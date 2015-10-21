@@ -27,5 +27,5 @@ import (
 )
 
 type Storage interface {
-	StoreFlows(flows []flow.Flow) error
+	StoreFlows(flows []*flow.Flow) error
 }

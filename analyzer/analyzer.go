@@ -20,42 +20,30 @@
  *
  */
 
-package elasticseach
+package analyzer
 
 import (
-	"fmt"
-	"strconv"
-
-	elastigo "github.com/mattbaird/elastigo/lib"
-
 	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/mappings"
+	"github.com/redhat-cip/skydive/storage"
 )
 
-type ElasticSearchStorage struct {
-	connection *elastigo.Conn
+type Analyzer struct {
+	Mapper  mappings.Mapper
+	Storage storage.Storage
 }
 
-func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
-	/* TODO(safchain) bulk insert */
+func (analyzer *Analyzer) AnalyzeFlows(flows []*flow.Flow) {
 	for _, flow := range flows {
-
-		fmt.Println(flow)
-		_, err := c.connection.Index("skydive", "flow", flow.Uuid, nil, *flow)
-		if err != nil {
-			/* TODO(safchain) add log here */
-			fmt.Println(err)
-			continue
-		}
+		flow.UpdateAttributes(analyzer.Mapper)
 	}
 
-	return nil
+	analyzer.Storage.StoreFlows(flows)
+	logging.GetLogger().Debug("%d flows stored", len(flows))
 }
 
-func GetInstance(addr string, port int) *ElasticSearchStorage {
-	c := elastigo.NewConn()
-	c.Domain = addr
-	c.Port = strconv.FormatInt(int64(port), 10)
-
-	storage := &ElasticSearchStorage{connection: c}
-	return storage
+func New(mapper mappings.Mapper, storage storage.Storage) *Analyzer {
+	analyzer := &Analyzer{Mapper: mapper, Storage: storage}
+	return analyzer
 }

@@ -23,15 +23,14 @@
 package agents
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
+	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/storage"
 )
 
 const (
@@ -39,9 +38,9 @@ const (
 )
 
 type SFlowAgent struct {
-	Addr    string
-	Port    int
-	Storage storage.Storage
+	Addr     string
+	Port     int
+	Analyzer *analyzer.Analyzer
 }
 
 func (agent *SFlowAgent) Start() error {
@@ -72,12 +71,12 @@ func (agent *SFlowAgent) Start() error {
 
 		if sflowPacket.SampleCount > 0 {
 			for _, sample := range sflowPacket.FlowSamples {
-				flows := flow.FLowsFromSFlowSample(sample)
-				if agent.Storage != nil {
-					agent.Storage.StoreFlows(flows)
-				}
+				flows := flow.FLowsFromSFlowSample(&sample)
 				logging.GetLogger().Debug("%d flows captured", len(flows))
-				fmt.Println(flows)
+
+				if agent.Analyzer != nil {
+					agent.Analyzer.AnalyzeFlows(flows)
+				}
 			}
 		}
 	}
@@ -85,7 +84,7 @@ func (agent *SFlowAgent) Start() error {
 	return nil
 }
 
-func NewSFlowAgent(addr string, port int, storage storage.Storage) SFlowAgent {
-	agent := SFlowAgent{Addr: addr, Port: port, Storage: storage}
+func NewSFlowAgent(addr string, port int, analyzer *analyzer.Analyzer) SFlowAgent {
+	agent := SFlowAgent{Addr: addr, Port: port, Analyzer: analyzer}
 	return agent
 }

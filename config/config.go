@@ -20,42 +20,25 @@
  *
  */
 
-package elasticseach
+package config
 
 import (
-	"fmt"
-	"strconv"
-
-	elastigo "github.com/mattbaird/elastigo/lib"
-
-	"github.com/redhat-cip/skydive/flow"
+	"gopkg.in/ini.v1"
 )
 
-type ElasticSearchStorage struct {
-	connection *elastigo.Conn
-}
+var cfg *ini.File
 
-func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
-	/* TODO(safchain) bulk insert */
-	for _, flow := range flows {
+func InitConfig(filename string) error {
+	var err error
 
-		fmt.Println(flow)
-		_, err := c.connection.Index("skydive", "flow", flow.Uuid, nil, *flow)
-		if err != nil {
-			/* TODO(safchain) add log here */
-			fmt.Println(err)
-			continue
-		}
+	cfg, err = ini.Load(filename)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func GetInstance(addr string, port int) *ElasticSearchStorage {
-	c := elastigo.NewConn()
-	c.Domain = addr
-	c.Port = strconv.FormatInt(int64(port), 10)
-
-	storage := &ElasticSearchStorage{connection: c}
-	return storage
+func GetConfig() *ini.File {
+	return cfg
 }

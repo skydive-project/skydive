@@ -23,19 +23,29 @@
 package flow
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
 	"github.com/nu7hatch/gouuid"
+
+	"github.com/redhat-cip/skydive/mappings"
 )
 
 type Flow struct {
 	Uuid            string
+	Host            string
 	InputInterface  uint32
 	OutputInterface uint32
-	FrameLength     uint32
+	TenantIdSrc     string
+	TenantIdDst     string
+	VNISrc          string
+	VNIDst          string
 	EtherSrc        string
 	EtherDst        string
 	EtherType       string
@@ -44,11 +54,25 @@ type Flow struct {
 	Protocol        string
 	PortSrc         uint32
 	PortDst         uint32
-	Seq             uint64
+	Id              uint64
 }
 
-func (flow *Flow) fillFromGoPacket(packet gopacket.Packet) error {
-	ethernetLayer := packet.Layer(layers.LayerTypeEthernet)
+func (flow *Flow) UpdateAttributes(mapper mappings.Mapper) {
+	attrs := mapper.GetAttributes(flow.EtherSrc)
+	fmt.Println(attrs)
+
+	flow.TenantIdSrc = attrs.TenantId
+	flow.VNISrc = attrs.VNI
+
+	attrs = mapper.GetAttributes(flow.EtherDst)
+	flow.TenantIdDst = attrs.TenantId
+	flow.VNIDst = attrs.VNI
+}
+
+func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
+	hasher := sha1.New()
+
+	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
 		return errors.New("Unable to decode the ethernet layer")
@@ -57,41 +81,65 @@ func (flow *Flow) fillFromGoPacket(packet gopacket.Packet) error {
 	flow.EtherDst = ethernetPacket.DstMAC.String()
 	flow.EtherType = ethernetPacket.EthernetType.String()
 
-	ipLayer := packet.Layer(layers.LayerTypeIPv4)
+	hasher.Write([]byte(flow.EtherSrc))
+	hasher.Write([]byte(flow.EtherDst))
+	hasher.Write([]byte(flow.EtherType))
+
+	ipLayer := (*packet).Layer(layers.LayerTypeIPv4)
 	if ipLayer != nil {
 		ip, _ := ipLayer.(*layers.IPv4)
 		flow.Ipv4Src = ip.SrcIP.String()
 		flow.Ipv4Dst = ip.DstIP.String()
 		flow.Protocol = ip.Protocol.String()
+
+		hasher.Write([]byte(flow.Ipv4Src))
+		hasher.Write([]byte(flow.Ipv4Dst))
+		hasher.Write([]byte(flow.Protocol))
 	}
 
-	udpLayer := packet.Layer(layers.LayerTypeUDP)
+	udpLayer := (*packet).Layer(layers.LayerTypeUDP)
 	if udpLayer != nil {
 		udp, _ := udpLayer.(*layers.UDP)
 		flow.PortSrc = uint32(udp.SrcPort)
 		flow.PortDst = uint32(udp.DstPort)
+
+		hasher.Write([]byte(udp.SrcPort.String()))
+		hasher.Write([]byte(udp.DstPort.String()))
 	}
 
-	tcpLayer := packet.Layer(layers.LayerTypeTCP)
+	tcpLayer := (*packet).Layer(layers.LayerTypeTCP)
 	if tcpLayer != nil {
 		tcp, _ := tcpLayer.(*layers.TCP)
 		flow.PortSrc = uint32(tcp.SrcPort)
 		flow.PortDst = uint32(tcp.DstPort)
-		flow.Seq = uint64(tcp.Seq)
+
+		hasher.Write([]byte(tcp.SrcPort.String()))
+		hasher.Write([]byte(tcp.DstPort.String()))
 	}
+
+	icmpLayer := (*packet).Layer(layers.LayerTypeICMPv4)
+	if icmpLayer != nil {
+		icmp, _ := icmpLayer.(*layers.ICMPv4)
+		flow.Id = uint64(icmp.Id)
+
+		hasher.Write([]byte(strconv.Itoa(int(icmp.Id))))
+	}
+
+	/* update the temporary uuid */
+	flow.Uuid = hex.EncodeToString(hasher.Sum(nil))
 
 	return nil
 }
 
-func New(in uint32, out uint32, len uint32) Flow {
+func New(in uint32, out uint32) Flow {
 	u, _ := uuid.NewV4()
 	flow := Flow{Uuid: u.String(), InputInterface: in, OutputInterface: out}
 
 	return flow
 }
 
-func FLowsFromSFlowSample(sample layers.SFlowFlowSample) []Flow {
-	flows := []Flow{}
+func FLowsFromSFlowSample(sample *layers.SFlowFlowSample) []*Flow {
+	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
 
@@ -101,10 +149,10 @@ func FLowsFromSFlowSample(sample layers.SFlowFlowSample) []Flow {
 			continue
 		}
 
-		flow := New(sample.InputInterface, sample.OutputInterface, record.FrameLength)
-		flow.fillFromGoPacket(record.Header)
+		flow := New(sample.InputInterface, sample.OutputInterface)
+		flow.fillFromGoPacket(&record.Header)
 
-		flows = append(flows, flow)
+		flows = append(flows, &flow)
 	}
 
 	return flows

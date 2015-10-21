@@ -20,42 +20,4 @@
  *
  */
 
-package elasticseach
-
-import (
-	"fmt"
-	"strconv"
-
-	elastigo "github.com/mattbaird/elastigo/lib"
-
-	"github.com/redhat-cip/skydive/flow"
-)
-
-type ElasticSearchStorage struct {
-	connection *elastigo.Conn
-}
-
-func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
-	/* TODO(safchain) bulk insert */
-	for _, flow := range flows {
-
-		fmt.Println(flow)
-		_, err := c.connection.Index("skydive", "flow", flow.Uuid, nil, *flow)
-		if err != nil {
-			/* TODO(safchain) add log here */
-			fmt.Println(err)
-			continue
-		}
-	}
-
-	return nil
-}
-
-func GetInstance(addr string, port int) *ElasticSearchStorage {
-	c := elastigo.NewConn()
-	c.Domain = addr
-	c.Port = strconv.FormatInt(int64(port), 10)
-
-	storage := &ElasticSearchStorage{connection: c}
-	return storage
-}
+package packet
