@@ -33,6 +33,10 @@ import (
 	"github.com/redhat-cip/skydive/storage"
 )
 
+const (
+	MAX_DGRAM_SIZE = 1500
+)
+
 type SFlowAgent struct {
 	Addr    string
 	Port    int
@@ -40,7 +44,7 @@ type SFlowAgent struct {
 }
 
 func (agent *SFlowAgent) Start() error {
-	var buf [1024]byte
+	var buf [MAX_DGRAM_SIZE]byte
 
 	addr := net.UDPAddr{
 		Port: agent.Port,
