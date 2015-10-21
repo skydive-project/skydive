@@ -30,6 +30,7 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage"
 )
 
@@ -75,6 +76,7 @@ func (agent *SFlowAgent) Start() error {
 				if agent.Storage != nil {
 					agent.Storage.StoreFlows(flows)
 				}
+				logging.GetLogger().Debug("%d flows captured", len(flows))
 				fmt.Println(flows)
 			}
 		}
