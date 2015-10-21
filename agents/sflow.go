@@ -40,7 +40,7 @@ const (
 type SFlowAgent struct {
 	Addr    string
 	Port    int
-	Storage storage.Connection
+	Storage storage.Storage
 }
 
 func (agent *SFlowAgent) Start() error {
@@ -83,7 +83,7 @@ func (agent *SFlowAgent) Start() error {
 	return nil
 }
 
-func NewSFlowAgent(addr string, port int, storage storage.Connection) SFlowAgent {
+func NewSFlowAgent(addr string, port int, storage storage.Storage) SFlowAgent {
 	agent := SFlowAgent{Addr: addr, Port: port, Storage: storage}
 	return agent
 }

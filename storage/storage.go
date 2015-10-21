@@ -26,6 +26,6 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 )
 
-type Connection interface {
+type Storage interface {
 	StoreFlows(flows []flow.Flow) error
 }

@@ -31,11 +31,11 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 )
 
-type ElasticSearchConnection struct {
+type ElasticSearchStorage struct {
 	Connection *elastigo.Conn
 }
 
-func (c *ElasticSearchConnection) StoreFlows(flows []flow.Flow) error {
+func (c *ElasticSearchStorage) StoreFlows(flows []flow.Flow) error {
 	/* TODO(safchain) bulk insert */
 	for _, flow := range flows {
 		_, err := c.Connection.Index("skydive", "flow", flow.Uuid, nil, flow)
@@ -49,11 +49,11 @@ func (c *ElasticSearchConnection) StoreFlows(flows []flow.Flow) error {
 	return nil
 }
 
-func GetConnection(addr string, port int) *ElasticSearchConnection {
+func GetInstance(addr string, port int) *ElasticSearchStorage {
 	c := elastigo.NewConn()
 	c.Domain = addr
 	c.Port = strconv.FormatInt(int64(port), 10)
 
-	storage := &ElasticSearchConnection{Connection: c}
+	storage := &ElasticSearchStorage{Connection: c}
 	return storage
 }
