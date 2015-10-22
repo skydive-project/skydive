@@ -35,7 +35,7 @@ var quit chan bool
 func main() {
 	quit = make(chan bool)
 
-	storage := elasticseach.GetConnection("127.0.0.1", 9200)
+	storage := elasticseach.GetInstance("127.0.0.1", 9200)
 
 	sflow := agents.NewSFlowAgent("127.0.0.1", 6343, storage)
 	go sflow.Start()

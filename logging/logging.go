@@ -20,40 +20,18 @@
  *
  */
 
-package elasticseach
+package logging
 
 import (
-	"fmt"
-	"strconv"
-
-	elastigo "github.com/mattbaird/elastigo/lib"
-
-	"github.com/redhat-cip/skydive/flow"
+	"github.com/op/go-logging"
 )
 
-type ElasticSearchStorage struct {
-	Connection *elastigo.Conn
+var log = logging.MustGetLogger("skydive")
+
+func InitLogger(name string) {
+	log = logging.MustGetLogger("log")
 }
 
-func (c *ElasticSearchStorage) StoreFlows(flows []flow.Flow) error {
-	/* TODO(safchain) bulk insert */
-	for _, flow := range flows {
-		_, err := c.Connection.Index("skydive", "flow", flow.Uuid, nil, flow)
-		if err != nil {
-			/* TODO(safchain) add log here */
-			fmt.Println(err)
-			continue
-		}
-	}
-
-	return nil
-}
-
-func GetInstance(addr string, port int) *ElasticSearchStorage {
-	c := elastigo.NewConn()
-	c.Domain = addr
-	c.Port = strconv.FormatInt(int64(port), 10)
-
-	storage := &ElasticSearchStorage{Connection: c}
-	return storage
+func GetLogger() *logging.Logger {
+	return log
 }

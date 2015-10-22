@@ -30,6 +30,7 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage"
 )
 
@@ -40,7 +41,7 @@ const (
 type SFlowAgent struct {
 	Addr    string
 	Port    int
-	Storage storage.Connection
+	Storage storage.Storage
 }
 
 func (agent *SFlowAgent) Start() error {
@@ -75,6 +76,7 @@ func (agent *SFlowAgent) Start() error {
 				if agent.Storage != nil {
 					agent.Storage.StoreFlows(flows)
 				}
+				logging.GetLogger().Debug("%d flows captured", len(flows))
 				fmt.Println(flows)
 			}
 		}
@@ -83,7 +85,7 @@ func (agent *SFlowAgent) Start() error {
 	return nil
 }
 
-func NewSFlowAgent(addr string, port int, storage storage.Connection) SFlowAgent {
+func NewSFlowAgent(addr string, port int, storage storage.Storage) SFlowAgent {
 	agent := SFlowAgent{Addr: addr, Port: port, Storage: storage}
 	return agent
 }
