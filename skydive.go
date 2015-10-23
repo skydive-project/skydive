@@ -60,7 +60,7 @@ func main() {
 	go sflow.Start()
 
 	agent := ovsdb.SFlowAgent{
-		Id:         "Skydive-SFlowAgent",
+		Id:         "SkydiveSFlowAgent",
 		Interface:  "eth0",
 		Agent:      sflow,
 		HeaderSize: 128,

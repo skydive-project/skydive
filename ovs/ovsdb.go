@@ -32,6 +32,7 @@ import (
 	"github.com/socketplane/libovsdb"
 
 	"github.com/redhat-cip/skydive/agents"
+	"github.com/redhat-cip/skydive/logging"
 )
 
 type Agent interface {
@@ -53,13 +54,13 @@ type IpFixAgent struct {
 var ovsAgents []Agent
 
 var ovsDb *libovsdb.OvsdbClient
-var ovsUpdate chan *libovsdb.TableUpdates
+var bridgeCache = map[string]string{}
 
 type Notifier struct {
 }
 
 func (n Notifier) Update(context interface{}, tableUpdates libovsdb.TableUpdates) {
-	ovsUpdate <- &tableUpdates
+	registerAgents(&tableUpdates)
 }
 
 func (n Notifier) Locked([]interface{}) {
@@ -190,12 +191,15 @@ func registerSFLowAgent(agent SFlowAgent, bridgeUuid string) error {
 	var uuid libovsdb.UUID
 	if agentUuid != "" {
 		uuid = libovsdb.UUID{agentUuid}
+
+		logging.GetLogger().Info("Using already registered sFlow agent \"%s(%s)\"", agent.Id, uuid)
 	} else {
 		insertOp, err := NewInsertSFlowAgentOP(agent)
 		if err != nil {
 			return err
 		}
 		uuid = libovsdb.UUID{insertOp.UUIDName}
+		logging.GetLogger().Info("Registering new sFlow agent \"%s(%s)\"", agent.Id, uuid)
 
 		operations = append(operations, *insertOp)
 	}
@@ -223,6 +227,7 @@ func registerAgent(agent Agent, bridgeUuid string) error {
 	switch t := agent.(type) {
 	case SFlowAgent:
 		sflowAgent := agent.(SFlowAgent)
+
 		err := registerSFLowAgent(sflowAgent, bridgeUuid)
 		if err != nil {
 			return err
@@ -234,20 +239,35 @@ func registerAgent(agent Agent, bridgeUuid string) error {
 	return nil
 }
 
-func registerAgents(updates libovsdb.TableUpdates) error {
+func registerAgents(updates *libovsdb.TableUpdates) {
 	empty := libovsdb.Row{}
 
 	for _, tableUpdate := range updates.Updates {
 		for bridgeUuid, row := range tableUpdate.Rows {
 			if !reflect.DeepEqual(row.New, empty) {
-				for agent := range ovsAgents {
-					registerAgent(agent, bridgeUuid)
+				if _, ok := bridgeCache[bridgeUuid]; ok {
+					continue
 				}
+				bridgeCache[bridgeUuid] = bridgeUuid
+
+				logging.GetLogger().Info("New bridge \"%s(%s)\" added, registering agents",
+					row.New.Fields["name"], bridgeUuid)
+
+				for _, agent := range ovsAgents {
+					err := registerAgent(agent, bridgeUuid)
+					if err != nil {
+						logging.GetLogger().Error("Error while registering agent %s", err)
+					}
+				}
+			} else {
+				delete(bridgeCache, bridgeUuid)
+
+				/* NOTE: got delete, ovs will release the agent if not anymore referenced */
+				logging.GetLogger().Info("Bridge \"%s(%s)\" got deleted",
+					row.Old.Fields["name"], bridgeUuid)
 			}
 		}
 	}
-
-	return nil
 }
 
 func registerBridgeHandler() (*libovsdb.TableUpdates, error) {
@@ -282,21 +302,15 @@ func StartBridgesMonitor(addr string, port int, agts []Agent) error {
 
 	ovsAgents = agts
 
-	/* TODO(safchain) implement live updates */
-	ovsUpdate = make(chan *libovsdb.TableUpdates)
-
 	var notifier Notifier
 	ovsDb.Register(notifier)
 
 	updates, err := registerBridgeHandler()
 	if err != nil {
-		return nil
-	}
-
-	err = registerAgents(*updates)
-	if err != nil {
 		return err
 	}
+
+	registerAgents(updates)
 
 	return nil
 }
