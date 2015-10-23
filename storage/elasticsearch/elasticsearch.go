@@ -23,12 +23,12 @@
 package elasticseach
 
 import (
-	"fmt"
 	"strconv"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 
 	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/logging"
 )
 
 type ElasticSearchStorage struct {
@@ -38,12 +38,10 @@ type ElasticSearchStorage struct {
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	/* TODO(safchain) bulk insert */
 	for _, flow := range flows {
-
-		fmt.Println(flow)
+		logging.GetLogger().Debug("Indexing: %s", flow)
 		_, err := c.connection.Index("skydive", "flow", flow.Uuid, nil, *flow)
 		if err != nil {
-			/* TODO(safchain) add log here */
-			fmt.Println(err)
+			logging.GetLogger().Error("Error while indexing: %s", err)
 			continue
 		}
 	}

@@ -26,7 +26,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/google/gopacket"
@@ -38,7 +37,8 @@ import (
 )
 
 type Flow struct {
-	Uuid            string
+	Uuid string
+	/* TODO(safchain) how to get brige id ?, starting different agent per bridge ? */
 	Host            string
 	InputInterface  uint32
 	OutputInterface uint32
@@ -59,7 +59,6 @@ type Flow struct {
 
 func (flow *Flow) UpdateAttributes(mapper mappings.Mapper) {
 	attrs := mapper.GetAttributes(flow.EtherSrc)
-	fmt.Println(attrs)
 
 	flow.TenantIdSrc = attrs.TenantId
 	flow.VNISrc = attrs.VNI
@@ -131,14 +130,14 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	return nil
 }
 
-func New(in uint32, out uint32) Flow {
+func New(host string, in uint32, out uint32) Flow {
 	u, _ := uuid.NewV4()
-	flow := Flow{Uuid: u.String(), InputInterface: in, OutputInterface: out}
+	flow := Flow{Uuid: u.String(), Host: host, InputInterface: in, OutputInterface: out}
 
 	return flow
 }
 
-func FLowsFromSFlowSample(sample *layers.SFlowFlowSample) []*Flow {
+func FLowsFromSFlowSample(host string, sample *layers.SFlowFlowSample) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
@@ -149,7 +148,7 @@ func FLowsFromSFlowSample(sample *layers.SFlowFlowSample) []*Flow {
 			continue
 		}
 
-		flow := New(sample.InputInterface, sample.OutputInterface)
+		flow := New(host, sample.InputInterface, sample.OutputInterface)
 		flow.fillFromGoPacket(&record.Header)
 
 		flows = append(flows, &flow)

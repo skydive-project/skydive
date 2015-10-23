@@ -78,7 +78,7 @@ func (agent *SFlowAgent) Start() error {
 
 		if sflowPacket.SampleCount > 0 {
 			for _, sample := range sflowPacket.FlowSamples {
-				flows := flow.FLowsFromSFlowSample(&sample)
+				flows := flow.FLowsFromSFlowSample(sflowPacket.AgentAddress.String(), &sample)
 
 				logging.GetLogger().Debug("%d flows captured", len(flows))
 
