@@ -26,8 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
-	"strconv"
-	"strings"
 
 	"github.com/socketplane/libovsdb"
 
@@ -73,6 +71,7 @@ func (n Notifier) Echo([]interface{}) {
 }
 
 func (n Notifier) Disconnected(*libovsdb.OvsdbClient) {
+	/* TODO(safchain) handle connection lost */
 }
 
 func execOps(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error) {
@@ -103,10 +102,7 @@ func execOps(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, erro
 func NewInsertSFlowAgentOP(agent SFlowAgent) (*libovsdb.Operation, error) {
 	sFlowRow := make(map[string]interface{})
 	sFlowRow["agent"] = agent.Interface
-
-	target := []string{agent.Agent.Addr, strconv.FormatInt(int64(agent.Agent.Port), 10)}
-	sFlowRow["targets"] = strings.Join(target, ":")
-
+	sFlowRow["targets"] = agent.Agent.GetTarget()
 	sFlowRow["header"] = agent.HeaderSize
 	sFlowRow["sampling"] = agent.Sampling
 	sFlowRow["polling"] = agent.Polling
@@ -130,6 +126,35 @@ func NewInsertSFlowAgentOP(agent SFlowAgent) (*libovsdb.Operation, error) {
 	return &insertOp, nil
 }
 
+func compareAgentId(row *map[string]interface{}, agent SFlowAgent) (bool, error) {
+	extIds := (*row)["external_ids"]
+	switch extIds.(type) {
+	case []interface{}:
+		sl := extIds.([]interface{})
+		bSliced, err := json.Marshal(sl)
+		if err != nil {
+			return false, err
+		}
+
+		switch sl[0] {
+		case "map":
+			var oMap libovsdb.OvsMap
+			err = json.Unmarshal(bSliced, &oMap)
+			if err != nil {
+				return false, err
+			}
+
+			if value, ok := oMap.GoMap["agent-id"]; ok {
+				if value == agent.Id {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
+
 func retrieveSFlowAgentUuid(agent SFlowAgent) (string, error) {
 	/* FIX(safchain) don't find a way to send a null condition */
 	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{"abc"})
@@ -150,29 +175,26 @@ func retrieveSFlowAgentUuid(agent SFlowAgent) (string, error) {
 			u := row["_uuid"].([]interface{})[1]
 			uuid := u.(string)
 
-			extIds := row["external_ids"]
-			switch extIds.(type) {
-			case []interface{}:
-				sl := extIds.([]interface{})
-				bSliced, err := json.Marshal(sl)
-				if err != nil {
-					return "", err
+			if targets, ok := row["targets"]; ok {
+				if targets != agent.Agent.GetTarget() {
+					continue
 				}
+			}
 
-				switch sl[0] {
-				case "map":
-					var oMap libovsdb.OvsMap
-					err = json.Unmarshal(bSliced, &oMap)
-					if err != nil {
-						return "", err
-					}
-
-					if value, ok := oMap.GoMap["agent-id"]; ok {
-						if value == agent.Id {
-							return uuid, nil
-						}
-					}
+			if polling, ok := row["polling"]; ok {
+				if uint32(polling.(float64)) != agent.Polling {
+					continue
 				}
+			}
+
+			if sampling, ok := row["sampling"]; ok {
+				if uint32(sampling.(float64)) != agent.Sampling {
+					continue
+				}
+			}
+
+			if ok, _ := compareAgentId(&row, agent); ok {
+				return uuid, nil
 			}
 		}
 	}

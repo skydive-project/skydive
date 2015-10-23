@@ -56,7 +56,7 @@ func main() {
 	storage := elasticseach.GetInstance("127.0.0.1", 9200)
 	analyzer := analyzer.New(mapper, storage)
 
-	sflow := agents.NewSFlowAgent("127.0.0.1", 6343, analyzer)
+	sflow := agents.NewSFlowAgent("127.0.0.1", 6345, analyzer)
 	go sflow.Start()
 
 	agent := ovsdb.SFlowAgent{
