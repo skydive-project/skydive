@@ -27,6 +27,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -55,6 +56,7 @@ type Flow struct {
 	PortSrc         uint32
 	PortDst         uint32
 	Id              uint64
+	Timestamp       uint64
 }
 
 func (flow *Flow) UpdateAttributes(mapper mappings.Mapper) {
@@ -132,7 +134,8 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 
 func New(host string, in uint32, out uint32) Flow {
 	u, _ := uuid.NewV4()
-	flow := Flow{Uuid: u.String(), Host: host, InputInterface: in, OutputInterface: out}
+	t := uint64(time.Now().Unix())
+	flow := Flow{Uuid: u.String(), Host: host, InputInterface: in, OutputInterface: out, Timestamp: t}
 
 	return flow
 }
