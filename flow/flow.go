@@ -53,6 +53,7 @@ type Flow struct {
 	Ipv4Src         string
 	Ipv4Dst         string
 	Protocol        string
+	Path            string
 	PortSrc         uint32
 	PortDst         uint32
 	Id              uint64
@@ -97,6 +98,16 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 		hasher.Write([]byte(flow.Ipv4Dst))
 		hasher.Write([]byte(flow.Protocol))
 	}
+
+	path := ""
+	for i, layer := range (*packet).Layers() {
+		if i > 0 {
+			path += "."
+		}
+		path += layer.LayerType().String()
+	}
+	flow.Path = path
+	hasher.Write([]byte(flow.Path))
 
 	udpLayer := (*packet).Layer(layers.LayerTypeUDP)
 	if udpLayer != nil {
