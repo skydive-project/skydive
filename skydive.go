@@ -69,7 +69,8 @@ func main() {
 	}
 	agents := []ovsdb.Agent{agent}
 
-	ovsdb.StartBridgesMonitor("127.0.0.1", 6400, agents)
+	monitor := ovsdb.NewBridgesMonitor("127.0.0.1", 6400, agents)
+	monitor.StartMonitoring()
 
 	fmt.Println("Skydive Agent started !")
 	<-quit
