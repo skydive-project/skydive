@@ -20,40 +20,26 @@
  *
  */
 
-package elasticseach
+package mappings
 
-import (
-	"strconv"
-
-	elastigo "github.com/mattbaird/elastigo/lib"
-
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/logging"
+const (
+	BROADCAST = "ff:ff:ff:ff:ff:ff"
 )
 
-type ElasticSearchStorage struct {
-	connection *elastigo.Conn
+type Attributes struct {
+	TenantId string
+	VNI      string
 }
 
-func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
-	/* TODO(safchain) bulk insert */
-	for _, flow := range flows {
-		logging.GetLogger().Debug("Indexing: %s", flow)
-		_, err := c.connection.Index("skydive", "flow", flow.Uuid, nil, *flow)
-		if err != nil {
-			logging.GetLogger().Error("Error while indexing: %s", err)
-			continue
-		}
-	}
-
-	return nil
+type Mapper interface {
+	GetAttributes(mac string) *Attributes
 }
 
-func GetInstance(addr string, port int) *ElasticSearchStorage {
-	c := elastigo.NewConn()
-	c.Domain = addr
-	c.Port = strconv.FormatInt(int64(port), 10)
+func GetDefaultAttributes() map[string]Attributes {
+	mm := map[string]Attributes{}
 
-	storage := &ElasticSearchStorage{connection: c}
-	return storage
+	/* TODO(safchain) add more predefined values */
+	mm[BROADCAST] = Attributes{}
+
+	return mm
 }

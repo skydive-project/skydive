@@ -20,40 +20,4 @@
  *
  */
 
-package elasticseach
-
-import (
-	"strconv"
-
-	elastigo "github.com/mattbaird/elastigo/lib"
-
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/logging"
-)
-
-type ElasticSearchStorage struct {
-	connection *elastigo.Conn
-}
-
-func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
-	/* TODO(safchain) bulk insert */
-	for _, flow := range flows {
-		logging.GetLogger().Debug("Indexing: %s", flow)
-		_, err := c.connection.Index("skydive", "flow", flow.Uuid, nil, *flow)
-		if err != nil {
-			logging.GetLogger().Error("Error while indexing: %s", err)
-			continue
-		}
-	}
-
-	return nil
-}
-
-func GetInstance(addr string, port int) *ElasticSearchStorage {
-	c := elastigo.NewConn()
-	c.Domain = addr
-	c.Port = strconv.FormatInt(int64(port), 10)
-
-	storage := &ElasticSearchStorage{connection: c}
-	return storage
-}
+package packet
