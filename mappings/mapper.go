@@ -22,24 +22,77 @@
 
 package mappings
 
-const (
-	BROADCAST = "ff:ff:ff:ff:ff:ff"
+import (
+	//"fmt"
+
+	"github.com/redhat-cip/skydive/flow"
 )
 
-type Attributes struct {
-	TenantId string
-	VNI      string
+type InterfaceMappingDriver interface {
+	Enhance(mac string, attrs *flow.InterfaceAttributes)
 }
 
-type Mapper interface {
-	GetAttributes(mac string) *Attributes
+type InterfaceMapper struct {
+	Drivers []InterfaceMappingDriver
 }
 
-func GetDefaultAttributes() map[string]Attributes {
-	mm := map[string]Attributes{}
+type FlowMapper struct {
+	InterfaceMapper *InterfaceMapper
+}
 
-	/* TODO(safchain) add more predefined values */
-	mm[BROADCAST] = Attributes{}
+func (im *InterfaceMapper) AddDriver(driver InterfaceMappingDriver) {
+	im.Drivers = append(im.Drivers, driver)
+}
 
-	return mm
+func (im *InterfaceMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
+	/* enhance interface attributes pipeline */
+	for _, driver := range im.Drivers {
+		driver.Enhance(mac, attrs)
+	}
+}
+
+func NewInterfaceMapper(drivers []InterfaceMappingDriver) *InterfaceMapper {
+	im := &InterfaceMapper{Drivers: drivers}
+	return im
+}
+
+func (fm *FlowMapper) EnhanceInterfaces(flow *flow.Flow) {
+	fm.InterfaceMapper.Enhance(flow.EtherSrc, &flow.Attributes.IntfAttrSrc)
+	fm.InterfaceMapper.Enhance(flow.EtherDst, &flow.Attributes.IntfAttrDst)
+}
+
+func (fm *FlowMapper) Enhance(flow *flow.Flow) {
+	fm.EnhanceInterfaces(flow)
+}
+
+func (fm *FlowMapper) SetInterfaceMapper(mapper *InterfaceMapper) {
+	fm.InterfaceMapper = mapper
+}
+
+func (fm *FlowMapper) SetDefaultInterfaceMappingDrivers() error {
+	drivers, err := GetDefaultInterfaceMappingDrivers()
+	if err != nil {
+		return err
+	}
+	im := NewInterfaceMapper(drivers)
+	fm.SetInterfaceMapper(im)
+
+	return nil
+}
+
+func NewFlowMapper() *FlowMapper {
+	fm := &FlowMapper{}
+	return fm
+}
+
+func GetDefaultInterfaceMappingDrivers() ([]InterfaceMappingDriver, error) {
+	drivers := []InterfaceMappingDriver{}
+
+	neutron, err := NewNeutronMapper()
+	if err != nil {
+		return drivers, err
+	}
+	drivers = append(drivers, neutron)
+
+	return drivers, nil
 }

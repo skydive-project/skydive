@@ -23,6 +23,7 @@
 package elasticseach
 
 import (
+	"encoding/json"
 	"strconv"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
@@ -38,8 +39,12 @@ type ElasticSearchStorage struct {
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	/* TODO(safchain) bulk insert */
 	for _, flow := range flows {
-		logging.GetLogger().Debug("Indexing: %s", flow)
-		_, err := c.connection.Index("skydive", "flow", flow.Uuid, nil, *flow)
+		j, err := json.Marshal(flow)
+		if err == nil {
+			logging.GetLogger().Debug("Indexing: %s", string(j))
+		}
+
+		_, err = c.connection.Index("skydive", "flow", flow.Uuid, nil, *flow)
 		if err != nil {
 			logging.GetLogger().Error("Error while indexing: %s", err)
 			continue

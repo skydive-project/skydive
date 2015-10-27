@@ -48,7 +48,8 @@ func main() {
 
 	quit = make(chan bool)
 
-	mapper, err := mappings.NewNeutronMapper()
+	mapper := mappings.NewFlowMapper()
+	err = mapper.SetDefaultInterfaceMappingDrivers()
 	if err != nil {
 		panic(err)
 	}

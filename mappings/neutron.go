@@ -36,6 +36,7 @@ import (
 	"github.com/pmylund/go-cache"
 
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -71,13 +72,13 @@ func (mapper *NeutronMapper) retrievePort(mac string) (ports.Port, error) {
 	return port, err
 }
 
-func (mapper *NeutronMapper) retrieveAttributes(mac string) Attributes {
+func (mapper *NeutronMapper) retrieveAttributes(mac string) flow.InterfaceAttributes {
 	logging.GetLogger().Debug("Retrieving attributes from Neutron for Mac: %s", mac)
 
 	/* FIX(safchain) remove fixed mac */
 	mac = "fa:16:3e:9f:e9:7f"
 
-	attrs := Attributes{}
+	attrs := flow.InterfaceAttributes{}
 
 	port, err := mapper.retrievePort(mac)
 	if err != nil {
@@ -113,22 +114,19 @@ func (mapper *NeutronMapper) cacheUpdater() {
 	}
 }
 
-func (mapper *NeutronMapper) GetAttributes(mac string) *Attributes {
+func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
 	a, f := mapper.cache.Get(mac)
 	if f {
-		attrs := a.(Attributes)
-		return &attrs
+		ia := a.(flow.InterfaceAttributes)
+
+		/* update attributes with attributes retrieved from neutron */
+		attrs.TenantId = ia.TenantId
+		attrs.VNI = ia.VNI
+
+		return
 	}
 
 	mapper.cacheUpdaterChan <- mac
-
-	return &Attributes{}
-}
-
-func (mapper *NeutronMapper) initCache() {
-	for mac, attrs := range GetDefaultAttributes() {
-		mapper.cache.Set(mac, attrs, cache.NoExpiration)
-	}
 }
 
 func NewNeutronMapper() (*NeutronMapper, error) {
@@ -174,8 +172,6 @@ func NewNeutronMapper() (*NeutronMapper, error) {
 		return nil, err
 	}
 	mapper.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
-	mapper.initCache()
-
 	mapper.cacheUpdaterChan = make(chan string)
 	go mapper.cacheUpdater()
 

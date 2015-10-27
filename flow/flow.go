@@ -33,42 +33,36 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/nu7hatch/gouuid"
-
-	"github.com/redhat-cip/skydive/mappings"
 )
+
+type InterfaceAttributes struct {
+	TenantId string
+	VNI      string
+	IfIndex  uint32
+	IfName   string
+}
+
+type Attributes struct {
+	IntfAttrSrc InterfaceAttributes
+	IntfAttrDst InterfaceAttributes
+}
 
 type Flow struct {
 	Uuid string
 	/* TODO(safchain) how to get brige id ?, starting different agent per bridge ? */
-	Host            string
-	InputInterface  uint32
-	OutputInterface uint32
-	TenantIdSrc     string
-	TenantIdDst     string
-	VNISrc          string
-	VNIDst          string
-	EtherSrc        string
-	EtherDst        string
-	EtherType       string
-	Ipv4Src         string
-	Ipv4Dst         string
-	Protocol        string
-	Path            string
-	PortSrc         uint32
-	PortDst         uint32
-	Id              uint64
-	Timestamp       uint64
-}
-
-func (flow *Flow) UpdateAttributes(mapper mappings.Mapper) {
-	attrs := mapper.GetAttributes(flow.EtherSrc)
-
-	flow.TenantIdSrc = attrs.TenantId
-	flow.VNISrc = attrs.VNI
-
-	attrs = mapper.GetAttributes(flow.EtherDst)
-	flow.TenantIdDst = attrs.TenantId
-	flow.VNIDst = attrs.VNI
+	Host       string
+	EtherSrc   string
+	EtherDst   string
+	EtherType  string
+	Ipv4Src    string
+	Ipv4Dst    string
+	Protocol   string
+	Path       string
+	PortSrc    uint32
+	PortDst    uint32
+	Id         uint64
+	Timestamp  uint64
+	Attributes Attributes
 }
 
 func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
@@ -143,10 +137,17 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	return nil
 }
 
-func New(host string, in uint32, out uint32) Flow {
+func New(host string, in uint32, out uint32, packet *gopacket.Packet) *Flow {
 	u, _ := uuid.NewV4()
 	t := uint64(time.Now().Unix())
-	flow := Flow{Uuid: u.String(), Host: host, InputInterface: in, OutputInterface: out, Timestamp: t}
+
+	flow := &Flow{Uuid: u.String(), Host: host, Timestamp: t}
+	flow.Attributes.IntfAttrSrc.IfIndex = in
+	flow.Attributes.IntfAttrDst.IfIndex = out
+
+	if packet != nil {
+		flow.fillFromGoPacket(packet)
+	}
 
 	return flow
 }
@@ -162,10 +163,8 @@ func FLowsFromSFlowSample(host string, sample *layers.SFlowFlowSample) []*Flow {
 			continue
 		}
 
-		flow := New(host, sample.InputInterface, sample.OutputInterface)
-		flow.fillFromGoPacket(&record.Header)
-
-		flows = append(flows, &flow)
+		flow := New(host, sample.InputInterface, sample.OutputInterface, &record.Header)
+		flows = append(flows, flow)
 	}
 
 	return flows
