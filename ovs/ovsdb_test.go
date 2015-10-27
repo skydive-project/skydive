@@ -75,7 +75,7 @@ func TestRegisterNewAgents(t *testing.T) {
 		Id:         "AgentId",
 		Interface:  "eth0",
 		Agent:      sflow,
-		HeaderSize: 128,
+		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
 	}
@@ -87,7 +87,7 @@ func TestRegisterNewAgents(t *testing.T) {
 	fakeClient.CurrentResult = 0
 	fakeClient.Results = make([]FakeOvsResult, 2)
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":128,"polling":0,"sampling":1,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":1,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
 	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
 
 	tableUpdates := getTableUpdates("bridge1")
@@ -124,7 +124,7 @@ func TestReusingRegisteredAgents(t *testing.T) {
 		Id:         "AgentId",
 		Interface:  "eth0",
 		Agent:      sflow,
-		HeaderSize: 128,
+		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
 	}
@@ -154,7 +154,7 @@ func TestUpdateRegisteredAgents(t *testing.T) {
 		Id:         "AgentId",
 		Interface:  "eth0",
 		Agent:      sflow,
-		HeaderSize: 128,
+		HeaderSize: 256,
 		Sampling:   2,
 		Polling:    0,
 	}
@@ -167,7 +167,7 @@ func TestUpdateRegisteredAgents(t *testing.T) {
 	fakeClient.Results = make([]FakeOvsResult, 2)
 	fakeClient.Results[0].Result = getSelectPreviousRegisteredResults(agent)
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":128,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
 	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
 
 	tableUpdates := getTableUpdates("bridge1")
@@ -185,7 +185,7 @@ func TestNewBridgeAdded(t *testing.T) {
 		Id:         "AgentId",
 		Interface:  "eth0",
 		Agent:      sflow,
-		HeaderSize: 128,
+		HeaderSize: 256,
 		Sampling:   2,
 		Polling:    0,
 	}
@@ -200,7 +200,7 @@ func TestNewBridgeAdded(t *testing.T) {
 	tableUpdates := getTableUpdates("bridge1")
 	monitor.registerAgents(tableUpdates)
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":128,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
 	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge2-uuid"]]]}]`
 
 	tableUpdates = getTableUpdates("bridge2")

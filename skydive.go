@@ -63,7 +63,7 @@ func main() {
 		Id:         "SkydiveSFlowAgent",
 		Interface:  "eth0",
 		Agent:      sflow,
-		HeaderSize: 128,
+		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
 	}
