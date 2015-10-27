@@ -45,20 +45,28 @@ type SFlowAgent struct {
 	Polling    uint32
 }
 
-type IpFixAgent struct {
-	Id string
+type OvsOpsExecutor interface {
+	Exec(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error)
 }
 
-var ovsAgents []Agent
+type OvsClient struct {
+	ovsdb *libovsdb.OvsdbClient
+}
 
-var ovsDb *libovsdb.OvsdbClient
-var bridgeCache = map[string]string{}
+type OvsBridgesMonitor struct {
+	Addr        string
+	Port        int
+	agents      []Agent
+	ovsClient   OvsOpsExecutor
+	bridgeCache map[string]string
+}
 
 type Notifier struct {
+	monitor *OvsBridgesMonitor
 }
 
 func (n Notifier) Update(context interface{}, tableUpdates libovsdb.TableUpdates) {
-	registerAgents(&tableUpdates)
+	n.monitor.registerAgents(&tableUpdates)
 }
 
 func (n Notifier) Locked([]interface{}) {
@@ -74,8 +82,8 @@ func (n Notifier) Disconnected(*libovsdb.OvsdbClient) {
 	/* TODO(safchain) handle connection lost */
 }
 
-func execOps(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error) {
-	result, err := ovsDb.Transact("Open_vSwitch", operations...)
+func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error) {
+	result, err := o.ovsdb.Transact("Open_vSwitch", operations...)
 	if err != nil {
 		return nil, errors.New(
 			"Replies number should be atleast equal to number of Operations ")
@@ -96,10 +104,11 @@ func execOps(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, erro
 				"Transaction Failed due to an error :" + o.Error)
 		}
 	}
+
 	return result, nil
 }
 
-func NewInsertSFlowAgentOP(agent SFlowAgent) (*libovsdb.Operation, error) {
+func newInsertSFlowAgentOP(agent SFlowAgent) (*libovsdb.Operation, error) {
 	sFlowRow := make(map[string]interface{})
 	sFlowRow["agent"] = agent.Interface
 	sFlowRow["targets"] = agent.Agent.GetTarget()
@@ -155,7 +164,7 @@ func compareAgentId(row *map[string]interface{}, agent SFlowAgent) (bool, error)
 	return false, nil
 }
 
-func retrieveSFlowAgentUuid(agent SFlowAgent) (string, error) {
+func (o *OvsBridgesMonitor) retrieveSFlowAgentUuid(agent SFlowAgent) (string, error) {
 	/* FIX(safchain) don't find a way to send a null condition */
 	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{"abc"})
 	selectOp := libovsdb.Operation{
@@ -165,7 +174,7 @@ func retrieveSFlowAgentUuid(agent SFlowAgent) (string, error) {
 	}
 
 	operations := []libovsdb.Operation{selectOp}
-	result, err := execOps(operations...)
+	result, err := o.ovsClient.Exec(operations...)
 	if err != nil {
 		return "", err
 	}
@@ -202,8 +211,8 @@ func retrieveSFlowAgentUuid(agent SFlowAgent) (string, error) {
 	return "", nil
 }
 
-func registerSFLowAgent(agent SFlowAgent, bridgeUuid string) error {
-	agentUuid, err := retrieveSFlowAgentUuid(agent)
+func (o *OvsBridgesMonitor) registerSFLowAgent(agent SFlowAgent, bridgeUuid string) error {
+	agentUuid, err := o.retrieveSFlowAgentUuid(agent)
 	if err != nil {
 		return err
 	}
@@ -216,7 +225,7 @@ func registerSFLowAgent(agent SFlowAgent, bridgeUuid string) error {
 
 		logging.GetLogger().Info("Using already registered sFlow agent \"%s(%s)\"", agent.Id, uuid)
 	} else {
-		insertOp, err := NewInsertSFlowAgentOP(agent)
+		insertOp, err := newInsertSFlowAgentOP(agent)
 		if err != nil {
 			return err
 		}
@@ -238,19 +247,19 @@ func registerSFLowAgent(agent SFlowAgent, bridgeUuid string) error {
 	}
 
 	operations = append(operations, updateOp)
-	_, err = execOps(operations...)
+	_, err = o.ovsClient.Exec(operations...)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func registerAgent(agent Agent, bridgeUuid string) error {
+func (o *OvsBridgesMonitor) registerAgent(agent agents.Agent, bridgeUuid string) error {
 	switch t := agent.(type) {
 	case SFlowAgent:
 		sflowAgent := agent.(SFlowAgent)
 
-		err := registerSFLowAgent(sflowAgent, bridgeUuid)
+		err := o.registerSFLowAgent(sflowAgent, bridgeUuid)
 		if err != nil {
 			return err
 		}
@@ -261,28 +270,27 @@ func registerAgent(agent Agent, bridgeUuid string) error {
 	return nil
 }
 
-func registerAgents(updates *libovsdb.TableUpdates) {
+func (o *OvsBridgesMonitor) registerAgents(updates *libovsdb.TableUpdates) {
 	empty := libovsdb.Row{}
-
 	for _, tableUpdate := range updates.Updates {
 		for bridgeUuid, row := range tableUpdate.Rows {
 			if !reflect.DeepEqual(row.New, empty) {
-				if _, ok := bridgeCache[bridgeUuid]; ok {
+				if _, ok := o.bridgeCache[bridgeUuid]; ok {
 					continue
 				}
-				bridgeCache[bridgeUuid] = bridgeUuid
+				o.bridgeCache[bridgeUuid] = bridgeUuid
 
 				logging.GetLogger().Info("New bridge \"%s(%s)\" added, registering agents",
 					row.New.Fields["name"], bridgeUuid)
 
-				for _, agent := range ovsAgents {
-					err := registerAgent(agent, bridgeUuid)
+				for _, agent := range o.agents {
+					err := o.registerAgent(agent, bridgeUuid)
 					if err != nil {
 						logging.GetLogger().Error("Error while registering agent %s", err)
 					}
 				}
 			} else {
-				delete(bridgeCache, bridgeUuid)
+				delete(o.bridgeCache, bridgeUuid)
 
 				/* NOTE: got delete, ovs will release the agent if not anymore referenced */
 				logging.GetLogger().Info("Bridge \"%s(%s)\" got deleted",
@@ -292,8 +300,9 @@ func registerAgents(updates *libovsdb.TableUpdates) {
 	}
 }
 
-func registerBridgeHandler() (*libovsdb.TableUpdates, error) {
-	schema, ok := ovsDb.Schema["Open_vSwitch"]
+func (o *OvsBridgesMonitor) registerBridgeHandler() (*libovsdb.TableUpdates, error) {
+	ovsClient := o.ovsClient.(*OvsClient)
+	schema, ok := ovsClient.ovsdb.Schema["Open_vSwitch"]
 	if !ok {
 		return nil, errors.New("invalid Database Schema")
 	}
@@ -312,27 +321,29 @@ func registerBridgeHandler() (*libovsdb.TableUpdates, error) {
 			Modify:  true,
 		},
 	}
-	return ovsDb.Monitor("Open_vSwitch", "", requests)
+	return ovsClient.ovsdb.Monitor("Open_vSwitch", "", requests)
 }
 
-func StartBridgesMonitor(addr string, port int, agts []Agent) error {
-	var err error
-	ovsDb, err = libovsdb.Connect(addr, 6400)
+func (o *OvsBridgesMonitor) StartMonitoring() error {
+	ovsdb, err := libovsdb.Connect(o.Addr, o.Port)
+	if err != nil {
+		return err
+	}
+	o.ovsClient = &OvsClient{ovsdb: ovsdb}
+
+	notifier := Notifier{monitor: o}
+	ovsdb.Register(notifier)
+
+	updates, err := o.registerBridgeHandler()
 	if err != nil {
 		return err
 	}
 
-	ovsAgents = agts
-
-	var notifier Notifier
-	ovsDb.Register(notifier)
-
-	updates, err := registerBridgeHandler()
-	if err != nil {
-		return err
-	}
-
-	registerAgents(updates)
+	o.registerAgents(updates)
 
 	return nil
+}
+
+func NewBridgesMonitor(addr string, port int, agents []Agent) *OvsBridgesMonitor {
+	return &OvsBridgesMonitor{Addr: addr, Port: port, agents: agents, bridgeCache: map[string]string{}}
 }

@@ -1,0 +1,2 @@
+language: go
+go_import_path: github.com/redhat-cip/skydive
