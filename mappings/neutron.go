@@ -46,6 +46,11 @@ type NeutronMapper struct {
 	cacheUpdaterChan chan string
 }
 
+type Attributes struct {
+	TenantId string
+	VNI      string
+}
+
 func (mapper *NeutronMapper) retrievePort(mac string) (ports.Port, error) {
 	port := ports.Port{}
 
@@ -72,13 +77,10 @@ func (mapper *NeutronMapper) retrievePort(mac string) (ports.Port, error) {
 	return port, err
 }
 
-func (mapper *NeutronMapper) retrieveAttributes(mac string) flow.InterfaceAttributes {
+func (mapper *NeutronMapper) retrieveAttributes(mac string) Attributes {
 	logging.GetLogger().Debug("Retrieving attributes from Neutron for Mac: %s", mac)
 
-	/* FIX(safchain) remove fixed mac */
-	mac = "fa:16:3e:9f:e9:7f"
-
-	attrs := flow.InterfaceAttributes{}
+	attrs := Attributes{}
 
 	port, err := mapper.retrievePort(mac)
 	if err != nil {
@@ -101,7 +103,7 @@ func (mapper *NeutronMapper) retrieveAttributes(mac string) flow.InterfaceAttrib
 }
 
 func (mapper *NeutronMapper) cacheUpdater() {
-	logging.GetLogger().Debug("Start updater")
+	logging.GetLogger().Debug("Start Neutron cache updater")
 
 	var mac string
 	for {
@@ -117,7 +119,7 @@ func (mapper *NeutronMapper) cacheUpdater() {
 func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
 	a, f := mapper.cache.Get(mac)
 	if f {
-		ia := a.(flow.InterfaceAttributes)
+		ia := a.(Attributes)
 
 		/* update attributes with attributes retrieved from neutron */
 		attrs.TenantId = ia.TenantId

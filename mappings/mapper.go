@@ -94,5 +94,11 @@ func GetDefaultInterfaceMappingDrivers() ([]InterfaceMappingDriver, error) {
 	}
 	drivers = append(drivers, neutron)
 
+	netlink, err := NewNetLinkMapper()
+	if err != nil {
+		return drivers, err
+	}
+	drivers = append(drivers, netlink)
+
 	return drivers, nil
 }

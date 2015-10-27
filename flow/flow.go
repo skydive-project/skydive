@@ -40,6 +40,7 @@ type InterfaceAttributes struct {
 	VNI      string
 	IfIndex  uint32
 	IfName   string
+	MTU      uint32
 }
 
 type Attributes struct {
