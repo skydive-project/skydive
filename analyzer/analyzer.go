@@ -30,20 +30,20 @@ import (
 )
 
 type Analyzer struct {
-	Mapper  mappings.Mapper
-	Storage storage.Storage
+	FlowMapper *mappings.FlowMapper
+	Storage    storage.Storage
 }
 
 func (analyzer *Analyzer) AnalyzeFlows(flows []*flow.Flow) {
 	for _, flow := range flows {
-		flow.UpdateAttributes(analyzer.Mapper)
+		analyzer.FlowMapper.Enhance(flow)
 	}
 
 	analyzer.Storage.StoreFlows(flows)
 	logging.GetLogger().Debug("%d flows stored", len(flows))
 }
 
-func New(mapper mappings.Mapper, storage storage.Storage) *Analyzer {
-	analyzer := &Analyzer{Mapper: mapper, Storage: storage}
+func New(mapper *mappings.FlowMapper, storage storage.Storage) *Analyzer {
+	analyzer := &Analyzer{FlowMapper: mapper, Storage: storage}
 	return analyzer
 }
