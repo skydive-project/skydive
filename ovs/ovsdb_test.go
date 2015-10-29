@@ -38,9 +38,26 @@ func (b *FakeBridgeHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row
 	b.BridgeUuid = uuid
 	b.Added = true
 }
+
 func (b *FakeBridgeHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	b.BridgeUuid = uuid
 	b.Deleted = true
+}
+
+func (o *FakeBridgeHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *FakeBridgeHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *FakeBridgeHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *FakeBridgeHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
 }
 
 func NewFakeBridgeHandler() FakeBridgeHandler {
@@ -78,7 +95,7 @@ func TestBridgeAdded(t *testing.T) {
 	monitor := NewOvsMonitor("127.0.0.1", 8888)
 
 	handler := NewFakeBridgeHandler()
-	monitor.AddBridgeMonitorHandler(&handler)
+	monitor.AddMonitorHandler(&handler)
 
 	tableUpdates := getTableUpdates("bridge1", "add")
 	monitor.updateHandler(tableUpdates)
@@ -92,7 +109,7 @@ func TestBridgeDeleted(t *testing.T) {
 	monitor := NewOvsMonitor("127.0.0.1", 8888)
 
 	handler := NewFakeBridgeHandler()
-	monitor.AddBridgeMonitorHandler(&handler)
+	monitor.AddMonitorHandler(&handler)
 
 	tableUpdates := getTableUpdates("bridge1", "add")
 	monitor.updateHandler(tableUpdates)
@@ -104,3 +121,5 @@ func TestBridgeDeleted(t *testing.T) {
 		t.Error("Bridge handler not called")
 	}
 }
+
+/* TODO(safchain) Add UT for interface adding */

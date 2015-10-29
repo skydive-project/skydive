@@ -23,8 +23,6 @@
 package mappings
 
 import (
-	//"fmt"
-
 	"github.com/redhat-cip/skydive/flow"
 )
 
@@ -69,36 +67,12 @@ func (fm *FlowMapper) SetInterfaceMapper(mapper *InterfaceMapper) {
 	fm.InterfaceMapper = mapper
 }
 
-func (fm *FlowMapper) SetDefaultInterfaceMappingDrivers() error {
-	drivers, err := GetDefaultInterfaceMappingDrivers()
-	if err != nil {
-		return err
-	}
+func (fm *FlowMapper) SetInterfaceMappingDrivers(drivers []InterfaceMappingDriver) {
 	im := NewInterfaceMapper(drivers)
 	fm.SetInterfaceMapper(im)
-
-	return nil
 }
 
 func NewFlowMapper() *FlowMapper {
 	fm := &FlowMapper{}
 	return fm
-}
-
-func GetDefaultInterfaceMappingDrivers() ([]InterfaceMappingDriver, error) {
-	drivers := []InterfaceMappingDriver{}
-
-	neutron, err := NewNeutronMapper()
-	if err != nil {
-		return drivers, err
-	}
-	drivers = append(drivers, neutron)
-
-	netlink, err := NewNetLinkMapper()
-	if err != nil {
-		return drivers, err
-	}
-	drivers = append(drivers, netlink)
-
-	return drivers, nil
 }

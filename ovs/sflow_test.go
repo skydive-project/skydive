@@ -27,8 +27,6 @@ import (
 	"testing"
 
 	"github.com/socketplane/libovsdb"
-
-	"github.com/redhat-cip/skydive/agents"
 )
 
 type FakeOvsResult struct {
@@ -71,11 +69,10 @@ func getSelectPreviousRegisteredResults(agent SFlowAgent) []libovsdb.OperationRe
 }
 
 func TestRegisterNewAgents(t *testing.T) {
-	sflow := agents.NewSFlowAgent("1.1.1.1", 111, nil)
 	agent := SFlowAgent{
 		Id:         "AgentId",
 		Interface:  "eth0",
-		Agent:      sflow,
+		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
@@ -102,11 +99,10 @@ func TestRegisterNewAgents(t *testing.T) {
 }
 
 func TestReusingRegisteredAgents(t *testing.T) {
-	sflow := agents.NewSFlowAgent("1.1.1.1", 111, nil)
 	agent := SFlowAgent{
 		Id:         "AgentId",
 		Interface:  "eth0",
-		Agent:      sflow,
+		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
@@ -133,11 +129,10 @@ func TestReusingRegisteredAgents(t *testing.T) {
 }
 
 func TestUpdateRegisteredAgents(t *testing.T) {
-	sflow := agents.NewSFlowAgent("1.1.1.1", 111, nil)
 	agent := SFlowAgent{
 		Id:         "AgentId",
 		Interface:  "eth0",
-		Agent:      sflow,
+		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
 		Sampling:   2,
 		Polling:    0,
@@ -165,11 +160,10 @@ func TestUpdateRegisteredAgents(t *testing.T) {
 }
 
 func TestNewBridgeAdded(t *testing.T) {
-	sflow := agents.NewSFlowAgent("1.1.1.1", 111, nil)
 	agent := SFlowAgent{
 		Id:         "AgentId",
 		Interface:  "eth0",
-		Agent:      sflow,
+		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
 		Sampling:   2,
 		Polling:    0,

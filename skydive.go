@@ -36,6 +36,26 @@ import (
 
 var quit chan bool
 
+func getInterfaceMappingDrivers(monitor *ovsdb.OvsMonitor) ([]mappings.InterfaceMappingDriver, error) {
+	drivers := []mappings.InterfaceMappingDriver{}
+
+	netlink, err := mappings.NewNetLinkMapper()
+	if err != nil {
+		return drivers, err
+	}
+	drivers = append(drivers, netlink)
+
+	ovs, err := mappings.NewOvsMapper()
+	if err != nil {
+		return drivers, err
+	}
+	drivers = append(drivers, ovs)
+
+	monitor.AddMonitorHandler(ovs)
+
+	return drivers, nil
+}
+
 func main() {
 	filename := flag.String("conf", "/etc/skydive/skydive.ini",
 		"Config file with all the skydive parameter.")
@@ -48,32 +68,35 @@ func main() {
 
 	quit = make(chan bool)
 
-	mapper := mappings.NewFlowMapper()
-	err = mapper.SetDefaultInterfaceMappingDrivers()
-	if err != nil {
-		panic(err)
-	}
-
-	storage := elasticseach.GetInstance("127.0.0.1", 9200)
-	analyzer := analyzer.New(mapper, storage)
-
-	sflow := agents.NewSFlowAgent("127.0.0.1", 6345, analyzer)
-	go sflow.Start()
-
-	agent := ovsdb.SFlowAgent{
+	sflowAgent := agents.NewSFlowAgent("127.0.0.1", 6345)
+	ovsSFlowAgent := ovsdb.SFlowAgent{
 		Id:         "SkydiveSFlowAgent",
 		Interface:  "eth0",
-		Agent:      sflow,
+		Target:     sflowAgent.GetTarget(),
 		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
 	}
-	agents := []ovsdb.SFlowAgent{agent}
-
-	sflowHandler := ovsdb.NewOvsSFlowAgentsHandler(agents)
+	sflowHandler := ovsdb.NewOvsSFlowAgentsHandler([]ovsdb.SFlowAgent{ovsSFlowAgent})
 
 	monitor := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
-	monitor.AddBridgeMonitorHandler(sflowHandler)
+	monitor.AddMonitorHandler(sflowHandler)
+
+	mapper := mappings.NewFlowMapper()
+	drivers, err := getInterfaceMappingDrivers(monitor)
+	if err != nil {
+		panic(err)
+	}
+	mapper.SetInterfaceMappingDrivers(drivers)
+
+	storage := elasticseach.GetInstance("127.0.0.1", 9200)
+	analyzer := analyzer.New(mapper, storage)
+
+	/* TODO(safchain) will use an analyzer client */
+	sflowAgent.SetAnalyzer(analyzer)
+
+	go sflowAgent.Start()
+
 	monitor.StartMonitoring()
 
 	fmt.Println("Skydive Agent started !")

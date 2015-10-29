@@ -42,14 +42,20 @@ type OvsClient struct {
 type OvsMonitorHandler interface {
 	OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+	OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+	OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+	OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+	OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 }
 
 type OvsMonitor struct {
-	Addr                  string
-	Port                  int
-	OvsClient             OvsOpsExecutor
-	BridgeMonitorHandlers []OvsMonitorHandler
-	bridgeCache           map[string]string
+	Addr            string
+	Port            int
+	OvsClient       OvsOpsExecutor
+	MonitorHandlers []OvsMonitorHandler
+	bridgeCache     map[string]string
+	interfaceCache  map[string]string
+	portCache       map[string]string
 }
 
 type Notifier struct {
@@ -99,7 +105,7 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 	return result, nil
 }
 
-func (o *OvsMonitor) bridgeUdateHandler(updates *libovsdb.TableUpdate) {
+func (o *OvsMonitor) bridgeUpdateHandler(updates *libovsdb.TableUpdate) {
 	empty := libovsdb.Row{}
 	for bridgeUuid, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
@@ -108,21 +114,76 @@ func (o *OvsMonitor) bridgeUdateHandler(updates *libovsdb.TableUpdate) {
 			}
 			o.bridgeCache[bridgeUuid] = bridgeUuid
 
-			logging.GetLogger().Info("New bridge \"%s(%s)\" added, registering agents",
+			logging.GetLogger().Info("New bridge \"%s(%s)\" added",
 				row.New.Fields["name"], bridgeUuid)
 
-			for _, handler := range o.BridgeMonitorHandlers {
+			for _, handler := range o.MonitorHandlers {
 				handler.OnOvsBridgeAdd(o, bridgeUuid, &row)
 			}
 		} else {
 			delete(o.bridgeCache, bridgeUuid)
 
-			/* NOTE: got delete, ovs will release the agent if not anymore referenced */
 			logging.GetLogger().Info("Bridge \"%s(%s)\" got deleted",
 				row.Old.Fields["name"], bridgeUuid)
 
-			for _, handler := range o.BridgeMonitorHandlers {
+			for _, handler := range o.MonitorHandlers {
 				handler.OnOvsBridgeDel(o, bridgeUuid, &row)
+			}
+		}
+	}
+}
+
+func (o *OvsMonitor) interfaceUpdateHandler(updates *libovsdb.TableUpdate) {
+	empty := libovsdb.Row{}
+	for interfaceUuid, row := range updates.Rows {
+		if !reflect.DeepEqual(row.New, empty) {
+			if _, ok := o.interfaceCache[interfaceUuid]; ok {
+				continue
+			}
+			o.interfaceCache[interfaceUuid] = interfaceUuid
+
+			logging.GetLogger().Info("New interface \"%s(%s)\" added",
+				row.New.Fields["name"], interfaceUuid)
+
+			for _, handler := range o.MonitorHandlers {
+				handler.OnOvsInterfaceAdd(o, interfaceUuid, &row)
+			}
+		} else {
+			delete(o.interfaceCache, interfaceUuid)
+
+			logging.GetLogger().Info("Interface \"%s(%s)\" got deleted",
+				row.Old.Fields["name"], interfaceUuid)
+
+			for _, handler := range o.MonitorHandlers {
+				handler.OnOvsInterfaceDel(o, interfaceUuid, &row)
+			}
+		}
+	}
+}
+
+func (o *OvsMonitor) portUpdateHandler(updates *libovsdb.TableUpdate) {
+	empty := libovsdb.Row{}
+	for portUuid, row := range updates.Rows {
+		if !reflect.DeepEqual(row.New, empty) {
+			if _, ok := o.portCache[portUuid]; ok {
+				continue
+			}
+			o.portCache[portUuid] = portUuid
+
+			logging.GetLogger().Info("New port \"%s(%s)\" added",
+				row.New.Fields["name"], portUuid)
+
+			for _, handler := range o.MonitorHandlers {
+				handler.OnOvsPortAdd(o, portUuid, &row)
+			}
+		} else {
+			delete(o.portCache, portUuid)
+
+			logging.GetLogger().Info("Port \"%s(%s)\" got deleted",
+				row.Old.Fields["name"], portUuid)
+
+			for _, handler := range o.MonitorHandlers {
+				handler.OnOvsPortDel(o, portUuid, &row)
 			}
 		}
 	}
@@ -132,14 +193,16 @@ func (o *OvsMonitor) updateHandler(updates *libovsdb.TableUpdates) {
 	for name, tableUpdate := range updates.Updates {
 		switch name {
 		case "Interface":
-
+			o.interfaceUpdateHandler(&tableUpdate)
 		case "Bridge":
-			o.bridgeUdateHandler(&tableUpdate)
+			o.bridgeUpdateHandler(&tableUpdate)
+		case "Port":
+			o.portUpdateHandler(&tableUpdate)
 		}
 	}
 }
 
-func (o *OvsMonitor) setBridgeMonitorRequests(r *map[string]libovsdb.MonitorRequest) error {
+func (o *OvsMonitor) setMonitorRequests(table string, r *map[string]libovsdb.MonitorRequest) error {
 	ovsClient := o.OvsClient.(*OvsClient)
 	schema, ok := ovsClient.ovsdb.Schema["Open_vSwitch"]
 	if !ok {
@@ -147,12 +210,12 @@ func (o *OvsMonitor) setBridgeMonitorRequests(r *map[string]libovsdb.MonitorRequ
 	}
 
 	var columns []string
-	for column, _ := range schema.Tables["Bridge"].Columns {
+	for column, _ := range schema.Tables[table].Columns {
 		columns = append(columns, column)
 	}
 
 	requests := *r
-	requests["Bridge"] = libovsdb.MonitorRequest{
+	requests[table] = libovsdb.MonitorRequest{
 		Columns: columns,
 		Select: libovsdb.MonitorSelect{
 			Initial: true,
@@ -165,34 +228,8 @@ func (o *OvsMonitor) setBridgeMonitorRequests(r *map[string]libovsdb.MonitorRequ
 	return nil
 }
 
-func (o *OvsMonitor) setInterfaceMonitorRequests(r *map[string]libovsdb.MonitorRequest) error {
-	ovsClient := o.OvsClient.(*OvsClient)
-	schema, ok := ovsClient.ovsdb.Schema["Open_vSwitch"]
-	if !ok {
-		return errors.New("invalid Database Schema")
-	}
-
-	var columns []string
-	for column, _ := range schema.Tables["Interface"].Columns {
-		columns = append(columns, column)
-	}
-
-	requests := *r
-	requests["Interface"] = libovsdb.MonitorRequest{
-		Columns: columns,
-		Select: libovsdb.MonitorSelect{
-			Initial: true,
-			Insert:  true,
-			Delete:  true,
-			Modify:  true,
-		},
-	}
-
-	return nil
-}
-
-func (o *OvsMonitor) AddBridgeMonitorHandler(handler OvsMonitorHandler) {
-	o.BridgeMonitorHandlers = append(o.BridgeMonitorHandlers, handler)
+func (o *OvsMonitor) AddMonitorHandler(handler OvsMonitorHandler) {
+	o.MonitorHandlers = append(o.MonitorHandlers, handler)
 }
 
 func (o *OvsMonitor) StartMonitoring() error {
@@ -206,11 +243,17 @@ func (o *OvsMonitor) StartMonitoring() error {
 	ovsdb.Register(notifier)
 
 	requests := make(map[string]libovsdb.MonitorRequest)
-	err = o.setBridgeMonitorRequests(&requests)
+	err = o.setMonitorRequests("Bridge", &requests)
 	if err != nil {
 		return err
 	}
-	err = o.setInterfaceMonitorRequests(&requests)
+
+	err = o.setMonitorRequests("Interface", &requests)
+	if err != nil {
+		return err
+	}
+
+	err = o.setMonitorRequests("Port", &requests)
 	if err != nil {
 		return err
 	}
@@ -220,13 +263,17 @@ func (o *OvsMonitor) StartMonitoring() error {
 		return err
 	}
 
-	//fmt.Println(updates)
-
 	o.updateHandler(updates)
 
 	return nil
 }
 
 func NewOvsMonitor(addr string, port int) *OvsMonitor {
-	return &OvsMonitor{Addr: addr, Port: port, bridgeCache: map[string]string{}}
+	return &OvsMonitor{
+		Addr:           addr,
+		Port:           port,
+		bridgeCache:    map[string]string{},
+		interfaceCache: map[string]string{},
+		portCache:      map[string]string{},
+	}
 }

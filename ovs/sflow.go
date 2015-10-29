@@ -27,14 +27,13 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
-	"github.com/redhat-cip/skydive/agents"
 	"github.com/redhat-cip/skydive/logging"
 )
 
 type SFlowAgent struct {
 	Id         string
 	Interface  string
-	Agent      agents.SFlowAgent
+	Target     string
 	HeaderSize uint32
 	Sampling   uint32
 	Polling    uint32
@@ -47,7 +46,7 @@ type OvsSFlowAgentsHandler struct {
 func newInsertSFlowAgentOP(agent SFlowAgent) (*libovsdb.Operation, error) {
 	sFlowRow := make(map[string]interface{})
 	sFlowRow["agent"] = agent.Interface
-	sFlowRow["targets"] = agent.Agent.GetTarget()
+	sFlowRow["targets"] = agent.Target
 	sFlowRow["header"] = agent.HeaderSize
 	sFlowRow["sampling"] = agent.Sampling
 	sFlowRow["polling"] = agent.Polling
@@ -121,7 +120,7 @@ func (o *OvsSFlowAgentsHandler) retrieveSFlowAgentUuid(monitor *OvsMonitor, agen
 			uuid := u.(string)
 
 			if targets, ok := row["targets"]; ok {
-				if targets != agent.Agent.GetTarget() {
+				if targets != agent.Target {
 					continue
 				}
 			}
@@ -210,7 +209,24 @@ func (o *OvsSFlowAgentsHandler) registerAgents(monitor *OvsMonitor, bridgeUuid s
 func (o *OvsSFlowAgentsHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.registerAgents(monitor, uuid)
 }
+
 func (o *OvsSFlowAgentsHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *OvsSFlowAgentsHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *OvsSFlowAgentsHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *OvsSFlowAgentsHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *OvsSFlowAgentsHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 
 }
 
