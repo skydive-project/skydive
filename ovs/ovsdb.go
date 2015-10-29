@@ -120,6 +120,10 @@ func (o *OvsMonitor) bridgeUdateHandler(updates *libovsdb.TableUpdate) {
 			/* NOTE: got delete, ovs will release the agent if not anymore referenced */
 			logging.GetLogger().Info("Bridge \"%s(%s)\" got deleted",
 				row.Old.Fields["name"], bridgeUuid)
+
+			for _, handler := range o.BridgeMonitorHandlers {
+				handler.OnOvsBridgeDel(o, bridgeUuid, &row)
+			}
 		}
 	}
 }
