@@ -68,9 +68,12 @@ func main() {
 		Sampling:   1,
 		Polling:    0,
 	}
-	agents := []ovsdb.Agent{agent}
+	agents := []ovsdb.SFlowAgent{agent}
 
-	monitor := ovsdb.NewBridgesMonitor("127.0.0.1", 6400, agents)
+	sflowHandler := ovsdb.NewOvsSFlowAgentsHandler(agents)
+
+	monitor := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
+	monitor.AddBridgeMonitorHandler(sflowHandler)
 	monitor.StartMonitoring()
 
 	fmt.Println("Skydive Agent started !")
