@@ -40,8 +40,10 @@ const (
 )
 
 type SFlowAgent struct {
-	Addr     string
-	Port     int
+	Addr string
+	Port int
+
+	/* TODO(safchain) replace by analyzer client */
 	Analyzer *analyzer.Analyzer
 }
 
@@ -92,7 +94,12 @@ func (agent *SFlowAgent) Start() error {
 	return nil
 }
 
-func NewSFlowAgent(addr string, port int, analyzer *analyzer.Analyzer) SFlowAgent {
-	agent := SFlowAgent{Addr: addr, Port: port, Analyzer: analyzer}
+/* TODO(safchain) replace by analyzer client */
+func (agent *SFlowAgent) SetAnalyzer(a *analyzer.Analyzer) {
+	agent.Analyzer = a
+}
+
+func NewSFlowAgent(addr string, port int) SFlowAgent {
+	agent := SFlowAgent{Addr: addr, Port: port}
 	return agent
 }

@@ -36,11 +36,12 @@ import (
 )
 
 type InterfaceAttributes struct {
-	TenantId string
-	VNI      string
-	IfIndex  uint32
-	IfName   string
-	MTU      uint32
+	TenantId   string
+	VNI        string
+	IfIndex    uint32
+	IfName     string
+	MTU        uint32
+	BridgeName string
 }
 
 type Attributes struct {

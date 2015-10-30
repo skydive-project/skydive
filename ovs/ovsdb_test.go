@@ -23,35 +23,48 @@
 package ovsdb
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/socketplane/libovsdb"
-
-	"github.com/redhat-cip/skydive/agents"
 )
 
-type FakeOvsResult struct {
-	Result []libovsdb.OperationResult
+type FakeBridgeHandler struct {
+	BridgeUuid string
+	Added      bool
+	Deleted    bool
 }
 
-type FakeOvsClient struct {
-	Operations []libovsdb.Operation
-
-	CurrentResult int
-	Results       []FakeOvsResult
+func (b *FakeBridgeHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	b.BridgeUuid = uuid
+	b.Added = true
 }
 
-func (o *FakeOvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error) {
-	o.Operations = operations
-
-	result := o.Results[o.CurrentResult].Result
-	o.CurrentResult++
-
-	return result, nil
+func (b *FakeBridgeHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	b.BridgeUuid = uuid
+	b.Deleted = true
 }
 
-func getTableUpdates(bridgeName string) *libovsdb.TableUpdates {
+func (o *FakeBridgeHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *FakeBridgeHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *FakeBridgeHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func (o *FakeBridgeHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+
+}
+
+func NewFakeBridgeHandler() FakeBridgeHandler {
+	return FakeBridgeHandler{Added: false, Deleted: false}
+}
+
+func getTableUpdates(bridgeName string, op string) *libovsdb.TableUpdates {
 	tableUpdates := &libovsdb.TableUpdates{}
 	tableUpdates.Updates = make(map[string]libovsdb.TableUpdate)
 
@@ -63,151 +76,50 @@ func getTableUpdates(bridgeName string) *libovsdb.TableUpdates {
 	row := libovsdb.Row{Fields: rowFields}
 
 	bridgeUuid := bridgeName + "-uuid"
-	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: bridgeUuid}, New: row}
+
+	var rowUpdate libovsdb.RowUpdate
+
+	switch op {
+	case "add":
+		rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: bridgeUuid}, New: row}
+	case "del":
+		rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: bridgeUuid}, Old: row}
+	}
+
 	rows[bridgeUuid] = rowUpdate
 
 	return tableUpdates
 }
 
-func TestRegisterNewAgents(t *testing.T) {
-	sflow := agents.NewSFlowAgent("1.1.1.1", 111, nil)
-	agent := SFlowAgent{
-		Id:         "AgentId",
-		Interface:  "eth0",
-		Agent:      sflow,
-		HeaderSize: 256,
-		Sampling:   1,
-		Polling:    0,
-	}
+func TestBridgeAdded(t *testing.T) {
+	monitor := NewOvsMonitor("127.0.0.1", 8888)
 
-	fakeClient := &FakeOvsClient{}
-	monitor := NewBridgesMonitor("127.0.0.1", 8888, []Agent{agent})
-	monitor.ovsClient = fakeClient
+	handler := NewFakeBridgeHandler()
+	monitor.AddMonitorHandler(&handler)
 
-	fakeClient.CurrentResult = 0
-	fakeClient.Results = make([]FakeOvsResult, 2)
+	tableUpdates := getTableUpdates("bridge1", "add")
+	monitor.updateHandler(tableUpdates)
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":1,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
-
-	tableUpdates := getTableUpdates("bridge1")
-	monitor.registerAgents(tableUpdates)
-
-	operations, _ := json.Marshal(fakeClient.Operations)
-	if string(operations) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(operations))
+	if handler.BridgeUuid != "bridge1-uuid" || handler.Added == false {
+		t.Error("Bridge handler not called")
 	}
 }
 
-func getSelectPreviousRegisteredResults(agent SFlowAgent) []libovsdb.OperationResult {
-	selectResult := make([]libovsdb.OperationResult, 1)
+func TestBridgeDeleted(t *testing.T) {
+	monitor := NewOvsMonitor("127.0.0.1", 8888)
 
-	rows := make(map[string]interface{})
-	rows["_uuid"] = []interface{}{"_uuid", "agent-uuid"}
+	handler := NewFakeBridgeHandler()
+	monitor.AddMonitorHandler(&handler)
 
-	rows["sampling"] = float64(1)
-	rows["polling"] = float64(0)
+	tableUpdates := getTableUpdates("bridge1", "add")
+	monitor.updateHandler(tableUpdates)
 
-	agentId := []interface{}{"agent-id", agent.Id}
-	extMap := []interface{}{"map", []interface{}{agentId}}
-	rows["external_ids"] = extMap
+	tableUpdates = getTableUpdates("bridge1", "del")
+	monitor.updateHandler(tableUpdates)
 
-	selectResult[0].Rows = make([]map[string]interface{}, 1)
-	selectResult[0].Rows[0] = rows
-
-	return selectResult
-}
-
-func TestReusingRegisteredAgents(t *testing.T) {
-	sflow := agents.NewSFlowAgent("1.1.1.1", 111, nil)
-	agent := SFlowAgent{
-		Id:         "AgentId",
-		Interface:  "eth0",
-		Agent:      sflow,
-		HeaderSize: 256,
-		Sampling:   1,
-		Polling:    0,
-	}
-
-	fakeClient := &FakeOvsClient{}
-	monitor := NewBridgesMonitor("127.0.0.1", 8888, []Agent{agent})
-	monitor.ovsClient = fakeClient
-
-	fakeClient.CurrentResult = 0
-	fakeClient.Results = make([]FakeOvsResult, 2)
-	fakeClient.Results[0].Result = getSelectPreviousRegisteredResults(agent)
-
-	expected := `[{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","agent-uuid"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
-
-	tableUpdates := getTableUpdates("bridge1")
-	monitor.registerAgents(tableUpdates)
-
-	operations, _ := json.Marshal(fakeClient.Operations)
-	if string(operations) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(operations))
+	if handler.BridgeUuid != "bridge1-uuid" || handler.Deleted == false {
+		t.Error("Bridge handler not called")
 	}
 }
 
-func TestUpdateRegisteredAgents(t *testing.T) {
-	sflow := agents.NewSFlowAgent("1.1.1.1", 111, nil)
-	agent := SFlowAgent{
-		Id:         "AgentId",
-		Interface:  "eth0",
-		Agent:      sflow,
-		HeaderSize: 256,
-		Sampling:   2,
-		Polling:    0,
-	}
-
-	fakeClient := &FakeOvsClient{}
-	monitor := NewBridgesMonitor("127.0.0.1", 8888, []Agent{agent})
-	monitor.ovsClient = fakeClient
-
-	fakeClient.CurrentResult = 0
-	fakeClient.Results = make([]FakeOvsResult, 2)
-	fakeClient.Results[0].Result = getSelectPreviousRegisteredResults(agent)
-
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
-
-	tableUpdates := getTableUpdates("bridge1")
-	monitor.registerAgents(tableUpdates)
-
-	operations, _ := json.Marshal(fakeClient.Operations)
-	if string(operations) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(operations))
-	}
-}
-
-func TestNewBridgeAdded(t *testing.T) {
-	sflow := agents.NewSFlowAgent("1.1.1.1", 111, nil)
-	agent := SFlowAgent{
-		Id:         "AgentId",
-		Interface:  "eth0",
-		Agent:      sflow,
-		HeaderSize: 256,
-		Sampling:   2,
-		Polling:    0,
-	}
-
-	fakeClient := &FakeOvsClient{}
-	monitor := NewBridgesMonitor("127.0.0.1", 8888, []Agent{agent})
-	monitor.ovsClient = fakeClient
-
-	fakeClient.CurrentResult = 0
-	fakeClient.Results = make([]FakeOvsResult, 4)
-
-	tableUpdates := getTableUpdates("bridge1")
-	monitor.registerAgents(tableUpdates)
-
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge2-uuid"]]]}]`
-
-	tableUpdates = getTableUpdates("bridge2")
-	monitor.registerAgents(tableUpdates)
-
-	operations, _ := json.Marshal(fakeClient.Operations)
-	if string(operations) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(operations))
-	}
-}
+/* TODO(safchain) Add UT for interface adding */
