@@ -23,25 +23,56 @@
 package analyzer
 
 import (
+	"encoding/json"
+	"net"
+	"strconv"
+	"strings"
+
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/mappings"
-	"github.com/redhat-cip/skydive/storage"
 )
 
-type Analyzer struct {
-	FlowMapper *mappings.FlowMapper
-	Storage    storage.Storage
+type AnalyzerClient struct {
+	Addr string
+	Port int
+
+	connection net.Conn
 }
 
-func (analyzer *Analyzer) AnalyzeFlows(flows []*flow.Flow) {
-	analyzer.FlowMapper.Enhance(flows)
-	analyzer.Storage.StoreFlows(flows)
+func (c *AnalyzerClient) SendFlow(f *flow.Flow) error {
+	data, err := f.GetData()
+	if err != nil {
+		return err
+	}
 
-	logging.GetLogger().Debug("%d flows stored", len(flows))
+	c.connection.Write(data)
+
+	return nil
 }
 
-func NewAnalyzer(mapper *mappings.FlowMapper, storage storage.Storage) *Analyzer {
-	analyzer := &Analyzer{FlowMapper: mapper, Storage: storage}
-	return analyzer
+func (a *AnalyzerClient) SendFlows(flows []*flow.Flow) {
+	for _, flow := range flows {
+		j, _ := json.Marshal(flow)
+		logging.GetLogger().Debug("Sending to analyzer: %s", string(j))
+
+		err := a.SendFlow(flow)
+		if err != nil {
+			logging.GetLogger().Error("Unable to send flow: ", err)
+		}
+	}
+}
+
+func NewAnalyzerClient(addr string, port int) (*AnalyzerClient, error) {
+	client := &AnalyzerClient{Addr: addr, Port: port}
+
+	host := []string{addr, strconv.FormatInt(int64(port), 10)}
+
+	connection, err := net.Dial("tcp", strings.Join(host, ":"))
+	if err != nil {
+		return nil, err
+	}
+
+	client.connection = connection
+
+	return client, nil
 }

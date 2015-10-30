@@ -31,7 +31,6 @@ import (
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/mappings"
 	"github.com/redhat-cip/skydive/ovs"
-	"github.com/redhat-cip/skydive/storage/elasticsearch"
 )
 
 var quit chan bool
@@ -70,6 +69,7 @@ func main() {
 	quit = make(chan bool)
 
 	sflowAgent := agents.NewSFlowAgent("127.0.0.1", 6345)
+
 	ovsSFlowAgent := ovsdb.SFlowAgent{
 		Id:         "SkydiveSFlowAgent",
 		Interface:  "eth0",
@@ -89,12 +89,13 @@ func main() {
 		panic(err)
 	}
 	mapper.SetInterfaceMappingDrivers(drivers)
+	sflowAgent.SetFlowMapper(mapper)
 
-	storage := elasticseach.GetInstance("127.0.0.1", 9200)
-	analyzer := analyzer.New(mapper, storage)
-
-	/* TODO(safchain) will use an analyzer client */
-	sflowAgent.SetAnalyzer(analyzer)
+	analyzer, err := analyzer.NewAnalyzerClient("127.0.0.1", 8888)
+	if err != nil {
+		panic(err)
+	}
+	sflowAgent.SetAnalyzerClient(analyzer)
 
 	go sflowAgent.Start()
 

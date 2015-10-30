@@ -59,8 +59,10 @@ func (fm *FlowMapper) EnhanceInterfaces(flow *flow.Flow) {
 	fm.InterfaceMapper.Enhance(flow.EtherDst, &flow.Attributes.IntfAttrDst)
 }
 
-func (fm *FlowMapper) Enhance(flow *flow.Flow) {
-	fm.EnhanceInterfaces(flow)
+func (fm *FlowMapper) Enhance(flows []*flow.Flow) {
+	for _, flow := range flows {
+		fm.EnhanceInterfaces(flow)
+	}
 }
 
 func (fm *FlowMapper) SetInterfaceMapper(mapper *InterfaceMapper) {
