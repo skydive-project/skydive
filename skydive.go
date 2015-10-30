@@ -45,6 +45,7 @@ func getInterfaceMappingDrivers(monitor *ovsdb.OvsMonitor) ([]mappings.Interface
 	}
 	drivers = append(drivers, netlink)
 
+	/* need to be added after the netlink one since it relies on it */
 	ovs, err := mappings.NewOvsMapper()
 	if err != nil {
 		return drivers, err

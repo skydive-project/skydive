@@ -23,8 +23,6 @@
 package mappings
 
 import (
-	//"fmt"
-
 	"github.com/socketplane/libovsdb"
 
 	"github.com/redhat-cip/skydive/flow"
@@ -32,36 +30,65 @@ import (
 )
 
 type OvsMapper struct {
-	MacToBridge map[string]string
+	IfNameToPort map[string]string
+	PortToBridge map[string]string
 }
 
-func (o *OvsMapper) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (mapper *OvsMapper) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	name, ok := row.New.Fields["name"]
+	if !ok {
+		return
+	}
+
+	set := row.New.Fields["ports"].(libovsdb.OvsSet)
+	for _, i := range set.GoSet {
+		u := i.(libovsdb.UUID).GoUuid
+		mapper.PortToBridge[u] = name.(string)
+	}
 }
 
-func (o *OvsMapper) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
+func (mapper *OvsMapper) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	set := row.Old.Fields["ports"].(libovsdb.OvsSet)
+	for _, i := range set.GoSet {
+		u := i.(libovsdb.UUID).GoUuid
+		delete(mapper.PortToBridge, u)
+	}
 }
 
-func (o *OvsMapper) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (mapper *OvsMapper) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsMapper) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
+func (mapper *OvsMapper) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsMapper) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (mapper *OvsMapper) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	name := row.New.Fields["name"].(string)
+	mapper.IfNameToPort[name] = uuid
 }
 
-func (o *OvsMapper) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
+func (mapper *OvsMapper) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	name := row.Old.Fields["name"].(string)
+	delete(mapper.IfNameToPort, name)
 }
 
 func (mapper *OvsMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
+	port, ok := mapper.IfNameToPort[attrs.IfName]
+	if !ok {
+		return
+	}
 
+	bridge, ok := mapper.PortToBridge[port]
+	if !ok {
+		return
+	}
+	attrs.BridgeName = bridge
 }
 
 func NewOvsMapper() (*OvsMapper, error) {
-	mapper := &OvsMapper{MacToBridge: map[string]string{}}
+	mapper := &OvsMapper{
+		IfNameToPort: map[string]string{},
+		PortToBridge: map[string]string{},
+	}
 
 	return mapper, nil
 }
