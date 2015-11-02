@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
@@ -49,9 +50,9 @@ type Attributes struct {
 	IntfAttrDst InterfaceAttributes
 }
 
+/* TODO(safchain) maybe use the proto object instead of this one */
 type Flow struct {
-	Uuid string
-	/* TODO(safchain) how to get brige id ?, starting different agent per bridge ? */
+	Uuid       string
 	Host       string
 	EtherSrc   string
 	EtherDst   string
@@ -137,6 +138,93 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	flow.Uuid = hex.EncodeToString(hasher.Sum(nil))
 
 	return nil
+}
+
+/* TODO(safchain) should it be removed using the proto structures directly ? */
+func FromData(data []byte) (*Flow, error) {
+	p := new(FlowMessage)
+
+	err := proto.Unmarshal(data, p)
+	if err != nil {
+		return nil, err
+	}
+
+	f := &Flow{
+		Uuid:      p.GetUuid(),
+		Host:      p.GetHost(),
+		EtherSrc:  p.GetEtherSrc(),
+		EtherDst:  p.GetEtherDst(),
+		Ipv4Src:   p.GetIpv4Src(),
+		Ipv4Dst:   p.GetIpv4Dst(),
+		Path:      p.GetPath(),
+		PortSrc:   p.GetPortSrc(),
+		PortDst:   p.GetPortDst(),
+		Id:        p.GetId(),
+		Timestamp: p.GetTimestamp(),
+		Attributes: Attributes{
+			IntfAttrSrc: InterfaceAttributes{
+				TenantId:   p.GetAttributes().GetIntfAttrSrc().GetTenantId(),
+				VNI:        p.GetAttributes().GetIntfAttrSrc().GetVNI(),
+				IfIndex:    p.GetAttributes().GetIntfAttrSrc().GetIfIndex(),
+				IfName:     p.GetAttributes().GetIntfAttrSrc().GetIfName(),
+				MTU:        p.GetAttributes().GetIntfAttrSrc().GetMTU(),
+				BridgeName: p.GetAttributes().GetIntfAttrSrc().GetBridgeName(),
+			},
+			IntfAttrDst: InterfaceAttributes{
+				TenantId:   p.GetAttributes().GetIntfAttrDst().GetTenantId(),
+				VNI:        p.GetAttributes().GetIntfAttrDst().GetVNI(),
+				IfIndex:    p.GetAttributes().GetIntfAttrDst().GetIfIndex(),
+				IfName:     p.GetAttributes().GetIntfAttrDst().GetIfName(),
+				MTU:        p.GetAttributes().GetIntfAttrDst().GetMTU(),
+				BridgeName: p.GetAttributes().GetIntfAttrDst().GetBridgeName(),
+			},
+		},
+	}
+
+	return f, nil
+}
+
+func (flow *Flow) GetData() ([]byte, error) {
+	m := &FlowMessage{
+		Uuid:      proto.String(flow.Uuid),
+		Host:      proto.String(flow.Host),
+		EtherSrc:  proto.String(flow.EtherSrc),
+		EtherDst:  proto.String(flow.EtherDst),
+		EtherType: proto.String(flow.EtherType),
+		Ipv4Src:   proto.String(flow.Ipv4Src),
+		Ipv4Dst:   proto.String(flow.Ipv4Dst),
+		Path:      proto.String(flow.Path),
+		PortSrc:   proto.Uint32(flow.PortSrc),
+		PortDst:   proto.Uint32(flow.PortDst),
+		Id:        proto.Uint64(flow.Id),
+		Timestamp: proto.Uint64(flow.Timestamp),
+
+		Attributes: &FlowMessage_Attrs{
+			IntfAttrSrc: &FlowMessage_InterfaceAttributes{
+				TenantId:   proto.String(flow.Attributes.IntfAttrSrc.TenantId),
+				VNI:        proto.String(flow.Attributes.IntfAttrSrc.VNI),
+				IfIndex:    proto.Uint32(flow.Attributes.IntfAttrSrc.IfIndex),
+				IfName:     proto.String(flow.Attributes.IntfAttrSrc.IfName),
+				MTU:        proto.Uint32(flow.Attributes.IntfAttrSrc.MTU),
+				BridgeName: proto.String(flow.Attributes.IntfAttrSrc.BridgeName),
+			},
+			IntfAttrDst: &FlowMessage_InterfaceAttributes{
+				TenantId:   proto.String(flow.Attributes.IntfAttrDst.TenantId),
+				VNI:        proto.String(flow.Attributes.IntfAttrDst.VNI),
+				IfIndex:    proto.Uint32(flow.Attributes.IntfAttrDst.IfIndex),
+				IfName:     proto.String(flow.Attributes.IntfAttrDst.IfName),
+				MTU:        proto.Uint32(flow.Attributes.IntfAttrDst.MTU),
+				BridgeName: proto.String(flow.Attributes.IntfAttrDst.BridgeName),
+			},
+		},
+	}
+
+	data, err := proto.Marshal(m)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return data, nil
 }
 
 func New(host string, in uint32, out uint32, packet *gopacket.Packet) *Flow {

@@ -59,7 +59,7 @@ func TestInterfacePipeline(t *testing.T) {
 
 	f := flow.New("127.0.0.1", 1, 2, nil)
 
-	fm.Enhance(f)
+	fm.Enhance([]*flow.Flow{f})
 	if f.Attributes.IntfAttrSrc.IfIndex != 1 || f.Attributes.IntfAttrDst.IfIndex != 2 {
 		t.Error("Original flow attributes ovverided")
 	}
@@ -86,7 +86,7 @@ func TestInterfacePipelineAddingIfNameDriver(t *testing.T) {
 
 	f := flow.New("127.0.0.1", 1, 2, nil)
 
-	fm.Enhance(f)
+	fm.Enhance([]*flow.Flow{f})
 	if f.Attributes.IntfAttrSrc.IfIndex != 1 || f.Attributes.IntfAttrDst.IfIndex != 2 {
 		t.Error("Original flow attributes ovverided")
 	}
@@ -111,7 +111,7 @@ func TestInterfacePipelineAddingIfNameDriver(t *testing.T) {
 	fd.FakeTenantId = tenantIdExpected
 	fd.FakeVNI = vniExpected
 
-	fm.Enhance(f)
+	fm.Enhance([]*flow.Flow{f})
 	if f.Attributes.IntfAttrSrc.TenantId != tenantIdExpected || f.Attributes.IntfAttrSrc.VNI != vniExpected {
 		t.Error("Flow src interface attrs updated: ",
 			f.Attributes.IntfAttrSrc, " expected ", tenantIdExpected, ", ", vniExpected)

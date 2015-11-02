@@ -33,6 +33,7 @@ import (
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/mappings"
 )
 
 const (
@@ -44,7 +45,8 @@ type SFlowAgent struct {
 	Port int
 
 	/* TODO(safchain) replace by analyzer client */
-	Analyzer *analyzer.Analyzer
+	AnalyzerClient *analyzer.AnalyzerClient
+	FlowMapper     *mappings.FlowMapper
 }
 
 func (agent *SFlowAgent) GetTarget() string {
@@ -84,8 +86,12 @@ func (agent *SFlowAgent) Start() error {
 
 				logging.GetLogger().Debug("%d flows captured", len(flows))
 
-				if agent.Analyzer != nil {
-					agent.Analyzer.AnalyzeFlows(flows)
+				if agent.FlowMapper != nil {
+					agent.FlowMapper.Enhance(flows)
+				}
+
+				if agent.AnalyzerClient != nil {
+					agent.AnalyzerClient.SendFlows(flows)
 				}
 			}
 		}
@@ -94,9 +100,12 @@ func (agent *SFlowAgent) Start() error {
 	return nil
 }
 
-/* TODO(safchain) replace by analyzer client */
-func (agent *SFlowAgent) SetAnalyzer(a *analyzer.Analyzer) {
-	agent.Analyzer = a
+func (agent *SFlowAgent) SetAnalyzerClient(a *analyzer.AnalyzerClient) {
+	agent.AnalyzerClient = a
+}
+
+func (agent *SFlowAgent) SetFlowMapper(m *mappings.FlowMapper) {
+	agent.FlowMapper = m
 }
 
 func NewSFlowAgent(addr string, port int) SFlowAgent {
