@@ -32,14 +32,14 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-type AnalyzerClient struct {
+type Client struct {
 	Addr string
 	Port int
 
 	connection net.Conn
 }
 
-func (c *AnalyzerClient) SendFlow(f *flow.Flow) error {
+func (c *Client) SendFlow(f *flow.Flow) error {
 	data, err := f.GetData()
 	if err != nil {
 		return err
@@ -50,20 +50,20 @@ func (c *AnalyzerClient) SendFlow(f *flow.Flow) error {
 	return nil
 }
 
-func (a *AnalyzerClient) SendFlows(flows []*flow.Flow) {
+func (c *Client) SendFlows(flows []*flow.Flow) {
 	for _, flow := range flows {
 		j, _ := json.Marshal(flow)
 		logging.GetLogger().Debug("Sending to analyzer: %s", string(j))
 
-		err := a.SendFlow(flow)
+		err := c.SendFlow(flow)
 		if err != nil {
 			logging.GetLogger().Error("Unable to send flow: ", err)
 		}
 	}
 }
 
-func NewAnalyzerClient(addr string, port int) (*AnalyzerClient, error) {
-	client := &AnalyzerClient{Addr: addr, Port: port}
+func NewClient(addr string, port int) (*Client, error) {
+	client := &Client{Addr: addr, Port: port}
 
 	host := []string{addr, strconv.FormatInt(int64(port), 10)}
 

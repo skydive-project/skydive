@@ -29,12 +29,12 @@ import (
 )
 
 type FakeInterfaceDriver struct {
-	FakeTenantId string
+	FakeTenantID string
 	FakeVNI      string
 }
 
 func (d *FakeInterfaceDriver) Enhance(mac string, attrs *flow.InterfaceAttributes) {
-	attrs.TenantId = d.FakeTenantId
+	attrs.TenantID = d.FakeTenantID
 	attrs.VNI = d.FakeVNI
 }
 
@@ -49,10 +49,10 @@ func (d *FakeIfNameDriver) Enhance(mac string, attrs *flow.InterfaceAttributes) 
 func TestInterfacePipeline(t *testing.T) {
 	fm := NewFlowMapper()
 
-	tenantIdExpected := "tenant-id"
-	vniExpected := "vni"
+	tenantIDExpected := "tenant-id"
+	VNIExpected := "vni"
 
-	fd := &FakeInterfaceDriver{FakeTenantId: tenantIdExpected, FakeVNI: vniExpected}
+	fd := &FakeInterfaceDriver{FakeTenantID: tenantIDExpected, FakeVNI: VNIExpected}
 	im := NewInterfaceMapper([]InterfaceMappingDriver{fd})
 
 	fm.SetInterfaceMapper(im)
@@ -63,23 +63,23 @@ func TestInterfacePipeline(t *testing.T) {
 	if f.Attributes.IntfAttrSrc.IfIndex != 1 || f.Attributes.IntfAttrDst.IfIndex != 2 {
 		t.Error("Original flow attributes ovverided")
 	}
-	if f.Attributes.IntfAttrSrc.TenantId != tenantIdExpected || f.Attributes.IntfAttrSrc.VNI != vniExpected {
+	if f.Attributes.IntfAttrSrc.TenantID != tenantIDExpected || f.Attributes.IntfAttrSrc.VNI != VNIExpected {
 		t.Error("Flow src interface attrs not updated: ",
-			f.Attributes.IntfAttrSrc, " expected ", tenantIdExpected, ", ", vniExpected)
+			f.Attributes.IntfAttrSrc, " expected ", tenantIDExpected, ", ", VNIExpected)
 	}
-	if f.Attributes.IntfAttrDst.TenantId != tenantIdExpected || f.Attributes.IntfAttrDst.VNI != vniExpected {
+	if f.Attributes.IntfAttrDst.TenantID != tenantIDExpected || f.Attributes.IntfAttrDst.VNI != VNIExpected {
 		t.Error("Flow dst interface attrs not updated: ",
-			f.Attributes.IntfAttrSrc, " expected ", tenantIdExpected, ", ", vniExpected)
+			f.Attributes.IntfAttrSrc, " expected ", tenantIDExpected, ", ", VNIExpected)
 	}
 }
 
 func TestInterfacePipelineAddingIfNameDriver(t *testing.T) {
 	fm := NewFlowMapper()
 
-	tenantIdExpected := "tenant-id"
-	vniExpected := "vni"
+	tenantIDExpected := "tenant-id"
+	VNIExpected := "vni"
 
-	fd := &FakeInterfaceDriver{FakeTenantId: tenantIdExpected, FakeVNI: vniExpected}
+	fd := &FakeInterfaceDriver{FakeTenantID: tenantIDExpected, FakeVNI: VNIExpected}
 	im := NewInterfaceMapper([]InterfaceMappingDriver{fd})
 
 	fm.SetInterfaceMapper(im)
@@ -90,13 +90,13 @@ func TestInterfacePipelineAddingIfNameDriver(t *testing.T) {
 	if f.Attributes.IntfAttrSrc.IfIndex != 1 || f.Attributes.IntfAttrDst.IfIndex != 2 {
 		t.Error("Original flow attributes ovverided")
 	}
-	if f.Attributes.IntfAttrSrc.TenantId != tenantIdExpected || f.Attributes.IntfAttrSrc.VNI != vniExpected {
+	if f.Attributes.IntfAttrSrc.TenantID != tenantIDExpected || f.Attributes.IntfAttrSrc.VNI != VNIExpected {
 		t.Error("Flow src interface attrs not updated: ",
-			f.Attributes.IntfAttrSrc, " expected ", tenantIdExpected, ", ", vniExpected)
+			f.Attributes.IntfAttrSrc, " expected ", tenantIDExpected, ", ", VNIExpected)
 	}
-	if f.Attributes.IntfAttrDst.TenantId != tenantIdExpected || f.Attributes.IntfAttrDst.VNI != vniExpected {
+	if f.Attributes.IntfAttrDst.TenantID != tenantIDExpected || f.Attributes.IntfAttrDst.VNI != VNIExpected {
 		t.Error("Flow dst interface attrs not updated: ",
-			f.Attributes.IntfAttrSrc, " expected ", tenantIdExpected, ", ", vniExpected)
+			f.Attributes.IntfAttrSrc, " expected ", tenantIDExpected, ", ", VNIExpected)
 	}
 
 	/* add a driver that will handles the IfName attribute */
@@ -105,20 +105,20 @@ func TestInterfacePipelineAddingIfNameDriver(t *testing.T) {
 	im.AddDriver(id)
 
 	/* update the previous attributes */
-	tenantIdExpected = "tenant-id2"
-	vniExpected = "vni2"
+	tenantIDExpected = "tenant-id2"
+	VNIExpected = "vni2"
 
-	fd.FakeTenantId = tenantIdExpected
-	fd.FakeVNI = vniExpected
+	fd.FakeTenantID = tenantIDExpected
+	fd.FakeVNI = VNIExpected
 
 	fm.Enhance([]*flow.Flow{f})
-	if f.Attributes.IntfAttrSrc.TenantId != tenantIdExpected || f.Attributes.IntfAttrSrc.VNI != vniExpected {
+	if f.Attributes.IntfAttrSrc.TenantID != tenantIDExpected || f.Attributes.IntfAttrSrc.VNI != VNIExpected {
 		t.Error("Flow src interface attrs updated: ",
-			f.Attributes.IntfAttrSrc, " expected ", tenantIdExpected, ", ", vniExpected)
+			f.Attributes.IntfAttrSrc, " expected ", tenantIDExpected, ", ", VNIExpected)
 	}
-	if f.Attributes.IntfAttrDst.TenantId != tenantIdExpected || f.Attributes.IntfAttrDst.VNI != vniExpected {
+	if f.Attributes.IntfAttrDst.TenantID != tenantIDExpected || f.Attributes.IntfAttrDst.VNI != VNIExpected {
 		t.Error("Flow dst interface attrs updated: ",
-			f.Attributes.IntfAttrSrc, " expected ", tenantIdExpected, ", ", vniExpected)
+			f.Attributes.IntfAttrSrc, " expected ", tenantIDExpected, ", ", VNIExpected)
 	}
 	if f.Attributes.IntfAttrSrc.IfName != intfExpected {
 		t.Error("Flow src interface name not updated: ",

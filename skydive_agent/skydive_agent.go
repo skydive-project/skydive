@@ -71,7 +71,7 @@ func main() {
 	sflowAgent := agents.NewSFlowAgent("127.0.0.1", 6345)
 
 	ovsSFlowAgent := ovsdb.SFlowAgent{
-		Id:         "SkydiveSFlowAgent",
+		ID:         "SkydiveSFlowAgent",
 		Interface:  "eth0",
 		Target:     sflowAgent.GetTarget(),
 		HeaderSize: 256,
@@ -91,7 +91,7 @@ func main() {
 	mapper.SetInterfaceMappingDrivers(drivers)
 	sflowAgent.SetFlowMapper(mapper)
 
-	analyzer, err := analyzer.NewAnalyzerClient("127.0.0.1", 8888)
+	analyzer, err := analyzer.NewClient("127.0.0.1", 8888)
 	if err != nil {
 		panic(err)
 	}

@@ -47,7 +47,7 @@ type NeutronMapper struct {
 }
 
 type Attributes struct {
-	TenantId string
+	TenantID string
 	VNI      string
 }
 
@@ -86,7 +86,7 @@ func (mapper *NeutronMapper) retrieveAttributes(mac string) Attributes {
 	if err != nil {
 		return attrs
 	}
-	attrs.TenantId = port.TenantID
+	attrs.TenantID = port.TenantID
 
 	result := networks.Get(mapper.client, port.NetworkID)
 	network, err := provider.ExtractGet(result)
@@ -122,7 +122,7 @@ func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.InterfaceAttributes
 		ia := a.(Attributes)
 
 		/* update attributes with attributes retrieved from neutron */
-		attrs.TenantId = ia.TenantId
+		attrs.TenantID = ia.TenantID
 		attrs.VNI = ia.VNI
 
 		return
@@ -134,17 +134,17 @@ func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.InterfaceAttributes
 func NewNeutronMapper() (*NeutronMapper, error) {
 	mapper := &NeutronMapper{}
 
-	auth_url := config.GetConfig().Section("openstack").Key("auth_url").String()
+	authURL := config.GetConfig().Section("openstack").Key("auth_url").String()
 	username := config.GetConfig().Section("openstack").Key("username").String()
 	password := config.GetConfig().Section("openstack").Key("password").String()
-	tenant_name := config.GetConfig().Section("openstack").Key("tenant_name").String()
-	region_name := config.GetConfig().Section("openstack").Key("region_name").String()
+	tenantName := config.GetConfig().Section("openstack").Key("tenant_name").String()
+	regionName := config.GetConfig().Section("openstack").Key("region_name").String()
 
 	opts := gophercloud.AuthOptions{
-		IdentityEndpoint: auth_url,
+		IdentityEndpoint: authURL,
 		Username:         username,
 		Password:         password,
-		TenantName:       tenant_name,
+		TenantName:       tenantName,
 	}
 
 	provider, err := openstack.AuthenticatedClient(opts)
@@ -155,7 +155,7 @@ func NewNeutronMapper() (*NeutronMapper, error) {
 	/* TODO(safchain) add config param for the Availability */
 	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
 		Name:         "neutron",
-		Region:       region_name,
+		Region:       regionName,
 		Availability: gophercloud.AvailabilityPublic,
 	})
 	if err != nil {

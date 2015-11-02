@@ -58,8 +58,8 @@ func getSelectPreviousRegisteredResults(agent SFlowAgent) []libovsdb.OperationRe
 	rows["sampling"] = float64(1)
 	rows["polling"] = float64(0)
 
-	agentId := []interface{}{"agent-id", agent.Id}
-	extMap := []interface{}{"map", []interface{}{agentId}}
+	agentID := []interface{}{"agent-id", agent.ID}
+	extMap := []interface{}{"map", []interface{}{agentID}}
 	rows["external_ids"] = extMap
 
 	selectResult[0].Rows = make([]map[string]interface{}, 1)
@@ -70,7 +70,7 @@ func getSelectPreviousRegisteredResults(agent SFlowAgent) []libovsdb.OperationRe
 
 func TestRegisterNewAgents(t *testing.T) {
 	agent := SFlowAgent{
-		Id:         "AgentId",
+		ID:         "AgentID",
 		Interface:  "eth0",
 		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
@@ -87,8 +87,8 @@ func TestRegisterNewAgents(t *testing.T) {
 	fakeClient.CurrentResult = 0
 	fakeClient.Results = make([]FakeOvsResult, 2)
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":1,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentID"]]],"header":256,"polling":0,"sampling":1,"targets":"1.1.1.1:111"},"uuid-name":"AgentID"},`
+	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentID"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
 
 	handler.registerAgents(monitor, "bridge1-uuid")
 
@@ -100,7 +100,7 @@ func TestRegisterNewAgents(t *testing.T) {
 
 func TestReusingRegisteredAgents(t *testing.T) {
 	agent := SFlowAgent{
-		Id:         "AgentId",
+		ID:         "AgentID",
 		Interface:  "eth0",
 		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
@@ -130,7 +130,7 @@ func TestReusingRegisteredAgents(t *testing.T) {
 
 func TestUpdateRegisteredAgents(t *testing.T) {
 	agent := SFlowAgent{
-		Id:         "AgentId",
+		ID:         "AgentID",
 		Interface:  "eth0",
 		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
@@ -148,8 +148,8 @@ func TestUpdateRegisteredAgents(t *testing.T) {
 	fakeClient.Results = make([]FakeOvsResult, 2)
 	fakeClient.Results[0].Result = getSelectPreviousRegisteredResults(agent)
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentID"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentID"},`
+	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentID"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
 
 	handler.registerAgents(monitor, "bridge1-uuid")
 
@@ -161,7 +161,7 @@ func TestUpdateRegisteredAgents(t *testing.T) {
 
 func TestNewBridgeAdded(t *testing.T) {
 	agent := SFlowAgent{
-		Id:         "AgentId",
+		ID:         "AgentID",
 		Interface:  "eth0",
 		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
@@ -180,8 +180,8 @@ func TestNewBridgeAdded(t *testing.T) {
 
 	handler.registerAgents(monitor, "bridge1-uuid")
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentId"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentId"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentId"]},"where":[["_uuid","==",["named-uuid","bridge2-uuid"]]]}]`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentID"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentID"},`
+	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentID"]},"where":[["_uuid","==",["named-uuid","bridge2-uuid"]]]}]`
 
 	handler.registerAgents(monitor, "bridge2-uuid")
 

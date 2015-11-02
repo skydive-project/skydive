@@ -37,7 +37,7 @@ import (
 )
 
 type InterfaceAttributes struct {
-	TenantId   string
+	TenantID   string
 	VNI        string
 	IfIndex    uint32
 	IfName     string
@@ -52,7 +52,7 @@ type Attributes struct {
 
 /* TODO(safchain) maybe use the proto object instead of this one */
 type Flow struct {
-	Uuid       string
+	UUID       string
 	Host       string
 	EtherSrc   string
 	EtherDst   string
@@ -63,7 +63,7 @@ type Flow struct {
 	Path       string
 	PortSrc    uint32
 	PortDst    uint32
-	Id         uint64
+	ID         uint64
 	Timestamp  uint64
 	Attributes Attributes
 }
@@ -129,13 +129,13 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	icmpLayer := (*packet).Layer(layers.LayerTypeICMPv4)
 	if icmpLayer != nil {
 		icmp, _ := icmpLayer.(*layers.ICMPv4)
-		flow.Id = uint64(icmp.Id)
+		flow.ID = uint64(icmp.Id)
 
 		hasher.Write([]byte(strconv.Itoa(int(icmp.Id))))
 	}
 
 	/* update the temporary uuid */
-	flow.Uuid = hex.EncodeToString(hasher.Sum(nil))
+	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 
 	return nil
 }
@@ -150,7 +150,7 @@ func FromData(data []byte) (*Flow, error) {
 	}
 
 	f := &Flow{
-		Uuid:      p.GetUuid(),
+		UUID:      p.GetUUID(),
 		Host:      p.GetHost(),
 		EtherSrc:  p.GetEtherSrc(),
 		EtherDst:  p.GetEtherDst(),
@@ -159,11 +159,11 @@ func FromData(data []byte) (*Flow, error) {
 		Path:      p.GetPath(),
 		PortSrc:   p.GetPortSrc(),
 		PortDst:   p.GetPortDst(),
-		Id:        p.GetId(),
+		ID:        p.GetID(),
 		Timestamp: p.GetTimestamp(),
 		Attributes: Attributes{
 			IntfAttrSrc: InterfaceAttributes{
-				TenantId:   p.GetAttributes().GetIntfAttrSrc().GetTenantId(),
+				TenantID:   p.GetAttributes().GetIntfAttrSrc().GetTenantID(),
 				VNI:        p.GetAttributes().GetIntfAttrSrc().GetVNI(),
 				IfIndex:    p.GetAttributes().GetIntfAttrSrc().GetIfIndex(),
 				IfName:     p.GetAttributes().GetIntfAttrSrc().GetIfName(),
@@ -171,7 +171,7 @@ func FromData(data []byte) (*Flow, error) {
 				BridgeName: p.GetAttributes().GetIntfAttrSrc().GetBridgeName(),
 			},
 			IntfAttrDst: InterfaceAttributes{
-				TenantId:   p.GetAttributes().GetIntfAttrDst().GetTenantId(),
+				TenantID:   p.GetAttributes().GetIntfAttrDst().GetTenantID(),
 				VNI:        p.GetAttributes().GetIntfAttrDst().GetVNI(),
 				IfIndex:    p.GetAttributes().GetIntfAttrDst().GetIfIndex(),
 				IfName:     p.GetAttributes().GetIntfAttrDst().GetIfName(),
@@ -186,7 +186,7 @@ func FromData(data []byte) (*Flow, error) {
 
 func (flow *Flow) GetData() ([]byte, error) {
 	m := &FlowMessage{
-		Uuid:      proto.String(flow.Uuid),
+		UUID:      proto.String(flow.UUID),
 		Host:      proto.String(flow.Host),
 		EtherSrc:  proto.String(flow.EtherSrc),
 		EtherDst:  proto.String(flow.EtherDst),
@@ -196,12 +196,12 @@ func (flow *Flow) GetData() ([]byte, error) {
 		Path:      proto.String(flow.Path),
 		PortSrc:   proto.Uint32(flow.PortSrc),
 		PortDst:   proto.Uint32(flow.PortDst),
-		Id:        proto.Uint64(flow.Id),
+		ID:        proto.Uint64(flow.ID),
 		Timestamp: proto.Uint64(flow.Timestamp),
 
 		Attributes: &FlowMessage_Attrs{
 			IntfAttrSrc: &FlowMessage_InterfaceAttributes{
-				TenantId:   proto.String(flow.Attributes.IntfAttrSrc.TenantId),
+				TenantID:   proto.String(flow.Attributes.IntfAttrSrc.TenantID),
 				VNI:        proto.String(flow.Attributes.IntfAttrSrc.VNI),
 				IfIndex:    proto.Uint32(flow.Attributes.IntfAttrSrc.IfIndex),
 				IfName:     proto.String(flow.Attributes.IntfAttrSrc.IfName),
@@ -209,7 +209,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 				BridgeName: proto.String(flow.Attributes.IntfAttrSrc.BridgeName),
 			},
 			IntfAttrDst: &FlowMessage_InterfaceAttributes{
-				TenantId:   proto.String(flow.Attributes.IntfAttrDst.TenantId),
+				TenantID:   proto.String(flow.Attributes.IntfAttrDst.TenantID),
 				VNI:        proto.String(flow.Attributes.IntfAttrDst.VNI),
 				IfIndex:    proto.Uint32(flow.Attributes.IntfAttrDst.IfIndex),
 				IfName:     proto.String(flow.Attributes.IntfAttrDst.IfName),
@@ -231,7 +231,7 @@ func New(host string, in uint32, out uint32, packet *gopacket.Packet) *Flow {
 	u, _ := uuid.NewV4()
 	t := uint64(time.Now().Unix())
 
-	flow := &Flow{Uuid: u.String(), Host: host, Timestamp: t}
+	flow := &Flow{UUID: u.String(), Host: host, Timestamp: t}
 	flow.Attributes.IntfAttrSrc.IfIndex = in
 	flow.Attributes.IntfAttrDst.IfIndex = out
 

@@ -23,7 +23,7 @@
 package flow;
 
 message FlowMessage {
-	required string Uuid 		= 1;
+	required string UUID 		= 1;
 	required string Host 		= 2;
 	required string EtherSrc 	= 3;
 	required string EtherDst 	= 4;
@@ -33,15 +33,15 @@ message FlowMessage {
 	required string Path 		= 8;
 	required uint32 PortSrc 	= 9;
 	required uint32 PortDst 	= 10;
-	required uint64 Id 			= 11;
+	required uint64 ID 			= 11;
 	required uint64 Timestamp 	= 12;
 
 	message InterfaceAttributes {
-		optional string TenantId 	= 1;
+		optional string TenantID 	= 1;
 		optional string VNI 		= 2;
 		optional uint32 IfIndex 	= 3;
 		optional string IfName 		= 4;
-		optional uint32 MTU 		= 5;
+		optional uint32 MTU			= 5;
 		optional string BridgeName 	= 6;
 	}
 

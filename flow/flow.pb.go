@@ -23,7 +23,7 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type FlowMessage struct {
-	Uuid             *string            `protobuf:"bytes,1,req,name=Uuid" json:"Uuid,omitempty"`
+	UUID             *string            `protobuf:"bytes,1,req,name=UUID" json:"UUID,omitempty"`
 	Host             *string            `protobuf:"bytes,2,req,name=Host" json:"Host,omitempty"`
 	EtherSrc         *string            `protobuf:"bytes,3,req,name=EtherSrc" json:"EtherSrc,omitempty"`
 	EtherDst         *string            `protobuf:"bytes,4,req,name=EtherDst" json:"EtherDst,omitempty"`
@@ -33,7 +33,7 @@ type FlowMessage struct {
 	Path             *string            `protobuf:"bytes,8,req,name=Path" json:"Path,omitempty"`
 	PortSrc          *uint32            `protobuf:"varint,9,req,name=PortSrc" json:"PortSrc,omitempty"`
 	PortDst          *uint32            `protobuf:"varint,10,req,name=PortDst" json:"PortDst,omitempty"`
-	Id               *uint64            `protobuf:"varint,11,req,name=Id" json:"Id,omitempty"`
+	ID               *uint64            `protobuf:"varint,11,req,name=ID" json:"ID,omitempty"`
 	Timestamp        *uint64            `protobuf:"varint,12,req,name=Timestamp" json:"Timestamp,omitempty"`
 	Attributes       *FlowMessage_Attrs `protobuf:"bytes,13,opt,name=Attributes" json:"Attributes,omitempty"`
 	XXX_unrecognized []byte             `json:"-"`
@@ -43,9 +43,9 @@ func (m *FlowMessage) Reset()         { *m = FlowMessage{} }
 func (m *FlowMessage) String() string { return proto.CompactTextString(m) }
 func (*FlowMessage) ProtoMessage()    {}
 
-func (m *FlowMessage) GetUuid() string {
-	if m != nil && m.Uuid != nil {
-		return *m.Uuid
+func (m *FlowMessage) GetUUID() string {
+	if m != nil && m.UUID != nil {
+		return *m.UUID
 	}
 	return ""
 }
@@ -113,9 +113,9 @@ func (m *FlowMessage) GetPortDst() uint32 {
 	return 0
 }
 
-func (m *FlowMessage) GetId() uint64 {
-	if m != nil && m.Id != nil {
-		return *m.Id
+func (m *FlowMessage) GetID() uint64 {
+	if m != nil && m.ID != nil {
+		return *m.ID
 	}
 	return 0
 }
@@ -135,7 +135,7 @@ func (m *FlowMessage) GetAttributes() *FlowMessage_Attrs {
 }
 
 type FlowMessage_InterfaceAttributes struct {
-	TenantId         *string `protobuf:"bytes,1,opt,name=TenantId" json:"TenantId,omitempty"`
+	TenantID         *string `protobuf:"bytes,1,opt,name=TenantID" json:"TenantID,omitempty"`
 	VNI              *string `protobuf:"bytes,2,opt,name=VNI" json:"VNI,omitempty"`
 	IfIndex          *uint32 `protobuf:"varint,3,opt,name=IfIndex" json:"IfIndex,omitempty"`
 	IfName           *string `protobuf:"bytes,4,opt,name=IfName" json:"IfName,omitempty"`
@@ -148,9 +148,9 @@ func (m *FlowMessage_InterfaceAttributes) Reset()         { *m = FlowMessage_Int
 func (m *FlowMessage_InterfaceAttributes) String() string { return proto.CompactTextString(m) }
 func (*FlowMessage_InterfaceAttributes) ProtoMessage()    {}
 
-func (m *FlowMessage_InterfaceAttributes) GetTenantId() string {
-	if m != nil && m.TenantId != nil {
-		return *m.TenantId
+func (m *FlowMessage_InterfaceAttributes) GetTenantID() string {
+	if m != nil && m.TenantID != nil {
+		return *m.TenantID
 	}
 	return ""
 }
