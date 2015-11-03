@@ -24,6 +24,7 @@ package mappings
 
 import (
 	"github.com/socketplane/libovsdb"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/ovs"
@@ -71,8 +72,8 @@ func (mapper *OvsMapper) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, ro
 	delete(mapper.IfNameToPort, name)
 }
 
-func (mapper *OvsMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
-	port, ok := mapper.IfNameToPort[attrs.IfName]
+func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
+	port, ok := mapper.IfNameToPort[attrs.GetIfName()]
 	if !ok {
 		return
 	}
@@ -81,7 +82,7 @@ func (mapper *OvsMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
 	if !ok {
 		return
 	}
-	attrs.BridgeName = bridge
+	attrs.BridgeName = proto.String(bridge)
 }
 
 func NewOvsMapper() (*OvsMapper, error) {

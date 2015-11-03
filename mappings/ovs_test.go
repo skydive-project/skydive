@@ -25,6 +25,7 @@ package mappings
 import (
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/socketplane/libovsdb"
 
 	"github.com/redhat-cip/skydive/flow"
@@ -55,10 +56,10 @@ func TestOvsEnhance(t *testing.T) {
 
 	mapper.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	attrs := flow.InterfaceAttributes{IfName: "eth0"}
+	attrs := flow.Flow_InterfaceAttributes{IfName: proto.String("eth0")}
 	mapper.Enhance("", &attrs)
 
-	if attrs.BridgeName != "br0" {
+	if attrs.GetBridgeName() != "br0" {
 		t.Error("Bridge name not found, expected br0")
 	}
 }

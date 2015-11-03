@@ -28,6 +28,7 @@ import (
 
 	"github.com/pmylund/go-cache"
 	"github.com/vishvananda/netlink"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
@@ -62,18 +63,18 @@ func (mapper *NetLinkMapper) cacheUpdater() {
 	}
 }
 
-func (mapper *NetLinkMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
-	a, f := mapper.cache.Get(strconv.Itoa(int(attrs.IfIndex)))
+func (mapper *NetLinkMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
+	a, f := mapper.cache.Get(strconv.Itoa(int(attrs.GetIfIndex())))
 	if f {
 		la := a.(*netlink.LinkAttrs)
 
-		attrs.IfName = la.Name
-		attrs.MTU = uint32(la.MTU)
+		attrs.IfName = proto.String(la.Name)
+		attrs.MTU = proto.Uint32(uint32(la.MTU))
 
 		return
 	}
 
-	mapper.cacheUpdaterChan <- attrs.IfIndex
+	mapper.cacheUpdaterChan <- attrs.GetIfIndex()
 }
 
 func NewNetLinkMapper() (*NetLinkMapper, error) {

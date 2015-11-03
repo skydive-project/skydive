@@ -36,38 +36,6 @@ import (
 	"github.com/nu7hatch/gouuid"
 )
 
-type InterfaceAttributes struct {
-	TenantID   string
-	VNI        string
-	IfIndex    uint32
-	IfName     string
-	MTU        uint32
-	BridgeName string
-}
-
-type Attributes struct {
-	IntfAttrSrc InterfaceAttributes
-	IntfAttrDst InterfaceAttributes
-}
-
-/* TODO(safchain) maybe use the proto object instead of this one */
-type Flow struct {
-	UUID       string
-	Host       string
-	EtherSrc   string
-	EtherDst   string
-	EtherType  string
-	Ipv4Src    string
-	Ipv4Dst    string
-	Protocol   string
-	Path       string
-	PortSrc    uint32
-	PortDst    uint32
-	ID         uint64
-	Timestamp  uint64
-	Attributes Attributes
-}
-
 func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	hasher := sha1.New()
 
@@ -76,24 +44,21 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	if !ok {
 		return errors.New("Unable to decode the ethernet layer")
 	}
-	flow.EtherSrc = ethernetPacket.SrcMAC.String()
-	flow.EtherDst = ethernetPacket.DstMAC.String()
-	flow.EtherType = ethernetPacket.EthernetType.String()
+	flow.EtherSrc = proto.String(ethernetPacket.SrcMAC.String())
+	flow.EtherDst = proto.String(ethernetPacket.DstMAC.String())
 
-	hasher.Write([]byte(flow.EtherSrc))
-	hasher.Write([]byte(flow.EtherDst))
-	hasher.Write([]byte(flow.EtherType))
+	hasher.Write([]byte(flow.GetEtherSrc()))
+	hasher.Write([]byte(flow.GetEtherDst()))
 
 	ipLayer := (*packet).Layer(layers.LayerTypeIPv4)
 	if ipLayer != nil {
 		ip, _ := ipLayer.(*layers.IPv4)
-		flow.Ipv4Src = ip.SrcIP.String()
-		flow.Ipv4Dst = ip.DstIP.String()
-		flow.Protocol = ip.Protocol.String()
 
-		hasher.Write([]byte(flow.Ipv4Src))
-		hasher.Write([]byte(flow.Ipv4Dst))
-		hasher.Write([]byte(flow.Protocol))
+		flow.Ipv4Src = proto.String(ip.SrcIP.String())
+		flow.Ipv4Dst = proto.String(ip.DstIP.String())
+
+		hasher.Write([]byte(flow.GetIpv4Src()))
+		hasher.Write([]byte(flow.GetIpv4Dst()))
 	}
 
 	path := ""
@@ -103,14 +68,14 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 		}
 		path += layer.LayerType().String()
 	}
-	flow.Path = path
-	hasher.Write([]byte(flow.Path))
+	flow.Path = proto.String(path)
+	hasher.Write([]byte(flow.GetPath()))
 
 	udpLayer := (*packet).Layer(layers.LayerTypeUDP)
 	if udpLayer != nil {
 		udp, _ := udpLayer.(*layers.UDP)
-		flow.PortSrc = uint32(udp.SrcPort)
-		flow.PortDst = uint32(udp.DstPort)
+		flow.PortSrc = proto.Uint32(uint32(udp.SrcPort))
+		flow.PortDst = proto.Uint32(uint32(udp.DstPort))
 
 		hasher.Write([]byte(udp.SrcPort.String()))
 		hasher.Write([]byte(udp.DstPort.String()))
@@ -119,8 +84,8 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	tcpLayer := (*packet).Layer(layers.LayerTypeTCP)
 	if tcpLayer != nil {
 		tcp, _ := tcpLayer.(*layers.TCP)
-		flow.PortSrc = uint32(tcp.SrcPort)
-		flow.PortDst = uint32(tcp.DstPort)
+		flow.PortSrc = proto.Uint32(uint32(tcp.SrcPort))
+		flow.PortDst = proto.Uint32(uint32(tcp.DstPort))
 
 		hasher.Write([]byte(tcp.SrcPort.String()))
 		hasher.Write([]byte(tcp.DstPort.String()))
@@ -129,97 +94,30 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	icmpLayer := (*packet).Layer(layers.LayerTypeICMPv4)
 	if icmpLayer != nil {
 		icmp, _ := icmpLayer.(*layers.ICMPv4)
-		flow.ID = uint64(icmp.Id)
+		flow.ID = proto.Uint64(uint64(icmp.Id))
 
 		hasher.Write([]byte(strconv.Itoa(int(icmp.Id))))
 	}
 
 	/* update the temporary uuid */
-	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
+	flow.UUID = proto.String(hex.EncodeToString(hasher.Sum(nil)))
 
 	return nil
 }
 
-/* TODO(safchain) should it be removed using the proto structures directly ? */
 func FromData(data []byte) (*Flow, error) {
-	p := new(FlowMessage)
+	flow := new(Flow)
 
-	err := proto.Unmarshal(data, p)
+	err := proto.Unmarshal(data, flow)
 	if err != nil {
 		return nil, err
 	}
 
-	f := &Flow{
-		UUID:      p.GetUUID(),
-		Host:      p.GetHost(),
-		EtherSrc:  p.GetEtherSrc(),
-		EtherDst:  p.GetEtherDst(),
-		Ipv4Src:   p.GetIpv4Src(),
-		Ipv4Dst:   p.GetIpv4Dst(),
-		Path:      p.GetPath(),
-		PortSrc:   p.GetPortSrc(),
-		PortDst:   p.GetPortDst(),
-		ID:        p.GetID(),
-		Timestamp: p.GetTimestamp(),
-		Attributes: Attributes{
-			IntfAttrSrc: InterfaceAttributes{
-				TenantID:   p.GetAttributes().GetIntfAttrSrc().GetTenantID(),
-				VNI:        p.GetAttributes().GetIntfAttrSrc().GetVNI(),
-				IfIndex:    p.GetAttributes().GetIntfAttrSrc().GetIfIndex(),
-				IfName:     p.GetAttributes().GetIntfAttrSrc().GetIfName(),
-				MTU:        p.GetAttributes().GetIntfAttrSrc().GetMTU(),
-				BridgeName: p.GetAttributes().GetIntfAttrSrc().GetBridgeName(),
-			},
-			IntfAttrDst: InterfaceAttributes{
-				TenantID:   p.GetAttributes().GetIntfAttrDst().GetTenantID(),
-				VNI:        p.GetAttributes().GetIntfAttrDst().GetVNI(),
-				IfIndex:    p.GetAttributes().GetIntfAttrDst().GetIfIndex(),
-				IfName:     p.GetAttributes().GetIntfAttrDst().GetIfName(),
-				MTU:        p.GetAttributes().GetIntfAttrDst().GetMTU(),
-				BridgeName: p.GetAttributes().GetIntfAttrDst().GetBridgeName(),
-			},
-		},
-	}
-
-	return f, nil
+	return flow, nil
 }
 
 func (flow *Flow) GetData() ([]byte, error) {
-	m := &FlowMessage{
-		UUID:      proto.String(flow.UUID),
-		Host:      proto.String(flow.Host),
-		EtherSrc:  proto.String(flow.EtherSrc),
-		EtherDst:  proto.String(flow.EtherDst),
-		EtherType: proto.String(flow.EtherType),
-		Ipv4Src:   proto.String(flow.Ipv4Src),
-		Ipv4Dst:   proto.String(flow.Ipv4Dst),
-		Path:      proto.String(flow.Path),
-		PortSrc:   proto.Uint32(flow.PortSrc),
-		PortDst:   proto.Uint32(flow.PortDst),
-		ID:        proto.Uint64(flow.ID),
-		Timestamp: proto.Uint64(flow.Timestamp),
-
-		Attributes: &FlowMessage_Attrs{
-			IntfAttrSrc: &FlowMessage_InterfaceAttributes{
-				TenantID:   proto.String(flow.Attributes.IntfAttrSrc.TenantID),
-				VNI:        proto.String(flow.Attributes.IntfAttrSrc.VNI),
-				IfIndex:    proto.Uint32(flow.Attributes.IntfAttrSrc.IfIndex),
-				IfName:     proto.String(flow.Attributes.IntfAttrSrc.IfName),
-				MTU:        proto.Uint32(flow.Attributes.IntfAttrSrc.MTU),
-				BridgeName: proto.String(flow.Attributes.IntfAttrSrc.BridgeName),
-			},
-			IntfAttrDst: &FlowMessage_InterfaceAttributes{
-				TenantID:   proto.String(flow.Attributes.IntfAttrDst.TenantID),
-				VNI:        proto.String(flow.Attributes.IntfAttrDst.VNI),
-				IfIndex:    proto.Uint32(flow.Attributes.IntfAttrDst.IfIndex),
-				IfName:     proto.String(flow.Attributes.IntfAttrDst.IfName),
-				MTU:        proto.Uint32(flow.Attributes.IntfAttrDst.MTU),
-				BridgeName: proto.String(flow.Attributes.IntfAttrDst.BridgeName),
-			},
-		},
-	}
-
-	data, err := proto.Marshal(m)
+	data, err := proto.Marshal(flow)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -231,9 +129,17 @@ func New(host string, in uint32, out uint32, packet *gopacket.Packet) *Flow {
 	u, _ := uuid.NewV4()
 	t := uint64(time.Now().Unix())
 
-	flow := &Flow{UUID: u.String(), Host: host, Timestamp: t}
-	flow.Attributes.IntfAttrSrc.IfIndex = in
-	flow.Attributes.IntfAttrDst.IfIndex = out
+	flow := &Flow{
+		UUID: proto.String(u.String()),
+		Host: proto.String(host),
+		Timestamp: proto.Uint64(t),
+		Attributes: &Flow_MappingAttributes{
+			IntfAttrSrc: &Flow_InterfaceAttributes{},
+			IntfAttrDst: &Flow_InterfaceAttributes{},
+		},
+	}
+	flow.GetAttributes().GetIntfAttrSrc().IfIndex = proto.Uint32(in)
+	flow.GetAttributes().GetIntfAttrDst().IfIndex = proto.Uint32(out)
 
 	if packet != nil {
 		flow.fillFromGoPacket(packet)

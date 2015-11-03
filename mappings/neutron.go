@@ -25,6 +25,7 @@ package mappings
 import (
 	"errors"
 	"time"
+	"strconv"
 
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
@@ -33,6 +34,7 @@ import (
 	"github.com/rackspace/gophercloud/openstack/networking/v2/ports"
 	"github.com/rackspace/gophercloud/pagination"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pmylund/go-cache"
 
 	"github.com/redhat-cip/skydive/config"
@@ -48,7 +50,7 @@ type NeutronMapper struct {
 
 type Attributes struct {
 	TenantID string
-	VNI      string
+	VNI      uint64
 }
 
 func (mapper *NeutronMapper) retrievePort(mac string) (ports.Port, error) {
@@ -97,7 +99,11 @@ func (mapper *NeutronMapper) retrieveAttributes(mac string) Attributes {
 	if err != nil {
 		return attrs
 	}
-	attrs.VNI = network.SegmentationID
+
+	segID, err := strconv.Atoi(network.SegmentationID)
+	if err == nil {
+		attrs.VNI = uint64(segID)
+	}
 
 	return attrs
 }
@@ -116,14 +122,14 @@ func (mapper *NeutronMapper) cacheUpdater() {
 	}
 }
 
-func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
+func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
 	a, f := mapper.cache.Get(mac)
 	if f {
 		ia := a.(Attributes)
 
 		/* update attributes with attributes retrieved from neutron */
-		attrs.TenantID = ia.TenantID
-		attrs.VNI = ia.VNI
+		attrs.TenantID = proto.String(ia.TenantID)
+		attrs.VNI = proto.Uint64(ia.VNI)
 
 		return
 	}

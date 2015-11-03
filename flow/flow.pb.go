@@ -9,7 +9,7 @@ It is generated from these files:
 	flow/flow.proto
 
 It has these top-level messages:
-	FlowMessage
+	Flow
 */
 package flow
 
@@ -22,121 +22,113 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-type FlowMessage struct {
-	UUID             *string            `protobuf:"bytes,1,req,name=UUID" json:"UUID,omitempty"`
-	Host             *string            `protobuf:"bytes,2,req,name=Host" json:"Host,omitempty"`
-	EtherSrc         *string            `protobuf:"bytes,3,req,name=EtherSrc" json:"EtherSrc,omitempty"`
-	EtherDst         *string            `protobuf:"bytes,4,req,name=EtherDst" json:"EtherDst,omitempty"`
-	EtherType        *string            `protobuf:"bytes,5,req,name=EtherType" json:"EtherType,omitempty"`
-	Ipv4Src          *string            `protobuf:"bytes,6,req,name=Ipv4Src" json:"Ipv4Src,omitempty"`
-	Ipv4Dst          *string            `protobuf:"bytes,7,req,name=Ipv4Dst" json:"Ipv4Dst,omitempty"`
-	Path             *string            `protobuf:"bytes,8,req,name=Path" json:"Path,omitempty"`
-	PortSrc          *uint32            `protobuf:"varint,9,req,name=PortSrc" json:"PortSrc,omitempty"`
-	PortDst          *uint32            `protobuf:"varint,10,req,name=PortDst" json:"PortDst,omitempty"`
-	ID               *uint64            `protobuf:"varint,11,req,name=ID" json:"ID,omitempty"`
-	Timestamp        *uint64            `protobuf:"varint,12,req,name=Timestamp" json:"Timestamp,omitempty"`
-	Attributes       *FlowMessage_Attrs `protobuf:"bytes,13,opt,name=Attributes" json:"Attributes,omitempty"`
-	XXX_unrecognized []byte             `json:"-"`
+type Flow struct {
+	UUID             *string                 `protobuf:"bytes,1,req,name=UUID" json:"UUID,omitempty"`
+	Host             *string                 `protobuf:"bytes,2,req,name=Host" json:"Host,omitempty"`
+	EtherSrc         *string                 `protobuf:"bytes,3,req,name=EtherSrc" json:"EtherSrc,omitempty"`
+	EtherDst         *string                 `protobuf:"bytes,4,req,name=EtherDst" json:"EtherDst,omitempty"`
+	Path             *string                 `protobuf:"bytes,5,req,name=Path" json:"Path,omitempty"`
+	Ipv4Src          *string                 `protobuf:"bytes,6,opt,name=Ipv4Src" json:"Ipv4Src,omitempty"`
+	Ipv4Dst          *string                 `protobuf:"bytes,7,opt,name=Ipv4Dst" json:"Ipv4Dst,omitempty"`
+	PortSrc          *uint32                 `protobuf:"varint,8,opt,name=PortSrc" json:"PortSrc,omitempty"`
+	PortDst          *uint32                 `protobuf:"varint,9,opt,name=PortDst" json:"PortDst,omitempty"`
+	ID               *uint64                 `protobuf:"varint,10,req,name=ID" json:"ID,omitempty"`
+	Timestamp        *uint64                 `protobuf:"varint,11,req,name=Timestamp" json:"Timestamp,omitempty"`
+	Attributes       *Flow_MappingAttributes `protobuf:"bytes,12,opt,name=Attributes" json:"Attributes,omitempty"`
+	XXX_unrecognized []byte                  `json:"-"`
 }
 
-func (m *FlowMessage) Reset()         { *m = FlowMessage{} }
-func (m *FlowMessage) String() string { return proto.CompactTextString(m) }
-func (*FlowMessage) ProtoMessage()    {}
+func (m *Flow) Reset()         { *m = Flow{} }
+func (m *Flow) String() string { return proto.CompactTextString(m) }
+func (*Flow) ProtoMessage()    {}
 
-func (m *FlowMessage) GetUUID() string {
+func (m *Flow) GetUUID() string {
 	if m != nil && m.UUID != nil {
 		return *m.UUID
 	}
 	return ""
 }
 
-func (m *FlowMessage) GetHost() string {
+func (m *Flow) GetHost() string {
 	if m != nil && m.Host != nil {
 		return *m.Host
 	}
 	return ""
 }
 
-func (m *FlowMessage) GetEtherSrc() string {
+func (m *Flow) GetEtherSrc() string {
 	if m != nil && m.EtherSrc != nil {
 		return *m.EtherSrc
 	}
 	return ""
 }
 
-func (m *FlowMessage) GetEtherDst() string {
+func (m *Flow) GetEtherDst() string {
 	if m != nil && m.EtherDst != nil {
 		return *m.EtherDst
 	}
 	return ""
 }
 
-func (m *FlowMessage) GetEtherType() string {
-	if m != nil && m.EtherType != nil {
-		return *m.EtherType
-	}
-	return ""
-}
-
-func (m *FlowMessage) GetIpv4Src() string {
-	if m != nil && m.Ipv4Src != nil {
-		return *m.Ipv4Src
-	}
-	return ""
-}
-
-func (m *FlowMessage) GetIpv4Dst() string {
-	if m != nil && m.Ipv4Dst != nil {
-		return *m.Ipv4Dst
-	}
-	return ""
-}
-
-func (m *FlowMessage) GetPath() string {
+func (m *Flow) GetPath() string {
 	if m != nil && m.Path != nil {
 		return *m.Path
 	}
 	return ""
 }
 
-func (m *FlowMessage) GetPortSrc() uint32 {
+func (m *Flow) GetIpv4Src() string {
+	if m != nil && m.Ipv4Src != nil {
+		return *m.Ipv4Src
+	}
+	return ""
+}
+
+func (m *Flow) GetIpv4Dst() string {
+	if m != nil && m.Ipv4Dst != nil {
+		return *m.Ipv4Dst
+	}
+	return ""
+}
+
+func (m *Flow) GetPortSrc() uint32 {
 	if m != nil && m.PortSrc != nil {
 		return *m.PortSrc
 	}
 	return 0
 }
 
-func (m *FlowMessage) GetPortDst() uint32 {
+func (m *Flow) GetPortDst() uint32 {
 	if m != nil && m.PortDst != nil {
 		return *m.PortDst
 	}
 	return 0
 }
 
-func (m *FlowMessage) GetID() uint64 {
+func (m *Flow) GetID() uint64 {
 	if m != nil && m.ID != nil {
 		return *m.ID
 	}
 	return 0
 }
 
-func (m *FlowMessage) GetTimestamp() uint64 {
+func (m *Flow) GetTimestamp() uint64 {
 	if m != nil && m.Timestamp != nil {
 		return *m.Timestamp
 	}
 	return 0
 }
 
-func (m *FlowMessage) GetAttributes() *FlowMessage_Attrs {
+func (m *Flow) GetAttributes() *Flow_MappingAttributes {
 	if m != nil {
 		return m.Attributes
 	}
 	return nil
 }
 
-type FlowMessage_InterfaceAttributes struct {
+type Flow_InterfaceAttributes struct {
 	TenantID         *string `protobuf:"bytes,1,opt,name=TenantID" json:"TenantID,omitempty"`
-	VNI              *string `protobuf:"bytes,2,opt,name=VNI" json:"VNI,omitempty"`
+	VNI              *uint64 `protobuf:"varint,2,opt,name=VNI" json:"VNI,omitempty"`
 	IfIndex          *uint32 `protobuf:"varint,3,opt,name=IfIndex" json:"IfIndex,omitempty"`
 	IfName           *string `protobuf:"bytes,4,opt,name=IfName" json:"IfName,omitempty"`
 	MTU              *uint32 `protobuf:"varint,5,opt,name=MTU" json:"MTU,omitempty"`
@@ -144,70 +136,70 @@ type FlowMessage_InterfaceAttributes struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *FlowMessage_InterfaceAttributes) Reset()         { *m = FlowMessage_InterfaceAttributes{} }
-func (m *FlowMessage_InterfaceAttributes) String() string { return proto.CompactTextString(m) }
-func (*FlowMessage_InterfaceAttributes) ProtoMessage()    {}
+func (m *Flow_InterfaceAttributes) Reset()         { *m = Flow_InterfaceAttributes{} }
+func (m *Flow_InterfaceAttributes) String() string { return proto.CompactTextString(m) }
+func (*Flow_InterfaceAttributes) ProtoMessage()    {}
 
-func (m *FlowMessage_InterfaceAttributes) GetTenantID() string {
+func (m *Flow_InterfaceAttributes) GetTenantID() string {
 	if m != nil && m.TenantID != nil {
 		return *m.TenantID
 	}
 	return ""
 }
 
-func (m *FlowMessage_InterfaceAttributes) GetVNI() string {
+func (m *Flow_InterfaceAttributes) GetVNI() uint64 {
 	if m != nil && m.VNI != nil {
 		return *m.VNI
 	}
-	return ""
+	return 0
 }
 
-func (m *FlowMessage_InterfaceAttributes) GetIfIndex() uint32 {
+func (m *Flow_InterfaceAttributes) GetIfIndex() uint32 {
 	if m != nil && m.IfIndex != nil {
 		return *m.IfIndex
 	}
 	return 0
 }
 
-func (m *FlowMessage_InterfaceAttributes) GetIfName() string {
+func (m *Flow_InterfaceAttributes) GetIfName() string {
 	if m != nil && m.IfName != nil {
 		return *m.IfName
 	}
 	return ""
 }
 
-func (m *FlowMessage_InterfaceAttributes) GetMTU() uint32 {
+func (m *Flow_InterfaceAttributes) GetMTU() uint32 {
 	if m != nil && m.MTU != nil {
 		return *m.MTU
 	}
 	return 0
 }
 
-func (m *FlowMessage_InterfaceAttributes) GetBridgeName() string {
+func (m *Flow_InterfaceAttributes) GetBridgeName() string {
 	if m != nil && m.BridgeName != nil {
 		return *m.BridgeName
 	}
 	return ""
 }
 
-type FlowMessage_Attrs struct {
-	IntfAttrSrc      *FlowMessage_InterfaceAttributes `protobuf:"bytes,1,opt,name=IntfAttrSrc" json:"IntfAttrSrc,omitempty"`
-	IntfAttrDst      *FlowMessage_InterfaceAttributes `protobuf:"bytes,2,opt,name=IntfAttrDst" json:"IntfAttrDst,omitempty"`
-	XXX_unrecognized []byte                           `json:"-"`
+type Flow_MappingAttributes struct {
+	IntfAttrSrc      *Flow_InterfaceAttributes `protobuf:"bytes,1,opt,name=IntfAttrSrc" json:"IntfAttrSrc,omitempty"`
+	IntfAttrDst      *Flow_InterfaceAttributes `protobuf:"bytes,2,opt,name=IntfAttrDst" json:"IntfAttrDst,omitempty"`
+	XXX_unrecognized []byte                    `json:"-"`
 }
 
-func (m *FlowMessage_Attrs) Reset()         { *m = FlowMessage_Attrs{} }
-func (m *FlowMessage_Attrs) String() string { return proto.CompactTextString(m) }
-func (*FlowMessage_Attrs) ProtoMessage()    {}
+func (m *Flow_MappingAttributes) Reset()         { *m = Flow_MappingAttributes{} }
+func (m *Flow_MappingAttributes) String() string { return proto.CompactTextString(m) }
+func (*Flow_MappingAttributes) ProtoMessage()    {}
 
-func (m *FlowMessage_Attrs) GetIntfAttrSrc() *FlowMessage_InterfaceAttributes {
+func (m *Flow_MappingAttributes) GetIntfAttrSrc() *Flow_InterfaceAttributes {
 	if m != nil {
 		return m.IntfAttrSrc
 	}
 	return nil
 }
 
-func (m *FlowMessage_Attrs) GetIntfAttrDst() *FlowMessage_InterfaceAttributes {
+func (m *Flow_MappingAttributes) GetIntfAttrDst() *Flow_InterfaceAttributes {
 	if m != nil {
 		return m.IntfAttrDst
 	}
