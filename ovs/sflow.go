@@ -31,7 +31,7 @@ import (
 )
 
 type SFlowAgent struct {
-	Id         string
+	ID         string
 	Interface  string
 	Target     string
 	HeaderSize uint32
@@ -52,25 +52,24 @@ func newInsertSFlowAgentOP(agent SFlowAgent) (*libovsdb.Operation, error) {
 	sFlowRow["polling"] = agent.Polling
 
 	extIds := make(map[string]string)
-	extIds["agent-id"] = agent.Id
+	extIds["agent-id"] = agent.ID
 	ovsMap, err := libovsdb.NewOvsMap(extIds)
 	if err != nil {
 		return nil, err
 	}
 	sFlowRow["external_ids"] = ovsMap
 
-	namedUuid := agent.Id
 	insertOp := libovsdb.Operation{
 		Op:       "insert",
 		Table:    "sFlow",
 		Row:      sFlowRow,
-		UUIDName: namedUuid,
+		UUIDName: agent.ID,
 	}
 
 	return &insertOp, nil
 }
 
-func compareAgentId(row *map[string]interface{}, agent SFlowAgent) (bool, error) {
+func compareAgentID(row *map[string]interface{}, agent SFlowAgent) (bool, error) {
 	extIds := (*row)["external_ids"]
 	switch extIds.(type) {
 	case []interface{}:
@@ -89,7 +88,7 @@ func compareAgentId(row *map[string]interface{}, agent SFlowAgent) (bool, error)
 			}
 
 			if value, ok := oMap.GoMap["agent-id"]; ok {
-				if value == agent.Id {
+				if value == agent.ID {
 					return true, nil
 				}
 			}
@@ -99,7 +98,7 @@ func compareAgentId(row *map[string]interface{}, agent SFlowAgent) (bool, error)
 	return false, nil
 }
 
-func (o *OvsSFlowAgentsHandler) retrieveSFlowAgentUuid(monitor *OvsMonitor, agent SFlowAgent) (string, error) {
+func (o *OvsSFlowAgentsHandler) retrieveSFlowAgentUUID(monitor *OvsMonitor, agent SFlowAgent) (string, error) {
 	/* FIX(safchain) don't find a way to send a null condition */
 	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{"abc"})
 	selectOp := libovsdb.Operation{
@@ -137,7 +136,7 @@ func (o *OvsSFlowAgentsHandler) retrieveSFlowAgentUuid(monitor *OvsMonitor, agen
 				}
 			}
 
-			if ok, _ := compareAgentId(&row, agent); ok {
+			if ok, _ := compareAgentID(&row, agent); ok {
 				return uuid, nil
 			}
 		}
@@ -146,8 +145,8 @@ func (o *OvsSFlowAgentsHandler) retrieveSFlowAgentUuid(monitor *OvsMonitor, agen
 	return "", nil
 }
 
-func (o *OvsSFlowAgentsHandler) registerSFLowAgent(monitor *OvsMonitor, agent SFlowAgent, bridgeUuid string) error {
-	agentUuid, err := o.retrieveSFlowAgentUuid(monitor, agent)
+func (o *OvsSFlowAgentsHandler) registerSFLowAgent(monitor *OvsMonitor, agent SFlowAgent, bridgeUUID string) error {
+	agentUUID, err := o.retrieveSFlowAgentUUID(monitor, agent)
 	if err != nil {
 		return err
 	}
@@ -155,17 +154,17 @@ func (o *OvsSFlowAgentsHandler) registerSFLowAgent(monitor *OvsMonitor, agent SF
 	operations := []libovsdb.Operation{}
 
 	var uuid libovsdb.UUID
-	if agentUuid != "" {
-		uuid = libovsdb.UUID{agentUuid}
+	if agentUUID != "" {
+		uuid = libovsdb.UUID{agentUUID}
 
-		logging.GetLogger().Info("Using already registered sFlow agent \"%s(%s)\"", agent.Id, uuid)
+		logging.GetLogger().Info("Using already registered sFlow agent \"%s(%s)\"", agent.ID, uuid)
 	} else {
 		insertOp, err := newInsertSFlowAgentOP(agent)
 		if err != nil {
 			return err
 		}
 		uuid = libovsdb.UUID{insertOp.UUIDName}
-		logging.GetLogger().Info("Registering new sFlow agent \"%s(%s)\"", agent.Id, uuid)
+		logging.GetLogger().Info("Registering new sFlow agent \"%s(%s)\"", agent.ID, uuid)
 
 		operations = append(operations, *insertOp)
 	}
@@ -173,7 +172,7 @@ func (o *OvsSFlowAgentsHandler) registerSFLowAgent(monitor *OvsMonitor, agent SF
 	bridgeRow := make(map[string]interface{})
 	bridgeRow["sflow"] = uuid
 
-	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{bridgeUuid})
+	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{bridgeUUID})
 	updateOp := libovsdb.Operation{
 		Op:    "update",
 		Table: "Bridge",
@@ -189,17 +188,17 @@ func (o *OvsSFlowAgentsHandler) registerSFLowAgent(monitor *OvsMonitor, agent SF
 	return nil
 }
 
-func (o *OvsSFlowAgentsHandler) registerAgent(monitor *OvsMonitor, agent SFlowAgent, bridgeUuid string) error {
-	err := o.registerSFLowAgent(monitor, agent, bridgeUuid)
+func (o *OvsSFlowAgentsHandler) registerAgent(monitor *OvsMonitor, agent SFlowAgent, bridgeUUID string) error {
+	err := o.registerSFLowAgent(monitor, agent, bridgeUUID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *OvsSFlowAgentsHandler) registerAgents(monitor *OvsMonitor, bridgeUuid string) {
+func (o *OvsSFlowAgentsHandler) registerAgents(monitor *OvsMonitor, bridgeUUID string) {
 	for _, agent := range o.agents {
-		err := o.registerAgent(monitor, agent, bridgeUuid)
+		err := o.registerAgent(monitor, agent, bridgeUUID)
 		if err != nil {
 			logging.GetLogger().Error("Error while registering agent %s", err)
 		}

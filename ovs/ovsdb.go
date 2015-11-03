@@ -107,27 +107,27 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 
 func (o *OvsMonitor) bridgeUpdateHandler(updates *libovsdb.TableUpdate) {
 	empty := libovsdb.Row{}
-	for bridgeUuid, row := range updates.Rows {
+	for bridgeUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
-			if _, ok := o.bridgeCache[bridgeUuid]; ok {
+			if _, ok := o.bridgeCache[bridgeUUID]; ok {
 				continue
 			}
-			o.bridgeCache[bridgeUuid] = bridgeUuid
+			o.bridgeCache[bridgeUUID] = bridgeUUID
 
 			logging.GetLogger().Info("New bridge \"%s(%s)\" added",
-				row.New.Fields["name"], bridgeUuid)
+				row.New.Fields["name"], bridgeUUID)
 
 			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsBridgeAdd(o, bridgeUuid, &row)
+				handler.OnOvsBridgeAdd(o, bridgeUUID, &row)
 			}
 		} else {
-			delete(o.bridgeCache, bridgeUuid)
+			delete(o.bridgeCache, bridgeUUID)
 
 			logging.GetLogger().Info("Bridge \"%s(%s)\" got deleted",
-				row.Old.Fields["name"], bridgeUuid)
+				row.Old.Fields["name"], bridgeUUID)
 
 			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsBridgeDel(o, bridgeUuid, &row)
+				handler.OnOvsBridgeDel(o, bridgeUUID, &row)
 			}
 		}
 	}
@@ -135,27 +135,27 @@ func (o *OvsMonitor) bridgeUpdateHandler(updates *libovsdb.TableUpdate) {
 
 func (o *OvsMonitor) interfaceUpdateHandler(updates *libovsdb.TableUpdate) {
 	empty := libovsdb.Row{}
-	for interfaceUuid, row := range updates.Rows {
+	for interfaceUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
-			if _, ok := o.interfaceCache[interfaceUuid]; ok {
+			if _, ok := o.interfaceCache[interfaceUUID]; ok {
 				continue
 			}
-			o.interfaceCache[interfaceUuid] = interfaceUuid
+			o.interfaceCache[interfaceUUID] = interfaceUUID
 
 			logging.GetLogger().Info("New interface \"%s(%s)\" added",
-				row.New.Fields["name"], interfaceUuid)
+				row.New.Fields["name"], interfaceUUID)
 
 			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsInterfaceAdd(o, interfaceUuid, &row)
+				handler.OnOvsInterfaceAdd(o, interfaceUUID, &row)
 			}
 		} else {
-			delete(o.interfaceCache, interfaceUuid)
+			delete(o.interfaceCache, interfaceUUID)
 
 			logging.GetLogger().Info("Interface \"%s(%s)\" got deleted",
-				row.Old.Fields["name"], interfaceUuid)
+				row.Old.Fields["name"], interfaceUUID)
 
 			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsInterfaceDel(o, interfaceUuid, &row)
+				handler.OnOvsInterfaceDel(o, interfaceUUID, &row)
 			}
 		}
 	}
@@ -163,27 +163,27 @@ func (o *OvsMonitor) interfaceUpdateHandler(updates *libovsdb.TableUpdate) {
 
 func (o *OvsMonitor) portUpdateHandler(updates *libovsdb.TableUpdate) {
 	empty := libovsdb.Row{}
-	for portUuid, row := range updates.Rows {
+	for portUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
-			if _, ok := o.portCache[portUuid]; ok {
+			if _, ok := o.portCache[portUUID]; ok {
 				continue
 			}
-			o.portCache[portUuid] = portUuid
+			o.portCache[portUUID] = portUUID
 
 			logging.GetLogger().Info("New port \"%s(%s)\" added",
-				row.New.Fields["name"], portUuid)
+				row.New.Fields["name"], portUUID)
 
 			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsPortAdd(o, portUuid, &row)
+				handler.OnOvsPortAdd(o, portUUID, &row)
 			}
 		} else {
-			delete(o.portCache, portUuid)
+			delete(o.portCache, portUUID)
 
 			logging.GetLogger().Info("Port \"%s(%s)\" got deleted",
-				row.Old.Fields["name"], portUuid)
+				row.Old.Fields["name"], portUUID)
 
 			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsPortDel(o, portUuid, &row)
+				handler.OnOvsPortDel(o, portUUID, &row)
 			}
 		}
 	}
@@ -210,7 +210,7 @@ func (o *OvsMonitor) setMonitorRequests(table string, r *map[string]libovsdb.Mon
 	}
 
 	var columns []string
-	for column, _ := range schema.Tables[table].Columns {
+	for column := range schema.Tables[table].Columns {
 		columns = append(columns, column)
 	}
 

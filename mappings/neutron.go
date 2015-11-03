@@ -25,6 +25,7 @@ package mappings
 import (
 	"errors"
 	"time"
+	"strconv"
 
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
@@ -33,6 +34,7 @@ import (
 	"github.com/rackspace/gophercloud/openstack/networking/v2/ports"
 	"github.com/rackspace/gophercloud/pagination"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pmylund/go-cache"
 
 	"github.com/redhat-cip/skydive/config"
@@ -47,8 +49,8 @@ type NeutronMapper struct {
 }
 
 type Attributes struct {
-	TenantId string
-	VNI      string
+	TenantID string
+	VNI      uint64
 }
 
 func (mapper *NeutronMapper) retrievePort(mac string) (ports.Port, error) {
@@ -86,7 +88,7 @@ func (mapper *NeutronMapper) retrieveAttributes(mac string) Attributes {
 	if err != nil {
 		return attrs
 	}
-	attrs.TenantId = port.TenantID
+	attrs.TenantID = port.TenantID
 
 	result := networks.Get(mapper.client, port.NetworkID)
 	network, err := provider.ExtractGet(result)
@@ -97,7 +99,11 @@ func (mapper *NeutronMapper) retrieveAttributes(mac string) Attributes {
 	if err != nil {
 		return attrs
 	}
-	attrs.VNI = network.SegmentationID
+
+	segID, err := strconv.Atoi(network.SegmentationID)
+	if err == nil {
+		attrs.VNI = uint64(segID)
+	}
 
 	return attrs
 }
@@ -116,14 +122,14 @@ func (mapper *NeutronMapper) cacheUpdater() {
 	}
 }
 
-func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
+func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
 	a, f := mapper.cache.Get(mac)
 	if f {
 		ia := a.(Attributes)
 
 		/* update attributes with attributes retrieved from neutron */
-		attrs.TenantId = ia.TenantId
-		attrs.VNI = ia.VNI
+		attrs.TenantID = proto.String(ia.TenantID)
+		attrs.VNI = proto.Uint64(ia.VNI)
 
 		return
 	}
@@ -134,17 +140,17 @@ func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.InterfaceAttributes
 func NewNeutronMapper() (*NeutronMapper, error) {
 	mapper := &NeutronMapper{}
 
-	auth_url := config.GetConfig().Section("openstack").Key("auth_url").String()
+	authURL := config.GetConfig().Section("openstack").Key("auth_url").String()
 	username := config.GetConfig().Section("openstack").Key("username").String()
 	password := config.GetConfig().Section("openstack").Key("password").String()
-	tenant_name := config.GetConfig().Section("openstack").Key("tenant_name").String()
-	region_name := config.GetConfig().Section("openstack").Key("region_name").String()
+	tenantName := config.GetConfig().Section("openstack").Key("tenant_name").String()
+	regionName := config.GetConfig().Section("openstack").Key("region_name").String()
 
 	opts := gophercloud.AuthOptions{
-		IdentityEndpoint: auth_url,
+		IdentityEndpoint: authURL,
 		Username:         username,
 		Password:         password,
-		TenantName:       tenant_name,
+		TenantName:       tenantName,
 	}
 
 	provider, err := openstack.AuthenticatedClient(opts)
@@ -155,7 +161,7 @@ func NewNeutronMapper() (*NeutronMapper, error) {
 	/* TODO(safchain) add config param for the Availability */
 	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
 		Name:         "neutron",
-		Region:       region_name,
+		Region:       regionName,
 		Availability: gophercloud.AvailabilityPublic,
 	})
 	if err != nil {

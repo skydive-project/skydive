@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	MAX_DGRAM_SIZE = 1500
+	maxDgramSize = 1500
 )
 
 type SFlowAgent struct {
@@ -45,7 +45,7 @@ type SFlowAgent struct {
 	Port int
 
 	/* TODO(safchain) replace by analyzer client */
-	AnalyzerClient *analyzer.AnalyzerClient
+	AnalyzerClient *analyzer.Client
 	FlowMapper     *mappings.FlowMapper
 }
 
@@ -55,7 +55,7 @@ func (agent *SFlowAgent) GetTarget() string {
 }
 
 func (agent *SFlowAgent) Start() error {
-	var buf [MAX_DGRAM_SIZE]byte
+	var buf [maxDgramSize]byte
 
 	addr := net.UDPAddr{
 		Port: agent.Port,
@@ -96,11 +96,9 @@ func (agent *SFlowAgent) Start() error {
 			}
 		}
 	}
-
-	return nil
 }
 
-func (agent *SFlowAgent) SetAnalyzerClient(a *analyzer.AnalyzerClient) {
+func (agent *SFlowAgent) SetAnalyzerClient(a *analyzer.Client) {
 	agent.AnalyzerClient = a
 }
 

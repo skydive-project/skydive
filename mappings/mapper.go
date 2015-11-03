@@ -27,7 +27,7 @@ import (
 )
 
 type InterfaceMappingDriver interface {
-	Enhance(mac string, attrs *flow.InterfaceAttributes)
+	Enhance(mac string, attrs *flow.Flow_InterfaceAttributes)
 }
 
 type InterfaceMapper struct {
@@ -42,7 +42,7 @@ func (im *InterfaceMapper) AddDriver(driver InterfaceMappingDriver) {
 	im.Drivers = append(im.Drivers, driver)
 }
 
-func (im *InterfaceMapper) Enhance(mac string, attrs *flow.InterfaceAttributes) {
+func (im *InterfaceMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
 	/* enhance interface attributes pipeline */
 	for _, driver := range im.Drivers {
 		driver.Enhance(mac, attrs)
@@ -55,8 +55,8 @@ func NewInterfaceMapper(drivers []InterfaceMappingDriver) *InterfaceMapper {
 }
 
 func (fm *FlowMapper) EnhanceInterfaces(flow *flow.Flow) {
-	fm.InterfaceMapper.Enhance(flow.EtherSrc, &flow.Attributes.IntfAttrSrc)
-	fm.InterfaceMapper.Enhance(flow.EtherDst, &flow.Attributes.IntfAttrDst)
+	fm.InterfaceMapper.Enhance(flow.GetEtherSrc(), flow.GetAttributes().GetIntfAttrSrc())
+	fm.InterfaceMapper.Enhance(flow.GetEtherDst(), flow.GetAttributes().GetIntfAttrDst())
 }
 
 func (fm *FlowMapper) Enhance(flows []*flow.Flow) {

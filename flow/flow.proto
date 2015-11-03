@@ -22,33 +22,32 @@
 
 package flow;
 
-message FlowMessage {
-	required string Uuid 		= 1;
+message Flow {
+	required string UUID 		= 1;
 	required string Host 		= 2;
 	required string EtherSrc 	= 3;
 	required string EtherDst 	= 4;
-	required string EtherType 	= 5;
-	required string Ipv4Src 	= 6;
-	required string Ipv4Dst 	= 7;
-	required string Path 		= 8;
-	required uint32 PortSrc 	= 9;
-	required uint32 PortDst 	= 10;
-	required uint64 Id 			= 11;
-	required uint64 Timestamp 	= 12;
+	required string Path 		= 5;
+	optional string Ipv4Src 	= 6;
+	optional string Ipv4Dst 	= 7;
+	optional uint32 PortSrc 	= 8;
+	optional uint32 PortDst 	= 9;
+	required uint64 ID 			= 10;
+	required uint64 Timestamp 	= 11;
 
 	message InterfaceAttributes {
-		optional string TenantId 	= 1;
-		optional string VNI 		= 2;
+		optional string TenantID 	= 1;
+		optional uint64 VNI 		= 2;
 		optional uint32 IfIndex 	= 3;
 		optional string IfName 		= 4;
-		optional uint32 MTU 		= 5;
+		optional uint32 MTU			= 5;
 		optional string BridgeName 	= 6;
 	}
 
-	message Attrs {
+	message MappingAttributes {
 		optional InterfaceAttributes IntfAttrSrc = 1;
 		optional InterfaceAttributes IntfAttrDst = 2;
 	}
 
-	optional Attrs Attributes = 13;
+	optional MappingAttributes Attributes = 12;
 }

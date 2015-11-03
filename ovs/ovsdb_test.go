@@ -29,34 +29,34 @@ import (
 )
 
 type FakeBridgeHandler struct {
-	BridgeUuid string
+	BridgeUUID string
 	Added      bool
 	Deleted    bool
 }
 
 func (b *FakeBridgeHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	b.BridgeUuid = uuid
+	b.BridgeUUID = uuid
 	b.Added = true
 }
 
 func (b *FakeBridgeHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	b.BridgeUuid = uuid
+	b.BridgeUUID = uuid
 	b.Deleted = true
 }
 
-func (o *FakeBridgeHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (b *FakeBridgeHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 
 }
 
-func (o *FakeBridgeHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (b *FakeBridgeHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 
 }
 
-func (o *FakeBridgeHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (b *FakeBridgeHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 
 }
 
-func (o *FakeBridgeHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (b *FakeBridgeHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 
 }
 
@@ -75,18 +75,18 @@ func getTableUpdates(bridgeName string, op string) *libovsdb.TableUpdates {
 	rowFields["name"] = bridgeName + "-name"
 	row := libovsdb.Row{Fields: rowFields}
 
-	bridgeUuid := bridgeName + "-uuid"
+	BridgeUUID := bridgeName + "-uuid"
 
 	var rowUpdate libovsdb.RowUpdate
 
 	switch op {
 	case "add":
-		rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: bridgeUuid}, New: row}
+		rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: BridgeUUID}, New: row}
 	case "del":
-		rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: bridgeUuid}, Old: row}
+		rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: BridgeUUID}, Old: row}
 	}
 
-	rows[bridgeUuid] = rowUpdate
+	rows[BridgeUUID] = rowUpdate
 
 	return tableUpdates
 }
@@ -100,7 +100,7 @@ func TestBridgeAdded(t *testing.T) {
 	tableUpdates := getTableUpdates("bridge1", "add")
 	monitor.updateHandler(tableUpdates)
 
-	if handler.BridgeUuid != "bridge1-uuid" || handler.Added == false {
+	if handler.BridgeUUID != "bridge1-uuid" || handler.Added == false {
 		t.Error("Bridge handler not called")
 	}
 }
@@ -117,7 +117,7 @@ func TestBridgeDeleted(t *testing.T) {
 	tableUpdates = getTableUpdates("bridge1", "del")
 	monitor.updateHandler(tableUpdates)
 
-	if handler.BridgeUuid != "bridge1-uuid" || handler.Deleted == false {
+	if handler.BridgeUUID != "bridge1-uuid" || handler.Deleted == false {
 		t.Error("Bridge handler not called")
 	}
 }
