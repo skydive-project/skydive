@@ -1,2 +1,10 @@
 language: go
 go_import_path: github.com/redhat-cip/skydive
+
+before_install:
+    - go get github.com/axw/gocov/gocov
+    - go get github.com/mattn/goveralls
+    - go get golang.org/x/tools/cmd/cover
+
+script:
+    - ./coverage.sh --coveralls
