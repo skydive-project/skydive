@@ -32,7 +32,6 @@ import (
 )
 
 func TestOvsEnhance(t *testing.T) {
-
 	mapper, err := NewOvsMapper()
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +45,7 @@ func TestOvsEnhance(t *testing.T) {
 
 	mapper.OnOvsPortAdd(nil, "port-uuid", &rowUpdate)
 
-	/* add bridge */
+	/* add bridge with already ports, simulate a initialisation */
 	rowFields = make(map[string]interface{})
 	rowFields["name"] = "br0"
 	uuid := libovsdb.UUID{GoUuid: "port-uuid"}
@@ -61,5 +60,80 @@ func TestOvsEnhance(t *testing.T) {
 
 	if attrs.GetBridgeName() != "br0" {
 		t.Error("Bridge name not found, expected br0")
+	}
+}
+
+func TestOvsOnBridgeAdd(t *testing.T) {
+	mapper, err := NewOvsMapper()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	/* add port */
+	rowFields := make(map[string]interface{})
+	rowFields["name"] = "br0"
+	row := libovsdb.Row{Fields: rowFields}
+	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
+
+	mapper.OnOvsPortAdd(nil, "br0-uuid", &rowUpdate)
+
+	/* add new bridge */
+	rowFields = make(map[string]interface{})
+	rowFields["name"] = "br0"
+	uuid := libovsdb.UUID{GoUuid: "br0-uuid"}
+	rowFields["ports"] = uuid
+	row = libovsdb.Row{Fields: rowFields}
+	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
+
+	mapper.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
+
+	attrs := flow.Flow_InterfaceAttributes{IfName: proto.String("br0")}
+	mapper.Enhance("", &attrs)
+
+	if attrs.GetBridgeName() != "br0" {
+		t.Error("Bridge name not found, expected br0")
+	}
+}
+
+func TestOvsOnBridgeDel(t *testing.T) {
+	mapper, err := NewOvsMapper()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	/* add port */
+	rowFields := make(map[string]interface{})
+	rowFields["name"] = "br0"
+	row := libovsdb.Row{Fields: rowFields}
+	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
+
+	mapper.OnOvsPortAdd(nil, "br0-uuid", &rowUpdate)
+
+	/* add new bridge */
+	rowFields = make(map[string]interface{})
+	rowFields["name"] = "br0"
+	uuid := libovsdb.UUID{GoUuid: "br0-uuid"}
+	rowFields["ports"] = uuid
+	row = libovsdb.Row{Fields: rowFields}
+	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
+
+	mapper.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
+
+	attrs := flow.Flow_InterfaceAttributes{IfName: proto.String("br0")}
+	mapper.Enhance("", &attrs)
+
+	if attrs.GetBridgeName() != "br0" {
+		t.Error("Bridge name not found, expected br0")
+	}
+
+	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, Old: row}
+
+	mapper.OnOvsBridgeDel(nil, "br0-uuid", &rowUpdate)
+
+	attrs = flow.Flow_InterfaceAttributes{IfName: proto.String("br0")}
+	mapper.Enhance("", &attrs)
+
+	if attrs.GetBridgeName() != "" {
+		t.Error("Bridge name still found, expected empty")
 	}
 }

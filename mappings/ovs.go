@@ -44,25 +44,39 @@ func (mapper *OvsMapper) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, 
 		return
 	}
 
-	set := row.New.Fields["ports"].(libovsdb.OvsSet)
-
 	mapper.Lock()
 	defer mapper.Unlock()
 
-	for _, i := range set.GoSet {
-		u := i.(libovsdb.UUID).GoUuid
+	switch row.New.Fields["ports"].(type) {
+	case libovsdb.OvsSet:
+		set := row.New.Fields["ports"].(libovsdb.OvsSet)
+
+		for _, i := range set.GoSet {
+			u := i.(libovsdb.UUID).GoUuid
+			mapper.PortToBridge[u] = name.(string)
+		}
+
+	case libovsdb.UUID:
+		u := row.New.Fields["ports"].(libovsdb.UUID).GoUuid
 		mapper.PortToBridge[u] = name.(string)
 	}
 }
 
 func (mapper *OvsMapper) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	set := row.Old.Fields["ports"].(libovsdb.OvsSet)
-
 	mapper.Lock()
 	defer mapper.Unlock()
 
-	for _, i := range set.GoSet {
-		u := i.(libovsdb.UUID).GoUuid
+	switch row.Old.Fields["ports"].(type) {
+	case libovsdb.OvsSet:
+		set := row.Old.Fields["ports"].(libovsdb.OvsSet)
+
+		for _, i := range set.GoSet {
+			u := i.(libovsdb.UUID).GoUuid
+			delete(mapper.PortToBridge, u)
+		}
+	case libovsdb.UUID:
+		u := row.Old.Fields["ports"].(libovsdb.UUID).GoUuid
+
 		delete(mapper.PortToBridge, u)
 	}
 }
@@ -94,6 +108,8 @@ func (mapper *OvsMapper) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, ro
 func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
 	mapper.Lock()
 	defer mapper.Unlock()
+
+	attrs.BridgeName = proto.String("")
 
 	port, ok := mapper.IfNameToPort[attrs.GetIfName()]
 	if !ok {
