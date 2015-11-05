@@ -200,7 +200,7 @@ func (o *OvsSFlowAgentsHandler) registerAgents(monitor *OvsMonitor, bridgeUUID s
 	for _, agent := range o.agents {
 		err := o.registerAgent(monitor, agent, bridgeUUID)
 		if err != nil {
-			logging.GetLogger().Error("Error while registering agent %s", err)
+			logging.GetLogger().Error("Error while registering agent %s", err.Error())
 		}
 	}
 }

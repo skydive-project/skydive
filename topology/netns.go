@@ -44,9 +44,9 @@ type NetNSTopoUpdater struct {
 }
 
 type NetNsNetLinkTopoUpdater struct {
-	Container      *Container
-	nlUpdater      *NetLinkTopoUpdater
-	nlUpdaterMutex sync.Mutex
+	sync.RWMutex
+	Container *Container
+	nlUpdater *NetLinkTopoUpdater
 }
 
 func getNetNSName(path string) string {
@@ -54,7 +54,7 @@ func getNetNSName(path string) string {
 	return s[len(s)-1]
 }
 
-func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
+func (nu *NetNsNetLinkTopoUpdater) start(path string) {
 	name := getNetNSName(path)
 
 	logging.GetLogger().Debug("Starting NetLinkTopoUpdater for NetNS: %s", name)
@@ -85,33 +85,36 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 	}
 
 	/* start a netlinks updater inside this namespace */
-	nu.nlUpdaterMutex.Lock()
+	nu.Lock()
 	nu.nlUpdater = NewNetLinkTopoUpdater(nu.Container)
-	nu.nlUpdaterMutex.Unlock()
+	nu.Unlock()
 
 	nu.nlUpdater.Start()
 
-	nu.nlUpdaterMutex.Lock()
+	nu.Lock()
 	nu.nlUpdater = nil
-	nu.nlUpdaterMutex.Unlock()
+	nu.Unlock()
 
 	logging.GetLogger().Debug("NetLinkTopoUpdater stopped for NetNS: %s", name)
 
 	netns.Set(origns)
 }
 
+func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
+	go nu.start(path)
+}
+
 func (nu *NetNsNetLinkTopoUpdater) Stop() {
-	nu.nlUpdaterMutex.Lock()
+	nu.Lock()
 	if nu.nlUpdater != nil {
 		nu.nlUpdater.Stop()
 	}
-	nu.nlUpdaterMutex.Unlock()
+	nu.Unlock()
 }
 
 func NewNetNsNetLinkTopoUpdater(c *Container) *NetNsNetLinkTopoUpdater {
 	return &NetNsNetLinkTopoUpdater{
-		Container:      c,
-		nlUpdaterMutex: sync.Mutex{},
+		Container: c,
 	}
 }
 
@@ -169,9 +172,9 @@ func (u *NetNSTopoUpdater) Start() {
 	}
 }
 
-func NewNetNSTopoUpdater(t *Topology) *NetNSTopoUpdater {
+func NewNetNSTopoUpdater(topo *Topology) *NetNSTopoUpdater {
 	return &NetNSTopoUpdater{
-		Topology:     t,
+		Topology:     topo,
 		nsNlUpdaters: make(map[string]*NetNsNetLinkTopoUpdater),
 	}
 }

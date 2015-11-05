@@ -22,6 +22,10 @@
 
 package topology
 
+import (
+	"sync"
+)
+
 const (
 	Root        = "root"
 	NetNs       = "netns"
@@ -30,12 +34,14 @@ const (
 )
 
 type Node struct {
+	sync.RWMutex
 	ID        string            `json:"-"`
 	Metadatas map[string]string `json:",omitempty"`
 	links     map[string]*Link  `json:"-"`
 }
 
 type Link struct {
+	sync.RWMutex
 	ID        string `json:"-"`
 	Left      *Node
 	Right     *Node
@@ -43,6 +49,7 @@ type Link struct {
 }
 
 type Container struct {
+	sync.RWMutex
 	ID       string `json:"-"`
 	Type     string
 	Nodes    map[string]*Node
@@ -50,10 +57,14 @@ type Container struct {
 }
 
 type Topology struct {
+	sync.RWMutex
 	Containers map[string]*Container
 }
 
 func (c *Container) GetNode(i string) *Node {
+	c.Lock()
+	defer c.Unlock()
+
 	if node, ok := c.Nodes[i]; ok {
 		return node
 	}
@@ -61,6 +72,9 @@ func (c *Container) GetNode(i string) *Node {
 }
 
 func (c *Container) DelNode(i string) {
+	c.Lock()
+	defer c.Unlock()
+
 	n, ok := c.Nodes[i]
 	if !ok {
 		return
@@ -75,6 +89,9 @@ func (c *Container) DelNode(i string) {
 }
 
 func (c *Container) NewNode(i string) *Node {
+	c.Lock()
+	defer c.Unlock()
+
 	node := &Node{
 		ID:        i,
 		Metadatas: make(map[string]string),
@@ -86,10 +103,16 @@ func (c *Container) NewNode(i string) *Node {
 }
 
 func (topo *Topology) DelContainer(i string) {
+	topo.Lock()
+	defer topo.Unlock()
+
 	delete(topo.Containers, i)
 }
 
 func (topo *Topology) NewContainer(i string, t string) *Container {
+	topo.Lock()
+	defer topo.Unlock()
+
 	container := &Container{
 		ID:       i,
 		Type:     t,

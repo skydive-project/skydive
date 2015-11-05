@@ -76,7 +76,7 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	delete(u.linkCache, index)
 }
 
-func (u *NetLinkTopoUpdater) Start() {
+func (u *NetLinkTopoUpdater) start() {
 	logging.GetLogger().Debug("Start NetLink Topo Updater for container: %s", u.Container.ID)
 
 	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK)
@@ -147,6 +147,10 @@ Loop:
 	}
 
 	u.nlSocket.Close()
+}
+
+func (u *NetLinkTopoUpdater) Start() {
+	go u.start()
 }
 
 func (u *NetLinkTopoUpdater) Stop() {

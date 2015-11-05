@@ -106,10 +106,12 @@ func main() {
 	root := topo.NewContainer("root", topology.Root)
 
 	ns := topology.NewNetNSTopoUpdater(topo)
-	go ns.Start()
+	ns.Start()
 
 	nl := topology.NewNetLinkTopoUpdater(root)
-	go nl.Start()
+	nl.Start()
+
+	//ovs := topology.NewO
 
 	fmt.Println("Skydive Agent started !")
 	<-quit

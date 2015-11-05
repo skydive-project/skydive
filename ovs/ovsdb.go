@@ -25,6 +25,7 @@ package ovsdb
 import (
 	"errors"
 	"reflect"
+	"sync"
 
 	"github.com/socketplane/libovsdb"
 
@@ -49,6 +50,7 @@ type OvsMonitorHandler interface {
 }
 
 type OvsMonitor struct {
+	sync.RWMutex
 	Addr            string
 	Port            int
 	OvsClient       OvsOpsExecutor
@@ -107,6 +109,10 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 
 func (o *OvsMonitor) bridgeUpdateHandler(updates *libovsdb.TableUpdate) {
 	empty := libovsdb.Row{}
+
+	o.Lock()
+	defer o.Unlock()
+
 	for bridgeUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
 			if _, ok := o.bridgeCache[bridgeUUID]; ok {
@@ -135,6 +141,10 @@ func (o *OvsMonitor) bridgeUpdateHandler(updates *libovsdb.TableUpdate) {
 
 func (o *OvsMonitor) interfaceUpdateHandler(updates *libovsdb.TableUpdate) {
 	empty := libovsdb.Row{}
+
+	o.Lock()
+	defer o.Unlock()
+
 	for interfaceUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
 			if _, ok := o.interfaceCache[interfaceUUID]; ok {
@@ -163,6 +173,10 @@ func (o *OvsMonitor) interfaceUpdateHandler(updates *libovsdb.TableUpdate) {
 
 func (o *OvsMonitor) portUpdateHandler(updates *libovsdb.TableUpdate) {
 	empty := libovsdb.Row{}
+
+	o.Lock()
+	defer o.Unlock()
+
 	for portUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
 			if _, ok := o.portCache[portUUID]; ok {
@@ -229,6 +243,9 @@ func (o *OvsMonitor) setMonitorRequests(table string, r *map[string]libovsdb.Mon
 }
 
 func (o *OvsMonitor) AddMonitorHandler(handler OvsMonitorHandler) {
+	o.Lock()
+	defer o.Unlock()
+
 	o.MonitorHandlers = append(o.MonitorHandlers, handler)
 }
 
@@ -272,8 +289,8 @@ func NewOvsMonitor(addr string, port int) *OvsMonitor {
 	return &OvsMonitor{
 		Addr:           addr,
 		Port:           port,
-		bridgeCache:    map[string]string{},
-		interfaceCache: map[string]string{},
-		portCache:      map[string]string{},
+		bridgeCache:    make(map[string]string),
+		interfaceCache: make(map[string]string),
+		portCache:      make(map[string]string),
 	}
 }

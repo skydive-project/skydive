@@ -23,14 +23,17 @@
 package mappings
 
 import (
-	"github.com/socketplane/libovsdb"
+	"sync"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/socketplane/libovsdb"
 
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/ovs"
 )
 
 type OvsMapper struct {
+	sync.Mutex
 	IfNameToPort map[string]string
 	PortToBridge map[string]string
 }
@@ -42,6 +45,10 @@ func (mapper *OvsMapper) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, 
 	}
 
 	set := row.New.Fields["ports"].(libovsdb.OvsSet)
+
+	mapper.Lock()
+	defer mapper.Unlock()
+
 	for _, i := range set.GoSet {
 		u := i.(libovsdb.UUID).GoUuid
 		mapper.PortToBridge[u] = name.(string)
@@ -50,6 +57,10 @@ func (mapper *OvsMapper) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, 
 
 func (mapper *OvsMapper) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	set := row.Old.Fields["ports"].(libovsdb.OvsSet)
+
+	mapper.Lock()
+	defer mapper.Unlock()
+
 	for _, i := range set.GoSet {
 		u := i.(libovsdb.UUID).GoUuid
 		delete(mapper.PortToBridge, u)
@@ -64,15 +75,26 @@ func (mapper *OvsMapper) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid strin
 
 func (mapper *OvsMapper) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	name := row.New.Fields["name"].(string)
+
+	mapper.Lock()
+	defer mapper.Unlock()
+
 	mapper.IfNameToPort[name] = uuid
 }
 
 func (mapper *OvsMapper) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	name := row.Old.Fields["name"].(string)
+
+	mapper.Lock()
+	defer mapper.Unlock()
+
 	delete(mapper.IfNameToPort, name)
 }
 
 func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
+	mapper.Lock()
+	defer mapper.Unlock()
+
 	port, ok := mapper.IfNameToPort[attrs.GetIfName()]
 	if !ok {
 		return
@@ -87,8 +109,8 @@ func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttribute
 
 func NewOvsMapper() (*OvsMapper, error) {
 	mapper := &OvsMapper{
-		IfNameToPort: map[string]string{},
-		PortToBridge: map[string]string{},
+		IfNameToPort: make(map[string]string),
+		PortToBridge: make(map[string]string),
 	}
 
 	return mapper, nil
