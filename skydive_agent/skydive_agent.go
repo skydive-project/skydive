@@ -36,7 +36,7 @@ import (
 
 var quit chan bool
 
-func getInterfaceMappingDrivers(monitor *ovsdb.OvsMonitor) ([]mappings.InterfaceMappingDriver, error) {
+func getInterfaceMappingDrivers(otu *topology.OvsTopoUpdater) ([]mappings.InterfaceMappingDriver, error) {
 	drivers := []mappings.InterfaceMappingDriver{}
 
 	netlink, err := mappings.NewNetLinkMapper()
@@ -46,13 +46,11 @@ func getInterfaceMappingDrivers(monitor *ovsdb.OvsMonitor) ([]mappings.Interface
 	drivers = append(drivers, netlink)
 
 	/* need to be added after the netlink one since it relies on it */
-	ovs, err := mappings.NewOvsMapper()
+	ovs, err := mappings.NewOvsMapper(otu)
 	if err != nil {
 		return drivers, err
 	}
 	drivers = append(drivers, ovs)
-
-	monitor.AddMonitorHandler(ovs)
 
 	return drivers, nil
 }
@@ -84,8 +82,20 @@ func main() {
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
 	ovsmon.AddMonitorHandler(sflowHandler)
 
+	topo := topology.NewTopology()
+	root := topo.NewContainer("root", topology.Root)
+
+	ns := topology.NewNetNSTopoUpdater(topo)
+	ns.Start()
+
+	nl := topology.NewNetLinkTopoUpdater(root)
+	nl.Start()
+
+	ovs := topology.NewOvsTopoUpdater(topo, ovsmon)
+	ovs.Start()
+
 	mapper := mappings.NewFlowMapper()
-	drivers, err := getInterfaceMappingDrivers(ovsmon)
+	drivers, err := getInterfaceMappingDrivers(ovs)
 	if err != nil {
 		panic(err)
 	}
@@ -97,21 +107,9 @@ func main() {
 		panic(err)
 	}
 	sflowAgent.SetAnalyzerClient(analyzer)
-
-	go sflowAgent.Start()
+	sflowAgent.Start()
 
 	ovsmon.StartMonitoring()
-
-	topo := topology.NewTopology()
-	root := topo.NewContainer("root", topology.Root)
-
-	ns := topology.NewNetNSTopoUpdater(topo)
-	ns.Start()
-
-	nl := topology.NewNetLinkTopoUpdater(root)
-	nl.Start()
-
-	//ovs := topology.NewO
 
 	fmt.Println("Skydive Agent started !")
 	<-quit

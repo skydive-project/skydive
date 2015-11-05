@@ -54,7 +54,7 @@ func (agent *SFlowAgent) GetTarget() string {
 	return strings.Join(target, ":")
 }
 
-func (agent *SFlowAgent) Start() error {
+func (agent *SFlowAgent) start() error {
 	var buf [maxDgramSize]byte
 
 	addr := net.UDPAddr{
@@ -64,6 +64,7 @@ func (agent *SFlowAgent) Start() error {
 	conn, err := net.ListenUDP("udp", &addr)
 	defer conn.Close()
 	if err != nil {
+		logging.GetLogger().Error("Unable to listen on port %d: %s", agent.Port, err.Error())
 		return err
 	}
 
@@ -96,6 +97,12 @@ func (agent *SFlowAgent) Start() error {
 			}
 		}
 	}
+
+	return nil
+}
+
+func (agent *SFlowAgent) Start() {
+	go agent.start()
 }
 
 func (agent *SFlowAgent) SetAnalyzerClient(a *analyzer.Client) {

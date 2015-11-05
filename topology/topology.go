@@ -109,6 +109,14 @@ func (topo *Topology) DelContainer(i string) {
 	delete(topo.Containers, i)
 }
 
+func (topo *Topology) GetContainer(i string) *Container {
+	c, ok := topo.Containers[i]
+	if !ok {
+		return nil
+	}
+	return c
+}
+
 func (topo *Topology) NewContainer(i string, t string) *Container {
 	topo.Lock()
 	defer topo.Unlock()

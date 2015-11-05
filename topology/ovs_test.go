@@ -20,22 +20,21 @@
  *
  */
 
-package mappings
+package topology
 
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/socketplane/libovsdb"
 
-	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/ovs"
 )
 
-func TestOvsEnhance(t *testing.T) {
-	mapper, err := NewOvsMapper()
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestOvsTopology(t *testing.T) {
+	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 8888)
+	topo := NewTopology()
+
+	updater := NewOvsTopoUpdater(topo, ovsmon)
 
 	/* add port */
 	rowFields := make(map[string]interface{})
@@ -43,7 +42,7 @@ func TestOvsEnhance(t *testing.T) {
 	row := libovsdb.Row{Fields: rowFields}
 	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "port-uuid"}, New: row}
 
-	mapper.OnOvsPortAdd(nil, "port-uuid", &rowUpdate)
+	updater.OnOvsPortAdd(nil, "port-uuid", &rowUpdate)
 
 	/* add bridge with already ports, simulate a initialisation */
 	rowFields = make(map[string]interface{})
@@ -53,21 +52,27 @@ func TestOvsEnhance(t *testing.T) {
 	row = libovsdb.Row{Fields: rowFields}
 	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
 
-	mapper.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
+	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	attrs := flow.Flow_InterfaceAttributes{IfName: proto.String("eth0")}
-	mapper.Enhance("", &attrs)
-
-	if attrs.GetBridgeName() != "br0" {
+	if updater.GetBridgeOfPort("eth0") != "br0" {
 		t.Error("Bridge name not found, expected br0")
+	}
+
+	container := topo.GetContainer("br0")
+	if container == nil {
+		t.Error("Unable to find a container in the topo for the ovs bridge br0")
+	}
+
+	if container.Type != OvsBridge {
+		t.Error("The container for the bridge br0 should be of type OvsBridge")
 	}
 }
 
 func TestOvsOnBridgeAdd(t *testing.T) {
-	mapper, err := NewOvsMapper()
-	if err != nil {
-		t.Fatal(err)
-	}
+	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 8888)
+	topo := NewTopology()
+
+	updater := NewOvsTopoUpdater(topo, ovsmon)
 
 	/* add port */
 	rowFields := make(map[string]interface{})
@@ -75,7 +80,7 @@ func TestOvsOnBridgeAdd(t *testing.T) {
 	row := libovsdb.Row{Fields: rowFields}
 	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
 
-	mapper.OnOvsPortAdd(nil, "br0-uuid", &rowUpdate)
+	updater.OnOvsPortAdd(nil, "br0-uuid", &rowUpdate)
 
 	/* add new bridge */
 	rowFields = make(map[string]interface{})
@@ -85,21 +90,23 @@ func TestOvsOnBridgeAdd(t *testing.T) {
 	row = libovsdb.Row{Fields: rowFields}
 	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
 
-	mapper.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
+	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	attrs := flow.Flow_InterfaceAttributes{IfName: proto.String("br0")}
-	mapper.Enhance("", &attrs)
-
-	if attrs.GetBridgeName() != "br0" {
+	if updater.GetBridgeOfPort("br0") != "br0" {
 		t.Error("Bridge name not found, expected br0")
+	}
+
+	container := topo.GetContainer("br0")
+	if container == nil {
+		t.Error("Unable to find a container in the topo for the ovs bridge br0")
 	}
 }
 
 func TestOvsOnBridgeDel(t *testing.T) {
-	mapper, err := NewOvsMapper()
-	if err != nil {
-		t.Fatal(err)
-	}
+	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 8888)
+	topo := NewTopology()
+
+	updater := NewOvsTopoUpdater(topo, ovsmon)
 
 	/* add port */
 	rowFields := make(map[string]interface{})
@@ -107,7 +114,7 @@ func TestOvsOnBridgeDel(t *testing.T) {
 	row := libovsdb.Row{Fields: rowFields}
 	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
 
-	mapper.OnOvsPortAdd(nil, "br0-uuid", &rowUpdate)
+	updater.OnOvsPortAdd(nil, "br0-uuid", &rowUpdate)
 
 	/* add new bridge */
 	rowFields = make(map[string]interface{})
@@ -117,23 +124,22 @@ func TestOvsOnBridgeDel(t *testing.T) {
 	row = libovsdb.Row{Fields: rowFields}
 	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
 
-	mapper.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
+	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	attrs := flow.Flow_InterfaceAttributes{IfName: proto.String("br0")}
-	mapper.Enhance("", &attrs)
-
-	if attrs.GetBridgeName() != "br0" {
+	if updater.GetBridgeOfPort("br0") != "br0" {
 		t.Error("Bridge name not found, expected br0")
 	}
 
 	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, Old: row}
 
-	mapper.OnOvsBridgeDel(nil, "br0-uuid", &rowUpdate)
+	updater.OnOvsBridgeDel(nil, "br0-uuid", &rowUpdate)
 
-	attrs = flow.Flow_InterfaceAttributes{IfName: proto.String("br0")}
-	mapper.Enhance("", &attrs)
-
-	if attrs.GetBridgeName() != "" {
+	if updater.GetBridgeOfPort("br0") != "" {
 		t.Error("Bridge name still found, expected empty")
+	}
+
+	container := topo.GetContainer("br0")
+	if container != nil {
+		t.Error("Container for the bridge br0 should exist anymore since the bridge has been deleted")
 	}
 }

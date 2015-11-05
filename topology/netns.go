@@ -54,7 +54,7 @@ func getNetNSName(path string) string {
 	return s[len(s)-1]
 }
 
-func (nu *NetNsNetLinkTopoUpdater) start(path string) {
+func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 	name := getNetNSName(path)
 
 	logging.GetLogger().Debug("Starting NetLinkTopoUpdater for NetNS: %s", name)
@@ -100,10 +100,6 @@ func (nu *NetNsNetLinkTopoUpdater) start(path string) {
 	netns.Set(origns)
 }
 
-func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
-	go nu.start(path)
-}
-
 func (nu *NetNsNetLinkTopoUpdater) Stop() {
 	nu.Lock()
 	if nu.nlUpdater != nil {
@@ -142,7 +138,7 @@ func (u *NetNSTopoUpdater) onNetNsDeleted(path string) {
 	delete(u.nsNlUpdaters, path)
 }
 
-func (u *NetNSTopoUpdater) Start() {
+func (u *NetNSTopoUpdater) start() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -170,6 +166,10 @@ func (u *NetNSTopoUpdater) Start() {
 			logging.GetLogger().Error("Error while watching network namespace: %s", err.Error())
 		}
 	}
+}
+
+func (u *NetNSTopoUpdater) Start() {
+	go u.start()
 }
 
 func NewNetNSTopoUpdater(topo *Topology) *NetNSTopoUpdater {
