@@ -31,6 +31,7 @@ import (
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/mappings"
 	"github.com/redhat-cip/skydive/ovs"
+	"github.com/redhat-cip/skydive/topology"
 )
 
 var quit chan bool
@@ -80,11 +81,11 @@ func main() {
 	}
 	sflowHandler := ovsdb.NewOvsSFlowAgentsHandler([]ovsdb.SFlowAgent{ovsSFlowAgent})
 
-	monitor := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
-	monitor.AddMonitorHandler(sflowHandler)
+	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
+	ovsmon.AddMonitorHandler(sflowHandler)
 
 	mapper := mappings.NewFlowMapper()
-	drivers, err := getInterfaceMappingDrivers(monitor)
+	drivers, err := getInterfaceMappingDrivers(ovsmon)
 	if err != nil {
 		panic(err)
 	}
@@ -99,7 +100,16 @@ func main() {
 
 	go sflowAgent.Start()
 
-	monitor.StartMonitoring()
+	ovsmon.StartMonitoring()
+
+	topo := topology.NewTopology()
+	root := topo.NewContainer("root", topology.Root)
+
+	ns := topology.NewNetNSTopoUpdater(topo)
+	go ns.Start()
+
+	nl := topology.NewNetLinkTopoUpdater(root)
+	go nl.Start()
 
 	fmt.Println("Skydive Agent started !")
 	<-quit

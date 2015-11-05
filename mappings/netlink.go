@@ -26,9 +26,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pmylund/go-cache"
 	"github.com/vishvananda/netlink"
-	"github.com/golang/protobuf/proto"
 
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
