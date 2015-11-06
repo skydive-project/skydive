@@ -30,21 +30,23 @@ import (
 )
 
 type OvsMapper struct {
-	OvsTopoUpdater *topology.OvsTopoUpdater
+	Topology *topology.Topology
 }
 
 func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
-	if mapper.OvsTopoUpdater != nil {
-		name := mapper.OvsTopoUpdater.GetBridgeByIntfName(attrs.GetIfName())
-		attrs.BridgeName = proto.String(name)
-	} else {
-		attrs.BridgeName = proto.String("")
+	if mapper.Topology != nil {
+		container := mapper.Topology.GetPort(attrs.GetIfName())
+		if container != nil {
+			attrs.BridgeName = proto.String(container.ID)
+			return
+		}
 	}
+	attrs.BridgeName = proto.String("")
 }
 
-func NewOvsMapper(o *topology.OvsTopoUpdater) (*OvsMapper, error) {
+func NewOvsMapper(o *topology.Topology) (*OvsMapper, error) {
 	mapper := &OvsMapper{
-		OvsTopoUpdater: o,
+		Topology: o,
 	}
 
 	return mapper, nil

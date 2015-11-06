@@ -112,7 +112,7 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 
 func (o *OvsMonitor) bridgeUpdated(bridgeUUID string, row *libovsdb.RowUpdate) {
 	logging.GetLogger().Info("Bridge \"%s(%s)\" updated",
-		row.Old.Fields["name"], bridgeUUID)
+		row.New.Fields["name"], bridgeUUID)
 
 	for _, handler := range o.MonitorHandlers {
 		handler.OnOvsBridgeUpdate(o, bridgeUUID, row)

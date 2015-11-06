@@ -36,18 +36,27 @@ const (
 	OvsBridge   = "ovsbridge"
 )
 
-type Node struct {
+type Interface struct {
 	sync.RWMutex
 	ID        string            `json:"-"`
-	Metadatas map[string]string `json:",omitempty"`
-	links     map[string]*Link  `json:"-"`
+	Metadatas map[string]string `json:",omitempty	"`
+	port      *Port             `json:"-"`
+}
+
+type Port struct {
+	sync.RWMutex
+	ID         string                `json:"-"`
+	Metadatas  map[string]string     `json:",omitempty"`
+	Interfaces map[string]*Interface `json:",omitempty"`
+	container  *Container            `json:"-"`
+	links      map[string]*Link      `json:"-"`
 }
 
 type Link struct {
 	sync.RWMutex
 	ID        string `json:"-"`
-	Left      *Node
-	Right     *Node
+	Left      *Port
+	Right     *Port
 	Metadatas map[string]string `json:",omitempty"`
 }
 
@@ -55,13 +64,16 @@ type Container struct {
 	sync.RWMutex
 	ID       string `json:"-"`
 	Type     string
-	Nodes    map[string]*Node
+	Ports    map[string]*Port
 	Topology *Topology `json:"-"`
 }
 
 type Topology struct {
 	sync.RWMutex
 	Containers map[string]*Container
+	interfaces map[string]*Interface `json:"-"`
+	ports      map[string]*Port      `json:"-"`
+	links      map[string]*Link      `json:"-"`
 }
 
 func (t *Topology) Log() {
@@ -69,54 +81,136 @@ func (t *Topology) Log() {
 	logging.GetLogger().Debug("Topology: %s", string(j))
 }
 
-func (c *Container) GetNode(i string) *Node {
-	c.Lock()
-	defer c.Unlock()
+func (topo *Topology) NewInterface(i string, p *Port) *Interface {
+	topo.Lock()
+	defer topo.Unlock()
 
-	if node, ok := c.Nodes[i]; ok {
-		return node
+	intf := &Interface{
+		ID:        i,
+		Metadatas: make(map[string]string),
 	}
-	return nil
+	topo.interfaces[i] = intf
+
+	if p != nil {
+		p.Interfaces[i] = intf
+		intf.port = p
+		topo.Log()
+	}
+
+	return intf
 }
 
-func (c *Container) DelNode(i string) {
-	c.Lock()
-	defer c.Unlock()
+func (topo *Topology) DelInterface(i string) {
+	topo.Lock()
+	defer topo.Unlock()
 
-	n, ok := c.Nodes[i]
+	intf, ok := topo.interfaces[i]
 	if !ok {
 		return
 	}
 
-	for id, link := range n.links {
+	if intf.port != nil {
+		delete(intf.port.Interfaces, i)
+		topo.Log()
+	}
+
+	delete(topo.interfaces, i)
+}
+
+func (topo *Topology) GetInterface(i string) *Interface {
+	topo.Lock()
+	defer topo.Unlock()
+
+	if intf, ok := topo.interfaces[i]; ok {
+		return intf
+	}
+	return nil
+}
+
+func (port *Port) AddInterface(intf *Interface) {
+	port.Lock()
+	defer port.Unlock()
+
+	intf.Lock()
+	defer intf.Unlock()
+
+	port.Interfaces[intf.ID] = intf
+	intf.port = port
+}
+
+func (port *Port) GetContainer() *Container {
+	return port.container
+}
+
+func (topo *Topology) GetPort(i string) *Port {
+	topo.Lock()
+	defer topo.Unlock()
+
+	if port, ok := topo.ports[i]; ok {
+		return port
+	}
+	return nil
+}
+
+func (topo *Topology) DelPort(i string) {
+	topo.Lock()
+	defer topo.Unlock()
+
+	port, ok := topo.ports[i]
+	if !ok {
+		return
+	}
+
+	for id, link := range port.links {
 		delete(link.Left.links, id)
 		delete(link.Right.links, id)
 	}
 
-	delete(c.Nodes, i)
+	for _, intf := range port.Interfaces {
+		intf.port = nil
+	}
 
-	c.Topology.Log()
+	if port.container != nil {
+		delete(port.container.Ports, i)
+		topo.Log()
+	}
+
+	delete(topo.ports, i)
 }
 
-func (c *Container) NewNode(i string) *Node {
-	c.Lock()
-	defer c.Unlock()
+func (topo *Topology) NewPort(i string, c *Container) *Port {
+	topo.Lock()
+	defer topo.Unlock()
 
-	node := &Node{
-		ID:        i,
-		Metadatas: make(map[string]string),
-		links:     make(map[string]*Link),
+	port := &Port{
+		ID:         i,
+		Metadatas:  make(map[string]string),
+		Interfaces: make(map[string]*Interface),
+		links:      make(map[string]*Link),
 	}
-	c.Nodes[i] = node
+	topo.ports[i] = port
 
-	c.Topology.Log()
+	if c != nil {
+		c.Ports[i] = port
+		port.container = c
+		topo.Log()
+	}
 
-	return node
+	return port
 }
 
 func (topo *Topology) DelContainer(i string) {
 	topo.Lock()
 	defer topo.Unlock()
+
+	container, ok := topo.Containers[i]
+	if !ok {
+		return
+	}
+
+	for _, port := range container.Ports {
+		port.container = nil
+	}
 
 	delete(topo.Containers, i)
 
@@ -124,11 +218,25 @@ func (topo *Topology) DelContainer(i string) {
 }
 
 func (topo *Topology) GetContainer(i string) *Container {
+	topo.Lock()
+	defer topo.Unlock()
+
 	c, ok := topo.Containers[i]
 	if !ok {
 		return nil
 	}
 	return c
+}
+
+func (container *Container) AddPort(port *Port) {
+	container.Lock()
+	defer container.Unlock()
+
+	port.Lock()
+	defer port.Unlock()
+
+	container.Ports[port.ID] = port
+	port.container = container
 }
 
 func (topo *Topology) NewContainer(i string, t string) *Container {
@@ -138,7 +246,7 @@ func (topo *Topology) NewContainer(i string, t string) *Container {
 	container := &Container{
 		ID:       i,
 		Type:     t,
-		Nodes:    make(map[string]*Node),
+		Ports:    make(map[string]*Port),
 		Topology: topo,
 	}
 	topo.Containers[i] = container
@@ -151,5 +259,8 @@ func (topo *Topology) NewContainer(i string, t string) *Container {
 func NewTopology() *Topology {
 	return &Topology{
 		Containers: make(map[string]*Container),
+		interfaces: make(map[string]*Interface),
+		ports:      make(map[string]*Port),
+		links:      make(map[string]*Link),
 	}
 }

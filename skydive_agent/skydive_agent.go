@@ -36,7 +36,7 @@ import (
 
 var quit chan bool
 
-func getInterfaceMappingDrivers(otu *topology.OvsTopoUpdater) ([]mappings.InterfaceMappingDriver, error) {
+func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
 	drivers := []mappings.InterfaceMappingDriver{}
 
 	netlink, err := mappings.NewNetLinkMapper()
@@ -46,7 +46,7 @@ func getInterfaceMappingDrivers(otu *topology.OvsTopoUpdater) ([]mappings.Interf
 	drivers = append(drivers, netlink)
 
 	/* need to be added after the netlink one since it relies on it */
-	ovs, err := mappings.NewOvsMapper(otu)
+	ovs, err := mappings.NewOvsMapper(topo)
 	if err != nil {
 		return drivers, err
 	}
@@ -95,7 +95,7 @@ func main() {
 	ovs.Start()
 
 	mapper := mappings.NewFlowMapper()
-	drivers, err := getInterfaceMappingDrivers(ovs)
+	drivers, err := getInterfaceMappingDrivers(topo)
 	if err != nil {
 		panic(err)
 	}

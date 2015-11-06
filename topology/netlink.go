@@ -52,10 +52,13 @@ type NetLinkTopoUpdater struct {
 func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	u.linkCache[link.Attrs().Index] = *link.Attrs()
 
-	node := u.Container.NewNode(link.Attrs().Name)
+	/* create a port, attach it to the current container, then create attach
+	   a single interface to this port */
+	port := u.Container.Topology.NewPort(link.Attrs().Name, u.Container)
+	intf := u.Container.Topology.NewInterface(link.Attrs().Name, port)
 
 	/* TODO(safchain) Add more metadatas here */
-	node.Metadatas["mac"] = link.Attrs().HardwareAddr.String()
+	intf.Metadatas["mac"] = link.Attrs().HardwareAddr.String()
 }
 
 func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
@@ -76,7 +79,7 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	if !ok {
 		return
 	}
-	u.Container.DelNode(attrs.Name)
+	u.Container.Topology.DelPort(attrs.Name)
 
 	delete(u.linkCache, index)
 }

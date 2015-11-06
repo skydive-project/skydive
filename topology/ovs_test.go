@@ -54,7 +54,7 @@ func TestOvsTopology(t *testing.T) {
 
 	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	if updater.GetBridgeByIntfName("eth0") != "br0" {
+	if topo.GetPort("eth0").GetContainer().ID != "br0" {
 		t.Error("Bridge name not found, expected br0")
 	}
 
@@ -92,12 +92,7 @@ func TestOvsOnBridgeAdd(t *testing.T) {
 
 	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	if updater.GetBridgeByIntfName("br0") != "br0" {
-		t.Error("Bridge name not found, expected br0")
-	}
-
-	container := topo.GetContainer("br0")
-	if container == nil {
+	if topo.GetContainer("br0") == nil {
 		t.Error("Unable to find a container in the topo for the ovs bridge br0")
 	}
 }
@@ -126,7 +121,7 @@ func TestOvsOnBridgeDel(t *testing.T) {
 
 	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	if updater.GetBridgeByIntfName("br0") != "br0" {
+	if topo.GetPort("br0").GetContainer().ID != "br0" {
 		t.Error("Bridge name not found, expected br0")
 	}
 
@@ -134,12 +129,11 @@ func TestOvsOnBridgeDel(t *testing.T) {
 
 	updater.OnOvsBridgeDel(nil, "br0-uuid", &rowUpdate)
 
-	if updater.GetBridgeByIntfName("br0") != "" {
+	if topo.GetPort("br0").GetContainer() != nil {
 		t.Error("Bridge name still found, expected empty")
 	}
 
-	container := topo.GetContainer("br0")
-	if container != nil {
+	if topo.GetContainer("br0") != nil {
 		t.Error("Container for the bridge br0 should exist anymore since the bridge has been deleted")
 	}
 }

@@ -31,17 +31,18 @@ func TestSimpleTopology(t *testing.T) {
 	topo := NewTopology()
 
 	container1 := topo.NewContainer("C1", Root)
-	container1.NewNode("node-1")
-	container1.NewNode("node-2")
-	node := container1.NewNode("node-3")
-	node.Metadatas["mac"] = "1.1.1.1.1.1"
+	topo.NewPort("node-1", container1)
+	topo.NewPort("node-2", container1)
+	port := topo.NewPort("node-3", container1)
+	port.Metadatas["mac"] = "1.1.1.1.1.1"
 
 	container2 := topo.NewContainer("C2", NetNs)
-	container2.NewNode("node-4")
-	container2.NewNode("node-5")
+	topo.NewPort("node-4", container2)
+	port5 := topo.NewPort("node-5", container2)
+	topo.NewInterface("intf-1", port5)
 
-	expected := `{"Containers":{"C1":{"Type":"root","Nodes":{"node-1":{},"node-2":{},"node-3":{"Metadatas":{"mac":"1.1.1.1.1.1"}}}},`
-	expected += `"C2":{"Type":"netns","Nodes":{"node-4":{},"node-5":{}}}}}`
+	expected := `{"Containers":{"C1":{"Type":"root","Ports":{"node-1":{},"node-2":{},"node-3":{"Metadatas":{"mac":"1.1.1.1.1.1"}}}},`
+	expected += `"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Metadatas":{}}}}}}}}`
 
 	j, _ := json.Marshal(topo)
 	if string(j) != expected {
@@ -53,27 +54,27 @@ func TestDeleteOperation(t *testing.T) {
 	topo := NewTopology()
 
 	container1 := topo.NewContainer("C1", Root)
-	container1.NewNode("node-1")
-	container1.NewNode("node-2")
-	node := container1.NewNode("node-3")
-	node.Metadatas["mac"] = "1.1.1.1.1.1"
+	topo.NewPort("node-1", container1)
+	topo.NewPort("node-2", container1)
+	port := topo.NewPort("node-3", container1)
+	port.Metadatas["mac"] = "1.1.1.1.1.1"
 
 	container2 := topo.NewContainer("C2", NetNs)
-	container2.NewNode("node-4")
-	container2.NewNode("node-5")
+	topo.NewPort("node-4", container2)
+	port5 := topo.NewPort("node-5", container2)
+	topo.NewInterface("intf-1", port5)
 
-	expected := `{"Containers":{"C1":{"Type":"root","Nodes":{"node-1":{},"node-2":{},"node-3":{"Metadatas":{"mac":"1.1.1.1.1.1"}}}},`
-	expected += `"C2":{"Type":"netns","Nodes":{"node-4":{},"node-5":{}}}}}`
+	expected := `{"Containers":{"C1":{"Type":"root","Ports":{"node-1":{},"node-2":{},"node-3":{"Metadatas":{"mac":"1.1.1.1.1.1"}}}},`
+	expected += `"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Metadatas":{}}}}}}}}`
 
 	j, _ := json.Marshal(topo)
 	if string(j) != expected {
 		t.Error("Expected: ", expected, " Got: ", string(j))
 	}
 
-	container1.DelNode("node-2")
-	topo.DelContainer("C2")
+	topo.DelContainer("C1")
 
-	expected = `{"Containers":{"C1":{"Type":"root","Nodes":{"node-1":{},"node-3":{"Metadatas":{"mac":"1.1.1.1.1.1"}}}}}}`
+	expected = `{"Containers":{"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Metadatas":{}}}}}}}}`
 
 	j, _ = json.Marshal(topo)
 	if string(j) != expected {
