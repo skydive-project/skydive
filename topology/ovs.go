@@ -23,12 +23,10 @@
 package topology
 
 import (
-	//"fmt"
 	"sync"
 
 	"github.com/socketplane/libovsdb"
 
-	//"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/ovs"
 )
 
@@ -36,7 +34,12 @@ type OvsTopoUpdater struct {
 	sync.Mutex
 	Topology     *Topology
 	ifNameToPort map[string]string
+	portToIfName map[string]string
 	portToBridge map[string]string
+}
+
+func (o *OvsTopoUpdater) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	o.OnOvsBridgeAdd(monitor, uuid, row)
 }
 
 func (o *OvsTopoUpdater) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
@@ -44,7 +47,7 @@ func (o *OvsTopoUpdater) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, 
 	if !ok {
 		return
 	}
-	o.Topology.NewContainer(name.(string), OvsBridge)
+	c := o.Topology.NewContainer(name.(string), OvsBridge)
 
 	o.Lock()
 	defer o.Unlock()
@@ -56,6 +59,11 @@ func (o *OvsTopoUpdater) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, 
 		for _, i := range set.GoSet {
 			u := i.(libovsdb.UUID).GoUuid
 			o.portToBridge[u] = name.(string)
+
+			ifName, ok := o.portToIfName[u]
+			if ok {
+				c.NewNode(ifName)
+			}
 		}
 
 	case libovsdb.UUID:
@@ -92,6 +100,9 @@ func (o *OvsTopoUpdater) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, 
 func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
+func (o *OvsTopoUpdater) OnOvsInterfaceUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
 func (o *OvsTopoUpdater) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
@@ -102,6 +113,20 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 	defer o.Unlock()
 
 	o.ifNameToPort[name] = uuid
+	o.portToIfName[uuid] = name
+
+	bridge, ok := o.portToBridge[uuid]
+	if !ok {
+		return
+	}
+
+	c := o.Topology.GetContainer(bridge)
+	if c != nil {
+		c.NewNode(name)
+	}
+}
+
+func (o *OvsTopoUpdater) OnOvsPortUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 func (o *OvsTopoUpdater) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
@@ -111,12 +136,23 @@ func (o *OvsTopoUpdater) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, ro
 	defer o.Unlock()
 
 	delete(o.ifNameToPort, name)
+	delete(o.portToIfName, uuid)
+
+	bridge, ok := o.portToBridge[uuid]
+	if !ok {
+		return
+	}
+
+	c := o.Topology.GetContainer(bridge)
+	if c != nil {
+		c.DelNode(name)
+	}
 }
 
 func (o *OvsTopoUpdater) Start() {
 }
 
-func (o *OvsTopoUpdater) GetBridgeOfPort(name string) string {
+func (o *OvsTopoUpdater) GetBridgeByIntfName(name string) string {
 	port, ok := o.ifNameToPort[name]
 	if !ok {
 		return ""
@@ -134,6 +170,7 @@ func NewOvsTopoUpdater(topo *Topology, ovsmon *ovsdb.OvsMonitor) *OvsTopoUpdater
 	u := &OvsTopoUpdater{
 		Topology:     topo,
 		ifNameToPort: make(map[string]string),
+		portToIfName: make(map[string]string),
 		portToBridge: make(map[string]string),
 	}
 	ovsmon.AddMonitorHandler(u)

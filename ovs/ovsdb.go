@@ -43,10 +43,13 @@ type OvsClient struct {
 type OvsMonitorHandler interface {
 	OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+	OnOvsBridgeUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+	OnOvsInterfaceUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
+	OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 }
 
 type OvsMonitor struct {
@@ -107,6 +110,37 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 	return result, nil
 }
 
+func (o *OvsMonitor) bridgeUpdated(bridgeUUID string, row *libovsdb.RowUpdate) {
+	logging.GetLogger().Info("Bridge \"%s(%s)\" updated",
+		row.Old.Fields["name"], bridgeUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsBridgeUpdate(o, bridgeUUID, row)
+	}
+}
+
+func (o *OvsMonitor) bridgeAdded(bridgeUUID string, row *libovsdb.RowUpdate) {
+	o.bridgeCache[bridgeUUID] = bridgeUUID
+
+	logging.GetLogger().Info("New bridge \"%s(%s)\" added",
+		row.New.Fields["name"], bridgeUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsBridgeAdd(o, bridgeUUID, row)
+	}
+}
+
+func (o *OvsMonitor) bridgeDeleted(bridgeUUID string, row *libovsdb.RowUpdate) {
+	delete(o.bridgeCache, bridgeUUID)
+
+	logging.GetLogger().Info("Bridge \"%s(%s)\" got deleted",
+		row.Old.Fields["name"], bridgeUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsBridgeDel(o, bridgeUUID, row)
+	}
+}
+
 func (o *OvsMonitor) bridgeUpdateHandler(updates *libovsdb.TableUpdate) {
 	empty := libovsdb.Row{}
 
@@ -116,26 +150,45 @@ func (o *OvsMonitor) bridgeUpdateHandler(updates *libovsdb.TableUpdate) {
 	for bridgeUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
 			if _, ok := o.bridgeCache[bridgeUUID]; ok {
-				continue
-			}
-			o.bridgeCache[bridgeUUID] = bridgeUUID
+				o.bridgeUpdated(bridgeUUID, &row)
 
-			logging.GetLogger().Info("New bridge \"%s(%s)\" added",
-				row.New.Fields["name"], bridgeUUID)
-
-			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsBridgeAdd(o, bridgeUUID, &row)
+			} else {
+				o.bridgeAdded(bridgeUUID, &row)
 			}
 		} else {
-			delete(o.bridgeCache, bridgeUUID)
-
-			logging.GetLogger().Info("Bridge \"%s(%s)\" got deleted",
-				row.Old.Fields["name"], bridgeUUID)
-
-			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsBridgeDel(o, bridgeUUID, &row)
-			}
+			o.bridgeDeleted(bridgeUUID, &row)
 		}
+	}
+}
+
+func (o *OvsMonitor) interfaceUpdated(interfaceUUID string, row *libovsdb.RowUpdate) {
+	logging.GetLogger().Info("Interface \"%s(%s)\" updated",
+		row.New.Fields["name"], interfaceUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsInterfaceUpdate(o, interfaceUUID, row)
+	}
+}
+
+func (o *OvsMonitor) interfaceAdded(interfaceUUID string, row *libovsdb.RowUpdate) {
+	o.interfaceCache[interfaceUUID] = interfaceUUID
+
+	logging.GetLogger().Info("New interface \"%s(%s)\" added",
+		row.New.Fields["name"], interfaceUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsInterfaceAdd(o, interfaceUUID, row)
+	}
+}
+
+func (o *OvsMonitor) interfaceDeleted(interfaceUUID string, row *libovsdb.RowUpdate) {
+	delete(o.interfaceCache, interfaceUUID)
+
+	logging.GetLogger().Info("Interface \"%s(%s)\" got deleted",
+		row.Old.Fields["name"], interfaceUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsInterfaceDel(o, interfaceUUID, row)
 	}
 }
 
@@ -148,26 +201,44 @@ func (o *OvsMonitor) interfaceUpdateHandler(updates *libovsdb.TableUpdate) {
 	for interfaceUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
 			if _, ok := o.interfaceCache[interfaceUUID]; ok {
-				continue
-			}
-			o.interfaceCache[interfaceUUID] = interfaceUUID
-
-			logging.GetLogger().Info("New interface \"%s(%s)\" added",
-				row.New.Fields["name"], interfaceUUID)
-
-			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsInterfaceAdd(o, interfaceUUID, &row)
+				o.interfaceUpdated(interfaceUUID, &row)
+			} else {
+				o.interfaceAdded(interfaceUUID, &row)
 			}
 		} else {
-			delete(o.interfaceCache, interfaceUUID)
-
-			logging.GetLogger().Info("Interface \"%s(%s)\" got deleted",
-				row.Old.Fields["name"], interfaceUUID)
-
-			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsInterfaceDel(o, interfaceUUID, &row)
-			}
+			o.interfaceDeleted(interfaceUUID, &row)
 		}
+	}
+}
+
+func (o *OvsMonitor) portUpdated(portUUID string, row *libovsdb.RowUpdate) {
+	logging.GetLogger().Info("Port \"%s(%s)\" updated",
+		row.New.Fields["name"], portUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsPortUpdate(o, portUUID, row)
+	}
+}
+
+func (o *OvsMonitor) portAdded(portUUID string, row *libovsdb.RowUpdate) {
+	o.portCache[portUUID] = portUUID
+
+	logging.GetLogger().Info("New port \"%s(%s)\" added",
+		row.New.Fields["name"], portUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsPortAdd(o, portUUID, row)
+	}
+}
+
+func (o *OvsMonitor) portDeleted(portUUID string, row *libovsdb.RowUpdate) {
+	delete(o.portCache, portUUID)
+
+	logging.GetLogger().Info("Port \"%s(%s)\" got deleted",
+		row.Old.Fields["name"], portUUID)
+
+	for _, handler := range o.MonitorHandlers {
+		handler.OnOvsPortDel(o, portUUID, row)
 	}
 }
 
@@ -180,25 +251,12 @@ func (o *OvsMonitor) portUpdateHandler(updates *libovsdb.TableUpdate) {
 	for portUUID, row := range updates.Rows {
 		if !reflect.DeepEqual(row.New, empty) {
 			if _, ok := o.portCache[portUUID]; ok {
-				continue
-			}
-			o.portCache[portUUID] = portUUID
-
-			logging.GetLogger().Info("New port \"%s(%s)\" added",
-				row.New.Fields["name"], portUUID)
-
-			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsPortAdd(o, portUUID, &row)
+				o.portUpdated(portUUID, &row)
+			} else {
+				o.portAdded(portUUID, &row)
 			}
 		} else {
-			delete(o.portCache, portUUID)
-
-			logging.GetLogger().Info("Port \"%s(%s)\" got deleted",
-				row.Old.Fields["name"], portUUID)
-
-			for _, handler := range o.MonitorHandlers {
-				handler.OnOvsPortDel(o, portUUID, &row)
-			}
+			o.portDeleted(portUUID, &row)
 		}
 	}
 }

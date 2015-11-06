@@ -35,7 +35,7 @@ type OvsMapper struct {
 
 func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
 	if mapper.OvsTopoUpdater != nil {
-		name := mapper.OvsTopoUpdater.GetBridgeOfPort(attrs.GetIfName())
+		name := mapper.OvsTopoUpdater.GetBridgeByIntfName(attrs.GetIfName())
 		attrs.BridgeName = proto.String(name)
 	} else {
 		attrs.BridgeName = proto.String("")

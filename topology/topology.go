@@ -23,7 +23,10 @@
 package topology
 
 import (
+	"encoding/json"
 	"sync"
+
+	"github.com/redhat-cip/skydive/logging"
 )
 
 const (
@@ -61,6 +64,11 @@ type Topology struct {
 	Containers map[string]*Container
 }
 
+func (t *Topology) Log() {
+	j, _ := json.Marshal(t)
+	logging.GetLogger().Debug("Topology: %s", string(j))
+}
+
 func (c *Container) GetNode(i string) *Node {
 	c.Lock()
 	defer c.Unlock()
@@ -86,6 +94,8 @@ func (c *Container) DelNode(i string) {
 	}
 
 	delete(c.Nodes, i)
+
+	c.Topology.Log()
 }
 
 func (c *Container) NewNode(i string) *Node {
@@ -99,6 +109,8 @@ func (c *Container) NewNode(i string) *Node {
 	}
 	c.Nodes[i] = node
 
+	c.Topology.Log()
+
 	return node
 }
 
@@ -107,6 +119,8 @@ func (topo *Topology) DelContainer(i string) {
 	defer topo.Unlock()
 
 	delete(topo.Containers, i)
+
+	topo.Log()
 }
 
 func (topo *Topology) GetContainer(i string) *Container {
@@ -128,6 +142,8 @@ func (topo *Topology) NewContainer(i string, t string) *Container {
 		Topology: topo,
 	}
 	topo.Containers[i] = container
+
+	topo.Log()
 
 	return container
 }

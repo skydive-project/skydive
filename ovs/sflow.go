@@ -205,28 +205,32 @@ func (o *OvsSFlowAgentsHandler) registerAgents(monitor *OvsMonitor, bridgeUUID s
 	}
 }
 
+func (o *OvsSFlowAgentsHandler) OnOvsBridgeUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
 func (o *OvsSFlowAgentsHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.registerAgents(monitor, uuid)
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
 
+func (o *OvsSFlowAgentsHandler) OnOvsInterfaceUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
 
+func (o *OvsSFlowAgentsHandler) OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 }
 
 func NewOvsSFlowAgentsHandler(agents []SFlowAgent) *OvsSFlowAgentsHandler {

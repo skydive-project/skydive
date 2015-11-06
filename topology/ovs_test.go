@@ -54,7 +54,7 @@ func TestOvsTopology(t *testing.T) {
 
 	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	if updater.GetBridgeOfPort("eth0") != "br0" {
+	if updater.GetBridgeByIntfName("eth0") != "br0" {
 		t.Error("Bridge name not found, expected br0")
 	}
 
@@ -92,7 +92,7 @@ func TestOvsOnBridgeAdd(t *testing.T) {
 
 	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	if updater.GetBridgeOfPort("br0") != "br0" {
+	if updater.GetBridgeByIntfName("br0") != "br0" {
 		t.Error("Bridge name not found, expected br0")
 	}
 
@@ -126,7 +126,7 @@ func TestOvsOnBridgeDel(t *testing.T) {
 
 	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	if updater.GetBridgeOfPort("br0") != "br0" {
+	if updater.GetBridgeByIntfName("br0") != "br0" {
 		t.Error("Bridge name not found, expected br0")
 	}
 
@@ -134,7 +134,7 @@ func TestOvsOnBridgeDel(t *testing.T) {
 
 	updater.OnOvsBridgeDel(nil, "br0-uuid", &rowUpdate)
 
-	if updater.GetBridgeOfPort("br0") != "" {
+	if updater.GetBridgeByIntfName("br0") != "" {
 		t.Error("Bridge name still found, expected empty")
 	}
 
