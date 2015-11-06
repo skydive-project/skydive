@@ -49,6 +49,15 @@ type NetLinkTopoUpdater struct {
 	doneChan  chan struct{}
 }
 
+func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
+	u.linkCache[link.Attrs().Index] = *link.Attrs()
+
+	node := u.Container.NewNode(link.Attrs().Name)
+
+	/* TODO(safchain) Add more metadatas here */
+	node.Metadatas["mac"] = link.Attrs().HardwareAddr.String()
+}
+
 func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
 	logging.GetLogger().Debug("Link added: %d", index)
 	link, err := netlink.LinkByIndex(index)
@@ -56,12 +65,8 @@ func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
 		logging.GetLogger().Error("Failed to find interface %d: %s", index, err.Error())
 		return
 	}
-	u.linkCache[index] = *link.Attrs()
 
-	node := u.Container.NewNode(link.Attrs().Name)
-
-	/* TODO(safchain) Add more metadatas here */
-	node.Metadatas["mac"] = link.Attrs().HardwareAddr.String()
+	u.addLinkToTopology(link)
 }
 
 func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
@@ -74,6 +79,18 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	u.Container.DelNode(attrs.Name)
 
 	delete(u.linkCache, index)
+}
+
+func (u *NetLinkTopoUpdater) initialize() {
+	links, err := netlink.LinkList()
+	if err != nil {
+		logging.GetLogger().Error("Unable to list interfaces: %s", err.Error())
+		return
+	}
+
+	for _, link := range links {
+		u.addLinkToTopology(link)
+	}
 }
 
 func (u *NetLinkTopoUpdater) start() {
@@ -101,6 +118,8 @@ func (u *NetLinkTopoUpdater) start() {
 	}
 	defer syscall.Close(epfd)
 
+	u.initialize()
+
 	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
 	if e = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); e != nil {
 		logging.GetLogger().Error("Failed to set the netlink fd as non-blocking: %s", err.Error())
@@ -120,6 +139,8 @@ Loop:
 		if n == 0 {
 			select {
 			case <-u.doneChan:
+				logging.GetLogger().Debug("WHOU")
+
 				break Loop
 			default:
 				continue
@@ -151,6 +172,10 @@ Loop:
 
 func (u *NetLinkTopoUpdater) Start() {
 	go u.start()
+}
+
+func (u *NetLinkTopoUpdater) Run() {
+	u.start()
 }
 
 func (u *NetLinkTopoUpdater) Stop() {

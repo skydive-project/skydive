@@ -23,6 +23,7 @@
 package topology
 
 import (
+	"io/ioutil"
 	"runtime"
 	"strings"
 	"sync"
@@ -89,7 +90,10 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 	nu.nlUpdater = NewNetLinkTopoUpdater(nu.Container)
 	nu.Unlock()
 
-	nu.nlUpdater.Start()
+	/* NOTE(safchain) don't Start just Run, need to keep it alive for the time life of the netns
+	 * and there is no need to have a new goroutine here
+	 */
+	nu.nlUpdater.Run()
 
 	nu.Lock()
 	nu.nlUpdater = nil
@@ -115,27 +119,44 @@ func NewNetNsNetLinkTopoUpdater(c *Container) *NetNsNetLinkTopoUpdater {
 }
 
 func (u *NetNSTopoUpdater) onNetNsCreated(path string) {
-	logging.GetLogger().Debug("Network Namespace added: %s", getNetNSName(path))
-	container := u.Topology.NewContainer(path, NetNs)
+	name := getNetNSName(path)
+
+	_, ok := u.nsNlUpdaters[name]
+	if ok {
+		return
+	}
+
+	logging.GetLogger().Debug("Network Namespace added: %s", name)
+	container := u.Topology.NewContainer(name, NetNs)
 
 	nu := NewNetNsNetLinkTopoUpdater(container)
 	go nu.Start(path)
 
-	u.nsNlUpdaters[path] = nu
+	u.nsNlUpdaters[name] = nu
 }
 
 func (u *NetNSTopoUpdater) onNetNsDeleted(path string) {
-	logging.GetLogger().Debug("Network Namespace deleted: %s", getNetNSName(path))
+	name := getNetNSName(path)
 
-	nu, ok := u.nsNlUpdaters[path]
+	logging.GetLogger().Debug("Network Namespace deleted: %s", name)
+
+	nu, ok := u.nsNlUpdaters[name]
 	if !ok {
 		return
 	}
 	nu.Stop()
 
-	u.Topology.DelContainer(nu.Container.ID)
+	u.Topology.DelContainer(name)
 
-	delete(u.nsNlUpdaters, path)
+	delete(u.nsNlUpdaters, name)
+}
+
+func (u *NetNSTopoUpdater) initialize() {
+	files, _ := ioutil.ReadDir(runBaseDir)
+	for _, f := range files {
+
+		u.onNetNsCreated(runBaseDir + "/" + f.Name())
+	}
 }
 
 func (u *NetNSTopoUpdater) start() {
@@ -152,6 +173,9 @@ func (u *NetNSTopoUpdater) start() {
 		logging.GetLogger().Error("Unable to Watch %s: %s", runBaseDir, err.Error())
 		return
 	}
+
+	u.initialize()
+
 	for {
 		select {
 		case ev := <-watcher.Event:
