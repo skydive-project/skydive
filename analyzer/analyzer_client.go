@@ -57,7 +57,7 @@ func (c *Client) SendFlows(flows []*flow.Flow) {
 
 		err := c.SendFlow(flow)
 		if err != nil {
-			logging.GetLogger().Error("Unable to send flow: ", err)
+			logging.GetLogger().Error("Unable to send flow: ", err.Error())
 		}
 	}
 }

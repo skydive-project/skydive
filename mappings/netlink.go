@@ -26,9 +26,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pmylund/go-cache"
 	"github.com/vishvananda/netlink"
-	"github.com/golang/protobuf/proto"
 
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
@@ -53,7 +53,7 @@ func (mapper *NetLinkMapper) cacheUpdater() {
 
 		link, err := netlink.LinkByIndex(int(ifIndex))
 		if err != nil {
-			logging.GetLogger().Error("Error while getting interface by index via netling: ", err)
+			logging.GetLogger().Error("Error while getting interface by index via netling: ", err.Error())
 			attrs = &netlink.LinkAttrs{}
 		} else {
 			attrs = link.Attrs()

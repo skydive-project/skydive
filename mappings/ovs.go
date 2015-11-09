@@ -23,72 +23,30 @@
 package mappings
 
 import (
-	"github.com/socketplane/libovsdb"
 	"github.com/golang/protobuf/proto"
 
 	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/ovs"
+	"github.com/redhat-cip/skydive/topology"
 )
 
 type OvsMapper struct {
-	IfNameToPort map[string]string
-	PortToBridge map[string]string
-}
-
-func (mapper *OvsMapper) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	name, ok := row.New.Fields["name"]
-	if !ok {
-		return
-	}
-
-	set := row.New.Fields["ports"].(libovsdb.OvsSet)
-	for _, i := range set.GoSet {
-		u := i.(libovsdb.UUID).GoUuid
-		mapper.PortToBridge[u] = name.(string)
-	}
-}
-
-func (mapper *OvsMapper) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	set := row.Old.Fields["ports"].(libovsdb.OvsSet)
-	for _, i := range set.GoSet {
-		u := i.(libovsdb.UUID).GoUuid
-		delete(mapper.PortToBridge, u)
-	}
-}
-
-func (mapper *OvsMapper) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
-
-func (mapper *OvsMapper) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
-
-func (mapper *OvsMapper) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	name := row.New.Fields["name"].(string)
-	mapper.IfNameToPort[name] = uuid
-}
-
-func (mapper *OvsMapper) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	name := row.Old.Fields["name"].(string)
-	delete(mapper.IfNameToPort, name)
+	Topology *topology.Topology
 }
 
 func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
-	port, ok := mapper.IfNameToPort[attrs.GetIfName()]
-	if !ok {
-		return
+	if mapper.Topology != nil {
+		container := mapper.Topology.GetPort(attrs.GetIfName())
+		if container != nil {
+			attrs.BridgeName = proto.String(container.ID)
+			return
+		}
 	}
-
-	bridge, ok := mapper.PortToBridge[port]
-	if !ok {
-		return
-	}
-	attrs.BridgeName = proto.String(bridge)
+	attrs.BridgeName = proto.String("")
 }
 
-func NewOvsMapper() (*OvsMapper, error) {
+func NewOvsMapper(o *topology.Topology) (*OvsMapper, error) {
 	mapper := &OvsMapper{
-		IfNameToPort: map[string]string{},
-		PortToBridge: map[string]string{},
+		Topology: o,
 	}
 
 	return mapper, nil

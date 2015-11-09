@@ -46,7 +46,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 
 		_, err = c.connection.Index("skydive", "flow", flow.GetUUID(), nil, *flow)
 		if err != nil {
-			logging.GetLogger().Error("Error while indexing: %s", err)
+			logging.GetLogger().Error("Error while indexing: %s", err.Error())
 			continue
 		}
 	}

@@ -34,6 +34,9 @@ type FakeBridgeHandler struct {
 	Deleted    bool
 }
 
+func (b *FakeBridgeHandler) OnOvsBridgeUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
 func (b *FakeBridgeHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	b.BridgeUUID = uuid
 	b.Added = true
@@ -44,20 +47,22 @@ func (b *FakeBridgeHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row
 	b.Deleted = true
 }
 
-func (b *FakeBridgeHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (b *FakeBridgeHandler) OnOvsInterfaceUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
 
+func (b *FakeBridgeHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 func (b *FakeBridgeHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
 
+func (b *FakeBridgeHandler) OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 func (b *FakeBridgeHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 }
 
 func (b *FakeBridgeHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 }
 
 func NewFakeBridgeHandler() FakeBridgeHandler {

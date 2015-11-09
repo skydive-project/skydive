@@ -56,13 +56,13 @@ func handleMessage(conn net.Conn, analyzer *analyzer.Analyzer) {
 	for {
 		n, err := conn.Read(data)
 		if err != nil {
-			logging.GetLogger().Error("Error while reading: %s", err)
+			logging.GetLogger().Error("Error while reading: %s", err.Error())
 			return
 		}
 
 		f, err := flow.FromData(data[0:n])
 		if err != nil {
-			logging.GetLogger().Error("Error while parsing flow: %s", err)
+			logging.GetLogger().Error("Error while parsing flow: %s", err.Error())
 		}
 
 		analyzer.AnalyzeFlows([]*flow.Flow{f})

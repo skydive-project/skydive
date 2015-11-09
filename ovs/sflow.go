@@ -200,9 +200,12 @@ func (o *OvsSFlowAgentsHandler) registerAgents(monitor *OvsMonitor, bridgeUUID s
 	for _, agent := range o.agents {
 		err := o.registerAgent(monitor, agent, bridgeUUID)
 		if err != nil {
-			logging.GetLogger().Error("Error while registering agent %s", err)
+			logging.GetLogger().Error("Error while registering agent %s", err.Error())
 		}
 	}
+}
+
+func (o *OvsSFlowAgentsHandler) OnOvsBridgeUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
@@ -210,23 +213,24 @@ func (o *OvsSFlowAgentsHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string,
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
 
+func (o *OvsSFlowAgentsHandler) OnOvsInterfaceUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
 
+func (o *OvsSFlowAgentsHandler) OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 }
 
 func (o *OvsSFlowAgentsHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-
 }
 
 func NewOvsSFlowAgentsHandler(agents []SFlowAgent) *OvsSFlowAgentsHandler {
