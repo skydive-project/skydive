@@ -49,7 +49,7 @@ type NetLinkTopoUpdater struct {
 	doneChan  chan struct{}
 }
 
-func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
+func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interface {
 	u.linkCache[link.Attrs().Index] = *link.Attrs()
 
 	/* create a port, attach it to the current container, then create attach
@@ -58,7 +58,27 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	intf := u.Container.Topology.NewInterface(link.Attrs().Name, port)
 
 	/* TODO(safchain) Add more metadatas here */
-	intf.Metadatas["mac"] = link.Attrs().HardwareAddr.String()
+	intf.Mac = link.Attrs().HardwareAddr.String()
+
+	return intf
+}
+
+func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
+	var intf *Interface
+
+	switch link.Type() {
+	/* ignore the openswitch interface as it will be handled
+	   by the ovs updater */
+	case "openvswitch":
+	case "veth":
+	case "bridge":
+	default:
+		intf = u.addGenericLinkToTopology(link)
+	}
+
+	if intf != nil {
+		intf.Type = link.Type()
+	}
 }
 
 func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
