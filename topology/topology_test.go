@@ -33,16 +33,16 @@ func TestSimpleTopology(t *testing.T) {
 	container1 := topo.NewContainer("C1", Root)
 	topo.NewPort("node-1", container1)
 	topo.NewPort("node-2", container1)
-	port := topo.NewPort("node-3", container1)
-	port.Metadatas["mac"] = "1.1.1.1.1.1"
+	topo.NewPort("node-3", container1)
 
 	container2 := topo.NewContainer("C2", NetNs)
 	topo.NewPort("node-4", container2)
 	port5 := topo.NewPort("node-5", container2)
-	topo.NewInterface("intf-1", port5)
+	intf := topo.NewInterface("intf-1", port5)
+	intf.Mac = "1.1.1.1.1.1"
 
-	expected := `{"Containers":{"C1":{"Type":"root","Ports":{"node-1":{},"node-2":{},"node-3":{"Metadatas":{"mac":"1.1.1.1.1.1"}}}},`
-	expected += `"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Metadatas":{}}}}}}}}`
+	expected := `{"Containers":{"C1":{"Type":"root","Ports":{"node-1":{},"node-2":{},"node-3":{}}},`
+	expected += `"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Type":"","Mac":"1.1.1.1.1.1"}}}}}}}`
 
 	j, _ := json.Marshal(topo)
 	if string(j) != expected {
@@ -56,16 +56,16 @@ func TestDeleteOperation(t *testing.T) {
 	container1 := topo.NewContainer("C1", Root)
 	topo.NewPort("node-1", container1)
 	topo.NewPort("node-2", container1)
-	port := topo.NewPort("node-3", container1)
-	port.Metadatas["mac"] = "1.1.1.1.1.1"
+	topo.NewPort("node-3", container1)
 
 	container2 := topo.NewContainer("C2", NetNs)
 	topo.NewPort("node-4", container2)
 	port5 := topo.NewPort("node-5", container2)
-	topo.NewInterface("intf-1", port5)
+	intf := topo.NewInterface("intf-1", port5)
+	intf.Mac = "1.1.1.1.1.1"
 
-	expected := `{"Containers":{"C1":{"Type":"root","Ports":{"node-1":{},"node-2":{},"node-3":{"Metadatas":{"mac":"1.1.1.1.1.1"}}}},`
-	expected += `"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Metadatas":{}}}}}}}}`
+	expected := `{"Containers":{"C1":{"Type":"root","Ports":{"node-1":{},"node-2":{},"node-3":{}}},`
+	expected += `"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Type":"","Mac":"1.1.1.1.1.1"}}}}}}}`
 
 	j, _ := json.Marshal(topo)
 	if string(j) != expected {
@@ -74,7 +74,7 @@ func TestDeleteOperation(t *testing.T) {
 
 	topo.DelContainer("C1")
 
-	expected = `{"Containers":{"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Metadatas":{}}}}}}}}`
+	expected = `{"Containers":{"C2":{"Type":"netns","Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Type":"","Mac":"1.1.1.1.1.1"}}}}}}}`
 
 	j, _ = json.Marshal(topo)
 	if string(j) != expected {

@@ -38,9 +38,11 @@ const (
 
 type Interface struct {
 	sync.RWMutex
-	ID        string            `json:"-"`
-	Metadatas map[string]string `json:",omitempty	"`
-	port      *Port             `json:"-"`
+	ID        string `json:"-"`
+	Type      string
+	Mac       string
+	Metadatas map[string]string `json:",omitempty"`
+	Port      *Port             `json:"-"`
 }
 
 type Port struct {
@@ -93,7 +95,7 @@ func (topo *Topology) NewInterface(i string, p *Port) *Interface {
 
 	if p != nil {
 		p.Interfaces[i] = intf
-		intf.port = p
+		intf.Port = p
 		topo.Log()
 	}
 
@@ -109,8 +111,8 @@ func (topo *Topology) DelInterface(i string) {
 		return
 	}
 
-	if intf.port != nil {
-		delete(intf.port.Interfaces, i)
+	if intf.Port != nil {
+		delete(intf.Port.Interfaces, i)
 		topo.Log()
 	}
 
@@ -135,7 +137,11 @@ func (port *Port) AddInterface(intf *Interface) {
 	defer intf.Unlock()
 
 	port.Interfaces[intf.ID] = intf
-	intf.port = port
+	intf.Port = port
+
+	if port.container != nil && port.container.Topology != nil {
+		port.container.Topology.Log()
+	}
 }
 
 func (port *Port) GetContainer() *Container {
@@ -167,7 +173,7 @@ func (topo *Topology) DelPort(i string) {
 	}
 
 	for _, intf := range port.Interfaces {
-		intf.port = nil
+		intf.Port = nil
 	}
 
 	if port.container != nil {

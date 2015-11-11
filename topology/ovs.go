@@ -110,7 +110,7 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 
 	switch row.New.Fields["mac_in_use"].(type) {
 	case string:
-		intf.Metadatas["mac"] = row.New.Fields["mac_in_use"].(string)
+		intf.Mac = row.New.Fields["mac_in_use"].(string)
 	}
 
 	/* set pending interface for a port */
