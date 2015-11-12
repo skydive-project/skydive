@@ -40,9 +40,11 @@ type Interface struct {
 	sync.RWMutex
 	ID        string `json:"-"`
 	Type      string
-	Mac       string
+	Mac       string            `json:",omitempty"`
+	IfIndex   uint32            `json:"-"`
 	Metadatas map[string]string `json:",omitempty"`
 	Port      *Port             `json:"-"`
+	Peer      string            `json:",omitempty"`
 }
 
 type Port struct {
@@ -50,16 +52,7 @@ type Port struct {
 	ID         string                `json:"-"`
 	Metadatas  map[string]string     `json:",omitempty"`
 	Interfaces map[string]*Interface `json:",omitempty"`
-	container  *Container            `json:"-"`
-	links      map[string]*Link      `json:"-"`
-}
-
-type Link struct {
-	sync.RWMutex
-	ID        string `json:"-"`
-	Left      *Port
-	Right     *Port
-	Metadatas map[string]string `json:",omitempty"`
+	Container  *Container            `json:"-"`
 }
 
 type Container struct {
@@ -73,9 +66,6 @@ type Container struct {
 type Topology struct {
 	sync.RWMutex
 	Containers map[string]*Container
-	interfaces map[string]*Interface `json:"-"`
-	ports      map[string]*Port      `json:"-"`
-	links      map[string]*Link      `json:"-"`
 }
 
 func (t *Topology) Log() {
@@ -83,139 +73,211 @@ func (t *Topology) Log() {
 	logging.GetLogger().Debug("Topology: %s", string(j))
 }
 
-func (topo *Topology) NewInterface(i string, p *Port) *Interface {
-	topo.Lock()
-	defer topo.Unlock()
+func (intf *Interface) SetPeer(i *Interface) {
+	intf.Lock()
+	defer intf.Unlock()
+	i.Lock()
+	defer i.Unlock()
+
+	intf.Peer = i.Port.Container.ID + "/" + i.Port.ID + "/" + i.ID
+	i.Peer = intf.Port.Container.ID + "/" + intf.Port.ID + "/" + intf.ID
+}
+
+func (intf *Interface) SetMac(mac string) {
+	intf.Lock()
+	defer intf.Unlock()
+
+	intf.Mac = mac
+}
+
+func (intf *Interface) Del() {
+	intf.Port.DelInterface(intf.ID)
+}
+
+func (p *Port) Del() {
+	p.Container.DelPort(p.ID)
+}
+
+func (p *Port) newInterface(i string, index uint32) *Interface {
+	p.Lock()
+	defer p.Unlock()
 
 	intf := &Interface{
 		ID:        i,
 		Metadatas: make(map[string]string),
+		IfIndex:   index,
+		Port:      p,
 	}
-	topo.interfaces[i] = intf
+	p.Interfaces[i] = intf
 
-	if p != nil {
-		p.Interfaces[i] = intf
-		intf.Port = p
-		topo.Log()
+	if p.Container != nil {
+		p.Container.Topology.Log()
 	}
 
 	return intf
 }
 
-func (topo *Topology) DelInterface(i string) {
-	topo.Lock()
-	defer topo.Unlock()
+func (p *Port) NewInterface(i string) *Interface {
+	return p.newInterface(i, 0)
+}
 
-	intf, ok := topo.interfaces[i]
-	if !ok {
+func (p *Port) NewInterfaceWithIndex(i string, index uint32) *Interface {
+	return p.newInterface(i, index)
+}
+
+func (p *Port) AddInterface(intf *Interface) {
+	p.Lock()
+	defer p.Unlock()
+
+	p.Interfaces[intf.ID] = intf
+
+	if p.Container != nil {
+		p.Container.Topology.Log()
+	}
+}
+
+func (p *Port) DelInterface(i string) {
+	p.Lock()
+	defer p.Unlock()
+
+	if _, ok := p.Interfaces[i]; !ok {
 		return
 	}
 
-	if intf.Port != nil {
-		delete(intf.Port.Interfaces, i)
-		topo.Log()
-	}
+	delete(p.Interfaces, i)
 
-	delete(topo.interfaces, i)
+	p.Container.Topology.Log()
 }
 
-func (topo *Topology) GetInterface(i string) *Interface {
-	topo.Lock()
-	defer topo.Unlock()
+func (p *Port) GetInterface(i string) *Interface {
+	p.Lock()
+	defer p.Unlock()
 
-	if intf, ok := topo.interfaces[i]; ok {
+	if intf, ok := p.Interfaces[i]; ok {
 		return intf
 	}
 	return nil
 }
 
-func (port *Port) AddInterface(intf *Interface) {
-	port.Lock()
-	defer port.Unlock()
+func (c *Container) GetPort(i string) *Port {
+	c.Lock()
+	defer c.Unlock()
 
-	intf.Lock()
-	defer intf.Unlock()
-
-	port.Interfaces[intf.ID] = intf
-	intf.Port = port
-
-	if port.container != nil && port.container.Topology != nil {
-		port.container.Topology.Log()
-	}
-}
-
-func (port *Port) GetContainer() *Container {
-	return port.container
-}
-
-func (topo *Topology) GetPort(i string) *Port {
-	topo.Lock()
-	defer topo.Unlock()
-
-	if port, ok := topo.ports[i]; ok {
+	if port, ok := c.Ports[i]; ok {
 		return port
 	}
 	return nil
 }
 
-func (topo *Topology) DelPort(i string) {
-	topo.Lock()
-	defer topo.Unlock()
+func (c *Container) DelPort(i string) {
+	c.Lock()
+	defer c.Unlock()
 
-	port, ok := topo.ports[i]
-	if !ok {
+	if _, ok := c.Ports[i]; !ok {
 		return
 	}
+	delete(c.Ports, i)
 
-	for id, link := range port.links {
-		delete(link.Left.links, id)
-		delete(link.Right.links, id)
-	}
-
-	for _, intf := range port.Interfaces {
-		intf.Port = nil
-	}
-
-	if port.container != nil {
-		delete(port.container.Ports, i)
-		topo.Log()
-	}
-
-	delete(topo.ports, i)
+	c.Topology.Log()
 }
 
-func (topo *Topology) NewPort(i string, c *Container) *Port {
-	topo.Lock()
-	defer topo.Unlock()
+func (c *Container) NewPort(i string) *Port {
+	c.Lock()
+	defer c.Unlock()
 
 	port := &Port{
 		ID:         i,
 		Metadatas:  make(map[string]string),
 		Interfaces: make(map[string]*Interface),
-		links:      make(map[string]*Link),
+		Container:  c,
 	}
-	topo.ports[i] = port
+	c.Ports[i] = port
 
-	if c != nil {
-		c.Ports[i] = port
-		port.container = c
-		topo.Log()
+	c.Topology.Log()
+
+	return port
+}
+
+func (c *Container) AddPort(p *Port) {
+	c.Lock()
+	defer c.Unlock()
+
+	c.Ports[p.ID] = p
+
+	c.Topology.Log()
+}
+
+func (topo *Topology) LookupInterfaceByIndex(index uint32) *Interface {
+	topo.Lock()
+	defer topo.Unlock()
+
+	for _, container := range topo.Containers {
+		container.Lock()
+		defer container.Unlock()
+		for _, port := range container.Ports {
+			port.Lock()
+			defer port.Unlock()
+			for _, intf := range port.Interfaces {
+				intf.Lock()
+				defer intf.Unlock()
+				if intf.IfIndex == index {
+					return intf
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (topo *Topology) LookupInterfaceByMac(mac string) *Interface {
+	topo.Lock()
+	defer topo.Unlock()
+
+	for _, container := range topo.Containers {
+		container.Lock()
+		defer container.Unlock()
+		for _, port := range container.Ports {
+			port.Lock()
+			defer port.Unlock()
+			for _, intf := range port.Interfaces {
+				intf.Lock()
+				defer intf.Unlock()
+				if intf.Mac == mac {
+					return intf
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (topo *Topology) NewPort(i string) *Port {
+	port := &Port{
+		ID:         i,
+		Metadatas:  make(map[string]string),
+		Interfaces: make(map[string]*Interface),
 	}
 
 	return port
+}
+
+func (topo *Topology) NewInterface(i string) *Interface {
+	intf := &Interface{
+		ID:        i,
+		Metadatas: make(map[string]string),
+	}
+
+	return intf
 }
 
 func (topo *Topology) DelContainer(i string) {
 	topo.Lock()
 	defer topo.Unlock()
 
-	container, ok := topo.Containers[i]
-	if !ok {
+	if _, ok := topo.Containers[i]; !ok {
 		return
-	}
-
-	for _, port := range container.Ports {
-		port.container = nil
 	}
 
 	delete(topo.Containers, i)
@@ -232,17 +294,6 @@ func (topo *Topology) GetContainer(i string) *Container {
 		return nil
 	}
 	return c
-}
-
-func (container *Container) AddPort(port *Port) {
-	container.Lock()
-	defer container.Unlock()
-
-	port.Lock()
-	defer port.Unlock()
-
-	container.Ports[port.ID] = port
-	port.container = container
 }
 
 func (topo *Topology) NewContainer(i string, t string) *Container {
@@ -265,8 +316,5 @@ func (topo *Topology) NewContainer(i string, t string) *Container {
 func NewTopology() *Topology {
 	return &Topology{
 		Containers: make(map[string]*Container),
-		interfaces: make(map[string]*Interface),
-		ports:      make(map[string]*Port),
-		links:      make(map[string]*Link),
 	}
 }

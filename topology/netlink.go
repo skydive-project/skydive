@@ -54,11 +54,10 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 
 	/* create a port, attach it to the current container, then create attach
 	   a single interface to this port */
-	port := u.Container.Topology.NewPort(link.Attrs().Name, u.Container)
-	intf := u.Container.Topology.NewInterface(link.Attrs().Name, port)
+	port := u.Container.NewPort(link.Attrs().Name)
+	intf := port.NewInterface(link.Attrs().Name)
 
-	/* TODO(safchain) Add more metadatas here */
-	intf.Mac = link.Attrs().HardwareAddr.String()
+	intf.SetMac(link.Attrs().HardwareAddr.String())
 
 	return intf
 }
@@ -99,7 +98,7 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	if !ok {
 		return
 	}
-	u.Container.Topology.DelPort(attrs.Name)
+	u.Container.DelPort(attrs.Name)
 
 	delete(u.linkCache, index)
 }
