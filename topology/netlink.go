@@ -26,14 +26,8 @@ import (
 	"syscall"
 	"time"
 
-	/* TODO(safchain) has to be removed when the
-	   PR https://github.com/vishvananda/netlink/pull/61
-	   will be merged
-	*/
-	"github.com/safchain/netlink"
-	"github.com/safchain/netlink/nl"
-	//"github.com/vishvananda/netlink"
-	//"github.com/vishvananda/netlink/nl"
+	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netlink/nl"
 
 	"github.com/redhat-cip/skydive/logging"
 )

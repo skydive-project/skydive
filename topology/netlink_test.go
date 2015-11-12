@@ -25,7 +25,7 @@ package topology
 import (
 	"testing"
 
-	"github.com/safchain/netlink"
+	"github.com/vishvananda/netlink"
 )
 
 type FakeOvsLink struct {
