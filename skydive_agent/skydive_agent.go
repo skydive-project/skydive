@@ -83,7 +83,7 @@ func main() {
 	ovsmon.AddMonitorHandler(sflowHandler)
 
 	topo := topology.NewTopology()
-	root := topo.NewContainer("root", topology.Root)
+	root := topo.NewNetNs("root")
 
 	ns := topology.NewNetNSTopoUpdater(topo)
 	ns.Start()

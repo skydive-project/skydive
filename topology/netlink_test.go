@@ -42,30 +42,31 @@ func (l *FakeOvsLink) Attrs() *netlink.LinkAttrs {
 
 func TestOvsLinkNotHandled(t *testing.T) {
 	topo := NewTopology()
-	root := topo.NewContainer("root", Root)
+	root := topo.NewNetNs("root")
 
 	updater := NewNetLinkTopoUpdater(root)
 
 	link := &netlink.Device{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: "intf1",
+			Name:         "intf1",
+			HardwareAddr: []byte("1.1.1.1.1.1"),
 		},
 	}
 	updater.addLinkToTopology(link)
 
-	if topo.GetInterface("intf1") == nil {
+	if root.GetInterface("intf1") == nil {
 		t.Error("interface of type device not found in the topology")
 	}
 
 	ovsLink := &FakeOvsLink{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: "intf2",
+			Name:         "intf2",
+			HardwareAddr: []byte("2.2.2.2.2.2"),
 		},
 	}
 	updater.addLinkToTopology(ovsLink)
 
-	if topo.GetInterface("intf2") != nil {
-		t.Error("interface of type openvswitch should not have been added to the topology")
+	if root.GetInterface("intf2") == nil {
+		t.Error("interface of type openvswitch can also be added as a standard interface")
 	}
-
 }

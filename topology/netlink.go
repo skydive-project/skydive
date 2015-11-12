@@ -39,7 +39,7 @@ const (
 )
 
 type NetLinkTopoUpdater struct {
-	Container *Container
+	NetNs     *NetNs
 	linkCache map[int]netlink.LinkAttrs
 	nlSocket  *nl.NetlinkSocket
 	doneChan  chan struct{}
@@ -48,13 +48,15 @@ type NetLinkTopoUpdater struct {
 func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interface {
 	u.linkCache[link.Attrs().Index] = *link.Attrs()
 
-	/* create a port, attach it to the current container, then create attach
-	   a single interface to this port */
-	port := u.Container.Topology.NewPort(link.Attrs().Name, u.Container)
-	intf := u.Container.Topology.NewInterface(link.Attrs().Name, port)
-
-	/* TODO(safchain) Add more metadatas here */
-	intf.Mac = link.Attrs().HardwareAddr.String()
+	mac := link.Attrs().HardwareAddr.String()
+	intf := u.NetNs.Topology.LookupInterfaceByMac(mac)
+	if intf == nil {
+		intf = u.NetNs.NewInterface(link.Attrs().Name, uint32(link.Attrs().Index))
+		intf.SetMac(mac)
+	} else {
+		u.NetNs.AddInterface(intf)
+		intf.SetIndex(uint32(link.Attrs().Index))
+	}
 
 	return intf
 }
@@ -62,8 +64,15 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 func (u *NetLinkTopoUpdater) addVethLinkToTopology(link netlink.Link) *Interface {
 	u.linkCache[link.Attrs().Index] = *link.Attrs()
 
-	port := u.Container.NewPort(link.Attrs().Name)
-	intf := port.NewInterfaceWithIndex(link.Attrs().Name, uint32(link.Attrs().Index))
+	mac := link.Attrs().HardwareAddr.String()
+	intf := u.NetNs.Topology.LookupInterfaceByMac(mac)
+	if intf == nil {
+		intf = u.NetNs.NewInterface(link.Attrs().Name, uint32(link.Attrs().Index))
+		intf.SetMac(mac)
+	} else {
+		u.NetNs.AddInterface(intf)
+		intf.SetIndex(uint32(link.Attrs().Index))
+	}
 
 	stats, err := ethtool.Stats(link.Attrs().Name)
 	if err != nil {
@@ -72,13 +81,11 @@ func (u *NetLinkTopoUpdater) addVethLinkToTopology(link netlink.Link) *Interface
 	}
 
 	if index, ok := stats["peer_ifindex"]; ok {
-		peer := u.Container.Topology.LookupInterfaceByIndex(uint32(index))
+		peer := u.NetNs.Topology.LookupInterfaceByIndex(uint32(index))
 		if peer != nil {
 			intf.SetPeer(peer)
 		}
 	}
-
-	intf.SetMac(link.Attrs().HardwareAddr.String())
 
 	return intf
 }
@@ -87,18 +94,17 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	var intf *Interface
 
 	switch link.Type() {
-	/* ignore the openswitch interface as it will be handled
-	   by the ovs updater */
-	case "openvswitch":
 	case "veth":
 		intf = u.addVethLinkToTopology(link)
 	case "bridge":
+	case "openvswitch":
+		fallthrough
 	default:
 		intf = u.addGenericLinkToTopology(link)
 	}
 
 	if intf != nil {
-		intf.Type = link.Type()
+		intf.SetType(link.Type())
 	}
 }
 
@@ -120,7 +126,7 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	if !ok {
 		return
 	}
-	u.Container.Topology.DelPort(attrs.Name)
+	u.NetNs.DelInterface(attrs.Name)
 
 	delete(u.linkCache, index)
 }
@@ -138,7 +144,7 @@ func (u *NetLinkTopoUpdater) initialize() {
 }
 
 func (u *NetLinkTopoUpdater) start() {
-	logging.GetLogger().Debug("Start NetLink Topo Updater for container: %s", u.Container.ID)
+	logging.GetLogger().Debug("Start NetLink Topo Updater for NetNs: %s", u.NetNs.ID)
 
 	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK)
 	if err != nil {
@@ -226,9 +232,9 @@ func (u *NetLinkTopoUpdater) Stop() {
 	u.doneChan <- struct{}{}
 }
 
-func NewNetLinkTopoUpdater(container *Container) *NetLinkTopoUpdater {
+func NewNetLinkTopoUpdater(n *NetNs) *NetLinkTopoUpdater {
 	return &NetLinkTopoUpdater{
-		Container: container,
+		NetNs:     n,
 		linkCache: make(map[int]netlink.LinkAttrs),
 		doneChan:  make(chan struct{}),
 	}

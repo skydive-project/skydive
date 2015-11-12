@@ -32,10 +32,11 @@ import (
 
 type OvsTopoUpdater struct {
 	sync.Mutex
-	Topology           *Topology
-	uuidToName         map[string]string
-	intfPortQueue      map[string]*Port
-	portContainerQueue map[string]*Container
+	Topology        *Topology
+	uuidToPort      map[string]*Port
+	uuidToIntf      map[string]*Interface
+	intfPortQueue   map[string]*Port
+	portBridgeQueue map[string]*OvsBridge
 }
 
 func (o *OvsTopoUpdater) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
@@ -47,11 +48,10 @@ func (o *OvsTopoUpdater) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, 
 	defer o.Unlock()
 
 	name := row.New.Fields["name"].(string)
-	o.uuidToName[uuid] = name
 
-	container := o.Topology.GetContainer(name)
-	if container == nil {
-		container = o.Topology.NewContainer(name, OvsBridge)
+	bridge := o.Topology.GetOvsBridge(name)
+	if bridge == nil {
+		bridge = o.Topology.NewOvsBridge(name)
 	}
 
 	switch row.New.Fields["ports"].(type) {
@@ -61,56 +61,51 @@ func (o *OvsTopoUpdater) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, 
 		for _, i := range set.GoSet {
 			u := i.(libovsdb.UUID).GoUuid
 
-			if name, ok := o.uuidToName[u]; ok {
-				port := o.Topology.GetPort(name)
-				container.AddPort(port)
+			if port, ok := o.uuidToPort[u]; ok {
+				bridge.AddPort(port)
 			} else {
 				/* will be filled later when the port update for this port will be triggered */
-				o.portContainerQueue[u] = container
+				o.portBridgeQueue[u] = bridge
 			}
 		}
 
 	case libovsdb.UUID:
 		u := row.New.Fields["ports"].(libovsdb.UUID).GoUuid
-		if name, ok := o.uuidToName[u]; ok {
-			port := o.Topology.GetPort(name)
-			container.AddPort(port)
+		if port, ok := o.uuidToPort[u]; ok {
+			bridge.AddPort(port)
 		} else {
 			/* will be filled later when the port update for this port will be triggered */
-			o.portContainerQueue[u] = container
+			o.portBridgeQueue[u] = bridge
 		}
 	}
 }
 
 func (o *OvsTopoUpdater) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	o.Lock()
-	defer o.Unlock()
-
-	name, ok := o.uuidToName[uuid]
-	if !ok {
-		return
-	}
-
-	o.Topology.DelContainer(name)
-
-	delete(o.uuidToName, uuid)
+	o.Topology.DelOvsBridge(row.Old.Fields["name"].(string))
 }
 
 func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
 
-	name := row.New.Fields["name"].(string)
-	o.uuidToName[uuid] = name
-
-	intf := o.Topology.GetInterface(name)
-	if intf == nil {
-		intf = o.Topology.NewInterface(name, nil)
-	}
-
+	var mac string
 	switch row.New.Fields["mac_in_use"].(type) {
 	case string:
-		intf.Mac = row.New.Fields["mac_in_use"].(string)
+		mac = row.New.Fields["mac_in_use"].(string)
+	default:
+		/* do not handle interface without mac, is it even possible ??? */
+		return
+	}
+
+	intf, ok := o.uuidToIntf[uuid]
+	if !ok {
+		/* lookup the topology first since the interface could have been added by another updater, ex: netlink */
+		intf = o.Topology.LookupInterfaceByMac(mac)
+		if intf == nil {
+			intf = o.Topology.NewInterface(row.New.Fields["name"].(string), 0)
+			intf.SetMac(mac)
+		}
+		o.uuidToIntf[uuid] = intf
 	}
 
 	/* set pending interface for a port */
@@ -128,27 +123,23 @@ func (o *OvsTopoUpdater) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid strin
 	o.Lock()
 	defer o.Unlock()
 
-	name, ok := o.uuidToName[uuid]
+	intf, ok := o.uuidToIntf[uuid]
 	if !ok {
 		return
 	}
+	intf.Del()
 
-	o.Topology.DelInterface(name)
-
-	delete(o.uuidToName, uuid)
-	delete(o.intfPortQueue, uuid)
+	delete(o.uuidToIntf, uuid)
 }
 
 func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
 
-	name := row.New.Fields["name"].(string)
-	o.uuidToName[uuid] = name
-
-	port := o.Topology.GetPort(name)
-	if port == nil {
-		port = o.Topology.NewPort(name, nil)
+	port, ok := o.uuidToPort[uuid]
+	if !ok {
+		port = o.Topology.NewPort(row.New.Fields["name"].(string))
+		o.uuidToPort[uuid] = port
 	}
 
 	switch row.New.Fields["interfaces"].(type) {
@@ -157,9 +148,8 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 
 		for _, i := range set.GoSet {
 			u := i.(libovsdb.UUID).GoUuid
-
-			if name, ok := o.uuidToName[u]; ok {
-				intf := o.Topology.GetInterface(name)
+			intf, ok := o.uuidToIntf[u]
+			if ok {
 				port.AddInterface(intf)
 			} else {
 				/* will be filled later when the interface update for this interface will be triggered */
@@ -168,8 +158,8 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 		}
 	case libovsdb.UUID:
 		u := row.New.Fields["interfaces"].(libovsdb.UUID).GoUuid
-		if name, ok := o.uuidToName[u]; ok {
-			intf := o.Topology.GetInterface(name)
+		intf, ok := o.uuidToIntf[u]
+		if ok {
 			port.AddInterface(intf)
 		} else {
 			/* will be filled later when the interface update for this interface will be triggered */
@@ -177,9 +167,9 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 		}
 	}
 	/* set pending port of a container */
-	if container, ok := o.portContainerQueue[uuid]; ok {
-		container.AddPort(port)
-		delete(o.portContainerQueue, uuid)
+	if bridge, ok := o.portBridgeQueue[uuid]; ok {
+		bridge.AddPort(port)
+		delete(o.portBridgeQueue, uuid)
 	}
 }
 
@@ -191,15 +181,13 @@ func (o *OvsTopoUpdater) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, ro
 	o.Lock()
 	defer o.Unlock()
 
-	name, ok := o.uuidToName[uuid]
+	port, ok := o.uuidToPort[uuid]
 	if !ok {
 		return
 	}
+	port.Del()
 
-	o.Topology.DelPort(name)
-
-	delete(o.uuidToName, uuid)
-	delete(o.portContainerQueue, uuid)
+	delete(o.uuidToPort, uuid)
 }
 
 func (o *OvsTopoUpdater) Start() {
@@ -207,10 +195,11 @@ func (o *OvsTopoUpdater) Start() {
 
 func NewOvsTopoUpdater(topo *Topology, ovsmon *ovsdb.OvsMonitor) *OvsTopoUpdater {
 	u := &OvsTopoUpdater{
-		Topology:           topo,
-		uuidToName:         make(map[string]string),
-		intfPortQueue:      make(map[string]*Port),
-		portContainerQueue: make(map[string]*Container),
+		Topology:        topo,
+		uuidToPort:      make(map[string]*Port),
+		uuidToIntf:      make(map[string]*Interface),
+		intfPortQueue:   make(map[string]*Port),
+		portBridgeQueue: make(map[string]*OvsBridge),
 	}
 	ovsmon.AddMonitorHandler(u)
 

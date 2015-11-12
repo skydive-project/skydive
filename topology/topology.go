@@ -29,20 +29,16 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-const (
-	Root        = "root"
-	NetNs       = "netns"
-	LinuxBridge = "linuxbridge"
-	OvsBridge   = "ovsbridge"
-)
-
 type Interface struct {
 	sync.RWMutex
-	ID        string `json:"-"`
-	Type      string
-	Mac       string
+	ID        string            `json:"-"`
+	Type      string            `json:",omitempty"`
+	Mac       string            `json:",omitempty"`
+	IfIndex   uint32            `json:"-"`
 	Metadatas map[string]string `json:",omitempty"`
 	Port      *Port             `json:"-"`
+	NetNs     *NetNs            `json:"-"`
+	Peer      *Interface        `json:",omitempty"`
 }
 
 type Port struct {
@@ -50,223 +46,433 @@ type Port struct {
 	ID         string                `json:"-"`
 	Metadatas  map[string]string     `json:",omitempty"`
 	Interfaces map[string]*Interface `json:",omitempty"`
-	container  *Container            `json:"-"`
-	links      map[string]*Link      `json:"-"`
+	OvsBridge  *OvsBridge            `json:"-"`
 }
 
-type Link struct {
-	sync.RWMutex
-	ID        string `json:"-"`
-	Left      *Port
-	Right     *Port
-	Metadatas map[string]string `json:",omitempty"`
-}
-
-type Container struct {
+type OvsBridge struct {
 	sync.RWMutex
 	ID       string `json:"-"`
-	Type     string
 	Ports    map[string]*Port
 	Topology *Topology `json:"-"`
 }
 
-type Topology struct {
+type NetNs struct {
 	sync.RWMutex
-	Containers map[string]*Container
-	interfaces map[string]*Interface `json:"-"`
-	ports      map[string]*Port      `json:"-"`
-	links      map[string]*Link      `json:"-"`
+	ID         string `json:"-"`
+	Interfaces map[string]*Interface
+	Topology   *Topology `json:"-"`
 }
 
-func (t *Topology) Log() {
-	j, _ := json.Marshal(t)
+type Topology struct {
+	sync.RWMutex
+	OvsBridges map[string]*OvsBridge
+	NetNss     map[string]*NetNs
+}
+
+func (topo *Topology) Log() {
+	j, _ := json.Marshal(topo)
 	logging.GetLogger().Debug("Topology: %s", string(j))
 }
 
-func (topo *Topology) NewInterface(i string, p *Port) *Interface {
-	topo.Lock()
-	defer topo.Unlock()
+func (intf *Interface) MarshalJSON() ([]byte, error) {
+
+	var peer []string
+	if intf.Peer != nil && intf.Peer.Port != nil && intf.Peer.Port.OvsBridge != nil {
+		peer = []string{intf.Peer.Port.OvsBridge.ID, intf.Peer.Port.ID, intf.Peer.ID}
+	} else if intf.Peer != nil && intf.Peer.NetNs != nil {
+		peer = []string{intf.Peer.NetNs.ID, intf.Peer.ID}
+	}
+
+	return json.Marshal(&struct {
+		Type      string            `json:",omitempty"`
+		Mac       string            `json:",omitempty"`
+		Metadatas map[string]string `json:",omitempty"`
+		Peer      []string          `json:",omitempty"`
+	}{
+		Type:      intf.Type,
+		Mac:       intf.Mac,
+		Metadatas: intf.Metadatas,
+		Peer:      peer,
+	})
+}
+
+// SetPeer set the peer interface with the given interface
+func (intf *Interface) SetPeer(i *Interface) {
+	intf.Lock()
+	defer intf.Unlock()
+	i.Lock()
+	defer i.Unlock()
+
+	intf.Peer = i
+	i.Peer = intf
+
+	if intf.Port != nil && intf.Port.OvsBridge != nil {
+		intf.Port.OvsBridge.Topology.Log()
+	}
+}
+
+// SetMac set the mac address
+func (intf *Interface) SetMac(mac string) {
+	intf.Lock()
+	defer intf.Unlock()
+
+	intf.Mac = mac
+
+	if intf.Port != nil && intf.Port.OvsBridge != nil {
+		intf.Port.OvsBridge.Topology.Log()
+	} else if intf.NetNs != nil {
+		intf.NetNs.Topology.Log()
+	}
+}
+
+// SetType set the type of the interface, could be device, openvswitch, veth, etc.
+func (intf *Interface) SetType(t string) {
+	intf.Lock()
+	defer intf.Unlock()
+
+	intf.Type = t
+
+	if intf.Port != nil && intf.Port.OvsBridge != nil {
+		intf.Port.OvsBridge.Topology.Log()
+	} else if intf.NetNs != nil {
+		intf.NetNs.Topology.Log()
+	}
+}
+
+// SetIndex specifies the index of the interface, doesn't make sense for ovs internals
+func (intf *Interface) SetIndex(i uint32) {
+	intf.Lock()
+	defer intf.Unlock()
+
+	intf.IfIndex = i
+}
+
+// Del deletes the interface, remove the interface for the port or any other container
+func (intf *Interface) Del() {
+	if intf.Port != nil {
+		intf.Port.DelInterface(intf.ID)
+	}
+}
+
+// NewInterface instanciate a new interface with a given index
+func (n *NetNs) NewInterface(i string, index uint32) *Interface {
+	n.Lock()
+	defer n.Unlock()
 
 	intf := &Interface{
 		ID:        i,
 		Metadatas: make(map[string]string),
+		IfIndex:   index,
+		NetNs:     n,
 	}
-	topo.interfaces[i] = intf
+	n.Interfaces[i] = intf
 
-	if p != nil {
-		p.Interfaces[i] = intf
-		intf.Port = p
-		topo.Log()
-	}
+	n.Topology.Log()
 
 	return intf
 }
 
-func (topo *Topology) DelInterface(i string) {
-	topo.Lock()
-	defer topo.Unlock()
+// AddInterface add a previously created interface
+func (n *NetNs) AddInterface(intf *Interface) {
+	n.Lock()
+	defer n.Unlock()
 
-	intf, ok := topo.interfaces[i]
-	if !ok {
-		return
-	}
+	n.Interfaces[intf.ID] = intf
+	intf.NetNs = n
 
-	if intf.Port != nil {
-		delete(intf.Port.Interfaces, i)
-		topo.Log()
-	}
-
-	delete(topo.interfaces, i)
+	n.Topology.Log()
 }
 
-func (topo *Topology) GetInterface(i string) *Interface {
-	topo.Lock()
-	defer topo.Unlock()
+// DelInterface removes the interface with the given id from the port
+func (n *NetNs) DelInterface(i string) {
+	n.Lock()
+	defer n.Unlock()
 
-	if intf, ok := topo.interfaces[i]; ok {
+	if _, ok := n.Interfaces[i]; !ok {
+		return
+	}
+	delete(n.Interfaces, i)
+
+	n.Topology.Log()
+}
+
+// GetInterface returns the interface with the given ID from the port
+func (n *NetNs) GetInterface(i string) *Interface {
+	n.Lock()
+	defer n.Unlock()
+
+	if intf, ok := n.Interfaces[i]; ok {
 		return intf
 	}
 	return nil
 }
 
-func (port *Port) AddInterface(intf *Interface) {
-	port.Lock()
-	defer port.Unlock()
-
-	intf.Lock()
-	defer intf.Unlock()
-
-	port.Interfaces[intf.ID] = intf
-	intf.Port = port
-
-	if port.container != nil && port.container.Topology != nil {
-		port.container.Topology.Log()
+// Del removes the port from the ovs bridge containing it
+func (p *Port) Del() {
+	if p.OvsBridge != nil {
+		p.OvsBridge.DelPort(p.ID)
 	}
 }
 
-func (port *Port) GetContainer() *Container {
-	return port.container
+// NewInterface instanciate a new interface with a given index
+func (p *Port) NewInterface(i string, index uint32) *Interface {
+	p.Lock()
+	defer p.Unlock()
+
+	intf := &Interface{
+		ID:        i,
+		Metadatas: make(map[string]string),
+		IfIndex:   index,
+		Port:      p,
+	}
+	p.Interfaces[i] = intf
+
+	if p.OvsBridge != nil {
+		p.OvsBridge.Topology.Log()
+	}
+
+	return intf
 }
 
-func (topo *Topology) GetPort(i string) *Port {
-	topo.Lock()
-	defer topo.Unlock()
+// AddInterface add a previously created interface
+func (p *Port) AddInterface(intf *Interface) {
+	p.Lock()
+	defer p.Unlock()
 
-	if port, ok := topo.ports[i]; ok {
+	p.Interfaces[intf.ID] = intf
+	intf.Port = p
+
+	if p.OvsBridge != nil {
+		p.OvsBridge.Topology.Log()
+	}
+}
+
+// DelInterface removes the interface with the given id from the port
+func (p *Port) DelInterface(i string) {
+	p.Lock()
+	defer p.Unlock()
+
+	if _, ok := p.Interfaces[i]; !ok {
+		return
+	}
+	delete(p.Interfaces, i)
+
+	p.OvsBridge.Topology.Log()
+}
+
+// GetInterface returns the interface with the given ID from the port
+func (p *Port) GetInterface(i string) *Interface {
+	p.Lock()
+	defer p.Unlock()
+
+	if intf, ok := p.Interfaces[i]; ok {
+		return intf
+	}
+	return nil
+}
+
+// GetPort returns the port with the given port ID from the container
+func (o *OvsBridge) GetPort(i string) *Port {
+	o.Lock()
+	defer o.Unlock()
+
+	if port, ok := o.Ports[i]; ok {
 		return port
 	}
 	return nil
 }
 
-func (topo *Topology) DelPort(i string) {
-	topo.Lock()
-	defer topo.Unlock()
+// DelPort removes the port with the given id from the ovs bridge
+func (o *OvsBridge) DelPort(i string) {
+	o.Lock()
+	defer o.Unlock()
 
-	port, ok := topo.ports[i]
-	if !ok {
+	if _, ok := o.Ports[i]; !ok {
 		return
 	}
+	delete(o.Ports, i)
 
-	for id, link := range port.links {
-		delete(link.Left.links, id)
-		delete(link.Right.links, id)
-	}
-
-	for _, intf := range port.Interfaces {
-		intf.Port = nil
-	}
-
-	if port.container != nil {
-		delete(port.container.Ports, i)
-		topo.Log()
-	}
-
-	delete(topo.ports, i)
+	o.Topology.Log()
 }
 
-func (topo *Topology) NewPort(i string, c *Container) *Port {
-	topo.Lock()
-	defer topo.Unlock()
+// NewPort intentiates a new port and add it to the ovs bridge
+func (o *OvsBridge) NewPort(i string) *Port {
+	o.Lock()
+	defer o.Unlock()
 
 	port := &Port{
 		ID:         i,
 		Metadatas:  make(map[string]string),
 		Interfaces: make(map[string]*Interface),
-		links:      make(map[string]*Link),
+		OvsBridge:  o,
 	}
-	topo.ports[i] = port
+	o.Ports[i] = port
 
-	if c != nil {
-		c.Ports[i] = port
-		port.container = c
-		topo.Log()
+	o.Topology.Log()
+
+	return port
+}
+
+// AddPort add a previously created port to the ovs bridge
+func (o *OvsBridge) AddPort(p *Port) {
+	o.Lock()
+	defer o.Unlock()
+
+	o.Ports[p.ID] = p
+	p.OvsBridge = o
+
+	o.Topology.Log()
+}
+
+func (topo *Topology) LookupInterfaceByIndex(index uint32) *Interface {
+	topo.Lock()
+	defer topo.Unlock()
+
+	for _, netns := range topo.NetNss {
+		netns.Lock()
+		defer netns.Unlock()
+		for _, intf := range netns.Interfaces {
+			intf.Lock()
+			if intf.IfIndex == index {
+				intf.Unlock()
+				return intf
+			}
+			intf.Unlock()
+		}
+	}
+
+	return nil
+}
+
+func (topo *Topology) LookupInterfaceByMac(mac string) *Interface {
+	topo.Lock()
+	defer topo.Unlock()
+
+	for _, netns := range topo.NetNss {
+		netns.Lock()
+		defer netns.Unlock()
+		for _, intf := range netns.Interfaces {
+			intf.Lock()
+			if intf.Mac == mac {
+				intf.Unlock()
+				return intf
+			}
+			intf.Unlock()
+		}
+	}
+
+	for _, bridge := range topo.OvsBridges {
+		bridge.Lock()
+		defer bridge.Unlock()
+		for _, port := range bridge.Ports {
+			port.Lock()
+			defer port.Unlock()
+			for _, intf := range port.Interfaces {
+				intf.Lock()
+				if intf.Mac == mac {
+					intf.Unlock()
+					return intf
+				}
+				intf.Unlock()
+			}
+		}
+	}
+
+	return nil
+}
+
+func (topo *Topology) NewPort(i string) *Port {
+	port := &Port{
+		ID:         i,
+		Metadatas:  make(map[string]string),
+		Interfaces: make(map[string]*Interface),
 	}
 
 	return port
 }
 
-func (topo *Topology) DelContainer(i string) {
+func (topo *Topology) NewInterface(i string, index uint32) *Interface {
+	intf := &Interface{
+		ID:        i,
+		Metadatas: make(map[string]string),
+		IfIndex:   index,
+	}
+
+	return intf
+}
+
+func (topo *Topology) DelOvsBridge(i string) {
 	topo.Lock()
 	defer topo.Unlock()
 
-	container, ok := topo.Containers[i]
-	if !ok {
+	if _, ok := topo.OvsBridges[i]; !ok {
 		return
 	}
 
-	for _, port := range container.Ports {
-		port.container = nil
-	}
-
-	delete(topo.Containers, i)
+	delete(topo.OvsBridges, i)
 
 	topo.Log()
 }
 
-func (topo *Topology) GetContainer(i string) *Container {
+func (topo *Topology) GetOvsBridge(i string) *OvsBridge {
 	topo.Lock()
 	defer topo.Unlock()
 
-	c, ok := topo.Containers[i]
+	c, ok := topo.OvsBridges[i]
 	if !ok {
 		return nil
 	}
 	return c
 }
 
-func (container *Container) AddPort(port *Port) {
-	container.Lock()
-	defer container.Unlock()
-
-	port.Lock()
-	defer port.Unlock()
-
-	container.Ports[port.ID] = port
-	port.container = container
-}
-
-func (topo *Topology) NewContainer(i string, t string) *Container {
+func (topo *Topology) DelNetNs(i string) {
 	topo.Lock()
 	defer topo.Unlock()
 
-	container := &Container{
+	if _, ok := topo.NetNss[i]; !ok {
+		return
+	}
+
+	delete(topo.NetNss, i)
+
+	topo.Log()
+}
+
+func (topo *Topology) NewOvsBridge(i string) *OvsBridge {
+	topo.Lock()
+	defer topo.Unlock()
+
+	bridge := &OvsBridge{
 		ID:       i,
-		Type:     t,
 		Ports:    make(map[string]*Port),
 		Topology: topo,
 	}
-	topo.Containers[i] = container
+	topo.OvsBridges[i] = bridge
 
 	topo.Log()
 
-	return container
+	return bridge
+}
+
+func (topo *Topology) NewNetNs(i string) *NetNs {
+	topo.Lock()
+	defer topo.Unlock()
+
+	netns := &NetNs{
+		ID:         i,
+		Interfaces: make(map[string]*Interface),
+		Topology:   topo,
+	}
+	topo.NetNss[i] = netns
+
+	topo.Log()
+
+	return netns
 }
 
 func NewTopology() *Topology {
 	return &Topology{
-		Containers: make(map[string]*Container),
-		interfaces: make(map[string]*Interface),
-		ports:      make(map[string]*Port),
-		links:      make(map[string]*Link),
+		OvsBridges: make(map[string]*OvsBridge),
+		NetNss:     make(map[string]*NetNs),
 	}
 }
