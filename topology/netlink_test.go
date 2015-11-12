@@ -53,7 +53,7 @@ func TestOvsLinkNotHandled(t *testing.T) {
 	}
 	updater.addLinkToTopology(link)
 
-	if topo.GetInterface("intf1") == nil {
+	if root.GetPort("intf1") == nil || root.GetPort("intf1").GetInterface("intf1") == nil {
 		t.Error("interface of type device not found in the topology")
 	}
 
@@ -64,7 +64,7 @@ func TestOvsLinkNotHandled(t *testing.T) {
 	}
 	updater.addLinkToTopology(ovsLink)
 
-	if topo.GetInterface("intf2") != nil {
+	if root.GetPort("intf2") != nil {
 		t.Error("interface of type openvswitch should not have been added to the topology")
 	}
 

@@ -36,27 +36,33 @@ func TestOvsTopology(t *testing.T) {
 
 	updater := NewOvsTopoUpdater(topo, ovsmon)
 
-	/* add port */
+	/* add interface */
 	rowFields := make(map[string]interface{})
-	rowFields["name"] = "eth0"
+	rowFields["name"] = "eth0.1"
 	row := libovsdb.Row{Fields: rowFields}
-	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "port-uuid"}, New: row}
+	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "intf-uuid"}, New: row}
+
+	updater.OnOvsInterfaceAdd(nil, "intf-uuid", &rowUpdate)
+
+	/* add port */
+	rowFields = make(map[string]interface{})
+	rowFields["name"] = "eth0"
+	uuid := libovsdb.UUID{GoUuid: "intf-uuid"}
+	rowFields["interfaces"] = libovsdb.OvsSet{GoSet: []interface{}{uuid}}
+	row = libovsdb.Row{Fields: rowFields}
+	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "port-uuid"}, New: row}
 
 	updater.OnOvsPortAdd(nil, "port-uuid", &rowUpdate)
 
 	/* add bridge with already ports, simulate a initialisation */
 	rowFields = make(map[string]interface{})
 	rowFields["name"] = "br0"
-	uuid := libovsdb.UUID{GoUuid: "port-uuid"}
+	uuid = libovsdb.UUID{GoUuid: "port-uuid"}
 	rowFields["ports"] = libovsdb.OvsSet{GoSet: []interface{}{uuid}}
 	row = libovsdb.Row{Fields: rowFields}
 	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, New: row}
 
 	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
-
-	if topo.GetPort("eth0").GetContainer().ID != "br0" {
-		t.Error("Bridge name not found, expected br0")
-	}
 
 	container := topo.GetContainer("br0")
 	if container == nil {
@@ -65,6 +71,16 @@ func TestOvsTopology(t *testing.T) {
 
 	if container.Type != OvsBridge {
 		t.Error("The container for the bridge br0 should be of type OvsBridge")
+	}
+
+	if container.GetPort("eth0") == nil {
+		t.Error("Unable to find the port eth0 in the container br0 as expected")
+	}
+
+	updater.OnOvsInterfaceAdd(nil, "intf-uuid", &rowUpdate)
+
+	if container.GetPort("eth0").GetInterface("eth0.1") == nil {
+		t.Error("Unable to find the interface eth0 in the port eth0 as expected")
 	}
 }
 
@@ -121,17 +137,18 @@ func TestOvsOnBridgeDel(t *testing.T) {
 
 	updater.OnOvsBridgeAdd(nil, "br0-uuid", &rowUpdate)
 
-	if topo.GetPort("br0").GetContainer().ID != "br0" {
-		t.Error("Bridge name not found, expected br0")
+	container := topo.GetContainer("br0")
+	if container == nil {
+		t.Error("Unable to find a container in the topo for the ovs bridge br0")
+	}
+
+	if container.Type != OvsBridge {
+		t.Error("The container for the bridge br0 should be of type OvsBridge")
 	}
 
 	rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "br0-uuid"}, Old: row}
 
 	updater.OnOvsBridgeDel(nil, "br0-uuid", &rowUpdate)
-
-	if topo.GetPort("br0").GetContainer() != nil {
-		t.Error("Bridge name still found, expected empty")
-	}
 
 	if topo.GetContainer("br0") != nil {
 		t.Error("Container for the bridge br0 should exist anymore since the bridge has been deleted")
