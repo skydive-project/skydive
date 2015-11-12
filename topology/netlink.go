@@ -29,6 +29,8 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netlink/nl"
 
+	"github.com/safchain/ethtool"
+
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -57,6 +59,30 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 	return intf
 }
 
+func (u *NetLinkTopoUpdater) addVethLinkToTopology(link netlink.Link) *Interface {
+	u.linkCache[link.Attrs().Index] = *link.Attrs()
+
+	port := u.Container.NewPort(link.Attrs().Name)
+	intf := port.NewInterfaceWithIndex(link.Attrs().Name, uint32(link.Attrs().Index))
+
+	stats, err := ethtool.Stats(link.Attrs().Name)
+	if err != nil {
+		logging.GetLogger().Error("Unable get stats from ethtool: %s", err.Error())
+		return nil
+	}
+
+	if index, ok := stats["peer_ifindex"]; ok {
+		peer := u.Container.Topology.LookupInterfaceByIndex(uint32(index))
+		if peer != nil {
+			intf.SetPeer(peer)
+		}
+	}
+
+	intf.SetMac(link.Attrs().HardwareAddr.String())
+
+	return intf
+}
+
 func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	var intf *Interface
 
@@ -65,6 +91,7 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	   by the ovs updater */
 	case "openvswitch":
 	case "veth":
+		intf = u.addVethLinkToTopology(link)
 	case "bridge":
 	default:
 		intf = u.addGenericLinkToTopology(link)
