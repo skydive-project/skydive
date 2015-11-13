@@ -100,9 +100,11 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 	intf, ok := o.uuidToIntf[uuid]
 	if !ok {
 		/* lookup the topology first since the interface could have been added by another updater, ex: netlink */
-		intf = o.Topology.LookupInterfaceByMac(mac)
+		name := row.New.Fields["name"].(string)
+
+		intf = o.Topology.InterfaceByMac(name, mac)
 		if intf == nil {
-			intf = o.Topology.NewInterface(row.New.Fields["name"].(string), 0)
+			intf = o.Topology.NewInterface(name, 0)
 			intf.SetMac(mac)
 		}
 		o.uuidToIntf[uuid] = intf

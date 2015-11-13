@@ -46,42 +46,42 @@ type NetLinkTopoUpdater struct {
 }
 
 func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interface {
-	u.linkCache[link.Attrs().Index] = *link.Attrs()
-
-	mac := link.Attrs().HardwareAddr.String()
-	intf := u.NetNs.Topology.LookupInterfaceByMac(mac)
+	name := link.Attrs().Name
+	intf := u.NetNs.Topology.InterfaceByMac(name, link.Attrs().HardwareAddr.String())
 	if intf == nil {
-		intf = u.NetNs.NewInterface(link.Attrs().Name, uint32(link.Attrs().Index))
-		intf.SetMac(mac)
+		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
 	} else {
 		u.NetNs.AddInterface(intf)
-		intf.SetIndex(uint32(link.Attrs().Index))
+	}
+
+	/* part of a bridge */
+	if link.Attrs().MasterIndex != 0 {
+		parent := u.NetNs.Topology.InterfaceByIndex(uint32(link.Attrs().MasterIndex))
+		if parent != nil {
+			parent.AddInterface(intf)
+		}
 	}
 
 	return intf
 }
 
 func (u *NetLinkTopoUpdater) addVethLinkToTopology(link netlink.Link) *Interface {
-	u.linkCache[link.Attrs().Index] = *link.Attrs()
-
-	mac := link.Attrs().HardwareAddr.String()
-	intf := u.NetNs.Topology.LookupInterfaceByMac(mac)
+	name := link.Attrs().Name
+	intf := u.NetNs.Topology.InterfaceByMac(name, link.Attrs().HardwareAddr.String())
 	if intf == nil {
-		intf = u.NetNs.NewInterface(link.Attrs().Name, uint32(link.Attrs().Index))
-		intf.SetMac(mac)
+		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
 	} else {
 		u.NetNs.AddInterface(intf)
-		intf.SetIndex(uint32(link.Attrs().Index))
 	}
 
-	stats, err := ethtool.Stats(link.Attrs().Name)
+	stats, err := ethtool.Stats(name)
 	if err != nil {
 		logging.GetLogger().Error("Unable get stats from ethtool: %s", err.Error())
 		return nil
 	}
 
 	if index, ok := stats["peer_ifindex"]; ok {
-		peer := u.NetNs.Topology.LookupInterfaceByIndex(uint32(index))
+		peer := u.NetNs.Topology.InterfaceByIndex(uint32(index))
 		if peer != nil {
 			intf.SetPeer(peer)
 		}
@@ -97,6 +97,7 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	case "veth":
 		intf = u.addVethLinkToTopology(link)
 	case "bridge":
+		fallthrough
 	case "openvswitch":
 		fallthrough
 	default:
@@ -105,7 +106,11 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 
 	if intf != nil {
 		intf.SetType(link.Type())
+		intf.SetIndex(uint32(link.Attrs().Index))
+		intf.SetMac(link.Attrs().HardwareAddr.String())
 	}
+
+	u.linkCache[link.Attrs().Index] = *link.Attrs()
 }
 
 func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
@@ -126,9 +131,18 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	if !ok {
 		return
 	}
-	u.NetNs.DelInterface(attrs.Name)
 
-	delete(u.linkCache, index)
+	// case of removing the interface from a bridge
+	intf := u.NetNs.Topology.InterfaceByIndex(uint32(index))
+	if intf != nil && intf.Parent != nil {
+		intf.Parent.DelInterface(attrs.Name)
+	}
+	// check wheter the interface has been deleted or not
+	_, err := netlink.LinkByIndex(index)
+	if err != nil {
+		u.NetNs.DelInterface(attrs.Name)
+		delete(u.linkCache, index)
+	}
 }
 
 func (u *NetLinkTopoUpdater) initialize() {

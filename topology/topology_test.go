@@ -100,7 +100,7 @@ func TestSameInterfaceNameTwoPlaces(t *testing.T) {
 	intf2.SetMac("2.2.2.2.2.2")
 	container2.AddInterface(intf2)
 
-	if topo.LookupInterfaceByIndex(1) == topo.LookupInterfaceByIndex(2) {
+	if topo.InterfaceByIndex(1) == topo.InterfaceByIndex(2) {
 		t.Error("The first interface has been overwritten by the second one")
 	}
 }
@@ -115,7 +115,7 @@ func TestSameInterfaceTwoPlaces(t *testing.T) {
 	container1.AddPort(port1)
 
 	container2 := topo.NewNetNs("C2")
-	intf2 := topo.LookupInterfaceByMac("1.1.1.1.1.1")
+	intf2 := topo.InterfaceByMac("intf", "1.1.1.1.1.1")
 	container2.AddInterface(intf2)
 
 	if container1.GetPort("port").GetInterface("intf") != container2.GetInterface("intf") {

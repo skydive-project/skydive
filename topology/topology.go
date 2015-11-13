@@ -31,14 +31,16 @@ import (
 
 type Interface struct {
 	sync.RWMutex
-	ID        string            `json:"-"`
-	Type      string            `json:",omitempty"`
-	Mac       string            `json:",omitempty"`
-	IfIndex   uint32            `json:"-"`
-	Metadatas map[string]string `json:",omitempty"`
-	Port      *Port             `json:"-"`
-	NetNs     *NetNs            `json:"-"`
-	Peer      *Interface        `json:",omitempty"`
+	ID         string                `json:"-"`
+	Type       string                `json:",omitempty"`
+	Mac        string                `json:",omitempty"`
+	IfIndex    uint32                `json:"-"`
+	Metadatas  map[string]string     `json:",omitempty"`
+	Port       *Port                 `json:"-"`
+	NetNs      *NetNs                `json:"-"`
+	Peer       *Interface            `json:",omitempty"`
+	Interfaces map[string]*Interface `json:",omitempty"`
+	Parent     *Interface            `json:",omitempty"`
 }
 
 type Port struct {
@@ -51,16 +53,16 @@ type Port struct {
 
 type OvsBridge struct {
 	sync.RWMutex
-	ID       string `json:"-"`
-	Ports    map[string]*Port
-	Topology *Topology `json:"-"`
+	ID       string           `json:"-"`
+	Ports    map[string]*Port `json:",omitempty"`
+	Topology *Topology        `json:"-"`
 }
 
 type NetNs struct {
 	sync.RWMutex
-	ID         string `json:"-"`
-	Interfaces map[string]*Interface
-	Topology   *Topology `json:"-"`
+	ID         string                `json:"-"`
+	Interfaces map[string]*Interface `json:",omitempty"`
+	Topology   *Topology             `json:"-"`
 }
 
 type Topology struct {
@@ -71,11 +73,11 @@ type Topology struct {
 
 func (topo *Topology) Log() {
 	j, _ := json.Marshal(topo)
+	//j = []byte{}
 	logging.GetLogger().Debug("Topology: %s", string(j))
 }
 
 func (intf *Interface) MarshalJSON() ([]byte, error) {
-
 	var peer []string
 	if intf.Peer != nil && intf.Peer.Port != nil && intf.Peer.Port.OvsBridge != nil {
 		peer = []string{intf.Peer.Port.OvsBridge.ID, intf.Peer.Port.ID, intf.Peer.ID}
@@ -84,15 +86,17 @@ func (intf *Interface) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&struct {
-		Type      string            `json:",omitempty"`
-		Mac       string            `json:",omitempty"`
-		Metadatas map[string]string `json:",omitempty"`
-		Peer      []string          `json:",omitempty"`
+		Type       string                `json:",omitempty"`
+		Mac        string                `json:",omitempty"`
+		Metadatas  map[string]string     `json:",omitempty"`
+		Interfaces map[string]*Interface `json:",omitempty"`
+		Peer       []string              `json:",omitempty"`
 	}{
-		Type:      intf.Type,
-		Mac:       intf.Mac,
-		Metadatas: intf.Metadatas,
-		Peer:      peer,
+		Type:       intf.Type,
+		Mac:        intf.Mac,
+		Metadatas:  intf.Metadatas,
+		Interfaces: intf.Interfaces,
+		Peer:       peer,
 	})
 }
 
@@ -154,16 +158,66 @@ func (intf *Interface) Del() {
 	}
 }
 
-// NewInterface instanciate a new interface with a given index
+// AddInterface add a previously created interface
+func (intf *Interface) AddInterface(i *Interface) {
+	intf.Lock()
+	defer intf.Unlock()
+	i.Lock()
+	defer i.Unlock()
+
+	intf.Interfaces[i.ID] = i
+	i.Parent = intf
+
+	if intf.NetNs != nil {
+		intf.NetNs.Topology.Log()
+	}
+}
+
+// DelInterface removes the interface with the given id from the port
+func (intf *Interface) DelInterface(i string) {
+	intf.Lock()
+	defer intf.Unlock()
+
+	delete(intf.Interfaces, i)
+
+	if intf.NetNs != nil {
+		intf.NetNs.Topology.Log()
+	}
+}
+
+// NewInterface instantiate a new interface with a given index
+func (intf *Interface) NewInterface(i string, index uint32) *Interface {
+	intf.Lock()
+	defer intf.Unlock()
+
+	nIntf := &Interface{
+		ID:         i,
+		Metadatas:  make(map[string]string),
+		Interfaces: make(map[string]*Interface),
+		IfIndex:    index,
+		Parent:     intf,
+		NetNs:      intf.NetNs,
+	}
+	intf.Interfaces[i] = nIntf
+
+	if intf.NetNs != nil {
+		intf.NetNs.Topology.Log()
+	}
+
+	return nIntf
+}
+
+// NewInterface instantiate a new interface with a given index
 func (n *NetNs) NewInterface(i string, index uint32) *Interface {
 	n.Lock()
 	defer n.Unlock()
 
 	intf := &Interface{
-		ID:        i,
-		Metadatas: make(map[string]string),
-		IfIndex:   index,
-		NetNs:     n,
+		ID:         i,
+		Metadatas:  make(map[string]string),
+		Interfaces: make(map[string]*Interface),
+		IfIndex:    index,
+		NetNs:      n,
 	}
 	n.Interfaces[i] = intf
 
@@ -176,6 +230,8 @@ func (n *NetNs) NewInterface(i string, index uint32) *Interface {
 func (n *NetNs) AddInterface(intf *Interface) {
 	n.Lock()
 	defer n.Unlock()
+	intf.Lock()
+	defer intf.Unlock()
 
 	n.Interfaces[intf.ID] = intf
 	intf.NetNs = n
@@ -188,9 +244,6 @@ func (n *NetNs) DelInterface(i string) {
 	n.Lock()
 	defer n.Unlock()
 
-	if _, ok := n.Interfaces[i]; !ok {
-		return
-	}
 	delete(n.Interfaces, i)
 
 	n.Topology.Log()
@@ -214,16 +267,17 @@ func (p *Port) Del() {
 	}
 }
 
-// NewInterface instanciate a new interface with a given index
+// NewInterface instantiate a new interface with a given index
 func (p *Port) NewInterface(i string, index uint32) *Interface {
 	p.Lock()
 	defer p.Unlock()
 
 	intf := &Interface{
-		ID:        i,
-		Metadatas: make(map[string]string),
-		IfIndex:   index,
-		Port:      p,
+		ID:         i,
+		Metadatas:  make(map[string]string),
+		Interfaces: make(map[string]*Interface),
+		IfIndex:    index,
+		Port:       p,
 	}
 	p.Interfaces[i] = intf
 
@@ -238,6 +292,8 @@ func (p *Port) NewInterface(i string, index uint32) *Interface {
 func (p *Port) AddInterface(intf *Interface) {
 	p.Lock()
 	defer p.Unlock()
+	intf.Lock()
+	intf.Unlock()
 
 	p.Interfaces[intf.ID] = intf
 	intf.Port = p
@@ -252,9 +308,6 @@ func (p *Port) DelInterface(i string) {
 	p.Lock()
 	defer p.Unlock()
 
-	if _, ok := p.Interfaces[i]; !ok {
-		return
-	}
 	delete(p.Interfaces, i)
 
 	p.OvsBridge.Topology.Log()
@@ -287,9 +340,6 @@ func (o *OvsBridge) DelPort(i string) {
 	o.Lock()
 	defer o.Unlock()
 
-	if _, ok := o.Ports[i]; !ok {
-		return
-	}
 	delete(o.Ports, i)
 
 	o.Topology.Log()
@@ -317,6 +367,8 @@ func (o *OvsBridge) NewPort(i string) *Port {
 func (o *OvsBridge) AddPort(p *Port) {
 	o.Lock()
 	defer o.Unlock()
+	p.Lock()
+	defer p.Unlock()
 
 	o.Ports[p.ID] = p
 	p.OvsBridge = o
@@ -324,7 +376,7 @@ func (o *OvsBridge) AddPort(p *Port) {
 	o.Topology.Log()
 }
 
-func (topo *Topology) LookupInterfaceByIndex(index uint32) *Interface {
+func (topo *Topology) InterfaceByIndex(index uint32) *Interface {
 	topo.Lock()
 	defer topo.Unlock()
 
@@ -344,7 +396,7 @@ func (topo *Topology) LookupInterfaceByIndex(index uint32) *Interface {
 	return nil
 }
 
-func (topo *Topology) LookupInterfaceByMac(mac string) *Interface {
+func (topo *Topology) InterfaceByMac(i string, mac string) *Interface {
 	topo.Lock()
 	defer topo.Unlock()
 
@@ -353,13 +405,37 @@ func (topo *Topology) LookupInterfaceByMac(mac string) *Interface {
 		defer netns.Unlock()
 		for _, intf := range netns.Interfaces {
 			intf.Lock()
-			if intf.Mac == mac {
+			if intf.ID == i && intf.Mac == mac {
 				intf.Unlock()
 				return intf
 			}
 			intf.Unlock()
 		}
 	}
+
+	for _, bridge := range topo.OvsBridges {
+		bridge.Lock()
+		defer bridge.Unlock()
+		for _, port := range bridge.Ports {
+			port.Lock()
+			defer port.Unlock()
+			for _, intf := range port.Interfaces {
+				intf.Lock()
+				if intf.ID == i && intf.Mac == mac {
+					intf.Unlock()
+					return intf
+				}
+				intf.Unlock()
+			}
+		}
+	}
+
+	return nil
+}
+
+func (topo *Topology) InterfaceByMacInOvsBridges(mac string) *Interface {
+	topo.Lock()
+	defer topo.Unlock()
 
 	for _, bridge := range topo.OvsBridges {
 		bridge.Lock()
@@ -393,9 +469,10 @@ func (topo *Topology) NewPort(i string) *Port {
 
 func (topo *Topology) NewInterface(i string, index uint32) *Interface {
 	intf := &Interface{
-		ID:        i,
-		Metadatas: make(map[string]string),
-		IfIndex:   index,
+		ID:         i,
+		Metadatas:  make(map[string]string),
+		Interfaces: make(map[string]*Interface),
+		IfIndex:    index,
 	}
 
 	return intf
@@ -404,10 +481,6 @@ func (topo *Topology) NewInterface(i string, index uint32) *Interface {
 func (topo *Topology) DelOvsBridge(i string) {
 	topo.Lock()
 	defer topo.Unlock()
-
-	if _, ok := topo.OvsBridges[i]; !ok {
-		return
-	}
 
 	delete(topo.OvsBridges, i)
 
@@ -425,19 +498,6 @@ func (topo *Topology) GetOvsBridge(i string) *OvsBridge {
 	return c
 }
 
-func (topo *Topology) DelNetNs(i string) {
-	topo.Lock()
-	defer topo.Unlock()
-
-	if _, ok := topo.NetNss[i]; !ok {
-		return
-	}
-
-	delete(topo.NetNss, i)
-
-	topo.Log()
-}
-
 func (topo *Topology) NewOvsBridge(i string) *OvsBridge {
 	topo.Lock()
 	defer topo.Unlock()
@@ -452,6 +512,15 @@ func (topo *Topology) NewOvsBridge(i string) *OvsBridge {
 	topo.Log()
 
 	return bridge
+}
+
+func (topo *Topology) DelNetNs(i string) {
+	topo.Lock()
+	defer topo.Unlock()
+
+	delete(topo.NetNss, i)
+
+	topo.Log()
 }
 
 func (topo *Topology) NewNetNs(i string) *NetNs {

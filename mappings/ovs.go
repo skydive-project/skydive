@@ -35,7 +35,7 @@ type OvsMapper struct {
 
 func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
 	if mapper.Topology != nil {
-		container := mapper.Topology.LookupInterfaceByMac(mac)
+		container := mapper.Topology.InterfaceByMacInOvsBridges(mac)
 		if container != nil {
 			attrs.BridgeName = proto.String(container.ID)
 			return
