@@ -46,7 +46,7 @@ type NetNSTopoUpdater struct {
 
 type NetNsNetLinkTopoUpdater struct {
 	sync.RWMutex
-	Container *Container
+	NetNs     *NetNs
 	nlUpdater *NetLinkTopoUpdater
 }
 
@@ -87,7 +87,7 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 
 	/* start a netlinks updater inside this namespace */
 	nu.Lock()
-	nu.nlUpdater = NewNetLinkTopoUpdater(nu.Container)
+	nu.nlUpdater = NewNetLinkTopoUpdater(nu.NetNs)
 	nu.Unlock()
 
 	/* NOTE(safchain) don't Start just Run, need to keep it alive for the time life of the netns
@@ -112,9 +112,9 @@ func (nu *NetNsNetLinkTopoUpdater) Stop() {
 	nu.Unlock()
 }
 
-func NewNetNsNetLinkTopoUpdater(c *Container) *NetNsNetLinkTopoUpdater {
+func NewNetNsNetLinkTopoUpdater(n *NetNs) *NetNsNetLinkTopoUpdater {
 	return &NetNsNetLinkTopoUpdater{
-		Container: c,
+		NetNs: n,
 	}
 }
 
@@ -127,9 +127,9 @@ func (u *NetNSTopoUpdater) onNetNsCreated(path string) {
 	}
 
 	logging.GetLogger().Debug("Network Namespace added: %s", name)
-	container := u.Topology.NewContainer(name, NetNs)
+	n := u.Topology.NewNetNs(name)
 
-	nu := NewNetNsNetLinkTopoUpdater(container)
+	nu := NewNetNsNetLinkTopoUpdater(n)
 	go nu.Start(path)
 
 	u.nsNlUpdaters[name] = nu
@@ -146,7 +146,7 @@ func (u *NetNSTopoUpdater) onNetNsDeleted(path string) {
 	}
 	nu.Stop()
 
-	u.Topology.DelContainer(name)
+	u.Topology.DelNetNs(name)
 
 	delete(u.nsNlUpdaters, name)
 }
