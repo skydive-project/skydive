@@ -99,14 +99,35 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 
 	intf, ok := o.uuidToIntf[uuid]
 	if !ok {
-		/* lookup the topology first since the interface could have been added by another updater, ex: netlink */
 		name := row.New.Fields["name"].(string)
 
-		intf = o.Topology.InterfaceByMac(name, mac)
+		intf = o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
 		if intf == nil {
 			intf = o.Topology.NewInterface(name, 0)
 			intf.SetMac(mac)
 		}
+
+		// peer resolution in case of a patch interface
+		if row.New.Fields["type"].(string) == "patch" {
+			intf.SetType("patch")
+
+			m := row.New.Fields["options"].(libovsdb.OvsMap)
+			if p, ok := m.GoMap["peer"]; ok {
+
+				peer := o.Topology.LookupInterface(LookupByID(p.(string)), OvsScope)
+				if peer != nil {
+					intf.SetPeer(peer)
+				} else {
+					// lookup in the intf queue
+					for _, peer = range o.uuidToIntf {
+						if peer.ID == p.(string) {
+							intf.SetPeer(peer)
+						}
+					}
+				}
+			}
+		}
+
 		o.uuidToIntf[uuid] = intf
 	}
 

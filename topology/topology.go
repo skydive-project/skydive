@@ -29,6 +29,13 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
+const (
+	NetNSScope = 1
+	OvsScope   = 2
+)
+
+type LookupFunction func(*Interface) bool
+
 type Interface struct {
 	sync.RWMutex
 	ID         string                `json:"-"`
@@ -80,9 +87,9 @@ func (topo *Topology) Log() {
 func (intf *Interface) MarshalJSON() ([]byte, error) {
 	var peer []string
 	if intf.Peer != nil && intf.Peer.Port != nil && intf.Peer.Port.OvsBridge != nil {
-		peer = []string{intf.Peer.Port.OvsBridge.ID, intf.Peer.Port.ID, intf.Peer.ID}
+		peer = []string{"OvsBridges", intf.Peer.Port.OvsBridge.ID, intf.Peer.Port.ID, intf.Peer.ID}
 	} else if intf.Peer != nil && intf.Peer.NetNs != nil {
-		peer = []string{intf.Peer.NetNs.ID, intf.Peer.ID}
+		peer = []string{"NetNss", intf.Peer.NetNs.ID, intf.Peer.ID}
 	}
 
 	return json.Marshal(&struct {
@@ -376,52 +383,47 @@ func (o *OvsBridge) AddPort(p *Port) {
 	o.Topology.Log()
 }
 
-func (topo *Topology) InterfaceByIndex(index uint32) *Interface {
-	topo.Lock()
-	defer topo.Unlock()
-
-	for _, netns := range topo.NetNss {
-		netns.Lock()
-		defer netns.Unlock()
-		for _, intf := range netns.Interfaces {
-			intf.Lock()
-			if intf.IfIndex == index {
-				intf.Unlock()
-				return intf
-			}
-			intf.Unlock()
+func LookupByMac(name string, mac string) LookupFunction {
+	return func(intf *Interface) bool {
+		if len(name) > 0 && intf.ID != name {
+			return false
 		}
+		if intf.Mac == mac {
+			return true
+		}
+		return false
 	}
-
-	return nil
 }
 
-func (topo *Topology) InterfaceByMac(i string, mac string) *Interface {
+func LookupByID(i string) LookupFunction {
+	return func(intf *Interface) bool {
+		if intf.ID == i {
+			return true
+		}
+		return false
+	}
+}
+
+func LookupByIfIndex(i uint32) LookupFunction {
+	return func(intf *Interface) bool {
+		if intf.IfIndex == i {
+			return true
+		}
+		return false
+	}
+}
+
+func (topo *Topology) LookupInterface(f LookupFunction, scope int) *Interface {
 	topo.Lock()
 	defer topo.Unlock()
 
-	for _, netns := range topo.NetNss {
-		netns.Lock()
-		defer netns.Unlock()
-		for _, intf := range netns.Interfaces {
-			intf.Lock()
-			if intf.ID == i && intf.Mac == mac {
-				intf.Unlock()
-				return intf
-			}
-			intf.Unlock()
-		}
-	}
-
-	for _, bridge := range topo.OvsBridges {
-		bridge.Lock()
-		defer bridge.Unlock()
-		for _, port := range bridge.Ports {
-			port.Lock()
-			defer port.Unlock()
-			for _, intf := range port.Interfaces {
+	if (scope & NetNSScope) > 0 {
+		for _, netns := range topo.NetNss {
+			netns.Lock()
+			defer netns.Unlock()
+			for _, intf := range netns.Interfaces {
 				intf.Lock()
-				if intf.ID == i && intf.Mac == mac {
+				if f(intf) {
 					intf.Unlock()
 					return intf
 				}
@@ -430,26 +432,21 @@ func (topo *Topology) InterfaceByMac(i string, mac string) *Interface {
 		}
 	}
 
-	return nil
-}
-
-func (topo *Topology) InterfaceByMacInOvsBridges(mac string) *Interface {
-	topo.Lock()
-	defer topo.Unlock()
-
-	for _, bridge := range topo.OvsBridges {
-		bridge.Lock()
-		defer bridge.Unlock()
-		for _, port := range bridge.Ports {
-			port.Lock()
-			defer port.Unlock()
-			for _, intf := range port.Interfaces {
-				intf.Lock()
-				if intf.Mac == mac {
+	if (scope & OvsScope) > 0 {
+		for _, bridge := range topo.OvsBridges {
+			bridge.Lock()
+			defer bridge.Unlock()
+			for _, port := range bridge.Ports {
+				port.Lock()
+				defer port.Unlock()
+				for _, intf := range port.Interfaces {
+					intf.Lock()
+					if f(intf) {
+						intf.Unlock()
+						return intf
+					}
 					intf.Unlock()
-					return intf
 				}
-				intf.Unlock()
 			}
 		}
 	}

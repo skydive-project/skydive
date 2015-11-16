@@ -40,6 +40,7 @@ func TestOvsTopology(t *testing.T) {
 	rowFields := make(map[string]interface{})
 	rowFields["name"] = "eth0.1"
 	rowFields["mac_in_use"] = "1.1.1.1.1.1"
+	rowFields["type"] = ""
 	row := libovsdb.Row{Fields: rowFields}
 	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "intf-uuid"}, New: row}
 
