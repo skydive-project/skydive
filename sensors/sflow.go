@@ -20,7 +20,7 @@
  *
  */
 
-package agents
+package sensors
 
 import (
 	"net"
@@ -40,7 +40,7 @@ const (
 	maxDgramSize = 1500
 )
 
-type SFlowAgent struct {
+type SFlowSensor struct {
 	Addr string
 	Port int
 
@@ -49,22 +49,22 @@ type SFlowAgent struct {
 	FlowMapper     *mappings.FlowMapper
 }
 
-func (agent *SFlowAgent) GetTarget() string {
-	target := []string{agent.Addr, strconv.FormatInt(int64(agent.Port), 10)}
+func (sensor *SFlowSensor) GetTarget() string {
+	target := []string{sensor.Addr, strconv.FormatInt(int64(sensor.Port), 10)}
 	return strings.Join(target, ":")
 }
 
-func (agent *SFlowAgent) start() error {
+func (sensor *SFlowSensor) start() error {
 	var buf [maxDgramSize]byte
 
 	addr := net.UDPAddr{
-		Port: agent.Port,
-		IP:   net.ParseIP(agent.Addr),
+		Port: sensor.Port,
+		IP:   net.ParseIP(sensor.Addr),
 	}
 	conn, err := net.ListenUDP("udp", &addr)
 	defer conn.Close()
 	if err != nil {
-		logging.GetLogger().Error("Unable to listen on port %d: %s", agent.Port, err.Error())
+		logging.GetLogger().Error("Unable to listen on port %d: %s", sensor.Port, err.Error())
 		return err
 	}
 
@@ -87,12 +87,12 @@ func (agent *SFlowAgent) start() error {
 
 				logging.GetLogger().Debug("%d flows captured", len(flows))
 
-				if agent.FlowMapper != nil {
-					agent.FlowMapper.Enhance(flows)
+				if sensor.FlowMapper != nil {
+					sensor.FlowMapper.Enhance(flows)
 				}
 
-				if agent.AnalyzerClient != nil {
-					agent.AnalyzerClient.SendFlows(flows)
+				if sensor.AnalyzerClient != nil {
+					sensor.AnalyzerClient.SendFlows(flows)
 				}
 			}
 		}
@@ -101,19 +101,19 @@ func (agent *SFlowAgent) start() error {
 	return nil
 }
 
-func (agent *SFlowAgent) Start() {
-	go agent.start()
+func (sensor *SFlowSensor) Start() {
+	go sensor.start()
 }
 
-func (agent *SFlowAgent) SetAnalyzerClient(a *analyzer.Client) {
-	agent.AnalyzerClient = a
+func (sensor *SFlowSensor) SetAnalyzerClient(a *analyzer.Client) {
+	sensor.AnalyzerClient = a
 }
 
-func (agent *SFlowAgent) SetFlowMapper(m *mappings.FlowMapper) {
-	agent.FlowMapper = m
+func (sensor *SFlowSensor) SetFlowMapper(m *mappings.FlowMapper) {
+	sensor.FlowMapper = m
 }
 
-func NewSFlowAgent(addr string, port int) SFlowAgent {
-	agent := SFlowAgent{Addr: addr, Port: port}
-	return agent
+func NewSFlowSensor(addr string, port int) SFlowSensor {
+	sensor := SFlowSensor{Addr: addr, Port: port}
+	return sensor
 }

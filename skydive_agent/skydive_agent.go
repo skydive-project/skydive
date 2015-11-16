@@ -26,11 +26,11 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/redhat-cip/skydive/agents"
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/mappings"
 	"github.com/redhat-cip/skydive/ovs"
+	"github.com/redhat-cip/skydive/sensors"
 	"github.com/redhat-cip/skydive/topology"
 )
 
@@ -67,17 +67,17 @@ func main() {
 
 	quit = make(chan bool)
 
-	sflowAgent := agents.NewSFlowAgent("127.0.0.1", 6345)
+	sflowSensor := sensors.NewSFlowSensor("127.0.0.1", 6345)
 
-	ovsSFlowAgent := ovsdb.SFlowAgent{
-		ID:         "SkydiveSFlowAgent",
+	ovsSFlowSensor := ovsdb.SFlowSensor{
+		ID:         "SkydiveSFlowSensor",
 		Interface:  "eth0",
-		Target:     sflowAgent.GetTarget(),
+		Target:     sflowSensor.GetTarget(),
 		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
 	}
-	sflowHandler := ovsdb.NewOvsSFlowAgentsHandler([]ovsdb.SFlowAgent{ovsSFlowAgent})
+	sflowHandler := ovsdb.NewOvsSFlowSensorsHandler([]ovsdb.SFlowSensor{ovsSFlowSensor})
 
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
 	ovsmon.AddMonitorHandler(sflowHandler)
@@ -100,14 +100,14 @@ func main() {
 		panic(err)
 	}
 	mapper.SetInterfaceMappingDrivers(drivers)
-	sflowAgent.SetFlowMapper(mapper)
+	sflowSensor.SetFlowMapper(mapper)
 
 	analyzer, err := analyzer.NewClient("127.0.0.1", 8888)
 	if err != nil {
 		panic(err)
 	}
-	sflowAgent.SetAnalyzerClient(analyzer)
-	sflowAgent.Start()
+	sflowSensor.SetAnalyzerClient(analyzer)
+	sflowSensor.Start()
 
 	ovsmon.StartMonitoring()
 

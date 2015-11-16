@@ -49,17 +49,17 @@ func (o *FakeOvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Opera
 	return result, nil
 }
 
-func getSelectPreviousRegisteredResults(agent SFlowAgent) []libovsdb.OperationResult {
+func getSelectPreviousRegisteredResults(sensor SFlowSensor) []libovsdb.OperationResult {
 	selectResult := make([]libovsdb.OperationResult, 1)
 
 	rows := make(map[string]interface{})
-	rows["_uuid"] = []interface{}{"_uuid", "agent-uuid"}
+	rows["_uuid"] = []interface{}{"_uuid", "sensor-uuid"}
 
 	rows["sampling"] = float64(1)
 	rows["polling"] = float64(0)
 
-	agentID := []interface{}{"agent-id", agent.ID}
-	extMap := []interface{}{"map", []interface{}{agentID}}
+	sensorID := []interface{}{"sensor-id", sensor.ID}
+	extMap := []interface{}{"map", []interface{}{sensorID}}
 	rows["external_ids"] = extMap
 
 	selectResult[0].Rows = make([]map[string]interface{}, 1)
@@ -68,9 +68,9 @@ func getSelectPreviousRegisteredResults(agent SFlowAgent) []libovsdb.OperationRe
 	return selectResult
 }
 
-func TestRegisterNewAgents(t *testing.T) {
-	agent := SFlowAgent{
-		ID:         "AgentID",
+func TestRegisterNewSensors(t *testing.T) {
+	sensor := SFlowSensor{
+		ID:         "SensorID",
 		Interface:  "eth0",
 		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
@@ -82,15 +82,15 @@ func TestRegisterNewAgents(t *testing.T) {
 	monitor := NewOvsMonitor("127.0.0.1", 8888)
 	monitor.OvsClient = fakeClient
 
-	handler := NewOvsSFlowAgentsHandler([]SFlowAgent{agent})
+	handler := NewOvsSFlowSensorsHandler([]SFlowSensor{sensor})
 
 	fakeClient.CurrentResult = 0
 	fakeClient.Results = make([]FakeOvsResult, 2)
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentID"]]],"header":256,"polling":0,"sampling":1,"targets":"1.1.1.1:111"},"uuid-name":"AgentID"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentID"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["sensor-id","SensorID"]]],"header":256,"polling":0,"sampling":1,"targets":"1.1.1.1:111"},"uuid-name":"SensorID"},`
+	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","SensorID"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
 
-	handler.registerAgents(monitor, "bridge1-uuid")
+	handler.registerSensors(monitor, "bridge1-uuid")
 
 	operations, _ := json.Marshal(fakeClient.Operations)
 	if string(operations) != expected {
@@ -98,9 +98,9 @@ func TestRegisterNewAgents(t *testing.T) {
 	}
 }
 
-func TestReusingRegisteredAgents(t *testing.T) {
-	agent := SFlowAgent{
-		ID:         "AgentID",
+func TestReusingRegisteredSensors(t *testing.T) {
+	sensor := SFlowSensor{
+		ID:         "SensorID",
 		Interface:  "eth0",
 		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
@@ -112,15 +112,15 @@ func TestReusingRegisteredAgents(t *testing.T) {
 	monitor := NewOvsMonitor("127.0.0.1", 8888)
 	monitor.OvsClient = fakeClient
 
-	handler := NewOvsSFlowAgentsHandler([]SFlowAgent{agent})
+	handler := NewOvsSFlowSensorsHandler([]SFlowSensor{sensor})
 
 	fakeClient.CurrentResult = 0
 	fakeClient.Results = make([]FakeOvsResult, 2)
-	fakeClient.Results[0].Result = getSelectPreviousRegisteredResults(agent)
+	fakeClient.Results[0].Result = getSelectPreviousRegisteredResults(sensor)
 
-	expected := `[{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","agent-uuid"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
+	expected := `[{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","sensor-uuid"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
 
-	handler.registerAgents(monitor, "bridge1-uuid")
+	handler.registerSensors(monitor, "bridge1-uuid")
 
 	operations, _ := json.Marshal(fakeClient.Operations)
 	if string(operations) != expected {
@@ -128,9 +128,9 @@ func TestReusingRegisteredAgents(t *testing.T) {
 	}
 }
 
-func TestUpdateRegisteredAgents(t *testing.T) {
-	agent := SFlowAgent{
-		ID:         "AgentID",
+func TestUpdateRegisteredSensors(t *testing.T) {
+	sensor := SFlowSensor{
+		ID:         "SensorID",
 		Interface:  "eth0",
 		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
@@ -142,16 +142,16 @@ func TestUpdateRegisteredAgents(t *testing.T) {
 	monitor := NewOvsMonitor("127.0.0.1", 8888)
 	monitor.OvsClient = fakeClient
 
-	handler := NewOvsSFlowAgentsHandler([]SFlowAgent{agent})
+	handler := NewOvsSFlowSensorsHandler([]SFlowSensor{sensor})
 
 	fakeClient.CurrentResult = 0
 	fakeClient.Results = make([]FakeOvsResult, 2)
-	fakeClient.Results[0].Result = getSelectPreviousRegisteredResults(agent)
+	fakeClient.Results[0].Result = getSelectPreviousRegisteredResults(sensor)
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentID"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentID"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentID"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["sensor-id","SensorID"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"SensorID"},`
+	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","SensorID"]},"where":[["_uuid","==",["named-uuid","bridge1-uuid"]]]}]`
 
-	handler.registerAgents(monitor, "bridge1-uuid")
+	handler.registerSensors(monitor, "bridge1-uuid")
 
 	operations, _ := json.Marshal(fakeClient.Operations)
 	if string(operations) != expected {
@@ -160,8 +160,8 @@ func TestUpdateRegisteredAgents(t *testing.T) {
 }
 
 func TestNewBridgeAdded(t *testing.T) {
-	agent := SFlowAgent{
-		ID:         "AgentID",
+	sensor := SFlowSensor{
+		ID:         "SensorID",
 		Interface:  "eth0",
 		Target:     "1.1.1.1:111",
 		HeaderSize: 256,
@@ -173,17 +173,17 @@ func TestNewBridgeAdded(t *testing.T) {
 	monitor := NewOvsMonitor("127.0.0.1", 8888)
 	monitor.OvsClient = fakeClient
 
-	handler := NewOvsSFlowAgentsHandler([]SFlowAgent{agent})
+	handler := NewOvsSFlowSensorsHandler([]SFlowSensor{sensor})
 
 	fakeClient.CurrentResult = 0
 	fakeClient.Results = make([]FakeOvsResult, 4)
 
-	handler.registerAgents(monitor, "bridge1-uuid")
+	handler.registerSensors(monitor, "bridge1-uuid")
 
-	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["agent-id","AgentID"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"AgentID"},`
-	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","AgentID"]},"where":[["_uuid","==",["named-uuid","bridge2-uuid"]]]}]`
+	expected := `[{"op":"insert","table":"sFlow","row":{"agent":"eth0","external_ids":["map",[["sensor-id","SensorID"]]],"header":256,"polling":0,"sampling":2,"targets":"1.1.1.1:111"},"uuid-name":"SensorID"},`
+	expected += `{"op":"update","table":"Bridge","row":{"sflow":["named-uuid","SensorID"]},"where":[["_uuid","==",["named-uuid","bridge2-uuid"]]]}]`
 
-	handler.registerAgents(monitor, "bridge2-uuid")
+	handler.registerSensors(monitor, "bridge2-uuid")
 
 	operations, _ := json.Marshal(fakeClient.Operations)
 	if string(operations) != expected {

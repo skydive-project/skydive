@@ -20,7 +20,7 @@
  *
  */
 
-package agents
+package sensors
 
 import (
 	"bytes"
@@ -30,17 +30,17 @@ import (
 	"github.com/calmh/ipfix"
 )
 
-type IpfixAgent struct {
+type IpfixSensor struct {
 	Addr string
 	Port int
 }
 
-func (agent *IpfixAgent) Start() error {
+func (sensor *IpfixSensor) Start() error {
 	var buf [4096]byte
 
 	addr := net.UDPAddr{
-		Port: agent.Port,
-		IP:   net.ParseIP(agent.Addr),
+		Port: sensor.Port,
+		IP:   net.ParseIP(sensor.Addr),
 	}
 	conn, err := net.ListenUDP("udp", &addr)
 	defer conn.Close()
@@ -75,7 +75,7 @@ func (agent *IpfixAgent) Start() error {
 	return nil
 }
 
-func NewIpfixAgent(addr string, port int) IpfixAgent {
-	agent := IpfixAgent{Addr: addr, Port: port}
-	return agent
+func NewIpfixSensor(addr string, port int) IpfixSensor {
+	sensor := IpfixSensor{Addr: addr, Port: port}
+	return sensor
 }
