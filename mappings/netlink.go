@@ -28,14 +28,15 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pmylund/go-cache"
-	"github.com/vishvananda/netlink"
 
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/topology"
 )
 
 type NetLinkMapper struct {
+	Topology         *topology.Topology
 	cache            *cache.Cache
 	cacheUpdaterChan chan uint32
 }
@@ -49,27 +50,24 @@ func (mapper *NetLinkMapper) cacheUpdater() {
 
 		logging.GetLogger().Debug("ifIndex request received: %s", ifIndex)
 
-		var attrs *netlink.LinkAttrs
-
-		link, err := netlink.LinkByIndex(int(ifIndex))
-		if err != nil {
-			logging.GetLogger().Error("Error while getting interface by index via netling: ", err.Error())
-			attrs = &netlink.LinkAttrs{}
+		intf := mapper.Topology.LookupInterface(topology.LookupByIfIndex(ifIndex), topology.NetNSScope)
+		if intf == nil {
+			logging.GetLogger().Debug("Unable to find the interface with index %d in the topology", ifIndex)
 		} else {
-			attrs = link.Attrs()
+			mapper.cache.Set(strconv.Itoa(int(ifIndex)), intf, cache.DefaultExpiration)
 		}
-
-		mapper.cache.Set(strconv.Itoa(int(ifIndex)), attrs, cache.DefaultExpiration)
 	}
 }
 
 func (mapper *NetLinkMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
-	a, f := mapper.cache.Get(strconv.Itoa(int(attrs.GetIfIndex())))
+	i, f := mapper.cache.Get(strconv.Itoa(int(attrs.GetIfIndex())))
 	if f {
-		la := a.(*netlink.LinkAttrs)
+		intf := i.(*topology.Interface)
 
-		attrs.IfName = proto.String(la.Name)
-		attrs.MTU = proto.Uint32(uint32(la.MTU))
+		// TODO(safchain) should report the full path of the interface here as
+		// we can have the same name at different place
+		attrs.IfName = proto.String(intf.ID)
+		attrs.MTU = proto.Uint32(intf.MTU)
 
 		return
 	}
@@ -77,8 +75,10 @@ func (mapper *NetLinkMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttri
 	mapper.cacheUpdaterChan <- attrs.GetIfIndex()
 }
 
-func NewNetLinkMapper() (*NetLinkMapper, error) {
-	mapper := &NetLinkMapper{}
+func NewNetLinkMapper(t *topology.Topology) (*NetLinkMapper, error) {
+	mapper := &NetLinkMapper{
+		Topology: t,
+	}
 
 	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
 	if err != nil {

@@ -23,8 +23,6 @@
 package mappings
 
 import (
-	//"github.com/golang/protobuf/proto"
-
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/topology"
 )
@@ -34,26 +32,11 @@ type OvsMapper struct {
 }
 
 func (mapper *OvsMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
-	/*if mapper.Topology != nil {
-		f := func(intf *topology.Interface) bool {
-			if intf.Mac == mac {
-				return true
-			}
-			return false
-		}
-
-		bridge := u.NetNs.Topology.LookupInterface(f, topology.NetNSScope|topology.OvsScope)
-		if bridge != nil {
-			attrs.BridgeName = proto.String(bridge.ID)
-			return
-		}
-	}
-	attrs.BridgeName = proto.String("")*/
 }
 
-func NewOvsMapper(o *topology.Topology) (*OvsMapper, error) {
+func NewOvsMapper(t *topology.Topology) (*OvsMapper, error) {
 	mapper := &OvsMapper{
-		Topology: o,
+		Topology: t,
 	}
 
 	return mapper, nil
