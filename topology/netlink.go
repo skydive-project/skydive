@@ -114,6 +114,7 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 		intf.SetType(link.Type())
 		intf.SetIndex(uint32(link.Attrs().Index))
 		intf.SetMac(link.Attrs().HardwareAddr.String())
+		intf.SetMTU(uint32(link.Attrs().MTU))
 	}
 
 	u.linkCache[link.Attrs().Index] = *link.Attrs()

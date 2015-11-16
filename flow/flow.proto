@@ -36,12 +36,12 @@ message Flow {
 	required uint64 Timestamp 	= 11;
 
 	message InterfaceAttributes {
-		optional string TenantID 	= 1;
-		optional uint64 VNI 		= 2;
-		optional uint32 IfIndex 	= 3;
-		optional string IfName 		= 4;
-		optional uint32 MTU			= 5;
-		optional string BridgeName 	= 6;
+		optional string TenantID 		= 1;
+		optional uint64 VNI 			= 2;
+		optional uint32 IfIndex 		= 3;
+		optional string IfName 			= 4;
+		optional uint32 MTU				= 5;
+		optional string OvsBridgeName 	= 6;
 	}
 
 	message MappingAttributes {

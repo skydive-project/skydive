@@ -41,6 +41,7 @@ type Interface struct {
 	ID         string                `json:"-"`
 	Type       string                `json:",omitempty"`
 	Mac        string                `json:",omitempty"`
+	MTU        uint32                `json:",omitempty"`
 	IfIndex    uint32                `json:"-"`
 	Metadatas  map[string]string     `json:",omitempty"`
 	Port       *Port                 `json:"-"`
@@ -95,12 +96,14 @@ func (intf *Interface) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Type       string                `json:",omitempty"`
 		Mac        string                `json:",omitempty"`
+		MTU        uint32                `json:",omitempty"`
 		Metadatas  map[string]string     `json:",omitempty"`
 		Interfaces map[string]*Interface `json:",omitempty"`
 		Peer       []string              `json:",omitempty"`
 	}{
 		Type:       intf.Type,
 		Mac:        intf.Mac,
+		MTU:        intf.MTU,
 		Metadatas:  intf.Metadatas,
 		Interfaces: intf.Interfaces,
 		Peer:       peer,
@@ -119,6 +122,8 @@ func (intf *Interface) SetPeer(i *Interface) {
 
 	if intf.Port != nil && intf.Port.OvsBridge != nil {
 		intf.Port.OvsBridge.Topology.Log()
+	} else if intf.NetNs != nil {
+		intf.NetNs.Topology.Log()
 	}
 }
 
@@ -128,6 +133,20 @@ func (intf *Interface) SetMac(mac string) {
 	defer intf.Unlock()
 
 	intf.Mac = mac
+
+	if intf.Port != nil && intf.Port.OvsBridge != nil {
+		intf.Port.OvsBridge.Topology.Log()
+	} else if intf.NetNs != nil {
+		intf.NetNs.Topology.Log()
+	}
+}
+
+// SetMac set the mac address
+func (intf *Interface) SetMTU(mtu uint32) {
+	intf.Lock()
+	defer intf.Unlock()
+
+	intf.MTU = mtu
 
 	if intf.Port != nil && intf.Port.OvsBridge != nil {
 		intf.Port.OvsBridge.Topology.Log()
