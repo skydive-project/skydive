@@ -25,6 +25,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+
+	"github.com/gorilla/mux"
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
@@ -110,6 +113,10 @@ func main() {
 	sflowSensor.Start()
 
 	ovsmon.StartMonitoring()
+
+	router := mux.NewRouter().StrictSlash(true)
+	topology.RegisterTopologyServerEndpoints(topo, router)
+	http.ListenAndServe(":8080", router)
 
 	fmt.Println("Skydive Agent started !")
 	<-quit

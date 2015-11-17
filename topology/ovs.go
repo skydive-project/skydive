@@ -93,8 +93,6 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 	case string:
 		mac = row.New.Fields["mac_in_use"].(string)
 	default:
-		/* do not handle interface without mac, is it even possible ??? */
-		return
 	}
 
 	intf, ok := o.uuidToIntf[uuid]
@@ -104,6 +102,7 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 		intf = o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
 		if intf == nil {
 			intf = o.Topology.NewInterface(name, 0)
+			intf.SetType("openvswitch")
 			intf.SetMac(mac)
 		}
 

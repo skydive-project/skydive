@@ -49,7 +49,11 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 	name := link.Attrs().Name
 	mac := link.Attrs().HardwareAddr.String()
 
-	intf := u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
+	var intf *Interface
+	if name != "lo" {
+		intf = u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
+	}
+
 	if intf == nil {
 		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
 	} else {
@@ -64,6 +68,19 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 		if parent != nil {
 			parent.AddInterface(intf)
 		}
+	}
+
+	return intf
+}
+
+func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link) *Interface {
+	name := link.Attrs().Name
+
+	intf := u.NetNs.Topology.LookupInterface(LookupByType(name, "openvswitch"), OvsScope)
+	if intf == nil {
+		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
+	} else {
+		u.NetNs.AddInterface(intf)
 	}
 
 	return intf
@@ -105,7 +122,7 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	case "bridge":
 		fallthrough
 	case "openvswitch":
-		fallthrough
+		intf = u.addOvsLinkToTopology(link)
 	default:
 		intf = u.addGenericLinkToTopology(link)
 	}

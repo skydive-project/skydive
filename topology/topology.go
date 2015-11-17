@@ -26,6 +26,8 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/nu7hatch/gouuid"
+
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -38,11 +40,12 @@ type LookupFunction func(*Interface) bool
 
 type Interface struct {
 	sync.RWMutex
+	UUID       string
 	ID         string                `json:"-"`
 	Type       string                `json:",omitempty"`
 	Mac        string                `json:",omitempty"`
 	MTU        uint32                `json:",omitempty"`
-	IfIndex    uint32                `json:"-"`
+	IfIndex    uint32                `json:",omitempty"`
 	Metadatas  map[string]string     `json:",omitempty"`
 	Port       *Port                 `json:"-"`
 	NetNs      *NetNs                `json:"-"`
@@ -81,32 +84,33 @@ type Topology struct {
 
 func (topo *Topology) Log() {
 	j, _ := json.Marshal(topo)
-	//j = []byte{}
 	logging.GetLogger().Debug("Topology: %s", string(j))
 }
 
 func (intf *Interface) MarshalJSON() ([]byte, error) {
-	var peer []string
-	if intf.Peer != nil && intf.Peer.Port != nil && intf.Peer.Port.OvsBridge != nil {
-		peer = []string{"OvsBridges", intf.Peer.Port.OvsBridge.ID, intf.Peer.Port.ID, intf.Peer.ID}
-	} else if intf.Peer != nil && intf.Peer.NetNs != nil {
-		peer = []string{"NetNss", intf.Peer.NetNs.ID, intf.Peer.ID}
+	var peer string
+	if intf.Peer != nil {
+		peer = intf.Peer.UUID
 	}
 
 	return json.Marshal(&struct {
+		UUID       string
 		Type       string                `json:",omitempty"`
 		Mac        string                `json:",omitempty"`
 		MTU        uint32                `json:",omitempty"`
 		Metadatas  map[string]string     `json:",omitempty"`
 		Interfaces map[string]*Interface `json:",omitempty"`
-		Peer       []string              `json:",omitempty"`
+		Peer       string                `json:",omitempty"`
+		IfIndex    uint32                `json:",omitempty"`
 	}{
+		UUID:       intf.UUID,
 		Type:       intf.Type,
 		Mac:        intf.Mac,
 		MTU:        intf.MTU,
 		Metadatas:  intf.Metadatas,
 		Interfaces: intf.Interfaces,
 		Peer:       peer,
+		IfIndex:    intf.IfIndex,
 	})
 }
 
@@ -216,8 +220,11 @@ func (intf *Interface) NewInterface(i string, index uint32) *Interface {
 	intf.Lock()
 	defer intf.Unlock()
 
+	u, _ := uuid.NewV4()
+
 	nIntf := &Interface{
 		ID:         i,
+		UUID:       u.String(),
 		Metadatas:  make(map[string]string),
 		Interfaces: make(map[string]*Interface),
 		IfIndex:    index,
@@ -238,8 +245,11 @@ func (n *NetNs) NewInterface(i string, index uint32) *Interface {
 	n.Lock()
 	defer n.Unlock()
 
+	u, _ := uuid.NewV4()
+
 	intf := &Interface{
 		ID:         i,
+		UUID:       u.String(),
 		Metadatas:  make(map[string]string),
 		Interfaces: make(map[string]*Interface),
 		IfIndex:    index,
@@ -298,8 +308,11 @@ func (p *Port) NewInterface(i string, index uint32) *Interface {
 	p.Lock()
 	defer p.Unlock()
 
+	u, _ := uuid.NewV4()
+
 	intf := &Interface{
 		ID:         i,
+		UUID:       u.String(),
 		Metadatas:  make(map[string]string),
 		Interfaces: make(map[string]*Interface),
 		IfIndex:    index,
@@ -402,6 +415,18 @@ func (o *OvsBridge) AddPort(p *Port) {
 	o.Topology.Log()
 }
 
+func LookupByType(name string, t string) LookupFunction {
+	return func(intf *Interface) bool {
+		if len(name) > 0 && intf.ID != name {
+			return false
+		}
+		if intf.Type == t {
+			return true
+		}
+		return false
+	}
+}
+
 func LookupByMac(name string, mac string) LookupFunction {
 	return func(intf *Interface) bool {
 		if len(name) > 0 && intf.ID != name {
@@ -484,8 +509,11 @@ func (topo *Topology) NewPort(i string) *Port {
 }
 
 func (topo *Topology) NewInterface(i string, index uint32) *Interface {
+	u, _ := uuid.NewV4()
+
 	intf := &Interface{
 		ID:         i,
+		UUID:       u.String(),
 		Metadatas:  make(map[string]string),
 		Interfaces: make(map[string]*Interface),
 		IfIndex:    index,
