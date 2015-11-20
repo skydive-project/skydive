@@ -92,42 +92,43 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 	switch row.New.Fields["mac_in_use"].(type) {
 	case string:
 		mac = row.New.Fields["mac_in_use"].(string)
-	default:
 	}
 
-	intf, ok := o.uuidToIntf[uuid]
-	if !ok {
-		name := row.New.Fields["name"].(string)
+	name := row.New.Fields["name"].(string)
 
-		intf = o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
-		if intf == nil {
-			intf = o.Topology.NewInterface(name, 0)
-			intf.SetType("openvswitch")
-			intf.SetMac(mac)
-		}
+	intf := o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
+	if intf == nil {
+		intf = o.Topology.NewInterface(name, 0)
+		intf.SetType("openvswitch")
+		intf.SetMac(mac)
 
-		// peer resolution in case of a patch interface
-		if row.New.Fields["type"].(string) == "patch" {
-			intf.SetType("patch")
+		o.uuidToIntf[uuid] = intf
+	}
 
-			m := row.New.Fields["options"].(libovsdb.OvsMap)
-			if p, ok := m.GoMap["peer"]; ok {
+	// type
+	if t, ok := row.New.Fields["type"]; ok {
+		intf.SetMetadata("Type", t.(string))
+	}
 
-				peer := o.Topology.LookupInterface(LookupByID(p.(string)), OvsScope)
-				if peer != nil {
-					intf.SetPeer(peer)
-				} else {
-					// lookup in the intf queue
-					for _, peer = range o.uuidToIntf {
-						if peer.ID == p.(string) {
-							intf.SetPeer(peer)
-						}
+	// peer resolution in case of a patch interface
+	if row.New.Fields["type"].(string) == "patch" {
+		intf.SetType("patch")
+
+		m := row.New.Fields["options"].(libovsdb.OvsMap)
+		if p, ok := m.GoMap["peer"]; ok {
+
+			peer := o.Topology.LookupInterface(LookupByID(p.(string)), OvsScope)
+			if peer != nil {
+				intf.SetPeer(peer)
+			} else {
+				// lookup in the intf queue
+				for _, peer = range o.uuidToIntf {
+					if peer.ID == p.(string) {
+						intf.SetPeer(peer)
 					}
 				}
 			}
 		}
-
-		o.uuidToIntf[uuid] = intf
 	}
 
 	/* set pending interface for a port */
