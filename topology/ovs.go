@@ -124,24 +124,21 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 			if ip, ok := m.GoMap["remote_ip"]; ok {
 				intf.SetMetadata("RemoteIP", ip.(string))
 			}
-		}
-	}
+		case "patch":
+			intf.SetType("patch")
 
-	// peer resolution in case of a patch interface
-	if row.New.Fields["type"].(string) == "patch" {
-		intf.SetType("patch")
+			m := row.New.Fields["options"].(libovsdb.OvsMap)
+			if p, ok := m.GoMap["peer"]; ok {
 
-		m := row.New.Fields["options"].(libovsdb.OvsMap)
-		if p, ok := m.GoMap["peer"]; ok {
-
-			peer := o.Topology.LookupInterface(LookupByID(p.(string)), OvsScope)
-			if peer != nil {
-				intf.SetPeer(peer)
-			} else {
-				// lookup in the intf queue
-				for _, peer = range o.uuidToIntf {
-					if peer.ID == p.(string) {
-						intf.SetPeer(peer)
+				peer := o.Topology.LookupInterface(LookupByID(p.(string)), OvsScope)
+				if peer != nil {
+					intf.SetPeer(peer)
+				} else {
+					// lookup in the intf queue
+					for _, peer = range o.uuidToIntf {
+						if peer.ID == p.(string) {
+							intf.SetPeer(peer)
+						}
 					}
 				}
 			}
