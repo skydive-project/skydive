@@ -23,6 +23,7 @@
 package topology
 
 import (
+	"net"
 	"syscall"
 	"time"
 
@@ -132,6 +133,12 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 		intf.SetIndex(uint32(link.Attrs().Index))
 		intf.SetMac(link.Attrs().HardwareAddr.String())
 		intf.SetMetadata("MTU", uint32(link.Attrs().MTU))
+
+		if (link.Attrs().Flags & net.FlagUp) > 0 {
+			intf.SetMetadata("State", "UP")
+		} else {
+			intf.SetMetadata("State", "DOWN")
+		}
 	}
 
 	u.linkCache[link.Attrs().Index] = *link.Attrs()
