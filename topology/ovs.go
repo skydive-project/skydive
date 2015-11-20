@@ -164,6 +164,19 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 		o.uuidToPort[uuid] = port
 	}
 
+	// vlan tag
+	if tag, ok := row.New.Fields["tag"]; ok {
+		switch tag.(type) {
+		case libovsdb.OvsSet:
+			set := tag.(libovsdb.OvsSet)
+			if len(set.GoSet) > 0 {
+				port.SetMetadata("Vlans", set.GoSet)
+			}
+		case float64:
+			port.SetMetadata("Vlans", int(tag.(float64)))
+		}
+	}
+
 	switch row.New.Fields["interfaces"].(type) {
 	case libovsdb.OvsSet:
 		set := row.New.Fields["interfaces"].(libovsdb.OvsSet)

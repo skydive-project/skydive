@@ -12,6 +12,10 @@
 		<script src="https://cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.min.js"></script>
 		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"></script>
 
+		<script src="http://cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.0/jquery.qtip.min.js"></script>
+		<link href="http://cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.0/jquery.qtip.min.css" rel="stylesheet" type="text/css" />
+		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-qtip/2.2.5/cytoscape-qtip.js"></script>
+
 		<style>
 		body {
 			padding-top: 50px;
@@ -29,6 +33,26 @@
 			var switchImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/switch.png';
 			var portImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/flow_chart.png';
 			var intfImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/wired_network.png';
+
+			function addTooltip(cy, id, el) {
+				if (!("Metadatas" in el))
+					return;
+
+				var metadata = '';
+				for (k in el["Metadatas"]) {
+					metadata += k + ': ' + el["Metadatas"][k];
+				}
+
+				cy.$('#' + id).qtip({
+					content: {
+						title:'Metadatas',
+						text: metadata
+					},
+					style: {
+						classes: 'qtip-bootstrap'
+					}
+				});
+			}
 
 			function drawTopology(topology) {
 				var cy = cytoscape({
@@ -110,6 +134,8 @@
 
 						cy.add({data: {id: portId, label: portName, parent: bridgeBoxId, img: portImg}});
 
+						addTooltip(cy, portId, ports[portName]);
+
 						// bridge to port
 						cy.add({data: {id: bridgeId + '->' + portId, source: bridgeId, target: portId, style: "solid", weight: 20}});
 
@@ -121,6 +147,8 @@
 							uuidToId[uuid] = intfId;
 
 							cy.add({data: {id: intfId, label: intfName, parent: bridgeBoxId, img: intfImg}});
+
+							addTooltip(cy, intfId, intfs[intfName]);
 
 							// port to intf
 							cy.add({data: {id: portId + '->' + intfId, source: portId, target: intfId, style: "solid", weight: 20}});
@@ -155,6 +183,8 @@
 
 						cy.add({data: {id: intfId, label: intfName, parent: parentId, img: intfImg}});
 
+						addTooltip(cy, intfId, intfs[intfName]);
+
 						// if already in ovs add a dotted link since this is the same interface that is
 						// in an ovs bridge and in a netns
 						uuid = intfs[intfName]["UUID"]
@@ -176,6 +206,8 @@
 					targetId = uuidToId[peering[uuid]]
 					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "dashed", weight: 3}});
 				}
+
+
 			}
 
 			$(document).ready(function() {

@@ -41,25 +41,25 @@ type LookupFunction func(*Interface) bool
 type Interface struct {
 	sync.RWMutex
 	UUID       string
-	ID         string                `json:"-"`
-	Type       string                `json:",omitempty"`
-	Mac        string                `json:",omitempty"`
-	MTU        uint32                `json:",omitempty"`
-	IfIndex    uint32                `json:",omitempty"`
-	Metadatas  map[string]string     `json:",omitempty"`
-	Port       *Port                 `json:"-"`
-	NetNs      *NetNs                `json:"-"`
-	Peer       *Interface            `json:",omitempty"`
-	Interfaces map[string]*Interface `json:",omitempty"`
-	Parent     *Interface            `json:",omitempty"`
+	ID         string                 `json:"-"`
+	Type       string                 `json:",omitempty"`
+	Mac        string                 `json:",omitempty"`
+	MTU        uint32                 `json:",omitempty"`
+	IfIndex    uint32                 `json:",omitempty"`
+	Metadatas  map[string]interface{} `json:",omitempty"`
+	Port       *Port                  `json:"-"`
+	NetNs      *NetNs                 `json:"-"`
+	Peer       *Interface             `json:",omitempty"`
+	Interfaces map[string]*Interface  `json:",omitempty"`
+	Parent     *Interface             `json:",omitempty"`
 }
 
 type Port struct {
 	sync.RWMutex
-	ID         string                `json:"-"`
-	Metadatas  map[string]string     `json:",omitempty"`
-	Interfaces map[string]*Interface `json:",omitempty"`
-	OvsBridge  *OvsBridge            `json:"-"`
+	ID         string                 `json:"-"`
+	Interfaces map[string]*Interface  `json:",omitempty"`
+	Metadatas  map[string]interface{} `json:",omitempty"`
+	OvsBridge  *OvsBridge             `json:"-"`
 }
 
 type OvsBridge struct {
@@ -95,13 +95,13 @@ func (intf *Interface) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(&struct {
 		UUID       string
-		Type       string                `json:",omitempty"`
-		Mac        string                `json:",omitempty"`
-		MTU        uint32                `json:",omitempty"`
-		Metadatas  map[string]string     `json:",omitempty"`
-		Interfaces map[string]*Interface `json:",omitempty"`
-		Peer       string                `json:",omitempty"`
-		IfIndex    uint32                `json:",omitempty"`
+		Type       string                 `json:",omitempty"`
+		Mac        string                 `json:",omitempty"`
+		MTU        uint32                 `json:",omitempty"`
+		Metadatas  map[string]interface{} `json:",omitempty"`
+		Interfaces map[string]*Interface  `json:",omitempty"`
+		Peer       string                 `json:",omitempty"`
+		IfIndex    uint32                 `json:",omitempty"`
 	}{
 		UUID:       intf.UUID,
 		Type:       intf.Type,
@@ -145,18 +145,12 @@ func (intf *Interface) SetMac(mac string) {
 	}
 }
 
-// SetMac set the mac address
-func (intf *Interface) SetMTU(mtu uint32) {
+// SetMetadata attach metadata to the interface
+func (intf *Interface) SetMetadata(key string, value interface{}) {
 	intf.Lock()
 	defer intf.Unlock()
 
-	intf.MTU = mtu
-
-	if intf.Port != nil && intf.Port.OvsBridge != nil {
-		intf.Port.OvsBridge.Topology.Log()
-	} else if intf.NetNs != nil {
-		intf.NetNs.Topology.Log()
-	}
+	intf.Metadatas[key] = value
 }
 
 // SetType set the type of the interface, could be device, openvswitch, veth, etc.
@@ -225,7 +219,7 @@ func (intf *Interface) NewInterface(i string, index uint32) *Interface {
 	nIntf := &Interface{
 		ID:         i,
 		UUID:       u.String(),
-		Metadatas:  make(map[string]string),
+		Metadatas:  make(map[string]interface{}),
 		Interfaces: make(map[string]*Interface),
 		IfIndex:    index,
 		Parent:     intf,
@@ -250,7 +244,7 @@ func (n *NetNs) NewInterface(i string, index uint32) *Interface {
 	intf := &Interface{
 		ID:         i,
 		UUID:       u.String(),
-		Metadatas:  make(map[string]string),
+		Metadatas:  make(map[string]interface{}),
 		Interfaces: make(map[string]*Interface),
 		IfIndex:    index,
 		NetNs:      n,
@@ -296,6 +290,14 @@ func (n *NetNs) GetInterface(i string) *Interface {
 	return nil
 }
 
+// SetMetadata attach metadata to the port
+func (p *Port) SetMetadata(key string, value interface{}) {
+	p.Lock()
+	defer p.Unlock()
+
+	p.Metadatas[key] = value
+}
+
 // Del removes the port from the ovs bridge containing it
 func (p *Port) Del() {
 	if p.OvsBridge != nil {
@@ -313,7 +315,7 @@ func (p *Port) NewInterface(i string, index uint32) *Interface {
 	intf := &Interface{
 		ID:         i,
 		UUID:       u.String(),
-		Metadatas:  make(map[string]string),
+		Metadatas:  make(map[string]interface{}),
 		Interfaces: make(map[string]*Interface),
 		IfIndex:    index,
 		Port:       p,
@@ -391,8 +393,8 @@ func (o *OvsBridge) NewPort(i string) *Port {
 
 	port := &Port{
 		ID:         i,
-		Metadatas:  make(map[string]string),
 		Interfaces: make(map[string]*Interface),
+		Metadatas:  make(map[string]interface{}),
 		OvsBridge:  o,
 	}
 	o.Ports[i] = port
@@ -501,8 +503,8 @@ func (topo *Topology) LookupInterface(f LookupFunction, scope int) *Interface {
 func (topo *Topology) NewPort(i string) *Port {
 	port := &Port{
 		ID:         i,
-		Metadatas:  make(map[string]string),
 		Interfaces: make(map[string]*Interface),
+		Metadatas:  make(map[string]interface{}),
 	}
 
 	return port
@@ -514,7 +516,7 @@ func (topo *Topology) NewInterface(i string, index uint32) *Interface {
 	intf := &Interface{
 		ID:         i,
 		UUID:       u.String(),
-		Metadatas:  make(map[string]string),
+		Metadatas:  make(map[string]interface{}),
 		Interfaces: make(map[string]*Interface),
 		IfIndex:    index,
 	}
