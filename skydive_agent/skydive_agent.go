@@ -39,7 +39,7 @@ var quit chan bool
 func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
 	drivers := []mappings.InterfaceMappingDriver{}
 
-	netlink, err := mappings.NewNetLinkMapper()
+	netlink, err := mappings.NewNetLinkMapper(topo)
 	if err != nil {
 		return drivers, err
 	}

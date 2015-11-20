@@ -47,7 +47,9 @@ type NetLinkTopoUpdater struct {
 
 func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interface {
 	name := link.Attrs().Name
-	intf := u.NetNs.Topology.InterfaceByMac(name, link.Attrs().HardwareAddr.String())
+	mac := link.Attrs().HardwareAddr.String()
+
+	intf := u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
 	if intf == nil {
 		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
 	} else {
@@ -56,7 +58,9 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 
 	/* part of a bridge */
 	if link.Attrs().MasterIndex != 0 {
-		parent := u.NetNs.Topology.InterfaceByIndex(uint32(link.Attrs().MasterIndex))
+		index := uint32(link.Attrs().MasterIndex)
+
+		parent := u.NetNs.Topology.LookupInterface(LookupByIfIndex(index), NetNSScope|OvsScope)
 		if parent != nil {
 			parent.AddInterface(intf)
 		}
@@ -67,7 +71,9 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 
 func (u *NetLinkTopoUpdater) addVethLinkToTopology(link netlink.Link) *Interface {
 	name := link.Attrs().Name
-	intf := u.NetNs.Topology.InterfaceByMac(name, link.Attrs().HardwareAddr.String())
+	mac := link.Attrs().HardwareAddr.String()
+
+	intf := u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
 	if intf == nil {
 		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
 	} else {
@@ -81,7 +87,7 @@ func (u *NetLinkTopoUpdater) addVethLinkToTopology(link netlink.Link) *Interface
 	}
 
 	if index, ok := stats["peer_ifindex"]; ok {
-		peer := u.NetNs.Topology.InterfaceByIndex(uint32(index))
+		peer := u.NetNs.Topology.LookupInterface(LookupByIfIndex(uint32(index)), NetNSScope|OvsScope)
 		if peer != nil {
 			intf.SetPeer(peer)
 		}
@@ -108,6 +114,7 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 		intf.SetType(link.Type())
 		intf.SetIndex(uint32(link.Attrs().Index))
 		intf.SetMac(link.Attrs().HardwareAddr.String())
+		intf.SetMTU(uint32(link.Attrs().MTU))
 	}
 
 	u.linkCache[link.Attrs().Index] = *link.Attrs()
@@ -133,7 +140,7 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	}
 
 	// case of removing the interface from a bridge
-	intf := u.NetNs.Topology.InterfaceByIndex(uint32(index))
+	intf := u.NetNs.Topology.LookupInterface(LookupByIfIndex(uint32(index)), NetNSScope)
 	if intf != nil && intf.Parent != nil {
 		intf.Parent.DelInterface(attrs.Name)
 	}
