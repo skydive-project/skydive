@@ -107,11 +107,13 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 
 	// type
 	if t, ok := row.New.Fields["type"]; ok {
-		t = t.(string)
-		intf.SetMetadata("Type", t)
+		tp := t.(string)
+		if len(tp) > 0 {
+			intf.SetMetadata("Type", tp)
+		}
 
 		// handle tunnels
-		switch t {
+		switch tp {
 		case "gre":
 			fallthrough
 		case "vxlan":
