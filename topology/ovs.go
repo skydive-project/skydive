@@ -107,7 +107,22 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 
 	// type
 	if t, ok := row.New.Fields["type"]; ok {
-		intf.SetMetadata("Type", t.(string))
+		t = t.(string)
+		intf.SetMetadata("Type", t)
+
+		// handle tunnels
+		switch t {
+		case "gre":
+			fallthrough
+		case "vxlan":
+			m := row.New.Fields["options"].(libovsdb.OvsMap)
+			if ip, ok := m.GoMap["local_ip"]; ok {
+				intf.SetMetadata("LocalIP", ip.(string))
+			}
+			if ip, ok := m.GoMap["remote_ip"]; ok {
+				intf.SetMetadata("RemoteIP", ip.(string))
+			}
+		}
 	}
 
 	// peer resolution in case of a patch interface
