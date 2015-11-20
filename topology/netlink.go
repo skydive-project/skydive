@@ -40,10 +40,11 @@ const (
 )
 
 type NetLinkTopoUpdater struct {
-	NetNs     *NetNs
-	linkCache map[int]netlink.LinkAttrs
-	nlSocket  *nl.NetlinkSocket
-	doneChan  chan struct{}
+	NetNs             *NetNs
+	linkCache         map[int]netlink.LinkAttrs
+	nlSocket          *nl.NetlinkSocket
+	doneChan          chan struct{}
+	indexTointfsQueue map[uint32][]*Interface
 }
 
 func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interface {
@@ -55,10 +56,19 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 		intf = u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
 	}
 
+	index := uint32(link.Attrs().Index)
 	if intf == nil {
-		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
+		intf = u.NetNs.NewInterface(name, index)
 	} else {
 		u.NetNs.AddInterface(intf)
+	}
+
+	// add children of this interface that haven previously added
+	if children, ok := u.indexTointfsQueue[index]; ok {
+		for _, child := range children {
+			intf.AddInterface(child)
+		}
+		delete(u.indexTointfsQueue, index)
 	}
 
 	/* part of a bridge */
@@ -68,6 +78,9 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 		parent := u.NetNs.Topology.LookupInterface(LookupByIfIndex(index), NetNSScope|OvsScope)
 		if parent != nil {
 			parent.AddInterface(intf)
+		} else {
+			// not yet the bridge so, enqueue for a later add
+			u.indexTointfsQueue[index] = append(u.indexTointfsQueue[index], intf)
 		}
 	}
 
@@ -120,10 +133,10 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	switch link.Type() {
 	case "veth":
 		intf = u.addVethLinkToTopology(link)
-	case "bridge":
-		fallthrough
 	case "openvswitch":
 		intf = u.addOvsLinkToTopology(link)
+	case "bridge":
+		fallthrough
 	default:
 		intf = u.addGenericLinkToTopology(link)
 	}
@@ -279,8 +292,9 @@ func (u *NetLinkTopoUpdater) Stop() {
 
 func NewNetLinkTopoUpdater(n *NetNs) *NetLinkTopoUpdater {
 	return &NetLinkTopoUpdater{
-		NetNs:     n,
-		linkCache: make(map[int]netlink.LinkAttrs),
-		doneChan:  make(chan struct{}),
+		NetNs:             n,
+		linkCache:         make(map[int]netlink.LinkAttrs),
+		doneChan:          make(chan struct{}),
+		indexTointfsQueue: make(map[uint32][]*Interface),
 	}
 }

@@ -118,6 +118,7 @@
 
 				peering = {};
 				uuidToId = {};
+				bridges = {};
 
 				// first to draw all the nodes
 				for (var bridgeName in topology["OvsBridges"]) {
@@ -180,14 +181,28 @@
 					intfs = topology["NetNss"][nsName]["Interfaces"]
 					for (var intfName in intfs) {
 						intfId = nsId + intfName
+						uuid = intfs[intfName]["UUID"]
 
-						cy.add({data: {id: intfId, label: intfName, parent: parentId, img: intfImg}});
+						img = intfImg;
+						if (intfs[intfName]["Type"] == "bridge") {
+							img = switchImg;
+
+							bridge = intfs[intfName]
+							if ("Interfaces" in bridge) {
+								for (childName in bridge["Interfaces"]) {
+									childUUID = bridge["Interfaces"][childName]["UUID"]
+									if (!(childUUID in bridges))
+										bridges[childUUID] = uuid
+								}
+							}
+						}
+
+						cy.add({data: {id: intfId, label: intfName, parent: parentId, img: img}});
 
 						addTooltip(cy, intfId, intfs[intfName]);
 
 						// if already in ovs add a dotted link since this is the same interface that is
 						// in an ovs bridge and in a netns
-						uuid = intfs[intfName]["UUID"]
 						if (uuid in uuidToId) {
 							cy.add({data: {id: uuid + '->' + uuid, source: uuidToId[uuid], target: intfId, style: "dotted", weight: 1}});
 						}
@@ -196,18 +211,22 @@
 						if ("Peer" in intfs[intfName] && intfs[intfName]["Peer"]) {
 							peerUUID = intfs[intfName]["Peer"]
 							if (!(peerUUID in peering))
-								peering[uuid] = peerUUID
+								peering[uuid] = peerUUID;
 						}
 					}
 				}
 
 				for (var uuid in peering) {
-					sourceId = uuidToId[uuid]
-					targetId = uuidToId[peering[uuid]]
+					sourceId = uuidToId[uuid];
+					targetId = uuidToId[peering[uuid]];
 					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "dashed", weight: 3}});
 				}
 
-
+				for (var uuid in bridges) {
+					sourceId = uuidToId[bridges[uuid]];
+					targetId = uuidToId[uuid];
+					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "solid", weight: 3}});
+				}
 			}
 
 			$(document).ready(function() {
