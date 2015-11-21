@@ -103,8 +103,8 @@
 					    {
 					    	selector: 'edge',
 					    	style: {
-					    		'width': 4,
-					    		'line-color': '#333',
+					    		'width': 'data(edgeWidth)',
+					    		'line-color': 'data(edgeColor)',
 					    		'line-style': 'data(style)',
 					    		'target-arrow-color': '#333'
 					    	}
@@ -119,10 +119,11 @@
 				peering = {};
 				uuidToId = {};
 				bridges = {};
+				uuidToIntf = {};
 
 				// first to draw all the nodes
 				for (var bridgeName in topology["OvsBridges"]) {
-					bridgeId = bridgeName
+					bridgeId = bridgeName;
 
 					bridgeBoxId = 'OvsBridges_' + bridgeId;
 					cy.add({data: {id: bridgeBoxId, label: 'OvsBridge', img: 'none'}});
@@ -131,33 +132,34 @@
 
 					ports = topology["OvsBridges"][bridgeName]["Ports"]
 					for (var portName in ports) {
-						portId = bridgeId + portName
+						portId = bridgeId + portName;
 
 						cy.add({data: {id: portId, label: portName, parent: bridgeBoxId, img: portImg}});
 
 						addTooltip(cy, portId, ports[portName]);
 
 						// bridge to port
-						cy.add({data: {id: bridgeId + '->' + portId, source: bridgeId, target: portId, style: "solid", weight: 20}});
+						cy.add({data: {id: bridgeId + '->' + portId, source: bridgeId, target: portId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
 
 						intfs = ports[portName]["Interfaces"]
 						for (var intfName in intfs) {
-							intfId = portId + intfName
+							intfId = portId + intfName;
 
 							uuid = intfs[intfName]["UUID"];
 							uuidToId[uuid] = intfId;
+							uuidToIntf[uuid] = intfs[intfName];
 
 							cy.add({data: {id: intfId, label: intfName, parent: bridgeBoxId, img: intfImg}});
 
 							addTooltip(cy, intfId, intfs[intfName]);
 
 							// port to intf
-							cy.add({data: {id: portId + '->' + intfId, source: portId, target: intfId, style: "solid", weight: 20}});
+							cy.add({data: {id: portId + '->' + intfId, source: portId, target: intfId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
 
 							if ("Peer" in intfs[intfName] && intfs[intfName]["Peer"]) {
 								peerUUID = intfs[intfName]["Peer"]
 								if (!(uuid in peering) && !(peerUUID in peering))
-									peering[uuid] = peerUUID
+									peering[uuid] = peerUUID;
 							}
 						}
 					}
@@ -165,7 +167,7 @@
 
 				var ns = 0;
 				for (var nsName in topology["NetNss"]) {
-					nsId = nsName
+					nsId = nsName;
 
 					// skip netns with only one interface meaning only the loopback
 					if (Object.keys(topology["NetNss"][nsName]["Interfaces"]).length < 2) {
@@ -180,8 +182,8 @@
 
 					intfs = topology["NetNss"][nsName]["Interfaces"]
 					for (var intfName in intfs) {
-						intfId = nsId + intfName
-						uuid = intfs[intfName]["UUID"]
+						intfId = nsId + intfName;
+						uuid = intfs[intfName]["UUID"];
 
 						img = intfImg;
 						if (intfs[intfName]["Type"] == "bridge") {
@@ -192,7 +194,7 @@
 								for (childName in bridge["Interfaces"]) {
 									childUUID = bridge["Interfaces"][childName]["UUID"]
 									if (!(childUUID in bridges))
-										bridges[childUUID] = uuid
+										bridges[childUUID] = uuid;
 								}
 							}
 						}
@@ -204,9 +206,10 @@
 						// if already in ovs add a dotted link since this is the same interface that is
 						// in an ovs bridge and in a netns
 						if (uuid in uuidToId) {
-							cy.add({data: {id: uuid + '->' + uuid, source: uuidToId[uuid], target: intfId, style: "dotted", weight: 1}});
+							cy.add({data: {id: uuid + '->' + uuid, source: uuidToId[uuid], target: intfId, style: "dotted", edgeWidth: 6, edgeColor: "#000"}});
 						}
 						uuidToId[uuid] = intfId;
+						uuidToIntf[uuid] = intfs[intfName];
 
 						if ("Peer" in intfs[intfName] && intfs[intfName]["Peer"]) {
 							peerUUID = intfs[intfName]["Peer"]
@@ -219,13 +222,19 @@
 				for (var uuid in peering) {
 					sourceId = uuidToId[uuid];
 					targetId = uuidToId[peering[uuid]];
-					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "dashed", weight: 3}});
+					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "dashed", edgeWidth: 4, edgeColor: "#333"}});
 				}
 
 				for (var uuid in bridges) {
-					sourceId = uuidToId[bridges[uuid]];
-					targetId = uuidToId[uuid];
-					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "solid", weight: 3}});
+					if (uuidToIntf[uuid]["Type"] != "veth") {
+						sourceId = uuidToId[bridges[uuid]];
+						targetId = uuidToId[uuid];
+					} else {
+						targetId = uuidToId[bridges[uuid]];
+						sourceId = uuidToId[uuid];;
+					}
+
+					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
 				}
 			}
 
