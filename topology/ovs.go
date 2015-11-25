@@ -94,16 +94,40 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 		mac = row.New.Fields["mac_in_use"].(string)
 	}
 
+	var driver string
+	if d, ok := row.New.Fields["status"].(libovsdb.OvsMap).GoMap["driver_name"]; ok {
+		driver = d.(string)
+	}
+
 	name := row.New.Fields["name"].(string)
 
-	intf := o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
-	if intf == nil {
-		intf = o.Topology.NewInterface(name, 0)
-		intf.SetType("openvswitch")
-		intf.SetMac(mac)
-
-		o.uuidToIntf[uuid] = intf
+	intf := o.Topology.LookupInterface(LookupByUUID(uuid), OvsScope)
+	if intf != nil {
+		// mac has been set or changed
+		if mac != intf.GetMac() {
+			// FIX(safchain) since an ovs interface can be added without any mac address, we can have twice the same interface.
+			// one in ovs and one in netns. Having now the mac we can check if the same interface is in both places. If so,
+			// remove the ovs interface and add the netns interface to the ovs port.
+			if i := o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope); i != nil {
+				if port := intf.GetPort(); port != nil {
+					port.DelInterface(intf.ID)
+					port.AddInterface(i)
+					intf = i
+				}
+			}
+		}
 	}
+
+	// check if a new interface is needed
+	if intf == nil {
+		if intf = o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope); intf == nil {
+			intf = o.Topology.NewInterfaceWithUUID(name, uuid)
+		}
+	}
+
+	intf.SetType(driver)
+	intf.SetMac(mac)
+	o.uuidToIntf[uuid] = intf
 
 	// type
 	if t, ok := row.New.Fields["type"]; ok {
@@ -216,6 +240,7 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 			o.intfPortQueue[u] = port
 		}
 	}
+
 	/* set pending port of a container */
 	if bridge, ok := o.portBridgeQueue[uuid]; ok {
 		bridge.AddPort(port)

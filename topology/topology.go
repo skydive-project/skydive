@@ -120,6 +120,22 @@ func (intf *Interface) SetPeer(i *Interface) {
 	intf.Topology.Log()
 }
 
+// GetPort return port which the interface below to
+func (intf *Interface) GetPort() *Port {
+	intf.Topology.RLock()
+	defer intf.Topology.RUnlock()
+
+	return intf.Port
+}
+
+// GetMac return the mac address
+func (intf *Interface) GetMac() string {
+	intf.Topology.RLock()
+	defer intf.Topology.RUnlock()
+
+	return intf.Mac
+}
+
 // SetMac set the mac address
 func (intf *Interface) SetMac(mac string) {
 	intf.Topology.Lock()
@@ -159,10 +175,11 @@ func (intf *Interface) SetIndex(i uint32) {
 // Del deletes the interface, remove the interface for the port or any other container
 func (intf *Interface) Del() {
 	intf.Topology.Lock()
-	defer intf.Topology.Unlock()
+	port := intf.Port
+	intf.Topology.Unlock()
 
-	if intf.Port != nil {
-		intf.Port.DelInterface(intf.ID)
+	if port != nil {
+		port.DelInterface(intf.ID)
 	}
 }
 
@@ -277,10 +294,11 @@ func (p *Port) SetMetadata(key string, value interface{}) {
 // Del removes the port from the ovs bridge containing it
 func (p *Port) Del() {
 	p.Topology.Lock()
-	defer p.Topology.Unlock()
+	bridge := p.OvsBridge
+	p.Topology.Unlock()
 
-	if p.OvsBridge != nil {
-		p.OvsBridge.DelPort(p.ID)
+	if bridge != nil {
+		bridge.DelPort(p.ID)
 	}
 }
 
@@ -423,6 +441,15 @@ func LookupByID(i string) LookupFunction {
 	}
 }
 
+func LookupByUUID(u string) LookupFunction {
+	return func(intf *Interface) bool {
+		if intf.UUID == u {
+			return true
+		}
+		return false
+	}
+}
+
 func LookupByIfIndex(i uint32) LookupFunction {
 	return func(intf *Interface) bool {
 		if intf.IfIndex == i {
@@ -472,15 +499,12 @@ func (topo *Topology) NewPort(i string) *Port {
 	return port
 }
 
-func (topo *Topology) NewInterface(i string, index uint32) *Interface {
-	u, _ := uuid.NewV4()
-
+func (topo *Topology) NewInterfaceWithUUID(i string, uuid string) *Interface {
 	intf := &Interface{
 		ID:         i,
-		UUID:       u.String(),
+		UUID:       uuid,
 		Metadatas:  make(map[string]interface{}),
 		Interfaces: make(map[string]*Interface),
-		IfIndex:    index,
 		Topology:   topo,
 	}
 
