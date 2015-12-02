@@ -85,7 +85,9 @@ func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *Interface, link netlink.Link
 
 	if index, ok := stats["peer_ifindex"]; ok {
 		peer := u.NetNs.Topology.LookupInterface(LookupByIfIndex(uint32(index)), NetNSScope|OvsScope)
-		if peer != nil {
+
+		// set the peer only if it is of type veth
+		if peer != nil && peer.Type == "veth" {
 			intf.SetPeer(peer)
 		}
 	}
