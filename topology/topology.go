@@ -27,14 +27,18 @@ import (
 	"sync"
 
 	"github.com/nu7hatch/gouuid"
-
-	"github.com/redhat-cip/skydive/logging"
 )
 
 const (
 	NetNSScope = 1
 	OvsScope   = 2
 )
+
+type EventListener interface {
+	OnDeleted(topo *Topology, i string)
+	OnAdded(topo *Topology, i string)
+	OnUpdated(topo *Topology, i string)
+}
 
 type LookupFunction func(*Interface) bool
 
@@ -77,9 +81,10 @@ type JTopology Topology
 
 type Topology struct {
 	sync.RWMutex
-	Host       string
-	OvsBridges map[string]*OvsBridge
-	NetNss     map[string]*NetNs
+	Host           string
+	OvsBridges     map[string]*OvsBridge
+	NetNss         map[string]*NetNs
+	eventListeners []EventListener
 }
 
 type GlobalTopology struct {
@@ -154,7 +159,7 @@ func (intf *Interface) SetPeer(i *Interface) {
 	intf.Peer = i
 	i.Peer = intf
 
-	intf.Topology.Log()
+	intf.Topology.notifyOnUpdated(intf.ID)
 }
 
 // GetPort return port which the interface below to
@@ -180,7 +185,7 @@ func (intf *Interface) SetMac(mac string) {
 
 	intf.Mac = mac
 
-	intf.Topology.Log()
+	intf.Topology.notifyOnUpdated(intf.ID)
 }
 
 // SetMetadata attach metadata to the interface
@@ -207,7 +212,7 @@ func (intf *Interface) SetType(t string) {
 
 	intf.Type = t
 
-	intf.Topology.Log()
+	intf.Topology.notifyOnUpdated(intf.ID)
 }
 
 // SetIndex specifies the index of the interface, doesn't make sense for ovs internals
@@ -237,7 +242,7 @@ func (intf *Interface) AddInterface(i *Interface) {
 	intf.Interfaces[i.ID] = i
 	i.Parent = intf
 
-	intf.Topology.Log()
+	intf.Topology.notifyOnAdded(i.ID)
 }
 
 // DelInterface removes the interface with the given id from the port
@@ -247,7 +252,7 @@ func (intf *Interface) DelInterface(i string) {
 
 	delete(intf.Interfaces, i)
 
-	intf.Topology.Log()
+	intf.Topology.notifyOnDeleted(i)
 }
 
 // NewInterface instantiate a new interface with a given index
@@ -269,7 +274,7 @@ func (intf *Interface) NewInterface(i string, index uint32) *Interface {
 	}
 	intf.Interfaces[i] = nIntf
 
-	intf.Topology.Log()
+	intf.Topology.notifyOnAdded(i)
 
 	return nIntf
 }
@@ -292,7 +297,7 @@ func (n *NetNs) NewInterface(i string, index uint32) *Interface {
 	}
 	n.Interfaces[i] = intf
 
-	n.Topology.Log()
+	n.Topology.notifyOnAdded(i)
 
 	return intf
 }
@@ -305,7 +310,7 @@ func (n *NetNs) AddInterface(intf *Interface) {
 	n.Interfaces[intf.ID] = intf
 	intf.NetNs = n
 
-	n.Topology.Log()
+	n.Topology.notifyOnAdded(intf.ID)
 }
 
 // DelInterface removes the interface with the given id from the port
@@ -315,7 +320,7 @@ func (n *NetNs) DelInterface(i string) {
 
 	delete(n.Interfaces, i)
 
-	n.Topology.Log()
+	n.Topology.notifyOnDeleted(i)
 }
 
 // GetInterface returns the interface with the given ID from the port
@@ -366,7 +371,7 @@ func (p *Port) NewInterface(i string, index uint32) *Interface {
 	}
 	p.Interfaces[i] = intf
 
-	p.Topology.Log()
+	p.Topology.notifyOnAdded(i)
 
 	return intf
 }
@@ -379,7 +384,7 @@ func (p *Port) AddInterface(intf *Interface) {
 	p.Interfaces[intf.ID] = intf
 	intf.Port = p
 
-	p.Topology.Log()
+	p.Topology.notifyOnAdded(intf.ID)
 }
 
 // DelInterface removes the interface with the given id from the port
@@ -389,7 +394,7 @@ func (p *Port) DelInterface(i string) {
 
 	delete(p.Interfaces, i)
 
-	p.Topology.Log()
+	p.Topology.notifyOnDeleted(i)
 }
 
 // GetInterface returns the interface with the given ID from the port
@@ -421,7 +426,7 @@ func (o *OvsBridge) DelPort(i string) {
 
 	delete(o.Ports, i)
 
-	o.Topology.Log()
+	o.Topology.notifyOnDeleted(i)
 }
 
 // NewPort intentiates a new port and add it to the ovs bridge
@@ -438,7 +443,7 @@ func (o *OvsBridge) NewPort(i string) *Port {
 	}
 	o.Ports[i] = port
 
-	o.Topology.Log()
+	o.Topology.notifyOnAdded(i)
 
 	return port
 }
@@ -451,7 +456,7 @@ func (o *OvsBridge) AddPort(p *Port) {
 	o.Ports[p.ID] = p
 	p.OvsBridge = o
 
-	o.Topology.Log()
+	o.Topology.notifyOnAdded(p.ID)
 }
 
 func LookupByType(name string, t string) LookupFunction {
@@ -563,7 +568,7 @@ func (topo *Topology) DelOvsBridge(i string) {
 
 	delete(topo.OvsBridges, i)
 
-	topo.Log()
+	topo.notifyOnDeleted(i)
 }
 
 func (topo *Topology) GetOvsBridge(i string) *OvsBridge {
@@ -588,7 +593,7 @@ func (topo *Topology) NewOvsBridge(i string) *OvsBridge {
 	}
 	topo.OvsBridges[i] = bridge
 
-	topo.Log()
+	topo.notifyOnAdded(i)
 
 	return bridge
 }
@@ -599,7 +604,7 @@ func (topo *Topology) DelNetNs(i string) {
 
 	delete(topo.NetNss, i)
 
-	topo.Log()
+	topo.notifyOnDeleted(i)
 }
 
 func (topo *Topology) NewNetNs(i string) *NetNs {
@@ -613,14 +618,39 @@ func (topo *Topology) NewNetNs(i string) *NetNs {
 	}
 	topo.NetNss[i] = netns
 
-	topo.Log()
+	topo.notifyOnAdded(i)
 
 	return netns
 }
 
-func (topo *Topology) Log() {
+func (topo *Topology) String() string {
 	j, _ := json.Marshal(JTopology(*topo))
-	logging.GetLogger().Debug("Topology: %s", string(j))
+	return string(j)
+}
+
+func (topo *Topology) notifyOnAdded(i string) {
+	for _, l := range topo.eventListeners {
+		l.OnAdded(topo, i)
+	}
+}
+
+func (topo *Topology) notifyOnDeleted(i string) {
+	for _, l := range topo.eventListeners {
+		l.OnDeleted(topo, i)
+	}
+}
+
+func (topo *Topology) notifyOnUpdated(i string) {
+	for _, l := range topo.eventListeners {
+		l.OnUpdated(topo, i)
+	}
+}
+
+func (topo *Topology) AddEventListener(l EventListener) {
+	topo.Lock()
+	defer topo.Unlock()
+
+	topo.eventListeners = append(topo.eventListeners, l)
 }
 
 func (topo *Topology) unmarshalJSONFixDupInterfaces() {

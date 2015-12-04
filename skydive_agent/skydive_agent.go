@@ -32,6 +32,7 @@ import (
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/mappings"
 	"github.com/redhat-cip/skydive/ovs"
 	"github.com/redhat-cip/skydive/sensors"
@@ -39,6 +40,21 @@ import (
 )
 
 var quit chan bool
+
+type TopologyEventListener struct {
+}
+
+func (l *TopologyEventListener) OnDeleted(topo *topology.Topology, i string) {
+	logging.GetLogger().Debug("Current topology: %s", topo.String())
+}
+
+func (l *TopologyEventListener) OnAdded(topo *topology.Topology, i string) {
+	logging.GetLogger().Debug("Current topology: %s", topo.String())
+}
+
+func (l *TopologyEventListener) OnUpdated(topo *topology.Topology, i string) {
+	logging.GetLogger().Debug("Current topology: %s", topo.String())
+}
 
 func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
 	drivers := []mappings.InterfaceMappingDriver{}
@@ -92,6 +108,8 @@ func main() {
 	}
 
 	topo := topology.NewTopology(hostname)
+	topo.AddEventListener(&TopologyEventListener{})
+
 	global := topology.NewGlobalTopology()
 	global.Add(topo)
 
