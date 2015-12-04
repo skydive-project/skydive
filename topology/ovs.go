@@ -101,6 +101,9 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 
 	name := row.New.Fields["name"].(string)
 
+	o.Topology.StartMultipleOperations()
+	defer o.Topology.StopMultipleOperations()
+
 	intf := o.Topology.LookupInterface(LookupByUUID(uuid), OvsScope)
 	if intf != nil {
 		// mac has been set or changed
@@ -196,6 +199,9 @@ func (o *OvsTopoUpdater) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid strin
 func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
+
+	o.Topology.StartMultipleOperations()
+	defer o.Topology.StopMultipleOperations()
 
 	port, ok := o.uuidToPort[uuid]
 	if !ok {

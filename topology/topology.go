@@ -85,6 +85,7 @@ type Topology struct {
 	OvsBridges     map[string]*OvsBridge
 	NetNss         map[string]*NetNs
 	eventListeners []EventListener
+	mutex          sync.Mutex
 }
 
 type GlobalTopology struct {
@@ -250,9 +251,14 @@ func (intf *Interface) DelInterface(i string) {
 	intf.Topology.Lock()
 	defer intf.Topology.Unlock()
 
-	delete(intf.Interfaces, i)
+	if sub, ok := intf.Interfaces[i]; ok {
+		if sub.Peer != nil {
+			sub.Peer.Peer = nil
+		}
+		delete(intf.Interfaces, i)
 
-	intf.Topology.notifyOnDeleted(i)
+		intf.Topology.notifyOnDeleted(i)
+	}
 }
 
 // NewInterface instantiate a new interface with a given index
@@ -318,9 +324,14 @@ func (n *NetNs) DelInterface(i string) {
 	n.Topology.Lock()
 	defer n.Topology.Unlock()
 
-	delete(n.Interfaces, i)
+	if intf, ok := n.Interfaces[i]; ok {
+		if intf.Peer != nil {
+			intf.Peer.Peer = nil
+		}
+		delete(n.Interfaces, i)
 
-	n.Topology.notifyOnDeleted(i)
+		n.Topology.notifyOnDeleted(i)
+	}
 }
 
 // GetInterface returns the interface with the given ID from the port
@@ -392,9 +403,14 @@ func (p *Port) DelInterface(i string) {
 	p.Topology.Lock()
 	defer p.Topology.Unlock()
 
-	delete(p.Interfaces, i)
+	if intf, ok := p.Interfaces[i]; ok {
+		if intf.Peer != nil {
+			intf.Peer.Peer = nil
+		}
+		delete(p.Interfaces, i)
 
-	p.Topology.notifyOnDeleted(i)
+		p.Topology.notifyOnDeleted(i)
+	}
 }
 
 // GetInterface returns the interface with the given ID from the port
@@ -424,9 +440,11 @@ func (o *OvsBridge) DelPort(i string) {
 	o.Topology.Lock()
 	defer o.Topology.Unlock()
 
-	delete(o.Ports, i)
+	if _, ok := o.Ports[i]; ok {
+		delete(o.Ports, i)
 
-	o.Topology.notifyOnDeleted(i)
+		o.Topology.notifyOnDeleted(i)
+	}
 }
 
 // NewPort intentiates a new port and add it to the ovs bridge
@@ -566,9 +584,11 @@ func (topo *Topology) DelOvsBridge(i string) {
 	topo.Lock()
 	defer topo.Unlock()
 
-	delete(topo.OvsBridges, i)
+	if _, ok := topo.OvsBridges[i]; ok {
+		delete(topo.OvsBridges, i)
 
-	topo.notifyOnDeleted(i)
+		topo.notifyOnDeleted(i)
+	}
 }
 
 func (topo *Topology) GetOvsBridge(i string) *OvsBridge {
@@ -602,9 +622,11 @@ func (topo *Topology) DelNetNs(i string) {
 	topo.Lock()
 	defer topo.Unlock()
 
-	delete(topo.NetNss, i)
+	if _, ok := topo.NetNss[i]; ok {
+		delete(topo.NetNss, i)
 
-	topo.notifyOnDeleted(i)
+		topo.notifyOnDeleted(i)
+	}
 }
 
 func (topo *Topology) NewNetNs(i string) *NetNs {
@@ -734,6 +756,14 @@ func (topo *Topology) MarshalJSON() ([]byte, error) {
 	defer topo.RUnlock()
 
 	return json.Marshal(JTopology(*topo))
+}
+
+func (topo *Topology) StartMultipleOperations() {
+	topo.mutex.Lock()
+}
+
+func (topo *Topology) StopMultipleOperations() {
+	topo.mutex.Unlock()
 }
 
 func NewTopology(host string) *Topology {

@@ -131,6 +131,9 @@ func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link) *Interface 
 func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	var intf *Interface
 
+	u.NetNs.Topology.StartMultipleOperations()
+	defer u.NetNs.Topology.StopMultipleOperations()
+
 	switch link.Type() {
 	case "openvswitch":
 		intf = u.addOvsLinkToTopology(link)
@@ -248,8 +251,6 @@ Loop:
 		if n == 0 {
 			select {
 			case <-u.doneChan:
-				logging.GetLogger().Debug("WHOU")
-
 				break Loop
 			default:
 				continue
