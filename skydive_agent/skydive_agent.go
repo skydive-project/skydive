@@ -42,18 +42,25 @@ import (
 var quit chan bool
 
 type TopologyEventListener struct {
+	Client *topology.Client
 }
 
 func (l *TopologyEventListener) OnDeleted(topo *topology.Topology, i string) {
 	logging.GetLogger().Debug("Current topology: %s", topo.String())
+
+	l.Client.AsyncUpdate(topo)
 }
 
 func (l *TopologyEventListener) OnAdded(topo *topology.Topology, i string) {
 	logging.GetLogger().Debug("Current topology: %s", topo.String())
+
+	l.Client.AsyncUpdate(topo)
 }
 
 func (l *TopologyEventListener) OnUpdated(topo *topology.Topology, i string) {
 	logging.GetLogger().Debug("Current topology: %s", topo.String())
+
+	l.Client.AsyncUpdate(topo)
 }
 
 func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
@@ -107,8 +114,10 @@ func main() {
 		panic(err)
 	}
 
+	client := topology.NewClient("127.0.0.1", 8081)
+
 	topo := topology.NewTopology(hostname)
-	topo.AddEventListener(&TopologyEventListener{})
+	topo.AddEventListener(&TopologyEventListener{Client: client})
 
 	global := topology.NewGlobalTopology()
 	global.Add(topo)
