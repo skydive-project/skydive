@@ -26,6 +26,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 
@@ -85,12 +86,19 @@ func main() {
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
 	ovsmon.AddMonitorHandler(sflowHandler)
 
-	topo := topology.NewTopology()
-	root := topo.NewNetNs("root")
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	topo := topology.NewTopology(hostname)
+	global := topology.NewGlobalTopology()
+	global.Add(topo)
 
 	ns := topology.NewNetNSTopoUpdater(topo)
 	ns.Start()
 
+	root := topo.NewNetNs("root")
 	nl := topology.NewNetLinkTopoUpdater(root)
 	nl.Start()
 
@@ -115,7 +123,8 @@ func main() {
 	ovsmon.StartMonitoring()
 
 	router := mux.NewRouter().StrictSlash(true)
-	topology.RegisterTopologyServerEndpoints(topo, router)
+	topology.RegisterStaticEndpoints(global, router)
+	topology.RegisterRpcEndpoints(global, router)
 	http.ListenAndServe(":8080", router)
 
 	fmt.Println("Skydive Agent started !")

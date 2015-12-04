@@ -40,10 +40,9 @@ type LookupFunction func(*Interface) bool
 
 type Interface struct {
 	UUID       string
-	ID         string                 `json:"-"`
+	ID         string
 	Type       string                 `json:",omitempty"`
 	Mac        string                 `json:",omitempty"`
-	MTU        uint32                 `json:",omitempty"`
 	IfIndex    uint32                 `json:",omitempty"`
 	Metadatas  map[string]interface{} `json:",omitempty"`
 	Port       *Port                  `json:"-"`
@@ -55,7 +54,7 @@ type Interface struct {
 }
 
 type Port struct {
-	ID         string                 `json:"-"`
+	ID         string
 	Interfaces map[string]*Interface  `json:",omitempty"`
 	Metadatas  map[string]interface{} `json:",omitempty"`
 	OvsBridge  *OvsBridge             `json:"-"`
@@ -63,13 +62,13 @@ type Port struct {
 }
 
 type OvsBridge struct {
-	ID       string           `json:"-"`
+	ID       string
 	Ports    map[string]*Port `json:",omitempty"`
 	Topology *Topology        `json:"-"`
 }
 
 type NetNs struct {
-	ID         string                `json:"-"`
+	ID         string
 	Interfaces map[string]*Interface `json:",omitempty"`
 	Topology   *Topology             `json:"-"`
 }
@@ -78,8 +77,14 @@ type JTopology Topology
 
 type Topology struct {
 	sync.RWMutex
+	Host       string
 	OvsBridges map[string]*OvsBridge
 	NetNss     map[string]*NetNs
+}
+
+type GlobalTopology struct {
+	sync.RWMutex
+	Topologies map[string]*Topology
 }
 
 func (intf *Interface) MarshalJSON() ([]byte, error) {
@@ -89,24 +94,56 @@ func (intf *Interface) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&struct {
+		ID         string
 		UUID       string
 		Type       string                 `json:",omitempty"`
 		Mac        string                 `json:",omitempty"`
-		MTU        uint32                 `json:",omitempty"`
 		Metadatas  map[string]interface{} `json:",omitempty"`
 		Interfaces map[string]*Interface  `json:",omitempty"`
 		Peer       string                 `json:",omitempty"`
 		IfIndex    uint32                 `json:",omitempty"`
 	}{
+		ID:         intf.ID,
 		UUID:       intf.UUID,
 		Type:       intf.Type,
 		Mac:        intf.Mac,
-		MTU:        intf.MTU,
 		Metadatas:  intf.Metadatas,
 		Interfaces: intf.Interfaces,
 		Peer:       peer,
 		IfIndex:    intf.IfIndex,
 	})
+}
+
+func (intf *Interface) UnmarshalJSON(data []byte) error {
+	var i struct {
+		ID         string
+		UUID       string
+		Type       string                 `json:",omitempty"`
+		Mac        string                 `json:",omitempty"`
+		Metadatas  map[string]interface{} `json:",omitempty"`
+		Interfaces map[string]*Interface  `json:",omitempty"`
+		Peer       string                 `json:",omitempty"`
+		IfIndex    uint32                 `json:",omitempty"`
+	}
+
+	if err := json.Unmarshal(data, &i); err != nil {
+		return err
+	}
+
+	// check if already present
+	intf.ID = i.ID
+	intf.UUID = i.UUID
+	intf.Type = i.Type
+	intf.Mac = i.Mac
+	intf.Metadatas = i.Metadatas
+	intf.Interfaces = i.Interfaces
+	intf.IfIndex = i.IfIndex
+
+	if i.Peer != "" {
+		intf.Peer = &Interface{UUID: i.Peer}
+	}
+
+	return nil
 }
 
 // SetPeer set the peer interface with the given interface
@@ -152,6 +189,15 @@ func (intf *Interface) SetMetadata(key string, value interface{}) {
 	defer intf.Topology.Unlock()
 
 	intf.Metadatas[key] = value
+}
+
+func (intf *Interface) GetMetadata(key string) (interface{}, bool) {
+	intf.Topology.Lock()
+	defer intf.Topology.Unlock()
+
+	value, ok := intf.Metadatas[key]
+
+	return value, ok
 }
 
 // SetType set the type of the interface, could be device, openvswitch, veth, etc.
@@ -577,6 +623,82 @@ func (topo *Topology) Log() {
 	logging.GetLogger().Debug("Topology: %s", string(j))
 }
 
+func (topo *Topology) unmarshalJSONFixDupInterfaces() {
+	intfs := make(map[string]*Interface)
+
+	for _, netns := range topo.NetNss {
+		for _, intf := range netns.Interfaces {
+			intfs[intf.UUID] = intf
+		}
+	}
+
+	for _, bridge := range topo.OvsBridges {
+		for _, port := range bridge.Ports {
+			for _, intf := range port.Interfaces {
+				if i, ok := intfs[intf.UUID]; ok {
+					port.Interfaces[i.ID] = i
+					i.Port = port
+				}
+			}
+		}
+	}
+}
+
+func (topo *Topology) unmarshalJSONFixPeerInterfaces() {
+	intfs := make(map[string]*Interface)
+
+	for _, netns := range topo.NetNss {
+		for _, intf := range netns.Interfaces {
+			intfs[intf.UUID] = intf
+
+			if intf.Peer != nil {
+				if i, ok := intfs[intf.Peer.UUID]; ok {
+					intf.Peer = i
+					i.Peer = intf
+				}
+			}
+		}
+	}
+
+	for _, bridge := range topo.OvsBridges {
+		for _, port := range bridge.Ports {
+			for _, intf := range port.Interfaces {
+				intfs[intf.UUID] = intf
+
+				if intf.Peer != nil {
+					if i, ok := intfs[intf.Peer.UUID]; ok {
+						intf.Peer = i
+						i.Peer = intf
+					}
+				}
+			}
+		}
+	}
+}
+
+func (topo *Topology) UnmarshalJSON(data []byte) error {
+	var t JTopology
+
+	if err := json.Unmarshal(data, &t); err != nil {
+		return err
+	}
+
+	topo.Lock()
+	defer topo.Unlock()
+
+	topo.Host = t.Host
+	topo.OvsBridges = t.OvsBridges
+	topo.NetNss = t.NetNss
+
+	// fix interface with same UUID
+	topo.unmarshalJSONFixDupInterfaces()
+
+	// fix interface having peer
+	topo.unmarshalJSONFixPeerInterfaces()
+
+	return nil
+}
+
 func (topo *Topology) MarshalJSON() ([]byte, error) {
 	topo.RLock()
 	defer topo.RUnlock()
@@ -584,9 +706,34 @@ func (topo *Topology) MarshalJSON() ([]byte, error) {
 	return json.Marshal(JTopology(*topo))
 }
 
-func NewTopology() *Topology {
+func NewTopology(host string) *Topology {
 	return &Topology{
+		Host:       host,
 		OvsBridges: make(map[string]*OvsBridge),
 		NetNss:     make(map[string]*NetNs),
+	}
+}
+
+func (g *GlobalTopology) Add(topo *Topology) {
+	g.Lock()
+	defer g.Unlock()
+	topo.Lock()
+	defer topo.Unlock()
+
+	g.Topologies[topo.Host] = topo
+}
+
+func (g *GlobalTopology) Get(host string) (*Topology, bool) {
+	g.Lock()
+	defer g.Unlock()
+
+	topo, ok := g.Topologies[host]
+
+	return topo, ok
+}
+
+func NewGlobalTopology() *GlobalTopology {
+	return &GlobalTopology{
+		Topologies: make(map[string]*Topology),
 	}
 }

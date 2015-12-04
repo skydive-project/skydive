@@ -67,7 +67,10 @@ func (mapper *NetLinkMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttri
 		// TODO(safchain) should report the full path of the interface here as
 		// we can have the same name at different place
 		attrs.IfName = proto.String(intf.ID)
-		attrs.MTU = proto.Uint32(intf.MTU)
+
+		if mtu, ok := intf.GetMetadata("MTU"); ok {
+			attrs.MTU = proto.Uint32(mtu.(uint32))
+		}
 
 		return
 	}
