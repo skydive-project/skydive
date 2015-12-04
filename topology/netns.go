@@ -24,6 +24,7 @@ package topology
 
 import (
 	"io/ioutil"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -40,13 +41,15 @@ const (
 )
 
 type NetNSTopoUpdater struct {
-	Topology     *Topology
+	Graph        *Graph
+	Root         *Node
 	nsNlUpdaters map[string]*NetNsNetLinkTopoUpdater
 }
 
 type NetNsNetLinkTopoUpdater struct {
 	sync.RWMutex
-	NetNs     *NetNs
+	Graph     *Graph
+	Root      *Node
 	nlUpdater *NetLinkTopoUpdater
 }
 
@@ -87,7 +90,7 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 
 	/* start a netlinks updater inside this namespace */
 	nu.Lock()
-	nu.nlUpdater = NewNetLinkTopoUpdater(nu.NetNs)
+	nu.nlUpdater = NewNetLinkTopoUpdater(nu.Graph, nu.Root)
 	nu.Unlock()
 
 	/* NOTE(safchain) don't Start just Run, need to keep it alive for the time life of the netns
@@ -112,9 +115,10 @@ func (nu *NetNsNetLinkTopoUpdater) Stop() {
 	nu.Unlock()
 }
 
-func NewNetNsNetLinkTopoUpdater(n *NetNs) *NetNsNetLinkTopoUpdater {
+func NewNetNsNetLinkTopoUpdater(g *Graph, n *Node) *NetNsNetLinkTopoUpdater {
 	return &NetNsNetLinkTopoUpdater{
-		NetNs: n,
+		Graph: g,
+		Root:  n,
 	}
 }
 
@@ -126,10 +130,14 @@ func (u *NetNSTopoUpdater) onNetNsCreated(path string) {
 		return
 	}
 
-	logging.GetLogger().Debug("Network Namespace added: %s", name)
-	n := u.Topology.NewNetNs(name)
+	u.Graph.Lock()
+	defer u.Graph.Unlock()
 
-	nu := NewNetNsNetLinkTopoUpdater(n)
+	logging.GetLogger().Debug("Network Namespace added: %s", name)
+	n := u.Graph.NewNode(Metadatas{"Name": name, "Type": "netns"})
+	u.Root.LinkTo(n)
+
+	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
 	go nu.Start(path)
 
 	u.nsNlUpdaters[name] = nu
@@ -146,7 +154,14 @@ func (u *NetNSTopoUpdater) onNetNsDeleted(path string) {
 	}
 	nu.Stop()
 
-	u.Topology.DelNetNs(name)
+	u.Graph.Lock()
+	defer u.Graph.Unlock()
+
+	children := nu.Root.LookupChildren(Metadatas{})
+	for _, child := range children {
+		u.Graph.DelNode(child)
+	}
+	u.Graph.DelNode(nu.Root)
 
 	delete(u.nsNlUpdaters, name)
 }
@@ -168,6 +183,16 @@ func (u *NetNSTopoUpdater) start() {
 		logging.GetLogger().Error("Unable to create a new Watcher: %s", err.Error())
 		return
 	}
+
+	// wait for the path creation
+	for {
+		_, err := os.Stat(runBaseDir)
+		if err == nil {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+
 	err = watcher.Watch(runBaseDir)
 	if err != nil {
 		logging.GetLogger().Error("Unable to Watch %s: %s", runBaseDir, err.Error())
@@ -180,6 +205,7 @@ func (u *NetNSTopoUpdater) start() {
 		select {
 		case ev := <-watcher.Event:
 			if ev.Mask&inotify.IN_CREATE > 0 {
+
 				u.onNetNsCreated(ev.Name)
 			}
 			if ev.Mask&inotify.IN_DELETE > 0 {
@@ -196,9 +222,10 @@ func (u *NetNSTopoUpdater) Start() {
 	go u.start()
 }
 
-func NewNetNSTopoUpdater(topo *Topology) *NetNSTopoUpdater {
+func NewNetNSTopoUpdater(g *Graph, n *Node) *NetNSTopoUpdater {
 	return &NetNSTopoUpdater{
-		Topology:     topo,
+		Graph:        g,
+		Root:         n,
 		nsNlUpdaters: make(map[string]*NetNsNetLinkTopoUpdater),
 	}
 }

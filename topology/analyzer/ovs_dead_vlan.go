@@ -20,12 +20,23 @@
  *
  */
 
-package topology
+package analyzer
 
-type Topology struct {
-	Host string
+import (
+	"fmt"
+
+	"github.com/redhat-cip/skydive/topology"
+)
+
+type OvsDeadVlan struct {
 }
 
-func (t *Topology) String() string {
-	return ""
+func (o *OvsDeadVlan) OnTopologyAdded(topo *topology.Topology) {
+	fmt.Println("WTF!!!!")
+}
+
+func (o *OvsDeadVlan) OnTopologyDeleted(topo *topology.Topology) {}
+
+func NewOvsDeadVlan() *OvsDeadVlan {
+	return &OvsDeadVlan{}
 }

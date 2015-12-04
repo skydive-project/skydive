@@ -40,20 +40,20 @@ const (
 )
 
 type NetLinkTopoUpdater struct {
-	NetNs             *NetNs
-	linkCache         map[int]netlink.LinkAttrs
+	Graph             *Graph
+	Root              *Node
 	nlSocket          *nl.NetlinkSocket
 	doneChan          chan struct{}
-	indexTointfsQueue map[uint32][]*Interface
+	indexTointfsQueue map[uint32][]*Node
 }
 
-func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *Interface, link netlink.Link) {
+func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *Node, link netlink.Link) {
 	index := uint32(link.Attrs().Index)
 
 	// add children of this interface that haven previously added
 	if children, ok := u.indexTointfsQueue[index]; ok {
 		for _, child := range children {
-			intf.AddInterface(child)
+			u.Graph.NewEdge(intf, child, nil)
 		}
 		delete(u.indexTointfsQueue, index)
 	}
@@ -62,9 +62,11 @@ func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *Interface, link netl
 	if link.Attrs().MasterIndex != 0 {
 		index := uint32(link.Attrs().MasterIndex)
 
-		parent := u.NetNs.Topology.LookupInterface(LookupByIfIndex(index), NetNSScope|OvsScope)
+		parent := u.Graph.LookupNode(Metadatas{"IfIndex": index})
 		if parent != nil {
-			parent.AddInterface(intf)
+			if !parent.IsLinkedTo(intf) {
+				u.Graph.NewEdge(parent, intf, nil)
+			}
 		} else {
 			// not yet the bridge so, enqueue for a later add
 			u.indexTointfsQueue[index] = append(u.indexTointfsQueue[index], intf)
@@ -72,7 +74,7 @@ func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *Interface, link netl
 	}
 }
 
-func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *Interface, link netlink.Link) {
+func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *Node, link netlink.Link) {
 	if link.Type() != "veth" {
 		return
 	}
@@ -84,29 +86,52 @@ func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *Interface, link netlink.Link
 	}
 
 	if index, ok := stats["peer_ifindex"]; ok {
-		peer := u.NetNs.Topology.LookupInterface(LookupByIfIndex(uint32(index)), NetNSScope|OvsScope)
+		peerResolver := func() bool {
+			// re get the interface from the graph since the interface could have been deleted
+			if u.Graph.GetNode(intf.ID) == nil {
+				return false
+			}
 
-		// set the peer only if it is of type veth
-		if peer != nil && peer.Type == "veth" {
-			intf.SetPeer(peer)
+			// got more than 1 peer, unable to find the right one, wait for the other to discover
+			peer := u.Graph.LookupNode(Metadatas{"IfIndex": uint32(index), "Type": "veth"})
+			if peer != nil && !intf.IsLinkedTo(peer) {
+				u.Graph.NewEdge(intf, peer, Metadatas{"Type": "veth"})
+				return true
+			}
+			return false
+		}
+
+		if uint32(index) > intf.Metadatas["IfIndex"].(uint32) {
+			ok := peerResolver()
+			if !ok {
+				// retry few second later since the right peer can be insert later
+				go func() {
+					time.Sleep(2 * time.Second)
+
+					u.Graph.Lock()
+					defer u.Graph.Unlock()
+					peerResolver()
+				}()
+			}
 		}
 	}
 }
 
-func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interface {
+func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link, m Metadatas) *Node {
 	name := link.Attrs().Name
-	mac := link.Attrs().HardwareAddr.String()
+	index := uint32(link.Attrs().Index)
 
-	var intf *Interface
+	var intf *Node
 	if name != "lo" {
-		intf = u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
+		intf = u.Graph.LookupNode(Metadatas{"Name": name, "IfIndex": index, "MAC": link.Attrs().HardwareAddr.String()})
 	}
 
 	if intf == nil {
-		index := uint32(link.Attrs().Index)
-		intf = u.NetNs.NewInterface(name, index)
-	} else {
-		u.NetNs.AddInterface(intf)
+		intf = u.Graph.NewNode(m)
+	}
+
+	if !u.Root.IsLinkedTo(intf) {
+		u.Root.LinkTo(intf)
 	}
 
 	u.handleIntfIsBridgeMember(intf, link)
@@ -115,47 +140,87 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interf
 	return intf
 }
 
-func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link) *Interface {
+func (u *NetLinkTopoUpdater) addBridgeLinkToTopology(link netlink.Link, m Metadatas) *Node {
+	index := uint32(link.Attrs().Index)
+
+	intf := u.Graph.LookupNode(Metadatas{"IfIndex": index})
+	if intf == nil {
+		intf = u.Graph.NewNode(m)
+	}
+
+	if !u.Root.IsLinkedTo(intf) {
+		u.Root.LinkTo(intf)
+	}
+
+	return intf
+}
+
+func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link, m Metadatas) *Node {
 	name := link.Attrs().Name
 
-	intf := u.NetNs.Topology.LookupInterface(LookupByType(name, "openvswitch"), OvsScope)
+	intf := u.Graph.LookupNode(Metadatas{"Name": name, "Driver": "openvswitch"})
 	if intf == nil {
-		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
-	} else {
-		u.NetNs.AddInterface(intf)
+		intf = u.Graph.NewNode(m)
+	}
+
+	if !u.Root.IsLinkedTo(intf) {
+		u.Root.LinkTo(intf)
 	}
 
 	return intf
 }
 
 func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
-	var intf *Interface
+	logging.GetLogger().Debug("Link \"%s(%d)\" added", link.Attrs().Name, link.Attrs().Index)
 
-	switch link.Type() {
+	u.Graph.Lock()
+	defer u.Graph.Unlock()
+
+	driver, _ := ethtool.DriverName(link.Attrs().Name)
+
+	metadatas := Metadatas{
+		"Name":    link.Attrs().Name,
+		"Type":    link.Type(),
+		"IfIndex": uint32(link.Attrs().Index),
+		"MAC":     link.Attrs().HardwareAddr.String(),
+		"MTU":     uint32(link.Attrs().MTU),
+		"Driver":  driver,
+	}
+
+	if (link.Attrs().Flags & net.FlagUp) > 0 {
+		metadatas["State"] = "UP"
+	} else {
+		metadatas["State"] = "DOWN"
+	}
+
+	var intf *Node
+
+	switch driver {
+	case "bridge":
+		intf = u.addBridgeLinkToTopology(link, metadatas)
 	case "openvswitch":
-		intf = u.addOvsLinkToTopology(link)
+		intf = u.addOvsLinkToTopology(link, metadatas)
 	default:
-		intf = u.addGenericLinkToTopology(link)
+		intf = u.addGenericLinkToTopology(link, metadatas)
 	}
 
 	if intf != nil {
-		intf.SetType(link.Type())
-		intf.SetIndex(uint32(link.Attrs().Index))
-		intf.SetMac(link.Attrs().HardwareAddr.String())
-		intf.SetMetadata("MTU", uint32(link.Attrs().MTU))
+		// update metadates if needed
+		updated := true
+		for k, metadata := range metadatas {
+			if intf.Metadatas[k] != metadata {
+				intf.Metadatas[k] = metadata
+				updated = true
+			}
+		}
 
-		if (link.Attrs().Flags & net.FlagUp) > 0 {
-			intf.SetMetadata("State", "UP")
-		} else {
-			intf.SetMetadata("State", "DOWN")
+		if updated {
+			u.Graph.NotifyNodeUpdated(intf)
 		}
 	}
-
-	u.linkCache[link.Attrs().Index] = *link.Attrs()
 }
 
 func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
-	logging.GetLogger().Debug("Link added: %d", index)
 	link, err := netlink.LinkByIndex(index)
 	if err != nil {
 		logging.GetLogger().Error("Failed to find interface %d: %s", index, err.Error())
@@ -166,27 +231,34 @@ func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
 }
 
 func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
-	logging.GetLogger().Debug("Link deleted: %d", index)
+	logging.GetLogger().Debug("Link %d deleted", index)
 
-	attrs, ok := u.linkCache[index]
-	if !ok {
-		return
-	}
+	u.Graph.Lock()
+	defer u.Graph.Unlock()
 
 	// case of removing the interface from a bridge
-	intf := u.NetNs.Topology.LookupInterface(LookupByIfIndex(uint32(index)), NetNSScope)
-	if intf != nil && intf.Parent != nil {
-		intf.Parent.DelInterface(attrs.Name)
+	intf := u.Graph.LookupNode(Metadatas{"IfIndex": uint32(index)})
+	if intf != nil {
+		parent := intf.LookupParentNode(Metadatas{"Type": "bridge"})
+		if parent != nil {
+			intf.UnlinkFrom(parent)
+		}
 	}
 
 	// check wheter the interface has been deleted or not
 	// we get a delete event when an interace is removed from a bridge
 	_, err := netlink.LinkByIndex(index)
-	if err != nil {
-		u.NetNs.DelInterface(attrs.Name)
+	if err != nil && intf != nil {
+		if driver, ok := intf.Metadatas["Driver"]; ok {
+			// if openvswitch do not remove let's do the job by ovs piece of code
+			if driver == "openvswitch" {
+				u.Root.UnlinkFrom(intf)
+			} else {
+				u.Graph.DelNode(intf)
+			}
+		}
 	}
 
-	delete(u.linkCache, index)
 	delete(u.indexTointfsQueue, uint32(index))
 }
 
@@ -203,8 +275,6 @@ func (u *NetLinkTopoUpdater) initialize() {
 }
 
 func (u *NetLinkTopoUpdater) start() {
-	logging.GetLogger().Debug("Start NetLink Topo Updater for NetNs: %s", u.NetNs.ID)
-
 	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK)
 	if err != nil {
 		logging.GetLogger().Error("Failed to subscribe to netlink RTNLGRP_LINK messages: %s", err.Error())
@@ -248,8 +318,6 @@ Loop:
 		if n == 0 {
 			select {
 			case <-u.doneChan:
-				logging.GetLogger().Debug("WHOU")
-
 				break Loop
 			default:
 				continue
@@ -291,11 +359,11 @@ func (u *NetLinkTopoUpdater) Stop() {
 	u.doneChan <- struct{}{}
 }
 
-func NewNetLinkTopoUpdater(n *NetNs) *NetLinkTopoUpdater {
+func NewNetLinkTopoUpdater(g *Graph, n *Node) *NetLinkTopoUpdater {
 	return &NetLinkTopoUpdater{
-		NetNs:             n,
-		linkCache:         make(map[int]netlink.LinkAttrs),
+		Graph:             g,
+		Root:              n,
 		doneChan:          make(chan struct{}),
-		indexTointfsQueue: make(map[uint32][]*Interface),
+		indexTointfsQueue: make(map[uint32][]*Node),
 	}
 }

@@ -23,10 +23,10 @@
 package mappings
 
 import (
-	"strconv"
+	//"strconv"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	//"github.com/golang/protobuf/proto"
 	"github.com/pmylund/go-cache"
 
 	"github.com/redhat-cip/skydive/config"
@@ -50,27 +50,30 @@ func (mapper *NetLinkMapper) cacheUpdater() {
 
 		logging.GetLogger().Debug("ifIndex request received: %s", ifIndex)
 
-		intf := mapper.Topology.LookupInterface(topology.LookupByIfIndex(ifIndex), topology.NetNSScope)
+		/*intf := mapper.Topology.LookupInterface(topology.LookupByIfIndex(ifIndex), topology.NetNSScope)
 		if intf == nil {
 			logging.GetLogger().Debug("Unable to find the interface with index %d in the topology", ifIndex)
 		} else {
 			mapper.cache.Set(strconv.Itoa(int(ifIndex)), intf, cache.DefaultExpiration)
-		}
+		}*/
 	}
 }
 
 func (mapper *NetLinkMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
-	i, f := mapper.cache.Get(strconv.Itoa(int(attrs.GetIfIndex())))
+	/*i, f := mapper.cache.Get(strconv.Itoa(int(attrs.GetIfIndex())))
 	if f {
 		intf := i.(*topology.Interface)
 
 		// TODO(safchain) should report the full path of the interface here as
 		// we can have the same name at different place
 		attrs.IfName = proto.String(intf.ID)
-		attrs.MTU = proto.Uint32(intf.MTU)
+
+		if mtu, ok := intf.GetMetadata("MTU"); ok {
+			attrs.MTU = proto.Uint32(mtu.(uint32))
+		}
 
 		return
-	}
+	}*/
 
 	mapper.cacheUpdaterChan <- attrs.GetIfIndex()
 }

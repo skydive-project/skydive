@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"net"
 	"strconv"
-	"strings"
 
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
@@ -65,9 +64,12 @@ func (c *Client) SendFlows(flows []*flow.Flow) {
 func NewClient(addr string, port int) (*Client, error) {
 	client := &Client{Addr: addr, Port: port}
 
-	host := []string{addr, strconv.FormatInt(int64(port), 10)}
+	srv, err := net.ResolveUDPAddr("udp", addr+":"+strconv.FormatInt(int64(port), 10))
+	if err != nil {
+		return nil, err
+	}
 
-	connection, err := net.Dial("tcp", strings.Join(host, ":"))
+	connection, err := net.DialUDP("udp", nil, srv)
 	if err != nil {
 		return nil, err
 	}

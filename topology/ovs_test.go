@@ -32,7 +32,7 @@ import (
 
 func TestOvsTopology(t *testing.T) {
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 8888)
-	topo := NewTopology()
+	topo := NewTopology("host-a")
 
 	updater := NewOvsTopoUpdater(topo, ovsmon)
 
@@ -41,6 +41,14 @@ func TestOvsTopology(t *testing.T) {
 	rowFields["name"] = "eth0.1"
 	rowFields["mac_in_use"] = "1.1.1.1.1.1"
 	rowFields["type"] = ""
+
+	om, err := libovsdb.NewOvsMap(make(map[string]string))
+	if err != nil {
+		t.Error("Error creating OvsMap ", err)
+	}
+
+	rowFields["status"] = *om
+
 	row := libovsdb.Row{Fields: rowFields}
 	rowUpdate := libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: "intf-uuid"}, New: row}
 
@@ -59,6 +67,14 @@ func TestOvsTopology(t *testing.T) {
 	/* add bridge with already ports, simulate a initialisation */
 	rowFields = make(map[string]interface{})
 	rowFields["name"] = "br0"
+
+	om, err = libovsdb.NewOvsMap(make(map[string]string))
+	if err != nil {
+		t.Error("Error creating OvsMap ", err)
+	}
+
+	rowFields["status"] = *om
+
 	uuid = libovsdb.UUID{GoUuid: "port-uuid"}
 	rowFields["ports"] = libovsdb.OvsSet{GoSet: []interface{}{uuid}}
 	row = libovsdb.Row{Fields: rowFields}
@@ -84,7 +100,7 @@ func TestOvsTopology(t *testing.T) {
 
 func TestOvsOnBridgeAdd(t *testing.T) {
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 8888)
-	topo := NewTopology()
+	topo := NewTopology("host-a")
 
 	updater := NewOvsTopoUpdater(topo, ovsmon)
 
@@ -113,7 +129,7 @@ func TestOvsOnBridgeAdd(t *testing.T) {
 
 func TestOvsOnBridgeDel(t *testing.T) {
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 8888)
-	topo := NewTopology()
+	topo := NewTopology("host-a")
 
 	updater := NewOvsTopoUpdater(topo, ovsmon)
 

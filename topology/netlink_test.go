@@ -41,7 +41,7 @@ func (l *FakeOvsLink) Attrs() *netlink.LinkAttrs {
 }
 
 func TestOvsLinkNotHandled(t *testing.T) {
-	topo := NewTopology()
+	topo := NewTopology("host-a")
 	root := topo.NewNetNs("root")
 
 	updater := NewNetLinkTopoUpdater(root)

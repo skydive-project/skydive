@@ -23,17 +23,19 @@
 package topology
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
+	"text/template"
 )
 
 func TestSimpleTopology(t *testing.T) {
-	topo := NewTopology()
+	topo := NewTopology("host-a")
 
 	container1 := topo.NewNetNs("C1")
 	container1.NewInterface("node-1", 0)
 	container1.NewInterface("node-2", 0)
-	intf3 := topo.NewInterface("node-3", 0)
+	intf3 := topo.NewInterfaceWithUUID("node-3", "node-3-uuid")
 	container1.AddInterface(intf3)
 
 	container2 := topo.NewOvsBridge("C2")
@@ -43,22 +45,37 @@ func TestSimpleTopology(t *testing.T) {
 	intf.SetMac("1.1.1.1.1.1")
 	container2.AddPort(port5)
 
-	expected := `{"OvsBridges":{"C2":{"Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Mac":"1.1.1.1.1.1"}}}}}},`
-	expected += `"NetNss":{"C1":{"Interfaces":{"node-1":{},"node-2":{},"node-3":{}}}}}`
+	expected := `{"Host":"host-a","OvsBridges":{"C2":{"Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"UUID":"{{.UUID_INTF_1}}","Mac":"1.1.1.1.1.1"}}}}}},`
+	expected += `"NetNss":{"C1":{"Interfaces":{"node-1":{"UUID":"{{.UUID_NODE_1}}"},"node-2":{"UUID":"{{.UUID_NODE_2}}"},"node-3":{"UUID":"node-3-uuid"}}}}}`
+
+	var data = &struct {
+		UUID_INTF_1 string
+		UUID_NODE_1 string
+		UUID_NODE_2 string
+	}{
+		UUID_INTF_1: intf.UUID,
+		UUID_NODE_1: topo.LookupInterface(LookupByID("node-1"), OvsScope|NetNSScope).UUID,
+		UUID_NODE_2: topo.LookupInterface(LookupByID("node-2"), OvsScope|NetNSScope).UUID,
+	}
+
+	tmpl, _ := template.New("str").Parse(expected)
+
+	var str bytes.Buffer
+	tmpl.Execute(&str, data)
 
 	j, _ := json.Marshal(topo)
-	if string(j) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(j))
+	if string(j) != str.String() {
+		t.Error("Expected: ", str.String(), " Got: ", string(j))
 	}
 }
 
 func TestDeleteOvsBridge(t *testing.T) {
-	topo := NewTopology()
+	topo := NewTopology("host-a")
 
 	container1 := topo.NewNetNs("C1")
 	container1.NewInterface("node-1", 0)
 	container1.NewInterface("node-2", 0)
-	intf3 := topo.NewInterface("node-3", 0)
+	intf3 := topo.NewInterfaceWithUUID("node-3", "node-3-uuid")
 	container1.AddInterface(intf3)
 
 	container2 := topo.NewOvsBridge("C2")
@@ -68,26 +85,46 @@ func TestDeleteOvsBridge(t *testing.T) {
 	intf.SetMac("1.1.1.1.1.1")
 	container2.AddPort(port5)
 
-	expected := `{"OvsBridges":{"C2":{"Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"Mac":"1.1.1.1.1.1"}}}}}},`
-	expected += `"NetNss":{"C1":{"Interfaces":{"node-1":{},"node-2":{},"node-3":{}}}}}`
+	expected := `{"Host":"host-a","OvsBridges":{"C2":{"Ports":{"node-4":{},"node-5":{"Interfaces":{"intf-1":{"UUID":"{{.UUID_INTF_1}}","Mac":"1.1.1.1.1.1"}}}}}},`
+	expected += `"NetNss":{"C1":{"Interfaces":{"node-1":{"UUID":"{{.UUID_NODE_1}}"},"node-2":{"UUID":"{{.UUID_NODE_2}}"},"node-3":{"UUID":"node-3-uuid"}}}}}`
+
+	var data = &struct {
+		UUID_INTF_1 string
+		UUID_NODE_1 string
+		UUID_NODE_2 string
+	}{
+		UUID_INTF_1: intf.UUID,
+		UUID_NODE_1: topo.LookupInterface(LookupByID("node-1"), OvsScope|NetNSScope).UUID,
+		UUID_NODE_2: topo.LookupInterface(LookupByID("node-2"), OvsScope|NetNSScope).UUID,
+	}
+
+	tmpl, _ := template.New("str").Parse(expected)
+
+	var str bytes.Buffer
+	tmpl.Execute(&str, data)
 
 	j, _ := json.Marshal(topo)
-	if string(j) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(j))
+	if string(j) != str.String() {
+		t.Error("Expected: ", str.String(), " Got: ", string(j))
 	}
 
 	topo.DelOvsBridge("C2")
 
-	expected = `{"OvsBridges":{},"NetNss":{"C1":{"Interfaces":{"node-1":{},"node-2":{},"node-3":{}}}}}`
+	expected = `{"Host":"host-a","OvsBridges":{},`
+	expected += `"NetNss":{"C1":{"Interfaces":{"node-1":{"UUID":"{{.UUID_NODE_1}}"},"node-2":{"UUID":"{{.UUID_NODE_2}}"},"node-3":{"UUID":"node-3-uuid"}}}}}`
+
+	str.Reset()
+	tmpl, _ = template.New("str").Parse(expected)
+	tmpl.Execute(&str, data)
 
 	j, _ = json.Marshal(topo)
-	if string(j) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(j))
+	if string(j) != str.String() {
+		t.Error("Expected: ", str.String(), " Got: ", string(j))
 	}
 }
 
 func TestSameInterfaceNameTwoPlaces(t *testing.T) {
-	topo := NewTopology()
+	topo := NewTopology("host-a")
 
 	container1 := topo.NewOvsBridge("C1")
 	port1 := topo.NewPort("port")
@@ -106,7 +143,7 @@ func TestSameInterfaceNameTwoPlaces(t *testing.T) {
 }
 
 func TestSameInterfaceTwoPlaces(t *testing.T) {
-	topo := NewTopology()
+	topo := NewTopology("host-a")
 
 	container1 := topo.NewOvsBridge("C1")
 	port1 := topo.NewPort("port")

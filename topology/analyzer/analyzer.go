@@ -20,12 +20,4 @@
  *
  */
 
-package topology
-
-type Topology struct {
-	Host string
-}
-
-func (t *Topology) String() string {
-	return ""
-}
+package analyzer

@@ -1,284 +1,723 @@
-	<!DOCTYPE html>
-	<html lang="en">
-	<head>
-		<meta charset="utf-8"/>
-		<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-		<meta name="viewport" content="width=device-width, initial-scale=1"/>
-		<title>Skydive local topology</title>
-		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"/>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>Skydive Topology</title>
 
-		<script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
-		<script src="http://cytoscape.github.io/cytoscape.js/api/cytoscape.js-latest/cytoscape.min.js"></script>
-		<script src="https://cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.min.js"></script>
-		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"></script>
+        <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"/>
 
-		<script src="http://cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.0/jquery.qtip.min.js"></script>
-		<link href="http://cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.0/jquery.qtip.min.css" rel="stylesheet" type="text/css" />
-		<script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-qtip/2.2.5/cytoscape-qtip.js"></script>
+        <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.10/d3.min.js"></script>
 
-		<style>
-		body {
-			padding-top: 50px;
-			background-color: #eee;
-		}
-		#cy {
-			width: 100%;
-			height: 100%;
-			display: block;
-			position: absolute;
-		}
-		</style>
+        <style>
+        html, body {
+            width:100%;
+            height:100%;
+        }
 
-		<script>
-			var switchImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/switch.png';
-			var portImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/flow_chart.png';
-			var intfImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/wired_network.png';
+        body {
+            margin: auto;
+            padding-top: 50px;
+            background-color: #333;
+        }
 
-			function addTooltip(cy, id, el) {
-				if (!("Metadatas" in el))
-					return;
+        .topology {
+            width: 100%;
+            height: 100%;
+        }
 
-				var metadata = '';
-				for (k in el["Metadatas"]) {
-					metadata += k + ': ' + el["Metadatas"][k] + "<br/>";
-				}
+        .node {
+            fill: lightsteelblue;
+            stroke: #888;
+            stroke-width: 1;
+            opacity: 0.9;
+        }
 
-				cy.$('#' + id).qtip({
-					content: {
-						title:'Metadatas',
-						text: metadata
-					},
-					style: {
-						classes: 'qtip-bootstrap'
-					}
-				});
-			}
+        .circle {
+            fill-opacity: 1.0;
+        }
 
-			function drawTopology(topology) {
-				var cy = cytoscape({
-					ready: function(){
-						window.cy = this;
-					},
-					container: document.getElementById('cy'),
-					pan: { x: 100, y: 0 },
-					minZoom: 0.2,
-					maxZoom: 1,
-					zoomingEnabled: true,
-					userZoomingEnabled: true,
-					panningEnabled: true,
-					userPanningEnabled: true,
-					boxSelectionEnabled: true,
-				    style: [ // the stylesheet for the graph
-					    {
-					    	selector: 'node',
-					    	style: {
-					    		'background-color': '#fff',
-					    		'label': 'data(label)',
-					    		'shape': 'rectangle',
-					    		'background-image': 'data(img)',
-					    		'shape': 'roundrectangle',
-					    		'font-size': 22
-					    	}
-					    },
-				        {
-					    	selector: '[img!="none"]',
-					    	style: {
-					    		'width': 64,
-					    		'height': 64
-					    	}
-					    },
-					    {
-					    	selector: '$node > node',
-					    	css: {
-					    		'padding-top': '10px',
-					    		'padding-left': '10px',
-					    		'padding-bottom': '10px',
-					    		'padding-right': '10px',
-					    		'text-valign': 'top',
-					    		'text-halign': 'center',
-					    		'background-color': '#aaa',
-					    		'shape': 'roundrectangle'
-					    	}
-					    },
-					    {
-					    	selector: 'edge',
-					    	style: {
-					    		'width': 'data(edgeWidth)',
-					    		'line-color': 'data(edgeColor)',
-					    		'line-style': 'data(style)',
-					    		'target-arrow-color': '#333'
-					    	}
-					    }
-				    ],
-				    layout: {
-				    	name: 'dagre',
-				    	fit: true
-				    }
-				});
+        .node text {
+            fill: #111;
+            pointer-events: none;
+            font: 12px Helvetica,Arial,sans-serif;
+            stroke-width: 0;
+        }
 
-				peering = {};
-				uuidToId = {};
-				bridges = {};
-				uuidToIntf = {};
+        .group {
+            fill: #fff;
+            pointer-events: none;
+            font: 16px Helvetica,Arial,sans-serif;
+            stroke-width: 5;
+        }
 
-				// first to draw all the nodes
-				for (var bridgeName in topology["OvsBridges"]) {
-					bridgeId = bridgeName;
+        .link {
+            stroke: #333;
+        }
 
-					bridgeBoxId = 'OvsBridges_' + bridgeId;
-					cy.add({data: {id: bridgeBoxId, label: 'OvsBridge', img: 'none'}});
+        path.hull {
+            fill: lightsteelblue;
+            fill-opacity: 0.4;
+        }
 
-					cy.add({data: {id: bridgeId, label: bridgeName, parent: bridgeBoxId, img: switchImg}});
+        div.tooltip {
+            position: absolute;
+            text-align: left;
+            padding: 0px;
+            font: 12px Helvetica,Arial,sans-serif;
+            background: lightsteelblue;
+            border: 1px solid #aaa;
+            border-radius: 2px;
+        }
 
-					ports = topology["OvsBridges"][bridgeName]["Ports"]
-					for (var portName in ports) {
-						portId = bridgeId + portName;
+        td,th {
+            padding-left: 5px;
+            padding-right: 5px;
+            padding-top: 1px;
+            padding-bottom: 1px;
+        }
 
-						cy.add({data: {id: portId, label: portName, parent: bridgeBoxId, img: portImg}});
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
 
-						addTooltip(cy, portId, ports[portName]);
+        rect {
+            fill: none;
+            pointer-events: all;
+        }
+        </style>
 
-						// bridge to port
-						cy.add({data: {id: bridgeId + '->' + portId, source: bridgeId, target: portId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
+        <script>
+            var switchImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/switch.png';
+            var portImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/flow_chart.png';
+            var intfImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/wired_network.png';
+            var nsImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/layers.png';
+            var bridgeImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/tree_structure.png';
 
-						intfs = ports[portName]["Interfaces"]
-						for (var intfName in intfs) {
-							intfId = portId + intfName;
+            function getMetadatas(node) {
+                var metadatas = '<table><tr><th colspan="2">' + node.ID + '</th></tr>';
 
-							uuid = intfs[intfName]["UUID"];
-							uuidToId[uuid] = intfId;
-							uuidToIntf[uuid] = intfs[intfName];
+                if ("MAC" in node.Metadatas && node.Metadatas["MAC"])
+                    metadatas += '<tr><td><strong>MAC</strong>:</td> <td>' + node.Metadatas["MAC"] +'</td></tr>';
 
-							cy.add({data: {id: intfId, label: intfName, parent: bridgeBoxId, img: intfImg}});
+                for (var k in node.Metadatas) {
+                    if (k != "MAC")
+                        metadatas += '<tr><td>' + k + ':</td> <td>' + node.Metadatas[k] + "</td></tr>";
+                }
 
-							addTooltip(cy, intfId, intfs[intfName]);
+                metadatas += '</table>';
 
-							// port to intf
-							cy.add({data: {id: portId + '->' + intfId, source: portId, target: intfId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
+                return metadatas;
+            }
 
-							if ("Peer" in intfs[intfName] && intfs[intfName]["Peer"]) {
-								peerUUID = intfs[intfName]["Peer"]
-								if (!(uuid in peering) && !(peerUUID in peering))
-									peering[uuid] = peerUUID;
-							}
-						}
-					}
-				}
+            var Node = function(ID) {
+                this.ID = ID;
+                this.Metadatas = {};
+                this.Edges = {};
+            }
 
-				var ns = 0;
-				for (var nsName in topology["NetNss"]) {
-					nsId = nsName;
+            var Edge = function(ID) {
+                this.ID = ID;
+                this.Metadatas = {};
+            }
 
-					// skip netns with only one interface meaning only the loopback
-					if (Object.keys(topology["NetNss"][nsName]["Interfaces"]).length < 2) {
-						continue;
-					}
+            var Graph = function(ID) {
+                this.Nodes = {};
+                this.Edges = {};
+            };
 
-					var parentId = '';
-					if (nsName != "root") {
-						cy.add({data: {id: nsId, label: nsName, img: 'none'}});
-						parentId = nsId;
-					}
+            Graph.prototype.NewNode = function(ID) {
+                var node = new Node(ID);
+                node.Graph = this;
 
-					intfs = topology["NetNss"][nsName]["Interfaces"]
-					for (var intfName in intfs) {
-						intfId = nsId + intfName;
-						uuid = intfs[intfName]["UUID"];
+                this.Nodes[ID] = node;
 
-						img = intfImg;
-						if (intfs[intfName]["Type"] == "bridge") {
-							img = switchImg;
+                return node;
+            }
 
-							bridge = intfs[intfName]
-							if ("Interfaces" in bridge) {
-								for (childName in bridge["Interfaces"]) {
-									childUUID = bridge["Interfaces"][childName]["UUID"]
-									if (!(childUUID in bridges))
-										bridges[childUUID] = uuid;
-								}
-							}
-						}
+            Graph.prototype.GetNode = function(ID) {
+                return this.Nodes[ID];
+            }
 
-						cy.add({data: {id: intfId, label: intfName, parent: parentId, img: img}});
+            Graph.prototype.GetEdge = function(ID) {
+                return this.Edges[ID];
+            }
 
-						addTooltip(cy, intfId, intfs[intfName]);
+            Graph.prototype.NewEdge = function(ID, parent, child) {
+                var edge = new Edge(ID);
+                edge.Parent = parent;
+                edge.Child = child;
+                edge.Graph = this;
 
-						// if already in ovs add a dotted link since this is the same interface that is
-						// in an ovs bridge and in a netns
-						if (uuid in uuidToId) {
-							cy.add({data: {id: uuid + '->' + uuid, source: uuidToId[uuid], target: intfId, style: "dotted", edgeWidth: 6, edgeColor: "#000"}});
-						}
-						uuidToId[uuid] = intfId;
-						uuidToIntf[uuid] = intfs[intfName];
+                this.Edges[ID] = edge;
 
-						if ("Peer" in intfs[intfName] && intfs[intfName]["Peer"]) {
-							peerUUID = intfs[intfName]["Peer"]
-							if (!(peerUUID in peering))
-								peering[uuid] = peerUUID;
-						}
-					}
-				}
+                parent.Edges[ID] = edge;
+                child.Edges[ID] = edge;
 
-				for (var uuid in peering) {
-					sourceId = uuidToId[uuid];
-					targetId = uuidToId[peering[uuid]];
-					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "dashed", edgeWidth: 4, edgeColor: "#333"}});
-				}
+                return edge;
+            }
 
-				for (var uuid in bridges) {
-					if (uuidToIntf[uuid]["Type"] != "veth") {
-						sourceId = uuidToId[bridges[uuid]];
-						targetId = uuidToId[uuid];
-					} else {
-						targetId = uuidToId[bridges[uuid]];
-						sourceId = uuidToId[uuid];;
-					}
+            Graph.prototype.DelNode = function(node) {
+                for (i in node.Edges) {
+                    this.DelEdge(this.Edges[i]);
+                }
 
-					cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
-				}
-			}
+                delete this.Nodes[node.ID];
+            }
 
-			$(document).ready(function() {
-				$.ajax({
-					url: '/topology.json',
-					data: {
-						format: 'json'
-					},
-					error: function() {
-					},
-					dataType: 'json',
-					success: function(data) {
-						drawTopology(data);
-					},
-					type: 'GET'
-				});
-			});
-			</script>
-		</head>
+            Graph.prototype.DelEdge = function(edge) {
+                delete edge.Parent.Edges[edge.ID];
+                if (edge.Parent.Edges.length == 0) {
+                    delete this.Nodes[edge.Parent.ID];
+                }
 
-		<body>
-			<nav class="navbar navbar-inverse navbar-fixed-top">
-				<div class="container">
-					<div class="navbar-header">
-						<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-							<span class="sr-only">Toggle navigation</span>
-							<span class="icon-bar"></span>
-							<span class="icon-bar"></span>
-							<span class="icon-bar"></span>
-						</button>
-						<a class="navbar-brand" href="#">Skydive</a>
-					</div>
-					<div id="navbar" class="collapse navbar-collapse">
-						<ul class="nav navbar-nav">
-							<li class="active"><a href="#">Home</a></li>
-						</ul>
-					</div>
-				</div>
-			</nav>
+                delete edge.Child.Edges[edge.ID];
+                if (edge.Child.Edges.length == 0) {
+                    delete this.Nodes[edge.Child.ID];
+                }
 
-			<div id="cy"/>
+                delete this.Edges[edge.ID];
+            }
 
-			<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-			<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
-		</body>
-		</html>
+            var graph;
+            var elements = {};
+            var updatesocket;
+
+            function initGraphFromData(data) {
+                graph = new Graph();
+
+                for (var ID in data["Nodes"]) {
+                    var node = graph.NewNode(ID);
+                    node.Metadatas = data["Nodes"][ID]["Metadatas"];
+                }
+
+                for (var ID in data["Edges"]) {
+                    parent = graph.GetNode(data["Edges"][ID]["Parent"]);
+                    child = graph.GetNode(data["Edges"][ID]["Child"]);
+
+                    var edge = graph.NewEdge(ID, parent, child);
+
+                    if ("Metadatas" in data["Edges"][ID])
+                        edge.Metadatas = data["Edges"][ID]["Metadatas"];
+                }
+            }
+
+            function addNode(node) {
+                if (node.ID in elements)
+                    return;
+
+                if (node.Metadatas["Type"] == "host")
+                    return;
+
+                nodes.push(node);
+
+                elements[node.ID] = true;
+
+                redraw();
+            }
+
+            function delNode(node) {
+                if (!(node.ID in elements))
+                    return;
+
+                for (i in node.Edges)
+                    delEdge(node.Edges[i]);
+
+                for (i in nodes) {
+                    if (nodes[i].ID == node.ID) {
+                        nodes.splice(i, 1);
+                        break;
+                    }
+                }
+
+                delete elements[node.ID];
+
+                redraw();
+            }
+
+            function addEdge(edge) {
+                if (edge.ID in elements)
+                    return;
+
+                var parent = edge.Parent
+                var type = parent.Metadatas["Type"];
+                if (type == "host")
+                    return;
+
+                links.push({source: edge.Parent, target: edge.Child});
+
+                elements[edge.ID] = true;
+
+                redraw();
+            }
+
+            function delEdge(edge) {
+                if (!(edge.ID in elements)) {
+                    return;
+                }
+
+                for (i in links) {
+                    if (links[i]["source"] == edge.Parent && links[i]["target"] == edge.Child)
+                        links.splice(i, 1);
+                }
+
+                delete elements[edge.ID];
+
+                redraw();
+            }
+
+            function drawTopology() {
+                var nodes = graph.Nodes;
+                for (var ID in nodes)
+                    addNode(nodes[ID]);
+
+                var edges = graph.Edges;
+                for (var ID in edges)
+                    addEdge(edges[ID]);
+            }
+
+            function startLiveTopologyUpdate() {
+                updatesocket = new WebSocket("ws://localhost:8081/ws/topology");
+
+                updatesocket.onopen = function() {
+                }
+
+                updatesocket.onclose = function() {
+                    setTimeout(syncTopology, 1000);
+                }
+
+                updatesocket.onmessage = function(e) {
+                    var update = jQuery.parseJSON(e.data);
+
+                    switch(update.Event) {
+                        case "NodeUpdated":
+                            var node = graph.GetNode(update.Obj.ID);
+                            node.Metadatas = update.Obj.Metadatas;
+                            redraw();
+                        break;
+                        case "NodeAdded":
+                            var node = graph.NewNode(update.Obj.ID);
+                            if ("Metadatas" in update.Obj)
+                                node.Metadatas = update.Obj.Metadatas;
+                            addNode(node);
+                        break;
+                        case "NodeDeleted":
+                            var node = graph.GetNode(update.Obj.ID);
+                            if (typeof node == "undefined") {
+                                redraw();
+                                break;
+                            }
+                            delNode(node);
+                            graph.DelNode(node);
+                        break;
+
+                        case "EdgeUpdated":
+                            var edge = graph.GetEdge(update.Obj.ID);
+                            edge.Metadatas = update.Obj.Metadatas;
+                            redraw();
+                        break;
+                        case "EdgeAdded":
+                            var parent = graph.GetNode(update.Obj.Parent);
+                            var child = graph.GetNode(update.Obj.Child);
+
+                            var edge = graph.NewEdge(update.Obj.ID, parent, child);
+                            if ("Metadatas" in update.Obj)
+                                edge.Metadatas = update.Obj.Metadatas;
+                            addEdge(edge);
+                        break;
+                        case "EdgeDeleted":
+                            var edge = graph.GetEdge(update.Obj.ID);
+                            if (typeof edge == "undefined") {
+                                redraw();
+                                break;
+                            }
+                            delEdge(edge);
+                            graph.DelEdge(edge);
+                        break;
+                    }
+                };
+            }
+
+            function resetTopology() {
+                var nodes = graph.Nodes;
+                for (var ID in nodes)
+                    delNode(nodes[ID]);
+
+                var edges = graph.Edges;
+                for (var ID in edges)
+                    delEdge(edges[ID]);
+            }
+
+            function syncTopology() {
+                $.ajax({
+                    url: '/rpc/topology',
+                    data: {
+                        format: 'json'
+                    },
+                    error: function() {
+                        setTimeout(syncTopology, 1000);
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        if (typeof graph != "undefined")
+                            resetTopology();
+
+                        initGraphFromData(data);
+                        drawTopology();
+                        startLiveTopologyUpdate();
+                    },
+                    type: 'GET'
+                });
+            }
+
+            var offset = 22;
+
+            var force;
+            var nodes;
+            var links;
+            var node;
+            var link;
+            var hullg;
+            var hull;
+            var elemg;
+            var tooltip;
+
+            $(document).ready(function() {
+                var container = $('.container');
+                width = container.width() * 1.3;
+                height = container.height() * 1.3;
+
+                force = d3.layout.force()
+                    .size([width, height])
+                    .charge(-900)
+                    .linkDistance(40)
+                    .gravity(0.3)
+                    .on("tick", tick);
+
+                var svg = d3.select(".topology").append("svg")
+                    .attr("width", '100%')
+                    .attr("height", '100%')
+                    .attr("viewBox", "0 0 " + width + " " + height)
+                    .on("mousemove", mousemove)
+                    .on("mousedown", mousedown);
+
+                hullg = svg.append("g");
+                elemg = svg.append("g");
+
+                nodes = force.nodes();
+                links = force.links();
+
+                node = elemg.selectAll(".node");
+                link = elemg.selectAll(".link");
+
+                tooltip = d3.select(".container")
+                    .append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0);
+
+                syncTopology();
+            });
+
+            function mousemove() {
+            }
+
+            function mousedown() {
+            }
+
+            function tick(e) {
+                link.attr("x1", function(d) { return d.source.x; })
+                    .attr("y1", function(d) { return d.source.y; })
+                    .attr("x2", function(d) { return d.target.x; })
+                    .attr("y2", function(d) { return d.target.y; });
+
+                node.attr("cx", function(d) { return d.x; })
+                    .attr("cy", function(d) { return d.y; });
+
+                node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+                if (!hull.empty()) {
+                    hull.data(convexHulls(offset))
+                        .attr("d", drawCluster);
+                }
+            }
+
+            function size(d) {
+                switch(d.Metadatas["Type"]) {
+                    case "ovsport":
+                        return 18;
+                    case "ovsbridge":
+                        return 20;
+                    default:
+                        return 16;
+                }
+            }
+
+            function nodeColor(d) {
+                switch(d.Metadatas["Type"]) {
+                    case "ovsbridge":
+                        return "rgb(198, 219, 239)";
+                    case "ovsport":
+                        return "rgb(253, 208, 162)";
+                    default:
+                        return "rgb(199, 233, 192)";
+                }
+            }
+
+            function circleOpacity(d) {
+                if (d.Metadatas["Type"] == "netns")
+                    return 0.0;
+
+                return 1.0;
+            }
+
+            function edgeOpacity(d) {
+                parent = d.source;
+                child = d.target;
+
+                if (parent.Metadatas["Type"] == "netns" || child.Metadatas["Type"] == "netns")
+                    return 0.0;
+
+                return 1.0;
+            }
+
+            function picto(d) {
+                switch(d.Metadatas["Type"]) {
+                    case "ovsport":
+                        return portImg;
+                    case "bridge":
+                        return bridgeImg;
+                    case "ovsbridge":
+                        return switchImg;
+                    case "netns":
+                        return nsImg;
+                    default:
+                        return intfImg;
+                }
+            }
+
+            function getParent(node) {
+                var parent;
+
+                for (var i in node.Edges) {
+                    var edge = node.Edges[i];
+                    if ("Type" in edge.Metadatas) {
+                        var type = edge.Metadatas["Type"];
+                        if (type == "patch" || type == "veth") {
+                            continue
+                        }
+                    }
+
+                    var p = edge.Parent;
+                    if (p == node)
+                        continue;
+
+                    var type = p.Metadatas["Type"]
+                    if (type == "host" || type == "netns")
+                        return p;
+
+                    parent = p;
+                }
+
+                return parent;
+            }
+
+            function addToGroup(node, group, groups) {
+                var ID = node.ID;
+                if (group in groups)
+                    groups[group][ID] = node;
+                else
+                    groups[group] = {ID: node};
+            }
+
+            function getNodeGroups(n, node, groups) {
+                if (n.Metadatas["Type"] == "host")
+                    return;
+
+                var parent = getParent(n);
+                if (typeof parent == "undefined")
+                    return;
+
+                if (parent == node)
+                    return;
+
+                if (parent.Metadatas["Type"] != "ovsport")
+                    addToGroup(node, parent.ID, groups);
+
+                getNodeGroups(parent, node, groups);
+            }
+
+            function getNodesGroups() {
+                var groups = {};
+
+                for (var i in graph.Nodes) {
+                    var node = graph.Nodes[i];
+                    var type = node.Metadatas["Type"]
+
+                    // create an itself group
+                    if (type == "ovsbridge" || type == "netns")
+                        addToGroup(node, node.ID, groups);
+
+                    getNodeGroups(node, node, groups);
+                }
+
+                return groups;
+            }
+
+            function convexHulls(offset) {
+                var hulls = {};
+
+                var groups = getNodesGroups();
+
+                // create point sets
+                for (var ID in groups) {
+                    for (var n in groups[ID]) {
+                        var node = groups[ID][n];
+
+                        if (isNaN(parseFloat(node.x)))
+                            continue;
+
+                        var l = hulls[ID] || (hulls[ID] = []);
+                        l.push([node.x - offset, node.y - offset]);
+                        l.push([node.x - offset, node.y + offset]);
+                        l.push([node.x + offset, node.y - offset]);
+                        l.push([node.x + offset, node.y + offset]);
+                    }
+                }
+
+                // create convex hulls
+                var hullset = [];
+                for (var ID in hulls) {
+                    hullset.push({group: ID, path: d3.geom.hull(hulls[ID])});
+                }
+
+                return hullset;
+            }
+
+            var curve = d3.svg.line()
+                .interpolate("cardinal-closed")
+                .tension(.85);
+
+            function drawCluster(d) {
+                return curve(d.path);
+            }
+
+            function redraw() {
+                link = link.data(links, function(d) { return d.source.ID + "-" + d.target.ID; });
+                link.enter().insert("line", ".node")
+                    .style("opacity", edgeOpacity)
+                    .attr("class", "link");
+                link.exit().remove();
+
+                node = node.data(nodes, function(d) { return d.ID; });
+                var nodeEnter = node.enter().append("g")
+                    .attr("class", "node")
+                    .call(force.drag);
+                node.exit().remove();
+
+                nodeEnter.append("circle")
+                    .attr("r", size)
+                    .attr("class", "circle")
+                    .style("opacity", circleOpacity)
+                    .style("fill", nodeColor)
+                    .on("mouseover", function(d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", 1.0)
+                            .style("display","block");
+                        tooltip.html(getMetadatas(d))
+                            .style("left", (d3.event.pageX + 20) + "px")
+                            .style("top", (d3.event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function(d) {
+                         tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0)
+                            .style("display","none");
+                    });
+
+                nodeEnter.append("image")
+                    .attr("xlink:href", picto)
+                    .attr("x", -10)
+                    .attr("y", -10)
+                    .attr("width", 20)
+                    .attr("height", 20)
+                    .on("mouseover", function(d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", 1.0)
+                            .style("display","block");
+                        tooltip.html(getMetadatas(d))
+                            .style("left", (d3.event.pageX + 20) + "px")
+                            .style("top", (d3.event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function(d) {
+                        tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0)
+                            .style("display","none");
+                    });
+
+                nodeEnter.append("text")
+                    .attr("dx", 22)
+                    .attr("dy", ".35em")
+                    .text(function(d) {
+                        if (d.Metadatas["Type"] != "netns")
+                            return d.Metadatas["Name"]
+                        else
+                            return "";
+                    });
+
+                var hullData = convexHulls(offset);
+
+                hullg.selectAll("path.hull").remove();
+                hull = hullg.selectAll("path.hull")
+                    .data(hullData)
+                    .enter().append("path")
+                    .attr("class", "hull")
+                    .attr("id", function(d) { return d.group; })
+                    .attr("d", drawCluster);
+
+                hullg.selectAll("text.group").remove();
+                hullg.selectAll("text.group")
+                    .data(hullData)
+                    .enter()
+                    .append("text")
+                    .attr("class", "group")
+                    .attr("dy", 20)
+                    .append("textPath")
+                    .attr("xlink:href", function(d) { return '#' + d.group; })
+                    .text(function(d) { return graph.GetNode(d.group).Metadatas["Name"]; });
+
+                force.start();
+            }
+        </script>
+    </head>
+
+    <body>
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">Skydive</a>
+                </div>
+                <div id="navbar" class="collapse navbar-collapse">
+                    <ul class="nav navbar-nav">
+                        <li class="active"><a href="#">Home</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="topology"></div>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    </body>
+    </html>
