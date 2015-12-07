@@ -20,7 +20,7 @@
  *
  */
 
-package agents
+package sensors
 
-type Agent interface {
+type Sensor interface {
 }

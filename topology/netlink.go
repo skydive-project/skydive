@@ -23,6 +23,7 @@
 package topology
 
 import (
+	"net"
 	"syscall"
 	"time"
 
@@ -39,58 +40,89 @@ const (
 )
 
 type NetLinkTopoUpdater struct {
-	NetNs     *NetNs
-	linkCache map[int]netlink.LinkAttrs
-	nlSocket  *nl.NetlinkSocket
-	doneChan  chan struct{}
+	NetNs             *NetNs
+	linkCache         map[int]netlink.LinkAttrs
+	nlSocket          *nl.NetlinkSocket
+	doneChan          chan struct{}
+	indexTointfsQueue map[uint32][]*Interface
 }
 
-func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interface {
-	name := link.Attrs().Name
-	mac := link.Attrs().HardwareAddr.String()
+func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *Interface, link netlink.Link) {
+	index := uint32(link.Attrs().Index)
 
-	intf := u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
-	if intf == nil {
-		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
-	} else {
-		u.NetNs.AddInterface(intf)
+	// add children of this interface that haven previously added
+	if children, ok := u.indexTointfsQueue[index]; ok {
+		for _, child := range children {
+			intf.AddInterface(child)
+		}
+		delete(u.indexTointfsQueue, index)
 	}
 
-	/* part of a bridge */
+	// interface being a part of a bridge
 	if link.Attrs().MasterIndex != 0 {
 		index := uint32(link.Attrs().MasterIndex)
 
 		parent := u.NetNs.Topology.LookupInterface(LookupByIfIndex(index), NetNSScope|OvsScope)
 		if parent != nil {
 			parent.AddInterface(intf)
+		} else {
+			// not yet the bridge so, enqueue for a later add
+			u.indexTointfsQueue[index] = append(u.indexTointfsQueue[index], intf)
 		}
 	}
-
-	return intf
 }
 
-func (u *NetLinkTopoUpdater) addVethLinkToTopology(link netlink.Link) *Interface {
-	name := link.Attrs().Name
-	mac := link.Attrs().HardwareAddr.String()
-
-	intf := u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
-	if intf == nil {
-		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
-	} else {
-		u.NetNs.AddInterface(intf)
+func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *Interface, link netlink.Link) {
+	if link.Type() != "veth" {
+		return
 	}
 
-	stats, err := ethtool.Stats(name)
+	stats, err := ethtool.Stats(link.Attrs().Name)
 	if err != nil {
 		logging.GetLogger().Error("Unable get stats from ethtool: %s", err.Error())
-		return nil
+		return
 	}
 
 	if index, ok := stats["peer_ifindex"]; ok {
 		peer := u.NetNs.Topology.LookupInterface(LookupByIfIndex(uint32(index)), NetNSScope|OvsScope)
-		if peer != nil {
+
+		// set the peer only if it is of type veth
+		if peer != nil && peer.Type == "veth" {
 			intf.SetPeer(peer)
 		}
+	}
+}
+
+func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link) *Interface {
+	name := link.Attrs().Name
+	mac := link.Attrs().HardwareAddr.String()
+
+	var intf *Interface
+	if name != "lo" {
+		intf = u.NetNs.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
+	}
+
+	if intf == nil {
+		index := uint32(link.Attrs().Index)
+		intf = u.NetNs.NewInterface(name, index)
+	} else {
+		u.NetNs.AddInterface(intf)
+	}
+
+	u.handleIntfIsBridgeMember(intf, link)
+	u.handleIntfIsVeth(intf, link)
+
+	return intf
+}
+
+func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link) *Interface {
+	name := link.Attrs().Name
+
+	intf := u.NetNs.Topology.LookupInterface(LookupByType(name, "openvswitch"), OvsScope)
+	if intf == nil {
+		intf = u.NetNs.NewInterface(name, uint32(link.Attrs().Index))
+	} else {
+		u.NetNs.AddInterface(intf)
 	}
 
 	return intf
@@ -100,12 +132,8 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	var intf *Interface
 
 	switch link.Type() {
-	case "veth":
-		intf = u.addVethLinkToTopology(link)
-	case "bridge":
-		fallthrough
 	case "openvswitch":
-		fallthrough
+		intf = u.addOvsLinkToTopology(link)
 	default:
 		intf = u.addGenericLinkToTopology(link)
 	}
@@ -114,7 +142,13 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 		intf.SetType(link.Type())
 		intf.SetIndex(uint32(link.Attrs().Index))
 		intf.SetMac(link.Attrs().HardwareAddr.String())
-		intf.SetMTU(uint32(link.Attrs().MTU))
+		intf.SetMetadata("MTU", uint32(link.Attrs().MTU))
+
+		if (link.Attrs().Flags & net.FlagUp) > 0 {
+			intf.SetMetadata("State", "UP")
+		} else {
+			intf.SetMetadata("State", "DOWN")
+		}
 	}
 
 	u.linkCache[link.Attrs().Index] = *link.Attrs()
@@ -144,12 +178,16 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	if intf != nil && intf.Parent != nil {
 		intf.Parent.DelInterface(attrs.Name)
 	}
+
 	// check wheter the interface has been deleted or not
+	// we get a delete event when an interace is removed from a bridge
 	_, err := netlink.LinkByIndex(index)
 	if err != nil {
 		u.NetNs.DelInterface(attrs.Name)
-		delete(u.linkCache, index)
 	}
+
+	delete(u.linkCache, index)
+	delete(u.indexTointfsQueue, uint32(index))
 }
 
 func (u *NetLinkTopoUpdater) initialize() {
@@ -255,8 +293,9 @@ func (u *NetLinkTopoUpdater) Stop() {
 
 func NewNetLinkTopoUpdater(n *NetNs) *NetLinkTopoUpdater {
 	return &NetLinkTopoUpdater{
-		NetNs:     n,
-		linkCache: make(map[int]netlink.LinkAttrs),
-		doneChan:  make(chan struct{}),
+		NetNs:             n,
+		linkCache:         make(map[int]netlink.LinkAttrs),
+		doneChan:          make(chan struct{}),
+		indexTointfsQueue: make(map[uint32][]*Interface),
 	}
 }

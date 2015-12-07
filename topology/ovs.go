@@ -92,23 +92,63 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 	switch row.New.Fields["mac_in_use"].(type) {
 	case string:
 		mac = row.New.Fields["mac_in_use"].(string)
-	default:
-		/* do not handle interface without mac, is it even possible ??? */
-		return
 	}
 
-	intf, ok := o.uuidToIntf[uuid]
-	if !ok {
-		name := row.New.Fields["name"].(string)
+	var driver string
+	if d, ok := row.New.Fields["status"].(libovsdb.OvsMap).GoMap["driver_name"]; ok {
+		driver = d.(string)
+	}
 
-		intf = o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope)
-		if intf == nil {
-			intf = o.Topology.NewInterface(name, 0)
-			intf.SetMac(mac)
+	name := row.New.Fields["name"].(string)
+
+	intf := o.Topology.LookupInterface(LookupByUUID(uuid), OvsScope)
+	if intf != nil {
+		// mac has been set or changed
+		if mac != intf.GetMac() {
+			// FIX(safchain) since an ovs interface can be added without any mac address, we can have twice the same interface.
+			// one in ovs and one in netns. Having now the mac we can check if the same interface is in both places. If so,
+			// remove the ovs interface and add the netns interface to the ovs port.
+			if i := o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope); i != nil {
+				if port := intf.GetPort(); port != nil {
+					port.DelInterface(intf.ID)
+					port.AddInterface(i)
+					intf = i
+				}
+			}
+		}
+	}
+
+	// check if a new interface is needed
+	if intf == nil {
+		if intf = o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope); intf == nil {
+			intf = o.Topology.NewInterfaceWithUUID(name, uuid)
+		}
+	}
+
+	intf.SetType(driver)
+	intf.SetMac(mac)
+	o.uuidToIntf[uuid] = intf
+
+	// type
+	if t, ok := row.New.Fields["type"]; ok {
+		tp := t.(string)
+		if len(tp) > 0 {
+			intf.SetMetadata("Type", tp)
 		}
 
-		// peer resolution in case of a patch interface
-		if row.New.Fields["type"].(string) == "patch" {
+		// handle tunnels
+		switch tp {
+		case "gre":
+			fallthrough
+		case "vxlan":
+			m := row.New.Fields["options"].(libovsdb.OvsMap)
+			if ip, ok := m.GoMap["local_ip"]; ok {
+				intf.SetMetadata("LocalIP", ip.(string))
+			}
+			if ip, ok := m.GoMap["remote_ip"]; ok {
+				intf.SetMetadata("RemoteIP", ip.(string))
+			}
+		case "patch":
 			intf.SetType("patch")
 
 			m := row.New.Fields["options"].(libovsdb.OvsMap)
@@ -127,8 +167,6 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 				}
 			}
 		}
-
-		o.uuidToIntf[uuid] = intf
 	}
 
 	/* set pending interface for a port */
@@ -165,6 +203,19 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 		o.uuidToPort[uuid] = port
 	}
 
+	// vlan tag
+	if tag, ok := row.New.Fields["tag"]; ok {
+		switch tag.(type) {
+		case libovsdb.OvsSet:
+			set := tag.(libovsdb.OvsSet)
+			if len(set.GoSet) > 0 {
+				port.SetMetadata("Vlans", set.GoSet)
+			}
+		case float64:
+			port.SetMetadata("Vlans", int(tag.(float64)))
+		}
+	}
+
 	switch row.New.Fields["interfaces"].(type) {
 	case libovsdb.OvsSet:
 		set := row.New.Fields["interfaces"].(libovsdb.OvsSet)
@@ -189,6 +240,7 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 			o.intfPortQueue[u] = port
 		}
 	}
+
 	/* set pending port of a container */
 	if bridge, ok := o.portBridgeQueue[uuid]; ok {
 		bridge.AddPort(port)
