@@ -26,6 +26,10 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
+	"strconv"
+
+	"github.com/gorilla/mux"
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
@@ -33,7 +37,10 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/mappings"
 	"github.com/redhat-cip/skydive/storage/elasticsearch"
+	"github.com/redhat-cip/skydive/topology"
 )
+
+var quit chan bool
 
 func getInterfaceMappingDrivers() ([]mappings.InterfaceMappingDriver, error) {
 	drivers := []mappings.InterfaceMappingDriver{}
@@ -47,14 +54,11 @@ func getInterfaceMappingDrivers() ([]mappings.InterfaceMappingDriver, error) {
 	return drivers, nil
 }
 
-func handleMessage(conn net.Conn, analyzer *analyzer.Analyzer) {
-	logging.GetLogger().Info("New connection from: %s", conn.RemoteAddr().String())
-
-	defer conn.Close()
+func handleMessage(conn *net.UDPConn, analyzer *analyzer.Analyzer) {
 	data := make([]byte, 4096)
 
 	for {
-		n, err := conn.Read(data)
+		n, _, err := conn.ReadFromUDP(data)
 		if err != nil {
 			logging.GetLogger().Error("Error while reading: %s", err.Error())
 			return
@@ -79,6 +83,22 @@ func main() {
 		panic(err)
 	}
 
+	quit = make(chan bool)
+
+	go func() {
+		global := topology.NewGlobalTopology()
+
+		port, err := config.GetConfig().Section("analyzer").Key("listen").Int64()
+		if err != nil {
+			panic(err)
+		}
+
+		router := mux.NewRouter().StrictSlash(true)
+		topology.RegisterStaticEndpoints(global, router)
+		topology.RegisterRpcEndpoints(global, router)
+		http.ListenAndServe(":"+strconv.FormatInt(port, 10), router)
+	}()
+
 	mapper := mappings.NewFlowMapper()
 	drivers, err := getInterfaceMappingDrivers()
 	if err != nil {
@@ -90,17 +110,20 @@ func main() {
 
 	analyzer := analyzer.NewAnalyzer(mapper, elasticsearch)
 
-	fmt.Println("Skydive Analyzer started !")
-	listener, err := net.Listen("tcp", "127.0.0.1:8888")
+	port, err := config.GetConfig().Section("analyzer").Key("listen").Int64()
 	if err != nil {
 		panic(err)
 	}
 
-	for {
-		if conn, err := listener.Accept(); err == nil {
-			go handleMessage(conn, analyzer)
-		} else {
-			continue
-		}
+	addr, err := net.ResolveUDPAddr("udp", ":"+strconv.FormatInt(port, 10))
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		panic(err)
 	}
+	defer conn.Close()
+
+	go handleMessage(conn, analyzer)
+
+	fmt.Println("Skydive Agent started !")
+	<-quit
 }

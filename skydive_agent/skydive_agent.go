@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 
@@ -114,10 +116,18 @@ func main() {
 		panic(err)
 	}
 
-	client := topology.NewClient("127.0.0.1", 8081)
+	analyzers := config.GetConfig().Section("agent").Key("analyzers").Strings(",")
+	// TODO(safchain) HA Connection ???
+	analyzer_addr := strings.Split(analyzers[0], ":")[0]
+	analyzer_port, err := strconv.Atoi(strings.Split(analyzers[0], ":")[1])
+	if err != nil {
+		panic(err)
+	}
+
+	topo_client := topology.NewClient(analyzer_addr, analyzer_port)
 
 	topo := topology.NewTopology(hostname)
-	topo.AddEventListener(&TopologyEventListener{Client: client})
+	topo.AddEventListener(&TopologyEventListener{Client: topo_client})
 
 	global := topology.NewGlobalTopology()
 	global.Add(topo)
@@ -140,10 +150,11 @@ func main() {
 	mapper.SetInterfaceMappingDrivers(drivers)
 	sflowSensor.SetFlowMapper(mapper)
 
-	analyzer, err := analyzer.NewClient("127.0.0.1", 8888)
+	analyzer, err := analyzer.NewClient(analyzer_addr, analyzer_port)
 	if err != nil {
 		panic(err)
 	}
+
 	sflowSensor.SetAnalyzerClient(analyzer)
 	sflowSensor.Start()
 
@@ -152,7 +163,12 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 	topology.RegisterStaticEndpoints(global, router)
 	topology.RegisterRpcEndpoints(global, router)
-	http.ListenAndServe(":8080", router)
+
+	port, err := config.GetConfig().Section("agent").Key("listen").Int64()
+	if err != nil {
+		panic(err)
+	}
+	http.ListenAndServe(":"+strconv.FormatInt(port, 10), router)
 
 	fmt.Println("Skydive Agent started !")
 	<-quit
