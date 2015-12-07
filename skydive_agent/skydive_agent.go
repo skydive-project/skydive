@@ -44,25 +44,23 @@ import (
 var quit chan bool
 
 type TopologyEventListener struct {
-	Client *topology.Client
-}
-
-func (l *TopologyEventListener) OnDeleted(topo *topology.Topology, i string) {
-	logging.GetLogger().Debug("Current topology: %s", topo.String())
-
-	l.Client.AsyncUpdate(topo)
-}
-
-func (l *TopologyEventListener) OnAdded(topo *topology.Topology, i string) {
-	logging.GetLogger().Debug("Current topology: %s", topo.String())
-
-	l.Client.AsyncUpdate(topo)
+	Client *topology.AsyncClient
 }
 
 func (l *TopologyEventListener) OnUpdated(topo *topology.Topology, i string) {
-	logging.GetLogger().Debug("Current topology: %s", topo.String())
+	jsonData := topo.String()
 
-	l.Client.AsyncUpdate(topo)
+	logging.GetLogger().Debug("Current topology: %s", jsonData)
+
+	l.Client.AsyncUpdate(topo.Host, jsonData)
+}
+
+func (l *TopologyEventListener) OnDeleted(topo *topology.Topology, i string) {
+	l.OnUpdated(topo, i)
+}
+
+func (l *TopologyEventListener) OnAdded(topo *topology.Topology, i string) {
+	l.OnUpdated(topo, i)
 }
 
 func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
@@ -124,7 +122,8 @@ func main() {
 		panic(err)
 	}
 
-	topo_client := topology.NewClient(analyzer_addr, analyzer_port)
+	topo_client := topology.NewAsyncClient(analyzer_addr, analyzer_port)
+	topo_client.Start()
 
 	topo := topology.NewTopology(hostname)
 	topo.AddEventListener(&TopologyEventListener{Client: topo_client})

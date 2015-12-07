@@ -121,6 +121,8 @@ func (s *Service) TopologyInsert(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}
+
+	logging.GetLogger().Debug(topology.String())
 }
 
 func RegisterStaticEndpoints(global *GlobalTopology, router *mux.Router) {
