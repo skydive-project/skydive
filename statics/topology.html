@@ -36,56 +36,68 @@
 
             var cy;
 
-            function addTooltip(cy, id, el) {
+            function getMetadatas(el) {
                 if (!("Metadatas" in el))
-                    return;
+                    return "";
 
-                var metadata = '';
+                var metadatas = '';
                 for (k in el["Metadatas"]) {
-                    metadata += k + ': ' + el["Metadatas"][k] + "<br/>";
+                    metadatas += k + ': ' + el["Metadatas"][k] + "<br/>";
                 }
 
-                cy.$('#' + id).qtip({
-                    content: {
-                        title:'Metadatas',
-                        text: metadata
-                    },
-                    style: {
-                        classes: 'qtip-bootstrap'
-                    }
-                });
+                return metadatas;
             }
 
-            function drawTopology(topology) {
-                peering = {};
-                uuidToId = {};
-                bridges = {};
-                uuidToIntf = {};
+            function updateElements(topology, elements) {
+                var peering = {};
+                var uuidToId = {};
+                var bridges = {};
+                var uuidToIntf = {};
 
-                hostname = topology["Host"];
+                var hostname = topology["Host"];
 
-                console.log(hostname);
-
-                cy.add({data: {id: hostname, label: hostname, img: 'none'}});
+                elements["nodes"].push({data: {id: hostname, label: hostname, img: 'none'}});
 
                 // first to draw all the nodes
                 for (var bridgeName in topology["OvsBridges"]) {
                     bridgeId = hostname + '-ovs-' + bridgeName;
 
                     bridgeBoxId = 'ovsbridgesbox_' + bridgeId;
-                    cy.add({data: {id: bridgeBoxId, label: "", parent: hostname, img: 'none'}});
+                    elements["nodes"].push({data: {
+                            id: bridgeBoxId,
+                            label: "",
+                            parent: hostname,
+                            img: 'none'
+                    }});
 
-                    cy.add({data: {id: bridgeId, label: bridgeName, parent: bridgeBoxId, img: switchImg}});
+                    elements["nodes"].push({data: {
+                        id: bridgeId,
+                        label: bridgeName,
+                        parent: bridgeBoxId,
+                        img: switchImg
+                    }});
 
                     ports = topology["OvsBridges"][bridgeName]["Ports"]
                     for (var portName in ports) {
                         portId = bridgeId + portName;
 
-                        cy.add({data: {id: portId, label: portName, parent: bridgeBoxId, img: portImg}});
-                        addTooltip(cy, portId, ports[portName]);
+                        elements["nodes"].push({data: {
+                            id: portId,
+                            label: portName,
+                            parent: bridgeBoxId,
+                            img: portImg,
+                            metadatas: getMetadatas(ports[portName])
+                        }});
 
                         // bridge to port
-                        cy.add({data: {id: bridgeId + '->' + portId, source: bridgeId, target: portId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
+                        elements["edges"].push({data: {
+                            id: bridgeId + '->' + portId,
+                            source: bridgeId,
+                            target: portId,
+                            style: "solid",
+                            edgeWidth: 4,
+                            edgeColor: "#333"
+                        }});
 
                         intfs = ports[portName]["Interfaces"]
                         for (var intfName in intfs) {
@@ -95,13 +107,25 @@
                             uuidToId[uuid] = intfId;
                             uuidToIntf[uuid] = intfs[intfName];
 
-                            cy.add({data: {id: intfId, label: intfName, parent: bridgeBoxId, img: intfImg}});
-
-                            addTooltip(cy, intfId, intfs[intfName]);
+                            elements["nodes"].push({data: {
+                                id: intfId,
+                                label: intfName,
+                                parent: bridgeBoxId,
+                                img: intfImg,
+                                metadatas: getMetadatas(intfs[intfName])
+                            }});
 
                             // port to intf
-                            cy.add({data: {id: portId + '->' + intfId, source: portId, target: intfId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
+                            elements["edges"].push({data: {
+                                id: portId + '->' + intfId,
+                                source: portId,
+                                target: intfId,
+                                style: "solid",
+                                edgeWidth: 4,
+                                edgeColor: "#333"
+                            }});
 
+                            // build the peering mapping for the following edges contruct
                             if ("Peer" in intfs[intfName] && intfs[intfName]["Peer"]) {
                                 peerUUID = intfs[intfName]["Peer"]
                                 if (!(uuid in peering) && !(peerUUID in peering))
@@ -111,18 +135,23 @@
                     }
                 }
 
-                var ns = 0;
                 for (var nsName in topology["NetNss"]) {
-                    nsId = hostname + nsName;
+                    var nsId = hostname + nsName;
 
                     // skip netns with only one interface meaning only the loopback
                     if (Object.keys(topology["NetNss"][nsName]["Interfaces"]).length < 2) {
                         continue;
                     }
 
+                    // if not root netns draw a box
                     var parentId = hostname;
                     if (nsName != "root") {
-                        cy.add({data: {id: nsId, label: nsName, img: 'none', parent: hostname}});
+                        elements["nodes"].push({data: {
+                            id: nsId,
+                            label: nsName,
+                            img: 'none',
+                            parent: hostname
+                        }});
                         parentId = nsId;
                     }
 
@@ -135,6 +164,7 @@
                         if (intfs[intfName]["Type"] == "bridge") {
                             img = switchImg;
 
+                            // build bridge interface mapping for the following edge contruct
                             bridge = intfs[intfName]
                             if ("Interfaces" in bridge) {
                                 for (childName in bridge["Interfaces"]) {
@@ -145,18 +175,30 @@
                             }
                         }
 
-                        cy.add({data: {id: intfId, label: intfName, parent: parentId, img: img}});
-
-                        addTooltip(cy, intfId, intfs[intfName]);
+                        elements["nodes"].push({data: {
+                            id: intfId,
+                            label: intfName,
+                            parent: parentId,
+                            img: img,
+                            metadatas: getMetadatas(intfs[intfName])
+                        }});
 
                         // if already in ovs add a dotted link since this is the same interface that is
                         // in an ovs bridge and in a netns
                         if (uuid in uuidToId) {
-                            cy.add({data: {id: uuid + '->' + uuid, source: uuidToId[uuid], target: intfId, style: "dotted", edgeWidth: 6, edgeColor: "#000"}});
+                            elements["edges"].push({data: {
+                                id: uuid + '->' + uuid,
+                                source: uuidToId[uuid],
+                                target: intfId,
+                                style: "dotted",
+                                edgeWidth: 6,
+                                edgeColor: "#000"
+                            }});
                         }
                         uuidToId[uuid] = intfId;
                         uuidToIntf[uuid] = intfs[intfName];
 
+                        // build the peering mapping for the following edges contruct
                         if ("Peer" in intfs[intfName] && intfs[intfName]["Peer"]) {
                             peerUUID = intfs[intfName]["Peer"]
                             if (!(peerUUID in peering))
@@ -165,12 +207,21 @@
                     }
                 }
 
+                // construct edges for peering mapping
                 for (var uuid in peering) {
                     sourceId = uuidToId[uuid];
                     targetId = uuidToId[peering[uuid]];
-                    cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "dashed", edgeWidth: 4, edgeColor: "#333"}});
+                    elements["edges"].push({data: {
+                        id: sourceId + '->' + targetId,
+                        source: sourceId,
+                        target: targetId,
+                        style: "dashed",
+                        edgeWidth: 4,
+                        edgeColor: "#333"
+                    }});
                 }
 
+                // contruct edges for bridges mapping
                 for (var uuid in bridges) {
                     if (uuidToIntf[uuid]["Type"] != "veth") {
                         sourceId = uuidToId[bridges[uuid]];
@@ -180,14 +231,51 @@
                         sourceId = uuidToId[uuid];;
                     }
 
-                    cy.add({data: {id: sourceId + '->' + targetId, source: sourceId, target: targetId, style: "solid", edgeWidth: 4, edgeColor: "#333"}});
+                    elements["edges"].push({data: {
+                        id: sourceId + '->' + targetId,
+                        source: sourceId,
+                        target: targetId,
+                        style: "solid",
+                        edgeWidth: 4,
+                        edgeColor: "#333"
+                    }});
                 }
             }
 
-            $(document).ready(function() {
+            function drawMetadatas(cy, elements) {
+                for (i in elements["nodes"]) {
+
+                    node = elements["nodes"][i]["data"];
+
+                    if (!("metadatas" in node) || !node["metadatas"])
+                        continue;
+
+                    cy.$('#' + node.id).qtip({
+                        content: {
+                            title: 'Metadatas',
+                            text: node["metadatas"]
+                        },
+                        style: {
+                            classes: 'qtip-bootstrap'
+                        }
+                    });
+                }
+            }
+
+            function drawTopology(data) {
+                var elements = {
+                    nodes: [],
+                    edges: []
+                };
+
+                for (hostname in data["Topologies"])
+                    updateElements(data["Topologies"][hostname], elements);
+
                 cy = cytoscape({
                     ready: function() {
                         window.cy = this;
+
+                        drawMetadatas(this, elements);
                     },
                     container: document.getElementById('cy'),
                     pan: { x: 100, y: 0 },
@@ -198,7 +286,7 @@
                     panningEnabled: true,
                     userPanningEnabled: true,
                     boxSelectionEnabled: true,
-                    style: [ // the stylesheet for the graph
+                    style: [
                         {
                             selector: 'node',
                             style: {
@@ -254,11 +342,14 @@
                         }
                     ],
                     layout: {
-                        name: 'dagre',
-                        fit: true
-                    }
+                        name: 'dagre'
+                    },
+                    elements: elements
                 });
+            }
 
+
+            $(document).ready(function() {
                 $.ajax({
                     url: '/rpc/topology',
                     data: {
@@ -268,8 +359,7 @@
                     },
                     dataType: 'json',
                     success: function(data) {
-                        for (hostname in data["Topologies"])
-                            drawTopology(data["Topologies"][hostname]);
+                        drawTopology(data);
                     },
                     type: 'GET'
                 });
