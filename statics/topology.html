@@ -40,7 +40,7 @@
                 if (!("Metadatas" in el))
                     return "";
 
-                var metadatas = '';
+                var metadatas = '<strong>Mac: ' + el["Mac"] +'</strong><br/>';
                 for (k in el["Metadatas"]) {
                     metadatas += k + ': ' + el["Metadatas"][k] + "<br/>";
                 }
