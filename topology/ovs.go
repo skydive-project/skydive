@@ -152,8 +152,6 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 				intf.SetMetadata("RemoteIP", ip.(string))
 			}
 		case "patch":
-			intf.SetType("patch")
-
 			m := row.New.Fields["options"].(libovsdb.OvsMap)
 			if p, ok := m.GoMap["peer"]; ok {
 

@@ -159,10 +159,12 @@ func (intf *Interface) SetPeer(i *Interface) {
 	intf.Topology.Lock()
 	defer intf.Topology.Unlock()
 
-	intf.Peer = i
-	i.Peer = intf
+	if intf.Peer == nil || intf.Peer != i {
+		intf.Peer = i
+		i.Peer = intf
 
-	intf.Topology.notifyOnUpdated(intf.ID)
+		intf.Topology.notifyOnUpdated(intf.ID)
+	}
 }
 
 // GetPort return port which the interface below to
@@ -186,9 +188,11 @@ func (intf *Interface) SetMac(mac string) {
 	intf.Topology.Lock()
 	defer intf.Topology.Unlock()
 
-	intf.Mac = mac
+	if intf.Mac != mac {
+		intf.Mac = mac
 
-	intf.Topology.notifyOnUpdated(intf.ID)
+		intf.Topology.notifyOnUpdated(intf.ID)
+	}
 }
 
 // SetMetadata attach metadata to the interface
@@ -196,7 +200,12 @@ func (intf *Interface) SetMetadata(key string, value interface{}) {
 	intf.Topology.Lock()
 	defer intf.Topology.Unlock()
 
-	intf.Metadatas[key] = value
+	v, ok := intf.Metadatas[key]
+	if !ok || v != value {
+		intf.Metadatas[key] = value
+
+		intf.Topology.notifyOnUpdated(intf.ID)
+	}
 }
 
 func (intf *Interface) GetMetadata(key string) (interface{}, bool) {
@@ -213,9 +222,11 @@ func (intf *Interface) SetType(t string) {
 	intf.Topology.Lock()
 	defer intf.Topology.Unlock()
 
-	intf.Type = t
+	if intf.Type != t {
+		intf.Type = t
 
-	intf.Topology.notifyOnUpdated(intf.ID)
+		intf.Topology.notifyOnUpdated(intf.ID)
+	}
 }
 
 // SetIndex specifies the index of the interface, doesn't make sense for ovs internals
@@ -352,7 +363,12 @@ func (p *Port) SetMetadata(key string, value interface{}) {
 	p.Topology.Lock()
 	defer p.Topology.Unlock()
 
-	p.Metadatas[key] = value
+	v, ok := p.Metadatas[key]
+	if !ok || v != value {
+		p.Metadatas[key] = value
+
+		p.Topology.notifyOnUpdated(p.ID)
+	}
 }
 
 // Del removes the port from the ovs bridge containing it
