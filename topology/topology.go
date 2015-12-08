@@ -195,6 +195,18 @@ func (intf *Interface) SetMac(mac string) {
 	}
 }
 
+// ResetUUID reset the uuid
+func (intf *Interface) ResetUUID(u string) {
+	intf.Topology.Lock()
+	defer intf.Topology.Unlock()
+
+	if intf.UUID != u {
+		intf.UUID = u
+
+		intf.Topology.notifyOnUpdated(intf.ID)
+	}
+}
+
 // SetMetadata attach metadata to the interface
 func (intf *Interface) SetMetadata(key string, value interface{}) {
 	intf.Topology.Lock()

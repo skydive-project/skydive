@@ -105,31 +105,31 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 	defer o.Topology.StopMultipleOperations()
 
 	intf := o.Topology.LookupInterface(LookupByUUID(uuid), OvsScope)
-	if intf != nil {
-		// mac has been set or changed
-		if mac != intf.GetMac() {
-			// FIX(safchain) since an ovs interface can be added without any mac address, we can have twice the same interface.
-			// one in ovs and one in netns. Having now the mac we can check if the same interface is in both places. If so,
-			// remove the ovs interface and add the netns interface to the ovs port.
-			if i := o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope); i != nil {
-				if port := intf.GetPort(); port != nil {
-					port.DelInterface(intf.ID)
-					port.AddInterface(i)
-					intf = i
-				}
+	if intf == nil {
+		// if mac, first lookup with mac address
+		if mac != "" {
+			intf = o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope)
+		} else {
+			// no mac address, so check if the netlink driver inserted the interface, if so reset the uuid
+			// that has randomly created by the one from the ovsdb
+			intf = o.Topology.LookupInterface(LookupByType(name, "openvswitch"), NetNSScope)
+			if intf != nil {
+				intf.ResetUUID(uuid)
 			}
 		}
 	}
 
-	// check if a new interface is needed
 	if intf == nil {
-		if intf = o.Topology.LookupInterface(LookupByMac(name, mac), NetNSScope|OvsScope); intf == nil {
-			intf = o.Topology.NewInterfaceWithUUID(name, uuid)
-		}
+		intf = o.Topology.NewInterfaceWithUUID(name, uuid)
 	}
 
 	intf.SetType(driver)
-	intf.SetMac(mac)
+
+	// an ovs interface can have no mac in its db,
+	// so don't overrivde the netlink provided value with an empty value
+	if mac != "" {
+		intf.SetMac(mac)
+	}
 	o.uuidToIntf[uuid] = intf
 
 	// type
