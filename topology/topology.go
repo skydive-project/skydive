@@ -25,6 +25,7 @@ package topology
 import (
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/nu7hatch/gouuid"
 )
@@ -84,6 +85,7 @@ type Topology struct {
 	Host           string
 	OvsBridges     map[string]*OvsBridge
 	NetNss         map[string]*NetNs
+	LastUpdate     time.Time
 	eventListeners []EventListener
 	mutex          sync.Mutex
 }
@@ -651,18 +653,24 @@ func (topo *Topology) String() string {
 }
 
 func (topo *Topology) notifyOnAdded(i string) {
+	topo.LastUpdate = time.Now()
+
 	for _, l := range topo.eventListeners {
 		l.OnAdded(topo, i)
 	}
 }
 
 func (topo *Topology) notifyOnDeleted(i string) {
+	topo.LastUpdate = time.Now()
+
 	for _, l := range topo.eventListeners {
 		l.OnDeleted(topo, i)
 	}
 }
 
 func (topo *Topology) notifyOnUpdated(i string) {
+	topo.LastUpdate = time.Now()
+
 	for _, l := range topo.eventListeners {
 		l.OnUpdated(topo, i)
 	}
@@ -741,6 +749,7 @@ func (topo *Topology) UnmarshalJSON(data []byte) error {
 	topo.Host = t.Host
 	topo.OvsBridges = t.OvsBridges
 	topo.NetNss = t.NetNss
+	topo.LastUpdate = t.LastUpdate
 
 	// fix interface with same UUID
 	topo.unmarshalJSONFixDupInterfaces()
