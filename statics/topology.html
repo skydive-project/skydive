@@ -4,17 +4,19 @@
         <meta charset="utf-8"/>
         <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <title>Skydive local topology</title>
+        <title>Skydive Topology</title>
+
         <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"/>
+        <link href="http://cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.0/jquery.qtip.min.css" rel="stylesheet" type="text/css" />
 
         <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/2.5.0/cytoscape.min.js"></script>
         <script src="https://cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.min.js"></script>
         <script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.1.2/cytoscape-dagre.js"></script>
-
         <script src="http://cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.0/jquery.qtip.min.js"></script>
-        <link href="http://cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.0/jquery.qtip.min.css" rel="stylesheet" type="text/css" />
         <script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-qtip/2.2.5/cytoscape-qtip.js"></script>
+
+
 
         <style>
         body {
@@ -33,8 +35,6 @@
             var switchImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/switch.png';
             var portImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/flow_chart.png';
             var intfImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/wired_network.png';
-
-            var cy;
 
             function getMetadatas(el) {
                 if (!("Metadatas" in el))
@@ -74,7 +74,8 @@
                         id: bridgeId,
                         label: bridgeName,
                         parent: bridgeBoxId,
-                        img: switchImg
+                        img: switchImg,
+                        rank: 1
                     }});
 
                     ports = topology["OvsBridges"][bridgeName]["Ports"]
@@ -262,11 +263,32 @@
                 }
             }
 
+            var lastUpdates = {};
+            function hasChanged(data) {
+                for (hostname in data["Topologies"]) {
+                    topology = data["Topologies"][hostname];
+                    if (!(hostname in lastUpdates) || lastUpdates[hostname] != topology["LastUpdate"]) {
+                        lastUpdates[hostname] = topology["LastUpdate"];
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            var cy;
             function drawTopology(data) {
                 var elements = {
                     nodes: [],
                     edges: []
                 };
+
+                if (hasChanged(data)) {
+                    if (typeof cy !== "undefined")
+                        cy.destroy();
+                } else {
+                    return;
+                }
 
                 for (hostname in data["Topologies"])
                     updateElements(data["Topologies"][hostname], elements);
@@ -348,8 +370,7 @@
                 });
             }
 
-
-            $(document).ready(function() {
+            function refreshTopology() {
                 $.ajax({
                     url: '/rpc/topology',
                     data: {
@@ -363,6 +384,12 @@
                     },
                     type: 'GET'
                 });
+            }
+
+            $(document).ready(function() {
+                refreshTopology();
+
+                setInterval(refreshTopology, 2000);
             });
         </script>
     </head>

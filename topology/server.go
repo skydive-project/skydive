@@ -131,7 +131,7 @@ func RegisterStaticEndpoints(global *GlobalTopology, router *mux.Router) {
 	}
 
 	// static routes
-	router.HandleFunc("/static/topology.html", service.htmlOutput)
+	router.HandleFunc("/static/topology", service.htmlOutput)
 }
 
 func RegisterRpcEndpoints(global *GlobalTopology, router *mux.Router) {
