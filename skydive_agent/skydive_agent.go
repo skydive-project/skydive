@@ -26,11 +26,15 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/mappings"
 	"github.com/redhat-cip/skydive/ovs"
 	"github.com/redhat-cip/skydive/sensors"
@@ -38,6 +42,26 @@ import (
 )
 
 var quit chan bool
+
+type TopologyEventListener struct {
+	Client *topology.AsyncClient
+}
+
+func (l *TopologyEventListener) OnUpdated(topo *topology.Topology, i string) {
+	jsonData := topo.String()
+
+	logging.GetLogger().Debug("Current topology: %s", jsonData)
+
+	l.Client.AsyncUpdate(topo.Host, jsonData)
+}
+
+func (l *TopologyEventListener) OnDeleted(topo *topology.Topology, i string) {
+	l.OnUpdated(topo, i)
+}
+
+func (l *TopologyEventListener) OnAdded(topo *topology.Topology, i string) {
+	l.OnUpdated(topo, i)
+}
 
 func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
 	drivers := []mappings.InterfaceMappingDriver{}
@@ -85,12 +109,32 @@ func main() {
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
 	ovsmon.AddMonitorHandler(sflowHandler)
 
-	topo := topology.NewTopology()
-	root := topo.NewNetNs("root")
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	analyzers := config.GetConfig().Section("agent").Key("analyzers").Strings(",")
+	// TODO(safchain) HA Connection ???
+	analyzer_addr := strings.Split(analyzers[0], ":")[0]
+	analyzer_port, err := strconv.Atoi(strings.Split(analyzers[0], ":")[1])
+	if err != nil {
+		panic(err)
+	}
+
+	topo_client := topology.NewAsyncClient(analyzer_addr, analyzer_port)
+	topo_client.Start()
+
+	topo := topology.NewTopology(hostname)
+	topo.AddEventListener(&TopologyEventListener{Client: topo_client})
+
+	global := topology.NewGlobalTopology()
+	global.Add(topo)
 
 	ns := topology.NewNetNSTopoUpdater(topo)
 	ns.Start()
 
+	root := topo.NewNetNs("root")
 	nl := topology.NewNetLinkTopoUpdater(root)
 	nl.Start()
 
@@ -105,18 +149,25 @@ func main() {
 	mapper.SetInterfaceMappingDrivers(drivers)
 	sflowSensor.SetFlowMapper(mapper)
 
-	analyzer, err := analyzer.NewClient("127.0.0.1", 8888)
+	analyzer, err := analyzer.NewClient(analyzer_addr, analyzer_port)
 	if err != nil {
 		panic(err)
 	}
+
 	sflowSensor.SetAnalyzerClient(analyzer)
 	sflowSensor.Start()
 
 	ovsmon.StartMonitoring()
 
 	router := mux.NewRouter().StrictSlash(true)
-	topology.RegisterTopologyServerEndpoints(topo, router)
-	http.ListenAndServe(":8080", router)
+	topology.RegisterStaticEndpoints(global, router)
+	topology.RegisterRpcEndpoints(global, router)
+
+	port, err := config.GetConfig().Section("agent").Key("listen").Int64()
+	if err != nil {
+		panic(err)
+	}
+	http.ListenAndServe(":"+strconv.FormatInt(port, 10), router)
 
 	fmt.Println("Skydive Agent started !")
 	<-quit

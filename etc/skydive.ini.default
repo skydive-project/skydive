@@ -14,6 +14,14 @@ password = password123
 tenant_name = admin
 region_name = RegionOne
 
+[analyzer]
+listen = 8082
+
+[agent]
+listen = 8081
+analyzers = 127.0.0.1:8082
+
+
 [sflow]
 
 [storage]
