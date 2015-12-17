@@ -33,6 +33,7 @@ import (
 	"github.com/safchain/ethtool"
 
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 const (
@@ -40,20 +41,20 @@ const (
 )
 
 type NetLinkTopoUpdater struct {
-	Graph             *Graph
-	Root              *Node
+	Graph             *graph.Graph
+	Root              *graph.Node
 	nlSocket          *nl.NetlinkSocket
 	doneChan          chan struct{}
-	indexTointfsQueue map[uint32][]*Node
+	indexTointfsQueue map[uint32][]*graph.Node
 }
 
-func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *Node, link netlink.Link) {
+func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *graph.Node, link netlink.Link) {
 	index := uint32(link.Attrs().Index)
 
 	// add children of this interface that haven previously added
 	if children, ok := u.indexTointfsQueue[index]; ok {
 		for _, child := range children {
-			u.Graph.NewEdge(intf, child, nil)
+			u.Graph.NewEdge(graph.GenID(), intf, child, nil)
 		}
 		delete(u.indexTointfsQueue, index)
 	}
@@ -62,10 +63,11 @@ func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *Node, link netlink.L
 	if link.Attrs().MasterIndex != 0 {
 		index := uint32(link.Attrs().MasterIndex)
 
-		parent := u.Graph.LookupNode(Metadatas{"IfIndex": index})
+		parent := u.Graph.LookupNode(graph.Metadatas{"IfIndex": index})
 		if parent != nil {
-			if !parent.IsLinkedTo(intf) {
-				u.Graph.NewEdge(parent, intf, nil)
+			// check the type of the parent since the index can be wrong in case of ovs
+			if parent.Metadatas["Type"] == "bridge" && !parent.IsLinkedTo(intf) {
+				u.Graph.NewEdge(graph.GenID(), parent, intf, nil)
 			}
 		} else {
 			// not yet the bridge so, enqueue for a later add
@@ -74,7 +76,7 @@ func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *Node, link netlink.L
 	}
 }
 
-func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *Node, link netlink.Link) {
+func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	if link.Type() != "veth" {
 		return
 	}
@@ -93,9 +95,9 @@ func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *Node, link netlink.Link) {
 			}
 
 			// got more than 1 peer, unable to find the right one, wait for the other to discover
-			peer := u.Graph.LookupNode(Metadatas{"IfIndex": uint32(index), "Type": "veth"})
-			if peer != nil && !intf.IsLinkedTo(peer) {
-				u.Graph.NewEdge(intf, peer, Metadatas{"Type": "veth"})
+			peer := u.Graph.LookupNode(graph.Metadatas{"IfIndex": uint32(index), "Type": "veth"})
+			if peer != nil && !peer.IsLinkedTo(intf) {
+				u.Graph.NewEdge(graph.GenID(), peer, intf, graph.Metadatas{"Type": "veth"})
 				return true
 			}
 			return false
@@ -117,17 +119,20 @@ func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *Node, link netlink.Link) {
 	}
 }
 
-func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link, m Metadatas) *Node {
+func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	name := link.Attrs().Name
 	index := uint32(link.Attrs().Index)
 
-	var intf *Node
+	var intf *graph.Node
 	if name != "lo" {
-		intf = u.Graph.LookupNode(Metadatas{"Name": name, "IfIndex": index, "MAC": link.Attrs().HardwareAddr.String()})
+		intf = u.Graph.LookupNode(graph.Metadatas{
+			"Name":    name,
+			"IfIndex": index,
+			"MAC":     link.Attrs().HardwareAddr.String()})
 	}
 
 	if intf == nil {
-		intf = u.Graph.NewNode(m)
+		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
 	if !u.Root.IsLinkedTo(intf) {
@@ -140,12 +145,12 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link, m Metad
 	return intf
 }
 
-func (u *NetLinkTopoUpdater) addBridgeLinkToTopology(link netlink.Link, m Metadatas) *Node {
+func (u *NetLinkTopoUpdater) addBridgeLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	index := uint32(link.Attrs().Index)
 
-	intf := u.Graph.LookupNode(Metadatas{"IfIndex": index})
+	intf := u.Graph.LookupNode(graph.Metadatas{"IfIndex": index})
 	if intf == nil {
-		intf = u.Graph.NewNode(m)
+		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
 	if !u.Root.IsLinkedTo(intf) {
@@ -155,12 +160,12 @@ func (u *NetLinkTopoUpdater) addBridgeLinkToTopology(link netlink.Link, m Metada
 	return intf
 }
 
-func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link, m Metadatas) *Node {
+func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	name := link.Attrs().Name
 
-	intf := u.Graph.LookupNode(Metadatas{"Name": name, "Driver": "openvswitch"})
+	intf := u.Graph.LookupNode(graph.Metadatas{"Name": name, "Driver": "openvswitch"})
 	if intf == nil {
-		intf = u.Graph.NewNode(m)
+		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
 	if !u.Root.IsLinkedTo(intf) {
@@ -178,7 +183,7 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 
 	driver, _ := ethtool.DriverName(link.Attrs().Name)
 
-	metadatas := Metadatas{
+	metadatas := graph.Metadatas{
 		"Name":    link.Attrs().Name,
 		"Type":    link.Type(),
 		"IfIndex": uint32(link.Attrs().Index),
@@ -193,7 +198,7 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 		metadatas["State"] = "DOWN"
 	}
 
-	var intf *Node
+	var intf *graph.Node
 
 	switch driver {
 	case "bridge":
@@ -237,9 +242,9 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	defer u.Graph.Unlock()
 
 	// case of removing the interface from a bridge
-	intf := u.Graph.LookupNode(Metadatas{"IfIndex": uint32(index)})
+	intf := u.Graph.LookupNode(graph.Metadatas{"IfIndex": uint32(index)})
 	if intf != nil {
-		parent := intf.LookupParentNode(Metadatas{"Type": "bridge"})
+		parent := intf.LookupParentNode(graph.Metadatas{"Type": "bridge"})
 		if parent != nil {
 			intf.UnlinkFrom(parent)
 		}
@@ -359,11 +364,11 @@ func (u *NetLinkTopoUpdater) Stop() {
 	u.doneChan <- struct{}{}
 }
 
-func NewNetLinkTopoUpdater(g *Graph, n *Node) *NetLinkTopoUpdater {
+func NewNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetLinkTopoUpdater {
 	return &NetLinkTopoUpdater{
 		Graph:             g,
 		Root:              n,
 		doneChan:          make(chan struct{}),
-		indexTointfsQueue: make(map[uint32][]*Node),
+		indexTointfsQueue: make(map[uint32][]*graph.Node),
 	}
 }

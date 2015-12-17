@@ -36,24 +36,22 @@ import (
 	"github.com/redhat-cip/skydive/ovs"
 	"github.com/redhat-cip/skydive/sensors"
 	"github.com/redhat-cip/skydive/topology"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-var quit chan bool
-
 type TopologyEventListener struct {
-	Client *topology.AsyncClient
 }
 
-func (l *TopologyEventListener) TopologyUpdated(g *topology.Graph) {
+func (l *TopologyEventListener) TopologyUpdated(g *graph.Graph) {
 	//logging.GetLogger().Debug("Topology updated: %s", g.String())
 }
 
-func (l *TopologyEventListener) OnNodeUpdated(n *topology.Node) { l.TopologyUpdated(n.Graph) }
-func (l *TopologyEventListener) OnNodeAdded(n *topology.Node)   { l.TopologyUpdated(n.Graph) }
-func (l *TopologyEventListener) OnNodeDeleted(n *topology.Node) { l.TopologyUpdated(n.Graph) }
-func (l *TopologyEventListener) OnEdgeUpdated(e *topology.Edge) { l.TopologyUpdated(e.Graph) }
-func (l *TopologyEventListener) OnEdgeAdded(e *topology.Edge)   { l.TopologyUpdated(e.Graph) }
-func (l *TopologyEventListener) OnEdgeDeleted(e *topology.Edge) { l.TopologyUpdated(e.Graph) }
+func (l *TopologyEventListener) OnNodeUpdated(n *graph.Node) { l.TopologyUpdated(n.Graph) }
+func (l *TopologyEventListener) OnNodeAdded(n *graph.Node)   { l.TopologyUpdated(n.Graph) }
+func (l *TopologyEventListener) OnNodeDeleted(n *graph.Node) { l.TopologyUpdated(n.Graph) }
+func (l *TopologyEventListener) OnEdgeUpdated(e *graph.Edge) { l.TopologyUpdated(e.Graph) }
+func (l *TopologyEventListener) OnEdgeAdded(e *graph.Edge)   { l.TopologyUpdated(e.Graph) }
+func (l *TopologyEventListener) OnEdgeDeleted(e *graph.Edge) { l.TopologyUpdated(e.Graph) }
 
 func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
 	drivers := []mappings.InterfaceMappingDriver{}
@@ -84,7 +82,7 @@ func main() {
 		panic(err)
 	}
 
-	quit = make(chan bool)
+	fmt.Println("Skydive Agent starting...")
 
 	sflowSensor := sensors.NewSFlowSensor("127.0.0.1", 6345)
 
@@ -114,24 +112,25 @@ func main() {
 		panic(err)
 	}
 
-	topo_client := topology.NewAsyncClient(analyzer_addr, analyzer_port)
-	topo_client.Start()
+	g, err := graph.NewGraph(graph.Identifier(hostname))
+	if err != nil {
+		panic(err)
+	}
+	g.AddEventListener(&TopologyEventListener{})
 
-	//topo := topology.NewTopology(hostname)
-	//topo.AddEventListener(&TopologyEventListener{Client: topo_client})
+	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port)
+	gclient.SetAutoGraphUpdate(g)
+	gclient.Connect()
 
-	graph := topology.NewGraph(topology.Identifier(hostname))
-	graph.AddEventListener(&TopologyEventListener{})
+	root := g.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})
 
-	root := graph.NewNode(topology.Metadatas{"Name": hostname, "Type": "host"})
-
-	ns := topology.NewNetNSTopoUpdater(graph, root)
+	ns := topology.NewNetNSTopoUpdater(g, root)
 	ns.Start()
 
-	nl := topology.NewNetLinkTopoUpdater(graph, root)
+	nl := topology.NewNetLinkTopoUpdater(g, root)
 	nl.Start()
 
-	ovs := topology.NewOvsTopoUpdater(graph, root, ovsmon)
+	ovs := topology.NewOvsTopoUpdater(g, root, ovsmon)
 	ovs.Start()
 
 	/*mapper := mappings.NewFlowMapper()
@@ -152,17 +151,16 @@ func main() {
 
 	ovsmon.StartMonitoring()
 
-	server := topology.NewServer(graph)
-	server.RegisterStaticEndpoints()
-	server.RegisterRpcEndpoints()
-	server.RegisterWebSocketEndpoint()
-
-	port, err := config.GetConfig().Section("agent").Key("listen").Int64()
+	port, err := config.GetConfig().Section("agent").Key("listen").Int()
 	if err != nil {
 		panic(err)
 	}
-	server.ListenAndServe(port)
 
-	fmt.Println("Skydive Agent started !")
-	<-quit
+	server := topology.NewServer(g, port)
+	server.RegisterStaticEndpoints()
+	server.RegisterRpcEndpoints()
+
+	graph.NewServer(g, server.Router).Start()
+
+	server.ListenAndServe()
 }

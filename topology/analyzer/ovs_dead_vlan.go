@@ -32,7 +32,6 @@ type OvsDeadVlan struct {
 }
 
 func (o *OvsDeadVlan) OnTopologyAdded(topo *topology.Topology) {
-	fmt.Println("WTF!!!!")
 }
 
 func (o *OvsDeadVlan) OnTopologyDeleted(topo *topology.Topology) {}

@@ -20,10 +20,12 @@
  *
  */
 
-package topology
+package graph
 
 import (
 	"encoding/json"
+	"errors"
+	"os"
 	"sync"
 
 	"github.com/nu7hatch/gouuid"
@@ -31,7 +33,12 @@ import (
 
 type Identifier string
 
-type EventListener interface {
+type GraphMessage struct {
+	Type string
+	Obj  interface{}
+}
+
+type GraphEventListener interface {
 	OnNodeUpdated(n *Node)
 	OnNodeAdded(n *Node)
 	OnNodeDeleted(n *Node)
@@ -46,6 +53,7 @@ type GraphElement struct {
 	ID        Identifier
 	Graph     *Graph    `json:"-"`
 	Metadatas Metadatas `json:",omitempty"`
+	Host      string
 }
 
 type JGraph Graph
@@ -55,7 +63,8 @@ type Graph struct {
 	ID             Identifier
 	Nodes          map[Identifier]*Node `json:"Nodes"`
 	Edges          map[Identifier]*Edge `json:"Edges"`
-	EventListeners []EventListener      `json:"-"`
+	EventListeners []GraphEventListener `json:"-"`
+	Host           string
 }
 
 type Node struct {
@@ -69,6 +78,11 @@ type Edge struct {
 	GraphElement
 }
 
+func (g GraphMessage) String() string {
+	j, _ := json.Marshal(g)
+	return string(j)
+}
+
 func GenID() Identifier {
 	u, _ := uuid.NewV4()
 
@@ -80,7 +94,17 @@ func (e *GraphElement) String() string {
 	return string(j)
 }
 
+func (e *Edge) SetMetadatas(m Metadatas) {
+	e.Metadatas = m
+
+	e.Graph.NotifyEdgeUpdated(e)
+}
+
 func (e *Edge) SetMetadata(k string, v interface{}) {
+	if o, ok := e.Metadatas[k]; ok && o == v {
+		return
+	}
+
 	e.Metadatas[k] = v
 
 	e.Graph.NotifyEdgeUpdated(e)
@@ -92,12 +116,20 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		Parent    Identifier
 		Child     Identifier
 		Metadatas map[string]interface{} `json:",omitempty"`
+		Host      string
 	}{
 		ID:        e.ID,
 		Parent:    e.Parent.ID,
 		Child:     e.Child.ID,
 		Metadatas: e.Metadatas,
+		Host:      e.Host,
 	})
+}
+
+func (n *Node) SetMetadatas(m Metadatas) {
+	n.Metadatas = m
+
+	n.Graph.NotifyNodeUpdated(n)
 }
 
 func (n *Node) SetMetadata(k string, v interface{}) {
@@ -114,9 +146,11 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		ID        Identifier
 		Metadatas map[string]interface{} `json:",omitempty"`
+		Host      string
 	}{
 		ID:        n.ID,
 		Metadatas: n.Metadatas,
+		Host:      n.Host,
 	})
 }
 
@@ -153,7 +187,7 @@ func (n *Node) IsLinkedTo(c *Node) bool {
 }
 
 func (n *Node) LinkTo(c *Node) {
-	n.Graph.NewEdge(n, c, nil)
+	n.Graph.NewEdge(GenID(), n, c, nil)
 }
 
 func (n *Node) UnlinkFrom(c *Node) {
@@ -171,9 +205,9 @@ func (n *Node) Replace(o *Node, m Metadatas) *Node {
 		n.Graph.DelEdge(e)
 
 		if e.Parent == n {
-			n.Graph.NewEdge(o, e.Child, e.Metadatas)
+			n.Graph.NewEdge(GenID(), o, e.Child, e.Metadatas)
 		} else {
-			n.Graph.NewEdge(e.Parent, o, e.Metadatas)
+			n.Graph.NewEdge(GenID(), e.Parent, o, e.Metadatas)
 		}
 	}
 
@@ -224,9 +258,19 @@ func (g *Graph) LookupNodes(f Metadatas) []*Node {
 }
 
 func (g *Graph) AddEdge(e *Edge) {
+	e.Parent.Edges[e.ID] = e
+	e.Child.Edges[e.ID] = e
+
 	g.Edges[e.ID] = e
 
 	g.NotifyEdgeAdded(e)
+}
+
+func (g *Graph) GetEdge(i Identifier) *Edge {
+	if edge, ok := g.Edges[i]; ok {
+		return edge
+	}
+	return nil
 }
 
 func (g *Graph) AddNode(n *Node) {
@@ -242,11 +286,12 @@ func (g *Graph) GetNode(i Identifier) *Node {
 	return nil
 }
 
-func (g *Graph) NewNode(m Metadatas) *Node {
+func (g *Graph) NewNode(i Identifier, m Metadatas) *Node {
 	n := &Node{
 		GraphElement: GraphElement{
-			ID:    GenID(),
+			ID:    i,
 			Graph: g,
+			Host:  g.Host,
 		},
 		Edges: make(map[Identifier]*Edge),
 	}
@@ -262,18 +307,16 @@ func (g *Graph) NewNode(m Metadatas) *Node {
 	return n
 }
 
-func (g *Graph) NewEdge(p *Node, c *Node, m Metadatas) *Edge {
+func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadatas) *Edge {
 	e := &Edge{
 		Parent: p,
 		Child:  c,
 		GraphElement: GraphElement{
-			ID:    GenID(),
+			ID:    i,
 			Graph: g,
+			Host:  g.Host,
 		},
 	}
-
-	p.Edges[e.ID] = e
-	c.Edges[e.ID] = e
 
 	if m != nil {
 		e.Metadatas = m
@@ -292,20 +335,7 @@ func (g *Graph) DelEdge(e *Edge) {
 	}
 
 	delete(e.Parent.Edges, e.ID)
-	if len(e.Parent.Edges) == 0 {
-		node := g.Nodes[e.Parent.ID]
-		delete(g.Nodes, e.Parent.ID)
-
-		g.NotifyNodeDeleted(node)
-	}
-
 	delete(e.Child.Edges, e.ID)
-	if len(e.Child.Edges) == 0 {
-		node := g.Nodes[e.Child.ID]
-		delete(g.Nodes, e.Child.ID)
-
-		g.NotifyNodeDeleted(node)
-	}
 
 	delete(g.Edges, e.ID)
 	g.NotifyEdgeDeleted(e)
@@ -324,15 +354,50 @@ func (g *Graph) DelNode(n *Node) {
 	g.NotifyNodeDeleted(n)
 }
 
+func (g *Graph) subtreeDel(n *Node, m map[Identifier]bool) {
+	if _, ok := m[n.ID]; ok {
+		return
+	}
+	m[n.ID] = true
+
+	for _, e := range n.Edges {
+		if e.Child != n {
+			g.subtreeDel(e.Child, m)
+			g.DelNode(e.Child)
+		}
+	}
+}
+
+func (g *Graph) SubtreeDel(n *Node) {
+	g.subtreeDel(n, make(map[Identifier]bool))
+}
+
+func (g *Graph) GetNodes() []*Node {
+	nodes := []*Node{}
+
+	for _, n := range g.Nodes {
+		nodes = append(nodes, n)
+	}
+
+	return nodes
+}
+
+func (g *Graph) GetEdges() []*Edge {
+	edges := []*Edge{}
+
+	for _, e := range g.Edges {
+		edges = append(edges, e)
+	}
+
+	return edges
+}
+
 func (g *Graph) String() string {
 	j, _ := json.Marshal(g)
 	return string(j)
 }
 
 func (g *Graph) MarshalJSON() ([]byte, error) {
-	g.RLock()
-	defer g.RUnlock()
-
 	return json.Marshal(JGraph(*g))
 }
 
@@ -372,17 +437,101 @@ func (g *Graph) NotifyEdgeAdded(e *Edge) {
 	}
 }
 
-func (g *Graph) AddEventListener(l EventListener) {
+func (g *Graph) AddEventListener(l GraphEventListener) {
 	g.Lock()
 	defer g.Unlock()
 
 	g.EventListeners = append(g.EventListeners, l)
 }
 
-func NewGraph(i Identifier) *Graph {
+func (g *Graph) UnmarshalGraphMessage(b []byte) (GraphMessage, error) {
+	msg := GraphMessage{}
+
+	err := json.Unmarshal(b, &msg)
+	if err != nil {
+		return msg, err
+	}
+
+	if msg.Type == "SyncRequest" {
+		return msg, nil
+	}
+
+	objMap, ok := msg.Obj.(map[string]interface{})
+	if !ok {
+		return msg, errors.New("Unable to parse event: " + string(b))
+	}
+
+	ID := Identifier(objMap["ID"].(string))
+	metadatas := make(Metadatas)
+	if m, ok := objMap["Metadatas"]; ok {
+		metadatas = Metadatas(m.(map[string]interface{}))
+	}
+
+	host := objMap["Host"].(string)
+
+	switch msg.Type {
+	case "SubtreeDeleted":
+		fallthrough
+	case "NodeUpdated":
+		fallthrough
+	case "NodeDeleted":
+		fallthrough
+	case "NodeAdded":
+		if m, ok := objMap["Metadatas"]; ok {
+			metadatas = Metadatas(m.(map[string]interface{}))
+		}
+
+		msg.Obj = &Node{
+			GraphElement: GraphElement{
+				ID:        ID,
+				Metadatas: metadatas,
+				Graph:     g,
+				Host:      host,
+			},
+			Edges: make(map[Identifier]*Edge),
+		}
+	case "EdgeUpdated":
+		fallthrough
+	case "EdgeDeleted":
+		fallthrough
+	case "EdgeAdded":
+		parentID := Identifier(objMap["Parent"].(string))
+		parent := g.GetNode(parentID)
+		if parent == nil {
+			return msg, errors.New("Edge node not found: " + string(parentID))
+		}
+
+		childID := Identifier(objMap["Child"].(string))
+		child := g.GetNode(childID)
+		if child == nil {
+			return msg, errors.New("Edge node not found: " + string(childID))
+		}
+
+		msg.Obj = &Edge{
+			GraphElement: GraphElement{
+				ID:        ID,
+				Metadatas: metadatas,
+				Graph:     g,
+				Host:      host,
+			},
+			Parent: parent,
+			Child:  child,
+		}
+	}
+
+	return msg, err
+}
+
+func NewGraph(i Identifier) (*Graph, error) {
+	host, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Graph{
 		ID:    i,
 		Nodes: make(map[Identifier]*Node),
 		Edges: make(map[Identifier]*Edge),
-	}
+		Host:  host,
+	}, nil
 }

@@ -34,6 +34,7 @@ import (
 	"golang.org/x/exp/inotify"
 
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 const (
@@ -41,15 +42,15 @@ const (
 )
 
 type NetNSTopoUpdater struct {
-	Graph        *Graph
-	Root         *Node
+	Graph        *graph.Graph
+	Root         *graph.Node
 	nsNlUpdaters map[string]*NetNsNetLinkTopoUpdater
 }
 
 type NetNsNetLinkTopoUpdater struct {
 	sync.RWMutex
-	Graph     *Graph
-	Root      *Node
+	Graph     *graph.Graph
+	Root      *graph.Node
 	nlUpdater *NetLinkTopoUpdater
 }
 
@@ -115,7 +116,7 @@ func (nu *NetNsNetLinkTopoUpdater) Stop() {
 	nu.Unlock()
 }
 
-func NewNetNsNetLinkTopoUpdater(g *Graph, n *Node) *NetNsNetLinkTopoUpdater {
+func NewNetNsNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetNsNetLinkTopoUpdater {
 	return &NetNsNetLinkTopoUpdater{
 		Graph: g,
 		Root:  n,
@@ -134,7 +135,7 @@ func (u *NetNSTopoUpdater) onNetNsCreated(path string) {
 	defer u.Graph.Unlock()
 
 	logging.GetLogger().Debug("Network Namespace added: %s", name)
-	n := u.Graph.NewNode(Metadatas{"Name": name, "Type": "netns"})
+	n := u.Graph.NewNode(graph.GenID(), graph.Metadatas{"Name": name, "Type": "netns"})
 	u.Root.LinkTo(n)
 
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
@@ -157,7 +158,7 @@ func (u *NetNSTopoUpdater) onNetNsDeleted(path string) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	children := nu.Root.LookupChildren(Metadatas{})
+	children := nu.Root.LookupChildren(graph.Metadatas{})
 	for _, child := range children {
 		u.Graph.DelNode(child)
 	}
@@ -222,7 +223,7 @@ func (u *NetNSTopoUpdater) Start() {
 	go u.start()
 }
 
-func NewNetNSTopoUpdater(g *Graph, n *Node) *NetNSTopoUpdater {
+func NewNetNSTopoUpdater(g *graph.Graph, n *graph.Node) *NetNSTopoUpdater {
 	return &NetNSTopoUpdater{
 		Graph:        g,
 		Root:         n,

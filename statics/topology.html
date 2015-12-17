@@ -9,7 +9,7 @@
         <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"/>
 
         <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.10/d3.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.10/d3.js"></script>
 
         <style>
         html, body {
@@ -26,6 +26,8 @@
         .topology {
             width: 100%;
             height: 100%;
+            text-align: center;
+            margin-top: 15px;
         }
 
         .node {
@@ -35,21 +37,21 @@
             opacity: 0.9;
         }
 
-        .circle {
-            fill-opacity: 1.0;
-        }
-
         .node text {
             fill: #111;
             pointer-events: none;
-            font: 12px Helvetica,Arial,sans-serif;
+            font: 12px Helvetica, Arial, sans-serif;
             stroke-width: 0;
+        }
+
+        .node .circle {
+            fill-opacity: 1.0;
         }
 
         .group {
             fill: #fff;
             pointer-events: none;
-            font: 16px Helvetica,Arial,sans-serif;
+            font: 16px Helvetica, Arial, sans-serif;
             stroke-width: 5;
         }
 
@@ -72,7 +74,7 @@
             border-radius: 2px;
         }
 
-        td,th {
+        td, th {
             padding-left: 5px;
             padding-right: 5px;
             padding-top: 1px;
@@ -84,9 +86,8 @@
             color: white;
         }
 
-        rect {
-            fill: none;
-            pointer-events: all;
+        .host {
+            fill: #555;
         }
         </style>
 
@@ -97,31 +98,37 @@
             var nsImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/layers.png';
             var bridgeImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/tree_structure.png';
 
-            function getMetadatas(node) {
-                var metadatas = '<table><tr><th colspan="2">' + node.ID + '</th></tr>';
-
-                if ("MAC" in node.Metadatas && node.Metadatas["MAC"])
-                    metadatas += '<tr><td><strong>MAC</strong>:</td> <td>' + node.Metadatas["MAC"] +'</td></tr>';
-
-                for (var k in node.Metadatas) {
-                    if (k != "MAC")
-                        metadatas += '<tr><td>' + k + ':</td> <td>' + node.Metadatas[k] + "</td></tr>";
-                }
-
-                metadatas += '</table>';
-
-                return metadatas;
-            }
-
             var Node = function(ID) {
                 this.ID = ID;
+                this.Host = '';
                 this.Metadatas = {};
                 this.Edges = {};
             }
 
+            Node.prototype.Type = function() {
+                if ("Type" in this.Metadatas)
+                    return this.Metadatas["Type"];
+                return "";
+            }
+
+            Node.prototype.Name = function() {
+                if ("Name" in this.Metadatas)
+                    return this.Metadatas["Name"];
+                return "";
+            }
+
             var Edge = function(ID) {
                 this.ID = ID;
+                this.Host = '';
+                this.Parent = '';
+                this.Child = '';
                 this.Metadatas = {};
+            }
+
+            Edge.prototype.Type = function() {
+                if ("Type" in this.Metadatas)
+                    return this.Metadatas["Type"];
+                return "";
             }
 
             var Graph = function(ID) {
@@ -129,9 +136,10 @@
                 this.Edges = {};
             };
 
-            Graph.prototype.NewNode = function(ID) {
+            Graph.prototype.NewNode = function(ID, host) {
                 var node = new Node(ID);
                 node.Graph = this;
+                node.Host = host;
 
                 this.Nodes[ID] = node;
 
@@ -146,11 +154,12 @@
                 return this.Edges[ID];
             }
 
-            Graph.prototype.NewEdge = function(ID, parent, child) {
+            Graph.prototype.NewEdge = function(ID, parent, child, host) {
                 var edge = new Edge(ID);
                 edge.Parent = parent;
                 edge.Child = child;
                 edge.Graph = this;
+                edge.Host = host;
 
                 this.Edges[ID] = edge;
 
@@ -170,282 +179,182 @@
 
             Graph.prototype.DelEdge = function(edge) {
                 delete edge.Parent.Edges[edge.ID];
-                if (edge.Parent.Edges.length == 0) {
-                    delete this.Nodes[edge.Parent.ID];
-                }
-
                 delete edge.Child.Edges[edge.ID];
-                if (edge.Child.Edges.length == 0) {
-                    delete this.Nodes[edge.Child.ID];
-                }
-
                 delete this.Edges[edge.ID];
             }
 
-            var graph;
-            var elements = {};
-            var updatesocket;
+            Graph.prototype.InitFromSyncMessage = function(msg) {
+                var g = msg.Obj;
 
-            function initGraphFromData(data) {
-                graph = new Graph();
-
-                for (var ID in data["Nodes"]) {
-                    var node = graph.NewNode(ID);
-                    node.Metadatas = data["Nodes"][ID]["Metadatas"];
+                for (var ID in g.Nodes) {
+                    var node = this.NewNode(ID);
+                    if ("Metadatas" in g.Nodes[ID])
+                        node.Metadatas = g.Nodes[ID]["Metadatas"];
+                    node.Host = g.Nodes[ID]["Host"];
                 }
 
-                for (var ID in data["Edges"]) {
-                    parent = graph.GetNode(data["Edges"][ID]["Parent"]);
-                    child = graph.GetNode(data["Edges"][ID]["Child"]);
+                for (var ID in g.Edges) {
+                    parent = this.GetNode(g.Edges[ID]["Parent"]);
+                    child = this.GetNode(g.Edges[ID]["Child"]);
 
-                    var edge = graph.NewEdge(ID, parent, child);
+                    var edge = this.NewEdge(ID, parent, child);
 
-                    if ("Metadatas" in data["Edges"][ID])
-                        edge.Metadatas = data["Edges"][ID]["Metadatas"];
+                    if ("Metadatas" in g.Edges[ID])
+                        edge.Metadatas = g.Edges[ID]["Metadatas"];
+                    edge.Host = g.Edges[ID]["Host"];
                 }
             }
 
-            function addNode(node) {
-                if (node.ID in elements)
-                    return;
+            var HostLayout = function(ID, graph, svg) {
+                this.width = 700;
+                this.height = 700;
+                this.graph = graph;
+                this.hullOffset = 22;
+                this.nodes = [];
+                this.links = [];
+                this.elements = {};
 
-                if (node.Metadatas["Type"] == "host")
-                    return;
+                var _this = this;
 
-                nodes.push(node);
-
-                elements[node.ID] = true;
-
-                redraw();
-            }
-
-            function delNode(node) {
-                if (!(node.ID in elements))
-                    return;
-
-                for (i in node.Edges)
-                    delEdge(node.Edges[i]);
-
-                for (i in nodes) {
-                    if (nodes[i].ID == node.ID) {
-                        nodes.splice(i, 1);
-                        break;
-                    }
-                }
-
-                delete elements[node.ID];
-
-                redraw();
-            }
-
-            function addEdge(edge) {
-                if (edge.ID in elements)
-                    return;
-
-                var parent = edge.Parent
-                var type = parent.Metadatas["Type"];
-                if (type == "host")
-                    return;
-
-                links.push({source: edge.Parent, target: edge.Child});
-
-                elements[edge.ID] = true;
-
-                redraw();
-            }
-
-            function delEdge(edge) {
-                if (!(edge.ID in elements)) {
-                    return;
-                }
-
-                for (i in links) {
-                    if (links[i]["source"] == edge.Parent && links[i]["target"] == edge.Child)
-                        links.splice(i, 1);
-                }
-
-                delete elements[edge.ID];
-
-                redraw();
-            }
-
-            function drawTopology() {
-                var nodes = graph.Nodes;
-                for (var ID in nodes)
-                    addNode(nodes[ID]);
-
-                var edges = graph.Edges;
-                for (var ID in edges)
-                    addEdge(edges[ID]);
-            }
-
-            function startLiveTopologyUpdate() {
-                updatesocket = new WebSocket("ws://localhost:8081/ws/topology");
-
-                updatesocket.onopen = function() {
-                }
-
-                updatesocket.onclose = function() {
-                    setTimeout(syncTopology, 1000);
-                }
-
-                updatesocket.onmessage = function(e) {
-                    var update = jQuery.parseJSON(e.data);
-
-                    switch(update.Event) {
-                        case "NodeUpdated":
-                            var node = graph.GetNode(update.Obj.ID);
-                            node.Metadatas = update.Obj.Metadatas;
-                            redraw();
-                        break;
-                        case "NodeAdded":
-                            var node = graph.NewNode(update.Obj.ID);
-                            if ("Metadatas" in update.Obj)
-                                node.Metadatas = update.Obj.Metadatas;
-                            addNode(node);
-                        break;
-                        case "NodeDeleted":
-                            var node = graph.GetNode(update.Obj.ID);
-                            if (typeof node == "undefined") {
-                                redraw();
-                                break;
-                            }
-                            delNode(node);
-                            graph.DelNode(node);
-                        break;
-
-                        case "EdgeUpdated":
-                            var edge = graph.GetEdge(update.Obj.ID);
-                            edge.Metadatas = update.Obj.Metadatas;
-                            redraw();
-                        break;
-                        case "EdgeAdded":
-                            var parent = graph.GetNode(update.Obj.Parent);
-                            var child = graph.GetNode(update.Obj.Child);
-
-                            var edge = graph.NewEdge(update.Obj.ID, parent, child);
-                            if ("Metadatas" in update.Obj)
-                                edge.Metadatas = update.Obj.Metadatas;
-                            addEdge(edge);
-                        break;
-                        case "EdgeDeleted":
-                            var edge = graph.GetEdge(update.Obj.ID);
-                            if (typeof edge == "undefined") {
-                                redraw();
-                                break;
-                            }
-                            delEdge(edge);
-                            graph.DelEdge(edge);
-                        break;
-                    }
-                };
-            }
-
-            function resetTopology() {
-                var nodes = graph.Nodes;
-                for (var ID in nodes)
-                    delNode(nodes[ID]);
-
-                var edges = graph.Edges;
-                for (var ID in edges)
-                    delEdge(edges[ID]);
-            }
-
-            function syncTopology() {
-                $.ajax({
-                    url: '/rpc/topology',
-                    data: {
-                        format: 'json'
-                    },
-                    error: function() {
-                        setTimeout(syncTopology, 1000);
-                    },
-                    dataType: 'json',
-                    success: function(data) {
-                        if (typeof graph != "undefined")
-                            resetTopology();
-
-                        initGraphFromData(data);
-                        drawTopology();
-                        startLiveTopologyUpdate();
-                    },
-                    type: 'GET'
-                });
-            }
-
-            var offset = 22;
-
-            var force;
-            var nodes;
-            var links;
-            var node;
-            var link;
-            var hullg;
-            var hull;
-            var elemg;
-            var tooltip;
-
-            $(document).ready(function() {
-                var container = $('.container');
-                width = container.width() * 1.3;
-                height = container.height() * 1.3;
-
-                force = d3.layout.force()
-                    .size([width, height])
+                this.force = d3.layout.force()
+                    .size([this.width, this.height])
                     .charge(-900)
-                    .linkDistance(40)
-                    .gravity(0.3)
-                    .on("tick", tick);
+                    .linkDistance(50)
+                    .gravity(0.35)
+                    .on("tick", function(e) {
+                        _this.Tick(e);
+                    });
 
-                var svg = d3.select(".topology").append("svg")
-                    .attr("width", '100%')
-                    .attr("height", '100%')
-                    .attr("viewBox", "0 0 " + width + " " + height)
-                    .on("mousemove", mousemove)
-                    .on("mousedown", mousedown);
+                this.container = svg.append("svg")
+                    .attr("width", this.width)
+                    .attr("height", this.height)
+                    .attr("viewBox", "0 0 " + this.width + " " + this.height);
 
-                hullg = svg.append("g");
-                elemg = svg.append("g");
+                this.container.append("rect")
+                    .attr("x", 10)
+                    .attr("y", 10)
+                    .attr("width", this.width - 10)
+                    .attr("height", this.height - 10)
+                    .attr("rx", 10)
+                    .attr("class", "host");
 
-                nodes = force.nodes();
-                links = force.links();
+                this.container.append("text")
+                    .attr("x", 30)
+                    .attr("y", 45)
+                    .attr("class", "group")
+                    .text(ID);
 
-                node = elemg.selectAll(".node");
-                link = elemg.selectAll(".link");
+                this.hullG = this.container.append("g");
 
-                tooltip = d3.select(".container")
-                    .append("div")
-                    .attr("class", "tooltip")
-                    .style("opacity", 0);
+                this.nodes = this.force.nodes();
+                this.links = this.force.links();
 
-                syncTopology();
-            });
+                var elemG = this.container.append("g");
+                this.node = elemG.selectAll(".node");
+                this.link = elemG.selectAll(".link");
 
-            function mousemove() {
+                this.tooltip = d3.select(".tooltip");
             }
 
-            function mousedown() {
+            HostLayout.prototype.GetBBox = function() {
+                return this.container.node().getBBox();
             }
 
-            function tick(e) {
-                link.attr("x1", function(d) { return d.source.x; })
+            HostLayout.prototype.SetPosition = function(x, y) {
+                this.container.attr("x", x).attr("y", y);
+            }
+
+            HostLayout.prototype.NodeMetadataToHTML = function(node) {
+                var metadatas = '<table><tr><th colspan="2">' + node.ID + '</th></tr>';
+
+                if ("MAC" in node.Metadatas && node.Metadatas["MAC"])
+                    metadatas += '<tr><td><strong>MAC</strong>:</td> <td>' + node.Metadatas["MAC"] +'</td></tr>';
+
+                for (var k in node.Metadatas) {
+                    if (k != "MAC")
+                        metadatas += '<tr><td>' + k + ':</td> <td>' + node.Metadatas[k] + "</td></tr>";
+                }
+
+                metadatas += '</table>';
+
+                return metadatas;
+            }
+
+            HostLayout.prototype.AddNode = function(node) {
+                if (node.ID in this.elements)
+                    return;
+                this.elements[node.ID] = node;
+
+               if (node.Type() == "host")
+                    return;
+
+                this.nodes.push(node);
+
+                this.Redraw();
+            }
+
+            HostLayout.prototype.DelNode = function(node) {
+                if (!(node.ID in this.elements))
+                    return;
+
+                for (var i in this.nodes) {
+                    if (this.nodes[i].ID == node.ID) {
+                        this.nodes.splice(i, 1);
+                        break;
+                    }
+                }
+                this.Redraw();
+            }
+
+            HostLayout.prototype.AddEdge = function(edge) {
+                if (edge.ID in this.elements)
+                    return;
+                this.elements[edge.ID] = edge;
+
+                if (edge.Parent.Type() == "host")
+                    return;
+
+                this.links.push({source: edge.Parent, target: edge.Child});
+                this.Redraw();
+            }
+
+            HostLayout.prototype.DelEdge = function(edge) {
+                if (!(edge.ID in this.elements))
+                    return;
+
+                for (var i in this.links) {
+                    if (this.links[i]["source"] == edge.Parent &&
+                        this.links[i]["target"] == edge.Child)
+                        this.links.splice(i, 1);
+                }
+                this.Redraw();
+            }
+
+            HostLayout.prototype.Tick = function(e) {
+                var k = 1 * e.alpha;
+
+                this.link.each(function(d) { d.source.y -= k, d.target.y += k; })
+                    .attr("x1", function(d) { return d.source.x; })
                     .attr("y1", function(d) { return d.source.y; })
                     .attr("x2", function(d) { return d.target.x; })
                     .attr("y2", function(d) { return d.target.y; });
 
-                node.attr("cx", function(d) { return d.x; })
+                this.node.attr("cx", function(d) { return d.x; })
                     .attr("cy", function(d) { return d.y; });
 
-                node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+                this.node.attr("transform", function(d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                });
 
-                if (!hull.empty()) {
-                    hull.data(convexHulls(offset))
-                        .attr("d", drawCluster);
-                }
+                var _this = this;
+                if (!this.hull.empty())
+                    this.hull.data(this.GetConvexHulls()).attr("d", function(d) {
+                        return _this.DrawCluster(d)
+                    });
             }
 
-            function size(d) {
-                switch(d.Metadatas["Type"]) {
+            HostLayout.prototype.CircleSize = function(d) {
+                switch(d.Type()) {
                     case "ovsport":
                         return 18;
                     case "ovsbridge":
@@ -455,7 +364,7 @@
                 }
             }
 
-            function nodeColor(d) {
+            HostLayout.prototype.NodeColor = function(d) {
                 switch(d.Metadatas["Type"]) {
                     case "ovsbridge":
                         return "rgb(198, 219, 239)";
@@ -466,24 +375,24 @@
                 }
             }
 
-            function circleOpacity(d) {
+            HostLayout.prototype.CircleOpacity = function(d) {
                 if (d.Metadatas["Type"] == "netns")
                     return 0.0;
-
                 return 1.0;
             }
 
-            function edgeOpacity(d) {
-                parent = d.source;
-                child = d.target;
+            HostLayout.prototype.EdgeOpacity = function(d) {
+                var parent = d.source;
+                var child = d.target;
 
-                if (parent.Metadatas["Type"] == "netns" || child.Metadatas["Type"] == "netns")
+                if (parent.Metadatas["Type"] == "netns" ||
+                    child.Metadatas["Type"] == "netns")
                     return 0.0;
 
                 return 1.0;
             }
 
-            function picto(d) {
+            HostLayout.prototype.NodePicto = function(d) {
                 switch(d.Metadatas["Type"]) {
                     case "ovsport":
                         return portImg;
@@ -498,33 +407,29 @@
                 }
             }
 
-            function getParent(node) {
+            HostLayout.prototype.GetParentNode = function(node) {
                 var parent;
 
                 for (var i in node.Edges) {
                     var edge = node.Edges[i];
-                    if ("Type" in edge.Metadatas) {
-                        var type = edge.Metadatas["Type"];
-                        if (type == "patch" || type == "veth") {
-                            continue
-                        }
-                    }
-
-                    var p = edge.Parent;
-                    if (p == node)
+                    var type = edge.Type();
+                    if (type == "patch" || type == "veth")
                         continue;
 
-                    var type = p.Metadatas["Type"]
-                    if (type == "host" || type == "netns")
-                        return p;
+                    if (edge.Parent == node)
+                        continue;
 
-                    parent = p;
+                    var type = edge.Parent.Type();
+                    if (type == "host" || type == "netns")
+                        return edge.Parent;
+
+                    parent = edge.Parent;
                 }
 
                 return parent;
             }
 
-            function addToGroup(node, group, groups) {
+            HostLayout.prototype.AddToGroup = function(node, group, groups) {
                 var ID = node.ID;
                 if (group in groups)
                     groups[group][ID] = node;
@@ -532,62 +437,60 @@
                     groups[group] = {ID: node};
             }
 
-            function getNodeGroups(n, node, groups) {
-                if (n.Metadatas["Type"] == "host")
+            HostLayout.prototype.SetNodeGroups = function(n, node, groups) {
+                if (n.Type() == "host")
                     return;
 
-                var parent = getParent(n);
-                if (typeof parent == "undefined")
+                var parent = this.GetParentNode(n);
+                if (typeof parent == "undefined" || parent == node)
                     return;
 
-                if (parent == node)
-                    return;
+                if (parent.Type() != "ovsport" && parent.Type() != "host")
+                    this.AddToGroup(node, parent.ID, groups);
 
-                if (parent.Metadatas["Type"] != "ovsport")
-                    addToGroup(node, parent.ID, groups);
-
-                getNodeGroups(parent, node, groups);
+                this.SetNodeGroups(parent, node, groups);
             }
 
-            function getNodesGroups() {
+            HostLayout.prototype.GetNodesGroups = function(n, node, groups) {
                 var groups = {};
 
-                for (var i in graph.Nodes) {
-                    var node = graph.Nodes[i];
-                    var type = node.Metadatas["Type"]
+                for (var i in this.graph.Nodes) {
+                    var node = this.graph.Nodes[i];
+                    if (!(node.ID in this.elements))
+                        continue;
+
+                    var type = node.Type();
 
                     // create an itself group
                     if (type == "ovsbridge" || type == "netns")
-                        addToGroup(node, node.ID, groups);
+                        this.AddToGroup(node, node.ID, groups);
 
-                    getNodeGroups(node, node, groups);
+                    this.SetNodeGroups(node, node, groups);
                 }
 
                 return groups;
             }
 
-            function convexHulls(offset) {
+            HostLayout.prototype.GetConvexHulls = function() {
                 var hulls = {};
 
-                var groups = getNodesGroups();
-
-                // create point sets
+                var groups = this.GetNodesGroups();
                 for (var ID in groups) {
-                    for (var n in groups[ID]) {
-                        var node = groups[ID][n];
+                    var group = groups[ID];
+                    for (var n in group) {
+                        var node = group[n];
 
                         if (isNaN(parseFloat(node.x)))
                             continue;
 
                         var l = hulls[ID] || (hulls[ID] = []);
-                        l.push([node.x - offset, node.y - offset]);
-                        l.push([node.x - offset, node.y + offset]);
-                        l.push([node.x + offset, node.y - offset]);
-                        l.push([node.x + offset, node.y + offset]);
+                        l.push([node.x - this.hullOffset, node.y - this.hullOffset]);
+                        l.push([node.x - this.hullOffset, node.y + this.hullOffset]);
+                        l.push([node.x + this.hullOffset, node.y - this.hullOffset]);
+                        l.push([node.x + this.hullOffset, node.y + this.hullOffset]);
                     }
                 }
 
-                // create convex hulls
                 var hullset = [];
                 for (var ID in hulls) {
                     hullset.push({group: ID, path: d3.geom.hull(hulls[ID])});
@@ -596,103 +499,303 @@
                 return hullset;
             }
 
-            var curve = d3.svg.line()
-                .interpolate("cardinal-closed")
-                .tension(.85);
+            HostLayout.prototype.DrawCluster = function(d) {
+                var curve = d3.svg.line()
+                    .interpolate("cardinal-closed")
+                    .tension(.85);
 
-            function drawCluster(d) {
                 return curve(d.path);
             }
 
-            function redraw() {
-                link = link.data(links, function(d) { return d.source.ID + "-" + d.target.ID; });
-                link.enter().insert("line", ".node")
-                    .style("opacity", edgeOpacity)
-                    .attr("class", "link");
-                link.exit().remove();
+            HostLayout.prototype.GetNodeText = function(d) {
+                name = this.graph.GetNode(d.ID).Name();
+                if (name.length > 10)
+                    name = name.substr(0, 8) + ".";
 
-                node = node.data(nodes, function(d) { return d.ID; });
-                var nodeEnter = node.enter().append("g")
+                return name;
+            }
+
+            HostLayout.prototype.MouseOverNode = function(d) {
+                this.tooltip.transition()
+                    .duration(200)
+                    .style("opacity", 1.0)
+                    .style("display","block");
+                this.tooltip.html(this.NodeMetadataToHTML(d))
+                    .style("left", (d3.event.pageX + 20) + "px")
+                    .style("top", (d3.event.pageY - 28) + "px");
+            }
+
+            HostLayout.prototype.MouseOutNode = function(d) {
+                this.tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0)
+                    .style("display","none");
+            }
+
+            HostLayout.prototype.Redraw = function() {
+                var _this = this;
+
+                this.link = this.link.data(this.links, function(d) {
+                    return d.source.ID + "-" + d.target.ID;
+                });
+                this.link.enter().insert("line", ".node")
+                    .style("opacity", function(d) {
+                        return _this.EdgeOpacity(d);
+                    })
+                    .attr("class", "link");
+                this.link.exit().remove();
+
+                this.node = this.node.data(this.nodes, function(d) {
+                    return d.ID;
+                });
+                var nodeEnter = this.node.enter().append("g")
                     .attr("class", "node")
-                    .call(force.drag);
-                node.exit().remove();
+                    .call(this.force.drag);
+                this.node.exit().remove();
 
                 nodeEnter.append("circle")
-                    .attr("r", size)
+                    .attr("r", this.CircleSize)
                     .attr("class", "circle")
-                    .style("opacity", circleOpacity)
-                    .style("fill", nodeColor)
+                    .style("opacity", function(d) {
+                        return _this.CircleOpacity(d);
+                    })
+                    .style("fill", function(d) {
+                        return _this.NodeColor(d);
+                    })
                     .on("mouseover", function(d) {
-                        tooltip.transition()
-                            .duration(200)
-                            .style("opacity", 1.0)
-                            .style("display","block");
-                        tooltip.html(getMetadatas(d))
-                            .style("left", (d3.event.pageX + 20) + "px")
-                            .style("top", (d3.event.pageY - 28) + "px");
+                        _this.MouseOverNode(d);
                     })
                     .on("mouseout", function(d) {
-                         tooltip.transition()
-                            .duration(500)
-                            .style("opacity", 0)
-                            .style("display","none");
+                        _this.MouseOutNode(d);
                     });
 
                 nodeEnter.append("image")
-                    .attr("xlink:href", picto)
+                    .attr("xlink:href", function(d) {
+                        return _this.NodePicto(d);
+                    })
                     .attr("x", -10)
                     .attr("y", -10)
                     .attr("width", 20)
                     .attr("height", 20)
                     .on("mouseover", function(d) {
-                        tooltip.transition()
-                            .duration(200)
-                            .style("opacity", 1.0)
-                            .style("display","block");
-                        tooltip.html(getMetadatas(d))
-                            .style("left", (d3.event.pageX + 20) + "px")
-                            .style("top", (d3.event.pageY - 28) + "px");
+                        _this.MouseOverNode(d);
                     })
                     .on("mouseout", function(d) {
-                        tooltip.transition()
-                            .duration(500)
-                            .style("opacity", 0)
-                            .style("display","none");
+                        _this.MouseOutNode(d);
                     });
 
                 nodeEnter.append("text")
                     .attr("dx", 22)
                     .attr("dy", ".35em")
                     .text(function(d) {
-                        if (d.Metadatas["Type"] != "netns")
-                            return d.Metadatas["Name"]
-                        else
-                            return "";
+                        return _this.GetNodeText(d);
                     });
 
-                var hullData = convexHulls(offset);
+                var hullsData = this.GetConvexHulls();
 
-                hullg.selectAll("path.hull").remove();
-                hull = hullg.selectAll("path.hull")
-                    .data(hullData)
+                this.hullG.selectAll("path.hull").remove();
+                this.hull = this.hullG.selectAll("path.hull")
+                    .data(hullsData)
                     .enter().append("path")
                     .attr("class", "hull")
-                    .attr("id", function(d) { return d.group; })
-                    .attr("d", drawCluster);
+                    .attr("id", function(d) {
+                        return d.group;
+                    })
+                    .attr("d", function(d) {
+                        return _this.DrawCluster(d);
+                    });
 
-                hullg.selectAll("text.group").remove();
-                hullg.selectAll("text.group")
-                    .data(hullData)
-                    .enter()
-                    .append("text")
-                    .attr("class", "group")
-                    .attr("dy", 20)
-                    .append("textPath")
-                    .attr("xlink:href", function(d) { return '#' + d.group; })
-                    .text(function(d) { return graph.GetNode(d.group).Metadatas["Name"]; });
-
-                force.start();
+                this.force.start();
             }
+
+            var Layout = function(selector) {
+                this.graph = new Graph();
+                this.hosts = {};
+                this.selector = selector;
+                this.updatesocket = '';
+
+                this.width = $(selector).width();
+                this.height = $(selector).height();
+
+                this.svg = d3.select(selector).append("svg")
+                    .attr("width", this.width)
+                    .attr("height", this.height)
+                    .attr("y", 60)
+                    .attr('viewBox', '0 0 ' + Math.min(this.width, this.height) + ' ' + Math.min(this.width, this.height))
+                    .attr('preserveAspectRatio','xMinYMin');
+
+                this.tooltip = d3.select(selector)
+                    .append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0);
+            }
+
+            Layout.prototype.ReOrderLayout = function() {
+                var x = 0;
+
+                for (var host in this.hosts) {
+                     this.hosts[host].SetPosition(x, 0);
+                     x += this.hosts[host].GetBBox().width;
+                }
+
+                this.width = x;
+                this.svg.attr("width", this.width);
+            }
+
+            Layout.prototype.AddHost = function(host) {
+                this.hosts[host] = new HostLayout(host, this.graph, this.svg);
+
+                this.ReOrderLayout();
+
+                return this.hosts[host];
+            }
+
+            Layout.prototype.DelHost = function(node) {
+                delete (this.hosts, node.ID);
+            }
+
+            Layout.prototype.AddNode = function(node) {
+                var hostLayout;
+                if (!(node.Host in this.hosts))
+                    hostLayout = this.AddHost(node.Host);
+                else
+                    hostLayout = this.hosts[node.Host];
+
+                hostLayout.AddNode(node);
+            }
+
+            Layout.prototype.DelNode = function(node) {
+                if (!(node.Host in this.hosts))
+                    return;
+
+                this.hosts[node.Host].DelNode(node);
+            }
+
+            Layout.prototype.AddEdge = function(edge) {
+                var hostLayout;
+                if (!(edge.Host in this.hosts))
+                    hostLayout = this.AddHost(edge.Host);
+                else
+                    hostLayout = this.hosts[edge.Host];
+
+                hostLayout.AddEdge(edge);
+            }
+
+            Layout.prototype.DelEdge = function(edge) {
+               if (!(edge.Host in this.hosts))
+                    return;
+
+                this.hosts[edge.Host].DelEdge(edge);
+            }
+
+            Layout.prototype.InitFromSyncMessage = function(msg) {
+                this.graph.InitFromSyncMessage(msg);
+
+                for (var ID in this.graph.Nodes)
+                    this.AddNode(this.graph.Nodes[ID]);
+
+                for (var ID in this.graph.Edges)
+                    this.AddEdge(this.graph.Edges[ID]);
+            }
+
+            Layout.prototype.Clear = function() {
+                for (var ID in this.graph.Nodes)
+                    this.DelNode(this.graph.Nodes[ID]);
+
+
+                for (var ID in this.graph.Edges)
+                    this.DelEdge(this.graph.Edges[ID]);
+            }
+
+            Layout.prototype.Redraw = function() {
+                for (var h in this.hosts) {
+                    this.hosts[h].Redraw();
+                }
+            }
+
+            Layout.prototype.ProcessGraphMessage = function(msg) {
+                switch(msg.Type) {
+                    case "SyncReply":
+                        this.Clear();
+                        this.InitFromSyncMessage(msg);
+                        break;
+
+                    case "NodeUpdated":
+                        var node = this.graph.GetNode(msg.Obj.ID);
+                        node.Metadatas = msg.Obj.Metadatas;
+
+                        this.Redraw();
+                        break;
+
+                    case "NodeAdded":
+                        var node = this.graph.NewNode(msg.Obj.ID, msg.Obj.Host);
+                        if ("Metadatas" in msg.Obj)
+                            node.Metadatas = msg.Obj.Metadatas;
+
+                        this.AddNode(node);
+                        break;
+
+                    case "NodeDeleted":
+                        var node = this.graph.GetNode(msg.Obj.ID);
+                        if (typeof node == "undefined")
+                            return;
+
+                        this.graph.DelNode(node);
+                        this.DelNode(node);
+                        break;
+
+                    case "EdgeUpdated":
+                        var edge = this.graph.GetEdge(msg.Obj.ID);
+                        edge.Metadatas = msg.Obj.Metadatas;
+
+                        this.Redraw();
+                        break;
+
+                    case "EdgeAdded":
+                        var parent = this.graph.GetNode(msg.Obj.Parent);
+                        var child = this.graph.GetNode(msg.Obj.Child);
+
+                        var edge = this.graph.NewEdge(msg.Obj.ID, parent, child, msg.Obj.Host);
+                        if ("Metadatas" in msg.Obj)
+                            edge.Metadatas = msg.Obj.Metadatas;
+
+                        this.AddEdge(edge);
+                        break;
+
+                    case "EdgeDeleted":
+                        var edge = this.graph.GetEdge(msg.Obj.ID);
+                        if (typeof edge == "undefined")
+                            break;
+
+                        this.graph.DelEdge(edge);
+                        this.DelEdge(edge);
+                        break;
+                }
+            }
+
+            Layout.prototype.StartLiveUpdate = function() {
+                this.updatesocket = new WebSocket("ws://" + location.host + "/ws/graph");
+
+                var _this = this;
+                this.updatesocket.onopen = function() {
+                    var msg = {"Type": "SyncRequest"};
+                    _this.updatesocket.send(JSON.stringify(msg));
+                }
+
+                this.updatesocket.onclose = function() {
+                    setTimeout(_this.StartLiveUpdate, 1000);
+                }
+
+                this.updatesocket.onmessage = function(e) {
+                    var msg = jQuery.parseJSON(e.data);
+                    _this.ProcessGraphMessage(msg);
+                };
+            }
+
+            $(document).ready(function() {
+                layout = new Layout(".topology");
+                layout.StartLiveUpdate();
+            });
         </script>
     </head>
 

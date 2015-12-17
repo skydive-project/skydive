@@ -37,7 +37,8 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/mappings"
 	"github.com/redhat-cip/skydive/storage/elasticsearch"
-	//"github.com/redhat-cip/skydive/topology"
+	"github.com/redhat-cip/skydive/topology"
+	"github.com/redhat-cip/skydive/topology/graph"
 	//topo_analyzer "github.com/redhat-cip/skydive/topology/analyzer"
 )
 
@@ -86,20 +87,25 @@ func main() {
 
 	quit = make(chan bool)
 
-	/*go func() {
-		mn := topology.NewMultiNodeTopology()
-		topo_analyzer.RegisterAnalyzers(mn)
-
-		port, err := config.GetConfig().Section("analyzer").Key("listen").Int64()
+	go func() {
+		port, err := config.GetConfig().Section("analyzer").Key("listen").Int()
 		if err != nil {
 			panic(err)
 		}
 
-		router := mux.NewRouter().StrictSlash(true)
-		topology.RegisterStaticEndpoints(mn, router)
-		topology.RegisterRpcEndpoints(mn, router)
-		http.ListenAndServe(":"+strconv.FormatInt(port, 10), router)
-	}()*/
+		g, err := graph.NewGraph("Global")
+		if err != nil {
+			panic(err)
+		}
+
+		server := topology.NewServer(g, port)
+		server.RegisterStaticEndpoints()
+		server.RegisterRpcEndpoints()
+
+		graph.NewServer(g, server.Router).Start()
+
+		server.ListenAndServe()
+	}()
 
 	mapper := mappings.NewFlowMapper()
 	drivers, err := getInterfaceMappingDrivers()
@@ -112,12 +118,12 @@ func main() {
 
 	analyzer := analyzer.NewAnalyzer(mapper, elasticsearch)
 
-	port, err := config.GetConfig().Section("analyzer").Key("listen").Int64()
+	port, err := config.GetConfig().Section("analyzer").Key("listen").Int()
 	if err != nil {
 		panic(err)
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", ":"+strconv.FormatInt(port, 10))
+	addr, err := net.ResolveUDPAddr("udp", ":"+strconv.FormatInt(int64(port), 10))
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		panic(err)
@@ -126,6 +132,6 @@ func main() {
 
 	go handleMessage(conn, analyzer)
 
-	fmt.Println("Skydive Agent started !")
+	fmt.Println("Skydive Analyzer started !")
 	<-quit
 }
