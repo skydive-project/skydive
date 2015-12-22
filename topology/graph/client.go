@@ -82,8 +82,8 @@ func (c *AutoGraphClient) triggerResync() {
 	}
 
 	edges := c.Graph.GetEdges()
-	for _, n := range edges {
-		c.SendGraphMessage(GraphMessage{"EdgeAdded", n})
+	for _, e := range edges {
+		c.SendGraphMessage(GraphMessage{"EdgeAdded", e})
 	}
 }
 

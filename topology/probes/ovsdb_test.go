@@ -20,7 +20,7 @@
  *
  */
 
-package topology
+package probes
 
 import (
 	"testing"

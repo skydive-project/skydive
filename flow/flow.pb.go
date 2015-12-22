@@ -23,19 +23,19 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type Flow struct {
-	UUID             *string                 `protobuf:"bytes,1,req,name=UUID" json:"UUID,omitempty"`
-	Host             *string                 `protobuf:"bytes,2,req,name=Host" json:"Host,omitempty"`
-	EtherSrc         *string                 `protobuf:"bytes,3,req,name=EtherSrc" json:"EtherSrc,omitempty"`
-	EtherDst         *string                 `protobuf:"bytes,4,req,name=EtherDst" json:"EtherDst,omitempty"`
-	Path             *string                 `protobuf:"bytes,5,req,name=Path" json:"Path,omitempty"`
-	Ipv4Src          *string                 `protobuf:"bytes,6,opt,name=Ipv4Src" json:"Ipv4Src,omitempty"`
-	Ipv4Dst          *string                 `protobuf:"bytes,7,opt,name=Ipv4Dst" json:"Ipv4Dst,omitempty"`
-	PortSrc          *uint32                 `protobuf:"varint,8,opt,name=PortSrc" json:"PortSrc,omitempty"`
-	PortDst          *uint32                 `protobuf:"varint,9,opt,name=PortDst" json:"PortDst,omitempty"`
-	ID               *uint64                 `protobuf:"varint,10,req,name=ID" json:"ID,omitempty"`
-	Timestamp        *uint64                 `protobuf:"varint,11,req,name=Timestamp" json:"Timestamp,omitempty"`
-	Attributes       *Flow_MappingAttributes `protobuf:"bytes,12,opt,name=Attributes" json:"Attributes,omitempty"`
-	XXX_unrecognized []byte                  `json:"-"`
+	UUID             *string                      `protobuf:"bytes,1,req,name=UUID" json:"UUID,omitempty"`
+	LayersPath       *string                      `protobuf:"bytes,2,req,name=LayersPath" json:"LayersPath,omitempty"`
+	EtherSrc         *string                      `protobuf:"bytes,3,req,name=EtherSrc" json:"EtherSrc,omitempty"`
+	EtherDst         *string                      `protobuf:"bytes,4,req,name=EtherDst" json:"EtherDst,omitempty"`
+	Ipv4Src          *string                      `protobuf:"bytes,5,opt,name=Ipv4Src" json:"Ipv4Src,omitempty"`
+	Ipv4Dst          *string                      `protobuf:"bytes,6,opt,name=Ipv4Dst" json:"Ipv4Dst,omitempty"`
+	PortSrc          *uint32                      `protobuf:"varint,7,opt,name=PortSrc" json:"PortSrc,omitempty"`
+	PortDst          *uint32                      `protobuf:"varint,8,opt,name=PortDst" json:"PortDst,omitempty"`
+	ID               *uint64                      `protobuf:"varint,9,opt,name=ID" json:"ID,omitempty"`
+	Timestamp        *uint64                      `protobuf:"varint,10,req,name=Timestamp" json:"Timestamp,omitempty"`
+	ProbeAttributes  *Flow_ProbeMappingAttributes `protobuf:"bytes,11,req,name=ProbeAttributes" json:"ProbeAttributes,omitempty"`
+	IfAttributes     *Flow_IfMappingAttributes    `protobuf:"bytes,12,opt,name=IfAttributes" json:"IfAttributes,omitempty"`
+	XXX_unrecognized []byte                       `json:"-"`
 }
 
 func (m *Flow) Reset()         { *m = Flow{} }
@@ -49,9 +49,9 @@ func (m *Flow) GetUUID() string {
 	return ""
 }
 
-func (m *Flow) GetHost() string {
-	if m != nil && m.Host != nil {
-		return *m.Host
+func (m *Flow) GetLayersPath() string {
+	if m != nil && m.LayersPath != nil {
+		return *m.LayersPath
 	}
 	return ""
 }
@@ -66,13 +66,6 @@ func (m *Flow) GetEtherSrc() string {
 func (m *Flow) GetEtherDst() string {
 	if m != nil && m.EtherDst != nil {
 		return *m.EtherDst
-	}
-	return ""
-}
-
-func (m *Flow) GetPath() string {
-	if m != nil && m.Path != nil {
-		return *m.Path
 	}
 	return ""
 }
@@ -119,26 +112,69 @@ func (m *Flow) GetTimestamp() uint64 {
 	return 0
 }
 
-func (m *Flow) GetAttributes() *Flow_MappingAttributes {
+func (m *Flow) GetProbeAttributes() *Flow_ProbeMappingAttributes {
 	if m != nil {
-		return m.Attributes
+		return m.ProbeAttributes
 	}
 	return nil
 }
 
+func (m *Flow) GetIfAttributes() *Flow_IfMappingAttributes {
+	if m != nil {
+		return m.IfAttributes
+	}
+	return nil
+}
+
+type Flow_ProbeMappingAttributes struct {
+	ProbePath        *string `protobuf:"bytes,1,req,name=ProbePath" json:"ProbePath,omitempty"`
+	IfSrcPath        *string `protobuf:"bytes,2,opt,name=IfSrcPath" json:"IfSrcPath,omitempty"`
+	IfDstPath        *string `protobuf:"bytes,3,opt,name=IfDstPath" json:"IfDstPath,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *Flow_ProbeMappingAttributes) Reset()         { *m = Flow_ProbeMappingAttributes{} }
+func (m *Flow_ProbeMappingAttributes) String() string { return proto.CompactTextString(m) }
+func (*Flow_ProbeMappingAttributes) ProtoMessage()    {}
+
+func (m *Flow_ProbeMappingAttributes) GetProbePath() string {
+	if m != nil && m.ProbePath != nil {
+		return *m.ProbePath
+	}
+	return ""
+}
+
+func (m *Flow_ProbeMappingAttributes) GetIfSrcPath() string {
+	if m != nil && m.IfSrcPath != nil {
+		return *m.IfSrcPath
+	}
+	return ""
+}
+
+func (m *Flow_ProbeMappingAttributes) GetIfDstPath() string {
+	if m != nil && m.IfDstPath != nil {
+		return *m.IfDstPath
+	}
+	return ""
+}
+
 type Flow_InterfaceAttributes struct {
-	TenantID         *string `protobuf:"bytes,1,opt,name=TenantID" json:"TenantID,omitempty"`
-	VNI              *uint64 `protobuf:"varint,2,opt,name=VNI" json:"VNI,omitempty"`
-	IfIndex          *uint32 `protobuf:"varint,3,opt,name=IfIndex" json:"IfIndex,omitempty"`
-	IfName           *string `protobuf:"bytes,4,opt,name=IfName" json:"IfName,omitempty"`
-	MTU              *uint32 `protobuf:"varint,5,opt,name=MTU" json:"MTU,omitempty"`
-	BridgeName       *string `protobuf:"bytes,6,opt,name=BridgeName" json:"BridgeName,omitempty"`
+	Host             *string `protobuf:"bytes,1,opt,name=Host" json:"Host,omitempty"`
+	TenantID         *string `protobuf:"bytes,2,opt,name=TenantID" json:"TenantID,omitempty"`
+	VNI              *uint64 `protobuf:"varint,3,opt,name=VNI" json:"VNI,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
 func (m *Flow_InterfaceAttributes) Reset()         { *m = Flow_InterfaceAttributes{} }
 func (m *Flow_InterfaceAttributes) String() string { return proto.CompactTextString(m) }
 func (*Flow_InterfaceAttributes) ProtoMessage()    {}
+
+func (m *Flow_InterfaceAttributes) GetHost() string {
+	if m != nil && m.Host != nil {
+		return *m.Host
+	}
+	return ""
+}
 
 func (m *Flow_InterfaceAttributes) GetTenantID() string {
 	if m != nil && m.TenantID != nil {
@@ -154,54 +190,26 @@ func (m *Flow_InterfaceAttributes) GetVNI() uint64 {
 	return 0
 }
 
-func (m *Flow_InterfaceAttributes) GetIfIndex() uint32 {
-	if m != nil && m.IfIndex != nil {
-		return *m.IfIndex
-	}
-	return 0
-}
-
-func (m *Flow_InterfaceAttributes) GetIfName() string {
-	if m != nil && m.IfName != nil {
-		return *m.IfName
-	}
-	return ""
-}
-
-func (m *Flow_InterfaceAttributes) GetMTU() uint32 {
-	if m != nil && m.MTU != nil {
-		return *m.MTU
-	}
-	return 0
-}
-
-func (m *Flow_InterfaceAttributes) GetBridgeName() string {
-	if m != nil && m.BridgeName != nil {
-		return *m.BridgeName
-	}
-	return ""
-}
-
-type Flow_MappingAttributes struct {
-	IntfAttrSrc      *Flow_InterfaceAttributes `protobuf:"bytes,1,opt,name=IntfAttrSrc" json:"IntfAttrSrc,omitempty"`
-	IntfAttrDst      *Flow_InterfaceAttributes `protobuf:"bytes,2,opt,name=IntfAttrDst" json:"IntfAttrDst,omitempty"`
+type Flow_IfMappingAttributes struct {
+	IfAttrsSrc       *Flow_InterfaceAttributes `protobuf:"bytes,1,opt,name=IfAttrsSrc" json:"IfAttrsSrc,omitempty"`
+	IfAttrsDst       *Flow_InterfaceAttributes `protobuf:"bytes,2,opt,name=IfAttrsDst" json:"IfAttrsDst,omitempty"`
 	XXX_unrecognized []byte                    `json:"-"`
 }
 
-func (m *Flow_MappingAttributes) Reset()         { *m = Flow_MappingAttributes{} }
-func (m *Flow_MappingAttributes) String() string { return proto.CompactTextString(m) }
-func (*Flow_MappingAttributes) ProtoMessage()    {}
+func (m *Flow_IfMappingAttributes) Reset()         { *m = Flow_IfMappingAttributes{} }
+func (m *Flow_IfMappingAttributes) String() string { return proto.CompactTextString(m) }
+func (*Flow_IfMappingAttributes) ProtoMessage()    {}
 
-func (m *Flow_MappingAttributes) GetIntfAttrSrc() *Flow_InterfaceAttributes {
+func (m *Flow_IfMappingAttributes) GetIfAttrsSrc() *Flow_InterfaceAttributes {
 	if m != nil {
-		return m.IntfAttrSrc
+		return m.IfAttrsSrc
 	}
 	return nil
 }
 
-func (m *Flow_MappingAttributes) GetIntfAttrDst() *Flow_InterfaceAttributes {
+func (m *Flow_IfMappingAttributes) GetIfAttrsDst() *Flow_InterfaceAttributes {
 	if m != nil {
-		return m.IntfAttrDst
+		return m.IfAttrsDst
 	}
 	return nil
 }

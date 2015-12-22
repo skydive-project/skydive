@@ -30,7 +30,7 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-type SFlowSensor struct {
+type SFlowProbe struct {
 	ID         string
 	Interface  string
 	Target     string
@@ -39,20 +39,20 @@ type SFlowSensor struct {
 	Polling    uint32
 }
 
-type OvsSFlowSensorsHandler struct {
-	sensors []SFlowSensor
+type OvsSFlowProbesHandler struct {
+	probes []SFlowProbe
 }
 
-func newInsertSFlowSensorOP(sensor SFlowSensor) (*libovsdb.Operation, error) {
+func newInsertSFlowProbeOP(probe SFlowProbe) (*libovsdb.Operation, error) {
 	sFlowRow := make(map[string]interface{})
-	sFlowRow["agent"] = sensor.Interface
-	sFlowRow["targets"] = sensor.Target
-	sFlowRow["header"] = sensor.HeaderSize
-	sFlowRow["sampling"] = sensor.Sampling
-	sFlowRow["polling"] = sensor.Polling
+	sFlowRow["agent"] = probe.Interface
+	sFlowRow["targets"] = probe.Target
+	sFlowRow["header"] = probe.HeaderSize
+	sFlowRow["sampling"] = probe.Sampling
+	sFlowRow["polling"] = probe.Polling
 
 	extIds := make(map[string]string)
-	extIds["sensor-id"] = sensor.ID
+	extIds["probe-id"] = probe.ID
 	ovsMap, err := libovsdb.NewOvsMap(extIds)
 	if err != nil {
 		return nil, err
@@ -63,13 +63,13 @@ func newInsertSFlowSensorOP(sensor SFlowSensor) (*libovsdb.Operation, error) {
 		Op:       "insert",
 		Table:    "sFlow",
 		Row:      sFlowRow,
-		UUIDName: sensor.ID,
+		UUIDName: probe.ID,
 	}
 
 	return &insertOp, nil
 }
 
-func compareSensorID(row *map[string]interface{}, sensor SFlowSensor) (bool, error) {
+func compareProbeID(row *map[string]interface{}, probe SFlowProbe) (bool, error) {
 	extIds := (*row)["external_ids"]
 	switch extIds.(type) {
 	case []interface{}:
@@ -87,8 +87,8 @@ func compareSensorID(row *map[string]interface{}, sensor SFlowSensor) (bool, err
 				return false, err
 			}
 
-			if value, ok := oMap.GoMap["sensor-id"]; ok {
-				if value == sensor.ID {
+			if value, ok := oMap.GoMap["probe-id"]; ok {
+				if value == probe.ID {
 					return true, nil
 				}
 			}
@@ -98,7 +98,7 @@ func compareSensorID(row *map[string]interface{}, sensor SFlowSensor) (bool, err
 	return false, nil
 }
 
-func (o *OvsSFlowSensorsHandler) retrieveSFlowSensorUUID(monitor *OvsMonitor, sensor SFlowSensor) (string, error) {
+func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(monitor *OvsMonitor, probe SFlowProbe) (string, error) {
 	/* FIX(safchain) don't find a way to send a null condition */
 	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{"abc"})
 	selectOp := libovsdb.Operation{
@@ -119,24 +119,24 @@ func (o *OvsSFlowSensorsHandler) retrieveSFlowSensorUUID(monitor *OvsMonitor, se
 			uuid := u.(string)
 
 			if targets, ok := row["targets"]; ok {
-				if targets != sensor.Target {
+				if targets != probe.Target {
 					continue
 				}
 			}
 
 			if polling, ok := row["polling"]; ok {
-				if uint32(polling.(float64)) != sensor.Polling {
+				if uint32(polling.(float64)) != probe.Polling {
 					continue
 				}
 			}
 
 			if sampling, ok := row["sampling"]; ok {
-				if uint32(sampling.(float64)) != sensor.Sampling {
+				if uint32(sampling.(float64)) != probe.Sampling {
 					continue
 				}
 			}
 
-			if ok, _ := compareSensorID(&row, sensor); ok {
+			if ok, _ := compareProbeID(&row, probe); ok {
 				return uuid, nil
 			}
 		}
@@ -145,8 +145,8 @@ func (o *OvsSFlowSensorsHandler) retrieveSFlowSensorUUID(monitor *OvsMonitor, se
 	return "", nil
 }
 
-func (o *OvsSFlowSensorsHandler) registerSFLowSensor(monitor *OvsMonitor, sensor SFlowSensor, bridgeUUID string) error {
-	sensorUUID, err := o.retrieveSFlowSensorUUID(monitor, sensor)
+func (o *OvsSFlowProbesHandler) registerSFlowProbe(monitor *OvsMonitor, probe SFlowProbe, bridgeUUID string) error {
+	probeUUID, err := o.retrieveSFlowProbeUUID(monitor, probe)
 	if err != nil {
 		return err
 	}
@@ -154,17 +154,17 @@ func (o *OvsSFlowSensorsHandler) registerSFLowSensor(monitor *OvsMonitor, sensor
 	operations := []libovsdb.Operation{}
 
 	var uuid libovsdb.UUID
-	if sensorUUID != "" {
-		uuid = libovsdb.UUID{sensorUUID}
+	if probeUUID != "" {
+		uuid = libovsdb.UUID{probeUUID}
 
-		logging.GetLogger().Info("Using already registered sFlow sensor \"%s(%s)\"", sensor.ID, uuid)
+		logging.GetLogger().Info("Using already registered sFlow probe \"%s(%s)\"", probe.ID, uuid)
 	} else {
-		insertOp, err := newInsertSFlowSensorOP(sensor)
+		insertOp, err := newInsertSFlowProbeOP(probe)
 		if err != nil {
 			return err
 		}
 		uuid = libovsdb.UUID{insertOp.UUIDName}
-		logging.GetLogger().Info("Registering new sFlow sensor \"%s(%s)\"", sensor.ID, uuid)
+		logging.GetLogger().Info("Registering new sFlow probe \"%s(%s)\"", probe.ID, uuid)
 
 		operations = append(operations, *insertOp)
 	}
@@ -188,51 +188,51 @@ func (o *OvsSFlowSensorsHandler) registerSFLowSensor(monitor *OvsMonitor, sensor
 	return nil
 }
 
-func (o *OvsSFlowSensorsHandler) registerSensor(monitor *OvsMonitor, sensor SFlowSensor, bridgeUUID string) error {
-	err := o.registerSFLowSensor(monitor, sensor, bridgeUUID)
+func (o *OvsSFlowProbesHandler) registerProbe(monitor *OvsMonitor, probe SFlowProbe, bridgeUUID string) error {
+	err := o.registerSFlowProbe(monitor, probe, bridgeUUID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *OvsSFlowSensorsHandler) registerSensors(monitor *OvsMonitor, bridgeUUID string) {
-	for _, sensor := range o.sensors {
-		err := o.registerSensor(monitor, sensor, bridgeUUID)
+func (o *OvsSFlowProbesHandler) registerProbes(monitor *OvsMonitor, bridgeUUID string) {
+	for _, probe := range o.probes {
+		err := o.registerProbe(monitor, probe, bridgeUUID)
 		if err != nil {
-			logging.GetLogger().Error("Error while registering sensor %s", err.Error())
+			logging.GetLogger().Error("Error while registering probe %s", err.Error())
 		}
 	}
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsBridgeUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsSFlowProbesHandler) OnOvsBridgeUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	o.registerSensors(monitor, uuid)
+func (o *OvsSFlowProbesHandler) OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	o.registerProbes(monitor, uuid)
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsSFlowProbesHandler) OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsInterfaceUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsSFlowProbesHandler) OnOvsInterfaceUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsSFlowProbesHandler) OnOvsInterfaceAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsSFlowProbesHandler) OnOvsInterfaceDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsSFlowProbesHandler) OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsSFlowProbesHandler) OnOvsPortAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func (o *OvsSFlowSensorsHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsSFlowProbesHandler) OnOvsPortDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 }
 
-func NewOvsSFlowSensorsHandler(sensors []SFlowSensor) *OvsSFlowSensorsHandler {
-	return &OvsSFlowSensorsHandler{sensors: sensors}
+func NewOvsSFlowProbesHandler(probes []SFlowProbe) *OvsSFlowProbesHandler {
+	return &OvsSFlowProbesHandler{probes: probes}
 }

@@ -20,7 +20,7 @@
  *
  */
 
-package topology
+package probes
 
 import (
 	"net"
@@ -40,7 +40,7 @@ const (
 	maxEpollEvents = 32
 )
 
-type NetLinkTopoUpdater struct {
+type NetLinkProbe struct {
 	Graph             *graph.Graph
 	Root              *graph.Node
 	nlSocket          *nl.NetlinkSocket
@@ -48,7 +48,7 @@ type NetLinkTopoUpdater struct {
 	indexTointfsQueue map[uint32][]*graph.Node
 }
 
-func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *graph.Node, link netlink.Link) {
+func (u *NetLinkProbe) handleIntfIsBridgeMember(intf *graph.Node, link netlink.Link) {
 	index := uint32(link.Attrs().Index)
 
 	// add children of this interface that haven previously added
@@ -76,7 +76,7 @@ func (u *NetLinkTopoUpdater) handleIntfIsBridgeMember(intf *graph.Node, link net
 	}
 }
 
-func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
+func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	if link.Type() != "veth" {
 		return
 	}
@@ -119,7 +119,7 @@ func (u *NetLinkTopoUpdater) handleIntfIsVeth(intf *graph.Node, link netlink.Lin
 	}
 }
 
-func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
+func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	name := link.Attrs().Name
 	index := uint32(link.Attrs().Index)
 
@@ -145,7 +145,7 @@ func (u *NetLinkTopoUpdater) addGenericLinkToTopology(link netlink.Link, m graph
 	return intf
 }
 
-func (u *NetLinkTopoUpdater) addBridgeLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
+func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	index := uint32(link.Attrs().Index)
 
 	intf := u.Graph.LookupNode(graph.Metadatas{"IfIndex": index})
@@ -160,7 +160,7 @@ func (u *NetLinkTopoUpdater) addBridgeLinkToTopology(link netlink.Link, m graph.
 	return intf
 }
 
-func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
+func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	name := link.Attrs().Name
 
 	intf := u.Graph.LookupNode(graph.Metadatas{"Name": name, "Driver": "openvswitch"})
@@ -175,7 +175,7 @@ func (u *NetLinkTopoUpdater) addOvsLinkToTopology(link netlink.Link, m graph.Met
 	return intf
 }
 
-func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
+func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	logging.GetLogger().Debug("Link \"%s(%d)\" added", link.Attrs().Name, link.Attrs().Index)
 
 	u.Graph.Lock()
@@ -225,7 +225,7 @@ func (u *NetLinkTopoUpdater) addLinkToTopology(link netlink.Link) {
 	}
 }
 
-func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
+func (u *NetLinkProbe) onLinkAdded(index int) {
 	link, err := netlink.LinkByIndex(index)
 	if err != nil {
 		logging.GetLogger().Error("Failed to find interface %d: %s", index, err.Error())
@@ -235,7 +235,7 @@ func (u *NetLinkTopoUpdater) onLinkAdded(index int) {
 	u.addLinkToTopology(link)
 }
 
-func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
+func (u *NetLinkProbe) onLinkDeleted(index int) {
 	logging.GetLogger().Debug("Link %d deleted", index)
 
 	u.Graph.Lock()
@@ -267,7 +267,7 @@ func (u *NetLinkTopoUpdater) onLinkDeleted(index int) {
 	delete(u.indexTointfsQueue, uint32(index))
 }
 
-func (u *NetLinkTopoUpdater) initialize() {
+func (u *NetLinkProbe) initialize() {
 	links, err := netlink.LinkList()
 	if err != nil {
 		logging.GetLogger().Error("Unable to list interfaces: %s", err.Error())
@@ -279,7 +279,7 @@ func (u *NetLinkTopoUpdater) initialize() {
 	}
 }
 
-func (u *NetLinkTopoUpdater) start() {
+func (u *NetLinkProbe) start() {
 	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK)
 	if err != nil {
 		logging.GetLogger().Error("Failed to subscribe to netlink RTNLGRP_LINK messages: %s", err.Error())
@@ -352,20 +352,20 @@ Loop:
 	u.nlSocket.Close()
 }
 
-func (u *NetLinkTopoUpdater) Start() {
+func (u *NetLinkProbe) Start() {
 	go u.start()
 }
 
-func (u *NetLinkTopoUpdater) Run() {
+func (u *NetLinkProbe) Run() {
 	u.start()
 }
 
-func (u *NetLinkTopoUpdater) Stop() {
+func (u *NetLinkProbe) Stop() {
 	u.doneChan <- struct{}{}
 }
 
-func NewNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetLinkTopoUpdater {
-	return &NetLinkTopoUpdater{
+func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
+	return &NetLinkProbe{
 		Graph:             g,
 		Root:              n,
 		doneChan:          make(chan struct{}),

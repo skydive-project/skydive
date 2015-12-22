@@ -20,7 +20,7 @@
  *
  */
 
-package topology
+package probes
 
 import (
 	"sync"
@@ -31,7 +31,7 @@ import (
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-type OvsTopoUpdater struct {
+type OvsdbProbe struct {
 	sync.Mutex
 	Graph           *graph.Graph
 	Root            *graph.Node
@@ -41,11 +41,11 @@ type OvsTopoUpdater struct {
 	portBridgeQueue map[string]*graph.Node
 }
 
-func (o *OvsTopoUpdater) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.OnOvsBridgeAdd(monitor, uuid, row)
 }
 
-func (o *OvsTopoUpdater) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
 
@@ -89,7 +89,7 @@ func (o *OvsTopoUpdater) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, 
 	}
 }
 
-func (o *OvsTopoUpdater) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
@@ -99,7 +99,7 @@ func (o *OvsTopoUpdater) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, 
 	}
 }
 
-func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
 
@@ -234,11 +234,11 @@ func (o *OvsTopoUpdater) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid strin
 	}
 }
 
-func (o *OvsTopoUpdater) OnOvsInterfaceUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsInterfaceUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.OnOvsInterfaceAdd(monitor, uuid, row)
 }
 
-func (o *OvsTopoUpdater) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
 
@@ -258,7 +258,7 @@ func (o *OvsTopoUpdater) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid strin
 	delete(o.uuidToIntf, uuid)
 }
 
-func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
 
@@ -320,11 +320,11 @@ func (o *OvsTopoUpdater) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, ro
 	}
 }
 
-func (o *OvsTopoUpdater) OnOvsPortUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsPortUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.OnOvsPortAdd(monitor, uuid, row)
 }
 
-func (o *OvsTopoUpdater) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsdbProbe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
 
@@ -341,11 +341,11 @@ func (o *OvsTopoUpdater) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, ro
 	delete(o.uuidToPort, uuid)
 }
 
-func (o *OvsTopoUpdater) Start() {
+func (o *OvsdbProbe) Start() {
 }
 
-func NewOvsTopoUpdater(g *graph.Graph, n *graph.Node, ovsmon *ovsdb.OvsMonitor) *OvsTopoUpdater {
-	u := &OvsTopoUpdater{
+func NewOvsdbProbe(g *graph.Graph, n *graph.Node, ovsmon *ovsdb.OvsMonitor) *OvsdbProbe {
+	u := &OvsdbProbe{
 		Graph:           g,
 		Root:            n,
 		uuidToIntf:      make(map[string]*graph.Node),

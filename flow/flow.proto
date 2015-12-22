@@ -24,30 +24,34 @@ package flow;
 
 message Flow {
 	required string UUID 		= 1;
-	required string Host 		= 2;
+	required string LayersPath 	= 2;
 	required string EtherSrc 	= 3;
 	required string EtherDst 	= 4;
-	required string Path 		= 5;
-	optional string Ipv4Src 	= 6;
-	optional string Ipv4Dst 	= 7;
-	optional uint32 PortSrc 	= 8;
-	optional uint32 PortDst 	= 9;
-	required uint64 ID 			= 10;
-	required uint64 Timestamp 	= 11;
+	optional string Ipv4Src 	= 5;
+	optional string Ipv4Dst 	= 6;
+	optional uint32 PortSrc 	= 7;
+	optional uint32 PortDst 	= 8;
+	optional uint64 ID 			= 9;
+	required uint64 Timestamp 	= 10;
+
+	message ProbeMappingAttributes {
+		required string ProbePath = 1;
+		optional string IfSrcPath = 2;
+		optional string IfDstPath = 3;
+	}
+
+	required ProbeMappingAttributes ProbeAttributes = 11;
 
 	message InterfaceAttributes {
-		optional string TenantID 		= 1;
-		optional uint64 VNI 			= 2;
-		optional uint32 IfIndex 		= 3;
-		optional string IfName 			= 4;
-		optional uint32 MTU				= 5;
-		optional string OvsBridgeName 	= 6;
+		optional string Host			= 1;
+		optional string TenantID 		= 2;
+		optional uint64 VNI 			= 3;
 	}
 
-	message MappingAttributes {
-		optional InterfaceAttributes IntfAttrSrc = 1;
-		optional InterfaceAttributes IntfAttrDst = 2;
+	message IfMappingAttributes {
+		optional InterfaceAttributes IfAttrsSrc = 1;
+		optional InterfaceAttributes IfAttrsDst = 2;
 	}
 
-	optional MappingAttributes Attributes = 12;
+	optional IfMappingAttributes IfAttributes = 12;
 }

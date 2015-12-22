@@ -20,7 +20,7 @@
  *
  */
 
-package sensors
+package probes
 
-type Sensor interface {
+type Probe interface {
 }

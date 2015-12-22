@@ -20,7 +20,7 @@
  *
  */
 
-package topology
+package probes
 
 import (
 	"io/ioutil"
@@ -41,17 +41,17 @@ const (
 	runBaseDir = "/var/run/netns"
 )
 
-type NetNSTopoUpdater struct {
-	Graph        *graph.Graph
-	Root         *graph.Node
-	nsNlUpdaters map[string]*NetNsNetLinkTopoUpdater
+type NetNSProbe struct {
+	Graph      *graph.Graph
+	Root       *graph.Node
+	nsnlProbes map[string]*NetNsNetLinkTopoUpdater
 }
 
 type NetNsNetLinkTopoUpdater struct {
 	sync.RWMutex
-	Graph     *graph.Graph
-	Root      *graph.Node
-	nlUpdater *NetLinkTopoUpdater
+	Graph   *graph.Graph
+	Root    *graph.Node
+	nlProbe *NetLinkProbe
 }
 
 func getNetNSName(path string) string {
@@ -91,16 +91,16 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 
 	/* start a netlinks updater inside this namespace */
 	nu.Lock()
-	nu.nlUpdater = NewNetLinkTopoUpdater(nu.Graph, nu.Root)
+	nu.nlProbe = NewNetLinkProbe(nu.Graph, nu.Root)
 	nu.Unlock()
 
 	/* NOTE(safchain) don't Start just Run, need to keep it alive for the time life of the netns
 	 * and there is no need to have a new goroutine here
 	 */
-	nu.nlUpdater.Run()
+	nu.nlProbe.Run()
 
 	nu.Lock()
-	nu.nlUpdater = nil
+	nu.nlProbe = nil
 	nu.Unlock()
 
 	logging.GetLogger().Debug("NetLinkTopoUpdater stopped for NetNS: %s", name)
@@ -110,8 +110,8 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 
 func (nu *NetNsNetLinkTopoUpdater) Stop() {
 	nu.Lock()
-	if nu.nlUpdater != nil {
-		nu.nlUpdater.Stop()
+	if nu.nlProbe != nil {
+		nu.nlProbe.Stop()
 	}
 	nu.Unlock()
 }
@@ -123,10 +123,10 @@ func NewNetNsNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetNsNetLinkTopo
 	}
 }
 
-func (u *NetNSTopoUpdater) onNetNsCreated(path string) {
+func (u *NetNSProbe) onNetNsCreated(path string) {
 	name := getNetNSName(path)
 
-	_, ok := u.nsNlUpdaters[name]
+	_, ok := u.nsnlProbes[name]
 	if ok {
 		return
 	}
@@ -141,15 +141,15 @@ func (u *NetNSTopoUpdater) onNetNsCreated(path string) {
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
 	go nu.Start(path)
 
-	u.nsNlUpdaters[name] = nu
+	u.nsnlProbes[name] = nu
 }
 
-func (u *NetNSTopoUpdater) onNetNsDeleted(path string) {
+func (u *NetNSProbe) onNetNsDeleted(path string) {
 	name := getNetNSName(path)
 
 	logging.GetLogger().Debug("Network Namespace deleted: %s", name)
 
-	nu, ok := u.nsNlUpdaters[name]
+	nu, ok := u.nsnlProbes[name]
 	if !ok {
 		return
 	}
@@ -164,10 +164,10 @@ func (u *NetNSTopoUpdater) onNetNsDeleted(path string) {
 	}
 	u.Graph.DelNode(nu.Root)
 
-	delete(u.nsNlUpdaters, name)
+	delete(u.nsnlProbes, name)
 }
 
-func (u *NetNSTopoUpdater) initialize() {
+func (u *NetNSProbe) initialize() {
 	files, _ := ioutil.ReadDir(runBaseDir)
 	for _, f := range files {
 
@@ -175,7 +175,7 @@ func (u *NetNSTopoUpdater) initialize() {
 	}
 }
 
-func (u *NetNSTopoUpdater) start() {
+func (u *NetNSProbe) start() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -219,14 +219,14 @@ func (u *NetNSTopoUpdater) start() {
 	}
 }
 
-func (u *NetNSTopoUpdater) Start() {
+func (u *NetNSProbe) Start() {
 	go u.start()
 }
 
-func NewNetNSTopoUpdater(g *graph.Graph, n *graph.Node) *NetNSTopoUpdater {
-	return &NetNSTopoUpdater{
-		Graph:        g,
-		Root:         n,
-		nsNlUpdaters: make(map[string]*NetNsNetLinkTopoUpdater),
+func NewNetNSProbe(g *graph.Graph, n *graph.Node) *NetNSProbe {
+	return &NetNSProbe{
+		Graph:      g,
+		Root:       n,
+		nsnlProbes: make(map[string]*NetNsNetLinkTopoUpdater),
 	}
 }

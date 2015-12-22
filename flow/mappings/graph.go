@@ -23,64 +23,55 @@
 package mappings
 
 import (
-	//"strconv"
 	"time"
 
-	//"github.com/golang/protobuf/proto"
 	"github.com/pmylund/go-cache"
 
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-type NetLinkMapper struct {
-	Topology         *topology.Topology
+type GraphMappingDriver struct {
+	Graph            *graph.Graph
 	cache            *cache.Cache
-	cacheUpdaterChan chan uint32
+	cacheUpdaterChan chan string
 }
 
-func (mapper *NetLinkMapper) cacheUpdater() {
-	logging.GetLogger().Debug("Start NetLink cache updater")
+func (m *GraphMappingDriver) cacheUpdater() {
+	logging.GetLogger().Debug("Start GraphMappingDriver cache updater")
 
-	var ifIndex uint32
+	var mac string
 	for {
-		ifIndex = <-mapper.cacheUpdaterChan
+		mac = <-m.cacheUpdaterChan
 
-		logging.GetLogger().Debug("ifIndex request received: %s", ifIndex)
+		logging.GetLogger().Debug("GraphMappingDriver request received: %s", mac)
 
-		/*intf := mapper.Topology.LookupInterface(topology.LookupByIfIndex(ifIndex), topology.NetNSScope)
-		if intf == nil {
-			logging.GetLogger().Debug("Unable to find the interface with index %d in the topology", ifIndex)
-		} else {
-			mapper.cache.Set(strconv.Itoa(int(ifIndex)), intf, cache.DefaultExpiration)
-		}*/
+		m.Graph.Lock()
+		intf := m.Graph.LookupNode(graph.Metadatas{"MAC": mac})
+		m.Graph.Unlock()
+
+		if intf != nil {
+			m.cache.Set(mac, intf.Host, cache.DefaultExpiration)
+		}
 	}
 }
 
-func (mapper *NetLinkMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
-	/*i, f := mapper.cache.Get(strconv.Itoa(int(attrs.GetIfIndex())))
+func (m *GraphMappingDriver) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
+	h, f := m.cache.Get(mac)
 	if f {
-		intf := i.(*topology.Interface)
-
-		// TODO(safchain) should report the full path of the interface here as
-		// we can have the same name at different place
-		attrs.IfName = proto.String(intf.ID)
-
-		if mtu, ok := intf.GetMetadata("MTU"); ok {
-			attrs.MTU = proto.Uint32(mtu.(uint32))
-		}
-
+		host := h.(string)
+		attrs.Host = &host
 		return
-	}*/
+	}
 
-	mapper.cacheUpdaterChan <- attrs.GetIfIndex()
+	m.cacheUpdaterChan <- mac
 }
 
-func NewNetLinkMapper(t *topology.Topology) (*NetLinkMapper, error) {
-	mapper := &NetLinkMapper{
-		Topology: t,
+func NewGraphMappingDriver(g *graph.Graph) (*GraphMappingDriver, error) {
+	mapper := &GraphMappingDriver{
+		Graph: g,
 	}
 
 	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
@@ -92,7 +83,7 @@ func NewNetLinkMapper(t *topology.Topology) (*NetLinkMapper, error) {
 		return nil, err
 	}
 	mapper.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
-	mapper.cacheUpdaterChan = make(chan uint32)
+	mapper.cacheUpdaterChan = make(chan string, 200)
 	go mapper.cacheUpdater()
 
 	return mapper, nil

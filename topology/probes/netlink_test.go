@@ -20,7 +20,7 @@
  *
  */
 
-package topology
+package probes
 
 import (
 	"testing"
@@ -44,7 +44,7 @@ func TestOvsLinkNotHandled(t *testing.T) {
 	topo := NewTopology("host-a")
 	root := topo.NewNetNs("root")
 
-	updater := NewNetLinkTopoUpdater(root)
+	updater := NewNetLinkProbe(root)
 
 	link := &netlink.Device{
 		LinkAttrs: netlink.LinkAttrs{

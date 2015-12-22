@@ -20,7 +20,7 @@
  *
  */
 
-package sensors
+package probes
 
 import (
 	"bytes"
@@ -30,17 +30,17 @@ import (
 	"github.com/calmh/ipfix"
 )
 
-type IpfixSensor struct {
+type IpfixProbe struct {
 	Addr string
 	Port int
 }
 
-func (sensor *IpfixSensor) Start() error {
+func (probe *IpfixProbe) Start() error {
 	var buf [4096]byte
 
 	addr := net.UDPAddr{
-		Port: sensor.Port,
-		IP:   net.ParseIP(sensor.Addr),
+		Port: probe.Port,
+		IP:   net.ParseIP(probe.Addr),
 	}
 	conn, err := net.ListenUDP("udp", &addr)
 	defer conn.Close()
@@ -75,7 +75,6 @@ func (sensor *IpfixSensor) Start() error {
 	return nil
 }
 
-func NewIpfixSensor(addr string, port int) IpfixSensor {
-	sensor := IpfixSensor{Addr: addr, Port: port}
-	return sensor
+func NewIpfixProbe(addr string, port int) IpfixProbe {
+	return IpfixProbe{Addr: addr, Port: port}
 }

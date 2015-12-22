@@ -60,7 +60,7 @@ type WSServer struct {
 	unregister chan *WSClient
 }
 
-func (c *WSClient) processGrapMessage(msg GraphMessage) {
+func (c *WSClient) processGraphMessage(msg GraphMessage) {
 	g := c.server.Graph
 
 	switch msg.Type {
@@ -132,7 +132,7 @@ func (c *WSClient) readPump() {
 
 		msg, err := c.server.Graph.UnmarshalGraphMessage(p)
 		if err == nil {
-			c.processGrapMessage(msg)
+			c.processGraphMessage(msg)
 		} else {
 			logging.GetLogger().Error("Unable to parse the event %s: %s", msg, err.Error())
 		}
@@ -173,7 +173,7 @@ func (c *WSClient) write(mt int, message []byte) error {
 	return c.conn.WriteMessage(mt, message)
 }
 
-func (s *WSServer) start() {
+func (s *WSServer) ListenAndServe() {
 	for {
 		select {
 		case c := <-s.register:
@@ -261,12 +261,12 @@ func (s *Server) serveGraphMessages(w http.ResponseWriter, r *http.Request) {
 	c.readPump()
 }
 
-func (s *Server) Start() {
+func (s *Server) ListenAndServe() {
 	s.Graph.AddEventListener(s)
 
 	s.Router.HandleFunc("/ws/graph", s.serveGraphMessages)
 
-	go s.wsServer.start()
+	s.wsServer.ListenAndServe()
 }
 
 func NewServer(g *Graph, router *mux.Router) *Server {

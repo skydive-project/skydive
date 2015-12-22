@@ -25,55 +25,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net"
-	//"net/http"
-	"strconv"
-
-	//"github.com/gorilla/mux"
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/mappings"
-	"github.com/redhat-cip/skydive/storage/elasticsearch"
-	"github.com/redhat-cip/skydive/topology"
-	"github.com/redhat-cip/skydive/topology/graph"
-	//topo_analyzer "github.com/redhat-cip/skydive/topology/analyzer"
+	//"github.com/redhat-cip/skydive/logging"
+	//"github.com/redhat-cip/skydive/storage/elasticsearch"
 )
-
-var quit chan bool
-
-func getInterfaceMappingDrivers() ([]mappings.InterfaceMappingDriver, error) {
-	drivers := []mappings.InterfaceMappingDriver{}
-
-	/*neutron, err := mappings.NewNeutronMapper()
-	if err != nil {
-		return drivers, err
-	}
-	drivers = append(drivers, neutron)*/
-
-	return drivers, nil
-}
-
-func handleMessage(conn *net.UDPConn, analyzer *analyzer.Analyzer) {
-	data := make([]byte, 4096)
-
-	for {
-		n, _, err := conn.ReadFromUDP(data)
-		if err != nil {
-			logging.GetLogger().Error("Error while reading: %s", err.Error())
-			return
-		}
-
-		f, err := flow.FromData(data[0:n])
-		if err != nil {
-			logging.GetLogger().Error("Error while parsing flow: %s", err.Error())
-		}
-
-		analyzer.AnalyzeFlows([]*flow.Flow{f})
-	}
-}
 
 func main() {
 	filename := flag.String("conf", "/etc/skydive/skydive.ini",
@@ -85,53 +42,18 @@ func main() {
 		panic(err)
 	}
 
-	quit = make(chan bool)
-
-	go func() {
-		port, err := config.GetConfig().Section("analyzer").Key("listen").Int()
-		if err != nil {
-			panic(err)
-		}
-
-		g, err := graph.NewGraph("Global")
-		if err != nil {
-			panic(err)
-		}
-
-		server := topology.NewServer(g, port)
-		server.RegisterStaticEndpoints()
-		server.RegisterRpcEndpoints()
-
-		graph.NewServer(g, server.Router).Start()
-
-		server.ListenAndServe()
-	}()
-
-	mapper := mappings.NewFlowMapper()
-	drivers, err := getInterfaceMappingDrivers()
-	if err != nil {
-		panic(err)
-	}
-	mapper.SetInterfaceMappingDrivers(drivers)
-
-	elasticsearch := elasticseach.GetInstance("127.0.0.1", 9200)
-
-	analyzer := analyzer.NewAnalyzer(mapper, elasticsearch)
+	/*elasticsearch := elasticseach.GetInstance("127.0.0.1", 9200)*/
 
 	port, err := config.GetConfig().Section("analyzer").Key("listen").Int()
 	if err != nil {
 		panic(err)
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", ":"+strconv.FormatInt(int64(port), 10))
-	conn, err := net.ListenUDP("udp", addr)
+	analyzer, err := analyzer.NewAnalyzer(port)
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
-
-	go handleMessage(conn, analyzer)
 
 	fmt.Println("Skydive Analyzer started !")
-	<-quit
+	analyzer.ListenAndServe()
 }

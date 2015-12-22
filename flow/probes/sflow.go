@@ -20,7 +20,7 @@
  *
  */
 
-package sensors
+package probes
 
 import (
 	"net"
@@ -32,39 +32,38 @@ import (
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/mappings"
 )
 
 const (
 	maxDgramSize = 1500
 )
 
-type SFlowSensor struct {
+type SFlowProbe struct {
 	Addr string
 	Port int
 
-	/* TODO(safchain) replace by analyzer client */
-	AnalyzerClient *analyzer.Client
-	FlowMapper     *mappings.FlowMapper
+	AnalyzerClient  *analyzer.Client
+	MappingPipeline *mappings.MappingPipeline
 }
 
-func (sensor *SFlowSensor) GetTarget() string {
-	target := []string{sensor.Addr, strconv.FormatInt(int64(sensor.Port), 10)}
+func (probe *SFlowProbe) GetTarget() string {
+	target := []string{probe.Addr, strconv.FormatInt(int64(probe.Port), 10)}
 	return strings.Join(target, ":")
 }
 
-func (sensor *SFlowSensor) start() error {
+func (probe *SFlowProbe) Start() error {
 	var buf [maxDgramSize]byte
 
 	addr := net.UDPAddr{
-		Port: sensor.Port,
-		IP:   net.ParseIP(sensor.Addr),
+		Port: probe.Port,
+		IP:   net.ParseIP(probe.Addr),
 	}
 	conn, err := net.ListenUDP("udp", &addr)
 	defer conn.Close()
 	if err != nil {
-		logging.GetLogger().Error("Unable to listen on port %d: %s", sensor.Port, err.Error())
+		logging.GetLogger().Error("Unable to listen on port %d: %s", probe.Port, err.Error())
 		return err
 	}
 
@@ -87,12 +86,12 @@ func (sensor *SFlowSensor) start() error {
 
 				logging.GetLogger().Debug("%d flows captured", len(flows))
 
-				if sensor.FlowMapper != nil {
-					sensor.FlowMapper.Enhance(flows)
+				if probe.MappingPipeline != nil {
+					probe.MappingPipeline.Enhance(flows)
 				}
 
-				if sensor.AnalyzerClient != nil {
-					sensor.AnalyzerClient.SendFlows(flows)
+				if probe.AnalyzerClient != nil {
+					probe.AnalyzerClient.SendFlows(flows)
 				}
 			}
 		}
@@ -101,19 +100,14 @@ func (sensor *SFlowSensor) start() error {
 	return nil
 }
 
-func (sensor *SFlowSensor) Start() {
-	go sensor.start()
+func (probe *SFlowProbe) SetAnalyzerClient(a *analyzer.Client) {
+	probe.AnalyzerClient = a
 }
 
-func (sensor *SFlowSensor) SetAnalyzerClient(a *analyzer.Client) {
-	sensor.AnalyzerClient = a
+func (probe *SFlowProbe) SetMappingPipeline(p *mappings.MappingPipeline) {
+	probe.MappingPipeline = p
 }
 
-func (sensor *SFlowSensor) SetFlowMapper(m *mappings.FlowMapper) {
-	sensor.FlowMapper = m
-}
-
-func NewSFlowSensor(addr string, port int) SFlowSensor {
-	sensor := SFlowSensor{Addr: addr, Port: port}
-	return sensor
+func NewSFlowProbe(addr string, port int) *SFlowProbe {
+	return &SFlowProbe{Addr: addr, Port: port}
 }

@@ -63,13 +63,13 @@ type Graph struct {
 	ID             Identifier
 	Nodes          map[Identifier]*Node `json:"Nodes"`
 	Edges          map[Identifier]*Edge `json:"Edges"`
-	EventListeners []GraphEventListener `json:"-"`
 	Host           string
+	eventListeners []GraphEventListener `json:"-"`
 }
 
 type Node struct {
 	GraphElement
-	Edges map[Identifier]*Edge
+	edges map[Identifier]*Edge `json:"-"`
 }
 
 type Edge struct {
@@ -155,7 +155,7 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 }
 
 func (n *Node) LookupParentNode(f Metadatas) *Node {
-	for _, e := range n.Edges {
+	for _, e := range n.edges {
 		if e.Child == n && e.Parent.matchFilters(f) {
 			return e.Parent
 		}
@@ -167,7 +167,7 @@ func (n *Node) LookupParentNode(f Metadatas) *Node {
 func (n *Node) LookupChildren(f Metadatas) []*Node {
 	children := []*Node{}
 
-	for _, e := range n.Edges {
+	for _, e := range n.edges {
 		if e.Parent == n && e.Child.matchFilters(f) {
 			children = append(children, e.Child)
 		}
@@ -177,7 +177,7 @@ func (n *Node) LookupChildren(f Metadatas) []*Node {
 }
 
 func (n *Node) IsLinkedTo(c *Node) bool {
-	for _, e := range n.Edges {
+	for _, e := range n.edges {
 		if e.Child == c || e.Parent == c {
 			return true
 		}
@@ -191,7 +191,7 @@ func (n *Node) LinkTo(c *Node) {
 }
 
 func (n *Node) UnlinkFrom(c *Node) {
-	for _, e := range n.Edges {
+	for _, e := range n.edges {
 		if e.Child == c {
 			n.Graph.DelEdge(e)
 		} else if e.Parent == c {
@@ -201,7 +201,7 @@ func (n *Node) UnlinkFrom(c *Node) {
 }
 
 func (n *Node) Replace(o *Node, m Metadatas) *Node {
-	for _, e := range n.Edges {
+	for _, e := range n.edges {
 		n.Graph.DelEdge(e)
 
 		if e.Parent == n {
@@ -258,8 +258,8 @@ func (g *Graph) LookupNodes(f Metadatas) []*Node {
 }
 
 func (g *Graph) AddEdge(e *Edge) {
-	e.Parent.Edges[e.ID] = e
-	e.Child.Edges[e.ID] = e
+	e.Parent.edges[e.ID] = e
+	e.Child.edges[e.ID] = e
 
 	g.Edges[e.ID] = e
 
@@ -293,7 +293,7 @@ func (g *Graph) NewNode(i Identifier, m Metadatas) *Node {
 			Graph: g,
 			Host:  g.Host,
 		},
-		Edges: make(map[Identifier]*Edge),
+		edges: make(map[Identifier]*Edge),
 	}
 
 	if m != nil {
@@ -334,8 +334,8 @@ func (g *Graph) DelEdge(e *Edge) {
 		return
 	}
 
-	delete(e.Parent.Edges, e.ID)
-	delete(e.Child.Edges, e.ID)
+	delete(e.Parent.edges, e.ID)
+	delete(e.Child.edges, e.ID)
 
 	delete(g.Edges, e.ID)
 	g.NotifyEdgeDeleted(e)
@@ -346,7 +346,7 @@ func (g *Graph) DelNode(n *Node) {
 		return
 	}
 
-	for _, e := range n.Edges {
+	for _, e := range n.edges {
 		g.DelEdge(e)
 	}
 
@@ -360,7 +360,7 @@ func (g *Graph) subtreeDel(n *Node, m map[Identifier]bool) {
 	}
 	m[n.ID] = true
 
-	for _, e := range n.Edges {
+	for _, e := range n.edges {
 		if e.Child != n {
 			g.subtreeDel(e.Child, m)
 			g.DelNode(e.Child)
@@ -402,37 +402,37 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 }
 
 func (g *Graph) NotifyNodeUpdated(n *Node) {
-	for _, l := range g.EventListeners {
+	for _, l := range g.eventListeners {
 		l.OnNodeUpdated(n)
 	}
 }
 
 func (g *Graph) NotifyNodeDeleted(n *Node) {
-	for _, l := range g.EventListeners {
+	for _, l := range g.eventListeners {
 		l.OnNodeDeleted(n)
 	}
 }
 
 func (g *Graph) NotifyNodeAdded(n *Node) {
-	for _, l := range g.EventListeners {
+	for _, l := range g.eventListeners {
 		l.OnNodeAdded(n)
 	}
 }
 
 func (g *Graph) NotifyEdgeUpdated(e *Edge) {
-	for _, l := range g.EventListeners {
+	for _, l := range g.eventListeners {
 		l.OnEdgeUpdated(e)
 	}
 }
 
 func (g *Graph) NotifyEdgeDeleted(e *Edge) {
-	for _, l := range g.EventListeners {
+	for _, l := range g.eventListeners {
 		l.OnEdgeDeleted(e)
 	}
 }
 
 func (g *Graph) NotifyEdgeAdded(e *Edge) {
-	for _, l := range g.EventListeners {
+	for _, l := range g.eventListeners {
 		l.OnEdgeAdded(e)
 	}
 }
@@ -441,7 +441,7 @@ func (g *Graph) AddEventListener(l GraphEventListener) {
 	g.Lock()
 	defer g.Unlock()
 
-	g.EventListeners = append(g.EventListeners, l)
+	g.eventListeners = append(g.eventListeners, l)
 }
 
 func (g *Graph) UnmarshalGraphMessage(b []byte) (GraphMessage, error) {
@@ -488,7 +488,7 @@ func (g *Graph) UnmarshalGraphMessage(b []byte) (GraphMessage, error) {
 				Graph:     g,
 				Host:      host,
 			},
-			Edges: make(map[Identifier]*Edge),
+			edges: make(map[Identifier]*Edge),
 		}
 	case "EdgeUpdated":
 		fallthrough

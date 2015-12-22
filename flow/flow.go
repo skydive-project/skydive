@@ -39,6 +39,16 @@ import (
 func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	hasher := sha1.New()
 
+	path := ""
+	for i, layer := range (*packet).Layers() {
+		if i > 0 {
+			path += "/"
+		}
+		path += layer.LayerType().String()
+	}
+	flow.LayersPath = proto.String(path)
+	hasher.Write([]byte(flow.GetLayersPath()))
+
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
@@ -60,16 +70,6 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 		hasher.Write([]byte(flow.GetIpv4Src()))
 		hasher.Write([]byte(flow.GetIpv4Dst()))
 	}
-
-	path := ""
-	for i, layer := range (*packet).Layers() {
-		if i > 0 {
-			path += "."
-		}
-		path += layer.LayerType().String()
-	}
-	flow.Path = proto.String(path)
-	hasher.Write([]byte(flow.GetPath()))
 
 	udpLayer := (*packet).Layer(layers.LayerTypeUDP)
 	if udpLayer != nil {
@@ -125,21 +125,21 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func New(host string, in uint32, out uint32, packet *gopacket.Packet) *Flow {
+func New(probePath string, packet *gopacket.Packet) *Flow {
 	u, _ := uuid.NewV4()
 	t := uint64(time.Now().Unix())
 
 	flow := &Flow{
-		UUID: proto.String(u.String()),
-		Host: proto.String(host),
+		UUID:      proto.String(u.String()),
 		Timestamp: proto.Uint64(t),
-		Attributes: &Flow_MappingAttributes{
-			IntfAttrSrc: &Flow_InterfaceAttributes{},
-			IntfAttrDst: &Flow_InterfaceAttributes{},
+		IfAttributes: &Flow_IfMappingAttributes{
+			IfAttrsSrc: &Flow_InterfaceAttributes{},
+			IfAttrsDst: &Flow_InterfaceAttributes{},
+		},
+		ProbeAttributes: &Flow_ProbeMappingAttributes{
+			ProbePath: &probePath,
 		},
 	}
-	flow.GetAttributes().GetIntfAttrSrc().IfIndex = proto.Uint32(in)
-	flow.GetAttributes().GetIntfAttrDst().IfIndex = proto.Uint32(out)
 
 	if packet != nil {
 		flow.fillFromGoPacket(packet)
@@ -148,7 +148,7 @@ func New(host string, in uint32, out uint32, packet *gopacket.Packet) *Flow {
 	return flow
 }
 
-func FLowsFromSFlowSample(host string, sample *layers.SFlowFlowSample) []*Flow {
+func FLowsFromSFlowSample(probePath string, sample *layers.SFlowFlowSample) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
@@ -159,7 +159,7 @@ func FLowsFromSFlowSample(host string, sample *layers.SFlowFlowSample) []*Flow {
 			continue
 		}
 
-		flow := New(host, sample.InputInterface, sample.OutputInterface, &record.Header)
+		flow := New(probePath, &record.Header)
 		flows = append(flows, flow)
 	}
 

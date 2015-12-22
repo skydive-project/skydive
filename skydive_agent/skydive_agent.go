@@ -31,29 +31,15 @@ import (
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
-	//"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/mappings"
+	"github.com/redhat-cip/skydive/flow/mappings"
+	fprobes "github.com/redhat-cip/skydive/flow/probes"
 	"github.com/redhat-cip/skydive/ovs"
-	"github.com/redhat-cip/skydive/sensors"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
+	tprobes "github.com/redhat-cip/skydive/topology/probes"
 )
 
-type TopologyEventListener struct {
-}
-
-func (l *TopologyEventListener) TopologyUpdated(g *graph.Graph) {
-	//logging.GetLogger().Debug("Topology updated: %s", g.String())
-}
-
-func (l *TopologyEventListener) OnNodeUpdated(n *graph.Node) { l.TopologyUpdated(n.Graph) }
-func (l *TopologyEventListener) OnNodeAdded(n *graph.Node)   { l.TopologyUpdated(n.Graph) }
-func (l *TopologyEventListener) OnNodeDeleted(n *graph.Node) { l.TopologyUpdated(n.Graph) }
-func (l *TopologyEventListener) OnEdgeUpdated(e *graph.Edge) { l.TopologyUpdated(e.Graph) }
-func (l *TopologyEventListener) OnEdgeAdded(e *graph.Edge)   { l.TopologyUpdated(e.Graph) }
-func (l *TopologyEventListener) OnEdgeDeleted(e *graph.Edge) { l.TopologyUpdated(e.Graph) }
-
-func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
+/*func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
 	drivers := []mappings.InterfaceMappingDriver{}
 
 	netlink, err := mappings.NewNetLinkMapper(topo)
@@ -62,7 +48,7 @@ func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMa
 	}
 	drivers = append(drivers, netlink)
 
-	/* need to be added after the netlink one since it relies on it */
+	// need to be added after the netlink one since it relies on it
 	ovs, err := mappings.NewOvsMapper(topo)
 	if err != nil {
 		return drivers, err
@@ -70,7 +56,7 @@ func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMa
 	drivers = append(drivers, ovs)
 
 	return drivers, nil
-}
+}*/
 
 func main() {
 	filename := flag.String("conf", "/etc/skydive/skydive.ini",
@@ -84,17 +70,17 @@ func main() {
 
 	fmt.Println("Skydive Agent starting...")
 
-	sflowSensor := sensors.NewSFlowSensor("127.0.0.1", 6345)
+	sflowProbe := fprobes.NewSFlowProbe("127.0.0.1", 6345)
 
-	ovsSFlowSensor := ovsdb.SFlowSensor{
-		ID:         "SkydiveSFlowSensor",
+	ovsSFlowProbe := ovsdb.SFlowProbe{
+		ID:         "SkydiveSFlowProbe",
 		Interface:  "eth0",
-		Target:     sflowSensor.GetTarget(),
+		Target:     sflowProbe.GetTarget(),
 		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
 	}
-	sflowHandler := ovsdb.NewOvsSFlowSensorsHandler([]ovsdb.SFlowSensor{ovsSFlowSensor})
+	sflowHandler := ovsdb.NewOvsSFlowProbesHandler([]ovsdb.SFlowProbe{ovsSFlowProbe})
 
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
 	ovsmon.AddMonitorHandler(sflowHandler)
@@ -116,7 +102,15 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	g.AddEventListener(&TopologyEventListener{})
+
+	gm, err := mappings.NewGraphMappingDriver(g)
+	if err != nil {
+		panic(err)
+	}
+
+	ip := mappings.NewInterfacePipeline([]mappings.InterfaceDriver{gm})
+	pipeline := mappings.NewMappingPipeline(ip)
+	sflowProbe.SetMappingPipeline(pipeline)
 
 	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port)
 	gclient.SetAutoGraphUpdate(g)
@@ -124,30 +118,23 @@ func main() {
 
 	root := g.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})
 
-	ns := topology.NewNetNSTopoUpdater(g, root)
+	// start probes that will update the graph
+	ns := tprobes.NewNetNSProbe(g, root)
 	ns.Start()
 
-	nl := topology.NewNetLinkTopoUpdater(g, root)
+	nl := tprobes.NewNetLinkProbe(g, root)
 	nl.Start()
 
-	ovs := topology.NewOvsTopoUpdater(g, root, ovsmon)
+	ovs := tprobes.NewOvsdbProbe(g, root, ovsmon)
 	ovs.Start()
-
-	/*mapper := mappings.NewFlowMapper()
-	drivers, err := getInterfaceMappingDrivers(topo)
-	if err != nil {
-		panic(err)
-	}
-	mapper.SetInterfaceMappingDrivers(drivers)
-	sflowSensor.SetFlowMapper(mapper)*/
 
 	analyzer, err := analyzer.NewClient(analyzer_addr, analyzer_port)
 	if err != nil {
 		panic(err)
 	}
 
-	sflowSensor.SetAnalyzerClient(analyzer)
-	sflowSensor.Start()
+	sflowProbe.SetAnalyzerClient(analyzer)
+	go sflowProbe.Start()
 
 	ovsmon.StartMonitoring()
 
@@ -160,7 +147,8 @@ func main() {
 	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
 
-	graph.NewServer(g, server.Router).Start()
+	gserver := graph.NewServer(g, server.Router)
+	go gserver.ListenAndServe()
 
 	server.ListenAndServe()
 }
