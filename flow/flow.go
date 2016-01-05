@@ -125,7 +125,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func New(probePath string, packet *gopacket.Packet) *Flow {
+func New(mac string, packet *gopacket.Packet) *Flow {
 	u, _ := uuid.NewV4()
 	t := uint64(time.Now().Unix())
 
@@ -137,7 +137,7 @@ func New(probePath string, packet *gopacket.Packet) *Flow {
 			IfAttrsDst: &Flow_InterfaceAttributes{},
 		},
 		ProbeAttributes: &Flow_ProbeMappingAttributes{
-			ProbePath: &probePath,
+			MAC: proto.String(mac),
 		},
 	}
 
@@ -148,7 +148,7 @@ func New(probePath string, packet *gopacket.Packet) *Flow {
 	return flow
 }
 
-func FLowsFromSFlowSample(probePath string, sample *layers.SFlowFlowSample) []*Flow {
+func FLowsFromSFlowSample(mac string, sample *layers.SFlowFlowSample) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
@@ -159,7 +159,7 @@ func FLowsFromSFlowSample(probePath string, sample *layers.SFlowFlowSample) []*F
 			continue
 		}
 
-		flow := New(probePath, &record.Header)
+		flow := New(mac, &record.Header)
 		flows = append(flows, flow)
 	}
 

@@ -26,43 +26,28 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 )
 
-type InterfaceDriver interface {
-	Enhance(mac string, attrs *flow.Flow_InterfaceAttributes)
+type FlowEnhancer interface {
+	Enhance(flow *flow.Flow)
 }
 
-type InterfacePipeline struct {
-	Drivers []InterfaceDriver
+type FlowMappingPipeline struct {
+	Enhancers []FlowEnhancer
 }
 
-type MappingPipeline struct {
-	InterfacePipeline *InterfacePipeline
-}
-
-func (ip *InterfacePipeline) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
-	for _, driver := range ip.Drivers {
-		driver.Enhance(mac, attrs)
+func (fe *FlowMappingPipeline) EnhanceFlow(flow *flow.Flow) {
+	for _, enhancer := range fe.Enhancers {
+		enhancer.Enhance(flow)
 	}
 }
 
-func NewInterfacePipeline(drivers []InterfaceDriver) *InterfacePipeline {
-	return &InterfacePipeline{
-		Drivers: drivers,
-	}
-}
-
-func (mp *MappingPipeline) EnhanceInterfaces(flow *flow.Flow) {
-	mp.InterfacePipeline.Enhance(flow.GetEtherSrc(), flow.GetIfAttributes().GetIfAttrsSrc())
-	mp.InterfacePipeline.Enhance(flow.GetEtherDst(), flow.GetIfAttributes().GetIfAttrsDst())
-}
-
-func (mp *MappingPipeline) Enhance(flows []*flow.Flow) {
+func (fe *FlowMappingPipeline) Enhance(flows []*flow.Flow) {
 	for _, flow := range flows {
-		mp.EnhanceInterfaces(flow)
+		fe.EnhanceFlow(flow)
 	}
 }
 
-func NewMappingPipeline(ip *InterfacePipeline) *MappingPipeline {
-	return &MappingPipeline{
-		InterfacePipeline: ip,
+func NewFlowMappingPipeline(e []FlowEnhancer) *FlowMappingPipeline {
+	return &FlowMappingPipeline{
+		Enhancers: e,
 	}
 }

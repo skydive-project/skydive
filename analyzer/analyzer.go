@@ -36,15 +36,15 @@ import (
 )
 
 type Analyzer struct {
-	Port            int
-	TopoServer      *topology.Server
-	GraphServer     *graph.Server
-	MappingPipeline *mappings.MappingPipeline
+	Port                int
+	TopoServer          *topology.Server
+	GraphServer         *graph.Server
+	FlowMappingPipeline *mappings.FlowMappingPipeline
 	//Storage     storage.Storage
 }
 
 func (a *Analyzer) AnalyzeFlows(flows []*flow.Flow) {
-	a.MappingPipeline.Enhance(flows)
+	a.FlowMappingPipeline.Enhance(flows)
 	//analyzer.Storage.StoreFlows(flows)
 
 	logging.GetLogger().Debug("%d flows stored", len(flows))
@@ -111,17 +111,16 @@ func NewAnalyzer(port int) (*Analyzer, error) {
 
 	gserver := graph.NewServer(g, server.Router)
 
-	gm, err := mappings.NewGraphMappingDriver(g)
+	gfe, err := mappings.NewGraphFlowEnhancer(g)
 	if err != nil {
 		return nil, err
 	}
 
-	ip := mappings.NewInterfacePipeline([]mappings.InterfaceDriver{gm})
-	pipeline := mappings.NewMappingPipeline(ip)
+	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 
 	return &Analyzer{
-		TopoServer:      server,
-		GraphServer:     gserver,
-		MappingPipeline: pipeline,
+		TopoServer:          server,
+		GraphServer:         gserver,
+		FlowMappingPipeline: pipeline,
 	}, nil
 }

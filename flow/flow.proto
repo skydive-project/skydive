@@ -35,17 +35,18 @@ message Flow {
 	required uint64 Timestamp 	= 10;
 
 	message ProbeMappingAttributes {
-		required string ProbePath = 1;
-		optional string IfSrcPath = 2;
-		optional string IfDstPath = 3;
+		required string MAC       = 1;
+		optional string GraphPath = 2;
 	}
 
 	required ProbeMappingAttributes ProbeAttributes = 11;
 
 	message InterfaceAttributes {
-		optional string Host			= 1;
-		optional string TenantID 		= 2;
-		optional uint64 VNI 			= 3;
+		optional string Name			= 1;
+		optional string Type			= 2;
+		optional string GraphPath		= 3;
+		optional string TenantID 		= 4;
+		optional uint64 VNI 			= 5;
 	}
 
 	message IfMappingAttributes {

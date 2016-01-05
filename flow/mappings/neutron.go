@@ -24,8 +24,8 @@ package mappings
 
 import (
 	"errors"
-	"time"
 	"strconv"
+	"time"
 
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
@@ -122,7 +122,7 @@ func (mapper *NeutronMapper) cacheUpdater() {
 	}
 }
 
-func (mapper *NeutronMapper) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
+func (mapper *NeutronMapper) EnhanceInterface(mac string, attrs *flow.Flow_InterfaceAttributes) {
 	a, f := mapper.cache.Get(mac)
 	if f {
 		ia := a.(Attributes)

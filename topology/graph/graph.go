@@ -154,6 +154,34 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (n *Node) getAncestorsTo(f Metadatas, ancestors *[]*Node) bool {
+	*ancestors = append(*ancestors, n)
+
+	for _, e := range n.edges {
+		if e.Child == n && e.Parent.matchFilters(f) {
+			*ancestors = append(*ancestors, e.Parent)
+			return true
+		}
+	}
+	for _, e := range n.edges {
+		if e.Child == n {
+			if e.Parent.getAncestorsTo(f, ancestors) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (n *Node) GetAncestorsTo(f Metadatas) ([]*Node, bool) {
+	ancestors := []*Node{}
+
+	ok := n.getAncestorsTo(f, &ancestors)
+
+	return ancestors, ok
+}
+
 func (n *Node) LookupParentNode(f Metadatas) *Node {
 	for _, e := range n.edges {
 		if e.Child == n && e.Parent.matchFilters(f) {

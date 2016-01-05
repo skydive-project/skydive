@@ -127,9 +127,8 @@ func (m *Flow) GetIfAttributes() *Flow_IfMappingAttributes {
 }
 
 type Flow_ProbeMappingAttributes struct {
-	ProbePath        *string `protobuf:"bytes,1,req,name=ProbePath" json:"ProbePath,omitempty"`
-	IfSrcPath        *string `protobuf:"bytes,2,opt,name=IfSrcPath" json:"IfSrcPath,omitempty"`
-	IfDstPath        *string `protobuf:"bytes,3,opt,name=IfDstPath" json:"IfDstPath,omitempty"`
+	MAC              *string `protobuf:"bytes,1,req,name=MAC" json:"MAC,omitempty"`
+	GraphPath        *string `protobuf:"bytes,2,opt,name=GraphPath" json:"GraphPath,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -137,31 +136,26 @@ func (m *Flow_ProbeMappingAttributes) Reset()         { *m = Flow_ProbeMappingAt
 func (m *Flow_ProbeMappingAttributes) String() string { return proto.CompactTextString(m) }
 func (*Flow_ProbeMappingAttributes) ProtoMessage()    {}
 
-func (m *Flow_ProbeMappingAttributes) GetProbePath() string {
-	if m != nil && m.ProbePath != nil {
-		return *m.ProbePath
+func (m *Flow_ProbeMappingAttributes) GetMAC() string {
+	if m != nil && m.MAC != nil {
+		return *m.MAC
 	}
 	return ""
 }
 
-func (m *Flow_ProbeMappingAttributes) GetIfSrcPath() string {
-	if m != nil && m.IfSrcPath != nil {
-		return *m.IfSrcPath
-	}
-	return ""
-}
-
-func (m *Flow_ProbeMappingAttributes) GetIfDstPath() string {
-	if m != nil && m.IfDstPath != nil {
-		return *m.IfDstPath
+func (m *Flow_ProbeMappingAttributes) GetGraphPath() string {
+	if m != nil && m.GraphPath != nil {
+		return *m.GraphPath
 	}
 	return ""
 }
 
 type Flow_InterfaceAttributes struct {
-	Host             *string `protobuf:"bytes,1,opt,name=Host" json:"Host,omitempty"`
-	TenantID         *string `protobuf:"bytes,2,opt,name=TenantID" json:"TenantID,omitempty"`
-	VNI              *uint64 `protobuf:"varint,3,opt,name=VNI" json:"VNI,omitempty"`
+	Name             *string `protobuf:"bytes,1,opt,name=Name" json:"Name,omitempty"`
+	Type             *string `protobuf:"bytes,2,opt,name=Type" json:"Type,omitempty"`
+	GraphPath        *string `protobuf:"bytes,3,opt,name=GraphPath" json:"GraphPath,omitempty"`
+	TenantID         *string `protobuf:"bytes,4,opt,name=TenantID" json:"TenantID,omitempty"`
+	VNI              *uint64 `protobuf:"varint,5,opt,name=VNI" json:"VNI,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -169,9 +163,23 @@ func (m *Flow_InterfaceAttributes) Reset()         { *m = Flow_InterfaceAttribut
 func (m *Flow_InterfaceAttributes) String() string { return proto.CompactTextString(m) }
 func (*Flow_InterfaceAttributes) ProtoMessage()    {}
 
-func (m *Flow_InterfaceAttributes) GetHost() string {
-	if m != nil && m.Host != nil {
-		return *m.Host
+func (m *Flow_InterfaceAttributes) GetName() string {
+	if m != nil && m.Name != nil {
+		return *m.Name
+	}
+	return ""
+}
+
+func (m *Flow_InterfaceAttributes) GetType() string {
+	if m != nil && m.Type != nil {
+		return *m.Type
+	}
+	return ""
+}
+
+func (m *Flow_InterfaceAttributes) GetGraphPath() string {
+	if m != nil && m.GraphPath != nil {
+		return *m.GraphPath
 	}
 	return ""
 }

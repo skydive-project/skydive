@@ -70,7 +70,10 @@ func main() {
 
 	fmt.Println("Skydive Agent starting...")
 
-	sflowProbe := fprobes.NewSFlowProbe("127.0.0.1", 6345)
+	sflowProbe, err := fprobes.NewSFlowProbe("127.0.0.1", 6345)
+	if err != nil {
+		panic(err)
+	}
 
 	ovsSFlowProbe := ovsdb.SFlowProbe{
 		ID:         "SkydiveSFlowProbe",
@@ -103,13 +106,12 @@ func main() {
 		panic(err)
 	}
 
-	gm, err := mappings.NewGraphMappingDriver(g)
+	gfe, err := mappings.NewGraphFlowEnhancer(g)
 	if err != nil {
 		panic(err)
 	}
 
-	ip := mappings.NewInterfacePipeline([]mappings.InterfaceDriver{gm})
-	pipeline := mappings.NewMappingPipeline(ip)
+	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 	sflowProbe.SetMappingPipeline(pipeline)
 
 	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port)

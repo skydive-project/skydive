@@ -26,11 +26,17 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
+	"github.com/pmylund/go-cache"
+
+	"github.com/vishvananda/netlink"
+
 	"github.com/redhat-cip/skydive/analyzer"
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
@@ -44,13 +50,48 @@ type SFlowProbe struct {
 	Addr string
 	Port int
 
-	AnalyzerClient  *analyzer.Client
-	MappingPipeline *mappings.MappingPipeline
+	AnalyzerClient      *analyzer.Client
+	FlowMappingPipeline *mappings.FlowMappingPipeline
+
+	cache            *cache.Cache
+	cacheUpdaterChan chan uint32
 }
 
 func (probe *SFlowProbe) GetTarget() string {
 	target := []string{probe.Addr, strconv.FormatInt(int64(probe.Port), 10)}
 	return strings.Join(target, ":")
+}
+
+func (probe *SFlowProbe) cacheUpdater() {
+	logging.GetLogger().Debug("Start SFlowProbe cache updater")
+
+	var index uint32
+	for {
+		index = <-probe.cacheUpdaterChan
+
+		logging.GetLogger().Debug("SFlowProbe request received: %d", index)
+
+		intf, err := netlink.LinkByIndex(int(index))
+		if err != nil {
+			continue
+		}
+
+		if intf != nil {
+			probe.cache.Set(strconv.FormatUint(uint64(index), 10), intf.Attrs().HardwareAddr.String(), cache.DefaultExpiration)
+		}
+	}
+}
+
+func (probe *SFlowProbe) getMac(index uint32) string {
+	m, f := probe.cache.Get(strconv.FormatUint(uint64(index), 10))
+	if f {
+		mac := m.(string)
+		return mac
+	}
+
+	probe.cacheUpdaterChan <- index
+
+	return ""
 }
 
 func (probe *SFlowProbe) Start() error {
@@ -67,6 +108,9 @@ func (probe *SFlowProbe) Start() error {
 		return err
 	}
 
+	// start index/mac cache updater
+	go probe.cacheUpdater()
+
 	for {
 		_, _, err := conn.ReadFromUDP(buf[:])
 		if err != nil {
@@ -82,15 +126,17 @@ func (probe *SFlowProbe) Start() error {
 
 		if sflowPacket.SampleCount > 0 {
 			for _, sample := range sflowPacket.FlowSamples {
-				flows := flow.FLowsFromSFlowSample(sflowPacket.AgentAddress.String(), &sample)
+				flows := flow.FLowsFromSFlowSample(probe.getMac(sample.InputInterface), &sample)
 
 				logging.GetLogger().Debug("%d flows captured", len(flows))
 
-				if probe.MappingPipeline != nil {
-					probe.MappingPipeline.Enhance(flows)
+				if probe.FlowMappingPipeline != nil {
+					probe.FlowMappingPipeline.Enhance(flows)
 				}
 
 				if probe.AnalyzerClient != nil {
+					// FIX(safchain) add flow state cache in order to send only flow changes
+					// to not flood the analyzer
 					probe.AnalyzerClient.SendFlows(flows)
 				}
 			}
@@ -104,10 +150,24 @@ func (probe *SFlowProbe) SetAnalyzerClient(a *analyzer.Client) {
 	probe.AnalyzerClient = a
 }
 
-func (probe *SFlowProbe) SetMappingPipeline(p *mappings.MappingPipeline) {
-	probe.MappingPipeline = p
+func (probe *SFlowProbe) SetMappingPipeline(p *mappings.FlowMappingPipeline) {
+	probe.FlowMappingPipeline = p
 }
 
-func NewSFlowProbe(addr string, port int) *SFlowProbe {
-	return &SFlowProbe{Addr: addr, Port: port}
+func NewSFlowProbe(addr string, port int) (*SFlowProbe, error) {
+	probe := &SFlowProbe{Addr: addr, Port: port}
+
+	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
+	if err != nil {
+		return nil, err
+	}
+	cleanup, err := config.GetConfig().Section("cache").Key("cleanup").Int()
+	if err != nil {
+		return nil, err
+	}
+
+	probe.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
+	probe.cacheUpdaterChan = make(chan uint32, 200)
+
+	return probe, nil
 }

@@ -33,44 +33,69 @@ import (
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-type GraphMappingDriver struct {
+type GraphFlowEnhancer struct {
 	Graph            *graph.Graph
 	cache            *cache.Cache
 	cacheUpdaterChan chan string
 }
 
-func (m *GraphMappingDriver) cacheUpdater() {
-	logging.GetLogger().Debug("Start GraphMappingDriver cache updater")
+func (gfe *GraphFlowEnhancer) cacheUpdater() {
+	logging.GetLogger().Debug("Start GraphFlowEnhancer cache updater")
 
 	var mac string
 	for {
-		mac = <-m.cacheUpdaterChan
+		mac = <-gfe.cacheUpdaterChan
 
-		logging.GetLogger().Debug("GraphMappingDriver request received: %s", mac)
+		logging.GetLogger().Debug("GraphFlowEnhancer request received: %s", mac)
 
-		m.Graph.Lock()
-		intf := m.Graph.LookupNode(graph.Metadatas{"MAC": mac})
-		m.Graph.Unlock()
+		gfe.Graph.Lock()
+		intf := gfe.Graph.LookupNode(graph.Metadatas{"MAC": mac})
 
 		if intf != nil {
-			m.cache.Set(mac, intf.Host, cache.DefaultExpiration)
+			ancestors, ok := intf.GetAncestorsTo(graph.Metadatas{"Type": "host"})
+			if ok {
+				var path string
+				for i := len(ancestors) - 1; i >= 0; i-- {
+					if len(path) > 0 {
+						path += "/"
+					}
+					path += ancestors[i].Metadatas["Name"].(string)
+				}
+
+				gfe.cache.Set(mac, path, cache.DefaultExpiration)
+			}
 		}
+		gfe.Graph.Unlock()
 	}
 }
 
-func (m *GraphMappingDriver) Enhance(mac string, attrs *flow.Flow_InterfaceAttributes) {
-	h, f := m.cache.Get(mac)
+func (gfe *GraphFlowEnhancer) getPath(mac string) *string {
+	if mac == "ff:ff:ff:ff:ff:ff" {
+		return new(string)
+	}
+
+	p, f := gfe.cache.Get(mac)
 	if f {
-		host := h.(string)
-		attrs.Host = &host
-		return
+		path := p.(string)
+		return &path
 	}
 
-	m.cacheUpdaterChan <- mac
+	gfe.cacheUpdaterChan <- mac
+
+	return nil
 }
 
-func NewGraphMappingDriver(g *graph.Graph) (*GraphMappingDriver, error) {
-	mapper := &GraphMappingDriver{
+func (gfe *GraphFlowEnhancer) Enhance(flow *flow.Flow) {
+	if flow.GetProbeAttributes().GraphPath == nil {
+		flow.GetProbeAttributes().GraphPath = gfe.getPath(flow.GetProbeAttributes().GetMAC())
+	}
+
+	flow.GetIfAttributes().GetIfAttrsSrc().GraphPath = gfe.getPath(flow.GetEtherSrc())
+	flow.GetIfAttributes().GetIfAttrsDst().GraphPath = gfe.getPath(flow.GetEtherDst())
+}
+
+func NewGraphFlowEnhancer(g *graph.Graph) (*GraphFlowEnhancer, error) {
+	mapper := &GraphFlowEnhancer{
 		Graph: g,
 	}
 
