@@ -35,7 +35,7 @@ import (
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-type Analyzer struct {
+type Server struct {
 	Port                int
 	TopoServer          *topology.Server
 	GraphServer         *graph.Server
@@ -43,14 +43,14 @@ type Analyzer struct {
 	//Storage     storage.Storage
 }
 
-func (a *Analyzer) AnalyzeFlows(flows []*flow.Flow) {
-	a.FlowMappingPipeline.Enhance(flows)
-	//analyzer.Storage.StoreFlows(flows)
+func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
+	s.FlowMappingPipeline.Enhance(flows)
+	//Server.Storage.StoreFlows(flows)
 
 	logging.GetLogger().Debug("%d flows stored", len(flows))
 }
 
-func (a *Analyzer) handleUDPFlowPacket(conn *net.UDPConn) {
+func (s *Server) handleUDPFlowPacket(conn *net.UDPConn) {
 	data := make([]byte, 4096)
 
 	for {
@@ -65,41 +65,41 @@ func (a *Analyzer) handleUDPFlowPacket(conn *net.UDPConn) {
 			logging.GetLogger().Error("Error while parsing flow: %s", err.Error())
 		}
 
-		a.AnalyzeFlows([]*flow.Flow{f})
+		s.AnalyzeFlows([]*flow.Flow{f})
 	}
 }
 
-func (a *Analyzer) ListenAndServe() {
+func (s *Server) ListenAndServe() {
 	var wg sync.WaitGroup
 
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		a.TopoServer.ListenAndServe()
+		s.TopoServer.ListenAndServe()
 	}()
 
 	go func() {
 		defer wg.Done()
-		a.GraphServer.ListenAndServe()
+		s.GraphServer.ListenAndServe()
 	}()
 
 	go func() {
 		defer wg.Done()
 
-		addr, err := net.ResolveUDPAddr("udp", ":"+strconv.FormatInt(int64(a.Port), 10))
+		addr, err := net.ResolveUDPAddr("udp", ":"+strconv.FormatInt(int64(s.Port), 10))
 		conn, err := net.ListenUDP("udp", addr)
 		if err != nil {
 			panic(err)
 		}
 		defer conn.Close()
 
-		a.handleUDPFlowPacket(conn)
+		s.handleUDPFlowPacket(conn)
 	}()
 
 	wg.Wait()
 }
 
-func NewAnalyzer(port int) (*Analyzer, error) {
+func NewServer(port int) (*Server, error) {
 	g, err := graph.NewGraph("Global")
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func NewAnalyzer(port int) (*Analyzer, error) {
 
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 
-	return &Analyzer{
+	return &Server{
 		TopoServer:          server,
 		GraphServer:         gserver,
 		FlowMappingPipeline: pipeline,

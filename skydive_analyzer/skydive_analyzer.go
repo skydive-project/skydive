@@ -49,7 +49,7 @@ func main() {
 		panic(err)
 	}
 
-	analyzer, err := analyzer.NewAnalyzer(port)
+	analyzer, err := analyzer.NewServer(port)
 	if err != nil {
 		panic(err)
 	}
