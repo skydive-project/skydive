@@ -34,11 +34,11 @@ import (
 	"github.com/rackspace/gophercloud/openstack/networking/v2/ports"
 	"github.com/rackspace/gophercloud/pagination"
 
-	"github.com/golang/protobuf/proto"
+	//"github.com/golang/protobuf/proto"
 	"github.com/pmylund/go-cache"
 
 	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow"
+	//"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -122,12 +122,11 @@ func (mapper *NeutronMapper) cacheUpdater() {
 	}
 }
 
-func (mapper *NeutronMapper) EnhanceInterface(mac string, attrs *flow.Flow_InterfaceAttributes) {
+/*func (mapper *NeutronMapper) EnhanceInterface(mac string, attrs *flow.Flow_InterfaceAttributes) {
 	a, f := mapper.cache.Get(mac)
 	if f {
 		ia := a.(Attributes)
 
-		/* update attributes with attributes retrieved from neutron */
 		attrs.TenantID = proto.String(ia.TenantID)
 		attrs.VNI = proto.Uint64(ia.VNI)
 
@@ -135,7 +134,7 @@ func (mapper *NeutronMapper) EnhanceInterface(mac string, attrs *flow.Flow_Inter
 	}
 
 	mapper.cacheUpdaterChan <- mac
-}
+}*/
 
 func NewNeutronMapper() (*NeutronMapper, error) {
 	mapper := &NeutronMapper{}

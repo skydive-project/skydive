@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/mux"
+
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow/mappings"
@@ -38,25 +40,6 @@ import (
 	"github.com/redhat-cip/skydive/topology/graph"
 	tprobes "github.com/redhat-cip/skydive/topology/probes"
 )
-
-/*func getInterfaceMappingDrivers(topo *topology.Topology) ([]mappings.InterfaceMappingDriver, error) {
-	drivers := []mappings.InterfaceMappingDriver{}
-
-	netlink, err := mappings.NewNetLinkMapper(topo)
-	if err != nil {
-		return drivers, err
-	}
-	drivers = append(drivers, netlink)
-
-	// need to be added after the netlink one since it relies on it
-	ovs, err := mappings.NewOvsMapper(topo)
-	if err != nil {
-		return drivers, err
-	}
-	drivers = append(drivers, ovs)
-
-	return drivers, nil
-}*/
 
 func main() {
 	filename := flag.String("conf", "/etc/skydive/skydive.ini",
@@ -145,7 +128,9 @@ func main() {
 		panic(err)
 	}
 
-	server := topology.NewServer(g, port)
+	router := mux.NewRouter().StrictSlash(true)
+
+	server := topology.NewServer(g, port, router)
 	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
 

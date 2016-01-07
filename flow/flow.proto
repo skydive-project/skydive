@@ -23,36 +23,29 @@
 package flow;
 
 message Flow {
-	required string UUID 		= 1;
-	required string LayersPath 	= 2;
-	required string EtherSrc 	= 3;
-	required string EtherDst 	= 4;
-	optional string Ipv4Src 	= 5;
-	optional string Ipv4Dst 	= 6;
-	optional uint32 PortSrc 	= 7;
-	optional uint32 PortDst 	= 8;
-	optional uint64 ID 			= 9;
-	required uint64 Timestamp 	= 10;
+	required string UUID 				= 1;
+	required string LayersPath 			= 2;
+	required string EtherSrc 			= 3;
+	required string EtherDst 			= 4;
+	optional string Ipv4Src 			= 5;
+	optional string Ipv4Dst 			= 6;
+	optional uint32 PortSrc 			= 7;
+	optional uint32 PortDst 			= 8;
+	optional uint64 ID 					= 9;
+	required uint64 Timestamp 			= 10;
 
-	message ProbeMappingAttributes {
-		required string MAC       = 1;
-		optional string GraphPath = 2;
-	}
+	required string ProbeMAC       		= 11;
+	optional string ProbeGraphPath 		= 12;
 
-	required ProbeMappingAttributes ProbeAttributes = 11;
+	optional string IfSrcName			= 13;
+	optional string IfSrcType			= 14;
+	optional string IfSrcGraphPath		= 15;
+	optional string IfSrcTenantID 		= 16;
+	optional uint64 IfSrcVNI 			= 17;
 
-	message InterfaceAttributes {
-		optional string Name			= 1;
-		optional string Type			= 2;
-		optional string GraphPath		= 3;
-		optional string TenantID 		= 4;
-		optional uint64 VNI 			= 5;
-	}
-
-	message IfMappingAttributes {
-		optional InterfaceAttributes IfAttrsSrc = 1;
-		optional InterfaceAttributes IfAttrsDst = 2;
-	}
-
-	optional IfMappingAttributes IfAttributes = 12;
+	optional string IfDstName			= 18;
+	optional string IfDstType			= 19;
+	optional string IfDstGraphPath		= 20;
+	optional string IfDstTenantID 		= 21;
+	optional uint64 IfDstVNI 			= 22;
 }

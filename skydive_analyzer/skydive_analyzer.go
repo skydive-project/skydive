@@ -26,10 +26,12 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/gorilla/mux"
+
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	//"github.com/redhat-cip/skydive/logging"
-	//"github.com/redhat-cip/skydive/storage/elasticsearch"
+	"github.com/redhat-cip/skydive/storage/elasticsearch"
 )
 
 func main() {
@@ -49,11 +51,19 @@ func main() {
 		panic(err)
 	}
 
-	analyzer, err := analyzer.NewServer(port)
+	router := mux.NewRouter().StrictSlash(true)
+
+	server, err := analyzer.NewServer(port, router)
 	if err != nil {
 		panic(err)
 	}
 
+	storage, err := elasticseach.New("127.0.0.1", 9200)
+	if err != nil {
+		panic(err)
+	}
+	server.SetStorage(storage)
+
 	fmt.Println("Skydive Analyzer started !")
-	analyzer.ListenAndServe()
+	server.ListenAndServe()
 }

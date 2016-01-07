@@ -32,6 +32,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/rpc"
 	"github.com/redhat-cip/skydive/statics"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
@@ -40,13 +41,6 @@ type Server struct {
 	Graph  *graph.Graph
 	Router *mux.Router
 	Port   int
-}
-
-type Route struct {
-	Name        string
-	Method      string
-	Pattern     string
-	HandlerFunc http.HandlerFunc
 }
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
@@ -111,14 +105,14 @@ func (s *Server) RegisterStaticEndpoints() {
 }
 
 func (s *Server) RegisterRpcEndpoints() {
-	routes := []Route{
-		Route{
+	routes := []rpc.Route{
+		rpc.Route{
 			"TopologiesIndex",
 			"GET",
 			"/rpc/topology",
 			s.TopologyIndex,
 		},
-		Route{
+		rpc.Route{
 			"TopologyShow",
 			"GET",
 			"/rpc/topology/{host}",
@@ -139,10 +133,10 @@ func (s *Server) ListenAndServe() {
 	http.ListenAndServe(":"+strconv.FormatInt(int64(s.Port), 10), s.Router)
 }
 
-func NewServer(g *graph.Graph, p int) *Server {
+func NewServer(g *graph.Graph, p int, router *mux.Router) *Server {
 	return &Server{
 		Graph:  g,
-		Router: mux.NewRouter().StrictSlash(true),
+		Router: router,
 		Port:   p,
 	}
 }

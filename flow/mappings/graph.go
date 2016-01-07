@@ -86,12 +86,16 @@ func (gfe *GraphFlowEnhancer) getPath(mac string) *string {
 }
 
 func (gfe *GraphFlowEnhancer) Enhance(flow *flow.Flow) {
-	if flow.GetProbeAttributes().GraphPath == nil {
-		flow.GetProbeAttributes().GraphPath = gfe.getPath(flow.GetProbeAttributes().GetMAC())
+	if flow.ProbeGraphPath == nil {
+		flow.ProbeGraphPath = gfe.getPath(flow.GetProbeMAC())
 	}
 
-	flow.GetIfAttributes().GetIfAttrsSrc().GraphPath = gfe.getPath(flow.GetEtherSrc())
-	flow.GetIfAttributes().GetIfAttrsDst().GraphPath = gfe.getPath(flow.GetEtherDst())
+	if flow.IfSrcGraphPath == nil {
+		flow.IfSrcGraphPath = gfe.getPath(flow.GetEtherSrc())
+	}
+	if flow.IfDstGraphPath == nil {
+		flow.IfDstGraphPath = gfe.getPath(flow.GetEtherDst())
+	}
 }
 
 func NewGraphFlowEnhancer(g *graph.Graph) (*GraphFlowEnhancer, error) {

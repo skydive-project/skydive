@@ -20,15 +20,15 @@
  *
  */
 
-package storage
+package rpc
 
 import (
-	"github.com/redhat-cip/skydive/flow"
+	"net/http"
 )
 
-type Filters map[string]interface{}
-
-type Storage interface {
-	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(filters Filters) ([]*flow.Flow, error)
+type Route struct {
+	Name        string
+	Method      string
+	Pattern     string
+	HandlerFunc http.HandlerFunc
 }

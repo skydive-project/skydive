@@ -132,13 +132,7 @@ func New(mac string, packet *gopacket.Packet) *Flow {
 	flow := &Flow{
 		UUID:      proto.String(u.String()),
 		Timestamp: proto.Uint64(t),
-		IfAttributes: &Flow_IfMappingAttributes{
-			IfAttrsSrc: &Flow_InterfaceAttributes{},
-			IfAttrsDst: &Flow_InterfaceAttributes{},
-		},
-		ProbeAttributes: &Flow_ProbeMappingAttributes{
-			MAC: proto.String(mac),
-		},
+		ProbeMAC:  proto.String(mac),
 	}
 
 	if packet != nil {

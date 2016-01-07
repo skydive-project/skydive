@@ -24,12 +24,14 @@ package elasticseach
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/storage"
 )
 
 type ElasticSearchStorage struct {
@@ -54,11 +56,87 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func GetInstance(addr string, port int) *ElasticSearchStorage {
+func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error) {
+	query := map[string]interface{}{}
+	if len(filters) > 0 {
+		query = map[string]interface{}{
+			"query": map[string]interface{}{
+				"term": filters,
+			},
+		}
+	}
+
+	q, err := json.Marshal(query)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := c.connection.Search("skydive", "flow", nil, string(q))
+	if err != nil {
+		return nil, err
+	}
+
+	flows := []*flow.Flow{}
+
+	if out.Hits.Len() > 0 {
+		for _, d := range out.Hits.Hits {
+			f := new(flow.Flow)
+			err := json.Unmarshal([]byte(*d.Source), f)
+			if err != nil {
+				return nil, err
+			}
+
+			flows = append(flows, f)
+		}
+	}
+
+	return flows, nil
+}
+
+func (c *ElasticSearchStorage) initialize() error {
+	req, err := c.connection.NewRequest("GET", "/skydive", "")
+	if err != nil {
+		return err
+	}
+
+	var response map[string]interface{}
+	code, _, _ := req.Do(&response)
+	if code == 200 {
+		return nil
+	}
+
+	// template to remove the analyzer
+	req, err = c.connection.NewRequest("PUT", "/skydive", "")
+	if err != nil {
+		return err
+	}
+
+	body := `{"mappings":{"flow":{"dynamic_templates":[{"notanalyzed":{"match":"*","mapping":{"type":"string","index":"not_analyzed"}}}]}}}`
+	req.SetBodyString(body)
+
+	code, _, err = req.Do(&response)
+	if err != nil {
+		return err
+	}
+
+	if code != 200 {
+		return errors.New("Unable to create the skydive index: " + strconv.FormatInt(int64(code), 10))
+	}
+
+	return nil
+}
+
+func New(addr string, port int) (*ElasticSearchStorage, error) {
 	c := elastigo.NewConn()
 	c.Domain = addr
 	c.Port = strconv.FormatInt(int64(port), 10)
 
 	storage := &ElasticSearchStorage{connection: c}
-	return storage
+
+	err := storage.initialize()
+	if err != nil {
+		return nil, err
+	}
+
+	return storage, nil
 }
