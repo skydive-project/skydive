@@ -837,7 +837,7 @@
                 }
 
                 this.updatesocket.onclose = function() {
-                    setTimeout(_this.StartLiveUpdate, 1000);
+                    setTimeout(function() { _this.StartLiveUpdate(); }, 1000);
                 }
 
                 this.updatesocket.onmessage = function(e) {
@@ -846,6 +846,7 @@
                 };
             }
 
+            var layout;
             $(document).ready(function() {
                 layout = new Layout(".topology");
                 layout.StartLiveUpdate();
