@@ -57,12 +57,27 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 }
 
 func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error) {
-	query := map[string]interface{}{}
+	query := map[string]interface{}{
+		"sort": map[string]interface{}{
+			"Timestamp": map[string]string{
+				"order": "desc",
+			},
+		},
+		"from": 0,
+		"size": 5,
+	}
 	if len(filters) > 0 {
 		query = map[string]interface{}{
 			"query": map[string]interface{}{
 				"term": filters,
 			},
+			"sort": map[string]interface{}{
+				"Timestamp": map[string]string{
+					"order": "desc",
+				},
+			},
+			"from": 0,
+			"size": 5,
 		}
 	}
 

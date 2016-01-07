@@ -7,6 +7,7 @@
         <title>Skydive Topology</title>
 
         <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"/>
+        <link href="http://netdna.bootstrapcdn.com/font-awesome/3.0.2/css/font-awesome.css" rel="stylesheet"/>
 
         <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.10/d3.js"></script>
@@ -89,6 +90,16 @@
         .host {
             fill: #555;
         }
+
+        .spinner {
+            display: inline-block;
+            width: 13px;
+            opacity: 0;
+        }
+
+        .active {
+            opacity: 1;
+        }
         </style>
 
         <script>
@@ -97,6 +108,7 @@
             var intfImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/wired_network.png';
             var nsImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/layers.png';
             var bridgeImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/tree_structure.png';
+            var loaderImg = 'https://i1.wp.com/cdnjs.cloudflare.com/ajax/libs/galleriffic/2.0.1/css/loader.gif';
 
             var Node = function(ID) {
                 this.ID = ID;
@@ -264,20 +276,55 @@
                 this.container.attr("x", x).attr("y", y);
             }
 
-            HostLayout.prototype.NodeMetadataToHTML = function(node) {
-                var metadatas = '<table><tr><th colspan="2">' + node.ID + '</th></tr>';
+            HostLayout.prototype.NodeDetails = function(node) {
+                var details = '<table><tr><th colspan="2">' + node.ID + '</th></tr>';
 
                 if ("MAC" in node.Metadatas && node.Metadatas["MAC"])
-                    metadatas += '<tr><td><strong>MAC</strong>:</td> <td>' + node.Metadatas["MAC"] +'</td></tr>';
+                    details += '<tr><td><strong>MAC</strong>:</td> <td>' + node.Metadatas["MAC"] +'</td></tr>';
 
                 for (var k in node.Metadatas) {
                     if (k != "MAC")
-                        metadatas += '<tr><td>' + k + ':</td> <td>' + node.Metadatas[k] + "</td></tr>";
+                        details += '<tr><td>' + k + ':</td> <td>' + node.Metadatas[k] + "</td></tr>";
                 }
 
-                metadatas += '</table>';
+                details += '<tr><th colspan="2">';
+                details += '<span id="flow_spinner" class="spinner active"><i class="icon-spin icon-refresh"></i></span>';
+                details += 'Flows';
+                details += '</th></tr>';
+                details += '<tr><td colspan="2" id="details_' + node.ID.replace('-', '_') + '">';
 
-                return metadatas;
+                $.ajax({
+                    dataType: "json",
+                    url: '/rpc/flows?ProbeMAC=' + node.Metadatas["MAC"],
+                    success: function(data) {
+                        $("#flow_spinner").removeClass("active");
+
+                        var flows = '';
+                        for (var i in data) {
+                            flows += '<strong>' + data[i]['UUID'] + '</strong>';
+                            flows += '<ul>';
+                            flows += '<li>Layers: ' + data[i]['LayersPath'] + '</li>';
+                            flows += '<li>Src: ' + data[i]['EtherSrc'];
+                            if ('Ipv4Src' in data[i])
+                                flows += ' / ' + data[i]['Ipv4Src'];
+                            flows += ' (' + data[i]['IfSrcGraphPath'] + ')</li>';
+                            flows += '<li>Dst: ' + data[i]['EtherDst'];
+                            if ('Ipv4Dst' in data[i])
+                                flows += ' / ' + data[i]['Ipv4Dst'];
+                            flows += ' (' + data[i]['IfDstGraphPath'] + ')</li>';
+                            if ('ID' in data[i])
+                                flows += '<li>ID: ' + data[i]['ID'] + '</li>';
+                            flows += '<li>Timestamp: ' + data[i]['Timestamp'] + '</li>';
+                            flows += '</ul>';
+                        }
+
+                        $('#details_' + node.ID.replace('-', '_')).append(flows);
+                    }
+                });
+
+                details += '</table>';
+
+                return details;
             }
 
             HostLayout.prototype.AddNode = function(node) {
@@ -520,7 +567,7 @@
                     .duration(200)
                     .style("opacity", 1.0)
                     .style("display","block");
-                this.tooltip.html(this.NodeMetadataToHTML(d))
+                this.tooltip.html(this.NodeDetails(d))
                     .style("left", (d3.event.pageX + 20) + "px")
                     .style("top", (d3.event.pageY - 28) + "px");
             }
