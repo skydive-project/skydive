@@ -288,39 +288,43 @@
                 }
 
                 details += '<tr><th colspan="2">';
-                details += '<span id="flow_spinner" class="spinner active"><i class="icon-spin icon-refresh"></i></span>';
+                details += '<span id="flow_spinner" class="spinner"><i class="icon-spin icon-refresh"></i></span>';
                 details += 'Flows';
                 details += '</th></tr>';
                 details += '<tr><td colspan="2" id="details_' + node.ID.replace('-', '_') + '">';
 
-                $.ajax({
-                    dataType: "json",
-                    url: '/rpc/flows?ProbeMAC=' + node.Metadatas["MAC"],
-                    success: function(data) {
-                        $("#flow_spinner").removeClass("active");
+                if ("MAC" in node.Metadatas && node.Metadatas["MAC"]) {
+                    $("#flow_spinner").addClass("active");
 
-                        var flows = '';
-                        for (var i in data) {
-                            flows += '<strong>' + data[i]['UUID'] + '</strong>';
-                            flows += '<ul>';
-                            flows += '<li>Layers: ' + data[i]['LayersPath'] + '</li>';
-                            flows += '<li>Src: ' + data[i]['EtherSrc'];
-                            if ('Ipv4Src' in data[i])
-                                flows += ' / ' + data[i]['Ipv4Src'];
-                            flows += ' (' + data[i]['IfSrcGraphPath'] + ')</li>';
-                            flows += '<li>Dst: ' + data[i]['EtherDst'];
-                            if ('Ipv4Dst' in data[i])
-                                flows += ' / ' + data[i]['Ipv4Dst'];
-                            flows += ' (' + data[i]['IfDstGraphPath'] + ')</li>';
-                            if ('ID' in data[i])
-                                flows += '<li>ID: ' + data[i]['ID'] + '</li>';
-                            flows += '<li>Timestamp: ' + data[i]['Timestamp'] + '</li>';
-                            flows += '</ul>';
+                    $.ajax({
+                        dataType: "json",
+                        url: '/rpc/flows?ProbeMAC=' + node.Metadatas["MAC"],
+                        success: function(data) {
+                            $("#flow_spinner").removeClass("active");
+
+                            var flows = '';
+                            for (var i in data) {
+                                flows += '<strong>' + data[i]['UUID'] + '</strong>';
+                                flows += '<ul>';
+                                flows += '<li>Layers: ' + data[i]['LayersPath'] + '</li>';
+                                flows += '<li>Src: ' + data[i]['EtherSrc'];
+                                if ('Ipv4Src' in data[i])
+                                    flows += ' / ' + data[i]['Ipv4Src'];
+                                flows += ' (' + data[i]['IfSrcGraphPath'] + ')</li>';
+                                flows += '<li>Dst: ' + data[i]['EtherDst'];
+                                if ('Ipv4Dst' in data[i])
+                                    flows += ' / ' + data[i]['Ipv4Dst'];
+                                flows += ' (' + data[i]['IfDstGraphPath'] + ')</li>';
+                                if ('ID' in data[i])
+                                    flows += '<li>ID: ' + data[i]['ID'] + '</li>';
+                                flows += '<li>Timestamp: ' + data[i]['Timestamp'] + '</li>';
+                                flows += '</ul>';
+                            }
+
+                            $('#details_' + node.ID.replace('-', '_')).append(flows);
                         }
-
-                        $('#details_' + node.ID.replace('-', '_')).append(flows);
-                    }
-                });
+                    });
+                }
 
                 details += '</table>';
 
@@ -412,6 +416,9 @@
             }
 
             HostLayout.prototype.NodeColor = function(d) {
+                if (d.Metadatas["State"] == "DOWN")
+                    return "rgb(255, 26, 0)";
+
                 switch(d.Metadatas["Type"]) {
                     case "ovsbridge":
                         return "rgb(198, 219, 239)";
