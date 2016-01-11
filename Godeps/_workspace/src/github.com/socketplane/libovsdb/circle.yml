@@ -1,0 +1,37 @@
+---
+machine:
+  services:
+    - docker
+  environment:
+    DOCKER_IP: "127.0.0.1"
+    GOPATH: "/home/ubuntu/.go_workspace"
+    ORG_PATH: "github.com/socketplane"
+    REPO_PATH: "${ORG_PATH}/libovsdb"
+
+dependencies:
+  override:
+    - rm -rf ${GOPATH}/src/${REPO_PATH}
+    - mkdir -p ${GOPATH}/src/${ORG_PATH}
+    - cp -r ../libovsdb ${GOPATH}/src/${ORG_PATH}
+    - mkdir -p ${CIRCLE_ARTIFACTS}/coverage
+    - go get github.com/mattn/goveralls
+
+  post:
+    - sudo pip install -qq fig:
+        pwd: ../.go_workspace/src/${REPO_PATH}
+    - fig up -d:
+        pwd: ../.go_workspace/src/${REPO_PATH}
+test:
+  override:
+    - make build:
+        pwd: ../.go_workspace/src/${REPO_PATH}
+    - make test-all:
+        pwd: ../.go_workspace/src/${REPO_PATH}
+  post:
+    - fig stop:
+        pwd: ../.go_workspace/src/${REPO_PATH}
+    - go tool cover -html=coverage.out -o $CIRCLE_ARTIFACTS/coverage/index.html:
+        pwd: ../.go_workspace/src/${REPO_PATH}
+    - goveralls -coverprofile=coverage.out -service=circleci -repotoken $COVERALLS_TOKEN:
+        pwd: ../.go_workspace/src/${REPO_PATH}
+

@@ -1,0 +1,6 @@
+ovs:
+ image: davetucker/docker-ovs:2.3.0
+ ports:
+  - "6640:6640"
+ command: "/usr/bin/supervisord -n"
+ privileged: true
