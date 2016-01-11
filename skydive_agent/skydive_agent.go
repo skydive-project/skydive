@@ -53,7 +53,17 @@ func main() {
 
 	fmt.Println("Skydive Agent starting...")
 
-	sflowProbe, err := fprobes.NewSFlowProbe("127.0.0.1", 6345)
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	g, err := graph.NewGraph(graph.Identifier(hostname))
+	if err != nil {
+		panic(err)
+	}
+
+	sflowProbe, err := fprobes.NewSFlowProbe("127.0.0.1", 6345, g)
 	if err != nil {
 		panic(err)
 	}
@@ -71,20 +81,10 @@ func main() {
 	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
 	ovsmon.AddMonitorHandler(sflowHandler)
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-
 	analyzers := config.GetConfig().Section("agent").Key("analyzers").Strings(",")
 	// TODO(safchain) HA Connection ???
 	analyzer_addr := strings.Split(analyzers[0], ":")[0]
 	analyzer_port, err := strconv.Atoi(strings.Split(analyzers[0], ":")[1])
-	if err != nil {
-		panic(err)
-	}
-
-	g, err := graph.NewGraph(graph.Identifier(hostname))
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +98,7 @@ func main() {
 	sflowProbe.SetMappingPipeline(pipeline)
 
 	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port)
-	gclient.SetAutoGraphUpdate(g)
+	graph.NewForwarder(gclient, g)
 	gclient.Connect()
 
 	root := g.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})

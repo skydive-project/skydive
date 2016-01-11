@@ -45,8 +45,20 @@
             stroke-width: 0;
         }
 
-        .node .circle {
-            fill-opacity: 1.0;
+        .default .circle {
+            fill: rgb(199, 233, 192);
+        }
+
+        .ovsbridge .circle {
+            fill: rgb(198, 219, 239);
+        }
+
+        .ovsport .circle {
+            fill: rgb(253, 208, 162);
+        }
+
+        .down .circle {
+            fill: rgb(255, 26, 0);
         }
 
         .group {
@@ -127,6 +139,37 @@
                 if ("Name" in this.Metadatas)
                     return this.Metadatas["Name"];
                 return "";
+            }
+
+            Node.prototype.getHostRelativePath = function(ancestors) {
+                for (var e in this.Edges) {
+                    var edge = this.Edges[e];
+                    if (this == edge.Child && edge.Parent.Type() == "host") {
+                        ancestors.push(edge.Parent.Name());
+                        return true;
+                    }
+                }
+
+                for (var e in this.Edges) {
+                    var edge = this.Edges[e];
+                    if (this == edge.Child ) {
+                        ancestors.push(edge.Parent.Name());
+                        if (edge.Parent.getHostRelativePath(ancestors)) {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+
+            Node.prototype.GetHostRelativePath = function() {
+                ancestors = [this.Name()];
+                 if (this.getHostRelativePath(ancestors)) {
+                    return ancestors.reverse().join('/');
+                 }
+
+                 return "";
             }
 
             var Edge = function(ID) {
@@ -293,12 +336,13 @@
                 details += '</th></tr>';
                 details += '<tr><td colspan="2" id="details_' + node.ID.replace('-', '_') + '">';
 
-                if ("MAC" in node.Metadatas && node.Metadatas["MAC"]) {
+                var graphPath = node.GetHostRelativePath();
+                if (graphPath != "") {
                     $("#flow_spinner").addClass("active");
 
                     $.ajax({
                         dataType: "json",
-                        url: '/rpc/flows?ProbeMAC=' + node.Metadatas["MAC"],
+                        url: '/rpc/flows?ProbeGraphPath=' + graphPath,
                         success: function(data) {
                             $("#flow_spinner").removeClass("active");
 
@@ -354,6 +398,8 @@
                         break;
                     }
                 }
+                delete this.elements[node.ID];
+
                 this.Redraw();
             }
 
@@ -378,6 +424,8 @@
                         this.links[i]["target"] == edge.Child)
                         this.links.splice(i, 1);
                 }
+                delete this.elements[edge.ID];
+
                 this.Redraw();
             }
 
@@ -415,17 +463,17 @@
                 }
             }
 
-            HostLayout.prototype.NodeColor = function(d) {
+            HostLayout.prototype.NodeClass = function(d) {
                 if (d.Metadatas["State"] == "DOWN")
-                    return "rgb(255, 26, 0)";
+                    return "down";
 
                 switch(d.Metadatas["Type"]) {
                     case "ovsbridge":
-                        return "rgb(198, 219, 239)";
+                        return "ovsbridge";
                     case "ovsport":
-                        return "rgb(253, 208, 162)";
+                        return "ovsport";
                     default:
-                        return "rgb(199, 233, 192)";
+                        return "default";
                 }
             }
 
@@ -607,14 +655,15 @@
                     .call(this.force.drag);
                 this.node.exit().remove();
 
+                this.node.attr("class", function(d) {
+                    return _this.NodeClass(d);
+                })
+
                 nodeEnter.append("circle")
                     .attr("r", this.CircleSize)
                     .attr("class", "circle")
                     .style("opacity", function(d) {
                         return _this.CircleOpacity(d);
-                    })
-                    .style("fill", function(d) {
-                        return _this.NodeColor(d);
                     })
                     .on("mouseover", function(d) {
                         _this.MouseOverNode(d);
@@ -753,12 +802,11 @@
             }
 
             Layout.prototype.Clear = function() {
-                for (var ID in this.graph.Nodes)
-                    this.DelNode(this.graph.Nodes[ID]);
-
-
                 for (var ID in this.graph.Edges)
                     this.DelEdge(this.graph.Edges[ID]);
+
+                for (var ID in this.graph.Nodes)
+                    this.DelNode(this.graph.Nodes[ID]);
             }
 
             Layout.prototype.Redraw = function() {
@@ -782,6 +830,7 @@
                         break;
 
                     case "NodeAdded":
+                        console.log(msg.Obj);
                         var node = this.graph.NewNode(msg.Obj.ID, msg.Obj.Host);
                         if ("Metadatas" in msg.Obj)
                             node.Metadatas = msg.Obj.Metadatas;

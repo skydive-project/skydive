@@ -27,7 +27,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -42,11 +41,6 @@ type EventListener interface {
 	OnDisconnected()
 }
 
-type AutoGraphClient struct {
-	Client *AsyncClient
-	Graph  *Graph
-}
-
 type AsyncClient struct {
 	sync.RWMutex
 	Addr      string
@@ -56,88 +50,12 @@ type AsyncClient struct {
 	connected bool
 }
 
-func (c *AutoGraphClient) triggerResync() {
-	logging.GetLogger().Info("Start a resync of the graph")
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		logging.GetLogger().Error("Unable to retrieve the hostname: %s", err.Error())
+func (c *AsyncClient) SendGraphMessage(m GraphMessage) {
+	if !c.IsConnected() {
 		return
 	}
 
-	c.Graph.Lock()
-	defer c.Graph.Unlock()
-
-	// request for deletion of everythin belonging to host node
-	root := c.Graph.GetNode(Identifier(hostname))
-	if root == nil {
-		return
-	}
-	c.SendGraphMessage(GraphMessage{"SubtreeDeleted", root})
-
-	// re-added all the nodes and edges
-	nodes := c.Graph.GetNodes()
-	for _, n := range nodes {
-		c.SendGraphMessage(GraphMessage{"NodeAdded", n})
-	}
-
-	edges := c.Graph.GetEdges()
-	for _, e := range edges {
-		c.SendGraphMessage(GraphMessage{"EdgeAdded", e})
-	}
-}
-
-func (c *AutoGraphClient) OnConnected() {
-	c.triggerResync()
-}
-
-func (c *AutoGraphClient) OnDisconnected() {
-}
-
-func (c *AutoGraphClient) OnNodeUpdated(n *Node) {
-	c.SendGraphMessage(GraphMessage{"NodeUpdated", n})
-}
-
-func (c *AutoGraphClient) OnNodeAdded(n *Node) {
-	c.SendGraphMessage(GraphMessage{"NodeAdded", n})
-}
-
-func (c *AutoGraphClient) OnNodeDeleted(n *Node) {
-	c.SendGraphMessage(GraphMessage{"NodeDeleted", n})
-}
-
-func (c *AutoGraphClient) OnEdgeUpdated(e *Edge) {
-	c.SendGraphMessage(GraphMessage{"EdgeUpdated", e})
-}
-
-func (c *AutoGraphClient) OnEdgeAdded(e *Edge) {
-	c.SendGraphMessage(GraphMessage{"EdgeAdded", e})
-}
-
-func (c *AutoGraphClient) OnEdgeDeleted(e *Edge) {
-	c.SendGraphMessage(GraphMessage{"EdgeDeleted", e})
-}
-
-func (c *AutoGraphClient) SendGraphMessage(e GraphMessage) {
-	if !c.Client.IsConnected() {
-		return
-	}
-
-	c.Client.messages <- e.String()
-}
-
-// SetAutoGraphUpdate the client will manage automatically the update event of the graph
-// and will forword then to the server. To do that it register itself as a graph listener
-// and as a connection listener as well. So that it can resync the graph when the connection
-// is lost.
-func (c *AsyncClient) SetAutoGraphUpdate(g *Graph) {
-	a := &AutoGraphClient{
-		Client: c,
-		Graph:  g,
-	}
-
-	g.AddEventListener(a)
-	c.AddListener(a)
+	c.messages <- m.String()
 }
 
 func (c *AsyncClient) IsConnected() bool {
@@ -182,6 +100,7 @@ func (c *AsyncClient) connect() {
 		return
 	}
 	defer wsConn.Close()
+	wsConn.SetPingHandler(nil)
 
 	logging.GetLogger().Info("Connected to %s", endpoint)
 
@@ -194,13 +113,28 @@ func (c *AsyncClient) connect() {
 		l.OnConnected()
 	}
 
+	quit := make(chan struct{})
+	go func() {
+		for {
+			if _, _, err := wsConn.NextReader(); err != nil {
+				quit <- struct{}{}
+				return
+			}
+		}
+	}()
+
 	var msg string
+Loop:
 	for {
-		msg = <-c.messages
-		err := c.sendMessage(wsConn, msg)
-		if err != nil {
-			logging.GetLogger().Error("Error while writing to the WebSocket: %s", err.Error())
-			break
+		select {
+		case msg = <-c.messages:
+			err := c.sendMessage(wsConn, msg)
+			if err != nil {
+				logging.GetLogger().Error("Error while writing to the WebSocket: %s", err.Error())
+				break Loop
+			}
+		case <-quit:
+			break Loop
 		}
 	}
 }
