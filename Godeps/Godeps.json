@@ -1,0 +1,107 @@
+{
+	"ImportPath": "github.com/redhat-cip/skydive",
+	"GoVersion": "go1.5",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/gcfg",
+			"Rev": "c2d3050044d05357eaf6c3547249ba57c5e235cb"
+		},
+		{
+			"ImportPath": "github.com/araddon/gou",
+			"Rev": "0c2ab7394d785afff14c983fedce4be70ccc431f"
+		},
+		{
+			"ImportPath": "github.com/bitly/go-hostpool",
+			"Rev": "d0e59c22a56e8dadfed24f74f452cea5a52722d2"
+		},
+		{
+			"ImportPath": "github.com/calmh/ipfix",
+			"Rev": "438fae9fe923768e48c49903c233aac74a8fade5"
+		},
+		{
+			"ImportPath": "github.com/cenkalti/hub",
+			"Comment": "v1.0.0-14-g57d753b",
+			"Rev": "57d753b5f4856e77b3cf8ecce78c97215a7d324d"
+		},
+		{
+			"ImportPath": "github.com/cenkalti/rpc2",
+			"Rev": "2d1be381ce47537e9e076b2b76dc70933162e4e9"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "efcaa340c1a788c79e1ca31217d66aa41c405a51"
+		},
+		{
+			"ImportPath": "github.com/google/gopacket",
+			"Comment": "v1.1.11-18-g1b0b789",
+			"Rev": "1b0b78901cdd351ecfc68bf1a2adafcd2ff30220"
+		},
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "1c83b3eabd45b6d76072b66b746c20815fb2872d"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Rev": "9c068cf16d982f8bd444b8c352acbeec34c4fe5b"
+		},
+		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Rev": "844dd6d40e1a9215ef4c8a204bfc839fcf5dd5dd"
+		},
+		{
+			"ImportPath": "github.com/mattbaird/elastigo/lib",
+			"Comment": "v1.0-258-g451c29b",
+			"Rev": "451c29b3ae220cd710294bc3436e293d99491b94"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/mapstructure",
+			"Rev": "281073eb9eb092240d33ef253c404f1cca550309"
+		},
+		{
+			"ImportPath": "github.com/nu7hatch/gouuid",
+			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+		},
+		{
+			"ImportPath": "github.com/op/go-logging",
+			"Rev": "e8d5414f0947014548c2334044a0fac13187dfee"
+		},
+		{
+			"ImportPath": "github.com/pmylund/go-cache",
+			"Rev": "a122e14c4b8ee69022f62f24ba85cb36ce844366"
+		},
+		{
+			"ImportPath": "github.com/rackspace/gophercloud",
+			"Comment": "v1.0.0-681-g8d032cb",
+			"Rev": "8d032cb1e835a0018269de3d6b53bb24fc77a8c0"
+		},
+		{
+			"ImportPath": "github.com/safchain/ethtool",
+			"Rev": "0d3300ef113b4352a61230cd89bf231a60bb9bb3"
+		},
+		{
+			"ImportPath": "github.com/socketplane/libovsdb",
+			"Comment": "v0.1-2-g58cf012",
+			"Rev": "58cf01279880d621a67c5f929af9ed59ab409373"
+		},
+		{
+			"ImportPath": "github.com/vishvananda/netlink",
+			"Rev": "00326095f5e19b6b121ef077ababe0f854771e36"
+		},
+		{
+			"ImportPath": "github.com/vishvananda/netns",
+			"Rev": "604eaf189ee867d8c147fafc28def2394e878d25"
+		},
+		{
+			"ImportPath": "golang.org/x/exp/inotify",
+			"Rev": "d4ff832f359323d4975dc23ce589f98afcc46e4f"
+		},
+		{
+			"ImportPath": "gopkg.in/ini.v1",
+			"Comment": "v0-32-g45bf59e",
+			"Rev": "45bf59e51e747b1d61b3108a97549497a6efd3bc"
+		}
+	]
+}
