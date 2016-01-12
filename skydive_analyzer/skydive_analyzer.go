@@ -25,26 +25,30 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/gorilla/mux"
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
-	//"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage/elasticsearch"
 )
+
+func usage() {
+	fmt.Printf("Usage: %s -conf <config.ini> [-h]\n", os.Args[0])
+}
 
 func main() {
 	filename := flag.String("conf", "/etc/skydive/skydive.ini",
 		"Config file with all the skydive parameter.")
+	flag.CommandLine.Usage = usage
 	flag.Parse()
 
 	err := config.InitConfig(*filename)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
-
-	/*elasticsearch := elasticseach.GetInstance("127.0.0.1", 9200)*/
 
 	port, err := config.GetConfig().Section("analyzer").Key("listen").Int()
 	if err != nil {

@@ -41,14 +41,20 @@ import (
 	tprobes "github.com/redhat-cip/skydive/topology/probes"
 )
 
+func usage() {
+	fmt.Printf("Usage: %s -conf <config.ini> [-h]\n", os.Args[0])
+}
+
 func main() {
 	filename := flag.String("conf", "/etc/skydive/skydive.ini",
 		"Config file with all the skydive parameter.")
+	flag.CommandLine.Usage = usage
 	flag.Parse()
 
 	err := config.InitConfig(*filename)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
 
 	fmt.Println("Skydive Agent starting...")
