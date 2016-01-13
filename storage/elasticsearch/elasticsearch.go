@@ -25,10 +25,13 @@ package elasticseach
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"strconv"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage"
@@ -141,10 +144,17 @@ func (c *ElasticSearchStorage) initialize() error {
 	return nil
 }
 
-func New(addr string, port int) (*ElasticSearchStorage, error) {
+func New() (*ElasticSearchStorage, error) {
 	c := elastigo.NewConn()
-	c.Domain = addr
-	c.Port = strconv.FormatInt(int64(port), 10)
+
+	elasticonfig := config.GetConfig().Section("storage").Key("elasticsearch").Strings(":")
+	if len(elasticonfig) != 2 {
+		fmt.Fprintf(os.Stderr, "Config file is misconfigured : check elasticsearch key format\n")
+		os.Exit(1)
+	}
+	fmt.Println(elasticonfig)
+	c.Domain = elasticonfig[0]
+	c.Port = elasticonfig[1]
 
 	storage := &ElasticSearchStorage{connection: c}
 
