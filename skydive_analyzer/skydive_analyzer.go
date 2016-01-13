@@ -62,7 +62,7 @@ func main() {
 		panic(err)
 	}
 
-	storage, err := elasticseach.New("127.0.0.1", 9200)
+	storage, err := elasticseach.New()
 	if err != nil {
 		panic(err)
 	}

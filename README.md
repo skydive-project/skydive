@@ -71,6 +71,9 @@ listen = 8082
 [agent]
 listen = 8081
 analyzers = 127.0.0.1:8082
+
+[storage]
+elasticsearch = 127.0.0.1:9200
 ```
 ### Start
 
