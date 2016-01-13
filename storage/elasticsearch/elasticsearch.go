@@ -25,8 +25,6 @@ package elasticseach
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"os"
 	"strconv"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
@@ -144,15 +142,15 @@ func (c *ElasticSearchStorage) initialize() error {
 	return nil
 }
 
+var ErrBadConfig = errors.New("elasticseach : Config file is misconfigured, check elasticsearch key format")
+
 func New() (*ElasticSearchStorage, error) {
 	c := elastigo.NewConn()
 
 	elasticonfig := config.GetConfig().Section("storage").Key("elasticsearch").Strings(":")
 	if len(elasticonfig) != 2 {
-		fmt.Fprintf(os.Stderr, "Config file is misconfigured : check elasticsearch key format\n")
-		os.Exit(1)
+		return nil, ErrBadConfig
 	}
-	fmt.Println(elasticonfig)
 	c.Domain = elasticonfig[0]
 	c.Port = elasticonfig[1]
 
