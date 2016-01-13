@@ -33,18 +33,17 @@ type Flow struct {
 	PortDst          *uint32 `protobuf:"varint,8,opt,name=PortDst" json:"PortDst,omitempty"`
 	ID               *uint64 `protobuf:"varint,9,opt,name=ID" json:"ID,omitempty"`
 	Timestamp        *uint64 `protobuf:"varint,10,req,name=Timestamp" json:"Timestamp,omitempty"`
-	ProbeMAC         *string `protobuf:"bytes,11,req,name=ProbeMAC" json:"ProbeMAC,omitempty"`
-	ProbeGraphPath   *string `protobuf:"bytes,12,opt,name=ProbeGraphPath" json:"ProbeGraphPath,omitempty"`
-	IfSrcName        *string `protobuf:"bytes,13,opt,name=IfSrcName" json:"IfSrcName,omitempty"`
-	IfSrcType        *string `protobuf:"bytes,14,opt,name=IfSrcType" json:"IfSrcType,omitempty"`
-	IfSrcGraphPath   *string `protobuf:"bytes,15,opt,name=IfSrcGraphPath" json:"IfSrcGraphPath,omitempty"`
-	IfSrcTenantID    *string `protobuf:"bytes,16,opt,name=IfSrcTenantID" json:"IfSrcTenantID,omitempty"`
-	IfSrcVNI         *uint64 `protobuf:"varint,17,opt,name=IfSrcVNI" json:"IfSrcVNI,omitempty"`
-	IfDstName        *string `protobuf:"bytes,18,opt,name=IfDstName" json:"IfDstName,omitempty"`
-	IfDstType        *string `protobuf:"bytes,19,opt,name=IfDstType" json:"IfDstType,omitempty"`
-	IfDstGraphPath   *string `protobuf:"bytes,20,opt,name=IfDstGraphPath" json:"IfDstGraphPath,omitempty"`
-	IfDstTenantID    *string `protobuf:"bytes,21,opt,name=IfDstTenantID" json:"IfDstTenantID,omitempty"`
-	IfDstVNI         *uint64 `protobuf:"varint,22,opt,name=IfDstVNI" json:"IfDstVNI,omitempty"`
+	ProbeGraphPath   *string `protobuf:"bytes,11,opt,name=ProbeGraphPath" json:"ProbeGraphPath,omitempty"`
+	IfSrcName        *string `protobuf:"bytes,12,opt,name=IfSrcName" json:"IfSrcName,omitempty"`
+	IfSrcType        *string `protobuf:"bytes,13,opt,name=IfSrcType" json:"IfSrcType,omitempty"`
+	IfSrcGraphPath   *string `protobuf:"bytes,14,opt,name=IfSrcGraphPath" json:"IfSrcGraphPath,omitempty"`
+	IfSrcTenantID    *string `protobuf:"bytes,15,opt,name=IfSrcTenantID" json:"IfSrcTenantID,omitempty"`
+	IfSrcVNI         *uint64 `protobuf:"varint,16,opt,name=IfSrcVNI" json:"IfSrcVNI,omitempty"`
+	IfDstName        *string `protobuf:"bytes,17,opt,name=IfDstName" json:"IfDstName,omitempty"`
+	IfDstType        *string `protobuf:"bytes,18,opt,name=IfDstType" json:"IfDstType,omitempty"`
+	IfDstGraphPath   *string `protobuf:"bytes,19,opt,name=IfDstGraphPath" json:"IfDstGraphPath,omitempty"`
+	IfDstTenantID    *string `protobuf:"bytes,20,opt,name=IfDstTenantID" json:"IfDstTenantID,omitempty"`
+	IfDstVNI         *uint64 `protobuf:"varint,21,opt,name=IfDstVNI" json:"IfDstVNI,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -120,13 +119,6 @@ func (m *Flow) GetTimestamp() uint64 {
 		return *m.Timestamp
 	}
 	return 0
-}
-
-func (m *Flow) GetProbeMAC() string {
-	if m != nil && m.ProbeMAC != nil {
-		return *m.ProbeMAC
-	}
-	return ""
 }
 
 func (m *Flow) GetProbeGraphPath() string {

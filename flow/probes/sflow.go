@@ -33,13 +33,12 @@ import (
 
 	"github.com/pmylund/go-cache"
 
-	"github.com/vishvananda/netlink"
-
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 const (
@@ -50,6 +49,7 @@ type SFlowProbe struct {
 	Addr string
 	Port int
 
+	Graph               *graph.Graph
 	AnalyzerClient      *analyzer.Client
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 
@@ -71,27 +71,42 @@ func (probe *SFlowProbe) cacheUpdater() {
 
 		logging.GetLogger().Debug("SFlowProbe request received: %d", index)
 
-		intf, err := netlink.LinkByIndex(int(index))
-		if err != nil {
-			continue
-		}
+		probe.Graph.Lock()
 
-		if intf != nil {
-			probe.cache.Set(strconv.FormatUint(uint64(index), 10), intf.Attrs().HardwareAddr.String(), cache.DefaultExpiration)
+		intfs := probe.Graph.LookupNodes(graph.Metadatas{"IfIndex": index})
+
+		// lookup for the interface that is a part of an ovs bridge
+		for _, intf := range intfs {
+			ancestors, ok := intf.GetAncestorsTo(graph.Metadatas{"Type": "ovsbridge"})
+			if ok {
+				bridge := ancestors[2]
+				ancestors, ok = bridge.GetAncestorsTo(graph.Metadatas{"Type": "host"})
+
+				var path string
+				for i := len(ancestors) - 1; i >= 0; i-- {
+					if len(path) > 0 {
+						path += "/"
+					}
+					path += ancestors[i].Metadatas["Name"].(string)
+				}
+				probe.cache.Set(strconv.FormatUint(uint64(index), 10), path, cache.DefaultExpiration)
+				break
+			}
 		}
+		probe.Graph.Unlock()
 	}
 }
 
-func (probe *SFlowProbe) getMac(index uint32) string {
-	m, f := probe.cache.Get(strconv.FormatUint(uint64(index), 10))
+func (probe *SFlowProbe) getProbePath(index uint32) *string {
+	p, f := probe.cache.Get(strconv.FormatUint(uint64(index), 10))
 	if f {
-		mac := m.(string)
-		return mac
+		path := p.(string)
+		return &path
 	}
 
 	probe.cacheUpdaterChan <- index
 
-	return ""
+	return nil
 }
 
 func (probe *SFlowProbe) Start() error {
@@ -126,7 +141,7 @@ func (probe *SFlowProbe) Start() error {
 
 		if sflowPacket.SampleCount > 0 {
 			for _, sample := range sflowPacket.FlowSamples {
-				flows := flow.FLowsFromSFlowSample(probe.getMac(sample.InputInterface), &sample)
+				flows := flow.FLowsFromSFlowSample(&sample, probe.getProbePath(sample.InputInterface))
 
 				logging.GetLogger().Debug("%d flows captured", len(flows))
 
@@ -154,8 +169,12 @@ func (probe *SFlowProbe) SetMappingPipeline(p *mappings.FlowMappingPipeline) {
 	probe.FlowMappingPipeline = p
 }
 
-func NewSFlowProbe(addr string, port int) (*SFlowProbe, error) {
-	probe := &SFlowProbe{Addr: addr, Port: port}
+func NewSFlowProbe(a string, p int, g *graph.Graph) (*SFlowProbe, error) {
+	probe := &SFlowProbe{
+		Addr:  a,
+		Port:  p,
+		Graph: g,
+	}
 
 	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
 	if err != nil {

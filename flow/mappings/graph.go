@@ -86,10 +86,6 @@ func (gfe *GraphFlowEnhancer) getPath(mac string) *string {
 }
 
 func (gfe *GraphFlowEnhancer) Enhance(flow *flow.Flow) {
-	if flow.ProbeGraphPath == nil {
-		flow.ProbeGraphPath = gfe.getPath(flow.GetProbeMAC())
-	}
-
 	if flow.IfSrcGraphPath == nil {
 		flow.IfSrcGraphPath = gfe.getPath(flow.GetEtherSrc())
 	}

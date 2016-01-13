@@ -11,7 +11,13 @@ function _sudo()
 _sudo ip netns add vm1
 _sudo ip netns add vm2
 _sudo ip l add vm1-eth0 type veth peer name eth0 netns vm1
+_sudo ip l set vm1-eth0 up
 _sudo ip l add vm2-eth0 type veth peer name eth0 netns vm2
+_sudo ip l set vm2-eth0 up
+_sudo ip netns exec vm1 ip l set eth0 up
+_sudo ip netns exec vm1 ip a add 192.168.0.1/24 dev eth0
+_sudo ip netns exec vm2 ip l set eth0 up
+_sudo ip netns exec vm2 ip a add 192.168.0.2/24 dev eth0
 _sudo ovs-vsctl add-br br1
 _sudo ovs-vsctl add-br br2
 _sudo ovs-vsctl add-port br1 vm1-eth0
