@@ -103,6 +103,12 @@ func main() {
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 	sflowProbe.SetMappingPipeline(pipeline)
 
+	alertclient := graph.NewAsyncClient(analyzer_addr, analyzer_port, "/ws/alert")
+	alertmgr := graph.NewAlert(alertclient, g)
+	alertclient.Connect()
+	/* here for testing purpose */
+	alertmgr.Register("MTU filter", "Interfaces with a big MTU", "MTU", "MTU > 1500", "I found one")
+
 	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port, "/ws/graph")
 	graph.NewForwarder(gclient, g)
 	gclient.Connect()

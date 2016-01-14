@@ -285,6 +285,19 @@ func (g *Graph) LookupNodes(f Metadatas) []*Node {
 	return nodes
 }
 
+func (g *Graph) LookupNodesFromKey(key string) []*Node {
+	nodes := []*Node{}
+
+	for _, n := range g.Nodes {
+		_, ok := n.Metadatas[key]
+		if ok {
+			nodes = append(nodes, n)
+		}
+	}
+
+	return nodes
+}
+
 func (g *Graph) AddEdge(e *Edge) {
 	e.Parent.edges[e.ID] = e
 	e.Child.edges[e.ID] = e
