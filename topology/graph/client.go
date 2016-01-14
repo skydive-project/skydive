@@ -51,12 +51,20 @@ type AsyncClient struct {
 	connected bool
 }
 
-func (c *AsyncClient) SendGraphMessage(m GraphMessage) {
+func (c *AsyncClient) sendMessage(m string) {
 	if !c.IsConnected() {
 		return
 	}
 
-	c.messages <- m.String()
+	c.messages <- m
+}
+
+func (c *AsyncClient) SendGraphMessage(m GraphMessage) {
+	c.sendMessage(m.String())
+}
+
+func (c *AsyncClient) SendAlertMessage(m AlertMessage) {
+	c.sendMessage(m.String())
 }
 
 func (c *AsyncClient) IsConnected() bool {
@@ -66,7 +74,7 @@ func (c *AsyncClient) IsConnected() bool {
 	return c.connected
 }
 
-func (c *AsyncClient) sendMessage(conn *websocket.Conn, msg string) error {
+func (c *AsyncClient) sendWSMessage(conn *websocket.Conn, msg string) error {
 	w, err := conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
@@ -129,7 +137,7 @@ Loop:
 	for {
 		select {
 		case msg = <-c.messages:
-			err := c.sendMessage(wsConn, msg)
+			err := c.sendWSMessage(wsConn, msg)
 			if err != nil {
 				logging.GetLogger().Error("Error while writing to the WebSocket: %s", err.Error())
 				break Loop
