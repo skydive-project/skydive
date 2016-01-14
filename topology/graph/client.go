@@ -105,7 +105,7 @@ func (c *AsyncClient) connect() {
 
 	wsConn, _, err := websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
 	if err != nil {
-		logging.GetLogger().Error("Unable to create a WebSocket connection: %s", err.Error())
+		logging.GetLogger().Error("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
 	}
 	defer wsConn.Close()
