@@ -8,7 +8,10 @@ PROTO_FILES=flow/flow.proto
 .bindata:
 	go-bindata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/
 
-all:
+all: .proto .bindata
+	godep go install -v ./...
+
+install:
 	godep go install -v ./...
 
 build:

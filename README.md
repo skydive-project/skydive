@@ -34,9 +34,8 @@ Make sure you have a working Go environment. [See the install instructions](http
 Then make sure you have Godep installed. [See the install instructions](https://github.com/tools/godep).
 
 ```console
-$ go get github.com/redhat-cip/skydive
-$ cd $GOPATH/src/github.com/redhat-cip/skydive
-$ make install
+$ go get github.com/redhat-cip/skydive/cmd/skydive_agent
+$ go get github.com/redhat-cip/skydive/cmd/skydive_analyzer
 ```
 
 ## Getting started
