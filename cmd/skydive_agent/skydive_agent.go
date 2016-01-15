@@ -64,7 +64,12 @@ func main() {
 		panic(err)
 	}
 
-	g, err := graph.NewGraph(graph.Identifier(hostname))
+	backend, err := graph.NewMemoryBackend()
+	if err != nil {
+		panic(err)
+	}
+
+	g, err := graph.NewGraph(backend)
 	if err != nil {
 		panic(err)
 	}

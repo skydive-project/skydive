@@ -77,17 +77,17 @@ func (probe *SFlowProbe) cacheUpdater() {
 
 		// lookup for the interface that is a part of an ovs bridge
 		for _, intf := range intfs {
-			ancestors, ok := intf.GetAncestorsTo(graph.Metadatas{"Type": "ovsbridge"})
+			ancestors, ok := probe.Graph.GetAncestorsTo(intf, graph.Metadatas{"Type": "ovsbridge"})
 			if ok {
 				bridge := ancestors[2]
-				ancestors, ok = bridge.GetAncestorsTo(graph.Metadatas{"Type": "host"})
+				ancestors, ok = probe.Graph.GetAncestorsTo(bridge, graph.Metadatas{"Type": "host"})
 
 				var path string
 				for i := len(ancestors) - 1; i >= 0; i-- {
 					if len(path) > 0 {
 						path += "/"
 					}
-					path += ancestors[i].Metadatas["Name"].(string)
+					path += ancestors[i].Metadatas()["Name"].(string)
 				}
 				probe.cache.Set(strconv.FormatUint(uint64(index), 10), path, cache.DefaultExpiration)
 				break

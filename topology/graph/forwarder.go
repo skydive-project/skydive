@@ -50,7 +50,7 @@ func (c *Forwarder) triggerResync() {
 	if root == nil {
 		return
 	}
-	c.Client.SendGraphMessage(GraphMessage{"SubtreeDeleted", root})
+	c.Client.SendGraphMessage(GraphMessage{"SubGraphDeleted", root})
 
 	// re-added all the nodes and edges
 	nodes := c.Graph.GetNodes()

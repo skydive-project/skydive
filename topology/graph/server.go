@@ -71,20 +71,20 @@ func (c *WSClient) processGraphMessage(msg GraphMessage) {
 		}
 		c.send <- []byte(reply.String())
 
-	case "SubtreeDeleted":
+	case "SubGraphDeleted":
 		n := msg.Obj.(*Node)
 
-		logging.GetLogger().Debug("Got SubtreeDeleted event from the node %s", n.ID)
+		logging.GetLogger().Debug("Got SubGraphDeleted event from the node %s", n.ID)
 
 		node := g.GetNode(n.ID)
 		if node != nil {
-			g.SubtreeDel(node)
+			g.DelSubGraph(node)
 		}
 	case "NodeUpdated":
 		n := msg.Obj.(*Node)
 		node := g.GetNode(n.ID)
 		if node != nil {
-			node.SetMetadatas(n.Metadatas)
+			g.SetMetadatas(node, n.metadatas)
 		}
 	case "NodeDeleted":
 		g.DelNode(msg.Obj.(*Node))
@@ -97,7 +97,7 @@ func (c *WSClient) processGraphMessage(msg GraphMessage) {
 		e := msg.Obj.(*Edge)
 		edge := g.GetEdge(e.ID)
 		if edge != nil {
-			edge.SetMetadatas(e.Metadatas)
+			g.SetMetadatas(edge, e.metadatas)
 		}
 	case "EdgeDeleted":
 		g.DelEdge(msg.Obj.(*Edge))
@@ -130,7 +130,7 @@ func (c *WSClient) readPump() {
 
 		c.server.Graph.Lock()
 
-		msg, err := c.server.Graph.UnmarshalGraphMessage(p)
+		msg, err := UnmarshalGraphMessage(c.server.Graph, p)
 		if err == nil {
 			c.processGraphMessage(msg)
 		} else {

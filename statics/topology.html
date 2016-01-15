@@ -241,22 +241,26 @@
             Graph.prototype.InitFromSyncMessage = function(msg) {
                 var g = msg.Obj;
 
-                for (var ID in g.Nodes) {
-                    var node = this.NewNode(ID);
-                    if ("Metadatas" in g.Nodes[ID])
-                        node.Metadatas = g.Nodes[ID]["Metadatas"];
-                    node.Host = g.Nodes[ID]["Host"];
+                for (var i in g.Nodes) {
+                    var n = g.Nodes[i];
+
+                    var node = this.NewNode(n.ID);
+                    if ("Metadatas" in n)
+                        node.Metadatas = n["Metadatas"];
+                    node.Host = n["Host"];
                 }
 
-                for (var ID in g.Edges) {
-                    parent = this.GetNode(g.Edges[ID]["Parent"]);
-                    child = this.GetNode(g.Edges[ID]["Child"]);
+                for (var i in g.Edges) {
+                    var e = g.Edges[i];
 
-                    var edge = this.NewEdge(ID, parent, child);
+                    var parent = this.GetNode(e["Parent"]);
+                    var child = this.GetNode(e["Child"]);
 
-                    if ("Metadatas" in g.Edges[ID])
-                        edge.Metadatas = g.Edges[ID]["Metadatas"];
-                    edge.Host = g.Edges[ID]["Host"];
+                    var edge = this.NewEdge(e.ID, parent, child);
+
+                    if ("Metadatas" in e)
+                        edge.Metadatas = e["Metadatas"];
+                    edge.Host = e["Host"];
                 }
             }
 
@@ -265,8 +269,6 @@
                 this.height = 700;
                 this.graph = graph;
                 this.hullOffset = 22;
-                this.nodes = [];
-                this.links = [];
                 this.elements = {};
 
                 var _this = this;
@@ -420,8 +422,8 @@
                     return;
 
                 for (var i in this.links) {
-                    if (this.links[i]["source"] == edge.Parent &&
-                        this.links[i]["target"] == edge.Child)
+                    if (this.links[i]["source"].ID == edge.Parent.ID &&
+                        this.links[i]["target"].ID == edge.Child.ID)
                         this.links.splice(i, 1);
                 }
                 delete this.elements[edge.ID];
@@ -754,7 +756,7 @@
             }
 
             Layout.prototype.DelHost = function(node) {
-                delete (this.hosts, node.ID);
+                delete this.hosts[node.ID];
             }
 
             Layout.prototype.AddNode = function(node) {
@@ -807,6 +809,12 @@
 
                 for (var ID in this.graph.Nodes)
                     this.DelNode(this.graph.Nodes[ID]);
+
+                for (var ID in this.graph.Edges)
+                    this.graph.DelEdge(this.graph.Edges[ID]);
+
+                for (var ID in this.graph.Nodes)
+                    this.graph.DelNode(this.graph.Nodes[ID]);
             }
 
             Layout.prototype.Redraw = function() {
@@ -830,7 +838,6 @@
                         break;
 
                     case "NodeAdded":
-                        console.log(msg.Obj);
                         var node = this.graph.NewNode(msg.Obj.ID, msg.Obj.Host);
                         if ("Metadatas" in msg.Obj)
                             node.Metadatas = msg.Obj.Metadatas;

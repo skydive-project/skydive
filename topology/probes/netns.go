@@ -136,7 +136,7 @@ func (u *NetNSProbe) onNetNsCreated(path string) {
 
 	logging.GetLogger().Debug("Network Namespace added: %s", name)
 	n := u.Graph.NewNode(graph.GenID(), graph.Metadatas{"Name": name, "Type": "netns"})
-	u.Root.LinkTo(n)
+	u.Graph.Link(u.Root, n)
 
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
 	go nu.Start(path)
@@ -158,7 +158,7 @@ func (u *NetNSProbe) onNetNsDeleted(path string) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	children := nu.Root.LookupChildren(graph.Metadatas{})
+	children := nu.Graph.LookupChildren(nu.Root, graph.Metadatas{})
 	for _, child := range children {
 		u.Graph.DelNode(child)
 	}
