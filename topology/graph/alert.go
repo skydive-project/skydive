@@ -26,17 +26,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/token"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"text/template"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/nu7hatch/gouuid"
 	eval "github.com/sbinet/go-eval"
 
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/rpc"
+	"github.com/redhat-cip/skydive/statics"
 )
 
 type Alert struct {
-	Client *AsyncClient
+	Router *mux.Router
+	Port   int
 	Graph  *Graph
 	alerts []AlertTest
 }
@@ -48,18 +55,21 @@ const (
 	THRESHOLD
 )
 
-type AlertTest struct {
-	UUID        *uuid.UUID
+type AlertTestParam struct {
 	Name        string
 	Description string
-	CreateTime  time.Time
+	Select      string
+	Test        string
+	Action      string
+}
 
-	Select string
-	Test   string
+type AlertTest struct {
+	AlertTestParam
+	UUID       *uuid.UUID
+	CreateTime time.Time
 
-	Type   AlertType
-	Action string
-	Count  int
+	Type  AlertType
+	Count int
 }
 
 type AlertMessage struct {
@@ -87,21 +97,18 @@ func UnmarshalAlertMessage(b []byte) (AlertMessage, error) {
 	return msg, nil
 }
 
-func (c *Alert) Register(name string, desc string, selection string, test string, action string) {
+func (c *Alert) Register(atp AlertTestParam) *AlertTest {
 	id, _ := uuid.NewV4()
 	a := AlertTest{
-		UUID:        id,
-		Name:        name,
-		Description: desc,
-		CreateTime:  time.Now(),
-
-		Select: selection,
-		Test:   test,
-		Type:   FIXED,
-		Action: action,
-		Count:  0,
+		AlertTestParam: atp,
+		UUID:           id,
+		CreateTime:     time.Now(),
+		Type:           FIXED,
+		Count:          0,
 	}
+
 	c.alerts = append(c.alerts, a)
+	return &a
 }
 
 func (c *Alert) EvalNodes() {
@@ -139,7 +146,10 @@ func (c *Alert) EvalNodes() {
 					Reason:     a.Action,
 					ReasonData: toEval + " " + n.String(),
 				}
-				c.Client.SendAlertMessage(msg)
+
+				//FIXME (nplanel) : Send the message to the UI client via WS
+				//c.Client.SendAlertMessage(msg)
+				logging.GetLogger().Info("AlertMessage to WS : " + a.UUID.String() + " " + msg.String())
 			}
 		}
 	}
@@ -191,14 +201,128 @@ func (c *Alert) OnEdgeAdded(e *Edge) {
 func (c *Alert) OnEdgeDeleted(e *Edge) {
 }
 
-func NewAlert(c *AsyncClient, g *Graph) *Alert {
+func (c *Alert) serveIndex(w http.ResponseWriter, r *http.Request) {
+	html, err := statics.Asset("statics/alert.html")
+	if err != nil {
+		logging.GetLogger().Panic("Unable to find the alert asset : ", err)
+	}
+
+	t := template.New("alert template")
+
+	t, err = t.Parse(string(html))
+	if err != nil {
+		panic(err)
+	}
+
+	host, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	var data = &struct {
+		Hostname string
+		Port     int
+	}{
+		Hostname: host,
+		Port:     c.Port,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	t.Execute(w, data)
+}
+
+func (c *Alert) AlertIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(c.alerts); err != nil {
+		panic(err)
+	}
+}
+
+func (c *Alert) findAlert(uuid string) *AlertTest {
+	for _, a := range c.alerts {
+		if uuid == a.UUID.String() {
+			return &a
+		}
+	}
+	return nil
+}
+
+func (c *Alert) AlertShow(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	alertUUID := vars["alert"]
+
+	if alert := c.findAlert(alertUUID); alert != nil {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(alert); err != nil {
+			panic(err)
+		}
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func (c *Alert) AlertInsert(w http.ResponseWriter, r *http.Request) {
+	var atp AlertTestParam
+	b, _ := ioutil.ReadAll(r.Body)
+	err := json.Unmarshal(b, &atp)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	a := c.Register(atp)
+	w.WriteHeader(http.StatusOK)
+	logging.GetLogger().Debug("AlertInsert : " + a.UUID.String())
+}
+
+func (c *Alert) RegisterStaticEndpoints() {
+	// static routes
+	c.Router.HandleFunc("/static/alert", c.serveIndex)
+}
+
+func (c *Alert) RegisterRpcEndpoints() {
+	routes := []rpc.Route{
+		rpc.Route{
+			"AlertIndex",
+			"GET",
+			"/rpc/alert",
+			c.AlertIndex,
+		},
+		rpc.Route{
+			"AlertShow",
+			"GET",
+			"/rpc/alert/{alert}",
+			c.AlertShow,
+		},
+		rpc.Route{
+			"AlertInsert",
+			"POST",
+			"/rpc/alert",
+			c.AlertInsert,
+		},
+	}
+
+	for _, route := range routes {
+		c.Router.
+			Methods(route.Method).
+			Path(route.Pattern).
+			Name(route.Name).
+			Handler(route.HandlerFunc)
+	}
+}
+
+func NewAlert(g *Graph, port int, router *mux.Router) *Alert {
 	f := &Alert{
-		Client: c,
 		Graph:  g,
+		Router: router,
+		Port:   port,
 	}
 
 	g.AddEventListener(f)
-	c.AddListener(f)
 
 	return f
 }
