@@ -45,7 +45,7 @@ type Alert struct {
 	Router *mux.Router
 	Port   int
 	Graph  *Graph
-	alerts []AlertTest
+	alerts map[uuid.UUID]*AlertTest
 }
 
 type AlertType int
@@ -107,8 +107,34 @@ func (c *Alert) Register(atp AlertTestParam) *AlertTest {
 		Count:          0,
 	}
 
-	c.alerts = append(c.alerts, a)
+	c.alerts[*id] = &a
 	return &a
+}
+
+/* remove all the alerts than match a least one atp field */
+func (c *Alert) UnRegister(atp AlertTestParam) {
+	for id, a := range c.alerts {
+		if atp.Name == a.Name {
+			delete(c.alerts, id)
+			continue
+		}
+		if atp.Description == a.Description {
+			delete(c.alerts, id)
+			continue
+		}
+		if atp.Select == a.Select {
+			delete(c.alerts, id)
+			continue
+		}
+		if atp.Test == a.Test {
+			delete(c.alerts, id)
+			continue
+		}
+		if atp.Action == a.Action {
+			delete(c.alerts, id)
+			continue
+		}
+	}
 }
 
 func (c *Alert) EvalNodes() {
@@ -241,20 +267,12 @@ func (c *Alert) AlertIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *Alert) findAlert(uuid string) *AlertTest {
-	for _, a := range c.alerts {
-		if uuid == a.UUID.String() {
-			return &a
-		}
-	}
-	return nil
-}
-
 func (c *Alert) AlertShow(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	alertUUID := vars["alert"]
+	alertUUID, err := uuid.ParseHex(vars["alert"])
 
-	if alert := c.findAlert(alertUUID); alert != nil {
+	if err != nil {
+		alert := c.alerts[*alertUUID]
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(alert); err != nil {
