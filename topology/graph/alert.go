@@ -272,7 +272,11 @@ func (c *Alert) AlertShow(w http.ResponseWriter, r *http.Request) {
 	alertUUID, err := uuid.ParseHex(vars["alert"])
 
 	if err != nil {
-		alert := c.alerts[*alertUUID]
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	alert, ok := c.alerts[*alertUUID]
+	if ok {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(alert); err != nil {
@@ -288,13 +292,31 @@ func (c *Alert) AlertInsert(w http.ResponseWriter, r *http.Request) {
 	b, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(b, &atp)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	a := c.Register(atp)
 	w.WriteHeader(http.StatusOK)
 	logging.GetLogger().Debug("AlertInsert : " + a.UUID.String())
+}
+
+func (c *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	alertUUID, err := uuid.ParseHex(vars["alert"])
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	_, ok := c.alerts[*alertUUID]
+	if ok {
+		delete(c.alerts, *alertUUID)
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
 }
 
 func (c *Alert) RegisterStaticEndpoints() {
@@ -321,6 +343,12 @@ func (c *Alert) RegisterRpcEndpoints() {
 			"POST",
 			"/rpc/alert",
 			c.AlertInsert,
+		},
+		rpc.Route{
+			"AlertDelete",
+			"DELETE",
+			"/rpc/alert/{alert}",
+			c.AlertShow,
 		},
 	}
 
