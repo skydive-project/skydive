@@ -82,6 +82,11 @@
 			"Rev": "0d3300ef113b4352a61230cd89bf231a60bb9bb3"
 		},
 		{
+			"ImportPath": "github.com/sbinet/go-eval",
+			"Comment": "go.weekly.2012-03-04-57-g5a18a6f",
+			"Rev": "5a18a6f14e020db7500a44a90ace4f81ebc4ec2a"
+		},
+		{
 			"ImportPath": "github.com/socketplane/libovsdb",
 			"Comment": "v0.1-2-g58cf012",
 			"Rev": "58cf01279880d621a67c5f929af9ed59ab409373"
@@ -97,6 +102,18 @@
 		{
 			"ImportPath": "golang.org/x/exp/inotify",
 			"Rev": "d4ff832f359323d4975dc23ce589f98afcc46e4f"
+		},
+		{
+			"ImportPath": "golang.org/x/tools/go/exact",
+			"Rev": "c0008c5889c0d5091cdfefd2bfb08bff96527879"
+		},
+		{
+			"ImportPath": "golang.org/x/tools/go/gcimporter",
+			"Rev": "c0008c5889c0d5091cdfefd2bfb08bff96527879"
+		},
+		{
+			"ImportPath": "golang.org/x/tools/go/types",
+			"Rev": "c0008c5889c0d5091cdfefd2bfb08bff96527879"
 		},
 		{
 			"ImportPath": "gopkg.in/ini.v1",
