@@ -45,17 +45,26 @@ type AsyncClient struct {
 	sync.RWMutex
 	Addr      string
 	Port      int
+	Path      string
 	messages  chan string
 	listeners []EventListener
 	connected bool
 }
 
-func (c *AsyncClient) SendGraphMessage(m GraphMessage) {
+func (c *AsyncClient) sendMessage(m string) {
 	if !c.IsConnected() {
 		return
 	}
 
-	c.messages <- m.String()
+	c.messages <- m
+}
+
+func (c *AsyncClient) SendGraphMessage(m GraphMessage) {
+	c.sendMessage(m.String())
+}
+
+func (c *AsyncClient) SendAlertMessage(m AlertMessage) {
+	c.sendMessage(m.String())
 }
 
 func (c *AsyncClient) IsConnected() bool {
@@ -65,7 +74,7 @@ func (c *AsyncClient) IsConnected() bool {
 	return c.connected
 }
 
-func (c *AsyncClient) sendMessage(conn *websocket.Conn, msg string) error {
+func (c *AsyncClient) sendWSMessage(conn *websocket.Conn, msg string) error {
 	w, err := conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
@@ -87,7 +96,7 @@ func (c *AsyncClient) connect() {
 	}
 	defer conn.Close()
 
-	endpoint := "ws://" + host + "/ws/graph"
+	endpoint := "ws://" + host + c.Path
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		logging.GetLogger().Error("Unable to parse the WebSocket Endpoint %s: %s", endpoint, err.Error())
@@ -96,7 +105,7 @@ func (c *AsyncClient) connect() {
 
 	wsConn, _, err := websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
 	if err != nil {
-		logging.GetLogger().Error("Unable to create a WebSocket connection: %s", err.Error())
+		logging.GetLogger().Error("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
 	}
 	defer wsConn.Close()
@@ -128,7 +137,7 @@ Loop:
 	for {
 		select {
 		case msg = <-c.messages:
-			err := c.sendMessage(wsConn, msg)
+			err := c.sendWSMessage(wsConn, msg)
 			if err != nil {
 				logging.GetLogger().Error("Error while writing to the WebSocket: %s", err.Error())
 				break Loop
@@ -165,10 +174,11 @@ func (c *AsyncClient) AddListener(l EventListener) {
 }
 
 // Create new chat client.
-func NewAsyncClient(addr string, port int) *AsyncClient {
+func NewAsyncClient(addr string, port int, path string) *AsyncClient {
 	return &AsyncClient{
 		Addr:      addr,
 		Port:      port,
+		Path:      path,
 		messages:  make(chan string, 500),
 		connected: false,
 	}

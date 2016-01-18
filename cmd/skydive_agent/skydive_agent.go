@@ -103,7 +103,7 @@ func main() {
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 	sflowProbe.SetMappingPipeline(pipeline)
 
-	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port)
+	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port, "/ws/graph")
 	graph.NewForwarder(gclient, g)
 	gclient.Connect()
 
