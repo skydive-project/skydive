@@ -20,6 +20,8 @@
  *
  */
 
+syntax = "proto2";
+
 package flow;
 
 message Flow {
