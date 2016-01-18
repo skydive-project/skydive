@@ -261,10 +261,44 @@ func (s *Server) serveGraphMessages(w http.ResponseWriter, r *http.Request) {
 	c.readPump()
 }
 
+func (s *Server) serveAlertMessages(w http.ResponseWriter, r *http.Request) {
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+
+	c := &WSClient{
+		send:   make(chan []byte, maxMessageSize),
+		conn:   conn,
+		server: s.wsServer,
+	}
+	logging.GetLogger().Info("[Alert] New WebSocket Connection from %s", conn.RemoteAddr().String())
+
+	for {
+		_, p, err := c.conn.ReadMessage()
+		if err != nil {
+			break
+		}
+
+		msg, err := UnmarshalAlertMessage(p)
+		if err == nil {
+			logging.GetLogger().Info("Alert " + msg.String())
+		} else {
+			logging.GetLogger().Error("Unable to parse the event %s: %s", msg, err.Error())
+		}
+	}
+}
+
 func (s *Server) ListenAndServe() {
 	s.Graph.AddEventListener(s)
 
 	s.Router.HandleFunc("/ws/graph", s.serveGraphMessages)
+	s.Router.HandleFunc("/ws/alert", s.serveAlertMessages)
 
 	s.wsServer.ListenAndServe()
 }
