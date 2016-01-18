@@ -2,10 +2,10 @@
 
 PROTO_FILES=flow/flow.proto
 
-.proto: ${PROTO_FILES}
+.proto: builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
 
-.bindata:
+.bindata: builddep
 	go-bindata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/
 
 all: .proto .bindata
@@ -16,3 +16,8 @@ install:
 
 build:
 	godep go build -v ./...
+
+# dependency package need for building the project
+builddep:
+	go get github.com/golang/protobuf/{proto,protoc-gen-go}
+	go get github.com/jteeuwen/go-bindata/...
