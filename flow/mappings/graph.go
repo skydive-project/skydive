@@ -49,17 +49,23 @@ func (gfe *GraphFlowEnhancer) cacheUpdater() {
 		logging.GetLogger().Debug("GraphFlowEnhancer request received: %s", mac)
 
 		gfe.Graph.Lock()
-		intf := gfe.Graph.LookupNode(graph.Metadatas{"MAC": mac})
+		intfs := gfe.Graph.LookupNodes(graph.Metadatas{"MAC": mac})
 
-		if intf != nil {
-			ancestors, ok := intf.GetAncestorsTo(graph.Metadatas{"Type": "host"})
+		if len(intfs) > 1 {
+			logging.GetLogger().Info("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
+			continue
+		}
+
+		if len(intfs) == 1 {
+			ancestors, ok := gfe.Graph.GetAncestorsTo(intfs[0], graph.Metadatas{"Type": "host"})
 			if ok {
 				var path string
 				for i := len(ancestors) - 1; i >= 0; i-- {
 					if len(path) > 0 {
 						path += "/"
 					}
-					path += ancestors[i].Metadatas["Name"].(string)
+					name, _ := ancestors[i].Metadatas()["Name"]
+					path += name.(string)
 				}
 
 				gfe.cache.Set(mac, path, cache.DefaultExpiration)

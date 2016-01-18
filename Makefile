@@ -19,5 +19,6 @@ build:
 
 # dependency package need for building the project
 builddep:
-	go get github.com/golang/protobuf/{proto,protoc-gen-go}
+	go get github.com/golang/protobuf/proto
+	go get github.com/golang/protobuf/protoc-gen-go
 	go get github.com/jteeuwen/go-bindata/...

@@ -23,6 +23,7 @@
 package probes
 
 import (
+	"encoding/json"
 	"net"
 	"syscall"
 	"time"
@@ -54,7 +55,7 @@ func (u *NetLinkProbe) handleIntfIsBridgeMember(intf *graph.Node, link netlink.L
 	// add children of this interface that haven previously added
 	if children, ok := u.indexTointfsQueue[index]; ok {
 		for _, child := range children {
-			u.Graph.NewEdge(graph.GenID(), intf, child, nil)
+			u.Graph.Link(intf, child)
 		}
 		delete(u.indexTointfsQueue, index)
 	}
@@ -63,12 +64,10 @@ func (u *NetLinkProbe) handleIntfIsBridgeMember(intf *graph.Node, link netlink.L
 	if link.Attrs().MasterIndex != 0 {
 		index := uint32(link.Attrs().MasterIndex)
 
-		parent := u.Graph.LookupNode(graph.Metadatas{"IfIndex": index})
-		if parent != nil {
-			// check the type of the parent since the index can be wrong in case of ovs
-			if parent.Metadatas["Type"] == "bridge" && !parent.IsLinkedTo(intf) {
-				u.Graph.NewEdge(graph.GenID(), parent, intf, nil)
-			}
+		// assuming we have only one parent with this index
+		parent := u.Graph.LookupFirstNode(graph.Metadatas{"IfIndex": index, "Type": "bridge"})
+		if parent != nil && !u.Graph.AreLinked(parent, intf) {
+			u.Graph.Link(parent, intf)
 		} else {
 			// not yet the bridge so, enqueue for a later add
 			u.indexTointfsQueue[index] = append(u.indexTointfsQueue[index], intf)
@@ -95,15 +94,15 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			}
 
 			// got more than 1 peer, unable to find the right one, wait for the other to discover
-			peer := u.Graph.LookupNode(graph.Metadatas{"IfIndex": uint32(index), "Type": "veth"})
-			if peer != nil && !peer.IsLinkedTo(intf) {
+			peer := u.Graph.LookupFirstNode(graph.Metadatas{"IfIndex": uint32(index), "Type": "veth"})
+			if peer != nil && !u.Graph.AreLinked(peer, intf) {
 				u.Graph.NewEdge(graph.GenID(), peer, intf, graph.Metadatas{"Type": "veth"})
 				return true
 			}
 			return false
 		}
 
-		if uint32(index) > intf.Metadatas["IfIndex"].(uint32) {
+		if uint32(index) > intf.Metadatas()["IfIndex"].(uint32) {
 			ok := peerResolver()
 			if !ok {
 				// retry few second later since the right peer can be insert later
@@ -125,7 +124,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 
 	var intf *graph.Node
 	if name != "lo" {
-		intf = u.Graph.LookupNode(graph.Metadatas{
+		intf = u.Graph.LookupFirstNode(graph.Metadatas{
 			"Name":    name,
 			"IfIndex": index,
 			"MAC":     link.Attrs().HardwareAddr.String()})
@@ -135,8 +134,8 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Root.IsLinkedTo(intf) {
-		u.Root.LinkTo(intf)
+	if !u.Graph.AreLinked(u.Root, intf) {
+		u.Graph.Link(u.Root, intf)
 	}
 
 	u.handleIntfIsBridgeMember(intf, link)
@@ -146,15 +145,19 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 }
 
 func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
+	name := link.Attrs().Name
 	index := uint32(link.Attrs().Index)
 
-	intf := u.Graph.LookupNode(graph.Metadatas{"IfIndex": index})
+	intf := u.Graph.LookupFirstNode(graph.Metadatas{
+		"Name":    name,
+		"IfIndex": index})
+
 	if intf == nil {
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Root.IsLinkedTo(intf) {
-		u.Root.LinkTo(intf)
+	if !u.Graph.AreLinked(u.Root, intf) {
+		u.Graph.Link(u.Root, intf)
 	}
 
 	return intf
@@ -163,16 +166,33 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	name := link.Attrs().Name
 
-	intf := u.Graph.LookupNode(graph.Metadatas{"Name": name, "Driver": "openvswitch"})
+	intf := u.Graph.LookupFirstNode(graph.Metadatas{"Name": name, "Driver": "openvswitch"})
 	if intf == nil {
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Root.IsLinkedTo(intf) {
-		u.Root.LinkTo(intf)
+	if !u.Graph.AreLinked(u.Root, intf) {
+		u.Graph.Link(u.Root, intf)
 	}
 
 	return intf
+}
+
+func (u *NetLinkProbe) getLinkIPV4Addr(link netlink.Link) string {
+	ipv4 := make([]string, 0)
+
+	addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
+	if err != nil {
+		return ""
+	}
+
+	for _, addr := range addrs {
+		ipv4 = append(ipv4, addr.IPNet.String())
+	}
+
+	j, _ := json.Marshal(ipv4)
+
+	return string(j)
 }
 
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
@@ -192,6 +212,15 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		"Driver":  driver,
 	}
 
+	ipv4 := u.getLinkIPV4Addr(link)
+	if len(ipv4) > 0 {
+		metadatas["IPV4"] = ipv4
+	}
+
+	if vlan, ok := link.(*netlink.Vlan); ok {
+		metadatas["Vlan"] = vlan.VlanId
+	}
+
 	if (link.Attrs().Flags & net.FlagUp) > 0 {
 		metadatas["State"] = "UP"
 	} else {
@@ -209,18 +238,21 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		intf = u.addGenericLinkToTopology(link, metadatas)
 	}
 
+	// merge metadatas if the interface returned is not a new one
 	if intf != nil {
-		// update metadates if needed
-		updated := true
-		for k, metadata := range metadatas {
-			if intf.Metadatas[k] != metadata {
-				intf.Metadatas[k] = metadata
-				updated = true
+		m := intf.Metadatas()
+
+		updated := false
+		for k, nv := range metadatas {
+			if ov, ok := m[k]; ok && nv == ov {
+				continue
 			}
+			m[k] = nv
+			updated = true
 		}
 
 		if updated {
-			u.Graph.NotifyNodeUpdated(intf)
+			u.Graph.SetMetadatas(intf, m)
 		}
 	}
 }
@@ -241,12 +273,17 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
+	var intf *graph.Node
+
 	// case of removing the interface from a bridge
-	intf := u.Graph.LookupNode(graph.Metadatas{"IfIndex": uint32(index)})
-	if intf != nil {
-		parent := intf.LookupParentNode(graph.Metadatas{"Type": "bridge"})
-		if parent != nil {
-			intf.UnlinkFrom(parent)
+	intfs := u.Graph.LookupNodes(graph.Metadatas{"IfIndex": uint32(index)})
+	if len(intfs) > 0 {
+		// FIX(safchain) assuming we have only one interface with this index, not true with netns
+		intf = intfs[0]
+
+		parents := u.Graph.LookupParentNodes(intf, graph.Metadatas{"Type": "bridge"})
+		for _, parent := range parents {
+			u.Graph.Unlink(parent, intf)
 		}
 	}
 
@@ -254,10 +291,10 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 	// we get a delete event when an interace is removed from a bridge
 	_, err := netlink.LinkByIndex(index)
 	if err != nil && intf != nil {
-		if driver, ok := intf.Metadatas["Driver"]; ok {
+		if driver, ok := intf.Metadatas()["Driver"]; ok {
 			// if openvswitch do not remove let's do the job by ovs piece of code
 			if driver == "openvswitch" {
-				u.Root.UnlinkFrom(intf)
+				u.Graph.Unlink(u.Root, intf)
 			} else {
 				u.Graph.DelNode(intf)
 			}

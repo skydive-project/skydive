@@ -152,7 +152,12 @@ func (s *Server) SetStorage(st storage.Storage) {
 }
 
 func NewServer(port int, router *mux.Router) (*Server, error) {
-	g, err := graph.NewGraph("Global")
+	backend, err := graph.NewMemoryBackend()
+	if err != nil {
+		return nil, err
+	}
+
+	g, err := graph.NewGraph(backend)
 	if err != nil {
 		return nil, err
 	}
