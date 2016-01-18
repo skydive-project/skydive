@@ -2,20 +2,23 @@
 
 PROTO_FILES=flow/flow.proto
 
-.proto: builddep ${PROTO_FILES}
+.proto: godep builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
 
-.bindata: builddep
+.bindata: godep builddep
 	go-bindata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/
 
 all: .proto .bindata
 	godep go install -v ./...
 
-install:
+install: godep
 	godep go install -v ./...
 
-build:
+build: godep
 	godep go build -v ./...
+
+godep:
+	go get github.com/tools/godep
 
 # dependency package need for building the project
 builddep:

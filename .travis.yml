@@ -7,4 +7,5 @@ before_install:
     - go get golang.org/x/tools/cmd/cover
 
 script:
+    - make install
     - ./coverage.sh --coveralls
