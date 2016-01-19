@@ -41,6 +41,10 @@ import (
 	"github.com/redhat-cip/skydive/statics"
 )
 
+const (
+	MaxAlertMessageQueue = 1000
+)
+
 type Alert struct {
 	Router   *mux.Router
 	Port     int
@@ -172,15 +176,18 @@ func (c *Alert) EvalNodes() {
 					ReasonData: data,
 				}
 
+				if len(c.messages) > (MaxAlertMessageQueue - 10) {
+					logging.GetLogger().Warning("AlertMessage chan almost full (%d)", len(c.messages))
+				}
+				logging.GetLogger().Debug("AlertMessage to WS : " + a.UUID.String() + " " + msg.String())
 				c.messages <- msg
-				logging.GetLogger().Info("AlertMessage to WS : " + a.UUID.String() + " " + msg.String())
 			}
 		}
 	}
 }
 
 func (c *Alert) triggerResync() {
-	logging.GetLogger().Info("Start a resync of the graph")
+	logging.GetLogger().Info("Start a resync of the alert")
 
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -366,8 +373,10 @@ func NewAlert(g *Graph, port int, router *mux.Router) *Alert {
 		Graph:  g,
 		Router: router,
 		Port:   port,
+
+		alerts:   make(map[uuid.UUID]AlertTest),
+		messages: make(chan AlertMessage, MaxAlertMessageQueue),
 	}
-	f.alerts = make(map[uuid.UUID]AlertTest)
 
 	g.AddEventListener(f)
 
