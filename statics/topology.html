@@ -61,6 +61,10 @@
             fill: rgb(255, 26, 0);
         }
 
+        .alert .circle {
+            fill: rgb(255, 255, 0);
+        }
+
         .group {
             fill: #fff;
             pointer-events: none;
@@ -128,6 +132,7 @@
                 this.Metadatas = {};
                 this.Edges = {};
             }
+            var alerts = {};
 
             Node.prototype.Type = function() {
                 if ("Type" in this.Metadatas)
@@ -466,6 +471,9 @@
             }
 
             HostLayout.prototype.NodeClass = function(d) {
+                if (d.ID in alerts)
+                    return "alert"
+                    
                 if (d.Metadatas["State"] == "DOWN")
                     return "down";
 
@@ -882,6 +890,21 @@
                         break;
                 }
             }
+            Layout.prototype.ProcessAlertMessage = function(msg) {
+                var _this = this;
+                
+                switch(msg.Type) {
+                case "SyncReply":
+                    break;
+                case "GetAlert":
+                    var ID  = msg.Obj.ReasonData.ID;
+                    alerts[ID] = msg;
+                    this.Redraw();
+
+                    setTimeout(function() { delete alerts[ID]; _this.Redraw(); }, 1000);
+                    break;
+                }
+            }
 
             Layout.prototype.StartLiveUpdate = function() {
                 this.updatesocket = new WebSocket("ws://" + location.host + "/ws/graph");
@@ -902,10 +925,30 @@
                 };
             }
 
+            Layout.prototype.StartLiveUpdateAlert = function() {
+                this.updatesocketalert = new WebSocket("ws://" + location.host + "/ws/alert");
+
+                var _this = this;
+                this.updatesocketalert.onopen = function() {
+                    var msg = {"Type": "SyncRequest"};
+                    _this.updatesocketalert.send(JSON.stringify(msg));
+                }
+
+                this.updatesocketalert.onclose = function() {
+                    setTimeout(function() { _this.StartLiveUpdate(); }, 3000);
+                }
+
+                this.updatesocketalert.onmessage = function(e) {
+                    var msg = jQuery.parseJSON(e.data);
+                    _this.ProcessAlertMessage(msg);
+                };
+            }
+
             var layout;
             $(document).ready(function() {
                 layout = new Layout(".topology");
                 layout.StartLiveUpdate();
+                layout.StartLiveUpdateAlert();
             });
         </script>
     </head>
