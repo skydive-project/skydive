@@ -46,11 +46,11 @@ const (
 )
 
 type Alert struct {
-	Router   *mux.Router
-	Port     int
-	Graph    *Graph
-	alerts   map[uuid.UUID]AlertTest
-	messages chan AlertMessage
+	Router         *mux.Router
+	Port           int
+	Graph          *Graph
+	alerts         map[uuid.UUID]AlertTest
+	eventListeners map[AlertEventListener]AlertEventListener
 }
 
 type AlertType int
@@ -83,7 +83,7 @@ type AlertMessage struct {
 	Timestamp  time.Time
 	Count      int
 	Reason     string
-	ReasonData []byte
+	ReasonData interface{}
 }
 
 func (am *AlertMessage) Marshal() []byte {
@@ -93,6 +93,18 @@ func (am *AlertMessage) Marshal() []byte {
 
 func (am *AlertMessage) String() string {
 	return string(am.Marshal())
+}
+
+type AlertEventListener interface {
+	OnAlert(n *AlertMessage)
+}
+
+func (a *Alert) AddEventListener(l AlertEventListener) {
+	a.eventListeners[l] = l
+}
+
+func (a *Alert) DelEventListener(l AlertEventListener) {
+	delete(a.eventListeners, l)
 }
 
 func (c *Alert) Register(atp AlertTestParam) *AlertTest {
@@ -162,25 +174,20 @@ func (c *Alert) EvalNodes() {
 
 			if ret.String() == "true" {
 				a.Count++
-				data, err := n.MarshalJSON()
-				if err != nil {
-					logging.GetLogger().Error("AlertMessage Marshal JSON error : %s ", err)
-					continue
-				}
+
 				msg := AlertMessage{
 					UUID:       *a.UUID,
 					Type:       FIXED,
 					Timestamp:  time.Now(),
 					Count:      a.Count,
 					Reason:     a.Action,
-					ReasonData: data,
+					ReasonData: n,
 				}
 
-				if len(c.messages) > (MaxAlertMessageQueue - 10) {
-					logging.GetLogger().Warning("AlertMessage chan almost full (%d)", len(c.messages))
-				}
 				logging.GetLogger().Debug("AlertMessage to WS : " + a.UUID.String() + " " + msg.String())
-				c.messages <- msg
+				for _, l := range c.eventListeners {
+					l.OnAlert(&msg)
+				}
 			}
 		}
 	}
@@ -374,8 +381,8 @@ func NewAlert(g *Graph, port int, router *mux.Router) *Alert {
 		Router: router,
 		Port:   port,
 
-		alerts:   make(map[uuid.UUID]AlertTest),
-		messages: make(chan AlertMessage, MaxAlertMessageQueue),
+		alerts:         make(map[uuid.UUID]AlertTest),
+		eventListeners: make(map[AlertEventListener]AlertEventListener),
 	}
 
 	g.AddEventListener(f)

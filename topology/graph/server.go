@@ -141,13 +141,16 @@ func (c *WSClient) processAlertMessage(p []byte) {
 			Obj:  c.server.Alert,
 		}
 		c.send <- reply.Marshal()
-	case "GetAlert":
-		if len(c.server.Alert.messages) > 0 {
-			amsg := <-c.server.Alert.messages
-			logging.GetLogger().Info("GetAlert " + msg.String())
-			c.send <- amsg.Marshal()
-		}
 	}
+}
+
+/* Called by alert.EvalNodes() */
+func (c *WSClient) OnAlert(amsg *AlertMessage) {
+	reply := WSMessage{
+		Type: "GetAlert",
+		Obj:  *amsg,
+	}
+	c.send <- reply.Marshal()
 }
 
 func (c *WSClient) readPump() {
@@ -215,11 +218,17 @@ func (s *WSServer) ListenAndServe() {
 		select {
 		case c := <-s.register:
 			s.clients[c] = true
+			if c.Type == ALERTCLIENT {
+				s.Alert.AddEventListener(c)
+			}
 			break
 
 		case c := <-s.unregister:
 			_, ok := s.clients[c]
 			if ok {
+				if c.Type == ALERTCLIENT {
+					s.Alert.DelEventListener(c)
+				}
 				delete(s.clients, c)
 				close(c.send)
 			}
