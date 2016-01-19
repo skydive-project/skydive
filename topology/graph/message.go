@@ -49,7 +49,7 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 		return msg, err
 	}
 
-	if msg.Type == "SyncRequest" {
+	if msg.Type == "SyncRequest" || msg.Type == "GetAlert" {
 		return msg, nil
 	}
 
