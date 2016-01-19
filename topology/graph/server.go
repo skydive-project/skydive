@@ -41,12 +41,21 @@ const (
 
 type Server struct {
 	Graph    *Graph
+	Alert    *Alert
 	Router   *mux.Router
 	wsServer *WSServer
 	Host     string
 }
 
+type ClientType int
+
+const (
+	GRAPHCLIENT ClientType = 1 + iota
+	ALERTCLIENT
+)
+
 type WSClient struct {
+	Type   ClientType
 	conn   *websocket.Conn
 	send   chan []byte
 	server *WSServer
@@ -54,18 +63,27 @@ type WSClient struct {
 
 type WSServer struct {
 	Graph      *Graph
+	Alert      *Alert
 	clients    map[*WSClient]bool
 	broadcast  chan string
 	register   chan *WSClient
 	unregister chan *WSClient
 }
 
-func (c *WSClient) processGraphMessage(msg GraphMessage) {
+func (c *WSClient) processGraphMessage(p []byte) {
+	c.server.Graph.Lock()
+	defer c.server.Graph.Unlock()
+
+	msg, err := UnmarshalWSMessage(p)
+	if err != nil {
+		logging.GetLogger().Error("Graph: Unable to parse the event %s: %s", msg, err.Error())
+		return
+	}
 	g := c.server.Graph
 
 	switch msg.Type {
 	case "SyncRequest":
-		reply := GraphMessage{
+		reply := WSMessage{
 			Type: "SyncReply",
 			Obj:  c.server.Graph,
 		}
@@ -109,6 +127,29 @@ func (c *WSClient) processGraphMessage(msg GraphMessage) {
 	}
 }
 
+func (c *WSClient) processAlertMessage(p []byte) {
+	msg, err := UnmarshalWSMessage(p)
+	if err != nil {
+		logging.GetLogger().Error("Alert: Unable to parse the event %s: %s", msg, err.Error())
+		return
+	}
+
+	switch msg.Type {
+	case "SyncRequest":
+		reply := WSMessage{
+			Type: "SyncReply",
+			Obj:  c.server.Alert,
+		}
+		c.send <- reply.Marshal()
+	case "GetAlert":
+		if len(c.server.Alert.messages) > 0 {
+			amsg := <-c.server.Alert.messages
+			logging.GetLogger().Info("GetAlert " + msg.String())
+			c.send <- amsg.Marshal()
+		}
+	}
+}
+
 func (c *WSClient) readPump() {
 	defer func() {
 		c.server.unregister <- c
@@ -128,16 +169,12 @@ func (c *WSClient) readPump() {
 			break
 		}
 
-		c.server.Graph.Lock()
-
-		msg, err := UnmarshalGraphMessage(c.server.Graph, p)
-		if err == nil {
-			c.processGraphMessage(msg)
-		} else {
-			logging.GetLogger().Error("Unable to parse the event %s: %s", msg, err.Error())
+		switch c.Type {
+		case GRAPHCLIENT:
+			c.processGraphMessage(p)
+		case ALERTCLIENT:
+			c.processAlertMessage(p)
 		}
-
-		c.server.Graph.Unlock()
 	}
 }
 
@@ -201,7 +238,7 @@ func (s *WSServer) broadcastMessage(m string) {
 		case c.send <- []byte(m):
 			break
 
-		// We can't reach the client
+			// We can't reach the client
 		default:
 			close(c.send)
 			delete(s.clients, c)
@@ -209,35 +246,35 @@ func (s *WSServer) broadcastMessage(m string) {
 	}
 }
 
-func (s *Server) sendGraphUpdateEvent(g GraphMessage) {
+func (s *Server) sendGraphUpdateEvent(g WSMessage) {
 	s.wsServer.broadcast <- g.String()
 }
 
 func (s *Server) OnNodeUpdated(n *Node) {
-	s.sendGraphUpdateEvent(GraphMessage{"NodeUpdated", n})
+	s.sendGraphUpdateEvent(WSMessage{"NodeUpdated", n})
 }
 
 func (s *Server) OnNodeAdded(n *Node) {
-	s.sendGraphUpdateEvent(GraphMessage{"NodeAdded", n})
+	s.sendGraphUpdateEvent(WSMessage{"NodeAdded", n})
 }
 
 func (s *Server) OnNodeDeleted(n *Node) {
-	s.sendGraphUpdateEvent(GraphMessage{"NodeDeleted", n})
+	s.sendGraphUpdateEvent(WSMessage{"NodeDeleted", n})
 }
 
 func (s *Server) OnEdgeUpdated(e *Edge) {
-	s.sendGraphUpdateEvent(GraphMessage{"EdgeUpdated", e})
+	s.sendGraphUpdateEvent(WSMessage{"EdgeUpdated", e})
 }
 
 func (s *Server) OnEdgeAdded(e *Edge) {
-	s.sendGraphUpdateEvent(GraphMessage{"EdgeAdded", e})
+	s.sendGraphUpdateEvent(WSMessage{"EdgeAdded", e})
 }
 
 func (s *Server) OnEdgeDeleted(e *Edge) {
-	s.sendGraphUpdateEvent(GraphMessage{"EdgeDeleted", e})
+	s.sendGraphUpdateEvent(WSMessage{"EdgeDeleted", e})
 }
 
-func (s *Server) serveGraphMessages(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -248,12 +285,19 @@ func (s *Server) serveGraphMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var ctype ClientType
+	if r.URL.Path == "/ws/graph" {
+		ctype = GRAPHCLIENT
+	} else if r.URL.Path == "/ws/alert" {
+		ctype = ALERTCLIENT
+	}
 	c := &WSClient{
+		Type:   ctype,
 		send:   make(chan []byte, maxMessageSize),
 		conn:   conn,
 		server: s.wsServer,
 	}
-	logging.GetLogger().Info("New WebSocket Connection from %s", conn.RemoteAddr().String())
+	logging.GetLogger().Info("New WebSocket Connection from %s : URI %s", conn.RemoteAddr().String(), r.URL.Path)
 
 	s.wsServer.register <- c
 
@@ -261,54 +305,25 @@ func (s *Server) serveGraphMessages(w http.ResponseWriter, r *http.Request) {
 	c.readPump()
 }
 
-func (s *Server) serveAlertMessages(w http.ResponseWriter, r *http.Request) {
-	var upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
-
-	c := &WSClient{
-		send:   make(chan []byte, maxMessageSize),
-		conn:   conn,
-		server: s.wsServer,
-	}
-	logging.GetLogger().Info("[Alert] New WebSocket Connection from %s", conn.RemoteAddr().String())
-
-	for {
-		_, p, err := c.conn.ReadMessage()
-		if err != nil {
-			break
-		}
-
-		msg, err := UnmarshalAlertMessage(p)
-		if err == nil {
-			logging.GetLogger().Info("Alert " + msg.String())
-		} else {
-			logging.GetLogger().Error("Unable to parse the event %s: %s", msg, err.Error())
-		}
-	}
-}
-
 func (s *Server) ListenAndServe() {
 	s.Graph.AddEventListener(s)
 
-	s.Router.HandleFunc("/ws/graph", s.serveGraphMessages)
-	s.Router.HandleFunc("/ws/alert", s.serveAlertMessages)
+	s.Router.HandleFunc("/ws/graph", s.serveMessages)
+	if s.Alert != nil {
+		s.Router.HandleFunc("/ws/alert", s.serveMessages)
+	}
 
 	s.wsServer.ListenAndServe()
 }
 
-func NewServer(g *Graph, router *mux.Router) *Server {
+func NewServer(g *Graph, a *Alert, router *mux.Router) *Server {
 	return &Server{
 		Graph:  g,
+		Alert:  a,
 		Router: router,
 		wsServer: &WSServer{
 			Graph:      g,
+			Alert:      a,
 			broadcast:  make(chan string, 500),
 			register:   make(chan *WSClient),
 			unregister: make(chan *WSClient),

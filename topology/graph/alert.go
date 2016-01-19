@@ -42,10 +42,11 @@ import (
 )
 
 type Alert struct {
-	Router *mux.Router
-	Port   int
-	Graph  *Graph
-	alerts map[uuid.UUID]*AlertTest
+	Router   *mux.Router
+	Port     int
+	Graph    *Graph
+	alerts   map[uuid.UUID]*AlertTest
+	messages chan AlertMessage
 }
 
 type AlertType int
@@ -78,23 +79,16 @@ type AlertMessage struct {
 	Timestamp  time.Time
 	Count      int
 	Reason     string
-	ReasonData string
+	ReasonData []byte
 }
 
-func (d *AlertMessage) String() string {
-	j, _ := json.Marshal(d)
-	return string(j)
+func (am *AlertMessage) Marshal() []byte {
+	j, _ := json.Marshal(am)
+	return j
 }
 
-func UnmarshalAlertMessage(b []byte) (AlertMessage, error) {
-	msg := AlertMessage{}
-
-	err := json.Unmarshal(b, &msg)
-	if err != nil {
-		return msg, err
-	}
-
-	return msg, nil
+func (am *AlertMessage) String() string {
+	return string(am.Marshal())
 }
 
 func (c *Alert) Register(atp AlertTestParam) *AlertTest {
@@ -164,17 +158,21 @@ func (c *Alert) EvalNodes() {
 
 			if ret.String() == "true" {
 				a.Count++
+				data, err := n.MarshalJSON()
+				if err != nil {
+					logging.GetLogger().Error("AlertMessage Marshal JSON error : %s ", err)
+					continue
+				}
 				msg := AlertMessage{
 					UUID:       *a.UUID,
 					Type:       FIXED,
 					Timestamp:  time.Now(),
 					Count:      a.Count,
 					Reason:     a.Action,
-					ReasonData: toEval + " " + n.String(),
+					ReasonData: data,
 				}
 
-				//FIXME (nplanel) : Send the message to the UI client via WS
-				//c.Client.SendAlertMessage(msg)
+				c.messages <- msg
 				logging.GetLogger().Info("AlertMessage to WS : " + a.UUID.String() + " " + msg.String())
 			}
 		}

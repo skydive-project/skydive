@@ -27,18 +27,22 @@ import (
 	"errors"
 )
 
-type GraphMessage struct {
+type WSMessage struct {
 	Type string
 	Obj  interface{}
 }
 
-func (g GraphMessage) String() string {
+func (g WSMessage) Marshal() []byte {
 	j, _ := json.Marshal(g)
-	return string(j)
+	return j
 }
 
-func UnmarshalGraphMessage(g *Graph, b []byte) (GraphMessage, error) {
-	msg := GraphMessage{}
+func (g WSMessage) String() string {
+	return string(g.Marshal())
+}
+
+func UnmarshalWSMessage(b []byte) (WSMessage, error) {
+	msg := WSMessage{}
 
 	err := json.Unmarshal(b, &msg)
 	if err != nil {
@@ -61,6 +65,7 @@ func UnmarshalGraphMessage(g *Graph, b []byte) (GraphMessage, error) {
 	}
 
 	switch msg.Type {
+	/* Graph Section */
 	case "SubGraphDeleted":
 		fallthrough
 	case "NodeUpdated":
@@ -94,6 +99,11 @@ func UnmarshalGraphMessage(g *Graph, b []byte) (GraphMessage, error) {
 			parent: parent,
 			child:  child,
 		}
+
+		/* Alert Section */
+	case "GetAlert":
+		return msg, err
+
 	}
 
 	return msg, err
