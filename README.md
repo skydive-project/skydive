@@ -83,6 +83,39 @@ $ skydive_agent -conf etc/skydive.ini
 $ skydive_analyzer -conf etc/skydive.ini
 ```
 
+### WebUI
+
+To access to the WebUI of agents or analyzer:
+
+```console
+http://<address>:<port>/static/topology
+```
+
+### API
+
+Topology informations are accessible through a RPC API or a WebSocket API
+
+RPC:
+
+```console
+curl http://<address>:<port>/rpc/topology
+```
+
+WebSocket endpoint:
+
+```console
+ws://<address>:<port>/ws/graph
+```
+
+Messages:
+
+* NodeUpdated
+* NodeAdded
+* NodeDeleted
+* EdgeUpdated
+* EdgeAdded
+* EdgeDeleted
+
 ## Contributing
 This project accepts contributions. Just fork the repo and submit a pull request!
 
