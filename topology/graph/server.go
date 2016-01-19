@@ -286,10 +286,13 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ctype ClientType
-	if r.URL.Path == "/ws/graph" {
+	switch r.URL.Path {
+	case "/ws/graph":
 		ctype = GRAPHCLIENT
-	} else if r.URL.Path == "/ws/alert" {
+		break
+	case "/ws/alert":
 		ctype = ALERTCLIENT
+		break
 	}
 	c := &WSClient{
 		Type:   ctype,
@@ -297,7 +300,7 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 		conn:   conn,
 		server: s.wsServer,
 	}
-	logging.GetLogger().Info("New WebSocket Connection from %s : URI %s", conn.RemoteAddr().String(), r.URL.Path)
+	logging.GetLogger().Info("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
 	s.wsServer.register <- c
 
