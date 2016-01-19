@@ -45,7 +45,7 @@ type Alert struct {
 	Router   *mux.Router
 	Port     int
 	Graph    *Graph
-	alerts   map[uuid.UUID]*AlertTest
+	alerts   map[uuid.UUID]AlertTest
 	messages chan AlertMessage
 }
 
@@ -101,7 +101,7 @@ func (c *Alert) Register(atp AlertTestParam) *AlertTest {
 		Count:          0,
 	}
 
-	c.alerts[*id] = &a
+	c.alerts[*id] = a
 	return &a
 }
 
@@ -260,8 +260,10 @@ func (c *Alert) AlertIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(c.alerts); err != nil {
-		panic(err)
+	for _, a := range c.alerts {
+		if err := json.NewEncoder(w).Encode(a); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -346,7 +348,7 @@ func (c *Alert) RegisterRpcEndpoints() {
 			"AlertDelete",
 			"DELETE",
 			"/rpc/alert/{alert}",
-			c.AlertShow,
+			c.AlertDelete,
 		},
 	}
 
@@ -365,6 +367,7 @@ func NewAlert(g *Graph, port int, router *mux.Router) *Alert {
 		Router: router,
 		Port:   port,
 	}
+	f.alerts = make(map[uuid.UUID]AlertTest)
 
 	g.AddEventListener(f)
 
