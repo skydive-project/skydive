@@ -49,7 +49,7 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 		return msg, err
 	}
 
-	if msg.Type == "SyncRequest" || msg.Type == "GetAlert" {
+	if msg.Type == "SyncRequest" {
 		return msg, nil
 	}
 
@@ -99,11 +99,6 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 			parent: parent,
 			child:  child,
 		}
-
-		/* Alert Section */
-	case "GetAlert":
-		return msg, err
-
 	}
 
 	return msg, err

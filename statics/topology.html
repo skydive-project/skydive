@@ -894,9 +894,7 @@
                 var _this = this;
                 
                 switch(msg.Type) {
-                case "SyncReply":
-                    break;
-                case "GetAlert":
+                case "AlertEvent":
                     var ID  = msg.Obj.ReasonData.ID;
                     alerts[ID] = msg;
                     this.Redraw();
@@ -930,8 +928,6 @@
 
                 var _this = this;
                 this.updatesocketalert.onopen = function() {
-                    var msg = {"Type": "SyncRequest"};
-                    _this.updatesocketalert.send(JSON.stringify(msg));
                 }
 
                 this.updatesocketalert.onclose = function() {

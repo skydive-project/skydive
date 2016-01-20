@@ -147,7 +147,7 @@ func (c *WSClient) processAlertMessage(p []byte) {
 /* Called by alert.EvalNodes() */
 func (c *WSClient) OnAlert(amsg *AlertMessage) {
 	reply := WSMessage{
-		Type: "GetAlert",
+		Type: "AlertEvent",
 		Obj:  *amsg,
 	}
 	c.send <- reply.Marshal()
