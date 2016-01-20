@@ -127,23 +127,6 @@ func (c *WSClient) processGraphMessage(p []byte) {
 	}
 }
 
-func (c *WSClient) processAlertMessage(p []byte) {
-	msg, err := UnmarshalWSMessage(p)
-	if err != nil {
-		logging.GetLogger().Error("Alert: Unable to parse the event %s: %s", msg, err.Error())
-		return
-	}
-
-	switch msg.Type {
-	case "SyncRequest":
-		reply := WSMessage{
-			Type: "SyncReply",
-			Obj:  c.server.Alert,
-		}
-		c.send <- reply.Marshal()
-	}
-}
-
 /* Called by alert.EvalNodes() */
 func (c *WSClient) OnAlert(amsg *AlertMessage) {
 	reply := WSMessage{
@@ -172,12 +155,7 @@ func (c *WSClient) readPump() {
 			break
 		}
 
-		switch c.Type {
-		case GRAPHCLIENT:
-			c.processGraphMessage(p)
-		case ALERTCLIENT:
-			c.processAlertMessage(p)
-		}
+		c.processGraphMessage(p)
 	}
 }
 
