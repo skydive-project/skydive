@@ -166,11 +166,11 @@ func NewServer(port int, router *mux.Router) (*Server, error) {
 	tserver.RegisterStaticEndpoints()
 	tserver.RegisterRpcEndpoints()
 
-	gserver := graph.NewServer(g, router)
-
 	alertmgr := graph.NewAlert(g, port, router)
 	alertmgr.RegisterStaticEndpoints()
 	alertmgr.RegisterRpcEndpoints()
+
+	gserver := graph.NewServer(g, alertmgr, router)
 
 	gfe, err := mappings.NewGraphFlowEnhancer(g)
 	if err != nil {

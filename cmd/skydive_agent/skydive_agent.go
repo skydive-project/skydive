@@ -145,7 +145,7 @@ func main() {
 	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
 
-	gserver := graph.NewServer(g, server.Router)
+	gserver := graph.NewServer(g, nil, server.Router)
 	go gserver.ListenAndServe()
 
 	server.ListenAndServe()

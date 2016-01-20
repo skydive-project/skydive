@@ -41,11 +41,16 @@ import (
 	"github.com/redhat-cip/skydive/statics"
 )
 
+const (
+	MaxAlertMessageQueue = 1000
+)
+
 type Alert struct {
-	Router *mux.Router
-	Port   int
-	Graph  *Graph
-	alerts map[uuid.UUID]*AlertTest
+	Router         *mux.Router
+	Port           int
+	Graph          *Graph
+	alerts         map[uuid.UUID]AlertTest
+	eventListeners map[AlertEventListener]AlertEventListener
 }
 
 type AlertType int
@@ -78,23 +83,28 @@ type AlertMessage struct {
 	Timestamp  time.Time
 	Count      int
 	Reason     string
-	ReasonData string
+	ReasonData interface{}
 }
 
-func (d *AlertMessage) String() string {
-	j, _ := json.Marshal(d)
-	return string(j)
+func (am *AlertMessage) Marshal() []byte {
+	j, _ := json.Marshal(am)
+	return j
 }
 
-func UnmarshalAlertMessage(b []byte) (AlertMessage, error) {
-	msg := AlertMessage{}
+func (am *AlertMessage) String() string {
+	return string(am.Marshal())
+}
 
-	err := json.Unmarshal(b, &msg)
-	if err != nil {
-		return msg, err
-	}
+type AlertEventListener interface {
+	OnAlert(n *AlertMessage)
+}
 
-	return msg, nil
+func (a *Alert) AddEventListener(l AlertEventListener) {
+	a.eventListeners[l] = l
+}
+
+func (a *Alert) DelEventListener(l AlertEventListener) {
+	delete(a.eventListeners, l)
 }
 
 func (c *Alert) Register(atp AlertTestParam) *AlertTest {
@@ -107,7 +117,7 @@ func (c *Alert) Register(atp AlertTestParam) *AlertTest {
 		Count:          0,
 	}
 
-	c.alerts[*id] = &a
+	c.alerts[*id] = a
 	return &a
 }
 
@@ -164,25 +174,27 @@ func (c *Alert) EvalNodes() {
 
 			if ret.String() == "true" {
 				a.Count++
+
 				msg := AlertMessage{
 					UUID:       *a.UUID,
 					Type:       FIXED,
 					Timestamp:  time.Now(),
 					Count:      a.Count,
 					Reason:     a.Action,
-					ReasonData: toEval + " " + n.String(),
+					ReasonData: n,
 				}
 
-				//FIXME (nplanel) : Send the message to the UI client via WS
-				//c.Client.SendAlertMessage(msg)
-				logging.GetLogger().Info("AlertMessage to WS : " + a.UUID.String() + " " + msg.String())
+				logging.GetLogger().Debug("AlertMessage to WS : " + a.UUID.String() + " " + msg.String())
+				for _, l := range c.eventListeners {
+					l.OnAlert(&msg)
+				}
 			}
 		}
 	}
 }
 
 func (c *Alert) triggerResync() {
-	logging.GetLogger().Info("Start a resync of the graph")
+	logging.GetLogger().Info("Start a resync of the alert")
 
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -262,8 +274,10 @@ func (c *Alert) AlertIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(c.alerts); err != nil {
-		panic(err)
+	for _, a := range c.alerts {
+		if err := json.NewEncoder(w).Encode(a); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -348,7 +362,7 @@ func (c *Alert) RegisterRpcEndpoints() {
 			"AlertDelete",
 			"DELETE",
 			"/rpc/alert/{alert}",
-			c.AlertShow,
+			c.AlertDelete,
 		},
 	}
 
@@ -366,6 +380,9 @@ func NewAlert(g *Graph, port int, router *mux.Router) *Alert {
 		Graph:  g,
 		Router: router,
 		Port:   port,
+
+		alerts:         make(map[uuid.UUID]AlertTest),
+		eventListeners: make(map[AlertEventListener]AlertEventListener),
 	}
 
 	g.AddEventListener(f)

@@ -50,17 +50,17 @@ func (c *Forwarder) triggerResync() {
 	if root == nil {
 		return
 	}
-	c.Client.SendGraphMessage(GraphMessage{"SubGraphDeleted", root})
+	c.Client.SendWSMessage(WSMessage{"SubGraphDeleted", root})
 
 	// re-added all the nodes and edges
 	nodes := c.Graph.GetNodes()
 	for _, n := range nodes {
-		c.Client.SendGraphMessage(GraphMessage{"NodeAdded", n})
+		c.Client.SendWSMessage(WSMessage{"NodeAdded", n})
 	}
 
 	edges := c.Graph.GetEdges()
 	for _, e := range edges {
-		c.Client.SendGraphMessage(GraphMessage{"EdgeAdded", e})
+		c.Client.SendWSMessage(WSMessage{"EdgeAdded", e})
 	}
 }
 
@@ -72,27 +72,27 @@ func (c *Forwarder) OnDisconnected() {
 }
 
 func (c *Forwarder) OnNodeUpdated(n *Node) {
-	c.Client.SendGraphMessage(GraphMessage{"NodeUpdated", n})
+	c.Client.SendWSMessage(WSMessage{"NodeUpdated", n})
 }
 
 func (c *Forwarder) OnNodeAdded(n *Node) {
-	c.Client.SendGraphMessage(GraphMessage{"NodeAdded", n})
+	c.Client.SendWSMessage(WSMessage{"NodeAdded", n})
 }
 
 func (c *Forwarder) OnNodeDeleted(n *Node) {
-	c.Client.SendGraphMessage(GraphMessage{"NodeDeleted", n})
+	c.Client.SendWSMessage(WSMessage{"NodeDeleted", n})
 }
 
 func (c *Forwarder) OnEdgeUpdated(e *Edge) {
-	c.Client.SendGraphMessage(GraphMessage{"EdgeUpdated", e})
+	c.Client.SendWSMessage(WSMessage{"EdgeUpdated", e})
 }
 
 func (c *Forwarder) OnEdgeAdded(e *Edge) {
-	c.Client.SendGraphMessage(GraphMessage{"EdgeAdded", e})
+	c.Client.SendWSMessage(WSMessage{"EdgeAdded", e})
 }
 
 func (c *Forwarder) OnEdgeDeleted(e *Edge) {
-	c.Client.SendGraphMessage(GraphMessage{"EdgeDeleted", e})
+	c.Client.SendWSMessage(WSMessage{"EdgeDeleted", e})
 }
 
 func NewForwarder(c *AsyncClient, g *Graph) *Forwarder {

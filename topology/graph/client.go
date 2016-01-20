@@ -59,11 +59,7 @@ func (c *AsyncClient) sendMessage(m string) {
 	c.messages <- m
 }
 
-func (c *AsyncClient) SendGraphMessage(m GraphMessage) {
-	c.sendMessage(m.String())
-}
-
-func (c *AsyncClient) SendAlertMessage(m AlertMessage) {
+func (c *AsyncClient) SendWSMessage(m WSMessage) {
 	c.sendMessage(m.String())
 }
 
