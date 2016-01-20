@@ -116,15 +116,15 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		mac = row.New.Fields["mac_in_use"].(string)
 	}
 
-	var index uint32
+	var index int64
 	if i, ok := row.New.Fields["ifindex"]; ok {
 		switch row.New.Fields["ifindex"].(type) {
 		case float64:
-			index = uint32(i.(float64))
+			index = int64(i.(float64))
 		case libovsdb.OvsSet:
 			set := row.New.Fields["ifindex"].(libovsdb.OvsSet)
 			if len(set.GoSet) > 0 {
-				index = set.GoSet[0].(uint32)
+				index = set.GoSet[0].(int64)
 			}
 		}
 	}

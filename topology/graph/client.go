@@ -75,11 +75,13 @@ func (c *AsyncClient) sendWSMessage(conn *websocket.Conn, msg string) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(w, msg)
 
-	w.Close()
+	_, err = io.WriteString(w, msg)
+	if err != nil {
+		return err
+	}
 
-	return nil
+	return w.Close()
 }
 
 func (c *AsyncClient) connect() {
