@@ -46,6 +46,7 @@ type Metadatas map[string]interface{}
 type graphElement struct {
 	ID        Identifier
 	metadatas Metadatas
+	host      string
 }
 
 type Node struct {
@@ -120,7 +121,7 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	}{
 		ID:        n.ID,
 		Metadatas: n.metadatas,
-		Host:      host,
+		Host:      n.host,
 	})
 }
 
@@ -136,7 +137,7 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		Metadatas: e.metadatas,
 		Parent:    e.parent,
 		Child:     e.child,
-		Host:      host,
+		Host:      e.host,
 	})
 }
 
@@ -344,7 +345,8 @@ func (g *Graph) GetNode(i Identifier) *Node {
 func (g *Graph) NewNode(i Identifier, m Metadatas) *Node {
 	n := &Node{
 		graphElement: graphElement{
-			ID: i,
+			ID:   i,
+			host: host,
 		},
 	}
 
@@ -366,7 +368,8 @@ func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadatas) *Edge {
 		parent: p.ID,
 		child:  c.ID,
 		graphElement: graphElement{
-			ID: i,
+			ID:   i,
+			host: host,
 		},
 	}
 

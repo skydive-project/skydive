@@ -64,6 +64,8 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 		metadatas = Metadatas(m.(map[string]interface{}))
 	}
 
+	host := objMap["Host"].(string)
+
 	switch msg.Type {
 	/* Graph Section */
 	case "SubGraphDeleted":
@@ -81,6 +83,7 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 			graphElement: graphElement{
 				ID:        ID,
 				metadatas: metadatas,
+				host:      host,
 			},
 		}
 	case "EdgeUpdated":
@@ -95,6 +98,7 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 			graphElement: graphElement{
 				ID:        ID,
 				metadatas: metadatas,
+				host:      host,
 			},
 			parent: parent,
 			child:  child,
