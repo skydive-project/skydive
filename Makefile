@@ -8,7 +8,7 @@ PROTO_FILES=flow/flow.proto
 .bindata: godep builddep
 	go-bindata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/
 
-all: .proto .bindata
+all: genlocalfiles
 	godep go install -v ./...
 
 install: godep
@@ -25,3 +25,5 @@ builddep:
 	go get github.com/golang/protobuf/proto
 	go get github.com/golang/protobuf/protoc-gen-go
 	go get github.com/jteeuwen/go-bindata/...
+
+genlocalfiles: .proto .bindata
