@@ -59,6 +59,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 			probes[t] = NewOvsdbProbeFromConfig(g, n)
 		case "docker":
 			probes[t] = NewDockerProbeFromConfig(g, n)
+		case "neutron":
+			neutron, err := NewNeutronMapperFromConfig(g)
+			if err != nil {
+				logging.GetLogger().Errorf("Failed to initialize Neutron probe: %s", err.Error())
+				continue
+			}
+			probes[t] = neutron
 
 		default:
 			logging.GetLogger().Error("unknown probe type %s", t)

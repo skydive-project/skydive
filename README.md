@@ -89,12 +89,14 @@ agent:
   analyzers: 127.0.0.1:8082
   topology:
     # Probes used to capture topology informations like interfaces,
-    # bridges, namespaces, etc. Available netlink, netns, ovsdb.
+    # bridges, namespaces, etc...
+    # Available: netlink, netns, ovsdb, neutron.
     # Default: netlink, netns
     probes:
       - netlink
       - netns
       # - ovsdb
+      # - neutron
   flow:
     # Probes used to capture traffic.
     probes:
