@@ -36,7 +36,7 @@
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "efcaa340c1a788c79e1ca31217d66aa41c405a51"
+			"Rev": "6aaa8d47701fa6cf07e914ec01fde3d4a1fe79c3"
 		},
 		{
 			"ImportPath": "github.com/google/gopacket",
