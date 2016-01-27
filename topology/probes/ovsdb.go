@@ -194,9 +194,9 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	o.uuidToIntf[uuid] = intf
 
 	switch itype {
-	case "gre":
-		fallthrough
-	case "vxlan":
+	case "gre", "vxlan":
+		o.Graph.SetMetadata(intf, "Driver", "openvswitch")
+
 		m := row.New.Fields["options"].(libovsdb.OvsMap)
 		if ip, ok := m.GoMap["local_ip"]; ok {
 			o.Graph.SetMetadata(intf, "LocalIP", ip.(string))
@@ -204,6 +204,14 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		if ip, ok := m.GoMap["remote_ip"]; ok {
 			o.Graph.SetMetadata(intf, "RemoteIP", ip.(string))
 		}
+		m = row.New.Fields["status"].(libovsdb.OvsMap)
+		if iface, ok := m.GoMap["tunnel_egress_iface"]; ok {
+			o.Graph.SetMetadata(intf, "TunEgressIface", iface.(string))
+		}
+		if carrier, ok := m.GoMap["tunnel_egress_iface_carrier"]; ok {
+			o.Graph.SetMetadata(intf, "TunEgressIfaceCarrier", carrier.(string))
+		}
+
 	case "patch":
 		// force the driver as it is not defined and we need it to delete properly
 		o.Graph.SetMetadata(intf, "Driver", "openvswitch")
