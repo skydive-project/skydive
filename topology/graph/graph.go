@@ -212,7 +212,7 @@ func (g *Graph) LookupParentNodes(n *Node, f Metadatas) []*Node {
 		parent, child := g.backend.GetEdgeNodes(e)
 
 		if child != nil && child.ID == n.ID && parent.matchFilters(f) {
-			parents = append(parents, child)
+			parents = append(parents, parent)
 		}
 	}
 
