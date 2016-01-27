@@ -20,6 +20,15 @@ build: godep
 godep:
 	go get github.com/tools/godep
 
+fmt:
+	@echo "+ $@"
+	@test -z "$$(gofmt -s -l . | grep -v Godeps/_workspace/src/ | grep -v statics/bindata.go | tee /dev/stderr)" || \
+		echo "+ please format Go code with 'gofmt -s'"
+
+lint:
+	@echo "+ $@"
+	@test -z "$$(golint ./... | grep -v Godeps/_workspace/src/ | tee /dev/stderr)"
+
 # dependency package need for building the project
 builddep:
 	go get github.com/golang/protobuf/proto
