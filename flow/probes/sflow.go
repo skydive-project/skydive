@@ -109,6 +109,10 @@ func (probe *SFlowProbe) getProbePath(index uint32) *string {
 	return nil
 }
 
+func (probe *SFlowProbe) flowExpire(f *flow.Flow) {
+	/* send a special event to the analyzer */
+}
+
 func (probe *SFlowProbe) Start() error {
 	var buf [maxDgramSize]byte
 
@@ -125,7 +129,9 @@ func (probe *SFlowProbe) Start() error {
 
 	// start index/mac cache updater
 	go probe.cacheUpdater()
-	go flow.AsyncFlowTableUpdate()
+
+	flowtable := flow.NewFlowTable()
+	go flowtable.AsyncExpire(probe.flowExpire, 5*time.Minute)
 
 	for {
 		_, _, err := conn.ReadFromUDP(buf[:])
@@ -142,9 +148,11 @@ func (probe *SFlowProbe) Start() error {
 
 		if sflowPacket.SampleCount > 0 {
 			for _, sample := range sflowPacket.FlowSamples {
-				flows := flow.FLowsFromSFlowSample(&sample, probe.getProbePath(sample.InputInterface))
+				flows := flow.FLowsFromSFlowSample(flowtable, &sample, probe.getProbePath(sample.InputInterface))
 
 				logging.GetLogger().Debug("%d flows captured", len(flows))
+
+				flowtable.Update(flows)
 
 				if probe.FlowMappingPipeline != nil {
 					probe.FlowMappingPipeline.Enhance(flows)

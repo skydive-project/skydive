@@ -48,7 +48,8 @@ func LayerFlow(l gopacket.Layer) gopacket.Flow {
 	case gopacket.TransportLayer:
 		return l.(gopacket.TransportLayer).TransportFlow()
 	}
-	panic("Unknown gopacket.Layer " + reflect.TypeOf(l).String())
+	logging.GetLogger().Critical("Unknown gopacket.Layer " + reflect.TypeOf(l).String())
+	return gopacket.Flow{}
 }
 
 type FlowKey struct {
@@ -65,34 +66,7 @@ func (key FlowKey) String() string {
 	return fmt.Sprint("%x-%x", key.net, key.transport)
 }
 
-var flowTable = make(map[FlowKey]*Flow)
-
-func AsyncFlowTableUpdate() {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer func() {
-		ticker.Stop()
-	}()
-	for {
-		select {
-		case now := <-ticker.C:
-			flowTableSzBefore := len(flowTable)
-			expire := now.Unix() - int64((5 * time.Minute).Seconds())
-
-			for key, f := range flowTable {
-				fs := f.GetStatistics()
-				if fs.Last < expire {
-					duration := time.Duration(fs.Last - fs.Start)
-					logging.GetLogger().Debug("%v Expire flow %s Duration %v", now, f.UUID, duration)
-					/* send a special event to the analyzer */
-					delete(flowTable, key)
-				}
-			}
-			logging.GetLogger().Debug("%v Expire flow table size, removed %v now %v", now, flowTableSzBefore-len(flowTable), len(flowTable))
-		}
-	}
-}
-
-func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
+func (flow *Flow) fillFromGoPacket(ft *FlowTable, packet *gopacket.Packet) error {
 	/* Continue if no ethernet layer */
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	_, ok := ethernetLayer.(*layers.Ethernet)
@@ -102,12 +76,17 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 
 	/* FlowTable */
 	key := (FlowKey{}).fillFromGoPacket(packet)
-	f, found := flowTable[key]
+	ft.lock.Lock()
+	f, found := ft.table[key.String()]
 	if found == false {
-		flowTable[key] = flow
+		ft.table[key.String()] = flow
+		f = flow
 	} else if flow.UUID != f.UUID {
-		return errors.New(fmt.Sprint("FlowTable key (%s) Collision on flow.UUID (%s) and f.UUID (%s)", key.String(), flow.UUID, f.UUID))
+		fuuid := f.UUID
+		ft.lock.Unlock()
+		return errors.New(fmt.Sprint("FlowTable key (%s) Collision on flow.UUID (%s) and f.UUID (%s)", key.String(), flow.UUID, fuuid))
 	}
+	ft.lock.Unlock()
 
 	fs := f.GetStatistics()
 	if found == false {
@@ -165,7 +144,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func New(packet *gopacket.Packet, probePath *string) *Flow {
+func New(ft *FlowTable, packet *gopacket.Packet, probePath *string) *Flow {
 	u, _ := uuid.NewV4()
 	t := time.Now().Unix()
 
@@ -176,13 +155,13 @@ func New(packet *gopacket.Packet, probePath *string) *Flow {
 	}
 
 	if packet != nil {
-		flow.fillFromGoPacket(packet)
+		flow.fillFromGoPacket(ft, packet)
 	}
 
 	return flow
 }
 
-func FLowsFromSFlowSample(sample *layers.SFlowFlowSample, probePath *string) []*Flow {
+func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePath *string) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
@@ -193,7 +172,7 @@ func FLowsFromSFlowSample(sample *layers.SFlowFlowSample, probePath *string) []*
 			continue
 		}
 
-		flow := New(&record.Header, probePath)
+		flow := New(ft, &record.Header, probePath)
 		flows = append(flows, flow)
 	}
 

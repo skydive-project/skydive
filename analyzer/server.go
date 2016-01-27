@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -49,9 +50,15 @@ type Server struct {
 	GraphServer         *graph.Server
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	Storage             storage.Storage
+	FlowTable           *flow.FlowTable
+}
+
+func (s *Server) flowExpire(f *flow.Flow) {
+	s.FlowTable.Remove(f)
 }
 
 func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
+	s.FlowTable.Update(flows)
 	s.FlowMappingPipeline.Enhance(flows)
 
 	if s.Storage != nil {
@@ -180,6 +187,8 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 
+	flowtable := flow.NewFlowTable()
+
 	server := &Server{
 		Addr:                addr,
 		Port:                port,
@@ -187,8 +196,10 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 		TopoServer:          tserver,
 		GraphServer:         gserver,
 		FlowMappingPipeline: pipeline,
+		FlowTable:           flowtable,
 	}
 	server.RegisterRpcEndpoints()
+	flowtable.AsyncExpire(server.flowExpire, 10*time.Minute)
 
 	return server, nil
 }
