@@ -106,13 +106,13 @@ func (s *Server) RegisterStaticEndpoints() {
 
 func (s *Server) RegisterRpcEndpoints() {
 	routes := []rpc.Route{
-		rpc.Route{
+		{
 			"TopologiesIndex",
 			"GET",
 			"/rpc/topology",
 			s.TopologyIndex,
 		},
-		rpc.Route{
+		{
 			"TopologyShow",
 			"GET",
 			"/rpc/topology/{host}",

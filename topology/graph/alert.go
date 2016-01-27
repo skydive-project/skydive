@@ -340,25 +340,25 @@ func (c *Alert) RegisterStaticEndpoints() {
 
 func (c *Alert) RegisterRpcEndpoints() {
 	routes := []rpc.Route{
-		rpc.Route{
+		{
 			"AlertIndex",
 			"GET",
 			"/rpc/alert",
 			c.AlertIndex,
 		},
-		rpc.Route{
+		{
 			"AlertShow",
 			"GET",
 			"/rpc/alert/{alert}",
 			c.AlertShow,
 		},
-		rpc.Route{
+		{
 			"AlertInsert",
 			"POST",
 			"/rpc/alert",
 			c.AlertInsert,
 		},
-		rpc.Route{
+		{
 			"AlertDelete",
 			"DELETE",
 			"/rpc/alert/{alert}",
