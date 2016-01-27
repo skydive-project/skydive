@@ -125,6 +125,7 @@ func (probe *SFlowProbe) Start() error {
 
 	// start index/mac cache updater
 	go probe.cacheUpdater()
+	go flow.AsyncFlowTableUpdate()
 
 	for {
 		_, _, err := conn.ReadFromUDP(buf[:])

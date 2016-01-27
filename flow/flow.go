@@ -26,7 +26,8 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"strconv"
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -34,9 +35,92 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/nu7hatch/gouuid"
+
+	"github.com/redhat-cip/skydive/logging"
 )
 
+func LayerFlow(l gopacket.Layer) gopacket.Flow {
+	switch l.(type) {
+	case gopacket.LinkLayer:
+		return l.(gopacket.LinkLayer).LinkFlow()
+	case gopacket.NetworkLayer:
+		return l.(gopacket.NetworkLayer).NetworkFlow()
+	case gopacket.TransportLayer:
+		return l.(gopacket.TransportLayer).TransportFlow()
+	}
+	panic("Unknown gopacket.Layer " + reflect.TypeOf(l).String())
+}
+
+type FlowKey struct {
+	net, transport uint64
+}
+
+func (key FlowKey) fillFromGoPacket(p *gopacket.Packet) FlowKey {
+	key.net = LayerFlow((*p).NetworkLayer()).FastHash()
+	key.transport = LayerFlow((*p).TransportLayer()).FastHash()
+	return key
+}
+
+func (key FlowKey) String() string {
+	return fmt.Sprint("%x-%x", key.net, key.transport)
+}
+
+var flowTable = make(map[FlowKey]*Flow)
+
+func AsyncFlowTableUpdate() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer func() {
+		ticker.Stop()
+	}()
+	for {
+		select {
+		case now := <-ticker.C:
+			flowTableSzBefore := len(flowTable)
+			expire := now.Unix() - int64((5 * time.Minute).Seconds())
+
+			for key, f := range flowTable {
+				fs := f.GetStatistics()
+				if fs.Last < expire {
+					duration := time.Duration(fs.Last - fs.Start)
+					logging.GetLogger().Debug("%v Expire flow %s Duration %v", now, f.UUID, duration)
+					/* send a special event to the analyzer */
+					delete(flowTable, key)
+				}
+			}
+			logging.GetLogger().Debug("%v Expire flow table size, removed %v now %v", now, flowTableSzBefore-len(flowTable), len(flowTable))
+		}
+	}
+}
+
 func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
+	/* Continue if no ethernet layer */
+	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
+	_, ok := ethernetLayer.(*layers.Ethernet)
+	if !ok {
+		return errors.New("Unable to decode the ethernet layer")
+	}
+
+	/* FlowTable */
+	key := (FlowKey{}).fillFromGoPacket(packet)
+	f, found := flowTable[key]
+	if found == false {
+		flowTable[key] = flow
+	} else if flow.UUID != f.UUID {
+		return errors.New(fmt.Sprint("FlowTable key (%s) Collision on flow.UUID (%s) and f.UUID (%s)", key.String(), flow.UUID, f.UUID))
+	}
+
+	fs := f.GetStatistics()
+	if found == false {
+		fs.Start = (*packet).Metadata().Timestamp.Unix()
+		fs.newEthernetEndpointStatistics(packet)
+		fs.newIPV4EndpointStatistics(packet)
+		fs.newTransportEndpointStatistics(packet)
+	}
+	fs.Last = (*packet).Metadata().Timestamp.Unix()
+	fs.updateEthernetFromGoPacket(packet)
+	fs.updateIPV4FromGoPacket(packet)
+	fs.updateTransportFromGoPacket(packet)
+
 	hasher := sha1.New()
 
 	path := ""
@@ -46,62 +130,18 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 		}
 		path += layer.LayerType().String()
 	}
-	flow.LayersPath = proto.String(path)
-	hasher.Write([]byte(flow.GetLayersPath()))
+	flow.LayersPath = path
+	hasher.Write([]byte(flow.LayersPath))
 
-	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
-	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
-	if !ok {
-		return errors.New("Unable to decode the ethernet layer")
+	flow.DebugKeyNet = key.net
+	flow.DebugKeyTransport = key.transport
+
+	/* Generate an flow UUID */
+	for _, ep := range fs.GetEndpoints() {
+		hasher.Write([]byte(ep.AB.Value))
+		hasher.Write([]byte(ep.BA.Value))
 	}
-	flow.EtherSrc = proto.String(ethernetPacket.SrcMAC.String())
-	flow.EtherDst = proto.String(ethernetPacket.DstMAC.String())
-
-	hasher.Write([]byte(flow.GetEtherSrc()))
-	hasher.Write([]byte(flow.GetEtherDst()))
-
-	ipLayer := (*packet).Layer(layers.LayerTypeIPv4)
-	if ipLayer != nil {
-		ip, _ := ipLayer.(*layers.IPv4)
-
-		flow.Ipv4Src = proto.String(ip.SrcIP.String())
-		flow.Ipv4Dst = proto.String(ip.DstIP.String())
-
-		hasher.Write([]byte(flow.GetIpv4Src()))
-		hasher.Write([]byte(flow.GetIpv4Dst()))
-	}
-
-	udpLayer := (*packet).Layer(layers.LayerTypeUDP)
-	if udpLayer != nil {
-		udp, _ := udpLayer.(*layers.UDP)
-		flow.PortSrc = proto.Uint32(uint32(udp.SrcPort))
-		flow.PortDst = proto.Uint32(uint32(udp.DstPort))
-
-		hasher.Write([]byte(udp.SrcPort.String()))
-		hasher.Write([]byte(udp.DstPort.String()))
-	}
-
-	tcpLayer := (*packet).Layer(layers.LayerTypeTCP)
-	if tcpLayer != nil {
-		tcp, _ := tcpLayer.(*layers.TCP)
-		flow.PortSrc = proto.Uint32(uint32(tcp.SrcPort))
-		flow.PortDst = proto.Uint32(uint32(tcp.DstPort))
-
-		hasher.Write([]byte(tcp.SrcPort.String()))
-		hasher.Write([]byte(tcp.DstPort.String()))
-	}
-
-	icmpLayer := (*packet).Layer(layers.LayerTypeICMPv4)
-	if icmpLayer != nil {
-		icmp, _ := icmpLayer.(*layers.ICMPv4)
-		flow.ID = proto.Uint64(uint64(icmp.Id))
-
-		hasher.Write([]byte(strconv.Itoa(int(icmp.Id))))
-	}
-
-	/* update the temporary uuid */
-	flow.UUID = proto.String(hex.EncodeToString(hasher.Sum(nil)))
-
+	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 	return nil
 }
 
@@ -127,12 +167,12 @@ func (flow *Flow) GetData() ([]byte, error) {
 
 func New(packet *gopacket.Packet, probePath *string) *Flow {
 	u, _ := uuid.NewV4()
-	t := uint64(time.Now().Unix())
+	t := time.Now().Unix()
 
 	flow := &Flow{
-		UUID:           proto.String(u.String()),
-		Timestamp:      proto.Uint64(t),
-		ProbeGraphPath: probePath,
+		UUID:           u.String(),
+		DebugTimestamp: t,
+		ProbeGraphPath: *probePath,
 	}
 
 	if packet != nil {

@@ -20,33 +20,52 @@
  *
  */
 
-syntax = "proto2";
+syntax = "proto3";
+/* Note : o proto3 fields are optional by default
+          o required fields are not allowed in proto3 */ 
 
 package flow;
 
+enum FlowEndpointType {
+  ETHERNET = 0;
+  IPV4 = 1;
+  TCPPORT = 2;
+  UDPPORT = 3;
+  SCTPPORT = 4;
+}
+
+message FlowEndpointStatistics {
+  FlowEndpointType Type = 1;
+  string Value 	= 2;
+  uint64 Packets = 5;
+  uint64 Bytes = 6;
+}
+
+message FlowEndpointsStatistics {
+  FlowEndpointType Type = 1;
+  FlowEndpointStatistics AB = 3; /* A->B */
+  FlowEndpointStatistics BA = 4; /* B->A */
+}
+
+message FlowStatistics {
+  int64 Start = 1;
+  int64 Last = 2;
+  map<int32, FlowEndpointsStatistics> Endpoints = 3;
+}
+
 message Flow {
-	required string UUID 				= 1;
-	required string LayersPath 			= 2;
-	required string EtherSrc 			= 3;
-	required string EtherDst 			= 4;
-	optional string Ipv4Src 			= 5;
-	optional string Ipv4Dst 			= 6;
-	optional uint32 PortSrc 			= 7;
-	optional uint32 PortDst 			= 8;
-	optional uint64 ID 					= 9;
-	required uint64 Timestamp 			= 10;
+  string UUID 			= 1;
+  string LayersPath 		= 2;
+  string ProbeGraphPath	= 11;
 
-	optional string ProbeGraphPath 		= 11;
+  FlowStatistics Statistics 		= 3;
 
-	optional string IfSrcName			= 12;
-	optional string IfSrcType			= 13;
-	optional string IfSrcGraphPath		= 14;
-	optional string IfSrcTenantID 		= 15;
-	optional uint64 IfSrcVNI 			= 16;
+  /* useless, should be removed */
+  string IfSrcGraphPath	= 14;
+  string IfDstGraphPath	= 19;
 
-	optional string IfDstName			= 17;
-	optional string IfDstType			= 18;
-	optional string IfDstGraphPath		= 19;
-	optional string IfDstTenantID 		= 20;
-	optional uint64 IfDstVNI 			= 21;
+
+  int64 DebugTimestamp 	= 90;
+  uint64 DebugKeyNet =  91;
+  uint64 DebugKeyTransport =  92;
 }
