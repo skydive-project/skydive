@@ -130,7 +130,7 @@ func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) RegisterRpcEndpoints() {
 	routes := []rpc.Route{
-		rpc.Route{
+		{
 			"FlowSearch",
 			"GET",
 			"/rpc/flows",
