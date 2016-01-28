@@ -116,14 +116,14 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 	}
 	var strNodes, strLinks string
 	i := 0
+	strNodes += "\"nodes\":["
+	strLinks += "\"links\":["
 	for _, f := range ft.table {
 		ethFlow := f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()]
-		strNodes += "\"nodes\":["
-		strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%u},", ethFlow.AB.Value, pathMap[f.LayersPath])
-		strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%u}", ethFlow.BA.Value, pathMap[f.LayersPath])
+		strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", ethFlow.AB.Value, pathMap[f.LayersPath])
+		strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d}", ethFlow.BA.Value, pathMap[f.LayersPath])
 
-		strLinks += "\"links\":["
-		strLinks += fmt.Sprintf("{\"source\":\"%s\",\"target\":%u,\"value\":%u}", ethMap[ethFlow.AB.Value], ethMap[ethFlow.BA.Value], ethFlow.AB.Bytes+ethFlow.BA.Bytes)
+		strLinks += fmt.Sprintf("{\"source\":%d,\"target\":%d,\"value\":%d}", ethMap[ethFlow.AB.Value], ethMap[ethFlow.BA.Value], ethFlow.AB.Bytes+ethFlow.BA.Bytes)
 
 		if i < len(ft.table)-1 {
 			strNodes += ","
