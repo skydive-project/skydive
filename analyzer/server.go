@@ -26,8 +26,10 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -37,6 +39,7 @@ import (
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/rpc"
+	"github.com/redhat-cip/skydive/statics"
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
@@ -137,6 +140,50 @@ func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/data" {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(s.FlowTable.JSONFlowConversationEthernetPath()))
+		return
+	}
+
+	html, err := statics.Asset("statics/conversation.html")
+	if err != nil {
+		logging.GetLogger().Panic("Unable to find the conversation asset")
+	}
+
+	t := template.New("conversation template")
+
+	t, err = t.Parse(string(html))
+	if err != nil {
+		panic(err)
+	}
+
+	host, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	var data = &struct {
+		Hostname string
+		Port     int
+	}{
+		Hostname: host,
+		Port:     s.Port,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	t.Execute(w, data)
+}
+
+func (s *Server) RegisterStaticEndpoints() {
+	// static routes
+	s.Router.HandleFunc("/static/conversation", s.serveIndex)
+	s.Router.HandleFunc("/data/conversation.json", s.serveIndex)
+}
+
 func (s *Server) RegisterRpcEndpoints() {
 	routes := []rpc.Route{
 		{
@@ -198,8 +245,9 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 		FlowMappingPipeline: pipeline,
 		FlowTable:           flowtable,
 	}
+	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
-	flowtable.AsyncExpire(server.flowExpire, 10*time.Minute)
+	go flowtable.AsyncExpire(server.flowExpire, 10*time.Minute)
 
 	return server, nil
 }
