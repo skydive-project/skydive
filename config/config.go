@@ -46,6 +46,7 @@ func init() {
 	cfg.SetDefault("analyzer.flowtable_expire", 10)
 	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
 	cfg.SetDefault("ws_pong_timeout", 5)
+	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
 }
 
 func checkStrictPositive(key string) error {

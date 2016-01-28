@@ -57,6 +57,9 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 			probes[t] = NewNetNSProbe(g, n)
 		case "ovsdb":
 			probes[t] = NewOvsdbProbeFromConfig(g, n)
+		case "docker":
+			probes[t] = NewDockerProbeFromConfig(g, n)
+
 		default:
 			logging.GetLogger().Error("unknown probe type %s", t)
 		}

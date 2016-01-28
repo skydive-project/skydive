@@ -231,7 +231,7 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 		return nil, err
 	}
 
-	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
+	pipeline := mappings.NewFlowMappingPipeline(gfe)
 
 	flowtable := flow.NewFlowTable()
 

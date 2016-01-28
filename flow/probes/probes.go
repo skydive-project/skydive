@@ -46,7 +46,7 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 		panic(err)
 	}
 
-	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
+	pipeline := mappings.NewFlowMappingPipeline(gfe)
 
 	var aclient *analyzer.Client
 
