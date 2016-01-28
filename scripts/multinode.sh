@@ -29,7 +29,7 @@ function start() {
 		sudo ovs-vsctl add-port br-tun patch-tun -- set interface patch-tun type=patch
 		sudo ovs-vsctl set interface patch-int option:peer=patch-tun
 		sudo ovs-vsctl set interface patch-tun option:peer=patch-int
-		sudo ovs-vsctl add-port br-tun mn-gre0 -- set interface mn-gre0 type=gre options:remote_ip=$1
+		sudo ovs-vsctl add-port br-tun mn-gre0 -- set interface mn-gre0 type=gre options:remote_ip=$2
 	fi
 }
 
