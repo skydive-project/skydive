@@ -141,7 +141,7 @@ func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/data" {
+	if r.URL.Path == "/data/conversation.json" {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(s.FlowTable.JSONFlowConversationEthernetPath()))
