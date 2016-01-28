@@ -27,14 +27,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-
-	"github.com/nu7hatch/gouuid"
 
 	"github.com/redhat-cip/skydive/logging"
 )
@@ -48,7 +45,7 @@ func LayerFlow(l gopacket.Layer) gopacket.Flow {
 	case gopacket.TransportLayer:
 		return l.(gopacket.TransportLayer).TransportFlow()
 	}
-	logging.GetLogger().Critical("Unknown gopacket.Layer " + reflect.TypeOf(l).String())
+	logging.GetLogger().Critical(fmt.Sprint("Unknown gopacket.Layer %T", l))
 	return gopacket.Flow{}
 }
 
@@ -63,10 +60,10 @@ func (key FlowKey) fillFromGoPacket(p *gopacket.Packet) FlowKey {
 }
 
 func (key FlowKey) String() string {
-	return fmt.Sprint("%x-%x", key.net, key.transport)
+	return fmt.Sprintf("%x-%x", key.net, key.transport)
 }
 
-func (flow *Flow) fillFromGoPacket(ft *FlowTable, packet *gopacket.Packet) error {
+func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	/* Continue if no ethernet layer */
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	_, ok := ethernetLayer.(*layers.Ethernet)
@@ -74,53 +71,42 @@ func (flow *Flow) fillFromGoPacket(ft *FlowTable, packet *gopacket.Packet) error
 		return errors.New("Unable to decode the ethernet layer")
 	}
 
-	/* FlowTable */
-	key := (FlowKey{}).fillFromGoPacket(packet)
-	ft.lock.Lock()
-	f, found := ft.table[key.String()]
-	if found == false {
-		ft.table[key.String()] = flow
-		f = flow
-	} else if flow.UUID != f.UUID {
-		fuuid := f.UUID
-		ft.lock.Unlock()
-		return errors.New(fmt.Sprint("FlowTable key (%s) Collision on flow.UUID (%s) and f.UUID (%s)", key.String(), flow.UUID, fuuid))
-	}
-	ft.lock.Unlock()
-
-	fs := f.GetStatistics()
-	if found == false {
-		fs.Start = (*packet).Metadata().Timestamp.Unix()
+	newFlow := false
+	fs := flow.GetStatistics()
+	now := time.Now().Unix() //(*packet).Metadata().Timestamp.Unix()
+	if fs == nil {
+		newFlow = true
+		fs = NewFlowStatistics()
+		fs.Start = now
 		fs.newEthernetEndpointStatistics(packet)
 		fs.newIPV4EndpointStatistics(packet)
 		fs.newTransportEndpointStatistics(packet)
+		flow.Statistics = fs
 	}
-	fs.Last = (*packet).Metadata().Timestamp.Unix()
+	fs.Last = now
 	fs.updateEthernetFromGoPacket(packet)
 	fs.updateIPV4FromGoPacket(packet)
 	fs.updateTransportFromGoPacket(packet)
 
-	hasher := sha1.New()
-
-	path := ""
-	for i, layer := range (*packet).Layers() {
-		if i > 0 {
-			path += "/"
+	if newFlow {
+		hasher := sha1.New()
+		path := ""
+		for i, layer := range (*packet).Layers() {
+			if i > 0 {
+				path += "/"
+			}
+			path += layer.LayerType().String()
 		}
-		path += layer.LayerType().String()
-	}
-	flow.LayersPath = path
-	hasher.Write([]byte(flow.LayersPath))
+		flow.LayersPath = path
+		hasher.Write([]byte(flow.LayersPath))
 
-	flow.DebugKeyNet = key.net
-	flow.DebugKeyTransport = key.transport
-
-	/* Generate an flow UUID */
-	for _, ep := range fs.GetEndpoints() {
-		hasher.Write([]byte(ep.AB.Value))
-		hasher.Write([]byte(ep.BA.Value))
+		/* Generate an flow UUID */
+		for _, ep := range fs.GetEndpoints() {
+			hasher.Write([]byte(ep.AB.Value))
+			hasher.Write([]byte(ep.BA.Value))
+		}
+		flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 	}
-	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 	return nil
 }
 
@@ -144,23 +130,6 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func New(ft *FlowTable, packet *gopacket.Packet, probePath *string) *Flow {
-	u, _ := uuid.NewV4()
-	t := time.Now().Unix()
-
-	flow := &Flow{
-		UUID:           u.String(),
-		DebugTimestamp: t,
-		ProbeGraphPath: *probePath,
-	}
-
-	if packet != nil {
-		flow.fillFromGoPacket(ft, packet)
-	}
-
-	return flow
-}
-
 func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePath *string) []*Flow {
 	flows := []*Flow{}
 
@@ -172,7 +141,17 @@ func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 			continue
 		}
 
-		flow := New(ft, &record.Header, probePath)
+		packet := &record.Header
+		key := (FlowKey{}).fillFromGoPacket(packet)
+		flow, new := ft.GetFlow(key.String(), packet)
+		if new {
+			flow.ProbeGraphPath = *probePath
+
+			flow.DebugTimestamp = time.Now().Unix()
+			flow.DebugKeyNet = key.net
+			flow.DebugKeyTransport = key.transport
+		}
+		flow.fillFromGoPacket(packet)
 		flows = append(flows, flow)
 	}
 

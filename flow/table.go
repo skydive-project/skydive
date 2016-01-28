@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gopacket"
+
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -75,6 +77,18 @@ func (ft *FlowTable) Remove(f *Flow) {
 	} else {
 		logging.GetLogger().Critical("FlowTable flow %s did not exist ...", f.UUID)
 	}
+}
+
+func (ft *FlowTable) GetFlow(key string, packet *gopacket.Packet) (flow *Flow, new bool) {
+	logging.GetLogger().Debug("flow key %s", key)
+	ft.lock.Lock()
+	flow, found := ft.table[key]
+	if found == false {
+		flow = &Flow{}
+		ft.table[key] = flow
+	}
+	ft.lock.Unlock()
+	return flow, !found
 }
 
 func (ft *FlowTable) JSONFlowConversationEthernetPath() string {

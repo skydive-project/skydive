@@ -33,8 +33,17 @@ func (x FlowEndpointType) Value() int32 {
 	return int32(x)
 }
 
+func NewFlowStatistics() *FlowStatistics {
+	fs := &FlowStatistics{}
+	fs.Endpoints = make(map[int32]*FlowEndpointsStatistics)
+	return fs
+}
+
 func (fs *FlowStatistics) newEthernetEndpointStatistics(packet *gopacket.Packet) error {
-	ep := fs.Endpoints[FlowEndpointType_ETHERNET.Value()]
+	ep := &FlowEndpointsStatistics{}
+	ep.AB = &FlowEndpointStatistics{}
+	ep.BA = &FlowEndpointStatistics{}
+
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
@@ -44,6 +53,7 @@ func (fs *FlowStatistics) newEthernetEndpointStatistics(packet *gopacket.Packet)
 	ep.Type = FlowEndpointType_ETHERNET
 	ep.AB.Value = ethernetPacket.SrcMAC.String()
 	ep.BA.Value = ethernetPacket.DstMAC.String()
+	fs.Endpoints[FlowEndpointType_ETHERNET.Value()] = ep
 	return nil
 }
 
@@ -71,7 +81,10 @@ func (fs *FlowStatistics) updateEthernetFromGoPacket(packet *gopacket.Packet) er
 }
 
 func (fs *FlowStatistics) newIPV4EndpointStatistics(packet *gopacket.Packet) error {
-	ep := fs.Endpoints[FlowEndpointType_IPV4.Value()]
+	ep := &FlowEndpointsStatistics{}
+	ep.AB = &FlowEndpointStatistics{}
+	ep.BA = &FlowEndpointStatistics{}
+
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
 	ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
 	if !ok {
@@ -81,11 +94,13 @@ func (fs *FlowStatistics) newIPV4EndpointStatistics(packet *gopacket.Packet) err
 	ep.Type = FlowEndpointType_IPV4
 	ep.AB.Value = ipv4Packet.SrcIP.String()
 	ep.BA.Value = ipv4Packet.DstIP.String()
+	fs.Endpoints[FlowEndpointType_IPV4.Value()] = ep
 	return nil
 }
 
 func (fs *FlowStatistics) updateIPV4FromGoPacket(packet *gopacket.Packet) error {
 	ep := fs.Endpoints[FlowEndpointType_IPV4.Value()]
+
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
 	ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
 	if !ok {
@@ -104,6 +119,10 @@ func (fs *FlowStatistics) updateIPV4FromGoPacket(packet *gopacket.Packet) error 
 }
 
 func (fs *FlowStatistics) newTransportEndpointStatistics(packet *gopacket.Packet) error {
+	ep := &FlowEndpointsStatistics{}
+	ep.AB = &FlowEndpointStatistics{}
+	ep.BA = &FlowEndpointStatistics{}
+
 	var transportLayer gopacket.Layer
 	var ok bool
 	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
@@ -123,7 +142,6 @@ func (fs *FlowStatistics) newTransportEndpointStatistics(packet *gopacket.Packet
 		}
 	}
 
-	ep := fs.Endpoints[ptype.Value()]
 	ep.Type = ptype
 	switch ptype {
 	case FlowEndpointType_TCPPORT:
@@ -139,19 +157,21 @@ func (fs *FlowStatistics) newTransportEndpointStatistics(packet *gopacket.Packet
 		ep.AB.Value = transportPacket.SrcPort.String()
 		ep.BA.Value = transportPacket.DstPort.String()
 	}
+	fs.Endpoints[ptype.Value()] = ep
 	return nil
 }
 
 func (fs *FlowStatistics) updateTransportFromGoPacket(packet *gopacket.Packet) error {
-	transportLayer := (*packet).Layer(layers.LayerTypeTCP)
+	var transportLayer gopacket.Layer
+	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
 	_, ok := transportLayer.(*layers.TCP)
 	ptype := FlowEndpointType_TCPPORT
 	if !ok {
-		transportLayer := (*packet).Layer(layers.LayerTypeUDP)
+		transportLayer = (*packet).Layer(layers.LayerTypeUDP)
 		_, ok := transportLayer.(*layers.UDP)
 		ptype = FlowEndpointType_UDPPORT
 		if !ok {
-			transportLayer := (*packet).Layer(layers.LayerTypeSCTP)
+			transportLayer = (*packet).Layer(layers.LayerTypeSCTP)
 			_, ok := transportLayer.(*layers.SCTP)
 			ptype = FlowEndpointType_SCTPPORT
 			if !ok {
