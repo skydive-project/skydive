@@ -47,6 +47,7 @@ type Agent struct {
 	TopoServer  *topology.Server
 	NsProbe     *tprobes.NetNSProbe
 	NlProbe     *tprobes.NetLinkProbe
+	DockerProbe *tprobes.DockerProbe
 	OvsMon      *ovsdb.OvsMonitor
 	OvsProbe    *tprobes.OvsdbProbe
 	SFlowProbe  *fprobes.SFlowProbe
@@ -95,19 +96,21 @@ func (a *Agent) Start() {
 		a.Gclient.Connect()
 	}
 
+	pipeline := mappings.NewFlowMappingPipeline()
+
 	gfe, err := mappings.NewGraphFlowEnhancer(a.Graph)
 	if err != nil {
 		panic(err)
 	}
-
-	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
-	a.SFlowProbe.SetMappingPipeline(pipeline)
+	pipeline.AddFlowEnhancer(gfe)
 
 	// start probes that will update the graph
 	a.NsProbe.Start()
 	a.NlProbe.Start()
 	a.OvsProbe.Start()
+	a.DockerProbe.Start()
 
+	a.SFlowProbe.SetMappingPipeline(pipeline)
 	go a.SFlowProbe.Start()
 
 	if err := a.OvsMon.StartMonitoring(); err != nil {
@@ -123,6 +126,7 @@ func (a *Agent) Stop() {
 	a.SFlowProbe.Stop()
 	a.NlProbe.Stop()
 	a.NsProbe.Stop()
+	a.DockerProbe.Stop()
 	a.OvsMon.StopMonitoring()
 	a.TopoServer.Stop()
 	a.GraphServer.Stop()
@@ -154,6 +158,7 @@ func NewAgent() *Agent {
 	ns := tprobes.NewNetNSProbe(g, root)
 	nl := tprobes.NewNetLinkProbe(g, root)
 	ovs := tprobes.NewOvsdbProbe(g, root, ovsmon)
+	docker := tprobes.NewDockerProbeFromConfig(ns)
 
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -174,6 +179,7 @@ func NewAgent() *Agent {
 		Graph:       g,
 		NsProbe:     ns,
 		NlProbe:     nl,
+		DockerProbe: docker,
 		OvsMon:      ovsmon,
 		OvsProbe:    ovs,
 		TopoServer:  server,

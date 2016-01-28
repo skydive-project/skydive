@@ -46,8 +46,12 @@ func (fe *FlowMappingPipeline) Enhance(flows []*flow.Flow) {
 	}
 }
 
-func NewFlowMappingPipeline(e []FlowEnhancer) *FlowMappingPipeline {
+func (fmp *FlowMappingPipeline) AddFlowEnhancer(e FlowEnhancer) {
+	fmp.Enhancers = append(fmp.Enhancers, e)
+}
+
+func NewFlowMappingPipeline(enhancers ...FlowEnhancer) *FlowMappingPipeline {
 	return &FlowMappingPipeline{
-		Enhancers: e,
+		Enhancers: enhancers,
 	}
 }
