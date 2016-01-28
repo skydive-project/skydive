@@ -76,6 +76,7 @@ func main() {
 	<-ch
 
 	server.Stop()
+	storage.Close()
 
 	logging.GetLogger().Notice("Skydive Analyzer stopped.")
 }
