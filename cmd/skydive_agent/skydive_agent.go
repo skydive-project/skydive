@@ -42,12 +42,14 @@ import (
 )
 
 func usage() {
-	fmt.Printf("Usage: %s -conf <config.ini> [-h]\n", os.Args[0])
+	fmt.Printf("Usage: %s -conf <config.ini> -trace <trace.pcap> [-h]\n", os.Args[0])
 }
 
 func main() {
 	filename := flag.String("conf", "/etc/skydive/skydive.ini",
 		"Config file with all the skydive parameter.")
+	pcaptrace := flag.String("trace", "",
+		"PCAP trace file to inject to Skydive Analyzer.")
 	flag.CommandLine.Usage = usage
 	flag.Parse()
 
@@ -78,7 +80,16 @@ func main() {
 	// send a first reset event to the analyzers
 	g.DelSubGraph(root)
 
-	sflowProbe, err := fprobes.NewSFlowProbeFromConfig(g)
+	var sflowProbe fprobes.Probe
+	sflowProbe, err = fprobes.NewSFlowProbeFromConfig(g)
+
+	if pcaptrace != nil { /* PCAP Injection mode */
+		sflowProbe, err = fprobes.NewPcapProbe(*pcaptrace, g)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	if err != nil {
 		panic(err)
 	}

@@ -22,5 +22,14 @@
 
 package probes
 
+import (
+	"github.com/redhat-cip/skydive/analyzer"
+	"github.com/redhat-cip/skydive/flow/mappings"
+)
+
 type Probe interface {
+	GetTarget() string
+	SetAnalyzerClient(a *analyzer.Client)
+	SetMappingPipeline(p *mappings.FlowMappingPipeline)
+	Start() error
 }
