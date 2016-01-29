@@ -287,7 +287,7 @@ func (probe *PcapProbe) AsyncProgressInfo() {
 	for {
 		select {
 		case <-ticker.C:
-			logging.GetLogger().Debug("%d", nbpackets)
+			logging.GetLogger().Debug("%d packets replayed | %s", nbpackets, probe.flowtable.String())
 		}
 	}
 }
@@ -315,8 +315,7 @@ func (probe *PcapProbe) Start() error {
 	for {
 		data, _, err := handleRead.ReadPacketData()
 		if err != nil && err != io.EOF {
-			logging.GetLogger().Debug("Capture file has been cut in the middle of a packet")
-			logging.GetLogger().Fatal(err)
+			logging.GetLogger().Debug("Capture file has been cut in the middle of a packet", err.Error())
 			break
 		} else if err == io.EOF {
 			logging.GetLogger().Debug("End of capture file")
@@ -355,6 +354,11 @@ func (probe *PcapProbe) Start() error {
 			}
 		}
 	}
+
+	logging.GetLogger().Info("PCAP Trace replay is finished, press Return to quit")
+	var b []byte = make([]byte, 1)
+	os.Stdin.Read(b)
+	os.Exit(0)
 
 	return nil
 }
