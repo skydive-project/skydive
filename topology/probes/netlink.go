@@ -279,12 +279,25 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 
 	var intf *graph.Node
 
-	// case of removing the interface from a bridge
 	intfs := u.Graph.LookupNodes(graph.Metadatas{"IfIndex": int64(index)})
-	if len(intfs) > 0 {
-		// FIX(safchain) assuming we have only one interface with this index, not true with netns
+	switch l := len(intfs); {
+	case l == 1:
 		intf = intfs[0]
+	case l > 1:
+	Loop:
+		for _, i := range intfs {
+			parents := u.Graph.LookupParentNodes(i, nil)
+			for _, parent := range parents {
+				if parent.ID == u.Root.ID {
+					intf = i
+					break Loop
+				}
+			}
+		}
+	}
 
+	// case of removing the interface from a bridge
+	if intf != nil {
 		parents := u.Graph.LookupParentNodes(intf, graph.Metadatas{"Type": "bridge"})
 		for _, parent := range parents {
 			u.Graph.Unlink(parent, intf)

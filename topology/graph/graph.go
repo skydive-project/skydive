@@ -118,7 +118,15 @@ func (e *graphElement) matchFilters(f Metadatas) bool {
 }
 
 func (e *graphElement) String() string {
-	j, _ := json.Marshal(e)
+	j, _ := json.Marshal(&struct {
+		ID        Identifier
+		Metadatas Metadatas `json:",omitempty"`
+		Host      string
+	}{
+		ID:        e.ID,
+		Metadatas: e.metadatas,
+		Host:      e.host,
+	})
 	return string(j)
 }
 
@@ -173,8 +181,8 @@ func (g *Graph) SetMetadata(e interface{}, k string, v interface{}) {
 	g.notifyMetadataUpdated(e)
 }
 
-func (g *Graph) getAncestorsTo(n *Node, f Metadatas, ancestors *[]*Node) bool {
-	*ancestors = append(*ancestors, n)
+func (g *Graph) getAncestorsTo(n *Node, f Metadatas, ancestors []*Node) ([]*Node, bool) {
+	ancestors = append(ancestors, n)
 
 	edges := g.backend.GetNodeEdges(n)
 
@@ -182,8 +190,8 @@ func (g *Graph) getAncestorsTo(n *Node, f Metadatas, ancestors *[]*Node) bool {
 		parent, child := g.backend.GetEdgeNodes(e)
 
 		if child != nil && child.ID == n.ID && parent.matchFilters(f) {
-			*ancestors = append(*ancestors, parent)
-			return true
+			ancestors = append(ancestors, parent)
+			return ancestors, true
 		}
 	}
 
@@ -191,21 +199,18 @@ func (g *Graph) getAncestorsTo(n *Node, f Metadatas, ancestors *[]*Node) bool {
 		parent, child := g.backend.GetEdgeNodes(e)
 
 		if child != nil && child.ID == n.ID {
-			if g.getAncestorsTo(parent, f, ancestors) {
-				return true
+			a, ok := g.getAncestorsTo(parent, f, ancestors)
+			if ok {
+				return a, true
 			}
 		}
 	}
 
-	return false
+	return ancestors, false
 }
 
 func (g *Graph) GetAncestorsTo(n *Node, f Metadatas) ([]*Node, bool) {
-	ancestors := []*Node{}
-
-	ok := g.getAncestorsTo(n, f, &ancestors)
-
-	return ancestors, ok
+	return g.getAncestorsTo(n, f, []*Node{})
 }
 
 func (g *Graph) LookupParentNodes(n *Node, f Metadatas) []*Node {
@@ -215,7 +220,7 @@ func (g *Graph) LookupParentNodes(n *Node, f Metadatas) []*Node {
 		parent, child := g.backend.GetEdgeNodes(e)
 
 		if child != nil && child.ID == n.ID && parent.matchFilters(f) {
-			parents = append(parents, child)
+			parents = append(parents, parent)
 		}
 	}
 
