@@ -24,10 +24,14 @@ package graph
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/nu7hatch/gouuid"
+
+	"github.com/redhat-cip/skydive/config"
 )
 
 type Identifier string
@@ -91,6 +95,11 @@ func GenID() Identifier {
 	u, _ := uuid.NewV4()
 
 	return Identifier(u.String())
+}
+
+func (m *Metadatas) String() string {
+	j, _ := json.Marshal(m)
+	return string(j)
 }
 
 func (e *graphElement) Metadatas() Metadatas {
@@ -410,6 +419,9 @@ func (g *Graph) delSubGraph(n *Node, m map[Identifier]bool) {
 
 	for _, e := range g.backend.GetNodeEdges(n) {
 		_, child := g.backend.GetEdgeNodes(e)
+		if child == nil {
+			continue
+		}
 
 		if child.ID != n.ID {
 			g.delSubGraph(child, m)
@@ -498,4 +510,31 @@ func NewGraph(b GraphBackend) (*Graph, error) {
 	return &Graph{
 		backend: b,
 	}, nil
+}
+
+func BackendFromConfig() (GraphBackend, error) {
+	backend := config.GetConfig().Section("graph").Key("backend").String()
+	if len(backend) == 0 {
+		backend = "memory"
+	}
+
+	switch backend {
+	case "memory":
+		return NewMemoryBackend()
+	case "gremlin":
+		gremlin := config.GetConfig().Section("graph").Key("gremlin").Strings(":")
+		if len(gremlin) != 2 {
+			return nil, errors.New("Config file is misconfigured, gremlin host:ip error")
+		}
+
+		host := gremlin[0]
+		port, err := strconv.Atoi(gremlin[1])
+		if err != nil {
+			return nil, errors.New("Config file is misconfigured, gremlin host:ip error")
+		}
+
+		return NewGremlinBackend(host, port)
+	default:
+		return nil, errors.New("Config file is misconfigured, graph backend unknown: " + backend)
+	}
 }

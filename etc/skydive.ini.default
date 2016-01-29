@@ -26,3 +26,8 @@ analyzers = 127.0.0.1:8082
 
 [storage]
 elasticsearch = 127.0.0.1:9200
+
+[graph]
+# graph backend memory, gremlin
+backend = memory
+gremlin = 127.0.0.1:8182

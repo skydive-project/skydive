@@ -46,11 +46,11 @@ type NetLinkProbe struct {
 	Root              *graph.Node
 	nlSocket          *nl.NetlinkSocket
 	doneChan          chan struct{}
-	indexTointfsQueue map[uint32][]*graph.Node
+	indexTointfsQueue map[int64][]*graph.Node
 }
 
 func (u *NetLinkProbe) handleIntfIsBridgeMember(intf *graph.Node, link netlink.Link) {
-	index := uint32(link.Attrs().Index)
+	index := int64(link.Attrs().Index)
 
 	// add children of this interface that haven previously added
 	if children, ok := u.indexTointfsQueue[index]; ok {
@@ -62,7 +62,7 @@ func (u *NetLinkProbe) handleIntfIsBridgeMember(intf *graph.Node, link netlink.L
 
 	// interface being a part of a bridge
 	if link.Attrs().MasterIndex != 0 {
-		index := uint32(link.Attrs().MasterIndex)
+		index := int64(link.Attrs().MasterIndex)
 
 		// assuming we have only one parent with this index
 		parent := u.Graph.LookupFirstNode(graph.Metadatas{"IfIndex": index, "Type": "bridge"})
@@ -94,7 +94,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			}
 
 			// got more than 1 peer, unable to find the right one, wait for the other to discover
-			peer := u.Graph.LookupFirstNode(graph.Metadatas{"IfIndex": uint32(index), "Type": "veth"})
+			peer := u.Graph.LookupFirstNode(graph.Metadatas{"IfIndex": int64(index), "Type": "veth"})
 			if peer != nil && !u.Graph.AreLinked(peer, intf) {
 				u.Graph.NewEdge(graph.GenID(), peer, intf, graph.Metadatas{"Type": "veth"})
 				return true
@@ -102,7 +102,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			return false
 		}
 
-		if uint32(index) > intf.Metadatas()["IfIndex"].(uint32) {
+		if int64(index) > intf.Metadatas()["IfIndex"].(int64) {
 			ok := peerResolver()
 			if !ok {
 				// retry few second later since the right peer can be insert later
@@ -120,7 +120,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 
 func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	name := link.Attrs().Name
-	index := uint32(link.Attrs().Index)
+	index := int64(link.Attrs().Index)
 
 	var intf *graph.Node
 	if name != "lo" {
@@ -132,6 +132,10 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 
 	if intf == nil {
 		intf = u.Graph.NewNode(graph.GenID(), m)
+	}
+
+	if intf == nil {
+		return nil
 	}
 
 	if !u.Graph.AreLinked(u.Root, intf) {
@@ -146,7 +150,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 
 func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadatas) *graph.Node {
 	name := link.Attrs().Name
-	index := uint32(link.Attrs().Index)
+	index := int64(link.Attrs().Index)
 
 	intf := u.Graph.LookupFirstNode(graph.Metadatas{
 		"Name":    name,
@@ -206,16 +210,16 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	metadatas := graph.Metadatas{
 		"Name":    link.Attrs().Name,
 		"Type":    link.Type(),
-		"IfIndex": uint32(link.Attrs().Index),
+		"IfIndex": int64(link.Attrs().Index),
 		"MAC":     link.Attrs().HardwareAddr.String(),
-		"MTU":     uint32(link.Attrs().MTU),
+		"MTU":     int64(link.Attrs().MTU),
 		"Driver":  driver,
 	}
 
-	ipv4 := u.getLinkIPV4Addr(link)
+	/*ipv4 := u.getLinkIPV4Addr(link)
 	if len(ipv4) > 0 {
 		metadatas["IPV4"] = ipv4
-	}
+	}*/
 
 	if vlan, ok := link.(*netlink.Vlan); ok {
 		metadatas["Vlan"] = vlan.VlanId
@@ -276,7 +280,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 	var intf *graph.Node
 
 	// case of removing the interface from a bridge
-	intfs := u.Graph.LookupNodes(graph.Metadatas{"IfIndex": uint32(index)})
+	intfs := u.Graph.LookupNodes(graph.Metadatas{"IfIndex": int64(index)})
 	if len(intfs) > 0 {
 		// FIX(safchain) assuming we have only one interface with this index, not true with netns
 		intf = intfs[0]
@@ -301,7 +305,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 		}
 	}
 
-	delete(u.indexTointfsQueue, uint32(index))
+	delete(u.indexTointfsQueue, int64(index))
 }
 
 func (u *NetLinkProbe) initialize() {
@@ -406,6 +410,6 @@ func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
 		Graph:             g,
 		Root:              n,
 		doneChan:          make(chan struct{}),
-		indexTointfsQueue: make(map[uint32][]*graph.Node),
+		indexTointfsQueue: make(map[int64][]*graph.Node),
 	}
 }

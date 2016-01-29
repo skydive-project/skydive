@@ -31,6 +31,10 @@
 			"Rev": "2d1be381ce47537e9e076b2b76dc70933162e4e9"
 		},
 		{
+			"ImportPath": "github.com/go-gremlin/gremlin",
+			"Rev": "e74ebaf231668d5133d3794ac6cb654309da5a8f"
+		},
+		{
 			"ImportPath": "github.com/golang/protobuf/proto",
 			"Rev": "efcaa340c1a788c79e1ca31217d66aa41c405a51"
 		},
@@ -80,6 +84,10 @@
 		{
 			"ImportPath": "github.com/safchain/ethtool",
 			"Rev": "0d3300ef113b4352a61230cd89bf231a60bb9bb3"
+		},
+		{
+			"ImportPath": "github.com/satori/go.uuid",
+			"Rev": "d41af8bb6a7704f00bc3b7cba9355ae6a5a80048"
 		},
 		{
 			"ImportPath": "github.com/sbinet/go-eval",

@@ -24,6 +24,7 @@ package graph
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -57,6 +58,7 @@ const (
 type WSClient struct {
 	Type   ClientType
 	conn   *websocket.Conn
+	read   chan []byte
 	send   chan []byte
 	server *WSServer
 }
@@ -70,11 +72,11 @@ type WSServer struct {
 	unregister chan *WSClient
 }
 
-func (c *WSClient) processGraphMessage(p []byte) {
+func (c *WSClient) processGraphMessage(m []byte) {
 	c.server.Graph.Lock()
 	defer c.server.Graph.Unlock()
 
-	msg, err := UnmarshalWSMessage(p)
+	msg, err := UnmarshalWSMessage(m)
 	if err != nil {
 		logging.GetLogger().Error("Graph: Unable to parse the event %s: %s", msg, err.Error())
 		return
@@ -127,6 +129,22 @@ func (c *WSClient) processGraphMessage(p []byte) {
 	}
 }
 
+func (c *WSClient) processGraphMessages(wg *sync.WaitGroup, quit chan struct{}) {
+	for {
+		select {
+		case m, ok := <-c.read:
+			if !ok {
+				wg.Done()
+				return
+			}
+			c.processGraphMessage(m)
+		case <-quit:
+			wg.Done()
+			return
+		}
+	}
+}
+
 /* Called by alert.EvalNodes() */
 func (c *WSClient) OnAlert(amsg *AlertMessage) {
 	reply := WSMessage{
@@ -150,16 +168,16 @@ func (c *WSClient) readPump() {
 	})
 
 	for {
-		_, p, err := c.conn.ReadMessage()
+		_, m, err := c.conn.ReadMessage()
 		if err != nil {
 			break
 		}
 
-		c.processGraphMessage(p)
+		c.read <- m
 	}
 }
 
-func (c *WSClient) writePump() {
+func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
 	ticker := time.NewTicker(pingPeriod)
 
 	defer func() {
@@ -172,16 +190,22 @@ func (c *WSClient) writePump() {
 		case message, ok := <-c.send:
 			if !ok {
 				c.write(websocket.CloseMessage, []byte{})
+				wg.Done()
 				return
 			}
 			if err := c.write(websocket.TextMessage, message); err != nil {
 				logging.GetLogger().Warning("Error while writing to the websocket: %s", err.Error())
+				wg.Done()
 				return
 			}
 		case <-ticker.C:
 			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
+				wg.Done()
 				return
 			}
+		case <-quit:
+			wg.Done()
+			return
 		}
 	}
 }
@@ -199,22 +223,17 @@ func (s *WSServer) ListenAndServe() {
 			if c.Type == ALERTCLIENT {
 				s.Alert.AddEventListener(c)
 			}
-			break
-
 		case c := <-s.unregister:
 			_, ok := s.clients[c]
 			if ok {
 				if c.Type == ALERTCLIENT {
 					s.Alert.DelEventListener(c)
 				}
-				delete(s.clients, c)
-				close(c.send)
-			}
-			break
 
+				delete(s.clients, c)
+			}
 		case m := <-s.broadcast:
 			s.broadcastMessage(m)
-			break
 		}
 	}
 }
@@ -223,11 +242,7 @@ func (s *WSServer) broadcastMessage(m string) {
 	for c := range s.clients {
 		select {
 		case c.send <- []byte(m):
-			break
-
-			// We can't reach the client
 		default:
-			close(c.send)
 			delete(s.clients, c)
 		}
 	}
@@ -276,13 +291,12 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/ws/graph":
 		ctype = GRAPHCLIENT
-		break
 	case "/ws/alert":
 		ctype = ALERTCLIENT
-		break
 	}
 	c := &WSClient{
 		Type:   ctype,
+		read:   make(chan []byte, maxMessageSize),
 		send:   make(chan []byte, maxMessageSize),
 		conn:   conn,
 		server: s.wsServer,
@@ -291,8 +305,23 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 
 	s.wsServer.register <- c
 
-	go c.writePump()
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	quit := make(chan struct{})
+
+	go c.writePump(&wg, quit)
+	go c.processGraphMessages(&wg, quit)
+
 	c.readPump()
+
+	quit <- struct{}{}
+	quit <- struct{}{}
+
+	close(c.read)
+	close(c.send)
+
+	wg.Wait()
 }
 
 func (s *Server) ListenAndServe() {

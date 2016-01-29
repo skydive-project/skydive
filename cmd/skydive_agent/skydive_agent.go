@@ -74,6 +74,10 @@ func main() {
 		panic(err)
 	}
 
+	root := g.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})
+	// send a first reset event to the analyzers
+	g.DelSubGraph(root)
+
 	sflowProbe, err := fprobes.NewSFlowProbe("127.0.0.1", 6345, g)
 	if err != nil {
 		panic(err)
@@ -111,8 +115,6 @@ func main() {
 	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port, "/ws/graph")
 	graph.NewForwarder(gclient, g)
 	gclient.Connect()
-
-	root := g.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})
 
 	// start probes that will update the graph
 	ns := tprobes.NewNetNSProbe(g, root)

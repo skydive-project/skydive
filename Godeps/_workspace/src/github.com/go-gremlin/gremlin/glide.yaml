@@ -1,0 +1,6 @@
+package: github.com/go-gremlin/gremlin
+import:
+  - package: github.com/satori/go.uuid
+    ref:     08f0718b61e95ddba0ade3346725fe0e4bf28ca6
+  - package: github.com/gorilla/websocket
+    ref:     c66b764651cdca39f42d263b07a507c6e8b58ee9
