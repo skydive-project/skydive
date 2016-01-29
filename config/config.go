@@ -23,6 +23,10 @@
 package config
 
 import (
+	"errors"
+	"fmt"
+	"strconv"
+
 	"gopkg.in/ini.v1"
 )
 
@@ -41,4 +45,29 @@ func InitConfig(filename string) error {
 
 func GetConfig() *ini.File {
 	return cfg
+}
+
+func GetHostPortAttributes(s string, p string) (string, int, error) {
+	listen := GetConfig().Section(s).Key(p).Strings(":")
+
+	addr := "127.0.0.1"
+
+	switch l := len(listen); {
+	case l == 1:
+		port, err := strconv.Atoi(listen[0])
+		if err != nil {
+			return "", 0, err
+		}
+
+		return addr, port, nil
+	case l == 2:
+		port, err := strconv.Atoi(listen[1])
+		if err != nil {
+			return "", 0, err
+		}
+
+		return listen[0], port, nil
+	default:
+		return "", 0, errors.New(fmt.Sprintf("Malformed listen parameter %s in section %s", s, p))
+	}
 }

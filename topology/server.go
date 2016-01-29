@@ -31,6 +31,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/rpc"
 	"github.com/redhat-cip/skydive/statics"
@@ -40,6 +41,7 @@ import (
 type Server struct {
 	Graph  *graph.Graph
 	Router *mux.Router
+	Addr   string
 	Port   int
 }
 
@@ -130,13 +132,24 @@ func (s *Server) RegisterRpcEndpoints() {
 }
 
 func (s *Server) ListenAndServe() {
-	http.ListenAndServe(":"+strconv.FormatInt(int64(s.Port), 10), s.Router)
+	http.ListenAndServe(s.Addr+":"+strconv.FormatInt(int64(s.Port), 10), s.Router)
 }
 
-func NewServer(g *graph.Graph, p int, router *mux.Router) *Server {
+func NewServer(g *graph.Graph, a string, p int, router *mux.Router) *Server {
 	return &Server{
 		Graph:  g,
 		Router: router,
+		Addr:   a,
 		Port:   p,
 	}
+}
+
+func NewServerFromConfig(s string, g *graph.Graph, router *mux.Router) *Server {
+	addr, port, err := config.GetHostPortAttributes(s, "listen")
+	if err != nil {
+		logging.GetLogger().Error("Configuration error: %s", err.Error())
+		return nil
+	}
+
+	return NewServer(g, addr, port, router)
 }

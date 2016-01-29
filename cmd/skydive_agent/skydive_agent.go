@@ -78,7 +78,7 @@ func main() {
 	// send a first reset event to the analyzers
 	g.DelSubGraph(root)
 
-	sflowProbe, err := fprobes.NewSFlowProbe("127.0.0.1", 6345, g)
+	sflowProbe, err := fprobes.NewSFlowProbeFromConfig(g)
 	if err != nil {
 		panic(err)
 	}
@@ -93,13 +93,13 @@ func main() {
 	}
 	sflowHandler := ovsdb.NewOvsSFlowProbesHandler([]ovsdb.SFlowProbe{ovsSFlowProbe})
 
-	ovsmon := ovsdb.NewOvsMonitor("127.0.0.1", 6400)
+	ovsmon := ovsdb.NewOvsMonitorFromConfig()
 	ovsmon.AddMonitorHandler(sflowHandler)
 
 	analyzers := config.GetConfig().Section("agent").Key("analyzers").Strings(",")
 	// TODO(safchain) HA Connection ???
-	analyzer_addr := strings.Split(analyzers[0], ":")[0]
-	analyzer_port, err := strconv.Atoi(strings.Split(analyzers[0], ":")[1])
+	analyzerAddr := strings.Split(analyzers[0], ":")[0]
+	analyzerPort, err := strconv.Atoi(strings.Split(analyzers[0], ":")[1])
 	if err != nil {
 		panic(err)
 	}
@@ -112,7 +112,7 @@ func main() {
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 	sflowProbe.SetMappingPipeline(pipeline)
 
-	gclient := graph.NewAsyncClient(analyzer_addr, analyzer_port, "/ws/graph")
+	gclient := graph.NewAsyncClient(analyzerAddr, analyzerPort, "/ws/graph")
 	graph.NewForwarder(gclient, g)
 	gclient.Connect()
 
@@ -126,7 +126,7 @@ func main() {
 	ovs := tprobes.NewOvsdbProbe(g, root, ovsmon)
 	ovs.Start()
 
-	analyzer, err := analyzer.NewClient(analyzer_addr, analyzer_port)
+	analyzer, err := analyzer.NewClient(analyzerAddr, analyzerPort)
 	if err != nil {
 		panic(err)
 	}
@@ -136,14 +136,9 @@ func main() {
 
 	ovsmon.StartMonitoring()
 
-	port, err := config.GetConfig().Section("agent").Key("listen").Int()
-	if err != nil {
-		panic(err)
-	}
-
 	router := mux.NewRouter().StrictSlash(true)
 
-	server := topology.NewServer(g, port, router)
+	server := topology.NewServerFromConfig("agent", g, router)
 	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
 

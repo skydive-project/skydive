@@ -50,14 +50,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	port, err := config.GetConfig().Section("analyzer").Key("listen").Int()
-	if err != nil {
-		panic(err)
-	}
-
 	router := mux.NewRouter().StrictSlash(true)
 
-	server, err := analyzer.NewServer(port, router)
+	server, err := analyzer.NewServerFromConfig(router)
 	if err != nil {
 		panic(err)
 	}
