@@ -115,8 +115,8 @@ var nbpackets int = 0
 var nbsflowmsg int = 0
 var sflowSeq uint32 = 0
 
-func SFlowRawPacketFlowRecordSerialize(rec *layers.SFlowRawPacketFlowRecord, payload []byte) []byte {
-	nbBytes := uint32(len(payload))
+func SFlowRawPacketFlowRecordSerialize(rec *layers.SFlowRawPacketFlowRecord, payload *[]byte) []byte {
+	nbBytes := uint32(len(*payload))
 	rec.FrameLength = nbBytes
 	rec.HeaderLength = nbBytes
 	rec.FlowDataLength = rec.HeaderLength + 16
@@ -128,25 +128,26 @@ func SFlowRawPacketFlowRecordSerialize(rec *layers.SFlowRawPacketFlowRecord, pay
 	binary.Write(buf, binary.BigEndian, rec.FrameLength)
 	binary.Write(buf, binary.BigEndian, rec.PayloadRemoved)
 	binary.Write(buf, binary.BigEndian, rec.HeaderLength)
-	buf.Write(payload)
+	buf.Write(*payload)
 	// Add padding
-	npad := (4 - (rec.HeaderLength % 4))
+	headerLenWithPadding := uint32(rec.HeaderLength + ((4 - rec.HeaderLength) % 4))
+	npad := headerLenWithPadding - nbBytes
 	for ; npad > 0; npad-- {
 		buf.Write([]byte{0})
 	}
 	return buf.Bytes()
 }
 
-func SFlowFlowSampleSerialize(sf *layers.SFlowFlowSample, payloads [][]byte) []byte {
+func SFlowFlowSampleSerialize(sf *layers.SFlowFlowSample, packets *[][]byte) []byte {
 	bufRec := new(bytes.Buffer)
 	for _, record := range sf.Records {
 		rec := record.(layers.SFlowRawPacketFlowRecord)
-		for _, payload := range payloads {
-			bufRec.Write(SFlowRawPacketFlowRecordSerialize(&rec, payload))
+		for _, payload := range *packets {
+			bufRec.Write(SFlowRawPacketFlowRecordSerialize(&rec, &payload))
 		}
 	}
 	sf.SampleLength = uint32(bufRec.Len()) + 32
-	sf.RecordCount = uint32(len(payloads))
+	sf.RecordCount = uint32(len(*packets))
 
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, ((uint32(sf.EnterpriseID) << 12) | (uint32(sf.Format))))
@@ -163,7 +164,7 @@ func SFlowFlowSampleSerialize(sf *layers.SFlowFlowSample, payloads [][]byte) []b
 	return buf.Bytes()
 }
 
-func SFlowDatagramSerialize(sfd *layers.SFlowDatagram, payload [][]byte) []byte {
+func SFlowDatagramSerialize(sfd *layers.SFlowDatagram, packets *[][]byte) []byte {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, sfd.DatagramVersion)
 	binary.Write(buf, binary.BigEndian, uint32(layers.SFlowIPv4))
@@ -173,12 +174,12 @@ func SFlowDatagramSerialize(sfd *layers.SFlowDatagram, payload [][]byte) []byte 
 	binary.Write(buf, binary.BigEndian, sfd.AgentUptime)
 	binary.Write(buf, binary.BigEndian, sfd.SampleCount)
 	for _, fs := range sfd.FlowSamples {
-		buf.Write(SFlowFlowSampleSerialize(&fs, payload))
+		buf.Write(SFlowFlowSampleSerialize(&fs, packets))
 	}
 	return buf.Bytes()
 }
 
-func (probe *PcapProbe) sflowPackets(pkts [][]byte) []byte {
+func (probe *PcapProbe) sflowPackets(packets *[][]byte) []byte {
 	nbsflowmsg++
 	sfraw := layers.SFlowRawPacketFlowRecord{
 		SFlowBaseFlowRecord: layers.SFlowBaseFlowRecord{
@@ -207,7 +208,7 @@ func (probe *PcapProbe) sflowPackets(pkts [][]byte) []byte {
 		Dropped:         0,
 		InputInterface:  48,
 		OutputInterface: 47,
-		RecordCount:     1,
+		//		RecordCount:     1,
 		//		Records:
 	}
 	sf.Records = append(sf.Records, sfraw)
@@ -226,7 +227,7 @@ func (probe *PcapProbe) sflowPackets(pkts [][]byte) []byte {
 	sflowLayer.FlowSamples = append(sflowLayer.FlowSamples, sf)
 	sflowLayer.SampleCount = uint32(len(sflowLayer.FlowSamples))
 
-	rawBytes := SFlowDatagramSerialize(sflowLayer, pkts)
+	rawBytes := SFlowDatagramSerialize(sflowLayer, packets)
 	return rawBytes
 }
 
@@ -265,6 +266,7 @@ func genEthIPUdp(payload []byte) []byte {
 }
 
 func writePcap(packet []byte) {
+	logging.GetLogger().Debug("Writing PCAP file")
 	f, _ := os.Create("/tmp/file.pcap")
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(65536, layers.LinkTypeEthernet) // new file, must do this.
@@ -274,6 +276,19 @@ func writePcap(packet []byte) {
 			Length:        len(packet),
 		}, packet)
 	f.Close()
+}
+
+func (probe *PcapProbe) AsyncProgressInfo() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer func() {
+		ticker.Stop()
+	}()
+	for {
+		select {
+		case <-ticker.C:
+			logging.GetLogger().Debug("%d", nbpackets)
+		}
+	}
 }
 
 func (probe *PcapProbe) Start() error {
@@ -293,6 +308,8 @@ func (probe *PcapProbe) Start() error {
 	flowtable := flow.NewFlowTable()
 	go flowtable.AsyncExpire(probe.flowExpire, 5*time.Minute)
 
+	go probe.AsyncProgressInfo()
+
 	var packets [][]byte
 	for {
 		data, _, err := handleRead.ReadPacketData()
@@ -305,15 +322,22 @@ func (probe *PcapProbe) Start() error {
 			break
 		} else {
 			nbpackets++
-			packets = append(packets, data)
+			dataCopy := make([]byte, len(data))
+			copy(dataCopy, data)
+			packets = append(packets, dataCopy)
 
-			sflowPacketData := probe.sflowPackets(packets)
+			if (nbpackets % 5) != 0 {
+				continue
+			}
+
+			sflowPacketData := probe.sflowPackets(&packets)
 			packets = packets[:0]
 
 			p := gopacket.NewPacket(sflowPacketData[:], layers.LayerTypeSFlow, gopacket.Default)
 			sflowLayer := p.Layer(layers.LayerTypeSFlow)
 			sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
 			if !ok {
+				logging.GetLogger().Critical("Can't cast gopacket as a SFlowDatagram", p)
 				continue
 			}
 
