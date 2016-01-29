@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
@@ -57,6 +58,20 @@ func (c *Client) SendFlows(flows []*flow.Flow) {
 		err := c.SendFlow(flow)
 		if err != nil {
 			logging.GetLogger().Error("Unable to send flow: ", err.Error())
+		}
+	}
+}
+
+func (c *Client) AsyncFlowsUpdate(ft *flow.FlowTable, every time.Duration) {
+	ticker := time.NewTicker(every)
+	defer func() {
+		ticker.Stop()
+	}()
+	for {
+		select {
+		case <-ticker.C:
+			flows := ft.FilterLast(every + (10 * time.Second))
+			c.SendFlows(flows)
 		}
 	}
 }

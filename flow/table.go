@@ -15,6 +15,10 @@ type FlowTable struct {
 	table map[string]*Flow
 }
 
+type FlowTableAsyncNotificaionUpdate interface {
+	AsyncNotificaionUpdate(every time.Duration)
+}
+
 func NewFlowTable() *FlowTable {
 	return &FlowTable{table: make(map[string]*Flow)}
 }
@@ -139,8 +143,14 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 	return str
 }
 
+func (ft *FlowTable) NewFlowTableFromFlows(flows []*Flow) *FlowTable {
+	nft := NewFlowTable()
+	nft.Update(flows)
+	return nft
+}
+
 /* Return a new FlowTable that contain <last> active flows */
-func (ft *FlowTable) FilterLast(last time.Duration) *FlowTable {
+func (ft *FlowTable) FilterLast(last time.Duration) []*Flow {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
 	var flows []*Flow
@@ -151,7 +161,5 @@ func (ft *FlowTable) FilterLast(last time.Duration) *FlowTable {
 			flows = append(flows, f)
 		}
 	}
-	nft := NewFlowTable()
-	nft.Update(flows)
-	return nft
+	return flows
 }

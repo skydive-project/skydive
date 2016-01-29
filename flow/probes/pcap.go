@@ -54,6 +54,7 @@ type PcapProbe struct {
 
 	cache            *cache.Cache
 	cacheUpdaterChan chan uint32
+	flowtable        *flow.FlowTable
 }
 
 func (probe *PcapProbe) GetTarget() string {
@@ -305,8 +306,8 @@ func (probe *PcapProbe) Start() error {
 	// start index/mac cache updater
 	go probe.cacheUpdater()
 
-	flowtable := flow.NewFlowTable()
-	go flowtable.AsyncExpire(probe.flowExpire, 5*time.Minute)
+	go probe.flowtable.AsyncExpire(probe.flowExpire, 5*time.Minute)
+	go probe.AnalyzerClient.AsyncFlowsUpdate(probe.flowtable, 30*time.Second)
 
 	go probe.AsyncProgressInfo()
 
@@ -344,17 +345,11 @@ func (probe *PcapProbe) Start() error {
 			if sflowPacket.SampleCount > 0 {
 				for _, sample := range sflowPacket.FlowSamples {
 					replayIntf := "replay0"
-					flows := flow.FLowsFromSFlowSample(flowtable, &sample, &replayIntf) // probe.getProbePath(sample.InputInterface))
+					flows := flow.FLowsFromSFlowSample(probe.flowtable, &sample, &replayIntf) // probe.getProbePath(sample.InputInterface))
 					logging.GetLogger().Debug("%d flows captured", len(flows))
 
 					if probe.FlowMappingPipeline != nil {
 						probe.FlowMappingPipeline.Enhance(flows)
-					}
-
-					if probe.AnalyzerClient != nil {
-						// FIX(safchain) add flow state cache in order to send only flow changes
-						// to not flood the analyzer
-						probe.AnalyzerClient.SendFlows(flows)
 					}
 				}
 			}
@@ -393,6 +388,8 @@ func NewPcapProbe(pcapfilename string, g *graph.Graph) (*PcapProbe, error) {
 
 	probe.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
 	probe.cacheUpdaterChan = make(chan uint32, 200)
+
+	probe.flowtable = flow.NewFlowTable()
 
 	return probe, nil
 }
