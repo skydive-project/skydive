@@ -88,10 +88,11 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-	}
-
-	if err != nil {
-		panic(err)
+	} else {
+		sflowProbe, err = fprobes.NewSFlowProbe("127.0.0.1", 6345, g)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	ovsSFlowProbe := ovsdb.SFlowProbe{
