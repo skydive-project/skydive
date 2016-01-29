@@ -138,6 +138,7 @@ func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 		/* FIX(safchain): just keeping the raw packet for now */
 		record, ok := rec.(layers.SFlowRawPacketFlowRecord)
 		if !ok {
+			logging.GetLogger().Critical("1st layer is not SFlowRawPacketFlowRecord type")
 			continue
 		}
 
