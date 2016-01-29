@@ -23,7 +23,6 @@
 package analyzer
 
 import (
-	"encoding/json"
 	"net"
 	"strconv"
 	"time"
@@ -52,9 +51,6 @@ func (c *Client) SendFlow(f *flow.Flow) error {
 
 func (c *Client) SendFlows(flows []*flow.Flow) {
 	for _, flow := range flows {
-		j, _ := json.Marshal(flow)
-		logging.GetLogger().Debug("Sending to analyzer: %s", string(j))
-
 		err := c.SendFlow(flow)
 		if err != nil {
 			logging.GetLogger().Error("Unable to send flow: ", err.Error())
@@ -71,6 +67,7 @@ func (c *Client) AsyncFlowsUpdate(ft *flow.FlowTable, every time.Duration) {
 		select {
 		case <-ticker.C:
 			flows := ft.FilterLast(every + (10 * time.Second))
+			logging.GetLogger().Info("Send %d Flows to the Analyzer", len(flows))
 			c.SendFlows(flows)
 		}
 	}
