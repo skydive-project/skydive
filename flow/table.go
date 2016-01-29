@@ -138,3 +138,20 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 	str += "}"
 	return str
 }
+
+/* Return a new FlowTable that contain <last> active flows */
+func (ft *FlowTable) FilterLast(last time.Duration) *FlowTable {
+	ft.lock.RLock()
+	defer ft.lock.RUnlock()
+	var flows []*Flow
+	selected := time.Now().Unix() - int64((last).Seconds())
+	for _, f := range ft.table {
+		fs := f.GetStatistics()
+		if fs.Last >= selected {
+			flows = append(flows, f)
+		}
+	}
+	nft := NewFlowTable()
+	nft.Update(flows)
+	return nft
+}
