@@ -2,6 +2,7 @@ package flow
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +22,10 @@ type FlowTableAsyncNotificaionUpdate interface {
 
 func NewFlowTable() *FlowTable {
 	return &FlowTable{table: make(map[string]*Flow)}
+}
+
+func (ft *FlowTable) String() string {
+	return fmt.Sprintf("%d flows", len(ft.table))
 }
 
 func (ft *FlowTable) Update(flows []*Flow) {
@@ -84,7 +89,6 @@ func (ft *FlowTable) Remove(f *Flow) {
 }
 
 func (ft *FlowTable) GetFlow(key string, packet *gopacket.Packet) (flow *Flow, new bool) {
-	logging.GetLogger().Debug("flow key %s", key)
 	ft.lock.Lock()
 	flow, found := ft.table[key]
 	if found == false {
@@ -100,6 +104,9 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 	str += "{"
 	//	{"nodes":[{"name":"Myriel","group":1}, ... ],"links":[{"source":1,"target":0,"value":1},...]}
 
+	var strNodes, strLinks string
+	strNodes += "\"nodes\":["
+	strLinks += "\"links\":["
 	pathMap := make(map[string]int)
 	ethMap := make(map[string]int)
 	for _, f := range ft.table {
@@ -109,35 +116,20 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 		}
 
 		ethFlow := f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()]
-		_, found = ethMap[ethFlow.AB.Value]
-		if !found {
+		if _, found := ethMap[ethFlow.AB.Value]; !found {
 			ethMap[ethFlow.AB.Value] = len(ethMap)
+			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", ethFlow.AB.Value, pathMap[f.LayersPath])
 		}
-		_, found = ethMap[ethFlow.BA.Value]
-		if !found {
+		if _, found := ethMap[ethFlow.BA.Value]; !found {
 			ethMap[ethFlow.BA.Value] = len(ethMap)
+			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", ethFlow.BA.Value, pathMap[f.LayersPath])
 		}
+		strLinks += fmt.Sprintf("{\"source\":%d,\"target\":%d,\"value\":%d},", ethMap[ethFlow.AB.Value], ethMap[ethFlow.BA.Value], ethFlow.AB.Bytes+ethFlow.BA.Bytes)
 	}
-	var strNodes, strLinks string
-	i := 0
-	strNodes += "\"nodes\":["
-	strLinks += "\"links\":["
-	for _, f := range ft.table {
-		ethFlow := f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()]
-		strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", ethFlow.AB.Value, pathMap[f.LayersPath])
-		strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d}", ethFlow.BA.Value, pathMap[f.LayersPath])
-
-		strLinks += fmt.Sprintf("{\"source\":%d,\"target\":%d,\"value\":%d}", ethMap[ethFlow.AB.Value], ethMap[ethFlow.BA.Value], ethFlow.AB.Bytes+ethFlow.BA.Bytes)
-
-		if i < len(ft.table)-1 {
-			strNodes += ","
-			strLinks += ","
-		} else {
-			strNodes += "]"
-			strLinks += "]"
-		}
-		i++
-	}
+	strNodes = strings.TrimRight(strNodes, ",")
+	strNodes += "]"
+	strLinks = strings.TrimRight(strLinks, ",")
+	strLinks += "]"
 	str += strNodes + "," + strLinks
 	str += "}"
 	return str
