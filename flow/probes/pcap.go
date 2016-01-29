@@ -33,7 +33,6 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
 	"github.com/google/gopacket/pcapgo"
 
 	"github.com/pmylund/go-cache"
@@ -278,11 +277,15 @@ func writePcap(packet []byte) {
 }
 
 func (probe *PcapProbe) Start() error {
-	handleRead, err := pcap.OpenOffline(probe.Filename)
+	f, err := os.Open(probe.Filename)
+	if err != nil {
+		logging.GetLogger().Fatal("PCAP OpenOffline error (", probe.Filename, ")", err)
+	}
+	handleRead, err := pcapgo.NewReader(f)
 	if err != nil {
 		logging.GetLogger().Fatal("PCAP OpenOffline error (handle to read packet)", err)
 	}
-	defer handleRead.Close()
+	defer f.Close()
 
 	// start index/mac cache updater
 	go probe.cacheUpdater()
@@ -345,12 +348,15 @@ func (probe *PcapProbe) SetMappingPipeline(p *mappings.FlowMappingPipeline) {
 	probe.FlowMappingPipeline = p
 }
 
-func NewPcapProbe(g *graph.Graph) (*PcapProbe, error) {
+func NewPcapProbe(pcapfilename string, g *graph.Graph) (*PcapProbe, error) {
 	probe := &PcapProbe{
-		Graph: g,
+		Filename: pcapfilename,
+		Graph:    g,
 	}
 
-	probe.Filename = config.GetConfig().Section("agent").Key("pcaptrace").String()
+	if probe.Filename == "" {
+		probe.Filename = config.GetConfig().Section("agent").Key("pcaptrace").String()
+	}
 
 	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
 	if err != nil {
