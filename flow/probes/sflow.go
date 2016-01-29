@@ -23,6 +23,7 @@
 package probes
 
 import (
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -32,6 +33,8 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/pmylund/go-cache"
+
+	"github.com/Preetam/sflow"
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
@@ -110,8 +113,6 @@ func (probe *SFlowProbe) getProbePath(index uint32) *string {
 }
 
 func (probe *SFlowProbe) Start() error {
-	var buf [maxDgramSize]byte
-
 	addr := net.UDPAddr{
 		Port: probe.Port,
 		IP:   net.ParseIP(probe.Addr),
@@ -126,36 +127,28 @@ func (probe *SFlowProbe) Start() error {
 	// start index/mac cache updater
 	go probe.cacheUpdater()
 
+	sflowr := NewSFlowReader(probe.GetTarget())
+	sflowr.Start(probe)
+
 	for {
-		_, _, err := conn.ReadFromUDP(buf[:])
+		/* FIXME (nplanel) : may need to implement a new File io to enable Seek(SEEK_CUR),
+		   as decode may skip bytes (when tried to recover the stream from a parsing fault */
+		f, err := conn.File()
 		if err != nil {
-			continue
+			logging.GetLogger().Error("Probe Connection failed %v", err)
+			return err
 		}
 
-		p := gopacket.NewPacket(buf[:], layers.LayerTypeSFlow, gopacket.Default)
-		sflowLayer := p.Layer(layers.LayerTypeSFlow)
-		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
-		if !ok {
-			continue
+		d := sflow.NewDecoder(f)
+		dgram, err := d.Decode()
+		if err != nil {
+			logging.GetLogger().Error("%v", err)
+			return err
 		}
 
-		if sflowPacket.SampleCount > 0 {
-			for _, sample := range sflowPacket.FlowSamples {
-				flows := flow.FLowsFromSFlowSample(&sample, probe.getProbePath(sample.InputInterface))
+		f.Close()
 
-				logging.GetLogger().Debug("%d flows captured", len(flows))
-
-				if probe.FlowMappingPipeline != nil {
-					probe.FlowMappingPipeline.Enhance(flows)
-				}
-
-				if probe.AnalyzerClient != nil {
-					// FIX(safchain) add flow state cache in order to send only flow changes
-					// to not flood the analyzer
-					probe.AnalyzerClient.SendFlows(flows)
-				}
-			}
-		}
+		sflowr.Parse(dgram)
 	}
 
 	return nil
@@ -189,4 +182,137 @@ func NewSFlowProbe(a string, p int, g *graph.Graph) (*SFlowProbe, error) {
 	probe.cacheUpdaterChan = make(chan uint32, 200)
 
 	return probe, nil
+}
+
+type SkydivePacket struct {
+	gopacket.Packet
+	ci     gopacket.CaptureInfo
+	raw    *sflow.RawPacketFlow
+	sample *sflow.FlowSample
+}
+
+type SFlowReader struct {
+	gopacket.PacketSource
+	ProbeTarget      string
+	PacketChannel    chan SkydivePacket
+	RawPacketCounter uint64
+}
+
+func (r *SFlowReader) LinkType() layers.LinkType {
+	return layers.LinkTypeEthernet
+}
+
+func (r *SFlowReader) CreatePacket(sample *sflow.FlowSample, raw *sflow.RawPacketFlow) {
+	var ci gopacket.CaptureInfo
+	ci.Timestamp = time.Now()
+	ci.CaptureLength = int(raw.FrameLength)
+	ci.Length = int(raw.HeaderSize)
+
+	data := raw.Header
+	r.PacketChannel <- SkydivePacket{
+		gopacket.NewPacket(data, r.LinkType(), gopacket.DecodeOptions{}),
+		ci,
+		raw,
+		sample}
+}
+
+/* PacketSource */
+func (r *SFlowReader) NextPacket() (SkydivePacket, error) {
+	packet := <-r.PacketChannel
+	m := packet.Metadata()
+	m.CaptureInfo = packet.ci
+	m.Truncated = m.Truncated || packet.ci.CaptureLength < packet.ci.Length
+
+	return packet, nil
+}
+
+func (p *SFlowReader) packetsToChannel() {
+	defer close(p.PacketChannel)
+	for {
+		packet, err := p.NextPacket()
+		if err == io.EOF {
+			return
+		} else if err == nil {
+			p.PacketChannel <- packet
+		}
+	}
+}
+
+func (p *SFlowReader) Packets() chan SkydivePacket {
+	if p.PacketChannel == nil {
+		p.PacketChannel = make(chan SkydivePacket, 1000)
+		go p.packetsToChannel()
+	}
+	return p.PacketChannel
+}
+
+func (r *SFlowReader) Parse(dgram *sflow.Datagram) {
+	for _, sample := range dgram.Samples {
+		switch sample.SampleType() {
+		case sflow.TypeCounterSample:
+			for _, record := range sample.GetRecords() {
+				switch record.(type) {
+				case sflow.HostDiskCounters:
+					rec := record.(sflow.HostDiskCounters)
+					rec = rec
+					/*	fmt.Printf("Max used percent of disk space is %d. %s\n",
+						r.MaxUsedPercent,
+						r.String())
+					*/
+				}
+			}
+		case sflow.TypeFlowSample:
+			samp := sample.(*sflow.FlowSample)
+			for _, record := range sample.GetRecords() {
+				switch record.(type) {
+				case sflow.RawPacketFlow:
+					rec := record.(sflow.RawPacketFlow)
+					r.RawPacketCounter++
+					r.CreatePacket(samp, &rec)
+				case sflow.ExtendedSwitchFlow:
+					rec := record.(sflow.ExtendedSwitchFlow)
+					rec = rec
+				}
+			}
+		}
+	}
+}
+func (r *SFlowReader) asyncStart(probe *SFlowProbe) {
+	packets := r.Packets()
+	ticker := time.Tick(time.Minute)
+
+	for {
+		select {
+		case packet := <-packets:
+			flows := flow.FLowsFromGoPacket(packet, probe.getProbePath(packet.sample.Input))
+
+			logging.GetLogger().Debug("%d flows captured", len(flows))
+
+			if probe.FlowMappingPipeline != nil {
+				probe.FlowMappingPipeline.Enhance(flows)
+			}
+
+			if probe.AnalyzerClient != nil {
+				// FIX(safchain) add flow state cache in order to send only flow changes
+				// to not flood the analyzer
+				probe.AnalyzerClient.SendFlows(flows)
+			}
+		case <-ticker:
+			// Every minute
+			logging.GetLogger().Info(r.ProbeTarget, r.RawPacketCounter)
+		}
+
+	}
+}
+
+func (r *SFlowReader) Start(probe *SFlowProbe) {
+	go r.asyncStart(probe)
+}
+
+func NewSFlowReader(ProbeTarget string) *SFlowReader {
+	s := &SFlowReader{
+		ProbeTarget:      ProbeTarget,
+		RawPacketCounter: uint64(0),
+	}
+	return s
 }

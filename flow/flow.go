@@ -142,6 +142,14 @@ func New(packet *gopacket.Packet, probePath *string) *Flow {
 	return flow
 }
 
+func FLowsFromGoPacket(packet gopacket.Packet, probePath *string) []*Flow {
+	flows := []*Flow{}
+
+	flow := New(&packet, probePath)
+	flows = append(flows, flow)
+	return flows
+}
+
 func FLowsFromSFlowSample(sample *layers.SFlowFlowSample, probePath *string) []*Flow {
 	flows := []*Flow{}
 
