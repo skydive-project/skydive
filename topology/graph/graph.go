@@ -118,7 +118,15 @@ func (e *graphElement) matchFilters(f Metadatas) bool {
 }
 
 func (e *graphElement) String() string {
-	j, _ := json.Marshal(e)
+	j, _ := json.Marshal(&struct {
+		ID        Identifier
+		Metadatas Metadatas `json:",omitempty"`
+		Host      string
+	}{
+		ID:        e.ID,
+		Metadatas: e.metadatas,
+		Host:      e.host,
+	})
 	return string(j)
 }
 
