@@ -29,7 +29,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"text/template"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -38,7 +37,6 @@ import (
 
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/rpc"
-	"github.com/redhat-cip/skydive/statics"
 )
 
 const (
@@ -47,7 +45,6 @@ const (
 
 type Alert struct {
 	Router         *mux.Router
-	Port           int
 	Graph          *Graph
 	alerts         map[uuid.UUID]AlertTest
 	eventListeners map[AlertEventListener]AlertEventListener
@@ -239,37 +236,6 @@ func (c *Alert) OnEdgeAdded(e *Edge) {
 func (c *Alert) OnEdgeDeleted(e *Edge) {
 }
 
-func (c *Alert) serveIndex(w http.ResponseWriter, r *http.Request) {
-	html, err := statics.Asset("statics/alert.html")
-	if err != nil {
-		logging.GetLogger().Panic("Unable to find the alert asset : ", err)
-	}
-
-	t := template.New("alert template")
-
-	t, err = t.Parse(string(html))
-	if err != nil {
-		panic(err)
-	}
-
-	host, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-
-	var data = &struct {
-		Hostname string
-		Port     int
-	}{
-		Hostname: host,
-		Port:     c.Port,
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	t.Execute(w, data)
-}
-
 func (c *Alert) AlertIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
@@ -333,11 +299,6 @@ func (c *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *Alert) RegisterStaticEndpoints() {
-	// static routes
-	c.Router.HandleFunc("/static/alert", c.serveIndex)
-}
-
 func (c *Alert) RegisterRpcEndpoints() {
 	routes := []rpc.Route{
 		{
@@ -375,12 +336,10 @@ func (c *Alert) RegisterRpcEndpoints() {
 	}
 }
 
-func NewAlert(g *Graph, port int, router *mux.Router) *Alert {
+func NewAlert(g *Graph, router *mux.Router) *Alert {
 	f := &Alert{
-		Graph:  g,
-		Router: router,
-		Port:   port,
-
+		Graph:          g,
+		Router:         router,
 		alerts:         make(map[uuid.UUID]AlertTest),
 		eventListeners: make(map[AlertEventListener]AlertEventListener),
 	}

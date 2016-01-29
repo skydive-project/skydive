@@ -29,6 +29,7 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -351,4 +352,14 @@ func NewOvsMonitor(addr string, port int) *OvsMonitor {
 		interfaceCache: make(map[string]string),
 		portCache:      make(map[string]string),
 	}
+}
+
+func NewOvsMonitorFromConfig() *OvsMonitor {
+	addr, port, err := config.GetHostPortAttributes("ovs", "ovsdb")
+	if err != nil {
+		logging.GetLogger().Error("Configuration error: %s", err.Error())
+		return nil
+	}
+
+	return NewOvsMonitor(addr, port)
 }

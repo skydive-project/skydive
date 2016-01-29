@@ -169,11 +169,23 @@ func (probe *SFlowProbe) SetMappingPipeline(p *mappings.FlowMappingPipeline) {
 	probe.FlowMappingPipeline = p
 }
 
-func NewSFlowProbe(a string, p int, g *graph.Graph) (*SFlowProbe, error) {
+func NewSFlowProbe(a string, p int, g *graph.Graph, expire int, cleanup int) (*SFlowProbe, error) {
 	probe := &SFlowProbe{
 		Addr:  a,
 		Port:  p,
 		Graph: g,
+	}
+
+	probe.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
+	probe.cacheUpdaterChan = make(chan uint32, 200)
+
+	return probe, nil
+}
+
+func NewSFlowProbeFromConfig(g *graph.Graph) (*SFlowProbe, error) {
+	addr, port, err := config.GetHostPortAttributes("sflow", "listen")
+	if err != nil {
+		return nil, err
 	}
 
 	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
@@ -185,8 +197,5 @@ func NewSFlowProbe(a string, p int, g *graph.Graph) (*SFlowProbe, error) {
 		return nil, err
 	}
 
-	probe.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
-	probe.cacheUpdaterChan = make(chan uint32, 200)
-
-	return probe, nil
+	return NewSFlowProbe(addr, port, g, expire, cleanup)
 }

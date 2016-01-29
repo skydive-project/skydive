@@ -31,6 +31,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
@@ -41,6 +42,7 @@ import (
 )
 
 type Server struct {
+	Addr                string
 	Port                int
 	Router              *mux.Router
 	TopoServer          *topology.Server
@@ -95,7 +97,7 @@ func (s *Server) ListenAndServe() {
 	go func() {
 		defer wg.Done()
 
-		addr, err := net.ResolveUDPAddr("udp", ":"+strconv.FormatInt(int64(s.Port), 10))
+		addr, err := net.ResolveUDPAddr("udp", s.Addr+":"+strconv.FormatInt(int64(s.Port), 10))
 		conn, err := net.ListenUDP("udp", addr)
 		if err != nil {
 			panic(err)
@@ -151,7 +153,7 @@ func (s *Server) SetStorage(st storage.Storage) {
 	s.Storage = st
 }
 
-func NewServer(port int, router *mux.Router) (*Server, error) {
+func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 	backend, err := graph.BackendFromConfig()
 	if err != nil {
 		return nil, err
@@ -162,12 +164,11 @@ func NewServer(port int, router *mux.Router) (*Server, error) {
 		return nil, err
 	}
 
-	tserver := topology.NewServer(g, port, router)
+	tserver := topology.NewServer(g, addr, port, router)
 	tserver.RegisterStaticEndpoints()
 	tserver.RegisterRpcEndpoints()
 
-	alertmgr := graph.NewAlert(g, port, router)
-	alertmgr.RegisterStaticEndpoints()
+	alertmgr := graph.NewAlert(g, router)
 	alertmgr.RegisterRpcEndpoints()
 
 	gserver := graph.NewServer(g, alertmgr, router)
@@ -180,6 +181,7 @@ func NewServer(port int, router *mux.Router) (*Server, error) {
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 
 	server := &Server{
+		Addr:                addr,
 		Port:                port,
 		Router:              router,
 		TopoServer:          tserver,
@@ -189,4 +191,13 @@ func NewServer(port int, router *mux.Router) (*Server, error) {
 	server.RegisterRpcEndpoints()
 
 	return server, nil
+}
+
+func NewServerFromConfig(router *mux.Router) (*Server, error) {
+	addr, port, err := config.GetHostPortAttributes("analyzer", "listen")
+	if err != nil {
+		logging.GetLogger().Error("Configuration error: %s", err.Error())
+	}
+
+	return NewServer(addr, port, router)
 }
