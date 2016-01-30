@@ -52,7 +52,6 @@ func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
 		expire := now.Unix() - int64((every).Seconds())
 
 		ft.lock.Lock()
-		defer ft.lock.Unlock()
 		for key, f := range ft.table {
 			fs := f.GetStatistics()
 			if fs.Last < expire {
@@ -63,6 +62,7 @@ func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
 				delete(ft.table, key)
 			}
 		}
+		ft.lock.Unlock()
 		logging.GetLogger().Debug("%v Expire Flow : removed %v new size %v", now, flowTableSzBefore-len(ft.table), len(ft.table))
 	}
 }
