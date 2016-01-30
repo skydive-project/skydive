@@ -76,16 +76,6 @@ func (ft *FlowTable) IsExist(f *Flow) bool {
 	return found
 }
 
-/* Must be called under ft.lock, ExpireFunc callback function are safe to call ft.Remove() */
-func (ft *FlowTable) Remove(f *Flow) {
-	if ft.IsExist(f) {
-		logging.GetLogger().Info("FlowTable remove flow %s", f.UUID)
-		delete(ft.table, f.UUID)
-	} else {
-		logging.GetLogger().Critical("FlowTable flow %s did not exist ...", f.UUID)
-	}
-}
-
 func (ft *FlowTable) GetFlow(key string, packet *gopacket.Packet) (flow *Flow, new bool) {
 	ft.lock.Lock()
 	flow, found := ft.table[key]

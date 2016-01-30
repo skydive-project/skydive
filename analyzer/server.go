@@ -57,7 +57,7 @@ type Server struct {
 }
 
 func (s *Server) flowExpire(f *flow.Flow) {
-	s.FlowTable.Remove(f)
+	/* Storge flow in the database */
 }
 
 func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
