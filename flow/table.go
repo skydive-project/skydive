@@ -45,9 +45,7 @@ type ExpireFunc func(f *Flow)
 
 func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
 	ticker := time.NewTicker(every)
-	defer func() {
-		ticker.Stop()
-	}()
+	defer ticker.Stop()
 	for {
 		select {
 		case now := <-ticker.C:

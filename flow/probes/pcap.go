@@ -281,9 +281,7 @@ func writePcap(packet []byte) {
 
 func (probe *PcapProbe) AsyncProgressInfo() {
 	ticker := time.NewTicker(10 * time.Second)
-	defer func() {
-		ticker.Stop()
-	}()
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
