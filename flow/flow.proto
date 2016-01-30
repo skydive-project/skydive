@@ -56,16 +56,12 @@ message FlowStatistics {
 message Flow {
   string UUID 			= 1;
   string LayersPath 		= 2;
+
+  /* Data Flow info */
+  FlowStatistics Statistics	= 3;
+
+  /* Topology info */
   string ProbeGraphPath	= 11;
-
-  FlowStatistics Statistics 		= 3;
-
-  /* useless, should be removed */
   string IfSrcGraphPath	= 14;
   string IfDstGraphPath	= 19;
-
-
-  int64 DebugTimestamp 	= 90;
-  uint64 DebugKeyNet =  91;
-  uint64 DebugKeyTransport =  92;
 }
