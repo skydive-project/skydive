@@ -283,10 +283,8 @@ func (probe *PcapProbe) AsyncProgressInfo() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
-		select {
-		case <-ticker.C:
-			logging.GetLogger().Debug("%d packets replayed | %s", nbpackets, probe.flowtable.String())
-		}
+		<-ticker.C
+		logging.GetLogger().Debug("%d packets replayed | %s", nbpackets, probe.flowtable.String())
 	}
 }
 
