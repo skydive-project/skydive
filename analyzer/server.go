@@ -140,14 +140,18 @@ func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveDataIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/data/conversation.json" {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(s.FlowTable.JSONFlowConversationEthernetPath()))
 		return
 	}
+	w.WriteHeader(http.StatusBadRequest)
+	return
+}
 
+func (s *Server) serveStaticIndex(w http.ResponseWriter, r *http.Request) {
 	html, err := statics.Asset("statics/conversation.html")
 	if err != nil {
 		logging.GetLogger().Panic("Unable to find the conversation asset")
@@ -180,8 +184,8 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) RegisterStaticEndpoints() {
 	// static routes
-	s.Router.HandleFunc("/static/conversation", s.serveIndex)
-	s.Router.HandleFunc("/data/conversation.json", s.serveIndex)
+	s.Router.HandleFunc("/static/conversation", s.serveStaticIndex)
+	s.Router.HandleFunc("/data/conversation.json", s.serveDataIndex)
 }
 
 func (s *Server) RegisterRpcEndpoints() {
