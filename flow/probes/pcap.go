@@ -375,10 +375,6 @@ func NewPcapProbe(pcapfilename string, g *graph.Graph) (*PcapProbe, error) {
 		Graph:    g,
 	}
 
-	if probe.Filename == "" {
-		probe.Filename = config.GetConfig().Section("agent").Key("pcaptrace").String()
-	}
-
 	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
 	if err != nil {
 		return nil, err
