@@ -16,8 +16,8 @@ type FlowTable struct {
 	table map[string]*Flow
 }
 
-type FlowTableAsyncNotificaionUpdate interface {
-	AsyncNotificaionUpdate(every time.Duration)
+type FlowTableAsyncNotificationUpdate interface {
+	AsyncNotificationUpdate(every time.Duration)
 }
 
 func NewFlowTable() *FlowTable {
