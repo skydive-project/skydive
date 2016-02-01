@@ -1,0 +1,10 @@
+[Unit]
+Description=Skydive analyzer
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/skydive_analyzer -conf /etc/skydive/skydive.ini
+
+[Install]
+WantedBy=multi-user.target
