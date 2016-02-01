@@ -1,6 +1,7 @@
 # really Basic Makefile for Skydive
 
 PROTO_FILES=flow/flow.proto
+GOFLAGS?=-v
 
 .proto: godep builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
@@ -9,13 +10,16 @@ PROTO_FILES=flow/flow.proto
 	go-bindata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/
 
 all: genlocalfiles
-	godep go install -v ./...
+	godep go install ${GOFLAGS} ./...
 
 install: godep
-	godep go install -v ./...
+	godep go install ${GOFLAGS} ./...
 
 build: godep
-	godep go build -v ./...
+	godep go build ${GOFLAGS} ./...
+
+test: godep
+	godep go test ${GOFLAGS} ./...
 
 godep:
 	go get github.com/tools/godep
