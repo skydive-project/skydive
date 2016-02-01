@@ -1,52 +1,173 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>Skydive Topology</title>
 
-<!DOCTYPE html>
-<html class="ocks-org do-not-copy">
-<meta charset="utf-8">
-<title>Les Misérables Co-occurrence</title>
-<style>
+        <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"/>
+        <link href="http://netdna.bootstrapcdn.com/font-awesome/3.0.2/css/font-awesome.css" rel="stylesheet"/>
 
-@import url(//bost.ocks.org/mike/style.css?aea6f0a);
+        <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.10/d3.js"></script>
+        <style>
+          .background {
+            fill: #eee;
+          }
+          
+          line {
+            stroke: #fff;
+          }
 
-.background {
-fill: #eee;
+          text {
+            font: 12px Helvetica, Arial, sans-serif;
+            fill: #eee;
+          }
+          
+          text.active {
+          fill: red;
+          }
+
+          html, body {
+            width:100%;
+            height:100%;
+        }
+
+        body {
+            margin: auto;
+            padding-top: 50px;
+            background-color: #333;
+        }
+
+        .conversation {
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .node {
+            fill: lightsteelblue;
+            stroke: #888;
+            stroke-width: 1;
+            opacity: 0.9;
+        }
+
+        .node text {
+            fill: #111;
+            pointer-events: none;
+            font: 12px Helvetica, Arial, sans-serif;
+            stroke-width: 0;
+        }
+
+        .default .circle {
+            fill: rgb(199, 233, 192);
+        }
+
+        .ovsbridge .circle {
+            fill: rgb(198, 219, 239);
+        }
+
+        .ovsport .circle {
+            fill: rgb(253, 208, 162);
+        }
+
+        .down .circle {
+            fill: rgb(255, 26, 0);
+        }
+
+        .alert .circle {
+            fill: rgb(255, 255, 0);
+        }
+
+        .group {
+            fill: #fff;
+            pointer-events: none;
+            font: 16px Helvetica, Arial, sans-serif;
+            stroke-width: 5;
+        }
+
+        .link {
+            stroke: #333;
+        }
+
+        path.hull {
+            fill: lightsteelblue;
+            fill-opacity: 0.4;
+        }
+
+        div.tooltip {
+            position: absolute;
+            text-align: left;
+            padding: 0px;
+            font: 12px Helvetica,Arial,sans-serif;
+            background: lightsteelblue;
+            border: 1px solid #aaa;
+            border-radius: 2px;
+        }
+
+        td, th {
+            padding-left: 5px;
+            padding-right: 5px;
+            padding-top: 1px;
+            padding-bottom: 1px;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .host {
+            fill: #555;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 13px;
+            opacity: 0;
+        }
+
+        .active {
+            opacity: 1;
 }
+        </style>
 
-line {
-stroke: #fff;
-}
+    </head>
 
-text.active {
-fill: red;
-}
+    <body>
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">Skydive</a>
+                </div>
+                <div id="navbar" class="collapse navbar-collapse">
+                    <ul class="nav navbar-nav">
+                        <li class="active"><a href="#">Ethernet Conversation</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
 
-</style>
-<script src="//d3js.org/d3.v2.min.js" charset="utf-8"></script>
-
-<header>
-<aside>April 10, 2012</aside>
-</header>
-
-<h1><i>Les Misérables</i> Co-occurrence</h1>
-
-<aside style="margin-top:80px;">
 <p>Order: <select id="order">
 <option value="name">by Name</option>
 <option value="count">by Frequency</option>
-<option value="group">by Cluster</option>
+<option value="group">by Application</option> <!-- by Cluster-->
 </select>
 
-<p>This matrix diagram visualizes character co-occurrences in Victor Hugo’s <i><a href="http://en.wikipedia.org/wiki/Les_Misérables">Les Misérables</a></i>.
 
-<p>Each colored cell represents two characters that appeared in the same chapter; darker cells indicate characters that co-occurred more frequently.
-
-<p>Use the drop-down menu to reorder the matrix and explore the data.
-
-<p>Built with <a href="http://d3js.org/">d3.js</a>.
-</aside>
-
+<div class="conversation"></div>
+    
 <script>
-
-var margin = {top: 80, right: 0, bottom: 10, left: 80},
+  
+var margin = {top: 120, right: 0, bottom: 10, left: 120},
 width = 720,
 height = 720;
 
@@ -54,7 +175,7 @@ var x = d3.scale.ordinal().rangeBands([0, width]),
 z = d3.scale.linear().domain([0, 4]).clamp(true),
 c = d3.scale.category10().domain(d3.range(10));
 
-var svg = d3.select("body").append("svg")
+var svg = d3.select(".conversation").append("svg")
 .attr("width", width + margin.left + margin.right)
 .attr("height", height + margin.top + margin.bottom)
 .style("margin-left", -margin.left + "px")
@@ -183,20 +304,5 @@ d3.select("#order").property("selectedIndex", 2).node().focus();
 });
 
 </script>
-
-<p class="attribution">Source: <a href="http://www-cs-staff.stanford.edu/~uno/sgb.html">The Stanford GraphBase</a>.
-
-<p>A network can be represented by an <i><a href="http://en.wikipedia.org/wiki/Adjacency_matrix">adjacency matrix</a></i>, where each cell <i>ij</i> represents an edge from vertex <i>i</i> to vertex <i>j</i>. Here, vertices represent characters in a book, while edges represent co-occurrence in a chapter.
-
-<p>Given this two-dimensional representation of a graph, a natural visualization is to show the matrix! However, the effectiveness of a matrix diagram is heavily dependent on the order of rows and columns: if related nodes are placed closed to each other, it is easier to identify clusters and bridges.
-
-<p>This example lets you try different orderings via the drop-down menu. This type of diagram can be extended with manual reordering of rows and columns, and expanding or collapsing of clusters, to allow deeper exploration. <a href="http://en.wikipedia.org/wiki/Jacques_Bertin">Jacques Bertin</a> (or more specifically, his fleet of assistants) did this by hand with paper strips.
-
-<p>While path-following is harder in a matrix view than in a <a href="http://mbostock.github.com/d3/ex/force.html">node-link diagram</a>, matrices have other advantages. As networks get large and highly connected, node-link diagrams often devolve into giant hairballs of line crossings. Line crossings are impossible with matrix views. Matrix cells can also be encoded to show additional data; here color depicts clusters computed by a community-detection algorithm.
-
-<p>Want more? See this analysis of <a href="../shuffle/compare.html">shuffling algorithms</a> using matrix diagrams.
-
-<footer>
-<aside>January 12, 2012</aside>
-</footer>
-
+    </body>
+    </html>
