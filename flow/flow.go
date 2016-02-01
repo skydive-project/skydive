@@ -146,7 +146,11 @@ func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 		key := (FlowKey{}).fillFromGoPacket(packet)
 		flow, new := ft.GetFlow(key.String(), packet)
 		if new {
-			flow.ProbeGraphPath = *probePath
+			if probePath == nil {
+				flow.ProbeGraphPath = "probe-topology-path-not-found"
+			} else {
+				flow.ProbeGraphPath = *probePath
+			}
 		}
 		flow.fillFromGoPacket(packet)
 		flows = append(flows, flow)
