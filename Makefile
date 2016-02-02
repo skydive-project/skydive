@@ -7,7 +7,7 @@ GOFLAGS?=-v
 	protoc --go_out . ${PROTO_FILES}
 
 .bindata: godep builddep
-	go-bindata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/
+	go-bindata -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/
 
 all: genlocalfiles
 	godep go install ${GOFLAGS} ./...
