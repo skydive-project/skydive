@@ -26,19 +26,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
-	"github.com/gorilla/mux"
-
-	"github.com/redhat-cip/skydive/analyzer"
+	"github.com/redhat-cip/skydive/agent"
 	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow/mappings"
-	fprobes "github.com/redhat-cip/skydive/flow/probes"
-	"github.com/redhat-cip/skydive/ovs"
-	"github.com/redhat-cip/skydive/topology"
-	"github.com/redhat-cip/skydive/topology/graph"
-	tprobes "github.com/redhat-cip/skydive/topology/probes"
 )
 
 func usage() {
@@ -51,103 +41,12 @@ func main() {
 	flag.CommandLine.Usage = usage
 	flag.Parse()
 
-	err := config.InitConfig(*filename)
+	err := config.InitConfigFromFile(*filename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Println("Skydive Agent starting...")
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-
-	backend, err := graph.NewMemoryBackend()
-	if err != nil {
-		panic(err)
-	}
-
-	g, err := graph.NewGraph(backend)
-	if err != nil {
-		panic(err)
-	}
-
-	root := g.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})
-	// send a first reset event to the analyzers
-	g.DelSubGraph(root)
-
-	sflowProbe, err := fprobes.NewSFlowProbeFromConfig(g)
-	if err != nil {
-		panic(err)
-	}
-
-	ovsSFlowProbe := ovsdb.SFlowProbe{
-		ID:         "SkydiveSFlowProbe",
-		Interface:  "eth0",
-		Target:     sflowProbe.GetTarget(),
-		HeaderSize: 256,
-		Sampling:   1,
-		Polling:    0,
-	}
-	sflowHandler := ovsdb.NewOvsSFlowProbesHandler([]ovsdb.SFlowProbe{ovsSFlowProbe})
-
-	ovsmon := ovsdb.NewOvsMonitorFromConfig()
-	ovsmon.AddMonitorHandler(sflowHandler)
-
-	analyzers := config.GetConfig().Section("agent").Key("analyzers").Strings(",")
-	// TODO(safchain) HA Connection ???
-	analyzerAddr := strings.Split(analyzers[0], ":")[0]
-	analyzerPort, err := strconv.Atoi(strings.Split(analyzers[0], ":")[1])
-	if err != nil {
-		panic(err)
-	}
-
-	gfe, err := mappings.NewGraphFlowEnhancer(g)
-	if err != nil {
-		panic(err)
-	}
-
-	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
-	sflowProbe.SetMappingPipeline(pipeline)
-
-	gclient := graph.NewAsyncClient(analyzerAddr, analyzerPort, "/ws/graph")
-	graph.NewForwarder(gclient, g)
-	gclient.Connect()
-
-	// start probes that will update the graph
-	ns := tprobes.NewNetNSProbe(g, root)
-	ns.Start()
-
-	nl := tprobes.NewNetLinkProbe(g, root)
-	nl.Start()
-
-	ovs := tprobes.NewOvsdbProbe(g, root, ovsmon)
-	ovs.Start()
-
-	analyzer, err := analyzer.NewClient(analyzerAddr, analyzerPort)
-	if err != nil {
-		panic(err)
-	}
-
-	sflowProbe.SetAnalyzerClient(analyzer)
-	go sflowProbe.Start()
-
-	ovsmon.StartMonitoring()
-
-	router := mux.NewRouter().StrictSlash(true)
-
-	server := topology.NewServerFromConfig("agent", g, router)
-	server.RegisterStaticEndpoints()
-	server.RegisterRpcEndpoints()
-
-	gserver, err := graph.NewServerFromConfig(g, nil, server.Router)
-	if err != nil {
-		panic(err)
-	}
-
-	go gserver.ListenAndServe()
-
-	server.ListenAndServe()
+	agent.NewAgent().Start()
 }
