@@ -50,10 +50,10 @@ func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
 	defer ticker.Stop()
 	for {
 		now := <-ticker.C
-		flowTableSzBefore := len(ft.table)
 		expire := now.Unix() - int64((every).Seconds())
 
 		ft.lock.Lock()
+		flowTableSzBefore := len(ft.table)
 		for key, f := range ft.table {
 			fs := f.GetStatistics()
 			if fs.Last < expire {
