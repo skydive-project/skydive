@@ -62,12 +62,10 @@ func (c *Client) AsyncFlowsUpdate(ft *flow.FlowTable, every time.Duration) {
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	for {
-		select {
-		case <-ticker.C:
-			flows := ft.FilterLast(every + (10 * time.Second))
-			logging.GetLogger().Info("Send %d Flows to the Analyzer", len(flows))
-			c.SendFlows(flows)
-		}
+		<-ticker.C
+		flows := ft.FilterLast(every + (10 * time.Second))
+		logging.GetLogger().Info("Send %d Flows to the Analyzer", len(flows))
+		c.SendFlows(flows)
 	}
 }
 
