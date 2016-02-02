@@ -25,12 +25,13 @@ func NewFlowTable() *FlowTable {
 }
 
 func (ft *FlowTable) String() string {
+	ft.lock.RLock()
+	defer ft.lock.RUnlock()
 	return fmt.Sprintf("%d flows", len(ft.table))
 }
 
 func (ft *FlowTable) Update(flows []*Flow) {
 	ft.lock.Lock()
-	defer ft.lock.Unlock()
 	for _, f := range flows {
 		_, found := ft.table[f.UUID]
 		if !found {
@@ -39,6 +40,7 @@ func (ft *FlowTable) Update(flows []*Flow) {
 			logging.GetLogger().Error("FlowTable Collision ", f.UUID, ft.table[f.UUID].UUID)
 		}
 	}
+	ft.lock.Unlock()
 }
 
 type ExpireFunc func(f *Flow)
@@ -62,8 +64,9 @@ func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
 				delete(ft.table, key)
 			}
 		}
+		flowTableSz := len(ft.table)
 		ft.lock.Unlock()
-		logging.GetLogger().Debug("%v Expire Flow : removed %v new size %v", now, flowTableSzBefore-len(ft.table), len(ft.table))
+		logging.GetLogger().Debug("%v Expire Flow : removed %v new size %v", now, flowTableSzBefore-flowTableSz, flowTableSz)
 	}
 }
 
@@ -95,6 +98,7 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 	strLinks += "\"links\":["
 	pathMap := make(map[string]int)
 	ethMap := make(map[string]int)
+	ft.lock.RLock()
 	for _, f := range ft.table {
 		_, found := pathMap[f.LayersPath]
 		if !found {
@@ -112,6 +116,7 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 		}
 		strLinks += fmt.Sprintf("{\"source\":%d,\"target\":%d,\"value\":%d},", ethMap[ethFlow.AB.Value], ethMap[ethFlow.BA.Value], ethFlow.AB.Bytes+ethFlow.BA.Bytes)
 	}
+	ft.lock.RUnlock()
 	strNodes = strings.TrimRight(strNodes, ",")
 	strNodes += "]"
 	strLinks = strings.TrimRight(strLinks, ",")
@@ -129,15 +134,15 @@ func (ft *FlowTable) NewFlowTableFromFlows(flows []*Flow) *FlowTable {
 
 /* Return a new FlowTable that contain <last> active flows */
 func (ft *FlowTable) FilterLast(last time.Duration) []*Flow {
-	ft.lock.RLock()
-	defer ft.lock.RUnlock()
 	var flows []*Flow
 	selected := time.Now().Unix() - int64((last).Seconds())
+	ft.lock.RLock()
 	for _, f := range ft.table {
 		fs := f.GetStatistics()
 		if fs.Last >= selected {
 			flows = append(flows, f)
 		}
 	}
+	ft.lock.RUnlock()
 	return flows
 }
