@@ -79,12 +79,20 @@ func flow2OldFlow(f *flow.Flow) OldFlow {
 	of.LayersPath = f.LayersPath
 	of.EtherSrc = eth.AB.Value
 	of.EtherDst = eth.BA.Value
-	of.Ipv4Src = ip.AB.Value
-	of.Ipv4Dst = ip.BA.Value
-	portInt, _ := strconv.Atoi(port.AB.Value)
-	of.PortSrc = uint32(portInt)
-	portInt, _ = strconv.Atoi(port.BA.Value)
-	of.PortDst = uint32(portInt)
+	of.Ipv4Src = ""
+	of.Ipv4Dst = ""
+	of.PortSrc = 0
+	of.PortDst = 0
+	if ip != nil {
+		of.Ipv4Src = ip.AB.Value
+		of.Ipv4Dst = ip.BA.Value
+	}
+	if port != nil {
+		portInt, _ := strconv.Atoi(port.AB.Value)
+		of.PortSrc = uint32(portInt)
+		portInt, _ = strconv.Atoi(port.BA.Value)
+		of.PortDst = uint32(portInt)
+	}
 	of.ID = 0
 	of.Timestamp = uint64(fs.Start)
 
