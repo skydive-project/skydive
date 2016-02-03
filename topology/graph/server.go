@@ -30,14 +30,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 )
 
 const (
-	writeWait      = 10 * time.Second
-	pongWait       = 1 * time.Second
-	pingPeriod     = (pongWait * 8) / 10
-	maxMessageSize = 1024 * 1024
+	defaultPongWait = 5
+	writeWait       = 10 * time.Second
+	maxMessageSize  = 1024 * 1024
 )
 
 type Server struct {
@@ -70,6 +70,8 @@ type WSServer struct {
 	broadcast  chan string
 	register   chan *WSClient
 	unregister chan *WSClient
+	pongWait   time.Duration
+	pingPeriod time.Duration
 }
 
 func (c *WSClient) processGraphMessage(m []byte) {
@@ -161,9 +163,9 @@ func (c *WSClient) readPump() {
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetReadDeadline(time.Now().Add(c.server.pongWait))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		c.conn.SetReadDeadline(time.Now().Add(c.server.pongWait))
 		return nil
 	})
 
@@ -178,7 +180,7 @@ func (c *WSClient) readPump() {
 }
 
 func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
-	ticker := time.NewTicker(pingPeriod)
+	ticker := time.NewTicker(c.server.pingPeriod)
 
 	defer func() {
 		ticker.Stop()
@@ -335,7 +337,7 @@ func (s *Server) ListenAndServe() {
 	s.wsServer.ListenAndServe()
 }
 
-func NewServer(g *Graph, a *Alert, router *mux.Router) *Server {
+func NewServer(g *Graph, a *Alert, router *mux.Router, pongWait time.Duration) *Server {
 	return &Server{
 		Graph:  g,
 		Alert:  a,
@@ -347,6 +349,14 @@ func NewServer(g *Graph, a *Alert, router *mux.Router) *Server {
 			register:   make(chan *WSClient),
 			unregister: make(chan *WSClient),
 			clients:    make(map[*WSClient]bool),
+			pongWait:   pongWait,
+			pingPeriod: (pongWait * 8) / 10,
 		},
 	}
+}
+
+func NewServerFromConfig(g *Graph, a *Alert, router *mux.Router) (*Server, error) {
+	w := config.GetConfig().Section("default").Key("ws_pong_timeout").MustInt(defaultPongWait)
+
+	return NewServer(g, a, router, time.Duration(w)*time.Second), nil
 }

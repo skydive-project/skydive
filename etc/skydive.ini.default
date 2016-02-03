@@ -1,5 +1,9 @@
 # Skydive config file
 
+[default]
+# WebSocket Ping/Pong timeout in second
+ws_pong_timeout = 5
+
 [cache]
 # expiration time in second
 expire = 300
