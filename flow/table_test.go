@@ -122,7 +122,14 @@ func TestFlowTable_String(t *testing.T) {
 	}
 }
 func TestFlowTable_Update(t *testing.T) {
-	NewFlowTableSimple(t)
+	ft := NewFlowTableSimple(t)
+	/* simulate a collision */
+	f := &Flow{}
+	ft.table["789"] = f
+	ft.table["789"].UUID = "78910"
+	f = &Flow{}
+	f.UUID = "789"
+	ft.Update([]*Flow{f})
 	NewFlowTableComplex(t)
 }
 
