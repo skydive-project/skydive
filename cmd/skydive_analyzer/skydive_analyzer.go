@@ -51,12 +51,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = logging.InitLogger()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-
 	router := mux.NewRouter().StrictSlash(true)
 
 	server, err := analyzer.NewServerFromConfig(router)

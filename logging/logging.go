@@ -24,6 +24,7 @@ package logging
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -128,7 +129,15 @@ func GetLogger() (log *logging.Logger) {
 	if !found {
 		log, found = skydiveLogger.loggers[pkg]
 		if !found {
-			log = skydiveLogger.loggers["default"]
+			log, found = skydiveLogger.loggers["default"]
+			if !found {
+				err := InitLogger()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%v\n", err)
+					os.Exit(1)
+				}
+				log, _ = skydiveLogger.loggers["default"]
+			}
 		}
 	}
 	return log

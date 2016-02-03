@@ -48,12 +48,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = logging.InitLogger()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-
 	logging.GetLogger().Notice("Skydive Agent starting...")
 	agent.NewAgent().Start()
 }

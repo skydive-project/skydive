@@ -241,12 +241,6 @@ func usage() {
 }
 
 func main() {
-	err := logging.InitLogger()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-
 	pcaptrace := flag.String("trace", "", "PCAP trace file to read")
 	pps := flag.Uint("pps", 1000, "Packets per second")
 	PktsPerFlow := flag.Uint("pktspersflow", 5, "Number of Packets per SFlow Datagram")
