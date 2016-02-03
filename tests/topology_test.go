@@ -234,6 +234,26 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []string, onChange func(ws 
 	}
 }
 
+func testCleanup(t *testing.T, g *graph.Graph, cmds []string) {
+	// cleanup side on the test
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
+			testPassed = true
+
+			ws.Close()
+		}
+	}
+
+	testTopology(t, g, cmds, onChange)
+	if !testPassed {
+		t.Error("test not executed")
+	}
+}
+
 func TestBridgeOVS(t *testing.T) {
 	backend, err := graph.NewMemoryBackend()
 	if err != nil {
@@ -289,23 +309,7 @@ func TestBridgeOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 
-	// cleanup side on the test
-	testPassed = false
-	onChange = func(ws *websocket.Conn) {
-		g.Lock()
-		defer g.Unlock()
-
-		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
-			testPassed = true
-
-			ws.Close()
-		}
-	}
-
-	testTopology(t, g, tearDownCmds, onChange)
-	if !testPassed {
-		t.Error("test not executed")
-	}
+	testCleanup(t, g, tearDownCmds)
 }
 
 func TestPatchOVS(t *testing.T) {
@@ -366,23 +370,7 @@ func TestPatchOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 
-	// cleanup side on the test
-	testPassed = false
-	onChange = func(ws *websocket.Conn) {
-		g.Lock()
-		defer g.Unlock()
-
-		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
-			testPassed = true
-
-			ws.Close()
-		}
-	}
-
-	testTopology(t, g, tearDownCmds, onChange)
-	if !testPassed {
-		t.Error("test not executed")
-	}
+	testCleanup(t, g, tearDownCmds)
 }
 
 func TestInterfaceOVS(t *testing.T) {
@@ -440,23 +428,7 @@ func TestInterfaceOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 
-	// cleanup side on the test
-	testPassed = false
-	onChange = func(ws *websocket.Conn) {
-		g.Lock()
-		defer g.Unlock()
-
-		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
-			testPassed = true
-
-			ws.Close()
-		}
-	}
-
-	testTopology(t, g, tearDownCmds, onChange)
-	if !testPassed {
-		t.Error("test not executed")
-	}
+	testCleanup(t, g, tearDownCmds)
 }
 
 func TestBondOVS(t *testing.T) {
@@ -511,21 +483,5 @@ func TestBondOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 
-	// cleanup side on the test
-	testPassed = false
-	onChange = func(ws *websocket.Conn) {
-		g.Lock()
-		defer g.Unlock()
-
-		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
-			testPassed = true
-
-			ws.Close()
-		}
-	}
-
-	testTopology(t, g, tearDownCmds, onChange)
-	if !testPassed {
-		t.Error("test not executed")
-	}
+	testCleanup(t, g, tearDownCmds)
 }
