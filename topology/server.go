@@ -85,24 +85,7 @@ func (s *Server) TopologyIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) TopologyShow(w http.ResponseWriter, r *http.Request) {
-	/*vars := mux.Vars(r)
-	host := vars["host"]
-
-	if topo, ok := s.MultiNodeTopology.Get(host); ok {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(topo); err != nil {
-			panic(err)
-		}
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-	}*/
-}
-
 func (s *Server) RegisterStaticEndpoints() {
-
-	// static routes
 	s.Router.HandleFunc("/static/topology", s.serveIndex)
 }
 
@@ -113,12 +96,6 @@ func (s *Server) RegisterRpcEndpoints() {
 			"GET",
 			"/rpc/topology",
 			s.TopologyIndex,
-		},
-		{
-			"TopologyShow",
-			"GET",
-			"/rpc/topology/{host}",
-			s.TopologyShow,
 		},
 	}
 
