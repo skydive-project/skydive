@@ -32,7 +32,7 @@ import (
 
 var cfg *ini.File
 
-func InitConfig(filename string) error {
+func InitConfigFromFile(filename string) error {
 	var err error
 
 	cfg, err = ini.Load(filename)

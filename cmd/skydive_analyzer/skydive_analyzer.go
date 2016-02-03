@@ -44,7 +44,7 @@ func main() {
 	flag.CommandLine.Usage = usage
 	flag.Parse()
 
-	err := config.InitConfig(*filename)
+	err := config.InitConfigFromFile(*filename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
