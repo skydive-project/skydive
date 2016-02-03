@@ -45,6 +45,24 @@ func (ft *FlowTable) Update(flows []*Flow) {
 
 type ExpireFunc func(f *Flow)
 
+func (ft *FlowTable) expire(fn ExpireFunc, expire int64) {
+	ft.lock.Lock()
+	flowTableSzBefore := len(ft.table)
+	for key, f := range ft.table {
+		fs := f.GetStatistics()
+		if fs.Last < expire {
+			duration := time.Duration(fs.Last - fs.Start)
+			logging.GetLogger().Debug("Expire flow %s Duration %v", f.UUID, duration)
+			/* Advise Clients */
+			fn(f)
+			delete(ft.table, key)
+		}
+	}
+	flowTableSz := len(ft.table)
+	ft.lock.Unlock()
+	logging.GetLogger().Debug("%v Expire Flow : removed %v new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
+}
+
 func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
@@ -52,21 +70,7 @@ func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
 		now := <-ticker.C
 		expire := now.Unix() - int64((every).Seconds())
 
-		ft.lock.Lock()
-		flowTableSzBefore := len(ft.table)
-		for key, f := range ft.table {
-			fs := f.GetStatistics()
-			if fs.Last < expire {
-				duration := time.Duration(fs.Last - fs.Start)
-				logging.GetLogger().Debug("%v Expire flow %s Duration %v", now, f.UUID, duration)
-				/* Advise Clients */
-				fn(f)
-				delete(ft.table, key)
-			}
-		}
-		flowTableSz := len(ft.table)
-		ft.lock.Unlock()
-		logging.GetLogger().Debug("%v Expire Flow : removed %v new size %v", now, flowTableSzBefore-flowTableSz, flowTableSz)
+		ft.expire(fn, expire)
 	}
 }
 
