@@ -458,3 +458,74 @@ func TestInterfaceOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 }
+
+func TestBondOVS(t *testing.T) {
+	backend, err := graph.NewMemoryBackend()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	g, err := graph.NewGraph(backend)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	startAgent(t)
+
+	setupCmds := []string{
+		"ovs-vsctl add-br br-test1",
+		"ip tuntap add mode tap dev intf1",
+		"ip tuntap add mode tap dev intf2",
+		"ovs-vsctl add-bond br-test1 bond0 intf1 intf2",
+	}
+
+	tearDownCmds := []string{
+		"ovs-vsctl del-br br-test1",
+		"ip link del intf1",
+		"ip link del intf2",
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 6 && len(g.GetEdges()) >= 5 {
+			bond := g.LookupFirstNode(graph.Metadatas{"Type": "ovsport", "Name": "bond0"})
+			if bond != nil {
+				intfs := g.LookupChildren(bond, nil)
+				if len(intfs) != 2 {
+					t.Error("bond interfaces not found")
+				}
+
+				testPassed = true
+
+				ws.Close()
+			}
+
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed")
+	}
+
+	// cleanup side on the test
+	testPassed = false
+	onChange = func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
+			testPassed = true
+
+			ws.Close()
+		}
+	}
+
+	testTopology(t, g, tearDownCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed")
+	}
+}
