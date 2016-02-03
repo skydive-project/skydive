@@ -60,7 +60,7 @@ func (ft *FlowTable) expire(fn ExpireFunc, expire int64) {
 	}
 	flowTableSz := len(ft.table)
 	ft.lock.Unlock()
-	logging.GetLogger().Debug("%v Expire Flow : removed %v new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
+	logging.GetLogger().Debug("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
 }
 
 func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
