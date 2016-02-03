@@ -1,7 +1,14 @@
 language: go
 go_import_path: github.com/redhat-cip/skydive
 
+sudo: required
+dist: trusty
+
 before_install:
+    - sudo apt-get -qq update
+    - sudo apt-get install -y openvswitch-switch
+    - sudo ovs-vsctl show
+    - sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400
     - go get github.com/axw/gocov/gocov
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
