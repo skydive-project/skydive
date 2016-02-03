@@ -142,7 +142,11 @@ func main() {
 	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
 
-	gserver := graph.NewServer(g, nil, server.Router)
+	gserver, err := graph.NewServerFromConfig(g, nil, server.Router)
+	if err != nil {
+		panic(err)
+	}
+
 	go gserver.ListenAndServe()
 
 	server.ListenAndServe()
