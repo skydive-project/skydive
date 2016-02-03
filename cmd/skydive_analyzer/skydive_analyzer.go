@@ -70,6 +70,6 @@ func main() {
 	}
 	server.SetStorage(storage)
 
-	fmt.Println("Skydive Analyzer started !")
+	logging.GetLogger().Notice("Skydive Analyzer started !")
 	server.ListenAndServe()
 }
