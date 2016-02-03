@@ -254,7 +254,7 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []string) {
 	}
 }
 
-func TestBridgeOVS(t *testing.T) {
+func newGraph(t *testing.T) *graph.Graph {
 	backend, err := graph.NewMemoryBackend()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -264,6 +264,12 @@ func TestBridgeOVS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+
+	return g
+}
+
+func TestBridgeOVS(t *testing.T) {
+	g := newGraph(t)
 
 	startAgent(t)
 
@@ -313,15 +319,7 @@ func TestBridgeOVS(t *testing.T) {
 }
 
 func TestPatchOVS(t *testing.T) {
-	backend, err := graph.NewMemoryBackend()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	g, err := graph.NewGraph(backend)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	g := newGraph(t)
 
 	startAgent(t)
 
@@ -374,15 +372,7 @@ func TestPatchOVS(t *testing.T) {
 }
 
 func TestInterfaceOVS(t *testing.T) {
-	backend, err := graph.NewMemoryBackend()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	g, err := graph.NewGraph(backend)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	g := newGraph(t)
 
 	startAgent(t)
 
@@ -432,15 +422,7 @@ func TestInterfaceOVS(t *testing.T) {
 }
 
 func TestBondOVS(t *testing.T) {
-	backend, err := graph.NewMemoryBackend()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	g, err := graph.NewGraph(backend)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	g := newGraph(t)
 
 	startAgent(t)
 
