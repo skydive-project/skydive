@@ -48,12 +48,14 @@ import (
 type Server struct {
 	Addr                string
 	Port                int
+	Stopping            bool
 	Router              *mux.Router
 	TopoServer          *topology.Server
 	GraphServer         *graph.Server
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	Storage             storage.Storage
 	FlowTable           *flow.FlowTable
+	Conn                *net.UDPConn
 }
 
 func (s *Server) flowExpire(f *flow.Flow) {
@@ -71,13 +73,15 @@ func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
 	logging.GetLogger().Debug("%d flows stored", len(flows))
 }
 
-func (s *Server) handleUDPFlowPacket(conn *net.UDPConn) {
+func (s *Server) handleUDPFlowPacket() {
 	data := make([]byte, 4096)
 
 	for {
-		n, _, err := conn.ReadFromUDP(data)
+		n, _, err := s.Conn.ReadFromUDP(data)
 		if err != nil {
-			logging.GetLogger().Error("Error while reading: %s", err.Error())
+			if !s.Stopping {
+				logging.GetLogger().Error("Error while reading: %s", err.Error())
+			}
 			return
 		}
 
@@ -108,16 +112,23 @@ func (s *Server) ListenAndServe() {
 		defer wg.Done()
 
 		addr, err := net.ResolveUDPAddr("udp", s.Addr+":"+strconv.FormatInt(int64(s.Port), 10))
-		conn, err := net.ListenUDP("udp", addr)
+		s.Conn, err = net.ListenUDP("udp", addr)
 		if err != nil {
 			panic(err)
 		}
-		defer conn.Close()
+		defer s.Conn.Close()
 
-		s.handleUDPFlowPacket(conn)
+		s.handleUDPFlowPacket()
 	}()
 
 	wg.Wait()
+}
+
+func (s *Server) Stop() {
+	s.Stopping = true
+	s.TopoServer.Stop()
+	s.GraphServer.Stop()
+	s.Conn.Close()
 }
 
 func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {

@@ -25,6 +25,7 @@ package probes
 import (
 	"encoding/json"
 	"net"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -45,7 +46,7 @@ type NetLinkProbe struct {
 	Graph             *graph.Graph
 	Root              *graph.Node
 	nlSocket          *nl.NetlinkSocket
-	doneChan          chan struct{}
+	running           atomic.Value
 	indexTointfsQueue map[int64][]*graph.Node
 }
 
@@ -343,6 +344,7 @@ func (u *NetLinkProbe) start() {
 		return
 	}
 	u.nlSocket = s
+	defer u.nlSocket.Close()
 
 	fd := u.nlSocket.GetFd()
 
@@ -354,7 +356,7 @@ func (u *NetLinkProbe) start() {
 
 	epfd, e := syscall.EpollCreate1(0)
 	if e != nil {
-		logging.GetLogger().Error("Failed to set the netlink fd as non-blocking: %s", err.Error())
+		logging.GetLogger().Error("Failed to create epoll: %s", err.Error())
 		return
 	}
 	defer syscall.Close(epfd)
@@ -363,27 +365,23 @@ func (u *NetLinkProbe) start() {
 
 	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
 	if e = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); e != nil {
-		logging.GetLogger().Error("Failed to set the netlink fd as non-blocking: %s", err.Error())
+		logging.GetLogger().Error("Failed to control epoll: %s", err.Error())
 		return
 	}
 
 	events := make([]syscall.EpollEvent, maxEpollEvents)
 
-Loop:
-	for {
+	for u.running.Load() == true {
 		n, err := syscall.EpollWait(epfd, events[:], 1000)
 		if err != nil {
-			logging.GetLogger().Error("Failed to receive from netlink messages: %s", err.Error())
+			errno, ok := err.(syscall.Errno)
+			if ok && errno != syscall.EINTR {
+				logging.GetLogger().Error("Failed to receive from events from netlink: %s", err.Error())
+			}
 			continue
 		}
-
 		if n == 0 {
-			select {
-			case <-u.doneChan:
-				break Loop
-			default:
-				continue
-			}
+			continue
 		}
 
 		msgs, err := s.Receive()
@@ -405,8 +403,6 @@ Loop:
 			}
 		}
 	}
-
-	u.nlSocket.Close()
 }
 
 func (u *NetLinkProbe) Start() {
@@ -418,14 +414,15 @@ func (u *NetLinkProbe) Run() {
 }
 
 func (u *NetLinkProbe) Stop() {
-	u.doneChan <- struct{}{}
+	u.running.Store(false)
 }
 
 func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
-	return &NetLinkProbe{
+	np := &NetLinkProbe{
 		Graph:             g,
 		Root:              n,
-		doneChan:          make(chan struct{}),
 		indexTointfsQueue: make(map[int64][]*graph.Node),
 	}
+	np.running.Store(true)
+	return np
 }
