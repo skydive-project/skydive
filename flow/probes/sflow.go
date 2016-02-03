@@ -131,7 +131,12 @@ func (probe *SFlowProbe) Start() error {
 	go probe.cacheUpdater()
 
 	flowtable := flow.NewFlowTable()
-	go flowtable.AsyncExpire(probe.flowExpire, 5*time.Minute)
+	cfgFlowtable_expire, err := config.GetConfig().Section("agent").Key("flowtable_expire").Int()
+	if err != nil || cfgFlowtable_expire < 1 {
+		logging.GetLogger().Error("Config flowTable_expire invalid value ", cfgFlowtable_expire, err.Error())
+		return err
+	}
+	go flowtable.AsyncExpire(probe.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
 
 	for {
 		_, _, err := conn.ReadFromUDP(buf[:])

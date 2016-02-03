@@ -251,7 +251,12 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 	}
 	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
-	go flowtable.AsyncExpire(server.flowExpire, 10*time.Minute)
+	cfgFlowtable_expire, err := config.GetConfig().Section("analyzer").Key("flowtable_expire").Int()
+	if err != nil || cfgFlowtable_expire < 1 {
+		logging.GetLogger().Error("Config flowTable_expire invalid value ", cfgFlowtable_expire, err.Error())
+		return nil, err
+	}
+	go flowtable.AsyncExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
 
 	return server, nil
 }

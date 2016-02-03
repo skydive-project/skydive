@@ -18,12 +18,14 @@ region_name = RegionOne
 # address and port for the analyzer API, Format: addr:port.
 # Default addr is 127.0.0.1
 listen = 8082
+flowtable_expire = 10
 
 [agent]
 # address and port for the agent API, Format: addr:port.
 # Default addr is 127.0.0.1
 listen = 8081
 analyzers = 127.0.0.1:8082
+flowtable_expire = 5
 
 [sflow]
 # listen parameter for the sflow agent, Format: addr:port.
