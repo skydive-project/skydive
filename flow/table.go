@@ -37,7 +37,7 @@ func (ft *FlowTable) Update(flows []*Flow) {
 		if !found {
 			ft.table[f.UUID] = f
 		} else if f.UUID != ft.table[f.UUID].UUID {
-			logging.GetLogger().Error("FlowTable Collision ", f.UUID, ft.table[f.UUID].UUID)
+			logging.GetLogger().Error("FlowTable Collision %s %s", f.UUID, ft.table[f.UUID].UUID)
 		}
 	}
 	ft.lock.Unlock()
