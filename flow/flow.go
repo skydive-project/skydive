@@ -45,7 +45,6 @@ func LayerFlow(l gopacket.Layer) gopacket.Flow {
 	case gopacket.TransportLayer:
 		return l.(gopacket.TransportLayer).TransportFlow()
 	}
-	logging.GetLogger().Critical(fmt.Sprint("Unknown gopacket.Layer %T", l))
 	return gopacket.Flow{}
 }
 
