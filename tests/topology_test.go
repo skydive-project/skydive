@@ -384,3 +384,77 @@ func TestPatchOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 }
+
+func TestInterfaceOVS(t *testing.T) {
+	backend, err := graph.NewMemoryBackend()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	g, err := graph.NewGraph(backend)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	startAgent(t)
+
+	setupCmds := []string{
+		"ovs-vsctl add-br br-test1",
+		"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal",
+	}
+
+	tearDownCmds := []string{
+		"ovs-vsctl del-br br-test1",
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 5 && len(g.GetEdges()) >= 4 {
+			intf := g.LookupFirstNode(graph.Metadatas{"Type": "internal", "Name": "intf1", "Driver": "openvswitch"})
+			if intf != nil {
+				if _, ok := intf.Metadatas()["UUID"]; ok {
+					// check we don't have another interface potentially added by netlink
+					// should only have ovsport and interface
+					others := g.LookupNodes(graph.Metadatas{"Name": "intf1"})
+					if len(others) > 2 {
+						t.Error("found more interface than expected")
+					}
+
+					if _, ok := intf.Metadatas()["MAC"]; !ok {
+						t.Error("mac not found")
+					}
+
+					testPassed = true
+
+					ws.Close()
+				}
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed")
+	}
+
+	// cleanup side on the test
+	testPassed = false
+	onChange = func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
+			testPassed = true
+
+			ws.Close()
+		}
+	}
+
+	testTopology(t, g, tearDownCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed")
+	}
+}
