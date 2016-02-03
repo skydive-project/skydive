@@ -9,6 +9,9 @@ It is generated from these files:
 	flow/flow.proto
 
 It has these top-level messages:
+	FlowEndpointStatistics
+	FlowEndpointsStatistics
+	FlowStatistics
 	Flow
 */
 package flow
@@ -22,178 +25,151 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.ProtoPackageIsVersion1
+
+type FlowEndpointType int32
+
+const (
+	FlowEndpointType_ETHERNET FlowEndpointType = 0
+	FlowEndpointType_IPV4     FlowEndpointType = 1
+	FlowEndpointType_TCPPORT  FlowEndpointType = 2
+	FlowEndpointType_UDPPORT  FlowEndpointType = 3
+	FlowEndpointType_SCTPPORT FlowEndpointType = 4
+)
+
+var FlowEndpointType_name = map[int32]string{
+	0: "ETHERNET",
+	1: "IPV4",
+	2: "TCPPORT",
+	3: "UDPPORT",
+	4: "SCTPPORT",
+}
+var FlowEndpointType_value = map[string]int32{
+	"ETHERNET": 0,
+	"IPV4":     1,
+	"TCPPORT":  2,
+	"UDPPORT":  3,
+	"SCTPPORT": 4,
+}
+
+func (x FlowEndpointType) String() string {
+	return proto.EnumName(FlowEndpointType_name, int32(x))
+}
+func (FlowEndpointType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+type FlowEndpointStatistics struct {
+	Type    FlowEndpointType `protobuf:"varint,1,opt,name=Type,enum=flow.FlowEndpointType" json:"Type,omitempty"`
+	Value   string           `protobuf:"bytes,2,opt,name=Value" json:"Value,omitempty"`
+	Packets uint64           `protobuf:"varint,5,opt,name=Packets" json:"Packets,omitempty"`
+	Bytes   uint64           `protobuf:"varint,6,opt,name=Bytes" json:"Bytes,omitempty"`
+}
+
+func (m *FlowEndpointStatistics) Reset()                    { *m = FlowEndpointStatistics{} }
+func (m *FlowEndpointStatistics) String() string            { return proto.CompactTextString(m) }
+func (*FlowEndpointStatistics) ProtoMessage()               {}
+func (*FlowEndpointStatistics) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+type FlowEndpointsStatistics struct {
+	Type FlowEndpointType        `protobuf:"varint,1,opt,name=Type,enum=flow.FlowEndpointType" json:"Type,omitempty"`
+	AB   *FlowEndpointStatistics `protobuf:"bytes,3,opt,name=AB" json:"AB,omitempty"`
+	BA   *FlowEndpointStatistics `protobuf:"bytes,4,opt,name=BA" json:"BA,omitempty"`
+}
+
+func (m *FlowEndpointsStatistics) Reset()                    { *m = FlowEndpointsStatistics{} }
+func (m *FlowEndpointsStatistics) String() string            { return proto.CompactTextString(m) }
+func (*FlowEndpointsStatistics) ProtoMessage()               {}
+func (*FlowEndpointsStatistics) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+func (m *FlowEndpointsStatistics) GetAB() *FlowEndpointStatistics {
+	if m != nil {
+		return m.AB
+	}
+	return nil
+}
+
+func (m *FlowEndpointsStatistics) GetBA() *FlowEndpointStatistics {
+	if m != nil {
+		return m.BA
+	}
+	return nil
+}
+
+type FlowStatistics struct {
+	Start     int64                              `protobuf:"varint,1,opt,name=Start" json:"Start,omitempty"`
+	Last      int64                              `protobuf:"varint,2,opt,name=Last" json:"Last,omitempty"`
+	Endpoints map[int32]*FlowEndpointsStatistics `protobuf:"bytes,3,rep,name=Endpoints" json:"Endpoints,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+}
+
+func (m *FlowStatistics) Reset()                    { *m = FlowStatistics{} }
+func (m *FlowStatistics) String() string            { return proto.CompactTextString(m) }
+func (*FlowStatistics) ProtoMessage()               {}
+func (*FlowStatistics) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *FlowStatistics) GetEndpoints() map[int32]*FlowEndpointsStatistics {
+	if m != nil {
+		return m.Endpoints
+	}
+	return nil
+}
+
 type Flow struct {
-	UUID             *string `protobuf:"bytes,1,req,name=UUID" json:"UUID,omitempty"`
-	LayersPath       *string `protobuf:"bytes,2,req,name=LayersPath" json:"LayersPath,omitempty"`
-	EtherSrc         *string `protobuf:"bytes,3,req,name=EtherSrc" json:"EtherSrc,omitempty"`
-	EtherDst         *string `protobuf:"bytes,4,req,name=EtherDst" json:"EtherDst,omitempty"`
-	Ipv4Src          *string `protobuf:"bytes,5,opt,name=Ipv4Src" json:"Ipv4Src,omitempty"`
-	Ipv4Dst          *string `protobuf:"bytes,6,opt,name=Ipv4Dst" json:"Ipv4Dst,omitempty"`
-	PortSrc          *uint32 `protobuf:"varint,7,opt,name=PortSrc" json:"PortSrc,omitempty"`
-	PortDst          *uint32 `protobuf:"varint,8,opt,name=PortDst" json:"PortDst,omitempty"`
-	ID               *uint64 `protobuf:"varint,9,opt,name=ID" json:"ID,omitempty"`
-	Timestamp        *uint64 `protobuf:"varint,10,req,name=Timestamp" json:"Timestamp,omitempty"`
-	ProbeGraphPath   *string `protobuf:"bytes,11,opt,name=ProbeGraphPath" json:"ProbeGraphPath,omitempty"`
-	IfSrcName        *string `protobuf:"bytes,12,opt,name=IfSrcName" json:"IfSrcName,omitempty"`
-	IfSrcType        *string `protobuf:"bytes,13,opt,name=IfSrcType" json:"IfSrcType,omitempty"`
-	IfSrcGraphPath   *string `protobuf:"bytes,14,opt,name=IfSrcGraphPath" json:"IfSrcGraphPath,omitempty"`
-	IfSrcTenantID    *string `protobuf:"bytes,15,opt,name=IfSrcTenantID" json:"IfSrcTenantID,omitempty"`
-	IfSrcVNI         *uint64 `protobuf:"varint,16,opt,name=IfSrcVNI" json:"IfSrcVNI,omitempty"`
-	IfDstName        *string `protobuf:"bytes,17,opt,name=IfDstName" json:"IfDstName,omitempty"`
-	IfDstType        *string `protobuf:"bytes,18,opt,name=IfDstType" json:"IfDstType,omitempty"`
-	IfDstGraphPath   *string `protobuf:"bytes,19,opt,name=IfDstGraphPath" json:"IfDstGraphPath,omitempty"`
-	IfDstTenantID    *string `protobuf:"bytes,20,opt,name=IfDstTenantID" json:"IfDstTenantID,omitempty"`
-	IfDstVNI         *uint64 `protobuf:"varint,21,opt,name=IfDstVNI" json:"IfDstVNI,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
+	UUID       string `protobuf:"bytes,1,opt,name=UUID" json:"UUID,omitempty"`
+	LayersPath string `protobuf:"bytes,2,opt,name=LayersPath" json:"LayersPath,omitempty"`
+	// Data Flow info
+	Statistics *FlowStatistics `protobuf:"bytes,3,opt,name=Statistics" json:"Statistics,omitempty"`
+	// Topology info
+	ProbeGraphPath string `protobuf:"bytes,11,opt,name=ProbeGraphPath" json:"ProbeGraphPath,omitempty"`
+	IfSrcGraphPath string `protobuf:"bytes,14,opt,name=IfSrcGraphPath" json:"IfSrcGraphPath,omitempty"`
+	IfDstGraphPath string `protobuf:"bytes,19,opt,name=IfDstGraphPath" json:"IfDstGraphPath,omitempty"`
 }
 
-func (m *Flow) Reset()         { *m = Flow{} }
-func (m *Flow) String() string { return proto.CompactTextString(m) }
-func (*Flow) ProtoMessage()    {}
+func (m *Flow) Reset()                    { *m = Flow{} }
+func (m *Flow) String() string            { return proto.CompactTextString(m) }
+func (*Flow) ProtoMessage()               {}
+func (*Flow) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-func (m *Flow) GetUUID() string {
-	if m != nil && m.UUID != nil {
-		return *m.UUID
+func (m *Flow) GetStatistics() *FlowStatistics {
+	if m != nil {
+		return m.Statistics
 	}
-	return ""
+	return nil
 }
 
-func (m *Flow) GetLayersPath() string {
-	if m != nil && m.LayersPath != nil {
-		return *m.LayersPath
-	}
-	return ""
+func init() {
+	proto.RegisterType((*FlowEndpointStatistics)(nil), "flow.FlowEndpointStatistics")
+	proto.RegisterType((*FlowEndpointsStatistics)(nil), "flow.FlowEndpointsStatistics")
+	proto.RegisterType((*FlowStatistics)(nil), "flow.FlowStatistics")
+	proto.RegisterType((*Flow)(nil), "flow.Flow")
+	proto.RegisterEnum("flow.FlowEndpointType", FlowEndpointType_name, FlowEndpointType_value)
 }
 
-func (m *Flow) GetEtherSrc() string {
-	if m != nil && m.EtherSrc != nil {
-		return *m.EtherSrc
-	}
-	return ""
-}
-
-func (m *Flow) GetEtherDst() string {
-	if m != nil && m.EtherDst != nil {
-		return *m.EtherDst
-	}
-	return ""
-}
-
-func (m *Flow) GetIpv4Src() string {
-	if m != nil && m.Ipv4Src != nil {
-		return *m.Ipv4Src
-	}
-	return ""
-}
-
-func (m *Flow) GetIpv4Dst() string {
-	if m != nil && m.Ipv4Dst != nil {
-		return *m.Ipv4Dst
-	}
-	return ""
-}
-
-func (m *Flow) GetPortSrc() uint32 {
-	if m != nil && m.PortSrc != nil {
-		return *m.PortSrc
-	}
-	return 0
-}
-
-func (m *Flow) GetPortDst() uint32 {
-	if m != nil && m.PortDst != nil {
-		return *m.PortDst
-	}
-	return 0
-}
-
-func (m *Flow) GetID() uint64 {
-	if m != nil && m.ID != nil {
-		return *m.ID
-	}
-	return 0
-}
-
-func (m *Flow) GetTimestamp() uint64 {
-	if m != nil && m.Timestamp != nil {
-		return *m.Timestamp
-	}
-	return 0
-}
-
-func (m *Flow) GetProbeGraphPath() string {
-	if m != nil && m.ProbeGraphPath != nil {
-		return *m.ProbeGraphPath
-	}
-	return ""
-}
-
-func (m *Flow) GetIfSrcName() string {
-	if m != nil && m.IfSrcName != nil {
-		return *m.IfSrcName
-	}
-	return ""
-}
-
-func (m *Flow) GetIfSrcType() string {
-	if m != nil && m.IfSrcType != nil {
-		return *m.IfSrcType
-	}
-	return ""
-}
-
-func (m *Flow) GetIfSrcGraphPath() string {
-	if m != nil && m.IfSrcGraphPath != nil {
-		return *m.IfSrcGraphPath
-	}
-	return ""
-}
-
-func (m *Flow) GetIfSrcTenantID() string {
-	if m != nil && m.IfSrcTenantID != nil {
-		return *m.IfSrcTenantID
-	}
-	return ""
-}
-
-func (m *Flow) GetIfSrcVNI() uint64 {
-	if m != nil && m.IfSrcVNI != nil {
-		return *m.IfSrcVNI
-	}
-	return 0
-}
-
-func (m *Flow) GetIfDstName() string {
-	if m != nil && m.IfDstName != nil {
-		return *m.IfDstName
-	}
-	return ""
-}
-
-func (m *Flow) GetIfDstType() string {
-	if m != nil && m.IfDstType != nil {
-		return *m.IfDstType
-	}
-	return ""
-}
-
-func (m *Flow) GetIfDstGraphPath() string {
-	if m != nil && m.IfDstGraphPath != nil {
-		return *m.IfDstGraphPath
-	}
-	return ""
-}
-
-func (m *Flow) GetIfDstTenantID() string {
-	if m != nil && m.IfDstTenantID != nil {
-		return *m.IfDstTenantID
-	}
-	return ""
-}
-
-func (m *Flow) GetIfDstVNI() uint64 {
-	if m != nil && m.IfDstVNI != nil {
-		return *m.IfDstVNI
-	}
-	return 0
+var fileDescriptor0 = []byte{
+	// 389 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x52, 0x4d, 0x4b, 0xeb, 0x40,
+	0x14, 0x7d, 0x49, 0x26, 0xfd, 0xb8, 0xe9, 0x4b, 0xc3, 0xbc, 0x47, 0x0d, 0xa2, 0x20, 0xd1, 0x45,
+	0x11, 0xa9, 0x50, 0x45, 0xc4, 0x5d, 0x3f, 0xa2, 0x16, 0x8a, 0x0d, 0x6d, 0xda, 0x7d, 0x5a, 0x53,
+	0x5a, 0x5a, 0x9b, 0x30, 0x33, 0x2a, 0xf9, 0x1d, 0xee, 0xfc, 0x21, 0xfe, 0x3e, 0x67, 0xa6, 0xa5,
+	0x89, 0x54, 0x10, 0x37, 0x49, 0xee, 0xb9, 0xe7, 0x9e, 0x7b, 0xe6, 0x4c, 0xa0, 0x3c, 0x5d, 0x46,
+	0xaf, 0xe7, 0xe2, 0x51, 0x8b, 0x49, 0xc4, 0x22, 0x8c, 0xc4, 0xb7, 0xf3, 0x04, 0x95, 0x5b, 0xfe,
+	0x76, 0x57, 0x8f, 0x71, 0x34, 0x5f, 0xb1, 0x01, 0x0b, 0xd8, 0x9c, 0xb2, 0xf9, 0x84, 0xe2, 0x13,
+	0x40, 0x7e, 0x12, 0x87, 0xb6, 0x72, 0xa4, 0x54, 0xcd, 0x7a, 0xa5, 0x26, 0x47, 0xb3, 0x5c, 0xd1,
+	0xc5, 0x7f, 0x41, 0x1f, 0x05, 0xcb, 0xe7, 0xd0, 0x56, 0x39, 0xad, 0x88, 0xcb, 0x90, 0xf7, 0x82,
+	0xc9, 0x22, 0x64, 0xd4, 0xd6, 0x39, 0x80, 0x44, 0xbf, 0x99, 0xb0, 0x90, 0xda, 0x39, 0x51, 0x3a,
+	0x6f, 0x0a, 0xec, 0x65, 0x35, 0xe8, 0xaf, 0x17, 0x56, 0x41, 0x6d, 0x34, 0x6d, 0x8d, 0x73, 0x8c,
+	0xfa, 0xc1, 0x2e, 0x27, 0xa3, 0xc7, 0x99, 0xcd, 0x86, 0x8d, 0x7e, 0x66, 0x3a, 0x1f, 0x0a, 0x98,
+	0xa2, 0x95, 0x19, 0xe6, 0xbe, 0x79, 0x45, 0x98, 0x74, 0xa3, 0xe1, 0x12, 0xa0, 0x6e, 0x40, 0x99,
+	0x3c, 0xa5, 0x86, 0xaf, 0xa0, 0xb8, 0x3d, 0x00, 0xb7, 0xa2, 0xf1, 0x05, 0xc7, 0xe9, 0x82, 0x54,
+	0xa5, 0xb6, 0x65, 0xb9, 0x2b, 0x46, 0x92, 0xfd, 0x1e, 0x98, 0x5f, 0x11, 0x6c, 0x80, 0xb6, 0x08,
+	0x13, 0xb9, 0x44, 0xc7, 0x67, 0xa0, 0xbf, 0x6c, 0xb3, 0x34, 0xea, 0x87, 0xbb, 0x9e, 0x33, 0x71,
+	0xdd, 0xa8, 0xd7, 0x8a, 0xf3, 0xae, 0x00, 0x12, 0x7d, 0xe1, 0x6f, 0x38, 0xec, 0xb4, 0xa5, 0x50,
+	0x11, 0x63, 0x80, 0x6e, 0x90, 0x84, 0x84, 0x7a, 0x01, 0x9b, 0x6d, 0x6e, 0xa6, 0x0a, 0x90, 0x0e,
+	0x6f, 0xf2, 0xfb, 0xff, 0x9d, 0x69, 0x5c, 0x01, 0xd3, 0x23, 0xd1, 0x38, 0xbc, 0x23, 0x41, 0x3c,
+	0x93, 0x0a, 0x86, 0x54, 0xe0, 0x78, 0x67, 0x3a, 0x20, 0x93, 0x14, 0x37, 0x53, 0xbc, 0x4d, 0x59,
+	0x8a, 0xff, 0x13, 0xf8, 0x69, 0x1f, 0xac, 0x9d, 0xdb, 0x2b, 0x41, 0xc1, 0xf5, 0xef, 0xdd, 0xfe,
+	0x83, 0xeb, 0x5b, 0x7f, 0x70, 0x01, 0x50, 0xc7, 0x1b, 0x5d, 0x5a, 0x0a, 0xcf, 0x21, 0xef, 0xb7,
+	0x3c, 0xaf, 0xd7, 0xf7, 0x2d, 0x55, 0x14, 0xc3, 0xf6, 0xba, 0x10, 0xc9, 0x17, 0x06, 0x2d, 0x7f,
+	0x5d, 0xa1, 0x71, 0x4e, 0xfe, 0xbb, 0x17, 0x9f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x72, 0x22, 0x09,
+	0x26, 0xce, 0x02, 0x00, 0x00,
 }

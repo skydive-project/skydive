@@ -26,82 +26,86 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"strconv"
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
-	"github.com/nu7hatch/gouuid"
+	"github.com/redhat-cip/skydive/logging"
 )
 
-func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
-	hasher := sha1.New()
-
-	path := ""
-	for i, layer := range (*packet).Layers() {
-		if i > 0 {
-			path += "/"
-		}
-		path += layer.LayerType().String()
+func LayerFlow(l gopacket.Layer) gopacket.Flow {
+	switch l.(type) {
+	case gopacket.LinkLayer:
+		return l.(gopacket.LinkLayer).LinkFlow()
+	case gopacket.NetworkLayer:
+		return l.(gopacket.NetworkLayer).NetworkFlow()
+	case gopacket.TransportLayer:
+		return l.(gopacket.TransportLayer).TransportFlow()
 	}
-	flow.LayersPath = proto.String(path)
-	hasher.Write([]byte(flow.GetLayersPath()))
+	return gopacket.Flow{}
+}
 
+type FlowKey struct {
+	net, transport uint64
+}
+
+func (key FlowKey) fillFromGoPacket(p *gopacket.Packet) FlowKey {
+	key.net = LayerFlow((*p).NetworkLayer()).FastHash()
+	key.transport = LayerFlow((*p).TransportLayer()).FastHash()
+	return key
+}
+
+func (key FlowKey) String() string {
+	return fmt.Sprintf("%x-%x", key.net, key.transport)
+}
+
+func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
+	/* Continue if no ethernet layer */
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
-	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
+	_, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
 		return errors.New("Unable to decode the ethernet layer")
 	}
-	flow.EtherSrc = proto.String(ethernetPacket.SrcMAC.String())
-	flow.EtherDst = proto.String(ethernetPacket.DstMAC.String())
 
-	hasher.Write([]byte(flow.GetEtherSrc()))
-	hasher.Write([]byte(flow.GetEtherDst()))
-
-	ipLayer := (*packet).Layer(layers.LayerTypeIPv4)
-	if ipLayer != nil {
-		ip, _ := ipLayer.(*layers.IPv4)
-
-		flow.Ipv4Src = proto.String(ip.SrcIP.String())
-		flow.Ipv4Dst = proto.String(ip.DstIP.String())
-
-		hasher.Write([]byte(flow.GetIpv4Src()))
-		hasher.Write([]byte(flow.GetIpv4Dst()))
+	newFlow := false
+	fs := flow.GetStatistics()
+	now := time.Now().Unix() //(*packet).Metadata().Timestamp.Unix()
+	if fs == nil {
+		newFlow = true
+		fs = NewFlowStatistics()
+		fs.Start = now
+		fs.newEthernetEndpointStatistics(packet)
+		fs.newIPV4EndpointStatistics(packet)
+		fs.newTransportEndpointStatistics(packet)
+		flow.Statistics = fs
 	}
+	fs.Last = now
+	fs.updateEthernetFromGoPacket(packet)
+	fs.updateIPV4FromGoPacket(packet)
+	fs.updateTransportFromGoPacket(packet)
 
-	udpLayer := (*packet).Layer(layers.LayerTypeUDP)
-	if udpLayer != nil {
-		udp, _ := udpLayer.(*layers.UDP)
-		flow.PortSrc = proto.Uint32(uint32(udp.SrcPort))
-		flow.PortDst = proto.Uint32(uint32(udp.DstPort))
+	if newFlow {
+		hasher := sha1.New()
+		path := ""
+		for i, layer := range (*packet).Layers() {
+			if i > 0 {
+				path += "/"
+			}
+			path += layer.LayerType().String()
+		}
+		flow.LayersPath = path
+		hasher.Write([]byte(flow.LayersPath))
 
-		hasher.Write([]byte(udp.SrcPort.String()))
-		hasher.Write([]byte(udp.DstPort.String()))
+		/* Generate an flow UUID */
+		for _, ep := range fs.GetEndpoints() {
+			hasher.Write([]byte(ep.AB.Value))
+			hasher.Write([]byte(ep.BA.Value))
+		}
+		flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 	}
-
-	tcpLayer := (*packet).Layer(layers.LayerTypeTCP)
-	if tcpLayer != nil {
-		tcp, _ := tcpLayer.(*layers.TCP)
-		flow.PortSrc = proto.Uint32(uint32(tcp.SrcPort))
-		flow.PortDst = proto.Uint32(uint32(tcp.DstPort))
-
-		hasher.Write([]byte(tcp.SrcPort.String()))
-		hasher.Write([]byte(tcp.DstPort.String()))
-	}
-
-	icmpLayer := (*packet).Layer(layers.LayerTypeICMPv4)
-	if icmpLayer != nil {
-		icmp, _ := icmpLayer.(*layers.ICMPv4)
-		flow.ID = proto.Uint64(uint64(icmp.Id))
-
-		hasher.Write([]byte(strconv.Itoa(int(icmp.Id))))
-	}
-
-	/* update the temporary uuid */
-	flow.UUID = proto.String(hex.EncodeToString(hasher.Sum(nil)))
-
 	return nil
 }
 
@@ -125,24 +129,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func New(packet *gopacket.Packet, probePath *string) *Flow {
-	u, _ := uuid.NewV4()
-	t := uint64(time.Now().Unix())
-
-	flow := &Flow{
-		UUID:           proto.String(u.String()),
-		Timestamp:      proto.Uint64(t),
-		ProbeGraphPath: probePath,
-	}
-
-	if packet != nil {
-		flow.fillFromGoPacket(packet)
-	}
-
-	return flow
-}
-
-func FLowsFromSFlowSample(sample *layers.SFlowFlowSample, probePath *string) []*Flow {
+func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePath *string) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
@@ -150,10 +137,20 @@ func FLowsFromSFlowSample(sample *layers.SFlowFlowSample, probePath *string) []*
 		/* FIX(safchain): just keeping the raw packet for now */
 		record, ok := rec.(layers.SFlowRawPacketFlowRecord)
 		if !ok {
+			logging.GetLogger().Critical("1st layer is not SFlowRawPacketFlowRecord type")
 			continue
 		}
 
-		flow := New(&record.Header, probePath)
+		packet := &record.Header
+		key := (FlowKey{}).fillFromGoPacket(packet)
+		flow, new := ft.GetFlow(key.String(), packet)
+		if new {
+			flow.ProbeGraphPath = ""
+			if probePath != nil {
+				flow.ProbeGraphPath = *probePath
+			}
+		}
+		flow.fillFromGoPacket(packet)
 		flows = append(flows, flow)
 	}
 

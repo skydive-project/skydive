@@ -26,8 +26,11 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
+	"text/template"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -36,6 +39,7 @@ import (
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/rpc"
+	"github.com/redhat-cip/skydive/statics"
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
@@ -49,9 +53,15 @@ type Server struct {
 	GraphServer         *graph.Server
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	Storage             storage.Storage
+	FlowTable           *flow.FlowTable
+}
+
+func (s *Server) flowExpire(f *flow.Flow) {
+	/* Storge flow in the database */
 }
 
 func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
+	s.FlowTable.Update(flows)
 	s.FlowMappingPipeline.Enhance(flows)
 
 	if s.Storage != nil {
@@ -130,6 +140,54 @@ func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) serveDataIndex(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/data/conversation.json" {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(s.FlowTable.JSONFlowConversationEthernetPath()))
+		return
+	}
+	w.WriteHeader(http.StatusBadRequest)
+	return
+}
+
+func (s *Server) serveStaticIndex(w http.ResponseWriter, r *http.Request) {
+	html, err := statics.Asset("statics/conversation.html")
+	if err != nil {
+		logging.GetLogger().Panic("Unable to find the conversation asset")
+	}
+
+	t := template.New("conversation template")
+
+	t, err = t.Parse(string(html))
+	if err != nil {
+		panic(err)
+	}
+
+	host, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	var data = &struct {
+		Hostname string
+		Port     int
+	}{
+		Hostname: host,
+		Port:     s.Port,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	t.Execute(w, data)
+}
+
+func (s *Server) RegisterStaticEndpoints() {
+	// static routes
+	s.Router.HandleFunc("/static/conversation", s.serveStaticIndex)
+	s.Router.HandleFunc("/data/conversation.json", s.serveDataIndex)
+}
+
 func (s *Server) RegisterRpcEndpoints() {
 	routes := []rpc.Route{
 		{
@@ -180,6 +238,8 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 
+	flowtable := flow.NewFlowTable()
+
 	server := &Server{
 		Addr:                addr,
 		Port:                port,
@@ -187,8 +247,16 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 		TopoServer:          tserver,
 		GraphServer:         gserver,
 		FlowMappingPipeline: pipeline,
+		FlowTable:           flowtable,
 	}
+	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
+	cfgFlowtable_expire, err := config.GetConfig().Section("analyzer").Key("flowtable_expire").Int()
+	if err != nil || cfgFlowtable_expire < 1 {
+		logging.GetLogger().Error("Config flowTable_expire invalid value ", cfgFlowtable_expire, err.Error())
+		return nil, err
+	}
+	go flowtable.AsyncExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
 
 	return server, nil
 }

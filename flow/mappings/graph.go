@@ -75,28 +75,28 @@ func (gfe *GraphFlowEnhancer) cacheUpdater() {
 	}
 }
 
-func (gfe *GraphFlowEnhancer) getPath(mac string) *string {
+func (gfe *GraphFlowEnhancer) getPath(mac string) string {
 	if mac == "ff:ff:ff:ff:ff:ff" {
-		return new(string)
+		return ""
 	}
 
 	p, f := gfe.cache.Get(mac)
 	if f {
 		path := p.(string)
-		return &path
+		return path
 	}
 
 	gfe.cacheUpdaterChan <- mac
 
-	return nil
+	return ""
 }
 
-func (gfe *GraphFlowEnhancer) Enhance(flow *flow.Flow) {
-	if flow.IfSrcGraphPath == nil {
-		flow.IfSrcGraphPath = gfe.getPath(flow.GetEtherSrc())
+func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
+	if f.IfSrcGraphPath == "" {
+		f.IfSrcGraphPath = gfe.getPath(f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()].AB.Value)
 	}
-	if flow.IfDstGraphPath == nil {
-		flow.IfDstGraphPath = gfe.getPath(flow.GetEtherDst())
+	if f.IfDstGraphPath == "" {
+		f.IfDstGraphPath = gfe.getPath(f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()].BA.Value)
 	}
 }
 
