@@ -31,6 +31,7 @@ import (
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage/elasticsearch"
 )
 
@@ -45,6 +46,12 @@ func main() {
 	flag.Parse()
 
 	err := config.InitConfigFromFile(*filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
+	err = logging.InitLogger()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)

@@ -47,3 +47,8 @@ elasticsearch = 127.0.0.1:9200
 # graph backend memory, gremlin
 backend = memory
 gremlin = 127.0.0.1:8182
+
+[logging]
+default = INFO
+topology/probes = INFO
+topology/graph = WARNING
