@@ -155,6 +155,7 @@ func TestFlowTable_expire(t *testing.T) {
 }
 
 func TestFlowTable_AsyncExpire(t *testing.T) {
+	t.Skip()
 }
 
 func TestFlowTable_IsExist(t *testing.T) {
