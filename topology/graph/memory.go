@@ -69,18 +69,19 @@ func (m MemoryBackend) AddEdge(e *Edge) bool {
 	edge := &MemoryBackendEdge{
 		Edge: e,
 	}
-	m.edges[e.ID] = edge
 
 	parent, ok := m.nodes[e.parent]
 	if !ok {
 		return false
 	}
-	parent.edges[e.ID] = edge
 
 	child, ok := m.nodes[e.child]
 	if !ok {
 		return false
 	}
+
+	m.edges[e.ID] = edge
+	parent.edges[e.ID] = edge
 	child.edges[e.ID] = edge
 
 	return true
