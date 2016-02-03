@@ -307,3 +307,80 @@ func TestBridgeOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 }
+
+func TestPatchOVS(t *testing.T) {
+	backend, err := graph.NewMemoryBackend()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	g, err := graph.NewGraph(backend)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	startAgent(t)
+
+	setupCmds := []string{
+		"ovs-vsctl add-br br-test1",
+		"ovs-vsctl add-br br-test2",
+		"ovs-vsctl add-port br-test1 patch-br-test2 -- set interface patch-br-test2 type=patch",
+		"ovs-vsctl add-port br-test2 patch-br-test1 -- set interface patch-br-test1 type=patch",
+		"ovs-vsctl set interface patch-br-test2 option:peer=patch-br-test1",
+		"ovs-vsctl set interface patch-br-test1 option:peer=patch-br-test2",
+	}
+
+	tearDownCmds := []string{
+		"ovs-vsctl del-br br-test1",
+		"ovs-vsctl del-br br-test2",
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 10 && len(g.GetEdges()) >= 9 {
+			patch1 := g.LookupFirstNode(graph.Metadatas{"Type": "patch", "Name": "patch-br-test1", "Driver": "openvswitch"})
+			if patch1 == nil {
+				t.Error("patch not found")
+			}
+
+			patch2 := g.LookupFirstNode(graph.Metadatas{"Type": "patch", "Name": "patch-br-test2", "Driver": "openvswitch"})
+			if patch2 == nil {
+				t.Error("patch not found")
+			}
+
+			if !g.AreLinked(patch1, patch2) {
+				t.Error("patch interfaces not linked")
+			}
+
+			testPassed = true
+
+			ws.Close()
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed")
+	}
+
+	// cleanup side on the test
+	testPassed = false
+	onChange = func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
+			testPassed = true
+
+			ws.Close()
+		}
+	}
+
+	testTopology(t, g, tearDownCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed")
+	}
+}
