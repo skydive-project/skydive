@@ -124,6 +124,10 @@
 			"Rev": "c0008c5889c0d5091cdfefd2bfb08bff96527879"
 		},
 		{
+			"ImportPath": "github.com/gima/jsonv/src",
+			"Rev": "964b60c2ebe1c9106b7c33e2566ec7de757d4f70"
+		},
+		{
 			"ImportPath": "gopkg.in/ini.v1",
 			"Comment": "v0-32-g45bf59e",
 			"Rev": "45bf59e51e747b1d61b3108a97549497a6efd3bc"
