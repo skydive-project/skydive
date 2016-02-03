@@ -116,7 +116,11 @@ func (a *Agent) Start() {
 
 	router := mux.NewRouter().StrictSlash(true)
 
-	server := topology.NewServerFromConfig("agent", a.Graph, router)
+	server, err := topology.NewServerFromConfig("agent", a.Graph, router)
+	if err != nil {
+		panic(err)
+	}
+
 	server.RegisterStaticEndpoints()
 	server.RegisterRpcEndpoints()
 

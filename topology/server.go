@@ -24,6 +24,7 @@ package topology
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -121,12 +122,11 @@ func NewServer(g *graph.Graph, a string, p int, router *mux.Router) *Server {
 	}
 }
 
-func NewServerFromConfig(s string, g *graph.Graph, router *mux.Router) *Server {
+func NewServerFromConfig(s string, g *graph.Graph, router *mux.Router) (*Server, error) {
 	addr, port, err := config.GetHostPortAttributes(s, "listen")
 	if err != nil {
-		logging.GetLogger().Error("Configuration error: %s", err.Error())
-		return nil
+		return nil, errors.New("Configuration error: " + err.Error())
 	}
 
-	return NewServer(g, addr, port, router)
+	return NewServer(g, addr, port, router), nil
 }
