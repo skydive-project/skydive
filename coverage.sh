@@ -22,8 +22,12 @@ generate_cover_data() {
 
     for pkg in "$@"; do
         f="$workdir/$(echo $pkg | tr / -).cover"
-        go test -covermode="$mode" -coverprofile="$f" "$pkg"
+        go test -timeout 1m -covermode="$mode" -coverprofile="$f" "$pkg"
     done
+
+    # add fonctional testing
+    f="$workdir/functional.cover"
+    go test -timeout 1m -v -cover -covermode="$mode" -coverprofile="$f" -coverpkg=./... ./tests/
 
     echo "mode: $mode" >"$profile"
     grep -h -v "^mode:" "$workdir"/*.cover >>"$profile"
