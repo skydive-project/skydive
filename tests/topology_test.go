@@ -252,17 +252,28 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []string, onChange func(ws 
 	}
 }
 
-func testCleanup(t *testing.T, g *graph.Graph, cmds []string) {
+func testCleanup(t *testing.T, g *graph.Graph, cmds []string, ints []string) {
 	// cleanup side on the test
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) == 0 && len(g.GetEdges()) == 0 {
-			testPassed = true
+		if !testPassed {
+			clean := true
+			for _, intf := range ints {
+				n := g.LookupFirstNode(graph.Metadatas{"Name": intf})
+				if n != nil {
+					clean = false
+					break
+				}
+			}
 
-			ws.Close()
+			if clean {
+				testPassed = true
+
+				ws.Close()
+			}
 		}
 	}
 
@@ -333,7 +344,7 @@ func TestBridgeOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 
-	testCleanup(t, g, tearDownCmds)
+	testCleanup(t, g, tearDownCmds, []string{"br-test1"})
 }
 
 func TestPatchOVS(t *testing.T) {
@@ -386,7 +397,7 @@ func TestPatchOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 
-	testCleanup(t, g, tearDownCmds)
+	testCleanup(t, g, tearDownCmds, []string{"br-test1", "br-test2", "patch-br-test1", "patch-br-test2"})
 }
 
 func TestInterfaceOVS(t *testing.T) {
@@ -436,7 +447,7 @@ func TestInterfaceOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 
-	testCleanup(t, g, tearDownCmds)
+	testCleanup(t, g, tearDownCmds, []string{"br-test1", "intf1"})
 }
 
 func TestBondOVS(t *testing.T) {
@@ -474,7 +485,6 @@ func TestBondOVS(t *testing.T) {
 
 				ws.Close()
 			}
-
 		}
 	}
 
@@ -483,5 +493,5 @@ func TestBondOVS(t *testing.T) {
 		t.Error("test not executed")
 	}
 
-	testCleanup(t, g, tearDownCmds)
+	testCleanup(t, g, tearDownCmds, []string{"br-test1", "intf1", "intf2"})
 }
