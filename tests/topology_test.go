@@ -495,3 +495,41 @@ func TestBondOVS(t *testing.T) {
 
 	testCleanup(t, g, tearDownCmds, []string{"br-test1", "intf1", "intf2"})
 }
+
+func TestVeth(t *testing.T) {
+	g := newGraph(t)
+
+	startAgent(t)
+
+	setupCmds := []string{
+		"ip l add vm1-veth0 type veth peer name vm1-veth1",
+	}
+
+	tearDownCmds := []string{
+		"ip link del vm1-veth0",
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
+			nodes := g.LookupNodes(graph.Metadatas{"Type": "veth"})
+			if len(nodes) == 2 {
+				if g.AreLinked(nodes[0], nodes[1]) {
+					testPassed = true
+
+					ws.Close()
+				}
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"vm1-veth0", "vm1-veth1"})
+}
