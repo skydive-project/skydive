@@ -32,10 +32,6 @@ import (
 
 var cfg *ini.File
 
-func InitEmptyConfig() {
-	cfg = ini.Empty()
-}
-
 func InitConfigFromFile(filename string) error {
 	var err error
 

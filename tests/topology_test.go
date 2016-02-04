@@ -24,6 +24,7 @@ package tests
 
 import (
 	"errors"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -39,6 +40,25 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
+
+const conf = `
+[default]
+ws_pong_timeout = 1
+
+[agent]
+listen = 8081
+flowtable_expire = 5
+
+[cache]
+expire = 300
+cleanup = 30
+
+[sflow]
+listen = 5000
+
+[ovs]
+ovsdb = 6400
+`
 
 // FIX(safchain) has to be removed when will be able to stop agent
 var globalAgent *agent.Agent
@@ -139,45 +159,33 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 	return nil
 }
 
+func initConfig(t *testing.T) {
+	f, err := ioutil.TempFile("", "skydive_agent")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	f.WriteString(conf)
+	f.Close()
+
+	err = config.InitConfigFromFile(f.Name())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
 func startAgent(t *testing.T) {
 	// FIX(safchain) has to be removed see comment around the variable declaration
 	if globalAgent != nil {
 		return
 	}
 
-	config.InitEmptyConfig()
+	initConfig(t)
 
-	section, err := config.GetConfig().NewSection("default")
+	err := logging.InitLogger()
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal(err)
 	}
-	section.NewKey("ws_pong_timeout", "1")
-
-	section, err = config.GetConfig().NewSection("agent")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	section.NewKey("listen", "8081")
-	section.NewKey("flowtable_expire", "5")
-
-	section, err = config.GetConfig().NewSection("cache")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	section.NewKey("expire", "300")
-	section.NewKey("cleanup", "30")
-
-	section, err = config.GetConfig().NewSection("sflow")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	section.NewKey("listen", "5000")
-
-	section, err = config.GetConfig().NewSection("ovs")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	section.NewKey("ovsdb", "6400")
 
 	globalAgent = agent.NewAgent()
 	go globalAgent.Start()
