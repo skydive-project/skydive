@@ -36,6 +36,7 @@ import (
 
 	"github.com/redhat-cip/skydive/agent"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
@@ -146,7 +147,13 @@ func startAgent(t *testing.T) {
 
 	config.InitEmptyConfig()
 
-	section, err := config.GetConfig().NewSection("agent")
+	section, err := config.GetConfig().NewSection("default")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	section.NewKey("ws_pong_timeout", "1")
+
+	section, err = config.GetConfig().NewSection("agent")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -193,6 +200,9 @@ func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.C
 		if err != nil {
 			return err
 		}
+
+		logging.GetLogger().Debug("%s", string(m))
+		logging.GetLogger().Debug("%s", g.String())
 
 		onChange()
 	}
