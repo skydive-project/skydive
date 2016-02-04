@@ -65,9 +65,11 @@ tenant_name = admin
 region_name = RegionOne
 
 [analyzer]
+flowtable_expire = 5
 listen = 8082
 
 [agent]
+flowtable_expire = 5
 listen = 8081
 analyzers = 127.0.0.1:8082
 
