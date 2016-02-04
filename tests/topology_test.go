@@ -279,7 +279,7 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []string, ints []string) {
 
 	testTopology(t, g, cmds, onChange)
 	if !testPassed {
-		t.Error("test not executed")
+		t.Error("test not executed or failed")
 	}
 }
 
@@ -318,19 +318,19 @@ func TestBridgeOVS(t *testing.T) {
 		if !testPassed && len(g.GetNodes()) >= 3 && len(g.GetEdges()) >= 2 {
 			ovsbridge := g.LookupFirstNode(graph.Metadatas{"Type": "ovsbridge", "Name": "br-test1"})
 			if ovsbridge == nil {
-				t.Error("ovs bridge not found")
+				return
 			}
 			ovsports := g.LookupChildren(ovsbridge, graph.Metadatas{"Type": "ovsport"})
 			if len(ovsports) != 1 {
-				t.Error("ovs port not found or not unique")
+				return
 			}
 			devices := g.LookupChildren(ovsports[0], graph.Metadatas{"Type": "internal", "Driver": "openvswitch"})
 			if len(devices) != 1 {
-				t.Error("device not found or not unique")
+				return
 			}
 
 			if ovsbridge.Metadatas()["Host"] == "" || ovsports[0].Metadatas()["Host"] == "" || devices[0].Metadatas()["Host"] == "" {
-				t.Error("host binding not found")
+				return
 			}
 
 			testPassed = true
@@ -341,7 +341,7 @@ func TestBridgeOVS(t *testing.T) {
 
 	testTopology(t, g, setupCmds, onChange)
 	if !testPassed {
-		t.Error("test not executed")
+		t.Error("test not executed or failed")
 	}
 
 	testCleanup(t, g, tearDownCmds, []string{"br-test1"})
@@ -374,16 +374,16 @@ func TestPatchOVS(t *testing.T) {
 		if !testPassed && len(g.GetNodes()) >= 10 && len(g.GetEdges()) >= 9 {
 			patch1 := g.LookupFirstNode(graph.Metadatas{"Type": "patch", "Name": "patch-br-test1", "Driver": "openvswitch"})
 			if patch1 == nil {
-				t.Error("patch not found")
+				return
 			}
 
 			patch2 := g.LookupFirstNode(graph.Metadatas{"Type": "patch", "Name": "patch-br-test2", "Driver": "openvswitch"})
 			if patch2 == nil {
-				t.Error("patch not found")
+				return
 			}
 
 			if !g.AreLinked(patch1, patch2) {
-				t.Error("patch interfaces not linked")
+				return
 			}
 
 			testPassed = true
@@ -394,7 +394,7 @@ func TestPatchOVS(t *testing.T) {
 
 	testTopology(t, g, setupCmds, onChange)
 	if !testPassed {
-		t.Error("test not executed")
+		t.Error("test not executed or failed")
 	}
 
 	testCleanup(t, g, tearDownCmds, []string{"br-test1", "br-test2", "patch-br-test1", "patch-br-test2"})
@@ -427,11 +427,11 @@ func TestInterfaceOVS(t *testing.T) {
 					// should only have ovsport and interface
 					others := g.LookupNodes(graph.Metadatas{"Name": "intf1"})
 					if len(others) > 2 {
-						t.Error("found more interface than expected")
+						return
 					}
 
 					if _, ok := intf.Metadatas()["MAC"]; !ok {
-						t.Error("mac not found")
+						return
 					}
 
 					testPassed = true
@@ -444,7 +444,7 @@ func TestInterfaceOVS(t *testing.T) {
 
 	testTopology(t, g, setupCmds, onChange)
 	if !testPassed {
-		t.Error("test not executed")
+		t.Error("test not executed or failed")
 	}
 
 	testCleanup(t, g, tearDownCmds, []string{"br-test1", "intf1"})
@@ -478,7 +478,7 @@ func TestBondOVS(t *testing.T) {
 			if bond != nil {
 				intfs := g.LookupChildren(bond, nil)
 				if len(intfs) != 2 {
-					t.Error("bond interfaces not found")
+					return
 				}
 
 				testPassed = true
@@ -490,7 +490,7 @@ func TestBondOVS(t *testing.T) {
 
 	testTopology(t, g, setupCmds, onChange)
 	if !testPassed {
-		t.Error("test not executed")
+		t.Error("test not executed or failed")
 	}
 
 	testCleanup(t, g, tearDownCmds, []string{"br-test1", "intf1", "intf2"})
@@ -528,7 +528,7 @@ func TestVeth(t *testing.T) {
 
 	testTopology(t, g, setupCmds, onChange)
 	if !testPassed {
-		t.Error("test not executed")
+		t.Error("test not executed or failed")
 	}
 
 	testCleanup(t, g, tearDownCmds, []string{"vm1-veth0", "vm1-veth1"})
