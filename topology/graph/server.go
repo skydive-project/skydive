@@ -329,16 +329,11 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 func (s *Server) ListenAndServe() {
 	s.Graph.AddEventListener(s)
 
-	s.Router.HandleFunc("/ws/graph", s.serveMessages)
-	if s.Alert != nil {
-		s.Router.HandleFunc("/ws/alert", s.serveMessages)
-	}
-
 	s.wsServer.ListenAndServe()
 }
 
 func NewServer(g *Graph, a *Alert, router *mux.Router, pongWait time.Duration) *Server {
-	return &Server{
+	s := &Server{
 		Graph:  g,
 		Alert:  a,
 		Router: router,
@@ -353,6 +348,13 @@ func NewServer(g *Graph, a *Alert, router *mux.Router, pongWait time.Duration) *
 			pingPeriod: (pongWait * 8) / 10,
 		},
 	}
+
+	s.Router.HandleFunc("/ws/graph", s.serveMessages)
+	if s.Alert != nil {
+		s.Router.HandleFunc("/ws/alert", s.serveMessages)
+	}
+
+	return s
 }
 
 func NewServerFromConfig(g *Graph, a *Alert, router *mux.Router) (*Server, error) {
