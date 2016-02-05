@@ -48,6 +48,8 @@ Skydive relies on two main components:
 ### Configuration
 
 A default configuration is present under etc/. For a single node setup only the analyzer and agent port need probably to be changed. For a multiple node setup the analyzer IP/PORT needs to be adapted.
+Processes are binding 127.0.0.1 by default, you can explicitly change binding address with "listen = 0.0.0.0:port" in any configuration section.
+The [openstack] section is optional. You can declare it if you want the analyzer to get informations from Openstack/Neutron.
 
 ```shell
 [cache]
@@ -72,6 +74,20 @@ listen = 8082
 flowtable_expire = 5
 listen = 8081
 analyzers = 127.0.0.1:8082
+
+[sflow]
+# listen parameter for the sflow agent, Format: addr:port.
+# Default addr is 127.0.0.1
+listen = 6345
+
+[ovs]
+# ovsdb connection, Format: addr:port.
+ovsdb = 6400
+
+[graph]
+# graph backend memory, gremlin
+backend = memory
+gremlin = 127.0.0.1:8182
 
 [storage]
 elasticsearch = 127.0.0.1:9200
