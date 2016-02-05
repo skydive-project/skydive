@@ -206,6 +206,9 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	defer u.Graph.Unlock()
 
 	driver, _ := ethtool.DriverName(link.Attrs().Name)
+	if driver == "" && link.Type() == "bridge" {
+		driver = "bridge"
+	}
 
 	metadatas := graph.Metadatas{
 		"Name":    link.Attrs().Name,
