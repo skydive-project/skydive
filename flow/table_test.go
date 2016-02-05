@@ -51,7 +51,7 @@ func generateFlows(t *testing.T, ft *FlowTable) []*Flow {
 	flows := []*Flow{}
 	for i := 0; i < 10; i++ {
 		packet := forgeEthIPTCP(t, int64(i))
-		flow, new := ft.GetFlow(string(i), packet)
+		flow, new := ft.GetFlow(string(i))
 		if !new {
 			t.Fail()
 		}
@@ -185,18 +185,18 @@ func TestFlowTable_GetFlow(t *testing.T) {
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
 	}
-	packet := forgeEthIPTCP(t, int64(1234))
-	_, new := ft.GetFlow("abcd", packet)
+	forgeEthIPTCP(t, int64(1234))
+	_, new := ft.GetFlow("abcd")
 	if !new {
 		t.Error("Collision in the FlowTable, should be new")
 	}
-	packet = forgeEthIPTCP(t, int64(1234))
-	_, new = ft.GetFlow("abcd", packet)
+	forgeEthIPTCP(t, int64(1234))
+	_, new = ft.GetFlow("abcd")
 	if new {
 		t.Error("Collision in the FlowTable, should be an update")
 	}
-	packet = forgeEthIPTCP(t, int64(1234))
-	_, new = ft.GetFlow("abcde", packet)
+	forgeEthIPTCP(t, int64(1234))
+	_, new = ft.GetFlow("abcde")
 	if !new {
 		t.Error("Collision in the FlowTable, should be a new flow")
 	}

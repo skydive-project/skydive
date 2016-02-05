@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/gopacket"
-
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -81,7 +79,7 @@ func (ft *FlowTable) IsExist(f *Flow) bool {
 	return found
 }
 
-func (ft *FlowTable) GetFlow(key string, packet *gopacket.Packet) (flow *Flow, new bool) {
+func (ft *FlowTable) GetFlow(key string) (flow *Flow, new bool) {
 	ft.lock.Lock()
 	flow, found := ft.table[key]
 	if found == false {

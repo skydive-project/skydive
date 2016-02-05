@@ -143,7 +143,7 @@ func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 
 		packet := &record.Header
 		key := (FlowKey{}).fillFromGoPacket(packet)
-		flow, new := ft.GetFlow(key.String(), packet)
+		flow, new := ft.GetFlow(key.String())
 		if new {
 			flow.ProbeGraphPath = ""
 			if probePath != nil {
