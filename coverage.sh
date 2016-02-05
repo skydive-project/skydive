@@ -30,7 +30,7 @@ generate_cover_data() {
     go test -timeout 1m -v -cover -covermode="$mode" -coverprofile="$f" -coverpkg=./... ./tests/
 
     echo "mode: $mode" >"$profile"
-    grep -h -v "^mode:" "$workdir"/*.cover >>"$profile"
+    grep -h -v "^mode:" "$workdir"/*.cover | grep -v "skydive/statics" | awk '{ stmt[$1] += $2; count[$1] += $3 } END{ for(e in stmt) { print e, stmt[e], count[e] } }' >> "$profile"
 }
 
 show_cover_report() {
