@@ -31,6 +31,7 @@ import (
 
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage/elasticsearch"
 )
 
@@ -63,6 +64,6 @@ func main() {
 	}
 	server.SetStorage(storage)
 
-	fmt.Println("Skydive Analyzer started !")
+	logging.GetLogger().Notice("Skydive Analyzer started !")
 	server.ListenAndServe()
 }

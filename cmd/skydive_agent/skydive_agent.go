@@ -29,6 +29,7 @@ import (
 
 	"github.com/redhat-cip/skydive/agent"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/logging"
 )
 
 func usage() {
@@ -47,6 +48,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Skydive Agent starting...")
+	logging.GetLogger().Notice("Skydive Agent starting...")
 	agent.NewAgent().Start()
 }
