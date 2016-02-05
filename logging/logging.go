@@ -69,7 +69,7 @@ func initSkydiveLogger() {
 	skydiveLogger = SkydiveLogger{
 		id:      id,
 		loggers: make(map[string]*logging.Logger),
-		format:  "%{color}%{time} " + id + " %{shortfile} %{shortpkg} %{longfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}",
+		format:  "%{color}%{time} " + id + " %{shortfile} %{shortpkg} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}",
 	}
 	newLogger("default", "INFO")
 }
