@@ -191,7 +191,7 @@ func startAgent(t *testing.T) {
 	go globalAgent.Start()
 }
 
-func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.Conn), onChange func()) error {
+func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.Conn), onChange func(*websocket.Conn)) error {
 	// ready when got a first ping
 	ws, err := connectToAgent(5, onReady)
 	if err != nil {
@@ -212,28 +212,26 @@ func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.C
 		logging.GetLogger().Debug("%s", string(m))
 		logging.GetLogger().Debug("%s", g.String())
 
-		onChange()
+		onChange(ws)
 	}
 
 	return nil
 }
 
 func testTopology(t *testing.T, g *graph.Graph, cmds []string, onChange func(ws *websocket.Conn)) {
-	var ws *websocket.Conn
-
 	cmdIndex := 0
 	or := func(w *websocket.Conn) {
-		ws = w
-
 		// ready to exec the first cmd
-		err := exec.Command("sudo", strings.Split(cmds[cmdIndex], " ")...).Run()
-		if err != nil {
-			t.Fatal(err.Error())
+		if cmdIndex < len(cmds) {
+			err := exec.Command("sudo", strings.Split(cmds[cmdIndex], " ")...).Run()
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+			cmdIndex++
 		}
-		cmdIndex++
 	}
 
-	oc := func() {
+	oc := func(ws *websocket.Conn) {
 		onChange(ws)
 
 		// exec the following command
