@@ -531,3 +531,46 @@ func TestVeth(t *testing.T) {
 
 	testCleanup(t, g, tearDownCmds, []string{"vm1-veth0", "vm1-veth1"})
 }
+
+func TestBridge(t *testing.T) {
+	g := newGraph(t)
+
+	startAgent(t)
+
+	setupCmds := []string{
+		"brctl addbr br-test",
+		"ip tuntap add mode tap dev intf1",
+		"brctl addif br-test intf1",
+	}
+
+	tearDownCmds := []string{
+		"brctl delbr br-test",
+		"ip link del intf1",
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
+			bridge := g.LookupFirstNode(graph.Metadatas{"Type": "bridge", "Name": "br-test"})
+			if bridge != nil {
+				nodes := g.LookupChildren(bridge, graph.Metadatas{"Name": "intf1"})
+				if len(nodes) == 1 {
+					testPassed = true
+
+					ws.Close()
+				}
+			}
+
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"br-test", "intf1"})
+}
