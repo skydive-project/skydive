@@ -224,19 +224,11 @@ func TestFlowTable_GetFlow(t *testing.T) {
 	}
 }
 
-func isJSON(s string) bool {
-	var js map[string]interface{}
-	return json.Unmarshal([]byte(s), &js) == nil
-}
-
 func TestFlowTable_JSONFlowConversationEthernetPath(t *testing.T) {
 	ft := NewFlowTableComplex(t)
 	statStr := ft.JSONFlowConversationEthernetPath()
 	if statStr == `{"nodes":[],"links":[]}` {
 		t.Error("stat should not be empty")
-	}
-	if !isJSON(statStr) {
-		t.Error("stat should be JSON format")
 	}
 
 	decoded := new(interface{})
