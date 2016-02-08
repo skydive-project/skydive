@@ -62,19 +62,17 @@ func InitConfig(t *testing.T, conf string) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+
+	err = logging.InitLogger()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
-func StartAgent(t *testing.T, conf string) *agent.Agent {
+func StartAgent(t *testing.T) *agent.Agent {
 	// FIX(safchain) has to be removed when will be able to stop agent
 	if globalAgent != nil {
 		return globalAgent
-	}
-
-	InitConfig(t, conf)
-
-	err := logging.InitLogger()
-	if err != nil {
-		t.Fatal(err)
 	}
 
 	globalAgent = agent.NewAgent()

@@ -36,13 +36,13 @@ import (
 	"github.com/redhat-cip/skydive/tests/helper"
 )
 
-type TraceInfo struct {
+type packetsTraceInfo struct {
 	filename string
 	packets  int
 	bytes    []int
 }
 
-var traces = [...]TraceInfo{
+var packetsTraces = [...]packetsTraceInfo{
 	{
 		filename: "eth-ip4-arp-dns-req-http-google.pcap",
 		packets:  58,
@@ -67,7 +67,7 @@ const (
 	maxDgramSize = 16384
 )
 
-func asyncSflowListen(t *testing.T, wg *sync.WaitGroup, conn *net.UDPConn, trace *TraceInfo) {
+func asyncSflowListen(t *testing.T, wg *sync.WaitGroup, conn *net.UDPConn, trace *packetsTraceInfo) {
 	defer wg.Done()
 
 	var buf [maxDgramSize]byte
@@ -133,7 +133,7 @@ func TestPcap2SflowReplay(t *testing.T) {
 		t.Error("Can't read back the local address")
 	}
 
-	for _, trace := range traces {
+	for _, trace := range packetsTraces {
 		var wg sync.WaitGroup
 		wg.Add(1)
 

@@ -34,13 +34,12 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/redhat-cip/skydive/agent"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/tests/helper"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-const conf = `
+const confTopology = `
 [default]
 ws_pong_timeout = 1
 
@@ -262,7 +261,8 @@ func newGraph(t *testing.T) *graph.Graph {
 func TestBridgeOVS(t *testing.T) {
 	g := newGraph(t)
 
-	helper.StartAgent(t, conf)
+	helper.InitConfig(t, confTopology)
+	helper.StartAgent(t)
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -312,7 +312,8 @@ func TestBridgeOVS(t *testing.T) {
 func TestPatchOVS(t *testing.T) {
 	g := newGraph(t)
 
-	helper.StartAgent(t, conf)
+	helper.InitConfig(t, confTopology)
+	helper.StartAgent(t)
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -365,7 +366,8 @@ func TestPatchOVS(t *testing.T) {
 func TestInterfaceOVS(t *testing.T) {
 	g := newGraph(t)
 
-	helper.StartAgent(t, conf)
+	helper.InitConfig(t, confTopology)
+	helper.StartAgent(t)
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -415,7 +417,8 @@ func TestInterfaceOVS(t *testing.T) {
 func TestBondOVS(t *testing.T) {
 	g := newGraph(t)
 
-	helper.StartAgent(t, conf)
+	helper.InitConfig(t, confTopology)
+	helper.StartAgent(t)
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -461,7 +464,8 @@ func TestBondOVS(t *testing.T) {
 func TestVeth(t *testing.T) {
 	g := newGraph(t)
 
-	helper.StartAgent(t, conf)
+	helper.InitConfig(t, confTopology)
+	helper.StartAgent(t)
 
 	setupCmds := []string{
 		"ip l add vm1-veth0 type veth peer name vm1-veth1",
@@ -499,7 +503,8 @@ func TestVeth(t *testing.T) {
 func TestBridge(t *testing.T) {
 	g := newGraph(t)
 
-	helper.StartAgent(t, conf)
+	helper.InitConfig(t, confTopology)
+	helper.StartAgent(t)
 
 	setupCmds := []string{
 		"brctl addbr br-test",

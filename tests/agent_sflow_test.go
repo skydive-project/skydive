@@ -24,6 +24,7 @@ package tests
 
 import (
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,7 +36,7 @@ import (
 	"github.com/redhat-cip/skydive/tests/helper"
 )
 
-const conf = `
+const confAgentAnalyzer = `
 [agent]
 listen = 58081
 flowtable_expire = 1
@@ -67,13 +68,13 @@ type flowStat struct {
 	BAPackets uint64
 	BABytes   uint64
 }
-type TraceInfo struct {
+type flowsTraceInfo struct {
 	filename string
 	nbFlow   int
 	flowStat []flowStat
 }
 
-var traces = [...]TraceInfo{
+var flowsTraces = [...]flowsTraceInfo{
 	{
 		filename: "eth-ip4-arp-dns-req-http-google.pcap",
 		nbFlow:   3,
@@ -88,6 +89,7 @@ var traces = [...]TraceInfo{
 }
 
 type TestStorage struct {
+	lock  sync.RWMutex
 	flows map[string]*flow.Flow
 }
 
@@ -96,9 +98,11 @@ func NewTestStorage() *TestStorage {
 }
 
 func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
+	s.lock.Lock()
 	for _, f := range flows {
 		s.flows[f.UUID] = f
 	}
+	s.lock.Unlock()
 	return nil
 }
 
@@ -106,7 +110,7 @@ func (s *TestStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error)
 	return nil, nil
 }
 
-func (s *TestStorage) CheckFlow(t *testing.T, f *flow.Flow, trace *TraceInfo) bool {
+func (s *TestStorage) CheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool {
 	eth := f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()]
 
 	for _, fi := range trace.flowStat {
@@ -121,7 +125,10 @@ func (s *TestStorage) CheckFlow(t *testing.T, f *flow.Flow, trace *TraceInfo) bo
 	return false
 }
 
-func (s *TestStorage) Validate(t *testing.T, trace *TraceInfo) {
+func (s *TestStorage) Validate(t *testing.T, trace *flowsTraceInfo) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
 	if len(trace.flowStat) != len(s.flows) {
 		t.Errorf("NB Flows mismatch : %d %d", len(trace.flowStat), len(s.flows))
 	}
@@ -136,7 +143,7 @@ func (s *TestStorage) Validate(t *testing.T, trace *TraceInfo) {
 }
 
 func TestSFlowAgent(t *testing.T) {
-	helper.InitConfig(t, conf)
+	helper.InitConfig(t, confAgentAnalyzer)
 
 	router := mux.NewRouter().StrictSlash(true)
 	server, err := analyzer.NewServerFromConfig(router)
@@ -148,10 +155,10 @@ func TestSFlowAgent(t *testing.T) {
 	server.SetStorage(ts)
 	go server.ListenAndServe()
 
-	helper.StartAgent(t, conf)
+	helper.StartAgent(t)
 
 	time.Sleep(1 * time.Second)
-	for _, trace := range traces {
+	for _, trace := range flowsTraces {
 		fulltrace, _ := filepath.Abs("pcaptraces" + string(filepath.Separator) + trace.filename)
 		helper.ReplayTraceHelper(t, fulltrace, "localhost:55000")
 
