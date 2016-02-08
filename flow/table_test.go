@@ -152,7 +152,15 @@ func TestFlowTable_Update(t *testing.T) {
 	f = &Flow{}
 	f.UUID = "789"
 	ft.Update([]*Flow{f})
-	NewFlowTableComplex(t)
+
+	ft2 := NewFlowTableComplex(t)
+	if "10 flows" != ft2.String() {
+		t.Error("We should got only 10 flows")
+	}
+	ft2.Update([]*Flow{f})
+	if "11 flows" != ft2.String() {
+		t.Error("We should got only 11 flows")
+	}
 }
 
 type MyTestFlowCounter struct {
