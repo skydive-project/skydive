@@ -52,6 +52,10 @@
 			"Rev": "844dd6d40e1a9215ef4c8a204bfc839fcf5dd5dd"
 		},
 		{
+			"ImportPath": "github.com/hydrogen18/stoppableListener",
+			"Rev": "dadc9ccc400c712e5a316107a5c462863919e579"
+		},
+		{
 			"ImportPath": "github.com/mattbaird/elastigo/lib",
 			"Comment": "v1.0-258-g451c29b",
 			"Rev": "451c29b3ae220cd710294bc3436e293d99491b94"
