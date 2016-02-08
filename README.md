@@ -25,6 +25,7 @@ Flow probes currenlty implemented:
 
 # Dependencies
 
+* Go >= 1.5
 * Elasticsearch
 
 ## Install

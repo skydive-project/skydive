@@ -1,6 +1,9 @@
 language: go
 go_import_path: github.com/redhat-cip/skydive
 
+go:
+    - 1.5
+
 sudo: required
 dist: trusty
 
