@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/redhat-cip/skydive",
-	"GoVersion": "go1.5",
+	"GoVersion": "go1.5.3",
 	"Packages": [
 		"./..."
 	],
@@ -32,17 +32,18 @@
 			"Rev": "2d1be381ce47537e9e076b2b76dc70933162e4e9"
 		},
 		{
-			"ImportPath": "github.com/gima/govalid/v1",
-			"Rev": "7b486932bea218beb6e85f7ed28650d283dd6ce6"
-		},
-		{
 			"ImportPath": "github.com/cpuguy83/go-md2man/md2man",
 			"Comment": "v1.0.4",
 			"Rev": "71acacd42f85e5e82f70a55327789582a5200a90"
 		},
 		{
-			"ImportPath": "github.com/gima/jsonv/src",
-			"Rev": "964b60c2ebe1c9106b7c33e2566ec7de757d4f70"
+			"ImportPath": "github.com/docker/go-units",
+			"Comment": "v0.1.0-23-g5d2041e",
+			"Rev": "5d2041e26a699eaca682e2ea41c8f891e1060444"
+		},
+		{
+			"ImportPath": "github.com/gima/govalid/v1",
+			"Rev": "7b486932bea218beb6e85f7ed28650d283dd6ce6"
 		},
 		{
 			"ImportPath": "github.com/go-gremlin/gremlin",
@@ -89,6 +90,10 @@
 		{
 			"ImportPath": "github.com/kr/text",
 			"Rev": "bb797dc4fb8320488f47bf11de07a733d7233e1f"
+		},
+		{
+			"ImportPath": "github.com/lebauce/dockerclient",
+			"Rev": "c9d1f947999cd8a2e03723c73c39bf8f343bc0b8"
 		},
 		{
 			"ImportPath": "github.com/magiconair/properties",
@@ -191,10 +196,6 @@
 		{
 			"ImportPath": "golang.org/x/tools/go/types",
 			"Rev": "c0008c5889c0d5091cdfefd2bfb08bff96527879"
-		},
-		{
-			"ImportPath": "gopkg.in/gcfg.v1",
-			"Rev": "083575c3955c85df16fe9590cceab64d03f5eb6e"
 		},
 		{
 			"ImportPath": "gopkg.in/fsnotify.v1",
