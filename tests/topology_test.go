@@ -259,9 +259,9 @@ func newGraph(t *testing.T) *graph.Graph {
 }
 
 func TestBridgeOVS(t *testing.T) {
-	g := newGraph(t)
-
 	helper.InitConfig(t, confTopology)
+
+	g := newGraph(t)
 	helper.StartAgent(t)
 
 	setupCmds := []string{
@@ -310,9 +310,9 @@ func TestBridgeOVS(t *testing.T) {
 }
 
 func TestPatchOVS(t *testing.T) {
-	g := newGraph(t)
-
 	helper.InitConfig(t, confTopology)
+
+	g := newGraph(t)
 	helper.StartAgent(t)
 
 	setupCmds := []string{
@@ -364,9 +364,9 @@ func TestPatchOVS(t *testing.T) {
 }
 
 func TestInterfaceOVS(t *testing.T) {
-	g := newGraph(t)
-
 	helper.InitConfig(t, confTopology)
+
+	g := newGraph(t)
 	helper.StartAgent(t)
 
 	setupCmds := []string{
@@ -415,9 +415,9 @@ func TestInterfaceOVS(t *testing.T) {
 }
 
 func TestBondOVS(t *testing.T) {
-	g := newGraph(t)
-
 	helper.InitConfig(t, confTopology)
+
+	g := newGraph(t)
 	helper.StartAgent(t)
 
 	setupCmds := []string{
@@ -462,9 +462,9 @@ func TestBondOVS(t *testing.T) {
 }
 
 func TestVeth(t *testing.T) {
-	g := newGraph(t)
-
 	helper.InitConfig(t, confTopology)
+
+	g := newGraph(t)
 	helper.StartAgent(t)
 
 	setupCmds := []string{
@@ -501,9 +501,9 @@ func TestVeth(t *testing.T) {
 }
 
 func TestBridge(t *testing.T) {
-	g := newGraph(t)
-
 	helper.InitConfig(t, confTopology)
+
+	g := newGraph(t)
 	helper.StartAgent(t)
 
 	setupCmds := []string{
