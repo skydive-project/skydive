@@ -267,7 +267,7 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 func (u *NetLinkProbe) onLinkAdded(index int) {
 	link, err := netlink.LinkByIndex(index)
 	if err != nil {
-		logging.GetLogger().Error("Failed to find interface %d: %s", index, err.Error())
+		logging.GetLogger().Warning("Failed to find interface %d: %s", index, err.Error())
 		return
 	}
 
