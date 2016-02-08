@@ -74,7 +74,7 @@ func asyncSflowListen(t *testing.T, wg *sync.WaitGroup, conn *net.UDPConn, trace
 	t.Log("listen...")
 	nbPackets := 0
 
-	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	for {
 		_, _, err := conn.ReadFromUDP(buf[:])
 		if err != nil {
