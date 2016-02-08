@@ -25,7 +25,6 @@ package tests
 import (
 	"fmt"
 	"net"
-	"os/exec"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -33,6 +32,8 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+
+	"github.com/redhat-cip/skydive/tests/helper"
 )
 
 type TraceInfo struct {
@@ -47,15 +48,6 @@ var traces = [...]TraceInfo{
 		packets:  58,
 		bytes:    []int{44, 44, 76, 76, 104, 156, 76, 76, 68, 180, 68, 556, 68, 76, 76, 92, 104, 76, 76, 68, 216, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1080, 68, 68, 68, 68, 68, 68},
 	},
-}
-
-func replayTraceHelper(t *testing.T, trace string, target string) {
-	t.Log("Replaying", trace)
-	out, err := exec.Command("go", "run", "../cmd/pcap2sflow-replay/pcap2sflow-replay.go", "-trace", trace, target).CombinedOutput()
-	if err != nil {
-		t.Error(err.Error() + "\n" + string(out))
-	}
-	t.Log("Stdout/Stderr ", string(out))
 }
 
 func sflowSetup(t *testing.T) (*net.UDPConn, error) {
@@ -148,7 +140,7 @@ func TestPcap2SflowReplay(t *testing.T) {
 		go asyncSflowListen(t, &wg, conn, &trace)
 
 		fulltrace, _ := filepath.Abs("pcaptraces" + string(filepath.Separator) + trace.filename)
-		replayTraceHelper(t, fulltrace, fmt.Sprintf("localhost:%d", laddr.Port))
+		helper.ReplayTraceHelper(t, fulltrace, fmt.Sprintf("localhost:%d", laddr.Port))
 
 		wg.Wait()
 	}
