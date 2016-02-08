@@ -6,10 +6,6 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/gcfg",
-			"Rev": "c2d3050044d05357eaf6c3547249ba57c5e235cb"
-		},
-		{
 			"ImportPath": "github.com/araddon/gou",
 			"Rev": "0c2ab7394d785afff14c983fedce4be70ccc431f"
 		},
@@ -19,7 +15,7 @@
 		},
 		{
 			"ImportPath": "github.com/calmh/ipfix",
-			"Rev": "438fae9fe923768e48c49903c233aac74a8fade5"
+			"Rev": "5d8d68781514e03e138546df9ff0a7d93c3b4543"
 		},
 		{
 			"ImportPath": "github.com/cenkalti/hub",
