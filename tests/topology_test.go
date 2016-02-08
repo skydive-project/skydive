@@ -44,7 +44,7 @@ const confTopology = `
 ws_pong_timeout = 1
 
 [agent]
-listen = 8081
+listen = 58081
 flowtable_expire = 5
 
 [cache]
@@ -52,19 +52,19 @@ expire = 300
 cleanup = 30
 
 [sflow]
-listen = 5000
+listen = 55000
 
 [ovs]
 ovsdb = 6400
 `
 
 func newClient() (*websocket.Conn, error) {
-	conn, err := net.Dial("tcp", "127.0.0.1:8081")
+	conn, err := net.Dial("tcp", "127.0.0.1:58081")
 	if err != nil {
 		return nil, err
 	}
 
-	endpoint := "ws://127.0.0.1:8081/ws/graph"
+	endpoint := "ws://127.0.0.1:58081/ws/graph"
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func connectToAgent(timeout int, onReady func(*websocket.Conn)) (*websocket.Conn
 	t := 0
 	for {
 		if t > timeout {
-			return nil, errors.New("Connection timeout reached")
+			return nil, errors.New("Connection to Agent : timeout reached")
 		}
 
 		ws, err = newClient()
