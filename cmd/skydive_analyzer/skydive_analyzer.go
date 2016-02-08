@@ -51,16 +51,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	logging.GetLogger().Notice("Skydive Analyzer starting...")
+
 	router := mux.NewRouter().StrictSlash(true)
 
 	server, err := analyzer.NewServerFromConfig(router)
 	if err != nil {
-		panic(err)
+		logging.GetLogger().Fatalf("Can't start Analyzer : %v", err)
 	}
 
 	storage, err := elasticseach.New()
 	if err != nil {
-		panic(err)
+		logging.GetLogger().Fatalf("Can't connect to ElasticSearch server : %v", err)
 	}
 	server.SetStorage(storage)
 
