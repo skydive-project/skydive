@@ -49,13 +49,15 @@ type Agent struct {
 	NlProbe     *tprobes.NetLinkProbe
 	OvsMon      *ovsdb.OvsMonitor
 	OvsProbe    *tprobes.OvsdbProbe
+	SFlowProbe  *fprobes.SFlowProbe
 }
 
 func (a *Agent) Start() {
+	var err error
 	// send a first reset event to the analyzers
 	a.Graph.DelSubGraph(a.Root)
 
-	sflowProbe, err := fprobes.NewSFlowProbeFromConfig(a.Graph)
+	a.SFlowProbe, err = fprobes.NewSFlowProbeFromConfig(a.Graph)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +65,7 @@ func (a *Agent) Start() {
 	ovsSFlowProbe := ovsdb.SFlowProbe{
 		ID:         "SkydiveSFlowProbe",
 		Interface:  "eth0",
-		Target:     sflowProbe.GetTarget(),
+		Target:     a.SFlowProbe.GetTarget(),
 		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
@@ -86,7 +88,7 @@ func (a *Agent) Start() {
 			panic(err)
 		}
 
-		sflowProbe.SetAnalyzerClient(analyzer)
+		a.SFlowProbe.SetAnalyzerClient(analyzer)
 
 		a.Gclient = graph.NewAsyncClient(analyzerAddr, analyzerPort, "/ws/graph")
 		graph.NewForwarder(a.Gclient, a.Graph)
@@ -99,14 +101,14 @@ func (a *Agent) Start() {
 	}
 
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
-	sflowProbe.SetMappingPipeline(pipeline)
+	a.SFlowProbe.SetMappingPipeline(pipeline)
 
 	// start probes that will update the graph
 	a.NsProbe.Start()
 	a.NlProbe.Start()
 	a.OvsProbe.Start()
 
-	go sflowProbe.Start()
+	go a.SFlowProbe.Start()
 
 	if err := a.OvsMon.StartMonitoring(); err != nil {
 		panic(err)
@@ -118,12 +120,15 @@ func (a *Agent) Start() {
 }
 
 func (a *Agent) Stop() {
+	a.SFlowProbe.Stop()
 	a.NlProbe.Stop()
 	a.NsProbe.Stop()
 	a.OvsMon.StopMonitoring()
 	a.TopoServer.Stop()
 	a.GraphServer.Stop()
-	a.Gclient.Disconnect()
+	if a.Gclient != nil {
+		a.Gclient.Disconnect()
+	}
 }
 
 func NewAgent() *Agent {

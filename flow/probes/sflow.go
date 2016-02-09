@@ -26,6 +26,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket"
@@ -55,6 +56,8 @@ type SFlowProbe struct {
 
 	cache            *cache.Cache
 	cacheUpdaterChan chan uint32
+
+	running atomic.Value
 }
 
 func (probe *SFlowProbe) GetTarget() string {
@@ -66,7 +69,7 @@ func (probe *SFlowProbe) cacheUpdater() {
 	logging.GetLogger().Debug("Start SFlowProbe cache updater")
 
 	var index uint32
-	for {
+	for probe.running.Load() == true {
 		index = <-probe.cacheUpdaterChan
 
 		logging.GetLogger().Debug("SFlowProbe request received: %d", index)
@@ -121,11 +124,12 @@ func (probe *SFlowProbe) Start() error {
 		IP:   net.ParseIP(probe.Addr),
 	}
 	conn, err := net.ListenUDP("udp", &addr)
-	defer conn.Close()
 	if err != nil {
 		logging.GetLogger().Error("Unable to listen on port %d: %s", probe.Port, err.Error())
 		return err
 	}
+	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(1 * time.Second))
 
 	// start index/mac cache updater
 	go probe.cacheUpdater()
@@ -138,7 +142,7 @@ func (probe *SFlowProbe) Start() error {
 	}
 	go flowtable.AsyncExpire(probe.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
 
-	for {
+	for probe.running.Load() == true {
 		_, _, err := conn.ReadFromUDP(buf[:])
 		if err != nil {
 			continue
@@ -175,6 +179,10 @@ func (probe *SFlowProbe) Start() error {
 	return nil
 }
 
+func (probe *SFlowProbe) Stop() {
+	probe.running.Store(false)
+}
+
 func (probe *SFlowProbe) SetAnalyzerClient(a *analyzer.Client) {
 	probe.AnalyzerClient = a
 }
@@ -192,6 +200,7 @@ func NewSFlowProbe(a string, p int, g *graph.Graph, expire int, cleanup int) (*S
 
 	probe.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
 	probe.cacheUpdaterChan = make(chan uint32, 200)
+	probe.running.Store(true)
 
 	return probe, nil
 }
