@@ -70,14 +70,12 @@ type flowStat struct {
 }
 type flowsTraceInfo struct {
 	filename string
-	nbFlow   int
 	flowStat []flowStat
 }
 
 var flowsTraces = [...]flowsTraceInfo{
 	{
 		filename: "eth-ip4-arp-dns-req-http-google.pcap",
-		nbFlow:   3,
 		flowStat: []flowStat{
 			{false, "Ethernet/ARP/Payload", 1, 44, 1, 44},
 			{false, "Ethernet/IPv4/UDP/DNS", 2, 152, 2, 260},
