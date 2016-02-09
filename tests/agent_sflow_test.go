@@ -50,7 +50,7 @@ cleanup = 30
 listen = 55000
 
 [ovs]
-ovsdb = 56400
+ovsdb = 6400
 
 [analyzer]
 listen = 58082
