@@ -152,6 +152,7 @@ func TestSFlowAgent(t *testing.T) {
 	ts := NewTestStorage()
 	server.SetStorage(ts)
 	go server.ListenAndServe()
+	defer server.Stop()
 
 	agent := helper.StartAgent(t)
 	defer agent.Stop()
