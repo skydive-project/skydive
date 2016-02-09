@@ -26,6 +26,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -57,7 +58,9 @@ type SFlowProbe struct {
 	cache            *cache.Cache
 	cacheUpdaterChan chan uint32
 
+	done    chan bool
 	running atomic.Value
+	wg      sync.WaitGroup
 }
 
 func (probe *SFlowProbe) GetTarget() string {
@@ -66,37 +69,44 @@ func (probe *SFlowProbe) GetTarget() string {
 }
 
 func (probe *SFlowProbe) cacheUpdater() {
+	probe.wg.Add(1)
+	defer probe.wg.Done()
+
 	logging.GetLogger().Debug("Start SFlowProbe cache updater")
 
 	var index uint32
 	for probe.running.Load() == true {
-		index = <-probe.cacheUpdaterChan
+		select {
+		case index = <-probe.cacheUpdaterChan:
+			logging.GetLogger().Debug("SFlowProbe request received: %d", index)
 
-		logging.GetLogger().Debug("SFlowProbe request received: %d", index)
+			probe.Graph.Lock()
 
-		probe.Graph.Lock()
+			intfs := probe.Graph.LookupNodes(graph.Metadatas{"IfIndex": index})
 
-		intfs := probe.Graph.LookupNodes(graph.Metadatas{"IfIndex": index})
+			// lookup for the interface that is a part of an ovs bridge
+			for _, intf := range intfs {
+				ancestors, ok := probe.Graph.GetAncestorsTo(intf, graph.Metadatas{"Type": "ovsbridge"})
+				if ok {
+					bridge := ancestors[2]
+					ancestors, ok = probe.Graph.GetAncestorsTo(bridge, graph.Metadatas{"Type": "host"})
 
-		// lookup for the interface that is a part of an ovs bridge
-		for _, intf := range intfs {
-			ancestors, ok := probe.Graph.GetAncestorsTo(intf, graph.Metadatas{"Type": "ovsbridge"})
-			if ok {
-				bridge := ancestors[2]
-				ancestors, ok = probe.Graph.GetAncestorsTo(bridge, graph.Metadatas{"Type": "host"})
-
-				var path string
-				for i := len(ancestors) - 1; i >= 0; i-- {
-					if len(path) > 0 {
-						path += "/"
+					var path string
+					for i := len(ancestors) - 1; i >= 0; i-- {
+						if len(path) > 0 {
+							path += "/"
+						}
+						path += ancestors[i].Metadatas()["Name"].(string)
 					}
-					path += ancestors[i].Metadatas()["Name"].(string)
+					probe.cache.Set(strconv.FormatUint(uint64(index), 10), path, cache.DefaultExpiration)
+					break
 				}
-				probe.cache.Set(strconv.FormatUint(uint64(index), 10), path, cache.DefaultExpiration)
-				break
 			}
+			probe.Graph.Unlock()
+
+		case <-probe.done:
+			return
 		}
-		probe.Graph.Unlock()
 	}
 }
 
@@ -117,6 +127,9 @@ func (probe *SFlowProbe) flowExpire(f *flow.Flow) {
 }
 
 func (probe *SFlowProbe) Start() error {
+	probe.wg.Add(1)
+	defer probe.wg.Done()
+
 	var buf [maxDgramSize]byte
 
 	addr := net.UDPAddr{
@@ -145,6 +158,7 @@ func (probe *SFlowProbe) Start() error {
 	for probe.running.Load() == true {
 		_, _, err := conn.ReadFromUDP(buf[:])
 		if err != nil {
+			conn.SetDeadline(time.Now().Add(1 * time.Second))
 			continue
 		}
 
@@ -181,6 +195,8 @@ func (probe *SFlowProbe) Start() error {
 
 func (probe *SFlowProbe) Stop() {
 	probe.running.Store(false)
+	probe.done <- true
+	probe.wg.Wait()
 }
 
 func (probe *SFlowProbe) SetAnalyzerClient(a *analyzer.Client) {
@@ -200,6 +216,7 @@ func NewSFlowProbe(a string, p int, g *graph.Graph, expire int, cleanup int) (*S
 
 	probe.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
 	probe.cacheUpdaterChan = make(chan uint32, 200)
+	probe.done = make(chan bool)
 	probe.running.Store(true)
 
 	return probe, nil

@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/op/go-logging"
 
@@ -51,6 +52,7 @@ func getPackageFunction() (pkg string, fun string) {
 	return pkg, fun
 }
 
+var skydiveLoggerLock sync.Mutex
 var skydiveLogger SkydiveLogger
 
 type SkydiveLogger struct {
@@ -96,6 +98,12 @@ func newLogger(pkg string, loglevel string) error {
 }
 
 func InitLogger() error {
+	skydiveLoggerLock.Lock()
+	defer skydiveLoggerLock.Unlock()
+	return initLogger()
+}
+
+func initLogger() error {
 	initSkydiveLogger()
 
 	cfg := config.GetConfig()
@@ -124,6 +132,9 @@ func InitLogger() error {
 }
 
 func GetLogger() (log *logging.Logger) {
+	skydiveLoggerLock.Lock()
+	defer skydiveLoggerLock.Unlock()
+
 	pkg, f := getPackageFunction()
 	log, found := skydiveLogger.loggers[pkg+"."+f]
 	if !found {
@@ -131,7 +142,7 @@ func GetLogger() (log *logging.Logger) {
 		if !found {
 			log, found = skydiveLogger.loggers["default"]
 			if !found {
-				err := InitLogger()
+				err := initLogger()
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "%v\n", err)
 					os.Exit(1)

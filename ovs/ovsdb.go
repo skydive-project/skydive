@@ -345,8 +345,17 @@ func (o *OvsMonitor) StartMonitoring() error {
 }
 
 func (o *OvsMonitor) StopMonitoring() {
-	ovsClient := o.OvsClient.(*OvsClient)
-	ovsClient.ovsdb.Disconnect()
+	/*
+	       FIXME (nplanel) in comment due to internal libovbdb data race : (bad design)
+	    backtrace  (async handleDisconnectNotification())
+	       o libovsdb/client.go:236
+	       o libovsdb/client.go:250
+
+	    To reproduce call StopMonitoring() from another thread than StartMonitoring()
+
+	         ovsClient := o.OvsClient.(*OvsClient)
+	   	ovsClient.ovsdb.Disconnect()
+	*/
 }
 
 func NewOvsMonitor(addr string, port int) *OvsMonitor {

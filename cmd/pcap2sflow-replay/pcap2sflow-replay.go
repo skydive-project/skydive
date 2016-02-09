@@ -210,6 +210,21 @@ func SFlowPackets(packets *[][]byte) []byte {
 	return rawBytes
 }
 
+func sendPackets(conn *net.UDPConn, packets *[][]byte) {
+	sflowPacketData := SFlowPackets(packets)
+	*packets = (*packets)[:0]
+
+	NbSFlowMsg++
+	SFlowMsgBytes += uint(len(sflowPacketData))
+	_, err := conn.Write(sflowPacketData)
+	if err != nil {
+		if (NbSFlowMsgDropped % 1000) == 0 {
+			logging.GetLogger().Critical("PCAP2SFlow Agent connection issue : %s", err.Error())
+		}
+		NbSFlowMsgDropped++
+	}
+}
+
 func NewUDPConnection(addr string, port int) (*net.UDPConn, error) {
 	srv, err := net.ResolveUDPAddr("udp", addr+":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
@@ -306,22 +321,14 @@ func main() {
 			if (NbPackets % *PktsPerFlow) != 0 {
 				continue
 			}
+
 			throttle.StartHook(*PktsPerFlow)
-
-			sflowPacketData := SFlowPackets(&packets)
-			packets = packets[:0]
-
-			NbSFlowMsg++
-			SFlowMsgBytes += uint(len(sflowPacketData))
-			_, err := conn.Write(sflowPacketData)
-			if err != nil {
-				if (NbSFlowMsgDropped % 1000) == 0 {
-					logging.GetLogger().Critical("PCAP2SFlow Agent connection issue : %s", err.Error())
-				}
-				NbSFlowMsgDropped++
-			}
+			sendPackets(conn, &packets)
 			throttle.EndHook()
 		}
+	}
+	if len(packets) > 0 {
+		sendPackets(conn, &packets)
 	}
 
 	logging.GetLogger().Info("PCAP Trace replay finished")
