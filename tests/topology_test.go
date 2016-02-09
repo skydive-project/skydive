@@ -24,7 +24,6 @@ package tests
 
 import (
 	"errors"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -35,18 +34,17 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/redhat-cip/skydive/agent"
-	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/tests/helper"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-const conf = `
+const confTopology = `
 [default]
 ws_pong_timeout = 1
 
 [agent]
-listen = 8081
+listen = 58081
 flowtable_expire = 5
 
 [cache]
@@ -54,22 +52,19 @@ expire = 300
 cleanup = 30
 
 [sflow]
-listen = 5000
+listen = 55000
 
 [ovs]
 ovsdb = 6400
 `
 
-// FIX(safchain) has to be removed when will be able to stop agent
-var globalAgent *agent.Agent
-
 func newClient() (*websocket.Conn, error) {
-	conn, err := net.Dial("tcp", "127.0.0.1:8081")
+	conn, err := net.Dial("tcp", "127.0.0.1:58081")
 	if err != nil {
 		return nil, err
 	}
 
-	endpoint := "ws://127.0.0.1:8081/ws/graph"
+	endpoint := "ws://127.0.0.1:58081/ws/graph"
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
@@ -90,7 +85,7 @@ func connectToAgent(timeout int, onReady func(*websocket.Conn)) (*websocket.Conn
 	t := 0
 	for {
 		if t > timeout {
-			return nil, errors.New("Connection timeout reached")
+			return nil, errors.New("Connection to Agent : timeout reached")
 		}
 
 		ws, err = newClient()
@@ -157,38 +152,6 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 	}
 
 	return nil
-}
-
-func initConfig(t *testing.T) {
-	f, err := ioutil.TempFile("", "skydive_agent")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	f.WriteString(conf)
-	f.Close()
-
-	err = config.InitConfigFromFile(f.Name())
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-}
-
-func startAgent(t *testing.T) {
-	// FIX(safchain) has to be removed see comment around the variable declaration
-	if globalAgent != nil {
-		return
-	}
-
-	initConfig(t)
-
-	err := logging.InitLogger()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	globalAgent = agent.NewAgent()
-	go globalAgent.Start()
 }
 
 func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.Conn), onChange func(*websocket.Conn)) error {
@@ -296,9 +259,11 @@ func newGraph(t *testing.T) *graph.Graph {
 }
 
 func TestBridgeOVS(t *testing.T) {
-	g := newGraph(t)
+	helper.InitConfig(t, confTopology)
 
-	startAgent(t)
+	g := newGraph(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -346,9 +311,11 @@ func TestBridgeOVS(t *testing.T) {
 }
 
 func TestPatchOVS(t *testing.T) {
-	g := newGraph(t)
+	helper.InitConfig(t, confTopology)
 
-	startAgent(t)
+	g := newGraph(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -399,9 +366,11 @@ func TestPatchOVS(t *testing.T) {
 }
 
 func TestInterfaceOVS(t *testing.T) {
-	g := newGraph(t)
+	helper.InitConfig(t, confTopology)
 
-	startAgent(t)
+	g := newGraph(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -449,9 +418,11 @@ func TestInterfaceOVS(t *testing.T) {
 }
 
 func TestBondOVS(t *testing.T) {
-	g := newGraph(t)
+	helper.InitConfig(t, confTopology)
 
-	startAgent(t)
+	g := newGraph(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -495,9 +466,11 @@ func TestBondOVS(t *testing.T) {
 }
 
 func TestVeth(t *testing.T) {
-	g := newGraph(t)
+	helper.InitConfig(t, confTopology)
 
-	startAgent(t)
+	g := newGraph(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ip l add vm1-veth0 type veth peer name vm1-veth1",
@@ -533,9 +506,11 @@ func TestVeth(t *testing.T) {
 }
 
 func TestBridge(t *testing.T) {
-	g := newGraph(t)
+	helper.InitConfig(t, confTopology)
 
-	startAgent(t)
+	g := newGraph(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"brctl addbr br-test",
