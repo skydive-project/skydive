@@ -42,6 +42,7 @@ const (
 )
 
 type NetNSProbe struct {
+	sync.RWMutex
 	Graph      *graph.Graph
 	Root       *graph.Node
 	nsnlProbes map[string]*NetNsNetLinkTopoUpdater
@@ -141,6 +142,8 @@ func (u *NetNSProbe) onNetNsCreated(path string) {
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
 	go nu.Start(path)
 
+	u.Lock()
+	defer u.Unlock()
 	u.nsnlProbes[name] = nu
 }
 
@@ -223,6 +226,9 @@ func (u *NetNSProbe) Start() {
 }
 
 func (u *NetNSProbe) Stop() {
+	u.Lock()
+	defer u.Unlock()
+
 	for _, probe := range u.nsnlProbes {
 		probe.Stop()
 	}
