@@ -43,7 +43,6 @@ type EventListener interface {
 }
 
 type AsyncClient struct {
-	sync.RWMutex
 	Addr      string
 	Port      int
 	Path      string
