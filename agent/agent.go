@@ -40,18 +40,20 @@ import (
 )
 
 type Agent struct {
-	Graph *graph.Graph
+	Graph       *graph.Graph
+	Gclient     *graph.AsyncClient
+	GraphServer *graph.Server
+	Root        *graph.Node
+	TopoServer  *topology.Server
+	NsProbe     *tprobes.NetNSProbe
+	NlProbe     *tprobes.NetLinkProbe
+	OvsMon      *ovsdb.OvsMonitor
+	OvsProbe    *tprobes.OvsdbProbe
 }
 
 func (a *Agent) Start() {
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-
-	root := a.Graph.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})
 	// send a first reset event to the analyzers
-	a.Graph.DelSubGraph(root)
+	a.Graph.DelSubGraph(a.Root)
 
 	sflowProbe, err := fprobes.NewSFlowProbeFromConfig(a.Graph)
 	if err != nil {
@@ -68,8 +70,7 @@ func (a *Agent) Start() {
 	}
 	sflowHandler := ovsdb.NewOvsSFlowProbesHandler([]ovsdb.SFlowProbe{ovsSFlowProbe})
 
-	ovsmon := ovsdb.NewOvsMonitorFromConfig()
-	ovsmon.AddMonitorHandler(sflowHandler)
+	a.OvsMon.AddMonitorHandler(sflowHandler)
 
 	analyzers := config.GetConfig().Section("agent").Key("analyzers").Strings(",")
 	// TODO(safchain) HA Connection ???
@@ -87,9 +88,9 @@ func (a *Agent) Start() {
 
 		sflowProbe.SetAnalyzerClient(analyzer)
 
-		gclient := graph.NewAsyncClient(analyzerAddr, analyzerPort, "/ws/graph")
-		graph.NewForwarder(gclient, a.Graph)
-		gclient.Connect()
+		a.Gclient = graph.NewAsyncClient(analyzerAddr, analyzerPort, "/ws/graph")
+		graph.NewForwarder(a.Gclient, a.Graph)
+		a.Gclient.Connect()
 	}
 
 	gfe, err := mappings.NewGraphFlowEnhancer(a.Graph)
@@ -101,36 +102,28 @@ func (a *Agent) Start() {
 	sflowProbe.SetMappingPipeline(pipeline)
 
 	// start probes that will update the graph
-	ns := tprobes.NewNetNSProbe(a.Graph, root)
-	ns.Start()
-
-	nl := tprobes.NewNetLinkProbe(a.Graph, root)
-	nl.Start()
-
-	ovs := tprobes.NewOvsdbProbe(a.Graph, root, ovsmon)
-	ovs.Start()
+	a.NsProbe.Start()
+	a.NlProbe.Start()
+	a.OvsProbe.Start()
 
 	go sflowProbe.Start()
 
-	ovsmon.StartMonitoring()
-
-	router := mux.NewRouter().StrictSlash(true)
-
-	server, err := topology.NewServerFromConfig("agent", a.Graph, router)
-	if err != nil {
+	if err := a.OvsMon.StartMonitoring(); err != nil {
 		panic(err)
 	}
 
-	server.RegisterStaticEndpoints()
-	server.RegisterRpcEndpoints()
+	go a.TopoServer.ListenAndServe()
 
-	gserver, err := graph.NewServerFromConfig(a.Graph, nil, server.Router)
-	if err != nil {
-		panic(err)
-	}
-	go gserver.ListenAndServe()
+	go a.GraphServer.ListenAndServe()
+}
 
-	server.ListenAndServe()
+func (a *Agent) Stop() {
+	a.NlProbe.Stop()
+	a.NsProbe.Stop()
+	a.OvsMon.StopMonitoring()
+	a.TopoServer.Stop()
+	a.GraphServer.Stop()
+	a.Gclient.Disconnect()
 }
 
 func NewAgent() *Agent {
@@ -144,7 +137,42 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	ovsmon := ovsdb.NewOvsMonitorFromConfig()
+
+	root := g.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})
+
+	ns := tprobes.NewNetNSProbe(g, root)
+	nl := tprobes.NewNetLinkProbe(g, root)
+	ovs := tprobes.NewOvsdbProbe(g, root, ovsmon)
+
+	router := mux.NewRouter().StrictSlash(true)
+
+	server, err := topology.NewServerFromConfig("agent", g, router)
+	if err != nil {
+		panic(err)
+	}
+
+	server.RegisterStaticEndpoints()
+	server.RegisterRpcEndpoints()
+
+	gserver, err := graph.NewServerFromConfig(g, nil, router)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Agent{
-		Graph: g,
+		Graph:       g,
+		NsProbe:     ns,
+		NlProbe:     nl,
+		OvsMon:      ovsmon,
+		OvsProbe:    ovs,
+		TopoServer:  server,
+		GraphServer: gserver,
+		Root:        root,
 	}
 }

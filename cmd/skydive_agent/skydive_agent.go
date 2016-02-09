@@ -26,6 +26,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/redhat-cip/skydive/agent"
 	"github.com/redhat-cip/skydive/config"
@@ -49,5 +51,14 @@ func main() {
 	}
 
 	logging.GetLogger().Notice("Skydive Agent starting...")
-	agent.NewAgent().Start()
+	agent := agent.NewAgent()
+	agent.Start()
+
+	ch := make(chan os.Signal)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	<-ch
+
+	agent.Stop()
+
+	logging.GetLogger().Notice("Skydive Agent stopped.")
 }

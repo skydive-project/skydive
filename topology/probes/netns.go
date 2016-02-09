@@ -206,7 +206,6 @@ func (u *NetNSProbe) start() {
 		select {
 		case ev := <-watcher.Event:
 			if ev.Mask&inotify.IN_CREATE > 0 {
-
 				u.onNetNsCreated(ev.Name)
 			}
 			if ev.Mask&inotify.IN_DELETE > 0 {
@@ -221,6 +220,12 @@ func (u *NetNSProbe) start() {
 
 func (u *NetNSProbe) Start() {
 	go u.start()
+}
+
+func (u *NetNSProbe) Stop() {
+	for _, probe := range u.nsnlProbes {
+		probe.Stop()
+	}
 }
 
 func NewNetNSProbe(g *graph.Graph, n *graph.Node) *NetNSProbe {

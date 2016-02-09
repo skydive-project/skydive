@@ -225,7 +225,7 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []string, onChange func(ws 
 		if cmdIndex < len(cmds) {
 			err := exec.Command("sudo", strings.Split(cmds[cmdIndex], " ")...).Run()
 			if err != nil {
-				t.Fatal(err.Error())
+				t.Fatal("cmd : (sudo " + cmds[cmdIndex] + ") " + err.Error())
 			}
 			cmdIndex++
 		}
@@ -238,7 +238,7 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []string, onChange func(ws 
 		if cmdIndex < len(cmds) {
 			err := exec.Command("sudo", strings.Split(cmds[cmdIndex], " ")...).Run()
 			if err != nil {
-				t.Fatal(err.Error())
+				t.Fatal("cmd : (sudo " + cmds[cmdIndex] + ") " + err.Error())
 			}
 			cmdIndex++
 		}

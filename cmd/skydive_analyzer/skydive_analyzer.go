@@ -26,6 +26,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gorilla/mux"
 
@@ -67,5 +69,13 @@ func main() {
 	server.SetStorage(storage)
 
 	logging.GetLogger().Notice("Skydive Analyzer started !")
-	server.ListenAndServe()
+	go server.ListenAndServe()
+
+	ch := make(chan os.Signal)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	<-ch
+
+	server.Stop()
+
+	logging.GetLogger().Notice("Skydive Analyzer stopped.")
 }

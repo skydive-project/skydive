@@ -46,6 +46,7 @@ type Server struct {
 	Router   *mux.Router
 	wsServer *WSServer
 	Host     string
+	wg       sync.WaitGroup
 }
 
 type ClientType int
@@ -68,6 +69,7 @@ type WSServer struct {
 	Alert      *Alert
 	clients    map[*WSClient]bool
 	broadcast  chan string
+	quit       chan bool
 	register   chan *WSClient
 	unregister chan *WSClient
 	pongWait   time.Duration
@@ -220,6 +222,8 @@ func (c *WSClient) write(mt int, message []byte) error {
 func (s *WSServer) ListenAndServe() {
 	for {
 		select {
+		case <-s.quit:
+			return
 		case c := <-s.register:
 			s.clients[c] = true
 			if c.Type == ALERTCLIENT {
@@ -327,9 +331,17 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ListenAndServe() {
+	s.wg.Add(1)
+	defer s.wg.Done()
+
 	s.Graph.AddEventListener(s)
 
 	s.wsServer.ListenAndServe()
+}
+
+func (s *Server) Stop() {
+	s.wsServer.quit <- true
+	s.wg.Wait()
 }
 
 func NewServer(g *Graph, a *Alert, router *mux.Router, pongWait time.Duration) *Server {
@@ -341,6 +353,7 @@ func NewServer(g *Graph, a *Alert, router *mux.Router, pongWait time.Duration) *
 			Graph:      g,
 			Alert:      a,
 			broadcast:  make(chan string, 500),
+			quit:       make(chan bool, 1),
 			register:   make(chan *WSClient),
 			unregister: make(chan *WSClient),
 			clients:    make(map[*WSClient]bool),

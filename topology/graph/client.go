@@ -47,6 +47,8 @@ type AsyncClient struct {
 	Port      int
 	Path      string
 	messages  chan string
+	quit      chan bool
+	wg        sync.WaitGroup
 	listeners []EventListener
 	connected bool
 }
@@ -111,6 +113,9 @@ func (c *AsyncClient) connect() {
 
 	logging.GetLogger().Info("Connected to %s", endpoint)
 
+	c.wg.Add(1)
+	defer c.wg.Done()
+
 	c.Lock()
 	c.connected = true
 	c.Unlock()
@@ -120,11 +125,10 @@ func (c *AsyncClient) connect() {
 		l.OnConnected()
 	}
 
-	quit := make(chan struct{})
 	go func() {
 		for {
 			if _, _, err := wsConn.NextReader(); err != nil {
-				quit <- struct{}{}
+				c.quit <- true
 				return
 			}
 		}
@@ -140,7 +144,7 @@ Loop:
 				logging.GetLogger().Error("Error while writing to the WebSocket: %s", err.Error())
 				break Loop
 			}
-		case <-quit:
+		case <-c.quit:
 			break Loop
 		}
 	}
@@ -171,6 +175,11 @@ func (c *AsyncClient) AddListener(l EventListener) {
 	c.listeners = append(c.listeners, l)
 }
 
+func (c *AsyncClient) Disconnect() {
+	c.quit <- true
+	c.wg.Wait()
+}
+
 // Create new chat client.
 func NewAsyncClient(addr string, port int, path string) *AsyncClient {
 	return &AsyncClient{
@@ -178,6 +187,7 @@ func NewAsyncClient(addr string, port int, path string) *AsyncClient {
 		Port:      port,
 		Path:      path,
 		messages:  make(chan string, 500),
+		quit:      make(chan bool, 1),
 		connected: false,
 	}
 }

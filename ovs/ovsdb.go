@@ -344,6 +344,11 @@ func (o *OvsMonitor) StartMonitoring() error {
 	return nil
 }
 
+func (o *OvsMonitor) StopMonitoring() {
+	ovsClient := o.OvsClient.(*OvsClient)
+	ovsClient.ovsdb.Disconnect()
+}
+
 func NewOvsMonitor(addr string, port int) *OvsMonitor {
 	return &OvsMonitor{
 		Addr:           addr,
