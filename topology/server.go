@@ -47,6 +47,7 @@ type Server struct {
 	Router *mux.Router
 	Addr   string
 	Port   int
+	lock   sync.Mutex
 	sl     *stoppableListener.StoppableListener
 	wg     sync.WaitGroup
 }
@@ -123,19 +124,23 @@ func (s *Server) ListenAndServe() {
 		logging.GetLogger().Fatalf("Failed to listen on %s:%d: %s", s.Addr, s.Port, err.Error())
 	}
 
+	s.lock.Lock()
 	s.sl, err = stoppableListener.New(listener)
 	if err != nil {
+		s.lock.Unlock()
 		logging.GetLogger().Fatalf("Failed to create stoppable listener: %s", err.Error())
 	}
+	s.lock.Unlock()
 
 	http.Serve(s.sl, s.Router)
 }
 
 func (s *Server) Stop() {
-	if s.sl != nil {
-		s.sl.Stop()
-		s.wg.Wait()
-	}
+	s.lock.Lock()
+	s.sl.Stop()
+	s.lock.Unlock()
+
+	s.wg.Wait()
 }
 
 func NewServer(g *graph.Graph, a string, p int, router *mux.Router) *Server {
