@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -50,7 +51,8 @@ type AsyncClient struct {
 	quit      chan bool
 	wg        sync.WaitGroup
 	listeners []EventListener
-	connected bool
+	connected atomic.Value
+	running   atomic.Value
 }
 
 func (c *AsyncClient) sendMessage(m string) {
@@ -66,10 +68,7 @@ func (c *AsyncClient) SendWSMessage(m WSMessage) {
 }
 
 func (c *AsyncClient) IsConnected() bool {
-	c.Lock()
-	defer c.Unlock()
-
-	return c.connected
+	return c.connected.Load() == true
 }
 
 func (c *AsyncClient) sendWSMessage(conn *websocket.Conn, msg string) error {
@@ -116,9 +115,7 @@ func (c *AsyncClient) connect() {
 	c.wg.Add(1)
 	defer c.wg.Done()
 
-	c.Lock()
-	c.connected = true
-	c.Unlock()
+	c.connected.Store(true)
 
 	// notify connected
 	for _, l := range c.listeners {
@@ -134,33 +131,29 @@ func (c *AsyncClient) connect() {
 		}
 	}()
 
-	var msg string
-Loop:
-	for {
+	for c.connected.Load() == true {
 		select {
-		case msg = <-c.messages:
+		case msg := <-c.messages:
 			err := c.sendWSMessage(wsConn, msg)
 			if err != nil {
 				logging.GetLogger().Error("Error while writing to the WebSocket: %s", err.Error())
-				break Loop
+				break
 			}
 		case <-c.quit:
-			break Loop
+			return
 		}
 	}
 }
 
 func (c *AsyncClient) Connect() {
 	go func() {
-		for {
+		for c.running.Load() == true {
 			c.connect()
 
-			c.Lock()
-			connected := c.connected
-			c.connected = false
-			c.Unlock()
+			wasConnected := c.connected.Load()
+			c.connected.Store(false)
 
-			if connected {
+			if wasConnected == true {
 				for _, l := range c.listeners {
 					l.OnDisconnected()
 				}
@@ -176,18 +169,21 @@ func (c *AsyncClient) AddListener(l EventListener) {
 }
 
 func (c *AsyncClient) Disconnect() {
+	c.running.Store(false)
 	c.quit <- true
 	c.wg.Wait()
 }
 
 // Create new chat client.
 func NewAsyncClient(addr string, port int, path string) *AsyncClient {
-	return &AsyncClient{
-		Addr:      addr,
-		Port:      port,
-		Path:      path,
-		messages:  make(chan string, 500),
-		quit:      make(chan bool, 1),
-		connected: false,
+	c := &AsyncClient{
+		Addr:     addr,
+		Port:     port,
+		Path:     path,
+		messages: make(chan string, 500),
+		quit:     make(chan bool),
 	}
+	c.connected.Store(false)
+	c.running.Store(true)
+	return c
 }
