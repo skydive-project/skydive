@@ -262,7 +262,8 @@ func TestBridgeOVS(t *testing.T) {
 	helper.InitConfig(t, confTopology)
 
 	g := newGraph(t)
-	helper.StartAgent(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -313,7 +314,8 @@ func TestPatchOVS(t *testing.T) {
 	helper.InitConfig(t, confTopology)
 
 	g := newGraph(t)
-	helper.StartAgent(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -367,7 +369,8 @@ func TestInterfaceOVS(t *testing.T) {
 	helper.InitConfig(t, confTopology)
 
 	g := newGraph(t)
-	helper.StartAgent(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -418,7 +421,8 @@ func TestBondOVS(t *testing.T) {
 	helper.InitConfig(t, confTopology)
 
 	g := newGraph(t)
-	helper.StartAgent(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ovs-vsctl add-br br-test1",
@@ -465,7 +469,8 @@ func TestVeth(t *testing.T) {
 	helper.InitConfig(t, confTopology)
 
 	g := newGraph(t)
-	helper.StartAgent(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"ip l add vm1-veth0 type veth peer name vm1-veth1",
@@ -504,7 +509,8 @@ func TestBridge(t *testing.T) {
 	helper.InitConfig(t, confTopology)
 
 	g := newGraph(t)
-	helper.StartAgent(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	setupCmds := []string{
 		"brctl addbr br-test",

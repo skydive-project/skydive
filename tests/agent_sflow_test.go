@@ -153,7 +153,8 @@ func TestSFlowAgent(t *testing.T) {
 	server.SetStorage(ts)
 	go server.ListenAndServe()
 
-	helper.StartAgent(t)
+	agent := helper.StartAgent(t)
+	defer agent.Stop()
 
 	time.Sleep(1 * time.Second)
 	for _, trace := range flowsTraces {

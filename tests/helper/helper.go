@@ -33,9 +33,6 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-// FIX(safchain) has to be removed when will be able to stop agent
-var globalAgent *agent.Agent
-
 func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
 	addr := net.UDPAddr{
 		Port: 0,
@@ -70,14 +67,9 @@ func InitConfig(t *testing.T, conf string) {
 }
 
 func StartAgent(t *testing.T) *agent.Agent {
-	// FIX(safchain) has to be removed when will be able to stop agent
-	if globalAgent != nil {
-		return globalAgent
-	}
-
-	globalAgent = agent.NewAgent()
-	go globalAgent.Start()
-	return globalAgent
+	agent := agent.NewAgent()
+	go agent.Start()
+	return agent
 }
 
 func ReplayTraceHelper(t *testing.T, trace string, target string) {
