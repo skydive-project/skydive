@@ -81,6 +81,12 @@ func StartAgent() *agent.Agent {
 	return agent
 }
 
+func StartAgentWithConfig(t *testing.T, conf string) *agent.Agent {
+	InitConfig(t, conf)
+
+	return StartAgent()
+}
+
 func ReplayTraceHelper(t *testing.T, trace string, target string) {
 	t.Log("Replaying", trace)
 	out, err := exec.Command("go", "run", "../cmd/pcap2sflow-replay/pcap2sflow-replay.go", "-trace", trace, target).CombinedOutput()
