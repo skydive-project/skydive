@@ -94,10 +94,12 @@ func NewTestStorage() *TestStorage {
 
 func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	for _, f := range flows {
 		s.flows[f.UUID] = f
 	}
-	s.lock.Unlock()
+
 	return nil
 }
 
@@ -105,7 +107,22 @@ func (s *TestStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error)
 	return nil, nil
 }
 
-func (s *TestStorage) CheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool {
+func (s *TestStorage) GetFlows() []*flow.Flow {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	flows := make([]*flow.Flow, len(s.flows))
+
+	i := 0
+	for _, f := range s.flows {
+		flows[i] = f
+		i++
+	}
+
+	return flows
+}
+
+func pcapTraceCheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool {
 	eth := f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()]
 
 	for _, fi := range trace.flowStat {
@@ -120,15 +137,12 @@ func (s *TestStorage) CheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInf
 	return false
 }
 
-func (s *TestStorage) Validate(t *testing.T, trace *flowsTraceInfo) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if len(trace.flowStat) != len(s.flows) {
-		t.Errorf("NB Flows mismatch : %d %d", len(trace.flowStat), len(s.flows))
+func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) {
+	if len(trace.flowStat) != len(flows) {
+		t.Errorf("NB Flows mismatch : %d %d", len(trace.flowStat), len(flows))
 	}
-	for _, f := range s.flows {
-		r := s.CheckFlow(t, f, trace)
+	for _, f := range flows {
+		r := pcapTraceCheckFlow(t, f, trace)
 		if r == false {
 			eth := f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()]
 			t.Logf("%s %s %d %d %d %d\n", f.UUID, f.LayersPath, eth.AB.Packets, eth.AB.Bytes, eth.BA.Packets, eth.BA.Bytes)
@@ -137,7 +151,7 @@ func (s *TestStorage) Validate(t *testing.T, trace *flowsTraceInfo) {
 	}
 }
 
-func TestSFlowAgent(t *testing.T) {
+func TestSFlowWithPCAP(t *testing.T) {
 	helper.InitConfig(t, confAgentAnalyzer)
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -161,6 +175,6 @@ func TestSFlowAgent(t *testing.T) {
 
 		/* FIXME (nplanel) remove this Sleep when agent.FlushFlowTable() exist */
 		time.Sleep(2 * time.Second)
-		ts.Validate(t, &trace)
+		pcapTraceValidate(t, ts.GetFlows(), &trace)
 	}
 }
