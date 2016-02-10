@@ -129,7 +129,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePath *string) []*Flow {
+func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePath string) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
@@ -152,10 +152,7 @@ func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 		key := (FlowKey{}).fillFromGoPacket(packet)
 		flow, new := ft.GetFlow(key.String())
 		if new {
-			flow.ProbeGraphPath = ""
-			if probePath != nil {
-				flow.ProbeGraphPath = *probePath
-			}
+			flow.ProbeGraphPath = probePath
 		}
 		flow.fillFromGoPacket(packet)
 		flows = append(flows, flow)
