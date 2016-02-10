@@ -28,9 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/mux"
-
-	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/tests/helper"
@@ -152,21 +149,11 @@ func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) 
 }
 
 func TestSFlowWithPCAP(t *testing.T) {
-	helper.InitConfig(t, confAgentAnalyzer)
-
-	router := mux.NewRouter().StrictSlash(true)
-	server, err := analyzer.NewServerFromConfig(router)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	ts := NewTestStorage()
-	server.SetStorage(ts)
-	go server.ListenAndServe()
-	defer server.Stop()
 
-	agent := helper.StartAgent()
+	agent, analyzer := helper.StartAgentAndAnalyzerWithConfig(t, confAgentAnalyzer, ts)
 	defer agent.Stop()
+	defer analyzer.Stop()
 
 	time.Sleep(1 * time.Second)
 	for _, trace := range flowsTraces {

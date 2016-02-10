@@ -29,9 +29,13 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/gorilla/mux"
+
 	"github.com/redhat-cip/skydive/agent"
+	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/storage"
 )
 
 func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
@@ -85,6 +89,22 @@ func StartAgentWithConfig(t *testing.T, conf string) *agent.Agent {
 	InitConfig(t, conf)
 
 	return StartAgent()
+}
+
+func StartAgentAndAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage) (*agent.Agent, *analyzer.Server) {
+	InitConfig(t, conf)
+
+	router := mux.NewRouter().StrictSlash(true)
+	server, err := analyzer.NewServerFromConfig(router)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server.SetStorage(s)
+
+	go server.ListenAndServe()
+
+	return StartAgent(), server
 }
 
 func ReplayTraceHelper(t *testing.T, trace string, target string) {
