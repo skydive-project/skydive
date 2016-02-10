@@ -2,11 +2,17 @@
 
 # Skydive
 
-Skydive is an open source real-time network topology and protocols analyzer. It aims to provide a comprehensive way of what is happening in the network infrastrure.
+Skydive is an open source real-time network topology and protocols analyzer.
+It aims to provide a comprehensive way of understanding what is happening in
+the network infrastructure.
 
-Skydive agents collect topology informations and flows and forward them to a central agent for further analysis. All the informations a stored in an Elasticsearch database.
+Skydive agents collect topology informations and flows and forward them to a
+central agent for further analysis. All the informations a stored in an
+Elasticsearch database.
 
-Skydive is SDN-agnostic but provides SDN drivers in order to enhance the topology and flows informations. Currently only the Neutron driver is provided but more drivers will come soon.
+Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
+topology and flows informations. Currently only the Neutron driver is provided
+but more drivers will come soon.
 
 ## Topology Probes
 
@@ -19,7 +25,7 @@ Topology probes currently implemented:
 
 ## Flow Probes
 
-Flow probes currenlty implemented:
+Flow probes currently implemented:
 
 * sFlow
 
@@ -30,9 +36,11 @@ Flow probes currenlty implemented:
 
 ## Install
 
-Make sure you have a working Go environment. [See the install instructions](http://golang.org/doc/install.html).
+Make sure you have a working Go environment. [See the install instructions]
+(http://golang.org/doc/install.html).
 
-Then make sure you have Godep installed. [See the install instructions](https://github.com/tools/godep).
+Then make sure you have Godep installed. [See the install instructions]
+(https://github.com/tools/godep).
 
 ```console
 $ go get github.com/redhat-cip/skydive/cmd/skydive_agent
@@ -43,14 +51,20 @@ $ go get github.com/redhat-cip/skydive/cmd/skydive_analyzer
 
 Skydive relies on two main components:
 
-* skydive_agent, has to be started on each node where the topology and flows informations will be captured
+* skydive_agent, has to be started on each node where the topology and flows
+  informations will be captured
 * skydive_analyzer, the node collecting data captured by the agents
 
 ### Configuration
 
-A default configuration is present under etc/. For a single node setup only the analyzer and agent port need probably to be changed. For a multiple node setup the analyzer IP/PORT needs to be adapted.
-Processes are binding 127.0.0.1 by default, you can explicitly change binding address with "listen = 0.0.0.0:port" in any configuration section.
-The [openstack] section is optional. You can declare it if you want the analyzer to get informations from Openstack/Neutron.
+A default configuration is present under etc/. For a single node setup only the
+analyzer and agent port need probably to be changed. For a multiple node setup
+the analyzer IP/PORT needs to be adapted.
+
+Processes are binding 127.0.0.1 by default, you can explicitly change binding
+address with "listen = 0.0.0.0:port" in any configuration section.
+The [openstack] section is optional. You can declare it if you want the
+analyzer to get informations from Openstack/Neutron.
 
 ```shell
 [cache]
@@ -138,11 +152,13 @@ Messages:
 * EdgeDeleted
 
 ## Contributing
-This project accepts contributions. Just fork the repo and submit a pull request!
+This project accepts contributions. Just fork the repo and submit a pull
+request!
 
 ## License
-This software is licensed under the Apache License, Version 2.0 (the "License");
-you may not use this software except in compliance with the License.
+This software is licensed under the Apache License, Version 2.0 (the
+"License"); you may not use this software except in compliance with the
+License.
 You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
