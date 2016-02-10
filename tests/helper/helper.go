@@ -75,7 +75,7 @@ func InitConfig(t *testing.T, conf string) {
 	}
 }
 
-func StartAgent(t *testing.T) *agent.Agent {
+func StartAgent() *agent.Agent {
 	agent := agent.NewAgent()
 	go agent.Start()
 	return agent

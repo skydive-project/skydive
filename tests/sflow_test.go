@@ -165,7 +165,7 @@ func TestSFlowWithPCAP(t *testing.T) {
 	go server.ListenAndServe()
 	defer server.Stop()
 
-	agent := helper.StartAgent(t)
+	agent := helper.StartAgent()
 	defer agent.Stop()
 
 	time.Sleep(1 * time.Second)
