@@ -55,9 +55,6 @@ ovsdb = 6400
 [analyzer]
 listen = 58082
 flowtable_expire = 10
-
-[logging]
-default = INFO
 `
 
 type flowStat struct {
