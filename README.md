@@ -97,7 +97,7 @@ listen = 6345
 
 [ovs]
 # ovsdb connection, Format: addr:port
-# You need to authorize connexion to ovsdb agent at least locally
+# You need to authorize connection to ovsdb agent at least locally
 # % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
 ovsdb = 6400
 
