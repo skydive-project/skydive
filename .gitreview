@@ -1,0 +1,5 @@
+[gerrit]
+host=softwarefactory-project.io
+port=29418
+project=skydive
+defaultbranch=master
