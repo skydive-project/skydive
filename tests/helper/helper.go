@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -37,6 +38,11 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage"
 )
+
+type Cmd struct {
+	Cmd   string
+	Check bool
+}
 
 func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
 	addr := net.UDPAddr{
@@ -114,4 +120,13 @@ func ReplayTraceHelper(t *testing.T, trace string, target string) {
 		t.Error(err.Error() + "\n" + string(out))
 	}
 	t.Log("Stdout/Stderr ", string(out))
+}
+
+func ExecCmds(t *testing.T, cmds ...Cmd) {
+	for _, cmd := range cmds {
+		err := exec.Command("sudo", strings.Split(cmd.Cmd, " ")...).Run()
+		if err != nil && cmd.Check {
+			t.Fatal("cmd : (sudo " + cmd.Cmd + ") " + err.Error())
+		}
+	}
 }

@@ -23,6 +23,7 @@
 package tests
 
 import (
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -163,5 +164,46 @@ func TestSFlowWithPCAP(t *testing.T) {
 		/* FIXME (nplanel) remove this Sleep when agent.FlushFlowTable() exist */
 		time.Sleep(2 * time.Second)
 		pcapTraceValidate(t, ts.GetFlows(), &trace)
+	}
+}
+
+func TestSFlowProbPath(t *testing.T) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	ts := NewTestStorage()
+
+	agent, analyzer := helper.StartAgentAndAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	defer agent.Stop()
+	defer analyzer.Stop()
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip link set sflow-intf1 up", true},
+		{"ping -c 15 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	ok := false
+	for _, f := range ts.GetFlows() {
+		if f.ProbeGraphPath == hostname+"/br-sflow" && f.LayersPath == "Ethernet/ARP/Payload" {
+			ok = true
+			break
+		}
+	}
+
+	if !ok {
+		t.Error("Unable to find a flow with the expected probePath")
 	}
 }
