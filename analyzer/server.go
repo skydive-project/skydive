@@ -151,15 +151,30 @@ func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) serveDataIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/data/conversation.json" {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(s.FlowTable.JSONFlowConversationEthernetPath()))
-		return
+func (s *Server) LayerConversation(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	layer := vars["layer"]
+
+	ltype := flow.FlowEndpointType_ETHERNET
+	switch layer {
+	case "ethernet":
+		ltype = flow.FlowEndpointType_ETHERNET
+	case "ipv4":
+		ltype = flow.FlowEndpointType_IPV4
+	case "tcp":
+		ltype = flow.FlowEndpointType_TCPPORT
+	case "udp":
+		ltype = flow.FlowEndpointType_UDPPORT
+	case "sctp":
+		ltype = flow.FlowEndpointType_SCTPPORT
 	}
-	w.WriteHeader(http.StatusBadRequest)
-	return
+	s.serveDataIndex(w, r, ltype)
+}
+
+func (s *Server) serveDataIndex(w http.ResponseWriter, r *http.Request, layer flow.FlowEndpointType) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(s.FlowTable.JSONFlowConversationEthernetPath(layer)))
 }
 
 func (s *Server) serveStaticIndex(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +211,6 @@ func (s *Server) serveStaticIndex(w http.ResponseWriter, r *http.Request) {
 func (s *Server) RegisterStaticEndpoints() {
 	// static routes
 	s.Router.HandleFunc("/static/conversation", s.serveStaticIndex)
-	s.Router.HandleFunc("/data/conversation.json", s.serveDataIndex)
 }
 
 func (s *Server) RegisterRpcEndpoints() {
@@ -206,6 +220,12 @@ func (s *Server) RegisterRpcEndpoints() {
 			"GET",
 			"/rpc/flows",
 			s.FlowSearch,
+		},
+		{
+			"LayerConversation",
+			"GET",
+			"/rpc/conversation/{layer}",
+			s.LayerConversation,
 		},
 	}
 

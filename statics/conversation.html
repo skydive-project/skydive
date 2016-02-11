@@ -161,6 +161,13 @@
 <option value="count">by Frequency</option>
 <option value="group">by Application</option> <!-- by Cluster-->
 </select>
+<p>Layer: <select id="layer">
+<option value="ethernet">Ethernet</option>
+<option value="ipv4">IPv4</option>
+<option value="tcp">TCP</option>
+<option value="udp">UDP</option>
+<option value="sctp">SCTP</option>
+</select>
 
 
 <div class="conversation"></div>
@@ -182,7 +189,8 @@ var svg = d3.select(".conversation").append("svg")
 .append("g")
 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-d3.json("/data/conversation.json", function(miserables) {
+var layer = d3.select("#layer")[0][0].value
+d3.json("/data/conversation.json/"+layer, function(miserables) {
 var matrix = [],
 nodes = miserables.nodes,
 n = nodes.length;

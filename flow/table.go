@@ -112,7 +112,7 @@ func (ft *FlowTable) GetFlow(key string) (flow *Flow, new bool) {
 	return flow, !found
 }
 
-func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
+func (ft *FlowTable) JSONFlowConversationEthernetPath(EndpointType FlowEndpointType) string {
 	str := ""
 	str += "{"
 	//	{"nodes":[{"name":"Myriel","group":1}, ... ],"links":[{"source":1,"target":0,"value":1},...]}
@@ -121,7 +121,7 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 	strNodes += "\"nodes\":["
 	strLinks += "\"links\":["
 	pathMap := make(map[string]int)
-	ethMap := make(map[string]int)
+	layerMap := make(map[string]int)
 	ft.lock.RLock()
 	for _, f := range ft.table {
 		_, found := pathMap[f.LayersPath]
@@ -129,16 +129,16 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath() string {
 			pathMap[f.LayersPath] = len(pathMap)
 		}
 
-		ethFlow := f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()]
-		if _, found := ethMap[ethFlow.AB.Value]; !found {
-			ethMap[ethFlow.AB.Value] = len(ethMap)
-			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", ethFlow.AB.Value, pathMap[f.LayersPath])
+		layerFlow := f.GetStatistics().Endpoints[EndpointType.Value()]
+		if _, found := layerMap[layerFlow.AB.Value]; !found {
+			layerMap[layerFlow.AB.Value] = len(layerMap)
+			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", layerFlow.AB.Value, pathMap[f.LayersPath])
 		}
-		if _, found := ethMap[ethFlow.BA.Value]; !found {
-			ethMap[ethFlow.BA.Value] = len(ethMap)
-			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", ethFlow.BA.Value, pathMap[f.LayersPath])
+		if _, found := layerMap[layerFlow.BA.Value]; !found {
+			layerMap[layerFlow.BA.Value] = len(layerMap)
+			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", layerFlow.BA.Value, pathMap[f.LayersPath])
 		}
-		strLinks += fmt.Sprintf("{\"source\":%d,\"target\":%d,\"value\":%d},", ethMap[ethFlow.AB.Value], ethMap[ethFlow.BA.Value], ethFlow.AB.Bytes+ethFlow.BA.Bytes)
+		strLinks += fmt.Sprintf("{\"source\":%d,\"target\":%d,\"value\":%d},", layerMap[layerFlow.AB.Value], layerMap[layerFlow.BA.Value], layerFlow.AB.Bytes+layerFlow.BA.Bytes)
 	}
 	ft.lock.RUnlock()
 	strNodes = strings.TrimRight(strNodes, ",")
