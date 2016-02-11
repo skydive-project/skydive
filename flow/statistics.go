@@ -24,6 +24,7 @@ package flow
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -146,16 +147,16 @@ func (fs *FlowStatistics) newTransportEndpointStatistics(packet *gopacket.Packet
 	switch ptype {
 	case FlowEndpointType_TCPPORT:
 		transportPacket, _ := transportLayer.(*layers.TCP)
-		ep.AB.Value = transportPacket.SrcPort.String()
-		ep.BA.Value = transportPacket.DstPort.String()
+		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
+		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
 	case FlowEndpointType_UDPPORT:
 		transportPacket, _ := transportLayer.(*layers.UDP)
-		ep.AB.Value = transportPacket.SrcPort.String()
-		ep.BA.Value = transportPacket.DstPort.String()
+		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
+		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
 	case FlowEndpointType_SCTPPORT:
 		transportPacket, _ := transportLayer.(*layers.SCTP)
-		ep.AB.Value = transportPacket.SrcPort.String()
-		ep.BA.Value = transportPacket.DstPort.String()
+		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
+		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
 	}
 	fs.Endpoints[ptype.Value()] = ep
 	return nil
