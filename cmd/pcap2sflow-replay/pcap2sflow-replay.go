@@ -252,7 +252,7 @@ func AsyncProgressInfo() {
 }
 
 func usage() {
-	fmt.Printf("\nUsage: %s -trace <trace.pcap> [-pps <1000>] [-pktpersflow <5>] <sflow_agent[:port]>\n", filepath.Base(os.Args[0]))
+	fmt.Printf("\nUsage: %s -trace <trace.pcap> [-pps <1000>] [-pktspersflow <5>] <sflow_agent[:port]>\n", filepath.Base(os.Args[0]))
 }
 
 func main() {
