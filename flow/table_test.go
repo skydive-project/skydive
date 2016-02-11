@@ -234,7 +234,7 @@ func TestFlowTable_GetFlow(t *testing.T) {
 
 func TestFlowTable_JSONFlowConversationEthernetPath(t *testing.T) {
 	ft := NewFlowTableComplex(t)
-	statStr := ft.JSONFlowConversationEthernetPath()
+	statStr := ft.JSONFlowConversationEthernetPath(FlowEndpointType_ETHERNET)
 	if statStr == `{"nodes":[],"links":[]}` {
 		t.Error("stat should not be empty")
 	}
