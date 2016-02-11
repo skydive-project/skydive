@@ -23,6 +23,7 @@
 package helper
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os/exec"
@@ -52,6 +53,14 @@ func InitConfig(t *testing.T, conf string) {
 		t.Fatal(err.Error())
 	}
 
+	var logLevel string
+	if testing.Verbose() {
+		logLevel = "DEBUG"
+	} else {
+		logLevel = "INFO"
+	}
+
+	conf += fmt.Sprintf("\n[logging]\ndefault = %s", logLevel)
 	f.WriteString(conf)
 	f.Close()
 
