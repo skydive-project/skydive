@@ -97,12 +97,15 @@ func flow2FlatFlow(f *flow.Flow) FlatFlow {
 
 type ElasticSearchStorage struct {
 	connection *elastigo.Conn
+	indexer    *elastigo.BulkIndexer
 }
 
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
-	/* TODO(safchain) bulk insert */
+	c.indexer.Start()
+	defer c.indexer.Stop()
+
 	for _, flow := range flows {
-		_, err := c.connection.Index("skydive", "flow", flow.UUID, nil, flow2FlatFlow(flow))
+		err := c.indexer.Index("skydive", "flow", flow.UUID, "", "", nil, flow2FlatFlow(flow))
 		if err != nil {
 			logging.GetLogger().Error("Error while indexing: %s", err.Error())
 			continue
@@ -193,6 +196,8 @@ func (c *ElasticSearchStorage) initialize() error {
 	if code != 200 {
 		return errors.New("Unable to create the skydive index: " + strconv.FormatInt(int64(code), 10))
 	}
+
+	c.indexer = c.connection.NewBulkIndexerErrors(10, 60)
 
 	return nil
 }
