@@ -170,3 +170,31 @@ func (ft *FlowTable) FilterLast(last time.Duration) []*Flow {
 	ft.lock.RUnlock()
 	return flows
 }
+
+func (ft *FlowTable) SelectLayer(endpointType FlowEndpointType, list []string) []*Flow {
+	meth := make(map[string][]*Flow)
+	ft.lock.RLock()
+	for _, f := range ft.table {
+		layerFlow := f.GetStatistics().Endpoints[endpointType.Value()]
+		if layerFlow.AB.Value == "ff:ff:ff:ff:ff:ff" || layerFlow.BA.Value == "ff:ff:ff:ff:ff:ff" {
+			continue
+		}
+		meth[layerFlow.AB.Value] = append(meth[layerFlow.AB.Value], f)
+		meth[layerFlow.BA.Value] = append(meth[layerFlow.BA.Value], f)
+	}
+	ft.lock.RUnlock()
+
+	mflows := make(map[*Flow]struct{})
+	var flows []*Flow
+	for _, eth := range list {
+		if flist, ok := meth[eth]; ok {
+			for _, f := range flist {
+				if _, found := mflows[f]; !found {
+					mflows[f] = struct{}{}
+					flows = append(flows, f)
+				}
+			}
+		}
+	}
+	return flows
+}

@@ -23,6 +23,7 @@
 package flow
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"testing"
@@ -296,5 +297,23 @@ func TestFlowTable_FilterLast(t *testing.T) {
 	flows = ft.FilterLast(0 * time.Minute)
 	if len(flows) != 0 {
 		t.Error("FilterLast should return less flows", len(flows), 0)
+	}
+}
+
+func TestFlowTable_SelectLayer(t *testing.T) {
+	ft := NewFlowTableComplex(t)
+
+	var macs []string
+	flows := ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
+	if len(ft.table) <= len(flows) && len(flows) != 0 {
+		t.Errorf("SelectLayer should select none flows %d %d", len(ft.table), len(flows))
+	}
+
+	for mac := 0; mac < 0xff; mac++ {
+		macs = append(macs, fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", 0x00, 0x0F, 0xAA, 0xFA, 0xAA, mac))
+	}
+	flows = ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
+	if len(ft.table) != len(flows) {
+		t.Errorf("SelectLayer should select all flows %d %d", len(ft.table), len(flows))
 	}
 }
