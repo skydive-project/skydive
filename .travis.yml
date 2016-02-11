@@ -19,5 +19,5 @@ before_install:
 script:
     - test -z "$(gofmt -s -l . | grep -v Godeps/_workspace/src/ | grep -v statics/bindata.go | tee /dev/stderr)"
     - make install GOFLAGS="-race -v"
-    - make test GOFLAGS="-race -v -timeout 1m"
+    - make test GOFLAGS="-race -v -timeout 5m"
     - ./coverage.sh --coveralls
