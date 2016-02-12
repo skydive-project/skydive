@@ -104,9 +104,9 @@ func (a *Alert) DelEventListener(l AlertEventListener) {
 	delete(a.eventListeners, l)
 }
 
-func (c *Alert) Register(atp AlertTestParam) *AlertTest {
+func (a *Alert) Register(atp AlertTestParam) *AlertTest {
 	id, _ := uuid.NewV4()
-	a := AlertTest{
+	at := AlertTest{
 		AlertTestParam: atp,
 		UUID:           id,
 		CreateTime:     time.Now(),
@@ -114,39 +114,39 @@ func (c *Alert) Register(atp AlertTestParam) *AlertTest {
 		Count:          0,
 	}
 
-	c.alerts[*id] = a
-	return &a
+	a.alerts[*id] = at
+	return &at
 }
 
 /* remove all the alerts than match a least one atp field */
-func (c *Alert) UnRegister(atp AlertTestParam) {
-	for id, a := range c.alerts {
-		if atp.Name == a.Name {
-			delete(c.alerts, id)
+func (a *Alert) UnRegister(atp AlertTestParam) {
+	for id, al := range a.alerts {
+		if atp.Name == al.Name {
+			delete(a.alerts, id)
 			continue
 		}
-		if atp.Description == a.Description {
-			delete(c.alerts, id)
+		if atp.Description == al.Description {
+			delete(a.alerts, id)
 			continue
 		}
-		if atp.Select == a.Select {
-			delete(c.alerts, id)
+		if atp.Select == al.Select {
+			delete(a.alerts, id)
 			continue
 		}
-		if atp.Test == a.Test {
-			delete(c.alerts, id)
+		if atp.Test == al.Test {
+			delete(a.alerts, id)
 			continue
 		}
-		if atp.Action == a.Action {
-			delete(c.alerts, id)
+		if atp.Action == al.Action {
+			delete(a.alerts, id)
 			continue
 		}
 	}
 }
 
-func (c *Alert) EvalNodes() {
-	for _, a := range c.alerts {
-		nodes := c.Graph.LookupNodesFromKey(a.Select)
+func (a *Alert) EvalNodes() {
+	for _, al := range a.alerts {
+		nodes := a.Graph.LookupNodesFromKey(al.Select)
 		for _, n := range nodes {
 			w := eval.NewWorld()
 			defConst := func(name string, val interface{}) {
@@ -157,7 +157,7 @@ func (c *Alert) EvalNodes() {
 				defConst(k, v)
 			}
 			fs := token.NewFileSet()
-			toEval := "(" + a.Test + ") == true"
+			toEval := "(" + al.Test + ") == true"
 			expr, err := w.Compile(fs, toEval)
 			if err != nil {
 				logging.GetLogger().Error("Can't compile expression : " + toEval)
@@ -170,19 +170,19 @@ func (c *Alert) EvalNodes() {
 			}
 
 			if ret.String() == "true" {
-				a.Count++
+				al.Count++
 
 				msg := AlertMessage{
-					UUID:       *a.UUID,
+					UUID:       *al.UUID,
 					Type:       FIXED,
 					Timestamp:  time.Now(),
-					Count:      a.Count,
-					Reason:     a.Action,
+					Count:      al.Count,
+					Reason:     al.Action,
 					ReasonData: n,
 				}
 
-				logging.GetLogger().Debug("AlertMessage to WS : " + a.UUID.String() + " " + msg.String())
-				for _, l := range c.eventListeners {
+				logging.GetLogger().Debug("AlertMessage to WS : " + al.UUID.String() + " " + msg.String())
+				for _, l := range a.eventListeners {
 					l.OnAlert(&msg)
 				}
 			}
@@ -190,7 +190,7 @@ func (c *Alert) EvalNodes() {
 	}
 }
 
-func (c *Alert) triggerResync() {
+func (a *Alert) triggerResync() {
 	logging.GetLogger().Info("Start a resync of the alert")
 
 	hostname, err := os.Hostname()
@@ -199,55 +199,55 @@ func (c *Alert) triggerResync() {
 		return
 	}
 
-	c.Graph.Lock()
-	defer c.Graph.Unlock()
+	a.Graph.Lock()
+	defer a.Graph.Unlock()
 
 	// request for deletion of everything belonging to host node
-	root := c.Graph.GetNode(Identifier(hostname))
+	root := a.Graph.GetNode(Identifier(hostname))
 	if root == nil {
 		return
 	}
 }
 
-func (c *Alert) OnConnected() {
-	c.triggerResync()
+func (a *Alert) OnConnected() {
+	a.triggerResync()
 }
 
-func (c *Alert) OnDisconnected() {
+func (a *Alert) OnDisconnected() {
 }
 
-func (c *Alert) OnNodeUpdated(n *Node) {
-	c.EvalNodes()
+func (a *Alert) OnNodeUpdated(n *Node) {
+	a.EvalNodes()
 }
 
-func (c *Alert) OnNodeAdded(n *Node) {
-	c.EvalNodes()
+func (a *Alert) OnNodeAdded(n *Node) {
+	a.EvalNodes()
 }
 
-func (c *Alert) OnNodeDeleted(n *Node) {
+func (a *Alert) OnNodeDeleted(n *Node) {
 }
 
-func (c *Alert) OnEdgeUpdated(e *Edge) {
+func (a *Alert) OnEdgeUpdated(e *Edge) {
 }
 
-func (c *Alert) OnEdgeAdded(e *Edge) {
+func (a *Alert) OnEdgeAdded(e *Edge) {
 }
 
-func (c *Alert) OnEdgeDeleted(e *Edge) {
+func (a *Alert) OnEdgeDeleted(e *Edge) {
 }
 
-func (c *Alert) AlertIndex(w http.ResponseWriter, r *http.Request) {
+func (a *Alert) AlertIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	for _, a := range c.alerts {
+	for _, a := range a.alerts {
 		if err := json.NewEncoder(w).Encode(a); err != nil {
 			panic(err)
 		}
 	}
 }
 
-func (c *Alert) AlertShow(w http.ResponseWriter, r *http.Request) {
+func (a *Alert) AlertShow(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	alertUUID, err := uuid.ParseHex(vars["alert"])
 
@@ -255,7 +255,7 @@ func (c *Alert) AlertShow(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	alert, ok := c.alerts[*alertUUID]
+	alert, ok := a.alerts[*alertUUID]
 	if ok {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
@@ -267,7 +267,7 @@ func (c *Alert) AlertShow(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *Alert) AlertInsert(w http.ResponseWriter, r *http.Request) {
+func (a *Alert) AlertInsert(w http.ResponseWriter, r *http.Request) {
 	var atp AlertTestParam
 	b, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(b, &atp)
@@ -276,12 +276,12 @@ func (c *Alert) AlertInsert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a := c.Register(atp)
+	al := a.Register(atp)
 	w.WriteHeader(http.StatusOK)
-	logging.GetLogger().Debug("AlertInsert : " + a.UUID.String())
+	logging.GetLogger().Debug("AlertInsert : " + al.UUID.String())
 }
 
-func (c *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
+func (a *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	alertUUID, err := uuid.ParseHex(vars["alert"])
 
@@ -289,9 +289,9 @@ func (c *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	_, ok := c.alerts[*alertUUID]
+	_, ok := a.alerts[*alertUUID]
 	if ok {
-		delete(c.alerts, *alertUUID)
+		delete(a.alerts, *alertUUID)
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 	} else {
@@ -299,36 +299,36 @@ func (c *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *Alert) RegisterRPCEndpoints() {
+func (a *Alert) RegisterRPCEndpoints() {
 	routes := []rpc.Route{
 		{
 			"AlertIndex",
 			"GET",
 			"/rpc/alert",
-			c.AlertIndex,
+			a.AlertIndex,
 		},
 		{
 			"AlertShow",
 			"GET",
 			"/rpc/alert/{alert}",
-			c.AlertShow,
+			a.AlertShow,
 		},
 		{
 			"AlertInsert",
 			"POST",
 			"/rpc/alert",
-			c.AlertInsert,
+			a.AlertInsert,
 		},
 		{
 			"AlertDelete",
 			"DELETE",
 			"/rpc/alert/{alert}",
-			c.AlertDelete,
+			a.AlertDelete,
 		},
 	}
 
 	for _, route := range routes {
-		c.Router.
+		a.Router.
 			Methods(route.Method).
 			Path(route.Pattern).
 			Name(route.Name).
