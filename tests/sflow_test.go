@@ -34,25 +34,25 @@ import (
 	"github.com/redhat-cip/skydive/tests/helper"
 )
 
-const confAgentAnalyzer = `
-[agent]
-listen = 58081
-flowtable_expire = 1
-analyzers = localhost:58082
+const confAgentAnalyzer = `---
+agent:
+  listen: 58081
+  flowtable_expire: 1
+  analyzers: localhost:58082
 
-[cache]
-expire = 300
-cleanup = 30
+cache:
+  expire: 300
+  cleanup: 30
 
-[sflow]
-listen = 55000
+sflow:
+  listen: 55000
 
-[ovs]
-ovsdb = 6400
+ovs:
+  ovsdb: 6400
 
-[analyzer]
-listen = 58082
-flowtable_expire = 10
+analyzer:
+  listen: 58082
+  flowtable_expire: 10
 `
 
 type flowStat struct {

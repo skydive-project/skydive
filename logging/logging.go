@@ -103,20 +103,11 @@ func InitLogger() error {
 	return initLogger()
 }
 
-func initLogger() error {
+func initLogger() (err error) {
 	initSkydiveLogger()
-
 	cfg := config.GetConfig()
-	if cfg == nil {
-		return nil
-	}
 
-	sec, err := cfg.GetSection("logging")
-	if err != nil {
-		return nil
-	}
-
-	for cfgPkg, cfgLvl := range sec.KeysHash() {
+	for cfgPkg, cfgLvl := range cfg.GetStringMapString("logging") {
 		pkg := strings.TrimSpace(cfgPkg)
 		lvl := strings.TrimSpace(cfgLvl)
 		if pkg == "default" {
@@ -125,10 +116,10 @@ func initLogger() error {
 			err = newLogger("github.com/redhat-cip/skydive/"+pkg, lvl)
 		}
 		if err != nil {
-			return errors.New("Can't parse [logging] section line : \"" + pkg + " " + lvl + "\" " + err.Error())
+			return errors.New("Can't parse logging line : \"" + pkg + " " + lvl + "\" " + err.Error())
 		}
 	}
-	return nil
+	return
 }
 
 func GetLogger() (log *logging.Logger) {

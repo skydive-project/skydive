@@ -161,11 +161,7 @@ func (probe *SFlowProbe) Start() error {
 	go probe.cacheUpdater()
 
 	flowtable := flow.NewFlowTable()
-	cfgFlowtable_expire, err := config.GetConfig().Section("agent").Key("flowtable_expire").Int()
-	if err != nil || cfgFlowtable_expire < 1 {
-		logging.GetLogger().Error("Config flowTable_expire invalid value ", cfgFlowtable_expire, err.Error())
-		return err
-	}
+	cfgFlowtable_expire := config.GetConfig().GetInt("agent.flowtable_expire")
 	go flowtable.AsyncExpire(probe.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
 
 	for probe.running.Load() == true {
@@ -243,14 +239,8 @@ func NewSFlowProbeFromConfig(g *graph.Graph) (*SFlowProbe, error) {
 		return nil, err
 	}
 
-	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
-	if err != nil {
-		return nil, err
-	}
-	cleanup, err := config.GetConfig().Section("cache").Key("cleanup").Int()
-	if err != nil {
-		return nil, err
-	}
+	expire := config.GetConfig().GetInt("cache.expire")
+	cleanup := config.GetConfig().GetInt("cache.cleanup")
 
 	return NewSFlowProbe(addr, port, g, expire, cleanup)
 }

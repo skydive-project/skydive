@@ -88,7 +88,7 @@ agent:
   listen: 8081
   analyzers: 127.0.0.1:8082
 
-sflow
+sflow:
   # listen parameter for the sflow agent, Format: addr:port.
   # Default addr is 127.0.0.1
   listen: 6345

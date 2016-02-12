@@ -70,7 +70,7 @@ func InitConfig(t *testing.T, conf string) {
 		logLevel = "INFO"
 	}
 
-	conf += fmt.Sprintf("\n[logging]\ndefault = %s", logLevel)
+	conf += fmt.Sprintf("\nlogging:\n  default: %s", logLevel)
 	f.WriteString(conf)
 	f.Close()
 

@@ -139,11 +139,11 @@ func (mapper *NeutronMapper) cacheUpdater() {
 func NewNeutronMapper() (*NeutronMapper, error) {
 	mapper := &NeutronMapper{}
 
-	authURL := config.GetConfig().Section("openstack").Key("auth_url").String()
-	username := config.GetConfig().Section("openstack").Key("username").String()
-	password := config.GetConfig().Section("openstack").Key("password").String()
-	tenantName := config.GetConfig().Section("openstack").Key("tenant_name").String()
-	regionName := config.GetConfig().Section("openstack").Key("region_name").String()
+	authURL := config.GetConfig().GetString("openstack.auth_url")
+	username := config.GetConfig().GetString("openstack.username")
+	password := config.GetConfig().GetString("openstack.password")
+	tenantName := config.GetConfig().GetString("openstack.tenant_name")
+	regionName := config.GetConfig().GetString("openstack.region_name")
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
@@ -170,14 +170,8 @@ func NewNeutronMapper() (*NeutronMapper, error) {
 
 	// Create a cache with a default expiration time of 5 minutes, and which
 	// purges expired items every 30 seconds
-	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
-	if err != nil {
-		return nil, err
-	}
-	cleanup, err := config.GetConfig().Section("cache").Key("cleanup").Int()
-	if err != nil {
-		return nil, err
-	}
+	expire := config.GetConfig().GetInt("cache.expire")
+	cleanup := config.GetConfig().GetInt("cache.cleanup")
 	mapper.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
 	mapper.cacheUpdaterChan = make(chan string)
 	go mapper.cacheUpdater()

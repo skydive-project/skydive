@@ -28,6 +28,7 @@ import (
 	"syscall"
 
 	"github.com/redhat-cip/skydive/agent"
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 
 	"github.com/spf13/cobra"
@@ -51,4 +52,24 @@ var Agent = &cobra.Command{
 
 		logging.GetLogger().Notice("Skydive Agent stopped.")
 	},
+}
+
+func init() {
+	Agent.Flags().String("listen", "127.0.0.1:8081", "address and port for the agent API")
+	config.GetConfig().BindPFlag("agent.listen", Agent.Flags().Lookup("listen"))
+
+	Agent.Flags().String("ovsdb", "127.0.0.1:6400", "ovsdb connection")
+	config.GetConfig().BindPFlag("ovs.ovsdb", Agent.Flags().Lookup("ovsdb"))
+
+	Agent.Flags().String("graph-backend", "memory", "graph backend")
+	config.GetConfig().BindPFlag("graph.backend", Agent.Flags().Lookup("graph-backend"))
+
+	Agent.Flags().String("gremlin", "127.0.0.1:8182", "gremlin server")
+	config.GetConfig().BindPFlag("graph.gremlin", Agent.Flags().Lookup("gremlin"))
+
+	Agent.Flags().String("sflow-listen", "127.0.0.1:6345", "listen parameter for the sflow agent")
+	config.GetConfig().BindPFlag("sflow.listen", Agent.Flags().Lookup("sflow-listen"))
+
+	Agent.Flags().Int("flowtable-expire", 10, "expiration time for flowtable entries")
+	config.GetConfig().BindPFlag("agent.flowtable_expire", Agent.Flags().Lookup("flowtable-expire"))
 }
