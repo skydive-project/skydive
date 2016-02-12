@@ -31,6 +31,15 @@
 			"Rev": "7b486932bea218beb6e85f7ed28650d283dd6ce6"
 		},
 		{
+			"ImportPath": "github.com/cpuguy83/go-md2man/md2man",
+			"Comment": "v1.0.4",
+			"Rev": "71acacd42f85e5e82f70a55327789582a5200a90"
+		},
+		{
+			"ImportPath": "github.com/gima/jsonv/src",
+			"Rev": "964b60c2ebe1c9106b7c33e2566ec7de757d4f70"
+		},
+		{
 			"ImportPath": "github.com/go-gremlin/gremlin",
 			"Rev": "e74ebaf231668d5133d3794ac6cb654309da5a8f"
 		},
@@ -60,6 +69,10 @@
 			"Rev": "dadc9ccc400c712e5a316107a5c462863919e579"
 		},
 		{
+			"ImportPath": "github.com/inconshreveable/mousetrap",
+			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
 			"ImportPath": "github.com/mattbaird/elastigo/lib",
 			"Comment": "v1.0-258-g451c29b",
 			"Rev": "451c29b3ae220cd710294bc3436e293d99491b94"
@@ -86,6 +99,11 @@
 			"Rev": "8d032cb1e835a0018269de3d6b53bb24fc77a8c0"
 		},
 		{
+			"ImportPath": "github.com/russross/blackfriday",
+			"Comment": "v1.3-14-g4b26653",
+			"Rev": "4b26653fe00067c22322249d58654737e44b0dfb"
+		},
+		{
 			"ImportPath": "github.com/safchain/ethtool",
 			"Rev": "0d3300ef113b4352a61230cd89bf231a60bb9bb3"
 		},
@@ -99,9 +117,21 @@
 			"Rev": "5a18a6f14e020db7500a44a90ace4f81ebc4ec2a"
 		},
 		{
+			"ImportPath": "github.com/shurcooL/sanitized_anchor_name",
+			"Rev": "10ef21a441db47d8b13ebcc5fd2310f636973c77"
+		},
+		{
 			"ImportPath": "github.com/socketplane/libovsdb",
 			"Comment": "v0.1-2-g58cf012",
 			"Rev": "58cf01279880d621a67c5f929af9ed59ab409373"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "230787ee13ff5f832b5e48010de7cc1312650587"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "08b1a584251b5b62f458943640fc8ebd4d50aaa5"
 		},
 		{
 			"ImportPath": "github.com/vishvananda/netlink",
