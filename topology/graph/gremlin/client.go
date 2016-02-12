@@ -180,7 +180,7 @@ func (p *GremlinPropertiesEncoder) Encode(v interface{}) error {
 }
 
 func resultToGremlinElements(result []byte) ([]GremlinElement, error) {
-	els := make([]GremlinElement, 0)
+	var els []GremlinElement
 	err := json.Unmarshal(result, &els)
 	if err != nil {
 		return nil, err

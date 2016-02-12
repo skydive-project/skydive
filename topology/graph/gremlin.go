@@ -322,7 +322,7 @@ func (g GremlinBackend) GetNode(i Identifier) *Node {
 }
 
 func (g GremlinBackend) GetNodeEdges(n *Node) []*Edge {
-	edges := make([]*Edge, 0)
+	var edges []*Edge
 
 	properties, err := idToPropertiesString(n.ID)
 	if err != nil {
@@ -381,7 +381,7 @@ func (g GremlinBackend) DelNode(n *Node) bool {
 }
 
 func (g GremlinBackend) GetNodes() []*Node {
-	nodes := make([]*Node, 0)
+	var nodes []*Node
 
 	query := "g.V().has('_ID')"
 
@@ -398,7 +398,7 @@ func (g GremlinBackend) GetNodes() []*Node {
 }
 
 func (g GremlinBackend) GetEdges() []*Edge {
-	edges := make([]*Edge, 0)
+	var edges []*Edge
 
 	query := "g.E().has('_ID')"
 
