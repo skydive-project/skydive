@@ -20,45 +20,35 @@
  *
  */
 
-package main
+package agent
 
 import (
-	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/redhat-cip/skydive/agent"
-	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
+
+	"github.com/spf13/cobra"
 )
 
-func usage() {
-	fmt.Printf("Usage: %s -conf <config.ini> [-h]\n", os.Args[0])
-}
+var Agent = &cobra.Command{
+	Use:          "agent",
+	Short:        "Skydive agent",
+	Long:         "Skydive agent",
+	SilenceUsage: true,
+	Run: func(cmd *cobra.Command, args []string) {
+		logging.GetLogger().Notice("Skydive Agent starting...")
+		agent := agent.NewAgent()
+		agent.Start()
 
-func main() {
-	filename := flag.String("conf", "/etc/skydive/skydive.ini",
-		"Config file with all the skydive parameter.")
-	flag.CommandLine.Usage = usage
-	flag.Parse()
+		ch := make(chan os.Signal)
+		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+		<-ch
 
-	err := config.InitConfigFromFile(*filename)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
+		agent.Stop()
 
-	logging.GetLogger().Notice("Skydive Agent starting...")
-	agent := agent.NewAgent()
-	agent.Start()
-
-	ch := make(chan os.Signal)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	<-ch
-
-	agent.Stop()
-
-	logging.GetLogger().Notice("Skydive Agent stopped.")
+		logging.GetLogger().Notice("Skydive Agent stopped.")
+	},
 }

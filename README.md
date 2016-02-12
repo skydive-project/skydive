@@ -43,17 +43,16 @@ Then make sure you have Godep installed. [See the install instructions]
 (https://github.com/tools/godep).
 
 ```console
-$ go get github.com/redhat-cip/skydive/cmd/skydive_agent
-$ go get github.com/redhat-cip/skydive/cmd/skydive_analyzer
+$ go get github.com/redhat-cip/skydive/cmd/skydive
 ```
 
 ## Getting started
 
 Skydive relies on two main components:
 
-* skydive_agent, has to be started on each node where the topology and flows
+* skydive agent, has to be started on each node where the topology and flows
   informations will be captured
-* skydive_analyzer, the node collecting data captured by the agents
+* skydive analyzer, the node collecting data captured by the agents
 
 ### Configuration
 
@@ -67,55 +66,54 @@ The [openstack] section is optional. You can declare it if you want the
 analyzer to get informations from Openstack/Neutron.
 
 ```shell
-[cache]
-# expiration time in second
-expire = 300
+cache:
+  # expiration time in second
+  expire: 300
+  # cleanup interval in second
+  cleanup: 30
 
-# cleanup interval in second
-cleanup = 30
+openstack:
+  auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
+  username: admin
+  password: password123
+  tenant_name: admin
+  region_name: RegionOne
 
-[openstack]
-auth_url = http://xxx.xxx.xxx.xxx:5000/v2.0
-username = admin
-password = password123
-tenant_name = admin
-region_name = RegionOne
+analyzer:
+  flowtable_expire: 5
+  listen: 8082
 
-[analyzer]
-flowtable_expire = 5
-listen = 8082
+agent:
+  flowtable_expire: 5
+  listen: 8081
+  analyzers: 127.0.0.1:8082
 
-[agent]
-flowtable_expire = 5
-listen = 8081
-analyzers = 127.0.0.1:8082
+sflow
+  # listen parameter for the sflow agent, Format: addr:port.
+  # Default addr is 127.0.0.1
+  listen: 6345
 
-[sflow]
-# listen parameter for the sflow agent, Format: addr:port.
-# Default addr is 127.0.0.1
-listen = 6345
+ovs:
+  # ovsdb connection, Format: addr:port
+  # You need to authorize connexion to ovsdb agent at least locally
+  # % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
+  ovsdb: 6400
 
-[ovs]
-# ovsdb connection, Format: addr:port
-# You need to authorize connexion to ovsdb agent at least locally
-# % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
-ovsdb = 6400
+graph:
+  # graph backend memory, gremlin
+  backend: memory
+  gremlin: 127.0.0.1:8182
 
-[graph]
-# graph backend memory, gremlin
-backend = memory
-gremlin = 127.0.0.1:8182
-
-[storage]
-elasticsearch = 127.0.0.1:9200
+storage:
+  elasticsearch: 127.0.0.1:9200
 ```
 ### Start
 
 ```console
-$ skydive_agent -conf etc/skydive.ini
+$ skydive agent --conf etc/skydive.yml
 ```
 ```console
-$ skydive_analyzer -conf etc/skydive.ini
+$ skydive analyzer --conf etc/skydive.yml
 ```
 
 ### WebUI

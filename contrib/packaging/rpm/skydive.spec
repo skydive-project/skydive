@@ -66,13 +66,13 @@ go install -v ./...
 %install
 install -d %{buildroot}%{_bindir}
 
+install -p -m 755 Godeps/_workspace/bin/skydive %{buildroot}%{_bindir}/skydive
 for bin in agent analyzer
 do
-  install -p -m 755 Godeps/_workspace/bin/skydive_${bin} %{buildroot}%{_bindir}/skydive_${bin}
   install -D -m 644 contrib/systemd/skydive-${bin}.service %{buildroot}%{_unitdir}/skydive-${bin}.service
 done
 
-install -D -m 644 etc/skydive.ini.default %{buildroot}/%{_sysconfdir}/skydive/skydive.ini
+install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/skydive.yml
 
 %post agent
 %systemd_post %{basename:%{name}-agent.service}
@@ -95,17 +95,16 @@ install -D -m 644 etc/skydive.ini.default %{buildroot}/%{_sysconfdir}/skydive/sk
 %files
 %defattr(-,root,root,-)
 %doc README.md LICENSE
-%config(noreplace) %{_sysconfdir}/skydive/skydive.ini
+%{_bindir}/skydive
+%config(noreplace) %{_sysconfdir}/skydive/skydive.yml
 
 %files agent
 %defattr(-,root,root,-)
 %{_unitdir}/skydive-agent.service
-%{_bindir}/skydive_agent
 
 %files analyzer
 %defattr(-,root,root,-)
 %{_unitdir}/skydive-analyzer.service
-%{_bindir}/skydive_analyzer
 
 %changelog
 * Mon Feb 1 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.1-1

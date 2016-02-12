@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/skydive_agent -conf /etc/skydive/skydive.ini
+ExecStart=/usr/bin/skydive agent --conf /etc/skydive/skydive.yaml
 
 [Install]
 WantedBy=multi-user.target
