@@ -173,7 +173,6 @@ func (c *AsyncClient) Disconnect() {
 	c.wg.Wait()
 }
 
-// Create new chat client.
 func NewAsyncClient(addr string, port int, path string) *AsyncClient {
 	c := &AsyncClient{
 		Addr:     addr,

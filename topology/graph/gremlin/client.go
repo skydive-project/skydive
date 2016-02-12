@@ -272,7 +272,6 @@ func (c *GremlinClient) Close() {
 	c.wsConn.Close()
 }
 
-// Create new chat client.
 func NewClient(addr string, port int) *GremlinClient {
 	return &GremlinClient{
 		Addr: addr,
