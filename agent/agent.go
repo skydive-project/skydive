@@ -163,7 +163,7 @@ func NewAgent() *Agent {
 	}
 
 	server.RegisterStaticEndpoints()
-	server.RegisterRpcEndpoints()
+	server.RegisterRPCEndpoints()
 
 	gserver, err := graph.NewServerFromConfig(g, nil, router)
 	if err != nil {

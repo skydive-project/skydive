@@ -299,7 +299,7 @@ func (c *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *Alert) RegisterRpcEndpoints() {
+func (c *Alert) RegisterRPCEndpoints() {
 	routes := []rpc.Route{
 		{
 			"AlertIndex",
