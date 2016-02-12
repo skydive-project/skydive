@@ -354,6 +354,10 @@ func (o *OvsdbProbe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 func (o *OvsdbProbe) Start() {
 }
 
+func (o *OvsdbProbe) Stop() {
+
+}
+
 func NewOvsdbProbe(g *graph.Graph, n *graph.Node, ovsmon *ovsdb.OvsMonitor) *OvsdbProbe {
 	u := &OvsdbProbe{
 		Graph:           g,

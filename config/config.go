@@ -45,7 +45,6 @@ func init() {
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.flowtable_expire", 10)
 	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
-	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
 	cfg.SetDefault("ws_pong_timeout", 5)
 }
 

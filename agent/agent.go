@@ -40,16 +40,14 @@ import (
 )
 
 type Agent struct {
-	Graph       *graph.Graph
-	Gclient     *graph.AsyncClient
-	GraphServer *graph.Server
-	Root        *graph.Node
-	TopoServer  *topology.Server
-	NsProbe     *tprobes.NetNSProbe
-	NlProbe     *tprobes.NetLinkProbe
-	OvsMon      *ovsdb.OvsMonitor
-	OvsProbe    *tprobes.OvsdbProbe
-	SFlowProbe  *fprobes.SFlowProbe
+	Graph           *graph.Graph
+	Gclient         *graph.AsyncClient
+	GraphServer     *graph.Server
+	Root            *graph.Node
+	TopoServer      *topology.Server
+	TopoProbeBundle *tprobes.ProbeBundle
+	OvsMon          *ovsdb.OvsMonitor
+	SFlowProbe      *fprobes.SFlowProbe
 }
 
 func (a *Agent) Start() {
@@ -103,10 +101,7 @@ func (a *Agent) Start() {
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 	a.SFlowProbe.SetMappingPipeline(pipeline)
 
-	// start probes that will update the graph
-	a.NsProbe.Start()
-	a.NlProbe.Start()
-	a.OvsProbe.Start()
+	a.TopoProbeBundle.Start()
 
 	go a.SFlowProbe.Start()
 
@@ -121,9 +116,8 @@ func (a *Agent) Start() {
 
 func (a *Agent) Stop() {
 	a.SFlowProbe.Stop()
-	a.NlProbe.Stop()
-	a.NsProbe.Stop()
 	a.OvsMon.StopMonitoring()
+	a.TopoProbeBundle.Stop()
 	a.TopoServer.Stop()
 	a.GraphServer.Stop()
 	if a.Gclient != nil {
@@ -151,9 +145,7 @@ func NewAgent() *Agent {
 
 	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
 
-	ns := tprobes.NewNetNSProbe(g, root)
-	nl := tprobes.NewNetLinkProbe(g, root)
-	ovs := tprobes.NewOvsdbProbe(g, root, ovsmon)
+	bundle := tprobes.NewProbeBundleFromConfig(g, root, ovsmon)
 
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -171,13 +163,11 @@ func NewAgent() *Agent {
 	}
 
 	return &Agent{
-		Graph:       g,
-		NsProbe:     ns,
-		NlProbe:     nl,
-		OvsMon:      ovsmon,
-		OvsProbe:    ovs,
-		TopoServer:  server,
-		GraphServer: gserver,
-		Root:        root,
+		Graph:           g,
+		OvsMon:          ovsmon,
+		TopoProbeBundle: bundle,
+		TopoServer:      server,
+		GraphServer:     gserver,
+		Root:            root,
 	}
 }
