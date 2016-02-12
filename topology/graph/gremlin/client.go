@@ -40,11 +40,6 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-type response struct {
-	data []byte
-	err  error
-}
-
 type GremlinClient struct {
 	sync.RWMutex
 	Addr   string
