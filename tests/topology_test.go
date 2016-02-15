@@ -27,8 +27,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os/exec"
-	"strings"
 	"testing"
 	"time"
 
@@ -181,15 +179,12 @@ func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.C
 	return nil
 }
 
-func testTopology(t *testing.T, g *graph.Graph, cmds []string, onChange func(ws *websocket.Conn)) {
+func testTopology(t *testing.T, g *graph.Graph, cmds []helper.Cmd, onChange func(ws *websocket.Conn)) {
 	cmdIndex := 0
 	or := func(w *websocket.Conn) {
 		// ready to exec the first cmd
 		if cmdIndex < len(cmds) {
-			err := exec.Command("sudo", strings.Split(cmds[cmdIndex], " ")...).Run()
-			if err != nil {
-				t.Fatal("cmd : (sudo " + cmds[cmdIndex] + ") " + err.Error())
-			}
+			helper.ExecCmds(t, cmds[cmdIndex])
 			cmdIndex++
 		}
 	}
@@ -199,10 +194,7 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []string, onChange func(ws 
 
 		// exec the following command
 		if cmdIndex < len(cmds) {
-			err := exec.Command("sudo", strings.Split(cmds[cmdIndex], " ")...).Run()
-			if err != nil {
-				t.Fatal("cmd : (sudo " + cmds[cmdIndex] + ") " + err.Error())
-			}
+			helper.ExecCmds(t, cmds[cmdIndex])
 			cmdIndex++
 		}
 	}
@@ -213,7 +205,7 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []string, onChange func(ws 
 	}
 }
 
-func testCleanup(t *testing.T, g *graph.Graph, cmds []string, ints []string) {
+func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, ints []string) {
 	// cleanup side on the test
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -259,18 +251,17 @@ func newGraph(t *testing.T) *graph.Graph {
 }
 
 func TestBridgeOVS(t *testing.T) {
-	helper.InitConfig(t, confTopology)
-
 	g := newGraph(t)
-	agent := helper.StartAgent(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
-	setupCmds := []string{
-		"ovs-vsctl add-br br-test1",
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-test1", true},
 	}
 
-	tearDownCmds := []string{
-		"ovs-vsctl del-br br-test1",
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-test1", true},
 	}
 
 	testPassed := false
@@ -311,24 +302,23 @@ func TestBridgeOVS(t *testing.T) {
 }
 
 func TestPatchOVS(t *testing.T) {
-	helper.InitConfig(t, confTopology)
-
 	g := newGraph(t)
-	agent := helper.StartAgent(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
-	setupCmds := []string{
-		"ovs-vsctl add-br br-test1",
-		"ovs-vsctl add-br br-test2",
-		"ovs-vsctl add-port br-test1 patch-br-test2 -- set interface patch-br-test2 type=patch",
-		"ovs-vsctl add-port br-test2 patch-br-test1 -- set interface patch-br-test1 type=patch",
-		"ovs-vsctl set interface patch-br-test2 option:peer=patch-br-test1",
-		"ovs-vsctl set interface patch-br-test1 option:peer=patch-br-test2",
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-test1", true},
+		{"ovs-vsctl add-br br-test2", true},
+		{"ovs-vsctl add-port br-test1 patch-br-test2 -- set interface patch-br-test2 type=patch", true},
+		{"ovs-vsctl add-port br-test2 patch-br-test1 -- set interface patch-br-test1 type=patch", true},
+		{"ovs-vsctl set interface patch-br-test2 option:peer=patch-br-test1", true},
+		{"ovs-vsctl set interface patch-br-test1 option:peer=patch-br-test2", true},
 	}
 
-	tearDownCmds := []string{
-		"ovs-vsctl del-br br-test1",
-		"ovs-vsctl del-br br-test2",
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-test1", true},
+		{"ovs-vsctl del-br br-test2", true},
 	}
 
 	testPassed := false
@@ -366,19 +356,18 @@ func TestPatchOVS(t *testing.T) {
 }
 
 func TestInterfaceOVS(t *testing.T) {
-	helper.InitConfig(t, confTopology)
-
 	g := newGraph(t)
-	agent := helper.StartAgent(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
-	setupCmds := []string{
-		"ovs-vsctl add-br br-test1",
-		"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal",
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-test1", true},
+		{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},
 	}
 
-	tearDownCmds := []string{
-		"ovs-vsctl del-br br-test1",
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-test1", true},
 	}
 
 	testPassed := false
@@ -418,23 +407,22 @@ func TestInterfaceOVS(t *testing.T) {
 }
 
 func TestBondOVS(t *testing.T) {
-	helper.InitConfig(t, confTopology)
-
 	g := newGraph(t)
-	agent := helper.StartAgent(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
-	setupCmds := []string{
-		"ovs-vsctl add-br br-test1",
-		"ip tuntap add mode tap dev intf1",
-		"ip tuntap add mode tap dev intf2",
-		"ovs-vsctl add-bond br-test1 bond0 intf1 intf2",
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-test1", true},
+		{"ip tuntap add mode tap dev intf1", true},
+		{"ip tuntap add mode tap dev intf2", true},
+		{"ovs-vsctl add-bond br-test1 bond0 intf1 intf2", true},
 	}
 
-	tearDownCmds := []string{
-		"ovs-vsctl del-br br-test1",
-		"ip link del intf1",
-		"ip link del intf2",
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-test1", true},
+		{"ip link del intf1", true},
+		{"ip link del intf2", true},
 	}
 
 	testPassed := false
@@ -466,18 +454,17 @@ func TestBondOVS(t *testing.T) {
 }
 
 func TestVeth(t *testing.T) {
-	helper.InitConfig(t, confTopology)
-
 	g := newGraph(t)
-	agent := helper.StartAgent(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
-	setupCmds := []string{
-		"ip l add vm1-veth0 type veth peer name vm1-veth1",
+	setupCmds := []helper.Cmd{
+		{"ip l add vm1-veth0 type veth peer name vm1-veth1", true},
 	}
 
-	tearDownCmds := []string{
-		"ip link del vm1-veth0",
+	tearDownCmds := []helper.Cmd{
+		{"ip link del vm1-veth0", true},
 	}
 
 	testPassed := false
@@ -506,21 +493,20 @@ func TestVeth(t *testing.T) {
 }
 
 func TestBridge(t *testing.T) {
-	helper.InitConfig(t, confTopology)
-
 	g := newGraph(t)
-	agent := helper.StartAgent(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
-	setupCmds := []string{
-		"brctl addbr br-test",
-		"ip tuntap add mode tap dev intf1",
-		"brctl addif br-test intf1",
+	setupCmds := []helper.Cmd{
+		{"brctl addbr br-test", true},
+		{"ip tuntap add mode tap dev intf1", true},
+		{"brctl addif br-test intf1", true},
 	}
 
-	tearDownCmds := []string{
-		"brctl delbr br-test",
-		"ip link del intf1",
+	tearDownCmds := []helper.Cmd{
+		{"brctl delbr br-test", true},
+		{"ip link del intf1", true},
 	}
 
 	testPassed := false

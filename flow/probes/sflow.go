@@ -48,24 +48,57 @@ const (
 )
 
 type SFlowProbe struct {
-	Addr string
-	Port int
-
+	Addr                string
+	Port                int
 	Graph               *graph.Graph
 	AnalyzerClient      *analyzer.Client
 	FlowMappingPipeline *mappings.FlowMappingPipeline
-
-	cache            *cache.Cache
-	cacheUpdaterChan chan uint32
-
-	done    chan bool
-	running atomic.Value
-	wg      sync.WaitGroup
+	cache               *cache.Cache
+	cacheUpdaterChan    chan int64
+	done                chan bool
+	running             atomic.Value
+	wg                  sync.WaitGroup
 }
 
 func (probe *SFlowProbe) GetTarget() string {
 	target := []string{probe.Addr, strconv.FormatInt(int64(probe.Port), 10)}
 	return strings.Join(target, ":")
+}
+
+func (probe *SFlowProbe) lookupForProbePath(index int64) string {
+	probe.Graph.Lock()
+	defer probe.Graph.Unlock()
+
+	intfs := probe.Graph.LookupNodes(graph.Metadatas{"IfIndex": index})
+	if len(intfs) == 0 {
+		return ""
+	}
+
+	// lookup for the interface that is a part of an ovs bridge
+	for _, intf := range intfs {
+		ancestors, ok := probe.Graph.GetAncestorsTo(intf, graph.Metadatas{"Type": "ovsbridge"})
+		if !ok {
+			continue
+		}
+
+		bridge := ancestors[2]
+		ancestors, ok = probe.Graph.GetAncestorsTo(bridge, graph.Metadatas{"Type": "host"})
+		if !ok {
+			continue
+		}
+
+		var path string
+		for i := len(ancestors) - 1; i >= 0; i-- {
+			if len(path) > 0 {
+				path += "/"
+			}
+			path += ancestors[i].Metadatas()["Name"].(string)
+		}
+
+		return path
+	}
+
+	return ""
 }
 
 func (probe *SFlowProbe) cacheUpdater() {
@@ -74,35 +107,16 @@ func (probe *SFlowProbe) cacheUpdater() {
 
 	logging.GetLogger().Debug("Start SFlowProbe cache updater")
 
-	var index uint32
+	var index int64
 	for probe.running.Load() == true {
 		select {
 		case index = <-probe.cacheUpdaterChan:
 			logging.GetLogger().Debug("SFlowProbe request received: %d", index)
 
-			probe.Graph.Lock()
-
-			intfs := probe.Graph.LookupNodes(graph.Metadatas{"IfIndex": index})
-
-			// lookup for the interface that is a part of an ovs bridge
-			for _, intf := range intfs {
-				ancestors, ok := probe.Graph.GetAncestorsTo(intf, graph.Metadatas{"Type": "ovsbridge"})
-				if ok {
-					bridge := ancestors[2]
-					ancestors, ok = probe.Graph.GetAncestorsTo(bridge, graph.Metadatas{"Type": "host"})
-
-					var path string
-					for i := len(ancestors) - 1; i >= 0; i-- {
-						if len(path) > 0 {
-							path += "/"
-						}
-						path += ancestors[i].Metadatas()["Name"].(string)
-					}
-					probe.cache.Set(strconv.FormatUint(uint64(index), 10), path, cache.DefaultExpiration)
-					break
-				}
+			path := probe.lookupForProbePath(index)
+			if path != "" {
+				probe.cache.Set(strconv.FormatInt(index, 10), path, cache.DefaultExpiration)
 			}
-			probe.Graph.Unlock()
 
 		case <-probe.done:
 			return
@@ -110,16 +124,15 @@ func (probe *SFlowProbe) cacheUpdater() {
 	}
 }
 
-func (probe *SFlowProbe) getProbePath(index uint32) *string {
-	p, f := probe.cache.Get(strconv.FormatUint(uint64(index), 10))
+func (probe *SFlowProbe) getProbePath(index int64) string {
+	p, f := probe.cache.Get(strconv.FormatInt(index, 10))
 	if f {
 		path := p.(string)
-		return &path
+		return path
 	}
-
 	probe.cacheUpdaterChan <- index
 
-	return nil
+	return ""
 }
 
 func (probe *SFlowProbe) flowExpire(f *flow.Flow) {
@@ -171,9 +184,11 @@ func (probe *SFlowProbe) Start() error {
 
 		if sflowPacket.SampleCount > 0 {
 			for _, sample := range sflowPacket.FlowSamples {
-				flows := flow.FLowsFromSFlowSample(flowtable, &sample, probe.getProbePath(sample.InputInterface))
+				probePath := probe.getProbePath(int64(sample.InputInterface))
 
-				logging.GetLogger().Debug("%d flows captured", len(flows))
+				flows := flow.FLowsFromSFlowSample(flowtable, &sample, probePath)
+
+				logging.GetLogger().Debug("%d flows captured at %v", len(flows), probePath)
 
 				flowtable.Update(flows)
 
@@ -215,7 +230,7 @@ func NewSFlowProbe(a string, p int, g *graph.Graph, expire int, cleanup int) (*S
 	}
 
 	probe.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
-	probe.cacheUpdaterChan = make(chan uint32, 200)
+	probe.cacheUpdaterChan = make(chan int64, 200)
 	probe.done = make(chan bool)
 	probe.running.Store(true)
 

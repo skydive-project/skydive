@@ -27,12 +27,22 @@ import (
 	"io/ioutil"
 	"net"
 	"os/exec"
+	"strings"
 	"testing"
 
+	"github.com/gorilla/mux"
+
 	"github.com/redhat-cip/skydive/agent"
+	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/storage"
 )
+
+type Cmd struct {
+	Cmd   string
+	Check bool
+}
 
 func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
 	addr := net.UDPAddr{
@@ -75,10 +85,32 @@ func InitConfig(t *testing.T, conf string) {
 	}
 }
 
-func StartAgent(t *testing.T) *agent.Agent {
+func StartAgent() *agent.Agent {
 	agent := agent.NewAgent()
 	go agent.Start()
 	return agent
+}
+
+func StartAgentWithConfig(t *testing.T, conf string) *agent.Agent {
+	InitConfig(t, conf)
+
+	return StartAgent()
+}
+
+func StartAgentAndAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage) (*agent.Agent, *analyzer.Server) {
+	InitConfig(t, conf)
+
+	router := mux.NewRouter().StrictSlash(true)
+	server, err := analyzer.NewServerFromConfig(router)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server.SetStorage(s)
+
+	go server.ListenAndServe()
+
+	return StartAgent(), server
 }
 
 func ReplayTraceHelper(t *testing.T, trace string, target string) {
@@ -88,4 +120,13 @@ func ReplayTraceHelper(t *testing.T, trace string, target string) {
 		t.Error(err.Error() + "\n" + string(out))
 	}
 	t.Log("Stdout/Stderr ", string(out))
+}
+
+func ExecCmds(t *testing.T, cmds ...Cmd) {
+	for _, cmd := range cmds {
+		err := exec.Command("sudo", strings.Split(cmd.Cmd, " ")...).Run()
+		if err != nil && cmd.Check {
+			t.Fatal("cmd : (sudo " + cmd.Cmd + ") " + err.Error())
+		}
+	}
 }

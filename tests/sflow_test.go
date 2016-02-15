@@ -23,14 +23,12 @@
 package tests
 
 import (
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/gorilla/mux"
-
-	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/tests/helper"
@@ -94,10 +92,12 @@ func NewTestStorage() *TestStorage {
 
 func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	for _, f := range flows {
 		s.flows[f.UUID] = f
 	}
-	s.lock.Unlock()
+
 	return nil
 }
 
@@ -105,7 +105,22 @@ func (s *TestStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error)
 	return nil, nil
 }
 
-func (s *TestStorage) CheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool {
+func (s *TestStorage) GetFlows() []*flow.Flow {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	flows := make([]*flow.Flow, len(s.flows))
+
+	i := 0
+	for _, f := range s.flows {
+		flows[i] = f
+		i++
+	}
+
+	return flows
+}
+
+func pcapTraceCheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool {
 	eth := f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()]
 
 	for _, fi := range trace.flowStat {
@@ -120,15 +135,12 @@ func (s *TestStorage) CheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInf
 	return false
 }
 
-func (s *TestStorage) Validate(t *testing.T, trace *flowsTraceInfo) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if len(trace.flowStat) != len(s.flows) {
-		t.Errorf("NB Flows mismatch : %d %d", len(trace.flowStat), len(s.flows))
+func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) {
+	if len(trace.flowStat) != len(flows) {
+		t.Errorf("NB Flows mismatch : %d %d", len(trace.flowStat), len(flows))
 	}
-	for _, f := range s.flows {
-		r := s.CheckFlow(t, f, trace)
+	for _, f := range flows {
+		r := pcapTraceCheckFlow(t, f, trace)
 		if r == false {
 			eth := f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()]
 			t.Logf("%s %s %d %d %d %d\n", f.UUID, f.LayersPath, eth.AB.Packets, eth.AB.Bytes, eth.BA.Packets, eth.BA.Bytes)
@@ -137,22 +149,12 @@ func (s *TestStorage) Validate(t *testing.T, trace *flowsTraceInfo) {
 	}
 }
 
-func TestSFlowAgent(t *testing.T) {
-	helper.InitConfig(t, confAgentAnalyzer)
-
-	router := mux.NewRouter().StrictSlash(true)
-	server, err := analyzer.NewServerFromConfig(router)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func TestSFlowWithPCAP(t *testing.T) {
 	ts := NewTestStorage()
-	server.SetStorage(ts)
-	go server.ListenAndServe()
-	defer server.Stop()
 
-	agent := helper.StartAgent(t)
+	agent, analyzer := helper.StartAgentAndAnalyzerWithConfig(t, confAgentAnalyzer, ts)
 	defer agent.Stop()
+	defer analyzer.Stop()
 
 	time.Sleep(1 * time.Second)
 	for _, trace := range flowsTraces {
@@ -161,6 +163,47 @@ func TestSFlowAgent(t *testing.T) {
 
 		/* FIXME (nplanel) remove this Sleep when agent.FlushFlowTable() exist */
 		time.Sleep(2 * time.Second)
-		ts.Validate(t, &trace)
+		pcapTraceValidate(t, ts.GetFlows(), &trace)
+	}
+}
+
+func TestSFlowProbPath(t *testing.T) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	ts := NewTestStorage()
+
+	agent, analyzer := helper.StartAgentAndAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	defer agent.Stop()
+	defer analyzer.Stop()
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip link set sflow-intf1 up", true},
+		{"ping -c 15 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	ok := false
+	for _, f := range ts.GetFlows() {
+		if f.ProbeGraphPath == hostname+"/br-sflow" && f.LayersPath == "Ethernet/ARP/Payload" {
+			ok = true
+			break
+		}
+	}
+
+	if !ok {
+		t.Error("Unable to find a flow with the expected probePath")
 	}
 }
