@@ -6,6 +6,11 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/BurntSushi/toml",
+			"Comment": "v0.1.0-23-g5c4df71",
+			"Rev": "5c4df71dfe9ac89ef6287afc05e4c1b16ae65a1e"
+		},
+		{
 			"ImportPath": "github.com/araddon/gou",
 			"Rev": "0c2ab7394d785afff14c983fedce4be70ccc431f"
 		},
@@ -65,12 +70,30 @@
 			"Rev": "844dd6d40e1a9215ef4c8a204bfc839fcf5dd5dd"
 		},
 		{
+			"ImportPath": "github.com/hashicorp/hcl",
+			"Rev": "1c284ec98f4b398443cbabb0d9197f7f4cc0077c"
+		},
+		{
 			"ImportPath": "github.com/hydrogen18/stoppableListener",
 			"Rev": "dadc9ccc400c712e5a316107a5c462863919e579"
 		},
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
 			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
+			"ImportPath": "github.com/kr/pretty",
+			"Comment": "go.weekly.2011-12-22-27-ge6ac2fc",
+			"Rev": "e6ac2fc51e89a3249e82157fa0bb7a18ef9dd5bb"
+		},
+		{
+			"ImportPath": "github.com/kr/text",
+			"Rev": "bb797dc4fb8320488f47bf11de07a733d7233e1f"
+		},
+		{
+			"ImportPath": "github.com/magiconair/properties",
+			"Comment": "v1.6.0-1-gc81f9d7",
+			"Rev": "c81f9d71af8f8cba1466501d30326b99a4e56c19"
 		},
 		{
 			"ImportPath": "github.com/mattbaird/elastigo/lib",
@@ -126,12 +149,24 @@
 			"Rev": "58cf01279880d621a67c5f929af9ed59ab409373"
 		},
 		{
+			"ImportPath": "github.com/spf13/cast",
+			"Rev": "ee7b3e0353166ab1f3a605294ac8cd2b77953778"
+		},
+		{
 			"ImportPath": "github.com/spf13/cobra",
 			"Rev": "230787ee13ff5f832b5e48010de7cc1312650587"
 		},
 		{
+			"ImportPath": "github.com/spf13/jwalterweatherman",
+			"Rev": "d00654080cddbd2b082acaa74007cb94a2b40866"
+		},
+		{
 			"ImportPath": "github.com/spf13/pflag",
 			"Rev": "08b1a584251b5b62f458943640fc8ebd4d50aaa5"
+		},
+		{
+			"ImportPath": "github.com/spf13/viper",
+			"Rev": "c975dc1b4eacf4ec7fdbf0873638de5d090ba323"
 		},
 		{
 			"ImportPath": "github.com/vishvananda/netlink",
@@ -162,9 +197,13 @@
 			"Rev": "083575c3955c85df16fe9590cceab64d03f5eb6e"
 		},
 		{
-			"ImportPath": "gopkg.in/ini.v1",
-			"Comment": "v0-32-g45bf59e",
-			"Rev": "45bf59e51e747b1d61b3108a97549497a6efd3bc"
+			"ImportPath": "gopkg.in/fsnotify.v1",
+			"Comment": "v1.2.9",
+			"Rev": "8611c35ab31c1c28aa903d33cf8b6e44a399b09e"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "bef53efd0c76e49e6de55ead051f886bea7e9420"
 		}
 	]
 }
