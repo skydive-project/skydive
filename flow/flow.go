@@ -150,10 +150,8 @@ func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 
 		packet := &record.Header
 		key := (FlowKey{}).fillFromGoPacket(packet)
-		flow, new := ft.GetFlow(key.String())
-		if new {
-			flow.ProbeGraphPath = probePath
-		}
+		flow, _ := ft.GetFlow(key.String())
+		flow.ProbeGraphPath = probePath
 		flow.fillFromGoPacket(packet)
 		flows = append(flows, flow)
 	}
