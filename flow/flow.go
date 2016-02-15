@@ -135,11 +135,18 @@ func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 	for _, rec := range sample.Records {
 
 		/* FIX(safchain): just keeping the raw packet for now */
-		record, ok := rec.(layers.SFlowRawPacketFlowRecord)
-		if !ok {
-			logging.GetLogger().Critical("1st layer is not SFlowRawPacketFlowRecord type")
+		switch rec.(type) {
+		case layers.SFlowRawPacketFlowRecord:
+			/* We only support RawPacket from SFlow probe */
+		case layers.SFlowExtendedSwitchFlowRecord:
+			logging.GetLogger().Debug("1st layer is not SFlowRawPacketFlowRecord type")
+			continue
+		default:
+			logging.GetLogger().Critical("1st layer is not a SFlow supported type")
 			continue
 		}
+
+		record := rec.(layers.SFlowRawPacketFlowRecord)
 
 		packet := &record.Header
 		key := (FlowKey{}).fillFromGoPacket(packet)
