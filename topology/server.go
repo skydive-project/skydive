@@ -96,7 +96,7 @@ func (s *Server) RegisterStaticEndpoints() {
 	s.Router.HandleFunc("/static/topology", s.serveIndex)
 }
 
-func (s *Server) RegisterRpcEndpoints() {
+func (s *Server) RegisterRPCEndpoints() {
 	routes := []rpc.Route{
 		{
 			"TopologiesIndex",

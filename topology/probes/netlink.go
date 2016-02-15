@@ -184,7 +184,7 @@ func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadatas
 }
 
 func (u *NetLinkProbe) getLinkIPV4Addr(link netlink.Link) string {
-	ipv4 := make([]string, 0)
+	var ipv4 []string
 
 	addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
 	if err != nil {

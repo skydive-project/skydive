@@ -54,7 +54,7 @@ var (
 )
 
 const (
-	MinPPS = 100
+	minPPS = 100
 )
 
 type Throttle struct {
@@ -67,7 +67,7 @@ type Throttle struct {
 func (t *Throttle) StartHook(hits uint) {
 	t.hits += hits
 
-	if t.hits < (t.MaxHitPerSecond / MinPPS) {
+	if t.hits < (t.MaxHitPerSecond / minPPS) {
 		return
 	}
 
@@ -87,7 +87,7 @@ func (t *Throttle) wait() {
 }
 
 func (t *Throttle) EndHook() {
-	if t.hits < (t.MaxHitPerSecond / MinPPS) {
+	if t.hits < (t.MaxHitPerSecond / minPPS) {
 		return
 	}
 	t.wait()
@@ -266,8 +266,8 @@ func main() {
 		usage()
 		os.Exit(1)
 	}
-	if *pps < MinPPS {
-		logging.GetLogger().Fatal("Minimal packet per seconds is ", MinPPS)
+	if *pps < minPPS {
+		logging.GetLogger().Fatal("Minimal packet per seconds is ", minPPS)
 	}
 
 	sflowAgent := strings.Split(os.Args[len(os.Args)-1], ":")

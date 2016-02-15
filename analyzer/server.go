@@ -213,7 +213,7 @@ func (s *Server) RegisterStaticEndpoints() {
 	s.Router.HandleFunc("/static/conversation", s.serveStaticIndex)
 }
 
-func (s *Server) RegisterRpcEndpoints() {
+func (s *Server) RegisterRPCEndpoints() {
 	routes := []rpc.Route{
 		{
 			"FlowSearch",
@@ -255,10 +255,10 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 
 	tserver := topology.NewServer(g, addr, port, router)
 	tserver.RegisterStaticEndpoints()
-	tserver.RegisterRpcEndpoints()
+	tserver.RegisterRPCEndpoints()
 
 	alertmgr := graph.NewAlert(g, router)
-	alertmgr.RegisterRpcEndpoints()
+	alertmgr.RegisterRPCEndpoints()
 
 	gserver, err := graph.NewServerFromConfig(g, alertmgr, router)
 	if err != nil {
@@ -284,7 +284,7 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 		FlowTable:           flowtable,
 	}
 	server.RegisterStaticEndpoints()
-	server.RegisterRpcEndpoints()
+	server.RegisterRPCEndpoints()
 	cfgFlowtable_expire, err := config.GetConfig().Section("analyzer").Key("flowtable_expire").Int()
 	if err != nil || cfgFlowtable_expire < 1 {
 		logging.GetLogger().Error("Config flowTable_expire invalid value ", cfgFlowtable_expire, err.Error())

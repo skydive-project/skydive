@@ -40,11 +40,6 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-type response struct {
-	data []byte
-	err  error
-}
-
 type GremlinClient struct {
 	sync.RWMutex
 	Addr   string
@@ -185,7 +180,7 @@ func (p *GremlinPropertiesEncoder) Encode(v interface{}) error {
 }
 
 func resultToGremlinElements(result []byte) ([]GremlinElement, error) {
-	els := make([]GremlinElement, 0)
+	var els []GremlinElement
 	err := json.Unmarshal(result, &els)
 	if err != nil {
 		return nil, err
@@ -277,7 +272,6 @@ func (c *GremlinClient) Close() {
 	c.wsConn.Close()
 }
 
-// Create new chat client.
 func NewClient(addr string, port int) *GremlinClient {
 	return &GremlinClient{
 		Addr: addr,
