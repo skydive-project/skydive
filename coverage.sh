@@ -22,7 +22,7 @@ generate_cover_data() {
 
     for pkg in "$@"; do
         f="$workdir/$(echo $pkg | tr / -).cover"
-        go test -timeout 1m -covermode="$mode" -coverprofile="$f" "$pkg"
+        go test -timeout 5m -covermode="$mode" -coverprofile="$f" "$pkg"
     done
 
     # add fonctional testing
