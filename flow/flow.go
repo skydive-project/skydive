@@ -169,6 +169,17 @@ func (key FlowKey) String() string {
 	return fmt.Sprintf("%x-%x", key.net, key.transport)
 }
 
+func (flow *Flow) ID() string {
+	id := flow.UUID
+
+	// FIX(safchain) should not be empty, will be removed when having sync mapping
+	if flow.ProbeGraphPath != "" {
+		id += ":" + flow.ProbeGraphPath
+	}
+
+	return id
+}
+
 func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	/* Continue if no ethernet layer */
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
