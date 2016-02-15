@@ -32,7 +32,7 @@ Flow probes currently implemented:
 # Dependencies
 
 * Go >= 1.5
-* Elasticsearch
+* Elasticsearch >= 2.0
 
 ## Install
 
