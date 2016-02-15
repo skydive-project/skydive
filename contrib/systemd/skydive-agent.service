@@ -1,0 +1,10 @@
+[Unit]
+Description=Skydive agent
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/skydive_agent -conf /etc/skydive/skydive.ini
+
+[Install]
+WantedBy=multi-user.target
