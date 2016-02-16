@@ -49,6 +49,7 @@ type AsyncClient struct {
 	messages  chan string
 	quit      chan bool
 	wg        sync.WaitGroup
+	wsConn    *websocket.Conn
 	listeners []EventListener
 	connected atomic.Value
 	running   atomic.Value
@@ -70,8 +71,8 @@ func (c *AsyncClient) IsConnected() bool {
 	return c.connected.Load() == true
 }
 
-func (c *AsyncClient) sendWSMessage(conn *websocket.Conn, msg string) error {
-	w, err := conn.NextWriter(websocket.TextMessage)
+func (c *AsyncClient) sendWSMessage(msg string) error {
+	w, err := c.wsConn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
 	}
@@ -101,13 +102,12 @@ func (c *AsyncClient) connect() {
 		return
 	}
 
-	wsConn, _, err := websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
+	c.wsConn, _, err = websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
 	if err != nil {
 		logging.GetLogger().Error("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
 	}
-	defer wsConn.Close()
-	wsConn.SetPingHandler(nil)
+	c.wsConn.SetPingHandler(nil)
 
 	logging.GetLogger().Info("Connected to %s", endpoint)
 
@@ -123,17 +123,17 @@ func (c *AsyncClient) connect() {
 
 	go func() {
 		for {
-			if _, _, err := wsConn.NextReader(); err != nil {
-				c.quit <- true
-				return
+			if _, _, err := c.wsConn.NextReader(); err != nil {
+				break
 			}
 		}
+		c.quit <- true
 	}()
 
-	for c.connected.Load() == true {
+	for {
 		select {
 		case msg := <-c.messages:
-			err := c.sendWSMessage(wsConn, msg)
+			err := c.sendWSMessage(msg)
 			if err != nil {
 				logging.GetLogger().Error("Error while writing to the WebSocket: %s", err.Error())
 				break
@@ -141,6 +141,10 @@ func (c *AsyncClient) connect() {
 		case <-c.quit:
 			return
 		}
+	}
+
+	if c.running.Load() == true {
+		c.wsConn.Close()
 	}
 }
 
@@ -169,8 +173,11 @@ func (c *AsyncClient) AddListener(l EventListener) {
 
 func (c *AsyncClient) Disconnect() {
 	c.running.Store(false)
-	c.quit <- true
+	if c.connected.Load() == true {
+		c.wsConn.Close()
+	}
 	c.wg.Wait()
+	close(c.quit)
 }
 
 func NewAsyncClient(addr string, port int, path string) *AsyncClient {
