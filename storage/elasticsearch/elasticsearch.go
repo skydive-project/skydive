@@ -35,64 +35,6 @@ import (
 	"github.com/redhat-cip/skydive/storage"
 )
 
-type FlatFlowEndpointStatistics struct {
-	Type    flow.FlowEndpointType
-	Value   string
-	Packets uint64
-	Bytes   uint64
-}
-
-type FlatFlowEndpointsStatistics struct {
-	Type flow.FlowEndpointType
-	AB   FlatFlowEndpointStatistics /* A->B */
-	BA   FlatFlowEndpointStatistics /* B->A */
-}
-
-type FlatFlowStatistics struct {
-	Start     int64
-	Last      int64
-	Endpoints []FlatFlowEndpointsStatistics
-}
-
-type FlatFlow struct {
-	UUID       string
-	LayersPath string
-	/* Data Flow info */
-	Statistics FlatFlowStatistics
-	/* Topology info */
-	ProbeGraphPath string
-	IfSrcGraphPath string
-	IfDstGraphPath string
-}
-
-func flow2FlatFlow(f *flow.Flow) FlatFlow {
-	ff := FlatFlow{}
-
-	ff.UUID = f.UUID
-	ff.LayersPath = f.LayersPath
-	ff.ProbeGraphPath = f.ProbeGraphPath
-	ff.IfSrcGraphPath = f.IfSrcGraphPath
-	ff.IfDstGraphPath = f.IfDstGraphPath
-
-	fs := f.GetStatistics()
-	ff.Statistics.Start = fs.Start
-	ff.Statistics.Last = fs.Last
-	for _, endp := range fs.Endpoints {
-		ffes := FlatFlowEndpointsStatistics{}
-		ffes.Type = endp.Type
-		ffes.AB.Type = endp.Type
-		ffes.AB.Value = endp.AB.Value
-		ffes.AB.Packets = endp.AB.Packets
-		ffes.AB.Bytes = endp.AB.Bytes
-		ffes.BA.Type = endp.Type
-		ffes.BA.Value = endp.BA.Value
-		ffes.BA.Packets = endp.BA.Packets
-		ffes.BA.Bytes = endp.BA.Bytes
-		ff.Statistics.Endpoints = append(ff.Statistics.Endpoints, ffes)
-	}
-	return ff
-}
-
 type ElasticSearchStorage struct {
 	connection *elastigo.Conn
 	indexer    *elastigo.BulkIndexer
@@ -100,7 +42,7 @@ type ElasticSearchStorage struct {
 
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	for _, flow := range flows {
-		err := c.indexer.Index("skydive", "flow", flow.UUID, "", "", nil, flow2FlatFlow(flow))
+		err := c.indexer.Index("skydive", "flow", flow.UUID, "", "", nil, flow)
 		if err != nil {
 			logging.GetLogger().Error("Error while indexing: %s", err.Error())
 			continue

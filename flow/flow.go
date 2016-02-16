@@ -25,6 +25,7 @@ package flow
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -35,6 +36,56 @@ import (
 
 	"github.com/redhat-cip/skydive/logging"
 )
+
+func (s *FlowStatistics) MarshalJSON() ([]byte, error) {
+	obj := &struct {
+		Start     int64
+		Last      int64
+		Endpoints []*FlowEndpointsStatistics
+	}{
+		Start:     s.Start,
+		Last:      s.Last,
+		Endpoints: make([]*FlowEndpointsStatistics, len(s.Endpoints), len(s.Endpoints)),
+	}
+
+	i := 0
+	for _, e := range s.Endpoints {
+		obj.Endpoints[i] = e
+		i++
+	}
+
+	return json.Marshal(&obj)
+}
+
+func (s *FlowEndpointStatistics) MarshalJSON() ([]byte, error) {
+	obj := &struct {
+		Type    string
+		Value   string
+		Packets uint64
+		Bytes   uint64
+	}{
+		Type:    s.Type.String(),
+		Value:   s.Value,
+		Packets: s.Packets,
+		Bytes:   s.Bytes,
+	}
+
+	return json.Marshal(&obj)
+}
+
+func (s *FlowEndpointsStatistics) MarshalJSON() ([]byte, error) {
+	obj := &struct {
+		Type string
+		AB   *FlowEndpointStatistics
+		BA   *FlowEndpointStatistics
+	}{
+		Type: s.Type.String(),
+		AB:   s.AB,
+		BA:   s.BA,
+	}
+
+	return json.Marshal(&obj)
+}
 
 func LayerFlow(l gopacket.Layer) gopacket.Flow {
 	switch l.(type) {
