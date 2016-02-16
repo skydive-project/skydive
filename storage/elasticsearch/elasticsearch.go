@@ -75,9 +75,8 @@ func flow2FlatFlow(f *flow.Flow) FlatFlow {
 	ff.IfDstGraphPath = f.IfDstGraphPath
 
 	fs := f.GetStatistics()
-	ffs := FlatFlowStatistics{}
-	ffs.Start = fs.Start
-	ffs.Last = fs.Last
+	ff.Statistics.Start = fs.Start
+	ff.Statistics.Last = fs.Last
 	for _, endp := range fs.Endpoints {
 		ffes := FlatFlowEndpointsStatistics{}
 		ffes.Type = endp.Type
@@ -89,9 +88,8 @@ func flow2FlatFlow(f *flow.Flow) FlatFlow {
 		ffes.BA.Value = endp.BA.Value
 		ffes.BA.Packets = endp.BA.Packets
 		ffes.BA.Bytes = endp.BA.Bytes
-		ffs.Endpoints = append(ffs.Endpoints, ffes)
+		ff.Statistics.Endpoints = append(ff.Statistics.Endpoints, ffes)
 	}
-	ff.Statistics = ffs
 	return ff
 }
 
@@ -101,9 +99,6 @@ type ElasticSearchStorage struct {
 }
 
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
-	c.indexer.Start()
-	defer c.indexer.Stop()
-
 	for _, flow := range flows {
 		err := c.indexer.Index("skydive", "flow", flow.UUID, "", "", nil, flow2FlatFlow(flow))
 		if err != nil {
@@ -168,6 +163,9 @@ func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flo
 }
 
 func (c *ElasticSearchStorage) initialize() error {
+	c.indexer = c.connection.NewBulkIndexerErrors(10, 60)
+	c.indexer.Start()
+
 	req, err := c.connection.NewRequest("GET", "/skydive", "")
 	if err != nil {
 		return err
@@ -185,7 +183,11 @@ func (c *ElasticSearchStorage) initialize() error {
 		return err
 	}
 
-	body := `{"mappings":{"flow":{"dynamic_templates":[{"notanalyzed":{"match":"*","mapping":{"type":"string","index":"not_analyzed"}}}]}}}`
+	body := `{"mappings":{"flow":{"dynamic_templates":[`
+	body += `{"notanalyzed_graph":{"match":"*Graph*","mapping":{"type":"string","index":"not_analyzed"}}},`
+	body += `{"notanalyzed_graph":{"match":"*Layer*","mapping":{"type":"string","index":"not_analyzed"}}}`
+	body += `]}}}`
+
 	req.SetBodyString(body)
 
 	code, _, err = req.Do(&response)
@@ -197,12 +199,15 @@ func (c *ElasticSearchStorage) initialize() error {
 		return errors.New("Unable to create the skydive index: " + strconv.FormatInt(int64(code), 10))
 	}
 
-	c.indexer = c.connection.NewBulkIndexerErrors(10, 60)
-
 	return nil
 }
 
 var ErrBadConfig = errors.New("elasticseach : Config file is misconfigured, check elasticsearch key format")
+
+func (c *ElasticSearchStorage) Close() {
+	c.indexer.Stop()
+	c.connection.Close()
+}
 
 func New() (*ElasticSearchStorage, error) {
 	c := elastigo.NewConn()
