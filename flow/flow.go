@@ -87,6 +87,66 @@ func (s *FlowEndpointsStatistics) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&obj)
 }
 
+func (s *FlowEndpointStatistics) UnmarshalJSON(b []byte) error {
+	m := struct {
+		Type    string
+		Value   string
+		Packets uint64
+		Bytes   uint64
+	}{}
+
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+
+	s.Type = FlowEndpointType(FlowEndpointType_value[m.Type])
+	s.Value = m.Value
+	s.Packets = m.Packets
+	s.Bytes = m.Bytes
+
+	return nil
+}
+
+func (s *FlowEndpointsStatistics) UnmarshalJSON(b []byte) error {
+	m := struct {
+		Type string
+		AB   *FlowEndpointStatistics
+		BA   *FlowEndpointStatistics
+	}{}
+
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+
+	s.Type = FlowEndpointType(FlowEndpointType_value[m.Type])
+	s.AB = m.AB
+	s.BA = m.BA
+
+	return nil
+}
+
+func (s *FlowStatistics) UnmarshalJSON(b []byte) error {
+	m := struct {
+		Start     int64
+		Last      int64
+		Endpoints []*FlowEndpointsStatistics
+	}{}
+
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+
+	s.Start = m.Start
+	s.Last = m.Last
+
+	s.Endpoints = make(map[int32]*FlowEndpointsStatistics)
+	for _, e := range m.Endpoints {
+		s.Endpoints[e.Type.Value()] = e
+	}
+
+	return nil
+}
+
 func LayerFlow(l gopacket.Layer) gopacket.Flow {
 	switch l.(type) {
 	case gopacket.LinkLayer:

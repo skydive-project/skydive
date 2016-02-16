@@ -55,7 +55,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error) {
 	query := map[string]interface{}{
 		"sort": map[string]interface{}{
-			"Timestamp": map[string]string{
+			"Statistics.Last": map[string]string{
 				"order": "desc",
 			},
 		},
@@ -68,7 +68,7 @@ func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flo
 				"term": filters,
 			},
 			"sort": map[string]interface{}{
-				"Timestamp": map[string]string{
+				"Statistics.Last": map[string]string{
 					"order": "desc",
 				},
 			},
