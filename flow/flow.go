@@ -59,12 +59,10 @@ func (s *FlowStatistics) MarshalJSON() ([]byte, error) {
 
 func (s *FlowEndpointStatistics) MarshalJSON() ([]byte, error) {
 	obj := &struct {
-		Type    string
 		Value   string
 		Packets uint64
 		Bytes   uint64
 	}{
-		Type:    s.Type.String(),
 		Value:   s.Value,
 		Packets: s.Packets,
 		Bytes:   s.Bytes,
@@ -89,7 +87,6 @@ func (s *FlowEndpointsStatistics) MarshalJSON() ([]byte, error) {
 
 func (s *FlowEndpointStatistics) UnmarshalJSON(b []byte) error {
 	m := struct {
-		Type    string
 		Value   string
 		Packets uint64
 		Bytes   uint64
@@ -99,7 +96,6 @@ func (s *FlowEndpointStatistics) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	s.Type = FlowEndpointType(FlowEndpointType_value[m.Type])
 	s.Value = m.Value
 	s.Packets = m.Packets
 	s.Bytes = m.Bytes

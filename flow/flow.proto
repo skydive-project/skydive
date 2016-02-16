@@ -22,7 +22,7 @@
 
 syntax = "proto3";
 /* Note : o proto3 fields are optional by default
-          o required fields are not allowed in proto3 */ 
+          o required fields are not allowed in proto3 */
 
 package flow;
 
@@ -35,7 +35,6 @@ enum FlowEndpointType {
 }
 
 message FlowEndpointStatistics {
-  FlowEndpointType Type = 1;
   string Value 	= 2;
   uint64 Packets = 5;
   uint64 Bytes = 6;
