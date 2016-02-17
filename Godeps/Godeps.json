@@ -27,6 +27,14 @@
 			"Rev": "2d1be381ce47537e9e076b2b76dc70933162e4e9"
 		},
 		{
+			"ImportPath": "github.com/gima/govalid/v1",
+			"Rev": "7b486932bea218beb6e85f7ed28650d283dd6ce6"
+		},
+		{
+			"ImportPath": "github.com/gima/jsonv/src",
+			"Rev": "964b60c2ebe1c9106b7c33e2566ec7de757d4f70"
+		},
+		{
 			"ImportPath": "github.com/go-gremlin/gremlin",
 			"Rev": "e74ebaf231668d5133d3794ac6cb654309da5a8f"
 		},
