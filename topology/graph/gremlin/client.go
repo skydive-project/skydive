@@ -192,7 +192,7 @@ func resultToGremlinElements(result []byte) ([]GremlinElement, error) {
 func (c *GremlinClient) QueryElements(q string) ([]GremlinElement, error) {
 	result, err := c.Query(q)
 	if err != nil {
-		logging.GetLogger().Error("Gremlin query error: %s, %s", q, err.Error())
+		logging.GetLogger().Errorf("Gremlin query error: %s, %s", q, err.Error())
 		return nil, err
 	}
 
@@ -202,7 +202,7 @@ func (c *GremlinClient) QueryElements(q string) ([]GremlinElement, error) {
 
 	els, err := resultToGremlinElements(result)
 	if err != nil {
-		logging.GetLogger().Error("Gremlin query error: %s, %s", q, err.Error())
+		logging.GetLogger().Errorf("Gremlin query error: %s, %s", q, err.Error())
 		return nil, err
 	}
 
@@ -246,24 +246,24 @@ func (c *GremlinClient) Connect() {
 
 	conn, err := net.Dial("tcp", host)
 	if err != nil {
-		logging.GetLogger().Error("Connection to the WebSocket server failed: %s", err.Error())
+		logging.GetLogger().Errorf("Connection to the WebSocket server failed: %s", err.Error())
 		return
 	}
 
 	endpoint := "ws://" + host
 	u, err := url.Parse(endpoint)
 	if err != nil {
-		logging.GetLogger().Error("Unable to parse the WebSocket Endpoint %s: %s", endpoint, err.Error())
+		logging.GetLogger().Errorf("Unable to parse the WebSocket Endpoint %s: %s", endpoint, err.Error())
 		return
 	}
 
 	wsConn, _, err := websocket.NewClient(conn, u, http.Header{}, 0, 4096)
 	if err != nil {
-		logging.GetLogger().Error("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
+		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
 	}
 
-	logging.GetLogger().Info("Connected to gremlin server %s:%d", c.Addr, c.Port)
+	logging.GetLogger().Infof("Connected to gremlin server %s:%d", c.Addr, c.Port)
 
 	c.wsConn = wsConn
 }

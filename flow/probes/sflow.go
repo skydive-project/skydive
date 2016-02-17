@@ -111,7 +111,7 @@ func (probe *SFlowProbe) cacheUpdater() {
 	for probe.running.Load() == true {
 		select {
 		case index = <-probe.cacheUpdaterChan:
-			logging.GetLogger().Debug("SFlowProbe request received: %d", index)
+			logging.GetLogger().Debugf("SFlowProbe request received: %d", index)
 
 			path := probe.lookupForProbePath(index)
 			if path != "" {
@@ -151,7 +151,7 @@ func (probe *SFlowProbe) Start() error {
 	}
 	conn, err := net.ListenUDP("udp", &addr)
 	if err != nil {
-		logging.GetLogger().Error("Unable to listen on port %d: %s", probe.Port, err.Error())
+		logging.GetLogger().Errorf("Unable to listen on port %d: %s", probe.Port, err.Error())
 		return err
 	}
 	defer conn.Close()
@@ -184,7 +184,7 @@ func (probe *SFlowProbe) Start() error {
 
 				flows := flow.FLowsFromSFlowSample(flowtable, &sample, probePath)
 
-				logging.GetLogger().Debug("%d flows captured at %v", len(flows), probePath)
+				logging.GetLogger().Debugf("%d flows captured at %v", len(flows), probePath)
 
 				flowtable.Update(flows)
 

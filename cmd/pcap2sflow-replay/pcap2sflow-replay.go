@@ -219,7 +219,7 @@ func sendPackets(conn *net.UDPConn, packets *[][]byte) {
 	_, err := conn.Write(sflowPacketData)
 	if err != nil {
 		if (NbSFlowMsgDropped % 1000) == 0 {
-			logging.GetLogger().Critical("PCAP2SFlow Agent connection issue : %s", err.Error())
+			logging.GetLogger().Criticalf("PCAP2SFlow Agent connection issue : %s", err.Error())
 		}
 		NbSFlowMsgDropped++
 	}
@@ -247,7 +247,7 @@ func AsyncProgressInfo() {
 		<-ticker.C
 		dpkts := NbPackets - oldNbPackets
 		oldNbPackets = NbPackets
-		logging.GetLogger().Debug("%d packets replayed, pps %d, NbSFlowMsgDropped %d", NbPackets, dpkts, NbSFlowMsgDropped)
+		logging.GetLogger().Debugf("%d packets replayed, pps %d, NbSFlowMsgDropped %d", NbPackets, dpkts, NbSFlowMsgDropped)
 	}
 }
 
@@ -267,7 +267,7 @@ func main() {
 		os.Exit(1)
 	}
 	if *pps < minPPS {
-		logging.GetLogger().Fatal("Minimal packet per seconds is ", minPPS)
+		logging.GetLogger().Fatal("Minimal packet per seconds is", minPPS)
 	}
 
 	sflowAgent := strings.Split(os.Args[len(os.Args)-1], ":")

@@ -80,7 +80,7 @@ func (mapper *NeutronMapper) retrievePort(mac string) (ports.Port, error) {
 }
 
 func (mapper *NeutronMapper) retrieveAttributes(mac string) Attributes {
-	logging.GetLogger().Debug("Retrieving attributes from Neutron for Mac: %s", mac)
+	logging.GetLogger().Debugf("Retrieving attributes from Neutron for Mac: %s", mac)
 
 	attrs := Attributes{}
 
@@ -115,7 +115,7 @@ func (mapper *NeutronMapper) cacheUpdater() {
 	for {
 		mac = <-mapper.cacheUpdaterChan
 
-		logging.GetLogger().Debug("Mac request received: %s", mac)
+		logging.GetLogger().Debugf("Mac request received: %s", mac)
 
 		attrs := mapper.retrieveAttributes(mac)
 		mapper.cache.Set(mac, attrs, cache.DefaultExpiration)

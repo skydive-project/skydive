@@ -112,7 +112,7 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 }
 
 func (o *OvsMonitor) bridgeUpdated(bridgeUUID string, row *libovsdb.RowUpdate) {
-	logging.GetLogger().Info("Bridge \"%s(%s)\" updated",
+	logging.GetLogger().Infof("Bridge \"%s(%s)\" updated",
 		row.New.Fields["name"], bridgeUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -123,7 +123,7 @@ func (o *OvsMonitor) bridgeUpdated(bridgeUUID string, row *libovsdb.RowUpdate) {
 func (o *OvsMonitor) bridgeAdded(bridgeUUID string, row *libovsdb.RowUpdate) {
 	o.bridgeCache[bridgeUUID] = bridgeUUID
 
-	logging.GetLogger().Info("New bridge \"%s(%s)\" added",
+	logging.GetLogger().Infof("New bridge \"%s(%s)\" added",
 		row.New.Fields["name"], bridgeUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -134,7 +134,7 @@ func (o *OvsMonitor) bridgeAdded(bridgeUUID string, row *libovsdb.RowUpdate) {
 func (o *OvsMonitor) bridgeDeleted(bridgeUUID string, row *libovsdb.RowUpdate) {
 	delete(o.bridgeCache, bridgeUUID)
 
-	logging.GetLogger().Info("Bridge \"%s(%s)\" got deleted",
+	logging.GetLogger().Infof("Bridge \"%s(%s)\" got deleted",
 		row.Old.Fields["name"], bridgeUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -163,7 +163,7 @@ func (o *OvsMonitor) bridgeUpdateHandler(updates *libovsdb.TableUpdate) {
 }
 
 func (o *OvsMonitor) interfaceUpdated(interfaceUUID string, row *libovsdb.RowUpdate) {
-	logging.GetLogger().Info("Interface \"%s(%s)\" updated",
+	logging.GetLogger().Infof("Interface \"%s(%s)\" updated",
 		row.New.Fields["name"], interfaceUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -174,7 +174,7 @@ func (o *OvsMonitor) interfaceUpdated(interfaceUUID string, row *libovsdb.RowUpd
 func (o *OvsMonitor) interfaceAdded(interfaceUUID string, row *libovsdb.RowUpdate) {
 	o.interfaceCache[interfaceUUID] = interfaceUUID
 
-	logging.GetLogger().Info("New interface \"%s(%s)\" added",
+	logging.GetLogger().Infof("New interface \"%s(%s)\" added",
 		row.New.Fields["name"], interfaceUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -185,7 +185,7 @@ func (o *OvsMonitor) interfaceAdded(interfaceUUID string, row *libovsdb.RowUpdat
 func (o *OvsMonitor) interfaceDeleted(interfaceUUID string, row *libovsdb.RowUpdate) {
 	delete(o.interfaceCache, interfaceUUID)
 
-	logging.GetLogger().Info("Interface \"%s(%s)\" got deleted",
+	logging.GetLogger().Infof("Interface \"%s(%s)\" got deleted",
 		row.Old.Fields["name"], interfaceUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -213,7 +213,7 @@ func (o *OvsMonitor) interfaceUpdateHandler(updates *libovsdb.TableUpdate) {
 }
 
 func (o *OvsMonitor) portUpdated(portUUID string, row *libovsdb.RowUpdate) {
-	logging.GetLogger().Info("Port \"%s(%s)\" updated",
+	logging.GetLogger().Infof("Port \"%s(%s)\" updated",
 		row.New.Fields["name"], portUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -224,7 +224,7 @@ func (o *OvsMonitor) portUpdated(portUUID string, row *libovsdb.RowUpdate) {
 func (o *OvsMonitor) portAdded(portUUID string, row *libovsdb.RowUpdate) {
 	o.portCache[portUUID] = portUUID
 
-	logging.GetLogger().Info("New port \"%s(%s)\" added",
+	logging.GetLogger().Infof("New port \"%s(%s)\" added",
 		row.New.Fields["name"], portUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -235,7 +235,7 @@ func (o *OvsMonitor) portAdded(portUUID string, row *libovsdb.RowUpdate) {
 func (o *OvsMonitor) portDeleted(portUUID string, row *libovsdb.RowUpdate) {
 	delete(o.portCache, portUUID)
 
-	logging.GetLogger().Info("Port \"%s(%s)\" got deleted",
+	logging.GetLogger().Infof("Port \"%s(%s)\" got deleted",
 		row.Old.Fields["name"], portUUID)
 
 	for _, handler := range o.MonitorHandlers {
@@ -371,7 +371,7 @@ func NewOvsMonitor(addr string, port int) *OvsMonitor {
 func NewOvsMonitorFromConfig() *OvsMonitor {
 	addr, port, err := config.GetHostPortAttributes("ovs", "ovsdb")
 	if err != nil {
-		logging.GetLogger().Error("Configuration error: %s", err.Error())
+		logging.GetLogger().Errorf("Configuration error: %s", err.Error())
 		return nil
 	}
 

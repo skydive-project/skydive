@@ -57,7 +57,7 @@ func (ft *FlowTable) Update(flows []*Flow) {
 		if !found {
 			ft.table[f.UUID] = f
 		} else if f.UUID != ft.table[f.UUID].UUID {
-			logging.GetLogger().Error("FlowTable Collision %s %s", f.UUID, ft.table[f.UUID].UUID)
+			logging.GetLogger().Errorf("FlowTable Collision %s %s", f.UUID, ft.table[f.UUID].UUID)
 		}
 	}
 	ft.lock.Unlock()
@@ -72,7 +72,7 @@ func (ft *FlowTable) expire(fn ExpireFunc, expire int64) {
 		fs := f.GetStatistics()
 		if fs.Last < expire {
 			duration := time.Duration(fs.Last - fs.Start)
-			logging.GetLogger().Debug("Expire flow %s Duration %v", f.UUID, duration)
+			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
 			/* Advise Clients */
 			fn(f)
 			delete(ft.table, key)
@@ -80,7 +80,7 @@ func (ft *FlowTable) expire(fn ExpireFunc, expire int64) {
 	}
 	flowTableSz := len(ft.table)
 	ft.lock.Unlock()
-	logging.GetLogger().Debug("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
+	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
 }
 
 func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {

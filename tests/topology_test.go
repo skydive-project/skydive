@@ -169,8 +169,8 @@ func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.C
 			return err
 		}
 
-		logging.GetLogger().Debug("%s", string(m))
-		logging.GetLogger().Debug("%s", g.String())
+		logging.GetLogger().Debugf("%s", string(m))
+		logging.GetLogger().Debugf("%s", g.String())
 
 		onChange(ws)
 	}

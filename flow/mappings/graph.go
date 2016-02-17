@@ -46,13 +46,13 @@ func (gfe *GraphFlowEnhancer) cacheUpdater() {
 	for {
 		mac = <-gfe.cacheUpdaterChan
 
-		logging.GetLogger().Debug("GraphFlowEnhancer request received: %s", mac)
+		logging.GetLogger().Debugf("GraphFlowEnhancer request received: %s", mac)
 
 		gfe.Graph.Lock()
 		intfs := gfe.Graph.LookupNodes(graph.Metadata{"MAC": mac})
 
 		if len(intfs) > 1 {
-			logging.GetLogger().Info("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
+			logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
 			continue
 		}
 

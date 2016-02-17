@@ -63,14 +63,14 @@ func getNetNSName(path string) string {
 func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 	name := getNetNSName(path)
 
-	logging.GetLogger().Debug("Starting NetLinkTopoUpdater for NetNS: %s", name)
+	logging.GetLogger().Debugf("Starting NetLinkTopoUpdater for NetNS: %s", name)
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
 	origns, err := netns.Get()
 	if err != nil {
-		logging.GetLogger().Error("Error while switching from root ns to %s: %s", name, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", name, err.Error())
 		return
 	}
 	defer origns.Close()
@@ -79,14 +79,14 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 
 	newns, err := netns.GetFromPath(path)
 	if err != nil {
-		logging.GetLogger().Error("Error while switching from root ns to %s: %s", name, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", name, err.Error())
 		return
 	}
 	defer newns.Close()
 
 	err = netns.Set(newns)
 	if err != nil {
-		logging.GetLogger().Error("Error while switching from root ns to %s: %s", name, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", name, err.Error())
 		return
 	}
 
@@ -104,7 +104,7 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 	nu.nlProbe = nil
 	nu.Unlock()
 
-	logging.GetLogger().Debug("NetLinkTopoUpdater stopped for NetNS: %s", name)
+	logging.GetLogger().Debugf("NetLinkTopoUpdater stopped for NetNS: %s", name)
 
 	netns.Set(origns)
 }
@@ -135,7 +135,7 @@ func (u *NetNSProbe) onNetNsCreated(path string) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	logging.GetLogger().Debug("Network Namespace added: %s", name)
+	logging.GetLogger().Debugf("Network Namespace added: %s", name)
 	n := u.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "Type": "netns"})
 	u.Graph.Link(u.Root, n)
 
@@ -150,7 +150,7 @@ func (u *NetNSProbe) onNetNsCreated(path string) {
 func (u *NetNSProbe) onNetNsDeleted(path string) {
 	name := getNetNSName(path)
 
-	logging.GetLogger().Debug("Network Namespace deleted: %s", name)
+	logging.GetLogger().Debugf("Network Namespace deleted: %s", name)
 
 	nu, ok := u.nsnlProbes[name]
 	if !ok {
@@ -184,7 +184,7 @@ func (u *NetNSProbe) start() {
 
 	watcher, err := inotify.NewWatcher()
 	if err != nil {
-		logging.GetLogger().Error("Unable to create a new Watcher: %s", err.Error())
+		logging.GetLogger().Errorf("Unable to create a new Watcher: %s", err.Error())
 		return
 	}
 
@@ -199,7 +199,7 @@ func (u *NetNSProbe) start() {
 
 	err = watcher.Watch(runBaseDir)
 	if err != nil {
-		logging.GetLogger().Error("Unable to Watch %s: %s", runBaseDir, err.Error())
+		logging.GetLogger().Errorf("Unable to Watch %s: %s", runBaseDir, err.Error())
 		return
 	}
 
@@ -216,7 +216,7 @@ func (u *NetNSProbe) start() {
 			}
 
 		case err := <-watcher.Error:
-			logging.GetLogger().Error("Error while watching network namespace: %s", err.Error())
+			logging.GetLogger().Errorf("Error while watching network namespace: %s", err.Error())
 		}
 	}
 }

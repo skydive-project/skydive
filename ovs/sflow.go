@@ -157,14 +157,14 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbe(monitor *OvsMonitor, probe SF
 	if probeUUID != "" {
 		uuid = libovsdb.UUID{probeUUID}
 
-		logging.GetLogger().Info("Using already registered sFlow probe \"%s(%s)\"", probe.ID, uuid)
+		logging.GetLogger().Infof("Using already registered sFlow probe \"%s(%s)\"", probe.ID, uuid)
 	} else {
 		insertOp, err := newInsertSFlowProbeOP(probe)
 		if err != nil {
 			return err
 		}
 		uuid = libovsdb.UUID{insertOp.UUIDName}
-		logging.GetLogger().Info("Registering new sFlow probe \"%s(%s)\"", probe.ID, uuid)
+		logging.GetLogger().Infof("Registering new sFlow probe \"%s(%s)\"", probe.ID, uuid)
 
 		operations = append(operations, *insertOp)
 	}
@@ -200,7 +200,7 @@ func (o *OvsSFlowProbesHandler) registerProbes(monitor *OvsMonitor, bridgeUUID s
 	for _, probe := range o.probes {
 		err := o.registerProbe(monitor, probe, bridgeUUID)
 		if err != nil {
-			logging.GetLogger().Error("Error while registering probe %s", err.Error())
+			logging.GetLogger().Errorf("Error while registering probe %s", err.Error())
 		}
 	}
 }
