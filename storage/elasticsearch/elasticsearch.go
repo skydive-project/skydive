@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 
@@ -154,7 +155,7 @@ func (c *ElasticSearchStorage) Close() {
 func New() (*ElasticSearchStorage, error) {
 	c := elastigo.NewConn()
 
-	elasticonfig := config.GetConfig().Section("storage").Key("elasticsearch").Strings(":")
+	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch"), ":")
 	if len(elasticonfig) != 2 {
 		return nil, ErrBadConfig
 	}

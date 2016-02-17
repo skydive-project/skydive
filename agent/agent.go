@@ -74,7 +74,7 @@ func (a *Agent) Start() {
 
 	a.OvsMon.AddMonitorHandler(sflowHandler)
 
-	analyzers := config.GetConfig().Section("agent").Key("analyzers").Strings(",")
+	analyzers := config.GetConfig().GetStringSlice("agent.analyzers")
 	// TODO(safchain) HA Connection ???
 	if len(analyzers) > 0 {
 		analyzerAddr := strings.Split(analyzers[0], ":")[0]

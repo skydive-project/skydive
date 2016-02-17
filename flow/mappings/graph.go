@@ -105,15 +105,10 @@ func NewGraphFlowEnhancer(g *graph.Graph) (*GraphFlowEnhancer, error) {
 		Graph: g,
 	}
 
-	expire, err := config.GetConfig().Section("cache").Key("expire").Int()
-	if err != nil {
-		return nil, err
-	}
-	cleanup, err := config.GetConfig().Section("cache").Key("cleanup").Int()
-	if err != nil {
-		return nil, err
-	}
+	expire := config.GetConfig().GetInt("cache.expire")
+	cleanup := config.GetConfig().GetInt("cache.cleanup")
 	mapper.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
+
 	mapper.cacheUpdaterChan = make(chan string, 200)
 	go mapper.cacheUpdater()
 

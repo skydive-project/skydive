@@ -37,23 +37,22 @@ import (
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-const confTopology = `
-[default]
-ws_pong_timeout = 1
+const confTopology = `---
+ws_pong_timeout: 1
 
-[agent]
-listen = 58081
-flowtable_expire = 5
+agent:
+  listen: 58081
+  flowtable_expire: 5
 
-[cache]
-expire = 300
-cleanup = 30
+cache:
+  expire: 300
+  cleanup: 30
 
-[sflow]
-listen = 55000
+sflow:
+  listen: 55000
 
-[ovs]
-ovsdb = 6400
+ovs:
+  ovsdb: 6400
 `
 
 func newClient() (*websocket.Conn, error) {

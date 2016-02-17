@@ -25,30 +25,79 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 
-	"gopkg.in/ini.v1"
+	"github.com/spf13/viper"
 )
 
-var cfg *ini.File
+var cfg *viper.Viper
 
-func InitConfigFromFile(filename string) error {
-	var err error
+func init() {
+	cfg = viper.New()
+	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
+	cfg.SetDefault("agent.flowtable_expire", 10)
+	cfg.SetDefault("ovs.ovsdb", "127.0.0.1:6400")
+	cfg.SetDefault("graph.backend", "memory")
+	cfg.SetDefault("graph.gremlin", "127.0.0.1:8182")
+	cfg.SetDefault("sflow.listen", "127.0.0.1:6345")
+	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
+	cfg.SetDefault("analyzer.flowtable_expire", 10)
+	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
+	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
+	cfg.SetDefault("ws_pong_timeout", 5)
+}
 
-	cfg, err = ini.Load(filename)
-	if err != nil {
+func checkStrictPositive(key string) error {
+	if value := cfg.GetInt(key); value < 1 {
+		return fmt.Errorf("invalid value for %s (%d)", value)
+	}
+
+	return nil
+}
+
+func checkConfig() error {
+	if err := checkStrictPositive("agent.flowtable_expire"); err != nil {
+		return err
+	}
+
+	if err := checkStrictPositive("analyzer.flowtable_expire"); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func GetConfig() *ini.File {
+func InitConfigFromFile(filename string) error {
+	configFile, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+
+	cfg.SetConfigType("yaml")
+	if err := cfg.ReadConfig(configFile); err != nil {
+		return err
+	}
+
+	if err := checkConfig(); err != nil {
+		return nil
+	}
+
+	return nil
+}
+
+func GetConfig() *viper.Viper {
 	return cfg
 }
 
+func SetDefault(key string, value interface{}) {
+	cfg.SetDefault(key, value)
+}
+
 func GetHostPortAttributes(s string, p string) (string, int, error) {
-	listen := GetConfig().Section(s).Key(p).Strings(":")
+	key := s + "." + p
+	listen := strings.Split(GetConfig().GetString(key), ":")
 
 	addr := "127.0.0.1"
 

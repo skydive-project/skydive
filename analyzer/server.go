@@ -24,6 +24,7 @@ package analyzer
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -285,9 +286,10 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 	}
 	server.RegisterStaticEndpoints()
 	server.RegisterRPCEndpoints()
-	cfgFlowtable_expire, err := config.GetConfig().Section("analyzer").Key("flowtable_expire").Int()
-	if err != nil || cfgFlowtable_expire < 1 {
-		logging.GetLogger().Error("Config flowTable_expire invalid value ", cfgFlowtable_expire, err.Error())
+	cfgFlowtable_expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
+	if cfgFlowtable_expire < 1 {
+		err = fmt.Errorf("Config flowTable_expire invalid value: %d", cfgFlowtable_expire)
+		logging.GetLogger().Error(err.Error())
 		return nil, err
 	}
 	go flowtable.AsyncExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
@@ -299,6 +301,7 @@ func NewServerFromConfig(router *mux.Router) (*Server, error) {
 	addr, port, err := config.GetHostPortAttributes("analyzer", "listen")
 	if err != nil {
 		logging.GetLogger().Error("Configuration error: %s", err.Error())
+		return nil, err
 	}
 
 	return NewServer(addr, port, router)

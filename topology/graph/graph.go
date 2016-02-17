@@ -27,6 +27,7 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/nu7hatch/gouuid"
@@ -518,7 +519,7 @@ func NewGraph(b GraphBackend) (*Graph, error) {
 }
 
 func BackendFromConfig() (GraphBackend, error) {
-	backend := config.GetConfig().Section("graph").Key("backend").String()
+	backend := config.GetConfig().GetString("graph.backend")
 	if len(backend) == 0 {
 		backend = "memory"
 	}
@@ -527,7 +528,7 @@ func BackendFromConfig() (GraphBackend, error) {
 	case "memory":
 		return NewMemoryBackend()
 	case "gremlin":
-		gremlin := config.GetConfig().Section("graph").Key("gremlin").Strings(":")
+		gremlin := strings.Split(config.GetConfig().GetString("graph.gremlin"), ":")
 		if len(gremlin) != 2 {
 			return nil, errors.New("Config file is misconfigured, gremlin host:ip error")
 		}

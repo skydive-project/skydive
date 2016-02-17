@@ -35,9 +35,8 @@ import (
 )
 
 const (
-	defaultPongWait = 5
-	writeWait       = 10 * time.Second
-	maxMessageSize  = 1024 * 1024
+	writeWait      = 10 * time.Second
+	maxMessageSize = 1024 * 1024
 )
 
 type Server struct {
@@ -371,7 +370,7 @@ func NewServer(g *Graph, a *Alert, router *mux.Router, pongWait time.Duration) *
 }
 
 func NewServerFromConfig(g *Graph, a *Alert, router *mux.Router) (*Server, error) {
-	w := config.GetConfig().Section("default").Key("ws_pong_timeout").MustInt(defaultPongWait)
+	w := config.GetConfig().GetInt("ws_pong_timeout")
 
 	return NewServer(g, a, router, time.Duration(w)*time.Second), nil
 }
