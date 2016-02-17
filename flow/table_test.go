@@ -30,7 +30,8 @@ import (
 	"time"
 
 	"encoding/json"
-	j "github.com/gima/jsonv/src"
+
+	v "github.com/gima/govalid/v1"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -240,22 +241,23 @@ func TestFlowTable_JSONFlowConversationEthernetPath(t *testing.T) {
 		t.Error("stat should not be empty")
 	}
 
-	decoded := new(interface{})
-	if err := json.Unmarshal([]byte(statStr), decoded); err != nil {
+	var decoded interface{}
+	if err := json.Unmarshal([]byte(statStr), &decoded); err != nil {
 		t.Error("JSON parsing failed:", err)
 	}
 
-	schema := &j.Object{Properties: []j.ObjectItem{
-		{"nodes", &j.Array{Each: &j.Object{Properties: []j.ObjectItem{
-			{"name", &j.String{MinLen: 1}},
-			{"group", &j.Number{Min: 0, Max: 20}}}}},
-		},
-		{"links", &j.Array{Each: &j.Object{Properties: []j.ObjectItem{
-			{"source", &j.Number{Min: 0, Max: 20}},
-			{"target", &j.Number{Min: 0, Max: 20}},
-			{"value", &j.Number{Min: 0, Max: 9999}}}}},
-		},
-	}}
+	schema := v.Object(
+		v.ObjKV("nodes", v.Array(v.ArrEach(v.Object(
+			v.ObjKV("name", v.String(v.StrMin(1))),
+			v.ObjKV("group", v.Number(v.NumMin(0), v.NumMax(20))),
+		)))),
+		v.ObjKV("links", v.Array(v.ArrEach(v.Object(
+			v.ObjKV("source", v.Number(v.NumMin(0), v.NumMax(20))),
+			v.ObjKV("target", v.Number(v.NumMin(0), v.NumMax(20))),
+			v.ObjKV("value", v.Number(v.NumMin(0), v.NumMax(9999))),
+		)))),
+	)
+
 	if path, err := schema.Validate(decoded); err != nil {
 		t.Errorf("Failed (%s). Path: %s", err, path)
 	}
