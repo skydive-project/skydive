@@ -129,20 +129,20 @@
             var Node = function(ID) {
                 this.ID = ID;
                 this.Host = '';
-                this.Metadatas = {};
+                this.Metadata = {};
                 this.Edges = {};
             }
             var alerts = {};
 
             Node.prototype.Type = function() {
-                if ("Type" in this.Metadatas)
-                    return this.Metadatas["Type"];
+                if ("Type" in this.Metadata)
+                    return this.Metadata["Type"];
                 return "";
             }
 
             Node.prototype.Name = function() {
-                if ("Name" in this.Metadatas)
-                    return this.Metadatas["Name"];
+                if ("Name" in this.Metadata)
+                    return this.Metadata["Name"];
                 return "";
             }
 
@@ -182,12 +182,12 @@
                 this.Host = '';
                 this.Parent = '';
                 this.Child = '';
-                this.Metadatas = {};
+                this.Metadata = {};
             }
 
             Edge.prototype.Type = function() {
-                if ("Type" in this.Metadatas)
-                    return this.Metadatas["Type"];
+                if ("Type" in this.Metadata)
+                    return this.Metadata["Type"];
                 return "";
             }
 
@@ -250,8 +250,8 @@
                     var n = g.Nodes[i];
 
                     var node = this.NewNode(n.ID);
-                    if ("Metadatas" in n)
-                        node.Metadatas = n["Metadatas"];
+                    if ("Metadata" in n)
+                        node.Metadata = n["Metadata"];
                     node.Host = n["Host"];
                 }
 
@@ -263,8 +263,8 @@
 
                     var edge = this.NewEdge(e.ID, parent, child);
 
-                    if ("Metadatas" in e)
-                        edge.Metadatas = e["Metadatas"];
+                    if ("Metadata" in e)
+                        edge.Metadata = e["Metadata"];
                     edge.Host = e["Host"];
                 }
             }
@@ -329,12 +329,12 @@
             HostLayout.prototype.NodeDetails = function(node) {
                 var details = '<table><tr><th colspan="2">' + node.ID + '</th></tr>';
 
-                if ("MAC" in node.Metadatas && node.Metadatas["MAC"])
-                    details += '<tr><td><strong>MAC</strong>:</td> <td>' + node.Metadatas["MAC"] +'</td></tr>';
+                if ("MAC" in node.Metadata && node.Metadata["MAC"])
+                    details += '<tr><td><strong>MAC</strong>:</td> <td>' + node.Metadata["MAC"] +'</td></tr>';
 
-                for (var k in node.Metadatas) {
+                for (var k in node.Metadata) {
                     if (k != "MAC")
-                        details += '<tr><td>' + k + ':</td> <td>' + node.Metadatas[k] + "</td></tr>";
+                        details += '<tr><td>' + k + ':</td> <td>' + node.Metadata[k] + "</td></tr>";
                 }
 
                 details += '<tr><th colspan="2">';
@@ -474,10 +474,10 @@
                 if (d.ID in alerts)
                     return "alert"
                     
-                if (d.Metadatas["State"] == "DOWN")
+                if (d.Metadata["State"] == "DOWN")
                     return "down";
 
-                switch(d.Metadatas["Type"]) {
+                switch(d.Metadata["Type"]) {
                     case "ovsbridge":
                         return "ovsbridge";
                     case "ovsport":
@@ -488,7 +488,7 @@
             }
 
             HostLayout.prototype.CircleOpacity = function(d) {
-                if (d.Metadatas["Type"] == "netns")
+                if (d.Metadata["Type"] == "netns")
                     return 0.0;
                 return 1.0;
             }
@@ -497,15 +497,15 @@
                 var parent = d.source;
                 var child = d.target;
 
-                if (parent.Metadatas["Type"] == "netns" ||
-                    child.Metadatas["Type"] == "netns")
+                if (parent.Metadata["Type"] == "netns" ||
+                    child.Metadata["Type"] == "netns")
                     return 0.0;
 
                 return 1.0;
             }
 
             HostLayout.prototype.NodePicto = function(d) {
-                switch(d.Metadatas["Type"]) {
+                switch(d.Metadata["Type"]) {
                     case "ovsport":
                         return portImg;
                     case "bridge":
@@ -840,15 +840,15 @@
 
                     case "NodeUpdated":
                         var node = this.graph.GetNode(msg.Obj.ID);
-                        node.Metadatas = msg.Obj.Metadatas;
+                        node.Metadata = msg.Obj.Metadata;
 
                         this.Redraw();
                         break;
 
                     case "NodeAdded":
                         var node = this.graph.NewNode(msg.Obj.ID, msg.Obj.Host);
-                        if ("Metadatas" in msg.Obj)
-                            node.Metadatas = msg.Obj.Metadatas;
+                        if ("Metadata" in msg.Obj)
+                            node.Metadata = msg.Obj.Metadata;
 
                         this.AddNode(node);
                         break;
@@ -864,7 +864,7 @@
 
                     case "EdgeUpdated":
                         var edge = this.graph.GetEdge(msg.Obj.ID);
-                        edge.Metadatas = msg.Obj.Metadatas;
+                        edge.Metadata = msg.Obj.Metadata;
 
                         this.Redraw();
                         break;
@@ -874,8 +874,8 @@
                         var child = this.graph.GetNode(msg.Obj.Child);
 
                         var edge = this.graph.NewEdge(msg.Obj.ID, parent, child, msg.Obj.Host);
-                        if ("Metadatas" in msg.Obj)
-                            edge.Metadatas = msg.Obj.Metadatas;
+                        if ("Metadata" in msg.Obj)
+                            edge.Metadata = msg.Obj.Metadata;
 
                         this.AddEdge(edge);
                         break;

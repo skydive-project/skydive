@@ -52,7 +52,7 @@ func toPropertiesString(e graphElement) ([]byte, error) {
 	properties := map[string]interface{}{
 		"_ID": string(e.ID),
 	}
-	for k, v := range e.metadatas {
+	for k, v := range e.metadata {
 		if k == "_ID" {
 			return nil, errors.New("_ID is a reserved value, can not be overridden by metadata")
 		}
@@ -72,8 +72,8 @@ func gremElementID(e gremlin.GremlinElement) Identifier {
 func gremElementToNode(e gremlin.GremlinElement) *Node {
 	return &Node{
 		graphElement: graphElement{
-			ID:        gremElementID(e),
-			metadatas: gremElementMetadata(e),
+			ID:       gremElementID(e),
+			metadata: gremElementMetadata(e),
 		},
 	}
 }
@@ -81,14 +81,14 @@ func gremElementToNode(e gremlin.GremlinElement) *Node {
 func gremElementToEdge(e gremlin.GremlinElement) *Edge {
 	return &Edge{
 		graphElement: graphElement{
-			ID:        gremElementID(e),
-			metadatas: gremElementMetadata(e),
+			ID:       gremElementID(e),
+			metadata: gremElementMetadata(e),
 		},
 	}
 }
 
-func gremElementMetadata(e gremlin.GremlinElement) Metadatas {
-	m := Metadatas{}
+func gremElementMetadata(e gremlin.GremlinElement) Metadata {
+	m := Metadata{}
 	for k, v := range e.Properties {
 		if k != "_ID" {
 			switch v[0].Value.(type) {
@@ -102,7 +102,7 @@ func gremElementMetadata(e gremlin.GremlinElement) Metadatas {
 	return m
 }
 
-func (g GremlinBackend) SetMetadatas(i interface{}, meta Metadatas) bool {
+func (g GremlinBackend) SetMetadata(i interface{}, meta Metadata) bool {
 	var e graphElement
 	var elType string
 
@@ -157,7 +157,7 @@ func (g GremlinBackend) SetMetadatas(i interface{}, meta Metadatas) bool {
 	return true
 }
 
-func (g GremlinBackend) SetMetadata(i interface{}, k string, v interface{}) bool {
+func (g GremlinBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
 	var e graphElement
 	var elType string
 

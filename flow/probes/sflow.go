@@ -69,20 +69,20 @@ func (probe *SFlowProbe) lookupForProbePath(index int64) string {
 	probe.Graph.Lock()
 	defer probe.Graph.Unlock()
 
-	intfs := probe.Graph.LookupNodes(graph.Metadatas{"IfIndex": index})
+	intfs := probe.Graph.LookupNodes(graph.Metadata{"IfIndex": index})
 	if len(intfs) == 0 {
 		return ""
 	}
 
 	// lookup for the interface that is a part of an ovs bridge
 	for _, intf := range intfs {
-		ancestors, ok := probe.Graph.GetAncestorsTo(intf, graph.Metadatas{"Type": "ovsbridge"})
+		ancestors, ok := probe.Graph.GetAncestorsTo(intf, graph.Metadata{"Type": "ovsbridge"})
 		if !ok {
 			continue
 		}
 
 		bridge := ancestors[2]
-		ancestors, ok = probe.Graph.GetAncestorsTo(bridge, graph.Metadatas{"Type": "host"})
+		ancestors, ok = probe.Graph.GetAncestorsTo(bridge, graph.Metadata{"Type": "host"})
 		if !ok {
 			continue
 		}
@@ -92,7 +92,7 @@ func (probe *SFlowProbe) lookupForProbePath(index int64) string {
 			if len(path) > 0 {
 				path += "/"
 			}
-			path += ancestors[i].Metadatas()["Name"].(string)
+			path += ancestors[i].Metadata()["Name"].(string)
 		}
 
 		return path

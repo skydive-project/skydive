@@ -107,7 +107,7 @@ func (c *WSClient) processGraphMessage(m []byte) {
 		n := msg.Obj.(*Node)
 		node := g.GetNode(n.ID)
 		if node != nil {
-			g.SetMetadatas(node, n.metadatas)
+			g.SetMetadata(node, n.metadata)
 		}
 	case "NodeDeleted":
 		g.DelNode(msg.Obj.(*Node))
@@ -120,7 +120,7 @@ func (c *WSClient) processGraphMessage(m []byte) {
 		e := msg.Obj.(*Edge)
 		edge := g.GetEdge(e.ID)
 		if edge != nil {
-			g.SetMetadatas(edge, e.metadatas)
+			g.SetMetadata(edge, e.metadata)
 		}
 	case "EdgeDeleted":
 		g.DelEdge(msg.Obj.(*Edge))
