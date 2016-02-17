@@ -110,7 +110,7 @@
 		},
 		{
 			"ImportPath": "github.com/op/go-logging",
-			"Rev": "e8d5414f0947014548c2334044a0fac13187dfee"
+			"Rev": "d2e44aa77b7195c0ef782189985dd8550e22e4de"
 		},
 		{
 			"ImportPath": "github.com/pmylund/go-cache",
