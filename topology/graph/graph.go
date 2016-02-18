@@ -228,6 +228,14 @@ func (g *Graph) LookupParentNodes(n *Node, f Metadata) []*Node {
 	return parents
 }
 
+func (g *Graph) LookupFirstChild(n *Node, f Metadata) *Node {
+	nodes := g.LookupChildren(n, f)
+	if len(nodes) > 0 {
+		return nodes[0]
+	}
+	return nil
+}
+
 func (g *Graph) LookupChildren(n *Node, f Metadata) []*Node {
 	children := []*Node{}
 

@@ -204,7 +204,7 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []helper.Cmd, onChange func
 	}
 }
 
-func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, ints []string) {
+func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, intfs []string) {
 	// cleanup side on the test
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -213,7 +213,7 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, ints []string)
 
 		if !testPassed {
 			clean := true
-			for _, intf := range ints {
+			for _, intf := range intfs {
 				n := g.LookupFirstNode(graph.Metadata{"Name": intf})
 				if n != nil {
 					clean = false
@@ -533,4 +533,48 @@ func TestBridge(t *testing.T) {
 	}
 
 	testCleanup(t, g, tearDownCmds, []string{"br-test", "intf1"})
+}
+
+func TestMacNameUpdate(t *testing.T) {
+	g := newGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	setupCmds := []helper.Cmd{
+		{"ip l add vm1-veth0 type veth peer name vm1-veth1", true},
+		{"ip l set vm1-veth1 name vm1-veth2", true},
+		{"ip l set vm1-veth2 address 00:00:00:00:00:aa", true},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip link del vm1-veth0", true},
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
+			node := g.LookupFirstNode(graph.Metadata{"Name": "vm1-veth2"})
+			if node == nil {
+				return
+			}
+			if mac, ok := node.Metadata()["MAC"]; ok && mac == "00:00:00:00:00:aa" {
+				if g.LookupFirstNode(graph.Metadata{"Name": "vm1-veth1"}) == nil {
+					testPassed = true
+
+					ws.Close()
+				}
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"vm1-veth0", "vm1-veth1", "vm1-veth2"})
 }
