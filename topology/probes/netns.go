@@ -136,7 +136,7 @@ func (u *NetNSProbe) onNetNsCreated(path string) {
 	defer u.Graph.Unlock()
 
 	logging.GetLogger().Debug("Network Namespace added: %s", name)
-	n := u.Graph.NewNode(graph.GenID(), graph.Metadatas{"Name": name, "Type": "netns"})
+	n := u.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "Type": "netns"})
 	u.Graph.Link(u.Root, n)
 
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
