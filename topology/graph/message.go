@@ -59,9 +59,9 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 	}
 
 	ID := Identifier(objMap["ID"].(string))
-	metadatas := make(Metadatas)
-	if m, ok := objMap["Metadatas"]; ok {
-		metadatas = Metadatas(m.(map[string]interface{}))
+	metadata := make(Metadata)
+	if m, ok := objMap["Metadata"]; ok {
+		metadata = Metadata(m.(map[string]interface{}))
 	}
 
 	host := objMap["Host"].(string)
@@ -75,15 +75,15 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 	case "NodeDeleted":
 		fallthrough
 	case "NodeAdded":
-		if m, ok := objMap["Metadatas"]; ok {
-			metadatas = Metadatas(m.(map[string]interface{}))
+		if m, ok := objMap["Metadata"]; ok {
+			metadata = Metadata(m.(map[string]interface{}))
 		}
 
 		msg.Obj = &Node{
 			graphElement: graphElement{
-				ID:        ID,
-				metadatas: metadatas,
-				host:      host,
+				ID:       ID,
+				metadata: metadata,
+				host:     host,
 			},
 		}
 	case "EdgeUpdated":
@@ -96,9 +96,9 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 
 		msg.Obj = &Edge{
 			graphElement: graphElement{
-				ID:        ID,
-				metadatas: metadatas,
-				host:      host,
+				ID:       ID,
+				metadata: metadata,
+				host:     host,
 			},
 			parent: parent,
 			child:  child,

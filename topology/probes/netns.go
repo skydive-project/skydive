@@ -161,7 +161,7 @@ func (u *NetNSProbe) onNetNsDeleted(path string) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	children := nu.Graph.LookupChildren(nu.Root, graph.Metadatas{})
+	children := nu.Graph.LookupChildren(nu.Root, graph.Metadata{})
 	for _, child := range children {
 		u.Graph.DelNode(child)
 	}

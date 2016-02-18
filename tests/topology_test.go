@@ -124,7 +124,7 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 		n := msg.Obj.(*graph.Node)
 		node := g.GetNode(n.ID)
 		if node != nil {
-			g.SetMetadatas(node, n.Metadatas())
+			g.SetMetadata(node, n.Metadata())
 		}
 	case "NodeDeleted":
 		g.DelNode(msg.Obj.(*graph.Node))
@@ -137,7 +137,7 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 		e := msg.Obj.(*graph.Edge)
 		edge := g.GetEdge(e.ID)
 		if edge != nil {
-			g.SetMetadatas(edge, e.Metadatas())
+			g.SetMetadata(edge, e.Metadata())
 		}
 	case "EdgeDeleted":
 		g.DelEdge(msg.Obj.(*graph.Edge))
@@ -214,7 +214,7 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, ints []string)
 		if !testPassed {
 			clean := true
 			for _, intf := range ints {
-				n := g.LookupFirstNode(graph.Metadatas{"Name": intf})
+				n := g.LookupFirstNode(graph.Metadata{"Name": intf})
 				if n != nil {
 					clean = false
 					break
@@ -269,20 +269,20 @@ func TestBridgeOVS(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed && len(g.GetNodes()) >= 3 && len(g.GetEdges()) >= 2 {
-			ovsbridge := g.LookupFirstNode(graph.Metadatas{"Type": "ovsbridge", "Name": "br-test1"})
+			ovsbridge := g.LookupFirstNode(graph.Metadata{"Type": "ovsbridge", "Name": "br-test1"})
 			if ovsbridge == nil {
 				return
 			}
-			ovsports := g.LookupChildren(ovsbridge, graph.Metadatas{"Type": "ovsport"})
+			ovsports := g.LookupChildren(ovsbridge, graph.Metadata{"Type": "ovsport"})
 			if len(ovsports) != 1 {
 				return
 			}
-			devices := g.LookupChildren(ovsports[0], graph.Metadatas{"Type": "internal", "Driver": "openvswitch"})
+			devices := g.LookupChildren(ovsports[0], graph.Metadata{"Type": "internal", "Driver": "openvswitch"})
 			if len(devices) != 1 {
 				return
 			}
 
-			if ovsbridge.Metadatas()["Host"] == "" || ovsports[0].Metadatas()["Host"] == "" || devices[0].Metadatas()["Host"] == "" {
+			if ovsbridge.Metadata()["Host"] == "" || ovsports[0].Metadata()["Host"] == "" || devices[0].Metadata()["Host"] == "" {
 				return
 			}
 
@@ -326,12 +326,12 @@ func TestPatchOVS(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed && len(g.GetNodes()) >= 10 && len(g.GetEdges()) >= 9 {
-			patch1 := g.LookupFirstNode(graph.Metadatas{"Type": "patch", "Name": "patch-br-test1", "Driver": "openvswitch"})
+			patch1 := g.LookupFirstNode(graph.Metadata{"Type": "patch", "Name": "patch-br-test1", "Driver": "openvswitch"})
 			if patch1 == nil {
 				return
 			}
 
-			patch2 := g.LookupFirstNode(graph.Metadatas{"Type": "patch", "Name": "patch-br-test2", "Driver": "openvswitch"})
+			patch2 := g.LookupFirstNode(graph.Metadata{"Type": "patch", "Name": "patch-br-test2", "Driver": "openvswitch"})
 			if patch2 == nil {
 				return
 			}
@@ -375,17 +375,17 @@ func TestInterfaceOVS(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed && len(g.GetNodes()) >= 5 && len(g.GetEdges()) >= 4 {
-			intf := g.LookupFirstNode(graph.Metadatas{"Type": "internal", "Name": "intf1", "Driver": "openvswitch"})
+			intf := g.LookupFirstNode(graph.Metadata{"Type": "internal", "Name": "intf1", "Driver": "openvswitch"})
 			if intf != nil {
-				if _, ok := intf.Metadatas()["UUID"]; ok {
+				if _, ok := intf.Metadata()["UUID"]; ok {
 					// check we don't have another interface potentially added by netlink
 					// should only have ovsport and interface
-					others := g.LookupNodes(graph.Metadatas{"Name": "intf1"})
+					others := g.LookupNodes(graph.Metadata{"Name": "intf1"})
 					if len(others) > 2 {
 						return
 					}
 
-					if _, ok := intf.Metadatas()["MAC"]; !ok {
+					if _, ok := intf.Metadata()["MAC"]; !ok {
 						return
 					}
 
@@ -430,7 +430,7 @@ func TestBondOVS(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed && len(g.GetNodes()) >= 6 && len(g.GetEdges()) >= 5 {
-			bond := g.LookupFirstNode(graph.Metadatas{"Type": "ovsport", "Name": "bond0"})
+			bond := g.LookupFirstNode(graph.Metadata{"Type": "ovsport", "Name": "bond0"})
 			if bond != nil {
 				intfs := g.LookupChildren(bond, nil)
 				if len(intfs) != 2 {
@@ -472,7 +472,7 @@ func TestVeth(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
-			nodes := g.LookupNodes(graph.Metadatas{"Type": "veth"})
+			nodes := g.LookupNodes(graph.Metadata{"Type": "veth"})
 			if len(nodes) == 2 {
 				if g.AreLinked(nodes[0], nodes[1]) {
 					testPassed = true
@@ -514,9 +514,9 @@ func TestBridge(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
-			bridge := g.LookupFirstNode(graph.Metadatas{"Type": "bridge", "Name": "br-test"})
+			bridge := g.LookupFirstNode(graph.Metadata{"Type": "bridge", "Name": "br-test"})
 			if bridge != nil {
-				nodes := g.LookupChildren(bridge, graph.Metadatas{"Name": "intf1"})
+				nodes := g.LookupChildren(bridge, graph.Metadata{"Name": "intf1"})
 				if len(nodes) == 1 {
 					testPassed = true
 

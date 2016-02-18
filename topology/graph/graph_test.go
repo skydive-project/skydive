@@ -43,8 +43,8 @@ func newGraph(t *testing.T) *Graph {
 func TestLinks(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadatas{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadatas{"Value": 2, "Type": "intf"})
+	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 
 	g.NewEdge(GenID(), n1, n2, nil)
 	if !g.AreLinked(n1, n2) {
@@ -70,10 +70,10 @@ func TestLinks(t *testing.T) {
 func TestBasicLookup(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadatas{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadatas{"Value": 2, "Type": "intf"})
-	n3 := g.NewNode(GenID(), Metadatas{"Value": 3})
-	n4 := g.NewNode(GenID(), Metadatas{"Value": 4, "Name": "Node4"})
+	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
+	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
 	g.NewEdge(GenID(), n1, n2, nil)
 	g.NewEdge(GenID(), n2, n3, nil)
@@ -83,11 +83,11 @@ func TestBasicLookup(t *testing.T) {
 		t.Error("Wrong node returned")
 	}
 
-	if n1.ID != g.LookupFirstNode(Metadatas{"Value": 1}).ID {
+	if n1.ID != g.LookupFirstNode(Metadata{"Value": 1}).ID {
 		t.Error("Wrong node returned")
 	}
 
-	r := g.LookupNodes(Metadatas{"Type": "intf"})
+	r := g.LookupNodes(Metadata{"Type": "intf"})
 	if len(r) != 2 {
 		t.Error("Wrong number of nodes returned")
 	}
@@ -113,10 +113,10 @@ func TestBasicLookup(t *testing.T) {
 func TestHierarchyLookup(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadatas{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadatas{"Value": 2, "Type": "intf"})
-	n3 := g.NewNode(GenID(), Metadatas{"Value": 3})
-	n4 := g.NewNode(GenID(), Metadatas{"Value": 4, "Name": "Node4"})
+	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
+	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
 	g.Link(n1, n2)
 	g.Link(n2, n3)
@@ -134,7 +134,7 @@ func TestHierarchyLookup(t *testing.T) {
 		}
 	}
 
-	r = g.LookupParentNodes(n4, Metadatas{"Type": "intf"})
+	r = g.LookupParentNodes(n4, Metadata{"Type": "intf"})
 	if len(r) != 1 {
 		t.Error("Wrong number of nodes returned")
 	}
@@ -153,7 +153,7 @@ func TestHierarchyLookup(t *testing.T) {
 		}
 	}
 
-	r = g.LookupChildren(n2, Metadatas{"Name": "Node4"})
+	r = g.LookupChildren(n2, Metadata{"Name": "Node4"})
 	if len(r) != 1 {
 		t.Error("Wrong number of nodes returned")
 	}
@@ -166,16 +166,16 @@ func TestHierarchyLookup(t *testing.T) {
 func TestPath(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadatas{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadatas{"Value": 2, "Type": "intf"})
-	n3 := g.NewNode(GenID(), Metadatas{"Value": 3})
-	n4 := g.NewNode(GenID(), Metadatas{"Value": 4, "Name": "Node4"})
+	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
+	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
 	g.Link(n1, n2)
 	g.Link(n2, n3)
 	g.Link(n3, n4)
 
-	r, ok := g.GetAncestorsTo(n4, Metadatas{"Value": 1})
+	r, ok := g.GetAncestorsTo(n4, Metadata{"Value": 1})
 	if !ok || len(r) != 4 {
 		t.Error("Wrong nodes returned")
 	}
@@ -184,7 +184,7 @@ func TestPath(t *testing.T) {
 		t.Error("Wrong path returned")
 	}
 
-	r, ok = g.GetAncestorsTo(n4, Metadatas{"Value": 2})
+	r, ok = g.GetAncestorsTo(n4, Metadata{"Value": 2})
 	if !ok || len(r) != 3 {
 		t.Error("Wrong nodes returned")
 	}
@@ -197,26 +197,26 @@ func TestPath(t *testing.T) {
 func TestMetadata(t *testing.T) {
 	g := newGraph(t)
 
-	n := g.NewNode(GenID(), Metadatas{"Value": 1, "Type": "intf"})
+	n := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
 
-	g.SetMetadata(n, "Name", "Node1")
-	v, ok := n.Metadatas()["Name"]
+	g.AddMetadata(n, "Name", "Node1")
+	v, ok := n.Metadata()["Name"]
 	if !ok || v != "Node1" {
 		t.Error("Metadata not updated")
 	}
 
-	g.SetMetadata(n, "Value", "Value1")
-	v, ok = n.Metadatas()["Value"]
+	g.AddMetadata(n, "Value", "Value1")
+	v, ok = n.Metadata()["Value"]
 	if !ok || v != "Value1" {
 		t.Error("Metadata not updated")
 	}
 
-	g.SetMetadatas(n, Metadatas{"Temp": 35})
-	_, ok = n.Metadatas()["Value"]
+	g.SetMetadata(n, Metadata{"Temp": 35})
+	_, ok = n.Metadata()["Value"]
 	if ok {
 		t.Error("Metadata should be removed")
 	}
-	v, ok = n.Metadatas()["Temp"]
+	v, ok = n.Metadata()["Temp"]
 	if !ok || v != 35 {
 		t.Error("Metadata not updated")
 	}
@@ -261,12 +261,12 @@ func TestEvents(t *testing.T) {
 	l := &FakeListener{}
 	g.AddEventListener(l)
 
-	n1 := g.NewNode(GenID(), Metadatas{"Value": 1, "Type": "intf"})
+	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
 	if l.lastNodeAdded.ID != n1.ID {
 		t.Error("Didn't get the notification")
 	}
 
-	n2 := g.NewNode(GenID(), Metadatas{"Value": 2, "Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 	if l.lastNodeAdded.ID != n2.ID {
 		t.Error("Didn't get the notification")
 	}
@@ -276,7 +276,7 @@ func TestEvents(t *testing.T) {
 		t.Error("Didn't get the notification")
 	}
 
-	g.SetMetadata(n1, "Name", "Node1")
+	g.AddMetadata(n1, "Name", "Node1")
 	if l.lastNodeUpdated.ID != n1.ID {
 		t.Error("Didn't get the notification")
 	}

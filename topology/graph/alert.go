@@ -153,7 +153,7 @@ func (a *Alert) EvalNodes() {
 				t, v := toTypeValue(val)
 				w.DefineConst(name, t, v)
 			}
-			for k, v := range n.metadatas {
+			for k, v := range n.metadata {
 				defConst(k, v)
 			}
 			fs := token.NewFileSet()

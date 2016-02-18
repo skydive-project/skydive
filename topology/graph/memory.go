@@ -36,18 +36,18 @@ type MemoryBackend struct {
 	edges map[Identifier]*MemoryBackendEdge
 }
 
-func (m MemoryBackend) SetMetadatas(i interface{}, meta Metadatas) bool {
+func (m MemoryBackend) SetMetadata(i interface{}, meta Metadata) bool {
 	switch i.(type) {
 	case *Node:
-		i.(*Node).metadatas = meta
+		i.(*Node).metadata = meta
 	case *Edge:
-		i.(*Edge).metadatas = meta
+		i.(*Edge).metadata = meta
 	}
 
 	return true
 }
 
-func (m MemoryBackend) SetMetadata(i interface{}, k string, v interface{}) bool {
+func (m MemoryBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
 	var e graphElement
 
 	switch i.(type) {
@@ -57,10 +57,10 @@ func (m MemoryBackend) SetMetadata(i interface{}, k string, v interface{}) bool 
 		e = i.(*Edge).graphElement
 	}
 
-	if o, ok := e.metadatas[k]; ok && o == v {
+	if o, ok := e.metadata[k]; ok && o == v {
 		return false
 	}
-	e.metadatas[k] = v
+	e.metadata[k] = v
 
 	return true
 }

@@ -46,12 +46,12 @@ type GraphEventListener interface {
 	OnEdgeDeleted(e *Edge)
 }
 
-type Metadatas map[string]interface{}
+type Metadata map[string]interface{}
 
 type graphElement struct {
-	ID        Identifier
-	metadatas Metadatas
-	host      string
+	ID       Identifier
+	metadata Metadata
+	host     string
 }
 
 type Node struct {
@@ -75,8 +75,8 @@ type GraphBackend interface {
 	GetEdge(i Identifier) *Edge
 	GetEdgeNodes(e *Edge) (*Node, *Node)
 
-	SetMetadata(e interface{}, k string, v interface{}) bool
-	SetMetadatas(e interface{}, m Metadatas) bool
+	AddMetadata(e interface{}, k string, v interface{}) bool
+	SetMetadata(e interface{}, m Metadata) bool
 
 	GetNodes() []*Node
 	GetEdges() []*Edge
@@ -98,18 +98,18 @@ func GenID() Identifier {
 	return Identifier(u.String())
 }
 
-func (m *Metadatas) String() string {
+func (m *Metadata) String() string {
 	j, _ := json.Marshal(m)
 	return string(j)
 }
 
-func (e *graphElement) Metadatas() Metadatas {
-	return e.metadatas
+func (e *graphElement) Metadata() Metadata {
+	return e.metadata
 }
 
-func (e *graphElement) matchFilters(f Metadatas) bool {
+func (e *graphElement) matchFilters(f Metadata) bool {
 	for k, v := range f {
-		nv, ok := e.metadatas[k]
+		nv, ok := e.metadata[k]
 		if !ok || v != nv {
 			return false
 		}
@@ -120,42 +120,42 @@ func (e *graphElement) matchFilters(f Metadatas) bool {
 
 func (e *graphElement) String() string {
 	j, _ := json.Marshal(&struct {
-		ID        Identifier
-		Metadatas Metadatas `json:",omitempty"`
-		Host      string
+		ID       Identifier
+		Metadata Metadata `json:",omitempty"`
+		Host     string
 	}{
-		ID:        e.ID,
-		Metadatas: e.metadatas,
-		Host:      e.host,
+		ID:       e.ID,
+		Metadata: e.metadata,
+		Host:     e.host,
 	})
 	return string(j)
 }
 
 func (n *Node) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		ID        Identifier
-		Metadatas Metadatas `json:",omitempty"`
-		Host      string
+		ID       Identifier
+		Metadata Metadata `json:",omitempty"`
+		Host     string
 	}{
-		ID:        n.ID,
-		Metadatas: n.metadatas,
-		Host:      n.host,
+		ID:       n.ID,
+		Metadata: n.metadata,
+		Host:     n.host,
 	})
 }
 
 func (e *Edge) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		ID        Identifier
-		Metadatas Metadatas `json:",omitempty"`
-		Parent    Identifier
-		Child     Identifier
-		Host      string
+		ID       Identifier
+		Metadata Metadata `json:",omitempty"`
+		Parent   Identifier
+		Child    Identifier
+		Host     string
 	}{
-		ID:        e.ID,
-		Metadatas: e.metadatas,
-		Parent:    e.parent,
-		Child:     e.child,
-		Host:      e.host,
+		ID:       e.ID,
+		Metadata: e.metadata,
+		Parent:   e.parent,
+		Child:    e.child,
+		Host:     e.host,
 	})
 }
 
@@ -168,21 +168,21 @@ func (g *Graph) notifyMetadataUpdated(e interface{}) {
 	}
 }
 
-func (g *Graph) SetMetadatas(e interface{}, m Metadatas) {
-	if !g.backend.SetMetadatas(e, m) {
+func (g *Graph) SetMetadata(e interface{}, m Metadata) {
+	if !g.backend.SetMetadata(e, m) {
 		return
 	}
 	g.notifyMetadataUpdated(e)
 }
 
-func (g *Graph) SetMetadata(e interface{}, k string, v interface{}) {
-	if !g.backend.SetMetadata(e, k, v) {
+func (g *Graph) AddMetadata(e interface{}, k string, v interface{}) {
+	if !g.backend.AddMetadata(e, k, v) {
 		return
 	}
 	g.notifyMetadataUpdated(e)
 }
 
-func (g *Graph) getAncestorsTo(n *Node, f Metadatas, ancestors []*Node) ([]*Node, bool) {
+func (g *Graph) getAncestorsTo(n *Node, f Metadata, ancestors []*Node) ([]*Node, bool) {
 	ancestors = append(ancestors, n)
 
 	edges := g.backend.GetNodeEdges(n)
@@ -210,11 +210,11 @@ func (g *Graph) getAncestorsTo(n *Node, f Metadatas, ancestors []*Node) ([]*Node
 	return ancestors, false
 }
 
-func (g *Graph) GetAncestorsTo(n *Node, f Metadatas) ([]*Node, bool) {
+func (g *Graph) GetAncestorsTo(n *Node, f Metadata) ([]*Node, bool) {
 	return g.getAncestorsTo(n, f, []*Node{})
 }
 
-func (g *Graph) LookupParentNodes(n *Node, f Metadatas) []*Node {
+func (g *Graph) LookupParentNodes(n *Node, f Metadata) []*Node {
 	parents := []*Node{}
 
 	for _, e := range g.backend.GetNodeEdges(n) {
@@ -228,7 +228,7 @@ func (g *Graph) LookupParentNodes(n *Node, f Metadatas) []*Node {
 	return parents
 }
 
-func (g *Graph) LookupChildren(n *Node, f Metadatas) []*Node {
+func (g *Graph) LookupChildren(n *Node, f Metadata) []*Node {
 	children := []*Node{}
 
 	for _, e := range g.backend.GetNodeEdges(n) {
@@ -274,7 +274,7 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 	}
 }
 
-func (g *Graph) Replace(o *Node, n *Node, m Metadatas) *Node {
+func (g *Graph) Replace(o *Node, n *Node, m Metadata) *Node {
 	for _, e := range g.backend.GetNodeEdges(o) {
 		parent, child := g.backend.GetEdgeNodes(e)
 		if parent == nil || child == nil {
@@ -289,7 +289,7 @@ func (g *Graph) Replace(o *Node, n *Node, m Metadatas) *Node {
 			g.Link(parent, n)
 		}
 	}
-	n.metadatas = o.metadatas
+	n.metadata = o.metadata
 	g.NotifyNodeUpdated(n)
 
 	g.DelNode(o)
@@ -297,7 +297,7 @@ func (g *Graph) Replace(o *Node, n *Node, m Metadatas) *Node {
 	return n
 }
 
-func (g *Graph) LookupFirstNode(m Metadatas) *Node {
+func (g *Graph) LookupFirstNode(m Metadata) *Node {
 	nodes := g.LookupNodes(m)
 	if len(nodes) > 0 {
 		return nodes[0]
@@ -306,7 +306,7 @@ func (g *Graph) LookupFirstNode(m Metadatas) *Node {
 	return nil
 }
 
-func (g *Graph) LookupNodes(m Metadatas) []*Node {
+func (g *Graph) LookupNodes(m Metadata) []*Node {
 	nodes := []*Node{}
 
 	for _, n := range g.backend.GetNodes() {
@@ -322,7 +322,7 @@ func (g *Graph) LookupNodesFromKey(key string) []*Node {
 	nodes := []*Node{}
 
 	for _, n := range g.backend.GetNodes() {
-		_, ok := n.metadatas[key]
+		_, ok := n.metadata[key]
 		if ok {
 			nodes = append(nodes, n)
 		}
@@ -357,7 +357,7 @@ func (g *Graph) GetNode(i Identifier) *Node {
 	return g.backend.GetNode(i)
 }
 
-func (g *Graph) NewNode(i Identifier, m Metadatas) *Node {
+func (g *Graph) NewNode(i Identifier, m Metadata) *Node {
 	n := &Node{
 		graphElement: graphElement{
 			ID:   i,
@@ -366,9 +366,9 @@ func (g *Graph) NewNode(i Identifier, m Metadatas) *Node {
 	}
 
 	if m != nil {
-		n.metadatas = m
+		n.metadata = m
 	} else {
-		n.metadatas = make(Metadatas)
+		n.metadata = make(Metadata)
 	}
 
 	if !g.AddNode(n) {
@@ -378,7 +378,7 @@ func (g *Graph) NewNode(i Identifier, m Metadatas) *Node {
 	return n
 }
 
-func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadatas) *Edge {
+func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
 	e := &Edge{
 		parent: p.ID,
 		child:  c.ID,
@@ -389,9 +389,9 @@ func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadatas) *Edge {
 	}
 
 	if m != nil {
-		e.metadatas = m
+		e.metadata = m
 	} else {
-		e.metadatas = make(Metadatas)
+		e.metadata = make(Metadata)
 	}
 
 	if !g.AddEdge(e) {

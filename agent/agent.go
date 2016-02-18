@@ -149,7 +149,7 @@ func NewAgent() *Agent {
 
 	ovsmon := ovsdb.NewOvsMonitorFromConfig()
 
-	root := g.NewNode(graph.Identifier(hostname), graph.Metadatas{"Name": hostname, "Type": "host"})
+	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
 
 	ns := tprobes.NewNetNSProbe(g, root)
 	nl := tprobes.NewNetLinkProbe(g, root)
