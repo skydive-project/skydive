@@ -29,6 +29,12 @@
     background-color: #333;
   }
 
+  .mode {
+    color: white;
+    font-size: 0.6em;
+    vertical-align: super;
+  }
+
   .topology {
     width: 100%;
     height: 100%;
@@ -947,6 +953,9 @@
 
   var layout;
   $(document).ready(function() {
+    if ("{{.Service}}" == "agent")
+      $("#flows-panel").hide();
+
     $('.topology-view').resizable({
       handles: 'e',
       minWidth: 300,
@@ -980,7 +989,7 @@
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand" href="#">Skydive</a>
+        <a class="navbar-brand" href="#">Skydive <span class="mode">{{.Service}}</span></a>
       </div>
       <div id="navbar" class="collapse navbar-collapse">
         <ul class="nav navbar-nav">
@@ -1000,7 +1009,7 @@
           <div class="title-left-panel">Metadata :</div>
           <div id="metadata"></div>
         </div>
-        <div class="left-panel">
+        <div class="left-panel" id="flows-panel">
           <div class="title-left-panel">Flows :</div>
           <div id="flows"></div>
         </div>
