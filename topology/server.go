@@ -43,13 +43,14 @@ import (
 )
 
 type Server struct {
-	Graph  *graph.Graph
-	Router *mux.Router
-	Addr   string
-	Port   int
-	lock   sync.Mutex
-	sl     *stoppableListener.StoppableListener
-	wg     sync.WaitGroup
+	Service string
+	Graph   *graph.Graph
+	Router  *mux.Router
+	Addr    string
+	Port    int
+	lock    sync.Mutex
+	sl      *stoppableListener.StoppableListener
+	wg      sync.WaitGroup
 }
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
@@ -71,9 +72,11 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var data = &struct {
+		Service  string
 		Hostname string
 		Port     int
 	}{
+		Service:  s.Service,
 		Hostname: host,
 		Port:     s.Port,
 	}
@@ -143,12 +146,13 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-func NewServer(g *graph.Graph, a string, p int, router *mux.Router) *Server {
+func NewServer(s string, g *graph.Graph, a string, p int, router *mux.Router) *Server {
 	return &Server{
-		Graph:  g,
-		Router: router,
-		Addr:   a,
-		Port:   p,
+		Service: s,
+		Graph:   g,
+		Router:  router,
+		Addr:    a,
+		Port:    p,
 	}
 }
 
@@ -158,5 +162,5 @@ func NewServerFromConfig(s string, g *graph.Graph, router *mux.Router) (*Server,
 		return nil, errors.New("Configuration error: " + err.Error())
 	}
 
-	return NewServer(g, addr, port, router), nil
+	return NewServer(s, g, addr, port, router), nil
 }

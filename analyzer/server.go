@@ -254,7 +254,7 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 		return nil, err
 	}
 
-	tserver := topology.NewServer(g, addr, port, router)
+	tserver := topology.NewServer("analyzer", g, addr, port, router)
 	tserver.RegisterStaticEndpoints()
 	tserver.RegisterRPCEndpoints()
 
