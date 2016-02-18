@@ -734,6 +734,11 @@
       return _this.DrawCluster(d);
     });
 
+    this.node.select('text')
+    .text(function(d){
+        return _this.GetNodeText(d);
+    })
+
     this.force.start();
   }
 
