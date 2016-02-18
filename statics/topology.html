@@ -133,10 +133,11 @@
   }
 
   .ui-resizable-handle {
-    position: absolute;
     font-size: 0.1px;
-    z-index: 99999;
-    display: block;
+  }
+
+  .ui-resizable-e {
+    right: 0px;
   }
 
   .jsonview .num {
@@ -158,13 +159,16 @@
   .left-cont {
     display: inline-table;
     width: 100%;
+    margin-top: 10px;
+    margin-bottom: 10px;
   }
 
   .left-panel {
     border-radius: 15px;
     background-color: #222;
     padding: 15px;
-    margin-top: 20px;
+    margin-top: 10px;
+    margin-bottom: 10px;
   }
 
   .title-left-panel {
@@ -326,8 +330,8 @@
   }
 
   var HostLayout = function(ID, graph, svg) {
-    this.width = 700;
-    this.height = 700;
+    this.width = 680;
+    this.height = 680;
     this.graph = graph;
     this.hullOffset = 22;
     this.elements = {};
@@ -733,8 +737,8 @@
     this.selector = selector;
     this.updatesocket = '';
 
-    this.width = 700;
-    this.height = 700;
+    this.width = 680;
+    this.height = 680;
 
     this.svg = d3.select(selector).append("svg")
     .attr("width", this.width)
