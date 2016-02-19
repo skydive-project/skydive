@@ -25,44 +25,11 @@ package probes
 import (
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/probe"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-type Probe interface {
-	Start()
-	Stop()
-}
-
-type ProbeBundle struct {
-	probes map[string]Probe
-}
-
-func (p *ProbeBundle) Start() {
-	for _, p := range p.probes {
-		p.Start()
-	}
-}
-
-func (p *ProbeBundle) Stop() {
-	for _, p := range p.probes {
-		p.Stop()
-	}
-}
-
-func (p *ProbeBundle) GetProbe(k string) Probe {
-	if probe, ok := p.probes[k]; ok {
-		return probe
-	}
-	return nil
-}
-
-func NewProbeBundle(p map[string]Probe) *ProbeBundle {
-	return &ProbeBundle{
-		probes: p,
-	}
-}
-
-func NewProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *ProbeBundle {
+func NewProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *probe.ProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.topology.probes")
 
 	// FIX(safchain) once viper setdefault on nested key will be fixed move this
@@ -73,7 +40,7 @@ func NewProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *ProbeBundle {
 
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
-	probes := make(map[string]Probe)
+	probes := make(map[string]probe.Probe)
 	for _, t := range list {
 		if _, ok := probes[t]; ok {
 			continue
@@ -91,5 +58,5 @@ func NewProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *ProbeBundle {
 		}
 	}
 
-	return NewProbeBundle(probes)
+	return probe.NewProbeBundle(probes)
 }

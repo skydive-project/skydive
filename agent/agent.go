@@ -34,6 +34,7 @@ import (
 	"github.com/redhat-cip/skydive/flow/mappings"
 	fprobes "github.com/redhat-cip/skydive/flow/probes"
 	"github.com/redhat-cip/skydive/ovs"
+	probe "github.com/redhat-cip/skydive/probe"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	tprobes "github.com/redhat-cip/skydive/topology/probes"
@@ -45,7 +46,7 @@ type Agent struct {
 	GraphServer     *graph.Server
 	Root            *graph.Node
 	TopoServer      *topology.Server
-	TopoProbeBundle *tprobes.ProbeBundle
+	TopoProbeBundle *probe.ProbeBundle
 	SFlowProbe      *fprobes.SFlowProbe
 }
 
