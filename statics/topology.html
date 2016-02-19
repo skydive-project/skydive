@@ -734,6 +734,11 @@
       return _this.DrawCluster(d);
     });
 
+    this.node.select('text')
+    .text(function(d){
+        return _this.GetNodeText(d);
+    })
+
     this.force.start();
   }
 
@@ -942,7 +947,7 @@
     }
 
     this.updatesocketalert.onclose = function() {
-      setTimeout(function() { _this.StartLiveUpdate(); }, 3000);
+      setTimeout(function() { _this.StartLiveUpdateAlert(); }, 3000);
     }
 
     this.updatesocketalert.onmessage = function(e) {

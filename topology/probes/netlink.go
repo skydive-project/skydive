@@ -66,7 +66,7 @@ func (u *NetLinkProbe) handleIntfIsBridgeMember(intf *graph.Node, link netlink.L
 		index := int64(link.Attrs().MasterIndex)
 
 		// assuming we have only one parent with this index
-		parent := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": index, "Type": "bridge"})
+		parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index, "Type": "bridge"})
 		if parent != nil && !u.Graph.AreLinked(parent, intf) {
 			u.Graph.Link(parent, intf)
 		} else {
@@ -125,10 +125,9 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 
 	var intf *graph.Node
 	if name != "lo" {
-		intf = u.Graph.LookupFirstNode(graph.Metadata{
-			"Name":    name,
+		intf = u.Graph.LookupFirstChild(u.Root, graph.Metadata{
 			"IfIndex": index,
-			"MAC":     link.Attrs().HardwareAddr.String()})
+		})
 	}
 
 	if intf == nil {
