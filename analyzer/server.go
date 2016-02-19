@@ -24,7 +24,6 @@ package analyzer
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -71,7 +70,7 @@ func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
 		s.Storage.StoreFlows(flows)
 	}
 
-	logging.GetLogger().Debug("%d flows stored", len(flows))
+	logging.GetLogger().Debugf("%d flows stored", len(flows))
 }
 
 func (s *Server) handleUDPFlowPacket() {
@@ -81,14 +80,14 @@ func (s *Server) handleUDPFlowPacket() {
 		n, _, err := s.Conn.ReadFromUDP(data)
 		if err != nil {
 			if !s.Stopping {
-				logging.GetLogger().Error("Error while reading: %s", err.Error())
+				logging.GetLogger().Errorf("Error while reading: %s", err.Error())
 			}
 			return
 		}
 
 		f, err := flow.FromData(data[0:n])
 		if err != nil {
-			logging.GetLogger().Error("Error while parsing flow: %s", err.Error())
+			logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
 		}
 
 		s.AnalyzeFlows([]*flow.Flow{f})
@@ -288,8 +287,7 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 	server.RegisterRPCEndpoints()
 	cfgFlowtable_expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
 	if cfgFlowtable_expire < 1 {
-		err = fmt.Errorf("Config flowTable_expire invalid value: %d", cfgFlowtable_expire)
-		logging.GetLogger().Error(err.Error())
+		logging.GetLogger().Errorf("Config flowTable_expire invalid value %d : %s", cfgFlowtable_expire, err.Error())
 		return nil, err
 	}
 	go flowtable.AsyncExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
@@ -300,7 +298,7 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 func NewServerFromConfig(router *mux.Router) (*Server, error) {
 	addr, port, err := config.GetHostPortAttributes("analyzer", "listen")
 	if err != nil {
-		logging.GetLogger().Error("Configuration error: %s", err.Error())
+		logging.GetLogger().Errorf("Configuration error: %s", err.Error())
 		return nil, err
 	}
 

@@ -90,7 +90,7 @@ func (c *AsyncClient) connect() {
 
 	conn, err := net.Dial("tcp", host)
 	if err != nil {
-		logging.GetLogger().Error("Connection to the WebSocket server failed: %s", err.Error())
+		logging.GetLogger().Errorf("Connection to the WebSocket server failed: %s", err.Error())
 		return
 	}
 	defer conn.Close()
@@ -98,18 +98,18 @@ func (c *AsyncClient) connect() {
 	endpoint := "ws://" + host + c.Path
 	u, err := url.Parse(endpoint)
 	if err != nil {
-		logging.GetLogger().Error("Unable to parse the WebSocket Endpoint %s: %s", endpoint, err.Error())
+		logging.GetLogger().Errorf("Unable to parse the WebSocket Endpoint %s: %s", endpoint, err.Error())
 		return
 	}
 
 	c.wsConn, _, err = websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
 	if err != nil {
-		logging.GetLogger().Error("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
+		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
 	}
 	c.wsConn.SetPingHandler(nil)
 
-	logging.GetLogger().Info("Connected to %s", endpoint)
+	logging.GetLogger().Infof("Connected to %s", endpoint)
 
 	c.wg.Add(1)
 	defer c.wg.Done()
@@ -135,7 +135,7 @@ func (c *AsyncClient) connect() {
 		case msg := <-c.messages:
 			err := c.sendWSMessage(msg)
 			if err != nil {
-				logging.GetLogger().Error("Error while writing to the WebSocket: %s", err.Error())
+				logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
 				break
 			}
 		case <-c.quit:

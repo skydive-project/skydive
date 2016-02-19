@@ -34,11 +34,11 @@ type Forwarder struct {
 }
 
 func (c *Forwarder) triggerResync() {
-	logging.GetLogger().Info("Start a resync of the graph")
+	logging.GetLogger().Infof("Start a resync of the graph")
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		logging.GetLogger().Error("Unable to retrieve the hostname: %s", err.Error())
+		logging.GetLogger().Errorf("Unable to retrieve the hostname: %s", err.Error())
 		return
 	}
 

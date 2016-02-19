@@ -56,10 +56,11 @@ var skydiveLoggerLock sync.Mutex
 var skydiveLogger SkydiveLogger
 
 type SkydiveLogger struct {
-	loggers map[string]*logging.Logger
-	id      string
-	format  string
-	backend logging.Backend
+	loggers     map[string]*logging.Logger
+	id          string
+	format      string
+	formatDebug string
+	backend     logging.Backend
 }
 
 func initSkydiveLogger() {
@@ -67,11 +68,12 @@ func initSkydiveLogger() {
 	if err != nil {
 		panic(err)
 	}
-	id += "." + filepath.Base(os.Args[0])
+	id += ":" + filepath.Base(os.Args[0])
 	skydiveLogger = SkydiveLogger{
-		id:      id,
-		loggers: make(map[string]*logging.Logger),
-		format:  "%{color}%{time} " + id + " %{shortfile} %{shortpkg} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}",
+		id:          id,
+		loggers:     make(map[string]*logging.Logger),
+		format:      "%{color}%{time} " + id + " %{shortfile} %{shortpkg} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}",
+		formatDebug: "%{color}%{time} " + id + " %{shortfile} %{shortpkg} %{callpath:5} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}",
 	}
 	newLogger("default", "INFO")
 }
@@ -82,7 +84,11 @@ func newLogger(pkg string, loglevel string) error {
 		return err
 	}
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	backendFormat := logging.NewBackendFormatter(backend, logging.MustStringFormatter(skydiveLogger.format))
+	format := skydiveLogger.format
+	if level == logging.DEBUG {
+		format = skydiveLogger.formatDebug
+	}
+	backendFormat := logging.NewBackendFormatter(backend, logging.MustStringFormatter(format))
 	backendLevel := logging.AddModuleLevel(backendFormat)
 	backendLevel.SetLevel(level, pkg)
 

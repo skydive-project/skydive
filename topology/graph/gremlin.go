@@ -41,7 +41,7 @@ func idToPropertiesString(i Identifier) (string, error) {
 	encoder := gremlin.GremlinPropertiesEncoder{}
 	err := encoder.Encode(properties)
 	if err != nil {
-		logging.GetLogger().Error("Error while retrieving a Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while retrieving a Node: %s", err.Error())
 		return "", err
 	}
 
@@ -117,7 +117,7 @@ func (g GremlinBackend) SetMetadata(i interface{}, meta Metadata) bool {
 
 	properties, err := idToPropertiesString(e.ID)
 	if err != nil {
-		logging.GetLogger().Error("Error while retrieving a Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while retrieving a Node: %s", err.Error())
 		return false
 	}
 
@@ -129,7 +129,7 @@ func (g GremlinBackend) SetMetadata(i interface{}, meta Metadata) bool {
 	}
 
 	if len(els) > 1 {
-		logging.GetLogger().Error("Found more than one node for this ID: " + string(e.ID))
+		logging.GetLogger().Errorf("Found more than one node for this ID: " + string(e.ID))
 		return false
 	}
 	el := els[0]
@@ -138,7 +138,7 @@ func (g GremlinBackend) SetMetadata(i interface{}, meta Metadata) bool {
 
 	_, err = g.client.Query(query)
 	if err != nil {
-		logging.GetLogger().Error("Gremlin query error: %s, %s", query, err.Error())
+		logging.GetLogger().Errorf("Gremlin query error: %s, %s", query, err.Error())
 		return false
 	}
 
@@ -150,7 +150,7 @@ func (g GremlinBackend) SetMetadata(i interface{}, meta Metadata) bool {
 
 	_, err = g.client.Query(query)
 	if err != nil {
-		logging.GetLogger().Error("Gremlin query error: %s, %s", query, err.Error())
+		logging.GetLogger().Errorf("Gremlin query error: %s, %s", query, err.Error())
 		return false
 	}
 
@@ -172,7 +172,7 @@ func (g GremlinBackend) AddMetadata(i interface{}, k string, v interface{}) bool
 
 	properties, err := idToPropertiesString(e.ID)
 	if err != nil {
-		logging.GetLogger().Error("Error while retrieving a Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while retrieving a Node: %s", err.Error())
 		return false
 	}
 
@@ -183,7 +183,7 @@ func (g GremlinBackend) AddMetadata(i interface{}, k string, v interface{}) bool
 
 	_, err = g.client.Query(query)
 	if err != nil {
-		logging.GetLogger().Error("Gremlin query error: %s, %s", query, err.Error())
+		logging.GetLogger().Errorf("Gremlin query error: %s, %s", query, err.Error())
 		return false
 	}
 
@@ -193,19 +193,19 @@ func (g GremlinBackend) AddMetadata(i interface{}, k string, v interface{}) bool
 func (g GremlinBackend) AddEdge(e *Edge) bool {
 	properties, err := toPropertiesString(e.graphElement)
 	if err != nil {
-		logging.GetLogger().Error("Error while adding a new Edge: %s", err.Error())
+		logging.GetLogger().Errorf("Error while adding a new Edge: %s", err.Error())
 		return false
 	}
 
 	propsParent, err := idToPropertiesString(e.parent)
 	if err != nil {
-		logging.GetLogger().Error("Error while adding a new Edge: %s", err.Error())
+		logging.GetLogger().Errorf("Error while adding a new Edge: %s", err.Error())
 		return false
 	}
 
 	propsChild, err := idToPropertiesString(e.child)
 	if err != nil {
-		logging.GetLogger().Error("Error while adding a new Edge: %s", err.Error())
+		logging.GetLogger().Errorf("Error while adding a new Edge: %s", err.Error())
 		return false
 	}
 
@@ -213,7 +213,7 @@ func (g GremlinBackend) AddEdge(e *Edge) bool {
 	query += ".addEdge('linked', g.V().has(" + propsChild + ").next(), " + string(properties) + ")"
 	_, err = g.client.Query(query)
 	if err != nil {
-		logging.GetLogger().Error("Error while adding a new Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while adding a new Node: %s", err.Error())
 		return false
 	}
 
@@ -223,7 +223,7 @@ func (g GremlinBackend) AddEdge(e *Edge) bool {
 func (g GremlinBackend) GetEdge(i Identifier) *Edge {
 	properties, err := idToPropertiesString(i)
 	if err != nil {
-		logging.GetLogger().Error("Error while retrieving a Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while retrieving a Node: %s", err.Error())
 		return nil
 	}
 
@@ -258,7 +258,7 @@ func (g GremlinBackend) GetEdge(i Identifier) *Edge {
 func (g GremlinBackend) GetEdgeNodes(e *Edge) (*Node, *Node) {
 	properties, err := idToPropertiesString(e.ID)
 	if err != nil {
-		logging.GetLogger().Error("Error while retrieving a Edge: %s", err.Error())
+		logging.GetLogger().Errorf("Error while retrieving a Edge: %s", err.Error())
 		return nil, nil
 	}
 
@@ -271,7 +271,7 @@ func (g GremlinBackend) GetEdgeNodes(e *Edge) (*Node, *Node) {
 
 	if len(els) != 2 {
 
-		logging.GetLogger().Error("Not found 2 nodes for this edge: " + string(e.ID))
+		logging.GetLogger().Errorf("Not found 2 nodes for this edge: " + string(e.ID))
 		return nil, nil
 	}
 
@@ -281,7 +281,7 @@ func (g GremlinBackend) GetEdgeNodes(e *Edge) (*Node, *Node) {
 func (g GremlinBackend) AddNode(n *Node) bool {
 	properties, err := toPropertiesString(n.graphElement)
 	if err != nil {
-		logging.GetLogger().Error("Error while adding a new Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while adding a new Node: %s", err.Error())
 		return false
 	}
 
@@ -289,7 +289,7 @@ func (g GremlinBackend) AddNode(n *Node) bool {
 
 	_, err = g.client.Query(query)
 	if err != nil {
-		logging.GetLogger().Error("Gremlin query error: %s, %s", query, err.Error())
+		logging.GetLogger().Errorf("Gremlin query error: %s, %s", query, err.Error())
 		return false
 	}
 
@@ -299,7 +299,7 @@ func (g GremlinBackend) AddNode(n *Node) bool {
 func (g GremlinBackend) GetNode(i Identifier) *Node {
 	properties, err := idToPropertiesString(i)
 	if err != nil {
-		logging.GetLogger().Error("Error while retrieving a Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while retrieving a Node: %s", err.Error())
 		return nil
 	}
 
@@ -314,7 +314,7 @@ func (g GremlinBackend) GetNode(i Identifier) *Node {
 	case l == 0:
 		return nil
 	case l > 1:
-		logging.GetLogger().Error("Found more than one node for this ID: " + string(i))
+		logging.GetLogger().Errorf("Found more than one node for this ID: " + string(i))
 		return nil
 	}
 
@@ -326,7 +326,7 @@ func (g GremlinBackend) GetNodeEdges(n *Node) []*Edge {
 
 	properties, err := idToPropertiesString(n.ID)
 	if err != nil {
-		logging.GetLogger().Error("Error while retrieving a Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while retrieving a Node: %s", err.Error())
 		return edges
 	}
 
@@ -347,7 +347,7 @@ func (g GremlinBackend) GetNodeEdges(n *Node) []*Edge {
 func (g GremlinBackend) DelEdge(e *Edge) bool {
 	properties, err := idToPropertiesString(e.ID)
 	if err != nil {
-		logging.GetLogger().Error("Error while deleting edge: %s", err.Error())
+		logging.GetLogger().Errorf("Error while deleting edge: %s", err.Error())
 		return false
 	}
 
@@ -355,7 +355,7 @@ func (g GremlinBackend) DelEdge(e *Edge) bool {
 
 	_, err = g.client.Query(query)
 	if err != nil {
-		logging.GetLogger().Error("Error while deleting edge: %s", err.Error())
+		logging.GetLogger().Errorf("Error while deleting edge: %s", err.Error())
 		return false
 	}
 
@@ -365,7 +365,7 @@ func (g GremlinBackend) DelEdge(e *Edge) bool {
 func (g GremlinBackend) DelNode(n *Node) bool {
 	properties, err := idToPropertiesString(n.ID)
 	if err != nil {
-		logging.GetLogger().Error("Error while deleting node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while deleting node: %s", err.Error())
 		return false
 	}
 
@@ -373,7 +373,7 @@ func (g GremlinBackend) DelNode(n *Node) bool {
 
 	_, err = g.client.Query(query)
 	if err != nil {
-		logging.GetLogger().Error("Error while deleting node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while deleting node: %s", err.Error())
 		return false
 	}
 

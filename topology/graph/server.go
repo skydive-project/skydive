@@ -81,7 +81,7 @@ func (c *WSClient) processGraphMessage(m []byte) {
 
 	msg, err := UnmarshalWSMessage(m)
 	if err != nil {
-		logging.GetLogger().Error("Graph: Unable to parse the event %s: %s", msg, err.Error())
+		logging.GetLogger().Errorf("Graph: Unable to parse the event %s: %s", msg, err.Error())
 		return
 	}
 	g := c.server.Graph
@@ -97,7 +97,7 @@ func (c *WSClient) processGraphMessage(m []byte) {
 	case "SubGraphDeleted":
 		n := msg.Obj.(*Node)
 
-		logging.GetLogger().Debug("Got SubGraphDeleted event from the node %s", n.ID)
+		logging.GetLogger().Debugf("Got SubGraphDeleted event from the node %s", n.ID)
 
 		node := g.GetNode(n.ID)
 		if node != nil {
@@ -197,7 +197,7 @@ func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
 				return
 			}
 			if err := c.write(websocket.TextMessage, message); err != nil {
-				logging.GetLogger().Warning("Error while writing to the websocket: %s", err.Error())
+				logging.GetLogger().Warningf("Error while writing to the websocket: %s", err.Error())
 				wg.Done()
 				return
 			}
@@ -306,7 +306,7 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 		conn:   conn,
 		server: s.wsServer,
 	}
-	logging.GetLogger().Info("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
+	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
 	s.wsServer.register <- c
 

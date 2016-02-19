@@ -181,7 +181,7 @@ func (a *Alert) EvalNodes() {
 					ReasonData: n,
 				}
 
-				logging.GetLogger().Debug("AlertMessage to WS : " + al.UUID.String() + " " + msg.String())
+				logging.GetLogger().Debugf("AlertMessage to WS : " + al.UUID.String() + " " + msg.String())
 				for _, l := range a.eventListeners {
 					l.OnAlert(&msg)
 				}
@@ -191,11 +191,11 @@ func (a *Alert) EvalNodes() {
 }
 
 func (a *Alert) triggerResync() {
-	logging.GetLogger().Info("Start a resync of the alert")
+	logging.GetLogger().Infof("Start a resync of the alert")
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		logging.GetLogger().Error("Unable to retrieve the hostname: %s", err.Error())
+		logging.GetLogger().Errorf("Unable to retrieve the hostname: %s", err.Error())
 		return
 	}
 
@@ -278,7 +278,7 @@ func (a *Alert) AlertInsert(w http.ResponseWriter, r *http.Request) {
 
 	al := a.Register(atp)
 	w.WriteHeader(http.StatusOK)
-	logging.GetLogger().Debug("AlertInsert : " + al.UUID.String())
+	logging.GetLogger().Debugf("AlertInsert : " + al.UUID.String())
 }
 
 func (a *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
@@ -494,6 +494,6 @@ func toTypeValue(val interface{}) (eval.Type, eval.Value) {
 		r := stringV(val)
 		return eval.StringType, &r
 	}
-	logging.GetLogger().Error("toValue(%T) not implemented", val)
+	logging.GetLogger().Errorf("toValue(%T) not implemented", val)
 	return nil, nil
 }

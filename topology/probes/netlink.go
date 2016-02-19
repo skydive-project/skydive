@@ -83,7 +83,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 
 	stats, err := ethtool.Stats(link.Attrs().Name)
 	if err != nil {
-		logging.GetLogger().Error("Unable get stats from ethtool: %s", err.Error())
+		logging.GetLogger().Errorf("Unable get stats from ethtool: %s", err.Error())
 		return
 	}
 
@@ -200,7 +200,7 @@ func (u *NetLinkProbe) getLinkIPV4Addr(link netlink.Link) string {
 }
 
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
-	logging.GetLogger().Debug("Link \"%s(%d)\" added", link.Attrs().Name, link.Attrs().Index)
+	logging.GetLogger().Debugf("Link \"%s(%d)\" added", link.Attrs().Name, link.Attrs().Index)
 
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
@@ -267,7 +267,7 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 func (u *NetLinkProbe) onLinkAdded(index int) {
 	link, err := netlink.LinkByIndex(index)
 	if err != nil {
-		logging.GetLogger().Warning("Failed to find interface %d: %s", index, err.Error())
+		logging.GetLogger().Warningf("Failed to find interface %d: %s", index, err.Error())
 		return
 	}
 
@@ -275,7 +275,7 @@ func (u *NetLinkProbe) onLinkAdded(index int) {
 }
 
 func (u *NetLinkProbe) onLinkDeleted(index int) {
-	logging.GetLogger().Debug("Link %d deleted", index)
+	logging.GetLogger().Debugf("Link %d deleted", index)
 
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
@@ -327,7 +327,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 func (u *NetLinkProbe) initialize() {
 	links, err := netlink.LinkList()
 	if err != nil {
-		logging.GetLogger().Error("Unable to list interfaces: %s", err.Error())
+		logging.GetLogger().Errorf("Unable to list interfaces: %s", err.Error())
 		return
 	}
 
@@ -339,7 +339,7 @@ func (u *NetLinkProbe) initialize() {
 func (u *NetLinkProbe) start() {
 	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK)
 	if err != nil {
-		logging.GetLogger().Error("Failed to subscribe to netlink RTNLGRP_LINK messages: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to subscribe to netlink RTNLGRP_LINK messages: %s", err.Error())
 		return
 	}
 	u.nlSocket = s
@@ -349,13 +349,13 @@ func (u *NetLinkProbe) start() {
 
 	err = syscall.SetNonblock(fd, true)
 	if err != nil {
-		logging.GetLogger().Error("Failed to set the netlink fd as non-blocking: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to set the netlink fd as non-blocking: %s", err.Error())
 		return
 	}
 
 	epfd, e := syscall.EpollCreate1(0)
 	if e != nil {
-		logging.GetLogger().Error("Failed to create epoll: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to create epoll: %s", err.Error())
 		return
 	}
 	defer syscall.Close(epfd)
@@ -364,7 +364,7 @@ func (u *NetLinkProbe) start() {
 
 	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
 	if e = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); e != nil {
-		logging.GetLogger().Error("Failed to control epoll: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to control epoll: %s", err.Error())
 		return
 	}
 
@@ -375,7 +375,7 @@ func (u *NetLinkProbe) start() {
 		if err != nil {
 			errno, ok := err.(syscall.Errno)
 			if ok && errno != syscall.EINTR {
-				logging.GetLogger().Error("Failed to receive from events from netlink: %s", err.Error())
+				logging.GetLogger().Errorf("Failed to receive from events from netlink: %s", err.Error())
 			}
 			continue
 		}
@@ -385,7 +385,7 @@ func (u *NetLinkProbe) start() {
 
 		msgs, err := s.Receive()
 		if err != nil {
-			logging.GetLogger().Error("Failed to receive from netlink messages: %s", err.Error())
+			logging.GetLogger().Errorf("Failed to receive from netlink messages: %s", err.Error())
 
 			time.Sleep(1 * time.Second)
 			continue
