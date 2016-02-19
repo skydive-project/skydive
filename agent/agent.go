@@ -33,8 +33,8 @@ import (
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	fprobes "github.com/redhat-cip/skydive/flow/probes"
-	"github.com/redhat-cip/skydive/ovs"
 	probe "github.com/redhat-cip/skydive/probe"
+	"github.com/redhat-cip/skydive/sflow"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	tprobes "github.com/redhat-cip/skydive/topology/probes"
@@ -47,7 +47,7 @@ type Agent struct {
 	Root            *graph.Node
 	TopoServer      *topology.Server
 	TopoProbeBundle *probe.ProbeBundle
-	SFlowAgent      *fprobes.SFlowAgent
+	SFlowAgent      *sflow.SFlowAgent
 }
 
 func (a *Agent) Start() {
@@ -63,12 +63,12 @@ func (a *Agent) Start() {
 	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 
 	if p := a.TopoProbeBundle.GetProbe("ovsdb"); p != nil {
-		a.SFlowAgent, err = fprobes.NewSFlowAgentFromConfig(a.Graph)
+		a.SFlowAgent, err = sflow.NewSFlowAgentFromConfig(a.Graph)
 		if err != nil {
 			panic(err)
 		}
 
-		ovsSFlowProbe := ovsdb.SFlowProbe{
+		ovsSFlowProbe := fprobes.SFlowProbe{
 			ID:         "SkydiveSFlowProbe",
 			Interface:  "eth0",
 			Target:     a.SFlowAgent.GetTarget(),
@@ -76,7 +76,7 @@ func (a *Agent) Start() {
 			Sampling:   1,
 			Polling:    0,
 		}
-		sflowHandler := ovsdb.NewOvsSFlowProbesHandler([]ovsdb.SFlowProbe{ovsSFlowProbe})
+		sflowHandler := fprobes.NewOvsSFlowProbesHandler([]fprobes.SFlowProbe{ovsSFlowProbe})
 
 		o := p.(*tprobes.OvsdbProbe)
 		o.OvsMon.AddMonitorHandler(sflowHandler)

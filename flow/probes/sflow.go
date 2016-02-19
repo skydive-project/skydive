@@ -23,224 +23,217 @@
 package probes
 
 import (
-	"net"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
+	"encoding/json"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
+	"github.com/socketplane/libovsdb"
 
-	"github.com/pmylund/go-cache"
-
-	"github.com/redhat-cip/skydive/analyzer"
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/ovs"
 )
 
-const (
-	maxDgramSize = 1500
-)
-
-type SFlowAgent struct {
-	Addr                string
-	Port                int
-	Graph               *graph.Graph
-	AnalyzerClient      *analyzer.Client
-	FlowMappingPipeline *mappings.FlowMappingPipeline
-	cache               *cache.Cache
-	cacheUpdaterChan    chan int64
-	done                chan bool
-	running             atomic.Value
-	wg                  sync.WaitGroup
+type SFlowProbe struct {
+	ID         string
+	Interface  string
+	Target     string
+	HeaderSize uint32
+	Sampling   uint32
+	Polling    uint32
 }
 
-func (sfa *SFlowAgent) GetTarget() string {
-	target := []string{sfa.Addr, strconv.FormatInt(int64(sfa.Port), 10)}
-	return strings.Join(target, ":")
+type OvsSFlowProbesHandler struct {
+	probes []SFlowProbe
 }
 
-func (sfa *SFlowAgent) lookupForProbePath(index int64) string {
-	sfa.Graph.Lock()
-	defer sfa.Graph.Unlock()
+func newInsertSFlowProbeOP(probe SFlowProbe) (*libovsdb.Operation, error) {
+	sFlowRow := make(map[string]interface{})
+	sFlowRow["agent"] = probe.Interface
+	sFlowRow["targets"] = probe.Target
+	sFlowRow["header"] = probe.HeaderSize
+	sFlowRow["sampling"] = probe.Sampling
+	sFlowRow["polling"] = probe.Polling
 
-	intfs := sfa.Graph.LookupNodes(graph.Metadata{"IfIndex": index})
-	if len(intfs) == 0 {
-		return ""
-	}
-
-	// lookup for the interface that is a part of an ovs bridge
-	for _, intf := range intfs {
-		ancestors, ok := sfa.Graph.GetAncestorsTo(intf, graph.Metadata{"Type": "ovsbridge"})
-		if !ok {
-			continue
-		}
-
-		bridge := ancestors[2]
-		ancestors, ok = sfa.Graph.GetAncestorsTo(bridge, graph.Metadata{"Type": "host"})
-		if !ok {
-			continue
-		}
-
-		var path string
-		for i := len(ancestors) - 1; i >= 0; i-- {
-			if len(path) > 0 {
-				path += "/"
-			}
-			path += ancestors[i].Metadata()["Name"].(string)
-		}
-
-		return path
-	}
-
-	return ""
-}
-
-func (sfa *SFlowAgent) cacheUpdater() {
-	sfa.wg.Add(1)
-	defer sfa.wg.Done()
-
-	logging.GetLogger().Debug("Start SFlowAgent cache updater")
-
-	var index int64
-	for sfa.running.Load() == true {
-		select {
-		case index = <-sfa.cacheUpdaterChan:
-			logging.GetLogger().Debugf("SFlowAgent request received: %d", index)
-
-			path := sfa.lookupForProbePath(index)
-			if path != "" {
-				sfa.cache.Set(strconv.FormatInt(index, 10), path, cache.DefaultExpiration)
-			}
-
-		case <-sfa.done:
-			return
-		}
-	}
-}
-
-func (sfa *SFlowAgent) getProbePath(index int64) string {
-	p, f := sfa.cache.Get(strconv.FormatInt(index, 10))
-	if f {
-		path := p.(string)
-		return path
-	}
-	sfa.cacheUpdaterChan <- index
-
-	return ""
-}
-
-func (sfa *SFlowAgent) flowExpire(f *flow.Flow) {
-	/* send a special event to the analyzer */
-}
-
-func (sfa *SFlowAgent) Start() error {
-	sfa.wg.Add(1)
-	defer sfa.wg.Done()
-
-	var buf [maxDgramSize]byte
-
-	addr := net.UDPAddr{
-		Port: sfa.Port,
-		IP:   net.ParseIP(sfa.Addr),
-	}
-	conn, err := net.ListenUDP("udp", &addr)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to listen on port %d: %s", sfa.Port, err.Error())
-		return err
-	}
-	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(1 * time.Second))
-
-	// start index/mac cache updater
-	go sfa.cacheUpdater()
-
-	flowtable := flow.NewFlowTable()
-	cfgFlowtable_expire := config.GetConfig().GetInt("agent.flowtable_expire")
-	go flowtable.AsyncExpire(sfa.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
-
-	for sfa.running.Load() == true {
-		_, _, err := conn.ReadFromUDP(buf[:])
-		if err != nil {
-			conn.SetDeadline(time.Now().Add(1 * time.Second))
-			continue
-		}
-
-		p := gopacket.NewPacket(buf[:], layers.LayerTypeSFlow, gopacket.Default)
-		sflowLayer := p.Layer(layers.LayerTypeSFlow)
-		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
-		if !ok {
-			continue
-		}
-
-		if sflowPacket.SampleCount > 0 {
-			for _, sample := range sflowPacket.FlowSamples {
-				probePath := sfa.getProbePath(int64(sample.InputInterface))
-
-				flows := flow.FLowsFromSFlowSample(flowtable, &sample, probePath)
-
-				logging.GetLogger().Debugf("%d flows captured at %v", len(flows), probePath)
-
-				flowtable.Update(flows)
-
-				if sfa.FlowMappingPipeline != nil {
-					sfa.FlowMappingPipeline.Enhance(flows)
-				}
-
-				if sfa.AnalyzerClient != nil {
-					// FIX(safchain) add flow state cache in order to send only flow changes
-					// to not flood the analyzer
-					sfa.AnalyzerClient.SendFlows(flows)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func (sfa *SFlowAgent) Stop() {
-	sfa.running.Store(false)
-	sfa.done <- true
-	sfa.wg.Wait()
-}
-
-func (sfa *SFlowAgent) SetAnalyzerClient(a *analyzer.Client) {
-	sfa.AnalyzerClient = a
-}
-
-func (sfa *SFlowAgent) SetMappingPipeline(p *mappings.FlowMappingPipeline) {
-	sfa.FlowMappingPipeline = p
-}
-
-func NewSFlowAgent(a string, p int, g *graph.Graph, expire int, cleanup int) (*SFlowAgent, error) {
-	sfa := &SFlowAgent{
-		Addr:  a,
-		Port:  p,
-		Graph: g,
-	}
-
-	sfa.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
-	sfa.cacheUpdaterChan = make(chan int64, 200)
-	sfa.done = make(chan bool)
-	sfa.running.Store(true)
-
-	return sfa, nil
-}
-
-func NewSFlowAgentFromConfig(g *graph.Graph) (*SFlowAgent, error) {
-	addr, port, err := config.GetHostPortAttributes("sflow", "listen")
+	extIds := make(map[string]string)
+	extIds["probe-id"] = probe.ID
+	ovsMap, err := libovsdb.NewOvsMap(extIds)
 	if err != nil {
 		return nil, err
 	}
+	sFlowRow["external_ids"] = ovsMap
 
-	expire := config.GetConfig().GetInt("cache.expire")
-	cleanup := config.GetConfig().GetInt("cache.cleanup")
+	insertOp := libovsdb.Operation{
+		Op:       "insert",
+		Table:    "sFlow",
+		Row:      sFlowRow,
+		UUIDName: probe.ID,
+	}
 
-	return NewSFlowAgent(addr, port, g, expire, cleanup)
+	return &insertOp, nil
+}
+
+func compareProbeID(row *map[string]interface{}, probe SFlowProbe) (bool, error) {
+	extIds := (*row)["external_ids"]
+	switch extIds.(type) {
+	case []interface{}:
+		sl := extIds.([]interface{})
+		bSliced, err := json.Marshal(sl)
+		if err != nil {
+			return false, err
+		}
+
+		switch sl[0] {
+		case "map":
+			var oMap libovsdb.OvsMap
+			err = json.Unmarshal(bSliced, &oMap)
+			if err != nil {
+				return false, err
+			}
+
+			if value, ok := oMap.GoMap["probe-id"]; ok {
+				if value == probe.ID {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
+
+func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(monitor *ovsdb.OvsMonitor, probe SFlowProbe) (string, error) {
+	/* FIX(safchain) don't find a way to send a null condition */
+	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{"abc"})
+	selectOp := libovsdb.Operation{
+		Op:    "select",
+		Table: "sFlow",
+		Where: []interface{}{condition},
+	}
+
+	operations := []libovsdb.Operation{selectOp}
+	result, err := monitor.OvsClient.Exec(operations...)
+	if err != nil {
+		return "", err
+	}
+
+	for _, o := range result {
+		for _, row := range o.Rows {
+			u := row["_uuid"].([]interface{})[1]
+			uuid := u.(string)
+
+			if targets, ok := row["targets"]; ok {
+				if targets != probe.Target {
+					continue
+				}
+			}
+
+			if polling, ok := row["polling"]; ok {
+				if uint32(polling.(float64)) != probe.Polling {
+					continue
+				}
+			}
+
+			if sampling, ok := row["sampling"]; ok {
+				if uint32(sampling.(float64)) != probe.Sampling {
+					continue
+				}
+			}
+
+			if ok, _ := compareProbeID(&row, probe); ok {
+				return uuid, nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func (o *OvsSFlowProbesHandler) registerSFlowProbe(monitor *ovsdb.OvsMonitor, probe SFlowProbe, bridgeUUID string) error {
+	probeUUID, err := o.retrieveSFlowProbeUUID(monitor, probe)
+	if err != nil {
+		return err
+	}
+
+	operations := []libovsdb.Operation{}
+
+	var uuid libovsdb.UUID
+	if probeUUID != "" {
+		uuid = libovsdb.UUID{probeUUID}
+
+		logging.GetLogger().Infof("Using already registered sFlow probe \"%s(%s)\"", probe.ID, uuid)
+	} else {
+		insertOp, err := newInsertSFlowProbeOP(probe)
+		if err != nil {
+			return err
+		}
+		uuid = libovsdb.UUID{insertOp.UUIDName}
+		logging.GetLogger().Infof("Registering new sFlow probe \"%s(%s)\"", probe.ID, uuid)
+
+		operations = append(operations, *insertOp)
+	}
+
+	bridgeRow := make(map[string]interface{})
+	bridgeRow["sflow"] = uuid
+
+	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{bridgeUUID})
+	updateOp := libovsdb.Operation{
+		Op:    "update",
+		Table: "Bridge",
+		Row:   bridgeRow,
+		Where: []interface{}{condition},
+	}
+
+	operations = append(operations, updateOp)
+	_, err = monitor.OvsClient.Exec(operations...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *OvsSFlowProbesHandler) registerProbe(monitor *ovsdb.OvsMonitor, probe SFlowProbe, bridgeUUID string) error {
+	err := o.registerSFlowProbe(monitor, probe, bridgeUUID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *OvsSFlowProbesHandler) registerProbes(monitor *ovsdb.OvsMonitor, bridgeUUID string) {
+	for _, probe := range o.probes {
+		err := o.registerProbe(monitor, probe, bridgeUUID)
+		if err != nil {
+			logging.GetLogger().Errorf("Error while registering probe %s", err.Error())
+		}
+	}
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	o.registerProbes(monitor, uuid)
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsInterfaceUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsPortUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+func (o *OvsSFlowProbesHandler) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+}
+
+func NewOvsSFlowProbesHandler(probes []SFlowProbe) *OvsSFlowProbesHandler {
+	return &OvsSFlowProbesHandler{probes: probes}
 }
