@@ -25,7 +25,6 @@ package probes
 import (
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/ovs"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
@@ -63,7 +62,7 @@ func NewProbeBundle(p map[string]Probe) *ProbeBundle {
 	}
 }
 
-func NewProbeBundleFromConfig(g *graph.Graph, n *graph.Node, ovsmon *ovsdb.OvsMonitor) *ProbeBundle {
+func NewProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *ProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.topology.probes")
 
 	// FIX(safchain) once viper setdefault on nested key will be fixed move this
@@ -86,7 +85,7 @@ func NewProbeBundleFromConfig(g *graph.Graph, n *graph.Node, ovsmon *ovsdb.OvsMo
 		case "netns":
 			probes[t] = NewNetNSProbe(g, n)
 		case "ovsdb":
-			probes[t] = NewOvsdbProbe(g, n, ovsmon)
+			probes[t] = NewOvsdbProbeFromConfig(g, n)
 		default:
 			logging.GetLogger().Error("unknown probe type %s", t)
 		}

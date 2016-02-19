@@ -39,6 +39,11 @@ agent:
   listen: 58081
   flowtable_expire: 1
   analyzers: localhost:58082
+  topology:
+    probes:
+      - netlink
+      - netns
+      - ovsdb
 
 cache:
   expire: 300

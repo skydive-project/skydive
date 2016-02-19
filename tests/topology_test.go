@@ -43,6 +43,11 @@ ws_pong_timeout: 1
 agent:
   listen: 58081
   flowtable_expire: 5
+  topology:
+    probes:
+      - netlink
+      - netns
+      - ovsdb
 
 cache:
   expire: 300

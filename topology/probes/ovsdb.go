@@ -27,6 +27,8 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
+	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/ovs"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
@@ -35,6 +37,7 @@ type OvsdbProbe struct {
 	sync.Mutex
 	Graph           *graph.Graph
 	Root            *graph.Node
+	OvsMon          *ovsdb.OvsMonitor
 	uuidToIntf      map[string]*graph.Node
 	uuidToPort      map[string]*graph.Node
 	intfPortQueue   map[string]*graph.Node
@@ -352,22 +355,34 @@ func (o *OvsdbProbe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 }
 
 func (o *OvsdbProbe) Start() {
+	o.OvsMon.StartMonitoring()
 }
 
 func (o *OvsdbProbe) Stop() {
-
+	o.OvsMon.StopMonitoring()
 }
 
-func NewOvsdbProbe(g *graph.Graph, n *graph.Node, ovsmon *ovsdb.OvsMonitor) *OvsdbProbe {
-	u := &OvsdbProbe{
+func NewOvsdbProbe(g *graph.Graph, n *graph.Node, addr string, port int) *OvsdbProbe {
+	o := &OvsdbProbe{
 		Graph:           g,
 		Root:            n,
 		uuidToIntf:      make(map[string]*graph.Node),
 		uuidToPort:      make(map[string]*graph.Node),
 		intfPortQueue:   make(map[string]*graph.Node),
 		portBridgeQueue: make(map[string]*graph.Node),
+		OvsMon:          ovsdb.NewOvsMonitor(addr, port),
 	}
-	ovsmon.AddMonitorHandler(u)
+	o.OvsMon.AddMonitorHandler(o)
 
-	return u
+	return o
+}
+
+func NewOvsdbProbeFromConfig(g *graph.Graph, n *graph.Node) *OvsdbProbe {
+	addr, port, err := config.GetHostPortAttributes("ovs", "ovsdb")
+	if err != nil {
+		logging.GetLogger().Errorf("Configuration error: %s", err.Error())
+		return nil
+	}
+
+	return NewOvsdbProbe(g, n, addr, port)
 }

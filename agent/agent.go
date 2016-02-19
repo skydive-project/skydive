@@ -46,7 +46,6 @@ type Agent struct {
 	Root            *graph.Node
 	TopoServer      *topology.Server
 	TopoProbeBundle *tprobes.ProbeBundle
-	OvsMon          *ovsdb.OvsMonitor
 	SFlowProbe      *fprobes.SFlowProbe
 }
 
@@ -55,22 +54,36 @@ func (a *Agent) Start() {
 	// send a first reset event to the analyzers
 	a.Graph.DelSubGraph(a.Root)
 
-	a.SFlowProbe, err = fprobes.NewSFlowProbeFromConfig(a.Graph)
+	gfe, err := mappings.NewGraphFlowEnhancer(a.Graph)
 	if err != nil {
 		panic(err)
 	}
 
-	ovsSFlowProbe := ovsdb.SFlowProbe{
-		ID:         "SkydiveSFlowProbe",
-		Interface:  "eth0",
-		Target:     a.SFlowProbe.GetTarget(),
-		HeaderSize: 256,
-		Sampling:   1,
-		Polling:    0,
-	}
-	sflowHandler := ovsdb.NewOvsSFlowProbesHandler([]ovsdb.SFlowProbe{ovsSFlowProbe})
+	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
 
-	a.OvsMon.AddMonitorHandler(sflowHandler)
+	if p := a.TopoProbeBundle.GetProbe("ovsdb"); p != nil {
+		a.SFlowProbe, err = fprobes.NewSFlowProbeFromConfig(a.Graph)
+		if err != nil {
+			panic(err)
+		}
+
+		ovsSFlowProbe := ovsdb.SFlowProbe{
+			ID:         "SkydiveSFlowProbe",
+			Interface:  "eth0",
+			Target:     a.SFlowProbe.GetTarget(),
+			HeaderSize: 256,
+			Sampling:   1,
+			Polling:    0,
+		}
+		sflowHandler := ovsdb.NewOvsSFlowProbesHandler([]ovsdb.SFlowProbe{ovsSFlowProbe})
+
+		o := p.(*tprobes.OvsdbProbe)
+		o.OvsMon.AddMonitorHandler(sflowHandler)
+
+		a.SFlowProbe.SetMappingPipeline(pipeline)
+
+		go a.SFlowProbe.Start()
+	}
 
 	analyzers := config.GetConfig().GetStringSlice("agent.analyzers")
 	// TODO(safchain) HA Connection ???
@@ -86,28 +99,16 @@ func (a *Agent) Start() {
 			panic(err)
 		}
 
-		a.SFlowProbe.SetAnalyzerClient(analyzer)
+		if a.SFlowProbe != nil {
+			a.SFlowProbe.SetAnalyzerClient(analyzer)
+		}
 
 		a.Gclient = graph.NewAsyncClient(analyzerAddr, analyzerPort, "/ws/graph")
 		graph.NewForwarder(a.Gclient, a.Graph)
 		a.Gclient.Connect()
 	}
 
-	gfe, err := mappings.NewGraphFlowEnhancer(a.Graph)
-	if err != nil {
-		panic(err)
-	}
-
-	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
-	a.SFlowProbe.SetMappingPipeline(pipeline)
-
 	a.TopoProbeBundle.Start()
-
-	go a.SFlowProbe.Start()
-
-	if err := a.OvsMon.StartMonitoring(); err != nil {
-		panic(err)
-	}
 
 	go a.TopoServer.ListenAndServe()
 
@@ -115,8 +116,9 @@ func (a *Agent) Start() {
 }
 
 func (a *Agent) Stop() {
-	a.SFlowProbe.Stop()
-	a.OvsMon.StopMonitoring()
+	if a.SFlowProbe != nil {
+		a.SFlowProbe.Stop()
+	}
 	a.TopoProbeBundle.Stop()
 	a.TopoServer.Stop()
 	a.GraphServer.Stop()
@@ -141,11 +143,9 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	ovsmon := ovsdb.NewOvsMonitorFromConfig()
-
 	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
 
-	bundle := tprobes.NewProbeBundleFromConfig(g, root, ovsmon)
+	bundle := tprobes.NewProbeBundleFromConfig(g, root)
 
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -164,7 +164,6 @@ func NewAgent() *Agent {
 
 	return &Agent{
 		Graph:           g,
-		OvsMon:          ovsmon,
 		TopoProbeBundle: bundle,
 		TopoServer:      server,
 		GraphServer:     gserver,
