@@ -33,8 +33,6 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
-	"github.com/pmylund/go-cache"
-
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
@@ -47,15 +45,17 @@ const (
 	maxDgramSize = 1500
 )
 
+type ProbePathGetter interface {
+	GetProbePath(index int64) string
+}
+
 type SFlowAgent struct {
 	Addr                string
 	Port                int
 	Graph               *graph.Graph
 	AnalyzerClient      *analyzer.Client
 	FlowMappingPipeline *mappings.FlowMappingPipeline
-	cache               *cache.Cache
-	cacheUpdaterChan    chan int64
-	done                chan bool
+	ProbePathGetter     ProbePathGetter
 	running             atomic.Value
 	wg                  sync.WaitGroup
 }
@@ -63,76 +63,6 @@ type SFlowAgent struct {
 func (sfa *SFlowAgent) GetTarget() string {
 	target := []string{sfa.Addr, strconv.FormatInt(int64(sfa.Port), 10)}
 	return strings.Join(target, ":")
-}
-
-func (sfa *SFlowAgent) lookupForProbePath(index int64) string {
-	sfa.Graph.Lock()
-	defer sfa.Graph.Unlock()
-
-	intfs := sfa.Graph.LookupNodes(graph.Metadata{"IfIndex": index})
-	if len(intfs) == 0 {
-		return ""
-	}
-
-	// lookup for the interface that is a part of an ovs bridge
-	for _, intf := range intfs {
-		ancestors, ok := sfa.Graph.GetAncestorsTo(intf, graph.Metadata{"Type": "ovsbridge"})
-		if !ok {
-			continue
-		}
-
-		bridge := ancestors[2]
-		ancestors, ok = sfa.Graph.GetAncestorsTo(bridge, graph.Metadata{"Type": "host"})
-		if !ok {
-			continue
-		}
-
-		var path string
-		for i := len(ancestors) - 1; i >= 0; i-- {
-			if len(path) > 0 {
-				path += "/"
-			}
-			path += ancestors[i].Metadata()["Name"].(string)
-		}
-
-		return path
-	}
-
-	return ""
-}
-
-func (sfa *SFlowAgent) cacheUpdater() {
-	sfa.wg.Add(1)
-	defer sfa.wg.Done()
-
-	logging.GetLogger().Debug("Start SFlowAgent cache updater")
-
-	var index int64
-	for sfa.running.Load() == true {
-		select {
-		case index = <-sfa.cacheUpdaterChan:
-			logging.GetLogger().Debugf("SFlowAgent request received: %d", index)
-
-			path := sfa.lookupForProbePath(index)
-			if path != "" {
-				sfa.cache.Set(strconv.FormatInt(index, 10), path, cache.DefaultExpiration)
-			}
-
-		case <-sfa.done:
-			return
-		}
-	}
-}
-
-func (sfa *SFlowAgent) getProbePath(index int64) string {
-	p, f := sfa.cache.Get(strconv.FormatInt(index, 10))
-	if f {
-		path := p.(string)
-		return path
-	}
-	sfa.cacheUpdaterChan <- index
-
-	return ""
 }
 
 func (sfa *SFlowAgent) flowExpire(f *flow.Flow) {
@@ -157,9 +87,6 @@ func (sfa *SFlowAgent) start() error {
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(1 * time.Second))
 
-	// start index/mac cache updater
-	go sfa.cacheUpdater()
-
 	flowtable := flow.NewFlowTable()
 	cfgFlowtable_expire := config.GetConfig().GetInt("agent.flowtable_expire")
 	go flowtable.AsyncExpire(sfa.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
@@ -180,7 +107,10 @@ func (sfa *SFlowAgent) start() error {
 
 		if sflowPacket.SampleCount > 0 {
 			for _, sample := range sflowPacket.FlowSamples {
-				probePath := sfa.getProbePath(int64(sample.InputInterface))
+				var probePath string
+				if sfa.ProbePathGetter != nil {
+					probePath = sfa.ProbePathGetter.GetProbePath(int64(sample.InputInterface))
+				}
 
 				flows := flow.FLowsFromSFlowSample(flowtable, &sample, probePath)
 
@@ -210,7 +140,6 @@ func (sfa *SFlowAgent) Start() {
 
 func (sfa *SFlowAgent) Stop() {
 	sfa.running.Store(false)
-	sfa.done <- true
 	sfa.wg.Wait()
 }
 
@@ -222,16 +151,17 @@ func (sfa *SFlowAgent) SetMappingPipeline(p *mappings.FlowMappingPipeline) {
 	sfa.FlowMappingPipeline = p
 }
 
-func NewSFlowAgent(a string, p int, g *graph.Graph, expire int, cleanup int) (*SFlowAgent, error) {
+func (sfa *SFlowAgent) SetProbePathGetter(p ProbePathGetter) {
+	sfa.ProbePathGetter = p
+}
+
+func NewSFlowAgent(a string, p int, g *graph.Graph) (*SFlowAgent, error) {
 	sfa := &SFlowAgent{
 		Addr:  a,
 		Port:  p,
 		Graph: g,
 	}
 
-	sfa.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
-	sfa.cacheUpdaterChan = make(chan int64, 200)
-	sfa.done = make(chan bool)
 	sfa.running.Store(true)
 
 	return sfa, nil
@@ -243,8 +173,5 @@ func NewSFlowAgentFromConfig(g *graph.Graph) (*SFlowAgent, error) {
 		return nil, err
 	}
 
-	expire := config.GetConfig().GetInt("cache.expire")
-	cleanup := config.GetConfig().GetInt("cache.cleanup")
-
-	return NewSFlowAgent(addr, port, g, expire, cleanup)
+	return NewSFlowAgent(addr, port, g)
 }

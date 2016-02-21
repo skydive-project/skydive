@@ -24,10 +24,16 @@ package probes
 
 import (
 	"encoding/json"
+	"strconv"
+	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/pmylund/go-cache"
 	"github.com/socketplane/libovsdb"
 
 	"github.com/redhat-cip/skydive/analyzer"
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/ovs"
@@ -46,8 +52,84 @@ type OvsSFlowProbe struct {
 }
 
 type OvsSFlowProbesHandler struct {
-	ovsmon *ovsdb.OvsMonitor
-	agent  *sflow.SFlowAgent
+	Graph            *graph.Graph
+	ovsmon           *ovsdb.OvsMonitor
+	agent            *sflow.SFlowAgent
+	cache            *cache.Cache
+	cacheUpdaterChan chan int64
+	done             chan bool
+	running          atomic.Value
+	wg               sync.WaitGroup
+}
+
+func (o *OvsSFlowProbesHandler) lookupForProbePath(index int64) string {
+	o.Graph.Lock()
+	defer o.Graph.Unlock()
+
+	intfs := o.Graph.LookupNodes(graph.Metadata{"IfIndex": index})
+	if len(intfs) == 0 {
+		return ""
+	}
+
+	// lookup for the interface that is a part of an ovs bridge
+	for _, intf := range intfs {
+		ancestors, ok := o.Graph.GetAncestorsTo(intf, graph.Metadata{"Type": "ovsbridge"})
+		if !ok {
+			continue
+		}
+
+		bridge := ancestors[2]
+		ancestors, ok = o.Graph.GetAncestorsTo(bridge, graph.Metadata{"Type": "host"})
+		if !ok {
+			continue
+		}
+
+		var path string
+		for i := len(ancestors) - 1; i >= 0; i-- {
+			if len(path) > 0 {
+				path += "/"
+			}
+			path += ancestors[i].Metadata()["Name"].(string)
+		}
+
+		return path
+	}
+
+	return ""
+}
+
+func (o *OvsSFlowProbesHandler) cacheUpdater() {
+	o.wg.Add(1)
+	defer o.wg.Done()
+
+	logging.GetLogger().Debug("Start OVS Sflow probe cache updater")
+
+	var index int64
+	for o.running.Load() == true {
+		select {
+		case index = <-o.cacheUpdaterChan:
+			logging.GetLogger().Debugf("OVS Sflow probe request received: %d", index)
+
+			path := o.lookupForProbePath(index)
+			if path != "" {
+				o.cache.Set(strconv.FormatInt(index, 10), path, cache.DefaultExpiration)
+			}
+
+		case <-o.done:
+			return
+		}
+	}
+}
+
+func (o *OvsSFlowProbesHandler) GetProbePath(index int64) string {
+	p, f := o.cache.Get(strconv.FormatInt(index, 10))
+	if f {
+		path := p.(string)
+		return path
+	}
+	o.cacheUpdaterChan <- index
+
+	return ""
 }
 
 func newInsertSFlowProbeOP(probe OvsSFlowProbe) (*libovsdb.Operation, error) {
@@ -164,14 +246,14 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbe(monitor *ovsdb.OvsMonitor, pr
 	if probeUUID != "" {
 		uuid = libovsdb.UUID{probeUUID}
 
-		logging.GetLogger().Infof("Using already registered OVS sFlow probe \"%s(%s)\"", probe.ID, uuid)
+		logging.GetLogger().Infof("Using already registered OVS SFlow probe \"%s(%s)\"", probe.ID, uuid)
 	} else {
 		insertOp, err := newInsertSFlowProbeOP(probe)
 		if err != nil {
 			return err
 		}
 		uuid = libovsdb.UUID{insertOp.UUIDName}
-		logging.GetLogger().Infof("Registering new OVS sFlow probe \"%s(%s)\"", probe.ID, uuid)
+		logging.GetLogger().Infof("Registering new OVS SFlow probe \"%s(%s)\"", probe.ID, uuid)
 
 		operations = append(operations, *insertOp)
 	}
@@ -243,19 +325,33 @@ func (o *OvsSFlowProbesHandler) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid str
 
 func (o *OvsSFlowProbesHandler) Start() {
 	o.ovsmon.AddMonitorHandler(o)
+
+	// start index/mac cache updater
+	go o.cacheUpdater()
+
 	o.agent.Start()
 }
 
 func (o *OvsSFlowProbesHandler) Stop() {
 	// TODO(safchain) call RemoveMonitorHandler when implemented
 	o.agent.Stop()
+
+	o.running.Store(false)
+	o.done <- true
+	o.wg.Wait()
 }
 
-func NewOvsSFlowProbesHandler(p *probes.OvsdbProbe, agent *sflow.SFlowAgent) *OvsSFlowProbesHandler {
+func NewOvsSFlowProbesHandler(p *probes.OvsdbProbe, agent *sflow.SFlowAgent, expire int, cleanup int) *OvsSFlowProbesHandler {
 	o := &OvsSFlowProbesHandler{
+		Graph:  p.Graph,
 		ovsmon: p.OvsMon,
 		agent:  agent,
 	}
+
+	o.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
+	o.cacheUpdaterChan = make(chan int64, 200)
+	o.done = make(chan bool)
+	o.running.Store(true)
 
 	return o
 }
@@ -268,7 +364,7 @@ func NewOvsSFlowProbesHandlerFromConfig(tb *probes.TopologyProbeBundle, g *graph
 
 	agent, err := sflow.NewSFlowAgentFromConfig(g)
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to start a sflow agent: %s", err.Error())
+		logging.GetLogger().Errorf("Unable to start an OVS SFlow probe handler: %s", err.Error())
 		return nil
 	}
 	agent.SetMappingPipeline(p)
@@ -277,5 +373,12 @@ func NewOvsSFlowProbesHandlerFromConfig(tb *probes.TopologyProbeBundle, g *graph
 		agent.SetAnalyzerClient(a)
 	}
 
-	return NewOvsSFlowProbesHandler(probe.(*probes.OvsdbProbe), agent)
+	expire := config.GetConfig().GetInt("cache.expire")
+	cleanup := config.GetConfig().GetInt("cache.cleanup")
+
+	o := NewOvsSFlowProbesHandler(probe.(*probes.OvsdbProbe), agent, expire, cleanup)
+
+	agent.SetProbePathGetter(o)
+
+	return o
 }
