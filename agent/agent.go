@@ -24,30 +24,25 @@ package agent
 
 import (
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 
-	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow/mappings"
 	fprobes "github.com/redhat-cip/skydive/flow/probes"
-	probe "github.com/redhat-cip/skydive/probe"
-	"github.com/redhat-cip/skydive/sflow"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	tprobes "github.com/redhat-cip/skydive/topology/probes"
 )
 
 type Agent struct {
-	Graph           *graph.Graph
-	Gclient         *graph.AsyncClient
-	GraphServer     *graph.Server
-	Root            *graph.Node
-	TopoServer      *topology.Server
-	TopoProbeBundle *probe.ProbeBundle
-	SFlowAgent      *sflow.SFlowAgent
+	Graph               *graph.Graph
+	Gclient             *graph.AsyncClient
+	GraphServer         *graph.Server
+	Root                *graph.Node
+	TopologyServer      *topology.Server
+	TopologyProbeBundle *tprobes.TopologyProbeBundle
+	FlowProbeBundle     *fprobes.FlowProbeBundle
 }
 
 func (a *Agent) Start() {
@@ -55,73 +50,32 @@ func (a *Agent) Start() {
 	// send a first reset event to the analyzers
 	a.Graph.DelSubGraph(a.Root)
 
-	gfe, err := mappings.NewGraphFlowEnhancer(a.Graph)
+	addr, port, err := config.GetAnalyzerClientAddr()
 	if err != nil {
-		panic(err)
+		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
+		os.Exit(1)
 	}
 
-	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
-
-	if p := a.TopoProbeBundle.GetProbe("ovsdb"); p != nil {
-		a.SFlowAgent, err = sflow.NewSFlowAgentFromConfig(a.Graph)
-		if err != nil {
-			panic(err)
-		}
-
-		ovsSFlowProbe := fprobes.SFlowProbe{
-			ID:         "SkydiveSFlowProbe",
-			Interface:  "eth0",
-			Target:     a.SFlowAgent.GetTarget(),
-			HeaderSize: 256,
-			Sampling:   1,
-			Polling:    0,
-		}
-		sflowHandler := fprobes.NewOvsSFlowProbesHandler([]fprobes.SFlowProbe{ovsSFlowProbe})
-
-		o := p.(*tprobes.OvsdbProbe)
-		o.OvsMon.AddMonitorHandler(sflowHandler)
-
-		a.SFlowAgent.SetMappingPipeline(pipeline)
-
-		go a.SFlowAgent.Start()
-	}
-
-	analyzers := config.GetConfig().GetStringSlice("agent.analyzers")
-	// TODO(safchain) HA Connection ???
-	if len(analyzers) > 0 {
-		analyzerAddr := strings.Split(analyzers[0], ":")[0]
-		analyzerPort, err := strconv.Atoi(strings.Split(analyzers[0], ":")[1])
-		if err != nil {
-			panic(err)
-		}
-
-		analyzer, err := analyzer.NewClient(analyzerAddr, analyzerPort)
-		if err != nil {
-			panic(err)
-		}
-
-		if a.SFlowAgent != nil {
-			a.SFlowAgent.SetAnalyzerClient(analyzer)
-		}
-
-		a.Gclient = graph.NewAsyncClient(analyzerAddr, analyzerPort, "/ws/graph")
+	if addr != "" {
+		a.Gclient = graph.NewAsyncClient(addr, port, "/ws/graph")
 		graph.NewForwarder(a.Gclient, a.Graph)
 		a.Gclient.Connect()
 	}
 
-	a.TopoProbeBundle.Start()
+	a.TopologyProbeBundle = tprobes.NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
+	a.TopologyProbeBundle.Start()
 
-	go a.TopoServer.ListenAndServe()
+	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph)
+	a.FlowProbeBundle.Start()
 
+	go a.TopologyServer.ListenAndServe()
 	go a.GraphServer.ListenAndServe()
 }
 
 func (a *Agent) Stop() {
-	if a.SFlowAgent != nil {
-		a.SFlowAgent.Stop()
-	}
-	a.TopoProbeBundle.Stop()
-	a.TopoServer.Stop()
+	a.TopologyProbeBundle.Stop()
+	a.FlowProbeBundle.Stop()
+	a.TopologyServer.Stop()
 	a.GraphServer.Stop()
 	if a.Gclient != nil {
 		a.Gclient.Disconnect()
@@ -146,8 +100,6 @@ func NewAgent() *Agent {
 
 	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
 
-	bundle := tprobes.NewProbeBundleFromConfig(g, root)
-
 	router := mux.NewRouter().StrictSlash(true)
 
 	server, err := topology.NewServerFromConfig("agent", g, router)
@@ -164,10 +116,9 @@ func NewAgent() *Agent {
 	}
 
 	return &Agent{
-		Graph:           g,
-		TopoProbeBundle: bundle,
-		TopoServer:      server,
-		GraphServer:     gserver,
-		Root:            root,
+		Graph:          g,
+		TopologyServer: server,
+		GraphServer:    gserver,
+		Root:           root,
 	}
 }

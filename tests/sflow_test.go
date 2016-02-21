@@ -44,6 +44,9 @@ agent:
       - netlink
       - netns
       - ovsdb
+  flow:
+    probes:
+      - ovssflow
 
 cache:
   expire: 300

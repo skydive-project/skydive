@@ -23,26 +23,46 @@
 package probes
 
 import (
+	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/probe"
 	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/topology/probes"
 )
 
-type TopologyProbeBundle struct {
+type FlowProbeBundle struct {
 	probe.ProbeBundle
 }
 
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyProbeBundle {
-	list := config.GetConfig().GetStringSlice("agent.topology.probes")
+func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph) *FlowProbeBundle {
+	list := config.GetConfig().GetStringSlice("agent.flow.probes")
 
-	// FIX(safchain) once viper setdefault on nested key will be fixed move this
-	// to config init
-	if len(list) == 0 {
-		list = []string{"netlink", "netns"}
+	logging.GetLogger().Infof("Flow probes: %v", list)
+
+	gfe, err := mappings.NewGraphFlowEnhancer(g)
+	if err != nil {
+		panic(err)
 	}
 
-	logging.GetLogger().Infof("Topology probes: %v", list)
+	pipeline := mappings.NewFlowMappingPipeline([]mappings.FlowEnhancer{gfe})
+
+	var aclient *analyzer.Client
+
+	addr, port, err := config.GetAnalyzerClientAddr()
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to parse analyzer client: %s", err.Error())
+		return nil
+	}
+
+	if addr != "" {
+		aclient, err = analyzer.NewClient(addr, port)
+		if err != nil {
+			logging.GetLogger().Errorf("Analyzer client error %s:%d : %s", addr, port, err.Error())
+			return nil
+		}
+	}
 
 	probes := make(map[string]probe.Probe)
 	for _, t := range list {
@@ -51,12 +71,11 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 		}
 
 		switch t {
-		case "netlink":
-			probes[t] = NewNetLinkProbe(g, n)
-		case "netns":
-			probes[t] = NewNetNSProbe(g, n)
-		case "ovsdb":
-			probes[t] = NewOvsdbProbeFromConfig(g, n)
+		case "ovssflow":
+			o := NewOvsSFlowProbesHandlerFromConfig(tb, g, pipeline, aclient)
+			if o != nil {
+				probes[t] = o
+			}
 		default:
 			logging.GetLogger().Error("unknown probe type %s", t)
 		}
@@ -64,5 +83,5 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 
 	p := probe.NewProbeBundle(probes)
 
-	return &TopologyProbeBundle{*p}
+	return &FlowProbeBundle{*p}
 }

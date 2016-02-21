@@ -139,7 +139,7 @@ func (sfa *SFlowAgent) flowExpire(f *flow.Flow) {
 	/* send a special event to the analyzer */
 }
 
-func (sfa *SFlowAgent) Start() error {
+func (sfa *SFlowAgent) start() error {
 	sfa.wg.Add(1)
 	defer sfa.wg.Done()
 
@@ -202,6 +202,10 @@ func (sfa *SFlowAgent) Start() error {
 	}
 
 	return nil
+}
+
+func (sfa *SFlowAgent) Start() {
+	go sfa.start()
 }
 
 func (sfa *SFlowAgent) Stop() {
