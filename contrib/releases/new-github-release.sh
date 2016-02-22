@@ -49,7 +49,7 @@ cd $GOPATH/src/github.com/redhat-cip/skydive
 git checkout $tag || (echo "Unknown tag $tag"; exit 1)
 
 # Run the test suite
-make test
+make test GOFLAGS="-race -timeout 6m"
 
 # Build the executables
 make install
