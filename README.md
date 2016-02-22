@@ -87,6 +87,18 @@ agent:
   flowtable_expire: 5
   listen: 8081
   analyzers: 127.0.0.1:8082
+  topology:
+    # Probes used to capture topology informations like interfaces,
+    # bridges, namespaces, etc. Available netlink, netns, ovsdb.
+    # Default: netlink, netns
+    probes:
+      - netlink
+      - netns
+      # - ovsdb
+  flow:
+    # Probes used to capture traffic.
+    probes:
+      # - ovssflow
 
 sflow:
   # listen parameter for the sflow agent, Format: addr:port.
