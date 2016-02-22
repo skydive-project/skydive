@@ -29,7 +29,8 @@ mkdir -p ${GOPATH}/src/github.com/redhat-cip/
 ln -s $(pwd) ${GOPATH}/src/github.com/redhat-cip/skydive
 
 # Install requirements
-sudo yum -y install make
+sudo yum install -y https://www.rdoproject.org/repos/rdo-release.rpm
+sudo yum -y install make openvswitch
 sudo service openvswitch start
 sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400
 
