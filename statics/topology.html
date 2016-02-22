@@ -29,18 +29,22 @@
     background-color: #333;
   }
 
+  select {
+    color: #111;
+  }
+
   .mode {
     color: white;
     font-size: 0.6em;
     vertical-align: super;
   }
 
-  .topology {
+  .topology, .conversation {
     width: 100%;
     height: 100%;
   }
 
-  .topology-d3 {
+  .topology-d3, .conversation-d3 {
     width: 100%;
     height: 100%;
     text-align: center;
@@ -59,6 +63,19 @@
     pointer-events: none;
     font: 12px Helvetica, Arial, sans-serif;
     stroke-width: 0;
+  }
+
+  .row text, .column text {
+    font: 12px Helvetica, Arial, sans-serif;
+    fill: #eee;
+  }
+
+  .row text.active, .column text.active{
+    fill: red;
+  }
+
+  .row line, .column line {
+    stroke: #fff;
   }
 
   .default .circle {
@@ -117,13 +134,13 @@
     height: 100%
   }
 
-  .topology-view {
+  .content {
     padding-left: 0px;
     padding-right: 0px;
     overflow: auto;
   }
 
-  .topology-info {
+  .info {
     border-left: 5px #222 solid;
     color: #fff;
     padding-top: 5px;
@@ -755,7 +772,7 @@
     .attr("width", this.width)
     .attr("height", this.height)
     .attr("y", 60)
-    .attr('viewBox', '0 0 ' + this.width + ' ' + this.height)
+    .attr('viewBox', '0 0 ' + this.width + ' ' + this.height);
   }
 
   Layout.prototype.ReOrderLayout = function() {
@@ -956,12 +973,192 @@
     };
   }
 
-  var layout;
-  $(document).ready(function() {
-    if ("{{.Service}}" == "agent")
-      $("#flows-panel").hide();
+  var ConversationLayout = function(selector) {
+    this.width = 600;
+    this.height = 600;
 
-    $('.topology-view').resizable({
+    var margin = {top: 100, right: 0, bottom: 10, left: 100};
+
+    this.svg = d3.select(selector).append("svg")
+    .attr("width", this.width + margin.left + margin.right)
+    .attr("height", this.height + margin.top + margin.bottom)
+    .style("margin-left", -margin.left + 20 + "px")
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    this.orders = {};
+
+    _this = this;
+    d3.select("#layer").on("change", function() {
+      _this.ShowConversation(this.value);
+    });
+
+    d3.select("#order").on("change", function() {
+      _this.Order(this.value);
+    });
+  }
+
+  ConversationLayout.prototype.Order = function(order) {
+    if (!(order in this.orders))
+      return
+
+    var x = d3.scale.ordinal().rangeBands([0, _this.width]);
+
+    x.domain(this.orders[order]);
+
+    var t = this.svg.transition().duration(2500);
+
+    t.selectAll(".row")
+    .delay(function(d, i) { return x(i) * 4; })
+    .attr("transform", function(d, i) {
+      return "translate(0," + x(i) + ")";
+    })
+    .selectAll(".cell")
+    .delay(function(d) { return x(d.x) * 4; })
+    .attr("x", function(d) { return x(d.x); });
+
+    t.selectAll(".column")
+    .delay(function(d, i) { return x(i) * 4; })
+    .attr("transform", function(d, i) {
+      return "translate(" + x(i) + ")rotate(-90)";
+    });
+  }
+
+  ConversationLayout.prototype.ShowConversation = function(layer) {
+    this.svg.selectAll("*").remove();
+
+    var _this = this;
+    d3.json("/rpc/conversation/" + layer, function(data) {
+      var matrix = [];
+      var nodes = data.nodes;
+      var n = nodes.length;
+
+      // Compute index per node.
+      nodes.forEach(function(node, i) {
+        node.index = i;
+        node.count = 0;
+        matrix[i] = d3.range(n).map(function(j) { return {x: j, y: i, z: 0}; });
+      });
+
+      // Convert links to matrix; count character occurrences.
+      data.links.forEach(function(link) {
+        matrix[link.source][link.target].z += link.value;
+        matrix[link.target][link.source].z += link.value;
+        matrix[link.source][link.source].z += link.value;
+        matrix[link.target][link.target].z += link.value;
+        nodes[link.source].count += link.value;
+        nodes[link.target].count += link.value;
+      });
+
+      // Precompute the orders.
+      _this.orders = {
+        name: d3.range(n).sort(function(a, b) {
+          return d3.ascending(nodes[a].name, nodes[b].name);
+        }),
+        count: d3.range(n).sort(function(a, b) {
+          return nodes[b].count - nodes[a].count;
+        }),
+        group: d3.range(n).sort(function(a, b) {
+          return nodes[b].group - nodes[a].group;
+        })
+      };
+
+      var x = d3.scale.ordinal().rangeBands([0, _this.width]);
+      var z = d3.scale.linear().domain([0, 4]).clamp(true);
+      var c = d3.scale.category10().domain(d3.range(10));
+
+      // The default sort order.
+      x.domain(_this.orders.name);
+
+      _this.svg.append("rect")
+      .attr("class", "background")
+      .attr("width", _this.width)
+      .attr("height", _this.height);
+
+      var row = _this.svg.selectAll(".row")
+      .data(matrix)
+      .enter().append("g")
+      .attr("class", "row")
+      .attr("transform", function(d, i) {
+        return "translate(0," + x(i) + ")"; })
+      .each(function(row) {
+        var cell = d3.select(this).selectAll(".cell")
+        .data(row.filter(function(d) { return d.z; }))
+        .enter().append("rect")
+        .attr("class", "cell")
+        .attr("x", function(d) { return x(d.x); })
+        .attr("width", x.rangeBand())
+        .attr("height", x.rangeBand())
+        .style("fill-opacity", function(d) { return z(d.z); })
+        .style("fill", function(d) { return nodes[d.x].group == nodes[d.y].group ? c(nodes[d.x].group) : null; })
+        .on("mouseover", function(p) {
+          d3.selectAll(".row text").classed("active", function(d, i) { return i == p.y; });
+          d3.selectAll(".column text").classed("active", function(d, i) { return i == p.x; });
+        })
+        .on("mouseout", function(p) {
+          d3.selectAll("text").classed("active", false);
+        });
+      });
+
+      row.append("line")
+        .attr("x2", _this.width);
+
+      row.append("text")
+      .attr("x", -6)
+      .attr("y", x.rangeBand() / 2)
+      .attr("dy", ".32em")
+      .attr("text-anchor", "end")
+      .text(function(d, i) { return nodes[i].name; });
+
+      var column = _this.svg.selectAll(".column")
+      .data(matrix)
+      .enter().append("g")
+      .attr("class", "column")
+      .attr("transform", function(d, i) {
+        return "translate(" + x(i) + ")rotate(-90)";
+      });
+
+      column.append("line")
+      .attr("x1", -_this.width);
+
+      column.append("text")
+      .attr("x", 6)
+      .attr("y", x.rangeBand() / 2)
+      .attr("dy", ".32em")
+      .attr("text-anchor", "start")
+      .text(function(d, i) { return nodes[i].name; });
+    });
+  }
+
+  var topologyLayout;
+  var conversationLayout;
+
+  $(document).ready(function() {
+    if ("{{.Service}}" == "agent") {
+      $("#flows-panel").hide();
+      $("#conversation").hide();
+    }
+    else {
+      $('#topology-btn').click(function() {
+        $('#topology').addClass('active');
+        $('#conversation').removeClass('active');
+
+        $('.topology').show();
+        $('.conversation').hide();
+      });
+
+      $('#conversation-btn').click(function() {
+        $('#topology').removeClass('active');
+        $('#conversation').addClass('active');
+
+        $('.topology').hide();
+        $('.conversation').show();
+
+        conversationLayout.ShowConversation();
+      });
+    }
+
+    $('.content').resizable({
       handles: 'e',
       minWidth: 300,
       resize:function(event,ui){
@@ -970,16 +1167,18 @@
         var ele=ui.element;
         var factor = $(this).parent().width()-x;
         var f2 = $(this).parent().width() * .02999;
-        $.each(ele.siblings(),function(idx,item){
+        $.each(ele.siblings(),function(idx,item) {
           ele.siblings().eq(idx).css('height',y+'px');
           ele.siblings().eq(idx).width((factor-f2)+'px');
         });
       }
     });
 
-    layout = new Layout(".topology-d3");
-    layout.StartLiveUpdate();
-    layout.StartLiveUpdateAlert();
+    topologyLayout = new Layout(".topology-d3");
+    topologyLayout.StartLiveUpdate();
+    topologyLayout.StartLiveUpdateAlert();
+
+    conversationLayout = new ConversationLayout(".conversation-d3")
   });
   </script>
 </head>
@@ -998,17 +1197,18 @@
       </div>
       <div id="navbar" class="collapse navbar-collapse">
         <ul class="nav navbar-nav">
-          <li class="active"><a href="#">Home</a></li>
+          <li class="active" id="topology"><a href="#" id="topology-btn">Topology</a></li>
+          <li id="conversation"><a href="#" id="conversation-btn">Conversation</a></li>
         </ul>
       </div>
     </div>
   </nav>
 
   <div class="topology">
-    <div class="col-sm-8 fill topology-view">
+    <div class="col-sm-8 fill content">
       <div class="topology-d3"></div>
     </div>
-    <div class="col-sm-4 fill topology-info">
+    <div class="col-sm-4 fill info">
       <div class="left-cont">
         <div class="left-panel">
           <div class="title-left-panel">Metadata :</div>
@@ -1017,6 +1217,38 @@
         <div class="left-panel" id="flows-panel">
           <div class="title-left-panel">Flows :</div>
           <div id="flows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="conversation">
+    <div class="col-sm-8 fill content">
+      <div class="conversation-d3"></div>
+    </div>
+    <div class="col-sm-4 fill info">
+      <div class="left-cont">
+        <div class="left-panel">
+          <div class="title-left-panel">Options :</div>
+          <br>
+          <p>
+            Order :
+            <select id="order">
+              <option value="name">by Name</option>
+              <option value="count">by Frequency</option>
+              <option value="group">by Application</option>
+            </select>
+          </p>
+          <p>
+            Layer :
+            <select id="layer">
+              <option value="ethernet">Ethernet</option>
+              <option value="ipv4">IPv4</option>
+              <option value="tcp">TCP</option>
+              <option value="udp">UDP</option>
+              <option value="sctp">SCTP</option>
+            </select>
+        </p>
         </div>
       </div>
     </div>

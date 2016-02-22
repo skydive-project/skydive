@@ -130,6 +130,10 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath(EndpointType FlowEndpointT
 		}
 
 		layerFlow := f.GetStatistics().Endpoints[EndpointType.Value()]
+		if layerFlow == nil {
+			continue
+		}
+
 		if _, found := layerMap[layerFlow.AB.Value]; !found {
 			layerMap[layerFlow.AB.Value] = len(layerMap)
 			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", layerFlow.AB.Value, pathMap[f.LayersPath])
