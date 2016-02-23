@@ -96,7 +96,7 @@ func (s *Server) TopologyIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) RegisterStaticEndpoints() {
-	s.Router.HandleFunc("/static/topology", s.serveIndex)
+	s.Router.HandleFunc("/", s.serveIndex)
 }
 
 func (s *Server) RegisterRPCEndpoints() {

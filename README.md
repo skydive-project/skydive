@@ -133,7 +133,7 @@ $ skydive analyzer --conf etc/skydive.yml
 To access to the WebUI of agents or analyzer:
 
 ```console
-http://<address>:<port>/static/topology
+http://<address>:<port>
 ```
 
 ### API
