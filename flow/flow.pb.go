@@ -60,9 +60,9 @@ func (x FlowEndpointType) String() string {
 func (FlowEndpointType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type FlowEndpointStatistics struct {
-	Value   string `protobuf:"bytes,2,opt,name=Value,json=value" json:"Value,omitempty"`
-	Packets uint64 `protobuf:"varint,5,opt,name=Packets,json=packets" json:"Packets,omitempty"`
-	Bytes   uint64 `protobuf:"varint,6,opt,name=Bytes,json=bytes" json:"Bytes,omitempty"`
+	Value   string `protobuf:"bytes,2,opt,name=Value" json:"Value,omitempty"`
+	Packets uint64 `protobuf:"varint,5,opt,name=Packets" json:"Packets,omitempty"`
+	Bytes   uint64 `protobuf:"varint,6,opt,name=Bytes" json:"Bytes,omitempty"`
 }
 
 func (m *FlowEndpointStatistics) Reset()                    { *m = FlowEndpointStatistics{} }
@@ -71,9 +71,9 @@ func (*FlowEndpointStatistics) ProtoMessage()               {}
 func (*FlowEndpointStatistics) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type FlowEndpointsStatistics struct {
-	Type FlowEndpointType        `protobuf:"varint,1,opt,name=Type,json=type,enum=flow.FlowEndpointType" json:"Type,omitempty"`
-	AB   *FlowEndpointStatistics `protobuf:"bytes,3,opt,name=AB,json=aB" json:"AB,omitempty"`
-	BA   *FlowEndpointStatistics `protobuf:"bytes,4,opt,name=BA,json=bA" json:"BA,omitempty"`
+	Type FlowEndpointType        `protobuf:"varint,1,opt,name=Type,enum=flow.FlowEndpointType" json:"Type,omitempty"`
+	AB   *FlowEndpointStatistics `protobuf:"bytes,3,opt,name=AB" json:"AB,omitempty"`
+	BA   *FlowEndpointStatistics `protobuf:"bytes,4,opt,name=BA" json:"BA,omitempty"`
 }
 
 func (m *FlowEndpointsStatistics) Reset()                    { *m = FlowEndpointsStatistics{} }
@@ -96,9 +96,9 @@ func (m *FlowEndpointsStatistics) GetBA() *FlowEndpointStatistics {
 }
 
 type FlowStatistics struct {
-	Start     int64                              `protobuf:"varint,1,opt,name=Start,json=start" json:"Start,omitempty"`
-	Last      int64                              `protobuf:"varint,2,opt,name=Last,json=last" json:"Last,omitempty"`
-	Endpoints map[int32]*FlowEndpointsStatistics `protobuf:"bytes,3,rep,name=Endpoints,json=endpoints" json:"Endpoints,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Start     int64                              `protobuf:"varint,1,opt,name=Start" json:"Start,omitempty"`
+	Last      int64                              `protobuf:"varint,2,opt,name=Last" json:"Last,omitempty"`
+	Endpoints map[int32]*FlowEndpointsStatistics `protobuf:"bytes,3,rep,name=Endpoints" json:"Endpoints,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 }
 
 func (m *FlowStatistics) Reset()                    { *m = FlowStatistics{} }
@@ -114,14 +114,14 @@ func (m *FlowStatistics) GetEndpoints() map[int32]*FlowEndpointsStatistics {
 }
 
 type Flow struct {
-	UUID       string `protobuf:"bytes,1,opt,name=UUID,json=uUID" json:"UUID,omitempty"`
-	LayersPath string `protobuf:"bytes,2,opt,name=LayersPath,json=layersPath" json:"LayersPath,omitempty"`
+	UUID       string `protobuf:"bytes,1,opt,name=UUID" json:"UUID,omitempty"`
+	LayersPath string `protobuf:"bytes,2,opt,name=LayersPath" json:"LayersPath,omitempty"`
 	// Data Flow info
-	Statistics *FlowStatistics `protobuf:"bytes,3,opt,name=Statistics,json=statistics" json:"Statistics,omitempty"`
+	Statistics *FlowStatistics `protobuf:"bytes,3,opt,name=Statistics" json:"Statistics,omitempty"`
 	// Topology info
-	ProbeGraphPath string `protobuf:"bytes,11,opt,name=ProbeGraphPath,json=probeGraphPath" json:"ProbeGraphPath,omitempty"`
-	IfSrcGraphPath string `protobuf:"bytes,14,opt,name=IfSrcGraphPath,json=ifSrcGraphPath" json:"IfSrcGraphPath,omitempty"`
-	IfDstGraphPath string `protobuf:"bytes,19,opt,name=IfDstGraphPath,json=ifDstGraphPath" json:"IfDstGraphPath,omitempty"`
+	ProbeGraphPath string `protobuf:"bytes,11,opt,name=ProbeGraphPath" json:"ProbeGraphPath,omitempty"`
+	IfSrcGraphPath string `protobuf:"bytes,14,opt,name=IfSrcGraphPath" json:"IfSrcGraphPath,omitempty"`
+	IfDstGraphPath string `protobuf:"bytes,19,opt,name=IfDstGraphPath" json:"IfDstGraphPath,omitempty"`
 }
 
 func (m *Flow) Reset()                    { *m = Flow{} }
