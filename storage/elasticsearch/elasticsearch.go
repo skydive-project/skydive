@@ -25,6 +25,7 @@ package elasticseach
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -35,6 +36,17 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage"
 )
+
+const indexVersion = 1
+
+const mapping = `
+{"mappings":{"flow":{"dynamic_templates":[
+	{"notanalyzed_graph":{"match":"*GraphPath","mapping":{"type":"string","index":"not_analyzed"}}},
+	{"notanalyzed_layers":{"match":"LayersPath","mapping":{"type":"string","index":"not_analyzed"}}},
+	{"start_epoch":{"match":"Start","mapping":{"type":"date", "format": "epoch_second"}}},
+	{"last_epoch":{"match":"Last","mapping":{"type":"date", "format": "epoch_second"}}}
+]}}}
+`
 
 type ElasticSearchStorage struct {
 	connection *elastigo.Conn
@@ -105,41 +117,61 @@ func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flo
 	return flows, nil
 }
 
+func (c *ElasticSearchStorage) request(method string, path string, query string, body string) (int, []byte, error) {
+	req, err := c.connection.NewRequest(method, path, query)
+	if err != nil {
+		return 503, nil, err
+	}
+
+	if body != "" {
+		req.SetBodyString(body)
+	}
+
+	var response map[string]interface{}
+	return req.Do(&response)
+}
+
 func (c *ElasticSearchStorage) initialize() error {
 	c.indexer = c.connection.NewBulkIndexerErrors(10, 60)
 	c.indexer.Start()
 
-	req, err := c.connection.NewRequest("GET", "/skydive", "")
-	if err != nil {
-		return err
-	}
+	indexPath := fmt.Sprintf("/skydive_v%d", indexVersion)
 
-	var response map[string]interface{}
-	code, _, _ := req.Do(&response)
+	code, _, _ := c.request("GET", indexPath, "", "")
 	if code == 200 {
 		return nil
 	}
 
-	// template to remove the analyzer
-	req, err = c.connection.NewRequest("PUT", "/skydive", "")
-	if err != nil {
-		return err
-	}
-
-	body := `{"mappings":{"flow":{"dynamic_templates":[`
-	body += `{"notanalyzed_graph":{"match":"*Graph*","mapping":{"type":"string","index":"not_analyzed"}}},`
-	body += `{"notanalyzed_graph":{"match":"*Layer*","mapping":{"type":"string","index":"not_analyzed"}}}`
-	body += `]}}}`
-
-	req.SetBodyString(body)
-
-	code, _, err = req.Do(&response)
-	if err != nil {
-		return err
-	}
-
+	code, _, _ = c.request("PUT", indexPath, "", mapping)
 	if code != 200 {
 		return errors.New("Unable to create the skydive index: " + strconv.FormatInt(int64(code), 10))
+	}
+
+	aliases := `{"actions": [`
+
+	code, data, _ := c.request("GET", "/_aliases", "", "")
+	if code == 200 {
+		var current map[string]interface{}
+
+		err := json.Unmarshal(data, &current)
+		if err != nil {
+			return errors.New("Unable to parse aliases: " + err.Error())
+		}
+
+		for k := range current {
+			if strings.HasPrefix(k, "skydive_") {
+				remove := `{"remove":{"alias": "skydive", "index": "%s"}},`
+				aliases += fmt.Sprintf(remove, k)
+			}
+		}
+	}
+
+	add := `{"add":{"alias": "skydive", "index": "skydive_v%d"}}]}`
+	aliases += fmt.Sprintf(add, indexVersion)
+
+	code, _, _ = c.request("POST", "/_aliases", "", aliases)
+	if code != 200 {
+		return errors.New("Unable to create an alias to the skydive index: " + strconv.FormatInt(int64(code), 10))
 	}
 
 	return nil
