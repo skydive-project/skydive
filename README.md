@@ -56,78 +56,21 @@ Skydive relies on two main components:
 
 ### Configuration
 
-A default configuration is present under etc/. For a single node setup only the
-analyzer and agent port need probably to be changed. For a multiple node setup
-the analyzer IP/PORT needs to be adapted.
+For a single node setup, the configuration file is optional. For a multiple
+node setup, the analyzer IP/PORT need to be adapted.
 
-Processes are binding 127.0.0.1 by default, you can explicitly change binding
-address with "listen = 0.0.0.0:port" in any configuration section.
-The [openstack] section is optional. You can declare it if you want the
-analyzer to get informations from Openstack/Neutron.
+Processes are bound to 127.0.0.1 by default, you can explicitly change binding
+address with "listen: 0.0.0.0:port" in the proper configuration sections.
 
-```shell
-cache:
-  # expiration time in second
-  expire: 300
-  # cleanup interval in second
-  cleanup: 30
+See the full list of configuration parameters in the sample configuration file [etc/skydive.yml.default](etc/skydive.yml.default).
 
-openstack:
-  auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
-  username: admin
-  password: password123
-  tenant_name: admin
-  region_name: RegionOne
-
-analyzer:
-  flowtable_expire: 5
-  listen: 8082
-
-agent:
-  flowtable_expire: 5
-  listen: 8081
-  analyzers: 127.0.0.1:8082
-  topology:
-    # Probes used to capture topology informations like interfaces,
-    # bridges, namespaces, etc...
-    # Available: netlink, netns, ovsdb, neutron.
-    # Default: netlink, netns
-    probes:
-      - netlink
-      - netns
-      # - ovsdb
-      # - neutron
-  flow:
-    # Probes used to capture traffic.
-    probes:
-      # - ovssflow
-
-sflow:
-  # listen parameter for the sflow agent, Format: addr:port.
-  # Default addr is 127.0.0.1
-  listen: 6345
-
-ovs:
-  # ovsdb connection, Format: addr:port
-  # You need to authorize connexion to ovsdb agent at least locally
-  # % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
-  ovsdb: 6400
-
-graph:
-  # graph backend memory, gremlin
-  backend: memory
-  gremlin: 127.0.0.1:8182
-
-storage:
-  elasticsearch: 127.0.0.1:9200
-```
 ### Start
 
 ```console
-$ skydive agent --conf etc/skydive.yml
+$ skydive agent [--conf etc/skydive.yml]
 ```
 ```console
-$ skydive analyzer --conf etc/skydive.yml
+$ skydive analyzer [--conf etc/skydive.yml]
 ```
 
 ### WebUI
