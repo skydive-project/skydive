@@ -81,4 +81,16 @@ func init() {
 
 	Analyzer.Flags().String("elasticsearch", "127.0.0.1:9200", "elasticsearch server")
 	config.GetConfig().BindPFlag("storage.elasticsearch", Analyzer.Flags().Lookup("elasticsearch"))
+
+	Analyzer.Flags().String("etcd", "http://127.0.0.1:2379", "etcd servers")
+	config.GetConfig().BindPFlag("etcd.servers", Analyzer.Flags().Lookup("etcd"))
+
+	Analyzer.Flags().Bool("embed-etcd", true, "embed etcd")
+	config.GetConfig().BindPFlag("etcd.embedded", Analyzer.Flags().Lookup("embed-etcd"))
+
+	Analyzer.Flags().Int("etcd-port", 2379, "embedded etcd port")
+	config.GetConfig().BindPFlag("etcd.port", Analyzer.Flags().Lookup("etcd-port"))
+
+	Analyzer.Flags().String("etcd-datadir", "/tmp/skydive-etcd", "embedded etcd data folder")
+	config.GetConfig().BindPFlag("etcd.data_dir", Analyzer.Flags().Lookup("etcd-datadir"))
 }

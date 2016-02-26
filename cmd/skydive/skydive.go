@@ -28,6 +28,7 @@ import (
 
 	"github.com/redhat-cip/skydive/cmd/agent"
 	"github.com/redhat-cip/skydive/cmd/analyzer"
+	"github.com/redhat-cip/skydive/cmd/client"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/version"
 
@@ -71,5 +72,6 @@ func main() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(agent.Agent)
 	rootCmd.AddCommand(analyzer.Analyzer)
+	rootCmd.AddCommand(client.Client)
 	rootCmd.Execute()
 }

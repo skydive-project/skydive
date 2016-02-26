@@ -47,6 +47,10 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
+	cfg.SetDefault("etcd.data_dir", "/tmp/skydive-etcd")
+	cfg.SetDefault("etcd.embedded", true)
+	cfg.SetDefault("etcd.port", 2379)
+	cfg.SetDefault("etcd.servers", []string{"http://127.0.0.1:2379"})
 }
 
 func checkStrictPositive(key string) error {

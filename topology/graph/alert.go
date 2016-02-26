@@ -24,30 +24,56 @@ package graph
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/token"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
+	"sync"
 	"time"
 
+	etcd "github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
 	"github.com/nu7hatch/gouuid"
 	eval "github.com/sbinet/go-eval"
+	"golang.org/x/net/context"
 
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/rpc"
 )
 
-const (
-	MaxAlertMessageQueue = 1000
-)
+type UUID uuid.UUID
+
+func (id *UUID) String() string {
+	i := uuid.UUID(*id)
+	return i.String()
+}
+
+func (id *UUID) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + id.String() + "\""), nil
+}
+
+func (id *UUID) UnmarshalJSON(data []byte) error {
+	uid, err := uuid.ParseHex(string(data[1 : len(data)-1]))
+	if err != nil {
+		return err
+	}
+	*id = UUID(*uid)
+	return nil
+}
 
 type Alert struct {
 	Router         *mux.Router
 	Graph          *Graph
-	alerts         map[uuid.UUID]AlertTest
+	alerts         map[UUID]AlertTest
+	alertsLock     sync.RWMutex
 	eventListeners map[AlertEventListener]AlertEventListener
+	etcdClient     *etcd.Client
+	etcdKeyAPI     etcd.KeysAPI
 }
 
 type AlertType int
@@ -67,15 +93,53 @@ type AlertTestParam struct {
 
 type AlertTest struct {
 	AlertTestParam
-	UUID       *uuid.UUID
+	UUID       *UUID
 	CreateTime time.Time
+	Type       AlertType
+	Count      int
+}
 
-	Type  AlertType
-	Count int
+type jsonAlertEncoder struct {
+	w       io.Writer
+	encoder *json.Encoder
+}
+
+func NewjsonAlertEncoder(w io.Writer) *jsonAlertEncoder {
+	return &jsonAlertEncoder{w: w, encoder: json.NewEncoder(w)}
+}
+
+func (e *jsonAlertEncoder) Encode(v interface{}) error {
+	switch t := v.(type) {
+	case map[UUID]AlertTest:
+		e.w.Write([]byte(`{`))
+		first := true
+		for _, v := range t {
+			if !first {
+				e.w.Write([]byte(`,`))
+			}
+			first = false
+			e.w.Write([]byte(`"`))
+			e.w.Write([]byte(v.UUID.String()))
+			e.w.Write([]byte(`":`))
+			e.encoder.Encode(v)
+		}
+		e.w.Write([]byte(`}`))
+	default:
+		e.encoder.Encode(v)
+	}
+	return nil
+}
+
+func etcdPath(id UUID) string {
+	return fmt.Sprintf("/alert/%s", id.String())
+}
+
+func (a *AlertTest) etcdPath() string {
+	return etcdPath(*a.UUID)
 }
 
 type AlertMessage struct {
-	UUID       uuid.UUID
+	UUID       UUID
 	Type       AlertType
 	Timestamp  time.Time
 	Count      int
@@ -104,47 +168,10 @@ func (a *Alert) DelEventListener(l AlertEventListener) {
 	delete(a.eventListeners, l)
 }
 
-func (a *Alert) Register(atp AlertTestParam) *AlertTest {
-	id, _ := uuid.NewV4()
-	at := AlertTest{
-		AlertTestParam: atp,
-		UUID:           id,
-		CreateTime:     time.Now(),
-		Type:           FIXED,
-		Count:          0,
-	}
-
-	a.alerts[*id] = at
-	return &at
-}
-
-/* remove all the alerts than match a least one atp field */
-func (a *Alert) UnRegister(atp AlertTestParam) {
-	for id, al := range a.alerts {
-		if atp.Name == al.Name {
-			delete(a.alerts, id)
-			continue
-		}
-		if atp.Description == al.Description {
-			delete(a.alerts, id)
-			continue
-		}
-		if atp.Select == al.Select {
-			delete(a.alerts, id)
-			continue
-		}
-		if atp.Test == al.Test {
-			delete(a.alerts, id)
-			continue
-		}
-		if atp.Action == al.Action {
-			delete(a.alerts, id)
-			continue
-		}
-	}
-}
-
 func (a *Alert) EvalNodes() {
+	a.alertsLock.RLock()
+	defer a.alertsLock.RUnlock()
+
 	for _, al := range a.alerts {
 		nodes := a.Graph.LookupNodesFromKey(al.Select)
 		for _, n := range nodes {
@@ -236,14 +263,34 @@ func (a *Alert) OnEdgeAdded(e *Edge) {
 func (a *Alert) OnEdgeDeleted(e *Edge) {
 }
 
+func (a *Alert) SetAlertTest(at *AlertTest) {
+	a.alertsLock.Lock()
+	a.alerts[*at.UUID] = *at
+	a.alertsLock.Unlock()
+}
+
+func (a *Alert) DeleteAlertTest(id *UUID) error {
+	a.alertsLock.Lock()
+	defer a.alertsLock.Unlock()
+
+	_, ok := a.alerts[*id]
+	if !ok {
+		return errors.New("Not found")
+	}
+	delete(a.alerts, *id)
+
+	return nil
+}
+
 func (a *Alert) AlertIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	for _, a := range a.alerts {
-		if err := json.NewEncoder(w).Encode(a); err != nil {
-			panic(err)
-		}
+	a.alertsLock.RLock()
+	defer a.alertsLock.RUnlock()
+
+	if err := NewjsonAlertEncoder(w).Encode(a.alerts); err != nil {
+		logging.GetLogger().Criticalf("Failed to display alerts: %s", err.Error())
 	}
 }
 
@@ -255,47 +302,108 @@ func (a *Alert) AlertShow(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	alert, ok := a.alerts[*alertUUID]
-	if ok {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(alert); err != nil {
-			panic(err)
-		}
-	} else {
+
+	a.alertsLock.RLock()
+	defer a.alertsLock.RUnlock()
+	alert, ok := a.alerts[UUID(*alertUUID)]
+	if !ok {
 		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(alert); err != nil {
+		logging.GetLogger().Criticalf("Failed to display alert: %s", err.Error())
 	}
 }
 
 func (a *Alert) AlertInsert(w http.ResponseWriter, r *http.Request) {
-	var atp AlertTestParam
 	b, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(b, &atp)
+	at, err := alertTestFromData(b)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	al := a.Register(atp)
+	id, err := uuid.NewV4()
+	if err != nil {
+		return
+	}
+
+	uid := UUID(*id)
+	at.UUID = &uid
+	at.CreateTime = time.Now()
+	at.Type = FIXED
+	at.Count = 0
+
+	b, _ = json.Marshal(&at)
+	_, err = a.etcdKeyAPI.Set(context.Background(), at.etcdPath(), string(b), nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	logging.GetLogger().Debugf("AlertInsert : " + al.UUID.String())
+	if _, err := w.Write(b); err != nil {
+		logging.GetLogger().Criticalf("Failed to create alert: %s", err.Error())
+	}
 }
 
 func (a *Alert) AlertDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	alertUUID, err := uuid.ParseHex(vars["alert"])
-
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	_, ok := a.alerts[*alertUUID]
-	if ok {
-		delete(a.alerts, *alertUUID)
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(http.StatusOK)
-	} else {
+
+	if _, err = a.etcdKeyAPI.Delete(context.Background(), etcdPath(UUID(*alertUUID)), nil); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+}
+
+func (a *Alert) AlertUpdate(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	alertUUID, err := uuid.ParseHex(vars["alert"])
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	b, _ := ioutil.ReadAll(r.Body)
+	at, err := alertTestFromData(b)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	a.alertsLock.RLock()
+	defer a.alertsLock.RUnlock()
+	_, ok := a.alerts[UUID(*alertUUID)]
+	if !ok {
 		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	*at.UUID = UUID(*alertUUID)
+
+	b, _ = json.Marshal(&at)
+	_, err = a.etcdKeyAPI.Set(context.Background(), at.etcdPath(), string(b), nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(b); err != nil {
+		logging.GetLogger().Criticalf("Failed to update alert: %s", err.Error())
 	}
 }
 
@@ -325,6 +433,12 @@ func (a *Alert) RegisterRPCEndpoints() {
 			"/rpc/alert/{alert}",
 			a.AlertDelete,
 		},
+		{
+			"AlertUpdate",
+			"PUT",
+			"/rpc/alert/{alert}",
+			a.AlertUpdate,
+		},
 	}
 
 	for _, route := range routes {
@@ -336,17 +450,97 @@ func (a *Alert) RegisterRPCEndpoints() {
 	}
 }
 
-func NewAlert(g *Graph, router *mux.Router) *Alert {
+func alertTestFromData(data []byte) (*AlertTest, error) {
+	at := AlertTest{}
+	if err := json.Unmarshal(data, &at); err != nil {
+		return nil, err
+	}
+	return &at, nil
+}
+
+func NewAlert(g *Graph, router *mux.Router, etcdServers []string) (*Alert, error) {
+	cfg := etcd.Config{
+		Endpoints: etcdServers,
+		Transport: etcd.DefaultTransport,
+		// set timeout per request to fail fast when the target endpoint is unavailable
+		HeaderTimeoutPerRequest: time.Second,
+	}
+
+	etcdClient, err := etcd.New(cfg)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to connect to etcd: %s", err))
+	}
+
+	kapi := etcd.NewKeysAPI(etcdClient)
+
 	f := &Alert{
 		Graph:          g,
 		Router:         router,
-		alerts:         make(map[uuid.UUID]AlertTest),
+		alerts:         make(map[UUID]AlertTest),
 		eventListeners: make(map[AlertEventListener]AlertEventListener),
+		etcdClient:     &etcdClient,
+		etcdKeyAPI:     kapi,
+	}
+
+	resp, err := kapi.Get(context.Background(), "/alert/", nil)
+	if err == nil {
+		for _, node := range resp.Node.Nodes {
+			if at, err := alertTestFromData([]byte(node.Value)); err == nil {
+				f.SetAlertTest(at)
+			}
+		}
+	} else {
+		resp, err = kapi.Set(context.Background(), "/alert", "", &etcd.SetOptions{Dir: true})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	g.AddEventListener(f)
 
-	return f
+	watcher := kapi.Watcher("/alert/", &etcd.WatcherOptions{Recursive: true, AfterIndex: resp.Index})
+	go func() {
+		for {
+			resp, err := watcher.Next(context.Background())
+			if err != nil {
+				return
+			}
+
+			if resp.Node.Dir {
+				continue
+			}
+
+			switch resp.Action {
+			case "create":
+				fallthrough
+			case "set":
+				fallthrough
+			case "update":
+				at, err := alertTestFromData([]byte(resp.Node.Value))
+				if err != nil {
+					logging.GetLogger().Debugf("Error handling etcd event: %s", err.Error())
+					continue
+				}
+				f.SetAlertTest(at)
+			case "expire":
+				fallthrough
+			case "delete":
+				id := path.Base(resp.Node.Key)
+				if id, err := uuid.ParseHex(id); err == nil {
+					uid := UUID(*id)
+					f.DeleteAlertTest(&uid)
+				}
+			}
+		}
+	}()
+
+	return f, nil
+}
+
+func NewAlertFromConfig(g *Graph, router *mux.Router) (*Alert, error) {
+	etcdServers := config.GetConfig().GetStringSlice("etcd.servers")
+
+	return NewAlert(g, router, etcdServers)
 }
 
 /*

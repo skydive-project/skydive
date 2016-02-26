@@ -53,6 +53,7 @@ type Server struct {
 	Storage             storage.Storage
 	FlowTable           *flow.FlowTable
 	Conn                *net.UDPConn
+	EmbeddedEtcd        *storage.EmbeddedEtcd
 }
 
 func (s *Server) flowExpire(f *flow.Flow) {
@@ -125,6 +126,9 @@ func (s *Server) Stop() {
 	s.Stopping = true
 	s.TopoServer.Stop()
 	s.GraphServer.Stop()
+	if s.EmbeddedEtcd != nil {
+		s.EmbeddedEtcd.Stop()
+	}
 	s.Conn.Close()
 }
 
@@ -203,7 +207,7 @@ func (s *Server) SetStorage(st storage.Storage) {
 	s.Storage = st
 }
 
-func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
+func NewServer(addr string, port int, router *mux.Router, embedEtcd bool) (*Server, error) {
 	backend, err := graph.BackendFromConfig()
 	if err != nil {
 		return nil, err
@@ -218,7 +222,15 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 	tserver.RegisterStaticEndpoints()
 	tserver.RegisterRPCEndpoints()
 
-	alertmgr := graph.NewAlert(g, router)
+	var etcd *storage.EmbeddedEtcd
+	if embedEtcd {
+		etcd, err = storage.NewEmbeddedEtcdFromConfig()
+	}
+
+	alertmgr, err := graph.NewAlertFromConfig(g, router)
+	if err != nil {
+		return nil, err
+	}
 	alertmgr.RegisterRPCEndpoints()
 
 	gserver, err := graph.NewServerFromConfig(g, alertmgr, router)
@@ -243,6 +255,7 @@ func NewServer(addr string, port int, router *mux.Router) (*Server, error) {
 		GraphServer:         gserver,
 		FlowMappingPipeline: pipeline,
 		FlowTable:           flowtable,
+		EmbeddedEtcd:        etcd,
 	}
 	server.RegisterRPCEndpoints()
 	cfgFlowtable_expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
@@ -262,5 +275,7 @@ func NewServerFromConfig(router *mux.Router) (*Server, error) {
 		return nil, err
 	}
 
-	return NewServer(addr, port, router)
+	embedEtcd := config.GetConfig().GetBool("etcd.embedded")
+
+	return NewServer(addr, port, router, embedEtcd)
 }
