@@ -41,4 +41,4 @@ rpm -qi openvswitch
 cd ${GOPATH}/src/github.com/redhat-cip/skydive
 gofmt -s -l . | grep -v statics/bindata.go
 make lint || true # (non-voting)
-make test GOFLAGS="-race -v -timeout 6m"
+make test GOFLAGS=-race VERBOSE=true TIMEOUT=6m

@@ -115,9 +115,10 @@ func StartAgentAndAnalyzerWithConfig(t *testing.T, conf string, s storage.Storag
 
 func ExecCmds(t *testing.T, cmds ...Cmd) {
 	for _, cmd := range cmds {
-		err := exec.Command("sudo", strings.Split(cmd.Cmd, " ")...).Run()
+		args := strings.Split(cmd.Cmd, " ")
+		err := exec.Command(args[0], args[1:]...).Run()
 		if err != nil && cmd.Check {
-			t.Fatal("cmd : (sudo " + cmd.Cmd + ") " + err.Error())
+			t.Fatal("cmd : (" + cmd.Cmd + ") " + err.Error())
 		}
 	}
 }

@@ -1,7 +1,12 @@
 # really Basic Makefile for Skydive
 
 PROTO_FILES=flow/flow.proto
-GOFLAGS?=-v
+VERBOSE_FLAGS?=-v
+VERBOSE?=true
+ifeq ($(VERBOSE), false)
+	VERBOSE_FLAGS:=
+endif
+TIMEOUT?=6m
 
 .proto: godep builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
@@ -10,16 +15,22 @@ GOFLAGS?=-v
 	go-bindata -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/
 
 all: genlocalfiles
-	godep go install ${GOFLAGS} ./...
+	godep go install ${GOFLAGS} ${VERBOSE_FLAGS} ./...
 
 install: godep
-	godep go install ${GOFLAGS} ./...
+	godep go install ${GOFLAGS} ${VERBOSE_FLAGS} ./...
 
 build: godep
-	godep go build ${GOFLAGS} ./...
+	godep go build ${GOFLAGS} ${VERBOSE_FLAGS} ./...
 
 test: godep
-	godep go test ${GOFLAGS} ./...
+	 godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -run "^tests" ./...
+	 godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+ifneq ($(VERBOSE_FLAGS),)
+	cd tests && sudo ./functionals -test.v -test.timeout ${TIMEOUT}
+else
+	cd tests && sudo ./functionals -test.timeout ${TIMEOUT}
+endif
 
 godep:
 	go get github.com/tools/godep
