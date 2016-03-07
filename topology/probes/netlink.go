@@ -267,6 +267,8 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		intf = u.addBridgeLinkToTopology(link, metadata)
 	case "openvswitch":
 		intf = u.addOvsLinkToTopology(link, metadata)
+		// always prefer Type from ovs
+		metadata["Type"] = intf.Metadata()["Type"]
 	default:
 		intf = u.addGenericLinkToTopology(link, metadata)
 	}

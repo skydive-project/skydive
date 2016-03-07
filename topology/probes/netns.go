@@ -127,7 +127,9 @@ func NewNetNsNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetNsNetLinkTopo
 func (u *NetNSProbe) Register(path string, extraMetadata *graph.Metadata) {
 	name := getNetNSName(path)
 
+	u.RLock()
 	_, ok := u.nsnlProbes[name]
+	u.RUnlock()
 	if ok {
 		return
 	}
@@ -149,8 +151,8 @@ func (u *NetNSProbe) Register(path string, extraMetadata *graph.Metadata) {
 	go nu.Start(path)
 
 	u.Lock()
-	defer u.Unlock()
 	u.nsnlProbes[name] = nu
+	u.Unlock()
 }
 
 func (u *NetNSProbe) Unregister(path string) {
@@ -158,7 +160,9 @@ func (u *NetNSProbe) Unregister(path string) {
 
 	logging.GetLogger().Debugf("Network Namespace deleted: %s", name)
 
+	u.RLock()
 	nu, ok := u.nsnlProbes[name]
+	u.RUnlock()
 	if !ok {
 		return
 	}
@@ -173,7 +177,9 @@ func (u *NetNSProbe) Unregister(path string) {
 	}
 	u.Graph.DelNode(nu.Root)
 
+	u.Lock()
 	delete(u.nsnlProbes, name)
+	u.Unlock()
 }
 
 func (u *NetNSProbe) initialize() {

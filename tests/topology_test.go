@@ -215,7 +215,7 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []helper.Cmd, onChange func
 	}
 }
 
-func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, intfs []string) {
+func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, names []string) {
 	// cleanup side on the test
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -224,8 +224,8 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, intfs []string
 
 		if !testPassed {
 			clean := true
-			for _, intf := range intfs {
-				n := g.LookupFirstNode(graph.Metadata{"Name": intf})
+			for _, name := range names {
+				n := g.LookupFirstNode(graph.Metadata{"Name": name})
 				if n != nil {
 					clean = false
 					break
@@ -588,4 +588,136 @@ func TestMacNameUpdate(t *testing.T) {
 	}
 
 	testCleanup(t, g, tearDownCmds, []string{"vm1-veth0", "vm1-veth1", "vm1-veth2"})
+}
+
+func TestNameSpace(t *testing.T) {
+	g := newGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	setupCmds := []helper.Cmd{
+		{"ip netns add ns1", true},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del ns1", true},
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
+			node := g.LookupFirstNode(graph.Metadata{"Name": "ns1", "Type": "netns"})
+			if node != nil {
+				testPassed = true
+
+				ws.Close()
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"ns1"})
+}
+
+func TestNameSpaceVeth(t *testing.T) {
+	g := newGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	setupCmds := []helper.Cmd{
+		{"ip netns add ns1", true},
+		{"ip l add vm1-veth0 type veth peer name vm1-veth1 netns ns1", true},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip link del vm1-veth0", true},
+		{"ip netns del ns1", true},
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
+			node := g.LookupFirstNode(graph.Metadata{"Name": "ns1", "Type": "netns"})
+			if node == nil {
+				return
+			}
+
+			veth := g.LookupFirstChild(node, graph.Metadata{"Name": "vm1-veth1", "Type": "veth"})
+			if veth != nil {
+				testPassed = true
+
+				ws.Close()
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"ns1", "vm1-veth0"})
+}
+
+func TestNameSpaceOVSInterface(t *testing.T) {
+	g := newGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	setupCmds := []helper.Cmd{
+		{"ip netns add ns1", true},
+		{"ovs-vsctl add-br br-test1", true},
+		{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},
+		{"ip l set intf1 netns ns1", true},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-test1", true},
+		{"ip netns del ns1", true},
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 2 {
+			node := g.LookupFirstNode(graph.Metadata{"Name": "ns1", "Type": "netns"})
+			if node == nil {
+				return
+			}
+
+			veth := g.LookupFirstChild(node, graph.Metadata{"Name": "intf1"})
+			if veth == nil {
+				return
+			}
+
+			children := g.LookupNodes(graph.Metadata{"Name": "intf1", "Type": "internal"})
+			if len(children) == 1 {
+				testPassed = true
+
+				ws.Close()
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"ns1", "br-test1"})
 }
