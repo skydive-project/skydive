@@ -32,6 +32,7 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/tests/helper"
+	"github.com/redhat-cip/skydive/tools"
 )
 
 const confAgentAnalyzer = `---
@@ -78,7 +79,7 @@ type flowsTraceInfo struct {
 
 var flowsTraces = [...]flowsTraceInfo{
 	{
-		filename: "eth-ip4-arp-dns-req-http-google.pcap",
+		filename: "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap",
 		flowStat: []flowStat{
 			{false, "Ethernet/ARP/Payload", 1, 44, 1, 44},
 			{false, "Ethernet/IPv4/UDP/DNS", 2, 152, 2, 260},
@@ -166,8 +167,11 @@ func TestSFlowWithPCAP(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 	for _, trace := range flowsTraces {
-		fulltrace, _ := filepath.Abs("pcaptraces" + string(filepath.Separator) + trace.filename)
-		helper.ReplayTraceHelper(t, fulltrace, "localhost:55000")
+		fulltrace, _ := filepath.Abs(trace.filename)
+		err := tools.PCAP2SFlowReplay("localhost", 55000, fulltrace, 1000, 5)
+		if err != nil {
+			t.Fatalf("Error during the replay: %s", err.Error())
+		}
 
 		/* FIXME (nplanel) remove this Sleep when agent.FlushFlowTable() exist */
 		time.Sleep(2 * time.Second)

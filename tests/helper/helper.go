@@ -113,15 +113,6 @@ func StartAgentAndAnalyzerWithConfig(t *testing.T, conf string, s storage.Storag
 	return StartAgent(), server
 }
 
-func ReplayTraceHelper(t *testing.T, trace string, target string) {
-	t.Log("Replaying", trace)
-	out, err := exec.Command("go", "run", "../cmd/pcap2sflow-replay/pcap2sflow-replay.go", "-trace", trace, target).CombinedOutput()
-	if err != nil {
-		t.Error(err.Error() + "\n" + string(out))
-	}
-	t.Log("Stdout/Stderr ", string(out))
-}
-
 func ExecCmds(t *testing.T, cmds ...Cmd) {
 	for _, cmd := range cmds {
 		err := exec.Command("sudo", strings.Split(cmd.Cmd, " ")...).Run()

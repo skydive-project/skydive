@@ -23,7 +23,6 @@
 package tests
 
 import (
-	"fmt"
 	"net"
 	"path/filepath"
 	"sync"
@@ -32,8 +31,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-
-	"github.com/redhat-cip/skydive/tests/helper"
+	"github.com/redhat-cip/skydive/tools"
 )
 
 type packetsTraceInfo struct {
@@ -44,7 +42,7 @@ type packetsTraceInfo struct {
 
 var packetsTraces = [...]packetsTraceInfo{
 	{
-		filename: "eth-ip4-arp-dns-req-http-google.pcap",
+		filename: "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap",
 		packets:  58,
 		bytes:    []int{44, 44, 76, 76, 104, 156, 76, 76, 68, 180, 68, 556, 68, 76, 76, 92, 104, 76, 76, 68, 216, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 68, 1416, 68, 1416, 68, 1416, 68, 1416, 68, 1080, 68, 68, 68, 68, 68, 68},
 	},
@@ -139,8 +137,11 @@ func TestPcap2SflowReplay(t *testing.T) {
 
 		go asyncSflowListen(t, &wg, conn, &trace)
 
-		fulltrace, _ := filepath.Abs("pcaptraces" + string(filepath.Separator) + trace.filename)
-		helper.ReplayTraceHelper(t, fulltrace, fmt.Sprintf("localhost:%d", laddr.Port))
+		fulltrace, _ := filepath.Abs(trace.filename)
+		err := tools.PCAP2SFlowReplay("localhost", laddr.Port, fulltrace, 1000, 5)
+		if err != nil {
+			t.Fatalf("Error during the replay: %s", err.Error())
+		}
 
 		wg.Wait()
 	}
