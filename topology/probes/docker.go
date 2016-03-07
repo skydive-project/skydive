@@ -37,12 +37,12 @@ import (
 
 type DockerProbe struct {
 	NetNSProbe
-	url      string
-	client   *dockerclient.DockerClient
-	nsProbe  *NetNSProbe
-	running  atomic.Value
-	quit     chan bool
-	wg       sync.WaitGroup
+	url     string
+	client  *dockerclient.DockerClient
+	nsProbe *NetNSProbe
+	running atomic.Value
+	quit    chan bool
+	wg      sync.WaitGroup
 }
 
 type DockerContainerAttributes struct {

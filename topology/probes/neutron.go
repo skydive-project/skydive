@@ -42,10 +42,10 @@ import (
 )
 
 type NeutronMapper struct {
-	graph            *graph.Graph
-	client           *gophercloud.ServiceClient
-	cache            *cache.Cache
-	nodeUpdaterChan  chan graph.Identifier
+	graph           *graph.Graph
+	client          *gophercloud.ServiceClient
+	cache           *cache.Cache
+	nodeUpdaterChan chan graph.Identifier
 }
 
 type Attributes struct {
@@ -96,7 +96,6 @@ func (mapper *NeutronMapper) retrieveAttributes(mac string) (*Attributes, error)
 	return &Attributes{TenantID: port.TenantID, VNI: network.SegmentationID}, nil
 }
 
-
 func (mapper *NeutronMapper) nodeUpdater() {
 	logging.GetLogger().Debugf("Starting Neutron updater")
 	for {
@@ -106,7 +105,7 @@ func (mapper *NeutronMapper) nodeUpdater() {
 			continue
 		}
 
-		mac, ok := node.Metadata()["MAC"];
+		mac, ok := node.Metadata()["MAC"]
 		if !ok {
 			continue
 		}
@@ -139,7 +138,7 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 }
 
 func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
-	mac, ok := node.Metadata()["MAC"];
+	mac, ok := node.Metadata()["MAC"]
 	if !ok {
 		return
 	}
@@ -151,7 +150,7 @@ func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
 		return
 	}
 
-	mapper.nodeUpdaterChan <-node.ID
+	mapper.nodeUpdaterChan <- node.ID
 }
 
 func (mapper *NeutronMapper) OnNodeUpdated(n *graph.Node) {
