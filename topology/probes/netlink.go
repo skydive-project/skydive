@@ -108,13 +108,23 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 		if int64(index) > intf.Metadata()["IfIndex"].(int64) {
 			ok := peerResolver()
 			if !ok {
-				// retry few second later since the right peer can be insert later
+				// retry few seconds later since the right peer can be insert later
 				go func() {
-					time.Sleep(2 * time.Second)
+					ok := false
+					try := 0
 
-					u.Graph.Lock()
-					defer u.Graph.Unlock()
-					peerResolver()
+					for {
+						if ok || try > 10 {
+							return
+						}
+						time.Sleep(time.Millisecond * 200)
+
+						u.Graph.Lock()
+						ok = peerResolver()
+						u.Graph.Unlock()
+
+						try++
+					}
 				}()
 			}
 		}
