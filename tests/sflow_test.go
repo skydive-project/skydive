@@ -62,6 +62,13 @@ ovs:
 analyzer:
   listen: 58082
   flowtable_expire: 10
+
+etcd:
+  embedded: true
+  port: 2374
+  data_dir: /tmp
+  servers:
+    - http://localhost:2374
 `
 
 type flowStat struct {

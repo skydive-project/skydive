@@ -58,6 +58,12 @@ sflow:
 
 ovs:
   ovsdb: 6400
+
+etcd:
+  embedded: true
+  port: 2374
+  data_dir: /tmp
+  servers: http://localhost:2374
 `
 
 func newClient() (*websocket.Conn, error) {

@@ -224,7 +224,9 @@ func NewServer(addr string, port int, router *mux.Router, embedEtcd bool) (*Serv
 
 	var etcd *storage.EmbeddedEtcd
 	if embedEtcd {
-		etcd, err = storage.NewEmbeddedEtcdFromConfig()
+		if etcd, err = storage.NewEmbeddedEtcdFromConfig(); err != nil {
+			return nil, err
+		}
 	}
 
 	alertmgr, err := graph.NewAlertFromConfig(g, router)

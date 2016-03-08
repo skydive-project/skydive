@@ -23,23 +23,28 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
+	etcd "github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/redhat-cip/skydive/config"
+
+	"golang.org/x/net/context"
 )
 
 const (
-	memberName  = "skydive"
-	clusterName = "skydive-cluster"
-
+	memberName   = "skydive"
+	clusterName  = "skydive-cluster"
+	startTimeout = 10 * time.Second
 	// No peer URL exists but etcd doesn't allow the value to be empty.
 	peerURL    = "http://localhost:2379"
 	clusterCfg = memberName + "=" + peerURL
@@ -95,6 +100,28 @@ func NewEmbeddedEtcd(port int, dataDir string) (*EmbeddedEtcd, error) {
 	se.server.Start()
 	go http.Serve(se.listener,
 		etcdhttp.NewClientHandler(se.server, cfg.ReqTimeout()))
+
+	// Wait for etcd server to be ready
+	t := time.Now().Add(startTimeout)
+	etcdClient, err := etcd.New(etcd.Config{
+		Endpoints:               []string{fmt.Sprintf("http://localhost:%d", port)},
+		Transport:               etcd.DefaultTransport,
+		HeaderTimeoutPerRequest: time.Second,
+	})
+	if err != nil {
+		return nil, err
+	}
+	kapi := etcd.NewKeysAPI(etcdClient)
+
+	for {
+		if time.Now().After(t) {
+			return nil, errors.New("Failed to start etcd")
+		}
+		if _, err := kapi.Get(context.Background(), "/", nil); err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 
 	return se, nil
 }

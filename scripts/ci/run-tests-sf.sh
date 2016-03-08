@@ -30,10 +30,9 @@ ln -s $(pwd) ${GOPATH}/src/github.com/redhat-cip/skydive
 
 # Install requirements
 sudo yum install -y https://www.rdoproject.org/repos/rdo-release.rpm
-sudo yum -y install make openvswitch etcd
+sudo yum -y install make openvswitch
 sudo service openvswitch start
 sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400
-sudo service etcd start
 
 rpm -qi openvswitch
 
