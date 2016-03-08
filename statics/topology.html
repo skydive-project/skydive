@@ -58,7 +58,7 @@
     opacity: 0.9;
   }
 
-  .node text {
+  text {
     fill: #111;
     pointer-events: none;
     font: 12px Helvetica, Arial, sans-serif;
@@ -82,11 +82,11 @@
     fill: rgb(199, 233, 192);
   }
 
-  .ovsbridge .circle {
+  .ovsbridge, .bridge .circle {
     fill: rgb(198, 219, 239);
   }
 
-  .ovsport .circle {
+  .ovsport, .bond .circle {
     fill: rgb(253, 208, 162);
   }
 
@@ -107,6 +107,11 @@
 
   .link {
     stroke: #333;
+  }
+
+  .veth {
+    stroke-width: 3;
+    stroke-dasharray: 5,5;
   }
 
   path.hull {
@@ -205,6 +210,7 @@
   var switchImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/switch.png';
   var portImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/flow_chart.png';
   var intfImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/wired_network.png';
+  var vethImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/ethernet_on.png';
   var nsImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/layers.png';
   var bridgeImg = 'https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/64/tree_structure.png';
   var loaderImg = 'https://i1.wp.com/cdnjs.cloudflare.com/ajax/libs/galleriffic/2.0.1/css/loader.gif';
@@ -461,7 +467,7 @@
     if (edge.Parent.Type() == "host")
     return;
 
-    this.links.push({source: edge.Parent, target: edge.Child});
+    this.links.push({source: edge.Parent, target: edge.Child, edge: edge});
     this.Redraw();
   }
 
@@ -520,13 +526,31 @@
     if (d.Metadata["State"] == "DOWN")
     return "down";
 
-    switch(d.Metadata["Type"]) {
+    switch(d.Type()) {
       case "ovsbridge":
       return "ovsbridge";
       case "ovsport":
       return "ovsport";
+      case "bond":
+      return "bond";
+      case "bridge":
+      return "bridge";
       default:
       return "default";
+    }
+  }
+
+  HostLayout.prototype.LinkClass = function(d) {
+    edge = d.edge;
+
+    if (edge.Type() == "")
+    return "link";
+
+    switch(edge.Type()) {
+      case "veth":
+      return "link veth";
+      default:
+      return "link";
     }
   }
 
@@ -557,6 +581,10 @@
       return switchImg;
       case "netns":
       return nsImg;
+      case "veth":
+      return vethImg;
+      case "bond":
+      return portImg;
       default:
       return intfImg;
     }
@@ -687,7 +715,9 @@
     .style("opacity", function(d) {
       return _this.EdgeOpacity(d);
     })
-    .attr("class", "link");
+    .attr("class", function(d) {
+      return _this.LinkClass(d);
+    });
     this.link.exit().remove();
 
     this.node = this.node.data(this.nodes, function(d) {
