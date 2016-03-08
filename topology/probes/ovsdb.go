@@ -288,6 +288,22 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		o.uuidToPort[uuid] = port
 	}
 
+	// bond mode
+	if mode, ok := row.New.Fields["bond_mode"]; ok {
+		switch mode.(type) {
+		case string:
+			o.Graph.AddMetadata(port, "BondMode", mode.(string))
+		}
+	}
+
+	// lacp
+	if lacp, ok := row.New.Fields["lacp"]; ok {
+		switch lacp.(type) {
+		case string:
+			o.Graph.AddMetadata(port, "LACP", lacp.(string))
+		}
+	}
+
 	// vlan tag
 	if tag, ok := row.New.Fields["tag"]; ok {
 		switch tag.(type) {
