@@ -43,35 +43,37 @@ const (
 )
 
 type NetLinkProbe struct {
-	Graph             *graph.Graph
-	Root              *graph.Node
-	nlSocket          *nl.NetlinkSocket
-	running           atomic.Value
-	indexTointfsQueue map[int64][]*graph.Node
+	Graph                *graph.Graph
+	Root                 *graph.Node
+	nlSocket             *nl.NetlinkSocket
+	running              atomic.Value
+	indexToChildrenQueue map[int64][]*graph.Node
 }
 
-func (u *NetLinkProbe) handleIntfIsBridgeMember(intf *graph.Node, link netlink.Link) {
-	index := int64(link.Attrs().Index)
-
+func (u *NetLinkProbe) linkMasterChildren(intf *graph.Node, index int64) {
 	// add children of this interface that haven previously added
-	if children, ok := u.indexTointfsQueue[index]; ok {
+	if children, ok := u.indexToChildrenQueue[index]; ok {
 		for _, child := range children {
 			u.Graph.Link(intf, child)
 		}
-		delete(u.indexTointfsQueue, index)
+		delete(u.indexToChildrenQueue, index)
 	}
+}
+
+func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
+	u.linkMasterChildren(intf, int64(link.Attrs().Index))
 
 	// interface being a part of a bridge
 	if link.Attrs().MasterIndex != 0 {
 		index := int64(link.Attrs().MasterIndex)
 
 		// assuming we have only one parent with this index
-		parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index, "Type": "bridge"})
+		parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 		if parent != nil && !u.Graph.AreLinked(parent, intf) {
 			u.Graph.Link(parent, intf)
 		} else {
 			// not yet the bridge so, enqueue for a later add
-			u.indexTointfsQueue[index] = append(u.indexTointfsQueue[index], intf)
+			u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], intf)
 		}
 	}
 }
@@ -142,7 +144,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 		u.Graph.Link(u.Root, intf)
 	}
 
-	u.handleIntfIsBridgeMember(intf, link)
+	u.handleIntfIsChild(intf, link)
 	u.handleIntfIsVeth(intf, link)
 
 	return intf
@@ -163,6 +165,8 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 	if !u.Graph.AreLinked(u.Root, intf) {
 		u.Graph.Link(u.Root, intf)
 	}
+
+	u.linkMasterChildren(intf, index)
 
 	return intf
 }
@@ -321,7 +325,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 		}
 	}
 
-	delete(u.indexTointfsQueue, int64(index))
+	delete(u.indexToChildrenQueue, int64(index))
 }
 
 func (u *NetLinkProbe) initialize() {
@@ -418,9 +422,9 @@ func (u *NetLinkProbe) Stop() {
 
 func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
 	np := &NetLinkProbe{
-		Graph:             g,
-		Root:              n,
-		indexTointfsQueue: make(map[int64][]*graph.Node),
+		Graph:                g,
+		Root:                 n,
+		indexToChildrenQueue: make(map[int64][]*graph.Node),
 	}
 	np.running.Store(true)
 	return np
