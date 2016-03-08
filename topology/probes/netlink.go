@@ -121,6 +121,17 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	}
 }
 
+func (u *NetLinkProbe) handleIntfIsBond(intf *graph.Node, link netlink.Link) {
+	if link.Type() != "bond" {
+		return
+	}
+
+	bond := link.(*netlink.Bond)
+	u.Graph.AddMetadata(intf, "BondMode", bond.Mode.String())
+
+	// TODO(safchain) Add more info there like xmit_hash_policy
+}
+
 func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
@@ -146,6 +157,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 
 	u.handleIntfIsChild(intf, link)
 	u.handleIntfIsVeth(intf, link)
+	u.handleIntfIsBond(intf, link)
 
 	return intf
 }
