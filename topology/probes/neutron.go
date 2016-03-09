@@ -124,14 +124,12 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
 
-	if attrs.TenantID != "" && node.Metadata()["Neutron.TenantID"] != attrs.TenantID {
+	if attrs.TenantID != "" {
 		mapper.graph.AddMetadata(node, "Neutron.TenantID", attrs.TenantID)
 	}
 
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil {
-		if node.Metadata()["Neutron.VNI"] != uint64(segID) {
-			mapper.graph.AddMetadata(node, "Neutron.VNI", uint64(segID))
-		}
+		mapper.graph.AddMetadata(node, "Neutron.VNI", uint64(segID))
 	}
 
 	mapper.cache.Set(string(node.ID), attrs, cache.DefaultExpiration)
