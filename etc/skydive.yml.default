@@ -63,8 +63,9 @@ storage:
   elasticsearch: 127.0.0.1:9200
 
 graph:
-  # graph backend memory, gremlin
+  # graph backend memory, titangraph, gremlin(generic gremlin based)
   backend: memory
+  # gremlin server address
   gremlin: 127.0.0.1:8182
 
 logging:

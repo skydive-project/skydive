@@ -519,8 +519,23 @@ func NewGraph(b GraphBackend) (*Graph, error) {
 
 	return &Graph{
 		backend: b,
-		host: h,
+		host:    h,
 	}, nil
+}
+
+func getGremlinAddrPort() (string, int, error) {
+	gremlin := strings.Split(config.GetConfig().GetString("graph.gremlin"), ":")
+	if len(gremlin) != 2 {
+		return "", 0, errors.New("Config file is misconfigured, gremlin host:ip error")
+	}
+
+	addr := gremlin[0]
+	port, err := strconv.Atoi(gremlin[1])
+	if err != nil {
+		return "", 0, errors.New("Config file is misconfigured, gremlin host:ip error")
+	}
+
+	return addr, port, nil
 }
 
 func BackendFromConfig() (GraphBackend, error) {
@@ -533,18 +548,17 @@ func BackendFromConfig() (GraphBackend, error) {
 	case "memory":
 		return NewMemoryBackend()
 	case "gremlin":
-		gremlin := strings.Split(config.GetConfig().GetString("graph.gremlin"), ":")
-		if len(gremlin) != 2 {
-			return nil, errors.New("Config file is misconfigured, gremlin host:ip error")
-		}
-
-		host := gremlin[0]
-		port, err := strconv.Atoi(gremlin[1])
+		addr, port, err := getGremlinAddrPort()
 		if err != nil {
-			return nil, errors.New("Config file is misconfigured, gremlin host:ip error")
+			return nil, err
 		}
-
-		return NewGremlinBackend(host, port)
+		return NewGremlinBackend(addr, port)
+	case "titangraph":
+		addr, port, err := getGremlinAddrPort()
+		if err != nil {
+			return nil, err
+		}
+		return NewTitangraphBackend(addr, port)
 	default:
 		return nil, errors.New("Config file is misconfigured, graph backend unknown: " + backend)
 	}
