@@ -50,11 +50,12 @@ func idToPropertiesString(i Identifier) (string, error) {
 
 func toPropertiesString(e graphElement) ([]byte, error) {
 	properties := map[string]interface{}{
-		"_ID": string(e.ID),
+		"_ID":   string(e.ID),
+		"_host": e.host,
 	}
 	for k, v := range e.metadata {
-		if k == "_ID" {
-			return nil, errors.New("_ID is a reserved value, can not be overridden by metadata")
+		if k[0] == '_' {
+			return nil, errors.New("Properties starting with _ are reserved")
 		}
 		properties[k] = v
 	}
@@ -69,11 +70,16 @@ func gremElementID(e gremlin.GremlinElement) Identifier {
 	return Identifier(e.Properties["_ID"][0].Value.(string))
 }
 
+func gremElementHost(e gremlin.GremlinElement) string {
+	return e.Properties["_host"][0].Value.(string)
+}
+
 func gremElementToNode(e gremlin.GremlinElement) *Node {
 	return &Node{
 		graphElement: graphElement{
 			ID:       gremElementID(e),
 			metadata: gremElementMetadata(e),
+			host:     gremElementHost(e),
 		},
 	}
 }
@@ -83,6 +89,7 @@ func gremElementToEdge(e gremlin.GremlinElement) *Edge {
 		graphElement: graphElement{
 			ID:       gremElementID(e),
 			metadata: gremElementMetadata(e),
+			host:     gremElementHost(e),
 		},
 	}
 }
@@ -90,7 +97,7 @@ func gremElementToEdge(e gremlin.GremlinElement) *Edge {
 func gremElementMetadata(e gremlin.GremlinElement) Metadata {
 	m := Metadata{}
 	for k, v := range e.Properties {
-		if k != "_ID" {
+		if k[0] != '_' {
 			switch v[0].Value.(type) {
 			case float64:
 				m[k] = int64(v[0].Value.(float64))
