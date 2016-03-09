@@ -89,9 +89,6 @@ type Graph struct {
 	eventListeners []GraphEventListener
 }
 
-// global host name
-var host string
-
 func GenID() Identifier {
 	u, _ := uuid.NewV4()
 
@@ -369,7 +366,7 @@ func (g *Graph) NewNode(i Identifier, m Metadata) *Node {
 	n := &Node{
 		graphElement: graphElement{
 			ID:   i,
-			host: host,
+			host: g.host,
 		},
 	}
 
@@ -392,7 +389,7 @@ func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
 		child:  c.ID,
 		graphElement: graphElement{
 			ID:   i,
-			host: host,
+			host: g.host,
 		},
 	}
 
@@ -519,10 +516,10 @@ func NewGraph(b GraphBackend) (*Graph, error) {
 	if err != nil {
 		return nil, err
 	}
-	host = h
 
 	return &Graph{
 		backend: b,
+		host: h,
 	}, nil
 }
 
