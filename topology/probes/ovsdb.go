@@ -149,7 +149,11 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	intf := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if intf == nil {
-		intf = o.Graph.LookupFirstNode(graph.Metadata{"IfIndex": index})
+		lm := graph.Metadata{"IfIndex": index}
+		if mac != "" {
+			lm["MAC"] = mac
+		}
+		intf = o.Graph.LookupFirstChild(o.Root, lm)
 		if intf != nil {
 			o.Graph.AddMetadata(intf, "UUID", uuid)
 		}
@@ -157,6 +161,11 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	if intf == nil {
 		metadata := graph.Metadata{"Name": name, "UUID": uuid}
+
+		if mac != "" {
+			metadata["MAC"] = mac
+		}
+
 		if driver != "" {
 			metadata["Driver"] = driver
 		}
@@ -171,19 +180,23 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		intf = o.Graph.NewNode(graph.GenID(), metadata)
 	}
 
-	// an ovs interface can have no mac in its db,
-	// so don't overrivde the netlink provided value with an empty value
-	if mac != "" && mac != intf.Metadata()["MAC"] {
-		// check wether a interface with the same mac exist, could have been added by netlink
-		// in such case, replace the netlink node by the ovs one
-		nl := o.Graph.LookupFirstNode(graph.Metadata{"MAC": mac})
-		if nl != nil {
-			m := intf.Metadata()
-			m["UUID"] = uuid
-			intf = o.Graph.Replace(intf, nl, m)
-		} else {
-			o.Graph.AddMetadata(intf, "MAC", mac)
+	// check wether a interface with the same mac exist, could have been added by netlink
+	// in such case, replace the netlink node by the ovs one keeping netlink metadata + uuid
+	if index > 0 {
+		nodes := o.Graph.LookupChildren(o.Root, graph.Metadata{"IfIndex": index})
+		for _, node := range nodes {
+			if node.Metadata()["UUID"] != uuid {
+				m := node.Metadata()
+				m["UUID"] = uuid
+				intf = o.Graph.Replace(node, intf)
+			}
 		}
+
+		o.Graph.AddMetadata(intf, "IfIndex", index)
+	}
+
+	if mac != "" {
+		o.Graph.AddMetadata(intf, "MAC", mac)
 	}
 
 	if driver != "" {

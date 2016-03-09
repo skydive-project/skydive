@@ -279,7 +279,7 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 	}
 }
 
-func (g *Graph) Replace(o *Node, n *Node, m Metadata) *Node {
+func (g *Graph) Replace(o *Node, n *Node) *Node {
 	for _, e := range g.backend.GetNodeEdges(o) {
 		parent, child := g.backend.GetEdgeNodes(e)
 		if parent == nil || child == nil {

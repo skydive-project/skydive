@@ -176,7 +176,7 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
 
-	intf := u.Graph.LookupFirstNode(graph.Metadata{
+	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{
 		"Name":    name,
 		"IfIndex": index})
 
@@ -196,7 +196,7 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	name := link.Attrs().Name
 
-	intf := u.Graph.LookupFirstNode(graph.Metadata{"Name": name, "Driver": "openvswitch"})
+	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"Name": name, "Driver": "openvswitch"})
 	if intf == nil {
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
