@@ -83,6 +83,7 @@ func (gfe *GraphFlowEnhancer) getPath(mac string) string {
 	p, f := gfe.cache.Get(mac)
 	if f {
 		path := p.(string)
+		gfe.cache.Set(mac, path, cache.DefaultExpiration)
 		return path
 	}
 
