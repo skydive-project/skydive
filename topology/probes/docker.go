@@ -39,7 +39,6 @@ type DockerProbe struct {
 	NetNSProbe
 	url     string
 	client  *dockerclient.DockerClient
-	nsProbe *NetNSProbe
 	running atomic.Value
 	quit    chan bool
 	wg      sync.WaitGroup
@@ -60,13 +59,13 @@ func (probe *DockerProbe) registerContainer(info dockerclient.ContainerInfo) {
 		"Docker.ContainerID":   info.Id,
 		"Docker.ContainerName": info.Name,
 	}
-	probe.nsProbe.Register(namespace, metadata)
+	probe.Register(namespace, metadata)
 }
 
 func (probe *DockerProbe) unregisterContainer(info dockerclient.ContainerInfo) {
 	namespace := probe.containerNamespace(info)
 	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, info.State.Pid)
-	probe.nsProbe.Unregister(namespace)
+	probe.Unregister(namespace)
 }
 
 func (probe *DockerProbe) handleDockerEvent(event *dockerclient.Event) {
