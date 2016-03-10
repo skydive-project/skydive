@@ -124,6 +124,8 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
 
+	mapper.graph.AddMetadata(node, "Manager", "neutron")
+
 	if attrs.TenantID != "" {
 		mapper.graph.AddMetadata(node, "Neutron.TenantID", attrs.TenantID)
 	}
