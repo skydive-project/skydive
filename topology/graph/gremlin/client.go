@@ -52,7 +52,7 @@ type GremlinPropertiesEncoder struct {
 }
 
 type GremlinProperty struct {
-	ID    string      `json:"id"`
+	ID    GremlinID   `json:"id"`
 	Value interface{} `json:"value"`
 }
 
