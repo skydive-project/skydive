@@ -26,25 +26,22 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
-	"net"
-	"net/http"
+	"fmt"
 	"net/url"
 	"reflect"
 	"strconv"
-	"sync"
-
-	"github.com/go-gremlin/gremlin"
-	"github.com/gorilla/websocket"
-
-	"github.com/redhat-cip/skydive/logging"
 )
 
 type GremlinClient struct {
-	sync.RWMutex
-	Addr   string
-	Port   int
-	wsConn *websocket.Conn
+	Endpoint string
+	client   client
+}
+
+type client interface {
+	connect(endpoint string) error
+	close()
+	query(q string) ([]byte, error)
+	queryElements(q string) ([]GremlinElement, error)
 }
 
 type GremlinPropertiesEncoder struct {
@@ -190,91 +187,39 @@ func resultToGremlinElements(result []byte) ([]GremlinElement, error) {
 }
 
 func (c *GremlinClient) QueryElements(q string) ([]GremlinElement, error) {
-	result, err := c.Query(q)
-	if err != nil {
-		logging.GetLogger().Errorf("Gremlin query error: %s, %s", q, err.Error())
-		return nil, err
-	}
-
-	if len(result) == 0 {
-		return make([]GremlinElement, 0), nil
-	}
-
-	els, err := resultToGremlinElements(result)
-	if err != nil {
-		logging.GetLogger().Errorf("Gremlin query error: %s, %s", q, err.Error())
-		return nil, err
-	}
-
-	return els, nil
+	return c.client.queryElements(q)
 }
 
 func (c *GremlinClient) Query(q string) ([]byte, error) {
-	m, err := json.Marshal(gremlin.Query(q))
-	if err != nil {
-		return nil, err
-	}
-
-	c.Lock()
-	defer c.Unlock()
-
-	if err = c.sendMessage(string(m)); err != nil {
-		return []byte{}, err
-	}
-	return gremlin.ReadResponse(c.wsConn)
+	return c.client.query(q)
 }
 
-func (c *GremlinClient) sendMessage(msg string) error {
-	w, err := c.wsConn.NextWriter(websocket.TextMessage)
-	if err != nil {
-		return err
-	}
-	_, err = io.WriteString(w, msg)
-	if err != nil {
-		return err
-	}
-
-	err = w.Close()
-	if err != nil {
-	}
-
-	return err
-}
-
-func (c *GremlinClient) Connect() {
-	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
-
-	conn, err := net.Dial("tcp", host)
-	if err != nil {
-		logging.GetLogger().Errorf("Connection to the WebSocket server failed: %s", err.Error())
-		return
-	}
-
-	endpoint := "ws://" + host
-	u, err := url.Parse(endpoint)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to parse the WebSocket Endpoint %s: %s", endpoint, err.Error())
-		return
-	}
-
-	wsConn, _, err := websocket.NewClient(conn, u, http.Header{}, 0, 4096)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
-		return
-	}
-
-	logging.GetLogger().Infof("Connected to gremlin server %s:%d", c.Addr, c.Port)
-
-	c.wsConn = wsConn
+func (c *GremlinClient) Connect() error {
+	return c.client.connect(c.Endpoint)
 }
 
 func (c *GremlinClient) Close() {
-	c.wsConn.Close()
+	c.client.close()
 }
 
-func NewClient(addr string, port int) *GremlinClient {
-	return &GremlinClient{
-		Addr: addr,
-		Port: port,
+func NewClient(endpoint string) (*GremlinClient, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to parse the Endpoint %s: %s", endpoint, err.Error())
 	}
+
+	var client client
+	switch u.Scheme {
+	case "ws":
+		client = &wsclient{}
+	case "http":
+		client = &restclient{}
+	default:
+		return nil, fmt.Errorf("Endpoint not supported %s", endpoint)
+	}
+
+	return &GremlinClient{
+		Endpoint: endpoint,
+		client:   client,
+	}, nil
 }

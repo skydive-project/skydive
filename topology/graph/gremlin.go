@@ -152,7 +152,9 @@ func (g GremlinBackend) SetMetadata(i interface{}, meta Metadata) bool {
 	j := meta.String()
 
 	query = "g." + elType + "(" + string(el.ID) + ")"
-	query += `.sideEffect{v = it; ["_ID": "` + string(e.ID) + `",` + j[1:len(j)-1] + `]`
+	query += `.sideEffect{v = it; ["_ID": "` + string(e.ID) + `"`
+	query += `, "_host": "` + string(e.host) + `"`
+	query += `,` + j[1:len(j)-1] + `]`
 	query += `.each{v.get().property(it.key, it.value)}}`
 
 	_, err = g.client.Query(query)
@@ -430,9 +432,16 @@ func (g GremlinBackend) GetEdges() []*Edge {
 	return edges
 }
 
-func NewGremlinBackend(addr string, port int) (*GremlinBackend, error) {
-	c := gremlin.NewClient(addr, port)
-	c.Connect()
+func NewGremlinBackend(endpoint string) (*GremlinBackend, error) {
+	c, err := gremlin.NewClient(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	if err = c.Connect(); err != nil {
+		return nil, err
+	}
+
+	logging.GetLogger().Infof("Connected to gremlin server %s", endpoint)
 
 	return &GremlinBackend{
 		client: c,

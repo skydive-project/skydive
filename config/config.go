@@ -40,7 +40,7 @@ func init() {
 	cfg.SetDefault("agent.flowtable_expire", 10)
 	cfg.SetDefault("ovs.ovsdb", "127.0.0.1:6400")
 	cfg.SetDefault("graph.backend", "memory")
-	cfg.SetDefault("graph.gremlin", "127.0.0.1:8182")
+	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
 	cfg.SetDefault("sflow.listen", "127.0.0.1:6345")
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.flowtable_expire", 10)

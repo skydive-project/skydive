@@ -65,8 +65,8 @@ storage:
 graph:
   # graph backend memory, titangraph, gremlin(generic gremlin based)
   backend: memory
-  # gremlin server address
-  gremlin: 127.0.0.1:8182
+  # gremlin endpoint, ex ws://127.0.0.1:8182, http://127.0.0.1:8182/graph
+  gremlin: ws://127.0.0.1:8182
 
 logging:
   default: INFO

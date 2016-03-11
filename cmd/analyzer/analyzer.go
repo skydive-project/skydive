@@ -93,4 +93,10 @@ func init() {
 
 	Analyzer.Flags().String("etcd-datadir", "/tmp/skydive-etcd", "embedded etcd data folder")
 	config.GetConfig().BindPFlag("etcd.data_dir", Analyzer.Flags().Lookup("etcd-datadir"))
+
+	Analyzer.Flags().String("graph-backend", "memory", "graph backend")
+	config.GetConfig().BindPFlag("graph.backend", Analyzer.Flags().Lookup("graph-backend"))
+
+	Analyzer.Flags().String("gremlin", "ws://127.0.0.1:8182", "gremlin server")
+	config.GetConfig().BindPFlag("graph.gremlin", Analyzer.Flags().Lookup("gremlin"))
 }

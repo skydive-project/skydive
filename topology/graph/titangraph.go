@@ -49,8 +49,8 @@ func (t *TitangraphBackend) initialize() error {
 	return nil
 }
 
-func NewTitangraphBackend(addr string, port int) (*TitangraphBackend, error) {
-	g, err := NewGremlinBackend(addr, port)
+func NewTitangraphBackend(endpoint string) (*TitangraphBackend, error) {
+	g, err := NewGremlinBackend(endpoint)
 	if err != nil {
 		return nil, err
 	}
