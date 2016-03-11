@@ -61,12 +61,6 @@ func init() {
 	Agent.Flags().String("ovsdb", "127.0.0.1:6400", "ovsdb connection")
 	config.GetConfig().BindPFlag("ovs.ovsdb", Agent.Flags().Lookup("ovsdb"))
 
-	Agent.Flags().String("graph-backend", "memory", "graph backend")
-	config.GetConfig().BindPFlag("graph.backend", Agent.Flags().Lookup("graph-backend"))
-
-	Agent.Flags().String("gremlin", "127.0.0.1:8182", "gremlin server")
-	config.GetConfig().BindPFlag("graph.gremlin", Agent.Flags().Lookup("gremlin"))
-
 	Agent.Flags().String("sflow-listen", "127.0.0.1:6345", "listen parameter for the sflow agent")
 	config.GetConfig().BindPFlag("sflow.listen", Agent.Flags().Lookup("sflow-listen"))
 
