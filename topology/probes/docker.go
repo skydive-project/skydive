@@ -56,9 +56,11 @@ func (probe *DockerProbe) registerContainer(info dockerclient.ContainerInfo) {
 	namespace := probe.containerNamespace(info)
 	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.Id, info.State.Pid)
 	metadata := &graph.Metadata{
+		"Name":                 info.Name[1:],
 		"Manager":              "docker",
 		"Docker.ContainerID":   info.Id,
 		"Docker.ContainerName": info.Name,
+		"Docker.ContainerPID":  info.State.Pid,
 	}
 	probe.Register(namespace, metadata)
 }

@@ -61,16 +61,14 @@ func getNetNSName(path string) string {
 }
 
 func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
-	name := getNetNSName(path)
-
-	logging.GetLogger().Debugf("Starting NetLinkTopoUpdater for NetNS: %s", name)
+	logging.GetLogger().Debugf("Starting NetLinkTopoUpdater for NetNS: %s", path)
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
 	origns, err := netns.Get()
 	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", name, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", path, err.Error())
 		return
 	}
 	defer origns.Close()
@@ -79,14 +77,14 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 
 	newns, err := netns.GetFromPath(path)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", name, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", path, err.Error())
 		return
 	}
 	defer newns.Close()
 
 	err = netns.Set(newns)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", name, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", path, err.Error())
 		return
 	}
 
@@ -104,7 +102,7 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 	nu.nlProbe = nil
 	nu.Unlock()
 
-	logging.GetLogger().Debugf("NetLinkTopoUpdater stopped for NetNS: %s", name)
+	logging.GetLogger().Debugf("NetLinkTopoUpdater stopped for NetNS: %s", path)
 
 	netns.Set(origns)
 }
@@ -125,10 +123,8 @@ func NewNetNsNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetNsNetLinkTopo
 }
 
 func (u *NetNSProbe) Register(path string, extraMetadata *graph.Metadata) {
-	name := getNetNSName(path)
-
 	u.RLock()
-	_, ok := u.nsnlProbes[name]
+	_, ok := u.nsnlProbes[path]
 	u.RUnlock()
 	if ok {
 		return
@@ -137,8 +133,8 @@ func (u *NetNSProbe) Register(path string, extraMetadata *graph.Metadata) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	logging.GetLogger().Debugf("Network Namespace added: %s", name)
-	metadata := graph.Metadata{"Name": name, "Type": "netns"}
+	logging.GetLogger().Debugf("Network Namespace added: %s", path)
+	metadata := graph.Metadata{"Name": getNetNSName(path), "Type": "netns"}
 	if extraMetadata != nil {
 		for k, v := range *extraMetadata {
 			metadata[k] = v
@@ -151,17 +147,15 @@ func (u *NetNSProbe) Register(path string, extraMetadata *graph.Metadata) {
 	go nu.Start(path)
 
 	u.Lock()
-	u.nsnlProbes[name] = nu
+	u.nsnlProbes[path] = nu
 	u.Unlock()
 }
 
 func (u *NetNSProbe) Unregister(path string) {
-	name := getNetNSName(path)
-
-	logging.GetLogger().Debugf("Network Namespace deleted: %s", name)
+	logging.GetLogger().Debugf("Network Namespace deleted: %s", path)
 
 	u.RLock()
-	nu, ok := u.nsnlProbes[name]
+	nu, ok := u.nsnlProbes[path]
 	u.RUnlock()
 	if !ok {
 		return
@@ -178,7 +172,7 @@ func (u *NetNSProbe) Unregister(path string) {
 	u.Graph.DelNode(nu.Root)
 
 	u.Lock()
-	delete(u.nsnlProbes, name)
+	delete(u.nsnlProbes, path)
 	u.Unlock()
 }
 
