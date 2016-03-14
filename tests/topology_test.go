@@ -50,6 +50,7 @@ agent:
       - netlink
       - netns
       - ovsdb
+      - docker
 
 cache:
   expire: 300
@@ -754,4 +755,41 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 	}
 
 	testCleanup(t, g, tearDownCmds, []string{"ns1", "br-test1"})
+}
+
+func TestDocker(t *testing.T) {
+	g := newGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	setupCmds := []helper.Cmd{
+		{"docker run -d -t -i --name test-skydive-docker busybox", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"docker rm -f test-skydive-docker", false},
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
+			node := g.LookupFirstNode(graph.Metadata{"Name": "test-skydive-docker", "Type": "netns",
+				"Manager": "docker", "Docker.ContainerName": "/test-skydive-docker"})
+			if node != nil {
+				testPassed = true
+				ws.Close()
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"test-skydive-docker"})
 }

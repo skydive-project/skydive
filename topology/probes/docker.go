@@ -61,6 +61,9 @@ func (probe *DockerProbe) containerNamespace(pid int) string {
 }
 
 func (probe *DockerProbe) registerContainer(info dockerclient.ContainerInfo) {
+	if _, ok := probe.idToPid[info.Id]; ok {
+		return
+	}
 	namespace := probe.containerNamespace(info.State.Pid)
 	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.Id, info.State.Pid)
 	metadata := &graph.Metadata{
