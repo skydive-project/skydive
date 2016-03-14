@@ -42,19 +42,20 @@ type DockerProbe struct {
 	running atomic.Value
 	quit    chan bool
 	wg      sync.WaitGroup
+	idToPid map[string]int
 }
 
 type DockerContainerAttributes struct {
 	ContainerID string
 }
 
-func (probe *DockerProbe) containerNamespace(info dockerclient.ContainerInfo) string {
-	return fmt.Sprintf("/proc/%d/ns/net", info.State.Pid)
+func (probe *DockerProbe) containerNamespace(pid int) string {
+	return fmt.Sprintf("/proc/%d/ns/net", pid)
 }
 
 func (probe *DockerProbe) registerContainer(info dockerclient.ContainerInfo) {
-	namespace := probe.containerNamespace(info)
-	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.Id, info.State.Pid)
+	namespace := probe.containerNamespace(info.State.Pid)
+	logging.GetLogger().Debugf("Register docker container %s and PID %d (%s)", info.Id, info.State.Pid)
 	metadata := &graph.Metadata{
 		"Name":                 info.Name[1:],
 		"Manager":              "docker",
@@ -63,11 +64,17 @@ func (probe *DockerProbe) registerContainer(info dockerclient.ContainerInfo) {
 		"Docker.ContainerPID":  info.State.Pid,
 	}
 	probe.Register(namespace, metadata)
+	probe.idToPid[info.Id] = info.State.Pid
 }
 
 func (probe *DockerProbe) unregisterContainer(info dockerclient.ContainerInfo) {
-	namespace := probe.containerNamespace(info)
-	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, info.State.Pid)
+	pid, ok := probe.idToPid[info.Id]
+	if !ok {
+		return
+	}
+	delete(probe.idToPid, info.Id)
+	namespace := probe.containerNamespace(pid)
+	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, pid)
 	probe.Unregister(namespace)
 }
 
@@ -170,6 +177,7 @@ func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) *DockerProb
 	return &DockerProbe{
 		NetNSProbe: *NewNetNSProbe(g, n),
 		url:        dockerURL,
+		idToPid:    make(map[string]int),
 	}
 }
 
