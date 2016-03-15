@@ -23,14 +23,16 @@ install: godep
 build: godep
 	godep go build ${GOFLAGS} ${VERBOSE_FLAGS} ./...
 
-test: godep
-	 godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -run "^tests" ./...
-	 godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+test.functionals: godep
+	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 ifneq ($(VERBOSE_FLAGS),)
-	cd tests && sudo ./functionals -test.v -test.timeout ${TIMEOUT}
+	cd tests && sudo ./functionals -test.v -test.timeout ${TIMEOUT} ${ARGS}
 else
-	cd tests && sudo ./functionals -test.timeout ${TIMEOUT}
+	cd tests && sudo ./functionals -test.timeout ${TIMEOUT} ${ARGS}
 endif
+
+test: godep
+	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -run "^tests" ./...
 
 godep:
 	go get github.com/tools/godep

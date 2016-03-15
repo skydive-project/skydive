@@ -24,9 +24,11 @@ package tests
 
 import (
 	"errors"
+	"flag"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -38,7 +40,7 @@ import (
 )
 
 const confTopology = `---
-ws_pong_timeout: 1
+ws_pong_timeout: 5
 
 agent:
   listen: 58081
@@ -65,6 +67,13 @@ etcd:
   data_dir: /tmp
   servers: http://localhost:2374
 `
+
+var graphBackend string
+
+func init() {
+	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
+	flag.Parse()
+}
 
 func newClient() (*websocket.Conn, error) {
 	conn, err := net.Dial("tcp", "127.0.0.1:58081")
@@ -247,14 +256,39 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, names []string
 }
 
 func newGraph(t *testing.T) *graph.Graph {
-	backend, err := graph.NewMemoryBackend()
+	var backend graph.GraphBackend
+	var err error
+	switch graphBackend {
+	case "gremlin-ws":
+		backend, err = graph.NewGremlinBackend("ws://127.0.0.1:8182")
+	case "gremlin-rest":
+		backend, err = graph.NewGremlinBackend("http://127.0.0.1:8182?gremlin=")
+	default:
+		backend, err = graph.NewMemoryBackend()
+	}
+
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
+	t.Logf("Using %s as backend", graphBackend)
+
 	g, err := graph.NewGraph(backend)
 	if err != nil {
 		t.Fatal(err.Error())
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	root := g.LookupFirstNode(graph.Metadata{"Name": hostname, "Type": "host"})
+	if root == nil {
+		root = g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
+		if root == nil {
+			t.Fatal("fail while adding root node")
+		}
 	}
 
 	return g

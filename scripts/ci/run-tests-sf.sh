@@ -30,14 +30,51 @@ ln -s $(pwd) ${GOPATH}/src/github.com/redhat-cip/skydive
 
 # Install requirements
 sudo yum install -y https://www.rdoproject.org/repos/rdo-release.rpm
-sudo yum -y install make openvswitch
+sudo yum -y install make openvswitch unzip java-1.8.0-openjdk
 sudo service openvswitch start
 sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400
 
 rpm -qi openvswitch
+
+# Install apache gremlin server
+cd ${HOME}
+curl -s -L http://apache.crihan.fr/dist/incubator/tinkerpop/3.1.1-incubating/apache-gremlin-server-3.1.1-incubating-bin.zip > gremlin-server.zip
+unzip gremlin-server.zip
+export GREMLINPATH=${HOME}/apache-gremlin-server-3.1.1-incubating
 
 # Run tests
 cd ${GOPATH}/src/github.com/redhat-cip/skydive
 gofmt -s -l . | grep -v statics/bindata.go
 make lint || true # (non-voting)
 make test GOFLAGS=-race VERBOSE=true TIMEOUT=6m
+
+# Run functionals test
+make test.functionals GOFLAGS=-race VERBOSE=true TIMEOUT=6m
+
+# test with websocket gremlin server
+cd ${GREMLINPATH}
+${GREMLINPATH}/bin/gremlin-server.sh ${GREMLINPATH}/conf/gremlin-server.yaml &
+GREMLINPID=$!
+sleep 5
+cd ${GOPATH}/src/github.com/redhat-cip/skydive
+make test.functionals GOFLAGS=-race VERBOSE=true TIMEOUT=6m ARGS="-graph.backend gremlin-ws"
+RET=$?
+kill ${GREMLINPID}
+if [ ${RET} -ne 0 ]; then
+  exit ${RET}
+fi
+
+sleep 5
+
+# test with rest gremlin server
+cd ${GREMLINPATH}
+${GREMLINPATH}/bin/gremlin-server.sh conf/gremlin-server-rest-modern.yaml &
+GREMLINPID=$!
+sleep 5
+cd ${GOPATH}/src/github.com/redhat-cip/skydive
+make test.functionals GOFLAGS=-race VERBOSE=true TIMEOUT=6m ARGS="-graph.backend gremlin-rest"
+RET=$?
+kill ${GREMLINPID}
+if [ ${RET} -ne 0 ]; then
+  exit ${RET}
+fi
