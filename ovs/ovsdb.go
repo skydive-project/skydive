@@ -32,10 +32,6 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-type OvsOpsExecutor interface {
-	Exec(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error)
-}
-
 type OvsClient struct {
 	ovsdb *libovsdb.OvsdbClient
 }
@@ -56,7 +52,7 @@ type OvsMonitor struct {
 	sync.RWMutex
 	Addr            string
 	Port            int
-	OvsClient       OvsOpsExecutor
+	OvsClient       *OvsClient
 	MonitorHandlers []OvsMonitorHandler
 	bridgeCache     map[string]string
 	interfaceCache  map[string]string
@@ -275,8 +271,7 @@ func (o *OvsMonitor) updateHandler(updates *libovsdb.TableUpdates) {
 }
 
 func (o *OvsMonitor) setMonitorRequests(table string, r *map[string]libovsdb.MonitorRequest) error {
-	ovsClient := o.OvsClient.(*OvsClient)
-	schema, ok := ovsClient.ovsdb.Schema["Open_vSwitch"]
+	schema, ok := o.OvsClient.ovsdb.Schema["Open_vSwitch"]
 	if !ok {
 		return errors.New("invalid Database Schema")
 	}

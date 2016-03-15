@@ -52,8 +52,9 @@ type OvsSFlowProbe struct {
 }
 
 type OvsSFlowProbesHandler struct {
+	graph.DefaultGraphListener
 	Graph            *graph.Graph
-	ovsmon           *ovsdb.OvsMonitor
+	ovsClient        *ovsdb.OvsClient
 	agent            *sflow.SFlowAgent
 	cache            *cache.Cache
 	cacheUpdaterChan chan int64
@@ -187,7 +188,7 @@ func compareProbeID(row *map[string]interface{}, probe OvsSFlowProbe) (bool, err
 	return false, nil
 }
 
-func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(monitor *ovsdb.OvsMonitor, probe OvsSFlowProbe) (string, error) {
+func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(probe OvsSFlowProbe) (string, error) {
 	/* FIX(safchain) don't find a way to send a null condition */
 	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{"abc"})
 	selectOp := libovsdb.Operation{
@@ -197,7 +198,7 @@ func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(monitor *ovsdb.OvsMonitor
 	}
 
 	operations := []libovsdb.Operation{selectOp}
-	result, err := monitor.OvsClient.Exec(operations...)
+	result, err := o.ovsClient.Exec(operations...)
 	if err != nil {
 		return "", err
 	}
@@ -234,8 +235,8 @@ func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(monitor *ovsdb.OvsMonitor
 	return "", nil
 }
 
-func (o *OvsSFlowProbesHandler) registerSFlowProbe(monitor *ovsdb.OvsMonitor, probe OvsSFlowProbe, bridgeUUID string) error {
-	probeUUID, err := o.retrieveSFlowProbeUUID(monitor, probe)
+func (o *OvsSFlowProbesHandler) registerSFlowProbe(probe OvsSFlowProbe, bridgeUUID string) error {
+	probeUUID, err := o.retrieveSFlowProbeUUID(probe)
 	if err != nil {
 		return err
 	}
@@ -270,14 +271,14 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbe(monitor *ovsdb.OvsMonitor, pr
 	}
 
 	operations = append(operations, updateOp)
-	_, err = monitor.OvsClient.Exec(operations...)
+	_, err = o.ovsClient.Exec(operations...)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *OvsSFlowProbesHandler) registerProbe(monitor *ovsdb.OvsMonitor, bridgeUUID string) error {
+func (o *OvsSFlowProbesHandler) registerProbe(bridgeUUID string) error {
 	// TODO(safchain) add config parameter
 	probe := OvsSFlowProbe{
 		ID:         "SkydiveSFlowProbe",
@@ -288,43 +289,27 @@ func (o *OvsSFlowProbesHandler) registerProbe(monitor *ovsdb.OvsMonitor, bridgeU
 		Polling:    0,
 	}
 
-	err := o.registerSFlowProbe(monitor, probe, bridgeUUID)
+	err := o.registerSFlowProbe(probe, bridgeUUID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *OvsSFlowProbesHandler) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
+func (o *OvsSFlowProbesHandler) OnNodeAdded(n *graph.Node) {
+	if t, ok := n.Metadata()["Type"]; !ok || t != "ovsbridge" {
+		return
+	}
 
-func (o *OvsSFlowProbesHandler) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-	o.registerProbe(monitor, uuid)
-}
-
-func (o *OvsSFlowProbesHandler) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
-
-func (o *OvsSFlowProbesHandler) OnOvsInterfaceUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
-
-func (o *OvsSFlowProbesHandler) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
-
-func (o *OvsSFlowProbesHandler) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
-
-func (o *OvsSFlowProbesHandler) OnOvsPortUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
-
-func (o *OvsSFlowProbesHandler) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
-}
-
-func (o *OvsSFlowProbesHandler) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
+	if uuid, ok := n.Metadata()["UUID"].(string); ok {
+		// TODO(safchain) do we need to register in an async way since
+		// we are in a graph lock for performance purpose
+		o.registerProbe(uuid)
+	}
 }
 
 func (o *OvsSFlowProbesHandler) Start() {
-	o.ovsmon.AddMonitorHandler(o)
+	o.Graph.AddEventListener(o)
 
 	// start index/mac cache updater
 	go o.cacheUpdater()
@@ -343,9 +328,9 @@ func (o *OvsSFlowProbesHandler) Stop() {
 
 func NewOvsSFlowProbesHandler(p *probes.OvsdbProbe, agent *sflow.SFlowAgent, expire int, cleanup int) *OvsSFlowProbesHandler {
 	o := &OvsSFlowProbesHandler{
-		Graph:  p.Graph,
-		ovsmon: p.OvsMon,
-		agent:  agent,
+		Graph:     p.Graph,
+		ovsClient: p.OvsMon.OvsClient,
+		agent:     agent,
 	}
 
 	o.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
