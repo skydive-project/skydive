@@ -67,6 +67,7 @@ func (id *UUID) UnmarshalJSON(data []byte) error {
 }
 
 type Alert struct {
+	DefaultGraphListener
 	Router         *mux.Router
 	Graph          *Graph
 	alerts         map[UUID]AlertTest
@@ -249,18 +250,6 @@ func (a *Alert) OnNodeUpdated(n *Node) {
 
 func (a *Alert) OnNodeAdded(n *Node) {
 	a.EvalNodes()
-}
-
-func (a *Alert) OnNodeDeleted(n *Node) {
-}
-
-func (a *Alert) OnEdgeUpdated(e *Edge) {
-}
-
-func (a *Alert) OnEdgeAdded(e *Edge) {
-}
-
-func (a *Alert) OnEdgeDeleted(e *Edge) {
 }
 
 func (a *Alert) SetAlertTest(at *AlertTest) {

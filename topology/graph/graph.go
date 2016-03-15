@@ -89,6 +89,29 @@ type Graph struct {
 	eventListeners []GraphEventListener
 }
 
+// default implementation of a graph listener, can be used when not implementing
+// the whole set of callbacks
+type DefaultGraphListener struct {
+}
+
+func (d *DefaultGraphListener) OnNodeUpdated(n *Node) {
+}
+
+func (c *DefaultGraphListener) OnNodeAdded(n *Node) {
+}
+
+func (c *DefaultGraphListener) OnNodeDeleted(n *Node) {
+}
+
+func (c *DefaultGraphListener) OnEdgeUpdated(e *Edge) {
+}
+
+func (c *DefaultGraphListener) OnEdgeAdded(e *Edge) {
+}
+
+func (c *DefaultGraphListener) OnEdgeDeleted(e *Edge) {
+}
+
 func GenID() Identifier {
 	u, _ := uuid.NewV4()
 

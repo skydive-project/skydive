@@ -42,6 +42,7 @@ import (
 )
 
 type NeutronMapper struct {
+	graph.DefaultGraphListener
 	graph           *graph.Graph
 	client          *gophercloud.ServiceClient
 	cache           *cache.Cache
@@ -159,18 +160,6 @@ func (mapper *NeutronMapper) OnNodeUpdated(n *graph.Node) {
 
 func (mapper *NeutronMapper) OnNodeAdded(n *graph.Node) {
 	go mapper.EnhanceNode(n)
-}
-
-func (mapper *NeutronMapper) OnNodeDeleted(n *graph.Node) {
-}
-
-func (mapper *NeutronMapper) OnEdgeUpdated(n *graph.Edge) {
-}
-
-func (mapper *NeutronMapper) OnEdgeAdded(n *graph.Edge) {
-}
-
-func (mapper *NeutronMapper) OnEdgeDeleted(n *graph.Edge) {
 }
 
 func (mapper *NeutronMapper) Start() {
