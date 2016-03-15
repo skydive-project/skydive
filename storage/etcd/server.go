@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Red Hat, Inc.
+ * Copyright (C) 2016 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,7 +20,7 @@
  *
  */
 
-package storage
+package etcd
 
 import (
 	"errors"
@@ -147,6 +147,12 @@ func (se *EmbeddedEtcd) Stop() error {
 
 	if se.server != nil {
 		se.server.Stop()
+	}
+
+	if tr, ok := etcd.DefaultTransport.(interface {
+		CloseIdleConnections()
+	}); ok {
+		tr.CloseIdleConnections()
 	}
 
 	if se.dataDir != "" {

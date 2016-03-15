@@ -143,13 +143,7 @@ func (s *Server) RegisterRPCEndpoints() {
 		},
 	}
 
-	for _, route := range routes {
-		s.Router.
-			Methods(route.Method).
-			Path(route.Pattern).
-			Name(route.Name).
-			Handler(route.HandlerFunc)
-	}
+	rpc.RegisterRoutes(s.Router, routes)
 }
 
 func (s *Server) ListenAndServe() {

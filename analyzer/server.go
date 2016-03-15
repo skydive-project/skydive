@@ -32,12 +32,14 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/rpc"
 	"github.com/redhat-cip/skydive/storage"
+	"github.com/redhat-cip/skydive/storage/etcd"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
@@ -53,7 +55,7 @@ type Server struct {
 	Storage             storage.Storage
 	FlowTable           *flow.FlowTable
 	Conn                *net.UDPConn
-	EmbeddedEtcd        *storage.EmbeddedEtcd
+	EmbeddedEtcd        *etcd.EmbeddedEtcd
 }
 
 func (s *Server) flowExpire(f *flow.Flow) {
@@ -213,13 +215,7 @@ func (s *Server) RegisterRPCEndpoints() {
 		},
 	}
 
-	for _, route := range routes {
-		s.Router.
-			Methods(route.Method).
-			Path(route.Pattern).
-			Name(route.Name).
-			Handler(route.HandlerFunc)
-	}
+	rpc.RegisterRoutes(s.Router, routes)
 }
 
 func (s *Server) SetStorage(st storage.Storage) {
@@ -241,20 +237,30 @@ func NewServer(addr string, port int, router *mux.Router, embedEtcd bool) (*Serv
 	tserver.RegisterStaticEndpoints()
 	tserver.RegisterRPCEndpoints()
 
-	var etcd *storage.EmbeddedEtcd
+	var etcdServer *etcd.EmbeddedEtcd
 	if embedEtcd {
-		if etcd, err = storage.NewEmbeddedEtcdFromConfig(); err != nil {
+		if etcdServer, err = etcd.NewEmbeddedEtcdFromConfig(); err != nil {
 			return nil, err
 		}
 	}
 
-	alertmgr, err := graph.NewAlertFromConfig(g, router)
+	etcdClient, err := etcd.NewEtcdClientFromConfig()
 	if err != nil {
 		return nil, err
 	}
-	alertmgr.RegisterRPCEndpoints()
 
-	gserver, err := graph.NewServerFromConfig(g, alertmgr, router)
+	alertManager, err := graph.NewAlertManager(g, etcdClient.KeysApi)
+	if err != nil {
+		return nil, err
+	}
+
+	apiServer, err := api.NewApi(router, etcdClient.KeysApi)
+	if err != nil {
+		return nil, err
+	}
+	apiServer.RegisterResource(alertManager)
+
+	gserver, err := graph.NewServerFromConfig(g, alertManager, router)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +282,7 @@ func NewServer(addr string, port int, router *mux.Router, embedEtcd bool) (*Serv
 		GraphServer:         gserver,
 		FlowMappingPipeline: pipeline,
 		FlowTable:           flowtable,
-		EmbeddedEtcd:        etcd,
+		EmbeddedEtcd:        etcdServer,
 	}
 	server.RegisterRPCEndpoints()
 	cfgFlowtable_expire := config.GetConfig().GetInt("analyzer.flowtable_expire")

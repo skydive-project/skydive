@@ -20,40 +20,46 @@
  *
  */
 
-package client
+package etcd
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
+	"time"
 
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/spf13/cobra"
+	etcd "github.com/coreos/etcd/client"
+
+	"github.com/redhat-cip/skydive/config"
 )
 
-var Client = &cobra.Command{
-	Use:          "client",
-	Short:        "Skydive client",
-	Long:         "Skydive client",
-	SilenceUsage: true,
+type EtcdClient struct {
+	Client  *etcd.Client
+	KeysApi etcd.KeysAPI
 }
 
-func printJSON(obj interface{}) {
-	s, err := json.MarshalIndent(obj, "", "  ")
+func NewEtcdClient(etcdServers []string) (*EtcdClient, error) {
+	cfg := etcd.Config{
+		Endpoints: etcdServers,
+		Transport: etcd.DefaultTransport,
+		// set timeout per request to fail fast when the target endpoint is unavailable
+		HeaderTimeoutPerRequest: time.Second,
+	}
+
+	etcdClient, err := etcd.New(cfg)
 	if err != nil {
-		logging.GetLogger().Errorf(err.Error())
-		os.Exit(1)
+		return nil, errors.New(fmt.Sprintf("Failed to connect to etcd: %s", err))
 	}
-	fmt.Println(string(s))
+
+	kapi := etcd.NewKeysAPI(etcdClient)
+
+	return &EtcdClient{
+		Client:  &etcdClient,
+		KeysApi: kapi,
+	}, nil
 }
 
-func setFromFlag(cmd *cobra.Command, flag string, value *string) {
-	if flag := cmd.LocalFlags().Lookup(flag); flag.Changed {
-		*value = flag.Value.String()
-	}
-}
+func NewEtcdClientFromConfig() (*EtcdClient, error) {
+	etcdServers := config.GetConfig().GetStringSlice("etcd.servers")
 
-func init() {
-	Client.AddCommand(AlertCmd)
-	Client.AddCommand(CaptureCmd)
+	return NewEtcdClient(etcdServers)
 }

@@ -24,11 +24,30 @@ package rpc
 
 import (
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
+
+type PathPrefix string
 
 type Route struct {
 	Name        string
 	Method      string
-	Pattern     string
+	Path        interface{}
 	HandlerFunc http.HandlerFunc
+}
+
+func RegisterRoutes(router *mux.Router, routes []Route) {
+	for _, route := range routes {
+		r := router.
+			Methods(route.Method).
+			Name(route.Name).
+			Handler(route.HandlerFunc)
+		switch p := route.Path.(type) {
+		case string:
+			r.Path(p)
+		case PathPrefix:
+			r.PathPrefix(string(p))
+		}
+	}
 }

@@ -41,7 +41,7 @@ const (
 
 type Server struct {
 	Graph    *Graph
-	Alert    *Alert
+	Alert    *AlertManager
 	Router   *mux.Router
 	wsServer *WSServer
 	Host     string
@@ -65,7 +65,7 @@ type WSClient struct {
 
 type WSServer struct {
 	Graph      *Graph
-	Alert      *Alert
+	Alert      *AlertManager
 	clients    map[*WSClient]bool
 	broadcast  chan string
 	quit       chan bool
@@ -343,7 +343,7 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-func NewServer(g *Graph, a *Alert, router *mux.Router, pongWait time.Duration) *Server {
+func NewServer(g *Graph, a *AlertManager, router *mux.Router, pongWait time.Duration) *Server {
 	s := &Server{
 		Graph:  g,
 		Alert:  a,
@@ -369,7 +369,7 @@ func NewServer(g *Graph, a *Alert, router *mux.Router, pongWait time.Duration) *
 	return s
 }
 
-func NewServerFromConfig(g *Graph, a *Alert, router *mux.Router) (*Server, error) {
+func NewServerFromConfig(g *Graph, a *AlertManager, router *mux.Router) (*Server, error) {
 	w := config.GetConfig().GetInt("ws_pong_timeout")
 
 	return NewServer(g, a, router, time.Duration(w)*time.Second), nil
