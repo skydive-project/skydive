@@ -279,7 +279,6 @@ func (g GremlinBackend) GetEdgeNodes(e *Edge) (*Node, *Node) {
 	}
 
 	if len(els) != 2 {
-
 		logging.GetLogger().Errorf("Not found 2 nodes for this edge: " + string(e.ID))
 		return nil, nil
 	}

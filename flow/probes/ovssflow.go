@@ -180,6 +180,18 @@ func compareProbeID(row *map[string]interface{}, probe OvsSFlowProbe) (bool, err
 	return false, nil
 }
 
+func (o *OvsSFlowProbesHandler) makeOvsSFlowProbe() OvsSFlowProbe {
+	// TODO(safchain) add config parameter
+	return OvsSFlowProbe{
+		ID:         "SkydiveSFlowProbe",
+		Interface:  "eth0",
+		Target:     o.agent.GetTarget(),
+		HeaderSize: 256,
+		Sampling:   1,
+		Polling:    0,
+	}
+}
+
 func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(probe OvsSFlowProbe) (string, error) {
 	/* FIX(safchain) don't find a way to send a null condition */
 	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{"abc"})
@@ -227,7 +239,7 @@ func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(probe OvsSFlowProbe) (str
 	return "", nil
 }
 
-func (o *OvsSFlowProbesHandler) registerSFlowProbe(probe OvsSFlowProbe, bridgeUUID string) error {
+func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, bridgeUUID string) error {
 	probeUUID, err := o.retrieveSFlowProbeUUID(probe)
 	if err != nil {
 		return err
@@ -270,27 +282,71 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbe(probe OvsSFlowProbe, bridgeUU
 	return nil
 }
 
-func (o *OvsSFlowProbesHandler) registerProbe(bridgeUUID string) error {
-	// TODO(safchain) add config parameter
-	probe := OvsSFlowProbe{
-		ID:         "SkydiveSFlowProbe",
-		Interface:  "eth0",
-		Target:     o.agent.GetTarget(),
-		HeaderSize: 256,
-		Sampling:   1,
-		Polling:    0,
+func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(probe OvsSFlowProbe, bridgeUUID string) error {
+	probeUUID, err := o.retrieveSFlowProbeUUID(probe)
+	if err != nil {
+		return err
+	}
+	if probeUUID == "" {
+		return nil
 	}
 
-	err := o.registerSFlowProbe(probe, bridgeUUID)
+	operations := []libovsdb.Operation{}
+
+	bridgeRow := make(map[string]interface{})
+	bridgeRow["sflow"] = libovsdb.OvsSet{make([]interface{}, 0)}
+
+	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{bridgeUUID})
+	updateOp := libovsdb.Operation{
+		Op:    "update",
+		Table: "Bridge",
+		Row:   bridgeRow,
+		Where: []interface{}{condition},
+	}
+
+	operations = append(operations, updateOp)
+	_, err = o.ovsClient.Exec(operations...)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string) error {
+	probe := o.makeOvsSFlowProbe()
+	err := o.registerSFlowProbeOnBridge(probe, bridgeUUID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func isOvsBridge(n *graph.Node) bool {
+	return n.Metadata()["UUID"] != "" && n.Metadata()["Type"] == "ovsbridge"
+}
+
 func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node) error {
-	if uuid, ok := n.Metadata()["UUID"]; ok && uuid != "" {
-		err := o.registerProbe(uuid.(string))
+	if isOvsBridge(n) {
+		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (o *OvsSFlowProbesHandler) unregisterProbe(bridgeUUID string) error {
+	probe := o.makeOvsSFlowProbe()
+	err := o.UnregisterSFlowProbeFromBridge(probe, bridgeUUID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *OvsSFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
+	if isOvsBridge(n) {
+		err := o.unregisterProbe(n.Metadata()["UUID"].(string))
 		if err != nil {
 			return err
 		}

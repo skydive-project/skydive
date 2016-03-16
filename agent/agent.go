@@ -30,6 +30,7 @@ import (
 	"github.com/redhat-cip/skydive/config"
 	fprobes "github.com/redhat-cip/skydive/flow/probes"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/storage/etcd"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	tprobes "github.com/redhat-cip/skydive/topology/probes"
@@ -44,6 +45,7 @@ type Agent struct {
 	TopologyProbeBundle   *tprobes.TopologyProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
+	EtcdClient            *etcd.EtcdClient
 }
 
 func (a *Agent) Start() {
@@ -72,7 +74,19 @@ func (a *Agent) Start() {
 	go a.TopologyServer.ListenAndServe()
 	go a.GraphServer.ListenAndServe()
 
-	a.OnDemandProbeListener = fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph)
+	a.EtcdClient, err = etcd.NewEtcdClientFromConfig()
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to start etcd client %s", err.Error())
+		os.Exit(1)
+	}
+
+	l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, a.EtcdClient)
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
+		os.Exit(1)
+	}
+	a.OnDemandProbeListener = l
+	a.OnDemandProbeListener.Start()
 }
 
 func (a *Agent) Stop() {
@@ -83,6 +97,7 @@ func (a *Agent) Stop() {
 	if a.Gclient != nil {
 		a.Gclient.Disconnect()
 	}
+	a.OnDemandProbeListener.Stop()
 }
 
 func NewAgent() *Agent {

@@ -23,7 +23,6 @@
 package etcd
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -47,7 +46,7 @@ func NewEtcdClient(etcdServers []string) (*EtcdClient, error) {
 
 	etcdClient, err := etcd.New(cfg)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed to connect to etcd: %s", err))
+		return nil, fmt.Errorf("Failed to connect to etcd: %s", err)
 	}
 
 	kapi := etcd.NewKeysAPI(etcdClient)

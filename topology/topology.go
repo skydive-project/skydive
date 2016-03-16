@@ -100,9 +100,15 @@ func LookupNodeFromNodePathString(g *graph.Graph, s string) *graph.Node {
 }
 
 func IsOwnershipEdge(e *graph.Edge) bool {
-	return e.Metadata()["RelationType"].(string) == "ownership"
+	if t, ok := e.Metadata()["RelationType"]; ok && t.(string) == "ownership" {
+		return true
+	}
+	return false
 }
 
 func IsLayer2Edge(e *graph.Edge) bool {
-	return e.Metadata()["RelationType"].(string) == "layer2"
+	if t, ok := e.Metadata()["RelationType"]; ok && t.(string) == "layer2" {
+		return true
+	}
+	return false
 }

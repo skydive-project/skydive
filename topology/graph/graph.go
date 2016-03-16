@@ -218,6 +218,9 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 		}
 
 		parent, child := g.backend.GetEdgeNodes(e)
+		if parent == nil || child == nil {
+			continue
+		}
 
 		var neighbor *Node
 		if parent.ID != n.ID && !v[parent.ID] {
@@ -486,6 +489,10 @@ func (g *Graph) GetNodes() []*Node {
 
 func (g *Graph) GetEdges() []*Edge {
 	return g.backend.GetEdges()
+}
+
+func (g *Graph) GetEdgeNodes(e *Edge) (*Node, *Node) {
+	return g.backend.GetEdgeNodes(e)
 }
 
 func (g *Graph) String() string {

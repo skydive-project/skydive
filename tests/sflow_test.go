@@ -29,7 +29,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/rpc"
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/tests/helper"
 	"github.com/redhat-cip/skydive/tools"
@@ -198,6 +200,12 @@ func TestSFlowProbePath(t *testing.T) {
 	defer agent.Stop()
 	defer analyzer.Stop()
 
+	client := rpc.NewClientFromConfig()
+	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
+	if err := client.Create("capture", &capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
 	time.Sleep(1 * time.Second)
 	setupCmds := []helper.Cmd{
 		{"ovs-vsctl add-br br-sflow", true},
@@ -225,4 +233,6 @@ func TestSFlowProbePath(t *testing.T) {
 	if !ok {
 		t.Error("Unable to find a flow with the expected probePath")
 	}
+
+	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
 }
