@@ -17,6 +17,7 @@ before_install:
     - go get golang.org/x/tools/cmd/cover
 
 script:
+    - git rev-list --max-count=1 HEAD
     - test -z "$(gofmt -s -l . | grep -v Godeps/_workspace/src/ | grep -v statics/bindata.go | tee /dev/stderr)"
     - make install GOFLAGS="-race -v"
     - make test GOFLAGS="-race -v -timeout 5m"
