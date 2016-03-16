@@ -83,5 +83,7 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 
 	p := probe.NewProbeBundle(probes)
 
-	return &FlowProbeBundle{*p}
+	return &FlowProbeBundle{
+		ProbeBundle: *p,
+	}
 }

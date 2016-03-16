@@ -52,7 +52,6 @@ type OvsSFlowProbe struct {
 }
 
 type OvsSFlowProbesHandler struct {
-	graph.DefaultGraphListener
 	Graph            *graph.Graph
 	ovsClient        *ovsdb.OvsClient
 	agent            *sflow.SFlowAgent
@@ -296,21 +295,17 @@ func (o *OvsSFlowProbesHandler) registerProbe(bridgeUUID string) error {
 	return nil
 }
 
-func (o *OvsSFlowProbesHandler) OnNodeAdded(n *graph.Node) {
-	if t, ok := n.Metadata()["Type"]; !ok || t != "ovsbridge" {
-		return
+func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node) error {
+	if uuid, ok := n.Metadata()["UUID"]; ok && uuid != "" {
+		err := o.registerProbe(uuid.(string))
+		if err != nil {
+			return err
+		}
 	}
-
-	if uuid, ok := n.Metadata()["UUID"].(string); ok {
-		// TODO(safchain) do we need to register in an async way since
-		// we are in a graph lock for performance purpose
-		o.registerProbe(uuid)
-	}
+	return nil
 }
 
 func (o *OvsSFlowProbesHandler) Start() {
-	o.Graph.AddEventListener(o)
-
 	// start index/mac cache updater
 	go o.cacheUpdater()
 

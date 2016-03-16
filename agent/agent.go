@@ -36,13 +36,14 @@ import (
 )
 
 type Agent struct {
-	Graph               *graph.Graph
-	Gclient             *graph.AsyncClient
-	GraphServer         *graph.Server
-	Root                *graph.Node
-	TopologyServer      *topology.Server
-	TopologyProbeBundle *tprobes.TopologyProbeBundle
-	FlowProbeBundle     *fprobes.FlowProbeBundle
+	Graph                 *graph.Graph
+	Gclient               *graph.AsyncClient
+	GraphServer           *graph.Server
+	Root                  *graph.Node
+	TopologyServer        *topology.Server
+	TopologyProbeBundle   *tprobes.TopologyProbeBundle
+	FlowProbeBundle       *fprobes.FlowProbeBundle
+	OnDemandProbeListener *fprobes.OnDemandProbeListener
 }
 
 func (a *Agent) Start() {
@@ -70,6 +71,8 @@ func (a *Agent) Start() {
 
 	go a.TopologyServer.ListenAndServe()
 	go a.GraphServer.ListenAndServe()
+
+	a.OnDemandProbeListener = fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph)
 }
 
 func (a *Agent) Stop() {
