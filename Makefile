@@ -51,3 +51,7 @@ builddep:
 	go get github.com/jteeuwen/go-bindata/...
 
 genlocalfiles: .proto .bindata
+
+clean:
+	grep ImportPath Godeps/Godeps.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
+	rm -rf Godeps/_workspace/pkg
