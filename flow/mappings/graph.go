@@ -30,6 +30,7 @@ import (
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
@@ -57,18 +58,9 @@ func (gfe *GraphFlowEnhancer) cacheUpdater() {
 		}
 
 		if len(intfs) == 1 {
-			ancestors, ok := gfe.Graph.GetAncestorsTo(intfs[0], graph.Metadata{"Type": "host"})
-			if ok {
-				var path string
-				for i := len(ancestors) - 1; i >= 0; i-- {
-					if len(path) > 0 {
-						path += "/"
-					}
-					name, _ := ancestors[i].Metadata()["Name"]
-					path += name.(string)
-				}
-
-				gfe.cache.Set(mac, path, cache.DefaultExpiration)
+			nodes := gfe.Graph.LookupShortestPath(intfs[0], graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
+			if len(nodes) > 0 {
+				gfe.cache.Set(mac, topology.NodePath{nodes}.Marshal(), cache.DefaultExpiration)
 			}
 		}
 		gfe.Graph.Unlock()

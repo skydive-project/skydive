@@ -23,6 +23,8 @@
 package graph
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -166,31 +168,60 @@ func TestHierarchyLookup(t *testing.T) {
 func TestPath(t *testing.T) {
 	g := newGraph(t)
 
+	validatePath := func(nodes []*Node, expected string) bool {
+		var values []string
+
+		for _, n := range nodes {
+			values = append(values, strconv.FormatInt(int64(n.Metadata()["Value"].(int)), 10))
+		}
+
+		return expected == strings.Join(values, "/")
+	}
+
 	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
 	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
 	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
-	g.Link(n1, n2)
-	g.Link(n2, n3)
-	g.Link(n3, n4)
+	g.Link(n1, n2, Metadata{"Type": "Layer2"})
+	g.Link(n2, n3, Metadata{"Type": "Layer2"})
+	g.Link(n3, n4, Metadata{"Type": "Layer2"})
 
-	r, ok := g.GetAncestorsTo(n4, Metadata{"Value": 1})
-	if !ok || len(r) != 4 {
-		t.Error("Wrong nodes returned")
+	r := g.LookupShortestPath(n4, Metadata{"Value": 1})
+	if len(r) == 0 || !validatePath(r, "4/3/2/1") {
+		t.Errorf("Wrong nodes returned: %v", r)
 	}
 
-	if r[0].ID != n4.ID || r[1].ID != n3.ID || r[2].ID != n2.ID || r[3].ID != n1.ID {
-		t.Error("Wrong path returned")
+	r = g.LookupShortestPath(n4, Metadata{"Value": 2})
+	if len(r) == 0 || !validatePath(r, "4/3/2") {
+		t.Errorf("Wrong nodes returned: %v", r)
 	}
 
-	r, ok = g.GetAncestorsTo(n4, Metadata{"Value": 2})
-	if !ok || len(r) != 3 {
-		t.Error("Wrong nodes returned")
+	r = g.LookupShortestPath(n4, Metadata{"Value": 55})
+	if len(r) > 0 {
+		t.Errorf("Shouldn't have true returned: %v", r)
 	}
 
-	if r[0].ID != n4.ID || r[1].ID != n3.ID || r[2].ID != n2.ID {
-		t.Error("Wrong path returned")
+	// add a shorter link in order to validate edga validator
+	g.Link(n1, n4, Metadata{"Type": "Layer3"})
+
+	v := func(e *Edge) bool {
+		return e.Metadata()["Type"].(string) == "Layer2"
+	}
+
+	r = g.LookupShortestPath(n4, Metadata{"Value": 1}, v)
+	if len(r) == 0 || !validatePath(r, "4/3/2/1") {
+		t.Errorf("Wrong nodes returned: %v", r)
+	}
+
+	// should return only n1 -> n4
+	v = func(e *Edge) bool {
+		return e.Metadata()["Type"].(string) == "Layer3"
+	}
+
+	r = g.LookupShortestPath(n4, Metadata{"Value": 1}, v)
+	if len(r) == 0 || !validatePath(r, "4/1") {
+		t.Errorf("Wrong nodes returned: %v", r)
 	}
 }
 

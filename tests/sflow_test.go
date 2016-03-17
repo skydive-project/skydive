@@ -186,7 +186,7 @@ func TestSFlowWithPCAP(t *testing.T) {
 	}
 }
 
-func TestSFlowProbPath(t *testing.T) {
+func TestSFlowProbePath(t *testing.T) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -216,7 +216,7 @@ func TestSFlowProbPath(t *testing.T) {
 
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.ProbeGraphPath == hostname+"/br-sflow" && f.LayersPath == "Ethernet/ARP/Payload" {
+		if f.ProbeGraphPath == hostname+"[Type=host]/br-sflow[Type=ovsbridge]" && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}

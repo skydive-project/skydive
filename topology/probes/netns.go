@@ -141,7 +141,7 @@ func (u *NetNSProbe) Register(path string, extraMetadata *graph.Metadata) {
 		}
 	}
 	n := u.Graph.NewNode(graph.GenID(), metadata)
-	u.Graph.Link(u.Root, n)
+	u.Graph.Link(u.Root, n, graph.Metadata{"RelationType": "ownership"})
 
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
 	go nu.Start(path)

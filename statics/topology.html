@@ -237,35 +237,54 @@
     return "";
   }
 
-  Node.prototype.getHostRelativePath = function(ancestors) {
+  Node.prototype.getHostRelativePath = function(path, visited) {
+    visited[this.ID] = true;
+
+    path = path.slice();
+
+    path.push(this);
+    if (this.Type() == "host")
+      return path;
+
+    var shortest = [];
     for (var e in this.Edges) {
       var edge = this.Edges[e];
-      if (this == edge.Child && edge.Parent.Type() == "host") {
-        ancestors.push(edge.Parent.Name());
-        return true;
+      if (edge.RelationType() != "ownership")
+        continue;
+
+      var neighbor;
+      if (edge.Parent.ID != this.ID && !(edge.Parent.ID in visited))
+        neighbor = edge.Parent;
+
+      if (edge.Child.ID != this.ID && !(edge.Child.ID in visited))
+        neighbor = edge.Child;
+
+      if (typeof neighbor != "undefined") {
+        var sub = neighbor.getHostRelativePath(path, visited);
+        if (sub.length > 0 && (shortest.length == 0 || sub.length < shortest.length))
+          shortest = sub;
       }
     }
 
-    for (var e in this.Edges) {
-      var edge = this.Edges[e];
-      if (this == edge.Child ) {
-        ancestors.push(edge.Parent.Name());
-        if (edge.Parent.getHostRelativePath(ancestors)) {
-          return true;
-        }
-      }
-    }
-
-    return false;
+    return shortest;
   }
 
   Node.prototype.GetHostRelativePath = function() {
-    ancestors = [this.Name()];
-    if (this.getHostRelativePath(ancestors)) {
-      return ancestors.reverse().join('/');
+    nodes = this.getHostRelativePath([], {});
+    if (nodes.length == 0)
+      return "";
+
+    var path = ""
+    for (i in nodes.reverse()) {
+      var node = nodes[i];
+
+      if (path.length > 0)
+        path += "/";
+
+      path += node.Name() + "[Type=" + node.Type() + "]";
     }
 
-    return "";
+    return path;
   }
 
   var Edge = function(ID) {
@@ -279,6 +298,12 @@
   Edge.prototype.Type = function() {
     if ("Type" in this.Metadata)
     return this.Metadata["Type"];
+    return "";
+  }
+
+  Edge.prototype.RelationType = function() {
+    if ("RelationType" in this.Metadata)
+    return this.Metadata["RelationType"];
     return "";
   }
 

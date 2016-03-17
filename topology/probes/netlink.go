@@ -54,7 +54,7 @@ func (u *NetLinkProbe) linkMasterChildren(intf *graph.Node, index int64) {
 	// add children of this interface that haven previously added
 	if children, ok := u.indexToChildrenQueue[index]; ok {
 		for _, child := range children {
-			u.Graph.Link(intf, child)
+			u.Graph.Link(intf, child, graph.Metadata{"RelationType": "layer2"})
 		}
 		delete(u.indexToChildrenQueue, index)
 	}
@@ -70,7 +70,7 @@ func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 		// assuming we have only one parent with this index
 		parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 		if parent != nil && !u.Graph.AreLinked(parent, intf) {
-			u.Graph.Link(parent, intf)
+			u.Graph.Link(parent, intf, graph.Metadata{"RelationType": "layer2"})
 		} else {
 			// not yet the bridge so, enqueue for a later add
 			u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], intf)
@@ -99,7 +99,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			// got more than 1 peer, unable to find the right one, wait for the other to discover
 			peer := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": int64(index), "Type": "veth"})
 			if peer != nil && !u.Graph.AreLinked(peer, intf) {
-				u.Graph.NewEdge(graph.GenID(), peer, intf, graph.Metadata{"Type": "veth"})
+				u.Graph.Link(peer, intf, graph.Metadata{"RelationType": "layer2", "Type": "veth"})
 				return true
 			}
 			return false
@@ -162,7 +162,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 	}
 
 	if !u.Graph.AreLinked(u.Root, intf) {
-		u.Graph.Link(u.Root, intf)
+		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
 	}
 
 	u.handleIntfIsChild(intf, link)
@@ -185,7 +185,7 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 	}
 
 	if !u.Graph.AreLinked(u.Root, intf) {
-		u.Graph.Link(u.Root, intf)
+		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
 	}
 
 	u.linkMasterChildren(intf, index)
@@ -202,7 +202,7 @@ func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata)
 	}
 
 	if !u.Graph.AreLinked(u.Root, intf) {
-		u.Graph.Link(u.Root, intf)
+		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
 	}
 
 	return intf

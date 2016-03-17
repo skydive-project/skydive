@@ -60,7 +60,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge == nil {
 		bridge = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Type": "ovsbridge"})
-		o.Graph.Link(o.Root, bridge)
+		o.Graph.Link(o.Root, bridge, graph.Metadata{"RelationType": "ownership"})
 	}
 
 	switch row.New.Fields["ports"].(type) {
@@ -72,7 +72,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 
 			port, ok := o.uuidToPort[u]
 			if ok && !o.Graph.AreLinked(bridge, port) {
-				o.Graph.Link(bridge, port)
+				o.Graph.Link(bridge, port, graph.Metadata{"RelationType": "layer2"})
 			} else {
 				/* will be filled later when the port update for this port will be triggered */
 				o.portBridgeQueue[u] = bridge
@@ -84,7 +84,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 
 		port, ok := o.uuidToPort[u]
 		if ok && !o.Graph.AreLinked(bridge, port) {
-			o.Graph.Link(bridge, port)
+			o.Graph.Link(bridge, port, graph.Metadata{"RelationType": "layer2"})
 		} else {
 			/* will be filled later when the port update for this port will be triggered */
 			o.portBridgeQueue[u] = bridge
@@ -240,13 +240,13 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 			peer := o.Graph.LookupFirstNode(graph.Metadata{"Name": peerName, "Type": "patch"})
 			if peer != nil {
 				if !o.Graph.AreLinked(intf, peer) {
-					o.Graph.NewEdge(graph.GenID(), intf, peer, graph.Metadata{"Type": "patch"})
+					o.Graph.Link(intf, peer, graph.Metadata{"RelationType": "layer2", "Type": "patch"})
 				}
 			} else {
 				// lookup in the intf queue
 				for _, peer := range o.uuidToIntf {
 					if peer.Metadata()["Name"] == peerName && !o.Graph.AreLinked(intf, peer) {
-						o.Graph.NewEdge(graph.GenID(), intf, peer, graph.Metadata{"Type": "patch"})
+						o.Graph.Link(intf, peer, graph.Metadata{"RelationType": "layer2", "Type": "patch"})
 					}
 				}
 			}
@@ -255,7 +255,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	/* set pending interface for a port */
 	if port, ok := o.intfPortQueue[uuid]; ok {
-		o.Graph.Link(port, intf)
+		o.Graph.Link(port, intf, graph.Metadata{"RelationType": "layer2"})
 		delete(o.intfPortQueue, uuid)
 	}
 }
@@ -338,7 +338,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			u := i.(libovsdb.UUID).GoUuid
 			intf, ok := o.uuidToIntf[u]
 			if ok && !o.Graph.AreLinked(port, intf) {
-				o.Graph.Link(port, intf)
+				o.Graph.Link(port, intf, graph.Metadata{"RelationType": "layer2"})
 			} else {
 				/* will be filled later when the interface update for this interface will be triggered */
 				o.intfPortQueue[u] = port
@@ -348,7 +348,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		u := row.New.Fields["interfaces"].(libovsdb.UUID).GoUuid
 		intf, ok := o.uuidToIntf[u]
 		if ok && !o.Graph.AreLinked(port, intf) {
-			o.Graph.Link(port, intf)
+			o.Graph.Link(port, intf, graph.Metadata{"RelationType": "layer2"})
 		} else {
 			/* will be filled later when the interface update for this interface will be triggered */
 			o.intfPortQueue[u] = port
@@ -357,7 +357,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 	/* set pending port of a container */
 	if bridge, ok := o.portBridgeQueue[uuid]; ok {
-		o.Graph.Link(bridge, port)
+		o.Graph.Link(bridge, port, graph.Metadata{"RelationType": "layer2"})
 		delete(o.portBridgeQueue, uuid)
 	}
 }

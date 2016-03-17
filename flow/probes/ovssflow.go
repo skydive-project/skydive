@@ -38,6 +38,7 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/ovs"
 	"github.com/redhat-cip/skydive/sflow"
+	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	"github.com/redhat-cip/skydive/topology/probes"
 )
@@ -73,26 +74,18 @@ func (o *OvsSFlowProbesHandler) lookupForProbePath(index int64) string {
 
 	// lookup for the interface that is a part of an ovs bridge
 	for _, intf := range intfs {
-		ancestors, ok := o.Graph.GetAncestorsTo(intf, graph.Metadata{"Type": "ovsbridge"})
-		if !ok {
+		nodes := o.Graph.LookupShortestPath(intf, graph.Metadata{"Type": "ovsbridge"}, topology.IsLayer2Edge)
+		if len(nodes) == 0 {
 			continue
 		}
 
-		bridge := ancestors[2]
-		ancestors, ok = o.Graph.GetAncestorsTo(bridge, graph.Metadata{"Type": "host"})
-		if !ok {
+		bridge := nodes[len(nodes)-1]
+		nodes = o.Graph.LookupShortestPath(bridge, graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
+		if len(nodes) == 0 {
 			continue
 		}
 
-		var path string
-		for i := len(ancestors) - 1; i >= 0; i-- {
-			if len(path) > 0 {
-				path += "/"
-			}
-			path += ancestors[i].Metadata()["Name"].(string)
-		}
-
-		return path
+		return topology.NodePath{nodes}.Marshal()
 	}
 
 	return ""

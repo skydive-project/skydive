@@ -87,6 +87,8 @@ type Graph struct {
 	eventListeners []GraphEventListener
 }
 
+type EdgeValidator func(e *Edge) bool
+
 // default implementation of a graph listener, can be used when not implementing
 // the whole set of callbacks
 type DefaultGraphListener struct {
@@ -200,36 +202,45 @@ func (g *Graph) AddMetadata(e interface{}, k string, v interface{}) {
 	g.notifyMetadataUpdated(e)
 }
 
-func (g *Graph) getAncestorsTo(n *Node, f Metadata, ancestors []*Node) ([]*Node, bool) {
-	ancestors = append(ancestors, n)
+func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, ev ...EdgeValidator) []*Node {
+	v[n.ID] = true
 
-	edges := g.backend.GetNodeEdges(n)
+	path = append(path, n)
 
-	for _, e := range edges {
-		parent, child := g.backend.GetEdgeNodes(e)
-
-		if child != nil && child.ID == n.ID && parent.matchFilters(f) {
-			ancestors = append(ancestors, parent)
-			return ancestors, true
-		}
+	if n.matchFilters(m) {
+		return path
 	}
 
-	for _, e := range edges {
+	shortest := []*Node{}
+	for _, e := range g.backend.GetNodeEdges(n) {
+		if len(ev) > 0 && !ev[0](e) {
+			continue
+		}
+
 		parent, child := g.backend.GetEdgeNodes(e)
 
-		if child != nil && child.ID == n.ID {
-			a, ok := g.getAncestorsTo(parent, f, ancestors)
-			if ok {
-				return a, true
+		var neighbor *Node
+		if parent.ID != n.ID && !v[parent.ID] {
+			neighbor = parent
+		}
+
+		if child.ID != n.ID && !v[child.ID] {
+			neighbor = child
+		}
+
+		if neighbor != nil {
+			sub := g.lookupShortestPath(neighbor, m, path, v)
+			if len(sub) > 0 && (len(shortest) == 0 || len(sub) < len(shortest)) {
+				shortest = sub
 			}
 		}
 	}
 
-	return ancestors, false
+	return shortest
 }
 
-func (g *Graph) GetAncestorsTo(n *Node, f Metadata) ([]*Node, bool) {
-	return g.getAncestorsTo(n, f, []*Node{})
+func (g *Graph) LookupShortestPath(n *Node, m Metadata, ev ...EdgeValidator) []*Node {
+	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), ev...)
 }
 
 func (g *Graph) LookupParentNodes(n *Node, f Metadata) []*Node {
@@ -283,8 +294,12 @@ func (g *Graph) AreLinked(n1 *Node, n2 *Node) bool {
 	return false
 }
 
-func (g *Graph) Link(n1 *Node, n2 *Node) {
-	g.NewEdge(GenID(), n1, n2, nil)
+func (g *Graph) Link(n1 *Node, n2 *Node, m ...Metadata) {
+	if len(m) > 0 {
+		g.NewEdge(GenID(), n1, n2, m[0])
+	} else {
+		g.NewEdge(GenID(), n1, n2, nil)
+	}
 }
 
 func (g *Graph) Unlink(n1 *Node, n2 *Node) {
@@ -443,20 +458,19 @@ func (g *Graph) DelNode(n *Node) {
 	}
 }
 
-func (g *Graph) delSubGraph(n *Node, m map[Identifier]bool) {
-	if _, ok := m[n.ID]; ok {
-		return
-	}
-	m[n.ID] = true
+func (g *Graph) delSubGraph(n *Node, v map[Identifier]bool) {
+	v[n.ID] = true
 
 	for _, e := range g.backend.GetNodeEdges(n) {
-		_, child := g.backend.GetEdgeNodes(e)
-		if child == nil {
-			continue
+		parent, child := g.backend.GetEdgeNodes(e)
+
+		if parent != nil && parent.ID != n.ID && !v[parent.ID] {
+			g.delSubGraph(parent, v)
+			g.DelNode(parent)
 		}
 
-		if child.ID != n.ID {
-			g.delSubGraph(child, m)
+		if child != nil && child.ID != n.ID && !v[child.ID] {
+			g.delSubGraph(child, v)
 			g.DelNode(child)
 		}
 	}
