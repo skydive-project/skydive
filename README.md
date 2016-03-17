@@ -62,7 +62,8 @@ node setup, the analyzer IP/PORT need to be adapted.
 Processes are bound to 127.0.0.1 by default, you can explicitly change binding
 address with "listen: 0.0.0.0:port" in the proper configuration sections.
 
-See the full list of configuration parameters in the sample configuration file [etc/skydive.yml.default](etc/skydive.yml.default).
+See the full list of configuration parameters in the sample configuration file
+[etc/skydive.yml.default](etc/skydive.yml.default).
 
 ### Start
 
@@ -105,6 +106,46 @@ Messages:
 * EdgeUpdated
 * EdgeAdded
 * EdgeDeleted
+
+### Devstack
+
+Skydive provides a DevStack plugin that can be used in order to have
+Skydive Agents/Analyzer configured and started with the proper probes
+by DevStack.
+
+For a single node setup adding the following lines to your local.conf file
+should be enough.
+
+```console
+enable_plugin skydive https://github.com/redhat-cip/skydive.git
+
+enable_service skydive-agent skydive-analyzer
+```
+
+The plugin accepts the following parameters:
+
+```console
+# Address on which skydive analyzer process listens for connections.
+# Must be in ip:port format
+#SKYDIVE_ANALYZER_LISTEN=
+
+# Inform the agent about the address on which analyzers are listening
+# Must be in ip:port format
+#SKYDIVE_AGENT_ANALYZERS=
+
+# ip:port address on which skydive agent listens for connections.
+#SKYDIVE_AGENT_LISTEN=
+
+# The path for the generated skydive configuration file
+#SKYDIVE_CONFIG_FILE=
+
+# List of agent probes to be used by the agent
+# Ex: netns netlink ovsdb
+#SKYDIVE_AGENT_PROBES=
+
+# Remote port for ovsdb server.
+#OVSDB_REMOTE_PORT=6640
+```
 
 ## Contributing
 This project accepts contributions. Skydive uses the Gerrit workflow
