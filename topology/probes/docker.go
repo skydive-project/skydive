@@ -35,14 +35,21 @@ import (
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
+const (
+	StoppedState  = iota
+	RunningState  = iota
+	StoppingState = iota
+)
+
 type DockerProbe struct {
 	NetNSProbe
-	url     string
-	client  *dockerclient.DockerClient
-	running atomic.Value
-	quit    chan bool
-	wg      sync.WaitGroup
-	idToPid map[string]int
+	url       string
+	client    *dockerclient.DockerClient
+	state     int64
+	connected atomic.Value
+	quit      chan bool
+	wg        sync.WaitGroup
+	idToPid   map[string]int
 }
 
 type DockerContainerAttributes struct {
@@ -55,7 +62,7 @@ func (probe *DockerProbe) containerNamespace(pid int) string {
 
 func (probe *DockerProbe) registerContainer(info dockerclient.ContainerInfo) {
 	namespace := probe.containerNamespace(info.State.Pid)
-	logging.GetLogger().Debugf("Register docker container %s and PID %d (%s)", info.Id, info.State.Pid)
+	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.Id, info.State.Pid)
 	metadata := &graph.Metadata{
 		"Name":                 info.Name[1:],
 		"Manager":              "docker",
@@ -91,14 +98,14 @@ func (probe *DockerProbe) handleDockerEvent(event *dockerclient.Event) {
 	}
 }
 
-func (probe *DockerProbe) connect() {
+func (probe *DockerProbe) connect() error {
 	var err error
 
 	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", probe.url)
 	probe.client, err = dockerclient.NewDockerClient(probe.url, nil)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to connect to Docker daemon: %s", err.Error())
-		return
+		return err
 	}
 
 	eventsOptions := &dockerclient.MonitorEventsOptions{
@@ -107,26 +114,29 @@ func (probe *DockerProbe) connect() {
 		},
 	}
 
-	probe.quit = make(chan bool)
 	eventErrChan, err := probe.client.MonitorEvents(eventsOptions, nil)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to monitor Docker events: %s", err.Error())
-		return
-	}
-
-	containers, err := probe.client.ListContainers(false, false, "")
-	if err != nil {
-		logging.GetLogger().Errorf("Failed to list containers: %s", err.Error())
-		return
+		return err
 	}
 
 	probe.wg.Add(2)
+	probe.quit = make(chan bool)
+
+	probe.connected.Store(true)
+	defer probe.connected.Store(false)
 
 	go func() {
 		defer probe.wg.Done()
 
+		containers, err := probe.client.ListContainers(false, false, "")
+		if err != nil {
+			logging.GetLogger().Errorf("Failed to list containers: %s", err.Error())
+			return
+		}
+
 		for _, c := range containers {
-			if probe.running.Load() == false {
+			if atomic.LoadInt64(&probe.state) != RunningState {
 				break
 			}
 
@@ -141,14 +151,15 @@ func (probe *DockerProbe) connect() {
 	}()
 
 	defer probe.wg.Done()
+
 	for {
 		select {
 		case <-probe.quit:
-			return
+			return nil
 		case e := <-eventErrChan:
 			if e.Error != nil {
 				logging.GetLogger().Errorf("Got error while waiting for Docker event: %s", e.Error.Error())
-				return
+				return e.Error
 			}
 			probe.handleDockerEvent(&e.Event)
 		}
@@ -156,29 +167,45 @@ func (probe *DockerProbe) connect() {
 }
 
 func (probe *DockerProbe) Start() {
-	probe.running.Store(true)
+	if !atomic.CompareAndSwapInt64(&probe.state, StoppedState, RunningState) {
+		return
+	}
 
 	go func() {
-		for probe.running.Load() == true {
-			probe.connect()
+		for {
+			state := atomic.LoadInt64(&probe.state)
+			if state == StoppingState || state == StoppedState {
+				break
+			}
 
-			time.Sleep(1 * time.Second)
+			if probe.connect() != nil {
+				time.Sleep(1 * time.Second)
+			}
 		}
 	}()
 }
 
 func (probe *DockerProbe) Stop() {
-	probe.running.Store(false)
-	close(probe.quit)
-	probe.wg.Wait()
+	if !atomic.CompareAndSwapInt64(&probe.state, RunningState, StoppingState) {
+		return
+	}
+
+	if probe.connected.Load() == true {
+		close(probe.quit)
+		probe.wg.Wait()
+	}
+
+	atomic.StoreInt64(&probe.state, StoppedState)
 }
 
-func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) *DockerProbe {
-	return &DockerProbe{
+func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) (probe *DockerProbe) {
+	probe = &DockerProbe{
 		NetNSProbe: *NewNetNSProbe(g, n),
 		url:        dockerURL,
 		idToPid:    make(map[string]int),
+		state:      StoppedState,
 	}
+	return
 }
 
 func NewDockerProbeFromConfig(g *graph.Graph, n *graph.Node) *DockerProbe {
