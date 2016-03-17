@@ -162,6 +162,9 @@ git review
 For a more complete documentation about
 [how to contribute to a gerrit hosted project](https://gerrit-documentation.storage.googleapis.com/Documentation/2.12/intro-quick.html#_the_life_and_times_of_a_change).
 
+## Contact
+
+* IRC: #skydive-project on irc.freenode.net
 
 ## License
 This software is licensed under the Apache License, Version 2.0 (the
