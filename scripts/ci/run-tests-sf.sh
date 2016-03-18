@@ -50,6 +50,10 @@ make test GOFLAGS=-race VERBOSE=true TIMEOUT=6m
 
 # Run functionals test
 make test.functionals GOFLAGS=-race VERBOSE=true TIMEOUT=6m
+RET=$?
+if [ ${RET} -ne 0 ]; then
+  exit ${RET}
+fi
 
 # test with websocket gremlin server
 cd ${GREMLINPATH}
