@@ -526,8 +526,8 @@
 		},
 		{
 			"ImportPath": "github.com/socketplane/libovsdb",
-			"Comment": "v0.1-2-g58cf012",
-			"Rev": "58cf01279880d621a67c5f929af9ed59ab409373"
+			"Comment": "v0.1-4-gd5bc040",
+			"Rev": "d5bc040ebbf7c56755a3e113dd2d96e2e383b644"
 		},
 		{
 			"ImportPath": "github.com/spf13/cast",
