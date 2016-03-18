@@ -117,7 +117,7 @@ func NewEmbeddedEtcd(port int, dataDir string) (*EmbeddedEtcd, error) {
 		if time.Now().After(t) {
 			return nil, errors.New("Failed to start etcd")
 		}
-		if _, err := kapi.Get(context.Background(), "/", nil); err == nil {
+		if _, err := kapi.Set(context.Background(), "/skydive", "", nil); err == nil {
 			break
 		}
 		time.Sleep(time.Second)
