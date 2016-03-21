@@ -1,0 +1,186 @@
+html, body {
+  width:100%;
+  height:100%;
+}
+
+body {
+  margin: auto;
+  padding-top: 50px;
+  background-color: #333;
+}
+
+select {
+  color: #111;
+}
+
+.mode {
+  color: white;
+  font-size: 0.6em;
+  vertical-align: super;
+}
+
+.topology, .conversation {
+  width: 100%;
+  height: 100%;
+}
+
+.topology-d3, .conversation-d3 {
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  padding-top: 15px;
+}
+
+.node {
+  fill: lightsteelblue;
+  stroke: #888;
+  stroke-width: 1;
+  opacity: 0.9;
+}
+
+text {
+  fill: #111;
+  pointer-events: none;
+  font: 12px Helvetica, Arial, sans-serif;
+  stroke-width: 0;
+}
+
+.row text, .column text {
+  font: 12px Helvetica, Arial, sans-serif;
+  fill: #eee;
+}
+
+.row text.active, .column text.active{
+  fill: red;
+}
+
+.row line, .column line {
+  stroke: #fff;
+}
+
+.default .circle {
+  fill: rgb(199, 233, 192);
+}
+
+.ovsbridge, .bridge .circle {
+  fill: rgb(198, 219, 239);
+}
+
+.ovsport, .bond .circle {
+  fill: rgb(253, 208, 162);
+}
+
+.down .circle {
+  fill: rgb(255, 26, 0);
+}
+
+.alert .circle {
+  fill: rgb(255, 255, 0);
+}
+
+.group {
+  fill: #fff;
+  pointer-events: none;
+  font: 16px Helvetica, Arial, sans-serif;
+  stroke-width: 5;
+}
+
+.link {
+  stroke: #333;
+}
+
+.veth {
+  stroke-width: 3;
+  stroke-dasharray: 5,5;
+}
+
+path.hull {
+  fill: lightsteelblue;
+  fill-opacity: 0.4;
+}
+
+.host {
+  fill: #555;
+}
+
+.pane-label {
+  position: absolute;
+  z-index: 99;
+  padding: 0;
+  font-size: 80%;
+  opacity: .4;
+  right: 15px;
+  bottom: 15px;
+  margin: 0;
+}
+
+.cont {
+  width:100%;
+  height: 100%
+}
+
+.content {
+  padding-left: 0px;
+  padding-right: 0px;
+  overflow: auto;
+}
+
+.info {
+  border-left: 5px #222 solid;
+  color: #fff;
+  padding-top: 5px;
+  overflow: auto;
+}
+
+.fill {
+  height: 100%;
+}
+
+.ui-resizable {
+  position: relative;
+}
+
+.ui-resizable-handle {
+  font-size: 0.1px;
+}
+
+.ui-resizable-e {
+  right: 0px;
+}
+
+.jsonview .num {
+  color: yellow;
+}
+
+.jsonview .string {
+  color: #aaa;
+}
+
+.jsonview {
+  font-size: 0.9em;
+}
+
+.jsonview ul {
+  margin: 0 0 0 1em;
+}
+
+.left-cont {
+  display: inline-table;
+  width: 100%;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.left-panel {
+  border-radius: 15px;
+  background-color: #222;
+  padding: 15px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.title-left-panel {
+  font-size: 1.2em;
+  padding-bottom: 5px;
+  color: #fff;
+}

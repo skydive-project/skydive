@@ -26,9 +26,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"text/template"
 
@@ -53,10 +56,40 @@ type Server struct {
 	wg      sync.WaitGroup
 }
 
+type StaticHandler struct {
+}
+
+func StaticServer() http.Handler {
+	return &StaticHandler{}
+}
+
+func (s *StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	upath := r.URL.Path
+	if strings.HasPrefix(upath, "/") {
+		upath = strings.TrimPrefix(upath, "/")
+	}
+
+	content, err := statics.Asset(upath)
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to find the asset: %s", upath)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	ext := filepath.Ext(upath)
+	ct := mime.TypeByExtension(ext)
+
+	w.Header().Set("Content-Type", ct+"; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(content)
+}
+
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 	html, err := statics.Asset("statics/topology.html")
 	if err != nil {
-		logging.GetLogger().Panic("Unable to find the topology asset")
+		logging.GetLogger().Error("Unable to find the topology asset")
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
 	t := template.New("topology template")
@@ -71,7 +104,7 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	var data = &struct {
+	data := &struct {
 		Service  string
 		Hostname string
 		Port     int
@@ -97,6 +130,7 @@ func (s *Server) TopologyIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) RegisterStaticEndpoints() {
 	s.Router.HandleFunc("/", s.serveIndex)
+	s.Router.PathPrefix("/statics").Handler(StaticServer())
 }
 
 func (s *Server) RegisterRPCEndpoints() {
