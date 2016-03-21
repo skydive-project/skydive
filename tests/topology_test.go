@@ -201,10 +201,19 @@ func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.C
 
 func testTopology(t *testing.T, g *graph.Graph, cmds []helper.Cmd, onChange func(ws *websocket.Conn)) {
 	cmdIndex := 0
+	cmdChan := make(chan helper.Cmd, len(cmds))
+	defer close(cmdChan)
+
+	go func() {
+		for cmd := range cmdChan {
+			helper.ExecCmds(t, cmd)
+		}
+	}()
+
 	or := func(w *websocket.Conn) {
 		// ready to exec the first cmd
 		if cmdIndex < len(cmds) {
-			helper.ExecCmds(t, cmds[cmdIndex])
+			cmdChan <- cmds[cmdIndex]
 			cmdIndex++
 		}
 	}
@@ -214,7 +223,7 @@ func testTopology(t *testing.T, g *graph.Graph, cmds []helper.Cmd, onChange func
 
 		// exec the following command
 		if cmdIndex < len(cmds) {
-			helper.ExecCmds(t, cmds[cmdIndex])
+			cmdChan <- cmds[cmdIndex]
 			cmdIndex++
 		}
 	}
