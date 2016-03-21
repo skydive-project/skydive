@@ -28,6 +28,8 @@ import (
 	"sync"
 	"time"
 
+	"encoding/json"
+
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -152,6 +154,96 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath(EndpointType FlowEndpointT
 	str += strNodes + "," + strLinks
 	str += "}"
 	return str
+}
+
+type DiscoType int
+
+const (
+	BYTES DiscoType = 1 + iota
+	PACKETS
+)
+
+type DiscoNode struct {
+	name     string
+	size     uint64
+	children map[string]*DiscoNode
+}
+
+func (d *DiscoNode) MarshalJSON() ([]byte, error) {
+	str := "{"
+	str += fmt.Sprintf(`"name":"%s",`, d.name)
+	if d.size > 0 {
+		str += fmt.Sprintf(`"size": %d,`, d.size)
+	}
+	str += fmt.Sprintf(`"children": [`)
+	idx := 0
+	for _, child := range d.children {
+		bytes, err := child.MarshalJSON()
+		if err != nil {
+			return []byte(str), err
+		}
+		str += string(bytes)
+		if idx != len(d.children)-1 {
+			str += ","
+		}
+		idx++
+	}
+	str += "]"
+	str += "}"
+	return []byte(str), nil
+}
+
+func NewDiscoNode() *DiscoNode {
+	return &DiscoNode{
+		children: make(map[string]*DiscoNode),
+	}
+}
+
+func (ft *FlowTable) JSONFlowDiscovery(DiscoType DiscoType) string {
+	// {"name":"root","children":[{"name":"Ethernet","children":[{"name":"IPv4","children":[{"name":"UDP","children":[{"name":"Payload","size":360,"children":[]}]},{"name":"TCP","children":[{"name":"Payload","size":240,"children":[]}]}]}]}]}
+
+	pathMap := make(map[string]FlowEndpointStatistics)
+
+	ft.lock.RLock()
+	for _, f := range ft.table {
+		p, _ := pathMap[f.LayersPath]
+		p.Bytes += f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()].AB.Bytes
+		p.Bytes += f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()].BA.Bytes
+		p.Packets += f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()].AB.Packets
+		p.Packets += f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()].BA.Packets
+		pathMap[f.LayersPath] = p
+	}
+	ft.lock.RUnlock()
+
+	root := NewDiscoNode()
+	root.name = "root"
+	for path, stat := range pathMap {
+		node := root
+		layers := strings.Split(path, "/")
+		for i, layer := range layers {
+			l, found := node.children[layer]
+			if !found {
+				node.children[layer] = NewDiscoNode()
+				l = node.children[layer]
+				l.name = layer
+			}
+			if len(layers)-1 == i {
+				switch DiscoType {
+				case BYTES:
+					l.size = stat.Bytes
+				case PACKETS:
+					l.size = stat.Packets
+				}
+			}
+			node = l
+		}
+	}
+
+	bytes, err := json.Marshal(root)
+	if err != nil {
+		logging.GetLogger().Fatal(err)
+	}
+	return string(bytes)
 }
 
 func (ft *FlowTable) NewFlowTableFromFlows(flows []*Flow) *FlowTable {

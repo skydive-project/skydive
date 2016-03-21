@@ -37,44 +37,83 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-func forgeEthIPTCP(t *testing.T, seed int64) *gopacket.Packet {
-	var options gopacket.SerializeOptions
+type ProtocolType int
+
+const (
+	ETH ProtocolType = 1 + iota
+	IPv4
+	IPv6
+	TCP
+	UDP
+)
+
+/* protos must contain a UDP or TCP layer on top of IPv4 */
+func forgePacket(t *testing.T, seed int64, protos ...ProtocolType) *gopacket.Packet {
 	rnd := rand.New(rand.NewSource(seed))
 
 	rawBytes := []byte{10, 20, 30}
-	ethernetLayer := &layers.Ethernet{
-		SrcMAC: net.HardwareAddr{0x00, 0x0F, 0xAA, 0xFA, 0xAA, byte(rnd.Intn(0x100))},
-		DstMAC: net.HardwareAddr{0x00, 0x0D, 0xBD, 0xBD, byte(rnd.Intn(0x100)), 0xBD},
+	var protoStack []gopacket.SerializableLayer
+
+	for i, proto := range protos {
+		switch proto {
+		case ETH:
+			ethernetLayer := &layers.Ethernet{
+				SrcMAC:       net.HardwareAddr{0x00, 0x0F, 0xAA, 0xFA, 0xAA, byte(rnd.Intn(0x100))},
+				DstMAC:       net.HardwareAddr{0x00, 0x0D, 0xBD, 0xBD, byte(rnd.Intn(0x100)), 0xBD},
+				EthernetType: layers.EthernetTypeIPv4,
+			}
+			protoStack = append(protoStack, ethernetLayer)
+		case IPv4:
+			ipv4Layer := &layers.IPv4{
+				SrcIP: net.IP{127, 0, 0, byte(rnd.Intn(0x100))},
+				DstIP: net.IP{byte(rnd.Intn(0x100)), 8, 8, 8},
+			}
+			switch protos[i+1] {
+			case TCP:
+				ipv4Layer.Protocol = layers.IPProtocolTCP
+			case UDP:
+				ipv4Layer.Protocol = layers.IPProtocolUDP
+			}
+			protoStack = append(protoStack, ipv4Layer)
+		case TCP:
+			tcpLayer := &layers.TCP{
+				SrcPort: layers.TCPPort(byte(rnd.Intn(0x10000))),
+				DstPort: layers.TCPPort(byte(rnd.Intn(0x10000))),
+			}
+			protoStack = append(protoStack, tcpLayer)
+		case UDP:
+			udpLayer := &layers.UDP{
+				SrcPort: layers.UDPPort(byte(rnd.Intn(0x10000))),
+				DstPort: layers.UDPPort(byte(rnd.Intn(0x10000))),
+			}
+			protoStack = append(protoStack, udpLayer)
+		default:
+			t.Log("forgePacket : Unsupported protocol ", proto)
+		}
 	}
-	ipLayer := &layers.IPv4{
-		SrcIP: net.IP{127, 0, 0, byte(rnd.Intn(0x100))},
-		DstIP: net.IP{byte(rnd.Intn(0x100)), 8, 8, 8},
-	}
-	tcpLayer := &layers.TCP{
-		SrcPort: layers.TCPPort(byte(rnd.Intn(0x10000))),
-		DstPort: layers.TCPPort(byte(rnd.Intn(0x10000))),
-	}
-	// And create the packet with the layers
+	protoStack = append(protoStack, gopacket.Payload(rawBytes))
+
 	buffer := gopacket.NewSerializeBuffer()
-	err := gopacket.SerializeLayers(buffer, options,
-		ethernetLayer,
-		ipLayer,
-		tcpLayer,
-		gopacket.Payload(rawBytes),
-	)
+	options := gopacket.SerializeOptions{FixLengths: true}
+	err := gopacket.SerializeLayers(buffer, options, protoStack...)
+
 	if err != nil {
 		t.Fail()
 	}
 
 	gpacket := gopacket.NewPacket(buffer.Bytes(), layers.LayerTypeEthernet, gopacket.Default)
 	return &gpacket
-
 }
 
 func generateFlows(t *testing.T, ft *FlowTable) []*Flow {
 	flows := []*Flow{}
 	for i := 0; i < 10; i++ {
-		packet := forgeEthIPTCP(t, int64(i))
+		var packet *gopacket.Packet
+		if i < 5 {
+			packet = forgePacket(t, int64(i), ETH, IPv4, TCP)
+		} else {
+			packet = forgePacket(t, int64(i), ETH, IPv4, UDP)
+		}
 		flow, new := ft.GetFlow(string(i))
 		if !new {
 			t.Fail()
@@ -217,17 +256,17 @@ func TestFlowTable_GetFlow(t *testing.T) {
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
 	}
-	forgeEthIPTCP(t, int64(1234))
+	forgePacket(t, int64(1234), ETH, IPv4, TCP)
 	_, new := ft.GetFlow("abcd")
 	if !new {
 		t.Error("Collision in the FlowTable, should be new")
 	}
-	forgeEthIPTCP(t, int64(1234))
+	forgePacket(t, int64(1234), ETH, IPv4, TCP)
 	_, new = ft.GetFlow("abcd")
 	if new {
 		t.Error("Collision in the FlowTable, should be an update")
 	}
-	forgeEthIPTCP(t, int64(1234))
+	forgePacket(t, int64(1234), ETH, IPv4, TCP)
 	_, new = ft.GetFlow("abcde")
 	if !new {
 		t.Error("Collision in the FlowTable, should be a new flow")
@@ -261,6 +300,48 @@ func TestFlowTable_JSONFlowConversationEthernetPath(t *testing.T) {
 	if path, err := schema.Validate(decoded); err != nil {
 		t.Errorf("Failed (%s). Path: %s", err, path)
 	}
+}
+
+func test_JSONFlowDiscovery(t *testing.T, DiscoType DiscoType) {
+	ft := NewFlowTableComplex(t)
+	disco := ft.JSONFlowDiscovery(DiscoType)
+
+	if disco == `{"name":"root","children":[]}` {
+		t.Error("disco should not be empty")
+	}
+
+	var decoded interface{}
+	if err := json.Unmarshal([]byte(disco), &decoded); err != nil {
+		t.Error("JSON parsing failed:", err)
+	}
+
+	schema := v.Object(
+		v.ObjKV("name", v.String(v.StrMin(1))), // root
+		v.ObjKV("children", v.Array(v.ArrEach(v.Object(
+			v.ObjKV("name", v.String(v.StrMin(1))), // Ethernet
+			v.ObjKV("children", v.Array(v.ArrEach(v.Object(
+				v.ObjKV("name", v.String(v.StrMin(1))), // IPv4
+				v.ObjKV("children", v.Array(v.ArrEach(v.Object(
+					v.ObjKV("name", v.String(v.StrMin(1))), // TCP or UDP
+					v.ObjKV("children", v.Array(v.ArrEach(v.Object(
+						v.ObjKV("name", v.String(v.StrMin(1))), // Payload
+						v.ObjKV("size", v.Number(v.NumMin(0), v.NumMax(9999))),
+					)))),
+				)))),
+			)))),
+		)))),
+	)
+
+	if path, err := schema.Validate(decoded); err != nil {
+		t.Errorf("Failed (%s). Path: %s", err, path)
+	}
+}
+
+func TestFlowTable_JSONFlowDiscovery(t *testing.T) {
+	test_JSONFlowDiscovery(t, BYTES)
+	t.Log("JSONFlowDiscovery BYTES : ok")
+	test_JSONFlowDiscovery(t, PACKETS)
+	t.Log("JSONFlowDiscovery PACKETS : ok")
 }
 
 func TestFlowTable_NewFlowTableFromFlows(t *testing.T) {

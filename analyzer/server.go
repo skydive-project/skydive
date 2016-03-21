@@ -152,7 +152,13 @@ func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) LayerConversation(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveDataIndex(w http.ResponseWriter, r *http.Request, message string) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(message))
+}
+
+func (s *Server) ConversationLayer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	layer := vars["layer"]
 
@@ -169,13 +175,20 @@ func (s *Server) LayerConversation(w http.ResponseWriter, r *http.Request) {
 	case "sctp":
 		ltype = flow.FlowEndpointType_SCTPPORT
 	}
-	s.serveDataIndex(w, r, ltype)
+	s.serveDataIndex(w, r, s.FlowTable.JSONFlowConversationEthernetPath(ltype))
 }
 
-func (s *Server) serveDataIndex(w http.ResponseWriter, r *http.Request, layer flow.FlowEndpointType) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(s.FlowTable.JSONFlowConversationEthernetPath(layer)))
+func (s *Server) DiscoveryType(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	discoType := vars["type"]
+	dtype := flow.BYTES
+	switch discoType {
+	case "bytes":
+		dtype = flow.BYTES
+	case "packets":
+		dtype = flow.PACKETS
+	}
+	s.serveDataIndex(w, r, s.FlowTable.JSONFlowDiscovery(dtype))
 }
 
 func (s *Server) RegisterRPCEndpoints() {
@@ -187,10 +200,16 @@ func (s *Server) RegisterRPCEndpoints() {
 			s.FlowSearch,
 		},
 		{
-			"LayerConversation",
+			"ConversationLayer",
 			"GET",
 			"/rpc/conversation/{layer}",
-			s.LayerConversation,
+			s.ConversationLayer,
+		},
+		{
+			"Discovery",
+			"GET",
+			"/rpc/discovery/{type}",
+			s.DiscoveryType,
 		},
 	}
 
