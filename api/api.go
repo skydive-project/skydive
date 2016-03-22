@@ -28,6 +28,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	etcd "github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
@@ -56,6 +57,21 @@ type apiResourceCRUD interface {
 	Get(id string) (interface{}, bool)
 	Create(resource interface{}) error
 	Delete(id string) error
+}
+
+type ApiWatcherCallback func(action string, id string, resource interface{})
+
+type StoppableWatcher struct {
+	watcher etcd.Watcher
+	running atomic.Value
+}
+
+type apiResourceWatcher interface {
+	AsyncWatch(f ApiWatcherCallback) StoppableWatcher
+}
+
+func (s *StoppableWatcher) Stop() {
+	s.running.Store(false)
 }
 
 func (a *ApiServer) RegisterResource(handler apiResourceCRUD) error {
@@ -164,6 +180,7 @@ func NewApi(router *mux.Router, kapi etcd.KeysAPI) (*ApiServer, error) {
 		etcdKeyAPI: kapi,
 	}
 
-	server.RegisterResource(&CaptureHandler{etcdKeyAPI: kapi})
+	server.RegisterResource(&CaptureHandler{EtcdKeyAPI: kapi})
+
 	return server, nil
 }

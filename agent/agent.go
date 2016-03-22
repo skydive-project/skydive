@@ -27,6 +27,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/config"
 	fprobes "github.com/redhat-cip/skydive/flow/probes"
 	"github.com/redhat-cip/skydive/logging"
@@ -45,7 +46,7 @@ type Agent struct {
 	TopologyProbeBundle   *tprobes.TopologyProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
-	EtcdClient            *etcd.EtcdClient
+	Router                *mux.Router
 }
 
 func (a *Agent) Start() {
@@ -71,22 +72,26 @@ func (a *Agent) Start() {
 	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph)
 	a.FlowProbeBundle.Start()
 
+	if addr != "" {
+		etcdClient, err := etcd.NewEtcdClientFromConfig()
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to start etcd client %s", err.Error())
+			os.Exit(1)
+		}
+
+		captureHandler := &api.CaptureHandler{EtcdKeyAPI: etcdClient.KeysApi}
+
+		l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, captureHandler)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
+			os.Exit(1)
+		}
+		a.OnDemandProbeListener = l
+		a.OnDemandProbeListener.Start()
+	}
+
 	go a.TopologyServer.ListenAndServe()
 	go a.GraphServer.ListenAndServe()
-
-	a.EtcdClient, err = etcd.NewEtcdClientFromConfig()
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to start etcd client %s", err.Error())
-		os.Exit(1)
-	}
-
-	l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, a.EtcdClient)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
-		os.Exit(1)
-	}
-	a.OnDemandProbeListener = l
-	a.OnDemandProbeListener.Start()
 }
 
 func (a *Agent) Stop() {
@@ -97,7 +102,9 @@ func (a *Agent) Stop() {
 	if a.Gclient != nil {
 		a.Gclient.Disconnect()
 	}
-	a.OnDemandProbeListener.Stop()
+	if a.OnDemandProbeListener != nil {
+		a.OnDemandProbeListener.Stop()
+	}
 }
 
 func NewAgent() *Agent {
@@ -138,5 +145,6 @@ func NewAgent() *Agent {
 		TopologyServer: server,
 		GraphServer:    gserver,
 		Root:           root,
+		Router:         router,
 	}
 }

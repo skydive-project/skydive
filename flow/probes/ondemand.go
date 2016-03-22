@@ -26,21 +26,19 @@ import (
 	"os"
 	"strings"
 
-	retcd "github.com/coreos/etcd/client"
-	"golang.org/x/net/context"
-
+	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/storage/etcd"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 type OnDemandProbeListener struct {
 	graph.DefaultGraphListener
-	Graph      *graph.Graph
-	Probes     *FlowProbeBundle
-	EtcdClient *etcd.EtcdClient
-	host       string
+	Graph          *graph.Graph
+	Probes         *FlowProbeBundle
+	CaptureHandler *api.CaptureHandler
+	watcher        api.StoppableWatcher
+	host           string
 }
 
 type FlowProbe interface {
@@ -83,10 +81,11 @@ func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
 	}
 
 	path := topology.NodePath{nodes}.Marshal()
-	if _, err := o.EtcdClient.KeysApi.Get(context.Background(), "/capture/"+path, nil); err != nil {
+
+	if _, ok := o.CaptureHandler.Get(path); !ok {
 		// try using the wildcard instead of the host
 		wildcard := "*/" + topology.NodePath{nodes[:len(nodes)-1]}.Marshal()
-		if _, err = o.EtcdClient.KeysApi.Get(context.Background(), "/capture/"+wildcard, nil); err != nil {
+		if _, ok = o.CaptureHandler.Get(wildcard); !ok {
 			return
 		}
 	}
@@ -124,7 +123,7 @@ func (o *OnDemandProbeListener) onCaptureAdded(probePath string) {
 	defer o.Graph.Unlock()
 
 	if node := topology.LookupNodeFromNodePathString(o.Graph, probePath); node != nil {
-		o.applyProbeAction("unregister", node)
+		o.applyProbeAction("register", node)
 	}
 }
 
@@ -137,42 +136,28 @@ func (o *OnDemandProbeListener) onCaptureDeleted(probePath string) {
 	}
 }
 
-func (o *OnDemandProbeListener) probePathFromNodeKey(k string) string {
-	probePath := strings.TrimPrefix(k, "/capture/")
-	return strings.Replace(probePath, "*", o.host+"[Type=host]", 1)
+func (o *OnDemandProbeListener) probePathFromID(id string) string {
+	return strings.Replace(id, "*", o.host+"[Type=host]", 1)
 }
 
-func (o *OnDemandProbeListener) watchEtcd() {
-	watcher := o.EtcdClient.KeysApi.Watcher("/capture/", &retcd.WatcherOptions{Recursive: true})
-	go func() {
-		for {
-			resp, err := watcher.Next(context.Background())
-			if err != nil {
-				return
-			}
-
-			if resp.Node.Dir {
-				continue
-			}
-
-			switch resp.Action {
-			case "create":
-				fallthrough
-			case "set":
-				fallthrough
-			case "update":
-				o.onCaptureAdded(o.probePathFromNodeKey(resp.Node.Key))
-			case "expire":
-				fallthrough
-			case "delete":
-				o.onCaptureDeleted(o.probePathFromNodeKey(resp.Node.Key))
-			}
-		}
-	}()
+func (o *OnDemandProbeListener) onApiWatcherEvent(action string, id string, resource interface{}) {
+	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
+	switch action {
+	case "create":
+		fallthrough
+	case "set":
+		fallthrough
+	case "update":
+		o.onCaptureAdded(o.probePathFromID(id))
+	case "expire":
+		fallthrough
+	case "delete":
+		o.onCaptureDeleted(o.probePathFromID(id))
+	}
 }
 
 func (o *OnDemandProbeListener) Start() error {
-	go o.watchEtcd()
+	o.watcher = o.CaptureHandler.AsyncWatch(o.onApiWatcherEvent)
 
 	o.Graph.AddEventListener(o)
 
@@ -180,19 +165,19 @@ func (o *OnDemandProbeListener) Start() error {
 }
 
 func (o *OnDemandProbeListener) Stop() {
-
+	o.watcher.Stop()
 }
 
-func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, e *etcd.EtcdClient) (*OnDemandProbeListener, error) {
+func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, ch *api.CaptureHandler) (*OnDemandProbeListener, error) {
 	h, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
 
 	return &OnDemandProbeListener{
-		Graph:      g,
-		Probes:     fb,
-		EtcdClient: e,
-		host:       h,
+		Graph:          g,
+		Probes:         fb,
+		CaptureHandler: ch,
+		host:           h,
 	}, nil
 }

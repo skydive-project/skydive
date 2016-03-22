@@ -26,9 +26,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	etcd "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
+
+	"github.com/redhat-cip/skydive/logging"
 )
 
 type Capture struct {
@@ -36,7 +40,7 @@ type Capture struct {
 }
 
 type CaptureHandler struct {
-	etcdKeyAPI etcd.KeysAPI
+	EtcdKeyAPI etcd.KeysAPI
 }
 
 func (c *CaptureHandler) Name() string {
@@ -60,7 +64,7 @@ func (c *CaptureHandler) collectNodes(flatten map[string]interface{}, nodes etcd
 }
 
 func (c *CaptureHandler) Index() map[string]interface{} {
-	resp, err := c.etcdKeyAPI.Get(context.Background(), "/capture/", &etcd.GetOptions{Recursive: true})
+	resp, err := c.EtcdKeyAPI.Get(context.Background(), "/capture/", &etcd.GetOptions{Recursive: true})
 	captures := make(map[string]interface{})
 
 	if err == nil {
@@ -71,7 +75,7 @@ func (c *CaptureHandler) Index() map[string]interface{} {
 }
 
 func (c *CaptureHandler) Get(id string) (interface{}, bool) {
-	resp, err := c.etcdKeyAPI.Get(context.Background(), "/capture/"+id, nil)
+	resp, err := c.EtcdKeyAPI.Get(context.Background(), "/capture/"+id, nil)
 	if err != nil {
 		return nil, false
 	}
@@ -93,14 +97,44 @@ func (c *CaptureHandler) Create(resource interface{}) error {
 	}
 
 	etcdPath := fmt.Sprintf("/%s/%s", "capture", capture.ProbePath)
-	_, err = c.etcdKeyAPI.Set(context.Background(), etcdPath, string(data), nil)
+	_, err = c.EtcdKeyAPI.Set(context.Background(), etcdPath, string(data), nil)
 	return err
 }
 
 func (c *CaptureHandler) Delete(id string) error {
-	if _, err := c.etcdKeyAPI.Delete(context.Background(), "/capture/"+id, nil); err != nil {
+	if _, err := c.EtcdKeyAPI.Delete(context.Background(), "/capture/"+id, nil); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (c *CaptureHandler) AsyncWatch(f ApiWatcherCallback) StoppableWatcher {
+	watcher := c.EtcdKeyAPI.Watcher("/capture/", &etcd.WatcherOptions{Recursive: true})
+
+	sw := StoppableWatcher{
+		watcher: watcher,
+	}
+
+	sw.running.Store(true)
+	go func() {
+		for sw.running.Load() == true {
+			resp, err := watcher.Next(context.Background())
+			if err != nil {
+				logging.GetLogger().Errorf("Error while watching etcd: %s", err.Error())
+
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			if resp.Node.Dir {
+				continue
+			}
+
+			id := strings.TrimPrefix(resp.Node.Key, "/capture/")
+			f(resp.Action, id, resp.Node.Value)
+		}
+	}()
+
+	return sw
 }
