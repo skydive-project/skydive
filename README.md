@@ -144,7 +144,7 @@ The plugin accepts the following parameters:
 #SKYDIVE_AGENT_PROBES=
 
 # Remote port for ovsdb server.
-#OVSDB_REMOTE_PORT=6640
+#SKYDIVE_OVSDB_REMOTE_PORT=6640
 ```
 
 ## Contributing

@@ -38,7 +38,7 @@ SKYDIVE_CONFIG_FILE=${SKYDIVE_CONFIG_FILE:-"/tmp/skydive.yaml"}
 SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb neutron"}
 
 # Remote port for ovsdb server.
-OVSDB_REMOTE_PORT=6640
+SKYDIVE_OVSDB_REMOTE_PORT=6640
 
 
 function install_go {
@@ -100,7 +100,7 @@ openstack:
   region_name: RegionOne
 
 ovs:
-  ovsdb: $OVSDB_REMOTE_PORT
+  ovsdb: $SKYDIVE_OVSDB_REMOTE_PORT
 EOF
 
     if [ "x$SKYDIVE_ANALYZER_LISTEN" != "x" ]; then
@@ -111,7 +111,7 @@ analyzer:
 EOF
     fi
 
-    sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote "ptcp:$OVSDB_REMOTE_PORT:127.0.0.1"
+    sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote "ptcp:$SKYDIVE_OVSDB_REMOTE_PORT:127.0.0.1"
 }
 
 function start_skydive {
