@@ -55,7 +55,7 @@ func init() {
 
 func checkStrictPositive(key string) error {
 	if value := cfg.GetInt(key); value < 1 {
-		return fmt.Errorf("invalid value for %s (%d)", value)
+		return fmt.Errorf("invalid value for %s (%d)", key, value)
 	}
 
 	return nil
@@ -85,7 +85,7 @@ func InitConfigFromFile(filename string) error {
 	}
 
 	if err := checkConfig(); err != nil {
-		return nil
+		return err
 	}
 
 	return nil
