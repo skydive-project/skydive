@@ -23,7 +23,7 @@ GOPATH=/opt/stack/go
 
 # Address on which skydive analyzer process listens for connections.
 # Must be in ip:port format
-SKYDIVE_ANALYZER_LISTEN=${SKYDIVE_ANALYZER_LISTEN:-$SERVICE_HOST}
+SKYDIVE_ANALYZER_LISTEN=${SKYDIVE_ANALYZER_LISTEN:-$SERVICE_HOST:8082}
 
 # Inform the agent about the address on which analyzers are listening
 SKYDIVE_AGENT_ANALYZERS=${SKYDIVE_AGENT_ANALYZERS:-$SKYDIVE_ANALYZER_LISTEN}
@@ -82,7 +82,7 @@ function get_probes_for_config {
 function configure_skydive {
     cat > $SKYDIVE_CONFIG_FILE <<- EOF
 agent:
-  analyzers: $SKYDIVE_ANALYZER_LISTEN
+  analyzers: $SKYDIVE_AGENT_ANALYZERS
   listen: $SKYDIVE_AGENT_LISTEN
   topology:
     probes:
