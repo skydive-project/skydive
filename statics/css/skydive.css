@@ -13,18 +13,22 @@ select {
   color: #111;
 }
 
+label {
+  color: #ffffff;
+}
+
 .mode {
   color: white;
   font-size: 0.6em;
   vertical-align: super;
 }
 
-.topology, .conversation {
+.topology, .conversation, .discovery {
   width: 100%;
   height: 100%;
 }
 
-.topology-d3, .conversation-d3 {
+.topology-d3, .conversation-d3, .discovery-d3 {
   width: 100%;
   height: 100%;
   text-align: center;

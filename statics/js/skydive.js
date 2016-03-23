@@ -880,6 +880,84 @@ Layout.prototype.StartLiveUpdateAlert = function() {
   };
 }
 
+var DiscoveryLayout = function(selector) {
+  this.width = 680;
+  this.height = 600;
+  this.radius = (Math.min(this.width, this.height) / 2) - 50;
+  this.color = d3.scale.category20c();
+
+  this.svg = d3.select(selector).append("svg")
+  .attr("width", this.width)
+  .attr("height", this.height)
+  .append("g")
+  .attr("transform", "translate(" + this.width / 2 + "," + this.height * .52 + ")");
+
+  this.partition = d3.layout.partition()
+  .sort(null)
+  .size([2 * Math.PI, this.radius * this.radius])
+  .value(function(d) { return 1; });
+
+  this.arc = d3.svg.arc()
+  .startAngle(function(d) { return d.x; })
+  .endAngle(function(d) { return d.x + d.dx; })
+  .innerRadius(function(d) { return Math.sqrt(d.y); })
+  .outerRadius(function(d) { return Math.sqrt(d.y + d.dy); });
+
+  _this = this;
+  d3.selectAll("#type").on("change", function() {
+    _this.DrawChart(this.value);
+  });
+}
+
+DiscoveryLayout.prototype.DrawChart = function(type) {
+  this.svg.selectAll("*").remove();
+  _this = this;
+  //assign bytes as default if no type given.
+  type = (type === undefined) ? "bytes" : type;
+  d3.json("/rpc/discovery/" + type, function(root) {
+    var path = _this.svg.datum(root).selectAll("path")
+      .data(_this.partition.nodes)
+      .enter().append("path")
+      .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
+      .attr("d", _this.arc)
+      .style("stroke", "#fff")
+      .style("fill", function(d) { return _this.color((d.children ? d : d.parent).name); })
+      .style("fill-rule", "evenodd")
+      .each(stash);
+
+    d3.selectAll("#mode").on("change", function change() {
+      var value = this.value === "count"
+        ? function() { return 1; }
+        : function(d) { return d.size; };
+
+      path
+        .data(_this.partition.value(value).nodes)
+        .transition()
+        .duration(1500)
+        .attrTween("d", arcTween);
+    });
+  });
+
+  // Stash the old values for transition.
+  function stash(d) {
+    d.x0 = d.x;
+    d.dx0 = d.dx;
+  }
+
+  // Interpolate the arcs in data space.
+  function arcTween(a) {
+    var i = d3.interpolate({x: a.x0, dx: a.dx0}, a);
+    return function(t) {
+      var b = i(t);
+      a.x0 = b.x;
+      a.dx0 = b.dx;
+      return _this.arc(b);
+    };
+  }
+
+  d3.select(self.frameElement).style("height", this.height + "px");
+}
+
 var ConversationLayout = function(selector) {
   this.width = 600;
   this.height = 600;
@@ -1045,19 +1123,23 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
 
 var topologyLayout;
 var conversationLayout;
+var discoveryLayout;
 
 $(document).ready(function() {
   if ("{{.Service}}" == "agent") {
     $("#flows-panel").hide();
     $("#conversation").hide();
+    $("#discovery").hide();
   }
   else {
     $('#topology-btn').click(function() {
       $('#topology').addClass('active');
       $('#conversation').removeClass('active');
+      $('#discovery').removeClass('active');
 
       $('.topology').show();
       $('.conversation').hide();
+      $('.discovery').hide();
     });
 
     $(".title-capture-switch").hide()
@@ -1065,11 +1147,24 @@ $(document).ready(function() {
     $('#conversation-btn').click(function() {
       $('#topology').removeClass('active');
       $('#conversation').addClass('active');
+      $('#discovery').removeClass('active');
 
       $('.topology').hide();
       $('.conversation').show();
+      $('.discovery').hide();
 
       conversationLayout.ShowConversation();
+    });
+    $('#discovery-btn').click(function() {
+      $('#topology').removeClass('active');
+      $('#conversation').removeClass('active');
+      $('#discovery').addClass('active');
+
+      $('.topology').hide();
+      $('.conversation').hide();
+      $('.discovery').show();
+
+      discoveryLayout.DrawChart();
     });
   }
 
@@ -1094,4 +1189,5 @@ $(document).ready(function() {
   topologyLayout.StartLiveUpdateAlert();
 
   conversationLayout = new ConversationLayout(".conversation-d3")
+  discoveryLayout = new DiscoveryLayout(".discovery-d3");
 });

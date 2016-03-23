@@ -39,6 +39,7 @@
         <ul class="nav navbar-nav">
           <li class="active" id="topology"><a href="#" id="topology-btn">Topology</a></li>
           <li id="conversation"><a href="#" id="conversation-btn">Conversation</a></li>
+          <li id="discovery"><a href="#" id="discovery-btn">Discovery</a></li>
         </ul>
       </div>
     </div>
@@ -98,6 +99,37 @@
         <div class="left-panel">
           <div class="title-left-panel">Metadata :</div>
           <div id="metadata_app"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="discovery">
+    <div class="col-sm-8 fill content">
+      <div class="discovery-d3"></div>
+    </div>
+    <div class="col-sm-4 fill info">
+      <div class="left-cont">
+        <div class="left-panel">
+          <div class="title-left-panel">Options :</div>
+          <br>
+          <p>
+            <form>
+              Type:
+              <label><input id="type" type="radio" name="type" value="bytes" checked> Bytes</label>
+              <label><input id="type" type="radio" name="type" value="packets"> Packets</label>
+            </form>
+          </p>
+        </div>
+        <div class="left-panel">
+          <div class="title-left-panel">Mode :</div>
+          <br>
+          <p>
+            <form>
+              <label><input id="mode" type="radio" name="mode" value="size"> Size</label>
+              <label><input id="mode" type="radio" name="mode" value="count" checked> Count</label>
+            </form>
+          </p>
         </div>
       </div>
     </div>
