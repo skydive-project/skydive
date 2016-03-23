@@ -42,9 +42,15 @@ fmt:
 	@test -z "$$(gofmt -s -l . | grep -v Godeps/_workspace/src/ | grep -v statics/bindata.go | tee /dev/stderr)" || \
 		echo "+ please format Go code with 'gofmt -s'"
 
-lint:
+ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
+	@go get github.com/alecthomas/gometalinter
+	@command -v $@ >/dev/null || gometalinter --install --update
+
+gometalinter: ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl
+
+lint: gometalinter
 	@echo "+ $@"
-	@test -z "$$(golint ./... | grep -v Godeps/_workspace/src/ | tee /dev/stderr)"
+	@gometalinter --disable=gotype --skip=Godeps/... --skip=statics/... --deadline 5m --sort=path ./...  2>&1 | grep -v -e 'error return value not checked' -e 'should have comment or be unexported' -e 'declaration of err shadows declaration'
 
 # dependency package need for building the project
 builddep:
