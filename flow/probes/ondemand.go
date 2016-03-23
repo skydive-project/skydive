@@ -36,7 +36,7 @@ type OnDemandProbeListener struct {
 	graph.DefaultGraphListener
 	Graph          *graph.Graph
 	Probes         *FlowProbeBundle
-	CaptureHandler *api.CaptureHandler
+	CaptureHandler api.ApiHandler
 	watcher        api.StoppableWatcher
 	host           string
 }
@@ -49,6 +49,8 @@ type FlowProbe interface {
 func (o *OnDemandProbeListener) applyProbeAction(action string, n *graph.Node) {
 	t := n.Metadata()["Type"]
 
+	var fprobe FlowProbe
+
 	switch t {
 	case "ovsbridge":
 		probe := o.Probes.GetProbe("ovssflow")
@@ -58,19 +60,22 @@ func (o *OnDemandProbeListener) applyProbeAction(action string, n *graph.Node) {
 
 		logging.GetLogger().Infof("%s flow probe %s, %s", action, t, n.String())
 
-		fprobe := probe.(FlowProbe)
+		fprobe = probe.(FlowProbe)
+	}
+	if fprobe == nil {
+		return
+	}
 
-		var err error
-		switch action {
-		case "register":
-			err = fprobe.RegisterProbe(n)
-		case "unregister":
-			err = fprobe.UnregisterProbe(n)
-		}
+	var err error
+	switch action {
+	case "register":
+		err = fprobe.RegisterProbe(n)
+	case "unregister":
+		err = fprobe.UnregisterProbe(n)
+	}
 
-		if err != nil {
-			logging.GetLogger().Errorf("%s error for flow probe %s: %s", action, t, err.Error())
-		}
+	if err != nil {
+		logging.GetLogger().Errorf("%s error for flow probe %s: %s", action, t, err.Error())
 	}
 }
 
@@ -140,18 +145,12 @@ func (o *OnDemandProbeListener) probePathFromID(id string) string {
 	return strings.Replace(id, "*", o.host+"[Type=host]", 1)
 }
 
-func (o *OnDemandProbeListener) onApiWatcherEvent(action string, id string, resource interface{}) {
+func (o *OnDemandProbeListener) onApiWatcherEvent(action string, id string, resource api.ApiResource) {
 	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
 	switch action {
-	case "create":
-		fallthrough
-	case "set":
-		fallthrough
-	case "update":
+	case "init", "create", "set", "update":
 		o.onCaptureAdded(o.probePathFromID(id))
-	case "expire":
-		fallthrough
-	case "delete":
+	case "expire", "delete":
 		o.onCaptureDeleted(o.probePathFromID(id))
 	}
 }
@@ -168,7 +167,7 @@ func (o *OnDemandProbeListener) Stop() {
 	o.watcher.Stop()
 }
 
-func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, ch *api.CaptureHandler) (*OnDemandProbeListener, error) {
+func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, ch api.ApiHandler) (*OnDemandProbeListener, error) {
 	h, err := os.Hostname()
 	if err != nil {
 		return nil, err

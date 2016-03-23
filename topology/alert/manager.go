@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Red Hat, Inc.
+ * Copyright (C) 2016 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,121 +20,40 @@
  *
  */
 
-package graph
+package alert
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"go/token"
-	"io"
-	"os"
-	"path"
 	"sync"
 	"time"
 
-	etcd "github.com/coreos/etcd/client"
-	"github.com/nu7hatch/gouuid"
 	eval "github.com/sbinet/go-eval"
-	"golang.org/x/net/context"
 
+	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-type UUID uuid.UUID
-
-func (id *UUID) String() string {
-	i := uuid.UUID(*id)
-	return i.String()
-}
-
-func (id *UUID) MarshalJSON() ([]byte, error) {
-	return []byte("\"" + id.String() + "\""), nil
-}
-
-func (id *UUID) UnmarshalJSON(data []byte) error {
-	uid, err := uuid.ParseHex(string(data[1 : len(data)-1]))
-	if err != nil {
-		return err
-	}
-	*id = UUID(*uid)
-	return nil
-}
-
-type AlertManager struct {
-	DefaultGraphListener
-	Graph          *Graph
-	alerts         map[UUID]AlertTest
-	alertsLock     sync.RWMutex
-	eventListeners map[AlertEventListener]AlertEventListener
-	etcdKeyAPI     etcd.KeysAPI
-}
-
-type AlertType int
-
 const (
-	FIXED AlertType = 1 + iota
+	FIXED = 1 + iota
 	THRESHOLD
 )
 
-type AlertTestParam struct {
-	Name        string
-	Description string
-	Select      string
-	Test        string
-	Action      string
-}
-
-type AlertTest struct {
-	AlertTestParam
-	UUID       *UUID
-	CreateTime time.Time
-	Type       AlertType
-	Count      int
-}
-
-type jsonAlertEncoder struct {
-	w       io.Writer
-	encoder *json.Encoder
-}
-
-func NewjsonAlertEncoder(w io.Writer) *jsonAlertEncoder {
-	return &jsonAlertEncoder{w: w, encoder: json.NewEncoder(w)}
-}
-
-func (e *jsonAlertEncoder) Encode(v interface{}) error {
-	switch t := v.(type) {
-	case map[UUID]AlertTest:
-		e.w.Write([]byte(`{`))
-		first := true
-		for _, v := range t {
-			if !first {
-				e.w.Write([]byte(`,`))
-			}
-			first = false
-			e.w.Write([]byte(`"`))
-			e.w.Write([]byte(v.UUID.String()))
-			e.w.Write([]byte(`":`))
-			e.encoder.Encode(v)
-		}
-		e.w.Write([]byte(`}`))
-	default:
-		e.encoder.Encode(v)
-	}
-	return nil
-}
-
-func etcdPath(id UUID) string {
-	return fmt.Sprintf("/alert/%s", id.String())
-}
-
-func (a *AlertTest) etcdPath() string {
-	return etcdPath(*a.UUID)
+type AlertManager struct {
+	graph.DefaultGraphListener
+	Graph          *graph.Graph
+	AlertHandler   api.ApiHandler
+	watcher        api.StoppableWatcher
+	alerts         map[string]*api.Alert
+	alertsLock     sync.RWMutex
+	eventListeners map[AlertEventListener]AlertEventListener
 }
 
 type AlertMessage struct {
-	UUID       UUID
-	Type       AlertType
+	UUID       string
+	Type       int
 	Timestamp  time.Time
 	Count      int
 	Reason     string
@@ -174,7 +93,7 @@ func (a *AlertManager) EvalNodes() {
 				t, v := toTypeValue(val)
 				w.DefineConst(name, t, v)
 			}
-			for k, v := range n.metadata {
+			for k, v := range n.Metadata() {
 				defConst(k, v)
 			}
 			fs := token.NewFileSet()
@@ -194,7 +113,7 @@ func (a *AlertManager) EvalNodes() {
 				al.Count++
 
 				msg := AlertMessage{
-					UUID:       *al.UUID,
+					UUID:       al.UUID,
 					Type:       FIXED,
 					Timestamp:  time.Now(),
 					Count:      al.Count,
@@ -202,7 +121,7 @@ func (a *AlertManager) EvalNodes() {
 					ReasonData: n,
 				}
 
-				logging.GetLogger().Debugf("AlertMessage to WS : " + al.UUID.String() + " " + msg.String())
+				logging.GetLogger().Debugf("AlertMessage to WS : " + al.UUID + " " + msg.String())
 				for _, l := range a.eventListeners {
 					l.OnAlert(&msg)
 				}
@@ -211,193 +130,58 @@ func (a *AlertManager) EvalNodes() {
 	}
 }
 
-func (a *AlertManager) triggerResync() {
-	logging.GetLogger().Infof("Start a resync of the alert")
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to retrieve the hostname: %s", err.Error())
-		return
-	}
-
-	a.Graph.Lock()
-	defer a.Graph.Unlock()
-
-	// request for deletion of everything belonging to host node
-	root := a.Graph.GetNode(Identifier(hostname))
-	if root == nil {
-		return
-	}
-}
-
-func (a *AlertManager) OnConnected() {
-	a.triggerResync()
-}
-
-func (a *AlertManager) OnDisconnected() {
-}
-
-func (a *AlertManager) OnNodeUpdated(n *Node) {
+func (a *AlertManager) OnNodeUpdated(n *graph.Node) {
 	a.EvalNodes()
 }
 
-func (a *AlertManager) OnNodeAdded(n *Node) {
+func (a *AlertManager) OnNodeAdded(n *graph.Node) {
 	a.EvalNodes()
 }
 
-func (a *AlertManager) SetAlertTest(at *AlertTest) {
-	a.alertsLock.Lock()
-	a.alerts[*at.UUID] = *at
-	a.alertsLock.Unlock()
-}
+func (a *AlertManager) SetAlert(at *api.Alert) {
+	logging.GetLogger().Debugf("New alert added: %v", at)
 
-func (a *AlertManager) DeleteAlertTest(id *UUID) error {
 	a.alertsLock.Lock()
 	defer a.alertsLock.Unlock()
 
-	_, ok := a.alerts[*id]
-	if !ok {
-		return errors.New("Not found")
+	a.alerts[at.UUID] = at
+}
+
+func (a *AlertManager) DeleteAlert(id string) {
+	logging.GetLogger().Debugf("Alert deleted: %s", id)
+
+	a.alertsLock.Lock()
+	defer a.alertsLock.Unlock()
+
+	delete(a.alerts, id)
+}
+
+func (a *AlertManager) onApiWatcherEvent(action string, id string, resource api.ApiResource) {
+	switch action {
+	case "init", "create", "set", "update":
+		a.SetAlert(resource.(*api.Alert))
+	case "expire", "delete":
+		a.DeleteAlert(id)
 	}
-	delete(a.alerts, *id)
-
-	return nil
 }
 
-func (a *AlertManager) Name() string {
-	return "alert"
+func (a *AlertManager) Start() {
+	a.watcher = a.AlertHandler.AsyncWatch(a.onApiWatcherEvent)
+
+	a.Graph.AddEventListener(a)
 }
 
-func (a *AlertManager) New() interface{} {
-	return &AlertTest{}
+func (a *AlertManager) Stop() {
+
 }
 
-func (a *AlertManager) Index() map[string]interface{} {
-	a.alertsLock.RLock()
-	defer a.alertsLock.RUnlock()
-
-	alerts := make(map[string]interface{})
-	for _, alert := range a.alerts {
-		alerts[alert.UUID.String()] = alert
-	}
-
-	return alerts
-}
-
-func (a *AlertManager) Get(id string) (interface{}, bool) {
-	alertUUID, err := uuid.ParseHex(id)
-	if err != nil {
-		return nil, false
-	}
-
-	a.alertsLock.RLock()
-	defer a.alertsLock.RUnlock()
-	alert, ok := a.alerts[UUID(*alertUUID)]
-	return &alert, ok
-}
-
-func (a *AlertManager) Create(resource interface{}) error {
-	at := resource.(*AlertTest)
-
-	id, err := uuid.NewV4()
-	if err != nil {
-		return err
-	}
-
-	uid := UUID(*id)
-	at.UUID = &uid
-	at.CreateTime = time.Now()
-	at.Type = FIXED
-	at.Count = 0
-
-	data, err := json.Marshal(&resource)
-	if err != nil {
-		return err
-	}
-
-	_, err = a.etcdKeyAPI.Set(context.Background(), at.etcdPath(), string(data), nil)
-	return err
-}
-
-func (a *AlertManager) Delete(id string) error {
-	alertUUID, err := uuid.ParseHex(id)
-	if err != nil {
-		return err
-	}
-
-	_, err = a.etcdKeyAPI.Delete(context.Background(), etcdPath(UUID(*alertUUID)), nil)
-	return err
-}
-
-func alertTestFromData(data []byte) (*AlertTest, error) {
-	at := AlertTest{}
-	if err := json.Unmarshal(data, &at); err != nil {
-		return nil, err
-	}
-	return &at, nil
-}
-
-func NewAlertManager(g *Graph, kapi etcd.KeysAPI) (*AlertManager, error) {
-	f := &AlertManager{
+func NewAlertManager(g *graph.Graph, ah api.ApiHandler) *AlertManager {
+	return &AlertManager{
 		Graph:          g,
-		alerts:         make(map[UUID]AlertTest),
+		AlertHandler:   ah,
+		alerts:         make(map[string]*api.Alert),
 		eventListeners: make(map[AlertEventListener]AlertEventListener),
-		etcdKeyAPI:     kapi,
 	}
-
-	resp, err := kapi.Get(context.Background(), "/alert/", nil)
-	if err == nil {
-		for _, node := range resp.Node.Nodes {
-			if at, err := alertTestFromData([]byte(node.Value)); err == nil {
-				f.SetAlertTest(at)
-			}
-		}
-	} else {
-		resp, err = kapi.Set(context.Background(), "/alert", "", &etcd.SetOptions{Dir: true})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	g.AddEventListener(f)
-
-	watcher := kapi.Watcher("/alert/", &etcd.WatcherOptions{Recursive: true, AfterIndex: resp.Index})
-	go func() {
-		for {
-			resp, err := watcher.Next(context.Background())
-			if err != nil {
-				return
-			}
-
-			if resp.Node.Dir {
-				continue
-			}
-
-			switch resp.Action {
-			case "create":
-				fallthrough
-			case "set":
-				fallthrough
-			case "update":
-				at, err := alertTestFromData([]byte(resp.Node.Value))
-				if err != nil {
-					logging.GetLogger().Debugf("Error handling etcd event: %s", err.Error())
-					continue
-				}
-				f.SetAlertTest(at)
-			case "expire":
-				fallthrough
-			case "delete":
-				id := path.Base(resp.Node.Key)
-				if id, err := uuid.ParseHex(id); err == nil {
-					uid := UUID(*id)
-					f.DeleteAlertTest(&uid)
-				}
-			}
-		}
-	}()
-
-	return f, nil
 }
 
 /*

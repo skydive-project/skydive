@@ -79,7 +79,10 @@ func (a *Agent) Start() {
 			os.Exit(1)
 		}
 
-		captureHandler := &api.CaptureHandler{EtcdKeyAPI: etcdClient.KeysApi}
+		captureHandler := &api.BasicApiHandler{
+			ResourceHandler: &api.CaptureHandler{},
+			EtcdKeyAPI:      etcdClient.KeysApi,
+		}
 
 		l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, captureHandler)
 		if err != nil {
@@ -135,7 +138,7 @@ func NewAgent() *Agent {
 	server.RegisterStaticEndpoints()
 	server.RegisterRPCEndpoints()
 
-	gserver, err := graph.NewServerFromConfig(g, nil, router)
+	gserver, err := graph.NewServerFromConfig(g, router)
 	if err != nil {
 		panic(err)
 	}

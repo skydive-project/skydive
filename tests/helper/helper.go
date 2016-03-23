@@ -26,9 +26,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -110,7 +112,18 @@ func StartAgentAndAnalyzerWithConfig(t *testing.T, conf string, s storage.Storag
 
 	go server.ListenAndServe()
 
-	return StartAgent(), server
+	// waiting for the api endpoint
+	for i := 1; i <= 5; i++ {
+		_, err := http.Get(fmt.Sprintf("http://%s:%d/api", server.Addr, server.Port))
+		if err == nil {
+			return StartAgent(), server
+		}
+		time.Sleep(time.Second)
+	}
+
+	t.Fatal("Fail to start the analyzer")
+
+	return nil, nil
 }
 
 func ExecCmds(t *testing.T, cmds ...Cmd) {

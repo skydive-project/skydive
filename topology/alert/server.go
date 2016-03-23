@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Red Hat, Inc.
+ * Copyright (C) 2016 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,7 +20,7 @@
  *
  */
 
-package graph
+package alert
 
 import (
 	"net/http"
@@ -41,12 +41,12 @@ const (
 )
 
 type Server struct {
-	Graph     *Graph
-	Router    *mux.Router
-	wsServer  *WSServer
-	Host      string
-	wg        sync.WaitGroup
-	listening atomic.Value
+	AlertManager *AlertManager
+	Router       *mux.Router
+	wsServer     *WSServer
+	Host         string
+	wg           sync.WaitGroup
+	listening    atomic.Value
 }
 
 type WSClient struct {
@@ -57,87 +57,19 @@ type WSClient struct {
 }
 
 type WSServer struct {
-	Graph      *Graph
-	clients    map[*WSClient]bool
-	broadcast  chan string
-	quit       chan bool
-	register   chan *WSClient
-	unregister chan *WSClient
-	pongWait   time.Duration
-	pingPeriod time.Duration
+	AlertManager *AlertManager
+	clients      map[*WSClient]bool
+	broadcast    chan string
+	quit         chan bool
+	register     chan *WSClient
+	unregister   chan *WSClient
+	pongWait     time.Duration
+	pingPeriod   time.Duration
 }
 
-func (c *WSClient) processGraphMessage(m []byte) {
-	c.server.Graph.Lock()
-	defer c.server.Graph.Unlock()
-
-	msg, err := UnmarshalWSMessage(m)
-	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %s: %s", msg, err.Error())
-		return
-	}
-	g := c.server.Graph
-
-	switch msg.Type {
-	case "SyncRequest":
-		reply := WSMessage{
-			Type: "SyncReply",
-			Obj:  c.server.Graph,
-		}
-		c.send <- []byte(reply.String())
-
-	case "SubGraphDeleted":
-		n := msg.Obj.(*Node)
-
-		logging.GetLogger().Debugf("Got SubGraphDeleted event from the node %s", n.ID)
-
-		node := g.GetNode(n.ID)
-		if node != nil {
-			g.DelSubGraph(node)
-		}
-	case "NodeUpdated":
-		n := msg.Obj.(*Node)
-		node := g.GetNode(n.ID)
-		if node != nil {
-			g.SetMetadata(node, n.metadata)
-		}
-	case "NodeDeleted":
-		g.DelNode(msg.Obj.(*Node))
-	case "NodeAdded":
-		n := msg.Obj.(*Node)
-		if g.GetNode(n.ID) == nil {
-			g.AddNode(n)
-		}
-	case "EdgeUpdated":
-		e := msg.Obj.(*Edge)
-		edge := g.GetEdge(e.ID)
-		if edge != nil {
-			g.SetMetadata(edge, e.metadata)
-		}
-	case "EdgeDeleted":
-		g.DelEdge(msg.Obj.(*Edge))
-	case "EdgeAdded":
-		e := msg.Obj.(*Edge)
-		if g.GetEdge(e.ID) == nil {
-			g.AddEdge(e)
-		}
-	}
-}
-
-func (c *WSClient) processGraphMessages(wg *sync.WaitGroup, quit chan struct{}) {
-	for {
-		select {
-		case m, ok := <-c.read:
-			if !ok {
-				wg.Done()
-				return
-			}
-			c.processGraphMessage(m)
-		case <-quit:
-			wg.Done()
-			return
-		}
-	}
+/* Called by alert.EvalNodes() */
+func (c *WSClient) OnAlert(amsg *AlertMessage) {
+	c.send <- amsg.Marshal()
 }
 
 func (c *WSClient) readPump() {
@@ -208,8 +140,12 @@ func (s *WSServer) ListenAndServe() {
 			return
 		case c := <-s.register:
 			s.clients[c] = true
+			s.AlertManager.AddEventListener(c)
 		case c := <-s.unregister:
-			delete(s.clients, c)
+			if _, ok := s.clients[c]; ok {
+				s.AlertManager.DelEventListener(c)
+				delete(s.clients, c)
+			}
 		case m := <-s.broadcast:
 			s.broadcastMessage(m)
 		}
@@ -224,34 +160,6 @@ func (s *WSServer) broadcastMessage(m string) {
 			delete(s.clients, c)
 		}
 	}
-}
-
-func (s *Server) sendGraphUpdateEvent(g WSMessage) {
-	s.wsServer.broadcast <- g.String()
-}
-
-func (s *Server) OnNodeUpdated(n *Node) {
-	s.sendGraphUpdateEvent(WSMessage{"NodeUpdated", n})
-}
-
-func (s *Server) OnNodeAdded(n *Node) {
-	s.sendGraphUpdateEvent(WSMessage{"NodeAdded", n})
-}
-
-func (s *Server) OnNodeDeleted(n *Node) {
-	s.sendGraphUpdateEvent(WSMessage{"NodeDeleted", n})
-}
-
-func (s *Server) OnEdgeUpdated(e *Edge) {
-	s.sendGraphUpdateEvent(WSMessage{"EdgeUpdated", e})
-}
-
-func (s *Server) OnEdgeAdded(e *Edge) {
-	s.sendGraphUpdateEvent(WSMessage{"EdgeAdded", e})
-}
-
-func (s *Server) OnEdgeDeleted(e *Edge) {
-	s.sendGraphUpdateEvent(WSMessage{"EdgeDeleted", e})
 }
 
 func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
@@ -281,7 +189,6 @@ func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
 	quit := make(chan struct{})
 
 	go c.writePump(&wg, quit)
-	go c.processGraphMessages(&wg, quit)
 
 	c.readPump()
 
@@ -298,8 +205,6 @@ func (s *Server) ListenAndServe() {
 	s.wg.Add(1)
 	defer s.wg.Done()
 
-	s.Graph.AddEventListener(s)
-
 	s.listening.Store(true)
 	s.wsServer.ListenAndServe()
 }
@@ -309,32 +214,31 @@ func (s *Server) Stop() {
 	if s.listening.Load() == true {
 		s.wg.Wait()
 	}
-	s.listening.Store(false)
 }
 
-func NewServer(g *Graph, router *mux.Router, pongWait time.Duration) *Server {
+func NewServer(a *AlertManager, router *mux.Router, pongWait time.Duration) *Server {
 	s := &Server{
-		Graph:  g,
-		Router: router,
+		AlertManager: a,
+		Router:       router,
 		wsServer: &WSServer{
-			Graph:      g,
-			broadcast:  make(chan string, 500),
-			quit:       make(chan bool, 1),
-			register:   make(chan *WSClient),
-			unregister: make(chan *WSClient),
-			clients:    make(map[*WSClient]bool),
-			pongWait:   pongWait,
-			pingPeriod: (pongWait * 8) / 10,
+			AlertManager: a,
+			broadcast:    make(chan string, 500),
+			quit:         make(chan bool, 1),
+			register:     make(chan *WSClient),
+			unregister:   make(chan *WSClient),
+			clients:      make(map[*WSClient]bool),
+			pongWait:     pongWait,
+			pingPeriod:   (pongWait * 8) / 10,
 		},
 	}
 
-	s.Router.HandleFunc("/ws/graph", s.serveMessages)
+	s.Router.HandleFunc("/ws/alert", s.serveMessages)
 
 	return s
 }
 
-func NewServerFromConfig(g *Graph, router *mux.Router) (*Server, error) {
+func NewServerFromConfig(a *AlertManager, router *mux.Router) (*Server, error) {
 	w := config.GetConfig().GetInt("ws_pong_timeout")
 
-	return NewServer(g, router, time.Duration(w)*time.Second), nil
+	return NewServer(a, router, time.Duration(w)*time.Second), nil
 }

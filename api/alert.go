@@ -22,27 +22,50 @@
 
 package api
 
-type Capture struct {
-	ProbePath string `json:"ProbePath,omitempty"`
+import (
+	"time"
+
+	"github.com/nu7hatch/gouuid"
+)
+
+const (
+	FIXED = 1 + iota
+	THRESHOLD
+)
+
+type Alert struct {
+	UUID        string
+	Name        string
+	Description string
+	Select      string
+	Test        string
+	Action      string
+	Type        int
+	Count       int
+	CreateTime  time.Time
 }
 
-type CaptureHandler struct {
+type AlertHandler struct {
 }
 
-func NewCapture(p string) *Capture {
-	return &Capture{
-		ProbePath: p,
+func NewAlert() *Alert {
+	id, _ := uuid.NewV4()
+
+	return &Alert{
+		UUID:       id.String(),
+		CreateTime: time.Now(),
+		Type:       FIXED,
 	}
 }
 
-func (c *CaptureHandler) New() ApiResource {
-	return &Capture{}
+func (a *AlertHandler) New() ApiResource {
+	return &Alert{}
 }
 
-func (c *CaptureHandler) Name() string {
-	return "capture"
+func (a *AlertHandler) Name() string {
+	return "alert"
 }
 
-func (c *Capture) ID() string {
-	return c.ProbePath
+func (a *Alert) ID() string {
+	return a.UUID
 }

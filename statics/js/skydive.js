@@ -800,15 +800,11 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
 Layout.prototype.ProcessAlertMessage = function(msg) {
   var _this = this;
 
-  switch(msg.Type) {
-    case "AlertEvent":
-      var ID  = msg.Obj.ReasonData.ID;
-      alerts[ID] = msg;
-      this.Redraw();
+  var ID  = msg.ReasonData.ID;
+  alerts[ID] = msg;
+  this.Redraw();
 
-      setTimeout(function() { delete alerts[ID]; _this.Redraw(); }, 1000);
-      break;
-  }
+  setTimeout(function() { delete alerts[ID]; _this.Redraw(); }, 1000);
 }
 
 Layout.prototype.StartLiveUpdate = function() {

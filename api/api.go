@@ -28,7 +28,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"sync/atomic"
 
 	etcd "github.com/coreos/etcd/client"
 	"github.com/gorilla/mux"
@@ -36,45 +35,38 @@ import (
 
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/rpc"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/version"
 )
 
 type ApiServer struct {
 	Router     *mux.Router
-	etcdKeyAPI etcd.KeysAPI
-}
-
-type ApiResource struct {
-	UUID *graph.UUID
+	EtcdKeyAPI etcd.KeysAPI
+	handlers   map[string]ApiHandler
 }
 
 type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 
-type apiResourceCRUD interface {
-	Name() string
-	New() interface{}
-	Index() map[string]interface{}
-	Get(id string) (interface{}, bool)
-	Create(resource interface{}) error
-	Delete(id string) error
+func (a *ApiServer) Index(n string) map[string]ApiResource {
+	return a.handlers[n].Index()
 }
 
-type ApiWatcherCallback func(action string, id string, resource interface{})
-
-type StoppableWatcher struct {
-	watcher etcd.Watcher
-	running atomic.Value
+func (a *ApiServer) Get(n string, id string) (ApiResource, bool) {
+	return a.handlers[n].Get(id)
 }
 
-type apiResourceWatcher interface {
-	AsyncWatch(f ApiWatcherCallback) StoppableWatcher
+func (a *ApiServer) Create(n string, resource ApiResource) error {
+	return a.handlers[n].Create(resource)
 }
 
-func (s *StoppableWatcher) Stop() {
-	s.running.Store(false)
+func (a *ApiServer) Delete(n string, id string) error {
+	return a.handlers[n].Delete(id)
 }
 
-func (a *ApiServer) RegisterResource(handler apiResourceCRUD) error {
+func (a *ApiServer) AsyncWatch(n string, f ApiWatcherCallback) StoppableWatcher {
+	return a.handlers[n].AsyncWatch(f)
+}
+
+func (a *ApiServer) RegisterHandler(handler ApiHandler) error {
 	name := handler.Name()
 	title := strings.Title(name)
 
@@ -170,17 +162,72 @@ func (a *ApiServer) RegisterResource(handler apiResourceCRUD) error {
 
 	rpc.RegisterRoutes(a.Router, routes)
 
-	_, err := a.etcdKeyAPI.Set(context.Background(), "/"+name, "", &etcd.SetOptions{Dir: true})
-	return err
+	if _, err := a.EtcdKeyAPI.Set(context.Background(), "/"+name, "", &etcd.SetOptions{Dir: true}); err != nil {
+		if _, err = a.EtcdKeyAPI.Get(context.Background(), "/"+name, nil); err != nil {
+			return err
+		}
+	}
+
+	a.handlers[handler.Name()] = handler
+
+	return nil
+}
+
+func (a *ApiServer) addAPIRootRoute() {
+	s := struct {
+		Version string
+	}{
+		Version: version.Version,
+	}
+
+	routes := []rpc.Route{
+		{
+			"Skydive API",
+			"GET",
+			"/api",
+			func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+				w.WriteHeader(http.StatusOK)
+
+				if err := json.NewEncoder(w).Encode(s); err != nil {
+					logging.GetLogger().Criticalf("Failed to display /api: %s", err.Error())
+				}
+			},
+		}}
+
+	rpc.RegisterRoutes(a.Router, routes)
+}
+
+func (a *ApiServer) GetHandler(s string) ApiHandler {
+	return a.handlers[s]
 }
 
 func NewApi(router *mux.Router, kapi etcd.KeysAPI) (*ApiServer, error) {
 	server := &ApiServer{
 		Router:     router,
-		etcdKeyAPI: kapi,
+		EtcdKeyAPI: kapi,
+		handlers:   make(map[string]ApiHandler),
 	}
 
-	server.RegisterResource(&CaptureHandler{EtcdKeyAPI: kapi})
+	captureHandler := &BasicApiHandler{
+		ResourceHandler: &CaptureHandler{},
+		EtcdKeyAPI:      kapi,
+	}
+	err := server.RegisterHandler(captureHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	alertHandler := &BasicApiHandler{
+		ResourceHandler: &AlertHandler{},
+		EtcdKeyAPI:      kapi,
+	}
+	err = server.RegisterHandler(alertHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	server.addAPIRootRoute()
 
 	return server, nil
 }

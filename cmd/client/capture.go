@@ -56,7 +56,7 @@ var CaptureCreate = &cobra.Command{
 		}
 
 		client := rpc.NewClientFromConfig()
-		capture := &api.Capture{ProbePath: probePath}
+		capture := api.NewCapture(probePath)
 		if err := client.Create("capture", &capture); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)

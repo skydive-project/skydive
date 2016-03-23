@@ -25,9 +25,9 @@ package client
 import (
 	"os"
 
+	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/rpc"
-	"github.com/redhat-cip/skydive/topology/graph"
 
 	"github.com/spf13/cobra"
 )
@@ -53,7 +53,7 @@ var AlertCreate = &cobra.Command{
 	Long:  "Create alert",
 	Run: func(cmd *cobra.Command, args []string) {
 		client := rpc.NewClientFromConfig()
-		alert := graph.AlertTest{}
+		alert := api.NewAlert()
 		setFromFlag(cmd, "name", &alert.Name)
 		setFromFlag(cmd, "description", &alert.Description)
 		setFromFlag(cmd, "select", &alert.Select)
@@ -69,7 +69,7 @@ var AlertList = &cobra.Command{
 	Short: "List alerts",
 	Long:  "List alerts",
 	Run: func(cmd *cobra.Command, args []string) {
-		var alerts map[string]graph.AlertTest
+		var alerts map[string]api.Alert
 		client := rpc.NewClientFromConfig()
 		if err := client.List("alert", &alerts); err != nil {
 			logging.GetLogger().Errorf(err.Error())
@@ -90,7 +90,7 @@ var AlertGet = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		var alert graph.AlertTest
+		var alert api.Alert
 		client := rpc.NewClientFromConfig()
 		if err := client.Get("alert", args[0], &alert); err != nil {
 			logging.GetLogger().Errorf(err.Error())

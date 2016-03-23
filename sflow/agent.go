@@ -70,9 +70,6 @@ func (sfa *SFlowAgent) flowExpire(f *flow.Flow) {
 }
 
 func (sfa *SFlowAgent) start() error {
-	sfa.wg.Add(1)
-	defer sfa.wg.Done()
-
 	var buf [maxDgramSize]byte
 
 	addr := net.UDPAddr{
@@ -86,6 +83,11 @@ func (sfa *SFlowAgent) start() error {
 	}
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(1 * time.Second))
+
+	sfa.wg.Add(1)
+	defer sfa.wg.Done()
+
+	sfa.running.Store(true)
 
 	flowtable := flow.NewFlowTable()
 	cfgFlowtable_expire := config.GetConfig().GetInt("agent.flowtable_expire")
@@ -139,8 +141,10 @@ func (sfa *SFlowAgent) Start() {
 }
 
 func (sfa *SFlowAgent) Stop() {
-	sfa.running.Store(false)
-	sfa.wg.Wait()
+	if sfa.running.Load() == true {
+		sfa.running.Store(false)
+		sfa.wg.Wait()
+	}
 }
 
 func (sfa *SFlowAgent) SetAnalyzerClient(a *analyzer.Client) {
@@ -161,8 +165,6 @@ func NewSFlowAgent(a string, p int, g *graph.Graph) (*SFlowAgent, error) {
 		Port:  p,
 		Graph: g,
 	}
-
-	sfa.running.Store(true)
 
 	return sfa, nil
 }

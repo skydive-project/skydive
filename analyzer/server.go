@@ -41,6 +41,7 @@ import (
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/storage/etcd"
 	"github.com/redhat-cip/skydive/topology"
+	"github.com/redhat-cip/skydive/topology/alert"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
@@ -51,6 +52,7 @@ type Server struct {
 	Router              *mux.Router
 	TopoServer          *topology.Server
 	GraphServer         *graph.Server
+	AlertServer         *alert.Server
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	Storage             storage.Storage
 	FlowTable           *flow.FlowTable
@@ -97,7 +99,9 @@ func (s *Server) handleUDPFlowPacket() {
 func (s *Server) ListenAndServe() {
 	var wg sync.WaitGroup
 
-	wg.Add(3)
+	s.AlertServer.AlertManager.Start()
+
+	wg.Add(4)
 	go func() {
 		defer wg.Done()
 		s.TopoServer.ListenAndServe()
@@ -106,6 +110,11 @@ func (s *Server) ListenAndServe() {
 	go func() {
 		defer wg.Done()
 		s.GraphServer.ListenAndServe()
+	}()
+
+	go func() {
+		defer wg.Done()
+		s.AlertServer.ListenAndServe()
 	}()
 
 	go func() {
@@ -126,6 +135,7 @@ func (s *Server) ListenAndServe() {
 
 func (s *Server) Stop() {
 	s.Stopping = true
+	s.AlertServer.Stop()
 	s.TopoServer.Stop()
 	s.GraphServer.Stop()
 	if s.EmbeddedEtcd != nil {
@@ -249,18 +259,22 @@ func NewServer(addr string, port int, router *mux.Router, embedEtcd bool) (*Serv
 		return nil, err
 	}
 
-	alertManager, err := graph.NewAlertManager(g, etcdClient.KeysApi)
-	if err != nil {
-		return nil, err
-	}
-
 	apiServer, err := api.NewApi(router, etcdClient.KeysApi)
 	if err != nil {
 		return nil, err
 	}
-	apiServer.RegisterResource(alertManager)
 
-	gserver, err := graph.NewServerFromConfig(g, alertManager, router)
+	alertManager := alert.NewAlertManager(g, apiServer.GetHandler("alert"))
+	if err != nil {
+		return nil, err
+	}
+
+	aserver, err := alert.NewServerFromConfig(alertManager, router)
+	if err != nil {
+		return nil, err
+	}
+
+	gserver, err := graph.NewServerFromConfig(g, router)
 	if err != nil {
 		return nil, err
 	}
@@ -280,6 +294,7 @@ func NewServer(addr string, port int, router *mux.Router, embedEtcd bool) (*Serv
 		Router:              router,
 		TopoServer:          tserver,
 		GraphServer:         gserver,
+		AlertServer:         aserver,
 		FlowMappingPipeline: pipeline,
 		FlowTable:           flowtable,
 		EmbeddedEtcd:        etcdServer,
