@@ -111,7 +111,9 @@ analyzer:
 EOF
     fi
 
-    sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote "ptcp:$SKYDIVE_OVSDB_REMOTE_PORT:127.0.0.1"
+    if is_service_enabled skydive-agent ; then
+        sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote "ptcp:$SKYDIVE_OVSDB_REMOTE_PORT:127.0.0.1"
+    fi
 }
 
 function start_skydive {
