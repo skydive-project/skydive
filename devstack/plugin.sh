@@ -42,33 +42,33 @@ SKYDIVE_OVSDB_REMOTE_PORT=6640
 
 
 function install_go {
-   if [[ `uname -m` == *"64" ]]; then
-       arch=amd64
-   else
-       arch=386
-   fi
+    if [[ `uname -m` == *"64" ]]; then
+        arch=amd64
+    else
+        arch=386
+    fi
 
-   if [ ! -d $GOROOT ]; then
-       sudo mkdir -p $GOROOT
-       safe_chown -R $STACK_USER $GOROOT
-       safe_chmod 0755 $GOROOT
-       curl -s -L https://storage.googleapis.com/golang/go$GO_VERSION.linux-$arch.tar.gz | tar -C `dirname $GOROOT` -xzf -
-   fi
-   export GOROOT=$GOROOT
-   export PATH=$PATH:$GOROOT/bin
-   export GOPATH=$GOPATH
+    if [ ! -d $GOROOT ]; then
+        sudo mkdir -p $GOROOT
+        safe_chown -R $STACK_USER $GOROOT
+        safe_chmod 0755 $GOROOT
+        curl -s -L https://storage.googleapis.com/golang/go$GO_VERSION.linux-$arch.tar.gz | tar -C `dirname $GOROOT` -xzf -
+    fi
+    export GOROOT=$GOROOT
+    export PATH=$PATH:$GOROOT/bin
+    export GOPATH=$GOPATH
 }
 
 function pre_install_skydive {
-   install_go
-   $TOP_DIR/pkg/elasticsearch.sh download
-   $TOP_DIR/pkg/elasticsearch.sh install
+    install_go
+    $TOP_DIR/pkg/elasticsearch.sh download
+    $TOP_DIR/pkg/elasticsearch.sh install
 }
 
 function install_skydive {
-   if [ ! -f $GOPATH/bin/skydive ]; then
-       go get github.com/redhat-cip/skydive/cmd/skydive
-   fi
+    if [ ! -f $GOPATH/bin/skydive ]; then
+        go get github.com/redhat-cip/skydive/cmd/skydive
+    fi
 }
 
 function join {
@@ -76,7 +76,7 @@ function join {
 }
 
 function get_probes_for_config {
-   printf "%s" "$(join '      - ' '' $SKYDIVE_AGENT_PROBES)";
+    printf "%s" "$(join '      - ' '' $SKYDIVE_AGENT_PROBES)";
 }
 
 function configure_skydive {
@@ -117,25 +117,25 @@ EOF
 }
 
 function start_skydive {
-   if is_service_enabled skydive-agent ; then
-       run_process skydive-agent "sudo $GOPATH/bin/skydive agent --conf $SKYDIVE_CONFIG_FILE"
-   fi
+    if is_service_enabled skydive-agent ; then
+        run_process skydive-agent "sudo $GOPATH/bin/skydive agent --conf $SKYDIVE_CONFIG_FILE"
+    fi
 
-   if is_service_enabled skydive-analyzer ; then
-       $TOP_DIR/pkg/elasticsearch.sh start
-       run_process skydive-analyzer "$GOPATH/bin/skydive analyzer --conf $SKYDIVE_CONFIG_FILE"
-   fi
+    if is_service_enabled skydive-analyzer ; then
+        $TOP_DIR/pkg/elasticsearch.sh start
+        run_process skydive-analyzer "$GOPATH/bin/skydive analyzer --conf $SKYDIVE_CONFIG_FILE"
+    fi
 }
 
 function stop_skydive {
-   if is_service_enabled skydive-agent ; then
-       stop_process skydive-agent
-   fi
+    if is_service_enabled skydive-agent ; then
+        stop_process skydive-agent
+    fi
 
-   if is_service_enabled skydive-analyzer ; then
-       $TOP_DIR/pkg/elasticsearch.sh stop
-       stop_process skydive-analyzer
-   fi
+    if is_service_enabled skydive-analyzer ; then
+        $TOP_DIR/pkg/elasticsearch.sh stop
+        stop_process skydive-analyzer
+    fi
 }
 
 if is_service_enabled skydive-agent || is_service_enabled skydive-analyzer ; then
