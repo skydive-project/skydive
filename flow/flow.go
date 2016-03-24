@@ -159,10 +159,11 @@ type FlowKey struct {
 	net, transport uint64
 }
 
-func (key FlowKey) fillFromGoPacket(p *gopacket.Packet) FlowKey {
-	key.net = LayerFlow((*p).NetworkLayer()).FastHash()
-	key.transport = LayerFlow((*p).TransportLayer()).FastHash()
-	return key
+func NewFlowKeyFromGoPacket(p *gopacket.Packet) *FlowKey {
+	return &FlowKey{
+		net:       LayerFlow((*p).NetworkLayer()).FastHash(),
+		transport: LayerFlow((*p).TransportLayer()).FastHash(),
+	}
 }
 
 func (key FlowKey) String() string {
@@ -247,7 +248,15 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePath string) []*Flow {
+func FlowFromGoPacket(ft *FlowTable, packet *gopacket.Packet, probePath string) *Flow {
+	key := NewFlowKeyFromGoPacket(packet)
+	flow, _ := ft.GetFlow(key.String())
+	flow.ProbeGraphPath = probePath
+	flow.fillFromGoPacket(packet)
+	return flow
+}
+
+func FlowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePath string) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
@@ -266,11 +275,7 @@ func FLowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
-		packet := &record.Header
-		key := (FlowKey{}).fillFromGoPacket(packet)
-		flow, _ := ft.GetFlow(key.String())
-		flow.ProbeGraphPath = probePath
-		flow.fillFromGoPacket(packet)
+		flow := FlowFromGoPacket(ft, &record.Header, probePath)
 		flows = append(flows, flow)
 	}
 

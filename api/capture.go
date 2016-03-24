@@ -24,14 +24,16 @@ package api
 
 type Capture struct {
 	ProbePath string `json:"ProbePath,omitempty"`
+	BPFFilter string `json:"BPFFilter,omitempty"`
 }
 
 type CaptureHandler struct {
 }
 
-func NewCapture(p string) *Capture {
+func NewCapture(probePath string, bpfFilter string) *Capture {
 	return &Capture{
-		ProbePath: p,
+		ProbePath: probePath,
+		BPFFilter: bpfFilter,
 	}
 }
 

@@ -168,16 +168,8 @@ func (h *BasicApiHandler) AsyncWatch(f ApiWatcherCallback) StoppableWatcher {
 
 	// init phase retrieve all the previous value and use init as action for the
 	// callback
-	resp, err := h.EtcdKeyAPI.Get(context.Background(), etcdPath, nil)
-	if err == nil {
-		for _, node := range resp.Node.Nodes {
-			id := strings.TrimPrefix(node.Key, etcdPath)
-
-			resource := h.ResourceHandler.New()
-			json.Unmarshal([]byte(node.Value), resource)
-
-			f("init", id, resource)
-		}
+	for id, node := range h.Index() {
+		f("init", id, node)
 	}
 
 	sw.wg.Add(1)

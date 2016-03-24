@@ -33,6 +33,7 @@ import (
 	"github.com/socketplane/libovsdb"
 
 	"github.com/redhat-cip/skydive/analyzer"
+	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
@@ -325,7 +326,7 @@ func isOvsBridge(n *graph.Node) bool {
 	return n.Metadata()["UUID"] != "" && n.Metadata()["Type"] == "ovsbridge"
 }
 
-func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node) error {
+func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) error {
 	if isOvsBridge(n) {
 		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string))
 		if err != nil {

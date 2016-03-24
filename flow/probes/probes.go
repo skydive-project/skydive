@@ -76,6 +76,11 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 			if o != nil {
 				probes[t] = o
 			}
+		case "pcap":
+			o := NewPcapProbesHandler(tb, g, pipeline, aclient)
+			if o != nil {
+				probes[t] = o
+			}
 		default:
 			logging.GetLogger().Error("unknown probe type %s", t)
 		}

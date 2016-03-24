@@ -114,7 +114,7 @@ func (sfa *SFlowAgent) start() error {
 					probePath = sfa.ProbePathGetter.GetProbePath(int64(sample.InputInterface))
 				}
 
-				flows := flow.FLowsFromSFlowSample(flowtable, &sample, probePath)
+				flows := flow.FlowsFromSFlowSample(flowtable, &sample, probePath)
 
 				logging.GetLogger().Debugf("%d flows captured at %v", len(flows), probePath)
 

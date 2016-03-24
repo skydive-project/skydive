@@ -50,6 +50,7 @@ agent:
   flow:
     probes:
       - ovssflow
+      - pcap
 
 cache:
   expire: 300
@@ -235,4 +236,54 @@ func TestSFlowProbePath(t *testing.T) {
 	}
 
 	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+}
+
+func TestPCAPProbe(t *testing.T) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	ts := NewTestStorage()
+
+	agent, analyzer := helper.StartAgentAndAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	defer agent.Stop()
+	defer analyzer.Stop()
+
+	client := rpc.NewClientFromConfig()
+	capture := &api.Capture{ProbePath: "*/br-pcap[Type=bridge]"}
+	if err := client.Create("capture", &capture); err != nil {
+		t.Fatal(err.Error())
+	}
+	time.Sleep(1 * time.Second)
+
+	setupCmds := []helper.Cmd{
+		{"brctl addbr br-pcap", true},
+		{"ip link set br-pcap up", true},
+		{"ip address add 169.254.66.66/24 dev br-pcap", true},
+		{"ping -c 3 169.254.66.66", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip link set br-pcap down", true},
+		{"brctl delbr br-pcap", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	ok := false
+	flows := ts.GetFlows()
+	for _, f := range flows {
+		if f.ProbeGraphPath == hostname+"[Type=host]/br-pcap[Type=bridge]" {
+			ok = true
+			break
+		}
+	}
+
+	if !ok {
+		t.Error("Unable to find a flow with the expected probePath")
+	}
+
+	client.Delete("capture", "*/br-pcap[Type=bridge]")
 }

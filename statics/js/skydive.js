@@ -267,6 +267,42 @@ HostLayout.prototype.NodeDetails = function(node) {
       }
     });
   }
+
+  $(".title-capture-switch").show();
+  $("[name='capture-switch']").bootstrapSwitch("destroy");
+  $("[name='capture-switch']").bootstrapSwitch({
+    onSwitchChange: function(event, state) {
+      if (state) {
+        $.ajax({
+          dataType: "json",
+          url: '/rpc/capture',
+          data: JSON.stringify({"ProbePath": graphPath}),
+          contentType: "application/json; charset=utf-8",
+          method: 'POST',
+        });
+      } else {
+        $.ajax({
+          url: '/rpc/capture/' + graphPath,
+          contentType: "application/json; charset=utf-8",
+          method: 'DELETE',
+        });
+      }
+      return true;
+    }
+  });
+
+  $.ajax({
+    dataType: "json",
+    url: '/rpc/capture/' + graphPath,
+    contentType: "application/json; charset=utf-8",
+    method: 'GET',
+    success: function(data) {
+      $("[name='capture-switch']").bootstrapSwitch('state', true, false);
+    },
+    error: function(data) {
+      $("[name='capture-switch']").bootstrapSwitch('state', false, false);
+    }
+  });
 }
 
 HostLayout.prototype.AddNode = function(node) {
@@ -797,6 +833,7 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
       break;
   }
 }
+
 Layout.prototype.ProcessAlertMessage = function(msg) {
   var _this = this;
 
@@ -1022,6 +1059,8 @@ $(document).ready(function() {
       $('.topology').show();
       $('.conversation').hide();
     });
+
+    $(".title-capture-switch").hide()
 
     $('#conversation-btn').click(function() {
       $('#topology').removeClass('active');

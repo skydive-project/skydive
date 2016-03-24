@@ -91,6 +91,7 @@ $(get_probes_for_config)
   flow:
     probes:
       - ovssflow
+      - pcap
 
 openstack:
   auth_url: ${KEYSTONE_AUTH_PROTOCOL}://${KEYSTONE_AUTH_HOST}:${KEYSTONE_AUTH_PORT}/v2.0

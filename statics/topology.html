@@ -6,7 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Skydive Dashboard</title>
 
+  <link rel="stylesheet" href="/statics/css/skydive.css" />
   <link href="/statics/css/bootstrap.3.3.5.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="/statics/css/bootstrap-switch.min.css">
   <link href="/statics/css/font-awesome.3.0.2.css" rel="stylesheet"/>
   <link media="all" rel="stylesheet" type="text/css" href="/statics/css/jquery-ui.1.10.1.css">
   <link rel="stylesheet" href="/statics/css/jquery.jsonview.css" />
@@ -15,6 +17,7 @@
   <script src="/statics/js/jquery.1.9.1.min.js" type="text/javascript"></script>
   <script src="/statics/js/jquery-ui.1.10.1.js" type="text/javascript"></script>
   <script src="/statics/js/bootstrap.3.3.5.min.js"></script>
+  <script src="/statics/js/bootstrap-switch.min.js"></script>
   <script src="/statics/js/jquery.jsonview.js"></script>
   <script src="/statics/js/d3.3.5.10.js"></script>
   <script src="/statics/js/skydive.js"></script>
@@ -53,7 +56,12 @@
         </div>
         <div class="left-panel" id="flows-panel">
           <div class="title-left-panel">Flows :</div>
-          <div id="flows"></div>
+          <div class="title-capture-switch">
+            <img src="statics/img/media-record.png">
+            <input type="checkbox" name="capture-switch" data-on-color="skydive-on" data-off-color="skydive-off" data-size="mini">
+          </div>
+          <div id="flows">
+          </div>
         </div>
       </div>
     </div>

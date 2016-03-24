@@ -184,3 +184,32 @@ path.hull {
   padding-bottom: 5px;
   color: #fff;
 }
+
+#flows-panel .title-left-panel {
+  float: left;
+}
+
+.title-capture-switch {
+  float: right;
+  display: none;
+}
+
+#flows {
+  clear: both;
+}
+
+.bootstrap-switch {
+  color: black;
+}
+
+.bootstrap-switch .bootstrap-switch-label {
+  background: #333;
+}
+
+.bootstrap-switch-skydive-on {
+  background-color: rgb(199, 233, 192);
+}
+
+.bootstrap-switch-skydive-off {
+  background-color: rgb(253, 208, 162);
+}

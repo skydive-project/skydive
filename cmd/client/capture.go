@@ -35,6 +35,7 @@ import (
 
 var (
 	probePath string
+	bpfFilter string
 )
 
 var CaptureCmd = &cobra.Command{
@@ -56,7 +57,7 @@ var CaptureCreate = &cobra.Command{
 		}
 
 		client := rpc.NewClientFromConfig()
-		capture := api.NewCapture(probePath)
+		capture := api.NewCapture(probePath, bpfFilter)
 		if err := client.Create("capture", &capture); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -121,7 +122,8 @@ var CaptureDelete = &cobra.Command{
 }
 
 func addCaptureFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&probePath, "probepath", "p", "", "probepath")
+	cmd.Flags().StringVarP(&probePath, "probepath", "p", "", "probe path")
+	cmd.Flags().StringVarP(&bpfFilter, "bpf", "b", "", "BPF filter")
 }
 
 func init() {

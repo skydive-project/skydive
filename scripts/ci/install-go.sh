@@ -14,6 +14,9 @@ curl -sL -o ~/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master
 chmod +x ~/bin/gimme
 eval "$(gimme 1.5)"
 
+# pcap.h is required to build skydive
+sudo yum -y install libpcap-devel
+
 # Get the Go dependencies
 export GOPATH=$HOME
 go get -f -u github.com/axw/gocov/gocov

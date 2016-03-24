@@ -42,40 +42,35 @@ type OnDemandProbeListener struct {
 }
 
 type FlowProbe interface {
-	RegisterProbe(n *graph.Node) error
+	RegisterProbe(n *graph.Node, capture *api.Capture) error
 	UnregisterProbe(n *graph.Node) error
 }
 
-func (o *OnDemandProbeListener) applyProbeAction(action string, n *graph.Node) {
-	t := n.Metadata()["Type"]
+func (o *OnDemandProbeListener) probeFromType(n *graph.Node) FlowProbe {
+	var probeName string
 
-	var fprobe FlowProbe
-
-	switch t {
+	switch n.Metadata()["Type"] {
 	case "ovsbridge":
-		probe := o.Probes.GetProbe("ovssflow")
-		if probe == nil {
-			break
-		}
-
-		logging.GetLogger().Infof("%s flow probe %s, %s", action, t, n.String())
-
-		fprobe = probe.(FlowProbe)
-	}
-	if fprobe == nil {
-		return
+		probeName = "ovssflow"
+	default:
+		probeName = "pcap"
 	}
 
-	var err error
-	switch action {
-	case "register":
-		err = fprobe.RegisterProbe(n)
-	case "unregister":
-		err = fprobe.UnregisterProbe(n)
-	}
+	probe := o.Probes.GetProbe(probeName)
+	return probe.(FlowProbe)
+}
 
-	if err != nil {
-		logging.GetLogger().Errorf("%s error for flow probe %s: %s", action, t, err.Error())
+func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) {
+	fprobe := o.probeFromType(n)
+	if err := fprobe.RegisterProbe(n, capture); err != nil {
+		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
+	}
+}
+
+func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
+	fprobe := o.probeFromType(n)
+	if err := fprobe.UnregisterProbe(n); err != nil {
+		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
 	}
 }
 
@@ -87,15 +82,17 @@ func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
 
 	path := topology.NodePath{nodes}.Marshal()
 
-	if _, ok := o.CaptureHandler.Get(path); !ok {
+	var capture api.ApiResource
+	var ok bool
+	if capture, ok = o.CaptureHandler.Get(path); !ok {
 		// try using the wildcard instead of the host
 		wildcard := "*/" + topology.NodePath{nodes[:len(nodes)-1]}.Marshal()
-		if _, ok = o.CaptureHandler.Get(wildcard); !ok {
+		if capture, ok = o.CaptureHandler.Get(wildcard); !ok {
 			return
 		}
 	}
 
-	o.applyProbeAction("register", n)
+	o.registerProbe(n, capture.(*api.Capture))
 }
 
 func (o *OnDemandProbeListener) OnNodeUpdated(n *graph.Node) {
@@ -120,15 +117,15 @@ func (o *OnDemandProbeListener) OnEdgeAdded(e *graph.Edge) {
 }
 
 func (o *OnDemandProbeListener) OnNodeDeleted(n *graph.Node) {
-	o.applyProbeAction("unregister", n)
+	o.unregisterProbe(n)
 }
 
-func (o *OnDemandProbeListener) onCaptureAdded(probePath string) {
+func (o *OnDemandProbeListener) onCaptureAdded(probePath string, capture *api.Capture) {
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
 	if node := topology.LookupNodeFromNodePathString(o.Graph, probePath); node != nil {
-		o.applyProbeAction("register", node)
+		o.registerProbe(node, capture)
 	}
 }
 
@@ -137,7 +134,7 @@ func (o *OnDemandProbeListener) onCaptureDeleted(probePath string) {
 	defer o.Graph.Unlock()
 
 	if node := topology.LookupNodeFromNodePathString(o.Graph, probePath); node != nil {
-		o.applyProbeAction("unregister", node)
+		o.unregisterProbe(node)
 	}
 }
 
@@ -147,9 +144,10 @@ func (o *OnDemandProbeListener) probePathFromID(id string) string {
 
 func (o *OnDemandProbeListener) onApiWatcherEvent(action string, id string, resource api.ApiResource) {
 	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
+	capture := resource.(*api.Capture)
 	switch action {
 	case "init", "create", "set", "update":
-		o.onCaptureAdded(o.probePathFromID(id))
+		o.onCaptureAdded(o.probePathFromID(id), capture)
 	case "expire", "delete":
 		o.onCaptureDeleted(o.probePathFromID(id))
 	}

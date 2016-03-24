@@ -44,6 +44,7 @@ agent:
     # Probes used to capture traffic.
     probes:
       # - ovssflow
+      # - pcap
 
 sflow:
   # listen parameter for the sflow agent, Format: addr:port.
