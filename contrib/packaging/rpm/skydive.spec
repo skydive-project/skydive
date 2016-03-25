@@ -8,7 +8,7 @@
 %global openvswitch_version 2.3.1
 
 Name:           skydive
-Version:        0.1
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Real-time network topology and protocols analyzer.
 License:        ASL 2.0
@@ -107,5 +107,8 @@ install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/sk
 %{_unitdir}/skydive-analyzer.service
 
 %changelog
-* Mon Feb 1 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.1-1
+* Fri Mar 25 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.2.0-1
+- Bump to version 0.2.0
+
+* Mon Feb 1 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.1.0-1
 - Initial release of RPM
