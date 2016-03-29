@@ -389,6 +389,7 @@ func NewOvsSFlowProbesHandler(p *probes.OvsdbProbe, agent *sflow.SFlowAgent, exp
 func NewOvsSFlowProbesHandlerFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph, p *mappings.FlowMappingPipeline, a *analyzer.Client) *OvsSFlowProbesHandler {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
+		logging.GetLogger().Error("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 		return nil
 	}
 
