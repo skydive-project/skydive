@@ -54,10 +54,13 @@ type SFlowAgent struct {
 	Port                int
 	Graph               *graph.Graph
 	AnalyzerClient      *analyzer.Client
+	flowTable           *flow.FlowTable
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	ProbePathGetter     ProbePathGetter
 	running             atomic.Value
 	wg                  sync.WaitGroup
+	flush               chan bool
+	flushDone           chan bool
 }
 
 func (sfa *SFlowAgent) GetTarget() string {
@@ -65,13 +68,45 @@ func (sfa *SFlowAgent) GetTarget() string {
 	return strings.Join(target, ":")
 }
 
-func (sfa *SFlowAgent) flowExpire(f *flow.Flow) {
-	/* send a special event to the analyzer */
+func (sfa *SFlowAgent) feedFlowTable(conn *net.UDPConn) {
+	var buf [maxDgramSize]byte
+	_, _, err := conn.ReadFromUDP(buf[:])
+	if err != nil {
+		conn.SetDeadline(time.Now().Add(1 * time.Second))
+		return
+	}
+
+	p := gopacket.NewPacket(buf[:], layers.LayerTypeSFlow, gopacket.Default)
+	sflowLayer := p.Layer(layers.LayerTypeSFlow)
+	sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
+	if !ok {
+		return
+	}
+
+	if sflowPacket.SampleCount > 0 {
+		for _, sample := range sflowPacket.FlowSamples {
+			var probePath string
+			if sfa.ProbePathGetter != nil {
+				probePath = sfa.ProbePathGetter.GetProbePath(int64(sample.InputInterface))
+			}
+
+			flows := flow.FlowsFromSFlowSample(sfa.flowTable, &sample, probePath)
+
+			logging.GetLogger().Debugf("%d flows captured at %v", len(flows), probePath)
+		}
+	}
+}
+
+func (sfa *SFlowAgent) asyncFlowPipeline(flows []*flow.Flow) {
+	if sfa.FlowMappingPipeline != nil {
+		sfa.FlowMappingPipeline.Enhance(flows)
+	}
+	if sfa.AnalyzerClient != nil {
+		sfa.AnalyzerClient.SendFlows(flows)
+	}
 }
 
 func (sfa *SFlowAgent) start() error {
-	var buf [maxDgramSize]byte
-
 	addr := net.UDPAddr{
 		Port: sfa.Port,
 		IP:   net.ParseIP(sfa.Addr),
@@ -89,47 +124,26 @@ func (sfa *SFlowAgent) start() error {
 
 	sfa.running.Store(true)
 
-	flowtable := flow.NewFlowTable()
-	cfgFlowtable_expire := config.GetConfig().GetInt("agent.flowtable_expire")
-	go flowtable.AsyncExpire(sfa.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
+	sfa.flowTable = flow.NewFlowTable()
+	defer sfa.flowTable.UnregisterAll()
+
+	cfgFlowtable_expire := config.GetConfig().GetInt("agent.flowTable_expire")
+	sfa.flowTable.RegisterExpire(sfa.asyncFlowPipeline, time.Duration(cfgFlowtable_expire)*time.Minute)
+
+	cfgFlowtable_update := config.GetConfig().GetInt("agent.flowTable_update")
+	sfa.flowTable.RegisterUpdated(sfa.asyncFlowPipeline, time.Duration(cfgFlowtable_update)*time.Second)
 
 	for sfa.running.Load() == true {
-		_, _, err := conn.ReadFromUDP(buf[:])
-		if err != nil {
-			conn.SetDeadline(time.Now().Add(1 * time.Second))
-			continue
-		}
-
-		p := gopacket.NewPacket(buf[:], layers.LayerTypeSFlow, gopacket.Default)
-		sflowLayer := p.Layer(layers.LayerTypeSFlow)
-		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
-		if !ok {
-			continue
-		}
-
-		if sflowPacket.SampleCount > 0 {
-			for _, sample := range sflowPacket.FlowSamples {
-				var probePath string
-				if sfa.ProbePathGetter != nil {
-					probePath = sfa.ProbePathGetter.GetProbePath(int64(sample.InputInterface))
-				}
-
-				flows := flow.FlowsFromSFlowSample(flowtable, &sample, probePath)
-
-				logging.GetLogger().Debugf("%d flows captured at %v", len(flows), probePath)
-
-				flowtable.Update(flows)
-
-				if sfa.FlowMappingPipeline != nil {
-					sfa.FlowMappingPipeline.Enhance(flows)
-				}
-
-				if sfa.AnalyzerClient != nil {
-					// FIX(safchain) add flow state cache in order to send only flow changes
-					// to not flood the analyzer
-					sfa.AnalyzerClient.SendFlows(flows)
-				}
-			}
+		select {
+		case now := <-sfa.flowTable.GetExpireTicker():
+			sfa.flowTable.Expire(now)
+		case now := <-sfa.flowTable.GetUpdatedTicker():
+			sfa.flowTable.Updated(now)
+		case <-sfa.flush:
+			sfa.flowTable.ExpireNow()
+			sfa.flushDone <- true
+		default:
+			sfa.feedFlowTable(conn)
 		}
 	}
 
@@ -147,6 +161,12 @@ func (sfa *SFlowAgent) Stop() {
 	}
 }
 
+func (sfa *SFlowAgent) Flush() {
+	logging.GetLogger().Critical("Flush() MUST be called for testing purpose only, not in production")
+	sfa.flush <- true
+	<-sfa.flushDone
+}
+
 func (sfa *SFlowAgent) SetAnalyzerClient(a *analyzer.Client) {
 	sfa.AnalyzerClient = a
 }
@@ -161,9 +181,11 @@ func (sfa *SFlowAgent) SetProbePathGetter(p ProbePathGetter) {
 
 func NewSFlowAgent(a string, p int, g *graph.Graph) (*SFlowAgent, error) {
 	sfa := &SFlowAgent{
-		Addr:  a,
-		Port:  p,
-		Graph: g,
+		Addr:      a,
+		Port:      p,
+		Graph:     g,
+		flush:     make(chan bool),
+		flushDone: make(chan bool),
 	}
 
 	return sfa, nil

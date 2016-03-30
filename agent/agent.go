@@ -24,6 +24,7 @@ package agent
 
 import (
 	"os"
+	"sync"
 
 	"github.com/gorilla/mux"
 
@@ -45,6 +46,7 @@ type Agent struct {
 	TopologyServer        *topology.Server
 	TopologyProbeBundle   *tprobes.TopologyProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
+	FlowProbeBundleLock   sync.Mutex
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
 	Router                *mux.Router
 }
@@ -69,8 +71,10 @@ func (a *Agent) Start() {
 	a.TopologyProbeBundle = tprobes.NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
 	a.TopologyProbeBundle.Start()
 
+	a.FlowProbeBundleLock.Lock()
 	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph)
 	a.FlowProbeBundle.Start()
+	a.FlowProbeBundleLock.Unlock()
 
 	if addr != "" {
 		etcdClient, err := etcd.NewEtcdClientFromConfig()
@@ -99,7 +103,9 @@ func (a *Agent) Start() {
 
 func (a *Agent) Stop() {
 	a.TopologyProbeBundle.Stop()
+	a.FlowProbeBundleLock.Lock()
 	a.FlowProbeBundle.Stop()
+	a.FlowProbeBundleLock.Unlock()
 	a.TopologyServer.Stop()
 	a.GraphServer.Stop()
 	if a.Gclient != nil {

@@ -41,6 +41,7 @@ const confAgentAnalyzer = `---
 agent:
   listen: 58081
   flowtable_expire: 1
+  flowtable_update: 10
   analyzers: localhost:58082
   topology:
     probes:
@@ -183,8 +184,11 @@ func TestSFlowWithPCAP(t *testing.T) {
 			t.Fatalf("Error during the replay: %s", err.Error())
 		}
 
-		/* FIXME (nplanel) remove this Sleep when agent.FlushFlowTable() exist */
-		time.Sleep(2 * time.Second)
+		agent.FlowProbeBundleLock.Lock()
+		agent.FlowProbeBundle.Flush()
+		agent.FlowProbeBundleLock.Unlock()
+		time.Sleep(500 * time.Millisecond) // Async UDP Socket
+		analyzer.Flush()
 		pcapTraceValidate(t, ts.GetFlows(), &trace)
 	}
 }
@@ -222,6 +226,12 @@ func TestSFlowProbePath(t *testing.T) {
 
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
+
+	agent.FlowProbeBundleLock.Lock()
+	agent.FlowProbeBundle.Flush()
+	agent.FlowProbeBundleLock.Unlock()
+	time.Sleep(500 * time.Millisecond)
+	analyzer.Flush()
 
 	ok := false
 	for _, f := range ts.GetFlows() {
@@ -271,6 +281,12 @@ func TestPCAPProbe(t *testing.T) {
 
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
+
+	agent.FlowProbeBundleLock.Lock()
+	agent.FlowProbeBundle.Flush()
+	agent.FlowProbeBundleLock.Unlock()
+	time.Sleep(500 * time.Millisecond)
+	analyzer.Flush()
 
 	ok := false
 	flows := ts.GetFlows()

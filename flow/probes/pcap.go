@@ -159,6 +159,9 @@ func (p *PcapProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
+func (o *PcapProbesHandler) Flush() {
+}
+
 func NewPcapProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph, p *mappings.FlowMappingPipeline, a *analyzer.Client) *PcapProbesHandler {
 	handler := &PcapProbesHandler{
 		graph:               g,

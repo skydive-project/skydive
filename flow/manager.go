@@ -20,38 +20,40 @@
  *
  */
 
-package probe
+package flow
 
-type Probe interface {
-	Start()
-	Stop()
+import (
+	"time"
+)
+
+type ExpireUpdateFunc func(f []*Flow)
+
+type FlowTableManagerAsyncFunction func(fn ExpireUpdateFunc, updateFrom int64)
+
+type FlowTableManagerAsyncParam struct {
+	function FlowTableManagerAsyncFunction
+	callback ExpireUpdateFunc
+	every    time.Duration
+	duration time.Duration
 }
 
-type ProbeBundle struct {
-	Probes map[string]Probe
+type FlowTableManagerAsync struct {
+	FlowTableManagerAsyncParam
+	ticker  *time.Ticker
+	running bool
 }
 
-func (p *ProbeBundle) Start() {
-	for _, p := range p.Probes {
-		p.Start()
-	}
+type FlowTableManager struct {
+	expire, updated FlowTableManagerAsync
 }
 
-func (p *ProbeBundle) Stop() {
-	for _, p := range p.Probes {
-		p.Stop()
-	}
+func (ftma *FlowTableManagerAsync) Register(p *FlowTableManagerAsyncParam) {
+	ftma.FlowTableManagerAsyncParam = *p
+	ftma.ticker = time.NewTicker(ftma.every)
+	ftma.running = true
 }
 
-func (p *ProbeBundle) GetProbe(k string) Probe {
-	if probe, ok := p.Probes[k]; ok {
-		return probe
-	}
-	return nil
-}
-
-func NewProbeBundle(p map[string]Probe) *ProbeBundle {
-	return &ProbeBundle{
-		Probes: p,
-	}
+func (ftma *FlowTableManagerAsync) Unregister() {
+	ftma.ticker.Stop()
+	ftma.running = false
 }

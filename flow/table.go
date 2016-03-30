@@ -34,8 +34,9 @@ import (
 )
 
 type FlowTable struct {
-	lock  sync.RWMutex
-	table map[string]*Flow
+	lock    sync.RWMutex
+	table   map[string]*Flow
+	manager FlowTableManager
 }
 
 type FlowTableAsyncNotificationUpdate interface {
@@ -63,37 +64,6 @@ func (ft *FlowTable) Update(flows []*Flow) {
 		}
 	}
 	ft.lock.Unlock()
-}
-
-type ExpireFunc func(f *Flow)
-
-func (ft *FlowTable) expire(fn ExpireFunc, expire int64) {
-	ft.lock.Lock()
-	flowTableSzBefore := len(ft.table)
-	for key, f := range ft.table {
-		fs := f.GetStatistics()
-		if fs.Last < expire {
-			duration := time.Duration(fs.Last - fs.Start)
-			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
-			/* Advise Clients */
-			fn(f)
-			delete(ft.table, key)
-		}
-	}
-	flowTableSz := len(ft.table)
-	ft.lock.Unlock()
-	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
-}
-
-func (ft *FlowTable) AsyncExpire(fn ExpireFunc, every time.Duration) {
-	ticker := time.NewTicker(every)
-	defer ticker.Stop()
-	for {
-		now := <-ticker.C
-		expire := now.Unix() - int64((every).Seconds())
-
-		ft.expire(fn, expire)
-	}
 }
 
 func (ft *FlowTable) IsExist(f *Flow) bool {
@@ -293,4 +263,99 @@ func (ft *FlowTable) SelectLayer(endpointType FlowEndpointType, list []string) [
 		}
 	}
 	return flows
+}
+
+/*
+ * Following function are FlowTable manager helpers
+ */
+
+func (ft *FlowTable) Expire(now time.Time) {
+	timepoint := now.Unix() - int64((ft.manager.expire.duration).Seconds())
+	ft.lock.Lock()
+	ft.expire(ft.manager.expire.callback, timepoint)
+	ft.lock.Unlock()
+}
+
+/* Internal call only, Must be called under ft.lock.Lock() */
+func (ft *FlowTable) expire(fn ExpireUpdateFunc, expireBefore int64) {
+	var expiredFlows []*Flow
+	flowTableSzBefore := len(ft.table)
+	for _, f := range ft.table {
+		fs := f.GetStatistics()
+		if fs.Last < expireBefore {
+			duration := time.Duration(fs.Last - fs.Start)
+			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
+			expiredFlows = append(expiredFlows, f)
+		}
+	}
+	/* Advise Clients */
+	fn(expiredFlows)
+	for _, f := range expiredFlows {
+		delete(ft.table, f.UUID)
+	}
+	flowTableSz := len(ft.table)
+	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
+}
+
+func (ft *FlowTable) Updated(now time.Time) {
+	timepoint := now.Unix() - int64((ft.manager.updated.duration).Seconds())
+	ft.lock.RLock()
+	ft.updated(ft.manager.updated.callback, timepoint)
+	ft.lock.RUnlock()
+}
+
+/* Internal call only, Must be called under ft.lock.RLock() */
+func (ft *FlowTable) updated(fn ExpireUpdateFunc, updateFrom int64) {
+	var updatedFlows []*Flow
+	for _, f := range ft.table {
+		fs := f.GetStatistics()
+		if fs.Last > updateFrom {
+			updatedFlows = append(updatedFlows, f)
+		}
+	}
+	/* Advise Clients */
+	fn(updatedFlows)
+	logging.GetLogger().Debugf("Send updated Flow %d", len(updatedFlows))
+}
+
+func (ft *FlowTable) ExpireNow() {
+	const Now = int64(^uint64(0) >> 1)
+	ft.lock.Lock()
+	ft.expire(ft.manager.expire.callback, Now)
+	ft.lock.Unlock()
+}
+
+/* Asynchrnously Register an expire callback fn with last updated flow 'since', each 'since' tick  */
+func (ft *FlowTable) RegisterExpire(fn ExpireUpdateFunc, every time.Duration) {
+	ft.lock.Lock()
+	ft.manager.expire.Register(&FlowTableManagerAsyncParam{ft.expire, fn, every, every})
+	ft.lock.Unlock()
+}
+
+/* Asynchrnously call the callback fn with last updated flow 'since', each 'since' tick  */
+func (ft *FlowTable) RegisterUpdated(fn ExpireUpdateFunc, since time.Duration) {
+	ft.lock.Lock()
+	ft.manager.updated.Register(&FlowTableManagerAsyncParam{ft.updated, fn, since, since + 2})
+	ft.lock.Unlock()
+}
+
+func (ft *FlowTable) UnregisterAll() {
+	ft.lock.Lock()
+	if ft.manager.updated.running {
+		ft.manager.updated.Unregister()
+	}
+	if ft.manager.expire.running {
+		ft.manager.expire.Unregister()
+	}
+	ft.lock.Unlock()
+
+	ft.ExpireNow()
+}
+
+func (ft *FlowTable) GetExpireTicker() <-chan time.Time {
+	return ft.manager.expire.ticker.C
+}
+
+func (ft *FlowTable) GetUpdatedTicker() <-chan time.Time {
+	return ft.manager.updated.ticker.C
 }

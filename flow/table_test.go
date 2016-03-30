@@ -208,8 +208,8 @@ type MyTestFlowCounter struct {
 	NbFlow int
 }
 
-func (fo *MyTestFlowCounter) expireCallback(f *Flow) {
-	fo.NbFlow++
+func (fo *MyTestFlowCounter) countFlowsCallback(flows []*Flow) {
+	fo.NbFlow += len(flows)
 }
 
 func TestFlowTable_expire(t *testing.T) {
@@ -218,22 +218,47 @@ func TestFlowTable_expire(t *testing.T) {
 
 	fc := MyTestFlowCounter{}
 	beforeNbFlow := fc.NbFlow
-	ft.expire(fc.expireCallback, 0)
+	ft.expire(fc.countFlowsCallback, 0)
 	afterNbFlow := fc.NbFlow
-	if beforeNbFlow != 0 && afterNbFlow != 0 {
+	if beforeNbFlow != 0 || afterNbFlow != 0 {
 		t.Error("we should not expire a flow")
 	}
 
 	fc = MyTestFlowCounter{}
 	beforeNbFlow = fc.NbFlow
-	ft.expire(fc.expireCallback, MaxInt64)
+	ft.expire(fc.countFlowsCallback, MaxInt64)
 	afterNbFlow = fc.NbFlow
-	if beforeNbFlow != 0 && afterNbFlow != 10 {
+	if beforeNbFlow != 0 || afterNbFlow != 10 {
 		t.Error("we should expire all flows")
 	}
 }
 
+func TestFlowTable_updated(t *testing.T) {
+	const MaxInt64 = int64(^uint64(0) >> 1)
+	ft := NewFlowTableComplex(t)
+
+	fc := MyTestFlowCounter{}
+	beforeNbFlow := fc.NbFlow
+	ft.updated(fc.countFlowsCallback, 0)
+	afterNbFlow := fc.NbFlow
+	if beforeNbFlow != 0 || afterNbFlow != 10 {
+		t.Error("all flows should be updated")
+	}
+
+	fc = MyTestFlowCounter{}
+	beforeNbFlow = fc.NbFlow
+	ft.updated(fc.countFlowsCallback, MaxInt64)
+	afterNbFlow = fc.NbFlow
+	if beforeNbFlow != 0 || afterNbFlow != 0 {
+		t.Error("no flows should be updated")
+	}
+}
+
 func TestFlowTable_AsyncExpire(t *testing.T) {
+	t.Skip()
+}
+
+func TestFlowTable_AsyncUpdated(t *testing.T) {
 	t.Skip()
 }
 

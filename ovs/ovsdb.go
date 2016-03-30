@@ -339,7 +339,9 @@ func (o *OvsMonitor) StartMonitoring() error {
 }
 
 func (o *OvsMonitor) StopMonitoring() {
-	o.OvsClient.ovsdb.Disconnect()
+	if o.OvsClient != nil {
+		o.OvsClient.ovsdb.Disconnect()
+	}
 }
 
 func NewOvsMonitor(addr string, port int) *OvsMonitor {

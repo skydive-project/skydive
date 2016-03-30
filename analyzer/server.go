@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -48,7 +49,7 @@ import (
 type Server struct {
 	Addr                string
 	Port                int
-	Stopping            bool
+	running             atomic.Value
 	Router              *mux.Router
 	TopoServer          *topology.Server
 	GraphServer         *graph.Server
@@ -60,30 +61,30 @@ type Server struct {
 	EmbeddedEtcd        *etcd.EmbeddedEtcd
 }
 
-func (s *Server) flowExpire(f *flow.Flow) {
-	/* Storge flow in the database */
+func (s *Server) flowExpire(flows []*flow.Flow) {
+	if s.Storage != nil {
+		s.Storage.StoreFlows(flows)
+		logging.GetLogger().Debugf("%d flows stored", len(flows))
+	}
 }
 
 func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
 	s.FlowTable.Update(flows)
 	s.FlowMappingPipeline.Enhance(flows)
 
-	if s.Storage != nil {
-		s.Storage.StoreFlows(flows)
-	}
-
-	logging.GetLogger().Debugf("%d flows stored", len(flows))
+	logging.GetLogger().Debugf("%d flows received", len(flows))
 }
 
 func (s *Server) handleUDPFlowPacket() {
 	data := make([]byte, 4096)
 
-	for {
+	for s.running.Load() == true {
 		n, _, err := s.Conn.ReadFromUDP(data)
 		if err != nil {
-			if !s.Stopping {
-				logging.GetLogger().Errorf("Error while reading: %s", err.Error())
+			if s.running.Load() == false {
+				return
 			}
+			logging.GetLogger().Errorf("Error while reading: %s", err.Error())
 			return
 		}
 
@@ -96,12 +97,20 @@ func (s *Server) handleUDPFlowPacket() {
 	}
 }
 
+func (s *Server) asyncFlowTableExpire() {
+	for s.running.Load() == true {
+		now := <-s.FlowTable.GetExpireTicker()
+		s.FlowTable.Expire(now)
+	}
+}
+
 func (s *Server) ListenAndServe() {
 	var wg sync.WaitGroup
+	s.running.Store(true)
 
 	s.AlertServer.AlertManager.Start()
 
-	wg.Add(4)
+	wg.Add(5)
 	go func() {
 		defer wg.Done()
 		s.TopoServer.ListenAndServe()
@@ -130,11 +139,17 @@ func (s *Server) ListenAndServe() {
 		s.handleUDPFlowPacket()
 	}()
 
+	go func() {
+		defer wg.Done()
+		s.asyncFlowTableExpire()
+	}()
+
 	wg.Wait()
 }
 
 func (s *Server) Stop() {
-	s.Stopping = true
+	s.running.Store(false)
+	s.FlowTable.UnregisterAll()
 	s.AlertServer.Stop()
 	s.TopoServer.Stop()
 	s.GraphServer.Stop()
@@ -142,6 +157,11 @@ func (s *Server) Stop() {
 		s.EmbeddedEtcd.Stop()
 	}
 	s.Conn.Close()
+}
+
+func (s *Server) Flush() {
+	logging.GetLogger().Critical("Flush() MUST be called for testing purpose only, not in production")
+	s.FlowTable.ExpireNow()
 }
 
 func (s *Server) FlowSearch(w http.ResponseWriter, r *http.Request) {
@@ -301,11 +321,7 @@ func NewServer(addr string, port int, router *mux.Router, embedEtcd bool) (*Serv
 	}
 	server.RegisterRPCEndpoints()
 	cfgFlowtable_expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
-	if cfgFlowtable_expire < 1 {
-		logging.GetLogger().Errorf("Config flowTable_expire invalid value %d : %s", cfgFlowtable_expire, err.Error())
-		return nil, err
-	}
-	go flowtable.AsyncExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
+	flowtable.RegisterExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
 
 	return server, nil
 }

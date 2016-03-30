@@ -36,6 +36,13 @@ type FlowProbeBundle struct {
 	probe.ProbeBundle
 }
 
+func (fpb *FlowProbeBundle) Flush() {
+	for _, p := range fpb.ProbeBundle.Probes {
+		fprobe := p.(FlowProbe)
+		fprobe.Flush()
+	}
+}
+
 func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph) *FlowProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.flow.probes")
 
