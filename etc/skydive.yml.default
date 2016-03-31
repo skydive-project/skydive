@@ -73,3 +73,9 @@ logging:
   default: INFO
   topology/probes: INFO
   topology/graph: WARNING
+
+auth:
+  # specify the type of authentication mechanism: noauth, basic (default: noauth)
+  # type: basic
+    # basic:
+      # file: /etc/skydive/htpasswd

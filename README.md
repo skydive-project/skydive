@@ -82,6 +82,38 @@ To access to the WebUI of agents or analyzer:
 http://<address>:<port>
 ```
 
+### Skydive client
+
+Skydive client can be used to interact with Skydive Analyzer and Agents.
+Running it without any command will return all the commands available.
+
+```console
+$ skydive client
+
+Usage:
+  skydive client [command]
+
+Available Commands:
+  alert       Manage alerts
+  capture     Manage captures
+
+Flags:
+  -h, --help[=false]: help for client
+      --password="": password auth parameter
+      --username="": username auth parameter
+```
+
+Specifying the subcommand will give the usage of the subcommand.
+
+```console
+$ skydive client capture
+```
+
+If an authentication mechanism is defined in the configuration file the username
+and password parameter have to be used for each command. Environment variables
+SKYDIVE_USERNAME and SKYDIVE_PASSWORD can be used as default value for the
+username/password command line parameters.
+
 ## Start Flow captures
 
 Skydive client allows you to start flow captures on topology Nodes/Interfaces

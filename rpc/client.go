@@ -36,24 +36,32 @@ import (
 )
 
 type RestClient struct {
-	addr   string
-	port   int
-	client *http.Client
+	addr     string
+	port     int
+	username string
+	password string
+	client   *http.Client
 }
 
-func NewClient(addr string, port int) *RestClient {
+func NewClient(addr string, port int, user string, pass string) *RestClient {
 	client := &http.Client{}
-	return &RestClient{client: client, addr: addr, port: port}
+	return &RestClient{
+		client:   client,
+		addr:     addr,
+		port:     port,
+		username: user,
+		password: pass,
+	}
 }
 
-func NewClientFromConfig() *RestClient {
+func NewClientFromConfig(user string, pass string) *RestClient {
 	addr, port, err := config.GetAnalyzerClientAddr()
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
 		os.Exit(1)
 	}
 
-	return NewClient(addr, port)
+	return NewClient(addr, port, user, pass)
 }
 
 func (c *RestClient) getPrefix() string {
@@ -64,6 +72,10 @@ func (c *RestClient) Request(method, urlStr string, body io.Reader) (*http.Respo
 	req, err := http.NewRequest(method, urlStr, body)
 	if err != nil {
 		return nil, err
+	}
+
+	if c.username != "" {
+		req.SetBasicAuth(c.username, c.password)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -79,7 +91,7 @@ func (c *RestClient) List(resource string, values interface{}) error {
 	}
 
 	if resp.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("Failed to retrieve list of %s", resource))
+		return errors.New(fmt.Sprintf("Failed to retrieve list of %s: %s", resource, resp.Status))
 	}
 
 	return json.NewDecoder(resp.Body).Decode(values)
@@ -93,7 +105,7 @@ func (c *RestClient) Get(resource string, id string, value interface{}) error {
 	}
 
 	if resp.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("Failed to retrieve %s", resource))
+		return errors.New(fmt.Sprintf("Failed to retrieve %s: %s", resource, resp.Status))
 	}
 
 	return json.NewDecoder(resp.Body).Decode(value)
@@ -114,7 +126,7 @@ func (c *RestClient) Create(resource string, value interface{}) error {
 	}
 
 	if resp.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("Failed to create %s", resource))
+		return errors.New(fmt.Sprintf("Failed to create %s: %s", resource, resp.Status))
 	}
 
 	return json.NewDecoder(resp.Body).Decode(value)
@@ -135,7 +147,7 @@ func (c *RestClient) Update(resource string, id string, value interface{}) error
 	}
 
 	if resp.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("Failed to update %s", resource))
+		return errors.New(fmt.Sprintf("Failed to update %s: %s", resource, resp.Status))
 	}
 
 	return json.NewDecoder(resp.Body).Decode(value)
@@ -150,7 +162,7 @@ func (c *RestClient) Delete(resource string, id string) error {
 	}
 
 	if resp.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("Failed to delete %s", resource))
+		return errors.New(fmt.Sprintf("Failed to delete %s: %s", resource, resp.Status))
 	}
 
 	return nil

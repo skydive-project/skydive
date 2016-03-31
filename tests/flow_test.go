@@ -205,7 +205,7 @@ func TestSFlowProbePath(t *testing.T) {
 	defer agent.Stop()
 	defer analyzer.Stop()
 
-	client := rpc.NewClientFromConfig()
+	client := rpc.NewClientFromConfig("", "")
 	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
 	if err := client.Create("capture", &capture); err != nil {
 		t.Fatal(err.Error())
@@ -260,7 +260,7 @@ func TestPCAPProbe(t *testing.T) {
 	defer agent.Stop()
 	defer analyzer.Stop()
 
-	client := rpc.NewClientFromConfig()
+	client := rpc.NewClientFromConfig("", "")
 	capture := &api.Capture{ProbePath: "*/br-pcap[Type=bridge]"}
 	if err := client.Create("capture", &capture); err != nil {
 		t.Fatal(err.Error())

@@ -16,6 +16,11 @@
 			"Rev": "5c4df71dfe9ac89ef6287afc05e4c1b16ae65a1e"
 		},
 		{
+			"ImportPath": "github.com/abbot/go-http-auth",
+			"Comment": "v0.3-10-gca62df3",
+			"Rev": "ca62df34b58d26b6a064246c21c0a18f97813173"
+		},
+		{
 			"ImportPath": "github.com/araddon/gou",
 			"Rev": "0c2ab7394d785afff14c983fedce4be70ccc431f"
 		},

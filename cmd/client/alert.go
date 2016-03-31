@@ -52,14 +52,17 @@ var AlertCreate = &cobra.Command{
 	Short: "Create alert",
 	Long:  "Create alert",
 	Run: func(cmd *cobra.Command, args []string) {
-		client := rpc.NewClientFromConfig()
+		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
 		alert := api.NewAlert()
 		setFromFlag(cmd, "name", &alert.Name)
 		setFromFlag(cmd, "description", &alert.Description)
 		setFromFlag(cmd, "select", &alert.Select)
 		setFromFlag(cmd, "action", &alert.Action)
 		setFromFlag(cmd, "test", &alert.Test)
-		client.Create("alert", &alert)
+		if err := client.Create("alert", &alert); err != nil {
+			logging.GetLogger().Errorf(err.Error())
+			os.Exit(1)
+		}
 		printJSON(&alert)
 	},
 }
@@ -70,7 +73,7 @@ var AlertList = &cobra.Command{
 	Long:  "List alerts",
 	Run: func(cmd *cobra.Command, args []string) {
 		var alerts map[string]api.Alert
-		client := rpc.NewClientFromConfig()
+		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
 		if err := client.List("alert", &alerts); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -91,7 +94,7 @@ var AlertGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var alert api.Alert
-		client := rpc.NewClientFromConfig()
+		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
 		if err := client.Get("alert", args[0], &alert); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -111,7 +114,7 @@ var AlertDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client := rpc.NewClientFromConfig()
+		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
 		if err := client.Delete("alert", args[0]); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)

@@ -53,6 +53,7 @@ func init() {
 	cfg.SetDefault("etcd.embedded", true)
 	cfg.SetDefault("etcd.port", 2379)
 	cfg.SetDefault("etcd.servers", []string{"http://127.0.0.1:2379"})
+	cfg.SetDefault("auth.type", "noauth")
 }
 
 func checkStrictPositive(key string) error {
