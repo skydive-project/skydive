@@ -28,7 +28,6 @@ import (
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/rpc"
 
 	"github.com/spf13/cobra"
 )
@@ -56,7 +55,10 @@ var CaptureCreate = &cobra.Command{
 			os.Exit(1)
 		}
 
-		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		if client == nil {
+			os.Exit(1)
+		}
 		capture := api.NewCapture(probePath, bpfFilter)
 		if err := client.Create("capture", &capture); err != nil {
 			logging.GetLogger().Errorf(err.Error())
@@ -72,7 +74,10 @@ var CaptureList = &cobra.Command{
 	Long:  "List captures",
 	Run: func(cmd *cobra.Command, args []string) {
 		var captures map[string]api.Capture
-		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		if client == nil {
+			os.Exit(1)
+		}
 		if err := client.List("capture", &captures); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -93,7 +98,7 @@ var CaptureGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var capture api.Capture
-		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
 		if err := client.Get("capture", args[0], &capture); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -113,7 +118,10 @@ var CaptureDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		if client == nil {
+			os.Exit(1)
+		}
 		if err := client.Delete("capture", args[0]); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)

@@ -23,6 +23,7 @@
 package graph
 
 import (
+	"encoding/base64"
 	"io"
 	"net"
 	"net/http"
@@ -46,6 +47,8 @@ type AsyncClient struct {
 	Addr      string
 	Port      int
 	Path      string
+	Username  string
+	Password  string
 	messages  chan string
 	quit      chan bool
 	wg        sync.WaitGroup
@@ -102,7 +105,13 @@ func (c *AsyncClient) connect() {
 		return
 	}
 
-	c.wsConn, _, err = websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
+	headers := http.Header{"Origin": {endpoint}}
+	if c.Username != "" {
+		e := base64.StdEncoding.EncodeToString([]byte(c.Username + ":" + c.Password))
+		headers["Authorization"] = []string{"Basic " + string(e)}
+	}
+
+	c.wsConn, _, err = websocket.NewClient(conn, u, headers, 1024, 1024)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
@@ -180,11 +189,13 @@ func (c *AsyncClient) Disconnect() {
 	close(c.quit)
 }
 
-func NewAsyncClient(addr string, port int, path string) *AsyncClient {
+func NewAsyncClient(addr string, port int, path string, user string, pass string) *AsyncClient {
 	c := &AsyncClient{
 		Addr:     addr,
 		Port:     port,
 		Path:     path,
+		Username: user,
+		Password: pass,
 		messages: make(chan string, 500),
 		quit:     make(chan bool),
 	}

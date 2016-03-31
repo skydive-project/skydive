@@ -20,130 +20,61 @@
  *
  */
 
-package topology
+package http
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"mime"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
 
+	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 	"github.com/hydrogen18/stoppableListener"
 
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/rpc"
 	"github.com/redhat-cip/skydive/statics"
-	"github.com/redhat-cip/skydive/topology/graph"
 )
+
+type PathPrefix string
+
+type Route struct {
+	Name        string
+	Method      string
+	Path        interface{}
+	HandlerFunc auth.AuthenticatedHandlerFunc
+}
 
 type Server struct {
 	Service string
-	Graph   *graph.Graph
 	Router  *mux.Router
 	Addr    string
 	Port    int
+	Auth    AuthRouteHandlerWrapper
 	lock    sync.Mutex
 	sl      *stoppableListener.StoppableListener
 	wg      sync.WaitGroup
 }
 
-type StaticHandler struct {
-}
-
-func StaticServer() http.Handler {
-	return &StaticHandler{}
-}
-
-func (s *StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	upath := r.URL.Path
-	if strings.HasPrefix(upath, "/") {
-		upath = strings.TrimPrefix(upath, "/")
+func (s *Server) RegisterRoutes(routes []Route) {
+	for _, route := range routes {
+		r := s.Router.
+			Methods(route.Method).
+			Name(route.Name).
+			Handler(s.Auth.Wrap(route.HandlerFunc))
+		switch p := route.Path.(type) {
+		case string:
+			r.Path(p)
+		case PathPrefix:
+			r.PathPrefix(string(p))
+		}
 	}
-
-	content, err := statics.Asset(upath)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to find the asset: %s", upath)
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	ext := filepath.Ext(upath)
-	ct := mime.TypeByExtension(ext)
-
-	w.Header().Set("Content-Type", ct+"; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(content)
-}
-
-func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
-	html, err := statics.Asset("statics/topology.html")
-	if err != nil {
-		logging.GetLogger().Error("Unable to find the topology asset")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	t := template.New("topology template")
-
-	t, err = t.Parse(string(html))
-	if err != nil {
-		panic(err)
-	}
-
-	host, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-
-	data := &struct {
-		Service  string
-		Hostname string
-		Port     int
-	}{
-		Service:  s.Service,
-		Hostname: host,
-		Port:     s.Port,
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	t.Execute(w, data)
-}
-
-func (s *Server) TopologyIndex(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(s.Graph); err != nil {
-		panic(err)
-	}
-}
-
-func (s *Server) RegisterStaticEndpoints() {
-	s.Router.HandleFunc("/", s.serveIndex)
-	s.Router.PathPrefix("/statics").Handler(StaticServer())
-}
-
-func (s *Server) RegisterRPCEndpoints() {
-	routes := []rpc.Route{
-		{
-			"TopologiesIndex",
-			"GET",
-			"/rpc/topology",
-			s.TopologyIndex,
-		},
-	}
-
-	rpc.RegisterRoutes(s.Router, routes)
 }
 
 func (s *Server) ListenAndServe() {
@@ -174,21 +105,85 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-func NewServer(s string, g *graph.Graph, a string, p int, router *mux.Router) *Server {
-	return &Server{
+func serveStatics(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	upath := r.URL.Path
+	if strings.HasPrefix(upath, "/") {
+		upath = strings.TrimPrefix(upath, "/")
+	}
+
+	content, err := statics.Asset(upath)
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to find the asset: %s", upath)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	ext := filepath.Ext(upath)
+	ct := mime.TypeByExtension(ext)
+
+	w.Header().Set("Content-Type", ct+"; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(content)
+}
+
+func (s *Server) serveIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	html, err := statics.Asset("statics/topology.html")
+	if err != nil {
+		logging.GetLogger().Error("Unable to find the topology asset")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	t := template.New("topology template")
+
+	t, err = t.Parse(string(html))
+	if err != nil {
+		panic(err)
+	}
+
+	data := &struct {
+		Service string
+	}{
+		Service: s.Service,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	t.Execute(w, data)
+}
+
+func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc) {
+	s.Router.HandleFunc(path, s.Auth.Wrap(f))
+}
+
+func NewServer(s string, a string, p int, auth AuthRouteHandlerWrapper) *Server {
+	router := mux.NewRouter().StrictSlash(true)
+
+	router.PathPrefix("/statics").Handler(auth.Wrap(serveStatics))
+
+	server := &Server{
 		Service: s,
-		Graph:   g,
 		Router:  router,
 		Addr:    a,
 		Port:    p,
+		Auth:    auth,
 	}
+
+	router.HandleFunc("/", auth.Wrap(server.serveIndex))
+
+	return server
 }
 
-func NewServerFromConfig(s string, g *graph.Graph, router *mux.Router) (*Server, error) {
+func NewServerFromConfig(s string) (*Server, error) {
+	auth, err := NewAuthRouteHandlerFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	addr, port, err := config.GetHostPortAttributes(s, "listen")
 	if err != nil {
 		return nil, errors.New("Configuration error: " + err.Error())
 	}
 
-	return NewServer(s, g, addr, port, router), nil
+	return NewServer(s, addr, port, auth), nil
 }

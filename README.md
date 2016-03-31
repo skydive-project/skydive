@@ -183,7 +183,7 @@ Topology informations are accessible through HTTP or a WebSocket API
 HTTP endpoint:
 
 ```console
-curl http://<address>:<port>/rpc/topology
+curl http://<address>:<port>/api/topology
 ```
 
 WebSocket endpoint:

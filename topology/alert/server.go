@@ -28,10 +28,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
 	"github.com/redhat-cip/skydive/config"
+	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -42,7 +43,6 @@ const (
 
 type Server struct {
 	AlertManager *AlertManager
-	Router       *mux.Router
 	wsServer     *WSServer
 	Host         string
 	wg           sync.WaitGroup
@@ -162,13 +162,13 @@ func (s *WSServer) broadcastMessage(m string) {
 	}
 }
 
-func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, &r.Request, nil)
 	if err != nil {
 		return
 	}
@@ -216,10 +216,9 @@ func (s *Server) Stop() {
 	}
 }
 
-func NewServer(a *AlertManager, router *mux.Router, pongWait time.Duration) *Server {
+func NewServer(a *AlertManager, server *shttp.Server, pongWait time.Duration) *Server {
 	s := &Server{
 		AlertManager: a,
-		Router:       router,
 		wsServer: &WSServer{
 			AlertManager: a,
 			broadcast:    make(chan string, 500),
@@ -232,13 +231,13 @@ func NewServer(a *AlertManager, router *mux.Router, pongWait time.Duration) *Ser
 		},
 	}
 
-	s.Router.HandleFunc("/ws/alert", s.serveMessages)
+	server.HandleFunc("/ws/alert", s.serveMessages)
 
 	return s
 }
 
-func NewServerFromConfig(a *AlertManager, router *mux.Router) (*Server, error) {
+func NewServerFromConfig(a *AlertManager, server *shttp.Server) (*Server, error) {
 	w := config.GetConfig().GetInt("ws_pong_timeout")
 
-	return NewServer(a, router, time.Duration(w)*time.Second), nil
+	return NewServer(a, server, time.Duration(w)*time.Second), nil
 }

@@ -31,4 +31,5 @@ type Filters map[string]interface{}
 type Storage interface {
 	StoreFlows(flows []*flow.Flow) error
 	SearchFlows(filters Filters) ([]*flow.Flow, error)
+	Close()
 }

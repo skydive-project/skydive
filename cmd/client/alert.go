@@ -27,7 +27,6 @@ import (
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/rpc"
 
 	"github.com/spf13/cobra"
 )
@@ -52,7 +51,10 @@ var AlertCreate = &cobra.Command{
 	Short: "Create alert",
 	Long:  "Create alert",
 	Run: func(cmd *cobra.Command, args []string) {
-		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		if client == nil {
+			os.Exit(1)
+		}
 		alert := api.NewAlert()
 		setFromFlag(cmd, "name", &alert.Name)
 		setFromFlag(cmd, "description", &alert.Description)
@@ -73,7 +75,10 @@ var AlertList = &cobra.Command{
 	Long:  "List alerts",
 	Run: func(cmd *cobra.Command, args []string) {
 		var alerts map[string]api.Alert
-		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		if client == nil {
+			os.Exit(1)
+		}
 		if err := client.List("alert", &alerts); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -94,7 +99,7 @@ var AlertGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var alert api.Alert
-		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
 		if err := client.Get("alert", args[0], &alert); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -114,7 +119,10 @@ var AlertDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client := rpc.NewClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		if client == nil {
+			os.Exit(1)
+		}
 		if err := client.Delete("alert", args[0]); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)

@@ -259,7 +259,7 @@ HostLayout.prototype.NodeDetails = function(node) {
   if (graphPath != "") {
     $.ajax({
       dataType: "json",
-      url: '/rpc/flows?ProbeGraphPath=' + graphPath,
+      url: '/api/flow/search?ProbeGraphPath=' + graphPath,
       success: function(data) {
         var json = JSON.stringify(data);
         $("#flows").JSONView(json);
@@ -275,14 +275,14 @@ HostLayout.prototype.NodeDetails = function(node) {
       if (state) {
         $.ajax({
           dataType: "json",
-          url: '/rpc/capture',
+          url: '/api/capture',
           data: JSON.stringify({"ProbePath": graphPath}),
           contentType: "application/json; charset=utf-8",
           method: 'POST',
         });
       } else {
         $.ajax({
-          url: '/rpc/capture/' + graphPath,
+          url: '/api/capture/' + graphPath,
           contentType: "application/json; charset=utf-8",
           method: 'DELETE',
         });
@@ -293,7 +293,7 @@ HostLayout.prototype.NodeDetails = function(node) {
 
   $.ajax({
     dataType: "json",
-    url: '/rpc/capture/' + graphPath,
+    url: '/api/capture/' + graphPath,
     contentType: "application/json; charset=utf-8",
     method: 'GET',
     success: function(data) {
@@ -1018,7 +1018,7 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
   this.svg.selectAll("*").remove();
 
   var _this = this;
-  d3.json("/rpc/conversation/" + layer, function(data) {
+  d3.json("/api/flow/conversation/" + layer, function(data) {
     var matrix = [];
     var nodes = data.nodes;
     var n = nodes.length;
@@ -1153,7 +1153,7 @@ $(document).ready(function() {
       $('.conversation').show();
       $('.discovery').hide();
 
-      conversationLayout.ShowConversation();
+      conversationLayout.ShowConversation("ethernet");
     });
     $('#discovery-btn').click(function() {
       $('#topology').removeClass('active');

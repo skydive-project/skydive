@@ -20,7 +20,7 @@
  *
  */
 
-package rpc
+package http
 
 import (
 	"bytes"
@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
@@ -43,7 +42,12 @@ type RestClient struct {
 	client   *http.Client
 }
 
-func NewClient(addr string, port int, user string, pass string) *RestClient {
+type CrudClient struct {
+	RestClient
+	Root string
+}
+
+func NewRestClient(addr string, port int, user string, pass string) *RestClient {
 	client := &http.Client{}
 	return &RestClient{
 		client:   client,
@@ -54,18 +58,18 @@ func NewClient(addr string, port int, user string, pass string) *RestClient {
 	}
 }
 
-func NewClientFromConfig(user string, pass string) *RestClient {
+func NewRestClientFromConfig(user string, pass string) *RestClient {
 	addr, port, err := config.GetAnalyzerClientAddr()
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
-		os.Exit(1)
+		return nil
 	}
 
-	return NewClient(addr, port, user, pass)
+	return NewRestClient(addr, port, user, pass)
 }
 
 func (c *RestClient) getPrefix() string {
-	return fmt.Sprintf("http://%s:%d/rpc", c.addr, c.port)
+	return fmt.Sprintf("http://%s:%d", c.addr, c.port)
 }
 
 func (c *RestClient) Request(method, urlStr string, body io.Reader) (*http.Response, error) {
@@ -83,8 +87,32 @@ func (c *RestClient) Request(method, urlStr string, body io.Reader) (*http.Respo
 	return c.client.Do(req)
 }
 
-func (c *RestClient) List(resource string, values interface{}) error {
-	url := fmt.Sprintf("%s/%s", c.getPrefix(), resource)
+func NewCrudClient(addr string, port int, user string, pass string, root string) *CrudClient {
+	restClient := NewRestClient(addr, port, user, pass)
+	if restClient == nil {
+		return nil
+	}
+
+	return &CrudClient{
+		RestClient: *restClient,
+		Root:       root,
+	}
+}
+
+func NewCrudClientFromConfig(user string, pass string, root string) *CrudClient {
+	restClient := NewRestClientFromConfig(user, pass)
+	if restClient == nil {
+		return nil
+	}
+
+	return &CrudClient{
+		RestClient: *restClient,
+		Root:       root,
+	}
+}
+
+func (c *CrudClient) List(resource string, values interface{}) error {
+	url := fmt.Sprintf("%s/%s/%s", c.getPrefix(), c.Root, resource)
 	resp, err := c.Request("GET", url, nil)
 	if err != nil {
 		return err
@@ -97,8 +125,8 @@ func (c *RestClient) List(resource string, values interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(values)
 }
 
-func (c *RestClient) Get(resource string, id string, value interface{}) error {
-	url := fmt.Sprintf("%s/%s/%s", c.getPrefix(), resource, id)
+func (c *CrudClient) Get(resource string, id string, value interface{}) error {
+	url := fmt.Sprintf("%s/%s/%s/%s", c.getPrefix(), c.Root, resource, id)
 	resp, err := c.Request("GET", url, nil)
 	if err != nil {
 		return err
@@ -111,14 +139,15 @@ func (c *RestClient) Get(resource string, id string, value interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(value)
 }
 
-func (c *RestClient) Create(resource string, value interface{}) error {
+func (c *CrudClient) Create(resource string, value interface{}) error {
 	s, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
 
 	contentReader := bytes.NewReader(s)
-	url := fmt.Sprintf("%s/%s", c.getPrefix(), resource)
+
+	url := fmt.Sprintf("%s/%s/%s", c.getPrefix(), c.Root, resource)
 
 	resp, err := c.Request("POST", url, contentReader)
 	if err != nil {
@@ -132,14 +161,14 @@ func (c *RestClient) Create(resource string, value interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(value)
 }
 
-func (c *RestClient) Update(resource string, id string, value interface{}) error {
+func (c *CrudClient) Update(resource string, id string, value interface{}) error {
 	s, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
 
 	contentReader := bytes.NewReader(s)
-	url := fmt.Sprintf("%s/%s/%s", c.getPrefix(), resource, id)
+	url := fmt.Sprintf("%s/%s/%s/%s", c.getPrefix(), c.Root, resource, id)
 
 	resp, err := c.Request("PUT", url, contentReader)
 	if err != nil {
@@ -153,8 +182,8 @@ func (c *RestClient) Update(resource string, id string, value interface{}) error
 	return json.NewDecoder(resp.Body).Decode(value)
 }
 
-func (c *RestClient) Delete(resource string, id string) error {
-	url := fmt.Sprintf("%s/%s/%s", c.getPrefix(), resource, id)
+func (c *CrudClient) Delete(resource string, id string) error {
+	url := fmt.Sprintf("%s/%s/%s/%s", c.getPrefix(), c.Root, resource, id)
 
 	resp, err := c.Request("DELETE", url, nil)
 	if err != nil {

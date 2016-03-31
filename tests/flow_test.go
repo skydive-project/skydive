@@ -31,7 +31,6 @@ import (
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/rpc"
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/tests/helper"
 	"github.com/redhat-cip/skydive/tools"
@@ -108,6 +107,9 @@ type TestStorage struct {
 
 func NewTestStorage() *TestStorage {
 	return &TestStorage{flows: make(map[string]*flow.Flow)}
+}
+
+func (s *TestStorage) Close() {
 }
 
 func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
@@ -205,7 +207,7 @@ func TestSFlowProbePath(t *testing.T) {
 	defer agent.Stop()
 	defer analyzer.Stop()
 
-	client := rpc.NewClientFromConfig("", "")
+	client := api.NewCrudClientFromConfig("", "")
 	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
 	if err := client.Create("capture", &capture); err != nil {
 		t.Fatal(err.Error())
@@ -260,7 +262,7 @@ func TestPCAPProbe(t *testing.T) {
 	defer agent.Stop()
 	defer analyzer.Stop()
 
-	client := rpc.NewClientFromConfig("", "")
+	client := api.NewCrudClientFromConfig("", "")
 	capture := &api.Capture{ProbePath: "*/br-pcap[Type=bridge]"}
 	if err := client.Create("capture", &capture); err != nil {
 		t.Fatal(err.Error())

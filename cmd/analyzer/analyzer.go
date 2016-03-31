@@ -27,12 +27,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gorilla/mux"
-
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/storage/elasticsearch"
 
 	"github.com/spf13/cobra"
 )
@@ -45,18 +42,11 @@ var Analyzer = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		logging.GetLogger().Notice("Skydive Analyzer starting...")
 
-		router := mux.NewRouter().StrictSlash(true)
-
-		server, err := analyzer.NewServerFromConfig(router)
+		server, err := analyzer.NewServerFromConfig()
 		if err != nil {
 			logging.GetLogger().Fatalf("Can't start Analyzer : %v", err)
 		}
 
-		storage, err := elasticseach.New()
-		if err != nil {
-			logging.GetLogger().Fatalf("Can't connect to ElasticSearch server : %v", err)
-		}
-		server.SetStorage(storage)
 		go server.ListenAndServe()
 
 		logging.GetLogger().Notice("Skydive Analyzer started !")
@@ -65,7 +55,6 @@ var Analyzer = &cobra.Command{
 		<-ch
 
 		server.Stop()
-		storage.Close()
 
 		logging.GetLogger().Notice("Skydive Analyzer stopped.")
 	},

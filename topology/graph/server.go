@@ -28,10 +28,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
 	"github.com/redhat-cip/skydive/config"
+	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -42,7 +43,6 @@ const (
 
 type Server struct {
 	Graph     *Graph
-	Router    *mux.Router
 	wsServer  *WSServer
 	Host      string
 	wg        sync.WaitGroup
@@ -254,13 +254,13 @@ func (s *Server) OnEdgeDeleted(e *Edge) {
 	s.sendGraphUpdateEvent(WSMessage{"EdgeDeleted", e})
 }
 
-func (s *Server) serveMessages(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, &r.Request, nil)
 	if err != nil {
 		return
 	}
@@ -312,10 +312,9 @@ func (s *Server) Stop() {
 	s.listening.Store(false)
 }
 
-func NewServer(g *Graph, router *mux.Router, pongWait time.Duration) *Server {
+func NewServer(g *Graph, server *shttp.Server, pongWait time.Duration) *Server {
 	s := &Server{
-		Graph:  g,
-		Router: router,
+		Graph: g,
 		wsServer: &WSServer{
 			Graph:      g,
 			broadcast:  make(chan string, 500),
@@ -328,13 +327,13 @@ func NewServer(g *Graph, router *mux.Router, pongWait time.Duration) *Server {
 		},
 	}
 
-	s.Router.HandleFunc("/ws/graph", s.serveMessages)
+	server.HandleFunc("/ws/graph", s.serveMessages)
 
 	return s
 }
 
-func NewServerFromConfig(g *Graph, router *mux.Router) (*Server, error) {
+func NewServerFromConfig(g *Graph, server *shttp.Server) (*Server, error) {
 	w := config.GetConfig().GetInt("ws_pong_timeout")
 
-	return NewServer(g, router, time.Duration(w)*time.Second), nil
+	return NewServer(g, server, time.Duration(w)*time.Second), nil
 }

@@ -26,14 +26,12 @@ import (
 	"os"
 	"sync"
 
-	"github.com/gorilla/mux"
-
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/config"
 	fprobes "github.com/redhat-cip/skydive/flow/probes"
+	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage/etcd"
-	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	tprobes "github.com/redhat-cip/skydive/topology/probes"
 )
@@ -43,12 +41,11 @@ type Agent struct {
 	Gclient               *graph.AsyncClient
 	GraphServer           *graph.Server
 	Root                  *graph.Node
-	TopologyServer        *topology.Server
 	TopologyProbeBundle   *tprobes.TopologyProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
 	FlowProbeBundleLock   sync.Mutex
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
-	Router                *mux.Router
+	HTTPServer            *shttp.Server
 }
 
 func (a *Agent) Start() {
@@ -63,7 +60,10 @@ func (a *Agent) Start() {
 	}
 
 	if addr != "" {
-		a.Gclient = graph.NewAsyncClient(addr, port, "/ws/graph")
+		user := config.GetConfig().GetString("auth.admin_username")
+		pass := config.GetConfig().GetString("auth.admin_password")
+
+		a.Gclient = graph.NewAsyncClient(addr, port, "/ws/graph", user, pass)
 		graph.NewForwarder(a.Gclient, a.Graph)
 		a.Gclient.Connect()
 	}
@@ -97,8 +97,9 @@ func (a *Agent) Start() {
 		a.OnDemandProbeListener.Start()
 	}
 
-	go a.TopologyServer.ListenAndServe()
 	go a.GraphServer.ListenAndServe()
+
+	go a.HTTPServer.ListenAndServe()
 }
 
 func (a *Agent) Stop() {
@@ -106,8 +107,8 @@ func (a *Agent) Stop() {
 	a.FlowProbeBundleLock.Lock()
 	a.FlowProbeBundle.Stop()
 	a.FlowProbeBundleLock.Unlock()
-	a.TopologyServer.Stop()
 	a.GraphServer.Stop()
+	a.HTTPServer.Stop()
 	if a.Gclient != nil {
 		a.Gclient.Disconnect()
 	}
@@ -132,28 +133,24 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
-
-	router := mux.NewRouter().StrictSlash(true)
-
-	server, err := topology.NewServerFromConfig("agent", g, router)
+	hserver, err := shttp.NewServerFromConfig("agent")
 	if err != nil {
 		panic(err)
 	}
 
-	server.RegisterStaticEndpoints()
-	server.RegisterRPCEndpoints()
+	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
 
-	gserver, err := graph.NewServerFromConfig(g, router)
+	api.RegisterTopologyApi("agent", g, hserver)
+
+	gserver, err := graph.NewServerFromConfig(g, hserver)
 	if err != nil {
 		panic(err)
 	}
 
 	return &Agent{
-		Graph:          g,
-		TopologyServer: server,
-		GraphServer:    gserver,
-		Root:           root,
-		Router:         router,
+		Graph:       g,
+		GraphServer: gserver,
+		Root:        root,
+		HTTPServer:  hserver,
 	}
 }

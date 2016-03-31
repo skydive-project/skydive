@@ -31,19 +31,17 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	etcd "github.com/coreos/etcd/client"
-	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
 
+	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/rpc"
 	"github.com/redhat-cip/skydive/version"
 )
 
 type ApiServer struct {
-	Router     *mux.Router
+	HTTPServer *shttp.Server
 	EtcdKeyAPI etcd.KeysAPI
 	handlers   map[string]ApiHandler
-	auth       ApiRouteHandlerWrapper
 }
 
 type HandlerFunc func(w http.ResponseWriter, r *http.Request)
@@ -68,16 +66,16 @@ func (a *ApiServer) AsyncWatch(n string, f ApiWatcherCallback) StoppableWatcher 
 	return a.handlers[n].AsyncWatch(f)
 }
 
-func (a *ApiServer) RegisterHandler(handler ApiHandler) error {
+func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 	name := handler.Name()
 	title := strings.Title(name)
 
-	routes := []rpc.Route{
+	routes := []shttp.Route{
 		{
 			title + "Index",
 			"GET",
-			"/rpc/" + name,
-			a.auth.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+			"/api/" + name,
+			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
 
@@ -85,14 +83,14 @@ func (a *ApiServer) RegisterHandler(handler ApiHandler) error {
 				if err := json.NewEncoder(w).Encode(resources); err != nil {
 					logging.GetLogger().Criticalf("Failed to display %s: %s", name, err.Error())
 				}
-			}),
+			},
 		},
 		{
 			title + "Show",
 			"GET",
-			rpc.PathPrefix(fmt.Sprintf("/rpc/%s/", name)),
-			a.auth.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-				id := r.URL.Path[len(fmt.Sprintf("/rpc/%s/", name)):]
+			shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
+			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
 				if id == "" {
 					w.WriteHeader(http.StatusBadRequest)
 					return
@@ -108,13 +106,13 @@ func (a *ApiServer) RegisterHandler(handler ApiHandler) error {
 				if err := json.NewEncoder(w).Encode(resource); err != nil {
 					logging.GetLogger().Criticalf("Failed to display %s: %s", name, err.Error())
 				}
-			}),
+			},
 		},
 		{
 			title + "Insert",
 			"POST",
-			"/rpc/" + name,
-			a.auth.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+			"/api/" + name,
+			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				resource := handler.New()
 				data, _ := ioutil.ReadAll(r.Body)
 				if err := json.Unmarshal(data, &resource); err != nil {
@@ -138,14 +136,14 @@ func (a *ApiServer) RegisterHandler(handler ApiHandler) error {
 				if _, err := w.Write(data); err != nil {
 					logging.GetLogger().Criticalf("Failed to create %s: %s", name, err.Error())
 				}
-			}),
+			},
 		},
 		{
 			title + "Delete",
 			"DELETE",
-			rpc.PathPrefix(fmt.Sprintf("/rpc/%s/", name)),
-			a.auth.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-				id := r.URL.Path[len(fmt.Sprintf("/rpc/%s/", name)):]
+			shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
+			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
 				if id == "" {
 					w.WriteHeader(http.StatusBadRequest)
 					return
@@ -158,11 +156,11 @@ func (a *ApiServer) RegisterHandler(handler ApiHandler) error {
 
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
-			}),
+			},
 		},
 	}
 
-	rpc.RegisterRoutes(a.Router, routes)
+	a.HTTPServer.RegisterRoutes(routes)
 
 	if _, err := a.EtcdKeyAPI.Set(context.Background(), "/"+name, "", &etcd.SetOptions{Dir: true}); err != nil {
 		if _, err = a.EtcdKeyAPI.Get(context.Background(), "/"+name, nil); err != nil {
@@ -182,46 +180,40 @@ func (a *ApiServer) addAPIRootRoute() {
 		Version: version.Version,
 	}
 
-	routes := []rpc.Route{
+	routes := []shttp.Route{
 		{
 			"Skydive API",
 			"GET",
 			"/api",
-			a.auth.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
 
 				if err := json.NewEncoder(w).Encode(s); err != nil {
 					logging.GetLogger().Criticalf("Failed to display /api: %s", err.Error())
 				}
-			}),
+			},
 		}}
 
-	rpc.RegisterRoutes(a.Router, routes)
+	a.HTTPServer.RegisterRoutes(routes)
 }
 
 func (a *ApiServer) GetHandler(s string) ApiHandler {
 	return a.handlers[s]
 }
 
-func NewApi(router *mux.Router, kapi etcd.KeysAPI) (*ApiServer, error) {
-	auth, err := NewAuthRouterHanlderFromConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	server := &ApiServer{
-		Router:     router,
+func NewApi(server *shttp.Server, kapi etcd.KeysAPI) (*ApiServer, error) {
+	apiServer := &ApiServer{
+		HTTPServer: server,
 		EtcdKeyAPI: kapi,
 		handlers:   make(map[string]ApiHandler),
-		auth:       auth,
 	}
 
 	captureHandler := &BasicApiHandler{
 		ResourceHandler: &CaptureHandler{},
 		EtcdKeyAPI:      kapi,
 	}
-	err = server.RegisterHandler(captureHandler)
+	err := apiServer.RegisterApiHandler(captureHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -230,12 +222,16 @@ func NewApi(router *mux.Router, kapi etcd.KeysAPI) (*ApiServer, error) {
 		ResourceHandler: &AlertHandler{},
 		EtcdKeyAPI:      kapi,
 	}
-	err = server.RegisterHandler(alertHandler)
+	err = apiServer.RegisterApiHandler(alertHandler)
 	if err != nil {
 		return nil, err
 	}
 
-	server.addAPIRootRoute()
+	apiServer.addAPIRootRoute()
 
-	return server, nil
+	return apiServer, nil
+}
+
+func NewCrudClientFromConfig(user string, pass string) *shttp.CrudClient {
+	return shttp.NewCrudClientFromConfig(user, pass, "api")
 }

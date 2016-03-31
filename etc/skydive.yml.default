@@ -22,6 +22,8 @@ analyzer:
   # Default addr is 127.0.0.1
   listen: 8082
   flowtable_expire: 10
+  # specify storage engine
+  # storage: elasticseach
 
 agent:
   # address and port for the agent API, Format: addr:port.
@@ -75,6 +77,11 @@ logging:
   topology/graph: WARNING
 
 auth:
+  # admin username/password needs to be defined when using an authentication
+  # mechanism in order to allow communication between agents and analyzers.
+  # admin_username: admin
+  # admin_password: admin
+
   # specify the type of authentication mechanism: noauth, basic (default: noauth)
   # type: basic
     # basic:

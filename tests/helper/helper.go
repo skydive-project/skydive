@@ -32,8 +32,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/mux"
-
 	"github.com/redhat-cip/skydive/agent"
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
@@ -102,8 +100,7 @@ func StartAgentWithConfig(t *testing.T, conf string) *agent.Agent {
 func StartAgentAndAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage) (*agent.Agent, *analyzer.Server) {
 	InitConfig(t, conf)
 
-	router := mux.NewRouter().StrictSlash(true)
-	server, err := analyzer.NewServerFromConfig(router)
+	server, err := analyzer.NewServerFromConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +111,8 @@ func StartAgentAndAnalyzerWithConfig(t *testing.T, conf string, s storage.Storag
 
 	// waiting for the api endpoint
 	for i := 1; i <= 5; i++ {
-		_, err := http.Get(fmt.Sprintf("http://%s:%d/api", server.Addr, server.Port))
+		url := fmt.Sprintf("http://%s:%d/api", server.HTTPServer.Addr, server.HTTPServer.Port)
+		_, err := http.Get(url)
 		if err == nil {
 			return StartAgent(), server
 		}

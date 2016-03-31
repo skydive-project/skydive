@@ -20,7 +20,7 @@
  *
  */
 
-package api
+package http
 
 import (
 	"net/http"
@@ -30,9 +30,7 @@ import (
 	"github.com/redhat-cip/skydive/config"
 )
 
-type APIWrappedHandlerFunc func(w http.ResponseWriter, r *auth.AuthenticatedRequest)
-
-type ApiRouteHandlerWrapper interface {
+type AuthRouteHandlerWrapper interface {
 	Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc
 }
 
@@ -50,7 +48,7 @@ func NewNoAuthRouteHandlerWrapper() *NoAuthRouteHandlerWrapper {
 	return &NoAuthRouteHandlerWrapper{}
 }
 
-func NewAuthRouterHanlderFromConfig() (ApiRouteHandlerWrapper, error) {
+func NewAuthRouteHandlerFromConfig() (AuthRouteHandlerWrapper, error) {
 	t := config.GetConfig().GetString("auth.type")
 
 	switch t {
@@ -62,7 +60,7 @@ func NewAuthRouterHanlderFromConfig() (ApiRouteHandlerWrapper, error) {
 
 		// TODO(safchain) add more providers
 		h := auth.HtpasswdFileProvider(f)
-		return auth.NewBasicAuthenticator("Basic Realm", h), nil
+		return auth.NewBasicAuthenticator("Skydive Authentication", h), nil
 	default:
 		return NewNoAuthRouteHandlerWrapper(), nil
 	}
