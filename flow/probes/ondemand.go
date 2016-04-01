@@ -57,11 +57,20 @@ func (o *OnDemandProbeListener) probeFromType(n *graph.Node) FlowProbe {
 	}
 
 	probe := o.Probes.GetProbe(probeName)
+	if probe == nil {
+		return nil
+	}
+
 	return probe.(FlowProbe)
 }
 
 func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) {
 	fprobe := o.probeFromType(n)
+	if fprobe == nil {
+		logging.GetLogger().Errorf("Failed to register flow probe, unknown type")
+		return
+	}
+
 	if err := fprobe.RegisterProbe(n, capture); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
 	}
@@ -69,6 +78,10 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 
 func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
 	fprobe := o.probeFromType(n)
+	if fprobe == nil {
+		return
+	}
+
 	if err := fprobe.UnregisterProbe(n); err != nil {
 		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
 	}
