@@ -60,8 +60,13 @@ func (probe *DockerProbe) containerNamespace(pid int) string {
 	return fmt.Sprintf("/proc/%d/ns/net", pid)
 }
 
-func (probe *DockerProbe) registerContainer(info dockerclient.ContainerInfo) {
-	if _, ok := probe.idToPid[info.Id]; ok {
+func (probe *DockerProbe) registerContainer(id string) {
+	if _, ok := probe.idToPid[id]; ok {
+		return
+	}
+	info, err := probe.client.InspectContainer(id)
+	if err != nil {
+		logging.GetLogger().Errorf("Failed to inspect Docker container %s: %s", id, err.Error())
 		return
 	}
 	namespace := probe.containerNamespace(info.State.Pid)
@@ -77,27 +82,22 @@ func (probe *DockerProbe) registerContainer(info dockerclient.ContainerInfo) {
 	probe.idToPid[info.Id] = info.State.Pid
 }
 
-func (probe *DockerProbe) unregisterContainer(info dockerclient.ContainerInfo) {
-	pid, ok := probe.idToPid[info.Id]
+func (probe *DockerProbe) unregisterContainer(id string) {
+	pid, ok := probe.idToPid[id]
 	if !ok {
 		return
 	}
-	delete(probe.idToPid, info.Id)
+	delete(probe.idToPid, id)
 	namespace := probe.containerNamespace(pid)
 	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, pid)
 	probe.Unregister(namespace)
 }
 
 func (probe *DockerProbe) handleDockerEvent(event *dockerclient.Event) {
-	info, err := probe.client.InspectContainer(event.ID)
-	if err != nil {
-		return
-	}
-
 	if event.Status == "start" {
-		probe.registerContainer(*info)
+		probe.registerContainer(event.ID)
 	} else if event.Status == "die" {
-		probe.unregisterContainer(*info)
+		probe.unregisterContainer(event.ID)
 	}
 }
 
@@ -142,14 +142,7 @@ func (probe *DockerProbe) connect() error {
 			if atomic.LoadInt64(&probe.state) != RunningState {
 				break
 			}
-
-			info, err := probe.client.InspectContainer(c.Id)
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to inspect container %s: %s", c.Id, err.Error())
-				continue
-			}
-
-			probe.registerContainer(*info)
+			probe.registerContainer(c.Id)
 		}
 	}()
 
