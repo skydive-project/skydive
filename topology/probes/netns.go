@@ -240,6 +240,10 @@ func (u *NetNSProbe) Stop() {
 }
 
 func NewNetNSProbe(g *graph.Graph, n *graph.Node) *NetNSProbe {
+	if uid := os.Geteuid(); uid != 0 {
+		logging.GetLogger().Fatalf("NetNS probe has to be run as root")
+	}
+
 	return &NetNSProbe{
 		Graph:      g,
 		Root:       n,
