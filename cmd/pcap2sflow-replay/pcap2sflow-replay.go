@@ -23,46 +23,58 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/tools"
+	"github.com/spf13/cobra"
 )
 
-func usage() {
-	fmt.Printf("\nUsage: %s -trace <trace.pcap> [-pps <1000>] [-pktspersflow <5>] <sflow_agent[:port]>\n", filepath.Base(os.Args[0]))
+var (
+	pcapTrace   string
+	pps         uint32
+	pktsPerFlow uint32
+	sflowAddr   string
+	sflowPort   int
+)
+
+var replayCmd = &cobra.Command{
+	Use:          "pcap2sflow-replay",
+	Short:        "",
+	SilenceUsage: true,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if pcapTrace == "" {
+			cmd.Usage()
+			os.Exit(1)
+		}
+		sflowFlag := cmd.LocalFlags().Lookup("sflow-agent").Value.String()
+		sflowTuple := strings.Split(sflowFlag, ":")
+		sflowAddr = sflowTuple[0]
+		sflowPort = 6345
+		if len(sflowTuple) == 2 {
+			if port, err := strconv.Atoi(sflowTuple[1]); err != nil {
+				logging.GetLogger().Fatal("Can't parse UDP port: ", err)
+			} else {
+				sflowPort = port
+			}
+		} else if len(sflowTuple) > 2 {
+			logging.GetLogger().Fatal("Invalid format for sFlow agent address:", sflowFlag)
+		}
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		err := tools.PCAP2SFlowReplay(sflowAddr, sflowPort, pcapTrace, pps, pktsPerFlow)
+		if err != nil {
+			logging.GetLogger().Fatalf("Error during the replay: %s", err.Error())
+		}
+	},
 }
 
 func main() {
-	pcaptrace := flag.String("trace", "", "PCAP trace file to read")
-	pps := flag.Uint("pps", 1000, "Packets per second")
-	pktsPerFlow := flag.Uint("pktspersflow", 5, "Number of Packets per SFlow Datagram")
-	flag.CommandLine.Usage = usage
-	flag.Parse()
-
-	if *pcaptrace == "" {
-		usage()
-		os.Exit(1)
-	}
-
-	sflowAgent := strings.Split(os.Args[len(os.Args)-1], ":")
-	addr := sflowAgent[0]
-	port := 6345
-	if len(sflowAgent) == 2 {
-		var err error
-		port, err = strconv.Atoi(sflowAgent[1])
-		if err != nil {
-			logging.GetLogger().Fatal("Can't parse UDP port ", err)
-		}
-	}
-
-	err := tools.PCAP2SFlowReplay(addr, port, *pcaptrace, uint32(*pps), uint32(*pktsPerFlow))
-	if err != nil {
-		logging.GetLogger().Fatalf("Error during the replay: %s", err.Error())
-	}
+	replayCmd.Flags().StringVarP(&pcapTrace, "trace", "t", "trace.pcap", "PCAP trace file to read")
+	replayCmd.Flags().StringP("sflow-agent", "s", "localhost:6345", "sFlow agent address (addr[:port])")
+	replayCmd.Flags().Uint32Var(&pps, "pps", 1000, "packets per second")
+	replayCmd.Flags().Uint32Var(&pktsPerFlow, "pktspersflow", 5, "number of packets per sFlow datagram")
+	replayCmd.Execute()
 }
