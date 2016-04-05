@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signin to Skydive</title>
+
+    <link rel="stylesheet" href="/statics/css/bootstrap.3.3.5.min.css" />
+    <link rel="stylesheet" href="/statics/css/bootstrap-switch.min.css" />
+    <link rel="stylesheet" href="/statics/css/font-awesome.3.0.2.css" />
+    <link rel="stylesheet" href="/statics/css/jquery-ui.1.10.1.css" media="all" type="text/css" />
+    <link rel="stylesheet" href="/statics/css/jquery.jsonview.css" />
+    <link rel="stylesheet" href="/statics/css/skydive.css" />
+
+    <script src="/statics/js/jquery.1.9.1.min.js" type="text/javascript"></script>
+    <script src="/statics/js/jquery-ui.1.10.1.js" type="text/javascript"></script>
+    <script src="/statics/js/bootstrap.3.3.5.min.js"></script>
+    <script src="/statics/js/bootstrap-switch.min.js"></script>
+    <script src="/statics/js/jquery.jsonview.js"></script>
+    <script src="/statics/js/d3.3.5.10.js"></script>
+
+    <script>
+      // define here globals with values from agent/analyzers
+      var Service = "{{.Service}}";
+    </script>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Skydive <span class="mode">{{.Service}}</span></a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">
+      <form class="form-signin" method="post">
+        <h2 class="form-signin-heading">Please sign in</h2>
+        <label for="login" class="sr-only">Login</label>
+        <input type="text" name="username" id="login" class="form-control" placeholder="Login" required autofocus>
+        <label for="password" class="sr-only">Password</label>
+        <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
+        <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+      </form>
+    </div>
+  </body>
+</html>

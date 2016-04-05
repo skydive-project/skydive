@@ -23,45 +23,103 @@
 package http
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
-	"os"
+	"net/url"
+	"strings"
 
-	auth "github.com/abbot/go-http-auth"
+	"github.com/abbot/go-http-auth"
 	"github.com/redhat-cip/skydive/config"
 )
 
-type AuthRouteHandlerWrapper interface {
-	Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc
+var (
+	WrongCredentials error = errors.New("Wrong credentials")
+)
+
+type AuthenticationOpts struct {
+	Username string
+	Password string
 }
 
-type NoAuthRouteHandlerWrapper struct {
+type AuthenticationClient struct {
+	authOptions   *AuthenticationOpts
+	authenticated bool
+	Addr          string
+	Port          int
+	AuthToken     string
 }
 
-func (h *NoAuthRouteHandlerWrapper) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ar := &auth.AuthenticatedRequest{Request: *r, Username: ""}
-		wrapped(w, ar)
+func (c *AuthenticationClient) getPrefix() string {
+	return fmt.Sprintf("http://%s:%d", c.Addr, c.Port)
+}
+
+func (c *AuthenticationClient) Authenticated() bool {
+	return c.authenticated
+}
+
+func (c *AuthenticationClient) SetHeaders(headers http.Header) {
+	if c.authenticated && c.AuthToken != "" {
+		headers.Set("Cookie", c.Cookie().String())
 	}
 }
 
-func NewNoAuthRouteHandlerWrapper() *NoAuthRouteHandlerWrapper {
-	return &NoAuthRouteHandlerWrapper{}
+func (c *AuthenticationClient) Cookie() *http.Cookie {
+	return &http.Cookie{Name: "authtok", Value: c.AuthToken}
 }
 
-func NewAuthRouteHandlerFromConfig() (AuthRouteHandlerWrapper, error) {
+func (c *AuthenticationClient) Authenticate() error {
+	values := url.Values{"username": {c.authOptions.Username}, "password": {c.authOptions.Password}}
+
+	req, err := http.NewRequest("POST", c.getPrefix()+"/login", strings.NewReader(values.Encode()))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		return fmt.Errorf("Authentication failed: %s", err.Error())
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
+		return fmt.Errorf("Authentication failed: returned code %d", resp.StatusCode)
+	}
+
+	c.authenticated = true
+
+	for _, cookie := range resp.Cookies() {
+		if cookie.Name == "authtok" {
+			c.AuthToken = cookie.Value
+			break
+		}
+	}
+
+	return nil
+}
+
+func NewAuthenticationClient(addr string, port int, authOptions *AuthenticationOpts) *AuthenticationClient {
+	return &AuthenticationClient{
+		Addr:        addr,
+		Port:        port,
+		authOptions: authOptions,
+	}
+}
+
+type AuthenticationBackend interface {
+	Authenticate(username string, password string) (string, error)
+	Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc
+}
+
+func NewAuthenticationBackendFromConfig() (AuthenticationBackend, error) {
 	t := config.GetConfig().GetString("auth.type")
 
 	switch t {
 	case "basic":
-		f := config.GetConfig().GetString("auth.basic.file")
-		if _, err := os.Stat(f); err != nil {
-			return nil, err
-		}
-
-		// TODO(safchain) add more providers
-		h := auth.HtpasswdFileProvider(f)
-		return auth.NewBasicAuthenticator("Skydive Authentication", h), nil
+		return NewBasicAuthenticationBackendFromConfig()
+	case "keystone":
+		return NewKeystoneAuthenticationBackendFromConfig(), nil
 	default:
-		return NewNoAuthRouteHandlerWrapper(), nil
+		return NewNoAuthenticationBackend(), nil
 	}
 }

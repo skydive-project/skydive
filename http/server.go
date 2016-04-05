@@ -25,13 +25,13 @@ package http
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"mime"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
-	"text/template"
 
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
@@ -56,7 +56,7 @@ type Server struct {
 	Router  *mux.Router
 	Addr    string
 	Port    int
-	Auth    AuthRouteHandlerWrapper
+	Auth    AuthenticationBackend
 	lock    sync.Mutex
 	sl      *stoppableListener.StoppableListener
 	wg      sync.WaitGroup
@@ -105,7 +105,7 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-func serveStatics(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func serveStatics(w http.ResponseWriter, r *http.Request) {
 	upath := r.URL.Path
 	if strings.HasPrefix(upath, "/") {
 		upath = strings.TrimPrefix(upath, "/")
@@ -127,39 +127,82 @@ func serveStatics(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 }
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	html, err := statics.Asset("statics/topology.html")
+	s.renderTemplate(w, "topology.html")
+}
+
+func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		loginForm, passwordForm := r.Form["username"], r.Form["password"]
+		if len(loginForm) != 0 && len(passwordForm) != 0 {
+			login, password := loginForm[0], passwordForm[0]
+			if token, err := s.Auth.Authenticate(login, password); err == nil {
+				if token != "" {
+					cookie := &http.Cookie{
+						Name:  "authtok",
+						Value: token,
+					}
+					http.SetCookie(w, cookie)
+				}
+				http.Redirect(w, r, "/", http.StatusFound)
+				return
+			}
+		}
+		unauthorized(w, r)
+	} else {
+		s.renderTemplate(w, "login.html")
+	}
+}
+
+func (s *Server) getTemplateData() interface{} {
+	return &struct {
+		Service string
+	}{
+		Service: s.Service,
+	}
+}
+
+func (s *Server) renderTemplate(w http.ResponseWriter, page string) {
+	html, err := statics.Asset("statics/" + page)
 	if err != nil {
-		logging.GetLogger().Error("Unable to find the topology asset")
+		logging.GetLogger().Error("Unable to find the asset " + page)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	t := template.New("topology template")
-
+	t := template.New(page)
 	t, err = t.Parse(string(html))
 	if err != nil {
 		panic(err)
 	}
 
-	data := &struct {
-		Service string
-	}{
-		Service: s.Service,
-	}
-
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	t.Execute(w, data)
+	t.Execute(w, s.getTemplateData())
+}
+
+func unauthorized(w http.ResponseWriter, r *http.Request) {
+	if acceptHeader, ok := r.Header["Accept"]; ok {
+		for _, contentType := range strings.Split(acceptHeader[0], ",") {
+			if contentType == "text/html" {
+				http.Redirect(w, r, "/login", http.StatusFound)
+				return
+			}
+		}
+	}
+
+	w.WriteHeader(401)
+	w.Write([]byte("401 Unauthorized\n"))
 }
 
 func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc) {
 	s.Router.HandleFunc(path, s.Auth.Wrap(f))
 }
 
-func NewServer(s string, a string, p int, auth AuthRouteHandlerWrapper) *Server {
+func NewServer(s string, a string, p int, auth AuthenticationBackend) *Server {
 	router := mux.NewRouter().StrictSlash(true)
 
-	router.PathPrefix("/statics").Handler(auth.Wrap(serveStatics))
+	router.PathPrefix("/statics").HandlerFunc(serveStatics)
 
 	server := &Server{
 		Service: s,
@@ -169,13 +212,14 @@ func NewServer(s string, a string, p int, auth AuthRouteHandlerWrapper) *Server 
 		Auth:    auth,
 	}
 
+	router.HandleFunc("/login", server.serveLogin)
 	router.HandleFunc("/", auth.Wrap(server.serveIndex))
 
 	return server
 }
 
 func NewServerFromConfig(s string) (*Server, error) {
-	auth, err := NewAuthRouteHandlerFromConfig()
+	auth, err := NewAuthenticationBackendFromConfig()
 	if err != nil {
 		return nil, err
 	}

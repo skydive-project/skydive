@@ -23,7 +23,6 @@
 package graph
 
 import (
-	"encoding/base64"
 	"io"
 	"net"
 	"net/http"
@@ -35,6 +34,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -44,18 +44,17 @@ type EventListener interface {
 }
 
 type AsyncClient struct {
-	Addr      string
-	Port      int
-	Path      string
-	Username  string
-	Password  string
-	messages  chan string
-	quit      chan bool
-	wg        sync.WaitGroup
-	wsConn    *websocket.Conn
-	listeners []EventListener
-	connected atomic.Value
-	running   atomic.Value
+	Addr       string
+	Port       int
+	Path       string
+	AuthClient *shttp.AuthenticationClient
+	messages   chan string
+	quit       chan bool
+	wg         sync.WaitGroup
+	wsConn     *websocket.Conn
+	listeners  []EventListener
+	connected  atomic.Value
+	running    atomic.Value
 }
 
 func (c *AsyncClient) sendMessage(m string) {
@@ -106,9 +105,12 @@ func (c *AsyncClient) connect() {
 	}
 
 	headers := http.Header{"Origin": {endpoint}}
-	if c.Username != "" {
-		e := base64.StdEncoding.EncodeToString([]byte(c.Username + ":" + c.Password))
-		headers["Authorization"] = []string{"Basic " + string(e)}
+	if c.AuthClient != nil {
+		if err := c.AuthClient.Authenticate(); err != nil {
+			logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
+			return
+		}
+		c.AuthClient.SetHeaders(headers)
 	}
 
 	c.wsConn, _, err = websocket.NewClient(conn, u, headers, 1024, 1024)
@@ -189,15 +191,14 @@ func (c *AsyncClient) Disconnect() {
 	close(c.quit)
 }
 
-func NewAsyncClient(addr string, port int, path string, user string, pass string) *AsyncClient {
+func NewAsyncClient(addr string, port int, path string, authClient *shttp.AuthenticationClient) *AsyncClient {
 	c := &AsyncClient{
-		Addr:     addr,
-		Port:     port,
-		Path:     path,
-		Username: user,
-		Password: pass,
-		messages: make(chan string, 500),
-		quit:     make(chan bool),
+		Addr:       addr,
+		Port:       port,
+		Path:       path,
+		AuthClient: authClient,
+		messages:   make(chan string, 500),
+		quit:       make(chan bool),
 	}
 	c.connected.Store(false)
 	c.running.Store(true)

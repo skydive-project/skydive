@@ -27,13 +27,13 @@ import (
 	"fmt"
 	"os"
 
+	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/spf13/cobra"
 )
 
 var (
-	clientUsername string
-	clientPassword string
+	authenticationOpts shttp.AuthenticationOpts
 )
 
 var Client = &cobra.Command{
@@ -59,8 +59,8 @@ func setFromFlag(cmd *cobra.Command, flag string, value *string) {
 }
 
 func init() {
-	Client.PersistentFlags().StringVarP(&clientUsername, "username", "", os.Getenv("SKYDIVE_USERNAME"), "username auth parameter")
-	Client.PersistentFlags().StringVarP(&clientPassword, "password", "", os.Getenv("SKYDIVE_PASSWORD"), "password auth parameter")
+	Client.PersistentFlags().StringVarP(&authenticationOpts.Username, "username", "", os.Getenv("SKYDIVE_USERNAME"), "username auth parameter")
+	Client.PersistentFlags().StringVarP(&authenticationOpts.Password, "password", "", os.Getenv("SKYDIVE_PASSWORD"), "password auth parameter")
 
 	Client.AddCommand(AlertCmd)
 	Client.AddCommand(CaptureCmd)

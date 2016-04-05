@@ -55,7 +55,7 @@ var CaptureCreate = &cobra.Command{
 			os.Exit(1)
 		}
 
-		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if client == nil {
 			os.Exit(1)
 		}
@@ -74,7 +74,7 @@ var CaptureList = &cobra.Command{
 	Long:  "List captures",
 	Run: func(cmd *cobra.Command, args []string) {
 		var captures map[string]api.Capture
-		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if client == nil {
 			os.Exit(1)
 		}
@@ -98,7 +98,7 @@ var CaptureGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var capture api.Capture
-		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if err := client.Get("capture", args[0], &capture); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -118,7 +118,7 @@ var CaptureDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if client == nil {
 			os.Exit(1)
 		}

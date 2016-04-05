@@ -54,6 +54,7 @@ func init() {
 	cfg.SetDefault("etcd.port", 2379)
 	cfg.SetDefault("etcd.servers", []string{"http://127.0.0.1:2379"})
 	cfg.SetDefault("auth.type", "noauth")
+	cfg.SetDefault("auth.keystone.tenant", "admin")
 }
 
 func checkStrictPositive(key string) error {

@@ -60,10 +60,12 @@ func (a *Agent) Start() {
 	}
 
 	if addr != "" {
-		user := config.GetConfig().GetString("auth.admin_username")
-		pass := config.GetConfig().GetString("auth.admin_password")
-
-		a.Gclient = graph.NewAsyncClient(addr, port, "/ws/graph", user, pass)
+		authOptions := &shttp.AuthenticationOpts{
+			Username: config.GetConfig().GetString("agent.analyzer_username"),
+			Password: config.GetConfig().GetString("agent.analyzer_password"),
+		}
+		authClient := shttp.NewAuthenticationClient(addr, port, authOptions)
+		a.Gclient = graph.NewAsyncClient(addr, port, "/ws/graph", authClient)
 		graph.NewForwarder(a.Gclient, a.Graph)
 		a.Gclient.Connect()
 	}

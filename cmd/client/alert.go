@@ -51,7 +51,7 @@ var AlertCreate = &cobra.Command{
 	Short: "Create alert",
 	Long:  "Create alert",
 	Run: func(cmd *cobra.Command, args []string) {
-		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if client == nil {
 			os.Exit(1)
 		}
@@ -75,7 +75,7 @@ var AlertList = &cobra.Command{
 	Long:  "List alerts",
 	Run: func(cmd *cobra.Command, args []string) {
 		var alerts map[string]api.Alert
-		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if client == nil {
 			os.Exit(1)
 		}
@@ -99,7 +99,7 @@ var AlertGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var alert api.Alert
-		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if err := client.Get("alert", args[0], &alert); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -119,7 +119,7 @@ var AlertDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client := api.NewCrudClientFromConfig(clientUsername, clientPassword)
+		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if client == nil {
 			os.Exit(1)
 		}

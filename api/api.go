@@ -232,6 +232,6 @@ func NewApi(server *shttp.Server, kapi etcd.KeysAPI) (*ApiServer, error) {
 	return apiServer, nil
 }
 
-func NewCrudClientFromConfig(user string, pass string) *shttp.CrudClient {
-	return shttp.NewCrudClientFromConfig(user, pass, "api")
+func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) *shttp.CrudClient {
+	return shttp.NewCrudClientFromConfig(authOptions, "api")
 }
