@@ -27,12 +27,16 @@ var nsImg = 'statics/img/ns.png';
 var bridgeImg = 'statics/img/bridge.png';
 var dockerImg = 'statics/img/docker.png';
 var neutronImg = 'statics/img/openstack.png';
+var minus = 'statics/img/minus-outline-16.png';
+var plus = 'statics/img/plus-16.png';
 
 var Node = function(ID) {
   this.ID = ID;
   this.Host = '';
   this.Metadata = {};
   this.Edges = {};
+  this.Visible = true;
+  this.Collapsed = false;
 }
 var alerts = {};
 
@@ -104,6 +108,7 @@ var Edge = function(ID) {
   this.Parent = '';
   this.Child = '';
   this.Metadata = {};
+  this.Visible = true;
 }
 
 Edge.prototype.Type = function() {
@@ -197,8 +202,9 @@ Graph.prototype.InitFromSyncMessage = function(msg) {
 }
 
 var HostLayout = function(ID, graph, svg) {
-  this.width = 680;
-  this.height = 680;
+  this.Width = 680;
+  this.Height = 680;
+
   this.graph = graph;
   this.hullOffset = 22;
   this.elements = {};
@@ -206,7 +212,7 @@ var HostLayout = function(ID, graph, svg) {
   var _this = this;
 
   this.force = d3.layout.force()
-  .size([this.width, this.height])
+  .size([this.Width, this.Height])
   .charge(-900)
   .linkDistance(50)
   .gravity(0.35)
@@ -215,36 +221,52 @@ var HostLayout = function(ID, graph, svg) {
   });
 
   this.container = svg.append("svg")
-  .attr("width", this.width)
-  .attr("height", this.height)
-  .attr("viewBox", "0 0 " + this.width + " " + this.height);
+  .attr("width", this.Width)
+  .attr("height", this.Height)
+  .attr("pointer-events", "all")
+  .attr("viewBox", "0 0 " + this.Width + " " + this.Height);
 
   this.container.append("rect")
-  .attr("x", 10)
-  .attr("y", 10)
-  .attr("width", this.width - 10)
-  .attr("height", this.height - 10)
+  .attr("width", this.Width)
+  .attr("height", this.Height)
   .attr("rx", 10)
-  .attr("class", "host");
+  .attr("class", "host")
+  .style("cursor","move")
+  .call(d3.behavior.zoom().on("zoom", function() {
+    _this.Rescale();
+  }));
 
   this.container.append("text")
-  .attr("x", 30)
-  .attr("y", 45)
+  .attr("x", 20)
+  .attr("y", 35)
   .attr("class", "group")
   .text(ID);
 
-  this.hullG = this.container.append("g");
+  this.view = this.container.append('g');
+
+  this.drag = this.force.stop().drag()
+  .on("dragstart", function(d) {
+      d3.event.sourceEvent.stopPropagation();
+  });
+
+  this.hullG = this.view.append("g")
+  .on("click", function() {
+    d3.event.preventDefault();
+  });
 
   this.nodes = this.force.nodes();
   this.links = this.force.links();
 
-  var elemG = this.container.append("g");
+  var elemG = this.view.append("g");
   this.node = elemG.selectAll(".node");
   this.link = elemG.selectAll(".link");
 }
 
-HostLayout.prototype.GetBBox = function() {
-  return this.container.node().getBBox();
+HostLayout.prototype.Rescale = function() {
+  var trans = d3.event.translate;
+  var scale = d3.event.scale;
+
+  this.view.attr("transform", "translate(" + trans + ")" + " scale(" + scale + ")");
 }
 
 HostLayout.prototype.SetPosition = function(x, y) {
@@ -445,14 +467,28 @@ HostLayout.prototype.EdgeOpacity = function(d) {
   return 1.0;
 }
 
-HostLayout.prototype.NodePicto = function(d) {
+HostLayout.prototype.NodeManagerPicto = function(d) {
   switch(d.Metadata["Manager"]) {
     case "docker":
       return dockerImg;
     case "neutron":
       return neutronImg;
   }
-  switch(d.Metadata["Type"]) {
+}
+
+HostLayout.prototype.NodeManagerStyle = function(d) {
+  switch(d.Metadata["Manager"]) {
+    case "docker":
+      return "";
+    case "neutron":
+      return "";
+  }
+
+  return "visibility: hidden"
+}
+
+HostLayout.prototype.NodePicto = function(d) {
+  switch(d.Type()) {
     case "ovsport":
       return portImg;
     case "bridge":
@@ -468,6 +504,15 @@ HostLayout.prototype.NodePicto = function(d) {
     default:
       return intfImg;
   }
+}
+
+HostLayout.prototype.NodeStatePicto = function(d) {
+  if (d.Type() != "netns")
+    return "";
+
+  if (d.Collapsed)
+    return plus;
+  return minus;
 }
 
 HostLayout.prototype.GetParentNode = function(node) {
@@ -546,6 +591,9 @@ HostLayout.prototype.GetConvexHulls = function() {
       if (isNaN(parseFloat(node.x)))
         continue;
 
+      if (!node.Visible)
+        continue
+
       var l = hulls[ID] || (hulls[ID] = []);
       l.push([node.x - this.hullOffset, node.y - this.hullOffset]);
       l.push([node.x - this.hullOffset, node.y + this.hullOffset]);
@@ -585,6 +633,34 @@ HostLayout.prototype.MouseOverNode = function(d) {
 HostLayout.prototype.MouseOutNode = function(d) {
 }
 
+HostLayout.prototype.CollapseNetNS = function(node) {
+  for (var i in node.Edges) {
+    var edge = node.Edges[i];
+
+    if (edge.Child == node)
+      continue;
+
+    if (Object.keys(edge.Child.Edges).length == 1) {
+      edge.Child.Visible = edge.Child.Visible ? false : true;
+      edge.Visible = edge.Visible ? false : true;
+
+      node.Collapsed = edge.Child.Visible ? false : true;
+    }
+  }
+}
+
+HostLayout.prototype.CollapseNode = function(d) {
+  if (d3.event.defaultPrevented)
+    return;
+
+  switch(d.Type()) {
+    case "netns":
+      this.CollapseNetNS(d);
+  }
+
+  this.Redraw();
+}
+
 HostLayout.prototype.Redraw = function() {
   var _this = this;
 
@@ -605,11 +681,18 @@ HostLayout.prototype.Redraw = function() {
   });
   var nodeEnter = this.node.enter().append("g")
   .attr("class", "node")
-  .call(this.force.drag);
+  .on("click", function(d) {
+    return _this.CollapseNode(d);
+  })
+  .style("cursor","pointer")
+  .call(this.drag);
   this.node.exit().remove();
 
   this.node.attr("class", function(d) {
     return _this.NodeClass(d);
+  })
+  this.node.style("display", function(d) {
+    return !d.Visible ? "none" : "block";
   })
 
   nodeEnter.append("circle")
@@ -640,6 +723,27 @@ HostLayout.prototype.Redraw = function() {
     _this.MouseOutNode(d);
   });
 
+  nodeEnter.append("image")
+  .attr("class", "state")
+  .attr("x", -20)
+  .attr("y", -20)
+  .attr("width", 12)
+  .attr("height", 12)
+  .attr("opacity", 0.7);
+
+  nodeEnter.append("circle")
+  .attr("r", 12)
+  .attr("cx", 14)
+  .attr("cy", 16)
+  .attr("class", "manager")
+  nodeEnter.append("image")
+  .attr("class", "manager")
+  .attr("x", 4)
+  .attr("y", 6)
+  .attr("width", 20)
+  .attr("height", 20)
+  .attr("opacity", 0.9);
+
   nodeEnter.append("text")
   .attr("dx", 22)
   .attr("dy", ".35em")
@@ -666,6 +770,18 @@ HostLayout.prototype.Redraw = function() {
       return _this.GetNodeText(d);
   })
 
+  this.node.select('image.state').attr("xlink:href", function(d) {
+    return _this.NodeStatePicto(d);
+  });
+
+  this.node.select('image.manager').attr("xlink:href", function(d) {
+    return _this.NodeManagerPicto(d);
+  });
+
+  this.node.select('circle.manager').attr("style", function(d) {
+    return _this.NodeManagerStyle(d);
+  });
+
   this.force.start();
 }
 
@@ -690,7 +806,7 @@ Layout.prototype.ReOrderLayout = function() {
 
   for (var host in this.hosts) {
     this.hosts[host].SetPosition(x, 0);
-    x += this.hosts[host].GetBBox().width + 10;
+    x += this.hosts[host].Width + 10;
   }
 
   this.width = x + 10;
@@ -748,24 +864,24 @@ Layout.prototype.InitFromSyncMessage = function(msg) {
   this.graph.InitFromSyncMessage(msg);
 
   for (var ID in this.graph.Nodes)
-  this.AddNode(this.graph.Nodes[ID]);
+    this.AddNode(this.graph.Nodes[ID]);
 
   for (var ID in this.graph.Edges)
-  this.AddEdge(this.graph.Edges[ID]);
+    this.AddEdge(this.graph.Edges[ID]);
 }
 
 Layout.prototype.Clear = function() {
   for (var ID in this.graph.Edges)
-  this.DelEdge(this.graph.Edges[ID]);
+    this.DelEdge(this.graph.Edges[ID]);
 
   for (var ID in this.graph.Nodes)
-  this.DelNode(this.graph.Nodes[ID]);
+    this.DelNode(this.graph.Nodes[ID]);
 
   for (var ID in this.graph.Edges)
-  this.graph.DelEdge(this.graph.Edges[ID]);
+    this.graph.DelEdge(this.graph.Edges[ID]);
 
   for (var ID in this.graph.Nodes)
-  this.graph.DelNode(this.graph.Nodes[ID]);
+    this.graph.DelNode(this.graph.Nodes[ID]);
 }
 
 Layout.prototype.Redraw = function() {
@@ -1125,47 +1241,58 @@ var topologyLayout;
 var conversationLayout;
 var discoveryLayout;
 
+function AgentReady() {
+  $("#flows-panel").hide();
+  $("#conversation").hide();
+  $("#discovery").hide();
+}
+
+function AnalyzerReady() {
+  conversationLayout = new ConversationLayout(".conversation-d3")
+  discoveryLayout = new DiscoveryLayout(".discovery-d3");
+
+  $('#topology-btn').click(function() {
+    $('#topology').addClass('active');
+    $('#conversation').removeClass('active');
+    $('#discovery').removeClass('active');
+
+    $('.topology').show();
+    $('.conversation').hide();
+    $('.discovery').hide();
+  });
+
+  $(".title-capture-switch").hide()
+
+  $('#conversation-btn').click(function() {
+    $('#topology').removeClass('active');
+    $('#conversation').addClass('active');
+    $('#discovery').removeClass('active');
+
+    $('.topology').hide();
+    $('.conversation').show();
+    $('.discovery').hide();
+
+    conversationLayout.ShowConversation("ethernet");
+  });
+  $('#discovery-btn').click(function() {
+    $('#topology').removeClass('active');
+    $('#conversation').removeClass('active');
+    $('#discovery').addClass('active');
+
+    $('.topology').hide();
+    $('.conversation').hide();
+    $('.discovery').show();
+
+    discoveryLayout.DrawChart();
+  });
+}
+
 $(document).ready(function() {
-  if ("{{.Service}}" == "agent") {
-    $("#flows-panel").hide();
-    $("#conversation").hide();
-    $("#discovery").hide();
+  if (Service == "agent") {
+    AgentReady();
   }
   else {
-    $('#topology-btn').click(function() {
-      $('#topology').addClass('active');
-      $('#conversation').removeClass('active');
-      $('#discovery').removeClass('active');
-
-      $('.topology').show();
-      $('.conversation').hide();
-      $('.discovery').hide();
-    });
-
-    $(".title-capture-switch").hide()
-
-    $('#conversation-btn').click(function() {
-      $('#topology').removeClass('active');
-      $('#conversation').addClass('active');
-      $('#discovery').removeClass('active');
-
-      $('.topology').hide();
-      $('.conversation').show();
-      $('.discovery').hide();
-
-      conversationLayout.ShowConversation("ethernet");
-    });
-    $('#discovery-btn').click(function() {
-      $('#topology').removeClass('active');
-      $('#conversation').removeClass('active');
-      $('#discovery').addClass('active');
-
-      $('.topology').hide();
-      $('.conversation').hide();
-      $('.discovery').show();
-
-      discoveryLayout.DrawChart();
-    });
+    AnalyzerReady();
   }
 
   $('.content').resizable({
@@ -1184,10 +1311,10 @@ $(document).ready(function() {
     }
   });
 
+  $('.conversation').hide();
+  $('.discovery').hide();
+
   topologyLayout = new Layout(".topology-d3");
   topologyLayout.StartLiveUpdate();
   topologyLayout.StartLiveUpdateAlert();
-
-  conversationLayout = new ConversationLayout(".conversation-d3")
-  discoveryLayout = new DiscoveryLayout(".discovery-d3");
 });

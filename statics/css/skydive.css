@@ -32,7 +32,7 @@ label {
   width: 100%;
   height: 100%;
   text-align: center;
-  padding-top: 15px;
+  padding-top: 25px;
 }
 
 .node {
@@ -216,4 +216,10 @@ path.hull {
 
 .bootstrap-switch-skydive-off {
   background-color: rgb(253, 208, 162);
+}
+
+circle.manager {
+  opacity: 0.9;
+  fill: #111;
+  stroke: #eee;
 }
