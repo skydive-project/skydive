@@ -44,6 +44,7 @@ var Agent = &cobra.Command{
 		agent := agent.NewAgent()
 		agent.Start()
 
+		logging.GetLogger().Notice("Skydive Agent started")
 		ch := make(chan os.Signal)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch

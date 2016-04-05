@@ -57,10 +57,9 @@ var Analyzer = &cobra.Command{
 			logging.GetLogger().Fatalf("Can't connect to ElasticSearch server : %v", err)
 		}
 		server.SetStorage(storage)
-
-		logging.GetLogger().Notice("Skydive Analyzer started !")
 		go server.ListenAndServe()
 
+		logging.GetLogger().Notice("Skydive Analyzer started !")
 		ch := make(chan os.Signal)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
