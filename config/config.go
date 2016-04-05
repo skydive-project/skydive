@@ -39,6 +39,7 @@ func init() {
 	cfg.SetDefault("agent.analyzers", "127.0.0.1:8082")
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.flowtable_expire", 10)
+	cfg.SetDefault("agent.flowtable_update", 30)
 	cfg.SetDefault("ovs.ovsdb", "127.0.0.1:6400")
 	cfg.SetDefault("graph.backend", "memory")
 	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
@@ -64,6 +65,10 @@ func checkStrictPositive(key string) error {
 
 func checkConfig() error {
 	if err := checkStrictPositive("agent.flowtable_expire"); err != nil {
+		return err
+	}
+
+	if err := checkStrictPositive("agent.flowtable_update"); err != nil {
 		return err
 	}
 
