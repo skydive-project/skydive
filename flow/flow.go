@@ -250,7 +250,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 
 func FlowFromGoPacket(ft *FlowTable, packet *gopacket.Packet, probePath string) *Flow {
 	key := NewFlowKeyFromGoPacket(packet)
-	flow, _ := ft.GetFlow(key.String())
+	flow, _ := ft.GetOrCreateFlow(key.String())
 	flow.ProbeGraphPath = probePath
 	flow.fillFromGoPacket(packet)
 	return flow

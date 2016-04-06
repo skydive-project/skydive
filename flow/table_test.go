@@ -114,10 +114,11 @@ func generateFlows(t *testing.T, ft *FlowTable) []*Flow {
 		} else {
 			packet = forgePacket(t, int64(i), ETH, IPv4, UDP)
 		}
-		flow, new := ft.GetFlow(string(i))
+		flow, new := ft.GetOrCreateFlow(string(i))
 		if !new {
 			t.Fail()
 		}
+
 		err := flow.fillFromGoPacket(packet)
 		if err != nil {
 			t.Error("fillFromGoPacket : " + err.Error())
@@ -262,37 +263,37 @@ func TestFlowTable_AsyncUpdated(t *testing.T) {
 	t.Skip()
 }
 
-func TestFlowTable_IsExist(t *testing.T) {
+func TestFlowTable_GetFlow(t *testing.T) {
 	ft := NewFlowTableSimple(t)
 	flow := &Flow{}
 	flow.UUID = "1234"
-	if ft.IsExist(flow) == false {
+	if ft.GetFlow(flow.UUID) == nil {
 		t.Fail()
 	}
 	flow.UUID = "12345"
-	if ft.IsExist(flow) == true {
+	if ft.GetFlow(flow.UUID) != nil {
 		t.Fail()
 	}
 }
 
-func TestFlowTable_GetFlow(t *testing.T) {
+func TestFlowTable_GetOrCreateFlow(t *testing.T) {
 	ft := NewFlowTableComplex(t)
 	flows := generateFlows(t, ft)
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
 	}
 	forgePacket(t, int64(1234), ETH, IPv4, TCP)
-	_, new := ft.GetFlow("abcd")
+	_, new := ft.GetOrCreateFlow("abcd")
 	if !new {
 		t.Error("Collision in the FlowTable, should be new")
 	}
 	forgePacket(t, int64(1234), ETH, IPv4, TCP)
-	_, new = ft.GetFlow("abcd")
+	_, new = ft.GetOrCreateFlow("abcd")
 	if new {
 		t.Error("Collision in the FlowTable, should be an update")
 	}
 	forgePacket(t, int64(1234), ETH, IPv4, TCP)
-	_, new = ft.GetFlow("abcde")
+	_, new = ft.GetOrCreateFlow("abcde")
 	if !new {
 		t.Error("Collision in the FlowTable, should be a new flow")
 	}

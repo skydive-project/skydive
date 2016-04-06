@@ -56,8 +56,7 @@ func (ft *FlowTable) String() string {
 func (ft *FlowTable) Update(flows []*Flow) {
 	ft.lock.Lock()
 	for _, f := range flows {
-		_, found := ft.table[f.UUID]
-		if !found {
+		if _, found := ft.table[f.UUID]; !found {
 			ft.table[f.UUID] = f
 		} else if f.UUID != ft.table[f.UUID].UUID {
 			logging.GetLogger().Errorf("FlowTable Collision %s %s", f.UUID, ft.table[f.UUID].UUID)
@@ -66,38 +65,41 @@ func (ft *FlowTable) Update(flows []*Flow) {
 	ft.lock.Unlock()
 }
 
-func (ft *FlowTable) IsExist(f *Flow) bool {
+func (ft *FlowTable) GetFlow(key string) *Flow {
 	ft.lock.RLock()
-	_, found := ft.table[f.UUID]
-	ft.lock.RUnlock()
-	return found
+	defer ft.lock.RUnlock()
+	if flow, found := ft.table[key]; found {
+		return flow
+	}
+
+	return nil
 }
 
-func (ft *FlowTable) GetFlow(key string) (flow *Flow, new bool) {
+func (ft *FlowTable) GetOrCreateFlow(key string) (*Flow, bool) {
 	ft.lock.Lock()
-	flow, found := ft.table[key]
-	if found == false {
-		flow = &Flow{}
-		ft.table[key] = flow
+	defer ft.lock.Unlock()
+	if flow, found := ft.table[key]; found {
+		return flow, false
 	}
-	ft.lock.Unlock()
-	return flow, !found
+
+	new := &Flow{}
+	ft.table[key] = new
+
+	return new, true
 }
 
 func (ft *FlowTable) JSONFlowConversationEthernetPath(EndpointType FlowEndpointType) string {
-	str := ""
-	str += "{"
 	//	{"nodes":[{"name":"Myriel","group":1}, ... ],"links":[{"source":1,"target":0,"value":1},...]}
 
-	var strNodes, strLinks string
-	strNodes += "\"nodes\":["
-	strLinks += "\"links\":["
+	nodes := []string{}
+	links := []string{}
+
 	pathMap := make(map[string]int)
 	layerMap := make(map[string]int)
+
 	ft.lock.RLock()
 	for _, f := range ft.table {
-		_, found := pathMap[f.LayersPath]
-		if !found {
+		if _, found := pathMap[f.LayersPath]; found {
 			pathMap[f.LayersPath] = len(pathMap)
 		}
 
@@ -106,24 +108,24 @@ func (ft *FlowTable) JSONFlowConversationEthernetPath(EndpointType FlowEndpointT
 			continue
 		}
 
-		if _, found := layerMap[layerFlow.AB.Value]; !found {
-			layerMap[layerFlow.AB.Value] = len(layerMap)
-			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", layerFlow.AB.Value, pathMap[f.LayersPath])
+		AB := layerFlow.AB.Value
+		BA := layerFlow.BA.Value
+
+		if _, found := layerMap[AB]; !found {
+			layerMap[AB] = len(layerMap)
+			nodes = append(nodes, fmt.Sprintf(`{"name":"%s","group":%d}`, AB, pathMap[f.LayersPath]))
 		}
-		if _, found := layerMap[layerFlow.BA.Value]; !found {
-			layerMap[layerFlow.BA.Value] = len(layerMap)
-			strNodes += fmt.Sprintf("{\"name\":\"%s\",\"group\":%d},", layerFlow.BA.Value, pathMap[f.LayersPath])
+		if _, found := layerMap[BA]; !found {
+			layerMap[BA] = len(layerMap)
+			nodes = append(nodes, fmt.Sprintf(`{"name":"%s","group":%d}`, BA, pathMap[f.LayersPath]))
 		}
-		strLinks += fmt.Sprintf("{\"source\":%d,\"target\":%d,\"value\":%d},", layerMap[layerFlow.AB.Value], layerMap[layerFlow.BA.Value], layerFlow.AB.Bytes+layerFlow.BA.Bytes)
+
+		link := fmt.Sprintf(`{"source":%d,"target":%d,"value":%d}`, layerMap[AB], layerMap[BA], layerFlow.AB.Bytes+layerFlow.BA.Bytes)
+		links = append(links, link)
 	}
 	ft.lock.RUnlock()
-	strNodes = strings.TrimRight(strNodes, ",")
-	strNodes += "]"
-	strLinks = strings.TrimRight(strLinks, ",")
-	strLinks += "]"
-	str += strNodes + "," + strLinks
-	str += "}"
-	return str
+
+	return fmt.Sprintf(`{"nodes":[%s], "links":[%s]}`, strings.Join(nodes, ","), strings.Join(links, ","))
 }
 
 type DiscoType int
@@ -170,7 +172,9 @@ func NewDiscoNode() *DiscoNode {
 }
 
 func (ft *FlowTable) JSONFlowDiscovery(DiscoType DiscoType) string {
-	// {"name":"root","children":[{"name":"Ethernet","children":[{"name":"IPv4","children":[{"name":"UDP","children":[{"name":"Payload","size":360,"children":[]}]},{"name":"TCP","children":[{"name":"Payload","size":240,"children":[]}]}]}]}]}
+	// {"name":"root","children":[{"name":"Ethernet","children":[{"name":"IPv4","children":
+	//		[{"name":"UDP","children":[{"name":"Payload","size":360,"children":[]}]},
+	//     {"name":"TCP","children":[{"name":"Payload","size":240,"children":[]}]}]}]}]}
 
 	pathMap := make(map[string]FlowEndpointStatistics)
 
@@ -268,7 +272,6 @@ func (ft *FlowTable) SelectLayer(endpointType FlowEndpointType, list []string) [
 /*
  * Following function are FlowTable manager helpers
  */
-
 func (ft *FlowTable) Expire(now time.Time) {
 	timepoint := now.Unix() - int64((ft.manager.expire.duration).Seconds())
 	ft.lock.Lock()
