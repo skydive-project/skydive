@@ -914,7 +914,7 @@ DiscoveryLayout.prototype.DrawChart = function(type) {
   _this = this;
   //assign bytes as default if no type given.
   type = (type === undefined) ? "bytes" : type;
-  d3.json("/rpc/discovery/" + type, function(root) {
+  d3.json("/api/flow/discovery/" + type, function(root) {
     var path = _this.svg.datum(root).selectAll("path")
       .data(_this.partition.nodes)
       .enter().append("path")
