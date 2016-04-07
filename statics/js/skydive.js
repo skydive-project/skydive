@@ -1026,6 +1026,7 @@ var DiscoveryLayout = function(selector) {
 }
 
 DiscoveryLayout.prototype.DrawChart = function(type) {
+  var totalSize = 0;
   this.svg.selectAll("*").remove();
   var _this = this;
   //assign bytes as default if no type given.
@@ -1039,7 +1040,9 @@ DiscoveryLayout.prototype.DrawChart = function(type) {
       .style("stroke", "#fff")
       .style("fill", function(d) { return _this.color((d.children ? d : d.parent).name); })
       .style("fill-rule", "evenodd")
+      .on("mouseover", mouseover)
       .each(stash);
+    totalSize = path.node().__data__.value;
 
     d3.selectAll("#mode").on("change", function change() {
       var value = this.value === "count"
@@ -1053,6 +1056,20 @@ DiscoveryLayout.prototype.DrawChart = function(type) {
         .attrTween("d", arcTween);
     });
   });
+
+  // On mouseover function
+  function mouseover(d) {
+    var percentage = (100 * d.value / totalSize).toPrecision(3) + " %";
+    var protocol_data = {
+                         "Name": d.name,
+                         "Percentage": percentage,
+                         "Size": d.size,
+                         "Value": d.value,
+                         "Depth": d.depth
+                         };
+    var json = JSON.stringify(protocol_data);
+    $("#protocol_data").JSONView(json);
+  }
 
   // Stash the old values for transition.
   function stash(d) {
