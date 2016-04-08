@@ -55,7 +55,7 @@ function install_go {
         curl -s -L https://storage.googleapis.com/golang/go$GO_VERSION.linux-$arch.tar.gz | tar -C `dirname $GOROOT` -xzf -
     fi
     export GOROOT=$GOROOT
-    export PATH=$PATH:$GOROOT/bin
+    export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
     export GOPATH=$GOPATH
 }
 
@@ -67,7 +67,16 @@ function pre_install_skydive {
 
 function install_skydive {
     if [ ! -f $GOPATH/bin/skydive ]; then
-        go get github.com/redhat-cip/skydive/cmd/skydive
+        if is_fedora ; then
+            install_package libpcap-devel
+        else
+            install_package libpcap-dev
+        fi
+        SKYDIVE_SRC=$GOPATH/src/github.com/redhat-cip
+        mkdir -p $SKYDIVE_SRC
+        ln -s $DEST/skydive $SKYDIVE_SRC/skydive
+        cd $SKYDIVE_SRC/skydive
+        make install
     fi
 }
 
