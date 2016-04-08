@@ -100,14 +100,14 @@ func forgeTestPacket(t *testing.T, seed int64, protos ...ProtocolType) *gopacket
 	return &gpacket
 }
 
-func GenerateTestFlows(t *testing.T, ft *FlowTable, probePath string) []*Flow {
+func GenerateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, probePath string) []*Flow {
 	flows := []*Flow{}
-	for i := 0; i < 10; i++ {
+	for i := int64(0); i < 10; i++ {
 		var packet *gopacket.Packet
 		if i < 5 {
-			packet = forgeTestPacket(t, int64(i), ETH, IPv4, TCP)
+			packet = forgeTestPacket(t, i+baseSeed*10, ETH, IPv4, TCP)
 		} else {
-			packet = forgeTestPacket(t, int64(i), ETH, IPv4, UDP)
+			packet = forgeTestPacket(t, i+baseSeed*10, ETH, IPv4, UDP)
 		}
 		flow := FlowFromGoPacket(ft, packet, probePath)
 		if flow == nil {
@@ -142,7 +142,6 @@ func NewTestFlowTableSimple(t *testing.T) *FlowTable {
 
 func NewFlowTableComplex(t *testing.T) *FlowTable {
 	ft := NewFlowTable()
-	flows := GenerateTestFlows(t, ft, "probe")
-	ft = ft.NewFlowTableFromFlows(flows)
+	GenerateTestFlows(t, ft, 0, "probe")
 	return ft
 }

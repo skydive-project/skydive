@@ -122,6 +122,23 @@ func TestFlowTable_AsyncUpdated(t *testing.T) {
 	t.Skip()
 }
 
+func TestFlowTable_LookupFlowByProbePath(t *testing.T) {
+	ft := NewFlowTable()
+	GenerateTestFlows(t, ft, 1, "probe1")
+	GenerateTestFlows(t, ft, 2, "probe2")
+
+	flows := ft.LookupFlowsByProbePath("probe1")
+	if len(flows) == 0 {
+		t.Errorf("Should have flows with from probe1 returned")
+	}
+
+	for _, f := range flows {
+		if f.ProbeGraphPath != "probe1" {
+			t.Errorf("Only flow with probe1 as probepath are expected, got %s", f.ProbeGraphPath)
+		}
+	}
+}
+
 func TestFlowTable_GetFlow(t *testing.T) {
 	ft := NewTestFlowTableSimple(t)
 	flow := &Flow{}
@@ -137,7 +154,7 @@ func TestFlowTable_GetFlow(t *testing.T) {
 
 func TestFlowTable_GetOrCreateFlow(t *testing.T) {
 	ft := NewFlowTableComplex(t)
-	flows := GenerateTestFlows(t, ft, "probe1")
+	flows := GenerateTestFlows(t, ft, 0, "probe1")
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
 	}

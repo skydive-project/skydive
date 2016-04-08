@@ -58,6 +58,19 @@ func (ft *FlowTable) Update(flows []*Flow) {
 	ft.lock.Unlock()
 }
 
+func (ft *FlowTable) LookupFlowsByProbePath(p string) []*Flow {
+	ft.lock.RLock()
+	defer ft.lock.RUnlock()
+
+	flows := []*Flow{}
+	for _, f := range ft.table {
+		if f.ProbeGraphPath == p {
+			flows = append(flows, &*f)
+		}
+	}
+	return flows
+}
+
 func (ft *FlowTable) GetFlows() []*Flow {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
