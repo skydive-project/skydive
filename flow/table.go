@@ -24,11 +24,8 @@ package flow
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"time"
-
-	"encoding/json"
 
 	"github.com/redhat-cip/skydive/logging"
 )
@@ -58,11 +55,20 @@ func (ft *FlowTable) Update(flows []*Flow) {
 	for _, f := range flows {
 		if _, found := ft.table[f.UUID]; !found {
 			ft.table[f.UUID] = f
-		} else if f.UUID != ft.table[f.UUID].UUID {
-			logging.GetLogger().Errorf("FlowTable Collision %s %s", f.UUID, ft.table[f.UUID].UUID)
 		}
 	}
 	ft.lock.Unlock()
+}
+
+func (ft *FlowTable) GetFlows() []*Flow {
+	ft.lock.RLock()
+	defer ft.lock.RUnlock()
+
+	flows := []*Flow{}
+	for _, f := range ft.table {
+		flows = append(flows, &*f)
+	}
+	return flows
 }
 
 func (ft *FlowTable) GetFlow(key string) *Flow {
@@ -86,138 +92,6 @@ func (ft *FlowTable) GetOrCreateFlow(key string) (*Flow, bool) {
 	ft.table[key] = new
 
 	return new, true
-}
-
-func (ft *FlowTable) JSONFlowConversationEthernetPath(EndpointType FlowEndpointType) string {
-	//	{"nodes":[{"name":"Myriel","group":1}, ... ],"links":[{"source":1,"target":0,"value":1},...]}
-
-	nodes := []string{}
-	links := []string{}
-
-	pathMap := make(map[string]int)
-	layerMap := make(map[string]int)
-
-	ft.lock.RLock()
-	for _, f := range ft.table {
-		if _, found := pathMap[f.LayersPath]; found {
-			pathMap[f.LayersPath] = len(pathMap)
-		}
-
-		layerFlow := f.GetStatistics().Endpoints[EndpointType.Value()]
-		if layerFlow == nil {
-			continue
-		}
-
-		AB := layerFlow.AB.Value
-		BA := layerFlow.BA.Value
-
-		if _, found := layerMap[AB]; !found {
-			layerMap[AB] = len(layerMap)
-			nodes = append(nodes, fmt.Sprintf(`{"name":"%s","group":%d}`, AB, pathMap[f.LayersPath]))
-		}
-		if _, found := layerMap[BA]; !found {
-			layerMap[BA] = len(layerMap)
-			nodes = append(nodes, fmt.Sprintf(`{"name":"%s","group":%d}`, BA, pathMap[f.LayersPath]))
-		}
-
-		link := fmt.Sprintf(`{"source":%d,"target":%d,"value":%d}`, layerMap[AB], layerMap[BA], layerFlow.AB.Bytes+layerFlow.BA.Bytes)
-		links = append(links, link)
-	}
-	ft.lock.RUnlock()
-
-	return fmt.Sprintf(`{"nodes":[%s], "links":[%s]}`, strings.Join(nodes, ","), strings.Join(links, ","))
-}
-
-type DiscoType int
-
-const (
-	BYTES DiscoType = 1 + iota
-	PACKETS
-)
-
-type DiscoNode struct {
-	name     string
-	size     uint64
-	children map[string]*DiscoNode
-}
-
-func (d *DiscoNode) MarshalJSON() ([]byte, error) {
-	str := "{"
-	str += fmt.Sprintf(`"name":"%s",`, d.name)
-	if d.size > 0 {
-		str += fmt.Sprintf(`"size": %d,`, d.size)
-	}
-	str += fmt.Sprintf(`"children": [`)
-	idx := 0
-	for _, child := range d.children {
-		bytes, err := child.MarshalJSON()
-		if err != nil {
-			return []byte(str), err
-		}
-		str += string(bytes)
-		if idx != len(d.children)-1 {
-			str += ","
-		}
-		idx++
-	}
-	str += "]"
-	str += "}"
-	return []byte(str), nil
-}
-
-func NewDiscoNode() *DiscoNode {
-	return &DiscoNode{
-		children: make(map[string]*DiscoNode),
-	}
-}
-
-func (ft *FlowTable) JSONFlowDiscovery(DiscoType DiscoType) string {
-	// {"name":"root","children":[{"name":"Ethernet","children":[{"name":"IPv4","children":
-	//		[{"name":"UDP","children":[{"name":"Payload","size":360,"children":[]}]},
-	//     {"name":"TCP","children":[{"name":"Payload","size":240,"children":[]}]}]}]}]}
-
-	pathMap := make(map[string]FlowEndpointStatistics)
-
-	ft.lock.RLock()
-	for _, f := range ft.table {
-		p, _ := pathMap[f.LayersPath]
-		p.Bytes += f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()].AB.Bytes
-		p.Bytes += f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()].BA.Bytes
-		p.Packets += f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()].AB.Packets
-		p.Packets += f.GetStatistics().Endpoints[FlowEndpointType_ETHERNET.Value()].BA.Packets
-		pathMap[f.LayersPath] = p
-	}
-	ft.lock.RUnlock()
-
-	root := NewDiscoNode()
-	root.name = "root"
-	for path, stat := range pathMap {
-		node := root
-		layers := strings.Split(path, "/")
-		for i, layer := range layers {
-			l, found := node.children[layer]
-			if !found {
-				node.children[layer] = NewDiscoNode()
-				l = node.children[layer]
-				l.name = layer
-			}
-			if len(layers)-1 == i {
-				switch DiscoType {
-				case BYTES:
-					l.size = stat.Bytes
-				case PACKETS:
-					l.size = stat.Packets
-				}
-			}
-			node = l
-		}
-	}
-
-	bytes, err := json.Marshal(root)
-	if err != nil {
-		logging.GetLogger().Fatal(err)
-	}
-	return string(bytes)
 }
 
 func (ft *FlowTable) NewFlowTableFromFlows(flows []*Flow) *FlowTable {

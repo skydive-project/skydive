@@ -24,12 +24,16 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
+
 	"github.com/redhat-cip/skydive/flow"
 	shttp "github.com/redhat-cip/skydive/http"
+	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage"
 )
 
@@ -39,7 +43,7 @@ type FlowApi struct {
 	Storage   storage.Storage
 }
 
-func (f *FlowApi) FlowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	filters := make(storage.Filters)
 	for k, v := range r.URL.Query() {
 		filters[k] = v[0]
@@ -70,7 +74,45 @@ func (f *FlowApi) serveDataIndex(w http.ResponseWriter, r *auth.AuthenticatedReq
 	w.Write([]byte(message))
 }
 
-func (f *FlowApi) ConversationLayer(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (f *FlowApi) jsonFlowConversationEthernetPath(EndpointType flow.FlowEndpointType) string {
+	//	{"nodes":[{"name":"Myriel","group":1}, ... ],"links":[{"source":1,"target":0,"value":1},...]}
+
+	nodes := []string{}
+	links := []string{}
+
+	pathMap := make(map[string]int)
+	layerMap := make(map[string]int)
+
+	for _, f := range f.FlowTable.GetFlows() {
+		if _, found := pathMap[f.LayersPath]; found {
+			pathMap[f.LayersPath] = len(pathMap)
+		}
+
+		layerFlow := f.GetStatistics().Endpoints[EndpointType.Value()]
+		if layerFlow == nil {
+			continue
+		}
+
+		AB := layerFlow.AB.Value
+		BA := layerFlow.BA.Value
+
+		if _, found := layerMap[AB]; !found {
+			layerMap[AB] = len(layerMap)
+			nodes = append(nodes, fmt.Sprintf(`{"name":"%s","group":%d}`, AB, pathMap[f.LayersPath]))
+		}
+		if _, found := layerMap[BA]; !found {
+			layerMap[BA] = len(layerMap)
+			nodes = append(nodes, fmt.Sprintf(`{"name":"%s","group":%d}`, BA, pathMap[f.LayersPath]))
+		}
+
+		link := fmt.Sprintf(`{"source":%d,"target":%d,"value":%d}`, layerMap[AB], layerMap[BA], layerFlow.AB.Bytes+layerFlow.BA.Bytes)
+		links = append(links, link)
+	}
+
+	return fmt.Sprintf(`{"nodes":[%s], "links":[%s]}`, strings.Join(nodes, ","), strings.Join(links, ","))
+}
+
+func (f *FlowApi) conversationLayer(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	vars := mux.Vars(&r.Request)
 	layer := vars["layer"]
 
@@ -87,20 +129,112 @@ func (f *FlowApi) ConversationLayer(w http.ResponseWriter, r *auth.Authenticated
 	case "sctp":
 		ltype = flow.FlowEndpointType_SCTPPORT
 	}
-	f.serveDataIndex(w, r, f.FlowTable.JSONFlowConversationEthernetPath(ltype))
+	f.serveDataIndex(w, r, f.jsonFlowConversationEthernetPath(ltype))
 }
 
-func (f *FlowApi) DiscoveryType(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+type discoType int
+
+const (
+	bytes discoType = 1 + iota
+	packets
+)
+
+type discoNode struct {
+	name     string
+	size     uint64
+	children map[string]*discoNode
+}
+
+func (d *discoNode) marshalJSON() ([]byte, error) {
+	str := "{"
+	str += fmt.Sprintf(`"name":"%s",`, d.name)
+	if d.size > 0 {
+		str += fmt.Sprintf(`"size": %d,`, d.size)
+	}
+	str += fmt.Sprintf(`"children": [`)
+	idx := 0
+	for _, child := range d.children {
+		bytes, err := child.marshalJSON()
+		if err != nil {
+			return []byte(str), err
+		}
+		str += string(bytes)
+		if idx != len(d.children)-1 {
+			str += ","
+		}
+		idx++
+	}
+	str += "]"
+	str += "}"
+	return []byte(str), nil
+}
+
+func newDiscoNode() *discoNode {
+	return &discoNode{
+		children: make(map[string]*discoNode),
+	}
+}
+
+func (f *FlowApi) jsonFlowDiscovery(DiscoType discoType) string {
+	// {"name":"root","children":[{"name":"Ethernet","children":[{"name":"IPv4","children":
+	//		[{"name":"UDP","children":[{"name":"Payload","size":360,"children":[]}]},
+	//     {"name":"TCP","children":[{"name":"Payload","size":240,"children":[]}]}]}]}]}
+
+	pathMap := make(map[string]flow.FlowEndpointStatistics)
+
+	for _, f := range f.FlowTable.GetFlows() {
+		p, _ := pathMap[f.LayersPath]
+
+		et := flow.FlowEndpointType_ETHERNET.Value()
+		p.Bytes += f.GetStatistics().Endpoints[et].AB.Bytes
+		p.Bytes += f.GetStatistics().Endpoints[et].BA.Bytes
+		p.Packets += f.GetStatistics().Endpoints[et].AB.Packets
+		p.Packets += f.GetStatistics().Endpoints[et].BA.Packets
+		pathMap[f.LayersPath] = p
+	}
+
+	root := newDiscoNode()
+	root.name = "root"
+	for path, stat := range pathMap {
+		node := root
+		layers := strings.Split(path, "/")
+		for i, layer := range layers {
+			l, found := node.children[layer]
+			if !found {
+				node.children[layer] = newDiscoNode()
+				l = node.children[layer]
+				l.name = layer
+			}
+			if len(layers)-1 == i {
+				switch DiscoType {
+				case bytes:
+					l.size = stat.Bytes
+				case packets:
+					l.size = stat.Packets
+				}
+			}
+			node = l
+		}
+	}
+
+	bytes, err := root.marshalJSON()
+	if err != nil {
+		logging.GetLogger().Fatal(err)
+	}
+	return string(bytes)
+}
+
+func (f *FlowApi) discoveryType(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	vars := mux.Vars(&r.Request)
 	discoType := vars["type"]
-	dtype := flow.BYTES
+	dtype := bytes
 	switch discoType {
 	case "bytes":
-		dtype = flow.BYTES
+		dtype = bytes
 	case "packets":
-		dtype = flow.PACKETS
+		dtype = packets
 	}
-	f.serveDataIndex(w, r, f.FlowTable.JSONFlowDiscovery(dtype))
+	f.serveDataIndex(w, r, f.jsonFlowDiscovery(dtype))
 }
 func (f *FlowApi) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
@@ -108,19 +242,19 @@ func (f *FlowApi) registerEndpoints(r *shttp.Server) {
 			"FlowSearch",
 			"GET",
 			"/api/flow/search",
-			f.FlowSearch,
+			f.flowSearch,
 		},
 		{
 			"ConversationLayer",
 			"GET",
 			"/api/flow/conversation/{layer}",
-			f.ConversationLayer,
+			f.conversationLayer,
 		},
 		{
 			"Discovery",
 			"GET",
 			"/api/flow/discovery/{type}",
-			f.DiscoveryType,
+			f.discoveryType,
 		},
 	}
 

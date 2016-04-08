@@ -252,7 +252,11 @@ func FlowFromGoPacket(ft *FlowTable, packet *gopacket.Packet, probePath string) 
 	key := NewFlowKeyFromGoPacket(packet)
 	flow, _ := ft.GetOrCreateFlow(key.String())
 	flow.ProbeGraphPath = probePath
-	flow.fillFromGoPacket(packet)
+	err := flow.fillFromGoPacket(packet)
+	if err != nil {
+		logging.GetLogger().Error(err.Error())
+		return nil
+	}
 	return flow
 }
 
@@ -276,7 +280,9 @@ func FlowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
 		flow := FlowFromGoPacket(ft, &record.Header, probePath)
-		flows = append(flows, flow)
+		if flow != nil {
+			flows = append(flows, flow)
+		}
 	}
 
 	return flows
