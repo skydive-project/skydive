@@ -953,19 +953,19 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
 Layout.prototype.ProcessAlertMessage = function(msg) {
   var _this = this;
 
-  var ID  = msg.ReasonData.ID;
-  alerts[ID] = msg;
+  var ID  = msg.Obj.ReasonData.ID;
+  alerts[ID] = msg.Obj;
   this.Redraw();
 
   setTimeout(function() { delete alerts[ID]; _this.Redraw(); }, 1000);
 }
 
 Layout.prototype.StartLiveUpdate = function() {
-  this.updatesocket = new WebSocket("ws://" + location.host + "/ws/graph");
+  this.updatesocket = new WebSocket("ws://" + location.host + "/ws");
 
   var _this = this;
   this.updatesocket.onopen = function() {
-    var msg = {"Type": "SyncRequest"};
+    var msg = {"Namespace": "Graph", "Type": "SyncRequest"};
     _this.updatesocket.send(JSON.stringify(msg));
   }
 
@@ -975,24 +975,14 @@ Layout.prototype.StartLiveUpdate = function() {
 
   this.updatesocket.onmessage = function(e) {
     var msg = jQuery.parseJSON(e.data);
-    _this.ProcessGraphMessage(msg);
-  };
-}
-
-Layout.prototype.StartLiveUpdateAlert = function() {
-  this.updatesocketalert = new WebSocket("ws://" + location.host + "/ws/alert");
-
-  var _this = this;
-  this.updatesocketalert.onopen = function() {
-  }
-
-  this.updatesocketalert.onclose = function() {
-    setTimeout(function() { _this.StartLiveUpdateAlert(); }, 3000);
-  }
-
-  this.updatesocketalert.onmessage = function(e) {
-    var msg = jQuery.parseJSON(e.data);
-    _this.ProcessAlertMessage(msg);
+    switch(msg.Namespace) {
+      case "Graph":
+        _this.ProcessGraphMessage(msg);
+        break;
+      case "Alert":
+        _this.ProcessAlertMessage(msg);
+        break;
+    }
   };
 }
 
@@ -1450,7 +1440,6 @@ $(document).ready(function() {
 
   topologyLayout = new Layout(".topology-d3");
   topologyLayout.StartLiveUpdate();
-  topologyLayout.StartLiveUpdateAlert();
 
   StartCheckAPIAccess();
 });

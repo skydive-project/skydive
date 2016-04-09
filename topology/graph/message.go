@@ -23,39 +23,19 @@
 package graph
 
 import (
-	"encoding/json"
-	"errors"
+	"fmt"
+
+	shttp "github.com/redhat-cip/skydive/http"
 )
 
-type WSMessage struct {
-	Type string
-	Obj  interface{}
-}
-
-func (g WSMessage) Marshal() []byte {
-	j, _ := json.Marshal(g)
-	return j
-}
-
-func (g WSMessage) String() string {
-	return string(g.Marshal())
-}
-
-func UnmarshalWSMessage(b []byte) (WSMessage, error) {
-	msg := WSMessage{}
-
-	err := json.Unmarshal(b, &msg)
-	if err != nil {
-		return msg, err
-	}
-
+func UnmarshalWSMessage(msg shttp.WSMessage) (shttp.WSMessage, error) {
 	if msg.Type == "SyncRequest" {
 		return msg, nil
 	}
 
 	objMap, ok := msg.Obj.(map[string]interface{})
 	if !ok {
-		return msg, errors.New("Unable to parse event: " + string(b))
+		return msg, fmt.Errorf("Unable to parse event: %v", msg)
 	}
 
 	ID := Identifier(objMap["ID"].(string))
@@ -105,5 +85,5 @@ func UnmarshalWSMessage(b []byte) (WSMessage, error) {
 		}
 	}
 
-	return msg, err
+	return msg, nil
 }

@@ -23,317 +23,137 @@
 package graph
 
 import (
-	"net/http"
-	"sync"
-	"sync/atomic"
-	"time"
-
-	"github.com/abbot/go-http-auth"
-	"github.com/gorilla/websocket"
-
-	"github.com/redhat-cip/skydive/config"
 	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 )
 
 const (
-	writeWait      = 10 * time.Second
-	maxMessageSize = 1024 * 1024
+	Namespace = "Graph"
 )
 
-type Server struct {
-	Graph     *Graph
-	wsServer  *WSServer
-	Host      string
-	wg        sync.WaitGroup
-	listening atomic.Value
+type GraphServer struct {
+	shttp.DefaultWSServerEventHandler
+	WSServer *shttp.WSServer
+	Graph    *Graph
 }
 
-type WSClient struct {
-	conn   *websocket.Conn
-	read   chan []byte
-	send   chan []byte
-	server *WSServer
-}
+func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
+	if msg.Namespace != Namespace {
+		return
+	}
 
-type WSServer struct {
-	Graph      *Graph
-	clients    map[*WSClient]bool
-	broadcast  chan string
-	quit       chan bool
-	register   chan *WSClient
-	unregister chan *WSClient
-	pongWait   time.Duration
-	pingPeriod time.Duration
-}
+	s.Graph.Lock()
+	defer s.Graph.Unlock()
 
-func (c *WSClient) processGraphMessage(m []byte) {
-	c.server.Graph.Lock()
-	defer c.server.Graph.Unlock()
-
-	msg, err := UnmarshalWSMessage(m)
+	msg, err := UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %s: %s", msg, err.Error())
 		return
 	}
-	g := c.server.Graph
 
 	switch msg.Type {
 	case "SyncRequest":
-		reply := WSMessage{
-			Type: "SyncReply",
-			Obj:  c.server.Graph,
+		reply := shttp.WSMessage{
+			Namespace: Namespace,
+			Type:      "SyncReply",
+			Obj:       s.Graph,
 		}
-		c.send <- []byte(reply.String())
+
+		c.SendWSMessage(reply)
 
 	case "SubGraphDeleted":
 		n := msg.Obj.(*Node)
 
 		logging.GetLogger().Debugf("Got SubGraphDeleted event from the node %s", n.ID)
 
-		node := g.GetNode(n.ID)
+		node := s.Graph.GetNode(n.ID)
 		if node != nil {
-			g.DelSubGraph(node)
+			s.Graph.DelSubGraph(node)
 		}
 	case "NodeUpdated":
 		n := msg.Obj.(*Node)
-		node := g.GetNode(n.ID)
+		node := s.Graph.GetNode(n.ID)
 		if node != nil {
-			g.SetMetadata(node, n.metadata)
+			s.Graph.SetMetadata(node, n.metadata)
 		}
 	case "NodeDeleted":
-		g.DelNode(msg.Obj.(*Node))
+		s.Graph.DelNode(msg.Obj.(*Node))
 	case "NodeAdded":
 		n := msg.Obj.(*Node)
-		if g.GetNode(n.ID) == nil {
-			g.AddNode(n)
+		if s.Graph.GetNode(n.ID) == nil {
+			s.Graph.AddNode(n)
 		}
 	case "EdgeUpdated":
 		e := msg.Obj.(*Edge)
-		edge := g.GetEdge(e.ID)
+		edge := s.Graph.GetEdge(e.ID)
 		if edge != nil {
-			g.SetMetadata(edge, e.metadata)
+			s.Graph.SetMetadata(edge, e.metadata)
 		}
 	case "EdgeDeleted":
-		g.DelEdge(msg.Obj.(*Edge))
+		s.Graph.DelEdge(msg.Obj.(*Edge))
 	case "EdgeAdded":
 		e := msg.Obj.(*Edge)
-		if g.GetEdge(e.ID) == nil {
-			g.AddEdge(e)
+		if s.Graph.GetEdge(e.ID) == nil {
+			s.Graph.AddEdge(e)
 		}
 	}
 }
 
-func (c *WSClient) processGraphMessages(wg *sync.WaitGroup, quit chan struct{}) {
-	for {
-		select {
-		case m, ok := <-c.read:
-			if !ok {
-				wg.Done()
-				return
-			}
-			c.processGraphMessage(m)
-		case <-quit:
-			wg.Done()
-			return
-		}
-	}
-}
-
-func (c *WSClient) readPump() {
-	defer func() {
-		c.server.unregister <- c
-		c.conn.Close()
-	}()
-
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(c.server.pongWait))
-	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(c.server.pongWait))
-		return nil
+func (s *GraphServer) OnNodeUpdated(n *Node) {
+	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "NodeUpdated",
+		Obj:       n,
 	})
+}
 
-	for {
-		_, m, err := c.conn.ReadMessage()
-		if err != nil {
-			break
-		}
+func (s *GraphServer) OnNodeAdded(n *Node) {
+	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "NodeAdded",
+		Obj:       n,
+	})
+}
 
-		c.read <- m
+func (s *GraphServer) OnNodeDeleted(n *Node) {
+	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "NodeDeleted",
+		Obj:       n,
+	})
+}
+
+func (s *GraphServer) OnEdgeUpdated(e *Edge) {
+	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "EdgeUpdated",
+		Obj:       e,
+	})
+}
+
+func (s *GraphServer) OnEdgeAdded(e *Edge) {
+	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "EdgeAdded",
+		Obj:       e,
+	})
+}
+
+func (s *GraphServer) OnEdgeDeleted(e *Edge) {
+	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "EdgeDeleted",
+		Obj:       e,
+	})
+}
+
+func NewServer(g *Graph, server *shttp.WSServer) *GraphServer {
+	s := &GraphServer{
+		Graph:    g,
+		WSServer: server,
 	}
-}
-
-func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
-	ticker := time.NewTicker(c.server.pingPeriod)
-
-	defer func() {
-		ticker.Stop()
-		c.conn.Close()
-	}()
-
-	for {
-		select {
-		case message, ok := <-c.send:
-			if !ok {
-				c.write(websocket.CloseMessage, []byte{})
-				wg.Done()
-				return
-			}
-			if err := c.write(websocket.TextMessage, message); err != nil {
-				logging.GetLogger().Warningf("Error while writing to the websocket: %s", err.Error())
-				wg.Done()
-				return
-			}
-		case <-ticker.C:
-			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
-				wg.Done()
-				return
-			}
-		case <-quit:
-			wg.Done()
-			return
-		}
-	}
-}
-
-func (c *WSClient) write(mt int, message []byte) error {
-	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-	return c.conn.WriteMessage(mt, message)
-}
-
-func (s *WSServer) ListenAndServe() {
-	for {
-		select {
-		case <-s.quit:
-			return
-		case c := <-s.register:
-			s.clients[c] = true
-		case c := <-s.unregister:
-			delete(s.clients, c)
-		case m := <-s.broadcast:
-			s.broadcastMessage(m)
-		}
-	}
-}
-
-func (s *WSServer) broadcastMessage(m string) {
-	for c := range s.clients {
-		select {
-		case c.send <- []byte(m):
-		default:
-			delete(s.clients, c)
-		}
-	}
-}
-
-func (s *Server) sendGraphUpdateEvent(g WSMessage) {
-	s.wsServer.broadcast <- g.String()
-}
-
-func (s *Server) OnNodeUpdated(n *Node) {
-	s.sendGraphUpdateEvent(WSMessage{"NodeUpdated", n})
-}
-
-func (s *Server) OnNodeAdded(n *Node) {
-	s.sendGraphUpdateEvent(WSMessage{"NodeAdded", n})
-}
-
-func (s *Server) OnNodeDeleted(n *Node) {
-	s.sendGraphUpdateEvent(WSMessage{"NodeDeleted", n})
-}
-
-func (s *Server) OnEdgeUpdated(e *Edge) {
-	s.sendGraphUpdateEvent(WSMessage{"EdgeUpdated", e})
-}
-
-func (s *Server) OnEdgeAdded(e *Edge) {
-	s.sendGraphUpdateEvent(WSMessage{"EdgeAdded", e})
-}
-
-func (s *Server) OnEdgeDeleted(e *Edge) {
-	s.sendGraphUpdateEvent(WSMessage{"EdgeDeleted", e})
-}
-
-func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	var upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-
-	conn, err := upgrader.Upgrade(w, &r.Request, nil)
-	if err != nil {
-		return
-	}
-
-	c := &WSClient{
-		read:   make(chan []byte, maxMessageSize),
-		send:   make(chan []byte, maxMessageSize),
-		conn:   conn,
-		server: s.wsServer,
-	}
-	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
-
-	s.wsServer.register <- c
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	quit := make(chan struct{})
-
-	go c.writePump(&wg, quit)
-	go c.processGraphMessages(&wg, quit)
-
-	c.readPump()
-
-	quit <- struct{}{}
-	quit <- struct{}{}
-
-	close(c.read)
-	close(c.send)
-
-	wg.Wait()
-}
-
-func (s *Server) ListenAndServe() {
-	s.wg.Add(1)
-	defer s.wg.Done()
-
 	s.Graph.AddEventListener(s)
-
-	s.listening.Store(true)
-	s.wsServer.ListenAndServe()
-}
-
-func (s *Server) Stop() {
-	s.wsServer.quit <- true
-	if s.listening.Load() == true {
-		s.wg.Wait()
-	}
-	s.listening.Store(false)
-}
-
-func NewServer(g *Graph, server *shttp.Server, pongWait time.Duration) *Server {
-	s := &Server{
-		Graph: g,
-		wsServer: &WSServer{
-			Graph:      g,
-			broadcast:  make(chan string, 500),
-			quit:       make(chan bool, 1),
-			register:   make(chan *WSClient),
-			unregister: make(chan *WSClient),
-			clients:    make(map[*WSClient]bool),
-			pongWait:   pongWait,
-			pingPeriod: (pongWait * 8) / 10,
-		},
-	}
-
-	server.HandleFunc("/ws/graph", s.serveMessages)
+	server.AddEventHandler(s)
 
 	return s
-}
-
-func NewServerFromConfig(g *Graph, server *shttp.Server) (*Server, error) {
-	w := config.GetConfig().GetInt("ws_pong_timeout")
-
-	return NewServer(g, server, time.Duration(w)*time.Second), nil
 }

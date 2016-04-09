@@ -25,11 +25,13 @@ package graph
 import (
 	"os"
 
+	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 )
 
 type Forwarder struct {
-	Client *AsyncClient
+	shttp.DefaultWSClientEventHandler
+	Client *shttp.WSAsyncClient
 	Graph  *Graph
 }
 
@@ -50,17 +52,29 @@ func (c *Forwarder) triggerResync() {
 	if root == nil {
 		return
 	}
-	c.Client.SendWSMessage(WSMessage{"SubGraphDeleted", root})
+	c.Client.SendWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "SubGraphDeleted",
+		Obj:       root,
+	})
 
 	// re-added all the nodes and edges
 	nodes := c.Graph.GetNodes()
 	for _, n := range nodes {
-		c.Client.SendWSMessage(WSMessage{"NodeAdded", n})
+		c.Client.SendWSMessage(shttp.WSMessage{
+			Namespace: Namespace,
+			Type:      "NodeAdded",
+			Obj:       n,
+		})
 	}
 
 	edges := c.Graph.GetEdges()
 	for _, e := range edges {
-		c.Client.SendWSMessage(WSMessage{"EdgeAdded", e})
+		c.Client.SendWSMessage(shttp.WSMessage{
+			Namespace: Namespace,
+			Type:      "EdgeAdded",
+			Obj:       e,
+		})
 	}
 }
 
@@ -68,41 +82,62 @@ func (c *Forwarder) OnConnected() {
 	c.triggerResync()
 }
 
-func (c *Forwarder) OnDisconnected() {
-}
-
 func (c *Forwarder) OnNodeUpdated(n *Node) {
-	c.Client.SendWSMessage(WSMessage{"NodeUpdated", n})
+	c.Client.SendWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "NodeUpdated",
+		Obj:       n,
+	})
 }
 
 func (c *Forwarder) OnNodeAdded(n *Node) {
-	c.Client.SendWSMessage(WSMessage{"NodeAdded", n})
+	c.Client.SendWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "NodeAdded",
+		Obj:       n,
+	})
 }
 
 func (c *Forwarder) OnNodeDeleted(n *Node) {
-	c.Client.SendWSMessage(WSMessage{"NodeDeleted", n})
+	c.Client.SendWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "NodeDeleted",
+		Obj:       n,
+	})
 }
 
 func (c *Forwarder) OnEdgeUpdated(e *Edge) {
-	c.Client.SendWSMessage(WSMessage{"EdgeUpdated", e})
+	c.Client.SendWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "EdgeUpdated",
+		Obj:       e,
+	})
 }
 
 func (c *Forwarder) OnEdgeAdded(e *Edge) {
-	c.Client.SendWSMessage(WSMessage{"EdgeAdded", e})
+	c.Client.SendWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "EdgeAdded",
+		Obj:       e,
+	})
 }
 
 func (c *Forwarder) OnEdgeDeleted(e *Edge) {
-	c.Client.SendWSMessage(WSMessage{"EdgeDeleted", e})
+	c.Client.SendWSMessage(shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "EdgeDeleted",
+		Obj:       e,
+	})
 }
 
-func NewForwarder(c *AsyncClient, g *Graph) *Forwarder {
+func NewForwarder(c *shttp.WSAsyncClient, g *Graph) *Forwarder {
 	f := &Forwarder{
 		Client: c,
 		Graph:  g,
 	}
 
 	g.AddEventListener(f)
-	c.AddListener(f)
+	c.AddEventHandler(f)
 
 	return f
 }

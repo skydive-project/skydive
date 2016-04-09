@@ -74,10 +74,16 @@ type AlertEventListener interface {
 }
 
 func (a *AlertManager) AddEventListener(l AlertEventListener) {
+	a.alertsLock.Lock()
+	defer a.alertsLock.Unlock()
+
 	a.eventListeners[l] = l
 }
 
 func (a *AlertManager) DelEventListener(l AlertEventListener) {
+	a.alertsLock.Lock()
+	defer a.alertsLock.Unlock()
+
 	delete(a.eventListeners, l)
 }
 

@@ -20,13 +20,14 @@
  *
  */
 
-package graph
+package http
 
 import (
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -34,30 +35,44 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 )
 
-type EventListener interface {
+type WSClientEventHandler interface {
+	OnMessage(m WSMessage)
 	OnConnected()
 	OnDisconnected()
 }
 
-type AsyncClient struct {
-	Addr       string
-	Port       int
-	Path       string
-	AuthClient *shttp.AuthenticationClient
-	messages   chan string
-	quit       chan bool
-	wg         sync.WaitGroup
-	wsConn     *websocket.Conn
-	listeners  []EventListener
-	connected  atomic.Value
-	running    atomic.Value
+type DefaultWSClientEventHandler struct {
 }
 
-func (c *AsyncClient) sendMessage(m string) {
+type WSAsyncClient struct {
+	Addr          string
+	Port          int
+	Path          string
+	AuthClient    *AuthenticationClient
+	host          string
+	messages      chan string
+	read          chan []byte
+	quit          chan bool
+	wg            sync.WaitGroup
+	wsConn        *websocket.Conn
+	eventHandlers []WSClientEventHandler
+	connected     atomic.Value
+	running       atomic.Value
+}
+
+func (d *DefaultWSClientEventHandler) OnMessage(m WSMessage) {
+}
+
+func (d *DefaultWSClientEventHandler) OnConnected() {
+}
+
+func (d *DefaultWSClientEventHandler) OnDisconnected() {
+}
+
+func (c *WSAsyncClient) sendMessage(m string) {
 	if !c.IsConnected() {
 		return
 	}
@@ -65,15 +80,15 @@ func (c *AsyncClient) sendMessage(m string) {
 	c.messages <- m
 }
 
-func (c *AsyncClient) SendWSMessage(m WSMessage) {
+func (c *WSAsyncClient) SendWSMessage(m WSMessage) {
 	c.sendMessage(m.String())
 }
 
-func (c *AsyncClient) IsConnected() bool {
+func (c *WSAsyncClient) IsConnected() bool {
 	return c.connected.Load() == true
 }
 
-func (c *AsyncClient) sendWSMessage(msg string) error {
+func (c *WSAsyncClient) send(msg string) error {
 	w, err := c.wsConn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
@@ -87,7 +102,16 @@ func (c *AsyncClient) sendWSMessage(msg string) error {
 	return w.Close()
 }
 
-func (c *AsyncClient) connect() {
+func (c *WSAsyncClient) sendHello() {
+	m := WSMessage{
+		Namespace: Namespace,
+		Type:      "Hello",
+		Obj:       c.host,
+	}
+	c.sendMessage(m.String())
+}
+
+func (c *WSAsyncClient) connect() {
 	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
 
 	conn, err := net.Dial("tcp", host)
@@ -129,16 +153,21 @@ func (c *AsyncClient) connect() {
 	c.wg.Add(1)
 	defer c.wg.Done()
 
+	c.sendHello()
+
 	// notify connected
-	for _, l := range c.listeners {
+	for _, l := range c.eventHandlers {
 		l.OnConnected()
 	}
 
 	go func() {
 		for c.running.Load() == true {
-			if _, _, err := c.wsConn.NextReader(); err != nil {
+			_, m, err := c.wsConn.ReadMessage()
+			if err != nil {
 				break
 			}
+
+			c.read <- m
 		}
 		c.quit <- true
 	}()
@@ -146,10 +175,18 @@ func (c *AsyncClient) connect() {
 	for c.running.Load() == true {
 		select {
 		case msg := <-c.messages:
-			err := c.sendWSMessage(msg)
+			err := c.send(msg)
 			if err != nil {
 				logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
-				break
+			}
+		case m := <-c.read:
+			msg, err := UnmarshalWSMessage(m)
+			if err != nil {
+				logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
+			} else {
+				for _, e := range c.eventHandlers {
+					e.OnMessage(msg)
+				}
 			}
 		case <-c.quit:
 			return
@@ -157,7 +194,7 @@ func (c *AsyncClient) connect() {
 	}
 }
 
-func (c *AsyncClient) Connect() {
+func (c *WSAsyncClient) Connect() {
 	go func() {
 		for c.running.Load() == true {
 			c.connect()
@@ -166,7 +203,7 @@ func (c *AsyncClient) Connect() {
 			c.connected.Store(false)
 
 			if wasConnected == true {
-				for _, l := range c.listeners {
+				for _, l := range c.eventHandlers {
 					l.OnDisconnected()
 				}
 			}
@@ -178,26 +215,35 @@ func (c *AsyncClient) Connect() {
 	}()
 }
 
-func (c *AsyncClient) AddListener(l EventListener) {
-	c.listeners = append(c.listeners, l)
+func (c *WSAsyncClient) AddEventHandler(h WSClientEventHandler) {
+	c.eventHandlers = append(c.eventHandlers, h)
 }
 
-func (c *AsyncClient) Disconnect() {
+func (c *WSAsyncClient) Disconnect() {
 	c.running.Store(false)
-	c.quit <- true
-	c.wg.Wait()
+	if c.connected.Load() == true {
+		c.quit <- true
+		c.wg.Wait()
+	}
 }
 
-func NewAsyncClient(addr string, port int, path string, authClient *shttp.AuthenticationClient) *AsyncClient {
-	c := &AsyncClient{
+func NewWSAsyncClient(addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
+	host, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
+	c := &WSAsyncClient{
 		Addr:       addr,
 		Port:       port,
 		Path:       path,
 		AuthClient: authClient,
+		host:       host,
 		messages:   make(chan string, 500),
+		read:       make(chan []byte, 500),
 		quit:       make(chan bool),
 	}
 	c.connected.Store(false)
 	c.running.Store(true)
-	return c
+	return c, nil
 }

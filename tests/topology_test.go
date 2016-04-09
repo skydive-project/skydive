@@ -34,6 +34,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/tests/helper"
 	"github.com/redhat-cip/skydive/topology/graph"
@@ -86,7 +87,7 @@ func newClient() (*websocket.Conn, error) {
 		return nil, err
 	}
 
-	endpoint := "ws://127.0.0.1:58081/ws/graph"
+	endpoint := "ws://127.0.0.1:58081/ws"
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
@@ -139,7 +140,16 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 	g.Lock()
 	defer g.Unlock()
 
-	msg, err := graph.UnmarshalWSMessage(m)
+	msg, err := shttp.UnmarshalWSMessage(m)
+	if err != nil {
+		return err
+	}
+
+	if msg.Namespace != "Graph" {
+		return nil
+	}
+
+	msg, err = graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		return err
 	}

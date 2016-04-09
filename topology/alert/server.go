@@ -23,221 +23,61 @@
 package alert
 
 import (
-	"net/http"
-	"sync"
-	"sync/atomic"
-	"time"
-
-	"github.com/abbot/go-http-auth"
-	"github.com/gorilla/websocket"
-
-	"github.com/redhat-cip/skydive/config"
 	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
 )
 
 const (
-	writeWait      = 10 * time.Second
-	maxMessageSize = 1024 * 1024
+	Namespace = "Alert"
 )
 
-type Server struct {
+type AlertServer struct {
+	shttp.DefaultWSServerEventHandler
+	WSServer     *shttp.WSServer
 	AlertManager *AlertManager
-	wsServer     *WSServer
-	Host         string
-	wg           sync.WaitGroup
-	listening    atomic.Value
+	clients      map[*shttp.WSClient]*alertClient
 }
 
-type WSClient struct {
-	conn   *websocket.Conn
-	read   chan []byte
-	send   chan []byte
-	server *WSServer
-}
-
-type WSServer struct {
-	AlertManager *AlertManager
-	clients      map[*WSClient]bool
-	broadcast    chan string
-	quit         chan bool
-	register     chan *WSClient
-	unregister   chan *WSClient
-	pongWait     time.Duration
-	pingPeriod   time.Duration
+type alertClient struct {
+	wsClient *shttp.WSClient
 }
 
 /* Called by alert.EvalNodes() */
-func (c *WSClient) OnAlert(amsg *AlertMessage) {
-	c.send <- amsg.Marshal()
-}
-
-func (c *WSClient) readPump() {
-	defer func() {
-		c.server.unregister <- c
-		c.conn.Close()
-	}()
-
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(c.server.pongWait))
-	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(c.server.pongWait))
-		return nil
-	})
-
-	for {
-		_, m, err := c.conn.ReadMessage()
-		if err != nil {
-			break
-		}
-
-		c.read <- m
-	}
-}
-
-func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
-	ticker := time.NewTicker(c.server.pingPeriod)
-
-	defer func() {
-		ticker.Stop()
-		c.conn.Close()
-	}()
-
-	for {
-		select {
-		case message, ok := <-c.send:
-			if !ok {
-				c.write(websocket.CloseMessage, []byte{})
-				wg.Done()
-				return
-			}
-			if err := c.write(websocket.TextMessage, message); err != nil {
-				logging.GetLogger().Warningf("Error while writing to the websocket: %s", err.Error())
-				wg.Done()
-				return
-			}
-		case <-ticker.C:
-			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
-				wg.Done()
-				return
-			}
-		case <-quit:
-			wg.Done()
-			return
-		}
-	}
-}
-
-func (c *WSClient) write(mt int, message []byte) error {
-	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-	return c.conn.WriteMessage(mt, message)
-}
-
-func (s *WSServer) ListenAndServe() {
-	for {
-		select {
-		case <-s.quit:
-			return
-		case c := <-s.register:
-			s.clients[c] = true
-			s.AlertManager.AddEventListener(c)
-		case c := <-s.unregister:
-			if _, ok := s.clients[c]; ok {
-				s.AlertManager.DelEventListener(c)
-				delete(s.clients, c)
-			}
-		case m := <-s.broadcast:
-			s.broadcastMessage(m)
-		}
-	}
-}
-
-func (s *WSServer) broadcastMessage(m string) {
-	for c := range s.clients {
-		select {
-		case c.send <- []byte(m):
-		default:
-			delete(s.clients, c)
-		}
-	}
-}
-
-func (s *Server) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	var upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
+func (c *alertClient) OnAlert(amsg *AlertMessage) {
+	msg := shttp.WSMessage{
+		Namespace: Namespace,
+		Type:      "Alert",
+		Obj:       amsg,
 	}
 
-	conn, err := upgrader.Upgrade(w, &r.Request, nil)
-	if err != nil {
+	c.wsClient.SendWSMessage(msg)
+}
+
+func (a *AlertServer) OnRegisterClient(c *shttp.WSClient) {
+	ac := &alertClient{
+		wsClient: c,
+	}
+
+	a.clients[c] = ac
+	a.AlertManager.AddEventListener(ac)
+}
+
+func (a *AlertServer) OnUnregisterClient(c *shttp.WSClient) {
+	ac := a.clients[c]
+	if ac == nil {
 		return
 	}
 
-	c := &WSClient{
-		read:   make(chan []byte, maxMessageSize),
-		send:   make(chan []byte, maxMessageSize),
-		conn:   conn,
-		server: s.wsServer,
-	}
-	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
-
-	s.wsServer.register <- c
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	quit := make(chan struct{})
-
-	go c.writePump(&wg, quit)
-
-	c.readPump()
-
-	quit <- struct{}{}
-	quit <- struct{}{}
-
-	close(c.read)
-	close(c.send)
-
-	wg.Wait()
+	a.AlertManager.DelEventListener(ac)
+	delete(a.clients, c)
 }
 
-func (s *Server) ListenAndServe() {
-	s.wg.Add(1)
-	defer s.wg.Done()
-
-	s.listening.Store(true)
-	s.wsServer.ListenAndServe()
-}
-
-func (s *Server) Stop() {
-	s.wsServer.quit <- true
-	if s.listening.Load() == true {
-		s.wg.Wait()
-	}
-}
-
-func NewServer(a *AlertManager, server *shttp.Server, pongWait time.Duration) *Server {
-	s := &Server{
+func NewServer(a *AlertManager, server *shttp.WSServer) *AlertServer {
+	s := &AlertServer{
 		AlertManager: a,
-		wsServer: &WSServer{
-			AlertManager: a,
-			broadcast:    make(chan string, 500),
-			quit:         make(chan bool, 1),
-			register:     make(chan *WSClient),
-			unregister:   make(chan *WSClient),
-			clients:      make(map[*WSClient]bool),
-			pongWait:     pongWait,
-			pingPeriod:   (pongWait * 8) / 10,
-		},
+		WSServer:     server,
+		clients:      make(map[*shttp.WSClient]*alertClient),
 	}
-
-	server.HandleFunc("/ws/alert", s.serveMessages)
+	server.AddEventHandler(s)
 
 	return s
-}
-
-func NewServerFromConfig(a *AlertManager, server *shttp.Server) (*Server, error) {
-	w := config.GetConfig().GetInt("ws_pong_timeout")
-
-	return NewServer(a, server, time.Duration(w)*time.Second), nil
 }

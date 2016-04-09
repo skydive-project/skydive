@@ -38,8 +38,9 @@ import (
 
 type Agent struct {
 	Graph                 *graph.Graph
-	Gclient               *graph.AsyncClient
-	GraphServer           *graph.Server
+	WSClient              *shttp.WSAsyncClient
+	WSServer              *shttp.WSServer
+	GraphServer           *graph.GraphServer
 	Root                  *graph.Node
 	TopologyProbeBundle   *tprobes.TopologyProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
@@ -50,8 +51,8 @@ type Agent struct {
 
 func (a *Agent) Start() {
 	var err error
-	// send a first reset event to the analyzers
-	a.Graph.DelSubGraph(a.Root)
+
+	go a.WSServer.ListenAndServe()
 
 	addr, port, err := config.GetAnalyzerClientAddr()
 	if err != nil {
@@ -65,9 +66,17 @@ func (a *Agent) Start() {
 			Password: config.GetConfig().GetString("agent.analyzer_password"),
 		}
 		authClient := shttp.NewAuthenticationClient(addr, port, authOptions)
-		a.Gclient = graph.NewAsyncClient(addr, port, "/ws/graph", authClient)
-		graph.NewForwarder(a.Gclient, a.Graph)
-		a.Gclient.Connect()
+		a.WSClient, err = shttp.NewWSAsyncClient(addr, port, "/ws", authClient)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to instantiate analyzer client %s", err.Error())
+			os.Exit(1)
+		}
+
+		graph.NewForwarder(a.WSClient, a.Graph)
+		a.WSClient.Connect()
+
+		// send a first reset event to the analyzers
+		a.Graph.DelSubGraph(a.Root)
 	}
 
 	a.TopologyProbeBundle = tprobes.NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
@@ -97,8 +106,6 @@ func (a *Agent) Start() {
 		a.OnDemandProbeListener.Start()
 	}
 
-	go a.GraphServer.ListenAndServe()
-
 	go a.HTTPServer.ListenAndServe()
 }
 
@@ -106,10 +113,10 @@ func (a *Agent) Stop() {
 	a.FlowProbeBundle.UnregisterAllProbes()
 	a.FlowProbeBundle.Stop()
 	a.TopologyProbeBundle.Stop()
-	a.GraphServer.Stop()
 	a.HTTPServer.Stop()
-	if a.Gclient != nil {
-		a.Gclient.Disconnect()
+	a.WSServer.Stop()
+	if a.WSClient != nil {
+		a.WSClient.Disconnect()
 	}
 	if a.OnDemandProbeListener != nil {
 		a.OnDemandProbeListener.Stop()
@@ -150,17 +157,17 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
+	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
+
 	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
 
 	api.RegisterTopologyApi("agent", g, hserver)
 
-	gserver, err := graph.NewServerFromConfig(g, hserver)
-	if err != nil {
-		panic(err)
-	}
+	gserver := graph.NewServer(g, wsServer)
 
 	return &Agent{
 		Graph:       g,
+		WSServer:    wsServer,
 		GraphServer: gserver,
 		Root:        root,
 		HTTPServer:  hserver,

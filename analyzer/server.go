@@ -46,8 +46,9 @@ import (
 
 type Server struct {
 	HTTPServer          *shttp.Server
-	GraphServer         *graph.Server
-	AlertServer         *alert.Server
+	WSServer            *shttp.WSServer
+	GraphServer         *graph.GraphServer
+	AlertServer         *alert.AlertServer
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	Storage             storage.Storage
 	FlowTable           *flow.FlowTable
@@ -106,6 +107,7 @@ func (s *Server) asyncFlowTableExpireUpdated() {
 			s.FlowTable.Expire(now)
 		case now := <-s.FlowTable.GetUpdatedTicker():
 			s.FlowTable.Updated(now)
+		case <-time.After(time.Second * 1):
 		}
 	}
 }
@@ -123,12 +125,7 @@ func (s *Server) ListenAndServe() {
 
 	go func() {
 		defer s.wgServers.Done()
-		s.GraphServer.ListenAndServe()
-	}()
-
-	go func() {
-		defer s.wgServers.Done()
-		s.AlertServer.ListenAndServe()
+		s.WSServer.ListenAndServe()
 	}()
 
 	go func() {
@@ -146,6 +143,7 @@ func (s *Server) ListenAndServe() {
 	}()
 
 	go func() {
+		defer s.wgServers.Done()
 		s.asyncFlowTableExpireUpdated()
 	}()
 }
@@ -153,8 +151,7 @@ func (s *Server) ListenAndServe() {
 func (s *Server) Stop() {
 	s.running.Store(false)
 	s.FlowTable.UnregisterAll()
-	s.AlertServer.Stop()
-	s.GraphServer.Stop()
+	s.WSServer.Stop()
 	s.HTTPServer.Stop()
 	if s.EmbeddedEtcd != nil {
 		s.EmbeddedEtcd.Stop()
@@ -216,6 +213,8 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
+	wsServer := shttp.NewWSServerFromConfig(httpServer, "/ws")
+
 	api.RegisterTopologyApi("analyzer", g, httpServer)
 
 	var etcdServer *etcd.EmbeddedEtcd
@@ -255,15 +254,8 @@ func NewServerFromConfig() (*Server, error) {
 
 	alertManager := alert.NewAlertManager(g, alertHandler)
 
-	aserver, err := alert.NewServerFromConfig(alertManager, httpServer)
-	if err != nil {
-		return nil, err
-	}
-
-	gserver, err := graph.NewServerFromConfig(g, httpServer)
-	if err != nil {
-		return nil, err
-	}
+	aserver := alert.NewServer(alertManager, wsServer)
+	gserver := graph.NewServer(g, wsServer)
 
 	gfe := mappings.NewGraphFlowEnhancer(g)
 	ofe := mappings.NewOvsFlowEnhancer(g)
@@ -274,6 +266,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	server := &Server{
 		HTTPServer:          httpServer,
+		WSServer:            wsServer,
 		GraphServer:         gserver,
 		AlertServer:         aserver,
 		FlowMappingPipeline: pipeline,

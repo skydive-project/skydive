@@ -393,7 +393,11 @@ func (o *OvsdbProbe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 }
 
 func (o *OvsdbProbe) Start() {
-	o.OvsMon.StartMonitoring()
+	// TODO(safchain) add reconnection mechanism
+	err := o.OvsMon.StartMonitoring()
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to start OVS monitoring: %s", err.Error())
+	}
 }
 
 func (o *OvsdbProbe) Stop() {
