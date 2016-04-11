@@ -177,6 +177,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		if index > 0 {
 			metadata["IfIndex"] = index
 		}
+
 		intf = o.Graph.NewNode(graph.GenID(), metadata)
 	}
 
@@ -205,6 +206,11 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	if itype != "" {
 		o.Graph.AddMetadata(intf, "Type", itype)
+	}
+
+	ext_ids := row.New.Fields["external_ids"].(libovsdb.OvsMap)
+	for k, v := range ext_ids.GoMap {
+		o.Graph.AddMetadata(intf, "ExtID:"+k.(string), v.(string))
 	}
 
 	o.uuidToIntf[uuid] = intf
