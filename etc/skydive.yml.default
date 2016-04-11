@@ -85,3 +85,11 @@ auth:
   # type: basic
     # basic:
       # file: /etc/skydive/htpasswd
+
+etcd:
+  # when 'embedded' is set to true, the analyzer will start an embedded etcd server
+  # embedded: true
+
+  # both the analyzers and the agents make use of etcd
+  # servers:
+  #   - http://127.0.0.1:2379
