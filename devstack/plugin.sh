@@ -93,7 +93,12 @@ function get_probes_for_config {
 
 function configure_skydive {
     cat > $SKYDIVE_CONFIG_FILE <<- EOF
+auth:
+  type: keystone
+
 agent:
+  analyzer_username: admin
+  analyzer_password: $ADMIN_PASSWORD
   analyzers: $SKYDIVE_AGENT_ANALYZERS
   listen: $SKYDIVE_AGENT_LISTEN
   topology:
