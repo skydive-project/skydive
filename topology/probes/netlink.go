@@ -69,6 +69,14 @@ func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 
 		// assuming we have only one parent with this index
 		parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
+
+		// ignore ovs-system interface as it doesn't make any sense according to
+		// the following thread:
+		// http://openvswitch.org/pipermail/discuss/2013-October/011657.html
+		if parent.Metadata()["Name"] == "ovs-system" {
+			return
+		}
+
 		if parent != nil && !u.Graph.AreLinked(parent, intf) {
 			u.Graph.Link(parent, intf, graph.Metadata{"RelationType": "layer2"})
 		} else {
@@ -163,6 +171,13 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 
 	if !u.Graph.AreLinked(u.Root, intf) {
 		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
+	}
+
+	// ignore ovs-system interface as it doesn't make any sense according to
+	// the following thread:
+	// http://openvswitch.org/pipermail/discuss/2013-October/011657.html
+	if name == "ovs-system" {
+		return intf
 	}
 
 	u.handleIntfIsChild(intf, link)

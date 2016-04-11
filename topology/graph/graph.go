@@ -328,9 +328,9 @@ func (g *Graph) Replace(o *Node, n *Node) *Node {
 		g.DelEdge(e)
 
 		if parent.ID == n.ID {
-			g.Link(n, child)
+			g.Link(n, child, e.metadata)
 		} else {
-			g.Link(parent, n)
+			g.Link(parent, n, e.metadata)
 		}
 	}
 	n.metadata = o.metadata
