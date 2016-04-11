@@ -115,7 +115,7 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 		go func() {
 			defer p.wg.Done()
 
-			for packet := range packetChannel {
+			for packet := range probe.channel {
 				p.handlePacket(probe, packet)
 			}
 		}()
@@ -125,7 +125,7 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 
 func (p *PcapProbesHandler) unregisterProbe(ifName string) error {
 	if probe, ok := p.probes[ifName]; ok {
-		close(probe.channel)
+		probe.handle.Close()
 		delete(p.probes, ifName)
 	}
 
