@@ -53,9 +53,7 @@ func (ft *FlowTable) String() string {
 func (ft *FlowTable) Update(flows []*Flow) {
 	ft.lock.Lock()
 	for _, f := range flows {
-		if _, found := ft.table[f.UUID]; !found {
-			ft.table[f.UUID] = f
-		}
+		ft.table[f.UUID] = f
 	}
 	ft.lock.Unlock()
 }
