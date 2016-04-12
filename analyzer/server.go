@@ -243,8 +243,9 @@ func NewServerFromConfig() (*Server, error) {
 	}
 
 	gfe := mappings.NewGraphFlowEnhancer(g)
+	ofe := mappings.NewOvsFlowEnhancer(g)
 
-	pipeline := mappings.NewFlowMappingPipeline(gfe)
+	pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
 
 	flowtable := flow.NewFlowTable()
 

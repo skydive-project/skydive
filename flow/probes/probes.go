@@ -63,8 +63,6 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 
 	gfe := mappings.NewGraphFlowEnhancer(g)
 
-	pipeline := mappings.NewFlowMappingPipeline(gfe)
-
 	var aclient *analyzer.Client
 
 	addr, port, err := config.GetAnalyzerClientAddr()
@@ -89,11 +87,16 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 
 		switch t {
 		case "ovssflow":
+			ofe := mappings.NewOvsFlowEnhancer(g)
+			pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
+
 			o := NewOvsSFlowProbesHandler(tb, g, pipeline, aclient)
 			if o != nil {
 				probes[t] = o
 			}
 		case "pcap":
+			pipeline := mappings.NewFlowMappingPipeline(gfe)
+
 			o := NewPcapProbesHandler(tb, g, pipeline, aclient)
 			if o != nil {
 				probes[t] = o
