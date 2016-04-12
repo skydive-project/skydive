@@ -37,6 +37,10 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
+type FlowProbePathSetter interface {
+	SetProbePath(flow *Flow) bool
+}
+
 func (s *FlowStatistics) MarshalJSON() ([]byte, error) {
 	obj := &struct {
 		Start     int64
@@ -170,15 +174,8 @@ func (key FlowKey) String() string {
 	return fmt.Sprintf("%x-%x", key.net, key.transport)
 }
 
-func (flow *Flow) ID() string {
-	id := flow.UUID
-
-	// FIX(safchain) should not be empty, will be removed when having sync mapping
-	if flow.ProbeGraphPath != "" {
-		id += ":" + flow.ProbeGraphPath
-	}
-
-	return id
+func (flow *Flow) GetLayer(t FlowEndpointType) *FlowEndpointsStatistics {
+	return flow.Statistics.Endpoints[t.Value()]
 }
 
 func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
@@ -223,6 +220,9 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 			hasher.Write([]byte(ep.AB.Value))
 			hasher.Write([]byte(ep.BA.Value))
 		}
+		flow.FlowUUID = hex.EncodeToString(hasher.Sum(nil))
+
+		hasher.Write([]byte(flow.ProbeGraphPath))
 		flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 	}
 	return nil
@@ -248,19 +248,23 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func FlowFromGoPacket(ft *FlowTable, packet *gopacket.Packet, probePath string) *Flow {
+func FlowFromGoPacket(ft *FlowTable, packet *gopacket.Packet, setter FlowProbePathSetter) *Flow {
 	key := NewFlowKeyFromGoPacket(packet)
 	flow, _ := ft.GetOrCreateFlow(key.String())
-	flow.ProbeGraphPath = probePath
+	if setter != nil {
+		setter.SetProbePath(flow)
+	}
+
 	err := flow.fillFromGoPacket(packet)
 	if err != nil {
 		logging.GetLogger().Error(err.Error())
 		return nil
 	}
+
 	return flow
 }
 
-func FlowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePath string) []*Flow {
+func FlowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, setter FlowProbePathSetter) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {
@@ -279,7 +283,7 @@ func FlowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, probePa
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
-		flow := FlowFromGoPacket(ft, &record.Header, probePath)
+		flow := FlowFromGoPacket(ft, &record.Header, setter)
 		if flow != nil {
 			flows = append(flows, flow)
 		}

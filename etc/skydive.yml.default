@@ -55,9 +55,13 @@ agent:
       # - pcap
 
 sflow:
-  # listen parameter for the sflow agent, Format: addr:port.
-  # Default addr is 127.0.0.1
-  listen: 6345
+  # Default listening address is 127.0.0.1
+  # bind_address: 127.0.0.1
+
+  # Port min/max used when starting a sflow probe, a agent will be started
+  # with a port from this range
+  # port_min: 6345
+  # port_max: 6355
 
 ovs:
   # ovsdb connection, Format: addr:port.

@@ -59,6 +59,8 @@ message Flow {
   /* Data Flow info */
   FlowStatistics Statistics	= 3;
 
+  string FlowUUID   = 5;
+
   /* Topology info */
   string ProbeGraphPath	= 11;
   string IfSrcGraphPath	= 14;

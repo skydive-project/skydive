@@ -23,6 +23,7 @@
 package sflow
 
 import (
+	"errors"
 	"net"
 	"strconv"
 	"strings"
@@ -38,29 +39,35 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 const (
 	maxDgramSize = 1500
 )
 
-type ProbePathGetter interface {
-	GetProbePath(index int64) string
-}
-
 type SFlowAgent struct {
+	UUID                string
 	Addr                string
 	Port                int
-	Graph               *graph.Graph
 	AnalyzerClient      *analyzer.Client
 	flowTable           *flow.FlowTable
 	FlowMappingPipeline *mappings.FlowMappingPipeline
-	ProbePathGetter     ProbePathGetter
+	FlowProbePathSetter flow.FlowProbePathSetter
 	running             atomic.Value
 	wg                  sync.WaitGroup
 	flush               chan bool
 	flushDone           chan bool
+}
+
+type SFlowAgentAllocator struct {
+	sync.RWMutex
+	AnalyzerClient      *analyzer.Client
+	FlowMappingPipeline *mappings.FlowMappingPipeline
+	FlowProbePathSetter flow.FlowProbePathSetter
+	Addr                string
+	MinPort             int
+	MaxPort             int
+	allocated           map[int]*SFlowAgent
 }
 
 func (sfa *SFlowAgent) GetTarget() string {
@@ -85,14 +92,8 @@ func (sfa *SFlowAgent) feedFlowTable(conn *net.UDPConn) {
 
 	if sflowPacket.SampleCount > 0 {
 		for _, sample := range sflowPacket.FlowSamples {
-			var probePath string
-			if sfa.ProbePathGetter != nil {
-				probePath = sfa.ProbePathGetter.GetProbePath(int64(sample.InputInterface))
-			}
-
-			flows := flow.FlowsFromSFlowSample(sfa.flowTable, &sample, probePath)
-
-			logging.GetLogger().Debugf("%d flows captured at %v", len(flows), probePath)
+			flows := flow.FlowsFromSFlowSample(sfa.flowTable, &sample, sfa.FlowProbePathSetter)
+			logging.GetLogger().Debugf("%d flows captured", len(flows))
 		}
 	}
 }
@@ -167,35 +168,112 @@ func (sfa *SFlowAgent) Flush() {
 	<-sfa.flushDone
 }
 
-func (sfa *SFlowAgent) SetAnalyzerClient(a *analyzer.Client) {
-	sfa.AnalyzerClient = a
+func (sfa *SFlowAgent) SetFlowProbePathSetter(p flow.FlowProbePathSetter) {
+	sfa.FlowProbePathSetter = p
 }
 
-func (sfa *SFlowAgent) SetMappingPipeline(p *mappings.FlowMappingPipeline) {
-	sfa.FlowMappingPipeline = p
-}
-
-func (sfa *SFlowAgent) SetProbePathGetter(p ProbePathGetter) {
-	sfa.ProbePathGetter = p
-}
-
-func NewSFlowAgent(a string, p int, g *graph.Graph) (*SFlowAgent, error) {
-	sfa := &SFlowAgent{
-		Addr:      a,
-		Port:      p,
-		Graph:     g,
-		flush:     make(chan bool),
-		flushDone: make(chan bool),
+func NewSFlowAgent(u string, a string, p int, c *analyzer.Client, m *mappings.FlowMappingPipeline) *SFlowAgent {
+	return &SFlowAgent{
+		UUID:                u,
+		Addr:                a,
+		Port:                p,
+		AnalyzerClient:      c,
+		FlowMappingPipeline: m,
+		flush:               make(chan bool),
+		flushDone:           make(chan bool),
 	}
-
-	return sfa, nil
 }
 
-func NewSFlowAgentFromConfig(g *graph.Graph) (*SFlowAgent, error) {
+func NewSFlowAgentFromConfig(u string, a *analyzer.Client, m *mappings.FlowMappingPipeline) (*SFlowAgent, error) {
 	addr, port, err := config.GetHostPortAttributes("sflow", "listen")
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSFlowAgent(addr, port, g)
+	return NewSFlowAgent(u, addr, port, a, m), nil
+}
+
+func (a *SFlowAgentAllocator) Agents() []*SFlowAgent {
+	a.Lock()
+	defer a.Unlock()
+
+	agents := make([]*SFlowAgent, 0)
+
+	for _, agent := range a.allocated {
+		agents = append(agents, agent)
+	}
+
+	return agents
+}
+
+func (a *SFlowAgentAllocator) Release(uuid string) {
+	a.Lock()
+	defer a.Unlock()
+
+	for i, agent := range a.allocated {
+		if uuid == agent.UUID {
+			agent.Stop()
+
+			delete(a.allocated, i)
+		}
+	}
+}
+
+func (a *SFlowAgentAllocator) ReleaseAll() {
+	a.Lock()
+	defer a.Unlock()
+
+	// Stop without waiting so that all the probe can terminate at the same time
+	for _, agent := range a.allocated {
+		agent.Stop()
+	}
+
+	for i, agent := range a.allocated {
+		agent.wg.Wait()
+
+		delete(a.allocated, i)
+	}
+}
+
+func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbePathSetter) (*SFlowAgent, error) {
+	address := config.GetConfig().GetString("sflow.bind_address")
+	if address == "" {
+		address = "127.0.0.1"
+	}
+
+	min := config.GetConfig().GetInt("sflow.port_min")
+	if min == 0 {
+		min = 6345
+	}
+
+	max := config.GetConfig().GetInt("sflow.port_max")
+	if max == 0 {
+		max = 6355
+	}
+
+	a.Lock()
+	defer a.Unlock()
+
+	for i := min; i != max+1; i++ {
+		if _, ok := a.allocated[i]; !ok {
+			s := NewSFlowAgent(uuid, address, i, a.AnalyzerClient, a.FlowMappingPipeline)
+			s.SetFlowProbePathSetter(p)
+
+			a.allocated[i] = s
+
+			s.Start()
+
+			return s, nil
+		}
+	}
+
+	return nil, errors.New("sflow port exhausted")
+}
+
+func NewSFlowAgentAllocator(a *analyzer.Client, m *mappings.FlowMappingPipeline) *SFlowAgentAllocator {
+	return &SFlowAgentAllocator{
+		AnalyzerClient:      a,
+		FlowMappingPipeline: m,
+		allocated:           make(map[int]*SFlowAgent),
+	}
 }

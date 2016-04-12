@@ -60,8 +60,13 @@ const (
 	snaplen int32 = 256
 )
 
+func (p *PcapProbe) SetProbePath(flow *flow.Flow) bool {
+	flow.ProbeGraphPath = p.probePath
+	return true
+}
+
 func (p *PcapProbesHandler) handlePacket(pcapProbe *PcapProbe, packet gopacket.Packet) {
-	flows := []*flow.Flow{flow.FlowFromGoPacket(p.flowTable, &packet, pcapProbe.probePath)}
+	flows := []*flow.Flow{flow.FlowFromGoPacket(p.flowTable, &packet, pcapProbe)}
 	p.flowTable.Update(flows)
 	p.flowMappingPipeline.Enhance(flows)
 

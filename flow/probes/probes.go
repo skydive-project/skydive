@@ -92,7 +92,7 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 
 		switch t {
 		case "ovssflow":
-			o := NewOvsSFlowProbesHandlerFromConfig(tb, g, pipeline, aclient)
+			o := NewOvsSFlowProbesHandler(tb, g, pipeline, aclient)
 			if o != nil {
 				probes[t] = o
 			}
@@ -102,7 +102,7 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 				probes[t] = o
 			}
 		default:
-			logging.GetLogger().Error("unknown probe type %s", t)
+			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}
 	}
 

@@ -100,6 +100,15 @@ func forgeTestPacket(t *testing.T, seed int64, protos ...ProtocolType) *gopacket
 	return &gpacket
 }
 
+type probePathSetter struct {
+	path string
+}
+
+func (p *probePathSetter) SetProbePath(f *Flow) bool {
+	f.ProbeGraphPath = p.path
+	return true
+}
+
 func GenerateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, probePath string) []*Flow {
 	flows := []*Flow{}
 	for i := int64(0); i < 10; i++ {
@@ -109,7 +118,7 @@ func GenerateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, probePath st
 		} else {
 			packet = forgeTestPacket(t, i+baseSeed*10, ETH, IPv4, UDP)
 		}
-		flow := FlowFromGoPacket(ft, packet, probePath)
+		flow := FlowFromGoPacket(ft, packet, &probePathSetter{probePath})
 		if flow == nil {
 			t.Fail()
 		}

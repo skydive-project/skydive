@@ -55,7 +55,7 @@ type ElasticSearchStorage struct {
 
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	for _, flow := range flows {
-		err := c.indexer.Index("skydive", "flow", flow.ID(), "", "", nil, flow)
+		err := c.indexer.Index("skydive", "flow", flow.UUID, "", "", nil, flow)
 		if err != nil {
 			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 			continue

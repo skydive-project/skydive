@@ -58,7 +58,8 @@ cache:
   cleanup: 30
 
 sflow:
-  listen: 55000
+  port_min: 55000
+  port_max: 55005
 
 ovs:
   ovsdb: 6400
@@ -180,7 +181,26 @@ func TestSFlowWithPCAP(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
+	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
+	if err := client.Create("capture", &capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
 	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	// FIX(safchain): need to be reworked as there is no more static sflow agent
+	// running at a specific port and agent couldn't speak sflow at all
 	for _, trace := range flowsTraces {
 		fulltrace, _ := filepath.Abs(trace.filename)
 		err := tools.PCAP2SFlowReplay("localhost", 55000, fulltrace, 1000, 5)
@@ -191,6 +211,8 @@ func TestSFlowWithPCAP(t *testing.T) {
 		aa.Flush()
 		pcapTraceValidate(t, ts.GetFlows(), &trace)
 	}
+
+	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
 }
 
 func TestSFlowProbePath(t *testing.T) {
@@ -242,6 +264,159 @@ func TestSFlowProbePath(t *testing.T) {
 	}
 
 	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+}
+
+func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
+	if err := client.Create("capture", &capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip netns add sflow-vm1", true},
+		{"ip link set sflow-intf1 netns sflow-vm1", true},
+		{"ip netns exec sflow-vm1 ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip netns exec sflow-vm1 ip link set sflow-intf1 up", true},
+		{"ip netns exec sflow-vm1 ping -c 15 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del sflow-vm1", true},
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	aa.Flush()
+
+	ok := false
+	for _, f := range ts.GetFlows() {
+		if f.ProbeGraphPath == hostname+"[Type=host]/br-sflow[Type=ovsbridge]" && f.LayersPath == "Ethernet/ARP/Payload" {
+			ok = true
+			break
+		}
+	}
+
+	if !ok {
+		t.Error("Unable to find a flow with the expected probePath")
+	}
+
+	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+}
+
+func TestSFlowTwoProbePathWithPatch(t *testing.T) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	capture1 := &api.Capture{ProbePath: "*/br-sflow1[Type=ovsbridge]"}
+	if err := client.Create("capture", &capture1); err != nil {
+		t.Fatal(err.Error())
+	}
+	capture2 := &api.Capture{ProbePath: "*/br-sflow2[Type=ovsbridge]"}
+	if err := client.Create("capture", &capture2); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(5 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow1", true},
+		{"ovs-vsctl add-port br-sflow1 sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip netns add sflow-vm1", true},
+		{"ip link set sflow-intf1 netns sflow-vm1", true},
+		{"ip netns exec sflow-vm1 ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip netns exec sflow-vm1 ip link set sflow-intf1 up", true},
+
+		{"ovs-vsctl add-br br-sflow2", true},
+		{"ovs-vsctl add-port br-sflow2 sflow-intf2 -- set interface sflow-intf2 type=internal", true},
+		{"ip netns add sflow-vm2", true},
+		{"ip link set sflow-intf2 netns sflow-vm2", true},
+		{"ip netns exec sflow-vm2 ip address add 169.254.33.34/24 dev sflow-intf2", true},
+		{"ip netns exec sflow-vm2 ip link set sflow-intf2 up", true},
+
+		// interfaces used to link br-sflow1 and br-sflow2 without a patch
+		{"ovs-vsctl add-port br-sflow1 sflow-link1 -- set interface sflow-link1 type=internal", true},
+		{"ip link set sflow-link1 up", true},
+		{"ovs-vsctl add-port br-sflow2 sflow-link2 -- set interface sflow-link2 type=internal", true},
+		{"ip link set sflow-link2 up", true},
+
+		{"brctl addbr br-link", true},
+		{"ip link set br-link up", true},
+		{"brctl addif br-link sflow-link1", true},
+		{"brctl addif br-link sflow-link2", true},
+
+		{"ip netns exec sflow-vm2 ping -c 15 -I sflow-intf2 169.254.33.33", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del sflow-vm1", true},
+		{"ip netns del sflow-vm2", true},
+		{"ovs-vsctl del-br br-sflow1", true},
+		{"ovs-vsctl del-br br-sflow2", true},
+		{"ip link set br-link down", true},
+		{"brctl delbr br-link", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	aa.Flush()
+
+	flows := []*flow.Flow{}
+	for _, f := range ts.GetFlows() {
+		if f.LayersPath == "Ethernet/IPv4/ICMPv4/Payload" {
+			flows = append(flows, f)
+		}
+	}
+
+	if len(flows) != 2 {
+		t.Errorf("Should have 2 flow entries one per probepath got: %d", len(flows))
+	}
+
+	if flows[0].ProbeGraphPath != hostname+"[Type=host]/br-sflow1[Type=ovsbridge]" &&
+		flows[0].ProbeGraphPath != hostname+"[Type=host]/br-sflow2[Type=ovsbridge]" {
+		t.Errorf("Bad probepath for the first flow: %s", flows[0].ProbeGraphPath)
+	}
+
+	if flows[1].ProbeGraphPath != hostname+"[Type=host]/br-sflow1[Type=ovsbridge]" &&
+		flows[1].ProbeGraphPath != hostname+"[Type=host]/br-sflow2[Type=ovsbridge]" {
+		t.Errorf("Bad probepath for the second flow: %s", flows[1].ProbeGraphPath)
+	}
+
+	if flows[0].FlowUUID != flows[1].FlowUUID {
+		t.Errorf("Both flows should have the same FlowUUID: %v", flows)
+	}
+
+	if flows[0].UUID == flows[1].UUID {
+		t.Errorf("Both flows should have different UUID: %v", flows)
+	}
+
+	client.Delete("capture", "*/br-sflow1[Type=ovsbridge]")
+	client.Delete("capture", "*/br-sflow2[Type=ovsbridge]")
 }
 
 func TestPCAPProbe(t *testing.T) {
