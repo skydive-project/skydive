@@ -216,7 +216,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	o.uuidToIntf[uuid] = intf
 
 	switch itype {
-	case "gre", "vxlan":
+	case "gre", "vxlan", "geneve":
 		o.Graph.AddMetadata(intf, "Driver", "openvswitch")
 
 		m := row.New.Fields["options"].(libovsdb.OvsMap)
