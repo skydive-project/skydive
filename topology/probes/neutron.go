@@ -165,7 +165,7 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 		mapper.graph.AddMetadata(node, "Neutron.NetworkName", attrs.NetworkName)
 	}
 
-	if segID, err := strconv.Atoi(attrs.VNI); err != nil {
+	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
 		mapper.graph.AddMetadata(node, "Neutron.VNI", uint64(segID))
 	}
 
