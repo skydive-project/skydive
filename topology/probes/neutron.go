@@ -50,8 +50,10 @@ type NeutronMapper struct {
 }
 
 type Attributes struct {
-	TenantID string
-	VNI      string
+	NetworkID   string
+	NetworkName string
+	TenantID    string
+	VNI         string
 }
 
 func (mapper *NeutronMapper) retrievePort(metadata graph.Metadata) (port ports.Port, err error) {
@@ -112,7 +114,14 @@ func (mapper *NeutronMapper) retrieveAttributes(metadata graph.Metadata) (*Attri
 		return nil, err
 	}
 
-	return &Attributes{TenantID: port.TenantID, VNI: network.SegmentationID}, nil
+	a := &Attributes{
+		NetworkID:   port.NetworkID,
+		NetworkName: network.Name,
+		TenantID:    port.TenantID,
+		VNI:         network.SegmentationID,
+	}
+
+	return a, nil
 }
 
 func (mapper *NeutronMapper) nodeUpdater() {
@@ -146,6 +155,14 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 
 	if attrs.TenantID != "" {
 		mapper.graph.AddMetadata(node, "Neutron.TenantID", attrs.TenantID)
+	}
+
+	if attrs.NetworkID != "" {
+		mapper.graph.AddMetadata(node, "Neutron.NetworkID", attrs.NetworkID)
+	}
+
+	if attrs.NetworkName != "" {
+		mapper.graph.AddMetadata(node, "Neutron.NetworkName", attrs.NetworkName)
 	}
 
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil {
