@@ -54,8 +54,28 @@ type Attributes struct {
 	VNI      string
 }
 
-func (mapper *NeutronMapper) retrievePort(mac string) (port ports.Port, err error) {
-	opts := ports.ListOpts{MACAddress: mac}
+func (mapper *NeutronMapper) retrievePort(metadata graph.Metadata) (port ports.Port, err error) {
+	var opts ports.ListOpts
+	var mac string
+
+	/* If we have a MAC address for a device attached to the interface, that is the one that
+	 * will be associated with the Neutron port. */
+	if attached_mac, ok := metadata["ExtID.attached-mac"]; ok {
+		mac = attached_mac.(string)
+	} else {
+		mac = metadata["MAC"].(string)
+	}
+
+	logging.GetLogger().Debugf("Retrieving attributes from Neutron for MAC: %s", mac)
+
+	/* Determine the best way to search for the Neutron port.
+	 * We prefer the Neutron port UUID if we have it, but will fall back
+	 * to using the MAC address otherwise. */
+	if portid, ok := metadata["ExtID.iface-id"]; ok {
+		opts.ID = portid.(string)
+	} else {
+		opts.MACAddress = mac
+	}
 	pager := ports.List(mapper.client, opts)
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
 		portList, err := ports.ExtractPorts(page)
@@ -80,10 +100,8 @@ func (mapper *NeutronMapper) retrievePort(mac string) (port ports.Port, err erro
 	return port, err
 }
 
-func (mapper *NeutronMapper) retrieveAttributes(mac string) (*Attributes, error) {
-	logging.GetLogger().Debugf("Retrieving attributes from Neutron for MAC: %s", mac)
-
-	port, err := mapper.retrievePort(mac)
+func (mapper *NeutronMapper) retrieveAttributes(metadata graph.Metadata) (*Attributes, error) {
+	port, err := mapper.retrievePort(metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +124,11 @@ func (mapper *NeutronMapper) nodeUpdater() {
 			continue
 		}
 
-		mac, ok := node.Metadata()["MAC"]
-		if !ok {
+		if _, ok := node.Metadata()["MAC"]; !ok {
 			continue
 		}
 
-		attrs, err := mapper.retrieveAttributes(mac.(string))
+		attrs, err := mapper.retrieveAttributes(node.Metadata())
 		if err != nil {
 			continue
 		}
