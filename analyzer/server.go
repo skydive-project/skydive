@@ -55,7 +55,7 @@ type Server struct {
 	running             atomic.Value
 }
 
-func (s *Server) flowExpire(flows []*flow.Flow) {
+func (s *Server) flowExpireUpdate(flows []*flow.Flow) {
 	if s.Storage != nil {
 		s.Storage.StoreFlows(flows)
 		logging.GetLogger().Debugf("%d flows stored", len(flows))
@@ -91,10 +91,14 @@ func (s *Server) handleUDPFlowPacket() {
 	}
 }
 
-func (s *Server) asyncFlowTableExpire() {
+func (s *Server) asyncFlowTableExpireUpdated() {
 	for s.running.Load() == true {
-		now := <-s.FlowTable.GetExpireTicker()
-		s.FlowTable.Expire(now)
+		select {
+		case now := <-s.FlowTable.GetExpireTicker():
+			s.FlowTable.Expire(now)
+		case now := <-s.FlowTable.GetUpdatedTicker():
+			s.FlowTable.Updated(now)
+		}
 	}
 }
 
@@ -136,7 +140,7 @@ func (s *Server) ListenAndServe() {
 
 	go func() {
 		defer wg.Done()
-		s.asyncFlowTableExpire()
+		s.asyncFlowTableExpireUpdated()
 	}()
 
 	wg.Wait()
@@ -257,7 +261,9 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterFlowApi("analyzer", flowtable, server.Storage, httpServer)
 
 	cfgFlowtable_expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
-	flowtable.RegisterExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Second)
+	flowtable.RegisterExpire(server.flowExpireUpdate, time.Duration(cfgFlowtable_expire)*time.Second)
+	cfgFlowtable_update := config.GetConfig().GetInt("analyzer.flowtable_update")
+	flowtable.RegisterUpdated(server.flowExpireUpdate, time.Duration(cfgFlowtable_update)*time.Second)
 
 	return server, nil
 }

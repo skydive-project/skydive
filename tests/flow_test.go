@@ -66,6 +66,7 @@ ovs:
 analyzer:
   listen: 58082
   flowtable_expire: 600
+  flowtable_update: 10
 
 etcd:
   embedded: true

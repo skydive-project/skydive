@@ -46,6 +46,7 @@ func init() {
 	cfg.SetDefault("sflow.listen", "127.0.0.1:6345")
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.flowtable_expire", 600)
+	cfg.SetDefault("analyzer.flowtable_update", 60)
 	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
@@ -75,6 +76,10 @@ func checkConfig() error {
 	}
 
 	if err := checkStrictPositive("analyzer.flowtable_expire"); err != nil {
+		return err
+	}
+
+	if err := checkStrictPositive("analyzer.flowtable_update"); err != nil {
 		return err
 	}
 

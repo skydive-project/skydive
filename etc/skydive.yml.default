@@ -22,6 +22,7 @@ analyzer:
   # Default addr is 127.0.0.1
   listen: 8082
   flowtable_expire: 600
+  flowtable_update: 60
   # specify storage engine
   # storage: elasticseach
 

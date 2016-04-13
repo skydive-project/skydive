@@ -67,6 +67,9 @@ func init() {
 	Analyzer.Flags().Int("flowtable-expire", 600, "expiration time for flowtable entries")
 	config.GetConfig().BindPFlag("analyzer.flowtable_expire", Analyzer.Flags().Lookup("flowtable-expire"))
 
+	Analyzer.Flags().Int("flowtable-update", 60, "send updated flows to storage every time (second)")
+	config.GetConfig().BindPFlag("analyzer.flowtable_update", Analyzer.Flags().Lookup("flowtable-update"))
+
 	Analyzer.Flags().String("elasticsearch", "127.0.0.1:9200", "elasticsearch server")
 	config.GetConfig().BindPFlag("storage.elasticsearch", Analyzer.Flags().Lookup("elasticsearch"))
 
