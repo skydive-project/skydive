@@ -176,9 +176,9 @@ func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) 
 func TestSFlowWithPCAP(t *testing.T) {
 	ts := NewTestStorage()
 
-	agent, analyzer := helper.StartAgentAndAnalyzerWithConfig(t, confAgentAnalyzer, ts)
-	defer agent.Stop()
-	defer analyzer.Stop()
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
 
 	time.Sleep(1 * time.Second)
 	for _, trace := range flowsTraces {
@@ -188,11 +188,7 @@ func TestSFlowWithPCAP(t *testing.T) {
 			t.Fatalf("Error during the replay: %s", err.Error())
 		}
 
-		agent.FlowProbeBundleLock.Lock()
-		agent.FlowProbeBundle.Flush()
-		agent.FlowProbeBundleLock.Unlock()
-		time.Sleep(500 * time.Millisecond) // Async UDP Socket
-		analyzer.Flush()
+		aa.Flush()
 		pcapTraceValidate(t, ts.GetFlows(), &trace)
 	}
 }
@@ -205,9 +201,9 @@ func TestSFlowProbePath(t *testing.T) {
 
 	ts := NewTestStorage()
 
-	agent, analyzer := helper.StartAgentAndAnalyzerWithConfig(t, confAgentAnalyzer, ts)
-	defer agent.Stop()
-	defer analyzer.Stop()
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
 	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
@@ -231,11 +227,7 @@ func TestSFlowProbePath(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	agent.FlowProbeBundleLock.Lock()
-	agent.FlowProbeBundle.Flush()
-	agent.FlowProbeBundleLock.Unlock()
-	time.Sleep(500 * time.Millisecond)
-	analyzer.Flush()
+	aa.Flush()
 
 	ok := false
 	for _, f := range ts.GetFlows() {
@@ -260,9 +252,9 @@ func TestPCAPProbe(t *testing.T) {
 
 	ts := NewTestStorage()
 
-	agent, analyzer := helper.StartAgentAndAnalyzerWithConfig(t, confAgentAnalyzer, ts)
-	defer agent.Stop()
-	defer analyzer.Stop()
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
 	capture := &api.Capture{ProbePath: "*/br-pcap[Type=bridge]"}
@@ -286,11 +278,7 @@ func TestPCAPProbe(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	agent.FlowProbeBundleLock.Lock()
-	agent.FlowProbeBundle.Flush()
-	agent.FlowProbeBundleLock.Unlock()
-	time.Sleep(500 * time.Millisecond)
-	analyzer.Flush()
+	aa.Flush()
 
 	ok := false
 	flows := ts.GetFlows()

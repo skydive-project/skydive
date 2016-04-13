@@ -24,7 +24,6 @@ package agent
 
 import (
 	"os"
-	"sync"
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/config"
@@ -43,7 +42,6 @@ type Agent struct {
 	Root                  *graph.Node
 	TopologyProbeBundle   *tprobes.TopologyProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
-	FlowProbeBundleLock   sync.Mutex
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
 	HTTPServer            *shttp.Server
 }
@@ -73,10 +71,8 @@ func (a *Agent) Start() {
 	a.TopologyProbeBundle = tprobes.NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
 	a.TopologyProbeBundle.Start()
 
-	a.FlowProbeBundleLock.Lock()
 	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph)
 	a.FlowProbeBundle.Start()
-	a.FlowProbeBundleLock.Unlock()
 
 	if addr != "" {
 		etcdClient, err := etcd.NewEtcdClientFromConfig()
@@ -106,9 +102,7 @@ func (a *Agent) Start() {
 
 func (a *Agent) Stop() {
 	a.TopologyProbeBundle.Stop()
-	a.FlowProbeBundleLock.Lock()
 	a.FlowProbeBundle.Stop()
-	a.FlowProbeBundleLock.Unlock()
 	a.GraphServer.Stop()
 	a.HTTPServer.Stop()
 	if a.Gclient != nil {

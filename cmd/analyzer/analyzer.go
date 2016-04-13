@@ -47,7 +47,7 @@ var Analyzer = &cobra.Command{
 			logging.GetLogger().Fatalf("Can't start Analyzer : %v", err)
 		}
 
-		go server.ListenAndServe()
+		server.ListenAndServe()
 
 		logging.GetLogger().Notice("Skydive Analyzer started !")
 		ch := make(chan os.Signal)

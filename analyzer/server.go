@@ -50,9 +50,10 @@ type Server struct {
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	Storage             storage.Storage
 	FlowTable           *flow.FlowTable
-	Conn                *net.UDPConn
+	conn                *net.UDPConn
 	EmbeddedEtcd        *etcd.EmbeddedEtcd
 	running             atomic.Value
+	wgServers           sync.WaitGroup
 }
 
 func (s *Server) flowExpireUpdate(flows []*flow.Flow) {
@@ -70,11 +71,16 @@ func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
 }
 
 func (s *Server) handleUDPFlowPacket() {
+	s.conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
 	data := make([]byte, 4096)
 
 	for s.running.Load() == true {
-		n, _, err := s.Conn.ReadFromUDP(data)
+		n, _, err := s.conn.ReadFromUDP(data)
 		if err != nil {
+			if err.(net.Error).Timeout() == true {
+				s.conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
+				continue
+			}
 			if s.running.Load() == false {
 				return
 			}
@@ -103,47 +109,43 @@ func (s *Server) asyncFlowTableExpireUpdated() {
 }
 
 func (s *Server) ListenAndServe() {
-	var wg sync.WaitGroup
 	s.running.Store(true)
 
 	s.AlertServer.AlertManager.Start()
 
-	wg.Add(5)
+	s.wgServers.Add(4)
 	go func() {
-		defer wg.Done()
+		defer s.wgServers.Done()
 		s.HTTPServer.ListenAndServe()
 	}()
 
 	go func() {
-		defer wg.Done()
+		defer s.wgServers.Done()
 		s.GraphServer.ListenAndServe()
 	}()
 
 	go func() {
-		defer wg.Done()
+		defer s.wgServers.Done()
 		s.AlertServer.ListenAndServe()
 	}()
 
 	go func() {
-		defer wg.Done()
+		defer s.wgServers.Done()
 
 		host := s.HTTPServer.Addr + ":" + strconv.FormatInt(int64(s.HTTPServer.Port), 10)
 		addr, err := net.ResolveUDPAddr("udp", host)
-		s.Conn, err = net.ListenUDP("udp", addr)
+		s.conn, err = net.ListenUDP("udp", addr)
 		if err != nil {
 			panic(err)
 		}
-		defer s.Conn.Close()
+		defer s.conn.Close()
 
 		s.handleUDPFlowPacket()
 	}()
 
 	go func() {
-		defer wg.Done()
 		s.asyncFlowTableExpireUpdated()
 	}()
-
-	wg.Wait()
 }
 
 func (s *Server) Stop() {
@@ -155,10 +157,11 @@ func (s *Server) Stop() {
 	if s.EmbeddedEtcd != nil {
 		s.EmbeddedEtcd.Stop()
 	}
-	s.Conn.Close()
 	if s.Storage != nil {
 		s.Storage.Close()
 	}
+	s.AlertServer.AlertManager.Stop()
+	s.wgServers.Wait()
 }
 
 func (s *Server) Flush() {

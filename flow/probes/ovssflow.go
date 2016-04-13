@@ -57,7 +57,6 @@ type OvsSFlowProbesHandler struct {
 	Graph            *graph.Graph
 	ovsClient        *ovsdb.OvsClient
 	agent            *sflow.SFlowAgent
-	agentLock        sync.Mutex
 	cache            *cache.Cache
 	cacheUpdaterChan chan int64
 	done             chan bool
@@ -184,8 +183,6 @@ func compareProbeID(row *map[string]interface{}, probe OvsSFlowProbe) (bool, err
 
 func (o *OvsSFlowProbesHandler) makeOvsSFlowProbe() OvsSFlowProbe {
 	// TODO(safchain) add config parameter
-	o.agentLock.Lock()
-	defer o.agentLock.Unlock()
 	return OvsSFlowProbe{
 		ID:         "SkydiveSFlowProbe",
 		Interface:  "eth0",
@@ -362,16 +359,12 @@ func (o *OvsSFlowProbesHandler) Start() {
 	// start index/mac cache updater
 	go o.cacheUpdater()
 
-	o.agentLock.Lock()
 	o.agent.Start()
-	o.agentLock.Unlock()
 }
 
 func (o *OvsSFlowProbesHandler) Stop() {
 	// TODO(safchain) call RemoveMonitorHandler when implemented
-	o.agentLock.Lock()
 	o.agent.Stop()
-	o.agentLock.Unlock()
 
 	o.running.Store(false)
 	o.done <- true
@@ -379,9 +372,7 @@ func (o *OvsSFlowProbesHandler) Stop() {
 }
 
 func (o *OvsSFlowProbesHandler) Flush() {
-	o.agentLock.Lock()
 	o.agent.Flush()
-	o.agentLock.Unlock()
 }
 
 func NewOvsSFlowProbesHandler(p *probes.OvsdbProbe, agent *sflow.SFlowAgent, expire int, cleanup int) *OvsSFlowProbesHandler {

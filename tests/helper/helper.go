@@ -85,43 +85,113 @@ func InitConfig(t *testing.T, conf string) {
 	}
 }
 
-func StartAgent() *agent.Agent {
-	agent := agent.NewAgent()
-	go agent.Start()
-	return agent
+type helperService int
+
+const (
+	start helperService = iota
+	stop
+	flush
+)
+
+type HelperAgentAnalyzer struct {
+	t        *testing.T
+	storage  storage.Storage
+	Agent    *agent.Agent
+	Analyzer *analyzer.Server
+
+	service     chan helperService
+	serviceDone chan bool
 }
 
-func StartAgentWithConfig(t *testing.T, conf string) *agent.Agent {
+func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage) *HelperAgentAnalyzer {
 	InitConfig(t, conf)
+	agent := NewAgent()
+	analyzer := NewAnalyzerStorage(t, s)
 
-	return StartAgent()
+	helper := &HelperAgentAnalyzer{
+		t:        t,
+		storage:  s,
+		Agent:    agent,
+		Analyzer: analyzer,
+
+		service:     make(chan helperService),
+		serviceDone: make(chan bool),
+	}
+
+	go helper.run()
+	return helper
 }
 
-func StartAgentAndAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage) (*agent.Agent, *analyzer.Server) {
-	InitConfig(t, conf)
+func (h *HelperAgentAnalyzer) startAnalyzer() {
+	h.Analyzer.ListenAndServe()
 
+	// waiting for the api endpoint
+	for i := 1; i <= 5; i++ {
+		url := fmt.Sprintf("http://%s:%d/api", h.Analyzer.HTTPServer.Addr, h.Analyzer.HTTPServer.Port)
+		_, err := http.Get(url)
+		if err == nil {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+
+	h.t.Fatal("Fail to start the analyzer")
+	return
+}
+
+func (h *HelperAgentAnalyzer) Start() {
+	h.service <- start
+	<-h.serviceDone
+}
+func (h *HelperAgentAnalyzer) Stop() {
+	h.service <- stop
+	<-h.serviceDone
+}
+func (h *HelperAgentAnalyzer) Flush() {
+	h.service <- flush
+	<-h.serviceDone
+}
+func (h *HelperAgentAnalyzer) run() {
+	for {
+		switch <-h.service {
+		case start:
+			h.startAnalyzer()
+			h.Agent.Start()
+		case stop:
+			h.Agent.Stop()
+			h.Analyzer.Stop()
+		case flush:
+			h.Agent.FlowProbeBundle.Flush()
+			time.Sleep(500 * time.Millisecond)
+			h.Analyzer.Flush()
+		}
+		h.serviceDone <- true
+	}
+}
+
+func NewAnalyzerStorage(t *testing.T, s storage.Storage) *analyzer.Server {
 	server, err := analyzer.NewServerFromConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	server.SetStorage(s)
+	return server
+}
 
-	go server.ListenAndServe()
+func NewAgent() *agent.Agent {
+	return agent.NewAgent()
+}
 
-	// waiting for the api endpoint
-	for i := 1; i <= 5; i++ {
-		url := fmt.Sprintf("http://%s:%d/api", server.HTTPServer.Addr, server.HTTPServer.Port)
-		_, err := http.Get(url)
-		if err == nil {
-			return StartAgent(), server
-		}
-		time.Sleep(time.Second)
-	}
+func StartAgent() *agent.Agent {
+	agent := NewAgent()
+	agent.Start()
+	return agent
+}
 
-	t.Fatal("Fail to start the analyzer")
-
-	return nil, nil
+func StartAgentWithConfig(t *testing.T, conf string) *agent.Agent {
+	InitConfig(t, conf)
+	return StartAgent()
 }
 
 func ExecCmds(t *testing.T, cmds ...Cmd) {
