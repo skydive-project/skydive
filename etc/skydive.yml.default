@@ -21,7 +21,7 @@ analyzer:
   # address and port for the analyzer API, Format: addr:port.
   # Default addr is 127.0.0.1
   listen: 8082
-  flowtable_expire: 10
+  flowtable_expire: 600
   # specify storage engine
   # storage: elasticseach
 
@@ -34,7 +34,8 @@ agent:
   # used by the agent to authenticate against the analyzer
   analyzer_username: admin
   analyzer_password: password
-  flowtable_expire: 5
+  flowtable_expire: 300
+  flowtable_update: 30
   topology:
     # Probes used to capture topology informations like interfaces,
     # bridges, namespaces, etc...

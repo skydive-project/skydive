@@ -64,7 +64,7 @@ func init() {
 	Analyzer.Flags().String("listen", "127.0.0.1:8082", "address and port for the analyzer API")
 	config.GetConfig().BindPFlag("analyzer.listen", Analyzer.Flags().Lookup("listen"))
 
-	Analyzer.Flags().Int("flowtable-expire", 10, "expiration time for flowtable entries")
+	Analyzer.Flags().Int("flowtable-expire", 600, "expiration time for flowtable entries")
 	config.GetConfig().BindPFlag("analyzer.flowtable_expire", Analyzer.Flags().Lookup("flowtable-expire"))
 
 	Analyzer.Flags().String("elasticsearch", "127.0.0.1:9200", "elasticsearch server")

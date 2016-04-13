@@ -257,7 +257,7 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterFlowApi("analyzer", flowtable, server.Storage, httpServer)
 
 	cfgFlowtable_expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
-	flowtable.RegisterExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Minute)
+	flowtable.RegisterExpire(server.flowExpire, time.Duration(cfgFlowtable_expire)*time.Second)
 
 	return server, nil
 }

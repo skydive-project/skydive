@@ -65,7 +65,7 @@ func init() {
 	Agent.Flags().String("sflow-listen", "127.0.0.1:6345", "listen parameter for the sflow agent")
 	config.GetConfig().BindPFlag("sflow.listen", Agent.Flags().Lookup("sflow-listen"))
 
-	Agent.Flags().Int("flowtable-expire", 10, "expiration time for flowtable entries")
+	Agent.Flags().Int("flowtable-expire", 300, "expiration time for flowtable entries")
 	config.GetConfig().BindPFlag("agent.flowtable_expire", Agent.Flags().Lookup("flowtable-expire"))
 
 	Agent.Flags().Int("flowtable-update", 30, "send updated flows to analyzer every time (second)")
