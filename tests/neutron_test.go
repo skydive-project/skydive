@@ -80,7 +80,7 @@ openstack:
 `
 
 func TestNeutron(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	authUrl := os.Getenv("OS_AUTH_URL")
 	username := os.Getenv("OS_USERNAME")
