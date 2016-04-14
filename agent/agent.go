@@ -101,8 +101,9 @@ func (a *Agent) Start() {
 }
 
 func (a *Agent) Stop() {
-	a.TopologyProbeBundle.Stop()
+	a.FlowProbeBundle.UnregisterAllProbes()
 	a.FlowProbeBundle.Stop()
+	a.TopologyProbeBundle.Stop()
 	a.GraphServer.Stop()
 	a.HTTPServer.Stop()
 	if a.Gclient != nil {

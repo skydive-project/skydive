@@ -34,12 +34,25 @@ import (
 
 type FlowProbeBundle struct {
 	probe.ProbeBundle
+	Graph *graph.Graph
 }
 
 func (fpb *FlowProbeBundle) Flush() {
 	for _, p := range fpb.ProbeBundle.Probes {
 		fprobe := p.(FlowProbe)
 		fprobe.Flush()
+	}
+}
+
+func (fpb *FlowProbeBundle) UnregisterAllProbes() {
+	fpb.Graph.Lock()
+	defer fpb.Graph.Unlock()
+
+	for _, n := range fpb.Graph.GetNodes() {
+		for _, p := range fpb.ProbeBundle.Probes {
+			fprobe := p.(FlowProbe)
+			fprobe.UnregisterProbe(n)
+		}
 	}
 }
 
@@ -97,5 +110,6 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 
 	return &FlowProbeBundle{
 		ProbeBundle: *p,
+		Graph:       g,
 	}
 }
