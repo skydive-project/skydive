@@ -192,6 +192,14 @@ func TestPath(t *testing.T) {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}
 
+	// add a shorter link
+	g.Link(n4, n1, Metadata{"Type": "Layer2"})
+	r = g.LookupShortestPath(n4, Metadata{"Value": 1})
+	if len(r) == 0 || !validatePath(r, "4/1") {
+		t.Errorf("Wrong nodes returned: %v", r)
+	}
+	g.Unlink(n4, n1)
+
 	r = g.LookupShortestPath(n4, Metadata{"Value": 2})
 	if len(r) == 0 || !validatePath(r, "4/3/2") {
 		t.Errorf("Wrong nodes returned: %v", r)
@@ -202,7 +210,7 @@ func TestPath(t *testing.T) {
 		t.Errorf("Shouldn't have true returned: %v", r)
 	}
 
-	// add a shorter link in order to validate edga validator
+	// add a shorter link in order to validate edge validator
 	g.Link(n1, n4, Metadata{"Type": "Layer3"})
 
 	v := func(e *Edge) bool {

@@ -232,7 +232,12 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 		}
 
 		if neighbor != nil {
-			sub := g.lookupShortestPath(neighbor, m, path, v)
+			nv := make(map[Identifier]bool)
+			for k, v := range v {
+				nv[k] = v
+			}
+
+			sub := g.lookupShortestPath(neighbor, m, path, nv)
 			if len(sub) > 0 && (len(shortest) == 0 || len(sub) < len(shortest)) {
 				shortest = sub
 			}
