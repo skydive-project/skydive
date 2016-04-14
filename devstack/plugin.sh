@@ -43,6 +43,8 @@ SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb neutron"}
 # Remote port for ovsdb server.
 SKYDIVE_OVSDB_REMOTE_PORT=6640
 
+# Storage used by the analyzer to store flows
+SKYDIVE_STORAGE=${SKYDIVE_STORAGE:-"elasticsearch"}
 
 function install_go {
     if [[ `uname -m` == *"64" ]]; then
@@ -64,8 +66,11 @@ function install_go {
 
 function pre_install_skydive {
     install_go
-    $TOP_DIR/pkg/elasticsearch.sh download
-    $TOP_DIR/pkg/elasticsearch.sh install
+    if is_service_enabled skydive-analyzer ; then
+        ELASTICSEARCH_VERSION=2.3.1
+        $TOP_DIR/pkg/elasticsearch.sh download
+        $TOP_DIR/pkg/elasticsearch.sh install
+    fi
 }
 
 function install_skydive {
@@ -130,6 +135,7 @@ EOF
 
 analyzer:
   listen: $SKYDIVE_ANALYZER_LISTEN
+  storage: $SKYDIVE_STORAGE
 EOF
     fi
 
