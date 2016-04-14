@@ -54,10 +54,7 @@ func (gfe *GraphFlowEnhancer) cacheUpdater() {
 
 		if len(intfs) > 1 {
 			logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
-			continue
-		}
-
-		if len(intfs) == 1 {
+		} else if len(intfs) == 1 {
 			nodes := gfe.Graph.LookupShortestPath(intfs[0], graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
 			if len(nodes) > 0 {
 				gfe.cache.Set(mac, topology.NodePath{nodes}.Marshal(), cache.DefaultExpiration)
