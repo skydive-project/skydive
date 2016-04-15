@@ -23,61 +23,34 @@
 package mappings
 
 import (
-	"time"
-
-	"github.com/pmylund/go-cache"
-
-	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/flow/packet"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 type GraphFlowEnhancer struct {
-	Graph            *graph.Graph
-	cache            *cache.Cache
-	cacheUpdaterChan chan string
-}
-
-func (gfe *GraphFlowEnhancer) cacheUpdater() {
-	logging.GetLogger().Debug("Start GraphFlowEnhancer cache updater")
-
-	var mac string
-	for {
-		mac = <-gfe.cacheUpdaterChan
-
-		logging.GetLogger().Debugf("GraphFlowEnhancer request received: %s", mac)
-
-		gfe.Graph.Lock()
-		intfs := gfe.Graph.LookupNodes(graph.Metadata{"MAC": mac})
-
-		if len(intfs) > 1 {
-			logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
-		} else if len(intfs) == 1 {
-			nodes := gfe.Graph.LookupShortestPath(intfs[0], graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
-			if len(nodes) > 0 {
-				gfe.cache.Set(mac, topology.NodePath{nodes}.Marshal(), cache.DefaultExpiration)
-			}
-		}
-		gfe.Graph.Unlock()
-	}
+	Graph *graph.Graph
 }
 
 func (gfe *GraphFlowEnhancer) getPath(mac string) string {
-	if mac == "ff:ff:ff:ff:ff:ff" {
-		return ""
+	if packet.IsBroadcastMac(mac) || packet.IsMulticastMac(mac) {
+		return "*"
 	}
 
-	p, f := gfe.cache.Get(mac)
-	if f {
-		path := p.(string)
-		gfe.cache.Set(mac, path, cache.DefaultExpiration)
-		return path
+	gfe.Graph.Lock()
+	defer gfe.Graph.Unlock()
+
+	intfs := gfe.Graph.LookupNodes(graph.Metadata{"MAC": mac})
+	if len(intfs) > 1 {
+		logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
+	} else if len(intfs) == 1 {
+		nodes := gfe.Graph.LookupShortestPath(intfs[0], graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
+		if len(nodes) > 0 {
+			return topology.NodePath{nodes}.Marshal()
+		}
 	}
-
-	gfe.cacheUpdaterChan <- mac
-
 	return ""
 }
 
@@ -97,17 +70,8 @@ func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
 	}
 }
 
-func NewGraphFlowEnhancer(g *graph.Graph) (*GraphFlowEnhancer, error) {
-	mapper := &GraphFlowEnhancer{
+func NewGraphFlowEnhancer(g *graph.Graph) *GraphFlowEnhancer {
+	return &GraphFlowEnhancer{
 		Graph: g,
 	}
-
-	expire := config.GetConfig().GetInt("cache.expire")
-	cleanup := config.GetConfig().GetInt("cache.cleanup")
-	mapper.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
-
-	mapper.cacheUpdaterChan = make(chan string, 200)
-	go mapper.cacheUpdater()
-
-	return mapper, nil
 }

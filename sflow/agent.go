@@ -45,6 +45,10 @@ const (
 	maxDgramSize = 1500
 )
 
+var (
+	AgentAlreadyAllocated error = errors.New("agent already allocated for this uuid")
+)
+
 type SFlowAgent struct {
 	UUID                string
 	Addr                string
@@ -223,13 +227,8 @@ func (a *SFlowAgentAllocator) ReleaseAll() {
 	a.Lock()
 	defer a.Unlock()
 
-	// Stop without waiting so that all the probe can terminate at the same time
-	for _, agent := range a.allocated {
-		agent.Stop()
-	}
-
 	for i, agent := range a.allocated {
-		agent.wg.Wait()
+		agent.Stop()
 
 		delete(a.allocated, i)
 	}
@@ -253,6 +252,13 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbePathSetter) (*S
 
 	a.Lock()
 	defer a.Unlock()
+
+	// check if there is an already allocated agent for this uuid
+	for _, agent := range a.allocated {
+		if uuid == agent.UUID {
+			return agent, AgentAlreadyAllocated
+		}
+	}
 
 	for i := min; i != max+1; i++ {
 		if _, ok := a.allocated[i]; !ok {

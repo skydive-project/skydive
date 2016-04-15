@@ -61,10 +61,7 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
-	gfe, err := mappings.NewGraphFlowEnhancer(g)
-	if err != nil {
-		panic(err)
-	}
+	gfe := mappings.NewGraphFlowEnhancer(g)
 
 	pipeline := mappings.NewFlowMappingPipeline(gfe)
 

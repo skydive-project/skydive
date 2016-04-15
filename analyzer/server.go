@@ -242,10 +242,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	gfe, err := mappings.NewGraphFlowEnhancer(g)
-	if err != nil {
-		return nil, err
-	}
+	gfe := mappings.NewGraphFlowEnhancer(g)
 
 	pipeline := mappings.NewFlowMappingPipeline(gfe)
 

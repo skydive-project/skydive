@@ -70,7 +70,7 @@ func InitConfig(t *testing.T, conf string) {
 		AnalyzerPort int
 		LogLevel     string
 	}{
-		AnalyzerPort: rand.Intn(99) + 55800,
+		AnalyzerPort: rand.Intn(400) + 64500,
 	}
 
 	if testing.Verbose() {
@@ -88,6 +88,8 @@ func InitConfig(t *testing.T, conf string) {
 
 	f.Write(buff.Bytes())
 	f.Close()
+
+	t.Logf("Configuration: %s", buff.String())
 
 	err = config.InitConfigFromFile(f.Name())
 	if err != nil {

@@ -193,7 +193,8 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 
 	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{
 		"Name":    name,
-		"IfIndex": index})
+		"IfIndex": index,
+	})
 
 	if intf == nil {
 		intf = u.Graph.NewNode(graph.GenID(), m)

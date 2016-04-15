@@ -332,7 +332,7 @@ func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
 	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
 }
 
-func TestSFlowTwoProbePathWithPatch(t *testing.T) {
+func TestSFlowTwoProbePath(t *testing.T) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		t.Fatal(err.Error())
@@ -481,4 +481,71 @@ func TestPCAPProbe(t *testing.T) {
 	}
 
 	client.Delete("capture", "*/br-pcap[Type=bridge]")
+}
+
+func TestSFlowSrcDstPath(t *testing.T) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
+	if err := client.Create("capture", &capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip netns add sflow-vm1", true},
+		{"ip link set sflow-intf1 netns sflow-vm1", true},
+		{"ip netns exec sflow-vm1 ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip netns exec sflow-vm1 ip link set sflow-intf1 up", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf2 -- set interface sflow-intf2 type=internal", true},
+		{"ip netns add sflow-vm2", true},
+		{"ip link set sflow-intf2 netns sflow-vm2", true},
+		{"ip netns exec sflow-vm2 ip address add 169.254.33.34/24 dev sflow-intf2", true},
+		{"ip netns exec sflow-vm2 ip link set sflow-intf2 up", true},
+
+		{"ip netns exec sflow-vm1 ping -c 25 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del sflow-vm1", true},
+		{"ip netns del sflow-vm2", true},
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	aa.Flush()
+
+	ok := false
+	for _, f := range ts.GetFlows() {
+		// we can have both way depending on which packet has been seen first
+		if (f.IfSrcGraphPath == hostname+"[Type=host]/sflow-vm1[Type=netns]/sflow-intf1[Type=internal]" &&
+			f.IfDstGraphPath == hostname+"[Type=host]/sflow-vm2[Type=netns]/sflow-intf2[Type=internal]") ||
+			(f.IfSrcGraphPath == hostname+"[Type=host]/sflow-vm2[Type=netns]/sflow-intf2[Type=internal]" &&
+				f.IfDstGraphPath == hostname+"[Type=host]/sflow-vm1[Type=netns]/sflow-intf1[Type=internal]") {
+			ok = true
+			break
+		}
+	}
+
+	if !ok {
+		t.Errorf("Unable to find flows with the expected path: %v\n %s", ts.GetFlows(), aa.Agent.Graph.String())
+	}
+
+	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
 }

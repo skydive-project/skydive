@@ -149,7 +149,15 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	intf := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if intf == nil {
-		// didn't find with the UUID, try with index and/or mac
+		// added before by netlink ?
+		intf = o.Graph.LookupFirstNode(graph.Metadata{"Name": name, "Driver": "openvswitch"})
+		if intf != nil {
+			o.Graph.AddMetadata(intf, "UUID", uuid)
+		}
+	}
+
+	if intf == nil {
+		// didn't find with the UUID nor with the driver, try with index and/or mac
 		lm := graph.Metadata{"Name": name}
 		if index > 0 {
 			lm["IfIndex"] = index
@@ -167,15 +175,13 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	}
 
 	if intf == nil {
-		intf = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid})
-	}
-
-	tr := o.Graph.StartMetadataTransaction(intf)
-	defer tr.Commit()
-
-	// check wether a interface with the same mac exist, could have been added by netlink
-	// in such case, replace the netlink node by the ovs one keeping netlink metadata + uuid
-	if index > 0 {
+		intf = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "DEBUG": "OVSDB"})
+	} else {
+		// the index can be added after the interface creation, during an update so
+		// we need to check whether a interface with the same index exists at the first level
+		// if this interface has no UUID it means that it has been added by NETLINK
+		// and this is the same interface thus replace one by the other to keep only
+		// one interface.
 		nodes := o.Graph.LookupChildren(o.Root, graph.Metadata{"Name": name, "IfIndex": index})
 		for _, node := range nodes {
 			if node.Metadata()["UUID"] != uuid {
@@ -184,7 +190,12 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 				intf = o.Graph.Replace(node, intf)
 			}
 		}
+	}
 
+	tr := o.Graph.StartMetadataTransaction(intf)
+	defer tr.Commit()
+
+	if index > 0 {
 		tr.AddMetadata("IfIndex", index)
 	}
 

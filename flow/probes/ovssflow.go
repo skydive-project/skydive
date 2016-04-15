@@ -236,7 +236,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, path st
 	}
 
 	agent, err := o.allocator.Alloc(bridgeUUID, &probe)
-	if err != nil {
+	if err != nil && err != sflow.AgentAlreadyAllocated {
 		return err
 	}
 

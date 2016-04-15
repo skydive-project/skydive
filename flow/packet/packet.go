@@ -21,3 +21,19 @@
  */
 
 package packet
+
+import (
+	"net"
+)
+
+func IsMulticastMac(mac string) bool {
+	hw, err := net.ParseMAC(mac)
+	if err != nil {
+		return false
+	}
+	return (hw[0] & 0x01) == 0x01
+}
+
+func IsBroadcastMac(mac string) bool {
+	return mac == "ff:ff:ff:ff:ff:ff"
+}
