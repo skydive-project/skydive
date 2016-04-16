@@ -159,6 +159,18 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 		intf = u.Graph.LookupFirstChild(u.Root, graph.Metadata{
 			"IfIndex": index,
 		})
+
+		// could be a member of ovs
+		intfs := u.Graph.LookupNodes(graph.Metadata{
+			"Name":    name,
+			"IfIndex": index,
+		})
+		for _, i := range intfs {
+			if _, ok := i.Metadata()["UUID"]; ok {
+				intf  = i
+				break
+			}
+		}
 	}
 
 	if intf == nil {

@@ -175,8 +175,8 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	}
 
 	if intf == nil {
-		intf = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "DEBUG": "OVSDB"})
-	} else {
+		intf = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid})
+	} else if index > 0 {
 		// the index can be added after the interface creation, during an update so
 		// we need to check whether a interface with the same index exists at the first level
 		// if this interface has no UUID it means that it has been added by NETLINK
