@@ -149,42 +149,34 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	intf := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if intf == nil {
-		lm := graph.Metadata{"IfIndex": index}
+		// didn't find with the UUID, try with index and/or mac
+		lm := graph.Metadata{"Name": name}
+		if index > 0 {
+			lm["IfIndex"] = index
+		}
 		if mac != "" {
 			lm["MAC"] = mac
 		}
-		intf = o.Graph.LookupFirstChild(o.Root, lm)
-		if intf != nil {
-			o.Graph.AddMetadata(intf, "UUID", uuid)
+
+		if len(lm) > 1 {
+			intf = o.Graph.LookupFirstChild(o.Root, lm)
+			if intf != nil {
+				o.Graph.AddMetadata(intf, "UUID", uuid)
+			}
 		}
 	}
 
 	if intf == nil {
-		metadata := graph.Metadata{"Name": name, "UUID": uuid}
-
-		if mac != "" {
-			metadata["MAC"] = mac
-		}
-
-		if driver != "" {
-			metadata["Driver"] = driver
-		}
-
-		if itype != "" {
-			metadata["Type"] = itype
-		}
-
-		if index > 0 {
-			metadata["IfIndex"] = index
-		}
-
-		intf = o.Graph.NewNode(graph.GenID(), metadata)
+		intf = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid})
 	}
+
+	tr := o.Graph.StartMetadataTransaction(intf)
+	defer tr.Commit()
 
 	// check wether a interface with the same mac exist, could have been added by netlink
 	// in such case, replace the netlink node by the ovs one keeping netlink metadata + uuid
 	if index > 0 {
-		nodes := o.Graph.LookupChildren(o.Root, graph.Metadata{"IfIndex": index})
+		nodes := o.Graph.LookupChildren(o.Root, graph.Metadata{"Name": name, "IfIndex": index})
 		for _, node := range nodes {
 			if node.Metadata()["UUID"] != uuid {
 				m := node.Metadata()
@@ -193,50 +185,50 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 			}
 		}
 
-		o.Graph.AddMetadata(intf, "IfIndex", index)
+		tr.AddMetadata("IfIndex", index)
 	}
 
 	if mac != "" {
-		o.Graph.AddMetadata(intf, "MAC", mac)
+		tr.AddMetadata("MAC", mac)
 	}
 
 	if driver != "" {
-		o.Graph.AddMetadata(intf, "Driver", driver)
+		tr.AddMetadata("Driver", driver)
 	}
 
 	if itype != "" {
-		o.Graph.AddMetadata(intf, "Type", itype)
+		tr.AddMetadata("Type", itype)
 	}
 
 	ext_ids := row.New.Fields["external_ids"].(libovsdb.OvsMap)
 	for k, v := range ext_ids.GoMap {
-		o.Graph.AddMetadata(intf, "ExtID."+k.(string), v.(string))
+		tr.AddMetadata("ExtID."+k.(string), v.(string))
 	}
 
 	o.uuidToIntf[uuid] = intf
 
 	switch itype {
 	case "gre", "vxlan", "geneve":
-		o.Graph.AddMetadata(intf, "Driver", "openvswitch")
+		tr.AddMetadata("Driver", "openvswitch")
 
 		m := row.New.Fields["options"].(libovsdb.OvsMap)
 		if ip, ok := m.GoMap["local_ip"]; ok {
-			o.Graph.AddMetadata(intf, "LocalIP", ip.(string))
+			tr.AddMetadata("LocalIP", ip.(string))
 		}
 		if ip, ok := m.GoMap["remote_ip"]; ok {
-			o.Graph.AddMetadata(intf, "RemoteIP", ip.(string))
+			tr.AddMetadata("RemoteIP", ip.(string))
 		}
 		m = row.New.Fields["status"].(libovsdb.OvsMap)
 		if iface, ok := m.GoMap["tunnel_egress_iface"]; ok {
-			o.Graph.AddMetadata(intf, "TunEgressIface", iface.(string))
+			tr.AddMetadata("TunEgressIface", iface.(string))
 		}
 		if carrier, ok := m.GoMap["tunnel_egress_iface_carrier"]; ok {
-			o.Graph.AddMetadata(intf, "TunEgressIfaceCarrier", carrier.(string))
+			tr.AddMetadata("TunEgressIfaceCarrier", carrier.(string))
 		}
 
 	case "patch":
 		// force the driver as it is not defined and we need it to delete properly
-		o.Graph.AddMetadata(intf, "Driver", "openvswitch")
+		tr.AddMetadata("Driver", "openvswitch")
 
 		m := row.New.Fields["options"].(libovsdb.OvsMap)
 		if p, ok := m.GoMap["peer"]; ok {

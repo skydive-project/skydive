@@ -46,6 +46,12 @@ type GraphEventListener interface {
 
 type Metadata map[string]interface{}
 
+type MetadataTransaction struct {
+	graph        *Graph
+	graphElement interface{}
+	metadata     Metadata
+}
+
 type graphElement struct {
 	ID       Identifier
 	metadata Metadata
@@ -200,6 +206,56 @@ func (g *Graph) AddMetadata(e interface{}, k string, v interface{}) {
 		return
 	}
 	g.notifyMetadataUpdated(e)
+}
+
+func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
+	t.metadata[k] = v
+}
+
+func (t *MetadataTransaction) Commit() {
+	var e graphElement
+
+	switch t.graphElement.(type) {
+	case *Node:
+		e = t.graphElement.(*Node).graphElement
+	case *Edge:
+		e = t.graphElement.(*Edge).graphElement
+	}
+
+	updated := false
+	for k, v := range t.metadata {
+		if e.metadata[k] != v {
+			if !t.graph.backend.AddMetadata(t.graphElement, k, v) {
+				return
+			}
+			updated = true
+		}
+	}
+	if updated {
+		t.graph.notifyMetadataUpdated(t.graphElement)
+	}
+}
+
+func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
+	var e graphElement
+
+	switch i.(type) {
+	case *Node:
+		e = i.(*Node).graphElement
+	case *Edge:
+		e = i.(*Edge).graphElement
+	}
+
+	t := MetadataTransaction{
+		graph:        g,
+		graphElement: i,
+		metadata:     make(Metadata),
+	}
+	for k, v := range e.metadata {
+		t.metadata[k] = v
+	}
+
+	return &t
 }
 
 func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, ev ...EdgeValidator) []*Node {
