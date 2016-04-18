@@ -200,16 +200,16 @@ func sflowPackets(packets *[][]byte, sflowSampleSeq *uint32, sflowSeq *uint32) [
 	return rawBytes
 }
 
-func sendPackets(conn *net.UDPConn, packets *[][]byte, sflowSampleSeq *uint32, sflowSeq *uint32, dropped *uint32) {
+func sendPackets(conn *net.UDPConn, packets *[][]byte, sflowSampleSeq *uint32, sflowSeq *uint32, droppedPackets *uint32) {
 	sflowPacketData := sflowPackets(packets, sflowSampleSeq, sflowSeq)
 	*packets = (*packets)[:0]
 
 	_, err := conn.Write(sflowPacketData)
 	if err != nil {
-		if (atomic.LoadUint32(dropped) % 1000) == 0 {
+		if (atomic.LoadUint32(droppedPackets) % 1000) == 0 {
 			logging.GetLogger().Criticalf("PCAP2SFlow Agent connection issue : %s", err.Error())
 		}
-		atomic.AddUint32(dropped, 1)
+		atomic.AddUint32(droppedPackets, 1)
 	}
 }
 
@@ -228,7 +228,7 @@ func newUDPConnection(addr string, port int) (*net.UDPConn, error) {
 }
 
 func PCAP2SFlowReplay(addr string, port int, file string, pps uint32, ppflow uint32) error {
-	var nbPackets, packetsBytes, sflowSampleSeq, sflowSeq, dropped uint32
+	var nbPackets, packetsBytes, sflowSampleSeq, sflowSeq, droppedPackets uint32
 
 	if pps < minPPS {
 		return fmt.Errorf("Minimal packet per seconds is %d", minPPS)
@@ -270,7 +270,8 @@ func PCAP2SFlowReplay(addr string, port int, file string, pps uint32, ppflow uin
 			nb := atomic.LoadUint32(&nbPackets)
 			dpkts := nb - oldNbPackets
 			oldNbPackets = nb
-			logging.GetLogger().Debugf("%d packets replayed, pps %d, nbSFlowMsgDropped %d", nbPackets, dpkts, dropped)
+			dropped := atomic.LoadUint32(&droppedPackets)
+			logging.GetLogger().Debugf("%d packets replayed, pps %d, nbSFlowMsgDropped %d", nb, dpkts, dropped)
 		}
 	}()
 
@@ -298,12 +299,12 @@ func PCAP2SFlowReplay(addr string, port int, file string, pps uint32, ppflow uin
 			}
 
 			throt.startHook(ppflow)
-			sendPackets(conn, &packets, &sflowSampleSeq, &sflowSeq, &dropped)
+			sendPackets(conn, &packets, &sflowSampleSeq, &sflowSeq, &droppedPackets)
 			throt.endHook()
 		}
 	}
 	if len(packets) > 0 {
-		sendPackets(conn, &packets, &sflowSampleSeq, &sflowSeq, &dropped)
+		sendPackets(conn, &packets, &sflowSampleSeq, &sflowSeq, &droppedPackets)
 	}
 
 	running.Store(false)
