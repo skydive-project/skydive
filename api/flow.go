@@ -84,13 +84,13 @@ func (f *FlowApi) jsonFlowConversationEthernetPath(EndpointType flow.FlowEndpoin
 	layerMap := make(map[string]int)
 
 	for _, f := range f.FlowTable.GetFlows() {
-		if _, found := pathMap[f.LayersPath]; found {
-			pathMap[f.LayersPath] = len(pathMap)
-		}
-
-		layerFlow := f.GetStatistics().Endpoints[EndpointType.Value()]
+		layerFlow := f.GetStatistics().GetEndpointsType(EndpointType)
 		if layerFlow == nil {
 			continue
+		}
+
+		if _, found := pathMap[f.LayersPath]; found {
+			pathMap[f.LayersPath] = len(pathMap)
 		}
 
 		AB := layerFlow.AB.Value
@@ -183,13 +183,16 @@ func (f *FlowApi) jsonFlowDiscovery(DiscoType discoType) string {
 	pathMap := make(map[string]flow.FlowEndpointStatistics)
 
 	for _, f := range f.FlowTable.GetFlows() {
-		p, _ := pathMap[f.LayersPath]
+		eth := f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
+		if eth == nil {
+			continue
+		}
 
-		et := flow.FlowEndpointType_ETHERNET.Value()
-		p.Bytes += f.GetStatistics().Endpoints[et].AB.Bytes
-		p.Bytes += f.GetStatistics().Endpoints[et].BA.Bytes
-		p.Packets += f.GetStatistics().Endpoints[et].AB.Packets
-		p.Packets += f.GetStatistics().Endpoints[et].BA.Packets
+		p, _ := pathMap[f.LayersPath]
+		p.Bytes += eth.AB.Bytes
+		p.Bytes += eth.BA.Bytes
+		p.Packets += eth.AB.Packets
+		p.Packets += eth.BA.Packets
 		pathMap[f.LayersPath] = p
 	}
 

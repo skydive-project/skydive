@@ -41,40 +41,6 @@ type FlowProbePathSetter interface {
 	SetProbePath(flow *Flow) bool
 }
 
-func (s *FlowStatistics) MarshalJSON() ([]byte, error) {
-	obj := &struct {
-		Start     int64
-		Last      int64
-		Endpoints []*FlowEndpointsStatistics
-	}{
-		Start:     s.Start,
-		Last:      s.Last,
-		Endpoints: make([]*FlowEndpointsStatistics, len(s.Endpoints), len(s.Endpoints)),
-	}
-
-	i := 0
-	for _, e := range s.Endpoints {
-		obj.Endpoints[i] = e
-		i++
-	}
-
-	return json.Marshal(&obj)
-}
-
-func (s *FlowEndpointStatistics) MarshalJSON() ([]byte, error) {
-	obj := &struct {
-		Value   string
-		Packets uint64
-		Bytes   uint64
-	}{
-		Value:   s.Value,
-		Packets: s.Packets,
-		Bytes:   s.Bytes,
-	}
-
-	return json.Marshal(&obj)
-}
-
 func (s *FlowEndpointsStatistics) MarshalJSON() ([]byte, error) {
 	obj := &struct {
 		Type string
@@ -87,24 +53,6 @@ func (s *FlowEndpointsStatistics) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&obj)
-}
-
-func (s *FlowEndpointStatistics) UnmarshalJSON(b []byte) error {
-	m := struct {
-		Value   string
-		Packets uint64
-		Bytes   uint64
-	}{}
-
-	if err := json.Unmarshal(b, &m); err != nil {
-		return err
-	}
-
-	s.Value = m.Value
-	s.Packets = m.Packets
-	s.Bytes = m.Bytes
-
-	return nil
 }
 
 func (s *FlowEndpointsStatistics) UnmarshalJSON(b []byte) error {
@@ -121,28 +69,6 @@ func (s *FlowEndpointsStatistics) UnmarshalJSON(b []byte) error {
 	s.Type = FlowEndpointType(FlowEndpointType_value[m.Type])
 	s.AB = m.AB
 	s.BA = m.BA
-
-	return nil
-}
-
-func (s *FlowStatistics) UnmarshalJSON(b []byte) error {
-	m := struct {
-		Start     int64
-		Last      int64
-		Endpoints []*FlowEndpointsStatistics
-	}{}
-
-	if err := json.Unmarshal(b, &m); err != nil {
-		return err
-	}
-
-	s.Start = m.Start
-	s.Last = m.Last
-
-	s.Endpoints = make(map[int32]*FlowEndpointsStatistics)
-	for _, e := range m.Endpoints {
-		s.Endpoints[e.Type.Value()] = e
-	}
 
 	return nil
 }
@@ -174,10 +100,6 @@ func (key FlowKey) String() string {
 	return fmt.Sprintf("%x-%x", key.net, key.transport)
 }
 
-func (flow *Flow) GetLayer(t FlowEndpointType) *FlowEndpointsStatistics {
-	return flow.Statistics.Endpoints[t.Value()]
-}
-
 func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	/* Continue if no ethernet layer */
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
@@ -191,17 +113,12 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 	now := time.Now().Unix() //(*packet).Metadata().Timestamp.Unix()
 	if fs == nil {
 		newFlow = true
-		fs = NewFlowStatistics()
+		fs = NewFlowStatistics(packet)
 		fs.Start = now
-		fs.newEthernetEndpointStatistics(packet)
-		fs.newIPV4EndpointStatistics(packet)
-		fs.newTransportEndpointStatistics(packet)
 		flow.Statistics = fs
 	}
 	fs.Last = now
-	fs.updateEthernetFromGoPacket(packet)
-	fs.updateIPV4FromGoPacket(packet)
-	fs.updateTransportFromGoPacket(packet)
+	fs.Update(packet)
 
 	if newFlow {
 		hasher := sha1.New()

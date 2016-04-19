@@ -23,7 +23,9 @@
 package flow
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/google/gopacket"
@@ -34,13 +36,64 @@ func (x FlowEndpointType) Value() int32 {
 	return int32(x)
 }
 
-func NewFlowStatistics() *FlowStatistics {
+func NewFlowStatistics(packet *gopacket.Packet) *FlowStatistics {
 	fs := &FlowStatistics{}
-	fs.Endpoints = make(map[int32]*FlowEndpointsStatistics)
+	fs.Endpoints = []*FlowEndpointsStatistics{}
+	err := fs.newLinkLayerEndpointStatistics(packet)
+	if err != nil {
+		return fs
+	}
+	err = fs.newNetworkLayerEndpointStatistics(packet)
+	if err != nil {
+		return fs
+	}
+	err = fs.newTransportLayerEndpointStatistics(packet)
+	if err != nil {
+		return fs
+	}
 	return fs
 }
 
-func (fs *FlowStatistics) newEthernetEndpointStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) Update(packet *gopacket.Packet) {
+	err := fs.updateLinkLayerStatistics(packet)
+	if err != nil {
+		return
+	}
+	err = fs.updateNetworkLayerStatistics(packet)
+	if err != nil {
+		return
+	}
+	err = fs.updateTransportLayerStatistics(packet)
+	if err != nil {
+		return
+	}
+}
+
+func (fs *FlowStatistics) DumpInfo(layerSeparator ...string) string {
+	sep := " | "
+	if len(layerSeparator) > 0 {
+		sep = layerSeparator[0]
+	}
+	buf := bytes.NewBufferString("")
+	for _, ep := range fs.Endpoints {
+		buf.WriteString(fmt.Sprintf("%s\t", ep.Type))
+		buf.WriteString(fmt.Sprintf("(%d %d)", ep.AB.Packets, ep.AB.Bytes))
+		buf.WriteString(fmt.Sprintf(" (%d %d)", ep.BA.Packets, ep.BA.Bytes))
+		buf.WriteString(fmt.Sprintf("\t(%s -> %s)%s", ep.AB.Value, ep.BA.Value, sep))
+	}
+	return buf.String()
+}
+
+func (fs *FlowStatistics) GetEndpointsType(eptype FlowEndpointType) *FlowEndpointsStatistics {
+	for _, ep := range fs.Endpoints {
+		if ep.Type == eptype {
+			return ep
+		}
+	}
+	return nil
+}
+
+func (fs *FlowStatistics) newLinkLayerEndpointStatistics(packet *gopacket.Packet) error {
 	ep := &FlowEndpointsStatistics{}
 	ep.AB = &FlowEndpointStatistics{}
 	ep.BA = &FlowEndpointStatistics{}
@@ -54,12 +107,12 @@ func (fs *FlowStatistics) newEthernetEndpointStatistics(packet *gopacket.Packet)
 	ep.Type = FlowEndpointType_ETHERNET
 	ep.AB.Value = ethernetPacket.SrcMAC.String()
 	ep.BA.Value = ethernetPacket.DstMAC.String()
-	fs.Endpoints[FlowEndpointType_ETHERNET.Value()] = ep
+	fs.Endpoints = append(fs.Endpoints, ep)
 	return nil
 }
 
-func (fs *FlowStatistics) updateEthernetFromGoPacket(packet *gopacket.Packet) error {
-	ep := fs.Endpoints[FlowEndpointType_ETHERNET.Value()]
+func (fs *FlowStatistics) updateLinkLayerStatistics(packet *gopacket.Packet) error {
+	ep := fs.Endpoints[FlowEndpointLayer_LINK]
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
@@ -81,7 +134,7 @@ func (fs *FlowStatistics) updateEthernetFromGoPacket(packet *gopacket.Packet) er
 	return nil
 }
 
-func (fs *FlowStatistics) newIPV4EndpointStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) newNetworkLayerEndpointStatistics(packet *gopacket.Packet) error {
 	ep := &FlowEndpointsStatistics{}
 	ep.AB = &FlowEndpointStatistics{}
 	ep.BA = &FlowEndpointStatistics{}
@@ -95,18 +148,18 @@ func (fs *FlowStatistics) newIPV4EndpointStatistics(packet *gopacket.Packet) err
 	ep.Type = FlowEndpointType_IPV4
 	ep.AB.Value = ipv4Packet.SrcIP.String()
 	ep.BA.Value = ipv4Packet.DstIP.String()
-	fs.Endpoints[FlowEndpointType_IPV4.Value()] = ep
+	fs.Endpoints = append(fs.Endpoints, ep)
 	return nil
 }
 
-func (fs *FlowStatistics) updateIPV4FromGoPacket(packet *gopacket.Packet) error {
-	ep := fs.Endpoints[FlowEndpointType_IPV4.Value()]
-
+func (fs *FlowStatistics) updateNetworkLayerStatistics(packet *gopacket.Packet) error {
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
 	ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
 	if !ok {
 		return errors.New("Unable to decode the ipv4 layer")
 	}
+
+	ep := fs.Endpoints[FlowEndpointLayer_NETWORK]
 
 	var e *FlowEndpointStatistics
 	if ep.AB.Value == ipv4Packet.SrcIP.String() {
@@ -119,7 +172,7 @@ func (fs *FlowStatistics) updateIPV4FromGoPacket(packet *gopacket.Packet) error 
 	return nil
 }
 
-func (fs *FlowStatistics) newTransportEndpointStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) newTransportLayerEndpointStatistics(packet *gopacket.Packet) error {
 	ep := &FlowEndpointsStatistics{}
 	ep.AB = &FlowEndpointStatistics{}
 	ep.BA = &FlowEndpointStatistics{}
@@ -158,40 +211,29 @@ func (fs *FlowStatistics) newTransportEndpointStatistics(packet *gopacket.Packet
 		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
 		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
 	}
-	fs.Endpoints[ptype.Value()] = ep
+	fs.Endpoints = append(fs.Endpoints, ep)
 	return nil
 }
 
-func (fs *FlowStatistics) updateTransportFromGoPacket(packet *gopacket.Packet) error {
-	var transportLayer gopacket.Layer
-	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
-	_, ok := transportLayer.(*layers.TCP)
-	ptype := FlowEndpointType_TCPPORT
-	if !ok {
-		transportLayer = (*packet).Layer(layers.LayerTypeUDP)
-		_, ok := transportLayer.(*layers.UDP)
-		ptype = FlowEndpointType_UDPPORT
-		if !ok {
-			transportLayer = (*packet).Layer(layers.LayerTypeSCTP)
-			_, ok := transportLayer.(*layers.SCTP)
-			ptype = FlowEndpointType_SCTPPORT
-			if !ok {
-				return errors.New("Unable to decode the transport layer")
-			}
-		}
+func (fs *FlowStatistics) updateTransportLayerStatistics(packet *gopacket.Packet) error {
+	if len(fs.Endpoints) <= int(FlowEndpointLayer_TRANSPORT) {
+		return errors.New("Unable to decode the transport layer")
 	}
+	ep := fs.Endpoints[FlowEndpointLayer_TRANSPORT]
 
-	ep := fs.Endpoints[ptype.Value()]
+	var transportLayer gopacket.Layer
 	var srcPort string
-
-	switch ptype {
+	switch ep.Type {
 	case FlowEndpointType_TCPPORT:
+		transportLayer = (*packet).Layer(layers.LayerTypeTCP)
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		srcPort = transportPacket.SrcPort.String()
 	case FlowEndpointType_UDPPORT:
+		transportLayer = (*packet).Layer(layers.LayerTypeUDP)
 		transportPacket, _ := transportLayer.(*layers.UDP)
 		srcPort = transportPacket.SrcPort.String()
 	case FlowEndpointType_SCTPPORT:
+		transportLayer = (*packet).Layer(layers.LayerTypeSCTP)
 		transportPacket, _ := transportLayer.(*layers.SCTP)
 		srcPort = transportPacket.SrcPort.String()
 	}

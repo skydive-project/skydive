@@ -36,10 +36,6 @@ type FlowTable struct {
 	manager FlowTableManager
 }
 
-type FlowTableAsyncNotificationUpdate interface {
-	AsyncNotificationUpdate(every time.Duration)
-}
-
 func NewFlowTable() *FlowTable {
 	return &FlowTable{table: make(map[string]*Flow)}
 }
@@ -130,8 +126,8 @@ func (ft *FlowTable) SelectLayer(endpointType FlowEndpointType, list []string) [
 	meth := make(map[string][]*Flow)
 	ft.lock.RLock()
 	for _, f := range ft.table {
-		layerFlow := f.GetStatistics().Endpoints[endpointType.Value()]
-		if layerFlow.AB.Value == "ff:ff:ff:ff:ff:ff" || layerFlow.BA.Value == "ff:ff:ff:ff:ff:ff" {
+		layerFlow := f.GetStatistics().GetEndpointsType(endpointType)
+		if layerFlow == nil || layerFlow.AB.Value == "ff:ff:ff:ff:ff:ff" || layerFlow.BA.Value == "ff:ff:ff:ff:ff:ff" {
 			continue
 		}
 		meth[layerFlow.AB.Value] = append(meth[layerFlow.AB.Value], f)

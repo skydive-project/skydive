@@ -37,9 +37,9 @@ func TestFlowJSON(t *testing.T) {
 		Statistics: &FlowStatistics{
 			Start: 1111,
 			Last:  222,
-			Endpoints: map[int32]*FlowEndpointsStatistics{
-				FlowEndpointType_IPV4.Value(): {
-					Type: FlowEndpointType_IPV4,
+			Endpoints: []*FlowEndpointsStatistics{
+				{
+					Type: FlowEndpointType_ETHERNET,
 					AB: &FlowEndpointStatistics{
 						Value:   "value-1",
 						Bytes:   33,

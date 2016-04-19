@@ -149,7 +149,10 @@ func (s *TestStorage) GetFlows() []*flow.Flow {
 }
 
 func pcapTraceCheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool {
-	eth := f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()]
+	eth := f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
+	if eth == nil {
+		t.Fail()
+	}
 
 	for _, fi := range trace.flowStat {
 		if fi.Path == f.LayersPath {
@@ -170,8 +173,12 @@ func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) 
 	for _, f := range flows {
 		r := pcapTraceCheckFlow(t, f, trace)
 		if r == false {
-			eth := f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()]
-			t.Logf("%s %s %d %d %d %d\n", f.UUID, f.LayersPath, eth.AB.Packets, eth.AB.Bytes, eth.BA.Packets, eth.BA.Bytes)
+			eth := f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
+			if eth == nil {
+				t.Fail()
+			}
+
+			t.Logf("%s %s %s\n", f.UUID, f.LayersPath, f.GetStatistics().DumpInfo())
 			t.Error("Flow not found")
 		}
 	}
@@ -201,6 +208,8 @@ func TestSFlowWithPCAP(t *testing.T) {
 
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
+
+	time.Sleep(5 * time.Second)
 
 	// FIX(safchain): need to be reworked as there is no more static sflow agent
 	// running at a specific port and agent couldn't speak sflow at all

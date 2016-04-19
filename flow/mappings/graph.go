@@ -82,11 +82,18 @@ func (gfe *GraphFlowEnhancer) getPath(mac string) string {
 }
 
 func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
+	var eth *flow.FlowEndpointsStatistics
+	if f.IfSrcGraphPath == "" || f.IfDstGraphPath == "" {
+		eth = f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
+		if eth == nil {
+			return
+		}
+	}
 	if f.IfSrcGraphPath == "" {
-		f.IfSrcGraphPath = gfe.getPath(f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()].AB.Value)
+		f.IfSrcGraphPath = gfe.getPath(eth.AB.Value)
 	}
 	if f.IfDstGraphPath == "" {
-		f.IfDstGraphPath = gfe.getPath(f.GetStatistics().Endpoints[flow.FlowEndpointType_ETHERNET.Value()].BA.Value)
+		f.IfDstGraphPath = gfe.getPath(eth.BA.Value)
 	}
 }
 

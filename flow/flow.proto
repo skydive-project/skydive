@@ -26,6 +26,12 @@ syntax = "proto3";
 
 package flow;
 
+enum FlowEndpointLayer {
+  LINK = 0;
+  NETWORK = 1;
+  TRANSPORT = 2;
+}
+
 enum FlowEndpointType {
   ETHERNET = 0;
   IPV4 = 1;
@@ -49,7 +55,7 @@ message FlowEndpointsStatistics {
 message FlowStatistics {
   int64 Start = 1;
   int64 Last = 2;
-  map<int32, FlowEndpointsStatistics> Endpoints = 3;
+  repeated FlowEndpointsStatistics Endpoints = 3;
 }
 
 message Flow {
