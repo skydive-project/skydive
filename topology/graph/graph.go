@@ -614,6 +614,18 @@ func (g *Graph) AddEventListener(l GraphEventListener) {
 	g.eventListeners = append(g.eventListeners, l)
 }
 
+func (g *Graph) RemoveEventListener(l GraphEventListener) {
+	g.Lock()
+	defer g.Unlock()
+
+	for i, el := range g.eventListeners {
+		if l == el {
+			g.eventListeners = append(g.eventListeners[:i], g.eventListeners[i+1:]...)
+			break
+		}
+	}
+}
+
 func NewGraph(b GraphBackend) (*Graph, error) {
 	h, err := os.Hostname()
 	if err != nil {

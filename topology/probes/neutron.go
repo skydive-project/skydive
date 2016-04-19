@@ -126,8 +126,7 @@ func (mapper *NeutronMapper) retrieveAttributes(metadata graph.Metadata) (*Attri
 
 func (mapper *NeutronMapper) nodeUpdater() {
 	logging.GetLogger().Debugf("Starting Neutron updater")
-	for {
-		nodeID := <-mapper.nodeUpdaterChan
+	for nodeID := range mapper.nodeUpdaterChan {
 		node := mapper.graph.GetNode(nodeID)
 		if node == nil {
 			continue
@@ -192,11 +191,11 @@ func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
 }
 
 func (mapper *NeutronMapper) OnNodeUpdated(n *graph.Node) {
-	go mapper.EnhanceNode(n)
+	mapper.EnhanceNode(n)
 }
 
 func (mapper *NeutronMapper) OnNodeAdded(n *graph.Node) {
-	go mapper.EnhanceNode(n)
+	mapper.EnhanceNode(n)
 }
 
 func (mapper *NeutronMapper) Start() {
@@ -204,6 +203,7 @@ func (mapper *NeutronMapper) Start() {
 }
 
 func (mapper *NeutronMapper) Stop() {
+	mapper.graph.RemoveEventListener(mapper)
 	close(mapper.nodeUpdaterChan)
 }
 
@@ -238,7 +238,7 @@ func NewNeutronMapper(g *graph.Graph, authURL string, username string, password 
 	expire := config.GetConfig().GetInt("cache.expire")
 	cleanup := config.GetConfig().GetInt("cache.cleanup")
 	mapper.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
-	mapper.nodeUpdaterChan = make(chan graph.Identifier, 100)
+	mapper.nodeUpdaterChan = make(chan graph.Identifier, 500)
 
 	g.AddEventListener(mapper)
 
