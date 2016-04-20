@@ -120,15 +120,15 @@ func GetHostPortAttributes(s string, p string) (string, int, error) {
 
 	addr := "127.0.0.1"
 
-	switch l := len(listen); {
-	case l == 1:
+	switch len(listen) {
+	case 1:
 		port, err := strconv.Atoi(listen[0])
 		if err != nil {
 			return "", 0, err
 		}
 
 		return addr, port, nil
-	case l == 2:
+	case 2:
 		port, err := strconv.Atoi(listen[1])
 		if err != nil {
 			return "", 0, err
