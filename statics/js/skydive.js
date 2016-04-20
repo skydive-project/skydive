@@ -1287,6 +1287,22 @@ function AnalyzerReady() {
   });
 }
 
+function Logout() {
+  window.location.href = "/login";
+}
+
+function StartCheckAPIAccess() {
+  setInterval(function() {
+    $.ajax({
+      dataType: "json",
+      url: '/api',
+      error: function() {
+        Logout();
+      }
+    });
+  }, 5000);
+}
+
 $(document).ready(function() {
   if (Service == "agent") {
     AgentReady();
@@ -1317,4 +1333,6 @@ $(document).ready(function() {
   topologyLayout = new Layout(".topology-d3");
   topologyLayout.StartLiveUpdate();
   topologyLayout.StartLiveUpdateAlert();
+
+  StartCheckAPIAccess();
 });
