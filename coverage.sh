@@ -12,7 +12,7 @@
 
 set -e
 
-workdir=.cover
+workdir=".cover"
 profile="$workdir/cover.out"
 mode=count
 
@@ -22,12 +22,13 @@ generate_cover_data() {
 
     for pkg in "$@"; do
         f="$workdir/$(echo $pkg | tr / -).cover"
-        go test -timeout 5m -covermode="$mode" -coverprofile="$f" "$pkg"
+        godep go test -timeout 6m -covermode="$mode" -coverprofile="$f" "$pkg"
     done
 
     # add fonctional testing
     f="$workdir/functional.cover"
-    go test -timeout 5m -v -cover -covermode="$mode" -coverprofile="$f" -coverpkg=./... ./tests/
+    godep go test -timeout 6m -v -cover -covermode="$mode" -coverprofile="$f" -coverpkg=./... -c -o tests/functionals ./tests/
+    pushd tests && sudo ./functionals -test.timeout 6m -test.coverprofile="../$f" ; popd
 
     echo "mode: $mode" >"$profile"
     grep -h -v "^mode:" "$workdir"/*.cover | grep -v "skydive/statics" | awk '{ stmt[$1] += $2; count[$1] += $3 } END{ for(e in stmt) { print e, stmt[e], count[e] } }' >> "$profile"
@@ -42,7 +43,7 @@ push_to_coveralls() {
     goveralls -coverprofile="$profile"
 }
 
-generate_cover_data $(go list ./...)
+generate_cover_data $(go list ./... | grep -v '/tests')
 show_cover_report func
 case "$1" in
 "")
