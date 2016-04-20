@@ -23,8 +23,11 @@
 package helper
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"os/exec"
@@ -63,15 +66,27 @@ func InitConfig(t *testing.T, conf string) {
 		t.Fatal(err.Error())
 	}
 
-	var logLevel string
-	if testing.Verbose() {
-		logLevel = "DEBUG"
-	} else {
-		logLevel = "INFO"
+	param := struct {
+		AnalyzerPort int
+		LogLevel     string
+	}{
+		AnalyzerPort: rand.Intn(99) + 55800,
 	}
 
-	conf += fmt.Sprintf("\nlogging:\n  default: %s", logLevel)
-	f.WriteString(conf)
+	if testing.Verbose() {
+		param.LogLevel = "DEBUG"
+	} else {
+		param.LogLevel = "INFO"
+	}
+
+	tmpl, err := template.New("config").Parse(conf)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	buff := bytes.NewBufferString("")
+	tmpl.Execute(buff, param)
+
+	f.Write(buff.Bytes())
 	f.Close()
 
 	err = config.InitConfigFromFile(f.Name())

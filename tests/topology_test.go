@@ -68,6 +68,9 @@ etcd:
   port: 2374
   data_dir: /tmp
   servers: http://localhost:2374
+
+logging:
+  default: {{.LogLevel}}
 `
 
 var graphBackend string

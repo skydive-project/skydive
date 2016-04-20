@@ -42,7 +42,7 @@ agent:
   listen: 58081
   flowtable_expire: 1
   flowtable_update: 10
-  analyzers: localhost:58082
+  analyzers: localhost:{{.AnalyzerPort}}
   topology:
     probes:
       - netlink
@@ -65,7 +65,7 @@ ovs:
   ovsdb: 6400
 
 analyzer:
-  listen: 58082
+  listen: {{.AnalyzerPort}}
   flowtable_expire: 600
   flowtable_update: 10
 
@@ -75,6 +75,9 @@ etcd:
   data_dir: /tmp
   servers:
     - http://localhost:2374
+
+logging:
+  default: {{.LogLevel}}
 `
 
 type flowStat struct {
