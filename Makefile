@@ -7,6 +7,7 @@ ifeq ($(VERBOSE), false)
 	VERBOSE_FLAGS:=
 endif
 TIMEOUT?=6m
+UT_PACKAGES=$(shell go list ./... | grep -v '/tests')
 
 .proto: godep builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
@@ -32,7 +33,7 @@ else
 endif
 
 test: godep
-	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -run "^tests" ./...
+	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 
 godep:
 	go get github.com/tools/godep
