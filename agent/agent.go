@@ -23,6 +23,7 @@
 package agent
 
 import (
+	"net/http"
 	"os"
 
 	"github.com/redhat-cip/skydive/api"
@@ -44,6 +45,7 @@ type Agent struct {
 	FlowProbeBundle       *fprobes.FlowProbeBundle
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
 	HTTPServer            *shttp.Server
+	EtcdClient            *etcd.EtcdClient
 }
 
 func (a *Agent) Start() {
@@ -75,7 +77,7 @@ func (a *Agent) Start() {
 	a.FlowProbeBundle.Start()
 
 	if addr != "" {
-		etcdClient, err := etcd.NewEtcdClientFromConfig()
+		a.EtcdClient, err = etcd.NewEtcdClientFromConfig()
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to start etcd client %s", err.Error())
 			os.Exit(1)
@@ -83,7 +85,7 @@ func (a *Agent) Start() {
 
 		captureHandler := &api.BasicApiHandler{
 			ResourceHandler: &api.CaptureHandler{},
-			EtcdKeyAPI:      etcdClient.KeysApi,
+			EtcdKeyAPI:      a.EtcdClient.KeysApi,
 		}
 
 		l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, captureHandler)
@@ -111,6 +113,14 @@ func (a *Agent) Stop() {
 	}
 	if a.OnDemandProbeListener != nil {
 		a.OnDemandProbeListener.Stop()
+	}
+	if a.EtcdClient != nil {
+		a.EtcdClient.Stop()
+	}
+	if tr, ok := http.DefaultTransport.(interface {
+		CloseIdleConnections()
+	}); ok {
+		tr.CloseIdleConnections()
 	}
 }
 

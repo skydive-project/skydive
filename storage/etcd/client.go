@@ -36,6 +36,14 @@ type EtcdClient struct {
 	KeysApi etcd.KeysAPI
 }
 
+func (client *EtcdClient) Stop() {
+	if tr, ok := etcd.DefaultTransport.(interface {
+		CloseIdleConnections()
+	}); ok {
+		tr.CloseIdleConnections()
+	}
+}
+
 func NewEtcdClient(etcdServers []string) (*EtcdClient, error) {
 	cfg := etcd.Config{
 		Endpoints: etcdServers,

@@ -149,12 +149,6 @@ func (se *EmbeddedEtcd) Stop() error {
 		se.server.Stop()
 	}
 
-	if tr, ok := etcd.DefaultTransport.(interface {
-		CloseIdleConnections()
-	}); ok {
-		tr.CloseIdleConnections()
-	}
-
 	if se.dataDir != "" {
 		firstErr(os.RemoveAll(se.dataDir))
 	}

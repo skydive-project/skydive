@@ -24,6 +24,7 @@ package analyzer
 
 import (
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"sync"
@@ -52,6 +53,7 @@ type Server struct {
 	FlowTable           *flow.FlowTable
 	conn                *net.UDPConn
 	EmbeddedEtcd        *etcd.EmbeddedEtcd
+	EtcdClient          *etcd.EtcdClient
 	running             atomic.Value
 	wgServers           sync.WaitGroup
 }
@@ -161,7 +163,13 @@ func (s *Server) Stop() {
 		s.Storage.Close()
 	}
 	s.AlertServer.AlertManager.Stop()
+	s.EtcdClient.Stop()
 	s.wgServers.Wait()
+	if tr, ok := http.DefaultTransport.(interface {
+		CloseIdleConnections()
+	}); ok {
+		tr.CloseIdleConnections()
+	}
 }
 
 func (s *Server) Flush() {
@@ -256,6 +264,7 @@ func NewServerFromConfig() (*Server, error) {
 		FlowMappingPipeline: pipeline,
 		FlowTable:           flowtable,
 		EmbeddedEtcd:        etcdServer,
+		EtcdClient:          etcdClient,
 	}
 	server.SetStorageFromConfig()
 
