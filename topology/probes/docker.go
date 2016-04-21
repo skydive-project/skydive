@@ -42,6 +42,7 @@ const (
 )
 
 type DockerProbe struct {
+	sync.RWMutex
 	NetNSProbe
 	url       string
 	client    *dockerclient.DockerClient
@@ -61,6 +62,9 @@ func (probe *DockerProbe) containerNamespace(pid int) string {
 }
 
 func (probe *DockerProbe) registerContainer(id string) {
+	probe.Lock()
+	defer probe.Unlock()
+
 	if _, ok := probe.idToPid[id]; ok {
 		return
 	}
@@ -83,6 +87,9 @@ func (probe *DockerProbe) registerContainer(id string) {
 }
 
 func (probe *DockerProbe) unregisterContainer(id string) {
+	probe.Lock()
+	defer probe.Unlock()
+
 	pid, ok := probe.idToPid[id]
 	if !ok {
 		return
