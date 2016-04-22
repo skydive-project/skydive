@@ -29,17 +29,17 @@ build: godep
 test.functionals.compile: godep
 	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
-test.functionals.run: test.functionals.compile
+test.functionals.run:
 ifneq ($(VERBOSE_FLAGS),)
 	cd tests && sudo ./functionals -test.v -test.timeout ${TIMEOUT} ${ARGS}
 else
 	cd tests && sudo ./functionals -test.timeout ${TIMEOUT} ${ARGS}
 endif
 
-test.functionals.all:
+test.functionals.all: test.functionals.compile
 	make TIMEOUT="8m" test.functionals.run
 
-test.functionals:
+test.functionals: test.functionals.compile
 	for functest in ${FUNC_TESTS} ; do \
 		make ARGS="-test.run $$functest" test.functionals.run ; \
 	done
