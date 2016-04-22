@@ -1019,7 +1019,7 @@ var DiscoveryLayout = function(selector) {
   .innerRadius(function(d) { return Math.sqrt(d.y); })
   .outerRadius(function(d) { return Math.sqrt(d.y + d.dy); });
 
-  _this = this;
+  var _this = this;
   d3.selectAll("#type").on("change", function() {
     _this.DrawChart(this.value);
   });
@@ -1027,7 +1027,7 @@ var DiscoveryLayout = function(selector) {
 
 DiscoveryLayout.prototype.DrawChart = function(type) {
   this.svg.selectAll("*").remove();
-  _this = this;
+  var _this = this;
   //assign bytes as default if no type given.
   type = (type === undefined) ? "bytes" : type;
   d3.json("/api/flow/discovery/" + type, function(root) {
@@ -1089,7 +1089,7 @@ var ConversationLayout = function(selector) {
 
   this.orders = {};
 
-  _this = this;
+  var _this = this;
   d3.select("#layer").on("change", function() {
     _this.ShowConversation(this.value);
   });
