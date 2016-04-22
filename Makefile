@@ -6,8 +6,10 @@ VERBOSE?=true
 ifeq ($(VERBOSE), false)
 	VERBOSE_FLAGS:=
 endif
-TIMEOUT?=6m
+TIMEOUT?=1m
 UT_PACKAGES=$(shell go list ./... | grep -v '/tests')
+FUNC_TESTS_CMD:="grep 'func Test' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
+FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 
 .proto: godep builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
@@ -24,13 +26,23 @@ install: godep
 build: godep
 	godep go build ${GOFLAGS} ${VERBOSE_FLAGS} ./...
 
-test.functionals: godep
+test.functionals.compile: godep
 	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+
+test.functionals.run: test.functionals.compile
 ifneq ($(VERBOSE_FLAGS),)
 	cd tests && sudo ./functionals -test.v -test.timeout ${TIMEOUT} ${ARGS}
 else
 	cd tests && sudo ./functionals -test.timeout ${TIMEOUT} ${ARGS}
 endif
+
+test.functionals.all:
+	make TIMEOUT="8m" test.functionals.run
+
+test.functionals:
+	for functest in ${FUNC_TESTS} ; do \
+		make ARGS="-test.run $$functest" test.functionals.run ; \
+	done
 
 test: godep
 	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}

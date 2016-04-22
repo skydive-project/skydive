@@ -25,4 +25,4 @@ case "$BACKEND" in
 esac
 
 cd ${GOPATH}/src/github.com/redhat-cip/skydive
-make test.functionals GOFLAGS=-race VERBOSE=true TIMEOUT=6m ARGS="$ARGS"
+make test.functionals GOFLAGS=-race VERBOSE=true TIMEOUT=1m ARGS="$ARGS"
