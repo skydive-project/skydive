@@ -95,12 +95,12 @@ func (c *AsyncClient) connect() {
 		logging.GetLogger().Errorf("Connection to the WebSocket server failed: %s", err.Error())
 		return
 	}
-	defer conn.Close()
 
 	endpoint := "ws://" + host + c.Path
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to parse the WebSocket Endpoint %s: %s", endpoint, err.Error())
+		conn.Close()
 		return
 	}
 
@@ -108,6 +108,7 @@ func (c *AsyncClient) connect() {
 	if c.AuthClient != nil {
 		if err := c.AuthClient.Authenticate(); err != nil {
 			logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
+			conn.Close()
 			return
 		}
 		c.AuthClient.SetHeaders(headers)
@@ -116,16 +117,17 @@ func (c *AsyncClient) connect() {
 	c.wsConn, _, err = websocket.NewClient(conn, u, headers, 1024, 1024)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
+		conn.Close()
 		return
 	}
+	defer c.wsConn.Close()
 	c.wsConn.SetPingHandler(nil)
 
+	c.connected.Store(true)
 	logging.GetLogger().Infof("Connected to %s", endpoint)
 
 	c.wg.Add(1)
 	defer c.wg.Done()
-
-	c.connected.Store(true)
 
 	// notify connected
 	for _, l := range c.listeners {
@@ -133,7 +135,7 @@ func (c *AsyncClient) connect() {
 	}
 
 	go func() {
-		for {
+		for c.running.Load() == true {
 			if _, _, err := c.wsConn.NextReader(); err != nil {
 				break
 			}
@@ -141,7 +143,7 @@ func (c *AsyncClient) connect() {
 		c.quit <- true
 	}()
 
-	for {
+	for c.running.Load() == true {
 		select {
 		case msg := <-c.messages:
 			err := c.sendWSMessage(msg)
@@ -152,10 +154,6 @@ func (c *AsyncClient) connect() {
 		case <-c.quit:
 			return
 		}
-	}
-
-	if c.running.Load() == true {
-		c.wsConn.Close()
 	}
 }
 
@@ -173,7 +171,9 @@ func (c *AsyncClient) Connect() {
 				}
 			}
 
-			time.Sleep(1 * time.Second)
+			if c.running.Load() == true {
+				time.Sleep(1 * time.Second)
+			}
 		}
 	}()
 }
@@ -184,11 +184,8 @@ func (c *AsyncClient) AddListener(l EventListener) {
 
 func (c *AsyncClient) Disconnect() {
 	c.running.Store(false)
-	if c.connected.Load() == true {
-		c.wsConn.Close()
-	}
+	c.quit <- true
 	c.wg.Wait()
-	close(c.quit)
 }
 
 func NewAsyncClient(addr string, port int, path string, authClient *shttp.AuthenticationClient) *AsyncClient {
