@@ -43,7 +43,7 @@ const (
 )
 
 /* protos must contain a UDP or TCP layer on top of IPv4 */
-func forgeTestPacket(t *testing.T, seed int64, protos ...ProtocolType) *gopacket.Packet {
+func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType) *gopacket.Packet {
 	rnd := rand.New(rand.NewSource(seed))
 
 	rawBytes := []byte{10, 20, 30}
@@ -57,6 +57,9 @@ func forgeTestPacket(t *testing.T, seed int64, protos ...ProtocolType) *gopacket
 				DstMAC:       net.HardwareAddr{0x00, 0x0D, 0xBD, 0xBD, byte(rnd.Intn(0x100)), 0xBD},
 				EthernetType: layers.EthernetTypeIPv4,
 			}
+			if swap {
+				ethernetLayer.SrcMAC, ethernetLayer.DstMAC = ethernetLayer.DstMAC, ethernetLayer.SrcMAC
+			}
 			protoStack = append(protoStack, ethernetLayer)
 		case IPv4:
 			ipv4Layer := &layers.IPv4{
@@ -69,17 +72,26 @@ func forgeTestPacket(t *testing.T, seed int64, protos ...ProtocolType) *gopacket
 			case UDP:
 				ipv4Layer.Protocol = layers.IPProtocolUDP
 			}
+			if swap {
+				ipv4Layer.SrcIP, ipv4Layer.DstIP = ipv4Layer.DstIP, ipv4Layer.SrcIP
+			}
 			protoStack = append(protoStack, ipv4Layer)
 		case TCP:
 			tcpLayer := &layers.TCP{
 				SrcPort: layers.TCPPort(byte(rnd.Intn(0x10000))),
 				DstPort: layers.TCPPort(byte(rnd.Intn(0x10000))),
 			}
+			if swap {
+				tcpLayer.SrcPort, tcpLayer.DstPort = tcpLayer.DstPort, tcpLayer.SrcPort
+			}
 			protoStack = append(protoStack, tcpLayer)
 		case UDP:
 			udpLayer := &layers.UDP{
 				SrcPort: layers.UDPPort(byte(rnd.Intn(0x10000))),
 				DstPort: layers.UDPPort(byte(rnd.Intn(0x10000))),
+			}
+			if swap {
+				udpLayer.SrcPort, udpLayer.DstPort = udpLayer.DstPort, udpLayer.SrcPort
 			}
 			protoStack = append(protoStack, udpLayer)
 		default:
@@ -109,14 +121,14 @@ func (p *probePathSetter) SetProbePath(f *Flow) bool {
 	return true
 }
 
-func GenerateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, probePath string) []*Flow {
+func generateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, swap bool, probePath string) []*Flow {
 	flows := []*Flow{}
 	for i := int64(0); i < 10; i++ {
 		var packet *gopacket.Packet
 		if i < 5 {
-			packet = forgeTestPacket(t, i+baseSeed*10, ETH, IPv4, TCP)
+			packet = forgeTestPacket(t, i+baseSeed*10, swap, ETH, IPv4, TCP)
 		} else {
-			packet = forgeTestPacket(t, i+baseSeed*10, ETH, IPv4, UDP)
+			packet = forgeTestPacket(t, i+baseSeed*10, swap, ETH, IPv4, UDP)
 		}
 		flow := FlowFromGoPacket(ft, packet, &probePathSetter{probePath})
 		if flow == nil {
@@ -125,6 +137,13 @@ func GenerateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, probePath st
 		flows = append(flows, flow)
 	}
 	return flows
+}
+
+func GenerateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, probePath string) []*Flow {
+	return generateTestFlows(t, ft, baseSeed, false, probePath)
+}
+func GenerateTestFlowsSymmetric(t *testing.T, ft *FlowTable, baseSeed int64, probePath string) []*Flow {
+	return generateTestFlows(t, ft, baseSeed, true, probePath)
 }
 
 func NewTestFlowTableSimple(t *testing.T) *FlowTable {
@@ -151,6 +170,6 @@ func NewTestFlowTableSimple(t *testing.T) *FlowTable {
 
 func NewFlowTableComplex(t *testing.T) *FlowTable {
 	ft := NewFlowTable()
-	GenerateTestFlows(t, ft, 0, "probe")
+	GenerateTestFlows(t, ft, 0xca55e77e, "probe")
 	return ft
 }

@@ -48,6 +48,7 @@ message FlowEndpointStatistics {
 
 message FlowEndpointsStatistics {
   FlowEndpointType Type = 1;
+  bytes Hash = 2; /* Symmetric hash */
   FlowEndpointStatistics AB = 3; /* A->B */
   FlowEndpointStatistics BA = 4; /* B->A */
 }

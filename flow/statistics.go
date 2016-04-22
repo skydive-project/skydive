@@ -107,6 +107,7 @@ func (fs *FlowStatistics) newLinkLayerEndpointStatistics(packet *gopacket.Packet
 	ep.Type = FlowEndpointType_ETHERNET
 	ep.AB.Value = ethernetPacket.SrcMAC.String()
 	ep.BA.Value = ethernetPacket.DstMAC.String()
+	ep.hash(ethernetPacket.SrcMAC, ethernetPacket.DstMAC)
 	fs.Endpoints = append(fs.Endpoints, ep)
 	return nil
 }
@@ -148,6 +149,7 @@ func (fs *FlowStatistics) newNetworkLayerEndpointStatistics(packet *gopacket.Pac
 	ep.Type = FlowEndpointType_IPV4
 	ep.AB.Value = ipv4Packet.SrcIP.String()
 	ep.BA.Value = ipv4Packet.DstIP.String()
+	ep.hash(ipv4Packet.SrcIP, ipv4Packet.DstIP)
 	fs.Endpoints = append(fs.Endpoints, ep)
 	return nil
 }
@@ -202,14 +204,17 @@ func (fs *FlowStatistics) newTransportLayerEndpointStatistics(packet *gopacket.P
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
 		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
+		ep.hash(transportPacket.SrcPort, transportPacket.DstPort)
 	case FlowEndpointType_UDPPORT:
 		transportPacket, _ := transportLayer.(*layers.UDP)
 		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
 		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
+		ep.hash(transportPacket.SrcPort, transportPacket.DstPort)
 	case FlowEndpointType_SCTPPORT:
 		transportPacket, _ := transportLayer.(*layers.SCTP)
 		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
 		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
+		ep.hash(transportPacket.SrcPort, transportPacket.DstPort)
 	}
 	fs.Endpoints = append(fs.Endpoints, ep)
 	return nil

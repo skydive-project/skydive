@@ -40,6 +40,12 @@ func NewFlowTable() *FlowTable {
 	return &FlowTable{table: make(map[string]*Flow)}
 }
 
+func NewFlowTableFromFlows(flows []*Flow) *FlowTable {
+	nft := NewFlowTable()
+	nft.Update(flows)
+	return nft
+}
+
 func (ft *FlowTable) String() string {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
@@ -103,12 +109,6 @@ func (ft *FlowTable) GetOrCreateFlow(key string) (*Flow, bool) {
 	ft.table[key] = new
 
 	return new, true
-}
-
-func (ft *FlowTable) NewFlowTableFromFlows(flows []*Flow) *FlowTable {
-	nft := NewFlowTable()
-	nft.Update(flows)
-	return nft
 }
 
 /* Return a new FlowTable that contain <last> active flows */

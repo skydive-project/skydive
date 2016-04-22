@@ -26,6 +26,9 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"crypto/sha1"
+	"encoding/hex"
 )
 
 func TestNewFlowTable(t *testing.T) {
@@ -158,17 +161,17 @@ func TestFlowTable_GetOrCreateFlow(t *testing.T) {
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
 	}
-	forgeTestPacket(t, int64(1234), ETH, IPv4, TCP)
+	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
 	_, new := ft.GetOrCreateFlow("abcd")
 	if !new {
 		t.Error("Collision in the FlowTable, should be new")
 	}
-	forgeTestPacket(t, int64(1234), ETH, IPv4, TCP)
+	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
 	_, new = ft.GetOrCreateFlow("abcd")
 	if new {
 		t.Error("Collision in the FlowTable, should be an update")
 	}
-	forgeTestPacket(t, int64(1234), ETH, IPv4, TCP)
+	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
 	_, new = ft.GetOrCreateFlow("abcde")
 	if !new {
 		t.Error("Collision in the FlowTable, should be a new flow")
@@ -182,7 +185,7 @@ func TestFlowTable_NewFlowTableFromFlows(t *testing.T) {
 		flow := *f
 		flows = append(flows, &flow)
 	}
-	ft2 := ft.NewFlowTableFromFlows(flows)
+	ft2 := NewFlowTableFromFlows(flows)
 	if len(ft.table) != len(ft2.table) {
 		t.Error("NewFlowTable(copy) are not the same size")
 	}
@@ -190,7 +193,7 @@ func TestFlowTable_NewFlowTableFromFlows(t *testing.T) {
 	for _, f := range ft.table {
 		flows = append(flows, f)
 	}
-	ft3 := ft.NewFlowTableFromFlows(flows)
+	ft3 := NewFlowTableFromFlows(flows)
 	if len(ft.table) != len(ft3.table) {
 		t.Error("NewFlowTable(ref) are not the same size")
 	}
@@ -229,5 +232,36 @@ func TestFlowTable_SelectLayer(t *testing.T) {
 	flows = ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
 	if len(ft.table) != len(flows) {
 		t.Errorf("SelectLayer should select all flows %d %d", len(ft.table), len(flows))
+	}
+}
+
+func TestFlowTable_SymmeticsHash(t *testing.T) {
+	ft := NewFlowTable()
+	GenerateTestFlows(t, ft, 0xca55e77e, "probe")
+
+	foundTable := make(map[string]bool)
+
+	for _, f := range ft.GetFlows() {
+		hasher := sha1.New()
+		for _, ep := range f.GetStatistics().GetEndpoints() {
+			hasher.Write(ep.Hash)
+		}
+		layersH := hex.EncodeToString(hasher.Sum(nil))
+		foundTable[layersH] = true
+	}
+
+	ft2 := NewFlowTable()
+	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe")
+
+	for _, f := range ft2.GetFlows() {
+		hasher := sha1.New()
+		for _, ep := range f.GetStatistics().GetEndpoints() {
+			hasher.Write(ep.Hash)
+		}
+		layersH := hex.EncodeToString(hasher.Sum(nil))
+		if _, found := foundTable[layersH]; !found {
+			t.Errorf("hash endpoint should be symmeticaly, not found : %s", layersH)
+			t.Fail()
+		}
 	}
 }

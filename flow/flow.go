@@ -24,10 +24,12 @@ package flow
 
 import (
 	"crypto/sha1"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -71,6 +73,63 @@ func (s *FlowEndpointsStatistics) UnmarshalJSON(b []byte) error {
 	s.BA = m.BA
 
 	return nil
+}
+
+func Var8bin(v []byte) []byte {
+	r := make([]byte, 8)
+	skip := 8 - len(v)
+	for i, b := range v {
+		r[i+skip] = b
+	}
+	return r
+}
+
+func (eps *FlowEndpointsStatistics) hash(ab interface{}, ba interface{}) {
+	var vab, vba uint64
+	var binab, binba []byte
+
+	hasher := sha1.New()
+	switch ab.(type) {
+	case net.HardwareAddr:
+		binab = ab.(net.HardwareAddr)
+		binba = ba.(net.HardwareAddr)
+		vab = binary.BigEndian.Uint64(Var8bin(binab))
+		vba = binary.BigEndian.Uint64(Var8bin(binba))
+	case net.IP:
+		binab = ab.(net.IP)
+		binba = ba.(net.IP)
+		vab = binary.BigEndian.Uint64(Var8bin(binab))
+		vba = binary.BigEndian.Uint64(Var8bin(binba))
+	case layers.TCPPort:
+		binab = make([]byte, 2)
+		binba = make([]byte, 2)
+		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.TCPPort)))
+		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.TCPPort)))
+		vab = uint64(ab.(layers.TCPPort))
+		vba = uint64(ba.(layers.TCPPort))
+	case layers.UDPPort:
+		binab = make([]byte, 2)
+		binba = make([]byte, 2)
+		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.UDPPort)))
+		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.UDPPort)))
+		vab = uint64(ab.(layers.UDPPort))
+		vba = uint64(ba.(layers.UDPPort))
+	case layers.SCTPPort:
+		binab = make([]byte, 2)
+		binba = make([]byte, 2)
+		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.SCTPPort)))
+		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.SCTPPort)))
+		vab = uint64(ab.(layers.SCTPPort))
+		vba = uint64(ba.(layers.SCTPPort))
+	}
+	if vab < vba {
+		hasher.Write(binab)
+		hasher.Write(binba)
+	} else {
+		hasher.Write(binba)
+		hasher.Write(binab)
+	}
+	eps.Hash = hasher.Sum(nil)
 }
 
 func LayerFlow(l gopacket.Layer) gopacket.Flow {
@@ -134,8 +193,7 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 
 		/* Generate an flow UUID */
 		for _, ep := range fs.GetEndpoints() {
-			hasher.Write([]byte(ep.AB.Value))
-			hasher.Write([]byte(ep.BA.Value))
+			hasher.Write(ep.Hash)
 		}
 		flow.FlowUUID = hex.EncodeToString(hasher.Sum(nil))
 
