@@ -308,9 +308,9 @@
 			"Rev": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
 		{
-			"ImportPath": "github.com/google/gopacket",
+			"ImportPath": "github.com/nplanel/gopacket",
 			"Comment": "v1.1.11-18-g1b0b789",
-			"Rev": "1b0b78901cdd351ecfc68bf1a2adafcd2ff30220"
+			"Rev": "7856863c9bb8b3ab023a6664b0060f0926c72905"
 		},
 		{
 			"ImportPath": "github.com/google/gopacket/layers",
