@@ -212,9 +212,14 @@ func StartAgentWithConfig(t *testing.T, conf string) *agent.Agent {
 func ExecCmds(t *testing.T, cmds ...Cmd) {
 	for _, cmd := range cmds {
 		args := strings.Split(cmd.Cmd, " ")
-		err := exec.Command(args[0], args[1:]...).Run()
+		command := exec.Command(args[0], args[1:]...)
+		stdouterr, err := command.CombinedOutput()
 		if err != nil && cmd.Check {
-			t.Fatal("cmd : (" + cmd.Cmd + ") " + err.Error())
+			output := ""
+			if testing.Verbose() {
+				output = string(stdouterr)
+			}
+			t.Fatal("cmd : ("+cmd.Cmd+") ", err.Error(), output)
 		}
 	}
 }
