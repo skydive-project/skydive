@@ -40,6 +40,7 @@ test.functionals.all: test.functionals.compile
 	make TIMEOUT="8m" test.functionals.run
 
 test.functionals: test.functionals.compile
+	set -e ; \
 	for functest in ${FUNC_TESTS} ; do \
 		make ARGS="-test.run $$functest" test.functionals.run ; \
 	done
