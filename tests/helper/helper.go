@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"net/http"
 	"os/exec"
@@ -60,16 +59,16 @@ func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
 	return conn, nil
 }
 
-func InitConfig(t *testing.T, conf string, params map[string]interface{}) {
+func InitConfig(t *testing.T, conf string, params HelperParams) {
 	f, err := ioutil.TempFile("", "skydive_agent")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	if params == nil {
-		params = make(map[string]interface{})
+		params = make(HelperParams)
 	}
-	params["AnalyzerPort"] = rand.Intn(400) + 64500
+	params["AnalyzerPort"] = 64500
 	if testing.Verbose() {
 		params["LogLevel"] = "DEBUG"
 	} else {
@@ -117,7 +116,9 @@ type HelperAgentAnalyzer struct {
 	serviceDone chan bool
 }
 
-func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params map[string]interface{}) *HelperAgentAnalyzer {
+type HelperParams map[string]interface{}
+
+func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params HelperParams) *HelperAgentAnalyzer {
 	InitConfig(t, conf, params)
 	agent := NewAgent()
 	analyzer := NewAnalyzerStorage(t, s)
@@ -138,19 +139,7 @@ func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, pa
 
 func (h *HelperAgentAnalyzer) startAnalyzer() {
 	h.Analyzer.ListenAndServe()
-
-	// waiting for the api endpoint
-	for i := 1; i <= 5; i++ {
-		url := fmt.Sprintf("http://%s:%d/api", h.Analyzer.HTTPServer.Addr, h.Analyzer.HTTPServer.Port)
-		_, err := http.Get(url)
-		if err == nil {
-			return
-		}
-		time.Sleep(time.Second)
-	}
-
-	h.t.Fatal("Fail to start the analyzer")
-	return
+	WaitApi(h.t, h.Analyzer)
 }
 
 func (h *HelperAgentAnalyzer) Start() {
@@ -197,15 +186,33 @@ func NewAgent() *agent.Agent {
 	return agent.NewAgent()
 }
 
-func StartAgent() *agent.Agent {
+func WaitApi(t *testing.T, analyzer *analyzer.Server) {
+	// waiting for the api endpoint
+	for i := 1; i <= 5; i++ {
+		url := fmt.Sprintf("http://%s:%d/api", analyzer.HTTPServer.Addr, analyzer.HTTPServer.Port)
+		_, err := http.Get(url)
+		if err == nil {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+
+	t.Fatal("Fail to start the analyzer")
+}
+
+func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params HelperParams) *analyzer.Server {
+	InitConfig(t, conf, params)
+	analyzer := NewAnalyzerStorage(t, s)
+	analyzer.ListenAndServe()
+	WaitApi(t, analyzer)
+	return analyzer
+}
+
+func StartAgentWithConfig(t *testing.T, conf string, params HelperParams) *agent.Agent {
+	InitConfig(t, conf, params)
 	agent := NewAgent()
 	agent.Start()
 	return agent
-}
-
-func StartAgentWithConfig(t *testing.T, conf string, params map[string]interface{}) *agent.Agent {
-	InitConfig(t, conf, params)
-	return StartAgent()
 }
 
 func ExecCmds(t *testing.T, cmds ...Cmd) {

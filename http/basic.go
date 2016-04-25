@@ -67,15 +67,19 @@ func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc)
 	}
 }
 
-func NewBasicAuthenticationBackendFromConfig() (*BasicAuthenticationBackend, error) {
-	f := config.GetConfig().GetString("auth.basic.file")
-	if _, err := os.Stat(f); err != nil {
+func NewBasicAuthenticationBackend(file string) (*BasicAuthenticationBackend, error) {
+	if _, err := os.Stat(file); err != nil {
 		return nil, err
 	}
 
 	// TODO(safchain) add more providers
-	h := auth.HtpasswdFileProvider(f)
+	h := auth.HtpasswdFileProvider(file)
 	return &BasicAuthenticationBackend{
 		auth.NewBasicAuthenticator(basicAuthRealm, h),
 	}, nil
+}
+
+func NewBasicAuthenticationBackendFromConfig() (*BasicAuthenticationBackend, error) {
+	f := config.GetConfig().GetString("auth.basic.file")
+	return NewBasicAuthenticationBackend(f)
 }
