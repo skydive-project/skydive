@@ -69,6 +69,9 @@ func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 
 		// assuming we have only one parent with this index
 		parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
+		if parent == nil {
+			return
+		}
 
 		// ignore ovs-system interface as it doesn't make any sense according to
 		// the following thread:
@@ -167,7 +170,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 		})
 		for _, i := range intfs {
 			if _, ok := i.Metadata()["UUID"]; ok {
-				intf  = i
+				intf = i
 				break
 			}
 		}
