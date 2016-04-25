@@ -389,6 +389,7 @@ func TestSFlowTwoProbePath(t *testing.T) {
 		{"ip netns del sflow-vm2", true},
 		{"ovs-vsctl del-br br-sflow1", true},
 		{"ovs-vsctl del-br br-sflow2", true},
+		{"sleep 1", true},
 		{"ip link set br-link down", true},
 		{"brctl delbr br-link", true},
 	}
