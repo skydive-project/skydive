@@ -243,6 +243,9 @@ The plugin accepts the following parameters:
 
 # Remote port for ovsdb server.
 #SKYDIVE_OVSDB_REMOTE_PORT=6640
+
+# Set the default log level, default: INFO
+#SKYDIVE_LOGLEVEL=DEBUG
 ```
 
 ## Contributing

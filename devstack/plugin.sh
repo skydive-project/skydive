@@ -43,8 +43,14 @@ SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb neutron"}
 # Remote port for ovsdb server.
 SKYDIVE_OVSDB_REMOTE_PORT=6640
 
+# Default log level
+SKYDIVE_LOGLEVEL=${SKYDIVE_LOGLEVEL:-INFO}
+
 # Storage used by the analyzer to store flows
 SKYDIVE_STORAGE=${SKYDIVE_STORAGE:-"elasticsearch"}
+
+ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution
+ELASTICSEARCH_VERSION=2.3.1
 
 function install_go {
     if [[ `uname -m` == *"64" ]]; then
@@ -64,11 +70,21 @@ function install_go {
     export GOPATH=$GOPATH
 }
 
+function download_elasticsearch {
+    if is_ubuntu; then
+        wget ${ELASTICSEARCH_BASE_URL}/deb/elasticsearch/${ELASTICSEARCH_VERSION}/elasticsearch-${ELASTICSEARCH_VERSION}.deb \
+            -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.deb
+    elif is_fedora; then
+        wget ${ELASTICSEARCH_BASE_URL}/rpm/elasticsearch/${ELASTICSEARCH_VERSION}/elasticsearch-${ELASTICSEARCH_VERSION}.rpm \
+            -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.noarch.rpm
+    fi
+}
+
 function pre_install_skydive {
     install_go
-    if is_service_enabled skydive-analyzer ; then
-        ELASTICSEARCH_VERSION=2.3.1
-        $TOP_DIR/pkg/elasticsearch.sh download
+    if is_service_enabled skydive-analyzer; then
+        download_elasticsearch
+        export ELASTICSEARCH_VERSION
         $TOP_DIR/pkg/elasticsearch.sh install
     fi
 }
@@ -136,6 +152,9 @@ EOF
 analyzer:
   listen: $SKYDIVE_ANALYZER_LISTEN
   storage: $SKYDIVE_STORAGE
+
+logging:
+  default: $SKYDIVE_LOGLEVEL
 EOF
     fi
 
