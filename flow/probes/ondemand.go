@@ -94,13 +94,13 @@ func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
 		return
 	}
 
-	path := topology.NodePath{nodes}.Marshal()
+	path := topology.NodePath{Nodes: nodes}.Marshal()
 
 	var capture api.ApiResource
 	var ok bool
 	if capture, ok = o.CaptureHandler.Get(path); !ok {
 		// try using the wildcard instead of the host
-		wildcard := "*/" + topology.NodePath{nodes[:len(nodes)-1]}.Marshal()
+		wildcard := "*/" + topology.NodePath{Nodes: nodes[:len(nodes)-1]}.Marshal()
 		if capture, ok = o.CaptureHandler.Get(wildcard); !ok {
 			return
 		}

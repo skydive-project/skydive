@@ -48,7 +48,7 @@ func (gfe *GraphFlowEnhancer) getPath(mac string) string {
 	} else if len(intfs) == 1 {
 		nodes := gfe.Graph.LookupShortestPath(intfs[0], graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
 		if len(nodes) > 0 {
-			return topology.NodePath{nodes}.Marshal()
+			return topology.NodePath{Nodes: nodes}.Marshal()
 		}
 	}
 	return ""

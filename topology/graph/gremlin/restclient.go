@@ -81,7 +81,7 @@ func (g *gremlinServerParser) IsSuccess(b []byte) (bool, error) {
 	}
 
 	if resp.Status.Code != 200 {
-		return false, fmt.Errorf("Gremlin server response error: %d, %s", resp.Status.Message)
+		return false, fmt.Errorf("Gremlin server response error: %d, %s", resp.Status.Code, resp.Status.Message)
 	}
 
 	return true, nil
@@ -95,7 +95,7 @@ func (g *gremlinServerParser) Results(b []byte) (results, error) {
 	}
 
 	if resp.Status.Code != 200 {
-		return nil, fmt.Errorf("Gremlin server response error: %d, %s", resp.Status.Message)
+		return nil, fmt.Errorf("Gremlin server response error: %d, %s", resp.Status.Code, resp.Status.Message)
 	}
 
 	data := gremlinServerData{}

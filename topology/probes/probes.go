@@ -68,7 +68,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 			probes[t] = neutron
 
 		default:
-			logging.GetLogger().Error("unknown probe type %s", t)
+			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}
 	}
 

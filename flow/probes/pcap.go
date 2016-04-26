@@ -101,7 +101,7 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 			handle.SetBPFFilter(capture.BPFFilter)
 		}
 
-		probePath := topology.NodePath{nodes}.Marshal()
+		probePath := topology.NodePath{Nodes: nodes}.Marshal()
 
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		packetChannel := packetSource.Packets()

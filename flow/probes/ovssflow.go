@@ -125,7 +125,7 @@ func compareProbeID(row *map[string]interface{}, id string) (bool, error) {
 
 func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(id string) (string, error) {
 	/* FIX(safchain) don't find a way to send a null condition */
-	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{"abc"})
+	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{GoUuid: "abc"})
 	selectOp := libovsdb.Operation{
 		Op:    "select",
 		Table: "sFlow",
@@ -162,7 +162,7 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 
 	var uuid libovsdb.UUID
 	if probeUUID != "" {
-		uuid = libovsdb.UUID{probeUUID}
+		uuid = libovsdb.UUID{GoUuid: probeUUID}
 
 		logging.GetLogger().Infof("Using already registered OVS SFlow probe \"%s(%s)\"", probe.ID, uuid)
 	} else {
@@ -170,7 +170,7 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 		if err != nil {
 			return err
 		}
-		uuid = libovsdb.UUID{insertOp.UUIDName}
+		uuid = libovsdb.UUID{GoUuid: insertOp.UUIDName}
 		logging.GetLogger().Infof("Registering new OVS SFlow probe \"%s(%s)\"", probe.ID, uuid)
 
 		operations = append(operations, *insertOp)
@@ -179,7 +179,7 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 	bridgeRow := make(map[string]interface{})
 	bridgeRow["sflow"] = uuid
 
-	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{bridgeUUID})
+	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUuid: bridgeUUID})
 	updateOp := libovsdb.Operation{
 		Op:    "update",
 		Table: "Bridge",
@@ -207,9 +207,9 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 	operations := []libovsdb.Operation{}
 
 	bridgeRow := make(map[string]interface{})
-	bridgeRow["sflow"] = libovsdb.OvsSet{make([]interface{}, 0)}
+	bridgeRow["sflow"] = libovsdb.OvsSet{GoSet: make([]interface{}, 0)}
 
-	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{bridgeUUID})
+	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUuid: bridgeUUID})
 	updateOp := libovsdb.Operation{
 		Op:    "update",
 		Table: "Bridge",
@@ -260,7 +260,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 			return errors.New(fmt.Sprintf("Failed to determine probePath for %v", n))
 		}
 
-		probePath := topology.NodePath{nodes}.Marshal()
+		probePath := topology.NodePath{Nodes: nodes}.Marshal()
 
 		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), probePath)
 		if err != nil {
