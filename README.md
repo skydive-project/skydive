@@ -23,11 +23,17 @@ Topology probes currently implemented:
 * NetNS
 * Ethtool
 
+Topology connectors:
+
+* Neutron
+* Docker
+
 ## Flow Probes
 
 Flow probes currently implemented:
 
 * sFlow
+* PCAP
 
 # Dependencies
 
