@@ -12,6 +12,19 @@ package pfring
 #include <stdlib.h>
 #include <pfring.h>
 #include <linux/pf_ring.h>
+
+int pfring_readpacketdatato_wrapper(
+    pfring* ring,
+    u_char* buffer,
+    u_int buffer_len,
+    struct pfring_pkthdr* hdr) {
+  // We can't pass a Go pointer to a Go pointer which means we can't pass
+  // buffer as a uchar**, like pfring_recv wants, for ReadPacketDataTo.  So,
+  // this wrapper does the pointer conversion in C code.  Since this isn't
+  // zero-copy, it turns out that the pointer-to-pointer part of things isn't
+  // actually used anyway.
+  return pfring_recv(ring, &buffer, buffer_len, hdr, 1);
+}
 */
 import "C"
 
@@ -21,12 +34,14 @@ import "C"
 
 import (
 	"fmt"
-	"github.com/google/gopacket"
+	"net"
 	"os"
 	"strconv"
 	"sync"
 	"time"
 	"unsafe"
+
+	"github.com/google/gopacket"
 )
 
 const errorBufferSize = 256
@@ -34,10 +49,11 @@ const errorBufferSize = 256
 // Ring provides a handle to a pf_ring.
 type Ring struct {
 	// cptr is the handle for the actual pcap C object.
-	cptr    *C.pfring
-	snaplen int
-
-	mu sync.Mutex
+	cptr                    *C.pfring
+	snaplen                 int
+	useExtendedPacketHeader bool
+	interfaceIndex          int
+	mu                      sync.Mutex
 	// Since pointers to these objects are passed into a C function, if
 	// they're declared locally then the Go compiler thinks they may have
 	// escaped into C-land, so it allocates them on the heap.  This causes a
@@ -69,6 +85,15 @@ func NewRing(device string, snaplen uint32, flags Flag) (ring *Ring, _ error) {
 		return nil, fmt.Errorf("pfring NewRing error: %v", err)
 	}
 	ring = &Ring{cptr: cptr, snaplen: int(snaplen)}
+
+	if flags&FlagLongHeader == FlagLongHeader {
+		ring.useExtendedPacketHeader = true
+	} else {
+		ifc, err := net.InterfaceByName(device)
+		if err == nil {
+			ring.interfaceIndex = ifc.Index
+		}
+	}
 	ring.SetApplicationName(os.Args[0])
 	return
 }
@@ -113,7 +138,7 @@ func (r *Ring) ReadPacketDataTo(data []byte) (ci gopacket.CaptureInfo, err error
 	// will actually write directly into our Go slice.  Nice!
 	r.mu.Lock()
 	r.buf_ptr = (*C.u_char)(unsafe.Pointer(&data[0]))
-	result := NextResult(C.pfring_recv(r.cptr, &r.buf_ptr, C.u_int(len(data)), &r.pkthdr, 1))
+	result := NextResult(C.pfring_readpacketdatato_wrapper(r.cptr, r.buf_ptr, C.u_int(len(data)), &r.pkthdr))
 	if result != NextOk {
 		err = result
 		r.mu.Unlock()
@@ -123,6 +148,11 @@ func (r *Ring) ReadPacketDataTo(data []byte) (ci gopacket.CaptureInfo, err error
 		int64(r.pkthdr.ts.tv_usec)*1000) // convert micros to nanos
 	ci.CaptureLength = int(r.pkthdr.caplen)
 	ci.Length = int(r.pkthdr.len)
+	if r.useExtendedPacketHeader {
+		ci.InterfaceIndex = int(r.pkthdr.extended_hdr.if_index)
+	} else {
+		ci.InterfaceIndex = r.interfaceIndex
+	}
 	r.mu.Unlock()
 	return
 }

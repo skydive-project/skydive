@@ -8,7 +8,9 @@
 package pcap
 
 /*
+#cgo solaris LDFLAGS: -L /opt/local/lib -lpcap
 #cgo linux LDFLAGS: -lpcap
+#cgo dragonfly LDFLAGS: -lpcap
 #cgo freebsd LDFLAGS: -lpcap
 #cgo openbsd LDFLAGS: -lpcap
 #cgo darwin LDFLAGS: -lpcap
@@ -128,6 +130,7 @@ type Handle struct {
 	cptr         *C.pcap_t
 	blockForever bool
 	device       string
+	deviceIndex  int
 	mu           sync.Mutex
 	// Since pointers to these objects are passed into a C function, if
 	// they're declared locally then the Go compiler thinks they may have
@@ -214,6 +217,15 @@ func OpenLive(device string, snaplen int32, promisc bool, timeout time.Duration)
 	p := &Handle{}
 	p.blockForever = timeout < 0
 	p.device = device
+
+	ifc, err := net.InterfaceByName(device)
+	if err != nil {
+		// The device wasn't found in the OS, but could be "any"
+		// Set index to 0
+		p.deviceIndex = 0
+	} else {
+		p.deviceIndex = ifc.Index
+	}
 
 	dev := C.CString(device)
 	defer C.free(unsafe.Pointer(dev))
@@ -340,6 +352,7 @@ func (p *Handle) getNextBufPtrLocked(ci *gopacket.CaptureInfo) error {
 		int64(p.pkthdr.ts.tv_usec)*1000) // convert micros to nanos
 	ci.CaptureLength = int(p.pkthdr.caplen)
 	ci.Length = int(p.pkthdr.len)
+	ci.InterfaceIndex = p.deviceIndex
 	return nil
 }
 
@@ -424,6 +437,11 @@ func (p *Handle) ListDataLinks() (datalinks []Datalink, err error) {
 	return datalinks, nil
 }
 
+// compileBPFFilter always returns an allocated _Ctype_struct_bpf_program
+// It is the callers responsibility to free the memory again, e.g.
+//
+//    C.pcap_freecode(&bpf)
+//
 func (p *Handle) compileBPFFilter(expr string) (_Ctype_struct_bpf_program, error) {
 	errorBuf := (*C.char)(C.calloc(errorBufferSize, 1))
 	defer C.free(unsafe.Pointer(errorBuf))
@@ -461,6 +479,7 @@ func (p *Handle) compileBPFFilter(expr string) (_Ctype_struct_bpf_program, error
 // CompileBPFFilter compiles and returns a BPF filter for the pcap handle.
 func (p *Handle) CompileBPFFilter(expr string) ([]BPFInstruction, error) {
 	bpf, err := p.compileBPFFilter(expr)
+	defer C.pcap_freecode(&bpf)
 	if err != nil {
 		return nil, err
 	}
@@ -475,14 +494,13 @@ func (p *Handle) CompileBPFFilter(expr string) ([]BPFInstruction, error) {
 		bpfInstruction[i].K = uint32(v.k)
 	}
 
-	C.pcap_freecode(&bpf)
-
 	return bpfInstruction, nil
 }
 
 // SetBPFFilter compiles and sets a BPF filter for the pcap handle.
 func (p *Handle) SetBPFFilter(expr string) (err error) {
 	bpf, err := p.compileBPFFilter(expr)
+	defer C.pcap_freecode(&bpf)
 	if err != nil {
 		return err
 	}
@@ -491,8 +509,6 @@ func (p *Handle) SetBPFFilter(expr string) (err error) {
 		C.pcap_freecode(&bpf)
 		return p.Error()
 	}
-
-	C.pcap_freecode(&bpf)
 
 	return nil
 }
@@ -768,6 +784,7 @@ type InactiveHandle struct {
 	// cptr is the handle for the actual pcap C object.
 	cptr         *C.pcap_t
 	device       string
+	deviceIndex  int
 	blockForever bool
 }
 
@@ -778,7 +795,7 @@ func (p *InactiveHandle) Activate() (*Handle, error) {
 	if err != aeNoError {
 		return nil, err
 	}
-	h := &Handle{cptr: p.cptr, device: p.device, blockForever: p.blockForever}
+	h := &Handle{cptr: p.cptr, device: p.device, deviceIndex: p.deviceIndex, blockForever: p.blockForever}
 	p.cptr = nil
 	return h, nil
 }
@@ -801,12 +818,20 @@ func NewInactiveHandle(device string) (*InactiveHandle, error) {
 	dev := C.CString(device)
 	defer C.free(unsafe.Pointer(dev))
 
+	// Try to get the interface index, but iy could be something like "any"
+	// in which case use 0, which doesn't exist in nature
+	deviceIndex := 0
+	ifc, err := net.InterfaceByName(device)
+	if err == nil {
+		deviceIndex = ifc.Index
+	}
+
 	// This copies a bunch of the pcap_open_live implementation from pcap.c:
 	cptr := C.pcap_create(dev, buf)
 	if cptr == nil {
 		return nil, errors.New(C.GoString(buf))
 	}
-	return &InactiveHandle{cptr: cptr, device: device}, nil
+	return &InactiveHandle{cptr: cptr, device: device, deviceIndex: deviceIndex}, nil
 }
 
 // SetSnapLen sets the snap length (max bytes per packet to capture).

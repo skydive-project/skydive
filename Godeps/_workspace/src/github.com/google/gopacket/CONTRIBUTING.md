@@ -26,31 +26,31 @@ so the code can make it into the master branch as quickly as possible.
 How To Submit Code
 ------------------
 
-gopacket uses the code.google.com Git version control system.  If you want to
+gopacket uses the Git version control system.  If you want to
 make a new change, you'll first have to get our code:
 
-    go get code.google.com/p/gopacket
-    cd $GOROOT/src/pkg/code.google.com/p/gopacket
+    go get github.com/google/gopacket
+    cd $GOROOT/src/pkg/github.com/google/gopacket
     git checkout -b <mynewfeature>  # create a new branch to work from
     ... code code code ...
     ./gc  # Run this to do local commits, it performs a number of checks
     ... code code code ...
     ./gc --benchmark  # Run this whenever your commit could affect performance
 
-Nw that you're in the gopacket code directory, you can start making your initial
+Now that you're in the gopacket code directory, you can start making your initial
 change.  PLEASE make sure you're using a new branch to develop whatever feature
 you're working on.
 
 Once you've got your code to a place where you're ready to have us look at it,
 send an email to gopacket@googlegroups.com, detailing your change.  We'll add
-you as a committer, and you can upload your feature branch to code.google.com.
+you as a committer, and you can upload your feature branch to github.com/google/gopacket.
 From there, the other folks working on gopacket can give you code reviews with
-the code.google.com code review functionality.
+the github.com code review functionality.
 
 The code review will generally be either emails or line-by-line reviews via
-code.google.com.  One or more folks might review your code.  The review should
+github.com.  One or more folks might review your code.  The review should
 be considered "complete" when at least one of the project Owners (see
-https://code.google.com/p/gopacket/people/list) gives you permission to merge to
+https://github.com/orgs/google/people) gives you permission to merge to
 master.  At that point, you can merge to master yourself, or you can have one of
 the other committers/owners do it for you.
 
@@ -66,7 +66,7 @@ To sum up:
     + Code using the style and methods discussed in the rest of this document.
     + Use the ./gc command to do local commits.
     + Send an email asking us to make you a committer (if you're new).
-    + Push your new feature branch up to code.google.com.
+    + Push your new feature branch up to github.com.
     + Handle comments and requests from reviewers, pushing new commits up to
       your feature branch as problems are addressed.
     + Get approval from a project Owner to merge to master.
@@ -111,26 +111,28 @@ Often, you'll already have decode some part of your protocol by the time you hit
 your error.  Use your own discretion to determine whether the stuff you've
 already decoded should be returned to the caller or not:
 
-    func decodeMyProtocol(data []byte, p gopacket.PacketBuilder) error {
-      prot := &MyProtocol{}
-      if len(data) < 10 {
-        // This error occurred before we did ANYTHING, so there's nothing in my
-        // protocol that the caller could possibly want.  Just return the error.
-        return fmt.Errorf("Length %d less than 10", len(data))
-      }
-      prot.ImportantField1 = data[:5]
-      prot.ImportantField2 = data[5:10]
-      // At this point, we've already got enough information in 'prot' to
-      // warrant returning it to the caller, so we'll add it now.
-      p.AddLayer(prot)
-      if len(data) < 15 {
-        // We encountered an error later in the packet, but the caller already
-        // has the important info we've gleaned so far.
-        return fmt.Errorf("Length %d less than 15", len(data))
-      }
-      prot.ImportantField3 = data[10:15]
-      return nil  // We've already added the layer, we can just return success.
-    }
+```go
+func decodeMyProtocol(data []byte, p gopacket.PacketBuilder) error {
+  prot := &MyProtocol{}
+  if len(data) < 10 {
+    // This error occurred before we did ANYTHING, so there's nothing in my
+    // protocol that the caller could possibly want.  Just return the error.
+    return fmt.Errorf("Length %d less than 10", len(data))
+  }
+  prot.ImportantField1 = data[:5]
+  prot.ImportantField2 = data[5:10]
+  // At this point, we've already got enough information in 'prot' to
+  // warrant returning it to the caller, so we'll add it now.
+  p.AddLayer(prot)
+  if len(data) < 15 {
+    // We encountered an error later in the packet, but the caller already
+    // has the important info we've gleaned so far.
+    return fmt.Errorf("Length %d less than 15", len(data))
+  }
+  prot.ImportantField3 = data[10:15]
+  return nil  // We've already added the layer, we can just return success.
+}
+```
 
 In general, our code follows the approach of returning the first error it
 encounters.  In general, we don't trust any bytes after the first error we see.
@@ -176,45 +178,49 @@ features.  In general, this means:
   majority of workloads.  A prime example of this is pre-allocating certain
   structs within a larger one:
 
-    type MyProtocol struct {
-      // Most packets have 1-4 of VeryCommon, so we preallocate it here.
-      initialAllocation [4]uint32
-      VeryCommon []uint32
-    }
+```go
+type MyProtocol struct {
+  // Most packets have 1-4 of VeryCommon, so we preallocate it here.
+  initialAllocation [4]uint32
+  VeryCommon []uint32
+}
 
-    func decodeMyProtocol(data []byte, p gopacket.PacketBuilder) error {
-      prot := &MyProtocol{}
-      prot.VeryCommon = proto.initialAllocation[:0]
-      for len(data) > 4 {
-        field := binary.BigEndian.Uint32(data[:4])
-        data = data[4:]
-        // Since we're using the underlying initialAllocation, we won't need to
-        // allocate new memory for the following append unless we more than 16
-        // bytes of data, which should be the uncommon case.
-        prot.VeryCommon = append(prot.VeryCommon, field)
-      }
-      p.AddLayer(prot)
-      if len(data) > 0 {
-        return fmt.Errorf("MyProtocol packet has %d bytes left after decoding", len(data))
-      }
-      return nil
-    }
+func decodeMyProtocol(data []byte, p gopacket.PacketBuilder) error {
+  prot := &MyProtocol{}
+  prot.VeryCommon = proto.initialAllocation[:0]
+  for len(data) > 4 {
+    field := binary.BigEndian.Uint32(data[:4])
+    data = data[4:]
+    // Since we're using the underlying initialAllocation, we won't need to
+    // allocate new memory for the following append unless we more than 16
+    // bytes of data, which should be the uncommon case.
+    prot.VeryCommon = append(prot.VeryCommon, field)
+  }
+  p.AddLayer(prot)
+  if len(data) > 0 {
+    return fmt.Errorf("MyProtocol packet has %d bytes left after decoding", len(data))
+  }
+  return nil
+}
+```
 
 ### Slices And Data
 
 If you're pulling a slice from the data you're decoding, don't copy it.  Just
 use the slice itself.
 
-    type MyProtocol struct {
-      A, B net.IP
-    }
-    func decodeMyProtocol(data []byte, p gopacket.PacketBuilder) error {
-      p.AddLayer(&MyProtocol{
-        A: data[:4],
-        B: data[4:8],
-      })
-      return nil
-    }
+```go
+type MyProtocol struct {
+  A, B net.IP
+}
+func decodeMyProtocol(data []byte, p gopacket.PacketBuilder) error {
+  p.AddLayer(&MyProtocol{
+    A: data[:4],
+    B: data[4:8],
+  })
+  return nil
+}
+```
 
 The caller has already agreed, by using this library, that they won't modify the
 set of bytes they pass in to the decoder, or the library has already copied the

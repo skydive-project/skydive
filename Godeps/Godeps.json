@@ -308,19 +308,24 @@
 			"Rev": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
 		{
-			"ImportPath": "github.com/nplanel/gopacket",
-			"Comment": "v1.1.11-18-g1b0b789",
-			"Rev": "7856863c9bb8b3ab023a6664b0060f0926c72905"
+			"ImportPath": "github.com/google/gopacket",
+			"Comment": "v1.1.11-106-gbdf4ee7",
+			"Rev": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
 		},
 		{
 			"ImportPath": "github.com/google/gopacket/layers",
-			"Comment": "v1.1.11-18-g1b0b789",
-			"Rev": "1b0b78901cdd351ecfc68bf1a2adafcd2ff30220"
+			"Comment": "v1.1.11-106-gbdf4ee7",
+			"Rev": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
+		},
+		{
+			"ImportPath": "github.com/google/gopacket/pcap",
+			"Comment": "v1.1.11-106-gbdf4ee7",
+			"Rev": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
 		},
 		{
 			"ImportPath": "github.com/google/gopacket/pcapgo",
-			"Comment": "v1.1.11-18-g1b0b789",
-			"Rev": "1b0b78901cdd351ecfc68bf1a2adafcd2ff30220"
+			"Comment": "v1.1.11-106-gbdf4ee7",
+			"Rev": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
@@ -508,11 +513,6 @@
 			"Rev": "37123d6cddfa3a274afd18b2c616aa711bb9ee89"
 		},
 		{
-			"ImportPath": "github.com/russross/blackfriday",
-			"Comment": "v1.3-14-g4b26653",
-			"Rev": "4b26653fe00067c22322249d58654737e44b0dfb"
-		},
-		{
 			"ImportPath": "github.com/safchain/ethtool",
 			"Rev": "0d3300ef113b4352a61230cd89bf231a60bb9bb3"
 		},
@@ -524,10 +524,6 @@
 			"ImportPath": "github.com/sbinet/go-eval",
 			"Comment": "go.weekly.2012-03-04-57-g5a18a6f",
 			"Rev": "5a18a6f14e020db7500a44a90ace4f81ebc4ec2a"
-		},
-		{
-			"ImportPath": "github.com/shurcooL/sanitized_anchor_name",
-			"Rev": "10ef21a441db47d8b13ebcc5fd2310f636973c77"
 		},
 		{
 			"ImportPath": "github.com/socketplane/libovsdb",

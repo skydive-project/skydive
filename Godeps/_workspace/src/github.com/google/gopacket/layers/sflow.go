@@ -176,7 +176,7 @@ type SFlowDataFormat uint32
 
 func (sdf SFlowDataFormat) decode() (SFlowEnterpriseID, SFlowSampleType) {
 	leftField := sdf >> 12
-	rightField := uint32(0xFFFFF) & uint32(sdf)
+	rightField := uint32(0xFFF) & uint32(sdf)
 	return SFlowEnterpriseID(leftField), SFlowSampleType(rightField)
 }
 
@@ -379,7 +379,7 @@ type SFlowFlowDataFormat uint32
 
 func (fdf SFlowFlowDataFormat) decode() (SFlowEnterpriseID, SFlowFlowRecordType) {
 	leftField := fdf >> 12
-	rightField := uint32(0xFFFFF) & uint32(fdf)
+	rightField := uint32(0xFFF) & uint32(fdf)
 	return SFlowEnterpriseID(leftField), SFlowFlowRecordType(rightField)
 }
 
@@ -537,7 +537,7 @@ type SFlowCounterDataFormat uint32
 
 func (cdf SFlowCounterDataFormat) decode() (SFlowEnterpriseID, SFlowCounterRecordType) {
 	leftField := cdf >> 12
-	rightField := uint32(0xFFFFF) & uint32(cdf)
+	rightField := uint32(0xFFF) & uint32(cdf)
 	return SFlowEnterpriseID(leftField), SFlowCounterRecordType(rightField)
 }
 
