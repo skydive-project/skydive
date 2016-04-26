@@ -38,10 +38,6 @@
 			"Rev": "6fa1249006bd0fb3836b664614fc4bb7c6f74167"
 		},
 		{
-			"ImportPath": "github.com/calmh/ipfix",
-			"Rev": "5d8d68781514e03e138546df9ff0a7d93c3b4543"
-		},
-		{
 			"ImportPath": "github.com/cenkalti/hub",
 			"Comment": "v1.0.0-14-g57d753b",
 			"Rev": "57d753b5f4856e77b3cf8ecce78c97215a7d324d"
@@ -654,22 +650,6 @@
 			"ImportPath": "gopkg.in/fsnotify.v1",
 			"Comment": "v1.2.9",
 			"Rev": "8611c35ab31c1c28aa903d33cf8b6e44a399b09e"
-		},
-		{
-			"ImportPath": "gopkg.in/gcfg.v1",
-			"Rev": "083575c3955c85df16fe9590cceab64d03f5eb6e"
-		},
-		{
-			"ImportPath": "gopkg.in/gcfg.v1/scanner",
-			"Rev": "083575c3955c85df16fe9590cceab64d03f5eb6e"
-		},
-		{
-			"ImportPath": "gopkg.in/gcfg.v1/token",
-			"Rev": "083575c3955c85df16fe9590cceab64d03f5eb6e"
-		},
-		{
-			"ImportPath": "gopkg.in/gcfg.v1/types",
-			"Rev": "083575c3955c85df16fe9590cceab64d03f5eb6e"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
