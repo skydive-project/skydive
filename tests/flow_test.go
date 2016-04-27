@@ -455,7 +455,7 @@ func TestPCAPProbe(t *testing.T) {
 		{"brctl addbr br-pcap", true},
 		{"ip link set br-pcap up", true},
 		{"ip address add 169.254.66.66/24 dev br-pcap", true},
-		{"ping -c 3 169.254.66.66", false},
+		{"ping -c 6 169.254.66.66", false},
 	}
 
 	tearDownCmds := []helper.Cmd{
