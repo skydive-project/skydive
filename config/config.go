@@ -25,11 +25,14 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/viper"
+	_ "github.com/spf13/viper/remote"
 )
 
 var cfg *viper.Viper
@@ -88,22 +91,42 @@ func checkConfig() error {
 	return nil
 }
 
-func InitConfigFromFile(filename string) error {
-	configFile, err := os.Open(filename)
-	if err != nil {
-		return err
+func InitConfig(backend string, path string) error {
+	if path == "" {
+		return fmt.Errorf("Empty configuration path")
 	}
 
-	cfg.SetConfigType("yaml")
-	if err := cfg.ReadConfig(configFile); err != nil {
-		return err
+	ext := strings.TrimPrefix(filepath.Ext(path), ".")
+	if ext == "" {
+		ext = "yaml"
+	}
+	cfg.SetConfigType(ext)
+
+	switch backend {
+	case "file":
+		configFile, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		if err := cfg.ReadConfig(configFile); err != nil {
+			return err
+		}
+	case "etcd":
+		u, err := url.Parse(path)
+		if err != nil {
+			return err
+		}
+		if err := cfg.AddRemoteProvider("etcd", fmt.Sprintf("%s://%s", u.Scheme, u.Host), u.Path); err != nil {
+			return err
+		}
+		if err := cfg.ReadRemoteConfig(); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("Invalid backend: %s", backend)
 	}
 
-	if err := checkConfig(); err != nil {
-		return err
-	}
-
-	return nil
+	return checkConfig()
 }
 
 func GetConfig() *viper.Viper {

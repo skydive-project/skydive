@@ -91,7 +91,7 @@ func InitConfig(t *testing.T, conf string) {
 
 	t.Logf("Configuration: %s", buff.String())
 
-	err = config.InitConfigFromFile(f.Name())
+	err = config.InitConfig("file", f.Name())
 	if err != nil {
 		t.Fatal(err.Error())
 	}

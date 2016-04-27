@@ -25,6 +25,10 @@
 			"Rev": "0c2ab7394d785afff14c983fedce4be70ccc431f"
 		},
 		{
+			"ImportPath": "github.com/armon/consul-api",
+			"Rev": "dcfedd50ed5334f96adee43fc88518a4f095e15c"
+		},
+		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
 			"Rev": "b965b613227fddccbfffe13eae360ed3fa822f8d"
 		},
@@ -254,6 +258,11 @@
 			"ImportPath": "github.com/coreos/etcd/wal/walpb",
 			"Comment": "v2.3.0-alpha.1-106-gbfcd393",
 			"Rev": "bfcd39335c6c27d84164c1b1d9e9d65c2e8f39b6"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-etcd/etcd",
+			"Comment": "v2.0.0-38-g003851b",
+			"Rev": "003851be7bb0694fe3cc457a49529a19388ee7cf"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
@@ -547,6 +556,10 @@
 			"Rev": "c975dc1b4eacf4ec7fdbf0873638de5d090ba323"
 		},
 		{
+			"ImportPath": "github.com/spf13/viper/remote",
+			"Rev": "c975dc1b4eacf4ec7fdbf0873638de5d090ba323"
+		},
+		{
 			"ImportPath": "github.com/ugorji/go/codec",
 			"Rev": "03b46f3d7a8e0457836a5ecd906b4961a5815a63"
 		},
@@ -567,11 +580,64 @@
 			"Rev": "6a0cc1ae81b4cc11db5e491e030e4b98fba79c19"
 		},
 		{
+			"ImportPath": "github.com/xordataexchange/crypt/backend",
+			"Comment": "v0.0.2-17-g749e360",
+			"Rev": "749e360c8f236773f28fc6d3ddfce4a470795227"
+		},
+		{
+			"ImportPath": "github.com/xordataexchange/crypt/backend/consul",
+			"Comment": "v0.0.2-17-g749e360",
+			"Rev": "749e360c8f236773f28fc6d3ddfce4a470795227"
+		},
+		{
+			"ImportPath": "github.com/xordataexchange/crypt/backend/etcd",
+			"Comment": "v0.0.2-17-g749e360",
+			"Rev": "749e360c8f236773f28fc6d3ddfce4a470795227"
+		},
+		{
+			"ImportPath": "github.com/xordataexchange/crypt/config",
+			"Comment": "v0.0.2-17-g749e360",
+			"Rev": "749e360c8f236773f28fc6d3ddfce4a470795227"
+		},
+		{
+			"ImportPath": "github.com/xordataexchange/crypt/encoding/secconf",
+			"Comment": "v0.0.2-17-g749e360",
+			"Rev": "749e360c8f236773f28fc6d3ddfce4a470795227"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
 			"Rev": "1f22c0103821b9390939b6776727195525381532"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
+			"Rev": "1f22c0103821b9390939b6776727195525381532"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/cast5",
+			"Rev": "1f22c0103821b9390939b6776727195525381532"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp",
+			"Rev": "1f22c0103821b9390939b6776727195525381532"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/armor",
+			"Rev": "1f22c0103821b9390939b6776727195525381532"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/elgamal",
+			"Rev": "1f22c0103821b9390939b6776727195525381532"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/errors",
+			"Rev": "1f22c0103821b9390939b6776727195525381532"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/packet",
+			"Rev": "1f22c0103821b9390939b6776727195525381532"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/openpgp/s2k",
 			"Rev": "1f22c0103821b9390939b6776727195525381532"
 		},
 		{

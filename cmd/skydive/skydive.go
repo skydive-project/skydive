@@ -35,17 +35,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var showVersion bool
-var cfgFile string
+var (
+	showVersion bool
+	cfgPath     string
+	cfgBackend  string
+)
 
 var rootCmd = &cobra.Command{
 	Use:          "skydive [sub]",
 	Short:        "Skydive",
 	SilenceUsage: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if cfgFile != "" {
-			err := config.InitConfigFromFile(cfgFile)
-			if err != nil {
+		if cfgPath != "" {
+			if err := config.InitConfig(cfgBackend, cfgPath); err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 				os.Exit(1)
 			}
@@ -62,8 +64,8 @@ var versionCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "conf", "c", "", "location of Skydive agent config file")
-
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "conf", "c", "", "location of Skydive agent config file")
+	rootCmd.PersistentFlags().StringVarP(&cfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
 	rootCmd.Flags().Int("ws-pong-timeout", 50, "WebSocket Ping/Pong timeout in second")
 	config.GetConfig().BindPFlag("ws_pong_timeout", rootCmd.Flags().Lookup("ws-pong-timeout"))
 }
