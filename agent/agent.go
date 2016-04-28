@@ -145,6 +145,11 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
+	_, err = api.NewApi(hserver, nil)
+	if err != nil {
+		panic(err)
+	}
+
 	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
 
 	api.RegisterTopologyApi("agent", g, hserver)

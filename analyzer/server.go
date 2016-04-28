@@ -235,10 +235,25 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	alertManager := alert.NewAlertManager(g, apiServer.GetHandler("alert"))
+	captureHandler := &api.BasicApiHandler{
+		ResourceHandler: &api.CaptureHandler{},
+		EtcdKeyAPI:      etcdClient.KeysApi,
+	}
+	err = apiServer.RegisterApiHandler(captureHandler)
 	if err != nil {
 		return nil, err
 	}
+
+	alertHandler := &api.BasicApiHandler{
+		ResourceHandler: &api.AlertHandler{},
+		EtcdKeyAPI:      etcdClient.KeysApi,
+	}
+	err = apiServer.RegisterApiHandler(alertHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	alertManager := alert.NewAlertManager(g, alertHandler)
 
 	aserver, err := alert.NewServerFromConfig(alertManager, httpServer)
 	if err != nil {

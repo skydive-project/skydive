@@ -209,24 +209,6 @@ func NewApi(server *shttp.Server, kapi etcd.KeysAPI) (*ApiServer, error) {
 		handlers:   make(map[string]ApiHandler),
 	}
 
-	captureHandler := &BasicApiHandler{
-		ResourceHandler: &CaptureHandler{},
-		EtcdKeyAPI:      kapi,
-	}
-	err := apiServer.RegisterApiHandler(captureHandler)
-	if err != nil {
-		return nil, err
-	}
-
-	alertHandler := &BasicApiHandler{
-		ResourceHandler: &AlertHandler{},
-		EtcdKeyAPI:      kapi,
-	}
-	err = apiServer.RegisterApiHandler(alertHandler)
-	if err != nil {
-		return nil, err
-	}
-
 	apiServer.addAPIRootRoute()
 
 	return apiServer, nil
