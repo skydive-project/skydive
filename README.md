@@ -313,6 +313,7 @@ For a more complete documentation about
 ## Contact
 
 * IRC: #skydive-project on irc.freenode.net
+* Mailing list: https://www.redhat.com/mailman/listinfo/skydive-dev
 
 ## License
 This software is licensed under the Apache License, Version 2.0 (the
