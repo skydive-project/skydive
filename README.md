@@ -7,7 +7,7 @@ It aims to provide a comprehensive way of understanding what is happening in
 the network infrastructure.
 
 Skydive agents collect topology informations and flows and forward them to a
-central agent for further analysis. All the informations a stored in an
+central agent for further analysis. All the informations are stored in an
 Elasticsearch database.
 
 Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
