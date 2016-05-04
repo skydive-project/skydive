@@ -7,8 +7,9 @@ ifeq ($(VERBOSE), false)
 	VERBOSE_FLAGS:=
 endif
 TIMEOUT?=1m
+TEST_PATTERN?=
 UT_PACKAGES=$(shell go list ./... | grep -v '/tests')
-FUNC_TESTS_CMD:="grep 'func Test' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
+FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 
 .proto: godep builddep ${PROTO_FILES}
