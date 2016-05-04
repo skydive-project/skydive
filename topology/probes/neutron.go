@@ -215,6 +215,7 @@ func NewNeutronMapper(g *graph.Graph, authURL string, username string, password 
 		Username:         username,
 		Password:         password,
 		TenantName:       tenantName,
+		AllowReauth:      true,
 	}
 
 	provider, err := openstack.AuthenticatedClient(opts)
