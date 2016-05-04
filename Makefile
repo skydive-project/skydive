@@ -32,18 +32,18 @@ test.functionals.compile: godep
 
 test.functionals.run:
 ifneq ($(VERBOSE_FLAGS),)
-	cd tests && sudo ./functionals -test.v -test.timeout ${TIMEOUT} ${ARGS}
+	cd tests && sudo -E ./functionals -test.v -test.timeout ${TIMEOUT} ${ARGS}
 else
-	cd tests && sudo ./functionals -test.timeout ${TIMEOUT} ${ARGS}
+	cd tests && sudo -E ./functionals -test.timeout ${TIMEOUT} ${ARGS}
 endif
 
 test.functionals.all: test.functionals.compile
-	make TIMEOUT="8m" test.functionals.run
+	make TIMEOUT="8m" ARGS=${ARGS} test.functionals.run
 
 test.functionals: test.functionals.compile
 	set -e ; \
 	for functest in ${FUNC_TESTS} ; do \
-		make ARGS="-test.run $$functest" test.functionals.run ; \
+		make ARGS="-test.run $$functest ${ARGS}" test.functionals.run ; \
 	done
 
 test: godep

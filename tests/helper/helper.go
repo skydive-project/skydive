@@ -60,23 +60,20 @@ func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
 	return conn, nil
 }
 
-func InitConfig(t *testing.T, conf string) {
+func InitConfig(t *testing.T, conf string, params map[string]interface{}) {
 	f, err := ioutil.TempFile("", "skydive_agent")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	param := struct {
-		AnalyzerPort int
-		LogLevel     string
-	}{
-		AnalyzerPort: rand.Intn(400) + 64500,
+	if params == nil {
+		params = make(map[string]interface{})
 	}
-
+	params["AnalyzerPort"] = rand.Intn(400) + 64500
 	if testing.Verbose() {
-		param.LogLevel = "DEBUG"
+		params["LogLevel"] = "DEBUG"
 	} else {
-		param.LogLevel = "INFO"
+		params["LogLevel"] = "INFO"
 	}
 
 	tmpl, err := template.New("config").Parse(conf)
@@ -84,7 +81,7 @@ func InitConfig(t *testing.T, conf string) {
 		t.Fatal(err.Error())
 	}
 	buff := bytes.NewBufferString("")
-	tmpl.Execute(buff, param)
+	tmpl.Execute(buff, params)
 
 	f.Write(buff.Bytes())
 	f.Close()
@@ -120,8 +117,8 @@ type HelperAgentAnalyzer struct {
 	serviceDone chan bool
 }
 
-func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage) *HelperAgentAnalyzer {
-	InitConfig(t, conf)
+func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params map[string]interface{}) *HelperAgentAnalyzer {
+	InitConfig(t, conf, params)
 	agent := NewAgent()
 	analyzer := NewAnalyzerStorage(t, s)
 
@@ -206,8 +203,8 @@ func StartAgent() *agent.Agent {
 	return agent
 }
 
-func StartAgentWithConfig(t *testing.T, conf string) *agent.Agent {
-	InitConfig(t, conf)
+func StartAgentWithConfig(t *testing.T, conf string, params map[string]interface{}) *agent.Agent {
+	InitConfig(t, conf, params)
 	return StartAgent()
 }
 
