@@ -210,7 +210,7 @@ func (c *WSClient) write(mt int, message []byte) error {
 }
 
 func (s *WSServer) SendWSMessageTo(msg WSMessage, host string) bool {
-	for c, _ := range s.clients {
+	for c := range s.clients {
 		if c.host == host {
 			c.SendWSMessage(msg)
 			return true

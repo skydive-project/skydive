@@ -55,7 +55,7 @@ godep:
 fmt:
 	@echo "+ $@"
 	@test -z "$$(gofmt -s -l . | grep -v Godeps/_workspace/src/ | grep -v statics/bindata.go | tee /dev/stderr)" || \
-		echo "+ please format Go code with 'gofmt -s'"
+		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
 
 ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
 	@go get github.com/alecthomas/gometalinter

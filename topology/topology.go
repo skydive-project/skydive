@@ -42,12 +42,12 @@ func (p NodePath) Marshal() string {
 		}
 
 		metadata := p.Nodes[i].Metadata()
-                n := metadata["Name"]
-                t := metadata["Type"]
+		n := metadata["Name"]
+		t := metadata["Type"]
 
-                if n == nil || t == nil {
+		if n == nil || t == nil {
 			return ""
-                }
+		}
 
 		path += fmt.Sprintf("%s[Type=%s]", n.(string), t.(string))
 	}
