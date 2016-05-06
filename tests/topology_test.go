@@ -541,13 +541,19 @@ func TestVeth(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
-			nodes := g.LookupNodes(graph.Metadata{"Type": "veth"})
-			if len(nodes) == 2 {
-				if g.AreLinked(nodes[0], nodes[1]) {
-					testPassed = true
+			veth0 := g.LookupFirstNode(graph.Metadata{"Type": "veth", "Name": "vm1-veth0"})
+			if veth0 == nil {
+				return
+			}
+			veth1 := g.LookupFirstNode(graph.Metadata{"Type": "veth", "Name": "vm1-veth1"})
+			if veth1 == nil {
+				return
+			}
 
-					ws.Close()
-				}
+			if g.AreLinked(veth0, veth1) {
+				testPassed = true
+
+				ws.Close()
 			}
 		}
 	}
