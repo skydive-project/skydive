@@ -30,6 +30,7 @@ import (
 
 	"github.com/nu7hatch/gouuid"
 
+	"github.com/redhat-cip/skydive/common"
 	"github.com/redhat-cip/skydive/config"
 )
 
@@ -95,6 +96,10 @@ type Graph struct {
 
 type EdgeValidator func(e *Edge) bool
 
+type MetadataMatcher interface {
+	Match(v interface{}) bool
+}
+
 // default implementation of a graph listener, can be used when not implementing
 // the whole set of callbacks
 type DefaultGraphListener struct {
@@ -133,11 +138,20 @@ func (e *graphElement) Metadata() Metadata {
 	return e.metadata
 }
 
-func (e *graphElement) matchFilters(f Metadata) bool {
+func (e *graphElement) matchMetadata(f Metadata) bool {
 	for k, v := range f {
-		nv, ok := e.metadata[k]
-		if !ok || v != nv {
-			return false
+		switch v.(type) {
+		case MetadataMatcher:
+			nv, ok := e.metadata[k]
+			matcher := v.(MetadataMatcher)
+			if !ok || !matcher.Match(nv) {
+				return false
+			}
+		default:
+			nv, ok := e.metadata[k]
+			if !ok || !common.CrossTypeEqual(nv, v) {
+				return false
+			}
 		}
 	}
 
@@ -263,7 +277,7 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 
 	path = append(path, n)
 
-	if n.matchFilters(m) {
+	if n.matchMetadata(m) {
 		return path
 	}
 
@@ -313,7 +327,7 @@ func (g *Graph) LookupParentNodes(n *Node, f Metadata) []*Node {
 	for _, e := range g.backend.GetNodeEdges(n) {
 		parent, child := g.backend.GetEdgeNodes(e)
 
-		if child != nil && child.ID == n.ID && parent.matchFilters(f) {
+		if child != nil && child.ID == n.ID && parent.matchMetadata(f) {
 			parents = append(parents, parent)
 		}
 	}
@@ -335,7 +349,7 @@ func (g *Graph) LookupChildren(n *Node, f Metadata) []*Node {
 	for _, e := range g.backend.GetNodeEdges(n) {
 		parent, child := g.backend.GetEdgeNodes(e)
 
-		if parent != nil && parent.ID == n.ID && child.matchFilters(f) {
+		if parent != nil && parent.ID == n.ID && child.matchMetadata(f) {
 			children = append(children, child)
 		}
 	}
@@ -415,7 +429,7 @@ func (g *Graph) LookupNodes(m Metadata) []*Node {
 	nodes := []*Node{}
 
 	for _, n := range g.backend.GetNodes() {
-		if n.matchFilters(m) {
+		if n.matchMetadata(m) {
 			nodes = append(nodes, n)
 		}
 	}
