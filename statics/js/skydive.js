@@ -29,6 +29,7 @@ var dockerImg = 'statics/img/docker.png';
 var neutronImg = 'statics/img/openstack.png';
 var minus = 'statics/img/minus-outline-16.png';
 var plus = 'statics/img/plus-16.png';
+var probeNodeIndicator = 'statics/img/media-record.png';
 
 var Node = function(ID) {
   this.ID = ID;
@@ -50,6 +51,10 @@ Node.prototype.Name = function() {
   if ("Name" in this.Metadata)
     return this.Metadata["Name"];
   return "";
+}
+
+Node.prototype.IsCaptureOn = function() {
+  return "State.FlowCapture" in this.Metadata && this.Metadata["State.FlowCapture"] == "ON";
 }
 
 Node.prototype.getHostRelativePath = function(path, visited) {
@@ -313,18 +318,11 @@ HostLayout.prototype.NodeDetails = function(node) {
     }
   });
 
-  $.ajax({
-    dataType: "json",
-    url: '/api/capture/' + graphPath,
-    contentType: "application/json; charset=utf-8",
-    method: 'GET',
-    success: function(data) {
-      $("[name='capture-switch']").bootstrapSwitch('state', true, false);
-    },
-    error: function(data) {
-      $("[name='capture-switch']").bootstrapSwitch('state', false, false);
-    }
-  });
+  if (node.IsCaptureOn()) {
+    $("[name='capture-switch']").bootstrapSwitch('state', true, false);
+  } else {
+    $("[name='capture-switch']").bootstrapSwitch('state', false, false);
+  }
 }
 
 HostLayout.prototype.AddNode = function(node) {
@@ -504,6 +502,12 @@ HostLayout.prototype.NodePicto = function(d) {
     default:
       return intfImg;
   }
+}
+
+HostLayout.prototype.NodeProbeStatePicto = function(d) {
+  if (d.IsCaptureOn())
+    return probeNodeIndicator;
+  return "";
 }
 
 HostLayout.prototype.NodeStatePicto = function(d) {
@@ -724,6 +728,14 @@ HostLayout.prototype.Redraw = function() {
   });
 
   nodeEnter.append("image")
+  .attr("class", "probe")
+  .attr("x", 10)
+  .attr("y", -20)
+  .attr("width", 20)
+  .attr("height", 20)
+  .attr("opacity", 0.7);
+
+  nodeEnter.append("image")
   .attr("class", "state")
   .attr("x", -20)
   .attr("y", -20)
@@ -736,6 +748,7 @@ HostLayout.prototype.Redraw = function() {
   .attr("cx", 14)
   .attr("cy", 16)
   .attr("class", "manager")
+
   nodeEnter.append("image")
   .attr("class", "manager")
   .attr("x", 4)
@@ -772,6 +785,10 @@ HostLayout.prototype.Redraw = function() {
 
   this.node.select('image.state').attr("xlink:href", function(d) {
     return _this.NodeStatePicto(d);
+  });
+
+  this.node.select('image.probe').attr("xlink:href", function(d) {
+    return _this.NodeProbeStatePicto(d);
   });
 
   this.node.select('image.manager').attr("xlink:href", function(d) {
