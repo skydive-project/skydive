@@ -1,0 +1,527 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Skydive Docs</title>
+    <link>/</link>
+    <description>Recent content on Skydive Docs</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 06 May 2016 11:03:48 +0200</lastBuildDate>
+    <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Contact</title>
+      <link>/contact/</link>
+      <pubDate>Fri, 06 May 2016 11:03:48 +0200</pubDate>
+      
+      <guid>/contact/</guid>
+      <description>
+
+&lt;h2 id=&#34;irc&#34;&gt;IRC&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;#skydive-project on irc.freenode.net&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&#34;mailing-list&#34;&gt;Mailing list&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.redhat.com/mailman/listinfo/skydive-dev&#34;&gt;https://www.redhat.com/mailman/listinfo/skydive-dev&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Contributting</title>
+      <link>/contributing/</link>
+      <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
+      
+      <guid>/contributing/</guid>
+      <description>
+
+&lt;p&gt;This project accepts contributions. Skydive uses the Gerrit workflow
+through Software Factory.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&#34;http://softwarefactory-project.io/r/#/q/project:skydive&#34;&gt;http://softwarefactory-project.io/r/#/q/project:skydive&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&#34;setting-up-your-environment&#34;&gt;Setting up your environment&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git clone http://softwarefactory-project.io/r/skydive
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;git-review installation :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;yum install git-review
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;or&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;apt-get install git-review
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;or to get the latest version&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;sudo pip install git-review
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;starting-a-change&#34;&gt;Starting a Change&lt;/h2&gt;
+
+&lt;p&gt;Create a topic branch :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git checkout -b TOPIC-BRANCH
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Submit your change :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git review
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Updating your Change :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git commit -a --amend
+git review
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;For a more complete documentation about
+&lt;a href=&#34;https://gerrit-documentation.storage.googleapis.com/Documentation/2.12/intro-quick.html#_the_life_and_times_of_a_change&#34;&gt;how to contribute to a gerrit hosted project&lt;/a&gt;.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Getting started</title>
+      <link>/getting-started/</link>
+      <pubDate>Fri, 06 May 2016 10:57:18 +0200</pubDate>
+      
+      <guid>/getting-started/</guid>
+      <description>
+
+&lt;h2 id=&#34;dependencies&#34;&gt;Dependencies&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Go &amp;gt;= 1.5&lt;/li&gt;
+&lt;li&gt;Elasticsearch &amp;gt;= 2.0&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&#34;install&#34;&gt;Install&lt;/h2&gt;
+
+&lt;p&gt;Make sure you have a working Go environment. &lt;a href=&#34;http://golang.org/doc/install.html&#34;&gt;See the install instructions&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Then make sure you have Godep installed. &lt;a href=&#34;https://github.com/tools/godep&#34;&gt;See the install instructions&lt;/a&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ go get github.com/redhat-cip/skydive/cmd/skydive
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;getting-started&#34;&gt;Getting started&lt;/h2&gt;
+
+&lt;p&gt;Skydive relies on two main components:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;skydive agent, has to be started on each node where the topology and flows
+informations will be captured&lt;/li&gt;
+&lt;li&gt;skydive analyzer, the node collecting data captured by the agents&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&#34;configuration&#34;&gt;Configuration&lt;/h3&gt;
+
+&lt;p&gt;For a single node setup, the configuration file is optional. For a multiple
+node setup, the analyzer IP/PORT need to be adapted.&lt;/p&gt;
+
+&lt;p&gt;Processes are bound to 127.0.0.1 by default, you can explicitly change binding
+address with &amp;ldquo;listen: 0.0.0.0:port&amp;rdquo; in the proper configuration sections.&lt;/p&gt;
+
+&lt;p&gt;See the full list of configuration parameters in the sample configuration file
+&lt;a href=&#34;etc/skydive.yml.default&#34;&gt;etc/skydive.yml.default&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&#34;start&#34;&gt;Start&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive agent [--conf etc/skydive.yml]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive analyzer [--conf etc/skydive.yml]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;webui&#34;&gt;WebUI&lt;/h3&gt;
+
+&lt;p&gt;To access to the WebUI of agents or analyzer:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;http://&amp;lt;address&amp;gt;:&amp;lt;port&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;skydive-client&#34;&gt;Skydive client&lt;/h3&gt;
+
+&lt;p&gt;Skydive client can be used to interact with Skydive Analyzer and Agents.
+Running it without any command will return all the commands available.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client
+
+Usage:
+  skydive client [command]
+
+Available Commands:
+  alert       Manage alerts
+  capture     Manage captures
+
+Flags:
+  -h, --help[=false]: help for client
+      --password=&amp;quot;&amp;quot;: password auth parameter
+      --username=&amp;quot;&amp;quot;: username auth parameter
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Specifying the subcommand will give the usage of the subcommand.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If an authentication mechanism is defined in the configuration file the username
+and password parameter have to be used for each command. Environment variables
+SKYDIVE_USERNAME and SKYDIVE_PASSWORD can be used as default value for the
+username/password command line parameters.&lt;/p&gt;
+
+&lt;h2 id=&#34;start-flow-captures&#34;&gt;Start Flow captures&lt;/h2&gt;
+
+&lt;p&gt;Skydive client allows you to start flow captures on topology Nodes/Interfaces&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create -p &amp;lt;probe path&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The probe path parameter references the interfaces where the flow probe will be
+started, so where the capture will be done.&lt;/p&gt;
+
+&lt;p&gt;The format of a probe path follows the links between topology nodes from
+a host node to a target node :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;host1[Type=host]/.../node_nameN[Type=node_typeN]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The node name can be the name of :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;a host&lt;/li&gt;
+&lt;li&gt;an interface&lt;/li&gt;
+&lt;li&gt;a namespace&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The node types can be :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;host&lt;/li&gt;
+&lt;li&gt;netns&lt;/li&gt;
+&lt;li&gt;ovsbridge&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Currently target node types supported are :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;ovsbridge&lt;/li&gt;
+&lt;li&gt;veth&lt;/li&gt;
+&lt;li&gt;device&lt;/li&gt;
+&lt;li&gt;internal&lt;/li&gt;
+&lt;li&gt;tun&lt;/li&gt;
+&lt;li&gt;bridge&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To start a capture on the OVS bridge br1 on the host host1 the following probe
+path is used :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create -p &amp;quot;host1[Type=host]/br1[Type=ovsbridge]&amp;quot;&amp;quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;A wilcard for the host node can be used in order to start a capture on
+all hosts.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create -p &amp;quot;*/br1[Type=ovsbridge]&amp;quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;A capture can be defined in advance and will start when a topology node will
+match.&lt;/p&gt;
+
+&lt;p&gt;To delete a capture :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture delete &amp;lt;probe path&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;devstack&#34;&gt;Devstack&lt;/h2&gt;
+
+&lt;p&gt;Skydive provides a DevStack plugin that can be used in order to have
+Skydive Agents/Analyzer configured and started with the proper probes
+by DevStack.&lt;/p&gt;
+
+&lt;p&gt;For a single node setup adding the following lines to your local.conf file
+should be enough.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;enable_plugin skydive https://github.com/redhat-cip/skydive.git
+
+enable_service skydive-agent skydive-analyzer
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The plugin accepts the following parameters:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;# Address on which skydive analyzer process listens for connections.
+# Must be in ip:port format
+#SKYDIVE_ANALYZER_LISTEN=
+
+# Inform the agent about the address on which analyzers are listening
+# Must be in ip:port format
+#SKYDIVE_AGENT_ANALYZERS=
+
+# ip:port address on which skydive agent listens for connections.
+#SKYDIVE_AGENT_LISTEN=
+
+# Configure the skydive agent with the etcd server address
+# http://IP_ADDRESS:2379
+#SKYDIVE_AGENT_ETCD=
+
+# The path for the generated skydive configuration file
+#SKYDIVE_CONFIG_FILE=
+
+# List of agent probes to be used by the agent
+# Ex: netns netlink ovsdb
+#SKYDIVE_AGENT_PROBES=
+
+# Remote port for ovsdb server.
+#SKYDIVE_OVSDB_REMOTE_PORT=6640
+
+# Set the default log level, default: INFO
+#SKYDIVE_LOGLEVEL=DEBUG
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Skydive, real-time network analyzer</title>
+      <link>/</link>
+      <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
+      
+      <guid>/</guid>
+      <description>
+
+&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+
+&lt;p&gt;Skydive is an open source real-time network topology and protocols analyzer.
+It aims to provide a comprehensive way of understanding what is happening in
+the network infrastructure.&lt;/p&gt;
+
+&lt;p&gt;Skydive agents collect topology informations and flows and forward them to a
+central agent for further analysis. All the informations are stored in an
+Elasticsearch database.&lt;/p&gt;
+
+&lt;p&gt;Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
+topology and flows informations.&lt;/p&gt;
+
+&lt;h2 id=&#34;topology-probes-supported&#34;&gt;Topology Probes supported&lt;/h2&gt;
+
+&lt;p&gt;Topology probes currently implemented:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;OVSDB&lt;/li&gt;
+&lt;li&gt;NetLINK&lt;/li&gt;
+&lt;li&gt;NetNS&lt;/li&gt;
+&lt;li&gt;Ethtool&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Topology connectors:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Neutron&lt;/li&gt;
+&lt;li&gt;Docker&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&#34;flow-probes-supported&#34;&gt;Flow Probes supported&lt;/h2&gt;
+
+&lt;p&gt;Flow probes currently implemented:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;sFlow&lt;/li&gt;
+&lt;li&gt;PCAP&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>license</title>
+      <link>/license/</link>
+      <pubDate>Wed, 04 May 2016 17:28:04 +0200</pubDate>
+      
+      <guid>/license/</guid>
+      <description>&lt;p&gt;Apache License
+                           Version 2.0, January 2004
+                        &lt;a href=&#34;http://www.apache.org/licenses/&#34;&gt;http://www.apache.org/licenses/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Definitions.&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;License&amp;rdquo; shall mean the terms and conditions for use, reproduction,
+  and distribution as defined by Sections 1 through 9 of this document.&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;Licensor&amp;rdquo; shall mean the copyright owner or entity authorized by
+  the copyright owner that is granting the License.&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;Legal Entity&amp;rdquo; shall mean the union of the acting entity and all
+  other entities that control, are controlled by, or are under common
+  control with that entity. For the purposes of this definition,
+  &amp;ldquo;control&amp;rdquo; means (i) the power, direct or indirect, to cause the
+  direction or management of such entity, whether by contract or
+  otherwise, or (ii) ownership of fifty percent (50%) or more of the
+  outstanding shares, or (iii) beneficial ownership of such entity.&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;You&amp;rdquo; (or &amp;ldquo;Your&amp;rdquo;) shall mean an individual or Legal Entity
+  exercising permissions granted by this License.&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;Source&amp;rdquo; form shall mean the preferred form for making modifications,
+  including but not limited to software source code, documentation
+  source, and configuration files.&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;Object&amp;rdquo; form shall mean any form resulting from mechanical
+  transformation or translation of a Source form, including but
+  not limited to compiled object code, generated documentation,
+  and conversions to other media types.&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;Work&amp;rdquo; shall mean the work of authorship, whether in Source or
+  Object form, made available under the License, as indicated by a
+  copyright notice that is included in or attached to the work
+  (an example is provided in the Appendix below).&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;Derivative Works&amp;rdquo; shall mean any work, whether in Source or Object
+  form, that is based on (or derived from) the Work and for which the
+  editorial revisions, annotations, elaborations, or other modifications
+  represent, as a whole, an original work of authorship. For the purposes
+  of this License, Derivative Works shall not include works that remain
+  separable from, or merely link (or bind by name) to the interfaces of,
+  the Work and Derivative Works thereof.&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;Contribution&amp;rdquo; shall mean any work of authorship, including
+  the original version of the Work and any modifications or additions
+  to that Work or Derivative Works thereof, that is intentionally
+  submitted to Licensor for inclusion in the Work by the copyright owner
+  or by an individual or Legal Entity authorized to submit on behalf of
+  the copyright owner. For the purposes of this definition, &amp;ldquo;submitted&amp;rdquo;
+  means any form of electronic, verbal, or written communication sent
+  to the Licensor or its representatives, including but not limited to
+  communication on electronic mailing lists, source code control systems,
+  and issue tracking systems that are managed by, or on behalf of, the
+  Licensor for the purpose of discussing and improving the Work, but
+  excluding communication that is conspicuously marked or otherwise
+  designated in writing by the copyright owner as &amp;ldquo;Not a Contribution.&amp;rdquo;&lt;/p&gt;
+
+&lt;p&gt;&amp;ldquo;Contributor&amp;rdquo; shall mean Licensor and any individual or Legal Entity
+  on behalf of whom a Contribution has been received by Licensor and
+  subsequently incorporated within the Work.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Grant of Copyright License. Subject to the terms and conditions of
+  this License, each Contributor hereby grants to You a perpetual,
+  worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+  copyright license to reproduce, prepare Derivative Works of,
+  publicly display, publicly perform, sublicense, and distribute the
+  Work and such Derivative Works in Source or Object form.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Grant of Patent License. Subject to the terms and conditions of
+  this License, each Contributor hereby grants to You a perpetual,
+  worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+  (except as stated in this section) patent license to make, have made,
+  use, offer to sell, sell, import, and otherwise transfer the Work,
+  where such license applies only to those patent claims licensable
+  by such Contributor that are necessarily infringed by their
+  Contribution(s) alone or by combination of their Contribution(s)
+  with the Work to which such Contribution(s) was submitted. If You
+  institute patent litigation against any entity (including a
+  cross-claim or counterclaim in a lawsuit) alleging that the Work
+  or a Contribution incorporated within the Work constitutes direct
+  or contributory patent infringement, then any patent licenses
+  granted to You under this License for that Work shall terminate
+  as of the date such litigation is filed.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Redistribution. You may reproduce and distribute copies of the
+  Work or Derivative Works thereof in any medium, with or without
+  modifications, and in Source or Object form, provided that You
+  meet the following conditions:&lt;/p&gt;
+
+&lt;p&gt;(a) You must give any other recipients of the Work or
+      Derivative Works a copy of this License; and&lt;/p&gt;
+
+&lt;p&gt;(b) You must cause any modified files to carry prominent notices
+      stating that You changed the files; and&lt;/p&gt;
+
+&lt;p&gt;&amp;copy; You must retain, in the Source form of any Derivative Works
+      that You distribute, all copyright, patent, trademark, and
+      attribution notices from the Source form of the Work,
+      excluding those notices that do not pertain to any part of
+      the Derivative Works; and&lt;/p&gt;
+
+&lt;p&gt;(d) If the Work includes a &amp;ldquo;NOTICE&amp;rdquo; text file as part of its
+      distribution, then any Derivative Works that You distribute must
+      include a readable copy of the attribution notices contained
+      within such NOTICE file, excluding those notices that do not
+      pertain to any part of the Derivative Works, in at least one
+      of the following places: within a NOTICE text file distributed
+      as part of the Derivative Works; within the Source form or
+      documentation, if provided along with the Derivative Works; or,
+      within a display generated by the Derivative Works, if and
+      wherever such third-party notices normally appear. The contents
+      of the NOTICE file are for informational purposes only and
+      do not modify the License. You may add Your own attribution
+      notices within Derivative Works that You distribute, alongside
+      or as an addendum to the NOTICE text from the Work, provided
+      that such additional attribution notices cannot be construed
+      as modifying the License.&lt;/p&gt;
+
+&lt;p&gt;You may add Your own copyright statement to Your modifications and
+  may provide additional or different license terms and conditions
+  for use, reproduction, or distribution of Your modifications, or
+  for any such Derivative Works as a whole, provided Your use,
+  reproduction, and distribution of the Work otherwise complies with
+  the conditions stated in this License.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Submission of Contributions. Unless You explicitly state otherwise,
+  any Contribution intentionally submitted for inclusion in the Work
+  by You to the Licensor shall be under the terms and conditions of
+  this License, without any additional terms or conditions.
+  Notwithstanding the above, nothing herein shall supersede or modify
+  the terms of any separate license agreement you may have executed
+  with Licensor regarding such Contributions.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Trademarks. This License does not grant permission to use the trade
+  names, trademarks, service marks, or product names of the Licensor,
+  except as required for reasonable and customary use in describing the
+  origin of the Work and reproducing the content of the NOTICE file.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Disclaimer of Warranty. Unless required by applicable law or
+  agreed to in writing, Licensor provides the Work (and each
+  Contributor provides its Contributions) on an &amp;ldquo;AS IS&amp;rdquo; BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+  implied, including, without limitation, any warranties or conditions
+  of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+  PARTICULAR PURPOSE. You are solely responsible for determining the
+  appropriateness of using or redistributing the Work and assume any
+  risks associated with Your exercise of permissions under this License.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Limitation of Liability. In no event and under no legal theory,
+  whether in tort (including negligence), contract, or otherwise,
+  unless required by applicable law (such as deliberate and grossly
+  negligent acts) or agreed to in writing, shall any Contributor be
+  liable to You for damages, including any direct, indirect, special,
+  incidental, or consequential damages of any character arising as a
+  result of this License or out of the use or inability to use the
+  Work (including but not limited to damages for loss of goodwill,
+  work stoppage, computer failure or malfunction, or any and all
+  other commercial damages or losses), even if such Contributor
+  has been advised of the possibility of such damages.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Accepting Warranty or Additional Liability. While redistributing
+  the Work or Derivative Works thereof, You may choose to offer,
+  and charge a fee for, acceptance of support, warranty, indemnity,
+  or other liability obligations and/or rights consistent with this
+  License. However, in accepting such obligations, You may act only
+  on Your own behalf and on Your sole responsibility, not on behalf
+  of any other Contributor, and only if You agree to indemnify,
+  defend, and hold each Contributor harmless for any liability
+  incurred by, or claims asserted against, such Contributor by reason
+  of your accepting any such warranty or additional liability.&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
