@@ -1,41 +1,9 @@
-[![Build Status](https://travis-ci.org/redhat-cip/skydive.png)](https://travis-ci.org/redhat-cip/skydive)
+---
+date: 2016-05-06T10:57:18+02:00
+title: Getting started
+---
 
-# Skydive
-
-Skydive is an open source real-time network topology and protocols analyzer.
-It aims to provide a comprehensive way of understanding what is happening in
-the network infrastructure.
-
-Skydive agents collect topology informations and flows and forward them to a
-central agent for further analysis. All the informations are stored in an
-Elasticsearch database.
-
-Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
-topology and flows informations. Currently only the Neutron driver is provided
-but more drivers will come soon.
-
-## Topology Probes
-
-Topology probes currently implemented:
-
-* OVSDB
-* NetLINK
-* NetNS
-* Ethtool
-
-Topology connectors:
-
-* Neutron
-* Docker
-
-## Flow Probes
-
-Flow probes currently implemented:
-
-* sFlow
-* PCAP
-
-# Dependencies
+## Dependencies
 
 * Go >= 1.5
 * Elasticsearch >= 2.0
@@ -182,32 +150,7 @@ To delete a capture :
 $ skydive client capture delete <probe path>
 ```
 
-### API
-
-Topology informations are accessible through HTTP or a WebSocket API
-
-HTTP endpoint:
-
-```console
-curl http://<address>:<port>/api/topology
-```
-
-WebSocket endpoint:
-
-```console
-ws://<address>:<port>/ws/graph
-```
-
-Messages:
-
-* NodeUpdated
-* NodeAdded
-* NodeDeleted
-* EdgeUpdated
-* EdgeAdded
-* EdgeDeleted
-
-### Devstack
+## Devstack
 
 Skydive provides a DevStack plugin that can be used in order to have
 Skydive Agents/Analyzer configured and started with the proper probes
@@ -253,82 +196,3 @@ The plugin accepts the following parameters:
 # Set the default log level, default: INFO
 #SKYDIVE_LOGLEVEL=DEBUG
 ```
-
-## Documentation
-
-Skydive documentation can be found here:
-
-* http://redhat-cip.github.io/skydive
-
-## Contributing
-This project accepts contributions. Skydive uses the Gerrit workflow
-through Software Factory.
-
-http://softwarefactory-project.io/r/#/q/project:skydive
-
-### Setting up your environment
-
-```console
-git clone http://softwarefactory-project.io/r/skydive
-```
-
-git-review installation :
-
-```console
-yum install git-review
-
-```
-
-or
-
-
-```console
-apt-get install git-review
-```
-
-or to get the latest version
-
-```console
-sudo pip install git-review
-```
-
-### Starting a Change
-
-Create a topic branch :
-
-```console
-git checkout -b TOPIC-BRANCH
-```
-
-Submit your change :
-
-```console
-git review
-```
-
-Updating your Change :
-
-```console
-git commit -a --amend
-git review
-```
-
-For a more complete documentation about
-[how to contribute to a gerrit hosted project](https://gerrit-documentation.storage.googleapis.com/Documentation/2.12/intro-quick.html#_the_life_and_times_of_a_change).
-
-## Contact
-
-* IRC: #skydive-project on irc.freenode.net
-* Mailing list: https://www.redhat.com/mailman/listinfo/skydive-dev
-
-## License
-This software is licensed under the Apache License, Version 2.0 (the
-"License"); you may not use this software except in compliance with the
-License.
-You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.

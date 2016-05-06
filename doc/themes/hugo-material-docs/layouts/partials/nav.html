@@ -1,0 +1,29 @@
+{{ $currentNode := . }}
+
+{{ range .Site.Menus.main.ByWeight }}
+
+{{ $.Scratch.Set "currentMenuEntry" . }}
+<li>
+  {{ if .HasChildren }}
+  <li>
+    {{ $currentURL := .URL }}
+
+    {{ range $.Site.Pages }}
+      {{ if eq (printf "%s%s" $.Site.BaseURL $currentURL) ( printf "%s" .Permalink) }}
+      <span class="section">{{ .Section | title }}</span>
+      {{ end }}
+    {{ end }}
+    
+
+    <ul>
+      {{ range .Children }}
+        {{ $.Scratch.Set "currentMenuEntry" . }}
+        {{ partial "nav_link" $currentNode }}  
+      {{ end }}
+    </ul>
+  </li>
+  {{ else }}
+    {{ partial "nav_link" $currentNode }}  
+  {{ end }}
+</li>
+{{ end }}

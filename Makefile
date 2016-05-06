@@ -78,3 +78,14 @@ genlocalfiles: .proto .bindata
 clean:
 	grep ImportPath Godeps/Godeps.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 	rm -rf Godeps/_workspace/pkg
+
+.PHONY: doc
+
+doc:
+	mkdir -p /tmp/skydive-doc
+	hugo --theme=hugo-material-docs -s doc -d /tmp/skydive-doc
+	git checkout gh-pages
+	cp -dpR /tmp/skydive-doc/* .
+	git add -A
+	git commit -a -m "Documentation update"
+	git push -f gerrit gh-pages
