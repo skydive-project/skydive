@@ -30,29 +30,29 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-type FlowTable struct {
+type Table struct {
 	lock    sync.RWMutex
 	table   map[string]*Flow
-	manager FlowTableManager
+	manager tableManager
 }
 
-func NewFlowTable() *FlowTable {
-	return &FlowTable{table: make(map[string]*Flow)}
+func NewTable() *Table {
+	return &Table{table: make(map[string]*Flow)}
 }
 
-func NewFlowTableFromFlows(flows []*Flow) *FlowTable {
-	nft := NewFlowTable()
+func NewTableFromFlows(flows []*Flow) *Table {
+	nft := NewTable()
 	nft.Update(flows)
 	return nft
 }
 
-func (ft *FlowTable) String() string {
+func (ft *Table) String() string {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
 	return fmt.Sprintf("%d flows", len(ft.table))
 }
 
-func (ft *FlowTable) Update(flows []*Flow) {
+func (ft *Table) Update(flows []*Flow) {
 	ft.lock.Lock()
 	for _, f := range flows {
 		if _, ok := ft.table[f.UUID]; !ok {
@@ -64,7 +64,7 @@ func (ft *FlowTable) Update(flows []*Flow) {
 	ft.lock.Unlock()
 }
 
-func (ft *FlowTable) LookupFlowsByProbePath(p string) []*Flow {
+func (ft *Table) LookupFlowsByProbePath(p string) []*Flow {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
 
@@ -77,7 +77,7 @@ func (ft *FlowTable) LookupFlowsByProbePath(p string) []*Flow {
 	return flows
 }
 
-func (ft *FlowTable) GetFlows() []*Flow {
+func (ft *Table) GetFlows() []*Flow {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
 
@@ -88,7 +88,7 @@ func (ft *FlowTable) GetFlows() []*Flow {
 	return flows
 }
 
-func (ft *FlowTable) GetFlow(key string) *Flow {
+func (ft *Table) GetFlow(key string) *Flow {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
 	if flow, found := ft.table[key]; found {
@@ -98,7 +98,7 @@ func (ft *FlowTable) GetFlow(key string) *Flow {
 	return nil
 }
 
-func (ft *FlowTable) GetOrCreateFlow(key string) (*Flow, bool) {
+func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
 	ft.lock.Lock()
 	defer ft.lock.Unlock()
 	if flow, found := ft.table[key]; found {
@@ -111,8 +111,8 @@ func (ft *FlowTable) GetOrCreateFlow(key string) (*Flow, bool) {
 	return new, true
 }
 
-/* Return a new FlowTable that contain <last> active flows */
-func (ft *FlowTable) FilterLast(last time.Duration) []*Flow {
+/* Return a new flow.Table that contain <last> active flows */
+func (ft *Table) FilterLast(last time.Duration) []*Flow {
 	var flows []*Flow
 	selected := time.Now().Unix() - int64((last).Seconds())
 	ft.lock.RLock()
@@ -126,7 +126,7 @@ func (ft *FlowTable) FilterLast(last time.Duration) []*Flow {
 	return flows
 }
 
-func (ft *FlowTable) SelectLayer(endpointType FlowEndpointType, list []string) []*Flow {
+func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) []*Flow {
 	meth := make(map[string][]*Flow)
 	ft.lock.RLock()
 	for _, f := range ft.table {
@@ -155,9 +155,9 @@ func (ft *FlowTable) SelectLayer(endpointType FlowEndpointType, list []string) [
 }
 
 /*
- * Following function are FlowTable manager helpers
+ * Following function are Table manager helpers
  */
-func (ft *FlowTable) Expire(now time.Time) {
+func (ft *Table) Expire(now time.Time) {
 	timepoint := now.Unix() - int64((ft.manager.expire.duration).Seconds())
 	ft.lock.Lock()
 	ft.expire(ft.manager.expire.callback, timepoint)
@@ -165,7 +165,7 @@ func (ft *FlowTable) Expire(now time.Time) {
 }
 
 /* Internal call only, Must be called under ft.lock.Lock() */
-func (ft *FlowTable) expire(fn ExpireUpdateFunc, expireBefore int64) {
+func (ft *Table) expire(fn ExpireUpdateFunc, expireBefore int64) {
 	var expiredFlows []*Flow
 	flowTableSzBefore := len(ft.table)
 	for _, f := range ft.table {
@@ -185,7 +185,7 @@ func (ft *FlowTable) expire(fn ExpireUpdateFunc, expireBefore int64) {
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
 }
 
-func (ft *FlowTable) Updated(now time.Time) {
+func (ft *Table) Updated(now time.Time) {
 	timepoint := now.Unix() - int64((ft.manager.updated.duration).Seconds())
 	ft.lock.RLock()
 	ft.updated(ft.manager.updated.callback, timepoint)
@@ -193,7 +193,7 @@ func (ft *FlowTable) Updated(now time.Time) {
 }
 
 /* Internal call only, Must be called under ft.lock.RLock() */
-func (ft *FlowTable) updated(fn ExpireUpdateFunc, updateFrom int64) {
+func (ft *Table) updated(fn ExpireUpdateFunc, updateFrom int64) {
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
 		fs := f.GetStatistics()
@@ -206,7 +206,7 @@ func (ft *FlowTable) updated(fn ExpireUpdateFunc, updateFrom int64) {
 	logging.GetLogger().Debugf("Send updated Flow %d", len(updatedFlows))
 }
 
-func (ft *FlowTable) ExpireNow() {
+func (ft *Table) ExpireNow() {
 	const Now = int64(^uint64(0) >> 1)
 	ft.lock.Lock()
 	ft.expire(ft.manager.expire.callback, Now)
@@ -214,20 +214,20 @@ func (ft *FlowTable) ExpireNow() {
 }
 
 /* Asynchrnously Register an expire callback fn with last updated flow 'since', each 'since' tick  */
-func (ft *FlowTable) RegisterExpire(fn ExpireUpdateFunc, every time.Duration) {
+func (ft *Table) RegisterExpire(fn ExpireUpdateFunc, every time.Duration) {
 	ft.lock.Lock()
-	ft.manager.expire.Register(&FlowTableManagerAsyncParam{ft.expire, fn, every, every})
+	ft.manager.expire.Register(&tableManagerAsyncParam{ft.expire, fn, every, every})
 	ft.lock.Unlock()
 }
 
 /* Asynchrnously call the callback fn with last updated flow 'since', each 'since' tick  */
-func (ft *FlowTable) RegisterUpdated(fn ExpireUpdateFunc, since time.Duration) {
+func (ft *Table) RegisterUpdated(fn ExpireUpdateFunc, since time.Duration) {
 	ft.lock.Lock()
-	ft.manager.updated.Register(&FlowTableManagerAsyncParam{ft.updated, fn, since, since + 2})
+	ft.manager.updated.Register(&tableManagerAsyncParam{ft.updated, fn, since, since + 2})
 	ft.lock.Unlock()
 }
 
-func (ft *FlowTable) UnregisterAll() {
+func (ft *Table) UnregisterAll() {
 	ft.lock.Lock()
 	if ft.manager.updated.running {
 		ft.manager.updated.Unregister()
@@ -240,10 +240,10 @@ func (ft *FlowTable) UnregisterAll() {
 	ft.ExpireNow()
 }
 
-func (ft *FlowTable) GetExpireTicker() <-chan time.Time {
+func (ft *Table) GetExpireTicker() <-chan time.Time {
 	return ft.manager.expire.ticker.C
 }
 
-func (ft *FlowTable) GetUpdatedTicker() <-chan time.Time {
+func (ft *Table) GetUpdatedTicker() <-chan time.Time {
 	return ft.manager.updated.ticker.C
 }

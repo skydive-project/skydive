@@ -49,7 +49,7 @@ type PcapProbe struct {
 type PcapProbesHandler struct {
 	graph               *graph.Graph
 	analyzerClient      *analyzer.Client
-	flowTable           *flow.FlowTable
+	flowTable           *flow.Table
 	flowMappingPipeline *mappings.FlowMappingPipeline
 	wg                  sync.WaitGroup
 	probes              map[string]*PcapProbe
@@ -172,7 +172,7 @@ func NewPcapProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph, p *map
 		graph:               g,
 		analyzerClient:      a,
 		flowMappingPipeline: p,
-		flowTable:           flow.NewFlowTable(),
+		flowTable:           flow.NewTable(),
 		probes:              make(map[string]*PcapProbe),
 	}
 	return handler

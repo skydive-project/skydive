@@ -51,7 +51,7 @@ type Server struct {
 	AlertServer         *alert.AlertServer
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	Storage             storage.Storage
-	FlowTable           *flow.FlowTable
+	FlowTable           *flow.Table
 	conn                *net.UDPConn
 	EmbeddedEtcd        *etcd.EmbeddedEtcd
 	EtcdClient          *etcd.EtcdClient
@@ -262,7 +262,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
 
-	flowtable := flow.NewFlowTable()
+	flowtable := flow.NewTable()
 
 	server := &Server{
 		HTTPServer:          httpServer,

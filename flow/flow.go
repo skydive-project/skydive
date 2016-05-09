@@ -223,7 +223,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func FlowFromGoPacket(ft *FlowTable, packet *gopacket.Packet, setter FlowProbePathSetter) *Flow {
+func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, setter FlowProbePathSetter) *Flow {
 	key := NewFlowKeyFromGoPacket(packet)
 	flow, _ := ft.GetOrCreateFlow(key.String())
 	if setter != nil {
@@ -239,7 +239,7 @@ func FlowFromGoPacket(ft *FlowTable, packet *gopacket.Packet, setter FlowProbePa
 	return flow
 }
 
-func FlowsFromSFlowSample(ft *FlowTable, sample *layers.SFlowFlowSample, setter FlowProbePathSetter) []*Flow {
+func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter FlowProbePathSetter) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {

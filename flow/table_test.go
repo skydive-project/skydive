@@ -31,14 +31,14 @@ import (
 	"encoding/hex"
 )
 
-func TestNewFlowTable(t *testing.T) {
-	ft := NewFlowTable()
+func TestNewTable(t *testing.T) {
+	ft := NewTable()
 	if ft == nil {
 		t.Error("new FlowTable return null")
 	}
 }
-func TestFlowTable_String(t *testing.T) {
-	ft := NewFlowTable()
+func TestTable_String(t *testing.T) {
+	ft := NewTable()
 	if "0 flows" != ft.String() {
 		t.Error("FlowTable too big")
 	}
@@ -47,7 +47,7 @@ func TestFlowTable_String(t *testing.T) {
 		t.Error("FlowTable too big")
 	}
 }
-func TestFlowTable_Update(t *testing.T) {
+func TestTable_Update(t *testing.T) {
 	ft := NewTestFlowTableSimple(t)
 	/* simulate a collision */
 	f := &Flow{}
@@ -57,7 +57,7 @@ func TestFlowTable_Update(t *testing.T) {
 	f.UUID = "789"
 	ft.Update([]*Flow{f})
 
-	ft2 := NewFlowTableComplex(t)
+	ft2 := NewTestFlowTableComplex(t)
 	if "10 flows" != ft2.String() {
 		t.Error("We should got only 10 flows")
 	}
@@ -75,9 +75,9 @@ func (fo *MyTestFlowCounter) countFlowsCallback(flows []*Flow) {
 	fo.NbFlow += len(flows)
 }
 
-func TestFlowTable_expire(t *testing.T) {
+func TestTable_expire(t *testing.T) {
 	const MaxInt64 = int64(^uint64(0) >> 1)
-	ft := NewFlowTableComplex(t)
+	ft := NewTestFlowTableComplex(t)
 
 	fc := MyTestFlowCounter{}
 	beforeNbFlow := fc.NbFlow
@@ -96,9 +96,9 @@ func TestFlowTable_expire(t *testing.T) {
 	}
 }
 
-func TestFlowTable_updated(t *testing.T) {
+func TestTable_updated(t *testing.T) {
 	const MaxInt64 = int64(^uint64(0) >> 1)
-	ft := NewFlowTableComplex(t)
+	ft := NewTestFlowTableComplex(t)
 
 	fc := MyTestFlowCounter{}
 	beforeNbFlow := fc.NbFlow
@@ -117,16 +117,16 @@ func TestFlowTable_updated(t *testing.T) {
 	}
 }
 
-func TestFlowTable_AsyncExpire(t *testing.T) {
+func TestTable_AsyncExpire(t *testing.T) {
 	t.Skip()
 }
 
-func TestFlowTable_AsyncUpdated(t *testing.T) {
+func TestTable_AsyncUpdated(t *testing.T) {
 	t.Skip()
 }
 
-func TestFlowTable_LookupFlowByProbePath(t *testing.T) {
-	ft := NewFlowTable()
+func TestTable_LookupFlowByProbePath(t *testing.T) {
+	ft := NewTable()
 	GenerateTestFlows(t, ft, 1, "probe1")
 	GenerateTestFlows(t, ft, 2, "probe2")
 
@@ -142,7 +142,7 @@ func TestFlowTable_LookupFlowByProbePath(t *testing.T) {
 	}
 }
 
-func TestFlowTable_GetFlow(t *testing.T) {
+func TestTable_GetFlow(t *testing.T) {
 	ft := NewTestFlowTableSimple(t)
 	flow := &Flow{}
 	flow.UUID = "1234"
@@ -155,8 +155,8 @@ func TestFlowTable_GetFlow(t *testing.T) {
 	}
 }
 
-func TestFlowTable_GetOrCreateFlow(t *testing.T) {
-	ft := NewFlowTableComplex(t)
+func TestTable_GetOrCreateFlow(t *testing.T) {
+	ft := NewTestFlowTableComplex(t)
 	flows := GenerateTestFlows(t, ft, 0, "probe1")
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
@@ -178,14 +178,14 @@ func TestFlowTable_GetOrCreateFlow(t *testing.T) {
 	}
 }
 
-func TestFlowTable_NewFlowTableFromFlows(t *testing.T) {
-	ft := NewFlowTableComplex(t)
+func TestTable_NewTableFromFlows(t *testing.T) {
+	ft := NewTestFlowTableComplex(t)
 	var flows []*Flow
 	for _, f := range ft.table {
 		flow := *f
 		flows = append(flows, &flow)
 	}
-	ft2 := NewFlowTableFromFlows(flows)
+	ft2 := NewTableFromFlows(flows)
 	if len(ft.table) != len(ft2.table) {
 		t.Error("NewFlowTable(copy) are not the same size")
 	}
@@ -193,14 +193,14 @@ func TestFlowTable_NewFlowTableFromFlows(t *testing.T) {
 	for _, f := range ft.table {
 		flows = append(flows, f)
 	}
-	ft3 := NewFlowTableFromFlows(flows)
+	ft3 := NewTableFromFlows(flows)
 	if len(ft.table) != len(ft3.table) {
 		t.Error("NewFlowTable(ref) are not the same size")
 	}
 }
 
-func TestFlowTable_FilterLast(t *testing.T) {
-	ft := NewFlowTableComplex(t)
+func TestTable_FilterLast(t *testing.T) {
+	ft := NewTestFlowTableComplex(t)
 	/* hack to put the FlowTable 1 second older */
 	for _, f := range ft.table {
 		fs := f.GetStatistics()
@@ -217,8 +217,8 @@ func TestFlowTable_FilterLast(t *testing.T) {
 	}
 }
 
-func TestFlowTable_SelectLayer(t *testing.T) {
-	ft := NewFlowTableComplex(t)
+func TestTable_SelectLayer(t *testing.T) {
+	ft := NewTestFlowTableComplex(t)
 
 	var macs []string
 	flows := ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
@@ -235,11 +235,11 @@ func TestFlowTable_SelectLayer(t *testing.T) {
 	}
 }
 
-func TestFlowTable_SymmeticsHash(t *testing.T) {
-	ft := NewFlowTable()
+func TestTable_SymmeticsHash(t *testing.T) {
+	ft := NewTable()
 	GenerateTestFlows(t, ft, 0xca55e77e, "probe")
 
-	foundTable := make(map[string]bool)
+	foundLayers := make(map[string]bool)
 
 	for _, f := range ft.GetFlows() {
 		hasher := sha1.New()
@@ -247,10 +247,10 @@ func TestFlowTable_SymmeticsHash(t *testing.T) {
 			hasher.Write(ep.Hash)
 		}
 		layersH := hex.EncodeToString(hasher.Sum(nil))
-		foundTable[layersH] = true
+		foundLayers[layersH] = true
 	}
 
-	ft2 := NewFlowTable()
+	ft2 := NewTable()
 	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe")
 
 	for _, f := range ft2.GetFlows() {
@@ -259,7 +259,7 @@ func TestFlowTable_SymmeticsHash(t *testing.T) {
 			hasher.Write(ep.Hash)
 		}
 		layersH := hex.EncodeToString(hasher.Sum(nil))
-		if _, found := foundTable[layersH]; !found {
+		if _, found := foundLayers[layersH]; !found {
 			t.Errorf("hash endpoint should be symmeticaly, not found : %s", layersH)
 			t.Fail()
 		}

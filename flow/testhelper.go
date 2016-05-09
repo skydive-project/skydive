@@ -122,7 +122,7 @@ func (p *probePathSetter) SetProbePath(f *Flow) bool {
 	return true
 }
 
-func generateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, swap bool, probePath string) []*Flow {
+func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, probePath string) []*Flow {
 	flows := []*Flow{}
 	for i := int64(0); i < 10; i++ {
 		var packet *gopacket.Packet
@@ -140,15 +140,15 @@ func generateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, swap bool, p
 	return flows
 }
 
-func GenerateTestFlows(t *testing.T, ft *FlowTable, baseSeed int64, probePath string) []*Flow {
+func GenerateTestFlows(t *testing.T, ft *Table, baseSeed int64, probePath string) []*Flow {
 	return generateTestFlows(t, ft, baseSeed, false, probePath)
 }
-func GenerateTestFlowsSymmetric(t *testing.T, ft *FlowTable, baseSeed int64, probePath string) []*Flow {
+func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, probePath string) []*Flow {
 	return generateTestFlows(t, ft, baseSeed, true, probePath)
 }
 
-func NewTestFlowTableSimple(t *testing.T) *FlowTable {
-	ft := NewFlowTable()
+func NewTestFlowTableSimple(t *testing.T) *Table {
+	ft := NewTable()
 	var flows []*Flow
 	f := &Flow{}
 	f.UUID = "1234"
@@ -169,8 +169,8 @@ func NewTestFlowTableSimple(t *testing.T) *FlowTable {
 	return ft
 }
 
-func NewFlowTableComplex(t *testing.T) *FlowTable {
-	ft := NewFlowTable()
+func NewTestFlowTableComplex(t *testing.T) *Table {
+	ft := NewTable()
 	GenerateTestFlows(t, ft, 0xca55e77e, "probe")
 	return ft
 }

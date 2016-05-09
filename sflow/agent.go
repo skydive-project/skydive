@@ -54,7 +54,7 @@ type SFlowAgent struct {
 	Addr                string
 	Port                int
 	AnalyzerClient      *analyzer.Client
-	flowTable           *flow.FlowTable
+	flowTable           *flow.Table
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	FlowProbePathSetter flow.FlowProbePathSetter
 	running             atomic.Value
@@ -129,7 +129,7 @@ func (sfa *SFlowAgent) start() error {
 
 	sfa.running.Store(true)
 
-	sfa.flowTable = flow.NewFlowTable()
+	sfa.flowTable = flow.NewTable()
 	defer sfa.flowTable.UnregisterAll()
 
 	cfgFlowtable_expire := config.GetConfig().GetInt("agent.flowtable_expire")

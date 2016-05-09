@@ -28,32 +28,32 @@ import (
 
 type ExpireUpdateFunc func(f []*Flow)
 
-type FlowTableManagerAsyncFunction func(fn ExpireUpdateFunc, updateFrom int64)
+type tableManagerAsyncFunction func(fn ExpireUpdateFunc, updateFrom int64)
 
-type FlowTableManagerAsyncParam struct {
-	function FlowTableManagerAsyncFunction
+type tableManagerAsyncParam struct {
+	function tableManagerAsyncFunction
 	callback ExpireUpdateFunc
 	every    time.Duration
 	duration time.Duration
 }
 
-type FlowTableManagerAsync struct {
-	FlowTableManagerAsyncParam
+type tableManagerAsync struct {
+	tableManagerAsyncParam
 	ticker  *time.Ticker
 	running bool
 }
 
-type FlowTableManager struct {
-	expire, updated FlowTableManagerAsync
+type tableManager struct {
+	expire, updated tableManagerAsync
 }
 
-func (ftma *FlowTableManagerAsync) Register(p *FlowTableManagerAsyncParam) {
-	ftma.FlowTableManagerAsyncParam = *p
+func (ftma *tableManagerAsync) Register(p *tableManagerAsyncParam) {
+	ftma.tableManagerAsyncParam = *p
 	ftma.ticker = time.NewTicker(ftma.every)
 	ftma.running = true
 }
 
-func (ftma *FlowTableManagerAsync) Unregister() {
+func (ftma *tableManagerAsync) Unregister() {
 	ftma.ticker.Stop()
 	ftma.running = false
 }

@@ -58,7 +58,7 @@ func (c *Client) SendFlows(flows []*flow.Flow) {
 	}
 }
 
-func (c *Client) AsyncFlowsUpdate(ft *flow.FlowTable, every time.Duration) {
+func (c *Client) AsyncFlowsUpdate(ft *flow.Table, every time.Duration) {
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	for {
