@@ -2,19 +2,19 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Skydive Docs</title>
-    <link>/</link>
+    <link>http://redhat-cip.github.io/skydive/</link>
     <description>Recent content on Skydive Docs</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Fri, 06 May 2016 11:03:48 +0200</lastBuildDate>
-    <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://redhat-cip.github.io/skydive/index.xml" rel="self" type="application/rss+xml" />
     
     <item>
       <title>Contact</title>
-      <link>/contact/</link>
+      <link>http://redhat-cip.github.io/skydive/contact/</link>
       <pubDate>Fri, 06 May 2016 11:03:48 +0200</pubDate>
       
-      <guid>/contact/</guid>
+      <guid>http://redhat-cip.github.io/skydive/contact/</guid>
       <description>
 
 &lt;h2 id=&#34;irc&#34;&gt;IRC&lt;/h2&gt;
@@ -33,10 +33,10 @@
     
     <item>
       <title>Contributting</title>
-      <link>/contributing/</link>
+      <link>http://redhat-cip.github.io/skydive/contributing/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>/contributing/</guid>
+      <guid>http://redhat-cip.github.io/skydive/contributing/</guid>
       <description>
 
 &lt;p&gt;This project accepts contributions. Skydive uses the Gerrit workflow
@@ -90,10 +90,10 @@ git review
     
     <item>
       <title>Getting started</title>
-      <link>/getting-started/</link>
+      <link>http://redhat-cip.github.io/skydive/getting-started/</link>
       <pubDate>Fri, 06 May 2016 10:57:18 +0200</pubDate>
       
-      <guid>/getting-started/</guid>
+      <guid>http://redhat-cip.github.io/skydive/getting-started/</guid>
       <description>
 
 &lt;h2 id=&#34;dependencies&#34;&gt;Dependencies&lt;/h2&gt;
@@ -290,10 +290,10 @@ enable_service skydive-agent skydive-analyzer
     
     <item>
       <title>Skydive, real-time network analyzer</title>
-      <link>/</link>
+      <link>http://redhat-cip.github.io/skydive/</link>
       <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
       
-      <guid>/</guid>
+      <guid>http://redhat-cip.github.io/skydive/</guid>
       <description>
 
 &lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
@@ -339,11 +339,11 @@ topology and flows informations.&lt;/p&gt;
     </item>
     
     <item>
-      <title>license</title>
-      <link>/license/</link>
+      <title>License</title>
+      <link>http://redhat-cip.github.io/skydive/license/</link>
       <pubDate>Wed, 04 May 2016 17:28:04 +0200</pubDate>
       
-      <guid>/license/</guid>
+      <guid>http://redhat-cip.github.io/skydive/license/</guid>
       <description>&lt;p&gt;Apache License
                            Version 2.0, January 2004
                         &lt;a href=&#34;http://www.apache.org/licenses/&#34;&gt;http://www.apache.org/licenses/&lt;/a&gt;&lt;/p&gt;
