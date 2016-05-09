@@ -75,6 +75,8 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 	if err := fprobe.RegisterProbe(n, capture); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
 	}
+
+	o.Graph.AddMetadata(n, "State.FlowCapture", "ON")
 }
 
 func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
@@ -86,6 +88,8 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
 	if err := fprobe.UnregisterProbe(n); err != nil {
 		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
 	}
+
+	o.Graph.AddMetadata(n, "State.FlowCapture", "OFF")
 }
 
 func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
