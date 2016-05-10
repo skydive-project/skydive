@@ -1,0 +1,32 @@
+version: '2'
+services:
+  elasticsearch:
+    image: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    logging:
+      driver: "none"
+    volumes:
+        - ./data/esdata:/usr/share/elasticsearch/data
+
+  skydive-analyzer:
+    image: skydive/skydive
+    ports:
+      - "2379:2379"
+      - "8082:8082"
+    links:
+      - elasticsearch
+    entrypoint: /usr/bin/start-skydive.sh analyzer
+
+  skydive-agent:
+    image: skydive/skydive
+    depends_on:
+      - skydive-analyzer
+    ports:
+      - "8081:8081"
+      - "6345:6345/udp"
+    network_mode: "host"
+    entrypoint: /usr/bin/start-skydive.sh agent
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
