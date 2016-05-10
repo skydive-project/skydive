@@ -89,3 +89,6 @@ doc:
 	git add -A
 	git commit -a -m "Documentation update"
 	git push -f gerrit gh-pages
+
+doctest:
+	hugo server run -t hugo-material-docs -s doc
