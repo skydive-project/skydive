@@ -25,6 +25,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/abbot/go-http-auth"
 	shttp "github.com/redhat-cip/skydive/http"
@@ -36,12 +37,43 @@ type TopologyApi struct {
 	Graph   *graph.Graph
 }
 
+type Topology struct {
+	GremlinQuery string `json:"GremlinQuery,omitempty"`
+}
+
 func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(t.Graph); err != nil {
-		panic(err)
+	resource := Topology{}
+	if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if resource.GremlinQuery != "" {
+		ts, err := graph.NewGraphTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph).Parse()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		res, err := ts.Exec()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(res.Values()); err != nil {
+			panic(err)
+		}
+	} else {
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(t.Graph); err != nil {
+			panic(err)
+		}
 	}
 }
 

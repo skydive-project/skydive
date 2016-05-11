@@ -63,14 +63,15 @@ func NewRestClientFromConfig(authOptions *AuthenticationOpts) *RestClient {
 	return NewRestClient(addr, port, authOptions)
 }
 
-func (c *RestClient) Request(method, urlStr string, body io.Reader) (*http.Response, error) {
+func (c *RestClient) Request(method, path string, body io.Reader) (*http.Response, error) {
 	if !c.authClient.Authenticated() {
 		if err := c.authClient.Authenticate(); err != nil {
 			return nil, err
 		}
 	}
 
-	req, err := http.NewRequest(method, urlStr, body)
+	url := fmt.Sprintf("%s/%s", c.authClient.getPrefix(), path)
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +108,8 @@ func NewCrudClientFromConfig(authOpts *AuthenticationOpts, root string) *CrudCli
 }
 
 func (c *CrudClient) List(resource string, values interface{}) error {
-	url := fmt.Sprintf("%s/%s/%s", c.authClient.getPrefix(), c.Root, resource)
-	resp, err := c.Request("GET", url, nil)
+	path := fmt.Sprintf("%s/%s", c.Root, resource)
+	resp, err := c.Request("GET", path, nil)
 	if err != nil {
 		return err
 	}
@@ -121,8 +122,8 @@ func (c *CrudClient) List(resource string, values interface{}) error {
 }
 
 func (c *CrudClient) Get(resource string, id string, value interface{}) error {
-	url := fmt.Sprintf("%s/%s/%s/%s", c.authClient.getPrefix(), c.Root, resource, id)
-	resp, err := c.Request("GET", url, nil)
+	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
+	resp, err := c.Request("GET", path, nil)
 	if err != nil {
 		return err
 	}
@@ -142,9 +143,9 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 
 	contentReader := bytes.NewReader(s)
 
-	url := fmt.Sprintf("%s/%s/%s", c.authClient.getPrefix(), c.Root, resource)
+	path := fmt.Sprintf("%s/%s", c.Root, resource)
 
-	resp, err := c.Request("POST", url, contentReader)
+	resp, err := c.Request("POST", path, contentReader)
 	if err != nil {
 		return err
 	}
@@ -163,9 +164,9 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 	}
 
 	contentReader := bytes.NewReader(s)
-	url := fmt.Sprintf("%s/%s/%s/%s", c.authClient.getPrefix(), c.Root, resource, id)
+	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
 
-	resp, err := c.Request("PUT", url, contentReader)
+	resp, err := c.Request("PUT", path, contentReader)
 	if err != nil {
 		return err
 	}
@@ -178,9 +179,9 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 }
 
 func (c *CrudClient) Delete(resource string, id string) error {
-	url := fmt.Sprintf("%s/%s/%s/%s", c.authClient.getPrefix(), c.Root, resource, id)
+	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
 
-	resp, err := c.Request("DELETE", url, nil)
+	resp, err := c.Request("DELETE", path, nil)
 	if err != nil {
 		return err
 	}
