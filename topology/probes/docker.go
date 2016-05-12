@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/lebauce/dockerclient"
+	"github.com/vishvananda/netns"
 
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
@@ -51,6 +52,7 @@ type DockerProbe struct {
 	quit      chan bool
 	wg        sync.WaitGroup
 	idToPid   map[string]int
+	hostNs    netns.NsHandle
 }
 
 type DockerContainerAttributes struct {
@@ -73,6 +75,17 @@ func (probe *DockerProbe) registerContainer(id string) {
 		logging.GetLogger().Errorf("Failed to inspect Docker container %s: %s", id, err.Error())
 		return
 	}
+
+	nsHandle, err := netns.GetFromPid(info.State.Pid)
+	if err != nil {
+		return
+	}
+
+	if probe.hostNs.Equal(nsHandle) {
+		// The container is in net=host mode
+		return
+	}
+
 	namespace := probe.containerNamespace(info.State.Pid)
 	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.Id, info.State.Pid)
 	metadata := &graph.Metadata{
@@ -110,6 +123,10 @@ func (probe *DockerProbe) handleDockerEvent(event *dockerclient.Event) {
 
 func (probe *DockerProbe) connect() error {
 	var err error
+
+	if probe.hostNs, err = netns.Get(); err != nil {
+		return err
+	}
 
 	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", probe.url)
 	probe.client, err = dockerclient.NewDockerClient(probe.url, nil)
