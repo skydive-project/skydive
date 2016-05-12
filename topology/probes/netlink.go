@@ -23,8 +23,8 @@
 package probes
 
 import (
-	"encoding/json"
 	"net"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -249,9 +249,7 @@ func (u *NetLinkProbe) getLinkIPV4Addr(link netlink.Link) string {
 		ipv4 = append(ipv4, addr.IPNet.String())
 	}
 
-	j, _ := json.Marshal(ipv4)
-
-	return string(j)
+	return strings.Join(ipv4, ", ")
 }
 
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
@@ -274,10 +272,10 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		"Driver":  driver,
 	}
 
-	/*ipv4 := u.getLinkIPV4Addr(link)
+	ipv4 := u.getLinkIPV4Addr(link)
 	if len(ipv4) > 0 {
 		metadata["IPV4"] = ipv4
-	}*/
+	}
 
 	if vlan, ok := link.(*netlink.Vlan); ok {
 		metadata["Vlan"] = vlan.VlanId
