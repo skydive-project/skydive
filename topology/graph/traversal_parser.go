@@ -238,6 +238,12 @@ func (p *GraphTraversalParser) parserStepParams() (traversalStepParams, error) {
 				return nil, err
 			}
 			params = append(params, Within(withParams...))
+		case WITHOUT:
+			withParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, Without(withParams...))
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}

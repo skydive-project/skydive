@@ -68,6 +68,24 @@ func Within(s ...interface{}) *WithinMetadataMatcher {
 	return &WithinMetadataMatcher{list: s}
 }
 
+type WithoutMetadataMatcher struct {
+	list []interface{}
+}
+
+func (w *WithoutMetadataMatcher) Match(v interface{}) bool {
+	for _, el := range w.list {
+		if common.CrossTypeEqual(v, el) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func Without(s ...interface{}) *WithoutMetadataMatcher {
+	return &WithoutMetadataMatcher{list: s}
+}
+
 func sliceToMetadata(s ...interface{}) (Metadata, error) {
 	m := Metadata{}
 	if len(s)%2 != 0 {

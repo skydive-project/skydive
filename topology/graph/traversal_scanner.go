@@ -61,6 +61,7 @@ const (
 	INE
 	DEDUP
 	WITHIN
+	WITHOUT
 )
 
 type TraversalScanner struct {
@@ -190,6 +191,8 @@ func (s *TraversalScanner) scanIdent() (tok Token, lit string) {
 		return INE, buf.String()
 	case "WITHIN":
 		return WITHIN, buf.String()
+	case "WITHOUT":
+		return WITHOUT, buf.String()
 	case "DEDUP":
 		return DEDUP, buf.String()
 	}
