@@ -7,17 +7,18 @@ title: Getting started
 
 * Go >= 1.5
 * Elasticsearch >= 2.0
+* libpcap
 
 ## Install
 
 Make sure you have a working Go environment. [See the install instructions]
 (http://golang.org/doc/install.html).
 
-Then make sure you have Godep installed. [See the install instructions]
-(https://github.com/tools/godep).
-
 ```console
-$ go get github.com/redhat-cip/skydive/cmd/skydive
+$ mkdir -p $GOPATH/src/github.com/redhat-cip
+$ git clone https://github.com/redhat-cip/skydive.git $GOPATH/src/github.com/redhat-cip/skydive
+$ cd $GOPATH/src/github.com/redhat-cip/skydive
+$ make install
 ```
 
 ## Getting started
