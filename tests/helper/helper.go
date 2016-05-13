@@ -59,20 +59,20 @@ func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
 	return conn, nil
 }
 
-func InitConfig(t *testing.T, conf string, params HelperParams) {
+func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 	f, err := ioutil.TempFile("", "skydive_agent")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	if params == nil {
-		params = make(HelperParams)
+	if len(params) == 0 {
+		params = []HelperParams{make(HelperParams)}
 	}
-	params["AnalyzerPort"] = 64500
+	params[0]["AnalyzerPort"] = 64500
 	if testing.Verbose() {
-		params["LogLevel"] = "DEBUG"
+		params[0]["LogLevel"] = "DEBUG"
 	} else {
-		params["LogLevel"] = "INFO"
+		params[0]["LogLevel"] = "INFO"
 	}
 
 	tmpl, err := template.New("config").Parse(conf)
@@ -80,7 +80,7 @@ func InitConfig(t *testing.T, conf string, params HelperParams) {
 		t.Fatal(err.Error())
 	}
 	buff := bytes.NewBufferString("")
-	tmpl.Execute(buff, params)
+	tmpl.Execute(buff, params[0])
 
 	f.Write(buff.Bytes())
 	f.Close()
@@ -118,8 +118,8 @@ type HelperAgentAnalyzer struct {
 
 type HelperParams map[string]interface{}
 
-func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params HelperParams) *HelperAgentAnalyzer {
-	InitConfig(t, conf, params)
+func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params ...HelperParams) *HelperAgentAnalyzer {
+	InitConfig(t, conf, params...)
 	agent := NewAgent()
 	analyzer := NewAnalyzerStorage(t, s)
 
@@ -200,16 +200,16 @@ func WaitApi(t *testing.T, analyzer *analyzer.Server) {
 	t.Fatal("Fail to start the analyzer")
 }
 
-func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params HelperParams) *analyzer.Server {
-	InitConfig(t, conf, params)
+func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params ...HelperParams) *analyzer.Server {
+	InitConfig(t, conf, params...)
 	analyzer := NewAnalyzerStorage(t, s)
 	analyzer.ListenAndServe()
 	WaitApi(t, analyzer)
 	return analyzer
 }
 
-func StartAgentWithConfig(t *testing.T, conf string, params HelperParams) *agent.Agent {
-	InitConfig(t, conf, params)
+func StartAgentWithConfig(t *testing.T, conf string, params ...HelperParams) *agent.Agent {
+	InitConfig(t, conf, params...)
 	agent := NewAgent()
 	agent.Start()
 	return agent

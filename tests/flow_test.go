@@ -187,7 +187,7 @@ func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) 
 func TestSFlowWithPCAP(t *testing.T) {
 	ts := NewTestStorage()
 
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts, nil)
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
 	aa.Start()
 	defer aa.Stop()
 
@@ -235,7 +235,7 @@ func TestSFlowProbePath(t *testing.T) {
 
 	ts := NewTestStorage()
 
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts, nil)
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
 	aa.Start()
 	defer aa.Stop()
 
@@ -286,7 +286,7 @@ func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
 
 	ts := NewTestStorage()
 
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts, nil)
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
 	aa.Start()
 	defer aa.Stop()
 
@@ -340,7 +340,7 @@ func TestSFlowTwoProbePath(t *testing.T) {
 
 	ts := NewTestStorage()
 
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts, nil)
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
 	aa.Start()
 	defer aa.Stop()
 
@@ -440,7 +440,7 @@ func TestPCAPProbe(t *testing.T) {
 
 	ts := NewTestStorage()
 
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts, nil)
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
 	aa.Start()
 	defer aa.Stop()
 
@@ -492,7 +492,7 @@ func TestSFlowSrcDstPath(t *testing.T) {
 
 	ts := NewTestStorage()
 
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts, nil)
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
 	aa.Start()
 	defer aa.Stop()
 

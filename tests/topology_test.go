@@ -321,7 +321,7 @@ func newGraph(t *testing.T) *graph.Graph {
 func TestBridgeOVS(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -372,7 +372,7 @@ func TestBridgeOVS(t *testing.T) {
 func TestPatchOVS(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -426,7 +426,7 @@ func TestPatchOVS(t *testing.T) {
 func TestInterfaceOVS(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -477,7 +477,7 @@ func TestInterfaceOVS(t *testing.T) {
 func TestBondOVS(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -524,7 +524,7 @@ func TestBondOVS(t *testing.T) {
 func TestVeth(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -569,7 +569,7 @@ func TestVeth(t *testing.T) {
 func TestBridge(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -613,7 +613,7 @@ func TestBridge(t *testing.T) {
 func TestMacNameUpdate(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -657,7 +657,7 @@ func TestMacNameUpdate(t *testing.T) {
 func TestNameSpace(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -694,7 +694,7 @@ func TestNameSpace(t *testing.T) {
 func TestNameSpaceVeth(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -738,7 +738,7 @@ func TestNameSpaceVeth(t *testing.T) {
 func TestNameSpaceOVSInterface(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
@@ -789,7 +789,7 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 func TestDocker(t *testing.T) {
 	g := newGraph(t)
 
-	agent := helper.StartAgentWithConfig(t, confTopology, nil)
+	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
 
 	setupCmds := []helper.Cmd{
