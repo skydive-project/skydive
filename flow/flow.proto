@@ -60,13 +60,26 @@ message FlowStatistics {
 }
 
 message Flow {
+  /* Flow Universally Unique IDentifier
+
+    flow.UUID is unique in the universe, as it should be used as a key of an
+    hashtable. By design 2 different flows, their UUID are always different.
+    flow.UUID can be used as Database Index.
+  */
   string UUID 			= 1;
   string LayersPath 		= 2;
 
   /* Data Flow info */
   FlowStatistics Statistics	= 3;
 
-  string FlowUUID   = 5;
+  /* Flow Tracking IDentifier, from 1st packet bytes
+
+    flow.TrackingID could be used to identify an unique flow whatever it has
+    been captured on the infrastructure. flow.TrackingID is calculated from
+    the bytes of the first packet of his session.
+    flow.TrackingID can be used as a Tag.
+  */
+  string TrackingID             = 5;
 
   /* Topology info */
   string ProbeGraphPath	= 11;

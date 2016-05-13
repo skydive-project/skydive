@@ -195,8 +195,11 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 		for _, ep := range fs.GetEndpoints() {
 			hasher.Write(ep.Hash)
 		}
-		flow.FlowUUID = hex.EncodeToString(hasher.Sum(nil))
+		flow.TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
+		bfStart := make([]byte, 8)
+		binary.BigEndian.PutUint64(bfStart, uint64(fs.Start))
+		hasher.Write(bfStart)
 		hasher.Write([]byte(flow.ProbeGraphPath))
 		flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 	}

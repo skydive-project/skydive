@@ -420,8 +420,8 @@ func TestSFlowTwoProbePath(t *testing.T) {
 		t.Errorf("Bad probepath for the second flow: %s", flows[1].ProbeGraphPath)
 	}
 
-	if flows[0].FlowUUID != flows[1].FlowUUID {
-		t.Errorf("Both flows should have the same FlowUUID: %v", flows)
+	if flows[0].TrackingID != flows[1].TrackingID {
+		t.Errorf("Both flows should have the same TrackingID: %v", flows)
 	}
 
 	if flows[0].UUID == flows[1].UUID {
