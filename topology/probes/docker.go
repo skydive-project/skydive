@@ -42,21 +42,22 @@ const (
 	StoppingState = iota
 )
 
+type ContainerInfo struct {
+	Pid  int
+	Node *graph.Node
+}
+
 type DockerProbe struct {
 	sync.RWMutex
 	NetNSProbe
-	url       string
-	client    *dockerclient.DockerClient
-	state     int64
-	connected atomic.Value
-	quit      chan bool
-	wg        sync.WaitGroup
-	idToPid   map[string]int
-	hostNs    netns.NsHandle
-}
-
-type DockerContainerAttributes struct {
-	ContainerID string
+	url          string
+	client       *dockerclient.DockerClient
+	state        int64
+	connected    atomic.Value
+	quit         chan bool
+	wg           sync.WaitGroup
+	hostNs       netns.NsHandle
+	containerMap map[string]ContainerInfo
 }
 
 func (probe *DockerProbe) containerNamespace(pid int) string {
@@ -67,7 +68,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	probe.Lock()
 	defer probe.Unlock()
 
-	if _, ok := probe.idToPid[id]; ok {
+	if _, ok := probe.containerMap[id]; ok {
 		return
 	}
 	info, err := probe.client.InspectContainer(id)
@@ -81,36 +82,53 @@ func (probe *DockerProbe) registerContainer(id string) {
 		return
 	}
 
-	if probe.hostNs.Equal(nsHandle) {
-		// The container is in net=host mode
-		return
-	}
-
 	namespace := probe.containerNamespace(info.State.Pid)
 	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.Id, info.State.Pid)
-	metadata := &graph.Metadata{
+
+	var n *graph.Node
+	if probe.hostNs.Equal(nsHandle) {
+		// The container is in net=host mode
+		n = probe.Root
+	} else {
+		n = probe.Register(namespace, graph.Metadata{"Name": info.Name[1:], "Manager": "docker"})
+
+	}
+
+	probe.Graph.Lock()
+	metadata := graph.Metadata{
+		"Type":                 "container",
 		"Name":                 info.Name[1:],
-		"Manager":              "docker",
 		"Docker.ContainerID":   info.Id,
 		"Docker.ContainerName": info.Name,
 		"Docker.ContainerPID":  info.State.Pid,
 	}
-	probe.Register(namespace, metadata)
-	probe.idToPid[info.Id] = info.State.Pid
+	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
+	probe.Graph.Link(n, containerNode, graph.Metadata{"RelationType": "membership"})
+	probe.Graph.Unlock()
+
+	probe.containerMap[info.Id] = ContainerInfo{
+		Pid:  info.State.Pid,
+		Node: containerNode,
+	}
 }
 
 func (probe *DockerProbe) unregisterContainer(id string) {
 	probe.Lock()
 	defer probe.Unlock()
 
-	pid, ok := probe.idToPid[id]
+	infos, ok := probe.containerMap[id]
 	if !ok {
 		return
 	}
-	delete(probe.idToPid, id)
-	namespace := probe.containerNamespace(pid)
-	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, pid)
+	namespace := probe.containerNamespace(infos.Pid)
+	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, infos.Pid)
 	probe.Unregister(namespace)
+
+	probe.Graph.Lock()
+	probe.Graph.DelNode(infos.Node)
+	probe.Graph.Unlock()
+
+	delete(probe.containerMap, id)
 }
 
 func (probe *DockerProbe) handleDockerEvent(event *dockerclient.Event) {
@@ -220,10 +238,10 @@ func (probe *DockerProbe) Stop() {
 
 func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) (probe *DockerProbe) {
 	probe = &DockerProbe{
-		NetNSProbe: *NewNetNSProbe(g, n),
-		url:        dockerURL,
-		idToPid:    make(map[string]int),
-		state:      StoppedState,
+		NetNSProbe:   *NewNetNSProbe(g, n),
+		url:          dockerURL,
+		containerMap: make(map[string]ContainerInfo),
+		state:        StoppedState,
 	}
 	return
 }

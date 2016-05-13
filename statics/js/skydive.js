@@ -499,6 +499,8 @@ HostLayout.prototype.NodePicto = function(d) {
       return vethImg;
     case "bond":
       return portImg;
+    case "container":
+      return dockerImg;
     default:
       return intfImg;
   }

@@ -23,11 +23,13 @@
 package probes
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/vishvananda/netns"
@@ -43,16 +45,25 @@ const (
 
 type NetNSProbe struct {
 	sync.RWMutex
-	Graph      *graph.Graph
-	Root       *graph.Node
-	nsnlProbes map[string]*NetNsNetLinkTopoUpdater
+
+	Graph       *graph.Graph
+	Root        *graph.Node
+	nsnlProbes  map[string]*NetNsNetLinkTopoUpdater
+	pathToNetNS map[string]*NetNs
+}
+
+type NetNs struct {
+	path string
+	dev  uint64
+	ino  uint64
 }
 
 type NetNsNetLinkTopoUpdater struct {
 	sync.RWMutex
-	Graph   *graph.Graph
-	Root    *graph.Node
-	nlProbe *NetLinkProbe
+	Graph    *graph.Graph
+	Root     *graph.Node
+	nlProbe  *NetLinkProbe
+	useCount int
 }
 
 func getNetNSName(path string) string {
@@ -60,31 +71,35 @@ func getNetNSName(path string) string {
 	return s[len(s)-1]
 }
 
-func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
-	logging.GetLogger().Debugf("Starting NetLinkTopoUpdater for NetNS: %s", path)
+func (ns *NetNs) String() string {
+	return fmt.Sprintf("%d,%d", ns.dev, ns.ino)
+}
+
+func (nu *NetNsNetLinkTopoUpdater) Start(ns *NetNs) {
+	logging.GetLogger().Debugf("Starting NetLinkTopoUpdater for NetNS: %s", ns.path)
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
 	origns, err := netns.Get()
 	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", path, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", ns.path, err.Error())
 		return
 	}
 	defer origns.Close()
 
 	time.Sleep(1 * time.Second)
 
-	newns, err := netns.GetFromPath(path)
+	newns, err := netns.GetFromPath(ns.path)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", path, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", ns.path, err.Error())
 		return
 	}
 	defer newns.Close()
 
 	err = netns.Set(newns)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", path, err.Error())
+		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", ns.path, err.Error())
 		return
 	}
 
@@ -102,7 +117,7 @@ func (nu *NetNsNetLinkTopoUpdater) Start(path string) {
 	nu.nlProbe = nil
 	nu.Unlock()
 
-	logging.GetLogger().Debugf("NetLinkTopoUpdater stopped for NetNS: %s", path)
+	logging.GetLogger().Debugf("NetLinkTopoUpdater stopped for NetNS: %s", ns.path)
 
 	netns.Set(origns)
 }
@@ -117,26 +132,46 @@ func (nu *NetNsNetLinkTopoUpdater) Stop() {
 
 func NewNetNsNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetNsNetLinkTopoUpdater {
 	return &NetNsNetLinkTopoUpdater{
-		Graph: g,
-		Root:  n,
+		Graph:    g,
+		Root:     n,
+		useCount: 1,
 	}
 }
 
-func (u *NetNSProbe) Register(path string, extraMetadata *graph.Metadata) {
-	u.RLock()
-	_, ok := u.nsnlProbes[path]
-	u.RUnlock()
+func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.Node {
+	ns, ok := u.pathToNetNS[path]
+	if !ok {
+		var s syscall.Stat_t
+		fd, err := syscall.Open(path, syscall.O_RDONLY, 0)
+		if err != nil {
+			return nil
+		}
+		defer syscall.Close(fd)
+		if err := syscall.Fstat(fd, &s); err != nil {
+			return nil
+		}
+		ns = &NetNs{path: path, dev: s.Dev, ino: s.Ino}
+		u.pathToNetNS[path] = ns
+	}
+
+	u.Lock()
+	defer u.Unlock()
+
+	nsString := ns.String()
+	probe, ok := u.nsnlProbes[nsString]
 	if ok {
-		return
+		probe.useCount++
+		logging.GetLogger().Debugf("Increasing counter for namespace %s to %d", nsString, probe.useCount)
+		return probe.Root
 	}
 
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	logging.GetLogger().Debugf("Network Namespace added: %s", path)
+	logging.GetLogger().Debugf("Network Namespace added: %s", nsString)
 	metadata := graph.Metadata{"Name": getNetNSName(path), "Type": "netns"}
 	if extraMetadata != nil {
-		for k, v := range *extraMetadata {
+		for k, v := range extraMetadata {
 			metadata[k] = v
 		}
 	}
@@ -144,23 +179,40 @@ func (u *NetNSProbe) Register(path string, extraMetadata *graph.Metadata) {
 	u.Graph.Link(u.Root, n, graph.Metadata{"RelationType": "ownership"})
 
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
-	go nu.Start(path)
+	go nu.Start(ns)
 
-	u.Lock()
-	u.nsnlProbes[path] = nu
-	u.Unlock()
+	u.nsnlProbes[nsString] = nu
+
+	return n
 }
 
 func (u *NetNSProbe) Unregister(path string) {
-	logging.GetLogger().Debugf("Network Namespace deleted: %s", path)
+	logging.GetLogger().Debugf("Unregister Network Namespace: %s", path)
 
-	u.RLock()
-	nu, ok := u.nsnlProbes[path]
-	u.RUnlock()
+	ns, ok := u.pathToNetNS[path]
 	if !ok {
 		return
 	}
+
+	u.Lock()
+	defer u.Unlock()
+
+	delete(u.pathToNetNS, path)
+	nsString := ns.String()
+	nu, ok := u.nsnlProbes[nsString]
+	if !ok {
+		logging.GetLogger().Debugf("No existing Network Namespace found: %s (%s)", nsString)
+		return
+	}
+
+	if nu.useCount > 1 {
+		nu.useCount--
+		logging.GetLogger().Debugf("Decremented counter for namespace %s to %d", nsString, nu.useCount)
+		return
+	}
+
 	nu.Stop()
+	logging.GetLogger().Debugf("Network Namespace deleted: %s", nsString)
 
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
@@ -171,9 +223,7 @@ func (u *NetNSProbe) Unregister(path string) {
 	}
 	u.Graph.DelNode(nu.Root)
 
-	u.Lock()
-	delete(u.nsnlProbes, path)
-	u.Unlock()
+	delete(u.nsnlProbes, nsString)
 }
 
 func (u *NetNSProbe) initialize() {
@@ -187,12 +237,6 @@ func (u *NetNSProbe) start() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	watcher, err := inotify.NewWatcher()
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to create a new Watcher: %s", err.Error())
-		return
-	}
-
 	// wait for the path creation
 	for {
 		_, err := os.Stat(runBaseDir)
@@ -200,6 +244,11 @@ func (u *NetNSProbe) start() {
 			break
 		}
 		time.Sleep(5 * time.Second)
+	}
+
+	watcher, err := inotify.NewWatcher()
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to create a new Watcher: %s", err.Error())
 	}
 
 	err = watcher.Watch(runBaseDir)
@@ -245,8 +294,9 @@ func NewNetNSProbe(g *graph.Graph, n *graph.Node) *NetNSProbe {
 	}
 
 	return &NetNSProbe{
-		Graph:      g,
-		Root:       n,
-		nsnlProbes: make(map[string]*NetNsNetLinkTopoUpdater),
+		Graph:       g,
+		Root:        n,
+		nsnlProbes:  make(map[string]*NetNsNetLinkTopoUpdater),
+		pathToNetNS: make(map[string]*NetNs),
 	}
 }

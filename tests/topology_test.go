@@ -786,7 +786,7 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 	testCleanup(t, g, tearDownCmds, []string{"ns1", "br-test1"})
 }
 
-func TestDocker(t *testing.T) {
+func TestDockerSimple(t *testing.T) {
 	g := newGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
@@ -806,10 +806,94 @@ func TestDocker(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
-			node := g.LookupFirstNode(graph.Metadata{"Name": "test-skydive-docker", "Type": "netns",
-				"Manager": "docker", "Docker.ContainerName": "/test-skydive-docker"})
-			if node != nil {
-				testPassed = true
+			if node := g.LookupFirstNode(graph.Metadata{"Name": "test-skydive-docker", "Type": "netns", "Manager": "docker"}); node != nil {
+				if node := g.LookupFirstChild(node, graph.Metadata{"Type": "container", "Docker.ContainerName": "/test-skydive-docker"}); node != nil {
+					testPassed = true
+					ws.Close()
+				}
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"test-skydive-docker"})
+}
+
+func TestDockerShareNamespace(t *testing.T) {
+	g := newGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	setupCmds := []helper.Cmd{
+		{"docker run -d -t -i --name test-skydive-docker busybox", false},
+		{"docker run -d -t -i --name test-skydive-docker2 --net=container:test-skydive-docker busybox", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"docker rm -f test-skydive-docker", false},
+		{"docker rm -f test-skydive-docker2", false},
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
+			nsNodes := g.LookupNodes(graph.Metadata{"Type": "netns", "Manager": "docker"})
+			if len(nsNodes) > 1 {
+				t.Error("There should be only one namespace managed by Docker")
+				ws.Close()
+			} else if len(nsNodes) == 1 {
+				if node := g.LookupFirstChild(nsNodes[0], graph.Metadata{"Type": "container", "Docker.ContainerName": "/test-skydive-docker"}); node != nil {
+					if node := g.LookupFirstChild(nsNodes[0], graph.Metadata{"Type": "container", "Docker.ContainerName": "/test-skydive-docker2"}); node != nil {
+						testPassed = true
+						ws.Close()
+					}
+				}
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"test-skydive-docker"})
+}
+
+func TestDockerNetHost(t *testing.T) {
+	g := newGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	setupCmds := []helper.Cmd{
+		{"docker run -d -t -i --net=host --name test-skydive-docker busybox", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"docker rm -f test-skydive-docker", false},
+	}
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
+			if node := g.LookupFirstNode(graph.Metadata{"Docker.ContainerName": "/test-skydive-docker", "Type": "container"}); node != nil {
+				if node := g.LookupFirstNode(graph.Metadata{"Type": "netns", "Manager": "docker", "Name": "test-skydive-docker"}); node != nil {
+					t.Error("There should be no netns node for container test-skydive-docker")
+				} else {
+					testPassed = true
+				}
 				ws.Close()
 			}
 		}
