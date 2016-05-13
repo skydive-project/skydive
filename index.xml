@@ -101,15 +101,17 @@ git review
 &lt;ul&gt;
 &lt;li&gt;Go &amp;gt;= 1.5&lt;/li&gt;
 &lt;li&gt;Elasticsearch &amp;gt;= 2.0&lt;/li&gt;
+&lt;li&gt;libpcap&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&#34;install&#34;&gt;Install&lt;/h2&gt;
 
 &lt;p&gt;Make sure you have a working Go environment. &lt;a href=&#34;http://golang.org/doc/install.html&#34;&gt;See the install instructions&lt;/a&gt;.&lt;/p&gt;
 
-&lt;p&gt;Then make sure you have Godep installed. &lt;a href=&#34;https://github.com/tools/godep&#34;&gt;See the install instructions&lt;/a&gt;.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ go get github.com/redhat-cip/skydive/cmd/skydive
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ mkdir -p $GOPATH/src/github.com/redhat-cip
+$ git clone https://github.com/redhat-cip/skydive.git $GOPATH/src/github.com/redhat-cip/skydive
+$ cd $GOPATH/src/github.com/redhat-cip/skydive
+$ make install
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h2 id=&#34;getting-started&#34;&gt;Getting started&lt;/h2&gt;
