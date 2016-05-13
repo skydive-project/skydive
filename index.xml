@@ -285,6 +285,27 @@ enable_service skydive-agent skydive-analyzer
 # Set the default log level, default: INFO
 #SKYDIVE_LOGLEVEL=DEBUG
 &lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;docker&#34;&gt;Docker&lt;/h2&gt;
+
+&lt;p&gt;A Docker image is available on the &lt;a href=&#34;https://hub.docker.com/r/skydive/&#34;&gt;Skydive Docker Hub account&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;To start the analyzer :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;docker run -p 8082:8082 -p 2379:2379 skydive/skydive analyzer
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;To start the agent :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;docker run --privileged --net=host -p 8081:8081 -v /var/run/docker.sock:/var/run/docker.sock skydive/skydive agent
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;a href=&#34;https://docs.docker.com/compose/&#34;&gt;Docker Compose&lt;/a&gt; can also be used to automatically start
+an Elasticsearch container, a Skydive analyzer container and a Skydive agent container. The service
+definition is location in the &lt;code&gt;contrib/docker&lt;/code&gt; folder of the Skydive sources.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;docker-compose up
+&lt;/code&gt;&lt;/pre&gt;
 </description>
     </item>
     

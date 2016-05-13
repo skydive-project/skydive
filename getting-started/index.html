@@ -480,6 +480,27 @@ enable_service skydive-agent skydive-analyzer
 #SKYDIVE_LOGLEVEL=DEBUG
 </code></pre>
 
+<h2 id="docker">Docker</h2>
+
+<p>A Docker image is available on the <a href="https://hub.docker.com/r/skydive/">Skydive Docker Hub account</a>.</p>
+
+<p>To start the analyzer :</p>
+
+<pre><code class="language-console">docker run -p 8082:8082 -p 2379:2379 skydive/skydive analyzer
+</code></pre>
+
+<p>To start the agent :</p>
+
+<pre><code class="language-console">docker run --privileged --net=host -p 8081:8081 -v /var/run/docker.sock:/var/run/docker.sock skydive/skydive agent
+</code></pre>
+
+<p><a href="https://docs.docker.com/compose/">Docker Compose</a> can also be used to automatically start
+an Elasticsearch container, a Skydive analyzer container and a Skydive agent container. The service
+definition is location in the <code>contrib/docker</code> folder of the Skydive sources.</p>
+
+<pre><code class="language-console">docker-compose up
+</code></pre>
+
 			
 			<aside class="copyright" role="note">
 				
