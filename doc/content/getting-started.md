@@ -94,7 +94,7 @@ username/password command line parameters.
 Skydive client allows you to start flow captures on topology Nodes/Interfaces
 
 ```console
-$ skydive client capture create -p <probe path>
+$ skydive client capture create --probepath <probe path>
 ```
 
 The probe path parameter references the interfaces where the flow probe will be
@@ -132,14 +132,14 @@ To start a capture on the OVS bridge br1 on the host host1 the following probe
 path is used :
 
 ```console
-$ skydive client capture create -p "host1[Type=host]/br1[Type=ovsbridge]""
+$ skydive client capture create --probepath "host1[Type=host]/br1[Type=ovsbridge]""
 ```
 
 A wilcard for the host node can be used in order to start a capture on
 all hosts.
 
 ```console
-$ skydive client capture create -p "*/br1[Type=ovsbridge]"
+$ skydive client capture create --probepath "*/br1[Type=ovsbridge]"
 ```
 
 A capture can be defined in advance and will start when a topology node will

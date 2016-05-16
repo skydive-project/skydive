@@ -131,11 +131,11 @@ var AlertDelete = &cobra.Command{
 }
 
 func addAlertFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&alertName, "name", "n", "", "alert name")
-	cmd.Flags().StringVarP(&alertDescription, "description", "d", "", "alert description")
-	cmd.Flags().StringVarP(&alertSelect, "select", "s", "", "alert select criteria")
-	cmd.Flags().StringVarP(&alertTest, "test", "t", "", "alert test")
-	cmd.Flags().StringVarP(&alertAction, "action", "a", "", "alert action")
+	cmd.Flags().StringVarP(&alertName, "name", "", "", "alert name")
+	cmd.Flags().StringVarP(&alertDescription, "description", "", "", "alert description")
+	cmd.Flags().StringVarP(&alertSelect, "select", "", "", "alert select criteria")
+	cmd.Flags().StringVarP(&alertTest, "test", "", "", "alert test")
+	cmd.Flags().StringVarP(&alertAction, "action", "", "", "alert action")
 }
 
 func init() {

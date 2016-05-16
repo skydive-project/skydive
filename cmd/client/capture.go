@@ -130,8 +130,8 @@ var CaptureDelete = &cobra.Command{
 }
 
 func addCaptureFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&probePath, "probepath", "p", "", "probe path")
-	cmd.Flags().StringVarP(&bpfFilter, "bpf", "b", "", "BPF filter")
+	cmd.Flags().StringVarP(&probePath, "probepath", "", "", "probe path")
+	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")
 }
 
 func init() {
