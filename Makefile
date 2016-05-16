@@ -27,6 +27,9 @@ install: godep
 build: godep
 	godep go build ${GOFLAGS} ${VERBOSE_FLAGS} ./...
 
+test.functionals.cleanup:
+	rm -f tests/functionals
+
 test.functionals.compile: godep
 	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
@@ -75,7 +78,7 @@ builddep:
 
 genlocalfiles: .proto .bindata
 
-clean:
+clean: test.functionals.cleanup
 	grep ImportPath Godeps/Godeps.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 	rm -rf Godeps/_workspace/pkg
 
