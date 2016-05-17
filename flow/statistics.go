@@ -93,6 +93,14 @@ func (fs *FlowStatistics) GetEndpointsType(eptype FlowEndpointType) *FlowEndpoin
 	return nil
 }
 
+func (fs *FlowStatistics) GetLayerHash(ltype FlowEndpointType) (hash []byte) {
+	e := fs.GetEndpointsType(ltype)
+	if e == nil {
+		return
+	}
+	return e.Hash
+}
+
 func (fs *FlowStatistics) newLinkLayerEndpointStatistics(packet *gopacket.Packet) error {
 	ep := &FlowEndpointsStatistics{}
 	ep.AB = &FlowEndpointStatistics{}
@@ -251,4 +259,14 @@ func (fs *FlowStatistics) updateTransportLayerStatistics(packet *gopacket.Packet
 	e.Packets += uint64(1)
 	e.Bytes += uint64(len(transportLayer.LayerContents()) + len(transportLayer.LayerPayload()))
 	return nil
+}
+
+type FlowBandwidth struct {
+	ABpackets, ABbytes, BApackets, BAbytes uint64
+	dt                                     int64
+	nbFlow                                 uint64
+}
+
+func (fbw FlowBandwidth) String() string {
+	return fmt.Sprintf("dt : %d seconds nbFlow %d\n\t\tAB -> BA\nPackets : %8d %8d\nBytes   : %8d %8d\n", fbw.dt, fbw.nbFlow, fbw.ABpackets, fbw.BApackets, fbw.ABbytes, fbw.BAbytes)
 }

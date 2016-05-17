@@ -30,7 +30,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
@@ -159,7 +158,7 @@ func (key FlowKey) String() string {
 	return fmt.Sprintf("%x-%x", key.net, key.transport)
 }
 
-func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
+func (flow *Flow) fillFromGoPacket(now int64, packet *gopacket.Packet) error {
 	/* Continue if no ethernet layer */
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	_, ok := ethernetLayer.(*layers.Ethernet)
@@ -169,7 +168,6 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 
 	newFlow := false
 	fs := flow.GetStatistics()
-	now := time.Now().Unix() //(*packet).Metadata().Timestamp.Unix()
 	if fs == nil {
 		newFlow = true
 		fs = NewFlowStatistics(packet)
@@ -226,6 +224,36 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
+func (flow *Flow) GetLayerHash(ltype FlowEndpointType) string {
+	s := flow.GetStatistics()
+	if s == nil {
+		return ""
+	}
+	return hex.EncodeToString(s.GetLayerHash(ltype))
+}
+
+func (flow *Flow) GetDuration(now int64) (duration, fstart, fend int64) {
+	s := flow.GetStatistics()
+	fstart = s.Start
+	fend = s.Last
+	if fend == 0 { /* Unterminated flow */
+		fend = now
+	}
+	duration = fend - fstart
+	return
+}
+
+func (flow *Flow) GetLayerBandwidth(ltype FlowEndpointType, duration int64) (fbw FlowBandwidth) {
+	e := flow.GetStatistics().GetEndpointsType(ltype)
+	fbw.nbFlow = 1
+	fbw.dt = duration
+	fbw.ABpackets = e.AB.Packets
+	fbw.ABbytes = e.AB.Bytes
+	fbw.BApackets = e.BA.Packets
+	fbw.BAbytes = e.BA.Bytes
+	return
+}
+
 func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, setter FlowProbeNodeSetter) *Flow {
 	key := NewFlowKeyFromGoPacket(packet)
 	flow, _ := ft.GetOrCreateFlow(key.String())
@@ -233,7 +261,7 @@ func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, setter FlowProbeNodeSe
 		setter.SetProbeNode(flow)
 	}
 
-	err := flow.fillFromGoPacket(packet)
+	err := flow.fillFromGoPacket(ft.GetTime(), packet)
 	if err != nil {
 		logging.GetLogger().Error(err.Error())
 		return nil

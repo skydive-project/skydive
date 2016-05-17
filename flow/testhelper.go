@@ -25,12 +25,15 @@
 package flow
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
+	"strings"
 	"testing"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/op/go-logging"
 )
 
 type ProtocolType int
@@ -173,4 +176,58 @@ func NewTestFlowTableComplex(t *testing.T, updateHandler *FlowHandler, expireHan
 	ft := NewTable(updateHandler, expireHandler)
 	GenerateTestFlows(t, ft, 0xca55e77e, "probe-uuid")
 	return ft
+}
+
+func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
+	minStart := int64(^uint64(0) >> 1)
+	maxEnd := int64(0)
+	for _, f := range flows {
+		fstart := f.GetStatistics().Start
+		fend := f.GetStatistics().Last
+		if fstart < minStart {
+			minStart = fstart
+		}
+		if fend > maxEnd {
+			maxEnd = fend
+		}
+	}
+	nbCol := 75
+	scale := float64(maxEnd-minStart) / float64(nbCol)
+	fmt.Printf("%d ----- %d (%d) scale %.2f\n", minStart-now, maxEnd-now, maxEnd-minStart, scale)
+	for _, f := range flows {
+		s := f.GetStatistics()
+		fstart := s.Start
+		fend := s.Last
+		if fend == 0 {
+			fend = maxEnd
+		}
+		duration := fend - fstart
+		hstr := f.GetLayerHash(FlowEndpointType_ETHERNET)
+
+		needTag := false
+		for _, tag := range tagsUUID {
+			if needTag = strings.Contains(hstr, tag); needTag {
+				break
+			}
+		}
+		if needTag {
+			fmt.Print(logging.ColorSeq(logging.ColorRed))
+		}
+		for x := 0; x < nbCol; x++ {
+			if (x < int(float64(fstart-minStart)/scale)) || (fend > 0 && (x > int(float64(fend-minStart)/scale))) {
+				fmt.Print("-")
+			} else {
+				fmt.Print("x")
+			}
+		}
+		e := s.GetEndpointsType(FlowEndpointType_ETHERNET)
+		fdt := float64(duration)
+		ppsAB := float64(e.AB.Packets) / fdt
+		bpsAB := float64(e.AB.Bytes) / fdt
+		fmt.Printf(" %s %d (%d) %.0f %.0f\n", hstr[:6], s.Start-now, duration, ppsAB, bpsAB)
+		if needTag {
+			fmt.Print(logging.ColorSeq(0))
+		}
+	}
+	return ""
 }

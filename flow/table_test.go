@@ -24,6 +24,7 @@ package flow
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -262,4 +263,118 @@ func TestTable_SymmeticsHash(t *testing.T) {
 			t.Fail()
 		}
 	}
+}
+
+func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow, ftype FlowEndpointType) {
+	rnd := rand.New(rand.NewSource(seed))
+	s := f.GetStatistics()
+	for _, e := range s.Endpoints {
+		if e.Type == ftype {
+			e.AB.Packets = uint64(rnd.Int63n(0x10000))
+			e.AB.Bytes = e.AB.Packets * uint64(14+rnd.Intn(1501))
+			e.BA.Packets = uint64(rnd.Int63n(0x10000))
+			e.BA.Bytes = e.BA.Packets * uint64(14+rnd.Intn(1501))
+
+			s.Last = 0
+			s.Start = now - rnd.Int63n(100)
+			if (rnd.Int() % 2) == 0 {
+				s.Last = s.Start + rnd.Int63n(100)
+			}
+			return
+		}
+	}
+}
+
+func TestNewTableQuery_WindowBandwidth(t *testing.T) {
+	now := int64(1462962423)
+
+	ft := NewTable(nil, nil)
+	flows := GenerateTestFlows(t, ft, 0x4567, "probequery0")
+	for i, f := range flows {
+		randomizeLayerStats(t, int64(0x785612+i), now, f, FlowEndpointType_ETHERNET)
+	}
+
+	fbw, _ := ft.WindowBandwidth(now-100, now+100)
+	fbwSeed0x4567 := FlowBandwidth{ABpackets: 392193, ABbytes: 225250394, BApackets: 278790, BAbytes: 238466148, dt: 200, nbFlow: 10}
+	if fbw != fbwSeed0x4567 {
+		t.Fatal("flows Bandwidth didn't match\n", "fbw:", fbw, "fbwSeed0x4567:", fbwSeed0x4567)
+	}
+
+	fbw, _ = ft.WindowBandwidth(0, now+100)
+	fbw10FlowZero := fbwSeed0x4567
+	fbw10FlowZero.dt = 1462962523
+	if fbw != fbw10FlowZero {
+		t.Fatal("flows Bandwidth should be zero for 10 flows", fbw, fbw10FlowZero)
+	}
+
+	fbw, _ = ft.WindowBandwidth(0, 0)
+	fbwZero := FlowBandwidth{}
+	if fbw != fbwZero {
+		t.Fatal("flows Bandwidth should be zero", fbw, fbwZero)
+	}
+
+	fbw, _ = ft.WindowBandwidth(now, now-1)
+	if fbw != fbwZero {
+		t.Fatal("flows Bandwidth should be zero", fbw, fbwZero)
+	}
+	graphFlows(now, flows)
+
+	fbw, _ = ft.WindowBandwidth(now-89, now-89)
+	if fbw != fbwZero {
+		t.Fatal("flows Bandwidth should be zero", fbw, fbwZero)
+	}
+
+	/* flow half window (2 sec) */
+	fbw, winFlows := ft.WindowBandwidth(now-89-1, now-89+1)
+	fbwFlow := FlowBandwidth{ABpackets: 239, ABbytes: 106266, BApackets: 551, BAbytes: 444983, dt: 2, nbFlow: 1}
+	if fbw != fbwFlow {
+		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
+	}
+
+	/* flow 2/3 window (3 sec) */
+	fbw, winFlows = ft.WindowBandwidth(now-89-1, now-89+2)
+	fbwFlow = FlowBandwidth{ABpackets: 479, ABbytes: 212532, BApackets: 1102, BAbytes: 889966, dt: 3, nbFlow: 1}
+	if fbw != fbwFlow {
+		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
+	}
+
+	/* flow full window, 1 sec */
+	fbw, winFlows = ft.WindowBandwidth(now-89, now-89+1)
+	fbwFlow = FlowBandwidth{ABpackets: 239, ABbytes: 106266, BApackets: 551, BAbytes: 444983, dt: 1, nbFlow: 1}
+	if fbw != fbwFlow {
+		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
+	}
+
+	/* flow full window shifted (+2), 2 sec */
+	fbw, winFlows = ft.WindowBandwidth(now-89+2, now-89+4)
+	fbwFlow = FlowBandwidth{ABpackets: 479, ABbytes: 212532, BApackets: 1102, BAbytes: 889966, dt: 2, nbFlow: 1}
+	if fbw != fbwFlow {
+		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
+	}
+
+	/* 2 flows full window, 1 sec */
+	fbw, winFlows = ft.WindowBandwidth(now-71, now-71+1)
+	fbwFlow = FlowBandwidth{ABpackets: 3956, ABbytes: 3154923, BApackets: 2052, BAbytes: 1879998, dt: 1, nbFlow: 2}
+	if fbw != fbwFlow {
+		t.Fatal("flows Bandwidth should be from 2 flows ", fbw, fbwFlow)
+	}
+
+	tags := make([]string, fbw.nbFlow)
+	for i, fw := range winFlows {
+		tags[i] = fw.GetLayerHash(FlowEndpointType_ETHERNET)
+	}
+	graphFlows(now, flows, tags...)
+
+	fbw, winFlows = ft.WindowBandwidth(now-58, now-58+1)
+	fbw4flows := FlowBandwidth{ABpackets: 33617, ABbytes: 31846830, BApackets: 7529, BAbytes: 9191349, dt: 1, nbFlow: 4}
+	if fbw != fbw4flows {
+		t.Fatal("flows Bandwidth should be from 4 flows ", fbw, fbw4flows)
+	}
+
+	tags = make([]string, fbw.nbFlow)
+	for i, fw := range winFlows {
+		tags[i] = fw.GetLayerHash(FlowEndpointType_ETHERNET)
+	}
+	graphFlows(now, flows, tags...)
+	t.Log(fbw)
 }

@@ -87,10 +87,11 @@ type Table struct {
 	wg            sync.WaitGroup
 	updateHandler *FlowHandler
 	expireHandler *FlowHandler
+	tableClock    int64
 }
 
 func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
-	return &Table{
+	t := &Table{
 		table:         make(map[string]*Flow),
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
@@ -98,6 +99,8 @@ func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 		updateHandler: updateHandler,
 		expireHandler: expireHandler,
 	}
+	atomic.StoreInt64(&t.tableClock, time.Now().Unix())
+	return t
 }
 
 func NewTableFromFlows(flows []*Flow, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
@@ -132,6 +135,10 @@ func matchQueryFilter(f *Flow, filter *FlowQueryFilter) bool {
 	}
 
 	return false
+}
+
+func (ft *Table) GetTime() int64 {
+	return atomic.LoadInt64(&ft.tableClock)
 }
 
 func (ft *Table) GetFlows(filters ...FlowQueryFilter) []*Flow {
@@ -279,6 +286,57 @@ func (ft *Table) RegisterDefault(fn func()) {
 	ft.Unlock()
 }
 
+/* Need to Rlock the table before calling. Returned flows may not be unique */
+func (ft *Table) window(start int64, end int64) (flows []*Flow) {
+	if start > end {
+		return
+	}
+	for _, f := range ft.table {
+		fstart := f.GetStatistics().Start
+		fend := f.GetStatistics().Last
+		if fstart < end && (fend == 0 || fend > start) {
+			flows = append(flows, f)
+		}
+	}
+	return
+}
+
+func minInt64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func (ft *Table) WindowBandwidth(start int64, end int64) (fbw FlowBandwidth, flows []*Flow) {
+	ft.RLock()
+	defer ft.RUnlock()
+
+	flows = ft.window(start, end)
+	if len(flows) == 0 {
+		return
+	}
+	fbw.dt = end - start
+	for _, f := range flows {
+		fduration, fstart, fend := f.GetDuration(end)
+		lbw := f.GetLayerBandwidth(FlowEndpointType_ETHERNET, fduration)
+		fdurationWindow := uint64(minInt64(fend, end) - maxInt64(fstart, start))
+		fbw.ABpackets += uint64(lbw.ABpackets * fdurationWindow / uint64(fduration))
+		fbw.ABbytes += uint64(lbw.ABbytes * fdurationWindow / uint64(fduration))
+		fbw.BApackets += uint64(lbw.BApackets * fdurationWindow / uint64(fduration))
+		fbw.BAbytes += uint64(lbw.BAbytes * fdurationWindow / uint64(fduration))
+		fbw.nbFlow++
+	}
+	return
+}
+
 func (ft *Table) Flush() {
 	ft.flush <- true
 	<-ft.flushDone
@@ -358,6 +416,9 @@ func (ft *Table) Start() {
 	expireTicker := time.NewTicker(ft.expireHandler.every)
 	defer expireTicker.Stop()
 
+	nowTicker := time.NewTicker(time.Second * 1)
+	defer nowTicker.Stop()
+
 	ft.query = make(chan *TableQuery)
 	ft.reply = make(chan *TableReply)
 
@@ -375,6 +436,8 @@ func (ft *Table) Start() {
 			if ok {
 				ft.reply <- ft.onQuery(query)
 			}
+		case now := <-nowTicker.C:
+			atomic.StoreInt64(&ft.tableClock, now.Unix())
 		default:
 			if ft.defaultFunc != nil {
 				ft.defaultFunc()
