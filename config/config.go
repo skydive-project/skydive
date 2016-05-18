@@ -91,13 +91,22 @@ func checkConfig() error {
 	return nil
 }
 
+func checkViperSupportedExts(ext string) bool {
+	for _, e := range viper.SupportedExts {
+		if e == ext {
+			return true
+		}
+	}
+	return false
+}
+
 func InitConfig(backend string, path string) error {
 	if path == "" {
 		return fmt.Errorf("Empty configuration path")
 	}
 
 	ext := strings.TrimPrefix(filepath.Ext(path), ".")
-	if ext == "" {
+	if ext == "" || !checkViperSupportedExts(ext) {
 		ext = "yaml"
 	}
 	cfg.SetConfigType(ext)

@@ -68,7 +68,7 @@ func (o *OnDemandProbeListener) probeFromType(n *graph.Node) FlowProbe {
 func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) {
 	fprobe := o.probeFromType(n)
 	if fprobe == nil {
-		logging.GetLogger().Errorf("Failed to register flow probe, unknown type")
+		logging.GetLogger().Errorf("Failed to register flow probe, unknown type %v", n)
 		return
 	}
 
