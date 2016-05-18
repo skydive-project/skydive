@@ -24,7 +24,7 @@ analyzer:
   flowtable_expire: 600
   flowtable_update: 60
   # specify storage engine
-  # storage: elasticseach
+  # storage: elasticsearch
 
 agent:
   # address and port for the agent API, Format: addr:port.
