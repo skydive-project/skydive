@@ -231,21 +231,12 @@ func TestPath(t *testing.T) {
 	// add a shorter link in order to validate edge validator
 	g.Link(n1, n4, Metadata{"Type": "Layer3"})
 
-	v := func(e *Edge) bool {
-		return e.Metadata()["Type"].(string) == "Layer2"
-	}
-
-	r = g.LookupShortestPath(n4, Metadata{"Value": 1}, v)
+	r = g.LookupShortestPath(n4, Metadata{"Value": 1}, Metadata{"Type": "Layer2"})
 	if len(r) == 0 || !validatePath(r, "4/3/2/1") {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}
 
-	// should return only n1 -> n4
-	v = func(e *Edge) bool {
-		return e.Metadata()["Type"].(string) == "Layer3"
-	}
-
-	r = g.LookupShortestPath(n4, Metadata{"Value": 1}, v)
+	r = g.LookupShortestPath(n4, Metadata{"Value": 1}, Metadata{"Type": "Layer3"})
 	if len(r) == 0 || !validatePath(r, "4/1") {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}

@@ -87,7 +87,7 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 			return errors.New(fmt.Sprintf("A pcap probe already exists for %s", ifName))
 		}
 
-		nodes := p.graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
+		nodes := p.graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
 		if len(nodes) == 0 {
 			return errors.New(fmt.Sprintf("Failed to determine probePath for %s", ifName))
 		}

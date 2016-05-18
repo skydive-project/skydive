@@ -93,7 +93,7 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
 }
 
 func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
-	nodes := o.Graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
+	nodes := o.Graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
 	if len(nodes) == 0 {
 		return
 	}

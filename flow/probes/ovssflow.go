@@ -255,7 +255,7 @@ func isOvsBridge(n *graph.Node) bool {
 
 func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) error {
 	if isOvsBridge(n) {
-		nodes := o.Graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, topology.IsOwnershipEdge)
+		nodes := o.Graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
 		if len(nodes) == 0 {
 			return errors.New(fmt.Sprintf("Failed to determine probePath for %v", n))
 		}

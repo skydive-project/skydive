@@ -94,8 +94,6 @@ type Graph struct {
 	eventListeners []GraphEventListener
 }
 
-type EdgeValidator func(e *Edge) bool
-
 type MetadataMatcher interface {
 	Match(v interface{}) bool
 }
@@ -272,7 +270,7 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	return &t
 }
 
-func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, ev ...EdgeValidator) []*Node {
+func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, em ...Metadata) []*Node {
 	v[n.ID] = true
 
 	path = append(path, n)
@@ -283,7 +281,7 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 
 	shortest := []*Node{}
 	for _, e := range g.backend.GetNodeEdges(n) {
-		if len(ev) > 0 && !ev[0](e) {
+		if len(em) > 0 && !e.matchMetadata(em[0]) {
 			continue
 		}
 
@@ -307,7 +305,7 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 				nv[k] = v
 			}
 
-			sub := g.lookupShortestPath(neighbor, m, path, nv)
+			sub := g.lookupShortestPath(neighbor, m, path, nv, em...)
 			if len(sub) > 0 && (len(shortest) == 0 || len(sub) < len(shortest)) {
 				shortest = sub
 			}
@@ -317,8 +315,8 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 	return shortest
 }
 
-func (g *Graph) LookupShortestPath(n *Node, m Metadata, ev ...EdgeValidator) []*Node {
-	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), ev...)
+func (g *Graph) LookupShortestPath(n *Node, m Metadata, em ...Metadata) []*Node {
+	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), em...)
 }
 
 func (g *Graph) LookupParentNodes(n *Node, f Metadata) []*Node {
