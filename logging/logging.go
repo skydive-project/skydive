@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -54,6 +53,11 @@ func getPackageFunction() (pkg string, fun string) {
 
 var skydiveLoggerLock sync.Mutex
 var skydiveLogger SkydiveLogger
+var skydiveLoggingID = "skydive"
+
+func SetLoggingID(ID string) {
+	skydiveLoggingID = ID
+}
 
 type SkydiveLogger struct {
 	loggers     map[string]*logging.Logger
@@ -68,7 +72,7 @@ func initSkydiveLogger() {
 	if err != nil {
 		panic(err)
 	}
-	id += ":" + filepath.Base(os.Args[0])
+	id += ":" + skydiveLoggingID
 	skydiveLogger = SkydiveLogger{
 		id:          id,
 		loggers:     make(map[string]*logging.Logger),

@@ -40,6 +40,7 @@ var Agent = &cobra.Command{
 	Long:         "Skydive agent",
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
+		logging.SetLoggingID("agent")
 		logging.GetLogger().Notice("Skydive Agent starting...")
 		agent := agent.NewAgent()
 		agent.Start()
