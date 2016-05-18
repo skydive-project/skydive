@@ -25,6 +25,7 @@ package probes
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -38,6 +39,7 @@ import (
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	"github.com/redhat-cip/skydive/topology/probes"
+	"github.com/vishvananda/netns"
 )
 
 type PcapProbe struct {
@@ -92,31 +94,54 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 			return errors.New(fmt.Sprintf("Failed to determine probePath for %s", ifName))
 		}
 
+		probePath := topology.NodePath(nodes).Marshal()
+
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+
+		origns, err := netns.Get()
+		if err != nil {
+			return fmt.Errorf("Error while getting current ns: %s", err.Error())
+		}
+		defer origns.Close()
+
+		for _, node := range nodes {
+			if node.Metadata()["Type"] == "netns" {
+				name := node.Metadata()["Name"].(string)
+				path := node.Metadata()["Path"].(string)
+				logging.GetLogger().Debugf("Switching to namespace %s (path: %s)", name, path)
+
+				newns, err := netns.GetFromPath(path)
+				if err != nil {
+					return fmt.Errorf("Error while opening ns %s (path: %s): %s", name, path, err.Error())
+				}
+				defer newns.Close()
+
+				if err := netns.Set(newns); err != nil {
+					return fmt.Errorf("Error while switching from root ns to %s (path: %s): %s", name, path, err.Error())
+				}
+				defer netns.Set(origns)
+			}
+		}
+
 		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
 		}
-
-		if capture.BPFFilter != "" {
-			handle.SetBPFFilter(capture.BPFFilter)
-		}
-
-		probePath := topology.NodePath(nodes).Marshal()
 
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		packetChannel := packetSource.Packets()
 
 		probe := &PcapProbe{
+			probePath: probePath,
 			handle:    handle,
 			channel:   packetChannel,
-			probePath: probePath,
 		}
-
 		p.probesLock.Lock()
 		p.probes[ifName] = probe
 		p.probesLock.Unlock()
-
 		p.wg.Add(1)
+
 		go func() {
 			defer p.wg.Done()
 
@@ -130,6 +155,7 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 
 func (p *PcapProbesHandler) unregisterProbe(ifName string) error {
 	if probe, ok := p.probes[ifName]; ok {
+		logging.GetLogger().Debugf("Terminating pcap capture on %s", ifName)
 		probe.handle.Close()
 		delete(p.probes, ifName)
 	}

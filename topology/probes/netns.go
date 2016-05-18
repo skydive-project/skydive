@@ -81,7 +81,7 @@ func (nu *NetNsNetLinkTopoUpdater) Start(ns *NetNs) {
 
 	origns, err := netns.Get()
 	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", ns.path, err.Error())
+		logging.GetLogger().Errorf("Error while getting root ns: %s", err.Error())
 		return
 	}
 	defer origns.Close()
@@ -169,7 +169,7 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 	defer u.Graph.Unlock()
 
 	logging.GetLogger().Debugf("Network Namespace added: %s", nsString)
-	metadata := graph.Metadata{"Name": getNetNSName(path), "Type": "netns"}
+	metadata := graph.Metadata{"Name": getNetNSName(path), "Type": "netns", "Path": path}
 	if extraMetadata != nil {
 		for k, v := range extraMetadata {
 			metadata[k] = v
