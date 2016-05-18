@@ -115,7 +115,10 @@ func NewTestStorage() *TestStorage {
 	return &TestStorage{flows: make(map[string]*flow.Flow)}
 }
 
-func (s *TestStorage) Close() {
+func (s *TestStorage) Start() {
+}
+
+func (s *TestStorage) Stop() {
 }
 
 func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {

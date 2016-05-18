@@ -115,6 +115,10 @@ func (s *Server) asyncFlowTableExpireUpdated() {
 func (s *Server) ListenAndServe() {
 	s.running.Store(true)
 
+	if s.Storage != nil {
+		s.Storage.Start()
+	}
+
 	s.AlertServer.AlertManager.Start()
 
 	s.wgServers.Add(4)
@@ -157,7 +161,7 @@ func (s *Server) Stop() {
 		s.EmbeddedEtcd.Stop()
 	}
 	if s.Storage != nil {
-		s.Storage.Close()
+		s.Storage.Stop()
 	}
 	s.AlertServer.AlertManager.Stop()
 	s.EtcdClient.Stop()

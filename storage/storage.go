@@ -29,7 +29,8 @@ import (
 type Filters map[string]interface{}
 
 type Storage interface {
+	Start()
 	StoreFlows(flows []*flow.Flow) error
 	SearchFlows(filters Filters) ([]*flow.Flow, error)
-	Close()
+	Stop()
 }

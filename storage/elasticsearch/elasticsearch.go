@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 
@@ -51,9 +53,14 @@ const mapping = `
 type ElasticSearchStorage struct {
 	connection *elastigo.Conn
 	indexer    *elastigo.BulkIndexer
+	started    atomic.Value
 }
 
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
+	if c.started.Load() != true {
+		return errors.New("ElasticSearchStorage is not yet started")
+	}
+
 	for _, flow := range flows {
 		err := c.indexer.Index("skydive", "flow", flow.UUID, "", "", nil, flow)
 		if err != nil {
@@ -66,6 +73,10 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 }
 
 func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error) {
+	if c.started.Load() != true {
+		return nil, errors.New("ElasticSearchStorage is not yet started")
+	}
+
 	query := map[string]interface{}{
 		"sort": map[string]interface{}{
 			"Statistics.Last": map[string]string{
@@ -132,9 +143,6 @@ func (c *ElasticSearchStorage) request(method string, path string, query string,
 }
 
 func (c *ElasticSearchStorage) initialize() error {
-	c.indexer = c.connection.NewBulkIndexerErrors(10, 60)
-	c.indexer.Start()
-
 	indexPath := fmt.Sprintf("/skydive_v%d", indexVersion)
 
 	code, _, _ := c.request("GET", indexPath, "", "")
@@ -174,14 +182,39 @@ func (c *ElasticSearchStorage) initialize() error {
 		return errors.New("Unable to create an alias to the skydive index: " + strconv.FormatInt(int64(code), 10))
 	}
 
+	logging.GetLogger().Infof("ElasticSearchStorage started")
+
 	return nil
 }
 
 var ErrBadConfig = errors.New("elasticseach : Config file is misconfigured, check elasticsearch key format")
 
-func (c *ElasticSearchStorage) Close() {
-	c.indexer.Stop()
-	c.connection.Close()
+func (c *ElasticSearchStorage) start() {
+	for {
+		err := c.initialize()
+		if err == nil {
+			break
+		}
+		logging.GetLogger().Errorf("Unable to get connected to Elasticsearch: %s", err.Error())
+
+		time.Sleep(1 * time.Second)
+	}
+
+	c.indexer = c.connection.NewBulkIndexerErrors(10, 60)
+	c.indexer.Start()
+
+	c.started.Store(true)
+}
+
+func (c *ElasticSearchStorage) Start() {
+	go c.start()
+}
+
+func (c *ElasticSearchStorage) Stop() {
+	if c.started.Load() == true {
+		c.indexer.Stop()
+		c.connection.Close()
+	}
 }
 
 func New() (*ElasticSearchStorage, error) {
@@ -195,11 +228,7 @@ func New() (*ElasticSearchStorage, error) {
 	c.Port = elasticonfig[1]
 
 	storage := &ElasticSearchStorage{connection: c}
-
-	err := storage.initialize()
-	if err != nil {
-		return nil, err
-	}
+	storage.started.Store(false)
 
 	return storage, nil
 }
