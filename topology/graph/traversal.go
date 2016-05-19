@@ -39,15 +39,21 @@ type GraphTraversal struct {
 }
 
 type GraphTraversalV struct {
-	Graph *Graph
-	nodes []*Node
-	error error
+	GraphTraversal *GraphTraversal
+	nodes          []*Node
+	error          error
 }
 
 type GraphTraversalE struct {
-	Graph *Graph
-	edges []*Edge
-	error error
+	GraphTraversal *GraphTraversal
+	edges          []*Edge
+	error          error
+}
+
+type GraphTraversalShortestPath struct {
+	GraphTraversal *GraphTraversal
+	paths          [][]*Node
+	error          error
 }
 
 type WithinMetadataMatcher struct {
@@ -120,12 +126,12 @@ func (t *GraphTraversal) V(ids ...Identifier) *GraphTraversalV {
 	if len(ids) > 0 {
 		node := t.Graph.GetNode(ids[0])
 		if node != nil {
-			return &GraphTraversalV{Graph: t.Graph, nodes: []*Node{node}}
+			return &GraphTraversalV{GraphTraversal: t, nodes: []*Node{node}}
 		}
-		return &GraphTraversalV{Graph: t.Graph, nodes: []*Node{}}
+		return &GraphTraversalV{GraphTraversal: t, nodes: []*Node{}}
 	}
 
-	return &GraphTraversalV{Graph: t.Graph, nodes: t.Graph.GetNodes()}
+	return &GraphTraversalV{GraphTraversal: t, nodes: t.Graph.GetNodes()}
 }
 
 func (tv *GraphTraversalV) Error() error {
@@ -141,7 +147,11 @@ func (tv *GraphTraversalV) Values() []interface{} {
 }
 
 func (tv *GraphTraversalV) Dedup() *GraphTraversalV {
-	ntv := &GraphTraversalV{Graph: tv.Graph, nodes: []*Node{}}
+	if tv.error != nil {
+		return tv
+	}
+
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
 
 	visited := make(map[Identifier]bool)
 	for _, n := range tv.nodes {
@@ -153,12 +163,42 @@ func (tv *GraphTraversalV) Dedup() *GraphTraversalV {
 	return ntv
 }
 
+func (sp *GraphTraversalShortestPath) Values() []interface{} {
+	s := make([]interface{}, len(sp.paths))
+	for i, p := range sp.paths {
+		s[i] = p
+	}
+	return s
+}
+
+func (sp *GraphTraversalShortestPath) Error() error {
+	return sp.error
+}
+
+func (tv *GraphTraversalV) ShortestPathTo(m Metadata, e ...Metadata) *GraphTraversalShortestPath {
+	if tv.error != nil {
+		return &GraphTraversalShortestPath{GraphTraversal: tv.GraphTraversal, paths: [][]*Node{}, error: tv.error}
+	}
+	sp := &GraphTraversalShortestPath{GraphTraversal: tv.GraphTraversal, paths: [][]*Node{}}
+
+	visited := make(map[Identifier]bool)
+	for _, n := range tv.nodes {
+		if _, ok := visited[n.ID]; !ok {
+			path := tv.GraphTraversal.Graph.LookupShortestPath(n, m, e...)
+			if len(path) > 0 {
+				sp.paths = append(sp.paths, path)
+			}
+		}
+	}
+	return sp
+}
+
 func (tv *GraphTraversalV) hasKey(k string) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
 
-	ntv := &GraphTraversalV{Graph: tv.Graph, nodes: []*Node{}}
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
 	for _, n := range tv.nodes {
 		if _, ok := n.Metadata()[k]; ok {
 			ntv.nodes = append(ntv.nodes, n)
@@ -175,21 +215,21 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 
 	switch len(s) {
 	case 0:
-		return &GraphTraversalV{Graph: tv.Graph, error: errors.New("At least one parameters must be provided")}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("At least one parameters must be provided")}
 	case 1:
 		k, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalV{Graph: tv.Graph, error: errors.New("Key must be a string")}
+			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("Key must be a string")}
 		}
 		return tv.hasKey(k)
 	}
 
 	m, err := sliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalV{Graph: tv.Graph, error: err}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
 	}
 
-	ntv := &GraphTraversalV{Graph: tv.Graph, nodes: []*Node{}}
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
 	for _, n := range tv.nodes {
 		if n.matchMetadata(m) {
 			ntv.nodes = append(ntv.nodes, n)
@@ -204,10 +244,10 @@ func (tv *GraphTraversalV) Out() *GraphTraversalV {
 		return tv
 	}
 
-	ntv := &GraphTraversalV{Graph: tv.Graph, nodes: []*Node{}}
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.Graph.backend.GetNodeEdges(n) {
-			parent, child := tv.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
+			parent, child := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
 
 			if parent != nil && parent.ID == n.ID {
 				ntv.nodes = append(ntv.nodes, child)
@@ -220,13 +260,13 @@ func (tv *GraphTraversalV) Out() *GraphTraversalV {
 
 func (tv *GraphTraversalV) OutE() *GraphTraversalE {
 	if tv.error != nil {
-		return &GraphTraversalE{Graph: tv.Graph, error: tv.error}
+		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: tv.error}
 	}
 
-	nte := &GraphTraversalE{Graph: tv.Graph, edges: []*Edge{}}
+	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*Edge{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.Graph.backend.GetNodeEdges(n) {
-			parent, _ := tv.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
+			parent, _ := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
 
 			if parent != nil && parent.ID == n.ID {
 				nte.edges = append(nte.edges, e)
@@ -242,10 +282,10 @@ func (tv *GraphTraversalV) In() *GraphTraversalV {
 		return tv
 	}
 
-	ntv := &GraphTraversalV{Graph: tv.Graph, nodes: []*Node{}}
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.Graph.backend.GetNodeEdges(n) {
-			parent, child := tv.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
+			parent, child := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
 
 			if child != nil && child.ID == n.ID {
 				ntv.nodes = append(ntv.nodes, parent)
@@ -258,13 +298,13 @@ func (tv *GraphTraversalV) In() *GraphTraversalV {
 
 func (tv *GraphTraversalV) InE() *GraphTraversalE {
 	if tv.error != nil {
-		return &GraphTraversalE{Graph: tv.Graph, error: tv.error}
+		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: tv.error}
 	}
 
-	nte := &GraphTraversalE{Graph: tv.Graph, edges: []*Edge{}}
+	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*Edge{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.Graph.backend.GetNodeEdges(n) {
-			_, child := tv.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
+			_, child := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
 
 			if child != nil && child.ID == n.ID {
 				nte.edges = append(nte.edges, e)
@@ -288,7 +328,7 @@ func (te *GraphTraversalE) Values() []interface{} {
 }
 
 func (te *GraphTraversalE) Dedup() *GraphTraversalE {
-	ntv := &GraphTraversalE{Graph: te.Graph, edges: []*Edge{}}
+	ntv := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*Edge{}}
 
 	visited := make(map[Identifier]bool)
 	for _, e := range te.edges {
@@ -305,7 +345,7 @@ func (te *GraphTraversalE) hasKey(k string) *GraphTraversalE {
 		return te
 	}
 
-	nte := &GraphTraversalE{Graph: te.Graph, edges: []*Edge{}}
+	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*Edge{}}
 	for _, e := range te.edges {
 		if _, ok := e.Metadata()[k]; ok {
 			nte.edges = append(nte.edges, e)
@@ -322,21 +362,21 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 
 	switch len(s) {
 	case 0:
-		return &GraphTraversalE{Graph: te.Graph, error: errors.New("At least one parameters must be provided")}
+		return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("At least one parameters must be provided")}
 	case 1:
 		k, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalE{Graph: te.Graph, error: errors.New("Key must be a string")}
+			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("Key must be a string")}
 		}
 		return te.hasKey(k)
 	}
 
 	m, err := sliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalE{Graph: te.Graph, error: err}
+		return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: err}
 	}
 
-	nte := &GraphTraversalE{Graph: te.Graph, edges: []*Edge{}}
+	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*Edge{}}
 	for _, e := range te.edges {
 		if e.matchMetadata(m) {
 			nte.edges = append(nte.edges, e)
@@ -348,12 +388,12 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 
 func (te *GraphTraversalE) InV() *GraphTraversalV {
 	if te.error != nil {
-		return &GraphTraversalV{Graph: te.Graph, error: te.error}
+		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: te.error}
 	}
 
-	ntv := &GraphTraversalV{Graph: te.Graph, nodes: []*Node{}}
+	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*Node{}}
 	for _, e := range te.edges {
-		parent, _ := te.Graph.backend.GetEdgeNodes(e)
+		parent, _ := te.GraphTraversal.Graph.backend.GetEdgeNodes(e)
 		ntv.nodes = append(ntv.nodes, parent)
 	}
 
@@ -362,12 +402,12 @@ func (te *GraphTraversalE) InV() *GraphTraversalV {
 
 func (te *GraphTraversalE) OutV() *GraphTraversalV {
 	if te.error != nil {
-		return &GraphTraversalV{Graph: te.Graph, error: te.error}
+		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: te.error}
 	}
 
-	ntv := &GraphTraversalV{Graph: te.Graph, nodes: []*Node{}}
+	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*Node{}}
 	for _, e := range te.edges {
-		_, child := te.Graph.backend.GetEdgeNodes(e)
+		_, child := te.GraphTraversal.Graph.backend.GetEdgeNodes(e)
 		ntv.nodes = append(ntv.nodes, child)
 	}
 

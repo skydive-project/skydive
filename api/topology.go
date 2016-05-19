@@ -29,6 +29,7 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	shttp "github.com/redhat-cip/skydive/http"
+	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
@@ -51,7 +52,10 @@ func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 	}
 
 	if resource.GremlinQuery != "" {
-		ts, err := graph.NewGremlinTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph).Parse()
+		tr := graph.NewGremlinTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph)
+		tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
+
+		ts, err := tr.Parse()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))

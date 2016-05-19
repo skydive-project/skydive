@@ -46,10 +46,7 @@ func (gfe *OvsFlowEnhancer) getPath(mac string) string {
 	if len(intfs) > 1 {
 		logging.GetLogger().Infof("OvsFlowEnhancer found more than one interface for the mac: %s", mac)
 	} else if len(intfs) == 1 {
-		nodes := gfe.Graph.LookupShortestPath(intfs[0], graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
-		if len(nodes) > 0 {
-			return topology.NodePath{Nodes: nodes}.Marshal()
-		}
+		return topology.GraphPath(gfe.Graph, intfs[0])
 	}
 	return ""
 }

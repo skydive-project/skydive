@@ -30,18 +30,16 @@ import (
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-type NodePath struct {
-	Nodes []*graph.Node
-}
+type NodePath []*graph.Node
 
 func (p NodePath) Marshal() string {
 	var path string
-	for i := len(p.Nodes) - 1; i >= 0; i-- {
+	for i := len(p) - 1; i >= 0; i-- {
 		if len(path) > 0 {
 			path += "/"
 		}
 
-		metadata := p.Nodes[i].Metadata()
+		metadata := p[i].Metadata()
 		n := metadata["Name"]
 		t := metadata["Type"]
 
@@ -104,16 +102,10 @@ func LookupNodeFromNodePathString(g *graph.Graph, s string) *graph.Node {
 	return node
 }
 
-func IsOwnershipEdge(e *graph.Edge) bool {
-	if t, ok := e.Metadata()["RelationType"]; ok && t.(string) == "ownership" {
-		return true
+func GraphPath(g *graph.Graph, n *graph.Node) string {
+	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
+	if len(nodes) > 0 {
+		return NodePath(nodes).Marshal()
 	}
-	return false
-}
-
-func IsLayer2Edge(e *graph.Edge) bool {
-	if t, ok := e.Metadata()["RelationType"]; ok && t.(string) == "layer2" {
-		return true
-	}
-	return false
+	return ""
 }

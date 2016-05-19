@@ -35,7 +35,7 @@ func newTrasversalGraph(t *testing.T) *Graph {
 	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
 	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
-	g.Link(n1, n2)
+	g.Link(n1, n2, Metadata{"Direction": "Left"})
 	g.Link(n2, n3, Metadata{"Direction": "Left"})
 	g.Link(n3, n4)
 	g.Link(n1, n4)
@@ -137,6 +137,44 @@ func TestTraversalWithin(t *testing.T) {
 	}
 }
 
+func TestTraversalShortestPathTo(t *testing.T) {
+	g := newTrasversalGraph(t)
+
+	tr := NewGrahTraversal(g)
+
+	tv := tr.V().Has("Value", 1).ShortestPathTo(Metadata{"Value": 3})
+	if len(tv.Values()) != 1 {
+		t.Fatalf("Should return 1 path, returned: %v", tv.Values())
+	}
+
+	path := tv.Values()[0].([]*Node)
+	if len(path) != 2 {
+		t.Fatalf("Should return a path len of 2, returned: %v", len(path))
+	}
+
+	// next test
+	tv = tr.V().Has("Value", Within(1, 2)).ShortestPathTo(Metadata{"Value": 3})
+	if len(tv.Values()) != 2 {
+		t.Fatalf("Should return 2 paths, returned: %v", tv.Values())
+	}
+
+	path = tv.Values()[0].([]*Node)
+	if len(path) != 2 {
+		t.Fatalf("Should return a path len of 2, returned: %v", len(path))
+	}
+
+	// next test
+	tv = tr.V().Has("Value", 1).ShortestPathTo(Metadata{"Value": 3}, Metadata{"Direction": "Left"})
+	if len(tv.Values()) != 1 {
+		t.Fatalf("Should return 1 path, returned: %v", tv.Values())
+	}
+
+	path = tv.Values()[0].([]*Node)
+	if len(path) != 3 {
+		t.Fatalf("Should return a path len of 3, returned: %v", len(path))
+	}
+}
+
 func execTraversalQuery(t *testing.T, g *Graph, query string) GraphTraversalStep {
 	ts, err := NewGremlinTraversalParser(strings.NewReader(query), g).Parse()
 	if err != nil {
@@ -227,5 +265,12 @@ func TestTraversalParser(t *testing.T) {
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 1 || res.Values()[0].(*Node).ID != node.ID {
 		t.Fatalf("Should return 1 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Has("Value", 1).ShortestPathTo(Metadata("Value", 3), Metadata("Direction", "Left"))`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 path, returned: %v", res.Values())
 	}
 }

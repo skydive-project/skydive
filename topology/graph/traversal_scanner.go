@@ -62,6 +62,8 @@ const (
 	DEDUP
 	WITHIN
 	WITHOUT
+	METADATA
+	SHORTESTPATHTO
 
 	// extensions token have to start after 1000
 )
@@ -203,6 +205,10 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return WITHOUT, buf.String()
 	case "DEDUP":
 		return DEDUP, buf.String()
+	case "METADATA":
+		return METADATA, buf.String()
+	case "SHORTESTPATHTO":
+		return SHORTESTPATHTO, buf.String()
 	}
 
 	for _, e := range s.extensions {

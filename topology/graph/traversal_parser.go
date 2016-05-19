@@ -42,18 +42,18 @@ type (
 	GremlinTraversalStepParams []interface{}
 
 	// built in steps
-	gremlinTraversalStepG      struct{}
-	gremlinTraversalStepV      struct{ params GremlinTraversalStepParams }
-	gremlinTraversalStepE      struct{}
-	gremlinTraversalStepOut    struct{}
-	gremlinTraversalStepIn     struct{}
-	gremlinTraversalStepOutV   struct{}
-	gremlinTraversalStepInV    struct{}
-	gremlinTraversalStepOutE   struct{}
-	gremlinTraversalStepInE    struct{}
-	gremlinTraversalStepDedup  struct{}
-	gremlinTraversalStepHas    struct{ params GremlinTraversalStepParams }
-	gremlinTraversalStepString struct{}
+	gremlinTraversalStepG              struct{}
+	gremlinTraversalStepV              struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepE              struct{}
+	gremlinTraversalStepOut            struct{}
+	gremlinTraversalStepIn             struct{}
+	gremlinTraversalStepOutV           struct{}
+	gremlinTraversalStepInV            struct{}
+	gremlinTraversalStepOutE           struct{}
+	gremlinTraversalStepInE            struct{}
+	gremlinTraversalStepDedup          struct{}
+	gremlinTraversalStepHas            struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepShortestPathTo struct{ params GremlinTraversalStepParams }
 )
 
 var (
@@ -171,6 +171,18 @@ func (s *gremlinTraversalStepInE) Exec(last GraphTraversalStep) (GraphTraversalS
 	return nil, ExecutionError
 }
 
+func (s *gremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalV:
+		if len(s.params) > 1 {
+			return last.(*GraphTraversalV).ShortestPathTo(s.params[0].(Metadata), s.params[1].(Metadata)), nil
+		}
+		return last.(*GraphTraversalV).ShortestPathTo(s.params[0].(Metadata)), nil
+	}
+
+	return nil, ExecutionError
+}
+
 func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 	var last GraphTraversalStep
 	var err error
@@ -226,6 +238,16 @@ func (p *GremlinTraversalParser) parserStepParams() (GremlinTraversalStepParams,
 			}
 		case STRING:
 			params = append(params, lit)
+		case METADATA:
+			metadataParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			metadata, err := sliceToMetadata(metadataParams...)
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, metadata)
 		case WITHIN:
 			withParams, err := p.parserStepParams()
 			if err != nil {
@@ -282,6 +304,11 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &gremlinTraversalStepDedup{}, nil
 	case HAS:
 		return &gremlinTraversalStepHas{params: params}, nil
+	case SHORTESTPATHTO:
+		if len(params) == 0 || len(params) > 2 {
+			return nil, fmt.Errorf("ShortestPathTo predicate accept only 1 or 2 parameters")
+		}
+		return &gremlinTraversalStepShortestPathTo{params: params}, nil
 	}
 
 	// extensions

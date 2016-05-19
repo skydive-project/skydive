@@ -260,7 +260,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 			return errors.New(fmt.Sprintf("Failed to determine probePath for %v", n))
 		}
 
-		probePath := topology.NodePath{Nodes: nodes}.Marshal()
+		probePath := topology.NodePath(nodes).Marshal()
 
 		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), probePath)
 		if err != nil {

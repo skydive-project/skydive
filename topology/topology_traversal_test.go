@@ -23,52 +23,38 @@
 package topology
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-func newGraph(t *testing.T) *graph.Graph {
-	b, err := graph.NewMemoryBackend()
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	g, err := graph.NewGraph(b)
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	return g
-}
-
-func TestMarshal(t *testing.T) {
+func TestGraphPathTraversal(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(graph.GenID(), graph.Metadata{"Name": "N1", "Type": "T1"})
+	n1 := g.NewNode(graph.GenID(), graph.Metadata{"Type": "host", "Name": "localhost"})
 	n2 := g.NewNode(graph.GenID(), graph.Metadata{"Name": "N2", "Type": "T2"})
 	n3 := g.NewNode(graph.GenID(), graph.Metadata{"Name": "N3", "Type": "T3"})
 
-	g.Link(n1, n2)
-	g.Link(n2, n3)
+	g.Link(n1, n2, graph.Metadata{"RelationType": "ownership"})
+	g.Link(n2, n3, graph.Metadata{"RelationType": "ownership"})
 
-	r := g.LookupShortestPath(n3, graph.Metadata{"Name": "N1"})
-	if len(r) == 0 {
-		t.Errorf("Wrong nodes returned: %v", r)
+	query := `G.V().Has("Name", "N3").GraphPath()`
+
+	tp := graph.NewGremlinTraversalParser(strings.NewReader(query), g)
+	tp.AddTraversalExtension(NewTopologyTraversalExtension())
+
+	ts, err := tp.Parse()
+	if err != nil {
+		t.Fatal(err.Error())
 	}
 
-	path := NodePath(r).Marshal()
-	if path != "N1[Type=T1]/N2[Type=T2]/N3[Type=T3]" {
-		t.Errorf("Wrong path returned: %s", path)
+	res, err := ts.Exec()
+	if err != nil {
+		t.Fatal(err.Error())
 	}
 
-	node := LookupNodeFromNodePathString(g, path)
-	if node == nil || node.ID != n3.ID {
-		t.Errorf("Wrong node returned: %s", node)
-	}
-
-	node = LookupNodeFromNodePathString(g, "N1[Type=T1]/N2[Type=T1]/N3[Type=T3]")
-	if node != nil {
-		t.Errorf("Shouldn't have any nodes returned")
+	if len(res.Values()) != 1 || res.Values()[0].(string) != "localhost[Type=host]/N2[Type=T2]/N3[Type=T3]" {
+		t.Fatalf("Should return 1 path, returned: %v", res.Values())
 	}
 }
