@@ -312,6 +312,11 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 		}
 	}
 
+	// check that the last element if the one we looked for
+	if len(shortest) > 0 && !shortest[len(shortest)-1].matchMetadata(m) {
+		return []*Node{}
+	}
+
 	return shortest
 }
 
