@@ -51,7 +51,7 @@ func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 	}
 
 	if resource.GremlinQuery != "" {
-		ts, err := graph.NewGraphTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph).Parse()
+		ts, err := graph.NewGremlinTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph).Parse()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))

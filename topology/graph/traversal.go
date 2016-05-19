@@ -108,6 +108,14 @@ func NewGrahTraversal(g *Graph) *GraphTraversal {
 	return &GraphTraversal{Graph: g}
 }
 
+func (t *GraphTraversal) Values() []interface{} {
+	return []interface{}{t.Graph}
+}
+
+func (t *GraphTraversal) Error() error {
+	return nil
+}
+
 func (t *GraphTraversal) V(ids ...Identifier) *GraphTraversalV {
 	if len(ids) > 0 {
 		node := t.Graph.GetNode(ids[0])

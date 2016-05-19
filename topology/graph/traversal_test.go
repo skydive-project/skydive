@@ -138,7 +138,7 @@ func TestTraversalWithin(t *testing.T) {
 }
 
 func execTraversalQuery(t *testing.T, g *Graph, query string) GraphTraversalStep {
-	ts, err := NewGraphTraversalParser(strings.NewReader(query), g).Parse()
+	ts, err := NewGremlinTraversalParser(strings.NewReader(query), g).Parse()
 	if err != nil {
 		t.Fatal(err.Error())
 	}

@@ -62,17 +62,23 @@ const (
 	DEDUP
 	WITHIN
 	WITHOUT
+
+	// extensions token have to start after 1000
 )
 
-type TraversalScanner struct {
-	r *bufio.Reader
+type GremlinTraversalScanner struct {
+	reader     *bufio.Reader
+	extensions []GremlinTraversalExtension
 }
 
-func NewTraversalScanner(r io.Reader) *TraversalScanner {
-	return &TraversalScanner{r: bufio.NewReader(r)}
+func NewGremlinTraversalScanner(r io.Reader, e []GremlinTraversalExtension) *GremlinTraversalScanner {
+	return &GremlinTraversalScanner{
+		reader:     bufio.NewReader(r),
+		extensions: e,
+	}
 }
 
-func (s *TraversalScanner) Scan() (tok Token, lit string) {
+func (s *GremlinTraversalScanner) Scan() (tok Token, lit string) {
 	ch := s.read()
 
 	if isWhitespace(ch) {
@@ -104,7 +110,7 @@ func (s *TraversalScanner) Scan() (tok Token, lit string) {
 	return ILLEGAL, string(ch)
 }
 
-func (s *TraversalScanner) scanWhitespace() (tok Token, lit string) {
+func (s *GremlinTraversalScanner) scanWhitespace() (tok Token, lit string) {
 	var buf bytes.Buffer
 	buf.WriteRune(s.read())
 
@@ -122,7 +128,7 @@ func (s *TraversalScanner) scanWhitespace() (tok Token, lit string) {
 	return WS, buf.String()
 }
 
-func (s *TraversalScanner) scanNumber() (tok Token, lit string) {
+func (s *GremlinTraversalScanner) scanNumber() (tok Token, lit string) {
 	var buf bytes.Buffer
 	buf.WriteRune(s.read())
 
@@ -140,7 +146,7 @@ func (s *TraversalScanner) scanNumber() (tok Token, lit string) {
 	return NUMBER, buf.String()
 }
 
-func (s *TraversalScanner) scanString() (tok Token, lit string) {
+func (s *GremlinTraversalScanner) scanString() (tok Token, lit string) {
 	var buf bytes.Buffer
 	buf.WriteRune(s.read())
 
@@ -155,7 +161,7 @@ func (s *TraversalScanner) scanString() (tok Token, lit string) {
 	return STRING, buf.String()
 }
 
-func (s *TraversalScanner) scanIdent() (tok Token, lit string) {
+func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 	var buf bytes.Buffer
 	buf.WriteRune(s.read())
 
@@ -170,7 +176,9 @@ func (s *TraversalScanner) scanIdent() (tok Token, lit string) {
 		}
 	}
 
-	switch strings.ToUpper(buf.String()) {
+	us := strings.ToUpper(buf.String())
+
+	switch us {
 	case "G":
 		return G, buf.String()
 	case "V":
@@ -197,19 +205,25 @@ func (s *TraversalScanner) scanIdent() (tok Token, lit string) {
 		return DEDUP, buf.String()
 	}
 
+	for _, e := range s.extensions {
+		if t, ok := e.ScanIdent(us); ok {
+			return t, buf.String()
+		}
+	}
+
 	return IDENT, buf.String()
 }
 
-func (s *TraversalScanner) read() rune {
-	ch, _, err := s.r.ReadRune()
+func (s *GremlinTraversalScanner) read() rune {
+	ch, _, err := s.reader.ReadRune()
 	if err != nil {
 		return eof
 	}
 	return ch
 }
 
-func (s *TraversalScanner) unread() {
-	s.r.UnreadRune()
+func (s *GremlinTraversalScanner) unread() {
+	s.reader.UnreadRune()
 }
 
 func isString(ch rune) bool {

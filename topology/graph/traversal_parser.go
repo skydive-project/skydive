@@ -30,50 +30,61 @@ import (
 )
 
 type (
-	GraphTraversalSequence struct {
+	GremlinTraversalSequence struct {
 		GraphTraversal *GraphTraversal
-		steps          []traversalStep
+		steps          []GremlinTraversalStep
+		extensions     []GremlinTraversalExtension
 	}
 
-	traversalStep       interface{}
-	traversalStepParams []interface{}
+	GremlinTraversalStep interface {
+		Exec(last GraphTraversalStep) (GraphTraversalStep, error)
+	}
+	GremlinTraversalStepParams []interface{}
 
-	traversalStepG     struct{}
-	traversalStepV     struct{ params traversalStepParams }
-	traversalStepE     struct{}
-	traversalStepOut   struct{}
-	traversalStepIn    struct{}
-	traversalStepOutV  struct{}
-	traversalStepInV   struct{}
-	traversalStepOutE  struct{}
-	traversalStepInE   struct{}
-	traversalStepDedup struct{}
-	traversalStepHas   struct{ params traversalStepParams }
+	// built in steps
+	gremlinTraversalStepG      struct{}
+	gremlinTraversalStepV      struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepE      struct{}
+	gremlinTraversalStepOut    struct{}
+	gremlinTraversalStepIn     struct{}
+	gremlinTraversalStepOutV   struct{}
+	gremlinTraversalStepInV    struct{}
+	gremlinTraversalStepOutE   struct{}
+	gremlinTraversalStepInE    struct{}
+	gremlinTraversalStepDedup  struct{}
+	gremlinTraversalStepHas    struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepString struct{}
 )
 
 var (
 	ExecutionError error = errors.New("Error while executing the query")
 )
 
-type GraphTraversalParser struct {
+type GremlinTraversalParser struct {
 	Graph   *Graph
-	scanner *TraversalScanner
+	Reader  io.Reader
+	scanner *GremlinTraversalScanner
 	buf     struct {
 		tok Token
 		lit string
 		n   int
 	}
+	extensions []GremlinTraversalExtension
 }
 
-func execStepV(last interface{}, params traversalStepParams) (interface{}, error) {
+func (s *gremlinTraversalStepG) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	return nil, nil
+}
+
+func (s *gremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	g, ok := last.(*GraphTraversal)
 	if !ok {
 		return nil, ExecutionError
 	}
 
-	switch len(params) {
+	switch len(s.params) {
 	case 1:
-		if k, ok := params[0].(string); ok {
+		if k, ok := s.params[0].(string); ok {
 			return g.V(Identifier(k)), nil
 		}
 		return nil, ExecutionError
@@ -84,18 +95,18 @@ func execStepV(last interface{}, params traversalStepParams) (interface{}, error
 	}
 }
 
-func execStepHas(last interface{}, params traversalStepParams) (interface{}, error) {
+func (s *gremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
-		return last.(*GraphTraversalV).Has(params...), nil
+		return last.(*GraphTraversalV).Has(s.params...), nil
 	case *GraphTraversalE:
-		return last.(*GraphTraversalE).Has(params...), nil
+		return last.(*GraphTraversalE).Has(s.params...), nil
 	}
 
 	return nil, ExecutionError
 }
 
-func execStepDedup(last interface{}) (interface{}, error) {
+func (s *gremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).Dedup(), nil
@@ -106,7 +117,7 @@ func execStepDedup(last interface{}) (interface{}, error) {
 	return nil, ExecutionError
 }
 
-func execStepOut(last interface{}) (interface{}, error) {
+func (s *gremlinTraversalStepOut) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).Out(), nil
@@ -115,7 +126,7 @@ func execStepOut(last interface{}) (interface{}, error) {
 	return nil, ExecutionError
 }
 
-func execStepIn(last interface{}) (interface{}, error) {
+func (s *gremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).In(), nil
@@ -124,7 +135,7 @@ func execStepIn(last interface{}) (interface{}, error) {
 	return nil, ExecutionError
 }
 
-func execStepOutV(last interface{}) (interface{}, error) {
+func (s *gremlinTraversalStepOutV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalE:
 		return last.(*GraphTraversalE).OutV(), nil
@@ -133,7 +144,7 @@ func execStepOutV(last interface{}) (interface{}, error) {
 	return nil, ExecutionError
 }
 
-func execStepInV(last interface{}) (interface{}, error) {
+func (s *gremlinTraversalStepInV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalE:
 		return last.(*GraphTraversalE).InV(), nil
@@ -142,7 +153,7 @@ func execStepInV(last interface{}) (interface{}, error) {
 	return nil, ExecutionError
 }
 
-func execStepOutE(last interface{}) (interface{}, error) {
+func (s *gremlinTraversalStepOutE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).OutE(), nil
@@ -151,7 +162,7 @@ func execStepOutE(last interface{}) (interface{}, error) {
 	return nil, ExecutionError
 }
 
-func execStepInE(last interface{}) (interface{}, error) {
+func (s *gremlinTraversalStepInE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).InE(), nil
@@ -160,35 +171,14 @@ func execStepInE(last interface{}) (interface{}, error) {
 	return nil, ExecutionError
 }
 
-func (s *GraphTraversalSequence) Exec() (GraphTraversalStep, error) {
-	var last interface{}
+func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
+	var last GraphTraversalStep
 	var err error
 
 	last = s.GraphTraversal
 
 	for _, step := range s.steps {
-		switch step.(type) {
-		case *traversalStepV:
-			last, err = execStepV(last, step.(*traversalStepV).params)
-		case *traversalStepHas:
-			last, err = execStepHas(last, step.(*traversalStepHas).params)
-		case *traversalStepOut:
-			last, err = execStepOut(last)
-		case *traversalStepIn:
-			last, err = execStepIn(last)
-		case *traversalStepOutV:
-			last, err = execStepOutV(last)
-		case *traversalStepInV:
-			last, err = execStepInV(last)
-		case *traversalStepOutE:
-			last, err = execStepOutE(last)
-		case *traversalStepInE:
-			last, err = execStepInE(last)
-		case *traversalStepDedup:
-			last, err = execStepDedup(last)
-		}
-
-		if err != nil {
+		if last, err = step.Exec(last); err != nil {
 			return nil, err
 		}
 	}
@@ -201,20 +191,24 @@ func (s *GraphTraversalSequence) Exec() (GraphTraversalStep, error) {
 	return res, nil
 }
 
-func NewGraphTraversalParser(r io.Reader, g *Graph) *GraphTraversalParser {
-	return &GraphTraversalParser{
-		Graph:   g,
-		scanner: NewTraversalScanner(r),
+func (p *GremlinTraversalParser) AddTraversalExtension(e GremlinTraversalExtension) {
+	p.extensions = append(p.extensions, e)
+}
+
+func NewGremlinTraversalParser(r io.Reader, g *Graph) *GremlinTraversalParser {
+	return &GremlinTraversalParser{
+		Graph:  g,
+		Reader: r,
 	}
 }
 
-func (p *GraphTraversalParser) parserStepParams() (traversalStepParams, error) {
+func (p *GremlinTraversalParser) parserStepParams() (GremlinTraversalStepParams, error) {
 	tok, lit := p.scanIgnoreWhitespace()
 	if tok != LEFT_PARENTHESIS {
 		return nil, fmt.Errorf("Expected left parenthesis, got: %s", lit)
 	}
 
-	params := traversalStepParams{}
+	params := GremlinTraversalStepParams{}
 	for tok, lit := p.scanIgnoreWhitespace(); tok != RIGHT_PARENTHESIS; {
 		switch tok {
 		case EOF:
@@ -253,14 +247,14 @@ func (p *GraphTraversalParser) parserStepParams() (traversalStepParams, error) {
 	return params, nil
 }
 
-func (p *GraphTraversalParser) parserStep() (traversalStep, error) {
+func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	tok, lit := p.scanIgnoreWhitespace()
 	if tok == IDENT {
 		return nil, fmt.Errorf("Expected step function, got: %s", lit)
 	}
 
 	if tok == G {
-		return &traversalStepG{}, nil
+		return &gremlinTraversalStepG{}, nil
 	}
 
 	params, err := p.parserStepParams()
@@ -268,33 +262,48 @@ func (p *GraphTraversalParser) parserStep() (traversalStep, error) {
 		return nil, err
 	}
 
+	// built in
 	switch tok {
 	case V:
-		return &traversalStepV{params: params}, nil
+		return &gremlinTraversalStepV{params: params}, nil
 	case OUT:
-		return &traversalStepOut{}, nil
+		return &gremlinTraversalStepOut{}, nil
 	case IN:
-		return &traversalStepIn{}, nil
+		return &gremlinTraversalStepIn{}, nil
 	case OUTV:
-		return &traversalStepOutV{}, nil
+		return &gremlinTraversalStepOutV{}, nil
 	case INV:
-		return &traversalStepInV{}, nil
+		return &gremlinTraversalStepInV{}, nil
 	case OUTE:
-		return &traversalStepOutE{}, nil
+		return &gremlinTraversalStepOutE{}, nil
 	case INE:
-		return &traversalStepInE{}, nil
+		return &gremlinTraversalStepInE{}, nil
 	case DEDUP:
-		return &traversalStepDedup{}, nil
+		return &gremlinTraversalStepDedup{}, nil
 	case HAS:
-		return &traversalStepHas{params: params}, nil
-	default:
-		return nil, fmt.Errorf("Expected step function, got: %s", lit)
+		return &gremlinTraversalStepHas{params: params}, nil
 	}
+
+	// extensions
+	for _, e := range p.extensions {
+		step, err := e.ParseStep(tok, params)
+		if err != nil {
+			return nil, err
+		}
+		if step != nil {
+			return step, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Expected step function, got: %s", lit)
 }
 
-func (p *GraphTraversalParser) Parse() (*GraphTraversalSequence, error) {
-	seq := &GraphTraversalSequence{
+func (p *GremlinTraversalParser) Parse() (*GremlinTraversalSequence, error) {
+	p.scanner = NewGremlinTraversalScanner(p.Reader, p.extensions)
+
+	seq := &GremlinTraversalSequence{
 		GraphTraversal: NewGrahTraversal(p.Graph),
+		extensions:     p.extensions,
 	}
 
 	if tok, lit := p.scanIgnoreWhitespace(); tok != G {
@@ -322,7 +331,7 @@ func (p *GraphTraversalParser) Parse() (*GraphTraversalSequence, error) {
 	return seq, nil
 }
 
-func (p *GraphTraversalParser) scan() (tok Token, lit string) {
+func (p *GremlinTraversalParser) scan() (tok Token, lit string) {
 	if p.buf.n != 0 {
 		p.buf.n = 0
 		return p.buf.tok, p.buf.lit
@@ -332,7 +341,7 @@ func (p *GraphTraversalParser) scan() (tok Token, lit string) {
 	return p.buf.tok, p.buf.lit
 }
 
-func (p *GraphTraversalParser) scanIgnoreWhitespace() (Token, string) {
+func (p *GremlinTraversalParser) scanIgnoreWhitespace() (Token, string) {
 	tok, lit := p.scan()
 	for tok == WS {
 		tok, lit = p.scan()
@@ -340,6 +349,6 @@ func (p *GraphTraversalParser) scanIgnoreWhitespace() (Token, string) {
 	return tok, lit
 }
 
-func (p *GraphTraversalParser) unscan() {
+func (p *GremlinTraversalParser) unscan() {
 	p.buf.n = 1
 }
