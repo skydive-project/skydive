@@ -45,12 +45,12 @@ type (
 	gremlinTraversalStepG              struct{}
 	gremlinTraversalStepV              struct{ params GremlinTraversalStepParams }
 	gremlinTraversalStepE              struct{}
-	gremlinTraversalStepOut            struct{}
-	gremlinTraversalStepIn             struct{}
-	gremlinTraversalStepOutV           struct{}
-	gremlinTraversalStepInV            struct{}
-	gremlinTraversalStepOutE           struct{}
-	gremlinTraversalStepInE            struct{}
+	gremlinTraversalStepOut            struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepIn             struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepOutV           struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepInV            struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepOutE           struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepInE            struct{ params GremlinTraversalStepParams }
 	gremlinTraversalStepDedup          struct{}
 	gremlinTraversalStepHas            struct{ params GremlinTraversalStepParams }
 	gremlinTraversalStepShortestPathTo struct{ params GremlinTraversalStepParams }
@@ -120,7 +120,7 @@ func (s *gremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversa
 func (s *gremlinTraversalStepOut) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
-		return last.(*GraphTraversalV).Out(), nil
+		return last.(*GraphTraversalV).Out(s.params...), nil
 	}
 
 	return nil, ExecutionError
@@ -129,7 +129,7 @@ func (s *gremlinTraversalStepOut) Exec(last GraphTraversalStep) (GraphTraversalS
 func (s *gremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
-		return last.(*GraphTraversalV).In(), nil
+		return last.(*GraphTraversalV).In(s.params...), nil
 	}
 
 	return nil, ExecutionError
@@ -138,7 +138,7 @@ func (s *gremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalSt
 func (s *gremlinTraversalStepOutV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalE:
-		return last.(*GraphTraversalE).OutV(), nil
+		return last.(*GraphTraversalE).OutV(s.params...), nil
 	}
 
 	return nil, ExecutionError
@@ -147,7 +147,7 @@ func (s *gremlinTraversalStepOutV) Exec(last GraphTraversalStep) (GraphTraversal
 func (s *gremlinTraversalStepInV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalE:
-		return last.(*GraphTraversalE).InV(), nil
+		return last.(*GraphTraversalE).InV(s.params...), nil
 	}
 
 	return nil, ExecutionError
@@ -156,7 +156,7 @@ func (s *gremlinTraversalStepInV) Exec(last GraphTraversalStep) (GraphTraversalS
 func (s *gremlinTraversalStepOutE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
-		return last.(*GraphTraversalV).OutE(), nil
+		return last.(*GraphTraversalV).OutE(s.params...), nil
 	}
 
 	return nil, ExecutionError
@@ -165,7 +165,7 @@ func (s *gremlinTraversalStepOutE) Exec(last GraphTraversalStep) (GraphTraversal
 func (s *gremlinTraversalStepInE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
-		return last.(*GraphTraversalV).InE(), nil
+		return last.(*GraphTraversalV).InE(s.params...), nil
 	}
 
 	return nil, ExecutionError
@@ -183,13 +183,72 @@ func (s *gremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (Grap
 	return nil, ExecutionError
 }
 
+func (s *GremlinTraversalSequence) nextStepToExec(i int) (GremlinTraversalStep, int) {
+	step := s.steps[i]
+
+	// check whether we can skip a step
+	if i+1 < len(s.steps) {
+		next := s.steps[i+1]
+
+		switch next.(type) {
+		// optimisation possible, uses the param of has for current predicate and
+		// inc the position in order to skip the HAS
+		case *gremlinTraversalStepHas:
+			params := next.(*gremlinTraversalStepHas).params
+
+			switch step.(type) {
+			case *gremlinTraversalStepIn:
+				if len(step.(*gremlinTraversalStepIn).params) == 0 {
+					step.(*gremlinTraversalStepIn).params = params
+					i++
+				}
+			case *gremlinTraversalStepOut:
+				if len(step.(*gremlinTraversalStepOut).params) == 0 {
+					step.(*gremlinTraversalStepOut).params = params
+					i++
+				}
+			case *gremlinTraversalStepOutV:
+				if len(step.(*gremlinTraversalStepOutV).params) == 0 {
+					step.(*gremlinTraversalStepOutV).params = params
+					i++
+				}
+			case *gremlinTraversalStepInV:
+				if len(step.(*gremlinTraversalStepInV).params) == 0 {
+					step.(*gremlinTraversalStepInV).params = params
+					i++
+				}
+			case *gremlinTraversalStepOutE:
+				if len(step.(*gremlinTraversalStepOutE).params) == 0 {
+					step.(*gremlinTraversalStepOutE).params = params
+					i++
+				}
+			case *gremlinTraversalStepInE:
+				if len(step.(*gremlinTraversalStepInE).params) == 0 {
+					step.(*gremlinTraversalStepInE).params = params
+					i++
+				}
+			}
+		}
+	}
+	i++
+
+	// last element return -1 to specify to end
+	if i == len(s.steps) {
+		return step, -1
+	}
+
+	return step, i
+}
+
 func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
+	var step GremlinTraversalStep
 	var last GraphTraversalStep
 	var err error
 
 	last = s.GraphTraversal
+	for i := 0; i != -1; {
+		step, i = s.nextStepToExec(i)
 
-	for _, step := range s.steps {
 		if last, err = step.Exec(last); err != nil {
 			return nil, err
 		}
@@ -289,17 +348,17 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	case V:
 		return &gremlinTraversalStepV{params: params}, nil
 	case OUT:
-		return &gremlinTraversalStepOut{}, nil
+		return &gremlinTraversalStepOut{params: params}, nil
 	case IN:
-		return &gremlinTraversalStepIn{}, nil
+		return &gremlinTraversalStepIn{params: params}, nil
 	case OUTV:
-		return &gremlinTraversalStepOutV{}, nil
+		return &gremlinTraversalStepOutV{params: params}, nil
 	case INV:
-		return &gremlinTraversalStepInV{}, nil
+		return &gremlinTraversalStepInV{params: params}, nil
 	case OUTE:
-		return &gremlinTraversalStepOutE{}, nil
+		return &gremlinTraversalStepOutE{params: params}, nil
 	case INE:
-		return &gremlinTraversalStepInE{}, nil
+		return &gremlinTraversalStepInE{params: params}, nil
 	case DEDUP:
 		return &gremlinTraversalStepDedup{}, nil
 	case HAS:
