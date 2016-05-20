@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: skydive-analyzer
+  labels:
+    app: skydive-analyzer
+spec:
+  type: NodePort
+  ports:
+  - port: 8082
+    name: api
+  - port: 2379
+    name: etcd
+  - port: 9200
+    name: es
+  selector:
+    app: skydive
+    tier: analyzer
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: skydive-analyzer
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: skydive
+        tier: analyzer
+    spec:
+      containers:
+      - name: skydive-analyzer
+        image: skydive/skydive
+        args:
+        - analyzer
+        ports:
+        - containerPort: 8082
+        - containerPort: 2379
+      - name: skydive-elasticsearch
+        image: elasticsearch
+        ports:
+        - containerPort: 9200
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: skydive-agent
+spec:
+  template:
+    metadata:
+      labels:
+        app: skydive
+        tier: agent
+    spec:
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: skydive-agent
+        image: skydive/skydive
+        args:
+        - agent
+        ports:
+        - containerPort: 8081
+        env:
+        - name: ANALYZER_PORT
+          value: "$(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)"
+        - name: ANALYZER_PORT_2379_ADDR
+          value: "$(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_ETCD)"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: docker
+          mountPath: /var/run/docker.sock
+        - name: run
+          mountPath: /host/run
+#        - name: ovsdb
+#          mountPath: /var/run/openvswitch/db.sock
+      volumes:
+      - name: docker
+        hostPath:
+          path: /var/run/docker.sock
+      - name: run
+        hostPath:
+          path: /var/run/netns
+#      - name: ovsdb
+#        hostPath:
+#          path: /var/run/openvswitch/db.sock

@@ -30,3 +30,4 @@ services:
     entrypoint: /usr/bin/start-skydive.sh agent
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      #- /var/run/openvswitch/db.sock:/var/run/openvswitch/db.sock
