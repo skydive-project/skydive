@@ -35,12 +35,9 @@ import (
 	"github.com/vishvananda/netns"
 	"golang.org/x/exp/inotify"
 
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph"
-)
-
-const (
-	runBaseDir = "/var/run/netns"
 )
 
 type NetNSProbe struct {
@@ -50,6 +47,7 @@ type NetNSProbe struct {
 	Root        *graph.Node
 	nsnlProbes  map[string]*NetNsNetLinkTopoUpdater
 	pathToNetNS map[string]*NetNs
+	runPath     string
 }
 
 type NetNs struct {
@@ -144,10 +142,12 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 		var s syscall.Stat_t
 		fd, err := syscall.Open(path, syscall.O_RDONLY, 0)
 		if err != nil {
+			logging.GetLogger().Errorf("Error registering namespace %s: %s", path, err.Error())
 			return nil
 		}
 		defer syscall.Close(fd)
 		if err := syscall.Fstat(fd, &s); err != nil {
+			logging.GetLogger().Errorf("Error reading namespace %s: %s", path, err.Error())
 			return nil
 		}
 		ns = &NetNs{path: path, dev: s.Dev, ino: s.Ino}
@@ -227,9 +227,9 @@ func (u *NetNSProbe) Unregister(path string) {
 }
 
 func (u *NetNSProbe) initialize() {
-	files, _ := ioutil.ReadDir(runBaseDir)
+	files, _ := ioutil.ReadDir(u.runPath)
 	for _, f := range files {
-		u.Register(runBaseDir+"/"+f.Name(), nil)
+		u.Register(u.runPath+"/"+f.Name(), nil)
 	}
 }
 
@@ -239,7 +239,7 @@ func (u *NetNSProbe) start() {
 
 	// wait for the path creation
 	for {
-		_, err := os.Stat(runBaseDir)
+		_, err := os.Stat(u.runPath)
 		if err == nil {
 			break
 		}
@@ -251,9 +251,9 @@ func (u *NetNSProbe) start() {
 		logging.GetLogger().Errorf("Unable to create a new Watcher: %s", err.Error())
 	}
 
-	err = watcher.Watch(runBaseDir)
+	err = watcher.Watch(u.runPath)
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to Watch %s: %s", runBaseDir, err.Error())
+		logging.GetLogger().Errorf("Unable to Watch %s: %s", u.runPath, err.Error())
 		return
 	}
 
@@ -288,9 +288,14 @@ func (u *NetNSProbe) Stop() {
 	}
 }
 
-func NewNetNSProbe(g *graph.Graph, n *graph.Node) *NetNSProbe {
+func NewNetNSProbe(g *graph.Graph, n *graph.Node, runPath ...string) *NetNSProbe {
 	if uid := os.Geteuid(); uid != 0 {
 		logging.GetLogger().Fatalf("NetNS probe has to be run as root")
+	}
+
+	path := "/var/run/netns"
+	if len(runPath) > 0 && runPath[0] != "" {
+		path = runPath[0]
 	}
 
 	return &NetNSProbe{
@@ -298,5 +303,11 @@ func NewNetNSProbe(g *graph.Graph, n *graph.Node) *NetNSProbe {
 		Root:        n,
 		nsnlProbes:  make(map[string]*NetNsNetLinkTopoUpdater),
 		pathToNetNS: make(map[string]*NetNs),
+		runPath:     path,
 	}
+}
+
+func NewNetNSProbeFromConfig(g *graph.Graph, n *graph.Node) *NetNSProbe {
+	path := config.GetConfig().GetString("netns.run_path")
+	return NewNetNSProbe(g, n, path)
 }

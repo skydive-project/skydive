@@ -73,6 +73,10 @@ ovs:
 docker:
   # url: unix:///var/run/docker.sock
 
+netns:
+  # allow to specify where the netns probe is watching network namespace
+  # run_path: /var/run/netns
+
 storage:
   elasticsearch: 127.0.0.1:9200
 

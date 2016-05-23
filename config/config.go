@@ -55,6 +55,7 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
+	cfg.SetDefault("netns.run_path", "/var/run/netns")
 	cfg.SetDefault("etcd.data_dir", "/tmp/skydive-etcd")
 	cfg.SetDefault("etcd.embedded", true)
 	cfg.SetDefault("etcd.port", 2379)

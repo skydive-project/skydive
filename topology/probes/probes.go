@@ -54,7 +54,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 		case "netlink":
 			probes[t] = NewNetLinkProbe(g, n)
 		case "netns":
-			probes[t] = NewNetNSProbe(g, n)
+			probes[t] = NewNetNSProbeFromConfig(g, n)
 		case "ovsdb":
 			probes[t] = NewOvsdbProbeFromConfig(g, n)
 		case "docker":
