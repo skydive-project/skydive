@@ -132,11 +132,11 @@ func (sfa *SFlowAgent) start() error {
 	sfa.flowTable = flow.NewTable()
 	defer sfa.flowTable.UnregisterAll()
 
-	cfgFlowtable_expire := config.GetConfig().GetInt("agent.flowtable_expire")
-	sfa.flowTable.RegisterExpire(sfa.asyncFlowPipeline, time.Duration(cfgFlowtable_expire)*time.Second)
+	agentExpire := config.GetAgentExpire()
+	sfa.flowTable.RegisterExpire(sfa.asyncFlowPipeline, agentExpire, agentExpire)
 
-	cfgFlowtable_update := config.GetConfig().GetInt("agent.flowtable_update")
-	sfa.flowTable.RegisterUpdated(sfa.asyncFlowPipeline, time.Duration(cfgFlowtable_update)*time.Second)
+	agentUpdate := config.GetAgentUpdate()
+	sfa.flowTable.RegisterUpdated(sfa.asyncFlowPipeline, agentUpdate, agentUpdate)
 
 	for sfa.running.Load() == true {
 		select {

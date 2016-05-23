@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 	_ "github.com/spf13/viper/remote"
@@ -41,8 +42,6 @@ func init() {
 	cfg = viper.New()
 	cfg.SetDefault("agent.analyzers", "127.0.0.1:8082")
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
-	cfg.SetDefault("agent.flowtable_expire", 300)
-	cfg.SetDefault("agent.flowtable_update", 30)
 	cfg.SetDefault("ovs.ovsdb", "127.0.0.1:6400")
 	cfg.SetDefault("graph.backend", "memory")
 	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
@@ -52,6 +51,7 @@ func init() {
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.flowtable_expire", 600)
 	cfg.SetDefault("analyzer.flowtable_update", 60)
+	cfg.SetDefault("analyzer.flowtable_agent_ratio", 0.5)
 	cfg.SetDefault("storage.elasticsearch", "127.0.0.1:9200")
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
@@ -63,28 +63,32 @@ func init() {
 	cfg.SetDefault("auth.keystone.tenant", "admin")
 }
 
-func checkStrictPositive(key string) error {
-	if value := cfg.GetInt(key); value < 1 {
+func checkStrictPositiveInt(key string) error {
+	if value := cfg.GetInt(key); value <= 0 {
 		return fmt.Errorf("invalid value for %s (%d)", key, value)
 	}
 
 	return nil
 }
 
+func checkStrictRangeFloat(key string, min, max float64) error {
+	if value := cfg.GetFloat64(key); value <= min || value > max {
+		return fmt.Errorf("invalid value for %s (%f)", key, value)
+	}
+
+	return nil
+}
+
 func checkConfig() error {
-	if err := checkStrictPositive("agent.flowtable_expire"); err != nil {
+	if err := checkStrictRangeFloat("analyzer.flowtable_agent_ratio", 0.0, 1.0); err != nil {
 		return err
 	}
 
-	if err := checkStrictPositive("agent.flowtable_update"); err != nil {
+	if err := checkStrictPositiveInt("analyzer.flowtable_expire"); err != nil {
 		return err
 	}
 
-	if err := checkStrictPositive("analyzer.flowtable_expire"); err != nil {
-		return err
-	}
-
-	if err := checkStrictPositive("analyzer.flowtable_update"); err != nil {
+	if err := checkStrictPositiveInt("analyzer.flowtable_update"); err != nil {
 		return err
 	}
 
@@ -185,4 +189,23 @@ func GetAnalyzerClientAddr() (string, int, error) {
 		return addr, port, nil
 	}
 	return "", 0, nil
+}
+
+func GetAnalyerExpire() time.Duration {
+	return time.Duration(GetConfig().GetInt("analyzer.flowtable_expire")) * time.Second
+}
+
+func GetAnalyerUpdate() time.Duration {
+	return time.Duration(GetConfig().GetInt("analyzer.flowtable_update")) * time.Second
+}
+
+func GetAgentExpire() time.Duration {
+	analyzerExpire := GetConfig().GetInt("analyzer.flowtable_expire")
+	agentExpire := int(float64(analyzerExpire) * GetConfig().GetFloat64("analyzer.flowtable_agent_ratio"))
+	return time.Duration(agentExpire) * time.Second
+}
+func GetAgentUpdate() time.Duration {
+	analyzerUpdate := GetConfig().GetInt("analyzer.flowtable_update")
+	agentUpdate := int(float64(analyzerUpdate) * GetConfig().GetFloat64("analyzer.flowtable_agent_ratio"))
+	return time.Duration(agentUpdate) * time.Second
 }

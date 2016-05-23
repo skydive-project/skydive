@@ -45,8 +45,6 @@ ws_pong_timeout: 5
 
 agent:
   listen: 58081
-  flowtable_expire: 300
-  flowtable_update: 20
   topology:
     probes:
       - netlink

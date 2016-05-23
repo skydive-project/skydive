@@ -282,10 +282,13 @@ func NewServerFromConfig() (*Server, error) {
 
 	api.RegisterFlowApi("analyzer", flowtable, server.Storage, httpServer)
 
-	cfgFlowtable_expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
-	flowtable.RegisterExpire(server.flowExpireUpdate, time.Duration(cfgFlowtable_expire)*time.Second)
-	cfgFlowtable_update := config.GetConfig().GetInt("analyzer.flowtable_update")
-	flowtable.RegisterUpdated(server.flowExpireUpdate, time.Duration(cfgFlowtable_update)*time.Second)
+	analyzerExpire := config.GetAnalyerExpire()
+	agentExpire := config.GetAgentExpire()
+	flowtable.RegisterExpire(server.flowExpireUpdate, analyzerExpire, agentExpire)
+
+	analyzerUpdate := config.GetAnalyerUpdate()
+	agentUpdate := config.GetAgentUpdate()
+	flowtable.RegisterUpdated(server.flowExpireUpdate, analyzerUpdate, agentUpdate)
 
 	return server, nil
 }

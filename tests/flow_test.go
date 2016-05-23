@@ -40,8 +40,6 @@ import (
 const confAgentAnalyzer = `---
 agent:
   listen: 58081
-  flowtable_expire: 1
-  flowtable_update: 10
   analyzers: localhost:{{.AnalyzerPort}}
   topology:
     probes:
@@ -68,6 +66,7 @@ analyzer:
   listen: {{.AnalyzerPort}}
   flowtable_expire: 600
   flowtable_update: 10
+  flowtable_agent_ratio: 0.5
 
 etcd:
   embedded: true

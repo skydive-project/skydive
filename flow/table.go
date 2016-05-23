@@ -214,16 +214,16 @@ func (ft *Table) ExpireNow() {
 }
 
 /* Asynchrnously Register an expire callback fn with last updated flow 'since', each 'since' tick  */
-func (ft *Table) RegisterExpire(fn ExpireUpdateFunc, every time.Duration) {
+func (ft *Table) RegisterExpire(fn ExpireUpdateFunc, every time.Duration, windowSize time.Duration) {
 	ft.lock.Lock()
-	ft.manager.expire.Register(&tableManagerAsyncParam{ft.expire, fn, every, every})
+	ft.manager.expire.Register(&tableManagerAsyncParam{ft.expire, fn, every, windowSize})
 	ft.lock.Unlock()
 }
 
 /* Asynchrnously call the callback fn with last updated flow 'since', each 'since' tick  */
-func (ft *Table) RegisterUpdated(fn ExpireUpdateFunc, since time.Duration) {
+func (ft *Table) RegisterUpdated(fn ExpireUpdateFunc, since time.Duration, windowSize time.Duration) {
 	ft.lock.Lock()
-	ft.manager.updated.Register(&tableManagerAsyncParam{ft.updated, fn, since, since + 2})
+	ft.manager.updated.Register(&tableManagerAsyncParam{ft.updated, fn, since, windowSize + 2})
 	ft.lock.Unlock()
 }
 
