@@ -25,6 +25,7 @@ package probes
 import (
 	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -46,8 +47,9 @@ type NetLinkProbe struct {
 	Graph                *graph.Graph
 	Root                 *graph.Node
 	nlSocket             *nl.NetlinkSocket
-	running              atomic.Value
+	state                int64
 	indexToChildrenQueue map[int64][]*graph.Node
+	wg                   sync.WaitGroup
 }
 
 func (u *NetLinkProbe) linkMasterChildren(intf *graph.Node, index int64) {
@@ -362,17 +364,15 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 		}
 	}
 
-	// check wheter the interface has been deleted or not
+	// check whether the interface has been deleted or not
 	// we get a delete event when an interace is removed from a bridge
 	_, err := netlink.LinkByIndex(index)
 	if err != nil && intf != nil {
-		if driver, ok := intf.Metadata()["Driver"]; ok {
-			// if openvswitch do not remove let's do the job by ovs piece of code
-			if driver == "openvswitch" {
-				u.Graph.Unlink(u.Root, intf)
-			} else {
-				u.Graph.DelNode(intf)
-			}
+		// if openvswitch do not remove let's do the job by ovs piece of code
+		if intf.Metadata()["Driver"] == "openvswitch" {
+			u.Graph.Unlink(u.Root, intf)
+		} else {
+			u.Graph.DelNode(intf)
 		}
 	}
 
@@ -425,7 +425,11 @@ func (u *NetLinkProbe) start() {
 
 	events := make([]syscall.EpollEvent, maxEpollEvents)
 
-	for u.running.Load() == true {
+	u.wg.Add(1)
+	defer u.wg.Done()
+
+	atomic.StoreInt64(&u.state, RunningState)
+	for atomic.LoadInt64(&u.state) == RunningState {
 		n, err := syscall.EpollWait(epfd, events[:], 1000)
 		if err != nil {
 			errno, ok := err.(syscall.Errno)
@@ -468,7 +472,9 @@ func (u *NetLinkProbe) Run() {
 }
 
 func (u *NetLinkProbe) Stop() {
-	u.running.Store(false)
+	if atomic.CompareAndSwapInt64(&u.state, RunningState, StoppingState) {
+		u.wg.Wait()
+	}
 }
 
 func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
@@ -476,7 +482,7 @@ func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
 		Graph:                g,
 		Root:                 n,
 		indexToChildrenQueue: make(map[int64][]*graph.Node),
+		state:                StoppedState,
 	}
-	np.running.Store(true)
 	return np
 }
