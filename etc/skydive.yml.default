@@ -52,6 +52,8 @@ agent:
     probes:
       # - ovssflow
       # - pcap
+  metadata:
+    info: This is compute node
 
 sflow:
   # Default listening address is 127.0.0.1

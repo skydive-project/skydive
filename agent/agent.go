@@ -159,7 +159,14 @@ func NewAgent() *Agent {
 
 	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
 
-	root := g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
+	m := graph.Metadata{"Name": hostname, "Type": "host"}
+	if config.GetConfig().IsSet("agent.metadata") {
+		subtree := config.GetConfig().Sub("agent.metadata")
+		for key, value := range subtree.AllSettings() {
+			m[key] = value
+		}
+	}
+	root := g.NewNode(graph.Identifier(hostname), m)
 
 	api.RegisterTopologyApi("agent", g, hserver)
 
