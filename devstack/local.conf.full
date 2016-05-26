@@ -1,0 +1,23 @@
+[[local|localrc]]
+HOST_IP=192.168.0.56
+
+SERVICE_HOST=${HOST_IP}
+
+MYSQL_HOST=${HOST_IP}
+RABBIT_HOST=${HOST_IP}
+GLANCE_HOSTPORT=${HOST_IP}:9292
+ADMIN_PASSWORD=password
+DATABASE_PASSWORD=password
+RABBIT_PASSWORD=password
+SERVICE_PASSWORD=password
+
+disable_service n-net
+ENABLED_SERVICES+=,q-svc,q-dhcp,q-meta,q-agt,q-l3
+
+enable_plugin skydive https://github.com/redhat-cip/skydive.git
+enable_service skydive-agent skydive-analyzer
+
+SKYDIVE_ANALYZER_LISTEN=${HOST_IP}:8082
+SKYDIVE_AGENT_ANALYZERS=${HOST_IP}:8082
+SKYDIVE_AGENT_LISTEN=${HOST_IP}:8081
+SKYDIVE_AGENT_ETCD=http://${HOST_IP}:2379

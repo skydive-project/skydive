@@ -51,18 +51,43 @@ googleAnalytics = ""
 
 [[menu.main]]
 	name   = "Getting started"
+  identifier = "started"
 	url    = "getting-started/"
 	weight = 10
+
+[[menu.main]]
+  name = "Installation"
+	parent = "started"
+	url = "getting-started/install/"
+  weight = 100
+
+[[menu.main]]
+  name = "Client & WebUI"
+	parent = "started"
+	url = "getting-started/client/"
+  weight = 120
+
+[[menu.main]]
+  name = "Devstack"
+	parent = "started"
+	url = "getting-started/devstack/"
+  weight = 300
+
+[[menu.main]]
+  name = "Docker"
+	parent = "started"
+	url = "getting-started/docker/"
+  weight = 300
 
 [[menu.main]]
 	name   = "Contributing"
 	url    = "contributing/"
 	weight = 30
 
-	[[menu.main]]
-		name   = "Contact"
-		url    = "contact/"
-		weight = 40
+[[menu.main]]
+	name   = "Contact"
+	url    = "contact/"
+	weight = 40
 
 [[menu.main]]
 	name   = "License"
