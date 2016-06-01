@@ -48,15 +48,18 @@ type NetLinkProbe struct {
 	Root                 *graph.Node
 	nlSocket             *nl.NetlinkSocket
 	state                int64
-	indexToChildrenQueue map[int64][]*graph.Node
+	indexToChildrenQueue map[int64][]graph.Identifier
 	wg                   sync.WaitGroup
 }
 
 func (u *NetLinkProbe) linkMasterChildren(intf *graph.Node, index int64) {
 	// add children of this interface that haven previously added
 	if children, ok := u.indexToChildrenQueue[index]; ok {
-		for _, child := range children {
-			u.Graph.Link(intf, child, graph.Metadata{"RelationType": "layer2"})
+		for _, id := range children {
+			child := u.Graph.GetNode(id)
+			if child != nil {
+				u.Graph.Link(intf, child, graph.Metadata{"RelationType": "layer2"})
+			}
 		}
 		delete(u.indexToChildrenQueue, index)
 	}
@@ -86,7 +89,7 @@ func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 			u.Graph.Link(parent, intf, graph.Metadata{"RelationType": "layer2"})
 		} else {
 			// not yet the bridge so, enqueue for a later add
-			u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], intf)
+			u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], intf.ID)
 		}
 	}
 }
@@ -481,7 +484,7 @@ func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
 	np := &NetLinkProbe{
 		Graph:                g,
 		Root:                 n,
-		indexToChildrenQueue: make(map[int64][]*graph.Node),
+		indexToChildrenQueue: make(map[int64][]graph.Identifier),
 		state:                StoppedState,
 	}
 	return np
