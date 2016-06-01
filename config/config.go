@@ -81,7 +81,9 @@ func checkStrictRangeFloat(key string, min, max float64) error {
 
 func checkConfig() error {
 	if err := checkStrictRangeFloat("analyzer.flowtable_agent_ratio", 0.0, 1.0); err != nil {
-		return err
+		if cfg.GetFloat64("analyzer.flowtable_agent_ratio") != 0.0 {
+			return err
+		}
 	}
 
 	if err := checkStrictPositiveInt("analyzer.flowtable_expire"); err != nil {
@@ -199,13 +201,22 @@ func GetAnalyerUpdate() time.Duration {
 	return time.Duration(GetConfig().GetInt("analyzer.flowtable_update")) * time.Second
 }
 
+func GetAgentRatio() float64 {
+	agentRatio := GetConfig().GetFloat64("analyzer.flowtable_agent_ratio")
+	if agentRatio == 0.0 {
+		return 0.5
+	}
+	return agentRatio
+}
+
 func GetAgentExpire() time.Duration {
 	analyzerExpire := GetConfig().GetInt("analyzer.flowtable_expire")
-	agentExpire := int(float64(analyzerExpire) * GetConfig().GetFloat64("analyzer.flowtable_agent_ratio"))
+	agentExpire := int(float64(analyzerExpire) * GetAgentRatio())
 	return time.Duration(agentExpire) * time.Second
 }
+
 func GetAgentUpdate() time.Duration {
 	analyzerUpdate := GetConfig().GetInt("analyzer.flowtable_update")
-	agentUpdate := int(float64(analyzerUpdate) * GetConfig().GetFloat64("analyzer.flowtable_agent_ratio"))
+	agentUpdate := int(float64(analyzerUpdate) * GetAgentRatio())
 	return time.Duration(agentUpdate) * time.Second
 }
