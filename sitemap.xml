@@ -18,8 +18,28 @@
   </url>
   
   <url>
+    <loc>http://redhat-cip.github.io/skydive/getting-started/devstack/</loc>
+    <lastmod>2016-05-06T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>http://redhat-cip.github.io/skydive/getting-started/docker/</loc>
+    <lastmod>2016-05-06T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>http://redhat-cip.github.io/skydive/getting-started/install/</loc>
+    <lastmod>2016-05-06T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>http://redhat-cip.github.io/skydive/getting-started/client/</loc>
+    <lastmod>2016-05-06T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
     <loc>http://redhat-cip.github.io/skydive/getting-started/</loc>
-    <lastmod>2016-05-06T10:57:18+02:00</lastmod>
+    <lastmod>2016-05-04T17:48:22+02:00</lastmod>
   </url>
   
   <url>

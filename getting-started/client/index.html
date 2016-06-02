@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>Getting started - Skydive Docs</title>
+    <title>Skydive client, API &amp; WebUI - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="http://redhat-cip.github.io/skydive/getting-started/">
+    <link rel="canonical" href="http://redhat-cip.github.io/skydive/getting-started/client/">
     
     <meta name="author" content="redhat-cip/skydive">
     
 
-    <meta property="og:url" content="http://redhat-cip.github.io/skydive/getting-started/">
+    <meta property="og:url" content="http://redhat-cip.github.io/skydive/getting-started/client/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="http://redhat-cip.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Getting started
+        Skydive client, API &amp; WebUI
       </div>
     </div>
 
@@ -236,11 +236,14 @@
 
 
 
-<a  title="Client &amp; WebUI" href="http://redhat-cip.github.io/skydive/getting-started/client/">
+<a class="current" title="Client &amp; WebUI" href="http://redhat-cip.github.io/skydive/getting-started/client/">
 	
 	Client &amp; WebUI
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
         
@@ -351,9 +354,110 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Getting started </h1>
+			<h1>Skydive client, API &amp; WebUI </h1>
 
 			
+
+<h2 id="client">Client</h2>
+
+<p>Skydive client can be used to interact with Skydive Analyzer and Agents.
+Running it without any command will return all the commands available.</p>
+
+<pre><code class="language-console">$ skydive client
+
+Usage:
+  skydive client [command]
+
+Available Commands:
+  alert       Manage alerts
+  capture     Manage captures
+
+Flags:
+  -h, --help[=false]: help for client
+      --password=&quot;&quot;: password auth parameter
+      --username=&quot;&quot;: username auth parameter
+</code></pre>
+
+<p>Specifying the subcommand will give the usage of the subcommand.</p>
+
+<pre><code class="language-console">$ skydive client capture
+</code></pre>
+
+<p>If an authentication mechanism is defined in the configuration file the username
+and password parameter have to be used for each command. Environment variables
+SKYDIVE_USERNAME and SKYDIVE_PASSWORD can be used as default value for the
+username/password command line parameters.</p>
+
+<h2 id="webui">WebUI</h2>
+
+<p>To access to the WebUI of agents or analyzer:</p>
+
+<pre><code class="language-console">http://&lt;address&gt;:&lt;port&gt;
+</code></pre>
+
+<h2 id="flow-captures">Flow captures</h2>
+
+<p>Flow captures can be started from the WebUI or thanks to the Skydive client :</p>
+
+<pre><code class="language-console">$ skydive client capture create --probepath &lt;probe path&gt;
+</code></pre>
+
+<p>The probe path parameter references the interfaces where the flow probe will be
+started, so where the capture will be done.</p>
+
+<p>The format of a probe path follows the links between topology nodes from
+a host node to a target node :</p>
+
+<pre><code class="language-console">host1[Type=host]/.../node_nameN[Type=node_typeN]
+</code></pre>
+
+<p>The node name can be the name of :</p>
+
+<ul>
+<li>a host</li>
+<li>an interface</li>
+<li>a namespace</li>
+</ul>
+
+<p>The node types can be :</p>
+
+<ul>
+<li>host</li>
+<li>netns</li>
+<li>ovsbridge</li>
+</ul>
+
+<p>Currently target node types supported are :</p>
+
+<ul>
+<li>ovsbridge</li>
+<li>veth</li>
+<li>device</li>
+<li>internal</li>
+<li>tun</li>
+<li>bridge</li>
+</ul>
+
+<p>To start a capture on the OVS bridge br1 on the host host1 the following probe
+path is used :</p>
+
+<pre><code class="language-console">$ skydive client capture create --probepath &quot;host1[Type=host]/br1[Type=ovsbridge]&quot;&quot;
+</code></pre>
+
+<p>A wilcard for the host node can be used in order to start a capture on
+all hosts.</p>
+
+<pre><code class="language-console">$ skydive client capture create --probepath &quot;*/br1[Type=ovsbridge]&quot;
+</code></pre>
+
+<p>A capture can be defined in advance and will start when a topology node will
+match.</p>
+
+<p>To delete a capture :</p>
+
+<pre><code class="language-console">$ skydive client capture delete &lt;probe path&gt;
+</code></pre>
+
 			
 			<aside class="copyright" role="note">
 				
@@ -373,7 +477,7 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="http://redhat-cip.github.io/skydive/" title="Overview">
+      <a href="http://redhat-cip.github.io/skydive/getting-started/" title="Getting started">
         <span class="direction">
           Previous
         </span>
@@ -383,7 +487,7 @@
           </div>
           <div class="stretch">
             <div class="title">
-              Overview
+              Getting started
             </div>
           </div>
         </div>
@@ -393,14 +497,14 @@
 
   <div class="next">
   
-      <a href="http://redhat-cip.github.io/skydive/getting-started/client/" title="Skydive client, API &amp; WebUI">
+      <a href="http://redhat-cip.github.io/skydive/getting-started/install/" title="Installation">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              Skydive client, API &amp; WebUI
+              Installation
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">

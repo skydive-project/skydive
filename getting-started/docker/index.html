@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>Getting started - Skydive Docs</title>
+    <title>How to deploy Skydive with Docker - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="http://redhat-cip.github.io/skydive/getting-started/">
+    <link rel="canonical" href="http://redhat-cip.github.io/skydive/getting-started/docker/">
     
     <meta name="author" content="redhat-cip/skydive">
     
 
-    <meta property="og:url" content="http://redhat-cip.github.io/skydive/getting-started/">
+    <meta property="og:url" content="http://redhat-cip.github.io/skydive/getting-started/docker/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="http://redhat-cip.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Getting started
+        How to deploy Skydive with Docker
       </div>
     </div>
 
@@ -260,11 +260,14 @@
 
 
 
-<a  title="Docker" href="http://redhat-cip.github.io/skydive/getting-started/docker/">
+<a class="current" title="Docker" href="http://redhat-cip.github.io/skydive/getting-started/docker/">
 	
 	Docker
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
     </ul>
@@ -351,9 +354,33 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Getting started </h1>
+			<h1>How to deploy Skydive with Docker </h1>
 
 			
+
+<h2 id="docker">Docker</h2>
+
+<p>A Docker image is available on the <a href="https://hub.docker.com/r/skydive/">Skydive Docker Hub account</a>.</p>
+
+<p>To start the analyzer :</p>
+
+<pre><code class="language-console">docker run -p 8082:8082 -p 2379:2379 skydive/skydive analyzer
+</code></pre>
+
+<p>To start the agent :</p>
+
+<pre><code class="language-console">docker run --privileged --pid=host --net=host -p 8081:8081 -v /var/run/docker.sock:/var/run/docker.sock skydive/skydive agent
+</code></pre>
+
+<h2 id="docker-compose">Docker Compose</h2>
+
+<p><a href="https://docs.docker.com/compose/">Docker Compose</a> can also be used to automatically start
+an Elasticsearch container, a Skydive analyzer container and a Skydive agent container. The service
+definition is located in the <code>contrib/docker</code> folder of the Skydive sources.</p>
+
+<pre><code class="language-console">docker-compose up
+</code></pre>
+
 			
 			<aside class="copyright" role="note">
 				
@@ -373,7 +400,7 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="http://redhat-cip.github.io/skydive/" title="Overview">
+      <a href="http://redhat-cip.github.io/skydive/getting-started/install/" title="Installation">
         <span class="direction">
           Previous
         </span>
@@ -383,7 +410,7 @@
           </div>
           <div class="stretch">
             <div class="title">
-              Overview
+              Installation
             </div>
           </div>
         </div>
@@ -393,14 +420,14 @@
 
   <div class="next">
   
-      <a href="http://redhat-cip.github.io/skydive/getting-started/client/" title="Skydive client, API &amp; WebUI">
+      <a href="http://redhat-cip.github.io/skydive/getting-started/devstack/" title="How to deploy Skydive with Devstack">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              Skydive client, API &amp; WebUI
+              How to deploy Skydive with Devstack
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">
