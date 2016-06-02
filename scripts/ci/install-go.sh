@@ -17,16 +17,12 @@ eval "$(gimme 1.5)"
 # pcap.h is required to build skydive
 sudo yum -y install libpcap-devel
 
+export GOPATH=$WORKSPACE
+
 # Get the Go dependencies
-export GOPATH=$HOME
 go get -f -u github.com/axw/gocov/gocov
 go get -f -u github.com/mattn/goveralls
 go get -f -u golang.org/x/tools/cmd/cover
 go get -f -u github.com/golang/lint/golint
 
-export GOPATH=`pwd`/Godeps/_workspace
 export PATH=$PATH:$GOPATH/bin
-
-# Fake install of project
-mkdir -p ${GOPATH}/src/github.com/redhat-cip/
-ln -s $(pwd) ${GOPATH}/src/github.com/redhat-cip/skydive
