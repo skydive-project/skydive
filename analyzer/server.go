@@ -186,7 +186,7 @@ func (s *Server) SetStorageFromConfig() {
 	if t := config.GetConfig().GetString("analyzer.storage"); t != "" {
 		switch t {
 		case "elasticsearch":
-			storage, err := elasticseach.New()
+			storage, err := elasticsearch.New()
 			if err != nil {
 				logging.GetLogger().Fatalf("Can't connect to ElasticSearch server: %v", err)
 			}

@@ -20,7 +20,7 @@
  *
  */
 
-package elasticseach
+package elasticsearch
 
 import (
 	"encoding/json"
@@ -187,7 +187,7 @@ func (c *ElasticSearchStorage) initialize() error {
 	return nil
 }
 
-var ErrBadConfig = errors.New("elasticseach : Config file is misconfigured, check elasticsearch key format")
+var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
 
 func (c *ElasticSearchStorage) start() {
 	for {
