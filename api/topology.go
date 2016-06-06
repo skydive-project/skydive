@@ -24,6 +24,7 @@ package api
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -46,9 +47,13 @@ func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	resource := Topology{}
-	if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+
+	data, _ := ioutil.ReadAll(r.Body)
+	if len(data) != 0 {
+		if err := json.Unmarshal(data, &resource); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
 	if resource.GremlinQuery != "" {

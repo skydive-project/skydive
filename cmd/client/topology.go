@@ -86,7 +86,7 @@ var TopologyRequest = &cobra.Command{
 }
 
 func addTopologyFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&gremlinQuery, "query", "", "", "Gremlin Query")
+	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
 }
 
 func init() {
