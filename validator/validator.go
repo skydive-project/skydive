@@ -20,52 +20,37 @@
  *
  */
 
-package api
+package validator
 
 import (
-	"time"
+	"errors"
+	"regexp"
 
-	"github.com/nu7hatch/gouuid"
+	"gopkg.in/validator.v2"
 )
 
-const (
-	FIXED = 1 + iota
-	THRESHOLD
-)
+var skydiveValidator = validator.NewValidator()
 
-type Alert struct {
-	UUID        string
-	Name        string `valid:"nonzero"`
-	Description string `valid:"nonzero"`
-	Select      string `valid:"nonzero"`
-	Test        string `valid:"nonzero"`
-	Action      string `valid:"nonzero"`
-	Type        int
-	Count       int
-	CreateTime  time.Time
-}
-
-type AlertHandler struct {
-}
-
-func NewAlert() *Alert {
-	id, _ := uuid.NewV4()
-
-	return &Alert{
-		UUID:       id.String(),
-		CreateTime: time.Now(),
-		Type:       FIXED,
+func isIP(v interface{}, param string) error {
+	//(TODO: masco) need to support IPv6 also
+	ipv4Regex := "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+	ipError := validator.TextErr{errors.New("Not a IP addr")}
+	ip, ok := v.(string)
+	if !ok {
+		return ipError
 	}
+	re, _ := regexp.Compile(ipv4Regex)
+	if !re.MatchString(ip) {
+		return ipError
+	}
+	return nil
 }
 
-func (a *AlertHandler) New() ApiResource {
-	return &Alert{}
+func Validate(v interface{}) error {
+	return skydiveValidator.Validate(v)
 }
 
-func (a *AlertHandler) Name() string {
-	return "alert"
-}
-
-func (a *Alert) ID() string {
-	return a.UUID
+func init() {
+	skydiveValidator.SetValidationFunc("isIP", isIP)
+	skydiveValidator.SetTag("valid")
 }

@@ -23,8 +23,8 @@
 package api
 
 type Capture struct {
-	ProbePath string `json:"ProbePath,omitempty"`
-	BPFFilter string `json:"BPFFilter,omitempty"`
+	ProbePath string `json:",omitempty" valid:"nonzero"`
+	BPFFilter string `json:",omitempty"`
 }
 
 type CaptureHandler struct {

@@ -728,6 +728,10 @@
 			"Rev": "8611c35ab31c1c28aa903d33cf8b6e44a399b09e"
 		},
 		{
+			"ImportPath": "gopkg.in/validator.v2",
+			"Rev": "3e4f037f12a1221a0864cf0dd2e81c452ab22448"
+		},
+		{
 			"ImportPath": "gopkg.in/yaml.v2",
 			"Rev": "bef53efd0c76e49e6de55ead051f886bea7e9420"
 		}

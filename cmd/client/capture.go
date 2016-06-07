@@ -28,6 +28,7 @@ import (
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/validator"
 
 	"github.com/spf13/cobra"
 )
@@ -49,17 +50,16 @@ var CaptureCreate = &cobra.Command{
 	Short: "Create capture",
 	Long:  "Create capture",
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(probePath) == 0 {
-			fmt.Println("You need to specify a probe path")
-			cmd.Usage()
-			os.Exit(1)
-		}
-
 		client := api.NewCrudClientFromConfig(&authenticationOpts)
 		if client == nil {
 			os.Exit(1)
 		}
 		capture := api.NewCapture(probePath, bpfFilter)
+		if errs := validator.Validate(capture); errs != nil {
+			fmt.Println("You need to specify a probe path")
+			cmd.Usage()
+			os.Exit(1)
+		}
 		if err := client.Create("capture", &capture); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)

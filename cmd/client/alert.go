@@ -23,10 +23,12 @@
 package client
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/validator"
 
 	"github.com/spf13/cobra"
 )
@@ -61,6 +63,11 @@ var AlertCreate = &cobra.Command{
 		setFromFlag(cmd, "select", &alert.Select)
 		setFromFlag(cmd, "action", &alert.Action)
 		setFromFlag(cmd, "test", &alert.Test)
+		if errs := validator.Validate(alert); errs != nil {
+			fmt.Println("Error: ", errs)
+			cmd.Usage()
+			os.Exit(1)
+		}
 		if err := client.Create("alert", &alert); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
