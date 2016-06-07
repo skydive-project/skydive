@@ -555,3 +555,97 @@ func TestSFlowSrcDstPath(t *testing.T) {
 
 	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
 }
+
+func TestFlowQuery(t *testing.T) {
+	al := flow.NewTableAllocator()
+
+	f := func(flows []*flow.Flow) {}
+
+	ft1 := al.Alloc()
+	ft1.RegisterExpire(f, 500, 500)
+	ft1.RegisterUpdated(f, 500, 500)
+
+	flow.GenerateTestFlows(t, ft1, 1, "probe1")
+	flows1 := flow.GenerateTestFlows(t, ft1, 2, "probe2")
+
+	ft2 := al.Alloc()
+	ft2.RegisterExpire(f, 500, 500)
+	ft2.RegisterUpdated(f, 500, 500)
+	flows2 := flow.GenerateTestFlows(t, ft2, 3, "probe2")
+
+	go ft1.Start()
+	go ft2.Start()
+
+	query := &flow.TableQuery{
+		Obj: &flow.FlowSearchQuery{
+			ProbeNodeUUID: "probe2",
+		},
+	}
+	reply := al.QueryTable(query)
+
+	ft1.Stop()
+	ft2.Stop()
+
+	searchReply := reply.Obj.(*flow.FlowSearchReply)
+	if len(searchReply.Flows) != len(flows1)+len(flows2) {
+		t.Fatalf("FlowQuery should return at least one flow")
+	}
+
+	for _, flow := range searchReply.Flows {
+		if flow.ProbeNodeUUID != "probe2" {
+			t.Fatalf("FlowQuery should only return flows with probe2, got: %s", flow)
+		}
+	}
+}
+
+func TestTableServer(t *testing.T) {
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
+	if err := client.Create("capture", &capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip link set sflow-intf1 up", true},
+		{"ping -c 15 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	aa.Flush()
+
+	node := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+
+	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
+	flows, err := fclient.LookupFlowsByProbeNode(node)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if len(ts.GetFlows()) != len(flows) {
+		t.Fatalf("Should return the same number of flows than in the database, got: %v", flows)
+	}
+
+	for _, f := range flows {
+		if f.ProbeNodeUUID != string(node.ID) {
+			t.Fatalf("Returned a non expected flow: %v", f)
+		}
+	}
+
+	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+}

@@ -56,6 +56,7 @@ type SFlowAgent struct {
 	flowTable           *flow.Table
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	FlowProbeNodeSetter flow.FlowProbeNodeSetter
+	FlowTableAllocator  *flow.TableAllocator
 }
 
 type SFlowAgentAllocator struct {
@@ -63,6 +64,7 @@ type SFlowAgentAllocator struct {
 	AnalyzerClient      *analyzer.Client
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	FlowProbeNodeSetter flow.FlowProbeNodeSetter
+	FlowTableAllocator  *flow.TableAllocator
 	Addr                string
 	MinPort             int
 	MaxPort             int
@@ -119,8 +121,9 @@ func (sfa *SFlowAgent) start() error {
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(1 * time.Second))
 
-	sfa.flowTable = flow.NewTable()
+	sfa.flowTable = sfa.FlowTableAllocator.Alloc()
 	defer sfa.flowTable.UnregisterAll()
+	defer sfa.FlowTableAllocator.Release(sfa.flowTable)
 
 	agentExpire := config.GetAgentExpire()
 	sfa.flowTable.RegisterExpire(sfa.asyncFlowPipeline, agentExpire, agentExpire)
@@ -155,23 +158,26 @@ func (sfa *SFlowAgent) SetFlowProbeNodeSetter(p flow.FlowProbeNodeSetter) {
 	sfa.FlowProbeNodeSetter = p
 }
 
-func NewSFlowAgent(u string, a string, p int, c *analyzer.Client, m *mappings.FlowMappingPipeline) *SFlowAgent {
+func NewSFlowAgent(u string, a string, p int, c *analyzer.Client,
+	m *mappings.FlowMappingPipeline, fta *flow.TableAllocator) *SFlowAgent {
 	return &SFlowAgent{
 		UUID:                u,
 		Addr:                a,
 		Port:                p,
 		AnalyzerClient:      c,
 		FlowMappingPipeline: m,
+		FlowTableAllocator:  fta,
 	}
 }
 
-func NewSFlowAgentFromConfig(u string, a *analyzer.Client, m *mappings.FlowMappingPipeline) (*SFlowAgent, error) {
+func NewSFlowAgentFromConfig(u string, a *analyzer.Client,
+	m *mappings.FlowMappingPipeline, fta *flow.TableAllocator) (*SFlowAgent, error) {
 	addr, port, err := config.GetHostPortAttributes("sflow", "listen")
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSFlowAgent(u, addr, port, a, m), nil
+	return NewSFlowAgent(u, addr, port, a, m, fta), nil
 }
 
 func (a *SFlowAgentAllocator) Agents() []*SFlowAgent {
@@ -239,7 +245,7 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter) (*S
 
 	for i := min; i != max+1; i++ {
 		if _, ok := a.allocated[i]; !ok {
-			s := NewSFlowAgent(uuid, address, i, a.AnalyzerClient, a.FlowMappingPipeline)
+			s := NewSFlowAgent(uuid, address, i, a.AnalyzerClient, a.FlowMappingPipeline, a.FlowTableAllocator)
 			s.SetFlowProbeNodeSetter(p)
 
 			a.allocated[i] = s
@@ -253,10 +259,11 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter) (*S
 	return nil, errors.New("sflow port exhausted")
 }
 
-func NewSFlowAgentAllocator(a *analyzer.Client, m *mappings.FlowMappingPipeline) *SFlowAgentAllocator {
+func NewSFlowAgentAllocator(a *analyzer.Client, m *mappings.FlowMappingPipeline, fta *flow.TableAllocator) *SFlowAgentAllocator {
 	return &SFlowAgentAllocator{
 		AnalyzerClient:      a,
 		FlowMappingPipeline: m,
+		FlowTableAllocator:  fta,
 		allocated:           make(map[int]*SFlowAgent),
 	}
 }

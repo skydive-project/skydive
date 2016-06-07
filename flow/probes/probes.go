@@ -25,6 +25,7 @@ package probes
 import (
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/probe"
@@ -35,13 +36,6 @@ import (
 type FlowProbeBundle struct {
 	probe.ProbeBundle
 	Graph *graph.Graph
-}
-
-func (fpb *FlowProbeBundle) Flush() {
-	for _, p := range fpb.ProbeBundle.Probes {
-		fprobe := p.(FlowProbe)
-		fprobe.Flush()
-	}
 }
 
 func (fpb *FlowProbeBundle) UnregisterAllProbes() {
@@ -56,7 +50,7 @@ func (fpb *FlowProbeBundle) UnregisterAllProbes() {
 	}
 }
 
-func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph) *FlowProbeBundle {
+func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph, fta *flow.TableAllocator) *FlowProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.flow.probes")
 
 	logging.GetLogger().Infof("Flow probes: %v", list)
@@ -90,14 +84,14 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 			ofe := mappings.NewOvsFlowEnhancer(g)
 			pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
 
-			o := NewOvsSFlowProbesHandler(tb, g, pipeline, aclient)
+			o := NewOvsSFlowProbesHandler(tb, g, pipeline, aclient, fta)
 			if o != nil {
 				probes[t] = o
 			}
 		case "pcap":
 			pipeline := mappings.NewFlowMappingPipeline(gfe)
 
-			o := NewPcapProbesHandler(tb, g, pipeline, aclient)
+			o := NewPcapProbesHandler(tb, g, pipeline, aclient, fta)
 			if o != nil {
 				probes[t] = o
 			}

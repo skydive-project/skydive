@@ -285,13 +285,8 @@ func (o *OvsSFlowProbesHandler) Stop() {
 	o.allocator.ReleaseAll()
 }
 
-func (o *OvsSFlowProbesHandler) Flush() {
-	for _, a := range o.allocator.Agents() {
-		a.Flush()
-	}
-}
-
-func NewOvsSFlowProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph, m *mappings.FlowMappingPipeline, a *analyzer.Client) *OvsSFlowProbesHandler {
+func NewOvsSFlowProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph,
+	m *mappings.FlowMappingPipeline, a *analyzer.Client, fta *flow.TableAllocator) *OvsSFlowProbesHandler {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		logging.GetLogger().Error("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
@@ -302,7 +297,7 @@ func NewOvsSFlowProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph, m 
 	o := &OvsSFlowProbesHandler{
 		Graph:     g,
 		ovsClient: p.OvsMon.OvsClient,
-		allocator: sflow.NewSFlowAgentAllocator(a, m),
+		allocator: sflow.NewSFlowAgentAllocator(a, m, fta),
 	}
 
 	return o

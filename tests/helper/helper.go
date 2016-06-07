@@ -184,7 +184,7 @@ func (h *HelperAgentAnalyzer) run() {
 			h.Agent.Stop()
 			h.Analyzer.Stop()
 		case flush:
-			h.Agent.FlowProbeBundle.Flush()
+			h.Agent.FlowTableAlloctor.Flush()
 			time.Sleep(500 * time.Millisecond)
 			h.Analyzer.FlowTable.Flush()
 		}

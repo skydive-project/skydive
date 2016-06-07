@@ -24,12 +24,38 @@ package flow
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/redhat-cip/skydive/logging"
 )
+
+type TableQuery struct {
+	Obj interface{}
+}
+
+type TableReply struct {
+	Status int
+	Obj    interface{}
+}
+
+type FlowSearchQuery struct {
+	ProbeNodeUUID string
+}
+
+type FlowSearchReply struct {
+	Flows []*Flow
+}
+
+type sortByLast []*Flow
+
+type FlowQueryFilter struct {
+	// TODO add more filter elements
+	ProbeNodeUUID string
+}
 
 type Table struct {
 	lock        sync.RWMutex
@@ -38,6 +64,8 @@ type Table struct {
 	defaultFunc func()
 	flush       chan bool
 	flushDone   chan bool
+	query       chan *TableQuery
+	reply       chan *TableReply
 	running     atomic.Value
 	wg          sync.WaitGroup
 }
@@ -47,6 +75,8 @@ func NewTable() *Table {
 		table:     make(map[string]*Flow),
 		flush:     make(chan bool),
 		flushDone: make(chan bool),
+		query:     make(chan *TableQuery),
+		reply:     make(chan *TableReply),
 	}
 }
 
@@ -74,26 +104,23 @@ func (ft *Table) Update(flows []*Flow) {
 	ft.lock.Unlock()
 }
 
-func (ft *Table) LookupFlowsByProbeNodeUUID(uuid string) []*Flow {
-	ft.lock.RLock()
-	defer ft.lock.RUnlock()
-
-	flows := []*Flow{}
-	for _, f := range ft.table {
-		if f.ProbeNodeUUID == uuid {
-			flows = append(flows, &*f)
-		}
+func matchQueryFilter(f *Flow, filter *FlowQueryFilter) bool {
+	if filter.ProbeNodeUUID != "" && f.ProbeNodeUUID != filter.ProbeNodeUUID {
+		return false
 	}
-	return flows
+
+	return true
 }
 
-func (ft *Table) GetFlows() []*Flow {
+func (ft *Table) GetFlows(filters ...FlowQueryFilter) []*Flow {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
 
-	flows := []*Flow{}
+	flows := make([]*Flow, 0, len(ft.table))
 	for _, f := range ft.table {
-		flows = append(flows, &*f)
+		if len(filters) == 0 || matchQueryFilter(f, &filters[0]) {
+			flows = append(flows, &*f)
+		}
 	}
 	return flows
 }
@@ -216,7 +243,7 @@ func (ft *Table) updated(fn ExpireUpdateFunc, updateFrom int64) {
 	logging.GetLogger().Debugf("Send updated Flow %d", len(updatedFlows))
 }
 
-func (ft *Table) ExpireNow() {
+func (ft *Table) expireNow() {
 	const Now = int64(^uint64(0) >> 1)
 	ft.lock.Lock()
 	ft.expire(ft.manager.expire.callback, Now)
@@ -253,12 +280,70 @@ func (ft *Table) UnregisterAll() {
 	}
 	ft.lock.Unlock()
 
-	ft.ExpireNow()
+	ft.expireNow()
 }
 
 func (ft *Table) Flush() {
 	ft.flush <- true
 	<-ft.flushDone
+}
+
+func (s sortByLast) Len() int {
+	return len(s)
+}
+
+func (s sortByLast) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s sortByLast) Less(i, j int) bool {
+	return s[i].GetStatistics().Last > s[j].GetStatistics().Last
+}
+
+func (ft *Table) onFlowSearchQueryMessage(o interface{}) (*FlowSearchReply, int) {
+	var fq FlowSearchQuery
+	err := mapstructure.Decode(o, &fq)
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to decode flow search message %v", o)
+		return nil, 500
+	}
+
+	flows := ft.GetFlows(FlowQueryFilter{
+		ProbeNodeUUID: fq.ProbeNodeUUID,
+	})
+
+	if len(flows) == 0 {
+		return &FlowSearchReply{
+			Flows: flows,
+		}, 404
+	}
+
+	sort.Sort(sortByLast(flows))
+
+	return &FlowSearchReply{
+		Flows: flows,
+	}, 200
+}
+
+func (ft *Table) onQuery(q *TableQuery) *TableReply {
+
+	var obj interface{}
+	status := 500
+
+	switch q.Obj.(type) {
+	case *FlowSearchQuery:
+		obj, status = ft.onFlowSearchQueryMessage(q.Obj)
+	}
+
+	return &TableReply{
+		Status: status,
+		Obj:    obj,
+	}
+}
+
+func (ft *Table) Query(query *TableQuery) *TableReply {
+	ft.query <- query
+	return <-ft.reply
 }
 
 func (ft *Table) Start() {
@@ -273,8 +358,10 @@ func (ft *Table) Start() {
 		case now := <-ft.manager.updated.ticker.C:
 			ft.Updated(now)
 		case <-ft.flush:
-			ft.ExpireNow()
+			ft.expireNow()
 			ft.flushDone <- true
+		case query := <-ft.query:
+			ft.reply <- ft.onQuery(query)
 		default:
 			if ft.defaultFunc != nil {
 				ft.defaultFunc()
@@ -283,7 +370,7 @@ func (ft *Table) Start() {
 			}
 		}
 	}
-	ft.ExpireNow()
+	ft.expireNow()
 }
 
 func (ft *Table) Stop() {
@@ -291,5 +378,5 @@ func (ft *Table) Stop() {
 		ft.running.Store(false)
 		ft.wg.Wait()
 	}
-	ft.ExpireNow()
+	ft.expireNow()
 }

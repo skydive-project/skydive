@@ -130,7 +130,7 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	GenerateTestFlows(t, ft, 1, "probe1")
 	GenerateTestFlows(t, ft, 2, "probe2")
 
-	flows := ft.LookupFlowsByProbeNodeUUID("probe1")
+	flows := ft.GetFlows(FlowQueryFilter{ProbeNodeUUID: "probe1"})
 	if len(flows) == 0 {
 		t.Errorf("Should have flows with from probe1 returned")
 	}

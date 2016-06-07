@@ -28,6 +28,7 @@ import (
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/config"
+	"github.com/redhat-cip/skydive/flow"
 	fprobes "github.com/redhat-cip/skydive/flow/probes"
 	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
@@ -44,6 +45,7 @@ type Agent struct {
 	Root                  *graph.Node
 	TopologyProbeBundle   *tprobes.TopologyProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
+	FlowTableAlloctor     *flow.TableAllocator
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
 	HTTPServer            *shttp.Server
 	EtcdClient            *etcd.EtcdClient
@@ -75,6 +77,9 @@ func (a *Agent) Start() {
 		graph.NewForwarder(a.WSClient, a.Graph)
 		a.WSClient.Connect()
 
+		// expose a flow server through the client connection
+		flow.NewServer(a.FlowTableAlloctor, a.WSClient)
+
 		// send a first reset event to the analyzers
 		a.Graph.DelSubGraph(a.Root)
 	}
@@ -82,7 +87,7 @@ func (a *Agent) Start() {
 	a.TopologyProbeBundle = tprobes.NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
 	a.TopologyProbeBundle.Start()
 
-	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph)
+	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAlloctor)
 	a.FlowProbeBundle.Start()
 
 	if addr != "" {
@@ -172,11 +177,14 @@ func NewAgent() *Agent {
 
 	gserver := graph.NewServer(g, wsServer)
 
+	fta := flow.NewTableAllocator()
+
 	return &Agent{
-		Graph:       g,
-		WSServer:    wsServer,
-		GraphServer: gserver,
-		Root:        root,
-		HTTPServer:  hserver,
+		Graph:             g,
+		WSServer:          wsServer,
+		GraphServer:       gserver,
+		Root:              root,
+		HTTPServer:        hserver,
+		FlowTableAlloctor: fta,
 	}
 }

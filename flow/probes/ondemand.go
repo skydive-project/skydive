@@ -44,7 +44,6 @@ type OnDemandProbeListener struct {
 type FlowProbe interface {
 	RegisterProbe(n *graph.Node, capture *api.Capture) error
 	UnregisterProbe(n *graph.Node) error
-	Flush()
 }
 
 func (o *OnDemandProbeListener) probeFromType(n *graph.Node) FlowProbe {
