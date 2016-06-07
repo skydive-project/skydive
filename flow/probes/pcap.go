@@ -33,6 +33,7 @@ import (
 	"github.com/google/gopacket/pcap"
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/api"
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
@@ -42,15 +43,18 @@ import (
 )
 
 type PcapProbe struct {
-	handle        *pcap.Handle
-	channel       chan gopacket.Packet
-	probeNodeUUID string
+	sync.RWMutex
+	handle              *pcap.Handle
+	channel             chan gopacket.Packet
+	probeNodeUUID       string
+	analyzerClient      *analyzer.Client
+	flowTable           *flow.Table
+	flowMappingPipeline *mappings.FlowMappingPipeline
 }
 
 type PcapProbesHandler struct {
 	graph               *graph.Graph
 	analyzerClient      *analyzer.Client
-	flowTable           *flow.Table
 	flowMappingPipeline *mappings.FlowMappingPipeline
 	wg                  sync.WaitGroup
 	probes              map[string]*PcapProbe
@@ -66,16 +70,53 @@ func (p *PcapProbe) SetProbeNode(flow *flow.Flow) bool {
 	return true
 }
 
-func (p *PcapProbesHandler) handlePacket(pcapProbe *PcapProbe, packet gopacket.Packet) {
-	flows := []*flow.Flow{flow.FlowFromGoPacket(p.flowTable, &packet, pcapProbe)}
-	p.flowTable.Update(flows)
-	p.flowMappingPipeline.Enhance(flows)
-
+func (p *PcapProbe) asyncFlowPipeline(flows []*flow.Flow) {
+	if p.flowMappingPipeline != nil {
+		p.flowMappingPipeline.Enhance(flows)
+	}
 	if p.analyzerClient != nil {
-		// FIX(safchain) add flow state cache in order to send only flow changes
-		// to not flood the analyzer
 		p.analyzerClient.SendFlows(flows)
 	}
+}
+
+func (p *PcapProbe) start() {
+	p.Lock()
+	p.flowTable = flow.NewTable()
+	p.Unlock()
+
+	defer p.flowTable.UnregisterAll()
+
+	agentExpire := config.GetAgentExpire()
+	p.flowTable.RegisterExpire(p.asyncFlowPipeline, agentExpire, agentExpire)
+
+	agentUpdate := config.GetAgentUpdate()
+	p.flowTable.RegisterUpdated(p.asyncFlowPipeline, agentUpdate, agentUpdate)
+
+	feedFlowTable := func() {
+		select {
+		case packet, ok := <-p.channel:
+			if ok {
+				flow.FlowFromGoPacket(p.flowTable, &packet, p)
+			}
+		}
+	}
+	p.flowTable.RegisterDefault(feedFlowTable)
+
+	p.flowTable.Start()
+}
+
+func (p *PcapProbe) stop() {
+	p.handle.Close()
+
+	p.RLock()
+	p.flowTable.Stop()
+	p.RUnlock()
+}
+
+func (p *PcapProbe) flush() {
+	p.RLock()
+	p.flowTable.Flush()
+	p.RUnlock()
 }
 
 func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) error {
@@ -130,9 +171,11 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 		packetChannel := packetSource.Packets()
 
 		probe := &PcapProbe{
-			handle:        handle,
-			channel:       packetChannel,
-			probeNodeUUID: string(n.ID),
+			handle:              handle,
+			channel:             packetChannel,
+			probeNodeUUID:       string(n.ID),
+			flowMappingPipeline: p.flowMappingPipeline,
+			analyzerClient:      p.analyzerClient,
 		}
 		p.probesLock.Lock()
 		p.probes[ifName] = probe
@@ -142,9 +185,7 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 		go func() {
 			defer p.wg.Done()
 
-			for packet := range probe.channel {
-				p.handlePacket(probe, packet)
-			}
+			probe.start()
 		}()
 	}
 	return nil
@@ -153,7 +194,7 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 func (p *PcapProbesHandler) unregisterProbe(ifName string) error {
 	if probe, ok := p.probes[ifName]; ok {
 		logging.GetLogger().Debugf("Terminating pcap capture on %s", ifName)
-		probe.handle.Close()
+		probe.stop()
 		delete(p.probes, ifName)
 	}
 
@@ -187,7 +228,13 @@ func (p *PcapProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
-func (o *PcapProbesHandler) Flush() {
+func (p *PcapProbesHandler) Flush() {
+	p.probesLock.Lock()
+	defer p.probesLock.Unlock()
+
+	for _, probe := range p.probes {
+		probe.flush()
+	}
 }
 
 func NewPcapProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph, p *mappings.FlowMappingPipeline, a *analyzer.Client) *PcapProbesHandler {
@@ -195,7 +242,6 @@ func NewPcapProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph, p *map
 		graph:               g,
 		analyzerClient:      a,
 		flowMappingPipeline: p,
-		flowTable:           flow.NewTable(),
 		probes:              make(map[string]*PcapProbe),
 	}
 	return handler

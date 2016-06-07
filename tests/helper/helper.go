@@ -186,7 +186,7 @@ func (h *HelperAgentAnalyzer) run() {
 		case flush:
 			h.Agent.FlowProbeBundle.Flush()
 			time.Sleep(500 * time.Millisecond)
-			h.Analyzer.Flush()
+			h.Analyzer.FlowTable.Flush()
 		}
 		h.serviceDone <- true
 	}

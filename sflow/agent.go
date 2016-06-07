@@ -28,7 +28,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket"
@@ -57,10 +56,6 @@ type SFlowAgent struct {
 	flowTable           *flow.Table
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	FlowProbeNodeSetter flow.FlowProbeNodeSetter
-	running             atomic.Value
-	wg                  sync.WaitGroup
-	flush               chan bool
-	flushDone           chan bool
 }
 
 type SFlowAgentAllocator struct {
@@ -124,11 +119,6 @@ func (sfa *SFlowAgent) start() error {
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(1 * time.Second))
 
-	sfa.wg.Add(1)
-	defer sfa.wg.Done()
-
-	sfa.running.Store(true)
-
 	sfa.flowTable = flow.NewTable()
 	defer sfa.flowTable.UnregisterAll()
 
@@ -138,19 +128,12 @@ func (sfa *SFlowAgent) start() error {
 	agentUpdate := config.GetAgentUpdate()
 	sfa.flowTable.RegisterUpdated(sfa.asyncFlowPipeline, agentUpdate, agentUpdate)
 
-	for sfa.running.Load() == true {
-		select {
-		case now := <-sfa.flowTable.GetExpireTicker():
-			sfa.flowTable.Expire(now)
-		case now := <-sfa.flowTable.GetUpdatedTicker():
-			sfa.flowTable.Updated(now)
-		case <-sfa.flush:
-			sfa.flowTable.ExpireNow()
-			sfa.flushDone <- true
-		default:
-			sfa.feedFlowTable(conn)
-		}
+	feedFlowTable := func() {
+		sfa.feedFlowTable(conn)
 	}
+	sfa.flowTable.RegisterDefault(feedFlowTable)
+
+	sfa.flowTable.Start()
 
 	return nil
 }
@@ -160,16 +143,12 @@ func (sfa *SFlowAgent) Start() {
 }
 
 func (sfa *SFlowAgent) Stop() {
-	if sfa.running.Load() == true {
-		sfa.running.Store(false)
-		sfa.wg.Wait()
-	}
+	sfa.flowTable.Stop()
 }
 
 func (sfa *SFlowAgent) Flush() {
 	logging.GetLogger().Critical("Flush() MUST be called for testing purpose only, not in production")
-	sfa.flush <- true
-	<-sfa.flushDone
+	sfa.flowTable.Flush()
 }
 
 func (sfa *SFlowAgent) SetFlowProbeNodeSetter(p flow.FlowProbeNodeSetter) {
@@ -183,8 +162,6 @@ func NewSFlowAgent(u string, a string, p int, c *analyzer.Client, m *mappings.Fl
 		Port:                p,
 		AnalyzerClient:      c,
 		FlowMappingPipeline: m,
-		flush:               make(chan bool),
-		flushDone:           make(chan bool),
 	}
 }
 

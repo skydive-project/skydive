@@ -100,18 +100,6 @@ func (s *Server) handleUDPFlowPacket() {
 	}
 }
 
-func (s *Server) asyncFlowTableExpireUpdated() {
-	for s.running.Load() == true {
-		select {
-		case now := <-s.FlowTable.GetExpireTicker():
-			s.FlowTable.Expire(now)
-		case now := <-s.FlowTable.GetUpdatedTicker():
-			s.FlowTable.Updated(now)
-		case <-time.After(time.Second * 1):
-		}
-	}
-}
-
 func (s *Server) ListenAndServe() {
 	s.running.Store(true)
 
@@ -121,7 +109,7 @@ func (s *Server) ListenAndServe() {
 
 	s.AlertServer.AlertManager.Start()
 
-	s.wgServers.Add(4)
+	s.wgServers.Add(3)
 	go func() {
 		defer s.wgServers.Done()
 		s.HTTPServer.ListenAndServe()
@@ -146,14 +134,12 @@ func (s *Server) ListenAndServe() {
 		s.handleUDPFlowPacket()
 	}()
 
-	go func() {
-		defer s.wgServers.Done()
-		s.asyncFlowTableExpireUpdated()
-	}()
+	go s.FlowTable.Start()
 }
 
 func (s *Server) Stop() {
 	s.running.Store(false)
+	s.FlowTable.Stop()
 	s.FlowTable.UnregisterAll()
 	s.WSServer.Stop()
 	s.HTTPServer.Stop()
@@ -171,11 +157,6 @@ func (s *Server) Stop() {
 	}); ok {
 		tr.CloseIdleConnections()
 	}
-}
-
-func (s *Server) Flush() {
-	logging.GetLogger().Critical("Flush() MUST be called for testing purpose only, not in production")
-	s.FlowTable.ExpireNow()
 }
 
 func (s *Server) SetStorage(storage storage.Storage) {

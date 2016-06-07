@@ -25,19 +25,29 @@ package flow
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/redhat-cip/skydive/logging"
 )
 
 type Table struct {
-	lock    sync.RWMutex
-	table   map[string]*Flow
-	manager tableManager
+	lock        sync.RWMutex
+	table       map[string]*Flow
+	manager     tableManager
+	defaultFunc func()
+	flush       chan bool
+	flushDone   chan bool
+	running     atomic.Value
+	wg          sync.WaitGroup
 }
 
 func NewTable() *Table {
-	return &Table{table: make(map[string]*Flow)}
+	return &Table{
+		table:     make(map[string]*Flow),
+		flush:     make(chan bool),
+		flushDone: make(chan bool),
+	}
 }
 
 func NewTableFromFlows(flows []*Flow) *Table {
@@ -227,6 +237,12 @@ func (ft *Table) RegisterUpdated(fn ExpireUpdateFunc, since time.Duration, windo
 	ft.lock.Unlock()
 }
 
+func (ft *Table) RegisterDefault(fn func()) {
+	ft.lock.Lock()
+	ft.defaultFunc = fn
+	ft.lock.Unlock()
+}
+
 func (ft *Table) UnregisterAll() {
 	ft.lock.Lock()
 	if ft.manager.updated.running {
@@ -240,10 +256,40 @@ func (ft *Table) UnregisterAll() {
 	ft.ExpireNow()
 }
 
-func (ft *Table) GetExpireTicker() <-chan time.Time {
-	return ft.manager.expire.ticker.C
+func (ft *Table) Flush() {
+	ft.flush <- true
+	<-ft.flushDone
 }
 
-func (ft *Table) GetUpdatedTicker() <-chan time.Time {
-	return ft.manager.updated.ticker.C
+func (ft *Table) Start() {
+	ft.wg.Add(1)
+	defer ft.wg.Done()
+
+	ft.running.Store(true)
+	for ft.running.Load() == true {
+		select {
+		case now := <-ft.manager.expire.ticker.C:
+			ft.Expire(now)
+		case now := <-ft.manager.updated.ticker.C:
+			ft.Updated(now)
+		case <-ft.flush:
+			ft.ExpireNow()
+			ft.flushDone <- true
+		default:
+			if ft.defaultFunc != nil {
+				ft.defaultFunc()
+			} else {
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}
+	ft.ExpireNow()
+}
+
+func (ft *Table) Stop() {
+	if ft.running.Load() == true {
+		ft.running.Store(false)
+		ft.wg.Wait()
+	}
+	ft.ExpireNow()
 }
