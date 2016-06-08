@@ -24,11 +24,13 @@ package helper
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -39,11 +41,23 @@ import (
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/storage"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 type Cmd struct {
 	Cmd   string
 	Check bool
+}
+
+var (
+	etcdServer   string
+	graphBackend string
+)
+
+func init() {
+	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
+	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
+	flag.Parse()
 }
 
 func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
@@ -74,7 +88,13 @@ func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 	} else {
 		params[0]["LogLevel"] = "INFO"
 	}
-
+	if etcdServer != "" {
+		params[0]["EmbeddedEtcd"] = "false"
+		params[0]["EtcdServer"] = etcdServer
+	} else {
+		params[0]["EmbeddedEtcd"] = "true"
+		params[0]["EtcdServer"] = "http://localhost:2374"
+	}
 	tmpl, err := template.New("config").Parse(conf)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -228,4 +248,43 @@ func ExecCmds(t *testing.T, cmds ...Cmd) {
 			t.Fatal("cmd : ("+cmd.Cmd+") ", err.Error(), output)
 		}
 	}
+}
+
+func NewGraph(t *testing.T) *graph.Graph {
+	var backend graph.GraphBackend
+	var err error
+	switch graphBackend {
+	case "gremlin-ws":
+		backend, err = graph.NewGremlinBackend("ws://127.0.0.1:8182")
+	case "gremlin-rest":
+		backend, err = graph.NewGremlinBackend("http://127.0.0.1:8182?gremlin=")
+	default:
+		backend, err = graph.NewMemoryBackend()
+	}
+
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	t.Logf("Using %s as backend", graphBackend)
+
+	g, err := graph.NewGraph(backend)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	root := g.LookupFirstNode(graph.Metadata{"Name": hostname, "Type": "host"})
+	if root == nil {
+		root = g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
+		if root == nil {
+			t.Fatal("fail while adding root node")
+		}
+	}
+
+	return g
 }

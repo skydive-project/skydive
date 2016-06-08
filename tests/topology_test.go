@@ -24,11 +24,9 @@ package tests
 
 import (
 	"errors"
-	"flag"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"testing"
 	"time"
 
@@ -63,21 +61,14 @@ ovs:
   ovsdb: 6400
 
 etcd:
-  embedded: true
+  embedded: {{.EmbeddedEtcd}}
   port: 2374
   data_dir: /tmp
-  servers: http://localhost:2374
+  servers: {{.EtcdServer}}
 
 logging:
   default: {{.LogLevel}}
 `
-
-var graphBackend string
-
-func init() {
-	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
-	flag.Parse()
-}
 
 func newClient() (*websocket.Conn, error) {
 	conn, err := net.Dial("tcp", "127.0.0.1:58081")
@@ -277,47 +268,8 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, names []string
 	}
 }
 
-func newGraph(t *testing.T) *graph.Graph {
-	var backend graph.GraphBackend
-	var err error
-	switch graphBackend {
-	case "gremlin-ws":
-		backend, err = graph.NewGremlinBackend("ws://127.0.0.1:8182")
-	case "gremlin-rest":
-		backend, err = graph.NewGremlinBackend("http://127.0.0.1:8182?gremlin=")
-	default:
-		backend, err = graph.NewMemoryBackend()
-	}
-
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	t.Logf("Using %s as backend", graphBackend)
-
-	g, err := graph.NewGraph(backend)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	root := g.LookupFirstNode(graph.Metadata{"Name": hostname, "Type": "host"})
-	if root == nil {
-		root = g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
-		if root == nil {
-			t.Fatal("fail while adding root node")
-		}
-	}
-
-	return g
-}
-
 func TestBridgeOVS(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -368,7 +320,7 @@ func TestBridgeOVS(t *testing.T) {
 }
 
 func TestPatchOVS(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -422,7 +374,7 @@ func TestPatchOVS(t *testing.T) {
 }
 
 func TestInterfaceOVS(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -473,7 +425,7 @@ func TestInterfaceOVS(t *testing.T) {
 }
 
 func TestBondOVS(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -520,7 +472,7 @@ func TestBondOVS(t *testing.T) {
 }
 
 func TestVeth(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -565,7 +517,7 @@ func TestVeth(t *testing.T) {
 }
 
 func TestBridge(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -609,7 +561,7 @@ func TestBridge(t *testing.T) {
 }
 
 func TestMacNameUpdate(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -653,7 +605,7 @@ func TestMacNameUpdate(t *testing.T) {
 }
 
 func TestNameSpace(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -690,7 +642,7 @@ func TestNameSpace(t *testing.T) {
 }
 
 func TestNameSpaceVeth(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -734,7 +686,7 @@ func TestNameSpaceVeth(t *testing.T) {
 }
 
 func TestNameSpaceOVSInterface(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -785,7 +737,7 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 }
 
 func TestDockerSimple(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -822,7 +774,7 @@ func TestDockerSimple(t *testing.T) {
 }
 
 func TestDockerShareNamespace(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
@@ -867,7 +819,7 @@ func TestDockerShareNamespace(t *testing.T) {
 }
 
 func TestDockerNetHost(t *testing.T) {
-	g := newGraph(t)
+	g := helper.NewGraph(t)
 
 	agent := helper.StartAgentWithConfig(t, confTopology)
 	defer agent.Stop()
