@@ -25,6 +25,7 @@ package graph
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 
@@ -181,6 +182,22 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (n *Node) Decode(i interface{}) error {
+	objMap, ok := i.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Unable to decode node: %v", i)
+	}
+
+	n.graphElement.ID = Identifier(objMap["ID"].(string))
+	n.graphElement.host = objMap["Host"].(string)
+	n.metadata = make(Metadata)
+	if m, ok := objMap["Metadata"]; ok {
+		n.metadata = Metadata(m.(map[string]interface{}))
+	}
+
+	return nil
+}
+
 func (e *Edge) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		ID       Identifier
@@ -195,6 +212,24 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		Child:    e.child,
 		Host:     e.host,
 	})
+}
+
+func (e *Edge) Decode(i interface{}) error {
+	objMap, ok := i.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Unable to decode node: %v", i)
+	}
+
+	e.graphElement.ID = Identifier(objMap["ID"].(string))
+	e.graphElement.host = objMap["Host"].(string)
+	e.parent = Identifier(objMap["Parent"].(string))
+	e.child = Identifier(objMap["Child"].(string))
+	e.metadata = make(Metadata)
+	if m, ok := objMap["Metadata"]; ok {
+		e.metadata = Metadata(m.(map[string]interface{}))
+	}
+
+	return nil
 }
 
 func (g *Graph) notifyMetadataUpdated(e interface{}) {

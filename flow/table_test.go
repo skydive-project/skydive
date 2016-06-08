@@ -130,14 +130,14 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	GenerateTestFlows(t, ft, 1, "probe1")
 	GenerateTestFlows(t, ft, 2, "probe2")
 
-	flows := ft.LookupFlowsByProbePath("probe1")
+	flows := ft.LookupFlowsByProbeNodeUUID("probe1")
 	if len(flows) == 0 {
 		t.Errorf("Should have flows with from probe1 returned")
 	}
 
 	for _, f := range flows {
-		if f.ProbeGraphPath != "probe1" {
-			t.Errorf("Only flow with probe1 as probepath are expected, got %s", f.ProbeGraphPath)
+		if f.ProbeNodeUUID != "probe1" {
+			t.Errorf("Only flow with probe1 as ProbeNodeUUID is expected, got %s", f.ProbeNodeUUID)
 		}
 	}
 }

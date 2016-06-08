@@ -22,29 +22,12 @@
 
 package graph
 
-import (
-	"fmt"
-
-	shttp "github.com/redhat-cip/skydive/http"
-)
+import shttp "github.com/redhat-cip/skydive/http"
 
 func UnmarshalWSMessage(msg shttp.WSMessage) (shttp.WSMessage, error) {
 	if msg.Type == "SyncRequest" {
 		return msg, nil
 	}
-
-	objMap, ok := msg.Obj.(map[string]interface{})
-	if !ok {
-		return msg, fmt.Errorf("Unable to parse event: %v", msg)
-	}
-
-	ID := Identifier(objMap["ID"].(string))
-	metadata := make(Metadata)
-	if m, ok := objMap["Metadata"]; ok {
-		metadata = Metadata(m.(map[string]interface{}))
-	}
-
-	host := objMap["Host"].(string)
 
 	switch msg.Type {
 	/* Graph Section */
@@ -55,34 +38,23 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (shttp.WSMessage, error) {
 	case "NodeDeleted":
 		fallthrough
 	case "NodeAdded":
-		if m, ok := objMap["Metadata"]; ok {
-			metadata = Metadata(m.(map[string]interface{}))
+		var node Node
+		err := node.Decode(msg.Obj)
+		if err != nil {
+			return msg, err
 		}
-
-		msg.Obj = &Node{
-			graphElement: graphElement{
-				ID:       ID,
-				metadata: metadata,
-				host:     host,
-			},
-		}
+		msg.Obj = &node
 	case "EdgeUpdated":
 		fallthrough
 	case "EdgeDeleted":
 		fallthrough
 	case "EdgeAdded":
-		parent := Identifier(objMap["Parent"].(string))
-		child := Identifier(objMap["Child"].(string))
-
-		msg.Obj = &Edge{
-			graphElement: graphElement{
-				ID:       ID,
-				metadata: metadata,
-				host:     host,
-			},
-			parent: parent,
-			child:  child,
+		var edge Edge
+		err := edge.Decode(msg.Obj)
+		if err != nil {
+			return msg, err
 		}
+		msg.Obj = &edge
 	}
 
 	return msg, nil

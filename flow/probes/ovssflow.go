@@ -24,8 +24,6 @@ package probes
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/socketplane/libovsdb"
@@ -37,19 +35,18 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/ovs"
 	"github.com/redhat-cip/skydive/sflow"
-	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	"github.com/redhat-cip/skydive/topology/probes"
 )
 
 type OvsSFlowProbe struct {
-	ID             string
-	Interface      string
-	Target         string
-	HeaderSize     uint32
-	Sampling       uint32
-	Polling        uint32
-	ProbeGraphPath string
+	ID            string
+	Interface     string
+	Target        string
+	HeaderSize    uint32
+	Sampling      uint32
+	Polling       uint32
+	ProbeNodeUUID string
 }
 
 type OvsSFlowProbesHandler struct {
@@ -63,8 +60,8 @@ func probeID(i string) string {
 	return "SkydiveSFlowProbe_" + strings.Replace(i, "-", "_", -1)
 }
 
-func (p *OvsSFlowProbe) SetProbePath(flow *flow.Flow) bool {
-	flow.ProbeGraphPath = p.ProbeGraphPath
+func (p *OvsSFlowProbe) SetProbeNode(flow *flow.Flow) bool {
+	flow.ProbeNodeUUID = p.ProbeNodeUUID
 	return true
 }
 
@@ -225,14 +222,14 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 	return nil
 }
 
-func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, path string) error {
+func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, uuid string) error {
 	probe := OvsSFlowProbe{
-		ID:             probeID(bridgeUUID),
-		Interface:      "lo",
-		HeaderSize:     256,
-		Sampling:       1,
-		Polling:        0,
-		ProbeGraphPath: path,
+		ID:            probeID(bridgeUUID),
+		Interface:     "lo",
+		HeaderSize:    256,
+		Sampling:      1,
+		Polling:       0,
+		ProbeNodeUUID: uuid,
 	}
 
 	agent, err := o.allocator.Alloc(bridgeUUID, &probe)
@@ -255,14 +252,7 @@ func isOvsBridge(n *graph.Node) bool {
 
 func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) error {
 	if isOvsBridge(n) {
-		nodes := o.Graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
-		if len(nodes) == 0 {
-			return errors.New(fmt.Sprintf("Failed to determine probePath for %v", n))
-		}
-
-		probePath := topology.NodePath(nodes).Marshal()
-
-		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), probePath)
+		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), string(n.ID))
 		if err != nil {
 			return err
 		}

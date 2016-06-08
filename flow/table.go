@@ -64,13 +64,13 @@ func (ft *Table) Update(flows []*Flow) {
 	ft.lock.Unlock()
 }
 
-func (ft *Table) LookupFlowsByProbePath(p string) []*Flow {
+func (ft *Table) LookupFlowsByProbeNodeUUID(uuid string) []*Flow {
 	ft.lock.RLock()
 	defer ft.lock.RUnlock()
 
 	flows := []*Flow{}
 	for _, f := range ft.table {
-		if f.ProbeGraphPath == p {
+		if f.ProbeNodeUUID == uuid {
 			flows = append(flows, &*f)
 		}
 	}

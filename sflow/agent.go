@@ -56,7 +56,7 @@ type SFlowAgent struct {
 	AnalyzerClient      *analyzer.Client
 	flowTable           *flow.Table
 	FlowMappingPipeline *mappings.FlowMappingPipeline
-	FlowProbePathSetter flow.FlowProbePathSetter
+	FlowProbeNodeSetter flow.FlowProbeNodeSetter
 	running             atomic.Value
 	wg                  sync.WaitGroup
 	flush               chan bool
@@ -67,7 +67,7 @@ type SFlowAgentAllocator struct {
 	sync.RWMutex
 	AnalyzerClient      *analyzer.Client
 	FlowMappingPipeline *mappings.FlowMappingPipeline
-	FlowProbePathSetter flow.FlowProbePathSetter
+	FlowProbeNodeSetter flow.FlowProbeNodeSetter
 	Addr                string
 	MinPort             int
 	MaxPort             int
@@ -96,7 +96,7 @@ func (sfa *SFlowAgent) feedFlowTable(conn *net.UDPConn) {
 
 	if sflowPacket.SampleCount > 0 {
 		for _, sample := range sflowPacket.FlowSamples {
-			flows := flow.FlowsFromSFlowSample(sfa.flowTable, &sample, sfa.FlowProbePathSetter)
+			flows := flow.FlowsFromSFlowSample(sfa.flowTable, &sample, sfa.FlowProbeNodeSetter)
 			logging.GetLogger().Debugf("%d flows captured", len(flows))
 		}
 	}
@@ -172,8 +172,8 @@ func (sfa *SFlowAgent) Flush() {
 	<-sfa.flushDone
 }
 
-func (sfa *SFlowAgent) SetFlowProbePathSetter(p flow.FlowProbePathSetter) {
-	sfa.FlowProbePathSetter = p
+func (sfa *SFlowAgent) SetFlowProbeNodeSetter(p flow.FlowProbeNodeSetter) {
+	sfa.FlowProbeNodeSetter = p
 }
 
 func NewSFlowAgent(u string, a string, p int, c *analyzer.Client, m *mappings.FlowMappingPipeline) *SFlowAgent {
@@ -234,7 +234,7 @@ func (a *SFlowAgentAllocator) ReleaseAll() {
 	}
 }
 
-func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbePathSetter) (*SFlowAgent, error) {
+func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter) (*SFlowAgent, error) {
 	address := config.GetConfig().GetString("sflow.bind_address")
 	if address == "" {
 		address = "127.0.0.1"
@@ -263,7 +263,7 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbePathSetter) (*S
 	for i := min; i != max+1; i++ {
 		if _, ok := a.allocated[i]; !ok {
 			s := NewSFlowAgent(uuid, address, i, a.AnalyzerClient, a.FlowMappingPipeline)
-			s.SetFlowProbePathSetter(p)
+			s.SetFlowProbeNodeSetter(p)
 
 			a.allocated[i] = s
 

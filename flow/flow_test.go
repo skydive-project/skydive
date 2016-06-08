@@ -53,9 +53,9 @@ func TestFlowJSON(t *testing.T) {
 				},
 			},
 		},
-		ProbeGraphPath: "probepath-1",
-		IfSrcGraphPath: "srcgraphpath-1",
-		IfDstGraphPath: "dstgraphpath-1",
+		ProbeNodeUUID: "probepath-1",
+		IfSrcNodeUUID: "srcgraphpath-1",
+		IfDstNodeUUID: "dstgraphpath-1",
 	}
 
 	j, err := json.Marshal(f)
@@ -66,9 +66,9 @@ func TestFlowJSON(t *testing.T) {
 	schema := v.Object(
 		v.ObjKV("UUID", v.String()),
 		v.ObjKV("LayersPath", v.String()),
-		v.ObjKV("ProbeGraphPath", v.String()),
-		v.ObjKV("IfSrcGraphPath", v.String()),
-		v.ObjKV("IfDstGraphPath", v.String()),
+		v.ObjKV("ProbeNodeUUID", v.String()),
+		v.ObjKV("IfSrcNodeUUID", v.String()),
+		v.ObjKV("IfDstNodeUUID", v.String()),
 		v.ObjKV("Statistics", v.Object(
 			v.ObjKV("Start", v.Number()),
 			v.ObjKV("Last", v.Number()),

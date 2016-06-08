@@ -23,18 +23,19 @@
 package tests
 
 import (
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/redhat-cip/skydive/api"
+	cmd "github.com/redhat-cip/skydive/cmd/client"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/tests/helper"
 	"github.com/redhat-cip/skydive/tools"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 const confAgentAnalyzer = `---
@@ -186,6 +187,23 @@ func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) 
 	}
 }
 
+func getNodeFromGremlin(t *testing.T, query string) *graph.Node {
+	result, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	array := result.([]interface{})
+
+	var node graph.Node
+	err = node.Decode(array[0])
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return &node
+}
+
 func TestSFlowWithPCAP(t *testing.T) {
 	ts := NewTestStorage()
 
@@ -229,12 +247,7 @@ func TestSFlowWithPCAP(t *testing.T) {
 	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
 }
 
-func TestSFlowProbePath(t *testing.T) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
+func TestSFlowProbeNode(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -265,9 +278,11 @@ func TestSFlowProbePath(t *testing.T) {
 
 	aa.Flush()
 
+	node := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.ProbeGraphPath == hostname+"[Type=host]/br-sflow[Type=ovsbridge]" && f.LayersPath == "Ethernet/ARP/Payload" {
+		if f.ProbeNodeUUID == string(node.ID) && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}
@@ -281,11 +296,6 @@ func TestSFlowProbePath(t *testing.T) {
 }
 
 func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -319,9 +329,11 @@ func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
 
 	aa.Flush()
 
+	node := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.ProbeGraphPath == hostname+"[Type=host]/br-sflow[Type=ovsbridge]" && f.LayersPath == "Ethernet/ARP/Payload" {
+		if f.ProbeNodeUUID == string(node.ID) && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}
@@ -335,11 +347,6 @@ func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
 }
 
 func TestSFlowTwoProbePath(t *testing.T) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -412,14 +419,17 @@ func TestSFlowTwoProbePath(t *testing.T) {
 		t.Errorf("Should have 2 flow entries one per probepath got: %d", len(flows))
 	}
 
-	if flows[0].ProbeGraphPath != hostname+"[Type=host]/br-sflow1[Type=ovsbridge]" &&
-		flows[0].ProbeGraphPath != hostname+"[Type=host]/br-sflow2[Type=ovsbridge]" {
-		t.Errorf("Bad probepath for the first flow: %s", flows[0].ProbeGraphPath)
+	node1 := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow1", "Type", "ovsbridge")`)
+	node2 := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow2", "Type", "ovsbridge")`)
+
+	if flows[0].ProbeNodeUUID != string(node1.ID) &&
+		flows[0].ProbeNodeUUID != string(node2.ID) {
+		t.Errorf("Bad probepath for the first flow: %s", flows[0].ProbeNodeUUID)
 	}
 
-	if flows[1].ProbeGraphPath != hostname+"[Type=host]/br-sflow1[Type=ovsbridge]" &&
-		flows[1].ProbeGraphPath != hostname+"[Type=host]/br-sflow2[Type=ovsbridge]" {
-		t.Errorf("Bad probepath for the second flow: %s", flows[1].ProbeGraphPath)
+	if flows[1].ProbeNodeUUID != string(node1.ID) &&
+		flows[1].ProbeNodeUUID != string(node2.ID) {
+		t.Errorf("Bad probepath for the second flow: %s", flows[1].ProbeNodeUUID)
 	}
 
 	if flows[0].TrackingID != flows[1].TrackingID {
@@ -435,11 +445,6 @@ func TestSFlowTwoProbePath(t *testing.T) {
 }
 
 func TestPCAPProbe(t *testing.T) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -470,10 +475,12 @@ func TestPCAPProbe(t *testing.T) {
 
 	aa.Flush()
 
+	node := getNodeFromGremlin(t, `g.V().Has("Name", "br-pcap", "Type", "bridge")`)
+
 	ok := false
 	flows := ts.GetFlows()
 	for _, f := range flows {
-		if f.ProbeGraphPath == hostname+"[Type=host]/br-pcap[Type=bridge]" {
+		if f.ProbeNodeUUID == string(node.ID) {
 			ok = true
 			break
 		}
@@ -487,11 +494,6 @@ func TestPCAPProbe(t *testing.T) {
 }
 
 func TestSFlowSrcDstPath(t *testing.T) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -534,13 +536,14 @@ func TestSFlowSrcDstPath(t *testing.T) {
 
 	aa.Flush()
 
+	node1 := getNodeFromGremlin(t, `g.V().Has("Name", "sflow-intf1", "Type", "internal")`)
+	node2 := getNodeFromGremlin(t, `g.V().Has("Name", "sflow-intf2", "Type", "internal")`)
+
 	ok := false
 	for _, f := range ts.GetFlows() {
 		// we can have both way depending on which packet has been seen first
-		if (f.IfSrcGraphPath == hostname+"[Type=host]/sflow-vm1[Type=netns]/sflow-intf1[Type=internal]" &&
-			f.IfDstGraphPath == hostname+"[Type=host]/sflow-vm2[Type=netns]/sflow-intf2[Type=internal]") ||
-			(f.IfSrcGraphPath == hostname+"[Type=host]/sflow-vm2[Type=netns]/sflow-intf2[Type=internal]" &&
-				f.IfDstGraphPath == hostname+"[Type=host]/sflow-vm1[Type=netns]/sflow-intf1[Type=internal]") {
+		if (f.IfSrcNodeUUID == string(node1.ID) && f.IfDstNodeUUID == string(node2.ID)) ||
+			(f.IfSrcNodeUUID == string(node2.ID) && f.IfDstNodeUUID == string(node1.ID)) {
 			ok = true
 			break
 		}

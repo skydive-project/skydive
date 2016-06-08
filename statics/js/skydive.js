@@ -291,7 +291,7 @@ HostLayout.prototype.NodeDetails = function(node) {
   if (graphPath != "") {
     $.ajax({
       dataType: "json",
-      url: '/api/flow/search?ProbeGraphPath=' + graphPath,
+      url: '/api/flow/search?ProbeNodeUUID=' + node.ID,
       success: function(data) {
         var json = JSON.stringify(data);
         $("#flows").JSONView(json);

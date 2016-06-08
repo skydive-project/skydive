@@ -82,7 +82,7 @@ message Flow {
   string TrackingID             = 5;
 
   /* Topology info */
-  string ProbeGraphPath	= 11;
-  string IfSrcGraphPath	= 14;
-  string IfDstGraphPath	= 19;
+  string ProbeNodeUUID	= 11;
+  string IfSrcNodeUUID	= 14;
+  string IfDstNodeUUID	= 19;
 }

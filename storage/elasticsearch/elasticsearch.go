@@ -39,11 +39,11 @@ import (
 	"github.com/redhat-cip/skydive/storage"
 )
 
-const indexVersion = 1
+const indexVersion = 2
 
 const mapping = `
 {"mappings":{"flow":{"dynamic_templates":[
-	{"notanalyzed_graph":{"match":"*GraphPath","mapping":{"type":"string","index":"not_analyzed"}}},
+	{"notanalyzed_graph":{"match":"*NodeUUID","mapping":{"type":"string","index":"not_analyzed"}}},
 	{"notanalyzed_layers":{"match":"LayersPath","mapping":{"type":"string","index":"not_analyzed"}}},
 	{"start_epoch":{"match":"Start","mapping":{"type":"date", "format": "epoch_second"}}},
 	{"last_epoch":{"match":"Last","mapping":{"type":"date", "format": "epoch_second"}}}

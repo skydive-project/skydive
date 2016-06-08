@@ -26,7 +26,6 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/packet"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
@@ -34,7 +33,7 @@ type GraphFlowEnhancer struct {
 	Graph *graph.Graph
 }
 
-func (gfe *GraphFlowEnhancer) getPath(mac string) string {
+func (gfe *GraphFlowEnhancer) getNodeUUID(mac string) string {
 	if packet.IsBroadcastMac(mac) || packet.IsMulticastMac(mac) {
 		return "*"
 	}
@@ -46,24 +45,24 @@ func (gfe *GraphFlowEnhancer) getPath(mac string) string {
 	if len(intfs) > 1 {
 		logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
 	} else if len(intfs) == 1 {
-		return topology.GraphPath(gfe.Graph, intfs[0])
+		return string(intfs[0].ID)
 	}
 	return ""
 }
 
 func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
 	var eth *flow.FlowEndpointsStatistics
-	if f.IfSrcGraphPath == "" || f.IfDstGraphPath == "" {
+	if f.IfSrcNodeUUID == "" || f.IfDstNodeUUID == "" {
 		eth = f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
 		if eth == nil {
 			return
 		}
 	}
-	if f.IfSrcGraphPath == "" {
-		f.IfSrcGraphPath = gfe.getPath(eth.AB.Value)
+	if f.IfSrcNodeUUID == "" {
+		f.IfSrcNodeUUID = gfe.getNodeUUID(eth.AB.Value)
 	}
-	if f.IfDstGraphPath == "" {
-		f.IfDstGraphPath = gfe.getPath(eth.BA.Value)
+	if f.IfDstNodeUUID == "" {
+		f.IfDstNodeUUID = gfe.getNodeUUID(eth.BA.Value)
 	}
 }
 

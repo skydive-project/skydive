@@ -39,8 +39,8 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-type FlowProbePathSetter interface {
-	SetProbePath(flow *Flow) bool
+type FlowProbeNodeSetter interface {
+	SetProbeNode(flow *Flow) bool
 }
 
 func (s *FlowEndpointsStatistics) MarshalJSON() ([]byte, error) {
@@ -200,7 +200,7 @@ func (flow *Flow) fillFromGoPacket(packet *gopacket.Packet) error {
 		bfStart := make([]byte, 8)
 		binary.BigEndian.PutUint64(bfStart, uint64(fs.Start))
 		hasher.Write(bfStart)
-		hasher.Write([]byte(flow.ProbeGraphPath))
+		hasher.Write([]byte(flow.ProbeNodeUUID))
 		flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 	}
 	return nil
@@ -226,11 +226,11 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, setter FlowProbePathSetter) *Flow {
+func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, setter FlowProbeNodeSetter) *Flow {
 	key := NewFlowKeyFromGoPacket(packet)
 	flow, _ := ft.GetOrCreateFlow(key.String())
 	if setter != nil {
-		setter.SetProbePath(flow)
+		setter.SetProbeNode(flow)
 	}
 
 	err := flow.fillFromGoPacket(packet)
@@ -242,7 +242,7 @@ func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, setter FlowProbePathSe
 	return flow
 }
 
-func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter FlowProbePathSetter) []*Flow {
+func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter FlowProbeNodeSetter) []*Flow {
 	flows := []*Flow{}
 
 	for _, rec := range sample.Records {

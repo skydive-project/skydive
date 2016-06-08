@@ -113,16 +113,16 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 	return &gpacket
 }
 
-type probePathSetter struct {
-	path string
+type probeNodeSetter struct {
+	uuid string
 }
 
-func (p *probePathSetter) SetProbePath(f *Flow) bool {
-	f.ProbeGraphPath = p.path
+func (p *probeNodeSetter) SetProbeNode(f *Flow) bool {
+	f.ProbeNodeUUID = p.uuid
 	return true
 }
 
-func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, probePath string) []*Flow {
+func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, uuid string) []*Flow {
 	flows := []*Flow{}
 	for i := int64(0); i < 10; i++ {
 		var packet *gopacket.Packet
@@ -131,7 +131,7 @@ func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, probe
 		} else {
 			packet = forgeTestPacket(t, i+baseSeed*10, swap, ETH, IPv4, UDP)
 		}
-		flow := FlowFromGoPacket(ft, packet, &probePathSetter{probePath})
+		flow := FlowFromGoPacket(ft, packet, &probeNodeSetter{uuid})
 		if flow == nil {
 			t.Fail()
 		}
@@ -140,11 +140,11 @@ func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, probe
 	return flows
 }
 
-func GenerateTestFlows(t *testing.T, ft *Table, baseSeed int64, probePath string) []*Flow {
-	return generateTestFlows(t, ft, baseSeed, false, probePath)
+func GenerateTestFlows(t *testing.T, ft *Table, baseSeed int64, uuid string) []*Flow {
+	return generateTestFlows(t, ft, baseSeed, false, uuid)
 }
-func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, probePath string) []*Flow {
-	return generateTestFlows(t, ft, baseSeed, true, probePath)
+func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, uuid string) []*Flow {
+	return generateTestFlows(t, ft, baseSeed, true, uuid)
 }
 
 func NewTestFlowTableSimple(t *testing.T) *Table {
@@ -171,6 +171,6 @@ func NewTestFlowTableSimple(t *testing.T) *Table {
 
 func NewTestFlowTableComplex(t *testing.T) *Table {
 	ft := NewTable()
-	GenerateTestFlows(t, ft, 0xca55e77e, "probe")
+	GenerateTestFlows(t, ft, 0xca55e77e, "probe-uuid")
 	return ft
 }

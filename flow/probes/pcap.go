@@ -36,16 +36,15 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 	"github.com/redhat-cip/skydive/topology/probes"
 	"github.com/vishvananda/netns"
 )
 
 type PcapProbe struct {
-	handle    *pcap.Handle
-	channel   chan gopacket.Packet
-	probePath string
+	handle        *pcap.Handle
+	channel       chan gopacket.Packet
+	probeNodeUUID string
 }
 
 type PcapProbesHandler struct {
@@ -62,8 +61,8 @@ const (
 	snaplen int32 = 256
 )
 
-func (p *PcapProbe) SetProbePath(flow *flow.Flow) bool {
-	flow.ProbeGraphPath = p.probePath
+func (p *PcapProbe) SetProbeNode(flow *flow.Flow) bool {
+	flow.ProbeNodeUUID = p.probeNodeUUID
 	return true
 }
 
@@ -93,8 +92,6 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 		if len(nodes) == 0 {
 			return errors.New(fmt.Sprintf("Failed to determine probePath for %s", ifName))
 		}
-
-		probePath := topology.NodePath(nodes).Marshal()
 
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
@@ -133,9 +130,9 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 		packetChannel := packetSource.Packets()
 
 		probe := &PcapProbe{
-			probePath: probePath,
-			handle:    handle,
-			channel:   packetChannel,
+			handle:        handle,
+			channel:       packetChannel,
+			probeNodeUUID: string(n.ID),
 		}
 		p.probesLock.Lock()
 		p.probes[ifName] = probe

@@ -25,6 +25,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -46,42 +47,47 @@ var TopologyCmd = &cobra.Command{
 	SilenceUsage: false,
 }
 
+func SendGremlinQuery(auth *shttp.AuthenticationOpts, query string) (interface{}, error) {
+	client := shttp.NewRestClientFromConfig(auth)
+
+	gq := api.Topology{GremlinQuery: query}
+	s, err := json.Marshal(gq)
+	if err != nil {
+		return nil, err
+	}
+
+	contentReader := bytes.NewReader(s)
+
+	resp, err := client.Request("GET", "api/topology", contentReader)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		data, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("%s: %s", resp.Status, string(data))
+	}
+
+	var values interface{}
+	err = json.NewDecoder(resp.Body).Decode(&values)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to decode response: %s", err.Error())
+	}
+
+	return values, nil
+}
+
 var TopologyRequest = &cobra.Command{
 	Use:   "query",
 	Short: "query topology",
 	Long:  "query topology",
 	Run: func(cmd *cobra.Command, args []string) {
-		client := shttp.NewRestClientFromConfig(&authenticationOpts)
-
-		gq := api.Topology{GremlinQuery: gremlinQuery}
-		s, err := json.Marshal(gq)
+		values, err := SendGremlinQuery(&authenticationOpts, gremlinQuery)
 		if err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
 		}
-
-		contentReader := bytes.NewReader(s)
-
-		resp, err := client.Request("GET", "api/topology", contentReader)
-		if err != nil {
-			logging.GetLogger().Errorf(err.Error())
-			os.Exit(1)
-		}
-
-		if resp.StatusCode != 200 {
-			data, _ := ioutil.ReadAll(resp.Body)
-			logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
-			os.Exit(1)
-		}
-
-		var values interface{}
-		err = json.NewDecoder(resp.Body).Decode(&values)
-		if err != nil {
-			logging.GetLogger().Errorf("Unable to decode response: %s", err.Error())
-			os.Exit(1)
-		}
-
-		printJSON(&values)
+		printJSON(values)
 	},
 }
 
