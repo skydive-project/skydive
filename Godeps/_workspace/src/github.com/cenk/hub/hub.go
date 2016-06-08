@@ -39,13 +39,14 @@ func (h *Hub) Subscribe(kind Kind, f func(Event)) (cancel func()) {
 	return func() {
 		h.m.Lock()
 		if cancelled {
+			h.m.Unlock()
 			return
 		}
 		cancelled = true
 		a := h.subscribers[kind]
-		for i, h := range a {
-			if h.id == id {
-				a[i], a = a[len(a)-1], a[:len(a)-1]
+		for i, f := range a {
+			if f.id == id {
+				a[i], h.subscribers[kind] = a[len(a)-1], a[:len(a)-1]
 				break
 			}
 		}

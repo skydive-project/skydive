@@ -23,6 +23,8 @@
 package probes
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/socketplane/libovsdb"
@@ -68,7 +70,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 		set := row.New.Fields["ports"].(libovsdb.OvsSet)
 
 		for _, i := range set.GoSet {
-			u := i.(libovsdb.UUID).GoUuid
+			u := i.(libovsdb.UUID).GoUUID
 
 			port, ok := o.uuidToPort[u]
 			if ok && !o.Graph.AreLinked(bridge, port) {
@@ -80,7 +82,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 		}
 
 	case libovsdb.UUID:
-		u := row.New.Fields["ports"].(libovsdb.UUID).GoUuid
+		u := row.New.Fields["ports"].(libovsdb.UUID).GoUUID
 
 		port, ok := o.uuidToPort[u]
 		if ok && !o.Graph.AreLinked(bridge, port) {
@@ -344,7 +346,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		set := row.New.Fields["interfaces"].(libovsdb.OvsSet)
 
 		for _, i := range set.GoSet {
-			u := i.(libovsdb.UUID).GoUuid
+			u := i.(libovsdb.UUID).GoUUID
 			intf, ok := o.uuidToIntf[u]
 			if ok && !o.Graph.AreLinked(port, intf) {
 				o.Graph.Link(port, intf, graph.Metadata{"RelationType": "layer2"})
@@ -354,7 +356,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			}
 		}
 	case libovsdb.UUID:
-		u := row.New.Fields["interfaces"].(libovsdb.UUID).GoUuid
+		u := row.New.Fields["interfaces"].(libovsdb.UUID).GoUUID
 		intf, ok := o.uuidToIntf[u]
 		if ok && !o.Graph.AreLinked(port, intf) {
 			o.Graph.Link(port, intf, graph.Metadata{"RelationType": "layer2"})
@@ -404,7 +406,7 @@ func (o *OvsdbProbe) Stop() {
 	o.OvsMon.StopMonitoring()
 }
 
-func NewOvsdbProbe(g *graph.Graph, n *graph.Node, addr string, port int) *OvsdbProbe {
+func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProbe {
 	o := &OvsdbProbe{
 		Graph:           g,
 		Root:            n,
@@ -412,7 +414,7 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, addr string, port int) *OvsdbP
 		uuidToPort:      make(map[string]*graph.Node),
 		intfPortQueue:   make(map[string]*graph.Node),
 		portBridgeQueue: make(map[string]*graph.Node),
-		OvsMon:          ovsdb.NewOvsMonitor(addr, port),
+		OvsMon:          ovsdb.NewOvsMonitor(p, t),
 	}
 	o.OvsMon.AddMonitorHandler(o)
 
@@ -420,11 +422,28 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, addr string, port int) *OvsdbP
 }
 
 func NewOvsdbProbeFromConfig(g *graph.Graph, n *graph.Node) *OvsdbProbe {
-	addr, port, err := config.GetHostPortAttributes("ovs", "ovsdb")
-	if err != nil {
-		logging.GetLogger().Errorf("Configuration error: %s", err.Error())
-		return nil
+	address := config.GetConfig().GetString("ovs.ovsdb")
+
+	var protocol string
+	var target string
+
+	if strings.HasPrefix(address, "unix://") {
+		target = strings.TrimPrefix(address, "unix://")
+		protocol = "unix"
+	} else if strings.HasPrefix(address, "tcp://") {
+		target = strings.TrimPrefix(address, "tcp://")
+		protocol = "tcp"
+	} else {
+		// fallback to the original address format addr:port
+		addr, port, err := config.GetHostPortAttributes("ovs", "ovsdb")
+		if err != nil {
+			logging.GetLogger().Errorf("Configuration error: %s", err.Error())
+			return nil
+		}
+
+		protocol = "tcp"
+		target = fmt.Sprintf("%s:%d", addr, port)
 	}
 
-	return NewOvsdbProbe(g, n, addr, port)
+	return NewOvsdbProbe(g, n, protocol, target)
 }

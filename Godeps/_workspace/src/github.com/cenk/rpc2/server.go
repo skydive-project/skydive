@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/cenkalti/hub"
+	"github.com/cenk/hub"
 )
 
 // Precompute the reflect type for error.  Can't use error directly

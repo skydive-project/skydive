@@ -65,10 +65,14 @@ sflow:
   # port_max: 6355
 
 ovs:
-  # ovsdb connection, Format: addr:port.
-  # You need to authorize connexion to ovsdb agent at least locally
+  # ovsdb connection, Format supported :
+  # * addr:port
+  # * tcp://addr:port
+  # * unix:///var/run/openvswitch/db.sock
+  # If you use the tcp connection you need to authorize connexion to ovsdb agent
+  # at least locally
   # % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
-  ovsdb: 6400
+  # ovsdb: unix:///var/run/openvswitch/db.sock
 
 docker:
   # url: unix:///var/run/docker.sock

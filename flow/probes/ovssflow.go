@@ -125,7 +125,7 @@ func compareProbeID(row *map[string]interface{}, id string) (bool, error) {
 
 func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(id string) (string, error) {
 	/* FIX(safchain) don't find a way to send a null condition */
-	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{GoUuid: "abc"})
+	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{GoUUID: "abc"})
 	selectOp := libovsdb.Operation{
 		Op:    "select",
 		Table: "sFlow",
@@ -162,7 +162,7 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 
 	var uuid libovsdb.UUID
 	if probeUUID != "" {
-		uuid = libovsdb.UUID{GoUuid: probeUUID}
+		uuid = libovsdb.UUID{GoUUID: probeUUID}
 
 		logging.GetLogger().Infof("Using already registered OVS SFlow probe \"%s(%s)\"", probe.ID, uuid)
 	} else {
@@ -170,7 +170,7 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 		if err != nil {
 			return err
 		}
-		uuid = libovsdb.UUID{GoUuid: insertOp.UUIDName}
+		uuid = libovsdb.UUID{GoUUID: insertOp.UUIDName}
 		logging.GetLogger().Infof("Registering new OVS SFlow probe \"%s(%s)\"", probe.ID, uuid)
 
 		operations = append(operations, *insertOp)
@@ -179,7 +179,7 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 	bridgeRow := make(map[string]interface{})
 	bridgeRow["sflow"] = uuid
 
-	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUuid: bridgeUUID})
+	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: bridgeUUID})
 	updateOp := libovsdb.Operation{
 		Op:    "update",
 		Table: "Bridge",
@@ -209,7 +209,7 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 	bridgeRow := make(map[string]interface{})
 	bridgeRow["sflow"] = libovsdb.OvsSet{GoSet: make([]interface{}, 0)}
 
-	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUuid: bridgeUUID})
+	condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: bridgeUUID})
 	updateOp := libovsdb.Operation{
 		Op:    "update",
 		Table: "Bridge",

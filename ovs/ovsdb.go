@@ -50,8 +50,8 @@ type OvsMonitorHandler interface {
 
 type OvsMonitor struct {
 	sync.RWMutex
-	Addr            string
-	Port            int
+	Protocol        string
+	Target          string
 	OvsClient       *OvsClient
 	MonitorHandlers []OvsMonitorHandler
 	bridgeCache     map[string]string
@@ -303,7 +303,7 @@ func (o *OvsMonitor) AddMonitorHandler(handler OvsMonitorHandler) {
 }
 
 func (o *OvsMonitor) StartMonitoring() error {
-	ovsdb, err := libovsdb.Connect(o.Addr, o.Port)
+	ovsdb, err := libovsdb.ConnectUsingProtocol(o.Protocol, o.Target)
 	if err != nil {
 		return err
 	}
@@ -344,10 +344,10 @@ func (o *OvsMonitor) StopMonitoring() {
 	}
 }
 
-func NewOvsMonitor(addr string, port int) *OvsMonitor {
+func NewOvsMonitor(protcol string, target string) *OvsMonitor {
 	return &OvsMonitor{
-		Addr:           addr,
-		Port:           port,
+		Protocol:       protcol,
+		Target:         target,
 		bridgeCache:    make(map[string]string),
 		interfaceCache: make(map[string]string),
 		portCache:      make(map[string]string),

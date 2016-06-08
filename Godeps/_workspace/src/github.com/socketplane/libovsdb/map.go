@@ -6,18 +6,18 @@ import (
 	"reflect"
 )
 
-//  RFC 7047 uses the following notation for map as JSON doesnt support non-string keys for maps.
-//  A 2-element JSON array that represents a database map value.  The
-//  first element of the array must be the string "map", and the
-//  second element must be an array of zero or more <pair>s giving the
-//  values in the map.  All of the <pair>s must have the same key and
-//  value types.
-
+// OvsMap is the JSON map structure used for OVSDB
+// RFC 7047 uses the following notation for map as JSON doesnt support non-string keys for maps.
+// A 2-element JSON array that represents a database map value.  The
+// first element of the array must be the string "map", and the
+// second element must be an array of zero or more <pair>s giving the
+// values in the map.  All of the <pair>s must have the same key and
+// value types.
 type OvsMap struct {
 	GoMap map[interface{}]interface{}
 }
 
-// <map> notation requires special handling
+// MarshalJSON marshalls an OVSDB style Map to a byte array
 func (o OvsMap) MarshalJSON() ([]byte, error) {
 	var ovsMap, innerMap []interface{}
 	ovsMap = append(ovsMap, "map")
@@ -31,6 +31,7 @@ func (o OvsMap) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ovsMap)
 }
 
+// UnmarshalJSON unmarshalls an OVSDB style Map from a byte array
 func (o *OvsMap) UnmarshalJSON(b []byte) (err error) {
 	var oMap []interface{}
 	o.GoMap = make(map[interface{}]interface{})
@@ -44,7 +45,7 @@ func (o *OvsMap) UnmarshalJSON(b []byte) (err error) {
 	return err
 }
 
-// <map> notation requires special marshaling
+// NewOvsMap will return an OVSDB style map from a provided Golang Map
 func NewOvsMap(goMap interface{}) (*OvsMap, error) {
 	v := reflect.ValueOf(goMap)
 	if v.Kind() != reflect.Map {

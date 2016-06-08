@@ -42,7 +42,7 @@ func init() {
 	cfg = viper.New()
 	cfg.SetDefault("agent.analyzers", "127.0.0.1:8082")
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
-	cfg.SetDefault("ovs.ovsdb", "127.0.0.1:6400")
+	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("graph.backend", "memory")
 	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
 	cfg.SetDefault("sflow.bind_address", "127.0.0.1:6345")

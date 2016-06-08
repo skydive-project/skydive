@@ -7,10 +7,10 @@ func NewGetSchemaArgs(schema string) []interface{} {
 
 // NewTransactArgs creates a new set of arguments for a transact RPC
 func NewTransactArgs(database string, operations ...Operation) []interface{} {
-	var dbSlice = make([]interface{}, 1)
+	dbSlice := make([]interface{}, 1)
 	dbSlice[0] = database
 
-	var opsSlice []interface{} = make([]interface{}, len(operations))
+	opsSlice := make([]interface{}, len(operations))
 	for i, d := range operations {
 		opsSlice[i] = d
 	}

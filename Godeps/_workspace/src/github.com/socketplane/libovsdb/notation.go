@@ -16,13 +16,10 @@ type Operation struct {
 	UUIDName  string                   `json:"uuid-name,omitempty"`
 }
 
-// MonitorRequest represents a monitor request according to RFC7047
-/*
- * We cannot use MonitorRequests by inlining the MonitorRequest Map structure till GoLang issue #6213 makes it.
- * The only option is to go with raw map[string]interface{} option :-( that sucks !
- * Refer to client.go : MonitorAll() function for more details
- */
-
+// MonitorRequests represents a group of monitor requests according to RFC7047
+// We cannot use MonitorRequests by inlining the MonitorRequest Map structure till GoLang issue #6213 makes it.
+// The only option is to go with raw map[string]interface{} option :-( that sucks !
+// Refer to client.go : MonitorAll() function for more details
 type MonitorRequests struct {
 	Requests map[string]MonitorRequest `json:"requests,overflow"`
 }
@@ -41,23 +38,23 @@ type MonitorSelect struct {
 	Modify  bool `json:"modify,omitempty"`
 }
 
-/*
- * We cannot use TableUpdates directly by json encoding by inlining the TableUpdate Map
- * structure till GoLang issue #6213 makes it.
- *
- * The only option is to go with raw map[string]map[string]interface{} option :-( that sucks !
- * Refer to client.go : MonitorAll() function for more details
- */
+// TableUpdates is a collection of TableUpdate entries
+// We cannot use TableUpdates directly by json encoding by inlining the TableUpdate Map
+// structure till GoLang issue #6213 makes it.
+// The only option is to go with raw map[string]map[string]interface{} option :-( that sucks !
+// Refer to client.go : MonitorAll() function for more details
 type TableUpdates struct {
 	Updates map[string]TableUpdate `json:"updates,overflow"`
 }
 
+// TableUpdate represents a table update according to RFC7047
 type TableUpdate struct {
 	Rows map[string]RowUpdate `json:"rows,overflow"`
 }
 
+// RowUpdate represents a row update according to RFC7047
 type RowUpdate struct {
-	Uuid UUID `json:"-,omitempty"`
+	UUID UUID `json:"-,omitempty"`
 	New  Row  `json:"new,omitempty"`
 	Old  Row  `json:"old,omitempty"`
 }
@@ -78,11 +75,13 @@ func NewMutation(column string, mutator string, value interface{}) []interface{}
 	return []interface{}{column, mutator, value}
 }
 
+// TransactResponse represents the response to a Transact Operation
 type TransactResponse struct {
 	Result []OperationResult `json:"result"`
 	Error  string            `json:"error"`
 }
 
+// OperationResult is the result of an Operation
 type OperationResult struct {
 	Count   int                      `json:"count,omitempty"`
 	Error   string                   `json:"error,omitempty"`

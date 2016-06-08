@@ -86,9 +86,9 @@ func getTableUpdates(bridgeName string, op string) *libovsdb.TableUpdates {
 
 	switch op {
 	case "add":
-		rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: BridgeUUID}, New: row}
+		rowUpdate = libovsdb.RowUpdate{UUID: libovsdb.UUID{GoUUID: BridgeUUID}, New: row}
 	case "del":
-		rowUpdate = libovsdb.RowUpdate{Uuid: libovsdb.UUID{GoUuid: BridgeUUID}, Old: row}
+		rowUpdate = libovsdb.RowUpdate{UUID: libovsdb.UUID{GoUUID: BridgeUUID}, Old: row}
 	}
 
 	rows[BridgeUUID] = rowUpdate
@@ -97,7 +97,7 @@ func getTableUpdates(bridgeName string, op string) *libovsdb.TableUpdates {
 }
 
 func TestBridgeAdded(t *testing.T) {
-	monitor := NewOvsMonitor("127.0.0.1", 8888)
+	monitor := NewOvsMonitor("tcp", "127.0.0.1:8888")
 
 	handler := NewFakeBridgeHandler()
 	monitor.AddMonitorHandler(&handler)
@@ -111,7 +111,7 @@ func TestBridgeAdded(t *testing.T) {
 }
 
 func TestBridgeDeleted(t *testing.T) {
-	monitor := NewOvsMonitor("127.0.0.1", 8888)
+	monitor := NewOvsMonitor("tcp", "127.0.0.1:8888")
 
 	handler := NewFakeBridgeHandler()
 	monitor.AddMonitorHandler(&handler)
