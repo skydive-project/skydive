@@ -61,6 +61,10 @@ func init() {
 	cfg.SetDefault("etcd.servers", []string{"http://127.0.0.1:2379"})
 	cfg.SetDefault("auth.type", "noauth")
 	cfg.SetDefault("auth.keystone.tenant", "admin")
+	cfg.SetDefault("orientdb.addr", "http://localhost:2480")
+	cfg.SetDefault("orientdb.database", "Skydive")
+	cfg.SetDefault("orientdb.username", "root")
+	cfg.SetDefault("orientdb.password", "root")
 }
 
 func checkStrictPositiveInt(key string) error {

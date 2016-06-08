@@ -85,7 +85,7 @@ storage:
   elasticsearch: 127.0.0.1:9200
 
 graph:
-  # graph backend memory, titangraph, gremlin(generic gremlin based)
+  # graph backend memory, titangraph, gremlin(generic gremlin based), orientdb
   backend: memory
   # gremlin endpoint, ex ws://127.0.0.1:8182, http://127.0.0.1:8182/graph
   gremlin: ws://127.0.0.1:8182
@@ -108,3 +108,10 @@ etcd:
   # both the analyzers and the agents make use of etcd
   # servers:
   #   - http://127.0.0.1:2379
+
+# OrientDB connection informations
+# orientdb:
+#  addr: http://127.0.0.1:2480
+#  database: Skydive
+#  username: root
+#  password: hello

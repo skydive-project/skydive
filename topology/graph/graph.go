@@ -257,18 +257,42 @@ func (g *Graph) notifyMetadataUpdated(e interface{}) {
 	}
 }
 
-func (g *Graph) SetMetadata(e interface{}, m Metadata) {
-	if !g.backend.SetMetadata(e, m) {
-		return
+func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
+	switch i.(type) {
+	case *Node:
+		i.(*Node).metadata = m
+	case *Edge:
+		i.(*Edge).metadata = m
 	}
-	g.notifyMetadataUpdated(e)
+
+	if !g.backend.SetMetadata(i, m) {
+		return false
+	}
+	g.notifyMetadataUpdated(i)
+	return true
 }
 
-func (g *Graph) AddMetadata(e interface{}, k string, v interface{}) {
-	if !g.backend.AddMetadata(e, k, v) {
-		return
+func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
+	var e graphElement
+
+	switch i.(type) {
+	case *Node:
+		e = i.(*Node).graphElement
+	case *Edge:
+		e = i.(*Edge).graphElement
 	}
-	g.notifyMetadataUpdated(e)
+
+	if o, ok := e.metadata[k]; ok && o == v {
+		return false
+	}
+	e.metadata[k] = v
+
+	if !g.backend.AddMetadata(i, k, v) {
+		return false
+	}
+
+	g.notifyMetadataUpdated(i)
+	return true
 }
 
 func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
@@ -288,7 +312,7 @@ func (t *MetadataTransaction) Commit() {
 	updated := false
 	for k, v := range t.metadata {
 		if e.metadata[k] != v {
-			if !t.graph.backend.AddMetadata(t.graphElement, k, v) {
+			if !t.graph.AddMetadata(t.graphElement, k, v) {
 				return
 			}
 			updated = true
@@ -721,6 +745,8 @@ func BackendFromConfig() (GraphBackend, error) {
 	case "titangraph":
 		endpoint := config.GetConfig().GetString("graph.gremlin")
 		return NewTitangraphBackend(endpoint)
+	case "orientdb":
+		return NewOrientDBBackendFromConfig()
 	default:
 		return nil, errors.New("Config file is misconfigured, graph backend unknown: " + backend)
 	}

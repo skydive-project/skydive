@@ -37,31 +37,10 @@ type MemoryBackend struct {
 }
 
 func (m MemoryBackend) SetMetadata(i interface{}, meta Metadata) bool {
-	switch i.(type) {
-	case *Node:
-		i.(*Node).metadata = meta
-	case *Edge:
-		i.(*Edge).metadata = meta
-	}
-
 	return true
 }
 
 func (m MemoryBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
-	var e graphElement
-
-	switch i.(type) {
-	case *Node:
-		e = i.(*Node).graphElement
-	case *Edge:
-		e = i.(*Edge).graphElement
-	}
-
-	if o, ok := e.metadata[k]; ok && o == v {
-		return false
-	}
-	e.metadata[k] = v
-
 	return true
 }
 

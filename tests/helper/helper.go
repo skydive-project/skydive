@@ -258,6 +258,12 @@ func NewGraph(t *testing.T) *graph.Graph {
 		backend, err = graph.NewGremlinBackend("ws://127.0.0.1:8182")
 	case "gremlin-rest":
 		backend, err = graph.NewGremlinBackend("http://127.0.0.1:8182?gremlin=")
+	case "orientdb":
+		password := os.Getenv("ORIENTDB_ROOT_PASSWORD")
+		if password == "" {
+			password = "root"
+		}
+		backend, err = graph.NewOrientDBBackend("http://127.0.0.1:2480", "TestSkydive", "root", password)
 	default:
 		backend, err = graph.NewMemoryBackend()
 	}

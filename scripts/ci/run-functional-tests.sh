@@ -22,6 +22,14 @@ case "$BACKEND" in
     sleep 5
     ARGS="-graph.backend gremlin-rest"
     ;;
+  "orientdb")
+    . "${dir}/install-orientdb.sh"
+    cd ${ORIENTDBPATH}
+    export ORIENTDB_ROOT_PASSWORD=root
+    ${ORIENTDBPATH}/bin/server.sh &
+    sleep 5
+    ARGS="-graph.backend orientdb"
+    ;;
 esac
 
 cd ${GOPATH}/src/github.com/redhat-cip/skydive
