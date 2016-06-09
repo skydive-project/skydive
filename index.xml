@@ -310,7 +310,7 @@ node setup, the analyzer IP/PORT need to be adapted.&lt;/p&gt;
 address with &amp;ldquo;listen: 0.0.0.0:port&amp;rdquo; in the proper configuration sections.&lt;/p&gt;
 
 &lt;p&gt;See the full list of configuration parameters in the sample configuration file
-&lt;a href=&#34;etc/skydive.yml.default&#34;&gt;etc/skydive.yml.default&lt;/a&gt;.&lt;/p&gt;
+&lt;a href=&#34;https://github.com/redhat-cip/skydive/blob/master/etc/skydive.yml.default&#34;&gt;etc/skydive.yml.default&lt;/a&gt;.&lt;/p&gt;
 
 &lt;h2 id=&#34;start&#34;&gt;Start&lt;/h2&gt;
 
