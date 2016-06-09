@@ -42,7 +42,7 @@ User can add host metadata to specify an extra host information in
 under this configuration section will be added to host metadata.
 
 See the full list of configuration parameters in the sample configuration file
-[etc/skydive.yml.default](etc/skydive.yml.default).
+[etc/skydive.yml.default](https://github.com/redhat-cip/skydive/blob/master/etc/skydive.yml.default).
 
 ## Start
 
