@@ -92,6 +92,22 @@ func Without(s ...interface{}) *WithoutMetadataMatcher {
 	return &WithoutMetadataMatcher{list: s}
 }
 
+type NEMetadataMatcher struct {
+	value interface{}
+}
+
+func (n *NEMetadataMatcher) Match(v interface{}) bool {
+	if !common.CrossTypeEqual(v, n.value) {
+		return true
+	}
+
+	return false
+}
+
+func Ne(s interface{}) *NEMetadataMatcher {
+	return &NEMetadataMatcher{value: s}
+}
+
 func sliceToMetadata(s ...interface{}) (Metadata, error) {
 	m := Metadata{}
 	if len(s)%2 != 0 {

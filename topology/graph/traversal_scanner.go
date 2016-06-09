@@ -64,6 +64,7 @@ const (
 	WITHOUT
 	METADATA
 	SHORTESTPATHTO
+	NE
 
 	// extensions token have to start after 1000
 )
@@ -209,6 +210,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return METADATA, buf.String()
 	case "SHORTESTPATHTO":
 		return SHORTESTPATHTO, buf.String()
+	case "NE":
+		return NE, buf.String()
 	}
 
 	for _, e := range s.extensions {

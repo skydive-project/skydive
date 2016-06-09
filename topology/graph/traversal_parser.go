@@ -319,6 +319,15 @@ func (p *GremlinTraversalParser) parserStepParams() (GremlinTraversalStepParams,
 				return nil, err
 			}
 			params = append(params, Without(withParams...))
+		case NE:
+			withParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(withParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected to EQ: %v", withParams)
+			}
+			params = append(params, Ne(withParams[0]))
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}
