@@ -155,6 +155,18 @@ func TestTraversalNe(t *testing.T) {
 	}
 }
 
+func TestTraversalBoth(t *testing.T) {
+	g := newTrasversalGraph(t)
+
+	tr := NewGrahTraversal(g)
+
+	// next test
+	tv := tr.V().Has("Value", 2).Both()
+	if len(tv.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
+	}
+}
+
 func TestTraversalShortestPathTo(t *testing.T) {
 	g := newTrasversalGraph(t)
 
@@ -297,5 +309,12 @@ func TestTraversalParser(t *testing.T) {
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Has("Value", 2).Both()`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
 	}
 }

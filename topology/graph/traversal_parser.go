@@ -54,6 +54,7 @@ type (
 	gremlinTraversalStepDedup          struct{}
 	gremlinTraversalStepHas            struct{ params GremlinTraversalStepParams }
 	gremlinTraversalStepShortestPathTo struct{ params GremlinTraversalStepParams }
+	gremlinTraversalStepBoth           struct{ params GremlinTraversalStepParams }
 )
 
 var (
@@ -183,6 +184,15 @@ func (s *gremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (Grap
 	return nil, ExecutionError
 }
 
+func (s *gremlinTraversalStepBoth) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalV:
+		return last.(*GraphTraversalV).Both(s.params...), nil
+	}
+
+	return nil, ExecutionError
+}
+
 func (s *GremlinTraversalSequence) nextStepToExec(i int) (GremlinTraversalStep, int) {
 	step := s.steps[i]
 
@@ -225,6 +235,11 @@ func (s *GremlinTraversalSequence) nextStepToExec(i int) (GremlinTraversalStep, 
 			case *gremlinTraversalStepInE:
 				if len(step.(*gremlinTraversalStepInE).params) == 0 {
 					step.(*gremlinTraversalStepInE).params = params
+					i++
+				}
+			case *gremlinTraversalStepBoth:
+				if len(step.(*gremlinTraversalStepBoth).params) == 0 {
+					step.(*gremlinTraversalStepBoth).params = params
 					i++
 				}
 			}
@@ -377,6 +392,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			return nil, fmt.Errorf("ShortestPathTo predicate accept only 1 or 2 parameters")
 		}
 		return &gremlinTraversalStepShortestPathTo{params: params}, nil
+	case BOTH:
+		return &gremlinTraversalStepBoth{params: params}, nil
 	}
 
 	// extensions

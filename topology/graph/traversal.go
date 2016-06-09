@@ -255,6 +255,34 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	return ntv
 }
 
+func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
+	if tv.error != nil {
+		return tv
+	}
+
+	metadata, err := sliceToMetadata(s...)
+	if err != nil {
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
+	}
+
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
+	for _, n := range tv.nodes {
+		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
+			parent, child := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
+
+			if parent != nil && parent.ID == n.ID && child.matchMetadata(metadata) {
+				ntv.nodes = append(ntv.nodes, child)
+			}
+
+			if child != nil && child.ID == n.ID && parent.matchMetadata(metadata) {
+				ntv.nodes = append(ntv.nodes, parent)
+			}
+		}
+	}
+
+	return ntv
+}
+
 func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
