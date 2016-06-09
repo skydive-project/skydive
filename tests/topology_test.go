@@ -282,32 +282,22 @@ func TestBridgeOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test1", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 3 && len(g.GetEdges()) >= 2 {
-			ovsbridge := g.LookupFirstNode(graph.Metadata{"Type": "ovsbridge", "Name": "br-test1"})
-			if ovsbridge == nil {
-				return
-			}
-			ovsports := g.LookupChildren(ovsbridge, graph.Metadata{"Type": "ovsport"})
-			if len(ovsports) != 1 {
-				return
-			}
-			devices := g.LookupChildren(ovsports[0], graph.Metadata{"Type": "internal", "Driver": "openvswitch"})
-			if len(devices) != 1 {
-				return
-			}
+		if !testPassed {
+			tv := tr.V().Has("Type", "ovsbridge", "Name", "br-test1")
+			tv = tv.Out("Type", "ovsport", "Name", "br-test1")
+			tv = tv.Out("Type", "internal", "Name", "br-test1", "Driver", "openvswitch")
 
-			if ovsbridge.Metadata()["Host"] == "" || ovsports[0].Metadata()["Host"] == "" || devices[0].Metadata()["Host"] == "" {
-				return
+			if len(tv.Values()) == 1 {
+				testPassed = true
+				ws.Close()
 			}
-
-			testPassed = true
-
-			ws.Close()
 		}
 	}
 
@@ -339,29 +329,21 @@ func TestPatchOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test2", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 10 && len(g.GetEdges()) >= 9 {
-			patch1 := g.LookupFirstNode(graph.Metadata{"Type": "patch", "Name": "patch-br-test1", "Driver": "openvswitch"})
-			if patch1 == nil {
-				return
+		if !testPassed {
+			tv := tr.V().Has("Type", "patch", "Name", "patch-br-test1", "Driver", "openvswitch")
+			tv = tv.Both("Type", "patch", "Name", "patch-br-test2", "Driver", "openvswitch")
+
+			if len(tv.Values()) == 1 {
+				testPassed = true
+				ws.Close()
 			}
-
-			patch2 := g.LookupFirstNode(graph.Metadata{"Type": "patch", "Name": "patch-br-test2", "Driver": "openvswitch"})
-			if patch2 == nil {
-				return
-			}
-
-			if !g.AreLinked(patch1, patch2) {
-				return
-			}
-
-			testPassed = true
-
-			ws.Close()
 		}
 	}
 
@@ -388,30 +370,19 @@ func TestInterfaceOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test1", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 5 && len(g.GetEdges()) >= 4 {
-			intf := g.LookupFirstNode(graph.Metadata{"Type": "internal", "Name": "intf1", "Driver": "openvswitch"})
-			if intf != nil {
-				if _, ok := intf.Metadata()["UUID"]; ok {
-					// check we don't have another interface potentially added by netlink
-					// should only have ovsport and interface
-					others := g.LookupNodes(graph.Metadata{"Name": "intf1"})
-					if len(others) > 2 {
-						return
-					}
+		if !testPassed {
+			tv := tr.V().Has("Type", "internal", "Name", "intf1", "Driver", "openvswitch", "UUID", graph.Ne(""), "MAC", graph.Ne(""))
 
-					if _, ok := intf.Metadata()["MAC"]; !ok {
-						return
-					}
-
-					testPassed = true
-
-					ws.Close()
-				}
+			if len(tv.Values()) == 1 && len(tr.V().Has("Name", "intf1", "Type", graph.Ne("ovsport")).Values()) == 1 {
+				testPassed = true
+				ws.Close()
 			}
 		}
 	}
@@ -443,21 +414,19 @@ func TestBondOVS(t *testing.T) {
 		{"ip link del intf2", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 6 && len(g.GetEdges()) >= 5 {
-			bond := g.LookupFirstNode(graph.Metadata{"Type": "ovsport", "Name": "bond0"})
-			if bond != nil {
-				intfs := g.LookupChildren(bond, nil)
-				if len(intfs) != 2 {
-					return
-				}
+		if !testPassed {
+			tv := tr.V().Has("Type", "ovsport", "Name", "bond0")
+			tv = tv.Out()
 
+			if len(tv.Values()) == 2 {
 				testPassed = true
-
 				ws.Close()
 			}
 		}
@@ -485,24 +454,19 @@ func TestVeth(t *testing.T) {
 		{"ip link del vm1-veth0", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
-			veth0 := g.LookupFirstNode(graph.Metadata{"Type": "veth", "Name": "vm1-veth0"})
-			if veth0 == nil {
-				return
-			}
-			veth1 := g.LookupFirstNode(graph.Metadata{"Type": "veth", "Name": "vm1-veth1"})
-			if veth1 == nil {
-				return
-			}
+		if !testPassed {
+			tv := tr.V().Has("Type", "veth", "Name", "vm1-veth0")
+			tv = tv.Both("Type", "veth", "Name", "vm1-veth1")
 
-			if g.AreLinked(veth0, veth1) {
+			if len(tv.Values()) == 1 {
 				testPassed = true
-
 				ws.Close()
 			}
 		}
@@ -533,22 +497,21 @@ func TestBridge(t *testing.T) {
 		{"ip link del intf1", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
-			bridge := g.LookupFirstNode(graph.Metadata{"Type": "bridge", "Name": "br-test"})
-			if bridge != nil {
-				nodes := g.LookupChildren(bridge, graph.Metadata{"Name": "intf1"})
-				if len(nodes) == 1 {
-					testPassed = true
+		if !testPassed {
+			tv := tr.V().Has("Type", "bridge", "Name", "br-test")
+			tv = tv.Out("Name", "intf1")
 
-					ws.Close()
-				}
+			if len(tv.Values()) == 1 {
+				testPassed = true
+				ws.Close()
 			}
-
 		}
 	}
 
@@ -576,22 +539,19 @@ func TestMacNameUpdate(t *testing.T) {
 		{"ip link del vm1-veth0", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 1 {
-			node := g.LookupFirstNode(graph.Metadata{"Name": "vm1-veth2"})
-			if node == nil {
-				return
-			}
-			if mac, ok := node.Metadata()["MAC"]; ok && mac == "00:00:00:00:00:aa" {
-				if g.LookupFirstNode(graph.Metadata{"Name": "vm1-veth1"}) == nil {
-					testPassed = true
+		if !testPassed {
+			tv := tr.V().Has("Name", "vm1-veth2", "MAC", "00:00:00:00:00:aa")
 
-					ws.Close()
-				}
+			if len(tv.Values()) == 1 && len(tr.V().Has("Name", "vm1-veth1").Values()) == 0 {
+				testPassed = true
+				ws.Close()
 			}
 		}
 	}
@@ -618,16 +578,18 @@ func TestNameSpace(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
-			node := g.LookupFirstNode(graph.Metadata{"Name": "ns1", "Type": "netns"})
-			if node != nil {
-				testPassed = true
+		if !testPassed {
+			tv := tr.V().Has("Name", "ns1", "Type", "netns")
 
+			if len(tv.Values()) == 1 {
+				testPassed = true
 				ws.Close()
 			}
 		}
@@ -657,21 +619,19 @@ func TestNameSpaceVeth(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
-			node := g.LookupFirstNode(graph.Metadata{"Name": "ns1", "Type": "netns"})
-			if node == nil {
-				return
-			}
+		if !testPassed {
+			tv := tr.V().Has("Name", "ns1", "Type", "netns")
+			tv = tv.Out("Name", "vm1-veth1", "Type", "veth")
 
-			veth := g.LookupFirstChild(node, graph.Metadata{"Name": "vm1-veth1", "Type": "veth"})
-			if veth != nil {
+			if len(tv.Values()) == 1 {
 				testPassed = true
-
 				ws.Close()
 			}
 		}
@@ -703,26 +663,19 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 2 && len(g.GetEdges()) >= 2 {
-			node := g.LookupFirstNode(graph.Metadata{"Name": "ns1", "Type": "netns"})
-			if node == nil {
-				return
-			}
+		if !testPassed {
+			tv := tr.V().Has("Name", "ns1", "Type", "netns")
+			tv = tv.Out("Name", "intf1", "Type", "internal")
 
-			veth := g.LookupFirstChild(node, graph.Metadata{"Name": "intf1"})
-			if veth == nil {
-				return
-			}
-
-			children := g.LookupNodes(graph.Metadata{"Name": "intf1", "Type": "internal"})
-			if len(children) == 1 {
+			if len(tv.Values()) == 1 && len(tr.V().Has("Name", "intf1", "Type", "internal").Values()) == 1 {
 				testPassed = true
-
 				ws.Close()
 			}
 		}
@@ -750,17 +703,20 @@ func TestDockerSimple(t *testing.T) {
 		{"docker rm -f test-skydive-docker", false},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
-			if node := g.LookupFirstNode(graph.Metadata{"Name": "test-skydive-docker", "Type": "netns", "Manager": "docker"}); node != nil {
-				if node := g.LookupFirstChild(node, graph.Metadata{"Type": "container", "Docker.ContainerName": "/test-skydive-docker"}); node != nil {
-					testPassed = true
-					ws.Close()
-				}
+		if !testPassed {
+			tv := tr.V().Has("Name", "test-skydive-docker", "Type", "netns", "Manager", "docker")
+			tv = tv.Out("Type", "container", "Docker.ContainerName", "/test-skydive-docker")
+
+			if len(tv.Values()) == 1 {
+				testPassed = true
+				ws.Close()
 			}
 		}
 	}
@@ -789,22 +745,25 @@ func TestDockerShareNamespace(t *testing.T) {
 		{"docker rm -f test-skydive-docker2", false},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
-			nsNodes := g.LookupNodes(graph.Metadata{"Type": "netns", "Manager": "docker"})
-			if len(nsNodes) > 1 {
+		if !testPassed {
+			tv := tr.V().Has("Type", "netns", "Manager", "docker")
+
+			if len(tv.Values()) > 1 {
 				t.Error("There should be only one namespace managed by Docker")
 				ws.Close()
-			} else if len(nsNodes) == 1 {
-				if node := g.LookupFirstChild(nsNodes[0], graph.Metadata{"Type": "container", "Docker.ContainerName": "/test-skydive-docker"}); node != nil {
-					if node := g.LookupFirstChild(nsNodes[0], graph.Metadata{"Type": "container", "Docker.ContainerName": "/test-skydive-docker2"}); node != nil {
-						testPassed = true
-						ws.Close()
-					}
+			} else if len(tv.Values()) == 1 {
+				tv = tv.Out().Has("Type", "container", "Docker.ContainerName", graph.Within("/test-skydive-docker", "/test-skydive-docker2"))
+
+				if len(tv.Values()) == 2 {
+					testPassed = true
+					ws.Close()
 				}
 			}
 		}
@@ -832,15 +791,20 @@ func TestDockerNetHost(t *testing.T) {
 		{"docker rm -f test-skydive-docker", false},
 	}
 
+	tr := graph.NewGrahTraversal(g)
+
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
 		g.Lock()
 		defer g.Unlock()
 
-		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 {
-			if node := g.LookupFirstNode(graph.Metadata{"Docker.ContainerName": "/test-skydive-docker", "Type": "container"}); node != nil {
-				if node := g.LookupFirstNode(graph.Metadata{"Type": "netns", "Manager": "docker", "Name": "test-skydive-docker"}); node != nil {
-					t.Error("There should be no netns node for container test-skydive-docker")
+		if !testPassed {
+			tv := tr.V().Has("Docker.ContainerName", "/test-skydive-docker", "Type", "container")
+
+			if len(tv.Values()) == 1 {
+				tv = tr.V().Has("Type", "netns", "Manager", "docker", "Name", "test-skydive-docker")
+				if len(tv.Values()) == 1 {
+					t.Error("There should be only one namespace managed by Docker")
 				} else {
 					testPassed = true
 				}
