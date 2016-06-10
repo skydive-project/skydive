@@ -40,6 +40,7 @@ import (
 	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/storage/elasticsearch"
 	"github.com/redhat-cip/skydive/storage/etcd"
+	"github.com/redhat-cip/skydive/storage/orientdb"
 	"github.com/redhat-cip/skydive/topology/alert"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
@@ -166,17 +167,27 @@ func (s *Server) SetStorage(storage storage.Storage) {
 
 func (s *Server) SetStorageFromConfig() {
 	if t := config.GetConfig().GetString("analyzer.storage"); t != "" {
+		var (
+			err     error
+			storage storage.Storage
+		)
+
 		switch t {
 		case "elasticsearch":
-			storage, err := elasticsearch.New()
+			storage, err = elasticsearch.New()
 			if err != nil {
 				logging.GetLogger().Fatalf("Can't connect to ElasticSearch server: %v", err)
 			}
-			s.SetStorage(storage)
+		case "orientdb":
+			storage, err = orientdb.New()
+			if err != nil {
+				logging.GetLogger().Fatalf("Can't connect to OrientDB server: %v", err)
+			}
 		default:
 			logging.GetLogger().Fatalf("Storage type unknown: %s", t)
 			os.Exit(1)
 		}
+		s.SetStorage(storage)
 		logging.GetLogger().Infof("Using %s as storage", t)
 	}
 }

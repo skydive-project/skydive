@@ -24,7 +24,8 @@ analyzer:
   flowtable_expire: 600
   flowtable_update: 60
   flowtable_agent_ratio: 0.5
-  # specify storage engine
+  # Flow storage engine
+  # Available: elasticsearch, orientdb
   # storage: elasticsearch
 
 agent:
