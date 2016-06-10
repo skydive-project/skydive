@@ -23,6 +23,8 @@
 package graph
 
 import (
+	"encoding/json"
+
 	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 )
@@ -37,6 +39,42 @@ type GraphServer struct {
 	Graph    *Graph
 }
 
+func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
+	if msg.Type == "SyncRequest" {
+		return msg.Type, msg, nil
+	}
+
+	switch msg.Type {
+	case "SubGraphDeleted", "NodeUpdated", "NodeDeleted", "NodeAdded":
+		var obj interface{}
+		if err := json.Unmarshal([]byte(*msg.Obj), &obj); err != nil {
+			return "", msg, err
+		}
+
+		var node Node
+		if err := node.Decode(obj); err != nil {
+			return "", msg, err
+		}
+
+		return msg.Type, &node, nil
+	case "EdgeUpdated", "EdgeDeleted", "EdgeAdded":
+		var obj interface{}
+		err := json.Unmarshal([]byte(*msg.Obj), &obj)
+		if err != nil {
+			return "", msg, err
+		}
+
+		var edge Edge
+		if err := edge.Decode(obj); err != nil {
+			return "", msg, err
+		}
+
+		return msg.Type, &edge, nil
+	}
+
+	return "", msg, nil
+}
+
 func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	if msg.Namespace != Namespace {
 		return
@@ -45,24 +83,27 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	s.Graph.Lock()
 	defer s.Graph.Unlock()
 
-	msg, err := UnmarshalWSMessage(msg)
+	msgType, obj, err := UnmarshalWSMessage(msg)
 	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %s: %s", msg, err.Error())
+		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
 		return
 	}
 
-	switch msg.Type {
+	switch msgType {
 	case "SyncRequest":
+		r, _ := json.Marshal(s.Graph)
+		raw := json.RawMessage(r)
+
 		reply := shttp.WSMessage{
 			Namespace: Namespace,
 			Type:      "SyncReply",
-			Obj:       s.Graph,
+			Obj:       &raw,
 		}
 
 		c.SendWSMessage(reply)
 
 	case "SubGraphDeleted":
-		n := msg.Obj.(*Node)
+		n := obj.(*Node)
 
 		logging.GetLogger().Debugf("Got SubGraphDeleted event from the node %s", n.ID)
 
@@ -71,28 +112,28 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 			s.Graph.DelSubGraph(node)
 		}
 	case "NodeUpdated":
-		n := msg.Obj.(*Node)
+		n := obj.(*Node)
 		node := s.Graph.GetNode(n.ID)
 		if node != nil {
 			s.Graph.SetMetadata(node, n.metadata)
 		}
 	case "NodeDeleted":
-		s.Graph.DelNode(msg.Obj.(*Node))
+		s.Graph.DelNode(obj.(*Node))
 	case "NodeAdded":
-		n := msg.Obj.(*Node)
+		n := obj.(*Node)
 		if s.Graph.GetNode(n.ID) == nil {
 			s.Graph.AddNode(n)
 		}
 	case "EdgeUpdated":
-		e := msg.Obj.(*Edge)
+		e := obj.(*Edge)
 		edge := s.Graph.GetEdge(e.ID)
 		if edge != nil {
 			s.Graph.SetMetadata(edge, e.metadata)
 		}
 	case "EdgeDeleted":
-		s.Graph.DelEdge(msg.Obj.(*Edge))
+		s.Graph.DelEdge(obj.(*Edge))
 	case "EdgeAdded":
-		e := msg.Obj.(*Edge)
+		e := obj.(*Edge)
 		if s.Graph.GetEdge(e.ID) == nil {
 			s.Graph.AddEdge(e)
 		}
@@ -103,7 +144,7 @@ func (s *GraphServer) OnNodeUpdated(n *Node) {
 	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "NodeUpdated",
-		Obj:       n,
+		Obj:       n.JsonRawMessage(),
 	})
 }
 
@@ -111,7 +152,7 @@ func (s *GraphServer) OnNodeAdded(n *Node) {
 	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "NodeAdded",
-		Obj:       n,
+		Obj:       n.JsonRawMessage(),
 	})
 }
 
@@ -119,7 +160,7 @@ func (s *GraphServer) OnNodeDeleted(n *Node) {
 	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "NodeDeleted",
-		Obj:       n,
+		Obj:       n.JsonRawMessage(),
 	})
 }
 
@@ -127,7 +168,7 @@ func (s *GraphServer) OnEdgeUpdated(e *Edge) {
 	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "EdgeUpdated",
-		Obj:       e,
+		Obj:       e.JsonRawMessage(),
 	})
 }
 
@@ -135,7 +176,7 @@ func (s *GraphServer) OnEdgeAdded(e *Edge) {
 	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "EdgeAdded",
-		Obj:       e,
+		Obj:       e.JsonRawMessage(),
 	})
 }
 
@@ -143,7 +184,7 @@ func (s *GraphServer) OnEdgeDeleted(e *Edge) {
 	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "EdgeDeleted",
-		Obj:       e,
+		Obj:       e.JsonRawMessage(),
 	})
 }
 

@@ -23,6 +23,7 @@
 package http
 
 import (
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -103,11 +104,15 @@ func (c *WSAsyncClient) send(msg string) error {
 }
 
 func (c *WSAsyncClient) sendHello() {
+	b, _ := json.Marshal(c.host)
+	raw := json.RawMessage(b)
+
 	m := WSMessage{
 		Namespace: Namespace,
 		Type:      "Hello",
-		Obj:       c.host,
+		Obj:       &raw,
 	}
+
 	c.sendMessage(m.String())
 }
 

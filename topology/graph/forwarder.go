@@ -52,10 +52,11 @@ func (c *Forwarder) triggerResync() {
 	if root == nil {
 		return
 	}
+
 	c.Client.SendWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "SubGraphDeleted",
-		Obj:       root,
+		Obj:       root.JsonRawMessage(),
 	})
 
 	// re-added all the nodes and edges
@@ -64,7 +65,7 @@ func (c *Forwarder) triggerResync() {
 		c.Client.SendWSMessage(shttp.WSMessage{
 			Namespace: Namespace,
 			Type:      "NodeAdded",
-			Obj:       n,
+			Obj:       n.JsonRawMessage(),
 		})
 	}
 
@@ -73,7 +74,7 @@ func (c *Forwarder) triggerResync() {
 		c.Client.SendWSMessage(shttp.WSMessage{
 			Namespace: Namespace,
 			Type:      "EdgeAdded",
-			Obj:       e,
+			Obj:       e.JsonRawMessage(),
 		})
 	}
 }
@@ -86,7 +87,7 @@ func (c *Forwarder) OnNodeUpdated(n *Node) {
 	c.Client.SendWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "NodeUpdated",
-		Obj:       n,
+		Obj:       n.JsonRawMessage(),
 	})
 }
 
@@ -94,7 +95,7 @@ func (c *Forwarder) OnNodeAdded(n *Node) {
 	c.Client.SendWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "NodeAdded",
-		Obj:       n,
+		Obj:       n.JsonRawMessage(),
 	})
 }
 
@@ -102,7 +103,7 @@ func (c *Forwarder) OnNodeDeleted(n *Node) {
 	c.Client.SendWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "NodeDeleted",
-		Obj:       n,
+		Obj:       n.JsonRawMessage(),
 	})
 }
 
@@ -110,7 +111,7 @@ func (c *Forwarder) OnEdgeUpdated(e *Edge) {
 	c.Client.SendWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "EdgeUpdated",
-		Obj:       e,
+		Obj:       e.JsonRawMessage(),
 	})
 }
 
@@ -118,7 +119,7 @@ func (c *Forwarder) OnEdgeAdded(e *Edge) {
 	c.Client.SendWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "EdgeAdded",
-		Obj:       e,
+		Obj:       e.JsonRawMessage(),
 	})
 }
 
@@ -126,7 +127,7 @@ func (c *Forwarder) OnEdgeDeleted(e *Edge) {
 	c.Client.SendWSMessage(shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "EdgeDeleted",
-		Obj:       e,
+		Obj:       e.JsonRawMessage(),
 	})
 }
 

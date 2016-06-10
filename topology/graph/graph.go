@@ -133,6 +133,10 @@ func (m *Metadata) String() string {
 	return string(j)
 }
 
+func (e *graphElement) Host() string {
+	return e.host
+}
+
 func (e *graphElement) Metadata() Metadata {
 	return e.metadata
 }
@@ -182,6 +186,12 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (n *Node) JsonRawMessage() *json.RawMessage {
+	r, _ := n.MarshalJSON()
+	raw := json.RawMessage(r)
+	return &raw
+}
+
 func (n *Node) Decode(i interface{}) error {
 	objMap, ok := i.(map[string]interface{})
 	if !ok {
@@ -212,6 +222,12 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		Child:    e.child,
 		Host:     e.host,
 	})
+}
+
+func (e *Edge) JsonRawMessage() *json.RawMessage {
+	r, _ := e.MarshalJSON()
+	raw := json.RawMessage(r)
+	return &raw
 }
 
 func (e *Edge) Decode(i interface{}) error {

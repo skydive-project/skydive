@@ -53,7 +53,8 @@ type WSClient struct {
 type WSMessage struct {
 	Namespace string
 	Type      string
-	Obj       interface{}
+	UUID      string `json:",omitempty"`
+	Obj       *json.RawMessage
 }
 
 type WSServerEventHandler interface {
@@ -121,7 +122,13 @@ func (c *WSClient) processMessage(m []byte) {
 	if msg.Namespace == Namespace {
 		switch msg.Type {
 		case "Hello":
-			c.host = msg.Obj.(string)
+			var host string
+			err := json.Unmarshal([]byte(*msg.Obj), &host)
+			if err != nil {
+				logging.GetLogger().Errorf("WSServer: Unable to parse the event %s: %s", msg, err.Error())
+				return
+			}
+			c.host = host
 
 			logging.GetLogger().Infof("Hello received from WSClient: %s", c.host)
 		}

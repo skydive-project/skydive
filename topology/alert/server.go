@@ -23,6 +23,8 @@
 package alert
 
 import (
+	"encoding/json"
+
 	shttp "github.com/redhat-cip/skydive/http"
 )
 
@@ -43,10 +45,13 @@ type alertClient struct {
 
 /* Called by alert.EvalNodes() */
 func (c *alertClient) OnAlert(amsg *AlertMessage) {
+	b := amsg.Marshal()
+	raw := json.RawMessage(b)
+
 	msg := shttp.WSMessage{
 		Namespace: Namespace,
 		Type:      "Alert",
-		Obj:       amsg,
+		Obj:       &raw,
 	}
 
 	c.wsClient.SendWSMessage(msg)

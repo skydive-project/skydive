@@ -138,35 +138,35 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 		return nil
 	}
 
-	msg, err = graph.UnmarshalWSMessage(msg)
+	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		return err
 	}
 
-	switch msg.Type {
+	switch msgType {
 	case "NodeUpdated":
-		n := msg.Obj.(*graph.Node)
+		n := obj.(*graph.Node)
 		node := g.GetNode(n.ID)
 		if node != nil {
 			g.SetMetadata(node, n.Metadata())
 		}
 	case "NodeDeleted":
-		g.DelNode(msg.Obj.(*graph.Node))
+		g.DelNode(obj.(*graph.Node))
 	case "NodeAdded":
-		n := msg.Obj.(*graph.Node)
+		n := obj.(*graph.Node)
 		if g.GetNode(n.ID) == nil {
 			g.AddNode(n)
 		}
 	case "EdgeUpdated":
-		e := msg.Obj.(*graph.Edge)
+		e := obj.(*graph.Edge)
 		edge := g.GetEdge(e.ID)
 		if edge != nil {
 			g.SetMetadata(edge, e.Metadata())
 		}
 	case "EdgeDeleted":
-		g.DelEdge(msg.Obj.(*graph.Edge))
+		g.DelEdge(obj.(*graph.Edge))
 	case "EdgeAdded":
-		e := msg.Obj.(*graph.Edge)
+		e := obj.(*graph.Edge)
 		if g.GetEdge(e.ID) == nil {
 			g.AddEdge(e)
 		}
