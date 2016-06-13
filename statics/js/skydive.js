@@ -57,6 +57,11 @@ Node.prototype.IsCaptureOn = function() {
   return "State.FlowCapture" in this.Metadata && this.Metadata["State.FlowCapture"] == "ON";
 }
 
+Node.prototype.IsCaptureAllowed = function() {
+  var allowedTypes = ["device", "veth", "ovsbridge", "internal", "tun", "bridge"];
+  return allowedTypes.indexOf(this.Metadata["Type"]) >= 0;
+}
+
 Node.prototype.getHostRelativePath = function(path, visited) {
   visited[this.ID] = true;
 
@@ -295,7 +300,11 @@ HostLayout.prototype.NodeDetails = function(node) {
     });
   }
 
-  $(".title-capture-switch").show();
+  if (node.IsCaptureAllowed())
+    $(".title-capture-switch").show();
+  else
+    $(".title-capture-switch").hide();
+
   $("[name='capture-switch']").bootstrapSwitch("destroy");
   $("[name='capture-switch']").bootstrapSwitch({
     onSwitchChange: function(event, state) {
