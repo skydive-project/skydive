@@ -37,6 +37,10 @@ node setup, the analyzer IP/PORT need to be adapted.
 Processes are bound to 127.0.0.1 by default, you can explicitly change binding
 address with "listen: 0.0.0.0:port" in the proper configuration sections.
 
+User can add host metadata to specify an extra host information in
+"agent.metadata" configuration section. All the key value pairs given
+under this configuration section will be added to host metadata.
+
 See the full list of configuration parameters in the sample configuration file
 [etc/skydive.yml.default](etc/skydive.yml.default).
 
