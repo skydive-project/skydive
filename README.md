@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/redhat-cip/skydive.png)](https://travis-ci.org/redhat-cip/skydive)
+[![Build Status](https://travis-ci.org/skydive-project/skydive.png)](https://travis-ci.org/skydive-project/skydive)
 
 # Skydive
 
@@ -17,7 +17,7 @@ topology and flows informations.
 
 Skydive documentation can be found here:
 
-* http://redhat-cip.github.io/skydive
+* http://skydive-project.github.io/skydive
 
 ## Contact
 

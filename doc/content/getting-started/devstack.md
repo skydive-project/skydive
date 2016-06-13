@@ -13,7 +13,7 @@ For a single node setup adding the following lines to your local.conf file
 should be enough.
 
 ```console
-enable_plugin skydive https://github.com/redhat-cip/skydive.git
+enable_plugin skydive https://github.com/skydive-project/skydive.git
 
 enable_service skydive-agent skydive-analyzer
 ```

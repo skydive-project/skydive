@@ -24,7 +24,7 @@ Make sure you have a working Go environment. [See the install instructions]
 
 ```console
 $ mkdir -p $GOPATH/src/github.com/redhat-cip
-$ git clone https://github.com/redhat-cip/skydive.git $GOPATH/src/github.com/redhat-cip/skydive
+$ git clone https://github.com/skydive-project/skydive.git $GOPATH/src/github.com/redhat-cip/skydive
 $ cd $GOPATH/src/github.com/redhat-cip/skydive
 $ make install
 ```

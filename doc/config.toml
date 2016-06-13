@@ -1,4 +1,4 @@
-baseurl = "http://redhat-cip.github.io/skydive/"
+baseurl = "http://skydive-project.github.io/skydive/"
 languageCode = "en-us"
 title = "Skydive Docs"
 theme = "hugo-material-docs"
@@ -9,13 +9,13 @@ googleAnalytics = ""
 
 [params]
 	# General information
-	author = "redhat-cip/skydive"
+	author = "skydive-project/skydive"
 	description = "Real-time network analyzer."
 	copyright = "Released under the Apache license 2.0"
 
 	# Repository
 	provider = "GitHub"
-	repo_url = "https://github.com/redhat-cip/skydive"
+	repo_url = "https://github.com/skydive-project/skydive"
 
 	version = "1.0.0"
 	logo = "images/skydive-logo.png"
@@ -41,7 +41,7 @@ googleAnalytics = ""
 
 [social]
 	twitter = ""
-	github  = "redhat-cip/skydive"
+	github  = "skydive-project/skydive"
 
 
 [[menu.main]]

@@ -30,7 +30,7 @@ while getopts ":dpu:" opt; do
   esac
 done
 
-org=${org-redhat-cip}
+org=${org:-skydive-project}
 tag=${@:$OPTIND:1}
 
 if [ -z "$tag" ]; then

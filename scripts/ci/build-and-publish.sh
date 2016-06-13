@@ -9,7 +9,7 @@ dir="$(dirname "$0")"
 cd ${GOPATH}/src/github.com/redhat-cip/skydive
 make install
 
-git remote add github git@github.com:redhat-cip/skydive.git
+git remote add github git@github.com:skydive-project/skydive.git
 git fetch github
 git checkout -b nightly-builds github/nightly-builds
 

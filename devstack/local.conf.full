@@ -14,7 +14,7 @@ SERVICE_PASSWORD=password
 disable_service n-net
 ENABLED_SERVICES+=,q-svc,q-dhcp,q-meta,q-agt,q-l3
 
-enable_plugin skydive https://github.com/redhat-cip/skydive.git
+enable_plugin skydive https://github.com/skydive-project/skydive.git
 enable_service skydive-agent skydive-analyzer
 
 SKYDIVE_ANALYZER_LISTEN=${HOST_IP}:8082

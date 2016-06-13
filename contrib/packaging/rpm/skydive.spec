@@ -12,9 +12,9 @@ Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Real-time network topology and protocols analyzer.
 License:        ASL 2.0
-URL:            https://github.com/redhat-cip/skydive
+URL:            https://github.com/skydive-project/skydive
 ExclusiveArch:  x86_64
-Source0:        https://github.com/redhat-cip/skydive/archive/%{commit}/%{name}-%{version}.tar.gz
+Source0:        https://github.com/skydive-project/skydive/archive/%{commit}/%{name}-%{version}.tar.gz
 BuildRequires:  golang >= 1.4
 BuildRequires:  systemd
 
