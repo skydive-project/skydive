@@ -22,6 +22,8 @@
 
 package graph
 
+import "time"
+
 type MemoryBackendNode struct {
 	*Node
 	edges map[Identifier]*MemoryBackendEdge
@@ -66,14 +68,14 @@ func (m MemoryBackend) AddEdge(e *Edge) bool {
 	return true
 }
 
-func (m MemoryBackend) GetEdge(i Identifier) *Edge {
+func (m MemoryBackend) GetEdge(i Identifier, t time.Time) *Edge {
 	if e, ok := m.edges[i]; ok {
 		return e.Edge
 	}
 	return nil
 }
 
-func (m MemoryBackend) GetEdgeNodes(e *Edge) (*Node, *Node) {
+func (m MemoryBackend) GetEdgeNodes(e *Edge, t time.Time) (*Node, *Node) {
 	var parent *MemoryBackendNode
 	if e, ok := m.edges[e.ID]; ok {
 		if n, ok := m.nodes[e.parent]; ok {
@@ -104,14 +106,14 @@ func (m MemoryBackend) AddNode(n *Node) bool {
 	return true
 }
 
-func (m MemoryBackend) GetNode(i Identifier) *Node {
+func (m MemoryBackend) GetNode(i Identifier, t time.Time) *Node {
 	if n, ok := m.nodes[i]; ok {
 		return n.Node
 	}
 	return nil
 }
 
-func (m MemoryBackend) GetNodeEdges(n *Node) []*Edge {
+func (m MemoryBackend) GetNodeEdges(n *Node, t time.Time) []*Edge {
 	edges := []*Edge{}
 
 	if n, ok := m.nodes[n.ID]; ok {
@@ -147,7 +149,7 @@ func (m MemoryBackend) DelNode(n *Node) bool {
 	return true
 }
 
-func (m MemoryBackend) GetNodes() []*Node {
+func (m MemoryBackend) GetNodes(t time.Time) []*Node {
 	nodes := []*Node{}
 
 	for _, n := range m.nodes {
@@ -157,7 +159,7 @@ func (m MemoryBackend) GetNodes() []*Node {
 	return nodes
 }
 
-func (m MemoryBackend) GetEdges() []*Edge {
+func (m MemoryBackend) GetEdges(t time.Time) []*Edge {
 	edges := []*Edge{}
 
 	for _, e := range m.edges {

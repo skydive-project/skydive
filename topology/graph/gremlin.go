@@ -24,6 +24,7 @@ package graph
 
 import (
 	"errors"
+	"time"
 
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph/gremlin"
@@ -229,7 +230,7 @@ func (g GremlinBackend) AddEdge(e *Edge) bool {
 	return true
 }
 
-func (g GremlinBackend) GetEdge(i Identifier) *Edge {
+func (g GremlinBackend) GetEdge(i Identifier, t time.Time) *Edge {
 	properties, err := idToPropertiesString(i)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving a Node: %s", err.Error())
@@ -253,7 +254,7 @@ func (g GremlinBackend) GetEdge(i Identifier) *Edge {
 
 	edge := gremElementToEdge(els[0])
 
-	parent, child := g.GetEdgeNodes(edge)
+	parent, child := g.GetEdgeNodes(edge, t)
 	if parent == nil || child == nil {
 		return nil
 	}
@@ -264,7 +265,7 @@ func (g GremlinBackend) GetEdge(i Identifier) *Edge {
 	return edge
 }
 
-func (g GremlinBackend) GetEdgeNodes(e *Edge) (*Node, *Node) {
+func (g GremlinBackend) GetEdgeNodes(e *Edge, t time.Time) (*Node, *Node) {
 	properties, err := idToPropertiesString(e.ID)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving a Edge: %s", err.Error())
@@ -304,7 +305,7 @@ func (g GremlinBackend) AddNode(n *Node) bool {
 	return true
 }
 
-func (g GremlinBackend) GetNode(i Identifier) *Node {
+func (g GremlinBackend) GetNode(i Identifier, t time.Time) *Node {
 	properties, err := idToPropertiesString(i)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving a Node: %s", err.Error())
@@ -329,7 +330,7 @@ func (g GremlinBackend) GetNode(i Identifier) *Node {
 	return gremElementToNode(els[0])
 }
 
-func (g GremlinBackend) GetNodeEdges(n *Node) []*Edge {
+func (g GremlinBackend) GetNodeEdges(n *Node, t time.Time) []*Edge {
 	var edges []*Edge
 
 	properties, err := idToPropertiesString(n.ID)
@@ -388,7 +389,7 @@ func (g GremlinBackend) DelNode(n *Node) bool {
 	return true
 }
 
-func (g GremlinBackend) GetNodes() []*Node {
+func (g GremlinBackend) GetNodes(t time.Time) []*Node {
 	var nodes []*Node
 
 	query := "g.V().has('_ID')"
@@ -405,7 +406,7 @@ func (g GremlinBackend) GetNodes() []*Node {
 	return nodes
 }
 
-func (g GremlinBackend) GetEdges() []*Edge {
+func (g GremlinBackend) GetEdges(t time.Time) []*Edge {
 	var edges []*Edge
 
 	query := "g.E().has('_ID')"
@@ -417,7 +418,7 @@ func (g GremlinBackend) GetEdges() []*Edge {
 
 	for _, e := range els {
 		edge := gremElementToEdge(e)
-		parent, child := g.GetEdgeNodes(edge)
+		parent, child := g.GetEdgeNodes(edge, t)
 		if parent == nil || child == nil {
 			continue
 		}

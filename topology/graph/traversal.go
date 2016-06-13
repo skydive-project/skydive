@@ -294,8 +294,8 @@ func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
-			parent, child := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
+			parent, child := tv.GraphTraversal.Graph.GetEdgeNodes(e)
 
 			if parent != nil && parent.ID == n.ID && child.MatchMetadata(metadata) {
 				ntv.nodes = append(ntv.nodes, child)
@@ -322,8 +322,8 @@ func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
-			parent, child := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
+			parent, child := tv.GraphTraversal.Graph.GetEdgeNodes(e)
 
 			if parent != nil && parent.ID == n.ID && child.MatchMetadata(metadata) {
 				ntv.nodes = append(ntv.nodes, child)
@@ -346,8 +346,8 @@ func (tv *GraphTraversalV) OutE(s ...interface{}) *GraphTraversalE {
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*Edge{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
-			parent, _ := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
+			parent, _ := tv.GraphTraversal.Graph.GetEdgeNodes(e)
 
 			if parent != nil && parent.ID == n.ID && e.MatchMetadata(metadata) {
 				nte.edges = append(nte.edges, e)
@@ -370,8 +370,8 @@ func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*Node{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
-			parent, child := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
+			parent, child := tv.GraphTraversal.Graph.GetEdgeNodes(e)
 
 			if child != nil && child.ID == n.ID && parent.MatchMetadata(metadata) {
 				ntv.nodes = append(ntv.nodes, parent)
@@ -394,8 +394,8 @@ func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*Edge{}}
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.backend.GetNodeEdges(n) {
-			_, child := tv.GraphTraversal.Graph.backend.GetEdgeNodes(e)
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
+			_, child := tv.GraphTraversal.Graph.GetEdgeNodes(e)
 
 			if child != nil && child.ID == n.ID && e.MatchMetadata(metadata) {
 				nte.edges = append(nte.edges, e)
@@ -493,7 +493,7 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*Node{}}
 	for _, e := range te.edges {
-		parent, _ := te.GraphTraversal.Graph.backend.GetEdgeNodes(e)
+		parent, _ := te.GraphTraversal.Graph.GetEdgeNodes(e)
 		if parent != nil && parent.MatchMetadata(metadata) {
 			ntv.nodes = append(ntv.nodes, parent)
 		}
@@ -514,7 +514,7 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*Node{}}
 	for _, e := range te.edges {
-		_, child := te.GraphTraversal.Graph.backend.GetEdgeNodes(e)
+		_, child := te.GraphTraversal.Graph.GetEdgeNodes(e)
 		if child != nil && child.MatchMetadata(metadata) {
 			ntv.nodes = append(ntv.nodes, child)
 		}

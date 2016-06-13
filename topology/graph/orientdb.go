@@ -131,6 +131,7 @@ func orientDBDocumentToEdge(doc orientdb.Document) *Edge {
 func (o *OrientDBBackend) AddNode(n *Node) bool {
 	doc := graphElementToOrientDBDocument(n.graphElement)
 	doc["@class"] = "Node"
+	doc["CreatedAt"] = time.Now().String()
 	_, err := o.client.CreateDocument(doc)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
@@ -140,10 +141,10 @@ func (o *OrientDBBackend) AddNode(n *Node) bool {
 }
 
 func (o *OrientDBBackend) DelNode(n *Node) bool {
-	query := fmt.Sprintf("DELETE VERTEX Node WHERE ID = \"%s\"", n.ID)
+	query := fmt.Sprintf("UPDATE Node SET DeletedAt = '%s' WHERE DeletedAt IS NULL AND ID = '%s'", time.Now(), n.ID)
 	docs, err := o.client.Sql(query)
 	if err != nil || (err == nil && len(docs) != 1) {
-		logging.GetLogger().Errorf("Error while deleting node %s: %s", n.ID, err.Error())
+		logging.GetLogger().Errorf("Error while deleting node %s: %s (sql: %s)", n.ID, err.Error(), query)
 		return false
 	}
 	value, ok := docs[0]["value"]
@@ -151,11 +152,11 @@ func (o *OrientDBBackend) DelNode(n *Node) bool {
 		return false
 	}
 	i, err := value.(json.Number).Int64()
-	return err != nil && i == 1
+	return err == nil && i == 1
 }
 
-func (o *OrientDBBackend) GetNode(i Identifier) *Node {
-	query := fmt.Sprintf("SELECT expand(rid) FROM INDEX:Node.ID WHERE key = \"%s\"", i)
+func (o *OrientDBBackend) GetNode(i Identifier, t time.Time) *Node {
+	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID = '%s'", o.getTimeClause(t), i)
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving node %s: %s", i, err.Error())
@@ -167,8 +168,8 @@ func (o *OrientDBBackend) GetNode(i Identifier) *Node {
 	return nil
 }
 
-func (o *OrientDBBackend) GetNodeEdges(n *Node) (edges []*Edge) {
-	query := fmt.Sprintf("SELECT expand(rid.bothe()) FROM INDEX:Node.ID WHERE key = \"%s\"", n.ID)
+func (o *OrientDBBackend) GetNodeEdges(n *Node, t time.Time) (edges []*Edge) {
+	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (parent = '%s' OR child = '%s')", o.getTimeClause(t), n.ID, n.ID)
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges for node %s: %s", n.ID, err.Error())
@@ -192,7 +193,7 @@ func (o *OrientDBBackend) AddEdge(e *Edge) bool {
 }
 
 func (o *OrientDBBackend) DelEdge(e *Edge) bool {
-	query := fmt.Sprintf("DELETE EDGE Link WHERE ID = \"%s\"", e.ID)
+	query := fmt.Sprintf("UPDATE Link SET DeletedAt = '%s' WHERE DeletedAt IS NULL AND ID = '%s'", time.Now(), e.ID)
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while deleting edge %s: %s", e.ID, err.Error())
@@ -206,8 +207,8 @@ func (o *OrientDBBackend) DelEdge(e *Edge) bool {
 	return err == nil && i == 1
 }
 
-func (o *OrientDBBackend) GetEdge(i Identifier) *Edge {
-	query := fmt.Sprintf("SELECT expand(rid) FROM INDEX:Link.ID WHERE key = \"%s\"", i)
+func (o *OrientDBBackend) GetEdge(i Identifier, t time.Time) *Edge {
+	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND ID = '%s'", o.getTimeClause(t), i)
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edge %s: %s", i, err.Error())
@@ -219,8 +220,8 @@ func (o *OrientDBBackend) GetEdge(i Identifier) *Edge {
 	return nil
 }
 
-func (o *OrientDBBackend) GetEdgeNodes(e *Edge) (n1 *Node, n2 *Node) {
-	query := fmt.Sprintf("SELECT expand(rid) FROM INDEX:Node.ID WHERE key in [\"%s\", \"%s\"]", e.parent, e.child)
+func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t time.Time) (n1 *Node, n2 *Node) {
+	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID in [\"%s\", \"%s\"]", o.getTimeClause(t), e.parent, e.child)
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving nodes for edge %s: %s", e.ID, err.Error())
@@ -244,58 +245,67 @@ func (o *OrientDBBackend) GetEdgeNodes(e *Edge) (n1 *Node, n2 *Node) {
 	}
 }
 
-func getElementAndClassType(i interface{}) (element graphElement, classType string) {
+func (o *OrientDBBackend) updateGraphElement(i interface{}) bool {
+	success := true
+
 	switch i.(type) {
 	case *Node:
-		return i.(*Node).graphElement, "Node"
+		node := i.(*Node)
+		now := time.Now()
+		edges := o.GetNodeEdges(node, now)
+		o.DelNode(node)
+		o.AddNode(node)
+		for _, e := range edges {
+			parent, child := o.GetEdgeNodes(e, now)
+			if parent == nil || child == nil {
+				continue
+			}
+
+			if success = o.DelEdge(e); !success {
+				break
+			}
+
+			if success = o.AddEdge(e); !success {
+				break
+			}
+		}
+
 	case *Edge:
-		return i.(*Edge).graphElement, "Link"
+		edge := i.(*Edge)
+		if success = o.DelEdge(edge); !success {
+			break
+		}
+
+		success = o.AddEdge(edge)
 	}
-	return
+
+	return success
 }
 
 func (o *OrientDBBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
-	element, classType := getElementAndClassType(i)
-	value, err := json.Marshal(v)
-	if err != nil {
-		return false
+	success := o.updateGraphElement(i)
+	if !success {
+		logging.GetLogger().Errorf("Error while adding metadata")
 	}
-
-	query := fmt.Sprintf("UPDATE %s SET %s = %s WHERE ID = '%s'", classType, k, string(value), element.ID)
-	if _, err := o.client.Sql(query); err != nil {
-		logging.GetLogger().Errorf("Error while adding metadata: %s", err.Error())
-		return false
-	}
-
-	return true
+	return success
 }
 
 func (o *OrientDBBackend) SetMetadata(i interface{}, m Metadata) bool {
-	element, classType := getElementAndClassType(i)
-	newElement := graphElement{
-		ID:       element.ID,
-		host:     element.host,
-		metadata: m,
+	success := o.updateGraphElement(i)
+	if !success {
+		logging.GetLogger().Errorf("Error while setting metadata")
 	}
-
-	doc := graphElementToOrientDBDocument(newElement)
-	delete(doc, "@class")
-	content, err := json.Marshal(doc)
-	if err != nil {
-		return false
-	}
-
-	query := fmt.Sprintf("UPDATE %s CONTENT %s WHERE ID = '%s'", classType, content, element.ID)
-	if _, err := o.client.Sql(query); err != nil {
-		logging.GetLogger().Errorf("Error while setting metadata: %s", err.Error())
-		return false
-	}
-
-	return true
+	return success
 }
 
-func (o *OrientDBBackend) GetNodes() (nodes []*Node) {
-	docs, err := o.client.Sql("SELECT FROM Node")
+func (*OrientDBBackend) getTimeClause(t time.Time) string {
+	s := t.String()
+	return fmt.Sprintf("CreatedAt <= '%s' AND (DeletedAt > '%s' OR DeletedAt is NULL)", s, s)
+}
+
+func (o *OrientDBBackend) GetNodes(t time.Time) (nodes []*Node) {
+	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeClause(t))
+	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving nodes: %s", err.Error(), docs)
 		return
@@ -308,8 +318,9 @@ func (o *OrientDBBackend) GetNodes() (nodes []*Node) {
 	return
 }
 
-func (o *OrientDBBackend) GetEdges() (edges []*Edge) {
-	docs, err := o.client.Sql("SELECT FROM Link")
+func (o *OrientDBBackend) GetEdges(t time.Time) (edges []*Edge) {
+	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeClause(t))
+	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges: %s", err.Error(), docs)
 		return
@@ -335,9 +346,11 @@ func NewOrientDBBackend(addr string, database string, username string, password 
 			Properties: []orientdb.Property{
 				{Name: "ID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "Host", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "CreatedAt", Type: "DATETIME", Mandatory: true, NotNull: true, ReadOnly: true},
+				{Name: "DeletedAt", Type: "DATETIME", NotNull: true},
 			},
 			Indexes: []orientdb.Index{
-				{Name: "Node.ID", Fields: []string{"ID"}, Type: "UNIQUE_HASH_INDEX"},
+				{Name: "Node.TimeSpan", Fields: []string{"CreatedAt", "DeletedAt"}, Type: "NOTUNIQUE"},
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
@@ -352,11 +365,13 @@ func NewOrientDBBackend(addr string, database string, username string, password 
 			Properties: []orientdb.Property{
 				{Name: "ID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "Host", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "CreatedAt", Type: "DATETIME", Mandatory: true, NotNull: true, ReadOnly: true},
+				{Name: "DeletedAt", Type: "DATETIME", NotNull: true},
 				{Name: "parent", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "child", Type: "STRING", Mandatory: true, NotNull: true},
 			},
 			Indexes: []orientdb.Index{
-				{Name: "Link.ID", Fields: []string{"ID"}, Type: "UNIQUE_HASH_INDEX"},
+				{Name: "Link.TimeSpan", Fields: []string{"CreatedAt", "DeletedAt"}, Type: "NOTUNIQUE"},
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
