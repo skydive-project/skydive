@@ -52,6 +52,7 @@ type Server struct {
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	Storage             storage.Storage
 	FlowTable           *flow.Table
+	TableClient         *flow.TableClient
 	conn                *net.UDPConn
 	EmbeddedEtcd        *etcd.EmbeddedEtcd
 	EtcdClient          *etcd.EtcdClient
@@ -200,8 +201,6 @@ func NewServerFromConfig() (*Server, error) {
 
 	wsServer := shttp.NewWSServerFromConfig(httpServer, "/ws")
 
-	api.RegisterTopologyApi("analyzer", g, httpServer)
-
 	var etcdServer *etcd.EmbeddedEtcd
 	if embedEtcd {
 		if etcdServer, err = etcd.NewEmbeddedEtcdFromConfig(); err != nil {
@@ -248,6 +247,7 @@ func NewServerFromConfig() (*Server, error) {
 	pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
 
 	flowtable := flow.NewTable()
+	tableClient := flow.NewTableClient(wsServer)
 
 	server := &Server{
 		HTTPServer:          httpServer,
@@ -256,10 +256,13 @@ func NewServerFromConfig() (*Server, error) {
 		AlertServer:         aserver,
 		FlowMappingPipeline: pipeline,
 		FlowTable:           flowtable,
+		TableClient:         tableClient,
 		EmbeddedEtcd:        etcdServer,
 		EtcdClient:          etcdClient,
 	}
 	server.SetStorageFromConfig()
+
+	api.RegisterTopologyApi("analyzer", g, httpServer, tableClient)
 
 	api.RegisterFlowApi("analyzer", flowtable, server.Storage, httpServer)
 

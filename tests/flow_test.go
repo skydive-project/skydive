@@ -23,6 +23,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -187,21 +188,40 @@ func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) 
 	}
 }
 
-func getNodeFromGremlin(t *testing.T, query string) *graph.Node {
-	result, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
+func getNodeFromGremlinReply(t *testing.T, query string) *graph.Node {
+	body, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	array := result.([]interface{})
+	var values []interface{}
+	err = json.NewDecoder(body).Decode(&values)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 
 	var node graph.Node
-	err = node.Decode(array[0])
+	err = node.Decode(values[0])
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	return &node
+}
+
+func getFlowsFromGremlinReply(t *testing.T, query string) []*flow.Flow {
+	body, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	var flows []*flow.Flow
+	err = json.NewDecoder(body).Decode(&flows)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return flows
 }
 
 func TestSFlowWithPCAP(t *testing.T) {
@@ -278,7 +298,7 @@ func TestSFlowProbeNode(t *testing.T) {
 
 	aa.Flush()
 
-	node := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	ok := false
 	for _, f := range ts.GetFlows() {
@@ -329,7 +349,7 @@ func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
 
 	aa.Flush()
 
-	node := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	ok := false
 	for _, f := range ts.GetFlows() {
@@ -419,8 +439,8 @@ func TestSFlowTwoProbePath(t *testing.T) {
 		t.Errorf("Should have 2 flow entries one per probepath got: %d", len(flows))
 	}
 
-	node1 := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow1", "Type", "ovsbridge")`)
-	node2 := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow2", "Type", "ovsbridge")`)
+	node1 := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow1", "Type", "ovsbridge")`)
+	node2 := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow2", "Type", "ovsbridge")`)
 
 	if flows[0].ProbeNodeUUID != string(node1.ID) &&
 		flows[0].ProbeNodeUUID != string(node2.ID) {
@@ -475,7 +495,7 @@ func TestPCAPProbe(t *testing.T) {
 
 	aa.Flush()
 
-	node := getNodeFromGremlin(t, `g.V().Has("Name", "br-pcap", "Type", "bridge")`)
+	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-pcap", "Type", "bridge")`)
 
 	ok := false
 	flows := ts.GetFlows()
@@ -536,8 +556,8 @@ func TestSFlowSrcDstPath(t *testing.T) {
 
 	aa.Flush()
 
-	node1 := getNodeFromGremlin(t, `g.V().Has("Name", "sflow-intf1", "Type", "internal")`)
-	node2 := getNodeFromGremlin(t, `g.V().Has("Name", "sflow-intf2", "Type", "internal")`)
+	node1 := getNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf1", "Type", "internal")`)
+	node2 := getNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf2", "Type", "internal")`)
 
 	ok := false
 	for _, f := range ts.GetFlows() {
@@ -629,12 +649,63 @@ func TestTableServer(t *testing.T) {
 
 	aa.Flush()
 
-	node := getNodeFromGremlin(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
 	flows, err := fclient.LookupFlowsByProbeNode(node)
 	if err != nil {
 		t.Fatal(err.Error())
+	}
+
+	if len(ts.GetFlows()) != len(flows) {
+		t.Fatalf("Should return the same number of flows than in the database, got: %v", flows)
+	}
+
+	for _, f := range flows {
+		if f.ProbeNodeUUID != string(node.ID) {
+			t.Fatalf("Returned a non expected flow: %v", f)
+		}
+	}
+
+	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+}
+
+func TestFlowGremlin(t *testing.T) {
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
+	if err := client.Create("capture", &capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip link set sflow-intf1 up", true},
+		{"ping -c 15 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	aa.Flush()
+
+	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+
+	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows()`)
+	if len(ts.GetFlows()) != len(flows) {
+		t.Fatalf("Should return the same number of flows than in the database, got: %v", flows)
 	}
 
 	if len(ts.GetFlows()) != len(flows) {

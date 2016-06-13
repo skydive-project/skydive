@@ -26,6 +26,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -47,7 +48,7 @@ var TopologyCmd = &cobra.Command{
 	SilenceUsage: false,
 }
 
-func SendGremlinQuery(auth *shttp.AuthenticationOpts, query string) (interface{}, error) {
+func SendGremlinQuery(auth *shttp.AuthenticationOpts, query string) (io.ReadCloser, error) {
 	client := shttp.NewRestClientFromConfig(auth)
 
 	gq := api.Topology{GremlinQuery: query}
@@ -68,13 +69,7 @@ func SendGremlinQuery(auth *shttp.AuthenticationOpts, query string) (interface{}
 		return nil, fmt.Errorf("%s: %s", resp.Status, string(data))
 	}
 
-	var values interface{}
-	err = json.NewDecoder(resp.Body).Decode(&values)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to decode response: %s", err.Error())
-	}
-
-	return values, nil
+	return resp.Body, nil
 }
 
 var TopologyRequest = &cobra.Command{
@@ -82,11 +77,19 @@ var TopologyRequest = &cobra.Command{
 	Short: "query topology",
 	Long:  "query topology",
 	Run: func(cmd *cobra.Command, args []string) {
-		values, err := SendGremlinQuery(&authenticationOpts, gremlinQuery)
+		body, err := SendGremlinQuery(&authenticationOpts, gremlinQuery)
 		if err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
 		}
+
+		var values interface{}
+		err = json.NewDecoder(body).Decode(&values)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to decode response: %s", err.Error())
+			os.Exit(1)
+		}
+
 		printJSON(values)
 	},
 }
