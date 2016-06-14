@@ -23,6 +23,7 @@
 package graph
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -31,6 +32,7 @@ import (
 
 type GraphTraversalStep interface {
 	Values() []interface{}
+	MarshalJSON() ([]byte, error)
 	Error() error
 }
 
@@ -134,6 +136,10 @@ func (t *GraphTraversal) Values() []interface{} {
 	return []interface{}{t.Graph}
 }
 
+func (t *GraphTraversal) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.Values)
+}
+
 func (t *GraphTraversal) Error() error {
 	return nil
 }
@@ -162,6 +168,10 @@ func (tv *GraphTraversalV) Values() []interface{} {
 	return s
 }
 
+func (tv *GraphTraversalV) MarshalJSON() ([]byte, error) {
+	return json.Marshal(tv.Values())
+}
+
 func (tv *GraphTraversalV) Dedup() *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -185,6 +195,10 @@ func (sp *GraphTraversalShortestPath) Values() []interface{} {
 		s[i] = p
 	}
 	return s
+}
+
+func (sp *GraphTraversalShortestPath) MarshalJSON() ([]byte, error) {
+	return json.Marshal(sp.Values())
 }
 
 func (sp *GraphTraversalShortestPath) Error() error {
@@ -389,6 +403,10 @@ func (te *GraphTraversalE) Values() []interface{} {
 		s[i] = v
 	}
 	return s
+}
+
+func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
+	return json.Marshal(te.Values())
 }
 
 func (te *GraphTraversalE) Dedup() *GraphTraversalE {

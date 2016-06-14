@@ -80,7 +80,7 @@ func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 		}
 
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(res.Values()); err != nil {
+		if err := json.NewEncoder(w).Encode(res); err != nil {
 			panic(err)
 		}
 	} else {

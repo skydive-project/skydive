@@ -23,6 +23,9 @@
 package flow
 
 import (
+	"bytes"
+	"encoding/json"
+
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
@@ -37,15 +40,60 @@ type FlowGremlinTraversalStep struct {
 }
 
 type FlowTraversalStep struct {
+	Graph *graph.Graph
 	flows []*Flow
 }
 
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flows))
-	for i, value := range f.flows {
-		a[i] = value
+	for i, flow := range f.flows {
+		a[i] = flow
 	}
 	return a
+}
+
+func (f *FlowTraversalStep) MarshalJSON() ([]byte, error) {
+	a := make([]interface{}, len(f.flows))
+	for i, flow := range f.flows {
+		b, err := json.Marshal(flow)
+		if err != nil {
+			logging.GetLogger().Errorf("Error while converting flow to JSON: %v", flow)
+			continue
+		}
+
+		d := json.NewDecoder(bytes.NewReader(b))
+		d.UseNumber()
+
+		var x map[string]interface{}
+		err = d.Decode(&x)
+		if err != nil {
+			logging.GetLogger().Errorf("Error while converting flow to JSON: %v", flow)
+			continue
+		}
+
+		// substitute UUID by the node
+		if flow.IfSrcNodeUUID != "" && flow.IfSrcNodeUUID != "*" {
+			node := f.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID))
+			if node != nil {
+				x["IfSrcNode"] = node
+			}
+		}
+
+		if flow.IfDstNodeUUID != "" && flow.IfDstNodeUUID != "*" {
+			node := f.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID))
+			if node != nil {
+				x["IfDstNode"] = node
+			}
+		}
+
+		node := f.Graph.GetNode(graph.Identifier(flow.ProbeNodeUUID))
+		if node != nil {
+			x["ProbeNode"] = node
+		}
+
+		a[i] = x
+	}
+	return json.Marshal(a)
 }
 
 func (p *FlowTraversalStep) Error() error {
@@ -93,7 +141,7 @@ func (s *FlowGremlinTraversalStep) Exec(last graph.GraphTraversalStep) (graph.Gr
 			flows = append(flows, fs...)
 		}
 
-		return &FlowTraversalStep{flows: flows}, nil
+		return &FlowTraversalStep{Graph: tv.GraphTraversal.Graph, flows: flows}, nil
 	}
 
 	return nil, graph.ExecutionError

@@ -22,7 +22,11 @@
 
 package topology
 
-import "github.com/redhat-cip/skydive/topology/graph"
+import (
+	"encoding/json"
+
+	"github.com/redhat-cip/skydive/topology/graph"
+)
 
 type TopologyTraversalExtension struct {
 	graphPathToken graph.Token
@@ -41,6 +45,10 @@ func (p *GraphPathTraversalStep) Values() []interface{} {
 		s[i] = gp.Marshal()
 	}
 	return s
+}
+
+func (p *GraphPathTraversalStep) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.Values())
 }
 
 func (p *GraphPathTraversalStep) Error() error {
