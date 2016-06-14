@@ -74,6 +74,12 @@ googleAnalytics = ""
   weight = 300
 
 [[menu.main]]
+  name = "kubernetes"
+	parent = "started"
+	url = "getting-started/kubernetes/"
+  weight = 400
+
+[[menu.main]]
   name = "Docker"
 	parent = "started"
 	url = "getting-started/docker/"
