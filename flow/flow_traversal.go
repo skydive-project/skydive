@@ -40,8 +40,52 @@ type FlowGremlinTraversalStep struct {
 }
 
 type FlowTraversalStep struct {
-	Graph *graph.Graph
-	flows []*Flow
+	GraphTraversal *graph.GraphTraversal
+	flows          []*Flow
+}
+
+func (f *FlowTraversalStep) Out(s ...interface{}) *graph.GraphTraversalV {
+	var nodes []*graph.Node
+
+	for _, flow := range f.flows {
+		if flow.IfDstNodeUUID != "" && flow.IfDstNodeUUID != "*" {
+			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID))
+			if node != nil {
+				m, err := graph.SliceToMetadata(s...)
+				if err != nil {
+					return graph.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+				}
+
+				if node.MatchMetadata(m) {
+					nodes = append(nodes, node)
+				}
+			}
+		}
+	}
+
+	return graph.NewGraphTraversalV(f.GraphTraversal, nodes)
+}
+
+func (f *FlowTraversalStep) In(s ...interface{}) *graph.GraphTraversalV {
+	var nodes []*graph.Node
+
+	for _, flow := range f.flows {
+		if flow.IfSrcNodeUUID != "" && flow.IfSrcNodeUUID != "*" {
+			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID))
+			if node != nil {
+				m, err := graph.SliceToMetadata(s...)
+				if err != nil {
+					return graph.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+				}
+
+				if node.MatchMetadata(m) {
+					nodes = append(nodes, node)
+				}
+			}
+		}
+	}
+
+	return graph.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
 func (f *FlowTraversalStep) Values() []interface{} {
@@ -73,20 +117,20 @@ func (f *FlowTraversalStep) MarshalJSON() ([]byte, error) {
 
 		// substitute UUID by the node
 		if flow.IfSrcNodeUUID != "" && flow.IfSrcNodeUUID != "*" {
-			node := f.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID))
+			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID))
 			if node != nil {
 				x["IfSrcNode"] = node
 			}
 		}
 
 		if flow.IfDstNodeUUID != "" && flow.IfDstNodeUUID != "*" {
-			node := f.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID))
+			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID))
 			if node != nil {
 				x["IfDstNode"] = node
 			}
 		}
 
-		node := f.Graph.GetNode(graph.Identifier(flow.ProbeNodeUUID))
+		node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ProbeNodeUUID))
 		if node != nil {
 			x["ProbeNode"] = node
 		}
@@ -141,7 +185,7 @@ func (s *FlowGremlinTraversalStep) Exec(last graph.GraphTraversalStep) (graph.Gr
 			flows = append(flows, fs...)
 		}
 
-		return &FlowTraversalStep{Graph: tv.GraphTraversal.Graph, flows: flows}, nil
+		return &FlowTraversalStep{GraphTraversal: tv.GraphTraversal, flows: flows}, nil
 	}
 
 	return nil, graph.ExecutionError

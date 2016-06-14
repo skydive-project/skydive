@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strconv"
 )
 
@@ -71,6 +72,20 @@ type GremlinTraversalParser struct {
 		n   int
 	}
 	extensions []GremlinTraversalExtension
+}
+
+func invokeStepFnc(last GraphTraversalStep, name string, params GremlinTraversalStepParams) (GraphTraversalStep, error) {
+	if v := reflect.ValueOf(last).MethodByName(name); !v.IsNil() {
+		inputs := make([]reflect.Value, len(params))
+		for i, param := range params {
+			inputs[i] = reflect.ValueOf(param)
+		}
+		r := v.Call(inputs)
+
+		return r[0].Interface().(GraphTraversalStep), nil
+	}
+
+	return nil, ExecutionError
 }
 
 func (s *gremlinTraversalStepG) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -124,7 +139,8 @@ func (s *gremlinTraversalStepOut) Exec(last GraphTraversalStep) (GraphTraversalS
 		return last.(*GraphTraversalV).Out(s.params...), nil
 	}
 
-	return nil, ExecutionError
+	// fallback to reflection way
+	return invokeStepFnc(last, "Out", s.params)
 }
 
 func (s *gremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -133,7 +149,7 @@ func (s *gremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalSt
 		return last.(*GraphTraversalV).In(s.params...), nil
 	}
 
-	return nil, ExecutionError
+	return invokeStepFnc(last, "In", s.params)
 }
 
 func (s *gremlinTraversalStepOutV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -317,7 +333,7 @@ func (p *GremlinTraversalParser) parserStepParams() (GremlinTraversalStepParams,
 			if err != nil {
 				return nil, err
 			}
-			metadata, err := sliceToMetadata(metadataParams...)
+			metadata, err := SliceToMetadata(metadataParams...)
 			if err != nil {
 				return nil, err
 			}

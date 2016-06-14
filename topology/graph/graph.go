@@ -141,7 +141,7 @@ func (e *graphElement) Metadata() Metadata {
 	return e.metadata
 }
 
-func (e *graphElement) matchMetadata(f Metadata) bool {
+func (e *graphElement) MatchMetadata(f Metadata) bool {
 	for k, v := range f {
 		switch v.(type) {
 		case MetadataMatcher:
@@ -350,13 +350,13 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 
 	path = append(path, n)
 
-	if n.matchMetadata(m) {
+	if n.MatchMetadata(m) {
 		return path
 	}
 
 	shortest := []*Node{}
 	for _, e := range g.backend.GetNodeEdges(n) {
-		if len(em) > 0 && !e.matchMetadata(em[0]) {
+		if len(em) > 0 && !e.MatchMetadata(em[0]) {
 			continue
 		}
 
@@ -388,7 +388,7 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 	}
 
 	// check that the last element if the one we looked for
-	if len(shortest) > 0 && !shortest[len(shortest)-1].matchMetadata(m) {
+	if len(shortest) > 0 && !shortest[len(shortest)-1].MatchMetadata(m) {
 		return []*Node{}
 	}
 
@@ -405,7 +405,7 @@ func (g *Graph) LookupParentNodes(n *Node, f Metadata) []*Node {
 	for _, e := range g.backend.GetNodeEdges(n) {
 		parent, child := g.backend.GetEdgeNodes(e)
 
-		if child != nil && child.ID == n.ID && parent.matchMetadata(f) {
+		if child != nil && child.ID == n.ID && parent.MatchMetadata(f) {
 			parents = append(parents, parent)
 		}
 	}
@@ -427,7 +427,7 @@ func (g *Graph) LookupChildren(n *Node, f Metadata) []*Node {
 	for _, e := range g.backend.GetNodeEdges(n) {
 		parent, child := g.backend.GetEdgeNodes(e)
 
-		if parent != nil && parent.ID == n.ID && child.matchMetadata(f) {
+		if parent != nil && parent.ID == n.ID && child.MatchMetadata(f) {
 			children = append(children, child)
 		}
 	}
@@ -507,7 +507,7 @@ func (g *Graph) LookupNodes(m Metadata) []*Node {
 	nodes := []*Node{}
 
 	for _, n := range g.backend.GetNodes() {
-		if n.matchMetadata(m) {
+		if n.MatchMetadata(m) {
 			nodes = append(nodes, n)
 		}
 	}
