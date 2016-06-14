@@ -24,7 +24,7 @@ package flow
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
@@ -59,16 +59,16 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) LookupFlowsByProbeNode(node *graph.Node) ([]*Flow, error) {
-	u, _ := uuid.NewV4()
-
+func (f *TableClient) lookupFlowsByProbeNode(flows chan []*Flow, host string, uuids []string) {
 	tq := TableQuery{
 		Obj: FlowSearchQuery{
-			ProbeNodeUUID: string(node.ID),
+			ProbeNodeUUIDs: uuids,
 		},
 	}
 	b, _ := json.Marshal(tq)
 	raw := json.RawMessage(b)
+
+	u, _ := uuid.NewV4()
 
 	msg := shttp.WSMessage{
 		Namespace: Namespace,
@@ -90,9 +90,11 @@ func (f *TableClient) LookupFlowsByProbeNode(node *graph.Node) ([]*Flow, error) 
 		f.replyChanMutex.Unlock()
 	}()
 
-	ok := f.WSServer.SendWSMessageTo(msg, node.Host())
+	ok := f.WSServer.SendWSMessageTo(msg, host)
 	if !ok {
-		return nil, fmt.Errorf("Unable to send message to agent: %s", node.Host())
+		logging.GetLogger().Errorf("Unable to send message to agent: %s", host)
+		flows <- []*Flow{}
+		return
 	}
 
 	select {
@@ -103,19 +105,48 @@ func (f *TableClient) LookupFlowsByProbeNode(node *graph.Node) ([]*Flow, error) 
 
 		err := json.Unmarshal([]byte(*raw), &reply)
 		if err != nil {
-			return nil, fmt.Errorf("Error returned while reading TableReply from: %s", node.Host())
+			logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
+			break
 		}
 
 		if reply.Status != 200 {
-			return nil, fmt.Errorf("Error %d TableReply from: %s", reply.Status, node.Host())
+			logging.GetLogger().Errorf("Error %d TableReply from: %s", reply.Status, host)
+			break
 		}
 
 		fr := reply.Obj.(*FlowSearchReply)
 
-		return fr.Flows, nil
+		flows <- fr.Flows
 	case <-time.After(time.Second * 10):
-		return nil, fmt.Errorf("Timeout while reading TableReply from: %s", node.Host())
+		logging.GetLogger().Errorf("Timeout while reading TableReply from: %s", host)
 	}
+
+	flows <- []*Flow{}
+}
+
+func (f *TableClient) LookupFlowsByProbeNode(nodes ...*graph.Node) ([]*Flow, error) {
+	if len(nodes) == 0 {
+		return nil, errors.New("No node provided")
+	}
+
+	uuids := make(map[string][]string)
+	for _, node := range nodes {
+		uuids[node.Host()] = append(uuids[node.Host()], string(node.ID))
+	}
+
+	ch := make(chan []*Flow)
+
+	for host, uuids := range uuids {
+		go f.lookupFlowsByProbeNode(ch, host, uuids)
+	}
+
+	var flows []*Flow
+	for i := 0; i != len(uuids); i++ {
+		f := <-ch
+		flows = append(flows, f...)
+	}
+
+	return flows, nil
 }
 
 func NewTableClient(w *shttp.WSServer) *TableClient {

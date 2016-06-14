@@ -598,7 +598,7 @@ func TestFlowQuery(t *testing.T) {
 
 	query := &flow.TableQuery{
 		Obj: &flow.FlowSearchQuery{
-			ProbeNodeUUID: "probe2",
+			ProbeNodeUUIDs: []string{"probe2"},
 		},
 	}
 	reply := al.QueryTable(query)

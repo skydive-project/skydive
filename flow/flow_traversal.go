@@ -169,20 +169,19 @@ func (e *FlowTraversalExtension) ParseStep(t graph.Token, p graph.GremlinTravers
 }
 
 func (s *FlowGremlinTraversalStep) Exec(last graph.GraphTraversalStep) (graph.GraphTraversalStep, error) {
-	flows := make([]*Flow, 0)
-
 	switch last.(type) {
 	case *graph.GraphTraversalV:
 		tv := last.(*graph.GraphTraversalV)
-		for _, i := range tv.Values() {
-			node := i.(*graph.Node)
 
-			fs, err := s.TableClient.LookupFlowsByProbeNode(node)
-			if err != nil {
-				logging.GetLogger().Errorf("Error while looking for flows for node: %v, %s", node, err.Error())
-				continue
-			}
-			flows = append(flows, fs...)
+		nodes := make([]*graph.Node, len(tv.Values()))
+		for i, v := range tv.Values() {
+			nodes[i] = v.(*graph.Node)
+		}
+
+		flows, err := s.TableClient.LookupFlowsByProbeNode(nodes...)
+		if err != nil {
+			logging.GetLogger().Errorf("Error while looking for flows for nodes: %v, %s", nodes, err.Error())
+			return nil, graph.ExecutionError
 		}
 
 		return &FlowTraversalStep{GraphTraversal: tv.GraphTraversal, flows: flows}, nil
