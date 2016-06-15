@@ -22,23 +22,35 @@
 
 package api
 
+import (
+	"github.com/nu7hatch/gouuid"
+)
+
 type Capture struct {
-	ProbePath string `json:",omitempty" valid:"nonzero"`
-	BPFFilter string `json:",omitempty"`
+	UUID         string
+	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
+	BPFFilter    string `json:"BPFFilter,omitempty"`
 }
 
 type CaptureHandler struct {
 }
 
-func NewCapture(probePath string, bpfFilter string) *Capture {
+func NewCapture(query string, bpfFilter string) *Capture {
+	id, _ := uuid.NewV4()
+
 	return &Capture{
-		ProbePath: probePath,
-		BPFFilter: bpfFilter,
+		UUID:         id.String(),
+		GremlinQuery: query,
+		BPFFilter:    bpfFilter,
 	}
 }
 
 func (c *CaptureHandler) New() ApiResource {
-	return &Capture{}
+	id, _ := uuid.NewV4()
+
+	return &Capture{
+		UUID: id.String(),
+	}
 }
 
 func (c *CaptureHandler) Name() string {
@@ -46,5 +58,9 @@ func (c *CaptureHandler) Name() string {
 }
 
 func (c *Capture) ID() string {
-	return c.ProbePath
+	return c.UUID
+}
+
+func (c *Capture) SetID(i string) {
+	c.UUID = i
 }

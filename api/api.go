@@ -25,7 +25,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -35,6 +34,7 @@ import (
 
 	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/validator"
 	"github.com/redhat-cip/skydive/version"
 )
 
@@ -114,8 +114,18 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 			"/api/" + name,
 			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				resource := handler.New()
-				data, _ := ioutil.ReadAll(r.Body)
-				if err := json.Unmarshal(data, &resource); err != nil {
+
+				// keep the original ID
+				id := resource.ID()
+
+				if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+
+				resource.SetID(id)
+
+				if err := validator.Validate(resource); err != nil {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}

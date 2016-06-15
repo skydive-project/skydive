@@ -38,6 +38,7 @@ import (
 
 type ApiResource interface {
 	ID() string
+	SetID(string)
 }
 
 type ApiHandler interface {
@@ -193,7 +194,13 @@ func (h *BasicApiHandler) AsyncWatch(f ApiWatcherCallback) StoppableWatcher {
 			id := strings.TrimPrefix(resp.Node.Key, etcdPath)
 
 			resource := h.ResourceHandler.New()
-			json.Unmarshal([]byte(resp.Node.Value), resource)
+
+			switch resp.Action {
+			case "expire", "delete":
+				json.Unmarshal([]byte(resp.PrevNode.Value), resource)
+			default:
+				json.Unmarshal([]byte(resp.Node.Value), resource)
+			}
 
 			f(resp.Action, id, resource)
 		}

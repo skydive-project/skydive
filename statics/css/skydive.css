@@ -184,11 +184,33 @@ path.hull {
 }
 
 .left-panel {
-  border-radius: 15px;
+  border-radius: 5px;
   background-color: #222;
   padding: 15px;
   margin-top: 10px;
   margin-bottom: 10px;
+}
+
+.sub-left-panel {
+  border-radius: 5px;
+  background-color: #111;
+  padding: 5px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+ul.capture-list {
+  list-style-type: none;
+  padding: 0px;
+}
+
+li.capture-item {
+  padding: 0px;
+  padding-bottom: 25px;
+}
+
+.capture-title {
+  font-weight: bold;
 }
 
 .title-left-panel {
@@ -197,8 +219,8 @@ path.hull {
   color: #fff;
 }
 
-#flows-panel .title-left-panel {
-  float: left;
+.sub-left-panel .title-left-panel {
+  font-size: 1.1em;
 }
 
 .title-capture-switch {

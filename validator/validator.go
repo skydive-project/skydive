@@ -24,25 +24,57 @@ package validator
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
+	"strings"
 
 	"gopkg.in/validator.v2"
+
+	"github.com/redhat-cip/skydive/flow"
+	"github.com/redhat-cip/skydive/topology"
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 var skydiveValidator = validator.NewValidator()
 
+var (
+	IPNotValid = func() error {
+		return validator.TextErr{errors.New("Not a IP addr")}
+	}
+	GremlinNotValid = func(err error) error {
+		return validator.TextErr{fmt.Errorf("Not a valid Gremlin expression: %s", err.Error())}
+	}
+)
+
 func isIP(v interface{}, param string) error {
 	//(TODO: masco) need to support IPv6 also
 	ipv4Regex := "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
-	ipError := validator.TextErr{errors.New("Not a IP addr")}
+
 	ip, ok := v.(string)
 	if !ok {
-		return ipError
+		return IPNotValid()
 	}
 	re, _ := regexp.Compile(ipv4Regex)
 	if !re.MatchString(ip) {
-		return ipError
+		return IPNotValid()
 	}
+	return nil
+}
+
+func isGremlinExpr(v interface{}, param string) error {
+	query, ok := v.(string)
+	if !ok {
+		return GremlinNotValid(errors.New("not a string"))
+	}
+
+	tr := graph.NewGremlinTraversalParser(strings.NewReader(query), nil)
+	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
+	tr.AddTraversalExtension(flow.NewFlowTraversalExtension(nil))
+
+	if _, err := tr.Parse(); err != nil {
+		return GremlinNotValid(err)
+	}
+
 	return nil
 }
 
@@ -52,5 +84,6 @@ func Validate(v interface{}) error {
 
 func init() {
 	skydiveValidator.SetValidationFunc("isIP", isIP)
+	skydiveValidator.SetValidationFunc("isGremlinExpr", isGremlinExpr)
 	skydiveValidator.SetTag("valid")
 }

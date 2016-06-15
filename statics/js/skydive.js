@@ -30,6 +30,12 @@ var neutronImg = 'statics/img/openstack.png';
 var minus = 'statics/img/minus-outline-16.png';
 var plus = 'statics/img/plus-16.png';
 var probeNodeIndicator = 'statics/img/media-record.png';
+var trashImg = 'statics/img/trash.png'
+
+var alerts = {};
+
+var CurrentNodeDetails;
+var NodeDetailsTmID;
 
 var Node = function(ID) {
   this.ID = ID;
@@ -39,7 +45,6 @@ var Node = function(ID) {
   this.Visible = true;
   this.Collapsed = false;
 }
-var alerts = {};
 
 Node.prototype.Type = function() {
   if ("Type" in this.Metadata)
@@ -60,56 +65,6 @@ Node.prototype.IsCaptureOn = function() {
 Node.prototype.IsCaptureAllowed = function() {
   var allowedTypes = ["device", "veth", "ovsbridge", "internal", "tun", "bridge"];
   return allowedTypes.indexOf(this.Metadata["Type"]) >= 0;
-}
-
-Node.prototype.getHostRelativePath = function(path, visited) {
-  visited[this.ID] = true;
-
-  path = path.slice();
-
-  path.push(this);
-  if (this.Type() == "host")
-    return path;
-
-  var shortest = [];
-  for (var e in this.Edges) {
-    var edge = this.Edges[e];
-    if (edge.RelationType() != "ownership")
-      continue;
-
-    var neighbor;
-    if (edge.Parent.ID != this.ID && !(edge.Parent.ID in visited))
-      neighbor = edge.Parent;
-
-    if (edge.Child.ID != this.ID && !(edge.Child.ID in visited))
-      neighbor = edge.Child;
-
-    if (typeof neighbor != "undefined") {
-      var sub = neighbor.getHostRelativePath(path, visited);
-      if (sub.length > 0 && (shortest.length == 0 || sub.length < shortest.length))
-        shortest = sub;
-    }
-  }
-
-  return shortest;
-}
-
-Node.prototype.GetHostRelativePath = function() {
-  nodes = this.getHostRelativePath([], {});
-  if (nodes.length == 0)
-    return "";
-
-  var path = ""
-  for (i in nodes.reverse()) {
-    var node = nodes[i];
-
-    if (path.length > 0)
-      path += "/";
-
-    path += node.Name() + "[Type=" + node.Type() + "]";
-  }
-
-  return path;
 }
 
 var Edge = function(ID) {
@@ -239,7 +194,7 @@ var HostLayout = function(ID, graph, svg) {
   this.container.append("rect")
   .attr("width", this.Width)
   .attr("height", this.Height)
-  .attr("rx", 10)
+  .attr("rx", 5)
   .attr("class", "host")
   .style("cursor","move")
   .call(d3.behavior.zoom().on("zoom", function() {
@@ -283,55 +238,50 @@ HostLayout.prototype.SetPosition = function(x, y) {
   this.container.attr("x", x).attr("y", y);
 }
 
-HostLayout.prototype.NodeDetails = function(node) {
-  var json = JSON.stringify(node.Metadata);
-  $("#metadata").JSONView(json);
-
-  var graphPath = node.GetHostRelativePath();
-  if (graphPath != "") {
-    $.ajax({
-      dataType: "json",
-      url: '/api/flow/search?ProbeNodeUUID=' + node.ID,
-      success: function(data) {
-        var json = JSON.stringify(data);
-        $("#flows").JSONView(json);
-        $('#flows').JSONView('toggle', 3);
+function ShowNodeFlows(node) {
+  var query = "G.V('" + node.ID + "').Flows()";
+  $.ajax({
+    dataType: "json",
+    url: '/api/topology',
+    data: JSON.stringify({"GremlinQuery": query}),
+    method: 'POST',
+    success: function(data) {
+      var packets = 0;
+      var bytes = 0;
+      for (var i in data) {
+        for (var j in data[i].Statistics.Endpoints) {
+          var endpoint = data[i].Statistics.Endpoints[j];
+          if (endpoint.Type == "ETHERNET") {
+            packets += endpoint.AB.Packets;
+            bytes += endpoint.AB.Bytes;
+          }
+        }
       }
-    });
-  }
 
-  if (node.IsCaptureAllowed())
-    $(".title-capture-switch").show();
-  else
-    $(".title-capture-switch").hide();
+      $("#flow-packets").html(packets);
+      $("#flow-bytes").html(bytes);
 
-  $("[name='capture-switch']").bootstrapSwitch("destroy");
-  $("[name='capture-switch']").bootstrapSwitch({
-    onSwitchChange: function(event, state) {
-      if (state) {
-        $.ajax({
-          dataType: "json",
-          url: '/api/capture',
-          data: JSON.stringify({"ProbePath": graphPath}),
-          contentType: "application/json; charset=utf-8",
-          method: 'POST',
-        });
-      } else {
-        $.ajax({
-          url: '/api/capture/' + graphPath,
-          contentType: "application/json; charset=utf-8",
-          method: 'DELETE',
-        });
-      }
-      return true;
+      var json = JSON.stringify(data);
+      $("#flows").JSONView(json);
+      $('#flows').JSONView('toggle', 10);
     }
   });
+}
 
-  if (node.IsCaptureOn()) {
-    $("[name='capture-switch']").bootstrapSwitch('state', true, false);
-  } else {
-    $("[name='capture-switch']").bootstrapSwitch('state', false, false);
-  }
+HostLayout.prototype.NodeDetails = function(node) {
+  CurrentNodeDetails = node;
+  $("#node-details").show();
+
+  var json = JSON.stringify(node.Metadata);
+  $("#metadata").JSONView(json);
+  $("#node-id").html(node.ID);
+
+  ShowNodeFlows(node);
+
+  if (node.IsCaptureAllowed())
+    $("#add-capture").show();
+  else
+    $("#add-capture").hide();
 }
 
 HostLayout.prototype.AddNode = function(node) {
@@ -343,6 +293,15 @@ HostLayout.prototype.AddNode = function(node) {
     return;
 
   this.nodes.push(node);
+
+  this.Redraw();
+}
+
+HostLayout.prototype.UpdateNode = function(node, metadata) {
+  node.Metadata = metadata;
+
+  if (typeof CurrentNodeDetails != "undefined" && node.ID == CurrentNodeDetails.ID)
+    this.NodeDetails(node);
 
   this.Redraw();
 }
@@ -642,10 +601,14 @@ HostLayout.prototype.GetNodeText = function(d) {
 }
 
 HostLayout.prototype.MouseOverNode = function(d) {
-  this.NodeDetails(d);
+  var _this = this;
+  NodeDetailsTmID = setTimeout(function(){
+    _this.NodeDetails(d);
+  }, 500);
 }
 
 HostLayout.prototype.MouseOutNode = function(d) {
+  clearTimeout(NodeDetailsTmID);
 }
 
 HostLayout.prototype.CollapseNetNS = function(node) {
@@ -864,6 +827,16 @@ Layout.prototype.AddNode = function(node) {
   hostLayout.AddNode(node);
 }
 
+Layout.prototype.UpdateNode = function(node, metadata) {
+  var hostLayout;
+  if (!(node.Host in this.hosts))
+    hostLayout = this.AddHost(node.Host);
+  else
+    hostLayout = this.hosts[node.Host];
+
+  hostLayout.UpdateNode(node, metadata);
+}
+
 Layout.prototype.DelNode = function(node) {
   if (!(node.Host in this.hosts))
     return;
@@ -932,9 +905,8 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
 
     case "NodeUpdated":
       var node = this.graph.GetNode(msg.Obj.ID);
-      node.Metadata = msg.Obj.Metadata;
 
-      this.Redraw();
+      this.UpdateNode(node, msg.Obj.Metadata);
       break;
 
     case "NodeAdded":
@@ -1099,12 +1071,12 @@ DiscoveryLayout.prototype.DrawChart = function(type) {
   function mouseover(d) {
     var percentage = (100 * d.value / totalSize).toPrecision(3) + " %";
     var protocol_data = {
-                         "Name": d.name,
-                         "Percentage": percentage,
-                         "Size": d.size,
-                         "Value": d.value,
-                         "Depth": d.depth
-                         };
+      "Name": d.name,
+      "Percentage": percentage,
+      "Size": d.size,
+      "Value": d.value,
+      "Depth": d.depth
+    };
     var json = JSON.stringify(protocol_data);
     $("#protocol_data").JSONView(json);
     var sequenceArray = getAncestors(d);
@@ -1442,11 +1414,94 @@ function StartCheckAPIAccess() {
     $.ajax({
       dataType: "json",
       url: '/api',
-      error: function() {
-        Logout();
+      error: function(e) {
+        if (e.status == 401)
+          Logout();
       }
     });
   }, 5000);
+}
+
+var Captures = {};
+function RefreshCaptureList() {
+  $.ajax({
+    dataType: "json",
+    url: '/api/capture',
+    contentType: "application/json; charset=utf-8",
+    method: 'GET',
+    success: function(data) {
+      var clist = $('.capture-list');
+
+      for (var key in data) {
+        if (!(key in Captures)) {
+          Captures[key] = data[key];
+          var li = $('<li/>', {id: key})
+            .addClass('capture-item')
+            .appendTo(clist);
+
+          var item = $('<div/>').appendTo(li);
+          var capture = $('<div/>').css('float', 'left').appendTo(item);
+
+          $('<div/>').addClass("capture-title").html(key).appendTo(capture);
+          $('<div/>').addClass("capture-content").html(data[key].GremlinQuery).appendTo(capture);
+
+          var trash = $('<div/>').addClass("capture-trash").css('text-align', 'right').appendTo(item);
+          var img = $('<img/>', {src:trashImg, width: 24, height: 24}).appendTo(trash);
+          img.css('cursor', 'pointer').click(function(e) {
+            var li = $(this).closest('li');
+            var id = li.attr('id');
+
+            $.ajax({
+              url: '/api/capture/' + id + '/',
+              contentType: "application/json; charset=utf-8",
+              method: 'DELETE'
+            });
+            li.remove();
+            delete Captures[id];
+          });
+        }
+      }
+    }
+  });
+}
+
+function SetupCaptureList() {
+  $("#add-capture").click(function(e) {
+    var query = "G";
+
+    for (var e in CurrentNodeDetails.Edges) {
+      var edge = CurrentNodeDetails.Edges[e];
+      if (edge.RelationType() != "ownership")
+        continue;
+
+      var neighbor;
+      if (edge.Parent.ID != this.ID) {
+        query += ".V().Has('Name', '" + edge.Parent.Name() + "')";
+        break;
+      }
+    }
+
+    if (query == "")
+      return;
+
+    query += ".Out('Name', '" + CurrentNodeDetails.Name() + "', 'Type', '" + CurrentNodeDetails.Type() + "')";
+
+    $.ajax({
+      dataType: "json",
+      url: '/api/capture',
+      data: JSON.stringify({"GremlinQuery": query}),
+      contentType: "application/json; charset=utf-8",
+      method: 'POST',
+    });
+  });
+
+  setInterval(RefreshCaptureList, 1000);
+}
+
+function SetupFlowRefresh() {
+  $("#flow-refresh").click(function(e) {
+    ShowNodeFlows(CurrentNodeDetails);
+  });
 }
 
 $(document).ready(function() {
@@ -1480,5 +1535,8 @@ $(document).ready(function() {
   topologyLayout.StartLiveUpdate();
 
   StartCheckAPIAccess();
+
   SetupTimeSlider();
+  SetupCaptureList();
+  SetupFlowRefresh();
 });

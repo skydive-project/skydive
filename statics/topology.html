@@ -63,18 +63,33 @@
     </div>
     <div class="col-sm-4 fill info">
       <div class="left-cont">
-        <div class="left-panel">
-          <div class="title-left-panel">Metadata :</div>
-          <div id="metadata"></div>
+        <div class="left-panel" id="captures-panel">
+          <div class="title-left-panel">Captures :</div>
+          <div class="sub-left-panel" id="metadata-panel">
+            <div id="captures">
+              <ul class="capture-list"></ul>
+            </div>
+          </div>
         </div>
-        <div class="left-panel" id="flows-panel">
-          <div class="title-left-panel">Flows :</div>
-          <div class="title-capture-switch">
-            <img src="statics/img/media-record.png">
-            <input type="checkbox" name="capture-switch" data-on-color="skydive-on" data-off-color="skydive-off" data-size="mini">
-          </div>
-          <div id="flows">
-          </div>
+        <div class="left-panel" id="node-details" style="display: none">
+          <div class="title-left-panel">
+            <div style="float:left">Node : <span id="node-id"></span></div>
+            <div style="text-align: right; margin-right: 5px;">
+              <img id="add-capture" style="cursor: pointer" src="statics/img/record.png" width="22" height="22">
+            </div>
+            <div class="sub-left-panel" id="metadata-panel" style="clear: both">
+              <div class="title-left-panel">Metadata :</div>
+              <div id="metadata"></div>
+            </div>
+            <div class="sub-left-panel" id="flows-panel">
+              <div class="title-left-panel">
+                <div style="float:left">Flows : <span id="flow-packets">0</span> packets, <span id="flow-bytes">0</span> bytes</div>
+                <div style="text-align: right">
+                  <img id="flow-refresh" style="cursor: pointer" src="statics/img/refresh.png" width="24" height="24">
+                </div>
+              </div>
+              <div id="flows" style="clear: both"></div>
+            </div>
         </div>
       </div>
     </div>

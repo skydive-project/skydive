@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/redhat-cip/skydive/common"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -66,7 +67,8 @@ type Table struct {
 	flushDone   chan bool
 	query       chan *TableQuery
 	reply       chan *TableReply
-	running     atomic.Value
+	state       int64
+	lockState   sync.RWMutex
 	wg          sync.WaitGroup
 }
 
@@ -77,6 +79,7 @@ func NewTable() *Table {
 		flushDone: make(chan bool),
 		query:     make(chan *TableQuery),
 		reply:     make(chan *TableReply),
+		state:     common.StoppedState,
 	}
 }
 
@@ -328,7 +331,6 @@ func (ft *Table) onFlowSearchQueryMessage(o interface{}) (*FlowSearchReply, int)
 }
 
 func (ft *Table) onQuery(q *TableQuery) *TableReply {
-
 	var obj interface{}
 	status := 500
 
@@ -344,16 +346,23 @@ func (ft *Table) onQuery(q *TableQuery) *TableReply {
 }
 
 func (ft *Table) Query(query *TableQuery) *TableReply {
-	ft.query <- query
-	return <-ft.reply
+	ft.lockState.Lock()
+	defer ft.lockState.Unlock()
+
+	if atomic.LoadInt64(&ft.state) == common.RunningState {
+		ft.query <- query
+		r := <-ft.reply
+		return r
+	}
+	return nil
 }
 
 func (ft *Table) Start() {
 	ft.wg.Add(1)
 	defer ft.wg.Done()
 
-	ft.running.Store(true)
-	for ft.running.Load() == true {
+	atomic.StoreInt64(&ft.state, common.RunningState)
+	for atomic.LoadInt64(&ft.state) == common.RunningState {
 		select {
 		case now := <-ft.manager.expire.ticker.C:
 			ft.Expire(now)
@@ -362,23 +371,29 @@ func (ft *Table) Start() {
 		case <-ft.flush:
 			ft.expireNow()
 			ft.flushDone <- true
-		case query := <-ft.query:
-			ft.reply <- ft.onQuery(query)
+		case query, ok := <-ft.query:
+			if ok {
+				ft.reply <- ft.onQuery(query)
+			}
 		default:
 			if ft.defaultFunc != nil {
 				ft.defaultFunc()
 			} else {
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(20 * time.Millisecond)
 			}
 		}
 	}
-	ft.expireNow()
 }
 
 func (ft *Table) Stop() {
-	if ft.running.Load() == true {
-		ft.running.Store(false)
+	ft.lockState.Lock()
+	if atomic.CompareAndSwapInt64(&ft.state, common.RunningState, common.StoppingState) {
 		ft.wg.Wait()
 	}
+	ft.lockState.Unlock()
+
+	close(ft.query)
+	close(ft.reply)
+
 	ft.expireNow()
 }

@@ -35,8 +35,8 @@ const (
 
 type Alert struct {
 	UUID        string
-	Name        string `valid:"nonzero"`
-	Description string `valid:"nonzero"`
+	Name        string
+	Description string
 	Select      string `valid:"nonzero"`
 	Test        string `valid:"nonzero"`
 	Action      string `valid:"nonzero"`
@@ -59,7 +59,11 @@ func NewAlert() *Alert {
 }
 
 func (a *AlertHandler) New() ApiResource {
-	return &Alert{}
+	id, _ := uuid.NewV4()
+
+	return &Alert{
+		UUID: id.String(),
+	}
 }
 
 func (a *AlertHandler) Name() string {
@@ -68,4 +72,8 @@ func (a *AlertHandler) Name() string {
 
 func (a *Alert) ID() string {
 	return a.UUID
+}
+
+func (a *Alert) SetID(i string) {
+	a.UUID = i
 }

@@ -27,12 +27,14 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/api"
+	"github.com/redhat-cip/skydive/common"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
@@ -50,6 +52,7 @@ type PcapProbe struct {
 	flowTable           *flow.Table
 	flowMappingPipeline *mappings.FlowMappingPipeline
 	flowTableAllocator  *flow.TableAllocator
+	state               int64
 }
 
 type PcapProbesHandler struct {
@@ -91,32 +94,38 @@ func (p *PcapProbe) start() {
 	agentUpdate := config.GetAgentUpdate()
 	p.flowTable.RegisterUpdated(p.asyncFlowPipeline, agentUpdate, agentUpdate)
 
+	timer := time.NewTicker(20 * time.Millisecond)
 	feedFlowTable := func() {
 		select {
 		case packet, ok := <-p.channel:
 			if ok {
 				flow.FlowFromGoPacket(p.flowTable, &packet, p)
 			}
+		case <-timer.C:
 		}
 	}
 	p.flowTable.RegisterDefault(feedFlowTable)
 
+	atomic.StoreInt64(&p.state, common.RunningState)
 	p.flowTable.Start()
 }
 
 func (p *PcapProbe) stop() {
-	p.handle.Close()
-	p.flowTable.Stop()
+	if atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
+		p.handle.Close()
+		p.flowTable.Stop()
+	}
 }
 
 func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) error {
 	logging.GetLogger().Debugf("Starting pcap capture on %s", n.Metadata()["Name"])
 
 	if name, ok := n.Metadata()["Name"]; ok && name != "" {
+		id := string(n.ID)
 		ifName := name.(string)
 
-		if _, ok := p.probes[ifName]; ok {
-			return errors.New(fmt.Sprintf("A pcap probe already exists for %s", ifName))
+		if _, ok := p.probes[id]; ok {
+			return nil
 		}
 
 		nodes := p.graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
@@ -163,13 +172,14 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 		probe := &PcapProbe{
 			handle:              handle,
 			channel:             packetChannel,
-			probeNodeUUID:       string(n.ID),
+			probeNodeUUID:       id,
 			flowMappingPipeline: p.flowMappingPipeline,
 			flowTableAllocator:  p.flowTableAllocator,
 			analyzerClient:      p.analyzerClient,
+			state:               common.StoppedState,
 		}
 		p.probesLock.Lock()
-		p.probes[ifName] = probe
+		p.probes[id] = probe
 		p.probesLock.Unlock()
 		p.wg.Add(1)
 
@@ -182,11 +192,11 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) e
 	return nil
 }
 
-func (p *PcapProbesHandler) unregisterProbe(ifName string) error {
-	if probe, ok := p.probes[ifName]; ok {
-		logging.GetLogger().Debugf("Terminating pcap capture on %s", ifName)
+func (p *PcapProbesHandler) unregisterProbe(id string) error {
+	if probe, ok := p.probes[id]; ok {
+		logging.GetLogger().Debugf("Terminating pcap capture on %s", id)
 		probe.stop()
-		delete(p.probes, ifName)
+		delete(p.probes, id)
 	}
 
 	return nil
@@ -196,13 +206,11 @@ func (p *PcapProbesHandler) UnregisterProbe(n *graph.Node) error {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
 
-	if name, ok := n.Metadata()["Name"]; ok && name != "" {
-		ifName := name.(string)
-		err := p.unregisterProbe(ifName)
-		if err != nil {
-			return err
-		}
+	err := p.unregisterProbe(string(n.ID))
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 

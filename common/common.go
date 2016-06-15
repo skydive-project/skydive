@@ -24,6 +24,12 @@ package common
 
 import "fmt"
 
+const (
+	StoppedState = iota
+	RunningState
+	StoppingState
+)
+
 func toInt64(i interface{}) (int64, error) {
 	switch i.(type) {
 	case int:

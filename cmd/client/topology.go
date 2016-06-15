@@ -37,10 +37,6 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 )
 
-var (
-	gremlinQuery string
-)
-
 var TopologyCmd = &cobra.Command{
 	Use:          "topology",
 	Short:        "Request on topology",
@@ -59,7 +55,7 @@ func SendGremlinQuery(auth *shttp.AuthenticationOpts, query string) (io.ReadClos
 
 	contentReader := bytes.NewReader(s)
 
-	resp, err := client.Request("GET", "api/topology", contentReader)
+	resp, err := client.Request("POST", "api/topology", contentReader)
 	if err != nil {
 		return nil, err
 	}

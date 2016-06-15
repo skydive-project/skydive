@@ -31,15 +31,10 @@ import (
 	"github.com/lebauce/dockerclient"
 	"github.com/vishvananda/netns"
 
+	"github.com/redhat-cip/skydive/common"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph"
-)
-
-const (
-	StoppedState  = iota
-	RunningState  = iota
-	StoppingState = iota
 )
 
 type ContainerInfo struct {
@@ -181,7 +176,7 @@ func (probe *DockerProbe) connect() error {
 		}
 
 		for _, c := range containers {
-			if atomic.LoadInt64(&probe.state) != RunningState {
+			if atomic.LoadInt64(&probe.state) != common.RunningState {
 				break
 			}
 			probe.registerContainer(c.Id)
@@ -205,14 +200,14 @@ func (probe *DockerProbe) connect() error {
 }
 
 func (probe *DockerProbe) Start() {
-	if !atomic.CompareAndSwapInt64(&probe.state, StoppedState, RunningState) {
+	if !atomic.CompareAndSwapInt64(&probe.state, common.StoppedState, common.RunningState) {
 		return
 	}
 
 	go func() {
 		for {
 			state := atomic.LoadInt64(&probe.state)
-			if state == StoppingState || state == StoppedState {
+			if state == common.StoppingState || state == common.StoppedState {
 				break
 			}
 
@@ -224,7 +219,7 @@ func (probe *DockerProbe) Start() {
 }
 
 func (probe *DockerProbe) Stop() {
-	if !atomic.CompareAndSwapInt64(&probe.state, RunningState, StoppingState) {
+	if !atomic.CompareAndSwapInt64(&probe.state, common.RunningState, common.StoppingState) {
 		return
 	}
 
@@ -233,7 +228,7 @@ func (probe *DockerProbe) Stop() {
 		probe.wg.Wait()
 	}
 
-	atomic.StoreInt64(&probe.state, StoppedState)
+	atomic.StoreInt64(&probe.state, common.StoppedState)
 }
 
 func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) (probe *DockerProbe) {
@@ -241,7 +236,7 @@ func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) (probe *Doc
 		NetNSProbe:   *NewNetNSProbe(g, n),
 		url:          dockerURL,
 		containerMap: make(map[string]ContainerInfo),
-		state:        StoppedState,
+		state:        common.StoppedState,
 	}
 	return
 }

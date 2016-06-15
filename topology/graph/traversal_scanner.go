@@ -87,7 +87,6 @@ func (s *GremlinTraversalScanner) Scan() (tok Token, lit string) {
 	ch := s.read()
 
 	if isWhitespace(ch) {
-		s.unread()
 		return s.scanWhitespace()
 	} else if isDigit(ch) {
 		s.unread()
@@ -117,7 +116,6 @@ func (s *GremlinTraversalScanner) Scan() (tok Token, lit string) {
 
 func (s *GremlinTraversalScanner) scanWhitespace() (tok Token, lit string) {
 	var buf bytes.Buffer
-	buf.WriteRune(s.read())
 
 	for {
 		if ch := s.read(); ch == eof {
@@ -153,7 +151,6 @@ func (s *GremlinTraversalScanner) scanNumber() (tok Token, lit string) {
 
 func (s *GremlinTraversalScanner) scanString() (tok Token, lit string) {
 	var buf bytes.Buffer
-	buf.WriteRune(s.read())
 
 	for {
 		if ch := s.read(); ch == '"' || ch == '\'' || ch == eof {

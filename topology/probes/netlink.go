@@ -35,6 +35,7 @@ import (
 
 	"github.com/safchain/ethtool"
 
+	"github.com/redhat-cip/skydive/common"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
@@ -431,8 +432,8 @@ func (u *NetLinkProbe) start() {
 	u.wg.Add(1)
 	defer u.wg.Done()
 
-	atomic.StoreInt64(&u.state, RunningState)
-	for atomic.LoadInt64(&u.state) == RunningState {
+	atomic.StoreInt64(&u.state, common.RunningState)
+	for atomic.LoadInt64(&u.state) == common.RunningState {
 		n, err := syscall.EpollWait(epfd, events[:], 1000)
 		if err != nil {
 			errno, ok := err.(syscall.Errno)
@@ -475,7 +476,7 @@ func (u *NetLinkProbe) Run() {
 }
 
 func (u *NetLinkProbe) Stop() {
-	if atomic.CompareAndSwapInt64(&u.state, RunningState, StoppingState) {
+	if atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
 		u.wg.Wait()
 	}
 }
@@ -485,7 +486,7 @@ func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
 		Graph:                g,
 		Root:                 n,
 		indexToChildrenQueue: make(map[int64][]graph.Identifier),
-		state:                StoppedState,
+		state:                common.StoppedState,
 	}
 	return np
 }

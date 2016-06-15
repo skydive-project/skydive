@@ -162,11 +162,17 @@ func TestAlertApi(t *testing.T) {
 	}
 
 	alert := api.NewAlert()
+	alert.Select = "MTU"
+	alert.Test = "MTU>1500"
+	alert.Action = "LOG"
 	if err := apiClient.create("alert", alert); err != nil {
 		t.Fatalf("Failed to create alert: %s", err.Error())
 	}
 
 	alert2 := api.NewAlert()
+	alert2.Select = "MTU"
+	alert2.Test = "MTU>1500"
+	alert2.Action = "LOG"
 	if err := apiClient.Get("alert", alert.UUID, &alert2); err != nil {
 		t.Error(err)
 	}
@@ -214,13 +220,13 @@ func TestCaptureApi(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	capture := api.NewCapture("*/br-sflow[Type=ovsbridge]", "port 80")
+	capture := api.NewCapture("G.V().Has('Name', 'br-int')", "port 80")
 	if err := apiClient.create("capture", capture); err != nil {
 		t.Fatalf("Failed to create alert: %s", err.Error())
 	}
 
 	capture2 := &api.Capture{}
-	if err := apiClient.Get("capture", capture.ProbePath, &capture2); err != nil {
+	if err := apiClient.Get("capture", capture.ID(), &capture2); err != nil {
 		t.Error(err)
 	}
 
@@ -237,11 +243,11 @@ func TestCaptureApi(t *testing.T) {
 		}
 	}
 
-	if captures[capture.ProbePath] != *capture {
-		t.Errorf("Capture corrupted: %+v != %+v", captures[capture.ProbePath], capture)
+	if captures[capture.ID()] != *capture {
+		t.Errorf("Capture corrupted: %+v != %+v", captures[capture.ID()], capture)
 	}
 
-	if err := apiClient.Delete("capture", capture.ProbePath); err != nil {
+	if err := apiClient.Delete("capture", capture.ID()); err != nil {
 		t.Errorf("Failed to delete capture: %s", err.Error())
 	}
 
@@ -254,7 +260,7 @@ func TestCaptureApi(t *testing.T) {
 		}
 	}
 
-	if err := apiClient.Get("capture", capture.ProbePath, &capture2); err == nil {
-		t.Errorf("Found delete capture: %s", capture.ProbePath)
+	if err := apiClient.Get("capture", capture.ID(), &capture2); err == nil {
+		t.Errorf("Found delete capture: %s", capture.ID())
 	}
 }

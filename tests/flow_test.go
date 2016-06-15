@@ -232,8 +232,8 @@ func TestSFlowWithPCAP(t *testing.T) {
 	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
-	if err := client.Create("capture", &capture); err != nil {
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -264,7 +264,7 @@ func TestSFlowWithPCAP(t *testing.T) {
 		pcapTraceValidate(t, ts.GetFlows(), &trace)
 	}
 
-	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+	client.Delete("capture", capture.ID())
 }
 
 func TestSFlowProbeNode(t *testing.T) {
@@ -275,8 +275,8 @@ func TestSFlowProbeNode(t *testing.T) {
 	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
-	if err := client.Create("capture", &capture); err != nil {
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -309,13 +309,13 @@ func TestSFlowProbeNode(t *testing.T) {
 	}
 
 	if !ok {
-		t.Error("Unable to find a flow with the expected probePath")
+		t.Error("Unable to find a flow with the expected ProbeNodeUUID")
 	}
 
-	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+	client.Delete("capture", capture.ID())
 }
 
-func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
+func TestSFlowProbeNodeUUIDOvsInternalNetNS(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -323,8 +323,8 @@ func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
 	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
-	if err := client.Create("capture", &capture); err != nil {
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -360,13 +360,13 @@ func TestSFlowProbePathOvsInternalNetNS(t *testing.T) {
 	}
 
 	if !ok {
-		t.Error("Unable to find a flow with the expected probePath")
+		t.Error("Unable to find a flow with the expected ProbeNodeUUID")
 	}
 
-	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+	client.Delete("capture", capture.ID())
 }
 
-func TestSFlowTwoProbePath(t *testing.T) {
+func TestSFlowTwoProbeNodeUUID(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -374,12 +374,12 @@ func TestSFlowTwoProbePath(t *testing.T) {
 	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	capture1 := &api.Capture{ProbePath: "*/br-sflow1[Type=ovsbridge]"}
-	if err := client.Create("capture", &capture1); err != nil {
+	capture1 := api.NewCapture("G.V().Has('Name', 'br-sflow1', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture1); err != nil {
 		t.Fatal(err.Error())
 	}
-	capture2 := &api.Capture{ProbePath: "*/br-sflow2[Type=ovsbridge]"}
-	if err := client.Create("capture", &capture2); err != nil {
+	capture2 := api.NewCapture("G.V().Has('Name', 'br-sflow2', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture2); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -436,7 +436,7 @@ func TestSFlowTwoProbePath(t *testing.T) {
 	}
 
 	if len(flows) != 2 {
-		t.Errorf("Should have 2 flow entries one per probepath got: %d", len(flows))
+		t.Errorf("Should have 2 flow entries one per ProbeNodeUUID got: %d", len(flows))
 	}
 
 	node1 := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow1", "Type", "ovsbridge")`)
@@ -444,12 +444,12 @@ func TestSFlowTwoProbePath(t *testing.T) {
 
 	if flows[0].ProbeNodeUUID != string(node1.ID) &&
 		flows[0].ProbeNodeUUID != string(node2.ID) {
-		t.Errorf("Bad probepath for the first flow: %s", flows[0].ProbeNodeUUID)
+		t.Errorf("Bad ProbeNodeUUID for the first flow: %s", flows[0].ProbeNodeUUID)
 	}
 
 	if flows[1].ProbeNodeUUID != string(node1.ID) &&
 		flows[1].ProbeNodeUUID != string(node2.ID) {
-		t.Errorf("Bad probepath for the second flow: %s", flows[1].ProbeNodeUUID)
+		t.Errorf("Bad ProbeNodeUUID for the second flow: %s", flows[1].ProbeNodeUUID)
 	}
 
 	if flows[0].TrackingID != flows[1].TrackingID {
@@ -460,8 +460,8 @@ func TestSFlowTwoProbePath(t *testing.T) {
 		t.Errorf("Both flows should have different UUID: %v", flows)
 	}
 
-	client.Delete("capture", "*/br-sflow1[Type=ovsbridge]")
-	client.Delete("capture", "*/br-sflow2[Type=ovsbridge]")
+	client.Delete("capture", capture1.ID())
+	client.Delete("capture", capture2.ID())
 }
 
 func TestPCAPProbe(t *testing.T) {
@@ -472,8 +472,8 @@ func TestPCAPProbe(t *testing.T) {
 	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	capture := &api.Capture{ProbePath: "*/br-pcap[Type=bridge]"}
-	if err := client.Create("capture", &capture); err != nil {
+	capture := api.NewCapture("G.V().Has('Name', 'br-pcap', 'Type', 'bridge')", "")
+	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
 	time.Sleep(1 * time.Second)
@@ -507,10 +507,10 @@ func TestPCAPProbe(t *testing.T) {
 	}
 
 	if !ok {
-		t.Error("Unable to find a flow with the expected probePath")
+		t.Error("Unable to find a flow with the expected ProbeNodeUUID")
 	}
 
-	client.Delete("capture", "*/br-pcap[Type=bridge]")
+	client.Delete("capture", capture.ID())
 }
 
 func TestSFlowSrcDstPath(t *testing.T) {
@@ -521,8 +521,8 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
-	if err := client.Create("capture", &capture); err != nil {
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -573,7 +573,7 @@ func TestSFlowSrcDstPath(t *testing.T) {
 		t.Errorf("Unable to find flows with the expected path: %v\n %s", ts.GetFlows(), aa.Agent.Graph.String())
 	}
 
-	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+	client.Delete("capture", capture.ID())
 }
 
 func TestFlowQuery(t *testing.T) {
@@ -595,6 +595,8 @@ func TestFlowQuery(t *testing.T) {
 
 	go ft1.Start()
 	go ft2.Start()
+
+	time.Sleep(time.Second)
 
 	query := &flow.TableQuery{
 		Obj: &flow.FlowSearchQuery{
@@ -626,8 +628,8 @@ func TestTableServer(t *testing.T) {
 	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
-	if err := client.Create("capture", &capture); err != nil {
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -667,7 +669,7 @@ func TestTableServer(t *testing.T) {
 		}
 	}
 
-	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+	client.Delete("capture", capture.ID())
 }
 
 func TestFlowGremlin(t *testing.T) {
@@ -678,8 +680,8 @@ func TestFlowGremlin(t *testing.T) {
 	defer aa.Stop()
 
 	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	capture := &api.Capture{ProbePath: "*/br-sflow[Type=ovsbridge]"}
-	if err := client.Create("capture", &capture); err != nil {
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -718,5 +720,5 @@ func TestFlowGremlin(t *testing.T) {
 		}
 	}
 
-	client.Delete("capture", "*/br-sflow[Type=ovsbridge]")
+	client.Delete("capture", capture.ID())
 }

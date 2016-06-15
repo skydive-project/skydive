@@ -33,6 +33,7 @@ import (
 	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/validator"
 )
 
 type TopologyApi struct {
@@ -42,10 +43,19 @@ type TopologyApi struct {
 }
 
 type Topology struct {
-	GremlinQuery string `json:"GremlinQuery,omitempty"`
+	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 }
 
 func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(t.Graph); err != nil {
+		panic(err)
+	}
+}
+
+func (t *TopologyApi) topologySearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	resource := Topology{}
@@ -54,40 +64,43 @@ func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 	if len(data) != 0 {
 		if err := json.Unmarshal(data, &resource); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		if err := validator.Validate(resource); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 			return
 		}
 	}
 
-	if resource.GremlinQuery != "" {
-		tr := graph.NewGremlinTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph)
-		tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
-		if t.TableClient != nil {
-			tr.AddTraversalExtension(flow.NewFlowTraversalExtension(t.TableClient))
-		}
+	if resource.GremlinQuery == "" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	tr := graph.NewGremlinTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph)
+	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
+	if t.TableClient != nil {
+		tr.AddTraversalExtension(flow.NewFlowTraversalExtension(t.TableClient))
+	}
 
-		ts, err := tr.Parse()
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
-			return
-		}
+	ts, err := tr.Parse()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
 
-		res, err := ts.Exec()
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
-			return
-		}
+	res, err := ts.Exec()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
 
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			panic(err)
-		}
-	} else {
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(t.Graph); err != nil {
-			panic(err)
-		}
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		panic(err)
 	}
 }
 
@@ -98,6 +111,12 @@ func (t *TopologyApi) registerEndpoints(r *shttp.Server) {
 			"GET",
 			"/api/topology",
 			t.topologyIndex,
+		},
+		{
+			"TopologiesSearch",
+			"POST",
+			"/api/topology",
+			t.topologySearch,
 		},
 	}
 

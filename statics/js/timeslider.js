@@ -116,6 +116,9 @@ function SetupTimeSlider() {
 
         $(".timeslider-div").addClass("disabled");
         slider.select(".background").style("cursor", "default");
+
+        $("#captures-panel").show();
+        $("#add-capture").show();
       }
       else {
         var now = new Date;
@@ -138,6 +141,9 @@ function SetupTimeSlider() {
 
         $(".timeslider-div").removeClass("disabled");
         slider.select(".background").style("cursor", "pointer");
+
+        $("#captures-panel").hide();
+        $("#add-capture").hide();
       }
 
       topologyLayout.live = state;

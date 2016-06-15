@@ -70,7 +70,9 @@ func (a *TableAllocator) QueryTable(query *TableQuery) *TableReply {
 	var replies []*TableReply
 	for table := range a.tables {
 		reply := table.Query(query)
-		replies = append(replies, reply)
+		if reply != nil {
+			replies = append(replies, reply)
+		}
 	}
 
 	return a.aggregateReplies(query, replies)

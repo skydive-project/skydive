@@ -205,7 +205,13 @@ func (s *gremlinTraversalStepInE) Exec(last GraphTraversalStep) (GraphTraversalS
 func (s *gremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
+		if _, ok := s.params[0].(Metadata); !ok {
+			return nil, ExecutionError
+		}
 		if len(s.params) > 1 {
+			if _, ok := s.params[1].(Metadata); !ok {
+				return nil, ExecutionError
+			}
 			return last.(*GraphTraversalV).ShortestPathTo(s.params[0].(Metadata), s.params[1].(Metadata)), nil
 		}
 		return last.(*GraphTraversalV).ShortestPathTo(s.params[0].(Metadata)), nil
@@ -328,7 +334,7 @@ func (p *GremlinTraversalParser) parserStepParams() (GremlinTraversalStepParams,
 	for tok, lit := p.scanIgnoreWhitespace(); tok != RIGHT_PARENTHESIS; {
 		switch tok {
 		case EOF:
-			return params, nil
+			return nil, errors.New("Expected right parenthesis")
 		case COMMA:
 		case NUMBER:
 			if i, err := strconv.ParseInt(lit, 10, 64); err == nil {
@@ -445,10 +451,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 func (p *GremlinTraversalParser) Parse() (*GremlinTraversalSequence, error) {
 	p.scanner = NewGremlinTraversalScanner(p.Reader, p.extensions)
 
-	graph := p.Graph.WithContext(GraphContext{})
-
 	seq := &GremlinTraversalSequence{
-		GraphTraversal: NewGraphTraversal(graph),
+		GraphTraversal: NewGraphTraversal(p.Graph),
 		extensions:     p.extensions,
 	}
 

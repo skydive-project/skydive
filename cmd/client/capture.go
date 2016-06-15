@@ -34,7 +34,6 @@ import (
 )
 
 var (
-	probePath string
 	bpfFilter string
 )
 
@@ -54,9 +53,9 @@ var CaptureCreate = &cobra.Command{
 		if client == nil {
 			os.Exit(1)
 		}
-		capture := api.NewCapture(probePath, bpfFilter)
-		if errs := validator.Validate(capture); errs != nil {
-			fmt.Println("You need to specify a probe path")
+		capture := api.NewCapture(gremlinQuery, bpfFilter)
+		if err := validator.Validate(capture); err != nil {
+			fmt.Println(err.Error())
 			cmd.Usage()
 			os.Exit(1)
 		}
@@ -130,7 +129,7 @@ var CaptureDelete = &cobra.Command{
 }
 
 func addCaptureFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&probePath, "probepath", "", "", "probe path")
+	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
 	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")
 }
 

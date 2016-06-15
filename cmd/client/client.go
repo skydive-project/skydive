@@ -34,6 +34,7 @@ import (
 
 var (
 	authenticationOpts shttp.AuthenticationOpts
+	gremlinQuery       string
 )
 
 var Client = &cobra.Command{

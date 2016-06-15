@@ -28,7 +28,6 @@ import (
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
 
@@ -66,7 +65,7 @@ func (o *OnDemandProbeListener) probeFromType(n *graph.Node) FlowProbe {
 
 func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) {
 	if !IsCaptureAllowed(n) {
-		logging.GetLogger().Errorf("Failed to register flow probe, type not supported %v", n)
+		logging.GetLogger().Infof("Do not register flow probe, type not supported %v", n)
 		return
 	}
 
@@ -96,25 +95,45 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
 	o.Graph.AddMetadata(n, "State.FlowCapture", "OFF")
 }
 
-func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
-	nodes := o.Graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
-	if len(nodes) == 0 {
-		return
+func (o *OnDemandProbeListener) matchGremlinExpr(node *graph.Node, gremlin string) bool {
+	tr := graph.NewGremlinTraversalParser(strings.NewReader(gremlin), o.Graph)
+	ts, err := tr.Parse()
+	if err != nil {
+		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
+		return false
 	}
 
-	path := topology.NodePath(nodes).Marshal()
+	res, err := ts.Exec()
+	if err != nil {
+		logging.GetLogger().Errorf("Gremlin execution error: %s", err.Error())
+		return false
+	}
 
-	var capture api.ApiResource
-	var ok bool
-	if capture, ok = o.CaptureHandler.Get(path); !ok {
-		// try using the wildcard instead of the host
-		wildcard := "*/" + topology.NodePath(nodes[:len(nodes)-1]).Marshal()
-		if capture, ok = o.CaptureHandler.Get(wildcard); !ok {
-			return
+	for _, value := range res.Values() {
+		n, ok := value.(*graph.Node)
+		if !ok {
+			logging.GetLogger().Error("Gremlin expression doesn't return node")
+			return false
+		}
+
+		if node.ID == n.ID {
+			return true
 		}
 	}
 
-	o.registerProbe(n, capture.(*api.Capture))
+	return false
+}
+
+func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
+
+	resources := o.CaptureHandler.Index()
+	for _, resource := range resources {
+		capture := resource.(*api.Capture)
+
+		if o.matchGremlinExpr(n, capture.GremlinQuery) {
+			o.registerProbe(n, capture)
+		}
+	}
 }
 
 func (o *OnDemandProbeListener) OnNodeUpdated(n *graph.Node) {
@@ -142,26 +161,68 @@ func (o *OnDemandProbeListener) OnNodeDeleted(n *graph.Node) {
 	o.unregisterProbe(n)
 }
 
-func (o *OnDemandProbeListener) onCaptureAdded(probePath string, capture *api.Capture) {
+func (o *OnDemandProbeListener) onCaptureAdded(capture *api.Capture) {
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
-	if node := topology.LookupNodeFromNodePathString(o.Graph, probePath); node != nil {
-		o.registerProbe(node, capture)
+	tr := graph.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), o.Graph)
+	ts, err := tr.Parse()
+	if err != nil {
+		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
+		return
+	}
+
+	res, err := ts.Exec()
+	if err != nil {
+		logging.GetLogger().Errorf("Gremlin execution error: %s", err.Error())
+		return
+	}
+
+	for _, value := range res.Values() {
+		switch value.(type) {
+		case *graph.Node:
+			o.registerProbe(value.(*graph.Node), capture)
+		case []*graph.Node:
+			for _, node := range value.([]*graph.Node) {
+				o.registerProbe(node, capture)
+			}
+		default:
+			logging.GetLogger().Error("Gremlin expression doesn't return node")
+			return
+		}
 	}
 }
 
-func (o *OnDemandProbeListener) onCaptureDeleted(probePath string) {
+func (o *OnDemandProbeListener) onCaptureDeleted(capture *api.Capture) {
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
-	if node := topology.LookupNodeFromNodePathString(o.Graph, probePath); node != nil {
-		o.unregisterProbe(node)
+	tr := graph.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), o.Graph)
+	ts, err := tr.Parse()
+	if err != nil {
+		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
+		return
 	}
-}
 
-func (o *OnDemandProbeListener) probePathFromID(id string) string {
-	return strings.Replace(id, "*", o.host+"[Type=host]", 1)
+	res, err := ts.Exec()
+	if err != nil {
+		logging.GetLogger().Errorf("Gremlin execution error: %s", err.Error())
+		return
+	}
+
+	for _, value := range res.Values() {
+		switch value.(type) {
+		case *graph.Node:
+			o.unregisterProbe(value.(*graph.Node))
+		case []*graph.Node:
+			for _, node := range value.([]*graph.Node) {
+				o.unregisterProbe(node)
+			}
+		default:
+			logging.GetLogger().Error("Gremlin expression doesn't return node")
+			return
+		}
+	}
 }
 
 func (o *OnDemandProbeListener) onApiWatcherEvent(action string, id string, resource api.ApiResource) {
@@ -169,9 +230,9 @@ func (o *OnDemandProbeListener) onApiWatcherEvent(action string, id string, reso
 	capture := resource.(*api.Capture)
 	switch action {
 	case "init", "create", "set", "update":
-		o.onCaptureAdded(o.probePathFromID(id), capture)
+		o.onCaptureAdded(capture)
 	case "expire", "delete":
-		o.onCaptureDeleted(o.probePathFromID(id))
+		o.onCaptureDeleted(capture)
 	}
 }
 
