@@ -6,6 +6,8 @@ SKYDIVE_ANALYZER_PORT_2379_ADDR="${ANALYZER_PORT_2379_ADDR:-127.0.0.1:2379}"
 OVSDB="${OVSDB:-unix:///var/run/openvswitch/db.sock}"
 SKYDIVE_NETNS_RUN_PATH="${SKYDIVE_NETNS_RUN_PATH:-/host/run}"
 SKYDIVE_LOG_LEVEL="${SKYDIVE_LOG_LEVEL:-INFO}"
+FLOWTABLE_UPDATE="${FLOWTABLE_UPDATE:-10}"
+FLOWTABLE_EXPIRE="${FLOWTABLE_EXPIRE:-300}"
 
 if [ ! -e /etc/skydive.yml ]
 then
@@ -26,6 +28,9 @@ agent:
       - pcap
 analyzer:
   listen: 0.0.0.0:8082
+  storage: elasticsearch
+  flowtable_update: $FLOWTABLE_UPDATE
+  flowtable_expire: $FLOWTABLE_EXPIRE
 etcd:
   embedded: true
   servers:

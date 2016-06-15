@@ -2,6 +2,7 @@ version: '2'
 services:
   elasticsearch:
     image: elasticsearch
+    command: elasticsearch -Des.network.bind_host=0.0.0.0
     ports:
       - "9200:9200"
       - "9300:9300"
@@ -15,9 +16,12 @@ services:
     ports:
       - "2379:2379"
       - "8082:8082"
+      - "8082:8082/udp"
     links:
       - elasticsearch
     entrypoint: /usr/bin/start-skydive.sh analyzer
+    environment:
+      - ELASTICSEARCH_PORT=elasticsearch:9200
 
   skydive-agent:
     image: skydive/skydive
@@ -26,7 +30,10 @@ services:
     ports:
       - "8081:8081"
     network_mode: "host"
+    pid: "host"
     entrypoint: /usr/bin/start-skydive.sh agent
+    privileged: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/netns:/host/run
       #- /var/run/openvswitch/db.sock:/var/run/openvswitch/db.sock
