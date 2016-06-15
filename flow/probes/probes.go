@@ -113,3 +113,11 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 		Graph:       g,
 	}
 }
+
+func IsCaptureAllowed(n *graph.Node) bool {
+	switch n.Metadata()["Type"] {
+	case "device", "ovsbridge", "internal", "veth", "tun", "bridge":
+		return true
+	}
+	return false
+}
