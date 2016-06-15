@@ -45,7 +45,6 @@ func init() {
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("graph.backend", "memory")
 	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
-	cfg.SetDefault("sflow.bind_address", "127.0.0.1:6345")
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")

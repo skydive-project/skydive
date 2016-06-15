@@ -62,7 +62,4 @@ func init() {
 
 	Agent.Flags().String("ovsdb", "unix:///var/run/openvswitch/db.sock", "ovsdb connection")
 	config.GetConfig().BindPFlag("ovs.ovsdb", Agent.Flags().Lookup("ovsdb"))
-
-	Agent.Flags().String("sflow-listen", "127.0.0.1:6345", "listen parameter for the sflow agent")
-	config.GetConfig().BindPFlag("sflow.listen", Agent.Flags().Lookup("sflow-listen"))
 }

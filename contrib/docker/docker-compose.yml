@@ -25,7 +25,6 @@ services:
       - skydive-analyzer
     ports:
       - "8081:8081"
-      - "6345:6345/udp"
     network_mode: "host"
     entrypoint: /usr/bin/start-skydive.sh agent
     volumes:
