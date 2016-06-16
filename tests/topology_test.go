@@ -282,7 +282,7 @@ func TestBridgeOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test1", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -329,7 +329,7 @@ func TestPatchOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test2", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -370,7 +370,7 @@ func TestInterfaceOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test1", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -414,7 +414,7 @@ func TestBondOVS(t *testing.T) {
 		{"ip link del intf2", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -454,7 +454,7 @@ func TestVeth(t *testing.T) {
 		{"ip link del vm1-veth0", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -497,7 +497,7 @@ func TestBridge(t *testing.T) {
 		{"ip link del intf1", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -539,7 +539,7 @@ func TestMacNameUpdate(t *testing.T) {
 		{"ip link del vm1-veth0", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -578,7 +578,7 @@ func TestNameSpace(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -619,7 +619,7 @@ func TestNameSpaceVeth(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -663,7 +663,7 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -703,7 +703,7 @@ func TestDockerSimple(t *testing.T) {
 		{"docker rm -f test-skydive-docker", false},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -745,7 +745,7 @@ func TestDockerShareNamespace(t *testing.T) {
 		{"docker rm -f test-skydive-docker2", false},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -791,7 +791,7 @@ func TestDockerNetHost(t *testing.T) {
 		{"docker rm -f test-skydive-docker", false},
 	}
 
-	tr := graph.NewGrahTraversal(g)
+	tr := graph.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {

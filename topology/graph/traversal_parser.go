@@ -46,6 +46,7 @@ type (
 	gremlinTraversalStepG              struct{}
 	gremlinTraversalStepV              struct{ params GremlinTraversalStepParams }
 	gremlinTraversalStepE              struct{}
+	gremlinTraversalStepContext        struct{ params GremlinTraversalStepParams }
 	gremlinTraversalStepOut            struct{ params GremlinTraversalStepParams }
 	gremlinTraversalStepIn             struct{ params GremlinTraversalStepParams }
 	gremlinTraversalStepOutV           struct{ params GremlinTraversalStepParams }
@@ -109,6 +110,19 @@ func (s *gremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalSte
 	default:
 		return nil, ExecutionError
 	}
+}
+
+func (s *gremlinTraversalStepContext) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	g, ok := last.(*GraphTraversal)
+	if !ok {
+		return nil, ExecutionError
+	}
+
+	if len(s.params) != 1 {
+		return nil, ExecutionError
+	}
+
+	return g.Context(s.params...), nil
 }
 
 func (s *gremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -410,6 +424,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &gremlinTraversalStepShortestPathTo{params: params}, nil
 	case BOTH:
 		return &gremlinTraversalStepBoth{params: params}, nil
+	case CONTEXT:
+		return &gremlinTraversalStepContext{params: params}, nil
 	}
 
 	// extensions
@@ -429,8 +445,10 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 func (p *GremlinTraversalParser) Parse() (*GremlinTraversalSequence, error) {
 	p.scanner = NewGremlinTraversalScanner(p.Reader, p.extensions)
 
+	graph := p.Graph.WithContext(GraphContext{})
+
 	seq := &GremlinTraversalSequence{
-		GraphTraversal: NewGrahTraversal(p.Graph),
+		GraphTraversal: NewGraphTraversal(graph),
 		extensions:     p.extensions,
 	}
 

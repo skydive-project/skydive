@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/redhat-cip/skydive/common"
 )
@@ -38,6 +39,7 @@ type GraphTraversalStep interface {
 
 type GraphTraversal struct {
 	Graph *Graph
+	error error
 }
 
 type GraphTraversalV struct {
@@ -128,7 +130,7 @@ func SliceToMetadata(s ...interface{}) (Metadata, error) {
 	return m, nil
 }
 
-func NewGrahTraversal(g *Graph) *GraphTraversal {
+func NewGraphTraversal(g *Graph) *GraphTraversal {
 	return &GraphTraversal{Graph: g}
 }
 
@@ -142,6 +144,29 @@ func (t *GraphTraversal) MarshalJSON() ([]byte, error) {
 
 func (t *GraphTraversal) Error() error {
 	return nil
+}
+
+func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
+	if len(s) != 1 {
+		return &GraphTraversal{Graph: t.Graph, error: errors.New("At least one parameter must be provided")}
+	}
+
+	var (
+		at  time.Time
+		err error
+	)
+	switch param := s[0].(type) {
+	case string:
+		if at, err = time.Parse(time.RFC1123, param); err != nil {
+			return &GraphTraversal{Graph: t.Graph, error: errors.New("Time must be in RFC1123 format")}
+		}
+	case int64:
+		at = time.Unix(param, 0)
+	default:
+		return &GraphTraversal{Graph: t.Graph, error: errors.New("Key must be either an integer or a string")}
+	}
+
+	return &GraphTraversal{Graph: t.Graph.WithContext(GraphContext{Time: &at})}
 }
 
 func (t *GraphTraversal) V(ids ...Identifier) *GraphTraversalV {
@@ -258,7 +283,7 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 
 	switch len(s) {
 	case 0:
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("At least one parameters must be provided")}
+		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("At least one parameter must be provided")}
 	case 1:
 		k, ok := s[0].(string)
 		if !ok {

@@ -66,6 +66,7 @@ const (
 	SHORTESTPATHTO
 	NE
 	BOTH
+	CONTEXT
 
 	// extensions token have to start after 1000
 )
@@ -215,6 +216,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return NE, buf.String()
 	case "BOTH":
 		return BOTH, buf.String()
+	case "CONTEXT":
+		return CONTEXT, buf.String()
 	}
 
 	for _, e := range s.extensions {

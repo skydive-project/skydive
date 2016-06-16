@@ -47,7 +47,7 @@ func newTrasversalGraph(t *testing.T) *Graph {
 func TestBasicTraversal(t *testing.T) {
 	g := newTrasversalGraph(t)
 
-	tr := NewGrahTraversal(g)
+	tr := NewGraphTraversal(g)
 
 	// next traversal test
 	tv := tr.V().Has("Value", 1)
@@ -129,7 +129,7 @@ func TestBasicTraversal(t *testing.T) {
 func TestTraversalWithin(t *testing.T) {
 	g := newTrasversalGraph(t)
 
-	tr := NewGrahTraversal(g)
+	tr := NewGraphTraversal(g)
 
 	tv := tr.V().Has("Value", Within(1, 2, 4))
 	if len(tv.Values()) != 3 {
@@ -140,7 +140,7 @@ func TestTraversalWithin(t *testing.T) {
 func TestTraversalNe(t *testing.T) {
 	g := newTrasversalGraph(t)
 
-	tr := NewGrahTraversal(g)
+	tr := NewGraphTraversal(g)
 
 	// next test
 	tv := tr.V().Has("Value", Ne(1))
@@ -158,7 +158,7 @@ func TestTraversalNe(t *testing.T) {
 func TestTraversalBoth(t *testing.T) {
 	g := newTrasversalGraph(t)
 
-	tr := NewGrahTraversal(g)
+	tr := NewGraphTraversal(g)
 
 	// next test
 	tv := tr.V().Has("Value", 2).Both()
@@ -170,7 +170,7 @@ func TestTraversalBoth(t *testing.T) {
 func TestTraversalShortestPathTo(t *testing.T) {
 	g := newTrasversalGraph(t)
 
-	tr := NewGrahTraversal(g)
+	tr := NewGraphTraversal(g)
 
 	tv := tr.V().Has("Value", 1).ShortestPathTo(Metadata{"Value": 3})
 	if len(tv.Values()) != 1 {
