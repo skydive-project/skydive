@@ -919,6 +919,11 @@ Layout.prototype.Redraw = function() {
 }
 
 Layout.prototype.ProcessGraphMessage = function(msg) {
+  if (!this.live && msg.Type != "SyncReply") {
+    console.log("Skipping message " + msg.Type);
+    return;
+  }
+
   switch(msg.Type) {
     case "SyncReply":
       this.Clear();
@@ -988,13 +993,18 @@ Layout.prototype.ProcessAlertMessage = function(msg) {
   setTimeout(function() { delete alerts[ID]; _this.Redraw(); }, 1000);
 }
 
+Layout.prototype.SyncRequest = function(t) {
+  var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": {"Time": t}};
+  this.updatesocket.send(JSON.stringify(msg));
+}
+
 Layout.prototype.StartLiveUpdate = function() {
+  this.live = true;
   this.updatesocket = new WebSocket("ws://" + location.host + "/ws");
 
   var _this = this;
   this.updatesocket.onopen = function() {
-    var msg = {"Namespace": "Graph", "Type": "SyncRequest"};
-    _this.updatesocket.send(JSON.stringify(msg));
+    _this.SyncRequest(Date.now())
   }
 
   this.updatesocket.onclose = function() {
@@ -1470,4 +1480,5 @@ $(document).ready(function() {
   topologyLayout.StartLiveUpdate();
 
   StartCheckAPIAccess();
+  SetupTimeSlider();
 });

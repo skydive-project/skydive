@@ -1,0 +1,69 @@
+.axis {
+  fill: gray;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.axis .halo {
+  stroke: gray;
+  stroke-width: 2px;
+  stroke-linecap: round;
+}
+
+.slider .handle path {
+  stroke: white;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.disabled .slider .handle path {
+  stroke: #333;
+}
+
+.slider .handle text {
+  fill: white;
+  text-align: center;
+  font-size: 12px;
+}
+
+.disabled .slider .handle text {
+  fill: #333;
+}
+
+.slider .tick text {
+  fill: yellowgreen;;
+}
+
+.disabled .slider .tick text {
+  fill: #333;
+}
+
+.live-switch {
+  float: left;
+}
+
+.topology-d3 {
+  clear: both;
+}
+
+.timeslider {
+  text-align: center;
+  margin: auto;
+  width: 700px;
+}
+
+.timeslider .bootstrap-switch {
+  float: left;
+  margin-top: 20px;
+  width: 50px;
+}
+
+.timeslider .bootstrap-switch .bootstrap-switch-label {
+  color: white;
+}
+
+.timeslider-div svg {
+  overflow: visible;
+}

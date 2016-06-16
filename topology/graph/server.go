@@ -24,6 +24,7 @@ package graph
 
 import (
 	"encoding/json"
+	"time"
 
 	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
@@ -41,7 +42,21 @@ type GraphServer struct {
 
 func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	if msg.Type == "SyncRequest" {
-		return msg.Type, msg, nil
+		var obj map[string]interface{}
+		if msg.Obj != nil {
+			if err := json.Unmarshal([]byte(*msg.Obj), &obj); err != nil {
+				return "", msg, err
+			}
+		}
+
+		var context GraphContext
+		switch v := obj["Time"].(type) {
+		case float64:
+			unix := time.Unix(int64(v)/1000, 0)
+			context.Time = &unix
+		}
+
+		return msg.Type, context, nil
 	}
 
 	switch msg.Type {
@@ -91,7 +106,7 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 
 	switch msgType {
 	case "SyncRequest":
-		r, _ := json.Marshal(s.Graph)
+		r, _ := json.Marshal(s.Graph.WithContext(obj.(GraphContext)))
 		raw := json.RawMessage(r)
 
 		reply := shttp.WSMessage{
