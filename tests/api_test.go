@@ -56,10 +56,10 @@ analyzer:
   flowtable_agent_ratio: 0.5
 
 etcd:
-  embedded: true
+  embedded: {{.EmbeddedEtcd}}
   port: 2374
   data_dir: {{.EtcdDataDir}}
-  servers: http://localhost:2374
+  servers: {{.EtcdServer}}
 
 logging:
   default: {{.LogLevel}}
