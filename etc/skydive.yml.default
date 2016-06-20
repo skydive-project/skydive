@@ -21,6 +21,8 @@ openstack:
   region_name: RegionOne
   # The endpoint_type value must be 'public', 'internal' or 'admin'
   endpoint_type: public
+  # When using Keystone V3, domain_name needs to be specified
+  # domain_name: MyDomain
 
 analyzer:
   # address and port for the analyzer API, Format: addr:port.

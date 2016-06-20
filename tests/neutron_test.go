@@ -46,12 +46,14 @@ func TestNeutron(t *testing.T) {
 	password := os.Getenv("OS_PASSWORD")
 	tenantName := os.Getenv("OS_TENANT_NAME")
 	regionName := os.Getenv("OS_REGION_NAME")
+	domainID := os.Getenv("OS_PROJECT_DOMAIN_ID")
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authUrl,
 		Username:         username,
 		Password:         password,
 		TenantName:       tenantName,
+		DomainID:         domainID,
 	}
 
 	provider, err := openstack.AuthenticatedClient(opts)

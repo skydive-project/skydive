@@ -259,7 +259,7 @@ func (mapper *NeutronMapper) Stop() {
 	close(mapper.nodeUpdaterChan)
 }
 
-func NewNeutronMapper(g *graph.Graph, fb *FabricProbe, authURL string, username string, password string, tenantName string, regionName string, availability gophercloud.Availability) (*NeutronMapper, error) {
+func NewNeutronMapper(g *graph.Graph, fb *FabricProbe, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronMapper, error) {
 	mapper := &NeutronMapper{graph: g, fb: fb}
 
 	opts := gophercloud.AuthOptions{
@@ -267,6 +267,7 @@ func NewNeutronMapper(g *graph.Graph, fb *FabricProbe, authURL string, username 
 		Username:         username,
 		Password:         password,
 		TenantName:       tenantName,
+		DomainName:       domainName,
 		AllowReauth:      true,
 	}
 
@@ -309,6 +310,7 @@ func NewNeutronMapperFromConfig(g *graph.Graph, probes *probe.ProbeBundle) (*Neu
 	tenantName := config.GetConfig().GetString("openstack.tenant_name")
 	regionName := config.GetConfig().GetString("openstack.region_name")
 	endpointType := config.GetConfig().GetString("openstack.endpoint_type")
+	domainName := config.GetConfig().GetString("openstack.domain_name")
 
 	endpointTypes := map[string]gophercloud.Availability{
 		"public":   gophercloud.AvailabilityPublic,
@@ -317,6 +319,6 @@ func NewNeutronMapperFromConfig(g *graph.Graph, probes *probe.ProbeBundle) (*Neu
 	if a, ok := endpointTypes[endpointType]; !ok {
 		return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
 	} else {
-		return NewNeutronMapper(g, fabric.(*FabricProbe), authURL, username, password, tenantName, regionName, a)
+		return NewNeutronMapper(g, fabric.(*FabricProbe), authURL, username, password, tenantName, regionName, domainName, a)
 	}
 }

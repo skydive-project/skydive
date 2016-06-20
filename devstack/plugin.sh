@@ -62,10 +62,10 @@ ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/ela
 ELASTICSEARCH_VERSION=2.3.1
 
 function install_protoc {
-    mkdir $DEST/protoc
+    mkdir -p $DEST/protoc
     pushd $DEST/protoc
     wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
-    unzip protoc-3.1.0-linux-x86_64.zip
+    unzip -o -u protoc-3.1.0-linux-x86_64.zip
     popd
     export PATH=$DEST/protoc/bin:${PATH}
 }
@@ -154,15 +154,19 @@ logging:
   default: $SKYDIVE_LOGLEVEL
 
 openstack:
-  auth_url: ${KEYSTONE_AUTH_PROTOCOL}://${KEYSTONE_AUTH_HOST}:${KEYSTONE_AUTH_PORT}/v2.0
+  auth_url: ${KEYSTONE_AUTH_PROTOCOL}://${KEYSTONE_AUTH_HOST}:${KEYSTONE_AUTH_PORT}/v3
   username: admin
   password: $ADMIN_PASSWORD
   tenant_name: admin
   region_name: RegionOne
+  domain_name: $SERVICE_DOMAIN_NAME
 
 etcd:
   servers:
     - $SKYDIVE_AGENT_ETCD
+
+graph:
+  backend: elasticsearch
 
 agent:
   analyzer_username: admin
