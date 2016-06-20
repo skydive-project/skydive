@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -v
+set -e
 
 dir="$(dirname "$0")"
 
@@ -9,7 +10,7 @@ dir="$(dirname "$0")"
 cd ${GOPATH}/src/github.com/redhat-cip/skydive
 make install
 
-git remote add github git@github.com:skydive-project/skydive.git
+git remote add github git@github.com:skydive-project/skydive-binaries.git
 git fetch github
 git checkout -b nightly-builds github/nightly-builds
 
@@ -23,7 +24,7 @@ DIR=`date +%Y-%m-%d`
 mkdir ${DIR}
 mv ${GOPATH}/bin/skydive ${DIR}/
 git add ${DIR}/skydive
-[ -e latest ] && unlink latest
+[ -L latest ] && unlink latest
 ln -s $DIR latest
 git add latest
 git commit -m "${DIR} nightly build"
