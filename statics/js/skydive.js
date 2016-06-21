@@ -1440,12 +1440,15 @@ function RefreshCaptureList() {
             .appendTo(clist);
 
           var item = $('<div/>').appendTo(li);
-          var capture = $('<div/>').css('float', 'left').appendTo(item);
+          var capture = $('<div/>').appendTo(item);
+          var title = $('<div/>').addClass("capture-title").html(key).appendTo(capture);
+          var trash = $('<div/>').addClass("capture-trash").css({"text-align": "right", "float": "right"}).appendTo(title);
+          $('<div/>').addClass("capture-content").html("Gremlin Query: " + data[key].GremlinQuery).appendTo(capture);
+          if (data[key].Name != undefined)
+            $('<div/>').addClass("capture-content").html("Name: " + data[key].Name).appendTo(capture);
+          if (data[key].Description != undefined)
+            $('<div/>').addClass("capture-content").html("Description: " + data[key].Description).appendTo(capture);
 
-          $('<div/>').addClass("capture-title").html(key).appendTo(capture);
-          $('<div/>').addClass("capture-content").html(data[key].GremlinQuery).appendTo(capture);
-
-          var trash = $('<div/>').addClass("capture-trash").css('text-align', 'right').appendTo(item);
           var img = $('<img/>', {src:trashImg, width: 24, height: 24}).appendTo(trash);
           img.css('cursor', 'pointer').click(function(e) {
             var li = $(this).closest('li');

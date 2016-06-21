@@ -34,7 +34,9 @@ import (
 )
 
 var (
-	bpfFilter string
+	bpfFilter          string
+	captureName        string
+	captureDescription string
 )
 
 var CaptureCmd = &cobra.Command{
@@ -54,6 +56,8 @@ var CaptureCreate = &cobra.Command{
 			os.Exit(1)
 		}
 		capture := api.NewCapture(gremlinQuery, bpfFilter)
+		capture.Name = captureName
+		capture.Description = captureDescription
 		if err := validator.Validate(capture); err != nil {
 			fmt.Println(err.Error())
 			cmd.Usage()
@@ -131,6 +135,8 @@ var CaptureDelete = &cobra.Command{
 func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
 	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")
+	cmd.Flags().StringVarP(&captureName, "name", "", "", "capture name")
+	cmd.Flags().StringVarP(&captureDescription, "description", "", "", "capture description")
 }
 
 func init() {

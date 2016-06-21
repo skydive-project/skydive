@@ -30,6 +30,8 @@ type Capture struct {
 	UUID         string
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 	BPFFilter    string `json:"BPFFilter,omitempty"`
+	Name         string `json:"Name,omitempty"`
+	Description  string `json:"Description,omitempty"`
 }
 
 type CaptureHandler struct {
