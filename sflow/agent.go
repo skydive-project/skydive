@@ -33,10 +33,8 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
-	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -52,19 +50,13 @@ type SFlowAgent struct {
 	UUID                string
 	Addr                string
 	Port                int
-	AnalyzerClient      *analyzer.Client
-	flowTable           *flow.Table
-	FlowMappingPipeline *mappings.FlowMappingPipeline
+	FlowTable           *flow.Table
 	FlowProbeNodeSetter flow.FlowProbeNodeSetter
-	FlowTableAllocator  *flow.TableAllocator
 }
 
 type SFlowAgentAllocator struct {
 	sync.RWMutex
-	AnalyzerClient      *analyzer.Client
-	FlowMappingPipeline *mappings.FlowMappingPipeline
 	FlowProbeNodeSetter flow.FlowProbeNodeSetter
-	FlowTableAllocator  *flow.TableAllocator
 	Addr                string
 	MinPort             int
 	MaxPort             int
@@ -93,18 +85,9 @@ func (sfa *SFlowAgent) feedFlowTable(conn *net.UDPConn) {
 
 	if sflowPacket.SampleCount > 0 {
 		for _, sample := range sflowPacket.FlowSamples {
-			flows := flow.FlowsFromSFlowSample(sfa.flowTable, &sample, sfa.FlowProbeNodeSetter)
+			flows := flow.FlowsFromSFlowSample(sfa.FlowTable, &sample, sfa.FlowProbeNodeSetter)
 			logging.GetLogger().Debugf("%d flows captured", len(flows))
 		}
-	}
-}
-
-func (sfa *SFlowAgent) asyncFlowPipeline(flows []*flow.Flow) {
-	if sfa.FlowMappingPipeline != nil {
-		sfa.FlowMappingPipeline.Enhance(flows)
-	}
-	if sfa.AnalyzerClient != nil {
-		sfa.AnalyzerClient.SendFlows(flows)
 	}
 }
 
@@ -121,22 +104,11 @@ func (sfa *SFlowAgent) start() error {
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(1 * time.Second))
 
-	sfa.flowTable = sfa.FlowTableAllocator.Alloc()
-	defer sfa.flowTable.UnregisterAll()
-	defer sfa.FlowTableAllocator.Release(sfa.flowTable)
-
-	agentExpire := config.GetAgentExpire()
-	sfa.flowTable.RegisterExpire(sfa.asyncFlowPipeline, agentExpire, agentExpire)
-
-	agentUpdate := config.GetAgentUpdate()
-	sfa.flowTable.RegisterUpdated(sfa.asyncFlowPipeline, agentUpdate, agentUpdate)
-
 	feedFlowTable := func() {
 		sfa.feedFlowTable(conn)
 	}
-	sfa.flowTable.RegisterDefault(feedFlowTable)
-
-	sfa.flowTable.Start()
+	sfa.FlowTable.RegisterDefault(feedFlowTable)
+	sfa.FlowTable.Start()
 
 	return nil
 }
@@ -146,38 +118,34 @@ func (sfa *SFlowAgent) Start() {
 }
 
 func (sfa *SFlowAgent) Stop() {
-	sfa.flowTable.Stop()
+	sfa.FlowTable.Stop()
 }
 
 func (sfa *SFlowAgent) Flush() {
 	logging.GetLogger().Critical("Flush() MUST be called for testing purpose only, not in production")
-	sfa.flowTable.Flush()
+	sfa.FlowTable.Flush()
 }
 
 func (sfa *SFlowAgent) SetFlowProbeNodeSetter(p flow.FlowProbeNodeSetter) {
 	sfa.FlowProbeNodeSetter = p
 }
 
-func NewSFlowAgent(u string, a string, p int, c *analyzer.Client,
-	m *mappings.FlowMappingPipeline, fta *flow.TableAllocator) *SFlowAgent {
+func NewSFlowAgent(u string, a string, p int, ft *flow.Table) *SFlowAgent {
 	return &SFlowAgent{
-		UUID:                u,
-		Addr:                a,
-		Port:                p,
-		AnalyzerClient:      c,
-		FlowMappingPipeline: m,
-		FlowTableAllocator:  fta,
+		UUID:      u,
+		Addr:      a,
+		Port:      p,
+		FlowTable: ft,
 	}
 }
 
-func NewSFlowAgentFromConfig(u string, a *analyzer.Client,
-	m *mappings.FlowMappingPipeline, fta *flow.TableAllocator) (*SFlowAgent, error) {
+func NewSFlowAgentFromConfig(u string, ft *flow.Table) (*SFlowAgent, error) {
 	addr, port, err := config.GetHostPortAttributes("sflow", "listen")
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSFlowAgent(u, addr, port, a, m, fta), nil
+	return NewSFlowAgent(u, addr, port, ft), nil
 }
 
 func (a *SFlowAgentAllocator) Agents() []*SFlowAgent {
@@ -217,7 +185,7 @@ func (a *SFlowAgentAllocator) ReleaseAll() {
 	}
 }
 
-func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter) (*SFlowAgent, error) {
+func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter, ft *flow.Table) (*SFlowAgent, error) {
 	address := config.GetConfig().GetString("sflow.bind_address")
 	if address == "" {
 		address = "127.0.0.1"
@@ -245,7 +213,7 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter) (*S
 
 	for i := min; i != max+1; i++ {
 		if _, ok := a.allocated[i]; !ok {
-			s := NewSFlowAgent(uuid, address, i, a.AnalyzerClient, a.FlowMappingPipeline, a.FlowTableAllocator)
+			s := NewSFlowAgent(uuid, address, i, ft)
 			s.SetFlowProbeNodeSetter(p)
 
 			a.allocated[i] = s
@@ -259,11 +227,8 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter) (*S
 	return nil, errors.New("sflow port exhausted")
 }
 
-func NewSFlowAgentAllocator(a *analyzer.Client, m *mappings.FlowMappingPipeline, fta *flow.TableAllocator) *SFlowAgentAllocator {
+func NewSFlowAgentAllocator() *SFlowAgentAllocator {
 	return &SFlowAgentAllocator{
-		AnalyzerClient:      a,
-		FlowMappingPipeline: m,
-		FlowTableAllocator:  fta,
-		allocated:           make(map[int]*SFlowAgent),
+		allocated: make(map[int]*SFlowAgent),
 	}
 }

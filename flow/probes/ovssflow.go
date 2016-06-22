@@ -31,7 +31,6 @@ import (
 	"github.com/redhat-cip/skydive/analyzer"
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/flow/mappings"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/ovs"
 	"github.com/redhat-cip/skydive/sflow"
@@ -50,6 +49,7 @@ type OvsSFlowProbe struct {
 }
 
 type OvsSFlowProbesHandler struct {
+	FlowProbe
 	Graph          *graph.Graph
 	AnalyzerClient *analyzer.Client
 	ovsClient      *ovsdb.OvsClient
@@ -222,7 +222,7 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 	return nil
 }
 
-func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, uuid string) error {
+func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, uuid string, ft *flow.Table) error {
 	probe := OvsSFlowProbe{
 		ID:            probeID(bridgeUUID),
 		Interface:     "lo",
@@ -232,7 +232,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, uuid st
 		ProbeNodeUUID: uuid,
 	}
 
-	agent, err := o.allocator.Alloc(bridgeUUID, &probe)
+	agent, err := o.allocator.Alloc(bridgeUUID, &probe, ft)
 	if err != nil && err != sflow.AgentAlreadyAllocated {
 		return err
 	}
@@ -250,9 +250,9 @@ func isOvsBridge(n *graph.Node) bool {
 	return n.Metadata()["UUID"] != "" && n.Metadata()["Type"] == "ovsbridge"
 }
 
-func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture) error {
+func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	if isOvsBridge(n) {
-		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), string(n.ID))
+		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), string(n.ID), ft)
 		if err != nil {
 			return err
 		}
@@ -285,8 +285,7 @@ func (o *OvsSFlowProbesHandler) Stop() {
 	o.allocator.ReleaseAll()
 }
 
-func NewOvsSFlowProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph,
-	m *mappings.FlowMappingPipeline, a *analyzer.Client, fta *flow.TableAllocator) *OvsSFlowProbesHandler {
+func NewOvsSFlowProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph) *OvsSFlowProbesHandler {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		logging.GetLogger().Error("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
@@ -297,7 +296,7 @@ func NewOvsSFlowProbesHandler(tb *probes.TopologyProbeBundle, g *graph.Graph,
 	o := &OvsSFlowProbesHandler{
 		Graph:     g,
 		ovsClient: p.OvsMon.OvsClient,
-		allocator: sflow.NewSFlowAgentAllocator(a, m, fta),
+		allocator: sflow.NewSFlowAgentAllocator(),
 	}
 
 	return o

@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/redhat-cip/skydive/api"
+	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph"
 )
@@ -37,15 +38,12 @@ type OnDemandProbeListener struct {
 	Probes         *FlowProbeBundle
 	CaptureHandler api.ApiHandler
 	watcher        api.StoppableWatcher
+	fta            *flow.TableAllocator
+	activeProbes   map[graph.Identifier]*flow.Table
 	host           string
 }
 
-type FlowProbe interface {
-	RegisterProbe(n *graph.Node, capture *api.Capture) error
-	UnregisterProbe(n *graph.Node) error
-}
-
-func (o *OnDemandProbeListener) probeFromType(n *graph.Node) FlowProbe {
+func (o *OnDemandProbeListener) probeFromType(n *graph.Node) *FlowProbe {
 	var probeName string
 
 	switch n.Metadata()["Type"] {
@@ -60,7 +58,8 @@ func (o *OnDemandProbeListener) probeFromType(n *graph.Node) FlowProbe {
 		return nil
 	}
 
-	return probe.(FlowProbe)
+	fprobe := probe.(FlowProbe)
+	return &fprobe
 }
 
 func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) {
@@ -75,10 +74,19 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 		return
 	}
 
-	if err := fprobe.RegisterProbe(n, capture); err != nil {
-		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
+	if _, ok := o.activeProbes[n.ID]; ok {
+		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
+		return
 	}
 
+	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline)
+	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
+		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
+		o.fta.Release(ft)
+		return
+	}
+
+	o.activeProbes[n.ID] = ft
 	o.Graph.AddMetadata(n, "State.FlowCapture", "ON")
 }
 
@@ -92,6 +100,8 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
 		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
 	}
 
+	o.fta.Release(o.activeProbes[n.ID])
+	delete(o.activeProbes, n.ID)
 	o.Graph.AddMetadata(n, "State.FlowCapture", "OFF")
 }
 
@@ -259,5 +269,7 @@ func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, ch api.ApiHan
 		Probes:         fb,
 		CaptureHandler: ch,
 		host:           h,
+		fta:            fb.FlowTableAllocator,
+		activeProbes:   make(map[graph.Identifier]*flow.Table),
 	}, nil
 }

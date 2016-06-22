@@ -25,6 +25,7 @@ package agent
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/config"
@@ -45,7 +46,7 @@ type Agent struct {
 	Root                  *graph.Node
 	TopologyProbeBundle   *tprobes.TopologyProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
-	FlowTableAlloctor     *flow.TableAllocator
+	FlowTableAllocator    *flow.TableAllocator
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
 	HTTPServer            *shttp.Server
 	EtcdClient            *etcd.EtcdClient
@@ -77,9 +78,6 @@ func (a *Agent) Start() {
 		graph.NewForwarder(a.WSClient, a.Graph)
 		a.WSClient.Connect()
 
-		// expose a flow server through the client connection
-		flow.NewServer(a.FlowTableAlloctor, a.WSClient)
-
 		// send a first reset event to the analyzers
 		a.Graph.DelSubGraph(a.Root)
 	}
@@ -87,8 +85,7 @@ func (a *Agent) Start() {
 	a.TopologyProbeBundle = tprobes.NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
 	a.TopologyProbeBundle.Start()
 
-	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAlloctor)
-	a.FlowProbeBundle.Start()
+	go a.HTTPServer.ListenAndServe()
 
 	if addr != "" {
 		a.EtcdClient, err = etcd.NewEtcdClientFromConfig()
@@ -102,21 +99,46 @@ func (a *Agent) Start() {
 			EtcdKeyAPI:      a.EtcdClient.KeysApi,
 		}
 
-		l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, captureHandler)
-		if err != nil {
-			logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
-			os.Exit(1)
-		}
-		a.OnDemandProbeListener = l
-		a.OnDemandProbeListener.Start()
-	}
+		for {
+			flowtableUpdate, err := a.EtcdClient.GetInt64("/agent/config/flowtable_update")
+			if err != nil {
+				time.Sleep(time.Second)
+				continue
+			}
+			flowtableExpire, err := a.EtcdClient.GetInt64("/agent/config/flowtable_expire")
+			if err != nil {
+				time.Sleep(time.Second)
+				continue
+			}
 
-	go a.HTTPServer.ListenAndServe()
+			updateTime := time.Duration(flowtableUpdate) * time.Second
+			expireTime := time.Duration(flowtableExpire) * time.Second
+			a.FlowTableAllocator = flow.NewTableAllocator(updateTime, updateTime, expireTime, expireTime)
+
+			// expose a flow server through the client connection
+			flow.NewServer(a.FlowTableAllocator, a.WSClient)
+
+			a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator)
+			a.FlowProbeBundle.Start()
+
+			l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, captureHandler)
+			if err != nil {
+				logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
+				os.Exit(1)
+			}
+			a.OnDemandProbeListener = l
+			a.OnDemandProbeListener.Start()
+
+			break
+		}
+	}
 }
 
 func (a *Agent) Stop() {
-	a.FlowProbeBundle.UnregisterAllProbes()
-	a.FlowProbeBundle.Stop()
+	if a.FlowProbeBundle != nil {
+		a.FlowProbeBundle.UnregisterAllProbes()
+		a.FlowProbeBundle.Stop()
+	}
 	a.TopologyProbeBundle.Stop()
 	a.HTTPServer.Stop()
 	a.WSServer.Stop()
@@ -177,14 +199,11 @@ func NewAgent() *Agent {
 
 	gserver := graph.NewServer(g, wsServer)
 
-	fta := flow.NewTableAllocator()
-
 	return &Agent{
-		Graph:             g,
-		WSServer:          wsServer,
-		GraphServer:       gserver,
-		Root:              root,
-		HTTPServer:        hserver,
-		FlowTableAlloctor: fta,
+		Graph:       g,
+		WSServer:    wsServer,
+		GraphServer: gserver,
+		Root:        root,
+		HTTPServer:  hserver,
 	}
 }

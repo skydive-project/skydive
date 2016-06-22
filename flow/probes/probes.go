@@ -24,6 +24,7 @@ package probes
 
 import (
 	"github.com/redhat-cip/skydive/analyzer"
+	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/flow/mappings"
@@ -35,7 +36,43 @@ import (
 
 type FlowProbeBundle struct {
 	probe.ProbeBundle
-	Graph *graph.Graph
+	Graph              *graph.Graph
+	FlowTableAllocator *flow.TableAllocator
+}
+
+type FlowProbeInterface interface {
+	probe.Probe
+	RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error
+	UnregisterProbe(n *graph.Node) error
+}
+
+type FlowProbe struct {
+	fpi      FlowProbeInterface
+	pipeline *mappings.FlowMappingPipeline
+	client   *analyzer.Client
+}
+
+func (fp FlowProbe) Start() {
+	fp.fpi.Start()
+}
+
+func (fp FlowProbe) Stop() {
+	fp.fpi.Stop()
+}
+
+func (fp *FlowProbe) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
+	return fp.fpi.RegisterProbe(n, capture, ft)
+}
+
+func (fp *FlowProbe) UnregisterProbe(n *graph.Node) error {
+	return fp.fpi.UnregisterProbe(n)
+}
+
+func (fp *FlowProbe) AsyncFlowPipeline(flows []*flow.Flow) {
+	fp.pipeline.Enhance(flows)
+	if fp.client != nil {
+		fp.client.SendFlows(flows)
+	}
 }
 
 func (fpb *FlowProbeBundle) UnregisterAllProbes() {
@@ -81,19 +118,17 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 
 		switch t {
 		case "ovssflow":
-			ofe := mappings.NewOvsFlowEnhancer(g)
-			pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
-
-			o := NewOvsSFlowProbesHandler(tb, g, pipeline, aclient, fta)
+			o := NewOvsSFlowProbesHandler(tb, g)
 			if o != nil {
-				probes[t] = o
+				ofe := mappings.NewOvsFlowEnhancer(g)
+				pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
+				probes[t] = FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
 			}
 		case "pcap":
-			pipeline := mappings.NewFlowMappingPipeline(gfe)
-
-			o := NewPcapProbesHandler(tb, g, pipeline, aclient, fta)
+			o := NewPcapProbesHandler(g)
 			if o != nil {
-				probes[t] = o
+				pipeline := mappings.NewFlowMappingPipeline(gfe)
+				probes[t] = FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
 			}
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
@@ -103,8 +138,9 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 	p := probe.NewProbeBundle(probes)
 
 	return &FlowProbeBundle{
-		ProbeBundle: *p,
-		Graph:       g,
+		ProbeBundle:        *p,
+		Graph:              g,
+		FlowTableAllocator: fta,
 	}
 }
 

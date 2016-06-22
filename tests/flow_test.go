@@ -577,20 +577,16 @@ func TestSFlowSrcDstPath(t *testing.T) {
 }
 
 func TestFlowQuery(t *testing.T) {
-	al := flow.NewTableAllocator()
+	al := flow.NewTableAllocator(500, 500, 500, 500)
 
 	f := func(flows []*flow.Flow) {}
 
-	ft1 := al.Alloc()
-	ft1.RegisterExpire(f, 500, 500)
-	ft1.RegisterUpdated(f, 500, 500)
+	ft1 := al.Alloc(f)
 
 	flow.GenerateTestFlows(t, ft1, 1, "probe1")
 	flows1 := flow.GenerateTestFlows(t, ft1, 2, "probe2")
 
-	ft2 := al.Alloc()
-	ft2.RegisterExpire(f, 500, 500)
-	ft2.RegisterUpdated(f, 500, 500)
+	ft2 := al.Alloc(f)
 	flows2 := flow.GenerateTestFlows(t, ft2, 3, "probe2")
 
 	go ft1.Start()

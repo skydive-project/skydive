@@ -32,13 +32,13 @@ import (
 )
 
 func TestNewTable(t *testing.T) {
-	ft := NewTable()
+	ft := NewTable(nil, nil)
 	if ft == nil {
 		t.Error("new FlowTable return null")
 	}
 }
 func TestTable_String(t *testing.T) {
-	ft := NewTable()
+	ft := NewTable(nil, nil)
 	if "0 flows" != ft.String() {
 		t.Error("FlowTable too big")
 	}
@@ -57,7 +57,7 @@ func TestTable_Update(t *testing.T) {
 	f.UUID = "789"
 	ft.Update([]*Flow{f})
 
-	ft2 := NewTestFlowTableComplex(t)
+	ft2 := NewTestFlowTableComplex(t, nil, nil)
 	if "10 flows" != ft2.String() {
 		t.Error("We should got only 10 flows")
 	}
@@ -77,11 +77,10 @@ func (fo *MyTestFlowCounter) countFlowsCallback(flows []*Flow) {
 
 func TestTable_expire(t *testing.T) {
 	const MaxInt64 = int64(^uint64(0) >> 1)
-	ft := NewTestFlowTableComplex(t)
-
 	fc := MyTestFlowCounter{}
+	ft := NewTestFlowTableComplex(t, nil, &FlowHandler{callback: fc.countFlowsCallback})
 	beforeNbFlow := fc.NbFlow
-	ft.expire(fc.countFlowsCallback, 0)
+	ft.expired(0)
 	afterNbFlow := fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 0 {
 		t.Error("we should not expire a flow")
@@ -89,7 +88,7 @@ func TestTable_expire(t *testing.T) {
 
 	fc = MyTestFlowCounter{}
 	beforeNbFlow = fc.NbFlow
-	ft.expire(fc.countFlowsCallback, MaxInt64)
+	ft.expired(MaxInt64)
 	afterNbFlow = fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 10 {
 		t.Error("we should expire all flows")
@@ -98,11 +97,10 @@ func TestTable_expire(t *testing.T) {
 
 func TestTable_updated(t *testing.T) {
 	const MaxInt64 = int64(^uint64(0) >> 1)
-	ft := NewTestFlowTableComplex(t)
-
 	fc := MyTestFlowCounter{}
+	ft := NewTestFlowTableComplex(t, &FlowHandler{callback: fc.countFlowsCallback}, nil)
 	beforeNbFlow := fc.NbFlow
-	ft.updated(fc.countFlowsCallback, 0)
+	ft.updated(0)
 	afterNbFlow := fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 10 {
 		t.Error("all flows should be updated")
@@ -110,7 +108,7 @@ func TestTable_updated(t *testing.T) {
 
 	fc = MyTestFlowCounter{}
 	beforeNbFlow = fc.NbFlow
-	ft.updated(fc.countFlowsCallback, MaxInt64)
+	ft.updated(MaxInt64)
 	afterNbFlow = fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 0 {
 		t.Error("no flows should be updated")
@@ -126,7 +124,7 @@ func TestTable_AsyncUpdated(t *testing.T) {
 }
 
 func TestTable_LookupFlowByProbePath(t *testing.T) {
-	ft := NewTable()
+	ft := NewTable(nil, nil)
 	GenerateTestFlows(t, ft, 1, "probe1")
 	GenerateTestFlows(t, ft, 2, "probe2")
 
@@ -156,7 +154,7 @@ func TestTable_GetFlow(t *testing.T) {
 }
 
 func TestTable_GetOrCreateFlow(t *testing.T) {
-	ft := NewTestFlowTableComplex(t)
+	ft := NewTestFlowTableComplex(t, nil, nil)
 	flows := GenerateTestFlows(t, ft, 0, "probe1")
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
@@ -179,13 +177,13 @@ func TestTable_GetOrCreateFlow(t *testing.T) {
 }
 
 func TestTable_NewTableFromFlows(t *testing.T) {
-	ft := NewTestFlowTableComplex(t)
+	ft := NewTestFlowTableComplex(t, nil, nil)
 	var flows []*Flow
 	for _, f := range ft.table {
 		flow := *f
 		flows = append(flows, &flow)
 	}
-	ft2 := NewTableFromFlows(flows)
+	ft2 := NewTableFromFlows(flows, nil, nil)
 	if len(ft.table) != len(ft2.table) {
 		t.Error("NewFlowTable(copy) are not the same size")
 	}
@@ -193,14 +191,14 @@ func TestTable_NewTableFromFlows(t *testing.T) {
 	for _, f := range ft.table {
 		flows = append(flows, f)
 	}
-	ft3 := NewTableFromFlows(flows)
+	ft3 := NewTableFromFlows(flows, nil, nil)
 	if len(ft.table) != len(ft3.table) {
 		t.Error("NewFlowTable(ref) are not the same size")
 	}
 }
 
 func TestTable_FilterLast(t *testing.T) {
-	ft := NewTestFlowTableComplex(t)
+	ft := NewTestFlowTableComplex(t, nil, nil)
 	/* hack to put the FlowTable 1 second older */
 	for _, f := range ft.table {
 		fs := f.GetStatistics()
@@ -218,7 +216,7 @@ func TestTable_FilterLast(t *testing.T) {
 }
 
 func TestTable_SelectLayer(t *testing.T) {
-	ft := NewTestFlowTableComplex(t)
+	ft := NewTestFlowTableComplex(t, nil, nil)
 
 	var macs []string
 	flows := ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
@@ -236,7 +234,7 @@ func TestTable_SelectLayer(t *testing.T) {
 }
 
 func TestTable_SymmeticsHash(t *testing.T) {
-	ft := NewTable()
+	ft := NewTable(nil, nil)
 	GenerateTestFlows(t, ft, 0xca55e77e, "probe")
 
 	foundLayers := make(map[string]bool)
@@ -250,7 +248,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 		foundLayers[layersH] = true
 	}
 
-	ft2 := NewTable()
+	ft2 := NewTable(nil, nil)
 	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe")
 
 	for _, f := range ft2.GetFlows() {

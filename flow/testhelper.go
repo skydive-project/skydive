@@ -148,7 +148,7 @@ func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, uuid st
 }
 
 func NewTestFlowTableSimple(t *testing.T) *Table {
-	ft := NewTable()
+	ft := NewTable(nil, nil)
 	var flows []*Flow
 	f := &Flow{}
 	f.UUID = "1234"
@@ -169,8 +169,8 @@ func NewTestFlowTableSimple(t *testing.T) *Table {
 	return ft
 }
 
-func NewTestFlowTableComplex(t *testing.T) *Table {
-	ft := NewTable()
+func NewTestFlowTableComplex(t *testing.T, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
+	ft := NewTable(updateHandler, expireHandler)
 	GenerateTestFlows(t, ft, 0xca55e77e, "probe-uuid")
 	return ft
 }

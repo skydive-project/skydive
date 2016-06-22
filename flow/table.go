@@ -58,45 +58,64 @@ type FlowQueryFilter struct {
 	ProbeNodeUUIDs []string
 }
 
-type Table struct {
-	lock        sync.RWMutex
-	table       map[string]*Flow
-	manager     tableManager
-	defaultFunc func()
-	flush       chan bool
-	flushDone   chan bool
-	query       chan *TableQuery
-	reply       chan *TableReply
-	state       int64
-	lockState   sync.RWMutex
-	wg          sync.WaitGroup
+type ExpireUpdateFunc func(f []*Flow)
+
+type FlowHandler struct {
+	callback ExpireUpdateFunc
+	every    time.Duration
+	duration time.Duration
 }
 
-func NewTable() *Table {
-	return &Table{
-		table:     make(map[string]*Flow),
-		flush:     make(chan bool),
-		flushDone: make(chan bool),
-		query:     make(chan *TableQuery),
-		reply:     make(chan *TableReply),
-		state:     common.StoppedState,
+func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration, duration time.Duration) *FlowHandler {
+	return &FlowHandler{
+		callback: callback,
+		every:    every,
+		duration: duration,
 	}
 }
 
-func NewTableFromFlows(flows []*Flow) *Table {
-	nft := NewTable()
+type Table struct {
+	sync.RWMutex
+	table         map[string]*Flow
+	defaultFunc   func()
+	flush         chan bool
+	flushDone     chan bool
+	query         chan *TableQuery
+	reply         chan *TableReply
+	state         int64
+	lockState     sync.RWMutex
+	wg            sync.WaitGroup
+	updateHandler *FlowHandler
+	expireHandler *FlowHandler
+}
+
+func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
+	return &Table{
+		table:         make(map[string]*Flow),
+		flush:         make(chan bool),
+		flushDone:     make(chan bool),
+		query:         make(chan *TableQuery),
+		reply:         make(chan *TableReply),
+		state:         common.StoppedState,
+		updateHandler: updateHandler,
+		expireHandler: expireHandler,
+	}
+}
+
+func NewTableFromFlows(flows []*Flow, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
+	nft := NewTable(updateHandler, expireHandler)
 	nft.Update(flows)
 	return nft
 }
 
 func (ft *Table) String() string {
-	ft.lock.RLock()
-	defer ft.lock.RUnlock()
+	ft.RLock()
+	defer ft.RUnlock()
 	return fmt.Sprintf("%d flows", len(ft.table))
 }
 
 func (ft *Table) Update(flows []*Flow) {
-	ft.lock.Lock()
+	ft.Lock()
 	for _, f := range flows {
 		if _, ok := ft.table[f.UUID]; !ok {
 			ft.table[f.UUID] = f
@@ -104,7 +123,7 @@ func (ft *Table) Update(flows []*Flow) {
 			ft.table[f.UUID].Statistics = f.Statistics
 		}
 	}
-	ft.lock.Unlock()
+	ft.Unlock()
 }
 
 func matchQueryFilter(f *Flow, filter *FlowQueryFilter) bool {
@@ -118,8 +137,8 @@ func matchQueryFilter(f *Flow, filter *FlowQueryFilter) bool {
 }
 
 func (ft *Table) GetFlows(filters ...FlowQueryFilter) []*Flow {
-	ft.lock.RLock()
-	defer ft.lock.RUnlock()
+	ft.RLock()
+	defer ft.RUnlock()
 
 	flows := make([]*Flow, 0, len(ft.table))
 	for _, f := range ft.table {
@@ -131,8 +150,8 @@ func (ft *Table) GetFlows(filters ...FlowQueryFilter) []*Flow {
 }
 
 func (ft *Table) GetFlow(key string) *Flow {
-	ft.lock.RLock()
-	defer ft.lock.RUnlock()
+	ft.RLock()
+	defer ft.RUnlock()
 	if flow, found := ft.table[key]; found {
 		return flow
 	}
@@ -141,8 +160,8 @@ func (ft *Table) GetFlow(key string) *Flow {
 }
 
 func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
-	ft.lock.Lock()
-	defer ft.lock.Unlock()
+	ft.Lock()
+	defer ft.Unlock()
 	if flow, found := ft.table[key]; found {
 		return flow, false
 	}
@@ -157,20 +176,20 @@ func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
 func (ft *Table) FilterLast(last time.Duration) []*Flow {
 	var flows []*Flow
 	selected := time.Now().Unix() - int64((last).Seconds())
-	ft.lock.RLock()
+	ft.RLock()
+	defer ft.RUnlock()
 	for _, f := range ft.table {
 		fs := f.GetStatistics()
 		if fs.Last >= selected {
 			flows = append(flows, f)
 		}
 	}
-	ft.lock.RUnlock()
 	return flows
 }
 
 func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) []*Flow {
 	meth := make(map[string][]*Flow)
-	ft.lock.RLock()
+	ft.RLock()
 	for _, f := range ft.table {
 		layerFlow := f.GetStatistics().GetEndpointsType(endpointType)
 		if layerFlow == nil || layerFlow.AB.Value == "ff:ff:ff:ff:ff:ff" || layerFlow.BA.Value == "ff:ff:ff:ff:ff:ff" {
@@ -179,7 +198,7 @@ func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) []*Fl
 		meth[layerFlow.AB.Value] = append(meth[layerFlow.AB.Value], f)
 		meth[layerFlow.BA.Value] = append(meth[layerFlow.BA.Value], f)
 	}
-	ft.lock.RUnlock()
+	ft.RUnlock()
 
 	mflows := make(map[*Flow]struct{})
 	var flows []*Flow
@@ -196,18 +215,8 @@ func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) []*Fl
 	return flows
 }
 
-/*
- * Following function are Table manager helpers
- */
-func (ft *Table) Expire(now time.Time) {
-	timepoint := now.Unix() - int64((ft.manager.expire.duration).Seconds())
-	ft.lock.Lock()
-	ft.expire(ft.manager.expire.callback, timepoint)
-	ft.lock.Unlock()
-}
-
-/* Internal call only, Must be called under ft.lock.Lock() */
-func (ft *Table) expire(fn ExpireUpdateFunc, expireBefore int64) {
+/* Internal call only, Must be called under ft.Lock() */
+func (ft *Table) expired(expireBefore int64) {
 	var expiredFlows []*Flow
 	flowTableSzBefore := len(ft.table)
 	for _, f := range ft.table {
@@ -219,7 +228,9 @@ func (ft *Table) expire(fn ExpireUpdateFunc, expireBefore int64) {
 		}
 	}
 	/* Advise Clients */
-	fn(expiredFlows)
+	if ft.expireHandler != nil {
+		ft.expireHandler.callback(expiredFlows)
+	}
 	for _, f := range expiredFlows {
 		delete(ft.table, f.UUID)
 	}
@@ -228,14 +239,14 @@ func (ft *Table) expire(fn ExpireUpdateFunc, expireBefore int64) {
 }
 
 func (ft *Table) Updated(now time.Time) {
-	timepoint := now.Unix() - int64((ft.manager.updated.duration).Seconds())
-	ft.lock.RLock()
-	ft.updated(ft.manager.updated.callback, timepoint)
-	ft.lock.RUnlock()
+	timepoint := now.Unix() - int64((ft.updateHandler.duration).Seconds())
+	ft.RLock()
+	ft.updated(timepoint)
+	ft.RUnlock()
 }
 
-/* Internal call only, Must be called under ft.lock.RLock() */
-func (ft *Table) updated(fn ExpireUpdateFunc, updateFrom int64) {
+/* Internal call only, Must be called under ft.RLock() */
+func (ft *Table) updated(updateFrom int64) {
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
 		fs := f.GetStatistics()
@@ -244,48 +255,30 @@ func (ft *Table) updated(fn ExpireUpdateFunc, updateFrom int64) {
 		}
 	}
 	/* Advise Clients */
-	fn(updatedFlows)
+	if ft.updateHandler != nil {
+		ft.updateHandler.callback(updatedFlows)
+	}
 	logging.GetLogger().Debugf("Send updated Flow %d", len(updatedFlows))
 }
 
 func (ft *Table) expireNow() {
 	const Now = int64(^uint64(0) >> 1)
-	ft.lock.Lock()
-	ft.expire(ft.manager.expire.callback, Now)
-	ft.lock.Unlock()
+	ft.Lock()
+	ft.expired(Now)
+	ft.Unlock()
 }
 
-/* Asynchrnously Register an expire callback fn with last updated flow 'since', each 'since' tick  */
-func (ft *Table) RegisterExpire(fn ExpireUpdateFunc, every time.Duration, windowSize time.Duration) {
-	ft.lock.Lock()
-	ft.manager.expire.Register(&tableManagerAsyncParam{ft.expire, fn, every, windowSize})
-	ft.lock.Unlock()
-}
-
-/* Asynchrnously call the callback fn with last updated flow 'since', each 'since' tick  */
-func (ft *Table) RegisterUpdated(fn ExpireUpdateFunc, since time.Duration, windowSize time.Duration) {
-	ft.lock.Lock()
-	ft.manager.updated.Register(&tableManagerAsyncParam{ft.updated, fn, since, windowSize + 2})
-	ft.lock.Unlock()
+func (ft *Table) Expire(now time.Time) {
+	timepoint := now.Unix() - int64((ft.expireHandler.duration).Seconds())
+	ft.Lock()
+	ft.expired(timepoint)
+	ft.Unlock()
 }
 
 func (ft *Table) RegisterDefault(fn func()) {
-	ft.lock.Lock()
+	ft.Lock()
 	ft.defaultFunc = fn
-	ft.lock.Unlock()
-}
-
-func (ft *Table) UnregisterAll() {
-	ft.lock.Lock()
-	if ft.manager.updated.running {
-		ft.manager.updated.Unregister()
-	}
-	if ft.manager.expire.running {
-		ft.manager.expire.Unregister()
-	}
-	ft.lock.Unlock()
-
-	ft.expireNow()
+	ft.Unlock()
 }
 
 func (ft *Table) Flush() {
@@ -361,12 +354,18 @@ func (ft *Table) Start() {
 	ft.wg.Add(1)
 	defer ft.wg.Done()
 
+	updateTicker := time.NewTicker(ft.updateHandler.every)
+	defer updateTicker.Stop()
+
+	expireTicker := time.NewTicker(ft.expireHandler.every)
+	defer expireTicker.Stop()
+
 	atomic.StoreInt64(&ft.state, common.RunningState)
 	for atomic.LoadInt64(&ft.state) == common.RunningState {
 		select {
-		case now := <-ft.manager.expire.ticker.C:
+		case now := <-expireTicker.C:
 			ft.Expire(now)
-		case now := <-ft.manager.updated.ticker.C:
+		case now := <-updateTicker.C:
 			ft.Updated(now)
 		case <-ft.flush:
 			ft.expireNow()

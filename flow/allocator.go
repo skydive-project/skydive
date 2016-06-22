@@ -22,11 +22,18 @@
 
 package flow
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type TableAllocator struct {
 	sync.RWMutex
-	tables map[*Table]bool
+	update       time.Duration
+	updateWindow time.Duration
+	expire       time.Duration
+	expireWindow time.Duration
+	tables       map[*Table]bool
 }
 
 func (a *TableAllocator) Flush() {
@@ -78,11 +85,13 @@ func (a *TableAllocator) QueryTable(query *TableQuery) *TableReply {
 	return a.aggregateReplies(query, replies)
 }
 
-func (a *TableAllocator) Alloc() *Table {
+func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc) *Table {
 	a.Lock()
 	defer a.Unlock()
 
-	t := NewTable()
+	updateHandler := NewFlowHandler(flowCallBack, a.update, a.update)
+	expireHandler := NewFlowHandler(flowCallBack, a.expire, a.expire)
+	t := NewTable(updateHandler, expireHandler)
 	a.tables[t] = true
 
 	return t
@@ -94,8 +103,12 @@ func (a *TableAllocator) Release(t *Table) {
 	a.Unlock()
 }
 
-func NewTableAllocator() *TableAllocator {
+func NewTableAllocator(update, updateWindow, expire, expireWindow time.Duration) *TableAllocator {
 	return &TableAllocator{
-		tables: make(map[*Table]bool),
+		update:       update,
+		updateWindow: updateWindow,
+		expire:       expire,
+		expireWindow: expireWindow,
+		tables:       make(map[*Table]bool),
 	}
 }

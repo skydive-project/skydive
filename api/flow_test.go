@@ -32,7 +32,7 @@ import (
 )
 
 func TestFlowTable_jsonFlowConversationEthernetPath(t *testing.T) {
-	ft := flow.NewTestFlowTableComplex(t)
+	ft := flow.NewTestFlowTableComplex(t, nil, nil)
 	fa := &FlowApi{
 		FlowTable: ft,
 	}
@@ -65,7 +65,7 @@ func TestFlowTable_jsonFlowConversationEthernetPath(t *testing.T) {
 }
 
 func test_jsonFlowDiscovery(t *testing.T, DiscoType discoType) {
-	ft := flow.NewTestFlowTableComplex(t)
+	ft := flow.NewTestFlowTableComplex(t, nil, nil)
 	fa := &FlowApi{
 		FlowTable: ft,
 	}

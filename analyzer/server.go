@@ -142,7 +142,6 @@ func (s *Server) ListenAndServe() {
 func (s *Server) Stop() {
 	s.running.Store(false)
 	s.FlowTable.Stop()
-	s.FlowTable.UnregisterAll()
 	s.WSServer.Stop()
 	s.HTTPServer.Stop()
 	if s.EmbeddedEtcd != nil {
@@ -224,6 +223,24 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
+	analyzerUpdate := config.GetConfig().GetInt("analyzer.flowtable_update")
+	analyzerExpire := config.GetConfig().GetInt("analyzer.flowtable_expire")
+	agentRatio := config.GetConfig().GetFloat64("analyzer.flowtable_agent_ratio")
+	if agentRatio == 0.0 {
+		agentRatio = 0.5
+	}
+
+	agentUpdate := int64(float64(analyzerUpdate) * agentRatio)
+	agentExpire := int64(float64(analyzerExpire) * agentRatio)
+
+	if err := etcdClient.SetInt64("/agent/config/flowtable_update", agentUpdate); err != nil {
+		return nil, err
+	}
+
+	if err := etcdClient.SetInt64("/agent/config/flowtable_expire", agentExpire); err != nil {
+		return nil, err
+	}
+
 	apiServer, err := api.NewApi(httpServer, etcdClient.KeysApi)
 	if err != nil {
 		return nil, err
@@ -257,7 +274,6 @@ func NewServerFromConfig() (*Server, error) {
 
 	pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
 
-	flowtable := flow.NewTable()
 	tableClient := flow.NewTableClient(wsServer)
 
 	server := &Server{
@@ -266,24 +282,20 @@ func NewServerFromConfig() (*Server, error) {
 		GraphServer:         gserver,
 		AlertServer:         aserver,
 		FlowMappingPipeline: pipeline,
-		FlowTable:           flowtable,
 		TableClient:         tableClient,
 		EmbeddedEtcd:        etcdServer,
 		EtcdClient:          etcdClient,
 	}
 	server.SetStorageFromConfig()
 
+	updateHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerUpdate), time.Second*time.Duration(agentUpdate))
+	expireHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerExpire), time.Second*time.Duration(agentExpire))
+	flowtable := flow.NewTable(updateHandler, expireHandler)
+	server.FlowTable = flowtable
+
 	api.RegisterTopologyApi("analyzer", g, httpServer, tableClient)
 
 	api.RegisterFlowApi("analyzer", flowtable, server.Storage, httpServer)
-
-	analyzerExpire := config.GetAnalyerExpire()
-	agentExpire := config.GetAgentExpire()
-	flowtable.RegisterExpire(server.flowExpireUpdate, analyzerExpire, agentExpire)
-
-	analyzerUpdate := config.GetAnalyerUpdate()
-	agentUpdate := config.GetAgentUpdate()
-	flowtable.RegisterUpdated(server.flowExpireUpdate, analyzerUpdate, agentUpdate)
 
 	return server, nil
 }

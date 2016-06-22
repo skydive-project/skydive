@@ -24,7 +24,10 @@ package etcd
 
 import (
 	"fmt"
+	"strconv"
 	"time"
+
+	"golang.org/x/net/context"
 
 	etcd "github.com/coreos/etcd/client"
 
@@ -34,6 +37,19 @@ import (
 type EtcdClient struct {
 	Client  *etcd.Client
 	KeysApi etcd.KeysAPI
+}
+
+func (client *EtcdClient) GetInt64(key string) (int64, error) {
+	resp, err := client.KeysApi.Get(context.Background(), key, nil)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseInt(resp.Node.Value, 10, 64)
+}
+
+func (client *EtcdClient) SetInt64(key string, value int64) error {
+	_, err := client.KeysApi.Set(context.Background(), key, strconv.FormatInt(value, 10), nil)
+	return err
 }
 
 func (client *EtcdClient) Stop() {

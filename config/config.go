@@ -30,7 +30,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/spf13/viper"
 	_ "github.com/spf13/viper/remote"
@@ -195,32 +194,4 @@ func GetAnalyzerClientAddr() (string, int, error) {
 		return addr, port, nil
 	}
 	return "", 0, nil
-}
-
-func GetAnalyerExpire() time.Duration {
-	return time.Duration(GetConfig().GetInt("analyzer.flowtable_expire")) * time.Second
-}
-
-func GetAnalyerUpdate() time.Duration {
-	return time.Duration(GetConfig().GetInt("analyzer.flowtable_update")) * time.Second
-}
-
-func GetAgentRatio() float64 {
-	agentRatio := GetConfig().GetFloat64("analyzer.flowtable_agent_ratio")
-	if agentRatio == 0.0 {
-		return 0.5
-	}
-	return agentRatio
-}
-
-func GetAgentExpire() time.Duration {
-	analyzerExpire := GetConfig().GetInt("analyzer.flowtable_expire")
-	agentExpire := int(float64(analyzerExpire) * GetAgentRatio())
-	return time.Duration(agentExpire) * time.Second
-}
-
-func GetAgentUpdate() time.Duration {
-	analyzerUpdate := GetConfig().GetInt("analyzer.flowtable_update")
-	agentUpdate := int(float64(analyzerUpdate) * GetAgentRatio())
-	return time.Duration(agentUpdate) * time.Second
 }

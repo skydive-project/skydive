@@ -49,6 +49,7 @@ type DefaultWSClientEventHandler struct {
 }
 
 type WSAsyncClient struct {
+	sync.RWMutex
 	Addr          string
 	Port          int
 	Path          string
@@ -161,9 +162,11 @@ func (c *WSAsyncClient) connect() {
 	c.sendHello()
 
 	// notify connected
+	c.RLock()
 	for _, l := range c.eventHandlers {
 		l.OnConnected()
 	}
+	c.RUnlock()
 
 	go func() {
 		for c.running.Load() == true {
@@ -189,9 +192,11 @@ func (c *WSAsyncClient) connect() {
 			if err != nil {
 				logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
 			} else {
+				c.RLock()
 				for _, e := range c.eventHandlers {
 					e.OnMessage(msg)
 				}
+				c.RUnlock()
 			}
 		case <-c.quit:
 			return
@@ -221,7 +226,9 @@ func (c *WSAsyncClient) Connect() {
 }
 
 func (c *WSAsyncClient) AddEventHandler(h WSClientEventHandler) {
+	c.Lock()
 	c.eventHandlers = append(c.eventHandlers, h)
+	c.Unlock()
 }
 
 func (c *WSAsyncClient) Disconnect() {
