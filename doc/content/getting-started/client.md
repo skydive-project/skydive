@@ -43,37 +43,50 @@ To access to the WebUI of agents or analyzer:
 http://<address>:<port>
 ```
 
+## Topology requests
+
+Skydive uses the Gremlin traversal language as a topology request language.
+Requests on the topology can be done as following :
+
+```console
+$ skydive client topology query --gremlin "G.V().Has('Name', 'br-int', 'Type' ,'ovsbridge')"
+[
+  {
+    "Host": "pc48.home",
+    "ID": "1e4fc503-312c-4e4f-4bf5-26263ce82e0b",
+    "Metadata": {
+      "Name": "br-int",
+      "Type": "ovsbridge",
+      "UUID": "c80cf5a7-998b-49ca-b2b2-7a1d050facc8"
+    }
+  }
+]
+```
+Refer to the [Gremlin section](/getting-started/gremlin/) for further
+explanations about the syntax and the functions available.
+
 ## Flow captures
 
-Flow captures can be started from the WebUI or thanks to the Skydive client :
+Flow captures can be started from the WebUI or thanks to the Skydive client.
+Skydive leverages the Gremlin language in order to select nodes on which a
+capture will be started. The gremlin expression is continuously evaluated which
+means that it is possible to define a capture on nodes that don't exist yet.
+It useful when you want to start a capture on all OpenvSwitch whatever the
+number of Skydive agents you will start.
+
+The following command start a capture on all docker0 interfaces
 
 ```console
-$ skydive client capture create --probepath <probe path>
+$ skydive client capture create --gremlin "G.V().Has('Name', 'docker0')"
+
+{
+  "UUID": "76de5697-106a-4f50-7455-47c2fa7a964f",
+  "GremlinQuery": "G.V().Has('Name', 'docker0')"
+}
+
 ```
 
-The probe path parameter references the interfaces where the flow probe will be
-started, so where the capture will be done.
-
-The format of a probe path follows the links between topology nodes from
-a host node to a target node :
-
-```console
-host1[Type=host]/.../node_nameN[Type=node_typeN]
-```
-
-The node name can be the name of :
-
-* a host
-* an interface
-* a namespace
-
-The node types can be :
-
-* host
-* netns
-* ovsbridge
-
-Currently target node types supported are :
+Node types that support captures are :
 
 * ovsbridge
 * veth
@@ -82,25 +95,15 @@ Currently target node types supported are :
 * tun
 * bridge
 
-To start a capture on the OVS bridge br1 on the host host1 the following probe
-path is used :
-
-```console
-$ skydive client capture create --probepath "host1[Type=host]/br1[Type=ovsbridge]""
-```
-
-A wilcard for the host node can be used in order to start a capture on
-all hosts.
-
-```console
-$ skydive client capture create --probepath "*/br1[Type=ovsbridge]"
-```
-
-A capture can be defined in advance and will start when a topology node will
-match.
-
 To delete a capture :
 
 ```console
-$ skydive client capture delete <probe path>
+$ skydive client capture delete <capture UUID>
+```
+
+The Flows Gremlin step can be used in order to see the flows captured. See the
+[Gremlin section](/getting-started/gremlin/) for further explanations.
+
+```console
+skydive client topology query --gremlin "G.V().Has('Name', 'docker0').Flows()"
 ```

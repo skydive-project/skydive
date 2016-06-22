@@ -19,7 +19,7 @@ googleAnalytics = ""
 
 	version = "1.0.0"
 	logo = "images/skydive-logo.png"
-	favicon = ""
+	favicon = "images/skydive-logo-16x16.png"
 
 	permalink = "#"
 
@@ -31,7 +31,7 @@ googleAnalytics = ""
 	highlight_css  = ""
 
 	[params.palette]
-			primary = "blue"
+			primary = "light-blue"
 			accent  = "white"
 
   [params.font]
@@ -66,6 +66,12 @@ googleAnalytics = ""
 	parent = "started"
 	url = "getting-started/client/"
   weight = 120
+
+[[menu.main]]
+  name = "Gremlin query language"
+	parent = "started"
+	url = "getting-started/gremlin/"
+  weight = 130
 
 [[menu.main]]
   name = "Devstack"
