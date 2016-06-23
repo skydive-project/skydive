@@ -293,7 +293,7 @@ func NewServerFromConfig() (*Server, error) {
 	flowtable := flow.NewTable(updateHandler, expireHandler)
 	server.FlowTable = flowtable
 
-	api.RegisterTopologyApi("analyzer", g, httpServer, tableClient)
+	api.RegisterTopologyApi("analyzer", g, httpServer, tableClient, server.Storage)
 
 	api.RegisterFlowApi("analyzer", flowtable, server.Storage, httpServer)
 

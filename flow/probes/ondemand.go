@@ -30,6 +30,7 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/topology/graph/traversal"
 )
 
 type OnDemandProbeListener struct {
@@ -106,7 +107,7 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
 }
 
 func (o *OnDemandProbeListener) matchGremlinExpr(node *graph.Node, gremlin string) bool {
-	tr := graph.NewGremlinTraversalParser(strings.NewReader(gremlin), o.Graph)
+	tr := traversal.NewGremlinTraversalParser(strings.NewReader(gremlin), o.Graph)
 	ts, err := tr.Parse()
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
@@ -175,7 +176,7 @@ func (o *OnDemandProbeListener) onCaptureAdded(capture *api.Capture) {
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
-	tr := graph.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), o.Graph)
+	tr := traversal.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), o.Graph)
 	ts, err := tr.Parse()
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
@@ -207,7 +208,7 @@ func (o *OnDemandProbeListener) onCaptureDeleted(capture *api.Capture) {
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
-	tr := graph.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), o.Graph)
+	tr := traversal.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), o.Graph)
 	ts, err := tr.Parse()
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())

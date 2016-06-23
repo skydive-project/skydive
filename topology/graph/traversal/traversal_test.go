@@ -20,32 +20,48 @@
  *
  */
 
-package graph
+package traversal
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
-func newTrasversalGraph(t *testing.T) *Graph {
+func newGraph(t *testing.T) *graph.Graph {
+	b, err := graph.NewMemoryBackend()
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	g, err := graph.NewGraph(b)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	return g
+}
+
+func newTransversalGraph(t *testing.T) *graph.Graph {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
-	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
-	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
+	n1 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 1, "Type": "intf"})
+	n2 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 2, "Type": "intf"})
+	n3 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 3})
+	n4 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 4, "Name": "Node4"})
 
-	g.Link(n1, n2, Metadata{"Direction": "Left"})
-	g.Link(n2, n3, Metadata{"Direction": "Left"})
+	g.Link(n1, n2, graph.Metadata{"Direction": "Left"})
+	g.Link(n2, n3, graph.Metadata{"Direction": "Left"})
 	g.Link(n3, n4)
 	g.Link(n1, n4)
-	g.Link(n1, n3, Metadata{"Mode": "Direct"})
+	g.Link(n1, n3, graph.Metadata{"Mode": "Direct"})
 
 	return g
 }
 
 func TestBasicTraversal(t *testing.T) {
-	g := newTrasversalGraph(t)
+	g := newTransversalGraph(t)
 
 	tr := NewGraphTraversal(g)
 
@@ -79,7 +95,7 @@ func TestBasicTraversal(t *testing.T) {
 		t.Fatalf("should return 1 node, returned: %d", len(tv.Values()))
 	}
 
-	node := tv.Values()[0].(*Node)
+	node := tv.Values()[0].(*graph.Node)
 	if node.Metadata()["Name"] != "Node4" {
 		t.Fatalf("Should return Node4, returned: %v", tv.Values())
 	}
@@ -114,7 +130,7 @@ func TestBasicTraversal(t *testing.T) {
 		t.Fatalf("should return 1 node, returned: %d", len(tv.Values()))
 	}
 
-	node = tv.Values()[0].(*Node)
+	node = tv.Values()[0].(*graph.Node)
 	if node.Metadata()["Value"] != 3 {
 		t.Fatalf("Should return Node3, returned: %v", tv.Values())
 	}
@@ -127,7 +143,7 @@ func TestBasicTraversal(t *testing.T) {
 }
 
 func TestTraversalWithin(t *testing.T) {
-	g := newTrasversalGraph(t)
+	g := newTransversalGraph(t)
 
 	tr := NewGraphTraversal(g)
 
@@ -138,7 +154,7 @@ func TestTraversalWithin(t *testing.T) {
 }
 
 func TestTraversalNe(t *testing.T) {
-	g := newTrasversalGraph(t)
+	g := newTransversalGraph(t)
 
 	tr := NewGraphTraversal(g)
 
@@ -156,7 +172,7 @@ func TestTraversalNe(t *testing.T) {
 }
 
 func TestTraversalBoth(t *testing.T) {
-	g := newTrasversalGraph(t)
+	g := newTransversalGraph(t)
 
 	tr := NewGraphTraversal(g)
 
@@ -168,44 +184,44 @@ func TestTraversalBoth(t *testing.T) {
 }
 
 func TestTraversalShortestPathTo(t *testing.T) {
-	g := newTrasversalGraph(t)
+	g := newTransversalGraph(t)
 
 	tr := NewGraphTraversal(g)
 
-	tv := tr.V().Has("Value", 1).ShortestPathTo(Metadata{"Value": 3})
+	tv := tr.V().Has("Value", 1).ShortestPathTo(graph.Metadata{"Value": 3})
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 path, returned: %v", tv.Values())
 	}
 
-	path := tv.Values()[0].([]*Node)
+	path := tv.Values()[0].([]*graph.Node)
 	if len(path) != 2 {
 		t.Fatalf("Should return a path len of 2, returned: %v", len(path))
 	}
 
 	// next test
-	tv = tr.V().Has("Value", Within(1, 2)).ShortestPathTo(Metadata{"Value": 3})
+	tv = tr.V().Has("Value", Within(1, 2)).ShortestPathTo(graph.Metadata{"Value": 3})
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 paths, returned: %v", tv.Values())
 	}
 
-	path = tv.Values()[0].([]*Node)
+	path = tv.Values()[0].([]*graph.Node)
 	if len(path) != 2 {
 		t.Fatalf("Should return a path len of 2, returned: %v", len(path))
 	}
 
 	// next test
-	tv = tr.V().Has("Value", 1).ShortestPathTo(Metadata{"Value": 3}, Metadata{"Direction": "Left"})
+	tv = tr.V().Has("Value", 1).ShortestPathTo(graph.Metadata{"Value": 3}, graph.Metadata{"Direction": "Left"})
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 path, returned: %v", tv.Values())
 	}
 
-	path = tv.Values()[0].([]*Node)
+	path = tv.Values()[0].([]*graph.Node)
 	if len(path) != 3 {
 		t.Fatalf("Should return a path len of 3, returned: %v", len(path))
 	}
 }
 
-func execTraversalQuery(t *testing.T, g *Graph, query string) GraphTraversalStep {
+func execTraversalQuery(t *testing.T, g *graph.Graph, query string) GraphTraversalStep {
 	ts, err := NewGremlinTraversalParser(strings.NewReader(query), g).Parse()
 	if err != nil {
 		t.Fatalf("%s: %s", query, err.Error())
@@ -220,7 +236,7 @@ func execTraversalQuery(t *testing.T, g *Graph, query string) GraphTraversalStep
 }
 
 func TestTraversalParser(t *testing.T) {
-	g := newTrasversalGraph(t)
+	g := newTransversalGraph(t)
 
 	// next traversal test
 	query := `G.V().Has("Type", "intf")`
@@ -243,7 +259,7 @@ func TestTraversalParser(t *testing.T) {
 		t.Fatalf("should return 1 node, returned: %d, %v", len(res.Values()), res.Values())
 	}
 
-	node := res.Values()[0].(*Node)
+	node := res.Values()[0].(*graph.Node)
 	if node.Metadata()["Name"] != "Node4" {
 		t.Fatalf("Should return Node4, returned: %v", res.Values())
 	}
@@ -289,11 +305,11 @@ func TestTraversalParser(t *testing.T) {
 	if len(res.Values()) != 1 {
 		t.Fatalf("should return 1 node, returned: %d, %v", len(res.Values()), res.Values())
 	}
-	node = res.Values()[0].(*Node)
+	node = res.Values()[0].(*graph.Node)
 
 	query = `G.V("` + string(node.ID) + `")`
 	res = execTraversalQuery(t, g, query)
-	if len(res.Values()) != 1 || res.Values()[0].(*Node).ID != node.ID {
+	if len(res.Values()) != 1 || res.Values()[0].(*graph.Node).ID != node.ID {
 		t.Fatalf("Should return 1 nodes, returned: %v", res.Values())
 	}
 

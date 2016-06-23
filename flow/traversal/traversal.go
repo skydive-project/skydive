@@ -20,40 +20,45 @@
  *
  */
 
-package flow
+package traversal
 
 import (
 	"bytes"
 	"encoding/json"
 
+	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
+	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/topology/graph/traversal"
 )
 
 type FlowTraversalExtension struct {
-	FlowToken   graph.Token
-	TableClient *TableClient
+	FlowToken   traversal.Token
+	TableClient *flow.TableClient
+	Storage     storage.Storage
 }
 
 type FlowGremlinTraversalStep struct {
-	TableClient *TableClient
+	TableClient *flow.TableClient
+	Storage     storage.Storage
 }
 
 type FlowTraversalStep struct {
-	GraphTraversal *graph.GraphTraversal
-	flows          []*Flow
+	GraphTraversal *traversal.GraphTraversal
+	flows          []*flow.Flow
 }
 
-func (f *FlowTraversalStep) Out(s ...interface{}) *graph.GraphTraversalV {
+func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
 	for _, flow := range f.flows {
 		if flow.IfDstNodeUUID != "" && flow.IfDstNodeUUID != "*" {
 			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID))
 			if node != nil {
-				m, err := graph.SliceToMetadata(s...)
+				m, err := traversal.SliceToMetadata(s...)
 				if err != nil {
-					return graph.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+					return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 				}
 
 				if node.MatchMetadata(m) {
@@ -63,19 +68,19 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *graph.GraphTraversalV {
 		}
 	}
 
-	return graph.NewGraphTraversalV(f.GraphTraversal, nodes)
+	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
-func (f *FlowTraversalStep) In(s ...interface{}) *graph.GraphTraversalV {
+func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
 	for _, flow := range f.flows {
 		if flow.IfSrcNodeUUID != "" && flow.IfSrcNodeUUID != "*" {
 			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID))
 			if node != nil {
-				m, err := graph.SliceToMetadata(s...)
+				m, err := traversal.SliceToMetadata(s...)
 				if err != nil {
-					return graph.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+					return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 				}
 
 				if node.MatchMetadata(m) {
@@ -85,7 +90,7 @@ func (f *FlowTraversalStep) In(s ...interface{}) *graph.GraphTraversalV {
 		}
 	}
 
-	return graph.NewGraphTraversalV(f.GraphTraversal, nodes)
+	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
 func (f *FlowTraversalStep) Values() []interface{} {
@@ -144,48 +149,66 @@ func (p *FlowTraversalStep) Error() error {
 	return nil
 }
 
-func NewFlowTraversalExtension(client *TableClient) *FlowTraversalExtension {
+func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
 	return &FlowTraversalExtension{
-		FlowToken:   graph.Token(1001),
+		FlowToken:   traversal.Token(1001),
 		TableClient: client,
+		Storage:     storage,
 	}
 }
 
-func (e *FlowTraversalExtension) ScanIdent(s string) (graph.Token, bool) {
+func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 	switch s {
 	case "FLOWS":
 		return e.FlowToken, true
 	}
-	return graph.IDENT, false
+	return traversal.IDENT, false
 }
 
-func (e *FlowTraversalExtension) ParseStep(t graph.Token, p graph.GremlinTraversalStepParams) (graph.GremlinTraversalStep, error) {
+func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalStepParams) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.FlowToken:
-		return &FlowGremlinTraversalStep{TableClient: e.TableClient}, nil
+		return &FlowGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
 	}
 
 	return nil, nil
 }
 
-func (s *FlowGremlinTraversalStep) Exec(last graph.GraphTraversalStep) (graph.GraphTraversalStep, error) {
+func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	switch last.(type) {
-	case *graph.GraphTraversalV:
-		tv := last.(*graph.GraphTraversalV)
+	case *traversal.GraphTraversalV:
+		tv := last.(*traversal.GraphTraversalV)
 
 		nodes := make([]*graph.Node, len(tv.Values()))
 		for i, v := range tv.Values() {
 			nodes[i] = v.(*graph.Node)
 		}
 
-		flows, err := s.TableClient.LookupFlowsByProbeNode(nodes...)
+		var flows []*flow.Flow
+		var err error
+
+		context := tv.GraphTraversal.Graph.GetContext()
+		if context.Time != nil && s.Storage != nil {
+			filters := storage.NewFilters()
+			filters.Range["Statistics.Start"] = storage.RangeFilter{Lte: context.Time.Unix()}
+			filters.Range["Statistics.Last"] = storage.RangeFilter{Gte: context.Time.Unix()}
+			for _, node := range nodes {
+				filters.Term["ProbeNodeUUID"] = node.ID
+				f, err := s.Storage.SearchFlows(filters)
+				if err != nil {
+					return nil, traversal.ExecutionError
+				}
+				flows = append(flows, f...)
+			}
+		} else {
+			flows, err = s.TableClient.LookupFlowsByProbeNode(nodes...)
+		}
 		if err != nil {
 			logging.GetLogger().Errorf("Error while looking for flows for nodes: %v, %s", nodes, err.Error())
-			return nil, graph.ExecutionError
+			return nil, traversal.ExecutionError
 		}
-
 		return &FlowTraversalStep{GraphTraversal: tv.GraphTraversal, flows: flows}, nil
 	}
 
-	return nil, graph.ExecutionError
+	return nil, traversal.ExecutionError
 }

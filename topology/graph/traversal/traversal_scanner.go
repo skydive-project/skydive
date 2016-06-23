@@ -20,7 +20,7 @@
  *
  */
 
-package graph
+package traversal
 
 import (
 	"bufio"

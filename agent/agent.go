@@ -195,7 +195,7 @@ func NewAgent() *Agent {
 	}
 	root := g.NewNode(graph.Identifier(hostname), m)
 
-	api.RegisterTopologyApi("agent", g, hserver, nil)
+	api.RegisterTopologyApi("agent", g, hserver, nil, nil)
 
 	gserver := graph.NewServer(g, wsServer)
 

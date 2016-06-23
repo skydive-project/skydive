@@ -36,6 +36,7 @@ import (
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/tests/helper"
 	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/topology/graph/traversal"
 )
 
 const confTopology = `---
@@ -282,7 +283,7 @@ func TestBridgeOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test1", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -329,7 +330,7 @@ func TestPatchOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test2", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -370,7 +371,7 @@ func TestInterfaceOVS(t *testing.T) {
 		{"ovs-vsctl del-br br-test1", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -378,9 +379,9 @@ func TestInterfaceOVS(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed {
-			tv := tr.V().Has("Type", "internal", "Name", "intf1", "Driver", "openvswitch", "UUID", graph.Ne(""), "MAC", graph.Ne(""))
+			tv := tr.V().Has("Type", "internal", "Name", "intf1", "Driver", "openvswitch", "UUID", traversal.Ne(""), "MAC", traversal.Ne(""))
 
-			if len(tv.Values()) == 1 && len(tr.V().Has("Name", "intf1", "Type", graph.Ne("ovsport")).Values()) == 1 {
+			if len(tv.Values()) == 1 && len(tr.V().Has("Name", "intf1", "Type", traversal.Ne("ovsport")).Values()) == 1 {
 				testPassed = true
 				ws.Close()
 			}
@@ -414,7 +415,7 @@ func TestBondOVS(t *testing.T) {
 		{"ip link del intf2", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -454,7 +455,7 @@ func TestVeth(t *testing.T) {
 		{"ip link del vm1-veth0", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -497,7 +498,7 @@ func TestBridge(t *testing.T) {
 		{"ip link del intf1", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -539,7 +540,7 @@ func TestMacNameUpdate(t *testing.T) {
 		{"ip link del vm1-veth0", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -578,7 +579,7 @@ func TestNameSpace(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -619,7 +620,7 @@ func TestNameSpaceVeth(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -663,7 +664,7 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -703,7 +704,7 @@ func TestDockerSimple(t *testing.T) {
 		{"docker rm -f test-skydive-docker", false},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -745,7 +746,7 @@ func TestDockerShareNamespace(t *testing.T) {
 		{"docker rm -f test-skydive-docker2", false},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -759,7 +760,7 @@ func TestDockerShareNamespace(t *testing.T) {
 				t.Error("There should be only one namespace managed by Docker")
 				ws.Close()
 			} else if len(tv.Values()) == 1 {
-				tv = tv.Out().Has("Type", "container", "Docker.ContainerName", graph.Within("/test-skydive-docker", "/test-skydive-docker2"))
+				tv = tv.Out().Has("Type", "container", "Docker.ContainerName", traversal.Within("/test-skydive-docker", "/test-skydive-docker2"))
 
 				if len(tv.Values()) == 2 {
 					testPassed = true
@@ -791,7 +792,7 @@ func TestDockerNetHost(t *testing.T) {
 		{"docker rm -f test-skydive-docker", false},
 	}
 
-	tr := graph.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {

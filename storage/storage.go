@@ -26,11 +26,28 @@ import (
 	"github.com/redhat-cip/skydive/flow"
 )
 
-type Filters map[string]interface{}
+type RangeFilter struct {
+	Gt  interface{} `json:"gt,omitempty"`
+	Lt  interface{} `json:"lt,omitempty"`
+	Gte interface{} `json:"gte,omitempty"`
+	Lte interface{} `json:"lte,omitempty"`
+}
+
+type Filters struct {
+	Term  map[string]interface{}
+	Range map[string]interface{}
+}
 
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(filters Filters) ([]*flow.Flow, error)
+	SearchFlows(filters *Filters) ([]*flow.Flow, error)
 	Stop()
+}
+
+func NewFilters() *Filters {
+	return &Filters{
+		Term:  make(map[string]interface{}),
+		Range: make(map[string]interface{}),
+	}
 }

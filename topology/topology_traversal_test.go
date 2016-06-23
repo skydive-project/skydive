@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/topology/graph/traversal"
 )
 
 func TestGraphPathTraversal(t *testing.T) {
@@ -41,7 +42,7 @@ func TestGraphPathTraversal(t *testing.T) {
 
 	query := `G.V().Has("Name", "N3").GraphPath()`
 
-	tp := graph.NewGremlinTraversalParser(strings.NewReader(query), g)
+	tp := traversal.NewGremlinTraversalParser(strings.NewReader(query), g)
 	tp.AddTraversalExtension(NewTopologyTraversalExtension())
 
 	ts, err := tp.Parse()

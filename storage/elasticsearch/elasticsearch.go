@@ -72,12 +72,12 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error) {
+func (c *ElasticSearchStorage) SearchFlows(filters *storage.Filters) ([]*flow.Flow, error) {
 	if c.started.Load() != true {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
 
-	query := map[string]interface{}{
+	request := map[string]interface{}{
 		"sort": map[string]interface{}{
 			"Statistics.Last": map[string]string{
 				"order": "desc",
@@ -86,22 +86,45 @@ func (c *ElasticSearchStorage) SearchFlows(filters storage.Filters) ([]*flow.Flo
 		"from": 0,
 		"size": 5,
 	}
-	if len(filters) > 0 {
-		query = map[string]interface{}{
-			"query": map[string]interface{}{
-				"term": filters,
-			},
-			"sort": map[string]interface{}{
-				"Statistics.Last": map[string]string{
-					"order": "desc",
-				},
-			},
-			"from": 0,
-			"size": 5,
+
+	if len(filters.Term)+len(filters.Range) > 0 {
+		var musts []interface{}
+		if len(filters.Range) > 0 {
+			for k, v := range filters.Range {
+				term := map[string]interface{}{
+					"range": map[string]interface{}{
+						k: v,
+					},
+				}
+				musts = append(musts, term)
+			}
 		}
+
+		if len(filters.Term) > 0 {
+			for k, v := range filters.Term {
+				term := map[string]interface{}{
+					"term": map[string]interface{}{
+						k: v,
+					},
+				}
+				musts = append(musts, term)
+			}
+		}
+
+		query := map[string]interface{}{
+			"bool": map[string]interface{}{
+				"must": musts,
+			},
+		}
+
+		// if len(filters.Term) > 0 {
+		// 	query["term"] = filters.Term
+		// }
+
+		request["query"] = query
 	}
 
-	q, err := json.Marshal(query)
+	q, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
 	}

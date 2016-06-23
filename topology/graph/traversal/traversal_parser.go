@@ -20,7 +20,7 @@
  *
  */
 
-package graph
+package traversal
 
 import (
 	"errors"
@@ -28,6 +28,8 @@ import (
 	"io"
 	"reflect"
 	"strconv"
+
+	"github.com/redhat-cip/skydive/topology/graph"
 )
 
 type (
@@ -64,7 +66,7 @@ var (
 )
 
 type GremlinTraversalParser struct {
-	Graph   *Graph
+	Graph   *graph.Graph
 	Reader  io.Reader
 	scanner *GremlinTraversalScanner
 	buf     struct {
@@ -102,7 +104,7 @@ func (s *gremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalSte
 	switch len(s.params) {
 	case 1:
 		if k, ok := s.params[0].(string); ok {
-			return g.V(Identifier(k)), nil
+			return g.V(graph.Identifier(k)), nil
 		}
 		return nil, ExecutionError
 	case 0:
@@ -205,16 +207,16 @@ func (s *gremlinTraversalStepInE) Exec(last GraphTraversalStep) (GraphTraversalS
 func (s *gremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
-		if _, ok := s.params[0].(Metadata); !ok {
+		if _, ok := s.params[0].(graph.Metadata); !ok {
 			return nil, ExecutionError
 		}
 		if len(s.params) > 1 {
-			if _, ok := s.params[1].(Metadata); !ok {
+			if _, ok := s.params[1].(graph.Metadata); !ok {
 				return nil, ExecutionError
 			}
-			return last.(*GraphTraversalV).ShortestPathTo(s.params[0].(Metadata), s.params[1].(Metadata)), nil
+			return last.(*GraphTraversalV).ShortestPathTo(s.params[0].(graph.Metadata), s.params[1].(graph.Metadata)), nil
 		}
-		return last.(*GraphTraversalV).ShortestPathTo(s.params[0].(Metadata)), nil
+		return last.(*GraphTraversalV).ShortestPathTo(s.params[0].(graph.Metadata)), nil
 	}
 
 	return nil, ExecutionError
@@ -317,7 +319,7 @@ func (p *GremlinTraversalParser) AddTraversalExtension(e GremlinTraversalExtensi
 	p.extensions = append(p.extensions, e)
 }
 
-func NewGremlinTraversalParser(r io.Reader, g *Graph) *GremlinTraversalParser {
+func NewGremlinTraversalParser(r io.Reader, g *graph.Graph) *GremlinTraversalParser {
 	return &GremlinTraversalParser{
 		Graph:  g,
 		Reader: r,
@@ -451,8 +453,10 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 func (p *GremlinTraversalParser) Parse() (*GremlinTraversalSequence, error) {
 	p.scanner = NewGremlinTraversalScanner(p.Reader, p.extensions)
 
+	graph := p.Graph.WithContext(graph.GraphContext{})
+
 	seq := &GremlinTraversalSequence{
-		GraphTraversal: NewGraphTraversal(p.Graph),
+		GraphTraversal: NewGraphTraversal(graph),
 		extensions:     p.extensions,
 	}
 

@@ -20,7 +20,7 @@
  *
  */
 
-package graph
+package traversal
 
 type GremlinTraversalExtension interface {
 	ScanIdent(s string) (Token, bool)

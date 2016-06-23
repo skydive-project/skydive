@@ -108,11 +108,11 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *OrientDBStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error) {
+func (c *OrientDBStorage) SearchFlows(filters *storage.Filters) ([]*flow.Flow, error) {
 	sql := "SELECT FROM Flow"
-	if len(filters) > 0 {
+	if len(filters.Range)+len(filters.Term) > 0 {
 		var filterList []string
-		for name, value := range filters {
+		for name, value := range filters.Term {
 			marshal, err := json.Marshal(value)
 			if err != nil {
 				return nil, err

@@ -30,9 +30,12 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	"github.com/redhat-cip/skydive/flow"
+	ftraversal "github.com/redhat-cip/skydive/flow/traversal"
 	shttp "github.com/redhat-cip/skydive/http"
+	"github.com/redhat-cip/skydive/storage"
 	"github.com/redhat-cip/skydive/topology"
 	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/topology/graph/traversal"
 	"github.com/redhat-cip/skydive/validator"
 )
 
@@ -40,6 +43,7 @@ type TopologyApi struct {
 	Service     string
 	Graph       *graph.Graph
 	TableClient *flow.TableClient
+	Storage     storage.Storage
 }
 
 type Topology struct {
@@ -78,10 +82,10 @@ func (t *TopologyApi) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	tr := graph.NewGremlinTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph)
+	tr := traversal.NewGremlinTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph)
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	if t.TableClient != nil {
-		tr.AddTraversalExtension(flow.NewFlowTraversalExtension(t.TableClient))
+		tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(t.TableClient, t.Storage))
 	}
 
 	ts, err := tr.Parse()
@@ -123,11 +127,12 @@ func (t *TopologyApi) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterTopologyApi(s string, g *graph.Graph, r *shttp.Server, tc *flow.TableClient) {
+func RegisterTopologyApi(s string, g *graph.Graph, r *shttp.Server, tc *flow.TableClient, st storage.Storage) {
 	t := &TopologyApi{
 		Service:     s,
 		Graph:       g,
 		TableClient: tc,
+		Storage:     st,
 	}
 
 	t.registerEndpoints(r)

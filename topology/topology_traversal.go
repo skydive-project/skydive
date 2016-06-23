@@ -26,10 +26,11 @@ import (
 	"encoding/json"
 
 	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/redhat-cip/skydive/topology/graph/traversal"
 )
 
 type TopologyTraversalExtension struct {
-	graphPathToken graph.Token
+	graphPathToken traversal.Token
 }
 
 type GraphPathGremlinTraversalStep struct {
@@ -57,19 +58,19 @@ func (p *GraphPathTraversalStep) Error() error {
 
 func NewTopologyTraversalExtension() *TopologyTraversalExtension {
 	return &TopologyTraversalExtension{
-		graphPathToken: graph.Token(1000),
+		graphPathToken: traversal.Token(1000),
 	}
 }
 
-func (e *TopologyTraversalExtension) ScanIdent(s string) (graph.Token, bool) {
+func (e *TopologyTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 	switch s {
 	case "GRAPHPATH":
 		return e.graphPathToken, true
 	}
-	return graph.IDENT, false
+	return traversal.IDENT, false
 }
 
-func (e *TopologyTraversalExtension) ParseStep(t graph.Token, p graph.GremlinTraversalStepParams) (graph.GremlinTraversalStep, error) {
+func (e *TopologyTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalStepParams) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.graphPathToken:
 		return &GraphPathGremlinTraversalStep{}, nil
@@ -78,12 +79,12 @@ func (e *TopologyTraversalExtension) ParseStep(t graph.Token, p graph.GremlinTra
 	return nil, nil
 }
 
-func (s *GraphPathGremlinTraversalStep) Exec(last graph.GraphTraversalStep) (graph.GraphTraversalStep, error) {
+func (s *GraphPathGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	paths := []NodePath{}
 
 	switch last.(type) {
-	case *graph.GraphTraversalV:
-		tv := last.(*graph.GraphTraversalV)
+	case *traversal.GraphTraversalV:
+		tv := last.(*traversal.GraphTraversalV)
 		for _, i := range tv.Values() {
 			node := i.(*graph.Node)
 
@@ -96,5 +97,5 @@ func (s *GraphPathGremlinTraversalStep) Exec(last graph.GraphTraversalStep) (gra
 		return &GraphPathTraversalStep{paths: paths}, nil
 	}
 
-	return nil, graph.ExecutionError
+	return nil, traversal.ExecutionError
 }

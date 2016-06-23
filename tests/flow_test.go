@@ -133,7 +133,7 @@ func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *TestStorage) SearchFlows(filters storage.Filters) ([]*flow.Flow, error) {
+func (s *TestStorage) SearchFlows(filters *storage.Filters) ([]*flow.Flow, error) {
 	return nil, nil
 }
 
