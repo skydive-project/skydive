@@ -19,6 +19,10 @@
  *
  */
 
+// Package ethtool  aims to provide a library giving a simple access to the
+// Linux SIOCETHTOOL ioctl operations. It can be used to retrieve informations
+// from a network device like statistics, driver related informations or
+// even the peer of a VETH interface.
 package ethtool
 
 import (
@@ -28,10 +32,12 @@ import (
 	"unsafe"
 )
 
+// Maximum size of an interface name
 const (
 	IFNAMSIZ = 16
 )
 
+// ioctl ethtool request
 const (
 	SIOCETHTOOL = 0x8946
 )
@@ -45,7 +51,8 @@ const (
 	ETHTOOL_GSTATS   = 0x0000001d
 )
 
-// MAX_GSTRINGS maximum number of stats entries that ethtool can retrieve currently.
+// MAX_GSTRINGS maximum number of stats entries that ethtool can
+// retrieve currently.
 const (
 	MAX_GSTRINGS = 100
 )
@@ -83,11 +90,13 @@ type ethtoolStats struct {
 	data    [MAX_GSTRINGS]uint64
 }
 
+// DriverName returns the driver name of the given interface.
 func DriverName(intf string) (string, error) {
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_IP)
 	if err != nil {
 		return "", err
 	}
+	defer syscall.Close(fd)
 
 	drvinfo := ethtoolDrvInfo{
 		cmd: ETHTOOL_GDRVINFO,
@@ -109,12 +118,13 @@ func DriverName(intf string) (string, error) {
 	return string(bytes.Trim(drvinfo.driver[:], "\x00")), nil
 }
 
-// Stats retrieves stats of the given interface name
+// Stats retrieves stats of the given interface name.
 func Stats(intf string) (map[string]uint64, error) {
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_IP)
 	if err != nil {
 		return nil, err
 	}
+	defer syscall.Close(fd)
 
 	drvinfo := ethtoolDrvInfo{
 		cmd: ETHTOOL_GDRVINFO,
