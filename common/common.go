@@ -22,7 +22,10 @@
 
 package common
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 const (
 	StoppedState = iota
@@ -112,4 +115,22 @@ func CrossTypeEqual(a interface{}, b interface{}) bool {
 	default:
 		return a == b
 	}
+}
+
+// Retry tries to execute the given function until a success applying a delay
+// between each try
+func Retry(fnc func() error, try int, delay time.Duration) error {
+	var err error
+	if err = fnc(); err == nil {
+		return nil
+	}
+
+	for i := 0; i != try; i++ {
+		time.Sleep(delay)
+		if err = fnc(); err == nil {
+			return nil
+		}
+	}
+
+	return err
 }

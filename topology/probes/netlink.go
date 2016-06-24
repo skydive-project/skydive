@@ -23,6 +23,7 @@
 package probes
 
 import (
+	"errors"
 	"net"
 	"strings"
 	"sync"
@@ -107,42 +108,29 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	}
 
 	if index, ok := stats["peer_ifindex"]; ok {
-		peerResolver := func() bool {
+		peerResolver := func() error {
 			// re get the interface from the graph since the interface could have been deleted
 			if u.Graph.GetNode(intf.ID) == nil {
-				return false
+				return errors.New("Node not found")
 			}
 
 			// got more than 1 peer, unable to find the right one, wait for the other to discover
 			peer := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": int64(index), "Type": "veth"})
 			if peer != nil && !u.Graph.AreLinked(peer, intf) {
 				u.Graph.Link(peer, intf, graph.Metadata{"RelationType": "layer2", "Type": "veth"})
-				return true
+				return nil
 			}
-			return false
+			return errors.New("Nodes not linked")
 		}
 
 		if int64(index) > intf.Metadata()["IfIndex"].(int64) {
-			ok := peerResolver()
-			if !ok {
-				// retry few seconds later since the right peer can be insert later
-				go func() {
-					ok := false
-					try := 0
-
-					for {
-						if ok || try > 10 {
-							return
-						}
-						time.Sleep(time.Millisecond * 200)
-
-						u.Graph.Lock()
-						ok = peerResolver()
-						u.Graph.Unlock()
-
-						try++
-					}
-				}()
+			if err := peerResolver(); err != nil {
+				retryFnc := func() error {
+					u.Graph.Lock()
+					defer u.Graph.Unlock()
+					return peerResolver()
+				}
+				go common.Retry(retryFnc, 10, 200*time.Millisecond)
 			}
 		}
 	}
@@ -326,13 +314,18 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 }
 
 func (u *NetLinkProbe) onLinkAdded(index int) {
-	link, err := netlink.LinkByIndex(index)
-	if err != nil {
-		logging.GetLogger().Warningf("Failed to find interface %d: %s", index, err.Error())
-		return
+	fnc := func() error {
+		link, err := netlink.LinkByIndex(index)
+		if err != nil {
+			return err
+		}
+		u.addLinkToTopology(link)
+		return nil
 	}
 
-	u.addLinkToTopology(link)
+	if err := common.Retry(fnc, 1, time.Millisecond*200); err != nil {
+		logging.GetLogger().Warningf("Failed to find interface %d: %s", index, err.Error())
+	}
 }
 
 func (u *NetLinkProbe) onLinkDeleted(index int) {
