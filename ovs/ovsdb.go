@@ -57,6 +57,7 @@ type OvsMonitor struct {
 	bridgeCache     map[string]string
 	interfaceCache  map[string]string
 	portCache       map[string]string
+	columnsExcluded map[string]bool
 }
 
 type Notifier struct {
@@ -278,7 +279,9 @@ func (o *OvsMonitor) setMonitorRequests(table string, r *map[string]libovsdb.Mon
 
 	var columns []string
 	for column := range schema.Tables[table].Columns {
-		columns = append(columns, column)
+		if _, found := o.columnsExcluded[column]; !found {
+			columns = append(columns, column)
+		}
 	}
 
 	requests := *r
@@ -300,6 +303,10 @@ func (o *OvsMonitor) AddMonitorHandler(handler OvsMonitorHandler) {
 	defer o.Unlock()
 
 	o.MonitorHandlers = append(o.MonitorHandlers, handler)
+}
+
+func (o *OvsMonitor) ExcludeColumn(column string) {
+	o.columnsExcluded[column] = true
 }
 
 func (o *OvsMonitor) StartMonitoring() error {
@@ -346,10 +353,11 @@ func (o *OvsMonitor) StopMonitoring() {
 
 func NewOvsMonitor(protcol string, target string) *OvsMonitor {
 	return &OvsMonitor{
-		Protocol:       protcol,
-		Target:         target,
-		bridgeCache:    make(map[string]string),
-		interfaceCache: make(map[string]string),
-		portCache:      make(map[string]string),
+		Protocol:        protcol,
+		Target:          target,
+		bridgeCache:     make(map[string]string),
+		interfaceCache:  make(map[string]string),
+		portCache:       make(map[string]string),
+		columnsExcluded: make(map[string]bool),
 	}
 }

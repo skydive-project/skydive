@@ -407,6 +407,9 @@ func (o *OvsdbProbe) Stop() {
 }
 
 func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProbe {
+	mon := ovsdb.NewOvsMonitor(p, t)
+	mon.ExcludeColumn("statistics")
+
 	o := &OvsdbProbe{
 		Graph:           g,
 		Root:            n,
@@ -414,7 +417,7 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProb
 		uuidToPort:      make(map[string]*graph.Node),
 		intfPortQueue:   make(map[string]*graph.Node),
 		portBridgeQueue: make(map[string]*graph.Node),
-		OvsMon:          ovsdb.NewOvsMonitor(p, t),
+		OvsMon:          mon,
 	}
 	o.OvsMon.AddMonitorHandler(o)
 
