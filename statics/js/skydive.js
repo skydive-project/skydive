@@ -1477,7 +1477,7 @@ function RefreshCaptureList() {
 
 function SetupCaptureList() {
   $("#add-capture").click(function(e) {
-    var query = "G";
+    var query = "";
 
     for (var e in CurrentNodeDetails.Edges) {
       var edge = CurrentNodeDetails.Edges[e];
@@ -1486,7 +1486,7 @@ function SetupCaptureList() {
 
       var neighbor;
       if (edge.Parent.ID != this.ID) {
-        query += ".V().Has('Name', '" + edge.Parent.Name() + "')";
+        query = "V().Has('Name', '" + edge.Parent.Name() + "')";
         break;
       }
     }
@@ -1494,7 +1494,7 @@ function SetupCaptureList() {
     if (query == "")
       return;
 
-    query += ".Out('Name', '" + CurrentNodeDetails.Name() + "', 'Type', '" + CurrentNodeDetails.Type() + "')";
+    query = "G." + query + ".Out('Name', '" + CurrentNodeDetails.Name() + "', 'Type', '" + CurrentNodeDetails.Type() + "')";
 
     $.ajax({
       dataType: "json",

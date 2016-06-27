@@ -80,7 +80,11 @@ var TopologyRequest = &cobra.Command{
 		}
 
 		var values interface{}
-		err = json.NewDecoder(body).Decode(&values)
+
+		decoder := json.NewDecoder(body)
+		decoder.UseNumber()
+
+		err = decoder.Decode(&values)
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to decode response: %s", err.Error())
 			os.Exit(1)

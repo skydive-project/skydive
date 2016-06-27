@@ -78,7 +78,7 @@ type GremlinTraversalParser struct {
 }
 
 func invokeStepFnc(last GraphTraversalStep, name string, params GremlinTraversalStepParams) (GraphTraversalStep, error) {
-	if v := reflect.ValueOf(last).MethodByName(name); !v.IsNil() {
+	if v := reflect.ValueOf(last).MethodByName(name); v.IsValid() && !v.IsNil() {
 		inputs := make([]reflect.Value, len(params))
 		for i, param := range params {
 			inputs[i] = reflect.ValueOf(param)

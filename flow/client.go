@@ -117,6 +117,8 @@ func (f *TableClient) lookupFlowsByProbeNode(flows chan []*Flow, host string, uu
 		fr := reply.Obj.(*FlowSearchReply)
 
 		flows <- fr.Flows
+
+		return
 	case <-time.After(time.Second * 10):
 		logging.GetLogger().Errorf("Timeout while reading TableReply from: %s", host)
 	}

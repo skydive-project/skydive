@@ -51,7 +51,7 @@ func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableRep
 		var flows []*Flow
 		for _, reply := range replies {
 			if reply.Status != 200 {
-				break
+				continue
 			}
 
 			flows = append(flows, reply.Obj.(*FlowSearchReply).Flows...)
