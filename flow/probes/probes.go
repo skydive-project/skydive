@@ -52,6 +52,15 @@ type FlowProbe struct {
 	client   *analyzer.Client
 }
 
+var CaptureTypes = map[string]map[string][]string{
+	"ovsbridge": {"allowed": {"ovssflow"}, "default": {"ovssflow"}},
+	"device":    {"allowed": {"pcap"}, "default": {"pcap"}},
+	"internal":  {"allowed": {"pcap"}, "default": {"pcap"}},
+	"veth":      {"allowed": {"pcap"}, "default": {"pcap"}},
+	"tun":       {"allowed": {"pcap"}, "default": {"pcap"}},
+	"bridge":    {"allowed": {"pcap"}, "default": {"pcap"}},
+}
+
 func (fp FlowProbe) Start() {
 	fp.fpi.Start()
 }

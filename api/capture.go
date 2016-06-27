@@ -32,6 +32,7 @@ type Capture struct {
 	BPFFilter    string `json:"BPFFilter,omitempty"`
 	Name         string `json:"Name,omitempty"`
 	Description  string `json:"Description,omitempty"`
+	Type         string `json:"Type,omitempty"`
 }
 
 type CaptureHandler struct {

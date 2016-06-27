@@ -27,6 +27,7 @@ import (
 	"os"
 
 	"github.com/redhat-cip/skydive/api"
+	"github.com/redhat-cip/skydive/flow/probes"
 	"github.com/redhat-cip/skydive/logging"
 	"github.com/redhat-cip/skydive/validator"
 
@@ -37,6 +38,7 @@ var (
 	bpfFilter          string
 	captureName        string
 	captureDescription string
+	captureType        string
 )
 
 var CaptureCmd = &cobra.Command{
@@ -58,6 +60,7 @@ var CaptureCreate = &cobra.Command{
 		capture := api.NewCapture(gremlinQuery, bpfFilter)
 		capture.Name = captureName
 		capture.Description = captureDescription
+		capture.Type = captureType
 		if err := validator.Validate(capture); err != nil {
 			fmt.Println(err.Error())
 			cmd.Usage()
@@ -133,10 +136,22 @@ var CaptureDelete = &cobra.Command{
 }
 
 func addCaptureFlags(cmd *cobra.Command) {
+	types := []string{}
+	found := map[string]bool{}
+	for _, v := range probes.CaptureTypes {
+		for _, t := range v["allowed"] {
+			if found[t] != true {
+				found[t] = true
+				types = append(types, t)
+			}
+		}
+	}
+	helpText := fmt.Sprintf("Allowed capture types: %v", types)
 	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
 	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")
 	cmd.Flags().StringVarP(&captureName, "name", "", "", "capture name")
 	cmd.Flags().StringVarP(&captureDescription, "description", "", "", "capture description")
+	cmd.Flags().StringVarP(&captureType, "type", "", "", helpText)
 }
 
 func init() {

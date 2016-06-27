@@ -43,26 +43,8 @@ type OnDemandProbeListener struct {
 	watcher        api.StoppableWatcher
 	fta            *flow.TableAllocator
 	activeProbes   map[graph.Identifier]*flow.Table
+	captures       map[graph.Identifier]*api.Capture
 	host           string
-}
-
-func (o *OnDemandProbeListener) probeFromType(n *graph.Node) *FlowProbe {
-	var probeName string
-
-	switch n.Metadata()["Type"] {
-	case "ovsbridge":
-		probeName = "ovssflow"
-	default:
-		probeName = "pcap"
-	}
-
-	probe := o.Probes.GetProbe(probeName)
-	if probe == nil {
-		return nil
-	}
-
-	fprobe := probe.(FlowProbe)
-	return &fprobe
 }
 
 func (o *OnDemandProbeListener) isActive(n *graph.Node) bool {
@@ -71,6 +53,31 @@ func (o *OnDemandProbeListener) isActive(n *graph.Node) bool {
 	_, active := o.activeProbes[n.ID]
 
 	return active
+}
+
+func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) *FlowProbe {
+	capType := ""
+	if capture.Type != "" {
+		types := CaptureTypes[n.Metadata()["Type"].(string)]["allowed"]
+		for _, t := range types {
+			if t == capture.Type {
+				capType = t
+				break
+			}
+		}
+		if capType == "" {
+			return nil
+		}
+	} else {
+		capType = CaptureTypes[n.Metadata()["Type"].(string)]["default"][0]
+	}
+	probe := o.Probes.GetProbe(capType)
+	if probe == nil {
+		return nil
+	}
+
+	fprobe := probe.(FlowProbe)
+	return &fprobe
 }
 
 func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) bool {
@@ -87,7 +94,7 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 		return false
 	}
 
-	fprobe := o.probeFromType(n)
+	fprobe := o.getProbe(n, capture)
 	if fprobe == nil {
 		logging.GetLogger().Errorf("Failed to register flow probe, unknown type %v", n)
 		return false
@@ -101,6 +108,7 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 	}
 
 	o.activeProbes[n.ID] = ft
+	o.captures[n.ID] = capture
 
 	logging.GetLogger().Debugf("New active probe on: %v", n)
 	return true
@@ -111,7 +119,10 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) bool {
 		return false
 	}
 
-	fprobe := o.probeFromType(n)
+	o.Lock()
+	c := o.captures[n.ID]
+	o.Unlock()
+	fprobe := o.getProbe(n, c)
 	if fprobe == nil {
 		return false
 	}
@@ -123,6 +134,7 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) bool {
 	o.Lock()
 	o.fta.Release(o.activeProbes[n.ID])
 	delete(o.activeProbes, n.ID)
+	delete(o.captures, n.ID)
 	o.Unlock()
 
 	return true
@@ -309,5 +321,6 @@ func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, ch api.ApiHan
 		host:           h,
 		fta:            fb.FlowTableAllocator,
 		activeProbes:   make(map[graph.Identifier]*flow.Table),
+		captures:       make(map[graph.Identifier]*api.Capture),
 	}, nil
 }
