@@ -2,53 +2,63 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/</loc>
-    <lastmod>2016-05-06T11:03:48+02:00</lastmod>
+    <loc>http://skydive-project.github.io/skydive/</loc>
+    <lastmod>2016-06-22T11:02:01+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/contact/</loc>
+    <loc>http://skydive-project.github.io/skydive/getting-started/gremlin/</loc>
+    <lastmod>2016-06-22T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>http://skydive-project.github.io/skydive/getting-started/kubernetes/</loc>
+    <lastmod>2016-05-14T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>http://skydive-project.github.io/skydive/contact/</loc>
     <lastmod>2016-05-06T11:03:48+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/contributing/</loc>
+    <loc>http://skydive-project.github.io/skydive/contributing/</loc>
     <lastmod>2016-05-06T11:02:01+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/getting-started/devstack/</loc>
+    <loc>http://skydive-project.github.io/skydive/getting-started/devstack/</loc>
     <lastmod>2016-05-06T11:02:01+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/getting-started/docker/</loc>
+    <loc>http://skydive-project.github.io/skydive/getting-started/docker/</loc>
     <lastmod>2016-05-06T11:02:01+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/getting-started/install/</loc>
+    <loc>http://skydive-project.github.io/skydive/getting-started/install/</loc>
     <lastmod>2016-05-06T11:02:01+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/getting-started/client/</loc>
+    <loc>http://skydive-project.github.io/skydive/getting-started/client/</loc>
     <lastmod>2016-05-06T11:02:01+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/getting-started/</loc>
+    <loc>http://skydive-project.github.io/skydive/getting-started/</loc>
     <lastmod>2016-05-04T17:48:22+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/</loc>
+    <loc>http://skydive-project.github.io/skydive/</loc>
     <lastmod>2016-05-04T17:48:22+02:00</lastmod>
   </url>
   
   <url>
-    <loc>http://redhat-cip.github.io/skydive/license/</loc>
+    <loc>http://skydive-project.github.io/skydive/license/</loc>
     <lastmod>2016-05-04T17:28:04+02:00</lastmod>
   </url>
   

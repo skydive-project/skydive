@@ -2,19 +2,283 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Getting-starteds on Skydive Docs</title>
-    <link>http://redhat-cip.github.io/skydive/getting-started/</link>
+    <link>http://skydive-project.github.io/skydive/getting-started/</link>
     <description>Recent content in Getting-starteds on Skydive Docs</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 06 May 2016 11:02:01 +0200</lastBuildDate>
-    <atom:link href="http://redhat-cip.github.io/skydive/getting-started/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 22 Jun 2016 11:02:01 +0200</lastBuildDate>
+    <atom:link href="http://skydive-project.github.io/skydive/getting-started/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Skydive Gremlin Query language</title>
+      <link>http://skydive-project.github.io/skydive/getting-started/gremlin/</link>
+      <pubDate>Wed, 22 Jun 2016 11:02:01 +0200</pubDate>
+      
+      <guid>http://skydive-project.github.io/skydive/getting-started/gremlin/</guid>
+      <description>
+
+&lt;h2 id=&#34;gremlin&#34;&gt;Gremlin&lt;/h2&gt;
+
+&lt;p&gt;Skydive uses a subset of the
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Gremlin_(programming_language)&#34;&gt;Gremlin language&lt;/a&gt;
+as query language for topology and flow requests.&lt;/p&gt;
+
+&lt;p&gt;A Gremlin expression is a chain of steps that are evaluated from left to right.
+In the context of Skydive nodes stand for interfaces, ports, bridges,
+namespaces, etc. Links stand for any kind of relation between two nodes,
+ownership(host), membership(containers), layer2, etc.&lt;/p&gt;
+
+&lt;p&gt;The following expression will return all the OpenvSwitch ports belonging to
+an OpenvSwitch bridge named &lt;code&gt;br-int&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;, &#39;Type&#39;, &#39;ovsbridge&#39;).Out()
+
+[
+  {
+    &amp;quot;Host&amp;quot;: &amp;quot;test&amp;quot;,
+    &amp;quot;ID&amp;quot;: &amp;quot;feae10c1-240e-48e0-4a13-c608ffd15700&amp;quot;,
+    &amp;quot;Metadata&amp;quot;: {
+      &amp;quot;Name&amp;quot;: &amp;quot;vm2-eth0&amp;quot;,
+      &amp;quot;Type&amp;quot;: &amp;quot;ovsport&amp;quot;,
+      &amp;quot;UUID&amp;quot;: &amp;quot;f68f3593-68c4-4778-b47f-0ef291654fcf&amp;quot;
+    }
+  },
+  {
+    &amp;quot;Host&amp;quot;: &amp;quot;test&amp;quot;,
+    &amp;quot;ID&amp;quot;: &amp;quot;ca909ccf-203d-457d-70b8-06fe308221ef&amp;quot;,
+    &amp;quot;Metadata&amp;quot;: {
+      &amp;quot;Name&amp;quot;: &amp;quot;br-int&amp;quot;,
+      &amp;quot;Type&amp;quot;: &amp;quot;ovsport&amp;quot;,
+      &amp;quot;UUID&amp;quot;: &amp;quot;e5b47010-f479-4def-b2d0-d55f5dbf7dad&amp;quot;
+    }
+  }
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The query has to be read as :&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;G&lt;/code&gt; returns the topology Graph&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;V&lt;/code&gt; step returns all the nodes belonging the Graph&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Has&lt;/code&gt; step returns only the node with the given metadata attributes&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Out&lt;/code&gt; step returns outgoing nodes&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&#34;traversal-steps&#34;&gt;Traversal steps&lt;/h2&gt;
+
+&lt;p&gt;The Skydive implements a subset of the Gremlin language steps and adds
+&amp;ldquo;network analysis&amp;rdquo; specific steps.&lt;/p&gt;
+
+&lt;h3 id=&#34;v-step&#34;&gt;V Step&lt;/h3&gt;
+
+&lt;p&gt;V step returns the nodes belonging to the graph.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;A node ID can be passed to the V step which will return the corresponding node.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V(&#39;ca909ccf-203d-457d-70b8-06fe308221efca909ccf-203d-457d-70b8-06fe308221ef&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;has-step&#34;&gt;Has Step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Has&lt;/code&gt; step filters out the nodes that don&amp;rsquo;t match the given metadata list. &lt;code&gt;Has&lt;/code&gt;
+can be applied either on nodes or edges.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;: test, &#39;Type&#39;: &#39;netns&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;in-out-both-steps&#34;&gt;In/Out/Both steps&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;In/Out&lt;/code&gt; steps returns either incoming, outgoing or neighbor nodes of
+previously selected nodes.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;, &#39;Type&#39;, &#39;ovsbridge&#39;).Out()
+G.V().Has(&#39;Name&#39;, &#39;br-int&#39;, &#39;Type&#39;, &#39;ovsbridge&#39;).In()
+G.V().Has(&#39;Name&#39;, &#39;br-int&#39;, &#39;Type&#39;, &#39;ovsbridge&#39;).Both()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Filters can be applied to these steps in order to select only the nodes
+corresponding to the given metadata. In that case the step will act as a couple
+of steps &lt;code&gt;Out/Has&lt;/code&gt; for example.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;, &#39;Type&#39;, &#39;ovsbridge&#39;).Out(&#39;Name&#39;, &#39;intf1&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;ine-oute-steps&#34;&gt;InE/OutE steps&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;InE/OutE&lt;/code&gt; steps returns the incoming/ougoing links.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;: &#39;test&#39;, &#39;Type&#39;: &#39;netns&#39;).InE()
+G.V().Has(&#39;Name&#39;: &#39;test&#39;, &#39;Type&#39;: &#39;netns&#39;).OutE()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Like for the &lt;code&gt;In/Out/Both&lt;/code&gt; steps metadata list can be passed directly as
+parameters in order to filter links.&lt;/p&gt;
+
+&lt;h3 id=&#34;inv-outv-steps&#34;&gt;InV/OutV steps&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;InV/OutV&lt;/code&gt; steps returns incoming, outgoing nodes attached to the previously
+selected links.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().OutE().Has(&#39;Type&#39;, &#39;layer2&#39;).InV()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;dedup-step&#34;&gt;Dedup step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Dedup&lt;/code&gt; removes duplicated nodes/links.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Out().Both().Dedup()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;shortestpathto-step&#34;&gt;ShortestPathTo step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;ShortestPathTo&lt;/code&gt; step returns the shortest path to node matching the given
+&lt;code&gt;Metadata&lt;/code&gt; predicate. This step returns a list of all the nodes traversed.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, &#39;netns&#39;).ShortestPathTo(Metadata(&#39;Type&#39;, &#39;host&#39;))
+
+[
+  [
+    {
+      &amp;quot;Host&amp;quot;: &amp;quot;test&amp;quot;,
+      &amp;quot;ID&amp;quot;: &amp;quot;5221d3c3-3180-4a64-5337-f2f66b83ddd6&amp;quot;,
+      &amp;quot;Metadata&amp;quot;: {
+        &amp;quot;Name&amp;quot;: &amp;quot;vm1&amp;quot;,
+        &amp;quot;Path&amp;quot;: &amp;quot;/var/run/netns/vm1&amp;quot;,
+        &amp;quot;Type&amp;quot;: &amp;quot;netns&amp;quot;
+      }
+    },
+    {
+      &amp;quot;Host&amp;quot;: &amp;quot;test&amp;quot;,
+      &amp;quot;ID&amp;quot;: &amp;quot;test&amp;quot;,
+      &amp;quot;Metadata&amp;quot;: {
+        &amp;quot;Name&amp;quot;: &amp;quot;pc48.home&amp;quot;,
+        &amp;quot;Type&amp;quot;: &amp;quot;host&amp;quot;
+      }
+    }
+  ]
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;It is possible to filter the link traversed according to the given &lt;code&gt;Metadata&lt;/code&gt;
+predicate as a second parameter.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;G.V().Has(&#39;Type&#39;, &#39;netns&#39;).ShortestPathTo(Metadata(&#39;Type&#39;, &#39;host&#39;), Metadata(&#39;Type&#39;, &#39;layer2&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;graphpath-step&#34;&gt;GraphPath step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;GraphPath&lt;/code&gt; step returns a path string corresponding to the reverse path
+from the nodes to the host node they belong to.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, &#39;netns&#39;).GraphPath()
+
+[
+  &amp;quot;test[Type=host]/vm1[Type=netns]&amp;quot;
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The format of the path returned is the following:
+&lt;code&gt;node_name[Type=node_type]/.../node_name[Type=node_type]&lt;/code&gt;`&lt;/p&gt;
+
+&lt;h3 id=&#34;flows-step&#34;&gt;Flows step&lt;/h3&gt;
+
+&lt;p&gt;Flows step returns flows of the nodes where a capture has been started.
+The following Gremlin query returns the flows from the node &lt;code&gt;br-int&lt;/code&gt; where
+an sFlow capture has been started.
+See the &lt;a href=&#34;http://skydive-project.github.io/skydive/getting-started/client/#flow-captures&#34;&gt;client section&lt;/a&gt;
+in order to know how to start a capture from a Gremlin query.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;flows-in-out-steps&#34;&gt;Flows In/Out steps&lt;/h3&gt;
+
+&lt;p&gt;From a flow step it is possible to get the node from where the packets are
+coming or the node where packets are going to. Node steps are of course
+applicable after &lt;code&gt;In/Out&lt;/code&gt; flow steps.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().In()
+G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().Out()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;predicates&#34;&gt;Predicates&lt;/h3&gt;
+
+&lt;p&gt;Predicates can be used with &lt;code&gt;Has&lt;/code&gt;, &lt;code&gt;In*&lt;/code&gt;&lt;code&gt;,&lt;/code&gt;Out*`` steps.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;NE&lt;/code&gt;, matches graph elements for which metadata don&amp;rsquo;t match specified values&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, NE(&#39;ovsbridge&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Within&lt;/code&gt;, matches graph elements for which metadata values match one member of
+the given array.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Within(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Without&lt;/code&gt;, matches graph elements for which metadata values don&amp;rsquo;t match any of
+the members of the given array.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Without(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>How to deploy Skydive with kubernetes</title>
+      <link>http://skydive-project.github.io/skydive/getting-started/kubernetes/</link>
+      <pubDate>Sat, 14 May 2016 11:02:01 +0200</pubDate>
+      
+      <guid>http://skydive-project.github.io/skydive/getting-started/kubernetes/</guid>
+      <description>
+
+&lt;h2 id=&#34;kubernetes-deployment&#34;&gt;Kubernetes deployment&lt;/h2&gt;
+
+&lt;p&gt;Skydive provides a Kubernetes
+&lt;a href=&#34;https://github.com/skydive-project/skydive/blob/master/contrib/kubernetes/skydive.yaml&#34;&gt;file&lt;/a&gt;
+which can be used to deploy Skydive. It will deploy an Elasticsearch,
+a Skydive analyzer and Skydive Agent on each Kubernetes nodes. Once you will
+have Skydive deployment on top on your Kubernetes cluster you will be able to
+monitor, capture, troubleshoot your container networking stack.&lt;/p&gt;
+
+&lt;p&gt;A skydive Analyzer &lt;a href=&#34;http://kubernetes.io/docs/user-guide/services/&#34;&gt;Kubernetes service&lt;/a&gt;
+is created and exposes ports for Elasticsearch and the Analyzer:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Elasticsearch: 9200&lt;/li&gt;
+&lt;li&gt;Analyzer: 8082&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;a href=&#34;http://kubernetes.io/docs/admin/daemons/&#34;&gt;Kubernetes DaemonSet&lt;/a&gt; is used for
+Agents in order to have one Agent per node.&lt;/p&gt;
+
+&lt;h2 id=&#34;creation&#34;&gt;Creation&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;kubectl create -f skydive.yaml
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Once you have your environment set up, going to the Analyzer service
+should show similar to the following capture.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&#34;http://skydive-project.github.io/skydive/images/kubernetes-two-nodes.png&#34; alt=&#34;WebUI Capture&#34; /&gt;&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>How to deploy Skydive with Devstack</title>
-      <link>http://redhat-cip.github.io/skydive/getting-started/devstack/</link>
+      <link>http://skydive-project.github.io/skydive/getting-started/devstack/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://redhat-cip.github.io/skydive/getting-started/devstack/</guid>
+      <guid>http://skydive-project.github.io/skydive/getting-started/devstack/</guid>
       <description>
 
 &lt;h2 id=&#34;devstack-plugin&#34;&gt;Devstack plugin&lt;/h2&gt;
@@ -26,7 +290,7 @@ by DevStack.&lt;/p&gt;
 &lt;p&gt;For a single node setup adding the following lines to your local.conf file
 should be enough.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;enable_plugin skydive https://github.com/redhat-cip/skydive.git
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;enable_plugin skydive https://github.com/skydive-project/skydive.git
 
 enable_service skydive-agent skydive-analyzer
 &lt;/code&gt;&lt;/pre&gt;
@@ -76,7 +340,7 @@ than the admin.&lt;/p&gt;
 &lt;p&gt;Once you have your environment set up, going to the Analyzer Web Interface
 should show similar to the following capture.&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&#34;http://redhat-cip.github.io/skydive/images/devstack-two-nodes.png&#34; alt=&#34;WebUI Capture&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;http://skydive-project.github.io/skydive/images/devstack-two-nodes.png&#34; alt=&#34;WebUI Capture&#34; /&gt;&lt;/p&gt;
 
 &lt;h2 id=&#34;capture-traffic&#34;&gt;Capture traffic&lt;/h2&gt;
 
@@ -155,10 +419,10 @@ between the qrouter and the qdhcp namespaces.&lt;/p&gt;
     
     <item>
       <title>How to deploy Skydive with Docker</title>
-      <link>http://redhat-cip.github.io/skydive/getting-started/docker/</link>
+      <link>http://skydive-project.github.io/skydive/getting-started/docker/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://redhat-cip.github.io/skydive/getting-started/docker/</guid>
+      <guid>http://skydive-project.github.io/skydive/getting-started/docker/</guid>
       <description>
 
 &lt;h2 id=&#34;docker&#34;&gt;Docker&lt;/h2&gt;
@@ -188,10 +452,10 @@ definition is located in the &lt;code&gt;contrib/docker&lt;/code&gt; folder of t
     
     <item>
       <title>Installation</title>
-      <link>http://redhat-cip.github.io/skydive/getting-started/install/</link>
+      <link>http://skydive-project.github.io/skydive/getting-started/install/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://redhat-cip.github.io/skydive/getting-started/install/</guid>
+      <guid>http://skydive-project.github.io/skydive/getting-started/install/</guid>
       <description>
 
 &lt;h2 id=&#34;introduction&#34;&gt;Introduction&lt;/h2&gt;
@@ -217,7 +481,7 @@ informations will be captured&lt;/li&gt;
 &lt;p&gt;Make sure you have a working Go environment. &lt;a href=&#34;http://golang.org/doc/install.html&#34;&gt;See the install instructions&lt;/a&gt;.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ mkdir -p $GOPATH/src/github.com/redhat-cip
-$ git clone https://github.com/redhat-cip/skydive.git $GOPATH/src/github.com/redhat-cip/skydive
+$ git clone https://github.com/skydive-project/skydive.git $GOPATH/src/github.com/redhat-cip/skydive
 $ cd $GOPATH/src/github.com/redhat-cip/skydive
 $ make install
 &lt;/code&gt;&lt;/pre&gt;
@@ -229,6 +493,10 @@ node setup, the analyzer IP/PORT need to be adapted.&lt;/p&gt;
 
 &lt;p&gt;Processes are bound to 127.0.0.1 by default, you can explicitly change binding
 address with &amp;ldquo;listen: 0.0.0.0:port&amp;rdquo; in the proper configuration sections.&lt;/p&gt;
+
+&lt;p&gt;User can add host metadata to specify an extra host information in
+&amp;ldquo;agent.metadata&amp;rdquo; configuration section. All the key value pairs given
+under this configuration section will be added to host metadata.&lt;/p&gt;
 
 &lt;p&gt;See the full list of configuration parameters in the sample configuration file
 &lt;a href=&#34;https://github.com/redhat-cip/skydive/blob/master/etc/skydive.yml.default&#34;&gt;etc/skydive.yml.default&lt;/a&gt;.&lt;/p&gt;
@@ -245,10 +513,10 @@ address with &amp;ldquo;listen: 0.0.0.0:port&amp;rdquo; in the proper configurat
     
     <item>
       <title>Skydive client, API &amp; WebUI</title>
-      <link>http://redhat-cip.github.io/skydive/getting-started/client/</link>
+      <link>http://skydive-project.github.io/skydive/getting-started/client/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://redhat-cip.github.io/skydive/getting-started/client/</guid>
+      <guid>http://skydive-project.github.io/skydive/getting-started/client/</guid>
       <description>
 
 &lt;h2 id=&#34;client&#34;&gt;Client&lt;/h2&gt;
@@ -288,39 +556,49 @@ username/password command line parameters.&lt;/p&gt;
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;http://&amp;lt;address&amp;gt;:&amp;lt;port&amp;gt;
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;h2 id=&#34;topology-requests&#34;&gt;Topology requests&lt;/h2&gt;
+
+&lt;p&gt;Skydive uses the Gremlin traversal language as a topology request language.
+Requests on the topology can be done as following :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client topology query --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;, &#39;Type&#39; ,&#39;ovsbridge&#39;)&amp;quot;
+[
+  {
+    &amp;quot;Host&amp;quot;: &amp;quot;pc48.home&amp;quot;,
+    &amp;quot;ID&amp;quot;: &amp;quot;1e4fc503-312c-4e4f-4bf5-26263ce82e0b&amp;quot;,
+    &amp;quot;Metadata&amp;quot;: {
+      &amp;quot;Name&amp;quot;: &amp;quot;br-int&amp;quot;,
+      &amp;quot;Type&amp;quot;: &amp;quot;ovsbridge&amp;quot;,
+      &amp;quot;UUID&amp;quot;: &amp;quot;c80cf5a7-998b-49ca-b2b2-7a1d050facc8&amp;quot;
+    }
+  }
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Refer to the &lt;a href=&#34;http://skydive-project.github.io/skydive/getting-started/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further
+explanations about the syntax and the functions available.&lt;/p&gt;
+
 &lt;h2 id=&#34;flow-captures&#34;&gt;Flow captures&lt;/h2&gt;
 
-&lt;p&gt;Flow captures can be started from the WebUI or thanks to the Skydive client :&lt;/p&gt;
+&lt;p&gt;Flow captures can be started from the WebUI or thanks to the Skydive client.
+Skydive leverages the Gremlin language in order to select nodes on which a
+capture will be started. The gremlin expression is continuously evaluated which
+means that it is possible to define a capture on nodes that don&amp;rsquo;t exist yet.
+It useful when you want to start a capture on all OpenvSwitch whatever the
+number of Skydive agents you will start.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create --probepath &amp;lt;probe path&amp;gt;
+&lt;p&gt;The following command start a capture on all docker0 interfaces&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;)&amp;quot;
+
+{
+  &amp;quot;UUID&amp;quot;: &amp;quot;76de5697-106a-4f50-7455-47c2fa7a964f&amp;quot;,
+  &amp;quot;GremlinQuery&amp;quot;: &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;)&amp;quot;
+}
+
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;The probe path parameter references the interfaces where the flow probe will be
-started, so where the capture will be done.&lt;/p&gt;
-
-&lt;p&gt;The format of a probe path follows the links between topology nodes from
-a host node to a target node :&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;host1[Type=host]/.../node_nameN[Type=node_typeN]
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;The node name can be the name of :&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;a host&lt;/li&gt;
-&lt;li&gt;an interface&lt;/li&gt;
-&lt;li&gt;a namespace&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;The node types can be :&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;host&lt;/li&gt;
-&lt;li&gt;netns&lt;/li&gt;
-&lt;li&gt;ovsbridge&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Currently target node types supported are :&lt;/p&gt;
+&lt;p&gt;Node types that support captures are :&lt;/p&gt;
 
 &lt;ul&gt;
 &lt;li&gt;ovsbridge&lt;/li&gt;
@@ -331,34 +609,25 @@ a host node to a target node :&lt;/p&gt;
 &lt;li&gt;bridge&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;To start a capture on the OVS bridge br1 on the host host1 the following probe
-path is used :&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create --probepath &amp;quot;host1[Type=host]/br1[Type=ovsbridge]&amp;quot;&amp;quot;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;A wilcard for the host node can be used in order to start a capture on
-all hosts.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create --probepath &amp;quot;*/br1[Type=ovsbridge]&amp;quot;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;A capture can be defined in advance and will start when a topology node will
-match.&lt;/p&gt;
-
 &lt;p&gt;To delete a capture :&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture delete &amp;lt;probe path&amp;gt;
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture delete &amp;lt;capture UUID&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The Flows Gremlin step can be used in order to see the flows captured. See the
+&lt;a href=&#34;http://skydive-project.github.io/skydive/getting-started/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further explanations.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client topology query --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;).Flows()&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
 </description>
     </item>
     
     <item>
       <title>Getting started</title>
-      <link>http://redhat-cip.github.io/skydive/getting-started/</link>
+      <link>http://skydive-project.github.io/skydive/getting-started/</link>
       <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
       
-      <guid>http://redhat-cip.github.io/skydive/getting-started/</guid>
+      <guid>http://skydive-project.github.io/skydive/getting-started/</guid>
       <description></description>
     </item>
     

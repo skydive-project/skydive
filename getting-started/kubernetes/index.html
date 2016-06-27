@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>How to deploy Skydive with Devstack - Skydive Docs</title>
+    <title>How to deploy Skydive with kubernetes - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="http://skydive-project.github.io/skydive/getting-started/devstack/">
+    <link rel="canonical" href="http://skydive-project.github.io/skydive/getting-started/kubernetes/">
     
     <meta name="author" content="skydive-project/skydive">
     
 
-    <meta property="og:url" content="http://skydive-project.github.io/skydive/getting-started/devstack/">
+    <meta property="og:url" content="http://skydive-project.github.io/skydive/getting-started/kubernetes/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="http://skydive-project.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        How to deploy Skydive with Devstack
+        How to deploy Skydive with kubernetes
       </div>
     </div>
 
@@ -264,14 +264,11 @@
 
 
 
-<a class="current" title="Devstack" href="http://skydive-project.github.io/skydive/getting-started/devstack/">
+<a  title="Devstack" href="http://skydive-project.github.io/skydive/getting-started/devstack/">
 	
 	Devstack
 </a>
 
-
-<ul id="scrollspy">
-</ul>
   
       
         
@@ -291,11 +288,14 @@
 
 
 
-<a  title="kubernetes" href="http://skydive-project.github.io/skydive/getting-started/kubernetes/">
+<a class="current" title="kubernetes" href="http://skydive-project.github.io/skydive/getting-started/kubernetes/">
 	
 	kubernetes
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
     </ul>
@@ -382,143 +382,39 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>How to deploy Skydive with Devstack </h1>
+			<h1>How to deploy Skydive with kubernetes </h1>
 
 			
 
-<h2 id="devstack-plugin">Devstack plugin</h2>
+<h2 id="kubernetes-deployment">Kubernetes deployment</h2>
 
-<p>Skydive provides a DevStack plugin that can be used in order to have
-Skydive Agents/Analyzer set up with the proper probes
-by DevStack.</p>
+<p>Skydive provides a Kubernetes
+<a href="https://github.com/skydive-project/skydive/blob/master/contrib/kubernetes/skydive.yaml">file</a>
+which can be used to deploy Skydive. It will deploy an Elasticsearch,
+a Skydive analyzer and Skydive Agent on each Kubernetes nodes. Once you will
+have Skydive deployment on top on your Kubernetes cluster you will be able to
+monitor, capture, troubleshoot your container networking stack.</p>
 
-<p>For a single node setup adding the following lines to your local.conf file
-should be enough.</p>
+<p>A skydive Analyzer <a href="http://kubernetes.io/docs/user-guide/services/">Kubernetes service</a>
+is created and exposes ports for Elasticsearch and the Analyzer:</p>
 
-<pre><code class="language-console">enable_plugin skydive https://github.com/skydive-project/skydive.git
+<ul>
+<li>Elasticsearch: 9200</li>
+<li>Analyzer: 8082</li>
+</ul>
 
-enable_service skydive-agent skydive-analyzer
+<p><a href="http://kubernetes.io/docs/admin/daemons/">Kubernetes DaemonSet</a> is used for
+Agents in order to have one Agent per node.</p>
+
+<h2 id="creation">Creation</h2>
+
+<pre><code class="language-console">kubectl create -f skydive.yaml
 </code></pre>
 
-<p>The plugin accepts the following parameters:</p>
-
-<pre><code class="language-console"># Address on which skydive analyzer process listens for connections.
-# Must be in ip:port format
-#SKYDIVE_ANALYZER_LISTEN=
-
-# Inform the agent about the address on which analyzers are listening
-# Must be in ip:port format
-#SKYDIVE_AGENT_ANALYZERS=
-
-# ip:port address on which skydive agent listens for connections.
-#SKYDIVE_AGENT_LISTEN=
-
-# Configure the skydive agent with the etcd server address
-# http://IP_ADDRESS:2379
-#SKYDIVE_AGENT_ETCD=
-
-# The path for the generated skydive configuration file
-#SKYDIVE_CONFIG_FILE=
-
-# List of agent probes to be used by the agent
-# Ex: netns netlink ovsdb
-#SKYDIVE_AGENT_PROBES=
-
-# Remote port for ovsdb server.
-#SKYDIVE_OVSDB_REMOTE_PORT=6640
-
-# Set the default log level, default: INFO
-#SKYDIVE_LOGLEVEL=DEBUG
-</code></pre>
-
-<h2 id="the-classical-two-nodes-deployment">The classical two nodes deployment</h2>
-
-<p>Inside the Devstack folder of the Skydive sources there are two local.conf files
-that can be used in order to deployment two Devstack with Skydive. The first
-file will install a full Devstack with Skydive analyzer and agent. The second
-one will install a compute Devstack with only the skydive agent.</p>
-
-<p>Skydive will be set with the probes for OpenvSwitch and Neutron. It will be set
-to use Keystone as authentication mechanism, so the credentials will be the same
-than the admin.</p>
-
-<p>Once you have your environment set up, going to the Analyzer Web Interface
+<p>Once you have your environment set up, going to the Analyzer service
 should show similar to the following capture.</p>
 
-<p><img src="http://skydive-project.github.io/skydive/images/devstack-two-nodes.png" alt="WebUI Capture" /></p>
-
-<h2 id="capture-traffic">Capture traffic</h2>
-
-<p>Now we have our two nodes up and running we may want to start capturing
-packets. The following command can be used in order to start a capture on all
-the <code>br-int</code> bridges.</p>
-
-<pre><code class="language-console">$ export SKYDIVE_USERNAME=admin
-$ export SKYDIVE_PASSWORD=password
-
-$ skydive client -c /tmp/skydive.yaml capture create \
-  --probepath &quot;*/br-int[Type=ovsbridge]&quot;
-</code></pre>
-
-<pre><code class="language-console">$ skydive client -c /tmp/skydive.yaml capture list
-{
-  &quot;*/br-int[Type=ovsbridge]&quot;: {
-    &quot;ProbePath&quot;: &quot;*/br-int[Type=ovsbridge]&quot;
-  }
-}
-</code></pre>
-
-<p>A request on Elasticsearch will give us the traffic captured. Here after a ping
-between the qrouter and the qdhcp namespaces.</p>
-
-<pre><code class="language-console">curl -s http://localhost:9200/_search | jq .hits.hits[0]
-{
-  &quot;_source&quot;: {
-    &quot;IfDstGraphPath&quot;: &quot;devstack-1[Type=host]/qdhcp-cb5e9887-0779-48d1-aac6-b48e4d688056[Type=netns]/tap8ce0a68c-38[Type=internal]&quot;,
-    &quot;IfSrcGraphPath&quot;: &quot;devstack-1[Type=host]/qrouter-c616325e-f3d9-497b-adfa-afe06a5a6245[Type=netns]/qr-26fe372c-b6[Type=internal]&quot;,
-    &quot;ProbeGraphPath&quot;: &quot;devstack-1[Type=host]/br-int[Type=ovsbridge]&quot;,
-    &quot;TrackingID&quot;: &quot;684924892c321f69599f826eb151acb103c4e8a3&quot;,
-    &quot;Statistics&quot;: {
-      &quot;Endpoints&quot;: [
-        {
-          &quot;BA&quot;: {
-            &quot;Bytes&quot;: 4700,
-            &quot;Packets&quot;: 47,
-            &quot;Value&quot;: &quot;fa:16:3e:85:ca:e1&quot;
-          },
-          &quot;AB&quot;: {
-            &quot;Bytes&quot;: 4700,
-            &quot;Packets&quot;: 47,
-            &quot;Value&quot;: &quot;fa:16:3e:9c:49:a5&quot;
-          },
-          &quot;Type&quot;: &quot;ETHERNET&quot;
-        },
-        {
-          &quot;BA&quot;: {
-            &quot;Bytes&quot;: 3948,
-            &quot;Packets&quot;: 47,
-            &quot;Value&quot;: &quot;10.0.0.2&quot;
-          },
-          &quot;AB&quot;: {
-            &quot;Bytes&quot;: 3948,
-            &quot;Packets&quot;: 47,
-            &quot;Value&quot;: &quot;10.0.0.1&quot;
-          },
-          &quot;Type&quot;: &quot;IPV4&quot;
-        }
-      ],
-      &quot;Last&quot;: 1464279198,
-      &quot;Start&quot;: 1464279141
-    },
-    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4/Payload&quot;,
-    &quot;UUID&quot;: &quot;a24497056a12484c181585b7a1344b95e3197955&quot;
-  },
-  &quot;_score&quot;: 1,
-  &quot;_id&quot;: &quot;a24497056a12484c181585b7a1344b95e3197955&quot;,
-  &quot;_type&quot;: &quot;flow&quot;,
-  &quot;_index&quot;: &quot;skydive_v1&quot;
-}
-</code></pre>
+<p><img src="http://skydive-project.github.io/skydive/images/kubernetes-two-nodes.png" alt="WebUI Capture" /></p>
 
 			
 			<aside class="copyright" role="note">
@@ -539,7 +435,7 @@ between the qrouter and the qdhcp namespaces.</p>
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="http://skydive-project.github.io/skydive/getting-started/docker/" title="How to deploy Skydive with Docker">
+      <a href="http://skydive-project.github.io/skydive/contact/" title="Contact">
         <span class="direction">
           Previous
         </span>
@@ -549,7 +445,7 @@ between the qrouter and the qdhcp namespaces.</p>
           </div>
           <div class="stretch">
             <div class="title">
-              How to deploy Skydive with Docker
+              Contact
             </div>
           </div>
         </div>
@@ -559,14 +455,14 @@ between the qrouter and the qdhcp namespaces.</p>
 
   <div class="next">
   
-      <a href="http://skydive-project.github.io/skydive/contributing/" title="Contributting">
+      <a href="http://skydive-project.github.io/skydive/getting-started/gremlin/" title="Skydive Gremlin Query language">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              Contributting
+              Skydive Gremlin Query language
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">
