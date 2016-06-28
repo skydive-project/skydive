@@ -278,10 +278,18 @@ HostLayout.prototype.NodeDetails = function(node) {
 
   ShowNodeFlows(node);
 
-  if (node.IsCaptureAllowed())
-    $("#add-capture").show();
-  else
-    $("#add-capture").hide();
+  if (node.IsCaptureAllowed()) {
+    if (node.IsCaptureOn()) {
+      $("#add-capture").parent().css("cursor","not-allowed");
+      $("#add-capture").attr("src", "statics/img/record_red.png").css("pointer-events","none");
+    } else {
+      $("#add-capture").parent().css("cursor","auto");
+      $("#add-capture").attr("src", "statics/img/record.png").css({"cursor":"pointer", "pointer-events":"auto"});
+    }
+  } else {
+    $("#add-capture").parent().css("cursor","not-allowed");
+    $("#add-capture").attr("src", "statics/img/record.png").css("pointer-events","none");
+  }
 }
 
 HostLayout.prototype.AddNode = function(node) {
