@@ -604,7 +604,7 @@ HostLayout.prototype.MouseOverNode = function(d) {
   var _this = this;
   NodeDetailsTmID = setTimeout(function(){
     _this.NodeDetails(d);
-  }, 500);
+  }, 300);
 }
 
 HostLayout.prototype.MouseOutNode = function(d) {
@@ -899,6 +899,8 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
 
   switch(msg.Type) {
     case "SyncReply":
+      $("#node-details").hide();
+
       this.Clear();
       this.InitFromSyncMessage(msg);
       break;
@@ -924,6 +926,9 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
 
       this.graph.DelNode(node);
       this.DelNode(node);
+
+      if (typeof CurrentNodeDetails != "undefined" && CurrentNodeDetails.ID == node.ID)
+        $("#node-details").hide();
       break;
 
     case "EdgeUpdated":
@@ -976,7 +981,7 @@ Layout.prototype.StartLiveUpdate = function() {
 
   var _this = this;
   this.updatesocket.onopen = function() {
-    _this.SyncRequest(Date.now())
+    _this.SyncRequest(Date.now());
   }
 
   this.updatesocket.onclose = function() {
