@@ -1432,6 +1432,13 @@ function RefreshCaptureList() {
     success: function(data) {
       var clist = $('.capture-list');
 
+      for (var key in Captures) {
+        if (! (key in data)) {
+          var id = "#" + key;
+          $(id).remove();
+          delete Captures[key];
+        }
+      }
       for (var key in data) {
         if (!(key in Captures)) {
           Captures[key] = data[key];
