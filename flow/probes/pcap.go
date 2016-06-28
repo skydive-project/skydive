@@ -25,6 +25,7 @@ package probes
 import (
 	"errors"
 	"fmt"
+	"io"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -42,7 +43,6 @@ import (
 
 type PcapProbe struct {
 	handle        *pcap.Handle
-	channel       chan gopacket.Packet
 	probeNodeUUID string
 	flowTable     *flow.Table
 	state         int64
@@ -64,11 +64,31 @@ func (p *PcapProbe) SetProbeNode(flow *flow.Flow) bool {
 	return true
 }
 
+func (p *PcapProbe) packetsToChan(ch chan gopacket.Packet) {
+	defer close(ch)
+
+	packetSource := gopacket.NewPacketSource(p.handle, p.handle.LinkType())
+	packetSource.DecodeOptions.Lazy = true
+	packetSource.DecodeOptions.NoCopy = true
+
+	for atomic.LoadInt64(&p.state) == common.RunningState {
+		packet, err := packetSource.NextPacket()
+		if err == io.EOF {
+			return
+		} else if err == nil {
+			ch <- packet
+		}
+	}
+}
+
 func (p *PcapProbe) start() {
+	ch := make(chan gopacket.Packet, 1000)
+	go p.packetsToChan(ch)
+
 	timer := time.NewTicker(20 * time.Millisecond)
 	feedFlowTable := func() {
 		select {
-		case packet, ok := <-p.channel:
+		case packet, ok := <-ch:
 			if ok {
 				flow.FlowFromGoPacket(p.flowTable, &packet, p)
 			}
@@ -83,8 +103,8 @@ func (p *PcapProbe) start() {
 
 func (p *PcapProbe) stop() {
 	if atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
-		p.handle.Close()
 		p.flowTable.Stop()
+		p.handle.Close()
 	}
 }
 
@@ -137,12 +157,8 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, f
 			return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
 		}
 
-		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-		packetChannel := packetSource.Packets()
-
 		probe := &PcapProbe{
 			handle:        handle,
-			channel:       packetChannel,
 			probeNodeUUID: id,
 			state:         common.StoppedState,
 			flowTable:     ft,
