@@ -59,10 +59,10 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlowsByProbeNode(flows chan []*Flow, host string, uuids []string) {
+func (f *TableClient) lookupFlowsByNode(flows chan []*Flow, host string, uuids []string) {
 	tq := TableQuery{
 		Obj: FlowSearchQuery{
-			ProbeNodeUUIDs: uuids,
+			NodeUUIDs: uuids,
 		},
 	}
 	b, _ := json.Marshal(tq)
@@ -126,7 +126,7 @@ func (f *TableClient) lookupFlowsByProbeNode(flows chan []*Flow, host string, uu
 	flows <- []*Flow{}
 }
 
-func (f *TableClient) LookupFlowsByProbeNode(nodes ...*graph.Node) ([]*Flow, error) {
+func (f *TableClient) LookupFlowsByNode(nodes ...*graph.Node) ([]*Flow, error) {
 	if len(nodes) == 0 {
 		return nil, errors.New("No node provided")
 	}
@@ -139,7 +139,7 @@ func (f *TableClient) LookupFlowsByProbeNode(nodes ...*graph.Node) ([]*Flow, err
 	ch := make(chan []*Flow)
 
 	for host, uuids := range uuids {
-		go f.lookupFlowsByProbeNode(ch, host, uuids)
+		go f.lookupFlowsByNode(ch, host, uuids)
 	}
 
 	var flows []*Flow

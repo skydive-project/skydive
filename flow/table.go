@@ -44,7 +44,7 @@ type TableReply struct {
 }
 
 type FlowSearchQuery struct {
-	ProbeNodeUUIDs []string
+	NodeUUIDs []string
 }
 
 type FlowSearchReply struct {
@@ -55,7 +55,7 @@ type sortByLast []*Flow
 
 type FlowQueryFilter struct {
 	// TODO add more filter elements
-	ProbeNodeUUIDs []string
+	NodeUUIDs []string
 }
 
 type ExpireUpdateFunc func(f []*Flow)
@@ -127,8 +127,8 @@ func (ft *Table) Update(flows []*Flow) {
 }
 
 func matchQueryFilter(f *Flow, filter *FlowQueryFilter) bool {
-	for _, u := range filter.ProbeNodeUUIDs {
-		if f.ProbeNodeUUID == u {
+	for _, u := range filter.NodeUUIDs {
+		if f.ProbeNodeUUID == u || f.IfSrcNodeUUID == u || f.IfDstNodeUUID == u {
 			return true
 		}
 	}
@@ -307,7 +307,7 @@ func (ft *Table) onFlowSearchQueryMessage(o interface{}) (*FlowSearchReply, int)
 	}
 
 	flows := ft.GetFlows(FlowQueryFilter{
-		ProbeNodeUUIDs: fq.ProbeNodeUUIDs,
+		NodeUUIDs: fq.NodeUUIDs,
 	})
 
 	if len(flows) == 0 {

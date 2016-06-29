@@ -87,8 +87,9 @@ func (c *ElasticSearchStorage) SearchFlows(filters *storage.Filters) ([]*flow.Fl
 		"size": 5,
 	}
 
-	if len(filters.Term)+len(filters.Range) > 0 {
+	if len(filters.Term.Terms)+len(filters.Range) > 0 {
 		var musts []interface{}
+		var terms []interface{}
 		if len(filters.Range) > 0 {
 			for k, v := range filters.Range {
 				term := map[string]interface{}{
@@ -100,26 +101,30 @@ func (c *ElasticSearchStorage) SearchFlows(filters *storage.Filters) ([]*flow.Fl
 			}
 		}
 
-		if len(filters.Term) > 0 {
-			for k, v := range filters.Term {
+		if len(filters.Term.Terms) > 0 {
+			for k, v := range filters.Term.Terms {
 				term := map[string]interface{}{
 					"term": map[string]interface{}{
 						k: v,
 					},
 				}
-				musts = append(musts, term)
+				terms = append(terms, term)
 			}
+		}
+
+		op := "and"
+		if filters.Term.Op == storage.OR {
+			op = "or"
 		}
 
 		query := map[string]interface{}{
 			"bool": map[string]interface{}{
 				"must": musts,
+				"filter": map[string]interface{}{
+					op: terms,
+				},
 			},
 		}
-
-		// if len(filters.Term) > 0 {
-		// 	query["term"] = filters.Term
-		// }
 
 		request["query"] = query
 	}

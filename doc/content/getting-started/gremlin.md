@@ -181,7 +181,8 @@ The format of the path returned is the following:
 
 ### Flows step
 
-Flows step returns flows of the nodes where a capture has been started.
+Flows step returns flows of nodes where a capture has been started or of nodes
+where the packets are coming from or going to.
 The following Gremlin query returns the flows from the node `br-int` where
 an sFlow capture has been started.
 See the [client section](/getting-started/client/#flow-captures)

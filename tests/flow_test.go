@@ -596,7 +596,7 @@ func TestFlowQuery(t *testing.T) {
 
 	query := &flow.TableQuery{
 		Obj: &flow.FlowSearchQuery{
-			ProbeNodeUUIDs: []string{"probe2"},
+			NodeUUIDs: []string{"probe2"},
 		},
 	}
 	reply := al.QueryTable(query)
@@ -650,7 +650,7 @@ func TestTableServer(t *testing.T) {
 	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
-	flows, err := fclient.LookupFlowsByProbeNode(node)
+	flows, err := fclient.LookupFlowsByNode(node)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

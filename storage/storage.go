@@ -33,8 +33,20 @@ type RangeFilter struct {
 	Lte interface{} `json:"lte,omitempty"`
 }
 
+type TermFilterOp int
+
+const (
+	OR TermFilterOp = iota
+	AND
+)
+
+type TermFilter struct {
+	Op    TermFilterOp
+	Terms map[string]interface{}
+}
+
 type Filters struct {
-	Term  map[string]interface{}
+	Term  TermFilter
 	Range map[string]interface{}
 }
 
@@ -47,7 +59,10 @@ type Storage interface {
 
 func NewFilters() *Filters {
 	return &Filters{
-		Term:  make(map[string]interface{}),
+		Term: TermFilter{
+			Op:    AND,
+			Terms: make(map[string]interface{}),
+		},
 		Range: make(map[string]interface{}),
 	}
 }

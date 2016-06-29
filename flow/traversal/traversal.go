@@ -192,8 +192,13 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 			filters := storage.NewFilters()
 			filters.Range["Statistics.Start"] = storage.RangeFilter{Lte: context.Time.Unix()}
 			filters.Range["Statistics.Last"] = storage.RangeFilter{Gte: context.Time.Unix()}
+
+			filters.Term.Op = storage.OR
 			for _, node := range nodes {
-				filters.Term["ProbeNodeUUID"] = node.ID
+				filters.Term.Terms["ProbeNodeUUID"] = node.ID
+				filters.Term.Terms["IfSrcNodeUUID"] = node.ID
+				filters.Term.Terms["IfDstNodeUUID"] = node.ID
+
 				f, err := s.Storage.SearchFlows(filters)
 				if err != nil {
 					return nil, traversal.ExecutionError
@@ -201,7 +206,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				flows = append(flows, f...)
 			}
 		} else {
-			flows, err = s.TableClient.LookupFlowsByProbeNode(nodes...)
+			flows, err = s.TableClient.LookupFlowsByNode(nodes...)
 		}
 		if err != nil {
 			logging.GetLogger().Errorf("Error while looking for flows for nodes: %v, %s", nodes, err.Error())

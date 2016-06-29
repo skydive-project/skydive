@@ -110,16 +110,21 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 
 func (c *OrientDBStorage) SearchFlows(filters *storage.Filters) ([]*flow.Flow, error) {
 	sql := "SELECT FROM Flow"
-	if len(filters.Range)+len(filters.Term) > 0 {
+	if len(filters.Range)+len(filters.Term.Terms) > 0 {
 		var filterList []string
-		for name, value := range filters.Term {
+		for name, value := range filters.Term.Terms {
 			marshal, err := json.Marshal(value)
 			if err != nil {
 				return nil, err
 			}
 			filterList = append(filterList, fmt.Sprintf("%s = %s", name, marshal))
 		}
-		sql += " WHERE " + strings.Join(filterList, " AND ")
+		sql += " WHERE "
+		if filters.Term.Op == storage.AND {
+			sql += strings.Join(filterList, " AND ")
+		} else {
+			sql += strings.Join(filterList, " OR ")
+		}
 	}
 	sql += " ORDER BY Statistics.Last"
 	docs, err := c.client.Sql(sql)
