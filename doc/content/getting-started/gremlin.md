@@ -226,3 +226,10 @@ G.V().Has('Type', Within('ovsbridge', 'ovsport'))
 ```console
 G.V().Has('Type', Without('ovsbridge', 'ovsport'))
 ```
+
+* `Regex`, matches graph elements for which metadata matches the given regular
+  expression.
+
+```console
+G.V().Has('Name', Regex('tap-'))
+```

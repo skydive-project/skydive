@@ -367,20 +367,34 @@ func (p *GremlinTraversalParser) parserStepParams() (GremlinTraversalStepParams,
 			}
 			params = append(params, Within(withParams...))
 		case WITHOUT:
-			withParams, err := p.parserStepParams()
+			withoutParams, err := p.parserStepParams()
 			if err != nil {
 				return nil, err
 			}
-			params = append(params, Without(withParams...))
+			params = append(params, Without(withoutParams...))
 		case NE:
-			withParams, err := p.parserStepParams()
+			neParams, err := p.parserStepParams()
 			if err != nil {
 				return nil, err
 			}
-			if len(withParams) != 1 {
-				return nil, fmt.Errorf("One parameter expected to EQ: %v", withParams)
+			if len(neParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with NE: %v", neParams)
 			}
-			params = append(params, Ne(withParams[0]))
+			params = append(params, Ne(neParams[0]))
+		case REGEX:
+			regexParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(regexParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with Regex: %v", regexParams)
+			}
+			switch param := regexParams[0].(type) {
+			case string:
+				params = append(params, Regex(param))
+			default:
+				return nil, fmt.Errorf("Regex predicate expect a string a parameter, got: %s", lit)
+			}
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}

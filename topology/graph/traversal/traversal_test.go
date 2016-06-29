@@ -171,6 +171,24 @@ func TestTraversalNe(t *testing.T) {
 	}
 }
 
+func TestTraversalRegex(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	// next test
+	tv := tr.V().Has("Name", Regex("ode"))
+	if len(tv.Values()) != 1 {
+		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
+	}
+
+	// next test
+	tv = tr.V().Has("Name", Regex("ode5"))
+	if len(tv.Values()) != 0 {
+		t.Fatalf("Shouldn't return node, returned: %v", tv.Values())
+	}
+}
+
 func TestTraversalBoth(t *testing.T) {
 	g := newTransversalGraph(t)
 
@@ -332,5 +350,12 @@ func TestTraversalParser(t *testing.T) {
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Has("Name", Regex("ode"))`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 1 {
+		t.Fatalf("Should return 1 node, returned: %v", res.Values())
 	}
 }

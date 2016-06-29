@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/redhat-cip/skydive/common"
@@ -111,6 +112,28 @@ func (n *NEMetadataMatcher) Match(v interface{}) bool {
 
 func Ne(s interface{}) *NEMetadataMatcher {
 	return &NEMetadataMatcher{value: s}
+}
+
+type RegexMetadataMatcher struct {
+	regexp *regexp.Regexp
+}
+
+func (r *RegexMetadataMatcher) Match(v interface{}) bool {
+	if r.regexp == nil {
+		return false
+	}
+
+	switch v.(type) {
+	case string:
+		return r.regexp.MatchString(v.(string))
+	}
+
+	return false
+}
+
+func Regex(expr string) *RegexMetadataMatcher {
+	r, _ := regexp.Compile(expr)
+	return &RegexMetadataMatcher{regexp: r}
 }
 
 func SliceToMetadata(s ...interface{}) (graph.Metadata, error) {
