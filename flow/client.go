@@ -59,7 +59,7 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlowsByNode(flows chan []*Flow, host string, uuids []string) {
+func (f *TableClient) lookupFlowsByNode(flowset chan *FlowSet, host string, uuids []string) {
 	tq := TableQuery{
 		Obj: FlowSearchQuery{
 			NodeUUIDs: uuids,
@@ -93,7 +93,7 @@ func (f *TableClient) lookupFlowsByNode(flows chan []*Flow, host string, uuids [
 	ok := f.WSServer.SendWSMessageTo(msg, host)
 	if !ok {
 		logging.GetLogger().Errorf("Unable to send message to agent: %s", host)
-		flows <- []*Flow{}
+		flowset <- NewFlowSet()
 		return
 	}
 
@@ -116,17 +116,17 @@ func (f *TableClient) lookupFlowsByNode(flows chan []*Flow, host string, uuids [
 
 		fr := reply.Obj.(*FlowSearchReply)
 
-		flows <- fr.Flows
+		flowset <- fr.FlowSet
 
 		return
 	case <-time.After(time.Second * 10):
 		logging.GetLogger().Errorf("Timeout while reading TableReply from: %s", host)
 	}
 
-	flows <- []*Flow{}
+	flowset <- NewFlowSet()
 }
 
-func (f *TableClient) LookupFlowsByNode(nodes ...*graph.Node) ([]*Flow, error) {
+func (f *TableClient) LookupFlowsByNode(nodes ...*graph.Node) (*FlowSet, error) {
 	if len(nodes) == 0 {
 		return nil, errors.New("No node provided")
 	}
@@ -136,19 +136,19 @@ func (f *TableClient) LookupFlowsByNode(nodes ...*graph.Node) ([]*Flow, error) {
 		uuids[node.Host()] = append(uuids[node.Host()], string(node.ID))
 	}
 
-	ch := make(chan []*Flow)
+	ch := make(chan *FlowSet)
 
 	for host, uuids := range uuids {
 		go f.lookupFlowsByNode(ch, host, uuids)
 	}
 
-	var flows []*Flow
+	flowset := NewFlowSet()
 	for i := 0; i != len(uuids); i++ {
-		f := <-ch
-		flows = append(flows, f...)
+		fs := <-ch
+		flowset.Merge(fs)
 	}
 
-	return flows, nil
+	return flowset, nil
 }
 
 func NewTableClient(w *shttp.WSServer) *TableClient {

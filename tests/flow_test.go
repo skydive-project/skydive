@@ -605,11 +605,11 @@ func TestFlowQuery(t *testing.T) {
 	ft2.Stop()
 
 	searchReply := reply.Obj.(*flow.FlowSearchReply)
-	if len(searchReply.Flows) != len(flows1)+len(flows2) {
+	if len(searchReply.FlowSet.Flows) != len(flows1)+len(flows2) {
 		t.Fatalf("FlowQuery should return at least one flow")
 	}
 
-	for _, flow := range searchReply.Flows {
+	for _, flow := range searchReply.FlowSet.Flows {
 		if flow.ProbeNodeUUID != "probe2" {
 			t.Fatalf("FlowQuery should only return flows with probe2, got: %s", flow)
 		}
@@ -650,16 +650,16 @@ func TestTableServer(t *testing.T) {
 	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
-	flows, err := fclient.LookupFlowsByNode(node)
+	flowset, err := fclient.LookupFlowsByNode(node)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	if len(ts.GetFlows()) != len(flows) {
-		t.Fatalf("Should return the same number of flows than in the database, got: %v", flows)
+	if len(ts.GetFlows()) != len(flowset.Flows) {
+		t.Fatalf("Should return the same number of flows than in the database, got: %v", flowset)
 	}
 
-	for _, f := range flows {
+	for _, f := range flowset.Flows {
 		if f.ProbeNodeUUID != string(node.ID) {
 			t.Fatalf("Returned a non expected flow: %v", f)
 		}
@@ -703,11 +703,7 @@ func TestFlowGremlin(t *testing.T) {
 
 	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows()`)
 	if len(ts.GetFlows()) != len(flows) {
-		t.Fatalf("Should return the same number of flows than in the database, got: %v", flows)
-	}
-
-	if len(ts.GetFlows()) != len(flows) {
-		t.Fatalf("Should return the same number of flows than in the database, got: %v", flows)
+		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
 	}
 
 	for _, f := range flows {

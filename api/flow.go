@@ -83,7 +83,7 @@ func (f *FlowApi) jsonFlowConversationEthernetPath(EndpointType flow.FlowEndpoin
 	pathMap := make(map[string]int)
 	layerMap := make(map[string]int)
 
-	for _, f := range f.FlowTable.GetFlows() {
+	for _, f := range f.FlowTable.GetFlows().Flows {
 		layerFlow := f.GetStatistics().GetEndpointsType(EndpointType)
 		if layerFlow == nil {
 			continue
@@ -182,7 +182,7 @@ func (f *FlowApi) jsonFlowDiscovery(DiscoType discoType) string {
 
 	pathMap := make(map[string]flow.FlowEndpointStatistics)
 
-	for _, f := range f.FlowTable.GetFlows() {
+	for _, f := range f.FlowTable.GetFlows().Flows {
 		eth := f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
 		if eth == nil {
 			continue

@@ -48,7 +48,7 @@ type FlowSearchQuery struct {
 }
 
 type FlowSearchReply struct {
-	Flows []*Flow
+	FlowSet *FlowSet
 }
 
 type sortByLast []*Flow
@@ -141,17 +141,23 @@ func (ft *Table) GetTime() int64 {
 	return atomic.LoadInt64(&ft.tableClock)
 }
 
-func (ft *Table) GetFlows(filters ...FlowQueryFilter) []*Flow {
+func (ft *Table) GetFlows(filters ...FlowQueryFilter) *FlowSet {
 	ft.RLock()
 	defer ft.RUnlock()
 
-	flows := make([]*Flow, 0, len(ft.table))
+	flowset := NewFlowSet()
 	for _, f := range ft.table {
 		if len(filters) == 0 || matchQueryFilter(f, &filters[0]) {
-			flows = append(flows, &*f)
+			if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
+				flowset.Start = f.Statistics.Start
+			}
+			if flowset.End == 0 || flowset.Start < f.Statistics.Last {
+				flowset.End = f.Statistics.Last
+			}
+			flowset.Flows = append(flowset.Flows, &*f)
 		}
 	}
-	return flows
+	return flowset
 }
 
 func (ft *Table) GetFlow(key string) *Flow {
@@ -192,7 +198,7 @@ func (ft *Table) FilterLast(last time.Duration) []*Flow {
 	return flows
 }
 
-func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) []*Flow {
+func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) *FlowSet {
 	meth := make(map[string][]*Flow)
 	ft.RLock()
 	for _, f := range ft.table {
@@ -206,18 +212,26 @@ func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) []*Fl
 	ft.RUnlock()
 
 	mflows := make(map[*Flow]struct{})
-	var flows []*Flow
+	flowset := NewFlowSet()
 	for _, eth := range list {
 		if flist, ok := meth[eth]; ok {
 			for _, f := range flist {
 				if _, found := mflows[f]; !found {
 					mflows[f] = struct{}{}
-					flows = append(flows, f)
+
+					if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
+						flowset.Start = f.Statistics.Start
+					}
+					if flowset.End == 0 || flowset.Start < f.Statistics.Last {
+						flowset.End = f.Statistics.Last
+					}
+
+					flowset.Flows = append(flowset.Flows, f)
 				}
 			}
 		}
 	}
-	return flows
+	return flowset
 }
 
 /* Internal call only, Must be called under ft.Lock() */
@@ -287,54 +301,23 @@ func (ft *Table) RegisterDefault(fn func()) {
 }
 
 /* Need to Rlock the table before calling. Returned flows may not be unique */
-func (ft *Table) window(start int64, end int64) (flows []*Flow) {
+// TODO need to be merge with GetFlows using filters
+func (ft *Table) Window(start, end int64) *FlowSet {
+	flowset := NewFlowSet()
 	if start > end {
-		return
+		return flowset
 	}
+	flowset.Start = start
+	flowset.End = end
+
 	for _, f := range ft.table {
 		fstart := f.GetStatistics().Start
 		fend := f.GetStatistics().Last
 		if fstart < end && (fend == 0 || fend > start) {
-			flows = append(flows, f)
+			flowset.Flows = append(flowset.Flows, f)
 		}
 	}
-	return
-}
-
-func minInt64(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func maxInt64(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func (ft *Table) WindowBandwidth(start int64, end int64) (fbw FlowBandwidth, flows []*Flow) {
-	ft.RLock()
-	defer ft.RUnlock()
-
-	flows = ft.window(start, end)
-	if len(flows) == 0 {
-		return
-	}
-	fbw.dt = end - start
-	for _, f := range flows {
-		fduration, fstart, fend := f.GetDuration(end)
-		lbw := f.GetLayerBandwidth(FlowEndpointType_ETHERNET, fduration)
-		fdurationWindow := uint64(minInt64(fend, end) - maxInt64(fstart, start))
-		fbw.ABpackets += uint64(lbw.ABpackets * fdurationWindow / uint64(fduration))
-		fbw.ABbytes += uint64(lbw.ABbytes * fdurationWindow / uint64(fduration))
-		fbw.BApackets += uint64(lbw.BApackets * fdurationWindow / uint64(fduration))
-		fbw.BAbytes += uint64(lbw.BAbytes * fdurationWindow / uint64(fduration))
-		fbw.nbFlow++
-	}
-	return
+	return flowset
 }
 
 func (ft *Table) Flush() {
@@ -362,20 +345,20 @@ func (ft *Table) onFlowSearchQueryMessage(o interface{}) (*FlowSearchReply, int)
 		return nil, 500
 	}
 
-	flows := ft.GetFlows(FlowQueryFilter{
+	flowset := ft.GetFlows(FlowQueryFilter{
 		NodeUUIDs: fq.NodeUUIDs,
 	})
 
-	if len(flows) == 0 {
+	if len(flowset.Flows) == 0 {
 		return &FlowSearchReply{
-			Flows: flows,
+			FlowSet: flowset,
 		}, 404
 	}
 
-	sort.Sort(sortByLast(flows))
+	sort.Sort(sortByLast(flowset.Flows))
 
 	return &FlowSearchReply{
-		Flows: flows,
+		FlowSet: flowset,
 	}, 200
 }
 

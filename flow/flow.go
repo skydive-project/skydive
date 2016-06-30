@@ -232,28 +232,6 @@ func (flow *Flow) GetLayerHash(ltype FlowEndpointType) string {
 	return hex.EncodeToString(s.GetLayerHash(ltype))
 }
 
-func (flow *Flow) GetDuration(now int64) (duration, fstart, fend int64) {
-	s := flow.GetStatistics()
-	fstart = s.Start
-	fend = s.Last
-	if fend == 0 { /* Unterminated flow */
-		fend = now
-	}
-	duration = fend - fstart
-	return
-}
-
-func (flow *Flow) GetLayerBandwidth(ltype FlowEndpointType, duration int64) (fbw FlowBandwidth) {
-	e := flow.GetStatistics().GetEndpointsType(ltype)
-	fbw.nbFlow = 1
-	fbw.dt = duration
-	fbw.ABpackets = e.AB.Packets
-	fbw.ABbytes = e.AB.Bytes
-	fbw.BApackets = e.BA.Packets
-	fbw.BAbytes = e.BA.Bytes
-	return
-}
-
 func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, setter FlowProbeNodeSetter) *Flow {
 	key := NewFlowKeyFromGoPacket(packet)
 	flow, _ := ft.GetOrCreateFlow(key.String())

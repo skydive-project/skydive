@@ -46,13 +46,13 @@ type FlowGremlinTraversalStep struct {
 
 type FlowTraversalStep struct {
 	GraphTraversal *traversal.GraphTraversal
-	flows          []*flow.Flow
+	flowset        *flow.FlowSet
 }
 
 func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
-	for _, flow := range f.flows {
+	for _, flow := range f.flowset.Flows {
 		if flow.IfDstNodeUUID != "" && flow.IfDstNodeUUID != "*" {
 			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID))
 			if node != nil {
@@ -74,7 +74,7 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
-	for _, flow := range f.flows {
+	for _, flow := range f.flowset.Flows {
 		if flow.IfSrcNodeUUID != "" && flow.IfSrcNodeUUID != "*" {
 			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID))
 			if node != nil {
@@ -94,16 +94,16 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 }
 
 func (f *FlowTraversalStep) Values() []interface{} {
-	a := make([]interface{}, len(f.flows))
-	for i, flow := range f.flows {
+	a := make([]interface{}, len(f.flowset.Flows))
+	for i, flow := range f.flowset.Flows {
 		a[i] = flow
 	}
 	return a
 }
 
 func (f *FlowTraversalStep) MarshalJSON() ([]byte, error) {
-	a := make([]interface{}, len(f.flows))
-	for i, flow := range f.flows {
+	a := make([]interface{}, len(f.flowset.Flows))
+	for i, flow := range f.flowset.Flows {
 		b, err := json.Marshal(flow)
 		if err != nil {
 			logging.GetLogger().Errorf("Error while converting flow to JSON: %v", flow)
@@ -184,7 +184,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 			nodes[i] = v.(*graph.Node)
 		}
 
-		var flows []*flow.Flow
+		flowset := flow.NewFlowSet()
 		var err error
 
 		context := tv.GraphTraversal.Graph.GetContext()
@@ -203,16 +203,16 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				if err != nil {
 					return nil, traversal.ExecutionError
 				}
-				flows = append(flows, f...)
+				flowset.Flows = append(flowset.Flows, f...)
 			}
 		} else {
-			flows, err = s.TableClient.LookupFlowsByNode(nodes...)
+			flowset, err = s.TableClient.LookupFlowsByNode(nodes...)
 		}
 		if err != nil {
 			logging.GetLogger().Errorf("Error while looking for flows for nodes: %v, %s", nodes, err.Error())
 			return nil, traversal.ExecutionError
 		}
-		return &FlowTraversalStep{GraphTraversal: tv.GraphTraversal, flows: flows}, nil
+		return &FlowTraversalStep{GraphTraversal: tv.GraphTraversal, flowset: flowset}, nil
 	}
 
 	return nil, traversal.ExecutionError

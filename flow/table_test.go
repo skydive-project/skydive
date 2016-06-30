@@ -129,12 +129,12 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	GenerateTestFlows(t, ft, 1, "probe1")
 	GenerateTestFlows(t, ft, 2, "probe2")
 
-	flows := ft.GetFlows(FlowQueryFilter{NodeUUIDs: []string{"probe1"}})
-	if len(flows) == 0 {
+	flowset := ft.GetFlows(FlowQueryFilter{NodeUUIDs: []string{"probe1"}})
+	if len(flowset.Flows) == 0 {
 		t.Errorf("Should have flows with from probe1 returned")
 	}
 
-	for _, f := range flows {
+	for _, f := range flowset.Flows {
 		if f.ProbeNodeUUID != "probe1" {
 			t.Errorf("Only flow with probe1 as NodeUUID is expected, got %s", f.ProbeNodeUUID)
 		}
@@ -220,17 +220,17 @@ func TestTable_SelectLayer(t *testing.T) {
 	ft := NewTestFlowTableComplex(t, nil, nil)
 
 	var macs []string
-	flows := ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
-	if len(ft.table) <= len(flows) && len(flows) != 0 {
-		t.Errorf("SelectLayer should select none flows %d %d", len(ft.table), len(flows))
+	flowset := ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
+	if len(ft.table) <= len(flowset.Flows) && len(flowset.Flows) != 0 {
+		t.Errorf("SelectLayer should select none flows %d %d", len(ft.table), len(flowset.Flows))
 	}
 
 	for mac := 0; mac < 0xff; mac++ {
 		macs = append(macs, fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", 0x00, 0x0F, 0xAA, 0xFA, 0xAA, mac))
 	}
-	flows = ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
-	if len(ft.table) != len(flows) {
-		t.Errorf("SelectLayer should select all flows %d %d", len(ft.table), len(flows))
+	flowset = ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
+	if len(ft.table) != len(flowset.Flows) {
+		t.Errorf("SelectLayer should select all flows %d %d", len(ft.table), len(flowset.Flows))
 	}
 }
 
@@ -240,7 +240,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 
 	foundLayers := make(map[string]bool)
 
-	for _, f := range ft.GetFlows() {
+	for _, f := range ft.GetFlows().Flows {
 		hasher := sha1.New()
 		for _, ep := range f.GetStatistics().GetEndpoints() {
 			hasher.Write(ep.Hash)
@@ -252,7 +252,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 	ft2 := NewTable(nil, nil)
 	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe")
 
-	for _, f := range ft2.GetFlows() {
+	for _, f := range ft2.GetFlows().Flows {
 		hasher := sha1.New()
 		for _, ep := range f.GetStatistics().GetEndpoints() {
 			hasher.Write(ep.Hash)
@@ -294,85 +294,91 @@ func TestNewTableQuery_WindowBandwidth(t *testing.T) {
 		randomizeLayerStats(t, int64(0x785612+i), now, f, FlowEndpointType_ETHERNET)
 	}
 
-	fbw, _ := ft.WindowBandwidth(now-100, now+100)
-	fbwSeed0x4567 := FlowBandwidth{ABpackets: 392193, ABbytes: 225250394, BApackets: 278790, BAbytes: 238466148, dt: 200, nbFlow: 10}
+	fbw := ft.Window(now-100, now+100).Bandwidth()
+	fbwSeed0x4567 := FlowSetBandwidth{ABpackets: 392193, ABbytes: 225250394, BApackets: 278790, BAbytes: 238466148, Duration: 200, NBFlow: 10}
 	if fbw != fbwSeed0x4567 {
 		t.Fatal("flows Bandwidth didn't match\n", "fbw:", fbw, "fbwSeed0x4567:", fbwSeed0x4567)
 	}
 
-	fbw, _ = ft.WindowBandwidth(0, now+100)
+	fbw = ft.Window(0, now+100).Bandwidth()
 	fbw10FlowZero := fbwSeed0x4567
-	fbw10FlowZero.dt = 1462962523
+	fbw10FlowZero.Duration = 1462962523
 	if fbw != fbw10FlowZero {
 		t.Fatal("flows Bandwidth should be zero for 10 flows", fbw, fbw10FlowZero)
 	}
 
-	fbw, _ = ft.WindowBandwidth(0, 0)
-	fbwZero := FlowBandwidth{}
+	fbw = ft.Window(0, 0).Bandwidth()
+	fbwZero := FlowSetBandwidth{}
 	if fbw != fbwZero {
 		t.Fatal("flows Bandwidth should be zero", fbw, fbwZero)
 	}
 
-	fbw, _ = ft.WindowBandwidth(now, now-1)
+	fbw = ft.Window(now, now-1).Bandwidth()
 	if fbw != fbwZero {
 		t.Fatal("flows Bandwidth should be zero", fbw, fbwZero)
 	}
 	graphFlows(now, flows)
 
-	fbw, _ = ft.WindowBandwidth(now-89, now-89)
+	fbw = ft.Window(now-89, now-89).Bandwidth()
 	if fbw != fbwZero {
 		t.Fatal("flows Bandwidth should be zero", fbw, fbwZero)
 	}
 
 	/* flow half window (2 sec) */
-	fbw, winFlows := ft.WindowBandwidth(now-89-1, now-89+1)
-	fbwFlow := FlowBandwidth{ABpackets: 239, ABbytes: 106266, BApackets: 551, BAbytes: 444983, dt: 2, nbFlow: 1}
+	winFlows := ft.Window(now-89-1, now-89+1)
+	fbw = winFlows.Bandwidth()
+	fbwFlow := FlowSetBandwidth{ABpackets: 239, ABbytes: 106266, BApackets: 551, BAbytes: 444983, Duration: 2, NBFlow: 1}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
 	}
 
 	/* flow 2/3 window (3 sec) */
-	fbw, winFlows = ft.WindowBandwidth(now-89-1, now-89+2)
-	fbwFlow = FlowBandwidth{ABpackets: 479, ABbytes: 212532, BApackets: 1102, BAbytes: 889966, dt: 3, nbFlow: 1}
+	winFlows = ft.Window(now-89-1, now-89+2)
+	fbw = winFlows.Bandwidth()
+	fbwFlow = FlowSetBandwidth{ABpackets: 479, ABbytes: 212532, BApackets: 1102, BAbytes: 889966, Duration: 3, NBFlow: 1}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
 	}
 
 	/* flow full window, 1 sec */
-	fbw, winFlows = ft.WindowBandwidth(now-89, now-89+1)
-	fbwFlow = FlowBandwidth{ABpackets: 239, ABbytes: 106266, BApackets: 551, BAbytes: 444983, dt: 1, nbFlow: 1}
+	winFlows = ft.Window(now-89, now-89+1)
+	fbw = winFlows.Bandwidth()
+	fbwFlow = FlowSetBandwidth{ABpackets: 239, ABbytes: 106266, BApackets: 551, BAbytes: 444983, Duration: 1, NBFlow: 1}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
 	}
 
 	/* flow full window shifted (+2), 2 sec */
-	fbw, winFlows = ft.WindowBandwidth(now-89+2, now-89+4)
-	fbwFlow = FlowBandwidth{ABpackets: 479, ABbytes: 212532, BApackets: 1102, BAbytes: 889966, dt: 2, nbFlow: 1}
+	winFlows = ft.Window(now-89+2, now-89+4)
+	fbw = winFlows.Bandwidth()
+	fbwFlow = FlowSetBandwidth{ABpackets: 479, ABbytes: 212532, BApackets: 1102, BAbytes: 889966, Duration: 2, NBFlow: 1}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
 	}
 
 	/* 2 flows full window, 1 sec */
-	fbw, winFlows = ft.WindowBandwidth(now-71, now-71+1)
-	fbwFlow = FlowBandwidth{ABpackets: 3956, ABbytes: 3154923, BApackets: 2052, BAbytes: 1879998, dt: 1, nbFlow: 2}
+	winFlows = ft.Window(now-71, now-71+1)
+	fbw = winFlows.Bandwidth()
+	fbwFlow = FlowSetBandwidth{ABpackets: 3956, ABbytes: 3154923, BApackets: 2052, BAbytes: 1879998, Duration: 1, NBFlow: 2}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 2 flows ", fbw, fbwFlow)
 	}
 
-	tags := make([]string, fbw.nbFlow)
-	for i, fw := range winFlows {
+	tags := make([]string, fbw.NBFlow)
+	for i, fw := range winFlows.Flows {
 		tags[i] = fw.GetLayerHash(FlowEndpointType_ETHERNET)
 	}
 	graphFlows(now, flows, tags...)
 
-	fbw, winFlows = ft.WindowBandwidth(now-58, now-58+1)
-	fbw4flows := FlowBandwidth{ABpackets: 33617, ABbytes: 31846830, BApackets: 7529, BAbytes: 9191349, dt: 1, nbFlow: 4}
+	winFlows = ft.Window(now-58, now-58+1)
+	fbw = winFlows.Bandwidth()
+	fbw4flows := FlowSetBandwidth{ABpackets: 33617, ABbytes: 31846830, BApackets: 7529, BAbytes: 9191349, Duration: 1, NBFlow: 4}
 	if fbw != fbw4flows {
 		t.Fatal("flows Bandwidth should be from 4 flows ", fbw, fbw4flows)
 	}
 
-	tags = make([]string, fbw.nbFlow)
-	for i, fw := range winFlows {
+	tags = make([]string, fbw.NBFlow)
+	for i, fw := range winFlows.Flows {
 		tags[i] = fw.GetLayerHash(FlowEndpointType_ETHERNET)
 	}
 	graphFlows(now, flows, tags...)

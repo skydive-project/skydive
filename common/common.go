@@ -134,3 +134,17 @@ func Retry(fnc func() error, try int, delay time.Duration) error {
 
 	return err
 }
+
+func MinInt64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func MaxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}

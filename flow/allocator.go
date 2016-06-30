@@ -48,19 +48,19 @@ func (a *TableAllocator) Flush() {
 func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableReply) *TableReply {
 	switch query.Obj.(type) {
 	case *FlowSearchQuery:
-		var flows []*Flow
+		flowset := NewFlowSet()
 		for _, reply := range replies {
 			if reply.Status != 200 {
 				continue
 			}
 
-			flows = append(flows, reply.Obj.(*FlowSearchReply).Flows...)
+			flowset.Merge(reply.Obj.(*FlowSearchReply).FlowSet)
 		}
 
 		return &TableReply{
 			Status: 200,
 			Obj: &FlowSearchReply{
-				Flows: flows,
+				FlowSet: flowset,
 			},
 		}
 	}
