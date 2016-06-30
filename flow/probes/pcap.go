@@ -68,9 +68,6 @@ func (p *PcapProbe) packetsToChan(ch chan gopacket.Packet) {
 	defer close(ch)
 
 	packetSource := gopacket.NewPacketSource(p.handle, p.handle.LinkType())
-	packetSource.DecodeOptions.Lazy = true
-	packetSource.DecodeOptions.NoCopy = true
-
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := packetSource.NextPacket()
 		if err == io.EOF {
@@ -85,7 +82,7 @@ func (p *PcapProbe) start() {
 	ch := make(chan gopacket.Packet, 1000)
 	go p.packetsToChan(ch)
 
-	timer := time.NewTicker(20 * time.Millisecond)
+	timer := time.NewTicker(200 * time.Millisecond)
 	feedFlowTable := func() {
 		select {
 		case packet, ok := <-ch:
@@ -109,71 +106,75 @@ func (p *PcapProbe) stop() {
 }
 
 func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
-	logging.GetLogger().Debugf("Starting pcap capture on %s", n.Metadata()["Name"])
-
-	if name, ok := n.Metadata()["Name"]; ok && name != "" {
-		id := string(n.ID)
-		ifName := name.(string)
-
-		if _, ok := p.probes[id]; ok {
-			return nil
-		}
-
-		nodes := p.graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
-		if len(nodes) == 0 {
-			return errors.New(fmt.Sprintf("Failed to determine probePath for %s", ifName))
-		}
-
-		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
-
-		origns, err := netns.Get()
-		if err != nil {
-			return fmt.Errorf("Error while getting current ns: %s", err.Error())
-		}
-		defer origns.Close()
-
-		for _, node := range nodes {
-			if node.Metadata()["Type"] == "netns" {
-				name := node.Metadata()["Name"].(string)
-				path := node.Metadata()["Path"].(string)
-				logging.GetLogger().Debugf("Switching to namespace %s (path: %s)", name, path)
-
-				newns, err := netns.GetFromPath(path)
-				if err != nil {
-					return fmt.Errorf("Error while opening ns %s (path: %s): %s", name, path, err.Error())
-				}
-				defer newns.Close()
-
-				if err := netns.Set(newns); err != nil {
-					return fmt.Errorf("Error while switching from root ns to %s (path: %s): %s", name, path, err.Error())
-				}
-				defer netns.Set(origns)
-			}
-		}
-
-		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
-		if err != nil {
-			return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
-		}
-
-		probe := &PcapProbe{
-			handle:        handle,
-			probeNodeUUID: id,
-			state:         common.StoppedState,
-			flowTable:     ft,
-		}
-		p.probesLock.Lock()
-		p.probes[id] = probe
-		p.probesLock.Unlock()
-		p.wg.Add(1)
-
-		go func() {
-			defer p.wg.Done()
-
-			probe.start()
-		}()
+	name, ok := n.Metadata()["Name"]
+	if !ok || name == "" {
+		return errors.New(fmt.Sprintf("No name for node %v", n))
 	}
+
+	id := string(n.ID)
+	ifName := name.(string)
+
+	if _, ok := p.probes[id]; ok {
+		return errors.New(fmt.Sprintf("Already registered %s", ifName))
+	}
+
+	nodes := p.graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
+	if len(nodes) == 0 {
+		return errors.New(fmt.Sprintf("Failed to determine probePath for %s", ifName))
+	}
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	origns, err := netns.Get()
+	if err != nil {
+		return fmt.Errorf("Error while getting current ns: %s", err.Error())
+	}
+	defer origns.Close()
+
+	for _, node := range nodes {
+		if node.Metadata()["Type"] == "netns" {
+			name := node.Metadata()["Name"].(string)
+			path := node.Metadata()["Path"].(string)
+			logging.GetLogger().Debugf("Switching to namespace %s (path: %s)", name, path)
+
+			newns, err := netns.GetFromPath(path)
+			if err != nil {
+				return fmt.Errorf("Error while opening ns %s (path: %s): %s", name, path, err.Error())
+			}
+			defer newns.Close()
+
+			if err := netns.Set(newns); err != nil {
+				return fmt.Errorf("Error while switching from root ns to %s (path: %s): %s", name, path, err.Error())
+			}
+			defer netns.Set(origns)
+		}
+	}
+
+	handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
+	if err != nil {
+		return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
+	}
+
+	logging.GetLogger().Debugf("PCAP capture started on %s", n.Metadata()["Name"])
+
+	probe := &PcapProbe{
+		handle:        handle,
+		probeNodeUUID: id,
+		state:         common.StoppedState,
+		flowTable:     ft,
+	}
+	p.probesLock.Lock()
+	p.probes[id] = probe
+	p.probesLock.Unlock()
+	p.wg.Add(1)
+
+	go func() {
+		defer p.wg.Done()
+
+		probe.start()
+	}()
+
 	return nil
 }
 

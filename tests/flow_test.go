@@ -73,7 +73,7 @@ analyzer:
 etcd:
   embedded: {{.EmbeddedEtcd}}
   port: 2374
-  data_dir: /tmp
+  data_dir: /tmp/skydive-test-etcd
   servers:
     - {{.EtcdServer}}
 
@@ -507,7 +507,7 @@ func TestPCAPProbe(t *testing.T) {
 	}
 
 	if !ok {
-		t.Error("Unable to find a flow with the expected ProbeNodeUUID")
+		t.Errorf("Unable to find a flow with the expected ProbeNodeUUID: %v\n%v", flows, aa.Agent.Graph.String())
 	}
 
 	client.Delete("capture", capture.ID())

@@ -25,6 +25,7 @@ package probes
 import (
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/redhat-cip/skydive/api"
 	"github.com/redhat-cip/skydive/flow"
@@ -34,6 +35,7 @@ import (
 )
 
 type OnDemandProbeListener struct {
+	sync.RWMutex
 	graph.DefaultGraphListener
 	Graph          *graph.Graph
 	Probes         *FlowProbeBundle
@@ -64,6 +66,14 @@ func (o *OnDemandProbeListener) probeFromType(n *graph.Node) *FlowProbe {
 }
 
 func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) {
+	o.Lock()
+	defer o.Unlock()
+
+	if _, ok := o.activeProbes[n.ID]; ok {
+		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
+		return
+	}
+
 	if !IsCaptureAllowed(n) {
 		logging.GetLogger().Infof("Do not register flow probe, type not supported %v", n)
 		return
@@ -72,11 +82,6 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 	fprobe := o.probeFromType(n)
 	if fprobe == nil {
 		logging.GetLogger().Errorf("Failed to register flow probe, unknown type %v", n)
-		return
-	}
-
-	if _, ok := o.activeProbes[n.ID]; ok {
-		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
 		return
 	}
 
@@ -89,9 +94,18 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 
 	o.activeProbes[n.ID] = ft
 	o.Graph.AddMetadata(n, "State.FlowCapture", "ON")
+
+	logging.GetLogger().Debugf("New active probe on: %v", n)
 }
 
 func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
+	o.RLock()
+	_, active := o.activeProbes[n.ID]
+	o.RUnlock()
+	if !active {
+		return
+	}
+
 	fprobe := o.probeFromType(n)
 	if fprobe == nil {
 		return
@@ -101,8 +115,11 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
 		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
 	}
 
+	o.Lock()
 	o.fta.Release(o.activeProbes[n.ID])
 	delete(o.activeProbes, n.ID)
+	o.Unlock()
+
 	o.Graph.AddMetadata(n, "State.FlowCapture", "OFF")
 }
 
@@ -135,8 +152,7 @@ func (o *OnDemandProbeListener) matchGremlinExpr(node *graph.Node, gremlin strin
 	return false
 }
 
-func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
-
+func (o *OnDemandProbeListener) onNodeEvent(n *graph.Node) {
 	resources := o.CaptureHandler.Index()
 	for _, resource := range resources {
 		capture := resource.(*api.Capture)
@@ -147,25 +163,21 @@ func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
 	}
 }
 
+func (o *OnDemandProbeListener) OnNodeAdded(n *graph.Node) {
+	o.onNodeEvent(n)
+}
+
 func (o *OnDemandProbeListener) OnNodeUpdated(n *graph.Node) {
-	o.OnNodeAdded(n)
+	o.onNodeEvent(n)
 }
 
 func (o *OnDemandProbeListener) OnEdgeAdded(e *graph.Edge) {
 	parent, child := o.Graph.GetEdgeNodes(e)
-	if parent == nil || child == nil {
+	if parent == nil || child == nil || e.Metadata()["Type"] != "ownership" {
 		return
 	}
 
-	if parent.Metadata()["Type"] == "ovsbridge" {
-		o.OnNodeAdded(parent)
-		return
-	}
-
-	if child.Metadata()["Type"] == "ovsbridge" {
-		o.OnNodeAdded(child)
-		return
-	}
+	o.onNodeEvent(child)
 }
 
 func (o *OnDemandProbeListener) OnNodeDeleted(n *graph.Node) {

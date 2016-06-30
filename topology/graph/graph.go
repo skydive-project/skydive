@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"sync"
 	"time"
 
@@ -93,12 +94,49 @@ type GraphContext struct {
 	Time *time.Time
 }
 
+type graphEventListenerStack []GraphEventListener
+
 type Graph struct {
 	sync.RWMutex
-	backend        GraphBackend
-	context        GraphContext
-	host           string
-	eventListeners []GraphEventListener
+	backend            GraphBackend
+	context            GraphContext
+	host               string
+	eventListeners     []GraphEventListener
+	eventListenerStack graphEventListenerStack
+}
+
+func (s *graphEventListenerStack) push(l GraphEventListener) {
+	*s = append(*s, l)
+}
+
+func (s *graphEventListenerStack) pop() GraphEventListener {
+	if len(*s) == 0 {
+		return nil
+	}
+
+	l := (*s)[len(*s)-1]
+	*s = (*s)[:len(*s)-1]
+
+	return l
+}
+
+func (s *graphEventListenerStack) last() GraphEventListener {
+	if len(*s) == 0 {
+		return nil
+	}
+	return (*s)[len(*s)-1]
+}
+
+func (s *graphEventListenerStack) isCurrent(l GraphEventListener) bool {
+	if len(*s) == 0 {
+		return false
+	}
+	current := (*s)[len(*s)-1]
+
+	if reflect.ValueOf(current).Pointer() == reflect.ValueOf(l).Pointer() {
+		return true
+	}
+	return false
 }
 
 type MetadataMatcher interface {
@@ -696,37 +734,73 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 
 func (g *Graph) NotifyNodeUpdated(n *Node) {
 	for _, l := range g.eventListeners {
+		if g.eventListenerStack.isCurrent(l) {
+			continue
+		}
+
+		g.eventListenerStack.push(l)
 		l.OnNodeUpdated(n)
+		g.eventListenerStack.pop()
 	}
 }
 
 func (g *Graph) NotifyNodeDeleted(n *Node) {
 	for _, l := range g.eventListeners {
+		if g.eventListenerStack.isCurrent(l) {
+			continue
+		}
+
+		g.eventListenerStack.push(l)
 		l.OnNodeDeleted(n)
+		g.eventListenerStack.pop()
 	}
 }
 
 func (g *Graph) NotifyNodeAdded(n *Node) {
 	for _, l := range g.eventListeners {
+		if g.eventListenerStack.isCurrent(l) {
+			continue
+		}
+
+		g.eventListenerStack.push(l)
 		l.OnNodeAdded(n)
+		g.eventListenerStack.pop()
 	}
 }
 
 func (g *Graph) NotifyEdgeUpdated(e *Edge) {
 	for _, l := range g.eventListeners {
+		if g.eventListenerStack.isCurrent(l) {
+			continue
+		}
+
+		g.eventListenerStack.push(l)
 		l.OnEdgeUpdated(e)
+		g.eventListenerStack.pop()
 	}
 }
 
 func (g *Graph) NotifyEdgeDeleted(e *Edge) {
 	for _, l := range g.eventListeners {
+		if g.eventListenerStack.isCurrent(l) {
+			continue
+		}
+
+		g.eventListenerStack.push(l)
 		l.OnEdgeDeleted(e)
+		g.eventListenerStack.pop()
 	}
 }
 
 func (g *Graph) NotifyEdgeAdded(e *Edge) {
 	for _, l := range g.eventListeners {
+		if g.eventListenerStack.isCurrent(l) {
+			continue
+		}
+
+		g.eventListenerStack.push(l)
 		l.OnEdgeAdded(e)
+		g.eventListenerStack.pop()
 	}
 }
 

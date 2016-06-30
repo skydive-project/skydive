@@ -82,6 +82,10 @@ func (t *TopologyApi) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+
+	t.Graph.Lock()
+	defer t.Graph.Unlock()
+
 	tr := traversal.NewGremlinTraversalParser(strings.NewReader(resource.GremlinQuery), t.Graph)
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	if t.TableClient != nil {
