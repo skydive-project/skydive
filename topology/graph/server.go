@@ -23,6 +23,7 @@
 package graph
 
 import (
+	"bytes"
 	"encoding/json"
 	"time"
 
@@ -44,15 +45,22 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	if msg.Type == "SyncRequest" {
 		var obj map[string]interface{}
 		if msg.Obj != nil {
-			if err := json.Unmarshal([]byte(*msg.Obj), &obj); err != nil {
+			decoder := json.NewDecoder(bytes.NewReader([]byte(*msg.Obj)))
+			decoder.UseNumber()
+
+			if err := decoder.Decode(&obj); err != nil {
 				return "", msg, err
 			}
 		}
 
 		var context GraphContext
 		switch v := obj["Time"].(type) {
-		case float64:
-			unix := time.Unix(int64(v)/1000, 0)
+		case json.Number:
+			i, err := v.Int64()
+			if err != nil {
+				return "", msg, err
+			}
+			unix := time.Unix(i/1000, 0).UTC()
 			context.Time = &unix
 		}
 

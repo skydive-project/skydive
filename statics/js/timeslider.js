@@ -59,7 +59,7 @@ function SetupTimeSlider() {
       handle.attr("transform", "translate(" + timeScale(value) + ",0.5)");
       handle.select('text').text(formatDate(value));
       if (topologyLayout.live != true) {
-        topologyLayout.SyncRequest(value);
+        topologyLayout.SyncRequest(value.getTime());
       }
     });
 
