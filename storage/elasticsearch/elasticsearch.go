@@ -36,7 +36,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/storage"
 )
 
 const indexVersion = 2
@@ -72,7 +71,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *ElasticSearchStorage) SearchFlows(filters *storage.Filters) ([]*flow.Flow, error) {
+func (c *ElasticSearchStorage) SearchFlows(filters *flow.Filters) ([]*flow.Flow, error) {
 	if c.started.Load() != true {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -102,10 +101,10 @@ func (c *ElasticSearchStorage) SearchFlows(filters *storage.Filters) ([]*flow.Fl
 		}
 
 		if len(filters.Term.Terms) > 0 {
-			for k, v := range filters.Term.Terms {
+			for _, term := range filters.Term.Terms {
 				term := map[string]interface{}{
 					"term": map[string]interface{}{
-						k: v,
+						term.Key: term.Value,
 					},
 				}
 				terms = append(terms, term)
@@ -113,7 +112,7 @@ func (c *ElasticSearchStorage) SearchFlows(filters *storage.Filters) ([]*flow.Fl
 		}
 
 		op := "and"
-		if filters.Term.Op == storage.OR {
+		if filters.Term.Op == flow.OR {
 			op = "or"
 		}
 

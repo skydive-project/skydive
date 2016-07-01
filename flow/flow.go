@@ -27,6 +27,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"math"
+	"reflect"
 	"strconv"
 
 	"github.com/golang/protobuf/proto"
@@ -152,6 +154,21 @@ func FromData(data []byte) (*Flow, error) {
 	}
 
 	return flow, nil
+}
+
+func (flow *Flow) GetField(name string) interface{} {
+	field := reflect.ValueOf(*flow).FieldByName(name)
+	if !field.IsValid() {
+		stats := flow.GetStatistics()
+		if name == "Last" && stats.Last == 0 {
+			return math.MaxUint32
+		}
+		field = reflect.ValueOf(*flow.GetStatistics()).FieldByName(name)
+		if !field.IsValid() {
+			return nil
+		}
+	}
+	return field.Interface()
 }
 
 func (flow *Flow) GetData() ([]byte, error) {

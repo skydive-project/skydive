@@ -46,7 +46,7 @@ type FlowApi struct {
 func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	filters := storage.NewFilters()
 	for k, v := range r.URL.Query() {
-		filters.Term.Terms[k] = v[0]
+		filters.Term.Terms = []flow.Term{{Key: k, Value: v[0]}}
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")

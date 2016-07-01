@@ -23,6 +23,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -31,6 +32,10 @@ const (
 	StoppedState = iota
 	RunningState
 	StoppingState
+)
+
+var (
+	CantCompareInterface error = errors.New("Can't compare interface")
 )
 
 func toInt64(i interface{}) (int64, error) {
@@ -55,17 +60,24 @@ func toInt64(i interface{}) (int64, error) {
 	return 0, fmt.Errorf("not an integer: %v", i)
 }
 
-func integerEqual(a interface{}, b interface{}) bool {
+func integerCompare(a interface{}, b interface{}) (int, error) {
 	n1, err := toInt64(a)
 	if err != nil {
-		return false
+		return 0, err
 	}
 
 	n2, err := toInt64(b)
 	if err != nil {
-		return false
+		return 0, err
 	}
-	return n1 == n2
+
+	if n1 == n2 {
+		return 0, nil
+	} else if n1 < n2 {
+		return -1, nil
+	} else {
+		return 1, nil
+	}
 }
 
 func toFloat64(f interface{}) (float64, error) {
@@ -84,37 +96,53 @@ func toFloat64(f interface{}) (float64, error) {
 	return 0, fmt.Errorf("not a float: %v", f)
 }
 
-func floatEqual(a interface{}, b interface{}) bool {
+func floatCompare(a interface{}, b interface{}) (int, error) {
 	f1, err := toFloat64(a)
 	if err != nil {
-		return false
+		return 0, err
 	}
 
 	f2, err := toFloat64(b)
 	if err != nil {
-		return false
+		return 0, err
 	}
 
-	return f1 == f2
+	if f1 == f2 {
+		return 0, nil
+	} else if f1 < f2 {
+		return -1, nil
+	} else {
+		return 1, nil
+	}
 }
 
-func CrossTypeEqual(a interface{}, b interface{}) bool {
+func CrossTypeCompare(a interface{}, b interface{}) (int, error) {
 	switch a.(type) {
 	case float32, float64:
-		return floatEqual(a, b)
+		return floatCompare(a, b)
 	}
 
 	switch b.(type) {
 	case float32, float64:
-		return floatEqual(a, b)
+		return floatCompare(a, b)
 	}
 
 	switch a.(type) {
 	case int, uint, int32, uint32, int64, uint64:
-		return integerEqual(a, b)
+		return integerCompare(a, b)
 	default:
-		return a == b
+		return 0, CantCompareInterface
 	}
+}
+
+func CrossTypeEqual(a interface{}, b interface{}) bool {
+	result, err := CrossTypeCompare(a, b)
+	if err == CantCompareInterface {
+		return a == b
+	} else if err != nil {
+		return false
+	}
+	return result == 0
 }
 
 // Retry tries to execute the given function until a success applying a delay

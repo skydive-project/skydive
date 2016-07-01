@@ -26,43 +26,18 @@ import (
 	"github.com/skydive-project/skydive/flow"
 )
 
-type RangeFilter struct {
-	Gt  interface{} `json:"gt,omitempty"`
-	Lt  interface{} `json:"lt,omitempty"`
-	Gte interface{} `json:"gte,omitempty"`
-	Lte interface{} `json:"lte,omitempty"`
-}
-
-type TermFilterOp int
-
-const (
-	OR TermFilterOp = iota
-	AND
-)
-
-type TermFilter struct {
-	Op    TermFilterOp
-	Terms map[string]interface{}
-}
-
-type Filters struct {
-	Term  TermFilter
-	Range map[string]interface{}
-}
-
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(filters *Filters) ([]*flow.Flow, error)
+	SearchFlows(filters *flow.Filters) ([]*flow.Flow, error)
 	Stop()
 }
 
-func NewFilters() *Filters {
-	return &Filters{
-		Term: TermFilter{
-			Op:    AND,
-			Terms: make(map[string]interface{}),
+func NewFilters() *flow.Filters {
+	return &flow.Filters{
+		Term: flow.TermFilter{
+			Op: flow.AND,
 		},
-		Range: make(map[string]interface{}),
+		Range: make(map[string]flow.RangeFilter),
 	}
 }

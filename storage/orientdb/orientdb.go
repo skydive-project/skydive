@@ -31,7 +31,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/storage"
 	orient "github.com/skydive-project/skydive/topology/graph/orientdb"
 )
 
@@ -108,19 +107,19 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *OrientDBStorage) SearchFlows(filters *storage.Filters) ([]*flow.Flow, error) {
+func (c *OrientDBStorage) SearchFlows(filters *flow.Filters) ([]*flow.Flow, error) {
 	sql := "SELECT FROM Flow"
 	if len(filters.Range)+len(filters.Term.Terms) > 0 {
 		var filterList []string
-		for name, value := range filters.Term.Terms {
-			marshal, err := json.Marshal(value)
+		for _, term := range filters.Term.Terms {
+			marshal, err := json.Marshal(term.Value)
 			if err != nil {
 				return nil, err
 			}
-			filterList = append(filterList, fmt.Sprintf("%s = %s", name, marshal))
+			filterList = append(filterList, fmt.Sprintf("%s = %s", term.Key, marshal))
 		}
 		sql += " WHERE "
-		if filters.Term.Op == storage.AND {
+		if filters.Term.Op == flow.AND {
 			sql += strings.Join(filterList, " AND ")
 		} else {
 			sql += strings.Join(filterList, " OR ")

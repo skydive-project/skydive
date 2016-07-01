@@ -193,15 +193,16 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		context := tv.GraphTraversal.Graph.GetContext()
 		if context.Time != nil && s.Storage != nil {
 			filters := storage.NewFilters()
-			filters.Range["Statistics.Start"] = storage.RangeFilter{Lte: context.Time.Unix()}
-			filters.Range["Statistics.Last"] = storage.RangeFilter{Gte: context.Time.Unix()}
-
-			filters.Term.Op = storage.OR
+			filters.Range["Statistics.Start"] = flow.RangeFilter{Lte: context.Time.Unix()}
+			filters.Range["Statistics.Last"] = flow.RangeFilter{Gte: context.Time.Unix()}
+			filters.Term.Op = flow.OR
 			for _, ids := range hnmap {
 				for _, id := range ids {
-					filters.Term.Terms["ProbeNodeUUID"] = id
-					filters.Term.Terms["IfSrcNodeUUID"] = id
-					filters.Term.Terms["IfDstNodeUUID"] = id
+					filters.Term.Terms = []flow.Term{
+						{Key: "ProbeNodeUUID", Value: id},
+						{Key: "IfSrcNodeUUID", Value: id},
+						{Key: "IfDstNodeUUID", Value: id},
+					}
 
 					f, err := s.Storage.SearchFlows(filters)
 					if err != nil {

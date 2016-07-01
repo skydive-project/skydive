@@ -126,7 +126,18 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	GenerateTestFlows(t, ft, 1, "probe1")
 	GenerateTestFlows(t, ft, 2, "probe2")
 
-	flowset := ft.GetFlows(FlowQueryFilter{NodeUUIDs: []string{"probe1"}})
+	filters := Filters{
+		Term: TermFilter{
+			Op: OR,
+			Terms: []Term{
+				{Key: "ProbeNodeUUID", Value: "probe1"},
+				{Key: "IfSrcNodeUUID", Value: "probe1"},
+				{Key: "IfDstNodeUUID", Value: "probe1"},
+			},
+		},
+	}
+
+	flowset := ft.GetFlows(filters)
 	if len(flowset.Flows) == 0 {
 		t.Errorf("Should have flows with from probe1 returned")
 	}

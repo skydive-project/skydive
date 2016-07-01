@@ -60,10 +60,17 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 }
 
 func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uuids []string) {
+	terms := make([]Term, len(uuids)*3)
+	for i, uuid := range uuids {
+		terms[i*3] = Term{Key: "ProbeNodeUUID", Value: uuid}
+		terms[i*3+1] = Term{Key: "IfSrcNodeUUID", Value: uuid}
+		terms[i*3+2] = Term{Key: "IfDstNodeUUID", Value: uuid}
+	}
 	tq := TableQuery{
-		Obj: FlowSearchQuery{
-			NodeUUIDs: uuids,
-		},
+		Obj: Filters{Term: TermFilter{
+			Op:    OR,
+			Terms: terms,
+		}},
 	}
 	b, _ := json.Marshal(tq)
 	raw := json.RawMessage(b)

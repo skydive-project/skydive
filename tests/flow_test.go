@@ -33,7 +33,6 @@ import (
 	cmd "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/storage"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/tools"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -132,7 +131,7 @@ func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *TestStorage) SearchFlows(filters *storage.Filters) ([]*flow.Flow, error) {
+func (s *TestStorage) SearchFlows(filters *flow.Filters) ([]*flow.Flow, error) {
 	return nil, nil
 }
 
@@ -611,7 +610,16 @@ func TestFlowQuery(t *testing.T) {
 
 	query := &flow.TableQuery{
 		Obj: &flow.FlowSearchQuery{
-			NodeUUIDs: []string{"probe2"},
+			flow.Filters{
+				Term: flow.TermFilter{
+					Op: flow.OR,
+					Terms: []flow.Term{
+						{Key: "ProbeNodeUUID", Value: "probe2"},
+						{Key: "IfSrcNodeUUID", Value: "probe2"},
+						{Key: "IfDstNodeUUID", Value: "probe2"},
+					},
+				},
+			},
 		},
 	}
 	reply := al.QueryTable(query)

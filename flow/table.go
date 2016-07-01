@@ -44,8 +44,37 @@ type TableReply struct {
 	Obj    json.RawMessage
 }
 
+type RangeFilter struct {
+	Gt  interface{} `json:"gt,omitempty"`
+	Lt  interface{} `json:"lt,omitempty"`
+	Gte interface{} `json:"gte,omitempty"`
+	Lte interface{} `json:"lte,omitempty"`
+}
+
+type TermFilterOp int
+
+const (
+	OR TermFilterOp = iota
+	AND
+)
+
+type Term struct {
+	Key   string
+	Value interface{}
+}
+
+type TermFilter struct {
+	Op    TermFilterOp
+	Terms []Term
+}
+
+type Filters struct {
+	Term  TermFilter
+	Range map[string]RangeFilter
+}
+
 type FlowSearchQuery struct {
-	NodeUUIDs []string
+	Filters
 }
 
 type FlowSearchReply struct {
@@ -53,11 +82,6 @@ type FlowSearchReply struct {
 }
 
 type sortByLast []*Flow
-
-type FlowQueryFilter struct {
-	// TODO add more filter elements
-	NodeUUIDs []string
-}
 
 type ExpireUpdateFunc func(f []*Flow)
 
@@ -128,21 +152,53 @@ func (ft *Table) Update(flows []*Flow) {
 	ft.Unlock()
 }
 
-func matchQueryFilter(f *Flow, filter *FlowQueryFilter) bool {
-	for _, u := range filter.NodeUUIDs {
-		if f.ProbeNodeUUID == u || f.IfSrcNodeUUID == u || f.IfDstNodeUUID == u {
-			return true
+func matchQueryFilter(f *Flow, filters *Filters) bool {
+	for k, filter := range filters.Range {
+		field := f.GetField(k)
+
+		if filter.Gt != nil {
+			if result, err := common.CrossTypeCompare(field, filter.Gt); err != nil || result != 1 {
+				return false
+			}
+		}
+		if filter.Lt != nil {
+			if result, err := common.CrossTypeCompare(field, filter.Lt); err != nil || result != -1 {
+				return false
+			}
+		}
+		if filter.Gte != nil {
+			if result, err := common.CrossTypeCompare(field, filter.Gte); err != nil || result == -1 {
+				return false
+			}
+		}
+		if filter.Lte != nil {
+			if result, err := common.CrossTypeCompare(field, filter.Lte); err != nil || result == 1 {
+				return false
+			}
 		}
 	}
 
-	return false
+	if len(filters.Term.Terms) > 0 {
+		for _, term := range filters.Term.Terms {
+			field := f.GetField(term.Key)
+			result := common.CrossTypeEqual(field, term.Value)
+			if filters.Term.Op == AND && !result {
+				return false
+			} else if filters.Term.Op == OR && result {
+				return true
+			}
+		}
+		return filters.Term.Op == AND
+	}
+
+	return true
 }
 
 func (ft *Table) GetTime() int64 {
 	return atomic.LoadInt64(&ft.tableClock)
 }
 
-func (ft *Table) GetFlows(filters ...FlowQueryFilter) *FlowSet {
+func (ft *Table) GetFlows(filters ...Filters) *FlowSet {
 	ft.RLock()
 	defer ft.RUnlock()
 
@@ -305,19 +361,25 @@ func (ft *Table) RegisterDefault(fn func()) {
 // TODO need to be merge with GetFlows using filters
 func (ft *Table) Window(start, end int64) *FlowSet {
 	flowset := NewFlowSet()
-	if start > end {
-		return flowset
-	}
 	flowset.Start = start
 	flowset.End = end
 
-	for _, f := range ft.table {
-		fstart := f.GetStatistics().Start
-		fend := f.GetStatistics().Last
-		if fstart < end && (fend == 0 || fend > start) {
-			flowset.Flows = append(flowset.Flows, f)
+	if end >= start {
+		filter := Filters{
+			Range: map[string]RangeFilter{
+				"Start": {
+					Lt: end,
+				},
+				"Last": {
+					Gt: start,
+				},
+			},
 		}
+
+		set := ft.GetFlows(filter)
+		flowset.Flows = set.Flows
 	}
+
 	return flowset
 }
 
@@ -346,10 +408,7 @@ func (ft *Table) onFlowSearchQueryMessage(o interface{}) (*FlowSearchReply, int)
 		return nil, 500
 	}
 
-	flowset := ft.GetFlows(FlowQueryFilter{
-		NodeUUIDs: fq.NodeUUIDs,
-	})
-
+	flowset := ft.GetFlows(fq.Filters)
 	if len(flowset.Flows) == 0 {
 		return &FlowSearchReply{
 			FlowSet: flowset,
