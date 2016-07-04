@@ -479,13 +479,30 @@ func TestPCAPProbe(t *testing.T) {
 	setupCmds := []helper.Cmd{
 		{"brctl addbr br-pcap", true},
 		{"ip link set br-pcap up", true},
-		{"ip address add 169.254.66.66/24 dev br-pcap", true},
-		{"ping -c 15 169.254.66.66", false},
+		{"ip netns add vm1", true},
+		{"ip link add name vm1-eth0 type veth peer name eth0 netns vm1", true},
+		{"ip link set vm1-eth0 up", true},
+		{"ip netns exec vm1 ip link set eth0 up", true},
+		{"ip netns exec vm1 ip address add 169.254.66.66/24 dev eth0", true},
+		{"brctl addif br-pcap vm1-eth0", true},
+
+		{"ip netns add vm2", true},
+		{"ip link add name vm2-eth0 type veth peer name eth0 netns vm2", true},
+		{"ip link set vm2-eth0 up", true},
+		{"ip netns exec vm2 ip link set eth0 up", true},
+		{"ip netns exec vm2 ip address add 169.254.66.67/24 dev eth0", true},
+		{"brctl addif br-pcap vm2-eth0", true},
+
+		{"ip netns exec vm1 ping -c 15 169.254.66.67", false},
 	}
 
 	tearDownCmds := []helper.Cmd{
 		{"ip link set br-pcap down", true},
 		{"brctl delbr br-pcap", true},
+		{"ip link del vm1-eth0", true},
+		{"ip link del vm2-eth0", true},
+		{"ip netns del vm1", true},
+		{"ip netns del vm2", true},
 	}
 
 	helper.ExecCmds(t, setupCmds...)

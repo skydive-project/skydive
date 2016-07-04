@@ -78,6 +78,8 @@ func (p *PcapProbe) packetsToChan(ch chan gopacket.Packet) {
 }
 
 func (p *PcapProbe) start() {
+	atomic.StoreInt64(&p.state, common.RunningState)
+
 	ch := make(chan gopacket.Packet, 1000)
 	go p.packetsToChan(ch)
 
@@ -92,8 +94,6 @@ func (p *PcapProbe) start() {
 		}
 	}
 	p.flowTable.RegisterDefault(feedFlowTable)
-
-	atomic.StoreInt64(&p.state, common.RunningState)
 	p.flowTable.Start()
 }
 
