@@ -184,7 +184,7 @@ func (o *OnDemandProbeListener) OnNodeUpdated(n *graph.Node) {
 
 func (o *OnDemandProbeListener) OnEdgeAdded(e *graph.Edge) {
 	parent, child := o.Graph.GetEdgeNodes(e)
-	if parent == nil || child == nil || e.Metadata()["Type"] != "ownership" {
+	if parent == nil || child == nil || e.Metadata()["RelationType"] != "ownership" {
 		return
 	}
 

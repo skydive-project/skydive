@@ -23,7 +23,6 @@
 package probes
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"runtime"
@@ -71,7 +70,7 @@ func (p *PcapProbe) packetsToChan(ch chan gopacket.Packet) {
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := packetSource.NextPacket()
 		if err == io.EOF {
-			return
+			time.Sleep(20 * time.Millisecond)
 		} else if err == nil {
 			ch <- packet
 		}
@@ -108,19 +107,19 @@ func (p *PcapProbe) stop() {
 func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	name, ok := n.Metadata()["Name"]
 	if !ok || name == "" {
-		return errors.New(fmt.Sprintf("No name for node %v", n))
+		return fmt.Errorf("No name for node %v", n)
 	}
 
 	id := string(n.ID)
 	ifName := name.(string)
 
 	if _, ok := p.probes[id]; ok {
-		return errors.New(fmt.Sprintf("Already registered %s", ifName))
+		return fmt.Errorf("Already registered %s", ifName)
 	}
 
 	nodes := p.graph.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
 	if len(nodes) == 0 {
-		return errors.New(fmt.Sprintf("Failed to determine probePath for %s", ifName))
+		return fmt.Errorf("Failed to determine probePath for %s", ifName)
 	}
 
 	runtime.LockOSThread()
