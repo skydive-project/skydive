@@ -38,8 +38,8 @@ func (gfe *GraphFlowEnhancer) getNodeUUID(mac string) string {
 		return "*"
 	}
 
-	gfe.Graph.Lock()
-	defer gfe.Graph.Unlock()
+	gfe.Graph.RLock()
+	defer gfe.Graph.RUnlock()
 
 	intfs := gfe.Graph.LookupNodes(graph.Metadata{"MAC": mac})
 	if len(intfs) > 1 {

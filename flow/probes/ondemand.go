@@ -65,50 +65,55 @@ func (o *OnDemandProbeListener) probeFromType(n *graph.Node) *FlowProbe {
 	return &fprobe
 }
 
-func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) {
+func (o *OnDemandProbeListener) isActive(n *graph.Node) bool {
+	o.RLock()
+	defer o.RUnlock()
+	_, active := o.activeProbes[n.ID]
+
+	return active
+}
+
+func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) bool {
 	o.Lock()
 	defer o.Unlock()
 
 	if _, ok := o.activeProbes[n.ID]; ok {
 		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
-		return
+		return false
 	}
 
 	if !IsCaptureAllowed(n) {
 		logging.GetLogger().Infof("Do not register flow probe, type not supported %v", n)
-		return
+		return false
 	}
 
 	fprobe := o.probeFromType(n)
 	if fprobe == nil {
 		logging.GetLogger().Errorf("Failed to register flow probe, unknown type %v", n)
-		return
+		return false
 	}
 
 	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline)
 	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
 		o.fta.Release(ft)
-		return
+		return false
 	}
 
 	o.activeProbes[n.ID] = ft
-	o.Graph.AddMetadata(n, "State.FlowCapture", "ON")
 
 	logging.GetLogger().Debugf("New active probe on: %v", n)
+	return true
 }
 
-func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
-	o.RLock()
-	_, active := o.activeProbes[n.ID]
-	o.RUnlock()
-	if !active {
-		return
+func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) bool {
+	if !o.isActive(n) {
+		return false
 	}
 
 	fprobe := o.probeFromType(n)
 	if fprobe == nil {
-		return
+		return false
 	}
 
 	if err := fprobe.UnregisterProbe(n); err != nil {
@@ -120,7 +125,7 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) {
 	delete(o.activeProbes, n.ID)
 	o.Unlock()
 
-	o.Graph.AddMetadata(n, "State.FlowCapture", "OFF")
+	return true
 }
 
 func (o *OnDemandProbeListener) matchGremlinExpr(node *graph.Node, gremlin string) bool {
@@ -153,12 +158,18 @@ func (o *OnDemandProbeListener) matchGremlinExpr(node *graph.Node, gremlin strin
 }
 
 func (o *OnDemandProbeListener) onNodeEvent(n *graph.Node) {
+	if o.isActive(n) {
+		return
+	}
+
 	resources := o.CaptureHandler.Index()
 	for _, resource := range resources {
 		capture := resource.(*api.Capture)
 
 		if o.matchGremlinExpr(n, capture.GremlinQuery) {
-			o.registerProbe(n, capture)
+			if o.registerProbe(n, capture) {
+				o.Graph.AddMetadata(n, "State.FlowCapture", "ON")
+			}
 		}
 	}
 }
@@ -181,7 +192,13 @@ func (o *OnDemandProbeListener) OnEdgeAdded(e *graph.Edge) {
 }
 
 func (o *OnDemandProbeListener) OnNodeDeleted(n *graph.Node) {
-	o.unregisterProbe(n)
+	if !o.isActive(n) {
+		return
+	}
+
+	if o.unregisterProbe(n) {
+		o.Graph.AddMetadata(n, "State.FlowCapture", "OFF")
+	}
 }
 
 func (o *OnDemandProbeListener) onCaptureAdded(capture *api.Capture) {
@@ -204,10 +221,14 @@ func (o *OnDemandProbeListener) onCaptureAdded(capture *api.Capture) {
 	for _, value := range res.Values() {
 		switch value.(type) {
 		case *graph.Node:
-			o.registerProbe(value.(*graph.Node), capture)
+			if o.registerProbe(value.(*graph.Node), capture) {
+				o.Graph.AddMetadata(value.(*graph.Node), "State.FlowCapture", "ON")
+			}
 		case []*graph.Node:
 			for _, node := range value.([]*graph.Node) {
-				o.registerProbe(node, capture)
+				if o.registerProbe(node, capture) {
+					o.Graph.AddMetadata(node, "State.FlowCapture", "ON")
+				}
 			}
 		default:
 			logging.GetLogger().Error("Gremlin expression doesn't return node")
@@ -236,10 +257,14 @@ func (o *OnDemandProbeListener) onCaptureDeleted(capture *api.Capture) {
 	for _, value := range res.Values() {
 		switch value.(type) {
 		case *graph.Node:
-			o.unregisterProbe(value.(*graph.Node))
+			if o.unregisterProbe(value.(*graph.Node)) {
+				o.Graph.AddMetadata(value.(*graph.Node), "State.FlowCapture", "OFF")
+			}
 		case []*graph.Node:
 			for _, node := range value.([]*graph.Node) {
-				o.unregisterProbe(node)
+				if o.unregisterProbe(node) {
+					o.Graph.AddMetadata(node, "State.FlowCapture", "OFF")
+				}
 			}
 		default:
 			logging.GetLogger().Error("Gremlin expression doesn't return node")

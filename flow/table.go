@@ -94,8 +94,6 @@ func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 		table:         make(map[string]*Flow),
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
-		query:         make(chan *TableQuery),
-		reply:         make(chan *TableReply),
 		state:         common.StoppedState,
 		updateHandler: updateHandler,
 		expireHandler: expireHandler,
@@ -360,6 +358,9 @@ func (ft *Table) Start() {
 	expireTicker := time.NewTicker(ft.expireHandler.every)
 	defer expireTicker.Stop()
 
+	ft.query = make(chan *TableQuery)
+	ft.reply = make(chan *TableReply)
+
 	atomic.StoreInt64(&ft.state, common.RunningState)
 	for atomic.LoadInt64(&ft.state) == common.RunningState {
 		select {
@@ -394,5 +395,8 @@ func (ft *Table) Stop() {
 	close(ft.query)
 	close(ft.reply)
 
-	ft.expireNow()
+	// FIX trigger deadlock since Stop is called from a place where the graph
+	// is locked and usually the enhance pipeline lock the graph as well.
+	// expireNow calls the enhance.
+	//ft.expireNow()
 }

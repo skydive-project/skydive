@@ -127,14 +127,15 @@ func (s *graphEventListenerStack) last() GraphEventListener {
 	return (*s)[len(*s)-1]
 }
 
-func (s *graphEventListenerStack) isCurrent(l GraphEventListener) bool {
+func (s *graphEventListenerStack) contains(l GraphEventListener) bool {
 	if len(*s) == 0 {
 		return false
 	}
-	current := (*s)[len(*s)-1]
 
-	if reflect.ValueOf(current).Pointer() == reflect.ValueOf(l).Pointer() {
-		return true
+	for _, el := range *s {
+		if reflect.ValueOf(el).Pointer() == reflect.ValueOf(l).Pointer() {
+			return true
+		}
 	}
 	return false
 }
@@ -734,7 +735,7 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 
 func (g *Graph) NotifyNodeUpdated(n *Node) {
 	for _, l := range g.eventListeners {
-		if g.eventListenerStack.isCurrent(l) {
+		if g.eventListenerStack.contains(l) {
 			continue
 		}
 
@@ -746,7 +747,7 @@ func (g *Graph) NotifyNodeUpdated(n *Node) {
 
 func (g *Graph) NotifyNodeDeleted(n *Node) {
 	for _, l := range g.eventListeners {
-		if g.eventListenerStack.isCurrent(l) {
+		if g.eventListenerStack.contains(l) {
 			continue
 		}
 
@@ -758,7 +759,7 @@ func (g *Graph) NotifyNodeDeleted(n *Node) {
 
 func (g *Graph) NotifyNodeAdded(n *Node) {
 	for _, l := range g.eventListeners {
-		if g.eventListenerStack.isCurrent(l) {
+		if g.eventListenerStack.contains(l) {
 			continue
 		}
 
@@ -770,7 +771,7 @@ func (g *Graph) NotifyNodeAdded(n *Node) {
 
 func (g *Graph) NotifyEdgeUpdated(e *Edge) {
 	for _, l := range g.eventListeners {
-		if g.eventListenerStack.isCurrent(l) {
+		if g.eventListenerStack.contains(l) {
 			continue
 		}
 
@@ -782,7 +783,7 @@ func (g *Graph) NotifyEdgeUpdated(e *Edge) {
 
 func (g *Graph) NotifyEdgeDeleted(e *Edge) {
 	for _, l := range g.eventListeners {
-		if g.eventListenerStack.isCurrent(l) {
+		if g.eventListenerStack.contains(l) {
 			continue
 		}
 
@@ -794,7 +795,7 @@ func (g *Graph) NotifyEdgeDeleted(e *Edge) {
 
 func (g *Graph) NotifyEdgeAdded(e *Edge) {
 	for _, l := range g.eventListeners {
-		if g.eventListenerStack.isCurrent(l) {
+		if g.eventListenerStack.contains(l) {
 			continue
 		}
 

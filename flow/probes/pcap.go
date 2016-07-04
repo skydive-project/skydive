@@ -82,7 +82,7 @@ func (p *PcapProbe) start() {
 	ch := make(chan gopacket.Packet, 1000)
 	go p.packetsToChan(ch)
 
-	timer := time.NewTicker(200 * time.Millisecond)
+	timer := time.NewTicker(100 * time.Millisecond)
 	feedFlowTable := func() {
 		select {
 		case packet, ok := <-ch:
