@@ -199,7 +199,8 @@ func (s *GremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversa
 		return last.(*GraphTraversalE).Dedup(), nil
 	}
 
-	return nil, ExecutionError
+	// fallback to reflection way
+	return invokeStepFnc(last, "Dedup", s)
 }
 
 func (s *GremlinTraversalStepDedup) Reduce(next GremlinTraversalStep) GremlinTraversalStep {

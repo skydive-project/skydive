@@ -35,10 +35,16 @@ import (
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
+const (
+	FLOW_TOKEN      traversal.Token = 1001
+	BANDWIDTH_TOKEN traversal.Token = 1002
+)
+
 type FlowTraversalExtension struct {
-	FlowToken   traversal.Token
-	TableClient *flow.TableClient
-	Storage     storage.Storage
+	FlowToken      traversal.Token
+	BandwidthToken traversal.Token
+	TableClient    *flow.TableClient
+	Storage        storage.Storage
 }
 
 type FlowGremlinTraversalStep struct {
@@ -51,6 +57,17 @@ type FlowTraversalStep struct {
 	GraphTraversal *traversal.GraphTraversal
 	flowset        *flow.FlowSet
 	error          error
+}
+
+type BandwidthGremlinTraversalStep struct {
+	TableClient *flow.TableClient
+	Storage     storage.Storage
+	params      []interface{}
+}
+
+type BandwidthTraversalStep struct {
+	GraphTraversal *traversal.GraphTraversal
+	bandwidth      *flow.FlowSetBandwidth
 }
 
 func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
@@ -167,6 +184,24 @@ func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset.Filter(filter)}
 }
 
+func (f *FlowTraversalStep) Dedup() *FlowTraversalStep {
+	flowset := flow.NewFlowSet()
+	flowset.Start = f.flowset.Start
+	flowset.End = f.flowset.End
+
+	uuids := make(map[string]bool)
+	for _, flow := range f.flowset.Flows {
+		if _, ok := uuids[flow.TrackingID]; ok {
+			continue
+		}
+
+		flowset.Flows = append(flowset.Flows, flow)
+		uuids[flow.TrackingID] = true
+	}
+
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: flowset}
+}
+
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flowset.Flows))
 	for i, flow := range f.flowset.Flows {
@@ -225,9 +260,10 @@ func (f *FlowTraversalStep) Error() error {
 
 func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
 	return &FlowTraversalExtension{
-		FlowToken:   traversal.Token(1001),
-		TableClient: client,
-		Storage:     storage,
+		FlowToken:      FLOW_TOKEN,
+		BandwidthToken: BANDWIDTH_TOKEN,
+		TableClient:    client,
+		Storage:        storage,
 	}
 }
 
@@ -235,6 +271,8 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 	switch s {
 	case "FLOWS":
 		return e.FlowToken, true
+	case "BANDWIDTH":
+		return e.BandwidthToken, true
 	}
 	return traversal.IDENT, false
 }
@@ -247,6 +285,8 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 			Storage:     e.Storage,
 			params:      p.Params(),
 		}, nil
+	case e.BandwidthToken:
+		return &BandwidthGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
 	}
 
 	return nil, nil
@@ -304,5 +344,37 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 }
 
 func (s *FlowGremlinTraversalStep) Params() (params []interface{}) {
+	return s.params
+}
+
+func (b *BandwidthTraversalStep) Values() []interface{} {
+	return []interface{}{b.bandwidth}
+}
+
+func (b *BandwidthTraversalStep) MarshalJSON() ([]byte, error) {
+	return json.Marshal(b.Values())
+}
+
+func (b *BandwidthTraversalStep) Error() error {
+	return nil
+}
+
+func (s *BandwidthGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
+	switch last.(type) {
+	case *FlowTraversalStep:
+		fs := last.(*FlowTraversalStep)
+		bw := fs.flowset.Bandwidth()
+
+		return &BandwidthTraversalStep{GraphTraversal: fs.GraphTraversal, bandwidth: &bw}, nil
+	}
+
+	return nil, traversal.ExecutionError
+}
+
+func (s *BandwidthGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	return next
+}
+
+func (s *BandwidthGremlinTraversalStep) Params() (params []interface{}) {
 	return s.params
 }

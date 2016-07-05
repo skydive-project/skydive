@@ -219,6 +219,21 @@ func getFlowsFromGremlinReply(t *testing.T, query string) []*flow.Flow {
 	return flows
 }
 
+func getFlowSetBandwidthFromGremlinReply(t *testing.T, query string) flow.FlowSetBandwidth {
+	body, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
+	if err != nil {
+		t.Fatalf("%s: %s", query, err.Error())
+	}
+
+	var bw []flow.FlowSetBandwidth
+	err = json.NewDecoder(body).Decode(&bw)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return bw[0]
+}
+
 func TestSFlowWithPCAP(t *testing.T) {
 	ts := NewTestStorage()
 
@@ -889,6 +904,11 @@ func TestFlowMetrics(t *testing.T) {
 	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Between(%d, %d))`, pingLen, pingLen), flow.FlowEndpointType_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
+	}
+
+	bw := getFlowSetBandwidthFromGremlinReply(t, gremlin+".Dedup().Bandwidth()")
+	if bw.NBFlow != 1 || bw.ABpackets != 1 || bw.BApackets != 1 || bw.ABbytes < 1066 || bw.BAbytes < 1066 {
+		t.Errorf("Wrong bandwidth returned, got : %v", bw)
 	}
 
 	client.Delete("capture", capture.ID())

@@ -361,16 +361,3 @@ func (fs *FlowStatistics) updateTransportLayerStatistics(packet *gopacket.Packet
 	e.Bytes += length
 	return length - uint64(len(transportLayer.LayerContents())), nil
 }
-
-type FlowSetBandwidth struct {
-	ABpackets uint64
-	ABbytes   uint64
-	BApackets uint64
-	BAbytes   uint64
-	Duration  int64
-	NBFlow    uint64
-}
-
-func (fsbw FlowSetBandwidth) String() string {
-	return fmt.Sprintf("dt : %d seconds nbFlow %d\n\t\tAB -> BA\nPackets : %8d %8d\nBytes   : %8d %8d\n", fsbw.Duration, fsbw.NBFlow, fsbw.ABpackets, fsbw.BApackets, fsbw.ABbytes, fsbw.BAbytes)
-}

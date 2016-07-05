@@ -64,39 +64,35 @@ func TestWindowBandwidth(t *testing.T) {
 	}
 
 	/* flow half window (2 sec) */
-	winFlows := ft.Window(now-89-1, now-89+1)
-	fbw = winFlows.Bandwidth()
+	fbw = ft.Window(now-89-1, now-89+1).Bandwidth()
 	fbwFlow := FlowSetBandwidth{ABpackets: 239, ABbytes: 106266, BApackets: 551, BAbytes: 444983, Duration: 2, NBFlow: 1}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
 	}
 
 	/* flow 2/3 window (3 sec) */
-	winFlows = ft.Window(now-89-1, now-89+2)
-	fbw = winFlows.Bandwidth()
+	fbw = ft.Window(now-89-1, now-89+2).Bandwidth()
 	fbwFlow = FlowSetBandwidth{ABpackets: 479, ABbytes: 212532, BApackets: 1102, BAbytes: 889966, Duration: 3, NBFlow: 1}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
 	}
 
 	/* flow full window, 1 sec */
-	winFlows = ft.Window(now-89, now-89+1)
-	fbw = winFlows.Bandwidth()
+	fbw = ft.Window(now-89, now-89+1).Bandwidth()
 	fbwFlow = FlowSetBandwidth{ABpackets: 239, ABbytes: 106266, BApackets: 551, BAbytes: 444983, Duration: 1, NBFlow: 1}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
 	}
 
 	/* flow full window shifted (+2), 2 sec */
-	winFlows = ft.Window(now-89+2, now-89+4)
-	fbw = winFlows.Bandwidth()
+	fbw = ft.Window(now-89+2, now-89+4).Bandwidth()
 	fbwFlow = FlowSetBandwidth{ABpackets: 479, ABbytes: 212532, BApackets: 1102, BAbytes: 889966, Duration: 2, NBFlow: 1}
 	if fbw != fbwFlow {
 		t.Fatal("flows Bandwidth should be from 1 flow ", fbw, fbwFlow)
 	}
 
 	/* 2 flows full window, 1 sec */
-	winFlows = ft.Window(now-71, now-71+1)
+	winFlows := ft.Window(now-71, now-71+1)
 	fbw = winFlows.Bandwidth()
 	fbwFlow = FlowSetBandwidth{ABpackets: 3956, ABbytes: 3154923, BApackets: 2052, BAbytes: 1879998, Duration: 1, NBFlow: 2}
 	if fbw != fbwFlow {
@@ -111,7 +107,7 @@ func TestWindowBandwidth(t *testing.T) {
 
 	winFlows = ft.Window(now-58, now-58+1)
 	fbw = winFlows.Bandwidth()
-	fbw4flows := FlowSetBandwidth{ABpackets: 33617, ABbytes: 31846830, BApackets: 7529, BAbytes: 9191349, Duration: 1, NBFlow: 4}
+	fbw4flows := FlowSetBandwidth{ABpackets: 28148, ABbytes: 31677291, BApackets: 3232, BAbytes: 3320778, Duration: 1, NBFlow: 3}
 	if fbw != fbw4flows {
 		t.Fatal("flows Bandwidth should be from 4 flows ", fbw, fbw4flows)
 	}
@@ -121,5 +117,4 @@ func TestWindowBandwidth(t *testing.T) {
 		tags[i] = fw.GetLayerHash(FlowEndpointType_ETHERNET)
 	}
 	graphFlows(now, flows, tags...)
-	t.Log(fbw)
 }

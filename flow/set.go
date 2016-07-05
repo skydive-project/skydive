@@ -22,12 +22,25 @@
 
 package flow
 
-import "github.com/skydive-project/skydive/common"
+import (
+	"fmt"
+
+	"github.com/skydive-project/skydive/common"
+)
 
 type FlowSet struct {
 	Flows []*Flow
 	Start int64
 	End   int64
+}
+
+type FlowSetBandwidth struct {
+	ABpackets uint64
+	ABbytes   uint64
+	BApackets uint64
+	BAbytes   uint64
+	Duration  int64
+	NBFlow    uint64
 }
 
 func NewFlowSet() *FlowSet {
@@ -55,14 +68,18 @@ func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
 	for _, f := range fs.Flows {
 		fstart := f.Statistics.Start
 		fend := f.Statistics.Last
-		if fend == 0 {
-			fend = fs.End
-		}
-		fduration := fend - fstart
 
-		e := f.Statistics.GetEndpointsType(FlowEndpointType_ETHERNET)
+		fduration := fend - fstart
+		if fduration == 0 {
+			fduration = 1
+		}
 
 		fdurationWindow := uint64(common.MinInt64(fend, fs.End) - common.MaxInt64(fstart, fs.Start))
+		if fdurationWindow == 0 {
+			fdurationWindow = 1
+		}
+
+		e := f.Statistics.GetEndpointsType(FlowEndpointType_ETHERNET)
 		fsbw.ABpackets += uint64(e.AB.Packets * fdurationWindow / uint64(fduration))
 		fsbw.ABbytes += uint64(e.AB.Bytes * fdurationWindow / uint64(fduration))
 		fsbw.BApackets += uint64(e.BA.Packets * fdurationWindow / uint64(fduration))
@@ -86,4 +103,9 @@ func (fs *FlowSet) Filter(filter Filter) *FlowSet {
 		}
 	}
 	return flowset
+}
+
+func (fsbw FlowSetBandwidth) String() string {
+	return fmt.Sprintf("dt : %d seconds nbFlow %d\n\t\tAB -> BA\nPackets : %8d %8d\nBytes : %8d %8d\n",
+		fsbw.Duration, fsbw.NBFlow, fsbw.ABpackets, fsbw.BApackets, fsbw.ABbytes, fsbw.BAbytes)
 }

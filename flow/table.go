@@ -286,8 +286,8 @@ func (ft *Table) RegisterDefault(fn func()) {
 	ft.Unlock()
 }
 
-/* Need to Rlock the table before calling. Returned flows may not be unique */
-// TODO need to be merge with GetFlows using filters
+/* Window returns a FlowSet with flows fitting in the given time range
+Need to Rlock the table before calling. Returned flows may not be unique */
 func (ft *Table) Window(start, end int64) *FlowSet {
 	flowset := NewFlowSet()
 	flowset.Start = start

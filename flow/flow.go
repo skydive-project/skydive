@@ -27,7 +27,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"math"
 	"reflect"
 	"strconv"
 
@@ -35,7 +34,6 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -186,10 +184,6 @@ componentLoop:
 
 		if intf == nil {
 			return nil
-		}
-
-		if component == "Last" && common.CrossTypeEqual(intf, 0) {
-			return math.MaxUint32
 		}
 	}
 	return intf

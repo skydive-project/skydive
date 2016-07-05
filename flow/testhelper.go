@@ -150,6 +150,26 @@ func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, uuid st
 	return generateTestFlows(t, ft, baseSeed, true, uuid)
 }
 
+func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow, ftype FlowEndpointType) {
+	rnd := rand.New(rand.NewSource(seed))
+	s := f.GetStatistics()
+	for _, e := range s.Endpoints {
+		if e.Type == ftype {
+			e.AB.Packets = uint64(rnd.Int63n(0x10000))
+			e.AB.Bytes = e.AB.Packets * uint64(14+rnd.Intn(1501))
+			e.BA.Packets = uint64(rnd.Int63n(0x10000))
+			e.BA.Bytes = e.BA.Packets * uint64(14+rnd.Intn(1501))
+
+			s.Start = now - rnd.Int63n(100)
+			s.Last = s.Start
+			if (rnd.Int() % 2) == 0 {
+				s.Last = s.Start + rnd.Int63n(100)
+			}
+			return
+		}
+	}
+}
+
 func NewTestFlowTableSimple(t *testing.T) *Table {
 	ft := NewTable(nil, nil)
 	var flows []*Flow
@@ -198,9 +218,6 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 		s := f.GetStatistics()
 		fstart := s.Start
 		fend := s.Last
-		if fend == 0 {
-			fend = maxEnd
-		}
 		duration := fend - fstart
 		hstr := f.GetLayerHash(FlowEndpointType_ETHERNET)
 
@@ -214,7 +231,7 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 			fmt.Print(logging.ColorSeq(logging.ColorRed))
 		}
 		for x := 0; x < nbCol; x++ {
-			if (x < int(float64(fstart-minStart)/scale)) || (fend > 0 && (x > int(float64(fend-minStart)/scale))) {
+			if (x < int(float64(fstart-minStart)/scale)) || (x > int(float64(fend-minStart)/scale)) {
 				fmt.Print("-")
 			} else {
 				fmt.Print("x")
