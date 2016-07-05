@@ -58,11 +58,11 @@ var AlertCreate = &cobra.Command{
 			os.Exit(1)
 		}
 		alert := api.NewAlert()
-		setFromFlag(cmd, "name", &alert.Name)
-		setFromFlag(cmd, "description", &alert.Description)
-		setFromFlag(cmd, "select", &alert.Select)
-		setFromFlag(cmd, "action", &alert.Action)
-		setFromFlag(cmd, "test", &alert.Test)
+		alert.Name = alertName
+		alert.Description = alertDescription
+		alert.Select = alertSelect
+		alert.Action = alertAction
+		alert.Test = alertTest
 		if errs := validator.Validate(alert); errs != nil {
 			fmt.Println("Error: ", errs)
 			cmd.Usage()
