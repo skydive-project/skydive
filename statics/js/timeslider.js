@@ -5,12 +5,10 @@ function GetTimeScale(width) {
   var startTime = new Date;
   startTime.setMinutes(now.getMinutes() - 60);
 
-  var timeScale = d3.time.scale()
+  return d3.time.scale()
     .domain([startTime, now])
     .range([0, width])
     .clamp(true);
-
-  return timeScale
 }
 
 function CreateAxis(timeScale) {
@@ -121,19 +119,13 @@ function SetupTimeSlider() {
         $("#add-capture").show();
       }
       else {
-        var now = new Date;
-        var startTime = new Date;
-        startTime.setMinutes(now.getMinutes() - 60);
+        timeScale = GetTimeScale(width);
 
-        var timeScale = d3.time.scale()
-          .domain([startTime, now])
-          .range([0, width])
-          .clamp(true);
-
-        svg.select("g.axis").call(axis);
-        brush.extent([now, now])
+        brush.extent([timeScale.domain()[1], timeScale.domain()[1]])
           .x(timeScale);
-        axis.tickValues([timeScale.domain()[0], timeScale.domain()[1]]);
+        axis.scale(timeScale)
+          .tickValues([timeScale.domain()[0], timeScale.domain()[1]]);
+        svg.select("g.axis").call(axis);
 
         slider.call(brush.event);
 
