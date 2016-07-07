@@ -153,6 +153,61 @@ func TestTraversalWithin(t *testing.T) {
 	}
 }
 
+func TestTraversalLt(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	tv := tr.V().Has("Value", Lt(3))
+	if len(tv.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
+	}
+}
+
+func TestTraversalGt(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	tv := tr.V().Has("Value", Gt(3))
+	if len(tv.Values()) != 1 {
+		t.Fatalf("Should return 1 nodes, returned: %v", tv.Values())
+	}
+}
+
+func TestTraversalLte(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	tv := tr.V().Has("Value", Lte(3))
+	if len(tv.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
+	}
+}
+
+func TestTraversalGte(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	tv := tr.V().Has("Value", Gte(3))
+	if len(tv.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
+	}
+}
+
+func TestTraversalInside(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	tv := tr.V().Has("Value", Inside(1, 4))
+	if len(tv.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
+	}
+}
+
 func TestTraversalNe(t *testing.T) {
 	g := newTransversalGraph(t)
 

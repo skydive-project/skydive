@@ -68,6 +68,12 @@ const (
 	BOTH
 	CONTEXT
 	REGEX
+	LT
+	GT
+	LTE
+	GTE
+	INSIDE
+	BETWEEN
 
 	// extensions token have to start after 1000
 )
@@ -218,6 +224,18 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return CONTEXT, buf.String()
 	case "REGEX":
 		return REGEX, buf.String()
+	case "LT":
+		return LT, buf.String()
+	case "GT":
+		return GT, buf.String()
+	case "LTE":
+		return LTE, buf.String()
+	case "GTE":
+		return GTE, buf.String()
+	case "INSIDE":
+		return INSIDE, buf.String()
+	case "BETWEEN":
+		return BETWEEN, buf.String()
 	}
 
 	for _, e := range s.extensions {

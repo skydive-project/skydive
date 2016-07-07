@@ -110,8 +110,140 @@ func (n *NEMetadataMatcher) Match(v interface{}) bool {
 	return false
 }
 
+func (n *NEMetadataMatcher) Value() interface{} {
+	return n.value
+}
+
 func Ne(s interface{}) *NEMetadataMatcher {
 	return &NEMetadataMatcher{value: s}
+}
+
+type LTMetadataMatcher struct {
+	value interface{}
+}
+
+func (lt *LTMetadataMatcher) Match(v interface{}) bool {
+	if result, err := common.CrossTypeCompare(v, lt.value); err == nil && result == -1 {
+		return true
+	}
+
+	return false
+}
+
+func (lt *LTMetadataMatcher) Value() interface{} {
+	return lt.value
+}
+
+func Lt(s interface{}) *LTMetadataMatcher {
+	return &LTMetadataMatcher{value: s}
+}
+
+type GTMetadataMatcher struct {
+	value interface{}
+}
+
+func (gt *GTMetadataMatcher) Match(v interface{}) bool {
+	if result, err := common.CrossTypeCompare(v, gt.value); err == nil && result == 1 {
+		return true
+	}
+
+	return false
+}
+
+func (gt *GTMetadataMatcher) Value() interface{} {
+	return gt.value
+}
+
+func Gt(s interface{}) *GTMetadataMatcher {
+	return &GTMetadataMatcher{value: s}
+}
+
+type LTEMetadataMatcher struct {
+	value interface{}
+}
+
+func (lte *LTEMetadataMatcher) Match(v interface{}) bool {
+	if result, err := common.CrossTypeCompare(v, lte.value); err == nil && result <= 0 {
+		return true
+	}
+
+	return false
+}
+
+func (lte *LTEMetadataMatcher) Value() interface{} {
+	return lte.value
+}
+
+func Lte(s interface{}) *LTEMetadataMatcher {
+	return &LTEMetadataMatcher{value: s}
+}
+
+type GTEMetadataMatcher struct {
+	value interface{}
+}
+
+func (gte *GTEMetadataMatcher) Match(v interface{}) bool {
+	if result, err := common.CrossTypeCompare(v, gte.value); err == nil && result >= 0 {
+		return true
+	}
+
+	return false
+}
+
+func (gte *GTEMetadataMatcher) Value() interface{} {
+	return gte.value
+}
+
+func Gte(s interface{}) *GTEMetadataMatcher {
+	return &GTEMetadataMatcher{value: s}
+}
+
+type InsideMetadataMatcher struct {
+	from interface{}
+	to   interface{}
+}
+
+func (i *InsideMetadataMatcher) Match(v interface{}) bool {
+	result, err := common.CrossTypeCompare(v, i.from)
+	result2, err2 := common.CrossTypeCompare(v, i.to)
+
+	if err == nil && err2 == nil && result == 1 && result2 == -1 {
+		return true
+	}
+
+	return false
+}
+
+func (i *InsideMetadataMatcher) Value() (interface{}, interface{}) {
+	return i.from, i.to
+}
+
+func Inside(from, to interface{}) *InsideMetadataMatcher {
+	return &InsideMetadataMatcher{from: from, to: to}
+}
+
+type BetweenMetadataMatcher struct {
+	from interface{}
+	to   interface{}
+}
+
+func (b *BetweenMetadataMatcher) Match(v interface{}) bool {
+	result, err := common.CrossTypeCompare(v, b.from)
+	result2, err2 := common.CrossTypeCompare(v, b.to)
+
+	if err == nil && err2 == nil && result >= 0 && result2 == -1 {
+		return true
+	}
+
+	return false
+}
+
+func (b *BetweenMetadataMatcher) Value() (interface{}, interface{}) {
+	return b.from, b.to
+}
+
+func Between(from interface{}, to interface{}) *BetweenMetadataMatcher {
+	return &BetweenMetadataMatcher{from: from, to: to}
 }
 
 type RegexMetadataMatcher struct {

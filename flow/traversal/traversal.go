@@ -25,6 +25,8 @@ package traversal
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -47,6 +49,7 @@ type FlowGremlinTraversalStep struct {
 type FlowTraversalStep struct {
 	GraphTraversal *traversal.GraphTraversal
 	flowset        *flow.FlowSet
+	error          error
 }
 
 func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
@@ -91,6 +94,55 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
+}
+
+func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
+	if f.error != nil {
+		return f
+	}
+
+	if len(s) < 2 {
+		return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, error: errors.New("At least two parameters must be provided")}
+	}
+
+	if len(s)%2 != 0 {
+		return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, error: fmt.Errorf("slice must be defined by pair k,v: %v", s)}
+	}
+
+	filters := storage.NewFilters()
+	terms := flow.TermFilter{Op: flow.AND}
+
+	for i := 0; i < len(s); i += 2 {
+		k, ok := s[i].(string)
+		if !ok {
+			return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, error: errors.New("keys should be of string type")}
+		}
+
+		switch v := s[i+1].(type) {
+		case *traversal.NEMetadataMatcher:
+			filters.Range[k] = flow.RangeFilter{Lt: v.Value(), Gt: v.Value()}
+		case *traversal.LTMetadataMatcher:
+			filters.Range[k] = flow.RangeFilter{Lt: v.Value()}
+		case *traversal.GTMetadataMatcher:
+			filters.Range[k] = flow.RangeFilter{Gt: v.Value()}
+		case *traversal.GTEMetadataMatcher:
+			filters.Range[k] = flow.RangeFilter{Gte: v.Value()}
+		case *traversal.LTEMetadataMatcher:
+			filters.Range[k] = flow.RangeFilter{Lte: v.Value()}
+		case *traversal.InsideMetadataMatcher:
+			from, to := v.Value()
+			filters.Range[k] = flow.RangeFilter{Gt: from, Lt: to}
+		case *traversal.BetweenMetadataMatcher:
+			from, to := v.Value()
+			filters.Range[k] = flow.RangeFilter{Gte: from, Lt: to}
+		default:
+			terms.Terms = append(terms.Terms, flow.Term{Key: k, Value: v})
+		}
+	}
+
+	filters.Term = terms
+	fs := f.flowset.Filter(filters)
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: fs}
 }
 
 func (f *FlowTraversalStep) Values() []interface{} {
@@ -145,8 +197,8 @@ func (f *FlowTraversalStep) MarshalJSON() ([]byte, error) {
 	return json.Marshal(a)
 }
 
-func (p *FlowTraversalStep) Error() error {
-	return nil
+func (f *FlowTraversalStep) Error() error {
+	return f.error
 }
 
 func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
@@ -222,4 +274,8 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 	}
 
 	return nil, traversal.ExecutionError
+}
+
+func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	return next
 }

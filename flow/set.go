@@ -37,7 +37,6 @@ func NewFlowSet() *FlowSet {
 }
 
 func (fs *FlowSet) Merge(ofs *FlowSet) {
-
 	fs.Start = common.MinInt64(fs.Start, ofs.Start)
 	if fs.Start == 0 {
 		fs.Start = ofs.Start
@@ -71,4 +70,20 @@ func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
 		fsbw.NBFlow++
 	}
 	return
+}
+
+func (fs *FlowSet) Filter(filters *Filters) *FlowSet {
+	flowset := NewFlowSet()
+	for _, f := range fs.Flows {
+		if filters == nil || matchQueryFilter(f, filters) {
+			if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
+				flowset.Start = f.Statistics.Start
+			}
+			if flowset.End == 0 || flowset.Start < f.Statistics.Last {
+				flowset.End = f.Statistics.Last
+			}
+			flowset.Flows = append(flowset.Flows, f)
+		}
+	}
+	return flowset
 }

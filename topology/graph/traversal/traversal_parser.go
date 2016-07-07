@@ -84,8 +84,9 @@ func invokeStepFnc(last GraphTraversalStep, name string, params GremlinTraversal
 			inputs[i] = reflect.ValueOf(param)
 		}
 		r := v.Call(inputs)
+		step := r[0].Interface().(GraphTraversalStep)
 
-		return r[0].Interface().(GraphTraversalStep), nil
+		return step, step.Error()
 	}
 
 	return nil, ExecutionError
@@ -135,7 +136,7 @@ func (s *gremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalS
 		return last.(*GraphTraversalE).Has(s.params...), nil
 	}
 
-	return nil, ExecutionError
+	return invokeStepFnc(last, "Has", s.params)
 }
 
 func (s *gremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -372,6 +373,60 @@ func (p *GremlinTraversalParser) parserStepParams() (GremlinTraversalStepParams,
 				return nil, err
 			}
 			params = append(params, Without(withoutParams...))
+		case LT:
+			ltParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(ltParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with LT: %v", ltParams)
+			}
+			params = append(params, Lt(ltParams[0]))
+		case GT:
+			gtParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(gtParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with GT: %v", gtParams)
+			}
+			params = append(params, Gt(gtParams[0]))
+		case LTE:
+			lteParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(lteParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with LTE: %v", lteParams)
+			}
+			params = append(params, Lte(lteParams[0]))
+		case GTE:
+			gteParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(gteParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with GTE: %v", gteParams)
+			}
+			params = append(params, Gte(gteParams[0]))
+		case INSIDE:
+			insideParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(insideParams) != 2 {
+				return nil, fmt.Errorf("Two parameters expected with INSIDE: %v", insideParams)
+			}
+			params = append(params, Inside(insideParams[0], insideParams[1]))
+		case BETWEEN:
+			betweenParams, err := p.parserStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(betweenParams) != 2 {
+				return nil, fmt.Errorf("Two parameters expected with BETWEEN: %v", betweenParams)
+			}
+			params = append(params, Between(betweenParams[0], betweenParams[1]))
 		case NE:
 			neParams, err := p.parserStepParams()
 			if err != nil {
