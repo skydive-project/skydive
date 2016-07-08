@@ -28,14 +28,28 @@ type CaptureType struct {
 	Default string
 }
 
+// ProbeCapability defines probe capability
+type ProbeCapability int
+
+const (
+	// BPFCapability the probe is able to handle bpf filters
+	BPFCapability ProbeCapability = 1
+	// RawPacketsCapability the probe can capture raw packets
+	RawPacketsCapability = 2
+	// ExtraTCPMetricCapability the probe can report TCP metrics
+	ExtraTCPMetricCapability = 4
+)
+
 var (
-	// CaptureTypes contain all registred capture type and associated probes
+	// CaptureTypes contains all registred capture type and associated probes
 	CaptureTypes = map[string]CaptureType{}
+
+	// ProbeCapabilities defines capability per probes
+	ProbeCapabilities = map[string]ProbeCapability{}
 )
 
 func initCaptureTypes() {
 	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow", "pcapsocket"}, Default: "ovssflow"}
-	CaptureTypes["device"] = CaptureType{Allowed: []string{"afpacket", "pcap", "pcapsocket", "sflow"}, Default: "afpacket"}
 	CaptureTypes["dpdkport"] = CaptureType{Allowed: []string{"dpdk"}, Default: "dpdk"}
 
 	// anything else will be handled by gopacket
@@ -43,11 +57,11 @@ func initCaptureTypes() {
 		"internal", "veth", "tun", "bridge", "dummy", "gre",
 		"bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan",
 		"gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan",
-		"lowpan", "ip6tnl", "ip6gre", "sit",
+		"lowpan", "ip6tnl", "ip6gre", "sit", "device",
 	}
 
 	for _, t := range types {
-		CaptureTypes[t] = CaptureType{Allowed: []string{"afpacket", "pcap", "pcapsocket"}, Default: "afpacket"}
+		CaptureTypes[t] = CaptureType{Allowed: []string{"afpacket", "pcap", "pcapsocket", "sflow", "ebpf"}, Default: "afpacket"}
 	}
 }
 
@@ -57,6 +71,27 @@ func IsCaptureAllowed(nodeType string) bool {
 	return ok
 }
 
+func initProbeCapabilities() {
+	ProbeCapabilities["afpacket"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+	ProbeCapabilities["pcap"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+	ProbeCapabilities["pcapsocket"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+	ProbeCapabilities["sflow"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+	ProbeCapabilities["ovssflow"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+	ProbeCapabilities["afpacket"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+	ProbeCapabilities["dpdk"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+}
+
+// CheckProbeCapabilities checks that a probe supports given capabilites
+func CheckProbeCapabilities(probeType string, capability ProbeCapability) bool {
+	if c, ok := ProbeCapabilities[probeType]; ok {
+		if (c & capability) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func init() {
 	initCaptureTypes()
+	initProbeCapabilities()
 }

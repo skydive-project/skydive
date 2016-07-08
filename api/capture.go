@@ -27,6 +27,7 @@ import (
 
 	"github.com/nu7hatch/gouuid"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -142,6 +143,26 @@ func (c *Capture) SetID(i string) {
 // Create tests that resource GremlinQuery does not exists already
 func (c *CaptureAPIHandler) Create(r Resource) error {
 	capture := r.(*Capture)
+
+	// check capabilites
+	if capture.Type != "" {
+		if capture.BPFFilter != "" {
+			if !common.CheckProbeCapabilities(capture.Type, common.BPFCapability) {
+				return fmt.Errorf("%s capture doesn't support BPF filtering", capture.Type)
+			}
+		}
+		if capture.RawPacketLimit != 0 {
+			if !common.CheckProbeCapabilities(capture.Type, common.RawPacketsCapability) {
+				return fmt.Errorf("%s capture doesn't support raw packet capture", capture.Type)
+			}
+		}
+		if capture.ExtraTCPMetric {
+			if !common.CheckProbeCapabilities(capture.Type, common.ExtraTCPMetricCapability) {
+				return fmt.Errorf("%s capture doesn't support extra TCP metrics capture", capture.Type)
+			}
+		}
+	}
+
 	resources := c.BasicAPIHandler.Index()
 	for _, resource := range resources {
 		if resource.(*Capture).GremlinQuery == capture.GremlinQuery {

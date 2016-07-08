@@ -224,10 +224,10 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 			p := gopacket.NewPacket(data, linkType, gopacket.Default)
 			p.Metadata().CaptureInfo = ci
 			if p.ErrorLayer() != nil {
-				t.Fatalf("Failed to decode packet with layer path '%s': %s\n", layerPathFromGoPacket(&p), p.ErrorLayer().Error())
+				t.Fatalf("Failed to decode packet with layer path '%s': %s", LayerPathFromGoPacket(&p), p.ErrorLayer().Error())
 			}
 			pcapPacketNB++
-			if strings.Contains(layerPathFromGoPacket(&p), "DecodeFailure") {
+			if strings.Contains(LayerPathFromGoPacket(&p), "DecodeFailure") {
 				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
 			}
 			ps := PacketSeqFromGoPacket(&p, 0, -1, bpf)
@@ -235,7 +235,7 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 				t.Fatal("Failed to get PacketSeq: ", err)
 			}
 			for level, p := range ps.Packets {
-				if strings.Contains(layerPathFromGoPacket((&p).gopacket), "DecodeFailure") {
+				if strings.Contains(LayerPathFromGoPacket((&p).gopacket), "DecodeFailure") {
 					t.Fatalf("GoPacket decode this pcap packet %d level %d as DecodeFailure :\n%s", pcapPacketNB, level+1, (*(&p).gopacket).Dump())
 				}
 			}

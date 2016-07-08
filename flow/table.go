@@ -162,11 +162,11 @@ func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
 	return new, true
 }
 
-func (ft *Table) putFlow(key string, f *Flow) bool {
-	_, found := ft.table[key]
+func (ft *Table) replaceFlow(key string, f *Flow) *Flow {
+	prev, _ := ft.table[key]
 	ft.table[key] = f
 
-	return !found
+	return prev
 }
 
 func (ft *Table) expire(expireBefore int64) {
@@ -336,7 +336,6 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, t int64, L2ID i
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
 		opts := FlowOpts{
-
 			TCPMetric: ft.Opts.TCPMetric,
 		}
 
@@ -346,7 +345,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, t int64, L2ID i
 			L3ID:       L3ID,
 		}
 
-		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, uuids, opts)
+		flow.InitFromGoPacket(key, t, packet.gopacket, packet.length, ft.nodeTID, uuids, opts)
 		ft.pipeline.EnhanceFlow(ft.pipelineConfig, flow)
 	} else {
 		flow.Update(t, packet.gopacket, packet.length)
@@ -388,7 +387,19 @@ func (ft *Table) processPacketSeq(ps *PacketSequence) {
 }
 
 func (ft *Table) processFlow(fl *Flow) {
-	ft.putFlow(fl.UUID, fl)
+	prev := ft.replaceFlow(fl.UUID, fl)
+	if prev == nil {
+		ft.pipeline.EnhanceFlow(ft.pipelineConfig, fl)
+	} else {
+		fl.ANodeTID = prev.ANodeTID
+		fl.BNodeTID = prev.BNodeTID
+
+		fl.LastUpdateMetric = prev.LastUpdateMetric
+		fl.LastUpdateStart = prev.LastUpdateStart
+		fl.LastUpdateLast = prev.LastUpdateLast
+
+		fl.XXX_state = prev.XXX_state
+	}
 }
 
 // Run background jobs, like update/expire entries event
@@ -460,6 +471,7 @@ func (ft *Table) Stop() {
 		}
 
 		close(ft.packetSeqChan)
+		close(ft.flowChan)
 	}
 
 	ft.expireNow()

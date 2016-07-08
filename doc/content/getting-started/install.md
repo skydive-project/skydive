@@ -18,6 +18,9 @@ Skydive relies on two main components:
 * libpcap
 * libxml2
 * protoc >= 3.0
+* llvm
+* clang
+* kernel-headers
 
 ## Install
 

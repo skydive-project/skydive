@@ -159,7 +159,10 @@ var apiMixin = {
     },
 
     $allowedTypes: function() {
-      return ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy", "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan", "gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan", "lowpan", "ip6tnl", "ip6gre", "sit", "dpdkport"];
+      return ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy",
+        "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan",
+        "gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan", "lowpan",
+        "ip6tnl", "ip6gre", "sit", "dpdkport"];
     }
   }
 

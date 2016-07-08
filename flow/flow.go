@@ -65,11 +65,11 @@ type flowState struct {
 
 // Packet describes one packet
 type Packet struct {
-	gopacket *gopacket.Packet // can contain either a gopacket
+	gopacket *gopacket.Packet
 	length   int64
 }
 
-// PacketSuite represents a suite of parent/child Packet
+// PacketSequence represents a suite of parent/child Packet
 type PacketSequence struct {
 	Packets   []Packet
 	Timestamp int64
@@ -225,7 +225,8 @@ func KeyFromGoPacket(p *gopacket.Packet, parentUUID string) Key {
 	return Key(parentUUID + strconv.FormatUint(uint64(network^transport^application), 10))
 }
 
-func layerPathFromGoPacket(packet *gopacket.Packet) string {
+// LayerPathFromGoPacket returns path of all the layers separated by a slash.
+func LayerPathFromGoPacket(packet *gopacket.Packet) string {
 	path := ""
 	for i, layer := range (*packet).Layers() {
 		if layer.LayerType() == gopacket.LayerTypePayload {
@@ -284,8 +285,8 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	hasher := sha1.New()
 
 	hasher.Write(f.Transport.Hash())
-	hasher.Write(f.Network.Hash())
 	if f.Network != nil {
+		hasher.Write(f.Network.Hash())
 		netID := make([]byte, 8)
 		binary.BigEndian.PutUint64(netID, uint64(f.Network.ID))
 		hasher.Write(netID)
@@ -293,8 +294,8 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
 	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
-	hasher.Write(f.Link.Hash())
 	if f.Link != nil {
+		hasher.Write(f.Link.Hash())
 		linkID := make([]byte, 8)
 		binary.BigEndian.PutUint64(linkID, uint64(f.Link.ID))
 		hasher.Write(linkID)
@@ -369,17 +370,21 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
-// Init initializes the flow based on packet data, flow key and ids
-func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
+func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
 	f.Start = now
 	f.Last = now
 
-	f.newLinkLayer(packet, length)
-
 	f.NodeTID = nodeTID
 	f.ParentUUID = uuids.ParentUUID
+}
 
-	f.LayersPath = layerPathFromGoPacket(packet)
+// InitFromGoPacket initializes the flow based on packet data, flow key and ids
+func (f *Flow) InitFromGoPacket(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
+	f.Init(now, nodeTID, uuids)
+
+	f.newLinkLayer(packet, length)
+
+	f.LayersPath = LayerPathFromGoPacket(packet)
 	appLayers := strings.Split(f.LayersPath, "/")
 	f.Application = appLayers[len(appLayers)-1]
 
@@ -683,7 +688,7 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error 
 func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bpf *BPF) *PacketSequence {
 	ps := &PacketSequence{Timestamp: t}
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
-		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
+		logging.GetLogger().Errorf("Decoding failure on layerpath %s", LayerPathFromGoPacket(packet))
 		logging.GetLogger().Debug((*packet).Dump())
 		return ps
 	}

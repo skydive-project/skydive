@@ -65,7 +65,7 @@ func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *fl
 }
 
 func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
-	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk"}
+	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
@@ -98,7 +98,15 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 			captureTypes = []string{"sflow"}
 		case "dpdk":
 			fp, err = NewDPDKProbesHandler(g, fpta)
-			captureTypes = []string{"dpdk"}
+			if err == ErrProbeNotCompiled {
+				logging.GetLogger().Info("Not compiled with DPDK support, skipping it")
+				continue
+			} else if err == nil {
+				captureTypes = []string{"dpdk"}
+			}
+		case "ebpf":
+			fp, err = NewEBPFProbesHandler(g, fpta)
+			captureTypes = []string{"ebpf"}
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}
