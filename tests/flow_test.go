@@ -82,7 +82,6 @@ logging:
 `
 
 type flowStat struct {
-	Checked   bool
 	Path      string
 	ABPackets uint64
 	ABBytes   uint64
@@ -98,11 +97,11 @@ var flowsTraces = [...]flowsTraceInfo{
 	{
 		filename: "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap",
 		flowStat: []flowStat{
-			{false, "Ethernet/ARP/Payload", 1, 44, 1, 44},
-			{false, "Ethernet/IPv4/UDP/DNS", 2, 152, 2, 260},
-			{false, "Ethernet/IPv4/TCP", 4, 392, 3, 700},
-			{false, "Ethernet/IPv4/UDP/DNS", 2, 152, 2, 196},
-			{false, "Ethernet/IPv4/TCP", 4, 280, 2, 144},
+			{"Ethernet/ARP/Payload", 1, 42, 1, 42},
+			{"Ethernet/IPv4/UDP/DNS", 2, 148, 2, 256},
+			{"Ethernet/IPv4/TCP", 4, 384, 3, 694},
+			{"Ethernet/IPv4/UDP/DNS", 2, 146, 2, 190},
+			{"Ethernet/IPv4/TCP", 4, 272, 2, 140},
 		},
 	},
 }
@@ -161,7 +160,6 @@ func pcapTraceCheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool 
 	for _, fi := range trace.flowStat {
 		if fi.Path == f.LayersPath {
 			if (fi.ABPackets == eth.AB.Packets) && (fi.ABBytes == eth.AB.Bytes) && (fi.BAPackets == eth.BA.Packets) && (fi.BABytes == eth.BA.Bytes) {
-				fi.Checked = true
 				return true
 			}
 		}
@@ -720,6 +718,83 @@ func TestFlowGremlin(t *testing.T) {
 		if f.ProbeNodeUUID != string(node.ID) {
 			t.Fatalf("Returned a non expected flow: %v", f)
 		}
+	}
+
+	client.Delete("capture", capture.ID())
+}
+
+func TestFlowMetrics(t *testing.T) {
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip netns add sflow-vm1", true},
+		{"ip link set sflow-intf1 netns sflow-vm1", true},
+		{"ip netns exec sflow-vm1 ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip netns exec sflow-vm1 ip link set sflow-intf1 up", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf2 -- set interface sflow-intf2 type=internal", true},
+		{"ip netns add sflow-vm2", true},
+		{"ip link set sflow-intf2 netns sflow-vm2", true},
+		{"ip netns exec sflow-vm2 ip address add 169.254.33.34/24 dev sflow-intf2", true},
+		{"ip netns exec sflow-vm2 ip link set sflow-intf2 up", true},
+
+		// wait to have everything ready, sflow, interfaces
+		{"sleep 1", false},
+
+		{"ip netns exec sflow-vm1 ping -c 1 -s 1024 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del sflow-vm1", true},
+		{"ip netns del sflow-vm2", true},
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	time.Sleep(2 * time.Second)
+	aa.Flush()
+
+	icmp := []*flow.Flow{}
+
+	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows()`)
+	for _, f := range flows {
+		if f.LayersPath == "Ethernet/IPv4/ICMPv4/Payload" {
+			icmp = append(icmp, f)
+		}
+	}
+
+	if len(icmp) != 1 {
+		t.Errorf("Should return only one icmp flow, got: %v", icmp)
+	}
+
+	ethernet := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
+	if ethernet.GetAB().Packets != 1 || ethernet.GetBA().Packets != 1 {
+		t.Errorf("Number of packets is wrong, got: %v", icmp)
+	}
+
+	if ethernet.GetAB().Bytes < 1024 || ethernet.GetBA().Bytes < 1024 {
+		t.Errorf("Number of bytes is wrong, got: %v", icmp)
+	}
+
+	ipv4 := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_IPV4)
+	if ethernet.GetAB().Bytes < ipv4.GetAB().Bytes {
+		t.Errorf("Layers bytes error, got: %v", icmp)
 	}
 
 	client.Delete("capture", capture.ID())

@@ -178,7 +178,7 @@ func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
 		return flow, false
 	}
 
-	new := &Flow{}
+	new := &Flow{Statistics: &FlowStatistics{}}
 	ft.table[key] = new
 
 	return new, true

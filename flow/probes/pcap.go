@@ -86,7 +86,7 @@ func (p *PcapProbe) start() {
 		select {
 		case packet, ok := <-ch:
 			if ok {
-				flow.FlowFromGoPacket(p.flowTable, &packet, p)
+				flow.FlowFromGoPacket(p.flowTable, &packet, 0, p)
 			}
 		case <-timer.C:
 		}
@@ -206,8 +206,8 @@ func (p *PcapProbesHandler) Stop() {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
 
-	for name := range p.probes {
-		p.unregisterProbe(name)
+	for id := range p.probes {
+		p.unregisterProbe(id)
 	}
 	p.wg.Wait()
 }

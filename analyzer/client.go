@@ -25,7 +25,6 @@ package analyzer
 import (
 	"net"
 	"strconv"
-	"time"
 
 	"github.com/redhat-cip/skydive/flow"
 	"github.com/redhat-cip/skydive/logging"
@@ -55,17 +54,6 @@ func (c *Client) SendFlows(flows []*flow.Flow) {
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to send flow: %s", err.Error())
 		}
-	}
-}
-
-func (c *Client) AsyncFlowsUpdate(ft *flow.Table, every time.Duration) {
-	ticker := time.NewTicker(every)
-	defer ticker.Stop()
-	for {
-		<-ticker.C
-		flows := ft.FilterLast(every + (10 * time.Second))
-		logging.GetLogger().Infof("Send %d Flows to the Analyzer", len(flows))
-		c.SendFlows(flows)
 	}
 }
 

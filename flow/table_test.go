@@ -27,9 +27,6 @@ import (
 	"math/rand"
 	"testing"
 	"time"
-
-	"crypto/sha1"
-	"encoding/hex"
 )
 
 func TestNewTable(t *testing.T) {
@@ -235,32 +232,26 @@ func TestTable_SelectLayer(t *testing.T) {
 }
 
 func TestTable_SymmeticsHash(t *testing.T) {
-	ft := NewTable(nil, nil)
-	GenerateTestFlows(t, ft, 0xca55e77e, "probe")
+	ft1 := NewTable(nil, nil)
+	GenerateTestFlows(t, ft1, 0xca55e77e, "probe")
 
-	foundLayers := make(map[string]bool)
+	UUIDS := make(map[string]bool)
+	TRIDS := make(map[string]bool)
 
-	for _, f := range ft.GetFlows().Flows {
-		hasher := sha1.New()
-		for _, ep := range f.GetStatistics().GetEndpoints() {
-			hasher.Write(ep.Hash)
-		}
-		layersH := hex.EncodeToString(hasher.Sum(nil))
-		foundLayers[layersH] = true
+	for _, f := range ft1.GetFlows().Flows {
+		UUIDS[f.UUID] = true
+		TRIDS[f.TrackingID] = true
 	}
 
 	ft2 := NewTable(nil, nil)
 	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe")
 
 	for _, f := range ft2.GetFlows().Flows {
-		hasher := sha1.New()
-		for _, ep := range f.GetStatistics().GetEndpoints() {
-			hasher.Write(ep.Hash)
+		if _, found := UUIDS[f.UUID]; !found {
+			t.Errorf("Flow UUID should support symmetrically, not found : %s", f.UUID)
 		}
-		layersH := hex.EncodeToString(hasher.Sum(nil))
-		if _, found := foundLayers[layersH]; !found {
-			t.Errorf("hash endpoint should be symmeticaly, not found : %s", layersH)
-			t.Fail()
+		if _, found := TRIDS[f.TrackingID]; !found {
+			t.Errorf("Flow TrackingID should support symmetrically, not found : %s", f.TrackingID)
 		}
 	}
 }

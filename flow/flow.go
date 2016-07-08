@@ -27,9 +27,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"net"
+	"strconv"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
@@ -74,64 +72,7 @@ func (s *FlowEndpointsStatistics) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func Var8bin(v []byte) []byte {
-	r := make([]byte, 8)
-	skip := 8 - len(v)
-	for i, b := range v {
-		r[i+skip] = b
-	}
-	return r
-}
-
-func (eps *FlowEndpointsStatistics) hash(ab interface{}, ba interface{}) {
-	var vab, vba uint64
-	var binab, binba []byte
-
-	hasher := sha1.New()
-	switch ab.(type) {
-	case net.HardwareAddr:
-		binab = ab.(net.HardwareAddr)
-		binba = ba.(net.HardwareAddr)
-		vab = binary.BigEndian.Uint64(Var8bin(binab))
-		vba = binary.BigEndian.Uint64(Var8bin(binba))
-	case net.IP:
-		binab = ab.(net.IP)
-		binba = ba.(net.IP)
-		vab = binary.BigEndian.Uint64(Var8bin(binab))
-		vba = binary.BigEndian.Uint64(Var8bin(binba))
-	case layers.TCPPort:
-		binab = make([]byte, 2)
-		binba = make([]byte, 2)
-		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.TCPPort)))
-		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.TCPPort)))
-		vab = uint64(ab.(layers.TCPPort))
-		vba = uint64(ba.(layers.TCPPort))
-	case layers.UDPPort:
-		binab = make([]byte, 2)
-		binba = make([]byte, 2)
-		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.UDPPort)))
-		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.UDPPort)))
-		vab = uint64(ab.(layers.UDPPort))
-		vba = uint64(ba.(layers.UDPPort))
-	case layers.SCTPPort:
-		binab = make([]byte, 2)
-		binba = make([]byte, 2)
-		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.SCTPPort)))
-		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.SCTPPort)))
-		vab = uint64(ab.(layers.SCTPPort))
-		vba = uint64(ba.(layers.SCTPPort))
-	}
-	if vab < vba {
-		hasher.Write(binab)
-		hasher.Write(binba)
-	} else {
-		hasher.Write(binba)
-		hasher.Write(binab)
-	}
-	eps.Hash = hasher.Sum(nil)
-}
-
-func LayerFlow(l gopacket.Layer) gopacket.Flow {
+func layerFlow(l gopacket.Layer) gopacket.Flow {
 	switch l.(type) {
 	case gopacket.LinkLayer:
 		return l.(gopacket.LinkLayer).LinkFlow()
@@ -143,65 +84,63 @@ func LayerFlow(l gopacket.Layer) gopacket.Flow {
 	return gopacket.Flow{}
 }
 
-type FlowKey struct {
-	net, transport uint64
+type FlowKey string
+
+func (f FlowKey) String() string {
+	return string(f)
 }
 
-func NewFlowKeyFromGoPacket(p *gopacket.Packet) *FlowKey {
-	return &FlowKey{
-		net:       LayerFlow((*p).NetworkLayer()).FastHash(),
-		transport: LayerFlow((*p).TransportLayer()).FastHash(),
+func FlowKeyFromGoPacket(p *gopacket.Packet) FlowKey {
+	network := layerFlow((*p).NetworkLayer()).FastHash()
+	transport := layerFlow((*p).TransportLayer()).FastHash()
+
+	return FlowKey(strconv.FormatUint(uint64(network^transport), 10))
+}
+
+func layerPathFromGoPacket(packet *gopacket.Packet) string {
+	path := ""
+	for i, layer := range (*packet).Layers() {
+		if i > 0 {
+			path += "/"
+		}
+		path += layer.LayerType().String()
 	}
+	return path
 }
 
-func (key FlowKey) String() string {
-	return fmt.Sprintf("%x-%x", key.net, key.transport)
-}
-
-func (flow *Flow) fillFromGoPacket(now int64, packet *gopacket.Packet) error {
-	/* Continue if no ethernet layer */
-	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
-	_, ok := ethernetLayer.(*layers.Ethernet)
-	if !ok {
-		return errors.New("Unable to decode the ethernet layer")
-	}
-
-	newFlow := false
+func (flow *Flow) UpdateUUIDs(key string) {
 	fs := flow.GetStatistics()
-	if fs == nil {
-		newFlow = true
-		fs = NewFlowStatistics(packet)
-		fs.Start = now
-		flow.Statistics = fs
+
+	hasher := sha1.New()
+	hasher.Write([]byte(flow.LayersPath))
+
+	for _, ep := range fs.GetEndpoints() {
+		hasher.Write(ep.Hash)
 	}
-	fs.Last = now
-	fs.Update(packet)
+	flow.TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
-	if newFlow {
-		hasher := sha1.New()
-		path := ""
-		for i, layer := range (*packet).Layers() {
-			if i > 0 {
-				path += "/"
-			}
-			path += layer.LayerType().String()
-		}
-		flow.LayersPath = path
-		hasher.Write([]byte(flow.LayersPath))
+	bfStart := make([]byte, 8)
+	binary.BigEndian.PutUint64(bfStart, uint64(fs.Start))
+	hasher.Write(bfStart)
+	hasher.Write([]byte(flow.ProbeNodeUUID))
 
-		/* Generate an flow UUID */
-		for _, ep := range fs.GetEndpoints() {
-			hasher.Write(ep.Hash)
-		}
-		flow.TrackingID = hex.EncodeToString(hasher.Sum(nil))
+	// include key so that we are sure that two flows with different keys don't
+	// give the same UUID due to different ways of hash the headers.
+	hasher.Write([]byte(key))
 
-		bfStart := make([]byte, 8)
-		binary.BigEndian.PutUint64(bfStart, uint64(fs.Start))
-		hasher.Write(bfStart)
-		hasher.Write([]byte(flow.ProbeNodeUUID))
-		flow.UUID = hex.EncodeToString(hasher.Sum(nil))
+	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
+}
+
+func (flow *Flow) initFromGoPacket(key string, now int64, packet *gopacket.Packet, length uint64, setter FlowProbeNodeSetter) {
+	flow.Statistics.Init(now, packet, length)
+
+	if setter != nil {
+		setter.SetProbeNode(flow)
 	}
-	return nil
+
+	flow.LayersPath = layerPathFromGoPacket(packet)
+
+	flow.UpdateUUIDs(key)
 }
 
 func FromData(data []byte) (*Flow, error) {
@@ -232,17 +171,18 @@ func (flow *Flow) GetLayerHash(ltype FlowEndpointType) string {
 	return hex.EncodeToString(s.GetLayerHash(ltype))
 }
 
-func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, setter FlowProbeNodeSetter) *Flow {
-	key := NewFlowKeyFromGoPacket(packet)
-	flow, _ := ft.GetOrCreateFlow(key.String())
-	if setter != nil {
-		setter.SetProbeNode(flow)
+func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, length uint64, setter FlowProbeNodeSetter) *Flow {
+	if el := (*packet).Layer(layers.LayerTypeEthernet); el == nil {
+		logging.GetLogger().Error("Unable to decode the ethernet layer")
+		return nil
 	}
 
-	err := flow.fillFromGoPacket(ft.GetTime(), packet)
-	if err != nil {
-		logging.GetLogger().Error(err.Error())
-		return nil
+	key := FlowKeyFromGoPacket(packet).String()
+	flow, new := ft.GetOrCreateFlow(key)
+	if new {
+		flow.initFromGoPacket(key, ft.GetTime(), packet, length, setter)
+	} else {
+		flow.GetStatistics().Update(ft.GetTime(), packet, length)
 	}
 
 	return flow
@@ -267,7 +207,7 @@ func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter Flow
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
-		flow := FlowFromGoPacket(ft, &record.Header, setter)
+		flow := FlowFromGoPacket(ft, &record.Header, uint64(record.FrameLength), setter)
 		if flow != nil {
 			flows = append(flows, flow)
 		}

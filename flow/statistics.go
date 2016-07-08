@@ -24,8 +24,11 @@ package flow
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 
 	"github.com/google/gopacket"
@@ -36,34 +39,102 @@ func (x FlowEndpointType) Value() int32 {
 	return int32(x)
 }
 
-func NewFlowStatistics(packet *gopacket.Packet) *FlowStatistics {
-	fs := &FlowStatistics{}
-	fs.Endpoints = []*FlowEndpointsStatistics{}
-	err := fs.newLinkLayerEndpointStatistics(packet)
-	if err != nil {
-		return fs
+func Var8bin(v []byte) []byte {
+	r := make([]byte, 8)
+	skip := 8 - len(v)
+	for i, b := range v {
+		r[i+skip] = b
 	}
-	err = fs.newNetworkLayerEndpointStatistics(packet)
-	if err != nil {
-		return fs
-	}
-	err = fs.newTransportLayerEndpointStatistics(packet)
-	if err != nil {
-		return fs
-	}
-	return fs
+	return r
 }
 
-func (fs *FlowStatistics) Update(packet *gopacket.Packet) {
-	err := fs.updateLinkLayerStatistics(packet)
+func HashFromValues(ab interface{}, ba interface{}) []byte {
+	var vab, vba uint64
+	var binab, binba []byte
+
+	hasher := sha1.New()
+	switch ab.(type) {
+	case net.HardwareAddr:
+		binab = ab.(net.HardwareAddr)
+		binba = ba.(net.HardwareAddr)
+		vab = binary.BigEndian.Uint64(Var8bin(binab))
+		vba = binary.BigEndian.Uint64(Var8bin(binba))
+	case net.IP:
+		// IP can be IPV4 or IPV6
+		binab = ab.(net.IP).To16()
+		binba = ba.(net.IP).To16()
+
+		vab = binary.BigEndian.Uint64(Var8bin(binab[:8]))
+		vba = binary.BigEndian.Uint64(Var8bin(binba[:8]))
+		if vab == vba {
+			vab = binary.BigEndian.Uint64(Var8bin(binab[8:]))
+			vba = binary.BigEndian.Uint64(Var8bin(binba[8:]))
+		}
+	case layers.TCPPort:
+		binab = make([]byte, 2)
+		binba = make([]byte, 2)
+		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.TCPPort)))
+		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.TCPPort)))
+		vab = uint64(ab.(layers.TCPPort))
+		vba = uint64(ba.(layers.TCPPort))
+	case layers.UDPPort:
+		binab = make([]byte, 2)
+		binba = make([]byte, 2)
+		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.UDPPort)))
+		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.UDPPort)))
+		vab = uint64(ab.(layers.UDPPort))
+		vba = uint64(ba.(layers.UDPPort))
+	case layers.SCTPPort:
+		binab = make([]byte, 2)
+		binba = make([]byte, 2)
+		binary.BigEndian.PutUint16(binab, uint16(ab.(layers.SCTPPort)))
+		binary.BigEndian.PutUint16(binba, uint16(ba.(layers.SCTPPort)))
+		vab = uint64(ab.(layers.SCTPPort))
+		vba = uint64(ba.(layers.SCTPPort))
+	}
+
+	if vab < vba {
+		hasher.Write(binab)
+		hasher.Write(binba)
+	} else {
+		hasher.Write(binba)
+		hasher.Write(binab)
+	}
+	return hasher.Sum(nil)
+}
+
+func (fs *FlowStatistics) Init(now int64, packet *gopacket.Packet, length uint64) {
+	fs.Start = now
+	fs.Last = now
+
+	fs.Endpoints = []*FlowEndpointsStatistics{}
+	payloadLen, err := fs.newLinkLayerEndpointStatistics(packet, length)
 	if err != nil {
 		return
 	}
-	err = fs.updateNetworkLayerStatistics(packet)
+	payloadLen, err = fs.newNetworkLayerEndpointStatistics(packet, payloadLen)
 	if err != nil {
 		return
 	}
-	err = fs.updateTransportLayerStatistics(packet)
+	_, err = fs.newTransportLayerEndpointStatistics(packet, payloadLen)
+	if err != nil {
+		return
+	}
+}
+
+func (fs *FlowStatistics) Update(now int64, packet *gopacket.Packet, length uint64) {
+	fs.Last = now
+
+	payloadLen, err := fs.updateLinkLayerStatistics(packet, length)
+	if err != nil {
+		return
+	}
+	// TODO MPLS ?
+	payloadLen, err = fs.updateNetworkLayerStatistics(packet, payloadLen)
+	if err != nil {
+		return
+	}
+	_, err = fs.updateTransportLayerStatistics(packet, payloadLen)
 	if err != nil {
 		return
 	}
@@ -101,7 +172,7 @@ func (fs *FlowStatistics) GetLayerHash(ltype FlowEndpointType) (hash []byte) {
 	return e.Hash
 }
 
-func (fs *FlowStatistics) newLinkLayerEndpointStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) newLinkLayerEndpointStatistics(packet *gopacket.Packet, length uint64) (uint64, error) {
 	ep := &FlowEndpointsStatistics{}
 	ep.AB = &FlowEndpointStatistics{}
 	ep.BA = &FlowEndpointStatistics{}
@@ -109,23 +180,23 @@ func (fs *FlowStatistics) newLinkLayerEndpointStatistics(packet *gopacket.Packet
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
-		return errors.New("Unable to decode the ethernet layer")
+		return 0, errors.New("Unable to decode the ethernet layer")
 	}
 
 	ep.Type = FlowEndpointType_ETHERNET
 	ep.AB.Value = ethernetPacket.SrcMAC.String()
 	ep.BA.Value = ethernetPacket.DstMAC.String()
-	ep.hash(ethernetPacket.SrcMAC, ethernetPacket.DstMAC)
+	ep.Hash = HashFromValues(ethernetPacket.SrcMAC, ethernetPacket.DstMAC)
 	fs.Endpoints = append(fs.Endpoints, ep)
-	return nil
+	return fs.updateLinkLayerStatistics(packet, length)
 }
 
-func (fs *FlowStatistics) updateLinkLayerStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) updateLinkLayerStatistics(packet *gopacket.Packet, length uint64) (uint64, error) {
 	ep := fs.Endpoints[FlowEndpointLayer_LINK]
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
-		return errors.New("Unable to decode the ethernet layer")
+		return 0, errors.New("Unable to decode the ethernet layer")
 	}
 
 	var e *FlowEndpointStatistics
@@ -134,55 +205,85 @@ func (fs *FlowStatistics) updateLinkLayerStatistics(packet *gopacket.Packet) err
 	} else {
 		e = ep.BA
 	}
+
 	e.Packets += uint64(1)
-	if ethernetPacket.Length > 0 { // LLC
-		e.Bytes += uint64(ethernetPacket.Length)
-	} else {
-		e.Bytes += uint64(len(ethernetPacket.Contents) + len(ethernetPacket.Payload))
+
+	// if the length is given use it as the packet can be truncated like in SFlow
+	if length == 0 {
+		if ethernetPacket.Length > 0 { // LLC
+			length = 14 + uint64(ethernetPacket.Length)
+		} else {
+			length = 14 + uint64(len(ethernetPacket.Payload))
+		}
 	}
-	return nil
+	e.Bytes += length
+
+	return length - 14, nil
 }
 
-func (fs *FlowStatistics) newNetworkLayerEndpointStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) newNetworkLayerEndpointStatistics(packet *gopacket.Packet, length uint64) (uint64, error) {
 	ep := &FlowEndpointsStatistics{}
 	ep.AB = &FlowEndpointStatistics{}
 	ep.BA = &FlowEndpointStatistics{}
 
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
-	ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
-	if !ok {
-		return errors.New("Unable to decode the ipv4 layer")
+	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+		ep.Type = FlowEndpointType_IPV4
+		ep.AB.Value = ipv4Packet.SrcIP.String()
+		ep.BA.Value = ipv4Packet.DstIP.String()
+		ep.Hash = HashFromValues(ipv4Packet.SrcIP, ipv4Packet.DstIP)
+		fs.Endpoints = append(fs.Endpoints, ep)
+		return fs.updateNetworkLayerStatistics(packet, length)
 	}
 
-	ep.Type = FlowEndpointType_IPV4
-	ep.AB.Value = ipv4Packet.SrcIP.String()
-	ep.BA.Value = ipv4Packet.DstIP.String()
-	ep.hash(ipv4Packet.SrcIP, ipv4Packet.DstIP)
-	fs.Endpoints = append(fs.Endpoints, ep)
-	return nil
+	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
+	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+		ep.Type = FlowEndpointType_IPV6
+		ep.AB.Value = ipv6Packet.SrcIP.String()
+		ep.BA.Value = ipv6Packet.DstIP.String()
+		ep.Hash = HashFromValues(ipv6Packet.SrcIP, ipv6Packet.DstIP)
+		fs.Endpoints = append(fs.Endpoints, ep)
+		return fs.updateNetworkLayerStatistics(packet, length)
+	}
+
+	return 0, errors.New("Unable to decode the IP layer")
 }
 
-func (fs *FlowStatistics) updateNetworkLayerStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) updateNetworkLayerStatistics(packet *gopacket.Packet, length uint64) (uint64, error) {
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
-	ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
-	if !ok {
-		return errors.New("Unable to decode the ipv4 layer")
+	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+		ep := fs.Endpoints[FlowEndpointLayer_NETWORK]
+
+		var e *FlowEndpointStatistics
+		if ep.AB.Value == ipv4Packet.SrcIP.String() {
+			e = ep.AB
+		} else {
+			e = ep.BA
+		}
+		e.Packets += uint64(1)
+		e.Bytes += length
+		return length - uint64(len(ipv4Packet.Contents)), nil
 	}
 
-	ep := fs.Endpoints[FlowEndpointLayer_NETWORK]
+	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
+	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+		ep := fs.Endpoints[FlowEndpointLayer_NETWORK]
 
-	var e *FlowEndpointStatistics
-	if ep.AB.Value == ipv4Packet.SrcIP.String() {
-		e = ep.AB
-	} else {
-		e = ep.BA
+		var e *FlowEndpointStatistics
+		if ep.AB.Value == ipv6Packet.SrcIP.String() {
+			e = ep.AB
+		} else {
+			e = ep.BA
+		}
+		e.Packets += uint64(1)
+		e.Bytes += length
+		return length - uint64(len(ipv6Packet.Contents)), nil
 	}
-	e.Packets += uint64(1)
-	e.Bytes += uint64(ipv4Packet.Length)
-	return nil
+
+	return 0, errors.New("Unable to decode the IP layer")
 }
 
-func (fs *FlowStatistics) newTransportLayerEndpointStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) newTransportLayerEndpointStatistics(packet *gopacket.Packet, length uint64) (uint64, error) {
 	ep := &FlowEndpointsStatistics{}
 	ep.AB = &FlowEndpointStatistics{}
 	ep.BA = &FlowEndpointStatistics{}
@@ -201,7 +302,7 @@ func (fs *FlowStatistics) newTransportLayerEndpointStatistics(packet *gopacket.P
 			_, ok = transportLayer.(*layers.SCTP)
 			ptype = FlowEndpointType_SCTPPORT
 			if !ok {
-				return errors.New("Unable to decode the transport layer")
+				return 0, errors.New("Unable to decode the transport layer")
 			}
 		}
 	}
@@ -212,25 +313,25 @@ func (fs *FlowStatistics) newTransportLayerEndpointStatistics(packet *gopacket.P
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
 		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
-		ep.hash(transportPacket.SrcPort, transportPacket.DstPort)
+		ep.Hash = HashFromValues(transportPacket.SrcPort, transportPacket.DstPort)
 	case FlowEndpointType_UDPPORT:
 		transportPacket, _ := transportLayer.(*layers.UDP)
 		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
 		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
-		ep.hash(transportPacket.SrcPort, transportPacket.DstPort)
+		ep.Hash = HashFromValues(transportPacket.SrcPort, transportPacket.DstPort)
 	case FlowEndpointType_SCTPPORT:
 		transportPacket, _ := transportLayer.(*layers.SCTP)
 		ep.AB.Value = strconv.Itoa(int(transportPacket.SrcPort))
 		ep.BA.Value = strconv.Itoa(int(transportPacket.DstPort))
-		ep.hash(transportPacket.SrcPort, transportPacket.DstPort)
+		ep.Hash = HashFromValues(transportPacket.SrcPort, transportPacket.DstPort)
 	}
 	fs.Endpoints = append(fs.Endpoints, ep)
-	return nil
+	return fs.updateTransportLayerStatistics(packet, length)
 }
 
-func (fs *FlowStatistics) updateTransportLayerStatistics(packet *gopacket.Packet) error {
+func (fs *FlowStatistics) updateTransportLayerStatistics(packet *gopacket.Packet, length uint64) (uint64, error) {
 	if len(fs.Endpoints) <= int(FlowEndpointLayer_TRANSPORT) {
-		return errors.New("Unable to decode the transport layer")
+		return 0, errors.New("Unable to decode the transport layer")
 	}
 	ep := fs.Endpoints[FlowEndpointLayer_TRANSPORT]
 
@@ -257,8 +358,8 @@ func (fs *FlowStatistics) updateTransportLayerStatistics(packet *gopacket.Packet
 		e = ep.BA
 	}
 	e.Packets += uint64(1)
-	e.Bytes += uint64(len(transportLayer.LayerContents()) + len(transportLayer.LayerPayload()))
-	return nil
+	e.Bytes += length
+	return length - uint64(len(transportLayer.LayerContents())), nil
 }
 
 type FlowSetBandwidth struct {

@@ -38,6 +38,7 @@ enum FlowEndpointType {
   TCPPORT = 2;
   UDPPORT = 3;
   SCTPPORT = 4;
+  IPV6 = 5;
 }
 
 message FlowEndpointStatistics {

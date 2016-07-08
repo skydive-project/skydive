@@ -76,6 +76,7 @@ func (sfa *SFlowAgent) feedFlowTable(conn *net.UDPConn) {
 		return
 	}
 
+	// TODO use gopacket.NoCopy ? instead of gopacket.Default
 	p := gopacket.NewPacket(buf[:], layers.LayerTypeSFlow, gopacket.Default)
 	sflowLayer := p.Layer(layers.LayerTypeSFlow)
 	sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
