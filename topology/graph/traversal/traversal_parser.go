@@ -41,6 +41,7 @@ type (
 
 	GremlinTraversalStep interface {
 		Exec(last GraphTraversalStep) (GraphTraversalStep, error)
+		Reduce(previous GremlinTraversalStep) GremlinTraversalStep
 	}
 	GremlinTraversalStepParams []interface{}
 
@@ -96,6 +97,10 @@ func (s *gremlinTraversalStepG) Exec(last GraphTraversalStep) (GraphTraversalSte
 	return nil, nil
 }
 
+func (s *gremlinTraversalStepG) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *gremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	g, ok := last.(*GraphTraversal)
 	if !ok {
@@ -115,6 +120,10 @@ func (s *gremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalSte
 	}
 }
 
+func (s *gremlinTraversalStepV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *gremlinTraversalStepContext) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	g, ok := last.(*GraphTraversal)
 	if !ok {
@@ -128,6 +137,10 @@ func (s *gremlinTraversalStepContext) Exec(last GraphTraversalStep) (GraphTraver
 	return g.Context(s.params...), nil
 }
 
+func (s *gremlinTraversalStepContext) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *gremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -137,6 +150,10 @@ func (s *gremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalS
 	}
 
 	return invokeStepFnc(last, "Has", s.params)
+}
+
+func (s *gremlinTraversalStepHas) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
 }
 
 func (s *gremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -150,6 +167,10 @@ func (s *gremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversa
 	return nil, ExecutionError
 }
 
+func (s *gremlinTraversalStepDedup) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *gremlinTraversalStepOut) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -158,6 +179,14 @@ func (s *gremlinTraversalStepOut) Exec(last GraphTraversalStep) (GraphTraversalS
 
 	// fallback to reflection way
 	return invokeStepFnc(last, "Out", s.params)
+}
+
+func (s *gremlinTraversalStepOut) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*gremlinTraversalStepHas); ok && len(s.params) == 0 {
+		s.params = hasStep.params
+		return s
+	}
+	return next
 }
 
 func (s *gremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -169,6 +198,14 @@ func (s *gremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalSt
 	return invokeStepFnc(last, "In", s.params)
 }
 
+func (s *gremlinTraversalStepIn) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*gremlinTraversalStepHas); ok && len(s.params) == 0 {
+		s.params = hasStep.params
+		return s
+	}
+	return next
+}
+
 func (s *gremlinTraversalStepOutV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalE:
@@ -176,6 +213,14 @@ func (s *gremlinTraversalStepOutV) Exec(last GraphTraversalStep) (GraphTraversal
 	}
 
 	return nil, ExecutionError
+}
+
+func (s *gremlinTraversalStepOutV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*gremlinTraversalStepHas); ok && len(s.params) == 0 {
+		s.params = hasStep.params
+		return s
+	}
+	return next
 }
 
 func (s *gremlinTraversalStepInV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -187,6 +232,14 @@ func (s *gremlinTraversalStepInV) Exec(last GraphTraversalStep) (GraphTraversalS
 	return nil, ExecutionError
 }
 
+func (s *gremlinTraversalStepInV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*gremlinTraversalStepHas); ok && len(s.params) == 0 {
+		s.params = hasStep.params
+		return s
+	}
+	return next
+}
+
 func (s *gremlinTraversalStepOutE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -196,6 +249,14 @@ func (s *gremlinTraversalStepOutE) Exec(last GraphTraversalStep) (GraphTraversal
 	return nil, ExecutionError
 }
 
+func (s *gremlinTraversalStepOutE) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*gremlinTraversalStepHas); ok && len(s.params) == 0 {
+		s.params = hasStep.params
+		return s
+	}
+	return next
+}
+
 func (s *gremlinTraversalStepInE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -203,6 +264,14 @@ func (s *gremlinTraversalStepInE) Exec(last GraphTraversalStep) (GraphTraversalS
 	}
 
 	return nil, ExecutionError
+}
+
+func (s *gremlinTraversalStepInE) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*gremlinTraversalStepHas); ok && len(s.params) == 0 {
+		s.params = hasStep.params
+		return s
+	}
+	return next
 }
 
 func (s *gremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
@@ -223,6 +292,10 @@ func (s *gremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (Grap
 	return nil, ExecutionError
 }
 
+func (s *gremlinTraversalStepShortestPathTo) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *gremlinTraversalStepBoth) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -232,66 +305,12 @@ func (s *gremlinTraversalStepBoth) Exec(last GraphTraversalStep) (GraphTraversal
 	return nil, ExecutionError
 }
 
-func (s *GremlinTraversalSequence) nextStepToExec(i int) (GremlinTraversalStep, int) {
-	step := s.steps[i]
-
-	// check whether we can skip a step
-	if i+1 < len(s.steps) {
-		next := s.steps[i+1]
-
-		switch next.(type) {
-		// optimisation possible, uses the param of has for current predicate and
-		// inc the position in order to skip the HAS
-		case *gremlinTraversalStepHas:
-			params := next.(*gremlinTraversalStepHas).params
-
-			switch step.(type) {
-			case *gremlinTraversalStepIn:
-				if len(step.(*gremlinTraversalStepIn).params) == 0 {
-					step.(*gremlinTraversalStepIn).params = params
-					i++
-				}
-			case *gremlinTraversalStepOut:
-				if len(step.(*gremlinTraversalStepOut).params) == 0 {
-					step.(*gremlinTraversalStepOut).params = params
-					i++
-				}
-			case *gremlinTraversalStepOutV:
-				if len(step.(*gremlinTraversalStepOutV).params) == 0 {
-					step.(*gremlinTraversalStepOutV).params = params
-					i++
-				}
-			case *gremlinTraversalStepInV:
-				if len(step.(*gremlinTraversalStepInV).params) == 0 {
-					step.(*gremlinTraversalStepInV).params = params
-					i++
-				}
-			case *gremlinTraversalStepOutE:
-				if len(step.(*gremlinTraversalStepOutE).params) == 0 {
-					step.(*gremlinTraversalStepOutE).params = params
-					i++
-				}
-			case *gremlinTraversalStepInE:
-				if len(step.(*gremlinTraversalStepInE).params) == 0 {
-					step.(*gremlinTraversalStepInE).params = params
-					i++
-				}
-			case *gremlinTraversalStepBoth:
-				if len(step.(*gremlinTraversalStepBoth).params) == 0 {
-					step.(*gremlinTraversalStepBoth).params = params
-					i++
-				}
-			}
-		}
+func (s *gremlinTraversalStepBoth) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*gremlinTraversalStepHas); ok && len(s.params) == 0 {
+		s.params = hasStep.params
+		return s
 	}
-	i++
-
-	// last element return -1 to specify to end
-	if i == len(s.steps) {
-		return step, -1
-	}
-
-	return step, i
+	return next
 }
 
 func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
@@ -300,8 +319,14 @@ func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 	var err error
 
 	last = s.GraphTraversal
-	for i := 0; i != -1; {
-		step, i = s.nextStepToExec(i)
+	for i := 0; i < len(s.steps); {
+		step = s.steps[i]
+
+		for i = i + 1; i < len(s.steps); i = i + 1 {
+			if next := step.Reduce(s.steps[i]); next != step {
+				break
+			}
+		}
 
 		if last, err = step.Exec(last); err != nil {
 			return nil, err

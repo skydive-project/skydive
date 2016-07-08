@@ -99,3 +99,7 @@ func (s *GraphPathGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) 
 
 	return nil, traversal.ExecutionError
 }
+
+func (s *GraphPathGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	return next
+}
