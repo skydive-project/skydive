@@ -103,3 +103,7 @@ func (s *GraphPathGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) 
 func (s *GraphPathGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
 	return next
 }
+
+func (s *GraphPathGremlinTraversalStep) Params() (params []interface{}) {
+	return
+}

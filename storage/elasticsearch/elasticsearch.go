@@ -71,7 +71,50 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *ElasticSearchStorage) SearchFlows(filters *flow.Filters) ([]*flow.Flow, error) {
+func (c *ElasticSearchStorage) formatFilter(filter flow.Filter) map[string]interface{} {
+	switch f := filter.(type) {
+	case flow.BoolFilter:
+		keyword := ""
+		switch f.Op {
+		case flow.OR:
+			keyword = "or"
+		case flow.AND:
+			keyword = "and"
+		}
+		filters := []interface{}{}
+		for _, item := range f.Filters {
+			filters = append(filters, c.formatFilter(item))
+		}
+		return map[string]interface{}{
+			keyword: filters,
+		}
+	case flow.TermFilter:
+		return map[string]interface{}{
+			"term": map[string]interface{}{
+				f.Key: f.Value,
+			},
+		}
+	case flow.RangeFilter:
+		return map[string]interface{}{
+			"range": map[string]interface{}{
+				f.Key: &struct {
+					Gt  interface{} `json:"gt,omitempty"`
+					Lt  interface{} `json:"lt,omitempty"`
+					Gte interface{} `json:"gte,omitempty"`
+					Lte interface{} `json:"lte,omitempty"`
+				}{
+					Gt:  f.Gt,
+					Lt:  f.Lt,
+					Gte: f.Gte,
+					Lte: f.Lte,
+				},
+			},
+		}
+	}
+	return nil
+}
+
+func (c *ElasticSearchStorage) SearchFlows(filter flow.Filter) ([]*flow.Flow, error) {
 	if c.started.Load() != true {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -86,46 +129,8 @@ func (c *ElasticSearchStorage) SearchFlows(filters *flow.Filters) ([]*flow.Flow,
 		"size": 5,
 	}
 
-	if len(filters.Term.Terms)+len(filters.Range) > 0 {
-		var musts []interface{}
-		var terms []interface{}
-		if len(filters.Range) > 0 {
-			for k, v := range filters.Range {
-				term := map[string]interface{}{
-					"range": map[string]interface{}{
-						k: v,
-					},
-				}
-				musts = append(musts, term)
-			}
-		}
-
-		if len(filters.Term.Terms) > 0 {
-			for _, term := range filters.Term.Terms {
-				term := map[string]interface{}{
-					"term": map[string]interface{}{
-						term.Key: term.Value,
-					},
-				}
-				terms = append(terms, term)
-			}
-		}
-
-		op := "and"
-		if filters.Term.Op == flow.OR {
-			op = "or"
-		}
-
-		query := map[string]interface{}{
-			"bool": map[string]interface{}{
-				"must": musts,
-				"filter": map[string]interface{}{
-					op: terms,
-				},
-			},
-		}
-
-		request["query"] = query
+	if filter != nil {
+		request["query"] = c.formatFilter(filter)
 	}
 
 	q, err := json.Marshal(request)

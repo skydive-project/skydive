@@ -24,20 +24,47 @@ package storage
 
 import (
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(filters *flow.Filters) ([]*flow.Flow, error)
+	SearchFlows(filter flow.Filter) ([]*flow.Flow, error)
 	Stop()
 }
 
-func NewFilters() *flow.Filters {
-	return &flow.Filters{
-		Term: flow.TermFilter{
-			Op: flow.AND,
+func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNodeIDMap, filter flow.Filter) ([]*flow.Flow, error) {
+	andFilter := flow.BoolFilter{
+		Op: flow.AND,
+		Filters: []flow.Filter{
+			flow.RangeFilter{
+				Key: "Statistics.Start",
+				Lte: context.Time.Unix(),
+			},
+			flow.RangeFilter{
+				Key: "Statistics.Last",
+				Gte: context.Time.Unix(),
+			},
 		},
-		Range: make(map[string]flow.RangeFilter),
 	}
+
+	if len(hnmap) > 0 {
+		nodeFilter := flow.BoolFilter{Op: flow.OR}
+		for _, ids := range hnmap {
+			for _, id := range ids {
+				nodeFilter.Filters = append(nodeFilter.Filters,
+					flow.TermFilter{Key: "ProbeNodeUUID", Value: id},
+					flow.TermFilter{Key: "IfSrcNodeUUID", Value: id},
+					flow.TermFilter{Key: "IfDstNodeUUID", Value: id})
+			}
+		}
+		andFilter.Filters = append(andFilter.Filters, nodeFilter)
+	}
+
+	if filter != nil {
+		andFilter.Filters = append(andFilter.Filters, filter)
+	}
+
+	return s.SearchFlows(andFilter)
 }

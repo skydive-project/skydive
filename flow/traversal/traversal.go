@@ -44,6 +44,7 @@ type FlowTraversalExtension struct {
 type FlowGremlinTraversalStep struct {
 	TableClient *flow.TableClient
 	Storage     storage.Storage
+	params      []interface{}
 }
 
 type FlowTraversalStep struct {
@@ -96,53 +97,65 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
+func paramsToFilter(s ...interface{}) (flow.Filter, error) {
+	if len(s) < 2 {
+		return nil, errors.New("At least two parameters must be provided")
+	}
+
+	if len(s)%2 != 0 {
+		return nil, fmt.Errorf("slice must be defined by pair k,v: %v", s)
+	}
+
+	filter := &flow.BoolFilter{Op: flow.AND}
+
+	for i := 0; i < len(s); i += 2 {
+		k, ok := s[i].(string)
+		if !ok {
+			return nil, errors.New("keys should be of string type")
+		}
+
+		switch v := s[i+1].(type) {
+		case *traversal.NEMetadataMatcher:
+			filter.Filters = append(filter.Filters, flow.BoolFilter{
+				Op: flow.OR,
+				Filters: []flow.Filter{
+					flow.RangeFilter{Key: k, Lt: v.Value()},
+					flow.RangeFilter{Key: k, Gt: v.Value()},
+				},
+			})
+		case *traversal.LTMetadataMatcher:
+			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Lt: v.Value()})
+		case *traversal.GTMetadataMatcher:
+			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gt: v.Value()})
+		case *traversal.GTEMetadataMatcher:
+			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gte: v.Value()})
+		case *traversal.LTEMetadataMatcher:
+			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Lte: v.Value()})
+		case *traversal.InsideMetadataMatcher:
+			from, to := v.Value()
+			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gt: from, Lt: to})
+		case *traversal.BetweenMetadataMatcher:
+			from, to := v.Value()
+			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gte: from, Lt: to})
+		default:
+			filter.Filters = append(filter.Filters, flow.TermFilter{Key: k, Value: v})
+		}
+	}
+
+	return filter, nil
+}
+
 func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
 	if f.error != nil {
 		return f
 	}
 
-	if len(s) < 2 {
-		return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, error: errors.New("At least two parameters must be provided")}
+	filter, err := paramsToFilter(s...)
+	if err != nil {
+		return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, error: err}
 	}
 
-	if len(s)%2 != 0 {
-		return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, error: fmt.Errorf("slice must be defined by pair k,v: %v", s)}
-	}
-
-	filters := storage.NewFilters()
-	terms := flow.TermFilter{Op: flow.AND}
-
-	for i := 0; i < len(s); i += 2 {
-		k, ok := s[i].(string)
-		if !ok {
-			return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, error: errors.New("keys should be of string type")}
-		}
-
-		switch v := s[i+1].(type) {
-		case *traversal.NEMetadataMatcher:
-			filters.Range[k] = flow.RangeFilter{Lt: v.Value(), Gt: v.Value()}
-		case *traversal.LTMetadataMatcher:
-			filters.Range[k] = flow.RangeFilter{Lt: v.Value()}
-		case *traversal.GTMetadataMatcher:
-			filters.Range[k] = flow.RangeFilter{Gt: v.Value()}
-		case *traversal.GTEMetadataMatcher:
-			filters.Range[k] = flow.RangeFilter{Gte: v.Value()}
-		case *traversal.LTEMetadataMatcher:
-			filters.Range[k] = flow.RangeFilter{Lte: v.Value()}
-		case *traversal.InsideMetadataMatcher:
-			from, to := v.Value()
-			filters.Range[k] = flow.RangeFilter{Gt: from, Lt: to}
-		case *traversal.BetweenMetadataMatcher:
-			from, to := v.Value()
-			filters.Range[k] = flow.RangeFilter{Gte: from, Lt: to}
-		default:
-			terms.Terms = append(terms.Terms, flow.Term{Key: k, Value: v})
-		}
-	}
-
-	filters.Term = terms
-	fs := f.flowset.Filter(filters)
-	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: fs}
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset.Filter(filter)}
 }
 
 func (f *FlowTraversalStep) Values() []interface{} {
@@ -220,7 +233,11 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalStepParams) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.FlowToken:
-		return &FlowGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
+		return &FlowGremlinTraversalStep{
+			TableClient: e.TableClient,
+			Storage:     e.Storage,
+			params:      p.Params(),
+		}, nil
 	}
 
 	return nil, nil
@@ -239,37 +256,30 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		}
 		tv.GraphTraversal.Graph.Unlock()
 
-		flowset := flow.NewFlowSet()
 		var err error
+		var paramsFilter flow.Filter
+		if len(s.params) > 0 {
+			if paramsFilter, err = paramsToFilter(s.params...); err != nil {
+				return nil, err
+			}
+		}
 
+		flowset := flow.NewFlowSet()
 		context := tv.GraphTraversal.Graph.GetContext()
 		if context.Time != nil && s.Storage != nil {
-			filters := storage.NewFilters()
-			filters.Range["Statistics.Start"] = flow.RangeFilter{Lte: context.Time.Unix()}
-			filters.Range["Statistics.Last"] = flow.RangeFilter{Gte: context.Time.Unix()}
-			filters.Term.Op = flow.OR
-			for _, ids := range hnmap {
-				for _, id := range ids {
-					filters.Term.Terms = []flow.Term{
-						{Key: "ProbeNodeUUID", Value: id},
-						{Key: "IfSrcNodeUUID", Value: id},
-						{Key: "IfDstNodeUUID", Value: id},
-					}
-
-					f, err := s.Storage.SearchFlows(filters)
-					if err != nil {
-						return nil, traversal.ExecutionError
-					}
-					flowset.Flows = append(flowset.Flows, f...)
-				}
+			var flows []*flow.Flow
+			if flows, err = storage.LookupFlowsByNodes(s.Storage, context, hnmap, paramsFilter); err == nil {
+				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap)
+			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, paramsFilter)
 		}
+
 		if err != nil {
 			logging.GetLogger().Errorf("Error while looking for flows for nodes: %v, %s", hnmap, err.Error())
-			return nil, traversal.ExecutionError
+			return nil, err
 		}
+
 		return &FlowTraversalStep{GraphTraversal: tv.GraphTraversal, flowset: flowset}, nil
 	}
 
@@ -277,5 +287,13 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 }
 
 func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok && len(s.params) == 0 {
+		s.params = hasStep.Params()
+		return s
+	}
 	return next
+}
+
+func (s *FlowGremlinTraversalStep) Params() (params []interface{}) {
+	return s.params
 }

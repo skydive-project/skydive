@@ -128,7 +128,7 @@ func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *TestStorage) SearchFlows(filters *flow.Filters) ([]*flow.Flow, error) {
+func (s *TestStorage) SearchFlows(filter flow.Filter) ([]*flow.Flow, error) {
 	return nil, nil
 }
 
@@ -607,14 +607,12 @@ func TestFlowQuery(t *testing.T) {
 
 	query := &flow.TableQuery{
 		Obj: &flow.FlowSearchQuery{
-			flow.Filters{
-				Term: flow.TermFilter{
-					Op: flow.OR,
-					Terms: []flow.Term{
-						{Key: "ProbeNodeUUID", Value: "probe2"},
-						{Key: "IfSrcNodeUUID", Value: "probe2"},
-						{Key: "IfDstNodeUUID", Value: "probe2"},
-					},
+			flow.BoolFilter{
+				Op: flow.OR,
+				Filters: []flow.Filter{
+					flow.TermFilter{Key: "ProbeNodeUUID", Value: "probe2"},
+					flow.TermFilter{Key: "IfSrcNodeUUID", Value: "probe2"},
+					flow.TermFilter{Key: "IfDstNodeUUID", Value: "probe2"},
 				},
 			},
 		},
@@ -683,7 +681,7 @@ func TestTableServer(t *testing.T) {
 	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
-	flowset, err := fclient.LookupFlowsByNodes(hnmap)
+	flowset, err := fclient.LookupFlowsByNodes(hnmap, nil)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

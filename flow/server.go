@@ -23,6 +23,7 @@
 package flow
 
 import (
+	"bytes"
 	"encoding/json"
 
 	shttp "github.com/skydive-project/skydive/http"
@@ -49,13 +50,12 @@ func (s *TableServer) OnMessage(msg shttp.WSMessage) {
 	// decode query obj depending on the msg type
 	switch msg.Type {
 	case "FlowSearchQuery":
-		query.Obj = &FlowSearchQuery{}
-
-		err := json.Unmarshal([]byte(*msg.Obj), &query)
+		filter, err := DecodeFilter(bytes.NewReader([]byte(*msg.Obj)))
 		if err != nil {
-			logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
+			logging.GetLogger().Errorf("Unable to decode search filters %v (%s)", msg, err.Error())
 			return
 		}
+		query.Obj = &FlowSearchQuery{Filter: filter}
 	}
 
 	b, _ := json.Marshal(s.TableAllocator.QueryTable(&query))

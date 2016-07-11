@@ -35,6 +35,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -156,19 +157,42 @@ func FromData(data []byte) (*Flow, error) {
 	return flow, nil
 }
 
-func (flow *Flow) GetField(name string) interface{} {
-	field := reflect.ValueOf(*flow).FieldByName(name)
+func GetAttribute(intf interface{}, name string) interface{} {
+	if getter, ok := intf.(GetAttr); ok {
+		return getter.GetAttr(name)
+	}
+	value := reflect.Indirect(reflect.ValueOf(intf))
+	field := value.FieldByName(name)
 	if !field.IsValid() {
-		stats := flow.GetStatistics()
-		if name == "Last" && stats.Last == 0 {
-			return math.MaxUint32
-		}
-		field = reflect.ValueOf(*flow.GetStatistics()).FieldByName(name)
-		if !field.IsValid() {
-			return nil
-		}
+		return nil
 	}
 	return field.Interface()
+}
+
+func GetFields(intf interface{}, fields []string) interface{} {
+componentLoop:
+	for _, component := range fields {
+		value := reflect.Indirect(reflect.ValueOf(intf))
+		if value.Kind() == reflect.Slice {
+			for i := 0; i < value.Len(); i++ {
+				if intf = value.Index(i).Interface(); GetAttribute(intf, component) != nil {
+					continue componentLoop
+				}
+			}
+			return nil
+		} else {
+			intf = GetAttribute(intf, component)
+		}
+
+		if intf == nil {
+			return nil
+		}
+
+		if component == "Last" && common.CrossTypeEqual(intf, 0) {
+			return math.MaxUint32
+		}
+	}
+	return intf
 }
 
 func (flow *Flow) GetData() ([]byte, error) {
@@ -231,4 +255,18 @@ func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter Flow
 	}
 
 	return flows
+}
+
+func (fes *FlowEndpointsStatistics) GetAttr(name string) interface{} {
+	flowType, ok := FlowEndpointType_value[name]
+	if ok && fes.Type == FlowEndpointType(flowType) {
+		return fes.Type
+	}
+
+	value := reflect.Indirect(reflect.ValueOf(fes))
+	field := value.FieldByName(name)
+	if !field.IsValid() {
+		return nil
+	}
+	return field.Interface()
 }

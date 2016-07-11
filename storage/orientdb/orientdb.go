@@ -23,9 +23,7 @@
 package orientdb
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/config"
@@ -107,23 +105,10 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *OrientDBStorage) SearchFlows(filters *flow.Filters) ([]*flow.Flow, error) {
+func (c *OrientDBStorage) SearchFlows(filter flow.Filter) ([]*flow.Flow, error) {
 	sql := "SELECT FROM Flow"
-	if len(filters.Range)+len(filters.Term.Terms) > 0 {
-		var filterList []string
-		for _, term := range filters.Term.Terms {
-			marshal, err := json.Marshal(term.Value)
-			if err != nil {
-				return nil, err
-			}
-			filterList = append(filterList, fmt.Sprintf("%s = %s", term.Key, marshal))
-		}
-		sql += " WHERE "
-		if filters.Term.Op == flow.AND {
-			sql += strings.Join(filterList, " AND ")
-		} else {
-			sql += strings.Join(filterList, " OR ")
-		}
+	if conditional := filter.String(); conditional != "" {
+		sql += " WHERE " + conditional
 	}
 	sql += " ORDER BY Statistics.Last"
 	docs, err := c.client.Sql(sql)

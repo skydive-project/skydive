@@ -72,10 +72,10 @@ func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
 	return
 }
 
-func (fs *FlowSet) Filter(filters *Filters) *FlowSet {
+func (fs *FlowSet) Filter(filter Filter) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range fs.Flows {
-		if filters == nil || matchQueryFilter(f, filters) {
+		if filter == nil || filter.Eval(f) {
 			if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
 				flowset.Start = f.Statistics.Start
 			}

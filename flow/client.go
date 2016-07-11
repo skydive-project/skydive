@@ -59,19 +59,28 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uuids []string) {
-	terms := make([]Term, len(uuids)*3)
+func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uuids []string, filter Filter) {
+	terms := make([]Filter, len(uuids)*3)
 	for i, uuid := range uuids {
-		terms[i*3] = Term{Key: "ProbeNodeUUID", Value: uuid}
-		terms[i*3+1] = Term{Key: "IfSrcNodeUUID", Value: uuid}
-		terms[i*3+2] = Term{Key: "IfDstNodeUUID", Value: uuid}
+		terms[i*3] = TermFilter{Key: "ProbeNodeUUID", Value: uuid}
+		terms[i*3+1] = TermFilter{Key: "IfSrcNodeUUID", Value: uuid}
+		terms[i*3+2] = TermFilter{Key: "IfDstNodeUUID", Value: uuid}
 	}
-	tq := TableQuery{
-		Obj: Filters{Term: TermFilter{
-			Op:    OR,
-			Terms: terms,
-		}},
+	andFilter := BoolFilter{
+		Op: AND,
+		Filters: []Filter{
+			BoolFilter{
+				Op:      OR,
+				Filters: terms,
+			},
+		},
 	}
+
+	if filter != nil {
+		andFilter.Filters = append(andFilter.Filters, filter)
+	}
+
+	tq := TableQuery{Obj: andFilter}
 	b, _ := json.Marshal(tq)
 	raw := json.RawMessage(b)
 
@@ -139,11 +148,11 @@ func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uui
 	flowset <- NewFlowSet()
 }
 
-func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap) (*FlowSet, error) {
+func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter Filter) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
 	for host, uuids := range hnmap {
-		go f.lookupFlowsByNodes(ch, host, uuids)
+		go f.lookupFlowsByNodes(ch, host, uuids, filter)
 	}
 
 	flowset := NewFlowSet()

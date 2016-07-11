@@ -44,9 +44,9 @@ type FlowApi struct {
 }
 
 func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	filters := storage.NewFilters()
+	filter := flow.BoolFilter{Op: flow.AND}
 	for k, v := range r.URL.Query() {
-		filters.Term.Terms = []flow.Term{{Key: k, Value: v[0]}}
+		filter.Filters = append(filter.Filters, flow.TermFilter{Key: k, Value: v[0]})
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -55,7 +55,7 @@ func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest
 		return
 	}
 
-	flows, err := f.Storage.SearchFlows(filters)
+	flows, err := f.Storage.SearchFlows(filter)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return

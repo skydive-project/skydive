@@ -44,37 +44,8 @@ type TableReply struct {
 	Obj    json.RawMessage
 }
 
-type RangeFilter struct {
-	Gt  interface{} `json:"gt,omitempty"`
-	Lt  interface{} `json:"lt,omitempty"`
-	Gte interface{} `json:"gte,omitempty"`
-	Lte interface{} `json:"lte,omitempty"`
-}
-
-type TermFilterOp int
-
-const (
-	OR TermFilterOp = iota
-	AND
-)
-
-type Term struct {
-	Key   string
-	Value interface{}
-}
-
-type TermFilter struct {
-	Op    TermFilterOp
-	Terms []Term
-}
-
-type Filters struct {
-	Term  TermFilter
-	Range map[string]RangeFilter
-}
-
 type FlowSearchQuery struct {
-	Filters
+	Filter
 }
 
 type FlowSearchReply struct {
@@ -152,59 +123,17 @@ func (ft *Table) Update(flows []*Flow) {
 	ft.Unlock()
 }
 
-func matchQueryFilter(f *Flow, filters *Filters) bool {
-	for k, filter := range filters.Range {
-		field := f.GetField(k)
-
-		if filter.Gt != nil {
-			if result, err := common.CrossTypeCompare(field, filter.Gt); err != nil || result != 1 {
-				return false
-			}
-		}
-		if filter.Lt != nil {
-			if result, err := common.CrossTypeCompare(field, filter.Lt); err != nil || result != -1 {
-				return false
-			}
-		}
-		if filter.Gte != nil {
-			if result, err := common.CrossTypeCompare(field, filter.Gte); err != nil || result == -1 {
-				return false
-			}
-		}
-		if filter.Lte != nil {
-			if result, err := common.CrossTypeCompare(field, filter.Lte); err != nil || result == 1 {
-				return false
-			}
-		}
-	}
-
-	if len(filters.Term.Terms) > 0 {
-		for _, term := range filters.Term.Terms {
-			field := f.GetField(term.Key)
-			result := common.CrossTypeEqual(field, term.Value)
-			if filters.Term.Op == AND && !result {
-				return false
-			} else if filters.Term.Op == OR && result {
-				return true
-			}
-		}
-		return filters.Term.Op == AND
-	}
-
-	return true
-}
-
 func (ft *Table) GetTime() int64 {
 	return atomic.LoadInt64(&ft.tableClock)
 }
 
-func (ft *Table) GetFlows(filters ...Filters) *FlowSet {
+func (ft *Table) GetFlows(filters ...Filter) *FlowSet {
 	ft.RLock()
 	defer ft.RUnlock()
 
 	flowset := NewFlowSet()
 	for _, f := range ft.table {
-		if len(filters) == 0 || matchQueryFilter(f, &filters[0]) {
+		if len(filters) == 0 || filters[0].Eval(f) {
 			if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
 				flowset.Start = f.Statistics.Start
 			}
@@ -365,13 +294,16 @@ func (ft *Table) Window(start, end int64) *FlowSet {
 	flowset.End = end
 
 	if end >= start {
-		filter := Filters{
-			Range: map[string]RangeFilter{
-				"Start": {
-					Lt: end,
+		filter := BoolFilter{
+			Op: AND,
+			Filters: []Filter{
+				RangeFilter{
+					Key: "Statistics.Start",
+					Lt:  end,
 				},
-				"Last": {
-					Gt: start,
+				RangeFilter{
+					Key: "Statistics.Last",
+					Gte: start,
 				},
 			},
 		}
@@ -408,7 +340,7 @@ func (ft *Table) onFlowSearchQueryMessage(o interface{}) (*FlowSearchReply, int)
 		return nil, 500
 	}
 
-	flowset := ft.GetFlows(fq.Filters)
+	flowset := ft.GetFlows(fq.Filter)
 	if len(flowset.Flows) == 0 {
 		return &FlowSearchReply{
 			FlowSet: flowset,

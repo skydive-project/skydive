@@ -35,6 +35,7 @@ func TestNewTable(t *testing.T) {
 		t.Error("new FlowTable return null")
 	}
 }
+
 func TestTable_String(t *testing.T) {
 	ft := NewTable(nil, nil)
 	if "0 flows" != ft.String() {
@@ -126,14 +127,12 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	GenerateTestFlows(t, ft, 1, "probe1")
 	GenerateTestFlows(t, ft, 2, "probe2")
 
-	filters := Filters{
-		Term: TermFilter{
-			Op: OR,
-			Terms: []Term{
-				{Key: "ProbeNodeUUID", Value: "probe1"},
-				{Key: "IfSrcNodeUUID", Value: "probe1"},
-				{Key: "IfDstNodeUUID", Value: "probe1"},
-			},
+	filters := BoolFilter{
+		Op: OR,
+		Filters: []Filter{
+			TermFilter{Key: "ProbeNodeUUID", Value: "probe1"},
+			TermFilter{Key: "IfSrcNodeUUID", Value: "probe1"},
+			TermFilter{Key: "IfDstNodeUUID", Value: "probe1"},
 		},
 	}
 
