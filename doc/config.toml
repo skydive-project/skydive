@@ -1,4 +1,4 @@
-baseurl = "http://skydive-project.github.io/skydive/"
+baseurl = "//skydive-project.github.io/skydive/"
 languageCode = "en-us"
 title = "Skydive Docs"
 theme = "hugo-material-docs"

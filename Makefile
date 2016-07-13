@@ -94,4 +94,4 @@ doc:
 	git push -f gerrit gh-pages
 
 doctest:
-	hugo server run -t hugo-material-docs -s doc
+	hugo server run -t hugo-material-docs -s doc -b http://localhost:1313/skydive
