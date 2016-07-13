@@ -1489,7 +1489,19 @@ function RefreshCaptureList() {
 }
 
 function SetupCaptureList() {
+  var resetCaptureForm = function() {
+    $("#capturename").val("");
+    $("#capturedesc").val("");
+  }
+
+  $("#cancel").click(function(e) {
+    $(this).parent().parent().hide();
+    resetCaptureForm(e);
+  });
+
   $("#add-capture").click(function(e) {
+    $("#capture").css("display","block");
+
     var query = "";
 
     for (var e in CurrentNodeDetails.Edges) {
@@ -1508,16 +1520,27 @@ function SetupCaptureList() {
       return;
 
     query = "G." + query + ".Out('Name', '" + CurrentNodeDetails.Name() + "', 'Type', '" + CurrentNodeDetails.Type() + "')";
-
-    $.ajax({
-      dataType: "json",
-      url: '/api/capture',
-      data: JSON.stringify({"GremlinQuery": query}),
-      contentType: "application/json; charset=utf-8",
-      method: 'POST',
-    });
+    $("#capturequery").val(query);
   });
 
+  $("#create").click(function(e) {
+    var name = $("#capturename").val();
+    var desc = $("#capturedesc").val();
+    var query = $("#capturequery").val();
+    if (query == "") {
+      alert("Gremlin query can't be empty");
+    } else {
+      $.ajax({
+        dataType: "json",
+        url: '/api/capture',
+        data: JSON.stringify({"GremlinQuery": query, "Name": name, "Description": desc}),
+        contentType: "application/json; charset=utf-8",
+        method: 'POST',
+      });
+      $(this).parent().parent().hide();
+      resetCaptureForm(e);
+    }
+  });
   setInterval(RefreshCaptureList, 1000);
 }
 

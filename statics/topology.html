@@ -97,6 +97,22 @@
     </div>
   </div>
 
+  <div id="capture">
+    <form action="#" id="capture_form">
+      <h3 style="text-align:center;">Start Capture</h3>
+      <hr/>
+      <label>Capture Name : </label>
+      <input type="text" class="capture_input" id="capturename" placeholder="name"/><br/>
+      <label>Description : </label>
+      <textarea type="text" class="capture_input" id="capturedesc" placeholder="description"></textarea><br/>
+      <label>Gremlin Query : </label>
+      <textarea type="text" class="capture_input" id="capturequery" required></textarea><br/></br>
+      <input type="button" class="btn btn-lg btn-primary capture_button" id="create" value="Start"/>
+      <input type="button" class="btn btn-lg capture_button" id="cancel" value="Cancel"/>
+      <br/>
+    </form>
+  </div>
+
   <div class="conversation">
     <div class="col-sm-8 fill content">
       <div class="conversation-d3"></div>
