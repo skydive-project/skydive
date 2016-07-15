@@ -2,19 +2,19 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Getting-starteds on Skydive Docs</title>
-    <link>http://skydive-project.github.io/skydive/getting-started/</link>
+    <link>//skydive-project.github.io/skydive/getting-started/</link>
     <description>Recent content in Getting-starteds on Skydive Docs</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 22 Jun 2016 11:02:01 +0200</lastBuildDate>
-    <atom:link href="http://skydive-project.github.io/skydive/getting-started/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="//skydive-project.github.io/skydive/getting-started/index.xml" rel="self" type="application/rss+xml" />
     
     <item>
       <title>Skydive Gremlin Query language</title>
-      <link>http://skydive-project.github.io/skydive/getting-started/gremlin/</link>
+      <link>//skydive-project.github.io/skydive/getting-started/gremlin/</link>
       <pubDate>Wed, 22 Jun 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://skydive-project.github.io/skydive/getting-started/gremlin/</guid>
+      <guid>//skydive-project.github.io/skydive/getting-started/gremlin/</guid>
       <description>
 
 &lt;h2 id=&#34;gremlin&#34;&gt;Gremlin&lt;/h2&gt;
@@ -185,10 +185,11 @@ from the nodes to the host node they belong to.&lt;/p&gt;
 
 &lt;h3 id=&#34;flows-step&#34;&gt;Flows step&lt;/h3&gt;
 
-&lt;p&gt;Flows step returns flows of the nodes where a capture has been started.
+&lt;p&gt;Flows step returns flows of nodes where a capture has been started or of nodes
+where the packets are coming from or going to.
 The following Gremlin query returns the flows from the node &lt;code&gt;br-int&lt;/code&gt; where
 an sFlow capture has been started.
-See the &lt;a href=&#34;http://skydive-project.github.io/skydive/getting-started/client/#flow-captures&#34;&gt;client section&lt;/a&gt;
+See the &lt;a href=&#34;//skydive-project.github.io/skydive/getting-started/client/#flow-captures&#34;&gt;client section&lt;/a&gt;
 in order to know how to start a capture from a Gremlin query.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows()
@@ -230,15 +231,23 @@ the members of the given array.&lt;/li&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Without(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
 &lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Regex&lt;/code&gt;, matches graph elements for which metadata matches the given regular
+expression.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, Regex(&#39;tap-&#39;))
+&lt;/code&gt;&lt;/pre&gt;
 </description>
     </item>
     
     <item>
       <title>How to deploy Skydive with kubernetes</title>
-      <link>http://skydive-project.github.io/skydive/getting-started/kubernetes/</link>
+      <link>//skydive-project.github.io/skydive/getting-started/kubernetes/</link>
       <pubDate>Sat, 14 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://skydive-project.github.io/skydive/getting-started/kubernetes/</guid>
+      <guid>//skydive-project.github.io/skydive/getting-started/kubernetes/</guid>
       <description>
 
 &lt;h2 id=&#34;kubernetes-deployment&#34;&gt;Kubernetes deployment&lt;/h2&gt;
@@ -269,16 +278,16 @@ Agents in order to have one Agent per node.&lt;/p&gt;
 &lt;p&gt;Once you have your environment set up, going to the Analyzer service
 should show similar to the following capture.&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&#34;http://skydive-project.github.io/skydive/images/kubernetes-two-nodes.png&#34; alt=&#34;WebUI Capture&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//skydive-project.github.io/skydive/images/kubernetes-two-nodes.png&#34; alt=&#34;WebUI Capture&#34; /&gt;&lt;/p&gt;
 </description>
     </item>
     
     <item>
       <title>How to deploy Skydive with Devstack</title>
-      <link>http://skydive-project.github.io/skydive/getting-started/devstack/</link>
+      <link>//skydive-project.github.io/skydive/getting-started/devstack/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://skydive-project.github.io/skydive/getting-started/devstack/</guid>
+      <guid>//skydive-project.github.io/skydive/getting-started/devstack/</guid>
       <description>
 
 &lt;h2 id=&#34;devstack-plugin&#34;&gt;Devstack plugin&lt;/h2&gt;
@@ -340,7 +349,7 @@ than the admin.&lt;/p&gt;
 &lt;p&gt;Once you have your environment set up, going to the Analyzer Web Interface
 should show similar to the following capture.&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&#34;http://skydive-project.github.io/skydive/images/devstack-two-nodes.png&#34; alt=&#34;WebUI Capture&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;//skydive-project.github.io/skydive/images/devstack-two-nodes.png&#34; alt=&#34;WebUI Capture&#34; /&gt;&lt;/p&gt;
 
 &lt;h2 id=&#34;capture-traffic&#34;&gt;Capture traffic&lt;/h2&gt;
 
@@ -419,10 +428,10 @@ between the qrouter and the qdhcp namespaces.&lt;/p&gt;
     
     <item>
       <title>How to deploy Skydive with Docker</title>
-      <link>http://skydive-project.github.io/skydive/getting-started/docker/</link>
+      <link>//skydive-project.github.io/skydive/getting-started/docker/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://skydive-project.github.io/skydive/getting-started/docker/</guid>
+      <guid>//skydive-project.github.io/skydive/getting-started/docker/</guid>
       <description>
 
 &lt;h2 id=&#34;docker&#34;&gt;Docker&lt;/h2&gt;
@@ -452,10 +461,10 @@ definition is located in the &lt;code&gt;contrib/docker&lt;/code&gt; folder of t
     
     <item>
       <title>Installation</title>
-      <link>http://skydive-project.github.io/skydive/getting-started/install/</link>
+      <link>//skydive-project.github.io/skydive/getting-started/install/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://skydive-project.github.io/skydive/getting-started/install/</guid>
+      <guid>//skydive-project.github.io/skydive/getting-started/install/</guid>
       <description>
 
 &lt;h2 id=&#34;introduction&#34;&gt;Introduction&lt;/h2&gt;
@@ -513,10 +522,10 @@ under this configuration section will be added to host metadata.&lt;/p&gt;
     
     <item>
       <title>Skydive client, API &amp; WebUI</title>
-      <link>http://skydive-project.github.io/skydive/getting-started/client/</link>
+      <link>//skydive-project.github.io/skydive/getting-started/client/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>http://skydive-project.github.io/skydive/getting-started/client/</guid>
+      <guid>//skydive-project.github.io/skydive/getting-started/client/</guid>
       <description>
 
 &lt;h2 id=&#34;client&#34;&gt;Client&lt;/h2&gt;
@@ -575,7 +584,7 @@ Requests on the topology can be done as following :&lt;/p&gt;
 ]
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;Refer to the &lt;a href=&#34;http://skydive-project.github.io/skydive/getting-started/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further
+&lt;p&gt;Refer to the &lt;a href=&#34;//skydive-project.github.io/skydive/getting-started/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further
 explanations about the syntax and the functions available.&lt;/p&gt;
 
 &lt;h2 id=&#34;flow-captures&#34;&gt;Flow captures&lt;/h2&gt;
@@ -615,7 +624,7 @@ number of Skydive agents you will start.&lt;/p&gt;
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;The Flows Gremlin step can be used in order to see the flows captured. See the
-&lt;a href=&#34;http://skydive-project.github.io/skydive/getting-started/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further explanations.&lt;/p&gt;
+&lt;a href=&#34;//skydive-project.github.io/skydive/getting-started/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further explanations.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client topology query --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;).Flows()&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
@@ -624,10 +633,10 @@ number of Skydive agents you will start.&lt;/p&gt;
     
     <item>
       <title>Getting started</title>
-      <link>http://skydive-project.github.io/skydive/getting-started/</link>
+      <link>//skydive-project.github.io/skydive/getting-started/</link>
       <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
       
-      <guid>http://skydive-project.github.io/skydive/getting-started/</guid>
+      <guid>//skydive-project.github.io/skydive/getting-started/</guid>
       <description></description>
     </item>
     
