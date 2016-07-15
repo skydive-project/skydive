@@ -12,7 +12,7 @@ echo ${PATH} | grep -q "${HOME}/bin" || {
 mkdir -p ~/bin
 curl -sL -o ~/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master/gimme
 chmod +x ~/bin/gimme
-eval "$(gimme 1.5)"
+eval "$(gimme 1.6)"
 
 # pcap.h is required to build skydive
 sudo yum -y install libpcap-devel
