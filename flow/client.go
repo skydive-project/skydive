@@ -99,10 +99,7 @@ func (f *TableClient) lookupFlowsByNode(flowset chan *FlowSet, host string, uuid
 
 	select {
 	case raw := <-ch:
-		reply := TableReply{
-			Obj: &FlowSearchReply{},
-		}
-
+		reply := TableReply{}
 		err := json.Unmarshal([]byte(*raw), &reply)
 		if err != nil {
 			logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
@@ -114,9 +111,18 @@ func (f *TableClient) lookupFlowsByNode(flowset chan *FlowSet, host string, uuid
 			break
 		}
 
-		fr := reply.Obj.(*FlowSearchReply)
+		fsr := []FlowSearchReply{}
+		err = json.Unmarshal(reply.Obj, &fsr)
+		if err != nil {
+			logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
+			break
+		}
 
-		flowset <- fr.FlowSet
+		fs := NewFlowSet()
+		for _, reply := range fsr {
+			fs.Merge(reply.FlowSet)
+		}
+		flowset <- fs
 
 		return
 	case <-time.After(time.Second * 10):

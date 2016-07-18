@@ -23,6 +23,7 @@
 package flow
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -40,7 +41,7 @@ type TableQuery struct {
 
 type TableReply struct {
 	Status int
-	Obj    interface{}
+	Obj    json.RawMessage
 }
 
 type FlowSearchQuery struct {
@@ -154,7 +155,7 @@ func (ft *Table) GetFlows(filters ...FlowQueryFilter) *FlowSet {
 			if flowset.End == 0 || flowset.Start < f.Statistics.Last {
 				flowset.End = f.Statistics.Last
 			}
-			flowset.Flows = append(flowset.Flows, &*f)
+			flowset.Flows = append(flowset.Flows, f)
 		}
 	}
 	return flowset
@@ -371,9 +372,14 @@ func (ft *Table) onQuery(q *TableQuery) *TableReply {
 		obj, status = ft.onFlowSearchQueryMessage(q.Obj)
 	}
 
+	// return the json version here to avoid touching the flow outside this
+	// goroutine leading in race
+	b, _ := json.Marshal(obj)
+	raw := json.RawMessage(b)
+
 	return &TableReply{
 		Status: status,
-		Obj:    obj,
+		Obj:    raw,
 	}
 }
 

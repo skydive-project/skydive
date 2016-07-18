@@ -604,12 +604,22 @@ func TestFlowQuery(t *testing.T) {
 	ft1.Stop()
 	ft2.Stop()
 
-	searchReply := reply.Obj.(*flow.FlowSearchReply)
-	if len(searchReply.FlowSet.Flows) != len(flows1)+len(flows2) {
+	fsr := []flow.FlowSearchReply{}
+	err := json.Unmarshal(reply.Obj, &fsr)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	flowset := flow.NewFlowSet()
+	for _, reply := range fsr {
+		flowset.Merge(reply.FlowSet)
+	}
+
+	if len(flowset.Flows) != len(flows1)+len(flows2) {
 		t.Fatalf("FlowQuery should return at least one flow")
 	}
 
-	for _, flow := range searchReply.FlowSet.Flows {
+	for _, flow := range flowset.Flows {
 		if flow.ProbeNodeUUID != "probe2" {
 			t.Fatalf("FlowQuery should only return flows with probe2, got: %s", flow)
 		}
