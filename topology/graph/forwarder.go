@@ -23,8 +23,7 @@
 package graph
 
 import (
-	"os"
-
+	"github.com/redhat-cip/skydive/config"
 	shttp "github.com/redhat-cip/skydive/http"
 	"github.com/redhat-cip/skydive/logging"
 )
@@ -33,22 +32,17 @@ type Forwarder struct {
 	shttp.DefaultWSClientEventHandler
 	Client *shttp.WSAsyncClient
 	Graph  *Graph
+	host   string
 }
 
 func (c *Forwarder) triggerResync() {
 	logging.GetLogger().Infof("Start a resync of the graph")
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to retrieve the hostname: %s", err.Error())
-		return
-	}
-
 	c.Graph.Lock()
 	defer c.Graph.Unlock()
 
 	// request for deletion of everythin belonging to host node
-	root := c.Graph.GetNode(Identifier(hostname))
+	root := c.Graph.GetNode(Identifier(c.host))
 	if root == nil {
 		return
 	}
@@ -131,14 +125,20 @@ func (c *Forwarder) OnEdgeDeleted(e *Edge) {
 	})
 }
 
-func NewForwarder(c *shttp.WSAsyncClient, g *Graph) *Forwarder {
+func NewForwarder(hostID string, c *shttp.WSAsyncClient, g *Graph) *Forwarder {
 	f := &Forwarder{
 		Client: c,
 		Graph:  g,
+		host:   hostID,
 	}
 
 	g.AddEventListener(f)
 	c.AddEventHandler(f)
 
 	return f
+}
+
+func NewForwarderFromConfig(c *shttp.WSAsyncClient, g *Graph) *Forwarder {
+	hostID := config.GetConfig().GetString("host_id")
+	return NewForwarder(hostID, c, g)
 }

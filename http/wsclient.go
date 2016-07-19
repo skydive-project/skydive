@@ -23,12 +23,10 @@
 package http
 
 import (
-	"encoding/json"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -36,6 +34,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/redhat-cip/skydive/config"
 	"github.com/redhat-cip/skydive/logging"
 )
 
@@ -104,19 +103,6 @@ func (c *WSAsyncClient) send(msg string) error {
 	return w.Close()
 }
 
-func (c *WSAsyncClient) sendHello() {
-	b, _ := json.Marshal(c.host)
-	raw := json.RawMessage(b)
-
-	m := WSMessage{
-		Namespace: Namespace,
-		Type:      "Hello",
-		Obj:       &raw,
-	}
-
-	c.sendMessage(m.String())
-}
-
 func (c *WSAsyncClient) connect() {
 	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
 
@@ -134,7 +120,7 @@ func (c *WSAsyncClient) connect() {
 		return
 	}
 
-	headers := http.Header{"Origin": {endpoint}}
+	headers := http.Header{"X-Host-ID": {c.host}, "Origin": {endpoint}}
 	if c.AuthClient != nil {
 		if err := c.AuthClient.Authenticate(); err != nil {
 			logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
@@ -158,8 +144,6 @@ func (c *WSAsyncClient) connect() {
 
 	c.wg.Add(1)
 	defer c.wg.Done()
-
-	c.sendHello()
 
 	// notify connected
 	c.RLock()
@@ -239,18 +223,13 @@ func (c *WSAsyncClient) Disconnect() {
 	}
 }
 
-func NewWSAsyncClient(addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
-	host, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-
+func NewWSAsyncClient(hostID string, addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
 	c := &WSAsyncClient{
 		Addr:       addr,
 		Port:       port,
 		Path:       path,
 		AuthClient: authClient,
-		host:       host,
+		host:       hostID,
 		messages:   make(chan string, 500),
 		read:       make(chan []byte, 500),
 		quit:       make(chan bool),
@@ -258,4 +237,9 @@ func NewWSAsyncClient(addr string, port int, path string, authClient *Authentica
 	c.connected.Store(false)
 	c.running.Store(true)
 	return c, nil
+}
+
+func NewWSAsyncClientFromConfig(addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
+	hostID := config.GetConfig().GetString("host_id")
+	return NewWSAsyncClient(hostID, addr, port, path, authClient)
 }

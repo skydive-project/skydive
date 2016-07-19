@@ -68,11 +68,7 @@ type SkydiveLogger struct {
 }
 
 func initSkydiveLogger() {
-	id, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-	id += ":" + skydiveLoggingID
+	id := config.GetConfig().GetString("host_id") + ":" + skydiveLoggingID
 	skydiveLogger = SkydiveLogger{
 		id:          id,
 		loggers:     make(map[string]*logging.Logger),

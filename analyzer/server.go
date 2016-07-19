@@ -199,7 +199,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	g, err := graph.NewGraph(backend)
+	g, err := graph.NewGraphFromConfig(backend)
 	if err != nil {
 		return nil, err
 	}

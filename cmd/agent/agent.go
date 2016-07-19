@@ -57,6 +57,14 @@ var Agent = &cobra.Command{
 }
 
 func init() {
+	host, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	Agent.Flags().String("host_id", host, "ID used to reference the agent, default hostname")
+	config.GetConfig().BindPFlag("host_id", Agent.Flags().Lookup("host_id"))
+
 	Agent.Flags().String("listen", "127.0.0.1:8081", "address and port for the agent API")
 	config.GetConfig().BindPFlag("agent.listen", Agent.Flags().Lookup("listen"))
 

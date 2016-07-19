@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"sync"
 	"time"
@@ -834,19 +833,19 @@ func (g *Graph) GetContext() GraphContext {
 	return g.context
 }
 
-func NewGraph(b GraphBackend) (*Graph, error) {
-	return NewGraphWithContext(b, GraphContext{})
+func NewGraph(hostID string, backend GraphBackend) (*Graph, error) {
+	return NewGraphWithContext(hostID, backend, GraphContext{})
 }
 
-func NewGraphWithContext(b GraphBackend, c GraphContext) (*Graph, error) {
-	h, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
+func NewGraphFromConfig(backend GraphBackend) (*Graph, error) {
+	hostID := config.GetConfig().GetString("host_id")
+	return NewGraph(hostID, backend)
+}
 
+func NewGraphWithContext(hostID string, b GraphBackend, c GraphContext) (*Graph, error) {
 	return &Graph{
 		backend: b,
-		host:    h,
+		host:    hostID,
 		context: c,
 	}, nil
 }

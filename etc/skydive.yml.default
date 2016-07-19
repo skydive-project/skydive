@@ -1,5 +1,8 @@
 # Skydive config file
 
+# host_id is used to reference the agent by default set to hostname
+# host_id:
+
 # WebSocket Ping/Pong timeout in second
 ws_pong_timeout: 5
 

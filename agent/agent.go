@@ -69,13 +69,13 @@ func (a *Agent) Start() {
 			Password: config.GetConfig().GetString("agent.analyzer_password"),
 		}
 		authClient := shttp.NewAuthenticationClient(addr, port, authOptions)
-		a.WSClient, err = shttp.NewWSAsyncClient(addr, port, "/ws", authClient)
+		a.WSClient, err = shttp.NewWSAsyncClientFromConfig(addr, port, "/ws", authClient)
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to instantiate analyzer client %s", err.Error())
 			os.Exit(1)
 		}
 
-		graph.NewForwarder(a.WSClient, a.Graph)
+		graph.NewForwarderFromConfig(a.WSClient, a.Graph)
 		a.WSClient.Connect()
 
 		// send a first reset event to the analyzers
@@ -164,15 +164,12 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	g, err := graph.NewGraph(backend)
+	g, err := graph.NewGraphFromConfig(backend)
 	if err != nil {
 		panic(err)
 	}
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
+	hostID := config.GetConfig().GetString("host_id")
 
 	hserver, err := shttp.NewServerFromConfig("agent")
 	if err != nil {
@@ -186,14 +183,14 @@ func NewAgent() *Agent {
 
 	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
 
-	m := graph.Metadata{"Name": hostname, "Type": "host"}
+	m := graph.Metadata{"Name": hostID, "Type": "host"}
 	if config.GetConfig().IsSet("agent.metadata") {
 		subtree := config.GetConfig().Sub("agent.metadata")
 		for key, value := range subtree.AllSettings() {
 			m[key] = value
 		}
 	}
-	root := g.NewNode(graph.Identifier(hostname), m)
+	root := g.NewNode(graph.Identifier(hostID), m)
 
 	api.RegisterTopologyApi("agent", g, hserver, nil, nil)
 

@@ -34,7 +34,7 @@ func newGraph(t *testing.T) *graph.Graph {
 		t.Error(err.Error())
 	}
 
-	g, err := graph.NewGraph(b)
+	g, err := graph.NewGraphFromConfig(b)
 	if err != nil {
 		t.Error(err.Error())
 	}

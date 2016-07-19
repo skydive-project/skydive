@@ -67,6 +67,7 @@ type DefaultWSServerEventHandler struct {
 }
 
 type WSServer struct {
+	sync.RWMutex
 	DefaultWSServerEventHandler
 	Server        *Server
 	eventHandlers []WSServerEventHandler
@@ -119,20 +120,7 @@ func (c *WSClient) processMessage(m []byte) {
 		return
 	}
 
-	if msg.Namespace == Namespace {
-		switch msg.Type {
-		case "Hello":
-			var host string
-			err := json.Unmarshal([]byte(*msg.Obj), &host)
-			if err != nil {
-				logging.GetLogger().Errorf("WSServer: Unable to parse the event %s: %s", msg, err.Error())
-				return
-			}
-			c.host = host
-
-			logging.GetLogger().Infof("Hello received from WSClient: %s", c.host)
-		}
-	} else {
+	if msg.Namespace != Namespace {
 		for _, e := range c.server.eventHandlers {
 			e.OnMessage(c, msg)
 		}
@@ -244,7 +232,9 @@ func (s *WSServer) listenAndServe() {
 
 			quit = true
 		case c := <-s.register:
+			s.Lock()
 			s.clients[c] = true
+			s.Unlock()
 			for _, e := range s.eventHandlers {
 				e.OnRegisterClient(c)
 			}
@@ -252,7 +242,9 @@ func (s *WSServer) listenAndServe() {
 			for _, e := range s.eventHandlers {
 				e.OnUnregisterClient(c)
 			}
+			s.Lock()
 			delete(s.clients, c)
+			s.Unlock()
 
 			// if quit has been requested and there is no more clients then leave
 			if quit && len(s.clients) == 0 {
@@ -265,16 +257,30 @@ func (s *WSServer) listenAndServe() {
 }
 
 func (s *WSServer) broadcastMessage(m string) {
+	s.RLock()
+	defer s.RUnlock()
+
 	for c := range s.clients {
-		select {
-		case c.send <- []byte(m):
-		default:
-			delete(s.clients, c)
-		}
+		c.send <- []byte(m)
 	}
 }
 
 func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	// if X-Host-ID specified avoid having twice the same ID
+	hostID := r.Header.Get("X-Host-ID")
+	if hostID != "" {
+		s.RLock()
+		for c := range s.clients {
+			if c.host == hostID {
+				logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, hostID)
+				w.WriteHeader(http.StatusConflict)
+				s.RUnlock()
+				return
+			}
+		}
+		s.RUnlock()
+	}
+
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -290,6 +296,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 		send:   make(chan []byte, maxMessageSize),
 		conn:   conn,
 		server: s,
+		host:   hostID,
 	}
 	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 

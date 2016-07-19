@@ -274,7 +274,7 @@ func NewGraph(t *testing.T) *graph.Graph {
 
 	t.Logf("Using %s as backend", graphBackend)
 
-	g, err := graph.NewGraph(backend)
+	g, err := graph.NewGraphFromConfig(backend)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

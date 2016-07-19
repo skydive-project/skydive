@@ -23,7 +23,6 @@
 package probes
 
 import (
-	"os"
 	"strings"
 	"sync"
 
@@ -44,7 +43,6 @@ type OnDemandProbeListener struct {
 	fta            *flow.TableAllocator
 	activeProbes   map[graph.Identifier]*flow.Table
 	captures       map[graph.Identifier]*api.Capture
-	host           string
 }
 
 func (o *OnDemandProbeListener) isActive(n *graph.Node) bool {
@@ -309,16 +307,10 @@ func (o *OnDemandProbeListener) Stop() {
 }
 
 func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, ch api.ApiHandler) (*OnDemandProbeListener, error) {
-	h, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-
 	return &OnDemandProbeListener{
 		Graph:          g,
 		Probes:         fb,
 		CaptureHandler: ch,
-		host:           h,
 		fta:            fb.FlowTableAllocator,
 		activeProbes:   make(map[graph.Identifier]*flow.Table),
 		captures:       make(map[graph.Identifier]*api.Capture),
