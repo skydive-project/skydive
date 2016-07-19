@@ -1373,9 +1373,7 @@ var conversationLayout;
 var discoveryLayout;
 
 function AgentReady() {
-  $("#flows-panel").hide();
-  $("#conversation").hide();
-  $("#discovery").hide();
+  $(".analyzer-only").hide();
 }
 
 function AnalyzerReady() {
@@ -1582,7 +1580,9 @@ $(document).ready(function() {
 
   StartCheckAPIAccess();
 
-  SetupTimeSlider();
-  SetupCaptureList();
-  SetupFlowRefresh();
+  if (Service != "agent") {
+    SetupTimeSlider();
+    SetupFlowRefresh();
+    SetupCaptureList();
+  }
 });
