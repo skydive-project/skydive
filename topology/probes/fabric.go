@@ -53,7 +53,7 @@ func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 		for node, link := range fb.links {
 			if child.MatchMetadata(link.metadata) {
 				if !fb.Graph.AreLinked(child, node) {
-					fb.Graph.Link(node, child, graph.Metadata{"RelationType": "layer2"})
+					fb.Graph.Link(node, child, graph.Metadata{"RelationType": "layer2", "Type": "fabric"})
 				}
 				delete(fb.links, node)
 				break
@@ -73,6 +73,7 @@ func nodeDefToMetadata(nodeDef string) (string, graph.Metadata, error) {
 	// by default use the node name as Name metadata attribute
 	metadata := graph.Metadata{
 		"Name": f[0],
+		"Type": "device",
 	}
 
 	// parse attributes metadata given
@@ -106,7 +107,6 @@ func (fb *FabricProbe) addFabricNodeFromDef(nodeDef string) (*graph.Node, error)
 	if node := fb.Graph.GetNode(id); node != nil {
 		return node, nil
 	}
-	metadata["Type"] = "device"
 	metadata["Probe"] = "fabric"
 
 	return fb.Graph.NewNode(id, metadata), nil
@@ -178,7 +178,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 			}
 
 			if !fb.Graph.AreLinked(node1, node2) {
-				fb.Graph.Link(node1, node2)
+				fb.Graph.Link(node1, node2, graph.Metadata{"RelationType": "layer2", "Type": "fabric"})
 			}
 		}
 	}

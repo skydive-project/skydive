@@ -36,6 +36,7 @@ label {
 
 .topology-d3 {
   margin-top: 15px;
+  height: 90%;
 }
 
 .node {
@@ -43,6 +44,7 @@ label {
   stroke: #888;
   stroke-width: 1;
   opacity: 0.9;
+  cursor: pointer;
 }
 
 text {
@@ -65,49 +67,80 @@ text {
   stroke: #fff;
 }
 
-.default .circle {
+.default circle {
   fill: rgb(199, 233, 192);
 }
 
-.ovsbridge, .bridge .circle {
+.host circle {
+  fill: #b5ffc5
+}
+
+.ovsbridge, .bridge circle {
   fill: rgb(198, 219, 239);
 }
 
-.ovsport, .bond .circle {
+.ovsport, .bond circle {
   fill: rgb(253, 208, 162);
 }
 
-.down .circle {
+.down circle {
   fill: rgb(255, 26, 0);
 }
 
-.alert .circle {
+.alert circle {
   fill: rgb(255, 255, 0);
 }
 
-.group {
-  fill: #fff;
+.link {
+  fill: none;
+}
+
+.links .veth {
+  stroke-width: 3;
+  stroke-dasharray: 5,5;
+}
+
+.links .layer2 {
+  stroke: #333;
+}
+
+.links .local2fabric {
+  stroke-width: 3;
+  stroke: #eee;
+}
+
+.links .ownership {
+  stroke: #080;
+  /* comment to see ownership link */
+  display: none;
+}
+
+.nodes .state {
+  opacity: 0.7;
+}
+
+.nodes .manager {
+  opacity: 0.9;
+}
+
+path.group {
+  fill: lightsteelblue;
+  fill-opacity: 0.5;
   pointer-events: none;
   font: 16px Helvetica, Arial, sans-serif;
   stroke-width: 5;
 }
 
-.link {
-  stroke: #333;
+.groups path.fabric {
+    fill: #fff;
 }
 
-.veth {
-  stroke-width: 3;
-  stroke-dasharray: 5,5;
+.groups rect.host {
+  fill: #b3b3b3;
 }
 
-path.hull {
-  fill: lightsteelblue;
-  fill-opacity: 0.4;
-}
-
-.host {
-  fill: #555;
+.groups rect.netns {
+  fill: #e6e6e6;
 }
 
 .pane-label {

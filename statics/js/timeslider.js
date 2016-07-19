@@ -1,8 +1,8 @@
 var formatDate = d3.time.format("%b %d %H:%M:%S");
 
 function GetTimeScale(width) {
-  var now = new Date;
-  var startTime = new Date;
+  var now = new Date();
+  var startTime = new Date();
   startTime.setMinutes(now.getMinutes() - 60);
 
   return d3.time.scale()
@@ -34,7 +34,7 @@ function SetupTimeSlider() {
   var orig = d3.select(".timeslider-div").append("svg")
     .attr("class", "slider")
     .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
+    .attr("height", height + margin.top + margin.bottom);
 
   var svg = orig.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
@@ -51,12 +51,12 @@ function SetupTimeSlider() {
       var value = brush.extent()[0];
 
       if (d3.event.sourceEvent) { // not a programmatic event
-        var value = timeScale.invert(d3.mouse(this)[0]);
-        brush.extent([value, value]);
+        var v = timeScale.invert(d3.mouse(this)[0]);
+        brush.extent([v, v]);
       }
       handle.attr("transform", "translate(" + timeScale(value) + ",0.5)");
       handle.select('text').text(formatDate(value));
-      if (topologyLayout.live != true) {
+      if (topologyLayout.live !== true) {
         topologyLayout.SyncRequest(value.getTime());
       }
     });
@@ -85,11 +85,11 @@ function SetupTimeSlider() {
     .attr("height", height);
 
   handle = slider.append("g")
-    .attr("class", "handle")
+    .attr("class", "handle");
 
   handle.append("path")
     .attr("transform", "translate(0," + height / 2 + ")")
-    .attr("d", "M 0 -5 V 5")
+    .attr("d", "M 0 -5 V 5");
 
   handle.append('text')
     .text(startingValue)
@@ -99,8 +99,8 @@ function SetupTimeSlider() {
 
   $("[name='live-switch']").bootstrapSwitch({
     onSwitchChange: function(event, state) {
-      if (state && topologyLayout.live == false) {
-        topologyLayout.SyncRequest(Date.now())
+      if (state && topologyLayout.live === false) {
+        topologyLayout.SyncRequest(Date.now());
       }
 
       if (state) {
