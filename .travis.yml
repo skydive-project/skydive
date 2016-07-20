@@ -2,23 +2,21 @@ language: go
 go_import_path: github.com/redhat-cip/skydive
 
 go:
-    - 1.5
+    - 1.6
 
 sudo: required
 dist: trusty
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -y openvswitch-switch
+    - sudo apt-get install -y openvswitch-switch unzip docker.io libpcap0.8-dev
     - sudo ovs-vsctl show
     - sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400
-    - go get github.com/axw/gocov/gocov
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
 
 script:
-    - git rev-list --max-count=1 HEAD
-    - test -z "$(gofmt -s -l . | grep -v Godeps/_workspace/src/ | grep -v statics/bindata.go | tee /dev/stderr)"
-    - make install GOFLAGS="-race -v"
-    - make test GOFLAGS="-race -v -timeout 5m"
+    - make install
+    - make test GOFLAGS=-race VERBOSE=true TIMEOUT=1m
+    - make test.functionals GOFLAGS=-race GORACE="history_size=5" VERBOSE=true TIMEOUT=2m ARGS="$ARGS"
     - ./coverage.sh --coveralls

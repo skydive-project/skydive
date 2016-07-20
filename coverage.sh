@@ -27,8 +27,12 @@ generate_cover_data() {
 
     # add fonctional testing
     f="$workdir/functional.cover"
-    godep go test -timeout 6m -v -cover -covermode="$mode" -coverprofile="$f" -coverpkg=./... -c -o tests/functionals ./tests/
-    pushd tests && sudo ./functionals -test.timeout 6m -test.coverprofile="../$f" ; popd
+    make ARGS="-cover -covermode="$mode" -coverprofile="$f" -coverpkg=./... ${ARGS}" test.functionals.compile
+    FUNC_TESTS=$( grep -e 'func Test' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf )
+    for functest in ${FUNC_TESTS} ; do
+        f="../$workdir/$functest.cover"
+        make TIMEOUT=2m ARGS="-test.coverprofile="$f" -test.run $functest ${ARGS}" test.functionals.run
+    done
 
     echo "mode: $mode" >"$profile"
     grep -h -v "^mode:" "$workdir"/*.cover | grep -v "skydive/statics" | awk '{ stmt[$1] += $2; count[$1] += $3 } END{ for(e in stmt) { print e, stmt[e], count[e] } }' >> "$profile"
@@ -55,4 +59,3 @@ case "$1" in
 *)
     echo >&2 "error: invalid option: $1"; exit 1 ;;
 esac
-
