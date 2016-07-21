@@ -54,8 +54,8 @@ type NetLinkProbe struct {
 	wg                   sync.WaitGroup
 }
 
-func (u *NetLinkProbe) linkMasterChildren(intf *graph.Node, index int64) {
-	// add children of this interface that haven previously added
+func (u *NetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
+	// add children of this interface that was previously added
 	if children, ok := u.indexToChildrenQueue[index]; ok {
 		for _, id := range children {
 			child := u.Graph.GetNode(id)
@@ -67,19 +67,10 @@ func (u *NetLinkProbe) linkMasterChildren(intf *graph.Node, index int64) {
 	}
 }
 
-func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
-	u.linkMasterChildren(intf, int64(link.Attrs().Index))
-
-	// interface being a part of a bridge
-	if link.Attrs().MasterIndex != 0 {
-		index := int64(link.Attrs().MasterIndex)
-
-		// assuming we have only one parent with this index
-		parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
-		if parent == nil {
-			return
-		}
-
+func (u *NetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
+	// assuming we have only one master with this index
+	parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
+	if parent != nil {
 		// ignore ovs-system interface as it doesn't make any sense according to
 		// the following thread:
 		// http://openvswitch.org/pipermail/discuss/2013-October/011657.html
@@ -87,11 +78,27 @@ func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 			return
 		}
 
-		if parent != nil && !u.Graph.AreLinked(parent, intf) {
+		if !u.Graph.AreLinked(parent, intf) {
 			u.Graph.Link(parent, intf, graph.Metadata{"RelationType": "layer2"})
-		} else {
-			// not yet the bridge so, enqueue for a later add
-			u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], intf.ID)
+		}
+	} else {
+		// not yet the bridge so, enqueue for a later add
+		u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], intf.ID)
+	}
+}
+
+func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
+	// handle pending relationship
+	u.linkPendingChildren(intf, int64(link.Attrs().Index))
+
+	// interface being a part of a bridge
+	if link.Attrs().MasterIndex != 0 {
+		u.linkIntfToIndex(intf, int64(link.Attrs().MasterIndex))
+	}
+
+	if link.Attrs().ParentIndex != 0 {
+		if _, ok := intf.Metadata()["Vlan"]; ok {
+			u.linkIntfToIndex(intf, int64(int64(link.Attrs().ParentIndex)))
 		}
 	}
 }
@@ -211,7 +218,7 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
 	}
 
-	u.linkMasterChildren(intf, index)
+	u.linkPendingChildren(intf, index)
 
 	return intf
 }
