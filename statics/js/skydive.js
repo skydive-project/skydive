@@ -1466,6 +1466,8 @@ function RefreshCaptureList() {
             $('<div/>').addClass("capture-content").html("Name: " + data[key].Name).appendTo(capture);
           if (data[key].Description != undefined)
             $('<div/>').addClass("capture-content").html("Description: " + data[key].Description).appendTo(capture);
+          if (data[key].Type != undefined)
+            $('<div/>').addClass("capture-content").html("Type: " + data[key].Type).appendTo(capture);
 
           var img = $('<img/>', {src:trashImg, width: 24, height: 24}).appendTo(trash);
           img.css('cursor', 'pointer').click(function(e) {
@@ -1490,6 +1492,21 @@ function SetupCaptureList() {
   var resetCaptureForm = function() {
     $("#capturename").val("");
     $("#capturedesc").val("");
+    $("#capturetype").val("");
+    $("select#capturetype option[value != '']").remove();
+  }
+
+  var getCaptureTypes = function(type) {
+    switch(type) {
+      case "internal":
+      case "tun":
+      case "bridge":
+      case "device":
+      case "veth":
+        return ["pcap"];
+      case "ovsbridge":
+        return ["ovssflow"];
+    }
   }
 
   $("#cancel").click(function(e) {
@@ -1519,19 +1536,25 @@ function SetupCaptureList() {
 
     query = "G." + query + ".Out('Name', '" + CurrentNodeDetails.Name() + "', 'Type', '" + CurrentNodeDetails.Type() + "')";
     $("#capturequery").val(query);
+  
+    var captureTypes = getCaptureTypes(CurrentNodeDetails.Type());
+    for (var t in captureTypes) {
+      $("select#capturetype").append($("<option>").val(captureTypes[t]).html(captureTypes[t]));
+    }
   });
 
   $("#create").click(function(e) {
     var name = $("#capturename").val();
     var desc = $("#capturedesc").val();
     var query = $("#capturequery").val();
+    var type = $("#capturetype").val();
     if (query == "") {
       alert("Gremlin query can't be empty");
     } else {
       $.ajax({
         dataType: "json",
         url: '/api/capture',
-        data: JSON.stringify({"GremlinQuery": query, "Name": name, "Description": desc}),
+        data: JSON.stringify({"GremlinQuery": query, "Name": name, "Description": desc, "Type": type}),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
       });
