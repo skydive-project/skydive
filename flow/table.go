@@ -31,8 +31,8 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/redhat-cip/skydive/common"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type TableQuery struct {

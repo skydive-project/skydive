@@ -23,7 +23,7 @@
 package storage
 
 import (
-	"github.com/redhat-cip/skydive/flow"
+	"github.com/skydive-project/skydive/flow"
 )
 
 type RangeFilter struct {

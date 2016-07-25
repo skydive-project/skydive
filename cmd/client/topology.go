@@ -32,9 +32,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/redhat-cip/skydive/api"
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/api"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 )
 
 var TopologyCmd = &cobra.Command{

@@ -35,9 +35,9 @@ import (
 	"github.com/vishvananda/netns"
 	"golang.org/x/exp/inotify"
 
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type NetNSProbe struct {

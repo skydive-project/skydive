@@ -7,7 +7,7 @@ dir="$(dirname "$0")"
 
 . "${dir}/install-go.sh"
 
-cd ${GOPATH}/src/github.com/redhat-cip/skydive
+cd ${GOPATH}/src/github.com/skydive-project/skydive
 make install
 
 git remote add github git@github.com:skydive-project/skydive-binaries.git

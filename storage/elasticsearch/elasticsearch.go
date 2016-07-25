@@ -33,10 +33,10 @@ import (
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/storage"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/storage"
 )
 
 const indexVersion = 2

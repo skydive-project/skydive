@@ -26,8 +26,8 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type Client struct {

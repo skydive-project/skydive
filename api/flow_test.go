@@ -28,7 +28,7 @@ import (
 
 	v "github.com/gima/govalid/v1"
 
-	"github.com/redhat-cip/skydive/flow"
+	"github.com/skydive-project/skydive/flow"
 )
 
 func TestFlowTable_jsonFlowConversationEthernetPath(t *testing.T) {

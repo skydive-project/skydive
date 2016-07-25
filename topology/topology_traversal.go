@@ -25,8 +25,8 @@ package topology
 import (
 	"encoding/json"
 
-	"github.com/redhat-cip/skydive/topology/graph"
-	"github.com/redhat-cip/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 type TopologyTraversalExtension struct {

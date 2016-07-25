@@ -30,7 +30,7 @@ import (
 	"strings"
 
 	"github.com/abbot/go-http-auth"
-	"github.com/redhat-cip/skydive/config"
+	"github.com/skydive-project/skydive/config"
 )
 
 var (

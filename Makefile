@@ -8,30 +8,30 @@ ifeq ($(VERBOSE), false)
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
-UT_PACKAGES=$(shell go list ./... | grep -v '/tests')
+UT_PACKAGES=$(shell govendor list -no-status +local | grep -v '/tests')
 FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 
-.proto: godep builddep ${PROTO_FILES}
+.proto: govendor builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
 
-.bindata: godep builddep
+.bindata: govendor builddep
 	go-bindata -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/*
 
-all: genlocalfiles
-	godep go install ${GOFLAGS} ${VERBOSE_FLAGS} ./...
+all: govendor genlocalfiles
+	govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
-install: godep
-	godep go install ${GOFLAGS} ${VERBOSE_FLAGS} ./...
+install: govendor
+	govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
-build: godep
-	godep go build ${GOFLAGS} ${VERBOSE_FLAGS} ./...
+build: govendor
+	govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
 test.functionals.cleanup:
 	rm -f tests/functionals
 
-test.functionals.compile: godep
-	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+test.functionals.compile: govendor
+	govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
 ifneq ($(VERBOSE_FLAGS),)
@@ -49,15 +49,16 @@ test.functionals: test.functionals.compile
 		make ARGS="-test.run $$functest ${ARGS}" test.functionals.run ; \
 	done
 
-test: godep
-	godep go test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+test: govendor
+	govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 
-godep:
-	go get github.com/tools/godep
+govendor:
+	go get github.com/kardianos/govendor
+	govendor sync
 
-fmt:
+fmt: govendor
 	@echo "+ $@"
-	@test -z "$$(gofmt -s -l . | grep -v Godeps/_workspace/src/ | grep -v statics/bindata.go | tee /dev/stderr)" || \
+	@govendor fmt +local || \
 		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
 
 ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
@@ -68,7 +69,7 @@ gometalinter: ineffassign interfacer golint goimports varcheck structcheck align
 
 lint: gometalinter
 	@echo "+ $@"
-	@gometalinter --disable=gotype --skip=Godeps/... --skip=statics/... --deadline 5m --sort=path ./...  2>&1 | grep -v -e 'error return value not checked' -e 'should have comment or be unexported' -e 'declaration of err shadows declaration'
+	@gometalinter --disable=gotype --skip=vendor/... --skip=statics/... --deadline 5m --sort=path ./...  2>&1 | grep -v -e 'error return value not checked' -e 'should have comment or be unexported' -e 'declaration of err shadows declaration'
 
 # dependency package need for building the project
 builddep:
@@ -79,8 +80,7 @@ builddep:
 genlocalfiles: .proto .bindata
 
 clean: test.functionals.cleanup
-	grep ImportPath Godeps/Godeps.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
-	rm -rf Godeps/_workspace/pkg
+	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: doc
 

@@ -32,8 +32,8 @@ import (
 
 	"github.com/nu7hatch/gouuid"
 
-	"github.com/redhat-cip/skydive/common"
-	"github.com/redhat-cip/skydive/config"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 )
 
 type Identifier string

@@ -31,7 +31,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type gremlinServerResponse struct {

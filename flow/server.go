@@ -25,8 +25,8 @@ package flow
 import (
 	"encoding/json"
 
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 )
 
 const (

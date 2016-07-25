@@ -29,7 +29,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type (

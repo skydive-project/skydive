@@ -25,7 +25,7 @@ package alert
 import (
 	"encoding/json"
 
-	shttp "github.com/redhat-cip/skydive/http"
+	shttp "github.com/skydive-project/skydive/http"
 )
 
 const (

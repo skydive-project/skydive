@@ -27,8 +27,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/tools"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/tools"
 	"github.com/spf13/cobra"
 )
 

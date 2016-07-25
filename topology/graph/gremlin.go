@@ -26,8 +26,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology/graph/gremlin"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology/graph/gremlin"
 )
 
 type GremlinBackend struct {

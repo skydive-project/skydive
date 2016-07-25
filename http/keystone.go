@@ -30,8 +30,8 @@ import (
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
 	"github.com/rackspace/gophercloud/openstack/identity/v2/tokens"
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type KeystoneAuthenticationBackend struct {

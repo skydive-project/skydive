@@ -28,14 +28,14 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
-	"github.com/redhat-cip/skydive/analyzer"
-	"github.com/redhat-cip/skydive/api"
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/ovs"
-	"github.com/redhat-cip/skydive/sflow"
-	"github.com/redhat-cip/skydive/topology/graph"
-	"github.com/redhat-cip/skydive/topology/probes"
+	"github.com/skydive-project/skydive/analyzer"
+	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/ovs"
+	"github.com/skydive-project/skydive/sflow"
+	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/probes"
 )
 
 type OvsSFlowProbe struct {

@@ -31,10 +31,10 @@ import (
 	"github.com/lebauce/dockerclient"
 	"github.com/vishvananda/netns"
 
-	"github.com/redhat-cip/skydive/common"
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type ContainerInfo struct {

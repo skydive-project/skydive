@@ -36,7 +36,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/pkg/types"
 
-	"github.com/redhat-cip/skydive/config"
+	"github.com/skydive-project/skydive/config"
 
 	"golang.org/x/net/context"
 )

@@ -8,7 +8,7 @@ import (
 
 // Package is the overall, canonical project import path under which the
 // package was built.
-var Package = "github.com/redhat-cip/skydive"
+var Package = "github.com/skydive-project/skydive"
 
 // Version indicates which version of the binary is running. This is set to
 // the latest release tag by hand, always suffixed by "+unknown". During
@@ -24,7 +24,7 @@ var Version = "v0.3.0+unknown"
 // For example, a binary "registry" built from github.com/docker/distribution
 // with version "v1.0.0" would print the following:
 //
-//      skydive_agent github.com/redhat-cip/skydive v1.0.0
+//      skydive_agent github.com/skydive-project/skydive v1.0.0
 //
 func FprintVersion(w io.Writer) {
 	fmt.Fprintln(w, os.Args[0], Package, Version)

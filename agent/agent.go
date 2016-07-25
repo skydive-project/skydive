@@ -27,15 +27,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/redhat-cip/skydive/api"
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow"
-	fprobes "github.com/redhat-cip/skydive/flow/probes"
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/storage/etcd"
-	"github.com/redhat-cip/skydive/topology/graph"
-	tprobes "github.com/redhat-cip/skydive/topology/probes"
+	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
+	fprobes "github.com/skydive-project/skydive/flow/probes"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/storage/etcd"
+	"github.com/skydive-project/skydive/topology/graph"
+	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
 type Agent struct {

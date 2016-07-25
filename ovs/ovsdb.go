@@ -29,7 +29,7 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type OvsClient struct {

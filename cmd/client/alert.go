@@ -26,9 +26,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/redhat-cip/skydive/api"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/validator"
+	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/validator"
 
 	"github.com/spf13/cobra"
 )

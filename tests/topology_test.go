@@ -32,11 +32,11 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/tests/helper"
-	"github.com/redhat-cip/skydive/topology/graph"
-	"github.com/redhat-cip/skydive/topology/graph/traversal"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 const confTopology = `---

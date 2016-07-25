@@ -58,9 +58,9 @@ flows informations will be captured.
 
 %build
 export GOPATH=`pwd`/Godeps/_workspace
-mkdir Godeps/_workspace/src/github.com/redhat-cip
-ln -s `pwd` Godeps/_workspace/src/github.com/redhat-cip/skydive
-cd Godeps/_workspace/src/github.com/redhat-cip/skydive
+mkdir Godeps/_workspace/src/github.com/skydive-project
+ln -s `pwd` Godeps/_workspace/src/github.com/skydive-project/skydive
+cd Godeps/_workspace/src/github.com/skydive-project/skydive
 go install -v ./...
 
 %install

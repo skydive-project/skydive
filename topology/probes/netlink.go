@@ -36,9 +36,9 @@ import (
 
 	"github.com/safchain/ethtool"
 
-	"github.com/redhat-cip/skydive/common"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const (

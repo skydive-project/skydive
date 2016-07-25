@@ -30,10 +30,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redhat-cip/skydive/analyzer"
-	"github.com/redhat-cip/skydive/api"
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/tests/helper"
+	"github.com/skydive-project/skydive/analyzer"
+	"github.com/skydive-project/skydive/api"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/tests/helper"
 )
 
 type testAPIServer struct {

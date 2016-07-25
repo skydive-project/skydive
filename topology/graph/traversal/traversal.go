@@ -29,8 +29,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/redhat-cip/skydive/common"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type GraphTraversalStep interface {

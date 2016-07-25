@@ -31,7 +31,7 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 
-	"github.com/redhat-cip/skydive/config"
+	"github.com/skydive-project/skydive/config"
 )
 
 type EtcdClient struct {

@@ -23,9 +23,9 @@
 package graph
 
 import (
-	"github.com/redhat-cip/skydive/config"
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type Forwarder struct {

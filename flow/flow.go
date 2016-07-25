@@ -33,7 +33,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type FlowProbeNodeSetter interface {

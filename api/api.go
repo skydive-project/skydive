@@ -32,10 +32,10 @@ import (
 	etcd "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/validator"
-	"github.com/redhat-cip/skydive/version"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/validator"
+	"github.com/skydive-project/skydive/version"
 )
 
 type ApiServer struct {

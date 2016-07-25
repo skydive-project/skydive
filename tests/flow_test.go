@@ -29,14 +29,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redhat-cip/skydive/api"
-	cmd "github.com/redhat-cip/skydive/cmd/client"
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/storage"
-	"github.com/redhat-cip/skydive/tests/helper"
-	"github.com/redhat-cip/skydive/tools"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/api"
+	cmd "github.com/skydive-project/skydive/cmd/client"
+	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/storage"
+	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/skydive-project/skydive/tools"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const confAgentAnalyzer = `---

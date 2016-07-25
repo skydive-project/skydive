@@ -27,9 +27,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/redhat-cip/skydive/analyzer"
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/analyzer"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 
 	"github.com/spf13/cobra"
 )

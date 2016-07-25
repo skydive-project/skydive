@@ -34,8 +34,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type WSClientEventHandler interface {

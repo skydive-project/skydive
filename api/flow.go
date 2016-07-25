@@ -31,10 +31,10 @@ import (
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 
-	"github.com/redhat-cip/skydive/flow"
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/storage"
+	"github.com/skydive-project/skydive/flow"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/storage"
 )
 
 type FlowApi struct {

@@ -23,9 +23,9 @@ Make sure you have a working Go environment. [See the install instructions]
 (http://golang.org/doc/install.html).
 
 ```console
-$ mkdir -p $GOPATH/src/github.com/redhat-cip
-$ git clone https://github.com/skydive-project/skydive.git $GOPATH/src/github.com/redhat-cip/skydive
-$ cd $GOPATH/src/github.com/redhat-cip/skydive
+$ mkdir -p $GOPATH/src/github.com/skydive-project
+$ git clone https://github.com/skydive-project/skydive.git $GOPATH/src/github.com/skydive-project/skydive
+$ cd $GOPATH/src/github.com/skydive-project/skydive
 $ make install
 ```
 
@@ -42,7 +42,7 @@ User can add host metadata to specify an extra host information in
 under this configuration section will be added to host metadata.
 
 See the full list of configuration parameters in the sample configuration file
-[etc/skydive.yml.default](https://github.com/redhat-cip/skydive/blob/master/etc/skydive.yml.default).
+[etc/skydive.yml.default](https://github.com/skydive-project/skydive/blob/master/etc/skydive.yml.default).
 
 ## Start
 

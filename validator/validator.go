@@ -30,10 +30,10 @@ import (
 
 	"gopkg.in/validator.v2"
 
-	ftraversal "github.com/redhat-cip/skydive/flow/traversal"
-	"github.com/redhat-cip/skydive/topology"
-	"github.com/redhat-cip/skydive/topology/graph"
-	"github.com/redhat-cip/skydive/topology/graph/traversal"
+	ftraversal "github.com/skydive-project/skydive/flow/traversal"
+	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 var skydiveValidator = validator.NewValidator()

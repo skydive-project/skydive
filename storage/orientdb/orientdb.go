@@ -28,11 +28,11 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/storage"
-	orient "github.com/redhat-cip/skydive/topology/graph/orientdb"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/storage"
+	orient "github.com/skydive-project/skydive/topology/graph/orientdb"
 )
 
 type OrientDBStorage struct {

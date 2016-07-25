@@ -22,7 +22,7 @@
 
 package flow
 
-import "github.com/redhat-cip/skydive/common"
+import "github.com/skydive-project/skydive/common"
 
 type FlowSet struct {
 	Flows []*Flow

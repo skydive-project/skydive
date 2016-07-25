@@ -37,7 +37,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
 
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/logging"
 )
 
 var (

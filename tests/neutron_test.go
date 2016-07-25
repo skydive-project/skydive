@@ -36,8 +36,8 @@ import (
 	"github.com/rackspace/gophercloud/openstack/networking/v2/ports"
 	"github.com/rackspace/gophercloud/pagination"
 
-	"github.com/redhat-cip/skydive/tests/helper"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const confNeutron = `---

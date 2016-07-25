@@ -29,10 +29,10 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/ovs"
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/ovs"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type OvsdbProbe struct {

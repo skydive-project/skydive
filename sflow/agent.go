@@ -33,9 +33,9 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/flow"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/logging"
 )
 
 const (

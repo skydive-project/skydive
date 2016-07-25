@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/redhat-cip/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 func newGraph(t *testing.T) *graph.Graph {

@@ -27,8 +27,8 @@ import (
 	"fmt"
 	"os"
 
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/logging"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/spf13/cobra"
 )
 

@@ -29,14 +29,14 @@ import (
 	"strings"
 
 	"github.com/abbot/go-http-auth"
-	"github.com/redhat-cip/skydive/flow"
-	ftraversal "github.com/redhat-cip/skydive/flow/traversal"
-	shttp "github.com/redhat-cip/skydive/http"
-	"github.com/redhat-cip/skydive/storage"
-	"github.com/redhat-cip/skydive/topology"
-	"github.com/redhat-cip/skydive/topology/graph"
-	"github.com/redhat-cip/skydive/topology/graph/traversal"
-	"github.com/redhat-cip/skydive/validator"
+	"github.com/skydive-project/skydive/flow"
+	ftraversal "github.com/skydive-project/skydive/flow/traversal"
+	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/storage"
+	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/validator"
 )
 
 type TopologyApi struct {

@@ -32,7 +32,7 @@ import (
 
 	"github.com/op/go-logging"
 
-	"github.com/redhat-cip/skydive/config"
+	"github.com/skydive-project/skydive/config"
 )
 
 func getPackageFunction() (pkg string, fun string) {
@@ -119,7 +119,7 @@ func initLogger() (err error) {
 		if pkg == "default" {
 			err = newLogger("default", lvl)
 		} else {
-			err = newLogger("github.com/redhat-cip/skydive/"+pkg, lvl)
+			err = newLogger("github.com/skydive-project/skydive/"+pkg, lvl)
 		}
 		if err != nil {
 			return errors.New("Can't parse logging line : \"" + pkg + " " + lvl + "\" " + err.Error())

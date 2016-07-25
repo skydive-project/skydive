@@ -30,8 +30,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type RestClient struct {

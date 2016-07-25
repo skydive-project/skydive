@@ -33,7 +33,7 @@ import (
 	etcd "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type ApiResource interface {

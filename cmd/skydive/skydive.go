@@ -26,11 +26,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/redhat-cip/skydive/cmd/agent"
-	"github.com/redhat-cip/skydive/cmd/analyzer"
-	"github.com/redhat-cip/skydive/cmd/client"
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/version"
+	"github.com/skydive-project/skydive/cmd/agent"
+	"github.com/skydive-project/skydive/cmd/analyzer"
+	"github.com/skydive-project/skydive/cmd/client"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/version"
 
 	"github.com/spf13/cobra"
 )

@@ -40,12 +40,12 @@ fi
 
 # Create a temporary GOPATH
 export GOPATH=`mktemp -d`
-mkdir -p $GOPATH/src/github.com/redhat-cip
+mkdir -p $GOPATH/src/github.com/skydive-project
 
 # Get the Skydive sources
-git clone https://github.com/$org/skydive $GOPATH/src/github.com/redhat-cip/skydive
+git clone https://github.com/$org/skydive $GOPATH/src/github.com/skydive-project/skydive
 
-cd $GOPATH/src/github.com/redhat-cip/skydive
+cd $GOPATH/src/github.com/skydive-project/skydive
 git checkout $tag || (echo "Unknown tag $tag"; exit 1)
 
 # Run the test suite

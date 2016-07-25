@@ -37,9 +37,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hydrogen18/stoppableListener"
 
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/statics"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/statics"
 )
 
 type PathPrefix string

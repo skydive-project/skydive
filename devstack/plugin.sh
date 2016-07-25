@@ -96,7 +96,7 @@ function install_skydive {
         else
             install_package libpcap-dev
         fi
-        SKYDIVE_SRC=$GOPATH/src/github.com/redhat-cip
+        SKYDIVE_SRC=$GOPATH/src/github.com/skydive-project
         mkdir -p $SKYDIVE_SRC
         ln -s $DEST/skydive $SKYDIVE_SRC/skydive
         cd $SKYDIVE_SRC/skydive

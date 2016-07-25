@@ -34,7 +34,7 @@ import (
 	"github.com/go-gremlin/gremlin"
 	"github.com/gorilla/websocket"
 
-	"github.com/redhat-cip/skydive/logging"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type wsclient struct {

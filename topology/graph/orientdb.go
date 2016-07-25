@@ -28,10 +28,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/redhat-cip/skydive/config"
-	"github.com/redhat-cip/skydive/logging"
-	"github.com/redhat-cip/skydive/topology/graph/gremlin"
-	"github.com/redhat-cip/skydive/topology/graph/orientdb"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology/graph/gremlin"
+	"github.com/skydive-project/skydive/topology/graph/orientdb"
 )
 
 type OrientDBBackend struct {

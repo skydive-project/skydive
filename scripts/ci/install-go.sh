@@ -8,7 +8,7 @@ echo ${PATH} | grep -q "${HOME}/bin" || {
   export PATH="${PATH}:${HOME}/bin"
 }
 
-# Install Go 1.5
+# Install Go 1.6
 mkdir -p ~/bin
 curl -sL -o ~/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master/gimme
 chmod +x ~/bin/gimme
