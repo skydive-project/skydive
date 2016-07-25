@@ -86,6 +86,10 @@ $ skydive client capture create --gremlin "G.V().Has('Name', 'docker0')"
 
 ```
 
+While starting the capture, you can specify the capture name,
+capture description and capture type optionally.
+In order to know the list of supported capture types, see the usage doc of flow capture.
+
 Node types that support captures are :
 
 * ovsbridge
