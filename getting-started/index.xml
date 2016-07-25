@@ -607,6 +607,10 @@ number of Skydive agents you will start.&lt;/p&gt;
 
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;p&gt;While starting the capture, you can specify the capture name,
+capture description and capture type optionally.
+In order to know the list of supported capture types, see the usage doc of flow capture.&lt;/p&gt;
+
 &lt;p&gt;Node types that support captures are :&lt;/p&gt;
 
 &lt;ul&gt;
