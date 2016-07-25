@@ -23,7 +23,6 @@
 package graph
 
 import (
-	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -32,7 +31,7 @@ type Forwarder struct {
 	shttp.DefaultWSClientEventHandler
 	Client *shttp.WSAsyncClient
 	Graph  *Graph
-	host   string
+	Root   *Node
 }
 
 func (c *Forwarder) triggerResync() {
@@ -41,17 +40,14 @@ func (c *Forwarder) triggerResync() {
 	c.Graph.Lock()
 	defer c.Graph.Unlock()
 
-	// request for deletion of everythin belonging to host node
-	root := c.Graph.GetNode(Identifier(c.host))
-	if root == nil {
-		return
+	// request for deletion of everything belonging to Root node
+	if c.Root != nil {
+		c.Client.SendWSMessage(shttp.WSMessage{
+			Namespace: Namespace,
+			Type:      "SubGraphDeleted",
+			Obj:       c.Root.JsonRawMessage(),
+		})
 	}
-
-	c.Client.SendWSMessage(shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      "SubGraphDeleted",
-		Obj:       root.JsonRawMessage(),
-	})
 
 	// re-added all the nodes and edges
 	nodes := c.Graph.GetNodes()
@@ -125,20 +121,15 @@ func (c *Forwarder) OnEdgeDeleted(e *Edge) {
 	})
 }
 
-func NewForwarder(hostID string, c *shttp.WSAsyncClient, g *Graph) *Forwarder {
+func NewForwarder(c *shttp.WSAsyncClient, g *Graph, root *Node) *Forwarder {
 	f := &Forwarder{
 		Client: c,
 		Graph:  g,
-		host:   hostID,
+		Root:   root,
 	}
 
 	g.AddEventListener(f)
 	c.AddEventHandler(f)
 
 	return f
-}
-
-func NewForwarderFromConfig(c *shttp.WSAsyncClient, g *Graph) *Forwarder {
-	hostID := config.GetConfig().GetString("host_id")
-	return NewForwarder(hostID, c, g)
 }

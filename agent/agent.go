@@ -27,6 +27,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/nu7hatch/gouuid"
+
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -75,7 +77,7 @@ func (a *Agent) Start() {
 			os.Exit(1)
 		}
 
-		graph.NewForwarderFromConfig(a.WSClient, a.Graph)
+		graph.NewForwarder(a.WSClient, a.Graph, a.Root)
 		a.WSClient.Connect()
 
 		// send a first reset event to the analyzers
@@ -190,7 +192,8 @@ func NewAgent() *Agent {
 			m[key] = value
 		}
 	}
-	root := g.NewNode(graph.Identifier(hostID), m)
+	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(hostID))
+	root := g.NewNode(graph.Identifier(u.String()), m)
 
 	api.RegisterTopologyApi("agent", g, hserver, nil, nil)
 
