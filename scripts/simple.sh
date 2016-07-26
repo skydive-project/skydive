@@ -23,7 +23,7 @@ function start() {
 
 	sudo ovs-vsctl add-port br-int vm1-eth0
 
-        if [ ! -z "$2" ]; then
+	if [ ! -z "$2" ]; then
 		sudo ip netns add vm2
 		sudo ip link add vm2-eth0 type veth peer name eth0 netns vm2
 		sudo ip link set vm2-eth0 up
@@ -40,7 +40,7 @@ function stop() {
 
 	sudo ovs-vsctl del-br br-int
 	sudo ip link del vm1-eth0
-	sudo ip netns del vm1	
+	sudo ip netns del vm1
 	sudo ip link del vm2-eth0
 	sudo ip netns del vm2
 }
