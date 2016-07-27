@@ -45,7 +45,11 @@ type Alert struct {
 	CreateTime  time.Time
 }
 
-type AlertHandler struct {
+type AlertResourceHandler struct {
+}
+
+type AlertApiHandler struct {
+	BasicApiHandler
 }
 
 func NewAlert() *Alert {
@@ -58,7 +62,7 @@ func NewAlert() *Alert {
 	}
 }
 
-func (a *AlertHandler) New() ApiResource {
+func (a *AlertResourceHandler) New() ApiResource {
 	id, _ := uuid.NewV4()
 
 	return &Alert{
@@ -66,7 +70,7 @@ func (a *AlertHandler) New() ApiResource {
 	}
 }
 
-func (a *AlertHandler) Name() string {
+func (a *AlertResourceHandler) Name() string {
 	return "alert"
 }
 

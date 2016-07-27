@@ -38,7 +38,7 @@ type OnDemandProbeListener struct {
 	graph.DefaultGraphListener
 	Graph          *graph.Graph
 	Probes         *FlowProbeBundle
-	CaptureHandler api.ApiHandler
+	CaptureHandler *api.CaptureApiHandler
 	watcher        api.StoppableWatcher
 	fta            *flow.TableAllocator
 	activeProbes   map[graph.Identifier]*flow.Table
@@ -172,7 +172,7 @@ func (o *OnDemandProbeListener) onNodeEvent(n *graph.Node) {
 		return
 	}
 
-	resources := o.CaptureHandler.Index()
+	resources := o.CaptureHandler.List()
 	for _, resource := range resources {
 		capture := resource.(*api.Capture)
 
@@ -306,7 +306,7 @@ func (o *OnDemandProbeListener) Stop() {
 	o.watcher.Stop()
 }
 
-func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, ch api.ApiHandler) (*OnDemandProbeListener, error) {
+func NewOnDemandProbeListener(fb *FlowProbeBundle, g *graph.Graph, ch *api.CaptureApiHandler) (*OnDemandProbeListener, error) {
 	return &OnDemandProbeListener{
 		Graph:          g,
 		Probes:         fb,

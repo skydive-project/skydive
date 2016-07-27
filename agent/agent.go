@@ -96,9 +96,12 @@ func (a *Agent) Start() {
 			os.Exit(1)
 		}
 
-		captureHandler := &api.BasicApiHandler{
-			ResourceHandler: &api.CaptureHandler{},
-			EtcdKeyAPI:      a.EtcdClient.KeysApi,
+		captureApiHandler := &api.CaptureApiHandler{
+			BasicApiHandler: api.BasicApiHandler{
+				ResourceHandler: &api.CaptureResourceHandler{},
+				EtcdKeyAPI:      a.EtcdClient.KeysApi,
+			},
+			Graph: a.Graph,
 		}
 
 		for {
@@ -123,7 +126,7 @@ func (a *Agent) Start() {
 			a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator)
 			a.FlowProbeBundle.Start()
 
-			l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, captureHandler)
+			l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, captureApiHandler)
 			if err != nil {
 				logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
 				os.Exit(1)
