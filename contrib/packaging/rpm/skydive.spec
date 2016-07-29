@@ -7,15 +7,21 @@
 # openvswitch_version is the version of openvswitch requires by packages
 %global openvswitch_version 2.3.1
 
+%if %{defined commit}
+%define source %{commit}
+%else
+%define source %{version}-%{release}
+%endif
+
 Name:           skydive
-Version:        0.2.0
+Version:        0.3.0
 Release:        1%{?dist}
 Summary:        Real-time network topology and protocols analyzer.
 License:        ASL 2.0
 URL:            https://github.com/skydive-project/skydive
 ExclusiveArch:  x86_64
-Source0:        https://github.com/skydive-project/skydive/archive/%{commit}/%{name}-%{version}.tar.gz
-BuildRequires:  golang >= 1.4
+Source0:        https://github.com/skydive-project/skydive/archive/skydive-%{source}.tar.gz
+BuildRequires:  golang >= 1.5
 BuildRequires:  systemd
 
 %description
@@ -54,24 +60,25 @@ The Skydive agent has to be started on each node where the topology and
 flows informations will be captured.
 
 %prep
-%setup -q
+%setup -q -n skydive-%{source}/src/github.com/skydive-project/skydive
 
 %build
-export GOPATH=`pwd`/Godeps/_workspace
-mkdir Godeps/_workspace/src/github.com/skydive-project
-ln -s `pwd` Godeps/_workspace/src/github.com/skydive-project/skydive
-cd Godeps/_workspace/src/github.com/skydive-project/skydive
-go install -v ./...
+rm -rf %{buildroot}
+export GOPATH=%{_builddir}/skydive-%{source}
+export PATH=$PATH:$GOPATH/bin
+export GO15VENDOREXPERIMENT=1
+# compile govendor locally
+go install github.com/kardianos/govendor
+make install
 
 %install
+export GOPATH=%{_builddir}/skydive-%{source}
 install -d %{buildroot}%{_bindir}
-
-install -p -m 755 Godeps/_workspace/bin/skydive %{buildroot}%{_bindir}/skydive
+install -p -m 755 $GOPATH/bin/skydive %{buildroot}%{_bindir}/skydive
 for bin in agent analyzer
 do
   install -D -m 644 contrib/systemd/skydive-${bin}.service %{buildroot}%{_unitdir}/skydive-${bin}.service
 done
-
 install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/skydive.yml
 
 %post agent
@@ -107,6 +114,9 @@ install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/sk
 %{_unitdir}/skydive-analyzer.service
 
 %changelog
+* Fri Jul 29 2016 Nicolas Planel <nplanel@redhat.com> - 0.3.0-2
+- Update spec file to use govendor on go version >=1.5
+
 * Wed Apr 27 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.3.0-1
 - Bump to version 0.3.0
 

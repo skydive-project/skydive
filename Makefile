@@ -1,4 +1,5 @@
 # really Basic Makefile for Skydive
+export GO15VENDOREXPERIMENT=1
 
 PROTO_FILES=flow/flow.proto
 VERBOSE_FLAGS?=-v
@@ -95,3 +96,6 @@ doc:
 
 doctest:
 	hugo server run -t hugo-material-docs -s doc -b http://localhost:1313/skydive
+
+rpm:
+	contrib/packaging/rpm/generate-skydive-bootstrap.sh
