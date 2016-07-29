@@ -22,16 +22,16 @@ generate_cover_data() {
 
     for pkg in "$@"; do
         f="$workdir/$(echo $pkg | tr / -).cover"
-        godep go test -timeout 6m -covermode="$mode" -coverprofile="$f" "$pkg"
+        govendor test -timeout 6m -covermode="$mode" -coverprofile="$f" "$pkg"
     done
 
     # add fonctional testing
     f="$workdir/functional.cover"
-    make ARGS="-cover -covermode="$mode" -coverprofile="$f" -coverpkg=./... ${ARGS}" test.functionals.compile
+    govendor test -v -cover -covermode="$mode" -coverprofile="$f" -coverpkg=./tests -timeout 2m -c -o tests/functionals ./tests/
     FUNC_TESTS=$( grep -e 'func Test' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf )
     for functest in ${FUNC_TESTS} ; do
         f="../$workdir/$functest.cover"
-        make TIMEOUT=2m ARGS="-test.coverprofile="$f" -test.run $functest ${ARGS}" test.functionals.run
+        cd texts && sudo -E ./functionals -test.v -test.timeout 2m -test.coverprofile="$f" -test.run $functest && cd ..
     done
 
     echo "mode: $mode" >"$profile"
@@ -47,7 +47,7 @@ push_to_coveralls() {
     goveralls -coverprofile="$profile"
 }
 
-generate_cover_data $(go list ./... | grep -v '/tests')
+generate_cover_data $(go list ./... | grep -v -e '/tests' -e '/vendor')
 show_cover_report func
 case "$1" in
 "")
