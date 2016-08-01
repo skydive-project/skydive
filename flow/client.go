@@ -24,7 +24,6 @@ package flow
 
 import (
 	"encoding/json"
-	"errors"
 	"sync"
 	"time"
 
@@ -32,7 +31,6 @@ import (
 
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type TableClient struct {
@@ -41,6 +39,8 @@ type TableClient struct {
 	replyChanMutex sync.RWMutex
 	replyChan      map[string]chan *json.RawMessage
 }
+
+type HostNodeIDMap map[string][]string
 
 func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	if m.Namespace != Namespace {
@@ -52,14 +52,14 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 
 	ch, ok := f.replyChan[m.UUID]
 	if !ok {
-		logging.GetLogger().Errorf("Unable to send reply, chan not found for %s", m.UUID)
+		logging.GetLogger().Errorf("Unable to send reply, chan not found for %s, available: %v", m.UUID, f.replyChan)
 		return
 	}
 
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlowsByNode(flowset chan *FlowSet, host string, uuids []string) {
+func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uuids []string) {
 	tq := TableQuery{
 		Obj: FlowSearchQuery{
 			NodeUUIDs: uuids,
@@ -132,24 +132,15 @@ func (f *TableClient) lookupFlowsByNode(flowset chan *FlowSet, host string, uuid
 	flowset <- NewFlowSet()
 }
 
-func (f *TableClient) LookupFlowsByNode(nodes ...*graph.Node) (*FlowSet, error) {
-	if len(nodes) == 0 {
-		return nil, errors.New("No node provided")
-	}
+func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap) (*FlowSet, error) {
+	ch := make(chan *FlowSet, len(hnmap))
 
-	uuids := make(map[string][]string)
-	for _, node := range nodes {
-		uuids[node.Host()] = append(uuids[node.Host()], string(node.ID))
-	}
-
-	ch := make(chan *FlowSet)
-
-	for host, uuids := range uuids {
-		go f.lookupFlowsByNode(ch, host, uuids)
+	for host, uuids := range hnmap {
+		go f.lookupFlowsByNodes(ch, host, uuids)
 	}
 
 	flowset := NewFlowSet()
-	for i := 0; i != len(uuids); i++ {
+	for i := 0; i != len(hnmap); i++ {
 		fs := <-ch
 		flowset.Merge(fs)
 	}

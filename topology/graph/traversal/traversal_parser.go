@@ -467,10 +467,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 func (p *GremlinTraversalParser) Parse() (*GremlinTraversalSequence, error) {
 	p.scanner = NewGremlinTraversalScanner(p.Reader, p.extensions)
 
-	graph := p.Graph.WithContext(graph.GraphContext{})
-
 	seq := &GremlinTraversalSequence{
-		GraphTraversal: NewGraphTraversal(graph),
+		GraphTraversal: NewGraphTraversal(p.Graph),
 		extensions:     p.extensions,
 	}
 

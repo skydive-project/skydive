@@ -179,10 +179,13 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 	case *traversal.GraphTraversalV:
 		tv := last.(*traversal.GraphTraversalV)
 
-		nodes := make([]*graph.Node, len(tv.Values()))
-		for i, v := range tv.Values() {
-			nodes[i] = v.(*graph.Node)
+		tv.GraphTraversal.Graph.Lock()
+		hnmap := make(flow.HostNodeIDMap)
+		for _, v := range tv.Values() {
+			node := v.(*graph.Node)
+			hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 		}
+		tv.GraphTraversal.Graph.Unlock()
 
 		flowset := flow.NewFlowSet()
 		var err error
@@ -194,22 +197,24 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 			filters.Range["Statistics.Last"] = storage.RangeFilter{Gte: context.Time.Unix()}
 
 			filters.Term.Op = storage.OR
-			for _, node := range nodes {
-				filters.Term.Terms["ProbeNodeUUID"] = node.ID
-				filters.Term.Terms["IfSrcNodeUUID"] = node.ID
-				filters.Term.Terms["IfDstNodeUUID"] = node.ID
+			for _, ids := range hnmap {
+				for _, id := range ids {
+					filters.Term.Terms["ProbeNodeUUID"] = id
+					filters.Term.Terms["IfSrcNodeUUID"] = id
+					filters.Term.Terms["IfDstNodeUUID"] = id
 
-				f, err := s.Storage.SearchFlows(filters)
-				if err != nil {
-					return nil, traversal.ExecutionError
+					f, err := s.Storage.SearchFlows(filters)
+					if err != nil {
+						return nil, traversal.ExecutionError
+					}
+					flowset.Flows = append(flowset.Flows, f...)
 				}
-				flowset.Flows = append(flowset.Flows, f...)
 			}
 		} else {
-			flowset, err = s.TableClient.LookupFlowsByNode(nodes...)
+			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap)
 		}
 		if err != nil {
-			logging.GetLogger().Errorf("Error while looking for flows for nodes: %v, %s", nodes, err.Error())
+			logging.GetLogger().Errorf("Error while looking for flows for nodes: %v, %s", hnmap, err.Error())
 			return nil, traversal.ExecutionError
 		}
 		return &FlowTraversalStep{GraphTraversal: tv.GraphTraversal, flowset: flowset}, nil

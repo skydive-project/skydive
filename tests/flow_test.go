@@ -674,8 +674,11 @@ func TestTableServer(t *testing.T) {
 
 	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
+	hnmap := make(flow.HostNodeIDMap)
+	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
+
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
-	flowset, err := fclient.LookupFlowsByNode(node)
+	flowset, err := fclient.LookupFlowsByNodes(hnmap)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
