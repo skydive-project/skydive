@@ -32,8 +32,5 @@ case "$BACKEND" in
     ;;
 esac
 
-# workaround until CI image are updated
-mv ${GOPATH}/src/github.com/{redhat-cip,skydive-project}
-
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 make test.functionals GOFLAGS=-race GORACE="history_size=5" VERBOSE=true TIMEOUT=2m ARGS="$ARGS -etcd.server http://localhost:2379"
