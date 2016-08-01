@@ -71,12 +71,14 @@ function install_go {
 }
 
 function download_elasticsearch {
-    if is_ubuntu; then
-        wget ${ELASTICSEARCH_BASE_URL}/deb/elasticsearch/${ELASTICSEARCH_VERSION}/elasticsearch-${ELASTICSEARCH_VERSION}.deb \
-            -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.deb
-    elif is_fedora; then
-        wget ${ELASTICSEARCH_BASE_URL}/rpm/elasticsearch/${ELASTICSEARCH_VERSION}/elasticsearch-${ELASTICSEARCH_VERSION}.rpm \
-            -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.noarch.rpm
+    if [ ! -f ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.* ]; then
+        if is_ubuntu; then
+            wget ${ELASTICSEARCH_BASE_URL}/deb/elasticsearch/${ELASTICSEARCH_VERSION}/elasticsearch-${ELASTICSEARCH_VERSION}.deb \
+                -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.deb
+        elif is_fedora; then
+            wget ${ELASTICSEARCH_BASE_URL}/rpm/elasticsearch/${ELASTICSEARCH_VERSION}/elasticsearch-${ELASTICSEARCH_VERSION}.rpm \
+                -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.noarch.rpm
+        fi
     fi
 }
 
@@ -98,7 +100,10 @@ function install_skydive {
         fi
         SKYDIVE_SRC=$GOPATH/src/github.com/skydive-project
         mkdir -p $SKYDIVE_SRC
-        ln -s $DEST/skydive $SKYDIVE_SRC/skydive
+	if [ ! -d $SKYDIVE_SRC/skydive ]; then
+		mv $DEST/skydive $SKYDIVE_SRC/
+		ln -s $SKYDIVE_SRC/skydive $DEST/skydive
+	fi
         cd $SKYDIVE_SRC/skydive
         make install
     fi
