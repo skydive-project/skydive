@@ -1,0 +1,36 @@
+# libovsdb maintainers file
+#
+# This file describes who runs the socketplane/libovsdb project and how.
+# This is a living document - if you see something out of date or missing, speak up!
+#
+# It is structured to be consumable by both humans and programs.
+# To extract its contents programmatically, use any TOML-compliant parser.
+#
+[Org]
+	[Org."Core maintainers"]
+		people = [
+			"dave-tucker",
+			"mavenugo",
+			"shaleman",
+		]
+
+[people]
+
+# A reference list of all people associated with the project.
+# All other sections should refer to people by their canonical key
+# in the people section.
+
+	# ADD YOURSELF HERE IN ALPHABETICAL ORDER
+	[people.dave-tucker]
+	Name = "Dave Tucker"
+	Email = "dt@docker.com"
+	GitHub = "dave-tucker"
+
+	[people.mavenugo]
+	Name = "Madhu Venugopal"
+	Email = "madhu@docker.com"
+	GitHub = "mavenugo"
+
+	[people.shaleman]
+	Name = "Sukhesh Halemane"
+	GitHub = "shaleman"

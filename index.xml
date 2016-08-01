@@ -568,9 +568,9 @@ informations will be captured&lt;/li&gt;
 
 &lt;p&gt;Make sure you have a working Go environment. &lt;a href=&#34;http://golang.org/doc/install.html&#34;&gt;See the install instructions&lt;/a&gt;.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ mkdir -p $GOPATH/src/github.com/redhat-cip
-$ git clone https://github.com/skydive-project/skydive.git $GOPATH/src/github.com/redhat-cip/skydive
-$ cd $GOPATH/src/github.com/redhat-cip/skydive
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ mkdir -p $GOPATH/src/github.com/skydive-project
+$ git clone https://github.com/skydive-project/skydive.git $GOPATH/src/github.com/skydive-project/skydive
+$ cd $GOPATH/src/github.com/skydive-project/skydive
 $ make install
 &lt;/code&gt;&lt;/pre&gt;
 
@@ -587,7 +587,7 @@ address with &amp;ldquo;listen: 0.0.0.0:port&amp;rdquo; in the proper configurat
 under this configuration section will be added to host metadata.&lt;/p&gt;
 
 &lt;p&gt;See the full list of configuration parameters in the sample configuration file
-&lt;a href=&#34;https://github.com/redhat-cip/skydive/blob/master/etc/skydive.yml.default&#34;&gt;etc/skydive.yml.default&lt;/a&gt;.&lt;/p&gt;
+&lt;a href=&#34;https://github.com/skydive-project/skydive/blob/master/etc/skydive.yml.default&#34;&gt;etc/skydive.yml.default&lt;/a&gt;.&lt;/p&gt;
 
 &lt;h2 id=&#34;start&#34;&gt;Start&lt;/h2&gt;
 
