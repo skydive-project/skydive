@@ -20,6 +20,10 @@ git config --global user.name "Nightly Builds Bot"
 git lfs install
 git lfs track "*/skydive"
 
+# Keep only the last 10 builds
+git lfs ls-files -l | awk '{ print $3 }' | tail -n +9 | xargs -r git rm --
+
+# Add the lastest build and creates a symlink to link
 DIR=`date +%Y-%m-%d`
 mkdir ${DIR}
 mv ${GOPATH}/bin/skydive ${DIR}/
