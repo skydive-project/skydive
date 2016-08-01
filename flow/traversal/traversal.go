@@ -136,7 +136,7 @@ func (f *FlowTraversalStep) Count(s ...interface{}) *traversal.GraphTraversalVal
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, len(f.flowset.Flows))
 }
 
-func paramsToFilter(s ...interface{}) (flow.Filter, error) {
+func paramsToFilter(s ...interface{}) (*flow.Filter, error) {
 	if len(s) < 2 {
 		return nil, errors.New("At least two parameters must be provided")
 	}
@@ -145,7 +145,7 @@ func paramsToFilter(s ...interface{}) (flow.Filter, error) {
 		return nil, fmt.Errorf("slice must be defined by pair k,v: %v", s)
 	}
 
-	filter := &flow.BoolFilter{Op: flow.AND}
+	andFilter := &flow.BoolFilter{Op: flow.BoolFilterOp_AND}
 
 	for i := 0; i < len(s); i += 2 {
 		k, ok := s[i].(string)
@@ -155,42 +155,159 @@ func paramsToFilter(s ...interface{}) (flow.Filter, error) {
 
 		switch v := s[i+1].(type) {
 		case *traversal.NEMetadataMatcher:
-			filter.Filters = append(filter.Filters, flow.BoolFilter{
-				Op: flow.OR,
-				Filters: []flow.Filter{
-					flow.RangeFilter{Key: k, Lt: v.Value()},
-					flow.RangeFilter{Key: k, Gt: v.Value()},
+			notFilters := &flow.Filter{}
+			switch t := v.Value().(type) {
+			case string:
+				notFilters.TermStringFilter = &flow.TermStringFilter{Key: k, Value: t}
+			case int64:
+				notFilters.TermInt64Filter = &flow.TermInt64Filter{Key: k, Value: t}
+			}
+
+			andFilter.Filters = append(andFilter.Filters,
+				&flow.Filter{
+					BoolFilter: &flow.BoolFilter{
+						Op:      flow.BoolFilterOp_NOT,
+						Filters: []*flow.Filter{notFilters},
+					},
 				},
-			})
+			)
 		case *traversal.LTMetadataMatcher:
-			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Lt: v.Value()})
+			switch t := v.Value().(type) {
+			case int64:
+				andFilter.Filters = append(andFilter.Filters,
+					&flow.Filter{
+						LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: t},
+					},
+				)
+			default:
+				return nil, errors.New("LT values should be of int64 type")
+			}
 		case *traversal.GTMetadataMatcher:
-			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gt: v.Value()})
+			switch t := v.Value().(type) {
+			case int64:
+				andFilter.Filters = append(andFilter.Filters,
+					&flow.Filter{
+						GtInt64Filter: &flow.GtInt64Filter{Key: k, Value: t},
+					},
+				)
+			default:
+				return nil, errors.New("GT values should be of int64 type")
+			}
 		case *traversal.GTEMetadataMatcher:
-			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gte: v.Value()})
+			switch t := v.Value().(type) {
+			case int64:
+				andFilter.Filters = append(andFilter.Filters,
+					&flow.Filter{
+						GteInt64Filter: &flow.GteInt64Filter{Key: k, Value: t},
+					},
+				)
+			default:
+				return nil, errors.New("GTE values should be of int64 type")
+			}
 		case *traversal.LTEMetadataMatcher:
-			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Lte: v.Value()})
+			switch t := v.Value().(type) {
+			case int64:
+				andFilter.Filters = append(andFilter.Filters,
+					&flow.Filter{
+						LteInt64Filter: &flow.LteInt64Filter{Key: k, Value: t},
+					},
+				)
+			default:
+				return nil, errors.New("LTE values should be of int64 type")
+			}
 		case *traversal.InsideMetadataMatcher:
 			from, to := v.Value()
-			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gt: from, Lt: to})
+
+			f64, fok := from.(int64)
+			t64, tok := to.(int64)
+
+			if !fok || !tok {
+				return nil, errors.New("Inside values should be of int64 type")
+			}
+
+			andFilter.Filters = append(andFilter.Filters,
+				&flow.Filter{
+					BoolFilter: &flow.BoolFilter{
+						Op: flow.BoolFilterOp_AND,
+						Filters: []*flow.Filter{
+							&flow.Filter{
+								GtInt64Filter: &flow.GtInt64Filter{Key: k, Value: f64},
+							},
+							&flow.Filter{
+								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: t64},
+							},
+						},
+					},
+				},
+			)
 		case *traversal.OutsideMetadataMatcher:
 			from, to := v.Value()
-			filter.Filters = append(filter.Filters, flow.BoolFilter{
-				Op: flow.AND,
-				Filters: []flow.Filter{
-					flow.RangeFilter{Key: k, Lt: from},
-					flow.RangeFilter{Key: k, Gt: to},
+
+			f64, fok := from.(int64)
+			t64, tok := to.(int64)
+
+			if !fok || !tok {
+				return nil, errors.New("Outside values should be of int64 type")
+			}
+
+			andFilter.Filters = append(andFilter.Filters,
+				&flow.Filter{
+					BoolFilter: &flow.BoolFilter{
+						Op: flow.BoolFilterOp_AND,
+						Filters: []*flow.Filter{
+							&flow.Filter{
+								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: f64},
+							},
+							&flow.Filter{
+								GtInt64Filter: &flow.GtInt64Filter{Key: k, Value: t64},
+							},
+						},
+					},
 				},
-			})
+			)
 		case *traversal.BetweenMetadataMatcher:
 			from, to := v.Value()
-			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gte: from, Lt: to})
+
+			f64, fok := from.(int64)
+			t64, tok := to.(int64)
+
+			if !fok || !tok {
+				return nil, errors.New("Between values should be of int64 type")
+			}
+
+			andFilter.Filters = append(andFilter.Filters,
+				&flow.Filter{
+					BoolFilter: &flow.BoolFilter{
+						Op: flow.BoolFilterOp_AND,
+						Filters: []*flow.Filter{
+							&flow.Filter{
+								GteInt64Filter: &flow.GteInt64Filter{Key: k, Value: f64},
+							},
+							&flow.Filter{
+								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: t64},
+							},
+						},
+					},
+				},
+			)
+		case string:
+			andFilter.Filters = append(andFilter.Filters,
+				&flow.Filter{
+					TermStringFilter: &flow.TermStringFilter{Key: k, Value: v},
+				},
+			)
+		case int64:
+			andFilter.Filters = append(andFilter.Filters,
+				&flow.Filter{
+					TermInt64Filter: &flow.TermInt64Filter{Key: k, Value: v},
+				},
+			)
 		default:
-			filter.Filters = append(filter.Filters, flow.TermFilter{Key: k, Value: v})
+			return nil, fmt.Errorf("value type unknown: %v", v)
 		}
 	}
 
-	return filter, nil
+	return &flow.Filter{BoolFilter: andFilter}, nil
 }
 
 func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
@@ -328,7 +445,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		tv.GraphTraversal.Graph.Unlock()
 
 		var err error
-		var paramsFilter flow.Filter
+		var paramsFilter *flow.Filter
 		if len(s.params) > 0 {
 			if paramsFilter, err = paramsToFilter(s.params...); err != nil {
 				return nil, err

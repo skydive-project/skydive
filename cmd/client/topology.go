@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -60,7 +61,7 @@ func SendGremlinQuery(auth *shttp.AuthenticationOpts, query string) (io.ReadClos
 		return nil, err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return nil, fmt.Errorf("%s: %s", resp.Status, string(data))
 	}

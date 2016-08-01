@@ -44,10 +44,15 @@ type FlowApi struct {
 }
 
 func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	filter := flow.BoolFilter{Op: flow.AND}
+	andFilter := &flow.BoolFilter{Op: flow.BoolFilterOp_AND}
 	for k, v := range r.URL.Query() {
-		filter.Filters = append(filter.Filters, flow.TermFilter{Key: k, Value: v[0]})
+		andFilter.Filters = append(andFilter.Filters,
+			&flow.Filter{
+				TermStringFilter: &flow.TermStringFilter{Key: k, Value: v[0]},
+			},
+		)
 	}
+	filter := &flow.Filter{BoolFilter: andFilter}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	if f.Storage == nil {
@@ -83,7 +88,7 @@ func (f *FlowApi) jsonFlowConversationEthernetPath(EndpointType flow.FlowEndpoin
 	pathMap := make(map[string]int)
 	layerMap := make(map[string]int)
 
-	for _, f := range f.FlowTable.GetFlows().Flows {
+	for _, f := range f.FlowTable.GetFlows(nil).Flows {
 		layerFlow := f.GetStatistics().GetEndpointsType(EndpointType)
 		if layerFlow == nil {
 			continue
@@ -182,7 +187,7 @@ func (f *FlowApi) jsonFlowDiscovery(DiscoType discoType) string {
 
 	pathMap := make(map[string]flow.FlowEndpointStatistics)
 
-	for _, f := range f.FlowTable.GetFlows().Flows {
+	for _, f := range f.FlowTable.GetFlows(nil).Flows {
 		eth := f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
 		if eth == nil {
 			continue

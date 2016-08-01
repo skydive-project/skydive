@@ -23,56 +23,74 @@
 package flow
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"reflect"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
 )
 
-type TermFilterOp int
+func (f *Filter) Eval(value interface{}) bool {
+	if f.BoolFilter != nil {
+		return f.BoolFilter.Eval(value)
+	}
+	if f.TermStringFilter != nil {
+		return f.TermStringFilter.Eval(value)
+	}
+	if f.TermInt64Filter != nil {
+		return f.TermInt64Filter.Eval(value)
+	}
+	if f.GtInt64Filter != nil {
+		return f.GtInt64Filter.Eval(value)
+	}
+	if f.LtInt64Filter != nil {
+		return f.LtInt64Filter.Eval(value)
+	}
+	if f.GteInt64Filter != nil {
+		return f.GteInt64Filter.Eval(value)
+	}
+	if f.LteInt64Filter != nil {
+		return f.LteInt64Filter.Eval(value)
+	}
 
-const (
-	OR TermFilterOp = iota
-	AND
-)
-
-type GetAttr interface {
-	GetAttr(name string) interface{}
+	return true
 }
 
-type Filter interface {
-	String() string
-	Eval(value interface{}) bool
+func (f *Filter) Expression() string {
+	if f.BoolFilter != nil {
+		return f.BoolFilter.Expression()
+	}
+	if f.TermStringFilter != nil {
+		return f.TermStringFilter.Expression()
+	}
+	if f.TermInt64Filter != nil {
+		return f.TermInt64Filter.Expression()
+	}
+	if f.GtInt64Filter != nil {
+		return f.GtInt64Filter.Expression()
+	}
+	if f.LtInt64Filter != nil {
+		return f.LtInt64Filter.Expression()
+	}
+	if f.GteInt64Filter != nil {
+		return f.GteInt64Filter.Expression()
+	}
+	if f.LteInt64Filter != nil {
+		return f.LteInt64Filter.Expression()
+	}
+
+	return ""
 }
 
-type TermFilter struct {
-	Key   string
-	Value interface{}
-}
-
-type RangeFilter struct {
-	Key string
-	Gt  interface{} `json:"Gt,omitempty"`
-	Lt  interface{} `json:"Lt,omitempty"`
-	Gte interface{} `json:"Gte,omitempty"`
-	Lte interface{} `json:"Lte,omitempty"`
-}
-
-type BoolFilter struct {
-	Op      TermFilterOp
-	Filters []Filter
-}
-
-func (b BoolFilter) String() string {
+func (b *BoolFilter) Expression() string {
 	keyword := ""
 	switch b.Op {
-	case OR:
+	case BoolFilterOp_NOT:
+		// FIX not yet implemented for the orientdb backend
+		// http://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
+		return "NOT " + b.Filters[0].String()
+	case BoolFilterOp_OR:
 		keyword = "OR"
-	case AND:
+	case BoolFilterOp_AND:
 		keyword = "AND"
 	}
 	var conditions []string
@@ -82,74 +100,94 @@ func (b BoolFilter) String() string {
 	return strings.Join(conditions, " "+keyword+" ")
 }
 
-func (b BoolFilter) Eval(value interface{}) bool {
-	for _, term := range b.Filters {
-		result := term.Eval(value)
-		if b.Op == AND && !result {
+func (b *BoolFilter) Eval(value interface{}) bool {
+	for _, filter := range b.Filters {
+		result := filter.Eval(value)
+		if b.Op == BoolFilterOp_NOT && !result {
+			return true
+		}
+		if b.Op == BoolFilterOp_AND && !result {
 			return false
-		} else if b.Op == OR && result {
+		} else if b.Op == BoolFilterOp_OR && result {
 			return true
 		}
 	}
-	return b.Op == AND || len(b.Filters) == 0
+	return b.Op == BoolFilterOp_AND || len(b.Filters) == 0
 }
 
-func (r RangeFilter) String() string {
-	var predicates []string
-	if r.Gt != nil {
-		predicates = append(predicates, fmt.Sprintf("%v > %v", r.Key, r.Gt))
-	}
-	if r.Lt != nil {
-		predicates = append(predicates, fmt.Sprintf("%v < %v", r.Key, r.Lt))
-	}
-	if r.Gte != nil {
-		predicates = append(predicates, fmt.Sprintf("%v >= %v", r.Key, r.Gte))
-	}
-	if r.Lte != nil {
-		predicates = append(predicates, fmt.Sprintf("%v <= %v", r.Key, r.Lte))
-	}
-	return strings.Join(predicates, " AND ")
+func (r *GtInt64Filter) Expression() string {
+	return fmt.Sprintf("%v > %v", r.Key, r.Value)
 }
 
-func (r RangeFilter) Eval(value interface{}) bool {
+func (r *LtInt64Filter) Expression() string {
+	return fmt.Sprintf("%v < %v", r.Key, r.Value)
+}
+
+func (r *GteInt64Filter) Expression() string {
+	return fmt.Sprintf("%v >= %v", r.Key, r.Value)
+}
+
+func (r *LteInt64Filter) Expression() string {
+	return fmt.Sprintf("%v <= %v", r.Key, r.Value)
+}
+
+func (r *GtInt64Filter) Eval(value interface{}) bool {
 	field := GetFields(value, strings.Split(r.Key, "."))
 	if field == nil {
 		return false
 	}
 
-	if r.Gt != nil {
-		if result, err := common.CrossTypeCompare(field, r.Gt); err != nil || result != 1 {
-			return false
-		}
-	}
-	if r.Lt != nil {
-		if result, err := common.CrossTypeCompare(field, r.Lt); err != nil || result != -1 {
-			return false
-		}
-	}
-	if r.Gte != nil {
-		if result, err := common.CrossTypeCompare(field, r.Gte); err != nil || result == -1 {
-			return false
-		}
-	}
-	if r.Lte != nil {
-		if result, err := common.CrossTypeCompare(field, r.Lte); err != nil || result == 1 {
-			return false
-		}
+	if result, err := common.CrossTypeCompare(field, r.Value); err != nil || result != 1 {
+		return false
 	}
 
 	return true
 }
 
-func (t TermFilter) String() string {
-	marshal, err := json.Marshal(t.Value)
-	if err != nil {
-		return ""
+func (r *LtInt64Filter) Eval(value interface{}) bool {
+	field := GetFields(value, strings.Split(r.Key, "."))
+	if field == nil {
+		return false
 	}
-	return fmt.Sprintf("%s = %s", t.Key, marshal)
+
+	if result, err := common.CrossTypeCompare(field, r.Value); err != nil || result != -1 {
+		return false
+	}
+
+	return true
 }
 
-func (t TermFilter) Eval(value interface{}) bool {
+func (r *GteInt64Filter) Eval(value interface{}) bool {
+	field := GetFields(value, strings.Split(r.Key, "."))
+	if field == nil {
+		return false
+	}
+
+	if result, err := common.CrossTypeCompare(field, r.Value); err != nil || result == -1 {
+		return false
+	}
+
+	return true
+}
+
+func (r *LteInt64Filter) Eval(value interface{}) bool {
+	field := GetFields(value, strings.Split(r.Key, "."))
+	if field == nil {
+		return false
+	}
+
+	if result, err := common.CrossTypeCompare(field, r.Value); err != nil || result == 1 {
+		return false
+	}
+
+	return true
+}
+
+func (t *TermStringFilter) Expression() string {
+	return fmt.Sprintf(`%s = "%s"`, t.Key, t.Value)
+}
+
+func (t *TermStringFilter) Eval(value interface{}) bool {
 	field := GetFields(value, strings.Split(t.Key, "."))
 	if field == nil {
 		return false
@@ -158,71 +196,15 @@ func (t TermFilter) Eval(value interface{}) bool {
 	return common.CrossTypeEqual(field, t.Value)
 }
 
-func decodeQuery(data interface{}) (result interface{}, err error) {
-	switch t := data.(type) {
-	case map[string]interface{}:
-		filtersValue, hasFilters := t["Filters"]
-		opValue, hasOp := t["Op"]
-		if hasFilters && hasOp {
-			op := int(opValue.(float64))
-			filters, err := decodeQuery(filtersValue)
-			if err != nil {
-				return nil, err
-			}
-
-			return BoolFilter{
-				Op:      TermFilterOp(op),
-				Filters: filters.([]Filter),
-			}, nil
-		}
-
-		_, hasKey := t["Key"]
-		_, hasValue := t["Value"]
-		if hasKey && hasValue {
-			termFilter := TermFilter{}
-			if err := mapstructure.Decode(t, &termFilter); err != nil {
-				return nil, err
-			}
-			return termFilter, nil
-		}
-
-		if hasKey {
-			rangeFilter := RangeFilter{}
-			if err := mapstructure.Decode(t, &rangeFilter); err != nil {
-				return nil, err
-			}
-			return rangeFilter, nil
-		}
-
-	case []interface{}:
-		items := make([]Filter, len(t))
-		for i, item := range t {
-			obj, err := decodeQuery(item)
-			if err != nil {
-				return nil, err
-			}
-			items[i] = obj.(Filter)
-		}
-		return items, nil
-	}
-
-	return nil, fmt.Errorf("Could not decode %+v", data)
+func (t *TermInt64Filter) Expression() string {
+	return fmt.Sprintf(`%s = %d`, t.Key, t.Value)
 }
 
-func DecodeFilter(reader io.Reader) (Filter, error) {
-	var mapInterface map[string]interface{}
-	jsonDecoder := json.NewDecoder(reader)
-	err := jsonDecoder.Decode(&mapInterface)
-	if err != nil {
-		return nil, err
+func (t *TermInt64Filter) Eval(value interface{}) bool {
+	field := GetFields(value, strings.Split(t.Key, "."))
+	if field == nil {
+		return false
 	}
-	obj, err := decodeQuery(mapInterface["Obj"])
-	if err != nil {
-		return nil, err
-	}
-	filter, ok := obj.(Filter)
-	if !ok {
-		return nil, fmt.Errorf("Query filter has wrong type : %+v", reflect.TypeOf(obj))
-	}
-	return filter, nil
+
+	return common.CrossTypeEqual(field, t.Value)
 }

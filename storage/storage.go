@@ -30,41 +30,52 @@ import (
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(filter flow.Filter) ([]*flow.Flow, error)
+	SearchFlows(filter *flow.Filter) ([]*flow.Flow, error)
 	Stop()
 }
 
-func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNodeIDMap, filter flow.Filter) ([]*flow.Flow, error) {
-	andFilter := flow.BoolFilter{
-		Op: flow.AND,
-		Filters: []flow.Filter{
-			flow.RangeFilter{
-				Key: "Statistics.Start",
-				Lte: context.Time.Unix(),
+func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNodeIDMap, filter *flow.Filter) ([]*flow.Flow, error) {
+	now := context.Time.Unix()
+	andFilter := &flow.BoolFilter{
+		Op: flow.BoolFilterOp_AND,
+		Filters: []*flow.Filter{
+			{
+				LteInt64Filter: &flow.LteInt64Filter{
+					Key:   "Statistics.Start",
+					Value: now,
+				},
 			},
-			flow.RangeFilter{
-				Key: "Statistics.Last",
-				Gte: context.Time.Unix(),
+			{
+				GteInt64Filter: &flow.GteInt64Filter{
+					Key:   "Statistics.Last",
+					Value: now,
+				},
 			},
 		},
 	}
 
 	if len(hnmap) > 0 {
-		nodeFilter := flow.BoolFilter{Op: flow.OR}
+		nodeFilter := &flow.BoolFilter{Op: flow.BoolFilterOp_OR}
 		for _, ids := range hnmap {
 			for _, id := range ids {
 				nodeFilter.Filters = append(nodeFilter.Filters,
-					flow.TermFilter{Key: "ProbeNodeUUID", Value: id},
-					flow.TermFilter{Key: "IfSrcNodeUUID", Value: id},
-					flow.TermFilter{Key: "IfDstNodeUUID", Value: id})
+					&flow.Filter{
+						TermStringFilter: &flow.TermStringFilter{Key: "ProbeNodeUUID", Value: id},
+					},
+					&flow.Filter{
+						TermStringFilter: &flow.TermStringFilter{Key: "IfSrcNodeUUID", Value: id},
+					},
+					&flow.Filter{
+						TermStringFilter: &flow.TermStringFilter{Key: "IfDstNodeUUID", Value: id},
+					})
 			}
 		}
-		andFilter.Filters = append(andFilter.Filters, nodeFilter)
+		andFilter.Filters = append(andFilter.Filters, &flow.Filter{BoolFilter: nodeFilter})
 	}
 
 	if filter != nil {
 		andFilter.Filters = append(andFilter.Filters, filter)
 	}
 
-	return s.SearchFlows(andFilter)
+	return s.SearchFlows(&flow.Filter{BoolFilter: andFilter})
 }

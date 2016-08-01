@@ -23,33 +23,30 @@
 package flow
 
 import (
-	"encoding/json"
 	"fmt"
+	"net/http"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/golang/protobuf/proto"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
+// TableQuery contains a type and a query obj as an array of bytes.
+// The query can be encoded in different ways according the type.
 type TableQuery struct {
-	Obj interface{}
+	Type string
+	Obj  []byte
 }
 
+// TableReply is the response to a TableQuery containing a Status and an array
+// of replies that can be encoded in many ways, ex: json, protobuf.
 type TableReply struct {
 	Status int
-	Obj    json.RawMessage
-}
-
-type FlowSearchQuery struct {
-	Filter
-}
-
-type FlowSearchReply struct {
-	FlowSet *FlowSet
+	Obj    [][]byte
 }
 
 type sortByLast []*Flow
@@ -127,13 +124,13 @@ func (ft *Table) GetTime() int64 {
 	return atomic.LoadInt64(&ft.tableClock)
 }
 
-func (ft *Table) GetFlows(filters ...Filter) *FlowSet {
+func (ft *Table) GetFlows(filter *Filter) *FlowSet {
 	ft.RLock()
 	defer ft.RUnlock()
 
 	flowset := NewFlowSet()
 	for _, f := range ft.table {
-		if len(filters) == 0 || filters[0].Eval(f) {
+		if filter == nil || filter.Eval(f) {
 			if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
 				flowset.Start = f.Statistics.Start
 			}
@@ -294,16 +291,22 @@ func (ft *Table) Window(start, end int64) *FlowSet {
 	flowset.End = end
 
 	if end >= start {
-		filter := BoolFilter{
-			Op: AND,
-			Filters: []Filter{
-				RangeFilter{
-					Key: "Statistics.Start",
-					Lt:  end,
-				},
-				RangeFilter{
-					Key: "Statistics.Last",
-					Gte: start,
+		filter := &Filter{
+			BoolFilter: &BoolFilter{
+				Op: BoolFilterOp_AND,
+				Filters: []*Filter{
+					{
+						LtInt64Filter: &LtInt64Filter{
+							Key:   "Statistics.Start",
+							Value: end,
+						},
+					},
+					{
+						GteInt64Filter: &GteInt64Filter{
+							Key:   "Statistics.Last",
+							Value: start,
+						},
+					},
 				},
 			},
 		}
@@ -332,46 +335,50 @@ func (s sortByLast) Less(i, j int) bool {
 	return s[i].GetStatistics().Last > s[j].GetStatistics().Last
 }
 
-func (ft *Table) onFlowSearchQueryMessage(o interface{}) (*FlowSearchReply, int) {
-	var fq FlowSearchQuery
-	err := mapstructure.Decode(o, &fq)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to decode flow search message %v", o)
-		return nil, 500
-	}
-
-	flowset := ft.GetFlows(fq.Filter)
+func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchReply, int) {
+	flowset := ft.GetFlows(fsq.Filter)
 	if len(flowset.Flows) == 0 {
 		return &FlowSearchReply{
 			FlowSet: flowset,
-		}, 404
+		}, http.StatusNotFound
 	}
 
 	sort.Sort(sortByLast(flowset.Flows))
 
 	return &FlowSearchReply{
 		FlowSet: flowset,
-	}, 200
+	}, http.StatusOK
 }
 
-func (ft *Table) onQuery(q *TableQuery) *TableReply {
-	var obj interface{}
-	status := 500
-
-	switch q.Obj.(type) {
-	case *FlowSearchQuery:
-		obj, status = ft.onFlowSearchQueryMessage(q.Obj)
+func (ft *Table) onQuery(query *TableQuery) *TableReply {
+	reply := &TableReply{
+		Status: http.StatusBadRequest,
+		Obj:    make([][]byte, 0),
 	}
 
-	// return the json version here to avoid touching the flow outside this
-	// goroutine leading in race
-	b, _ := json.Marshal(obj)
-	raw := json.RawMessage(b)
+	switch query.Type {
+	case "FlowSearchQuery":
+		var fsq FlowSearchQuery
+		if err := proto.Unmarshal(query.Obj, &fsq); err != nil {
+			logging.GetLogger().Errorf("Unable to decode the flow search query: %s", err.Error())
+			break
+		}
 
-	return &TableReply{
-		Status: status,
-		Obj:    raw,
+		fsr, status := ft.onFlowSearchQueryMessage(&fsq)
+		if status != http.StatusOK {
+			reply.Status = status
+			break
+		}
+		pb, _ := proto.Marshal(fsr)
+
+		// TableReply returns an array of replies so in that case an array of
+		// protobuf replies
+		reply.Obj = append(reply.Obj, pb)
+
+		reply.Status = http.StatusOK
 	}
+
+	return reply
 }
 
 func (ft *Table) Query(query *TableQuery) *TableReply {

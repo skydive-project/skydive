@@ -105,7 +105,7 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *OrientDBStorage) SearchFlows(filter flow.Filter) ([]*flow.Flow, error) {
+func (c *OrientDBStorage) SearchFlows(filter *flow.Filter) ([]*flow.Flow, error) {
 	sql := "SELECT FROM Flow"
 	if conditional := filter.String(); conditional != "" {
 		sql += " WHERE " + conditional

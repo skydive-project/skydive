@@ -23,6 +23,7 @@
 package http
 
 import (
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -81,7 +82,7 @@ func (c *WSAsyncClient) sendMessage(m string) {
 	c.messages <- m
 }
 
-func (c *WSAsyncClient) SendWSMessage(m WSMessage) {
+func (c *WSAsyncClient) SendWSMessage(m *WSMessage) {
 	c.sendMessage(m.String())
 }
 
@@ -172,8 +173,8 @@ func (c *WSAsyncClient) connect() {
 				logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
 			}
 		case m := <-c.read:
-			msg, err := UnmarshalWSMessage(m)
-			if err != nil {
+			var msg WSMessage
+			if err := json.Unmarshal(m, &msg); err != nil {
 				logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
 			} else {
 				c.RLock()
@@ -202,9 +203,7 @@ func (c *WSAsyncClient) Connect() {
 				}
 			}
 
-			if c.running.Load() == true {
-				time.Sleep(1 * time.Second)
-			}
+			time.Sleep(1 * time.Second)
 		}
 	}()
 }

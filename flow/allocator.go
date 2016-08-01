@@ -23,7 +23,7 @@
 package flow
 
 import (
-	"encoding/json"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -47,29 +47,21 @@ func (a *TableAllocator) Flush() {
 }
 
 func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableReply) *TableReply {
-	switch query.Obj.(type) {
-	case *FlowSearchQuery:
-		flowSearchReplies := make([]json.RawMessage, 0)
-		for _, reply := range replies {
-			if reply.Status != 200 {
-				continue
-			}
-
-			flowSearchReplies = append(flowSearchReplies, reply.Obj)
-		}
-
-		b, _ := json.Marshal(flowSearchReplies)
-		raw := json.RawMessage(b)
-
-		return &TableReply{
-			Status: 200,
-			Obj:    raw,
-		}
+	reply := &TableReply{
+		Status: http.StatusOK,
+		Obj:    make([][]byte, 0),
 	}
 
-	return &TableReply{
-		Status: 500,
+	for _, r := range replies {
+		if r.Status != http.StatusOK {
+			// FIX, 207 => http.StatusMultiStatus when moving to >= 1.7
+			reply.Status = 207
+			continue
+		}
+		reply.Obj = append(reply.Obj, r.Obj...)
 	}
+
+	return reply
 }
 
 func (a *TableAllocator) QueryTable(query *TableQuery) *TableReply {

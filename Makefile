@@ -1,7 +1,7 @@
 # really Basic Makefile for Skydive
 export GO15VENDOREXPERIMENT=1
 
-PROTO_FILES=flow/flow.proto
+PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 VERBOSE_FLAGS?=-v
 VERBOSE?=true
 ifeq ($(VERBOSE), false)

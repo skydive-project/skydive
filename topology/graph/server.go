@@ -114,17 +114,8 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 
 	switch msgType {
 	case "SyncRequest":
-		r, _ := json.Marshal(s.Graph.WithContext(obj.(GraphContext)))
-		raw := json.RawMessage(r)
-
-		reply := shttp.WSMessage{
-			Namespace: Namespace,
-			Type:      "SyncReply",
-			Obj:       &raw,
-		}
-
+		reply := shttp.NewWSMessage(Namespace, "SyncReply", s.Graph.WithContext(obj.(GraphContext)))
 		c.SendWSMessage(reply)
-
 	case "SubGraphDeleted":
 		n := obj.(*Node)
 
@@ -164,51 +155,27 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 }
 
 func (s *GraphServer) OnNodeUpdated(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      "NodeUpdated",
-		Obj:       n.JsonRawMessage(),
-	})
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "NodeUpdated", n))
 }
 
 func (s *GraphServer) OnNodeAdded(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      "NodeAdded",
-		Obj:       n.JsonRawMessage(),
-	})
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "NodeAdded", n))
 }
 
 func (s *GraphServer) OnNodeDeleted(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      "NodeDeleted",
-		Obj:       n.JsonRawMessage(),
-	})
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "NodeDeleted", n))
 }
 
 func (s *GraphServer) OnEdgeUpdated(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      "EdgeUpdated",
-		Obj:       e.JsonRawMessage(),
-	})
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "EdgeUpdated", e))
 }
 
 func (s *GraphServer) OnEdgeAdded(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      "EdgeAdded",
-		Obj:       e.JsonRawMessage(),
-	})
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "EdgeAdded", e))
 }
 
 func (s *GraphServer) OnEdgeDeleted(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      "EdgeDeleted",
-		Obj:       e.JsonRawMessage(),
-	})
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "EdgeDeleted", e))
 }
 
 func NewServer(g *Graph, server *shttp.WSServer) *GraphServer {

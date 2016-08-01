@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -71,42 +72,83 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *ElasticSearchStorage) formatFilter(filter flow.Filter) map[string]interface{} {
-	switch f := filter.(type) {
-	case flow.BoolFilter:
+func (c *ElasticSearchStorage) formatFilter(filter *flow.Filter) map[string]interface{} {
+	if f := filter.BoolFilter; f != nil {
 		keyword := ""
 		switch f.Op {
-		case flow.OR:
-			keyword = "or"
-		case flow.AND:
-			keyword = "and"
+		case flow.BoolFilterOp_NOT:
+			keyword = "must_not"
+		case flow.BoolFilterOp_OR:
+			keyword = "should"
+		case flow.BoolFilterOp_AND:
+			keyword = "must"
 		}
 		filters := []interface{}{}
 		for _, item := range f.Filters {
 			filters = append(filters, c.formatFilter(item))
 		}
 		return map[string]interface{}{
-			keyword: filters,
+			"bool": map[string]interface{}{
+				keyword: filters,
+			},
 		}
-	case flow.TermFilter:
+	}
+
+	if f := filter.TermStringFilter; f != nil {
 		return map[string]interface{}{
-			"term": map[string]interface{}{
+			"term": map[string]string{
 				f.Key: f.Value,
 			},
 		}
-	case flow.RangeFilter:
+	}
+	if f := filter.TermInt64Filter; f != nil {
+		return map[string]interface{}{
+			"term": map[string]int64{
+				f.Key: f.Value,
+			},
+		}
+	}
+
+	if f := filter.GtInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
 				f.Key: &struct {
-					Gt  interface{} `json:"gt,omitempty"`
-					Lt  interface{} `json:"lt,omitempty"`
+					Gt interface{} `json:"gt,omitempty"`
+				}{
+					Gt: f.Value,
+				},
+			},
+		}
+	}
+	if f := filter.LtInt64Filter; f != nil {
+		return map[string]interface{}{
+			"range": map[string]interface{}{
+				f.Key: &struct {
+					Lt interface{} `json:"lt,omitempty"`
+				}{
+					Lt: f.Value,
+				},
+			},
+		}
+	}
+	if f := filter.GteInt64Filter; f != nil {
+		return map[string]interface{}{
+			"range": map[string]interface{}{
+				f.Key: &struct {
 					Gte interface{} `json:"gte,omitempty"`
+				}{
+					Gte: f.Value,
+				},
+			},
+		}
+	}
+	if f := filter.LteInt64Filter; f != nil {
+		return map[string]interface{}{
+			"range": map[string]interface{}{
+				f.Key: &struct {
 					Lte interface{} `json:"lte,omitempty"`
 				}{
-					Gt:  f.Gt,
-					Lt:  f.Lt,
-					Gte: f.Gte,
-					Lte: f.Lte,
+					Lte: f.Value,
 				},
 			},
 		}
@@ -114,7 +156,7 @@ func (c *ElasticSearchStorage) formatFilter(filter flow.Filter) map[string]inter
 	return nil
 }
 
-func (c *ElasticSearchStorage) SearchFlows(filter flow.Filter) ([]*flow.Flow, error) {
+func (c *ElasticSearchStorage) SearchFlows(filter *flow.Filter) ([]*flow.Flow, error) {
 	if c.started.Load() != true {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -178,19 +220,19 @@ func (c *ElasticSearchStorage) initialize() error {
 	indexPath := fmt.Sprintf("/skydive_v%d", indexVersion)
 
 	code, _, _ := c.request("GET", indexPath, "", "")
-	if code == 200 {
+	if code == http.StatusOK {
 		return nil
 	}
 
 	code, _, _ = c.request("PUT", indexPath, "", mapping)
-	if code != 200 {
+	if code != http.StatusOK {
 		return errors.New("Unable to create the skydive index: " + strconv.FormatInt(int64(code), 10))
 	}
 
 	aliases := `{"actions": [`
 
 	code, data, _ := c.request("GET", "/_aliases", "", "")
-	if code == 200 {
+	if code == http.StatusOK {
 		var current map[string]interface{}
 
 		err := json.Unmarshal(data, &current)
@@ -210,7 +252,7 @@ func (c *ElasticSearchStorage) initialize() error {
 	aliases += fmt.Sprintf(add, indexVersion)
 
 	code, _, _ = c.request("POST", "/_aliases", "", aliases)
-	if code != 200 {
+	if code != http.StatusOK {
 		return errors.New("Unable to create an alias to the skydive index: " + strconv.FormatInt(int64(code), 10))
 	}
 

@@ -23,6 +23,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -127,8 +128,8 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 	g.Lock()
 	defer g.Unlock()
 
-	msg, err := shttp.UnmarshalWSMessage(m)
-	if err != nil {
+	var msg shttp.WSMessage
+	if err := json.Unmarshal(m, &msg); err != nil {
 		return err
 	}
 

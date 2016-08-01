@@ -80,7 +80,7 @@ func (g *gremlinServerParser) IsSuccess(b []byte) (bool, error) {
 		return false, err
 	}
 
-	if resp.Status.Code != 200 {
+	if resp.Status.Code != http.StatusOK {
 		return false, fmt.Errorf("Gremlin server response error: %d, %s", resp.Status.Code, resp.Status.Message)
 	}
 
@@ -94,7 +94,7 @@ func (g *gremlinServerParser) Results(b []byte) (results, error) {
 		return nil, err
 	}
 
-	if resp.Status.Code != 200 {
+	if resp.Status.Code != http.StatusOK {
 		return nil, fmt.Errorf("Gremlin server response error: %d, %s", resp.Status.Code, resp.Status.Message)
 	}
 
@@ -220,7 +220,7 @@ func (c *restclient) query(q string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("gremlin request error %s, %d, %s", q, resp.StatusCode, resp.Status)
 	}
 

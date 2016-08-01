@@ -7,12 +7,27 @@ Package flow is a generated protocol buffer package.
 
 It is generated from these files:
 	flow/flow.proto
+	flow/set.proto
+	flow/request.proto
 
 It has these top-level messages:
 	FlowEndpointStatistics
 	FlowEndpointsStatistics
 	FlowStatistics
 	Flow
+	FlowSet
+	TermStringFilter
+	TermInt64Filter
+	NeStringFilter
+	NeInt64Filter
+	GtInt64Filter
+	LtInt64Filter
+	GteInt64Filter
+	LteInt64Filter
+	Filter
+	BoolFilter
+	FlowSearchQuery
+	FlowSearchReply
 */
 package flow
 

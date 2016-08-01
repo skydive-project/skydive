@@ -23,7 +23,6 @@
 package flow
 
 import (
-	"bytes"
 	"encoding/json"
 
 	shttp "github.com/skydive-project/skydive/http"
@@ -40,35 +39,26 @@ type TableServer struct {
 	TableAllocator *TableAllocator
 }
 
+func (s *TableServer) OnTableQuery(msg shttp.WSMessage) {
+	var query TableQuery
+	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
+		logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
+		return
+	}
+
+	reply := msg.Reply(s.TableAllocator.QueryTable(&query))
+	s.WSAsyncClient.SendWSMessage(reply)
+}
+
 func (s *TableServer) OnMessage(msg shttp.WSMessage) {
 	if msg.Namespace != Namespace {
 		return
 	}
 
-	var query TableQuery
-
-	// decode query obj depending on the msg type
 	switch msg.Type {
-	case "FlowSearchQuery":
-		filter, err := DecodeFilter(bytes.NewReader([]byte(*msg.Obj)))
-		if err != nil {
-			logging.GetLogger().Errorf("Unable to decode search filters %v (%s)", msg, err.Error())
-			return
-		}
-		query.Obj = &FlowSearchQuery{Filter: filter}
+	case "TableQuery":
+		s.OnTableQuery(msg)
 	}
-
-	b, _ := json.Marshal(s.TableAllocator.QueryTable(&query))
-	raw := json.RawMessage(b)
-
-	reply := shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      msg.Type,
-		UUID:      msg.UUID,
-		Obj:       &raw,
-	}
-
-	s.WSAsyncClient.SendWSMessage(reply)
 }
 
 func NewServer(allocator *TableAllocator, client *shttp.WSAsyncClient) *TableServer {

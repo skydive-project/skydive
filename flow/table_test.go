@@ -126,12 +126,20 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	GenerateTestFlows(t, ft, 1, "probe1")
 	GenerateTestFlows(t, ft, 2, "probe2")
 
-	filters := BoolFilter{
-		Op: OR,
-		Filters: []Filter{
-			TermFilter{Key: "ProbeNodeUUID", Value: "probe1"},
-			TermFilter{Key: "IfSrcNodeUUID", Value: "probe1"},
-			TermFilter{Key: "IfDstNodeUUID", Value: "probe1"},
+	filters := &Filter{
+		BoolFilter: &BoolFilter{
+			Op: BoolFilterOp_OR,
+			Filters: []*Filter{
+				&Filter{
+					TermStringFilter: &TermStringFilter{Key: "ProbeNodeUUID", Value: "probe1"},
+				},
+				&Filter{
+					TermStringFilter: &TermStringFilter{Key: "IfSrcNodeUUID", Value: "probe1"},
+				},
+				&Filter{
+					TermStringFilter: &TermStringFilter{Key: "IfDstNodeUUID", Value: "probe1"},
+				},
+			},
 		},
 	}
 
@@ -247,7 +255,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 	UUIDS := make(map[string]bool)
 	TRIDS := make(map[string]bool)
 
-	for _, f := range ft1.GetFlows().Flows {
+	for _, f := range ft1.GetFlows(nil).Flows {
 		UUIDS[f.UUID] = true
 		TRIDS[f.TrackingID] = true
 	}
@@ -255,7 +263,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 	ft2 := NewTable(nil, nil)
 	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe")
 
-	for _, f := range ft2.GetFlows().Flows {
+	for _, f := range ft2.GetFlows(nil).Flows {
 		if _, found := UUIDS[f.UUID]; !found {
 			t.Errorf("Flow UUID should support symmetrically, not found : %s", f.UUID)
 		}

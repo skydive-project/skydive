@@ -37,6 +37,10 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+type GetAttr interface {
+	GetAttr(name string) interface{}
+}
+
 type FlowProbeNodeSetter interface {
 	SetProbeNode(flow *Flow) bool
 }
@@ -178,10 +182,9 @@ componentLoop:
 				}
 			}
 			return nil
-		} else {
-			intf = GetAttribute(intf, component)
 		}
 
+		intf = GetAttribute(intf, component)
 		if intf == nil {
 			return nil
 		}

@@ -114,7 +114,7 @@ func (c *CrudClient) List(resource string, values interface{}) error {
 		return err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to retrieve list of %s: %s", resource, resp.Status))
 	}
 
@@ -128,7 +128,7 @@ func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 		return err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to retrieve %s: %s", resource, resp.Status))
 	}
 
@@ -150,7 +150,7 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 		return err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to create %s: %s", resource, resp.Status))
 	}
 
@@ -171,7 +171,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 		return err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to update %s: %s", resource, resp.Status))
 	}
 
@@ -186,7 +186,7 @@ func (c *CrudClient) Delete(resource string, id string) error {
 		return err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to delete %s: %s", resource, resp.Status))
 	}
 

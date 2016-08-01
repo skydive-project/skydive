@@ -24,10 +24,11 @@ package flow
 
 import (
 	"encoding/json"
+	"net/http"
 	"sync"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
+	"github.com/golang/protobuf/proto"
 
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -59,19 +60,28 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uuids []string, filter Filter) {
-	terms := make([]Filter, len(uuids)*3)
+func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uuids []string, filter *Filter) {
+	terms := make([]*Filter, len(uuids)*3)
 	for i, uuid := range uuids {
-		terms[i*3] = TermFilter{Key: "ProbeNodeUUID", Value: uuid}
-		terms[i*3+1] = TermFilter{Key: "IfSrcNodeUUID", Value: uuid}
-		terms[i*3+2] = TermFilter{Key: "IfDstNodeUUID", Value: uuid}
+		terms[i*3] = &Filter{
+			TermStringFilter: &TermStringFilter{Key: "ProbeNodeUUID", Value: uuid},
+		}
+		terms[i*3+1] = &Filter{
+			TermStringFilter: &TermStringFilter{Key: "IfSrcNodeUUID", Value: uuid},
+		}
+		terms[i*3+2] = &Filter{
+			TermStringFilter: &TermStringFilter{Key: "IfDstNodeUUID", Value: uuid},
+		}
 	}
-	andFilter := BoolFilter{
-		Op: AND,
-		Filters: []Filter{
-			BoolFilter{
-				Op:      OR,
-				Filters: terms,
+
+	andFilter := &BoolFilter{
+		Op: BoolFilterOp_AND,
+		Filters: []*Filter{
+			{
+				BoolFilter: &BoolFilter{
+					Op:      BoolFilterOp_OR,
+					Filters: terms,
+				},
 			},
 		},
 	}
@@ -80,34 +90,32 @@ func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uui
 		andFilter.Filters = append(andFilter.Filters, filter)
 	}
 
-	tq := TableQuery{Obj: andFilter}
-	b, _ := json.Marshal(tq)
-	raw := json.RawMessage(b)
-
-	u, _ := uuid.NewV4()
-
-	msg := shttp.WSMessage{
-		Namespace: Namespace,
-		Type:      "FlowSearchQuery",
-		UUID:      u.String(),
-		Obj:       &raw,
+	queryFilter := &Filter{
+		BoolFilter: andFilter,
 	}
+	obj, _ := proto.Marshal(&FlowSearchQuery{Filter: queryFilter})
+
+	tq := TableQuery{
+		Type: "FlowSearchQuery",
+		Obj:  obj,
+	}
+
+	msg := shttp.NewWSMessage(Namespace, "TableQuery", tq)
 
 	ch := make(chan *json.RawMessage)
 	defer close(ch)
 
 	f.replyChanMutex.Lock()
-	f.replyChan[u.String()] = ch
+	f.replyChan[msg.UUID] = ch
 	f.replyChanMutex.Unlock()
 
 	defer func() {
 		f.replyChanMutex.Lock()
-		delete(f.replyChan, u.String())
+		delete(f.replyChan, msg.UUID)
 		f.replyChanMutex.Unlock()
 	}()
 
-	ok := f.WSServer.SendWSMessageTo(msg, host)
-	if !ok {
+	if !f.WSServer.SendWSMessageTo(msg, host) {
 		logging.GetLogger().Errorf("Unable to send message to agent: %s", host)
 		flowset <- NewFlowSet()
 		return
@@ -115,28 +123,26 @@ func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uui
 
 	select {
 	case raw := <-ch:
-		reply := TableReply{}
-		err := json.Unmarshal([]byte(*raw), &reply)
-		if err != nil {
+		var reply TableReply
+		if err := json.Unmarshal([]byte(*raw), &reply); err != nil {
 			logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
 			break
 		}
 
-		if reply.Status != 200 {
+		if reply.Status != http.StatusOK {
 			logging.GetLogger().Errorf("Error %d TableReply from: %s", reply.Status, host)
 			break
 		}
 
-		fsr := []FlowSearchReply{}
-		err = json.Unmarshal(reply.Obj, &fsr)
-		if err != nil {
-			logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
-			break
-		}
-
 		fs := NewFlowSet()
-		for _, reply := range fsr {
-			fs.Merge(reply.FlowSet)
+		for _, b := range reply.Obj {
+			var fsr FlowSearchReply
+			if err := proto.Unmarshal(b, &fsr); err != nil {
+				logging.GetLogger().Errorf("Unable to decode flow search reply from: %s", host)
+				continue
+			}
+
+			fs.Merge(fsr.FlowSet)
 		}
 		flowset <- fs
 
@@ -148,7 +154,7 @@ func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uui
 	flowset <- NewFlowSet()
 }
 
-func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter Filter) (*FlowSet, error) {
+func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter *Filter) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
 	for host, uuids := range hnmap {

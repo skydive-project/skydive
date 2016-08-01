@@ -28,12 +28,6 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
-type FlowSet struct {
-	Flows []*Flow
-	Start int64
-	End   int64
-}
-
 type FlowSetBandwidth struct {
 	ABpackets uint64
 	ABbytes   uint64
@@ -89,7 +83,7 @@ func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
 	return
 }
 
-func (fs *FlowSet) Filter(filter Filter) *FlowSet {
+func (fs *FlowSet) Filter(filter *Filter) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range fs.Flows {
 		if filter == nil || filter.Eval(f) {

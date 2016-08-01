@@ -31,6 +31,7 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
+	"github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
@@ -39,7 +40,8 @@ import (
 const (
 	Namespace      = "WSServer"
 	writeWait      = 10 * time.Second
-	maxMessageSize = 1024 * 1024
+	maxMessages    = 1024
+	maxMessageSize = 0
 )
 
 type WSClient struct {
@@ -91,13 +93,36 @@ func (g WSMessage) String() string {
 	return string(g.Marshal())
 }
 
-func UnmarshalWSMessage(b []byte) (WSMessage, error) {
-	msg := WSMessage{}
-	if err := json.Unmarshal(b, &msg); err != nil {
-		return msg, err
+func (g *WSMessage) Reply(v interface{}) *WSMessage {
+	b, _ := json.Marshal(v)
+	raw := json.RawMessage(b)
+
+	return &WSMessage{
+		Namespace: g.Namespace,
+		Type:      g.Type,
+		UUID:      g.UUID,
+		Obj:       &raw,
+	}
+}
+
+func NewWSMessage(ns string, tp string, v interface{}, uuids ...string) *WSMessage {
+	var u string
+	if len(uuids) != 0 {
+		u = uuids[0]
+	} else {
+		v4, _ := uuid.NewV4()
+		u = v4.String()
 	}
 
-	return msg, nil
+	b, _ := json.Marshal(v)
+	raw := json.RawMessage(b)
+
+	return &WSMessage{
+		Namespace: ns,
+		Type:      tp,
+		UUID:      u,
+		Obj:       &raw,
+	}
 }
 
 func (d *DefaultWSServerEventHandler) OnMessage(c *WSClient, m WSMessage) {
@@ -109,13 +134,13 @@ func (d *DefaultWSServerEventHandler) OnRegisterClient(c *WSClient) {
 func (d *DefaultWSServerEventHandler) OnUnregisterClient(c *WSClient) {
 }
 
-func (c *WSClient) SendWSMessage(msg WSMessage) {
+func (c *WSClient) SendWSMessage(msg *WSMessage) {
 	c.send <- []byte(msg.String())
 }
 
 func (c *WSClient) processMessage(m []byte) {
-	msg, err := UnmarshalWSMessage(m)
-	if err != nil {
+	var msg WSMessage
+	if err := json.Unmarshal(m, &msg); err != nil {
 		logging.GetLogger().Errorf("WSServer: Unable to parse the event %s: %s", msg, err.Error())
 		return
 	}
@@ -159,6 +184,9 @@ func (c *WSClient) readPump() {
 	for {
 		_, m, err := c.conn.ReadMessage()
 		if err != nil {
+			if err != websocket.ErrCloseSent {
+				logging.GetLogger().Errorf("Error while reading websocket from %s: %s", c.host, err.Error())
+			}
 			break
 		}
 
@@ -204,7 +232,7 @@ func (c *WSClient) write(mt int, message []byte) error {
 	return c.conn.WriteMessage(mt, message)
 }
 
-func (s *WSServer) SendWSMessageTo(msg WSMessage, host string) bool {
+func (s *WSServer) SendWSMessageTo(msg *WSMessage, host string) bool {
 	for c := range s.clients {
 		if c.host == host {
 			c.SendWSMessage(msg)
@@ -292,8 +320,8 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	}
 
 	c := &WSClient{
-		read:   make(chan []byte, maxMessageSize),
-		send:   make(chan []byte, maxMessageSize),
+		read:   make(chan []byte, maxMessages),
+		send:   make(chan []byte, maxMessages),
 		conn:   conn,
 		server: s,
 		host:   hostID,
@@ -321,7 +349,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	wg.Wait()
 }
 
-func (s *WSServer) BroadcastWSMessage(msg WSMessage) {
+func (s *WSServer) BroadcastWSMessage(msg *WSMessage) {
 	s.broadcast <- msg.String()
 }
 

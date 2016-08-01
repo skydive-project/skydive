@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/skydive-project/skydive/api"
 	cmd "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/flow"
@@ -129,7 +130,7 @@ func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *TestStorage) SearchFlows(filter flow.Filter) ([]*flow.Flow, error) {
+func (s *TestStorage) SearchFlows(filter *flow.Filter) ([]*flow.Flow, error) {
 	return nil, nil
 }
 
@@ -618,32 +619,42 @@ func TestFlowQuery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	query := &flow.TableQuery{
-		Obj: &flow.FlowSearchQuery{
-			flow.BoolFilter{
-				Op: flow.OR,
-				Filters: []flow.Filter{
-					flow.TermFilter{Key: "ProbeNodeUUID", Value: "probe2"},
-					flow.TermFilter{Key: "IfSrcNodeUUID", Value: "probe2"},
-					flow.TermFilter{Key: "IfDstNodeUUID", Value: "probe2"},
+	obj, _ := proto.Marshal(&flow.FlowSearchQuery{
+		Filter: &flow.Filter{
+			BoolFilter: &flow.BoolFilter{
+				Op: flow.BoolFilterOp_OR,
+				Filters: []*flow.Filter{
+					&flow.Filter{
+						TermStringFilter: &flow.TermStringFilter{Key: "ProbeNodeUUID", Value: "probe2"},
+					},
+					&flow.Filter{
+						TermStringFilter: &flow.TermStringFilter{Key: "IfSrcNodeUUID", Value: "probe2"},
+					},
+					&flow.Filter{
+						TermStringFilter: &flow.TermStringFilter{Key: "IfDstNodeUUID", Value: "probe2"},
+					},
 				},
 			},
 		},
+	})
+
+	query := &flow.TableQuery{
+		Type: "FlowSearchQuery",
+		Obj:  obj,
 	}
 	reply := al.QueryTable(query)
 
 	ft1.Stop()
 	ft2.Stop()
 
-	fsr := []flow.FlowSearchReply{}
-	err := json.Unmarshal(reply.Obj, &fsr)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
 	flowset := flow.NewFlowSet()
-	for _, reply := range fsr {
-		flowset.Merge(reply.FlowSet)
+	for _, r := range reply.Obj {
+		var fsr flow.FlowSearchReply
+		if err := proto.Unmarshal(r, &fsr); err != nil {
+			t.Fatal(err.Error())
+		}
+
+		flowset.Merge(fsr.FlowSet)
 	}
 
 	if len(flowset.Flows) != len(flows1)+len(flows2) {
