@@ -478,6 +478,15 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 				return nil, fmt.Errorf("Two parameters expected with INSIDE: %v", insideParams)
 			}
 			params = append(params, Inside(insideParams[0], insideParams[1]))
+		case OUTSIDE:
+			outsideParams, err := p.parseStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(outsideParams) != 2 {
+				return nil, fmt.Errorf("Two parameters expected with OUTSIDE: %v", outsideParams)
+			}
+			params = append(params, Outside(outsideParams[0], outsideParams[1]))
 		case BETWEEN:
 			betweenParams, err := p.parseStepParams()
 			if err != nil {

@@ -134,6 +134,15 @@ func paramsToFilter(s ...interface{}) (flow.Filter, error) {
 		case *traversal.InsideMetadataMatcher:
 			from, to := v.Value()
 			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gt: from, Lt: to})
+		case *traversal.OutsideMetadataMatcher:
+			from, to := v.Value()
+			filter.Filters = append(filter.Filters, flow.BoolFilter{
+				Op: flow.AND,
+				Filters: []flow.Filter{
+					flow.RangeFilter{Key: k, Lt: from},
+					flow.RangeFilter{Key: k, Gt: to},
+				},
+			})
 		case *traversal.BetweenMetadataMatcher:
 			from, to := v.Value()
 			filter.Filters = append(filter.Filters, flow.RangeFilter{Key: k, Gte: from, Lt: to})

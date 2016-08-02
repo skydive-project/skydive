@@ -222,6 +222,30 @@ func Inside(from, to interface{}) *InsideMetadataMatcher {
 	return &InsideMetadataMatcher{from: from, to: to}
 }
 
+type OutsideMetadataMatcher struct {
+	from interface{}
+	to   interface{}
+}
+
+func (i *OutsideMetadataMatcher) Match(v interface{}) bool {
+	result, err := common.CrossTypeCompare(v, i.from)
+	result2, err2 := common.CrossTypeCompare(v, i.to)
+
+	if err == nil && err2 == nil && result == -1 && result2 == 1 {
+		return true
+	}
+
+	return false
+}
+
+func (i *OutsideMetadataMatcher) Value() (interface{}, interface{}) {
+	return i.from, i.to
+}
+
+func Outside(from, to interface{}) *OutsideMetadataMatcher {
+	return &OutsideMetadataMatcher{from: from, to: to}
+}
+
 type BetweenMetadataMatcher struct {
 	from interface{}
 	to   interface{}

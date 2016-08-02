@@ -73,6 +73,7 @@ const (
 	LTE
 	GTE
 	INSIDE
+	OUTSIDE
 	BETWEEN
 
 	// extensions token have to start after 1000

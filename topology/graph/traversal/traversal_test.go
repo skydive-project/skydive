@@ -208,6 +208,17 @@ func TestTraversalInside(t *testing.T) {
 	}
 }
 
+func TestTraversalBetween(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	tv := tr.V().Has("Value", Between(1, 4))
+	if len(tv.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
+	}
+}
+
 func TestTraversalNe(t *testing.T) {
 	g := newTransversalGraph(t)
 
