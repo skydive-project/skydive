@@ -24,6 +24,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -732,18 +733,25 @@ func TestFlowGremlin(t *testing.T) {
 
 	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
-	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows()`)
+	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("ProbeNodeUUID", "`+string(node.ID)+`")`)
 	if len(ts.GetFlows()) != len(flows) {
 		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
 	}
 
-	for _, f := range flows {
-		if f.ProbeNodeUUID != string(node.ID) {
-			t.Fatalf("Returned a non expected flow: %v", f)
-		}
+	flows = getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`")`)
+	if len(ts.GetFlows()) != len(flows) {
+		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
 	}
 
 	client.Delete("capture", capture.ID())
+}
+
+func getFlowEndpoint(t *testing.T, gremlin string, endpointType flow.FlowEndpointType) *flow.FlowEndpointsStatistics {
+	flows := getFlowsFromGremlinReply(t, gremlin)
+	if len(flows) != 1 {
+		return nil
+	}
+	return flows[0].GetStatistics().GetEndpointsType(endpointType)
 }
 
 func TestFlowMetrics(t *testing.T) {
@@ -793,31 +801,94 @@ func TestFlowMetrics(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	aa.Flush()
 
-	icmp := []*flow.Flow{}
-
-	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows()`)
-	for _, f := range flows {
-		if f.LayersPath == "Ethernet/IPv4/ICMPv4/Payload" {
-			icmp = append(icmp, f)
-		}
-	}
-
+	icmp := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`)
 	if len(icmp) != 1 {
 		t.Errorf("Should return only one icmp flow, got: %v", icmp)
 	}
+	if icmp[0].LayersPath != "Ethernet/IPv4/ICMPv4/Payload" {
+		t.Errorf("Wrong layer path, should be 'Ethernet/IPv4/ICMPv4/Payload', got %s", icmp[0].LayersPath)
+	}
+
+	pingLen := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetAB().Bytes
 
 	ethernet := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
-	if ethernet.GetAB().Packets != 1 || ethernet.GetBA().Packets != 1 {
+	if ethernet.GetBA().Packets != 1 {
 		t.Errorf("Number of packets is wrong, got: %v", icmp)
 	}
 
-	if ethernet.GetAB().Bytes < 1024 || ethernet.GetBA().Bytes < 1024 {
+	if ethernet.GetAB().Bytes < 1066 || ethernet.GetBA().Bytes < 1066 {
 		t.Errorf("Number of bytes is wrong, got: %v", icmp)
 	}
 
+	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload", "Statistics.Endpoints.ETHERNET.AB.Packets", 1)`)
+	if len(flows) != 1 || flows[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetBA().Packets != 1 {
+		t.Errorf("Number of packets is wrong, got: %v", flows)
+	}
+
 	ipv4 := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_IPV4)
-	if ethernet.GetAB().Bytes < ipv4.GetAB().Bytes {
+	if flows[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetAB().Bytes < ipv4.GetAB().Bytes {
 		t.Errorf("Layers bytes error, got: %v", icmp)
+	}
+
+	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
+	endpoint := getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gt(%d))`, pingLen-1), flow.FlowEndpointType_ETHERNET)
+	if endpoint == nil || endpoint.GetAB().Bytes < pingLen {
+		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gt(%d))`, pingLen), flow.FlowEndpointType_ETHERNET)
+	if endpoint != nil {
+		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gte(%d))`, pingLen), flow.FlowEndpointType_ETHERNET)
+	if endpoint == nil || endpoint.GetAB().Bytes < pingLen {
+		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gte(%d))`, pingLen+1), flow.FlowEndpointType_ETHERNET)
+	if endpoint != nil {
+		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Lt(%d))`, pingLen+1), flow.FlowEndpointType_ETHERNET)
+	if endpoint == nil || endpoint.GetAB().Bytes > pingLen {
+		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Lt(%d))`, pingLen), flow.FlowEndpointType_ETHERNET)
+	if endpoint != nil {
+		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Lte(%d))`, pingLen), flow.FlowEndpointType_ETHERNET)
+	if endpoint == nil || endpoint.GetAB().Bytes > pingLen {
+		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Lte(%d))`, pingLen-1), flow.FlowEndpointType_ETHERNET)
+	if endpoint != nil {
+		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Inside(%d, %d))`, pingLen-1, pingLen+1), flow.FlowEndpointType_ETHERNET)
+	if endpoint == nil || endpoint.GetAB().Bytes <= pingLen-1 || endpoint.GetAB().Bytes >= pingLen+1 {
+		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Inside(%d, %d))`, pingLen, pingLen+1), flow.FlowEndpointType_ETHERNET)
+	if endpoint != nil {
+		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Between(%d, %d))`, pingLen, pingLen+1), flow.FlowEndpointType_ETHERNET)
+	if endpoint == nil || endpoint.GetAB().Bytes <= pingLen-1 || endpoint.GetAB().Bytes >= pingLen+1 {
+		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
+	}
+
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Between(%d, %d))`, pingLen, pingLen), flow.FlowEndpointType_ETHERNET)
+	if endpoint != nil {
+		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
 	}
 
 	client.Delete("capture", capture.ID())
