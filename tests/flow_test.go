@@ -60,9 +60,6 @@ sflow:
   port_min: 55000
   port_max: 55005
 
-ovs:
-  ovsdb: 6400
-
 analyzer:
   listen: {{.AnalyzerPort}}
   flowtable_expire: 600

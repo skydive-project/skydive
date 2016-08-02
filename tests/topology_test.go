@@ -58,9 +58,6 @@ cache:
 sflow:
   listen: 55000
 
-ovs:
-  ovsdb: 6400
-
 etcd:
   embedded: {{.EmbeddedEtcd}}
   port: 2374
