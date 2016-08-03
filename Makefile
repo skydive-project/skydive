@@ -12,6 +12,8 @@ TEST_PATTERN?=
 UT_PACKAGES=$(shell govendor list -no-status +local | grep -v '/tests')
 FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
+DOCKER_IMAGE?=skydive/skydive
+DOCKER_TAG?=devel
 
 .proto: govendor builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
@@ -100,3 +102,6 @@ doctest:
 
 rpm:
 	contrib/packaging/rpm/generate-skydive-bootstrap.sh
+
+docker-image: install
+	sudo -E docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile ${GOPATH}
