@@ -15,8 +15,8 @@
 # The path where go binaries have to be installed
 GOROOT=${GOROOT:-/opt/go}
 
-# golang version. Skydive needs atleast version 1.5
-GO_VERSION=${GO_VERSION:-1.5}
+# golang version. Skydive needs at least version 1.6
+GO_VERSION=${GO_VERSION:-1.6}
 
 # GOPATH where the go src, pkgs are installed
 GOPATH=/opt/stack/go
