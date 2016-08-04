@@ -18,6 +18,7 @@ FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 
 .bindata: govendor builddep
 	go-bindata -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/*
+	gofmt -w -s statics/bindata.go
 
 all: govendor genlocalfiles
 	govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
@@ -59,7 +60,7 @@ govendor:
 
 fmt: govendor
 	@echo "+ $@"
-	@govendor fmt +local || \
+	@test -z "$$(govendor fmt +local)" || \
 		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
 
 ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
