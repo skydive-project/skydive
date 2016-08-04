@@ -14,7 +14,7 @@ var Package = "github.com/skydive-project/skydive"
 // the latest release tag by hand, always suffixed by "+unknown". During
 // build, it will be replaced by the actual version. The value here will be
 // used if Skydive is run after a go get based install.
-var Version = "v0.3.0+unknown"
+var Version = "v0.4.0+unknown"
 
 // FprintVersion outputs the version string to the writer, in the following
 // format, followed by a newline:
