@@ -2,27 +2,33 @@
 %global debug_package %{nil}
 %global gopath      %{_datadir}/gocode
 
-# docker_version is the version of docker requires by packages
-%global docker_version 1.8.2
-# openvswitch_version is the version of openvswitch requires by packages
-%global openvswitch_version 2.3.1
-
+# commit or tagversion need to be defined on command line
 %if %{defined commit}
 %define source %{commit}
-%else
-%define source %{version}-%{release}
+%define tag 0.git%{commit}
 %endif
 
+%if %{defined tagversion}
+%define source %{tagversion}
+%endif
+
+%{!?tagversion:%define tagversion 0.4.0}
+%{!?source:%define source 0.4.0}
+%{!?tag:%define tag 1}
+
 Name:           skydive
-Version:        0.3.0
-Release:        1%{?dist}
+Version:        %{tagversion}
+Release:        %{tag}%{dist}
 Summary:        Real-time network topology and protocols analyzer.
 License:        ASL 2.0
 URL:            https://github.com/skydive-project/skydive
 ExclusiveArch:  x86_64
 Source0:        https://github.com/skydive-project/skydive/archive/skydive-%{source}.tar.gz
+Requires:       libpcap
+BuildRequires:  make
 BuildRequires:  golang >= 1.5
 BuildRequires:  systemd
+BuildRequires:  libpcap-devel
 
 %description
 Skydive is an open source real-time network topology and protocols analyzer.
@@ -114,6 +120,9 @@ install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/sk
 %{_unitdir}/skydive-analyzer.service
 
 %changelog
+* Thu Aug 4 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.4.0-1
+- Bump to version 0.4.0
+
 * Fri Jul 29 2016 Nicolas Planel <nplanel@redhat.com> - 0.3.0-2
 - Update spec file to use govendor on go version >=1.5
 
