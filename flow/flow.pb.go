@@ -27,7 +27,9 @@ var _ = math.Inf
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type FlowEndpointLayer int32
 
@@ -87,9 +89,9 @@ func (x FlowEndpointType) String() string {
 func (FlowEndpointType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 type FlowEndpointStatistics struct {
-	Value   string `protobuf:"bytes,2,opt,name=Value" json:"Value,omitempty"`
-	Packets uint64 `protobuf:"varint,5,opt,name=Packets" json:"Packets,omitempty"`
-	Bytes   uint64 `protobuf:"varint,6,opt,name=Bytes" json:"Bytes,omitempty"`
+	Value   string `protobuf:"bytes,2,opt,name=Value,json=value" json:"Value,omitempty"`
+	Packets uint64 `protobuf:"varint,5,opt,name=Packets,json=packets" json:"Packets,omitempty"`
+	Bytes   uint64 `protobuf:"varint,6,opt,name=Bytes,json=bytes" json:"Bytes,omitempty"`
 }
 
 func (m *FlowEndpointStatistics) Reset()                    { *m = FlowEndpointStatistics{} }
@@ -98,10 +100,10 @@ func (*FlowEndpointStatistics) ProtoMessage()               {}
 func (*FlowEndpointStatistics) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type FlowEndpointsStatistics struct {
-	Type FlowEndpointType        `protobuf:"varint,1,opt,name=Type,enum=flow.FlowEndpointType" json:"Type,omitempty"`
-	Hash []byte                  `protobuf:"bytes,2,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	AB   *FlowEndpointStatistics `protobuf:"bytes,3,opt,name=AB" json:"AB,omitempty"`
-	BA   *FlowEndpointStatistics `protobuf:"bytes,4,opt,name=BA" json:"BA,omitempty"`
+	Type FlowEndpointType        `protobuf:"varint,1,opt,name=Type,json=type,enum=flow.FlowEndpointType" json:"Type,omitempty"`
+	Hash []byte                  `protobuf:"bytes,2,opt,name=Hash,json=hash,proto3" json:"Hash,omitempty"`
+	AB   *FlowEndpointStatistics `protobuf:"bytes,3,opt,name=AB,json=aB" json:"AB,omitempty"`
+	BA   *FlowEndpointStatistics `protobuf:"bytes,4,opt,name=BA,json=bA" json:"BA,omitempty"`
 }
 
 func (m *FlowEndpointsStatistics) Reset()                    { *m = FlowEndpointsStatistics{} }
@@ -124,9 +126,9 @@ func (m *FlowEndpointsStatistics) GetBA() *FlowEndpointStatistics {
 }
 
 type FlowStatistics struct {
-	Start     int64                      `protobuf:"varint,1,opt,name=Start" json:"Start,omitempty"`
-	Last      int64                      `protobuf:"varint,2,opt,name=Last" json:"Last,omitempty"`
-	Endpoints []*FlowEndpointsStatistics `protobuf:"bytes,3,rep,name=Endpoints" json:"Endpoints,omitempty"`
+	Start     int64                      `protobuf:"varint,1,opt,name=Start,json=start" json:"Start,omitempty"`
+	Last      int64                      `protobuf:"varint,2,opt,name=Last,json=last" json:"Last,omitempty"`
+	Endpoints []*FlowEndpointsStatistics `protobuf:"bytes,3,rep,name=Endpoints,json=endpoints" json:"Endpoints,omitempty"`
 }
 
 func (m *FlowStatistics) Reset()                    { *m = FlowStatistics{} }
@@ -147,21 +149,21 @@ type Flow struct {
 	// flow.UUID is unique in the universe, as it should be used as a key of an
 	// hashtable. By design 2 different flows, their UUID are always different.
 	// flow.UUID can be used as Database Index.
-	UUID       string `protobuf:"bytes,1,opt,name=UUID" json:"UUID,omitempty"`
-	LayersPath string `protobuf:"bytes,2,opt,name=LayersPath" json:"LayersPath,omitempty"`
+	UUID       string `protobuf:"bytes,1,opt,name=UUID,json=uUID" json:"UUID,omitempty"`
+	LayersPath string `protobuf:"bytes,2,opt,name=LayersPath,json=layersPath" json:"LayersPath,omitempty"`
 	// Data Flow info
-	Statistics *FlowStatistics `protobuf:"bytes,3,opt,name=Statistics" json:"Statistics,omitempty"`
+	Statistics *FlowStatistics `protobuf:"bytes,3,opt,name=Statistics,json=statistics" json:"Statistics,omitempty"`
 	// Flow Tracking IDentifier, from 1st packet bytes
 	//
 	// flow.TrackingID could be used to identify an unique flow whatever it has
 	// been captured on the infrastructure. flow.TrackingID is calculated from
 	// the bytes of the first packet of his session.
 	// flow.TrackingID can be used as a Tag.
-	TrackingID string `protobuf:"bytes,5,opt,name=TrackingID" json:"TrackingID,omitempty"`
+	TrackingID string `protobuf:"bytes,5,opt,name=TrackingID,json=trackingID" json:"TrackingID,omitempty"`
 	// Topology info
-	ProbeNodeUUID string `protobuf:"bytes,11,opt,name=ProbeNodeUUID" json:"ProbeNodeUUID,omitempty"`
-	IfSrcNodeUUID string `protobuf:"bytes,14,opt,name=IfSrcNodeUUID" json:"IfSrcNodeUUID,omitempty"`
-	IfDstNodeUUID string `protobuf:"bytes,19,opt,name=IfDstNodeUUID" json:"IfDstNodeUUID,omitempty"`
+	ProbeNodeUUID string `protobuf:"bytes,11,opt,name=ProbeNodeUUID,json=probeNodeUUID" json:"ProbeNodeUUID,omitempty"`
+	IfSrcNodeUUID string `protobuf:"bytes,14,opt,name=IfSrcNodeUUID,json=ifSrcNodeUUID" json:"IfSrcNodeUUID,omitempty"`
+	IfDstNodeUUID string `protobuf:"bytes,19,opt,name=IfDstNodeUUID,json=ifDstNodeUUID" json:"IfDstNodeUUID,omitempty"`
 }
 
 func (m *Flow) Reset()                    { *m = Flow{} }
@@ -184,6 +186,8 @@ func init() {
 	proto.RegisterEnum("flow.FlowEndpointLayer", FlowEndpointLayer_name, FlowEndpointLayer_value)
 	proto.RegisterEnum("flow.FlowEndpointType", FlowEndpointType_name, FlowEndpointType_value)
 }
+
+func init() { proto.RegisterFile("flow/flow.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
 	// 468 bytes of a gzipped FileDescriptorProto
