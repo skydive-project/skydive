@@ -9,7 +9,7 @@ screen -dmS skydive-scale
 
 for i in $(seq $1); do
 	port=$(( 40000 + $i ))
-	screen -S skydive-scale -X screen -t skydive-agent $i /home/safchain/code/gocode/bin/skydive agent -c $2 --listen $port --host_id=node-$i
+	screen -S skydive-scale -X screen -t skydive-agent $i /home/safchain/code/gocode/bin/skydive agent -c $2 --listen $port --host-id=node-$i
 	sleep 2
 	echo started $i/$1
 done
