@@ -23,19 +23,28 @@
 package probes
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/lebauce/dockerclient"
+	"github.com/docker/engine-api/client"
+	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/events"
+	"github.com/docker/engine-api/types/filters"
 	"github.com/vishvananda/netns"
+	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+	sversion "github.com/skydive-project/skydive/version"
 )
+
+const DockerClientApiVersion = "1.18"
 
 type ContainerInfo struct {
 	Pid  int
@@ -46,10 +55,10 @@ type DockerProbe struct {
 	sync.RWMutex
 	NetNSProbe
 	url          string
-	client       *dockerclient.DockerClient
+	client       *client.Client
+	cancel       context.CancelFunc
 	state        int64
 	connected    atomic.Value
-	quit         chan bool
 	wg           sync.WaitGroup
 	hostNs       netns.NsHandle
 	containerMap map[string]ContainerInfo
@@ -66,7 +75,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	if _, ok := probe.containerMap[id]; ok {
 		return
 	}
-	info, err := probe.client.InspectContainer(id)
+	info, err := probe.client.ContainerInspect(context.Background(), id)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to inspect Docker container %s: %s", id, err.Error())
 		return
@@ -78,7 +87,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	}
 
 	namespace := probe.containerNamespace(info.State.Pid)
-	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.Id, info.State.Pid)
+	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.ID, info.State.Pid)
 
 	var n *graph.Node
 	if probe.hostNs.Equal(nsHandle) {
@@ -93,7 +102,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	metadata := graph.Metadata{
 		"Type":                 "container",
 		"Name":                 info.Name[1:],
-		"Docker.ContainerID":   info.Id,
+		"Docker.ContainerID":   info.ID,
 		"Docker.ContainerName": info.Name,
 		"Docker.ContainerPID":  info.State.Pid,
 	}
@@ -101,7 +110,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	probe.Graph.Link(n, containerNode, graph.Metadata{"RelationType": "membership"})
 	probe.Graph.Unlock()
 
-	probe.containerMap[info.Id] = ContainerInfo{
+	probe.containerMap[info.ID] = ContainerInfo{
 		Pid:  info.State.Pid,
 		Node: containerNode,
 	}
@@ -126,7 +135,7 @@ func (probe *DockerProbe) unregisterContainer(id string) {
 	delete(probe.containerMap, id)
 }
 
-func (probe *DockerProbe) handleDockerEvent(event *dockerclient.Event) {
+func (probe *DockerProbe) handleDockerEvent(event *events.Message) {
 	if event.Status == "start" {
 		probe.registerContainer(event.ID)
 	} else if event.Status == "die" {
@@ -142,26 +151,31 @@ func (probe *DockerProbe) connect() error {
 	}
 
 	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", probe.url)
-	probe.client, err = dockerclient.NewDockerClient(probe.url, nil)
+	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("skydive-agent-%s", sversion.Version)}
+	probe.client, err = client.NewClient(probe.url, DockerClientApiVersion, nil, defaultHeaders)
 	if err != nil {
+		logging.GetLogger().Errorf("Failed to create client to Docker daemon: %s", err.Error())
+		return err
+	}
+
+	if _, err := probe.client.ServerVersion(context.Background()); err != nil {
 		logging.GetLogger().Errorf("Failed to connect to Docker daemon: %s", err.Error())
 		return err
 	}
 
-	eventsOptions := &dockerclient.MonitorEventsOptions{
-		Filters: &dockerclient.MonitorEventsFilters{
-			Events: []string{"start", "die"},
-		},
-	}
+	eventsFilter := filters.NewArgs()
+	eventsFilter.Add("event", "start")
+	eventsFilter.Add("event", "die")
 
-	eventErrChan, err := probe.client.MonitorEvents(eventsOptions, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	body, err := probe.client.Events(ctx, types.EventsOptions{Filters: eventsFilter})
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to monitor Docker events: %s", err.Error())
 		return err
 	}
+	defer body.Close()
+	probe.cancel = cancel
 
 	probe.wg.Add(2)
-	probe.quit = make(chan bool)
 
 	probe.connected.Store(true)
 	defer probe.connected.Store(false)
@@ -169,7 +183,7 @@ func (probe *DockerProbe) connect() error {
 	go func() {
 		defer probe.wg.Done()
 
-		containers, err := probe.client.ListContainers(false, false, "")
+		containers, err := probe.client.ContainerList(context.Background(), types.ContainerListOptions{})
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to list containers: %s", err.Error())
 			return
@@ -179,24 +193,30 @@ func (probe *DockerProbe) connect() error {
 			if atomic.LoadInt64(&probe.state) != common.RunningState {
 				break
 			}
-			probe.registerContainer(c.Id)
+			probe.registerContainer(c.ID)
 		}
 	}()
 
 	defer probe.wg.Done()
 
+	dec := json.NewDecoder(body)
 	for {
-		select {
-		case <-probe.quit:
-			return nil
-		case e := <-eventErrChan:
-			if e.Error != nil {
-				logging.GetLogger().Errorf("Got error while waiting for Docker event: %s", e.Error.Error())
-				return e.Error
+		var event events.Message
+		err := dec.Decode(&event)
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				if atomic.LoadInt64(&probe.state) != common.StoppingState {
+					logging.GetLogger().Errorf("Got error while waiting for Docker event: %s", err.Error())
+				}
+				return err
 			}
-			probe.handleDockerEvent(&e.Event)
 		}
+		probe.handleDockerEvent(&event)
 	}
+
+	return nil
 }
 
 func (probe *DockerProbe) Start() {
@@ -224,7 +244,7 @@ func (probe *DockerProbe) Stop() {
 	}
 
 	if probe.connected.Load() == true {
-		close(probe.quit)
+		probe.cancel()
 		probe.wg.Wait()
 	}
 
