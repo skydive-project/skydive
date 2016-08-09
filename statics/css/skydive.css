@@ -308,46 +308,23 @@ circle.manager {
   fill: #fff;
 }
 
-#capture{
-  opacity:0.95;
-  position: absolute;
-  top: 0px;
-  left: 0px;
-  height: 100%;
-  width: 100%;
-  background: #000;
+#capture {
   display: none;
 }
 
-#capture_form {
-  width:350px;
-  margin:0px;
-  background-color:grey;
-  position: relative;
-  left: 50%;
-  top: 50%;
-  margin-left:-210px;
-  margin-top:-255px;
-  border-radius: 8px;
-  padding:10px 20px;
+#capture_form label {
+  font-weight: normal;
 }
 
-.capture_input{
-  width:100%;
-  border:1px solid #999;
-  padding:5px;
-  border-radius: 6px;
+.capture_input {
+  margin-bottom: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-box-sizing:border-box;
+  -moz-box-sizing: border-box;
+  color: black;
 }
 
-.capture_button{
-  font-Weight:bold;
-  color:white;
-  width:49%;
-}
-
-textarea.capture_input {
-  width:100%;
-  height:70px;
-  resize:none;
-  border-radius: 6px;
+#capture_form textarea {
+  height: 100px;
 }

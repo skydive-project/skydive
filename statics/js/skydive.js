@@ -1510,12 +1510,12 @@ function SetupCaptureList() {
   }
 
   $("#cancel").click(function(e) {
-    $(this).parent().parent().hide();
+    $("#capture").slideToggle(500, function () {});
     resetCaptureForm(e);
   });
 
   $("#add-capture").click(function(e) {
-    $("#capture").css("display","block");
+    $("#capture").slideToggle(500, function () {});
 
     var query = "";
 
@@ -1536,7 +1536,7 @@ function SetupCaptureList() {
 
     query = "G." + query + ".Out('Name', '" + CurrentNodeDetails.Name() + "', 'Type', '" + CurrentNodeDetails.Type() + "')";
     $("#capturequery").val(query);
-  
+
     var captureTypes = getCaptureTypes(CurrentNodeDetails.Type());
     for (var t in captureTypes) {
       $("select#capturetype").append($("<option>").val(captureTypes[t]).html(captureTypes[t]));
@@ -1558,7 +1558,7 @@ function SetupCaptureList() {
         contentType: "application/json; charset=utf-8",
         method: 'POST',
       });
-      $(this).parent().parent().hide();
+      $("#capture").slideToggle(500, function () {});
       resetCaptureForm(e);
     }
   });

@@ -79,6 +79,26 @@
             <div style="text-align: right; margin-right: 5px;" class="analyzer-only">
               <img id="add-capture" style="cursor: pointer" src="statics/img/record.png" width="22" height="22">
             </div>
+            <div id="capture">
+              <div class="sub-left-panel" style="clear: both">
+                <div class="title-left-panel">New Capture :</div>
+                <form action="#" id="capture_form">
+                  <label>Name : </label></br>
+                  <input type="text" id="capturename" class="capture_input"/><br/>
+                  <label>Description : </label></br>
+                  <textarea type="text" id="capturedesc" class="capture_input" rows="4"></textarea><br/>
+                  <label>Type : </label></br>
+                  <select id="capturetype" class="capture_input">
+                    <option value="" selected="selected">auto</option>
+                  </select><br/>
+                  <label>Gremlin Query : </label></br>
+                  <textarea type="text" id="capturequery" class="capture_input" required></textarea><br/>
+                  <input type="button" class="btn btn-primary" id="create" value="Start"/>
+                  <input type="button" class="btn btn-danger" id="cancel" value="Cancel"/>
+                  <br/>
+                </form>
+              </div>
+            </div>
             <div class="sub-left-panel" id="metadata-panel" style="clear: both">
               <div class="title-left-panel">Metadata :</div>
               <div id="metadata"></div>
@@ -95,26 +115,6 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <div id="capture">
-    <form action="#" id="capture_form">
-      <h3 style="text-align:center;">Start Capture</h3>
-      <hr/>
-      <label>Capture Name : </label>
-      <input type="text" class="capture_input" id="capturename" placeholder="name"/><br/>
-      <label>Description : </label>
-      <textarea type="text" class="capture_input" id="capturedesc" placeholder="description"></textarea><br/>
-      <label>Capture Type : </label>
-      <select id="capturetype" class="capture_input">
-        <option value="" selected="selected">auto</option>
-      </select><br/>
-      <label>Gremlin Query : </label>
-      <textarea type="text" class="capture_input" id="capturequery" required></textarea><br/></br>
-      <input type="button" class="btn btn-lg btn-primary capture_button" id="create" value="Start"/>
-      <input type="button" class="btn btn-lg capture_button" id="cancel" value="Cancel"/>
-      <br/>
-    </form>
   </div>
 
   <div class="conversation analyzer-only">
