@@ -114,6 +114,10 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
+func (f *FlowTraversalStep) Count(s ...interface{}) *traversal.GraphTraversalValue {
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, len(f.flowset.Flows))
+}
+
 func paramsToFilter(s ...interface{}) (flow.Filter, error) {
 	if len(s) < 2 {
 		return nil, errors.New("At least two parameters must be provided")

@@ -91,6 +91,9 @@ type (
 	GremlinTraversalStepBoth struct {
 		GremlinTraversalStepParams
 	}
+	GremlinTraversalStepCount struct {
+		GremlinTraversalStepParams
+	}
 )
 
 var (
@@ -349,6 +352,21 @@ func (s *GremlinTraversalStepBoth) Reduce(next GremlinTraversalStep) GremlinTrav
 	return next
 }
 
+func (s *GremlinTraversalStepCount) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalV:
+		return last.(*GraphTraversalV).Count(s.params...), nil
+	case *GraphTraversalE:
+		return last.(*GraphTraversalE).Count(s.params...), nil
+	}
+
+	return invokeStepFnc(last, "Count", s)
+}
+
+func (s *GremlinTraversalStepCount) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 	var step GremlinTraversalStep
 	var last GraphTraversalStep
@@ -568,13 +586,18 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &GremlinTraversalStepHas{gremlinStepParams}, nil
 	case SHORTESTPATHTO:
 		if len(params) == 0 || len(params) > 2 {
-			return nil, fmt.Errorf("ShortestPathTo predicate accept only 1 or 2 parameters")
+			return nil, fmt.Errorf("ShortestPathTo predicate accepts only 1 or 2 parameters")
 		}
 		return &GremlinTraversalStepShortestPathTo{gremlinStepParams}, nil
 	case BOTH:
 		return &GremlinTraversalStepBoth{gremlinStepParams}, nil
 	case CONTEXT:
 		return &GremlinTraversalStepContext{gremlinStepParams}, nil
+	case COUNT:
+		if len(params) != 0 {
+			return nil, fmt.Errorf("Count accepts no parameter")
+		}
+		return &GremlinTraversalStepCount{gremlinStepParams}, nil
 	}
 
 	// extensions

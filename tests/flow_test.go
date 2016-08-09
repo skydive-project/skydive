@@ -183,40 +183,33 @@ func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) 
 	}
 }
 
-func getNodeFromGremlinReply(t *testing.T, query string) *graph.Node {
+func gremlinQuery(t *testing.T, query string, values interface{}) {
 	body, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatalf("Error while executing query %s: %s", query, err.Error())
 	}
 
-	var values []interface{}
-	err = json.NewDecoder(body).Decode(&values)
+	err = json.NewDecoder(body).Decode(values)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+}
+
+func getNodeFromGremlinReply(t *testing.T, query string) *graph.Node {
+	var values []interface{}
+	gremlinQuery(t, query, &values)
 
 	var node graph.Node
-	err = node.Decode(values[0])
-	if err != nil {
+	if err := node.Decode(values[0]); err != nil {
 		t.Fatal(err.Error())
 	}
 
 	return &node
 }
 
-func getFlowsFromGremlinReply(t *testing.T, query string) []*flow.Flow {
-	body, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	var flows []*flow.Flow
-	err = json.NewDecoder(body).Decode(&flows)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return flows
+func getFlowsFromGremlinReply(t *testing.T, query string) (flows []*flow.Flow) {
+	gremlinQuery(t, query, &flows)
+	return
 }
 
 func getFlowSetBandwidthFromGremlinReply(t *testing.T, query string) flow.FlowSetBandwidth {
@@ -748,6 +741,12 @@ func TestFlowGremlin(t *testing.T) {
 
 	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
+	var count int64
+	gremlinQuery(t, `G.V().Has("Name", "br-sflow", "Type", "ovsbridge").Count()`, &count)
+	if count != 1 {
+		t.Fatalf("Should return 1, got: %d", count)
+	}
+
 	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("ProbeNodeUUID", "`+string(node.ID)+`")`)
 	if len(ts.GetFlows()) != len(flows) {
 		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
@@ -755,6 +754,11 @@ func TestFlowGremlin(t *testing.T) {
 
 	flows = getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`")`)
 	if len(ts.GetFlows()) != len(flows) {
+		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
+	}
+
+	gremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Count()`, &count)
+	if int(count) != len(flows) {
 		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
 	}
 

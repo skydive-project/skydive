@@ -267,6 +267,18 @@ func TestTraversalBoth(t *testing.T) {
 	}
 }
 
+func TestTraversalCount(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	// next test
+	tv := tr.V().Count()
+	if tv.Values()[0] != 4 {
+		t.Fatalf("Should return 4 nodes, returned: %v", tv.Values())
+	}
+}
+
 func TestTraversalShortestPathTo(t *testing.T) {
 	g := newTransversalGraph(t)
 
@@ -327,6 +339,13 @@ func TestTraversalParser(t *testing.T) {
 	res := execTraversalQuery(t, g, query)
 	if len(res.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Count()`
+	res = execTraversalQuery(t, g, query)
+	if res.Values()[0] != 4 {
+		t.Fatalf("Should return 4, returned: %v", res.Values())
 	}
 
 	// next traversal test

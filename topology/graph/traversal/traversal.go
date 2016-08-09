@@ -62,6 +62,12 @@ type GraphTraversalShortestPath struct {
 	error          error
 }
 
+type GraphTraversalValue struct {
+	GraphTraversal *GraphTraversal
+	value          interface{}
+	error          error
+}
+
 type WithinMetadataMatcher struct {
 	list []interface{}
 }
@@ -319,7 +325,7 @@ func (t *GraphTraversal) Values() []interface{} {
 }
 
 func (t *GraphTraversal) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.Values)
+	return json.Marshal(t.Values())
 }
 
 func (t *GraphTraversal) Error() error {
@@ -515,6 +521,14 @@ func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 	return ntv
 }
 
+func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
+	if tv.error != nil {
+		return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, error: tv.error}
+	}
+
+	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: len(tv.nodes)}
+}
+
 func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -627,6 +641,14 @@ func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
 	return json.Marshal(te.Values())
 }
 
+func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
+	if te.error != nil {
+		return &GraphTraversalValue{GraphTraversal: te.GraphTraversal, error: te.error}
+	}
+
+	return &GraphTraversalValue{GraphTraversal: te.GraphTraversal, value: len(te.edges)}
+}
+
 func (te *GraphTraversalE) Dedup() *GraphTraversalE {
 	ntv := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
 
@@ -726,4 +748,29 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	}
 
 	return ntv
+}
+
+func NewGraphTraversalValue(gt *GraphTraversal, value interface{}, err ...error) *GraphTraversalValue {
+	tv := &GraphTraversalValue{
+		GraphTraversal: gt,
+		value:          value,
+	}
+
+	if len(err) > 0 {
+		tv.error = err[0]
+	}
+
+	return tv
+}
+
+func (t *GraphTraversalValue) Values() []interface{} {
+	return []interface{}{t.value}
+}
+
+func (t *GraphTraversalValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.value)
+}
+
+func (t *GraphTraversalValue) Error() error {
+	return nil
 }
