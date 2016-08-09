@@ -195,16 +195,24 @@ func gremlinQuery(t *testing.T, query string, values interface{}) {
 	}
 }
 
-func getNodeFromGremlinReply(t *testing.T, query string) *graph.Node {
+func getNodesFromGremlinReply(t *testing.T, query string) []graph.Node {
 	var values []interface{}
 	gremlinQuery(t, query, &values)
-
-	var node graph.Node
-	if err := node.Decode(values[0]); err != nil {
-		t.Fatal(err.Error())
+	nodes := make([]graph.Node, len(values))
+	for i, node := range values {
+		if err := nodes[i].Decode(node); err != nil {
+			t.Fatal(err.Error())
+		}
 	}
+	return nodes
+}
 
-	return &node
+func getNodeFromGremlinReply(t *testing.T, query string) *graph.Node {
+	nodes := getNodesFromGremlinReply(t, query)
+	if len(nodes) > 0 {
+		return &nodes[0]
+	}
+	return nil
 }
 
 func getFlowsFromGremlinReply(t *testing.T, query string) (flows []*flow.Flow) {
@@ -755,6 +763,21 @@ func TestFlowGremlin(t *testing.T) {
 	flows = getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`")`)
 	if len(ts.GetFlows()) != len(flows) {
 		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
+	}
+
+	nodes := getNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Out()`)
+	if len(nodes) != 0 {
+		t.Fatalf("Should return no destination node, got %d", len(nodes))
+	}
+
+	nodes = getNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Both().Dedup()`)
+	if len(nodes) != 1 {
+		t.Fatalf("Should return one node, got %d", len(nodes))
+	}
+
+	nodes = getNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").In().Dedup()`)
+	if len(nodes) != 1 {
+		t.Fatalf("Should return one source node, got %d", len(nodes))
 	}
 
 	gremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Count()`, &count)

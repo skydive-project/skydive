@@ -341,7 +341,7 @@ func (s *GremlinTraversalStepBoth) Exec(last GraphTraversalStep) (GraphTraversal
 		return last.(*GraphTraversalV).Both(s.params...), nil
 	}
 
-	return nil, ExecutionError
+	return invokeStepFnc(last, "Both", s)
 }
 
 func (s *GremlinTraversalStepBoth) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
