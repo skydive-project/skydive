@@ -166,20 +166,15 @@ func pcapTraceCheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool 
 }
 
 func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) {
-	if len(trace.flowStat) != len(flows) {
-		t.Errorf("NB Flows mismatch : %d %d", len(trace.flowStat), len(flows))
-	}
+	found := 0
 	for _, f := range flows {
-		r := pcapTraceCheckFlow(t, f, trace)
-		if r == false {
-			eth := f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
-			if eth == nil {
-				t.Fail()
-			}
-
-			t.Logf("%s %s %s\n", f.UUID, f.LayersPath, f.GetStatistics().DumpInfo())
-			t.Error("Flow not found")
+		if pcapTraceCheckFlow(t, f, trace) {
+			found++
 		}
+	}
+
+	if found != len(trace.flowStat) {
+		t.Errorf("Flow expected not found %v != %v", trace.flowStat, flows)
 	}
 }
 

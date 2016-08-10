@@ -233,7 +233,7 @@ func (ft *Table) expired(expireBefore int64) {
 		}
 	}
 	/* Advise Clients */
-	if ft.expireHandler != nil {
+	if ft.expireHandler.callback != nil {
 		ft.expireHandler.callback(expiredFlows)
 	}
 	for _, f := range expiredFlows {
@@ -260,7 +260,7 @@ func (ft *Table) updated(updateFrom int64) {
 		}
 	}
 	/* Advise Clients */
-	if ft.updateHandler != nil {
+	if ft.updateHandler.callback != nil {
 		ft.updateHandler.callback(updatedFlows)
 	}
 	logging.GetLogger().Debugf("Send updated Flow %d", len(updatedFlows))
