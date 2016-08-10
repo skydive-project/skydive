@@ -9,7 +9,7 @@ dist: trusty
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -y openvswitch-switch unzip docker.io libpcap0.8-dev
+    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io libpcap0.8-dev
     - sudo ovs-vsctl show
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
@@ -25,7 +25,7 @@ after_success:
 
     - echo "--- DOCKER IMAGE ---"
     - make docker-image DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
-    - sudo docker login -e $DOCKER_EMAIL -u $DOCKER_USERNAME -p $DOCKER_PASSWORD >/dev/null 2>/dev/null
+    - sudo docker login -e "${DOCKER_EMAIL}" -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
     - sudo docker tag ${DOCKER_IMAGE}:${BUILD_TAG} ${DOCKER_IMAGE}:latest
     - sudo docker push docker.io/${DOCKER_IMAGE}:${BUILD_TAG}
     - sudo docker push docker.io/${DOCKER_IMAGE}:latest
