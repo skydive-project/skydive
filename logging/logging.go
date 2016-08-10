@@ -31,7 +31,6 @@ import (
 	"sync"
 
 	"github.com/op/go-logging"
-
 	"github.com/skydive-project/skydive/config"
 )
 

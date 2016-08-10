@@ -140,6 +140,23 @@ func (fs *FlowStatistics) Update(now int64, packet *gopacket.Packet, length uint
 	}
 }
 
+func (fs *FlowEndpointsStatistics) Copy() *FlowEndpointsStatistics {
+	return &FlowEndpointsStatistics{
+		Type: fs.Type,
+		Hash: fs.Hash,
+		AB: &FlowEndpointStatistics{
+			Value:   fs.AB.Value,
+			Packets: fs.AB.Packets,
+			Bytes:   fs.AB.Bytes,
+		},
+		BA: &FlowEndpointStatistics{
+			Value:   fs.BA.Value,
+			Packets: fs.BA.Packets,
+			Bytes:   fs.BA.Bytes,
+		},
+	}
+}
+
 func (fs *FlowStatistics) DumpInfo(layerSeparator ...string) string {
 	sep := " | "
 	if len(layerSeparator) > 0 {

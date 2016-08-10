@@ -65,7 +65,7 @@ sflow:
 analyzer:
   listen: {{.AnalyzerPort}}
   flowtable_expire: 600
-  flowtable_update: 10
+  flowtable_update: 20
   flowtable_agent_ratio: 0.5
 
 etcd:
@@ -851,7 +851,9 @@ func TestFlowMetrics(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	icmp := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`)
+	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
+
+	icmp := getFlowsFromGremlinReply(t, gremlin)
 	if len(icmp) != 1 {
 		t.Errorf("Should return only one icmp flow, got: %v", icmp)
 	}
@@ -859,7 +861,16 @@ func TestFlowMetrics(t *testing.T) {
 		t.Errorf("Wrong layer path, should be 'Ethernet/IPv4/ICMPv4/Payload', got %s", icmp[0].LayersPath)
 	}
 
-	pingLen := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetAB().Bytes
+	// since the agent update ticker is about 10 sec according to the configuration
+	// wait 10 sec to have the first update and the MetricRange filled
+	time.Sleep(10 * time.Second)
+
+	// this check needs to be close to the beginnig of the test since it's a time
+	// based test and it will fail if we wait one more update tick
+	bw := getFlowSetBandwidthFromGremlinReply(t, gremlin+".Dedup().Bandwidth()")
+	if bw.NBFlow != 1 || bw.ABpackets != 1 || bw.BApackets != 1 || bw.ABbytes < 1066 || bw.BAbytes < 1066 {
+		t.Errorf("Wrong bandwidth returned, got : %v", bw)
+	}
 
 	ethernet := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
 	if ethernet.GetBA().Packets != 1 {
@@ -880,7 +891,7 @@ func TestFlowMetrics(t *testing.T) {
 		t.Errorf("Layers bytes error, got: %v", icmp)
 	}
 
-	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
+	pingLen := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetAB().Bytes
 	endpoint := getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gt(%d))`, pingLen-1), flow.FlowEndpointType_ETHERNET)
 	if endpoint == nil || endpoint.GetAB().Bytes < pingLen {
 		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
@@ -939,11 +950,6 @@ func TestFlowMetrics(t *testing.T) {
 	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Between(%d, %d))`, pingLen, pingLen), flow.FlowEndpointType_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
-	}
-
-	bw := getFlowSetBandwidthFromGremlinReply(t, gremlin+".Dedup().Bandwidth()")
-	if bw.NBFlow != 1 || bw.ABpackets != 1 || bw.BApackets != 1 || bw.ABbytes < 1066 || bw.BAbytes < 1066 {
-		t.Errorf("Wrong bandwidth returned, got : %v", bw)
 	}
 
 	client.Delete("capture", capture.ID())

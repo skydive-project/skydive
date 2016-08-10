@@ -53,7 +53,7 @@ func (fs *FlowSet) Merge(ofs *FlowSet) {
 	fs.Flows = append(fs.Flows, ofs.Flows...)
 }
 
-func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
+func (fs *FlowSet) AvgBandwidth() (fsbw FlowSetBandwidth) {
 	if len(fs.Flows) == 0 {
 		return
 	}
@@ -97,6 +97,25 @@ func (fs *FlowSet) Filter(filter *Filter) *FlowSet {
 		}
 	}
 	return flowset
+}
+
+func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
+	for _, f := range fs.Flows {
+		duration := f.MetricRange.Last - f.MetricRange.Start
+
+		// set the duration to the largest flow duration. All the flow should
+		// be close in term of duration ~= update timer
+		if fsbw.Duration < duration {
+			fsbw.Duration = duration
+		}
+
+		fsbw.ABpackets += f.MetricRange.ABPackets
+		fsbw.ABbytes += f.MetricRange.ABBytes
+		fsbw.BApackets += f.MetricRange.BAPackets
+		fsbw.BAbytes += f.MetricRange.BABytes
+		fsbw.NBFlow++
+	}
+	return
 }
 
 func (fsbw FlowSetBandwidth) String() string {

@@ -70,6 +70,7 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration, duration tim
 type Table struct {
 	sync.RWMutex
 	table         map[string]*Flow
+	stats         map[string]*FlowEndpointsStatistics
 	defaultFunc   func()
 	flush         chan bool
 	flushDone     chan bool
@@ -86,6 +87,7 @@ type Table struct {
 func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 	t := &Table{
 		table:         make(map[string]*Flow),
+		stats:         make(map[string]*FlowEndpointsStatistics),
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
 		state:         common.StoppedState,
@@ -160,7 +162,10 @@ func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
 		return flow, false
 	}
 
-	new := &Flow{Statistics: &FlowStatistics{}}
+	new := &Flow{
+		Statistics:  &FlowStatistics{},
+		MetricRange: &FlowMetricRange{},
+	}
 	ft.table[key] = new
 
 	return new, true
@@ -230,12 +235,16 @@ func (ft *Table) expired(expireBefore int64) {
 
 			// need to use the key as the key could be not equal to the UUID
 			delete(ft.table, k)
+
+			// stats are always indexed by UUID
+			delete(ft.stats, f.UUID)
 		}
 	}
 	/* Advise Clients */
 	if ft.expireHandler.callback != nil {
 		ft.expireHandler.callback(expiredFlows)
 	}
+
 	flowTableSz := len(ft.table)
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
 }
@@ -251,11 +260,33 @@ func (ft *Table) Updated(now time.Time) {
 func (ft *Table) updated(updateFrom int64) {
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
-		fs := f.GetStatistics()
+		fs := f.Statistics
+
 		if fs.Last > updateFrom {
 			updatedFlows = append(updatedFlows, f)
+
+			e := f.Statistics.Endpoints[0]
+			f.MetricRange.ABPackets = e.AB.Packets
+			f.MetricRange.ABBytes = e.AB.Bytes
+			f.MetricRange.BAPackets = e.BA.Packets
+			f.MetricRange.BABytes = e.BA.Bytes
+			f.MetricRange.Last = f.Statistics.Last
+
+			// substract previous values to get the diff so that we store the
+			// amount of data between two updates
+			if s, ok := ft.stats[f.UUID]; ok {
+				f.MetricRange.ABPackets -= s.AB.Packets
+				f.MetricRange.ABBytes -= s.AB.Bytes
+				f.MetricRange.BAPackets -= s.BA.Packets
+				f.MetricRange.BABytes -= s.BA.Bytes
+			}
+		} else {
+			f.MetricRange = &FlowMetricRange{Start: updateFrom, Last: updateFrom}
 		}
+
+		ft.stats[f.UUID] = f.Statistics.Endpoints[0].Copy()
 	}
+
 	/* Advise Clients */
 	if ft.updateHandler.callback != nil {
 		ft.updateHandler.callback(updatedFlows)
