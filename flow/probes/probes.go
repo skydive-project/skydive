@@ -154,9 +154,6 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 }
 
 func IsCaptureAllowed(n *graph.Node) bool {
-	switch n.Metadata()["Type"] {
-	case "device", "ovsbridge", "internal", "veth", "tun", "bridge":
-		return true
-	}
-	return false
+	_, ok := CaptureTypes[n.Metadata()["Type"].(string)]
+	return ok
 }
