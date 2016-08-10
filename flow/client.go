@@ -60,46 +60,12 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uuids []string, filter *Filter) {
-	terms := make([]*Filter, len(uuids)*3)
-	for i, uuid := range uuids {
-		terms[i*3] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "ProbeNodeUUID", Value: uuid},
-		}
-		terms[i*3+1] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "IfSrcNodeUUID", Value: uuid},
-		}
-		terms[i*3+2] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "IfDstNodeUUID", Value: uuid},
-		}
-	}
-
-	andFilter := &BoolFilter{
-		Op: BoolFilterOp_AND,
-		Filters: []*Filter{
-			{
-				BoolFilter: &BoolFilter{
-					Op:      BoolFilterOp_OR,
-					Filters: terms,
-				},
-			},
-		},
-	}
-
-	if filter != nil {
-		andFilter.Filters = append(andFilter.Filters, filter)
-	}
-
-	queryFilter := &Filter{
-		BoolFilter: andFilter,
-	}
-	obj, _ := proto.Marshal(&FlowSearchQuery{Filter: queryFilter})
-
+func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, filter *Filter) {
+	obj, _ := proto.Marshal(&FlowSearchQuery{Filter: filter})
 	tq := TableQuery{
 		Type: "FlowSearchQuery",
 		Obj:  obj,
 	}
-
 	msg := shttp.NewWSMessage(Namespace, "TableQuery", tq)
 
 	ch := make(chan *json.RawMessage)
@@ -154,11 +120,44 @@ func (f *TableClient) lookupFlowsByNodes(flowset chan *FlowSet, host string, uui
 	flowset <- NewFlowSet()
 }
 
+func (f *TableClient) LookupFlows(filter *Filter) (*FlowSet, error) {
+	clients := f.WSServer.GetClientsByType("skydive-agent")
+	ch := make(chan *FlowSet, len(clients))
+
+	for _, client := range clients {
+		hostname, _ := client.GetHostInfo()
+		go f.lookupFlows(ch, hostname, filter)
+	}
+
+	flowset := NewFlowSet()
+	for i := 0; i != len(clients); i++ {
+		fs := <-ch
+		flowset.Merge(fs)
+	}
+
+	return flowset, nil
+}
+
 func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter *Filter) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
 	for host, uuids := range hnmap {
-		go f.lookupFlowsByNodes(ch, host, uuids, filter)
+		andFilter := &BoolFilter{
+			Op: BoolFilterOp_AND,
+			Filters: []*Filter{
+				NewFilterForNodes(uuids),
+			},
+		}
+
+		if filter != nil {
+			andFilter.Filters = append(andFilter.Filters, filter)
+		}
+
+		queryFilter := &Filter{
+			BoolFilter: andFilter,
+		}
+
+		go f.lookupFlows(ch, host, queryFilter)
 	}
 
 	flowset := NewFlowSet()

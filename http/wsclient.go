@@ -55,6 +55,7 @@ type WSAsyncClient struct {
 	Path          string
 	AuthClient    *AuthenticationClient
 	host          string
+	clientType    string
 	messages      chan string
 	read          chan []byte
 	quit          chan bool
@@ -121,7 +122,7 @@ func (c *WSAsyncClient) connect() {
 		return
 	}
 
-	headers := http.Header{"X-Host-ID": {c.host}, "Origin": {endpoint}}
+	headers := http.Header{"X-Host-ID": {c.host}, "Origin": {endpoint}, "X-Client-Type": {c.clientType}}
 	if c.AuthClient != nil {
 		if err := c.AuthClient.Authenticate(); err != nil {
 			logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
@@ -222,13 +223,14 @@ func (c *WSAsyncClient) Disconnect() {
 	}
 }
 
-func NewWSAsyncClient(hostID string, addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
+func NewWSAsyncClient(hostID string, clientType string, addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
 	c := &WSAsyncClient{
 		Addr:       addr,
 		Port:       port,
 		Path:       path,
 		AuthClient: authClient,
 		host:       hostID,
+		clientType: clientType,
 		messages:   make(chan string, 500),
 		read:       make(chan []byte, 500),
 		quit:       make(chan bool),
@@ -238,7 +240,7 @@ func NewWSAsyncClient(hostID string, addr string, port int, path string, authCli
 	return c, nil
 }
 
-func NewWSAsyncClientFromConfig(addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
+func NewWSAsyncClientFromConfig(clientType string, addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
 	hostID := config.GetConfig().GetString("host_id")
-	return NewWSAsyncClient(hostID, addr, port, path, authClient)
+	return NewWSAsyncClient(hostID, clientType, addr, port, path, authClient)
 }

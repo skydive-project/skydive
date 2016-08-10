@@ -433,12 +433,34 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 }
 
 func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
-	switch last.(type) {
-	case *traversal.GraphTraversalV:
-		tv := last.(*traversal.GraphTraversalV)
+	var graphTraversal *traversal.GraphTraversal
+	var err error
+	var paramsFilter *flow.Filter
 
-		tv.GraphTraversal.Graph.Lock()
+	if len(s.params) > 0 {
+		if paramsFilter, err = paramsToFilter(s.params...); err != nil {
+			return nil, err
+		}
+	}
+
+	flowset := flow.NewFlowSet()
+	switch tv := last.(type) {
+	case *traversal.GraphTraversal:
+		graphTraversal = tv
+
+		if context := graphTraversal.Graph.GetContext(); context.Time != nil && s.Storage != nil {
+			var flows []*flow.Flow
+			if flows, err = storage.LookupFlows(s.Storage, context, paramsFilter); err == nil {
+				flowset.Flows = append(flowset.Flows, flows...)
+			}
+		} else {
+			flowset, err = s.TableClient.LookupFlows(paramsFilter)
+		}
+	case *traversal.GraphTraversalV:
+		graphTraversal = tv.GraphTraversal
+
 		hnmap := make(flow.HostNodeIDMap)
+		graphTraversal.Graph.Lock()
 		for _, v := range tv.Values() {
 			node := v.(*graph.Node)
 			if !common.IsCaptureAllowed(node.Metadata()["Type"].(string)) {
@@ -446,19 +468,9 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 			}
 			hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 		}
-		tv.GraphTraversal.Graph.Unlock()
+		graphTraversal.Graph.Unlock()
 
-		var err error
-		var paramsFilter *flow.Filter
-		if len(s.params) > 0 {
-			if paramsFilter, err = paramsToFilter(s.params...); err != nil {
-				return nil, err
-			}
-		}
-
-		flowset := flow.NewFlowSet()
-		context := tv.GraphTraversal.Graph.GetContext()
-		if context.Time != nil && s.Storage != nil {
+		if context := graphTraversal.Graph.GetContext(); context.Time != nil && s.Storage != nil {
 			var flows []*flow.Flow
 			if flows, err = storage.LookupFlowsByNodes(s.Storage, context, hnmap, paramsFilter); err == nil {
 				flowset.Flows = append(flowset.Flows, flows...)
@@ -466,16 +478,16 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		} else {
 			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, paramsFilter)
 		}
-
-		if err != nil {
-			logging.GetLogger().Errorf("Error while looking for flows for nodes: %v, %s", hnmap, err.Error())
-			return nil, err
-		}
-
-		return &FlowTraversalStep{GraphTraversal: tv.GraphTraversal, flowset: flowset}, nil
+	default:
+		return nil, traversal.ExecutionError
 	}
 
-	return nil, traversal.ExecutionError
+	if err != nil {
+		logging.GetLogger().Errorf("Error while looking for flows: %s", err.Error())
+		return nil, err
+	}
+
+	return &FlowTraversalStep{GraphTraversal: graphTraversal, flowset: flowset}, nil
 }
 
 func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {

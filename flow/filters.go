@@ -208,3 +208,25 @@ func (t *TermInt64Filter) Eval(value interface{}) bool {
 
 	return common.CrossTypeEqual(field, t.Value)
 }
+
+func NewFilterForNodes(uuids []string) *Filter {
+	terms := make([]*Filter, len(uuids)*3)
+	for i, uuid := range uuids {
+		terms[i*3] = &Filter{
+			TermStringFilter: &TermStringFilter{Key: "ProbeNodeUUID", Value: uuid},
+		}
+		terms[i*3+1] = &Filter{
+			TermStringFilter: &TermStringFilter{Key: "IfSrcNodeUUID", Value: uuid},
+		}
+		terms[i*3+2] = &Filter{
+			TermStringFilter: &TermStringFilter{Key: "IfDstNodeUUID", Value: uuid},
+		}
+	}
+
+	return &Filter{
+		BoolFilter: &BoolFilter{
+			Op:      BoolFilterOp_OR,
+			Filters: terms,
+		},
+	}
+}

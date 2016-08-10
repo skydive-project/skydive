@@ -34,6 +34,10 @@ type Storage interface {
 	Stop()
 }
 
+func LookupFlows(s Storage, context graph.GraphContext, filter *flow.Filter) ([]*flow.Flow, error) {
+	return LookupFlowsByNodes(s, context, flow.HostNodeIDMap{}, filter)
+}
+
 func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNodeIDMap, filter *flow.Filter) ([]*flow.Flow, error) {
 	now := context.Time.Unix()
 	andFilter := &flow.BoolFilter{
@@ -57,18 +61,7 @@ func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNo
 	if len(hnmap) > 0 {
 		nodeFilter := &flow.BoolFilter{Op: flow.BoolFilterOp_OR}
 		for _, ids := range hnmap {
-			for _, id := range ids {
-				nodeFilter.Filters = append(nodeFilter.Filters,
-					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "ProbeNodeUUID", Value: id},
-					},
-					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "IfSrcNodeUUID", Value: id},
-					},
-					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "IfDstNodeUUID", Value: id},
-					})
-			}
+			nodeFilter.Filters = append(nodeFilter.Filters, flow.NewFilterForNodes(ids))
 		}
 		andFilter.Filters = append(andFilter.Filters, &flow.Filter{BoolFilter: nodeFilter})
 	}

@@ -71,7 +71,7 @@ func (a *Agent) Start() {
 			Password: config.GetConfig().GetString("agent.analyzer_password"),
 		}
 		authClient := shttp.NewAuthenticationClient(addr, port, authOptions)
-		a.WSClient, err = shttp.NewWSAsyncClientFromConfig(addr, port, "/ws", authClient)
+		a.WSClient, err = shttp.NewWSAsyncClientFromConfig("skydive-agent", addr, port, "/ws", authClient)
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to instantiate analyzer client %s", err.Error())
 			os.Exit(1)

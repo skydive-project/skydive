@@ -50,6 +50,7 @@ type WSClient struct {
 	send   chan []byte
 	server *WSServer
 	host   string
+	kind   string
 }
 
 type WSMessage struct {
@@ -132,6 +133,10 @@ func (d *DefaultWSServerEventHandler) OnRegisterClient(c *WSClient) {
 }
 
 func (d *DefaultWSServerEventHandler) OnUnregisterClient(c *WSClient) {
+}
+
+func (c *WSClient) GetHostInfo() (string, string) {
+	return c.host, c.kind
 }
 
 func (c *WSClient) SendWSMessage(msg *WSMessage) {
@@ -233,6 +238,9 @@ func (c *WSClient) write(mt int, message []byte) error {
 }
 
 func (s *WSServer) SendWSMessageTo(msg *WSMessage, host string) bool {
+	s.RLock()
+	defer s.RUnlock()
+
 	for c := range s.clients {
 		if c.host == host {
 			c.SendWSMessage(msg)
@@ -249,7 +257,9 @@ func (s *WSServer) listenAndServe() {
 	for {
 		select {
 		case <-s.quit:
+			s.RLock()
 			if len(s.clients) == 0 {
+				s.RUnlock()
 				return
 			}
 
@@ -258,6 +268,7 @@ func (s *WSServer) listenAndServe() {
 				c.conn.Close()
 			}
 
+			s.RUnlock()
 			quit = true
 		case c := <-s.register:
 			s.Lock()
@@ -325,6 +336,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 		conn:   conn,
 		server: s,
 		host:   hostID,
+		kind:   r.Header.Get("X-Client-Type"),
 	}
 	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
@@ -371,6 +383,17 @@ func (s *WSServer) Stop() {
 
 func (s *WSServer) AddEventHandler(h WSServerEventHandler) {
 	s.eventHandlers = append(s.eventHandlers, h)
+}
+
+func (s *WSServer) GetClientsByType(kind string) (clients []*WSClient) {
+	s.RLock()
+	for client, _ := range s.clients {
+		if client.kind == kind {
+			clients = append(clients, client)
+		}
+	}
+	s.RUnlock()
+	return clients
 }
 
 func NewWSServer(server *Server, pongWait time.Duration, endpoint string) *WSServer {
