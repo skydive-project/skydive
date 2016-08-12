@@ -27,7 +27,7 @@ import (
 	"os"
 
 	"github.com/skydive-project/skydive/api"
-	"github.com/skydive-project/skydive/flow/probes"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -138,7 +138,7 @@ var CaptureDelete = &cobra.Command{
 func addCaptureFlags(cmd *cobra.Command) {
 	types := []string{}
 	found := map[string]bool{}
-	for _, v := range probes.CaptureTypes {
+	for _, v := range common.CaptureTypes {
 		for _, t := range v["allowed"] {
 			if found[t] != true {
 				found[t] = true

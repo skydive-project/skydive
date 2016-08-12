@@ -27,6 +27,7 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -56,7 +57,7 @@ func (o *OnDemandProbeListener) isActive(n *graph.Node) bool {
 func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) *FlowProbe {
 	capType := ""
 	if capture.Type != "" {
-		types := CaptureTypes[n.Metadata()["Type"].(string)]["allowed"]
+		types := common.CaptureTypes[n.Metadata()["Type"].(string)]["allowed"]
 		for _, t := range types {
 			if t == capture.Type {
 				capType = t
@@ -67,7 +68,7 @@ func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) *F
 			return nil
 		}
 	} else {
-		capType = CaptureTypes[n.Metadata()["Type"].(string)]["default"][0]
+		capType = common.CaptureTypes[n.Metadata()["Type"].(string)]["default"][0]
 	}
 	probe := o.Probes.GetProbe(capType)
 	if probe == nil {
@@ -87,7 +88,7 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 		return false
 	}
 
-	if !IsCaptureAllowed(n) {
+	if !common.IsCaptureAllowed(n.Metadata()["Type"].(string)) {
 		logging.GetLogger().Infof("Do not register flow probe, type not supported %v", n)
 		return false
 	}

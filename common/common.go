@@ -36,6 +36,14 @@ const (
 
 var (
 	CantCompareInterface error = errors.New("Can't compare interface")
+	CaptureTypes               = map[string]map[string][]string{
+		"ovsbridge": {"allowed": {"ovssflow"}, "default": {"ovssflow"}},
+		"device":    {"allowed": {"pcap"}, "default": {"pcap"}},
+		"internal":  {"allowed": {"pcap"}, "default": {"pcap"}},
+		"veth":      {"allowed": {"pcap"}, "default": {"pcap"}},
+		"tun":       {"allowed": {"pcap"}, "default": {"pcap"}},
+		"bridge":    {"allowed": {"pcap"}, "default": {"pcap"}},
+	}
 )
 
 func toInt64(i interface{}) (int64, error) {
@@ -175,4 +183,9 @@ func MaxInt64(a, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+func IsCaptureAllowed(nodeType string) bool {
+	_, ok := CaptureTypes[nodeType]
+	return ok
 }

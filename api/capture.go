@@ -30,6 +30,7 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"golang.org/x/net/context"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
@@ -91,8 +92,7 @@ func (c *CaptureApiHandler) getCaptureCount(r ApiResource) ApiResource {
 		switch value.(type) {
 		case *graph.Node:
 			n := value.(*graph.Node)
-			switch n.Metadata()["Type"] {
-			case "device", "ovsbridge", "internal", "veth", "tun", "bridge":
+			if common.IsCaptureAllowed(n.Metadata()["Type"].(string)) {
 				capture.Count = capture.Count + 1
 			}
 		case []*graph.Node:
