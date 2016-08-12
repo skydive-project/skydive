@@ -224,20 +224,20 @@ func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) *Flow
 func (ft *Table) expired(expireBefore int64) {
 	var expiredFlows []*Flow
 	flowTableSzBefore := len(ft.table)
-	for _, f := range ft.table {
+	for k, f := range ft.table {
 		fs := f.GetStatistics()
 		if fs.Last < expireBefore {
 			duration := time.Duration(fs.Last - fs.Start)
 			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
 			expiredFlows = append(expiredFlows, f)
+
+			// need to use the key as the key could be not equal to the UUID
+			delete(ft.table, k)
 		}
 	}
 	/* Advise Clients */
 	if ft.expireHandler.callback != nil {
 		ft.expireHandler.callback(expiredFlows)
-	}
-	for _, f := range expiredFlows {
-		delete(ft.table, f.UUID)
 	}
 	flowTableSz := len(ft.table)
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)

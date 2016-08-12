@@ -600,7 +600,8 @@ func TestSFlowSrcDstPath(t *testing.T) {
 }
 
 func TestFlowQuery(t *testing.T) {
-	al := flow.NewTableAllocator(500, 500, 500, 500)
+	delay := 500 * time.Second
+	al := flow.NewTableAllocator(delay, delay, delay, delay)
 
 	f := func(flows []*flow.Flow) {}
 
@@ -685,8 +686,6 @@ func TestTableServer(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	aa.Flush()
-
 	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	hnmap := make(flow.HostNodeIDMap)
@@ -697,6 +696,8 @@ func TestTableServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+
+	aa.Flush()
 
 	if len(ts.GetFlows()) != len(flowset.Flows) {
 		t.Fatalf("Should return the same number of flows than in the database, got: %v", flowset)
@@ -740,8 +741,6 @@ func TestFlowGremlin(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	aa.Flush()
-
 	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	var count int64
@@ -751,13 +750,13 @@ func TestFlowGremlin(t *testing.T) {
 	}
 
 	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("ProbeNodeUUID", "`+string(node.ID)+`")`)
-	if len(ts.GetFlows()) != len(flows) {
-		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
+	if len(flows) == 0 {
+		t.Fatalf("Should return at least 1 flow, got: %v", flows)
 	}
 
-	flows = getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`")`)
-	if len(ts.GetFlows()) != len(flows) {
-		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
+	flowsOpt := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`")`)
+	if len(flowsOpt) != len(flows) {
+		t.Fatalf("Should return the same number of flows that without optimisation, got: %v", flowsOpt)
 	}
 
 	nodes := getNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Out()`)
@@ -777,7 +776,13 @@ func TestFlowGremlin(t *testing.T) {
 
 	gremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Count()`, &count)
 	if int(count) != len(flows) {
-		t.Fatalf("Should return the same number of flows than in the database, got: %v, expected: %v", len(flows), len(ts.GetFlows()))
+		t.Fatalf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
+	}
+
+	aa.Flush()
+
+	if len(ts.GetFlows()) != int(count) {
+		t.Fatalf("Should get the same number of flows in the database than previously in the agent, got: %v", ts.GetFlows())
 	}
 
 	client.Delete("capture", capture.ID())
@@ -834,9 +839,6 @@ func TestFlowMetrics(t *testing.T) {
 
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
-
-	time.Sleep(2 * time.Second)
-	aa.Flush()
 
 	icmp := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`)
 	if len(icmp) != 1 {
