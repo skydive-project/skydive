@@ -82,7 +82,7 @@ func NewEtcdClient(etcdServers []string) (*EtcdClient, error) {
 }
 
 func NewEtcdClientFromConfig() (*EtcdClient, error) {
-	etcdServers := config.GetConfig().GetStringSlice("etcd.servers")
+	etcdServers := config.GetEtcdServerAddrs()
 
 	return NewEtcdClient(etcdServers)
 }

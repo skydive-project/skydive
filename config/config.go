@@ -63,7 +63,6 @@ func init() {
 	cfg.SetDefault("etcd.data_dir", "/tmp/skydive-etcd")
 	cfg.SetDefault("etcd.embedded", true)
 	cfg.SetDefault("etcd.port", 2379)
-	cfg.SetDefault("etcd.servers", []string{"http://127.0.0.1:2379"})
 	cfg.SetDefault("auth.type", "noauth")
 	cfg.SetDefault("auth.keystone.tenant", "admin")
 	cfg.SetDefault("orientdb.addr", "http://localhost:2480")
@@ -200,4 +199,13 @@ func GetAnalyzerClientAddr() (string, int, error) {
 		return addr, port, nil
 	}
 	return "", 0, nil
+}
+
+func GetEtcdServerAddrs() []string {
+	etcdServers := GetConfig().GetStringSlice("etcd.servers")
+	if len(etcdServers) > 0 {
+		return etcdServers
+	}
+	analyzer, _, _ := GetAnalyzerClientAddr()
+	return []string{"http://" + analyzer + ":2379"}
 }
