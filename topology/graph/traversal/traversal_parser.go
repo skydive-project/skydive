@@ -136,7 +136,7 @@ func invokeStepFnc(last GraphTraversalStep, name string, gremlinStep GremlinTrav
 	return nil, ExecutionError
 }
 
-func (p *GremlinTraversalContext) reduceRange(next GremlinTraversalStep) bool {
+func (p *GremlinTraversalContext) ReduceRange(next GremlinTraversalStep) bool {
 	if p.StepContext.Range != nil {
 		return false
 	}
@@ -184,7 +184,7 @@ func (s *GremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalSte
 }
 
 func (s *GremlinTraversalStepV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -220,7 +220,7 @@ func (s *GremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalS
 }
 
 func (s *GremlinTraversalStepHas) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -242,7 +242,7 @@ func (s *GremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversa
 }
 
 func (s *GremlinTraversalStepDedup) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -265,7 +265,7 @@ func (s *GremlinTraversalStepOut) Reduce(next GremlinTraversalStep) GremlinTrave
 		return s
 	}
 
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -287,7 +287,7 @@ func (s *GremlinTraversalStepIn) Reduce(next GremlinTraversalStep) GremlinTraver
 		return s
 	}
 
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -309,7 +309,7 @@ func (s *GremlinTraversalStepOutV) Reduce(next GremlinTraversalStep) GremlinTrav
 		return s
 	}
 
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -331,7 +331,7 @@ func (s *GremlinTraversalStepInV) Reduce(next GremlinTraversalStep) GremlinTrave
 		return s
 	}
 
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -353,7 +353,7 @@ func (s *GremlinTraversalStepOutE) Reduce(next GremlinTraversalStep) GremlinTrav
 		return s
 	}
 
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -375,7 +375,7 @@ func (s *GremlinTraversalStepInE) Reduce(next GremlinTraversalStep) GremlinTrave
 		return s
 	}
 
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 
@@ -419,7 +419,7 @@ func (s *GremlinTraversalStepBoth) Reduce(next GremlinTraversalStep) GremlinTrav
 		return s
 	}
 
-	if s.reduceRange(next) {
+	if s.ReduceRange(next) {
 		return s
 	}
 

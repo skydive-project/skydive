@@ -60,7 +60,7 @@ func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest
 		return
 	}
 
-	flows, err := f.Storage.SearchFlows(filter)
+	flows, err := f.Storage.SearchFlows(filter, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return

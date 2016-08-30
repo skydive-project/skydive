@@ -60,8 +60,8 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, filter *Filter) {
-	obj, _ := proto.Marshal(&FlowSearchQuery{Filter: filter})
+func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, filter *Filter, interval *Range) {
+	obj, _ := proto.Marshal(&FlowSearchQuery{Filter: filter, Range: interval})
 	tq := TableQuery{
 		Type: "FlowSearchQuery",
 		Obj:  obj,
@@ -120,13 +120,13 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, filter *Fi
 	flowset <- NewFlowSet()
 }
 
-func (f *TableClient) LookupFlows(filter *Filter) (*FlowSet, error) {
+func (f *TableClient) LookupFlows(filter *Filter, interval *Range) (*FlowSet, error) {
 	clients := f.WSServer.GetClientsByType("skydive-agent")
 	ch := make(chan *FlowSet, len(clients))
 
 	for _, client := range clients {
 		hostname, _ := client.GetHostInfo()
-		go f.lookupFlows(ch, hostname, filter)
+		go f.lookupFlows(ch, hostname, filter, interval)
 	}
 
 	flowset := NewFlowSet()
@@ -138,7 +138,7 @@ func (f *TableClient) LookupFlows(filter *Filter) (*FlowSet, error) {
 	return flowset, nil
 }
 
-func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter *Filter) (*FlowSet, error) {
+func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter *Filter, interval *Range) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
 	for host, uuids := range hnmap {
@@ -157,7 +157,7 @@ func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter *Filter) (*
 			BoolFilter: andFilter,
 		}
 
-		go f.lookupFlows(ch, host, queryFilter)
+		go f.lookupFlows(ch, host, queryFilter, interval)
 	}
 
 	flowset := NewFlowSet()

@@ -189,3 +189,30 @@ func IsCaptureAllowed(nodeType string) bool {
 	_, ok := CaptureTypes[nodeType]
 	return ok
 }
+
+type Iterator struct {
+	at, from, to int64
+}
+
+func (it *Iterator) Done() bool {
+	return it.to != -1 && it.at >= it.to
+}
+
+func (it *Iterator) Next() bool {
+	it.at++
+	return it.at-1 >= it.from
+}
+
+func NewIterator(values ...int64) (it *Iterator) {
+	it = &Iterator{to: -1}
+	if len(values) > 0 {
+		it.at = values[0]
+	}
+	if len(values) > 1 {
+		it.from = values[1]
+	}
+	if len(values) > 2 {
+		it.to = values[2]
+	}
+	return
+}

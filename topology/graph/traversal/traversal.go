@@ -43,11 +43,11 @@ type GraphStepContext struct {
 	Range *GraphTraversalRange
 }
 
-func (r *GraphTraversalRange) Iterator() *Iterator {
+func (r *GraphTraversalRange) Iterator() *common.Iterator {
 	if r != nil {
-		return &Iterator{0, int(r[0]), int(r[1])}
+		return common.NewIterator(0, r[0], r[1])
 	}
-	return &Iterator{0, 0, -1}
+	return common.NewIterator()
 }
 
 type GraphTraversalRange [2]int64
@@ -328,19 +328,6 @@ func SliceToMetadata(s ...interface{}) (graph.Metadata, error) {
 	}
 
 	return m, nil
-}
-
-type Iterator struct {
-	at, from, to int
-}
-
-func (it *Iterator) Done() bool {
-	return it.to != -1 && it.at >= it.to
-}
-
-func (it *Iterator) Next() bool {
-	it.at++
-	return it.at-1 >= it.from
 }
 
 func NewGraphTraversal(g *graph.Graph) *GraphTraversal {

@@ -443,6 +443,11 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		}
 	}
 
+	var interval *flow.Range
+	if s.context.StepContext.Range != nil {
+		interval = &flow.Range{0, s.context.StepContext.Range[1]}
+	}
+
 	flowset := flow.NewFlowSet()
 	switch tv := last.(type) {
 	case *traversal.GraphTraversal:
@@ -450,11 +455,11 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 
 		if context := graphTraversal.Graph.GetContext(); context.Time != nil && s.Storage != nil {
 			var flows []*flow.Flow
-			if flows, err = storage.LookupFlows(s.Storage, context, paramsFilter); err == nil {
+			if flows, err = storage.LookupFlows(s.Storage, context, paramsFilter, interval); err == nil {
 				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowset, err = s.TableClient.LookupFlows(paramsFilter)
+			flowset, err = s.TableClient.LookupFlows(paramsFilter, interval)
 		}
 	case *traversal.GraphTraversalV:
 		graphTraversal = tv.GraphTraversal
@@ -472,11 +477,22 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 
 		if context := graphTraversal.Graph.GetContext(); context.Time != nil && s.Storage != nil {
 			var flows []*flow.Flow
-			if flows, err = storage.LookupFlowsByNodes(s.Storage, context, hnmap, paramsFilter); err == nil {
+			if flows, err = storage.LookupFlowsByNodes(s.Storage, context, hnmap, paramsFilter, interval); err == nil {
 				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, paramsFilter)
+			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, paramsFilter, interval)
+		}
+
+		if r := s.context.StepContext.Range; r != nil {
+			from, to := int(r[0]), int(r[1]+1)
+			if from > len(flowset.Flows) {
+				from = len(flowset.Flows)
+			}
+			if to > len(flowset.Flows) {
+				to = len(flowset.Flows)
+			}
+			flowset.Flows = flowset.Flows[from:to]
 		}
 	default:
 		return nil, traversal.ExecutionError
@@ -495,6 +511,11 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 		s.context.Params = hasStep.Params
 		return s
 	}
+
+	if s.context.ReduceRange(next) {
+		return s
+	}
+
 	return next
 }
 

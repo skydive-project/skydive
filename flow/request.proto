@@ -89,8 +89,14 @@ message BoolFilter {
   repeated Filter Filters = 2;
 }
 
+message Range {
+  int64 From = 1;
+  int64 To = 2;
+}
+
 message FlowSearchQuery {
   Filter Filter = 1;
+  Range Range = 2;
 }
 
 message FlowSearchReply {

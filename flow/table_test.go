@@ -143,7 +143,7 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 		},
 	}
 
-	flowset := ft.GetFlows(filters)
+	flowset := ft.GetFlows(&FlowSearchQuery{Filter: filters})
 	if len(flowset.Flows) == 0 {
 		t.Errorf("Should have flows with from probe1 returned")
 	}

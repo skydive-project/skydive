@@ -227,7 +227,7 @@ func (c *ElasticSearchStorage) formatFilter(filter *flow.Filter) map[string]inte
 	return nil
 }
 
-func (c *ElasticSearchStorage) SearchFlows(filter *flow.Filter) ([]*flow.Flow, error) {
+func (c *ElasticSearchStorage) SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
 	if c.started.Load() != true {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -238,8 +238,11 @@ func (c *ElasticSearchStorage) SearchFlows(filter *flow.Filter) ([]*flow.Flow, e
 				"order": "desc",
 			},
 		},
-		"from": 0,
-		"size": 5,
+	}
+
+	if interval != nil {
+		request["from"] = interval.From
+		request["size"] = interval.To - interval.From
 	}
 
 	if filter != nil {

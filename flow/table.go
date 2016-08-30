@@ -124,13 +124,23 @@ func (ft *Table) GetTime() int64 {
 	return atomic.LoadInt64(&ft.tableClock)
 }
 
-func (ft *Table) GetFlows(filter *Filter) *FlowSet {
+func (ft *Table) GetFlows(query *FlowSearchQuery) *FlowSet {
 	ft.RLock()
 	defer ft.RUnlock()
 
+	var it *common.Iterator
+	if query != nil && query.Range != nil {
+		it = common.NewIterator(0, query.Range.From, query.Range.To)
+	} else {
+		it = common.NewIterator()
+	}
+
 	flowset := NewFlowSet()
 	for _, f := range ft.table {
-		if filter == nil || filter.Eval(f) {
+		if it.Done() {
+			break
+		}
+		if (query == nil || query.Filter == nil || query.Filter.Eval(f)) && it.Next() {
 			if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
 				flowset.Start = f.Statistics.Start
 			}
@@ -344,7 +354,7 @@ func (ft *Table) Window(start, end int64) *FlowSet {
 			},
 		}
 
-		set := ft.GetFlows(filter)
+		set := ft.GetFlows(&FlowSearchQuery{Filter: filter})
 		flowset.Flows = set.Flows
 	}
 
@@ -369,7 +379,7 @@ func (s sortByLast) Less(i, j int) bool {
 }
 
 func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchReply, int) {
-	flowset := ft.GetFlows(fsq.Filter)
+	flowset := ft.GetFlows(fsq)
 	if len(flowset.Flows) == 0 {
 		return &FlowSearchReply{
 			FlowSet: flowset,

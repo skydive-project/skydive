@@ -130,7 +130,7 @@ func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *TestStorage) SearchFlows(filter *flow.Filter) ([]*flow.Flow, error) {
+func (s *TestStorage) SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
 	return nil, nil
 }
 
@@ -703,7 +703,7 @@ func TestTableServer(t *testing.T) {
 	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
-	flowset, err := fclient.LookupFlowsByNodes(hnmap, nil)
+	flowset, err := fclient.LookupFlowsByNodes(hnmap, nil, nil)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

@@ -14,9 +14,9 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type FlowSet struct {
-	Flows []*Flow `protobuf:"bytes,1,rep,name=Flows,json=flows" json:"Flows,omitempty"`
-	Start int64   `protobuf:"varint,2,opt,name=Start,json=start" json:"Start,omitempty"`
-	End   int64   `protobuf:"varint,3,opt,name=End,json=end" json:"End,omitempty"`
+	Flows []*Flow `protobuf:"bytes,1,rep,name=Flows" json:"Flows,omitempty"`
+	Start int64   `protobuf:"varint,2,opt,name=Start" json:"Start,omitempty"`
+	End   int64   `protobuf:"varint,3,opt,name=End" json:"End,omitempty"`
 }
 
 func (m *FlowSet) Reset()                    { *m = FlowSet{} }
@@ -34,8 +34,6 @@ func (m *FlowSet) GetFlows() []*Flow {
 func init() {
 	proto.RegisterType((*FlowSet)(nil), "flow.FlowSet")
 }
-
-func init() { proto.RegisterFile("flow/set.proto", fileDescriptor1) }
 
 var fileDescriptor1 = []byte{
 	// 125 bytes of a gzipped FileDescriptorProto

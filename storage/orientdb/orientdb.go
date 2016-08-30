@@ -105,11 +105,16 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *OrientDBStorage) SearchFlows(filter *flow.Filter) ([]*flow.Flow, error) {
+func (c *OrientDBStorage) SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
 	sql := "SELECT FROM Flow"
 	if conditional := filter.String(); conditional != "" {
 		sql += " WHERE " + conditional
 	}
+
+	if interval != nil {
+		sql += fmt.Sprintf(" LIMIT %d, %d", interval.To-interval.From, interval.From)
+	}
+
 	sql += " ORDER BY Statistics.Last"
 	docs, err := c.client.Sql(sql)
 	if err != nil {

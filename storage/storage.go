@@ -30,15 +30,15 @@ import (
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(filter *flow.Filter) ([]*flow.Flow, error)
+	SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error)
 	Stop()
 }
 
-func LookupFlows(s Storage, context graph.GraphContext, filter *flow.Filter) ([]*flow.Flow, error) {
-	return LookupFlowsByNodes(s, context, flow.HostNodeIDMap{}, filter)
+func LookupFlows(s Storage, context graph.GraphContext, filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
+	return LookupFlowsByNodes(s, context, flow.HostNodeIDMap{}, filter, interval)
 }
 
-func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNodeIDMap, filter *flow.Filter) ([]*flow.Flow, error) {
+func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNodeIDMap, filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
 	now := context.Time.Unix()
 	andFilter := &flow.BoolFilter{
 		Op: flow.BoolFilterOp_AND,
@@ -70,5 +70,5 @@ func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNo
 		andFilter.Filters = append(andFilter.Filters, filter)
 	}
 
-	return s.SearchFlows(&flow.Filter{BoolFilter: andFilter})
+	return s.SearchFlows(&flow.Filter{BoolFilter: andFilter}, interval)
 }
