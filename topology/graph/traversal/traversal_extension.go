@@ -24,5 +24,5 @@ package traversal
 
 type GremlinTraversalExtension interface {
 	ScanIdent(s string) (Token, bool)
-	ParseStep(t Token, p GremlinTraversalStepParams) (GremlinTraversalStep, error)
+	ParseStep(t Token, p GremlinTraversalContext) (GremlinTraversalStep, error)
 }

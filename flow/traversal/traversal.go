@@ -51,7 +51,7 @@ type FlowTraversalExtension struct {
 type FlowGremlinTraversalStep struct {
 	TableClient *flow.TableClient
 	Storage     storage.Storage
-	params      []interface{}
+	context     traversal.GremlinTraversalContext
 }
 
 type FlowTraversalStep struct {
@@ -63,7 +63,7 @@ type FlowTraversalStep struct {
 type BandwidthGremlinTraversalStep struct {
 	TableClient *flow.TableClient
 	Storage     storage.Storage
-	params      []interface{}
+	context     traversal.GremlinTraversalContext
 }
 
 type BandwidthTraversalStep struct {
@@ -417,13 +417,13 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 	return traversal.IDENT, false
 }
 
-func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalStepParams) (traversal.GremlinTraversalStep, error) {
+func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.FlowToken:
 		return &FlowGremlinTraversalStep{
 			TableClient: e.TableClient,
 			Storage:     e.Storage,
-			params:      p.Params(),
+			context:     p,
 		}, nil
 	case e.BandwidthToken:
 		return &BandwidthGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
@@ -437,8 +437,8 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 	var err error
 	var paramsFilter *flow.Filter
 
-	if len(s.params) > 0 {
-		if paramsFilter, err = paramsToFilter(s.params...); err != nil {
+	if len(s.context.Params) > 0 {
+		if paramsFilter, err = paramsToFilter(s.context.Params...); err != nil {
 			return nil, err
 		}
 	}
@@ -491,15 +491,15 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 }
 
 func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
-	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok && len(s.params) == 0 {
-		s.params = hasStep.Params()
+	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok && len(s.context.Params) == 0 {
+		s.context.Params = hasStep.Params
 		return s
 	}
 	return next
 }
 
-func (s *FlowGremlinTraversalStep) Params() (params []interface{}) {
-	return s.params
+func (s *FlowGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+	return &s.context
 }
 
 func (b *BandwidthTraversalStep) Values() []interface{} {
@@ -530,6 +530,6 @@ func (s *BandwidthGremlinTraversalStep) Reduce(next traversal.GremlinTraversalSt
 	return next
 }
 
-func (s *BandwidthGremlinTraversalStep) Params() (params []interface{}) {
-	return s.params
+func (s *BandwidthGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+	return &s.context
 }

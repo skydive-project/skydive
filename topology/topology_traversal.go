@@ -70,7 +70,7 @@ func (e *TopologyTraversalExtension) ScanIdent(s string) (traversal.Token, bool)
 	return traversal.IDENT, false
 }
 
-func (e *TopologyTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalStepParams) (traversal.GremlinTraversalStep, error) {
+func (e *TopologyTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.graphPathToken:
 		return &GraphPathGremlinTraversalStep{}, nil
@@ -104,6 +104,6 @@ func (s *GraphPathGremlinTraversalStep) Reduce(next traversal.GremlinTraversalSt
 	return next
 }
 
-func (s *GraphPathGremlinTraversalStep) Params() (params []interface{}) {
-	return
+func (s *GraphPathGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+	return &traversal.GremlinTraversalContext{}
 }

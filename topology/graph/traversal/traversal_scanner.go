@@ -76,6 +76,8 @@ const (
 	OUTSIDE
 	BETWEEN
 	COUNT
+	RANGE
+	LIMIT
 
 	// extensions token have to start after 1000
 )
@@ -240,6 +242,10 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return BETWEEN, buf.String()
 	case "COUNT":
 		return COUNT, buf.String()
+	case "RANGE":
+		return RANGE, buf.String()
+	case "LIMIT":
+		return LIMIT, buf.String()
 	}
 
 	for _, e := range s.extensions {
