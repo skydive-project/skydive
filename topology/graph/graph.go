@@ -371,7 +371,8 @@ func (t *MetadataTransaction) Commit() {
 	updated := false
 	for k, v := range t.metadata {
 		if e.metadata[k] != v {
-			if !t.graph.AddMetadata(t.graphElement, k, v) {
+			e.metadata[k] = v
+			if !t.graph.backend.AddMetadata(t.graphElement, k, v) {
 				return
 			}
 			updated = true
