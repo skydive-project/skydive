@@ -28,6 +28,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage"
@@ -440,6 +441,9 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		hnmap := make(flow.HostNodeIDMap)
 		for _, v := range tv.Values() {
 			node := v.(*graph.Node)
+			if !common.IsCaptureAllowed(node.Metadata()["Type"].(string)) {
+				continue
+			}
 			hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 		}
 		tv.GraphTraversal.Graph.Unlock()
