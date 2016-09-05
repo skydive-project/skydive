@@ -39,15 +39,77 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-const indexVersion = 2
+const indexVersion = 3
 
 const mapping = `
-{"mappings":{"flow":{"dynamic_templates":[
-	{"notanalyzed_graph":{"match":"*NodeUUID","mapping":{"type":"string","index":"not_analyzed"}}},
-	{"notanalyzed_layers":{"match":"LayersPath","mapping":{"type":"string","index":"not_analyzed"}}},
-	{"start_epoch":{"match":"Start","mapping":{"type":"date", "format": "epoch_second"}}},
-	{"last_epoch":{"match":"Last","mapping":{"type":"date", "format": "epoch_second"}}}
-]}}}
+{"mappings": {
+	"flow": {
+		"dynamic_templates": [
+      {"strings": {
+        "match": "*",
+        "match_mapping_type": "string",
+        "mapping": {
+					"type": "string", "index": "not_analyzed", "doc_values": false
+				}
+      }},
+			{"packets": {
+        "match": "*Packets",
+				"mapping": {
+					"type": "long"
+				}
+			}},
+			{"bytes": {
+				"match": "*Bytes",
+				"mapping": {
+					"type": "long"
+				}
+			}},
+			{"start": {
+				"match": "Start",
+				"mapping": {
+					"type": "date", "format": "epoch_second"
+				}
+			}},
+			{"last": {
+				"match": "Last",
+				"mapping": {
+					"type": "date", "format": "epoch_second"
+				}
+			}}
+		]
+	},
+	"metric": {
+		"_parent": {
+      "type": "flow"
+    },
+		"dynamic_templates": [
+			{"packets": {
+        "match": "*Packets",
+				"mapping": {
+					"type": "long"
+				}
+			}},
+			{"bytes": {
+				"match": "*Bytes",
+				"mapping": {
+					"type": "long"
+				}
+			}},
+			{"start": {
+				"match": "Start",
+				"mapping": {
+					"type": "date", "format": "epoch_second"
+				}
+			}},
+			{"last": {
+				"match": "Last",
+				"mapping": {
+					"type": "date", "format": "epoch_second"
+				}
+			}}
+		]
+	}
+}}
 `
 
 type ElasticSearchStorage struct {
@@ -61,11 +123,20 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 		return errors.New("ElasticSearchStorage is not yet started")
 	}
 
-	for _, flow := range flows {
-		err := c.indexer.Index("skydive", "flow", flow.UUID, "", "", nil, flow)
+	for _, f := range flows {
+		err := c.indexer.Index("skydive", "flow", f.UUID, "", "", nil, f)
 		if err != nil {
 			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 			continue
+		}
+
+		if f.MetricRange != nil {
+			// TODO submit a pull request to add bulk request with parent supported
+			_, err = c.connection.IndexWithParameters("skydive", "metric", "", f.UUID, 0, "", "", "", 0, "", "", false, nil, f.MetricRange)
+			if err != nil {
+				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+				continue
+			}
 		}
 	}
 
