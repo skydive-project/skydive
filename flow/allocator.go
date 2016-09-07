@@ -53,7 +53,7 @@ func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableRep
 	}
 
 	for _, r := range replies {
-		if r.Status != http.StatusOK {
+		if r.Status >= http.StatusBadRequest {
 			// FIX, 207 => http.StatusMultiStatus when moving to >= 1.7
 			reply.Status = 207
 			continue

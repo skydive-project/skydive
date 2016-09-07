@@ -371,7 +371,7 @@ func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchRepl
 	if len(flowset.Flows) == 0 {
 		return &FlowSearchReply{
 			FlowSet: flowset,
-		}, http.StatusNotFound
+		}, http.StatusNoContent
 	}
 
 	sort.Sort(sortByLast(flowset.Flows))
