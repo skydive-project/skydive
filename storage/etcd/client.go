@@ -60,12 +60,11 @@ func (client *EtcdClient) Stop() {
 	}
 }
 
-func NewEtcdClient(etcdServers []string) (*EtcdClient, error) {
+func NewEtcdClient(etcdServers []string, clientTimeout time.Duration) (*EtcdClient, error) {
 	cfg := etcd.Config{
-		Endpoints: etcdServers,
-		Transport: etcd.DefaultTransport,
-		// set timeout per request to fail fast when the target endpoint is unavailable
-		HeaderTimeoutPerRequest: time.Second,
+		Endpoints:               etcdServers,
+		Transport:               etcd.DefaultTransport,
+		HeaderTimeoutPerRequest: clientTimeout,
 	}
 
 	etcdClient, err := etcd.New(cfg)
@@ -83,6 +82,13 @@ func NewEtcdClient(etcdServers []string) (*EtcdClient, error) {
 
 func NewEtcdClientFromConfig() (*EtcdClient, error) {
 	etcdServers := config.GetEtcdServerAddrs()
+	etcdTimeout := config.GetConfig().GetInt("etcd.client_timeout")
+	switch etcdTimeout {
+	case 0:
+		etcdTimeout = 5 // Default timeout
+	case -1:
+		etcdTimeout = 0 // No timeout
+	}
 
-	return NewEtcdClient(etcdServers)
+	return NewEtcdClient(etcdServers, time.Duration(etcdTimeout)*time.Second)
 }

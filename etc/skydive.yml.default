@@ -113,6 +113,8 @@ etcd:
   # servers:
   #   - http://127.0.0.1:2379
 
+  # client_timeout: 5
+
 # OrientDB connection informations
 # orientdb:
 #  addr: http://127.0.0.1:2480
