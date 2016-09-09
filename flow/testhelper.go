@@ -219,7 +219,7 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 		fstart := s.Start
 		fend := s.Last
 		duration := fend - fstart
-		hstr := f.GetLayerHash(FlowEndpointType_ETHERNET)
+		hstr := f.GetLayerHash(FlowEndpointLayer_LINK)
 
 		needTag := false
 		for _, tag := range tagsUUID {

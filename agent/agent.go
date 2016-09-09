@@ -118,7 +118,7 @@ func (a *Agent) Start() {
 
 			updateTime := time.Duration(flowtableUpdate) * time.Second
 			expireTime := time.Duration(flowtableExpire) * time.Second
-			a.FlowTableAllocator = flow.NewTableAllocator(updateTime, updateTime, expireTime, expireTime)
+			a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime)
 
 			// expose a flow server through the client connection
 			flow.NewServer(a.FlowTableAllocator, a.WSClient)

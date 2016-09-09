@@ -201,12 +201,8 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func (flow *Flow) GetLayerHash(ltype FlowEndpointType) string {
-	s := flow.GetStatistics()
-	if s == nil {
-		return ""
-	}
-	return hex.EncodeToString(s.GetLayerHash(ltype))
+func (flow *Flow) GetLayerHash(layer FlowEndpointLayer) string {
+	return hex.EncodeToString(flow.Statistics.GetLayerHash(layer))
 }
 
 func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, length uint64, setter FlowProbeNodeSetter) *Flow {

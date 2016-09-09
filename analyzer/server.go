@@ -293,8 +293,8 @@ func NewServerFromConfig() (*Server, error) {
 	}
 	server.SetStorageFromConfig()
 
-	updateHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerUpdate), time.Second*time.Duration(agentUpdate))
-	expireHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerExpire), time.Second*time.Duration(agentExpire))
+	updateHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerUpdate))
+	expireHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerExpire))
 	flowtable := flow.NewTable(updateHandler, expireHandler)
 	server.FlowTable = flowtable
 

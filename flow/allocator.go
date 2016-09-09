@@ -30,11 +30,9 @@ import (
 
 type TableAllocator struct {
 	sync.RWMutex
-	update       time.Duration
-	updateWindow time.Duration
-	expire       time.Duration
-	expireWindow time.Duration
-	tables       map[*Table]bool
+	update time.Duration
+	expire time.Duration
+	tables map[*Table]bool
 }
 
 func (a *TableAllocator) Flush() {
@@ -83,8 +81,8 @@ func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc) *Table {
 	a.Lock()
 	defer a.Unlock()
 
-	updateHandler := NewFlowHandler(flowCallBack, a.update, a.update)
-	expireHandler := NewFlowHandler(flowCallBack, a.expire, a.expire)
+	updateHandler := NewFlowHandler(flowCallBack, a.update)
+	expireHandler := NewFlowHandler(flowCallBack, a.expire)
 	t := NewTable(updateHandler, expireHandler)
 	a.tables[t] = true
 
@@ -97,12 +95,10 @@ func (a *TableAllocator) Release(t *Table) {
 	a.Unlock()
 }
 
-func NewTableAllocator(update, updateWindow, expire, expireWindow time.Duration) *TableAllocator {
+func NewTableAllocator(update, expire time.Duration) *TableAllocator {
 	return &TableAllocator{
-		update:       update,
-		updateWindow: updateWindow,
-		expire:       expire,
-		expireWindow: expireWindow,
-		tables:       make(map[*Table]bool),
+		update: update,
+		expire: expire,
+		tables: make(map[*Table]bool),
 	}
 }

@@ -181,12 +181,18 @@ func (fs *FlowStatistics) GetEndpointsType(eptype FlowEndpointType) *FlowEndpoin
 	return nil
 }
 
-func (fs *FlowStatistics) GetLayerHash(ltype FlowEndpointType) (hash []byte) {
-	e := fs.GetEndpointsType(ltype)
-	if e == nil {
-		return
+func (fs *FlowStatistics) GetLayerHash(layer FlowEndpointLayer) (hash []byte) {
+	if len(fs.Endpoints) > int(layer) {
+		return fs.Endpoints[layer].Hash
 	}
-	return e.Hash
+	return
+}
+
+func (fs *FlowStatistics) GetLayer(layer FlowEndpointLayer) *FlowEndpointsStatistics {
+	if len(fs.Endpoints) > int(layer) {
+		return fs.Endpoints[layer]
+	}
+	return nil
 }
 
 func (fs *FlowStatistics) newLinkLayerEndpointStatistics(packet *gopacket.Packet, length uint64) (uint64, error) {

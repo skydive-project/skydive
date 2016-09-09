@@ -56,14 +56,12 @@ type ExpireUpdateFunc func(f []*Flow)
 type FlowHandler struct {
 	callback ExpireUpdateFunc
 	every    time.Duration
-	duration time.Duration
 }
 
-func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration, duration time.Duration) *FlowHandler {
+func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *FlowHandler {
 	return &FlowHandler{
 		callback: callback,
 		every:    every,
-		duration: duration,
 	}
 }
 
@@ -250,7 +248,7 @@ func (ft *Table) expired(expireBefore int64) {
 }
 
 func (ft *Table) Updated(now time.Time) {
-	timepoint := now.Unix() - int64((ft.updateHandler.duration).Seconds())
+	timepoint := now.Unix() - int64((ft.updateHandler.every).Seconds())
 	ft.RLock()
 	ft.updated(timepoint)
 	ft.RUnlock()
@@ -258,6 +256,8 @@ func (ft *Table) Updated(now time.Time) {
 
 /* Internal call only, Must be called under ft.RLock() */
 func (ft *Table) updated(updateFrom int64) {
+	every := int64(ft.updateHandler.every.Seconds())
+
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
 		fs := f.Statistics
@@ -270,7 +270,9 @@ func (ft *Table) updated(updateFrom int64) {
 			f.MetricRange.ABBytes = e.AB.Bytes
 			f.MetricRange.BAPackets = e.BA.Packets
 			f.MetricRange.BABytes = e.BA.Bytes
-			f.MetricRange.Last = f.Statistics.Last
+
+			f.MetricRange.Start = updateFrom
+			f.MetricRange.Last = updateFrom + every
 
 			// substract previous values to get the diff so that we store the
 			// amount of data between two updates
@@ -281,7 +283,7 @@ func (ft *Table) updated(updateFrom int64) {
 				f.MetricRange.BABytes -= s.BA.Bytes
 			}
 		} else {
-			f.MetricRange = &FlowMetricRange{Start: updateFrom, Last: updateFrom}
+			f.MetricRange = &FlowMetricRange{}
 		}
 
 		ft.stats[f.UUID] = f.Statistics.Endpoints[0].Copy()
@@ -302,7 +304,7 @@ func (ft *Table) expireNow() {
 }
 
 func (ft *Table) Expire(now time.Time) {
-	timepoint := now.Unix() - int64((ft.expireHandler.duration).Seconds())
+	timepoint := now.Unix() - int64((ft.expireHandler.every).Seconds())
 	ft.Lock()
 	ft.expired(timepoint)
 	ft.Unlock()

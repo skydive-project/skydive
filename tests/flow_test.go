@@ -602,7 +602,7 @@ func TestSFlowSrcDstPath(t *testing.T) {
 
 func TestFlowQuery(t *testing.T) {
 	delay := 500 * time.Second
-	al := flow.NewTableAllocator(delay, delay, delay, delay)
+	al := flow.NewTableAllocator(delay, delay)
 
 	f := func(flows []*flow.Flow) {}
 
@@ -837,7 +837,7 @@ func TestFlowMetrics(t *testing.T) {
 		{"ip netns exec sflow-vm2 ip link set sflow-intf2 up", true},
 
 		// wait to have everything ready, sflow, interfaces
-		{"sleep 1", false},
+		{"sleep 2", false},
 
 		{"ip netns exec sflow-vm1 ping -c 1 -s 1024 -I sflow-intf1 169.254.33.34", false},
 	}
@@ -851,6 +851,8 @@ func TestFlowMetrics(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
+	time.Sleep(1 * time.Second)
+
 	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
 
 	icmp := getFlowsFromGremlinReply(t, gremlin)
@@ -859,17 +861,6 @@ func TestFlowMetrics(t *testing.T) {
 	}
 	if icmp[0].LayersPath != "Ethernet/IPv4/ICMPv4/Payload" {
 		t.Errorf("Wrong layer path, should be 'Ethernet/IPv4/ICMPv4/Payload', got %s", icmp[0].LayersPath)
-	}
-
-	// since the agent update ticker is about 10 sec according to the configuration
-	// wait 10 sec to have the first update and the MetricRange filled
-	time.Sleep(10 * time.Second)
-
-	// this check needs to be close to the beginnig of the test since it's a time
-	// based test and it will fail if we wait one more update tick
-	bw := getFlowSetBandwidthFromGremlinReply(t, gremlin+".Dedup().Bandwidth()")
-	if bw.NBFlow != 1 || bw.ABpackets != 1 || bw.BApackets != 1 || bw.ABbytes < 1066 || bw.BAbytes < 1066 {
-		t.Errorf("Wrong bandwidth returned, got : %v", bw)
 	}
 
 	ethernet := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
@@ -950,6 +941,66 @@ func TestFlowMetrics(t *testing.T) {
 	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Between(%d, %d))`, pingLen, pingLen), flow.FlowEndpointType_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
+	}
+
+	client.Delete("capture", capture.ID())
+}
+
+func TestFlowBandwidth(t *testing.T) {
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip netns add sflow-vm1", true},
+		{"ip link set sflow-intf1 netns sflow-vm1", true},
+		{"ip netns exec sflow-vm1 ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip netns exec sflow-vm1 ip link set sflow-intf1 up", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf2 -- set interface sflow-intf2 type=internal", true},
+		{"ip netns add sflow-vm2", true},
+		{"ip link set sflow-intf2 netns sflow-vm2", true},
+		{"ip netns exec sflow-vm2 ip address add 169.254.33.34/24 dev sflow-intf2", true},
+		{"ip netns exec sflow-vm2 ip link set sflow-intf2 up", true},
+
+		// wait to have everything ready, sflow, interfaces
+		{"sleep 2", false},
+
+		{"ip netns exec sflow-vm1 ping -c 1 -s 1024 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del sflow-vm1", true},
+		{"ip netns del sflow-vm2", true},
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	// since the agent update ticker is about 10 sec according to the configuration
+	// wait 11 sec to have the first update and the MetricRange filled
+	time.Sleep(11 * time.Second)
+
+	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Bandwidth()`
+
+	// this check needs to be close to the beginnig of the test since it's a time
+	// based test and it will fail if we wait one more update tick
+	bw := getFlowSetBandwidthFromGremlinReply(t, gremlin)
+	if bw.NBFlow != 1 || bw.ABpackets != 1 || bw.BApackets != 1 || bw.ABbytes < 1066 || bw.BAbytes < 1066 {
+		t.Errorf("Wrong bandwidth returned, got : %v", bw)
 	}
 
 	client.Delete("capture", capture.ID())

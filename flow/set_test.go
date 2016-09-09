@@ -101,7 +101,7 @@ func TestAvgBandwidth(t *testing.T) {
 
 	tags := make([]string, fbw.NBFlow)
 	for i, fw := range winFlows.Flows {
-		tags[i] = fw.GetLayerHash(FlowEndpointType_ETHERNET)
+		tags[i] = fw.GetLayerHash(FlowEndpointLayer_LINK)
 	}
 	graphFlows(now, flows, tags...)
 
@@ -114,7 +114,7 @@ func TestAvgBandwidth(t *testing.T) {
 
 	tags = make([]string, fbw.NBFlow)
 	for i, fw := range winFlows.Flows {
-		tags[i] = fw.GetLayerHash(FlowEndpointType_ETHERNET)
+		tags[i] = fw.GetLayerHash(FlowEndpointLayer_LINK)
 	}
 	graphFlows(now, flows, tags...)
 }
