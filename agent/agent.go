@@ -36,6 +36,7 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage/etcd"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
@@ -52,6 +53,7 @@ type Agent struct {
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
 	HTTPServer            *shttp.Server
 	EtcdClient            *etcd.EtcdClient
+	TIDMapper             *topology.TIDMapper
 }
 
 func (a *Agent) Start() {
@@ -161,6 +163,7 @@ func (a *Agent) Stop() {
 	}); ok {
 		tr.CloseIdleConnections()
 	}
+	a.TIDMapper.Stop()
 }
 
 func NewAgent() *Agent {
@@ -173,6 +176,8 @@ func NewAgent() *Agent {
 	if err != nil {
 		panic(err)
 	}
+	tm := topology.NewTIDMapper(g)
+	tm.Start()
 
 	hostID := config.GetConfig().GetString("host_id")
 
@@ -208,5 +213,6 @@ func NewAgent() *Agent {
 		GraphServer: gserver,
 		Root:        root,
 		HTTPServer:  hserver,
+		TIDMapper:   tm,
 	}
 }

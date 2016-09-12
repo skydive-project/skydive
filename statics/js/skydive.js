@@ -1517,24 +1517,7 @@ function SetupCaptureList() {
   $("#add-capture").click(function(e) {
     $("#capture").slideToggle(500, function () {});
 
-    var query = "";
-
-    for (var e in CurrentNodeDetails.Edges) {
-      var edge = CurrentNodeDetails.Edges[e];
-      if (edge.RelationType() != "ownership")
-        continue;
-
-      var neighbor;
-      if (edge.Parent.ID != this.ID) {
-        query = "V().Has('Name', '" + edge.Parent.Name() + "')";
-        break;
-      }
-    }
-
-    if (query == "")
-      return;
-
-    query = "G." + query + ".Out('Name', '" + CurrentNodeDetails.Name() + "', 'Type', '" + CurrentNodeDetails.Type() + "')";
+    var query = "G.V().Has('TID','" + CurrentNodeDetails.Metadata["TID"] + "')";
     $("#capturequery").val(query);
 
     var captureTypes = getCaptureTypes(CurrentNodeDetails.Type());
