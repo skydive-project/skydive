@@ -50,7 +50,7 @@ test.functionals.all: test.functionals.compile
 test.functionals: test.functionals.compile
 	set -e ; \
 	for functest in ${FUNC_TESTS} ; do \
-		make ARGS="-test.run $$functest ${ARGS}" test.functionals.run ; \
+		make ARGS="-test.run $$functest$$\$$ ${ARGS}" test.functionals.run ; \
 	done
 
 test: govendor
