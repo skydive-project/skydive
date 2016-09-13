@@ -66,7 +66,7 @@ func (fs *FlowSet) mergeFlows(left, right []*Flow) []*Flow {
 		if len(right) == 0 {
 			return append(ret, left...)
 		}
-		if left[0].Statistics.Last >= right[0].Statistics.Last {
+		if left[0].Metric.Last >= right[0].Metric.Last {
 			ret = append(ret, left[0])
 			left = left[1:]
 		} else {
@@ -84,8 +84,8 @@ func (fs *FlowSet) AvgBandwidth() (fsbw FlowSetBandwidth) {
 
 	fsbw.Duration = fs.End - fs.Start
 	for _, f := range fs.Flows {
-		fstart := f.Statistics.Start
-		fend := f.Statistics.Last
+		fstart := f.Metric.Start
+		fend := f.Metric.Last
 
 		fduration := fend - fstart
 		if fduration == 0 {
@@ -97,11 +97,11 @@ func (fs *FlowSet) AvgBandwidth() (fsbw FlowSetBandwidth) {
 			fdurationWindow = 1
 		}
 
-		e := f.Statistics.GetEndpointsType(FlowEndpointType_ETHERNET)
-		fsbw.ABpackets += uint64(e.AB.Packets * fdurationWindow / uint64(fduration))
-		fsbw.ABbytes += uint64(e.AB.Bytes * fdurationWindow / uint64(fduration))
-		fsbw.BApackets += uint64(e.BA.Packets * fdurationWindow / uint64(fduration))
-		fsbw.BAbytes += uint64(e.BA.Bytes * fdurationWindow / uint64(fduration))
+		m := f.Metric
+		fsbw.ABpackets += uint64(m.ABPackets * fdurationWindow / uint64(fduration))
+		fsbw.ABbytes += uint64(m.ABBytes * fdurationWindow / uint64(fduration))
+		fsbw.BApackets += uint64(m.BAPackets * fdurationWindow / uint64(fduration))
+		fsbw.BAbytes += uint64(m.BABytes * fdurationWindow / uint64(fduration))
 		fsbw.NBFlow++
 	}
 	return
@@ -111,11 +111,11 @@ func (fs *FlowSet) Filter(filter *Filter) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range fs.Flows {
 		if filter == nil || filter.Eval(f) {
-			if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
-				flowset.Start = f.Statistics.Start
+			if flowset.Start == 0 || flowset.Start > f.Metric.Start {
+				flowset.Start = f.Metric.Start
 			}
-			if flowset.End == 0 || flowset.Start < f.Statistics.Last {
-				flowset.End = f.Statistics.Last
+			if flowset.End == 0 || flowset.Start < f.Metric.Last {
+				flowset.End = f.Metric.Last
 			}
 			flowset.Flows = append(flowset.Flows, f)
 		}
@@ -125,7 +125,7 @@ func (fs *FlowSet) Filter(filter *Filter) *FlowSet {
 
 func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
 	for _, f := range fs.Flows {
-		duration := f.MetricRange.Last - f.MetricRange.Start
+		duration := f.LastUpdateMetric.Last - f.LastUpdateMetric.Start
 
 		// set the duration to the largest flow duration. All the flow should
 		// be close in term of duration ~= update timer
@@ -133,10 +133,10 @@ func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
 			fsbw.Duration = duration
 		}
 
-		fsbw.ABpackets += f.MetricRange.ABPackets
-		fsbw.ABbytes += f.MetricRange.ABBytes
-		fsbw.BApackets += f.MetricRange.BAPackets
-		fsbw.BAbytes += f.MetricRange.BABytes
+		fsbw.ABpackets += f.LastUpdateMetric.ABPackets
+		fsbw.ABbytes += f.LastUpdateMetric.ABBytes
+		fsbw.BApackets += f.LastUpdateMetric.BAPackets
+		fsbw.BAbytes += f.LastUpdateMetric.BABytes
 		fsbw.NBFlow++
 	}
 	return

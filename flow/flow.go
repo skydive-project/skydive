@@ -27,6 +27,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strconv"
 
@@ -37,6 +38,8 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+var ErrFlowProtocol = errors.New("FlowProtocol invalid")
+
 type GetAttr interface {
 	GetAttr(name string) interface{}
 }
@@ -45,34 +48,38 @@ type FlowProbeNodeSetter interface {
 	SetProbeNode(flow *Flow) bool
 }
 
-func (s *FlowEndpointsStatistics) MarshalJSON() ([]byte, error) {
+func (s *FlowLayer) MarshalJSON() ([]byte, error) {
 	obj := &struct {
-		Type string
-		AB   *FlowEndpointStatistics
-		BA   *FlowEndpointStatistics
+		Protocol string
+		A        string
+		B        string
 	}{
-		Type: s.Type.String(),
-		AB:   s.AB,
-		BA:   s.BA,
+		Protocol: s.Protocol.String(),
+		A:        s.A,
+		B:        s.B,
 	}
 
 	return json.Marshal(&obj)
 }
 
-func (s *FlowEndpointsStatistics) UnmarshalJSON(b []byte) error {
+func (s *FlowLayer) UnmarshalJSON(b []byte) error {
 	m := struct {
-		Type string
-		AB   *FlowEndpointStatistics
-		BA   *FlowEndpointStatistics
+		Protocol string
+		A        string
+		B        string
 	}{}
 
 	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
 
-	s.Type = FlowEndpointType(FlowEndpointType_value[m.Type])
-	s.AB = m.AB
-	s.BA = m.BA
+	protocol, ok := FlowProtocol_value[m.Protocol]
+	if !ok {
+		return ErrFlowProtocol
+	}
+	s.Protocol = FlowProtocol(protocol)
+	s.A = m.A
+	s.B = m.B
 
 	return nil
 }
@@ -114,20 +121,18 @@ func layerPathFromGoPacket(packet *gopacket.Packet) string {
 }
 
 func (flow *Flow) UpdateUUIDs(key string) {
-	fs := flow.GetStatistics()
-
 	hasher := sha1.New()
 	hasher.Write([]byte(flow.LayersPath))
 
-	for _, ep := range fs.GetEndpoints() {
-		hasher.Write(ep.Hash)
-	}
+	hasher.Write(flow.Link.Hash())
+	hasher.Write(flow.Network.Hash())
+	hasher.Write(flow.Transport.Hash())
 	flow.TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
 	bfStart := make([]byte, 8)
-	binary.BigEndian.PutUint64(bfStart, uint64(fs.Start))
+	binary.BigEndian.PutUint64(bfStart, uint64(flow.Metric.Start))
 	hasher.Write(bfStart)
-	hasher.Write([]byte(flow.ProbeNodeUUID))
+	hasher.Write([]byte(flow.NodeUUID))
 
 	// include key so that we are sure that two flows with different keys don't
 	// give the same UUID due to different ways of hash the headers.
@@ -137,7 +142,7 @@ func (flow *Flow) UpdateUUIDs(key string) {
 }
 
 func (flow *Flow) initFromGoPacket(key string, now int64, packet *gopacket.Packet, length uint64, setter FlowProbeNodeSetter) {
-	flow.Statistics.Init(now, packet, length)
+	flow.Init(now, packet, length)
 
 	if setter != nil {
 		setter.SetProbeNode(flow)
@@ -201,10 +206,6 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func (flow *Flow) GetLayerHash(layer FlowEndpointLayer) string {
-	return hex.EncodeToString(flow.Statistics.GetLayerHash(layer))
-}
-
 func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, length uint64, setter FlowProbeNodeSetter) *Flow {
 	if el := (*packet).Layer(layers.LayerTypeEthernet); el == nil {
 		logging.GetLogger().Error("Unable to decode the ethernet layer")
@@ -216,7 +217,7 @@ func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, length uint64, setter 
 	if new {
 		flow.initFromGoPacket(key, ft.GetTime(), packet, length, setter)
 	} else {
-		flow.GetStatistics().Update(ft.GetTime(), packet, length)
+		flow.Update(ft.GetTime(), packet, length)
 	}
 
 	return flow
@@ -250,10 +251,10 @@ func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter Flow
 	return flows
 }
 
-func (fes *FlowEndpointsStatistics) GetAttr(name string) interface{} {
-	flowType, ok := FlowEndpointType_value[name]
-	if ok && fes.Type == FlowEndpointType(flowType) {
-		return fes.Type
+func (fes *FlowLayer) GetAttr(name string) interface{} {
+	flowType, ok := FlowProtocol_value[name]
+	if ok && fes.Protocol.Value() == flowType {
+		return fes.Protocol
 	}
 
 	value := reflect.Indirect(reflect.ValueOf(fes))

@@ -147,14 +147,14 @@ func (s *TestStorage) GetFlows() []*flow.Flow {
 }
 
 func pcapTraceCheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool {
-	eth := f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
-	if eth == nil {
+	eth := f.Metric
+	if eth == nil || f.Link.Protocol != flow.FlowProtocol_ETHERNET {
 		t.Fail()
 	}
 
 	for _, fi := range trace.flowStat {
 		if fi.Path == f.LayersPath {
-			if (fi.ABPackets == eth.AB.Packets) && (fi.ABBytes == eth.AB.Bytes) && (fi.BAPackets == eth.BA.Packets) && (fi.BABytes == eth.BA.Bytes) {
+			if (fi.ABPackets == eth.ABPackets) && (fi.ABBytes == eth.ABBytes) && (fi.BAPackets == eth.BAPackets) && (fi.BABytes == eth.BABytes) {
 				return true
 			}
 		}
@@ -256,20 +256,20 @@ func TestSFlowProbeNode(t *testing.T) {
 
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.ProbeNodeUUID == string(node.ID) && f.LayersPath == "Ethernet/ARP/Payload" {
+		if f.NodeUUID == string(node.ID) && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}
 	}
 
 	if !ok {
-		t.Error("Unable to find a flow with the expected ProbeNodeUUID")
+		t.Error("Unable to find a flow with the expected NodeUUID")
 	}
 
 	client.Delete("capture", capture.ID())
 }
 
-func TestSFlowProbeNodeUUIDOvsInternalNetNS(t *testing.T) {
+func TestSFlowNodeUUIDOvsInternalNetNS(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -309,20 +309,20 @@ func TestSFlowProbeNodeUUIDOvsInternalNetNS(t *testing.T) {
 
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.ProbeNodeUUID == string(node.ID) && f.LayersPath == "Ethernet/ARP/Payload" {
+		if f.NodeUUID == string(node.ID) && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}
 	}
 
 	if !ok {
-		t.Error("Unable to find a flow with the expected ProbeNodeUUID")
+		t.Error("Unable to find a flow with the expected NodeUUID")
 	}
 
 	client.Delete("capture", capture.ID())
 }
 
-func TestSFlowTwoProbeNodeUUID(t *testing.T) {
+func TestSFlowTwoNodeUUID(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -392,7 +392,7 @@ func TestSFlowTwoProbeNodeUUID(t *testing.T) {
 	}
 
 	if len(flows) != 2 {
-		t.Errorf("Should have 2 flow entries one per ProbeNodeUUID got: %d", len(flows))
+		t.Errorf("Should have 2 flow entries one per NodeUUID got: %d", len(flows))
 	}
 
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
@@ -400,14 +400,14 @@ func TestSFlowTwoProbeNodeUUID(t *testing.T) {
 	node1 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow1", "Type", "ovsbridge")`)
 	node2 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow2", "Type", "ovsbridge")`)
 
-	if flows[0].ProbeNodeUUID != string(node1.ID) &&
-		flows[0].ProbeNodeUUID != string(node2.ID) {
-		t.Errorf("Bad ProbeNodeUUID for the first flow: %s", flows[0].ProbeNodeUUID)
+	if flows[0].NodeUUID != string(node1.ID) &&
+		flows[0].NodeUUID != string(node2.ID) {
+		t.Errorf("Bad NodeUUID for the first flow: %s", flows[0].NodeUUID)
 	}
 
-	if flows[1].ProbeNodeUUID != string(node1.ID) &&
-		flows[1].ProbeNodeUUID != string(node2.ID) {
-		t.Errorf("Bad ProbeNodeUUID for the second flow: %s", flows[1].ProbeNodeUUID)
+	if flows[1].NodeUUID != string(node1.ID) &&
+		flows[1].NodeUUID != string(node2.ID) {
+		t.Errorf("Bad NodeUUID for the second flow: %s", flows[1].NodeUUID)
 	}
 
 	if flows[0].TrackingID != flows[1].TrackingID {
@@ -477,14 +477,14 @@ func TestPCAPProbe(t *testing.T) {
 	ok := false
 	flows := ts.GetFlows()
 	for _, f := range flows {
-		if f.ProbeNodeUUID == string(node.ID) {
+		if f.NodeUUID == string(node.ID) {
 			ok = true
 			break
 		}
 	}
 
 	if !ok {
-		t.Errorf("Unable to find a flow with the expected ProbeNodeUUID: %v\n%v", flows, aa.Agent.Graph.String())
+		t.Errorf("Unable to find a flow with the expected NodeUUID: %v\n%v", flows, aa.Agent.Graph.String())
 	}
 
 	client.Delete("capture", capture.ID())
@@ -541,8 +541,8 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	ok := false
 	for _, f := range ts.GetFlows() {
 		// we can have both way depending on which packet has been seen first
-		if (f.IfSrcNodeUUID == string(node1.ID) && f.IfDstNodeUUID == string(node2.ID)) ||
-			(f.IfSrcNodeUUID == string(node2.ID) && f.IfDstNodeUUID == string(node1.ID)) {
+		if (f.ANodeUUID == string(node1.ID) && f.BNodeUUID == string(node2.ID)) ||
+			(f.ANodeUUID == string(node2.ID) && f.BNodeUUID == string(node1.ID)) {
 			ok = true
 			break
 		}
@@ -580,13 +580,13 @@ func TestFlowQuery(t *testing.T) {
 				Op: flow.BoolFilterOp_OR,
 				Filters: []*flow.Filter{
 					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "ProbeNodeUUID", Value: "probe2"},
+						TermStringFilter: &flow.TermStringFilter{Key: "NodeUUID", Value: "probe2"},
 					},
 					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "IfSrcNodeUUID", Value: "probe2"},
+						TermStringFilter: &flow.TermStringFilter{Key: "ANodeUUID", Value: "probe2"},
 					},
 					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "IfDstNodeUUID", Value: "probe2"},
+						TermStringFilter: &flow.TermStringFilter{Key: "BNodeUUID", Value: "probe2"},
 					},
 				},
 			},
@@ -617,7 +617,7 @@ func TestFlowQuery(t *testing.T) {
 	}
 
 	for _, flow := range flowset.Flows {
-		if flow.ProbeNodeUUID != "probe2" {
+		if flow.NodeUUID != "probe2" {
 			t.Fatalf("FlowQuery should only return flows with probe2, got: %s", flow)
 		}
 	}
@@ -672,7 +672,7 @@ func TestTableServer(t *testing.T) {
 	}
 
 	for _, f := range flowset.Flows {
-		if f.ProbeNodeUUID != string(node.ID) {
+		if f.NodeUUID != string(node.ID) {
 			t.Fatalf("Returned a non expected flow: %v", f)
 		}
 	}
@@ -719,32 +719,32 @@ func TestFlowGremlin(t *testing.T) {
 		t.Fatalf("Should return 1, got: %d", count)
 	}
 
-	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("ProbeNodeUUID", "`+string(node.ID)+`")`)
+	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeUUID", "`+string(node.ID)+`")`)
 	if len(flows) == 0 {
 		t.Fatalf("Should return at least 1 flow, got: %v", flows)
 	}
 
-	flowsOpt := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`")`)
+	flowsOpt := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("NodeUUID", "`+string(node.ID)+`")`)
 	if len(flowsOpt) != len(flows) {
 		t.Fatalf("Should return the same number of flows that without optimisation, got: %v", flowsOpt)
 	}
 
-	nodes := gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Out()`)
+	nodes := gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("NodeUUID", "`+string(node.ID)+`").Out()`)
 	if len(nodes) != 0 {
 		t.Fatalf("Should return no destination node, got %d", len(nodes))
 	}
 
-	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Both().Dedup()`)
+	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("NodeUUID", "`+string(node.ID)+`").Both().Dedup()`)
 	if len(nodes) != 1 {
 		t.Fatalf("Should return one node, got %d", len(nodes))
 	}
 
-	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").In().Dedup()`)
+	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("NodeUUID", "`+string(node.ID)+`").In().Dedup()`)
 	if len(nodes) != 1 {
 		t.Fatalf("Should return one source node, got %d", len(nodes))
 	}
 
-	gh.GremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Count()`, &count)
+	gh.GremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("NodeUUID", "`+string(node.ID)+`").Count()`, &count)
 	if int(count) != len(flows) {
 		t.Fatalf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
 	}
@@ -758,14 +758,14 @@ func TestFlowGremlin(t *testing.T) {
 	client.Delete("capture", capture.ID())
 }
 
-func getFlowEndpoint(t *testing.T, gremlin string, endpointType flow.FlowEndpointType) *flow.FlowEndpointsStatistics {
+func getFlowEndpoint(t *testing.T, gremlin string, protocol flow.FlowProtocol) *flow.FlowMetric {
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
 	flows := gh.GetFlowsFromGremlinReply(t, gremlin)
 	if len(flows) != 1 {
 		return nil
 	}
-	return flows[0].GetStatistics().GetEndpointsType(endpointType)
+	return flows[0].Metric
 }
 
 func TestFlowMetrics(t *testing.T) {
@@ -827,82 +827,82 @@ func TestFlowMetrics(t *testing.T) {
 		t.Errorf("Wrong layer path, should be 'Ethernet/IPv4/ICMPv4/Payload', got %s", icmp[0].LayersPath)
 	}
 
-	ethernet := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
-	if ethernet.GetBA().Packets != 1 {
+	ethernet := icmp[0].Metric
+	if ethernet.BAPackets != 1 {
 		t.Errorf("Number of packets is wrong, got: %v", icmp)
 	}
 
-	if ethernet.GetAB().Bytes < 1066 || ethernet.GetBA().Bytes < 1066 {
+	if ethernet.ABBytes < 1066 || ethernet.BABytes < 1066 {
 		t.Errorf("Number of bytes is wrong, got: %v", icmp)
 	}
 
-	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload", "Statistics.Endpoints.ETHERNET.AB.Packets", 1)`)
-	if len(flows) != 1 || flows[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetBA().Packets != 1 {
+	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload", "Metric.ABPackets", 1)`)
+	if len(flows) != 1 || flows[0].Metric.BAPackets != 1 {
 		t.Errorf("Number of packets is wrong, got: %v", flows)
 	}
 
-	ipv4 := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_IPV4)
-	if flows[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetAB().Bytes < ipv4.GetAB().Bytes {
+	ipv4 := icmp[0].Metric // FIXME double check protocol Network = IPv4/v6
+	if flows[0].Metric.ABBytes < ipv4.ABBytes {
 		t.Errorf("Layers bytes error, got: %v", icmp)
 	}
 
-	pingLen := icmp[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetAB().Bytes
-	endpoint := getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gt(%d))`, pingLen-1), flow.FlowEndpointType_ETHERNET)
-	if endpoint == nil || endpoint.GetAB().Bytes < pingLen {
+	pingLen := icmp[0].Metric.ABBytes
+	endpoint := getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Gt(%d))`, pingLen-1), flow.FlowProtocol_ETHERNET)
+	if endpoint == nil || endpoint.ABBytes < pingLen {
 		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gt(%d))`, pingLen), flow.FlowEndpointType_ETHERNET)
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Gt(%d))`, pingLen), flow.FlowProtocol_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gte(%d))`, pingLen), flow.FlowEndpointType_ETHERNET)
-	if endpoint == nil || endpoint.GetAB().Bytes < pingLen {
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Gte(%d))`, pingLen), flow.FlowProtocol_ETHERNET)
+	if endpoint == nil || endpoint.ABBytes < pingLen {
 		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Gte(%d))`, pingLen+1), flow.FlowEndpointType_ETHERNET)
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Gte(%d))`, pingLen+1), flow.FlowProtocol_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Lt(%d))`, pingLen+1), flow.FlowEndpointType_ETHERNET)
-	if endpoint == nil || endpoint.GetAB().Bytes > pingLen {
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Lt(%d))`, pingLen+1), flow.FlowProtocol_ETHERNET)
+	if endpoint == nil || endpoint.ABBytes > pingLen {
 		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Lt(%d))`, pingLen), flow.FlowEndpointType_ETHERNET)
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Lt(%d))`, pingLen), flow.FlowProtocol_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Lte(%d))`, pingLen), flow.FlowEndpointType_ETHERNET)
-	if endpoint == nil || endpoint.GetAB().Bytes > pingLen {
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Lte(%d))`, pingLen), flow.FlowProtocol_ETHERNET)
+	if endpoint == nil || endpoint.ABBytes > pingLen {
 		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Lte(%d))`, pingLen-1), flow.FlowEndpointType_ETHERNET)
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Lte(%d))`, pingLen-1), flow.FlowProtocol_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Inside(%d, %d))`, pingLen-1, pingLen+1), flow.FlowEndpointType_ETHERNET)
-	if endpoint == nil || endpoint.GetAB().Bytes <= pingLen-1 || endpoint.GetAB().Bytes >= pingLen+1 {
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Inside(%d, %d))`, pingLen-1, pingLen+1), flow.FlowProtocol_ETHERNET)
+	if endpoint == nil || endpoint.ABBytes <= pingLen-1 || endpoint.ABBytes >= pingLen+1 {
 		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Inside(%d, %d))`, pingLen, pingLen+1), flow.FlowEndpointType_ETHERNET)
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Inside(%d, %d))`, pingLen, pingLen+1), flow.FlowProtocol_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Between(%d, %d))`, pingLen, pingLen+1), flow.FlowEndpointType_ETHERNET)
-	if endpoint == nil || endpoint.GetAB().Bytes <= pingLen-1 || endpoint.GetAB().Bytes >= pingLen+1 {
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Between(%d, %d))`, pingLen, pingLen+1), flow.FlowProtocol_ETHERNET)
+	if endpoint == nil || endpoint.ABBytes <= pingLen-1 || endpoint.ABBytes >= pingLen+1 {
 		t.Errorf("Number of bytes is wrong, got: %v", endpoint)
 	}
 
-	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Between(%d, %d))`, pingLen, pingLen), flow.FlowEndpointType_ETHERNET)
+	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Metric.ABBytes", Between(%d, %d))`, pingLen, pingLen), flow.FlowProtocol_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
 	}

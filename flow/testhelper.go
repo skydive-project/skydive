@@ -25,6 +25,7 @@
 package flow
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"net"
@@ -121,7 +122,7 @@ type probeNodeSetter struct {
 }
 
 func (p *probeNodeSetter) SetProbeNode(f *Flow) bool {
-	f.ProbeNodeUUID = p.uuid
+	f.NodeUUID = p.uuid
 	return true
 }
 
@@ -150,24 +151,19 @@ func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, uuid st
 	return generateTestFlows(t, ft, baseSeed, true, uuid)
 }
 
-func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow, ftype FlowEndpointType) {
+func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow) {
 	rnd := rand.New(rand.NewSource(seed))
-	s := f.GetStatistics()
-	for _, e := range s.Endpoints {
-		if e.Type == ftype {
-			e.AB.Packets = uint64(rnd.Int63n(0x10000))
-			e.AB.Bytes = e.AB.Packets * uint64(14+rnd.Intn(1501))
-			e.BA.Packets = uint64(rnd.Int63n(0x10000))
-			e.BA.Bytes = e.BA.Packets * uint64(14+rnd.Intn(1501))
+	f.Metric.ABPackets = uint64(rnd.Int63n(0x10000))
+	f.Metric.ABBytes = f.Metric.ABPackets * uint64(14+rnd.Intn(1501))
+	f.Metric.BAPackets = uint64(rnd.Int63n(0x10000))
+	f.Metric.BABytes = f.Metric.BAPackets * uint64(14+rnd.Intn(1501))
 
-			s.Start = now - rnd.Int63n(100)
-			s.Last = s.Start
-			if (rnd.Int() % 2) == 0 {
-				s.Last = s.Start + rnd.Int63n(100)
-			}
-			return
-		}
+	f.Metric.Start = now - rnd.Int63n(100)
+	f.Metric.Last = f.Metric.Start
+	if (rnd.Int() % 2) == 0 {
+		f.Metric.Last = f.Metric.Start + rnd.Int63n(100)
 	}
+	return
 }
 
 func NewTestFlowTableSimple(t *testing.T) *Table {
@@ -202,8 +198,8 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 	minStart := int64(^uint64(0) >> 1)
 	maxEnd := int64(0)
 	for _, f := range flows {
-		fstart := f.GetStatistics().Start
-		fend := f.GetStatistics().Last
+		fstart := f.Metric.Start
+		fend := f.Metric.Last
 		if fstart < minStart {
 			minStart = fstart
 		}
@@ -215,11 +211,11 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 	scale := float64(maxEnd-minStart) / float64(nbCol)
 	fmt.Printf("%d ----- %d (%d) scale %.2f\n", minStart-now, maxEnd-now, maxEnd-minStart, scale)
 	for _, f := range flows {
-		s := f.GetStatistics()
+		s := f.Metric
 		fstart := s.Start
 		fend := s.Last
 		duration := fend - fstart
-		hstr := f.GetLayerHash(FlowEndpointLayer_LINK)
+		hstr := hex.EncodeToString(f.Link.Hash())
 
 		needTag := false
 		for _, tag := range tagsUUID {
@@ -237,10 +233,10 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 				fmt.Print("x")
 			}
 		}
-		e := s.GetEndpointsType(FlowEndpointType_ETHERNET)
+		e := f.Metric
 		fdt := float64(duration)
-		ppsAB := float64(e.AB.Packets) / fdt
-		bpsAB := float64(e.AB.Bytes) / fdt
+		ppsAB := float64(e.ABPackets) / fdt
+		bpsAB := float64(e.ABBytes) / fdt
 		fmt.Printf(" %s %d (%d) %.0f %.0f\n", hstr[:6], s.Start-now, duration, ppsAB, bpsAB)
 		if needTag {
 			fmt.Print(logging.ColorSeq(0))

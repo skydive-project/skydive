@@ -37,7 +37,7 @@ func TestFlowTable_jsonFlowConversationEthernetPath(t *testing.T) {
 		FlowTable: ft,
 	}
 
-	statStr := fa.jsonFlowConversationEthernetPath(flow.FlowEndpointType_ETHERNET)
+	statStr := fa.jsonFlowConversationEthernetPath(flow.FlowProtocol_ETHERNET)
 	if statStr == `{"nodes":[],"links":[]}` {
 		t.Error("stat should not be empty")
 	}

@@ -46,11 +46,11 @@ type packetHandle interface {
 }
 
 type GoPacketProbe struct {
-	handle        packetHandle
-	packetSource  *gopacket.PacketSource
-	probeNodeUUID string
-	flowTable     *flow.Table
-	state         int64
+	handle       packetHandle
+	packetSource *gopacket.PacketSource
+	NodeUUID     string
+	flowTable    *flow.Table
+	state        int64
 }
 
 type GoPacketProbesHandler struct {
@@ -65,7 +65,7 @@ const (
 )
 
 func (p *GoPacketProbe) SetProbeNode(flow *flow.Flow) bool {
-	flow.ProbeNodeUUID = p.probeNodeUUID
+	flow.NodeUUID = p.NodeUUID
 	return true
 }
 
@@ -160,9 +160,9 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 	}
 
 	probe := &GoPacketProbe{
-		probeNodeUUID: id,
-		state:         common.StoppedState,
-		flowTable:     ft,
+		NodeUUID:  id,
+		state:     common.StoppedState,
+		flowTable: ft,
 	}
 
 	switch capture.Type {

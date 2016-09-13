@@ -131,13 +131,13 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 			Op: BoolFilterOp_OR,
 			Filters: []*Filter{
 				&Filter{
-					TermStringFilter: &TermStringFilter{Key: "ProbeNodeUUID", Value: "probe1"},
+					TermStringFilter: &TermStringFilter{Key: "NodeUUID", Value: "probe1"},
 				},
 				&Filter{
-					TermStringFilter: &TermStringFilter{Key: "IfSrcNodeUUID", Value: "probe1"},
+					TermStringFilter: &TermStringFilter{Key: "ANodeUUID", Value: "probe1"},
 				},
 				&Filter{
-					TermStringFilter: &TermStringFilter{Key: "IfDstNodeUUID", Value: "probe1"},
+					TermStringFilter: &TermStringFilter{Key: "BNodeUUID", Value: "probe1"},
 				},
 			},
 		},
@@ -149,8 +149,8 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	}
 
 	for _, f := range flowset.Flows {
-		if f.ProbeNodeUUID != "probe1" {
-			t.Errorf("Only flow with probe1 as NodeUUID is expected, got %s", f.ProbeNodeUUID)
+		if f.NodeUUID != "probe1" {
+			t.Errorf("Only flow with probe1 as NodeUUID is expected, got %s", f.NodeUUID)
 		}
 	}
 }
@@ -216,7 +216,7 @@ func TestTable_FilterLast(t *testing.T) {
 	ft := NewTestFlowTableComplex(t, nil, nil)
 	/* hack to put the FlowTable 1 second older */
 	for _, f := range ft.table {
-		fs := f.GetStatistics()
+		fs := f.Metric
 		fs.Start -= int64(1)
 		fs.Last -= int64(1)
 	}
@@ -234,7 +234,7 @@ func TestTable_SelectLayer(t *testing.T) {
 	ft := NewTestFlowTableComplex(t, nil, nil)
 
 	var macs []string
-	flowset := ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
+	flowset := ft.SelectLayer(FlowProtocol_ETHERNET, macs)
 	if len(ft.table) <= len(flowset.Flows) && len(flowset.Flows) != 0 {
 		t.Errorf("SelectLayer should select none flows %d %d", len(ft.table), len(flowset.Flows))
 	}
@@ -242,7 +242,7 @@ func TestTable_SelectLayer(t *testing.T) {
 	for mac := 0; mac < 0xff; mac++ {
 		macs = append(macs, fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", 0x00, 0x0F, 0xAA, 0xFA, 0xAA, mac))
 	}
-	flowset = ft.SelectLayer(FlowEndpointType_ETHERNET, macs)
+	flowset = ft.SelectLayer(FlowProtocol_ETHERNET, macs)
 	if len(ft.table) != len(flowset.Flows) {
 		t.Errorf("SelectLayer should select all flows %d %d", len(ft.table), len(flowset.Flows))
 	}

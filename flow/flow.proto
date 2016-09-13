@@ -21,80 +21,72 @@
  */
 
 syntax = "proto3";
-/* Note : o proto3 fields are optional by default
-          o required fields are not allowed in proto3 */
+/* Notes :
+   o proto3 fields are optional by default
+   o required fields are not allowed in proto3 */
 
 package flow;
 
-enum FlowEndpointLayer {
-  LINK = 0;
-  NETWORK = 1;
-  TRANSPORT = 2;
+enum FlowProtocol {
+	ETHERNET = 0;
+	IPV4 = 1;
+	TCPPORT = 2;
+	UDPPORT = 3;
+	SCTPPORT = 4;
+	IPV6 = 5;
 }
 
-enum FlowEndpointType {
-  ETHERNET = 0;
-  IPV4 = 1;
-  TCPPORT = 2;
-  UDPPORT = 3;
-  SCTPPORT = 4;
-  IPV6 = 5;
+message FlowLayer {
+	FlowProtocol Protocol = 1;
+	string A = 3;
+	string B = 4;
 }
 
-message FlowEndpointStatistics {
-  string Value 	= 2;
-  uint64 Packets = 5;
-  uint64 Bytes = 6;
-}
-
-message FlowEndpointsStatistics {
-  FlowEndpointType Type = 1;
-  bytes Hash = 2; /* Symmetric hash */
-  FlowEndpointStatistics AB = 3; /* A->B */
-  FlowEndpointStatistics BA = 4; /* B->A */
-}
-
-message FlowStatistics {
-  int64 Start = 1;
-  int64 Last = 2;
-  repeated FlowEndpointsStatistics Endpoints = 3;
-}
-
-message FlowMetricRange{
-  int64 Start = 1;
-  int64 Last = 2;
-  uint64 ABPackets = 3;
-  uint64 ABBytes = 4;
-  uint64 BAPackets = 5;
-  uint64 BABytes = 6;
+message FlowMetric {
+	int64 Start = 1;
+	int64 Last = 2;
+	uint64 ABPackets = 3;
+	uint64 ABBytes = 4;
+	uint64 BAPackets = 5;
+	uint64 BABytes = 6;
 }
 
 message Flow {
-  /* Flow Universally Unique IDentifier
+/* Flow Universally Unique IDentifier
+   flow.UUID is unique in the universe, as it should be used as a key of an
+   hashtable. By design 2 different flows, their UUID are always different.
+   flow.UUID can be used as Database Index.
+*/
+	string UUID = 1;
+	string LayersPath = 2;
 
-    flow.UUID is unique in the universe, as it should be used as a key of an
-    hashtable. By design 2 different flows, their UUID are always different.
-    flow.UUID can be used as Database Index.
-  */
-  string UUID 			= 1;
-  string LayersPath 		= 2;
+/* Data Flow info */
+	FlowLayer Link = 20;
+	FlowLayer Network = 21;
+	FlowLayer Transport = 22;
 
-  /* Data Flow info */
-  FlowStatistics Statistics	= 3;
+/* Data Flow Metric info from the 1st layer
+   amount of data between two updates
+*/
+	FlowMetric LastUpdateMetric = 31;
+/* Total amount of data for the whole flow duration */
+	FlowMetric Metric = 32;
 
-  /* Flow Tracking IDentifier, from 1st packet bytes
+/* Flow Tracking IDentifier, from 1st packet bytes
+   flow.TrackingID could be used to identify an unique flow whatever it has
+   been captured on the infrastructure. flow.TrackingID is calculated from
+   the bytes of the first packet of his session.
+   flow.TrackingID can be used as a Tag.
+*/
+	string TrackingID = 5;
 
-    flow.TrackingID could be used to identify an unique flow whatever it has
-    been captured on the infrastructure. flow.TrackingID is calculated from
-    the bytes of the first packet of his session.
-    flow.TrackingID can be used as a Tag.
-  */
-  string TrackingID             = 5;
+/* Flow Parent UUID is used as reference to the parent flow
+   Flow.ParentUUID is the same value that point to his parent flow.UUID
+*/
+	string ParentUUID = 6;
 
-  /* Topology info */
-  string ProbeNodeUUID	= 11;
-  string IfSrcNodeUUID	= 14;
-  string IfDstNodeUUID	= 19;
-
-  FlowMetricRange MetricRange = 20;
+/* Topology info */
+	string NodeUUID = 11;
+	string ANodeUUID = 14;
+	string BNodeUUID = 19;
 }

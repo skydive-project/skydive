@@ -213,13 +213,13 @@ func NewFilterForNodes(uuids []string) *Filter {
 	terms := make([]*Filter, len(uuids)*3)
 	for i, uuid := range uuids {
 		terms[i*3] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "ProbeNodeUUID", Value: uuid},
+			TermStringFilter: &TermStringFilter{Key: "NodeUUID", Value: uuid},
 		}
 		terms[i*3+1] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "IfSrcNodeUUID", Value: uuid},
+			TermStringFilter: &TermStringFilter{Key: "ANodeUUID", Value: uuid},
 		}
 		terms[i*3+2] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "IfDstNodeUUID", Value: uuid},
+			TermStringFilter: &TermStringFilter{Key: "BNodeUUID", Value: uuid},
 		}
 	}
 

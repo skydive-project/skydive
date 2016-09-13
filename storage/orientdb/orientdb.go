@@ -37,51 +37,54 @@ type OrientDBStorage struct {
 }
 
 func flowToDocument(flow *flow.Flow) orient.Document {
-	var endpoints []orient.Document
-	for _, endpoint := range flow.Statistics.Endpoints {
-		flowEndpointStatisticsDocAB := orient.Document{
-			"@class":  "FlowEndpointStatistics",
-			"@type":   "d",
-			"Value":   endpoint.GetAB().Value,
-			"Packets": endpoint.GetAB().Packets,
-			"Bytes":   endpoint.GetAB().Bytes,
-		}
-
-		flowEndpointStatisticsDocBA := orient.Document{
-			"@class":  "FlowEndpointStatistics",
-			"@type":   "d",
-			"Value":   endpoint.GetBA().Value,
-			"Packets": endpoint.GetBA().Packets,
-			"Bytes":   endpoint.GetBA().Bytes,
-		}
-
-		endpointDoc := orient.Document{
-			"@class": "Endpoint",
-			"@type":  "d",
-			"Type":   endpoint.Type,
-			"AB":     flowEndpointStatisticsDocAB,
-			"BA":     flowEndpointStatisticsDocBA,
-		}
-
-		endpoints = append(endpoints, endpointDoc)
+	linkLayer := orient.Document{
+		"@class":   "LinkLayer",
+		"@type":    "d",
+		"Protocol": flow.Link.Protocol,
+		"A":        flow.Link.A,
+		"B":        flow.Link.B,
 	}
 
-	statsDoc := orient.Document{
-		"@class":    "Statistics",
+	metricDoc := orient.Document{
+		"@class":    "Metric",
 		"@type":     "d",
-		"Start":     flow.Statistics.Start,
-		"Last":      flow.Statistics.Last,
-		"Endpoints": endpoints,
+		"Start":     flow.Metric.Start,
+		"Last":      flow.Metric.Last,
+		"ABPackets": flow.Metric.ABPackets,
+		"ABBytes":   flow.Metric.ABBytes,
+		"BAPackets": flow.Metric.BAPackets,
+		"BABytes":   flow.Metric.BABytes,
 	}
 
 	flowDoc := orient.Document{
-		"@class":        "Flow",
-		"UUID":          flow.UUID,
-		"LayersPath":    flow.LayersPath,
-		"ProbeNodeUUID": flow.ProbeNodeUUID,
-		"IfSrcNodeUUID": flow.IfSrcNodeUUID,
-		"IfDstNodeUUID": flow.IfDstNodeUUID,
-		"Statistics":    statsDoc,
+		"@class":     "Flow",
+		"UUID":       flow.UUID,
+		"LayersPath": flow.LayersPath,
+		"NodeUUID":   flow.NodeUUID,
+		"ANodeUUID":  flow.ANodeUUID,
+		"BNodeUUID":  flow.BNodeUUID,
+		"Metric":     metricDoc,
+		"LinkLayer":  linkLayer,
+	}
+
+	if flow.Network != nil {
+		flowDoc["NetworkLayer"] = orient.Document{
+			"@class":   "NetworkLayer",
+			"@type":    "d",
+			"Protocol": flow.Network.Protocol,
+			"A":        flow.Network.A,
+			"B":        flow.Network.B,
+		}
+	}
+
+	if flow.Transport != nil {
+		flowDoc["TransportLayer"] = orient.Document{
+			"@class":   "TransportLayer",
+			"@type":    "d",
+			"Protocol": flow.Transport.Protocol,
+			"A":        flow.Transport.A,
+			"B":        flow.Transport.B,
+		}
 	}
 
 	return flowDoc
@@ -115,7 +118,7 @@ func (c *OrientDBStorage) SearchFlows(filter *flow.Filter, interval *flow.Range)
 		sql += fmt.Sprintf(" LIMIT %d, %d", interval.To-interval.From, interval.From)
 	}
 
-	sql += " ORDER BY Statistics.Last"
+	sql += " ORDER BY Metric.Last"
 	docs, err := c.client.Sql(sql)
 	if err != nil {
 		return nil, err
@@ -153,48 +156,21 @@ func New() (*OrientDBStorage, error) {
 		return nil, err
 	}
 
-	if _, err := client.GetDocumentClass("FlowEndpointStatistics"); err != nil {
+	if _, err := client.GetDocumentClass("FlowMetric"); err != nil {
 		class := orient.ClassDefinition{
-			Name: "FlowEndpointStatistics",
+			Name: "FlowMetric",
 			Properties: []orient.Property{
-				{Name: "Bytes", Type: "INTEGER", Mandatory: true, NotNull: true},
-				{Name: "Packets", Type: "INTEGER", Mandatory: true, NotNull: true},
-				{Name: "Value", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "ABBytes", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "ABPackets", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "BABytes", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "BAPackets", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "Start", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "Last", Type: "INTEGER", Mandatory: true, NotNull: true},
 			},
 			Indexes: []orient.Index{},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class FlowEndpointStatistics: %s", err.Error())
-		}
-	}
-
-	if _, err := client.GetDocumentClass("FlowEndpointsStatistics"); err != nil {
-		class := orient.ClassDefinition{
-			Name: "FlowEndpointsStatistics",
-			Properties: []orient.Property{
-				{Name: "AB", Type: "EMBEDDED", LinkedClass: "FlowEndpointStatistics", Mandatory: true, NotNull: true},
-				{Name: "BA", Type: "EMBEDDED", LinkedClass: "FlowEndpointStatistics", Mandatory: true, NotNull: true},
-				{Name: "Type", Type: "INTEGER", Mandatory: true, NotNull: true},
-			},
-			Indexes: []orient.Index{},
-		}
-		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class FlowEndpointsStatistics: %s", err.Error())
-		}
-	}
-
-	if _, err := client.GetDocumentClass("FlowStatistics"); err != nil {
-		class := orient.ClassDefinition{
-			Name: "FlowStatistics",
-			Properties: []orient.Property{
-				{Name: "Endpoints", Type: "EMBEDDEDLIST", LinkedClass: "FlowEndpointsStatistics"},
-				{Name: "Start", Type: "INTEGER"},
-				{Name: "Last", Type: "INTEGER"},
-			},
-			Indexes: []orient.Index{},
-		}
-		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class FlowStatistics: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class FlowMetric: %s", err.Error())
 		}
 	}
 
@@ -204,10 +180,10 @@ func New() (*OrientDBStorage, error) {
 			Properties: []orient.Property{
 				{Name: "UUID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "LayersPath", Type: "STRING", Mandatory: true, NotNull: true},
-				{Name: "Statistics", Type: "EMBEDDED", LinkedClass: "FlowStatistics"},
-				{Name: "ProbeNodeUUID", Type: "STRING"},
-				{Name: "IfSrcNodeUUID", Type: "STRING"},
-				{Name: "IfDstNodeUUID", Type: "STRING"},
+				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
+				{Name: "NodeUUID", Type: "STRING"},
+				{Name: "ANodeUUID", Type: "STRING"},
+				{Name: "BNodeUUID", Type: "STRING"},
 			},
 			Indexes: []orient.Index{},
 		}

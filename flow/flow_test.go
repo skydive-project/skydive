@@ -34,28 +34,24 @@ func TestFlowJSON(t *testing.T) {
 	f := Flow{
 		UUID:       "uuid-1",
 		LayersPath: "layerpath-1",
-		Statistics: &FlowStatistics{
+		Link: &FlowLayer{
+			Protocol: FlowProtocol_ETHERNET,
+			A:        "value-1",
+			B:        "value-2",
+		},
+		Metric: &FlowMetric{
 			Start: 1111,
 			Last:  222,
-			Endpoints: []*FlowEndpointsStatistics{
-				{
-					Type: FlowEndpointType_ETHERNET,
-					AB: &FlowEndpointStatistics{
-						Value:   "value-1",
-						Bytes:   33,
-						Packets: 34,
-					},
-					BA: &FlowEndpointStatistics{
-						Value:   "value-2",
-						Bytes:   44,
-						Packets: 55,
-					},
-				},
-			},
+
+			ABBytes:   33,
+			ABPackets: 34,
+
+			BABytes:   44,
+			BAPackets: 55,
 		},
-		ProbeNodeUUID: "probepath-1",
-		IfSrcNodeUUID: "srcgraphpath-1",
-		IfDstNodeUUID: "dstgraphpath-1",
+		NodeUUID:  "probepath-1",
+		ANodeUUID: "srcgraphpath-1",
+		BNodeUUID: "dstgraphpath-1",
 	}
 
 	j, err := json.Marshal(f)
@@ -66,25 +62,21 @@ func TestFlowJSON(t *testing.T) {
 	schema := v.Object(
 		v.ObjKV("UUID", v.String()),
 		v.ObjKV("LayersPath", v.String()),
-		v.ObjKV("ProbeNodeUUID", v.String()),
-		v.ObjKV("IfSrcNodeUUID", v.String()),
-		v.ObjKV("IfDstNodeUUID", v.String()),
-		v.ObjKV("Statistics", v.Object(
+		v.ObjKV("NodeUUID", v.String()),
+		v.ObjKV("ANodeUUID", v.String()),
+		v.ObjKV("BNodeUUID", v.String()),
+		v.ObjKV("Link", v.Object(
+			v.ObjKV("Protocol", v.String()),
+			v.ObjKV("A", v.String()),
+			v.ObjKV("B", v.String()),
+		)),
+		v.ObjKV("Metric", v.Object(
 			v.ObjKV("Start", v.Number()),
 			v.ObjKV("Last", v.Number()),
-			v.ObjKV("Endpoints", v.Array(v.ArrEach(v.Object(
-				v.ObjKV("Type", v.String()),
-				v.ObjKV("AB", v.Object(
-					v.ObjKV("Value", v.String()),
-					v.ObjKV("Packets", v.Number()),
-					v.ObjKV("Bytes", v.Number()),
-				)),
-				v.ObjKV("AB", v.Object(
-					v.ObjKV("Value", v.String()),
-					v.ObjKV("Packets", v.Number()),
-					v.ObjKV("Bytes", v.Number()),
-				)),
-			)))),
+			v.ObjKV("ABPackets", v.Number()),
+			v.ObjKV("ABBytes", v.Number()),
+			v.ObjKV("BAPackets", v.Number()),
+			v.ObjKV("BABytes", v.Number()),
 		)),
 	)
 

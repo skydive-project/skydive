@@ -330,12 +330,11 @@ function ShowNodeFlows(node) {
       var packets = 0;
       var bytes = 0;
       for (var i in data) {
-        for (var j in data[i].Statistics.Endpoints) {
-          var endpoint = data[i].Statistics.Endpoints[j];
-          if (endpoint.Type == "ETHERNET") {
-            packets += endpoint.AB.Packets;
-            bytes += endpoint.AB.Bytes;
-          }
+        if (data[i].Link.Protocol == "ETHERNET") {
+          packets += data[i].Metric.ABPackets;
+          bytes += data[i].Metric.ABBytes;
+          packets += data[i].Metric.BAPackets;
+          bytes += data[i].Metric.BABytes;
         }
       }
 

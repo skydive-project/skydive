@@ -45,13 +45,13 @@ func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNo
 		Filters: []*flow.Filter{
 			{
 				LteInt64Filter: &flow.LteInt64Filter{
-					Key:   "Statistics.Start",
+					Key:   "Metric.Start",
 					Value: now,
 				},
 			},
 			{
 				GteInt64Filter: &flow.GteInt64Filter{
-					Key:   "Statistics.Last",
+					Key:   "Metric.Last",
 					Value: now,
 				},
 			},

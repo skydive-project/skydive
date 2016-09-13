@@ -88,8 +88,8 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	for _, flow := range f.flowset.Flows {
-		if flow.IfDstNodeUUID != "" && flow.IfDstNodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
+			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID)); node != nil && node.MatchMetadata(m) {
 				nodes = append(nodes, node)
 			}
 		}
@@ -107,8 +107,8 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	for _, flow := range f.flowset.Flows {
-		if flow.IfSrcNodeUUID != "" && flow.IfSrcNodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
+			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID)); node != nil && node.MatchMetadata(m) {
 				nodes = append(nodes, node)
 			}
 		}
@@ -126,13 +126,13 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	for _, flow := range f.flowset.Flows {
-		if flow.IfSrcNodeUUID != "" && flow.IfSrcNodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
+			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID)); node != nil && node.MatchMetadata(m) {
 				nodes = append(nodes, node)
 			}
 		}
-		if flow.IfDstNodeUUID != "" && flow.IfDstNodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
+			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID)); node != nil && node.MatchMetadata(m) {
 				nodes = append(nodes, node)
 			}
 		}
@@ -378,21 +378,21 @@ func (f *FlowTraversalStep) MarshalJSON() ([]byte, error) {
 		}
 
 		// substitute UUID by the node
-		if flow.IfSrcNodeUUID != "" && flow.IfSrcNodeUUID != "*" {
-			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfSrcNodeUUID))
+		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
+			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID))
 			if node != nil {
 				x["IfSrcNode"] = node
 			}
 		}
 
-		if flow.IfDstNodeUUID != "" && flow.IfDstNodeUUID != "*" {
-			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.IfDstNodeUUID))
+		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
+			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID))
 			if node != nil {
 				x["IfDstNode"] = node
 			}
 		}
 
-		node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ProbeNodeUUID))
+		node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.NodeUUID))
 		if node != nil {
 			x["ProbeNode"] = node
 		}
@@ -586,7 +586,7 @@ func (s *HopsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		}
 
 		for _, f := range fs.flowset.Flows {
-			if node := graphTraversal.Graph.GetNode(graph.Identifier(f.ProbeNodeUUID)); node != nil && node.MatchMetadata(m) {
+			if node := graphTraversal.Graph.GetNode(graph.Identifier(f.NodeUUID)); node != nil && node.MatchMetadata(m) {
 				nodes = append(nodes, node)
 			}
 		}

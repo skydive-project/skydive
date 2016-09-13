@@ -68,7 +68,7 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *FlowHandler
 type Table struct {
 	sync.RWMutex
 	table         map[string]*Flow
-	stats         map[string]*FlowEndpointsStatistics
+	stats         map[string]*FlowMetric
 	defaultFunc   func()
 	flush         chan bool
 	flushDone     chan bool
@@ -85,7 +85,7 @@ type Table struct {
 func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 	t := &Table{
 		table:         make(map[string]*Flow),
-		stats:         make(map[string]*FlowEndpointsStatistics),
+		stats:         make(map[string]*FlowMetric),
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
 		state:         common.StoppedState,
@@ -114,7 +114,7 @@ func (ft *Table) Update(flows []*Flow) {
 		if _, ok := ft.table[f.UUID]; !ok {
 			ft.table[f.UUID] = f
 		} else {
-			ft.table[f.UUID].Statistics = f.Statistics
+			ft.table[f.UUID].Metric = f.Metric
 		}
 	}
 	ft.Unlock()
@@ -141,11 +141,11 @@ func (ft *Table) GetFlows(query *FlowSearchQuery) *FlowSet {
 			break
 		}
 		if (query == nil || query.Filter == nil || query.Filter.Eval(f)) && it.Next() {
-			if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
-				flowset.Start = f.Statistics.Start
+			if flowset.Start == 0 || flowset.Start > f.Metric.Start {
+				flowset.Start = f.Metric.Start
 			}
-			if flowset.End == 0 || flowset.Start < f.Statistics.Last {
-				flowset.End = f.Statistics.Last
+			if flowset.End == 0 || flowset.Start < f.Metric.Last {
+				flowset.End = f.Metric.Last
 			}
 			flowset.Flows = append(flowset.Flows, f)
 		}
@@ -171,8 +171,8 @@ func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
 	}
 
 	new := &Flow{
-		Statistics:  &FlowStatistics{},
-		MetricRange: &FlowMetricRange{},
+		Metric:           &FlowMetric{},
+		LastUpdateMetric: &FlowMetric{},
 	}
 	ft.table[key] = new
 
@@ -186,24 +186,23 @@ func (ft *Table) FilterLast(last time.Duration) []*Flow {
 	ft.RLock()
 	defer ft.RUnlock()
 	for _, f := range ft.table {
-		fs := f.GetStatistics()
-		if fs.Last >= selected {
+		if f.Metric.Last >= selected {
 			flows = append(flows, f)
 		}
 	}
 	return flows
 }
 
-func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) *FlowSet {
+func (ft *Table) SelectLayer(protocol FlowProtocol, list []string) *FlowSet {
 	meth := make(map[string][]*Flow)
 	ft.RLock()
 	for _, f := range ft.table {
-		layerFlow := f.GetStatistics().GetEndpointsType(endpointType)
-		if layerFlow == nil || layerFlow.AB.Value == "ff:ff:ff:ff:ff:ff" || layerFlow.BA.Value == "ff:ff:ff:ff:ff:ff" {
+		layerFlow := f.Link
+		if layerFlow == nil || layerFlow.A == "ff:ff:ff:ff:ff:ff" || layerFlow.B == "ff:ff:ff:ff:ff:ff" {
 			continue
 		}
-		meth[layerFlow.AB.Value] = append(meth[layerFlow.AB.Value], f)
-		meth[layerFlow.BA.Value] = append(meth[layerFlow.BA.Value], f)
+		meth[layerFlow.A] = append(meth[layerFlow.A], f)
+		meth[layerFlow.B] = append(meth[layerFlow.B], f)
 	}
 	ft.RUnlock()
 
@@ -215,11 +214,11 @@ func (ft *Table) SelectLayer(endpointType FlowEndpointType, list []string) *Flow
 				if _, found := mflows[f]; !found {
 					mflows[f] = struct{}{}
 
-					if flowset.Start == 0 || flowset.Start > f.Statistics.Start {
-						flowset.Start = f.Statistics.Start
+					if flowset.Start == 0 || flowset.Start > f.Metric.Start {
+						flowset.Start = f.Metric.Start
 					}
-					if flowset.End == 0 || flowset.Start < f.Statistics.Last {
-						flowset.End = f.Statistics.Last
+					if flowset.End == 0 || flowset.Start < f.Metric.Last {
+						flowset.End = f.Metric.Last
 					}
 
 					flowset.Flows = append(flowset.Flows, f)
@@ -235,9 +234,8 @@ func (ft *Table) expired(expireBefore int64) {
 	var expiredFlows []*Flow
 	flowTableSzBefore := len(ft.table)
 	for k, f := range ft.table {
-		fs := f.GetStatistics()
-		if fs.Last < expireBefore {
-			duration := time.Duration(fs.Last - fs.Start)
+		if f.Metric.Last < expireBefore {
+			duration := time.Duration(f.Metric.Last - f.Metric.Start)
 			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
 			expiredFlows = append(expiredFlows, f)
 
@@ -270,33 +268,31 @@ func (ft *Table) updated(updateFrom int64) {
 
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
-		fs := f.Statistics
-
-		if fs.Last > updateFrom {
+		if f.Metric.Last > updateFrom {
 			updatedFlows = append(updatedFlows, f)
 
-			e := f.Statistics.Endpoints[0]
-			f.MetricRange.ABPackets = e.AB.Packets
-			f.MetricRange.ABBytes = e.AB.Bytes
-			f.MetricRange.BAPackets = e.BA.Packets
-			f.MetricRange.BABytes = e.BA.Bytes
+			e := f.Metric
+			f.LastUpdateMetric.ABPackets = e.ABPackets
+			f.LastUpdateMetric.ABBytes = e.ABBytes
+			f.LastUpdateMetric.BAPackets = e.BAPackets
+			f.LastUpdateMetric.BABytes = e.BABytes
 
-			f.MetricRange.Start = updateFrom
-			f.MetricRange.Last = updateFrom + every
+			f.LastUpdateMetric.Start = updateFrom
+			f.LastUpdateMetric.Last = updateFrom + every
 
 			// substract previous values to get the diff so that we store the
 			// amount of data between two updates
 			if s, ok := ft.stats[f.UUID]; ok {
-				f.MetricRange.ABPackets -= s.AB.Packets
-				f.MetricRange.ABBytes -= s.AB.Bytes
-				f.MetricRange.BAPackets -= s.BA.Packets
-				f.MetricRange.BABytes -= s.BA.Bytes
+				f.LastUpdateMetric.ABPackets -= s.ABPackets
+				f.LastUpdateMetric.ABBytes -= s.ABBytes
+				f.LastUpdateMetric.BAPackets -= s.BAPackets
+				f.LastUpdateMetric.BABytes -= s.BABytes
 			}
 		} else {
-			f.MetricRange = &FlowMetricRange{}
+			f.LastUpdateMetric = &FlowMetric{}
 		}
 
-		ft.stats[f.UUID] = f.Statistics.Endpoints[0].Copy()
+		ft.stats[f.UUID] = f.Metric.Copy()
 	}
 
 	/* Advise Clients */
@@ -340,13 +336,13 @@ func (ft *Table) Window(start, end int64) *FlowSet {
 				Filters: []*Filter{
 					{
 						LtInt64Filter: &LtInt64Filter{
-							Key:   "Statistics.Start",
+							Key:   "Metric.Start",
 							Value: end,
 						},
 					},
 					{
 						GteInt64Filter: &GteInt64Filter{
-							Key:   "Statistics.Last",
+							Key:   "Metric.Last",
 							Value: start,
 						},
 					},
@@ -375,7 +371,7 @@ func (s sortByLast) Swap(i, j int) {
 }
 
 func (s sortByLast) Less(i, j int) bool {
-	return s[i].GetStatistics().Last > s[j].GetStatistics().Last
+	return s[i].Metric.Last > s[j].Metric.Last
 }
 
 func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchReply, int) {

@@ -30,7 +30,7 @@ func TestAvgBandwidth(t *testing.T) {
 	ft := NewTable(nil, nil)
 	flows := GenerateTestFlows(t, ft, 0x4567, "probequery0")
 	for i, f := range flows {
-		randomizeLayerStats(t, int64(0x785612+i), now, f, FlowEndpointType_ETHERNET)
+		randomizeLayerStats(t, int64(0x785612+i), now, f)
 	}
 
 	fbw := ft.Window(now-100, now+100).AvgBandwidth()
@@ -101,7 +101,7 @@ func TestAvgBandwidth(t *testing.T) {
 
 	tags := make([]string, fbw.NBFlow)
 	for i, fw := range winFlows.Flows {
-		tags[i] = fw.GetLayerHash(FlowEndpointLayer_LINK)
+		tags[i] = fw.Link.HashStr()
 	}
 	graphFlows(now, flows, tags...)
 
@@ -114,7 +114,7 @@ func TestAvgBandwidth(t *testing.T) {
 
 	tags = make([]string, fbw.NBFlow)
 	for i, fw := range winFlows.Flows {
-		tags[i] = fw.GetLayerHash(FlowEndpointLayer_LINK)
+		tags[i] = fw.Link.HashStr()
 	}
 	graphFlows(now, flows, tags...)
 }

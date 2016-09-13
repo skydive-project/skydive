@@ -79,7 +79,7 @@ func (f *FlowApi) serveDataIndex(w http.ResponseWriter, r *auth.AuthenticatedReq
 	w.Write([]byte(message))
 }
 
-func (f *FlowApi) jsonFlowConversationEthernetPath(EndpointType flow.FlowEndpointType) string {
+func (f *FlowApi) jsonFlowConversationEthernetPath(protocol flow.FlowProtocol) string {
 	//	{"nodes":[{"name":"Myriel","group":1}, ... ],"links":[{"source":1,"target":0,"value":1},...]}
 
 	nodes := []string{}
@@ -89,7 +89,7 @@ func (f *FlowApi) jsonFlowConversationEthernetPath(EndpointType flow.FlowEndpoin
 	layerMap := make(map[string]int)
 
 	for _, f := range f.FlowTable.GetFlows(nil).Flows {
-		layerFlow := f.GetStatistics().GetEndpointsType(EndpointType)
+		layerFlow := f.Link
 		if layerFlow == nil {
 			continue
 		}
@@ -98,8 +98,8 @@ func (f *FlowApi) jsonFlowConversationEthernetPath(EndpointType flow.FlowEndpoin
 			pathMap[f.LayersPath] = len(pathMap)
 		}
 
-		AB := layerFlow.AB.Value
-		BA := layerFlow.BA.Value
+		AB := layerFlow.A
+		BA := layerFlow.B
 
 		if _, found := layerMap[AB]; !found {
 			layerMap[AB] = len(layerMap)
@@ -110,7 +110,7 @@ func (f *FlowApi) jsonFlowConversationEthernetPath(EndpointType flow.FlowEndpoin
 			nodes = append(nodes, fmt.Sprintf(`{"name":"%s","group":%d}`, BA, pathMap[f.LayersPath]))
 		}
 
-		link := fmt.Sprintf(`{"source":%d,"target":%d,"value":%d}`, layerMap[AB], layerMap[BA], layerFlow.AB.Bytes+layerFlow.BA.Bytes)
+		link := fmt.Sprintf(`{"source":%d,"target":%d,"value":%d}`, layerMap[AB], layerMap[BA], f.Metric.ABBytes+f.Metric.BABytes)
 		links = append(links, link)
 	}
 
@@ -121,18 +121,18 @@ func (f *FlowApi) conversationLayer(w http.ResponseWriter, r *auth.Authenticated
 	vars := mux.Vars(&r.Request)
 	layer := vars["layer"]
 
-	ltype := flow.FlowEndpointType_ETHERNET
+	ltype := flow.FlowProtocol_ETHERNET
 	switch layer {
 	case "ethernet":
-		ltype = flow.FlowEndpointType_ETHERNET
+		ltype = flow.FlowProtocol_ETHERNET
 	case "ipv4":
-		ltype = flow.FlowEndpointType_IPV4
+		ltype = flow.FlowProtocol_IPV4
 	case "tcp":
-		ltype = flow.FlowEndpointType_TCPPORT
+		ltype = flow.FlowProtocol_TCPPORT
 	case "udp":
-		ltype = flow.FlowEndpointType_UDPPORT
+		ltype = flow.FlowProtocol_UDPPORT
 	case "sctp":
-		ltype = flow.FlowEndpointType_SCTPPORT
+		ltype = flow.FlowProtocol_SCTPPORT
 	}
 	f.serveDataIndex(w, r, f.jsonFlowConversationEthernetPath(ltype))
 }
@@ -180,24 +180,29 @@ func newDiscoNode() *discoNode {
 	}
 }
 
+type flowMetricStat struct {
+	Bytes   uint64
+	Packets uint64
+}
+
 func (f *FlowApi) jsonFlowDiscovery(DiscoType discoType) string {
 	// {"name":"root","children":[{"name":"Ethernet","children":[{"name":"IPv4","children":
 	//		[{"name":"UDP","children":[{"name":"Payload","size":360,"children":[]}]},
 	//     {"name":"TCP","children":[{"name":"Payload","size":240,"children":[]}]}]}]}]}
 
-	pathMap := make(map[string]flow.FlowEndpointStatistics)
+	pathMap := make(map[string]flowMetricStat)
 
 	for _, f := range f.FlowTable.GetFlows(nil).Flows {
-		eth := f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
-		if eth == nil {
+		eth := f.Metric
+		if eth == nil || f.Link.Protocol != flow.FlowProtocol_ETHERNET {
 			continue
 		}
 
 		p, _ := pathMap[f.LayersPath]
-		p.Bytes += eth.AB.Bytes
-		p.Bytes += eth.BA.Bytes
-		p.Packets += eth.AB.Packets
-		p.Packets += eth.BA.Packets
+		p.Bytes += eth.ABBytes
+		p.Bytes += eth.BABytes
+		p.Packets += eth.ABPackets
+		p.Packets += eth.BAPackets
 		pathMap[f.LayersPath] = p
 	}
 

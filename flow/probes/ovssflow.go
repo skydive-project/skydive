@@ -39,13 +39,13 @@ import (
 )
 
 type OvsSFlowProbe struct {
-	ID            string
-	Interface     string
-	Target        string
-	HeaderSize    uint32
-	Sampling      uint32
-	Polling       uint32
-	ProbeNodeUUID string
+	ID         string
+	Interface  string
+	Target     string
+	HeaderSize uint32
+	Sampling   uint32
+	Polling    uint32
+	NodeUUID   string
 }
 
 type OvsSFlowProbesHandler struct {
@@ -61,7 +61,7 @@ func probeID(i string) string {
 }
 
 func (p *OvsSFlowProbe) SetProbeNode(flow *flow.Flow) bool {
-	flow.ProbeNodeUUID = p.ProbeNodeUUID
+	flow.NodeUUID = p.NodeUUID
 	return true
 }
 
@@ -226,12 +226,12 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 
 func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, uuid string, ft *flow.Table) error {
 	probe := OvsSFlowProbe{
-		ID:            probeID(bridgeUUID),
-		Interface:     "lo",
-		HeaderSize:    256,
-		Sampling:      1,
-		Polling:       0,
-		ProbeNodeUUID: uuid,
+		ID:         probeID(bridgeUUID),
+		Interface:  "lo",
+		HeaderSize: 256,
+		Sampling:   1,
+		Polling:    0,
+		NodeUUID:   uuid,
 	}
 
 	agent, err := o.allocator.Alloc(bridgeUUID, &probe, ft)

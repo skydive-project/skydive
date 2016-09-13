@@ -51,18 +51,16 @@ func (gfe *GraphFlowEnhancer) getNodeUUID(mac string) string {
 }
 
 func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
-	var eth *flow.FlowEndpointsStatistics
-	if f.IfSrcNodeUUID == "" || f.IfDstNodeUUID == "" {
-		eth = f.GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET)
-		if eth == nil {
+	if f.ANodeUUID == "" || f.BNodeUUID == "" {
+		if f.Link == nil {
 			return
 		}
 	}
-	if f.IfSrcNodeUUID == "" {
-		f.IfSrcNodeUUID = gfe.getNodeUUID(eth.AB.Value)
+	if f.ANodeUUID == "" {
+		f.ANodeUUID = gfe.getNodeUUID(f.Link.A)
 	}
-	if f.IfDstNodeUUID == "" {
-		f.IfDstNodeUUID = gfe.getNodeUUID(eth.BA.Value)
+	if f.BNodeUUID == "" {
+		f.BNodeUUID = gfe.getNodeUUID(f.Link.B)
 	}
 }
 
