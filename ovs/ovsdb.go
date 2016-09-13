@@ -26,6 +26,8 @@ import (
 	"errors"
 	"reflect"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/socketplane/libovsdb"
 
@@ -33,7 +35,8 @@ import (
 )
 
 type OvsClient struct {
-	ovsdb *libovsdb.OvsdbClient
+	ovsdb     *libovsdb.OvsdbClient
+	connected uint64
 }
 
 type OvsMonitorHandler interface {
@@ -58,7 +61,11 @@ type OvsMonitor struct {
 	interfaceCache  map[string]string
 	portCache       map[string]string
 	columnsExcluded map[string]bool
+	ticker          *time.Ticker
+	done            chan struct{}
 }
+
+const ConnectionPollInterval time.Duration = 4 * time.Second
 
 type Notifier struct {
 	monitor *OvsMonitor
@@ -77,11 +84,16 @@ func (n Notifier) Stolen([]interface{}) {
 func (n Notifier) Echo([]interface{}) {
 }
 
-func (n Notifier) Disconnected(*libovsdb.OvsdbClient) {
-	/* TODO(safchain) handle connection lost */
+func (n Notifier) Disconnected(c *libovsdb.OvsdbClient) {
+	/* trigger re-connection */
+	atomic.StoreUint64(&n.monitor.OvsClient.connected, 0)
 }
 
 func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error) {
+	if atomic.LoadUint64(&o.connected) == 0 {
+		return nil, errors.New("OVSDB client is not connected")
+	}
+
 	result, err := o.ovsdb.Transact("Open_vSwitch", operations...)
 	if err != nil {
 		return nil, errors.New(
@@ -105,6 +117,10 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 	}
 
 	return result, nil
+}
+
+func (o *OvsMonitor) isConnected() bool {
+	return atomic.LoadUint64(&o.OvsClient.connected) == 1
 }
 
 func (o *OvsMonitor) bridgeUpdated(bridgeUUID string, row *libovsdb.RowUpdate) {
@@ -309,12 +325,13 @@ func (o *OvsMonitor) ExcludeColumn(column string) {
 	o.columnsExcluded[column] = true
 }
 
-func (o *OvsMonitor) StartMonitoring() error {
+func (o *OvsMonitor) monitorOvsdb() error {
 	ovsdb, err := libovsdb.ConnectUsingProtocol(o.Protocol, o.Target)
 	if err != nil {
 		return err
 	}
-	o.OvsClient = &OvsClient{ovsdb: ovsdb}
+	o.OvsClient.ovsdb = ovsdb
+	atomic.StoreUint64(&o.OvsClient.connected, 1)
 
 	notifier := Notifier{monitor: o}
 	ovsdb.Register(notifier)
@@ -345,8 +362,33 @@ func (o *OvsMonitor) StartMonitoring() error {
 	return nil
 }
 
+// startMonitoring() is a watchdog of OvsClient connection with ConnectionPollInterval
+func (o *OvsMonitor) startMonitoring() error {
+	o.ticker = time.NewTicker(ConnectionPollInterval)
+
+	for {
+		select {
+		case <-o.ticker.C:
+			if o.isConnected() {
+				continue
+			}
+			if err := o.monitorOvsdb(); err != nil {
+				logging.GetLogger().Errorf(": re-connect error %v, will try again", err)
+			}
+		case <-o.done:
+			break
+		}
+	}
+}
+
+func (o *OvsMonitor) StartMonitoring() {
+	o.monitorOvsdb()
+	go o.startMonitoring()
+}
+
 func (o *OvsMonitor) StopMonitoring() {
 	if o.OvsClient != nil {
+		o.done <- struct{}{}
 		o.OvsClient.ovsdb.Disconnect()
 	}
 }
@@ -355,9 +397,12 @@ func NewOvsMonitor(protcol string, target string) *OvsMonitor {
 	return &OvsMonitor{
 		Protocol:        protcol,
 		Target:          target,
+		OvsClient:       &OvsClient{ovsdb: nil, connected: 0},
 		bridgeCache:     make(map[string]string),
 		interfaceCache:  make(map[string]string),
 		portCache:       make(map[string]string),
 		columnsExcluded: make(map[string]bool),
+		ticker:          nil,
+		done:            make(chan struct{}),
 	}
 }
