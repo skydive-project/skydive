@@ -36,7 +36,10 @@ etcd:
   servers:
     - http://$SKYDIVE_ANALYZER_PORT_2379_ADDR
 storage:
-  elasticsearch: $ELASTICSEARCH_PORT
+  elasticsearch:
+    host: $ELASTICSEARCH_PORT
+    maxconns: 10
+    retry: 60
 ovs:
   ovsdb: $OVSDB
 docker:

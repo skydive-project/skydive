@@ -86,7 +86,10 @@ netns:
   # run_path: /var/run/netns
 
 storage:
-  elasticsearch: 127.0.0.1:9200
+  elasticsearch:
+    host: 127.0.0.1:9200
+    maxconns: 10
+    retry: 60
 
 graph:
   # graph backend memory, titangraph, gremlin(generic gremlin based), orientdb

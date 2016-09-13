@@ -264,6 +264,16 @@ func (c *ElasticSearchStorage) initialize() error {
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
 
 func (c *ElasticSearchStorage) start() {
+	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
+	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
+	//TODO(masco): need to remove, once viper default issue fixed
+	if maxConns == 0 {
+		maxConns = 10
+	}
+	if retrySeconds == 0 {
+		retrySeconds = 60
+	}
+
 	for {
 		err := c.initialize()
 		if err == nil {
@@ -274,7 +284,7 @@ func (c *ElasticSearchStorage) start() {
 		time.Sleep(1 * time.Second)
 	}
 
-	c.indexer = c.connection.NewBulkIndexerErrors(10, 60)
+	c.indexer = c.connection.NewBulkIndexerErrors(maxConns, retrySeconds)
 	c.indexer.Start()
 
 	c.started.Store(true)
@@ -294,7 +304,7 @@ func (c *ElasticSearchStorage) Stop() {
 func New() (*ElasticSearchStorage, error) {
 	c := elastigo.NewConn()
 
-	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch"), ":")
+	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch.host"), ":")
 	if len(elasticonfig) != 2 {
 		return nil, ErrBadConfig
 	}
