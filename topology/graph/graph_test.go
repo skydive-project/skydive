@@ -69,6 +69,26 @@ func TestLinks(t *testing.T) {
 	}
 }
 
+func TestAreLinkedWithMetadata(t *testing.T) {
+	g := newGraph(t)
+
+	n1 := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
+	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
+
+	g.Link(n1, n2, Metadata{"Type": "aaa"})
+	if !g.AreLinked(n1, n2) {
+		t.Error("nodes should be linked")
+	}
+
+	if !g.AreLinked(n1, n2, Metadata{"Type": "aaa"}) {
+		t.Error("nodes should be linked")
+	}
+
+	if g.AreLinked(n1, n2, Metadata{"Type": "bbb"}) {
+		t.Error("nodes shouldn't be linked")
+	}
+}
+
 func TestBasicLookup(t *testing.T) {
 	g := newGraph(t)
 

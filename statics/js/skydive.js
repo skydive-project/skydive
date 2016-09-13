@@ -334,6 +334,10 @@ HostLayout.prototype.AddEdge = function(edge) {
     return;
   this.elements[edge.ID] = edge;
 
+  // ignore layer 3 for now
+  if (edge.RelationType() == "layer3")
+    return;
+
   if (edge.Parent.Type() == "host")
     return;
 
@@ -528,7 +532,7 @@ HostLayout.prototype.AddToGroup = function(node, group, groups) {
 }
 
 HostLayout.prototype.SetNodeGroups = function(n, node, groups) {
-  if (n.Type() == "host")
+  if (n.Type() == "host" || n.Type() == "fabric")
     return;
 
   var parent = this.GetParentNode(n);
@@ -554,6 +558,9 @@ HostLayout.prototype.GetNodesGroups = function(n, node, groups) {
     // create an itself group
     if (type == "ovsbridge" || type == "netns")
       this.AddToGroup(node, node.ID, groups);
+
+    if (node.Type() == "fabric")
+      this.AddToGroup(node, "fabric", groups);
 
     this.SetNodeGroups(node, node, groups);
   }

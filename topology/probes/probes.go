@@ -39,7 +39,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 	// FIX(safchain) once viper setdefault on nested key will be fixed move this
 	// to config init
 	if len(list) == 0 {
-		list = []string{"netlink", "netns"}
+		list = []string{"fabric", "netlink", "netns"}
 	}
 
 	logging.GetLogger().Infof("Topology probes: %v", list)
@@ -66,7 +66,8 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 				continue
 			}
 			probes[t] = neutron
-
+		case "fabric":
+			probes[t] = NewFabricProbe(g)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}

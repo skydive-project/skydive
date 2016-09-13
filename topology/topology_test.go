@@ -61,14 +61,4 @@ func TestMarshal(t *testing.T) {
 	if path != "N1[Type=T1]/N2[Type=T2]/N3[Type=T3]" {
 		t.Errorf("Wrong path returned: %s", path)
 	}
-
-	node := LookupNodeFromNodePathString(g, path)
-	if node == nil || node.ID != n3.ID {
-		t.Errorf("Wrong node returned: %s", node)
-	}
-
-	node = LookupNodeFromNodePathString(g, "N1[Type=T1]/N2[Type=T1]/N3[Type=T3]")
-	if node != nil {
-		t.Errorf("Shouldn't have any nodes returned")
-	}
 }

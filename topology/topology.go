@@ -24,9 +24,7 @@ package topology
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -51,55 +49,6 @@ func (p NodePath) Marshal() string {
 	}
 
 	return path
-}
-
-func nodePathPartToMetadata(p string) (graph.Metadata, error) {
-	f := strings.FieldsFunc(p, func(r rune) bool {
-		return r == '[' || r == ']'
-	})
-	if len(f) != 2 {
-		return nil, fmt.Errorf("Unable to parse part of node path: %s", p)
-	}
-
-	n := f[0]
-	t := strings.Split(f[1], "=")
-	if len(t) != 2 || t[0] != "Type" {
-		return nil, fmt.Errorf("Unable to parse part of node path: %s", p)
-	}
-
-	return graph.Metadata{
-		"Name": n,
-		"Type": t[1],
-	}, nil
-}
-
-func LookupNodeFromNodePathString(g *graph.Graph, s string) *graph.Node {
-	parts := strings.Split(s, "/")
-
-	m, err := nodePathPartToMetadata(parts[0])
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to parse a part of node path string (%s): %s", parts[0], err.Error())
-		return nil
-	}
-
-	node := g.LookupFirstNode(m)
-	if node == nil {
-		return nil
-	}
-
-	for _, part := range parts[1:] {
-		m, err := nodePathPartToMetadata(part)
-		if err != nil {
-			return nil
-		}
-
-		node = g.LookupFirstChild(node, m)
-		if node == nil {
-			return nil
-		}
-	}
-
-	return node
 }
 
 func GraphPath(g *graph.Graph, n *graph.Node) string {

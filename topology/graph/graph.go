@@ -503,7 +503,7 @@ func (g *Graph) LookupChildren(n *Node, f Metadata, em ...Metadata) []*Node {
 	return children
 }
 
-func (g *Graph) AreLinked(n1 *Node, n2 *Node) bool {
+func (g *Graph) AreLinked(n1 *Node, n2 *Node, m ...Metadata) bool {
 	t := g.context.GetTime()
 	for _, e := range g.backend.GetNodeEdges(n1, t) {
 		parent, child := g.backend.GetEdgeNodes(e, t)
@@ -512,19 +512,26 @@ func (g *Graph) AreLinked(n1 *Node, n2 *Node) bool {
 		}
 
 		if child.ID == n2.ID || parent.ID == n2.ID {
-			return true
+			if len(m) > 0 {
+				if e.MatchMetadata(m[0]) {
+					return true
+				}
+			} else {
+				return true
+			}
 		}
 	}
 
 	return false
 }
 
-func (g *Graph) Link(n1 *Node, n2 *Node, m ...Metadata) {
+func (g *Graph) Link(n1 *Node, n2 *Node, m ...Metadata) *Edge {
+	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(string(n1.ID)+string(n2.ID)))
+
 	if len(m) > 0 {
-		g.NewEdge(GenID(), n1, n2, m[0])
-	} else {
-		g.NewEdge(GenID(), n1, n2, nil)
+		return g.NewEdge(Identifier(u.String()), n1, n2, m[0])
 	}
+	return g.NewEdge(Identifier(u.String()), n1, n2, nil)
 }
 
 func (g *Graph) Unlink(n1 *Node, n2 *Node) {
@@ -687,13 +694,7 @@ func (g *Graph) delSubGraph(n *Node, v map[Identifier]bool) {
 	v[n.ID] = true
 
 	for _, e := range g.backend.GetNodeEdges(n, nil) {
-		parent, child := g.backend.GetEdgeNodes(e, nil)
-
-		if parent != nil && parent.ID != n.ID && !v[parent.ID] {
-			g.delSubGraph(parent, v)
-			g.DelNode(parent)
-		}
-
+		_, child := g.backend.GetEdgeNodes(e, nil)
 		if child != nil && child.ID != n.ID && !v[child.ID] {
 			g.delSubGraph(child, v)
 			g.DelNode(child)
