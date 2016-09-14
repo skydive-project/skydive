@@ -193,6 +193,8 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 }
 
 func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string) error {
+	o.allocator.Release(bridgeUUID)
+
 	probeUUID, err := o.retrieveSFlowProbeUUID(probeID(bridgeUUID))
 	if err != nil {
 		return err
