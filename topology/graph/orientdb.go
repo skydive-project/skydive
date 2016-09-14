@@ -155,7 +155,7 @@ func (o *OrientDBBackend) DelNode(n *Node) bool {
 	return err == nil && i == 1
 }
 
-func (o *OrientDBBackend) GetNode(i Identifier, t time.Time) *Node {
+func (o *OrientDBBackend) GetNode(i Identifier, t *time.Time) *Node {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID = '%s'", o.getTimeClause(t), i)
 	docs, err := o.client.Sql(query)
 	if err != nil {
@@ -168,7 +168,7 @@ func (o *OrientDBBackend) GetNode(i Identifier, t time.Time) *Node {
 	return nil
 }
 
-func (o *OrientDBBackend) GetNodeEdges(n *Node, t time.Time) (edges []*Edge) {
+func (o *OrientDBBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (parent = '%s' OR child = '%s')", o.getTimeClause(t), n.ID, n.ID)
 	docs, err := o.client.Sql(query)
 	if err != nil {
@@ -207,7 +207,7 @@ func (o *OrientDBBackend) DelEdge(e *Edge) bool {
 	return err == nil && i == 1
 }
 
-func (o *OrientDBBackend) GetEdge(i Identifier, t time.Time) *Edge {
+func (o *OrientDBBackend) GetEdge(i Identifier, t *time.Time) *Edge {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND ID = '%s'", o.getTimeClause(t), i)
 	docs, err := o.client.Sql(query)
 	if err != nil {
@@ -220,7 +220,7 @@ func (o *OrientDBBackend) GetEdge(i Identifier, t time.Time) *Edge {
 	return nil
 }
 
-func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t time.Time) (n1 *Node, n2 *Node) {
+func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *time.Time) (n1 *Node, n2 *Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID in [\"%s\", \"%s\"]", o.getTimeClause(t), e.parent, e.child)
 	docs, err := o.client.Sql(query)
 	if err != nil {
@@ -252,11 +252,11 @@ func (o *OrientDBBackend) updateGraphElement(i interface{}) bool {
 	case *Node:
 		node := i.(*Node)
 		now := time.Now()
-		edges := o.GetNodeEdges(node, now)
+		edges := o.GetNodeEdges(node, &now)
 		o.DelNode(node)
 		o.AddNode(node)
 		for _, e := range edges {
-			parent, child := o.GetEdgeNodes(e, now)
+			parent, child := o.GetEdgeNodes(e, &now)
 			if parent == nil || child == nil {
 				continue
 			}
@@ -298,12 +298,18 @@ func (o *OrientDBBackend) SetMetadata(i interface{}, m Metadata) bool {
 	return success
 }
 
-func (*OrientDBBackend) getTimeClause(t time.Time) string {
-	s := t.String()
+func (*OrientDBBackend) getTimeClause(t *time.Time) string {
+	var t2 time.Time
+	if t == nil {
+		t2 = time.Now()
+	} else {
+		t2 = *t
+	}
+	s := t2.String()
 	return fmt.Sprintf("CreatedAt <= '%s' AND (DeletedAt > '%s' OR DeletedAt is NULL)", s, s)
 }
 
-func (o *OrientDBBackend) GetNodes(t time.Time) (nodes []*Node) {
+func (o *OrientDBBackend) GetNodes(t *time.Time) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeClause(t))
 	docs, err := o.client.Sql(query)
 	if err != nil {
@@ -318,7 +324,7 @@ func (o *OrientDBBackend) GetNodes(t time.Time) (nodes []*Node) {
 	return
 }
 
-func (o *OrientDBBackend) GetEdges(t time.Time) (edges []*Edge) {
+func (o *OrientDBBackend) GetEdges(t *time.Time) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeClause(t))
 	docs, err := o.client.Sql(query)
 	if err != nil {

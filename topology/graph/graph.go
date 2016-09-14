@@ -74,19 +74,19 @@ type Edge struct {
 type GraphBackend interface {
 	AddNode(n *Node) bool
 	DelNode(n *Node) bool
-	GetNode(i Identifier, at time.Time) *Node
-	GetNodeEdges(n *Node, at time.Time) []*Edge
+	GetNode(i Identifier, at *time.Time) *Node
+	GetNodeEdges(n *Node, at *time.Time) []*Edge
 
 	AddEdge(e *Edge) bool
 	DelEdge(e *Edge) bool
-	GetEdge(i Identifier, at time.Time) *Edge
-	GetEdgeNodes(e *Edge, at time.Time) (*Node, *Node)
+	GetEdge(i Identifier, at *time.Time) *Edge
+	GetEdgeNodes(e *Edge, at *time.Time) (*Node, *Node)
 
 	AddMetadata(e interface{}, k string, v interface{}) bool
 	SetMetadata(e interface{}, m Metadata) bool
 
-	GetNodes(at time.Time) []*Node
-	GetEdges(at time.Time) []*Edge
+	GetNodes(at *time.Time) []*Node
+	GetEdges(at *time.Time) []*Edge
 }
 
 type GraphContext struct {
@@ -300,11 +300,8 @@ func (e *Edge) GetChild() Identifier {
 	return e.child
 }
 
-func (c *GraphContext) GetTime() time.Time {
-	if c.Time != nil {
-		return *c.Time
-	}
-	return time.Now()
+func (c *GraphContext) GetTime() *time.Time {
+	return c.Time
 }
 
 func (g *Graph) notifyMetadataUpdated(e interface{}) {
@@ -528,9 +525,8 @@ func (g *Graph) Link(n1 *Node, n2 *Node, m ...Metadata) {
 }
 
 func (g *Graph) Unlink(n1 *Node, n2 *Node) {
-	now := time.Now()
-	for _, e := range g.backend.GetNodeEdges(n1, now) {
-		parent, child := g.backend.GetEdgeNodes(e, now)
+	for _, e := range g.backend.GetNodeEdges(n1, nil) {
+		parent, child := g.backend.GetEdgeNodes(e, nil)
 		if parent == nil || child == nil {
 			continue
 		}
@@ -542,9 +538,8 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 }
 
 func (g *Graph) Replace(o *Node, n *Node) *Node {
-	now := time.Now()
-	for _, e := range g.backend.GetNodeEdges(o, now) {
-		parent, child := g.backend.GetEdgeNodes(e, now)
+	for _, e := range g.backend.GetNodeEdges(o, nil) {
+		parent, child := g.backend.GetEdgeNodes(e, nil)
 		if parent == nil || child == nil {
 			continue
 		}
@@ -676,7 +671,7 @@ func (g *Graph) DelEdge(e *Edge) {
 }
 
 func (g *Graph) DelNode(n *Node) {
-	for _, e := range g.backend.GetNodeEdges(n, time.Now()) {
+	for _, e := range g.backend.GetNodeEdges(n, nil) {
 		g.DelEdge(e)
 	}
 
@@ -688,9 +683,8 @@ func (g *Graph) DelNode(n *Node) {
 func (g *Graph) delSubGraph(n *Node, v map[Identifier]bool) {
 	v[n.ID] = true
 
-	now := time.Now()
-	for _, e := range g.backend.GetNodeEdges(n, now) {
-		parent, child := g.backend.GetEdgeNodes(e, now)
+	for _, e := range g.backend.GetNodeEdges(n, nil) {
+		parent, child := g.backend.GetEdgeNodes(e, nil)
 
 		if parent != nil && parent.ID != n.ID && !v[parent.ID] {
 			g.delSubGraph(parent, v)
