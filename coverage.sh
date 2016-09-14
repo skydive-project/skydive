@@ -34,7 +34,7 @@ generate_cover_data() {
     FUNC_TESTS=$( grep -e 'func Test' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf )
     for functest in ${FUNC_TESTS} ; do
         coverfile="../$workdir/$functest.cover"
-        cd tests && sudo -E ./functionals -test.v -test.timeout 2m -test.coverprofile="$coverfile" -test.run $functest && cd ..
+        cd tests && sudo -E ./functionals -test.v -test.timeout 2m -test.coverprofile="$coverfile" -test.run $functest$ && cd ..
     done
 
     # merge all together
