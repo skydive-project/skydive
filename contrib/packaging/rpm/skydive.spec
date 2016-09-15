@@ -12,8 +12,8 @@
 %define source %{tagversion}
 %endif
 
-%{!?tagversion:%define tagversion 0.4.0}
-%{!?source:%define source 0.4.0}
+%{!?tagversion:%define tagversion 0.5.0}
+%{!?source:%define source 0.5.0}
 %{!?tag:%define tag 1}
 
 Name:           skydive
@@ -120,6 +120,17 @@ install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/sk
 %{_unitdir}/skydive-analyzer.service
 
 %changelog
+* Thu Sep 15 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.5.0-1
+- Gremlin improvements:
+  - Allow filtering flows in Gremlin query
+  - Add bandwidth calculation
+  - New steps: Count, Both
+  - New predicates: Lt, Gt, Lte, Gte, Between, Inside, Outside
+- Scaling improvements
+- Use protobuf instead of JSON for analyzer - agent communications
+- Switch Docker image to Ubuntu
+- Improved release pipeline (executables, Docker image)
+
 * Thu Aug 4 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.4.0-1
 - Bump to version 0.4.0
 
