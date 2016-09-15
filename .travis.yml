@@ -9,10 +9,16 @@ dist: trusty
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io libpcap0.8-dev
+    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison
     - sudo ovs-vsctl show
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
+    - git clone https://github.com/the-tcpdump-group/libpcap.git
+    - cd libpcap
+    - ./configure --prefix=/usr/local --disable-shared --disable-dbus --disable-bluetooth --disable-packet-ring --disable-usb
+    - make
+    - sudo make install
+    - cd ..
 
 script:
     - make install
