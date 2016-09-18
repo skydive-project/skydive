@@ -102,7 +102,7 @@ function start_locust() {
 	task_set = UserBehavior
 	min_wait=5000
 	max_wait=9000
-	EOF
+EOF
 	create_ns $NAME $IP
 
 	sudo -E screen -S skydive-scale -X screen -t http-server $WINDOW ip netns exec ${NAME} su - $USER -c "python -m SimpleHTTPServer 8080"
