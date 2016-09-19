@@ -873,11 +873,14 @@ func BackendFromConfig() (backend GraphBackend, err error) {
 	case "gremlin":
 		endpoint := config.GetConfig().GetString("graph.gremlin")
 		backend, err = NewGremlinBackend(endpoint)
+		cachingMode = Shadowed
 	case "titangraph":
 		endpoint := config.GetConfig().GetString("graph.gremlin")
 		backend, err = NewTitangraphBackend(endpoint)
+		cachingMode = Shadowed
 	case "orientdb":
 		backend, err = NewOrientDBBackendFromConfig()
+		cachingMode = Shadowed
 	case "elasticsearch":
 		backend, err = NewElasticSearchBackendFromConfig()
 		cachingMode = Shadowed
