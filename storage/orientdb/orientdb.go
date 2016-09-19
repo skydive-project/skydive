@@ -138,10 +138,10 @@ func (c *OrientDBStorage) Close() {
 }
 
 func New() (*OrientDBStorage, error) {
-	addr := config.GetConfig().GetString("orientdb.addr")
-	database := config.GetConfig().GetString("orientdb.database")
-	username := config.GetConfig().GetString("orientdb.username")
-	password := config.GetConfig().GetString("orientdb.password")
+	addr := config.GetConfig().GetString("storage.orientdb.addr")
+	database := config.GetConfig().GetString("storage.orientdb.database")
+	username := config.GetConfig().GetString("storage.orientdb.username")
+	password := config.GetConfig().GetString("storage.orientdb.password")
 
 	client, err := orient.NewClient(addr, database, username, password)
 	if err != nil {

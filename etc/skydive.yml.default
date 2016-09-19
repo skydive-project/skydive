@@ -91,6 +91,13 @@ storage:
     maxconns: 10
     retry: 60
 
+  # OrientDB connection informations
+  # orientdb:
+  #  addr: http://127.0.0.1:2480
+  #  database: Skydive
+  #  username: root
+  #  password: hello
+
 graph:
   # graph backend memory, titangraph, gremlin(generic gremlin based), orientdb
   backend: memory
@@ -118,9 +125,3 @@ etcd:
 
   # client_timeout: 5
 
-# OrientDB connection informations
-# orientdb:
-#  addr: http://127.0.0.1:2480
-#  database: Skydive
-#  username: root
-#  password: hello
