@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
@@ -40,17 +41,22 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-type PcapProbe struct {
-	handle        *pcap.Handle
+type packetHandle interface {
+	Close()
+}
+
+type GoPacketProbe struct {
+	handle        packetHandle
+	packetSource  *gopacket.PacketSource
 	probeNodeUUID string
 	flowTable     *flow.Table
 	state         int64
 }
 
-type PcapProbesHandler struct {
+type GoPacketProbesHandler struct {
 	graph      *graph.Graph
 	wg         sync.WaitGroup
-	probes     map[string]*PcapProbe
+	probes     map[string]*GoPacketProbe
 	probesLock sync.RWMutex
 }
 
@@ -58,26 +64,27 @@ const (
 	snaplen int32 = 256
 )
 
-func (p *PcapProbe) SetProbeNode(flow *flow.Flow) bool {
+func (p *GoPacketProbe) SetProbeNode(flow *flow.Flow) bool {
 	flow.ProbeNodeUUID = p.probeNodeUUID
 	return true
 }
 
-func (p *PcapProbe) packetsToChan(ch chan gopacket.Packet) {
+func (p *GoPacketProbe) packetsToChan(ch chan gopacket.Packet) {
 	defer close(ch)
 
-	packetSource := gopacket.NewPacketSource(p.handle, p.handle.LinkType())
 	for atomic.LoadInt64(&p.state) == common.RunningState {
-		packet, err := packetSource.NextPacket()
+		packet, err := p.packetSource.NextPacket()
 		if err == io.EOF {
 			time.Sleep(20 * time.Millisecond)
 		} else if err == nil {
 			ch <- packet
 		}
 	}
+
+	p.handle.Close()
 }
 
-func (p *PcapProbe) start() {
+func (p *GoPacketProbe) start() {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	ch := make(chan gopacket.Packet, 1000)
@@ -97,14 +104,13 @@ func (p *PcapProbe) start() {
 	p.flowTable.Start()
 }
 
-func (p *PcapProbe) stop() {
+func (p *GoPacketProbe) stop() {
 	if atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
 		p.flowTable.Stop()
-		p.handle.Close()
 	}
 }
 
-func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
+func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	name, ok := n.Metadata()["Name"]
 	if !ok || name == "" {
 		return fmt.Errorf("No name for node %v", n)
@@ -150,19 +156,47 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, f
 		}
 	}
 
-	handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
-	if err != nil {
-		return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
-	}
-
-	logging.GetLogger().Debugf("PCAP capture started on %s", n.Metadata()["Name"])
-
-	probe := &PcapProbe{
-		handle:        handle,
+	probe := &GoPacketProbe{
 		probeNodeUUID: id,
 		state:         common.StoppedState,
 		flowTable:     ft,
 	}
+
+	switch capture.Type {
+	case "pcap":
+		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
+		if err != nil {
+			return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
+		}
+
+		if err := handle.SetBPFFilter(capture.BPFFilter); err != nil {
+			return fmt.Errorf("BPF Filter failed: %s", err)
+		}
+
+		probe.handle = handle
+		probe.packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeEthernet)
+
+		logging.GetLogger().Infof("PCAP Capture type %s started on %s", capture.Type, n.Metadata()["Name"])
+	default:
+		var handle *AFPacketHandle
+		fnc := func() error {
+			handle, err = NewAFPacketHandle(ifName, snaplen)
+			if err != nil {
+				return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
+			}
+			return nil
+		}
+
+		if err = common.Retry(fnc, 2, 100*time.Millisecond); err != nil {
+			return err
+		}
+
+		probe.handle = handle
+		probe.packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeEthernet)
+
+		logging.GetLogger().Infof("AfPacket Capture started on %s", n.Metadata()["Name"])
+	}
+
 	p.probesLock.Lock()
 	p.probes[id] = probe
 	p.probesLock.Unlock()
@@ -177,9 +211,9 @@ func (p *PcapProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, f
 	return nil
 }
 
-func (p *PcapProbesHandler) unregisterProbe(id string) error {
+func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
 	if probe, ok := p.probes[id]; ok {
-		logging.GetLogger().Debugf("Terminating pcap capture on %s", id)
+		logging.GetLogger().Debugf("Terminating gopacket capture on %s", id)
 		probe.stop()
 		delete(p.probes, id)
 	}
@@ -187,7 +221,7 @@ func (p *PcapProbesHandler) unregisterProbe(id string) error {
 	return nil
 }
 
-func (p *PcapProbesHandler) UnregisterProbe(n *graph.Node) error {
+func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node) error {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
 
@@ -199,10 +233,10 @@ func (p *PcapProbesHandler) UnregisterProbe(n *graph.Node) error {
 	return nil
 }
 
-func (p *PcapProbesHandler) Start() {
+func (p *GoPacketProbesHandler) Start() {
 }
 
-func (p *PcapProbesHandler) Stop() {
+func (p *GoPacketProbesHandler) Stop() {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
 
@@ -212,10 +246,10 @@ func (p *PcapProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
-func NewPcapProbesHandler(g *graph.Graph) *PcapProbesHandler {
-	handler := &PcapProbesHandler{
+func NewGoPacketProbesHandler(g *graph.Graph) *GoPacketProbesHandler {
+	handler := &GoPacketProbesHandler{
 		graph:  g,
-		probes: make(map[string]*PcapProbe),
+		probes: make(map[string]*GoPacketProbe),
 	}
 	return handler
 }

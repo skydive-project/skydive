@@ -124,11 +124,14 @@ func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph
 				pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
 				probes[t] = FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
 			}
-		case "pcap":
-			o := NewPcapProbesHandler(g)
+		case "gopacket":
+			o := NewGoPacketProbesHandler(g)
 			if o != nil {
 				pipeline := mappings.NewFlowMappingPipeline(gfe)
-				probes[t] = FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
+				gopacket := FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
+
+				probes["afpacket"] = gopacket
+				probes["pcap"] = gopacket
 			}
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)

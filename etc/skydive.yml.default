@@ -55,7 +55,9 @@ agent:
     # Probes used to capture traffic.
     probes:
       # - ovssflow
-      # - pcap
+      # gopacket probe will use either pcap or afpacket according to the type of
+      # the capture. Default is afpacket.
+      # - gopacket
   metadata:
     info: This is compute node
 

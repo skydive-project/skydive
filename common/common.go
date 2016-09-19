@@ -38,11 +38,11 @@ var (
 	CantCompareInterface error = errors.New("Can't compare interface")
 	CaptureTypes               = map[string]map[string][]string{
 		"ovsbridge": {"allowed": {"ovssflow"}, "default": {"ovssflow"}},
-		"device":    {"allowed": {"pcap"}, "default": {"pcap"}},
-		"internal":  {"allowed": {"pcap"}, "default": {"pcap"}},
-		"veth":      {"allowed": {"pcap"}, "default": {"pcap"}},
-		"tun":       {"allowed": {"pcap"}, "default": {"pcap"}},
-		"bridge":    {"allowed": {"pcap"}, "default": {"pcap"}},
+		"device":    {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
+		"internal":  {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
+		"veth":      {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
+		"tun":       {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
+		"bridge":    {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
 	}
 )
 

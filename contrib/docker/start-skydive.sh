@@ -25,7 +25,7 @@ agent:
   flow:
     probes:
       - ovssflow
-      - pcap
+      - gopacket
 analyzer:
   listen: 0.0.0.0:8082
   storage: elasticsearch

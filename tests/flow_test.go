@@ -52,7 +52,7 @@ agent:
   flow:
     probes:
       - ovssflow
-      - pcap
+      - gopacket
 
 cache:
   expire: 300

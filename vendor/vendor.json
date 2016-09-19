@@ -899,34 +899,45 @@
 			"revision": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
 		{
-			"checksumSHA1": "U2Ydh7vEAKlN0Wq22n1JpefF7uY=",
+			"checksumSHA1": "QRgk4w56AbqvQdpqeNr6I3nrRR4=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket",
-			"revision": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
+			"revision": "632566d585d0456397d2058bd9cb800c48e3230b",
+			"revisionTime": "2016-08-30T20:46:11Z"
+		},
+		{
+			"checksumSHA1": "LB6gUQwV19iGKn3tOK7JP3cHVJg=",
+			"path": "github.com/google/gopacket/afpacket",
+			"revision": "632566d585d0456397d2058bd9cb800c48e3230b",
+			"revisionTime": "2016-08-30T20:46:11Z"
 		},
 		{
 			"checksumSHA1": "l9DwWGxjn8A9VpmuT01b+vf9Boo=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/bytediff",
-			"revision": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
+			"revision": "632566d585d0456397d2058bd9cb800c48e3230b",
+			"revisionTime": "2016-08-30T20:46:11Z"
 		},
 		{
-			"checksumSHA1": "OWpWLxYTrqn7xJt2HL7zjRarW/s=",
+			"checksumSHA1": "fp7+5R00H4rKuD+B2R28XkWX8Fg=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
-			"revision": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
+			"revision": "632566d585d0456397d2058bd9cb800c48e3230b",
+			"revisionTime": "2016-08-30T20:46:11Z"
 		},
 		{
 			"checksumSHA1": "sYC22CvIBHjt4MbEvMQSMk2/rUk=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcap",
-			"revision": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
+			"revision": "632566d585d0456397d2058bd9cb800c48e3230b",
+			"revisionTime": "2016-08-30T20:46:11Z"
 		},
 		{
-			"checksumSHA1": "z3O/etYHIZUhBJrsN5z9AWKltYg=",
+			"checksumSHA1": "8KFwVOMpP4jdoBW7r8GoKcJLAc0=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcapgo",
-			"revision": "bdf4ee7eb518c56e3ce97a09ba2e91aee1bfe2e4"
+			"revision": "632566d585d0456397d2058bd9cb800c48e3230b",
+			"revisionTime": "2016-08-30T20:46:11Z"
 		},
 		{
 			"checksumSHA1": "iIUYZyoanCQQTUaWsu8b+iOSPt4=",

@@ -1503,7 +1503,7 @@ function SetupCaptureList() {
       case "bridge":
       case "device":
       case "veth":
-        return ["pcap"];
+        return ["afpacket", "pcap"];
       case "ovsbridge":
         return ["ovssflow"];
     }
