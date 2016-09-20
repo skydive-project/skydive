@@ -15,7 +15,8 @@ before_install:
     - go get golang.org/x/tools/cmd/cover
     - git clone https://github.com/the-tcpdump-group/libpcap.git
     - cd libpcap
-    - ./configure --prefix=/usr/local --disable-shared --disable-dbus --disable-bluetooth --disable-packet-ring --disable-usb
+    - git checkout libpcap-1.5.3
+    - ./configure --prefix=/usr/local --disable-shared --disable-dbus --disable-bluetooth --disable-canusb
     - make
     - sudo make install
     - cd ..
