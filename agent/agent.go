@@ -32,11 +32,11 @@ import (
 
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/storage/etcd"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	tprobes "github.com/skydive-project/skydive/topology/probes"
