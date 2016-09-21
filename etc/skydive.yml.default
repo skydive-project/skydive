@@ -116,7 +116,7 @@ storage:
   #  password: hello
 
 graph:
-  # graph backend memory, titangraph, gremlin(generic gremlin based), orientdb
+  # graph backend memory, elasticsearch, titangraph, gremlin(generic gremlin based), orientdb
   backend: memory
   # gremlin endpoint, ex ws://127.0.0.1:8182, http://127.0.0.1:8182/graph
   gremlin: ws://127.0.0.1:8182

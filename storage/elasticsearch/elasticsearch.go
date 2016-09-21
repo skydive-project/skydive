@@ -25,115 +25,119 @@ package elasticsearch
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"net/http"
-	"strconv"
 	"strings"
-	"sync/atomic"
-	"time"
-
-	elastigo "github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 )
 
-const indexVersion = 3
-
-const mapping = `
-{"mappings": {
-	"flow": {
-		"dynamic_templates": [
-      {"strings": {
-        "match": "*",
-        "match_mapping_type": "string",
-        "mapping": {
+const flowMapping = `
+{
+	"dynamic_templates": [
+		{
+			"strings": {
+				"match": "*",
+				"match_mapping_type": "string",
+				"mapping": {
 					"type": "string", "index": "not_analyzed", "doc_values": false
 				}
-      }},
-			{"packets": {
-        "match": "*Packets",
+			}
+		},
+		{
+			"packets": {
+				"match": "*Packets",
 				"mapping": {
 					"type": "long"
 				}
-			}},
-			{"bytes": {
+			}
+		},
+		{
+			"bytes": {
 				"match": "*Bytes",
 				"mapping": {
 					"type": "long"
 				}
-			}},
-			{"start": {
+			}
+		},
+		{
+			"start": {
 				"match": "Start",
 				"mapping": {
 					"type": "date", "format": "epoch_second"
 				}
-			}},
-			{"last": {
+			}
+		},
+		{
+			"last": {
 				"match": "Last",
 				"mapping": {
 					"type": "date", "format": "epoch_second"
 				}
-			}}
-		]
+			}
+		}
+	]
+}`
+
+const metricMapping = `
+{
+	"_parent": {
+		"type": "flow"
 	},
-	"metric": {
-		"_parent": {
-      "type": "flow"
-    },
-		"dynamic_templates": [
-			{"packets": {
-        "match": "*Packets",
+	"dynamic_templates": [
+		{
+			"packets": {
+				"match": "*Packets",
 				"mapping": {
 					"type": "long"
 				}
-			}},
-			{"bytes": {
+			}
+		},
+		{
+			"bytes": {
 				"match": "*Bytes",
 				"mapping": {
 					"type": "long"
 				}
-			}},
-			{"start": {
+			}
+		},
+		{
+			"start": {
 				"match": "Start",
 				"mapping": {
 					"type": "date", "format": "epoch_second"
 				}
-			}},
-			{"last": {
+			}
+		},
+		{
+			"last": {
 				"match": "Last",
 				"mapping": {
 					"type": "date", "format": "epoch_second"
 				}
-			}}
-		]
-	}
-}}
-`
+			}
+		}
+	]
+}`
 
 type ElasticSearchStorage struct {
-	connection *elastigo.Conn
-	indexer    *elastigo.BulkIndexer
-	started    atomic.Value
+	client *ElasticSearchClient
 }
 
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
-	if c.started.Load() != true {
+	if !c.client.Started() {
 		return errors.New("ElasticSearchStorage is not yet started")
 	}
 
 	for _, f := range flows {
-		err := c.indexer.Index("skydive", "flow", f.UUID, "", "", nil, f)
-		if err != nil {
+		if err := c.client.Index("flow", f.UUID, f); err != nil {
 			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 			continue
 		}
 
 		if f.MetricRange != nil {
 			// TODO submit a pull request to add bulk request with parent supported
-			_, err = c.connection.IndexWithParameters("skydive", "metric", "", f.UUID, 0, "", "", "", 0, "", "", false, nil, f.MetricRange)
-			if err != nil {
+			if err := c.client.IndexChild("metric", f.UUID, "", f.MetricRange); err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
 			}
@@ -228,7 +232,7 @@ func (c *ElasticSearchStorage) formatFilter(filter *flow.Filter) map[string]inte
 }
 
 func (c *ElasticSearchStorage) SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
-	if c.started.Load() != true {
+	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
 
@@ -254,7 +258,7 @@ func (c *ElasticSearchStorage) SearchFlows(filter *flow.Filter, interval *flow.R
 		return nil, err
 	}
 
-	out, err := c.connection.Search("skydive", "flow", nil, string(q))
+	out, err := c.client.Search("flow", string(q))
 	if err != nil {
 		return nil, err
 	}
@@ -276,71 +280,25 @@ func (c *ElasticSearchStorage) SearchFlows(filter *flow.Filter, interval *flow.R
 	return flows, nil
 }
 
-func (c *ElasticSearchStorage) request(method string, path string, query string, body string) (int, []byte, error) {
-	req, err := c.connection.NewRequest(method, path, query)
-	if err != nil {
-		return 503, nil, err
-	}
-
-	if body != "" {
-		req.SetBodyString(body)
-	}
-
-	var response map[string]interface{}
-	return req.Do(&response)
+func (c *ElasticSearchStorage) Start() {
+	go c.client.Start([]map[string][]byte{
+		{"metric": []byte(metricMapping)},
+		{"flow": []byte(flowMapping)}},
+	)
 }
 
-func (c *ElasticSearchStorage) initialize() error {
-	indexPath := fmt.Sprintf("/skydive_v%d", indexVersion)
-
-	code, _, _ := c.request("GET", indexPath, "", "")
-	if code == http.StatusOK {
-		return nil
-	}
-
-	code, _, _ = c.request("PUT", indexPath, "", mapping)
-	if code != http.StatusOK {
-		return errors.New("Unable to create the skydive index: " + strconv.FormatInt(int64(code), 10))
-	}
-
-	aliases := `{"actions": [`
-
-	code, data, _ := c.request("GET", "/_aliases", "", "")
-	if code == http.StatusOK {
-		var current map[string]interface{}
-
-		err := json.Unmarshal(data, &current)
-		if err != nil {
-			return errors.New("Unable to parse aliases: " + err.Error())
-		}
-
-		for k := range current {
-			if strings.HasPrefix(k, "skydive_") {
-				remove := `{"remove":{"alias": "skydive", "index": "%s"}},`
-				aliases += fmt.Sprintf(remove, k)
-			}
-		}
-	}
-
-	add := `{"add":{"alias": "skydive", "index": "skydive_v%d"}}]}`
-	aliases += fmt.Sprintf(add, indexVersion)
-
-	code, _, _ = c.request("POST", "/_aliases", "", aliases)
-	if code != http.StatusOK {
-		return errors.New("Unable to create an alias to the skydive index: " + strconv.FormatInt(int64(code), 10))
-	}
-
-	logging.GetLogger().Infof("ElasticSearchStorage started")
-
-	return nil
+func (c *ElasticSearchStorage) Stop() {
+	c.client.Stop()
 }
 
-var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
+func New() (*ElasticSearchStorage, error) {
+	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch.host"), ":")
+	if len(elasticonfig) != 2 {
+		return nil, ErrBadConfig
+	}
 
-func (c *ElasticSearchStorage) start() {
 	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
 	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
-	//TODO(masco): need to remove, once viper default issue fixed
 	if maxConns == 0 {
 		maxConns = 10
 	}
@@ -348,45 +306,10 @@ func (c *ElasticSearchStorage) start() {
 		retrySeconds = 60
 	}
 
-	for {
-		err := c.initialize()
-		if err == nil {
-			break
-		}
-		logging.GetLogger().Errorf("Unable to get connected to Elasticsearch: %s", err.Error())
-
-		time.Sleep(1 * time.Second)
+	client, err := NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds)
+	if err != nil {
+		return nil, err
 	}
 
-	c.indexer = c.connection.NewBulkIndexerErrors(maxConns, retrySeconds)
-	c.indexer.Start()
-
-	c.started.Store(true)
-}
-
-func (c *ElasticSearchStorage) Start() {
-	go c.start()
-}
-
-func (c *ElasticSearchStorage) Stop() {
-	if c.started.Load() == true {
-		c.indexer.Stop()
-		c.connection.Close()
-	}
-}
-
-func New() (*ElasticSearchStorage, error) {
-	c := elastigo.NewConn()
-
-	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch.host"), ":")
-	if len(elasticonfig) != 2 {
-		return nil, ErrBadConfig
-	}
-	c.Domain = elasticonfig[0]
-	c.Port = elasticonfig[1]
-
-	storage := &ElasticSearchStorage{connection: c}
-	storage.started.Store(false)
-
-	return storage, nil
+	return &ElasticSearchStorage{client: client}, nil
 }

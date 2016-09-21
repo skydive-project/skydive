@@ -711,7 +711,7 @@ func TestDockerSimple(t *testing.T) {
 
 		if !testPassed {
 			tv := tr.V().Has("Name", "test-skydive-docker", "Type", "netns", "Manager", "docker")
-			tv = tv.Out("Type", "container", "Docker.ContainerName", "/test-skydive-docker")
+			tv = tv.Out("Type", "container", "Docker/ContainerName", "/test-skydive-docker")
 
 			if len(tv.Values()) == 1 {
 				testPassed = true
@@ -758,7 +758,7 @@ func TestDockerShareNamespace(t *testing.T) {
 				t.Error("There should be only one namespace managed by Docker")
 				ws.Close()
 			} else if len(tv.Values()) == 1 {
-				tv = tv.Out().Has("Type", "container", "Docker.ContainerName", traversal.Within("/test-skydive-docker", "/test-skydive-docker2"))
+				tv = tv.Out().Has("Type", "container", "Docker/ContainerName", traversal.Within("/test-skydive-docker", "/test-skydive-docker2"))
 
 				if len(tv.Values()) == 2 {
 					testPassed = true
@@ -798,7 +798,7 @@ func TestDockerNetHost(t *testing.T) {
 		defer g.Unlock()
 
 		if !testPassed {
-			tv := tr.V().Has("Docker.ContainerName", "/test-skydive-docker", "Type", "container")
+			tv := tr.V().Has("Docker/ContainerName", "/test-skydive-docker", "Type", "container")
 
 			if len(tv.Values()) == 1 {
 				tv = tr.V().Has("Type", "netns", "Manager", "docker", "Name", "test-skydive-docker")

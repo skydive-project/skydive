@@ -36,6 +36,11 @@ import (
 	"github.com/skydive-project/skydive/config"
 )
 
+const (
+	Direct int64 = iota
+	Shadowed
+)
+
 type Identifier string
 
 type GraphEventListener interface {
@@ -855,24 +860,39 @@ func NewGraphWithContext(hostID string, b GraphBackend, c GraphContext) (*Graph,
 	}, nil
 }
 
-func BackendFromConfig() (GraphBackend, error) {
-	backend := config.GetConfig().GetString("graph.backend")
-	if len(backend) == 0 {
-		backend = "memory"
+func BackendFromConfig() (backend GraphBackend, err error) {
+	cachingMode := Direct
+	name := config.GetConfig().GetString("graph.backend")
+	if len(name) == 0 {
+		name = "memory"
 	}
 
-	switch backend {
+	switch name {
 	case "memory":
-		return NewMemoryBackend()
+		backend, err = NewMemoryBackend()
 	case "gremlin":
 		endpoint := config.GetConfig().GetString("graph.gremlin")
-		return NewGremlinBackend(endpoint)
+		backend, err = NewGremlinBackend(endpoint)
 	case "titangraph":
 		endpoint := config.GetConfig().GetString("graph.gremlin")
-		return NewTitangraphBackend(endpoint)
+		backend, err = NewTitangraphBackend(endpoint)
 	case "orientdb":
-		return NewOrientDBBackendFromConfig()
+		backend, err = NewOrientDBBackendFromConfig()
+	case "elasticsearch":
+		backend, err = NewElasticSearchBackendFromConfig()
+		cachingMode = Shadowed
 	default:
-		return nil, errors.New("Config file is misconfigured, graph backend unknown: " + backend)
+		return nil, errors.New("Config file is misconfigured, graph backend unknown: " + name)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	switch cachingMode {
+	case Shadowed:
+		return NewShadowedBackend(backend)
+	default:
+		return backend, nil
 	}
 }

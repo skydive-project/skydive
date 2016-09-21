@@ -180,7 +180,7 @@ func (o *OnDemandProbeListener) onNodeEvent(n *graph.Node) {
 		if o.matchGremlinExpr(n, capture.GremlinQuery) {
 			if o.registerProbe(n, capture) {
 				t := o.Graph.StartMetadataTransaction(n)
-				t.AddMetadata("State.FlowCapture", "ON")
+				t.AddMetadata("State/FlowCapture", "ON")
 				t.AddMetadata("CaptureID", capture.UUID)
 				t.Commit()
 			}
@@ -212,7 +212,7 @@ func (o *OnDemandProbeListener) OnNodeDeleted(n *graph.Node) {
 
 	if o.unregisterProbe(n) {
 		metadata := n.Metadata()
-		metadata["State.FlowCapture"] = "OFF"
+		metadata["State/FlowCapture"] = "OFF"
 		delete(metadata, "CaptureID")
 		o.Graph.SetMetadata(n, metadata)
 	}
@@ -240,7 +240,7 @@ func (o *OnDemandProbeListener) onCaptureAdded(capture *api.Capture) {
 		case *graph.Node:
 			if o.registerProbe(value.(*graph.Node), capture) {
 				t := o.Graph.StartMetadataTransaction(value.(*graph.Node))
-				t.AddMetadata("State.FlowCapture", "ON")
+				t.AddMetadata("State/FlowCapture", "ON")
 				t.AddMetadata("CaptureID", capture.UUID)
 				t.Commit()
 			}
@@ -248,7 +248,7 @@ func (o *OnDemandProbeListener) onCaptureAdded(capture *api.Capture) {
 			for _, node := range value.([]*graph.Node) {
 				if o.registerProbe(node, capture) {
 					t := o.Graph.StartMetadataTransaction(node)
-					t.AddMetadata("State.FlowCapture", "ON")
+					t.AddMetadata("State/FlowCapture", "ON")
 					t.AddMetadata("CaptureID", capture.UUID)
 					t.Commit()
 				}
@@ -282,7 +282,7 @@ func (o *OnDemandProbeListener) onCaptureDeleted(capture *api.Capture) {
 		case *graph.Node:
 			if o.unregisterProbe(value.(*graph.Node)) {
 				metadata := value.(*graph.Node).Metadata()
-				metadata["State.FlowCapture"] = "OFF"
+				metadata["State/FlowCapture"] = "OFF"
 				delete(metadata, "CaptureID")
 				o.Graph.SetMetadata(value.(*graph.Node), metadata)
 			}
@@ -290,7 +290,7 @@ func (o *OnDemandProbeListener) onCaptureDeleted(capture *api.Capture) {
 			for _, node := range value.([]*graph.Node) {
 				if o.unregisterProbe(node) {
 					metadata := node.Metadata()
-					metadata["State.FlowCapture"] = "OFF"
+					metadata["State/FlowCapture"] = "OFF"
 					delete(metadata, "CaptureID")
 					o.Graph.SetMetadata(node, metadata)
 				}

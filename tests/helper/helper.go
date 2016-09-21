@@ -258,6 +258,11 @@ func NewGraph(t *testing.T) *graph.Graph {
 		backend, err = graph.NewGremlinBackend("ws://127.0.0.1:8182")
 	case "gremlin-rest":
 		backend, err = graph.NewGremlinBackend("http://127.0.0.1:8182?gremlin=")
+	case "elasticsearch":
+		backend, err = graph.NewElasticSearchBackend("127.0.0.1", "9200", 10, 60)
+		if err == nil {
+			backend, err = graph.NewShadowedBackend(backend)
+		}
 	case "orientdb":
 		password := os.Getenv("ORIENTDB_ROOT_PASSWORD")
 		if password == "" {

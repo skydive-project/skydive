@@ -177,7 +177,7 @@ func TestNeutron(t *testing.T) {
 		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 && port != nil {
 			if g.LookupFirstNode(graph.Metadata{"Name": fmt.Sprintf("qdhcp-%s", network.ID), "Type": "netns"}) != nil {
 				if g.LookupFirstNode(graph.Metadata{"Name": fmt.Sprintf("qprobe-%s", port.ID), "Type": "netns"}) != nil {
-					if g.LookupFirstNode(graph.Metadata{"Type": "internal", "Driver": "openvswitch", "Manager": "neutron", "Neutron.NetworkID": network.ID}) != nil {
+					if g.LookupFirstNode(graph.Metadata{"Type": "internal", "Driver": "openvswitch", "Manager": "neutron", "Neutron/NetworkID": network.ID}) != nil {
 						testPassed = true
 						ws.Close()
 					}

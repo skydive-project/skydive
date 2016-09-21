@@ -30,6 +30,10 @@ case "$BACKEND" in
     sleep 5
     ARGS="-graph.backend orientdb"
     ;;
+  "elasticsearch")
+    . "${dir}/install-elasticsearch.sh"
+    ARGS="-graph.backend elasticsearch"
+    ;;
 esac
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive

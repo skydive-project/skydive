@@ -102,9 +102,9 @@ func (probe *DockerProbe) registerContainer(id string) {
 	metadata := graph.Metadata{
 		"Type":                 "container",
 		"Name":                 info.Name[1:],
-		"Docker.ContainerID":   info.ID,
-		"Docker.ContainerName": info.Name,
-		"Docker.ContainerPID":  info.State.Pid,
+		"Docker/ContainerID":   info.ID,
+		"Docker/ContainerName": info.Name,
+		"Docker/ContainerPID":  info.State.Pid,
 	}
 	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
 	probe.Graph.Link(n, containerNode, graph.Metadata{"RelationType": "membership"})

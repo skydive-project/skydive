@@ -215,7 +215,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	ext_ids := row.New.Fields["external_ids"].(libovsdb.OvsMap)
 	for k, v := range ext_ids.GoMap {
-		tr.AddMetadata("ExtID."+k.(string), v.(string))
+		tr.AddMetadata("ExtID/"+k.(string), v.(string))
 	}
 
 	o.uuidToIntf[uuid] = intf

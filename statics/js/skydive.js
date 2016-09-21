@@ -56,7 +56,7 @@ var Node = function(ID) {
 };
 
 Node.prototype.IsCaptureOn = function() {
-  return "State.FlowCapture" in this.Metadata && this.Metadata["State.FlowCapture"] == "ON";
+  return "State/FlowCapture" in this.Metadata && this.Metadata["State/FlowCapture"] == "ON";
 };
 
 Node.prototype.IsCaptureAllowed = function() {
@@ -997,7 +997,11 @@ Layout.prototype.ProcessAlertMessage = function(msg) {
 };
 
 Layout.prototype.SyncRequest = function(t) {
-  var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": {"Time": t}};
+  var obj = {};
+  if (t != null) {
+    obj["Time"] = t;
+  }
+  var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
   this.updatesocket.send(JSON.stringify(msg));
 };
 
@@ -1007,7 +1011,7 @@ Layout.prototype.StartLiveUpdate = function() {
 
   var _this = this;
   this.updatesocket.onopen = function() {
-    _this.SyncRequest(Date.now());
+    _this.SyncRequest(null);
   };
 
   this.updatesocket.onclose = function() {

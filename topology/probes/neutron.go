@@ -62,7 +62,7 @@ func (mapper *NeutronMapper) retrievePort(metadata graph.Metadata) (port ports.P
 
 	/* If we have a MAC address for a device attached to the interface, that is the one that
 	 * will be associated with the Neutron port. */
-	if attached_mac, ok := metadata["ExtID.attached-mac"]; ok {
+	if attached_mac, ok := metadata["ExtID/attached-mac"]; ok {
 		mac = attached_mac.(string)
 	} else {
 		mac = metadata["MAC"].(string)
@@ -73,7 +73,7 @@ func (mapper *NeutronMapper) retrievePort(metadata graph.Metadata) (port ports.P
 	/* Determine the best way to search for the Neutron port.
 	 * We prefer the Neutron port UUID if we have it, but will fall back
 	 * to using the MAC address otherwise. */
-	if portid, ok := metadata["ExtID.iface-id"]; ok {
+	if portid, ok := metadata["ExtID/iface-id"]; ok {
 		opts.ID = portid.(string)
 	} else {
 		opts.MACAddress = mac
@@ -156,19 +156,19 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	tr.AddMetadata("Manager", "neutron")
 
 	if attrs.TenantID != "" {
-		tr.AddMetadata("Neutron.TenantID", attrs.TenantID)
+		tr.AddMetadata("Neutron/TenantID", attrs.TenantID)
 	}
 
 	if attrs.NetworkID != "" {
-		tr.AddMetadata("Neutron.NetworkID", attrs.NetworkID)
+		tr.AddMetadata("Neutron/NetworkID", attrs.NetworkID)
 	}
 
 	if attrs.NetworkName != "" {
-		tr.AddMetadata("Neutron.NetworkName", attrs.NetworkName)
+		tr.AddMetadata("Neutron/NetworkName", attrs.NetworkName)
 	}
 
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
-		tr.AddMetadata("Neutron.VNI", uint64(segID))
+		tr.AddMetadata("Neutron/VNI", uint64(segID))
 	}
 
 	mapper.cache.Set(string(node.ID), attrs, cache.DefaultExpiration)
