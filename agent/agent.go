@@ -23,6 +23,7 @@
 package agent
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -68,6 +69,7 @@ func (a *Agent) Start() {
 	}
 
 	if addr != "" {
+		waitAnalyzer(addr, port)
 		authOptions := &shttp.AuthenticationOpts{
 			Username: config.GetConfig().GetString("agent.analyzer_username"),
 			Password: config.GetConfig().GetString("agent.analyzer_password"),
@@ -214,5 +216,17 @@ func NewAgent() *Agent {
 		Root:        root,
 		HTTPServer:  hserver,
 		TIDMapper:   tm,
+	}
+}
+
+func waitAnalyzer(addr string, port int) {
+	for {
+		url := fmt.Sprintf("http://%s:%d/api", addr, port)
+		if resp, err := http.Get(url); err == nil && resp.StatusCode == 200 {
+			logging.GetLogger().Info("Analyzer is ready:")
+			return
+		}
+		logging.GetLogger().Warning("Waiting for analyzer to start")
+		time.Sleep(time.Second)
 	}
 }
