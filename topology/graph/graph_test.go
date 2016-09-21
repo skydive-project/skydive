@@ -240,6 +240,34 @@ func TestPath(t *testing.T) {
 	if len(r) == 0 || !validatePath(r, "4/1") {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}
+	g.Unlink(n1, n4)
+
+	// test shortestPath on the following graph
+	// n1 -- n2 -- n3 -- n4 -----------
+	//  \                              \
+	//   \-- n11 -- n12---------------- n5
+	//                \                /
+	//                 \-- n121 -- n122
+	n5 := g.NewNode(GenID(), Metadata{"Value": 5, "Name": "Node5"})
+	g.Link(n4, n5, Metadata{"Type": "Layer2"})
+
+	n11 := g.NewNode(GenID(), Metadata{"Value": 11, "Name": "Node11"})
+	n12 := g.NewNode(GenID(), Metadata{"Value": 12, "Name": "Node12"})
+	g.Link(n1, n11, Metadata{"Type": "Layer2"})
+	g.Link(n11, n12, Metadata{"Type": "Layer2"})
+	g.Link(n12, n5, Metadata{"Type": "Layer2"})
+
+	n121 := g.NewNode(GenID(), Metadata{"Value": 121, "Name": "Node121"})
+	n122 := g.NewNode(GenID(), Metadata{"Value": 122, "Name": "Node122"})
+
+	g.Link(n12, n121, Metadata{"Type": "Layer2"})
+	g.Link(n121, n122, Metadata{"Type": "Layer2"})
+	g.Link(n122, n5, Metadata{"Type": "Layer2"})
+
+	r = g.LookupShortestPath(n1, Metadata{"Value": 5})
+	if len(r) == 0 || !validatePath(r, "1/11/12/5") {
+		t.Errorf("Wrong nodes returned: %v", r)
+	}
 }
 
 func TestMetadata(t *testing.T) {

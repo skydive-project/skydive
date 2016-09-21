@@ -408,10 +408,12 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, em ...Metadata) []*Node {
 	v[n.ID] = true
 
-	path = append(path, n)
+	newPath := make([]*Node, len(path)+1)
+	copy(newPath, path)
+	newPath[len(path)] = n
 
 	if n.MatchMetadata(m) {
-		return path
+		return newPath
 	}
 
 	t := g.context.GetTime()
@@ -441,7 +443,7 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 				nv[k] = v
 			}
 
-			sub := g.lookupShortestPath(neighbor, m, path, nv, em...)
+			sub := g.lookupShortestPath(neighbor, m, newPath, nv, em...)
 			if len(sub) > 0 && (len(shortest) == 0 || len(sub) < len(shortest)) {
 				shortest = sub
 			}
