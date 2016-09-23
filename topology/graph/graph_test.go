@@ -143,7 +143,7 @@ func TestHierarchyLookup(t *testing.T) {
 	g.Link(n3, n4)
 	g.Link(n2, n4)
 
-	r := g.LookupParentNodes(n4, nil)
+	r := g.LookupParents(n4, nil)
 	if len(r) != 2 {
 		t.Error("Wrong number of nodes returned")
 	}
@@ -154,7 +154,7 @@ func TestHierarchyLookup(t *testing.T) {
 		}
 	}
 
-	r = g.LookupParentNodes(n4, Metadata{"Type": "intf"})
+	r = g.LookupParents(n4, Metadata{"Type": "intf"})
 	if len(r) != 1 {
 		t.Error("Wrong number of nodes returned")
 	}

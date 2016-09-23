@@ -55,10 +55,16 @@ func (t *TIDMapper) setTID(parent, child *graph.Node) {
 	}
 }
 
-// onNodeEvent set TID(topology NodeID) for root TID nodes
-// like host, netns, ovsport.
-// TID are composed of persistent attributes of the element + the host node ID +
-// the node type.
+func (t *TIDMapper) setChildrenTID(parent *graph.Node) {
+	children := t.Graph.LookupChildren(parent, graph.Metadata{"RelationType": "ownership"})
+	for _, child := range children {
+		t.setTID(parent, child)
+	}
+}
+
+// onNodeEvent set TID
+// TID is UUIDV5(ID/UUID) of "root" node like host, netns, ovsport, fabric
+// for other nodes TID is UUIDV5(rootTID + Name + Type)
 func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 	if _, ok := n.Metadata()["TID"]; !ok {
 		if tp, ok := n.Metadata()["Type"]; ok {
@@ -66,22 +72,30 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 			case "host":
 				t.hostID = n.ID
 				t.Graph.AddMetadata(n, "TID", string(n.ID))
+
+				t.setChildrenTID(n)
 			case "netns":
 				tid := string(t.hostID) + n.Metadata()["Path"].(string) + tp.(string)
 				u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
 				t.Graph.AddMetadata(n, "TID", u.String())
+
+				t.setChildrenTID(n)
 			case "ovsport":
 				tid := string(t.hostID) + n.Metadata()["UUID"].(string) + tp.(string)
 				u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
 				t.Graph.AddMetadata(n, "TID", u.String())
-			case "fabric":
-				t.Graph.AddMetadata(n, "TID", string(n.ID))
+
+				t.setChildrenTID(n)
 			default:
-				parents := t.Graph.LookupParentNodes(n, graph.Metadata{"RelationType": "ownership"})
-				if len(parents) > 1 {
-					logging.GetLogger().Errorf("A should always only have one ownership parent: %v", n)
-				} else if len(parents) == 1 {
-					t.setTID(parents[0], n)
+				if n.Metadata()["Probe"] == "fabric" {
+					t.Graph.AddMetadata(n, "TID", string(n.ID))
+				} else {
+					parents := t.Graph.LookupParents(n, graph.Metadata{"RelationType": "ownership"})
+					if len(parents) > 1 {
+						logging.GetLogger().Errorf("A should always only have one ownership parent: %v", n)
+					} else if len(parents) == 1 {
+						t.setTID(parents[0], n)
+					}
 				}
 			}
 		}

@@ -350,7 +350,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 	case l > 1:
 	Loop:
 		for _, i := range intfs {
-			parents := u.Graph.LookupParentNodes(i, nil)
+			parents := u.Graph.LookupParents(i, nil)
 			for _, parent := range parents {
 				if parent.ID == u.Root.ID {
 					intf = i
@@ -362,7 +362,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 
 	// case of removing the interface from a bridge
 	if intf != nil {
-		parents := u.Graph.LookupParentNodes(intf, graph.Metadata{"Type": "bridge"})
+		parents := u.Graph.LookupParents(intf, graph.Metadata{"Type": "bridge"})
 		for _, parent := range parents {
 			u.Graph.Unlink(parent, intf)
 		}

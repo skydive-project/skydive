@@ -459,7 +459,7 @@ func (g *Graph) LookupShortestPath(n *Node, m Metadata, em ...Metadata) []*Node 
 	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), em...)
 }
 
-func (g *Graph) LookupParentNodes(n *Node, f Metadata, em ...Metadata) []*Node {
+func (g *Graph) LookupParents(n *Node, f Metadata, em ...Metadata) []*Node {
 	parents := []*Node{}
 	t := g.context.GetTime()
 	for _, e := range g.backend.GetNodeEdges(n, t) {
@@ -485,11 +485,14 @@ func (g *Graph) LookupFirstChild(n *Node, f Metadata) *Node {
 	return nil
 }
 
-func (g *Graph) LookupChildren(n *Node, f Metadata) []*Node {
+func (g *Graph) LookupChildren(n *Node, f Metadata, em ...Metadata) []*Node {
 	children := []*Node{}
-
 	t := g.context.GetTime()
 	for _, e := range g.backend.GetNodeEdges(n, t) {
+		if len(em) > 0 && !e.MatchMetadata(em[0]) {
+			continue
+		}
+
 		parent, child := g.backend.GetEdgeNodes(e, t)
 
 		if parent != nil && parent.ID == n.ID && child.MatchMetadata(f) {
