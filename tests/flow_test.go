@@ -801,60 +801,18 @@ func getFlowEndpoint(t *testing.T, gremlin string, protocol flow.FlowProtocol) *
 	return flows[0].Metric
 }
 
-func TestFlowMetrics(t *testing.T) {
-	ts := NewTestStorage()
-
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
-	aa.Start()
-	defer aa.Stop()
-
-	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
-	if err := client.Create("capture", capture); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	time.Sleep(1 * time.Second)
-	setupCmds := []helper.Cmd{
-		{"ovs-vsctl add-br br-sflow", true},
-
-		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
-		{"ip netns add sflow-vm1", true},
-		{"ip link set sflow-intf1 netns sflow-vm1", true},
-		{"ip netns exec sflow-vm1 ip address add 169.254.33.33/24 dev sflow-intf1", true},
-		{"ip netns exec sflow-vm1 ip link set sflow-intf1 up", true},
-
-		{"ovs-vsctl add-port br-sflow sflow-intf2 -- set interface sflow-intf2 type=internal", true},
-		{"ip netns add sflow-vm2", true},
-		{"ip link set sflow-intf2 netns sflow-vm2", true},
-		{"ip netns exec sflow-vm2 ip address add 169.254.33.34/24 dev sflow-intf2", true},
-		{"ip netns exec sflow-vm2 ip link set sflow-intf2 up", true},
-
-		// wait to have everything ready, sflow, interfaces
-		{"sleep 2", false},
-
-		{"ip netns exec sflow-vm1 ping -c 1 -s 1024 -I sflow-intf1 169.254.33.34", false},
-	}
-
-	tearDownCmds := []helper.Cmd{
-		{"ip netns del sflow-vm1", true},
-		{"ip netns del sflow-vm2", true},
-		{"ovs-vsctl del-br br-sflow", true},
-	}
-
-	helper.ExecCmds(t, setupCmds...)
-	defer helper.ExecCmds(t, tearDownCmds...)
-
-	time.Sleep(1 * time.Second)
+func queryFlowMetrics(t *testing.T, timeContext int64, pings int64) {
+	graphGremlin := "g"
 
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
-	ovsBridge := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
-	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
+	if timeContext != -1 {
+		graphGremlin += fmt.Sprintf(".Context(%d)", timeContext)
+	}
+
+	ovsGremlin := graphGremlin + `.V().Has("Name", "br-sflow", "Type", "ovsbridge")`
+	ovsBridge := gh.GetNodeFromGremlinReply(t, ovsGremlin)
+	gremlin := ovsGremlin + `.Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
 
 	icmp := gh.GetFlowsFromGremlinReply(t, gremlin)
 	if len(icmp) != 1 {
@@ -865,17 +823,17 @@ func TestFlowMetrics(t *testing.T) {
 	}
 
 	ethernet := icmp[0].Metric
-	if ethernet.BAPackets != 1 {
-		t.Errorf("Number of packets is wrong, got: %v", icmp)
+	if ethernet.BAPackets != pings {
+		t.Errorf("Number of packets is wrong, got: %v", ethernet.BAPackets)
 	}
 
-	if ethernet.ABBytes < 1066 || ethernet.BABytes < 1066 {
-		t.Errorf("Number of bytes is wrong, got: %v", icmp)
+	if ethernet.ABBytes < pings*1066 || ethernet.BABytes < pings*1066 {
+		t.Errorf("Number of bytes is wrong, got: %v", ethernet.BABytes)
 	}
 
-	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload", "Metric.ABPackets", 1)`)
-	if len(flows) != 1 || flows[0].Metric.BAPackets != 1 {
-		t.Errorf("Number of packets is wrong, got: %v", flows)
+	flows := gh.GetFlowsFromGremlinReply(t, fmt.Sprintf(`%s.Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload", "Metric.ABPackets", %d)`, ovsGremlin, pings))
+	if len(flows) != 1 || flows[0].Metric.BAPackets != pings {
+		t.Errorf("Number of packets is wrong, got %d, flows: %v", len(flows), flows)
 	}
 
 	ipv4 := icmp[0].Metric // FIXME double check protocol Network = IPv4/v6
@@ -950,6 +908,59 @@ func TestFlowMetrics(t *testing.T) {
 	} else if nodes[0].ID != ovsBridge.ID {
 		t.Errorf("Hops should return the node %v, got %v\n", ovsBridge, nodes[0])
 	}
+}
+
+func TestFlowMetrics(t *testing.T) {
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip netns add sflow-vm1", true},
+		{"ip link set sflow-intf1 netns sflow-vm1", true},
+		{"ip netns exec sflow-vm1 ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip netns exec sflow-vm1 ip link set sflow-intf1 up", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf2 -- set interface sflow-intf2 type=internal", true},
+		{"ip netns add sflow-vm2", true},
+		{"ip link set sflow-intf2 netns sflow-vm2", true},
+		{"ip netns exec sflow-vm2 ip address add 169.254.33.34/24 dev sflow-intf2", true},
+		{"ip netns exec sflow-vm2 ip link set sflow-intf2 up", true},
+
+		// wait to have everything ready, sflow, interfaces
+		{"sleep 2", false},
+
+		{"ip netns exec sflow-vm1 ping -c 1 -s 1024 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del sflow-vm1", true},
+		{"ip netns del sflow-vm2", true},
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	time.Sleep(1 * time.Second)
+
+	queryFlowMetrics(t, -1, 1)
 
 	client.Delete("capture", capture.ID())
 }

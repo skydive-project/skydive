@@ -524,8 +524,8 @@ func (b *ElasticSearchBackend) GetEdges(t *time.Time) (edges []*Edge) {
 	return edges
 }
 
-func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int) (*ElasticSearchBackend, error) {
-	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds)
+func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int) (*ElasticSearchBackend, error) {
+	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds, bulkMaxDocs)
 	if err != nil {
 		return nil, err
 	}
@@ -550,14 +550,8 @@ func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
 	}
 
 	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
-	if maxConns == 0 {
-		maxConns = 10
-	}
-
 	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
-	if retrySeconds == 0 {
-		retrySeconds = 60
-	}
+	bulkMaxDocs := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdocs")
 
-	return NewElasticSearchBackend(c[0], c[1], maxConns, retrySeconds)
+	return NewElasticSearchBackend(c[0], c[1], maxConns, retrySeconds, bulkMaxDocs)
 }

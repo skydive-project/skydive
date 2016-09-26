@@ -299,14 +299,9 @@ func New() (*ElasticSearchStorage, error) {
 
 	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
 	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
-	if maxConns == 0 {
-		maxConns = 10
-	}
-	if retrySeconds == 0 {
-		retrySeconds = 60
-	}
+	bulkMaxDocs := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdocs")
 
-	client, err := NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds)
+	client, err := NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds, bulkMaxDocs)
 	if err != nil {
 		return nil, err
 	}

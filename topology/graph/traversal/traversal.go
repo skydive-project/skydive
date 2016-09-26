@@ -368,6 +368,9 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 		return &GraphTraversal{Graph: t.Graph, error: errors.New("Key must be either an integer or a string")}
 	}
 
+	t.Graph.RLock()
+	defer t.Graph.RUnlock()
+
 	return &GraphTraversal{Graph: t.Graph.WithContext(graph.GraphContext{Time: &at})}
 }
 

@@ -57,6 +57,7 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
 	cfg.SetDefault("storage.elasticsearch.maxconns", 10)
 	cfg.SetDefault("storage.elasticsearch.retry", 60)
+	cfg.SetDefault("storage.elasticsearch.bulk_maxdocs", 0)
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
 	cfg.SetDefault("netns.run_path", "/var/run/netns")

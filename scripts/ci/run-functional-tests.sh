@@ -7,6 +7,8 @@ dir="$(dirname "$0")"
 . "${dir}/install-go.sh"
 . "${dir}/install-requirements.sh"
 
+GOFLAGS="-race"
+
 case "$BACKEND" in
   "gremlin-ws")
     . "${dir}/install-gremlin.sh"
@@ -28,13 +30,15 @@ case "$BACKEND" in
     export ORIENTDB_ROOT_PASSWORD=root
     ${ORIENTDBPATH}/bin/server.sh &
     sleep 5
-    ARGS="-graph.backend orientdb"
+    ARGS="-graph.backend orientdb -storage.backend orientdb"
+    GOFLAGS="$GOFLAGS -tags storage"
     ;;
   "elasticsearch")
     . "${dir}/install-elasticsearch.sh"
-    ARGS="-graph.backend elasticsearch"
+    ARGS="-graph.backend elasticsearch -storage.backend elasticsearch"
+    GOFLAGS="$GOFLAGS -tags storage"
     ;;
 esac
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
-make test.functionals GOFLAGS=-race GORACE="history_size=5" VERBOSE=true TIMEOUT=2m ARGS="$ARGS -etcd.server http://localhost:2379"
+make test.functionals GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=2m ARGS="$ARGS -etcd.server http://localhost:2379"

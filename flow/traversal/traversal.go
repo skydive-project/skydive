@@ -522,7 +522,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		graphTraversal = tv.GraphTraversal
 
 		hnmap := make(flow.HostNodeIDMap)
-		graphTraversal.Graph.Lock()
+		graphTraversal.Graph.RLock()
 		for _, v := range tv.Values() {
 			node := v.(*graph.Node)
 			if t, ok := node.Metadata()["Type"]; !ok || !common.IsCaptureAllowed(t.(string)) {
@@ -530,7 +530,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 			}
 			hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 		}
-		graphTraversal.Graph.Unlock()
+		graphTraversal.Graph.RUnlock()
 
 		if context := graphTraversal.Graph.GetContext(); context.Time != nil && s.Storage != nil {
 			var flows []*flow.Flow

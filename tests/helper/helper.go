@@ -58,13 +58,15 @@ type GremlinQueryHelper struct {
 }
 
 var (
-	etcdServer   string
-	graphBackend string
+	etcdServer     string
+	graphBackend   string
+	storageBackend string
 )
 
 func init() {
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
 	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
+	flag.StringVar(&storageBackend, "storage.backend", "", "Specify the storage backend used")
 	flag.Parse()
 }
 
@@ -103,6 +105,17 @@ func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 		params[0]["EmbeddedEtcd"] = "true"
 		params[0]["EtcdServer"] = "http://localhost:2374"
 	}
+	if storageBackend != "" {
+		params[0]["Storage"] = storageBackend
+	}
+	if storageBackend == "orientdb" {
+		orientDBPassword := os.Getenv("ORIENTDB_ROOT_PASSWORD")
+		if orientDBPassword == "" {
+			orientDBPassword = "root"
+		}
+		params[0]["OrientDBRootPassword"] = orientDBPassword
+	}
+
 	tmpl, err := template.New("config").Parse(conf)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -206,7 +219,10 @@ func NewAnalyzerStorage(t *testing.T, s storage.Storage) *analyzer.Server {
 		t.Fatal(err)
 	}
 
-	server.SetStorage(s)
+	if server.Storage == nil {
+		server.SetStorage(s)
+	}
+
 	return server
 }
 
@@ -231,6 +247,7 @@ func WaitApi(t *testing.T, analyzer *analyzer.Server) {
 func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params ...HelperParams) *analyzer.Server {
 	InitConfig(t, conf, params...)
 	analyzer := NewAnalyzerStorage(t, s)
+	s.Start()
 	analyzer.ListenAndServe()
 	WaitApi(t, analyzer)
 	return analyzer
@@ -267,7 +284,7 @@ func NewGraph(t *testing.T) *graph.Graph {
 	case "gremlin-rest":
 		backend, err = graph.NewGremlinBackend("http://127.0.0.1:8182?gremlin=")
 	case "elasticsearch":
-		backend, err = graph.NewElasticSearchBackend("127.0.0.1", "9200", 10, 60)
+		backend, err = graph.NewElasticSearchBackend("127.0.0.1", "9200", 10, 60, 1)
 		if err == nil {
 			backend, err = graph.NewShadowedBackend(backend)
 		}

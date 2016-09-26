@@ -166,13 +166,17 @@ func (c *ElasticSearchClient) Started() bool {
 	return c.started.Load() == true
 }
 
-func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds int) (*ElasticSearchClient, error) {
+func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int) (*ElasticSearchClient, error) {
 	c := elastigo.NewConn()
 
 	c.Domain = addr
 	c.Port = port
 
 	indexer := c.NewBulkIndexerErrors(maxConns, retrySeconds)
+	if bulkMaxDocs <= 0 {
+		indexer.BulkMaxDocs = bulkMaxDocs
+	}
+
 	client := &ElasticSearchClient{
 		connection: c,
 		indexer:    indexer,
