@@ -472,7 +472,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowset, err = s.TableClient.LookupFlows(paramsFilter, interval)
+			flowset, err = s.TableClient.LookupFlows(paramsFilter, interval, s.context.StepContext.Sort)
 		}
 	case *traversal.GraphTraversalV:
 		graphTraversal = tv.GraphTraversal
@@ -494,7 +494,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, paramsFilter, interval)
+			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, paramsFilter, interval, s.context.StepContext.Sort)
 		}
 
 		if r := s.context.StepContext.Range; r != nil {
@@ -522,6 +522,10 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
 	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok && len(s.context.Params) == 0 {
 		s.context.Params = hasStep.Params
+		return s
+	}
+
+	if _, s.context.StepContext.Sort = next.(*traversal.GremlinTraversalStepSort); s.context.StepContext.Sort {
 		return s
 	}
 

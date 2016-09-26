@@ -609,7 +609,7 @@ func TestFlowQuery(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		flowset.Merge(fsr.FlowSet)
+		flowset.Merge(fsr.FlowSet, false)
 	}
 
 	if len(flowset.Flows) != len(flows1)+len(flows2) {
@@ -660,7 +660,7 @@ func TestTableServer(t *testing.T) {
 	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
-	flowset, err := fclient.LookupFlowsByNodes(hnmap, nil, nil)
+	flowset, err := fclient.LookupFlowsByNodes(hnmap, nil, nil, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

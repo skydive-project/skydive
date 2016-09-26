@@ -43,14 +43,38 @@ func NewFlowSet() *FlowSet {
 	}
 }
 
-func (fs *FlowSet) Merge(ofs *FlowSet) {
+func (fs *FlowSet) Merge(ofs *FlowSet, sorted bool) {
 	fs.Start = common.MinInt64(fs.Start, ofs.Start)
 	if fs.Start == 0 {
 		fs.Start = ofs.Start
 	}
 	fs.End = common.MaxInt64(fs.End, ofs.End)
 
-	fs.Flows = append(fs.Flows, ofs.Flows...)
+	if sorted {
+		fs.Flows = fs.mergeFlows(fs.Flows, ofs.Flows)
+	} else {
+		fs.Flows = append(fs.Flows, ofs.Flows...)
+	}
+}
+
+func (fs *FlowSet) mergeFlows(left, right []*Flow) []*Flow {
+	ret := make([]*Flow, 0, len(left)+len(right))
+	for len(left) > 0 || len(right) > 0 {
+		if len(left) == 0 {
+			return append(ret, right...)
+		}
+		if len(right) == 0 {
+			return append(ret, left...)
+		}
+		if left[0].Statistics.Last >= right[0].Statistics.Last {
+			ret = append(ret, left[0])
+			left = left[1:]
+		} else {
+			ret = append(ret, right[0])
+			right = right[1:]
+		}
+	}
+	return ret
 }
 
 func (fs *FlowSet) AvgBandwidth() (fsbw FlowSetBandwidth) {

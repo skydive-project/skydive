@@ -386,7 +386,9 @@ func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchRepl
 		}, http.StatusNoContent
 	}
 
-	sort.Sort(sortByLast(flowset.Flows))
+	if fsq.Sorted {
+		sort.Sort(sortByLast(flowset.Flows))
+	}
 
 	return &FlowSearchReply{
 		FlowSet: flowset,

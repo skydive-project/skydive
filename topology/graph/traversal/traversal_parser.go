@@ -102,6 +102,9 @@ type (
 	GremlinTraversalStepLimit struct {
 		GremlinTraversalContext
 	}
+	GremlinTraversalStepSort struct {
+		GremlinTraversalContext
+	}
 )
 
 var (
@@ -471,6 +474,14 @@ func (s *GremlinTraversalStepLimit) Reduce(next GremlinTraversalStep) GremlinTra
 	return next
 }
 
+func (s *GremlinTraversalStepSort) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	return invokeStepFnc(last, "Sort", s)
+}
+
+func (s *GremlinTraversalStepSort) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 	var step GremlinTraversalStep
 	var last GraphTraversalStep
@@ -702,6 +713,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			return nil, fmt.Errorf("Count accepts no parameter")
 		}
 		return &GremlinTraversalStepCount{gremlinStepContext}, nil
+	case SORT:
+		return &GremlinTraversalStepSort{gremlinStepContext}, nil
 	case RANGE:
 		if len(params) != 2 {
 			return nil, fmt.Errorf("Range requires 2 parameters")
