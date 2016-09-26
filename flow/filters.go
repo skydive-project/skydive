@@ -87,7 +87,7 @@ func (b *BoolFilter) Expression() string {
 	case BoolFilterOp_NOT:
 		// FIX not yet implemented for the orientdb backend
 		// http://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
-		return "NOT " + b.Filters[0].String()
+		return "NOT " + b.Filters[0].Expression()
 	case BoolFilterOp_OR:
 		keyword = "OR"
 	case BoolFilterOp_AND:
@@ -95,7 +95,7 @@ func (b *BoolFilter) Expression() string {
 	}
 	var conditions []string
 	for _, item := range b.Filters {
-		conditions = append(conditions, "("+item.String()+")")
+		conditions = append(conditions, "("+item.Expression()+")")
 	}
 	return strings.Join(conditions, " "+keyword+" ")
 }
