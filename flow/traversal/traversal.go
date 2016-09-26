@@ -445,7 +445,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 
 	var interval *flow.Range
 	if s.context.StepContext.Range != nil {
-		interval = &flow.Range{0, s.context.StepContext.Range[1]}
+		interval = &flow.Range{From: 0, To: s.context.StepContext.Range[1]}
 	}
 
 	flowset := flow.NewFlowSet()
@@ -468,7 +468,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		graphTraversal.Graph.Lock()
 		for _, v := range tv.Values() {
 			node := v.(*graph.Node)
-			if !common.IsCaptureAllowed(node.Metadata()["Type"].(string)) {
+			if t, ok := node.Metadata()["Type"]; !ok || !common.IsCaptureAllowed(t.(string)) {
 				continue
 			}
 			hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
