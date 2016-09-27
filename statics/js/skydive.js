@@ -31,6 +31,7 @@ var neutronImg = 'statics/img/openstack.png';
 var minusImg = 'statics/img/minus-outline-16.png';
 var plusImg = 'statics/img/plus-16.png';
 var probeIndicatorImg = 'statics/img/media-record.png';
+var pinIndicatorImg = 'statics/img/pin.png';
 var trashImg = 'statics/img/trash.png';
 
 var alerts = {};
@@ -196,7 +197,8 @@ var Layout = function(selector) {
     .attr('preserveAspectRatio', 'xMidYMid meet')
     .call(d3.behavior.zoom().on("zoom", function() {
       _this.Rescale();
-    }));
+    }))
+    .on("dblclick.zoom", null);
 
   var _this = this;
   this.force = d3.layout.force()
@@ -593,6 +595,12 @@ Layout.prototype.NodeProbeStatePicto = function(d) {
   return "";
 };
 
+Layout.prototype.NodePinStatePicto = function(d) {
+  if (d.fixed)
+    return pinIndicatorImg;
+  return "";
+};
+
 Layout.prototype.NodeStatePicto = function(d) {
   if (d.Metadata.Type != "netns")
     return "";
@@ -825,6 +833,14 @@ Layout.prototype.Redraw = function() {
         .attr("r", _this.CircleSize(d));
       _this.MouseOutNode(d);
     })
+    .on("dblclick", function(d) {
+      if (d.fixed)
+        d.fixed = false;
+      else
+        d.fixed = true;
+
+      _this.Redraw();
+    })
     .call(this.drag);
 
   nodeEnter.append("circle")
@@ -846,10 +862,17 @@ Layout.prototype.Redraw = function() {
 
   nodeEnter.append("image")
     .attr("class", "probe")
-    .attr("x", 10)
-    .attr("y", -20)
+    .attr("x", 3)
+    .attr("y", 5)
     .attr("width", 20)
     .attr("height", 20);
+
+  nodeEnter.append("image")
+    .attr("class", "pin")
+    .attr("x", 10)
+    .attr("y", -23)
+    .attr("width", 16)
+    .attr("height", 16);
 
   nodeEnter.append("image")
     .attr("class", "state")
@@ -904,6 +927,10 @@ Layout.prototype.Redraw = function() {
 
   this.node.select('image.probe').attr("xlink:href", function(d) {
     return _this.NodeProbeStatePicto(d);
+  });
+
+  this.node.select('image.pin').attr("xlink:href", function(d) {
+    return _this.NodePinStatePicto(d);
   });
 
   this.node.select('image.manager').attr("xlink:href", function(d) {
