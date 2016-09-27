@@ -141,3 +141,14 @@ func (c *Capture) ID() string {
 func (c *Capture) SetID(i string) {
 	c.UUID = i
 }
+
+// Create tests that resource GremlinQuery does not exists already
+func (c *CaptureApiHandler) Create(r ApiResource) error {
+	resources := c.BasicApiHandler.Index()
+	for _, resource := range resources {
+		if resource.(*Capture).GremlinQuery == r.(*Capture).GremlinQuery {
+			return fmt.Errorf("Duplicate capture, uuid=%s", resource.(*Capture).UUID)
+		}
+	}
+	return c.BasicApiHandler.Create(r)
+}
