@@ -38,7 +38,7 @@ SKYDIVE_AGENT_LISTEN=${SKYDIVE_AGENT_LISTEN:-"127.0.0.1:8081"}
 SKYDIVE_CONFIG_FILE=${SKYDIVE_CONFIG_FILE:-"/tmp/skydive.yaml"}
 
 # List of agent probes to be used by the agent
-SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb neutron"}
+SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb neutron fabric"}
 
 # Remote port for ovsdb server.
 SKYDIVE_OVSDB_REMOTE_PORT=6640
@@ -130,7 +130,15 @@ agent:
   topology:
     probes:
 $(get_probes_for_config)
-
+EOF
+    if [ "x$PUBLIC_INTERFACE" != "x" ]; then
+      cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+    fabric:
+      - TOR[Name=TOR Switch, Type=switch] -> PORT_${LOCAL_HOSTNAME}[Name=${LOCAL_HOSTNAME} Port, Type=port]
+      - PORT_${LOCAL_HOSTNAME} -> local/${PUBLIC_INTERFACE}
+EOF
+    fi
+    cat >> $SKYDIVE_CONFIG_FILE <<- EOF
   flow:
     probes:
       - ovssflow
