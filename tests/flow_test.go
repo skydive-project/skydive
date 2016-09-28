@@ -853,6 +853,7 @@ func TestFlowMetrics(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
+	ovsBridge := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
 
 	icmp := getFlowsFromGremlinReply(t, gremlin)
@@ -941,6 +942,13 @@ func TestFlowMetrics(t *testing.T) {
 	endpoint = getFlowEndpoint(t, gremlin+fmt.Sprintf(`.Has("Statistics.Endpoints.ETHERNET.AB.Bytes", Between(%d, %d))`, pingLen, pingLen), flow.FlowEndpointType_ETHERNET)
 	if endpoint != nil {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
+	}
+
+	nodes := getNodesFromGremlinReply(t, gremlin+".Hops()")
+	if len(nodes) != 1 {
+		t.Errorf("Hops should return one node, got %d", len(nodes))
+	} else if nodes[0].ID != ovsBridge.ID {
+		t.Errorf("Hops should return the node %v, got %v\n", ovsBridge, nodes[0])
 	}
 
 	client.Delete("capture", capture.ID())
