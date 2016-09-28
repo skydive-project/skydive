@@ -28,6 +28,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/skydive-project/skydive/config"
@@ -42,6 +43,14 @@ type RestClient struct {
 type CrudClient struct {
 	RestClient
 	Root string
+}
+
+func readBody(resp *http.Response) string {
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 func NewRestClient(addr string, port int, authOptions *AuthenticationOpts) *RestClient {
@@ -115,7 +124,7 @@ func (c *CrudClient) List(resource string, values interface{}) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Failed to retrieve list of %s: %s", resource, resp.Status))
+		return errors.New(fmt.Sprintf("Failed to list %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
 	return json.NewDecoder(resp.Body).Decode(values)
@@ -129,7 +138,7 @@ func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Failed to retrieve %s: %s", resource, resp.Status))
+		return errors.New(fmt.Sprintf("Failed to get %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
 	return json.NewDecoder(resp.Body).Decode(value)
@@ -151,7 +160,7 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Failed to create %s: %s", resource, resp.Status))
+		return errors.New(fmt.Sprintf("Failed to create %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
 	return json.NewDecoder(resp.Body).Decode(value)
@@ -172,7 +181,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Failed to update %s: %s", resource, resp.Status))
+		return errors.New(fmt.Sprintf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
 	return json.NewDecoder(resp.Body).Decode(value)
@@ -187,7 +196,7 @@ func (c *CrudClient) Delete(resource string, id string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Failed to delete %s: %s", resource, resp.Status))
+		return errors.New(fmt.Sprintf("Failed to delete %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
 	return nil

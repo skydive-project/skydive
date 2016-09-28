@@ -46,6 +46,12 @@ type ApiServer struct {
 
 type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 
+func writeError(w http.ResponseWriter, status int, err error) {
+	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	w.WriteHeader(status)
+	w.Write([]byte(err.Error()))
+}
+
 func (a *ApiServer) Index(n string) map[string]ApiResource {
 	return a.handlers[n].Index()
 }
@@ -119,25 +125,25 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 				id := resource.ID()
 
 				if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
-					w.WriteHeader(http.StatusBadRequest)
+					writeError(w, http.StatusBadRequest, err)
 					return
 				}
 
 				resource.SetID(id)
 
 				if err := validator.Validate(resource); err != nil {
-					w.WriteHeader(http.StatusBadRequest)
+					writeError(w, http.StatusBadRequest, err)
 					return
 				}
 
 				if err := handler.Create(resource); err != nil {
-					w.WriteHeader(http.StatusBadRequest)
+					writeError(w, http.StatusBadRequest, err)
 					return
 				}
 
 				data, err := json.Marshal(&resource)
 				if err != nil {
-					w.WriteHeader(http.StatusBadRequest)
+					writeError(w, http.StatusBadRequest, err)
 					return
 				}
 
@@ -160,7 +166,7 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 				}
 
 				if err := handler.Delete(id); err != nil {
-					w.WriteHeader(http.StatusBadRequest)
+					writeError(w, http.StatusBadRequest, err)
 					return
 				}
 
