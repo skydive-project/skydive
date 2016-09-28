@@ -23,7 +23,6 @@
 package agent
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -69,12 +68,11 @@ func (a *Agent) Start() {
 	}
 
 	if addr != "" {
-		waitAnalyzer(addr, port)
 		authOptions := &shttp.AuthenticationOpts{
 			Username: config.GetConfig().GetString("agent.analyzer_username"),
 			Password: config.GetConfig().GetString("agent.analyzer_password"),
 		}
-		authClient := shttp.NewAuthenticationClient(addr, port, authOptions)
+		authClient := waitAnalyzer(addr, port, authOptions)
 		a.WSClient, err = shttp.NewWSAsyncClientFromConfig("skydive-agent", addr, port, "/ws", authClient)
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to instantiate analyzer client %s", err.Error())
@@ -219,13 +217,24 @@ func NewAgent() *Agent {
 	}
 }
 
-func waitAnalyzer(addr string, port int) {
+func waitAnalyzer(addr string, port int, authOptions *shttp.AuthenticationOpts) *shttp.AuthenticationClient {
+	authClient := shttp.NewAuthenticationClient(addr, port, authOptions)
+
 	for {
-		url := fmt.Sprintf("http://%s:%d/api", addr, port)
-		if resp, err := http.Get(url); err == nil && resp.StatusCode == 200 {
-			logging.GetLogger().Info("Analyzer is ready:")
-			return
+		if !authClient.Authenticated() {
+			if err := authClient.Authenticate(); err != nil {
+				logging.GetLogger().Warning("Waiting for agent to authenticate")
+				time.Sleep(time.Second)
+				continue
+			}
 		}
+
+		restClient := shttp.NewRestClient(addr, port, authOptions)
+		if _, err := restClient.Request("GET", "/api", nil); err == nil {
+			logging.GetLogger().Info("Analyzer is ready:")
+			return authClient
+		}
+
 		logging.GetLogger().Warning("Waiting for analyzer to start")
 		time.Sleep(time.Second)
 	}
