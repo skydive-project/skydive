@@ -373,7 +373,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 	_, err := netlink.LinkByIndex(index)
 	if err != nil && intf != nil {
 		// if openvswitch do not remove let's do the job by ovs piece of code
-		if intf.Metadata()["Driver"] == "openvswitch" {
+		if intf.Metadata()["Driver"] == "openvswitch" && intf.Metadata()["UUID"] != "" {
 			u.Graph.Unlink(u.Root, intf)
 		} else {
 			u.Graph.DelNode(intf)
