@@ -53,6 +53,7 @@ var Node = function(ID) {
   this.Edges = {};
   this.Visible = true;
   this.Collapsed = false;
+  this.Highlighted = false;
   this.Group = '';
 };
 
@@ -324,6 +325,32 @@ function ShowNodeFlows(node) {
       var json = JSON.stringify(data);
       $("#flows").JSONView(json);
       $('#flows').JSONView('toggle', 10);
+      $('#flows >> ul.level0').children().each(function(index) {
+        $(this).data("TrackingID", data[i].TrackingID);
+        $(this).mouseenter(function() {
+          var query = "G.Flows('TrackingID', '"+data[i].TrackingID+"').Hops()";
+          $.ajax({
+            dataType: "json",
+            url: '/api/topology',
+            data: JSON.stringify({"GremlinQuery": query}),
+            method: 'POST',
+            success: function(data) {
+              for (var i in data) {
+                var id = data[i].ID;
+                var n = topologyLayout.graph.GetNode(id);
+                n.Highlighted = true;
+                topologyLayout.Redraw();
+              }
+            }
+          });
+        });
+        $(this).mouseleave(function() {
+          for (var i in topologyLayout.graph.Nodes) {
+            topologyLayout.graph.Nodes[i].Highlighted = false;
+            topologyLayout.Redraw();
+          }
+        });
+      });
     }
   });
 }
@@ -517,6 +544,9 @@ Layout.prototype.NodeClass = function(d) {
 
   if (d.Metadata.State == "DOWN")
     clazz += " down";
+
+  if (d.Highlighted)
+    clazz = "highlighted " + clazz;
 
   return clazz;
 };
@@ -1025,8 +1055,8 @@ Layout.prototype.ProcessAlertMessage = function(msg) {
 
 Layout.prototype.SyncRequest = function(t) {
   var obj = {};
-  if (t != null) {
-    obj["Time"] = t;
+  if (t !== null) {
+    obj.Time = t;
   }
   var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
   this.updatesocket.send(JSON.stringify(msg));
