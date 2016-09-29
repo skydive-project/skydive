@@ -23,7 +23,6 @@
 package probes
 
 import (
-	"errors"
 	"strconv"
 	"time"
 
@@ -54,6 +53,14 @@ type Attributes struct {
 	NetworkName string
 	TenantID    string
 	VNI         string
+}
+
+type NeutronPortNotFound struct {
+	MAC string
+}
+
+func (e NeutronPortNotFound) Error() string {
+	return "Unable to find port for MAC address: " + e.MAC
 }
 
 func (mapper *NeutronMapper) retrievePort(metadata graph.Metadata) (port ports.Port, err error) {
@@ -96,7 +103,7 @@ func (mapper *NeutronMapper) retrievePort(metadata graph.Metadata) (port ports.P
 	})
 
 	if len(port.NetworkID) == 0 {
-		return port, errors.New("Unable to find port for MAC address: " + mac)
+		return port, NeutronPortNotFound{mac}
 	}
 
 	return port, err
@@ -138,6 +145,10 @@ func (mapper *NeutronMapper) nodeUpdater() {
 
 		attrs, err := mapper.retrieveAttributes(node.Metadata())
 		if err != nil {
+			if nerr, ok := err.(NeutronPortNotFound); ok {
+				logging.GetLogger().Debugf("Setting in cache not found MAC " + nerr.MAC)
+				mapper.cache.Set(nerr.MAC, nil, cache.DefaultExpiration)
+			}
 			continue
 		}
 
@@ -171,7 +182,7 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 		tr.AddMetadata("Neutron/VNI", uint64(segID))
 	}
 
-	mapper.cache.Set(string(node.ID), attrs, cache.DefaultExpiration)
+	mapper.cache.Set(node.Metadata()["MAC"].(string), attrs, cache.DefaultExpiration)
 }
 
 func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
@@ -180,10 +191,8 @@ func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
 		return
 	}
 
-	a, f := mapper.cache.Get(mac.(string))
+	_, f := mapper.cache.Get(mac.(string))
 	if f {
-		attrs := a.(Attributes)
-		mapper.updateNode(node, &attrs)
 		return
 	}
 
