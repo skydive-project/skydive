@@ -78,6 +78,9 @@ func (p *GoPacketProbe) packetsToChan(ch chan gopacket.Packet) {
 			time.Sleep(20 * time.Millisecond)
 		} else if err == nil {
 			ch <- packet
+		} else {
+			// sleep awhile in case of error to reduce the presure on cpu
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 
