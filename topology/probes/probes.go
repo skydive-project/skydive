@@ -68,6 +68,8 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 			probes[t] = neutron
 		case "fabric":
 			probes[t] = NewFabricProbe(g)
+		case "opencontrail":
+			probes[t] = NewOpenContrailMapper(g, n)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}

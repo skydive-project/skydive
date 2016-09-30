@@ -70,6 +70,12 @@
 			"revisionTime": "2016-04-27T17:01:38Z"
 		},
 		{
+			"checksumSHA1": "qTanQD9SWYhlZjHFZImg/ibhDl8=",
+			"path": "github.com/codegangsta/cli",
+			"revision": "d53eb991652b1d438abdd34ce4bfa3ef1539108e",
+			"revisionTime": "2016-09-17T21:38:06Z"
+		},
+		{
 			"checksumSHA1": "RkF5+IVeZXNDAJIShEkD8RsquX0=",
 			"path": "github.com/coreos/etcd/Godeps/_workspace/src/bitbucket.org/ww/goautoneg",
 			"revision": "fd17c9101d94703f6f4c3d8d6cfb72b62b894cd7",
@@ -955,6 +961,24 @@
 			"revision": "844dd6d40e1a9215ef4c8a204bfc839fcf5dd5dd"
 		},
 		{
+			"checksumSHA1": "cACEkFM7kIL+NVF6jSJPY2tW4d8=",
+			"path": "github.com/gosuri/uitable",
+			"revision": "36ee7e946282a3fb1cfecd476ddc9b35d8847e42",
+			"revisionTime": "2016-04-04T20:39:58Z"
+		},
+		{
+			"checksumSHA1": "hfL7iFULaUity86NGidQt/AiYyo=",
+			"path": "github.com/gosuri/uitable/util/strutil",
+			"revision": "36ee7e946282a3fb1cfecd476ddc9b35d8847e42",
+			"revisionTime": "2016-04-04T20:39:58Z"
+		},
+		{
+			"checksumSHA1": "xUvDrGeY4HijGKl+W8WSvWl1Evs=",
+			"path": "github.com/gosuri/uitable/util/wordwrap",
+			"revision": "36ee7e946282a3fb1cfecd476ddc9b35d8847e42",
+			"revisionTime": "2016-04-04T20:39:58Z"
+		},
+		{
 			"checksumSHA1": "bJJp3lBIn2Lt/9ZGivcjLw8o2Hg=",
 			"path": "github.com/hashicorp/hcl",
 			"revision": "1c284ec98f4b398443cbabb0d9197f7f4cc0077c"
@@ -1010,6 +1034,42 @@
 			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
 		},
 		{
+			"checksumSHA1": "dY0KFmKy0CuFTgKzrIxlT8aW7+g=",
+			"path": "github.com/jbowtie/gokogiri",
+			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
+			"revisionTime": "2016-07-04T00:25:24Z"
+		},
+		{
+			"checksumSHA1": "pYPwTpovW+lIUb58aOZuTZftG+c=",
+			"path": "github.com/jbowtie/gokogiri/help",
+			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
+			"revisionTime": "2016-07-04T00:25:24Z"
+		},
+		{
+			"checksumSHA1": "xJD3yhxwE8VXS741wgWplhEdzsQ=",
+			"path": "github.com/jbowtie/gokogiri/html",
+			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
+			"revisionTime": "2016-07-04T00:25:24Z"
+		},
+		{
+			"checksumSHA1": "GYnhzFMWYi7kfsdt6Eh0y9VaBUA=",
+			"path": "github.com/jbowtie/gokogiri/util",
+			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
+			"revisionTime": "2016-07-04T00:25:24Z"
+		},
+		{
+			"checksumSHA1": "/kcC0I9eEONlz1Owk/w7G6ZItCw=",
+			"path": "github.com/jbowtie/gokogiri/xml",
+			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
+			"revisionTime": "2016-07-04T00:25:24Z"
+		},
+		{
+			"checksumSHA1": "9fLUX2ttIRXryNOBjb/hvqRSeIg=",
+			"path": "github.com/jbowtie/gokogiri/xpath",
+			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
+			"revisionTime": "2016-07-04T00:25:24Z"
+		},
+		{
 			"checksumSHA1": "irxwCucfzk0o745pGL995YofeTM=",
 			"path": "github.com/jonboulle/clockwork",
 			"revision": "ed104f61ea4877bea08af6f759805674861e968d"
@@ -1044,6 +1104,12 @@
 			"revision": "451c29b3ae220cd710294bc3436e293d99491b94"
 		},
 		{
+			"checksumSHA1": "DdH3xAkzAWJ4B/LGYJyCeRsly2I=",
+			"path": "github.com/mattn/go-runewidth",
+			"revision": "d6bea18f789704b5f83375793155289da36a3c7f",
+			"revisionTime": "2016-03-15T04:07:12Z"
+		},
+		{
 			"checksumSHA1": "Q2vw4HZBbnU8BLFt8VrzStwqSJg=",
 			"path": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 			"revision": "d0c3fe89de86839aecf2e0579c40ba3bb336a453"
@@ -1052,6 +1118,24 @@
 			"checksumSHA1": "4Js6Jlu93Wa0o6Kjt393L9Z7diE=",
 			"path": "github.com/mitchellh/mapstructure",
 			"revision": "281073eb9eb092240d33ef253c404f1cca550309"
+		},
+		{
+			"checksumSHA1": "rIknn+sVUT+km4t2JJ5+12ReOM8=",
+			"path": "github.com/nlewo/contrail-introspect-cli/collection",
+			"revision": "d18f119e1cc10d72c9bcacdc680c818dede04f69",
+			"revisionTime": "2016-10-03T13:57:36Z"
+		},
+		{
+			"checksumSHA1": "ccMHhIHDv9TFYnNfikxKtD6uMXA=",
+			"path": "github.com/nlewo/contrail-introspect-cli/descriptions",
+			"revision": "d18f119e1cc10d72c9bcacdc680c818dede04f69",
+			"revisionTime": "2016-10-03T13:57:36Z"
+		},
+		{
+			"checksumSHA1": "dc8PNRlEB9pbEJiJHjitlcJvH2I=",
+			"path": "github.com/nlewo/contrail-introspect-cli/utils",
+			"revision": "26910455eebfad0eccdeb8b2e0b342f1b371e82b",
+			"revisionTime": "2016-09-30T14:32:53Z"
 		},
 		{
 			"checksumSHA1": "gcLub3oB+u4QrOJZcYmk/y2AP4k=",

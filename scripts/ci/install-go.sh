@@ -16,6 +16,8 @@ eval "$(gimme 1.6)"
 
 # pcap.h is required to build skydive
 sudo yum -y install libpcap-devel
+# for opencontrail probe
+sudo yum -y install libxml2-devel
 
 export GOPATH=$WORKSPACE
 

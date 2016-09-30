@@ -31,6 +31,9 @@ install: govendor
 build: govendor
 	govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
+static:
+	make install GOFLAGS="--ldflags '-extldflags \"-lpthread -static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a\"'"
+
 test.functionals.cleanup:
 	rm -f tests/functionals
 

@@ -9,7 +9,7 @@ dist: trusty
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison
+    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev
     - sudo ovs-vsctl show
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
@@ -22,7 +22,7 @@ before_install:
     - cd ..
 
 script:
-    - make install
+    - make static
     - make test GOFLAGS=-race VERBOSE=true TIMEOUT=1m
     - make test.functionals GOFLAGS=-race GORACE="history_size=5" VERBOSE=true TIMEOUT=2m
     - ./coverage.sh --coveralls

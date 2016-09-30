@@ -43,7 +43,7 @@ agent:
   topology:
     # Probes used to capture topology informations like interfaces,
     # bridges, namespaces, etc...
-    # Available: netlink, netns, ovsdb, docker, neutron.
+    # Available: netlink, netns, ovsdb, docker, neutron, opencontrail
     # Default: netlink, netns
     probes:
       - netlink
@@ -52,6 +52,7 @@ agent:
       # - docker
       # - neutron
       # - fabric
+      # - opencontrail
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.
     #

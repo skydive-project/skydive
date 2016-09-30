@@ -30,6 +30,7 @@ Topology connectors:
 
 * Neutron
 * Docker
+* Opencontrail
 
 ## Flow Probes supported
 
