@@ -66,14 +66,11 @@ enable_service skydive-analyzer skydive-agent
 
 SKYDIVE_ANALYZER_LISTEN=0.0.0.0:8082
 SKYDIVE_AGENT_LISTEN=0.0.0.0:8081
-SKYDIVE_OVSDB_REMOTE_PORT=6640
 EOF
 
 ./stack.sh
 
 source openrc admin admin
-export NEUTRON_TEST_CONFIG_FILE=/etc/neutron/l3_agent.ini
-export SKYDIVE_OVSDB_REMOTE_PORT=6640
 export PATH=$PATH:/opt/go/bin:/opt/stack/go/bin
 export GOROOT=/opt/go
 export GOPATH=/opt/stack/go

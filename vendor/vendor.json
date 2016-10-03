@@ -1168,6 +1168,12 @@
 			"revision": "37123d6cddfa3a274afd18b2c616aa711bb9ee89"
 		},
 		{
+			"checksumSHA1": "Pym7WV1AmFt2ZqlN376xzfxKNcw=",
+			"path": "github.com/rackspace/gophercloud/openstack/networking/v2/subnets",
+			"revision": "37123d6cddfa3a274afd18b2c616aa711bb9ee89",
+			"revisionTime": "2016-04-06T18:57:28Z"
+		},
+		{
 			"checksumSHA1": "e4ussrqujJHizWbdBaLjIpWYmgY=",
 			"comment": "v1.0.0-854-g37123d6",
 			"path": "github.com/rackspace/gophercloud/openstack/utils",

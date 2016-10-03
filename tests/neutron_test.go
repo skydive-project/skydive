@@ -28,77 +28,24 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
 	"github.com/rackspace/gophercloud/openstack/networking/v2/networks"
 	"github.com/rackspace/gophercloud/openstack/networking/v2/ports"
-	"github.com/rackspace/gophercloud/pagination"
+	"github.com/rackspace/gophercloud/openstack/networking/v2/subnets"
 
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
-const confNeutron = `---
-ws_pong_timeout: 5
-
-agent:
-  listen: 58081
-  topology:
-    probes:
-      - netlink
-      - netns
-      - ovsdb
-      - neutron
-
-cache:
-  expire: 300
-  cleanup: 30
-
-sflow:
-  listen: 55000
-
-ovs:
-  ovsdb: {{.OvsdbPort}}
-
-etcd:
-  embedded: true
-  port: 2374
-  data_dir: /tmp
-  servers: http://localhost:2374
-
-logging:
-  default: {{.LogLevel}}
-
-openstack:
-  auth_url: {{.OsAuthUrl}}
-  username: {{.OsUsername}}
-  password: {{.OsPassword}}
-  tenant_name: {{.OsTenantName}}
-  region_name: {{.OsRegionName}}
-`
-
 func TestNeutron(t *testing.T) {
-	g := helper.NewGraph(t)
-
 	authUrl := os.Getenv("OS_AUTH_URL")
 	username := os.Getenv("OS_USERNAME")
 	password := os.Getenv("OS_PASSWORD")
 	tenantName := os.Getenv("OS_TENANT_NAME")
 	regionName := os.Getenv("OS_REGION_NAME")
-	ovsdbPort := os.Getenv("SKYDIVE_OVSDB_REMOTE_PORT")
-
-	params := map[string]interface{}{
-		"OsAuthUrl":    authUrl,
-		"OsUsername":   username,
-		"OsPassword":   password,
-		"OsTenantName": tenantName,
-		"OsRegionName": regionName,
-		"OvsdbPort":    ovsdbPort,
-	}
-	agent := helper.StartAgentWithConfig(t, confNeutron, params)
-	defer agent.Stop()
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authUrl,
@@ -121,75 +68,70 @@ func TestNeutron(t *testing.T) {
 		t.Fatalf("Failed to create neutron client: %s", err.Error())
 	}
 
-	result := networks.Create(client, networks.CreateOpts{Name: "skydive-test-network"})
-	if result.Err != nil {
-		t.Fatalf("Failed to create neutron network: %s", result.Err.Error())
+	netResult := networks.Create(client, networks.CreateOpts{Name: "skydive-test-network"})
+	if netResult.Err != nil {
+		t.Fatalf("Failed to create neutron network: %s", netResult.Err.Error())
 	}
 
-	network, err := result.Extract()
+	network, err := netResult.Extract()
 	if err != nil {
 		t.Fatalf("Failed to create neutron network: %s", err.Error())
 	}
 
+	subResult := subnets.Create(client, subnets.CreateOpts{Name: "skydive-test-subnet", NetworkID: network.ID, CIDR: "192.168.1.0/24", IPVersion: 4})
+	if subResult.Err != nil {
+		t.Fatalf("Failed to create neutron subnet: %s", subResult.Err.Error())
+	}
+
+	subnet, err := subResult.Extract()
+	if err != nil {
+		t.Fatalf("Failed to create neutron subnet: %s", err.Error())
+	}
+
+	portResult := ports.Create(client, ports.CreateOpts{NetworkID: network.ID, DeviceID: "skydive-123", DeviceOwner: "skydive-test"})
+	if portResult.Err != nil {
+		t.Fatalf("Failed to create neutron port: %s", subResult.Err.Error())
+	}
+
+	port, err := portResult.Extract()
+	if err != nil {
+		t.Fatalf("Failed to create neutron port: %s", err.Error())
+	}
+
+	defer ports.Delete(client, port.ID)
+	defer subnets.Delete(client, subnet.ID)
 	defer networks.Delete(client, network.ID)
 
+	authOptions := &shttp.AuthenticationOpts{
+		Username: username,
+		Password: password,
+	}
+
+	subID := port.ID[0:11]
+	dev := fmt.Sprintf("tap%s", subID)
+
+	ovsctl := `ovs-vsctl add-port br-int %s -- set Interface %s external-ids:iface-id=%s`
+	ovsctl += ` external-ids:iface-status=active external-ids:attached-mac=%s external-ids:vm-uuid=skydive-vm type=internal`
+
 	setupCmds := []helper.Cmd{
-		{fmt.Sprintf("neutron subnet-create --name skydive-test-subnet-%s %s 10.0.0.0/24", network.ID, network.ID), false},
-		{fmt.Sprintf("neutron-debug probe-create %s", network.ID), false},
+		{fmt.Sprintf(ovsctl, dev, dev, port.ID, port.MACAddress), true},
+		{"sleep 1", true},
+		{fmt.Sprintf("ip link set %s up", dev), true},
 	}
 
 	tearDownCmds := []helper.Cmd{
-		{fmt.Sprintf("neutron subnet-delete skydive-test-subnet-%s", network.ID), false},
+		{fmt.Sprintf("ovs-vsctl del-port %s", dev), true},
 	}
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
 
-	var port *ports.Port
-	testPassed := false
-	onChange := func(ws *websocket.Conn) {
-		g.Lock()
-		defer g.Unlock()
+	gh := helper.NewGremlinQueryHelper(authOptions)
 
-		if port == nil {
-			portListOpts := ports.ListOpts{}
-			pager := ports.List(client, portListOpts)
-			err = pager.EachPage(func(page pagination.Page) (bool, error) {
-				portList, err := ports.ExtractPorts(page)
-				if err != nil {
-					return false, err
-				}
+	// let neutron update the port
+	time.Sleep(5 * time.Second)
 
-				for _, p := range portList {
-					if p.DeviceOwner == "network:probe" && p.NetworkID == network.ID {
-						port = &p
-						return false, nil
-					}
-				}
-
-				return true, nil
-			})
-
-			if port != nil {
-				tearDownCmds = append(tearDownCmds, helper.Cmd{})
-				copy(tearDownCmds[1:], tearDownCmds[0:])
-				tearDownCmds[0] = helper.Cmd{fmt.Sprintf("neutron-debug probe-delete %s", port.ID), false}
-			}
-		}
-
-		if !testPassed && len(g.GetNodes()) >= 1 && len(g.GetEdges()) >= 1 && port != nil {
-			if g.LookupFirstNode(graph.Metadata{"Name": fmt.Sprintf("qdhcp-%s", network.ID), "Type": "netns"}) != nil {
-				if g.LookupFirstNode(graph.Metadata{"Name": fmt.Sprintf("qprobe-%s", port.ID), "Type": "netns"}) != nil {
-					if g.LookupFirstNode(graph.Metadata{"Type": "internal", "Driver": "openvswitch", "Manager": "neutron", "Neutron/NetworkID": network.ID}) != nil {
-						testPassed = true
-						ws.Close()
-					}
-				}
-			}
-		}
+	nodes := gh.GetNodesFromGremlinReply(t, `g.V().Has("Manager", "neutron", "ExtID/vm-uuid", "skydive-vm", "Name", "`+dev+`", "Neutron/PortID", "`+port.ID+`")`)
+	if len(nodes) != 1 {
+		t.Errorf("Should find the neutron port in the topology: %v", gh.GetNodesFromGremlinReply(t, `g.V()`))
 	}
-
-	testTopology(t, g, setupCmds, onChange)
-	if !testPassed {
-		t.Error("test not executed or failed")
-	}
-
-	testCleanup(t, g, tearDownCmds, []string{fmt.Sprintf("qdhcp-%s", network.ID), fmt.Sprintf("qprobe-%s", port.ID)})
 }

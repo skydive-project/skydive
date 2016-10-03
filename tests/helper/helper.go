@@ -24,6 +24,7 @@ package helper
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
@@ -38,7 +39,10 @@ import (
 
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
+	cmd "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -47,6 +51,10 @@ import (
 type Cmd struct {
 	Cmd   string
 	Check bool
+}
+
+type GremlinQueryHelper struct {
+	authOptions *shttp.AuthenticationOpts
 }
 
 var (
@@ -298,4 +306,62 @@ func NewGraph(t *testing.T) *graph.Graph {
 	}
 
 	return g
+}
+
+func (g *GremlinQueryHelper) GremlinQuery(t *testing.T, query string, values interface{}) {
+	body, err := cmd.SendGremlinQuery(g.authOptions, query)
+	if err != nil {
+		t.Fatalf("Error while executing query %s: %s", query, err.Error())
+	}
+
+	err = json.NewDecoder(body).Decode(values)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
+func (g *GremlinQueryHelper) GetNodesFromGremlinReply(t *testing.T, query string) []graph.Node {
+	var values []interface{}
+	g.GremlinQuery(t, query, &values)
+	nodes := make([]graph.Node, len(values))
+	for i, node := range values {
+		if err := nodes[i].Decode(node); err != nil {
+			t.Fatal(err.Error())
+		}
+	}
+	return nodes
+}
+
+func (g *GremlinQueryHelper) GetNodeFromGremlinReply(t *testing.T, query string) *graph.Node {
+	nodes := g.GetNodesFromGremlinReply(t, query)
+	if len(nodes) > 0 {
+		return &nodes[0]
+	}
+	return nil
+}
+
+func (g *GremlinQueryHelper) GetFlowsFromGremlinReply(t *testing.T, query string) (flows []*flow.Flow) {
+	g.GremlinQuery(t, query, &flows)
+	return
+}
+
+func (g *GremlinQueryHelper) GetFlowSetBandwidthFromGremlinReply(t *testing.T, query string) flow.FlowSetBandwidth {
+	body, err := cmd.SendGremlinQuery(g.authOptions, query)
+	if err != nil {
+		t.Fatalf("%s: %s", query, err.Error())
+	}
+
+	var bw []flow.FlowSetBandwidth
+	err = json.NewDecoder(body).Decode(&bw)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	return bw[0]
+}
+
+func NewGremlinQueryHelper(authOptions *shttp.AuthenticationOpts) *GremlinQueryHelper {
+	return &GremlinQueryHelper{
+		authOptions: authOptions,
+	}
 }

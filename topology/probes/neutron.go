@@ -26,14 +26,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pmylund/go-cache"
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
 	"github.com/rackspace/gophercloud/openstack/networking/v2/extensions/provider"
 	"github.com/rackspace/gophercloud/openstack/networking/v2/networks"
 	"github.com/rackspace/gophercloud/openstack/networking/v2/ports"
 	"github.com/rackspace/gophercloud/pagination"
-
-	"github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
@@ -49,6 +48,7 @@ type NeutronMapper struct {
 }
 
 type Attributes struct {
+	PortID      string
 	NetworkID   string
 	NetworkName string
 	TenantID    string
@@ -122,6 +122,7 @@ func (mapper *NeutronMapper) retrieveAttributes(metadata graph.Metadata) (*Attri
 	}
 
 	a := &Attributes{
+		PortID:      port.ID,
 		NetworkID:   port.NetworkID,
 		NetworkName: network.Name,
 		TenantID:    port.TenantID,
@@ -165,6 +166,10 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	defer tr.Commit()
 
 	tr.AddMetadata("Manager", "neutron")
+
+	if attrs.PortID != "" {
+		tr.AddMetadata("Neutron/PortID", attrs.PortID)
+	}
 
 	if attrs.TenantID != "" {
 		tr.AddMetadata("Neutron/TenantID", attrs.TenantID)

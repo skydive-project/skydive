@@ -23,7 +23,6 @@
 package tests
 
 import (
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -32,12 +31,10 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/skydive-project/skydive/api"
-	cmd "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/tools"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const confAgentAnalyzer = `---
@@ -179,58 +176,6 @@ func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) 
 	}
 }
 
-func gremlinQuery(t *testing.T, query string, values interface{}) {
-	body, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
-	if err != nil {
-		t.Fatalf("Error while executing query %s: %s", query, err.Error())
-	}
-
-	err = json.NewDecoder(body).Decode(values)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-}
-
-func getNodesFromGremlinReply(t *testing.T, query string) []graph.Node {
-	var values []interface{}
-	gremlinQuery(t, query, &values)
-	nodes := make([]graph.Node, len(values))
-	for i, node := range values {
-		if err := nodes[i].Decode(node); err != nil {
-			t.Fatal(err.Error())
-		}
-	}
-	return nodes
-}
-
-func getNodeFromGremlinReply(t *testing.T, query string) *graph.Node {
-	nodes := getNodesFromGremlinReply(t, query)
-	if len(nodes) > 0 {
-		return &nodes[0]
-	}
-	return nil
-}
-
-func getFlowsFromGremlinReply(t *testing.T, query string) (flows []*flow.Flow) {
-	gremlinQuery(t, query, &flows)
-	return
-}
-
-func getFlowSetBandwidthFromGremlinReply(t *testing.T, query string) flow.FlowSetBandwidth {
-	body, err := cmd.SendGremlinQuery(&http.AuthenticationOpts{}, query)
-	if err != nil {
-		t.Fatalf("%s: %s", query, err.Error())
-	}
-
-	var bw []flow.FlowSetBandwidth
-	err = json.NewDecoder(body).Decode(&bw)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return bw[0]
-}
-
 func TestSFlowWithPCAP(t *testing.T) {
 	ts := NewTestStorage()
 
@@ -305,7 +250,9 @@ func TestSFlowProbeNode(t *testing.T) {
 
 	aa.Flush()
 
-	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	ok := false
 	for _, f := range ts.GetFlows() {
@@ -356,7 +303,9 @@ func TestSFlowProbeNodeUUIDOvsInternalNetNS(t *testing.T) {
 
 	aa.Flush()
 
-	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	ok := false
 	for _, f := range ts.GetFlows() {
@@ -446,8 +395,10 @@ func TestSFlowTwoProbeNodeUUID(t *testing.T) {
 		t.Errorf("Should have 2 flow entries one per ProbeNodeUUID got: %d", len(flows))
 	}
 
-	node1 := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow1", "Type", "ovsbridge")`)
-	node2 := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow2", "Type", "ovsbridge")`)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	node1 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow1", "Type", "ovsbridge")`)
+	node2 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow2", "Type", "ovsbridge")`)
 
 	if flows[0].ProbeNodeUUID != string(node1.ID) &&
 		flows[0].ProbeNodeUUID != string(node2.ID) {
@@ -519,7 +470,9 @@ func TestPCAPProbe(t *testing.T) {
 
 	aa.Flush()
 
-	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-pcap", "Type", "bridge")`)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-pcap", "Type", "bridge")`)
 
 	ok := false
 	flows := ts.GetFlows()
@@ -580,8 +533,10 @@ func TestSFlowSrcDstPath(t *testing.T) {
 
 	aa.Flush()
 
-	node1 := getNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf1", "Type", "internal")`)
-	node2 := getNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf2", "Type", "internal")`)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	node1 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf1", "Type", "internal")`)
+	node2 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf2", "Type", "internal")`)
 
 	ok := false
 	for _, f := range ts.GetFlows() {
@@ -697,7 +652,9 @@ func TestTableServer(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	hnmap := make(flow.HostNodeIDMap)
 	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
@@ -752,40 +709,42 @@ func TestFlowGremlin(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	node := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
 	var count int64
-	gremlinQuery(t, `G.V().Has("Name", "br-sflow", "Type", "ovsbridge").Count()`, &count)
+	gh.GremlinQuery(t, `G.V().Has("Name", "br-sflow", "Type", "ovsbridge").Count()`, &count)
 	if count != 1 {
 		t.Fatalf("Should return 1, got: %d", count)
 	}
 
-	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("ProbeNodeUUID", "`+string(node.ID)+`")`)
+	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("ProbeNodeUUID", "`+string(node.ID)+`")`)
 	if len(flows) == 0 {
 		t.Fatalf("Should return at least 1 flow, got: %v", flows)
 	}
 
-	flowsOpt := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`")`)
+	flowsOpt := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`")`)
 	if len(flowsOpt) != len(flows) {
 		t.Fatalf("Should return the same number of flows that without optimisation, got: %v", flowsOpt)
 	}
 
-	nodes := getNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Out()`)
+	nodes := gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Out()`)
 	if len(nodes) != 0 {
 		t.Fatalf("Should return no destination node, got %d", len(nodes))
 	}
 
-	nodes = getNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Both().Dedup()`)
+	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Both().Dedup()`)
 	if len(nodes) != 1 {
 		t.Fatalf("Should return one node, got %d", len(nodes))
 	}
 
-	nodes = getNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").In().Dedup()`)
+	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").In().Dedup()`)
 	if len(nodes) != 1 {
 		t.Fatalf("Should return one source node, got %d", len(nodes))
 	}
 
-	gremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Count()`, &count)
+	gh.GremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("ProbeNodeUUID", "`+string(node.ID)+`").Count()`, &count)
 	if int(count) != len(flows) {
 		t.Fatalf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
 	}
@@ -800,7 +759,9 @@ func TestFlowGremlin(t *testing.T) {
 }
 
 func getFlowEndpoint(t *testing.T, gremlin string, endpointType flow.FlowEndpointType) *flow.FlowEndpointsStatistics {
-	flows := getFlowsFromGremlinReply(t, gremlin)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	flows := gh.GetFlowsFromGremlinReply(t, gremlin)
 	if len(flows) != 1 {
 		return nil
 	}
@@ -853,10 +814,12 @@ func TestFlowMetrics(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	ovsBridge := getNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	ovsBridge := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
 
-	icmp := getFlowsFromGremlinReply(t, gremlin)
+	icmp := gh.GetFlowsFromGremlinReply(t, gremlin)
 	if len(icmp) != 1 {
 		t.Errorf("Should return only one icmp flow, got: %v", icmp)
 	}
@@ -873,7 +836,7 @@ func TestFlowMetrics(t *testing.T) {
 		t.Errorf("Number of bytes is wrong, got: %v", icmp)
 	}
 
-	flows := getFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload", "Statistics.Endpoints.ETHERNET.AB.Packets", 1)`)
+	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload", "Statistics.Endpoints.ETHERNET.AB.Packets", 1)`)
 	if len(flows) != 1 || flows[0].GetStatistics().GetEndpointsType(flow.FlowEndpointType_ETHERNET).GetBA().Packets != 1 {
 		t.Errorf("Number of packets is wrong, got: %v", flows)
 	}
@@ -944,7 +907,7 @@ func TestFlowMetrics(t *testing.T) {
 		t.Errorf("Wrong number of flow, should have none, got : %v", endpoint)
 	}
 
-	nodes := getNodesFromGremlinReply(t, gremlin+".Hops()")
+	nodes := gh.GetNodesFromGremlinReply(t, gremlin+".Hops()")
 	if len(nodes) != 1 {
 		t.Errorf("Hops should return one node, got %d", len(nodes))
 	} else if nodes[0].ID != ovsBridge.ID {
@@ -1002,11 +965,13 @@ func TestFlowBandwidth(t *testing.T) {
 	// wait 11 sec to have the first update and the MetricRange filled
 	time.Sleep(11 * time.Second)
 
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
 	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Bandwidth()`
 
 	// this check needs to be close to the beginnig of the test since it's a time
 	// based test and it will fail if we wait one more update tick
-	bw := getFlowSetBandwidthFromGremlinReply(t, gremlin)
+	bw := gh.GetFlowSetBandwidthFromGremlinReply(t, gremlin)
 	if bw.NBFlow != 1 || bw.ABpackets != 1 || bw.BApackets != 1 || bw.ABbytes < 1066 || bw.BAbytes < 1066 {
 		t.Errorf("Wrong bandwidth returned, got : %v", bw)
 	}
