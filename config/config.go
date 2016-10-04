@@ -45,7 +45,6 @@ func init() {
 
 	cfg = viper.New()
 	cfg.SetDefault("host_id", host)
-	cfg.SetDefault("agent.analyzers", "127.0.0.1:8082")
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("graph.backend", "memory")
@@ -71,6 +70,11 @@ func init() {
 	cfg.SetDefault("storage.orientdb.database", "Skydive")
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
+
+	replacer := strings.NewReplacer(".", "_", "-", "_")
+	cfg.SetEnvPrefix("SKYDIVE")
+	cfg.SetEnvKeyReplacer(replacer)
+	cfg.AutomaticEnv()
 }
 
 func checkStrictPositiveInt(key string) error {

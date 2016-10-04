@@ -19,9 +19,11 @@ services:
       - "8082:8082/udp"
     links:
       - elasticsearch
-    entrypoint: /usr/bin/start-skydive.sh analyzer
+    command: analyzer --listen=0.0.0.0:8082
     environment:
-      - ELASTICSEARCH_PORT=elasticsearch:9200
+      - SKYDIVE_STORAGE_ELASTICSEARCH_HOST=elasticsearch:9200
+      - SKYDIVE_ANALYZER_STORAGE=elasticsearch
+      - SKYDIVE_GRAPH_BACKEND=elasticsearch
 
   skydive-agent:
     image: skydive/skydive
@@ -31,9 +33,12 @@ services:
       - "8081:8081"
     network_mode: "host"
     pid: "host"
-    entrypoint: /usr/bin/start-skydive.sh agent
+    command: agent --listen=0.0.0.0:8081
     privileged: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/run/netns:/host/run
       #- /var/run/openvswitch/db.sock:/var/run/openvswitch/db.sock
+    environment:
+      - SKYDIVE_NETNS_RUN_PATH=/host/run
+      - SKYDIVE_AGENT_ANALYZERS=127.0.0.1:8082
