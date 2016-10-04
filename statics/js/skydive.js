@@ -655,6 +655,8 @@ Layout.prototype.ParentNodeForGroup = function(node) {
 
     switch (edge.Parent.Metadata.Type) {
       case "ovsport":
+        if (node.Metadata.IfIndex)
+          return edge.Parent;
         break;
       case "ovsbridge":
       case "netns":
@@ -698,7 +700,7 @@ Layout.prototype.AddNodeToGroup = function(ID, type, node, groups) {
 // add node to parent group until parent is of type host
 // this means a node can be in multiple group
 Layout.prototype.addNodeToParentGroup = function(parent, node, groups) {
-  if (typeof parent != "undefined") {
+  if (parent) {
     groupID = parent.ID;
 
     // parent group exist so add node to it
