@@ -97,6 +97,7 @@ text {
 
 .link {
   fill: none;
+  stroke-width: 1.5;
 }
 
 .links .veth {

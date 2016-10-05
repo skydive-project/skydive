@@ -236,16 +236,32 @@ var Layout = function(selector) {
 
   var nodesG = this.view.append("g").attr("class", "nodes");
   this.node = nodesG.selectAll(".node");
+
+  // un-comment to debug relationships
+  /*this.svg.append("svg:defs").selectAll("marker")
+    .data(["end"])      // Different link/path types can be defined here
+    .enter().append("svg:marker")    // This section adds in the arrows
+    .attr("id", String)
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 25)
+    .attr("refY", -1.5)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+    .append("svg:path")
+    .attr("d", "M0,-5L10,0L0,5");*/
 };
 
 Layout.prototype.LinkDistance = function(d, i) {
   var distance = 60;
 
-  if (d.source.Group == d.target.Group)
-    return distance;
-
-  if (d.target.Group in this.groups)
-    distance += this.groups[d.target.Group].Hulls.length;
+  if (d.source.Group == d.target.Group) {
+    if (d.source.Metadata.Type == "host") {
+      for (var property in d.source.Edges)
+        distance += 2;
+      return distance;
+    }
+  }
 
   // local to fabric
   if ((d.source.Metadata.Probe == "fabric" && !d.target.Metadata.Probe) ||
@@ -445,19 +461,14 @@ Layout.prototype.AddEdge = function(edge) {
   // specific to link to host
   var i, e;
   if (edge.Parent.Metadata.Type == "host") {
-    // do not link ovsbridge to host
-    if (edge.Child.Metadata.Type == "ovsbridge" || edge.Child.Metadata.Type == "netns")
+    if (edge.Child.Metadata.Type == "ovsbridge" ||
+        edge.Child.Metadata.Type == "netns" ||
+        edge.Child.Metadata.Type == "bridge")
       return;
 
-    // do not add host link if there is already another kind of link and child node have children
-    var child = edge.Child;
-    for (i in child.Edges) {
-      e = child.Edges[i];
-      if (e.Child == child && e.Parent.Metadata.Type != "host" && e.Parent.Metadata.Probe != "fabric" &&
-          this.graph.GetChildren(child).length !== 0) {
-        return;
-      }
-    }
+    var nparents = this.graph.GetParents(edge.Child).length;
+    if (nparents > 2 || (nparents > 1 && this.graph.GetChildren(edge.Child).length !== 0))
+      return;
   } else {
     // remove host link if nodes have children, since we are creating a link that is not
     // a host one, this rules is equal to the previous one.
@@ -467,8 +478,7 @@ Layout.prototype.AddEdge = function(edge) {
       for (i in node.Edges) {
         e = node.Edges[i];
         if (e.Parent.Metadata.Type == "host" &&
-            this.graph.GetChildren(node).length !== 0 &&
-            this.graph.GetParents(node).length > 1) {
+            this.graph.GetParents(node).length > 2) {
           this.DelEdge(e);
           break;
         }
@@ -656,8 +666,8 @@ Layout.prototype.ParentNodeForGroup = function(node) {
     switch (edge.Parent.Metadata.Type) {
       case "ovsport":
         if (node.Metadata.IfIndex)
-          return edge.Parent;
-        break;
+          break;
+        return edge.Parent;
       case "ovsbridge":
       case "netns":
         return edge.Parent;
@@ -832,6 +842,7 @@ Layout.prototype.Redraw = function() {
   this.link.exit().remove();
 
   this.link.enter().append("path")
+    .attr("marker-end", "url(#end)")
     .style("opacity", function(d) {
       return _this.EdgeOpacity(d);
     })
@@ -894,7 +905,7 @@ Layout.prototype.Redraw = function() {
 
   nodeEnter.append("image")
     .attr("class", "probe")
-    .attr("x", 3)
+    .attr("x", -25)
     .attr("y", 5)
     .attr("width", 20)
     .attr("height", 20);
