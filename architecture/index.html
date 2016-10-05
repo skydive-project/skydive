@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>How to deploy Skydive with kubernetes - Skydive Docs</title>
+    <title>Architecture - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.16-DEV" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="//skydive-project.github.io/skydive/getting-started/kubernetes/">
+    <link rel="canonical" href="//skydive-project.github.io/skydive/architecture/">
     
     <meta name="author" content="skydive-project/skydive">
     
 
-    <meta property="og:url" content="//skydive-project.github.io/skydive/getting-started/kubernetes/">
+    <meta property="og:url" content="//skydive-project.github.io/skydive/architecture/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="//skydive-project.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        How to deploy Skydive with kubernetes
+        Architecture
       </div>
     </div>
 
@@ -290,14 +290,11 @@
 
 
 
-<a class="current" title="kubernetes" href="//skydive-project.github.io/skydive/getting-started/kubernetes/">
+<a  title="kubernetes" href="//skydive-project.github.io/skydive/getting-started/kubernetes/">
 	
 	kubernetes
 </a>
 
-
-<ul id="scrollspy">
-</ul>
   
       
     </ul>
@@ -313,11 +310,14 @@
 
 
 
-<a  title="Architecture" href="//skydive-project.github.io/skydive/architecture/">
+<a class="current" title="Architecture" href="//skydive-project.github.io/skydive/architecture/">
 	
 	Architecture
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
   
 </li>
@@ -401,39 +401,69 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>How to deploy Skydive with kubernetes </h1>
+			<h1>Architecture </h1>
 
 			
 
-<h2 id="kubernetes-deployment">Kubernetes deployment</h2>
+<p><img src="//skydive-project.github.io/skydive/images/architecture.png" alt="Skydive Architecture" /></p>
 
-<p>Skydive provides a Kubernetes
-<a href="https://github.com/skydive-project/skydive/blob/master/contrib/kubernetes/skydive.yaml">file</a>
-which can be used to deploy Skydive. It will deploy an Elasticsearch,
-a Skydive analyzer and Skydive Agent on each Kubernetes nodes. Once you will
-have Skydive deployment on top on your Kubernetes cluster you will be able to
-monitor, capture, troubleshoot your container networking stack.</p>
+<h2 id="graph">Graph</h2>
 
-<p>A skydive Analyzer <a href="http://kubernetes.io/docs/user-guide/services/">Kubernetes service</a>
-is created and exposes ports for Elasticsearch and the Analyzer:</p>
+<p>Skydive relies on a event based graph engine, which means that notifications
+are sent for each modification. Graphs expose notifications over WebSocket
+connections. Skydive support multiple graph backends for the Graph. The <code>memory</code>
+backend will be always used by agents while the backend for analyzers can be
+choosen. Each modification is kept in the datastore so that we have a full
+history of the graph. This is really useful to troubleshoot even if
+interfaces do not exist anymore.</p>
 
-<ul>
-<li>Elasticsearch: 9200</li>
-<li>Analyzer: 8082</li>
-</ul>
+<h2 id="forwarder">Forwarder</h2>
 
-<p><a href="http://kubernetes.io/docs/admin/daemons/">Kubernetes DaemonSet</a> is used for
-Agents in order to have one Agent per node.</p>
+<p>Forwards graph messages from agents to analyzers so that analyzers can build
+an aggregation of all agent graphs.</p>
 
-<h2 id="creation">Creation</h2>
+<h2 id="topology-probes">Topology probes</h2>
 
-<pre><code class="language-console">kubectl create -f skydive.yaml
-</code></pre>
+<p>Fill the graph with topology informations collected. Multiple probes fill the
+graph in parallel. As an example there are probes filling graph with
+network namespaces, netlink or OVSDB information.</p>
 
-<p>Once you have your environment set up, going to the Analyzer service
-should show similar to the following capture.</p>
+<h2 id="flow-table">Flow table</h2>
 
-<p><img src="//skydive-project.github.io/skydive/images/kubernetes-two-nodes.png" alt="WebUI Capture" /></p>
+<p>Skydive keep a track of packets captured in flow tables. It allows Skydive to
+keep metrics for each flows. At a given frequency or when the flow expires
+(see the config file) flows are forwarded from agents to analyzers and then
+to the datastore.</p>
+
+<h2 id="flow-enhancer">Flow enhancer</h2>
+
+<p>Each time a new flow is received by the analyzer the flow is enhanced with
+topology informations like where it has been captured, where it originates from,
+where the packet is going to.</p>
+
+<h2 id="flow-probes">Flow probes</h2>
+
+<p>Flow probes capture packets and fill agent flow tables. There are different
+ways to capture packets like sFlow, afpacket, PCAP, etc.</p>
+
+<h2 id="gremlin-engine">Gremlin engine</h2>
+
+<p>Skydive uses Gremlin language as its graph traversal language. The Skydive
+Gremlin implementation allows to use Gremlin for flow traversal purpose.
+The Gremlin engine can either retrieve informations from the datastore or from
+agents depending whether the request is about something is the past or for live
+monitoring/troubleshooting.</p>
+
+<h2 id="etcd">Etcd</h2>
+
+<p>Skydive uses Etcd to store API objects like captures. Agents are watching Etcd
+so that they can react on API calls.</p>
+
+<h2 id="on-demand-probe">On-demand probe</h2>
+
+<p>This component watches Etcd and the graph in order to start captures. So when a
+new capture is created by the API on-demande probe looks for graph nodes
+matching the Gremlin expression, and if so, start capturing traffic.</p>
 
 			
 			<aside class="copyright" role="note">
@@ -454,7 +484,7 @@ should show similar to the following capture.</p>
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="//skydive-project.github.io/skydive/contact/" title="Contact">
+      <a href="//skydive-project.github.io/skydive/getting-started/gremlin/" title="Skydive Gremlin Query language">
         <span class="direction">
           Previous
         </span>
@@ -464,7 +494,7 @@ should show similar to the following capture.</p>
           </div>
           <div class="stretch">
             <div class="title">
-              Contact
+              Skydive Gremlin Query language
             </div>
           </div>
         </div>
@@ -473,22 +503,6 @@ should show similar to the following capture.</p>
   </div>
 
   <div class="next">
-  
-      <a href="//skydive-project.github.io/skydive/getting-started/gremlin/" title="Skydive Gremlin Query language">
-        <span class="direction">
-          Next
-        </span>
-        <div class="page">
-          <div class="stretch">
-            <div class="title">
-              Skydive Gremlin Query language
-            </div>
-          </div>
-          <div class="button button-next" role="button" aria-label="Next">
-            <i class="icon icon-forward"></i>
-          </div>
-        </div>
-      </a>
   
   </div>
 </nav>

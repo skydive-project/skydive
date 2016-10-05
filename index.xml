@@ -6,8 +6,78 @@
     <description>Recent content on Skydive Docs</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 22 Jun 2016 11:02:01 +0200</lastBuildDate>
+    <lastBuildDate>Thu, 29 Sep 2016 11:02:01 +0200</lastBuildDate>
     <atom:link href="//skydive-project.github.io/skydive/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Architecture</title>
+      <link>//skydive-project.github.io/skydive/architecture/</link>
+      <pubDate>Thu, 29 Sep 2016 11:02:01 +0200</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/architecture/</guid>
+      <description>
+
+&lt;p&gt;&lt;img src=&#34;//skydive-project.github.io/skydive/images/architecture.png&#34; alt=&#34;Skydive Architecture&#34; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&#34;graph&#34;&gt;Graph&lt;/h2&gt;
+
+&lt;p&gt;Skydive relies on a event based graph engine, which means that notifications
+are sent for each modification. Graphs expose notifications over WebSocket
+connections. Skydive support multiple graph backends for the Graph. The &lt;code&gt;memory&lt;/code&gt;
+backend will be always used by agents while the backend for analyzers can be
+choosen. Each modification is kept in the datastore so that we have a full
+history of the graph. This is really useful to troubleshoot even if
+interfaces do not exist anymore.&lt;/p&gt;
+
+&lt;h2 id=&#34;forwarder&#34;&gt;Forwarder&lt;/h2&gt;
+
+&lt;p&gt;Forwards graph messages from agents to analyzers so that analyzers can build
+an aggregation of all agent graphs.&lt;/p&gt;
+
+&lt;h2 id=&#34;topology-probes&#34;&gt;Topology probes&lt;/h2&gt;
+
+&lt;p&gt;Fill the graph with topology informations collected. Multiple probes fill the
+graph in parallel. As an example there are probes filling graph with
+network namespaces, netlink or OVSDB information.&lt;/p&gt;
+
+&lt;h2 id=&#34;flow-table&#34;&gt;Flow table&lt;/h2&gt;
+
+&lt;p&gt;Skydive keep a track of packets captured in flow tables. It allows Skydive to
+keep metrics for each flows. At a given frequency or when the flow expires
+(see the config file) flows are forwarded from agents to analyzers and then
+to the datastore.&lt;/p&gt;
+
+&lt;h2 id=&#34;flow-enhancer&#34;&gt;Flow enhancer&lt;/h2&gt;
+
+&lt;p&gt;Each time a new flow is received by the analyzer the flow is enhanced with
+topology informations like where it has been captured, where it originates from,
+where the packet is going to.&lt;/p&gt;
+
+&lt;h2 id=&#34;flow-probes&#34;&gt;Flow probes&lt;/h2&gt;
+
+&lt;p&gt;Flow probes capture packets and fill agent flow tables. There are different
+ways to capture packets like sFlow, afpacket, PCAP, etc.&lt;/p&gt;
+
+&lt;h2 id=&#34;gremlin-engine&#34;&gt;Gremlin engine&lt;/h2&gt;
+
+&lt;p&gt;Skydive uses Gremlin language as its graph traversal language. The Skydive
+Gremlin implementation allows to use Gremlin for flow traversal purpose.
+The Gremlin engine can either retrieve informations from the datastore or from
+agents depending whether the request is about something is the past or for live
+monitoring/troubleshooting.&lt;/p&gt;
+
+&lt;h2 id=&#34;etcd&#34;&gt;Etcd&lt;/h2&gt;
+
+&lt;p&gt;Skydive uses Etcd to store API objects like captures. Agents are watching Etcd
+so that they can react on API calls.&lt;/p&gt;
+
+&lt;h2 id=&#34;on-demand-probe&#34;&gt;On-demand probe&lt;/h2&gt;
+
+&lt;p&gt;This component watches Etcd and the graph in order to start captures. So when a
+new capture is created by the API on-demande probe looks for graph nodes
+matching the Gremlin expression, and if so, start capturing traffic.&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>Skydive Gremlin Query language</title>
