@@ -389,7 +389,9 @@ func (o *OvsMonitor) StartMonitoring() {
 func (o *OvsMonitor) StopMonitoring() {
 	if o.OvsClient != nil {
 		o.done <- struct{}{}
-		o.OvsClient.ovsdb.Disconnect()
+		if o.OvsClient.ovsdb != nil {
+			o.OvsClient.ovsdb.Disconnect()
+		}
 	}
 }
 
