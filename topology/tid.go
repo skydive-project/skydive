@@ -56,7 +56,7 @@ func (t *TIDMapper) setTID(parent, child *graph.Node) {
 }
 
 func (t *TIDMapper) setChildrenTID(parent *graph.Node) {
-	children := t.Graph.LookupChildren(parent, graph.Metadata{"RelationType": "ownership"})
+	children := t.Graph.LookupChildren(parent, graph.Metadata{}, graph.Metadata{"RelationType": "ownership"})
 	for _, child := range children {
 		t.setTID(parent, child)
 	}
@@ -90,7 +90,7 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 				if n.Metadata()["Probe"] == "fabric" {
 					t.Graph.AddMetadata(n, "TID", string(n.ID))
 				} else {
-					parents := t.Graph.LookupParents(n, graph.Metadata{"RelationType": "ownership"})
+					parents := t.Graph.LookupParents(n, graph.Metadata{}, graph.Metadata{"RelationType": "ownership"})
 					if len(parents) > 1 {
 						logging.GetLogger().Errorf("A should always only have one ownership parent: %v", n)
 					} else if len(parents) == 1 {
@@ -119,10 +119,6 @@ func (t *TIDMapper) onEdgeEvent(e *graph.Edge) {
 
 	parent, child := t.Graph.GetEdgeNodes(e)
 	if parent == nil {
-		return
-	}
-
-	if _, ok := child.Metadata()["TID"]; ok {
 		return
 	}
 
