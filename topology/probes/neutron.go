@@ -23,6 +23,7 @@
 package probes
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -238,7 +239,7 @@ func (mapper *NeutronMapper) Stop() {
 	close(mapper.nodeUpdaterChan)
 }
 
-func NewNeutronMapper(g *graph.Graph, authURL string, username string, password string, tenantName string, regionName string) (*NeutronMapper, error) {
+func NewNeutronMapper(g *graph.Graph, authURL string, username string, password string, tenantName string, regionName string, availability gophercloud.Availability) (*NeutronMapper, error) {
 	mapper := &NeutronMapper{graph: g}
 
 	opts := gophercloud.AuthOptions{
@@ -254,11 +255,10 @@ func NewNeutronMapper(g *graph.Graph, authURL string, username string, password 
 		return nil, err
 	}
 
-	/* TODO(safchain) add config param for the Availability */
 	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
 		Name:         "neutron",
 		Region:       regionName,
-		Availability: gophercloud.AvailabilityPublic,
+		Availability: availability,
 	})
 	if err != nil {
 		return nil, err
@@ -283,6 +283,15 @@ func NewNeutronMapperFromConfig(g *graph.Graph) (*NeutronMapper, error) {
 	password := config.GetConfig().GetString("openstack.password")
 	tenantName := config.GetConfig().GetString("openstack.tenant_name")
 	regionName := config.GetConfig().GetString("openstack.region_name")
+	endpointType := config.GetConfig().GetString("openstack.endpoint_type")
 
-	return NewNeutronMapper(g, authURL, username, password, tenantName, regionName)
+	endpointTypes := map[string]gophercloud.Availability{
+		"public":   gophercloud.AvailabilityPublic,
+		"admin":    gophercloud.AvailabilityAdmin,
+		"internal": gophercloud.AvailabilityInternal}
+	if a, ok := endpointTypes[endpointType]; !ok {
+		return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
+	} else {
+		return NewNeutronMapper(g, authURL, username, password, tenantName, regionName, a)
+	}
 }

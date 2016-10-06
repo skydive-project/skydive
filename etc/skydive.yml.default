@@ -19,6 +19,8 @@ openstack:
   password: password123
   tenant_name: admin
   region_name: RegionOne
+  # The endpoint_type value must be 'public', 'internal' or 'admin'
+  endpoint_type: public
 
 analyzer:
   # address and port for the analyzer API, Format: addr:port.
