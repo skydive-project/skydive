@@ -11,7 +11,7 @@ import (
 var Package = "github.com/skydive-project/skydive"
 
 // Version indicates which version of the binary is running.
-var Version = "v0.5.0"
+var Version = "v0.6.0"
 
 // FprintVersion outputs the version string to the writer, in the following
 // format, followed by a newline:
