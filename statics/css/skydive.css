@@ -47,6 +47,10 @@ label {
   cursor: pointer;
 }
 
+#node-id {
+  cursor: default;
+}
+
 text {
   fill: #111;
   pointer-events: none;
@@ -97,7 +101,6 @@ text {
 
 .link {
   fill: none;
-  stroke-width: 1.5;
 }
 
 .links .veth {

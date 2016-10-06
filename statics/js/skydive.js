@@ -315,6 +315,10 @@ Layout.prototype.SetPosition = function(x, y) {
   this.view.attr("x", x).attr("y", y);
 };
 
+Layout.prototype.SetNodeClass = function(ID, clazz, active) {
+  d3.select("#node-" + ID).classed(clazz, active);
+};
+
 function ShowNodeFlows(node) {
   var query = "G.V('" + node.ID + "').Flows().Limit(5)";
   $.ajax({
@@ -355,15 +359,16 @@ function ShowNodeFlows(node) {
                 var id = data[i].ID;
                 var n = topologyLayout.graph.GetNode(id);
                 n.Highlighted = true;
-                topologyLayout.Redraw();
+                topologyLayout.SetNodeClass(id, "highlighted", true);
               }
             }
           });
         });
         $(this).mouseleave(function() {
           for (var i in topologyLayout.graph.Nodes) {
-            topologyLayout.graph.Nodes[i].Highlighted = false;
-            topologyLayout.Redraw();
+            var node = topologyLayout.graph.Nodes[i];
+            node.Highlighted = false;
+            topologyLayout.SetNodeClass(node.ID, "highlighted", false);
           }
         });
       });
@@ -462,16 +467,17 @@ Layout.prototype.AddEdge = function(edge) {
   var i, e;
   if (edge.Parent.Metadata.Type == "host") {
     if (edge.Child.Metadata.Type == "ovsbridge" ||
-        edge.Child.Metadata.Type == "netns" ||
-        edge.Child.Metadata.Type == "bridge")
+        edge.Child.Metadata.Type == "netns")
+      return;
+
+    if (edge.Child.Metadata.Type == "bridge" && edge.Child.Edges.length > 1)
       return;
 
     var nparents = this.graph.GetParents(edge.Child).length;
     if (nparents > 2 || (nparents > 1 && this.graph.GetChildren(edge.Child).length !== 0))
       return;
   } else {
-    // remove host link if nodes have children, since we are creating a link that is not
-    // a host one, this rules is equal to the previous one.
+    // remove link to host if having more than two parent already
     var nodes = [edge.Parent, edge.Child];
     for (var n in nodes) {
       var node = nodes[n];
@@ -851,6 +857,7 @@ Layout.prototype.Redraw = function() {
     });
 
   this.node = this.node.data(this.nodes, function(d) { return d.ID; })
+    .attr("id", function(d) { return "node-" + d.ID; })
     .attr("class", function(d) {
       return _this.NodeClass(d);
     })
@@ -1223,6 +1230,17 @@ function RefreshCaptureList() {
   });
 }
 
+function SetupNodeDetails() {
+  $("#node-id").mouseenter(function() {
+    var id = $("#node-id").html();
+    topologyLayout.SetNodeClass(id, "highlighted", true);
+  });
+  $("#node-id").mouseleave(function() {
+    var id = $("#node-id").html();
+    topologyLayout.SetNodeClass(id, "highlighted", false);
+  });
+}
+
 function SetupCaptureList() {
   var resetCaptureForm = function() {
     $("#capturename").val("");
@@ -1325,5 +1343,6 @@ $(document).ready(function() {
     SetupTimeSlider();
     SetupFlowRefresh();
     SetupCaptureList();
+    SetupNodeDetails();
   }
 });
