@@ -39,12 +39,24 @@ label {
   height: 90%;
 }
 
+.node-selection {
+  cursor: crosshair;
+}
+
 .node {
   fill: lightsteelblue;
   stroke: #888;
   stroke-width: 1;
   opacity: 1;
   cursor: pointer;
+}
+
+.node-selection .node {
+  cursor: crosshair !important;
+}
+
+.node-invalid-selection .node {
+  cursor: not-allowed !important;
 }
 
 #node-id {
@@ -240,6 +252,10 @@ path.group {
   margin-bottom: 10px;
 }
 
+#capture {
+  font-size: 1.2em;
+}
+
 ul.capture-list {
   list-style-type: none;
   padding: 0px;
@@ -368,4 +384,23 @@ circle.manager {
 
 #capture_form textarea {
   height: 100px;
+}
+
+.fa{
+  font-size: 1.3em;
+  color: #000;
+}
+
+.form-control + .fa-crosshairs{
+  left: 0;
+}
+
+.form-control:focus+.fa-crosshairs{
+  color: #66afe9;
+}
+
+.has-left-icon{
+  /*Left padding 20px in this case, but it could be different due to other settings - for example in my project it was 25 pixels*/
+  padding-left: 30px !important;
+  padding-right: 10px !important;
 }

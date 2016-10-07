@@ -10,7 +10,7 @@
 
   <link rel="stylesheet" href="/statics/css/bootstrap.3.3.5.min.css" />
   <link rel="stylesheet" href="/statics/css/bootstrap-switch.min.css" />
-  <link rel="stylesheet" href="/statics/css/font-awesome.3.0.2.css" />
+  <link rel="stylesheet" href="/statics/css/font-awesome.4.6.3.min.css" />
   <link rel="stylesheet" href="/statics/css/jquery-ui.1.10.1.css" media="all" type="text/css" />
   <link rel="stylesheet" href="/statics/css/jquery.jsonview.css" />
   <link rel="stylesheet" href="/statics/css/skydive.css" />
@@ -68,39 +68,52 @@
     <div class="col-sm-4 fill info">
       <div class="left-cont">
         <div class="left-panel analyzer-only" id="captures-panel">
-          <div class="title-left-panel">Captures :</div>
+          <div class="title-left-panel" style="float: left">Captures :</div>
+          <div style="text-align: right; margin-right: 5px;" class="analyzer-only">
+            <img id="add-capture" style="cursor: pointer" src="statics/img/record.png" width="22" height="22">
+          </div>
           <div class="sub-left-panel" id="metadata-panel">
             <div id="captures">
               <ul class="capture-list"></ul>
+            </div>
+          </div>
+          <div id="capture">
+            <div class="sub-left-panel" style="clear: both">
+              <div class="title-left-panel">New Capture :</div>
+              <form action="#" id="capture_form">
+                <label>Name : </label></br>
+                <input type="text" id="capturename" class="capture_input"/><br/>
+                <label>Description : </label></br>
+                <textarea type="text" id="capturedesc" class="capture_input" rows="4"></textarea><br/>
+
+                <label>Target : </label></br>
+                <label class="radio-inline"><input type="radio" name="capture-target" value="selection" checked>Nodes selection</label>
+                <label class="radio-inline"><input type="radio" name="capture-target" value="gremlin">Gremlin Expression</label>
+                <div id="capture-selection">
+                  <div style="position:relative">
+                    <input class="form-control input-sm has-left-icon capture-node" id="capture-node1" placeholder="Node 1" readonly>
+                    <span class="fa fa-crosshairs form-control-feedback"></span>
+                  </div>
+                  </br>
+                  <div style="position:relative">
+                    <input class="form-control input-sm has-left-icon capture-node" id="capture-node2" placeholder="Node 2 (optional)" readonly>
+                    <span class="fa fa-crosshairs form-control-feedback"></span>
+                  </div>
+                </div>
+                <br/>
+                <div id="capture-gremlin" style="display: none">
+                  <textarea type="text" id="capturequery" class="capture_input" required></textarea><br/>
+                </div>
+                <input type="button" class="btn btn-primary" id="create" value="Start"/>
+                <input type="button" class="btn btn-danger" id="cancel" value="Cancel"/>
+                <br/>
+              </form>
             </div>
           </div>
         </div>
         <div class="left-panel" id="node-details" style="display: none">
           <div class="title-left-panel">
             <div style="float:left">Node : <span id="node-id"></span></div>
-            <div style="text-align: right; margin-right: 5px;" class="analyzer-only">
-              <img id="add-capture" style="cursor: pointer" src="statics/img/record.png" width="22" height="22">
-            </div>
-            <div id="capture">
-              <div class="sub-left-panel" style="clear: both">
-                <div class="title-left-panel">New Capture :</div>
-                <form action="#" id="capture_form">
-                  <label>Name : </label></br>
-                  <input type="text" id="capturename" class="capture_input"/><br/>
-                  <label>Description : </label></br>
-                  <textarea type="text" id="capturedesc" class="capture_input" rows="4"></textarea><br/>
-                  <label>Type : </label></br>
-                  <select id="capturetype" class="capture_input">
-                    <option value="" selected="selected">auto</option>
-                  </select><br/>
-                  <label>Gremlin Query : </label></br>
-                  <textarea type="text" id="capturequery" class="capture_input" required></textarea><br/>
-                  <input type="button" class="btn btn-primary" id="create" value="Start"/>
-                  <input type="button" class="btn btn-danger" id="cancel" value="Cancel"/>
-                  <br/>
-                </form>
-              </div>
-            </div>
             <div class="sub-left-panel" id="metadata-panel" style="clear: both">
               <div class="title-left-panel">Metadata :</div>
               <div id="metadata"></div>

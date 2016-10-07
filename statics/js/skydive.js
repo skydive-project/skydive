@@ -204,9 +204,9 @@ var Layout = function(selector) {
   var _this = this;
   this.force = d3.layout.force()
     .size([this.width, this.height])
-    .charge(-500)
+    .charge(-400)
     .gravity(0.02)
-    .linkStrength(1)
+    .linkStrength(0.5)
     .friction(0.8)
     .linkDistance(function(d, i) {
       return _this.LinkDistance(d, i);
@@ -385,7 +385,7 @@ Layout.prototype.NodeDetails = function(node) {
 
   ShowNodeFlows(node);
 
-  if (node.IsCaptureAllowed()) {
+  /*if (node.IsCaptureAllowed()) {
     if (node.IsCaptureOn()) {
       $("#add-capture").parent().css("cursor","not-allowed");
       $("#add-capture").attr("src", "statics/img/record_red.png").css("pointer-events","none");
@@ -396,7 +396,7 @@ Layout.prototype.NodeDetails = function(node) {
   } else {
     $("#add-capture").parent().css("cursor","not-allowed");
     $("#add-capture").attr("src", "statics/img/record.png").css("pointer-events","none");
-  }
+  }*/
 };
 
 Layout.prototype.Hash = function(str) {
@@ -835,6 +835,9 @@ Layout.prototype.CollapseNode = function(d) {
   switch(d.Metadata.Type) {
     case "netns":
       this.CollapseNetNS(d);
+      break;
+    default:
+      return;
   }
 
   this.Redraw();
@@ -868,15 +871,27 @@ Layout.prototype.Redraw = function() {
   var nodeEnter = this.node.enter().append("g")
     .attr("class", "node")
     .on("click", function(d) {
+      // node selection callback registered, so in selection mode
+      if (nodeSelectedCallback) {
+        nodeSelectedCallback(d);
+        return;
+      }
       return _this.CollapseNode(d);
     })
     .on("mouseover", function(d) {
+      if (nodeSelectedCallback) {
+        if (!d.IsCaptureAllowed())
+          $(".topology-d3").addClass('node-invalid-selection');
+      }
+
       d3.select(this).select("circle").transition()
         .duration(400)
         .attr("r", _this.CircleSize(d) * 1.2);
       _this.MouseOverNode(d);
     })
     .on("mouseout", function(d) {
+      $(".topology-d3").removeClass('node-invalid-selection');
+
       d3.select(this).select("circle").transition()
         .duration(400)
         .attr("r", _this.CircleSize(d));
@@ -1191,6 +1206,7 @@ function RefreshCaptureList() {
           delete Captures[key];
         }
       }
+
       for (key in data) {
         if (!(key in Captures)) {
           Captures[key] = data[key];
@@ -1211,22 +1227,24 @@ function RefreshCaptureList() {
             $('<div/>').addClass("capture-content").html("Type: " + data[key].Type).appendTo(capture);
 
           var img = $('<img/>', {src:trashImg, width: 24, height: 24}).appendTo(trash);
-          img.css('cursor', 'pointer').click(function(e) {
-            var li = $(this).closest('li');
-            var id = li.attr('id');
-
-            $.ajax({
-              url: '/api/capture/' + id + '/',
-              contentType: "application/json; charset=utf-8",
-              method: 'DELETE'
-            });
-            li.remove();
-            delete Captures[id];
-          });
+          img.css('cursor', 'pointer').click(DeleteCapture);
         }
       }
     }
   });
+}
+
+function DeleteCapture() {
+  var li = $(this).closest('li');
+  var id = li.attr('id');
+
+  $.ajax({
+    url: '/api/capture/' + id + '/',
+    contentType: "application/json; charset=utf-8",
+    method: 'DELETE'
+  });
+  li.remove();
+  delete Captures[id];
 }
 
 function SetupNodeDetails() {
@@ -1240,61 +1258,89 @@ function SetupNodeDetails() {
   });
 }
 
-function SetupCaptureList() {
-  var resetCaptureForm = function() {
-    $("#capturename").val("");
-    $("#capturedesc").val("");
-    $("#capturetype").val("");
-    $("select#capturetype option[value != '']").remove();
-  };
-
-  var getCaptureTypes = function(type) {
-    switch(type) {
-      case "internal":
-      case "tun":
-      case "bridge":
-      case "device":
-      case "veth":
-        return ["afpacket", "pcap"];
-      case "ovsbridge":
-        return ["ovssflow"];
+var nodeSelectedCallback;
+function SetupCaptureOptions() {
+  $('input[type=radio][name=capture-target]').change(function() {
+    if (this.value == 'selection') {
+      $('#capture-selection').show();
+      $('#capture-gremlin').hide();
     }
-  };
+    else if (this.value == 'gremlin') {
+      $('#capture-gremlin').show();
+      $('#capture-selection').hide();
+    }
+  });
 
+  $('.capture-node').focusin(function() {
+    $('.topology-d3').addClass('node-selection');
+    $(this).val('');
+    var _this = $(this);
+    nodeSelectedCallback = function(n) {
+      if (n.IsCaptureAllowed())
+        _this.val(n.Metadata.TID);
+      nodeSelectedCallback = undefined;
+    };
+  });
+  $('.capture-node').focusout(function() {
+    $('.topology-d3').removeClass('node-selection');
+  });
+}
+
+var ResetCaptureForm = function() {
+  $("#capture-name").val("");
+  $("#capture-desc").val("");
+  $("#capture-query").val("");
+  $('#capture-node1').val("");
+  $('#capture-node2').val("");
+};
+
+function SetupCaptureList() {
   $("#cancel").click(function(e) {
     $("#capture").slideToggle(500, function () {});
-    resetCaptureForm(e);
   });
 
   $("#add-capture").click(function(e) {
     $("#capture").slideToggle(500, function () {});
+    ResetCaptureForm();
 
-    var query = "G.V().Has('TID','" + CurrentNodeDetails.Metadata.TID + "')";
-    $("#capturequery").val(query);
-
-    var captureTypes = getCaptureTypes(CurrentNodeDetails.Metadata.Type);
-    for (var t in captureTypes) {
-      $("select#capturetype").append($("<option>").val(captureTypes[t]).html(captureTypes[t]));
-    }
+    if (CurrentNodeDetails)
+       $('#capture-node1').val(CurrentNodeDetails.Metadata.TID);
   });
 
   $("#create").click(function(e) {
-    var name = $("#capturename").val();
-    var desc = $("#capturedesc").val();
-    var query = $("#capturequery").val();
-    var type = $("#capturetype").val();
+    var name = $("#capture-name").val();
+    var desc = $("#capture-desc").val();
+    var query;
+
+    var mode = $('input[type=radio][name=capture-target]').val();
+    if (mode == "gremlin") {
+      query = $("#capture-query").val();
+    } else {
+      var node1 = $('#capture-node1').val();
+      if (node1 === "") {
+        alert("At least one node have to be selected");
+        return;
+      }
+
+      var node2 = $('#capture-node2').val();
+      if (node2 !== "") {
+        query = "G.V().Has('TID', '" + node1 + "').ShortestPathTo(Metadata('TID', '" + node2 + "'), Metadata('RelationType', 'layer2'))";
+      } else {
+        query = "G.V().Has('TID', '" + node1 + "')";
+      }
+    }
+
     if (query === "") {
       alert("Gremlin query can't be empty");
     } else {
       $.ajax({
         dataType: "json",
         url: '/api/capture',
-        data: JSON.stringify({"GremlinQuery": query, "Name": name, "Description": desc, "Type": type}),
+        data: JSON.stringify({"GremlinQuery": query, "Name": name, "Description": desc}),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
       });
       $("#capture").slideToggle(500, function () {});
-      resetCaptureForm(e);
     }
   });
   setInterval(RefreshCaptureList, 1000);
@@ -1343,5 +1389,6 @@ $(document).ready(function() {
     SetupFlowRefresh();
     SetupCaptureList();
     SetupNodeDetails();
+    SetupCaptureOptions();
   }
 });

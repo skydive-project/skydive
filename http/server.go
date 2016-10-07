@@ -178,7 +178,9 @@ func (s *Server) renderTemplate(w http.ResponseWriter, page string) {
 
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	t.Execute(w, s.getTemplateData())
+	if err = t.Execute(w, s.getTemplateData()); err != nil {
+		logging.GetLogger().Errorf("Unable to render template: %s", err.Error())
+	}
 }
 
 func unauthorized(w http.ResponseWriter, r *http.Request) {
