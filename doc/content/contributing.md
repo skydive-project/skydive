@@ -18,7 +18,6 @@ git-review installation :
 
 ```console
 yum install git-review
-
 ```
 
 or

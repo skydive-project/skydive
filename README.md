@@ -13,11 +13,34 @@ Elasticsearch database.
 Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
 topology and flows informations.
 
+## Quick start
+
+To quick set up a working environment, [Docker Compose](https://docs.docker.com/compose/)
+can be used to automatically start an Elasticsearch container, a Skydive analyzer
+container and a Skydive agent container.
+
+```console
+curl -o docker-compose.yml https://raw.githubusercontent.com/skydive-project/skydive/master/contrib/docker/docker-compose.yml
+docker-compose up
+```
+
+Open a browser to http://localhost:8082 to access the analyzer Web UI.
+
+You can also use the Skydive [command line client](https://skydive-project.github.io/skydive/getting-started/client/) with:
+```console
+docker run -ti skydive/skydive client topology query --gremlin "g.V()"
+```
+
 ## Documentation
 
 Skydive documentation can be found here:
 
 * http://skydive-project.github.io/skydive
+
+## Contributing
+
+Your contributions are more than welcome. Please check https://skydive-project.github.io/skydive/contributing/
+to know about the process.
 
 ## Contact
 
@@ -25,6 +48,7 @@ Skydive documentation can be found here:
 * Mailing list: https://www.redhat.com/mailman/listinfo/skydive-dev
 
 ## License
+
 This software is licensed under the Apache License, Version 2.0 (the
 "License"); you may not use this software except in compliance with the
 License.
