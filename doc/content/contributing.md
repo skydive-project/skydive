@@ -11,7 +11,7 @@ http://softwarefactory-project.io/r/#/q/project:skydive
 ## Setting up your environment
 
 ```console
-git clone http://softwarefactory-project.io/r/skydive
+git clone https://softwarefactory-project.io/r/skydive
 ```
 
 git-review installation :
