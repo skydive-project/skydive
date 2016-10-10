@@ -1,6 +1,6 @@
 ---
 date: 2016-05-06T11:02:01+02:00
-title: Contributting
+title: Contributing
 ---
 
 This project accepts contributions. Skydive uses the Gerrit workflow
