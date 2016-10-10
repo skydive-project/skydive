@@ -53,10 +53,11 @@ var CaptureCreate = &cobra.Command{
 	Short: "Create capture",
 	Long:  "Create capture",
 	Run: func(cmd *cobra.Command, args []string) {
-		client := api.NewCrudClientFromConfig(&authenticationOpts)
-		if client == nil {
-			os.Exit(1)
+		client, err := api.NewCrudClientFromConfig(&authenticationOpts)
+		if err != nil {
+			logging.GetLogger().Criticalf(err.Error())
 		}
+
 		capture := api.NewCapture(gremlinQuery, bpfFilter)
 		capture.Name = captureName
 		capture.Description = captureDescription
@@ -80,10 +81,11 @@ var CaptureList = &cobra.Command{
 	Long:  "List captures",
 	Run: func(cmd *cobra.Command, args []string) {
 		var captures map[string]api.Capture
-		client := api.NewCrudClientFromConfig(&authenticationOpts)
-		if client == nil {
-			os.Exit(1)
+		client, err := api.NewCrudClientFromConfig(&authenticationOpts)
+		if err != nil {
+			logging.GetLogger().Criticalf(err.Error())
 		}
+
 		if err := client.List("capture", &captures); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -104,7 +106,11 @@ var CaptureGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var capture api.Capture
-		client := api.NewCrudClientFromConfig(&authenticationOpts)
+		client, err := api.NewCrudClientFromConfig(&authenticationOpts)
+		if err != nil {
+			logging.GetLogger().Criticalf(err.Error())
+		}
+
 		if err := client.Get("capture", args[0], &capture); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
@@ -124,10 +130,11 @@ var CaptureDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client := api.NewCrudClientFromConfig(&authenticationOpts)
-		if client == nil {
-			os.Exit(1)
+		client, err := api.NewCrudClientFromConfig(&authenticationOpts)
+		if err != nil {
+			logging.GetLogger().Criticalf(err.Error())
 		}
+
 		if err := client.Delete("capture", args[0]); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)

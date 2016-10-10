@@ -23,7 +23,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -188,7 +187,7 @@ func GetHostPortAttributes(s string, p string) (string, int, error) {
 
 		return listen[0], port, nil
 	default:
-		return "", 0, errors.New(fmt.Sprintf("Malformed listen parameter %s in section %s", s, p))
+		return "", 0, fmt.Errorf("Malformed listen parameter %s in section %s", s, p)
 	}
 }
 
@@ -196,13 +195,16 @@ func GetAnalyzerClientAddr() (string, int, error) {
 	analyzers := GetConfig().GetStringSlice("agent.analyzers")
 	// TODO(safchain) HA Connection ???
 	if len(analyzers) > 0 {
-		addr := strings.Split(analyzers[0], ":")[0]
-		port, err := strconv.Atoi(strings.Split(analyzers[0], ":")[1])
+		split := strings.Split(analyzers[0], ":")
+		if len(split) != 2 {
+			return "", 0, fmt.Errorf("Malformed analyzer address: %s", analyzers[0])
+		}
+		port, err := strconv.Atoi(split[1])
 		if err != nil {
 			return "", 0, err
 		}
 
-		return addr, port, nil
+		return split[0], port, nil
 	}
 	return "", 0, nil
 }

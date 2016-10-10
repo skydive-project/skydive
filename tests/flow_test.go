@@ -183,7 +183,11 @@ func TestSFlowWithPCAP(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
@@ -226,7 +230,11 @@ func TestSFlowProbeNode(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
@@ -276,7 +284,11 @@ func TestSFlowNodeUUIDOvsInternalNetNS(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
@@ -329,7 +341,11 @@ func TestSFlowTwoNodeUUID(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture1 := api.NewCapture("G.V().Has('Name', 'br-sflow1', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture1); err != nil {
 		t.Fatal(err.Error())
@@ -429,7 +445,11 @@ func TestPCAPProbe(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-pcap', 'Type', 'bridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
@@ -497,7 +517,11 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
@@ -630,7 +654,11 @@ func TestTableServer(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
@@ -687,7 +715,11 @@ func TestFlowGremlin(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
@@ -775,7 +807,11 @@ func TestFlowMetrics(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
@@ -924,7 +960,11 @@ func TestFlowBandwidth(t *testing.T) {
 	aa.Start()
 	defer aa.Stop()
 
-	client := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
