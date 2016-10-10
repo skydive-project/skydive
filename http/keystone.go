@@ -27,9 +27,9 @@ import (
 	"strings"
 
 	auth "github.com/abbot/go-http-auth"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
-	"github.com/rackspace/gophercloud/openstack/identity/v2/tokens"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/identity/v2/tokens"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
