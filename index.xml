@@ -375,7 +375,7 @@ should show similar to the following capture.&lt;/p&gt;
     </item>
     
     <item>
-      <title>Contributting</title>
+      <title>Contributing</title>
       <link>//skydive-project.github.io/skydive/contributing/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
@@ -389,7 +389,7 @@ through Software Factory.&lt;/p&gt;
 
 &lt;h2 id=&#34;setting-up-your-environment&#34;&gt;Setting up your environment&lt;/h2&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git clone http://softwarefactory-project.io/r/skydive
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git clone https://softwarefactory-project.io/r/skydive
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;git-review installation :&lt;/p&gt;
@@ -830,6 +830,7 @@ topology and flows informations.&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;Neutron&lt;/li&gt;
 &lt;li&gt;Docker&lt;/li&gt;
+&lt;li&gt;Opencontrail&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&#34;flow-probes-supported&#34;&gt;Flow Probes supported&lt;/h2&gt;
