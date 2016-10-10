@@ -103,6 +103,13 @@ netns:
   # allow to specify where the netns probe is watching network namespace
   # run_path: /var/run/netns
 
+opencontrail:
+  # Host address of the OpenContrail vrouter agent
+  # host: localhost
+  # TCP port of the OpenContrail vrouter agent
+  # port: 8086
+
+
 storage:
   elasticsearch:
     host: 127.0.0.1:9200

@@ -23,10 +23,11 @@
 package probes
 
 import (
-	"time"
-
+	"fmt"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+	"time"
 
 	"github.com/nlewo/contrail-introspect-cli/collection"
 	"github.com/nlewo/contrail-introspect-cli/descriptions"
@@ -39,6 +40,8 @@ type OpenContrailMapper struct {
 	nodeUpdaterChan chan graph.Identifier
 	vHost           *graph.Node
 	pendingLinks    []*graph.Node
+	agentHost       string
+	agentPort       int
 }
 
 type ExtIDs struct {
@@ -76,13 +79,13 @@ func (mapper *OpenContrailMapper) retrieveExtIDs(metadata graph.Metadata, itf co
 // for instance, the tap is first created by nova and this information
 // is then propagated to contrail. We then retry to get interface from
 // contrail introspect with a delay between each attempt.
-func getInterfaceFromIntrospect(name string) (collection.Element, error) {
+func getInterfaceFromIntrospect(host string, port int, name string) (collection.Element, error) {
 	var err error
 	try := 3
 	delay := 500 * time.Millisecond
 
 	for i := 0; i < try; i++ {
-		col, e := collection.LoadCollection(descriptions.Interface(), []string{"localhost"})
+		col, e := collection.LoadCollection(descriptions.Interface(), []string{fmt.Sprintf("%s:%d", host, port)})
 		err = e
 		if e == nil {
 			itf, e := col.SearchStrictUnique(name)
@@ -150,7 +153,7 @@ func (mapper *OpenContrailMapper) nodeUpdater() {
 			return
 		}
 
-		itf, err := getInterfaceFromIntrospect(name.(string))
+		itf, err := getInterfaceFromIntrospect(mapper.agentHost, mapper.agentPort, name.(string))
 		if err != nil {
 			logging.GetLogger().Debugf("%s\n", err)
 			return
@@ -180,7 +183,7 @@ func (mapper *OpenContrailMapper) nodeUpdater() {
 		}
 	}
 
-	logging.GetLogger().Debugf("Starting OpenContrail updater")
+	logging.GetLogger().Debugf("Starting OpenContrail updater (using the vrouter agent on %s:%d)", mapper.agentHost, mapper.agentPort)
 	for nodeID := range mapper.nodeUpdaterChan {
 		// We launch the node update in a routine because
 		// several retries can be realized to get the
@@ -243,7 +246,16 @@ func (mapper *OpenContrailMapper) Stop() {
 }
 
 func NewOpenContrailMapper(g *graph.Graph, r *graph.Node) *OpenContrailMapper {
-	mapper := &OpenContrailMapper{graph: g, root: r}
+	host := config.GetConfig().GetString("opencontrail.host")
+	port := config.GetConfig().GetInt("opencontrail.port")
+	if host == "" {
+		host = "localhost"
+	}
+	if port == 0 {
+		port = 8085
+	}
+
+	mapper := &OpenContrailMapper{graph: g, root: r, agentHost: host, agentPort: port}
 	mapper.nodeUpdaterChan = make(chan graph.Identifier, 500)
 	g.AddEventListener(mapper)
 	return mapper
