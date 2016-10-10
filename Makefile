@@ -9,7 +9,7 @@ ifeq ($(VERBOSE), false)
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
-UT_PACKAGES=$(shell govendor list -no-status +local | grep -v '/tests')
+UT_PACKAGES=$(shell ${GOPATH}/bin/govendor list -no-status +local | grep -v '/tests')
 FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 DOCKER_IMAGE?=skydive/skydive
@@ -23,13 +23,13 @@ DOCKER_TAG?=devel
 	gofmt -w -s statics/bindata.go
 
 all: govendor genlocalfiles
-	govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
+	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
 install: govendor
-	govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
+	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
 build: govendor
-	govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
+	${GOPATH}/bin/govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
 static:
 	make install GOFLAGS="--ldflags '-extldflags \"-lpthread -static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a\"'"
@@ -38,7 +38,7 @@ test.functionals.cleanup:
 	rm -f tests/functionals
 
 test.functionals.compile: govendor
-	govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+	${GOPATH}/bin/govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
 ifneq ($(VERBOSE_FLAGS),)
@@ -57,15 +57,15 @@ test.functionals: test.functionals.compile
 	done
 
 test: govendor
-	govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+	${GOPATH}/bin/govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 
 govendor:
 	go get github.com/kardianos/govendor
-	govendor sync
+	${GOPATH}/bin/govendor sync
 
 fmt: govendor
 	@echo "+ $@"
-	@test -z "$$(govendor fmt +local)" || \
+	@test -z "$$(${GOPATH}/bin/govendor fmt +local)" || \
 		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
 
 ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
