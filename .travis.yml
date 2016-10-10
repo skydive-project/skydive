@@ -22,6 +22,7 @@ before_install:
     - cd ..
 
 script:
+    - make install
     - make static
     - make test GOFLAGS=-race VERBOSE=true TIMEOUT=1m
     - make test.functionals GOFLAGS=-race GORACE="history_size=5" VERBOSE=true TIMEOUT=2m
