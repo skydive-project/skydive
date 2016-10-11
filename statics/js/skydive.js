@@ -38,6 +38,9 @@ var alerts = {};
 
 var CurrentNodeDetails;
 var NodeDetailsTmID;
+var FlowGrid;
+var FlowDataView;
+var FlowDataGrid;
 
 var Group = function(ID, type) {
   this.ID = ID;
@@ -329,58 +332,84 @@ Layout.prototype.SetNodeClass = function(ID, clazz, active) {
   d3.select("#node-" + ID).classed(clazz, active);
 };
 
+function LayersPathToProtocol(layers) {
+  var els = layers.split('/');
+
+  if (els[els.length-1] == 'Payload')
+    return els[els.length-2];
+  return els[els.length-1];
+}
+
 function ShowNodeFlows(node) {
-  var query = "G.V('" + node.ID + "').Flows().Limit(5)";
+  var query = "G.V('" + node.ID + "').Flows().Sort().Dedup().Limit(20)";
   $.ajax({
     dataType: "json",
     url: '/api/topology',
     data: JSON.stringify({"GremlinQuery": query}),
     method: 'POST',
     success: function(data) {
-      var packets = 0;
-      var bytes = 0;
+      FlowDataGrid = [];
+
+      var id = 0;
       for (var i in data) {
-        if (data[i].Link.Protocol == "ETHERNET") {
-          packets += data[i].Metric.ABPackets;
-          bytes += data[i].Metric.ABBytes;
-          packets += data[i].Metric.BAPackets;
-          bytes += data[i].Metric.BABytes;
+        var flow = data[i];
+
+        var a = flow.Link.A;
+        if ("Network" in flow) {
+          a = flow.Network.A;
+          if ("Transport" in flow) {
+            a += ':' + flow.Transport.A;
+          }
         }
+
+        var b = flow.Link.B;
+        if ("Network" in flow) {
+          b = flow.Network.B;
+          if ("Transport" in flow) {
+            b += ':' + flow.Transport.B;
+          }
+        }
+
+        var parent = {
+          id: id,
+          parent: null,
+          indent: 0,
+          UUID: flow.UUID,
+          TrackingID: flow.TrackingID,
+          ID: flow.TrackingID,
+          Protocol: LayersPathToProtocol(flow.LayersPath),
+          A: a,
+          B: b,
+          ABPackets: flow.Metric.ABPackets,
+          BAPackets: flow.Metric.BAPackets,
+          ABBytes: flow.Metric.ABBytes,
+          BABytes: flow.Metric.BABytes
+        };
+
+        FlowDataGrid.push(parent);
+        if ("Network" in flow) {
+          parent._collapsed = true;
+          FlowDataGrid.push({
+            id: id + 1,
+            parent: {id: id},
+            indent: 1,
+            TrackingID: flow.TrackingID,
+            ID: '',
+            Protocol: flow.Link.Protocol,
+            A: flow.Link.A,
+            B: flow.Link.B
+          });
+          id++;
+        }
+        id++;
       }
 
-      $("#flow-packets").html(packets);
-      $("#flow-bytes").html(bytes);
-
-      var json = JSON.stringify(data);
-      $("#flows").JSONView(json);
-      $('#flows').JSONView('toggle', 10);
-      $('#flows >> ul.level0').children().each(function(index) {
-        $(this).data("TrackingID", data[i].TrackingID);
-        $(this).mouseenter(function() {
-          var query = "G.Flows('TrackingID', '"+data[i].TrackingID+"').Hops()";
-          $.ajax({
-            dataType: "json",
-            url: '/api/topology',
-            data: JSON.stringify({"GremlinQuery": query}),
-            method: 'POST',
-            success: function(data) {
-              for (var i in data) {
-                var id = data[i].ID;
-                var n = topologyLayout.graph.GetNode(id);
-                n.Highlighted = true;
-                topologyLayout.SetNodeClass(id, "highlighted", true);
-              }
-            }
-          });
-        });
-        $(this).mouseleave(function() {
-          for (var i in topologyLayout.graph.Nodes) {
-            var node = topologyLayout.graph.Nodes[i];
-            node.Highlighted = false;
-            topologyLayout.SetNodeClass(node.ID, "highlighted", false);
-          }
-        });
-      });
+      FlowDataView.beginUpdate();
+      FlowDataView.setItems(FlowDataGrid);
+      FlowDataView.setFilterArgs(FlowDataGrid);
+      FlowDataView.endUpdate();
+      FlowDataView.refresh();
+      FlowGrid.invalidate();
     }
   });
 }
@@ -394,19 +423,6 @@ Layout.prototype.NodeDetails = function(node) {
   $("#node-id").html(node.ID);
 
   ShowNodeFlows(node);
-
-  /*if (node.IsCaptureAllowed()) {
-    if (node.IsCaptureOn()) {
-      $("#add-capture").parent().css("cursor","not-allowed");
-      $("#add-capture").attr("src", "statics/img/record_red.png").css("pointer-events","none");
-    } else {
-      $("#add-capture").parent().css("cursor","auto");
-      $("#add-capture").attr("src", "statics/img/record.png").css({"cursor":"pointer", "pointer-events":"auto"});
-    }
-  } else {
-    $("#add-capture").parent().css("cursor","not-allowed");
-    $("#add-capture").attr("src", "statics/img/record.png").css("pointer-events","none");
-  }*/
 };
 
 Layout.prototype.Hash = function(str) {
@@ -420,7 +436,6 @@ Layout.prototype.Hash = function(str) {
 
   return hash;
 };
-
 
 Layout.prototype.AddNode = function(node) {
   if (node.ID in this.elements)
@@ -1383,6 +1398,139 @@ function SetupFlowRefresh() {
   });
 }
 
+function ShowFlowDetails(uuid) {
+  $('#flow-uuid').html(uuid);
+  $("#flowdetails").html('');
+
+  var query = "G.Flows('UUID', '" + uuid + "')";
+   $.ajax({
+     dataType: "json",
+     url: '/api/topology',
+     data: JSON.stringify({"GremlinQuery": query}),
+     method: 'POST',
+     success: function(data) {
+
+       var json = JSON.stringify(data);
+       $("#flowdetails").JSONView(json);
+       $('#flowdetails').JSONView('toggle', 10);
+     }
+   });
+}
+
+function SetupFlowGrid() {
+  var trackIdFormatter = function(row, cell, value, columnDef, dataContext) {
+    var spacer = "<span style='display:inline-block;height:1px;width:" + (15 * dataContext.indent) + "px'></span>";
+    var idx = FlowDataView.getIdxById(dataContext.id);
+    if (FlowDataGrid[idx + 1] && FlowDataGrid[idx + 1].indent > FlowDataGrid[idx].indent) {
+      if (dataContext._collapsed) {
+        return spacer + "<span class='flowids toggle expand' _uuid='" + dataContext.UUID + "' _trackid='" + dataContext.TrackingID + "'></span>&nbsp;" + value;
+      } else {
+        return spacer + "<span class='flowids toggle collapse' _uuid='" + dataContext.UUID + "' _trackid='" + dataContext.TrackingID + "'></span>&nbsp;" + value;
+      }
+    } else {
+      return spacer + "<span class='flowids toggle' _uuid='" + dataContext.UUID + "' _trackid='" + dataContext.TrackingID + "'></span>&nbsp;" + value;
+    }
+  };
+
+  $(document).on('click', ".slick-row", function () {
+      ShowFlowDetails($(this).find('.flowids').attr('_uuid'));
+  });
+
+  $(document).on('mouseenter', ".slick-row", function () {
+      $(this).children('.slick-cell').addClass('cell-highlighted');
+
+      var query = "G.Flows('TrackingID', '" + $(this).find('.flowids').attr('_trackid') + "').Hops()";
+      $.ajax({
+        dataType: "json",
+        url: '/api/topology',
+        data: JSON.stringify({"GremlinQuery": query}),
+        method: 'POST',
+        success: function(data) {
+          for (var i in data) {
+            var id = data[i].ID;
+            var n = topologyLayout.graph.GetNode(id);
+            n.Highlighted = true;
+            topologyLayout.SetNodeClass(id, "highlighted", true);
+          }
+        }
+      });
+  }).on('mouseleave', ".slick-row", function () {
+      $(this).children('.slick-cell').removeClass('cell-highlighted');
+
+      for (var i in topologyLayout.graph.Nodes) {
+        var node = topologyLayout.graph.Nodes[i];
+        node.Highlighted = false;
+        topologyLayout.SetNodeClass(node.ID, "highlighted", false);
+      }
+  });
+
+  var columns = [
+    {id: "ID", name: "ID", field: "ID", formatter: trackIdFormatter},
+    {id: "Protocol", name: "Protocol", field: "Protocol"},
+    {id: "A", name: "A", field: "A"},
+    {id: "B", name: "B", field: "B"},
+    {id: "AB Pkts", name: "AB Pkts", field: "ABPackets", cssClass: "cell-metric"},
+    {id: "BA Pkts", name: "BA Pkts", field: "BAPackets", cssClass: "cell-metric"},
+    {id: "AB Bytes", name: "AB Bytes", field: "ABBytes", cssClass: "cell-metric"},
+    {id: "BA Bytes", name: "BA Bytes", field: "BABytes", cssClass: "cell-metric"},
+  ];
+
+  var options = {
+    enableCellNavigation: true,
+    enableColumnReorder: false,
+    autoHeight: true,
+    fullWidthRows: true,
+    forceFitColumns: true,
+  };
+
+  var flowFilter = function(item, data) {
+    if (item.parent !== null) {
+      var parent = data[item.parent.id];
+
+      while (parent) {
+        if (parent._collapsed) {
+          return false;
+        }
+        parent = data[parent.parent ? parent.parent.id : null];
+      }
+    }
+
+    return true;
+  };
+
+  FlowDataView = new Slick.Data.DataView({ inlineFilters: true });
+  FlowDataView.beginUpdate();
+  FlowDataView.setFilter(flowFilter);
+  FlowDataView.endUpdate();
+
+  FlowGrid = new Slick.Grid("#flowgrid", FlowDataView, columns, options);
+  FlowGrid.onClick.subscribe(function (e, args) {
+    if ($(e.target).hasClass("toggle")) {
+      var item = FlowDataView.getItem(args.row);
+      if (item) {
+        if (!item._collapsed) {
+          item._collapsed = true;
+        } else {
+          item._collapsed = false;
+        }
+
+        FlowDataView.updateItem(item.id, item);
+      }
+      e.stopImmediatePropagation();
+    }
+  });
+
+  FlowDataView.onRowCountChanged.subscribe(function (e, args) {
+    FlowGrid.updateRowCount();
+    FlowGrid.render();
+  });
+
+  FlowDataView.onRowsChanged.subscribe(function (e, args) {
+    FlowGrid.invalidateRows(args.rows);
+    FlowGrid.render();
+  });
+}
+
 $(document).ready(function() {
   if (Service == "agent") {
     AgentReady();
@@ -1404,6 +1552,7 @@ $(document).ready(function() {
         ele.siblings().eq(idx).css('height',y+'px');
         ele.siblings().eq(idx).width((factor-f2)+'px');
       });
+      FlowGrid.resizeCanvas();
     }
   });
 
@@ -1421,5 +1570,6 @@ $(document).ready(function() {
     SetupCaptureList();
     SetupNodeDetails();
     SetupCaptureOptions();
+    SetupFlowGrid();
   }
 });
