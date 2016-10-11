@@ -95,6 +95,16 @@ Graph.prototype.GetNode = function(ID) {
   return this.Nodes[ID];
 };
 
+Graph.prototype.GetNeighbors = function(node) {
+  var neighbors = [];
+
+  for (var i in node.Edges) {
+    neighbors.push(node.Edges[i]);
+  }
+
+  return neighbors;
+};
+
 Graph.prototype.GetChildren = function(node) {
   var children = [];
 
@@ -469,23 +479,29 @@ Layout.prototype.AddEdge = function(edge) {
         edge.Child.Metadata.Type == "netns")
       return;
 
-    if (edge.Child.Metadata.Type == "bridge" && edge.Child.Edges.length > 1)
+    if (edge.Child.Metadata.Type == "bridge" && this.graph.GetNeighbors(edge.Child).length > 1)
       return;
 
     var nparents = this.graph.GetParents(edge.Child).length;
     if (nparents > 2 || (nparents > 1 && this.graph.GetChildren(edge.Child).length !== 0))
       return;
   } else {
-    // remove link to host if having more than two parent already
     var nodes = [edge.Parent, edge.Child];
     for (var n in nodes) {
       var node = nodes[n];
       for (i in node.Edges) {
         e = node.Edges[i];
-        if (e.Parent.Metadata.Type == "host" &&
-            this.graph.GetParents(node).length > 2) {
-          this.DelEdge(e);
-          break;
+        if (e.Parent.Metadata.Type == "host") {
+
+          if (node.Metadata.Type == "bridge" && this.graph.GetNeighbors(node).length > 1) {
+            this.DelEdge(e);
+            break;
+          }
+
+          if (this.graph.GetParents(node).length > 2) {
+            this.DelEdge(e);
+            break;
+          }
         }
       }
     }
@@ -502,8 +518,23 @@ Layout.prototype.DelEdge = function(edge) {
 
   for (var i in this.links) {
     if (this.links[i].source.ID == edge.Parent.ID &&
-      this.links[i].target.ID == edge.Child.ID)
-    this.links.splice(i, 1);
+        this.links[i].target.ID == edge.Child.ID) {
+
+      var nodes = [edge.Parent, edge.Child];
+      for (var n in nodes) {
+        var node = nodes[n];
+
+        if (node.Metadata.Type == "bridge" && this.graph.GetNeighbors(node).length < 2) {
+          for (var e in node.Edges) {
+            if (node.Edges[e].Parent.Metadata.Type == "host" || node.Edges[e].Child.Metadata.Type == "host") {
+              this.AddEdge(node.Edges[e]);
+            }
+          }
+        }
+      }
+
+      this.links.splice(i, 1);
+    }
   }
   delete this.elements[edge.ID];
 
