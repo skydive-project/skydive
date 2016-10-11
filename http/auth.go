@@ -81,6 +81,7 @@ func (c *AuthenticationClient) Authenticate() error {
 	if err != nil {
 		return fmt.Errorf("Authentication failed: %s", err.Error())
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
 		return fmt.Errorf("Authentication failed: returned code %d", resp.StatusCode)

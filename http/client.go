@@ -118,6 +118,7 @@ func (c *CrudClient) List(resource string, values interface{}) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to list %s, %s: %s", resource, resp.Status, readBody(resp)))
@@ -132,6 +133,7 @@ func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to get %s, %s: %s", resource, resp.Status, readBody(resp)))
@@ -154,6 +156,7 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to create %s, %s: %s", resource, resp.Status, readBody(resp)))
@@ -175,6 +178,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp)))
@@ -190,6 +194,7 @@ func (c *CrudClient) Delete(resource string, id string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Failed to delete %s, %s: %s", resource, resp.Status, readBody(resp)))
