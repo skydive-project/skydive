@@ -78,10 +78,10 @@ logging:
 
 type flowStat struct {
 	Path      string
-	ABPackets uint64
-	ABBytes   uint64
-	BAPackets uint64
-	BABytes   uint64
+	ABPackets int64
+	ABBytes   int64
+	BAPackets int64
+	BABytes   int64
 }
 type flowsTraceInfo struct {
 	filename string

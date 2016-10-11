@@ -25,31 +25,29 @@ package flow
 import (
 	"fmt"
 	"strings"
-
-	"github.com/skydive-project/skydive/common"
 )
 
-func (f *Filter) Eval(value interface{}) bool {
+func (f *Filter) Eval(flow *Flow) bool {
 	if f.BoolFilter != nil {
-		return f.BoolFilter.Eval(value)
+		return f.BoolFilter.Eval(flow)
 	}
 	if f.TermStringFilter != nil {
-		return f.TermStringFilter.Eval(value)
+		return f.TermStringFilter.Eval(flow)
 	}
 	if f.TermInt64Filter != nil {
-		return f.TermInt64Filter.Eval(value)
+		return f.TermInt64Filter.Eval(flow)
 	}
 	if f.GtInt64Filter != nil {
-		return f.GtInt64Filter.Eval(value)
+		return f.GtInt64Filter.Eval(flow)
 	}
 	if f.LtInt64Filter != nil {
-		return f.LtInt64Filter.Eval(value)
+		return f.LtInt64Filter.Eval(flow)
 	}
 	if f.GteInt64Filter != nil {
-		return f.GteInt64Filter.Eval(value)
+		return f.GteInt64Filter.Eval(flow)
 	}
 	if f.LteInt64Filter != nil {
-		return f.LteInt64Filter.Eval(value)
+		return f.LteInt64Filter.Eval(flow)
 	}
 
 	return true
@@ -100,9 +98,9 @@ func (b *BoolFilter) Expression() string {
 	return strings.Join(conditions, " "+keyword+" ")
 }
 
-func (b *BoolFilter) Eval(value interface{}) bool {
+func (b *BoolFilter) Eval(flow *Flow) bool {
 	for _, filter := range b.Filters {
-		result := filter.Eval(value)
+		result := filter.Eval(flow)
 		if b.Op == BoolFilterOp_NOT && !result {
 			return true
 		}
@@ -131,82 +129,78 @@ func (r *LteInt64Filter) Expression() string {
 	return fmt.Sprintf("%v <= %v", r.Key, r.Value)
 }
 
-func (r *GtInt64Filter) Eval(value interface{}) bool {
-	field := GetFields(value, strings.Split(r.Key, "."))
-	if field == nil {
+func (r *GtInt64Filter) Eval(f *Flow) bool {
+	field, err := f.GetFieldInt64(r.Key)
+	if err != nil {
 		return false
 	}
 
-	if result, err := common.CrossTypeCompare(field, r.Value); err != nil || result != 1 {
-		return false
+	if field > r.Value {
+		return true
 	}
-
-	return true
+	return false
 }
 
-func (r *LtInt64Filter) Eval(value interface{}) bool {
-	field := GetFields(value, strings.Split(r.Key, "."))
-	if field == nil {
+func (r *LtInt64Filter) Eval(f *Flow) bool {
+	field, err := f.GetFieldInt64(r.Key)
+	if err != nil {
 		return false
 	}
 
-	if result, err := common.CrossTypeCompare(field, r.Value); err != nil || result != -1 {
-		return false
+	if field < r.Value {
+		return true
 	}
-
-	return true
+	return false
 }
 
-func (r *GteInt64Filter) Eval(value interface{}) bool {
-	field := GetFields(value, strings.Split(r.Key, "."))
-	if field == nil {
+func (r *GteInt64Filter) Eval(f *Flow) bool {
+	field, err := f.GetFieldInt64(r.Key)
+	if err != nil {
 		return false
 	}
 
-	if result, err := common.CrossTypeCompare(field, r.Value); err != nil || result == -1 {
-		return false
+	if field >= r.Value {
+		return true
 	}
-
-	return true
+	return false
 }
 
-func (r *LteInt64Filter) Eval(value interface{}) bool {
-	field := GetFields(value, strings.Split(r.Key, "."))
-	if field == nil {
+func (r *LteInt64Filter) Eval(f *Flow) bool {
+	field, err := f.GetFieldInt64(r.Key)
+	if err != nil {
 		return false
 	}
 
-	if result, err := common.CrossTypeCompare(field, r.Value); err != nil || result == 1 {
-		return false
+	if field <= r.Value {
+		return true
 	}
-
-	return true
+	return false
 }
 
 func (t *TermStringFilter) Expression() string {
 	return fmt.Sprintf(`%s = "%s"`, t.Key, t.Value)
 }
 
-func (t *TermStringFilter) Eval(value interface{}) bool {
-	field := GetFields(value, strings.Split(t.Key, "."))
-	if field == nil {
+func (t *TermStringFilter) Eval(f *Flow) bool {
+	field, err := f.GetFieldString(t.Key)
+	if err != nil {
 		return false
 	}
 
-	return common.CrossTypeEqual(field, t.Value)
+	return field == t.Value
 }
 
 func (t *TermInt64Filter) Expression() string {
 	return fmt.Sprintf(`%s = %d`, t.Key, t.Value)
 }
 
-func (t *TermInt64Filter) Eval(value interface{}) bool {
-	field := GetFields(value, strings.Split(t.Key, "."))
-	if field == nil {
+func (t *TermInt64Filter) Eval(f *Flow) bool {
+	field, err := f.GetFieldInt64(t.Key)
+	if err != nil {
 		return false
 	}
 
-	return common.CrossTypeEqual(field, t.Value)
+	return field == t.Value
 }
 
 func NewFilterForNodes(uuids []string) *Filter {

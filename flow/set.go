@@ -29,10 +29,10 @@ import (
 )
 
 type FlowSetBandwidth struct {
-	ABpackets uint64
-	ABbytes   uint64
-	BApackets uint64
-	BAbytes   uint64
+	ABpackets int64
+	ABbytes   int64
+	BApackets int64
+	BAbytes   int64
 	Duration  int64
 	NBFlow    uint64
 }
@@ -92,16 +92,16 @@ func (fs *FlowSet) AvgBandwidth() (fsbw FlowSetBandwidth) {
 			fduration = 1
 		}
 
-		fdurationWindow := uint64(common.MinInt64(fend, fs.End) - common.MaxInt64(fstart, fs.Start))
+		fdurationWindow := common.MinInt64(fend, fs.End) - common.MaxInt64(fstart, fs.Start)
 		if fdurationWindow == 0 {
 			fdurationWindow = 1
 		}
 
 		m := f.Metric
-		fsbw.ABpackets += uint64(m.ABPackets * fdurationWindow / uint64(fduration))
-		fsbw.ABbytes += uint64(m.ABBytes * fdurationWindow / uint64(fduration))
-		fsbw.BApackets += uint64(m.BAPackets * fdurationWindow / uint64(fduration))
-		fsbw.BAbytes += uint64(m.BABytes * fdurationWindow / uint64(fduration))
+		fsbw.ABpackets += m.ABPackets * fdurationWindow / fduration
+		fsbw.ABbytes += m.ABBytes * fdurationWindow / fduration
+		fsbw.BApackets += m.BAPackets * fdurationWindow / fduration
+		fsbw.BAbytes += m.BABytes * fdurationWindow / fduration
 		fsbw.NBFlow++
 	}
 	return

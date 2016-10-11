@@ -153,10 +153,10 @@ func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, uuid st
 
 func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow) {
 	rnd := rand.New(rand.NewSource(seed))
-	f.Metric.ABPackets = uint64(rnd.Int63n(0x10000))
-	f.Metric.ABBytes = f.Metric.ABPackets * uint64(14+rnd.Intn(1501))
-	f.Metric.BAPackets = uint64(rnd.Int63n(0x10000))
-	f.Metric.BABytes = f.Metric.BAPackets * uint64(14+rnd.Intn(1501))
+	f.Metric.ABPackets = int64(rnd.Int63n(0x10000))
+	f.Metric.ABBytes = f.Metric.ABPackets * int64(14+rnd.Intn(1501))
+	f.Metric.BAPackets = int64(rnd.Int63n(0x10000))
+	f.Metric.BABytes = f.Metric.BAPackets * int64(14+rnd.Intn(1501))
 
 	f.Metric.Start = now - rnd.Int63n(100)
 	f.Metric.Last = f.Metric.Start

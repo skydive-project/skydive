@@ -45,10 +45,10 @@ message FlowLayer {
 message FlowMetric {
 	int64 Start = 1;
 	int64 Last = 2;
-	uint64 ABPackets = 3;
-	uint64 ABBytes = 4;
-	uint64 BAPackets = 5;
-	uint64 BABytes = 6;
+	int64 ABPackets = 3;
+	int64 ABBytes = 4;
+	int64 BAPackets = 5;
+	int64 BABytes = 6;
 }
 
 message Flow {

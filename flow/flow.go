@@ -28,8 +28,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
@@ -39,6 +39,7 @@ import (
 )
 
 var ErrFlowProtocol = errors.New("FlowProtocol invalid")
+var ErrFieldNotFound = errors.New("Flow field not found")
 
 type GetAttr interface {
 	GetAttr(name string) interface{}
@@ -141,7 +142,7 @@ func (flow *Flow) UpdateUUIDs(key string) {
 	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 }
 
-func (flow *Flow) initFromGoPacket(key string, now int64, packet *gopacket.Packet, length uint64, setter FlowProbeNodeSetter) {
+func (flow *Flow) initFromGoPacket(key string, now int64, packet *gopacket.Packet, length int64, setter FlowProbeNodeSetter) {
 	flow.Init(now, packet, length)
 
 	if setter != nil {
@@ -164,39 +165,6 @@ func FromData(data []byte) (*Flow, error) {
 	return flow, nil
 }
 
-func GetAttribute(intf interface{}, name string) interface{} {
-	if getter, ok := intf.(GetAttr); ok {
-		return getter.GetAttr(name)
-	}
-	value := reflect.Indirect(reflect.ValueOf(intf))
-	field := value.FieldByName(name)
-	if !field.IsValid() {
-		return nil
-	}
-	return field.Interface()
-}
-
-func GetFields(intf interface{}, fields []string) interface{} {
-componentLoop:
-	for _, component := range fields {
-		value := reflect.Indirect(reflect.ValueOf(intf))
-		if value.Kind() == reflect.Slice {
-			for i := 0; i < value.Len(); i++ {
-				if intf = value.Index(i).Interface(); GetAttribute(intf, component) != nil {
-					continue componentLoop
-				}
-			}
-			return nil
-		}
-
-		intf = GetAttribute(intf, component)
-		if intf == nil {
-			return nil
-		}
-	}
-	return intf
-}
-
 func (flow *Flow) GetData() ([]byte, error) {
 	data, err := proto.Marshal(flow)
 	if err != nil {
@@ -206,7 +174,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, length uint64, setter FlowProbeNodeSetter) *Flow {
+func FlowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, setter FlowProbeNodeSetter) *Flow {
 	if el := (*packet).Layer(layers.LayerTypeEthernet); el == nil {
 		logging.GetLogger().Error("Unable to decode the ethernet layer")
 		return nil
@@ -242,7 +210,7 @@ func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter Flow
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
-		flow := FlowFromGoPacket(ft, &record.Header, uint64(record.FrameLength), setter)
+		flow := FlowFromGoPacket(ft, &record.Header, int64(record.FrameLength), setter)
 		if flow != nil {
 			flows = append(flows, flow)
 		}
@@ -251,16 +219,98 @@ func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter Flow
 	return flows
 }
 
-func (fes *FlowLayer) GetAttr(name string) interface{} {
-	flowType, ok := FlowProtocol_value[name]
-	if ok && fes.Protocol.Value() == flowType {
-		return fes.Protocol
+func (f *FlowLayer) GetField(fields []string) (string, error) {
+	if f == nil || len(fields) != 2 {
+		return "", ErrFieldNotFound
 	}
+	layerName := fields[0]
+	/* Protocol must be set on the Layer or the transport layer name like Link, Network, Transport */
+	_, ok := FlowProtocol_value[layerName]
+	if !ok {
+		switch layerName {
+		case "Link", "Network", "Transport":
+		default:
+			return "", ErrFieldNotFound
+		}
+	}
+	switch fields[1] {
+	case "A":
+		return f.A, nil
+	case "B":
+		return f.B, nil
+	}
+	return "", ErrFieldNotFound
+}
 
-	value := reflect.Indirect(reflect.ValueOf(fes))
-	field := value.FieldByName(name)
-	if !field.IsValid() {
-		return nil
+func (f *FlowMetric) GetField(fields []string) (int64, error) {
+	if len(fields) != 2 {
+		return 0, ErrFieldNotFound
 	}
-	return field.Interface()
+	switch fields[1] {
+	case "Start":
+		return f.Start, nil
+	case "Last":
+		return f.Last, nil
+	case "ABPackets":
+		return f.ABPackets, nil
+	case "ABBytes":
+		return f.ABBytes, nil
+	case "BAPackets":
+		return f.BAPackets, nil
+	case "BABytes":
+		return f.BABytes, nil
+	}
+	return 0, ErrFieldNotFound
+}
+
+func (f *Flow) GetFieldString(field string) (string, error) {
+	fields := strings.Split(field, ".")
+	if len(fields) < 1 {
+		return "", ErrFieldNotFound
+	}
+	name := fields[0]
+	switch name {
+	case "UUID":
+		return f.UUID, nil
+	case "LayersPath":
+		return f.LayersPath, nil
+	case "TrackingID":
+		return f.TrackingID, nil
+	case "ParentUUID":
+		return f.ParentUUID, nil
+	case "NodeUUID":
+		return f.NodeUUID, nil
+	case "ANodeUUID":
+		return f.ANodeUUID, nil
+	case "BNodeUUID":
+		return f.BNodeUUID, nil
+	case "Link":
+		return f.Link.GetField(fields)
+	case "Network":
+		return f.Network.GetField(fields)
+	case "Transport":
+		return f.Transport.GetField(fields)
+	case "UDPPORT", "TCPPORT", "SCTPPORT":
+		return f.Transport.GetField(fields)
+	case "IPV4", "IPV6":
+		return f.Network.GetField(fields)
+	case "ETHERNET":
+		return f.Link.GetField(fields)
+	}
+	return "", ErrFieldNotFound
+}
+
+func (f *Flow) GetFieldInt64(field string) (int64, error) {
+	fields := strings.Split(field, ".")
+	if len(fields) < 1 {
+		return 0, ErrFieldNotFound
+	}
+	name := fields[0]
+	switch name {
+	case "Metric":
+		return f.Metric.GetField(fields)
+	case "LastUpdateMetric":
+		return f.LastUpdateMetric.GetField(fields)
+	}
+	return 0, ErrFieldNotFound
 }

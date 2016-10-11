@@ -146,7 +146,7 @@ const (
 
 type discoNode struct {
 	name     string
-	size     uint64
+	size     int64
 	children map[string]*discoNode
 }
 
@@ -181,8 +181,8 @@ func newDiscoNode() *discoNode {
 }
 
 type flowMetricStat struct {
-	Bytes   uint64
-	Packets uint64
+	Bytes   int64
+	Packets int64
 }
 
 func (f *FlowApi) jsonFlowDiscovery(DiscoType discoType) string {
