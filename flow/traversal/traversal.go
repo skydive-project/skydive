@@ -40,12 +40,14 @@ const (
 	FLOW_TOKEN      traversal.Token = 1001
 	BANDWIDTH_TOKEN traversal.Token = 1002
 	HOPS_TOKEN      traversal.Token = 1003
+	NODES_TOKEN     traversal.Token = 1004
 )
 
 type FlowTraversalExtension struct {
 	FlowToken      traversal.Token
 	BandwidthToken traversal.Token
 	HopsToken      traversal.Token
+	NodesToken     traversal.Token
 	TableClient    *flow.TableClient
 	Storage        storage.Storage
 }
@@ -74,6 +76,12 @@ type BandwidthTraversalStep struct {
 }
 
 type HopsGremlinTraversalStep struct {
+	TableClient *flow.TableClient
+	Storage     storage.Storage
+	context     traversal.GremlinTraversalContext
+}
+
+type NodesGremlinTraversalStep struct {
 	TableClient *flow.TableClient
 	Storage     storage.Storage
 	context     traversal.GremlinTraversalContext
@@ -138,6 +146,35 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 		}
 	}
 
+	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
+}
+
+func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
+	var nodes []*graph.Node
+
+	m, err := traversal.SliceToMetadata(s...)
+	if err != nil {
+		logging.GetLogger().Critical(err)
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+	}
+
+	for _, flow := range f.flowset.Flows {
+		if flow.NodeUUID != "" && flow.NodeUUID != "*" {
+			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.NodeUUID)); node != nil && node.MatchMetadata(m) {
+				nodes = append(nodes, node)
+			}
+		}
+		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
+			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID)); node != nil && node.MatchMetadata(m) {
+				nodes = append(nodes, node)
+			}
+		}
+		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
+			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID)); node != nil && node.MatchMetadata(m) {
+				nodes = append(nodes, node)
+			}
+		}
+	}
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
@@ -411,6 +448,7 @@ func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage
 		FlowToken:      FLOW_TOKEN,
 		BandwidthToken: BANDWIDTH_TOKEN,
 		HopsToken:      HOPS_TOKEN,
+		NodesToken:     NODES_TOKEN,
 		TableClient:    client,
 		Storage:        storage,
 	}
@@ -424,6 +462,8 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 		return e.BandwidthToken, true
 	case "HOPS":
 		return e.HopsToken, true
+	case "NODES":
+		return e.NodesToken, true
 	}
 	return traversal.IDENT, false
 }
@@ -440,6 +480,8 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 		return &BandwidthGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
 	case e.HopsToken:
 		return &HopsGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
+	case e.NodesToken:
+		return &NodesGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
 	}
 
 	return nil, nil
@@ -605,5 +647,22 @@ func (s *HopsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 }
 
 func (s *HopsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+	return &s.context
+}
+
+func (s *NodesGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
+	switch last.(type) {
+	case *FlowTraversalStep:
+		fs := last.(*FlowTraversalStep)
+		return fs.Nodes(s.context.Params...), nil
+	}
+	return nil, traversal.ExecutionError
+}
+
+func (s *NodesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	return next
+}
+
+func (s *NodesGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &s.context
 }

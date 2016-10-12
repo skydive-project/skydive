@@ -1019,3 +1019,88 @@ func TestFlowBandwidth(t *testing.T) {
 
 	client.Delete("capture", capture.ID())
 }
+
+func TestFlowHops(t *testing.T) {
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
+	if err := client.Create("capture", capture); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-sflow", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf1 -- set interface sflow-intf1 type=internal", true},
+		{"ip netns add sflow-vm1", true},
+		{"ip link set sflow-intf1 netns sflow-vm1", true},
+		{"ip netns exec sflow-vm1 ip address add 169.254.33.33/24 dev sflow-intf1", true},
+		{"ip netns exec sflow-vm1 ip link set sflow-intf1 up", true},
+
+		{"ovs-vsctl add-port br-sflow sflow-intf2 -- set interface sflow-intf2 type=internal", true},
+		{"ip netns add sflow-vm2", true},
+		{"ip link set sflow-intf2 netns sflow-vm2", true},
+		{"ip netns exec sflow-vm2 ip address add 169.254.33.34/24 dev sflow-intf2", true},
+		{"ip netns exec sflow-vm2 ip link set sflow-intf2 up", true},
+
+		// wait to have everything ready, sflow, interfaces
+		{"sleep 2", false},
+
+		{"ip netns exec sflow-vm1 ping -c 1 -s 1024 -I sflow-intf1 169.254.33.34", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del sflow-vm1", true},
+		{"ip netns del sflow-vm2", true},
+		{"ovs-vsctl del-br br-sflow", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	// since the agent update ticker is about 10 sec according to the configuration
+	// wait 11 sec to have the first update and the MetricRange filled
+	time.Sleep(11 * time.Second)
+
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	gremlin := `g.Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
+	flows := gh.GetFlowsFromGremlinReply(t, gremlin)
+	if len(flows) != 1 {
+		t.Fatal("We should receive only one ICMPv4 flow")
+	}
+	gremlin = fmt.Sprintf(`g.Flows("TrackingID", "%s").Nodes()`, flows[0].TrackingID)
+	tnodes := gh.GetNodesFromGremlinReply(t, gremlin)
+	if len(tnodes) != 3 {
+		t.Fatal("We should have 3 nodes NodeUUID,A,B")
+	}
+	gremlin = `g.Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Hops()`
+	nodes := gh.GetNodesFromGremlinReply(t, gremlin)
+	if len(nodes) != 1 {
+		t.Fatal("We should have 1 node NodeUUID")
+	}
+
+	found := false
+	m := nodes[0].Metadata()
+	for _, n := range tnodes {
+		if n.MatchMetadata(m) == true {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("We should found the Hops nodes in the TrackingID nodes")
+	}
+
+	client.Delete("capture", capture.ID())
+}
