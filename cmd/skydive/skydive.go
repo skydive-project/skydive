@@ -27,6 +27,7 @@ import (
 	"os"
 
 	"github.com/skydive-project/skydive/cmd/agent"
+	"github.com/skydive-project/skydive/cmd/allinone"
 	"github.com/skydive-project/skydive/cmd/analyzer"
 	"github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/config"
@@ -66,8 +67,6 @@ var versionCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "conf", "c", "", "location of Skydive agent config file")
 	rootCmd.PersistentFlags().StringVarP(&cfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
-	rootCmd.Flags().Int("ws-pong-timeout", 50, "WebSocket Ping/Pong timeout in second")
-	config.GetConfig().BindPFlag("ws_pong_timeout", rootCmd.Flags().Lookup("ws-pong-timeout"))
 }
 
 func main() {
@@ -75,5 +74,6 @@ func main() {
 	rootCmd.AddCommand(agent.Agent)
 	rootCmd.AddCommand(analyzer.Analyzer)
 	rootCmd.AddCommand(client.Client)
+	rootCmd.AddCommand(allinone.AllInOne)
 	rootCmd.Execute()
 }
