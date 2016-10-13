@@ -418,20 +418,20 @@ func (f *FlowTraversalStep) MarshalJSON() ([]byte, error) {
 		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
 			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID))
 			if node != nil {
-				x["IfSrcNode"] = node
+				x["ANode"] = node
 			}
 		}
 
 		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
 			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID))
 			if node != nil {
-				x["IfDstNode"] = node
+				x["BNode"] = node
 			}
 		}
 
 		node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.NodeUUID))
 		if node != nil {
-			x["ProbeNode"] = node
+			x["Node"] = node
 		}
 
 		a[i] = x
