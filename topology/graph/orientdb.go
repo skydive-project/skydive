@@ -72,7 +72,6 @@ func orientDBDocumentToGraphElement(doc orientdb.Document) graphElement {
 	}
 	for field, value := range doc {
 		if !strings.HasPrefix(field, "@") && !strings.HasPrefix(field, "_") {
-			field = strings.Replace(field, "/", ".", -1)
 			if n, ok := value.(json.Number); ok {
 				var err error
 				if value, err = n.Int64(); err == nil {
@@ -93,7 +92,6 @@ func graphElementToOrientDBDocument(e graphElement) orientdb.Document {
 	doc["ID"] = e.ID
 	doc["Host"] = e.host
 	for k, v := range e.metadata {
-		k = strings.Replace(k, ".", "/", -1)
 		doc[k] = v
 	}
 	return doc
