@@ -688,7 +688,8 @@ func TestTableServer(t *testing.T) {
 	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
-	flowset, err := fclient.LookupFlowsByNodes(hnmap, nil, nil, false)
+	fsq := &flow.FlowSearchQuery{nil, nil, false}
+	flowset, err := fclient.LookupFlowsByNodes(hnmap, fsq)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

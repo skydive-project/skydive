@@ -60,8 +60,8 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, filter *Filter, interval *Range, sorted bool) {
-	obj, _ := proto.Marshal(&FlowSearchQuery{Filter: filter, Range: interval, Sorted: sorted})
+func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery *FlowSearchQuery) {
+	obj, _ := proto.Marshal(flowSearchQuery)
 	tq := TableQuery{
 		Type: "FlowSearchQuery",
 		Obj:  obj,
@@ -108,7 +108,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, filter *Fi
 				continue
 			}
 
-			fs.Merge(fsr.FlowSet, sorted)
+			fs.Merge(fsr.FlowSet, flowSearchQuery.Sorted)
 		}
 		flowset <- fs
 
@@ -120,25 +120,25 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, filter *Fi
 	flowset <- NewFlowSet()
 }
 
-func (f *TableClient) LookupFlows(filter *Filter, interval *Range, sorted bool) (*FlowSet, error) {
+func (f *TableClient) LookupFlows(flowSearchQuery *FlowSearchQuery) (*FlowSet, error) {
 	clients := f.WSServer.GetClientsByType("skydive-agent")
 	ch := make(chan *FlowSet, len(clients))
 
 	for _, client := range clients {
 		hostname, _ := client.GetHostInfo()
-		go f.lookupFlows(ch, hostname, filter, interval, sorted)
+		go f.lookupFlows(ch, hostname, flowSearchQuery)
 	}
 
 	flowset := NewFlowSet()
 	for i := 0; i != len(clients); i++ {
 		fs := <-ch
-		flowset.Merge(fs, sorted)
+		flowset.Merge(fs, flowSearchQuery.Sorted)
 	}
 
 	return flowset, nil
 }
 
-func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter *Filter, interval *Range, sorted bool) (*FlowSet, error) {
+func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, flowSearchQuery *FlowSearchQuery) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
 	for host, uuids := range hnmap {
@@ -149,21 +149,23 @@ func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, filter *Filter, in
 			},
 		}
 
-		if filter != nil {
-			andFilter.Filters = append(andFilter.Filters, filter)
+		if flowSearchQuery.Filter != nil {
+			andFilter.Filters = append(andFilter.Filters, flowSearchQuery.Filter)
 		}
 
 		queryFilter := &Filter{
 			BoolFilter: andFilter,
 		}
 
-		go f.lookupFlows(ch, host, queryFilter, interval, sorted)
+		var fsq FlowSearchQuery = *flowSearchQuery
+		fsq.Filter = queryFilter
+		go f.lookupFlows(ch, host, &fsq)
 	}
 
 	flowset := NewFlowSet()
 	for i := 0; i != len(hnmap); i++ {
 		fs := <-ch
-		flowset.Merge(fs, sorted)
+		flowset.Merge(fs, flowSearchQuery.Sorted)
 	}
 
 	return flowset, nil

@@ -472,7 +472,8 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowset, err = s.TableClient.LookupFlows(paramsFilter, interval, s.context.StepContext.Sort)
+			flowSearchQuery := &flow.FlowSearchQuery{Filter: paramsFilter, Range: interval, Sorted: s.context.StepContext.Sort}
+			flowset, err = s.TableClient.LookupFlows(flowSearchQuery)
 		}
 	case *traversal.GraphTraversalV:
 		graphTraversal = tv.GraphTraversal
@@ -494,7 +495,8 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, paramsFilter, interval, s.context.StepContext.Sort)
+			flowSearchQuery := &flow.FlowSearchQuery{Filter: paramsFilter, Range: interval, Sorted: s.context.StepContext.Sort}
+			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, flowSearchQuery)
 		}
 
 		if r := s.context.StepContext.Range; r != nil {
