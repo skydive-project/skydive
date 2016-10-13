@@ -370,21 +370,13 @@ func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
 }
 
 func (f *FlowTraversalStep) Dedup() *FlowTraversalStep {
-	flowset := flow.NewFlowSet()
-	flowset.Start = f.flowset.Start
-	flowset.End = f.flowset.End
+	f.flowset.Dedup()
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset}
+}
 
-	uuids := make(map[string]bool)
-	for _, flow := range f.flowset.Flows {
-		if _, ok := uuids[flow.TrackingID]; ok {
-			continue
-		}
-
-		flowset.Flows = append(flowset.Flows, flow)
-		uuids[flow.TrackingID] = true
-	}
-
-	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: flowset}
+func (f *FlowTraversalStep) Sort() *FlowTraversalStep {
+	f.flowset.Sort()
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset}
 }
 
 func (f *FlowTraversalStep) Values() []interface{} {
@@ -514,8 +506,17 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowSearchQuery := &flow.FlowSearchQuery{Filter: paramsFilter, Range: interval, Sorted: s.context.StepContext.Sort}
+			flowSearchQuery := &flow.FlowSearchQuery{
+				Filter: paramsFilter,
+				Range:  interval,
+				Sort:   s.context.StepContext.Sort,
+				Dedup:  s.context.StepContext.Dedup,
+			}
 			flowset, err = s.TableClient.LookupFlows(flowSearchQuery)
+		}
+
+		if r := s.context.StepContext.Range; r != nil {
+			flowset.Slice(int(r[0]), int(r[1]))
 		}
 	case *traversal.GraphTraversalV:
 		graphTraversal = tv.GraphTraversal
@@ -537,19 +538,17 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				flowset.Flows = append(flowset.Flows, flows...)
 			}
 		} else {
-			flowSearchQuery := &flow.FlowSearchQuery{Filter: paramsFilter, Range: interval, Sorted: s.context.StepContext.Sort}
+			flowSearchQuery := &flow.FlowSearchQuery{
+				Filter: paramsFilter,
+				Range:  interval,
+				Sort:   s.context.StepContext.Sort,
+				Dedup:  s.context.StepContext.Dedup,
+			}
 			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, flowSearchQuery)
 		}
 
 		if r := s.context.StepContext.Range; r != nil {
-			from, to := int(r[0]), int(r[1]+1)
-			if from > len(flowset.Flows) {
-				from = len(flowset.Flows)
-			}
-			if to > len(flowset.Flows) {
-				to = len(flowset.Flows)
-			}
-			flowset.Flows = flowset.Flows[from:to]
+			flowset.Slice(int(r[0]), int(r[1]))
 		}
 	default:
 		return nil, traversal.ExecutionError
@@ -569,7 +568,13 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 		return s
 	}
 
-	if _, s.context.StepContext.Sort = next.(*traversal.GremlinTraversalStepSort); s.context.StepContext.Sort {
+	if _, ok := next.(*traversal.GremlinTraversalStepSort); ok {
+		s.context.StepContext.Sort = true
+		return s
+	}
+
+	if _, ok := next.(*traversal.GremlinTraversalStepDedup); ok {
+		s.context.StepContext.Dedup = true
 		return s
 	}
 

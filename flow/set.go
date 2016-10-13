@@ -24,6 +24,7 @@ package flow
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -37,44 +38,136 @@ type FlowSetBandwidth struct {
 	NBFlow    uint64
 }
 
+type MergeContext struct {
+	Sorted bool
+	Dedup  bool
+}
+
+type sortByLast []*Flow
+
 func NewFlowSet() *FlowSet {
 	return &FlowSet{
 		Flows: make([]*Flow, 0),
 	}
 }
 
-func (fs *FlowSet) Merge(ofs *FlowSet, sorted bool) {
+func (fs *FlowSet) Merge(ofs *FlowSet, context MergeContext) {
 	fs.Start = common.MinInt64(fs.Start, ofs.Start)
 	if fs.Start == 0 {
 		fs.Start = ofs.Start
 	}
 	fs.End = common.MaxInt64(fs.End, ofs.End)
 
-	if sorted {
-		fs.Flows = fs.mergeFlows(fs.Flows, ofs.Flows)
+	if context.Sorted {
+		fs.Flows = fs.mergeFlows(fs.Flows, ofs.Flows, context)
+	} else if context.Dedup {
+		uuids := make(map[string]bool)
+		for _, flow := range fs.Flows {
+			uuids[flow.TrackingID] = true
+		}
+
+		for _, flow := range ofs.Flows {
+			if !uuids[flow.TrackingID] {
+				fs.Flows = append(fs.Flows, flow)
+			}
+		}
 	} else {
 		fs.Flows = append(fs.Flows, ofs.Flows...)
 	}
 }
 
-func (fs *FlowSet) mergeFlows(left, right []*Flow) []*Flow {
-	ret := make([]*Flow, 0, len(left)+len(right))
+func (fs *FlowSet) mergeFlows(left, right []*Flow, context MergeContext) []*Flow {
+	var ret []*Flow
+
+	if !context.Dedup {
+		ret = make([]*Flow, 0, len(left)+len(right))
+	}
+
+	uuids := make(map[string]bool)
 	for len(left) > 0 || len(right) > 0 {
 		if len(left) == 0 {
+			if context.Dedup {
+				for _, flow := range right {
+					if !uuids[flow.TrackingID] {
+						ret = append(ret, flow)
+						uuids[flow.TrackingID] = true
+					}
+				}
+				return ret
+			}
 			return append(ret, right...)
 		}
 		if len(right) == 0 {
+			if context.Dedup {
+				for _, flow := range left {
+					if !uuids[flow.TrackingID] {
+						ret = append(ret, flow)
+						uuids[flow.TrackingID] = true
+					}
+				}
+				return ret
+			}
 			return append(ret, left...)
 		}
-		if left[0].Metric.Last >= right[0].Metric.Last {
-			ret = append(ret, left[0])
+
+		lf, rf := left[0], right[0]
+		if lf.Metric.Last >= rf.Metric.Last {
+			if !context.Dedup || !uuids[lf.TrackingID] {
+				ret = append(ret, lf)
+				uuids[lf.TrackingID] = true
+			}
 			left = left[1:]
 		} else {
-			ret = append(ret, right[0])
+			if !context.Dedup || !uuids[rf.TrackingID] {
+				ret = append(ret, rf)
+				uuids[rf.TrackingID] = true
+			}
 			right = right[1:]
 		}
 	}
 	return ret
+}
+
+func (fs *FlowSet) Slice(from, to int) {
+	if from > len(fs.Flows) {
+		from = len(fs.Flows)
+	}
+	if to > len(fs.Flows) {
+		to = len(fs.Flows)
+	}
+
+	fs.Flows = fs.Flows[from:to]
+}
+
+func (fs *FlowSet) Dedup() {
+	var deduped []*Flow
+
+	uuids := make(map[string]bool)
+	for _, flow := range fs.Flows {
+		if _, ok := uuids[flow.TrackingID]; ok {
+			continue
+		}
+
+		deduped = append(deduped, flow)
+		uuids[flow.TrackingID] = true
+	}
+	fs.Flows = deduped
+}
+
+func (s sortByLast) Len() int {
+	return len(s)
+}
+
+func (s sortByLast) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s sortByLast) Less(i, j int) bool {
+	return s[i].Metric.Last > s[j].Metric.Last
+}
+
+func (fs *FlowSet) Sort() {
+	sort.Sort(sortByLast(fs.Flows))
 }
 
 func (fs *FlowSet) AvgBandwidth() (fsbw FlowSetBandwidth) {

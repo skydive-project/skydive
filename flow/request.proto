@@ -97,7 +97,8 @@ message Range {
 message FlowSearchQuery {
   Filter Filter = 1;
   Range Range = 2;
-  bool Sorted = 3;
+  bool Sort = 3;
+  bool Dedup = 4;
 }
 
 message FlowSearchReply {

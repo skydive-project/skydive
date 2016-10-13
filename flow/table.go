@@ -25,7 +25,6 @@ package flow
 import (
 	"fmt"
 	"net/http"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -48,8 +47,6 @@ type TableReply struct {
 	Status int
 	Obj    [][]byte
 }
-
-type sortByLast []*Flow
 
 type ExpireUpdateFunc func(f []*Flow)
 
@@ -362,18 +359,6 @@ func (ft *Table) Flush() {
 	<-ft.flushDone
 }
 
-func (s sortByLast) Len() int {
-	return len(s)
-}
-
-func (s sortByLast) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s sortByLast) Less(i, j int) bool {
-	return s[i].Metric.Last > s[j].Metric.Last
-}
-
 func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchReply, int) {
 	flowset := ft.GetFlows(fsq)
 	if len(flowset.Flows) == 0 {
@@ -382,8 +367,8 @@ func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchRepl
 		}, http.StatusNoContent
 	}
 
-	if fsq.Sorted {
-		sort.Sort(sortByLast(flowset.Flows))
+	if fsq.Sort {
+		flowset.Sort()
 	}
 
 	return &FlowSearchReply{

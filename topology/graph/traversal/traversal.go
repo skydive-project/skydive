@@ -42,6 +42,7 @@ type GraphTraversalStep interface {
 type GraphStepContext struct {
 	Range *GraphTraversalRange
 	Sort  bool
+	Dedup bool
 }
 
 func (r *GraphTraversalRange) Iterator() *common.Iterator {

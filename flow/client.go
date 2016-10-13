@@ -101,14 +101,15 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 		}
 
 		fs := NewFlowSet()
+
+		context := MergeContext{Sorted: flowSearchQuery.Sort, Dedup: flowSearchQuery.Dedup}
 		for _, b := range reply.Obj {
 			var fsr FlowSearchReply
 			if err := proto.Unmarshal(b, &fsr); err != nil {
 				logging.GetLogger().Errorf("Unable to decode flow search reply from: %s", host)
 				continue
 			}
-
-			fs.Merge(fsr.FlowSet, flowSearchQuery.Sorted)
+			fs.Merge(fsr.FlowSet, context)
 		}
 		flowset <- fs
 
@@ -130,9 +131,11 @@ func (f *TableClient) LookupFlows(flowSearchQuery *FlowSearchQuery) (*FlowSet, e
 	}
 
 	flowset := NewFlowSet()
+
+	context := MergeContext{Sorted: flowSearchQuery.Sort, Dedup: flowSearchQuery.Dedup}
 	for i := 0; i != len(clients); i++ {
 		fs := <-ch
-		flowset.Merge(fs, flowSearchQuery.Sorted)
+		flowset.Merge(fs, context)
 	}
 
 	return flowset, nil
@@ -157,15 +160,17 @@ func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, flowSearchQuery *F
 			BoolFilter: andFilter,
 		}
 
-		var fsq FlowSearchQuery = *flowSearchQuery
+		fsq := *flowSearchQuery
 		fsq.Filter = queryFilter
 		go f.lookupFlows(ch, host, &fsq)
 	}
 
 	flowset := NewFlowSet()
+
+	context := MergeContext{Sorted: flowSearchQuery.Sort, Dedup: flowSearchQuery.Dedup}
 	for i := 0; i != len(hnmap); i++ {
 		fs := <-ch
-		flowset.Merge(fs, flowSearchQuery.Sorted)
+		flowset.Merge(fs, context)
 	}
 
 	return flowset, nil
