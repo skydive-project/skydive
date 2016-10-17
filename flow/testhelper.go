@@ -45,6 +45,7 @@ const (
 	IPv6
 	TCP
 	UDP
+	GRE
 )
 
 /* protos must contain a UDP or TCP layer on top of IPv4 */
@@ -56,6 +57,17 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 
 	for i, proto := range protos {
 		switch proto {
+		case GRE:
+			var ethernetType layers.EthernetType
+			switch protos[i+1]{
+			case IPv4: ethernetType = layers.EthernetTypeIPv4
+			default:
+				t.Error(fmt.Sprintf("Protocol %s can not be encapsulated in GRE", protos[i+1]))
+			}
+			greLayer := &layers.GRE{
+				Protocol: ethernetType,
+			}
+			protoStack = append(protoStack, greLayer)
 		case ETH:
 			ethernetLayer := &layers.Ethernet{
 				SrcMAC:       net.HardwareAddr{0x00, 0x0F, 0xAA, 0xFA, 0xAA, byte(rnd.Intn(0x100))},
@@ -76,6 +88,8 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 				ipv4Layer.Protocol = layers.IPProtocolTCP
 			case UDP:
 				ipv4Layer.Protocol = layers.IPProtocolUDP
+			case GRE:
+				ipv4Layer.Protocol = layers.IPProtocolGRE
 			}
 			if swap {
 				ipv4Layer.SrcIP, ipv4Layer.DstIP = ipv4Layer.DstIP, ipv4Layer.SrcIP
