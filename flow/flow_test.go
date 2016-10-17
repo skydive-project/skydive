@@ -30,6 +30,16 @@ import (
 	v "github.com/gima/govalid/v1"
 )
 
+func TestFlowEncaspulation(t *testing.T) {
+	table := NewTable(nil, nil)
+	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, GRE, IPv4, TCP)
+	FlowsFromGoPacket(table, packet, 0, nil)
+	flows := table.GetFlows(nil).GetFlows()
+	if len(flows) != 3 {
+		t.Error("An encapsulated encaspsulated packet must generate 3 flows")
+	}
+}
+
 func TestFlowJSON(t *testing.T) {
 	f := Flow{
 		UUID:       "uuid-1",
