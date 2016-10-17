@@ -135,7 +135,8 @@ func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, uuid 
 		} else {
 			packet = forgeTestPacket(t, i+baseSeed*10, swap, ETH, IPv4, UDP)
 		}
-		flow := FlowFromGoPacket(ft, packet, 0, &probeNodeSetter{uuid})
+
+		flow := flowFromGoPacket(ft, packet, int64(len((*packet).Data())), &probeNodeSetter{uuid})
 		if flow == nil {
 			t.Fail()
 		}

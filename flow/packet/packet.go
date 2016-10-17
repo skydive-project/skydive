@@ -37,3 +37,11 @@ func IsMulticastMac(mac string) bool {
 func IsBroadcastMac(mac string) bool {
 	return mac == "ff:ff:ff:ff:ff:ff"
 }
+
+func IsMulticastIP(ip string) bool {
+	netip := net.ParseIP(ip)
+	if netip == nil {
+		return false
+	}
+	return netip.IsMulticast()
+}

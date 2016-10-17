@@ -98,7 +98,7 @@ func (p *GoPacketProbe) start() {
 		select {
 		case packet, ok := <-ch:
 			if ok {
-				flow.FlowFromGoPacket(p.flowTable, &packet, 0, p)
+				flow.FlowsFromGoPacket(p.flowTable, &packet, 0, p)
 			}
 		case <-timer.C:
 		}

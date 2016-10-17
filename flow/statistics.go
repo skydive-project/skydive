@@ -58,7 +58,11 @@ func (f *Flow) Init(now int64, packet *gopacket.Packet, length int64) {
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
 	f.Metric.Last = now
 
-	_, err := f.updateLinkLayer(packet, length)
+	payloadLen, err := f.updateLinkLayer(packet, length)
+	if err != nil {
+		return
+	}
+	_, err = f.updateNetworkLayer(packet, payloadLen)
 	if err != nil {
 		return
 	}
@@ -93,7 +97,8 @@ func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) (int64, error
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
-		return 0, errors.New("Unable to decode the ethernet layer")
+		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
+		return length, nil
 	}
 
 	f.Link = &FlowLayer{
@@ -105,11 +110,11 @@ func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) (int64, error
 }
 
 func (f *Flow) updateLinkLayer(packet *gopacket.Packet, length int64) (int64, error) {
-	fl := f.Link
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
-		return 0, errors.New("Unable to decode the ethernet layer")
+		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
+		return length, nil
 	}
 
 	// if the length is given use it as the packet can be truncated like in SFlow
@@ -121,7 +126,7 @@ func (f *Flow) updateLinkLayer(packet *gopacket.Packet, length int64) (int64, er
 		}
 	}
 
-	if fl.A == ethernetPacket.SrcMAC.String() {
+	if f.Link.A == ethernetPacket.SrcMAC.String() {
 		f.Metric.ABPackets += int64(1)
 		f.Metric.ABBytes += length
 	} else {
@@ -140,7 +145,7 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet, length int64) (int64, er
 			A:        ipv4Packet.SrcIP.String(),
 			B:        ipv4Packet.DstIP.String(),
 		}
-		return length - int64(len(ipv4Packet.Contents)), nil
+		return f.updateNetworkLayer(packet, length)
 	}
 
 	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
@@ -150,9 +155,40 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet, length int64) (int64, er
 			A:        ipv6Packet.SrcIP.String(),
 			B:        ipv6Packet.DstIP.String(),
 		}
-		return length - int64(len(ipv6Packet.Contents)), nil
+		return f.updateNetworkLayer(packet, length)
 	}
 
+	return 0, errors.New("Unable to decode the IP layer")
+}
+
+func (f *Flow) updateNetworkLayer(packet *gopacket.Packet, length int64) (int64, error) {
+	// bypass if a Link layer already exist
+	if f.Link != nil {
+		return length, nil
+	}
+
+	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+		if f.Network.A == ipv4Packet.SrcIP.String() {
+			f.Metric.ABPackets += int64(1)
+			f.Metric.ABBytes += length
+		} else {
+			f.Metric.BAPackets += int64(1)
+			f.Metric.BABytes += length
+		}
+		return length - int64(len(ipv4Packet.Contents)), nil
+	}
+	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
+	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+		if f.Network.A == ipv6Packet.SrcIP.String() {
+			f.Metric.ABPackets += int64(1)
+			f.Metric.ABBytes += length
+		} else {
+			f.Metric.BAPackets += int64(1)
+			f.Metric.BABytes += length
+		}
+		return length - int64(len(ipv6Packet.Contents)), nil
+	}
 	return 0, errors.New("Unable to decode the IP layer")
 }
 
