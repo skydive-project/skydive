@@ -113,6 +113,19 @@ func (p *GoPacketProbe) stop() {
 	}
 }
 
+func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
+	switch n.Metadata()["Type"] {
+	case "bridge", "bond", "can", "dummy", "hsr", "ifb", "macvlan", "macvtap",
+		"veth", "vlan", "vxlan", "gretap", "ip6gretap", "geneve":
+		return layers.LayerTypeEthernet
+	case "ipoib", "vcan", "ipip", "ipvlan", "lowpan":
+		return layers.LayerTypeIPv4
+	case "ip6tnl", "ip6gre", "sit":
+		return layers.LayerTypeIPv6
+	}
+	return layers.LayerTypeEthernet
+}
+
 func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	name, ok := n.Metadata()["Name"]
 	if !ok || name == "" {
@@ -177,7 +190,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 		}
 
 		probe.handle = handle
-		probe.packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeEthernet)
+		probe.packetSource = gopacket.NewPacketSource(handle, getGoPacketFirstLayerType(n))
 
 		logging.GetLogger().Infof("PCAP Capture type %s started on %s", capture.Type, n.Metadata()["Name"])
 	default:
@@ -195,7 +208,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 		}
 
 		probe.handle = handle
-		probe.packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeEthernet)
+		probe.packetSource = gopacket.NewPacketSource(handle, getGoPacketFirstLayerType(n))
 
 		logging.GetLogger().Infof("AfPacket Capture started on %s", n.Metadata()["Name"])
 	}
