@@ -30,6 +30,48 @@ import (
 	v "github.com/gima/govalid/v1"
 )
 
+func TestFlowSimple(t *testing.T) {
+	table := NewTable(nil, nil)
+	packet := forgeTestPacket(t, 64, false, IPv4, TCP)
+	FlowsFromGoPacket(table, packet, 0, nil)
+	flows := table.GetFlows(nil).GetFlows()
+	if len(flows) != 1 {
+		t.Error("A single packet must generate 1 flow")
+	}
+	if flows[0].LayersPath != "IPv4/TCP/Payload" {
+		t.Error("Flow LayersPath must be IPv4/TCP/Payload")
+	}
+}
+
+func TestFlowParentUUID(t *testing.T) {
+	table := NewTable(nil, nil)
+	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, UDP)
+	flows := FlowsFromGoPacket(table, packet, 0, nil)
+	flowsTable := table.GetFlows(nil).GetFlows()
+	if len(flowsTable) != 2 {
+		t.Error("An encapsulated encaspsulated packet must generate 2 flows")
+	}
+	if flows[1].ParentUUID != flows[0].UUID {
+		t.Errorf("Encapsulated flow must have ParentUUID == %s", flows[0].UUID)
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/GRE" || flows[1].LayersPath != "IPv4/UDP/Payload" {
+		t.Errorf("Flows LayersPath must be Ethernet/IPv4/GRE | IPv4/UDP/Payload")
+	}
+}
+
+func TestFlowEncaspulation(t *testing.T) {
+	table := NewTable(nil, nil)
+	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, GRE, IPv4, TCP)
+	flows := FlowsFromGoPacket(table, packet, 0, nil)
+	flowsTable := table.GetFlows(nil).GetFlows()
+	if len(flowsTable) != 3 {
+		t.Error("An encapsulated encaspsulated packet must generate 3 flows")
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/GRE" || flows[1].LayersPath != "IPv4/GRE" || flows[2].LayersPath != "IPv4/TCP/Payload" {
+		t.Errorf("Flows LayersPath must be Ethernet/IPv4/GRE | IPv4/GRE | IPv4/TCP/Payload")
+	}
+}
+
 func TestFlowJSON(t *testing.T) {
 	f := Flow{
 		UUID:       "uuid-1",

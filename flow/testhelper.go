@@ -45,17 +45,28 @@ const (
 	IPv6
 	TCP
 	UDP
+	GRE
 )
 
 /* protos must contain a UDP or TCP layer on top of IPv4 */
 func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType) *gopacket.Packet {
 	rnd := rand.New(rand.NewSource(seed))
-
 	rawBytes := []byte{10, 20, 30}
 	var protoStack []gopacket.SerializableLayer
 
 	for i, proto := range protos {
 		switch proto {
+		case GRE:
+			greLayer := &layers.GRE{}
+			switch protos[i+1] {
+			case IPv4:
+				greLayer.Protocol = layers.EthernetTypeIPv4
+			case IPv6:
+				greLayer.Protocol = layers.EthernetTypeIPv6
+			default:
+				t.Error(fmt.Sprintf("Protocol %s can not be encapsulated in GRE", protos[i+1]))
+			}
+			protoStack = append(protoStack, greLayer)
 		case ETH:
 			ethernetLayer := &layers.Ethernet{
 				SrcMAC:       net.HardwareAddr{0x00, 0x0F, 0xAA, 0xFA, 0xAA, byte(rnd.Intn(0x100))},
@@ -76,6 +87,8 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 				ipv4Layer.Protocol = layers.IPProtocolTCP
 			case UDP:
 				ipv4Layer.Protocol = layers.IPProtocolUDP
+			case GRE:
+				ipv4Layer.Protocol = layers.IPProtocolGRE
 			}
 			if swap {
 				ipv4Layer.SrcIP, ipv4Layer.DstIP = ipv4Layer.DstIP, ipv4Layer.SrcIP
@@ -83,8 +96,8 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 			protoStack = append(protoStack, ipv4Layer)
 		case TCP:
 			tcpLayer := &layers.TCP{
-				SrcPort: layers.TCPPort(byte(rnd.Intn(0x10000))),
-				DstPort: layers.TCPPort(byte(rnd.Intn(0x10000))),
+				SrcPort: layers.TCPPort(uint16(1024 + rnd.Intn(0x10000-1024))),
+				DstPort: layers.TCPPort(uint16(1024 + rnd.Intn(0x10000-1024))),
 			}
 			if swap {
 				tcpLayer.SrcPort, tcpLayer.DstPort = tcpLayer.DstPort, tcpLayer.SrcPort
@@ -92,8 +105,8 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 			protoStack = append(protoStack, tcpLayer)
 		case UDP:
 			udpLayer := &layers.UDP{
-				SrcPort: layers.UDPPort(byte(rnd.Intn(0x10000))),
-				DstPort: layers.UDPPort(byte(rnd.Intn(0x10000))),
+				SrcPort: layers.UDPPort(uint16(1024 + rnd.Intn(0x10000-1024))),
+				DstPort: layers.UDPPort(uint16(1024 + rnd.Intn(0x10000-1024))),
 			}
 			if swap {
 				udpLayer.SrcPort, udpLayer.DstPort = udpLayer.DstPort, udpLayer.SrcPort
@@ -113,7 +126,14 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 		t.Fail()
 	}
 
-	gpacket := gopacket.NewPacket(buffer.Bytes(), layers.LayerTypeEthernet, gopacket.Default)
+	firstLayerType := layers.LayerTypeEthernet
+	switch protos[0] {
+	case IPv4:
+		firstLayerType = layers.LayerTypeIPv4
+	case IPv6:
+		firstLayerType = layers.LayerTypeIPv6
+	}
+	gpacket := gopacket.NewPacket(buffer.Bytes(), firstLayerType, gopacket.Default)
 	return &gpacket
 }
 
