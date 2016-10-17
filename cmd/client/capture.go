@@ -146,7 +146,7 @@ func addCaptureFlags(cmd *cobra.Command) {
 	types := []string{}
 	found := map[string]bool{}
 	for _, v := range common.CaptureTypes {
-		for _, t := range v["allowed"] {
+		for _, t := range v.Allowed {
 			if found[t] != true {
 				found[t] = true
 				types = append(types, t)

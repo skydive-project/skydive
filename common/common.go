@@ -34,17 +34,36 @@ const (
 	StoppingState
 )
 
+type CaptureType struct {
+	Allowed []string
+	Default string
+}
+
 var (
 	CantCompareInterface error = errors.New("Can't compare interface")
-	CaptureTypes               = map[string]map[string][]string{
-		"ovsbridge": {"allowed": {"ovssflow"}, "default": {"ovssflow"}},
-		"device":    {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
-		"internal":  {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
-		"veth":      {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
-		"tun":       {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
-		"bridge":    {"allowed": {"afpacket", "pcap"}, "default": {"afpacket"}},
-	}
+	CaptureTypes               = map[string]CaptureType{}
 )
+
+func initCaptureTypes() {
+	// add ovs type
+	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow"}, Default: "ovssflow"}
+
+	// anything else will be handled by gopacket
+	types := []string{
+		"device", "internal", "veth", "tun", "bridge", "dummy", "gre",
+		"bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan",
+		"gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan",
+		"lowpan", "ip6tnl", "ip6gre", "sit",
+	}
+
+	for _, t := range types {
+		CaptureTypes[t] = CaptureType{Allowed: []string{"afpacket", "pcap"}, Default: "afpacket"}
+	}
+}
+
+func init() {
+	initCaptureTypes()
+}
 
 func toInt64(i interface{}) (int64, error) {
 	switch i.(type) {

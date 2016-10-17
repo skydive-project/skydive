@@ -57,7 +57,7 @@ func (o *OnDemandProbeListener) isActive(n *graph.Node) bool {
 func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) *FlowProbe {
 	capType := ""
 	if capture.Type != "" {
-		types := common.CaptureTypes[n.Metadata()["Type"].(string)]["allowed"]
+		types := common.CaptureTypes[n.Metadata()["Type"].(string)].Allowed
 		for _, t := range types {
 			if t == capture.Type {
 				capType = t
@@ -68,7 +68,7 @@ func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) *F
 			return nil
 		}
 	} else {
-		capType = common.CaptureTypes[n.Metadata()["Type"].(string)]["default"][0]
+		capType = common.CaptureTypes[n.Metadata()["Type"].(string)].Default
 	}
 	probe := o.Probes.GetProbe(capType)
 	if probe == nil {
