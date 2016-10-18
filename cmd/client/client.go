@@ -77,4 +77,5 @@ func init() {
 	Client.AddCommand(CaptureCmd)
 	Client.AddCommand(TopologyCmd)
 	Client.AddCommand(ShellCmd)
+	Client.AddCommand(PacketInjectorCmd)
 }

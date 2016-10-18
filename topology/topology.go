@@ -24,7 +24,11 @@ package topology
 
 import (
 	"fmt"
+	"runtime"
 
+	"github.com/vishvananda/netns"
+
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -57,4 +61,47 @@ func GraphPath(g *graph.Graph, n *graph.Node) string {
 		return NodePath(nodes).Marshal()
 	}
 	return ""
+}
+
+func SetNetNSByNode(g *graph.Graph, n *graph.Node) (netns.NsHandle, netns.NsHandle, error) {
+	name, ok := n.Metadata()["Name"]
+	if !ok || name == "" {
+		return 0, 0, fmt.Errorf("No name for node %v", n)
+	}
+	ifName := name.(string)
+
+	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
+	if len(nodes) == 0 {
+		return 0, 0, fmt.Errorf("Failed to determine probePath for %s", ifName)
+	}
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	origns, err := netns.Get()
+	if err != nil {
+		return 0, 0, fmt.Errorf("Error while getting current ns: %s", err.Error())
+	}
+	defer origns.Close()
+
+	var newns netns.NsHandle
+	for _, node := range nodes {
+		if node.Metadata()["Type"] == "netns" {
+			name := node.Metadata()["Name"].(string)
+			path := node.Metadata()["Path"].(string)
+			logging.GetLogger().Debugf("Switching to namespace %s (path: %s)", name, path)
+
+			newns, err = netns.GetFromPath(path)
+			if err != nil {
+				return 0, 0, fmt.Errorf("Error while opening ns %s (path: %s): %s", name, path, err.Error())
+			}
+
+			if err := netns.Set(newns); err != nil {
+				return 0, 0, fmt.Errorf("Error while switching from root ns to %s (path: %s): %s", name, path, err.Error())
+			}
+			break
+		}
+	}
+
+	return newns, origns, nil
 }

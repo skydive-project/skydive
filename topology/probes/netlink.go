@@ -250,7 +250,7 @@ func (u *NetLinkProbe) getLinkIPs(link netlink.Link, family int) string {
 		ips = append(ips, addr.IPNet.String())
 	}
 
-	return strings.Join(ips, ", ")
+	return strings.Join(ips, ",")
 }
 
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {

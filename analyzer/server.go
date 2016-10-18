@@ -38,6 +38,7 @@ import (
 	"github.com/skydive-project/skydive/flow/mappings"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/storage"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
 	"github.com/skydive-project/skydive/storage/orientdb"
@@ -281,6 +282,8 @@ func NewServerFromConfig() (*Server, error) {
 
 	tableClient := flow.NewTableClient(wsServer)
 
+	piClient := packet_injector.NewPacketInjectorClient(wsServer)
+
 	server := &Server{
 		HTTPServer:          httpServer,
 		WSServer:            wsServer,
@@ -301,6 +304,8 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterTopologyApi("analyzer", g, httpServer, tableClient, server.Storage)
 
 	api.RegisterFlowApi("analyzer", flowtable, server.Storage, httpServer)
+
+	api.RegisterPacketInjectorApi("analyzer", piClient, g, httpServer)
 
 	return server, nil
 }

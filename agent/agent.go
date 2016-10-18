@@ -38,6 +38,7 @@ import (
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	tprobes "github.com/skydive-project/skydive/topology/probes"
@@ -123,6 +124,8 @@ func (a *Agent) Start() {
 
 			// expose a flow server through the client connection
 			flow.NewServer(a.FlowTableAllocator, a.WSClient)
+
+			packet_injector.NewServer(a.WSClient, a.Graph)
 
 			a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator)
 			a.FlowProbeBundle.Start()
