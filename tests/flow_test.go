@@ -1257,6 +1257,15 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 }
 
 func TestFlowGRETunnel(t *testing.T) {
+	testFlowTunnel(t, "gre")
+}
+
+func TestFlowVxlanTunnel(t *testing.T) {
+	testFlowTunnel(t, "vxlan")
+}
+
+// tunnelType is gre or vxlan
+func testFlowTunnel(t *testing.T, tunnelType string) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -1268,58 +1277,69 @@ func TestFlowGRETunnel(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	capture1 := api.NewCapture("G.V().Has('Name', 'gre-vm1').Out().Has('Name', 'gre')", "")
+	capture1 := api.NewCapture("G.V().Has('Name', 'tunnel-vm1').Out().Has('Name', 'tunnel')", "")
 	if err := client.Create("capture", capture1); err != nil {
 		t.Fatal(err.Error())
 	}
 
-	capture2 := api.NewCapture("G.V().Has('Name', 'gre-vm2-eth0')", "")
+	capture2 := api.NewCapture("G.V().Has('Name', 'tunnel-vm2-eth0')", "")
 	if err := client.Create("capture", capture2); err != nil {
 		t.Fatal(err.Error())
 	}
-
 	time.Sleep(1 * time.Second)
+
 	setupCmds := []helper.Cmd{
-		{"sudo ovs-vsctl add-br br-gre", true},
+		{"sudo ovs-vsctl add-br br-tunnel", true},
 
-		{"sudo ip netns add gre-vm1", true},
-		{"sudo ip link add gre-vm1-eth0 type veth peer name eth0 netns gre-vm1", true},
-		{"sudo ip link set gre-vm1-eth0 up", true},
+		{"sudo ip netns add tunnel-vm1", true},
+		{"sudo ip link add tunnel-vm1-eth0 type veth peer name eth0 netns tunnel-vm1", true},
+		{"sudo ip link set tunnel-vm1-eth0 up", true},
 
-		{"sudo ip netns exec gre-vm1 ip link set eth0 up", true},
-		{"sudo ip netns exec gre-vm1 ip address add 172.16.0.1/24 dev eth0", true},
+		{"sudo ip netns exec tunnel-vm1 ip link set eth0 up", true},
+		{"sudo ip netns exec tunnel-vm1 ip address add 172.16.0.1/24 dev eth0", true},
 
-		{"sudo ip netns add gre-vm2", true},
-		{"sudo ip link add gre-vm2-eth0 type veth peer name eth0 netns gre-vm2", true},
-		{"sudo ip link set gre-vm2-eth0 up", true},
-		{"sudo ip netns exec gre-vm2 ip link set eth0 up", true},
-		{"sudo ip netns exec gre-vm2 ip address add 172.16.0.2/24 dev eth0", true},
+		{"sudo ip netns add tunnel-vm2", true},
+		{"sudo ip link add tunnel-vm2-eth0 type veth peer name eth0 netns tunnel-vm2", true},
+		{"sudo ip link set tunnel-vm2-eth0 up", true},
+		{"sudo ip netns exec tunnel-vm2 ip link set eth0 up", true},
+		{"sudo ip netns exec tunnel-vm2 ip address add 172.16.0.2/24 dev eth0", true},
 
-		{"sudo ovs-vsctl add-port br-gre gre-vm1-eth0", true},
-		{"sudo ovs-vsctl add-port br-gre gre-vm2-eth0", true},
+		{"sudo ovs-vsctl add-port br-tunnel tunnel-vm1-eth0", true},
+		{"sudo ovs-vsctl add-port br-tunnel tunnel-vm2-eth0", true}}
 
-		{"sudo ip netns exec gre-vm1 ip tunnel add gre mode gre remote 172.16.0.2 local 172.16.0.1 ttl 255", true},
-		{"sudo ip netns exec gre-vm1 ip l set gre up", true},
-		{"sudo ip netns exec gre-vm1 ip link add name dummy0 type dummy", true},
-		{"sudo ip netns exec gre-vm1 ip l set dummy0 up", true},
-		{"sudo ip netns exec gre-vm1 ip a add 192.168.0.1/32 dev dummy0", true},
-		{"sudo ip netns exec gre-vm1 ip r add 192.168.0.0/24 dev gre", true},
-
-		{"sudo ip netns exec gre-vm2 ip tunnel add gre mode gre remote 172.16.0.1 local 172.16.0.2 ttl 255", true},
-		{"sudo ip netns exec gre-vm2 ip l set gre up", true},
-		{"sudo ip netns exec gre-vm2 ip link add name dummy0 type dummy", true},
-		{"sudo ip netns exec gre-vm2 ip l set dummy0 up", true},
-		{"sudo ip netns exec gre-vm2 ip a add 192.168.0.2/32 dev dummy0", true},
-		{"sudo ip netns exec gre-vm2 ip r add 192.168.0.0/24 dev gre", true},
-
-		{"sleep 10", false},
-		{"sudo ip netns exec gre-vm1 ping -c 10 -I 192.168.0.1 192.168.0.2", false},
+	tunnelAdd := ""
+	if tunnelType == "gre" {
+		tunnelAdd = "sudo ip netns exec tunnel-vm1 ip tunnel add tunnel mode gre remote 172.16.0.2 local 172.16.0.1 ttl 255"
+	} else {
+		tunnelAdd = "sudo ip netns exec tunnel-vm1 ip link add tunnel type vxlan id 10 remote 172.16.0.2 local 172.16.0.1 ttl 255 dev eth0 dstport 4789"
 	}
+	setupCmds = append(setupCmds, []helper.Cmd{
+		{tunnelAdd, true},
+		{"sudo ip netns exec tunnel-vm1 ip link set tunnel up", true},
+		{"sudo ip netns exec tunnel-vm1 ip link add name dummy0 type dummy", true},
+		{"sudo ip netns exec tunnel-vm1 ip link set dummy0 up", true},
+		{"sudo ip netns exec tunnel-vm1 ip a add 192.168.0.1/32 dev dummy0", true},
+		{"sudo ip netns exec tunnel-vm1 ip r add 192.168.0.0/24 dev tunnel", true}}...)
+
+	if tunnelType == "gre" {
+		tunnelAdd = "sudo ip netns exec tunnel-vm2 ip tunnel add tunnel mode gre remote 172.16.0.1 local 172.16.0.2 ttl 255"
+	} else {
+		tunnelAdd = "sudo ip netns exec tunnel-vm2 ip link add tunnel type vxlan id 10 remote 172.16.0.1 local 172.16.0.2 ttl 255 dev eth0 dstport 4789"
+	}
+	setupCmds = append(setupCmds, []helper.Cmd{
+		{tunnelAdd, true},
+		{"sudo ip netns exec tunnel-vm2 ip link set tunnel up", true},
+		{"sudo ip netns exec tunnel-vm2 ip link add name dummy0 type dummy", true},
+		{"sudo ip netns exec tunnel-vm2 ip link set dummy0 up", true},
+		{"sudo ip netns exec tunnel-vm2 ip a add 192.168.0.2/32 dev dummy0", true},
+		{"sudo ip netns exec tunnel-vm2 ip r add 192.168.0.0/24 dev tunnel", true},
+		{"sleep 10", false},
+		{"sudo ip netns exec tunnel-vm1 ping -c 5 -I 192.168.0.1 192.168.0.2", false}}...)
 
 	tearDownCmds := []helper.Cmd{
-		{"ip netns del gre-vm1", true},
-		{"ip netns del gre-vm2", true},
-		{"ovs-vsctl del-br br-gre", true},
+		{"ip netns del tunnel-vm1", true},
+		{"ip netns del tunnel-vm2", true},
+		{"ovs-vsctl del-br br-tunnel", true},
 	}
 
 	helper.ExecCmds(t, setupCmds...)
@@ -1327,12 +1347,14 @@ func TestFlowGRETunnel(t *testing.T) {
 
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
-	flowsInnerTunnel := gh.GetFlowsFromGremlinReply(t, `G.V().Has('Name', 'gre-vm1').Out().Has('Name', 'gre').Flows()`)
-	flowsBridge := gh.GetFlowsFromGremlinReply(t, `G.V().Has('Name', 'gre-vm2-eth0').Flows()`)
+	flowsInnerTunnel := gh.GetFlowsFromGremlinReply(t, `G.V().Has('Name', 'tunnel-vm1').Out().Has('Name', 'tunnel').Flows()`)
+	flowsBridge := gh.GetFlowsFromGremlinReply(t, `G.V().Has('Name', 'tunnel-vm2-eth0').Flows()`)
 
 	var TrackID string
 	for _, flow := range flowsInnerTunnel {
-		if flow.LayersPath == "IPv4/ICMPv4/Payload" {
+		// A vxlan innerpacket contains Ethernet while gre
+		// innerpacket does not
+		if strings.Contains(flow.LayersPath, "IPv4/ICMPv4/Payload") {
 			if TrackID != "" {
 				t.Errorf("We should only found one ICMPv4 flow in the tunnel %v", flowsInnerTunnel)
 			}
@@ -1349,7 +1371,7 @@ func TestFlowGRETunnel(t *testing.T) {
 	}
 
 	if !success {
-		t.Errorf("TrackingID not found in GRE tunnel: leaving the gre interface(%v) == seen in the gre tunnel(%v)", flowsInnerTunnel, flowsBridge)
+		t.Errorf("TrackingID not found in %s tunnel: leaving the interface(%v) == seen in the tunnel(%v)", tunnelType, flowsInnerTunnel, flowsBridge)
 	}
 
 	client.Delete("capture", capture1.ID())
