@@ -319,6 +319,10 @@ func Regex(expr string) *RegexMetadataMatcher {
 	return &RegexMetadataMatcher{regexp: r, pattern: expr}
 }
 
+type Since struct {
+	Seconds int64
+}
+
 func SliceToMetadata(s ...interface{}) (graph.Metadata, error) {
 	m := graph.Metadata{}
 	if len(s)%2 != 0 {
@@ -396,6 +400,9 @@ func (t *GraphTraversal) V(ids ...graph.Identifier) *GraphTraversalV {
 
 	if len(ids) > 0 {
 		node := t.Graph.GetNode(ids[0])
+		if node == nil {
+			return &GraphTraversalV{error: fmt.Errorf("Node '%s' does not exist", ids[0])}
+		}
 		nodes = []*graph.Node{node}
 	} else {
 		nodes = t.Graph.GetNodes()
@@ -444,6 +451,15 @@ func (tv *GraphTraversalV) Values() []interface{} {
 
 func (tv *GraphTraversalV) MarshalJSON() ([]byte, error) {
 	return json.Marshal(tv.Values())
+}
+
+func (tv *GraphTraversalV) GetNodes() (nodes []*graph.Node) {
+	for _, node := range tv.nodes {
+		if t, ok := node.Metadata()["Type"]; ok && common.IsCaptureAllowed(t.(string)) {
+			nodes = append(nodes, node)
+		}
+	}
+	return
 }
 
 func (tv *GraphTraversalV) Dedup() *GraphTraversalV {

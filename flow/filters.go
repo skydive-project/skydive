@@ -57,42 +57,42 @@ func (f *Filter) Eval(flow *Flow) bool {
 	return true
 }
 
-func (f *Filter) Expression() string {
+func (f *Filter) Expression(prefix string) string {
 	if f.BoolFilter != nil {
-		return f.BoolFilter.Expression()
+		return f.BoolFilter.Expression(prefix)
 	}
 	if f.TermStringFilter != nil {
-		return f.TermStringFilter.Expression()
+		return f.TermStringFilter.Expression(prefix)
 	}
 	if f.TermInt64Filter != nil {
-		return f.TermInt64Filter.Expression()
+		return f.TermInt64Filter.Expression(prefix)
 	}
 	if f.GtInt64Filter != nil {
-		return f.GtInt64Filter.Expression()
+		return f.GtInt64Filter.Expression(prefix)
 	}
 	if f.LtInt64Filter != nil {
-		return f.LtInt64Filter.Expression()
+		return f.LtInt64Filter.Expression(prefix)
 	}
 	if f.GteInt64Filter != nil {
-		return f.GteInt64Filter.Expression()
+		return f.GteInt64Filter.Expression(prefix)
 	}
 	if f.LteInt64Filter != nil {
-		return f.LteInt64Filter.Expression()
+		return f.LteInt64Filter.Expression(prefix)
 	}
 	if f.RegexFilter != nil {
-		return f.RegexFilter.Expression()
+		return f.RegexFilter.Expression(prefix)
 	}
 
 	return ""
 }
 
-func (b *BoolFilter) Expression() string {
+func (b *BoolFilter) Expression(prefix string) string {
 	keyword := ""
 	switch b.Op {
 	case BoolFilterOp_NOT:
 		// FIX not yet implemented for the orientdb backend
 		// http://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
-		return "NOT " + b.Filters[0].Expression()
+		return "NOT " + b.Filters[0].Expression(prefix)
 	case BoolFilterOp_OR:
 		keyword = "OR"
 	case BoolFilterOp_AND:
@@ -100,7 +100,7 @@ func (b *BoolFilter) Expression() string {
 	}
 	var conditions []string
 	for _, item := range b.Filters {
-		conditions = append(conditions, "("+item.Expression()+")")
+		conditions = append(conditions, "("+item.Expression(prefix)+")")
 	}
 	return strings.Join(conditions, " "+keyword+" ")
 }
@@ -120,20 +120,20 @@ func (b *BoolFilter) Eval(flow *Flow) bool {
 	return b.Op == BoolFilterOp_AND || len(b.Filters) == 0
 }
 
-func (r *GtInt64Filter) Expression() string {
-	return fmt.Sprintf("%v > %v", r.Key, r.Value)
+func (r *GtInt64Filter) Expression(prefix string) string {
+	return fmt.Sprintf("%v > %v", prefix+r.Key, r.Value)
 }
 
-func (r *LtInt64Filter) Expression() string {
-	return fmt.Sprintf("%v < %v", r.Key, r.Value)
+func (r *LtInt64Filter) Expression(prefix string) string {
+	return fmt.Sprintf("%v < %v", prefix+r.Key, r.Value)
 }
 
-func (r *GteInt64Filter) Expression() string {
-	return fmt.Sprintf("%v >= %v", r.Key, r.Value)
+func (r *GteInt64Filter) Expression(prefix string) string {
+	return fmt.Sprintf("%v >= %v", prefix+r.Key, r.Value)
 }
 
-func (r *LteInt64Filter) Expression() string {
-	return fmt.Sprintf("%v <= %v", r.Key, r.Value)
+func (r *LteInt64Filter) Expression(prefix string) string {
+	return fmt.Sprintf("%v <= %v", prefix+r.Key, r.Value)
 }
 
 func (r *GtInt64Filter) Eval(f *Flow) bool {
@@ -184,8 +184,8 @@ func (r *LteInt64Filter) Eval(f *Flow) bool {
 	return false
 }
 
-func (t *TermStringFilter) Expression() string {
-	return fmt.Sprintf(`%s = "%s"`, t.Key, t.Value)
+func (t *TermStringFilter) Expression(prefix string) string {
+	return fmt.Sprintf(`%s = "%s"`, prefix+t.Key, t.Value)
 }
 
 func (t *TermStringFilter) Eval(f *Flow) bool {
@@ -197,8 +197,8 @@ func (t *TermStringFilter) Eval(f *Flow) bool {
 	return field == t.Value
 }
 
-func (t *TermInt64Filter) Expression() string {
-	return fmt.Sprintf(`%s = %d`, t.Key, t.Value)
+func (t *TermInt64Filter) Expression(prefix string) string {
+	return fmt.Sprintf(`%s = %d`, prefix+t.Key, t.Value)
 }
 
 func (t *TermInt64Filter) Eval(f *Flow) bool {
@@ -210,8 +210,8 @@ func (t *TermInt64Filter) Eval(f *Flow) bool {
 	return field == t.Value
 }
 
-func (r *RegexFilter) Expression() string {
-	return fmt.Sprintf(`%s MATCHES "%s"`, r.Key, r.Value)
+func (r *RegexFilter) Expression(prefix string) string {
+	return fmt.Sprintf(`%s MATCHES "%s"`, prefix+r.Key, r.Value)
 }
 
 func (r *RegexFilter) Eval(f *Flow) bool {
@@ -224,17 +224,36 @@ func (r *RegexFilter) Eval(f *Flow) bool {
 	return re.MatchString(field)
 }
 
-func NewFilterForNodes(uuids []string) *Filter {
-	terms := make([]*Filter, len(uuids)*3)
+func NewBoolFilter(op BoolFilterOp, filters ...*Filter) *Filter {
+	boolFilter := &BoolFilter{
+		Op:      op,
+		Filters: []*Filter{},
+	}
+
+	for _, filter := range filters {
+		if filter != nil {
+			boolFilter.Filters = append(boolFilter.Filters, filter)
+		}
+	}
+
+	return &Filter{BoolFilter: boolFilter}
+}
+
+func NewAndFilter(filters ...*Filter) *Filter {
+	return NewBoolFilter(BoolFilterOp_AND, filters...)
+}
+
+func NewOrFilter(filters ...*Filter) *Filter {
+	return NewBoolFilter(BoolFilterOp_OR, filters...)
+}
+
+func NewFilterForIds(uuids []string, attrs ...string) *Filter {
+	terms := make([]*Filter, len(uuids)*len(attrs))
 	for i, uuid := range uuids {
-		terms[i*3] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "NodeUUID", Value: uuid},
-		}
-		terms[i*3+1] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "ANodeUUID", Value: uuid},
-		}
-		terms[i*3+2] = &Filter{
-			TermStringFilter: &TermStringFilter{Key: "BNodeUUID", Value: uuid},
+		for j, attr := range attrs {
+			terms[i*len(attrs)+j] = &Filter{
+				TermStringFilter: &TermStringFilter{Key: attr, Value: uuid},
+			}
 		}
 	}
 
@@ -244,4 +263,50 @@ func NewFilterForNodes(uuids []string) *Filter {
 			Filters: terms,
 		},
 	}
+}
+
+func NewFilterForNodes(uuids []string) *Filter {
+	return NewFilterForIds(uuids, "NodeUUID", "ANodeUUID", "BNodeUUID")
+}
+
+func NewFilterForRange(fr Range, prefix string) *Filter {
+	andFilter := &BoolFilter{
+		Op: BoolFilterOp_AND,
+		Filters: []*Filter{
+			{
+				GteInt64Filter: &GteInt64Filter{
+					Key:   prefix + "Start",
+					Value: fr.From,
+				},
+			},
+			{
+				LteInt64Filter: &LteInt64Filter{
+					Key:   prefix + "Last",
+					Value: fr.To,
+				},
+			},
+		},
+	}
+	return &Filter{BoolFilter: andFilter}
+}
+
+func NewFilterForTime(t int64, prefix string) *Filter {
+	andFilter := &BoolFilter{
+		Op: BoolFilterOp_AND,
+		Filters: []*Filter{
+			{
+				LteInt64Filter: &LteInt64Filter{
+					Key:   prefix + "Start",
+					Value: t,
+				},
+			},
+			{
+				GteInt64Filter: &GteInt64Filter{
+					Key:   prefix + "Last",
+					Value: t,
+				},
+			},
+		},
+	}
+	return &Filter{BoolFilter: andFilter}
 }

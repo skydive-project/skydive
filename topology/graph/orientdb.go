@@ -30,7 +30,6 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph/gremlin"
 	"github.com/skydive-project/skydive/topology/graph/orientdb"
 )
 
@@ -51,27 +50,27 @@ func graphElementToOrientDBSetString(e graphElement) (s string) {
 }
 
 func metadataToOrientDBSetString(m Metadata) string {
-	properties := []string{}
-	for k, v := range m {
-		encoder := gremlin.GremlinPropertiesEncoder{}
-		encoder.Encode(v)
-		properties = append(properties, fmt.Sprintf("%s = %s", k, encoder.String()))
+	if len(m) > 0 {
+		b, err := json.Marshal(m)
+		if err == nil {
+			return "Metadata = " + string(b)
+		}
 	}
-	return strings.Join(properties, ", ")
+	return ""
 }
 
 func orientDBDocumentToGraphElement(doc orientdb.Document) graphElement {
 	element := graphElement{
+		ID:       Identifier(doc["ID"].(string)),
 		metadata: make(Metadata),
 	}
-	element.ID = Identifier(doc["ID"].(string))
-	delete(doc, "ID")
+
 	if host, ok := doc["Host"]; ok {
 		element.host = host.(string)
-		delete(doc, "Host")
 	}
-	for field, value := range doc {
-		if !strings.HasPrefix(field, "@") && !strings.HasPrefix(field, "_") {
+
+	if metadata, ok := doc["Metadata"]; ok {
+		for field, value := range metadata.(map[string]interface{}) {
 			if n, ok := value.(json.Number); ok {
 				var err error
 				if value, err = n.Int64(); err == nil {
@@ -83,6 +82,7 @@ func orientDBDocumentToGraphElement(doc orientdb.Document) graphElement {
 			element.metadata[field] = value
 		}
 	}
+
 	return element
 }
 
@@ -91,15 +91,11 @@ func graphElementToOrientDBDocument(e graphElement) orientdb.Document {
 	doc["@class"] = "Node"
 	doc["ID"] = e.ID
 	doc["Host"] = e.host
-	for k, v := range e.metadata {
-		doc[k] = v
-	}
+	doc["Metadata"] = e.metadata
 	return doc
 }
 
 func orientDBDocumentToNode(doc orientdb.Document) *Node {
-	delete(doc, "in_Link")
-	delete(doc, "out_Link")
 	return &Node{
 		graphElement: orientDBDocumentToGraphElement(doc),
 	}
@@ -108,21 +104,15 @@ func orientDBDocumentToNode(doc orientdb.Document) *Node {
 func orientDBDocumentToEdge(doc orientdb.Document) *Edge {
 	e := &Edge{}
 
-	if parent, ok := doc["parent"]; ok {
+	if parent, ok := doc["Parent"]; ok {
 		e.parent = Identifier(parent.(string))
-		delete(doc, "parent")
 	}
 
-	if child, ok := doc["child"]; ok {
+	if child, ok := doc["Child"]; ok {
 		e.child = Identifier(child.(string))
-		delete(doc, "child")
 	}
-
-	delete(doc, "in")
-	delete(doc, "out")
 
 	e.graphElement = orientDBDocumentToGraphElement(doc)
-
 	return e
 }
 
@@ -167,7 +157,7 @@ func (o *OrientDBBackend) GetNode(i Identifier, t *time.Time) *Node {
 }
 
 func (o *OrientDBBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edge) {
-	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (parent = '%s' OR child = '%s')", o.getTimeClause(t), n.ID, n.ID)
+	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (Parent = '%s' OR Child = '%s')", o.getTimeClause(t), n.ID, n.ID)
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges for node %s: %s", n.ID, err.Error())
@@ -181,7 +171,7 @@ func (o *OrientDBBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edge) {
 }
 
 func (o *OrientDBBackend) AddEdge(e *Edge) bool {
-	query := fmt.Sprintf("CREATE EDGE Link FROM (SELECT FROM Node WHERE DeletedAt IS NULL AND ID = '%s') TO (SELECT FROM Node WHERE DeletedAt IS NULL AND ID = '%s') SET %s, parent = '%s', child = '%s', CreatedAt = '%s'", e.parent, e.child, graphElementToOrientDBSetString(e.graphElement), e.parent, e.child, time.Now().String())
+	query := fmt.Sprintf("CREATE EDGE Link FROM (SELECT FROM Node WHERE DeletedAt IS NULL AND ID = '%s') TO (SELECT FROM Node WHERE DeletedAt IS NULL AND ID = '%s') SET %s, Parent = '%s', Child = '%s', CreatedAt = '%s' RETRY 100 WAIT 20", e.parent, e.child, graphElementToOrientDBSetString(e.graphElement), e.parent, e.child, time.Now().String())
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s (sql: %s)", e.ID, err.Error(), query)
@@ -243,40 +233,45 @@ func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *time.Time) (n1 *Node, n2 *Nod
 }
 
 func (o *OrientDBBackend) updateGraphElement(i interface{}) bool {
-	success := true
-
 	switch i.(type) {
 	case *Node:
 		node := i.(*Node)
 		now := time.Now()
 		edges := o.GetNodeEdges(node, &now)
-		o.DelNode(node)
-		o.AddNode(node)
+
+		if !o.DelNode(node) {
+			return false
+		}
+
+		if !o.AddNode(node) {
+			return false
+		}
+
 		for _, e := range edges {
 			parent, child := o.GetEdgeNodes(e, &now)
 			if parent == nil || child == nil {
 				continue
 			}
 
-			if success = o.DelEdge(e); !success {
-				break
+			if !o.DelEdge(e) {
+				return false
 			}
 
-			if success = o.AddEdge(e); !success {
-				break
+			if !o.AddEdge(e) {
+				return false
 			}
 		}
 
 	case *Edge:
 		edge := i.(*Edge)
-		if success = o.DelEdge(edge); !success {
-			break
+		if !o.DelEdge(edge) {
+			return false
 		}
 
-		success = o.AddEdge(edge)
+		return o.AddEdge(edge)
 	}
 
-	return success
+	return true
 }
 
 func (o *OrientDBBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
@@ -310,7 +305,7 @@ func (o *OrientDBBackend) GetNodes(t *time.Time) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeClause(t))
 	docs, err := o.client.Sql(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving nodes: %s, %v", err.Error(), docs)
+		logging.GetLogger().Errorf("Error while retrieving nodes: %s (%+v)", err.Error(), docs)
 		return
 	}
 
@@ -325,7 +320,7 @@ func (o *OrientDBBackend) GetEdges(t *time.Time) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeClause(t))
 	docs, err := o.client.Sql(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving edges: %s, %v", err.Error(), docs)
+		logging.GetLogger().Errorf("Error while retrieving edges: %s (%+v)", err.Error(), docs)
 		return
 	}
 
@@ -351,6 +346,7 @@ func NewOrientDBBackend(addr string, database string, username string, password 
 				{Name: "Host", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "CreatedAt", Type: "DATETIME", Mandatory: true, NotNull: true, ReadOnly: true},
 				{Name: "DeletedAt", Type: "DATETIME", NotNull: true},
+				{Name: "Metadata", Type: "EMBEDDEDMAP"},
 			},
 			Indexes: []orientdb.Index{
 				{Name: "Node.TimeSpan", Fields: []string{"CreatedAt", "DeletedAt"}, Type: "NOTUNIQUE"},
@@ -370,8 +366,9 @@ func NewOrientDBBackend(addr string, database string, username string, password 
 				{Name: "Host", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "CreatedAt", Type: "DATETIME", Mandatory: true, NotNull: true, ReadOnly: true},
 				{Name: "DeletedAt", Type: "DATETIME", NotNull: true},
-				{Name: "parent", Type: "STRING", Mandatory: true, NotNull: true},
-				{Name: "child", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "Parent", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "Child", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "Metadata", Type: "EMBEDDEDMAP"},
 			},
 			Indexes: []orientdb.Index{
 				{Name: "Link.TimeSpan", Fields: []string{"CreatedAt", "DeletedAt"}, Type: "NOTUNIQUE"},

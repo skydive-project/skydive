@@ -144,7 +144,8 @@ func TestFlowStorage(t *testing.T) {
 	id := string(node.ID)
 
 	filters := flow.NewFilterForNodes([]string{id})
-	flows, err := aa.Analyzer.Storage.SearchFlows(filters, nil)
+	flowSearchQuery := flow.FlowSearchQuery{Filter: filters}
+	flows, err := aa.Analyzer.Storage.SearchFlows(flowSearchQuery)
 	if err != nil {
 		t.Fatalf("Failed to query flows: %s", err.Error())
 	}

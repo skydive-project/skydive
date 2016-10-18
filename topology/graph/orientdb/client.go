@@ -258,6 +258,33 @@ func (c *Client) CreateDocument(doc Document) (Document, error) {
 	return result, nil
 }
 
+func (c *Client) Upsert(doc Document, key string) (Document, error) {
+	class, ok := doc["@class"]
+	if !ok {
+		return nil, errors.New("A @class property is required for upsert")
+	}
+	delete(doc, "@class")
+
+	id, ok := doc[key]
+	if !ok {
+		return nil, fmt.Errorf("No property '%s' found in document", key)
+	}
+
+	content, err := json.Marshal(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf("UPDATE %s CONTENT %s UPSERT RETURN AFTER @rid WHERE %s = '%s'", class, string(content), key, id)
+	docs, err := c.Sql(query)
+
+	if len(docs) > 0 {
+		return docs[0], err
+	}
+
+	return nil, err
+}
+
 func (c *Client) GetDocumentClass(name string) (*DocumentClass, error) {
 	url := fmt.Sprintf("%s/class/%s/%s", c.url, c.database, name)
 	resp, err := c.Request("GET", url, nil)
@@ -273,44 +300,70 @@ func (c *Client) GetDocumentClass(name string) (*DocumentClass, error) {
 	return &result, nil
 }
 
-func (c *Client) CreateDocumentClass(class ClassDefinition) error {
+func (c *Client) AlterProperty(className string, prop Property) error {
+	alterQuery := fmt.Sprintf("ALTER PROPERTY %s.%s", className, prop.Name)
+	if prop.Mandatory {
+		if _, err := c.Sql(alterQuery + " MANDATORY true"); err != nil && err != io.EOF {
+			return err
+		}
+	}
+	if prop.NotNull {
+		if _, err := c.Sql(alterQuery + " NOTNULL true"); err != nil && err != io.EOF {
+			return err
+		}
+	}
+	if prop.ReadOnly {
+		if _, err := c.Sql(alterQuery + " READONLY true"); err != nil && err != io.EOF {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) CreateProperty(className string, prop Property) error {
+	query := fmt.Sprintf("CREATE PROPERTY %s.%s %s", className, prop.Name, prop.Type)
+	if prop.LinkedClass != "" {
+		query += " " + prop.LinkedClass
+	}
+	if prop.LinkedType != "" {
+		query += " " + prop.LinkedType
+	}
+	if _, err := c.Sql(query); err != nil {
+		return err
+	}
+
+	return c.AlterProperty(className, prop)
+}
+
+func (c *Client) CreateClass(class ClassDefinition) error {
 	query := fmt.Sprintf("CREATE CLASS %s", class.Name)
 	if class.SuperClass != "" {
 		query += " EXTENDS " + class.SuperClass
 	}
 
 	_, err := c.Sql(query)
-	if err != nil {
+	return err
+}
+
+func (c *Client) CreateIndex(className string, index Index) error {
+	query := fmt.Sprintf("CREATE INDEX %s ON %s (%s) %s", index.Name, className, strings.Join(index.Fields, ", "), index.Type)
+	_, err := c.Sql(query)
+	return err
+}
+
+func (c *Client) CreateDocumentClass(class ClassDefinition) error {
+	if err := c.CreateClass(class); err != nil {
 		return err
 	}
 
 	for _, prop := range class.Properties {
-		query = fmt.Sprintf("CREATE PROPERTY %s.%s %s", class.Name, prop.Name, prop.Type)
-		if _, err := c.Sql(query); err != nil {
+		if err := c.CreateProperty(class.Name, prop); err != nil {
 			return err
-		}
-
-		alterQuery := fmt.Sprintf("ALTER PROPERTY %s.%s", class.Name, prop.Name)
-		if prop.Mandatory {
-			if _, err := c.Sql(alterQuery + " MANDATORY true"); err != nil && err != io.EOF {
-				return err
-			}
-		}
-		if prop.NotNull {
-			if _, err := c.Sql(alterQuery + " NOTNULL true"); err != nil && err != io.EOF {
-				return err
-			}
-		}
-		if prop.ReadOnly {
-			if _, err := c.Sql(alterQuery + " READONLY true"); err != nil && err != io.EOF {
-				return err
-			}
 		}
 	}
 
 	for _, index := range class.Indexes {
-		query = fmt.Sprintf("CREATE INDEX %s ON %s (%s) %s", index.Name, class.Name, strings.Join(index.Fields, ", "), index.Type)
-		if _, err := c.Sql(query); err != nil {
+		if err := c.CreateIndex(class.Name, index); err != nil {
 			return err
 		}
 	}

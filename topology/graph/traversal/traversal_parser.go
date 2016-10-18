@@ -136,7 +136,7 @@ func invokeStepFnc(last GraphTraversalStep, name string, gremlinStep GremlinTrav
 		return step, step.Error()
 	}
 
-	return nil, ExecutionError
+	return nil, fmt.Errorf("Invalid step '%s' on '%s'", name, reflect.TypeOf(last))
 }
 
 func (p *GremlinTraversalContext) ReduceRange(next GremlinTraversalStep) bool {
@@ -649,14 +649,27 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 				return nil, err
 			}
 			if len(regexParams) != 1 {
-				return nil, fmt.Errorf("One parameter expected with Regex: %v", regexParams)
+				return nil, fmt.Errorf("One parameter expected with REGEX: %v", regexParams)
 			}
 			switch param := regexParams[0].(type) {
 			case string:
 				params = append(params, Regex(param))
 			default:
-				return nil, fmt.Errorf("Regex predicate expect a string a parameter, got: %s", lit)
+				return nil, fmt.Errorf("REGEX predicate expects a string as parameter, got: %s", lit)
 			}
+		case SINCE:
+			sinceParams, err := p.parseStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(sinceParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with SINCE: %v", sinceParams)
+			}
+			param, ok := sinceParams[0].(int64)
+			if !ok {
+				return nil, fmt.Errorf("SINCE predicate expects a number of second as parameter, got: %s", lit)
+			}
+			params = append(params, Since{param})
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}

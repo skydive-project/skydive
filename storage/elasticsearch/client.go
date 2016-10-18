@@ -32,7 +32,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	elastigo "github.com/mattbaird/elastigo/lib"
+	elastigo "github.com/lebauce/elastigo/lib"
 
 	"github.com/skydive-project/skydive/logging"
 )

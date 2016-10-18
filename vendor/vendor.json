@@ -1188,6 +1188,19 @@
 			"revision": "bb797dc4fb8320488f47bf11de07a733d7233e1f"
 		},
 		{
+			"checksumSHA1": "V5VI2dn9Jv7YVhvvFu/GtulBfP4=",
+			"path": "github.com/lebauce/elastigo",
+			"revision": "83f25ddf31290323a0a9dd72117be65a43705f2f",
+			"revisionTime": "2016-10-25T13:05:53Z"
+		},
+		{
+			"checksumSHA1": "YktYtyOpl+XdSqT56DdJ3cy0t+M=",
+			"comment": "v1.0-258-g451c29b",
+			"path": "github.com/lebauce/elastigo/lib",
+			"revision": "83f25ddf31290323a0a9dd72117be65a43705f2f",
+			"revisionTime": "2016-10-25T13:05:53Z"
+		},
+		{
 			"checksumSHA1": "KCgFx/QQG9vUtshnL9aUxeWGFyY=",
 			"comment": "v1.6.0-1-gc81f9d7",
 			"path": "github.com/magiconair/properties",
@@ -1198,12 +1211,6 @@
 			"comment": "v1.6.0-1-gc81f9d7",
 			"path": "github.com/magiconair/properties/_third_party/gopkg.in/check.v1",
 			"revision": "c81f9d71af8f8cba1466501d30326b99a4e56c19"
-		},
-		{
-			"checksumSHA1": "st9RjPQcOvuww3sh51yCE8lpHRs=",
-			"comment": "v1.0-258-g451c29b",
-			"path": "github.com/mattbaird/elastigo/lib",
-			"revision": "451c29b3ae220cd710294bc3436e293d99491b94"
 		},
 		{
 			"checksumSHA1": "DdH3xAkzAWJ4B/LGYJyCeRsly2I=",

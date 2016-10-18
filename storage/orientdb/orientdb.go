@@ -36,29 +36,32 @@ type OrientDBStorage struct {
 	client *orient.Client
 }
 
+func metricToDocument(metric *flow.FlowMetric) orient.Document {
+	return orient.Document{
+		"@class":    "FlowMetric",
+		"@type":     "d",
+		"Start":     metric.Start,
+		"Last":      metric.Last,
+		"ABPackets": metric.ABPackets,
+		"ABBytes":   metric.ABBytes,
+		"BAPackets": metric.BAPackets,
+		"BABytes":   metric.BABytes,
+	}
+}
+
 func flowToDocument(flow *flow.Flow) orient.Document {
 	linkLayer := orient.Document{
-		"@class":   "LinkLayer",
-		"@type":    "d",
 		"Protocol": flow.Link.Protocol,
 		"A":        flow.Link.A,
 		"B":        flow.Link.B,
 	}
 
-	metricDoc := orient.Document{
-		"@class":    "Metric",
-		"@type":     "d",
-		"Start":     flow.Metric.Start,
-		"Last":      flow.Metric.Last,
-		"ABPackets": flow.Metric.ABPackets,
-		"ABBytes":   flow.Metric.ABBytes,
-		"BAPackets": flow.Metric.BAPackets,
-		"BABytes":   flow.Metric.BABytes,
-	}
+	metricDoc := metricToDocument(flow.Metric)
 
 	flowDoc := orient.Document{
 		"@class":     "Flow",
 		"UUID":       flow.UUID,
+		"TrackingID": flow.TrackingID,
 		"LayersPath": flow.LayersPath,
 		"NodeUUID":   flow.NodeUUID,
 		"ANodeUUID":  flow.ANodeUUID,
@@ -69,8 +72,6 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 
 	if flow.Network != nil {
 		flowDoc["NetworkLayer"] = orient.Document{
-			"@class":   "NetworkLayer",
-			"@type":    "d",
 			"Protocol": flow.Network.Protocol,
 			"A":        flow.Network.A,
 			"B":        flow.Network.B,
@@ -79,8 +80,6 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 
 	if flow.Transport != nil {
 		flowDoc["TransportLayer"] = orient.Document{
-			"@class":   "TransportLayer",
-			"@type":    "d",
 			"Protocol": flow.Transport.Protocol,
 			"A":        flow.Transport.A,
 			"B":        flow.Transport.B,
@@ -97,20 +96,47 @@ func documentToFlow(document orient.Document) (flow *flow.Flow, err error) {
 	return
 }
 
+func documentToMetric(document orient.Document) (metric *flow.FlowMetric, err error) {
+	if err = mapstructure.WeakDecode(document, &metric); err != nil {
+		return nil, err
+	}
+	return
+}
+
 func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	// TODO: use batch of operations
 	for _, flow := range flows {
-		if _, err := c.client.CreateDocument(flowToDocument(flow)); err != nil {
-			logging.GetLogger().Errorf("Error while pushing flow %s: %s\n\n", flow.UUID, err.Error())
+		flowDoc, err := c.client.Upsert(flowToDocument(flow), "UUID")
+		if err != nil {
+			logging.GetLogger().Errorf("Error while pushing flow %s: %s\n", flow.UUID, err.Error())
 			return err
 		}
+
+		flowID, ok := flowDoc["@rid"]
+		if !ok {
+			logging.GetLogger().Errorf("No @rid attribute for flow '%s'", flow.UUID)
+			return err
+		}
+
+		if flow.LastUpdateMetric != nil {
+			doc := metricToDocument(flow.LastUpdateMetric)
+			doc["Flow"] = flowID
+			if _, err := c.client.CreateDocument(doc); err != nil {
+				logging.GetLogger().Errorf("Error while pushing metric %+v: %s\n", flow.LastUpdateMetric, err.Error())
+				continue
+			}
+		}
 	}
+
 	return nil
 }
 
-func (c *OrientDBStorage) SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
+func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error) {
+	interval := fsq.Range
+	filter := fsq.Filter
+
 	sql := "SELECT FROM Flow"
-	if conditional := filter.Expression(); conditional != "" {
+	if conditional := filter.Expression(""); conditional != "" {
 		sql += " WHERE " + conditional
 	}
 
@@ -118,7 +144,10 @@ func (c *OrientDBStorage) SearchFlows(filter *flow.Filter, interval *flow.Range)
 		sql += fmt.Sprintf(" LIMIT %d, %d", interval.To-interval.From, interval.From)
 	}
 
-	sql += " ORDER BY Metric.Last"
+	if fsq.Sort {
+		sql += " ORDER BY Metric.Last"
+	}
+
 	docs, err := c.client.Sql(sql)
 	if err != nil {
 		return nil, err
@@ -134,6 +163,36 @@ func (c *OrientDBStorage) SearchFlows(filter *flow.Filter, interval *flow.Range)
 	}
 
 	return flows, nil
+}
+
+func (c *OrientDBStorage) SearchMetrics(fsq flow.FlowSearchQuery, fr flow.Range) (map[string][]*flow.FlowMetric, error) {
+	filter := fsq.Filter
+	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
+
+	metricFilter := flow.NewFilterForRange(fr, "")
+	sql += " WHERE " + metricFilter.Expression("")
+
+	if conditional := filter.Expression("Flow."); conditional != "" {
+		sql += " AND " + conditional
+	}
+
+	sql += " ORDER BY Start"
+	docs, err := c.client.Sql(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	metrics := map[string][]*flow.FlowMetric{}
+	for _, doc := range docs {
+		metric, err := documentToMetric(doc)
+		if err != nil {
+			return nil, err
+		}
+		flowID := doc["Flow"].(string)
+		metrics[flowID] = append(metrics[flowID], metric)
+	}
+
+	return metrics, nil
 }
 
 func (c *OrientDBStorage) Start() {
@@ -167,7 +226,9 @@ func New() (*OrientDBStorage, error) {
 				{Name: "Start", Type: "INTEGER", Mandatory: true, NotNull: true},
 				{Name: "Last", Type: "INTEGER", Mandatory: true, NotNull: true},
 			},
-			Indexes: []orient.Index{},
+			Indexes: []orient.Index{
+				{Name: "FlowMetric.TimeSpan", Fields: []string{"Start", "Last"}, Type: "NOTUNIQUE"},
+			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
 			return nil, fmt.Errorf("Failed to register class FlowMetric: %s", err.Error())
@@ -181,16 +242,26 @@ func New() (*OrientDBStorage, error) {
 				{Name: "UUID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "LayersPath", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
+				{Name: "TrackingID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "NodeUUID", Type: "STRING"},
 				{Name: "ANodeUUID", Type: "STRING"},
 				{Name: "BNodeUUID", Type: "STRING"},
 			},
-			Indexes: []orient.Index{},
+			Indexes: []orient.Index{
+				{Name: "Flow.UUID", Fields: []string{"UUID"}, Type: "UNIQUE"},
+				{Name: "Flow.TrackingID", Fields: []string{"TrackingID"}, Type: "NOTUNIQUE"},
+			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
 			return nil, fmt.Errorf("Failed to register class Flow: %s", err.Error())
 		}
 	}
+
+	flowProp := orient.Property{Name: "Flow", Type: "LINK", LinkedClass: "Flow", Mandatory: false, NotNull: true}
+	client.CreateProperty("FlowMetric", flowProp)
+
+	flowIndex := orient.Index{Name: "FlowMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
+	client.CreateIndex("FlowMetric", flowIndex)
 
 	return &OrientDBStorage{
 		client: client,

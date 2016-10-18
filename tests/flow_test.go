@@ -37,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/tools"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const confAgentAnalyzer = `---
@@ -168,7 +169,11 @@ func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *TestStorage) SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
+func (s *TestStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error) {
+	return nil, nil
+}
+
+func (s *TestStorage) SearchMetrics(ffsq flow.FlowSearchQuery, fr flow.Range) (map[string][]*flow.FlowMetric, error) {
 	return nil, nil
 }
 
@@ -725,11 +730,11 @@ func TestTableServer(t *testing.T) {
 
 	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
-	hnmap := make(flow.HostNodeIDMap)
+	hnmap := make(graph.HostNodeIDMap)
 	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 
 	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
-	fsq := &flow.FlowSearchQuery{nil, nil, false, false}
+	fsq := flow.FlowSearchQuery{nil, nil, false, false}
 	flowset, err := fclient.LookupFlowsByNodes(hnmap, fsq)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -1060,7 +1065,7 @@ func TestFlowBandwidth(t *testing.T) {
 
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
-	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Bandwidth()`
+	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Bandwidth()`
 
 	// this check needs to be close to the beginnig of the test since it's a time
 	// based test and it will fail if we wait one more update tick

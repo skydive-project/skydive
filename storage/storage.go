@@ -23,52 +23,19 @@
 package storage
 
 import (
+	"errors"
+
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/topology/graph"
+)
+
+var (
+	NoStorageConfigured error = errors.New("No storage backend has been configured")
 )
 
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error)
+	SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error)
+	SearchMetrics(fsq flow.FlowSearchQuery, fr flow.Range) (map[string][]*flow.FlowMetric, error)
 	Stop()
-}
-
-func LookupFlows(s Storage, context graph.GraphContext, filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
-	return LookupFlowsByNodes(s, context, flow.HostNodeIDMap{}, filter, interval)
-}
-
-func LookupFlowsByNodes(s Storage, context graph.GraphContext, hnmap flow.HostNodeIDMap, filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
-	now := context.Time.Unix()
-	andFilter := &flow.BoolFilter{
-		Op: flow.BoolFilterOp_AND,
-		Filters: []*flow.Filter{
-			{
-				LteInt64Filter: &flow.LteInt64Filter{
-					Key:   "Metric.Start",
-					Value: now,
-				},
-			},
-			{
-				GteInt64Filter: &flow.GteInt64Filter{
-					Key:   "Metric.Last",
-					Value: now,
-				},
-			},
-		},
-	}
-
-	if len(hnmap) > 0 {
-		nodeFilter := &flow.BoolFilter{Op: flow.BoolFilterOp_OR}
-		for _, ids := range hnmap {
-			nodeFilter.Filters = append(nodeFilter.Filters, flow.NewFilterForNodes(ids))
-		}
-		andFilter.Filters = append(andFilter.Filters, &flow.Filter{BoolFilter: nodeFilter})
-	}
-
-	if filter != nil {
-		andFilter.Filters = append(andFilter.Filters, filter)
-	}
-
-	return s.SearchFlows(&flow.Filter{BoolFilter: andFilter}, interval)
 }

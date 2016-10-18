@@ -27,6 +27,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/lebauce/elastigo/lib"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -135,9 +136,9 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 			continue
 		}
 
-		if f.Metric != nil {
+		if f.LastUpdateMetric != nil {
 			// TODO submit a pull request to add bulk request with parent supported
-			if err := c.client.IndexChild("metric", f.UUID, "", f.Metric); err != nil {
+			if err := c.client.IndexChild("metric", f.UUID, "", f.LastUpdateMetric); err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
 			}
@@ -148,6 +149,12 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 }
 
 func (c *ElasticSearchStorage) formatFilter(filter *flow.Filter) map[string]interface{} {
+	if filter == nil {
+		return map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		}
+	}
+
 	if f := filter.BoolFilter; f != nil {
 		keyword := ""
 		switch f.Op {
@@ -239,48 +246,110 @@ func (c *ElasticSearchStorage) formatFilter(filter *flow.Filter) map[string]inte
 	return nil
 }
 
-func (c *ElasticSearchStorage) SearchFlows(filter *flow.Filter, interval *flow.Range) ([]*flow.Flow, error) {
-	if !c.client.Started() {
-		return nil, errors.New("ElasticSearchStorage is not yet started")
-	}
-
-	request := map[string]interface{}{
-		"sort": map[string]interface{}{
-			"Metric.Last": map[string]string{
-				"order": "desc",
-			},
-		},
-	}
+func (c *ElasticSearchStorage) requestFromQuery(fsq flow.FlowSearchQuery) map[string]interface{} {
+	interval := fsq.Range
+	request := map[string]interface{}{"size": 10000}
 
 	if interval != nil {
 		request["from"] = interval.From
 		request["size"] = interval.To - interval.From
 	}
 
-	if filter != nil {
-		request["query"] = c.formatFilter(filter)
+	return request
+}
+
+func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]interface{}) (elastigo.SearchResult, error) {
+	q, err := json.Marshal(request)
+	if err != nil {
+		return elastigo.SearchResult{}, err
 	}
 
-	q, err := json.Marshal(request)
+	return c.client.Search(docType, string(q))
+}
+
+func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, fr flow.Range) (map[string][]*flow.FlowMetric, error) {
+	if !c.client.Started() {
+		return nil, errors.New("ElasticSearchStorage is not yet started")
+	}
+
+	request := c.requestFromQuery(fsq)
+	flowQuery := c.formatFilter(fsq.Filter)
+	musts := []map[string]interface{}{{
+		"has_parent": map[string]interface{}{
+			"type":  "flow",
+			"query": flowQuery,
+		},
+	}}
+
+	metricFilter := flow.NewFilterForRange(fr, "")
+	metricQuery := c.formatFilter(metricFilter)
+	musts = append(musts, metricQuery)
+
+	request["query"] = map[string]interface{}{
+		"bool": map[string]interface{}{
+			"must": musts,
+		},
+	}
+
+	request["sort"] = map[string]interface{}{
+		"Last": map[string]string{
+			"order": "asc",
+		},
+	}
+
+	out, err := c.sendRequest("metric", request)
 	if err != nil {
 		return nil, err
 	}
 
-	out, err := c.client.Search("flow", string(q))
+	metrics := map[string][]*flow.FlowMetric{}
+	if out.Hits.Len() > 0 {
+		for _, d := range out.Hits.Hits {
+			m := new(flow.FlowMetric)
+			if err := json.Unmarshal([]byte(*d.Source), m); err != nil {
+				return nil, err
+			}
+			metrics[d.Parent] = append(metrics[d.Parent], m)
+		}
+	}
+
+	return metrics, nil
+}
+
+func (c *ElasticSearchStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error) {
+	if !c.client.Started() {
+		return nil, errors.New("ElasticSearchStorage is not yet started")
+	}
+
+	request := c.requestFromQuery(fsq)
+
+	var query map[string]interface{}
+	if fsq.Filter != nil {
+		query = c.formatFilter(fsq.Filter)
+	}
+
+	request["query"] = query
+
+	if fsq.Sort {
+		request["sort"] = map[string]interface{}{
+			"Metric.Last": map[string]string{
+				"order": "desc",
+			},
+		}
+	}
+
+	out, err := c.sendRequest("flow", request)
 	if err != nil {
 		return nil, err
 	}
 
 	flows := []*flow.Flow{}
-
 	if out.Hits.Len() > 0 {
 		for _, d := range out.Hits.Hits {
 			f := new(flow.Flow)
-			err := json.Unmarshal([]byte(*d.Source), f)
-			if err != nil {
+			if err := json.Unmarshal([]byte(*d.Source), f); err != nil {
 				return nil, err
 			}
-
 			flows = append(flows, f)
 		}
 	}

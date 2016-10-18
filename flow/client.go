@@ -41,8 +41,6 @@ type TableClient struct {
 	replyChan      map[string]chan *json.RawMessage
 }
 
-type HostNodeIDMap map[string][]string
-
 func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	if m.Namespace != Namespace {
 		return
@@ -60,8 +58,8 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	ch <- m.Obj
 }
 
-func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery *FlowSearchQuery) {
-	obj, _ := proto.Marshal(flowSearchQuery)
+func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery FlowSearchQuery) {
+	obj, _ := proto.Marshal(&flowSearchQuery)
 	tq := TableQuery{
 		Type: "FlowSearchQuery",
 		Obj:  obj,
@@ -121,7 +119,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 	flowset <- NewFlowSet()
 }
 
-func (f *TableClient) LookupFlows(flowSearchQuery *FlowSearchQuery) (*FlowSet, error) {
+func (f *TableClient) LookupFlows(flowSearchQuery FlowSearchQuery) (*FlowSet, error) {
 	clients := f.WSServer.GetClientsByType("skydive-agent")
 	ch := make(chan *FlowSet, len(clients))
 
@@ -141,28 +139,12 @@ func (f *TableClient) LookupFlows(flowSearchQuery *FlowSearchQuery) (*FlowSet, e
 	return flowset, nil
 }
 
-func (f *TableClient) LookupFlowsByNodes(hnmap HostNodeIDMap, flowSearchQuery *FlowSearchQuery) (*FlowSet, error) {
+func (f *TableClient) LookupFlowsByNodes(hnmap map[string][]string, flowSearchQuery FlowSearchQuery) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
 	for host, uuids := range hnmap {
-		andFilter := &BoolFilter{
-			Op: BoolFilterOp_AND,
-			Filters: []*Filter{
-				NewFilterForNodes(uuids),
-			},
-		}
-
-		if flowSearchQuery.Filter != nil {
-			andFilter.Filters = append(andFilter.Filters, flowSearchQuery.Filter)
-		}
-
-		queryFilter := &Filter{
-			BoolFilter: andFilter,
-		}
-
-		fsq := *flowSearchQuery
-		fsq.Filter = queryFilter
-		go f.lookupFlows(ch, host, &fsq)
+		flowSearchQuery.Filter = NewAndFilter(NewFilterForNodes(uuids), flowSearchQuery.Filter)
+		go f.lookupFlows(ch, host, flowSearchQuery)
 	}
 
 	flowset := NewFlowSet()
