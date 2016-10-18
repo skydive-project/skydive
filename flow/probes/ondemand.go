@@ -88,7 +88,7 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 		return false
 	}
 
-	if !common.IsCaptureAllowed(n.Metadata()["Type"].(string)) {
+	if _, ok := n.Metadata()["Type"]; !ok {
 		logging.GetLogger().Infof("Do not register flow probe, type not supported %v", n)
 		return false
 	}
