@@ -23,8 +23,10 @@
 package agent
 
 import (
+	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -179,8 +181,6 @@ func NewAgent() *Agent {
 	tm := topology.NewTIDMapper(g)
 	tm.Start()
 
-	hostID := config.GetConfig().GetString("host_id")
-
 	hserver, err := shttp.NewServerFromConfig("agent")
 	if err != nil {
 		panic(err)
@@ -193,16 +193,7 @@ func NewAgent() *Agent {
 
 	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
 
-	m := graph.Metadata{"Name": hostID, "Type": "host"}
-	if config.GetConfig().IsSet("agent.metadata") {
-		subtree := config.GetConfig().Sub("agent.metadata")
-		for key, value := range subtree.AllSettings() {
-			m[key] = value
-		}
-	}
-	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(hostID))
-	root := g.NewNode(graph.Identifier(u.String()), m)
-
+	root := createRootNode(g)
 	api.RegisterTopologyApi("agent", g, hserver, nil, nil)
 
 	gserver := graph.NewServer(g, wsServer)
@@ -238,4 +229,21 @@ func waitAnalyzer(addr string, port int, authOptions *shttp.AuthenticationOpts) 
 		logging.GetLogger().Warning("Waiting for analyzer to start")
 		time.Sleep(time.Second)
 	}
+}
+
+func createRootNode(g *graph.Graph) *graph.Node {
+	hostID := config.GetConfig().GetString("host_id")
+	m := graph.Metadata{"Name": hostID, "Type": "host"}
+	if config.GetConfig().IsSet("agent.metadata") {
+		subtree := config.GetConfig().Sub("agent.metadata")
+		for key, value := range subtree.AllSettings() {
+			m[key] = value
+		}
+	}
+	buffer, err := ioutil.ReadFile("/var/lib/cloud/data/instance-id")
+	if err == nil {
+		m["InstanceID"] = strings.TrimSpace(string(buffer))
+	}
+	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(hostID))
+	return g.NewNode(graph.Identifier(u.String()), m)
 }
