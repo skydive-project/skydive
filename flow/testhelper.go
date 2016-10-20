@@ -66,6 +66,8 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 				greLayer.Protocol = layers.EthernetTypeIPv4
 			case IPv6:
 				greLayer.Protocol = layers.EthernetTypeIPv6
+			case MPLS:
+				greLayer.Protocol = layers.EthernetTypeMPLSUnicast
 			default:
 				t.Error(fmt.Sprintf("Protocol %s can not be encapsulated in GRE", protos[i+1]))
 			}

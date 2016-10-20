@@ -409,6 +409,11 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64) FlowPac
 
 		switch layer.LayerType() {
 		case layers.LayerTypeGRE, layers.LayerTypeVXLAN, layers.LayerTypeMPLS:
+			// If the next layer type is MPLS, we don't
+			// create the tunneling packet at this level, but at the next one.
+			if i < len(packetLayers)-2 && packetLayers[i+1].LayerType() == layers.LayerTypeMPLS {
+				continue
+			}
 			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
 			flowPackets = append(flowPackets, FlowPacket{gopacket: &p, length: topLayerLength})
 

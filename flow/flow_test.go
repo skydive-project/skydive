@@ -135,6 +135,24 @@ func TestFlowEncaspulationMplsUdp(t *testing.T) {
 	}
 }
 
+func TestFlowEncaspulationMplsGRE(t *testing.T) {
+	table := NewTable(nil, nil)
+	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, MPLS, IPv4, TCP)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	table.FlowPacketsToFlow(flowPackets)
+
+	flows := table.GetFlows(nil).GetFlows()
+	if len(flows) != 2 {
+		t.Error("An MPLSoGRE packet must generate 2 flows")
+	}
+
+	flows = sortFlowByRelationship(flows)
+
+	if flows[0].LayersPath != "Ethernet/IPv4/GRE/MPLS" || flows[1].LayersPath != "IPv4/TCP/Payload" {
+		t.Errorf("Flows LayersPath must be Ethernet/IPv4/GRE/MPLS | IPv4/TCP/Payload")
+	}
+}
+
 func TestFlowJSON(t *testing.T) {
 	f := Flow{
 		UUID:       "uuid-1",
