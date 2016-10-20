@@ -354,7 +354,7 @@ function ShowNodeFlows(node) {
       for (var i in data) {
         var flow = data[i];
 
-        var a = flow.Link.A;
+        var a = ('Link' in flow) ? flow.Link.A : '';
         if ("Network" in flow) {
           a = flow.Network.A;
           if ("Transport" in flow) {
@@ -362,7 +362,7 @@ function ShowNodeFlows(node) {
           }
         }
 
-        var b = flow.Link.B;
+        var b = ('Link' in flow) ? flow.Link.B : '';
         if ("Network" in flow) {
           b = flow.Network.B;
           if ("Transport" in flow) {
@@ -370,6 +370,7 @@ function ShowNodeFlows(node) {
           }
         }
 
+        var protocol = LayersPathToProtocol(flow.LayersPath);
         var parent = {
           id: id,
           parent: null,
@@ -377,7 +378,7 @@ function ShowNodeFlows(node) {
           UUID: flow.UUID,
           TrackingID: flow.TrackingID,
           ID: flow.TrackingID,
-          Protocol: LayersPathToProtocol(flow.LayersPath),
+          Protocol: ("Network" in flow) ? flow.Network.Protocol + '/' + protocol : protocol,
           A: a,
           B: b,
           ABPackets: flow.Metric.ABPackets,
@@ -387,7 +388,7 @@ function ShowNodeFlows(node) {
         };
 
         FlowDataGrid.push(parent);
-        if ("Network" in flow) {
+        if ("Network" in flow && "Link" in flow) {
           parent._collapsed = true;
           FlowDataGrid.push({
             id: id + 1,
@@ -396,7 +397,7 @@ function ShowNodeFlows(node) {
             TrackingID: flow.TrackingID,
             ID: '',
             Protocol: flow.Link.Protocol,
-            A: flow.Link.A,
+            A:flow.Link.A,
             B: flow.Link.B
           });
           id++;
