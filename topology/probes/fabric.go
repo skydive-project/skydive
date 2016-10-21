@@ -34,7 +34,8 @@ import (
 )
 
 type fabricLink struct {
-	metadata graph.Metadata
+	parentMetadata graph.Metadata
+	childMetadata  graph.Metadata
 }
 
 type FabricProbe struct {
@@ -43,22 +44,30 @@ type FabricProbe struct {
 	links map[*graph.Node]fabricLink
 }
 
+var fabricL2Link = graph.Metadata{"RelationType": "layer2", "Type": "fabric"}
+
 func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 	parent, child := fb.Graph.GetEdgeNodes(e)
-	if parent == nil || child == nil || e.Metadata()["RelationType"] != "ownership" {
+	if parent == nil || child == nil {
 		return
 	}
 
-	if parent.Metadata()["Type"] == "host" {
-		for node, link := range fb.links {
-			if child.MatchMetadata(link.metadata) {
-				if !fb.Graph.AreLinked(child, node) {
-					fb.Graph.Link(node, child, graph.Metadata{"RelationType": "layer2", "Type": "fabric"})
-				}
-				delete(fb.links, node)
-				break
-			}
+	for node, link := range fb.links {
+		if parent.MatchMetadata(link.parentMetadata) && child.MatchMetadata(link.childMetadata) {
+			fb.LinkNodes(node, child)
 		}
+	}
+}
+
+func (fb *FabricProbe) OnNodeDeleted(n *graph.Node) {
+	if probe, ok := n.Metadata()["Probe"]; !ok || probe != "fabric" {
+		delete(fb.links, n)
+	}
+}
+
+func (fb *FabricProbe) LinkNodes(parent *graph.Node, child *graph.Node) {
+	if !fb.Graph.AreLinked(child, parent, fabricL2Link) {
+		fb.Graph.Link(parent, child, fabricL2Link)
 	}
 }
 
@@ -71,9 +80,9 @@ func nodeDefToMetadata(nodeDef string) (string, graph.Metadata, error) {
 	}
 
 	// by default use the node name as Name metadata attribute
-	metadata := graph.Metadata{
-		"Name": f[0],
-		"Type": "device",
+	metadata := graph.Metadata{}
+	if f[0] != "*" {
+		metadata["Name"] = f[0]
 	}
 
 	// parse attributes metadata given
@@ -95,10 +104,14 @@ func nodeDefToMetadata(nodeDef string) (string, graph.Metadata, error) {
 	return f[0], metadata, nil
 }
 
-func (fb *FabricProbe) addFabricNodeFromDef(nodeDef string) (*graph.Node, error) {
+func (fb *FabricProbe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, error) {
 	nodeName, metadata, err := nodeDefToMetadata(nodeDef)
 	if err != nil {
 		return nil, err
+	}
+
+	if _, ok := metadata["Type"]; !ok {
+		metadata["Type"] = "device"
 	}
 
 	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte("fabric"+nodeName))
@@ -107,9 +120,23 @@ func (fb *FabricProbe) addFabricNodeFromDef(nodeDef string) (*graph.Node, error)
 	if node := fb.Graph.GetNode(id); node != nil {
 		return node, nil
 	}
+
 	metadata["Probe"] = "fabric"
 
-	return fb.Graph.NewNode(id, metadata), nil
+	return fb.Graph.NewNode(id, metadata, ""), nil
+}
+
+func (fb *FabricProbe) RegisterLink(parentNode *graph.Node, parentMetadata graph.Metadata, childMetadata graph.Metadata) {
+	if edges := fb.Graph.LookupEdges(parentMetadata, childMetadata, graph.Metadata{}); len(edges) > 0 {
+		for _, e := range edges {
+			fb.LinkNodes(parentNode, fb.Graph.GetNode(e.GetChild()))
+		}
+	}
+	fb.links[parentNode] = fabricLink{childMetadata: childMetadata, parentMetadata: parentMetadata}
+}
+
+func (fb *FabricProbe) UnregisterLink(parentNode *graph.Node) {
+	delete(fb.links, parentNode)
 }
 
 func (fb *FabricProbe) Start() {
@@ -129,7 +156,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 	fb.Graph.Lock()
 	defer fb.Graph.Unlock()
 
-	list := config.GetConfig().GetStringSlice("agent.topology.fabric")
+	list := config.GetConfig().GetStringSlice("analyzer.topology.fabric")
 	for _, link := range list {
 		pc := strings.Split(link, "->")
 		if len(pc) != 2 {
@@ -140,45 +167,56 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 		parentDef := strings.TrimSpace(pc[0])
 		childDef := strings.TrimSpace(pc[1])
 
-		if strings.HasPrefix(parentDef, "local/") {
-			logging.GetLogger().Error("FabricProbe doesn't support local node as parent node")
+		if strings.HasPrefix(parentDef, "*") {
+			logging.GetLogger().Error("FabricProbe doesn't support wildcard node as parent node")
 			continue
 		}
 
-		if strings.HasPrefix(childDef, "local/") {
-			// Fabric Node to Local Node
-			childDef = strings.TrimPrefix(childDef, "local/")
+		if strings.HasPrefix(childDef, "*") {
+			nodes := strings.SplitN(childDef, "/", 2)
+			if len(nodes) < 2 {
+				logging.GetLogger().Error("Invalid wildcard pattern: " + childDef)
+				continue
+			}
 
-			parentNode, err := fb.addFabricNodeFromDef(parentDef)
+			// Fabric Node to Incoming Node
+
+			parentNode, err := fb.getOrCreateFabricNodeFromDef(parentDef)
 			if err != nil {
 				logging.GetLogger().Error(err.Error())
 				continue
 			}
 
-			_, childMetadata, err := nodeDefToMetadata(childDef)
+			_, parentMetadata, err := nodeDefToMetadata(nodes[0])
 			if err != nil {
 				logging.GetLogger().Error(err.Error())
 				continue
 			}
 
-			// queue it as the local doesn't exist at start
-			fb.links[parentNode] = fabricLink{metadata: childMetadata}
+			_, childMetadata, err := nodeDefToMetadata(nodes[1])
+			if err != nil {
+				logging.GetLogger().Error(err.Error())
+				continue
+			}
+
+			// queue it as the node doesn't exist at start
+			fb.links[parentNode] = fabricLink{childMetadata: childMetadata, parentMetadata: parentMetadata}
 		} else {
 			// Fabric Node to Fabric Node
-			node1, err := fb.addFabricNodeFromDef(parentDef)
+			node1, err := fb.getOrCreateFabricNodeFromDef(parentDef)
 			if err != nil {
 				logging.GetLogger().Error(err.Error())
 				continue
 			}
 
-			node2, err := fb.addFabricNodeFromDef(childDef)
+			node2, err := fb.getOrCreateFabricNodeFromDef(childDef)
 			if err != nil {
 				logging.GetLogger().Error(err.Error())
 				continue
 			}
 
 			if !fb.Graph.AreLinked(node1, node2) {
-				fb.Graph.Link(node1, node2, graph.Metadata{"RelationType": "layer2", "Type": "fabric"})
+				fb.Graph.Link(node1, node2, fabricL2Link)
 			}
 		}
 	}

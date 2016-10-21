@@ -520,6 +520,24 @@ func (g *Graph) LookupChildren(n *Node, f Metadata, em ...Metadata) []*Node {
 	return children
 }
 
+func (g *Graph) LookupEdges(pm Metadata, cm Metadata, em Metadata) []*Edge {
+	edges := []*Edge{}
+	t := g.context.GetTime()
+	for _, e := range g.backend.GetEdges(t) {
+		if len(em) > 0 && !e.MatchMetadata(em) {
+			continue
+		}
+
+		parent, child := g.backend.GetEdgeNodes(e, t)
+
+		if parent != nil && child != nil && parent.MatchMetadata(pm) && child.MatchMetadata(cm) {
+			edges = append(edges, e)
+		}
+	}
+
+	return edges
+}
+
 func (g *Graph) AreLinked(n1 *Node, n2 *Node, m ...Metadata) bool {
 	t := g.context.GetTime()
 	for _, e := range g.backend.GetNodeEdges(n1, t) {
@@ -647,11 +665,15 @@ func (g *Graph) GetNode(i Identifier) *Node {
 	return g.backend.GetNode(i, g.context.GetTime())
 }
 
-func (g *Graph) NewNode(i Identifier, m Metadata) *Node {
+func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
+	hostname := g.host
+	if len(h) > 0 {
+		hostname = h[0]
+	}
 	n := &Node{
 		graphElement: graphElement{
 			ID:   i,
-			host: g.host,
+			host: hostname,
 		},
 	}
 

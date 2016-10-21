@@ -39,9 +39,9 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
-	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
 type Agent struct {
@@ -50,7 +50,7 @@ type Agent struct {
 	WSServer              *shttp.WSServer
 	GraphServer           *graph.GraphServer
 	Root                  *graph.Node
-	TopologyProbeBundle   *tprobes.TopologyProbeBundle
+	TopologyProbeBundle   *probe.ProbeBundle
 	FlowProbeBundle       *fprobes.FlowProbeBundle
 	FlowTableAllocator    *flow.TableAllocator
 	OnDemandProbeListener *fprobes.OnDemandProbeListener
@@ -86,7 +86,7 @@ func (a *Agent) Start() {
 		a.WSClient.Connect()
 	}
 
-	a.TopologyProbeBundle = tprobes.NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
+	a.TopologyProbeBundle = NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
 	a.TopologyProbeBundle.Start()
 
 	go a.HTTPServer.ListenAndServe()

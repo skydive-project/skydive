@@ -23,6 +23,7 @@
 package probes
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -37,12 +38,14 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type NeutronMapper struct {
 	graph.DefaultGraphListener
 	graph  *graph.Graph
+	fb     *FabricProbe
 	client *gophercloud.ServiceClient
 	// The cache associates some metadatas to a MAC and is used to
 	// detect any updates on these metadatas.
@@ -212,6 +215,16 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
 		tr.AddMetadata("Neutron/VNI", uint64(segID))
 	}
+
+	if vm, ok := node.Metadata()["ExtID/vm-uuid"]; ok {
+		if mac, ok := node.Metadata()["ExtID/attached-mac"]; ok {
+			if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Type": "tun"}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
+				parentMetadata := graph.Metadata{"Type": "host", "InstanceID": vm}
+				childMetadata := graph.Metadata{"Type": "device", "MAC": mac}
+				mapper.fb.RegisterLink(path[len(path)-1], parentMetadata, childMetadata)
+			}
+		}
+	}
 }
 
 func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
@@ -246,8 +259,8 @@ func (mapper *NeutronMapper) Stop() {
 	close(mapper.nodeUpdaterChan)
 }
 
-func NewNeutronMapper(g *graph.Graph, authURL string, username string, password string, tenantName string, regionName string, availability gophercloud.Availability) (*NeutronMapper, error) {
-	mapper := &NeutronMapper{graph: g}
+func NewNeutronMapper(g *graph.Graph, fb *FabricProbe, authURL string, username string, password string, tenantName string, regionName string, availability gophercloud.Availability) (*NeutronMapper, error) {
+	mapper := &NeutronMapper{graph: g, fb: fb}
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
@@ -284,7 +297,12 @@ func NewNeutronMapper(g *graph.Graph, authURL string, username string, password 
 	return mapper, nil
 }
 
-func NewNeutronMapperFromConfig(g *graph.Graph) (*NeutronMapper, error) {
+func NewNeutronMapperFromConfig(g *graph.Graph, probes *probe.ProbeBundle) (*NeutronMapper, error) {
+	fabric := probes.GetProbe("fabric")
+	if fabric == nil {
+		return nil, errors.New("The 'fabric' is required by the 'neutron' probe")
+	}
+
 	authURL := config.GetConfig().GetString("openstack.auth_url")
 	username := config.GetConfig().GetString("openstack.username")
 	password := config.GetConfig().GetString("openstack.password")
@@ -299,6 +317,6 @@ func NewNeutronMapperFromConfig(g *graph.Graph) (*NeutronMapper, error) {
 	if a, ok := endpointTypes[endpointType]; !ok {
 		return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
 	} else {
-		return NewNeutronMapper(g, authURL, username, password, tenantName, regionName, a)
+		return NewNeutronMapper(g, fabric.(*FabricProbe), authURL, username, password, tenantName, regionName, a)
 	}
 }

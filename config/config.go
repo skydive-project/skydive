@@ -71,6 +71,8 @@ func init() {
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
 	cfg.SetDefault("openstack.endpoint_type", "public")
+	cfg.SetDefault("agent.topology.probes", []string{"netlink", "netns"})
+	cfg.SetDefault("analyzer.topology.probes", []string{})
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")

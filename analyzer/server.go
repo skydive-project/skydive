@@ -39,6 +39,7 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/storage"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
 	"github.com/skydive-project/skydive/storage/orientdb"
@@ -52,6 +53,7 @@ type Server struct {
 	GraphServer         *graph.GraphServer
 	AlertServer         *alert.AlertServer
 	FlowMappingPipeline *mappings.FlowMappingPipeline
+	ProbeBundle         *probe.ProbeBundle
 	Storage             storage.Storage
 	FlowTable           *flow.Table
 	TableClient         *flow.TableClient
@@ -110,6 +112,8 @@ func (s *Server) ListenAndServe() {
 		s.Storage.Start()
 	}
 
+	s.ProbeBundle.Start()
+
 	s.AlertServer.AlertManager.Start()
 
 	s.wgServers.Add(3)
@@ -151,6 +155,7 @@ func (s *Server) Stop() {
 	if s.Storage != nil {
 		s.Storage.Stop()
 	}
+	s.ProbeBundle.Stop()
 	s.AlertServer.AlertManager.Stop()
 	s.EtcdClient.Stop()
 	s.wgServers.Wait()
@@ -201,6 +206,11 @@ func NewServerFromConfig() (*Server, error) {
 	}
 
 	g := graph.NewGraphFromConfig(backend)
+
+	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
+	if err != nil {
+		return nil, err
+	}
 
 	httpServer, err := shttp.NewServerFromConfig("analyzer")
 	if err != nil {
@@ -290,6 +300,7 @@ func NewServerFromConfig() (*Server, error) {
 		TableClient:         tableClient,
 		EmbeddedEtcd:        etcdServer,
 		EtcdClient:          etcdClient,
+		ProbeBundle:         probeBundle,
 	}
 	server.SetStorageFromConfig()
 

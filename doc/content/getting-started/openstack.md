@@ -48,6 +48,9 @@ The plugin accepts the following parameters:
 
 # Set the default log level, default: INFO
 #SKYDIVE_LOGLEVEL=DEBUG
+
+# List of public interfaces for the agents to register in fabric
+#SKYDIVE_PUBLIC_INTERFACES=devstack1/eth0 devstack2/eth1
 ```
 
 ## The classical two nodes deployment
@@ -56,6 +59,14 @@ Inside the Devstack folder of the Skydive sources there are two local.conf files
 that can be used in order to deployment two Devstack with Skydive. The first
 file will install a full Devstack with Skydive analyzer and agent. The second
 one will install a compute Devstack with only the skydive agent.
+
+For Skydive to create a TOR object that links both Devstack, add the following
+line to your local.conf file:
+```console
+SKYDIVE_PUBLIC_INTERFACES=devstack1/eth0 devstack2/eth1
+```
+where `devstack1` and `devstack2` are the hostnames of the two nodes followed
+by their respective public interface.
 
 Skydive will be set with the probes for OpenvSwitch and Neutron. It will be set
 to use Keystone as authentication mechanism, so the credentials will be the same

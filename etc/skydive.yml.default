@@ -32,29 +32,10 @@ analyzer:
   # Flow storage engine
   # Available: elasticsearch, orientdb
   # storage: elasticsearch
-
-agent:
-  # address and port for the agent API, Format: addr:port.
-  # Default addr is 127.0.0.1
-  listen: :8081
-  analyzers: 127.0.0.1:8082
-  # The 'analyzer_username' and 'analyzer_password' parameters are
-  # used by the agent to authenticate against the analyzer
-  analyzer_username: admin
-  analyzer_password: password
   topology:
-    # Probes used to capture topology informations like interfaces,
-    # bridges, namespaces, etc...
-    # Available: netlink, netns, ovsdb, docker, neutron, opencontrail
-    # Default: netlink, netns
     probes:
-      - netlink
-      - netns
-      # - ovsdb
-      # - docker
       # - neutron
-      # - fabric
-      # - opencontrail
+
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.
     #
@@ -68,7 +49,28 @@ agent:
     # linked to the local interface eth0.
     fabric:
       # - TOR1[Name=tor1] -> TOR1_PORT1[Name=port1, MTU=1500]
-      # - TOR1_PORT1 -> local/eth0
+      # - TOR1_PORT1 -> *[Type=host]/eth0
+
+agent:
+  # address and port for the agent API, Format: addr:port.
+  # Default addr is 127.0.0.1
+  listen: :8081
+  analyzers: 127.0.0.1:8082
+  # The 'analyzer_username' and 'analyzer_password' parameters are
+  # used by the agent to authenticate against the analyzer
+  analyzer_username: admin
+  analyzer_password: password
+  topology:
+    # Probes used to capture topology informations like interfaces,
+    # bridges, namespaces, etc...
+    # Available: netlink, netns, ovsdb, docker, opencontrail
+    # Default: netlink, netns
+    probes:
+      - netlink
+      - netns
+      # - ovsdb
+      # - docker
+      # - opencontrail
   flow:
     # Probes used to capture traffic.
     probes:

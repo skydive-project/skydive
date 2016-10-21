@@ -38,7 +38,10 @@ SKYDIVE_AGENT_LISTEN=${SKYDIVE_AGENT_LISTEN:-"127.0.0.1:8081"}
 SKYDIVE_CONFIG_FILE=${SKYDIVE_CONFIG_FILE:-"/tmp/skydive.yaml"}
 
 # List of agent probes to be used by the agent
-SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb neutron fabric"}
+SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb"}
+
+# List of analyzer probes to be used by the analyzer
+SKYDIVE_ANALYZER_PROBES=${SKYDIVE_ANALYZER_PROBES:-"neutron"}
 
 # Remote port for ovsdb server.
 SKYDIVE_OVSDB_REMOTE_PORT=${SKYDIVE_OVSDB_REMOTE_PORT:-}
@@ -49,16 +52,22 @@ SKYDIVE_LOGLEVEL=${SKYDIVE_LOGLEVEL:-INFO}
 # Storage used by the analyzer to store flows
 SKYDIVE_STORAGE=${SKYDIVE_STORAGE:-"elasticsearch"}
 
+# List of public interfaces for the agents to register in fabric
+# ex: "devstack1/eth0 devstack2/eth1"
+if [ "x$PUBLIC_INTERFACE" != "x" ]; then
+    SKYDIVE_PUBLIC_INTERFACES=${SKYDIVE_PUBLIC_INTERFACES:-$LOCAL_HOSTNAME/$PUBLIC_INTERFACE}
+fi
+
 ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution
 ELASTICSEARCH_VERSION=2.3.1
 
 function install_protoc {
-  mkdir $DEST/protoc
-  pushd $DEST/protoc
-  wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
-  unzip protoc-3.1.0-linux-x86_64.zip
-  popd
-  export PATH=$DEST/protoc/bin:${PATH}
+    mkdir $DEST/protoc
+    pushd $DEST/protoc
+    wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
+    unzip protoc-3.1.0-linux-x86_64.zip
+    popd
+    export PATH=$DEST/protoc/bin:${PATH}
 }
 
 function install_go {
@@ -124,7 +133,16 @@ function join {
 }
 
 function get_probes_for_config {
-    printf "%s" "$(join '      - ' '' $SKYDIVE_AGENT_PROBES)";
+    printf "%s" "$(join '      - ' '' $*)";
+}
+
+function get_fabric_config {
+    for hostintf in $SKYDIVE_PUBLIC_INTERFACES; do
+        host=${hostintf%/*}
+        intf=${hostintf#*/}
+        echo "      - TOR[Name=TOR Switch, Type=switch] -> PORT_${host}[Name=${host} Port, Type=port]"
+        echo "      - PORT_${host} -> *[Type=host, Name=${host}]/${intf}"
+    done
 }
 
 function configure_skydive {
@@ -157,14 +175,25 @@ agent:
       - gopacket
   topology:
     probes:
-$(get_probes_for_config)
+$(get_probes_for_config $SKYDIVE_AGENT_PROBES)
+
+analyzer:
+  storage: $SKYDIVE_STORAGE
+  topology:
+    probes:
+$(get_probes_for_config $SKYDIVE_ANALYZER_PROBES)
 EOF
-    if [ "x$PUBLIC_INTERFACE" != "x" ]; then
+
+    if [ "x$SKYDIVE_PUBLIC_INTERFACES" != "x" ]; then
         cat >> $SKYDIVE_CONFIG_FILE <<- EOF
     fabric:
-      - TOR[Name=TOR Switch, Type=switch] -> PORT_${LOCAL_HOSTNAME}[Name=${LOCAL_HOSTNAME} Port, Type=port]
-      - PORT_${LOCAL_HOSTNAME} -> local/${PUBLIC_INTERFACE}
+$(get_fabric_config)
+EOF
+    fi
 
+    if [ "x$SKYDIVE_ANALYZER_LISTEN" != "x" ]; then
+        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
+  listen: $SKYDIVE_ANALYZER_LISTEN
 EOF
     fi
 
@@ -173,14 +202,6 @@ EOF
 ovs:
   ovsdb: $SKYDIVE_OVSDB_REMOTE_PORT
 
-EOF
-    fi
-
-    if [ "x$SKYDIVE_ANALYZER_LISTEN" != "x" ]; then
-        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
-analyzer:
-  listen: $SKYDIVE_ANALYZER_LISTEN
-  storage: $SKYDIVE_STORAGE
 EOF
     fi
 

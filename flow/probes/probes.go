@@ -31,7 +31,6 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/probes"
 )
 
 type FlowProbeBundle struct {
@@ -87,7 +86,7 @@ func (fpb *FlowProbeBundle) UnregisterAllProbes() {
 	}
 }
 
-func NewFlowProbeBundleFromConfig(tb *probes.TopologyProbeBundle, g *graph.Graph, fta *flow.TableAllocator) *FlowProbeBundle {
+func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator) *FlowProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.flow.probes")
 
 	logging.GetLogger().Infof("Flow probes: %v", list)

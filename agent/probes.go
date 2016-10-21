@@ -20,31 +20,23 @@
  *
  */
 
-package probes
+package agent
 
 import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
+	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
-type TopologyProbeBundle struct {
-	probe.ProbeBundle
-}
-
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyProbeBundle {
+func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *probe.ProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.topology.probes")
-
-	// FIX(safchain) once viper setdefault on nested key will be fixed move this
-	// to config init
-	if len(list) == 0 {
-		list = []string{"fabric", "netlink", "netns"}
-	}
-
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
 	probes := make(map[string]probe.Probe)
+	bundle := probe.NewProbeBundle(probes)
+
 	for _, t := range list {
 		if _, ok := probes[t]; ok {
 			continue
@@ -52,30 +44,19 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *TopologyPr
 
 		switch t {
 		case "netlink":
-			probes[t] = NewNetLinkProbe(g, n)
+			probes[t] = tprobes.NewNetLinkProbe(g, n)
 		case "netns":
-			probes[t] = NewNetNSProbeFromConfig(g, n)
+			probes[t] = tprobes.NewNetNSProbeFromConfig(g, n)
 		case "ovsdb":
-			probes[t] = NewOvsdbProbeFromConfig(g, n)
+			probes[t] = tprobes.NewOvsdbProbeFromConfig(g, n)
 		case "docker":
-			probes[t] = NewDockerProbeFromConfig(g, n)
-		case "neutron":
-			neutron, err := NewNeutronMapperFromConfig(g)
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to initialize Neutron probe: %s", err.Error())
-				continue
-			}
-			probes[t] = neutron
-		case "fabric":
-			probes[t] = NewFabricProbe(g)
+			probes[t] = tprobes.NewDockerProbeFromConfig(g, n)
 		case "opencontrail":
-			probes[t] = NewOpenContrailMapper(g, n)
+			probes[t] = tprobes.NewOpenContrailMapper(g, n)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}
 	}
 
-	p := probe.NewProbeBundle(probes)
-
-	return &TopologyProbeBundle{*p}
+	return bundle
 }
