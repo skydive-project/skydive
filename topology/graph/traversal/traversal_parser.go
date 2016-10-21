@@ -500,6 +500,10 @@ func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 		if last, err = step.Exec(last); err != nil {
 			return nil, err
 		}
+
+		if err := last.Error(); err != nil {
+			return nil, err
+		}
 	}
 
 	res, ok := last.(GraphTraversalStep)

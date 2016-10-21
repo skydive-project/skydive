@@ -90,6 +90,10 @@ type NodesGremlinTraversalStep struct {
 func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
+	if f.Error() != nil {
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.Error())
+	}
+
 	m, err := traversal.SliceToMetadata(s...)
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
@@ -109,6 +113,10 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
+	if f.Error() != nil {
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.Error())
+	}
+
 	m, err := traversal.SliceToMetadata(s...)
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
@@ -127,6 +135,10 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 
 func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
+
+	if f.Error() != nil {
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.Error())
+	}
 
 	m, err := traversal.SliceToMetadata(s...)
 	if err != nil {
@@ -151,6 +163,10 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 
 func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
+
+	if f.Error() != nil {
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.Error())
+	}
 
 	m, err := traversal.SliceToMetadata(s...)
 	if err != nil {
@@ -179,6 +195,10 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 }
 
 func (f *FlowTraversalStep) Count(s ...interface{}) *traversal.GraphTraversalValue {
+	if f.Error() != nil {
+		return traversal.NewGraphTraversalValue(f.GraphTraversal, 0, f.Error())
+	}
+
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, len(f.flowset.Flows))
 }
 
@@ -363,18 +383,26 @@ func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
 
 	filter, err := paramsToFilter(s...)
 	if err != nil {
-		return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, error: err}
+		return &FlowTraversalStep{error: err}
 	}
 
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset.Filter(filter)}
 }
 
 func (f *FlowTraversalStep) Dedup() *FlowTraversalStep {
+	if f.Error() != nil {
+		return &FlowTraversalStep{error: f.Error()}
+	}
+
 	f.flowset.Dedup()
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset}
 }
 
 func (f *FlowTraversalStep) Sort() *FlowTraversalStep {
+	if f.Error() != nil {
+		return &FlowTraversalStep{error: f.Error()}
+	}
+
 	f.flowset.Sort()
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset}
 }

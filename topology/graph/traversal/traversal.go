@@ -345,12 +345,16 @@ func (t *GraphTraversal) MarshalJSON() ([]byte, error) {
 }
 
 func (t *GraphTraversal) Error() error {
-	return nil
+	return t.error
 }
 
 func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
+	if t.error != nil {
+		return t
+	}
+
 	if len(s) != 1 {
-		return &GraphTraversal{Graph: t.Graph, error: errors.New("At least one parameter must be provided")}
+		return &GraphTraversal{error: errors.New("At least one parameter must be provided")}
 	}
 
 	var (
@@ -360,21 +364,29 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	switch param := s[0].(type) {
 	case string:
 		if at, err = time.Parse(time.RFC1123, param); err != nil {
-			return &GraphTraversal{Graph: t.Graph, error: errors.New("Time must be in RFC1123 format")}
+			return &GraphTraversal{error: errors.New("Time must be in RFC1123 format")}
 		}
 	case int64:
 		at = time.Unix(param, 0)
 	default:
-		return &GraphTraversal{Graph: t.Graph, error: errors.New("Key must be either an integer or a string")}
+		return &GraphTraversal{error: errors.New("Key must be either an integer or a string")}
 	}
 
 	t.Graph.RLock()
 	defer t.Graph.RUnlock()
 
+	if at.After(time.Now()) {
+		return &GraphTraversal{error: errors.New("Sorry, I can't predict the future")}
+	}
+
 	return &GraphTraversal{Graph: t.Graph.WithContext(graph.GraphContext{Time: &at})}
 }
 
 func (t *GraphTraversal) V(ids ...graph.Identifier) *GraphTraversalV {
+	if t.error != nil {
+		return &GraphTraversalV{error: t.error}
+	}
+
 	var nodes []*graph.Node
 
 	if len(ids) > 0 {
@@ -468,7 +480,7 @@ func (sp *GraphTraversalShortestPath) Error() error {
 
 func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e ...graph.Metadata) *GraphTraversalShortestPath {
 	if tv.error != nil {
-		return &GraphTraversalShortestPath{GraphTraversal: tv.GraphTraversal, paths: [][]*graph.Node{}, error: tv.error}
+		return &GraphTraversalShortestPath{error: tv.error}
 	}
 	sp := &GraphTraversalShortestPath{GraphTraversal: tv.GraphTraversal, paths: [][]*graph.Node{}}
 
@@ -506,18 +518,18 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 
 	switch len(s) {
 	case 0:
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("At least one parameter must be provided")}
+		return &GraphTraversalV{error: errors.New("At least one parameter must be provided")}
 	case 1:
 		k, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("Key must be a string")}
+			return &GraphTraversalV{error: errors.New("Key must be a string")}
 		}
 		return tv.hasKey(k)
 	}
 
 	m, err := SliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
+		return &GraphTraversalV{error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
@@ -570,7 +582,7 @@ nodeloop:
 
 func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
-		return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, error: tv.error}
+		return &GraphTraversalValue{error: tv.error}
 	}
 
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: len(tv.nodes)}
@@ -578,30 +590,26 @@ func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
 
 func (tv *GraphTraversalV) Range(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: tv.error}
+		return &GraphTraversalV{error: tv.error}
 	}
 
-	switch len(s) {
-	case 2:
+	if len(s) == 2 {
 		from, ok := s[0].(int64)
 		if !ok {
-			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: fmt.Errorf("%s is not an integer", s[0])}
+			return &GraphTraversalV{error: fmt.Errorf("%s is not an integer", s[0])}
 		}
 		to, ok := s[1].(int64)
 		if !ok {
-			return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: fmt.Errorf("%s is not an integer", s[1])}
+			return &GraphTraversalV{error: fmt.Errorf("%s is not an integer", s[1])}
 		}
 		var nodes []*graph.Node
 		for ; from < int64(len(tv.nodes)) && from < to; from++ {
 			nodes = append(nodes, tv.nodes[from])
 		}
 		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: nodes}
-
-	default:
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: errors.New("2 parameters must be provided to 'range'")}
 	}
 
-	return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: tv.nodes}
+	return &GraphTraversalV{error: errors.New("2 parameters must be provided to 'range'")}
 }
 
 func (tv *GraphTraversalV) Limit(s ...interface{}) *GraphTraversalV {
@@ -615,7 +623,7 @@ func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 
 	metadata, err := SliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
+		return &GraphTraversalV{error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
@@ -641,12 +649,12 @@ nodeloop:
 
 func (tv *GraphTraversalV) OutE(s ...interface{}) *GraphTraversalE {
 	if tv.error != nil {
-		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: tv.error}
+		return &GraphTraversalE{error: tv.error}
 	}
 
 	metadata, err := SliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
+		return &GraphTraversalE{error: err}
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
@@ -677,7 +685,7 @@ func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
 
 	metadata, err := SliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
+		return &GraphTraversalV{error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
@@ -703,7 +711,7 @@ nodeloop:
 
 func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
 	if tv.error != nil {
-		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: tv.error}
+		return &GraphTraversalE{error: tv.error}
 	}
 
 	metadata, err := SliceToMetadata(s...)
@@ -750,7 +758,7 @@ func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
 
 func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
 	if te.error != nil {
-		return &GraphTraversalValue{GraphTraversal: te.GraphTraversal, error: te.error}
+		return &GraphTraversalValue{error: te.error}
 	}
 
 	return &GraphTraversalValue{GraphTraversal: te.GraphTraversal, value: len(te.edges)}
@@ -758,18 +766,18 @@ func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
 
 func (te *GraphTraversalE) Range(s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
-		return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: te.error}
+		return te
 	}
 
 	switch len(s) {
 	case 2:
 		from, ok := s[0].(int64)
 		if !ok {
-			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: fmt.Errorf("%s is not an integer", s[0])}
+			return &GraphTraversalE{error: fmt.Errorf("%s is not an integer", s[0])}
 		}
 		to, ok := s[1].(int64)
 		if !ok {
-			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: fmt.Errorf("%s is not an integer", s[1])}
+			return &GraphTraversalE{error: fmt.Errorf("%s is not an integer", s[1])}
 		}
 		var edges []*graph.Edge
 		for ; from < int64(len(te.edges)) && from < to; from++ {
@@ -783,10 +791,18 @@ func (te *GraphTraversalE) Range(s ...interface{}) *GraphTraversalE {
 }
 
 func (te *GraphTraversalE) Limit(s ...interface{}) *GraphTraversalE {
+	if te.error != nil {
+		return te
+	}
+
 	return te.Range(int64(0), s[0])
 }
 
 func (te *GraphTraversalE) Dedup() *GraphTraversalE {
+	if te.error != nil {
+		return te
+	}
+
 	ntv := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
 
 	visited := make(map[graph.Identifier]bool)
@@ -825,18 +841,18 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 
 	switch len(s) {
 	case 0:
-		return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("At least one parameters must be provided")}
+		return &GraphTraversalE{error: errors.New("At least one parameters must be provided")}
 	case 1:
 		k, ok := s[0].(string)
 		if !ok {
-			return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: errors.New("Key must be a string")}
+			return &GraphTraversalE{error: errors.New("Key must be a string")}
 		}
 		return te.hasKey(k)
 	}
 
 	m, err := SliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalE{GraphTraversal: te.GraphTraversal, error: err}
+		return &GraphTraversalE{error: err}
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
@@ -854,12 +870,12 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 
 func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 	if te.error != nil {
-		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: te.error}
+		return &GraphTraversalV{error: te.error}
 	}
 
 	metadata, err := SliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: err}
+		return &GraphTraversalV{error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
@@ -879,12 +895,12 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 
 func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	if te.error != nil {
-		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: te.error}
+		return &GraphTraversalV{error: te.error}
 	}
 
 	metadata, err := SliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalV{GraphTraversal: te.GraphTraversal, error: err}
+		return &GraphTraversalV{error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
