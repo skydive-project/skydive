@@ -1359,7 +1359,7 @@ function SetupCaptureList() {
     var desc = $("#capture-desc").val();
     var query;
 
-    var mode = $('input[type=radio][name=capture-target]').val();
+    var mode = $('input[type=radio][name=capture-target]:checked').val();
     if (mode == "gremlin") {
       query = $("#capture-query").val();
     } else {
