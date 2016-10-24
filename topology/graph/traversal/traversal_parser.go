@@ -182,21 +182,16 @@ func (s *GremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalSte
 
 	g.currentStepContext = s.StepContext
 
-	switch len(s.Params) {
-	case 1:
-		if k, ok := s.Params[0].(string); ok {
-			return g.V(graph.Identifier(k)), nil
-		}
-		return nil, ExecutionError
-	case 0:
-		return g.V(), nil
-	default:
-		return nil, ExecutionError
-	}
+	return g.V(s.Params...), nil
 }
 
 func (s *GremlinTraversalStepV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if s.ReduceRange(next) {
+		return s
+	}
+
+	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 && len(hasStep.Params) >= 2 {
+		s.Params = hasStep.Params
 		return s
 	}
 
@@ -732,6 +727,15 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	// built in
 	switch tok {
 	case V:
+		switch len(params) {
+		case 0:
+		case 1:
+			if _, ok := params[0].(string); !ok {
+				return nil, fmt.Errorf("V parameter must be a string")
+			}
+		default:
+			return nil, fmt.Errorf("V accepts at most one parameter")
+		}
 		return &GremlinTraversalStepV{gremlinStepContext}, nil
 	case OUT:
 		return &GremlinTraversalStepOut{gremlinStepContext}, nil
@@ -782,7 +786,6 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		if _, ok := params[0].(string); !ok {
 			return nil, fmt.Errorf("Values parameter has to be a string key")
 		}
-
 		return &GremlinTraversalStepValues{gremlinStepContext}, nil
 	case KEYS:
 		return &GremlinTraversalStepKeys{gremlinStepContext}, nil

@@ -408,21 +408,33 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	return &GraphTraversal{Graph: g}
 }
 
-func (t *GraphTraversal) V(ids ...graph.Identifier) *GraphTraversalV {
+func (t *GraphTraversal) V(s ...interface{}) *GraphTraversalV {
+	var nodes []*graph.Node
+	var metadata graph.Metadata
+	var err error
+
 	if t.error != nil {
 		return &GraphTraversalV{error: t.error}
 	}
 
-	var nodes []*graph.Node
-
-	if len(ids) > 0 {
-		node := t.Graph.GetNode(ids[0])
+	switch len(s) {
+	case 1:
+		id, ok := s[0].(string)
+		if !ok {
+			return &GraphTraversalV{error: fmt.Errorf("V accepts only a string when there is only one argument")}
+		}
+		node := t.Graph.GetNode(graph.Identifier(id))
 		if node == nil {
-			return &GraphTraversalV{error: fmt.Errorf("Node '%s' does not exist", ids[0])}
+			return &GraphTraversalV{error: fmt.Errorf("Node '%s' does not exist", id)}
 		}
 		nodes = []*graph.Node{node}
-	} else {
-		nodes = t.Graph.GetNodes(graph.Metadata{})
+	default:
+		if metadata, err = SliceToMetadata(s...); err != nil {
+			return &GraphTraversalV{error: err}
+		}
+		fallthrough
+	case 0:
+		nodes = t.Graph.GetNodes(metadata)
 	}
 
 	if t.currentStepContext.PaginationRange != nil {

@@ -795,6 +795,8 @@ func TestTableServer(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
+
 	aa.Start()
 	defer aa.Stop()
 
@@ -831,7 +833,6 @@ func TestTableServer(t *testing.T) {
 	hnmap := make(graph.HostNodeIDMap)
 	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
 
-	fclient := flow.NewTableClient(aa.Analyzer.WSServer)
 	fsq := flow.FlowSearchQuery{nil, nil, false, false}
 	flowset, err := fclient.LookupFlowsByNodes(hnmap, fsq)
 	if err != nil {

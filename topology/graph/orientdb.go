@@ -59,6 +59,20 @@ func metadataToOrientDBSetString(m Metadata) string {
 	return ""
 }
 
+func metadataToOrientDBSelectString(m Metadata) string {
+	i := 0
+	props := make([]string, len(m))
+	for key, value := range m {
+		if v, ok := value.(string); ok {
+			props[i] = fmt.Sprintf("Metadata.%s='%s'", key, v)
+		} else {
+			props[i] = fmt.Sprintf("Metadata.%s=%s", key, value)
+		}
+		i++
+	}
+	return strings.Join(props, " AND ")
+}
+
 func orientDBDocumentToGraphElement(doc orientdb.Document) graphElement {
 	element := graphElement{
 		ID:       Identifier(doc["ID"].(string)),
@@ -303,7 +317,7 @@ func (*OrientDBBackend) getTimeClause(t *time.Time) string {
 
 func (o *OrientDBBackend) GetNodes(t *time.Time, m Metadata) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeClause(t))
-	if metadataQuery := metadataToOrientDBSetString(m); metadataQuery != "" {
+	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
 	}
 	docs, err := o.client.Sql(query)
@@ -321,7 +335,7 @@ func (o *OrientDBBackend) GetNodes(t *time.Time, m Metadata) (nodes []*Node) {
 
 func (o *OrientDBBackend) GetEdges(t *time.Time, m Metadata) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeClause(t))
-	if metadataQuery := metadataToOrientDBSetString(m); metadataQuery != "" {
+	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
 	}
 	docs, err := o.client.Sql(query)
