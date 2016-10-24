@@ -41,7 +41,7 @@ func (gfe *OvsFlowEnhancer) getNodeUUID(mac string) string {
 	gfe.Graph.RLock()
 	defer gfe.Graph.RUnlock()
 
-	intfs := gfe.Graph.LookupNodes(graph.Metadata{"ExtID/attached-mac": mac})
+	intfs := gfe.Graph.GetNodes(graph.Metadata{"ExtID/attached-mac": mac})
 	if len(intfs) > 1 {
 		logging.GetLogger().Infof("OvsFlowEnhancer found more than one interface for the mac: %s", mac)
 	} else if len(intfs) == 1 {

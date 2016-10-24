@@ -78,7 +78,7 @@ func (fpb *FlowProbeBundle) UnregisterAllProbes() {
 	fpb.Graph.Lock()
 	defer fpb.Graph.Unlock()
 
-	for _, n := range fpb.Graph.GetNodes() {
+	for _, n := range fpb.Graph.GetNodes(graph.Metadata{}) {
 		for _, p := range fpb.ProbeBundle.Probes {
 			fprobe := p.(FlowProbe)
 			fprobe.UnregisterProbe(n)

@@ -104,7 +104,7 @@ func TestBasicLookup(t *testing.T) {
 		t.Error("Wrong node returned")
 	}
 
-	r := g.LookupNodes(Metadata{"Type": "intf"})
+	r := g.GetNodes(Metadata{"Type": "intf"})
 	if len(r) != 2 {
 		t.Error("Wrong number of nodes returned")
 	}

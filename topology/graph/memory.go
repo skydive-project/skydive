@@ -152,21 +152,25 @@ func (m MemoryBackend) DelNode(n *Node) bool {
 	return true
 }
 
-func (m MemoryBackend) GetNodes(t *time.Time) []*Node {
+func (m MemoryBackend) GetNodes(t *time.Time, metadata Metadata) []*Node {
 	nodes := []*Node{}
 
 	for _, n := range m.nodes {
-		nodes = append(nodes, n.Node)
+		if n.MatchMetadata(metadata) {
+			nodes = append(nodes, n.Node)
+		}
 	}
 
 	return nodes
 }
 
-func (m MemoryBackend) GetEdges(t *time.Time) []*Edge {
+func (m MemoryBackend) GetEdges(t *time.Time, metadata Metadata) []*Edge {
 	edges := []*Edge{}
 
 	for _, e := range m.edges {
-		edges = append(edges, e.Edge)
+		if e.MatchMetadata(metadata) {
+			edges = append(edges, e.Edge)
+		}
 	}
 
 	return edges

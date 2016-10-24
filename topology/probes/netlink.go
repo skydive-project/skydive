@@ -161,7 +161,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 	})
 
 	// could be a member of ovs
-	intfs := u.Graph.LookupNodes(graph.Metadata{
+	intfs := u.Graph.GetNodes(graph.Metadata{
 		"Name":    name,
 		"IfIndex": index,
 	})
@@ -346,7 +346,7 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 
 	var intf *graph.Node
 
-	intfs := u.Graph.LookupNodes(graph.Metadata{"IfIndex": int64(index)})
+	intfs := u.Graph.GetNodes(graph.Metadata{"IfIndex": int64(index)})
 	switch l := len(intfs); {
 	case l == 1:
 		intf = intfs[0]

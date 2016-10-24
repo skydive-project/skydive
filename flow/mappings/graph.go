@@ -41,7 +41,7 @@ func (gfe *GraphFlowEnhancer) getNodeUUID(mac string) string {
 	gfe.Graph.RLock()
 	defer gfe.Graph.RUnlock()
 
-	intfs := gfe.Graph.LookupNodes(graph.Metadata{"MAC": mac})
+	intfs := gfe.Graph.GetNodes(graph.Metadata{"MAC": mac})
 	if len(intfs) > 1 {
 		logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
 	} else if len(intfs) == 1 {

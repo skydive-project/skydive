@@ -90,8 +90,8 @@ type GraphBackend interface {
 	AddMetadata(e interface{}, k string, v interface{}) bool
 	SetMetadata(e interface{}, m Metadata) bool
 
-	GetNodes(at *time.Time) []*Node
-	GetEdges(at *time.Time) []*Edge
+	GetNodes(at *time.Time, m Metadata) []*Node
+	GetEdges(at *time.Time, m Metadata) []*Edge
 
 	WithContext(graph *Graph, context GraphContext) (*Graph, error)
 }
@@ -525,11 +525,7 @@ func (g *Graph) LookupChildren(n *Node, f Metadata, em ...Metadata) []*Node {
 func (g *Graph) LookupEdges(pm Metadata, cm Metadata, em Metadata) []*Edge {
 	edges := []*Edge{}
 	t := g.context.GetTime()
-	for _, e := range g.backend.GetEdges(t) {
-		if len(em) > 0 && !e.MatchMetadata(em) {
-			continue
-		}
-
+	for _, e := range g.backend.GetEdges(t, em) {
 		parent, child := g.backend.GetEdgeNodes(e, t)
 
 		if parent != nil && child != nil && parent.MatchMetadata(pm) && child.MatchMetadata(cm) {
@@ -608,7 +604,7 @@ func (g *Graph) Replace(o *Node, n *Node) *Node {
 }
 
 func (g *Graph) LookupFirstNode(m Metadata) *Node {
-	nodes := g.LookupNodes(m)
+	nodes := g.GetNodes(m)
 	if len(nodes) > 0 {
 		return nodes[0]
 	}
@@ -616,22 +612,10 @@ func (g *Graph) LookupFirstNode(m Metadata) *Node {
 	return nil
 }
 
-func (g *Graph) LookupNodes(m Metadata) []*Node {
-	nodes := []*Node{}
-
-	for _, n := range g.backend.GetNodes(g.context.GetTime()) {
-		if n.MatchMetadata(m) {
-			nodes = append(nodes, n)
-		}
-	}
-
-	return nodes
-}
-
 func (g *Graph) LookupNodesFromKey(key string) []*Node {
 	nodes := []*Node{}
 
-	for _, n := range g.backend.GetNodes(g.context.GetTime()) {
+	for _, n := range g.backend.GetNodes(g.context.GetTime(), Metadata{}) {
 		_, ok := n.metadata[key]
 		if ok {
 			nodes = append(nodes, n)
@@ -732,19 +716,19 @@ func (g *Graph) DelNode(n *Node) {
 }
 
 func (g *Graph) DelHostGraph(host string) {
-	for _, node := range g.GetNodes() {
+	for _, node := range g.GetNodes(Metadata{}) {
 		if node.host == host {
 			g.DelNode(node)
 		}
 	}
 }
 
-func (g *Graph) GetNodes() []*Node {
-	return g.backend.GetNodes(g.context.GetTime())
+func (g *Graph) GetNodes(m Metadata) []*Node {
+	return g.backend.GetNodes(g.context.GetTime(), m)
 }
 
-func (g *Graph) GetEdges() []*Edge {
-	return g.backend.GetEdges(g.context.GetTime())
+func (g *Graph) GetEdges(m Metadata) []*Edge {
+	return g.backend.GetEdges(g.context.GetTime(), m)
 }
 
 func (g *Graph) GetEdgeNodes(e *Edge) (*Node, *Node) {
@@ -765,8 +749,8 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 		Nodes []*Node
 		Edges []*Edge
 	}{
-		Nodes: g.GetNodes(),
-		Edges: g.GetEdges(),
+		Nodes: g.GetNodes(Metadata{}),
+		Edges: g.GetEdges(Metadata{}),
 	})
 }
 

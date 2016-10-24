@@ -49,6 +49,21 @@ func idToPropertiesString(i Identifier) (string, error) {
 	return encoder.String(), nil
 }
 
+func metadataToString(m Metadata) (string, error) {
+	properties := map[string]interface{}{}
+	for k, v := range m {
+		if k[0] == '_' {
+			return "", errors.New("Properties starting with _ are reserved")
+		}
+		properties[k] = v
+	}
+
+	encoder := gremlin.GremlinPropertiesEncoder{}
+	err := encoder.Encode(properties)
+
+	return encoder.String(), err
+}
+
 func toPropertiesString(e graphElement) ([]byte, error) {
 	properties := map[string]interface{}{
 		"_ID":   string(e.ID),
@@ -389,10 +404,19 @@ func (g GremlinBackend) DelNode(n *Node) bool {
 	return true
 }
 
-func (g GremlinBackend) GetNodes(t *time.Time) []*Node {
+func (g GremlinBackend) GetNodes(t *time.Time, m Metadata) []*Node {
 	var nodes []*Node
 
 	query := "g.V().has('_ID')"
+
+	if len(m) > 0 {
+		properties, err := metadataToString(m)
+		if err != nil {
+			logging.GetLogger().Errorf("Error while retrieving nodes: %s", err.Error())
+			return nil
+		}
+		query += ".has(" + properties + ")"
+	}
 
 	els, err := g.client.QueryElements(query)
 	if err != nil {
@@ -413,10 +437,19 @@ func (g GremlinBackend) WithContext(graph *Graph, context GraphContext) (*Graph,
 	return graph, nil
 }
 
-func (g GremlinBackend) GetEdges(t *time.Time) []*Edge {
+func (g GremlinBackend) GetEdges(t *time.Time, m Metadata) []*Edge {
 	var edges []*Edge
 
 	query := "g.E().has('_ID')"
+
+	if len(m) > 0 {
+		properties, err := metadataToString(m)
+		if err != nil {
+			logging.GetLogger().Errorf("Error while retrieving edges: %s", err.Error())
+			return nil
+		}
+		query += ".has(" + properties + ")"
+	}
 
 	els, err := g.client.QueryElements(query)
 	if err != nil {

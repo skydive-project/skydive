@@ -91,18 +91,18 @@ func (c *ShadowedBackend) SetMetadata(i interface{}, metadata Metadata) bool {
 	return c.persistent.SetMetadata(i, metadata)
 }
 
-func (c *ShadowedBackend) GetNodes(t *time.Time) []*Node {
+func (c *ShadowedBackend) GetNodes(t *time.Time, m Metadata) []*Node {
 	if t == nil {
-		return c.memory.GetNodes(t)
+		return c.memory.GetNodes(t, m)
 	}
-	return c.persistent.GetNodes(t)
+	return c.persistent.GetNodes(t, m)
 }
 
-func (c *ShadowedBackend) GetEdges(t *time.Time) []*Edge {
+func (c *ShadowedBackend) GetEdges(t *time.Time, m Metadata) []*Edge {
 	if t == nil {
-		return c.memory.GetEdges(t)
+		return c.memory.GetEdges(t, m)
 	}
-	return c.persistent.GetEdges(t)
+	return c.persistent.GetEdges(t, m)
 }
 
 func (c *ShadowedBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
@@ -110,11 +110,11 @@ func (c *ShadowedBackend) WithContext(graph *Graph, context GraphContext) (*Grap
 }
 
 func (c *ShadowedBackend) populateMemoryBackend() {
-	for _, node := range c.persistent.GetNodes(nil) {
+	for _, node := range c.persistent.GetNodes(nil, Metadata{}) {
 		c.memory.AddNode(node)
 	}
 
-	for _, edge := range c.persistent.GetEdges(nil) {
+	for _, edge := range c.persistent.GetEdges(nil, Metadata{}) {
 		c.memory.AddEdge(edge)
 	}
 

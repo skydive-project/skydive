@@ -44,12 +44,12 @@ func (c *Forwarder) triggerResync() {
 	c.Client.SendWSMessage(shttp.NewWSMessage(Namespace, "HostGraphDeleted", c.Host))
 
 	// re-added all the nodes and edges
-	nodes := c.Graph.GetNodes()
+	nodes := c.Graph.GetNodes(Metadata{})
 	for _, n := range nodes {
 		c.Client.SendWSMessage(shttp.NewWSMessage(Namespace, "NodeAdded", n))
 	}
 
-	edges := c.Graph.GetEdges()
+	edges := c.Graph.GetEdges(Metadata{})
 	for _, e := range edges {
 		c.Client.SendWSMessage(shttp.NewWSMessage(Namespace, "EdgeAdded", e))
 	}

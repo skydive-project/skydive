@@ -222,6 +222,18 @@ func (b *ElasticSearchBackend) getElement(i Identifier, t *time.Time, element in
 	return fmt.Errorf("No object found %s", string(i))
 }
 
+func (b *ElasticSearchBackend) metadataToTerms(m Metadata) []map[string]interface{} {
+	terms := make([]map[string]interface{}, 0, len(m))
+	for k, v := range m {
+		terms = append(terms, map[string]interface{}{
+			"term": map[string]interface{}{
+				"Metadata/" + k: v,
+			},
+		})
+	}
+	return terms
+}
+
 func (b *ElasticSearchBackend) unflattenMetadata(obj map[string]interface{}) {
 	metadata := make(map[string]interface{})
 	for k, v := range obj {
@@ -470,8 +482,9 @@ func (b *ElasticSearchBackend) SetMetadata(i interface{}, m Metadata) bool {
 	return success
 }
 
-func (b *ElasticSearchBackend) GetNodes(t *time.Time) (nodes []*Node) {
+func (b *ElasticSearchBackend) GetNodes(t *time.Time, m Metadata) (nodes []*Node) {
 	timedQuery := b.getTimedQuery(t)
+	timedQuery = append(timedQuery, b.metadataToTerms(m)...)
 	query := b.createQuery(timedQuery...)
 
 	q, err := json.Marshal(query)
@@ -497,8 +510,9 @@ func (b *ElasticSearchBackend) GetNodes(t *time.Time) (nodes []*Node) {
 	return nodes
 }
 
-func (b *ElasticSearchBackend) GetEdges(t *time.Time) (edges []*Edge) {
+func (b *ElasticSearchBackend) GetEdges(t *time.Time, m Metadata) (edges []*Edge) {
 	timedQuery := b.getTimedQuery(t)
+	timedQuery = append(timedQuery, b.metadataToTerms(m)...)
 	query := b.createQuery(timedQuery...)
 
 	q, err := json.Marshal(query)

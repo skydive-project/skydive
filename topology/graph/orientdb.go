@@ -301,8 +301,11 @@ func (*OrientDBBackend) getTimeClause(t *time.Time) string {
 	return fmt.Sprintf("CreatedAt <= '%s' AND (DeletedAt > '%s' OR DeletedAt is NULL)", s, s)
 }
 
-func (o *OrientDBBackend) GetNodes(t *time.Time) (nodes []*Node) {
+func (o *OrientDBBackend) GetNodes(t *time.Time, m Metadata) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeClause(t))
+	if metadataQuery := metadataToOrientDBSetString(m); metadataQuery != "" {
+		query += " AND " + metadataQuery
+	}
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving nodes: %s (%+v)", err.Error(), docs)
@@ -316,8 +319,11 @@ func (o *OrientDBBackend) GetNodes(t *time.Time) (nodes []*Node) {
 	return
 }
 
-func (o *OrientDBBackend) GetEdges(t *time.Time) (edges []*Edge) {
+func (o *OrientDBBackend) GetEdges(t *time.Time, m Metadata) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeClause(t))
+	if metadataQuery := metadataToOrientDBSetString(m); metadataQuery != "" {
+		query += " AND " + metadataQuery
+	}
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges: %s (%+v)", err.Error(), docs)

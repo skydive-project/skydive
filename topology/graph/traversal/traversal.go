@@ -422,7 +422,7 @@ func (t *GraphTraversal) V(ids ...graph.Identifier) *GraphTraversalV {
 		}
 		nodes = []*graph.Node{node}
 	} else {
-		nodes = t.Graph.GetNodes()
+		nodes = t.Graph.GetNodes(graph.Metadata{})
 	}
 
 	if t.currentStepContext.PaginationRange != nil {
