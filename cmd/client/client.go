@@ -46,7 +46,7 @@ var Client = &cobra.Command{
 	SilenceUsage: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if flag := cmd.Flags().Lookup("analyzer"); !flag.Changed {
-			config.GetConfig().Set("agent.analyzers", "localhost:8082")
+			config.GetConfig().SetDefault("agent.analyzers", "localhost:8082")
 		} else {
 			config.GetConfig().Set("agent.analyzers", flag.Value)
 		}

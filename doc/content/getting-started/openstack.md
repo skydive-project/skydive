@@ -75,12 +75,13 @@ the `br-int` bridges.
 ```console
 $ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
+$ export SKYDIVE_AGENT_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
 
 $ skydive client capture create --gremlin "G.V().Has('Name', 'br-int')"
 ```
 
 ```console
-$ skydive client -c /tmp/skydive.yaml capture list
+$ skydive client capture list
 {
   "d62b3176-ebc8-44ed-7001-191270dc4d76": {
     "UUID": "d62b3176-ebc8-44ed-7001-191270dc4d76",
