@@ -76,4 +76,5 @@ func init() {
 	Client.AddCommand(AlertCmd)
 	Client.AddCommand(CaptureCmd)
 	Client.AddCommand(TopologyCmd)
+	Client.AddCommand(ShellCmd)
 }

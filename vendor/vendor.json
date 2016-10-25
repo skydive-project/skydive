@@ -1217,6 +1217,12 @@
 			"revision": "d0c3fe89de86839aecf2e0579c40ba3bb336a453"
 		},
 		{
+			"checksumSHA1": "AXacfEchaUqT5RGmPmMXsOWRhv8=",
+			"path": "github.com/mitchellh/go-homedir",
+			"revision": "756f7b183b7ab78acdbbee5c7f392838ed459dda",
+			"revisionTime": "2016-06-21T17:42:43Z"
+		},
+		{
 			"checksumSHA1": "4Js6Jlu93Wa0o6Kjt393L9Z7diE=",
 			"path": "github.com/mitchellh/mapstructure",
 			"revision": "281073eb9eb092240d33ef253c404f1cca550309"
@@ -1272,6 +1278,12 @@
 			"path": "github.com/petar/GoLLRB/llrb",
 			"revision": "53be0d36a84c2a886ca057d34b6aa4468df9ccb4",
 			"revisionTime": "2013-04-27T21:51:48Z"
+		},
+		{
+			"checksumSHA1": "i8KS96zyCztA4003YeqcAmpcXXs=",
+			"path": "github.com/peterh/liner",
+			"revision": "8975875355a81d612fafb9f5a6037bdcc2d9b073",
+			"revisionTime": "2016-06-15T11:30:19Z"
 		},
 		{
 			"checksumSHA1": "Mud+5WNq90BFb4gTeM5AByN8f2Y=",
