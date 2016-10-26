@@ -1,0 +1,15 @@
+agent:
+  topology:
+    probes:
+      - netlink
+      - netns
+      - ovsdb
+      - docker
+      - neutron
+  flow:
+    probes:
+      - ovssflow
+      - gopacket
+
+analyzer:
+  listen: 0.0.0.0:8082
