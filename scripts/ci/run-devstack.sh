@@ -70,6 +70,8 @@ EOF
 
 ./stack.sh
 
+set -e
+
 source openrc admin admin
 export PATH=$PATH:/opt/go/bin:/opt/stack/go/bin
 export GOROOT=/opt/go

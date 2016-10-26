@@ -40,5 +40,6 @@ case "$BACKEND" in
     ;;
 esac
 
+set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 make test.functionals GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=2m ARGS="$ARGS -etcd.server http://localhost:2379"
