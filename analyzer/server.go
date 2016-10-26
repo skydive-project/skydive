@@ -57,11 +57,12 @@ type Server struct {
 	Storage             storage.Storage
 	FlowTable           *flow.Table
 	TableClient         *flow.TableClient
-	conn                *net.UDPConn
+	conn                *AgentAnalyzerServerConn
 	EmbeddedEtcd        *etcd.EmbeddedEtcd
 	EtcdClient          *etcd.EtcdClient
 	running             atomic.Value
 	wgServers           sync.WaitGroup
+	wgFlowsHandlers     sync.WaitGroup
 }
 
 func (s *Server) flowExpireUpdate(flows []*flow.Flow) {
@@ -78,15 +79,19 @@ func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
 	logging.GetLogger().Debugf("%d flows received", len(flows))
 }
 
-func (s *Server) handleUDPFlowPacket() {
-	s.conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
+/* handleFlowPacket can handle connection based on TCP or UDP */
+func (s *Server) handleFlowPacket(conn *AgentAnalyzerServerConn) {
+	defer s.wgFlowsHandlers.Done()
+	defer conn.Close()
+
+	conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
 	data := make([]byte, 4096)
 
 	for s.running.Load() == true {
-		n, _, err := s.conn.ReadFromUDP(data)
+		n, err := conn.Read(data)
 		if err != nil {
 			if err.(net.Error).Timeout() == true {
-				s.conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
+				conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
 				continue
 			}
 			if s.running.Load() == false {
@@ -127,18 +132,37 @@ func (s *Server) ListenAndServe() {
 		s.WSServer.ListenAndServe()
 	}()
 
+	host := s.HTTPServer.Addr + ":" + strconv.FormatInt(int64(s.HTTPServer.Port), 10)
+	addr, err := net.ResolveUDPAddr("udp", host)
+	s.conn, err = NewAgentAnalyzerServerConn(addr)
+	if err != nil {
+		panic(err)
+	}
 	go func() {
 		defer s.wgServers.Done()
 
-		host := s.HTTPServer.Addr + ":" + strconv.FormatInt(int64(s.HTTPServer.Port), 10)
-		addr, err := net.ResolveUDPAddr("udp", host)
-		s.conn, err = net.ListenUDP("udp", addr)
-		if err != nil {
-			panic(err)
-		}
-		defer s.conn.Close()
+		for s.running.Load() == true {
+			switch s.conn.Mode() {
+			case TLS:
+				conn, err := s.conn.Accept()
+				if s.running.Load() == false {
+					break
+				}
+				if err != nil {
+					logging.GetLogger().Errorf("Accept error : %s", err.Error())
+					time.Sleep(200 * time.Millisecond)
+					continue
+				}
 
-		s.handleUDPFlowPacket()
+				s.wgFlowsHandlers.Add(1)
+				go s.handleFlowPacket(conn)
+			case UDP:
+				s.wgFlowsHandlers.Add(1)
+				s.handleFlowPacket(s.conn)
+			}
+		}
+		s.wgFlowsHandlers.Wait()
+		logging.GetLogger().Debug("server flows : wait for opened connection done")
 	}()
 
 	s.FlowTable.Start()
@@ -158,6 +182,7 @@ func (s *Server) Stop() {
 	s.ProbeBundle.Stop()
 	s.AlertServer.AlertManager.Stop()
 	s.EtcdClient.Stop()
+	s.conn.Cleanup()
 	s.wgServers.Wait()
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()

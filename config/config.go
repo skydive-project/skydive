@@ -32,6 +32,8 @@ import (
 
 	"github.com/spf13/viper"
 	_ "github.com/spf13/viper/remote"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 var cfg *viper.Viper
@@ -185,10 +187,7 @@ func validateIPPort(addressPort string) (string, int, error) {
 
 	addr := "localhost"
 	if IPaddr != nil {
-		addr = IPaddr.String()
-		if len(IPaddr) == 16 {
-			addr = "[" + IPaddr.String() + "]"
-		}
+		addr = common.IPToString(IPaddr)
 	}
 	return addr, port, nil
 }

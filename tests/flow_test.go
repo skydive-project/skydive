@@ -43,6 +43,8 @@ import (
 const confAgentAnalyzer = `---
 agent:
   listen: :58081
+  X509_cert: {{.AgentX509_cert}}
+  X509_key: {{.AgentX509_key}}
   analyzers: localhost:{{.AnalyzerPort}}
   topology:
     probes:
@@ -64,6 +66,8 @@ sflow:
 
 analyzer:
   listen: :{{.AnalyzerPort}}
+  X509_cert: {{.AnalyzerX509_cert}}
+  X509_key: {{.AnalyzerX509_key}}
   flowtable_expire: 600
   flowtable_update: 20
   flowtable_agent_ratio: 0.5
@@ -82,6 +86,8 @@ logging:
 const confAgentAnalyzerIPv6 = `---
 agent:
   listen: "[::1]:58081"
+  X509_cert: {{.AgentX509_cert}}
+  X509_key: {{.AgentX509_key}}
   analyzers: "[::1]:{{.AnalyzerPort}}"
   topology:
     probes:
@@ -103,6 +109,8 @@ sflow:
 
 analyzer:
   listen: "[::1]:{{.AnalyzerPort}}"
+  X509_cert: {{.AnalyzerX509_cert}}
+  X509_key: {{.AnalyzerX509_key}}
   flowtable_expire: 600
   flowtable_update: 20
   flowtable_agent_ratio: 0.5
@@ -490,6 +498,85 @@ func TestPCAPProbe(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	capture := api.NewCapture("G.V().Has('Name', 'br-pcap', 'Type', 'bridge')", "")
+	if err := client.Create("capture", capture); err != nil {
+		t.Fatal(err.Error())
+	}
+	time.Sleep(1 * time.Second)
+
+	setupCmds := []helper.Cmd{
+		{"brctl addbr br-pcap", true},
+		{"ip link set br-pcap up", true},
+		{"ip netns add vm1", true},
+		{"ip link add name vm1-eth0 type veth peer name eth0 netns vm1", true},
+		{"ip link set vm1-eth0 up", true},
+		{"ip netns exec vm1 ip link set eth0 up", true},
+		{"ip netns exec vm1 ip address add 169.254.66.66/24 dev eth0", true},
+		{"brctl addif br-pcap vm1-eth0", true},
+
+		{"ip netns add vm2", true},
+		{"ip link add name vm2-eth0 type veth peer name eth0 netns vm2", true},
+		{"ip link set vm2-eth0 up", true},
+		{"ip netns exec vm2 ip link set eth0 up", true},
+		{"ip netns exec vm2 ip address add 169.254.66.67/24 dev eth0", true},
+		{"brctl addif br-pcap vm2-eth0", true},
+
+		{"ip netns exec vm1 ping -c 15 169.254.66.67", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip link set br-pcap down", true},
+		{"brctl delbr br-pcap", true},
+		{"ip link del vm1-eth0", true},
+		{"ip link del vm2-eth0", true},
+		{"ip netns del vm1", true},
+		{"ip netns del vm2", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	aa.Flush()
+
+	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-pcap", "Type", "bridge")`)
+
+	ok := false
+	flows := ts.GetFlows()
+	for _, f := range flows {
+		if f.NodeUUID == string(node.ID) {
+			ok = true
+			break
+		}
+	}
+
+	if !ok {
+		t.Errorf("Unable to find a flow with the expected NodeUUID: %v\n%v", flows, aa.Agent.Graph.String())
+	}
+
+	client.Delete("capture", capture.ID())
+}
+
+func TestPCAPProbeTLS(t *testing.T) {
+	ts := NewTestStorage()
+
+	params := []helper.HelperParams{make(helper.HelperParams)}
+	cert, key := helper.GenerateFakeX509Certificate("server")
+	params[0]["AnalyzerX509_cert"] = cert
+	params[0]["AnalyzerX509_key"] = key
+	cert, key = helper.GenerateFakeX509Certificate("client")
+	params[0]["AgentX509_cert"] = cert
+	params[0]["AgentX509_key"] = key
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts, params...)
 	aa.Start()
 	defer aa.Stop()
 

@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"runtime"
 	"strconv"
@@ -312,4 +313,11 @@ func NewNetNsContext(path string) (*NetNSContext, error) {
 		origns: origns,
 		newns:  newns,
 	}, nil
+}
+
+func IPToString(ip net.IP) string {
+	if ip.To4() == nil {
+		return "[" + ip.String() + "]"
+	}
+	return ip.String()
 }

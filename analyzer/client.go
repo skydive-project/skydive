@@ -34,7 +34,7 @@ type Client struct {
 	Addr string
 	Port int
 
-	connection net.Conn
+	connection *AgentAnalyzerClientConn
 }
 
 func (c *Client) SendFlow(f *flow.Flow) error {
@@ -65,7 +65,7 @@ func NewClient(addr string, port int) (*Client, error) {
 		return nil, err
 	}
 
-	connection, err := net.DialUDP("udp", nil, srv)
+	connection, err := NewAgentAnalyzerClientConn(srv)
 	if err != nil {
 		return nil, err
 	}

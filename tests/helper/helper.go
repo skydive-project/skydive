@@ -24,15 +24,24 @@ package helper
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -58,15 +67,17 @@ type GremlinQueryHelper struct {
 }
 
 var (
-	etcdServer     string
-	graphBackend   string
-	storageBackend string
+	etcdServer             string
+	graphBackend           string
+	storageBackend         string
+	useFlowsConnectionType string
 )
 
 func init() {
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
 	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
 	flag.StringVar(&storageBackend, "storage.backend", "", "Specify the storage backend used")
+	flag.StringVar(&useFlowsConnectionType, "use.FlowsConnectionType", "UDP", "Specify the flows connection type between Agent(s) and Analyzer")
 	flag.Parse()
 }
 
@@ -117,6 +128,14 @@ func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 	}
 	if graphBackend != "" {
 		params[0]["GraphBackend"] = graphBackend
+	}
+	if useFlowsConnectionType == "TLS" {
+		cert, key := GenerateFakeX509Certificate("server")
+		params[0]["AnalyzerX509_cert"] = cert
+		params[0]["AnalyzerX509_key"] = key
+		cert, key = GenerateFakeX509Certificate("client")
+		params[0]["AgentX509_cert"] = cert
+		params[0]["AgentX509_key"] = key
 	}
 
 	tmpl, err := template.New("config").Parse(conf)
@@ -405,4 +424,102 @@ func FilterIPv6AddrAnd(flows []*flow.Flow, A, B string) (r []*flow.Flow) {
 		}
 	}
 	return r
+}
+
+func publicKey(priv interface{}) interface{} {
+	switch k := priv.(type) {
+	case *rsa.PrivateKey:
+		return &k.PublicKey
+	case *ecdsa.PrivateKey:
+		return &k.PublicKey
+	default:
+		return nil
+	}
+}
+
+func pemBlockForKey(priv interface{}) *pem.Block {
+	switch k := priv.(type) {
+	case *rsa.PrivateKey:
+		return &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}
+	case *ecdsa.PrivateKey:
+		b, err := x509.MarshalECPrivateKey(k)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to marshal ECDSA private key: %v", err)
+			os.Exit(2)
+		}
+		return &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}
+	default:
+		return nil
+	}
+}
+
+func GenerateFakeX509Certificate(certType string) (string, string) {
+	priv, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	if err != nil {
+		logging.GetLogger().Fatal("ECDSA GenerateKey failed : " + err.Error())
+	}
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		logging.GetLogger().Fatal("Serial number generation error : " + err.Error())
+	}
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Skydive Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(1 * time.Hour),
+
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+	}
+	if certType == "server" {
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	} else {
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+	}
+
+	hosts := strings.Split("127.0.0.1,::1", ",")
+	for _, h := range hosts {
+		if ip := net.ParseIP(h); ip != nil {
+			template.IPAddresses = append(template.IPAddresses, ip)
+		} else {
+			template.DNSNames = append(template.DNSNames, h)
+		}
+	}
+	template.DNSNames = append(template.DNSNames, "localhost")
+	template.EmailAddresses = append(template.EmailAddresses, "skydive@skydive-test.com")
+	/* Generate CA */
+	template.IsCA = true
+	template.KeyUsage |= x509.KeyUsageCertSign
+
+	/* Certificate */
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
+	if err != nil {
+		logging.GetLogger().Fatalf("Failed to create certificate: %s", err)
+	}
+
+	basedir, err := ioutil.TempDir("", "skydive-keys")
+	if err != nil {
+		logging.GetLogger().Fatal("can't create tempdir skydive-keys")
+	}
+	certFilename := filepath.Join(basedir, "cert.pem")
+	certOut, err := os.Create(certFilename)
+	if err != nil {
+		logging.GetLogger().Fatalf("failed to open %s for writing: %s", certFilename, err)
+	}
+	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	certOut.Close()
+
+	/* Private Key */
+	privKeyFilename := filepath.Join(basedir, "key.pem")
+	keyOut, err := os.OpenFile(privKeyFilename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		logging.GetLogger().Fatalf("failed to open %s for writing: %s", privKeyFilename, err)
+	}
+	pem.Encode(keyOut, pemBlockForKey(priv))
+	keyOut.Close()
+
+	return certFilename, privKeyFilename
 }
