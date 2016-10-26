@@ -382,3 +382,18 @@ func NewGremlinQueryHelper(authOptions *shttp.AuthenticationOpts) *GremlinQueryH
 		authOptions: authOptions,
 	}
 }
+
+func FilterIPv6AddrAnd(flows []*flow.Flow, A, B string) (r []*flow.Flow) {
+	for _, f := range flows {
+		if f.Network == nil || (f.Network.Protocol != flow.FlowProtocol_IPV6) {
+			continue
+		}
+		if strings.HasPrefix(f.Network.A, A) && strings.HasPrefix(f.Network.B, B) {
+			r = append(r, f)
+		}
+		if strings.HasPrefix(f.Network.A, B) && strings.HasPrefix(f.Network.B, A) {
+			r = append(r, f)
+		}
+	}
+	return r
+}

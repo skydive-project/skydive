@@ -25,7 +25,7 @@ openstack:
 analyzer:
   # address and port for the analyzer API, Format: addr:port.
   # Default addr is 127.0.0.1
-  listen: 8082
+  listen: :8082
   flowtable_expire: 600
   flowtable_update: 60
   flowtable_agent_ratio: 0.5
@@ -36,7 +36,7 @@ analyzer:
 agent:
   # address and port for the agent API, Format: addr:port.
   # Default addr is 127.0.0.1
-  listen: 8081
+  listen: :8081
   analyzers: 127.0.0.1:8082
   # The 'analyzer_username' and 'analyzer_password' parameters are
   # used by the agent to authenticate against the analyzer

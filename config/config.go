@@ -24,10 +24,10 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -167,46 +167,39 @@ func SetDefault(key string, value interface{}) {
 	cfg.SetDefault(key, value)
 }
 
-func GetHostPortAttributes(s string, p string) (string, int, error) {
-	key := s + "." + p
-	listen := strings.Split(GetConfig().GetString(key), ":")
+func validateIPPort(addressPort string) (string, int, error) {
+	/* Backward compatibility for old format like : listen = 1234 */
+	if !strings.ContainsAny(addressPort, ".:") {
+		addressPort = ":" + addressPort
+	}
+	/* validate IPv4 and IPv6 address */
+	IPAddr, err := net.ResolveUDPAddr("", addressPort)
+	if err != nil {
+		return "", 0, err
+	}
+	IPaddr := IPAddr.IP
+	port := IPAddr.Port
 
 	addr := "127.0.0.1"
-
-	switch len(listen) {
-	case 1:
-		port, err := strconv.Atoi(listen[0])
-		if err != nil {
-			return "", 0, err
+	if IPaddr != nil {
+		addr = IPaddr.String()
+		if len(IPaddr) == 16 {
+			addr = "[" + IPaddr.String() + "]"
 		}
-
-		return addr, port, nil
-	case 2:
-		port, err := strconv.Atoi(listen[1])
-		if err != nil {
-			return "", 0, err
-		}
-
-		return listen[0], port, nil
-	default:
-		return "", 0, fmt.Errorf("Malformed listen parameter %s in section %s", s, p)
 	}
+	return addr, port, nil
+}
+
+func GetHostPortAttributes(s string, p string) (string, int, error) {
+	key := s + "." + p
+	return validateIPPort(GetConfig().GetString(key))
 }
 
 func GetAnalyzerClientAddr() (string, int, error) {
 	analyzers := GetConfig().GetStringSlice("agent.analyzers")
 	// TODO(safchain) HA Connection ???
 	if len(analyzers) > 0 {
-		split := strings.Split(analyzers[0], ":")
-		if len(split) != 2 {
-			return "", 0, fmt.Errorf("Malformed analyzer address: %s", analyzers[0])
-		}
-		port, err := strconv.Atoi(split[1])
-		if err != nil {
-			return "", 0, err
-		}
-
-		return split[0], port, nil
+		return validateIPPort(analyzers[0])
 	}
 	return "", 0, nil
 }

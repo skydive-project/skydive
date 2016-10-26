@@ -44,7 +44,7 @@ const confTopology = `---
 ws_pong_timeout: 5
 
 agent:
-  listen: 58081
+  listen: :58081
   topology:
     probes:
       - netlink
@@ -57,7 +57,7 @@ cache:
   cleanup: 30
 
 sflow:
-  listen: 55000
+  listen: :55000
 
 etcd:
   embedded: {{.EmbeddedEtcd}}

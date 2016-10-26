@@ -43,6 +43,19 @@ func TestFlowSimple(t *testing.T) {
 	}
 }
 
+func TestFlowSimpleIPv6(t *testing.T) {
+	table := NewTable(nil, nil)
+	packet := forgeTestPacket(t, 64, false, IPv6, TCP)
+	FlowsFromGoPacket(table, packet, 0, nil)
+	flows := table.GetFlows(nil).GetFlows()
+	if len(flows) != 1 {
+		t.Error("A single packet must generate 1 flow")
+	}
+	if flows[0].LayersPath != "IPv6/TCP/Payload" {
+		t.Error("Flow LayersPath must be IPv6/TCP/Payload")
+	}
+}
+
 func TestFlowParentUUID(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, UDP)

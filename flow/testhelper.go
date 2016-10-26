@@ -45,6 +45,7 @@ const (
 	IPv6
 	TCP
 	UDP
+	SCTP
 	GRE
 )
 
@@ -87,6 +88,8 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 				ipv4Layer.Protocol = layers.IPProtocolTCP
 			case UDP:
 				ipv4Layer.Protocol = layers.IPProtocolUDP
+			case SCTP:
+				ipv4Layer.Protocol = layers.IPProtocolSCTP
 			case GRE:
 				ipv4Layer.Protocol = layers.IPProtocolGRE
 			}
@@ -94,6 +97,25 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 				ipv4Layer.SrcIP, ipv4Layer.DstIP = ipv4Layer.DstIP, ipv4Layer.SrcIP
 			}
 			protoStack = append(protoStack, ipv4Layer)
+		case IPv6:
+			ipv6Layer := &layers.IPv6{
+				SrcIP: net.IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, byte(rnd.Intn(0x100)), 1},
+				DstIP: net.IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, byte(rnd.Intn(0x100)), 0, 1},
+			}
+			switch protos[i+1] {
+			case TCP:
+				ipv6Layer.NextHeader = layers.IPProtocolTCP
+			case UDP:
+				ipv6Layer.NextHeader = layers.IPProtocolUDP
+			case SCTP:
+				ipv6Layer.NextHeader = layers.IPProtocolSCTP
+			case GRE:
+				ipv6Layer.NextHeader = layers.IPProtocolGRE
+			}
+			if swap {
+				ipv6Layer.SrcIP, ipv6Layer.DstIP = ipv6Layer.DstIP, ipv6Layer.SrcIP
+			}
+			protoStack = append(protoStack, ipv6Layer)
 		case TCP:
 			tcpLayer := &layers.TCP{
 				SrcPort: layers.TCPPort(uint16(1024 + rnd.Intn(0x10000-1024))),
@@ -112,6 +134,15 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 				udpLayer.SrcPort, udpLayer.DstPort = udpLayer.DstPort, udpLayer.SrcPort
 			}
 			protoStack = append(protoStack, udpLayer)
+		case SCTP:
+			sctpLayer := &layers.SCTP{
+				SrcPort: layers.SCTPPort(uint16(1024 + rnd.Intn(0x10000-1024))),
+				DstPort: layers.SCTPPort(uint16(1024 + rnd.Intn(0x10000-1024))),
+			}
+			if swap {
+				sctpLayer.SrcPort, sctpLayer.DstPort = sctpLayer.DstPort, sctpLayer.SrcPort
+			}
+			protoStack = append(protoStack, sctpLayer)
 		default:
 			t.Log("forgeTestPacket : Unsupported protocol ", proto)
 		}

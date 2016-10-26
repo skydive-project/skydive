@@ -238,19 +238,19 @@ func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata)
 	return intf
 }
 
-func (u *NetLinkProbe) getLinkIPV4Addr(link netlink.Link) string {
-	var ipv4 []string
+func (u *NetLinkProbe) getLinkIPs(link netlink.Link, family int) string {
+	var ips []string
 
-	addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
+	addrs, err := netlink.AddrList(link, family)
 	if err != nil {
 		return ""
 	}
 
 	for _, addr := range addrs {
-		ipv4 = append(ipv4, addr.IPNet.String())
+		ips = append(ips, addr.IPNet.String())
 	}
 
-	return strings.Join(ipv4, ", ")
+	return strings.Join(ips, ", ")
 }
 
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
@@ -273,9 +273,14 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		"Driver":  driver,
 	}
 
-	ipv4 := u.getLinkIPV4Addr(link)
+	ipv4 := u.getLinkIPs(link, netlink.FAMILY_V4)
 	if len(ipv4) > 0 {
 		metadata["IPV4"] = ipv4
+	}
+
+	ipv6 := u.getLinkIPs(link, netlink.FAMILY_V6)
+	if len(ipv6) > 0 {
+		metadata["IPV6"] = ipv6
 	}
 
 	if vlan, ok := link.(*netlink.Vlan); ok {

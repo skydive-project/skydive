@@ -36,7 +36,7 @@ import (
 
 const confStorage = `---
 agent:
-  listen: 58081
+  listen: :58081
   analyzers: localhost:{{.AnalyzerPort}}
   topology:
     probes:
@@ -56,7 +56,7 @@ sflow:
   port_max: 55005
 
 analyzer:
-  listen: {{.AnalyzerPort}}
+  listen: :{{.AnalyzerPort}}
   flowtable_expire: 600
   flowtable_update: 20
   flowtable_agent_ratio: 0.5

@@ -25,7 +25,7 @@ package validator
 import (
 	"errors"
 	"fmt"
-	"regexp"
+	"net"
 	"strings"
 
 	"gopkg.in/validator.v2"
@@ -48,15 +48,12 @@ var (
 )
 
 func isIP(v interface{}, param string) error {
-	//(TODO: masco) need to support IPv6 also
-	ipv4Regex := "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
-
 	ip, ok := v.(string)
 	if !ok {
 		return IPNotValid()
 	}
-	re, _ := regexp.Compile(ipv4Regex)
-	if !re.MatchString(ip) {
+	/* Parse/Check IPv4 and IPv6 address */
+	if n := net.ParseIP(ip); n == nil {
 		return IPNotValid()
 	}
 	return nil

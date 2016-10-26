@@ -50,7 +50,7 @@ auth:
     file: {{.PasswordFile}}
 
 analyzer:
-  listen: {{.AnalyzerPort}}
+  listen: :{{.AnalyzerPort}}
   flowtable_expire: 600
   flowtable_update: 10
   flowtable_agent_ratio: 0.5

@@ -127,6 +127,8 @@ func (f *FlowApi) conversationLayer(w http.ResponseWriter, r *auth.Authenticated
 		ltype = flow.FlowProtocol_ETHERNET
 	case "ipv4":
 		ltype = flow.FlowProtocol_IPV4
+	case "ipv6":
+		ltype = flow.FlowProtocol_IPV6
 	case "tcp":
 		ltype = flow.FlowProtocol_TCPPORT
 	case "udp":
