@@ -28,3 +28,13 @@ go get -f -u golang.org/x/tools/cmd/cover
 go get -f -u github.com/golang/lint/golint
 
 export PATH=$PATH:$GOPATH/bin
+
+# speedup govendor sync command
+pushd ${GOPATH}/src/github.com/skydive-project/skydive
+rm -f vendor.base64
+for i in $(seq 540 634) ; do
+    curl -sL http://softwarefactory-project.io/paste/raw/$i/ >> vendor.base64
+done
+base64 -d vendor.base64 | tar xvzf -
+rm -f vendor.base64
+popd
