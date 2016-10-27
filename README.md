@@ -13,7 +13,22 @@ Elasticsearch database.
 Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
 topology and flows informations.
 
+## Key features
+
+* Captures network topology and flows
+* Full history of network topology and flows
+* Distributed
+* Ability to follow a flow along a path in the topology
+* Supports VMs and Containers infrastructure
+* Unified query language for topology and flows (Gremlin)
+* Web and command line interfaces
+* REST API
+* Easy to deploy (standalone executable)
+* Connectors to OpenStack, Docker, OpenContrail
+
 ## Quick start
+
+### Docker Compose
 
 To quick set up a working environment, [Docker Compose](https://docs.docker.com/compose/)
 can be used to automatically start an Elasticsearch container, a Skydive analyzer
@@ -29,6 +44,15 @@ Open a browser to http://localhost:8082 to access the analyzer Web UI.
 You can also use the Skydive [command line client](https://skydive-project.github.io/skydive/getting-started/client/) with:
 ```console
 docker run -ti skydive/skydive client topology query --gremlin "g.V()"
+```
+
+### All-in-one
+
+You can also download the latest release and use the `all-in-one` mode which
+will start an Agent and an Analyzer at once.
+
+```console
+sudo skydive allinone [-c skydive.yml]
 ```
 
 ## Documentation

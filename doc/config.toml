@@ -43,7 +43,6 @@ googleAnalytics = ""
 	twitter = ""
 	github  = "skydive-project/skydive"
 
-
 [[menu.main]]
 	name   = "Home"
 	url    = ""
@@ -68,19 +67,13 @@ googleAnalytics = ""
   weight = 120
 
 [[menu.main]]
-  name = "Gremlin query language"
+  name = "Openstack"
 	parent = "started"
-	url = "getting-started/gremlin/"
-  weight = 130
-
-[[menu.main]]
-  name = "Devstack"
-	parent = "started"
-	url = "getting-started/devstack/"
+	url = "getting-started/openstack/"
   weight = 300
 
 [[menu.main]]
-  name = "kubernetes"
+  name = "Kubernetes"
 	parent = "started"
 	url = "getting-started/kubernetes/"
   weight = 400
@@ -90,6 +83,30 @@ googleAnalytics = ""
 	parent = "started"
 	url = "getting-started/docker/"
   weight = 300
+
+[[menu.main]]
+	name   = "API"
+	identifier = "api"
+	url    = "api/"
+	weight = 15
+
+[[menu.main]]
+	name = "Flows"
+	parent = "api"
+	url = "api/flows/"
+	weight = 1400
+
+[[menu.main]]
+	name = "Gremlin language"
+	parent = "api"
+	url = "api/gremlin/"
+	weight = 1300
+
+[[menu.main]]
+	name = "Rest"
+	parent = "api"
+	url = "api/rest/"
+	weight = 1500
 
 [[menu.main]]
 	name   = "Architecture"
@@ -110,7 +127,6 @@ googleAnalytics = ""
 	name   = "License"
 	url    = "license"
 	weight = 100
-
 
 [blackfriday]
 	smartypants	= true

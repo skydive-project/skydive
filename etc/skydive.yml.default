@@ -139,8 +139,8 @@ logging:
 auth:
   # specify the type of authentication mechanism: noauth, basic, keystone (default: noauth)
   # type: basic
-    # basic:
-      # file: /etc/skydive/htpasswd
+  # basic:
+    # file: /etc/skydive/htpasswd
 
 etcd:
   # when 'embedded' is set to true, the analyzer will start an embedded etcd server

@@ -16,6 +16,7 @@ Skydive relies on two main components:
 * Go >= 1.5
 * Elasticsearch >= 2.0
 * libpcap
+* libxml2
 
 ## Install
 
@@ -51,4 +52,12 @@ $ skydive agent [--conf etc/skydive.yml]
 ```
 ```console
 $ skydive analyzer [--conf etc/skydive.yml]
+```
+
+## All-in-one
+
+The `all-in-one` mode can be used to start an Agent and an Analyzer at once.
+
+```console
+$ skydive allinone [--conf etc/skydive.yml]
 ```

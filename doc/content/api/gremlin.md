@@ -125,6 +125,22 @@ G.V().OutE().Has('Type', 'layer2').InV()
 G.V().Out().Both().Dedup()
 ```
 
+### Count step
+
+`Count` returns the number of elements retrieved by the previous step.
+
+```console
+G.V().Count()
+```
+
+### Limit step
+
+`Limit` limits the number of elements returned.
+
+```console
+g.Flows().Limit(1)
+```
+
 ### ShortestPathTo step
 
 `ShortestPathTo` step returns the shortest path to node matching the given
@@ -203,9 +219,44 @@ G.V().Has('Name', 'br-int').Flows().In()
 G.V().Has('Name', 'br-int').Flows().Out()
 ```
 
+### Flows Has step
+
+`Has` step filters out the flows that don't match the given attributes list.
+
+```console
+G.Flows().Has('Network.A', '192.168.0.1')
+```
+
+Key can be any attributes of the Flow data structure :
+
+* `UUID`
+* `TrackingID`
+* `NodeUUID`
+* `ANodeUUID`
+* `BNodeUUID`
+* `LayersPath`
+* `Link.A`
+* `Link.B`
+* `Link.Protocol`
+* `Network.A`
+* `Network.B`
+* `Network.Protocol`
+* `Transport.A`
+* `Transport.B`
+* `Transport.Protocol`
+* `Metric.ABBytes`
+* `Metric.BABytes`
+* `Metric.ABPackets`
+* `Metric.BAPackets`
+* `Metric.Start`
+* `Metric.Last`
+
+Lt, Lte, Gt, Gte predicates can be used on numerical fields.
+See [Flow Schema](/api/flows/) for further explanations.
+
 ### Predicates
 
-Predicates can be used with `Has`, `In*``, `Out*`` steps.
+Predicates can be used with `Has`, `In*`, `Out*` steps.
 
 * `NE`, matches graph elements for which metadata don't match specified values
 

@@ -62,7 +62,7 @@ $ skydive client topology query --gremlin "G.V().Has('Name', 'br-int', 'Type' ,'
   }
 ]
 ```
-Refer to the [Gremlin section](/getting-started/gremlin/) for further
+Refer to the [Gremlin section](/api/gremlin/) for further
 explanations about the syntax and the functions available.
 
 ## Flow captures

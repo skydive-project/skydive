@@ -76,68 +76,61 @@ the `br-int` bridges.
 $ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
 
-$ skydive client -c /tmp/skydive.yaml capture create \
-  --probepath "*/br-int[Type=ovsbridge]"
+$ skydive client capture create --gremlin "G.V().Has('Name', 'br-int')"
 ```
 
 ```console
 $ skydive client -c /tmp/skydive.yaml capture list
 {
-  "*/br-int[Type=ovsbridge]": {
-    "ProbePath": "*/br-int[Type=ovsbridge]"
+  "d62b3176-ebc8-44ed-7001-191270dc4d76": {
+    "UUID": "d62b3176-ebc8-44ed-7001-191270dc4d76",
+    "GremlinQuery": "G.V().Has('Name', 'br-int')",
+    "Count": 1
   }
 }
 ```
 
-A request on Elasticsearch will give us the traffic captured. Here after a ping
-between the qrouter and the qdhcp namespaces.
+To get Flows captured :
 
 ```console
-curl -s http://localhost:9200/_search | jq .hits.hits[0]
-{
-  "_source": {
-    "IfDstGraphPath": "devstack-1[Type=host]/qdhcp-cb5e9887-0779-48d1-aac6-b48e4d688056[Type=netns]/tap8ce0a68c-38[Type=internal]",
-    "IfSrcGraphPath": "devstack-1[Type=host]/qrouter-c616325e-f3d9-497b-adfa-afe06a5a6245[Type=netns]/qr-26fe372c-b6[Type=internal]",
-    "ProbeGraphPath": "devstack-1[Type=host]/br-int[Type=ovsbridge]",
-    "TrackingID": "684924892c321f69599f826eb151acb103c4e8a3",
-    "Statistics": {
-      "Endpoints": [
-        {
-          "BA": {
-            "Bytes": 4700,
-            "Packets": 47,
-            "Value": "fa:16:3e:85:ca:e1"
-          },
-          "AB": {
-            "Bytes": 4700,
-            "Packets": 47,
-            "Value": "fa:16:3e:9c:49:a5"
-          },
-          "Type": "ETHERNET"
-        },
-        {
-          "BA": {
-            "Bytes": 3948,
-            "Packets": 47,
-            "Value": "10.0.0.2"
-          },
-          "AB": {
-            "Bytes": 3948,
-            "Packets": 47,
-            "Value": "10.0.0.1"
-          },
-          "Type": "IPV4"
-        }
-      ],
-      "Last": 1464279198,
-      "Start": 1464279141
+skydive client topology query --gremlin "G.Flows()"
+[
+  {
+    "ANodeUUID": "422190f1-bbde-4eb0-4849-1fd1209229fe",
+    "BNodeUUID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
+    "LastUpdateMetric": {
+      "ABBytes": 490,
+      "ABPackets": 5,
+      "BABytes": 490,
+      "BAPackets": 5,
+      "Last": 1477567166,
+      "Start": 1477567161
     },
     "LayersPath": "Ethernet/IPv4/ICMPv4/Payload",
-    "UUID": "a24497056a12484c181585b7a1344b95e3197955"
-  },
-  "_score": 1,
-  "_id": "a24497056a12484c181585b7a1344b95e3197955",
-  "_type": "flow",
-  "_index": "skydive_v1"
-}
+    "Link": {
+      "A": "02:48:4f:c4:40:99",
+      "B": "e2:d0:f0:61:e7:81",
+      "Protocol": "ETHERNET"
+    },
+    "Metric": {
+      "ABBytes": 364560,
+      "ABPackets": 3720,
+      "BABytes": 364560,
+      "BAPackets": 3720,
+      "Last": 1477567165,
+      "Start": 1477563444
+    },
+    "Network": {
+      "A": "192.168.0.1",
+      "B": "192.168.0.2",
+      "Protocol": "IPV4"
+    },
+    "NodeUUID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
+    "TrackingID": "f745fb1f59298a1773e35827adfa42dab4f469f9",
+    "UUID": "caa24da240cb3b40c84ebb708e2e5dcbe3c54784"
+  }
+]
 ```
+
+For a complete description of the flow structure can be found
+[here](/api/flows/).
