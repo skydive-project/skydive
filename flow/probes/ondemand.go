@@ -68,7 +68,12 @@ func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) *F
 			return nil
 		}
 	} else {
-		capType = common.CaptureTypes[n.Metadata()["Type"].(string)].Default
+		c, ok := common.CaptureTypes[n.Metadata()["Type"].(string)]
+		if !ok {
+			logging.GetLogger().Errorf("Failed to register flow probe, unknown type %v", n)
+			return nil
+		}
+		capType = c.Default
 	}
 	probe := o.Probes.GetProbe(capType)
 	if probe == nil {
