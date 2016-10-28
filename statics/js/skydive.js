@@ -489,7 +489,7 @@ Layout.prototype.AddEdge = function(edge) {
     return;
 
   // specific to link to host
-  var i, e;
+  var i, e, nparents;
   if (edge.Parent.Metadata.Type == "host") {
     if (edge.Child.Metadata.Type == "ovsbridge" ||
         edge.Child.Metadata.Type == "netns")
@@ -498,7 +498,7 @@ Layout.prototype.AddEdge = function(edge) {
     if (edge.Child.Metadata.Type == "bridge" && this.graph.GetNeighbors(edge.Child).length > 1)
       return;
 
-    var nparents = this.graph.GetParents(edge.Child).length;
+    nparents = this.graph.GetParents(edge.Child).length;
     if (nparents > 2 || (nparents > 1 && this.graph.GetChildren(edge.Child).length !== 0))
       return;
   } else {
@@ -514,7 +514,8 @@ Layout.prototype.AddEdge = function(edge) {
             break;
           }
 
-          if (this.graph.GetParents(node).length > 2) {
+          nparents = this.graph.GetParents(node).length;
+          if (nparents > 2 || (nparents > 1 && this.graph.GetChildren(node).length !== 0)) {
             this.DelEdge(e);
             break;
           }
