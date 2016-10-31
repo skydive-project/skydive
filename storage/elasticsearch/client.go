@@ -132,6 +132,16 @@ func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, d
 	return err
 }
 
+func (c *ElasticSearchClient) Update(obj string, id string, data interface{}) error {
+	_, err := c.connection.Update("skydive", obj, id, nil, data)
+	return err
+}
+
+func (c *ElasticSearchClient) UpdateWithPartialDoc(obj string, id string, data interface{}) error {
+	_, err := c.connection.UpdateWithPartialDoc("skydive", obj, id, nil, data, false)
+	return err
+}
+
 func (c *ElasticSearchClient) Get(obj string, id string) (elastigo.BaseResponse, error) {
 	return c.connection.Get("skydive", obj, id, nil)
 }

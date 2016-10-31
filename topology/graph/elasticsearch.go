@@ -76,6 +76,30 @@ type ElasticSearchBackend struct {
 	client *elasticsearch.ElasticSearchClient
 }
 
+func (b *ElasticSearchBackend) mapElement(e *graphElement) map[string]interface{} {
+	obj := map[string]interface{}{
+		"ID":   string(e.ID),
+		"Host": e.host,
+	}
+
+	for k, v := range e.metadata {
+		obj["Metadata/"+k] = v
+	}
+
+	return obj
+}
+
+func (b *ElasticSearchBackend) mapNode(n *Node) map[string]interface{} {
+	return b.mapElement(&n.graphElement)
+}
+
+func (b *ElasticSearchBackend) mapEdge(e *Edge) map[string]interface{} {
+	obj := b.mapElement(&e.graphElement)
+	obj["Parent"] = e.parent
+	obj["Child"] = e.child
+	return obj
+}
+
 func (b *ElasticSearchBackend) getTimedQuery(t *time.Time) []map[string]interface{} {
 	var t2 time.Time
 	if t != nil {
@@ -117,16 +141,6 @@ func (b *ElasticSearchBackend) getTimedQuery(t *time.Time) []map[string]interfac
 	}
 }
 
-func (b *ElasticSearchBackend) getMapping(e interface{}) string {
-	switch e.(type) {
-	case *Node:
-		return "node"
-	case *Edge:
-		return "edge"
-	}
-	return ""
-}
-
 func (b *ElasticSearchBackend) createQuery(filters ...map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{
 		"query": map[string]interface{}{
@@ -150,21 +164,13 @@ func (b *ElasticSearchBackend) getRequest(i Identifier, t *time.Time) map[string
 	return b.createQuery(timedQuery...)
 }
 
-func (b *ElasticSearchBackend) getElement(i Identifier, t *time.Time, element interface{}) error {
-	var t2 time.Time
-	if t != nil {
-		t2 = *t
-	} else {
-		t2 = time.Now()
-	}
-
+func (b *ElasticSearchBackend) searchElement(kind string, i Identifier, t *time.Time, element interface{}) error {
 	request := b.getRequest(i, t)
 	q, err := json.Marshal(request)
 	if err != nil {
 		return err
 	}
 
-	kind := b.getMapping(element)
 	out, err := b.client.Search(kind, string(q))
 	if err != nil {
 		return err
@@ -186,6 +192,14 @@ func (b *ElasticSearchBackend) getElement(i Identifier, t *time.Time, element in
 		}
 	}
 
+	return fmt.Errorf("Element %s not found", string(i))
+}
+
+func (b *ElasticSearchBackend) getElement(kind string, i Identifier, t *time.Time, element interface{}) error {
+	if t != nil {
+		return b.searchElement(kind, i, t, element)
+	}
+
 	resp, err := b.client.Get(kind, string(i))
 	if err != nil {
 		return err
@@ -197,25 +211,14 @@ func (b *ElasticSearchBackend) getElement(i Identifier, t *time.Time, element in
 			return err
 		}
 
-		createdAt, ok := obj["CreatedAt"].(float64)
-		if !ok {
-			return errors.New("Object has no attribute 'CreatedAt'")
-		}
-
 		deletedAt, ok := obj["DeletedAt"].(float64)
-		if !ok {
-			return errors.New("Object has no attribute 'DeletedAt'")
-		}
-
-		if createdAt <= float64(t2.Unix()) && (deletedAt == 0 || deletedAt > float64(t2.Unix())) {
+		if ok && deletedAt == 0 {
 			switch e := element.(type) {
 			case *Node:
 				e.Decode(obj)
 			case *Edge:
 				e.Decode(obj)
 			}
-
-			return nil
 		}
 	}
 
@@ -232,6 +235,45 @@ func (b *ElasticSearchBackend) metadataToTerms(m Metadata) []map[string]interfac
 		})
 	}
 	return terms
+}
+
+func (b *ElasticSearchBackend) archiveElement(kind string, id Identifier) bool {
+	resp, err := b.client.Get(kind, string(id))
+	if err != nil || !resp.Found {
+		return false
+	}
+
+	var obj map[string]interface{}
+	if err := json.Unmarshal([]byte(*resp.Source), &obj); err != nil {
+		return false
+	}
+
+	if _, err := b.client.Delete(kind, string(id)); err != nil {
+		logging.GetLogger().Errorf("Error while deleting %s %s: %s", kind, id, err.Error())
+		return false
+	}
+
+	obj["DeletedAt"] = time.Now().Unix()
+	obj["CreatedAt"] = int64(obj["CreatedAt"].(float64))
+
+	// Archive the element with a different ES id
+	if err := b.client.Index(kind, string(GenID()), obj); err != nil {
+		logging.GetLogger().Errorf("Error while deleting %s %s: %s", kind, id, err.Error())
+		return false
+	}
+
+	return true
+}
+
+func (b *ElasticSearchBackend) deleteElement(kind string, id string) bool {
+	obj := map[string]interface{}{"DeletedAt": time.Now().Unix()}
+
+	if err := b.client.UpdateWithPartialDoc(kind, id, obj); err != nil {
+		logging.GetLogger().Errorf("Error while marking %s as deleted %s: %s", kind, id, err.Error())
+		return false
+	}
+
+	return true
 }
 
 func (b *ElasticSearchBackend) unflattenMetadata(obj map[string]interface{}) {
@@ -270,17 +312,9 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 }
 
 func (b *ElasticSearchBackend) AddNode(n *Node) bool {
-	now := time.Now().Unix()
-	obj := map[string]interface{}{
-		"ID":        string(n.ID),
-		"Host":      n.host,
-		"CreatedAt": now,
-		"DeletedAt": 0,
-	}
-
-	for k, v := range n.metadata {
-		obj["Metadata/"+k] = v
-	}
+	obj := b.mapNode(n)
+	obj["CreatedAt"] = time.Now().Unix()
+	obj["DeletedAt"] = 0
 
 	if err := b.client.Index("node", string(n.ID), obj); err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
@@ -291,34 +325,12 @@ func (b *ElasticSearchBackend) AddNode(n *Node) bool {
 }
 
 func (b *ElasticSearchBackend) DelNode(n *Node) bool {
-	resp, err := b.client.Get("node", string(n.ID))
-	if err != nil || !resp.Found {
-		return false
-	}
-
-	var obj map[string]interface{}
-	if err := json.Unmarshal([]byte(*resp.Source), &obj); err != nil {
-		return false
-	}
-
-	obj["DeletedAt"] = time.Now().Unix()
-	obj["CreatedAt"] = int64(obj["CreatedAt"].(float64))
-
-	if _, err := b.client.Delete("node", string(n.ID)); err != nil {
-		logging.GetLogger().Errorf("Error while deleting node %s: %s", n.ID, err.Error())
-	}
-
-	if err := b.client.Index("node", string(GenID()), obj); err != nil {
-		logging.GetLogger().Errorf("Error while deleting node %s: %s", n.ID, err.Error())
-		return false
-	}
-
-	return true
+	return b.deleteElement("node", string(n.ID))
 }
 
 func (b *ElasticSearchBackend) GetNode(i Identifier, t *time.Time) *Node {
 	var node Node
-	if b.getElement(i, t, &node) != nil {
+	if b.getElement("node", i, t, &node) != nil {
 		return nil
 	}
 	return &node
@@ -371,18 +383,9 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edg
 
 func (b *ElasticSearchBackend) AddEdge(e *Edge) bool {
 	now := time.Now().Unix()
-	obj := map[string]interface{}{
-		"ID":        string(e.ID),
-		"Host":      e.host,
-		"CreatedAt": now,
-		"DeletedAt": 0,
-		"Parent":    e.parent,
-		"Child":     e.child,
-	}
-
-	for k, v := range e.metadata {
-		obj["Metadata/"+k] = v
-	}
+	obj := b.mapEdge(e)
+	obj["CreatedAt"] = now
+	obj["DeletedAt"] = 0
 
 	if err := b.client.Index("edge", string(e.ID), obj); err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
@@ -393,34 +396,12 @@ func (b *ElasticSearchBackend) AddEdge(e *Edge) bool {
 }
 
 func (b *ElasticSearchBackend) DelEdge(e *Edge) bool {
-	resp, err := b.client.Get("edge", string(e.ID))
-	if err != nil || !resp.Found {
-		return false
-	}
-
-	var obj map[string]interface{}
-	if err := json.Unmarshal([]byte(*resp.Source), &obj); err != nil {
-		return false
-	}
-
-	obj["DeletedAt"] = time.Now().Unix()
-	obj["CreatedAt"] = int64(obj["CreatedAt"].(float64))
-
-	if _, err := b.client.Delete("edge", string(e.ID)); err != nil {
-		logging.GetLogger().Errorf("Error while deleting edge %s: %s", e.ID, err.Error())
-	}
-
-	if err := b.client.Index("edge", string(GenID()), obj); err != nil {
-		logging.GetLogger().Errorf("Error while updating edge %s: %s", e.ID, err.Error())
-		return false
-	}
-
-	return true
+	return b.deleteElement("edge", string(e.ID))
 }
 
 func (b *ElasticSearchBackend) GetEdge(i Identifier, t *time.Time) *Edge {
 	var edge Edge
-	if b.getElement(i, t, &edge) != nil {
+	if b.getElement("edge", i, t, &edge) != nil {
 		return nil
 	}
 	return &edge
@@ -437,20 +418,27 @@ func (b *ElasticSearchBackend) updateGraphElement(i interface{}) bool {
 	case *Node:
 		node := i.(*Node)
 		edges := b.GetNodeEdges(node, nil)
-		b.DelNode(node)
-		b.AddNode(node)
+
+		if !b.archiveElement("node", node.ID) {
+			return false
+		}
+
+		if !b.AddNode(node) {
+			return false
+		}
+
 		for _, e := range edges {
 			parent, child := b.GetEdgeNodes(e, nil)
 			if parent == nil || child == nil {
 				continue
 			}
 
-			if success = b.DelEdge(e); !success {
-				break
+			if !b.archiveElement("edge", e.ID) {
+				return false
 			}
 
-			if success = b.AddEdge(e); !success {
-				break
+			if !b.AddEdge(e) {
+				return false
 			}
 		}
 
