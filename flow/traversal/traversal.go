@@ -23,7 +23,6 @@
 package traversal
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -416,47 +415,7 @@ func (f *FlowTraversalStep) Values() []interface{} {
 }
 
 func (f *FlowTraversalStep) MarshalJSON() ([]byte, error) {
-	a := make([]interface{}, len(f.flowset.Flows))
-	for i, flow := range f.flowset.Flows {
-		b, err := json.Marshal(flow)
-		if err != nil {
-			logging.GetLogger().Errorf("Error while converting flow to JSON: %v", flow)
-			continue
-		}
-
-		d := json.NewDecoder(bytes.NewReader(b))
-		d.UseNumber()
-
-		var x map[string]interface{}
-		err = d.Decode(&x)
-		if err != nil {
-			logging.GetLogger().Errorf("Error while converting flow to JSON: %v", flow)
-			continue
-		}
-
-		// substitute UUID by the node
-		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
-			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID))
-			if node != nil {
-				x["ANode"] = node
-			}
-		}
-
-		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
-			node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID))
-			if node != nil {
-				x["BNode"] = node
-			}
-		}
-
-		node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.NodeUUID))
-		if node != nil {
-			x["Node"] = node
-		}
-
-		a[i] = x
-	}
-	return json.Marshal(a)
+	return json.Marshal(f.Values())
 }
 
 func (f *FlowTraversalStep) Error() error {
