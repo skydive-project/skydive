@@ -31,19 +31,17 @@ type Forwarder struct {
 	shttp.DefaultWSClientEventHandler
 	Client *shttp.WSAsyncClient
 	Graph  *Graph
-	Root   *Node
+	Host   string
 }
 
 func (c *Forwarder) triggerResync() {
 	logging.GetLogger().Infof("Start a resync of the graph")
 
-	c.Graph.Lock()
-	defer c.Graph.Unlock()
+	c.Graph.RLock()
+	defer c.Graph.RUnlock()
 
 	// request for deletion of everything belonging to Root node
-	if c.Root != nil {
-		c.Client.SendWSMessage(shttp.NewWSMessage(Namespace, "SubGraphDeleted", c.Root))
-	}
+	c.Client.SendWSMessage(shttp.NewWSMessage(Namespace, "HostGraphDeleted", c.Host))
 
 	// re-added all the nodes and edges
 	nodes := c.Graph.GetNodes()
@@ -85,11 +83,11 @@ func (c *Forwarder) OnEdgeDeleted(e *Edge) {
 	c.Client.SendWSMessage(shttp.NewWSMessage(Namespace, "EdgeDeleted", e))
 }
 
-func NewForwarder(c *shttp.WSAsyncClient, g *Graph, root *Node) *Forwarder {
+func NewForwarder(c *shttp.WSAsyncClient, g *Graph, host string) *Forwarder {
 	f := &Forwarder{
 		Client: c,
 		Graph:  g,
-		Root:   root,
+		Host:   host,
 	}
 
 	g.AddEventListener(f)

@@ -695,20 +695,12 @@ func (g *Graph) DelNode(n *Node) {
 	}
 }
 
-func (g *Graph) delSubGraph(n *Node, v map[Identifier]bool) {
-	v[n.ID] = true
-
-	for _, e := range g.backend.GetNodeEdges(n, nil) {
-		_, child := g.backend.GetEdgeNodes(e, nil)
-		if child != nil && child.ID != n.ID && !v[child.ID] {
-			g.delSubGraph(child, v)
-			g.DelNode(child)
+func (g *Graph) DelHostGraph(host string) {
+	for _, node := range g.GetNodes() {
+		if node.host == host {
+			g.DelNode(node)
 		}
 	}
-}
-
-func (g *Graph) DelSubGraph(n *Node) {
-	g.delSubGraph(n, make(map[Identifier]bool))
 }
 
 func (g *Graph) GetNodes() []*Node {

@@ -238,9 +238,8 @@ func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *time.Time) (n1 *Node, n2 *Nod
 
 	if id1 == e.parent {
 		return n1, n2
-	} else {
-		return n2, n1
 	}
+	return n2, n1
 }
 
 func (o *OrientDBBackend) updateGraphElement(i interface{}) bool {
@@ -311,7 +310,7 @@ func (o *OrientDBBackend) GetNodes(t *time.Time) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeClause(t))
 	docs, err := o.client.Sql(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving nodes: %s", err.Error(), docs)
+		logging.GetLogger().Errorf("Error while retrieving nodes: %s, %v", err.Error(), docs)
 		return
 	}
 
@@ -326,7 +325,7 @@ func (o *OrientDBBackend) GetEdges(t *time.Time) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeClause(t))
 	docs, err := o.client.Sql(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving edges: %s", err.Error(), docs)
+		logging.GetLogger().Errorf("Error while retrieving edges: %s, %v", err.Error(), docs)
 		return
 	}
 

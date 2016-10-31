@@ -81,11 +81,8 @@ func (a *Agent) Start() {
 			os.Exit(1)
 		}
 
-		graph.NewForwarder(a.WSClient, a.Graph, a.Root)
+		graph.NewForwarder(a.WSClient, a.Graph, config.GetConfig().GetString("host_id"))
 		a.WSClient.Connect()
-
-		// send a first reset event to the analyzers
-		a.Graph.DelSubGraph(a.Root)
 	}
 
 	a.TopologyProbeBundle = tprobes.NewTopologyProbeBundleFromConfig(a.Graph, a.Root)

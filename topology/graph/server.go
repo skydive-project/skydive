@@ -68,7 +68,13 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	}
 
 	switch msg.Type {
-	case "SubGraphDeleted", "NodeUpdated", "NodeDeleted", "NodeAdded":
+	case "HostGraphDeleted":
+		var obj interface{}
+		if err := json.Unmarshal([]byte(*msg.Obj), &obj); err != nil {
+			return "", msg, err
+		}
+		return msg.Type, obj, nil
+	case "NodeUpdated", "NodeDeleted", "NodeAdded":
 		var obj interface{}
 		if err := json.Unmarshal([]byte(*msg.Obj), &obj); err != nil {
 			return "", msg, err
@@ -116,15 +122,11 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	case "SyncRequest":
 		reply := shttp.NewWSMessage(Namespace, "SyncReply", s.Graph.WithContext(obj.(GraphContext)))
 		c.SendWSMessage(reply)
-	case "SubGraphDeleted":
-		n := obj.(*Node)
+	case "HostGraphDeleted":
+		host := obj.(string)
 
-		logging.GetLogger().Debugf("Got SubGraphDeleted event from the node %s", n.ID)
-
-		node := s.Graph.GetNode(n.ID)
-		if node != nil {
-			s.Graph.DelSubGraph(node)
-		}
+		logging.GetLogger().Debugf("Got HostGraphDeleted event for host %s", host)
+		s.Graph.DelHostGraph(host)
 	case "NodeUpdated":
 		n := obj.(*Node)
 		node := s.Graph.GetNode(n.ID)

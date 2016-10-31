@@ -22,7 +22,11 @@
 
 package graph
 
-import "time"
+import (
+	"time"
+
+	"github.com/skydive-project/skydive/logging"
+)
 
 type ShadowedBackend struct {
 	memory     *MemoryBackend
@@ -101,14 +105,30 @@ func (c *ShadowedBackend) GetEdges(t *time.Time) []*Edge {
 	return c.persistent.GetEdges(t)
 }
 
+func (c *ShadowedBackend) populateMemoryBackend() {
+	for _, node := range c.persistent.GetNodes(nil) {
+		c.memory.AddNode(node)
+	}
+
+	for _, edge := range c.persistent.GetEdges(nil) {
+		c.memory.AddEdge(edge)
+	}
+
+	logging.GetLogger().Debug("Population of memory backend from persistent backend done")
+}
+
 func NewShadowedBackend(persistent GraphBackend) (*ShadowedBackend, error) {
 	memory, err := NewMemoryBackend()
 	if err != nil {
 		return nil, err
 	}
 
-	return &ShadowedBackend{
+	sb := &ShadowedBackend{
 		persistent: persistent,
 		memory:     memory,
-	}, nil
+	}
+
+	sb.populateMemoryBackend()
+
+	return sb, nil
 }
