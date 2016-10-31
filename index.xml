@@ -80,11 +80,224 @@ matching the Gremlin expression, and if so, start capturing traffic.&lt;/p&gt;
     </item>
     
     <item>
+      <title>Flows</title>
+      <link>//skydive-project.github.io/skydive/api/flows/</link>
+      <pubDate>Thu, 29 Sep 2016 11:02:01 +0200</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/api/flows/</guid>
+      <description>&lt;p&gt;The Flow Schema is described in a
+&lt;a href=&#34;https://github.com/skydive-project/skydive/blob/master/flow/flow.proto&#34;&gt;protobuf file&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;A typical Gremlin request on Flows will return a JSON version of the Flow
+structure.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client topology query --gremlin &amp;quot;G.Flows().Limit(1)&amp;quot;
+[
+  {
+    &amp;quot;ANodeUUID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
+    &amp;quot;BNodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;LastUpdateMetric&amp;quot;: {
+      &amp;quot;ABBytes&amp;quot;: 490,
+      &amp;quot;ABPackets&amp;quot;: 5,
+      &amp;quot;BABytes&amp;quot;: 490,
+      &amp;quot;BAPackets&amp;quot;: 5,
+      &amp;quot;Last&amp;quot;: 1477563666,
+      &amp;quot;Start&amp;quot;: 1477563661
+    },
+    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4/Payload&amp;quot;,
+    &amp;quot;Link&amp;quot;: {
+      &amp;quot;A&amp;quot;: &amp;quot;02:48:4f:c4:40:99&amp;quot;,
+      &amp;quot;B&amp;quot;: &amp;quot;e2:d0:f0:61:e7:81&amp;quot;,
+      &amp;quot;Protocol&amp;quot;: &amp;quot;ETHERNET&amp;quot;
+    },
+    &amp;quot;Metric&amp;quot;: {
+      &amp;quot;ABBytes&amp;quot;: 21658,
+      &amp;quot;ABPackets&amp;quot;: 221,
+      &amp;quot;BABytes&amp;quot;: 21658,
+      &amp;quot;BAPackets&amp;quot;: 221,
+      &amp;quot;Last&amp;quot;: 1477563666,
+      &amp;quot;Start&amp;quot;: 1477563444
+    },
+    &amp;quot;Network&amp;quot;: {
+      &amp;quot;A&amp;quot;: &amp;quot;192.168.0.1&amp;quot;,
+      &amp;quot;B&amp;quot;: &amp;quot;192.168.0.2&amp;quot;,
+      &amp;quot;Protocol&amp;quot;: &amp;quot;IPV4&amp;quot;
+    },
+    &amp;quot;NodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;TrackingID&amp;quot;: &amp;quot;f745fb1f59298a1773e35827adfa42dab4f469f9&amp;quot;,
+    &amp;quot;UUID&amp;quot;: &amp;quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&amp;quot;
+  }
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Below the description of the fields :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;UUID&lt;/code&gt;, Unique ID of the flow. The ID is unique per capture point, meaning
+that a same flow will get a different ID for a different capture.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;TrackingID&lt;/code&gt;, ID of the Flow which is the same across all the
+captures point. This ID can be used to follow a Flow on each capture points.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;NodeUUID&lt;/code&gt;, ID of the interface node in the topology where the flow was
+captured.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;ANodeUUID&lt;/code&gt;, ID of the interface node in the topology where the packet is
+coming from.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;ANodeUUID&lt;/code&gt;, ID of the interface node in the topology where the packet is
+going to.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;LayersPath&lt;/code&gt;, All the layers composing the packets.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Link&lt;/code&gt;, Link layer of the flow. A, B and Protocol describing the endpoints and
+the protocol of this layer.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Network&lt;/code&gt;, Network layer of the flow. A, B and Protocol describing the
+endpoints and the protocol of this layer.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Transport&lt;/code&gt;, Transport layer of the flow. A, B and Protocol describing the
+endpoints and the protocol of this layer.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Metric&lt;/code&gt;, Current metrics of the flow. &lt;code&gt;AB*&lt;/code&gt; stands for metrics from
+endpoint &lt;code&gt;A&lt;/code&gt; to endpoint &lt;code&gt;B&lt;/code&gt;, and &lt;code&gt;BA*&lt;/code&gt; for the reverse path.&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Rest API</title>
+      <link>//skydive-project.github.io/skydive/api/rest/</link>
+      <pubDate>Thu, 29 Sep 2016 11:02:01 +0200</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/api/rest/</guid>
+      <description>
+
+&lt;h2 id=&#34;topology-flow-request&#34;&gt;Topology/Flow request&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;POST /api/topology HTTP/1.1
+Content-Type: application/json
+
+{
+  &amp;quot;GremlinQuery&amp;quot;:&amp;quot;G.V()&amp;quot;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+
+[
+  {
+    &amp;quot;Host&amp;quot;: &amp;quot;localhost.localdomain&amp;quot;,
+    &amp;quot;ID&amp;quot;: &amp;quot;d6759df3-d4e0-408b-64d3-c82ea6c9aeda&amp;quot;,
+    &amp;quot;Metadata&amp;quot;: {
+      &amp;quot;Name&amp;quot;: &amp;quot;vm2&amp;quot;,
+      &amp;quot;Path&amp;quot;: &amp;quot;/var/run/netns/vm2&amp;quot;,
+      &amp;quot;TID&amp;quot;: &amp;quot;7daa39fe-92f7-5f9b-51b1-1dddcd41785c&amp;quot;,
+      &amp;quot;Type&amp;quot;: &amp;quot;netns&amp;quot;
+    }
+  }
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;POST /api/topology HTTP/1.1
+Content-Type: application/json
+
+{
+  &amp;quot;GremlinQuery&amp;quot;:&amp;quot;G.Flows().Limit(1)&amp;quot;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;[
+  {
+    &amp;quot;ANodeUUID&amp;quot;: &amp;quot;d9d6f8cf-4aa6-4a06-6785-3dc56032ef82&amp;quot;,
+    &amp;quot;BNodeUUID&amp;quot;: &amp;quot;488789f9-38be-4eba-704a-79996382de41&amp;quot;,
+    &amp;quot;LastUpdateMetric&amp;quot;: {
+      &amp;quot;ABBytes&amp;quot;: 490,
+      &amp;quot;ABPackets&amp;quot;: 5,
+      &amp;quot;BABytes&amp;quot;: 490,
+      &amp;quot;BAPackets&amp;quot;: 5,
+      &amp;quot;Last&amp;quot;: 1477572621,
+      &amp;quot;Start&amp;quot;: 1477572616
+    },
+    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4/Payload&amp;quot;,
+    &amp;quot;Link&amp;quot;: {
+      &amp;quot;A&amp;quot;: &amp;quot;02:48:4f:c4:40:99&amp;quot;,
+      &amp;quot;B&amp;quot;: &amp;quot;e2:d0:f0:61:e7:81&amp;quot;,
+      &amp;quot;Protocol&amp;quot;: &amp;quot;ETHERNET&amp;quot;
+    },
+    &amp;quot;Metric&amp;quot;: {
+      &amp;quot;ABBytes&amp;quot;: 1666,
+      &amp;quot;ABPackets&amp;quot;: 17,
+      &amp;quot;BABytes&amp;quot;: 1568,
+      &amp;quot;BAPackets&amp;quot;: 16,
+      &amp;quot;Last&amp;quot;: 1477572622,
+      &amp;quot;Start&amp;quot;: 1477572606
+    },
+    &amp;quot;Network&amp;quot;: {
+      &amp;quot;A&amp;quot;: &amp;quot;192.168.0.1&amp;quot;,
+      &amp;quot;B&amp;quot;: &amp;quot;192.168.0.2&amp;quot;,
+      &amp;quot;Protocol&amp;quot;: &amp;quot;IPV4&amp;quot;
+    },
+    &amp;quot;NodeUUID&amp;quot;: &amp;quot;488789f9-38be-4eba-704a-79996382de41&amp;quot;,
+    &amp;quot;TrackingID&amp;quot;: &amp;quot;f745fb1f59298a1773e35827adfa42dab4f469f9&amp;quot;,
+    &amp;quot;UUID&amp;quot;: &amp;quot;ee29fc47f425d7a2e6de9379b0131f64a70fc991&amp;quot;
+  }
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;capture&#34;&gt;Capture&lt;/h2&gt;
+
+&lt;p&gt;To create capture :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;POST /api/capture HTTP/1.1
+Content-Type: application/json
+
+{
+  &amp;quot;GremlinQuery&amp;quot;:&amp;quot;g.V().Has(&#39;TID&#39;, &#39;de0cba34-5d96-5ce6-698a-dffd2e674f95&#39;)&amp;quot;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+
+{
+  &amp;quot;UUID&amp;quot;:&amp;quot;e2d9f084-4543-4f7e-6c2c-673f56ae4610&amp;quot;,
+  &amp;quot;GremlinQuery&amp;quot;:&amp;quot;g.V().Has(&#39;TID&#39;, &#39;de0cba34-5d96-5ce6-698a-dffd2e674f95&#39;)&amp;quot;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;To list captures :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;GET /api/capture HTTP/1.1
+Content-Type: application/json
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;{
+  &amp;quot;104fc114-e153-4f67-692a-60c636ee1597&amp;quot;:
+  {
+    &amp;quot;UUID&amp;quot;: &amp;quot;104fc114-e153-4f67-692a-60c636ee1597&amp;quot;
+    &amp;quot;GremlinQuery&amp;quot;: &amp;quot;G.V().Has(&#39;TID&#39;, &#39;2108e074-feac-5a3c-60ca-5963e89c4059&#39;)&amp;quot;
+    &amp;quot;Count&amp;quot;: 1
+  },
+  &amp;quot;e2d9f084-4543-4f7e-6c2c-673f56ae4610&amp;quot;:
+  {
+    &amp;quot;UUID&amp;quot;: &amp;quot;e2d9f084-4543-4f7e-6c2c-673f56ae4610&amp;quot;
+    &amp;quot;GremlinQuery&amp;quot;: &amp;quot;g.V().Has(&#39;TID&#39;, &#39;de0cba34-5d96-5ce6-698a-dffd2e674f95&#39;)&amp;quot;
+    &amp;quot;Count&amp;quot;: 1
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;To delete a capture :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;DELETE /api/capture/7ca73f92-0547-475e-472d-d6e28664a117 HTTP/1.1
+Content-Type: application/json
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+    </item>
+    
+    <item>
       <title>Skydive Gremlin Query language</title>
-      <link>//skydive-project.github.io/skydive/getting-started/gremlin/</link>
+      <link>//skydive-project.github.io/skydive/api/gremlin/</link>
       <pubDate>Wed, 22 Jun 2016 11:02:01 +0200</pubDate>
       
-      <guid>//skydive-project.github.io/skydive/getting-started/gremlin/</guid>
+      <guid>//skydive-project.github.io/skydive/api/gremlin/</guid>
       <description>
 
 &lt;h2 id=&#34;gremlin&#34;&gt;Gremlin&lt;/h2&gt;
@@ -202,6 +415,20 @@ selected links.&lt;/p&gt;
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Out().Both().Dedup()
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;h3 id=&#34;count-step&#34;&gt;Count step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Count&lt;/code&gt; returns the number of elements retrieved by the previous step.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Count()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;limit-step&#34;&gt;Limit step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Limit&lt;/code&gt; limits the number of elements returned.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;g.Flows().Limit(1)
+&lt;/code&gt;&lt;/pre&gt;
+
 &lt;h3 id=&#34;shortestpathto-step&#34;&gt;ShortestPathTo step&lt;/h3&gt;
 
 &lt;p&gt;&lt;code&gt;ShortestPathTo&lt;/code&gt; step returns the shortest path to node matching the given
@@ -275,9 +502,45 @@ applicable after &lt;code&gt;In/Out&lt;/code&gt; flow steps.&lt;/p&gt;
 G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().Out()
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;h3 id=&#34;flows-has-step&#34;&gt;Flows Has step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Has&lt;/code&gt; step filters out the flows that don&amp;rsquo;t match the given attributes list.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Has(&#39;Network.A&#39;, &#39;192.168.0.1&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Key can be any attributes of the Flow data structure :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;UUID&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;TrackingID&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;NodeUUID&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;ANodeUUID&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;BNodeUUID&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;LayersPath&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Link.A&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Link.B&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Link.Protocol&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Network.A&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Network.B&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Network.Protocol&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Transport.A&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Transport.B&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Transport.Protocol&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Metric.ABBytes&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Metric.BABytes&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Metric.ABPackets&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Metric.BAPackets&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Metric.Start&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Metric.Last&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Lt, Lte, Gt, Gte predicates can be used on numerical fields.
+See &lt;a href=&#34;//skydive-project.github.io/skydive/api/flows/&#34;&gt;Flow Schema&lt;/a&gt; for further explanations.&lt;/p&gt;
+
 &lt;h3 id=&#34;predicates&#34;&gt;Predicates&lt;/h3&gt;
 
-&lt;p&gt;Predicates can be used with &lt;code&gt;Has&lt;/code&gt;, &lt;code&gt;In*&lt;/code&gt;&lt;code&gt;,&lt;/code&gt;Out*`` steps.&lt;/p&gt;
+&lt;p&gt;Predicates can be used with &lt;code&gt;Has&lt;/code&gt;, &lt;code&gt;In*&lt;/code&gt;, &lt;code&gt;Out*&lt;/code&gt; steps.&lt;/p&gt;
 
 &lt;ul&gt;
 &lt;li&gt;&lt;code&gt;NE&lt;/code&gt;, matches graph elements for which metadata don&amp;rsquo;t match specified values&lt;/li&gt;
@@ -395,7 +658,6 @@ through Software Factory.&lt;/p&gt;
 &lt;p&gt;git-review installation :&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;yum install git-review
-
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;or&lt;/p&gt;
@@ -433,10 +695,10 @@ git review
     
     <item>
       <title>How to deploy Skydive with Devstack</title>
-      <link>//skydive-project.github.io/skydive/getting-started/devstack/</link>
+      <link>//skydive-project.github.io/skydive/getting-started/openstack/</link>
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
-      <guid>//skydive-project.github.io/skydive/getting-started/devstack/</guid>
+      <guid>//skydive-project.github.io/skydive/getting-started/openstack/</guid>
       <description>
 
 &lt;h2 id=&#34;devstack-plugin&#34;&gt;Devstack plugin&lt;/h2&gt;
@@ -509,69 +771,62 @@ the &lt;code&gt;br-int&lt;/code&gt; bridges.&lt;/p&gt;
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
 
-$ skydive client -c /tmp/skydive.yaml capture create \
-  --probepath &amp;quot;*/br-int[Type=ovsbridge]&amp;quot;
+$ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;)&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client -c /tmp/skydive.yaml capture list
 {
-  &amp;quot;*/br-int[Type=ovsbridge]&amp;quot;: {
-    &amp;quot;ProbePath&amp;quot;: &amp;quot;*/br-int[Type=ovsbridge]&amp;quot;
+  &amp;quot;d62b3176-ebc8-44ed-7001-191270dc4d76&amp;quot;: {
+    &amp;quot;UUID&amp;quot;: &amp;quot;d62b3176-ebc8-44ed-7001-191270dc4d76&amp;quot;,
+    &amp;quot;GremlinQuery&amp;quot;: &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;)&amp;quot;,
+    &amp;quot;Count&amp;quot;: 1
   }
 }
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;A request on Elasticsearch will give us the traffic captured. Here after a ping
-between the qrouter and the qdhcp namespaces.&lt;/p&gt;
+&lt;p&gt;To get Flows captured :&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;curl -s http://localhost:9200/_search | jq .hits.hits[0]
-{
-  &amp;quot;_source&amp;quot;: {
-    &amp;quot;IfDstGraphPath&amp;quot;: &amp;quot;devstack-1[Type=host]/qdhcp-cb5e9887-0779-48d1-aac6-b48e4d688056[Type=netns]/tap8ce0a68c-38[Type=internal]&amp;quot;,
-    &amp;quot;IfSrcGraphPath&amp;quot;: &amp;quot;devstack-1[Type=host]/qrouter-c616325e-f3d9-497b-adfa-afe06a5a6245[Type=netns]/qr-26fe372c-b6[Type=internal]&amp;quot;,
-    &amp;quot;ProbeGraphPath&amp;quot;: &amp;quot;devstack-1[Type=host]/br-int[Type=ovsbridge]&amp;quot;,
-    &amp;quot;TrackingID&amp;quot;: &amp;quot;684924892c321f69599f826eb151acb103c4e8a3&amp;quot;,
-    &amp;quot;Statistics&amp;quot;: {
-      &amp;quot;Endpoints&amp;quot;: [
-        {
-          &amp;quot;BA&amp;quot;: {
-            &amp;quot;Bytes&amp;quot;: 4700,
-            &amp;quot;Packets&amp;quot;: 47,
-            &amp;quot;Value&amp;quot;: &amp;quot;fa:16:3e:85:ca:e1&amp;quot;
-          },
-          &amp;quot;AB&amp;quot;: {
-            &amp;quot;Bytes&amp;quot;: 4700,
-            &amp;quot;Packets&amp;quot;: 47,
-            &amp;quot;Value&amp;quot;: &amp;quot;fa:16:3e:9c:49:a5&amp;quot;
-          },
-          &amp;quot;Type&amp;quot;: &amp;quot;ETHERNET&amp;quot;
-        },
-        {
-          &amp;quot;BA&amp;quot;: {
-            &amp;quot;Bytes&amp;quot;: 3948,
-            &amp;quot;Packets&amp;quot;: 47,
-            &amp;quot;Value&amp;quot;: &amp;quot;10.0.0.2&amp;quot;
-          },
-          &amp;quot;AB&amp;quot;: {
-            &amp;quot;Bytes&amp;quot;: 3948,
-            &amp;quot;Packets&amp;quot;: 47,
-            &amp;quot;Value&amp;quot;: &amp;quot;10.0.0.1&amp;quot;
-          },
-          &amp;quot;Type&amp;quot;: &amp;quot;IPV4&amp;quot;
-        }
-      ],
-      &amp;quot;Last&amp;quot;: 1464279198,
-      &amp;quot;Start&amp;quot;: 1464279141
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client topology query --gremlin &amp;quot;G.Flows()&amp;quot;
+[
+  {
+    &amp;quot;ANodeUUID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
+    &amp;quot;BNodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;LastUpdateMetric&amp;quot;: {
+      &amp;quot;ABBytes&amp;quot;: 490,
+      &amp;quot;ABPackets&amp;quot;: 5,
+      &amp;quot;BABytes&amp;quot;: 490,
+      &amp;quot;BAPackets&amp;quot;: 5,
+      &amp;quot;Last&amp;quot;: 1477567166,
+      &amp;quot;Start&amp;quot;: 1477567161
     },
     &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4/Payload&amp;quot;,
-    &amp;quot;UUID&amp;quot;: &amp;quot;a24497056a12484c181585b7a1344b95e3197955&amp;quot;
-  },
-  &amp;quot;_score&amp;quot;: 1,
-  &amp;quot;_id&amp;quot;: &amp;quot;a24497056a12484c181585b7a1344b95e3197955&amp;quot;,
-  &amp;quot;_type&amp;quot;: &amp;quot;flow&amp;quot;,
-  &amp;quot;_index&amp;quot;: &amp;quot;skydive_v1&amp;quot;
-}
+    &amp;quot;Link&amp;quot;: {
+      &amp;quot;A&amp;quot;: &amp;quot;02:48:4f:c4:40:99&amp;quot;,
+      &amp;quot;B&amp;quot;: &amp;quot;e2:d0:f0:61:e7:81&amp;quot;,
+      &amp;quot;Protocol&amp;quot;: &amp;quot;ETHERNET&amp;quot;
+    },
+    &amp;quot;Metric&amp;quot;: {
+      &amp;quot;ABBytes&amp;quot;: 364560,
+      &amp;quot;ABPackets&amp;quot;: 3720,
+      &amp;quot;BABytes&amp;quot;: 364560,
+      &amp;quot;BAPackets&amp;quot;: 3720,
+      &amp;quot;Last&amp;quot;: 1477567165,
+      &amp;quot;Start&amp;quot;: 1477563444
+    },
+    &amp;quot;Network&amp;quot;: {
+      &amp;quot;A&amp;quot;: &amp;quot;192.168.0.1&amp;quot;,
+      &amp;quot;B&amp;quot;: &amp;quot;192.168.0.2&amp;quot;,
+      &amp;quot;Protocol&amp;quot;: &amp;quot;IPV4&amp;quot;
+    },
+    &amp;quot;NodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;TrackingID&amp;quot;: &amp;quot;f745fb1f59298a1773e35827adfa42dab4f469f9&amp;quot;,
+    &amp;quot;UUID&amp;quot;: &amp;quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&amp;quot;
+  }
+]
 &lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;For a complete description of the flow structure can be found
+&lt;a href=&#34;//skydive-project.github.io/skydive/api/flows/&#34;&gt;here&lt;/a&gt;.&lt;/p&gt;
 </description>
     </item>
     
@@ -632,6 +887,7 @@ informations will be captured&lt;/li&gt;
 &lt;li&gt;Go &amp;gt;= 1.5&lt;/li&gt;
 &lt;li&gt;Elasticsearch &amp;gt;= 2.0&lt;/li&gt;
 &lt;li&gt;libpcap&lt;/li&gt;
+&lt;li&gt;libxml2&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&#34;install&#34;&gt;Install&lt;/h2&gt;
@@ -665,6 +921,13 @@ under this configuration section will be added to host metadata.&lt;/p&gt;
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive analyzer [--conf etc/skydive.yml]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;all-in-one&#34;&gt;All-in-one&lt;/h2&gt;
+
+&lt;p&gt;The &lt;code&gt;all-in-one&lt;/code&gt; mode can be used to start an Agent and an Analyzer at once.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive allinone [--conf etc/skydive.yml]
 &lt;/code&gt;&lt;/pre&gt;
 </description>
     </item>
@@ -733,7 +996,7 @@ Requests on the topology can be done as following :&lt;/p&gt;
 ]
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;Refer to the &lt;a href=&#34;//skydive-project.github.io/skydive/getting-started/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further
+&lt;p&gt;Refer to the &lt;a href=&#34;//skydive-project.github.io/skydive/api/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further
 explanations about the syntax and the functions available.&lt;/p&gt;
 
 &lt;h2 id=&#34;flow-captures&#34;&gt;Flow captures&lt;/h2&gt;
@@ -785,6 +1048,15 @@ In order to know the list of supported capture types, see the usage doc of flow 
     </item>
     
     <item>
+      <title>API</title>
+      <link>//skydive-project.github.io/skydive/api/</link>
+      <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/api/</guid>
+      <description></description>
+    </item>
+    
+    <item>
       <title>Getting started</title>
       <link>//skydive-project.github.io/skydive/getting-started/</link>
       <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
@@ -800,8 +1072,6 @@ In order to know the list of supported capture types, see the usage doc of flow 
       
       <guid>//skydive-project.github.io/skydive/</guid>
       <description>
-
-&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
 
 &lt;p&gt;Skydive is an open source real-time network topology and protocols analyzer.
 It aims to provide a comprehensive way of understanding what is happening in

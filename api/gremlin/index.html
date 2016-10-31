@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>Contact - Skydive Docs</title>
+    <title>Skydive Gremlin Query language - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="//skydive-project.github.io/skydive/contact/">
+    <link rel="canonical" href="//skydive-project.github.io/skydive/api/gremlin/">
     
     <meta name="author" content="skydive-project/skydive">
     
 
-    <meta property="og:url" content="//skydive-project.github.io/skydive/contact/">
+    <meta property="og:url" content="//skydive-project.github.io/skydive/api/gremlin/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="//skydive-project.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Contact
+        Skydive Gremlin Query language
       </div>
     </div>
 
@@ -345,11 +345,14 @@
 
 
 
-<a  title="Gremlin language" href="//skydive-project.github.io/skydive/api/gremlin/">
+<a class="current" title="Gremlin language" href="//skydive-project.github.io/skydive/api/gremlin/">
 	
 	Gremlin language
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
         
@@ -423,14 +426,11 @@
 
 
 
-<a class="current" title="Contact" href="//skydive-project.github.io/skydive/contact/">
+<a  title="Contact" href="//skydive-project.github.io/skydive/contact/">
 	
 	Contact
 </a>
 
-
-<ul id="scrollspy">
-</ul>
   
   
 </li>
@@ -480,21 +480,282 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Contact </h1>
+			<h1>Skydive Gremlin Query language </h1>
 
 			
 
-<h2 id="irc">IRC</h2>
+<h2 id="gremlin">Gremlin</h2>
+
+<p>Skydive uses a subset of the
+<a href="https://en.wikipedia.org/wiki/Gremlin_(programming_language)">Gremlin language</a>
+as query language for topology and flow requests.</p>
+
+<p>A Gremlin expression is a chain of steps that are evaluated from left to right.
+In the context of Skydive nodes stand for interfaces, ports, bridges,
+namespaces, etc. Links stand for any kind of relation between two nodes,
+ownership(host), membership(containers), layer2, etc.</p>
+
+<p>The following expression will return all the OpenvSwitch ports belonging to
+an OpenvSwitch bridge named <code>br-int</code>.</p>
+
+<pre><code class="language-console">G.V().Has('Name', 'br-int', 'Type', 'ovsbridge').Out()
+
+[
+  {
+    &quot;Host&quot;: &quot;test&quot;,
+    &quot;ID&quot;: &quot;feae10c1-240e-48e0-4a13-c608ffd15700&quot;,
+    &quot;Metadata&quot;: {
+      &quot;Name&quot;: &quot;vm2-eth0&quot;,
+      &quot;Type&quot;: &quot;ovsport&quot;,
+      &quot;UUID&quot;: &quot;f68f3593-68c4-4778-b47f-0ef291654fcf&quot;
+    }
+  },
+  {
+    &quot;Host&quot;: &quot;test&quot;,
+    &quot;ID&quot;: &quot;ca909ccf-203d-457d-70b8-06fe308221ef&quot;,
+    &quot;Metadata&quot;: {
+      &quot;Name&quot;: &quot;br-int&quot;,
+      &quot;Type&quot;: &quot;ovsport&quot;,
+      &quot;UUID&quot;: &quot;e5b47010-f479-4def-b2d0-d55f5dbf7dad&quot;
+    }
+  }
+]
+</code></pre>
+
+<p>The query has to be read as :</p>
+
+<ol>
+<li><code>G</code> returns the topology Graph</li>
+<li><code>V</code> step returns all the nodes belonging the Graph</li>
+<li><code>Has</code> step returns only the node with the given metadata attributes</li>
+<li><code>Out</code> step returns outgoing nodes</li>
+</ol>
+
+<h2 id="traversal-steps">Traversal steps</h2>
+
+<p>The Skydive implements a subset of the Gremlin language steps and adds
+&ldquo;network analysis&rdquo; specific steps.</p>
+
+<h3 id="v-step">V Step</h3>
+
+<p>V step returns the nodes belonging to the graph.</p>
+
+<pre><code class="language-console">G.V()
+</code></pre>
+
+<p>A node ID can be passed to the V step which will return the corresponding node.</p>
+
+<pre><code class="language-console">G.V('ca909ccf-203d-457d-70b8-06fe308221efca909ccf-203d-457d-70b8-06fe308221ef')
+</code></pre>
+
+<h3 id="has-step">Has Step</h3>
+
+<p><code>Has</code> step filters out the nodes that don&rsquo;t match the given metadata list. <code>Has</code>
+can be applied either on nodes or edges.</p>
+
+<pre><code class="language-console">G.V().Has('Name': test, 'Type': 'netns')
+</code></pre>
+
+<h3 id="in-out-both-steps">In/Out/Both steps</h3>
+
+<p><code>In/Out</code> steps returns either incoming, outgoing or neighbor nodes of
+previously selected nodes.</p>
+
+<pre><code class="language-console">G.V().Has('Name', 'br-int', 'Type', 'ovsbridge').Out()
+G.V().Has('Name', 'br-int', 'Type', 'ovsbridge').In()
+G.V().Has('Name', 'br-int', 'Type', 'ovsbridge').Both()
+</code></pre>
+
+<p>Filters can be applied to these steps in order to select only the nodes
+corresponding to the given metadata. In that case the step will act as a couple
+of steps <code>Out/Has</code> for example.</p>
+
+<pre><code>G.V().Has('Name', 'br-int', 'Type', 'ovsbridge').Out('Name', 'intf1')
+</code></pre>
+
+<h3 id="ine-oute-steps">InE/OutE steps</h3>
+
+<p><code>InE/OutE</code> steps returns the incoming/ougoing links.</p>
+
+<pre><code class="language-console">G.V().Has('Name': 'test', 'Type': 'netns').InE()
+G.V().Has('Name': 'test', 'Type': 'netns').OutE()
+</code></pre>
+
+<p>Like for the <code>In/Out/Both</code> steps metadata list can be passed directly as
+parameters in order to filter links.</p>
+
+<h3 id="inv-outv-steps">InV/OutV steps</h3>
+
+<p><code>InV/OutV</code> steps returns incoming, outgoing nodes attached to the previously
+selected links.</p>
+
+<pre><code class="language-console">G.V().OutE().Has('Type', 'layer2').InV()
+</code></pre>
+
+<h3 id="dedup-step">Dedup step</h3>
+
+<p><code>Dedup</code> removes duplicated nodes/links.</p>
+
+<pre><code class="language-console">G.V().Out().Both().Dedup()
+</code></pre>
+
+<h3 id="count-step">Count step</h3>
+
+<p><code>Count</code> returns the number of elements retrieved by the previous step.</p>
+
+<pre><code class="language-console">G.V().Count()
+</code></pre>
+
+<h3 id="limit-step">Limit step</h3>
+
+<p><code>Limit</code> limits the number of elements returned.</p>
+
+<pre><code class="language-console">g.Flows().Limit(1)
+</code></pre>
+
+<h3 id="shortestpathto-step">ShortestPathTo step</h3>
+
+<p><code>ShortestPathTo</code> step returns the shortest path to node matching the given
+<code>Metadata</code> predicate. This step returns a list of all the nodes traversed.</p>
+
+<pre><code class="language-console">G.V().Has('Type', 'netns').ShortestPathTo(Metadata('Type', 'host'))
+
+[
+  [
+    {
+      &quot;Host&quot;: &quot;test&quot;,
+      &quot;ID&quot;: &quot;5221d3c3-3180-4a64-5337-f2f66b83ddd6&quot;,
+      &quot;Metadata&quot;: {
+        &quot;Name&quot;: &quot;vm1&quot;,
+        &quot;Path&quot;: &quot;/var/run/netns/vm1&quot;,
+        &quot;Type&quot;: &quot;netns&quot;
+      }
+    },
+    {
+      &quot;Host&quot;: &quot;test&quot;,
+      &quot;ID&quot;: &quot;test&quot;,
+      &quot;Metadata&quot;: {
+        &quot;Name&quot;: &quot;pc48.home&quot;,
+        &quot;Type&quot;: &quot;host&quot;
+      }
+    }
+  ]
+]
+</code></pre>
+
+<p>It is possible to filter the link traversed according to the given <code>Metadata</code>
+predicate as a second parameter.</p>
+
+<pre><code>G.V().Has('Type', 'netns').ShortestPathTo(Metadata('Type', 'host'), Metadata('Type', 'layer2'))
+</code></pre>
+
+<h3 id="graphpath-step">GraphPath step</h3>
+
+<p><code>GraphPath</code> step returns a path string corresponding to the reverse path
+from the nodes to the host node they belong to.</p>
+
+<pre><code class="language-console">G.V().Has('Type', 'netns').GraphPath()
+
+[
+  &quot;test[Type=host]/vm1[Type=netns]&quot;
+]
+</code></pre>
+
+<p>The format of the path returned is the following:
+<code>node_name[Type=node_type]/.../node_name[Type=node_type]</code>`</p>
+
+<h3 id="flows-step">Flows step</h3>
+
+<p>Flows step returns flows of nodes where a capture has been started or of nodes
+where the packets are coming from or going to.
+The following Gremlin query returns the flows from the node <code>br-int</code> where
+an sFlow capture has been started.
+See the <a href="//skydive-project.github.io/skydive/getting-started/client/#flow-captures">client section</a>
+in order to know how to start a capture from a Gremlin query.</p>
+
+<pre><code class="language-console">G.V().Has('Name', 'br-int').Flows()
+</code></pre>
+
+<h3 id="flows-in-out-steps">Flows In/Out steps</h3>
+
+<p>From a flow step it is possible to get the node from where the packets are
+coming or the node where packets are going to. Node steps are of course
+applicable after <code>In/Out</code> flow steps.</p>
+
+<pre><code class="language-console">G.V().Has('Name', 'br-int').Flows().In()
+G.V().Has('Name', 'br-int').Flows().Out()
+</code></pre>
+
+<h3 id="flows-has-step">Flows Has step</h3>
+
+<p><code>Has</code> step filters out the flows that don&rsquo;t match the given attributes list.</p>
+
+<pre><code class="language-console">G.Flows().Has('Network.A', '192.168.0.1')
+</code></pre>
+
+<p>Key can be any attributes of the Flow data structure :</p>
 
 <ul>
-<li>#skydive-project on irc.freenode.net</li>
+<li><code>UUID</code></li>
+<li><code>TrackingID</code></li>
+<li><code>NodeUUID</code></li>
+<li><code>ANodeUUID</code></li>
+<li><code>BNodeUUID</code></li>
+<li><code>LayersPath</code></li>
+<li><code>Link.A</code></li>
+<li><code>Link.B</code></li>
+<li><code>Link.Protocol</code></li>
+<li><code>Network.A</code></li>
+<li><code>Network.B</code></li>
+<li><code>Network.Protocol</code></li>
+<li><code>Transport.A</code></li>
+<li><code>Transport.B</code></li>
+<li><code>Transport.Protocol</code></li>
+<li><code>Metric.ABBytes</code></li>
+<li><code>Metric.BABytes</code></li>
+<li><code>Metric.ABPackets</code></li>
+<li><code>Metric.BAPackets</code></li>
+<li><code>Metric.Start</code></li>
+<li><code>Metric.Last</code></li>
 </ul>
 
-<h2 id="mailing-list">Mailing list</h2>
+<p>Lt, Lte, Gt, Gte predicates can be used on numerical fields.
+See <a href="//skydive-project.github.io/skydive/api/flows/">Flow Schema</a> for further explanations.</p>
+
+<h3 id="predicates">Predicates</h3>
+
+<p>Predicates can be used with <code>Has</code>, <code>In*</code>, <code>Out*</code> steps.</p>
 
 <ul>
-<li><a href="https://www.redhat.com/mailman/listinfo/skydive-dev">https://www.redhat.com/mailman/listinfo/skydive-dev</a></li>
+<li><code>NE</code>, matches graph elements for which metadata don&rsquo;t match specified values</li>
 </ul>
+
+<pre><code class="language-console">G.V().Has('Type', NE('ovsbridge'))
+</code></pre>
+
+<ul>
+<li><code>Within</code>, matches graph elements for which metadata values match one member of
+the given array.</li>
+</ul>
+
+<pre><code class="language-console">G.V().Has('Type', Within('ovsbridge', 'ovsport'))
+</code></pre>
+
+<ul>
+<li><code>Without</code>, matches graph elements for which metadata values don&rsquo;t match any of
+the members of the given array.</li>
+</ul>
+
+<pre><code class="language-console">G.V().Has('Type', Without('ovsbridge', 'ovsport'))
+</code></pre>
+
+<ul>
+<li><code>Regex</code>, matches graph elements for which metadata matches the given regular
+expression.</li>
+</ul>
+
+<pre><code class="language-console">G.V().Has('Name', Regex('tap-'))
+</code></pre>
 
 			
 			<aside class="copyright" role="note">
@@ -515,7 +776,7 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="//skydive-project.github.io/skydive/contributing/" title="Contributing">
+      <a href="//skydive-project.github.io/skydive/getting-started/kubernetes/" title="How to deploy Skydive with kubernetes">
         <span class="direction">
           Previous
         </span>
@@ -525,7 +786,7 @@
           </div>
           <div class="stretch">
             <div class="title">
-              Contributing
+              How to deploy Skydive with kubernetes
             </div>
           </div>
         </div>
@@ -535,14 +796,14 @@
 
   <div class="next">
   
-      <a href="//skydive-project.github.io/skydive/getting-started/kubernetes/" title="How to deploy Skydive with kubernetes">
+      <a href="//skydive-project.github.io/skydive/api/rest/" title="Rest API">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              How to deploy Skydive with kubernetes
+              Rest API
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">

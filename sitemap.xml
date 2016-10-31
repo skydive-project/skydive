@@ -13,7 +13,17 @@
   </url>
   
   <url>
-    <loc>//skydive-project.github.io/skydive/getting-started/gremlin/</loc>
+    <loc>//skydive-project.github.io/skydive/api/flows/</loc>
+    <lastmod>2016-09-29T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/api/rest/</loc>
+    <lastmod>2016-09-29T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/api/gremlin/</loc>
     <lastmod>2016-06-22T11:02:01+02:00</lastmod>
   </url>
   
@@ -33,7 +43,7 @@
   </url>
   
   <url>
-    <loc>//skydive-project.github.io/skydive/getting-started/devstack/</loc>
+    <loc>//skydive-project.github.io/skydive/getting-started/openstack/</loc>
     <lastmod>2016-05-06T11:02:01+02:00</lastmod>
   </url>
   
@@ -50,6 +60,11 @@
   <url>
     <loc>//skydive-project.github.io/skydive/getting-started/client/</loc>
     <lastmod>2016-05-06T11:02:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/api/</loc>
+    <lastmod>2016-05-04T17:48:22+02:00</lastmod>
   </url>
   
   <url>

@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>Contact - Skydive Docs</title>
+    <title>Flows - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="//skydive-project.github.io/skydive/contact/">
+    <link rel="canonical" href="//skydive-project.github.io/skydive/api/flows/">
     
     <meta name="author" content="skydive-project/skydive">
     
 
-    <meta property="og:url" content="//skydive-project.github.io/skydive/contact/">
+    <meta property="og:url" content="//skydive-project.github.io/skydive/api/flows/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="//skydive-project.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Contact
+        Flows
       </div>
     </div>
 
@@ -357,11 +357,14 @@
 
 
 
-<a  title="Flows" href="//skydive-project.github.io/skydive/api/flows/">
+<a class="current" title="Flows" href="//skydive-project.github.io/skydive/api/flows/">
 	
 	Flows
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
         
@@ -423,14 +426,11 @@
 
 
 
-<a class="current" title="Contact" href="//skydive-project.github.io/skydive/contact/">
+<a  title="Contact" href="//skydive-project.github.io/skydive/contact/">
 	
 	Contact
 </a>
 
-
-<ul id="scrollspy">
-</ul>
   
   
 </li>
@@ -480,20 +480,75 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Contact </h1>
+			<h1>Flows </h1>
 
-			
+			<p>The Flow Schema is described in a
+<a href="https://github.com/skydive-project/skydive/blob/master/flow/flow.proto">protobuf file</a>.</p>
 
-<h2 id="irc">IRC</h2>
+<p>A typical Gremlin request on Flows will return a JSON version of the Flow
+structure.</p>
+
+<pre><code class="language-console">$ skydive client topology query --gremlin &quot;G.Flows().Limit(1)&quot;
+[
+  {
+    &quot;ANodeUUID&quot;: &quot;422190f1-bbde-4eb0-4849-1fd1209229fe&quot;,
+    &quot;BNodeUUID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
+    &quot;LastUpdateMetric&quot;: {
+      &quot;ABBytes&quot;: 490,
+      &quot;ABPackets&quot;: 5,
+      &quot;BABytes&quot;: 490,
+      &quot;BAPackets&quot;: 5,
+      &quot;Last&quot;: 1477563666,
+      &quot;Start&quot;: 1477563661
+    },
+    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4/Payload&quot;,
+    &quot;Link&quot;: {
+      &quot;A&quot;: &quot;02:48:4f:c4:40:99&quot;,
+      &quot;B&quot;: &quot;e2:d0:f0:61:e7:81&quot;,
+      &quot;Protocol&quot;: &quot;ETHERNET&quot;
+    },
+    &quot;Metric&quot;: {
+      &quot;ABBytes&quot;: 21658,
+      &quot;ABPackets&quot;: 221,
+      &quot;BABytes&quot;: 21658,
+      &quot;BAPackets&quot;: 221,
+      &quot;Last&quot;: 1477563666,
+      &quot;Start&quot;: 1477563444
+    },
+    &quot;Network&quot;: {
+      &quot;A&quot;: &quot;192.168.0.1&quot;,
+      &quot;B&quot;: &quot;192.168.0.2&quot;,
+      &quot;Protocol&quot;: &quot;IPV4&quot;
+    },
+    &quot;NodeUUID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
+    &quot;TrackingID&quot;: &quot;f745fb1f59298a1773e35827adfa42dab4f469f9&quot;,
+    &quot;UUID&quot;: &quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&quot;
+  }
+]
+</code></pre>
+
+<p>Below the description of the fields :</p>
 
 <ul>
-<li>#skydive-project on irc.freenode.net</li>
-</ul>
-
-<h2 id="mailing-list">Mailing list</h2>
-
-<ul>
-<li><a href="https://www.redhat.com/mailman/listinfo/skydive-dev">https://www.redhat.com/mailman/listinfo/skydive-dev</a></li>
+<li><code>UUID</code>, Unique ID of the flow. The ID is unique per capture point, meaning
+that a same flow will get a different ID for a different capture.</li>
+<li><code>TrackingID</code>, ID of the Flow which is the same across all the
+captures point. This ID can be used to follow a Flow on each capture points.</li>
+<li><code>NodeUUID</code>, ID of the interface node in the topology where the flow was
+captured.</li>
+<li><code>ANodeUUID</code>, ID of the interface node in the topology where the packet is
+coming from.</li>
+<li><code>ANodeUUID</code>, ID of the interface node in the topology where the packet is
+going to.</li>
+<li><code>LayersPath</code>, All the layers composing the packets.</li>
+<li><code>Link</code>, Link layer of the flow. A, B and Protocol describing the endpoints and
+the protocol of this layer.</li>
+<li><code>Network</code>, Network layer of the flow. A, B and Protocol describing the
+endpoints and the protocol of this layer.</li>
+<li><code>Transport</code>, Transport layer of the flow. A, B and Protocol describing the
+endpoints and the protocol of this layer.</li>
+<li><code>Metric</code>, Current metrics of the flow. <code>AB*</code> stands for metrics from
+endpoint <code>A</code> to endpoint <code>B</code>, and <code>BA*</code> for the reverse path.</li>
 </ul>
 
 			
@@ -515,7 +570,7 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="//skydive-project.github.io/skydive/contributing/" title="Contributing">
+      <a href="//skydive-project.github.io/skydive/api/rest/" title="Rest API">
         <span class="direction">
           Previous
         </span>
@@ -525,7 +580,7 @@
           </div>
           <div class="stretch">
             <div class="title">
-              Contributing
+              Rest API
             </div>
           </div>
         </div>
@@ -535,14 +590,14 @@
 
   <div class="next">
   
-      <a href="//skydive-project.github.io/skydive/getting-started/kubernetes/" title="How to deploy Skydive with kubernetes">
+      <a href="//skydive-project.github.io/skydive/architecture/" title="Architecture">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              How to deploy Skydive with kubernetes
+              Architecture
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">

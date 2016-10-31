@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>Contact - Skydive Docs</title>
+    <title>How to deploy Skydive with Devstack - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="//skydive-project.github.io/skydive/contact/">
+    <link rel="canonical" href="//skydive-project.github.io/skydive/getting-started/openstack/">
     
     <meta name="author" content="skydive-project/skydive">
     
 
-    <meta property="og:url" content="//skydive-project.github.io/skydive/contact/">
+    <meta property="og:url" content="//skydive-project.github.io/skydive/getting-started/openstack/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="//skydive-project.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Contact
+        How to deploy Skydive with Devstack
       </div>
     </div>
 
@@ -272,11 +272,14 @@
 
 
 
-<a  title="Openstack" href="//skydive-project.github.io/skydive/getting-started/openstack/">
+<a class="current" title="Openstack" href="//skydive-project.github.io/skydive/getting-started/openstack/">
 	
 	Openstack
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
         
@@ -423,14 +426,11 @@
 
 
 
-<a class="current" title="Contact" href="//skydive-project.github.io/skydive/contact/">
+<a  title="Contact" href="//skydive-project.github.io/skydive/contact/">
 	
 	Contact
 </a>
 
-
-<ul id="scrollspy">
-</ul>
   
   
 </li>
@@ -480,21 +480,136 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Contact </h1>
+			<h1>How to deploy Skydive with Devstack </h1>
 
 			
 
-<h2 id="irc">IRC</h2>
+<h2 id="devstack-plugin">Devstack plugin</h2>
 
-<ul>
-<li>#skydive-project on irc.freenode.net</li>
-</ul>
+<p>Skydive provides a DevStack plugin that can be used in order to have
+Skydive Agents/Analyzer set up with the proper probes
+by DevStack.</p>
 
-<h2 id="mailing-list">Mailing list</h2>
+<p>For a single node setup adding the following lines to your local.conf file
+should be enough.</p>
 
-<ul>
-<li><a href="https://www.redhat.com/mailman/listinfo/skydive-dev">https://www.redhat.com/mailman/listinfo/skydive-dev</a></li>
-</ul>
+<pre><code class="language-console">enable_plugin skydive https://github.com/skydive-project/skydive.git
+
+enable_service skydive-agent skydive-analyzer
+</code></pre>
+
+<p>The plugin accepts the following parameters:</p>
+
+<pre><code class="language-console"># Address on which skydive analyzer process listens for connections.
+# Must be in ip:port format
+#SKYDIVE_ANALYZER_LISTEN=
+
+# Inform the agent about the address on which analyzers are listening
+# Must be in ip:port format
+#SKYDIVE_AGENT_ANALYZERS=
+
+# ip:port address on which skydive agent listens for connections.
+#SKYDIVE_AGENT_LISTEN=
+
+# Configure the skydive agent with the etcd server address
+# http://IP_ADDRESS:2379
+#SKYDIVE_AGENT_ETCD=
+
+# The path for the generated skydive configuration file
+#SKYDIVE_CONFIG_FILE=
+
+# List of agent probes to be used by the agent
+# Ex: netns netlink ovsdb
+#SKYDIVE_AGENT_PROBES=
+
+# Remote port for ovsdb server.
+#SKYDIVE_OVSDB_REMOTE_PORT=6640
+
+# Set the default log level, default: INFO
+#SKYDIVE_LOGLEVEL=DEBUG
+</code></pre>
+
+<h2 id="the-classical-two-nodes-deployment">The classical two nodes deployment</h2>
+
+<p>Inside the Devstack folder of the Skydive sources there are two local.conf files
+that can be used in order to deployment two Devstack with Skydive. The first
+file will install a full Devstack with Skydive analyzer and agent. The second
+one will install a compute Devstack with only the skydive agent.</p>
+
+<p>Skydive will be set with the probes for OpenvSwitch and Neutron. It will be set
+to use Keystone as authentication mechanism, so the credentials will be the same
+than the admin.</p>
+
+<p>Once you have your environment set up, going to the Analyzer Web Interface
+should show similar to the following capture.</p>
+
+<p><img src="//skydive-project.github.io/skydive/images/devstack-two-nodes.png" alt="WebUI Capture" /></p>
+
+<h2 id="capture-traffic">Capture traffic</h2>
+
+<p>Now we have our two nodes up and running we may want to start capturing
+packets. The following command can be used in order to start a capture on all
+the <code>br-int</code> bridges.</p>
+
+<pre><code class="language-console">$ export SKYDIVE_USERNAME=admin
+$ export SKYDIVE_PASSWORD=password
+
+$ skydive client capture create --gremlin &quot;G.V().Has('Name', 'br-int')&quot;
+</code></pre>
+
+<pre><code class="language-console">$ skydive client -c /tmp/skydive.yaml capture list
+{
+  &quot;d62b3176-ebc8-44ed-7001-191270dc4d76&quot;: {
+    &quot;UUID&quot;: &quot;d62b3176-ebc8-44ed-7001-191270dc4d76&quot;,
+    &quot;GremlinQuery&quot;: &quot;G.V().Has('Name', 'br-int')&quot;,
+    &quot;Count&quot;: 1
+  }
+}
+</code></pre>
+
+<p>To get Flows captured :</p>
+
+<pre><code class="language-console">skydive client topology query --gremlin &quot;G.Flows()&quot;
+[
+  {
+    &quot;ANodeUUID&quot;: &quot;422190f1-bbde-4eb0-4849-1fd1209229fe&quot;,
+    &quot;BNodeUUID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
+    &quot;LastUpdateMetric&quot;: {
+      &quot;ABBytes&quot;: 490,
+      &quot;ABPackets&quot;: 5,
+      &quot;BABytes&quot;: 490,
+      &quot;BAPackets&quot;: 5,
+      &quot;Last&quot;: 1477567166,
+      &quot;Start&quot;: 1477567161
+    },
+    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4/Payload&quot;,
+    &quot;Link&quot;: {
+      &quot;A&quot;: &quot;02:48:4f:c4:40:99&quot;,
+      &quot;B&quot;: &quot;e2:d0:f0:61:e7:81&quot;,
+      &quot;Protocol&quot;: &quot;ETHERNET&quot;
+    },
+    &quot;Metric&quot;: {
+      &quot;ABBytes&quot;: 364560,
+      &quot;ABPackets&quot;: 3720,
+      &quot;BABytes&quot;: 364560,
+      &quot;BAPackets&quot;: 3720,
+      &quot;Last&quot;: 1477567165,
+      &quot;Start&quot;: 1477563444
+    },
+    &quot;Network&quot;: {
+      &quot;A&quot;: &quot;192.168.0.1&quot;,
+      &quot;B&quot;: &quot;192.168.0.2&quot;,
+      &quot;Protocol&quot;: &quot;IPV4&quot;
+    },
+    &quot;NodeUUID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
+    &quot;TrackingID&quot;: &quot;f745fb1f59298a1773e35827adfa42dab4f469f9&quot;,
+    &quot;UUID&quot;: &quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&quot;
+  }
+]
+</code></pre>
+
+<p>For a complete description of the flow structure can be found
+<a href="//skydive-project.github.io/skydive/api/flows/">here</a>.</p>
 
 			
 			<aside class="copyright" role="note">
@@ -515,7 +630,7 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="//skydive-project.github.io/skydive/contributing/" title="Contributing">
+      <a href="//skydive-project.github.io/skydive/getting-started/docker/" title="How to deploy Skydive with Docker">
         <span class="direction">
           Previous
         </span>
@@ -525,7 +640,7 @@
           </div>
           <div class="stretch">
             <div class="title">
-              Contributing
+              How to deploy Skydive with Docker
             </div>
           </div>
         </div>
@@ -535,14 +650,14 @@
 
   <div class="next">
   
-      <a href="//skydive-project.github.io/skydive/getting-started/kubernetes/" title="How to deploy Skydive with kubernetes">
+      <a href="//skydive-project.github.io/skydive/contributing/" title="Contributing">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              How to deploy Skydive with kubernetes
+              Contributing
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">

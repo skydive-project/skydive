@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>Contact - Skydive Docs</title>
+    <title>Rest API - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="//skydive-project.github.io/skydive/contact/">
+    <link rel="canonical" href="//skydive-project.github.io/skydive/api/rest/">
     
     <meta name="author" content="skydive-project/skydive">
     
 
-    <meta property="og:url" content="//skydive-project.github.io/skydive/contact/">
+    <meta property="og:url" content="//skydive-project.github.io/skydive/api/rest/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="//skydive-project.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Contact
+        Rest API
       </div>
     </div>
 
@@ -369,11 +369,14 @@
 
 
 
-<a  title="Rest" href="//skydive-project.github.io/skydive/api/rest/">
+<a class="current" title="Rest" href="//skydive-project.github.io/skydive/api/rest/">
 	
 	Rest
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
     </ul>
@@ -423,14 +426,11 @@
 
 
 
-<a class="current" title="Contact" href="//skydive-project.github.io/skydive/contact/">
+<a  title="Contact" href="//skydive-project.github.io/skydive/contact/">
 	
 	Contact
 </a>
 
-
-<ul id="scrollspy">
-</ul>
   
   
 </li>
@@ -480,21 +480,135 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Contact </h1>
+			<h1>Rest API </h1>
 
 			
 
-<h2 id="irc">IRC</h2>
+<h2 id="topology-flow-request">Topology/Flow request</h2>
 
-<ul>
-<li>#skydive-project on irc.freenode.net</li>
-</ul>
+<pre><code class="language-console">POST /api/topology HTTP/1.1
+Content-Type: application/json
 
-<h2 id="mailing-list">Mailing list</h2>
+{
+  &quot;GremlinQuery&quot;:&quot;G.V()&quot;
+}
+</code></pre>
 
-<ul>
-<li><a href="https://www.redhat.com/mailman/listinfo/skydive-dev">https://www.redhat.com/mailman/listinfo/skydive-dev</a></li>
-</ul>
+<pre><code class="language-console">HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+
+[
+  {
+    &quot;Host&quot;: &quot;localhost.localdomain&quot;,
+    &quot;ID&quot;: &quot;d6759df3-d4e0-408b-64d3-c82ea6c9aeda&quot;,
+    &quot;Metadata&quot;: {
+      &quot;Name&quot;: &quot;vm2&quot;,
+      &quot;Path&quot;: &quot;/var/run/netns/vm2&quot;,
+      &quot;TID&quot;: &quot;7daa39fe-92f7-5f9b-51b1-1dddcd41785c&quot;,
+      &quot;Type&quot;: &quot;netns&quot;
+    }
+  }
+]
+</code></pre>
+
+<pre><code class="language-console">POST /api/topology HTTP/1.1
+Content-Type: application/json
+
+{
+  &quot;GremlinQuery&quot;:&quot;G.Flows().Limit(1)&quot;
+}
+</code></pre>
+
+<pre><code class="language-console">[
+  {
+    &quot;ANodeUUID&quot;: &quot;d9d6f8cf-4aa6-4a06-6785-3dc56032ef82&quot;,
+    &quot;BNodeUUID&quot;: &quot;488789f9-38be-4eba-704a-79996382de41&quot;,
+    &quot;LastUpdateMetric&quot;: {
+      &quot;ABBytes&quot;: 490,
+      &quot;ABPackets&quot;: 5,
+      &quot;BABytes&quot;: 490,
+      &quot;BAPackets&quot;: 5,
+      &quot;Last&quot;: 1477572621,
+      &quot;Start&quot;: 1477572616
+    },
+    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4/Payload&quot;,
+    &quot;Link&quot;: {
+      &quot;A&quot;: &quot;02:48:4f:c4:40:99&quot;,
+      &quot;B&quot;: &quot;e2:d0:f0:61:e7:81&quot;,
+      &quot;Protocol&quot;: &quot;ETHERNET&quot;
+    },
+    &quot;Metric&quot;: {
+      &quot;ABBytes&quot;: 1666,
+      &quot;ABPackets&quot;: 17,
+      &quot;BABytes&quot;: 1568,
+      &quot;BAPackets&quot;: 16,
+      &quot;Last&quot;: 1477572622,
+      &quot;Start&quot;: 1477572606
+    },
+    &quot;Network&quot;: {
+      &quot;A&quot;: &quot;192.168.0.1&quot;,
+      &quot;B&quot;: &quot;192.168.0.2&quot;,
+      &quot;Protocol&quot;: &quot;IPV4&quot;
+    },
+    &quot;NodeUUID&quot;: &quot;488789f9-38be-4eba-704a-79996382de41&quot;,
+    &quot;TrackingID&quot;: &quot;f745fb1f59298a1773e35827adfa42dab4f469f9&quot;,
+    &quot;UUID&quot;: &quot;ee29fc47f425d7a2e6de9379b0131f64a70fc991&quot;
+  }
+]
+</code></pre>
+
+<h2 id="capture">Capture</h2>
+
+<p>To create capture :</p>
+
+<pre><code class="language-console">POST /api/capture HTTP/1.1
+Content-Type: application/json
+
+{
+  &quot;GremlinQuery&quot;:&quot;g.V().Has('TID', 'de0cba34-5d96-5ce6-698a-dffd2e674f95')&quot;
+}
+</code></pre>
+
+<pre><code class="language-console">HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+
+{
+  &quot;UUID&quot;:&quot;e2d9f084-4543-4f7e-6c2c-673f56ae4610&quot;,
+  &quot;GremlinQuery&quot;:&quot;g.V().Has('TID', 'de0cba34-5d96-5ce6-698a-dffd2e674f95')&quot;
+}
+</code></pre>
+
+<p>To list captures :</p>
+
+<pre><code class="language-console">GET /api/capture HTTP/1.1
+Content-Type: application/json
+</code></pre>
+
+<pre><code class="language-console">{
+  &quot;104fc114-e153-4f67-692a-60c636ee1597&quot;:
+  {
+    &quot;UUID&quot;: &quot;104fc114-e153-4f67-692a-60c636ee1597&quot;
+    &quot;GremlinQuery&quot;: &quot;G.V().Has('TID', '2108e074-feac-5a3c-60ca-5963e89c4059')&quot;
+    &quot;Count&quot;: 1
+  },
+  &quot;e2d9f084-4543-4f7e-6c2c-673f56ae4610&quot;:
+  {
+    &quot;UUID&quot;: &quot;e2d9f084-4543-4f7e-6c2c-673f56ae4610&quot;
+    &quot;GremlinQuery&quot;: &quot;g.V().Has('TID', 'de0cba34-5d96-5ce6-698a-dffd2e674f95')&quot;
+    &quot;Count&quot;: 1
+  }
+}
+</code></pre>
+
+<p>To delete a capture :</p>
+
+<pre><code class="language-console">DELETE /api/capture/7ca73f92-0547-475e-472d-d6e28664a117 HTTP/1.1
+Content-Type: application/json
+</code></pre>
+
+<pre><code>HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+</code></pre>
 
 			
 			<aside class="copyright" role="note">
@@ -515,7 +629,7 @@
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="//skydive-project.github.io/skydive/contributing/" title="Contributing">
+      <a href="//skydive-project.github.io/skydive/api/gremlin/" title="Skydive Gremlin Query language">
         <span class="direction">
           Previous
         </span>
@@ -525,7 +639,7 @@
           </div>
           <div class="stretch">
             <div class="title">
-              Contributing
+              Skydive Gremlin Query language
             </div>
           </div>
         </div>
@@ -535,14 +649,14 @@
 
   <div class="next">
   
-      <a href="//skydive-project.github.io/skydive/getting-started/kubernetes/" title="How to deploy Skydive with kubernetes">
+      <a href="//skydive-project.github.io/skydive/api/flows/" title="Flows">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              How to deploy Skydive with kubernetes
+              Flows
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">

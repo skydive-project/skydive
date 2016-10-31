@@ -214,6 +214,12 @@
       
     
       
+    
+      
+    
+      
+    
+      
       <span class="section">Getting-Started</span>
       
     
@@ -257,30 +263,6 @@
 
 
 
-<a  title="Gremlin query language" href="//skydive-project.github.io/skydive/getting-started/gremlin/">
-	
-	Gremlin query language
-</a>
-
-  
-      
-        
-        
-
-
-
-<a  title="Devstack" href="//skydive-project.github.io/skydive/getting-started/devstack/">
-	
-	Devstack
-</a>
-
-  
-      
-        
-        
-
-
-
 <a  title="Docker" href="//skydive-project.github.io/skydive/getting-started/docker/">
 	
 	Docker
@@ -293,9 +275,106 @@
 
 
 
-<a  title="kubernetes" href="//skydive-project.github.io/skydive/getting-started/kubernetes/">
+<a  title="Openstack" href="//skydive-project.github.io/skydive/getting-started/openstack/">
 	
-	kubernetes
+	Openstack
+</a>
+
+  
+      
+        
+        
+
+
+
+<a  title="Kubernetes" href="//skydive-project.github.io/skydive/getting-started/kubernetes/">
+	
+	Kubernetes
+</a>
+
+  
+      
+    </ul>
+  </li>
+  
+</li>
+
+
+
+<li>
+  
+  <li>
+    
+
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+      <span class="section">Api</span>
+      
+    
+      
+    
+      
+    
+      
+    
+    
+
+    <ul>
+      
+        
+        
+
+
+
+<a  title="Gremlin language" href="//skydive-project.github.io/skydive/api/gremlin/">
+	
+	Gremlin language
+</a>
+
+  
+      
+        
+        
+
+
+
+<a  title="Flows" href="//skydive-project.github.io/skydive/api/flows/">
+	
+	Flows
+</a>
+
+  
+      
+        
+        
+
+
+
+<a  title="Rest" href="//skydive-project.github.io/skydive/api/rest/">
+	
+	Rest
 </a>
 
   
@@ -421,6 +500,7 @@ informations will be captured</li>
 <li>Go &gt;= 1.5</li>
 <li>Elasticsearch &gt;= 2.0</li>
 <li>libpcap</li>
+<li>libxml2</li>
 </ul>
 
 <h2 id="install">Install</h2>
@@ -454,6 +534,13 @@ under this configuration section will be added to host metadata.</p>
 </code></pre>
 
 <pre><code class="language-console">$ skydive analyzer [--conf etc/skydive.yml]
+</code></pre>
+
+<h2 id="all-in-one">All-in-one</h2>
+
+<p>The <code>all-in-one</code> mode can be used to start an Agent and an Analyzer at once.</p>
+
+<pre><code class="language-console">$ skydive allinone [--conf etc/skydive.yml]
 </code></pre>
 
 			
