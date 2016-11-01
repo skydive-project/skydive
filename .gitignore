@@ -1,2 +1,5 @@
-
-
+vendor/github.com/
+vendor/golang.org/
+vendor/google.golang.org/
+vendor/gopkg.in/
+contrib/packaging/rpm/*.tar.gz
