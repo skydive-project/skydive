@@ -115,8 +115,8 @@ func (p *GoPacketProbe) stop() {
 
 func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
 	switch n.Metadata()["Type"].(string) {
-	case "bridge", "bond", "can", "dummy", "hsr", "ifb", "macvlan", "macvtap",
-		"veth", "vlan", "vxlan", "gretap", "ip6gretap", "geneve":
+	case "bridge", "bond", "device", "can", "dummy", "hsr", "ifb", "macvlan",
+		"macvtap", "veth", "vlan", "vxlan", "gretap", "ip6gretap", "geneve":
 		return layers.LayerTypeEthernet
 	case "ipoib", "vcan", "ipip", "ipvlan", "lowpan":
 		return layers.LayerTypeIPv4
@@ -125,7 +125,7 @@ func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
 	case "ip6tnl", "ip6gre", "sit":
 		return layers.LayerTypeIPv6
 	}
-	return layers.LayerTypeLinuxSLL
+	return layers.LayerTypeEthernet
 }
 
 func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
