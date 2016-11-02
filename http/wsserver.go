@@ -58,6 +58,7 @@ type WSMessage struct {
 	Type      string
 	UUID      string `json:",omitempty"`
 	Obj       *json.RawMessage
+	Status    int
 }
 
 type WSServerEventHandler interface {
@@ -94,15 +95,16 @@ func (g WSMessage) String() string {
 	return string(g.Marshal())
 }
 
-func (g *WSMessage) Reply(v interface{}) *WSMessage {
+func (g *WSMessage) Reply(v interface{}, kind string, status int) *WSMessage {
 	b, _ := json.Marshal(v)
 	raw := json.RawMessage(b)
 
 	return &WSMessage{
 		Namespace: g.Namespace,
-		Type:      g.Type,
 		UUID:      g.UUID,
 		Obj:       &raw,
+		Type:      kind,
+		Status:    status,
 	}
 }
 
@@ -123,6 +125,7 @@ func NewWSMessage(ns string, tp string, v interface{}, uuids ...string) *WSMessa
 		Type:      tp,
 		UUID:      u,
 		Obj:       &raw,
+		Status:    http.StatusOK,
 	}
 }
 

@@ -44,8 +44,8 @@ type TableQuery struct {
 // TableReply is the response to a TableQuery containing a Status and an array
 // of replies that can be encoded in many ways, ex: json, protobuf.
 type TableReply struct {
-	Status int
 	Obj    [][]byte
+	status int
 }
 
 type ExpireUpdateFunc func(f []*Flow)
@@ -378,7 +378,7 @@ func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchRepl
 
 func (ft *Table) onQuery(query *TableQuery) *TableReply {
 	reply := &TableReply{
-		Status: http.StatusBadRequest,
+		status: http.StatusBadRequest,
 		Obj:    make([][]byte, 0),
 	}
 
@@ -392,7 +392,7 @@ func (ft *Table) onQuery(query *TableQuery) *TableReply {
 
 		fsr, status := ft.onFlowSearchQueryMessage(&fsq)
 		if status != http.StatusOK {
-			reply.Status = status
+			reply.status = status
 			break
 		}
 		pb, _ := proto.Marshal(fsr)
@@ -401,7 +401,7 @@ func (ft *Table) onQuery(query *TableQuery) *TableReply {
 		// protobuf replies
 		reply.Obj = append(reply.Obj, pb)
 
-		reply.Status = http.StatusOK
+		reply.status = http.StatusOK
 	}
 
 	return reply

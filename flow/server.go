@@ -46,7 +46,8 @@ func (s *TableServer) OnTableQuery(msg shttp.WSMessage) {
 		return
 	}
 
-	reply := msg.Reply(s.TableAllocator.QueryTable(&query))
+	result := s.TableAllocator.QueryTable(&query)
+	reply := msg.Reply(result, "TableResult", result.status)
 	s.WSAsyncClient.SendWSMessage(reply)
 }
 

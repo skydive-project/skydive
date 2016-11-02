@@ -108,12 +108,15 @@ func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 	if storageBackend != "" {
 		params[0]["Storage"] = storageBackend
 	}
-	if storageBackend == "orientdb" {
+	if storageBackend == "orientdb" || graphBackend == "orientdb" {
 		orientDBPassword := os.Getenv("ORIENTDB_ROOT_PASSWORD")
 		if orientDBPassword == "" {
 			orientDBPassword = "root"
 		}
 		params[0]["OrientDBRootPassword"] = orientDBPassword
+	}
+	if graphBackend != "" {
+		params[0]["GraphBackend"] = graphBackend
 	}
 
 	tmpl, err := template.New("config").Parse(conf)
@@ -304,10 +307,7 @@ func NewGraph(t *testing.T) *graph.Graph {
 
 	t.Logf("Using %s as backend", graphBackend)
 
-	g, err := graph.NewGraphFromConfig(backend)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	g := graph.NewGraphFromConfig(backend)
 
 	hostname, err := os.Hostname()
 	if err != nil {

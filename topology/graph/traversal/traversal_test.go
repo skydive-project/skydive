@@ -35,12 +35,7 @@ func newGraph(t *testing.T) *graph.Graph {
 		t.Error(err.Error())
 	}
 
-	g, err := graph.NewGraphFromConfig(b)
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	return g
+	return graph.NewGraphFromConfig(b)
 }
 
 func newTransversalGraph(t *testing.T) *graph.Graph {

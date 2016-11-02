@@ -22,7 +22,10 @@
 
 package graph
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 type MemoryBackendNode struct {
 	*Node
@@ -167,6 +170,13 @@ func (m MemoryBackend) GetEdges(t *time.Time) []*Edge {
 	}
 
 	return edges
+}
+
+func (m MemoryBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
+	if context.Time != nil {
+		return nil, errors.New("Memory backend does not support history")
+	}
+	return graph, nil
 }
 
 func NewMemoryBackend() (*MemoryBackend, error) {

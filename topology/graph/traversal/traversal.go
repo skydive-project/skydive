@@ -388,7 +388,12 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 		return &GraphTraversal{error: errors.New("Sorry, I can't predict the future")}
 	}
 
-	return &GraphTraversal{Graph: t.Graph.WithContext(graph.GraphContext{Time: &at})}
+	g, err := t.Graph.WithContext(graph.GraphContext{Time: &at})
+	if err != nil {
+		return &GraphTraversal{error: err}
+	}
+
+	return &GraphTraversal{Graph: g}
 }
 
 func (t *GraphTraversal) V(ids ...graph.Identifier) *GraphTraversalV {

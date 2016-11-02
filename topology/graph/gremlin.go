@@ -406,6 +406,13 @@ func (g GremlinBackend) GetNodes(t *time.Time) []*Node {
 	return nodes
 }
 
+func (g GremlinBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
+	if context.Time != nil {
+		return nil, errors.New("Gremlin backend does not support history")
+	}
+	return graph, nil
+}
+
 func (g GremlinBackend) GetEdges(t *time.Time) []*Edge {
 	var edges []*Edge
 

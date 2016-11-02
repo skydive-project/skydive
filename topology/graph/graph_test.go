@@ -34,12 +34,7 @@ func newGraph(t *testing.T) *Graph {
 		t.Error(err.Error())
 	}
 
-	g, err := NewGraphFromConfig(b)
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	return g
+	return NewGraphFromConfig(b)
 }
 
 func TestLinks(t *testing.T) {

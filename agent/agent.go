@@ -174,10 +174,8 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	g, err := graph.NewGraphFromConfig(backend)
-	if err != nil {
-		panic(err)
-	}
+	g := graph.NewGraphFromConfig(backend)
+
 	tm := topology.NewTIDMapper(g)
 	tm.Start()
 

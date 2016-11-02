@@ -46,14 +46,14 @@ func (a *TableAllocator) Flush() {
 
 func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableReply) *TableReply {
 	reply := &TableReply{
-		Status: http.StatusOK,
+		status: http.StatusOK,
 		Obj:    make([][]byte, 0),
 	}
 
 	for _, r := range replies {
-		if r.Status >= http.StatusBadRequest {
+		if r.status >= http.StatusBadRequest {
 			// FIX, 207 => http.StatusMultiStatus when moving to >= 1.7
-			reply.Status = 207
+			reply.status = 207
 			continue
 		}
 		reply.Obj = append(reply.Obj, r.Obj...)

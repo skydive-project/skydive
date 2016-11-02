@@ -331,6 +331,12 @@ func (o *OrientDBBackend) GetEdges(t *time.Time) (edges []*Edge) {
 	return
 }
 
+func (o *OrientDBBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
+	var newGraph = *graph
+	newGraph.context = context
+	return &newGraph, nil
+}
+
 func NewOrientDBBackend(addr string, database string, username string, password string) (*OrientDBBackend, error) {
 	client, err := orientdb.NewClient(addr, database, username, password)
 	if err != nil {

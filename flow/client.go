@@ -55,7 +55,11 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 		return
 	}
 
-	ch <- m.Obj
+	if m.Status >= http.StatusBadRequest {
+		ch <- nil
+	} else {
+		ch <- m.Obj
+	}
 }
 
 func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery FlowSearchQuery) {
@@ -88,18 +92,13 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 	select {
 	case raw := <-ch:
 		var reply TableReply
-		if err := json.Unmarshal([]byte(*raw), &reply); err != nil {
+
+		if raw == nil || json.Unmarshal([]byte(*raw), &reply) != nil {
 			logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
 			break
 		}
 
-		if reply.Status != http.StatusOK {
-			logging.GetLogger().Errorf("Error %d TableReply from: %s", reply.Status, host)
-			break
-		}
-
 		fs := NewFlowSet()
-
 		context := MergeContext{Sorted: flowSearchQuery.Sort, Dedup: flowSearchQuery.Dedup}
 		for _, b := range reply.Obj {
 			var fsr FlowSearchReply

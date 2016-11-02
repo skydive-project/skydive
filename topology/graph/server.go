@@ -25,6 +25,7 @@ package graph
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"time"
 
 	shttp "github.com/skydive-project/skydive/http"
@@ -120,7 +121,13 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 
 	switch msgType {
 	case "SyncRequest":
-		reply := shttp.NewWSMessage(Namespace, "SyncReply", s.Graph.WithContext(obj.(GraphContext)))
+		status := http.StatusOK
+		graph, err := s.Graph.WithContext(obj.(GraphContext))
+		if err != nil {
+			logging.GetLogger().Errorf("Graph: unable to get a graph with context %+v: %s", obj.(GraphContext), err.Error())
+			graph, status = &Graph{}, http.StatusBadRequest
+		}
+		reply := msg.Reply(graph, "SyncReply", status)
 		c.SendWSMessage(reply)
 	case "HostGraphDeleted":
 		host := obj.(string)

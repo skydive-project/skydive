@@ -524,6 +524,12 @@ func (b *ElasticSearchBackend) GetEdges(t *time.Time) (edges []*Edge) {
 	return edges
 }
 
+func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
+	var newGraph = *graph
+	newGraph.context = context
+	return &newGraph, nil
+}
+
 func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int) (*ElasticSearchBackend, error) {
 	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds, bulkMaxDocs)
 	if err != nil {

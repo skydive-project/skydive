@@ -82,6 +82,9 @@ storage:
     database: TestSkydive
     username: root
     password: {{.OrientDBRootPassword}}
+
+graph:
+  backend: {{.GraphBackend}}
 `
 
 func TestFlowStorage(t *testing.T) {

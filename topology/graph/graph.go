@@ -92,6 +92,8 @@ type GraphBackend interface {
 
 	GetNodes(at *time.Time) []*Node
 	GetEdges(at *time.Time) []*Edge
+
+	WithContext(graph *Graph, context GraphContext) (*Graph, error)
 }
 
 type GraphContext struct {
@@ -835,31 +837,30 @@ func (g *Graph) RemoveEventListener(l GraphEventListener) {
 	}
 }
 
-func (g *Graph) WithContext(c GraphContext) *Graph {
-	newG := *g
-	newG.context = c
-	return &newG
+func (g *Graph) WithContext(c GraphContext) (*Graph, error) {
+	return g.backend.WithContext(g, c)
 }
 
 func (g *Graph) GetContext() GraphContext {
 	return g.context
 }
 
-func NewGraph(hostID string, backend GraphBackend) (*Graph, error) {
-	return NewGraphWithContext(hostID, backend, GraphContext{})
+func NewGraph(hostID string, backend GraphBackend) *Graph {
+	return &Graph{
+		backend: backend,
+		host:    hostID,
+		context: GraphContext{},
+	}
 }
 
-func NewGraphFromConfig(backend GraphBackend) (*Graph, error) {
+func NewGraphFromConfig(backend GraphBackend) *Graph {
 	hostID := config.GetConfig().GetString("host_id")
 	return NewGraph(hostID, backend)
 }
 
-func NewGraphWithContext(hostID string, b GraphBackend, c GraphContext) (*Graph, error) {
-	return &Graph{
-		backend: b,
-		host:    hostID,
-		context: c,
-	}, nil
+func NewGraphWithContext(hostID string, backend GraphBackend, context GraphContext) (*Graph, error) {
+	graph := NewGraph(hostID, backend)
+	return graph.WithContext(context)
 }
 
 func BackendFromConfig() (backend GraphBackend, err error) {

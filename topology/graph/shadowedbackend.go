@@ -105,6 +105,10 @@ func (c *ShadowedBackend) GetEdges(t *time.Time) []*Edge {
 	return c.persistent.GetEdges(t)
 }
 
+func (c *ShadowedBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
+	return c.persistent.WithContext(graph, context)
+}
+
 func (c *ShadowedBackend) populateMemoryBackend() {
 	for _, node := range c.persistent.GetNodes(nil) {
 		c.memory.AddNode(node)

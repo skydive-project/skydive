@@ -200,10 +200,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	g, err := graph.NewGraphFromConfig(backend)
-	if err != nil {
-		return nil, err
-	}
+	g := graph.NewGraphFromConfig(backend)
 
 	httpServer, err := shttp.NewServerFromConfig("analyzer")
 	if err != nil {
