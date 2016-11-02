@@ -1187,25 +1187,29 @@ func TestFlowGRETunnel(t *testing.T) {
 
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
-	flows1 := gh.GetFlowsFromGremlinReply(t, `G.V().Has('Name', 'gre-vm1').Out().Has('Name', 'gre').Flows()`)
-	flows2 := gh.GetFlowsFromGremlinReply(t, `G.V().Has('Name', 'gre-vm2-eth0').Flows()`)
+	flowsInnerTunnel := gh.GetFlowsFromGremlinReply(t, `G.V().Has('Name', 'gre-vm1').Out().Has('Name', 'gre').Flows()`)
+	flowsBridge := gh.GetFlowsFromGremlinReply(t, `G.V().Has('Name', 'gre-vm2-eth0').Flows()`)
 
 	var TrackID string
-	for _, flow := range flows1 {
-		if strings.Contains(flow.LayersPath, "ICMPv4/Payload") {
+	for _, flow := range flowsInnerTunnel {
+		if flow.LayersPath == "IPv4/ICMPv4/Payload" {
+			if TrackID != "" {
+				t.Error("We should only found one ICMPv4 flow in the tunnel %v", flowsInnerTunnel)
+			}
 			TrackID = flow.TrackingID
 		}
 	}
 
 	success := false
-	for _, flow := range flows2 {
-		if TrackID == flow.TrackingID && strings.Contains(flow.LayersPath, "ICMPv4/Payload") {
+	for _, f := range flowsBridge {
+		if TrackID == f.TrackingID && strings.Contains(f.LayersPath, "ICMPv4/Payload") && f.Network != nil && f.Network.Protocol == flow.FlowProtocol_IPV4 {
 			success = true
+			break
 		}
 	}
 
 	if !success {
-		t.Errorf("TrackingID not found in GRE tunnel: %v == %v", flows1, flows2)
+		t.Errorf("TrackingID not found in GRE tunnel: %v == %v", flowsInnerTunnel, flowsBridge)
 	}
 
 	client.Delete("capture", capture1.ID())

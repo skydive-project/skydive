@@ -173,6 +173,10 @@ func (flow *Flow) GetData() ([]byte, error) {
 }
 
 func FlowsFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, setter FlowProbeNodeSetter) []*Flow {
+	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
+		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
+		return nil
+	}
 	var packetsFlows []*gopacket.Packet
 
 	packetData := (*packet).Data()
@@ -220,10 +224,6 @@ func FlowsFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, setter 
 }
 
 func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, setter FlowProbeNodeSetter, parentUUID ...string) *Flow {
-	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
-		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
-		return nil
-	}
 	pUUID := ""
 	if len(parentUUID) > 0 {
 		pUUID = parentUUID[0]
