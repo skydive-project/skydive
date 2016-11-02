@@ -1264,8 +1264,14 @@ function RefreshCaptureList() {
 
           var item = $('<div/>').appendTo(li);
           var capture = $('<div/>').appendTo(item);
-          var title = $('<div/>').addClass("capture-title").html(key).appendTo(capture);
+          var title_style = "capture-title";
+
+          if (!data[key].Count) {
+            title_style = "passive-capture-title";
+          }
+          var title = $('<div/>').addClass(title_style).html(key).appendTo(capture);
           var trash = $('<div/>').addClass("capture-trash").css({"text-align": "right", "float": "right"}).appendTo(title);
+
           $('<div/>').addClass("capture-content").html("Gremlin Query: " + data[key].GremlinQuery).appendTo(capture);
           if (data[key].Name)
             $('<div/>').addClass("capture-content").html("Name: " + data[key].Name).appendTo(capture);

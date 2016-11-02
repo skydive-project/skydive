@@ -270,6 +270,10 @@ li.capture-item {
   font-weight: bold;
 }
 
+.passive-capture-title {
+  color: grey
+}
+
 .title-left-panel {
   font-size: 1.2em;
   padding-bottom: 5px;
