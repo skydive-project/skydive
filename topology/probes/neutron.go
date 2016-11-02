@@ -112,12 +112,16 @@ func (mapper *NeutronMapper) retrievePort(portMd PortMetadata) (port ports.Port,
 		for _, p := range portList {
 			if p.MACAddress == portMd.mac {
 				port = p
-				return true, nil
+				return false, nil
 			}
 		}
 
 		return true, nil
 	})
+
+	if err != nil {
+		return port, err
+	}
 
 	if len(port.NetworkID) == 0 {
 		return port, NeutronPortNotFound{portMd.mac}
@@ -165,8 +169,11 @@ func (mapper *NeutronMapper) nodeUpdater() {
 		attrs, err := mapper.retrieveAttributes(portMd)
 		if err != nil {
 			if nerr, ok := err.(NeutronPortNotFound); ok {
-				logging.GetLogger().Debugf("Setting in cache not found MAC " + nerr.MAC)
+				logging.GetLogger().Debugf("Setting in cache not found MAC %s", nerr.MAC)
 				mapper.cache.Set(nerr.MAC, PortMetadata{}, cache.DefaultExpiration)
+			} else {
+				logging.GetLogger().Errorf("Failed to retrieve attributes for port %s/%s : %v",
+					portMd.portID, portMd.mac, err)
 			}
 			continue
 		}
