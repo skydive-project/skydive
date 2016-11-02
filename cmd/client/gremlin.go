@@ -45,24 +45,29 @@ type GremlinQueryHelper struct {
 	authOptions *shttp.AuthenticationOpts
 }
 
-func (g *GremlinQueryHelper) Query(query string, values interface{}) error {
+func (g *GremlinQueryHelper) Request(query string, header http.Header) (*http.Response, error) {
 	client, err := api.NewRestClientFromConfig(g.authOptions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	gq := api.Topology{GremlinQuery: query}
 	s, err := json.Marshal(gq)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	contentReader := bytes.NewReader(s)
 
-	resp, err := client.Request("POST", "api/topology", contentReader)
+	return client.Request("POST", "api/topology", contentReader, header)
+}
+
+func (g *GremlinQueryHelper) Query(query string, values interface{}) error {
+	resp, err := g.Request(query, nil)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		data, _ := ioutil.ReadAll(resp.Body)

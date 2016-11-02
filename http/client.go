@@ -61,7 +61,7 @@ func NewRestClient(addr string, port int, authOptions *AuthenticationOpts) *Rest
 	}
 }
 
-func (c *RestClient) Request(method, path string, body io.Reader) (*http.Response, error) {
+func (c *RestClient) Request(method, path string, body io.Reader, header http.Header) (*http.Response, error) {
 	if !c.authClient.Authenticated() {
 		if err := c.authClient.Authenticate(); err != nil {
 			return nil, err
@@ -74,9 +74,13 @@ func (c *RestClient) Request(method, path string, body io.Reader) (*http.Respons
 		return nil, err
 	}
 
+	if header != nil {
+		req.Header = header
+	}
+	req.Header.Set("Content-Type", "application/json")
+
 	cookie := http.Cookie{Name: "authtok", Value: c.authClient.AuthToken}
 	req.Header.Set("Cookie", cookie.String())
-	req.Header.Set("Content-Type", "application/json")
 
 	return c.client.Do(req)
 }
@@ -91,7 +95,7 @@ func NewCrudClient(addr string, port int, authOpts *AuthenticationOpts, root str
 
 func (c *CrudClient) List(resource string, values interface{}) error {
 	path := fmt.Sprintf("%s/%s", c.Root, resource)
-	resp, err := c.Request("GET", path, nil)
+	resp, err := c.Request("GET", path, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -106,7 +110,7 @@ func (c *CrudClient) List(resource string, values interface{}) error {
 
 func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
-	resp, err := c.Request("GET", path, nil)
+	resp, err := c.Request("GET", path, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -129,7 +133,7 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 
 	path := fmt.Sprintf("%s/%s", c.Root, resource)
 
-	resp, err := c.Request("POST", path, contentReader)
+	resp, err := c.Request("POST", path, contentReader, nil)
 	if err != nil {
 		return err
 	}
@@ -151,7 +155,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 	contentReader := bytes.NewReader(s)
 	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
 
-	resp, err := c.Request("PUT", path, contentReader)
+	resp, err := c.Request("PUT", path, contentReader, nil)
 	if err != nil {
 		return err
 	}
@@ -167,7 +171,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 func (c *CrudClient) Delete(resource string, id string) error {
 	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
 
-	resp, err := c.Request("DELETE", path, nil)
+	resp, err := c.Request("DELETE", path, nil, nil)
 	if err != nil {
 		return err
 	}

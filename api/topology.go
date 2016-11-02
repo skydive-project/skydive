@@ -24,12 +24,15 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
 	"github.com/abbot/go-http-auth"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 	"github.com/skydive-project/skydive/validator"
 )
@@ -42,33 +45,75 @@ type Topology struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 }
 
-func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
+	w.Write([]byte("digraph g {\n"))
 
-	t.gremlinParser.Graph.RLock()
-	defer t.gremlinParser.Graph.RUnlock()
+	nodeMap := make(map[graph.Identifier]*graph.Node)
+	for _, n := range g.GetNodes(nil) {
+		nodeMap[n.ID] = n
+		name, _ := n.GetFieldString("Name")
+		title := fmt.Sprintf("%s-%s", name, n.ID[:7])
+		label := title
+		for k, v := range n.Metadata() {
+			switch k {
+			case "Type", "IfIndex", "State", "TID":
+				label += fmt.Sprintf("\\n%s = %v", k, v)
+			}
+		}
+		w.Write([]byte(fmt.Sprintf("\"%s\" [label=\"%s\"]\n", title, label)))
+	}
+
+	for _, e := range g.GetEdges(nil) {
+		parent := nodeMap[e.GetParent()]
+		child := nodeMap[e.GetChild()]
+		childName, _ := child.GetFieldString("Name")
+		parentName, _ := parent.GetFieldString("Name")
+		relationType, _ := e.GetFieldString("RelationType")
+		linkLabel, linkType := "", "->"
+		switch relationType {
+		case "":
+		case "layer2":
+			linkType = "--"
+			fallthrough
+		default:
+			linkLabel = fmt.Sprintf(" [label=%s]\n", relationType)
+		}
+		link := fmt.Sprintf("\"%s-%s\" %s \"%s-%s\"%s", parentName, parent.ID[:7], linkType, childName, child.ID[:7], linkLabel)
+		w.Write([]byte(link))
+	}
+
+	w.Write([]byte("}"))
+}
+
+func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	g := t.gremlinParser.Graph
+
+	g.RLock()
+	defer g.RUnlock()
 
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(t.gremlinParser.Graph); err != nil {
-		panic(err)
+	if strings.Contains(r.Header.Get("Accept"), "vnd.graphviz") {
+		w.Header().Set("Content-Type", "text/vnd.graphviz; charset=UTF-8")
+		t.graphToDot(w, g)
+	} else {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		if err := json.NewEncoder(w).Encode(g); err != nil {
+			panic(err)
+		}
 	}
 }
 
 func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
 	resource := Topology{}
 
 	data, _ := ioutil.ReadAll(r.Body)
 	if len(data) != 0 {
 		if err := json.Unmarshal(data, &resource); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadRequest, err)
 			return
 		}
 		if err := validator.Validate(resource); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
@@ -80,21 +125,29 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 
 	ts, err := t.gremlinParser.Parse(strings.NewReader(resource.GremlinQuery), true)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	res, err := ts.Exec()
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		panic(err)
+	if strings.Contains(r.Header.Get("Accept"), "vnd.graphviz") {
+		if graphTraversal, ok := res.(*traversal.GraphTraversal); ok {
+			w.WriteHeader(http.StatusOK)
+			t.graphToDot(w, graphTraversal.Graph)
+		} else {
+			writeError(w, http.StatusNotAcceptable, errors.New("Only graph can be outputted as dot"))
+		}
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			panic(err)
+		}
 	}
 }
 

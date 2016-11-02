@@ -23,14 +23,19 @@
 package client
 
 import (
-	"os"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/spf13/cobra"
 
 	"github.com/skydive-project/skydive/logging"
 )
 
-var gremlinQuery string
+var (
+	gremlinQuery string
+	outputFormat string
+)
 
 var TopologyCmd = &cobra.Command{
 	Use:          "topology",
@@ -44,15 +49,28 @@ var TopologyRequest = &cobra.Command{
 	Short: "query topology",
 	Long:  "query topology",
 	Run: func(cmd *cobra.Command, args []string) {
-		var value interface{}
-
 		queryHelper := NewGremlinQueryHelper(&AuthenticationOpts)
-		if err := queryHelper.Query(gremlinQuery, &value); err != nil {
-			logging.GetLogger().Errorf(err.Error())
-			os.Exit(1)
-		}
 
-		printJSON(value)
+		switch outputFormat {
+		case "json":
+			var value interface{}
+			if err := queryHelper.Query(gremlinQuery, &value); err != nil {
+				logging.GetLogger().Fatalf(err.Error())
+			}
+			printJSON(value)
+		case "dot":
+			header := make(http.Header)
+			header.Set("Accept", "vnd.graphviz")
+			resp, err := queryHelper.Request(gremlinQuery, header)
+			if err != nil {
+				logging.GetLogger().Fatalf(err.Error())
+			}
+			defer resp.Body.Close()
+			data, _ := ioutil.ReadAll(resp.Body)
+			fmt.Println(string(data))
+		default:
+			logging.GetLogger().Fatalf("Invalid output format %s", outputFormat)
+		}
 	},
 }
 
@@ -63,4 +81,5 @@ func addTopologyFlags(cmd *cobra.Command) {
 func init() {
 	TopologyCmd.AddCommand(TopologyRequest)
 	TopologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
+	TopologyRequest.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json or dot)")
 }

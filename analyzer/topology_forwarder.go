@@ -64,7 +64,7 @@ func (p *TopologyForwarderPeer) getHostID() string {
 	var info api.APIInfo
 
 	for {
-		resp, err := client.Request("GET", "api", contentReader)
+		resp, err := client.Request("GET", "api", contentReader, nil)
 		if err != nil {
 			goto NotReady
 		}
