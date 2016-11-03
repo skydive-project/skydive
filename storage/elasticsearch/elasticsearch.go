@@ -184,6 +184,14 @@ func (c *ElasticSearchStorage) formatFilter(filter *flow.Filter) map[string]inte
 		}
 	}
 
+	if f := filter.RegexFilter; f != nil {
+		return map[string]interface{}{
+			"regexp": map[string]string{
+				f.Key: f.Value,
+			},
+		}
+	}
+
 	if f := filter.GtInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{

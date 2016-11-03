@@ -293,7 +293,12 @@ func Between(from interface{}, to interface{}) *BetweenMetadataMatcher {
 }
 
 type RegexMetadataMatcher struct {
-	regexp *regexp.Regexp
+	regexp  *regexp.Regexp
+	pattern string
+}
+
+func (r *RegexMetadataMatcher) Value() interface{} {
+	return r.pattern
 }
 
 func (r *RegexMetadataMatcher) Match(v interface{}) bool {
@@ -311,7 +316,7 @@ func (r *RegexMetadataMatcher) Match(v interface{}) bool {
 
 func Regex(expr string) *RegexMetadataMatcher {
 	r, _ := regexp.Compile(expr)
-	return &RegexMetadataMatcher{regexp: r}
+	return &RegexMetadataMatcher{regexp: r, pattern: expr}
 }
 
 func SliceToMetadata(s ...interface{}) (graph.Metadata, error) {

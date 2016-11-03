@@ -72,6 +72,11 @@ message LteInt64Filter {
   int64 Value = 2;
 }
 
+message RegexFilter {
+  string Key = 1;
+  string Value = 2;
+}
+
 message Filter {
   TermStringFilter TermStringFilter = 1;
   TermInt64Filter TermInt64Filter = 2;
@@ -82,6 +87,7 @@ message Filter {
   LteInt64Filter LteInt64Filter = 6;
 
   BoolFilter BoolFilter = 7;
+  RegexFilter RegexFilter = 8;
 }
 
 message BoolFilter {

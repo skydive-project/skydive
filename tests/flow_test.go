@@ -853,7 +853,7 @@ func queryFlowMetrics(t *testing.T, timeContext int64, pings int64) {
 
 	ovsGremlin := graphGremlin + `.V().Has("Name", "br-sflow", "Type", "ovsbridge")`
 	ovsBridge := gh.GetNodeFromGremlinReply(t, ovsGremlin)
-	gremlin := ovsGremlin + `.Flows("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
+	gremlin := ovsGremlin + `.Flows("LayersPath", Regex(".*ICMPv4.*"))`
 
 	icmp := gh.GetFlowsFromGremlinReply(t, gremlin)
 	if len(icmp) != 1 {

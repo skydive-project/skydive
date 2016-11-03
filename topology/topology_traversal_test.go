@@ -59,3 +59,27 @@ func TestGraphPathTraversal(t *testing.T) {
 		t.Fatalf("Should return 1 path, returned: %v", res.Values())
 	}
 }
+
+func TestRegexPredicate(t *testing.T) {
+	g := newGraph(t)
+	g.NewNode(graph.GenID(), graph.Metadata{"Type": "host", "Name": "localhost"})
+
+	query := `G.V().Has("Name", Regex("^local.*st$")).Count()`
+
+	tp := traversal.NewGremlinTraversalParser(strings.NewReader(query), g)
+	tp.AddTraversalExtension(NewTopologyTraversalExtension())
+
+	ts, err := tp.Parse()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	res, err := ts.Exec()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if len(res.Values()) != 1 || res.Values()[0].(int) != 1 {
+		t.Fatalf("Regex should exactly match 1 node, returned: %v", res.Values())
+	}
+}

@@ -219,6 +219,11 @@ func paramsToFilter(s ...interface{}) (*flow.Filter, error) {
 		}
 
 		switch v := s[i+1].(type) {
+		case *traversal.RegexMetadataMatcher:
+			andFilter.Filters = append(andFilter.Filters,
+				&flow.Filter{
+					RegexFilter: &flow.RegexFilter{Key: k, Value: v.Value().(string)},
+				})
 		case *traversal.NEMetadataMatcher:
 			notFilters := &flow.Filter{}
 			switch t := v.Value().(type) {

@@ -24,6 +24,7 @@ package flow
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -48,6 +49,9 @@ func (f *Filter) Eval(flow *Flow) bool {
 	}
 	if f.LteInt64Filter != nil {
 		return f.LteInt64Filter.Eval(flow)
+	}
+	if f.RegexFilter != nil {
+		return f.RegexFilter.Eval(flow)
 	}
 
 	return true
@@ -74,6 +78,9 @@ func (f *Filter) Expression() string {
 	}
 	if f.LteInt64Filter != nil {
 		return f.LteInt64Filter.Expression()
+	}
+	if f.RegexFilter != nil {
+		return f.RegexFilter.Expression()
 	}
 
 	return ""
@@ -201,6 +208,20 @@ func (t *TermInt64Filter) Eval(f *Flow) bool {
 	}
 
 	return field == t.Value
+}
+
+func (r *RegexFilter) Expression() string {
+	return fmt.Sprintf(`%s MATCHES "%s"`, r.Key, r.Value)
+}
+
+func (r *RegexFilter) Eval(f *Flow) bool {
+	field, err := f.GetFieldString(r.Key)
+	if err != nil {
+		return false
+	}
+	// TODO: don't compile regex here
+	re := regexp.MustCompile(r.Value)
+	return re.MatchString(field)
 }
 
 func NewFilterForNodes(uuids []string) *Filter {
