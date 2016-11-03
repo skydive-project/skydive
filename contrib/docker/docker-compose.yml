@@ -1,7 +1,7 @@
 version: '2'
 services:
   elasticsearch:
-    image: elasticsearch
+    image: elasticsearch:2
     command: elasticsearch -Des.network.bind_host=0.0.0.0
     ports:
       - "9200:9200"
