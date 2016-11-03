@@ -32,7 +32,7 @@ if (!mgmt.getGraphIndex("byNodeID")) {
   mgmt.buildIndex('byNodeID',Vertex.class).addKey(idKey).unique().buildCompositeIndex()
 }
 if (!mgmt.getGraphIndex("byEdgeID")) {
-  mgmt.buildIndex('byEdgeID',Edge.class).addKey(idKey).buildCompositeIndex()
+  mgmt.buildIndex('byEdgeID',Edge.class).addKey(idKey).unique().buildCompositeIndex()
 }
 mgmt.commit()
 `
