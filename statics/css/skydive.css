@@ -488,3 +488,25 @@ circle.manager {
 #control_container .button-wrapper {
   text-align: center;
 }
+
+.flow-ops-panel .tab-content {
+  color : white;
+  background-color: #222;
+}
+
+.flow-ops-panel .nav>li>a {
+  color : white;
+}
+
+.flow-ops-panel .nav-pills > li > a {
+  background-color: #111;
+  border-radius: 0;
+}
+
+.flow-ops-panel .nav-pills>li.active>a, .flow-ops-panel .nav-pills>li.active>a:focus, .flow-ops-panel .nav-pills>li.active>a:hover {
+  background-color: #222;
+}
+
+.flow-ops-panel .left-cont {
+  margin-top: 0px;
+}

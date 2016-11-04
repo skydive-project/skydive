@@ -1312,7 +1312,7 @@ function SetupCaptureOptions() {
     }
   });
 
-  $('.capture-node').focusin(function() {
+  $('.node-selector').focusin(function() {
     $('.topology-d3').addClass('node-selection');
     $(this).val('');
     var _this = $(this);
@@ -1322,7 +1322,7 @@ function SetupCaptureOptions() {
       nodeSelectedCallback = undefined;
     };
   });
-  $('.capture-node').focusout(function() {
+  $('.node-selector').focusout(function() {
     $('.topology-d3').removeClass('node-selection');
   });
 }
@@ -1335,8 +1335,36 @@ var ResetCaptureForm = function() {
   $('#capture-node2').val("");
 };
 
+function SetupPacketGenerator() {
+  $("#inject-packet").click(function(e) {
+    var node1 = $('#inject-node1').val();
+    if (node1 === "") {
+      alert("Please select a source node");
+      return;
+    }
+
+    var node2 = $('#inject-node2').val();
+    if (node2 === "") {
+      alert("Please select a destination node");
+      return;
+    }
+
+    $.ajax({
+      dataType: "json",
+      url: '/api/injectpacket',
+      data: JSON.stringify({
+        "Src": "G.V().Has('TID', '" + node1 + "')",
+        "Dst": "G.V().Has('TID', '" + node2 + "')",
+        "Type": $("#inject-type").val()
+      }),
+      contentType: "application/json; charset=utf-8",
+      method: 'POST',
+    });
+  });
+}
+
 function SetupCaptureList() {
-  $("#cancel").click(function(e) {
+  $("#capture-cancel").click(function(e) {
     $("#capture").slideToggle(500, function () {});
   });
 
@@ -1348,7 +1376,7 @@ function SetupCaptureList() {
        $('#capture-node1').val(CurrentNodeDetails.Metadata.TID);
   });
 
-  $("#create").click(function(e) {
+  $("#capture-create").click(function(e) {
     var name = $("#capture-name").val();
     var desc = $("#capture-desc").val();
     var query;
@@ -1620,5 +1648,6 @@ $(document).ready(function() {
     SetupCaptureOptions();
     SetupFlowGrid();
     SetupControlButtons();
+    SetupPacketGenerator();
   }
 });

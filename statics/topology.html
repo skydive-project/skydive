@@ -65,9 +65,10 @@
     <div id="control_container">
       <div class="btn-group-vertical">
         <div class="button-wrapper">
-          <button type="button" id="zoomin" value="zoomin" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Zoom In">+</button>
-          <button type="button" id="zoomout" value="zoomout" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Zoom Out">-</button>
-          <br/>
+          <div>
+            <button type="button" id="zoomin" value="zoomin" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Zoom In">+</button>
+            <button type="button" id="zoomout" value="zoomout" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Zoom Out">-</button>
+          </div>
           <button type="button" id="zoomreset" value="reset" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Fit View">Reset</button>
         </div>
       </div>
@@ -82,76 +83,119 @@
       <div class="topology-d3"></div>
     </div>
     <div class="col-sm-4 fill info">
-      <div class="left-cont">
-        <div class="left-panel analyzer-only" id="captures-panel">
-          <div class="title-left-panel" style="float: left">Captures :</div>
-          <div style="text-align: right; margin-right: 5px;" class="analyzer-only">
-            <img id="add-capture" style="cursor: pointer" src="statics/img/record.png" width="22" height="22">
-          </div>
-          <div class="sub-left-panel" id="metadata-panel">
-            <div id="captures">
-              <ul class="capture-list"></ul>
+      <div class="flow-ops-panel analyzer-only">
+        <ul class="nav nav-pills">
+          <li class="active">
+            <a  href="#1a" data-toggle="tab">Captures</a>
+          </li>
+          <li>
+            <a href="#2a" data-toggle="tab">Generator</a>
+          </li>
+        </ul>
+        <div class="tab-content clearfix">
+          <div class="tab-pane active" id="1a">
+            <div class="left-cont ">
+              <div class="left-panel">
+                <div class="title-left-panel" style="float: left"></div>
+                <div style="text-align: right; margin-right: 5px;">
+                  <img id="add-capture" style="cursor: pointer" src="statics/img/record.png" width="22" height="22">
+                </div>
+                <div class="sub-left-panel" id="metadata-panel">
+                  <div id="captures">
+                    <ul class="capture-list"></ul>
+                  </div>
+                </div>
+                <div id="capture">
+                  <div class="sub-left-panel" style="clear: both">
+                    <div class="title-left-panel">New Capture :</div>
+                    <form action="#" id="capture_form">
+                      <label>Name : </label></br>
+                      <input type="text" id="capture-name" class="capture_input"/><br/>
+                      <label>Description : </label></br>
+                      <textarea type="text" id="capture-desc" class="capture_input" rows="4"></textarea><br/>
+
+                      <label>Target : </label></br>
+                      <label class="radio-inline"><input type="radio" name="capture-target" value="selection" checked>Nodes selection</label>
+                      <label class="radio-inline"><input type="radio" name="capture-target" value="gremlin">Gremlin Expression</label>
+                      <div id="capture-selection">
+                        <div style="position:relative">
+                          <input class="form-control input-sm has-left-icon node-selector" id="capture-node1" placeholder="Node 1" readonly>
+                          <span class="fa fa-crosshairs form-control-feedback"></span>
+                        </div>
+                        </br>
+                        <div style="position:relative">
+                          <input class="form-control input-sm has-left-icon node-selector" id="capture-node2" placeholder="Node 2 (optional)" readonly>
+                          <span class="fa fa-crosshairs form-control-feedback"></span>
+                        </div>
+                      </div>
+                      <br/>
+                      <div id="capture-gremlin" style="display: none">
+                        <textarea type="text" id="capture-query" class="capture_input" required></textarea><br/>
+                      </div>
+                      <input type="button" class="btn btn-primary" id="capture-create" value="Start"/>
+                      <input type="button" class="btn btn-danger" id="capture-cancel" value="Cancel"/>
+                      <br/>
+                    </form>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div id="capture">
-            <div class="sub-left-panel" style="clear: both">
-              <div class="title-left-panel">New Capture :</div>
-              <form action="#" id="capture_form">
-                <label>Name : </label></br>
-                <input type="text" id="capture-name" class="capture_input"/><br/>
-                <label>Description : </label></br>
-                <textarea type="text" id="capture-desc" class="capture_input" rows="4"></textarea><br/>
 
-                <label>Target : </label></br>
-                <label class="radio-inline"><input type="radio" name="capture-target" value="selection" checked>Nodes selection</label>
-                <label class="radio-inline"><input type="radio" name="capture-target" value="gremlin">Gremlin Expression</label>
-                <div id="capture-selection">
+          <div class="tab-pane" id="2a">
+            <div class="left-cont">
+              <div class="left-panel">
+                <div class="title-left-panel">Packet generator :</div>
+                <form action="#" id="inject_form">
+                  <label>Type : </label></br>
+                  <select id="inject-type" class="form-control">
+                    <option value="icmp" selected>ICMPv4/Echo request</option>
+                  </select></br>
+                  <label>Target : </label></br>
                   <div style="position:relative">
-                    <input class="form-control input-sm has-left-icon capture-node" id="capture-node1" placeholder="Node 1" readonly>
+                    <input class="form-control input-sm has-left-icon node-selector" id="inject-node1" placeholder="From" readonly>
                     <span class="fa fa-crosshairs form-control-feedback"></span>
                   </div>
                   </br>
                   <div style="position:relative">
-                    <input class="form-control input-sm has-left-icon capture-node" id="capture-node2" placeholder="Node 2 (optional)" readonly>
+                    <input class="form-control input-sm has-left-icon node-selector" id="inject-node2" placeholder="To" readonly>
                     <span class="fa fa-crosshairs form-control-feedback"></span>
                   </div>
-                </div>
-                <br/>
-                <div id="capture-gremlin" style="display: none">
-                  <textarea type="text" id="capture-query" class="capture_input" required></textarea><br/>
-                </div>
-                <input type="button" class="btn btn-primary" id="create" value="Start"/>
-                <input type="button" class="btn btn-danger" id="cancel" value="Cancel"/>
-                <br/>
-              </form>
+                  <br/>
+                  <input type="button" class="btn btn-primary" id="inject-packet" value="Inject"/>
+                  <br/>
+                </form>
+              </div>
             </div>
           </div>
+
         </div>
-        <div class="left-panel" id="node-details" style="display: none">
-          <div class="title-left-panel">
-            <div style="float:left">Node : <span id="node-id"></span></div>
-            <div class="sub-left-panel" id="metadata-panel" style="clear: both">
-              <div class="title-left-panel">Metadata :</div>
-              <div id="metadata"></div>
-            </div>
-            <div class="sub-left-panel analyzer-only" id="flows-panel">
-              <div class="title-left-panel">
-                <div style="float:left">Flows : </div>
-                <div style="text-align: right">
-                  <img id="flow-refresh" style="cursor: pointer" src="statics/img/refresh.png" width="24" height="24">
-                </div>
-              </div>
-              <div id="flows" style="clear: both">
-                <div id="flowgrid"></div>
+      </div>
+
+      <div class="left-panel" id="node-details" style="display: none">
+        <div class="title-left-panel">
+          <div style="float:left">Node : <span id="node-id"></span></div>
+          <div class="sub-left-panel" id="metadata-panel" style="clear: both">
+            <div class="title-left-panel">Metadata :</div>
+            <div id="metadata"></div>
+          </div>
+          <div class="sub-left-panel analyzer-only" id="flows-panel">
+            <div class="title-left-panel">
+              <div style="float:left">Flows : </div>
+              <div style="text-align: right">
+                <img id="flow-refresh" style="cursor: pointer" src="statics/img/refresh.png" width="24" height="24">
               </div>
             </div>
-            <div class="sub-left-panel analyzer-only" id="flows-panel">
-              <div class="title-left-panel">
-                <div style="float:left">Flow Details : <span id="flow-uuid"></span></div>
-              </div>
-              <div id="flows" style="clear: both">
-                <div id="flowdetails"></div>
-              </div>
+            <div id="flows" style="clear: both">
+              <div id="flowgrid"></div>
+            </div>
+          </div>
+          <div class="sub-left-panel analyzer-only" id="flows-panel">
+            <div class="title-left-panel">
+              <div style="float:left">Flow Details : <span id="flow-uuid"></span></div>
+            </div>
+            <div id="flows" style="clear: both">
+              <div id="flowdetails"></div>
             </div>
           </div>
         </div>
