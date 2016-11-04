@@ -23,6 +23,7 @@
 package probes
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -54,7 +55,7 @@ func (o *OnDemandProbeListener) isActive(n *graph.Node) bool {
 	return active
 }
 
-func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) *FlowProbe {
+func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) (*FlowProbe, error) {
 	capType := ""
 	if capture.Type != "" {
 		types := common.CaptureTypes[n.Metadata()["Type"].(string)].Allowed
@@ -65,23 +66,23 @@ func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) *F
 			}
 		}
 		if capType == "" {
-			return nil
+			return nil, fmt.Errorf("Capture type %v not allowed on this node: %v", capture, n)
 		}
 	} else {
+		// no capture type defined for this type of node, ex: ovsport
 		c, ok := common.CaptureTypes[n.Metadata()["Type"].(string)]
 		if !ok {
-			logging.GetLogger().Errorf("Failed to register flow probe, unknown type %v", n)
-			return nil
+			return nil, nil
 		}
 		capType = c.Default
 	}
 	probe := o.Probes.GetProbe(capType)
 	if probe == nil {
-		return nil
+		return nil, fmt.Errorf("Unable to find probe for this capture type: %v", capType)
 	}
 
 	fprobe := probe.(FlowProbe)
-	return &fprobe
+	return &fprobe, nil
 }
 
 func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Capture) bool {
@@ -94,13 +95,15 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 	}
 
 	if _, ok := n.Metadata()["Type"]; !ok {
-		logging.GetLogger().Infof("Do not register flow probe, type not supported %v", n)
+		logging.GetLogger().Infof("Unable to register flow probe type of node unknown %v", n)
 		return false
 	}
 
-	fprobe := o.getProbe(n, capture)
+	fprobe, err := o.getProbe(n, capture)
 	if fprobe == nil {
-		logging.GetLogger().Errorf("Failed to register flow probe, unknown type %v", n)
+		if err != nil {
+			logging.GetLogger().Error(err.Error())
+		}
 		return false
 	}
 
@@ -126,8 +129,11 @@ func (o *OnDemandProbeListener) unregisterProbe(n *graph.Node) bool {
 	o.Lock()
 	c := o.captures[n.ID]
 	o.Unlock()
-	fprobe := o.getProbe(n, c)
+	fprobe, err := o.getProbe(n, c)
 	if fprobe == nil {
+		if err != nil {
+			logging.GetLogger().Error(err.Error())
+		}
 		return false
 	}
 
