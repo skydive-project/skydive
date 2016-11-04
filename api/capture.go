@@ -92,7 +92,7 @@ func (c *CaptureApiHandler) getCaptureCount(r ApiResource) ApiResource {
 		switch value.(type) {
 		case *graph.Node:
 			n := value.(*graph.Node)
-			if common.IsCaptureAllowed(n.Metadata()["Type"].(string)) {
+			if t, ok := n.Metadata()["Type"]; ok && common.IsCaptureAllowed(t.(string)) {
 				capture.Count = capture.Count + 1
 			}
 		case []*graph.Node:
