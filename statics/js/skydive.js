@@ -37,7 +37,6 @@ var trashImg = 'statics/img/trash.png';
 var alerts = {};
 
 var CurrentNodeDetails;
-var NodeDetailsTmID;
 var FlowGrid;
 var FlowDataView;
 var FlowDataGrid;
@@ -851,15 +850,6 @@ Layout.prototype.GetNodeText = function(d) {
   return name;
 };
 
-Layout.prototype.MouseOverNode = function(d) {
-  var _this = this;
-  NodeDetailsTmID = setTimeout(function(){ _this.NodeDetails(d); }, 300);
-};
-
-Layout.prototype.MouseOutNode = function(d) {
-  clearTimeout(NodeDetailsTmID);
-};
-
 Layout.prototype.CollapseNetNS = function(node) {
   for (var i in node.Edges) {
     var edge = node.Edges[i];
@@ -924,34 +914,28 @@ Layout.prototype.Redraw = function() {
         nodeSelectedCallback(d);
         return;
       }
-      return _this.CollapseNode(d);
-    })
-    .on("mouseover", function(d) {
-      if (nodeSelectedCallback) {
-        if (!d.IsCaptureAllowed())
-          $(".topology-d3").addClass('node-invalid-selection');
+
+      if (d3.event.shiftKey) {
+        if (d.fixed)
+          d.fixed = false;
+        else
+          d.fixed = true;
+        _this.Redraw();
+        return;
       }
 
-      d3.select(this).select("circle").transition()
-        .duration(400)
-        .attr("r", _this.CircleSize(d) * 1.2);
-      _this.MouseOverNode(d);
-    })
-    .on("mouseout", function(d) {
-      $(".topology-d3").removeClass('node-invalid-selection');
-
-      d3.select(this).select("circle").transition()
-        .duration(400)
-        .attr("r", _this.CircleSize(d));
-      _this.MouseOutNode(d);
+      if (CurrentNodeDetails) {
+        var old = d3.select('#node-' + CurrentNodeDetails.ID);
+        old.classed('active', false);
+        old.select('circle').attr('r', parseInt(old.select('circle').attr('r')) - 3);
+      }
+      _this.NodeDetails(d);
+      var current = d3.select(this);
+      current.classed('active', true);
+      current.select('circle').attr('r', parseInt(current.select('circle').attr('r')) + 3);
     })
     .on("dblclick", function(d) {
-      if (d.fixed)
-        d.fixed = false;
-      else
-        d.fixed = true;
-
-      _this.Redraw();
+      return _this.CollapseNode(d);
     })
     .call(this.drag);
 
