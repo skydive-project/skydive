@@ -94,6 +94,8 @@ func (p *GoPacketProbe) start() {
 	go p.packetsToChan(ch)
 
 	timer := time.NewTicker(100 * time.Millisecond)
+	defer timer.Stop()
+
 	feedFlowTable := func() {
 		select {
 		case packet, ok := <-ch:
