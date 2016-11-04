@@ -413,8 +413,20 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 
 	if atomic.LoadInt64(&ft.state) == common.RunningState {
 		ft.query <- query
-		r := <-ft.reply
-		return r
+
+		timer := time.NewTicker(1 * time.Second)
+		defer timer.Stop()
+
+		for {
+			select {
+			case r := <-ft.reply:
+				return r
+			case <-timer.C:
+				if atomic.LoadInt64(&ft.state) != common.RunningState {
+					return nil
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -432,8 +444,8 @@ func (ft *Table) Start() {
 	nowTicker := time.NewTicker(time.Second * 1)
 	defer nowTicker.Stop()
 
-	ft.query = make(chan *TableQuery)
-	ft.reply = make(chan *TableReply)
+	ft.query = make(chan *TableQuery, 100)
+	ft.reply = make(chan *TableReply, 100)
 
 	atomic.StoreInt64(&ft.state, common.RunningState)
 	for atomic.LoadInt64(&ft.state) == common.RunningState {
@@ -462,14 +474,14 @@ func (ft *Table) Start() {
 }
 
 func (ft *Table) Stop() {
-	ft.lockState.Lock()
 	if atomic.CompareAndSwapInt64(&ft.state, common.RunningState, common.StoppingState) {
 		ft.wg.Wait()
-	}
-	ft.lockState.Unlock()
 
-	close(ft.query)
-	close(ft.reply)
+		ft.lockState.Lock()
+		close(ft.query)
+		close(ft.reply)
+		ft.lockState.Unlock()
+	}
 
 	// FIX trigger deadlock since Stop is called from a place where the graph
 	// is locked and usually the enhance pipeline lock the graph as well.
