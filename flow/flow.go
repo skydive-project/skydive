@@ -149,6 +149,9 @@ func (flow *Flow) initFromGoPacket(key string, now int64, packet *gopacket.Packe
 		setter.SetProbeNode(flow)
 	}
 	flow.LayersPath = layerPathFromGoPacket(packet)
+	appLayers := strings.Split(strings.TrimSuffix(flow.LayersPath, "/Payload"), "/")
+	flow.Application = appLayers[len(appLayers)-1]
+
 	flow.UpdateUUIDs(key, parentUUID)
 }
 
@@ -346,6 +349,8 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.Network.GetField(fields)
 	case "ETHERNET":
 		return f.Link.GetField(fields)
+	case "Application":
+		return f.Application, nil
 	}
 	return "", ErrFieldNotFound
 }

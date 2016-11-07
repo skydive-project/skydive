@@ -60,6 +60,10 @@ message Flow {
 	string UUID = 1;
 	string LayersPath = 2;
 
+/* Application is the last layer which is not a payload.
+*/
+	string Application = 3;
+
 /* Data Flow info */
 	FlowLayer Link = 20;
 	FlowLayer Network = 21;
