@@ -265,12 +265,13 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	}
 
 	metadata := graph.Metadata{
-		"Name":    link.Attrs().Name,
-		"Type":    link.Type(),
-		"IfIndex": int64(link.Attrs().Index),
-		"MAC":     link.Attrs().HardwareAddr.String(),
-		"MTU":     int64(link.Attrs().MTU),
-		"Driver":  driver,
+		"Name":      link.Attrs().Name,
+		"Type":      link.Type(),
+		"EncapType": link.Attrs().EncapType,
+		"IfIndex":   int64(link.Attrs().Index),
+		"MAC":       link.Attrs().HardwareAddr.String(),
+		"MTU":       int64(link.Attrs().MTU),
+		"Driver":    driver,
 	}
 
 	ipv4 := u.getLinkIPs(link, netlink.FAMILY_V4)

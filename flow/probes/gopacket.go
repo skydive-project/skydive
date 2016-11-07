@@ -116,16 +116,19 @@ func (p *GoPacketProbe) stop() {
 }
 
 func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
-	switch n.Metadata()["Type"].(string) {
-	case "bridge", "bond", "device", "can", "dummy", "hsr", "ifb", "macvlan",
-		"macvtap", "veth", "vlan", "vxlan", "gretap", "ip6gretap", "geneve":
-		return layers.LayerTypeEthernet
-	case "ipoib", "vcan", "ipip", "ipvlan", "lowpan":
-		return layers.LayerTypeIPv4
-	case "gre":
-		return flow.LayerTypeInGRE
-	case "ip6tnl", "ip6gre", "sit":
-		return layers.LayerTypeIPv6
+	if encapType, ok := n.Metadata()["EncapType"]; ok {
+		switch encapType.(string) {
+		case "ether":
+			return layers.LayerTypeEthernet
+		case "sit", "ipip", "gre":
+			return layers.LayerTypeIPv4
+		case "tunnel6", "gre6":
+			return layers.LayerTypeIPv6
+		default:
+			logging.GetLogger().Warningf("Encapsulation unknown %s on link %s, defaulting to Ethernet", encapType, n.Metadata()["Name"])
+		}
+	} else {
+		logging.GetLogger().Warningf("EncapType not found on link %s, defaulting to Ethernet", n.Metadata()["Name"])
 	}
 	return layers.LayerTypeEthernet
 }

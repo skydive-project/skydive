@@ -1419,14 +1419,16 @@
 			"revision": "b94837a2404ab90efe9289e77a70694c355739cb"
 		},
 		{
-			"checksumSHA1": "/10RFIElW3zqKvo6MpFoRKw1QXA=",
+			"checksumSHA1": "1X4+LZRyRioFEkyTBVgcWwVRl88=",
 			"path": "github.com/vishvananda/netlink",
-			"revision": "734d02c3e202f682c74b71314b2c61eec0170fd4"
+			"revision": "a1f8555521646b5a9800f39c5fd477597697135c",
+			"revisionTime": "2016-10-21T14:55:29Z"
 		},
 		{
-			"checksumSHA1": "7V1WkMoix8qAXS29jEzqdNOV13I=",
+			"checksumSHA1": "qKneIoHTQHLsL2EF1Zl3S7S++gk=",
 			"path": "github.com/vishvananda/netlink/nl",
-			"revision": "734d02c3e202f682c74b71314b2c61eec0170fd4"
+			"revision": "a1f8555521646b5a9800f39c5fd477597697135c",
+			"revisionTime": "2016-10-21T14:55:29Z"
 		},
 		{
 			"checksumSHA1": "JCH45h0NMsN7LFN18mwjzNgDaYI=",
