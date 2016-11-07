@@ -109,7 +109,7 @@ func (sfa *SFlowAgent) start() error {
 		sfa.feedFlowTable(conn)
 	}
 	sfa.FlowTable.RegisterDefault(feedFlowTable)
-	sfa.FlowTable.Start()
+	sfa.FlowTable.Run()
 
 	return nil
 }

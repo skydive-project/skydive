@@ -431,7 +431,7 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) Start() {
+func (ft *Table) Run() {
 	ft.wg.Add(1)
 	defer ft.wg.Done()
 
@@ -471,6 +471,10 @@ func (ft *Table) Start() {
 			}
 		}
 	}
+}
+
+func (ft *Table) Start() {
+	go ft.Run()
 }
 
 func (ft *Table) Stop() {

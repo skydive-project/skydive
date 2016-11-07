@@ -106,7 +106,7 @@ func (p *GoPacketProbe) start() {
 		}
 	}
 	p.flowTable.RegisterDefault(feedFlowTable)
-	p.flowTable.Start()
+	p.flowTable.Run()
 }
 
 func (p *GoPacketProbe) stop() {

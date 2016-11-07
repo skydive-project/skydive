@@ -136,7 +136,7 @@ func (s *Server) ListenAndServe() {
 		s.handleUDPFlowPacket()
 	}()
 
-	go s.FlowTable.Start()
+	s.FlowTable.Start()
 }
 
 func (s *Server) Stop() {
