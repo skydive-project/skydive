@@ -27,8 +27,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"strings"
 	"time"
+
+	"github.com/vishvananda/netns"
 )
 
 const (
@@ -254,4 +257,45 @@ func IPv6Supported() bool {
 	}
 
 	return true
+}
+
+type NetNSContext struct {
+	origns netns.NsHandle
+	newns  netns.NsHandle
+}
+
+func (n *NetNSContext) Close() {
+	if n != nil {
+		netns.Set(n.origns)
+		n.newns.Close()
+		n.origns.Close()
+	}
+
+	runtime.UnlockOSThread()
+}
+
+func NewNetNsContext(path string) (*NetNSContext, error) {
+	runtime.LockOSThread()
+
+	origns, err := netns.Get()
+	if err != nil {
+		return nil, fmt.Errorf("Error while getting current ns: %s", err.Error())
+	}
+
+	newns, err := netns.GetFromPath(path)
+	if err != nil {
+		origns.Close()
+		return nil, fmt.Errorf("Error while opening %s: %s", path, err.Error())
+	}
+
+	if err = netns.Set(newns); err != nil {
+		newns.Close()
+		origns.Close()
+		return nil, fmt.Errorf("Error while switching from root ns to %s: %s", path, err.Error())
+	}
+
+	return &NetNSContext{
+		origns: origns,
+		newns:  newns,
+	}, nil
 }

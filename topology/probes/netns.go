@@ -32,9 +32,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/vishvananda/netns"
 	"golang.org/x/exp/inotify"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -73,31 +73,14 @@ func (ns *NetNs) String() string {
 	return fmt.Sprintf("%d,%d", ns.dev, ns.ino)
 }
 
-func (nu *NetNsNetLinkTopoUpdater) Start(ns *NetNs) {
+func (nu *NetNsNetLinkTopoUpdater) Run(ns *NetNs) {
 	logging.GetLogger().Debugf("Starting NetLinkTopoUpdater for NetNS: %s", ns.path)
 
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
+	nscontext, err := common.NewNetNsContext(ns.path)
+	defer nscontext.Close()
 
-	origns, err := netns.Get()
 	if err != nil {
-		logging.GetLogger().Errorf("Error while getting root ns: %s", err.Error())
-		return
-	}
-	defer origns.Close()
-
-	time.Sleep(1 * time.Second)
-
-	newns, err := netns.GetFromPath(ns.path)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", ns.path, err.Error())
-		return
-	}
-	defer newns.Close()
-
-	err = netns.Set(newns)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while switching from root ns to %s: %s", ns.path, err.Error())
+		logging.GetLogger().Error(err.Error())
 		return
 	}
 
@@ -116,8 +99,10 @@ func (nu *NetNsNetLinkTopoUpdater) Start(ns *NetNs) {
 	nu.Unlock()
 
 	logging.GetLogger().Debugf("NetLinkTopoUpdater stopped for NetNS: %s", ns.path)
+}
 
-	netns.Set(origns)
+func (nu *NetNsNetLinkTopoUpdater) Start(ns *NetNs) {
+	go nu.Run(ns)
 }
 
 func (nu *NetNsNetLinkTopoUpdater) Stop() {
@@ -179,7 +164,7 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 	u.Graph.Link(u.Root, n, graph.Metadata{"RelationType": "ownership"})
 
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
-	go nu.Start(ns)
+	nu.Start(ns)
 
 	u.nsnlProbes[nsString] = nu
 
