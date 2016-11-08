@@ -1,6 +1,49 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2016-11-08
+### Added
+Flows:
+  - Encapsulation support (VXLAN, GRE)
+  - IPv6 support
+Gremlin:
+  - Add 'Sort' step to sort flows by uptime time
+  - Add 'Nodes' step to get capture, source and destination nodes
+Topology:
+  - Add cache for gremlin, titangraph and orientdb backends
+  - Add OpenContrail probe
+WebUI:
+  - Use shortest path to create captures
+  - Support for tunneling
+Client:
+  - Add an 'allinone' command
+  - Add a 'shell' command
+Documentation:
+  - Add quick start and contributing sections to README.md
+  - Add rest, flow schema section and some fixes
+
+### Changed
+Flows:
+  - Reworked flow structurem to simplify exploitation and storage
+  - Use ANode, BNode, Node instead of old name for flows
+Gremlin:
+  - Optimize Dedup step for flows
+  - Ensure error is passed for every step
+WebUI:
+  - Replace flow jsonview by a flow grid table
+  - Change node selection behaviour
+Docker:
+  - Use scratch as Docker base image
+  - Add missing configuration file for Docker image
+OpenStack:
+  - Add availability configuration variable
+  - Retrieve metadatas when port metadatas are updated
+Bugs fixes:
+  - Properly handle default values in configuration
+  - Fix fd leak when using http clients
+  - Stop timer of gopacket
+  - Fix frozen agent when a flow query was used while when stopping flow table
+
 ## [0.6.0] - 2016-10-15
 ### Added
 - Use elasticsearch as a time series database

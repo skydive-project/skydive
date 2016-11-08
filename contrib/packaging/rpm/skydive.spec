@@ -12,8 +12,8 @@
 %define source %{tagversion}
 %endif
 
-%{!?tagversion:%define tagversion 0.6.0}
-%{!?source:%define source 0.6.0}
+%{!?tagversion:%define tagversion 0.7.0}
+%{!?source:%define source 0.7.0}
 %{!?tag:%define tag 1}
 
 Name:           skydive
