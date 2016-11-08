@@ -25,6 +25,9 @@ package common
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -234,4 +237,21 @@ func NewIterator(values ...int64) (it *Iterator) {
 		it.to = values[2]
 	}
 	return
+}
+
+func IPv6Supported() bool {
+	if _, err := os.Stat("/proc/net/if_inet6"); os.IsNotExist(err) {
+		return false
+	}
+
+	data, err := ioutil.ReadFile("/proc/sys/net/ipv6/conf/all/disable_ipv6")
+	if err != nil {
+		return false
+	}
+
+	if strings.TrimSpace(string(data)) == "1" {
+		return false
+	}
+
+	return true
 }

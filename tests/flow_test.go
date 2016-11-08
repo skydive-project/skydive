@@ -32,6 +32,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -1157,6 +1158,10 @@ func TestFlowHops(t *testing.T) {
 }
 
 func TestIPv6FlowHopsIPv6(t *testing.T) {
+	if !common.IPv6Supported() {
+		t.Skipf("Platform doesn't support IPv6")
+	}
+
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzerIPv6, ts)
@@ -1345,6 +1350,10 @@ func TestFlowGRETunnel(t *testing.T) {
 
 func TestIPv6FlowGRETunnelIPv6(t *testing.T) {
 	t.Skip("Fedora seems didn't support ip6gre tunnel for the moment")
+
+	if !common.IPv6Supported() {
+		t.Skipf("Platform doesn't support IPv6")
+	}
 
 	ts := NewTestStorage()
 
