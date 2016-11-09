@@ -190,7 +190,7 @@ func NewAgent() *Agent {
 
 	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
 
-	root := createRootNode(g)
+	root := CreateRootNode(g)
 	api.RegisterTopologyApi("agent", g, hserver, nil, nil)
 
 	gserver := graph.NewServer(g, wsServer)
@@ -228,7 +228,7 @@ func waitAnalyzer(addr string, port int, authOptions *shttp.AuthenticationOpts) 
 	}
 }
 
-func createRootNode(g *graph.Graph) *graph.Node {
+func CreateRootNode(g *graph.Graph) *graph.Node {
 	hostID := config.GetConfig().GetString("host_id")
 	m := graph.Metadata{"Name": hostID, "Type": "host"}
 	if config.GetConfig().IsSet("agent.metadata") {

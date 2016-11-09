@@ -223,7 +223,7 @@ func (g GremlinBackend) AddEdge(e *Edge) bool {
 	query += ".addEdge('linked', g.V().has(" + propsChild + ").next(), " + string(properties) + ")"
 	_, err = g.client.Query(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while adding a new Node: %s", err.Error())
+		logging.GetLogger().Errorf("Error while adding a new Edge: %s", err.Error())
 		return false
 	}
 

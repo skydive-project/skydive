@@ -316,7 +316,7 @@ func NewGraph(t *testing.T) *graph.Graph {
 
 	root := g.LookupFirstNode(graph.Metadata{"Name": hostname, "Type": "host"})
 	if root == nil {
-		root = g.NewNode(graph.Identifier(hostname), graph.Metadata{"Name": hostname, "Type": "host"})
+		root = agent.CreateRootNode(g)
 		if root == nil {
 			t.Fatal("fail while adding root node")
 		}
