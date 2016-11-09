@@ -110,7 +110,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 
 	stats, err := ethtool.Stats(link.Attrs().Name)
 	if err != nil {
-		logging.GetLogger().Errorf("Unable get stats from ethtool: %s", err.Error())
+		logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", link.Attrs().Name, err.Error())
 		return
 	}
 
