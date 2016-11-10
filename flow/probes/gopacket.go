@@ -120,7 +120,9 @@ func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
 		switch encapType.(string) {
 		case "ether":
 			return layers.LayerTypeEthernet
-		case "sit", "ipip", "gre":
+		case "gre":
+			return flow.LayerTypeInGRE
+		case "sit", "ipip":
 			return layers.LayerTypeIPv4
 		case "tunnel6", "gre6":
 			return layers.LayerTypeIPv6
