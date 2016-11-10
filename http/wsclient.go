@@ -25,9 +25,7 @@ package http
 import (
 	"encoding/json"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -106,36 +104,27 @@ func (c *WSAsyncClient) send(msg string) error {
 }
 
 func (c *WSAsyncClient) connect() {
+	var err error
 	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
-
-	conn, err := net.Dial("tcp", host)
-	if err != nil {
-		logging.GetLogger().Errorf("Connection to the WebSocket server failed: %s", err.Error())
-		return
-	}
-
 	endpoint := "ws://" + host + c.Path
-	u, err := url.Parse(endpoint)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to parse the WebSocket Endpoint %s: %s", endpoint, err.Error())
-		conn.Close()
-		return
-	}
-
 	headers := http.Header{"X-Host-ID": {c.host}, "Origin": {endpoint}, "X-Client-Type": {c.clientType}}
+
 	if c.AuthClient != nil {
 		if err := c.AuthClient.Authenticate(); err != nil {
 			logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
-			conn.Close()
 			return
 		}
 		c.AuthClient.SetHeaders(headers)
 	}
 
-	c.wsConn, _, err = websocket.NewClient(conn, u, headers, 1024, 1024)
+	d := websocket.Dialer{
+		Proxy:           http.ProxyFromEnvironment,
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+	c.wsConn, _, err = d.Dial(endpoint, headers)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
-		conn.Close()
 		return
 	}
 	defer c.wsConn.Close()
