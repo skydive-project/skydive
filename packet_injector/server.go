@@ -46,6 +46,7 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) {
 		DstNode interface{}
 		Type    string
 		Payload string
+		Count   int
 	}{}
 	if err := json.Unmarshal([]byte(*msg.Obj), &params); err != nil {
 		logging.GetLogger().Errorf("Unable to decode packet inject param message %v", msg)
@@ -69,6 +70,7 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) {
 		DstNode: &dstNode,
 		Type:    params.Type,
 		Payload: params.Payload,
+		Count:   params.Count,
 	}
 
 	if err := InjectPacket(&pip, pis.Graph); err != nil {

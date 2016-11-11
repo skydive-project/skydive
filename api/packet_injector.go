@@ -49,6 +49,7 @@ type PacketParamsReq struct {
 	Dst     string `valid:"isGremlinExpr"`
 	Type    string
 	Payload string
+	Count   int
 }
 
 func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
@@ -90,6 +91,7 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 		DstNode: dstNode,
 		Type:    ppr.Type,
 		Payload: ppr.Payload,
+		Count:   ppr.Count,
 	}
 
 	host := srcNode.Host()

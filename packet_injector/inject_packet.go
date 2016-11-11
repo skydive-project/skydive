@@ -51,6 +51,7 @@ type PacketParams struct {
 	DstNode *graph.Node
 	Type    string
 	Payload string
+	Count   int
 }
 
 func InjectPacket(pp *PacketParams, g *graph.Graph) error {
@@ -111,8 +112,10 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) error {
 	defer handle.Close()
 
 	packet := buffer.Bytes()
-	if err := handle.WritePacketData(packet); err != nil {
-		return fmt.Errorf("Write error: %s", err.Error())
+	for i := 0; i < pp.Count; i++ {
+		if err := handle.WritePacketData(packet); err != nil {
+			return fmt.Errorf("Write error: %s", err.Error())
+		}
 	}
 
 	return nil
