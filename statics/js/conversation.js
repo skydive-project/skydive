@@ -75,8 +75,6 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
     data.links.forEach(function(link) {
       matrix[link.source][link.target].z += link.value;
       matrix[link.target][link.source].z += link.value;
-      matrix[link.source][link.source].z += link.value;
-      matrix[link.target][link.target].z += link.value;
       nodes[link.source].count += link.value;
       nodes[link.target].count += link.value;
     });
@@ -121,7 +119,7 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
       .attr("width", x.rangeBand())
       .attr("height", x.rangeBand())
       .style("fill-opacity", function(d) { return z(d.z); })
-      .style("fill", function(d) { return nodes[d.x].group == nodes[d.y].group ? c(nodes[d.x].group) : null; })
+      .style("fill", function(d) { return "rgb(31, 119, 180)"; })
       .on("mouseover", function(p) {
         d3.selectAll(".row text").classed("active", function(d, i) { return i == p.y; });
         d3.selectAll(".column text").classed("active", function(d, i) { return i == p.x; });

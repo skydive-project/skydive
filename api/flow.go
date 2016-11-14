@@ -79,9 +79,8 @@ func (f *FlowApi) serveDataIndex(w http.ResponseWriter, r *auth.AuthenticatedReq
 	w.Write([]byte(message))
 }
 
-func (f *FlowApi) jsonFlowConversationEthernetPath(protocol flow.FlowProtocol) string {
+func (f *FlowApi) jsonFlowConversation(layer string) string {
 	//	{"nodes":[{"name":"Myriel","group":1}, ... ],"links":[{"source":1,"target":0,"value":1},...]}
-
 	nodes := []string{}
 	links := []string{}
 
@@ -89,7 +88,21 @@ func (f *FlowApi) jsonFlowConversationEthernetPath(protocol flow.FlowProtocol) s
 	layerMap := make(map[string]int)
 
 	for _, f := range f.FlowTable.GetFlows(nil).Flows {
-		layerFlow := f.Link
+		var layerFlow *flow.FlowLayer
+		if layer == "ethernet" && f.Link != nil && f.Link.Protocol == flow.FlowProtocol_ETHERNET {
+			layerFlow = f.Link
+		} else if layer == "ipv4" && f.Network != nil && f.Network.Protocol == flow.FlowProtocol_IPV4 {
+			layerFlow = f.Network
+		} else if layer == "ipv6" && f.Network != nil && f.Network.Protocol == flow.FlowProtocol_IPV6 {
+			layerFlow = f.Network
+		} else if layer == "tcp" && f.Transport != nil && f.Transport.Protocol == flow.FlowProtocol_TCPPORT {
+			layerFlow = f.Transport
+		} else if layer == "udp" && f.Transport != nil && f.Transport.Protocol == flow.FlowProtocol_UDPPORT {
+			layerFlow = f.Transport
+		} else if layer == "sctp" && f.Transport != nil && f.Transport.Protocol == flow.FlowProtocol_SCTPPORT {
+			layerFlow = f.Transport
+		}
+
 		if layerFlow == nil {
 			continue
 		}
@@ -119,24 +132,7 @@ func (f *FlowApi) jsonFlowConversationEthernetPath(protocol flow.FlowProtocol) s
 
 func (f *FlowApi) conversationLayer(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	vars := mux.Vars(&r.Request)
-	layer := vars["layer"]
-
-	ltype := flow.FlowProtocol_ETHERNET
-	switch layer {
-	case "ethernet":
-		ltype = flow.FlowProtocol_ETHERNET
-	case "ipv4":
-		ltype = flow.FlowProtocol_IPV4
-	case "ipv6":
-		ltype = flow.FlowProtocol_IPV6
-	case "tcp":
-		ltype = flow.FlowProtocol_TCPPORT
-	case "udp":
-		ltype = flow.FlowProtocol_UDPPORT
-	case "sctp":
-		ltype = flow.FlowProtocol_SCTPPORT
-	}
-	f.serveDataIndex(w, r, f.jsonFlowConversationEthernetPath(ltype))
+	f.serveDataIndex(w, r, f.jsonFlowConversation(vars["layer"]))
 }
 
 type discoType int

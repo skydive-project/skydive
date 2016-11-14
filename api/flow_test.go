@@ -31,13 +31,13 @@ import (
 	"github.com/skydive-project/skydive/flow"
 )
 
-func TestFlowTable_jsonFlowConversationEthernetPath(t *testing.T) {
+func TestFlowTable_jsonFlowConversation(t *testing.T) {
 	ft := flow.NewTestFlowTableComplex(t, nil, nil)
 	fa := &FlowApi{
 		FlowTable: ft,
 	}
 
-	statStr := fa.jsonFlowConversationEthernetPath(flow.FlowProtocol_ETHERNET)
+	statStr := fa.jsonFlowConversation("ethernet")
 	if statStr == `{"nodes":[],"links":[]}` {
 		t.Error("stat should not be empty")
 	}

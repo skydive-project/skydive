@@ -190,42 +190,6 @@ func (ft *Table) FilterLast(last time.Duration) []*Flow {
 	return flows
 }
 
-func (ft *Table) SelectLayer(protocol FlowProtocol, list []string) *FlowSet {
-	meth := make(map[string][]*Flow)
-	ft.RLock()
-	for _, f := range ft.table {
-		layerFlow := f.Link
-		if layerFlow == nil || layerFlow.A == "ff:ff:ff:ff:ff:ff" || layerFlow.B == "ff:ff:ff:ff:ff:ff" {
-			continue
-		}
-		meth[layerFlow.A] = append(meth[layerFlow.A], f)
-		meth[layerFlow.B] = append(meth[layerFlow.B], f)
-	}
-	ft.RUnlock()
-
-	mflows := make(map[*Flow]struct{})
-	flowset := NewFlowSet()
-	for _, eth := range list {
-		if flist, ok := meth[eth]; ok {
-			for _, f := range flist {
-				if _, found := mflows[f]; !found {
-					mflows[f] = struct{}{}
-
-					if flowset.Start == 0 || flowset.Start > f.Metric.Start {
-						flowset.Start = f.Metric.Start
-					}
-					if flowset.End == 0 || flowset.Start < f.Metric.Last {
-						flowset.End = f.Metric.Last
-					}
-
-					flowset.Flows = append(flowset.Flows, f)
-				}
-			}
-		}
-	}
-	return flowset
-}
-
 /* Internal call only, Must be called under ft.Lock() */
 func (ft *Table) expired(expireBefore int64) {
 	var expiredFlows []*Flow

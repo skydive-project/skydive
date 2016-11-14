@@ -26,6 +26,7 @@ import (
 	"net/http"
 
 	"github.com/abbot/go-http-auth"
+	"github.com/gorilla/context"
 )
 
 type NoAuthenticationBackend struct {
@@ -38,7 +39,9 @@ func (h *NoAuthenticationBackend) Authenticate(username string, password string)
 func (h *NoAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ar := &auth.AuthenticatedRequest{Request: *r, Username: ""}
+		copyRequestVars(r, &ar.Request)
 		wrapped(w, ar)
+		context.Clear(&ar.Request)
 	}
 }
 

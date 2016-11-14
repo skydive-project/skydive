@@ -28,6 +28,7 @@ import (
 	"os"
 
 	"github.com/abbot/go-http-auth"
+	"github.com/gorilla/context"
 	"github.com/skydive-project/skydive/config"
 )
 
@@ -62,7 +63,9 @@ func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc)
 			unauthorized(w, r)
 		} else {
 			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
+			copyRequestVars(r, &ar.Request)
 			wrapped(w, ar)
+			context.Clear(&ar.Request)
 		}
 	}
 }

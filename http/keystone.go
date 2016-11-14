@@ -30,6 +30,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/identity/v2/tokens"
+	"github.com/gorilla/context"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -117,7 +118,9 @@ func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFu
 			unauthorized(w, r)
 		} else {
 			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
+			copyRequestVars(r, &ar.Request)
 			wrapped(w, ar)
+			context.Clear(&ar.Request)
 		}
 	}
 }

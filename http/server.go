@@ -34,6 +34,7 @@ import (
 	"sync"
 
 	"github.com/abbot/go-http-auth"
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/hydrogen18/stoppableListener"
 
@@ -60,6 +61,13 @@ type Server struct {
 	lock    sync.Mutex
 	sl      *stoppableListener.StoppableListener
 	wg      sync.WaitGroup
+}
+
+func copyRequestVars(old, new *http.Request) {
+	kv := context.GetAll(old)
+	for k, v := range kv {
+		context.Set(new, k, v)
+	}
 }
 
 func (s *Server) RegisterRoutes(routes []Route) {
