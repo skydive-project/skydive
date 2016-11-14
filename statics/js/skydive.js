@@ -1355,7 +1355,8 @@ function SetupPacketGenerator() {
       data: JSON.stringify({
         "Src": "G.V().Has('TID', '" + node1 + "')",
         "Dst": "G.V().Has('TID', '" + node2 + "')",
-        "Type": $("#inject-type").val()
+        "Type": $("#inject-type").val(),
+        "Count": parseInt($("#inject-count").val())
       }),
       contentType: "application/json; charset=utf-8",
       method: 'POST',
