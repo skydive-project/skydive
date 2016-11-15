@@ -1341,7 +1341,7 @@ function SetupCaptureList() {
     $("#capture").slideToggle(500, function () {});
     ResetCaptureForm();
 
-    if (CurrentNodeDetails)
+    if (CurrentNodeDetails && CurrentNodeDetails.IsCaptureAllowed())
        $('#capture-node1').val(CurrentNodeDetails.Metadata.TID);
   });
 
