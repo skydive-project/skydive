@@ -10,3 +10,10 @@ sudo service openvswitch start
 sudo service etcd start
 
 rpm -qi openvswitch
+
+mkdir ${HOME}/protoc
+pushd ${HOME}/protoc
+wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
+unzip protoc-3.1.0-linux-x86_64.zip
+popd
+export PATH=${HOME}/protoc/bin:${PATH}

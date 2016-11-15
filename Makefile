@@ -25,13 +25,13 @@ DOCKER_TAG?=devel
 all: govendor genlocalfiles
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
-install: govendor
+install: govendor genlocalfiles
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
-build: govendor
+build: govendor genlocalfiles
 	${GOPATH}/bin/govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
-static:
+static: genlocalfiles
 	rm -f $$GOPATH/bin/skydive
 	test -f /etc/redhat-release && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib64/libz.a /usr/lib64/liblzma.a /usr/lib64/libm.a"' ${VERBOSE_FLAGS} +local || true
 	test -f /etc/debian_version && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a"' ${VERBOSE_FLAGS} +local || true
@@ -39,7 +39,7 @@ static:
 test.functionals.cleanup:
 	rm -f tests/functionals
 
-test.functionals.compile: govendor
+test.functionals.compile: govendor genlocalfiles
 	${GOPATH}/bin/govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
@@ -58,7 +58,7 @@ test.functionals: test.functionals.compile
 		make ARGS="-test.run $$functest$$\$$ ${ARGS}" test.functionals.run ; \
 	done
 
-test: govendor
+test: govendor genlocalfiles
 	${GOPATH}/bin/govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 
 govendor:

@@ -3,3 +3,5 @@ vendor/golang.org/
 vendor/google.golang.org/
 vendor/gopkg.in/
 contrib/packaging/rpm/*.tar.gz
+flow/*.pb.go
+statics/bindata.go
