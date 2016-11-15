@@ -52,6 +52,15 @@ SKYDIVE_STORAGE=${SKYDIVE_STORAGE:-"elasticsearch"}
 ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution
 ELASTICSEARCH_VERSION=2.3.1
 
+function install_protoc {
+  mkdir $DEST/protoc
+  pushd $DEST/protoc
+  wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
+  unzip protoc-3.1.0-linux-x86_64.zip
+  popd
+  export PATH=$DEST/protoc/bin:${PATH}
+}
+
 function install_go {
     if [[ `uname -m` == *"64" ]]; then
         arch=amd64
@@ -83,6 +92,7 @@ function download_elasticsearch {
 }
 
 function pre_install_skydive {
+    install_protoc
     install_go
     if is_service_enabled skydive-analyzer; then
         download_elasticsearch

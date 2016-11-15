@@ -21,6 +21,13 @@ before_install:
     - sudo make install
     - cd ..
 
+    - mkdir ${HOME}/protoc
+    - pushd ${HOME}/protoc
+    - wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
+    - unzip protoc-3.1.0-linux-x86_64.zip
+    - popd
+    - export PATH=${HOME}/protoc/bin:${PATH}
+
 script:
     - export BUILD_TAG=$(date +%Y-%m-%d).${TRAVIS_JOB_NUMBER}
 

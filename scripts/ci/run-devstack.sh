@@ -73,7 +73,7 @@ EOF
 set -e
 
 source openrc admin admin
-export PATH=$PATH:/opt/go/bin:/opt/stack/go/bin
+export PATH=$PATH:/opt/go/bin:/opt/stack/go/bin:/opt/stack/protoc/bin
 export GOROOT=/opt/go
 export GOPATH=/opt/stack/go
 export GO_VERSION=1.6
