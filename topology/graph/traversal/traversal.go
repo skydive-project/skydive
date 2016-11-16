@@ -467,6 +467,22 @@ func (tv *GraphTraversalV) GetNodes() (nodes []*graph.Node) {
 	return
 }
 
+func (tv *GraphTraversalV) PropertyValues(keys ...interface{}) *GraphTraversalValue {
+	if tv.error != nil {
+		return &GraphTraversalValue{error: tv.error}
+	}
+
+	key := keys[0].(string)
+
+	var s []interface{}
+	for _, n := range tv.nodes {
+		if value, ok := n.Metadata()[key]; ok {
+			s = append(s, value)
+		}
+	}
+	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
+}
+
 func (tv *GraphTraversalV) Dedup() *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -958,6 +974,12 @@ func NewGraphTraversalValue(gt *GraphTraversal, value interface{}, err ...error)
 }
 
 func (t *GraphTraversalValue) Values() []interface{} {
+	// Values like all step has to return an array of interface
+	// if v is already an array return it otherwise instanciate an new array
+	// with the value as first element.
+	if v, ok := t.value.([]interface{}); ok {
+		return v
+	}
 	return []interface{}{t.value}
 }
 
@@ -966,5 +988,5 @@ func (t *GraphTraversalValue) MarshalJSON() ([]byte, error) {
 }
 
 func (t *GraphTraversalValue) Error() error {
-	return nil
+	return t.error
 }

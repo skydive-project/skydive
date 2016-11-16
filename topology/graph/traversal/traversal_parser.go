@@ -105,6 +105,9 @@ type (
 	GremlinTraversalStepSort struct {
 		GremlinTraversalContext
 	}
+	GremlinTraversalStepValues struct {
+		GremlinTraversalContext
+	}
 )
 
 var (
@@ -482,6 +485,14 @@ func (s *GremlinTraversalStepSort) Reduce(next GremlinTraversalStep) GremlinTrav
 	return next
 }
 
+func (s *GremlinTraversalStepValues) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	return invokeStepFnc(last, "PropertyValues", s)
+}
+
+func (s *GremlinTraversalStepValues) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 	var step GremlinTraversalStep
 	var last GraphTraversalStep
@@ -742,6 +753,15 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			return nil, fmt.Errorf("Limit requires 1 parameter")
 		}
 		return &GremlinTraversalStepLimit{gremlinStepContext}, nil
+	case VALUES:
+		if len(params) != 1 {
+			return nil, fmt.Errorf("Values requires 1 parameter")
+		}
+		if _, ok := params[0].(string); !ok {
+			return nil, fmt.Errorf("Values parameter has to be a string key")
+		}
+
+		return &GremlinTraversalStepValues{gremlinStepContext}, nil
 	}
 
 	// extensions

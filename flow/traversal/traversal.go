@@ -426,6 +426,51 @@ func (f *FlowTraversalStep) Sort() *FlowTraversalStep {
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset}
 }
 
+func (f *FlowTraversalStep) propertyInt64Values(field string) *traversal.GraphTraversalValue {
+	var s []interface{}
+	for _, fl := range f.flowset.Flows {
+		if v, err := fl.GetFieldInt64(field); err == nil {
+			s = append(s, v)
+		}
+	}
+
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
+}
+
+func (f *FlowTraversalStep) propertyStringValues(field string) *traversal.GraphTraversalValue {
+	var s []interface{}
+	for _, fl := range f.flowset.Flows {
+
+		v, err := fl.GetFieldString(field)
+		if err != nil {
+			return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, err)
+		}
+		if v != "" {
+			s = append(s, v)
+		}
+	}
+
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
+}
+
+func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.GraphTraversalValue {
+	if f.error != nil {
+		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, f.error)
+	}
+
+	key := keys[0].(string)
+
+	if len(f.flowset.Flows) > 0 {
+		// use the first flow to determine what is the type of the field
+		if _, err := f.flowset.Flows[0].GetFieldInt64(key); err == nil {
+			return f.propertyInt64Values(key)
+		}
+		return f.propertyStringValues(key)
+	}
+
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, flow.ErrFieldNotFound)
+}
+
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flowset.Flows))
 	for i, flow := range f.flowset.Flows {

@@ -276,21 +276,21 @@ func (f *FlowLayer) GetField(fields []string) (string, error) {
 	if f == nil || len(fields) != 2 {
 		return "", ErrFieldNotFound
 	}
-	layerName := fields[0]
+
 	/* Protocol must be set on the Layer or the transport layer name like Link, Network, Transport */
-	_, ok := FlowProtocol_value[layerName]
-	if !ok {
-		switch layerName {
-		case "Link", "Network", "Transport":
-		default:
-			return "", ErrFieldNotFound
-		}
+	switch fields[0] {
+	case "Link", "Network", "Transport":
+	default:
+		return "", ErrFieldNotFound
 	}
+
 	switch fields[1] {
 	case "A":
 		return f.A, nil
 	case "B":
 		return f.B, nil
+	case "Protocol":
+		return f.Protocol.String(), nil
 	}
 	return "", ErrFieldNotFound
 }

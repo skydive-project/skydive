@@ -133,6 +133,14 @@ G.V().Out().Both().Dedup()
 G.V().Count()
 ```
 
+### Values step
+
+`Values` returns the property value of elements retrieved by the previous step.
+
+```console
+G.V().Values('Name')
+```
+
 ### Limit step
 
 `Limit` limits the number of elements returned.

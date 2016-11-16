@@ -80,6 +80,7 @@ const (
 	LIMIT
 	SORT
 	SINCE
+	VALUES
 
 	// extensions token have to start after 1000
 )
@@ -252,6 +253,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return SORT, buf.String()
 	case "SINCE":
 		return SINCE, buf.String()
+	case "VALUES":
+		return VALUES, buf.String()
 	}
 
 	for _, e := range s.extensions {

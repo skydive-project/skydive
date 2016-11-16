@@ -135,6 +135,11 @@ func TestBasicTraversal(t *testing.T) {
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
+
+	res := tr.V().PropertyValues("Type")
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	}
 }
 
 func TestTraversalWithin(t *testing.T) {
@@ -437,5 +442,12 @@ func TestTraversalParser(t *testing.T) {
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Values("Type")`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2 node, returned: %v", res.Values())
 	}
 }
