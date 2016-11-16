@@ -208,12 +208,14 @@ var Layout = function(selector) {
     .attr("y", 60)
     .attr('viewBox', -this.width/2 + ' ' + -this.height/2 + ' ' + this.width * 2 + ' ' + this.height * 2)
     .attr('preserveAspectRatio', 'xMidYMid meet')
-    .call(d3.behavior.zoom().on("zoom", function() {
-      _this.Rescale();
-    }))
     .on("dblclick.zoom", null);
 
   var _this = this;
+
+  d3.behavior.zoom();
+  zoom = d3.behavior.zoom()
+    .on("zoom", function() { _this.Rescale(); });
+
   this.force = d3.layout.force()
     .size([this.width, this.height])
     .charge(-400)
@@ -228,6 +230,7 @@ var Layout = function(selector) {
     });
 
   this.view = this.svg.append('g');
+  this.svg.call(zoom).call(zoom.event);
 
   this.drag = this.force.stop().drag()
     .on("dragstart", function(d) {
@@ -1517,10 +1520,63 @@ function SetupFlowGrid() {
     FlowGrid.render();
   });
 
-  FlowDataView.onRowsChanged.subscribe(function (e, args) {
+    FlowDataView.onRowsChanged.subscribe(function (e, args) {
     FlowGrid.invalidateRows(args.rows);
     FlowGrid.render();
   });
+}
+
+function zoomclicked(direction) {
+
+  var scale = this.zoom.scale();
+  var translate = this.zoom.translate();
+
+  if (direction == "zoomreset") {
+      newscale = 1;
+      newtranslate = [0,0];
+  } else {
+      if (direction == "zoomin") {
+          factor = 1.1;
+      } else {
+          factor = 0.9;
+      }
+
+      newscale = (scale * factor);
+      newtranslate = [topologyLayout.width / 2 + (translate[0] - topologyLayout.width / 2 )*factor,
+                      topologyLayout.height / 2 + (translate[1] - topologyLayout.height / 2)*factor];
+  }
+
+  this.zoom.scale(newscale);
+  this.zoom.translate(newtranslate);
+  this.zoom.event(topologyLayout.view);
+}
+
+function SetupControlButtons() {
+  $("#zoomin").click(function(e) {
+    zoomclicked("zoomin");
+    e.preventDefault();
+  });
+  $("#zoomout").click(function(e) {
+    zoomclicked("zoomout");
+    e.preventDefault();
+  });
+  $("#zoomreset").click(function(e) {
+    zoomclicked("zoomreset");
+    e.preventDefault();
+  });
+  document.onkeypress=function(e) {
+    var char = e.which || e.keyCode;
+    switch (char) {
+      case 43:
+      zoomclicked("zoomin");
+      break;
+      case 45:
+      zoomclicked("zoomout");
+      break;
+      default:
+    }
+    e.preventDefault();
+  };
 }
 
 $(document).ready(function() {
@@ -1563,5 +1619,6 @@ $(document).ready(function() {
     SetupNodeDetails();
     SetupCaptureOptions();
     SetupFlowGrid();
+    SetupControlButtons();
   }
 });

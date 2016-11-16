@@ -469,3 +469,22 @@ circle.manager {
 #flowgrid .l0 {
   border-left: 1px solid silver;
 }
+
+.button-wrapper .btn {
+    margin:2px;
+}
+
+#control_container {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+}
+
+#control_container .btn-group-vertical {
+    z-index: 999;
+    position:relative;
+}
+
+#control_container .button-wrapper {
+  text-align: center;
+}
