@@ -36,6 +36,7 @@ var trashImg = 'statics/img/trash.png';
 
 var alerts = {};
 
+var connected = false;
 var CurrentNodeDetails;
 var FlowGrid;
 var FlowDataView;
@@ -198,6 +199,7 @@ var Layout = function(selector) {
   this.elements = {};
   this.groups = {};
   this.synced = false;
+  this.live = false;
 
   this.width = $(selector).width() - 20;
   this.height = $(selector).height();
@@ -349,6 +351,13 @@ function ShowNodeFlows(node) {
     url: '/api/topology',
     data: JSON.stringify({"GremlinQuery": query}),
     method: 'POST',
+    error: function(e) {
+      $.notify({
+        message: 'Gremlin request error: ' + e.responseText
+      },{
+        type: 'danger'
+      });
+    },
     success: function(data) {
       FlowDataGrid = [];
 
@@ -1137,10 +1146,28 @@ Layout.prototype.StartLiveUpdate = function() {
 
   var _this = this;
   this.updatesocket.onopen = function() {
+    if (!connected) {
+      $.notify({
+      	message: 'Connected'
+      },{
+      	type: 'success'
+      });
+      connected = true;
+    }
+
     _this.SyncRequest(null);
   };
 
   this.updatesocket.onclose = function() {
+    if (connected) {
+      $.notify({
+        message: 'Connection lost'
+      },{
+        type: 'danger'
+      });
+      connected = false;
+    }
+
     _this.Invalidate();
     setTimeout(function() { _this.StartLiveUpdate(); }, 1000);
   };
@@ -1225,11 +1252,22 @@ function StartCheckAPIAccess() {
 
 var Captures = {};
 function RefreshCaptureList() {
+  if (!connected)
+    return;
+
   $.ajax({
     dataType: "json",
     url: '/api/capture',
     contentType: "application/json; charset=utf-8",
     method: 'GET',
+    error: function(e) {
+
+      $.notify({
+        message: 'Capture list error: ' + e.responseText
+      },{
+        type: 'danger'
+      });
+    },
     success: function(data) {
       var clist = $('.capture-list');
 
@@ -1281,8 +1319,16 @@ function DeleteCapture() {
 
   $.ajax({
     url: '/api/capture/' + id + '/',
-    contentType: "application/json; charset=utf-8",
-    method: 'DELETE'
+    method: 'DELETE',
+    error: function(e) {
+      if (e.status == 200)
+        return;
+      $.notify({
+        message: 'Capture delete error: ' + e.responseText
+      },{
+        type: 'danger'
+      });
+    }
   });
   li.remove();
   delete Captures[id];
@@ -1360,6 +1406,20 @@ function SetupPacketGenerator() {
       }),
       contentType: "application/json; charset=utf-8",
       method: 'POST',
+      success: function(e) {
+        $.notify({
+          message: 'Packet injected'
+        },{
+          type: 'success'
+        });
+      },
+      error: function(e) {
+        $.notify({
+          message: 'Packet injection error: ' + e.responseText
+        },{
+          type: 'danger'
+        });
+      }
     });
   });
 }
@@ -1409,6 +1469,20 @@ function SetupCaptureList() {
         data: JSON.stringify({"GremlinQuery": query, "Name": name, "Description": desc}),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
+        success: function() {
+          $.notify({
+            message: 'Capture created'
+          },{
+            type: 'success'
+          });
+        },
+        error: function(e) {
+          $.notify({
+            message: 'Capture create error: ' + e.responseText
+          },{
+            type: 'danger'
+          });
+        }
       });
       $("#capture").slideToggle(500, function () {});
     }
@@ -1433,10 +1507,16 @@ function ShowFlowDetails(uuid) {
      data: JSON.stringify({"GremlinQuery": query}),
      method: 'POST',
      success: function(data) {
-
        var json = JSON.stringify(data);
        $("#flowdetails").JSONView(json);
        $('#flowdetails').JSONView('toggle', 10);
+     },
+     error: function(e) {
+       $.notify({
+         message: 'Node details error: ' + e.responseText
+       },{
+         type: 'danger'
+       });
      }
    });
 }
@@ -1476,6 +1556,13 @@ function SetupFlowGrid() {
             n.Highlighted = true;
             topologyLayout.SetNodeClass(id, "highlighted", true);
           }
+        },
+        error: function(e) {
+          $.notify({
+            message: 'Gremlin request error: ' + e.responseText
+          },{
+            type: 'danger'
+          });
         }
       });
   }).on('mouseleave', ".slick-row", function () {
