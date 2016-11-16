@@ -29,9 +29,7 @@ import (
 	"strings"
 
 	"github.com/abbot/go-http-auth"
-
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
@@ -57,15 +55,15 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 	var ppr PacketParamsReq
 	err := decoder.Decode(&ppr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		logging.GetLogger().Errorf("Not able to decode the request body")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	}
 	defer r.Body.Close()
 
 	if errs := validator.Validate(&ppr); errs != nil {
-		writeError(w, http.StatusBadRequest, errs)
-		logging.GetLogger().Errorf("Gremlin syntax error")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -73,7 +71,6 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 	dstNode := pi.getNode(ppr.Dst)
 	if srcNode == nil || dstNode == nil {
 		writeError(w, http.StatusBadRequest, errors.New("Not able to find a Node"))
-		logging.GetLogger().Errorf("Not able to find a Node")
 		return
 	}
 
@@ -82,7 +79,6 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 	if srcdata["IPV4"] == "" || srcdata["MAC"] == "" ||
 		dstdata["IPV4"] == "" || dstdata["MAC"] == "" {
 		writeError(w, http.StatusBadRequest, errors.New("Selected nodes are not proper"))
-		logging.GetLogger().Errorf("Selected nodes are not proper")
 		return
 	}
 
@@ -97,11 +93,13 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 	host := srcNode.Host()
 	if !pi.PIClient.InjectPacket(host, &pp) {
 		writeError(w, http.StatusBadRequest, errors.New("Somthing wrong to connect with agent"))
-		logging.GetLogger().Errorf("Something wrong to connect with agent")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(pp); err != nil {
+		panic(err)
+	}
 }
 
 func (pi *PacketInjectorApi) getNode(gremlinQuery string) *graph.Node {

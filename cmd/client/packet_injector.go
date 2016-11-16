@@ -73,7 +73,7 @@ var PacketInjectorCmd = &cobra.Command{
 func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcNode, "src", "", "", "source node gremlin expression")
 	cmd.Flags().StringVarP(&dstNode, "dst", "", "", "destination node gremlin expression")
-	cmd.Flags().StringVarP(&packetType, "packetType", "", "", "packet type ex: ICMPV4, TCP, UDP")
+	cmd.Flags().StringVarP(&packetType, "type", "", "icmp", "packet type: icmp")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
 	cmd.Flags().IntVarP(&count, "count", "", 1, "number of packets to be generated")
 }
