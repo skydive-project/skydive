@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
+	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -45,18 +46,18 @@ import (
 )
 
 type Agent struct {
-	Graph                 *graph.Graph
-	WSClient              *shttp.WSAsyncClient
-	WSServer              *shttp.WSServer
-	GraphServer           *graph.GraphServer
-	Root                  *graph.Node
-	TopologyProbeBundle   *probe.ProbeBundle
-	FlowProbeBundle       *fprobes.FlowProbeBundle
-	FlowTableAllocator    *flow.TableAllocator
-	OnDemandProbeListener *fprobes.OnDemandProbeListener
-	HTTPServer            *shttp.Server
-	EtcdClient            *etcd.EtcdClient
-	TIDMapper             *topology.TIDMapper
+	Graph               *graph.Graph
+	WSClient            *shttp.WSAsyncClient
+	WSServer            *shttp.WSServer
+	GraphServer         *graph.GraphServer
+	Root                *graph.Node
+	TopologyProbeBundle *probe.ProbeBundle
+	FlowProbeBundle     *fprobes.FlowProbeBundle
+	FlowTableAllocator  *flow.TableAllocator
+	OnDemandProbeServer *ondemand.OnDemandProbeServer
+	HTTPServer          *shttp.Server
+	EtcdClient          *etcd.EtcdClient
+	TIDMapper           *topology.TIDMapper
 }
 
 func (a *Agent) Start() {
@@ -102,14 +103,6 @@ func (a *Agent) Start() {
 			os.Exit(1)
 		}
 
-		captureApiHandler := &api.CaptureApiHandler{
-			BasicApiHandler: api.BasicApiHandler{
-				ResourceHandler: &api.CaptureResourceHandler{},
-				EtcdKeyAPI:      a.EtcdClient.KeysApi,
-			},
-			Graph: a.Graph,
-		}
-
 		for {
 			flowtableUpdate, err := a.EtcdClient.GetInt64("/agent/config/flowtable_update")
 			if err != nil {
@@ -134,13 +127,13 @@ func (a *Agent) Start() {
 			a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator)
 			a.FlowProbeBundle.Start()
 
-			l, err := fprobes.NewOnDemandProbeListener(a.FlowProbeBundle, a.Graph, captureApiHandler)
+			l, err := ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, a.WSClient)
 			if err != nil {
 				logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
 				os.Exit(1)
 			}
-			a.OnDemandProbeListener = l
-			a.OnDemandProbeListener.Start()
+			a.OnDemandProbeServer = l
+			a.OnDemandProbeServer.Start()
 
 			break
 		}
@@ -158,8 +151,8 @@ func (a *Agent) Stop() {
 	if a.WSClient != nil {
 		a.WSClient.Disconnect()
 	}
-	if a.OnDemandProbeListener != nil {
-		a.OnDemandProbeListener.Stop()
+	if a.OnDemandProbeServer != nil {
+		a.OnDemandProbeServer.Stop()
 	}
 	if a.EtcdClient != nil {
 		a.EtcdClient.Stop()

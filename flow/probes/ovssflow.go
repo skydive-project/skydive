@@ -28,7 +28,6 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
-	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -51,10 +50,9 @@ type OvsSFlowProbe struct {
 
 type OvsSFlowProbesHandler struct {
 	FlowProbe
-	Graph          *graph.Graph
-	AnalyzerClient *analyzer.Client
-	ovsClient      *ovsdb.OvsClient
-	allocator      *sflow.SFlowAgentAllocator
+	Graph     *graph.Graph
+	ovsClient *ovsdb.OvsClient
+	allocator *sflow.SFlowAgentAllocator
 }
 
 func probeID(i string) string {

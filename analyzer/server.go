@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/mappings"
+	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
 	"github.com/skydive-project/skydive/flow/storage/orientdb"
@@ -52,6 +53,7 @@ type Server struct {
 	WSServer            *shttp.WSServer
 	GraphServer         *graph.GraphServer
 	AlertServer         *alert.AlertServer
+	OnDemandClient      *ondemand.OnDemandProbeClient
 	FlowMappingPipeline *mappings.FlowMappingPipeline
 	ProbeBundle         *probe.ProbeBundle
 	Storage             storage.Storage
@@ -120,6 +122,7 @@ func (s *Server) ListenAndServe() {
 	s.ProbeBundle.Start()
 
 	s.AlertServer.AlertManager.Start()
+	s.OnDemandClient.Start()
 
 	s.wgServers.Add(3)
 	go func() {
@@ -181,6 +184,7 @@ func (s *Server) Stop() {
 	}
 	s.ProbeBundle.Stop()
 	s.AlertServer.AlertManager.Stop()
+	s.OnDemandClient.Stop()
 	s.EtcdClient.Stop()
 	s.conn.Cleanup()
 	s.wgServers.Wait()
@@ -303,6 +307,7 @@ func NewServerFromConfig() (*Server, error) {
 	}
 
 	alertManager := alert.NewAlertManager(g, alertApiHandler)
+	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureApiHandler, wsServer)
 
 	aserver := alert.NewServer(alertManager, wsServer)
 	gserver := graph.NewServer(g, wsServer)
@@ -321,6 +326,7 @@ func NewServerFromConfig() (*Server, error) {
 		WSServer:            wsServer,
 		GraphServer:         gserver,
 		AlertServer:         aserver,
+		OnDemandClient:      onDemandClient,
 		FlowMappingPipeline: pipeline,
 		TableClient:         tableClient,
 		EmbeddedEtcd:        etcdServer,
