@@ -125,7 +125,7 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 		graph, err := s.Graph.WithContext(obj.(GraphContext))
 		if err != nil {
 			logging.GetLogger().Errorf("Graph: unable to get a graph with context %+v: %s", obj.(GraphContext), err.Error())
-			graph, status = &Graph{}, http.StatusBadRequest
+			graph, status = nil, http.StatusBadRequest
 		}
 		reply := msg.Reply(graph, "SyncReply", status)
 		c.SendWSMessage(reply)

@@ -199,7 +199,16 @@ path.group {
 
 .main-toolbar {
   background-color: #111;
-  height: 60px;
+  height: 65px;
+  padding-top: 28px;
+}
+
+.main-toolbar .tooltip-inner {
+  background-color: #333;
+}
+
+.main-toolbar .slider.slider-horizontal {
+  width: 400px;
 }
 
 .fill {
@@ -386,7 +395,7 @@ circle.manager {
   margin-bottom: 6px;
   width: 100%;
   box-sizing: border-box;
-  -webkit-box-sizing:border-box;
+  -webkit-box-sizing:&box;
   -moz-box-sizing: border-box;
   color: black;
 }
@@ -474,18 +483,20 @@ circle.manager {
     margin:2px;
 }
 
-#control_container {
+.topology-control-container {
   position: absolute;
   bottom: 20px;
   left: 20px;
+  height: 80px;
+  width: 80px;
 }
 
-#control_container .btn-group-vertical {
-    z-index: 999;
-    position:relative;
+.topology-control-container .btn-group-vertical {
+  z-index: 999;
+  position:relative;
 }
 
-#control_container .button-wrapper {
+.topology-control-container .button-wrapper {
   text-align: center;
 }
 
@@ -509,4 +520,24 @@ circle.manager {
 
 .flow-ops-panel .left-cont {
   margin-top: 0px;
+}
+
+.slowmotion-effect-in {
+  -webkit-filter: grayscale(100%);
+  -webkit-transition: 1s ease-in-out;
+  -moz-filter: grayscale(100%);
+  -moz-transition: 1s ease-in-out;
+  -o-filter: grayscale(100%);
+  -o-transition: 1s ease-in-out;
+  filter: grayscale(100%);
+}
+
+.slowmotion-effect-out {
+  -webkit-filter: grayscale(0%);
+  -webkit-transition: 1.5s ease-in-out;
+  -moz-filter: grayscale(0%);
+  -moz-transition: 1.5s ease-in-out;
+  -o-filter: grayscale(0%);
+  -o-transition: 1.5s ease-in-out;
+  filter: grayscale(0%);
 }

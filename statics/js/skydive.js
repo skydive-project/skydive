@@ -289,6 +289,15 @@ Layout.prototype.LinkDistance = function(d, i) {
 };
 
 Layout.prototype.InitFromSyncMessage = function(msg) {
+  if (msg.Status != 200) {
+    $.notify({
+      message: 'Unable to init topology'
+    },{
+      type: 'danger'
+    });
+    return;
+  }
+
   this.graph.InitFromSyncMessage(msg);
 
   var ID;
@@ -1203,6 +1212,7 @@ function AnalyzerReady() {
     $('#discovery').removeClass('active');
 
     $('.topology').show();
+    $('.topology-control-container').show();
     $('.conversation').hide();
     $('.discovery').hide();
   });
@@ -1215,6 +1225,7 @@ function AnalyzerReady() {
     $('#discovery').removeClass('active');
 
     $('.topology').hide();
+    $('.topology-control-container').hide();
     $('.conversation').show();
     $('.discovery').hide();
 
@@ -1226,6 +1237,7 @@ function AnalyzerReady() {
     $('#discovery').addClass('active');
 
     $('.topology').hide();
+    $('.topology-control-container').hide();
     $('.conversation').hide();
     $('.discovery').show();
 

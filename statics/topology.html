@@ -10,6 +10,7 @@
 
   <link rel="stylesheet" href="/statics/css/bootstrap.3.3.5.min.css" />
   <link rel="stylesheet" href="/statics/css/bootstrap-switch.min.css" />
+  <link rel="stylesheet" href="/statics/css/bootstrap-slider.min.css" />
   <link rel="stylesheet" href="/statics/css/font-awesome.4.6.3.min.css" />
   <link rel="stylesheet" href="/statics/css/jquery-ui.1.10.1.css" media="all" type="text/css" />
   <link rel="stylesheet" href="/statics/css/jquery.jsonview.css" />
@@ -22,6 +23,7 @@
   <script src="/statics/js/bootstrap.3.3.5.min.js"></script>
   <script src="/statics/js/bootstrap-switch.min.js"></script>
   <script src="/statics/js/bootstrap-notify.min.js"></script>
+  <script src="/statics/js/bootstrap-slider.min.js"></script>
   <script src="/statics/js/jquery.jsonview.js"></script>
   <script src="/statics/js/d3.3.5.10.js"></script>
   <script src="/statics/js/timeslider.js"></script>
@@ -62,23 +64,25 @@
     </div>
   </nav>
 
-  <div class="topology">
-    <div id="control_container">
-      <div class="btn-group-vertical">
-        <div class="button-wrapper">
-          <div>
-            <button type="button" id="zoomin" value="zoomin" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Zoom In">+</button>
-            <button type="button" id="zoomout" value="zoomout" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Zoom Out">-</button>
-          </div>
-          <button type="button" id="zoomreset" value="reset" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Fit View">Reset</button>
+  <div class="topology-control-container">
+    <div class="btn-group-vertical">
+      <div class="button-wrapper">
+        <div>
+          <button type="button" id="zoomin" value="zoomin" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Zoom In">+</button>
+          <button type="button" id="zoomout" value="zoomout" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Zoom Out">-</button>
         </div>
+        <button type="button" id="zoomreset" value="reset" class="btn btn-primary" data-toggle="tooltip" data-placement="left" title="Fit View">Reset</button>
       </div>
     </div>
+  </div>
+  <div class="topology">
     <div class="col-sm-8 fill content">
       <div class="main-toolbar analyzer-only">
         <div class="timeslider">
-          <input type="checkbox" name="live-switch" data-on-color="skydive-on" data-off-color="skydive-off" data-label-text="Live" data-size="mini">
-          <div id="timeslider" class="timeslider-div disabled"></div>
+          <div>
+            <input type="checkbox" name="live-switch" data-on-color="skydive-on" data-off-color="skydive-off" data-label-text="Live" data-size="mini">
+            <input id="timeslider" data-slider-id='timeslider' type="text" data-slider-min="-120" data-slider-max="0" data-slider-step="1" data-slider-value="0"/>
+          </div>
         </div>
       </div>
       <div class="topology-d3"></div>
