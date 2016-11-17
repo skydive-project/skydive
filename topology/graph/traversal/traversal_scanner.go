@@ -226,7 +226,7 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return NE, buf.String()
 	case "BOTH":
 		return BOTH, buf.String()
-	case "CONTEXT":
+	case "CONTEXT", "AT":
 		return CONTEXT, buf.String()
 	case "REGEX":
 		return REGEX, buf.String()
