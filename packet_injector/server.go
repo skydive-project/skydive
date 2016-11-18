@@ -24,6 +24,8 @@ package packet_injector
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
 
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -40,7 +42,7 @@ type PacketInjectorServer struct {
 	Graph         *graph.Graph
 }
 
-func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) {
+func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (bool, string) {
 	params := struct {
 		SrcNode interface{}
 		DstNode interface{}
@@ -49,20 +51,20 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) {
 		Count   int
 	}{}
 	if err := json.Unmarshal([]byte(*msg.Obj), &params); err != nil {
-		logging.GetLogger().Errorf("Unable to decode packet inject param message %v", msg)
-		return
+		e := fmt.Sprintf("Unable to decode packet inject param message %v", msg)
+		return false, e
 	}
 
 	var srcNode graph.Node
 	if err := srcNode.Decode(params.SrcNode); err != nil {
-		logging.GetLogger().Errorf("Unable to decode source node %s", err.Error())
-		return
+		e := fmt.Sprintf("Unable to decode source node %s", err.Error())
+		return false, e
 	}
 
 	var dstNode graph.Node
 	if err := dstNode.Decode(params.DstNode); err != nil {
-		logging.GetLogger().Errorf("Unable to decode destination node %s", err.Error())
-		return
+		e := fmt.Sprintf("Unable to decode destination node %s", err.Error())
+		return false, e
 	}
 
 	pip := PacketParams{
@@ -74,8 +76,10 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) {
 	}
 
 	if err := InjectPacket(&pip, pis.Graph); err != nil {
-		logging.GetLogger().Errorf("Failed to inject packet: %s", err.Error())
+		e := fmt.Sprintf("Failed to inject packet: %s", err.Error())
+		return false, e
 	}
+	return true, ""
 }
 
 func (pis *PacketInjectorServer) OnMessage(msg shttp.WSMessage) {
@@ -85,7 +89,14 @@ func (pis *PacketInjectorServer) OnMessage(msg shttp.WSMessage) {
 
 	switch msg.Type {
 	case "InjectPacket":
-		pis.injectPacket(msg)
+		status := http.StatusOK
+		result, e := pis.injectPacket(msg)
+		if !result {
+			logging.GetLogger().Errorf(e)
+			status = http.StatusBadRequest
+		}
+		reply := msg.Reply(e, "PIResult", status)
+		pis.WSAsyncClient.SendWSMessage(reply)
 	}
 }
 

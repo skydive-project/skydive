@@ -91,8 +91,8 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 	}
 
 	host := srcNode.Host()
-	if !pi.PIClient.InjectPacket(host, &pp) {
-		writeError(w, http.StatusBadRequest, errors.New("Somthing wrong to connect with agent"))
+	if err := pi.PIClient.InjectPacket(host, &pp); err != nil {
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")

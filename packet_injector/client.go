@@ -23,28 +23,90 @@
 package packet_injector
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"sync"
+
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
 
 type PacketInjectorClient struct {
 	shttp.DefaultWSServerEventHandler
-	WSServer *shttp.WSServer
+	WSServer       *shttp.WSServer
+	replyChanMutex sync.RWMutex
+	replyChan      map[string]chan *json.RawMessage
 }
 
-func (pc *PacketInjectorClient) InjectPacket(host string, pp *PacketParams) bool {
+func (pc *PacketInjectorClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
+	if m.Namespace != Namespace {
+		return
+	}
+
+	pc.replyChanMutex.RLock()
+	defer pc.replyChanMutex.RUnlock()
+
+	ch, ok := pc.replyChan[m.UUID]
+	if !ok {
+		logging.GetLogger().Errorf("Unable to send reply, chan not found for %s, available: %v", m.UUID, pc.replyChan)
+		return
+	}
+
+	ch <- m.Obj
+}
+
+func (pc *PacketInjectorClient) injectPacket(host string, pp *PacketParams, status chan *string) {
 	msg := shttp.NewWSMessage(Namespace, "InjectPacket", pp)
 
+	ch := make(chan *json.RawMessage)
+	defer close(ch)
+
+	pc.replyChanMutex.Lock()
+	pc.replyChan[msg.UUID] = ch
+	pc.replyChanMutex.Unlock()
+
+	defer func() {
+		pc.replyChanMutex.Lock()
+		delete(pc.replyChan, msg.UUID)
+		pc.replyChanMutex.Unlock()
+	}()
+
 	if !pc.WSServer.SendWSMessageTo(msg, host) {
-		logging.GetLogger().Errorf("Unable to send message to agent: %s", host)
-		return false
+		e := fmt.Sprintf("Unable to send message to agent: %s", host)
+		logging.GetLogger().Errorf(e)
+		status <- &e
+		return
 	}
-	return true
+
+	data := <-ch
+	var reply string
+	if err := json.Unmarshal([]byte(*data), &reply); err != nil {
+		e := fmt.Sprintf("Error while reading reply from: %s", host)
+		logging.GetLogger().Errorf(e)
+		status <- &e
+		return
+	}
+
+	status <- &reply
+}
+
+func (pc *PacketInjectorClient) InjectPacket(host string, pp *PacketParams) error {
+	ch := make(chan *string, 1)
+
+	go pc.injectPacket(host, pp, ch)
+	reply := <-ch
+	if *reply != "" {
+		return errors.New(*reply)
+	} else {
+		return nil
+	}
 }
 
 func NewPacketInjectorClient(w *shttp.WSServer) *PacketInjectorClient {
 	pic := &PacketInjectorClient{
-		WSServer: w,
+		WSServer:  w,
+		replyChan: make(map[string]chan *json.RawMessage),
 	}
 	w.AddEventHandler(pic)
 
