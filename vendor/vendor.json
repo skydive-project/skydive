@@ -1343,9 +1343,9 @@
 			"revision": "4b26653fe00067c22322249d58654737e44b0dfb"
 		},
 		{
-			"checksumSHA1": "d7erZyKtmItRBMwduza5ZRbkG2c=",
+			"checksumSHA1": "95gBkstnaYEQv3HefuJL+kj4lW4=",
 			"path": "github.com/safchain/ethtool",
-			"revision": "9563c5dfdaab236c115ecf5f082bdd3b00ff999d"
+			"revision": "680f7a033d0a34d012f46958d85324913d792f21"
 		},
 		{
 			"checksumSHA1": "TvF3ym5sZVNqGlUOS9HgOIl/sZM=",
@@ -1426,16 +1426,14 @@
 			"revision": "b94837a2404ab90efe9289e77a70694c355739cb"
 		},
 		{
-			"checksumSHA1": "1X4+LZRyRioFEkyTBVgcWwVRl88=",
+			"checksumSHA1": "AbGpMPO4ROPOaLo2SSvZBGGnJp0=",
 			"path": "github.com/vishvananda/netlink",
-			"revision": "a1f8555521646b5a9800f39c5fd477597697135c",
-			"revisionTime": "2016-10-21T14:55:29Z"
+			"revision": "a4f22d8ad2327663017dbb309b5e3f8b6f348020"
 		},
 		{
-			"checksumSHA1": "qKneIoHTQHLsL2EF1Zl3S7S++gk=",
+			"checksumSHA1": "jWu7ylTcopMQHmpV3YdfaLUYikw=",
 			"path": "github.com/vishvananda/netlink/nl",
-			"revision": "a1f8555521646b5a9800f39c5fd477597697135c",
-			"revisionTime": "2016-10-21T14:55:29Z"
+			"revision": "a4f22d8ad2327663017dbb309b5e3f8b6f348020"
 		},
 		{
 			"checksumSHA1": "JCH45h0NMsN7LFN18mwjzNgDaYI=",

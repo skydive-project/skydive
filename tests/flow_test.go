@@ -1311,7 +1311,6 @@ func TestFlowGRETunnel(t *testing.T) {
 		{"sudo ip netns exec gre-vm2 ip r add 192.168.0.0/24 dev gre", true},
 
 		{"sleep 10", false},
-
 		{"sudo ip netns exec gre-vm1 ping -c 10 -I 192.168.0.1 192.168.0.2", false},
 	}
 

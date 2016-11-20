@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -34,7 +33,6 @@ import (
 
 	"golang.org/x/exp/inotify"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -76,14 +74,6 @@ func (ns *NetNs) String() string {
 func (nu *NetNsNetLinkTopoUpdater) Run(ns *NetNs) {
 	logging.GetLogger().Debugf("Starting NetLinkTopoUpdater for NetNS: %s", ns.path)
 
-	nscontext, err := common.NewNetNsContext(ns.path)
-	defer nscontext.Close()
-
-	if err != nil {
-		logging.GetLogger().Error(err.Error())
-		return
-	}
-
 	/* start a netlinks updater inside this namespace */
 	nu.Lock()
 	nu.nlProbe = NewNetLinkProbe(nu.Graph, nu.Root)
@@ -92,7 +82,7 @@ func (nu *NetNsNetLinkTopoUpdater) Run(ns *NetNs) {
 	/* NOTE(safchain) don't Start just Run, need to keep it alive for the time life of the netns
 	 * and there is no need to have a new goroutine here
 	 */
-	nu.nlProbe.Run()
+	nu.nlProbe.Run(ns.path)
 
 	nu.Lock()
 	nu.nlProbe = nil
@@ -130,8 +120,9 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 			logging.GetLogger().Errorf("Error registering namespace %s: %s", path, err.Error())
 			return nil
 		}
-		defer syscall.Close(fd)
-		if err := syscall.Fstat(fd, &s); err != nil {
+		err = syscall.Fstat(fd, &s)
+		syscall.Close(fd)
+		if err != nil {
 			logging.GetLogger().Errorf("Error reading namespace %s: %s", path, err.Error())
 			return nil
 		}
@@ -219,9 +210,6 @@ func (u *NetNSProbe) initialize() {
 }
 
 func (u *NetNSProbe) start() {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
 	// wait for the path creation
 	for {
 		_, err := os.Stat(u.runPath)

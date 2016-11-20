@@ -41,7 +41,7 @@ import (
 )
 
 const confTopology = `---
-ws_pong_timeout: 5
+ws_pong_timeout: 15
 
 agent:
   listen: :58081
@@ -755,12 +755,14 @@ func TestDockerShareNamespace(t *testing.T) {
 
 		if !testPassed {
 			tv := tr.V().Has("Type", "netns", "Manager", "docker")
+			logging.GetLogger().Warningf("Looking for docker namespace: %+v (%d)\n", tv.Values(), len(tv.Values()))
 
 			if len(tv.Values()) > 1 {
 				t.Error("There should be only one namespace managed by Docker")
 				ws.Close()
 			} else if len(tv.Values()) == 1 {
 				tv = tv.Out().Has("Type", "container", "Docker/ContainerName", traversal.Within("/test-skydive-docker", "/test-skydive-docker2"))
+				logging.GetLogger().Warningf("Found namespace, looking for containers: %+v (%d)\n", tv.Values(), len(tv.Values()))
 
 				if len(tv.Values()) == 2 {
 					testPassed = true

@@ -31,10 +31,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/safchain/ethtool"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netlink/nl"
-
-	"github.com/safchain/ethtool"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
@@ -48,8 +47,9 @@ const (
 type NetLinkProbe struct {
 	Graph                *graph.Graph
 	Root                 *graph.Node
-	nlSocket             *nl.NetlinkSocket
 	state                int64
+	ethtool              *ethtool.Ethtool
+	netlink              *netlink.Handle
 	indexToChildrenQueue map[int64][]graph.Identifier
 	wg                   sync.WaitGroup
 }
@@ -108,7 +108,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 		return
 	}
 
-	stats, err := ethtool.Stats(link.Attrs().Name)
+	stats, err := u.ethtool.Stats(link.Attrs().Name)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", link.Attrs().Name, err.Error())
 		return
@@ -262,7 +262,7 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	driver, _ := ethtool.DriverName(link.Attrs().Name)
+	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
 	if driver == "" && link.Type() == "bridge" {
 		driver = "bridge"
 	}
@@ -329,26 +329,14 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	}
 }
 
-func (u *NetLinkProbe) onLinkAdded(index int) {
-	fnc := func() error {
-		if u.isRunning() == false {
-			return nil
-		}
-		link, err := netlink.LinkByIndex(index)
-		if err != nil {
-			return err
-		}
+func (u *NetLinkProbe) onLinkAdded(link netlink.Link) {
+	if u.isRunning() == true {
 		u.addLinkToTopology(link)
-		return nil
-	}
-
-	if err := common.Retry(fnc, 1, time.Millisecond*200); err != nil {
-		logging.GetLogger().Warningf("Failed to find interface %d: %s", index, err.Error())
 	}
 }
 
-func (u *NetLinkProbe) onLinkDeleted(index int) {
-	logging.GetLogger().Debugf("Link %d deleted", index)
+func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
+	index := link.Attrs().Index
 
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
@@ -382,7 +370,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 
 	// check whether the interface has been deleted or not
 	// we get a delete event when an interace is removed from a bridge
-	_, err := netlink.LinkByIndex(index)
+	_, err := u.netlink.LinkByIndex(index)
 	if err != nil && intf != nil {
 		// if openvswitch do not remove let's do the job by ovs piece of code
 		if intf.Metadata()["Driver"] == "openvswitch" && intf.Metadata()["UUID"] != "" {
@@ -396,7 +384,7 @@ func (u *NetLinkProbe) onLinkDeleted(index int) {
 }
 
 func (u *NetLinkProbe) initialize() {
-	links, err := netlink.LinkList()
+	links, err := u.netlink.LinkList()
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to list interfaces: %s", err.Error())
 		return
@@ -411,22 +399,43 @@ func (u *NetLinkProbe) isRunning() bool {
 	return atomic.LoadInt64(&u.state) == common.RunningState
 }
 
-func (u *NetLinkProbe) start() {
+func (u *NetLinkProbe) start(nsPath string) {
+	var context *common.NetNSContext
+	var err error
+
+	// Enter the network namespace if necessary
+	if nsPath != "" {
+		context, err = common.NewNetNsContext(nsPath)
+		if err != nil {
+			logging.GetLogger().Errorf("Failed to switch namespace: %s", err.Error())
+			return
+		}
+	}
+
+	// Both NewHandle and Subscribe need to done in the network namespace.
+	h, err := netlink.NewHandle(syscall.NETLINK_ROUTE)
+	if err != nil {
+		logging.GetLogger().Errorf("Failed to create netlink handle: %s", err.Error())
+		context.Close()
+		return
+	}
+	defer h.Delete()
+
 	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to subscribe to netlink RTNLGRP_LINK messages: %s", err.Error())
+		context.Close()
 		return
 	}
-	u.nlSocket = s
-	defer u.nlSocket.Close()
+	defer s.Close()
 
-	fd := u.nlSocket.GetFd()
-
-	err = syscall.SetNonblock(fd, true)
+	u.ethtool, err = ethtool.NewEthtool()
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to set the netlink fd as non-blocking: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to create ethtool object: %s", err.Error())
+		context.Close()
 		return
 	}
+	defer u.ethtool.Close()
 
 	epfd, e := syscall.EpollCreate1(0)
 	if e != nil {
@@ -435,14 +444,24 @@ func (u *NetLinkProbe) start() {
 	}
 	defer syscall.Close(epfd)
 
+	// Leave the network namespace
+	context.Close()
+
+	u.netlink = h
 	u.initialize()
 
-	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
-	if e = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); e != nil {
-		logging.GetLogger().Errorf("Failed to control epoll: %s", err.Error())
+	fd := s.GetFd()
+	err = syscall.SetNonblock(fd, true)
+	if err != nil {
+		logging.GetLogger().Errorf("Failed to set the netlink fd as non-blocking: %s", err.Error())
 		return
 	}
 
+	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
+	if err = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
+		logging.GetLogger().Errorf("Failed to control epoll: %s", err.Error())
+		return
+	}
 	events := make([]syscall.EpollEvent, maxEpollEvents)
 
 	u.wg.Add(1)
@@ -464,8 +483,10 @@ func (u *NetLinkProbe) start() {
 
 		msgs, err := s.Receive()
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to receive from netlink messages: %s", err.Error())
-
+			if errno, ok := err.(syscall.Errno); !ok || !errno.Temporary() {
+				logging.GetLogger().Errorf("Failed to receive from netlink messages: %s", err.Error())
+				return
+			}
 			time.Sleep(1 * time.Second)
 			continue
 		}
@@ -473,22 +494,30 @@ func (u *NetLinkProbe) start() {
 		for _, msg := range msgs {
 			switch msg.Header.Type {
 			case syscall.RTM_NEWLINK:
-				ifmsg := nl.DeserializeIfInfomsg(msg.Data)
-				u.onLinkAdded(int(ifmsg.Index))
+				link, err := netlink.LinkDeserialize(msg.Data)
+				if err != nil {
+					logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
+					continue
+				}
+				u.onLinkAdded(link)
 			case syscall.RTM_DELLINK:
-				ifmsg := nl.DeserializeIfInfomsg(msg.Data)
-				u.onLinkDeleted(int(ifmsg.Index))
+				link, err := netlink.LinkDeserialize(msg.Data)
+				if err != nil {
+					logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
+					continue
+				}
+				u.onLinkDeleted(link)
 			}
 		}
 	}
 }
 
 func (u *NetLinkProbe) Start() {
-	go u.start()
+	go u.start("")
 }
 
-func (u *NetLinkProbe) Run() {
-	u.start()
+func (u *NetLinkProbe) Run(nsPath string) {
+	u.start(nsPath)
 }
 
 func (u *NetLinkProbe) Stop() {
