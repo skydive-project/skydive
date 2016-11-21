@@ -572,6 +572,16 @@ func queryFromContext(context traversal.GremlinTraversalContext) (fsq flow.FlowS
 	return
 }
 
+func captureAllowedNodes(nodes []*graph.Node) []*graph.Node {
+	var allowed []*graph.Node
+	for _, n := range nodes {
+		if t, ok := n.Metadata()["Type"]; ok && common.IsCaptureAllowed(t.(string)) {
+			allowed = append(allowed, n)
+		}
+	}
+	return allowed
+}
+
 func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	var graphTraversal *traversal.GraphTraversal
 	var err error
@@ -616,7 +626,8 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		graphTraversal = tv.GraphTraversal
 		context := graphTraversal.Graph.GetContext()
 
-		nodes := tv.GetNodes()
+		// not need to get flows from node not supporting capture
+		nodes := captureAllowedNodes(tv.GetNodes())
 		if len(nodes) != 0 {
 			if context.Time != nil {
 				if s.Storage == nil {

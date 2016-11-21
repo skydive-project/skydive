@@ -459,12 +459,7 @@ func (tv *GraphTraversalV) MarshalJSON() ([]byte, error) {
 }
 
 func (tv *GraphTraversalV) GetNodes() (nodes []*graph.Node) {
-	for _, node := range tv.nodes {
-		if t, ok := node.Metadata()["Type"]; ok && common.IsCaptureAllowed(t.(string)) {
-			nodes = append(nodes, node)
-		}
-	}
-	return
+	return tv.nodes
 }
 
 func (tv *GraphTraversalV) PropertyValues(keys ...interface{}) *GraphTraversalValue {
