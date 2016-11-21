@@ -133,6 +133,9 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 		if int64(index) > intf.Metadata()["IfIndex"].(int64) {
 			if err := peerResolver(); err != nil {
 				retryFnc := func() error {
+					if u.isRunning() == false {
+						return nil
+					}
 					u.Graph.Lock()
 					defer u.Graph.Unlock()
 					return peerResolver()
@@ -328,6 +331,9 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 
 func (u *NetLinkProbe) onLinkAdded(index int) {
 	fnc := func() error {
+		if u.isRunning() == false {
+			return nil
+		}
 		link, err := netlink.LinkByIndex(index)
 		if err != nil {
 			return err
@@ -399,6 +405,10 @@ func (u *NetLinkProbe) initialize() {
 	for _, link := range links {
 		u.addLinkToTopology(link)
 	}
+}
+
+func (u *NetLinkProbe) isRunning() bool {
+	return atomic.LoadInt64(&u.state) == common.RunningState
 }
 
 func (u *NetLinkProbe) start() {
