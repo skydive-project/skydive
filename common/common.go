@@ -264,14 +264,17 @@ type NetNSContext struct {
 	newns  netns.NsHandle
 }
 
-func (n *NetNSContext) Close() {
+func (n *NetNSContext) Close() error {
 	if n != nil {
-		netns.Set(n.origns)
+		if err := netns.Set(n.origns); err != nil {
+			return err
+		}
 		n.newns.Close()
 		n.origns.Close()
 	}
 
 	runtime.UnlockOSThread()
+	return nil
 }
 
 func NewNetNsContext(path string) (*NetNSContext, error) {
@@ -282,16 +285,28 @@ func NewNetNsContext(path string) (*NetNSContext, error) {
 		return nil, fmt.Errorf("Error while getting current ns: %s", err.Error())
 	}
 
-	newns, err := netns.GetFromPath(path)
+	// When a new network namespace has been seen by inotify, the path to
+	// the namespace may still be a regular file, not a bind mount to the
+	// file in /proc/<pid>/tasks/<tid>/ns/net yet, so we wait a bit for the
+	// bind mount to be set up
+	var newns netns.NsHandle
+	err = Retry(func() error {
+		newns, err := netns.GetFromPath(path)
+		if err != nil {
+			return fmt.Errorf("Error while opening %s: %s", path, err.Error())
+		}
+
+		if err = netns.Set(newns); err != nil {
+			newns.Close()
+			return fmt.Errorf("Error while switching from root ns to %s: %s", path, err.Error())
+		}
+
+		return nil
+	}, 10, time.Millisecond*20)
+
 	if err != nil {
 		origns.Close()
-		return nil, fmt.Errorf("Error while opening %s: %s", path, err.Error())
-	}
-
-	if err = netns.Set(newns); err != nil {
-		newns.Close()
-		origns.Close()
-		return nil, fmt.Errorf("Error while switching from root ns to %s: %s", path, err.Error())
+		return nil, err
 	}
 
 	return &NetNSContext{
