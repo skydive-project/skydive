@@ -32,9 +32,9 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/storage"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/storage"
 )
 
 type FlowApi struct {

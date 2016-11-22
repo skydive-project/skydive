@@ -25,12 +25,11 @@ package elasticsearch
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 
 	"github.com/lebauce/elastigo/lib"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
+	esclient "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
 const flowMapping = `
@@ -122,7 +121,7 @@ const metricMapping = `
 }`
 
 type ElasticSearchStorage struct {
-	client *ElasticSearchClient
+	client *esclient.ElasticSearchClient
 }
 
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
@@ -246,16 +245,19 @@ func (c *ElasticSearchStorage) formatFilter(filter *flow.Filter) map[string]inte
 	return nil
 }
 
-func (c *ElasticSearchStorage) requestFromQuery(fsq flow.FlowSearchQuery) map[string]interface{} {
-	interval := fsq.Range
+func (c *ElasticSearchStorage) requestFromQuery(fsq flow.FlowSearchQuery) (map[string]interface{}, error) {
 	request := map[string]interface{}{"size": 10000}
 
-	if interval != nil {
-		request["from"] = interval.From
-		request["size"] = interval.To - interval.From
+	if fsq.PaginationRange != nil {
+		if fsq.PaginationRange.To < fsq.PaginationRange.From {
+			return request, errors.New("Incorrect PaginationRange, To < From")
+		}
+
+		request["from"] = fsq.PaginationRange.From
+		request["size"] = fsq.PaginationRange.To - fsq.PaginationRange.From
 	}
 
-	return request
+	return request, nil
 }
 
 func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]interface{}) (elastigo.SearchResult, error) {
@@ -263,16 +265,19 @@ func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]in
 	if err != nil {
 		return elastigo.SearchResult{}, err
 	}
-
 	return c.client.Search(docType, string(q))
 }
 
-func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, fr flow.Range) (map[string][]*flow.FlowMetric, error) {
+func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
 
-	request := c.requestFromQuery(fsq)
+	request, err := c.requestFromQuery(fsq)
+	if err != nil {
+		return nil, err
+	}
+
 	flowQuery := c.formatFilter(fsq.Filter)
 	musts := []map[string]interface{}{{
 		"has_parent": map[string]interface{}{
@@ -281,7 +286,6 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, fr flow.R
 		},
 	}}
 
-	metricFilter := flow.NewFilterForRange(fr, "")
 	metricQuery := c.formatFilter(metricFilter)
 	musts = append(musts, metricQuery)
 
@@ -321,7 +325,10 @@ func (c *ElasticSearchStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Fl
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
 
-	request := c.requestFromQuery(fsq)
+	request, err := c.requestFromQuery(fsq)
+	if err != nil {
+		return nil, err
+	}
 
 	var query map[string]interface{}
 	if fsq.Filter != nil {
@@ -369,16 +376,7 @@ func (c *ElasticSearchStorage) Stop() {
 }
 
 func New() (*ElasticSearchStorage, error) {
-	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch.host"), ":")
-	if len(elasticonfig) != 2 {
-		return nil, ErrBadConfig
-	}
-
-	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
-	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
-	bulkMaxDocs := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdocs")
-
-	client, err := NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds, bulkMaxDocs)
+	client, err := esclient.NewElasticSearchClientFromConfig()
 	if err != nil {
 		return nil, err
 	}

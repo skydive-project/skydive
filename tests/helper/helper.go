@@ -42,9 +42,9 @@ import (
 	cmd "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/storage"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/storage"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 

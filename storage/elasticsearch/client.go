@@ -34,6 +34,7 @@ import (
 
 	elastigo "github.com/lebauce/elastigo/lib"
 
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -184,4 +185,17 @@ func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds
 
 	client.started.Store(false)
 	return client, nil
+}
+
+func NewElasticSearchClientFromConfig() (*ElasticSearchClient, error) {
+	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch.host"), ":")
+	if len(elasticonfig) != 2 {
+		return nil, ErrBadConfig
+	}
+
+	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
+	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
+	bulkMaxDocs := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdocs")
+
+	return NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds, bulkMaxDocs)
 }

@@ -212,6 +212,54 @@ G.V().Has('Type', 'netns').GraphPath()
 The format of the path returned is the following:
 `node_name[Type=node_type]/.../node_name[Type=node_type]``
 
+### At step
+
+`At` allows to set the time context of the Gremlin request. It means that
+we can contextualize a request to a specific point of time therefore being
+able to see how was the graph in the past.
+Supported formats for time argument are :
+
+* Timestamp
+* RFC1123 format
+* [Go Duration format](https://golang.org/pkg/time/#ParseDuration)
+
+```
+G.At(1479899809).V()
+G.At('-1m').V()
+G.At('Sun, 06 Nov 2016 08:49:37 GMT').V()
+```
+
+### Predicates
+
+Predicates which can be used with `Has`, `In*`, `Out*` steps :
+
+* `NE`, matches graph elements for which metadata don't match specified values
+
+```console
+G.V().Has('Type', NE('ovsbridge'))
+```
+
+* `Within`, matches graph elements for which metadata values match one member of
+  the given array.
+
+```console
+G.V().Has('Type', Within('ovsbridge', 'ovsport'))
+```
+
+* `Without`, matches graph elements for which metadata values don't match any of
+  the members of the given array.
+
+```console
+G.V().Has('Type', Without('ovsbridge', 'ovsport'))
+```
+
+* `Regex`, matches graph elements for which metadata matches the given regular
+  expression.
+
+```console
+G.V().Has('Name', Regex('tap-'))
+```
+
 ### Flows step
 
 Flows step returns flows of nodes where a capture has been started or of nodes
@@ -252,6 +300,7 @@ Key can be any attributes of the Flow data structure :
 * `ANodeUUID`
 * `BNodeUUID`
 * `LayersPath`
+* `Application`
 * `Link.A`
 * `Link.B`
 * `Link.Protocol`
@@ -271,33 +320,72 @@ Key can be any attributes of the Flow data structure :
 Lt, Lte, Gt, Gte predicates can be used on numerical fields.
 See [Flow Schema](/api/flows/) for further explanations.
 
-### Predicates
+### Flows Sort step
 
-Predicates can be used with `Has`, `In*`, `Out*` steps.
-
-* `NE`, matches graph elements for which metadata don't match specified values
+`Sort` step sorts flows by their `Metric.Last` field.
 
 ```console
-G.V().Has('Type', NE('ovsbridge'))
+G.Flows().Sort()
 ```
 
-* `Within`, matches graph elements for which metadata values match one member of
-  the given array.
+### Flows Dedup step
+
+`Dedup` step de-duplicates flows having the same TrackingID.
 
 ```console
-G.V().Has('Type', Within('ovsbridge', 'ovsport'))
+G.Flows().Dedup()
 ```
 
-* `Without`, matches graph elements for which metadata values don't match any of
-  the members of the given array.
+### Flows Since predicate
+
+`Since` can be used in a timed context request(see `At` step) meaning having
+specified a time point thanks to the `At` step. `Since` allows to do a lookup
+from that point in the past. `Since` will return the flows which were active
+during the period. `Since` takes the number of seconds to go back in past.
+
+The following request returns flows which were active between
+(now - 2 hours) and (now - 1 hour).
 
 ```console
-G.V().Has('Type', Without('ovsbridge', 'ovsport'))
+G.At('-1h').Flows(Since(3600))
 ```
 
-* `Regex`, matches graph elements for which metadata matches the given regular
-  expression.
+### Metrics step
+
+`Metrics` returns arrays of metrics of a set of flow, grouped by
+the flows UUIDs.
 
 ```console
-G.V().Has('Name', Regex('tap-'))
+G.Flows().Metrics()
+[
+  {
+    "64249da029a25d09668ea4a61b14a02c3d083da0": [
+      {
+        "ABBytes": 980,
+        "ABPackets": 10,
+        "BABytes": 980,
+        "BAPackets": 10,
+        "Last": 1479899789,
+        "Start": 1479899779
+      }
+  }
+]
+```
+
+### Bandwidth step
+
+`Bandwidth` returns a sum of all the previously selected metrics.
+
+```console
+G.Flows().Dedup().Metrics().Bandwidth()"
+[
+  {
+    "ABbytes": 4900,
+    "ABpackets": 50,
+    "BAbytes": 4900,
+    "BApackets": 50,
+    "Duration": 10,
+    "NBFlow": 1
+  }
+]
 ```

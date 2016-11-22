@@ -102,7 +102,7 @@ message Range {
 
 message FlowSearchQuery {
   Filter Filter = 1;
-  Range Range = 2;
+  Range PaginationRange = 2;
   bool Sort = 3;
   bool Dedup = 4;
 }

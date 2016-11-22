@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const confStorage = `---
@@ -144,9 +145,8 @@ func TestFlowStorage(t *testing.T) {
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
 	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
-	id := string(node.ID)
 
-	filters := flow.NewFilterForNodes([]string{id})
+	filters := flow.NewFilterForNodes([]*graph.Node{node})
 	flowSearchQuery := flow.FlowSearchQuery{Filter: filters}
 	flows, err := aa.Analyzer.Storage.SearchFlows(flowSearchQuery)
 	if err != nil {

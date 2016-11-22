@@ -132,7 +132,7 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 }
 
 func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error) {
-	interval := fsq.Range
+	interval := fsq.PaginationRange
 	filter := fsq.Filter
 
 	sql := "SELECT FROM Flow"
@@ -165,11 +165,10 @@ func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, e
 	return flows, nil
 }
 
-func (c *OrientDBStorage) SearchMetrics(fsq flow.FlowSearchQuery, fr flow.Range) (map[string][]*flow.FlowMetric, error) {
+func (c *OrientDBStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error) {
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
 
-	metricFilter := flow.NewFilterForRange(fr, "")
 	sql += " WHERE " + metricFilter.Expression("")
 
 	if conditional := filter.Expression("Flow."); conditional != "" {

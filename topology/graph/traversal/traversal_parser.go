@@ -146,17 +146,17 @@ func invokeStepFnc(last GraphTraversalStep, name string, gremlinStep GremlinTrav
 }
 
 func (p *GremlinTraversalContext) ReduceRange(next GremlinTraversalStep) bool {
-	if p.StepContext.Range != nil {
+	if p.StepContext.PaginationRange != nil {
 		return false
 	}
 
 	if rangeStep, ok := next.(*GremlinTraversalStepRange); ok {
-		p.StepContext.Range = &GraphTraversalRange{rangeStep.Params[0].(int64), rangeStep.Params[1].(int64)}
+		p.StepContext.PaginationRange = &GraphTraversalRange{rangeStep.Params[0].(int64), rangeStep.Params[1].(int64)}
 	} else if limitStep, ok := next.(*GremlinTraversalStepLimit); ok {
-		p.StepContext.Range = &GraphTraversalRange{0, limitStep.Params[0].(int64)}
+		p.StepContext.PaginationRange = &GraphTraversalRange{0, limitStep.Params[0].(int64)}
 	}
 
-	return p.StepContext.Range != nil
+	return p.StepContext.PaginationRange != nil
 }
 
 func (p *GremlinTraversalContext) Context() *GremlinTraversalContext {

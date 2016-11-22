@@ -132,8 +132,8 @@ func (ft *Table) GetFlows(query *FlowSearchQuery) *FlowSet {
 	defer ft.RUnlock()
 
 	var it *common.Iterator
-	if query != nil && query.Range != nil {
-		it = common.NewIterator(0, query.Range.From, query.Range.To)
+	if query != nil && query.PaginationRange != nil {
+		it = common.NewIterator(0, query.PaginationRange.From, query.PaginationRange.To)
 	} else {
 		it = common.NewIterator()
 	}

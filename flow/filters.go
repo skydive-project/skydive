@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 func (f *Filter) Eval(flow *Flow) bool {
@@ -265,11 +267,52 @@ func NewFilterForIds(uuids []string, attrs ...string) *Filter {
 	}
 }
 
-func NewFilterForNodes(uuids []string) *Filter {
+func NewFilterForNodeUUIDs(uuids []string) *Filter {
 	return NewFilterForIds(uuids, "NodeUUID", "ANodeUUID", "BNodeUUID")
 }
 
-func NewFilterForRange(fr Range, prefix string) *Filter {
+func NewFilterForNodes(nodes []*graph.Node) *Filter {
+	ids := make([]string, len(nodes))
+	for i, node := range nodes {
+		ids[i] = string(node.ID)
+	}
+	return NewFilterForNodeUUIDs(ids)
+}
+
+func NewFilterForFlowSet(flowset *FlowSet) *Filter {
+	ids := make([]string, len(flowset.Flows))
+	for i, flow := range flowset.Flows {
+		ids[i] = string(flow.UUID)
+	}
+	return NewFilterForIds(ids, "UUID")
+}
+
+// NewFilterActiveIn returns a filter that returns elements that were active
+// in the given time range.
+func NewFilterActiveIn(fr Range, prefix string) *Filter {
+	andFilter := &BoolFilter{
+		Op: BoolFilterOp_AND,
+		Filters: []*Filter{
+			{
+				LtInt64Filter: &LtInt64Filter{
+					Key:   prefix + "Start",
+					Value: fr.To,
+				},
+			},
+			{
+				GteInt64Filter: &GteInt64Filter{
+					Key:   prefix + "Last",
+					Value: fr.From,
+				},
+			},
+		},
+	}
+	return &Filter{BoolFilter: andFilter}
+}
+
+// NewFilterIncludedIn returns a filter that returns elements that include in
+// the time range.
+func NewFilterIncludedIn(fr Range, prefix string) *Filter {
 	andFilter := &BoolFilter{
 		Op: BoolFilterOp_AND,
 		Filters: []*Filter{
@@ -290,7 +333,9 @@ func NewFilterForRange(fr Range, prefix string) *Filter {
 	return &Filter{BoolFilter: andFilter}
 }
 
-func NewFilterForTime(t int64, prefix string) *Filter {
+// NewFilterActiveAt returns a filter including all the elements that are
+// active/alive at that time, ex: flow started and not expired at that time.
+func NewFilterActiveAt(t int64, prefix string) *Filter {
 	andFilter := &BoolFilter{
 		Op: BoolFilterOp_AND,
 		Filters: []*Filter{

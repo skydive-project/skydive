@@ -1519,7 +1519,7 @@ function ShowFlowDetails(uuid) {
   $('#flow-uuid').html(uuid);
   $("#flow-details").html('');
 
-  var query = "G.Flows('UUID', '" + uuid + "')";
+  var query = "G.Flows().Has('UUID', '" + uuid + "')";
    $.ajax({
      dataType: "json",
      url: '/api/topology',
@@ -1562,7 +1562,7 @@ function SetupFlowGrid() {
   $(document).on('mouseenter', ".slick-row", function () {
       $(this).children('.slick-cell').addClass('cell-highlighted');
 
-      var query = "G.Flows('TrackingID', '" + $(this).find('.flowids').attr('_trackid') + "').Hops()";
+      var query = "G.Flows().Has('TrackingID', '" + $(this).find('.flowids').attr('_trackid') + "').Hops()";
       $.ajax({
         dataType: "json",
         url: '/api/topology',

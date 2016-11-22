@@ -30,9 +30,9 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/storage"
 	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/storage"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"

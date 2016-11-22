@@ -40,9 +40,9 @@ type GraphTraversalStep interface {
 }
 
 type GraphStepContext struct {
-	Range *GraphTraversalRange
-	Sort  bool
-	Dedup bool
+	PaginationRange *GraphTraversalRange
+	Sort            bool
+	Dedup           bool
 }
 
 func (r *GraphTraversalRange) Iterator() *common.Iterator {
@@ -357,6 +357,18 @@ func (t *GraphTraversal) Error() error {
 	return t.error
 }
 
+func parseTimeContext(param string) (time.Time, error) {
+	if at, err := time.Parse(time.RFC1123, param); err == nil {
+		return at, nil
+	}
+
+	if d, err := time.ParseDuration(param); err == nil {
+		return time.Now().Add(d), nil
+	}
+
+	return time.Time{}, errors.New("Time must be in RFC1123 or in Go Duration format")
+}
+
 func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	if t.error != nil {
 		return t
@@ -372,8 +384,8 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	)
 	switch param := s[0].(type) {
 	case string:
-		if at, err = time.Parse(time.RFC1123, param); err != nil {
-			return &GraphTraversal{error: errors.New("Time must be in RFC1123 format")}
+		if at, err = parseTimeContext(param); err != nil {
+			return &GraphTraversal{error: err}
 		}
 	case int64:
 		at = time.Unix(param, 0)
@@ -413,9 +425,9 @@ func (t *GraphTraversal) V(ids ...graph.Identifier) *GraphTraversalV {
 		nodes = t.Graph.GetNodes()
 	}
 
-	if t.currentStepContext.Range != nil {
+	if t.currentStepContext.PaginationRange != nil {
 		var nodeRange []*graph.Node
-		it := t.currentStepContext.Range.Iterator()
+		it := t.currentStepContext.PaginationRange.Iterator()
 		for _, node := range nodes {
 			if it.Done() {
 				break
@@ -504,7 +516,7 @@ func (tv *GraphTraversalV) Dedup() *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 
-	it := tv.GraphTraversal.currentStepContext.Range.Iterator()
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 	visited := make(map[graph.Identifier]bool)
 	for _, n := range tv.nodes {
 		if it.Done() {
@@ -589,7 +601,7 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.Range.Iterator()
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 	for _, n := range tv.nodes {
 		if it.Done() {
 			break
@@ -612,7 +624,7 @@ func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.Range.Iterator()
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
 nodeloop:
 	for _, n := range tv.nodes {
@@ -683,7 +695,7 @@ func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.Range.Iterator()
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
 nodeloop:
 	for _, n := range tv.nodes {
@@ -714,7 +726,7 @@ func (tv *GraphTraversalV) OutE(s ...interface{}) *GraphTraversalE {
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
-	it := tv.GraphTraversal.currentStepContext.Range.Iterator()
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
 nodeloop:
 	for _, n := range tv.nodes {
@@ -745,7 +757,7 @@ func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.Range.Iterator()
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
 nodeloop:
 	for _, n := range tv.nodes {
@@ -776,7 +788,7 @@ func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
-	it := tv.GraphTraversal.currentStepContext.Range.Iterator()
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
 nodeloop:
 	for _, n := range tv.nodes {
@@ -877,7 +889,7 @@ func (te *GraphTraversalE) hasKey(k string) *GraphTraversalE {
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
-	it := te.GraphTraversal.currentStepContext.Range.Iterator()
+	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
 	for _, e := range te.edges {
 		if it.Done() {
@@ -912,7 +924,7 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 	}
 
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
-	it := te.GraphTraversal.currentStepContext.Range.Iterator()
+	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 	for _, e := range te.edges {
 		if it.Done() {
 			break
@@ -935,7 +947,7 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
-	it := te.GraphTraversal.currentStepContext.Range.Iterator()
+	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 	for _, e := range te.edges {
 		if it.Done() {
 			break
@@ -960,7 +972,7 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
-	it := te.GraphTraversal.currentStepContext.Range.Iterator()
+	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 	for _, e := range te.edges {
 		if it.Done() {
 			break
