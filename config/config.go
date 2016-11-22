@@ -182,7 +182,7 @@ func validateIPPort(addressPort string) (string, int, error) {
 	IPaddr := IPAddr.IP
 	port := IPAddr.Port
 
-	addr := "127.0.0.1"
+	addr := "localhost"
 	if IPaddr != nil {
 		addr = IPaddr.String()
 		if len(IPaddr) == 16 {
