@@ -426,6 +426,23 @@ func (f *FlowTraversalStep) Sort() *FlowTraversalStep {
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset}
 }
 
+// Sum aggregates integer values mapped by 'key' cross flows
+func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalValue {
+	if f.error != nil {
+		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, f.error)
+	}
+	var s float64
+	key := keys[0].(string)
+	for _, fl := range f.flowset.Flows {
+		if v, err := fl.GetFieldInt64(key); err == nil {
+			s += float64(v)
+		} else {
+			return traversal.NewGraphTraversalValue(f.GraphTraversal, s, err)
+		}
+	}
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
+}
+
 func (f *FlowTraversalStep) propertyInt64Values(field string) *traversal.GraphTraversalValue {
 	var s []interface{}
 	for _, fl := range f.flowset.Flows {
