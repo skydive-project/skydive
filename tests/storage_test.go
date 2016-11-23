@@ -102,6 +102,7 @@ func TestFlowStorage(t *testing.T) {
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
+	defer client.Delete("capture", capture.ID())
 
 	time.Sleep(3 * time.Second)
 	now := time.Now()
@@ -158,6 +159,4 @@ func TestFlowStorage(t *testing.T) {
 	}
 
 	queryFlowMetrics(t, now.Add(5*time.Second).Unix(), 10)
-
-	client.Delete("capture", capture.ID())
 }

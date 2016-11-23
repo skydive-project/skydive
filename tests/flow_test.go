@@ -574,6 +574,7 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
+	defer client.Delete("capture", capture.ID())
 
 	time.Sleep(1 * time.Second)
 	setupCmds := []helper.Cmd{
@@ -610,6 +611,16 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	node1 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf1", "Type", "internal")`)
 	node2 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf2", "Type", "internal")`)
 
+	if node1 == nil {
+		t.Errorf("Could not find sflow-intf1 internal interface")
+		return
+	}
+
+	if node2 == nil {
+		t.Errorf("Could not find sflow-intf2 internal interface")
+		return
+	}
+
 	ok := false
 	for _, f := range ts.GetFlows() {
 		// we can have both way depending on which packet has been seen first
@@ -623,8 +634,6 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	if !ok {
 		t.Errorf("Unable to find flows with the expected path: %v\n %s", ts.GetFlows(), aa.Agent.Graph.String())
 	}
-
-	client.Delete("capture", capture.ID())
 }
 
 func TestFlowQuery(t *testing.T) {
@@ -863,7 +872,12 @@ func queryFlowMetrics(t *testing.T, timeContext int64, pings int64) {
 	gremlin := ovsGremlin + `.Flows().Has("LayersPath", Regex(".*ICMPv4.*"))`
 
 	icmp := gh.GetFlowsFromGremlinReply(t, gremlin)
-	if len(icmp) != 1 {
+	switch len(icmp) {
+	case 0:
+		t.Error("Should return one icmp flow, got none")
+		return
+	case 1:
+	default:
 		t.Errorf("Should return only one icmp flow, got: %v", icmp)
 	}
 	if icmp[0].LayersPath != "Ethernet/IPv4/ICMPv4/Payload" {
