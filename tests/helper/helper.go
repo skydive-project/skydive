@@ -193,6 +193,8 @@ func (h *HelperAgentAnalyzer) Start() {
 func (h *HelperAgentAnalyzer) Stop() {
 	h.service <- stop
 	<-h.serviceDone
+
+	CleanGraph(h.Analyzer.GraphServer.Graph)
 }
 func (h *HelperAgentAnalyzer) Flush() {
 	h.service <- flush
@@ -323,6 +325,13 @@ func NewGraph(t *testing.T) *graph.Graph {
 	}
 
 	return g
+}
+
+func CleanGraph(g *graph.Graph) {
+	g.Lock()
+	defer g.Unlock()
+	hostname, _ := os.Hostname()
+	g.DelHostGraph(hostname)
 }
 
 func (g *GremlinQueryHelper) GremlinQuery(t *testing.T, query string, values interface{}) {

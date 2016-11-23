@@ -265,6 +265,8 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, names []string
 	if !testPassed {
 		t.Error("test not executed or failed")
 	}
+
+	helper.CleanGraph(g)
 }
 
 func TestBridgeOVS(t *testing.T) {
@@ -803,7 +805,7 @@ func TestDockerNetHost(t *testing.T) {
 			if len(tv.Values()) == 1 {
 				tv = tr.V().Has("Type", "netns", "Manager", "docker", "Name", "test-skydive-docker")
 				if len(tv.Values()) == 1 {
-					t.Error("There should be only one namespace managed by Docker")
+					t.Error("There should be only no namespace managed by Docker")
 				} else {
 					testPassed = true
 				}
