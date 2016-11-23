@@ -128,6 +128,18 @@ googleAnalytics = ""
 	url    = "license"
 	weight = 100
 
+[[menu.main]]
+	name   = "Use Cases"
+	identifier = "usecases"
+	url  = "use-cases/"
+	weight = 35
+
+[[menu.main]]
+	name = "Packet Injector"
+	parent = "usecases"
+	url = "use-cases/packet-injector/"
+	weight = 3500
+
 [blackfriday]
 	smartypants	= true
 	fractions = true
