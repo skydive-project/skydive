@@ -1310,7 +1310,9 @@ func TestFlowGRETunnel(t *testing.T) {
 		{"sudo ip netns exec gre-vm2 ip a add 192.168.0.2/32 dev dummy0", true},
 		{"sudo ip netns exec gre-vm2 ip r add 192.168.0.0/24 dev gre", true},
 
-		{"sudo ip netns exec gre-vm1 ping -c 5 -I 192.168.0.1 192.168.0.2", false},
+		{"sleep 10", false},
+
+		{"sudo ip netns exec gre-vm1 ping -c 10 -I 192.168.0.1 192.168.0.2", false},
 	}
 
 	tearDownCmds := []helper.Cmd{
@@ -1331,7 +1333,7 @@ func TestFlowGRETunnel(t *testing.T) {
 	for _, flow := range flowsInnerTunnel {
 		if flow.LayersPath == "IPv4/ICMPv4/Payload" {
 			if TrackID != "" {
-				t.Error("We should only found one ICMPv4 flow in the tunnel %v", flowsInnerTunnel)
+				t.Errorf("We should only found one ICMPv4 flow in the tunnel %v", flowsInnerTunnel)
 			}
 			TrackID = flow.TrackingID
 		}
