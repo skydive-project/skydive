@@ -317,6 +317,9 @@ Layout.prototype.Invalidate = function() {
 Layout.prototype.Clear = function() {
   var ID;
 
+  CurrentNodeDetails = null;
+  $("#node-details").hide();
+
   for (ID in this.graph.Edges)
     this.DelEdge(this.graph.Edges[ID]);
 
@@ -489,6 +492,10 @@ Layout.prototype.DelNode = function(node) {
 
   for (var i in this.nodes) {
     if (this.nodes[i].ID == node.ID) {
+      if (typeof CurrentNodeDetails != "undefined" && this.nodes[i].ID == CurrentNodeDetails.ID) {
+        CurrentNodeDetails = undefined;
+        $("#node-details").hide();
+      }
       this.nodes.splice(i, 1);
       break;
     }
@@ -1510,7 +1517,7 @@ function SetupFlowRefresh() {
 
 function ShowFlowDetails(uuid) {
   $('#flow-uuid').html(uuid);
-  $("#flowdetails").html('');
+  $("#flow-details").html('');
 
   var query = "G.Flows('UUID', '" + uuid + "')";
    $.ajax({
@@ -1520,8 +1527,8 @@ function ShowFlowDetails(uuid) {
      method: 'POST',
      success: function(data) {
        var json = JSON.stringify(data);
-       $("#flowdetails").JSONView(json);
-       $('#flowdetails').JSONView('toggle', 10);
+       $("#flow-details").JSONView(json);
+       $('#flow-details').JSONView('toggle', 10);
      },
      error: function(e) {
        $.notify({
