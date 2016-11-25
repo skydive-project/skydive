@@ -36,35 +36,23 @@ func (x FlowProtocol) Value() int32 {
 	return int32(x)
 }
 
-func (f *Flow) Init(now int64, packet *gopacket.Packet, length int64) {
+func (f *Flow) Init(now int64, packet *gopacket.Packet, length int64) error {
 
 	f.Metric.Start = now
 	f.Metric.Last = now
 
-	payloadLen, err := f.newLinkLayer(packet, length)
-	if err != nil {
-		return
+	f.newLinkLayer(packet, length)
+	if err := f.newNetworkLayer(packet); err != nil {
+		return err
 	}
-	payloadLen, err = f.newNetworkLayer(packet, payloadLen)
-	if err != nil {
-		return
-	}
-	_, err = f.newTransportLayer(packet, payloadLen)
-	if err != nil {
-		return
-	}
+	return f.newTransportLayer(packet)
 }
 
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
 	f.Metric.Last = now
 
-	payloadLen, err := f.updateLinkLayer(packet, length)
-	if err != nil {
-		return
-	}
-	_, err = f.updateNetworkLayer(packet, payloadLen)
-	if err != nil {
-		return
+	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
+		f.updateMetricsWithNetworkLayer(packet)
 	}
 }
 
@@ -93,12 +81,12 @@ func (f *Flow) DumpInfo(layerSeparator ...string) string {
 	return buf.String()
 }
 
-func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) (int64, error) {
+func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) {
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
 		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
-		return length, nil
+		return
 	}
 
 	f.Link = &FlowLayer{
@@ -106,24 +94,29 @@ func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) (int64, error
 		A:        ethernetPacket.SrcMAC.String(),
 		B:        ethernetPacket.DstMAC.String(),
 	}
-	return f.updateLinkLayer(packet, length)
+
+	f.updateMetricsWithLinkLayer(packet, length)
 }
 
-func (f *Flow) updateLinkLayer(packet *gopacket.Packet, length int64) (int64, error) {
+func getLinkLayerLength(packet *layers.Ethernet) int64 {
+	if packet.Length > 0 { // LLC
+		return 14 + int64(packet.Length)
+	}
+
+	return 14 + int64(len(packet.Payload))
+}
+
+func (f *Flow) updateMetricsWithLinkLayer(packet *gopacket.Packet, length int64) bool {
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
 		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
-		return length, nil
+		return false
 	}
 
 	// if the length is given use it as the packet can be truncated like in SFlow
 	if length == 0 {
-		if ethernetPacket.Length > 0 { // LLC
-			length = 14 + int64(ethernetPacket.Length)
-		} else {
-			length = 14 + int64(len(ethernetPacket.Payload))
-		}
+		length = getLinkLayerLength(ethernetPacket)
 	}
 
 	if f.Link.A == ethernetPacket.SrcMAC.String() {
@@ -134,10 +127,10 @@ func (f *Flow) updateLinkLayer(packet *gopacket.Packet, length int64) (int64, er
 		f.Metric.BABytes += length
 	}
 
-	return length - 14, nil
+	return true
 }
 
-func (f *Flow) newNetworkLayer(packet *gopacket.Packet, length int64) (int64, error) {
+func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
 	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
 		f.Network = &FlowLayer{
@@ -145,7 +138,7 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet, length int64) (int64, er
 			A:        ipv4Packet.SrcIP.String(),
 			B:        ipv4Packet.DstIP.String(),
 		}
-		return f.updateNetworkLayer(packet, length)
+		return f.updateMetricsWithNetworkLayer(packet)
 	}
 
 	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
@@ -155,44 +148,44 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet, length int64) (int64, er
 			A:        ipv6Packet.SrcIP.String(),
 			B:        ipv6Packet.DstIP.String(),
 		}
-		return f.updateNetworkLayer(packet, length)
+		return f.updateMetricsWithNetworkLayer(packet)
 	}
 
-	return 0, errors.New("Unable to decode the IP layer")
+	return errors.New("Unable to decode the IP layer")
 }
 
-func (f *Flow) updateNetworkLayer(packet *gopacket.Packet, length int64) (int64, error) {
+func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 	// bypass if a Link layer already exist
 	if f.Link != nil {
-		return length, nil
+		return nil
 	}
 
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
 	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
 		if f.Network.A == ipv4Packet.SrcIP.String() {
 			f.Metric.ABPackets += int64(1)
-			f.Metric.ABBytes += length
+			f.Metric.ABBytes += int64(ipv4Packet.Length)
 		} else {
 			f.Metric.BAPackets += int64(1)
-			f.Metric.BABytes += length
+			f.Metric.BABytes += int64(ipv4Packet.Length)
 		}
-		return length - int64(len(ipv4Packet.Contents)), nil
+		return nil
 	}
 	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
 	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
 		if f.Network.A == ipv6Packet.SrcIP.String() {
 			f.Metric.ABPackets += int64(1)
-			f.Metric.ABBytes += length
+			f.Metric.ABBytes += int64(ipv6Packet.Length)
 		} else {
 			f.Metric.BAPackets += int64(1)
-			f.Metric.BABytes += length
+			f.Metric.BABytes += int64(ipv6Packet.Length)
 		}
-		return length - int64(len(ipv6Packet.Contents)), nil
+		return nil
 	}
-	return 0, errors.New("Unable to decode the IP layer")
+	return errors.New("Unable to decode the IP layer")
 }
 
-func (f *Flow) newTransportLayer(packet *gopacket.Packet, length int64) (int64, error) {
+func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 	var transportLayer gopacket.Layer
 	var ok bool
 	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
@@ -207,7 +200,7 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, length int64) (int64, 
 			_, ok = transportLayer.(*layers.SCTP)
 			ptype = FlowProtocol_SCTPPORT
 			if !ok {
-				return 0, errors.New("Unable to decode the transport layer")
+				return errors.New("Unable to decode the transport layer")
 			}
 		}
 	}
@@ -230,5 +223,5 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, length int64) (int64, 
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
 	}
-	return length - int64(len(transportLayer.LayerContents())), nil
+	return nil
 }

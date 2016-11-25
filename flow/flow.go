@@ -175,48 +175,81 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
+type SubPacket struct {
+	packet *gopacket.Packet
+	length int64
+}
+
+// splitPacket split original packet into multiple packets in
+// case of encapsulation like GRE, VXLAN, etc.
+func splitPacket(packet *gopacket.Packet, outerLength int64) []SubPacket {
+	var subPackets []SubPacket
+
+	packetData := (*packet).Data()
+	packetLayers := (*packet).Layers()
+
+	var topLayer = packetLayers[0]
+
+	if outerLength == 0 {
+		if ethernetPacket, ok := topLayer.(*layers.Ethernet); ok {
+			outerLength = getLinkLayerLength(ethernetPacket)
+		} else if ipv4Packet, ok := topLayer.(*layers.IPv4); ok {
+			outerLength = int64(ipv4Packet.Length)
+		} else if ipv6Packet, ok := topLayer.(*layers.IPv6); ok {
+			outerLength = int64(ipv6Packet.Length)
+		}
+	}
+
+	// length of the encapsulation header + the inner packet
+	topLayerLength := outerLength
+
+	var start int
+	var innerLength int
+	for i, layer := range packetLayers {
+		innerLength += len(layer.LayerContents())
+
+		switch layer.LayerType() {
+		case layers.LayerTypeGRE, layers.LayerTypeVXLAN, layers.LayerTypeMPLS:
+			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
+			subPackets = append(subPackets, SubPacket{packet: &p, length: topLayerLength})
+
+			// substract the current encapsulation header length as we are going to change the
+			// encapsulation layer
+			topLayerLength -= int64(innerLength)
+
+			start += innerLength
+			innerLength = 0
+
+			// change topLayer in case of mutliple encapsulation
+			if i+1 < len(packetLayers)-1 {
+				topLayer = packetLayers[i+1]
+			}
+		}
+	}
+
+	if len(subPackets) > 0 {
+		p := gopacket.NewPacket(packetData[start:], topLayer.LayerType(), gopacket.NoCopy)
+		subPackets = append(subPackets, SubPacket{packet: &p, length: 0})
+	} else {
+		subPackets = append(subPackets, SubPacket{packet: packet, length: outerLength})
+	}
+
+	return subPackets
+}
+
 func FlowsFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, setter FlowProbeNodeSetter) []*Flow {
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
 		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
 		logging.GetLogger().Debug((*packet).Dump())
 		return nil
 	}
-	var packetsFlows []*gopacket.Packet
 
-	packetData := (*packet).Data()
-	packetLayers := (*packet).Layers()
+	subPackets := splitPacket(packet, length)
 
-	var start int
-	var innerLen int
-	var firstLayer = packetLayers[0]
-
-	for i, layer := range packetLayers {
-		innerLen += len(layer.LayerContents())
-		layerType := layer.LayerType()
-
-		switch layerType {
-		case layers.LayerTypeGRE, layers.LayerTypeVXLAN, layers.LayerTypeMPLS:
-			p := gopacket.NewPacket(packetData[start:start+innerLen], firstLayer.LayerType(), gopacket.NoCopy)
-			packetsFlows = append(packetsFlows, &p)
-			start = start + innerLen
-			innerLen = 0
-			if i+1 < len(packetLayers)-1 {
-				firstLayer = packetLayers[i+1]
-			}
-		}
-	}
-
-	if len(packetsFlows) > 0 {
-		p := gopacket.NewPacket(packetData[start:], firstLayer.LayerType(), gopacket.NoCopy)
-		packetsFlows = append(packetsFlows, &p)
-	} else {
-		packetsFlows = append(packetsFlows, packet)
-	}
-
-	flows := make([]*Flow, len(packetsFlows))
+	flows := make([]*Flow, len(subPackets))
 	var parentUUID string
-	for i, p := range packetsFlows {
-		flows[i] = flowFromGoPacket(ft, p, length, setter, parentUUID)
+	for i, sub := range subPackets {
+		flows[i] = flowFromGoPacket(ft, sub.packet, sub.length, setter, parentUUID)
 		if flows[i] == nil {
 			return nil
 		}
@@ -263,7 +296,7 @@ func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter Flow
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
-		goFlows := FlowsFromGoPacket(ft, &record.Header, int64(record.FrameLength), setter)
+		goFlows := FlowsFromGoPacket(ft, &record.Header, int64(record.FrameLength-record.PayloadRemoved), setter)
 		if goFlows != nil {
 			flows = append(flows, goFlows...)
 		}
