@@ -141,6 +141,15 @@ G.V().Count()
 G.V().Values('Name')
 ```
 
+### Sum step
+
+`Sum` returns sum of elements, named 'Name', retrieved by the previous step.
+When attribute 'Name' exists, must be integer type.
+
+```console
+G.V().Sum('Name')
+```
+
 ### Limit step
 
 `Limit` limits the number of elements returned.

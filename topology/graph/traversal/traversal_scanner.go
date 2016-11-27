@@ -81,6 +81,7 @@ const (
 	SORT
 	SINCE
 	VALUES
+	SUM
 
 	// extensions token have to start after 1000
 )
@@ -255,6 +256,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return SINCE, buf.String()
 	case "VALUES":
 		return VALUES, buf.String()
+	case "SUM":
+		return SUM, buf.String()
 	}
 
 	for _, e := range s.extensions {

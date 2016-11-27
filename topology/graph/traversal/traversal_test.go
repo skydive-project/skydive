@@ -41,10 +41,10 @@ func newGraph(t *testing.T) *graph.Graph {
 func newTransversalGraph(t *testing.T) *graph.Graph {
 	g := newGraph(t)
 
-	n1 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 1, "Type": "intf"})
-	n2 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 2, "Type": "intf"})
+	n1 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 1, "Type": "intf", "Bytes": 1024})
+	n2 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 2, "Type": "intf", "Bytes": 2024})
 	n3 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 3})
-	n4 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 4, "Name": "Node4"})
+	n4 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 4, "Name": "Node4", "Bytes": 4024})
 
 	g.Link(n1, n2, graph.Metadata{"Direction": "Left"})
 	g.Link(n2, n3, graph.Metadata{"Direction": "Left"})
@@ -139,6 +139,15 @@ func TestBasicTraversal(t *testing.T) {
 	res := tr.V().PropertyValues("Type")
 	if len(res.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	}
+	sum := tr.V().Sum("Bytes")
+	bytes, ok := sum.Values()[0].(float64)
+	if ok {
+		if bytes != 7072 {
+			t.Fatalf("Should return 7072, instead got %d", bytes)
+		}
+	} else {
+		t.Logf("Error in Sum() step: %s", sum.Error())
 	}
 }
 

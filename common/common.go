@@ -113,7 +113,7 @@ func integerCompare(a interface{}, b interface{}) (int, error) {
 	}
 }
 
-func toFloat64(f interface{}) (float64, error) {
+func ToFloat64(f interface{}) (float64, error) {
 	switch f.(type) {
 	case int, uint, int32, uint32, int64, uint64:
 		i, err := toInt64(f)
@@ -130,12 +130,12 @@ func toFloat64(f interface{}) (float64, error) {
 }
 
 func floatCompare(a interface{}, b interface{}) (int, error) {
-	f1, err := toFloat64(a)
+	f1, err := ToFloat64(a)
 	if err != nil {
 		return 0, err
 	}
 
-	f2, err := toFloat64(b)
+	f2, err := ToFloat64(b)
 	if err != nil {
 		return 0, err
 	}
