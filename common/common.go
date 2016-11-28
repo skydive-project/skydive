@@ -28,6 +28,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,35 +72,37 @@ func init() {
 	initCaptureTypes()
 }
 
-func toInt64(i interface{}) (int64, error) {
-	switch i.(type) {
+func ToInt64(i interface{}) (int64, error) {
+	switch v := i.(type) {
+	case string:
+		return strconv.ParseInt(v, 10, 64)
 	case int:
-		return int64(i.(int)), nil
+		return int64(v), nil
 	case uint:
-		return int64(i.(uint)), nil
+		return int64(v), nil
 	case int32:
-		return int64(i.(int32)), nil
+		return int64(v), nil
 	case uint32:
-		return int64(i.(uint32)), nil
+		return int64(v), nil
 	case int64:
-		return i.(int64), nil
+		return v, nil
 	case uint64:
-		return int64(i.(uint64)), nil
+		return int64(v), nil
 	case float32:
-		return int64(i.(float32)), nil
+		return int64(v), nil
 	case float64:
-		return int64(i.(float64)), nil
+		return int64(v), nil
 	}
 	return 0, fmt.Errorf("not an integer: %v", i)
 }
 
 func integerCompare(a interface{}, b interface{}) (int, error) {
-	n1, err := toInt64(a)
+	n1, err := ToInt64(a)
 	if err != nil {
 		return 0, err
 	}
 
-	n2, err := toInt64(b)
+	n2, err := ToInt64(b)
 	if err != nil {
 		return 0, err
 	}
@@ -114,15 +117,17 @@ func integerCompare(a interface{}, b interface{}) (int, error) {
 }
 
 func ToFloat64(f interface{}) (float64, error) {
-	switch f.(type) {
+	switch v := f.(type) {
+	case string:
+		return strconv.ParseFloat(v, 64)
 	case int, uint, int32, uint32, int64, uint64:
-		i, err := toInt64(f)
+		i, err := ToInt64(f)
 		if err != nil {
 			return 0, err
 		}
 		return float64(i), nil
 	case float32:
-		return float64(f.(float32)), nil
+		return float64(v), nil
 	case float64:
 		return f.(float64), nil
 	}
