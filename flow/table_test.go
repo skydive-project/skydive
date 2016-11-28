@@ -122,21 +122,21 @@ func TestTable_AsyncUpdated(t *testing.T) {
 
 func TestTable_LookupFlowByProbePath(t *testing.T) {
 	ft := NewTable(nil, nil)
-	GenerateTestFlows(t, ft, 1, "probe1")
-	GenerateTestFlows(t, ft, 2, "probe2")
+	GenerateTestFlows(t, ft, 1, "probe-tid1")
+	GenerateTestFlows(t, ft, 2, "probe-tid2")
 
 	filters := &Filter{
 		BoolFilter: &BoolFilter{
 			Op: BoolFilterOp_OR,
 			Filters: []*Filter{
 				&Filter{
-					TermStringFilter: &TermStringFilter{Key: "NodeUUID", Value: "probe1"},
+					TermStringFilter: &TermStringFilter{Key: "NodeTID", Value: "probe-tid1"},
 				},
 				&Filter{
-					TermStringFilter: &TermStringFilter{Key: "ANodeUUID", Value: "probe1"},
+					TermStringFilter: &TermStringFilter{Key: "ANodeTID", Value: "probe-tid1"},
 				},
 				&Filter{
-					TermStringFilter: &TermStringFilter{Key: "BNodeUUID", Value: "probe1"},
+					TermStringFilter: &TermStringFilter{Key: "BNodeTID", Value: "probe-tid1"},
 				},
 			},
 		},
@@ -148,8 +148,8 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	}
 
 	for _, f := range flowset.Flows {
-		if f.NodeUUID != "probe1" {
-			t.Errorf("Only flow with probe1 as NodeUUID is expected, got %s", f.NodeUUID)
+		if f.NodeTID != "probe-tid1" {
+			t.Errorf("Only flow with probe-tid1 as NodeTID is expected, got %s", f.NodeTID)
 		}
 	}
 }
@@ -169,7 +169,7 @@ func TestTable_GetFlow(t *testing.T) {
 
 func TestTable_GetOrCreateFlow(t *testing.T) {
 	ft := NewTestFlowTableComplex(t, nil, nil)
-	flows := GenerateTestFlows(t, ft, 0, "probe1")
+	flows := GenerateTestFlows(t, ft, 0, "probe-tid1")
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
 	}
@@ -231,7 +231,7 @@ func TestTable_FilterLast(t *testing.T) {
 
 func TestTable_SymmeticsHash(t *testing.T) {
 	ft1 := NewTable(nil, nil)
-	GenerateTestFlows(t, ft1, 0xca55e77e, "probe")
+	GenerateTestFlows(t, ft1, 0xca55e77e, "probe-tid")
 
 	UUIDS := make(map[string]bool)
 	TRIDS := make(map[string]bool)
@@ -242,7 +242,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 	}
 
 	ft2 := NewTable(nil, nil)
-	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe")
+	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe-tid")
 
 	for _, f := range ft2.GetFlows(nil).Flows {
 		if _, found := UUIDS[f.UUID]; !found {

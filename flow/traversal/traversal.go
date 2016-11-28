@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
@@ -115,8 +116,9 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	for _, flow := range f.flowset.Flows {
-		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
+			m["TID"] = flow.BNodeTID
+			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -138,8 +140,9 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	for _, flow := range f.flowset.Flows {
-		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
+			m["TID"] = flow.ANodeTID
+			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -161,13 +164,15 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	for _, flow := range f.flowset.Flows {
-		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
+			m["TID"] = flow.ANodeTID
+			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
-		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
+			m["TID"] = flow.BNodeTID
+			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -189,18 +194,21 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	for _, flow := range f.flowset.Flows {
-		if flow.NodeUUID != "" && flow.NodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.NodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.NodeTID != "" && flow.NodeTID != "*" {
+			m["TID"] = flow.NodeTID
+			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
-		if flow.ANodeUUID != "" && flow.ANodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.ANodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
+			m["TID"] = flow.ANodeTID
+			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
-		if flow.BNodeUUID != "" && flow.BNodeUUID != "*" {
-			if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(flow.BNodeUUID)); node != nil && node.MatchMetadata(m) {
+		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
+			m["TID"] = flow.BNodeTID
+			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -221,7 +229,8 @@ func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 	}
 
 	for _, fl := range f.flowset.Flows {
-		if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(fl.NodeUUID)); node != nil && node.MatchMetadata(m) {
+		m["TID"] = fl.NodeTID
+		if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 			nodes = append(nodes, node)
 		}
 	}
@@ -465,7 +474,8 @@ func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraver
 	}
 
 	for _, fl := range f.flowset.Flows {
-		if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(fl.NodeUUID)); node != nil && node.MatchMetadata(m) {
+		m["TID"] = fl.NodeTID
+		if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
 			nodes = append(nodes, node)
 		}
 	}
@@ -833,7 +843,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 					flowset.Flows = flows
 				}
 			} else {
-				hnmap := graph.BuildHostNodeMap(nodes)
+				hnmap := topology.BuildHostNodeTIDMap(nodes)
 				flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, flowSearchQuery)
 			}
 		}

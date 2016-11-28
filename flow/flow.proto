@@ -90,7 +90,7 @@ message Flow {
 	string ParentUUID = 6;
 
 /* Topology info */
-	string NodeUUID = 11;
-	string ANodeUUID = 14;
-	string BNodeUUID = 19;
+	string NodeTID = 33;
+	string ANodeTID = 34;
+	string BNodeTID = 35;
 }

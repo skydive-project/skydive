@@ -150,10 +150,10 @@ type MetadataMatcher interface {
 	Match(v interface{}) bool
 }
 
-type HostNodeIDMap map[string][]string
+type HostNodeTIDMap map[string][]string
 
-func BuildHostNodeMap(nodes []*Node) HostNodeIDMap {
-	hnmap := make(HostNodeIDMap)
+func BuildHostNodeTIDMap(nodes []*Node) HostNodeTIDMap {
+	hnmap := make(HostNodeTIDMap)
 	for _, node := range nodes {
 		if host := node.Host(); host != "" {
 			hnmap[host] = append(hnmap[host], string(node.ID))

@@ -99,7 +99,7 @@ func TestFlowStorage(t *testing.T) {
 	}
 
 	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
-	if err := client.Create("capture", capture); err != nil {
+	if err = client.Create("capture", capture); err != nil {
 		t.Fatal(err.Error())
 	}
 	defer client.Delete("capture", capture.ID())
@@ -125,7 +125,7 @@ func TestFlowStorage(t *testing.T) {
 		// wait to have everything ready, sflow, interfaces
 		{"sleep 2", false},
 
-		{"ip netns exec sflow-vm1 ping -c 10 -s 1024 -I sflow-intf1 169.254.33.34", false},
+		{"ip netns exec sflow-vm1 ping -c 15 -s 1024 -I sflow-intf1 169.254.33.34", false},
 	}
 
 	tearDownCmds := []helper.Cmd{
@@ -141,7 +141,7 @@ func TestFlowStorage(t *testing.T) {
 	aa.Flush()
 
 	// Wait for the flows to be indexed in elasticsearch
-	time.Sleep(3 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
@@ -158,5 +158,5 @@ func TestFlowStorage(t *testing.T) {
 		t.Fatalf("SearchFlows should return at least one flow, got %d", len(flows))
 	}
 
-	queryFlowMetrics(t, now.Add(5*time.Second).Unix(), 10)
+	queryFlowMetrics(t, now.Add(9*time.Second).Unix(), 15)
 }

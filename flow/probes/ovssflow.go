@@ -24,6 +24,7 @@ package probes
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/socketplane/libovsdb"
@@ -45,7 +46,7 @@ type OvsSFlowProbe struct {
 	HeaderSize uint32
 	Sampling   uint32
 	Polling    uint32
-	NodeUUID   string
+	NodeTID    string
 }
 
 type OvsSFlowProbesHandler struct {
@@ -218,14 +219,14 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 	return nil
 }
 
-func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, uuid string, ft *flow.Table) error {
+func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, ft *flow.Table) error {
 	probe := OvsSFlowProbe{
 		ID:         probeID(bridgeUUID),
 		Interface:  "lo",
 		HeaderSize: 256,
 		Sampling:   1,
 		Polling:    0,
-		NodeUUID:   uuid,
+		NodeTID:    tid,
 	}
 
 	agent, err := o.allocator.Alloc(bridgeUUID, ft)
@@ -247,8 +248,13 @@ func isOvsBridge(n *graph.Node) bool {
 }
 
 func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
+	tid, ok := n.Metadata()["TID"]
+	if !ok {
+		return fmt.Errorf("No TID for node %v", n)
+	}
+
 	if isOvsBridge(n) {
-		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), string(n.ID), ft)
+		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), tid.(string), ft)
 		if err != nil {
 			return err
 		}

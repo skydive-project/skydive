@@ -190,11 +190,11 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 	return &gpacket
 }
 
-func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, nodeUUID string) *Flow {
+func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, nodeTID string) *Flow {
 	key := FlowKeyFromGoPacket(packet, "").String()
 	flow, new := ft.GetOrCreateFlow(key)
 	if new {
-		flow.Init(key, ft.GetTime(), packet, length, nodeUUID, "")
+		flow.Init(key, ft.GetTime(), packet, length, nodeTID, "")
 	} else {
 		flow.Update(ft.GetTime(), packet, length)
 	}
@@ -202,7 +202,7 @@ func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, nodeUUID
 	return flow
 }
 
-func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, uuid string) []*Flow {
+func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, tid string) []*Flow {
 	flows := []*Flow{}
 	for i := int64(0); i < 10; i++ {
 		var packet *gopacket.Packet
@@ -212,7 +212,7 @@ func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, uuid 
 			packet = forgeTestPacket(t, i+baseSeed*10, swap, ETH, IPv4, UDP)
 		}
 
-		flow := flowFromGoPacket(ft, packet, int64(len((*packet).Data())), uuid)
+		flow := flowFromGoPacket(ft, packet, int64(len((*packet).Data())), tid)
 		if flow == nil {
 			t.Fail()
 		}
@@ -221,11 +221,11 @@ func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, uuid 
 	return flows
 }
 
-func GenerateTestFlows(t *testing.T, ft *Table, baseSeed int64, uuid string) []*Flow {
-	return generateTestFlows(t, ft, baseSeed, false, uuid)
+func GenerateTestFlows(t *testing.T, ft *Table, baseSeed int64, tid string) []*Flow {
+	return generateTestFlows(t, ft, baseSeed, false, tid)
 }
-func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, uuid string) []*Flow {
-	return generateTestFlows(t, ft, baseSeed, true, uuid)
+func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, tid string) []*Flow {
+	return generateTestFlows(t, ft, baseSeed, true, tid)
 }
 
 func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow) {
@@ -267,7 +267,7 @@ func NewTestFlowTableSimple(t *testing.T) *Table {
 
 func NewTestFlowTableComplex(t *testing.T, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 	ft := NewTable(updateHandler, expireHandler)
-	GenerateTestFlows(t, ft, 0xca55e77e, "probe-uuid")
+	GenerateTestFlows(t, ft, 0xca55e77e, "probe-tid")
 	return ft
 }
 

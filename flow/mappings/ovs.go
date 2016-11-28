@@ -33,7 +33,7 @@ type OvsFlowEnhancer struct {
 	Graph *graph.Graph
 }
 
-func (gfe *OvsFlowEnhancer) getNodeUUID(mac string) string {
+func (gfe *OvsFlowEnhancer) getNodeTID(mac string) string {
 	if packet.IsBroadcastMac(mac) || packet.IsMulticastMac(mac) {
 		return "*"
 	}
@@ -45,22 +45,24 @@ func (gfe *OvsFlowEnhancer) getNodeUUID(mac string) string {
 	if len(intfs) > 1 {
 		logging.GetLogger().Infof("OvsFlowEnhancer found more than one interface for the mac: %s", mac)
 	} else if len(intfs) == 1 {
-		return string(intfs[0].ID)
+		if t, ok := intfs[0].Metadata()["TID"]; ok {
+			return t.(string)
+		}
 	}
 	return ""
 }
 
 func (gfe *OvsFlowEnhancer) Enhance(f *flow.Flow) {
-	if f.ANodeUUID == "" || f.BNodeUUID == "" {
+	if f.ANodeTID == "" || f.BNodeTID == "" {
 		if f.Link == nil {
 			return
 		}
 	}
-	if f.ANodeUUID == "" {
-		f.ANodeUUID = gfe.getNodeUUID(f.Link.A)
+	if f.ANodeTID == "" {
+		f.ANodeTID = gfe.getNodeTID(f.Link.A)
 	}
-	if f.BNodeUUID == "" {
-		f.BNodeUUID = gfe.getNodeUUID(f.Link.B)
+	if f.BNodeTID == "" {
+		f.BNodeTID = gfe.getNodeTID(f.Link.B)
 	}
 }
 

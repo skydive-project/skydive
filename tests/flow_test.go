@@ -37,7 +37,7 @@ import (
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/tools"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology"
 )
 
 const confAgentAnalyzer = `---
@@ -318,20 +318,20 @@ func TestSFlowProbeNode(t *testing.T) {
 
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.NodeUUID == string(node.ID) && f.LayersPath == "Ethernet/ARP/Payload" {
+		if f.NodeTID == node.Metadata()["TID"].(string) && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}
 	}
 
 	if !ok {
-		t.Error("Unable to find a flow with the expected NodeUUID")
+		t.Error("Unable to find a flow with the expected NodeTID")
 	}
 
 	client.Delete("capture", capture.ID())
 }
 
-func TestSFlowNodeUUIDOvsInternalNetNS(t *testing.T) {
+func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -375,20 +375,20 @@ func TestSFlowNodeUUIDOvsInternalNetNS(t *testing.T) {
 
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.NodeUUID == string(node.ID) && f.LayersPath == "Ethernet/ARP/Payload" {
+		if f.NodeTID == node.Metadata()["TID"].(string) && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}
 	}
 
 	if !ok {
-		t.Error("Unable to find a flow with the expected NodeUUID")
+		t.Error("Unable to find a flow with the expected NodeTID")
 	}
 
 	client.Delete("capture", capture.ID())
 }
 
-func TestSFlowTwoNodeUUID(t *testing.T) {
+func TestSFlowTwoNodeTID(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -464,7 +464,7 @@ func TestSFlowTwoNodeUUID(t *testing.T) {
 	}
 
 	if len(flows) != 2 {
-		t.Errorf("Should have 2 flow entries one per NodeUUID got: %d", len(flows))
+		t.Errorf("Should have 2 flow entries one per NodeTID got: %d", len(flows))
 	}
 
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
@@ -472,14 +472,14 @@ func TestSFlowTwoNodeUUID(t *testing.T) {
 	node1 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow1", "Type", "ovsbridge")`)
 	node2 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow2", "Type", "ovsbridge")`)
 
-	if flows[0].NodeUUID != string(node1.ID) &&
-		flows[0].NodeUUID != string(node2.ID) {
-		t.Errorf("Bad NodeUUID for the first flow: %s", flows[0].NodeUUID)
+	if flows[0].NodeTID != node1.Metadata()["TID"].(string) &&
+		flows[0].NodeTID != node2.Metadata()["TID"].(string) {
+		t.Errorf("Bad NodeTID for the first flow: %s", flows[0].NodeTID)
 	}
 
-	if flows[1].NodeUUID != string(node1.ID) &&
-		flows[1].NodeUUID != string(node2.ID) {
-		t.Errorf("Bad NodeUUID for the second flow: %s", flows[1].NodeUUID)
+	if flows[1].NodeTID != node1.Metadata()["TID"].(string) &&
+		flows[1].NodeTID != node2.Metadata()["TID"].(string) {
+		t.Errorf("Bad NodeTID for the second flow: %s", flows[1].NodeTID)
 	}
 
 	if flows[0].TrackingID != flows[1].TrackingID {
@@ -553,14 +553,14 @@ func TestPCAPProbe(t *testing.T) {
 	ok := false
 	flows := ts.GetFlows()
 	for _, f := range flows {
-		if f.NodeUUID == string(node.ID) {
+		if f.NodeTID == node.Metadata()["TID"].(string) {
 			ok = true
 			break
 		}
 	}
 
 	if !ok {
-		t.Errorf("Unable to find a flow with the expected NodeUUID: %v\n%v", flows, aa.Agent.Graph.String())
+		t.Errorf("Unable to find a flow with the expected NodeTID: %v\n%v", flows, aa.Agent.Graph.String())
 	}
 
 	client.Delete("capture", capture.ID())
@@ -632,14 +632,14 @@ func TestPCAPProbeTLS(t *testing.T) {
 	ok := false
 	flows := ts.GetFlows()
 	for _, f := range flows {
-		if f.NodeUUID == string(node.ID) {
+		if f.NodeTID == node.Metadata()["TID"].(string) {
 			ok = true
 			break
 		}
 	}
 
 	if !ok {
-		t.Errorf("Unable to find a flow with the expected NodeUUID: %v\n%v", flows, aa.Agent.Graph.String())
+		t.Errorf("Unable to find a flow with the expected NodeTID: %v\n%v", flows, aa.Agent.Graph.String())
 	}
 
 	client.Delete("capture", capture.ID())
@@ -711,8 +711,8 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	ok := false
 	for _, f := range ts.GetFlows() {
 		// we can have both way depending on which packet has been seen first
-		if (f.ANodeUUID == string(node1.ID) && f.BNodeUUID == string(node2.ID)) ||
-			(f.ANodeUUID == string(node2.ID) && f.BNodeUUID == string(node1.ID)) {
+		if (f.ANodeTID == node1.Metadata()["TID"].(string) && f.BNodeTID == node2.Metadata()["TID"].(string)) ||
+			(f.ANodeTID == node2.Metadata()["TID"].(string) && f.BNodeTID == node1.Metadata()["TID"].(string)) {
 			ok = true
 			break
 		}
@@ -731,11 +731,11 @@ func TestFlowQuery(t *testing.T) {
 
 	ft1 := al.Alloc(f)
 
-	flow.GenerateTestFlows(t, ft1, 1, "probe1")
-	flows1 := flow.GenerateTestFlows(t, ft1, 2, "probe2")
+	flow.GenerateTestFlows(t, ft1, 1, "probe-tid1")
+	flows1 := flow.GenerateTestFlows(t, ft1, 2, "probe-tid2")
 
 	ft2 := al.Alloc(f)
-	flows2 := flow.GenerateTestFlows(t, ft2, 3, "probe2")
+	flows2 := flow.GenerateTestFlows(t, ft2, 3, "probe-tid2")
 
 	ft1.Start()
 	ft2.Start()
@@ -748,13 +748,13 @@ func TestFlowQuery(t *testing.T) {
 				Op: flow.BoolFilterOp_OR,
 				Filters: []*flow.Filter{
 					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "NodeUUID", Value: "probe2"},
+						TermStringFilter: &flow.TermStringFilter{Key: "NodeTID", Value: "probe-tid2"},
 					},
 					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "ANodeUUID", Value: "probe2"},
+						TermStringFilter: &flow.TermStringFilter{Key: "ANodeTID", Value: "probe-tid2"},
 					},
 					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "BNodeUUID", Value: "probe2"},
+						TermStringFilter: &flow.TermStringFilter{Key: "BNodeTID", Value: "probe-tid2"},
 					},
 				},
 			},
@@ -785,8 +785,8 @@ func TestFlowQuery(t *testing.T) {
 	}
 
 	for _, flow := range flowset.Flows {
-		if flow.NodeUUID != "probe2" {
-			t.Fatalf("FlowQuery should only return flows with probe2, got: %s", flow)
+		if flow.NodeTID != "probe-tid2" {
+			t.Fatalf("FlowQuery should only return flows with probe-tid2, got: %s", flow)
 		}
 	}
 }
@@ -830,10 +830,10 @@ func TestTableServer(t *testing.T) {
 
 	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
 
-	hnmap := make(graph.HostNodeIDMap)
-	hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
+	hnmap := make(topology.HostNodeTIDMap)
+	hnmap[node.Host()] = append(hnmap[node.Host()], node.Metadata()["TID"].(string))
 
-	fsq := flow.FlowSearchQuery{nil, nil, false, false}
+	fsq := flow.FlowSearchQuery{}
 	flowset, err := fclient.LookupFlowsByNodes(hnmap, fsq)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -846,7 +846,7 @@ func TestTableServer(t *testing.T) {
 	}
 
 	for _, f := range flowset.Flows {
-		if f.NodeUUID != string(node.ID) {
+		if f.NodeTID != node.Metadata()["TID"].(string) {
 			t.Fatalf("Returned a non expected flow: %v", f)
 		}
 	}
@@ -897,32 +897,34 @@ func TestFlowGremlin(t *testing.T) {
 		t.Fatalf("Should return 1, got: %d", count)
 	}
 
-	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeUUID", "`+string(node.ID)+`")`)
+	tid := node.Metadata()["TID"].(string)
+
+	flows := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`")`)
 	if len(flows) == 0 {
 		t.Fatalf("Should return at least 1 flow, got: %v", flows)
 	}
 
-	flowsOpt := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeUUID", "`+string(node.ID)+`")`)
+	flowsOpt := gh.GetFlowsFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`")`)
 	if len(flowsOpt) != len(flows) {
 		t.Fatalf("Should return the same number of flows that without optimisation, got: %v", flowsOpt)
 	}
 
-	nodes := gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeUUID", "`+string(node.ID)+`").Out()`)
+	nodes := gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`").Out()`)
 	if len(nodes) != 0 {
 		t.Fatalf("Should return no destination node, got %d", len(nodes))
 	}
 
-	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeUUID", "`+string(node.ID)+`").Both().Dedup()`)
+	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`").Both().Dedup()`)
 	if len(nodes) != 1 {
 		t.Fatalf("Should return one node, got %d", len(nodes))
 	}
 
-	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeUUID", "`+string(node.ID)+`").In().Dedup()`)
+	nodes = gh.GetNodesFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`").In().Dedup()`)
 	if len(nodes) != 1 {
 		t.Fatalf("Should return one source node, got %d", len(nodes))
 	}
 
-	gh.GremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeUUID", "`+string(node.ID)+`").Count()`, &count)
+	gh.GremlinQuery(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`").Count()`, &count)
 	if int(count) != len(flows) {
 		t.Fatalf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
 	}
@@ -1243,12 +1245,12 @@ func TestFlowHops(t *testing.T) {
 	gremlin = fmt.Sprintf(`g.Flows().Has("TrackingID", "%s").Nodes()`, flows[0].TrackingID)
 	tnodes := gh.GetNodesFromGremlinReply(t, gremlin)
 	if len(tnodes) != 3 {
-		t.Fatal("We should have 3 nodes NodeUUID,A,B")
+		t.Fatal("We should have 3 nodes NodeTID,A,B")
 	}
 	gremlin = `g.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Hops()`
 	nodes := gh.GetNodesFromGremlinReply(t, gremlin)
 	if len(nodes) != 1 {
-		t.Fatal("We should have 1 node NodeUUID")
+		t.Fatal("We should have 1 node NodeTID")
 	}
 
 	found := false
@@ -1334,13 +1336,13 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 	gremlin = fmt.Sprintf(`g.Flows().Has("TrackingID", "%s").Nodes()`, flows[0].TrackingID)
 	tnodes := gh.GetNodesFromGremlinReply(t, gremlin)
 	if len(tnodes) != 3 {
-		t.Fatal("We should have 3 nodes NodeUUID,A,B")
+		t.Fatal("We should have 3 nodes NodeTID,A,B")
 	}
 	/* Dedup() here for same reason than above ^^^ */
 	gremlin = `g.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6/Payload").Hops().Dedup()`
 	nodes := gh.GetNodesFromGremlinReply(t, gremlin)
 	if len(nodes) != 1 {
-		t.Fatal("We should have 1 node NodeUUID")
+		t.Fatal("We should have 1 node NodeTID")
 	}
 
 	found := false

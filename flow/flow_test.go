@@ -172,9 +172,9 @@ func TestFlowJSON(t *testing.T) {
 			BABytes:   44,
 			BAPackets: 55,
 		},
-		NodeUUID:  "probepath-1",
-		ANodeUUID: "srcgraphpath-1",
-		BNodeUUID: "dstgraphpath-1",
+		NodeTID:  "probe-tid",
+		ANodeTID: "anode-tid",
+		BNodeTID: "bnode-tid",
 	}
 
 	j, err := json.Marshal(f)
@@ -185,9 +185,9 @@ func TestFlowJSON(t *testing.T) {
 	schema := v.Object(
 		v.ObjKV("UUID", v.String()),
 		v.ObjKV("LayersPath", v.String()),
-		v.ObjKV("NodeUUID", v.String()),
-		v.ObjKV("ANodeUUID", v.String()),
-		v.ObjKV("BNodeUUID", v.String()),
+		v.ObjKV("NodeTID", v.String()),
+		v.ObjKV("ANodeTID", v.String()),
+		v.ObjKV("BNodeTID", v.String()),
 		v.ObjKV("Link", v.Object(
 			v.ObjKV("Protocol", v.String()),
 			v.ObjKV("A", v.String()),

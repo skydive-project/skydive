@@ -267,16 +267,18 @@ func NewFilterForIds(uuids []string, attrs ...string) *Filter {
 	}
 }
 
-func NewFilterForNodeUUIDs(uuids []string) *Filter {
-	return NewFilterForIds(uuids, "NodeUUID", "ANodeUUID", "BNodeUUID")
+func NewFilterForNodeTIDs(uuids []string) *Filter {
+	return NewFilterForIds(uuids, "NodeTID", "ANodeTID", "BNodeTID")
 }
 
 func NewFilterForNodes(nodes []*graph.Node) *Filter {
-	ids := make([]string, len(nodes))
-	for i, node := range nodes {
-		ids[i] = string(node.ID)
+	var ids []string
+	for _, node := range nodes {
+		if t, ok := node.Metadata()["TID"]; ok {
+			ids = append(ids, t.(string))
+		}
 	}
-	return NewFilterForNodeUUIDs(ids)
+	return NewFilterForNodeTIDs(ids)
 }
 
 func NewFilterForFlowSet(flowset *FlowSet) *Filter {

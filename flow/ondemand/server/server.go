@@ -101,6 +101,11 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		return false
 	}
 
+	if _, ok := n.Metadata()["TID"]; !ok {
+		logging.GetLogger().Infof("Unable to register flow probe without node TID %v", n)
+		return false
+	}
+
 	o.Lock()
 	defer o.Unlock()
 
@@ -113,7 +118,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 	}
 
 	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline)
-	ft.SetNodeUUID(string(n.ID))
+	ft.SetNodeTID(n.Metadata()["TID"].(string))
 
 	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())

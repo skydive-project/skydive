@@ -32,7 +32,7 @@ import (
 
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology"
 )
 
 type TableClient struct {
@@ -139,11 +139,11 @@ func (f *TableClient) LookupFlows(flowSearchQuery FlowSearchQuery) (*FlowSet, er
 	return flowset, nil
 }
 
-func (f *TableClient) LookupFlowsByNodes(hnmap graph.HostNodeIDMap, flowSearchQuery FlowSearchQuery) (*FlowSet, error) {
+func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSearchQuery FlowSearchQuery) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
-	for host, uuids := range hnmap {
-		flowSearchQuery.Filter = NewAndFilter(NewFilterForNodeUUIDs(uuids), flowSearchQuery.Filter)
+	for host, tids := range hnmap {
+		flowSearchQuery.Filter = NewAndFilter(NewFilterForNodeTIDs(tids), flowSearchQuery.Filter)
 		go f.lookupFlows(ch, host, flowSearchQuery)
 	}
 

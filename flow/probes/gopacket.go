@@ -47,7 +47,7 @@ type packetHandle interface {
 type GoPacketProbe struct {
 	handle       packetHandle
 	packetSource *gopacket.PacketSource
-	NodeUUID     string
+	NodeTID      string
 	flowTable    *flow.Table
 	state        int64
 }
@@ -178,9 +178,16 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 		return fmt.Errorf("No EncapType for node %v", n)
 	}
 
+	tid, ok := n.Metadata()["TID"]
+	if !ok {
+		return fmt.Errorf("No TID for node %v", n)
+	}
+
 	id := string(n.ID)
+	ifName := name.(string)
+
 	if _, ok = p.probes[id]; ok {
-		return fmt.Errorf("Already registered %s", name.(string))
+		return fmt.Errorf("Already registered %s", ifName)
 	}
 
 	port, ok := n.Metadata()["MPLSUDPPort"].(int)
@@ -192,7 +199,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 	}
 
 	probe := &GoPacketProbe{
-		NodeUUID:  id,
+		NodeTID:   tid.(string),
 		state:     common.StoppedState,
 		flowTable: ft,
 	}

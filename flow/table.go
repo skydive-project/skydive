@@ -77,7 +77,7 @@ type Table struct {
 	updateHandler *FlowHandler
 	expireHandler *FlowHandler
 	tableClock    int64
-	nodeUUID      string
+	nodeTID       string
 }
 
 func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
@@ -107,8 +107,8 @@ func (ft *Table) String() string {
 	return fmt.Sprintf("%d flows", len(ft.table))
 }
 
-func (ft *Table) SetNodeUUID(uuid string) {
-	ft.nodeUUID = uuid
+func (ft *Table) SetNodeTID(tid string) {
+	ft.nodeTID = tid
 }
 
 func (ft *Table) Update(flows []*Flow) {
@@ -399,7 +399,7 @@ func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string) *Flow {
 	key := FlowKeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.GetOrCreateFlow(key)
 	if new {
-		flow.Init(key, ft.GetTime(), packet.gopacket, packet.length, ft.nodeUUID, parentUUID)
+		flow.Init(key, ft.GetTime(), packet.gopacket, packet.length, ft.nodeTID, parentUUID)
 	} else {
 		flow.Update(ft.GetTime(), packet.gopacket, packet.length)
 	}
@@ -408,7 +408,7 @@ func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string) *Flow {
 
 func (ft *Table) FlowPacketsToFlow(flowPackets FlowPackets) {
 	var parentUUID string
-	logging.GetLogger().Debugf("%d FlowPackets received for capture node %s", len(flowPackets), ft.nodeUUID)
+	logging.GetLogger().Debugf("%d FlowPackets received for capture node %s", len(flowPackets), ft.nodeTID)
 	for _, packet := range flowPackets {
 		parentUUID = ft.FlowPacketToFlow(&packet, parentUUID).UUID
 	}

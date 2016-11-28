@@ -85,3 +85,15 @@ func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NetNSContext,
 
 	return nil, nil
 }
+
+type HostNodeTIDMap map[string][]string
+
+func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
+	hnmap := make(HostNodeTIDMap)
+	for _, node := range nodes {
+		if t, ok := node.Metadata()["TID"]; ok {
+			hnmap[node.Host()] = append(hnmap[node.Host()], t.(string))
+		}
+	}
+	return hnmap
+}

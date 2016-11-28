@@ -144,7 +144,7 @@ func (flow *Flow) UpdateUUID(key string) {
 	bfStart := make([]byte, 8)
 	binary.BigEndian.PutUint64(bfStart, uint64(flow.Metric.Start))
 	hasher.Write(bfStart)
-	hasher.Write([]byte(flow.NodeUUID))
+	hasher.Write([]byte(flow.NodeTID))
 
 	// include key so that we are sure that two flows with different keys don't
 	// give the same UUID due to different ways of hash the headers.
@@ -173,13 +173,13 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeUUID string, parentUUID string) {
+func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string) {
 	f.Metric.Start = now
 	f.Metric.Last = now
 
 	f.newLinkLayer(packet, length)
 
-	f.NodeUUID = nodeUUID
+	f.NodeTID = nodeTID
 	f.ParentUUID = parentUUID
 
 	f.LayersPath = layerPathFromGoPacket(packet)
@@ -520,12 +520,12 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.TrackingID, nil
 	case "ParentUUID":
 		return f.ParentUUID, nil
-	case "NodeUUID":
-		return f.NodeUUID, nil
-	case "ANodeUUID":
-		return f.ANodeUUID, nil
-	case "BNodeUUID":
-		return f.BNodeUUID, nil
+	case "NodeTID":
+		return f.NodeTID, nil
+	case "ANodeTID":
+		return f.ANodeTID, nil
+	case "BNodeTID":
+		return f.BNodeTID, nil
 	case "Application":
 		return f.Application, nil
 	}
