@@ -5,7 +5,6 @@ agent:
       - netns
       - ovsdb
       - docker
-      - neutron
   flow:
     probes:
       - ovssflow

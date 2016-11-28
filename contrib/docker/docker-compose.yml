@@ -1,15 +1,11 @@
 version: '2'
 services:
   elasticsearch:
-    image: elasticsearch
+    image: elasticsearch:2
     command: elasticsearch -Des.network.bind_host=0.0.0.0
     ports:
       - "9200:9200"
       - "9300:9300"
-    logging:
-      driver: "none"
-    volumes:
-        - ./data/esdata:/usr/share/elasticsearch/data
 
   skydive-analyzer:
     image: skydive/skydive
