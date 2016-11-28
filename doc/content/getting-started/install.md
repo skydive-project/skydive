@@ -17,6 +17,7 @@ Skydive relies on two main components:
 * Elasticsearch >= 2.0
 * libpcap
 * libxml2
+* protoc >= 3.0
 
 ## Install
 
