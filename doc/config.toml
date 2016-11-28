@@ -85,6 +85,12 @@ googleAnalytics = ""
   weight = 300
 
 [[menu.main]]
+  name = "Vagrant"
+  parent = "started"
+  url = "getting-started/vagrant/"
+  weight = 300
+
+[[menu.main]]
 	name   = "API"
 	identifier = "api"
 	url    = "api/"

@@ -1,0 +1,43 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+  config.vm.define "analyzer" do |analyzer|
+    analyzer.vm.box = "fedora/25-cloud-base"
+    analyzer.vm.hostname = "analyzer"
+    analyzer.vm.network "private_network", ip: "192.168.50.10"
+    analyzer.vm.synced_folder ".", "/vagrant", :disabled => true
+    analyzer.vm.provision "common", type: "shell", path: "setup-common.sh"
+    analyzer.vm.provision "setup", type: "shell", path: "setup-analyzer.sh"
+    analyzer.vm.provision "start", type: "shell", inline: "sudo systemctl start skydive-analyzer.service"
+    analyzer.vm.provider :libvirt do |domain|
+      domain.memory = 1024
+    end
+  end
+
+  config.vm.define "agent1" do |agent|
+    agent.vm.box = "fedora/25-cloud-base"
+    agent.vm.hostname = "agent1"
+    agent.vm.network "private_network", ip: "192.168.50.20"
+    agent.vm.synced_folder ".", "/vagrant", :disabled => true
+    agent.vm.provision "common", type: "shell", path: "setup-common.sh"
+    agent.vm.provision "setup", type: "shell", path: "setup-agent.sh"
+    agent.vm.provision "start", type: "shell", inline: "sudo systemctl start skydive-agent.service"
+    agent.vm.provider :libvirt do |domain|
+      domain.memory = 1536
+    end
+  end
+
+  config.vm.define "agent2" do |agent|
+    agent.vm.box = "fedora/25-cloud-base"
+    agent.vm.hostname = "agent2"
+    agent.vm.network "private_network", ip: "192.168.50.30"
+    agent.vm.synced_folder ".", "/vagrant", :disabled => true
+    agent.vm.provision "common", type: "shell", path: "setup-common.sh"
+    agent.vm.provision "setup", type: "shell", path: "setup-agent.sh"
+    agent.vm.provision "start", type: "shell", inline: "sudo systemctl start skydive-agent.service"
+    agent.vm.provider :libvirt do |domain|
+      domain.memory = 1536
+    end
+  end
+end
