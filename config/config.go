@@ -73,6 +73,7 @@ func init() {
 	cfg.SetDefault("openstack.endpoint_type", "public")
 	cfg.SetDefault("agent.topology.probes", []string{"netlink", "netns"})
 	cfg.SetDefault("analyzer.topology.probes", []string{})
+	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")

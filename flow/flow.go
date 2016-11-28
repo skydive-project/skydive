@@ -195,7 +195,7 @@ func FlowsFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, setter 
 		layerType := layer.LayerType()
 
 		switch layerType {
-		case layers.LayerTypeGRE, layers.LayerTypeVXLAN:
+		case layers.LayerTypeGRE, layers.LayerTypeVXLAN, layers.LayerTypeMPLS:
 			p := gopacket.NewPacket(packetData[start:start+innerLen], firstLayer.LayerType(), gopacket.NoCopy)
 			packetsFlows = append(packetsFlows, &p)
 			start = start + innerLen

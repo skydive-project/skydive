@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	v "github.com/gima/govalid/v1"
+	"github.com/google/gopacket/layers"
 )
 
 func TestFlowSimple(t *testing.T) {
@@ -82,6 +83,20 @@ func TestFlowEncaspulation(t *testing.T) {
 	}
 	if flows[0].LayersPath != "Ethernet/IPv4/GRE" || flows[1].LayersPath != "IPv4/GRE" || flows[2].LayersPath != "IPv4/TCP/Payload" {
 		t.Errorf("Flows LayersPath must be Ethernet/IPv4/GRE | IPv4/GRE | IPv4/TCP/Payload")
+	}
+}
+
+func TestFlowEncaspulationMplsUdp(t *testing.T) {
+	layers.RegisterUDPPortLayerType(layers.UDPPort(444), layers.LayerTypeMPLS)
+	table := NewTable(nil, nil)
+	packet := forgeTestPacket(t, 64, false, ETH, IPv4, UDP_MPLS, MPLS, IPv4, TCP)
+	flows := FlowsFromGoPacket(table, packet, 0, nil)
+	flowsTable := table.GetFlows(nil).GetFlows()
+	if len(flowsTable) != 2 {
+		t.Error("An MPLSoUDP packet must generate 2 flows")
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/UDP/MPLS" || flows[1].LayersPath != "IPv4/TCP/Payload" {
+		t.Errorf("Flows LayersPath must be Ethernet/IPv4/UDP/MPLS | IPv4/TCP/Payload")
 	}
 }
 

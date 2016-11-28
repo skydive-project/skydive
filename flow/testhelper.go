@@ -46,7 +46,9 @@ const (
 	TCP
 	UDP
 	SCTP
+	UDP_MPLS
 	GRE
+	MPLS
 )
 
 /* protos must contain a UDP or TCP layer on top of IPv4 */
@@ -80,8 +82,9 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 			protoStack = append(protoStack, ethernetLayer)
 		case IPv4:
 			ipv4Layer := &layers.IPv4{
-				SrcIP: net.IP{127, 0, 0, byte(rnd.Intn(0x100))},
-				DstIP: net.IP{byte(rnd.Intn(0x100)), 8, 8, 8},
+				Version: 4,
+				SrcIP:   net.IP{127, 0, 0, byte(rnd.Intn(0x100))},
+				DstIP:   net.IP{byte(rnd.Intn(0x100)), 8, 8, 8},
 			}
 			switch protos[i+1] {
 			case TCP:
@@ -90,6 +93,8 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 				ipv4Layer.Protocol = layers.IPProtocolUDP
 			case SCTP:
 				ipv4Layer.Protocol = layers.IPProtocolSCTP
+			case UDP_MPLS:
+				ipv4Layer.Protocol = layers.IPProtocolUDP
 			case GRE:
 				ipv4Layer.Protocol = layers.IPProtocolGRE
 			}
@@ -143,6 +148,21 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 				sctpLayer.SrcPort, sctpLayer.DstPort = sctpLayer.DstPort, sctpLayer.SrcPort
 			}
 			protoStack = append(protoStack, sctpLayer)
+		case UDP_MPLS:
+			udpLayer := &layers.UDP{
+				SrcPort: layers.UDPPort(uint16(rnd.Intn(0x10000))),
+				DstPort: layers.UDPPort(444),
+			}
+			if swap {
+				udpLayer.SrcPort, udpLayer.DstPort = udpLayer.DstPort, udpLayer.SrcPort
+			}
+			protoStack = append(protoStack, udpLayer)
+		case MPLS:
+			mplsLayer := &layers.MPLS{
+				Label:       rnd.Uint32(),
+				StackBottom: true,
+			}
+			protoStack = append(protoStack, mplsLayer)
 		default:
 			t.Log("forgeTestPacket : Unsupported protocol ", proto)
 		}

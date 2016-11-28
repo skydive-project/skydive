@@ -88,7 +88,6 @@ func (fpb *FlowProbeBundle) UnregisterAllProbes() {
 
 func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator) *FlowProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.flow.probes")
-
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	gfe := mappings.NewGraphFlowEnhancer(g)

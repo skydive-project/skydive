@@ -154,6 +154,14 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 		return err
 	}
 
+	port, ok := n.Metadata()["MPLSUDPPort"].(int)
+	if ok {
+		// All gopacket instance of this agent will classify UDP packets coming
+		// from UDP port MPLSUDPPort as MPLS whatever the source interface
+		layers.RegisterUDPPortLayerType(layers.UDPPort(port), layers.LayerTypeMPLS)
+		logging.GetLogger().Infof("MPLSoUDP port: %v", port)
+	}
+
 	probe := &GoPacketProbe{
 		NodeUUID:  id,
 		state:     common.StoppedState,

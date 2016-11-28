@@ -43,6 +43,7 @@ type OpenContrailMapper struct {
 	pendingLinks    []*graph.Node
 	agentHost       string
 	agentPort       int
+	mplsUDPPort     int
 }
 
 type ExtIDs struct {
@@ -127,6 +128,8 @@ func (mapper *OpenContrailMapper) onVhostAdded(node *graph.Node, itf collection.
 		mapper.linkToVhost(n)
 	}
 	mapper.pendingLinks = mapper.pendingLinks[:0]
+
+	mapper.graph.AddMetadata(nodes[0], "MPLSUDPPort", mapper.mplsUDPPort)
 }
 
 func (mapper *OpenContrailMapper) linkToVhost(node *graph.Node) {
@@ -249,6 +252,7 @@ func (mapper *OpenContrailMapper) Stop() {
 func NewOpenContrailMapper(g *graph.Graph, r *graph.Node) *OpenContrailMapper {
 	host := config.GetConfig().GetString("opencontrail.host")
 	port := config.GetConfig().GetInt("opencontrail.port")
+	mplsUDPPort := config.GetConfig().GetInt("opencontrail.mpls_udp_port")
 	if host == "" {
 		host = "localhost"
 	}
@@ -256,7 +260,7 @@ func NewOpenContrailMapper(g *graph.Graph, r *graph.Node) *OpenContrailMapper {
 		port = 8085
 	}
 
-	mapper := &OpenContrailMapper{graph: g, root: r, agentHost: host, agentPort: port}
+	mapper := &OpenContrailMapper{graph: g, root: r, agentHost: host, agentPort: port, mplsUDPPort: mplsUDPPort}
 	mapper.nodeUpdaterChan = make(chan graph.Identifier, 500)
 	g.AddEventListener(mapper)
 	return mapper

@@ -112,6 +112,8 @@ opencontrail:
   # host: localhost
   # TCP port of the OpenContrail vrouter agent
   # port: 8086
+  # UDP dest port for MPLS traffic
+  # mpls_udp_port: 51234
 
 
 storage:
