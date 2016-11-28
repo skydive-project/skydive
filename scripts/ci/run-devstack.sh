@@ -2,7 +2,7 @@
 
 set -v
 
-SKYDIVE_REV=`git rev-parse HEAD`
+git checkout -b software-factory
 SKYDIVE_PATH=`pwd`
 
 sudo yum -y install git iproute net-tools
@@ -61,7 +61,7 @@ disable_service horizon
 ENABLE_ISOLATED_METADATA=True
 
 # Skydive
-enable_plugin skydive file://$SKYDIVE_PATH $SKYDIVE_REV
+enable_plugin skydive file://$SKYDIVE_PATH software-factory
 enable_service skydive-analyzer skydive-agent
 
 SKYDIVE_ANALYZER_LISTEN=0.0.0.0:8082
