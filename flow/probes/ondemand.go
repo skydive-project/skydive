@@ -89,6 +89,8 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 	o.Lock()
 	defer o.Unlock()
 
+	logging.GetLogger().Debugf("Attempting to register probe on node %s", n.Metadata()["Name"].(string))
+
 	if _, ok := o.activeProbes[n.ID]; ok {
 		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
 		return false

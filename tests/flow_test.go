@@ -1348,7 +1348,7 @@ func TestFlowGRETunnel(t *testing.T) {
 	}
 
 	if !success {
-		t.Errorf("TrackingID not found in GRE tunnel: %v == %v", flowsInnerTunnel, flowsBridge)
+		t.Errorf("TrackingID not found in GRE tunnel: leaving the gre interface(%v) == seen in the gre tunnel(%v)", flowsInnerTunnel, flowsBridge)
 	}
 
 	client.Delete("capture", capture1.ID())
@@ -1438,7 +1438,7 @@ func TestIPv6FlowGRETunnelIPv6(t *testing.T) {
 	for _, flow := range flowsInnerTunnel {
 		if flow.LayersPath == "IPv6/ICMPv6/Payload" {
 			if TrackID != "" {
-				t.Error("We should only found one ICMPv6 flow in the tunnel %v", flowsInnerTunnel)
+				t.Errorf("We should only found one ICMPv6 flow in the tunnel %v", flowsInnerTunnel)
 			}
 			TrackID = flow.TrackingID
 		}

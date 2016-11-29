@@ -86,26 +86,82 @@ func (p *GoPacketProbe) packetsToChan(ch chan gopacket.Packet) {
 	p.handle.Close()
 }
 
-func (p *GoPacketProbe) start() {
+func (p *GoPacketProbe) start(g *graph.Graph, n *graph.Node, capture *api.Capture) error {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
-	ch := make(chan gopacket.Packet, 1000)
-	go p.packetsToChan(ch)
+	g.RLock()
+	ifName := n.Metadata()["Name"].(string)
+	firstLayerType := getGoPacketFirstLayerType(n)
 
-	timer := time.NewTicker(100 * time.Millisecond)
-	defer timer.Stop()
+	nscontext, err := topology.NewNetNSContextByNode(g, n)
+	g.RUnlock()
 
-	feedFlowTable := func() {
-		select {
-		case packet, ok := <-ch:
-			if ok {
-				flow.FlowsFromGoPacket(p.flowTable, &packet, 0, p)
-			}
-		case <-timer.C:
-		}
+	defer nscontext.Close()
+
+	if err != nil {
+		return err
 	}
-	p.flowTable.RegisterDefault(feedFlowTable)
-	p.flowTable.Run()
+
+	switch capture.Type {
+	case "pcap":
+		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
+		if err != nil {
+			return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
+		}
+
+		if err := handle.SetBPFFilter(capture.BPFFilter); err != nil {
+			return fmt.Errorf("BPF Filter failed: %s", err)
+		}
+
+		p.handle = handle
+		p.packetSource = gopacket.NewPacketSource(handle, firstLayerType)
+
+		logging.GetLogger().Infof("PCAP Capture started on %s with First layer: %s", ifName, firstLayerType)
+	default:
+		var handle *AFPacketHandle
+		fnc := func() error {
+			handle, err = NewAFPacketHandle(ifName, snaplen)
+			if err != nil {
+				return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
+			}
+			return nil
+		}
+
+		if err = common.Retry(fnc, 2, 100*time.Millisecond); err != nil {
+			return err
+		}
+
+		p.handle = handle
+		p.packetSource = gopacket.NewPacketSource(handle, firstLayerType)
+
+		logging.GetLogger().Infof("AfPacket Capture started on %s with First layer: %s", ifName, firstLayerType)
+	}
+
+	// leave the namespace, stay lock in the current thread
+	nscontext.Quit()
+
+	ch := make(chan gopacket.Packet, 1000)
+
+	go func() {
+		timer := time.NewTicker(100 * time.Millisecond)
+		defer timer.Stop()
+
+		feedFlowTable := func() {
+			select {
+			case packet, ok := <-ch:
+				if ok {
+					flow.FlowsFromGoPacket(p.flowTable, &packet, 0, p)
+				}
+			case <-timer.C:
+			}
+		}
+		p.flowTable.RegisterDefault(feedFlowTable)
+		p.flowTable.Run()
+	}()
+
+	p.packetsToChan(ch)
+
+	return nil
 }
 
 func (p *GoPacketProbe) stop() {
@@ -140,18 +196,14 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 		return fmt.Errorf("No name for node %v", n)
 	}
 
-	id := string(n.ID)
-	ifName := name.(string)
-
-	if _, ok := p.probes[id]; ok {
-		return fmt.Errorf("Already registered %s", ifName)
+	encapType, ok := n.Metadata()["EncapType"]
+	if !ok || encapType == "" {
+		return fmt.Errorf("No EncapType for node %v", n)
 	}
 
-	nscontext, err := topology.NewNetNSContextByNode(p.graph, n)
-	defer nscontext.Close()
-
-	if err != nil {
-		return err
+	id := string(n.ID)
+	if _, ok = p.probes[id]; ok {
+		return fmt.Errorf("Already registered %s", name.(string))
 	}
 
 	port, ok := n.Metadata()["MPLSUDPPort"].(int)
@@ -168,41 +220,6 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 		flowTable: ft,
 	}
 
-	switch capture.Type {
-	case "pcap":
-		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
-		if err != nil {
-			return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
-		}
-
-		if err := handle.SetBPFFilter(capture.BPFFilter); err != nil {
-			return fmt.Errorf("BPF Filter failed: %s", err)
-		}
-
-		probe.handle = handle
-		probe.packetSource = gopacket.NewPacketSource(handle, getGoPacketFirstLayerType(n))
-
-		logging.GetLogger().Infof("PCAP Capture type %s started on %s", capture.Type, n.Metadata()["Name"])
-	default:
-		var handle *AFPacketHandle
-		fnc := func() error {
-			handle, err = NewAFPacketHandle(ifName, snaplen)
-			if err != nil {
-				return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
-			}
-			return nil
-		}
-
-		if err = common.Retry(fnc, 2, 100*time.Millisecond); err != nil {
-			return err
-		}
-
-		probe.handle = handle
-		probe.packetSource = gopacket.NewPacketSource(handle, getGoPacketFirstLayerType(n))
-
-		logging.GetLogger().Infof("AfPacket Capture started on %s", n.Metadata()["Name"])
-	}
-
 	p.probesLock.Lock()
 	p.probes[id] = probe
 	p.probesLock.Unlock()
@@ -211,7 +228,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 	go func() {
 		defer p.wg.Done()
 
-		probe.start()
+		probe.start(p.graph, n, capture)
 	}()
 
 	return nil

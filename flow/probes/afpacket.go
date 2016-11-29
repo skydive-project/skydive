@@ -24,7 +24,9 @@ package probes
 
 import (
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/afpacket"
+
+	// will re-use google package once the PR250 or something similar will be merged
+	"github.com/skydive-project/skydive/flow/probes/afpacket"
 )
 
 type AFPacketHandle struct {
@@ -43,6 +45,7 @@ func NewAFPacketHandle(ifName string, snaplen int32) (*AFPacketHandle, error) {
 	tpacket, err := afpacket.NewTPacket(
 		afpacket.OptInterface(ifName),
 		afpacket.OptFrameSize(snaplen),
+		afpacket.OptPollTimeout(1000),
 	)
 
 	if err != nil {

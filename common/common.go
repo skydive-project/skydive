@@ -264,7 +264,7 @@ type NetNSContext struct {
 	newns  netns.NsHandle
 }
 
-func (n *NetNSContext) Close() error {
+func (n *NetNSContext) Quit() error {
 	if n != nil {
 		if err := netns.Set(n.origns); err != nil {
 			return err
@@ -272,9 +272,15 @@ func (n *NetNSContext) Close() error {
 		n.newns.Close()
 		n.origns.Close()
 	}
+	return nil
+}
+
+func (n *NetNSContext) Close() {
+	if n != nil && n.origns.IsOpen() {
+		n.Quit()
+	}
 
 	runtime.UnlockOSThread()
-	return nil
 }
 
 func NewNetNsContext(path string) (*NetNSContext, error) {
