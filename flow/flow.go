@@ -118,7 +118,7 @@ func layerPathFromGoPacket(packet *gopacket.Packet) string {
 		}
 		path += layer.LayerType().String()
 	}
-	return path
+	return strings.Replace(path, "Linux SLL/", "", 1)
 }
 
 func (flow *Flow) UpdateUUIDs(key string, parentUUID string) {

@@ -55,26 +55,37 @@ func (o *OnDemandProbeListener) isActive(n *graph.Node) bool {
 	return active
 }
 
-func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) (*FlowProbe, error) {
-	capType := ""
-	if capture.Type != "" {
-		types := common.CaptureTypes[n.Metadata()["Type"].(string)].Allowed
-		for _, t := range types {
-			if t == capture.Type {
-				capType = t
-				break
-			}
-		}
-		if capType == "" {
-			return nil, fmt.Errorf("Capture type %v not allowed on this node: %v", capture, n)
-		}
-	} else {
-		// no capture type defined for this type of node, ex: ovsport
+func getCaptureType(n *graph.Node, capture *api.Capture) (string, error) {
+	if capture.Type == "" {
 		c, ok := common.CaptureTypes[n.Metadata()["Type"].(string)]
 		if !ok {
-			return nil, nil
+			return "", nil
 		}
-		capType = c.Default
+		return c.Default, nil
+	}
+
+	capType := ""
+	types := common.CaptureTypes[n.Metadata()["Type"].(string)].Allowed
+	for _, t := range types {
+		if t == capture.Type {
+			capType = t
+			break
+		}
+	}
+	if capType == "" {
+		return "", fmt.Errorf("Capture type %v not allowed on this node: %v", capture, n)
+	}
+	return capType, nil
+}
+
+func (o *OnDemandProbeListener) getProbe(n *graph.Node, capture *api.Capture) (*FlowProbe, error) {
+	capType, err := getCaptureType(n, capture)
+	// no capture type defined for this type of node, ex: ovsport
+	if capType == "" {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	probe := o.Probes.GetProbe(capType)
 	if probe == nil {

@@ -114,7 +114,7 @@ func (p *GoPacketProbe) start(g *graph.Graph, n *graph.Node, capture *api.Captur
 		}
 
 		p.handle = handle
-		p.packetSource = gopacket.NewPacketSource(handle, firstLayerType)
+		p.packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
 
 		logging.GetLogger().Infof("PCAP Capture started on %s with First layer: %s", ifName, firstLayerType)
 	default:
