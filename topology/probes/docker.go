@@ -85,6 +85,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	if err != nil {
 		return
 	}
+	defer nsHandle.Close()
 
 	namespace := probe.containerNamespace(info.State.Pid)
 	logging.GetLogger().Debugf("Register docker container %s and PID %d", info.ID, info.State.Pid)
@@ -95,7 +96,6 @@ func (probe *DockerProbe) registerContainer(id string) {
 		n = probe.Root
 	} else {
 		n = probe.Register(namespace, graph.Metadata{"Name": info.Name[1:], "Manager": "docker"})
-
 	}
 
 	probe.Graph.Lock()
@@ -149,6 +149,7 @@ func (probe *DockerProbe) connect() error {
 	if probe.hostNs, err = netns.Get(); err != nil {
 		return err
 	}
+	defer probe.hostNs.Close()
 
 	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", probe.url)
 	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("skydive-agent-%s", sversion.Version)}
