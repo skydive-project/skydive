@@ -950,6 +950,10 @@ func (s *NodesGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (tra
 }
 
 func (s *NodesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok {
+		s.context.Params = hasStep.Params
+		return s
+	}
 	return next
 }
 
