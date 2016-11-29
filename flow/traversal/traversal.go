@@ -36,21 +36,23 @@ import (
 )
 
 const (
-	FLOW_TOKEN      traversal.Token = 1001
-	METRICS_TOKEN   traversal.Token = 1002
-	BANDWIDTH_TOKEN traversal.Token = 1003
-	HOPS_TOKEN      traversal.Token = 1004
-	NODES_TOKEN     traversal.Token = 1005
+	FLOW_TOKEN         traversal.Token = 1001
+	METRICS_TOKEN      traversal.Token = 1002
+	BANDWIDTH_TOKEN    traversal.Token = 1003
+	HOPS_TOKEN         traversal.Token = 1004
+	NODES_TOKEN        traversal.Token = 1005
+	CAPTURE_NODE_TOKEN traversal.Token = 1006
 )
 
 type FlowTraversalExtension struct {
-	FlowToken      traversal.Token
-	MetricsToken   traversal.Token
-	BandwidthToken traversal.Token
-	HopsToken      traversal.Token
-	NodesToken     traversal.Token
-	TableClient    *flow.TableClient
-	Storage        storage.Storage
+	FlowToken        traversal.Token
+	MetricsToken     traversal.Token
+	BandwidthToken   traversal.Token
+	HopsToken        traversal.Token
+	NodesToken       traversal.Token
+	TableClient      *flow.TableClient
+	Storage          storage.Storage
+	CaptureNodeToken traversal.Token
 }
 
 type FlowGremlinTraversalStep struct {
@@ -99,6 +101,10 @@ type NodesGremlinTraversalStep struct {
 	TableClient *flow.TableClient
 	Storage     storage.Storage
 	context     traversal.GremlinTraversalContext
+}
+
+type CaptureNodeGremlinTraversalStep struct {
+	context traversal.GremlinTraversalContext
 }
 
 func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
@@ -417,6 +423,26 @@ func (f *FlowTraversalStep) Dedup() *FlowTraversalStep {
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset}
 }
 
+func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraversalV {
+	var nodes []*graph.Node
+
+	if f.error != nil {
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.error)
+	}
+
+	m, err := traversal.SliceToMetadata(s...)
+	if err != nil {
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+	}
+
+	for _, fl := range f.flowset.Flows {
+		if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(fl.NodeUUID)); node != nil && node.MatchMetadata(m) {
+			nodes = append(nodes, node)
+		}
+	}
+	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
+}
+
 func (f *FlowTraversalStep) Sort() *FlowTraversalStep {
 	if f.Error() != nil {
 		return &FlowTraversalStep{error: f.Error()}
@@ -506,13 +532,14 @@ func (f *FlowTraversalStep) Error() error {
 
 func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
 	return &FlowTraversalExtension{
-		FlowToken:      FLOW_TOKEN,
-		MetricsToken:   METRICS_TOKEN,
-		BandwidthToken: BANDWIDTH_TOKEN,
-		HopsToken:      HOPS_TOKEN,
-		NodesToken:     NODES_TOKEN,
-		TableClient:    client,
-		Storage:        storage,
+		FlowToken:        FLOW_TOKEN,
+		MetricsToken:     METRICS_TOKEN,
+		BandwidthToken:   BANDWIDTH_TOKEN,
+		HopsToken:        HOPS_TOKEN,
+		NodesToken:       NODES_TOKEN,
+		TableClient:      client,
+		Storage:          storage,
+		CaptureNodeToken: CAPTURE_NODE_TOKEN,
 	}
 }
 
@@ -528,6 +555,8 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 		return e.HopsToken, true
 	case "NODES":
 		return e.NodesToken, true
+	case "CAPTURENODE":
+		return e.CaptureNodeToken, true
 	}
 	return traversal.IDENT, false
 }
@@ -560,6 +589,11 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 		return &HopsGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
 	case e.NodesToken:
 		return &NodesGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
+	case e.CaptureNodeToken:
+		if len(p.Params) != 0 {
+			return nil, fmt.Errorf("CaptureNode will not accept any parameters")
+		}
+		return &CaptureNodeGremlinTraversalStep{context: p}, nil
 	}
 
 	return nil, nil
@@ -891,5 +925,27 @@ func (s *NodesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) 
 }
 
 func (s *NodesGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+	return &s.context
+}
+
+func (s *CaptureNodeGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
+	switch last.(type) {
+	case *FlowTraversalStep:
+		fs := last.(*FlowTraversalStep)
+		return fs.CaptureNode(s.context.Params...), nil
+	}
+
+	return nil, traversal.ExecutionError
+}
+
+func (s *CaptureNodeGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok {
+		s.context.Params = hasStep.Params
+		return s
+	}
+	return next
+}
+
+func (s *CaptureNodeGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &s.context
 }
