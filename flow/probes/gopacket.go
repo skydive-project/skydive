@@ -81,7 +81,7 @@ func (p *GoPacketProbe) feedFlowTable(packetsChan chan flow.FlowPackets) {
 	p.handle.Close()
 }
 
-func (p *GoPacketProbe) start(g *graph.Graph, n *graph.Node, capture *api.Capture) error {
+func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture) error {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	g.RLock()
@@ -205,7 +205,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 	go func() {
 		defer p.wg.Done()
 
-		probe.start(p.graph, n, capture)
+		probe.run(p.graph, n, capture)
 	}()
 
 	return nil
