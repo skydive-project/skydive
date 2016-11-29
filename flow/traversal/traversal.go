@@ -537,6 +537,21 @@ func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.Graph
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, flow.ErrFieldNotFound)
 }
 
+func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTraversalValue {
+	if f.error != nil {
+		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, f.error)
+	}
+
+	var s []interface{}
+
+	if len(f.flowset.Flows) > 0 {
+		// all Flow structs are the same, take the first one
+		s = f.flowset.Flows[0].GetFields()
+	}
+
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
+}
+
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flowset.Flows))
 	for i, flow := range f.flowset.Flows {

@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -559,4 +560,39 @@ func (f *Flow) GetFieldInt64(field string) (int64, error) {
 		return f.LastUpdateMetric.GetField(fields)
 	}
 	return 0, ErrFieldNotFound
+}
+
+func (f *Flow) GetFields() []interface{} {
+	return fields
+}
+
+var fields []interface{}
+
+func introspectFields(t reflect.Type, prefix string) []interface{} {
+
+	var fFields []interface{}
+
+	for i := 0; i < t.NumField(); i++ {
+		vField := t.Field(i)
+		tField := vField.Type
+		vName := prefix + vField.Name
+
+		for tField.Kind() == reflect.Ptr {
+			tField = tField.Elem()
+		}
+
+		if tField.Kind() == reflect.Struct {
+			fFields = append(fFields, introspectFields(tField, vName+".")...)
+		} else {
+			fFields = append(fFields, vName)
+		}
+	}
+
+	return fFields
+}
+
+func init() {
+
+	fields = introspectFields(reflect.TypeOf(Flow{}), "")
+
 }

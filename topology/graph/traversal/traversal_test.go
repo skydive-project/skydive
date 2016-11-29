@@ -136,6 +136,11 @@ func TestBasicTraversal(t *testing.T) {
 		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
 	}
 
+	props := tr.V().PropertyKeys()
+	if len(props.Values()) != 10 {
+		t.Fatalf("Should return 10 properties, returned: %s", props.Values())
+	}
+
 	res := tr.V().PropertyValues("Type")
 	if len(res.Values()) != 2 {
 		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
@@ -149,6 +154,7 @@ func TestBasicTraversal(t *testing.T) {
 	} else {
 		t.Logf("Error in Sum() step: %s", sum.Error())
 	}
+
 }
 
 func TestTraversalWithin(t *testing.T) {

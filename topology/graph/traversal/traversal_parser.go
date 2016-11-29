@@ -108,6 +108,9 @@ type (
 	GremlinTraversalStepValues struct {
 		GremlinTraversalContext
 	}
+	GremlinTraversalStepKeys struct {
+		GremlinTraversalContext
+	}
 	GremlinTraversalStepSum struct {
 		GremlinTraversalContext
 	}
@@ -495,6 +498,15 @@ func (s *GremlinTraversalStepValues) Exec(last GraphTraversalStep) (GraphTravers
 func (s *GremlinTraversalStepValues) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
+
+func (s *GremlinTraversalStepKeys) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	return invokeStepFnc(last, "PropertyKeys", s)
+}
+
+func (s *GremlinTraversalStepKeys) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 func (s *GremlinTraversalStepSum) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	return invokeStepFnc(last, "Sum", s)
 }
@@ -772,6 +784,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		}
 
 		return &GremlinTraversalStepValues{gremlinStepContext}, nil
+	case KEYS:
+		return &GremlinTraversalStepKeys{gremlinStepContext}, nil
 	case SUM:
 		if len(params) != 1 {
 			return nil, fmt.Errorf("Sum requires 1 parameter")

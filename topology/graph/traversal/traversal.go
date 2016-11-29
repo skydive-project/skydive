@@ -490,6 +490,21 @@ func (tv *GraphTraversalV) PropertyValues(keys ...interface{}) *GraphTraversalVa
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
 }
 
+func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValue {
+	if tv.error != nil {
+		return &GraphTraversalValue{error: tv.error}
+	}
+
+	var s []interface{}
+	for _, n := range tv.nodes {
+		for key := range n.Metadata() {
+			s = append(s, key)
+		}
+	}
+
+	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
+}
+
 func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return &GraphTraversalValue{error: tv.error}

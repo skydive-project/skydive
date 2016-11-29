@@ -141,6 +141,14 @@ G.V().Count()
 G.V().Values('Name')
 ```
 
+### Keys step
+
+`Keys` returns the list of properties of the elements retrieved by the previous step.
+
+```console
+G.V().Keys()
+```
+
 ### Sum step
 
 `Sum` returns sum of elements, named 'Name', retrieved by the previous step.
