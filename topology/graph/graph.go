@@ -155,7 +155,9 @@ type HostNodeIDMap map[string][]string
 func BuildHostNodeMap(nodes []*Node) HostNodeIDMap {
 	hnmap := make(HostNodeIDMap)
 	for _, node := range nodes {
-		hnmap[node.Host()] = append(hnmap[node.Host()], string(node.ID))
+		if host := node.Host(); host != "" {
+			hnmap[host] = append(hnmap[host], string(node.ID))
+		}
 	}
 	return hnmap
 }
