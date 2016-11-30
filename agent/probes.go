@@ -30,7 +30,7 @@ import (
 	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *probe.ProbeBundle {
+func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.ProbeBundle, error) {
 	list := config.GetConfig().GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
@@ -46,11 +46,19 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *probe.Prob
 		case "netlink":
 			probes[t] = tprobes.NewNetLinkProbe(g, n)
 		case "netns":
-			probes[t] = tprobes.NewNetNSProbeFromConfig(g, n)
+			nsProbe, err := tprobes.NewNetNSProbeFromConfig(g, n)
+			if err != nil {
+				return nil, err
+			}
+			probes[t] = nsProbe
 		case "ovsdb":
 			probes[t] = tprobes.NewOvsdbProbeFromConfig(g, n)
 		case "docker":
-			probes[t] = tprobes.NewDockerProbeFromConfig(g, n)
+			dockerProbe, err := tprobes.NewDockerProbeFromConfig(g, n)
+			if err != nil {
+				return nil, err
+			}
+			probes[t] = dockerProbe
 		case "opencontrail":
 			probes[t] = tprobes.NewOpenContrailMapper(g, n)
 		default:
@@ -58,5 +66,5 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) *probe.Prob
 		}
 	}
 
-	return bundle
+	return bundle, nil
 }

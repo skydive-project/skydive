@@ -23,6 +23,7 @@
 package probes
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -33,9 +34,11 @@ import (
 
 	"golang.org/x/exp/inotify"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/vishvananda/netns"
 )
 
 type NetNSProbe struct {
@@ -46,6 +49,7 @@ type NetNSProbe struct {
 	nsnlProbes  map[string]*NetNsNetLinkTopoUpdater
 	pathToNetNS map[string]*NetNs
 	runPath     string
+	rootNsDev   uint64
 }
 
 type NetNs struct {
@@ -112,28 +116,46 @@ func NewNetNsNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetNsNetLinkTopo
 }
 
 func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.Node {
-	ns, ok := u.pathToNetNS[path]
-	if !ok {
-		var s syscall.Stat_t
+	// When a new network namespace has been seen by inotify, the path to
+	// the namespace may still be a regular file, not a bind mount to the
+	// file in /proc/<pid>/tasks/<tid>/ns/net yet, so we wait a bit for the
+	// bind mount to be set up
+	var newns *NetNs
+	err := common.Retry(func() error {
+		var stats syscall.Stat_t
 		fd, err := syscall.Open(path, syscall.O_RDONLY, 0)
 		if err != nil {
-			logging.GetLogger().Errorf("Error registering namespace %s: %s", path, err.Error())
-			return nil
+			return err
 		}
-		err = syscall.Fstat(fd, &s)
+
+		err = syscall.Fstat(fd, &stats)
 		syscall.Close(fd)
 		if err != nil {
-			logging.GetLogger().Errorf("Error reading namespace %s: %s", path, err.Error())
-			return nil
+			return err
 		}
-		ns = &NetNs{path: path, dev: s.Dev, ino: s.Ino}
-		u.pathToNetNS[path] = ns
+
+		if stats.Dev != u.rootNsDev {
+			return fmt.Errorf("%s does not seem to be a valid namespace", path)
+		}
+
+		newns = &NetNs{path: path, dev: stats.Dev, ino: stats.Ino}
+		return nil
+	}, 10, time.Millisecond*20)
+
+	if err != nil {
+		logging.GetLogger().Errorf("Could not register namespace: %s", err.Error())
+		return nil
+	}
+
+	_, ok := u.pathToNetNS[path]
+	if !ok {
+		u.pathToNetNS[path] = newns
 	}
 
 	u.Lock()
 	defer u.Unlock()
 
-	nsString := ns.String()
+	nsString := newns.String()
 	probe, ok := u.nsnlProbes[nsString]
 	if ok {
 		probe.useCount++
@@ -155,7 +177,7 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 	u.Graph.Link(u.Root, n, graph.Metadata{"RelationType": "ownership"})
 
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
-	nu.Start(ns)
+	nu.Start(newns)
 
 	u.nsnlProbes[nsString] = nu
 
@@ -261,14 +283,25 @@ func (u *NetNSProbe) Stop() {
 	}
 }
 
-func NewNetNSProbe(g *graph.Graph, n *graph.Node, runPath ...string) *NetNSProbe {
+func NewNetNSProbe(g *graph.Graph, n *graph.Node, runPath ...string) (*NetNSProbe, error) {
 	if uid := os.Geteuid(); uid != 0 {
-		logging.GetLogger().Fatalf("NetNS probe has to be run as root")
+		return nil, errors.New("NetNS probe has to be run as root")
 	}
 
 	path := "/var/run/netns"
 	if len(runPath) > 0 && runPath[0] != "" {
 		path = runPath[0]
+	}
+
+	rootNs, err := netns.Get()
+	if err != nil {
+		return nil, errors.New("Failed to get root namespace")
+	}
+	defer rootNs.Close()
+
+	var stats syscall.Stat_t
+	if err := syscall.Fstat(int(rootNs), &stats); err != nil {
+		return nil, errors.New("Failed to stat root namespace")
 	}
 
 	return &NetNSProbe{
@@ -277,10 +310,11 @@ func NewNetNSProbe(g *graph.Graph, n *graph.Node, runPath ...string) *NetNSProbe
 		nsnlProbes:  make(map[string]*NetNsNetLinkTopoUpdater),
 		pathToNetNS: make(map[string]*NetNs),
 		runPath:     path,
-	}
+		rootNsDev:   stats.Dev,
+	}, nil
 }
 
-func NewNetNSProbeFromConfig(g *graph.Graph, n *graph.Node) *NetNSProbe {
+func NewNetNSProbeFromConfig(g *graph.Graph, n *graph.Node) (*NetNSProbe, error) {
 	path := config.GetConfig().GetString("netns.run_path")
 	return NewNetNSProbe(g, n, path)
 }
