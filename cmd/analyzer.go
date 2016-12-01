@@ -20,7 +20,7 @@
  *
  */
 
-package analyzer
+package cmd
 
 import (
 	"os"

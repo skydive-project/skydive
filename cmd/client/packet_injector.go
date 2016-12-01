@@ -47,7 +47,7 @@ var PacketInjectorCmd = &cobra.Command{
 	Long:         "inject packets",
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&authenticationOpts)
+		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Criticalf(err.Error())
 		}

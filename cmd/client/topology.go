@@ -38,6 +38,8 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+var gremlinQuery string
+
 var TopologyCmd = &cobra.Command{
 	Use:          "topology",
 	Short:        "Request on topology",
@@ -77,7 +79,7 @@ var TopologyRequest = &cobra.Command{
 	Short: "query topology",
 	Long:  "query topology",
 	Run: func(cmd *cobra.Command, args []string) {
-		body, err := SendGremlinQuery(&authenticationOpts, gremlinQuery)
+		body, err := SendGremlinQuery(&AuthenticationOpts, gremlinQuery)
 		if err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)

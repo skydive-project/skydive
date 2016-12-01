@@ -20,7 +20,7 @@
  *
  */
 
-package allinone
+package cmd
 
 import (
 	"os"

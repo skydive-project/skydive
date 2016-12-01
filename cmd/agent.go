@@ -20,7 +20,7 @@
  *
  */
 
-package agent
+package cmd
 
 import (
 	"os"
