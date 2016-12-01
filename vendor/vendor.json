@@ -1111,6 +1111,48 @@
 			"revision": "406e5b7bfd8201a36e2bb5f7bdae0b03380c2ce8"
 		},
 		{
+			"checksumSHA1": "5qwv3yDROEz5ZV8HztOBmQxen8c=",
+			"path": "github.com/robertkrimen/otto",
+			"revision": "bf1c3795ba078da6905fe80bfbc3ed3d8c36e9aa",
+			"revisionTime": "2016-10-04T12:49:59Z"
+		},
+		{
+			"checksumSHA1": "qgziiO3/QDVJMKw2nGrUbC8QldY=",
+			"path": "github.com/robertkrimen/otto/ast",
+			"revision": "bf1c3795ba078da6905fe80bfbc3ed3d8c36e9aa",
+			"revisionTime": "2016-10-04T12:49:59Z"
+		},
+		{
+			"checksumSHA1": "L0KsB2EzTlPgv0iae3q3SukNW7U=",
+			"path": "github.com/robertkrimen/otto/dbg",
+			"revision": "bf1c3795ba078da6905fe80bfbc3ed3d8c36e9aa",
+			"revisionTime": "2016-10-04T12:49:59Z"
+		},
+		{
+			"checksumSHA1": "euDLJKhw4doeTSxjEoezjxYXLzs=",
+			"path": "github.com/robertkrimen/otto/file",
+			"revision": "bf1c3795ba078da6905fe80bfbc3ed3d8c36e9aa",
+			"revisionTime": "2016-10-04T12:49:59Z"
+		},
+		{
+			"checksumSHA1": "LLuLITFO8chqSG0+APJIy5NtOHU=",
+			"path": "github.com/robertkrimen/otto/parser",
+			"revision": "bf1c3795ba078da6905fe80bfbc3ed3d8c36e9aa",
+			"revisionTime": "2016-10-04T12:49:59Z"
+		},
+		{
+			"checksumSHA1": "7J/7NaYRqKhBvZ+dTIutsEoEgFw=",
+			"path": "github.com/robertkrimen/otto/registry",
+			"revision": "bf1c3795ba078da6905fe80bfbc3ed3d8c36e9aa",
+			"revisionTime": "2016-10-04T12:49:59Z"
+		},
+		{
+			"checksumSHA1": "/jMXYuXycBpTqWhRyJ2xsqvHvQI=",
+			"path": "github.com/robertkrimen/otto/token",
+			"revision": "bf1c3795ba078da6905fe80bfbc3ed3d8c36e9aa",
+			"revisionTime": "2016-10-04T12:49:59Z"
+		},
+		{
 			"checksumSHA1": "JCpbEPQptbtrVcXNCJr22QIW8rg=",
 			"comment": "v1.3-14-g4b26653",
 			"path": "github.com/russross/blackfriday",
@@ -1125,12 +1167,6 @@
 			"checksumSHA1": "TvF3ym5sZVNqGlUOS9HgOIl/sZM=",
 			"path": "github.com/satori/go.uuid",
 			"revision": "d41af8bb6a7704f00bc3b7cba9355ae6a5a80048"
-		},
-		{
-			"checksumSHA1": "PV3xtIWA+PNK0IrDVfDm8lpFpjQ=",
-			"comment": "go.weekly.2012-03-04-57-g5a18a6f",
-			"path": "github.com/sbinet/go-eval",
-			"revision": "5a18a6f14e020db7500a44a90ace4f81ebc4ec2a"
 		},
 		{
 			"checksumSHA1": "XXTR/ftEYSqQn4+Y7wNfiJJmq9U=",
@@ -1479,6 +1515,18 @@
 			"comment": "v1.2.9",
 			"path": "gopkg.in/fsnotify.v1",
 			"revision": "8611c35ab31c1c28aa903d33cf8b6e44a399b09e"
+		},
+		{
+			"checksumSHA1": "omNnn0E5H5b9BuDZN5fUXBnETl8=",
+			"path": "gopkg.in/sourcemap.v1",
+			"revision": "eef8f47ab679652a7d3a4ee34c34314d255d2536",
+			"revisionTime": "2016-06-02T08:55:44Z"
+		},
+		{
+			"checksumSHA1": "DPyTTxwhl5mrDF15nLNtshc0cWs=",
+			"path": "gopkg.in/sourcemap.v1/base64vlq",
+			"revision": "eef8f47ab679652a7d3a4ee34c34314d255d2536",
+			"revisionTime": "2016-06-02T08:55:44Z"
 		},
 		{
 			"checksumSHA1": "jXDje+kqCATfVXkT6fCZA14Sd6g=",

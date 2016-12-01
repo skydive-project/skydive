@@ -115,6 +115,12 @@ googleAnalytics = ""
 	weight = 1500
 
 [[menu.main]]
+	name = "Alerts"
+	parent = "api"
+	url = "api/alerts/"
+	weight = 1600
+
+[[menu.main]]
 	name   = "Deployment"
 	url    = "deployment/"
 	weight = 18

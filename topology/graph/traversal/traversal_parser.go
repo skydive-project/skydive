@@ -122,7 +122,6 @@ var (
 
 type GremlinTraversalParser struct {
 	Graph   *graph.Graph
-	Reader  io.Reader
 	scanner *GremlinTraversalScanner
 	buf     struct {
 		tok Token
@@ -546,10 +545,9 @@ func (p *GremlinTraversalParser) AddTraversalExtension(e GremlinTraversalExtensi
 	p.extensions = append(p.extensions, e)
 }
 
-func NewGremlinTraversalParser(r io.Reader, g *graph.Graph) *GremlinTraversalParser {
+func NewGremlinTraversalParser(g *graph.Graph) *GremlinTraversalParser {
 	return &GremlinTraversalParser{
-		Graph:  g,
-		Reader: r,
+		Graph: g,
 	}
 }
 
@@ -817,8 +815,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	return nil, fmt.Errorf("Expected step function, got: %s", lit)
 }
 
-func (p *GremlinTraversalParser) Parse() (*GremlinTraversalSequence, error) {
-	p.scanner = NewGremlinTraversalScanner(p.Reader, p.extensions)
+func (p *GremlinTraversalParser) Parse(r io.Reader) (*GremlinTraversalSequence, error) {
+	p.scanner = NewGremlinTraversalScanner(r, p.extensions)
 
 	seq := &GremlinTraversalSequence{
 		GraphTraversal: NewGraphTraversal(p.Graph),

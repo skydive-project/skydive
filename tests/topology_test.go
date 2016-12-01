@@ -24,12 +24,7 @@ package tests
 
 import (
 	"encoding/json"
-	"errors"
-	"net"
-	"net/http"
-	"net/url"
 	"testing"
-	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -68,61 +63,6 @@ etcd:
 logging:
   default: {{.LogLevel}}
 `
-
-func newClient() (*websocket.Conn, error) {
-	conn, err := net.Dial("tcp", "127.0.0.1:58081")
-	if err != nil {
-		return nil, err
-	}
-
-	endpoint := "ws://127.0.0.1:58081/ws"
-	u, err := url.Parse(endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	wsConn, _, err := websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
-	if err != nil {
-		return nil, err
-	}
-
-	return wsConn, nil
-}
-
-func connectToAgent(timeout int, onReady func(*websocket.Conn)) (*websocket.Conn, error) {
-	var ws *websocket.Conn
-	var err error
-
-	t := 0
-	for {
-		if t > timeout {
-			return nil, errors.New("Connection to Agent : timeout reached")
-		}
-
-		ws, err = newClient()
-		if err == nil {
-			break
-		}
-		time.Sleep(1 * time.Second)
-		t++
-	}
-
-	ready := false
-	h := func(message string) error {
-		err := ws.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(time.Second))
-		if err != nil {
-			return err
-		}
-		if !ready {
-			ready = true
-			onReady(ws)
-		}
-		return nil
-	}
-	ws.SetPingHandler(h)
-
-	return ws, nil
-}
 
 func processGraphMessage(g *graph.Graph, m []byte) error {
 	g.Lock()
@@ -176,7 +116,7 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 
 func startTopologyClient(t *testing.T, g *graph.Graph, onReady func(*websocket.Conn), onChange func(*websocket.Conn)) error {
 	// ready when got a first ping
-	ws, err := connectToAgent(5, onReady)
+	ws, err := helper.WSConnect("localhost:58081", 5, onReady)
 	if err != nil {
 		return err
 	}

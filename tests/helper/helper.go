@@ -32,6 +32,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"flag"
 	"fmt"
 	"html/template"
@@ -39,6 +40,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +48,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
 	cmd "github.com/skydive-project/skydive/cmd/client"
@@ -522,4 +525,59 @@ func GenerateFakeX509Certificate(certType string) (string, string) {
 	keyOut.Close()
 
 	return certFilename, privKeyFilename
+}
+
+func newWSClient(endpoint string) (*websocket.Conn, error) {
+	conn, err := net.Dial("tcp", endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint = fmt.Sprintf("ws://%s/ws", endpoint)
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	wsConn, _, err := websocket.NewClient(conn, u, http.Header{"Origin": {endpoint}}, 1024, 1024)
+	if err != nil {
+		return nil, err
+	}
+
+	return wsConn, nil
+}
+
+func WSConnect(endpoint string, timeout int, onReady func(*websocket.Conn)) (*websocket.Conn, error) {
+	var ws *websocket.Conn
+	var err error
+
+	t := 0
+	for {
+		if t > timeout {
+			return nil, errors.New("Connection to Agent : timeout reached")
+		}
+
+		ws, err = newWSClient(endpoint)
+		if err == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+		t++
+	}
+
+	ready := false
+	h := func(message string) error {
+		err := ws.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(time.Second))
+		if err != nil {
+			return err
+		}
+		if !ready {
+			ready = true
+			onReady(ws)
+		}
+		return nil
+	}
+	ws.SetPingHandler(h)
+
+	return ws, nil
 }

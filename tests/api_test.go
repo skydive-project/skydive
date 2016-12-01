@@ -162,17 +162,13 @@ func TestAlertApi(t *testing.T) {
 	}
 
 	alert := api.NewAlert()
-	alert.Select = "MTU"
-	alert.Test = "MTU>1500"
-	alert.Action = "LOG"
+	alert.Expression = "G.V().Has('MTU', GT(1500))"
 	if err := apiClient.create("alert", alert); err != nil {
 		t.Fatalf("Failed to create alert: %s", err.Error())
 	}
 
 	alert2 := api.NewAlert()
-	alert2.Select = "MTU"
-	alert2.Test = "MTU>1500"
-	alert2.Action = "LOG"
+	alert2.Expression = "G.V().Has('MTU', Gt(1500))"
 	if err := apiClient.Get("alert", alert.UUID, &alert2); err != nil {
 		t.Error(err)
 	}

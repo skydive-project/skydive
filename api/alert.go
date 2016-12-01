@@ -28,20 +28,13 @@ import (
 	"github.com/nu7hatch/gouuid"
 )
 
-const (
-	FIXED = 1 + iota
-	THRESHOLD
-)
-
 type Alert struct {
 	UUID        string
-	Name        string
-	Description string
-	Select      string `valid:"nonzero"`
-	Test        string `valid:"nonzero"`
-	Action      string `valid:"nonzero"`
-	Type        int
-	Count       int
+	Name        string `json:",omitempty"`
+	Description string `json:",omitempty"`
+	Expression  string `json:",omitempty" valid:"nonzero"`
+	Action      string `json:",omitempty" valid:"regexp=^(|http://|https://|file://).*$"`
+	Trigger     string `json:",omitempty" valid:"regexp=^(graph|duration:.+|)$"`
 	CreateTime  time.Time
 }
 
@@ -58,7 +51,6 @@ func NewAlert() *Alert {
 	return &Alert{
 		UUID:       id.String(),
 		CreateTime: time.Now(),
-		Type:       FIXED,
 	}
 }
 

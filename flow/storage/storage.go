@@ -24,8 +24,13 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
+	"github.com/skydive-project/skydive/flow/storage/orientdb"
+	"github.com/skydive-project/skydive/logging"
 )
 
 var (
@@ -38,4 +43,33 @@ type Storage interface {
 	SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error)
 	SearchMetrics(fsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error)
 	Stop()
+}
+
+func NewStorage(backend string) (s Storage, err error) {
+	switch backend {
+	case "elasticsearch":
+		s, err = elasticsearch.New()
+		if err != nil {
+			logging.GetLogger().Fatalf("Can't connect to ElasticSearch server: %v", err)
+		}
+	case "orientdb":
+		s, err = orientdb.New()
+		if err != nil {
+			logging.GetLogger().Fatalf("Can't connect to OrientDB server: %v", err)
+		}
+	case "":
+		logging.GetLogger().Infof("Using no storage")
+		return
+	default:
+		err = fmt.Errorf("Storage type unknown: %s", backend)
+		logging.GetLogger().Fatalf(err.Error())
+		return
+	}
+
+	logging.GetLogger().Infof("Using %s as storage", backend)
+	return
+}
+
+func NewStorageFromConfig() (s Storage, err error) {
+	return NewStorage(config.GetConfig().GetString("analyzer.storage"))
 }

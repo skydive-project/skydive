@@ -65,11 +65,11 @@ func isGremlinExpr(v interface{}, param string) error {
 		return GremlinNotValid(errors.New("not a string"))
 	}
 
-	tr := traversal.NewGremlinTraversalParser(strings.NewReader(query), &graph.Graph{})
+	tr := traversal.NewGremlinTraversalParser(&graph.Graph{})
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(nil, nil))
 
-	if _, err := tr.Parse(); err != nil {
+	if _, err := tr.Parse(strings.NewReader(query)); err != nil {
 		return GremlinNotValid(err)
 	}
 
@@ -77,7 +77,11 @@ func isGremlinExpr(v interface{}, param string) error {
 }
 
 func Validate(v interface{}) error {
-	return skydiveValidator.Validate(v)
+	if err := skydiveValidator.Validate(v); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func init() {

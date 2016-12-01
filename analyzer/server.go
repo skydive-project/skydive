@@ -25,12 +25,12 @@ package analyzer
 import (
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/skydive-project/skydive/alert"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
@@ -38,13 +38,10 @@ import (
 	"github.com/skydive-project/skydive/flow/mappings"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/storage"
-	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
-	"github.com/skydive-project/skydive/flow/storage/orientdb"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/alert"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -121,9 +118,8 @@ func (s *Server) ListenAndServe() {
 	}
 
 	s.ProbeBundle.Start()
-
-	s.AlertServer.AlertManager.Start()
 	s.OnDemandClient.Start()
+	s.AlertServer.Start()
 
 	s.wgServers.Add(3)
 	go func() {
@@ -184,8 +180,8 @@ func (s *Server) Stop() {
 		s.Storage.Stop()
 	}
 	s.ProbeBundle.Stop()
-	s.AlertServer.AlertManager.Stop()
 	s.OnDemandClient.Stop()
+	s.AlertServer.Stop()
 	s.EtcdClient.Stop()
 	s.conn.Cleanup()
 	s.wgServers.Wait()
@@ -198,33 +194,6 @@ func (s *Server) Stop() {
 
 func (s *Server) SetStorage(storage storage.Storage) {
 	s.Storage = storage
-}
-
-func (s *Server) SetStorageFromConfig() {
-	if t := config.GetConfig().GetString("analyzer.storage"); t != "" {
-		var (
-			err     error
-			storage storage.Storage
-		)
-
-		switch t {
-		case "elasticsearch":
-			storage, err = elasticsearch.New()
-			if err != nil {
-				logging.GetLogger().Fatalf("Can't connect to ElasticSearch server: %v", err)
-			}
-		case "orientdb":
-			storage, err = orientdb.New()
-			if err != nil {
-				logging.GetLogger().Fatalf("Can't connect to OrientDB server: %v", err)
-			}
-		default:
-			logging.GetLogger().Fatalf("Storage type unknown: %s", t)
-			os.Exit(1)
-		}
-		s.SetStorage(storage)
-		logging.GetLogger().Infof("Using %s as storage", t)
-	}
 }
 
 func NewServerFromConfig() (*Server, error) {
@@ -307,18 +276,20 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	alertManager := alert.NewAlertManager(g, alertApiHandler)
 	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureApiHandler, wsServer)
-
-	aserver := alert.NewServer(alertManager, wsServer)
-	gserver := graph.NewServer(g, wsServer)
 
 	gfe := mappings.NewGraphFlowEnhancer(g)
 	ofe := mappings.NewOvsFlowEnhancer(g)
-
 	pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
 
 	tableClient := flow.NewTableClient(wsServer)
+	storage, err := storage.NewStorageFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	aserver := alert.NewAlertServer(g, alertApiHandler, wsServer, tableClient, storage)
+	gserver := graph.NewServer(g, wsServer)
 
 	piClient := packet_injector.NewPacketInjectorClient(wsServer)
 
@@ -333,8 +304,8 @@ func NewServerFromConfig() (*Server, error) {
 		EmbeddedEtcd:        etcdServer,
 		EtcdClient:          etcdClient,
 		ProbeBundle:         probeBundle,
+		Storage:             storage,
 	}
-	server.SetStorageFromConfig()
 
 	updateHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerUpdate))
 	expireHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerExpire))

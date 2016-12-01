@@ -36,9 +36,9 @@ import (
 var (
 	alertName        string
 	alertDescription string
-	alertSelect      string
-	alertTest        string
+	alertExpression  string
 	alertAction      string
+	alertTrigger     string
 )
 
 var AlertCmd = &cobra.Command{
@@ -61,9 +61,10 @@ var AlertCreate = &cobra.Command{
 		alert := api.NewAlert()
 		alert.Name = alertName
 		alert.Description = alertDescription
-		alert.Select = alertSelect
+		alert.Expression = alertExpression
+		alert.Trigger = alertTrigger
 		alert.Action = alertAction
-		alert.Test = alertTest
+
 		if errs := validator.Validate(alert); errs != nil {
 			fmt.Println("Error: ", errs)
 			cmd.Usage()
@@ -145,10 +146,10 @@ var AlertDelete = &cobra.Command{
 
 func addAlertFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&alertName, "name", "", "", "alert name")
-	cmd.Flags().StringVarP(&alertDescription, "description", "", "", "alert description")
-	cmd.Flags().StringVarP(&alertSelect, "select", "", "", "alert select criteria")
-	cmd.Flags().StringVarP(&alertTest, "test", "", "", "alert test")
-	cmd.Flags().StringVarP(&alertAction, "action", "", "", "alert action")
+	cmd.Flags().StringVarP(&alertDescription, "description", "", "", "description of the alert")
+	cmd.Flags().StringVarP(&alertTrigger, "trigger", "", "graph", "event that triggers the alert evaluation")
+	cmd.Flags().StringVarP(&alertExpression, "expression", "", "", "Gremlin of JavaScript expression evaluated to trigger the alarm")
+	cmd.Flags().StringVarP(&alertAction, "action", "", "", "can be either an empty string, or a URL (use 'file://' for local scripts)")
 }
 
 func init() {

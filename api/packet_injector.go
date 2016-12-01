@@ -116,8 +116,8 @@ func (pi *PacketInjectorApi) getNode(gremlinQuery string) *graph.Node {
 	pi.Graph.RLock()
 	defer pi.Graph.RUnlock()
 
-	tr := traversal.NewGremlinTraversalParser(strings.NewReader(gremlinQuery), pi.Graph)
-	ts, err := tr.Parse()
+	tr := traversal.NewGremlinTraversalParser(pi.Graph)
+	ts, err := tr.Parse(strings.NewReader(gremlinQuery))
 	if err != nil {
 		return nil
 	}

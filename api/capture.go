@@ -75,8 +75,8 @@ func (c *CaptureResourceHandler) New() ApiResource {
 
 func (c *CaptureApiHandler) getCaptureCount(r ApiResource) ApiResource {
 	capture := r.(*Capture)
-	tr := traversal.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), c.Graph)
-	ts, err := tr.Parse()
+	tr := traversal.NewGremlinTraversalParser(c.Graph)
+	ts, err := tr.Parse(strings.NewReader(capture.GremlinQuery))
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
 		return r

@@ -42,10 +42,10 @@ func TestGraphPathTraversal(t *testing.T) {
 
 	query := `G.V().Has("Name", "N3").GraphPath()`
 
-	tp := traversal.NewGremlinTraversalParser(strings.NewReader(query), g)
+	tp := traversal.NewGremlinTraversalParser(g)
 	tp.AddTraversalExtension(NewTopologyTraversalExtension())
 
-	ts, err := tp.Parse()
+	ts, err := tp.Parse(strings.NewReader(query))
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -66,10 +66,10 @@ func TestRegexPredicate(t *testing.T) {
 
 	query := `G.V().Has("Name", Regex("^local.*st$")).Count()`
 
-	tp := traversal.NewGremlinTraversalParser(strings.NewReader(query), g)
+	tp := traversal.NewGremlinTraversalParser(g)
 	tp.AddTraversalExtension(NewTopologyTraversalExtension())
 
-	ts, err := tp.Parse()
+	ts, err := tp.Parse(strings.NewReader(query))
 	if err != nil {
 		t.Fatal(err.Error())
 	}

@@ -333,7 +333,7 @@ func TestTraversalShortestPathTo(t *testing.T) {
 }
 
 func execTraversalQuery(t *testing.T, g *graph.Graph, query string) GraphTraversalStep {
-	ts, err := NewGremlinTraversalParser(strings.NewReader(query), g).Parse()
+	ts, err := NewGremlinTraversalParser(g).Parse(strings.NewReader(query))
 	if err != nil {
 		t.Fatalf("%s: %s", query, err.Error())
 	}

@@ -42,6 +42,7 @@ type OnDemandProbeClient struct {
 	wsServer       *shttp.WSServer
 	captures       map[string]*api.Capture
 	watcher        api.StoppableWatcher
+	parser         *traversal.GremlinTraversalParser
 }
 
 func (o *OnDemandProbeClient) registerProbe(node *graph.Node, capture *api.Capture) bool {
@@ -72,8 +73,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node) bool {
 }
 
 func (o *OnDemandProbeClient) matchGremlinExpr(node *graph.Node, gremlin string) bool {
-	tr := traversal.NewGremlinTraversalParser(strings.NewReader(gremlin), o.graph)
-	ts, err := tr.Parse()
+	ts, err := o.parser.Parse(strings.NewReader(gremlin))
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
 		return false
@@ -138,8 +138,7 @@ func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
 
 	o.captures[capture.UUID] = capture
 
-	tr := traversal.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), o.graph)
-	ts, err := tr.Parse()
+	ts, err := o.parser.Parse(strings.NewReader(capture.GremlinQuery))
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
 		return
@@ -179,8 +178,7 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 
 	delete(o.captures, capture.UUID)
 
-	tr := traversal.NewGremlinTraversalParser(strings.NewReader(capture.GremlinQuery), o.graph)
-	ts, err := tr.Parse()
+	ts, err := o.parser.Parse(strings.NewReader(capture.GremlinQuery))
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
 		return
@@ -243,5 +241,6 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureApiHandler, w *shttp.
 		captureHandler: ch,
 		wsServer:       w,
 		captures:       captures,
+		parser:         traversal.NewGremlinTraversalParser(g),
 	}
 }
