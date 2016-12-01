@@ -23,11 +23,13 @@
 package flow
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -45,8 +47,16 @@ type GetAttr interface {
 	GetAttr(name string) interface{}
 }
 
-type FlowProbeNodeSetter interface {
-	SetProbeNode(flow *Flow) bool
+type FlowPacket struct {
+	gopacket *gopacket.Packet
+	length   int64
+}
+
+// FlowPackets represents a suite of parent/child FlowPacket
+type FlowPackets []FlowPacket
+
+func (x FlowProtocol) Value() int32 {
+	return int32(x)
 }
 
 func (s *FlowLayer) MarshalJSON() ([]byte, error) {
@@ -121,7 +131,7 @@ func layerPathFromGoPacket(packet *gopacket.Packet) string {
 	return strings.Replace(path, "Linux SLL/", "", 1)
 }
 
-func (flow *Flow) UpdateUUIDs(key string, parentUUID string) {
+func (flow *Flow) UpdateUUID(key string) {
 	hasher := sha1.New()
 	hasher.Write([]byte(flow.LayersPath))
 
@@ -140,19 +150,6 @@ func (flow *Flow) UpdateUUIDs(key string, parentUUID string) {
 	hasher.Write([]byte(key))
 
 	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
-	flow.ParentUUID = parentUUID
-}
-
-func (flow *Flow) initFromGoPacket(key string, now int64, packet *gopacket.Packet, length int64, setter FlowProbeNodeSetter, parentUUID string) {
-	flow.Init(now, packet, length)
-	if setter != nil {
-		setter.SetProbeNode(flow)
-	}
-	flow.LayersPath = layerPathFromGoPacket(packet)
-	appLayers := strings.Split(strings.TrimSuffix(flow.LayersPath, "/Payload"), "/")
-	flow.Application = appLayers[len(appLayers)-1]
-
-	flow.UpdateUUIDs(key, parentUUID)
 }
 
 func FromData(data []byte) (*Flow, error) {
@@ -175,15 +172,216 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-type SubPacket struct {
-	packet *gopacket.Packet
-	length int64
+func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeUUID string, parentUUID string) {
+	f.Metric.Start = now
+	f.Metric.Last = now
+
+	f.newLinkLayer(packet, length)
+
+	f.NodeUUID = nodeUUID
+	f.ParentUUID = parentUUID
+
+	f.LayersPath = layerPathFromGoPacket(packet)
+	appLayers := strings.Split(strings.TrimSuffix(f.LayersPath, "/Payload"), "/")
+	f.Application = appLayers[len(appLayers)-1]
+
+	// no network layer then no transport layer
+	if err := f.newNetworkLayer(packet); err == nil {
+		f.newTransportLayer(packet)
+	}
+
+	// need to have as most variable filled as possible to get correct UUID
+	f.UpdateUUID(key)
 }
 
-// splitPacket split original packet into multiple packets in
+func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
+	f.Metric.Last = now
+
+	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
+		f.updateMetricsWithNetworkLayer(packet)
+	}
+}
+
+func (fm *FlowMetric) Copy() *FlowMetric {
+	return &FlowMetric{
+		Start:     fm.Start,
+		Last:      fm.Last,
+		ABPackets: fm.ABPackets,
+		ABBytes:   fm.ABBytes,
+		BAPackets: fm.BAPackets,
+		BABytes:   fm.BABytes,
+	}
+}
+
+func (f *Flow) DumpInfo(layerSeparator ...string) string {
+	fm := f.GetMetric()
+	sep := " | "
+	if len(layerSeparator) > 0 {
+		sep = layerSeparator[0]
+	}
+	buf := bytes.NewBufferString("")
+	buf.WriteString(fmt.Sprintf("%s\t", f.Link.Protocol))
+	buf.WriteString(fmt.Sprintf("(%d %d)", fm.ABPackets, fm.ABBytes))
+	buf.WriteString(fmt.Sprintf(" (%d %d)", fm.BAPackets, fm.BABytes))
+	buf.WriteString(fmt.Sprintf("\t(%s -> %s)%s", f.Link.A, f.Link.B, sep))
+	return buf.String()
+}
+
+func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) {
+	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
+	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
+	if !ok {
+		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
+		return
+	}
+
+	f.Link = &FlowLayer{
+		Protocol: FlowProtocol_ETHERNET,
+		A:        ethernetPacket.SrcMAC.String(),
+		B:        ethernetPacket.DstMAC.String(),
+	}
+
+	f.updateMetricsWithLinkLayer(packet, length)
+}
+
+func getLinkLayerLength(packet *layers.Ethernet) int64 {
+	if packet.Length > 0 { // LLC
+		return 14 + int64(packet.Length)
+	}
+
+	return 14 + int64(len(packet.Payload))
+}
+
+func (f *Flow) updateMetricsWithLinkLayer(packet *gopacket.Packet, length int64) bool {
+	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
+	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
+	if !ok {
+		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
+		return false
+	}
+
+	// if the length is given use it as the packet can be truncated like in SFlow
+	if length == 0 {
+		length = getLinkLayerLength(ethernetPacket)
+	}
+
+	if f.Link.A == ethernetPacket.SrcMAC.String() {
+		f.Metric.ABPackets += int64(1)
+		f.Metric.ABBytes += length
+	} else {
+		f.Metric.BAPackets += int64(1)
+		f.Metric.BABytes += length
+	}
+
+	return true
+}
+
+func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
+	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+		f.Network = &FlowLayer{
+			Protocol: FlowProtocol_IPV4,
+			A:        ipv4Packet.SrcIP.String(),
+			B:        ipv4Packet.DstIP.String(),
+		}
+		return f.updateMetricsWithNetworkLayer(packet)
+	}
+
+	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
+	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+		f.Network = &FlowLayer{
+			Protocol: FlowProtocol_IPV6,
+			A:        ipv6Packet.SrcIP.String(),
+			B:        ipv6Packet.DstIP.String(),
+		}
+		return f.updateMetricsWithNetworkLayer(packet)
+	}
+
+	return errors.New("Unable to decode the IP layer")
+}
+
+func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
+	// bypass if a Link layer already exist
+	if f.Link != nil {
+		return nil
+	}
+
+	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+		if f.Network.A == ipv4Packet.SrcIP.String() {
+			f.Metric.ABPackets += int64(1)
+			f.Metric.ABBytes += int64(ipv4Packet.Length)
+		} else {
+			f.Metric.BAPackets += int64(1)
+			f.Metric.BABytes += int64(ipv4Packet.Length)
+		}
+		return nil
+	}
+	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
+	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+		if f.Network.A == ipv6Packet.SrcIP.String() {
+			f.Metric.ABPackets += int64(1)
+			f.Metric.ABBytes += int64(ipv6Packet.Length)
+		} else {
+			f.Metric.BAPackets += int64(1)
+			f.Metric.BABytes += int64(ipv6Packet.Length)
+		}
+		return nil
+	}
+	return errors.New("Unable to decode the IP layer")
+}
+
+func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
+	var transportLayer gopacket.Layer
+	var ok bool
+	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
+	_, ok = transportLayer.(*layers.TCP)
+	ptype := FlowProtocol_TCPPORT
+	if !ok {
+		transportLayer = (*packet).Layer(layers.LayerTypeUDP)
+		_, ok = transportLayer.(*layers.UDP)
+		ptype = FlowProtocol_UDPPORT
+		if !ok {
+			transportLayer = (*packet).Layer(layers.LayerTypeSCTP)
+			_, ok = transportLayer.(*layers.SCTP)
+			ptype = FlowProtocol_SCTPPORT
+			if !ok {
+				return errors.New("Unable to decode the transport layer")
+			}
+		}
+	}
+
+	f.Transport = &FlowLayer{
+		Protocol: ptype,
+	}
+
+	switch ptype {
+	case FlowProtocol_TCPPORT:
+		transportPacket, _ := transportLayer.(*layers.TCP)
+		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
+		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
+	case FlowProtocol_UDPPORT:
+		transportPacket, _ := transportLayer.(*layers.UDP)
+		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
+		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
+	case FlowProtocol_SCTPPORT:
+		transportPacket, _ := transportLayer.(*layers.SCTP)
+		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
+		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
+	}
+	return nil
+}
+
+// FlowPacketsFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
-func splitPacket(packet *gopacket.Packet, outerLength int64) []SubPacket {
-	var subPackets []SubPacket
+func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64) FlowPackets {
+	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
+		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
+		logging.GetLogger().Debug((*packet).Dump())
+		return nil
+	}
+
+	var flowPackets FlowPackets
 
 	packetData := (*packet).Data()
 	packetLayers := (*packet).Layers()
@@ -211,7 +409,7 @@ func splitPacket(packet *gopacket.Packet, outerLength int64) []SubPacket {
 		switch layer.LayerType() {
 		case layers.LayerTypeGRE, layers.LayerTypeVXLAN, layers.LayerTypeMPLS:
 			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
-			subPackets = append(subPackets, SubPacket{packet: &p, length: topLayerLength})
+			flowPackets = append(flowPackets, FlowPacket{gopacket: &p, length: topLayerLength})
 
 			// substract the current encapsulation header length as we are going to change the
 			// encapsulation layer
@@ -227,67 +425,27 @@ func splitPacket(packet *gopacket.Packet, outerLength int64) []SubPacket {
 		}
 	}
 
-	if len(subPackets) > 0 {
+	if len(flowPackets) > 0 {
 		p := gopacket.NewPacket(packetData[start:], topLayer.LayerType(), gopacket.NoCopy)
-		subPackets = append(subPackets, SubPacket{packet: &p, length: 0})
+		flowPackets = append(flowPackets, FlowPacket{gopacket: &p, length: 0})
 	} else {
-		subPackets = append(subPackets, SubPacket{packet: packet, length: outerLength})
+		flowPackets = append(flowPackets, FlowPacket{gopacket: packet, length: outerLength})
 	}
 
-	return subPackets
+	return flowPackets
 }
 
-func FlowsFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, setter FlowProbeNodeSetter) []*Flow {
-	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
-		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
-		logging.GetLogger().Debug((*packet).Dump())
-		return nil
-	}
-
-	subPackets := splitPacket(packet, length)
-
-	flows := make([]*Flow, len(subPackets))
-	var parentUUID string
-	for i, sub := range subPackets {
-		flows[i] = flowFromGoPacket(ft, sub.packet, sub.length, setter, parentUUID)
-		if flows[i] == nil {
-			return nil
-		}
-		parentUUID = flows[i].UUID
-	}
-
-	return flows
-
-}
-
-func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, setter FlowProbeNodeSetter, parentUUID ...string) *Flow {
-	pUUID := ""
-	if len(parentUUID) > 0 {
-		pUUID = parentUUID[0]
-	}
-
-	key := FlowKeyFromGoPacket(packet, pUUID).String()
-	flow, new := ft.GetOrCreateFlow(key)
-	if new {
-		flow.initFromGoPacket(key, ft.GetTime(), packet, length, setter, pUUID)
-	} else {
-		flow.Update(ft.GetTime(), packet, length)
-	}
-
-	return flow
-}
-
-func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter FlowProbeNodeSetter) []*Flow {
-	flows := []*Flow{}
+// FlowPacketsFromSFlowSample returns an array of FlowPackets as a sample
+// contains mutlple records which generate a FlowPackets each.
+func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample) []FlowPackets {
+	var flowPacketsSet []FlowPackets
 
 	for _, rec := range sample.Records {
-
 		/* FIX(safchain): just keeping the raw packet for now */
 		switch rec.(type) {
 		case layers.SFlowRawPacketFlowRecord:
 			/* We only support RawPacket from SFlow probe */
 		case layers.SFlowExtendedSwitchFlowRecord:
-			logging.GetLogger().Debug("1st layer is not SFlowRawPacketFlowRecord type")
 			continue
 		default:
 			logging.GetLogger().Critical("1st layer is not a SFlow supported type")
@@ -296,13 +454,13 @@ func FlowsFromSFlowSample(ft *Table, sample *layers.SFlowFlowSample, setter Flow
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
-		goFlows := FlowsFromGoPacket(ft, &record.Header, int64(record.FrameLength-record.PayloadRemoved), setter)
-		if goFlows != nil {
-			flows = append(flows, goFlows...)
+		// each record can generate mutliple FlowPacket in case of encapsulation
+		if flowPackets := FlowPacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved)); len(flowPackets) > 0 {
+			flowPacketsSet = append(flowPacketsSet, flowPackets)
 		}
 	}
 
-	return flows
+	return flowPacketsSet
 }
 
 func (f *FlowLayer) GetField(fields []string) (string, error) {

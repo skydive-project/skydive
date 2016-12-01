@@ -34,7 +34,9 @@ import (
 func TestFlowSimple(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, IPv4, TCP)
-	FlowsFromGoPacket(table, packet, 0, nil)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	table.FlowPacketsToFlow(flowPackets)
+
 	flows := table.GetFlows(nil).GetFlows()
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
@@ -47,7 +49,9 @@ func TestFlowSimple(t *testing.T) {
 func TestFlowSimpleIPv6(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, IPv6, TCP)
-	FlowsFromGoPacket(table, packet, 0, nil)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	table.FlowPacketsToFlow(flowPackets)
+
 	flows := table.GetFlows(nil).GetFlows()
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
@@ -57,15 +61,36 @@ func TestFlowSimpleIPv6(t *testing.T) {
 	}
 }
 
+func sortFlowByRelationship(flows []*Flow) []*Flow {
+	res := make([]*Flow, len(flows))
+
+	var parentUUID string
+	for i := range flows {
+		for _, flow := range flows {
+			if flow.ParentUUID == parentUUID {
+				res[i] = flow
+				parentUUID = flow.UUID
+				break
+			}
+		}
+	}
+	return res
+}
+
 func TestFlowParentUUID(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, UDP)
-	flows := FlowsFromGoPacket(table, packet, 0, nil)
-	flowsTable := table.GetFlows(nil).GetFlows()
-	if len(flowsTable) != 2 {
+	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	table.FlowPacketsToFlow(flowPackets)
+
+	flows := table.GetFlows(nil).GetFlows()
+	if len(flows) != 2 {
 		t.Error("An encapsulated encaspsulated packet must generate 2 flows")
 	}
-	if flows[1].ParentUUID != flows[0].UUID {
+
+	flows = sortFlowByRelationship(flows)
+
+	if flows[1].ParentUUID == "" || flows[1].ParentUUID != flows[0].UUID {
 		t.Errorf("Encapsulated flow must have ParentUUID == %s", flows[0].UUID)
 	}
 	if flows[0].LayersPath != "Ethernet/IPv4/GRE" || flows[1].LayersPath != "IPv4/UDP/Payload" {
@@ -76,11 +101,16 @@ func TestFlowParentUUID(t *testing.T) {
 func TestFlowEncaspulation(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, GRE, IPv4, TCP)
-	flows := FlowsFromGoPacket(table, packet, 0, nil)
-	flowsTable := table.GetFlows(nil).GetFlows()
-	if len(flowsTable) != 3 {
+	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	table.FlowPacketsToFlow(flowPackets)
+
+	flows := table.GetFlows(nil).GetFlows()
+	if len(flows) != 3 {
 		t.Error("An encapsulated encaspsulated packet must generate 3 flows")
 	}
+
+	flows = sortFlowByRelationship(flows)
+
 	if flows[0].LayersPath != "Ethernet/IPv4/GRE" || flows[1].LayersPath != "IPv4/GRE" || flows[2].LayersPath != "IPv4/TCP/Payload" {
 		t.Errorf("Flows LayersPath must be Ethernet/IPv4/GRE | IPv4/GRE | IPv4/TCP/Payload")
 	}
@@ -90,11 +120,16 @@ func TestFlowEncaspulationMplsUdp(t *testing.T) {
 	layers.RegisterUDPPortLayerType(layers.UDPPort(444), layers.LayerTypeMPLS)
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, UDP_MPLS, MPLS, IPv4, TCP)
-	flows := FlowsFromGoPacket(table, packet, 0, nil)
-	flowsTable := table.GetFlows(nil).GetFlows()
-	if len(flowsTable) != 2 {
+	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	table.FlowPacketsToFlow(flowPackets)
+
+	flows := table.GetFlows(nil).GetFlows()
+	if len(flows) != 2 {
 		t.Error("An MPLSoUDP packet must generate 2 flows")
 	}
+
+	flows = sortFlowByRelationship(flows)
+
 	if flows[0].LayersPath != "Ethernet/IPv4/UDP/MPLS" || flows[1].LayersPath != "IPv4/TCP/Payload" {
 		t.Errorf("Flows LayersPath must be Ethernet/IPv4/UDP/MPLS | IPv4/TCP/Payload")
 	}

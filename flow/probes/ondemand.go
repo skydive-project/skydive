@@ -121,6 +121,8 @@ func (o *OnDemandProbeListener) registerProbe(n *graph.Node, capture *api.Captur
 	}
 
 	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline)
+	ft.SetNodeUUID(string(n.ID))
+
 	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
 		o.fta.Release(ft)

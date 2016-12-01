@@ -28,7 +28,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -47,20 +46,19 @@ var (
 )
 
 type SFlowAgent struct {
-	UUID                string
-	Addr                string
-	Port                int
-	FlowTable           *flow.Table
-	FlowProbeNodeSetter flow.FlowProbeNodeSetter
+	UUID      string
+	Addr      string
+	Port      int
+	FlowTable *flow.Table
+	Conn      *net.UDPConn
 }
 
 type SFlowAgentAllocator struct {
 	sync.RWMutex
-	FlowProbeNodeSetter flow.FlowProbeNodeSetter
-	Addr                string
-	MinPort             int
-	MaxPort             int
-	allocated           map[int]*SFlowAgent
+	Addr      string
+	MinPort   int
+	MaxPort   int
+	allocated map[int]*SFlowAgent
 }
 
 func (sfa *SFlowAgent) GetTarget() string {
@@ -68,26 +66,31 @@ func (sfa *SFlowAgent) GetTarget() string {
 	return strings.Join(target, ":")
 }
 
-func (sfa *SFlowAgent) feedFlowTable(conn *net.UDPConn) {
+func (sfa *SFlowAgent) feedFlowTable(packetsChan chan flow.FlowPackets) {
 	var buf [maxDgramSize]byte
-	_, _, err := conn.ReadFromUDP(buf[:])
-	if err != nil {
-		conn.SetDeadline(time.Now().Add(1 * time.Second))
-		return
-	}
+	for {
+		_, _, err := sfa.Conn.ReadFromUDP(buf[:])
+		if err != nil {
+			return
+		}
 
-	// TODO use gopacket.NoCopy ? instead of gopacket.Default
-	p := gopacket.NewPacket(buf[:], layers.LayerTypeSFlow, gopacket.Default)
-	sflowLayer := p.Layer(layers.LayerTypeSFlow)
-	sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
-	if !ok {
-		return
-	}
+		// TODO use gopacket.NoCopy ? instead of gopacket.Default
+		p := gopacket.NewPacket(buf[:], layers.LayerTypeSFlow, gopacket.Default)
+		sflowLayer := p.Layer(layers.LayerTypeSFlow)
+		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
+		if !ok {
+			continue
+		}
 
-	if sflowPacket.SampleCount > 0 {
-		for _, sample := range sflowPacket.FlowSamples {
-			flows := flow.FlowsFromSFlowSample(sfa.FlowTable, &sample, sfa.FlowProbeNodeSetter)
-			logging.GetLogger().Debugf("%d flows captured", len(flows))
+		if sflowPacket.SampleCount > 0 {
+			logging.GetLogger().Debugf("%d sample captured", sflowPacket.SampleCount)
+			for _, sample := range sflowPacket.FlowSamples {
+				// iterate over a set of FlowPackets as a sample contains multiple
+				// records each generating FlowPackets.
+				for _, flowPackets := range flow.FlowPacketsFromSFlowSample(&sample) {
+					packetsChan <- flowPackets
+				}
+			}
 		}
 	}
 }
@@ -102,14 +105,12 @@ func (sfa *SFlowAgent) start() error {
 		logging.GetLogger().Errorf("Unable to listen on port %d: %s", sfa.Port, err.Error())
 		return err
 	}
-	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(1 * time.Second))
+	sfa.Conn = conn
 
-	feedFlowTable := func() {
-		sfa.feedFlowTable(conn)
-	}
-	sfa.FlowTable.RegisterDefault(feedFlowTable)
-	sfa.FlowTable.Run()
+	packetsChan := sfa.FlowTable.Start()
+	defer sfa.FlowTable.Stop()
+
+	sfa.feedFlowTable(packetsChan)
 
 	return nil
 }
@@ -119,16 +120,14 @@ func (sfa *SFlowAgent) Start() {
 }
 
 func (sfa *SFlowAgent) Stop() {
-	sfa.FlowTable.Stop()
+	if sfa.Conn != nil {
+		sfa.Conn.Close()
+	}
 }
 
 func (sfa *SFlowAgent) Flush() {
 	logging.GetLogger().Critical("Flush() MUST be called for testing purpose only, not in production")
 	sfa.FlowTable.Flush()
-}
-
-func (sfa *SFlowAgent) SetFlowProbeNodeSetter(p flow.FlowProbeNodeSetter) {
-	sfa.FlowProbeNodeSetter = p
 }
 
 func NewSFlowAgent(u string, a string, p int, ft *flow.Table) *SFlowAgent {
@@ -186,7 +185,7 @@ func (a *SFlowAgentAllocator) ReleaseAll() {
 	}
 }
 
-func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter, ft *flow.Table) (*SFlowAgent, error) {
+func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table) (*SFlowAgent, error) {
 	address := config.GetConfig().GetString("sflow.bind_address")
 	if address == "" {
 		address = "127.0.0.1"
@@ -215,7 +214,6 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, p flow.FlowProbeNodeSetter, ft 
 	for i := min; i != max+1; i++ {
 		if _, ok := a.allocated[i]; !ok {
 			s := NewSFlowAgent(uuid, address, i, ft)
-			s.SetFlowProbeNodeSetter(p)
 
 			a.allocated[i] = s
 

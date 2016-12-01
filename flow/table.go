@@ -64,9 +64,9 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *FlowHandler
 
 type Table struct {
 	sync.RWMutex
+	PacketsChan   chan FlowPackets
 	table         map[string]*Flow
 	stats         map[string]*FlowMetric
-	defaultFunc   func()
 	flush         chan bool
 	flushDone     chan bool
 	query         chan *TableQuery
@@ -77,10 +77,12 @@ type Table struct {
 	updateHandler *FlowHandler
 	expireHandler *FlowHandler
 	tableClock    int64
+	nodeUUID      string
 }
 
 func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 	t := &Table{
+		PacketsChan:   make(chan FlowPackets, 1000),
 		table:         make(map[string]*Flow),
 		stats:         make(map[string]*FlowMetric),
 		flush:         make(chan bool),
@@ -103,6 +105,10 @@ func (ft *Table) String() string {
 	ft.RLock()
 	defer ft.RUnlock()
 	return fmt.Sprintf("%d flows", len(ft.table))
+}
+
+func (ft *Table) SetNodeUUID(uuid string) {
+	ft.nodeUUID = uuid
 }
 
 func (ft *Table) Update(flows []*Flow) {
@@ -277,12 +283,6 @@ func (ft *Table) Expire(now time.Time) {
 	ft.Unlock()
 }
 
-func (ft *Table) RegisterDefault(fn func()) {
-	ft.Lock()
-	ft.defaultFunc = fn
-	ft.Unlock()
-}
-
 /* Window returns a FlowSet with flows fitting in the given time range
 Need to Rlock the table before calling. Returned flows may not be unique */
 func (ft *Table) Window(start, end int64) *FlowSet {
@@ -395,6 +395,24 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
+func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string) *Flow {
+	key := FlowKeyFromGoPacket(packet.gopacket, parentUUID).String()
+	flow, new := ft.GetOrCreateFlow(key)
+	if new {
+		flow.Init(key, ft.GetTime(), packet.gopacket, packet.length, ft.nodeUUID, parentUUID)
+	} else {
+		flow.Update(ft.GetTime(), packet.gopacket, packet.length)
+	}
+	return flow
+}
+
+func (ft *Table) FlowPacketsToFlow(flowPackets FlowPackets) {
+	var parentUUID string
+	for _, packet := range flowPackets {
+		parentUUID = ft.FlowPacketToFlow(&packet, parentUUID).UUID
+	}
+}
+
 func (ft *Table) Run() {
 	ft.wg.Add(1)
 	defer ft.wg.Done()
@@ -427,18 +445,15 @@ func (ft *Table) Run() {
 			}
 		case now := <-nowTicker.C:
 			atomic.StoreInt64(&ft.tableClock, now.Unix())
-		default:
-			if ft.defaultFunc != nil {
-				ft.defaultFunc()
-			} else {
-				time.Sleep(20 * time.Millisecond)
-			}
+		case packets := <-ft.PacketsChan:
+			ft.FlowPacketsToFlow(packets)
 		}
 	}
 }
 
-func (ft *Table) Start() {
+func (ft *Table) Start() chan FlowPackets {
 	go ft.Run()
+	return ft.PacketsChan
 }
 
 func (ft *Table) Stop() {
@@ -448,6 +463,7 @@ func (ft *Table) Stop() {
 		ft.lockState.Lock()
 		close(ft.query)
 		close(ft.reply)
+		close(ft.PacketsChan)
 		ft.lockState.Unlock()
 	}
 

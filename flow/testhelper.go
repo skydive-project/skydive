@@ -188,13 +188,16 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 	return &gpacket
 }
 
-type probeNodeSetter struct {
-	uuid string
-}
+func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, nodeUUID string) *Flow {
+	key := FlowKeyFromGoPacket(packet, "").String()
+	flow, new := ft.GetOrCreateFlow(key)
+	if new {
+		flow.Init(key, ft.GetTime(), packet, length, nodeUUID, "")
+	} else {
+		flow.Update(ft.GetTime(), packet, length)
+	}
 
-func (p *probeNodeSetter) SetProbeNode(f *Flow) bool {
-	f.NodeUUID = p.uuid
-	return true
+	return flow
 }
 
 func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, uuid string) []*Flow {
@@ -207,7 +210,7 @@ func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, uuid 
 			packet = forgeTestPacket(t, i+baseSeed*10, swap, ETH, IPv4, UDP)
 		}
 
-		flow := flowFromGoPacket(ft, packet, int64(len((*packet).Data())), &probeNodeSetter{uuid})
+		flow := flowFromGoPacket(ft, packet, int64(len((*packet).Data())), uuid)
 		if flow == nil {
 			t.Fail()
 		}

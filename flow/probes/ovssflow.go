@@ -61,11 +61,6 @@ func probeID(i string) string {
 	return "SkydiveSFlowProbe_" + strings.Replace(i, "-", "_", -1)
 }
 
-func (p *OvsSFlowProbe) SetProbeNode(flow *flow.Flow) bool {
-	flow.NodeUUID = p.NodeUUID
-	return true
-}
-
 func newInsertSFlowProbeOP(probe OvsSFlowProbe) (*libovsdb.Operation, error) {
 	sFlowRow := make(map[string]interface{})
 	sFlowRow["agent"] = probe.Interface
@@ -235,7 +230,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, uuid st
 		NodeUUID:   uuid,
 	}
 
-	agent, err := o.allocator.Alloc(bridgeUUID, &probe, ft)
+	agent, err := o.allocator.Alloc(bridgeUUID, ft)
 	if err != nil && err != sflow.AgentAlreadyAllocated {
 		return err
 	}

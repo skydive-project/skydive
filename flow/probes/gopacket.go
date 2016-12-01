@@ -63,20 +63,15 @@ const (
 	snaplen int32 = 256
 )
 
-func (p *GoPacketProbe) SetProbeNode(flow *flow.Flow) bool {
-	flow.NodeUUID = p.NodeUUID
-	return true
-}
-
-func (p *GoPacketProbe) packetsToChan(ch chan gopacket.Packet) {
-	defer close(ch)
-
+func (p *GoPacketProbe) feedFlowTable(packetsChan chan flow.FlowPackets) {
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := p.packetSource.NextPacket()
 		if err == io.EOF {
 			time.Sleep(20 * time.Millisecond)
 		} else if err == nil {
-			ch <- packet
+			if packets := flow.FlowPacketsFromGoPacket(&packet, 0); len(packets) > 0 {
+				packetsChan <- packets
+			}
 		} else {
 			// sleep awhile in case of error to reduce the presure on cpu
 			time.Sleep(100 * time.Millisecond)
@@ -140,34 +135,16 @@ func (p *GoPacketProbe) start(g *graph.Graph, n *graph.Node, capture *api.Captur
 	// leave the namespace, stay lock in the current thread
 	nscontext.Quit()
 
-	ch := make(chan gopacket.Packet, 1000)
+	packetsChan := p.flowTable.Start()
+	defer p.flowTable.Stop()
 
-	go func() {
-		timer := time.NewTicker(100 * time.Millisecond)
-		defer timer.Stop()
-
-		feedFlowTable := func() {
-			select {
-			case packet, ok := <-ch:
-				if ok {
-					flow.FlowsFromGoPacket(p.flowTable, &packet, 0, p)
-				}
-			case <-timer.C:
-			}
-		}
-		p.flowTable.RegisterDefault(feedFlowTable)
-		p.flowTable.Run()
-	}()
-
-	p.packetsToChan(ch)
+	p.feedFlowTable(packetsChan)
 
 	return nil
 }
 
 func (p *GoPacketProbe) stop() {
-	if atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
-		p.flowTable.Stop()
-	}
+	atomic.StoreInt64(&p.state, common.StoppingState)
 }
 
 func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
