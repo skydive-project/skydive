@@ -1016,3 +1016,21 @@ func (t *GraphTraversalValue) MarshalJSON() ([]byte, error) {
 func (t *GraphTraversalValue) Error() error {
 	return t.error
 }
+
+func (t *GraphTraversalValue) Dedup() *GraphTraversalValue {
+
+	if t.error != nil {
+		return t
+	}
+
+	var nv []interface{}
+	ntv := &GraphTraversalValue{GraphTraversal: t.GraphTraversal, value: nv}
+	visited := make(map[interface{}]bool)
+	for _, v := range t.Values() {
+		if _, ok := visited[v]; !ok {
+			visited[v] = true
+			ntv.value = append(ntv.value.([]interface{}), v)
+		}
+	}
+	return ntv
+}
