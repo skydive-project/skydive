@@ -9,7 +9,7 @@ dist: trusty
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev
+    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils
     - sudo ovs-vsctl show
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
