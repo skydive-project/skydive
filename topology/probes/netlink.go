@@ -108,13 +108,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 		return
 	}
 
-	stats, err := u.ethtool.Stats(link.Attrs().Name)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", link.Attrs().Name, err.Error())
-		return
-	}
-
-	if index, ok := stats["peer_ifindex"]; ok {
+	if index, ok := intf.Metadata()["PeerIfIndex"]; ok {
 		peerResolver := func() error {
 			// re get the interface from the graph since the interface could have been deleted
 			if u.Graph.GetNode(intf.ID) == nil {
@@ -122,7 +116,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			}
 
 			// got more than 1 peer, unable to find the right one, wait for the other to discover
-			peer := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": int64(index), "Type": "veth"})
+			peer := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": index.(int64), "Type": "veth"})
 			if peer != nil && !u.Graph.AreLinked(peer, intf) {
 				u.Graph.Link(peer, intf, graph.Metadata{"RelationType": "layer2", "Type": "veth"})
 				return nil
@@ -130,7 +124,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			return errors.New("Nodes not linked")
 		}
 
-		if int64(index) > intf.Metadata()["IfIndex"].(int64) {
+		if index.(int64) > intf.Metadata()["IfIndex"].(int64) {
 			if err := peerResolver(); err != nil {
 				retryFnc := func() error {
 					if u.isRunning() == false {
@@ -275,6 +269,15 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		"MAC":       link.Attrs().HardwareAddr.String(),
 		"MTU":       int64(link.Attrs().MTU),
 		"Driver":    driver,
+	}
+
+	if link.Type() == "veth" {
+		stats, err := u.ethtool.Stats(link.Attrs().Name)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", link.Attrs().Name, err.Error())
+		} else if index, ok := stats["peer_ifindex"]; ok {
+			metadata["PeerIfIndex"] = int64(index)
+		}
 	}
 
 	ipv4 := u.getLinkIPs(link, netlink.FAMILY_V4)
@@ -447,6 +450,12 @@ func (u *NetLinkProbe) start(nsPath string) {
 	// Leave the network namespace
 	context.Close()
 
+	u.wg.Add(1)
+	defer u.wg.Done()
+
+	atomic.StoreInt64(&u.state, common.RunningState)
+	defer atomic.StoreInt64(&u.state, common.StoppedState)
+
 	u.netlink = h
 	u.initialize()
 
@@ -464,10 +473,6 @@ func (u *NetLinkProbe) start(nsPath string) {
 	}
 	events := make([]syscall.EpollEvent, maxEpollEvents)
 
-	u.wg.Add(1)
-	defer u.wg.Done()
-
-	atomic.StoreInt64(&u.state, common.RunningState)
 	for atomic.LoadInt64(&u.state) == common.RunningState {
 		n, err := syscall.EpollWait(epfd, events[:], 1000)
 		if err != nil {
