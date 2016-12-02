@@ -55,9 +55,17 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) error {
 	srcdata := pp.SrcNode.Metadata()
 	dstdata := pp.DstNode.Metadata()
 
+	if _, ok := srcdata["IPV4"]; !ok {
+		return errors.New("Source Node doesn't have an IP")
+	}
+
 	srcIP := getIP(srcdata["IPV4"].(string))
 	if srcIP == nil {
 		return errors.New("Source Node doesn't have proper IP")
+	}
+
+	if _, ok := dstdata["IPV4"]; !ok {
+		return errors.New("Destination Node doesn't have an IP")
 	}
 
 	dstIP := getIP(dstdata["IPV4"].(string))

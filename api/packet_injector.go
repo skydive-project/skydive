@@ -76,6 +76,16 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 
 	srcdata := srcNode.Metadata()
 	dstdata := dstNode.Metadata()
+
+	if _, ok := srcdata["IPV4"]; !ok {
+		writeError(w, http.StatusBadRequest, errors.New("Source Node doesn't have an IP"))
+		return
+	}
+	if _, ok := dstdata["IPV4"]; !ok {
+		writeError(w, http.StatusBadRequest, errors.New("Destination Node doesn't have an IP"))
+		return
+	}
+
 	if srcdata["IPV4"] == "" || srcdata["MAC"] == "" ||
 		dstdata["IPV4"] == "" || dstdata["MAC"] == "" {
 		writeError(w, http.StatusBadRequest, errors.New("Selected nodes are not proper"))
