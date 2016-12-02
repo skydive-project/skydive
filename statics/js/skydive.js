@@ -317,7 +317,7 @@ Layout.prototype.Invalidate = function() {
 Layout.prototype.Clear = function() {
   var ID;
 
-  CurrentNodeDetails = null;
+  CurrentNodeDetails = undefined;
   $("#node-details").hide();
 
   for (ID in this.graph.Edges)
@@ -487,15 +487,17 @@ Layout.prototype.UpdateNode = function(node, metadata) {
 };
 
 Layout.prototype.DelNode = function(node) {
+
+  if (typeof CurrentNodeDetails != "undefined" && node.ID == CurrentNodeDetails.ID) {
+    CurrentNodeDetails = undefined;
+    $("#node-details").hide();
+  }
+
   if (!(node.ID in this.elements))
     return;
 
   for (var i in this.nodes) {
     if (this.nodes[i].ID == node.ID) {
-      if (typeof CurrentNodeDetails != "undefined" && this.nodes[i].ID == CurrentNodeDetails.ID) {
-        CurrentNodeDetails = undefined;
-        $("#node-details").hide();
-      }
       this.nodes.splice(i, 1);
       break;
     }
@@ -1103,9 +1105,6 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
 
       this.graph.DelNode(node);
       this.DelNode(node);
-
-      if (typeof CurrentNodeDetails != "undefined" && CurrentNodeDetails.ID == node.ID)
-        $("#node-details").hide();
       break;
 
     case "EdgeUpdated":
