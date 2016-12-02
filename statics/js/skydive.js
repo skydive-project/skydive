@@ -1698,19 +1698,24 @@ function SetupControlButtons() {
     zoomclicked("zoomreset");
     e.preventDefault();
   });
-  document.onkeypress=function(e) {
+  $('.topology-d3').mouseover(function(e) {
+    // focus so that keypress can be captured
+    $('.topology-d3').focus();
+  });
+  $('.topology-d3').keypress(function(e) {
     var char = e.which || e.keyCode;
     switch (char) {
       case 43:
       zoomclicked("zoomin");
+      e.preventDefault();
       break;
       case 45:
       zoomclicked("zoomout");
+      e.preventDefault();
       break;
       default:
     }
-    e.preventDefault();
-  };
+  });
 }
 
 $(document).ready(function() {
