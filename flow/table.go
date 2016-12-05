@@ -408,6 +408,7 @@ func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string) *Flow {
 
 func (ft *Table) FlowPacketsToFlow(flowPackets FlowPackets) {
 	var parentUUID string
+	logging.GetLogger().Debugf("%d FlowPackets received for capture node %s", len(flowPackets), ft.nodeUUID)
 	for _, packet := range flowPackets {
 		parentUUID = ft.FlowPacketToFlow(&packet, parentUUID).UUID
 	}
