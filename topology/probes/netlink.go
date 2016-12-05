@@ -238,7 +238,7 @@ func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata)
 func (u *NetLinkProbe) getLinkIPs(link netlink.Link, family int) string {
 	var ips []string
 
-	addrs, err := netlink.AddrList(link, family)
+	addrs, err := u.netlink.AddrList(link, family)
 	if err != nil {
 		return ""
 	}
