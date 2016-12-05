@@ -193,7 +193,6 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 
 	m, err := traversal.SliceToMetadata(s...)
 	if err != nil {
-		logging.GetLogger().Critical(err)
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
@@ -214,6 +213,27 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 			}
 		}
 	}
+	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
+}
+
+func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
+	var nodes []*graph.Node
+
+	if f.error != nil {
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.error)
+	}
+
+	m, err := traversal.SliceToMetadata(s...)
+	if err != nil {
+		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+	}
+
+	for _, fl := range f.flowset.Flows {
+		if node := f.GraphTraversal.Graph.GetNode(graph.Identifier(fl.NodeUUID)); node != nil && node.MatchMetadata(m) {
+			nodes = append(nodes, node)
+		}
+	}
+
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
@@ -907,32 +927,20 @@ func (s *BandwidthGremlinTraversalStep) Context() *traversal.GremlinTraversalCon
 }
 
 func (s *HopsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
-	var nodes []*graph.Node
-
 	switch last.(type) {
 	case *FlowTraversalStep:
 		fts := last.(*FlowTraversalStep)
-		graphTraversal := fts.GraphTraversal
-
-		m, err := traversal.SliceToMetadata(s.context.Params...)
-		if err != nil {
-			return nil, traversal.ExecutionError
-		}
-
-		for _, f := range fts.flowset.Flows {
-			if node := graphTraversal.Graph.GetNode(graph.Identifier(f.NodeUUID)); node != nil && node.MatchMetadata(m) {
-				nodes = append(nodes, node)
-			}
-		}
-
-		graphTraversalV := traversal.NewGraphTraversalV(graphTraversal, nodes)
-		return graphTraversalV, nil
+		return fts.Hops(s.context.Params...), nil
 	}
 
 	return nil, traversal.ExecutionError
 }
 
 func (s *HopsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	if hasStep, ok := next.(*traversal.GremlinTraversalStepHas); ok {
+		s.context.Params = hasStep.Params
+		return s
+	}
 	return next
 }
 
