@@ -390,19 +390,19 @@ func (g *GremlinQueryHelper) GetFlowsFromGremlinReply(t *testing.T, query string
 	return
 }
 
-func (g *GremlinQueryHelper) GetFlowSetBandwidthFromGremlinReply(t *testing.T, query string) flow.FlowSetBandwidth {
+func (g *GremlinQueryHelper) GetFlowMetricFromGremlinReply(t *testing.T, query string) flow.FlowMetric {
 	body, err := cmd.SendGremlinQuery(g.authOptions, query)
 	if err != nil {
 		t.Fatalf("%s: %s", query, err.Error())
 	}
 
-	var bw []flow.FlowSetBandwidth
-	err = json.NewDecoder(body).Decode(&bw)
+	var metric flow.FlowMetric
+	err = json.NewDecoder(body).Decode(&metric)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	return bw[0]
+	return metric
 }
 
 func NewGremlinQueryHelper(authOptions *shttp.AuthenticationOpts) *GremlinQueryHelper {

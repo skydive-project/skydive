@@ -469,19 +469,12 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample) []FlowPackets {
 	return flowPacketsSet
 }
 
-func (f *FlowLayer) GetField(fields []string) (string, error) {
-	if f == nil || len(fields) != 2 {
+func (f *FlowLayer) GetField(field string) (string, error) {
+	if f == nil {
 		return "", ErrFieldNotFound
 	}
 
-	/* Protocol must be set on the Layer or the transport layer name like Link, Network, Transport */
-	switch fields[0] {
-	case "Link", "Network", "Transport":
-	default:
-		return "", ErrFieldNotFound
-	}
-
-	switch fields[1] {
+	switch field {
 	case "A":
 		return f.A, nil
 	case "B":
@@ -492,11 +485,8 @@ func (f *FlowLayer) GetField(fields []string) (string, error) {
 	return "", ErrFieldNotFound
 }
 
-func (f *FlowMetric) GetField(fields []string) (int64, error) {
-	if len(fields) != 2 {
-		return 0, ErrFieldNotFound
-	}
-	switch fields[1] {
+func (f *FlowMetric) GetField(field string) (int64, error) {
+	switch field {
 	case "Start":
 		return f.Start, nil
 	case "Last":
@@ -518,6 +508,8 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 	if len(fields) < 1 {
 		return "", ErrFieldNotFound
 	}
+
+	// root field
 	name := fields[0]
 	switch name {
 	case "UUID":
@@ -534,35 +526,43 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.ANodeUUID, nil
 	case "BNodeUUID":
 		return f.BNodeUUID, nil
-	case "Link":
-		return f.Link.GetField(fields)
-	case "Network":
-		return f.Network.GetField(fields)
-	case "Transport":
-		return f.Transport.GetField(fields)
-	case "UDPPORT", "TCPPORT", "SCTPPORT":
-		return f.Transport.GetField(fields)
-	case "IPV4", "IPV6":
-		return f.Network.GetField(fields)
-	case "ETHERNET":
-		return f.Link.GetField(fields)
 	case "Application":
 		return f.Application, nil
+	}
+
+	// sub field
+	if len(fields) != 2 {
+		return "", ErrFieldNotFound
+	}
+
+	switch name {
+	case "Link":
+		return f.Link.GetField(fields[1])
+	case "Network":
+		return f.Network.GetField(fields[1])
+	case "Transport":
+		return f.Transport.GetField(fields[1])
+	case "UDPPORT", "TCPPORT", "SCTPPORT":
+		return f.Transport.GetField(fields[1])
+	case "IPV4", "IPV6":
+		return f.Network.GetField(fields[1])
+	case "ETHERNET":
+		return f.Link.GetField(fields[1])
 	}
 	return "", ErrFieldNotFound
 }
 
 func (f *Flow) GetFieldInt64(field string) (int64, error) {
 	fields := strings.Split(field, ".")
-	if len(fields) < 1 {
+	if len(fields) != 2 {
 		return 0, ErrFieldNotFound
 	}
 	name := fields[0]
 	switch name {
 	case "Metric":
-		return f.Metric.GetField(fields)
+		return f.Metric.GetField(fields[1])
 	case "LastUpdateMetric":
-		return f.LastUpdateMetric.GetField(fields)
+		return f.LastUpdateMetric.GetField(fields[1])
 	}
 	return 0, ErrFieldNotFound
 }

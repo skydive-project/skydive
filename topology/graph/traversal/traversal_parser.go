@@ -790,12 +790,6 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	case KEYS:
 		return &GremlinTraversalStepKeys{gremlinStepContext}, nil
 	case SUM:
-		if len(params) != 1 {
-			return nil, fmt.Errorf("Sum requires 1 parameter")
-		}
-		if _, ok := params[0].(string); !ok {
-			return nil, fmt.Errorf("Sum parameter has to be a string key")
-		}
 		return &GremlinTraversalStepSum{gremlinStepContext}, nil
 	}
 

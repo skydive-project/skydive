@@ -1115,7 +1115,7 @@ func TestFlowMetrics(t *testing.T) {
 	client.Delete("capture", capture.ID())
 }
 
-func TestFlowBandwidth(t *testing.T) {
+func TestFlowMetricsSum(t *testing.T) {
 	ts := NewTestStorage()
 
 	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
@@ -1169,13 +1169,13 @@ func TestFlowBandwidth(t *testing.T) {
 
 	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
-	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Bandwidth()`
+	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Sum()`
 
 	// this check needs to be close to the beginnig of the test since it's a time
 	// based test and it will fail if we wait one more update tick
-	bw := gh.GetFlowSetBandwidthFromGremlinReply(t, gremlin)
-	if bw.NBFlow != 1 || bw.ABpackets != 1 || bw.BApackets != 1 || bw.ABbytes < 1066 || bw.BAbytes < 1066 {
-		t.Errorf("Wrong bandwidth returned, got : %v", bw)
+	metric := gh.GetFlowMetricFromGremlinReply(t, gremlin)
+	if metric.ABPackets != 1 || metric.BAPackets != 1 || metric.ABBytes < 1066 || metric.BABytes < 1066 {
+		t.Errorf("Wrong metric returned, got : %v", metric)
 	}
 
 	client.Delete("capture", capture.ID())

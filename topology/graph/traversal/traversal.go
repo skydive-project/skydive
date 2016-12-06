@@ -521,7 +521,14 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return &GraphTraversalValue{error: tv.error}
 	}
-	key := keys[0].(string)
+
+	if len(keys) != 1 {
+		return &GraphTraversalValue{error: fmt.Errorf("Sum requires 1 parameter")}
+	}
+	key, ok := keys[0].(string)
+	if !ok {
+		return &GraphTraversalValue{error: fmt.Errorf("Sum parameter has to be a string key")}
+	}
 
 	var s float64
 	for _, n := range tv.nodes {

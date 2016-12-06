@@ -66,6 +66,7 @@ type FlowGremlinTraversalStep struct {
 
 type FlowTraversalStep struct {
 	GraphTraversal  *traversal.GraphTraversal
+	Storage         storage.Storage
 	flowset         *flow.FlowSet
 	flowSearchQuery flow.FlowSearchQuery
 	since           traversal.Since
@@ -81,29 +82,15 @@ type MetricsGremlinTraversalStep struct {
 type MetricsTraversalStep struct {
 	GraphTraversal *traversal.GraphTraversal
 	metrics        map[string][]*flow.FlowMetric
-}
-
-type BandwidthGremlinTraversalStep struct {
-	TableClient *flow.TableClient
-	Storage     storage.Storage
-	context     traversal.GremlinTraversalContext
-}
-
-type BandwidthTraversalStep struct {
-	GraphTraversal *traversal.GraphTraversal
-	bandwidth      *flow.FlowSetBandwidth
+	error          error
 }
 
 type HopsGremlinTraversalStep struct {
-	TableClient *flow.TableClient
-	Storage     storage.Storage
-	context     traversal.GremlinTraversalContext
+	context traversal.GremlinTraversalContext
 }
 
 type NodesGremlinTraversalStep struct {
-	TableClient *flow.TableClient
-	Storage     storage.Storage
-	context     traversal.GremlinTraversalContext
+	context traversal.GremlinTraversalContext
 }
 
 type CaptureNodeGremlinTraversalStep struct {
@@ -448,7 +435,7 @@ func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
 		return &FlowTraversalStep{error: err}
 	}
 
-	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset.Filter(filter)}
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset.Filter(filter)}
 }
 
 func (f *FlowTraversalStep) Dedup() *FlowTraversalStep {
@@ -457,7 +444,7 @@ func (f *FlowTraversalStep) Dedup() *FlowTraversalStep {
 	}
 
 	f.flowset.Dedup()
-	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset, since: f.since}
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset, since: f.since}
 }
 
 func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraversalV {
@@ -486,7 +473,7 @@ func (f *FlowTraversalStep) Sort() *FlowTraversalStep {
 	}
 
 	f.flowset.Sort()
-	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, flowset: f.flowset, since: f.since}
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset, since: f.since}
 }
 
 // Sum aggregates integer values mapped by 'key' cross flows
@@ -494,8 +481,17 @@ func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalVa
 	if f.error != nil {
 		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, f.error)
 	}
+
+	if len(keys) != 1 {
+		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, fmt.Errorf("Sum requires 1 parameter"))
+	}
+
+	key, ok := keys[0].(string)
+	if !ok {
+		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, fmt.Errorf("Sum parameter has to be a string key"))
+	}
+
 	var s float64
-	key := keys[0].(string)
 	for _, fl := range f.flowset.Flows {
 		if v, err := fl.GetFieldInt64(key); err == nil {
 			s += float64(v)
@@ -566,6 +562,52 @@ func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTr
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
 }
 
+func (f *FlowTraversalStep) Metrics() *MetricsTraversalStep {
+	if f.error != nil {
+		return &MetricsTraversalStep{error: f.error}
+	}
+
+	var metrics map[string][]*flow.FlowMetric
+
+	context := f.GraphTraversal.Graph.GetContext()
+	if context.Time != nil {
+		metrics = make(map[string][]*flow.FlowMetric)
+
+		// two cases, either we have a flowset and we need to use it in order to filter
+		// flows or we don't have flowset but we have the pre-built flowSearchQuery filter
+		// if none of these cases it's an error.
+		if f.flowset != nil {
+			flowFilter := flow.NewFilterForFlowSet(f.flowset)
+			f.flowSearchQuery.Filter = flow.NewAndFilter(f.flowSearchQuery.Filter, flowFilter)
+		} else if f.flowSearchQuery.Filter == nil {
+			return &MetricsTraversalStep{error: errors.New("Unable to filter flows")}
+		}
+
+		// contruct metrics filter according to the time context and the since
+		// predicate given to Flows.
+		fr := flow.Range{To: context.Time.Unix()}
+		if f.since.Seconds > 0 {
+			fr.From = context.Time.Unix() - f.since.Seconds
+		}
+		metricFilter := flow.NewFilterIncludedIn(fr, "")
+
+		var err error
+		if metrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {
+			return &MetricsTraversalStep{error: err}
+		}
+	} else {
+		metrics = make(map[string][]*flow.FlowMetric, len(f.flowset.Flows))
+		for _, flow := range f.flowset.Flows {
+			if flow.LastUpdateMetric.Start != 0 || flow.LastUpdateMetric.Last != 0 {
+				metrics[flow.UUID] = append(metrics[flow.UUID], flow.LastUpdateMetric)
+			} else {
+				metrics[flow.UUID] = append(metrics[flow.UUID], flow.Metric)
+			}
+		}
+	}
+	return &MetricsTraversalStep{GraphTraversal: f.GraphTraversal, metrics: metrics}
+}
+
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flowset.Flows))
 	for i, flow := range f.flowset.Flows {
@@ -633,12 +675,10 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 		return step, nil
 	case e.MetricsToken:
 		return &MetricsGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage, context: p}, nil
-	case e.BandwidthToken:
-		return &BandwidthGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
 	case e.HopsToken:
-		return &HopsGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
+		return &HopsGremlinTraversalStep{context: p}, nil
 	case e.NodesToken:
-		return &NodesGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage}, nil
+		return &NodesGremlinTraversalStep{context: p}, nil
 	case e.CaptureNodeToken:
 		if len(p.Params) != 0 {
 			return nil, fmt.Errorf("CaptureNode will not accept any parameters")
@@ -743,7 +783,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 			// We do nothing as the following step is Metrics
 			// and we'll make a request on metrics instead of flows
 			if s.metricsNextStep {
-				return &FlowTraversalStep{GraphTraversal: graphTraversal, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
+				return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
 			}
 
 			var flows []*flow.Flow
@@ -779,7 +819,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				// We do nothing as the following step is Metrics
 				// and we'll make a request on metrics instead of flows
 				if s.metricsNextStep {
-					return &FlowTraversalStep{GraphTraversal: graphTraversal, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
+					return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
 				}
 
 				var flows []*flow.Flow
@@ -804,7 +844,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		flowset.Slice(int(r[0]), int(r[1]))
 	}
 
-	return &FlowTraversalStep{GraphTraversal: graphTraversal, flowset: flowset, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
+	return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowset: flowset, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
 }
 
 func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
@@ -834,6 +874,56 @@ func (s *FlowGremlinTraversalStep) Context() *traversal.GremlinTraversalContext 
 	return &s.context
 }
 
+// Sum aggregates integer values mapped by 'key' cross flows
+func (m *MetricsTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalValue {
+	if m.error != nil {
+		return traversal.NewGraphTraversalValue(m.GraphTraversal, nil, m.error)
+	}
+
+	if len(keys) > 0 {
+		if len(keys) != 1 {
+			return traversal.NewGraphTraversalValue(m.GraphTraversal, nil, fmt.Errorf("Sum requires 1 parameter"))
+		}
+
+		key, ok := keys[0].(string)
+		if !ok {
+			return traversal.NewGraphTraversalValue(m.GraphTraversal, nil, errors.New("Argument of Sum must be a string"))
+		}
+
+		var total int64
+		for _, metrics := range m.metrics {
+			for _, metric := range metrics {
+				value, err := metric.GetField(key)
+				if err != nil {
+					traversal.NewGraphTraversalValue(m.GraphTraversal, nil, err)
+				}
+				total += value
+			}
+		}
+		return traversal.NewGraphTraversalValue(m.GraphTraversal, total)
+	}
+
+	var total flow.FlowMetric
+	for _, metrics := range m.metrics {
+		for _, metric := range metrics {
+			total.ABBytes += metric.ABBytes
+			total.BABytes += metric.BABytes
+			total.ABPackets += metric.ABPackets
+			total.BAPackets += metric.BAPackets
+
+			if total.Start == 0 || total.Start > metric.Start {
+				total.Start = metric.Start
+			}
+
+			if total.Last == 0 || total.Last < metric.Last {
+				total.Last = metric.Last
+			}
+		}
+	}
+
+	return traversal.NewGraphTraversalValue(m.GraphTraversal, &total)
+}
+
 func (m *MetricsTraversalStep) Values() []interface{} {
 	return []interface{}{m.metrics}
 }
@@ -853,45 +943,7 @@ func (f *MetricsTraversalStep) Count(s ...interface{}) *traversal.GraphTraversal
 func (s *MetricsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	switch tv := last.(type) {
 	case *FlowTraversalStep:
-		var metrics map[string][]*flow.FlowMetric
-		context := tv.GraphTraversal.Graph.GetContext()
-
-		if context.Time != nil {
-			metrics = make(map[string][]*flow.FlowMetric)
-
-			// two cases, either we have a flowset and we need to use it in order to filter
-			// flows or we don't have flowset but we have the pre-built flowSearchQuery filter
-			// if none of these cases it's an error.
-			if tv.flowset != nil {
-				flowFilter := flow.NewFilterForFlowSet(tv.flowset)
-				tv.flowSearchQuery.Filter = flow.NewAndFilter(tv.flowSearchQuery.Filter, flowFilter)
-			} else if tv.flowSearchQuery.Filter == nil {
-				return nil, errors.New("Unable to filter flows")
-			}
-
-			// contruct metrics filter according to the time context and the since
-			// predicate given to Flows.
-			fr := flow.Range{To: context.Time.Unix()}
-			if tv.since.Seconds > 0 {
-				fr.From = context.Time.Unix() - tv.since.Seconds
-			}
-			metricFilter := flow.NewFilterIncludedIn(fr, "")
-
-			var err error
-			if metrics, err = s.Storage.SearchMetrics(tv.flowSearchQuery, metricFilter); err != nil {
-				return nil, err
-			}
-		} else {
-			metrics = make(map[string][]*flow.FlowMetric, len(tv.flowset.Flows))
-			for _, flow := range tv.flowset.Flows {
-				if flow.LastUpdateMetric.Start != 0 || flow.LastUpdateMetric.Last != 0 {
-					metrics[flow.UUID] = append(metrics[flow.UUID], flow.LastUpdateMetric)
-				} else {
-					metrics[flow.UUID] = append(metrics[flow.UUID], flow.Metric)
-				}
-			}
-		}
-		return &MetricsTraversalStep{GraphTraversal: tv.GraphTraversal, metrics: metrics}, nil
+		return tv.Metrics(), nil
 	}
 
 	return nil, traversal.ExecutionError
@@ -902,56 +954,6 @@ func (s *MetricsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep
 }
 
 func (s *MetricsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &s.context
-}
-
-func (b *BandwidthTraversalStep) Values() []interface{} {
-	return []interface{}{b.bandwidth}
-}
-
-func (b *BandwidthTraversalStep) MarshalJSON() ([]byte, error) {
-	return json.Marshal(b.Values())
-}
-
-func (b *BandwidthTraversalStep) Error() error {
-	return nil
-}
-
-func (s *BandwidthGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
-	switch last.(type) {
-	case *MetricsTraversalStep:
-		mts := last.(*MetricsTraversalStep)
-		bw := flow.FlowSetBandwidth{}
-
-		for _, metrics := range mts.metrics {
-			for _, metric := range metrics {
-				bw.ABbytes += metric.ABBytes
-				bw.BAbytes += metric.BABytes
-				bw.ABpackets += metric.ABPackets
-				bw.BApackets += metric.BAPackets
-
-				duration := common.MaxInt64(metric.Last-metric.Start, 1)
-
-				// set the duration to the largest flow duration. All the flow should
-				// be close in term of duration ~= update timer
-				if bw.Duration < duration {
-					bw.Duration = duration
-				}
-			}
-			bw.NBFlow++
-		}
-
-		return &BandwidthTraversalStep{GraphTraversal: mts.GraphTraversal, bandwidth: &bw}, nil
-	}
-
-	return nil, traversal.ExecutionError
-}
-
-func (s *BandwidthGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
-	return next
-}
-
-func (s *BandwidthGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &s.context
 }
 
