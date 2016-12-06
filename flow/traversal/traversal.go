@@ -39,10 +39,10 @@ import (
 const (
 	FLOW_TOKEN         traversal.Token = 1001
 	METRICS_TOKEN      traversal.Token = 1002
-	BANDWIDTH_TOKEN    traversal.Token = 1003
-	HOPS_TOKEN         traversal.Token = 1004
-	NODES_TOKEN        traversal.Token = 1005
-	CAPTURE_NODE_TOKEN traversal.Token = 1006
+	HOPS_TOKEN         traversal.Token = 1003
+	NODES_TOKEN        traversal.Token = 1004
+	CAPTURE_NODE_TOKEN traversal.Token = 1005
+	AGGREGATES_TOKEN   traversal.Token = 1006
 )
 
 type FlowTraversalExtension struct {
@@ -51,9 +51,10 @@ type FlowTraversalExtension struct {
 	BandwidthToken   traversal.Token
 	HopsToken        traversal.Token
 	NodesToken       traversal.Token
+	CaptureNodeToken traversal.Token
+	AggregatesToken  traversal.Token
 	TableClient      *flow.TableClient
 	Storage          storage.Storage
-	CaptureNodeToken traversal.Token
 }
 
 type FlowGremlinTraversalStep struct {
@@ -94,6 +95,10 @@ type NodesGremlinTraversalStep struct {
 }
 
 type CaptureNodeGremlinTraversalStep struct {
+	context traversal.GremlinTraversalContext
+}
+
+type AggregatesGremlinTraversalStep struct {
 	context traversal.GremlinTraversalContext
 }
 
@@ -628,12 +633,12 @@ func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage
 	return &FlowTraversalExtension{
 		FlowToken:        FLOW_TOKEN,
 		MetricsToken:     METRICS_TOKEN,
-		BandwidthToken:   BANDWIDTH_TOKEN,
 		HopsToken:        HOPS_TOKEN,
 		NodesToken:       NODES_TOKEN,
+		CaptureNodeToken: CAPTURE_NODE_TOKEN,
+		AggregatesToken:  AGGREGATES_TOKEN,
 		TableClient:      client,
 		Storage:          storage,
-		CaptureNodeToken: CAPTURE_NODE_TOKEN,
 	}
 }
 
@@ -651,6 +656,8 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 		return e.NodesToken, true
 	case "CAPTURENODE":
 		return e.CaptureNodeToken, true
+	case "AGGREGATES":
+		return e.AggregatesToken, true
 	}
 	return traversal.IDENT, false
 }
@@ -680,10 +687,9 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 	case e.NodesToken:
 		return &NodesGremlinTraversalStep{context: p}, nil
 	case e.CaptureNodeToken:
-		if len(p.Params) != 0 {
-			return nil, fmt.Errorf("CaptureNode will not accept any parameters")
-		}
 		return &CaptureNodeGremlinTraversalStep{context: p}, nil
+	case e.AggregatesToken:
+		return &AggregatesGremlinTraversalStep{context: p}, nil
 	}
 
 	return nil, nil
@@ -924,6 +930,63 @@ func (m *MetricsTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversa
 	return traversal.NewGraphTraversalValue(m.GraphTraversal, &total)
 }
 
+func aggregateMetrics(a, b []*flow.FlowMetric) []*flow.FlowMetric {
+	var result []*flow.FlowMetric
+	boundA, boundB := len(a)-1, len(b)-1
+
+	var i, j int
+	for i <= boundA || j <= boundB {
+		if i > boundA && j <= boundB {
+			return append(result, b[j:]...)
+		} else if j > boundB && i <= boundA {
+			return append(result, a[i:]...)
+		} else if a[i].Last < b[j].Start {
+			// metric a is strictly before metric b
+			result = append(result, a[i])
+			i++
+		} else if b[j].Last < a[i].Start {
+			// metric b is strictly before metric a
+			result = append(result, b[j])
+			j++
+		} else {
+			start := a[i].Start
+			last := a[i].Last
+			if a[i].Start > b[j].Start {
+				start = b[j].Start
+				last = b[j].Last
+			}
+
+			// in case of an overlap then summing using the smallest start/last slice
+			result = append(result, &flow.FlowMetric{
+				ABBytes:   a[i].ABBytes + b[j].ABBytes,
+				ABPackets: a[i].ABPackets + b[j].ABPackets,
+				BABytes:   a[i].BABytes + b[j].BABytes,
+				BAPackets: a[i].BAPackets + b[j].BAPackets,
+				Start:     start,
+				Last:      last,
+			})
+			i++
+			j++
+		}
+	}
+	return result
+}
+
+// Aggregates merges multiple metrics array into one by summing overlapping
+// metrics. It returns a unique array will all the aggregated metrics.
+func (m *MetricsTraversalStep) Aggregates() *MetricsTraversalStep {
+	if m.error != nil {
+		return m
+	}
+
+	var aggregated []*flow.FlowMetric
+	for _, metrics := range m.metrics {
+		aggregated = aggregateMetrics(aggregated, metrics)
+	}
+
+	return &MetricsTraversalStep{GraphTraversal: m.GraphTraversal, metrics: map[string][]*flow.FlowMetric{"Aggregated": aggregated}}
+}
+
 func (m *MetricsTraversalStep) Values() []interface{} {
 	return []interface{}{m.metrics}
 }
@@ -1020,4 +1083,22 @@ func (s *CaptureNodeGremlinTraversalStep) Reduce(next traversal.GremlinTraversal
 
 func (s *CaptureNodeGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &s.context
+}
+
+func (a *AggregatesGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
+	switch last.(type) {
+	case *MetricsTraversalStep:
+		mts := last.(*MetricsTraversalStep)
+		return mts.Aggregates(), nil
+	}
+
+	return nil, traversal.ExecutionError
+}
+
+func (a *AggregatesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	return next
+}
+
+func (a *AggregatesGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+	return &a.context
 }
