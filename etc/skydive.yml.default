@@ -40,9 +40,6 @@ analyzer:
   # Available: elasticsearch, orientdb
   # storage: elasticsearch
   topology:
-    probes:
-      # - neutron
-
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.
     #
@@ -75,13 +72,14 @@ agent:
   topology:
     # Probes used to capture topology informations like interfaces,
     # bridges, namespaces, etc...
-    # Available: netlink, netns, ovsdb, docker, opencontrail
+    # Available: netlink, netns, ovsdb, docker, neutron, opencontrail
     # Default: netlink, netns
     probes:
       - netlink
       - netns
       # - ovsdb
       # - docker
+      # - neutron
       # - opencontrail
   flow:
     # Probes used to capture traffic.

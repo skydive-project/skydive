@@ -24,13 +24,14 @@ package agent
 
 import (
 	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.ProbeBundle, error) {
+func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node, wsClient *shttp.WSAsyncClient) (*probe.ProbeBundle, error) {
 	list := config.GetConfig().GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
@@ -59,6 +60,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 				return nil, err
 			}
 			probes[t] = dockerProbe
+		case "neutron":
+			neutron, err := tprobes.NewNeutronMapperFromConfig(g, wsClient)
+			if err != nil {
+				logging.GetLogger().Errorf("Failed to initialize Neutron probe: %s", err.Error())
+				return nil, err
+			}
+			probes["neutron"] = neutron
 		case "opencontrail":
 			probes[t] = tprobes.NewOpenContrailMapper(g, n)
 		default:

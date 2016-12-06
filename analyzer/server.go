@@ -232,17 +232,17 @@ func NewServerFromConfig() (*Server, error) {
 
 	g := graph.NewGraphFromConfig(backend)
 
-	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
-	if err != nil {
-		return nil, err
-	}
-
 	httpServer, err := shttp.NewServerFromConfig("analyzer")
 	if err != nil {
 		return nil, err
 	}
 
 	wsServer := shttp.NewWSServerFromConfig(httpServer, "/ws")
+
+	probeBundle, err := NewTopologyProbeBundleFromConfig(g, wsServer)
+	if err != nil {
+		return nil, err
+	}
 
 	var etcdServer *etcd.EmbeddedEtcd
 	if embedEtcd {

@@ -86,7 +86,7 @@ func (a *Agent) Start() {
 		a.WSClient.Connect()
 	}
 
-	a.TopologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
+	a.TopologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.Graph, a.Root, a.WSClient)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to instantiate topology probes: %s", err.Error())
 		os.Exit(1)

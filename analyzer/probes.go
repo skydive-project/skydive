@@ -23,30 +23,14 @@
 package analyzer
 
 import (
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
-func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error) {
+func NewTopologyProbeBundleFromConfig(g *graph.Graph, wsServer *shttp.WSServer) (*probe.ProbeBundle, error) {
 	probes := make(map[string]probe.Probe)
-	probes["fabric"] = tprobes.NewFabricProbe(g)
-	probeBundle := probe.NewProbeBundle(probes)
-
-	for _, probe := range config.GetConfig().GetStringSlice("analyzer.topology.probes") {
-		switch probe {
-		case "neutron":
-			neutron, err := tprobes.NewNeutronMapperFromConfig(g, probeBundle)
-			if err != nil {
-				logging.GetLogger().Errorf("Failed to initialize Neutron probe: %s", err.Error())
-				return nil, err
-			}
-			probes["neutron"] = neutron
-		default:
-			logging.GetLogger().Errorf("unknown probe type %s", probe)
-		}
-	}
-	return probeBundle, nil
+	probes["fabric"] = tprobes.NewFabricProbe(g, wsServer)
+	return probe.NewProbeBundle(probes), nil
 }

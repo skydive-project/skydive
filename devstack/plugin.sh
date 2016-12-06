@@ -38,10 +38,10 @@ SKYDIVE_AGENT_LISTEN=${SKYDIVE_AGENT_LISTEN:-"127.0.0.1:8081"}
 SKYDIVE_CONFIG_FILE=${SKYDIVE_CONFIG_FILE:-"/tmp/skydive.yaml"}
 
 # List of agent probes to be used by the agent
-SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb"}
+SKYDIVE_AGENT_PROBES=${SKYDIVE_AGENT_PROBES:-"netlink netns ovsdb neutron"}
 
 # List of analyzer probes to be used by the analyzer
-SKYDIVE_ANALYZER_PROBES=${SKYDIVE_ANALYZER_PROBES:-"neutron"}
+SKYDIVE_ANALYZER_PROBES=${SKYDIVE_ANALYZER_PROBES:-""}
 
 # Remote port for ovsdb server.
 SKYDIVE_OVSDB_REMOTE_PORT=${SKYDIVE_OVSDB_REMOTE_PORT:-}

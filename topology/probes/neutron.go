@@ -23,7 +23,6 @@
 package probes
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -37,16 +36,16 @@ import (
 	"github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type NeutronMapper struct {
 	graph.DefaultGraphListener
-	graph  *graph.Graph
-	fb     *FabricProbe
-	client *gophercloud.ServiceClient
+	graph    *graph.Graph
+	wsClient *shttp.WSAsyncClient
+	client   *gophercloud.ServiceClient
 	// The cache associates some metadatas to a MAC and is used to
 	// detect any updates on these metadatas.
 	cache           *cache.Cache
@@ -189,11 +188,8 @@ func (mapper *NeutronMapper) nodeUpdater() {
 
 func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	mapper.graph.Lock()
-	defer mapper.graph.Unlock()
 
 	tr := mapper.graph.StartMetadataTransaction(node)
-	defer tr.Commit()
-
 	tr.AddMetadata("Manager", "neutron")
 
 	if attrs.PortID != "" {
@@ -216,14 +212,24 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 		tr.AddMetadata("Neutron/VNI", uint64(segID))
 	}
 
+	var registerLink *FabricRegisterLinkWSMessage
 	if vm, ok := node.Metadata()["ExtID/vm-uuid"]; ok {
 		if mac, ok := node.Metadata()["ExtID/attached-mac"]; ok {
 			if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Type": "tun"}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
-				parentMetadata := graph.Metadata{"Type": "host", "InstanceID": vm}
-				childMetadata := graph.Metadata{"Type": "device", "MAC": mac}
-				mapper.fb.RegisterLink(path[len(path)-1], parentMetadata, childMetadata)
+				registerLink = &FabricRegisterLinkWSMessage{
+					ParentNodeID:   path[len(path)-1].ID,
+					ParentMetadata: graph.Metadata{"Type": "host", "InstanceID": vm},
+					ChildMetadata:  graph.Metadata{"Type": "device", "MAC": mac},
+				}
 			}
 		}
+	}
+	tr.Commit()
+	mapper.graph.Unlock()
+
+	if registerLink != nil {
+		msg := shttp.NewWSMessage(FabricNamespace, "RegisterLink", registerLink)
+		mapper.wsClient.SendWSMessage(msg)
 	}
 }
 
@@ -259,8 +265,8 @@ func (mapper *NeutronMapper) Stop() {
 	close(mapper.nodeUpdaterChan)
 }
 
-func NewNeutronMapper(g *graph.Graph, fb *FabricProbe, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronMapper, error) {
-	mapper := &NeutronMapper{graph: g, fb: fb}
+func NewNeutronMapper(g *graph.Graph, wsClient *shttp.WSAsyncClient, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronMapper, error) {
+	mapper := &NeutronMapper{graph: g, wsClient: wsClient}
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
@@ -298,12 +304,7 @@ func NewNeutronMapper(g *graph.Graph, fb *FabricProbe, authURL, username, passwo
 	return mapper, nil
 }
 
-func NewNeutronMapperFromConfig(g *graph.Graph, probes *probe.ProbeBundle) (*NeutronMapper, error) {
-	fabric := probes.GetProbe("fabric")
-	if fabric == nil {
-		return nil, errors.New("The 'fabric' is required by the 'neutron' probe")
-	}
-
+func NewNeutronMapperFromConfig(g *graph.Graph, wsCient *shttp.WSAsyncClient) (*NeutronMapper, error) {
 	authURL := config.GetConfig().GetString("openstack.auth_url")
 	username := config.GetConfig().GetString("openstack.username")
 	password := config.GetConfig().GetString("openstack.password")
@@ -319,6 +320,6 @@ func NewNeutronMapperFromConfig(g *graph.Graph, probes *probe.ProbeBundle) (*Neu
 	if a, ok := endpointTypes[endpointType]; !ok {
 		return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
 	} else {
-		return NewNeutronMapper(g, fabric.(*FabricProbe), authURL, username, password, tenantName, regionName, domainName, a)
+		return NewNeutronMapper(g, wsCient, authURL, username, password, tenantName, regionName, domainName, a)
 	}
 }

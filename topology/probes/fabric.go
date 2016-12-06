@@ -23,14 +23,20 @@
 package probes
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
+)
+
+const (
+	FabricNamespace = "Fabric"
 )
 
 type fabricLink struct {
@@ -39,12 +45,19 @@ type fabricLink struct {
 }
 
 type FabricProbe struct {
+	shttp.DefaultWSServerEventHandler
 	graph.DefaultGraphListener
 	Graph *graph.Graph
 	links map[*graph.Node]fabricLink
 }
 
 var fabricL2Link = graph.Metadata{"RelationType": "layer2", "Type": "fabric"}
+
+type FabricRegisterLinkWSMessage struct {
+	ParentNodeID   graph.Identifier
+	ParentMetadata graph.Metadata
+	ChildMetadata  graph.Metadata
+}
 
 func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 	parent, child := fb.Graph.GetEdgeNodes(e)
@@ -139,19 +152,49 @@ func (fb *FabricProbe) UnregisterLink(parentNode *graph.Node) {
 	delete(fb.links, parentNode)
 }
 
+func (fb *FabricProbe) onRegisterLinkWSMessage(msg *FabricRegisterLinkWSMessage) {
+	fb.Graph.Lock()
+	defer fb.Graph.Unlock()
+
+	parentNode := fb.Graph.GetNode(graph.Identifier(msg.ParentNodeID))
+	if parentNode == nil {
+		return
+	}
+
+	fb.RegisterLink(parentNode, msg.ParentMetadata, msg.ChildMetadata)
+}
+
+func (fb *FabricProbe) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
+	if msg.Namespace != FabricNamespace {
+		return
+	}
+
+	switch msg.Type {
+	case "RegisterLink":
+		var registerMsg FabricRegisterLinkWSMessage
+		if err := json.Unmarshal([]byte(*msg.Obj), &registerMsg); err != nil {
+			logging.GetLogger().Errorf("Unable to decode RegisterLink message %v", msg)
+			return
+		}
+
+		fb.onRegisterLinkWSMessage(&registerMsg)
+	}
+}
+
 func (fb *FabricProbe) Start() {
 }
 
 func (fb *FabricProbe) Stop() {
 }
 
-func NewFabricProbe(g *graph.Graph) *FabricProbe {
+func NewFabricProbe(g *graph.Graph, wsServer *shttp.WSServer) *FabricProbe {
 	fb := &FabricProbe{
 		Graph: g,
 		links: make(map[*graph.Node]fabricLink),
 	}
 
 	g.AddEventListener(fb)
+	wsServer.AddEventHandler(fb)
 
 	fb.Graph.Lock()
 	defer fb.Graph.Unlock()
