@@ -235,6 +235,8 @@ func (probe *DockerProbe) Start() {
 			if probe.connect() != nil {
 				time.Sleep(1 * time.Second)
 			}
+
+			probe.wg.Wait()
 		}
 	}()
 }
