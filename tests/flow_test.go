@@ -699,12 +699,12 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	node2 := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "sflow-intf2", "Type", "internal")`)
 
 	if node1 == nil {
-		t.Errorf("Could not find sflow-intf1 internal interface")
+		t.Errorf("Could not find sflow-intf1 internal interface: %s", aa.Analyzer.GraphServer.Graph.String())
 		return
 	}
 
 	if node2 == nil {
-		t.Errorf("Could not find sflow-intf2 internal interface")
+		t.Errorf("Could not find sflow-intf2 internal interface: %s", aa.Analyzer.GraphServer.Graph.String())
 		return
 	}
 
