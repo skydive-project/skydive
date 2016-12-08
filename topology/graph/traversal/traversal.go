@@ -85,11 +85,11 @@ type GraphTraversalValue struct {
 }
 
 type WithinMetadataMatcher struct {
-	list []interface{}
+	List []interface{}
 }
 
 func (w *WithinMetadataMatcher) Match(v interface{}) bool {
-	for _, el := range w.list {
+	for _, el := range w.List {
 		if common.CrossTypeEqual(v, el) {
 			return true
 		}
@@ -99,7 +99,7 @@ func (w *WithinMetadataMatcher) Match(v interface{}) bool {
 }
 
 func Within(s ...interface{}) *WithinMetadataMatcher {
-	return &WithinMetadataMatcher{list: s}
+	return &WithinMetadataMatcher{List: s}
 }
 
 type WithoutMetadataMatcher struct {

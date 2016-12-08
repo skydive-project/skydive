@@ -404,6 +404,20 @@ func paramsToFilter(s ...interface{}) (*flow.Filter, error) {
 					},
 				},
 			)
+		case *traversal.WithinMetadataMatcher:
+			orFilters := &flow.BoolFilter{Op: flow.BoolFilterOp_OR}
+			for _, val := range v.List {
+				orFilters.Filters = append(orFilters.Filters,
+					&flow.Filter{
+						TermStringFilter: &flow.TermStringFilter{Key: k, Value: val.(string)},
+					})
+			}
+
+			andFilter.Filters = append(andFilter.Filters,
+				&flow.Filter{
+					BoolFilter: orFilters,
+				},
+			)
 		case string:
 			andFilter.Filters = append(andFilter.Filters,
 				&flow.Filter{
