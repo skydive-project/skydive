@@ -92,7 +92,7 @@ func (s *Server) handleFlowPacket(conn *AgentAnalyzerServerConn) {
 	for s.running.Load() == true {
 		n, err := conn.Read(data)
 		if err != nil {
-			if err.(net.Error).Timeout() == true {
+			if conn.Timeout(err) {
 				conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
 				continue
 			}
@@ -106,6 +106,7 @@ func (s *Server) handleFlowPacket(conn *AgentAnalyzerServerConn) {
 		f, err := flow.FromData(data[0:n])
 		if err != nil {
 			logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
+			continue
 		}
 
 		s.AnalyzeFlows([]*flow.Flow{f})

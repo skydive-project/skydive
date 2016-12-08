@@ -137,6 +137,20 @@ func (a *AgentAnalyzerServerConn) Read(data []byte) (int, error) {
 	return 0, errors.New("Mode didn't exist")
 }
 
+func (a *AgentAnalyzerServerConn) Timeout(err error) bool {
+	switch a.mode {
+	case TLS:
+		if netErr, ok := err.(net.Error); ok {
+			return netErr.Timeout()
+		}
+	case UDP:
+		if netErr, ok := err.(*net.OpError); ok {
+			return netErr.Timeout()
+		}
+	}
+	return false
+}
+
 func NewAgentAnalyzerServerConn(addr *net.UDPAddr) (a *AgentAnalyzerServerConn, err error) {
 	a = &AgentAnalyzerServerConn{mode: UDP}
 	certPEM := config.GetConfig().GetString("analyzer.X509_cert")
