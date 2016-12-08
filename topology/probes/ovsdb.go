@@ -108,9 +108,10 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	o.Lock()
 	defer o.Unlock()
 
-	// NOTE(safchain) is it a workaround ???, seems that the interface is not fully set
+	var ofport int64
 	switch row.New.Fields["ofport"].(type) {
 	case float64:
+		ofport = int64(row.New.Fields["ofport"].(float64))
 	default:
 		return
 	}
@@ -196,6 +197,10 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	tr := o.Graph.StartMetadataTransaction(intf)
 	defer tr.Commit()
+
+	if ofport > 0 {
+		tr.AddMetadata("OfPort", ofport)
+	}
 
 	if index > 0 {
 		tr.AddMetadata("IfIndex", index)
