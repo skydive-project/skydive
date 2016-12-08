@@ -9,14 +9,22 @@ dist: trusty
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils
+    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils libdb5.1-dev
     - sudo ovs-vsctl show
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
+
     - git clone https://github.com/the-tcpdump-group/libpcap.git
     - cd libpcap
     - git checkout libpcap-1.5.3
     - ./configure --prefix=/usr/local --disable-shared --disable-dbus --disable-bluetooth --disable-canusb
+    - make
+    - sudo make install
+    - cd ..
+
+    - wget https://www.kernel.org/pub/linux/utils/net/iproute2/iproute2-4.0.0.tar.gz
+    - tar -xvzf iproute2-4.0.0.tar.gz
+    - cd iproute2-4.0.0
     - make
     - sudo make install
     - cd ..
