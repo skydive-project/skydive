@@ -914,42 +914,42 @@
 			"checksumSHA1": "R8706kR0KZCNlIez2BemqnSGRNg=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket",
-			"revision": "a12eb5bddccf95ff01d94445993b768547a33a62",
-			"revisionTime": "2016-11-08T11:24:06Z"
+			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
+			"revisionTime": "2016-12-08T20:20:03Z"
 		},
 		{
 			"checksumSHA1": "pzT5KM7f55DL1sdlqD/rFaa30FY=",
 			"path": "github.com/google/gopacket/afpacket",
-			"revision": "a12eb5bddccf95ff01d94445993b768547a33a62",
-			"revisionTime": "2016-11-08T11:24:06Z"
+			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
+			"revisionTime": "2016-12-08T20:20:03Z"
 		},
 		{
 			"checksumSHA1": "l9DwWGxjn8A9VpmuT01b+vf9Boo=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/bytediff",
-			"revision": "a12eb5bddccf95ff01d94445993b768547a33a62",
-			"revisionTime": "2016-11-08T11:24:06Z"
+			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
+			"revisionTime": "2016-12-08T20:20:03Z"
 		},
 		{
-			"checksumSHA1": "xFEatpxkXgEfg5JPqd9xfI1PHts=",
+			"checksumSHA1": "t3eK/CnARurH3N+j85JT70Jdl7o=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
-			"revision": "a12eb5bddccf95ff01d94445993b768547a33a62",
-			"revisionTime": "2016-11-08T11:24:06Z"
+			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
+			"revisionTime": "2016-12-08T20:20:03Z"
 		},
 		{
 			"checksumSHA1": "iAfnvhEgYadVvOMeGJKApvneIFA=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcap",
-			"revision": "a12eb5bddccf95ff01d94445993b768547a33a62",
-			"revisionTime": "2016-11-08T11:24:06Z"
+			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
+			"revisionTime": "2016-12-08T20:20:03Z"
 		},
 		{
 			"checksumSHA1": "3s4xVMFdqU6YDaNJI7pJiU+o4Lw=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcapgo",
-			"revision": "a12eb5bddccf95ff01d94445993b768547a33a62",
-			"revisionTime": "2016-11-08T11:24:06Z"
+			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
+			"revisionTime": "2016-12-08T20:20:03Z"
 		},
 		{
 			"checksumSHA1": "WJ/6nt4LiRCzFQcaxfc/iodURPM=",
