@@ -175,6 +175,7 @@ func (b *KeystoneAuthenticationBackend) Authenticate(username string, password s
 
 func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setTLSHeader(w, r)
 		if username, err := b.CheckUser(r); username == "" {
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to check token: %s", err.Error())

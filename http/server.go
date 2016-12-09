@@ -23,6 +23,7 @@
 package http
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"mime"
@@ -35,7 +36,6 @@ import (
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/hydrogen18/stoppableListener"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -52,7 +52,15 @@ type Route struct {
 	HandlerFunc auth.AuthenticatedHandlerFunc
 }
 
+type ConnectionType int
+
+const (
+	TCP ConnectionType = 1 + iota
+	TLS
+)
+
 type Server struct {
+	http.Server
 	Host        string
 	ServiceType common.ServiceType
 	Router      *mux.Router
@@ -60,7 +68,8 @@ type Server struct {
 	Port        int
 	Auth        AuthenticationBackend
 	lock        sync.Mutex
-	sl          *stoppableListener.StoppableListener
+	listener    net.Listener
+	CnxType     ConnectionType
 	wg          sync.WaitGroup
 }
 
@@ -90,27 +99,40 @@ func (s *Server) ListenAndServe() {
 	defer s.wg.Done()
 	s.wg.Add(1)
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.Addr, s.Port))
+	s.CnxType = TCP
+	listenAddrPort := fmt.Sprintf("%s:%d", s.Addr, s.Port)
+	var err error
+	ln, err := net.Listen("tcp", listenAddrPort)
 	if err != nil {
 		logging.GetLogger().Fatalf("Failed to listen on %s:%d: %s", s.Addr, s.Port, err.Error())
 	}
+	s.listener = ln
 
-	s.lock.Lock()
-	s.sl, err = stoppableListener.New(listener)
-	if err != nil {
-		s.lock.Unlock()
-		logging.GetLogger().Fatalf("Failed to create stoppable listener: %s", err.Error())
+	if config.IsTLSenabled() == true {
+		s.CnxType = TLS
+		certPEM := config.GetConfig().GetString("analyzer.X509_cert")
+		keyPEM := config.GetConfig().GetString("analyzer.X509_key")
+		agentCertPEM := config.GetConfig().GetString("agent.X509_cert")
+		s.TLSConfig = common.SetupTLSServerConfig(certPEM, keyPEM)
+		s.TLSConfig.ClientCAs = common.SetupTLSLoadCertificate(agentCertPEM)
+		s.listener = tls.NewListener(ln.(*net.TCPListener), s.TLSConfig)
 	}
-	s.lock.Unlock()
 
-	http.Serve(s.sl, s.Router)
+	socketType := "TCP"
+	if s.CnxType == TLS {
+		socketType = "TLS"
+	}
+	logging.GetLogger().Infof("Listening on %s socket %s:%d", socketType, s.Addr, s.Port)
+
+	s.Handler = s.Router
+	err = s.Serve(s.listener)
+	if err != nil {
+		logging.GetLogger().Errorf("Failed to Serve on %s:%d: %s", s.Addr, s.Port, err.Error())
+	}
 }
 
 func (s *Server) Stop() {
-	s.lock.Lock()
-	s.sl.Stop()
-	s.lock.Unlock()
-
+	s.listener.Close()
 	s.wg.Wait()
 }
 
@@ -130,6 +152,7 @@ func serveStatics(w http.ResponseWriter, r *http.Request) {
 	ext := filepath.Ext(upath)
 	ct := mime.TypeByExtension(ext)
 
+	setTLSHeader(w, r)
 	w.Header().Set("Content-Type", ct+"; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(content)
@@ -142,12 +165,14 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	setTLSHeader(w, r)
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(html)
 }
 
 func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
+	setTLSHeader(w, r)
 	if r.Method == "POST" {
 		r.ParseForm()
 		loginForm, passwordForm := r.Form["username"], r.Form["password"]

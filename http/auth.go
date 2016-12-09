@@ -51,7 +51,11 @@ type AuthenticationClient struct {
 }
 
 func (c *AuthenticationClient) getPrefix() string {
-	return fmt.Sprintf("http://%s:%d", c.Addr, c.Port)
+	protocol := "http"
+	if config.IsTLSenabled() == true {
+		protocol = "https"
+	}
+	return fmt.Sprintf("%s://%s:%d", protocol, c.Addr, c.Port)
 }
 
 func (c *AuthenticationClient) Authenticated() bool {
@@ -77,7 +81,14 @@ func (c *AuthenticationClient) Authenticate() error {
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultTransport.RoundTrip(req)
+
+	var resp *http.Response
+	if config.IsTLSenabled() == true {
+		client := getHttpClient()
+		resp, err = client.Do(req)
+	} else {
+		resp, err = http.DefaultTransport.RoundTrip(req)
+	}
 	if err != nil {
 		return fmt.Errorf("Authentication failed: %s", err.Error())
 	}

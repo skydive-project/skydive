@@ -54,6 +54,7 @@ func (b *BasicAuthenticationBackend) Authenticate(username string, password stri
 
 func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setTLSHeader(w, r)
 		cookie, err := r.Cookie("authtok")
 		if err == nil {
 			r.Header.Set("Authorization", "Basic "+cookie.Value)

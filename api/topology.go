@@ -90,7 +90,6 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 
 func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	g := t.gremlinParser.Graph
-
 	g.RLock()
 	defer g.RUnlock()
 
@@ -140,6 +139,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 
 	if strings.Contains(r.Header.Get("Accept"), "vnd.graphviz") {
 		if graphTraversal, ok := res.(*traversal.GraphTraversal); ok {
+			w.Header().Set("Content-Type", "text/vnd.graphviz; charset=UTF-8")
 			w.WriteHeader(http.StatusOK)
 			t.graphToDot(w, graphTraversal.Graph)
 		} else {

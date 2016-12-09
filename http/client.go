@@ -32,6 +32,7 @@ import (
 	"net/http"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 )
 
 type RestClient struct {
@@ -52,8 +53,24 @@ func readBody(resp *http.Response) string {
 	return string(data)
 }
 
-func NewRestClient(addr string, port int, authOptions *AuthenticationOpts) *RestClient {
+func getHttpClient() *http.Client {
 	client := &http.Client{}
+	if config.IsTLSenabled() == true {
+		certPEM := config.GetConfig().GetString("agent.X509_cert")
+		keyPEM := config.GetConfig().GetString("agent.X509_key")
+		analyzerCertPEM := config.GetConfig().GetString("analyzer.X509_cert")
+		tlsConfig := common.SetupTLSClientConfig(certPEM, keyPEM)
+		tlsConfig.RootCAs = common.SetupTLSLoadCertificate(analyzerCertPEM)
+		checkTLSConfig(tlsConfig)
+
+		tr := &http.Transport{TLSClientConfig: tlsConfig}
+		client = &http.Client{Transport: tr}
+	}
+	return client
+}
+
+func NewRestClient(addr string, port int, authOptions *AuthenticationOpts) *RestClient {
+	client := getHttpClient()
 	authClient := NewAuthenticationClient(addr, port, authOptions)
 	return &RestClient{
 		client:     client,

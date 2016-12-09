@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -23,29 +23,22 @@
 package http
 
 import (
+	"crypto/tls"
 	"net/http"
 
-	"github.com/abbot/go-http-auth"
-	"github.com/gorilla/context"
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
-type NoAuthenticationBackend struct {
-}
-
-func (h *NoAuthenticationBackend) Authenticate(username string, password string) (string, error) {
-	return "", nil
-}
-
-func (h *NoAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		setTLSHeader(w, r)
-		ar := &auth.AuthenticatedRequest{Request: *r, Username: ""}
-		copyRequestVars(r, &ar.Request)
-		wrapped(w, ar)
-		context.Clear(&ar.Request)
+func setTLSHeader(w http.ResponseWriter, r *http.Request) {
+	if r.TLS != nil {
+		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 	}
 }
 
-func NewNoAuthenticationBackend() *NoAuthenticationBackend {
-	return &NoAuthenticationBackend{}
+func checkTLSConfig(tlsConfig *tls.Config) {
+	tlsConfig.InsecureSkipVerify = config.GetConfig().GetBool("agent.X509_insecure")
+	if tlsConfig.InsecureSkipVerify == true {
+		logging.GetLogger().Critical("======> You running the agent in Insecure, the certificate can't be verified, generally use for test purpose, Please make sure it what's you want <======\n PRODUCTION must not run in Insecure\n")
+	}
 }

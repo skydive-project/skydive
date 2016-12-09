@@ -116,10 +116,17 @@ func (c *WSAsyncClient) send(msg string) error {
 	return w.Close()
 }
 
+func (c *WSAsyncClient) scheme() string {
+	if config.IsTLSenabled() == true {
+		return "wss://"
+	}
+	return "ws://"
+}
+
 func (c *WSAsyncClient) connect() {
 	var err error
 	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
-	endpoint := "ws://" + host + c.Path
+	endpoint := c.scheme() + host + c.Path
 	headers := http.Header{
 		"X-Host-ID":             {c.Host},
 		"Origin":                {endpoint},
@@ -140,7 +147,14 @@ func (c *WSAsyncClient) connect() {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
+	certPEM := config.GetConfig().GetString("agent.X509_cert")
+	keyPEM := config.GetConfig().GetString("agent.X509_key")
+	if certPEM != "" && keyPEM != "" {
+		d.TLSClientConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
+		checkTLSConfig(d.TLSClientConfig)
+	}
 	c.wsConn, _, err = d.Dial(endpoint, headers)
+
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
