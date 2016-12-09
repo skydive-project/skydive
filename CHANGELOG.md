@@ -1,6 +1,59 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2016-12-09
+### Added
+Flows:
+  - Add packet injector to generate traffic between two interfaces
+  - Support Geneve tunneling
+  - Add support for MPLS over both UDP and GRE
+  - Add sFlow tunneling support
+  - Add 'Application' metadata that contains the last layer type
+Gremlin:
+  - New 'Metrics' Gremlin step to get all the metrics associated to a
+    set of flows
+  - New 'Values' step which returns values of a property:
+    ex: G.V().Values('Name')
+  - New 'Sum' step that returns aggregation over named node property:
+    ex: G.Flows().Sum('Metric.ABBytes')
+  - New 'Regex' predicated to use regular expression when querying graph
+    and flows
+  - New 'At' alias for 'Context' and allow more user friendly time definition
+    ex: g.At('-5m').V()
+  - New 'Within' filter for flows
+  - New 'Since' predicate to select flows
+  - New 'CaptureNode' step to get the capture nodes of a set of flows
+OpenStack:
+  - Add support for Keystone V3
+  - Autodetect Skydive agent running inside a virtual machine
+WebUI:
+  - Add packet injector tab
+  - Add support for zoom-in zoom-out and reset
+  - Add the "famous" "mmmgnmm bob effect"
+Misc:
+  - Experimental support for TLS communication between agents and analyzer
+  - Vagrantfile to bootstrap a 3 nodes setup
+
+### Changed
+Flows:
+  - Manage captures from the analyzer to handle use case like setting capture
+    point on all the interfaces between two nodes
+  - Simplify packet processing and remove timeout mechanisms at the probe level
+  - Correct packet length for outer/inner packets in tunnels
+Topology:
+  - Move 'fabric' probe onto the analyzer and add a WebSocket API
+WebUI:
+  - Update timeslider to use delta instead of date
+  - Restore discovery and conversation views
+  - Fix node selection issue after agent Resync
+Bugs fixes:
+  - Many bugfixes around network namespaces that caused Goroutines to run
+    in the wrong namespace that resulted in flow captures and packet injection
+    errors
+  - Fix leak of namespace fd in docker probe
+Build:
+  - Do not integrate generated file anymore
+
 ## [0.7.0] - 2016-11-08
 ### Added
 Flows:
