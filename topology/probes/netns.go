@@ -32,7 +32,7 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/exp/inotify"
+	"gopkg.in/fsnotify.v1"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -241,12 +241,12 @@ func (u *NetNSProbe) start() {
 		time.Sleep(5 * time.Second)
 	}
 
-	watcher, err := inotify.NewWatcher()
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a new Watcher: %s", err.Error())
 	}
 
-	err = watcher.Watch(u.runPath)
+	err = watcher.Add(u.runPath)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to Watch %s: %s", u.runPath, err.Error())
 		return
@@ -256,15 +256,15 @@ func (u *NetNSProbe) start() {
 
 	for {
 		select {
-		case ev := <-watcher.Event:
-			if ev.Mask&inotify.IN_CREATE > 0 {
+		case ev := <-watcher.Events:
+			if ev.Op&fsnotify.Create == fsnotify.Create {
 				u.Register(ev.Name, nil)
 			}
-			if ev.Mask&inotify.IN_DELETE > 0 {
+			if ev.Op&fsnotify.Remove == fsnotify.Remove {
 				u.Unregister(ev.Name)
 			}
 
-		case err := <-watcher.Error:
+		case err := <-watcher.Errors:
 			logging.GetLogger().Errorf("Error while watching network namespace: %s", err.Error())
 		}
 	}
