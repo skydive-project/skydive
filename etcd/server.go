@@ -33,7 +33,8 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/etcd/etcdserver/api/v2http"
+	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/skydive-project/skydive/config"
@@ -98,8 +99,10 @@ func NewEmbeddedEtcd(port int, dataDir string) (*EmbeddedEtcd, error) {
 	}
 
 	se.server.Start()
+	osutil.RegisterInterruptHandler(se.server.Stop)
+
 	go http.Serve(se.listener,
-		etcdhttp.NewClientHandler(se.server, cfg.ReqTimeout()))
+		v2http.NewClientHandler(se.server, cfg.ReqTimeout()))
 
 	// Wait for etcd server to be ready
 	t := time.Now().Add(startTimeout)
