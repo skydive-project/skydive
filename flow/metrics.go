@@ -25,12 +25,26 @@ package flow
 import "github.com/skydive-project/skydive/common"
 
 // Copy a flow metric
-func (f *FlowMetric) Copy() *FlowMetric {
+func (fm *FlowMetric) Copy() *FlowMetric {
 	return &FlowMetric{
-		ABPackets: f.ABPackets,
-		ABBytes:   f.ABBytes,
-		BAPackets: f.BAPackets,
-		BABytes:   f.BABytes,
+		ABPackets: fm.ABPackets,
+		ABBytes:   fm.ABBytes,
+		BAPackets: fm.BAPackets,
+		BABytes:   fm.BABytes,
+	}
+}
+
+// Copy extended metric
+func (fm *TCPMetric) Copy() *TCPMetric {
+	return &TCPMetric{
+		ABSynStart: fm.ABSynStart,
+		BASynStart: fm.BASynStart,
+		ABSynTTL:   fm.ABSynTTL,
+		BASynTTL:   fm.BASynTTL,
+		ABFinStart: fm.ABFinStart,
+		BAFinStart: fm.BAFinStart,
+		ABRstStart: fm.ABRstStart,
+		BARstStart: fm.BARstStart,
 	}
 }
 

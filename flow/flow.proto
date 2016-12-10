@@ -80,6 +80,17 @@ message RawPacket {
   bytes Data = 3;
 }
 
+message TCPMetric {
+  int64 ABSynStart = 1;
+  int64 BASynStart = 2;
+  uint32 ABSynTTL = 3;
+  uint32 BASynTTL = 4;
+  int64 ABFinStart = 5;
+  int64 BAFinStart = 6;
+  int64 ABRstStart = 7;
+  int64 BARstStart = 8;
+}
+
 message Flow {
 /* Flow Universally Unique IDentifier
    flow.UUID is unique in the universe, as it should be used as a key of an
@@ -105,6 +116,9 @@ message Flow {
 	FlowMetric LastUpdateMetric = 31;
 /* Total amount of data for the whole flow duration */
 	FlowMetric Metric = 32;
+
+/* Flow metric specific to the TCP Protocol only and optional */
+  TCPMetric TCPFlowMetric = 38;
 
   int64 Start = 10;
   int64 Last = 11;
