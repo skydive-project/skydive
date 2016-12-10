@@ -81,6 +81,54 @@ const flowMapping = `
 					"type": "date", "format": "epoch_millis"
 				}
 			}
+		},
+		{
+			"absynstart": {
+				"match": "ABSynStart",
+				"mapping": {
+					"type": "date", "format": "epoch_millis"
+				}
+			}
+		},
+		{
+			"basynstart": {
+				"match": "BASynStart",
+				"mapping": {
+					"type": "date", "format": "epoch_millis"
+				}
+			}
+		},
+		{
+			"abfinstart": {
+				"match": "ABFinStart",
+				"mapping": {
+					"type": "date", "format": "epoch_millis"
+				}
+			}
+		},
+		{
+			"bafindstart": {
+				"match": "BAFinStart",
+				"mapping": {
+					"type": "date", "format": "epoch_millis"
+				}
+			}
+		},
+		{
+			"abrststart": {
+				"match": "ABRstStart",
+				"mapping": {
+					"type": "date", "format": "epoch_millis"
+				}
+			}
+		},
+		{
+			"barstdstart": {
+				"match": "BARstStart",
+				"mapping": {
+					"type": "date", "format": "epoch_millis"
+				}
+			}
 		}
 	]
 }`
@@ -120,6 +168,14 @@ const metricMapping = `
 				"match": "Last",
 				"mapping": {
 					"type": "date", "format": "epoch_millis"
+				}
+			}
+		},
+		{
+			"absynstart": {
+				"match": "ABSynStart",
+				"mapping": {
+					"type": "date", "format": "epoch_second"
 				}
 			}
 		}

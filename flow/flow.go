@@ -37,6 +37,7 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -243,7 +244,7 @@ func networkID(p *gopacket.Packet) int64 {
 // NewFlow creates a new empty flow
 func NewFlow() *Flow {
 	return &Flow{
-		Metric:           &FlowMetric{},
+		Metric:           &ExtFlowMetric{},
 		LastUpdateMetric: &FlowMetric{},
 	}
 }
@@ -340,7 +341,37 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
-// Init a flow based on flow key and gopacket
+func uint32Distance(a uint32, b uint32) uint32 {
+	if a >= b {
+		return a - b
+	} else {
+		return 0xffffffff - (b - a)
+	}
+}
+
+func getExpectedSeq(packet *gopacket.Packet) uint32 {
+	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+	ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
+	if !ok {
+		logging.GetLogger().Error("Can not retrieve IP header")
+		return 0
+	}
+
+	ipHeaderLen := uint32(ipv4Packet.IHL * 4)
+
+	transportLayer := (*packet).Layer(layers.LayerTypeTCP)
+	transportPacket, ok := transportLayer.(*layers.TCP)
+	if !ok {
+		logging.GetLogger().Error("Can not retrieve TCP header")
+		return 0
+	}
+
+	tcpHeaderLen := uint32(transportPacket.DataOffset * 4)
+	var expectedSeq uint32 = transportPacket.Seq + uint32(ipv4Packet.Length) - ipHeaderLen - tcpHeaderLen
+
+	return expectedSeq
+}
+
 func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
 	f.Start = now
 	f.Last = now
@@ -349,6 +380,7 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 
 	f.NodeTID = nodeTID
 	f.ParentUUID = parentUUID
+	f.Metric.LenBySeq = false
 
 	f.LayersPath = layerPathFromGoPacket(packet)
 	appLayers := strings.Split(f.LayersPath, "/")
@@ -357,6 +389,27 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 	// no network layer then no transport layer
 	if err := f.newNetworkLayer(packet); err == nil {
 		f.newTransportLayer(packet)
+
+		if config.GetConfig().GetBool("agent.tcp_len_by_seq") {
+			// Check if we can calculate length by TCP SEQ
+			transportLayer := (*packet).Layer(layers.LayerTypeTCP)
+			transportPacket, ok := transportLayer.(*layers.TCP)
+			if ok && transportPacket.SYN {
+				logging.GetLogger().Notice("Track length by sequantial number")
+
+				ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+				if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+					if f.Network.A == ipv4Packet.SrcIP.String() {
+						f.Metric.ABExpectedSeq = getExpectedSeq(packet)
+						logging.GetLogger().Notice("SYN AB", f.Metric.ABExpectedSeq)
+					} else {
+						f.Metric.BAExpectedSeq = getExpectedSeq(packet)
+						logging.GetLogger().Notice("SYN BA", f.Metric.BAExpectedSeq)
+					}
+					f.Metric.LenBySeq = true
+				}
+			}
+		}
 	}
 
 	// need to have as most variable filled as possible to get correct UUID
@@ -367,9 +420,14 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
 	f.Last = now
 
-	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
+	if f.Metric.LenBySeq {
+		f.updateMetricsBySeq(packet)
+	} else if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
+		logging.GetLogger().Error("Update metrics with network\n")
 		f.updateMetricsWithNetworkLayer(packet)
 	}
+
+	f.updateMetricsSynCapture(packet)
 }
 
 func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) {
@@ -499,6 +557,166 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 	return errors.New("Unable to decode the IP layer")
 }
 
+func (f *Flow) updateMetricsSynCapture(packet *gopacket.Packet) error {
+	// capture content of SYN packets
+
+	if !f.Metric.CaptureSyn {
+		return nil
+	}
+	//bypass if not TCP
+	if f.Transport == nil || f.Transport.Protocol != FlowProtocol_TCPPORT {
+		return nil
+	}
+	tcpLayer := (*packet).Layer(layers.LayerTypeTCP)
+	tcpPacket, ok := tcpLayer.(*layers.TCP)
+	if !ok {
+		logging.GetLogger().Notice("Capture SYN unable to decode TCP layer. ignoring")
+		return nil
+	}
+	// we capture SYN, FIN & RST
+	if !(tcpPacket.SYN || tcpPacket.FIN || tcpPacket.RST) {
+		return nil
+	}
+	logging.GetLogger().Notice("Capture SYN/FIN/RST packets")
+	var srcIP string
+	var timeToLive uint32
+	switch f.Network.Protocol {
+	case FlowProtocol_IPV4:
+		ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+		ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
+		if !ok {
+			return errors.New("Unable to decode IPv4 Layer")
+		}
+		srcIP = ipv4Packet.SrcIP.String()
+		timeToLive = uint32(ipv4Packet.TTL)
+	case FlowProtocol_IPV6:
+		ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
+		ipv6Packet, ok := ipv6Layer.(*layers.IPv6)
+		if !ok {
+			return errors.New("Unable to decode IPv4 Layer")
+		}
+		srcIP = ipv6Packet.SrcIP.String()
+		timeToLive = uint32(ipv6Packet.HopLimit)
+	default:
+		logging.GetLogger().Notice("Capture SYN unknown IP version. ignoring")
+		return nil
+
+	}
+
+	var captureTime int64
+
+	captureTime = f.Last
+	if metadata := (*packet).Metadata(); metadata != nil {
+		captureTime = metadata.CaptureInfo.Timestamp.UnixNano() /
+			(int64(time.Millisecond) / int64(time.Nanosecond))
+	} else {
+		logging.GetLogger().Notice("No metadata in packet")
+		return nil
+	}
+
+	switch {
+	case tcpPacket.SYN:
+		synData := ""
+		if app := (*packet).ApplicationLayer(); app != nil {
+			synData = string(app.Payload())
+		} else {
+			logging.GetLogger().Notice("Capture SYN failed to parse app data. leaving empty")
+		}
+		if f.Network.A == srcIP {
+			if f.Metric.ABSynStart == 0 {
+				f.Metric.ABSynStart = captureTime
+				f.Metric.ABSynTTL = timeToLive
+				f.Metric.ABSynData = ""
+				f.Metric.ABSynData += synData
+			} else {
+				logging.GetLogger().Notice("Duplicate SYNCapture AB", f.Metric.ABSynData)
+			}
+		} else {
+			if f.Metric.BASynStart == 0 {
+				f.Metric.BASynStart = captureTime
+				f.Metric.BASynTTL = timeToLive
+				f.Metric.BASynData = ""
+				f.Metric.BASynData += synData
+			} else {
+				logging.GetLogger().Notice("Duplicate SYNCapture BA", f.Metric.BASynData)
+			}
+		}
+	case tcpPacket.FIN:
+		if f.Network.A == srcIP {
+			f.Metric.ABFinStart = captureTime
+		} else {
+			f.Metric.BAFinStart = captureTime
+		}
+	case tcpPacket.RST:
+		if f.Network.A == srcIP {
+			f.Metric.ABRstStart = captureTime
+		} else {
+			f.Metric.BARstStart = captureTime
+		}
+	}
+
+	return nil
+}
+
+func (f *Flow) updateMetricsBySeq(packet *gopacket.Packet) error {
+	transportLayer := (*packet).Layer(layers.LayerTypeTCP)
+	transportPacket, _ := transportLayer.(*layers.TCP)
+
+	var expectedSeq uint32
+
+	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+	ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
+	if ok {
+		if f.Network.A == ipv4Packet.SrcIP.String() {
+			if transportPacket.SYN {
+				f.Metric.ABExpectedSeq = getExpectedSeq(packet)
+				logging.GetLogger().Notice("SYN AB", f.Metric.ABExpectedSeq)
+				return nil
+			}
+			expectedSeq = f.Metric.ABExpectedSeq
+		} else {
+			if transportPacket.SYN {
+				f.Metric.BAExpectedSeq = getExpectedSeq(packet)
+				logging.GetLogger().Notice("SYN BA", f.Metric.BAExpectedSeq)
+				return nil
+			}
+			expectedSeq = f.Metric.BAExpectedSeq
+		}
+	} else {
+		logging.GetLogger().Error("Error retrieving IP layer")
+	}
+
+	length := uint32Distance(transportPacket.Seq, expectedSeq)
+
+	if transportPacket.Seq < 0x10000 {
+		logging.GetLogger().Notice("Overlap", transportPacket.Seq, expectedSeq)
+	}
+
+	if length > 0x80010000 {
+		logging.GetLogger().Notice("Detected retransmission", transportPacket.Seq)
+		return nil
+	}
+
+	newExpectedSeq := getExpectedSeq(packet)
+	length = uint32Distance(newExpectedSeq, expectedSeq)
+
+	if f.Network.A == ipv4Packet.SrcIP.String() {
+		f.Metric.ABPackets += int64(1)
+		f.Metric.ABBytes += int64(length)
+		f.Metric.ABExpectedSeq = newExpectedSeq
+	} else {
+		f.Metric.BAPackets += int64(1)
+		f.Metric.BABytes += int64(length)
+		f.Metric.BAExpectedSeq = newExpectedSeq
+	}
+
+	if transportPacket.FIN {
+		logging.GetLogger().Notice("FIN", f.Metric.ABExpectedSeq, f.Metric.BAExpectedSeq, f.Metric.ABBytes, f.Metric.BABytes)
+	}
+
+	return nil
+}
+
 func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 	var transportLayer gopacket.Layer
 	var ok bool
@@ -528,6 +746,12 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
+		if config.GetConfig().GetBool("agent.capture_syn") {
+			f.Metric.CaptureSyn = true
+			f.Metric.ABSynStart = int64(0)
+			f.Metric.BASynStart = int64(0)
+			return f.updateMetricsSynCapture(packet)
+		}
 	case FlowProtocol_UDPPORT:
 		transportPacket, _ := transportLayer.(*layers.UDP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))

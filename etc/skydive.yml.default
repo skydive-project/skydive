@@ -105,6 +105,8 @@ agent:
     # stats_update: 1
   metadata:
     info: This is compute node
+  tcp_len_by_seq: true
+  capture_syn: true
 
 sflow:
   # Default listening address is 127.0.0.1

@@ -79,11 +79,23 @@ func TestFlowJSON(t *testing.T) {
 		},
 		Start: 1111,
 		Last:  222,
-		Metric: &FlowMetric{
-			ABBytes:   33,
-			ABPackets: 34,
-			BABytes:   44,
-			BAPackets: 55,
+		LastUpdateMetric: &FlowMetric{
+			ABBytes:   0,
+			ABPackets: 0,
+			BABytes:   0,
+			BAPackets: 0,
+		},
+		Metric: &ExtFlowMetric{
+			ABBytes:    33,
+			ABPackets:  34,
+			BABytes:    44,
+			BAPackets:  55,
+			ABSynStart: 0,
+			BASynStart: 0,
+			ABFinStart: 0,
+			BAFinStart: 0,
+			ABRstStart: 0,
+			BARstStart: 0,
 		},
 		NodeTID:  "probe-tid",
 		ANodeTID: "anode-tid",
@@ -108,13 +120,25 @@ func TestFlowJSON(t *testing.T) {
 			v.ObjKV("A", v.String()),
 			v.ObjKV("B", v.String()),
 		)),
-		v.ObjKV("Metric", v.Object(
+		v.ObjKV("LastUpdateMetric", v.Object(
 			v.ObjKV("ABPackets", v.Number()),
 			v.ObjKV("ABBytes", v.Number()),
 			v.ObjKV("BAPackets", v.Number()),
 			v.ObjKV("BABytes", v.Number()),
 		)),
-	)
+		v.ObjKV("Metric", v.Object(
+			v.ObjKV("ABPackets", v.Number()),
+			v.ObjKV("ABBytes", v.Number()),
+			v.ObjKV("BAPackets", v.Number()),
+			v.ObjKV("BABytes", v.Number()),
+			v.ObjKV("ABSynStart", v.Number()),
+			v.ObjKV("BASynStart", v.Number()),
+			v.ObjKV("ABFinStart", v.Number()),
+			v.ObjKV("BAFinStart", v.Number()),
+			v.ObjKV("ABRstStart", v.Number()),
+			v.ObjKV("BARstStart", v.Number()),
+		),
+		))
 
 	var data interface{}
 	if err := json.Unmarshal(j, &data); err != nil {
@@ -143,13 +167,27 @@ func compareFlowLayer(expected, tested *FlowLayer) bool {
 	return expected.Protocol == tested.Protocol && expected.A == tested.A && expected.B == tested.B && expected.ID == tested.ID
 }
 
-func compareFlowMetric(expected, tested *FlowMetric) bool {
+func compareFlowLastUpdateMetric(expected, tested *FlowMetric) bool {
 	if tested == nil {
 		return false
 	}
 
 	return expected.ABBytes == tested.ABBytes && expected.ABPackets == tested.ABPackets &&
 		expected.BABytes == tested.BABytes && expected.BAPackets == tested.BAPackets
+}
+
+func compareFlowExtMetric(expected, tested *ExtFlowMetric) bool {
+	if tested == nil {
+		return false
+	}
+
+	return expected.ABBytes == tested.ABBytes && expected.ABPackets == tested.ABPackets &&
+		expected.BABytes == tested.BABytes && expected.BAPackets == tested.BAPackets &&
+		expected.ABSynStart == tested.ABSynStart && expected.BASynStart == tested.BASynStart &&
+		expected.ABFinStart == tested.ABFinStart && expected.BAFinStart == tested.BAFinStart &&
+		expected.ABSynData == tested.ABSynData && expected.BASynData == tested.BASynData &&
+		expected.ABSynTTL == tested.ABSynTTL && expected.BASynTTL == tested.BASynTTL &&
+		expected.ABRstStart == tested.ABRstStart && expected.BARstStart == tested.BARstStart
 }
 
 func compareFlow(expected, tested *Flow) bool {
@@ -174,7 +212,11 @@ func compareFlow(expected, tested *Flow) bool {
 	if expected.Transport != nil && !compareFlowLayer(expected.Transport, tested.Transport) {
 		return false
 	}
-	if expected.Metric != nil && !compareFlowMetric(expected.Metric, tested.Metric) {
+	if expected.Metric != nil && !compareFlowExtMetric(expected.Metric, tested.Metric) {
+		return false
+	}
+	if expected.LastUpdateMetric != nil && !compareFlowLastUpdateMetric(expected.LastUpdateMetric,
+		tested.LastUpdateMetric) {
 		return false
 	}
 
@@ -308,11 +350,27 @@ func TestPCAP1(t *testing.T) {
 				A:        "fa:16:3e:29:e0:82",
 				B:        "ff:ff:ff:ff:ff:ff",
 			},
-			Metric: &FlowMetric{
-				ABPackets: 1,
-				ABBytes:   42,
-				BAPackets: 1,
-				BABytes:   42,
+			Metric: &ExtFlowMetric{
+				ABPackets:  1,
+				ABBytes:    42,
+				BAPackets:  1,
+				BABytes:    42,
+				ABSynStart: 0,
+				BASynStart: 0,
+				ABSynData:  "",
+				BASynData:  "",
+				ABSynTTL:   0,
+				BASynTTL:   0,
+				ABFinStart: 0,
+				BAFinStart: 0,
+				ABRstStart: 0,
+				BARstStart: 0,
+			},
+			LastUpdateMetric: &FlowMetric{
+				ABPackets: 0,
+				ABBytes:   0,
+				BAPackets: 0,
+				BABytes:   0,
 			},
 		},
 		{
@@ -333,11 +391,27 @@ func TestPCAP1(t *testing.T) {
 				A:        "37686",
 				B:        "53",
 			},
-			Metric: &FlowMetric{
-				ABPackets: 2,
-				ABBytes:   148,
-				BAPackets: 2,
-				BABytes:   256,
+			Metric: &ExtFlowMetric{
+				ABPackets:  2,
+				ABBytes:    148,
+				BAPackets:  2,
+				BABytes:    256,
+				ABSynStart: 0,
+				BASynStart: 0,
+				ABSynData:  "",
+				BASynData:  "",
+				ABSynTTL:   0,
+				BASynTTL:   0,
+				ABFinStart: 0,
+				BAFinStart: 0,
+				ABRstStart: 0,
+				BARstStart: 0,
+			},
+			LastUpdateMetric: &FlowMetric{
+				ABPackets: 0,
+				ABBytes:   0,
+				BAPackets: 0,
+				BABytes:   0,
 			},
 		},
 		{
@@ -358,11 +432,27 @@ func TestPCAP1(t *testing.T) {
 				A:        "47838",
 				B:        "80",
 			},
-			Metric: &FlowMetric{
-				ABPackets: 6,
-				ABBytes:   516,
-				BAPackets: 4,
-				BABytes:   760,
+			Metric: &ExtFlowMetric{
+				ABPackets:  6,
+				ABBytes:    516,
+				BAPackets:  4,
+				BABytes:    760,
+				ABSynStart: 0,
+				BASynStart: 0,
+				ABSynData:  "",
+				BASynData:  "",
+				ABSynTTL:   0,
+				BASynTTL:   0,
+				ABFinStart: 0,
+				BAFinStart: 0,
+				ABRstStart: 0,
+				BARstStart: 0,
+			},
+			LastUpdateMetric: &FlowMetric{
+				ABPackets: 0,
+				ABBytes:   0,
+				BAPackets: 0,
+				BABytes:   0,
 			},
 		},
 		{
@@ -383,11 +473,27 @@ func TestPCAP1(t *testing.T) {
 				A:        "33553",
 				B:        "53",
 			},
-			Metric: &FlowMetric{
-				ABPackets: 2,
-				ABBytes:   146,
-				BAPackets: 2,
-				BABytes:   190,
+			Metric: &ExtFlowMetric{
+				ABPackets:  2,
+				ABBytes:    146,
+				BAPackets:  2,
+				BABytes:    190,
+				ABSynStart: 0,
+				BASynStart: 0,
+				ABSynData:  "",
+				BASynData:  "",
+				ABSynTTL:   0,
+				BASynTTL:   0,
+				ABFinStart: 0,
+				BAFinStart: 0,
+				ABRstStart: 0,
+				BARstStart: 0,
+			},
+			LastUpdateMetric: &FlowMetric{
+				ABPackets: 0,
+				ABBytes:   0,
+				BAPackets: 0,
+				BABytes:   0,
 			},
 		},
 		{
@@ -408,11 +514,27 @@ func TestPCAP1(t *testing.T) {
 				A:        "54785",
 				B:        "80",
 			},
-			Metric: &FlowMetric{
-				ABPackets: 20,
-				ABBytes:   1475,
-				BAPackets: 18,
-				BABytes:   21080,
+			Metric: &ExtFlowMetric{
+				ABPackets:  20,
+				ABBytes:    1475,
+				BAPackets:  18,
+				BABytes:    21080,
+				ABSynStart: 0,
+				BASynStart: 0,
+				ABSynData:  "",
+				BASynData:  "",
+				ABSynTTL:   0,
+				BASynTTL:   0,
+				ABFinStart: 0,
+				BAFinStart: 0,
+				ABRstStart: 0,
+				BARstStart: 0,
+			},
+			LastUpdateMetric: &FlowMetric{
+				ABPackets: 0,
+				ABBytes:   0,
+				BAPackets: 0,
+				BABytes:   0,
 			},
 		},
 	}
@@ -458,7 +580,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				A:        "10.65.65.5",
 				B:        "10.35.35.3",
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 1,
 				ABBytes:   104,
 			},
@@ -481,7 +603,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				A:        "53580",
 				B:        "51234",
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 1,
 				ABBytes:   120,
 			},
@@ -504,7 +626,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				A:        "52477",
 				B:        "80",
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 1,
 				ABBytes:   74,
 			},
@@ -527,7 +649,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				A:        "51822",
 				B:        "51234",
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 1,
 				ABBytes:   150,
 			},
@@ -579,7 +701,7 @@ func TestVlansQinQ(t *testing.T) {
 				A:        "172.16.0.2",
 				B:        "172.16.0.1",
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 10,
 				ABBytes:   1020,
 				BAPackets: 8,
@@ -600,7 +722,7 @@ func TestVlansQinQ(t *testing.T) {
 				A:        "172.16.10.2",
 				B:        "172.16.10.1",
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 10,
 				ABBytes:   1060,
 				BAPackets: 10,
@@ -621,7 +743,7 @@ func TestVlansQinQ(t *testing.T) {
 				A:        "172.16.20.2",
 				B:        "172.16.20.1",
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 10,
 				ABBytes:   1100,
 				BAPackets: 9,
@@ -642,7 +764,7 @@ func TestVlansQinQ(t *testing.T) {
 				A:        "172.16.30.2",
 				B:        "172.16.30.1",
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 10,
 				ABBytes:   1140,
 				BAPackets: 8,
@@ -671,7 +793,7 @@ func TestGREEthernet(t *testing.T) {
 				B:        "86.106.164.150",
 				ID:       0,
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 5,
 				ABBytes:   810,
 				BAPackets: 5,
@@ -687,7 +809,7 @@ func TestGREEthernet(t *testing.T) {
 				B:        "10.10.13.2",
 				ID:       0,
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 5,
 				ABBytes:   620,
 				BAPackets: 5,
@@ -703,7 +825,7 @@ func TestGREEthernet(t *testing.T) {
 				B:        "192.168.1.2",
 				ID:       0,
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 5,
 				ABBytes:   500,
 				BAPackets: 5,
@@ -732,7 +854,7 @@ func TestGREMPLS(t *testing.T) {
 				B:        "172.16.0.2",
 				ID:       0,
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 2,
 				ABBytes:   252,
 				BAPackets: 0,
@@ -748,7 +870,7 @@ func TestGREMPLS(t *testing.T) {
 				B:        "192.168.0.2",
 				ID:       0,
 			},
-			Metric: &FlowMetric{
+			Metric: &ExtFlowMetric{
 				ABPackets: 2,
 				ABBytes:   168,
 				BAPackets: 0,

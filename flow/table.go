@@ -75,7 +75,7 @@ type Table struct {
 	Opts          TableOpts
 	PacketsChan   chan *Packets
 	table         map[string]*Flow
-	stats         map[string]*FlowMetric
+	stats         map[string]*ExtFlowMetric
 	flush         chan bool
 	flushDone     chan bool
 	query         chan *TableQuery
@@ -97,7 +97,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 	t := &Table{
 		PacketsChan:   make(chan *Packets, 1000),
 		table:         make(map[string]*Flow),
-		stats:         make(map[string]*FlowMetric),
+		stats:         make(map[string]*ExtFlowMetric),
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
 		state:         common.StoppedState,

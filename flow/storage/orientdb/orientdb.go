@@ -66,8 +66,35 @@ func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Docum
 	}
 }
 
+func extFlowMetricToDocument(flow *flow.Flow, metric *flow.ExtFlowMetric) orient.Document {
+	return orient.Document{
+		"@class":        "ExtFlowMetric",
+		"@type":         "d",
+		"Start":         flow.LastUpdateStart,
+		"Last":          flow.LastUpdateLast,
+		"ABPackets":     metric.ABPackets,
+		"ABBytes":       metric.ABBytes,
+		"BAPackets":     metric.BAPackets,
+		"BABytes":       metric.BABytes,
+		"ABSynStart":    metric.ABSynStart,
+		"BASynStart":    metric.BASynStart,
+		"ABSynData":     metric.ABSynData,
+		"BASynData":     metric.BASynData,
+		"ABSynTTL":      metric.ABSynTTL,
+		"BASynTTL":      metric.BASynTTL,
+		"CaptureSyn":    metric.CaptureSyn,
+		"ABFinStart":    metric.ABFinStart,
+		"BAFinStart":    metric.BAFinStart,
+		"ABRstStart":    metric.ABRstStart,
+		"BARstStart":    metric.BARstStart,
+		"LenBySeq":      metric.LenBySeq,
+		"ABExpectedSeq": metric.ABExpectedSeq,
+		"BAExpectedSeq": metric.BAExpectedSeq,
+	}
+}
+
 func flowToDocument(flow *flow.Flow) orient.Document {
-	metricDoc := flowMetricToDocument(flow, flow.Metric)
+	metricDoc := extFlowMetricToDocument(flow, flow.Metric)
 	lastMetricDoc := flowMetricToDocument(flow, flow.LastUpdateMetric)
 
 	flowDoc := orient.Document{
@@ -385,6 +412,40 @@ func New() (*OrientDBStorage, error) {
 		}
 	}
 
+	if _, err := client.GetDocumentClass("ExtFlowMetric"); err != nil {
+		class := orient.ClassDefinition{
+			Name: "ExtFlowMetric",
+			Properties: []orient.Property{
+				{Name: "ABBytes", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "ABPackets", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "BABytes", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "BAPackets", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "Start", Type: "LONG", Mandatory: true, NotNull: true},
+				{Name: "Last", Type: "LONG", Mandatory: true, NotNull: true},
+				{Name: "ABSynStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "BASynStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "ABSynData", Type: "STRING", Mandatory: false, NotNull: false},
+				{Name: "BASynData", Type: "STRING", Mandatory: false, NotNull: false},
+				{Name: "ABSynTTL", Type: "INTEGER", Mandatory: false, NotNull: false},
+				{Name: "BASynTTL", Type: "INTEGER", Mandatory: false, NotNull: false},
+				{Name: "CaptureSyn", Type: "BOOLEAN", Mandatory: false, NotNull: false},
+				{Name: "LenBySeq", Type: "BOOLEAN", Mandatory: false, NotNull: false},
+				{Name: "ABFinStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "BAFinStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "ABRstStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "BARstStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "ABExpectedSeq", Type: "INTEGER", Mandatory: false, NotNull: false},
+				{Name: "BAExpectedSeq", Type: "INTEGER", Mandatory: false, NotNull: false},
+			},
+			Indexes: []orient.Index{
+				{Name: "ExtFlowMetric.TimeSpan", Fields: []string{"Start", "Last"}, Type: "NOTUNIQUE"},
+			},
+		}
+		if err := client.CreateDocumentClass(class); err != nil {
+			return nil, fmt.Errorf("Failed to register class ExtFlowMetric: %s", err.Error())
+		}
+	}
+
 	if _, err := client.GetDocumentClass("Flow"); err != nil {
 		class := orient.ClassDefinition{
 			Name: "Flow",
@@ -393,7 +454,7 @@ func New() (*OrientDBStorage, error) {
 				{Name: "LayersPath", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "Application", Type: "STRING"},
 				{Name: "LastUpdateMetric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
-				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
+				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "ExtFlowMetric"},
 				{Name: "Start", Type: "LONG"},
 				{Name: "Last", Type: "LONG"},
 				{Name: "LastUpdateStart", Type: "LONG"},
@@ -422,6 +483,11 @@ func New() (*OrientDBStorage, error) {
 
 	flowIndex := orient.Index{Name: "FlowMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
 	client.CreateIndex("FlowMetric", flowIndex)
+
+	client.CreateProperty("ExtFlowMetric", flowProp)
+
+	extFlowIndex := orient.Index{Name: "ExtFlowMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
+	client.CreateIndex("ExtFlowMetric", extFlowIndex)
 
 	return &OrientDBStorage{
 		client: client,

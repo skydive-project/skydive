@@ -105,7 +105,8 @@ func init() {
 	cfg.SetDefault("logging.level", "INFO")
 	cfg.SetDefault("logging.file.path", "/var/log/skydive.log")
 	cfg.SetDefault("logging.encoder", "")
-
+	cfg.SetDefault("agent.tcp_len_by seq", false)
+	cfg.SetDefault("agent.capture_syn", false)
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")
 	cfg.SetEnvKeyReplacer(replacer)

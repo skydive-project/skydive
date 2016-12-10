@@ -80,6 +80,27 @@ message RawPacket {
   bytes Data = 3;
 }
 
+message ExtFlowMetric {
+	int64 ABPackets = 3;
+	int64 ABBytes = 4;
+	int64 BAPackets = 5;
+	int64 BABytes = 6;
+	int64 ABSynStart = 7;
+	int64 BASynStart = 8;
+	string ABSynData = 9;
+	string BASynData = 10;
+	uint32 ABSynTTL = 11;
+	uint32 BASynTTL = 12;
+	bool CaptureSyn = 13;
+	int64 ABFinStart = 14;
+	int64 BAFinStart = 15;
+	int64 ABRstStart = 16;
+	int64 BARstStart = 17;
+	bool LenBySeq = 18;
+	uint32 ABExpectedSeq = 19;
+	uint32 BAExpectedSeq = 20;
+}
+
 message Flow {
 /* Flow Universally Unique IDentifier
    flow.UUID is unique in the universe, as it should be used as a key of an
@@ -104,7 +125,7 @@ message Flow {
 */
 	FlowMetric LastUpdateMetric = 31;
 /* Total amount of data for the whole flow duration */
-	FlowMetric Metric = 32;
+	ExtFlowMetric Metric = 32;
 
   int64 Start = 10;
   int64 Last = 11;
