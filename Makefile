@@ -105,8 +105,11 @@ doc:
 doctest:
 	hugo server run -t hugo-material-docs -s doc -b http://localhost:1313/skydive
 
+srpm:
+	contrib/packaging/rpm/generate-skydive-bootstrap.sh -s
+
 rpm:
-	contrib/packaging/rpm/generate-skydive-bootstrap.sh
+	contrib/packaging/rpm/generate-skydive-bootstrap.sh -b
 
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/

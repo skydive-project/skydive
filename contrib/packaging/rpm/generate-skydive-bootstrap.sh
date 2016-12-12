@@ -1,10 +1,33 @@
 #!/bin/bash
 
+function usage {
+  echo "Usage: $0 [-b|-s|-a] [-r tag_or_commit]"
+}
 
 from=HEAD
-if [ -n "$1" ]; then
-    from=$1
-fi
+build_opts=-ba
+
+while getopts ":asb:r:" opt; do
+  case $opt in
+    a)
+      build_opts="-ba"
+      ;;
+    s)
+      build_opts="-bs"
+      ;;
+    b)
+      build_opts="-bb"
+      ;;
+    r)
+      from=$OPTARG
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 define=""
 version=$(git rev-parse --verify $from)
@@ -41,4 +64,4 @@ mkdir -p rpmbuild/SOURCES
 tar -C $tmpdir --exclude=skydive-${version}/src/github.com/skydive-project/skydive/.git -cvf rpmbuild/SOURCES/skydive-${version}.tar.gz skydive-${version}/src
 rm -rf $tmpdir
 
-rpmbuild -ba --define "$define" --define "_topdir $PWD/rpmbuild" contrib/packaging/rpm/skydive.spec
+rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $PWD/rpmbuild" contrib/packaging/rpm/skydive.spec

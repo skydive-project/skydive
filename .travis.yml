@@ -45,10 +45,10 @@ script:
 
     - echo "--- DOCKER IMAGE ---"
     - make docker-image DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
-    - sudo docker login -e "${DOCKER_EMAIL}" -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
-    - sudo docker tag ${DOCKER_IMAGE}:${BUILD_TAG} ${DOCKER_IMAGE}:latest
-    - sudo docker push docker.io/${DOCKER_IMAGE}:${BUILD_TAG}
-    - sudo docker push docker.io/${DOCKER_IMAGE}:latest
+    - sudo -E docker login -e "${DOCKER_EMAIL}" -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
+    - sudo -E docker tag ${DOCKER_IMAGE}:${BUILD_TAG} ${DOCKER_IMAGE}:latest
+    - sudo -E docker push docker.io/${DOCKER_IMAGE}:${BUILD_TAG}
+    - sudo -E docker push docker.io/${DOCKER_IMAGE}:latest
 
     - echo "--- BINARIES ---"
     - git remote add binaries ${BINARIES_REPO}
