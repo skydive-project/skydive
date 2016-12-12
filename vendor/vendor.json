@@ -911,45 +911,45 @@
 			"revision": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
 		{
-			"checksumSHA1": "R8706kR0KZCNlIez2BemqnSGRNg=",
+			"checksumSHA1": "5QqRDBdoOpLTKVWal5bLkm2pNy0=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket",
-			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
-			"revisionTime": "2016-12-08T20:20:03Z"
+			"revision": "24eb854d1e62e2496504340dbace901f36c4a643",
+			"revisionTime": "2016-11-07T16:49:57Z"
 		},
 		{
-			"checksumSHA1": "pzT5KM7f55DL1sdlqD/rFaa30FY=",
+			"checksumSHA1": "ZGjkFAvXg6X7ITBAAaouP6nvrro=",
 			"path": "github.com/google/gopacket/afpacket",
-			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
-			"revisionTime": "2016-12-08T20:20:03Z"
+			"revision": "24eb854d1e62e2496504340dbace901f36c4a643",
+			"revisionTime": "2016-11-07T16:49:57Z"
 		},
 		{
 			"checksumSHA1": "l9DwWGxjn8A9VpmuT01b+vf9Boo=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/bytediff",
-			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
-			"revisionTime": "2016-12-08T20:20:03Z"
+			"revision": "24eb854d1e62e2496504340dbace901f36c4a643",
+			"revisionTime": "2016-11-07T16:49:57Z"
 		},
 		{
-			"checksumSHA1": "t3eK/CnARurH3N+j85JT70Jdl7o=",
+			"checksumSHA1": "9weWL33DDOVZidmfItiPtFA1CZc=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
-			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
-			"revisionTime": "2016-12-08T20:20:03Z"
+			"revision": "24eb854d1e62e2496504340dbace901f36c4a643",
+			"revisionTime": "2016-11-07T16:49:57Z"
 		},
 		{
 			"checksumSHA1": "iAfnvhEgYadVvOMeGJKApvneIFA=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcap",
-			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
-			"revisionTime": "2016-12-08T20:20:03Z"
+			"revision": "24eb854d1e62e2496504340dbace901f36c4a643",
+			"revisionTime": "2016-11-07T16:49:57Z"
 		},
 		{
 			"checksumSHA1": "3s4xVMFdqU6YDaNJI7pJiU+o4Lw=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcapgo",
-			"revision": "58db4386b08b5b4cf105b6ab5a32448173a7637d",
-			"revisionTime": "2016-12-08T20:20:03Z"
+			"revision": "24eb854d1e62e2496504340dbace901f36c4a643",
+			"revisionTime": "2016-11-07T16:49:57Z"
 		},
 		{
 			"checksumSHA1": "WJ/6nt4LiRCzFQcaxfc/iodURPM=",

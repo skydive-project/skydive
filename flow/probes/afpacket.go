@@ -24,9 +24,7 @@ package probes
 
 import (
 	"github.com/google/gopacket"
-
-	// will re-use google package once the PR250 or something similar will be merged
-	"github.com/skydive-project/skydive/flow/probes/afpacket"
+	"github.com/google/gopacket/afpacket"
 )
 
 type AFPacketHandle struct {
