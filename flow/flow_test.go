@@ -437,3 +437,21 @@ func TestPCAP1(t *testing.T) {
 
 	validatePCAP(t, "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", layers.LinkTypeEthernet, expected)
 }
+
+func TestEmptyParentUUIDExported(t *testing.T) {
+	flow := &Flow{}
+
+	m, err := json.Marshal(&flow)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	var i map[string]interface{}
+	if err = json.Unmarshal(m, &i); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if _, ok := i["ParentUUID"]; !ok {
+		t.Fatal("ParentUUID field should always be exported")
+	}
+}
