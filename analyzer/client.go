@@ -25,6 +25,7 @@ package analyzer
 import (
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -37,13 +38,37 @@ type Client struct {
 	connection *AgentAnalyzerClientConn
 }
 
+func (c *Client) connect() {
+	strAddr := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
+	srv, err := net.ResolveUDPAddr("udp", strAddr)
+	if err != nil {
+		logging.GetLogger().Errorf("Can't resolv address to %s", strAddr)
+		time.Sleep(200 * time.Millisecond)
+		return
+	}
+	connection, err := NewAgentAnalyzerClientConn(srv)
+	if err != nil {
+		logging.GetLogger().Errorf("Connection error to %s : %s", strAddr, err.Error())
+		time.Sleep(200 * time.Millisecond)
+		return
+	}
+	c.connection = connection
+}
+
 func (c *Client) SendFlow(f *flow.Flow) error {
 	data, err := f.GetData()
 	if err != nil {
 		return err
 	}
 
-	c.connection.Write(data)
+retry:
+	_, err = c.connection.Write(data)
+	if err != nil {
+		logging.GetLogger().Errorf("flows connection to analyzer error %s : try to reconnect" + err.Error())
+		c.connection.Close()
+		c.connect()
+		goto retry
+	}
 
 	return nil
 }
@@ -59,18 +84,6 @@ func (c *Client) SendFlows(flows []*flow.Flow) {
 
 func NewClient(addr string, port int) (*Client, error) {
 	client := &Client{Addr: addr, Port: port}
-
-	srv, err := net.ResolveUDPAddr("udp", addr+":"+strconv.FormatInt(int64(port), 10))
-	if err != nil {
-		return nil, err
-	}
-
-	connection, err := NewAgentAnalyzerClientConn(srv)
-	if err != nil {
-		return nil, err
-	}
-
-	client.connection = connection
-
+	client.connect()
 	return client, nil
 }
