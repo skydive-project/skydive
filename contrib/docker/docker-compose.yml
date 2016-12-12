@@ -37,4 +37,4 @@ services:
       #- /var/run/openvswitch/db.sock:/var/run/openvswitch/db.sock
     environment:
       - SKYDIVE_NETNS_RUN_PATH=/host/run
-      - SKYDIVE_AGENT_ANALYZERS=127.0.0.1:8082
+      - SKYDIVE_ANALYZERS=127.0.0.1:8082

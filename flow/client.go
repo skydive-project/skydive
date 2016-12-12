@@ -30,6 +30,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -125,12 +126,11 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 }
 
 func (f *TableClient) LookupFlows(flowSearchQuery FlowSearchQuery) (*FlowSet, error) {
-	clients := f.WSServer.GetClientsByType("skydive-agent")
+	clients := f.WSServer.GetClientsByType(common.AgentService)
 	ch := make(chan *FlowSet, len(clients))
 
 	for _, client := range clients {
-		hostname, _ := client.GetHostInfo()
-		go f.lookupFlows(ch, hostname, flowSearchQuery)
+		go f.lookupFlows(ch, client.Host, flowSearchQuery)
 	}
 
 	flowset := NewFlowSet()

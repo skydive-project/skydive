@@ -35,6 +35,8 @@ import (
 
 	"github.com/robertkrimen/otto"
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
 	ftraversal "github.com/skydive-project/skydive/flow/traversal"
@@ -232,6 +234,7 @@ type AlertServer struct {
 	graphAlerts   map[string]*GremlinAlert
 	alertTimers   map[string]*time.Ticker
 	gremlinParser *traversal.GremlinTraversalParser
+	elector       *etcd.EtcdMasterElector
 }
 
 type AlertMessage struct {
@@ -270,6 +273,10 @@ func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
 }
 
 func (a *AlertServer) evaluateAlert(al *GremlinAlert) error {
+	if !a.elector.IsMaster() {
+		return nil
+	}
+
 	if al.triggered {
 		return nil
 	}
@@ -398,25 +405,33 @@ func (a *AlertServer) onApiWatcherEvent(action string, id string, resource api.A
 }
 
 func (a *AlertServer) Start() {
+	a.elector.Start()
+
 	a.watcher = a.AlertHandler.AsyncWatch(a.onApiWatcherEvent)
 	a.Graph.AddEventListener(a)
 	a.WSServer.AddEventHandler(a)
 }
 
 func (a *AlertServer) Stop() {
+	a.elector.Stop()
 }
 
-func NewAlertServer(g *graph.Graph, ah api.ApiHandler, wsServer *shttp.WSServer, tc *flow.TableClient, s storage.Storage) *AlertServer {
+func NewAlertServer(g *graph.Graph, ah api.ApiHandler, wsServer *shttp.WSServer, tc *flow.TableClient, s storage.Storage, etcdClient *etcd.EtcdClient) *AlertServer {
 	gremlinParser := traversal.NewGremlinTraversalParser(g)
 	gremlinParser.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	gremlinParser.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tc, s))
 
-	return &AlertServer{
+	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
+
+	as := &AlertServer{
 		Graph:         g,
 		WSServer:      wsServer,
 		AlertHandler:  ah,
 		graphAlerts:   make(map[string]*GremlinAlert),
 		alertTimers:   make(map[string]*time.Ticker),
 		gremlinParser: gremlinParser,
+		elector:       elector,
 	}
+
+	return as
 }

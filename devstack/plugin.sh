@@ -26,7 +26,7 @@ GOPATH=/opt/stack/go
 SKYDIVE_ANALYZER_LISTEN=${SKYDIVE_ANALYZER_LISTEN:-$SERVICE_HOST:8082}
 
 # Inform the agent about the address on which analyzers are listening
-SKYDIVE_AGENT_ANALYZERS=${SKYDIVE_AGENT_ANALYZERS:-$SKYDIVE_ANALYZER_LISTEN}
+SKYDIVE_ANALYZERS=${SKYDIVE_ANALYZERS:-$SKYDIVE_ANALYZER_LISTEN}
 
 # Configure the skydive agent with the etcd server address
 SKYDIVE_AGENT_ETCD=${SKYDIVE_AGENT_ETCD:-http://$SERVICE_HOST:2379}
@@ -149,6 +149,8 @@ function configure_skydive {
     cat > $SKYDIVE_CONFIG_FILE <<- EOF
 auth:
   type: keystone
+  analyzer_username: admin
+  analyzer_password: $ADMIN_PASSWORD
 
 logging:
   default: $SKYDIVE_LOGLEVEL
@@ -169,10 +171,10 @@ etcd:
 graph:
   backend: elasticsearch
 
+analyzers:
+  - $SKYDIVE_ANALYZERS
+
 agent:
-  analyzer_username: admin
-  analyzer_password: $ADMIN_PASSWORD
-  analyzers: $SKYDIVE_AGENT_ANALYZERS
   listen: $SKYDIVE_AGENT_LISTEN
   flow:
     probes:

@@ -38,7 +38,6 @@ import (
 )
 
 type FlowApi struct {
-	Service   string
 	FlowTable *flow.Table
 	Storage   storage.Storage
 }

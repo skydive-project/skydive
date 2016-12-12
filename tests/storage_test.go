@@ -38,9 +38,10 @@ import (
 )
 
 const confStorage = `---
+analyzers:
+  - localhost:{{.AnalyzerPort}}
 agent:
   listen: :58081
-  analyzers: localhost:{{.AnalyzerPort}}
   topology:
     probes:
       - netlink

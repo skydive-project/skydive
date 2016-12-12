@@ -31,7 +31,7 @@ import (
 	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node, wsClient *shttp.WSAsyncClient) (*probe.ProbeBundle, error) {
+func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node, wspool *shttp.WSAsyncClientPool) (*probe.ProbeBundle, error) {
 	list := config.GetConfig().GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
@@ -61,7 +61,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node, wsClient *s
 			}
 			probes[t] = dockerProbe
 		case "neutron":
-			neutron, err := tprobes.NewNeutronMapperFromConfig(g, wsClient)
+			neutron, err := tprobes.NewNeutronMapperFromConfig(g, wspool)
 			if err != nil {
 				logging.GetLogger().Errorf("Failed to initialize Neutron probe: %s", err.Error())
 				return nil, err

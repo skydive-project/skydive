@@ -8,8 +8,9 @@ sudo systemctl start docker.service
 
 sudo mkdir -p /etc/skydive
 sudo tee /etc/skydive/skydive.yml << EOF
+analyzers:
+  - 192.168.50.10:8082
 agent:
-  analyzers: 192.168.50.10:8082
   flow:
     probes:
       - ovssflow

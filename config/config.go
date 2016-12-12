@@ -23,8 +23,9 @@
 package config
 
 import (
+	"errors"
 	"fmt"
-	"net"
+	"math/rand"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -37,6 +38,10 @@ import (
 )
 
 var cfg *viper.Viper
+
+var (
+	ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the config file")
+)
 
 func init() {
 	host, err := os.Hostname()
@@ -175,38 +180,36 @@ func SetDefault(key string, value interface{}) {
 	cfg.SetDefault(key, value)
 }
 
-func validateIPPort(addressPort string) (string, int, error) {
-	/* Backward compatibility for old format like : listen = 1234 */
-	if !strings.ContainsAny(addressPort, ".:") {
-		addressPort = ":" + addressPort
+func GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
+	var addresses []common.ServiceAddress
+	for _, a := range GetConfig().GetStringSlice("analyzers") {
+		sa, err := common.ServiceAddressFromString(a)
+		if err != nil {
+			return nil, err
+		}
+		addresses = append(addresses, sa)
 	}
-	/* validate IPv4 and IPv6 address */
-	IPAddr, err := net.ResolveUDPAddr("", addressPort)
+
+	// shuffle in order to load balance connections
+	for i := range addresses {
+		j := rand.Intn(i + 1)
+		addresses[i], addresses[j] = addresses[j], addresses[i]
+	}
+
+	return addresses, nil
+}
+
+func GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
+	addresses, err := GetAnalyzerServiceAddresses()
 	if err != nil {
-		return "", 0, err
+		return common.ServiceAddress{}, err
 	}
-	IPaddr := IPAddr.IP
-	port := IPAddr.Port
 
-	addr := "localhost"
-	if IPaddr != nil {
-		addr = common.IPToString(IPaddr)
+	if len(addresses) == 0 {
+		return common.ServiceAddress{}, ErrNoAnalyzerSpecified
 	}
-	return addr, port, nil
-}
 
-func GetHostPortAttributes(s string, p string) (string, int, error) {
-	key := s + "." + p
-	return validateIPPort(GetConfig().GetString(key))
-}
-
-func GetAnalyzerClientAddr() (string, int, error) {
-	analyzers := GetConfig().GetStringSlice("agent.analyzers")
-	// TODO(safchain) HA Connection ???
-	if len(analyzers) > 0 {
-		return validateIPPort(analyzers[0])
-	}
-	return "", 0, nil
+	return addresses[rand.Intn(len(addresses))], nil
 }
 
 func GetEtcdServerAddrs() []string {
@@ -214,6 +217,8 @@ func GetEtcdServerAddrs() []string {
 	if len(etcdServers) > 0 {
 		return etcdServers
 	}
-	analyzer, _, _ := GetAnalyzerClientAddr()
-	return []string{"http://" + analyzer + ":2379"}
+	if addresse, err := GetOneAnalyzerServiceAddress(); err == nil {
+		return []string{"http://" + addresse.Addr + ":2379"}
+	}
+	return []string{"http://localhost:2379"}
 }

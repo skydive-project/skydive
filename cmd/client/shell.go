@@ -75,7 +75,7 @@ func actionSetVarPassword(s *Session, arg string) error {
 }
 func actionSetVarAnalyzer(s *Session, arg string) error {
 	s.analyzerAddr = arg
-	config.GetConfig().Set("agent.analyzers", s.analyzerAddr)
+	config.GetConfig().Set("analyzers", s.analyzerAddr)
 	return nil
 }
 
@@ -330,7 +330,7 @@ func NewSession() (*Session, error) {
 			Password: "password",
 		},
 	}
-	config.GetConfig().Set("agent.analyzers", s.analyzerAddr)
+	config.GetConfig().Set("analyzers", s.analyzerAddr)
 
 	return s, nil
 }

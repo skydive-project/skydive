@@ -32,6 +32,7 @@ import (
 
 	"github.com/skydive-project/skydive/alert"
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
@@ -42,13 +43,14 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type Server struct {
+	shttp.DefaultWSServerEventHandler
 	HTTPServer          *shttp.Server
 	WSServer            *shttp.WSServer
-	GraphServer         *graph.GraphServer
+	TopologyForwarder   *TopologyForwarder
+	TopologyServer      *TopologyServer
 	AlertServer         *alert.AlertServer
 	OnDemandClient      *ondemand.OnDemandProbeClient
 	FlowMappingPipeline *mappings.FlowMappingPipeline
@@ -56,7 +58,7 @@ type Server struct {
 	Storage             storage.Storage
 	FlowTable           *flow.Table
 	TableClient         *flow.TableClient
-	conn                *AgentAnalyzerServerConn
+	conn                *FlowServerConn
 	EmbeddedEtcd        *etcd.EmbeddedEtcd
 	EtcdClient          *etcd.EtcdClient
 	running             atomic.Value
@@ -79,7 +81,7 @@ func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
 }
 
 /* handleFlowPacket can handle connection based on TCP or UDP */
-func (s *Server) handleFlowPacket(conn *AgentAnalyzerServerConn) {
+func (s *Server) handleFlowPacket(conn *FlowServerConn) {
 	defer s.wgFlowsHandlers.Done()
 	defer conn.Close()
 
@@ -117,6 +119,8 @@ func (s *Server) ListenAndServe() {
 		s.Storage.Start()
 	}
 
+	s.TopologyForwarder.ConnectAll()
+
 	s.ProbeBundle.Start()
 	s.OnDemandClient.Start()
 	s.AlertServer.Start()
@@ -134,7 +138,7 @@ func (s *Server) ListenAndServe() {
 
 	host := s.HTTPServer.Addr + ":" + strconv.FormatInt(int64(s.HTTPServer.Port), 10)
 	addr, err := net.ResolveUDPAddr("udp", host)
-	s.conn, err = NewAgentAnalyzerServerConn(addr)
+	s.conn, err = NewFlowServerConn(addr)
 	if err != nil {
 		panic(err)
 	}
@@ -199,21 +203,16 @@ func (s *Server) SetStorage(storage storage.Storage) {
 func NewServerFromConfig() (*Server, error) {
 	embedEtcd := config.GetConfig().GetBool("etcd.embedded")
 
-	backend, err := graph.BackendFromConfig()
+	httpServer, err := shttp.NewServerFromConfig(common.AnalyzerService)
 	if err != nil {
 		return nil, err
 	}
 
-	g := graph.NewGraphFromConfig(backend)
+	wsServer := shttp.NewWSServerFromConfig(common.AnalyzerService, httpServer, "/ws")
 
-	httpServer, err := shttp.NewServerFromConfig("analyzer")
-	if err != nil {
-		return nil, err
-	}
+	topology := NewTopologyServerFromConfig(wsServer)
 
-	wsServer := shttp.NewWSServerFromConfig(httpServer, "/ws")
-
-	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
+	probeBundle, err := NewTopologyProbeBundleFromConfig(topology.Graph)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +257,7 @@ func NewServerFromConfig() (*Server, error) {
 			ResourceHandler: &api.CaptureResourceHandler{},
 			EtcdKeyAPI:      etcdClient.KeysApi,
 		},
-		Graph: g,
+		Graph: topology.Graph,
 	}
 	err = apiServer.RegisterApiHandler(captureApiHandler)
 	if err != nil {
@@ -276,13 +275,13 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureApiHandler, wsServer)
+	onDemandClient := ondemand.NewOnDemandProbeClient(topology.Graph, captureApiHandler, wsServer, etcdClient)
 
-	pipeline := mappings.NewFlowMappingPipeline(mappings.NewGraphFlowEnhancer(g))
+	pipeline := mappings.NewFlowMappingPipeline(mappings.NewGraphFlowEnhancer(topology.Graph))
 
 	// check that the neutron probe is loaded if so add the neutron flow enhancer
 	if probeBundle.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(mappings.NewNeutronFlowEnhancer(g))
+		pipeline.AddEnhancer(mappings.NewNeutronFlowEnhancer(topology.Graph))
 	}
 
 	tableClient := flow.NewTableClient(wsServer)
@@ -291,15 +290,17 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	aserver := alert.NewAlertServer(g, alertApiHandler, wsServer, tableClient, store)
-	gserver := graph.NewServer(g, wsServer)
+	aserver := alert.NewAlertServer(topology.Graph, alertApiHandler, wsServer, tableClient, store, etcdClient)
 
 	piClient := packet_injector.NewPacketInjectorClient(wsServer)
+
+	forwarder := NewTopologyForwarderFromConfig(topology.Graph, wsServer)
 
 	server := &Server{
 		HTTPServer:          httpServer,
 		WSServer:            wsServer,
-		GraphServer:         gserver,
+		TopologyForwarder:   forwarder,
+		TopologyServer:      topology,
 		AlertServer:         aserver,
 		OnDemandClient:      onDemandClient,
 		FlowMappingPipeline: pipeline,
@@ -310,16 +311,18 @@ func NewServerFromConfig() (*Server, error) {
 		Storage:             store,
 	}
 
+	wsServer.AddEventHandler(server)
+
 	updateHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerUpdate))
 	expireHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerExpire))
 	flowtable := flow.NewTable(updateHandler, expireHandler)
 	server.FlowTable = flowtable
 
-	api.RegisterTopologyApi(g, httpServer, tableClient, server.Storage)
+	api.RegisterTopologyApi(topology.Graph, httpServer, tableClient, server.Storage)
 
 	api.RegisterFlowApi(flowtable, server.Storage, httpServer)
 
-	api.RegisterPacketInjectorApi(piClient, g, httpServer)
+	api.RegisterPacketInjectorApi(piClient, topology.Graph, httpServer)
 
 	api.RegisterPcapApi(httpServer, flowtable.PacketsChan)
 

@@ -31,7 +31,9 @@ import (
 
 	"github.com/nu7hatch/gouuid"
 
+	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
@@ -46,97 +48,110 @@ import (
 )
 
 type Agent struct {
+	shttp.DefaultWSClientEventHandler
 	Graph               *graph.Graph
-	WSClient            *shttp.WSAsyncClient
+	WSAsyncClientPool   *shttp.WSAsyncClientPool
 	WSServer            *shttp.WSServer
 	GraphServer         *graph.GraphServer
 	Root                *graph.Node
 	TopologyProbeBundle *probe.ProbeBundle
 	FlowProbeBundle     *fprobes.FlowProbeBundle
 	FlowTableAllocator  *flow.TableAllocator
+	FlowClientPool      *analyzer.FlowClientPool
 	OnDemandProbeServer *ondemand.OnDemandProbeServer
 	HTTPServer          *shttp.Server
 	EtcdClient          *etcd.EtcdClient
 	TIDMapper           *topology.TIDMapper
 }
 
+func NewAnalyzerWSClientPool() *shttp.WSAsyncClientPool {
+	wspool := shttp.NewWSAsyncClientPool()
+
+	authOptions := &shttp.AuthenticationOpts{
+		Username: config.GetConfig().GetString("auth.analyzer_username"),
+		Password: config.GetConfig().GetString("auth.analyzer_password"),
+	}
+
+	addresses, err := config.GetAnalyzerServiceAddresses()
+	if err != nil {
+		logging.GetLogger().Warningf("Unable to get the analyzers list: %s", err.Error())
+		return nil
+	}
+
+	for _, sa := range addresses {
+		authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
+		wsclient := shttp.NewWSAsyncClientFromConfig(common.AgentService, sa.Addr, sa.Port, "/ws", authClient)
+
+		wspool.AddWSAsyncClient(wsclient)
+	}
+
+	return wspool
+}
+
 func (a *Agent) Start() {
 	var err error
 
+	go a.HTTPServer.ListenAndServe()
 	go a.WSServer.ListenAndServe()
 
-	addr, port, err := config.GetAnalyzerClientAddr()
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
+	a.WSAsyncClientPool = NewAnalyzerWSClientPool()
+	if a.WSAsyncClientPool == nil {
 		os.Exit(1)
 	}
 
-	if addr != "" {
-		authOptions := &shttp.AuthenticationOpts{
-			Username: config.GetConfig().GetString("agent.analyzer_username"),
-			Password: config.GetConfig().GetString("agent.analyzer_password"),
-		}
-		authClient := waitAnalyzer(addr, port, authOptions)
-		a.WSClient, err = shttp.NewWSAsyncClientFromConfig("skydive-agent", addr, port, "/ws", authClient)
-		if err != nil {
-			logging.GetLogger().Errorf("Unable to instantiate analyzer client %s", err.Error())
-			os.Exit(1)
-		}
+	NewTopologyForwarderFromConfig(a.Graph, a.WSAsyncClientPool)
 
-		graph.NewForwarder(a.WSClient, a.Graph, config.GetConfig().GetString("host_id"))
-		a.WSClient.Connect()
-	}
-
-	a.TopologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.Graph, a.Root, a.WSClient)
+	a.TopologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.Graph, a.Root, a.WSAsyncClientPool)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to instantiate topology probes: %s", err.Error())
 		os.Exit(1)
 	}
 	a.TopologyProbeBundle.Start()
 
-	go a.HTTPServer.ListenAndServe()
-
-	if addr != "" {
+	// at least one analyzer, so try to get info from etcd
+	if _, err := config.GetOneAnalyzerServiceAddress(); err == nil {
 		a.EtcdClient, err = etcd.NewEtcdClientFromConfig()
 		if err != nil {
 			logging.GetLogger().Errorf("Unable to start etcd client %s", err.Error())
 			os.Exit(1)
 		}
 
+		// waiting for some config coming from etcd
+		var flowtableUpdate, flowtableExpire int64
 		for {
-			flowtableUpdate, err := a.EtcdClient.GetInt64("/agent/config/flowtable_update")
-			if err != nil {
+			if flowtableUpdate, err = a.EtcdClient.GetInt64("/agent/config/flowtable_update"); err != nil {
 				time.Sleep(time.Second)
 				continue
 			}
-			flowtableExpire, err := a.EtcdClient.GetInt64("/agent/config/flowtable_expire")
-			if err != nil {
+			if flowtableExpire, err = a.EtcdClient.GetInt64("/agent/config/flowtable_expire"); err != nil {
 				time.Sleep(time.Second)
 				continue
 			}
-
-			updateTime := time.Duration(flowtableUpdate) * time.Second
-			expireTime := time.Duration(flowtableExpire) * time.Second
-			a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime)
-
-			// expose a flow server through the client connection
-			flow.NewServer(a.FlowTableAllocator, a.WSClient)
-
-			packet_injector.NewServer(a.WSClient, a.Graph)
-
-			a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator)
-			a.FlowProbeBundle.Start()
-
-			l, err := ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, a.WSClient)
-			if err != nil {
-				logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
-				os.Exit(1)
-			}
-			a.OnDemandProbeServer = l
-			a.OnDemandProbeServer.Start()
-
 			break
 		}
+
+		updateTime := time.Duration(flowtableUpdate) * time.Second
+		expireTime := time.Duration(flowtableExpire) * time.Second
+		a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime)
+
+		// expose a flow server through the client connections
+		flow.NewServer(a.FlowTableAllocator, a.WSAsyncClientPool)
+
+		packet_injector.NewServer(a.WSAsyncClientPool, a.Graph)
+
+		a.FlowClientPool = analyzer.NewFlowClientPool(a.WSAsyncClientPool)
+
+		a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator, a.FlowClientPool)
+		a.FlowProbeBundle.Start()
+
+		if a.OnDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, a.WSAsyncClientPool); err != nil {
+			logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
+			os.Exit(1)
+		}
+		a.OnDemandProbeServer.Start()
+
+		// everything is ready, then initiate the websocket connection
+		go a.WSAsyncClientPool.ConnectAll()
 	}
 }
 
@@ -148,8 +163,9 @@ func (a *Agent) Stop() {
 	a.TopologyProbeBundle.Stop()
 	a.HTTPServer.Stop()
 	a.WSServer.Stop()
-	if a.WSClient != nil {
-		a.WSClient.Disconnect()
+	a.WSAsyncClientPool.DisconnectAll()
+	if a.FlowClientPool != nil {
+		a.FlowClientPool.Close()
 	}
 	if a.OnDemandProbeServer != nil {
 		a.OnDemandProbeServer.Stop()
@@ -176,7 +192,7 @@ func NewAgent() *Agent {
 	tm := topology.NewTIDMapper(g)
 	tm.Start()
 
-	hserver, err := shttp.NewServerFromConfig("agent")
+	hserver, err := shttp.NewServerFromConfig(common.AgentService)
 	if err != nil {
 		panic(err)
 	}
@@ -186,7 +202,7 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
+	wsServer := shttp.NewWSServerFromConfig(common.AgentService, hserver, "/ws")
 
 	root := CreateRootNode(g)
 	api.RegisterTopologyApi(g, hserver, nil, nil)
@@ -200,29 +216,6 @@ func NewAgent() *Agent {
 		Root:        root,
 		HTTPServer:  hserver,
 		TIDMapper:   tm,
-	}
-}
-
-func waitAnalyzer(addr string, port int, authOptions *shttp.AuthenticationOpts) *shttp.AuthenticationClient {
-	authClient := shttp.NewAuthenticationClient(addr, port, authOptions)
-
-	for {
-		if !authClient.Authenticated() {
-			if err := authClient.Authenticate(); err != nil {
-				logging.GetLogger().Warning("Waiting for agent to authenticate")
-				time.Sleep(time.Second)
-				continue
-			}
-		}
-
-		restClient := shttp.NewRestClient(addr, port, authOptions)
-		if _, err := restClient.Request("GET", "/api", nil); err == nil {
-			logging.GetLogger().Info("Analyzer is ready:")
-			return authClient
-		}
-
-		logging.GetLogger().Warning("Waiting for analyzer to start")
-		time.Sleep(time.Second)
 	}
 }
 

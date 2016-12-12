@@ -40,7 +40,7 @@ type GremlinQueryHelper struct {
 }
 
 func (g *GremlinQueryHelper) Query(query string, values interface{}) error {
-	client, err := shttp.NewRestClientFromConfig(g.authOptions)
+	client, err := api.NewRestClientFromConfig(g.authOptions)
 	if err != nil {
 		return err
 	}

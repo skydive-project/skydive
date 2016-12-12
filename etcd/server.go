@@ -44,7 +44,6 @@ import (
 
 const (
 	memberName   = "skydive"
-	clusterName  = "skydive-cluster"
 	startTimeout = 10 * time.Second
 	// No peer URL exists but etcd doesn't allow the value to be empty.
 	peerURL    = "http://localhost:2379"

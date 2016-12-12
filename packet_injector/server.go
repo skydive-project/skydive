@@ -38,8 +38,8 @@ const (
 
 type PacketInjectorServer struct {
 	shttp.DefaultWSClientEventHandler
-	WSAsyncClient *shttp.WSAsyncClient
-	Graph         *graph.Graph
+	WSAsyncClientPool *shttp.WSAsyncClientPool
+	Graph             *graph.Graph
 }
 
 func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (bool, string) {
@@ -82,7 +82,7 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (bool, string
 	return true, ""
 }
 
-func (pis *PacketInjectorServer) OnMessage(msg shttp.WSMessage) {
+func (pis *PacketInjectorServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	if msg.Namespace != Namespace {
 		return
 	}
@@ -96,16 +96,16 @@ func (pis *PacketInjectorServer) OnMessage(msg shttp.WSMessage) {
 			status = http.StatusBadRequest
 		}
 		reply := msg.Reply(e, "PIResult", status)
-		pis.WSAsyncClient.SendWSMessage(reply)
+		c.SendWSMessage(reply)
 	}
 }
 
-func NewServer(client *shttp.WSAsyncClient, graph *graph.Graph) *PacketInjectorServer {
+func NewServer(wspool *shttp.WSAsyncClientPool, graph *graph.Graph) *PacketInjectorServer {
 	s := &PacketInjectorServer{
-		WSAsyncClient: client,
-		Graph:         graph,
+		WSAsyncClientPool: wspool,
+		Graph:             graph,
 	}
-	client.AddEventHandler(s)
+	wspool.AddEventHandler(s)
 
 	return s
 }

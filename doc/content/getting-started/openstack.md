@@ -27,7 +27,7 @@ The plugin accepts the following parameters:
 
 # Inform the agent about the address on which analyzers are listening
 # Must be in ip:port format
-#SKYDIVE_AGENT_ANALYZERS=
+#SKYDIVE_ANALYZERS=
 
 # ip:port address on which skydive agent listens for connections.
 #SKYDIVE_AGENT_LISTEN=
@@ -86,7 +86,7 @@ the `br-int` bridges.
 ```console
 $ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
-$ export SKYDIVE_AGENT_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
+$ export SKYDIVE_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
 
 $ skydive client capture create --gremlin "G.V().Has('Name', 'br-int')"
 ```

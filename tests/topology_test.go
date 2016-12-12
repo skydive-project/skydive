@@ -186,8 +186,7 @@ func testCleanup(t *testing.T, g *graph.Graph, cmds []helper.Cmd, names []string
 		if !testPassed {
 			clean := true
 			for _, name := range names {
-				n := g.LookupFirstNode(graph.Metadata{"Name": name})
-				if n != nil {
+				if n := g.LookupFirstNode(graph.Metadata{"Name": name}); n != nil {
 					clean = false
 					break
 				}

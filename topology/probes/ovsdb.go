@@ -29,6 +29,7 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs"
@@ -439,14 +440,14 @@ func NewOvsdbProbeFromConfig(g *graph.Graph, n *graph.Node) *OvsdbProbe {
 		protocol = "tcp"
 	} else {
 		// fallback to the original address format addr:port
-		addr, port, err := config.GetHostPortAttributes("ovs", "ovsdb")
+		sa, err := common.ServiceAddressFromString("ovs.ovsdb")
 		if err != nil {
 			logging.GetLogger().Errorf("Configuration error: %s", err.Error())
 			return nil
 		}
 
 		protocol = "tcp"
-		target = fmt.Sprintf("%s:%d", addr, port)
+		target = fmt.Sprintf("%s:%d", sa.Addr, sa.Port)
 	}
 
 	return NewOvsdbProbe(g, n, protocol, target)

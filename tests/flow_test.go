@@ -40,11 +40,12 @@ import (
 )
 
 const confAgentAnalyzer = `---
+analyzers:
+  - localhost:{{.AnalyzerPort}}
 agent:
   listen: :58081
   X509_cert: {{.AgentX509_cert}}
   X509_key: {{.AgentX509_key}}
-  analyzers: localhost:{{.AnalyzerPort}}
   topology:
     probes:
       - netlink
@@ -84,11 +85,12 @@ logging:
 `
 
 const confAgentAnalyzerIPv6 = `---
+analyzers:
+  - "[::1]:{{.AnalyzerPort}}"
 agent:
   listen: "[::1]:58081"
   X509_cert: {{.AgentX509_cert}}
   X509_key: {{.AgentX509_key}}
-  analyzers: "[::1]:{{.AnalyzerPort}}"
   topology:
     probes:
       - netlink
@@ -623,12 +625,12 @@ func TestSFlowSrcDstPath(t *testing.T) {
 	}
 
 	if node1 == nil {
-		t.Errorf("Could not find sflow-intf1 internal interface: %s", aa.Analyzer.GraphServer.Graph.String())
+		t.Errorf("Could not find sflow-intf1 internal interface: %s", aa.Analyzer.TopologyServer.Graph.String())
 		return
 	}
 
 	if node2 == nil {
-		t.Errorf("Could not find sflow-intf2 internal interface: %s", aa.Analyzer.GraphServer.Graph.String())
+		t.Errorf("Could not find sflow-intf2 internal interface: %s", aa.Analyzer.TopologyServer.Graph.String())
 		return
 	}
 

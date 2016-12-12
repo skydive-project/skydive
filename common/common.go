@@ -37,11 +37,23 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+type ServiceType string
+
+const (
+	AnalyzerService ServiceType = "analyzer"
+	AgentService    ServiceType = "agent"
+)
+
 const (
 	StoppedState = iota
 	RunningState
 	StoppingState
 )
+
+type ServiceAddress struct {
+	Addr string
+	Port int
+}
 
 type CaptureType struct {
 	Allowed []string
@@ -54,6 +66,10 @@ var (
 	NoPortLeft           error = errors.New("No free port left")
 	CaptureTypes               = map[string]CaptureType{}
 )
+
+func (st ServiceType) String() string {
+	return string(st)
+}
 
 func initCaptureTypes() {
 	// add ovs type
@@ -375,5 +391,28 @@ func NewPortAllocator(min, max int) (*PortAllocator, error) {
 		MinPort: min,
 		MaxPort: max,
 		PortMap: make(map[int]interface{}),
+	}, nil
+}
+
+func ServiceAddressFromString(addressPort string) (ServiceAddress, error) {
+	/* Backward compatibility for old format like : listen = 1234 */
+	if !strings.ContainsAny(addressPort, ".:") {
+		addressPort = ":" + addressPort
+	}
+	/* validate IPv4 and IPv6 address */
+	IPAddr, err := net.ResolveUDPAddr("", addressPort)
+	if err != nil {
+		return ServiceAddress{}, err
+	}
+	IPaddr := IPAddr.IP
+	port := IPAddr.Port
+
+	addr := "localhost"
+	if IPaddr != nil {
+		addr = IPToString(IPaddr)
+	}
+	return ServiceAddress{
+		Addr: addr,
+		Port: port,
 	}, nil
 }

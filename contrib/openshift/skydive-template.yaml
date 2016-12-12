@@ -142,7 +142,7 @@ objects:
         - args:
           - agent
           env:
-          - name: SKYDIVE_AGENT_ANALYZERS
+          - name: SKYDIVE_ANALYZERS
             value: $(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)
           image: skydive/skydive
           imagePullPolicy: Always

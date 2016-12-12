@@ -38,6 +38,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hydrogen18/stoppableListener"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
@@ -53,14 +54,15 @@ type Route struct {
 }
 
 type Server struct {
-	Service string
-	Router  *mux.Router
-	Addr    string
-	Port    int
-	Auth    AuthenticationBackend
-	lock    sync.Mutex
-	sl      *stoppableListener.StoppableListener
-	wg      sync.WaitGroup
+	Host        string
+	ServiceType common.ServiceType
+	Router      *mux.Router
+	Addr        string
+	Port        int
+	Auth        AuthenticationBackend
+	lock        sync.Mutex
+	sl          *stoppableListener.StoppableListener
+	wg          sync.WaitGroup
 }
 
 func copyRequestVars(old, new *http.Request) {
@@ -166,7 +168,7 @@ func (s *Server) getTemplateData() interface{} {
 	return &struct {
 		Service string
 	}{
-		Service: s.Service,
+		Service: s.ServiceType.String(),
 	}
 }
 
@@ -209,17 +211,19 @@ func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc) {
 	s.Router.HandleFunc(path, s.Auth.Wrap(f))
 }
 
-func NewServer(s string, a string, p int, auth AuthenticationBackend) *Server {
+func NewServer(host string, serviceType common.ServiceType, addr string, port int, auth AuthenticationBackend) *Server {
 	router := mux.NewRouter().StrictSlash(true)
+	router.Headers("X-Host-ID", host, "X-Service-Type", serviceType.String())
 
 	router.PathPrefix("/statics").HandlerFunc(serveStatics)
 
 	server := &Server{
-		Service: s,
-		Router:  router,
-		Addr:    a,
-		Port:    p,
-		Auth:    auth,
+		Host:        host,
+		ServiceType: serviceType,
+		Router:      router,
+		Addr:        addr,
+		Port:        port,
+		Auth:        auth,
 	}
 
 	router.HandleFunc("/login", server.serveLogin)
@@ -228,16 +232,18 @@ func NewServer(s string, a string, p int, auth AuthenticationBackend) *Server {
 	return server
 }
 
-func NewServerFromConfig(s string) (*Server, error) {
+func NewServerFromConfig(serviceType common.ServiceType) (*Server, error) {
 	auth, err := NewAuthenticationBackendFromConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	addr, port, err := config.GetHostPortAttributes(s, "listen")
+	sa, err := common.ServiceAddressFromString(config.GetConfig().GetString(serviceType.String() + ".listen"))
 	if err != nil {
 		return nil, errors.New("Configuration error: " + err.Error())
 	}
 
-	return NewServer(s, addr, port, auth), nil
+	host := config.GetConfig().GetString("host_id")
+
+	return NewServer(host, serviceType, sa.Addr, sa.Port, auth), nil
 }

@@ -33,6 +33,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/nu7hatch/gouuid"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -45,12 +46,12 @@ const (
 )
 
 type WSClient struct {
-	conn   *websocket.Conn
-	read   chan []byte
-	send   chan []byte
-	server *WSServer
-	host   string
-	kind   string
+	Host       string
+	ClientType common.ServiceType
+	conn       *websocket.Conn
+	read       chan []byte
+	send       chan []byte
+	server     *WSServer
 }
 
 type WSMessage struct {
@@ -74,6 +75,8 @@ type WSServer struct {
 	sync.RWMutex
 	DefaultWSServerEventHandler
 	Server        *Server
+	Host          string
+	ServiceType   common.ServiceType
 	eventHandlers []WSServerEventHandler
 	clients       map[*WSClient]bool
 	broadcast     chan string
@@ -138,10 +141,6 @@ func (d *DefaultWSServerEventHandler) OnRegisterClient(c *WSClient) {
 func (d *DefaultWSServerEventHandler) OnUnregisterClient(c *WSClient) {
 }
 
-func (c *WSClient) GetHostInfo() (string, string) {
-	return c.host, c.kind
-}
-
 func (c *WSClient) SendWSMessage(msg *WSMessage) {
 	c.send <- []byte(msg.String())
 }
@@ -192,7 +191,7 @@ func (c *WSClient) readPump() {
 		_, m, err := c.conn.ReadMessage()
 		if err != nil {
 			if err != websocket.ErrCloseSent {
-				logging.GetLogger().Errorf("Error while reading websocket from %s: %s", c.host, err.Error())
+				logging.GetLogger().Errorf("Error while reading websocket from %s: %s", c.Host, err.Error())
 			}
 			break
 		}
@@ -207,6 +206,13 @@ func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
 	defer func() {
 		ticker.Stop()
 	}()
+
+	// send a first ping to help firefox and some other client which wait for a
+	// first ping before doing something
+	if err := c.write(websocket.PingMessage, []byte{}); err != nil {
+		wg.Done()
+		return
+	}
 
 	for {
 		select {
@@ -243,7 +249,7 @@ func (s *WSServer) SendWSMessageTo(msg *WSMessage, host string) bool {
 	defer s.RUnlock()
 
 	for c := range s.clients {
-		if c.host == host {
+		if c.Host == host {
 			c.SendWSMessage(msg)
 			return true
 		}
@@ -296,12 +302,12 @@ func (s *WSServer) broadcastMessage(m string) {
 
 func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// if X-Host-ID specified avoid having twice the same ID
-	hostID := r.Header.Get("X-Host-ID")
-	if hostID != "" {
+	host := r.Header.Get("X-Host-ID")
+	if host != "" {
 		s.RLock()
 		for c := range s.clients {
-			if c.host == hostID {
-				logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, hostID)
+			if c.Host == host {
+				logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, host)
 				w.WriteHeader(http.StatusConflict)
 				s.RUnlock()
 
@@ -324,12 +330,12 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	}
 
 	c := &WSClient{
-		read:   make(chan []byte, maxMessages),
-		send:   make(chan []byte, maxMessages),
-		conn:   conn,
-		server: s,
-		host:   hostID,
-		kind:   r.Header.Get("X-Client-Type"),
+		read:       make(chan []byte, maxMessages),
+		send:       make(chan []byte, maxMessages),
+		conn:       conn,
+		server:     s,
+		Host:       host,
+		ClientType: common.ServiceType(r.Header.Get("X-Client-Type")),
 	}
 	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
@@ -387,10 +393,10 @@ func (s *WSServer) GetClients() (clients []*WSClient) {
 	return clients
 }
 
-func (s *WSServer) GetClientsByType(kind string) (clients []*WSClient) {
+func (s *WSServer) GetClientsByType(clientType common.ServiceType) (clients []*WSClient) {
 	s.RLock()
 	for client := range s.clients {
-		if client.kind == kind {
+		if client.ClientType == clientType {
 			clients = append(clients, client)
 		}
 	}
@@ -398,16 +404,18 @@ func (s *WSServer) GetClientsByType(kind string) (clients []*WSClient) {
 	return clients
 }
 
-func NewWSServer(server *Server, pongWait time.Duration, endpoint string) *WSServer {
+func NewWSServer(host string, serviceType common.ServiceType, server *Server, pongWait time.Duration, endpoint string) *WSServer {
 	s := &WSServer{
-		Server:     server,
-		broadcast:  make(chan string, 500),
-		quit:       make(chan bool, 1),
-		register:   make(chan *WSClient),
-		unregister: make(chan *WSClient),
-		clients:    make(map[*WSClient]bool),
-		pongWait:   pongWait,
-		pingPeriod: (pongWait * 8) / 10,
+		Host:        host,
+		ServiceType: serviceType,
+		Server:      server,
+		broadcast:   make(chan string, 500),
+		quit:        make(chan bool, 1),
+		register:    make(chan *WSClient),
+		unregister:  make(chan *WSClient),
+		clients:     make(map[*WSClient]bool),
+		pongWait:    pongWait,
+		pingPeriod:  (pongWait * 8) / 10,
 	}
 
 	server.HandleFunc(endpoint, s.serveMessages)
@@ -415,8 +423,9 @@ func NewWSServer(server *Server, pongWait time.Duration, endpoint string) *WSSer
 	return s
 }
 
-func NewWSServerFromConfig(server *Server, endpoint string) *WSServer {
+func NewWSServerFromConfig(serviceType common.ServiceType, server *Server, endpoint string) *WSServer {
 	w := config.GetConfig().GetInt("ws_pong_timeout")
+	host := config.GetConfig().GetString("host_id")
 
-	return NewWSServer(server, time.Duration(w)*time.Second, endpoint)
+	return NewWSServer(host, serviceType, server, time.Duration(w)*time.Second, endpoint)
 }

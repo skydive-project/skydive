@@ -12,9 +12,10 @@ FLOWTABLE_EXPIRE="${FLOWTABLE_EXPIRE:-300}"
 if [ ! -e /etc/skydive.yml ]
 then
   cat > /etc/skydive.yml <<EOF
+analyzers:
+  - $SKYDIVE_ANALYZER_PORT
 agent:
   listen: 0.0.0.0:8081
-  analyzers: $SKYDIVE_ANALYZER_PORT
   topology:
     probes:
       - netlink

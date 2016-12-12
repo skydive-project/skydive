@@ -26,6 +26,8 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -41,6 +43,7 @@ type OnDemandProbeClient struct {
 	wsServer       *shttp.WSServer
 	captures       map[string]*api.Capture
 	watcher        api.StoppableWatcher
+	elector        *etcd.EtcdMasterElector
 }
 
 func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.Capture) {
@@ -111,6 +114,10 @@ func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
 }
 
 func (o *OnDemandProbeClient) onNodeEvent() {
+	if !o.elector.IsMaster() {
+		return
+	}
+
 	for _, capture := range o.captures {
 		res := o.applyGremlinExpr(capture.GremlinQuery)
 		if len(res) > 0 {
@@ -132,6 +139,10 @@ func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
 }
 
 func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
+	if !o.elector.IsMaster() {
+		return
+	}
+
 	o.Lock()
 	defer o.Unlock()
 
@@ -147,6 +158,10 @@ func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
 }
 
 func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
+	if !o.elector.IsMaster() {
+		return
+	}
+
 	o.Lock()
 	defer o.Unlock()
 
@@ -193,25 +208,31 @@ func (o *OnDemandProbeClient) onApiWatcherEvent(action string, id string, resour
 }
 
 func (o *OnDemandProbeClient) Start() {
+	o.elector.Start()
+
 	o.watcher = o.captureHandler.AsyncWatch(o.onApiWatcherEvent)
 	o.graph.AddEventListener(o)
 }
 
 func (o *OnDemandProbeClient) Stop() {
 	o.watcher.Stop()
+	o.elector.Stop()
 }
 
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureApiHandler, w *shttp.WSServer) *OnDemandProbeClient {
+func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureApiHandler, w *shttp.WSServer, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*api.Capture)
 	for _, resource := range resources {
 		captures[resource.ID()] = resource.(*api.Capture)
 	}
 
+	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "ondemand-client", etcdClient)
+
 	return &OnDemandProbeClient{
 		graph:          g,
 		captureHandler: ch,
 		wsServer:       w,
 		captures:       captures,
+		elector:        elector,
 	}
 }

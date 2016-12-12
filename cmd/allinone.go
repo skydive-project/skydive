@@ -80,7 +80,7 @@ var AllInOne = &cobra.Command{
 			logging.GetLogger().Fatalf("Can't start Skydive All-in-One : %v", err)
 		}
 
-		os.Setenv("SKYDIVE_AGENT_ANALYZERS", "localhost:8082")
+		os.Setenv("SKYDIVE_ANALYZERS", "localhost:8082")
 		agentAttr := &os.ProcAttr{
 			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 			Env:   os.Environ(),

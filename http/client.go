@@ -30,9 +30,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type RestClient struct {
@@ -62,16 +59,6 @@ func NewRestClient(addr string, port int, authOptions *AuthenticationOpts) *Rest
 	}
 }
 
-func NewRestClientFromConfig(authOptions *AuthenticationOpts) (*RestClient, error) {
-	addr, port, err := config.GetAnalyzerClientAddr()
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
-		return nil, err
-	}
-
-	return NewRestClient(addr, port, authOptions), nil
-}
-
 func (c *RestClient) Request(method, path string, body io.Reader) (*http.Response, error) {
 	if !c.authClient.Authenticated() {
 		if err := c.authClient.Authenticate(); err != nil {
@@ -98,18 +85,6 @@ func NewCrudClient(addr string, port int, authOpts *AuthenticationOpts, root str
 		RestClient: *restClient,
 		Root:       root,
 	}
-}
-
-func NewCrudClientFromConfig(authOpts *AuthenticationOpts, root string) (*CrudClient, error) {
-	restClient, err := NewRestClientFromConfig(authOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	return &CrudClient{
-		RestClient: *restClient,
-		Root:       root,
-	}, nil
 }
 
 func (c *CrudClient) List(resource string, values interface{}) error {

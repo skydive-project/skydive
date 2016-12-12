@@ -62,20 +62,19 @@ analyzer:
       # - TOR1[Name=tor1] -> TOR1_PORT1[Name=port1, MTU=1500]
       # - TOR1_PORT1 -> *[Type=host]/eth0
 
+# list of analyzers used by analyzers and agents
+analyzers:
+  - 127.0.0.1:8082
+
 agent:
   # address and port for the agent API, Format: addr:port.
   # Default addr is 127.0.0.1
   listen: :8081
-  analyzers: 127.0.0.1:8082
   # File path to X509 Certificate and Private Key to enable TLS communication
   # Must be different than the analyzer and unique per agent (recommended)
   # X509_cert: /etc/ssl/certs/agent.domain.com.crt
   # X509_key:  /etc/ssl/certs/agent.domain.com.key
   #
-  # The 'analyzer_username' and 'analyzer_password' parameters are
-  # used by the agent to authenticate against the analyzer
-  analyzer_username: admin
-  analyzer_password: password
   topology:
     # Probes used to capture topology informations like interfaces,
     # bridges, namespaces, etc...
@@ -162,6 +161,10 @@ auth:
   # type: basic
   # basic:
     # file: /etc/skydive/htpasswd
+  # The 'analyzer_username' and 'analyzer_password' parameters are
+  # used by the agent to authenticate against the analyzer
+  analyzer_username: admin
+  analyzer_password: password
 
 etcd:
   # when 'embedded' is set to true, the analyzer will start an embedded etcd server

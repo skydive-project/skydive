@@ -78,19 +78,6 @@ func init() {
 	flag.Parse()
 }
 
-func SFlowSetup(t *testing.T) (*net.UDPConn, error) {
-	addr := net.UDPAddr{
-		Port: 0,
-		IP:   net.ParseIP("localhost"),
-	}
-	conn, err := net.ListenUDP("udp", &addr)
-	if err != nil {
-		t.Errorf("Unable to listen on UDP %s", err.Error())
-		return nil, err
-	}
-	return conn, nil
-}
-
 func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 	f, err := ioutil.TempFile("", "skydive_agent")
 	if err != nil {
@@ -210,7 +197,7 @@ func (h *HelperAgentAnalyzer) Stop() {
 	h.service <- stop
 	<-h.serviceDone
 
-	CleanGraph(h.Analyzer.GraphServer.Graph)
+	CleanGraph(h.Analyzer.TopologyServer.Graph)
 }
 func (h *HelperAgentAnalyzer) Flush() {
 	h.service <- flush
@@ -301,7 +288,8 @@ func NewGraph(t *testing.T) *graph.Graph {
 	case "elasticsearch":
 		backend, err = graph.NewElasticSearchBackend("127.0.0.1", "9200", 10, 60, 1)
 		if err == nil {
-			backend, err = graph.NewShadowedBackend(backend)
+			// need to use cache backend with ES as the indexing is async
+			backend, err = graph.NewCachedBackend(backend)
 		}
 	case "orientdb":
 		password := os.Getenv("ORIENTDB_ROOT_PASSWORD")

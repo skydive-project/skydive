@@ -32,6 +32,7 @@ import (
 	etcd "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 
+	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
@@ -42,6 +43,11 @@ type ApiServer struct {
 	HTTPServer *shttp.Server
 	EtcdKeyAPI etcd.KeysAPI
 	handlers   map[string]ApiHandler
+}
+
+type ApiInfo struct {
+	Host    string
+	Version string
 }
 
 type HandlerFunc func(w http.ResponseWriter, r *http.Request)
@@ -175,9 +181,8 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 }
 
 func (a *ApiServer) addAPIRootRoute() {
-	s := struct {
-		Version string
-	}{
+	info := ApiInfo{
+		Host:    config.GetConfig().GetString("host_id"),
 		Version: version.Version,
 	}
 
@@ -190,7 +195,7 @@ func (a *ApiServer) addAPIRootRoute() {
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
 
-				if err := json.NewEncoder(w).Encode(s); err != nil {
+				if err := json.NewEncoder(w).Encode(&info); err != nil {
 					logging.GetLogger().Criticalf("Failed to display /api: %s", err.Error())
 				}
 			},
@@ -216,9 +221,21 @@ func NewApi(server *shttp.Server, kapi etcd.KeysAPI) (*ApiServer, error) {
 }
 
 func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.CrudClient, error) {
-	return shttp.NewCrudClientFromConfig(authOptions, "api")
+	sa, err := config.GetOneAnalyzerServiceAddress()
+	if err != nil && err != config.ErrNoAnalyzerSpecified {
+		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
+		return nil, err
+	}
+
+	return shttp.NewCrudClient(sa.Addr, sa.Port, authOptions, "api"), nil
 }
 
 func NewRestClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.RestClient, error) {
-	return shttp.NewRestClientFromConfig(authOptions)
+	sa, err := config.GetOneAnalyzerServiceAddress()
+	if err != nil && err != config.ErrNoAnalyzerSpecified {
+		logging.GetLogger().Errorf("Unable to parse analyzer client %s", err.Error())
+		return nil, err
+	}
+
+	return shttp.NewRestClient(sa.Addr, sa.Port, authOptions), nil
 }

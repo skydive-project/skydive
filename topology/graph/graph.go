@@ -846,18 +846,18 @@ func (g *Graph) GetHost() string {
 	return g.host
 }
 
-func NewGraph(hostID string, backend GraphBackend) *Graph {
+func NewGraph(host string, backend GraphBackend) *Graph {
 	return &Graph{
 		backend:   backend,
-		host:      hostID,
+		host:      host,
 		context:   GraphContext{},
 		eventChan: make(chan graphEvent, maxEvents),
 	}
 }
 
 func NewGraphFromConfig(backend GraphBackend) *Graph {
-	hostID := config.GetConfig().GetString("host_id")
-	return NewGraph(hostID, backend)
+	host := config.GetConfig().GetString("host_id")
+	return NewGraph(host, backend)
 }
 
 func NewGraphWithContext(hostID string, backend GraphBackend, context GraphContext) (*Graph, error) {
@@ -866,7 +866,6 @@ func NewGraphWithContext(hostID string, backend GraphBackend, context GraphConte
 }
 
 func BackendFromConfig() (backend GraphBackend, err error) {
-	cachingMode := Direct
 	name := config.GetConfig().GetString("graph.backend")
 	if len(name) == 0 {
 		name = "memory"
@@ -877,10 +876,8 @@ func BackendFromConfig() (backend GraphBackend, err error) {
 		backend, err = NewMemoryBackend()
 	case "orientdb":
 		backend, err = NewOrientDBBackendFromConfig()
-		cachingMode = Shadowed
 	case "elasticsearch":
 		backend, err = NewElasticSearchBackendFromConfig()
-		cachingMode = Shadowed
 	default:
 		return nil, errors.New("Config file is misconfigured, graph backend unknown: " + name)
 	}
@@ -888,11 +885,5 @@ func BackendFromConfig() (backend GraphBackend, err error) {
 	if err != nil {
 		return nil, err
 	}
-
-	switch cachingMode {
-	case Shadowed:
-		return NewShadowedBackend(backend)
-	default:
-		return backend, nil
-	}
+	return backend, nil
 }

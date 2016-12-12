@@ -47,9 +47,9 @@ import (
 
 type NeutronMapper struct {
 	graph.DefaultGraphListener
-	graph    *graph.Graph
-	wsClient *shttp.WSAsyncClient
-	client   *gophercloud.ServiceClient
+	graph  *graph.Graph
+	wspool *shttp.WSAsyncClientPool
+	client *gophercloud.ServiceClient
 	// The cache associates some metadatas to a MAC and is used to
 	// detect any updates on these metadatas.
 	cache           *cache.Cache
@@ -324,12 +324,12 @@ func (mapper *NeutronMapper) Stop() {
 	close(mapper.nodeUpdaterChan)
 }
 
-func NewNeutronMapper(g *graph.Graph, wsClient *shttp.WSAsyncClient, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronMapper, error) {
+func NewNeutronMapper(g *graph.Graph, wspool *shttp.WSAsyncClientPool, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronMapper, error) {
 	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
 	intfRegexp := regexp.MustCompile(`(tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2}`)
 	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9]{8}`)
 
-	mapper := &NeutronMapper{graph: g, wsClient: wsClient, intfRegexp: intfRegexp, nsRegexp: nsRegexp}
+	mapper := &NeutronMapper{graph: g, wspool: wspool, intfRegexp: intfRegexp, nsRegexp: nsRegexp}
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
@@ -367,7 +367,7 @@ func NewNeutronMapper(g *graph.Graph, wsClient *shttp.WSAsyncClient, authURL, us
 	return mapper, nil
 }
 
-func NewNeutronMapperFromConfig(g *graph.Graph, wsCient *shttp.WSAsyncClient) (*NeutronMapper, error) {
+func NewNeutronMapperFromConfig(g *graph.Graph, wspool *shttp.WSAsyncClientPool) (*NeutronMapper, error) {
 	authURL := config.GetConfig().GetString("openstack.auth_url")
 	username := config.GetConfig().GetString("openstack.username")
 	password := config.GetConfig().GetString("openstack.password")
@@ -383,6 +383,6 @@ func NewNeutronMapperFromConfig(g *graph.Graph, wsCient *shttp.WSAsyncClient) (*
 	if a, ok := endpointTypes[endpointType]; !ok {
 		return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
 	} else {
-		return NewNeutronMapper(g, wsCient, authURL, username, password, tenantName, regionName, domainName, a)
+		return NewNeutronMapper(g, wspool, authURL, username, password, tenantName, regionName, domainName, a)
 	}
 }

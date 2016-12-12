@@ -25,6 +25,7 @@ package http
 import (
 	"encoding/json"
 	"io"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
@@ -33,14 +34,15 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
 type WSClientEventHandler interface {
-	OnMessage(m WSMessage)
-	OnConnected()
-	OnDisconnected()
+	OnMessage(c *WSAsyncClient, m WSMessage)
+	OnConnected(c *WSAsyncClient)
+	OnDisconnected(c *WSAsyncClient)
 }
 
 type DefaultWSClientEventHandler struct {
@@ -48,29 +50,38 @@ type DefaultWSClientEventHandler struct {
 
 type WSAsyncClient struct {
 	sync.RWMutex
+	Host          string
+	ClientType    common.ServiceType
 	Addr          string
 	Port          int
 	Path          string
 	AuthClient    *AuthenticationClient
-	host          string
-	clientType    string
 	messages      chan string
 	read          chan []byte
 	quit          chan bool
 	wg            sync.WaitGroup
 	wsConn        *websocket.Conn
-	eventHandlers []WSClientEventHandler
+	eventHandlers map[WSClientEventHandler]bool
 	connected     atomic.Value
 	running       atomic.Value
 }
 
-func (d *DefaultWSClientEventHandler) OnMessage(m WSMessage) {
+type WSAsyncClientPool struct {
+	sync.RWMutex
+	master            *WSAsyncClient
+	masterLock        sync.RWMutex
+	clients           []*WSAsyncClient
+	eventHandlers     map[WSClientEventHandler]bool
+	eventHandlersLock sync.RWMutex
 }
 
-func (d *DefaultWSClientEventHandler) OnConnected() {
+func (d *DefaultWSClientEventHandler) OnMessage(c *WSAsyncClient, m WSMessage) {
 }
 
-func (d *DefaultWSClientEventHandler) OnDisconnected() {
+func (d *DefaultWSClientEventHandler) OnConnected(c *WSAsyncClient) {
+}
+
+func (d *DefaultWSClientEventHandler) OnDisconnected(c *WSAsyncClient) {
 }
 
 func (c *WSAsyncClient) sendMessage(m string) {
@@ -107,10 +118,10 @@ func (c *WSAsyncClient) connect() {
 	var err error
 	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
 	endpoint := "ws://" + host + c.Path
-	headers := http.Header{"X-Host-ID": {c.host}, "Origin": {endpoint}, "X-Client-Type": {c.clientType}}
+	headers := http.Header{"X-Host-ID": {c.Host}, "Origin": {endpoint}, "X-Client-Type": {c.ClientType.String()}}
 
 	if c.AuthClient != nil {
-		if err := c.AuthClient.Authenticate(); err != nil {
+		if err = c.AuthClient.Authenticate(); err != nil {
 			logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 			return
 		}
@@ -131,6 +142,8 @@ func (c *WSAsyncClient) connect() {
 	c.wsConn.SetPingHandler(nil)
 
 	c.connected.Store(true)
+	defer c.connected.Store(false)
+
 	logging.GetLogger().Infof("Connected to %s", endpoint)
 
 	c.wg.Add(1)
@@ -138,8 +151,8 @@ func (c *WSAsyncClient) connect() {
 
 	// notify connected
 	c.RLock()
-	for _, l := range c.eventHandlers {
-		l.OnConnected()
+	for l := range c.eventHandlers {
+		l.OnConnected(c)
 	}
 	c.RUnlock()
 
@@ -147,15 +160,26 @@ func (c *WSAsyncClient) connect() {
 		for c.running.Load() == true {
 			_, m, err := c.wsConn.ReadMessage()
 			if err != nil {
+				if c.running.Load() != false {
+					c.quit <- true
+				}
 				break
 			}
 
 			c.read <- m
 		}
-		c.quit <- true
 	}()
 
-	for c.running.Load() == true {
+	defer func() {
+		c.connected.Store(false)
+		c.RLock()
+		for l := range c.eventHandlers {
+			l.OnDisconnected(c)
+		}
+		c.RUnlock()
+	}()
+
+	for {
 		select {
 		case msg := <-c.messages:
 			err := c.send(msg)
@@ -168,8 +192,8 @@ func (c *WSAsyncClient) connect() {
 				logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
 			} else {
 				c.RLock()
-				for _, e := range c.eventHandlers {
-					e.OnMessage(msg)
+				for l := range c.eventHandlers {
+					l.OnMessage(c, msg)
 				}
 				c.RUnlock()
 			}
@@ -183,16 +207,6 @@ func (c *WSAsyncClient) Connect() {
 	go func() {
 		for c.running.Load() == true {
 			c.connect()
-
-			wasConnected := c.connected.Load()
-			c.connected.Store(false)
-
-			if wasConnected == true {
-				for _, l := range c.eventHandlers {
-					l.OnDisconnected()
-				}
-			}
-
 			time.Sleep(1 * time.Second)
 		}
 	}()
@@ -200,7 +214,7 @@ func (c *WSAsyncClient) Connect() {
 
 func (c *WSAsyncClient) AddEventHandler(h WSClientEventHandler) {
 	c.Lock()
-	c.eventHandlers = append(c.eventHandlers, h)
+	c.eventHandlers[h] = true
 	c.Unlock()
 }
 
@@ -212,24 +226,163 @@ func (c *WSAsyncClient) Disconnect() {
 	}
 }
 
-func NewWSAsyncClient(hostID string, clientType string, addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
+func NewWSAsyncClient(host string, clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSAsyncClient {
 	c := &WSAsyncClient{
-		Addr:       addr,
-		Port:       port,
-		Path:       path,
-		AuthClient: authClient,
-		host:       hostID,
-		clientType: clientType,
-		messages:   make(chan string, 500),
-		read:       make(chan []byte, 500),
-		quit:       make(chan bool),
+		Host:          host,
+		ClientType:    clientType,
+		Addr:          addr,
+		Port:          port,
+		Path:          path,
+		AuthClient:    authClient,
+		messages:      make(chan string, 500),
+		read:          make(chan []byte, 500),
+		quit:          make(chan bool),
+		eventHandlers: make(map[WSClientEventHandler]bool),
 	}
 	c.connected.Store(false)
 	c.running.Store(true)
-	return c, nil
+	return c
 }
 
-func NewWSAsyncClientFromConfig(clientType string, addr string, port int, path string, authClient *AuthenticationClient) (*WSAsyncClient, error) {
-	hostID := config.GetConfig().GetString("host_id")
-	return NewWSAsyncClient(hostID, clientType, addr, port, path, authClient)
+func NewWSAsyncClientFromConfig(clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSAsyncClient {
+	host := config.GetConfig().GetString("host_id")
+	return NewWSAsyncClient(host, clientType, addr, port, path, authClient)
+}
+
+func (a *WSAsyncClientPool) selectMaster() *WSAsyncClient {
+	a.RLock()
+	defer a.RUnlock()
+
+	a.masterLock.Lock()
+	defer a.masterLock.Unlock()
+
+	a.master = nil
+
+	length := len(a.clients)
+	if length == 0 {
+		return nil
+	}
+
+	index := rand.Intn(length)
+	for i := 0; i != length; i++ {
+		if client := a.clients[index]; client != nil && client.IsConnected() {
+			a.master = client
+			break
+		}
+
+		if index+1 >= length {
+			index = 0
+		} else {
+			index++
+		}
+	}
+	return a.master
+}
+
+func (a *WSAsyncClientPool) MasterClient() *WSAsyncClient {
+	a.masterLock.RLock()
+	if m := a.master; m != nil {
+		a.masterLock.RUnlock()
+		return m
+	}
+	a.masterLock.RUnlock()
+
+	return a.selectMaster()
+}
+
+func (a *WSAsyncClientPool) BroadcastWSMessage(m *WSMessage) {
+	a.RLock()
+	defer a.RUnlock()
+
+	for _, wsclient := range a.clients {
+		if wsclient.IsConnected() {
+			wsclient.SendWSMessage(m)
+		}
+	}
+}
+
+func (a *WSAsyncClientPool) SendWSMessageToMaster(m *WSMessage) {
+	if master := a.MasterClient(); master != nil {
+		master.SendWSMessage(m)
+	}
+}
+
+func (a *WSAsyncClientPool) OnConnected(c *WSAsyncClient) {
+	a.eventHandlersLock.RLock()
+	defer a.eventHandlersLock.RUnlock()
+
+	for l := range a.eventHandlers {
+		l.OnConnected(c)
+	}
+}
+
+func (a *WSAsyncClientPool) OnDisconnected(c *WSAsyncClient) {
+	// reset master
+	a.masterLock.Lock()
+	if a.master == c {
+		a.master = nil
+	}
+	a.masterLock.Unlock()
+
+	a.eventHandlersLock.RLock()
+	defer a.eventHandlersLock.RUnlock()
+
+	for l := range a.eventHandlers {
+		l.OnDisconnected(c)
+	}
+}
+
+func (a *WSAsyncClientPool) OnMessage(c *WSAsyncClient, m WSMessage) {
+	a.eventHandlersLock.RLock()
+	defer a.eventHandlersLock.RUnlock()
+
+	for l := range a.eventHandlers {
+		l.OnMessage(c, m)
+	}
+}
+
+func (a *WSAsyncClientPool) AddWSAsyncClient(client *WSAsyncClient) {
+	a.Lock()
+	defer a.Unlock()
+
+	a.clients = append(a.clients, client)
+	client.AddEventHandler(a)
+}
+
+func (a *WSAsyncClientPool) ConnectAll() {
+	a.RLock()
+	defer a.RUnlock()
+
+	// shuffle connections to avoid election of the same client as master
+	indexes := rand.Perm(len(a.clients))
+	for _, i := range indexes {
+		a.clients[i].Connect()
+	}
+}
+
+func (a *WSAsyncClientPool) DisconnectAll() {
+	a.eventHandlersLock.Lock()
+	for k := range a.eventHandlers {
+		delete(a.eventHandlers, k)
+	}
+	a.eventHandlersLock.Unlock()
+
+	a.RLock()
+	defer a.RUnlock()
+	for _, client := range a.clients {
+		client.Disconnect()
+	}
+}
+
+func (a *WSAsyncClientPool) AddEventHandler(h WSClientEventHandler) {
+	a.eventHandlersLock.Lock()
+	a.eventHandlers[h] = true
+	a.eventHandlersLock.Unlock()
+}
+
+func NewWSAsyncClientPool() *WSAsyncClientPool {
+	return &WSAsyncClientPool{
+		clients:       make([]*WSAsyncClient, 0),
+		eventHandlers: make(map[WSClientEventHandler]bool),
+	}
 }

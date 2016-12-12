@@ -36,27 +36,27 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-var ErrAgentAnalyzerUDPAcceptNotSupported = errors.New("UDP connection is datagram based (not connected), accept() not supported")
+var ErrFlowUDPAcceptNotSupported = errors.New("UDP connection is datagram based (not connected), accept() not supported")
 
-type AgentAnalyzerConnectionType int
+type FlowConnectionType int
 
 const (
-	UDP AgentAnalyzerConnectionType = 1 + iota
+	UDP FlowConnectionType = 1 + iota
 	TLS
 )
 
-type AgentAnalyzerServerConn struct {
-	mode      AgentAnalyzerConnectionType
+type FlowServerConn struct {
+	mode      FlowConnectionType
 	udpConn   *net.UDPConn
 	tlsConn   net.Conn
 	tlsListen net.Listener
 }
 
-func (a *AgentAnalyzerServerConn) Mode() AgentAnalyzerConnectionType {
+func (a *FlowServerConn) Mode() FlowConnectionType {
 	return a.mode
 }
 
-func (a *AgentAnalyzerServerConn) Accept() (*AgentAnalyzerServerConn, error) {
+func (a *FlowServerConn) Accept() (*FlowServerConn, error) {
 	switch a.mode {
 	case TLS:
 		acceptedTLSConn, err := a.tlsListen.Accept()
@@ -76,17 +76,17 @@ func (a *AgentAnalyzerServerConn) Accept() (*AgentAnalyzerServerConn, error) {
 		if state.HandshakeComplete == false {
 			return nil, errors.New("TLS Handshake is not complete")
 		}
-		return &AgentAnalyzerServerConn{
+		return &FlowServerConn{
 			mode:    TLS,
 			tlsConn: acceptedTLSConn,
 		}, nil
 	case UDP:
-		return a, ErrAgentAnalyzerUDPAcceptNotSupported
+		return a, ErrFlowUDPAcceptNotSupported
 	}
 	return nil, errors.New("Connection mode is not set properly")
 }
 
-func (a *AgentAnalyzerServerConn) Cleanup() {
+func (a *FlowServerConn) Cleanup() {
 	if a.mode == TLS {
 		err := a.tlsListen.Close()
 		if err != nil {
@@ -95,7 +95,7 @@ func (a *AgentAnalyzerServerConn) Cleanup() {
 	}
 }
 
-func (a *AgentAnalyzerServerConn) Close() {
+func (a *FlowServerConn) Close() {
 	switch a.mode {
 	case TLS:
 		err := a.tlsConn.Close()
@@ -110,7 +110,7 @@ func (a *AgentAnalyzerServerConn) Close() {
 	}
 }
 
-func (a *AgentAnalyzerServerConn) SetDeadline(t time.Time) {
+func (a *FlowServerConn) SetDeadline(t time.Time) {
 	switch a.mode {
 	case TLS:
 		err := a.tlsConn.SetReadDeadline(t)
@@ -125,7 +125,7 @@ func (a *AgentAnalyzerServerConn) SetDeadline(t time.Time) {
 	}
 }
 
-func (a *AgentAnalyzerServerConn) Read(data []byte) (int, error) {
+func (a *FlowServerConn) Read(data []byte) (int, error) {
 	switch a.mode {
 	case TLS:
 		n, err := a.tlsConn.Read(data)
@@ -137,7 +137,7 @@ func (a *AgentAnalyzerServerConn) Read(data []byte) (int, error) {
 	return 0, errors.New("Mode didn't exist")
 }
 
-func (a *AgentAnalyzerServerConn) Timeout(err error) bool {
+func (a *FlowServerConn) Timeout(err error) bool {
 	switch a.mode {
 	case TLS:
 		if netErr, ok := err.(net.Error); ok {
@@ -151,8 +151,8 @@ func (a *AgentAnalyzerServerConn) Timeout(err error) bool {
 	return false
 }
 
-func NewAgentAnalyzerServerConn(addr *net.UDPAddr) (a *AgentAnalyzerServerConn, err error) {
-	a = &AgentAnalyzerServerConn{mode: UDP}
+func NewFlowServerConn(addr *net.UDPAddr) (a *FlowServerConn, err error) {
+	a = &FlowServerConn{mode: UDP}
 	certPEM := config.GetConfig().GetString("analyzer.X509_cert")
 	keyPEM := config.GetConfig().GetString("analyzer.X509_key")
 	clientCertPEM := config.GetConfig().GetString("agent.X509_cert")
@@ -206,12 +206,12 @@ func NewAgentAnalyzerServerConn(addr *net.UDPAddr) (a *AgentAnalyzerServerConn, 
 	return a, err
 }
 
-type AgentAnalyzerClientConn struct {
+type FlowClientConn struct {
 	udpConn       *net.UDPConn
 	tlsConnClient *tls.Conn
 }
 
-func (a *AgentAnalyzerClientConn) Close() {
+func (a *FlowClientConn) Close() {
 	if a.tlsConnClient != nil {
 		err := a.tlsConnClient.Close()
 		if err != nil {
@@ -225,15 +225,15 @@ func (a *AgentAnalyzerClientConn) Close() {
 	}
 }
 
-func (a *AgentAnalyzerClientConn) Write(b []byte) (int, error) {
+func (a *FlowClientConn) Write(b []byte) (int, error) {
 	if a.tlsConnClient != nil {
 		return a.tlsConnClient.Write(b)
 	}
 	return a.udpConn.Write(b)
 }
 
-func NewAgentAnalyzerClientConn(addr *net.UDPAddr) (a *AgentAnalyzerClientConn, err error) {
-	a = &AgentAnalyzerClientConn{}
+func NewFlowClientConn(addr *net.UDPAddr) (a *FlowClientConn, err error) {
+	a = &FlowClientConn{}
 	certPEM := config.GetConfig().GetString("agent.X509_cert")
 	keyPEM := config.GetConfig().GetString("agent.X509_key")
 	serverCertPEM := config.GetConfig().GetString("analyzer.X509_cert")
@@ -276,6 +276,6 @@ func NewAgentAnalyzerClientConn(addr *net.UDPAddr) (a *AgentAnalyzerClientConn, 
 	if err != nil {
 		return nil, err
 	}
-	logging.GetLogger().Debug("UDP client dialup done")
+	logging.GetLogger().Debugf("UDP client dialup done for: %s:%d", addr.IP, addr.Port)
 	return a, nil
 }
