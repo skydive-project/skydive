@@ -23,20 +23,10 @@
 package flow
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/skydive-project/skydive/common"
 )
-
-type FlowSetBandwidth struct {
-	ABpackets int64
-	ABbytes   int64
-	BApackets int64
-	BAbytes   int64
-	Duration  int64
-	NBFlow    uint64
-}
 
 type MergeContext struct {
 	Sorted  bool
@@ -248,36 +238,6 @@ func (fs *FlowSet) Sort() {
 	sort.Sort(sortByLast(fs.Flows))
 }
 
-func (fs *FlowSet) AvgBandwidth() (fsbw FlowSetBandwidth) {
-	if len(fs.Flows) == 0 {
-		return
-	}
-
-	fsbw.Duration = fs.End - fs.Start
-	for _, f := range fs.Flows {
-		fstart := f.Metric.Start
-		fend := f.Metric.Last
-
-		fduration := fend - fstart
-		if fduration == 0 {
-			fduration = 1
-		}
-
-		fdurationWindow := common.MinInt64(fend, fs.End) - common.MaxInt64(fstart, fs.Start)
-		if fdurationWindow == 0 {
-			fdurationWindow = 1
-		}
-
-		m := f.Metric
-		fsbw.ABpackets += m.ABPackets * fdurationWindow / fduration
-		fsbw.ABbytes += m.ABBytes * fdurationWindow / fduration
-		fsbw.BApackets += m.BAPackets * fdurationWindow / fduration
-		fsbw.BAbytes += m.BABytes * fdurationWindow / fduration
-		fsbw.NBFlow++
-	}
-	return
-}
-
 func (fs *FlowSet) Filter(filter *Filter) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range fs.Flows {
@@ -292,28 +252,4 @@ func (fs *FlowSet) Filter(filter *Filter) *FlowSet {
 		}
 	}
 	return flowset
-}
-
-func (fs *FlowSet) Bandwidth() (fsbw FlowSetBandwidth) {
-	for _, f := range fs.Flows {
-		duration := f.LastUpdateMetric.Last - f.LastUpdateMetric.Start
-
-		// set the duration to the largest flow duration. All the flow should
-		// be close in term of duration ~= update timer
-		if fsbw.Duration < duration {
-			fsbw.Duration = duration
-		}
-
-		fsbw.ABpackets += f.LastUpdateMetric.ABPackets
-		fsbw.ABbytes += f.LastUpdateMetric.ABBytes
-		fsbw.BApackets += f.LastUpdateMetric.BAPackets
-		fsbw.BAbytes += f.LastUpdateMetric.BABytes
-		fsbw.NBFlow++
-	}
-	return
-}
-
-func (fsbw FlowSetBandwidth) String() string {
-	return fmt.Sprintf("dt : %d seconds nbFlow %d\n\t\tAB -> BA\nPackets : %8d %8d\nBytes : %8d %8d\n",
-		fsbw.Duration, fsbw.NBFlow, fsbw.ABpackets, fsbw.BApackets, fsbw.ABbytes, fsbw.BAbytes)
 }

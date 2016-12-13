@@ -283,41 +283,6 @@ func (ft *Table) Expire(now time.Time) {
 	ft.Unlock()
 }
 
-/* Window returns a FlowSet with flows fitting in the given time range
-Need to Rlock the table before calling. Returned flows may not be unique */
-func (ft *Table) Window(start, end int64) *FlowSet {
-	flowset := NewFlowSet()
-	flowset.Start = start
-	flowset.End = end
-
-	if end >= start {
-		filter := &Filter{
-			BoolFilter: &BoolFilter{
-				Op: BoolFilterOp_AND,
-				Filters: []*Filter{
-					{
-						LtInt64Filter: &LtInt64Filter{
-							Key:   "Metric.Start",
-							Value: end,
-						},
-					},
-					{
-						GteInt64Filter: &GteInt64Filter{
-							Key:   "Metric.Last",
-							Value: start,
-						},
-					},
-				},
-			},
-		}
-
-		set := ft.GetFlows(&FlowSearchQuery{Filter: filter})
-		flowset.Flows = set.Flows
-	}
-
-	return flowset
-}
-
 func (ft *Table) Flush() {
 	ft.flush <- true
 	<-ft.flushDone
