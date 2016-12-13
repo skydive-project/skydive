@@ -2,8 +2,8 @@
 
 # create/delete a test topology
 # syntax:
-#   ./tunnel.sh start gre|vxlan
-#   ./tunnel.sh stop gre|vxlan
+#   ./tunnel.sh start gre|vxlan|geneve
+#   ./tunnel.sh stop gre|vxlan|geneve
 
 function start() {
 	set -x
@@ -30,6 +30,8 @@ function start() {
 	
 	if [ "$1" == "gre" ]; then
 	    sudo ip netns exec vm1 ip tunnel add ${1} mode gre remote 172.16.0.2 local 172.16.0.1 ttl 255
+	elif [ "$1" == "geneve" ]; then
+	    sudo ip netns exec vm1 ip link add ${1} type geneve id 10 remote 172.16.0.2
 	else
 	    sudo ip netns exec vm1 ip link add ${1} type vxlan id 10 group 239.0.0.10 ttl 10 dev eth0 dstport 4789
 	fi
@@ -41,6 +43,8 @@ function start() {
 
 	if [ "$1" == "gre" ]; then
 	    sudo ip netns exec vm2 ip tunnel add ${1} mode gre remote 172.16.0.1 local 172.16.0.2 ttl 255
+	elif [ "$1" == "geneve" ]; then
+	    sudo ip netns exec vm2 ip link add ${1} type geneve id 10 remote 172.16.0.1
 	else
 	    sudo ip netns exec vm2 ip link add ${1} type vxlan id 10 group 239.0.0.10 ttl 10 dev eth0 dstport 4789
 	fi
@@ -62,7 +66,7 @@ function stop() {
 	sudo ip netns del vm2
 }
 
-if [ "$2" != "gre" ] && [ "$2" != "vxlan" ]
+if [ "$2" != "gre" ] && [ "$2" != "vxlan" ] && [ "$2" != "geneve" ]
 then
     echo -n "Second argument must be 'gre' or 'vxlan'. Exiting."
     exit 1
