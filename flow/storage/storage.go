@@ -35,7 +35,7 @@ var (
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error)
+	SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error)
 	SearchMetrics(fsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error)
 	Stop()
 }

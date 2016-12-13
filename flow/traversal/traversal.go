@@ -64,6 +64,8 @@ type FlowGremlinTraversalStep struct {
 	context         traversal.GremlinTraversalContext
 	hasParams       []interface{}
 	metricsNextStep bool
+	dedup           bool
+	dedupBy         string
 }
 
 type FlowTraversalStep struct {
@@ -452,12 +454,24 @@ func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset.Filter(filter)}
 }
 
-func (f *FlowTraversalStep) Dedup() *FlowTraversalStep {
+func (f *FlowTraversalStep) Dedup(keys ...interface{}) *FlowTraversalStep {
 	if f.error != nil {
 		return f
 	}
 
-	f.flowset.Dedup()
+	var key string
+	if len(keys) > 0 {
+		k, ok := keys[0].(string)
+		if !ok {
+			return &FlowTraversalStep{error: fmt.Errorf("Dedup parameter has to be a string key")}
+		}
+		key = k
+	}
+
+	if err := f.flowset.Dedup(key); err != nil {
+		return &FlowTraversalStep{error: err}
+	}
+
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset, since: f.since}
 }
 
@@ -725,7 +739,8 @@ func (s *FlowGremlinTraversalStep) makeFlowSearchQuery() (fsq flow.FlowSearchQue
 		Filter:          paramsFilter,
 		PaginationRange: interval,
 		Sort:            s.context.StepContext.Sort,
-		Dedup:           s.context.StepContext.Dedup,
+		Dedup:           s.dedup,
+		DedupBy:         s.dedupBy,
 	}
 
 	return
@@ -777,7 +792,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		return nil, err
 	}
 
-	flowset := flow.NewFlowSet()
+	var flowset *flow.FlowSet
 
 	switch tv := last.(type) {
 	case *traversal.GraphTraversal:
@@ -802,9 +817,8 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
 			}
 
-			var flows []*flow.Flow
-			if flows, err = s.Storage.SearchFlows(flowSearchQuery); err == nil {
-				flowset.Flows = flows
+			if flowset, err = s.Storage.SearchFlows(flowSearchQuery); err != nil {
+				return nil, err
 			}
 		} else {
 			flowset, err = s.TableClient.LookupFlows(flowSearchQuery)
@@ -838,9 +852,8 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 					return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
 				}
 
-				var flows []*flow.Flow
-				if flows, err = s.Storage.SearchFlows(flowSearchQuery); err == nil {
-					flowset.Flows = flows
+				if flowset, err = s.Storage.SearchFlows(flowSearchQuery); err != nil {
+					return nil, err
 				}
 			} else {
 				hnmap := topology.BuildHostNodeTIDMap(nodes)
@@ -868,6 +881,13 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 		// merge has parameters, useful in case of multiple Has reduce
 		s.hasParams = append(s.hasParams, hasStep.Params...)
 		return s
+	}
+
+	if dedupStep, ok := next.(*traversal.GremlinTraversalStepDedup); ok {
+		s.dedup = true
+		if len(dedupStep.Params) > 0 {
+			s.dedupBy = dedupStep.Params[0].(string)
+		}
 	}
 
 	if _, ok := next.(*traversal.GremlinTraversalStepSort); ok {

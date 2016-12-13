@@ -131,7 +131,7 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error) {
+func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error) {
 	interval := fsq.PaginationRange
 	filter := fsq.Filter
 
@@ -153,16 +153,22 @@ func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, e
 		return nil, err
 	}
 
-	flows := []*flow.Flow{}
+	flowset := flow.NewFlowSet()
 	for _, doc := range docs {
 		flow, err := documentToFlow(doc)
 		if err != nil {
 			return nil, err
 		}
-		flows = append(flows, flow)
+		flowset.Flows = append(flowset.Flows, flow)
 	}
 
-	return flows, nil
+	if fsq.Dedup {
+		if err := flowset.Dedup(fsq.DedupBy); err != nil {
+			return nil, err
+		}
+	}
+
+	return flowset, nil
 }
 
 func (c *OrientDBStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error) {

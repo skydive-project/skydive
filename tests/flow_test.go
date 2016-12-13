@@ -150,7 +150,7 @@ func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *TestStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error) {
+func (s *TestStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error) {
 	return nil, nil
 }
 

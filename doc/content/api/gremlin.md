@@ -119,10 +119,13 @@ G.V().OutE().Has('Type', 'layer2').InV()
 
 ### Dedup step
 
-`Dedup` removes duplicated nodes/links.
+`Dedup` removes duplicated nodes/links or flows. `Dedup` can take a parameter
+in order to specify the field used for the deduplication.
 
 ```console
 G.V().Out().Both().Dedup()
+G.V().Out().Both().Dedup('Type')
+G.Flows().Dedup('NodeTID')
 ```
 
 ### Count step

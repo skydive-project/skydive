@@ -22,7 +22,11 @@
 
 package flow
 
-import "testing"
+import (
+	"encoding/json"
+	"reflect"
+	"testing"
+)
 
 func TestAvgBandwidth(t *testing.T) {
 	now := int64(1462962423)
@@ -117,4 +121,91 @@ func TestAvgBandwidth(t *testing.T) {
 		tags[i] = fw.Link.HashStr()
 	}
 	graphFlows(now, flows, tags...)
+}
+
+func TestDedup(t *testing.T) {
+	flowset := FlowSet{
+		Flows: []*Flow{
+			&Flow{TrackingID: "aaa"},
+			&Flow{TrackingID: "bbb"},
+			&Flow{TrackingID: "aaa"},
+		},
+	}
+
+	expected := FlowSet{
+		Flows: []*Flow{
+			&Flow{TrackingID: "aaa"},
+			&Flow{TrackingID: "bbb"},
+		},
+	}
+
+	flowset.Dedup("")
+
+	if !reflect.DeepEqual(expected, flowset) {
+		e, _ := json.Marshal(expected)
+		f, _ := json.Marshal(flowset)
+		t.Errorf("Flowset mismatch, expected: \n\n%s\n\ngot: \n\n%s", string(e), string(f))
+	}
+}
+
+func TestDedupBy(t *testing.T) {
+	flowset := FlowSet{
+		Flows: []*Flow{
+			&Flow{TrackingID: "aaa", NodeTID: "111"},
+			&Flow{TrackingID: "bbb", NodeTID: "111"},
+			&Flow{TrackingID: "aaa", NodeTID: "222"},
+		},
+	}
+
+	expected := FlowSet{
+		Flows: []*Flow{
+			&Flow{TrackingID: "aaa", NodeTID: "111"},
+			&Flow{TrackingID: "aaa", NodeTID: "222"},
+		},
+	}
+
+	flowset.Dedup("NodeTID")
+
+	if !reflect.DeepEqual(expected, flowset) {
+		e, _ := json.Marshal(expected)
+		f, _ := json.Marshal(flowset)
+		t.Errorf("Flowset mismatch, expected: \n\n%s\n\ngot: \n\n%s", string(e), string(f))
+	}
+}
+
+func TestMergeDedup(t *testing.T) {
+	flowset1 := FlowSet{
+		Flows: []*Flow{
+			&Flow{TrackingID: "aaa", NodeTID: "111", Metric: &FlowMetric{Start: 0, Last: 1}},
+			&Flow{TrackingID: "bbb", NodeTID: "111", Metric: &FlowMetric{Start: 2, Last: 3}},
+			&Flow{TrackingID: "aaa", NodeTID: "222", Metric: &FlowMetric{Start: 0, Last: 1}},
+		},
+	}
+	flowset2 := FlowSet{
+		Flows: []*Flow{
+			&Flow{TrackingID: "aaa", NodeTID: "111", Metric: &FlowMetric{Start: 0, Last: 1}},
+			&Flow{TrackingID: "bbb", NodeTID: "111", Metric: &FlowMetric{Start: 4, Last: 6}},
+			&Flow{TrackingID: "aaa", NodeTID: "222", Metric: &FlowMetric{Start: 7, Last: 8}},
+			&Flow{TrackingID: "ccc", NodeTID: "333", Metric: &FlowMetric{Start: 0, Last: 1}},
+		},
+	}
+
+	expected := FlowSet{
+		Flows: []*Flow{
+			&Flow{TrackingID: "aaa", NodeTID: "111", Metric: &FlowMetric{Start: 0, Last: 1}},
+			&Flow{TrackingID: "aaa", NodeTID: "222", Metric: &FlowMetric{Start: 0, Last: 1}},
+			&Flow{TrackingID: "ccc", NodeTID: "333", Metric: &FlowMetric{Start: 0, Last: 1}},
+		},
+	}
+
+	flowset1.Dedup("NodeTID")
+	flowset2.Dedup("NodeTID")
+
+	flowset1.Merge(&flowset2, MergeContext{Dedup: true, DedupBy: "NodeTID"})
+
+	if !reflect.DeepEqual(expected, flowset1) {
+		e, _ := json.Marshal(expected)
+		f, _ := json.Marshal(flowset1)
+		t.Errorf("Flowset mismatch, expected: \n\n%s\n\ngot: \n\n%s", string(e), string(f))
+	}
 }

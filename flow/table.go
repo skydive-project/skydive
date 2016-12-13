@@ -335,6 +335,10 @@ func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchRepl
 		flowset.Sort()
 	}
 
+	if fsq.Dedup {
+		flowset.Dedup(fsq.DedupBy)
+	}
+
 	return &FlowSearchReply{
 		FlowSet: flowset,
 	}, http.StatusOK

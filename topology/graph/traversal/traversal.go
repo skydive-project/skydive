@@ -42,7 +42,6 @@ type GraphTraversalStep interface {
 type GraphStepContext struct {
 	PaginationRange *GraphTraversalRange
 	Sort            bool
-	Dedup           bool
 }
 
 func (r *GraphTraversalRange) Iterator() *common.Iterator {
@@ -543,21 +542,40 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
 }
 
-func (tv *GraphTraversalV) Dedup() *GraphTraversalV {
+func (tv *GraphTraversalV) Dedup(keys ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
+	}
+
+	var key string
+	if len(keys) > 0 {
+		k, ok := keys[0].(string)
+		if !ok {
+			return &GraphTraversalV{error: fmt.Errorf("Dedup parameter has to be a string key")}
+		}
+		key = k
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
-	visited := make(map[graph.Identifier]bool)
+	visited := make(map[interface{}]bool)
+
+	var kvisited interface{}
 	for _, n := range tv.nodes {
+
+		kvisited = n.ID
+		if key != "" {
+			if v, ok := n.Metadata()[key]; ok {
+				kvisited = v
+			}
+		}
+
 		if it.Done() {
 			break
-		} else if _, ok := visited[n.ID]; !ok && it.Next() {
+		} else if _, ok := visited[kvisited]; !ok && it.Next() {
 			ntv.nodes = append(ntv.nodes, n)
-			visited[n.ID] = true
+			visited[kvisited] = true
 		}
 	}
 
@@ -900,18 +918,37 @@ func (te *GraphTraversalE) Limit(s ...interface{}) *GraphTraversalE {
 	return te.Range(int64(0), s[0])
 }
 
-func (te *GraphTraversalE) Dedup() *GraphTraversalE {
+func (te *GraphTraversalE) Dedup(keys ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
 
+	var key string
+	if len(keys) > 0 {
+		k, ok := keys[0].(string)
+		if !ok {
+			return &GraphTraversalE{error: fmt.Errorf("Dedup parameter has to be a string key")}
+		}
+		key = k
+	}
+
 	ntv := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
 
-	visited := make(map[graph.Identifier]bool)
+	visited := make(map[interface{}]bool)
+
+	var kvisited interface{}
 	for _, e := range te.edges {
-		if _, ok := visited[e.ID]; !ok {
+
+		kvisited = e.ID
+		if key != "" {
+			if v, ok := e.Metadata()[key]; ok {
+				kvisited = v
+			}
+		}
+
+		if _, ok := visited[kvisited]; !ok {
 			ntv.edges = append(ntv.edges, e)
-			visited[e.ID] = true
+			visited[kvisited] = true
 		}
 	}
 	return ntv
@@ -1051,8 +1088,7 @@ func (t *GraphTraversalValue) Error() error {
 	return t.error
 }
 
-func (t *GraphTraversalValue) Dedup() *GraphTraversalValue {
-
+func (t *GraphTraversalValue) Dedup(keys ...interface{}) *GraphTraversalValue {
 	if t.error != nil {
 		return t
 	}

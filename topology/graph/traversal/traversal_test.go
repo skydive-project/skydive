@@ -404,6 +404,13 @@ func TestTraversalParser(t *testing.T) {
 	}
 
 	// next traversal test
+	query = `G.V().Dedup("Type")`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 3 {
+		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
 	query = `G.V().Has("Value", Within(1, 2, 4))`
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 3 {

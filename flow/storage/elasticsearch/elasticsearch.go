@@ -320,7 +320,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFil
 	return metrics, nil
 }
 
-func (c *ElasticSearchStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Flow, error) {
+func (c *ElasticSearchStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -350,18 +350,24 @@ func (c *ElasticSearchStorage) SearchFlows(fsq flow.FlowSearchQuery) ([]*flow.Fl
 		return nil, err
 	}
 
-	flows := []*flow.Flow{}
+	flowset := flow.NewFlowSet()
 	if out.Hits.Len() > 0 {
 		for _, d := range out.Hits.Hits {
 			f := new(flow.Flow)
 			if err := json.Unmarshal([]byte(*d.Source), f); err != nil {
 				return nil, err
 			}
-			flows = append(flows, f)
+			flowset.Flows = append(flowset.Flows, f)
 		}
 	}
 
-	return flows, nil
+	if fsq.Dedup {
+		if err := flowset.Dedup(fsq.DedupBy); err != nil {
+			return nil, err
+		}
+	}
+
+	return flowset, nil
 }
 
 func (c *ElasticSearchStorage) Start() {

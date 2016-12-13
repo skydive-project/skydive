@@ -238,10 +238,10 @@ func (s *GremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversa
 	switch g := last.(type) {
 	case *GraphTraversalV:
 		g.GraphTraversal.currentStepContext = s.StepContext
-		return last.(*GraphTraversalV).Dedup(), nil
+		return last.(*GraphTraversalV).Dedup(s.Params...), nil
 	case *GraphTraversalE:
 		g.GraphTraversal.currentStepContext = s.StepContext
-		return last.(*GraphTraversalE).Dedup(), nil
+		return last.(*GraphTraversalE).Dedup(s.Params...), nil
 	}
 
 	// fallback to reflection way
@@ -750,7 +750,17 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	case INE:
 		return &GremlinTraversalStepInE{gremlinStepContext}, nil
 	case DEDUP:
-		return &GremlinTraversalStepDedup{gremlinStepContext}, nil
+		switch len(params) {
+		case 0:
+			return &GremlinTraversalStepDedup{gremlinStepContext}, nil
+		case 1:
+			if _, ok := params[0].(string); !ok {
+				return nil, fmt.Errorf("Dedup parameter has to be a string key")
+			}
+			return &GremlinTraversalStepDedup{gremlinStepContext}, nil
+		default:
+			return nil, fmt.Errorf("Dedup accepts at most 1 string parameter")
+		}
 	case HAS:
 		return &GremlinTraversalStepHas{gremlinStepContext}, nil
 	case SHORTESTPATHTO:

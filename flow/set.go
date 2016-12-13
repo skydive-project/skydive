@@ -39,8 +39,9 @@ type FlowSetBandwidth struct {
 }
 
 type MergeContext struct {
-	Sorted bool
-	Dedup  bool
+	Sorted  bool
+	Dedup   bool
+	DedupBy string
 }
 
 type sortByLast []*Flow
@@ -51,81 +52,149 @@ func NewFlowSet() *FlowSet {
 	}
 }
 
-func (fs *FlowSet) Merge(ofs *FlowSet, context MergeContext) {
+func getDedupField(flow *Flow, field string) (string, error) {
+	if field == "" {
+		return flow.TrackingID, nil
+	}
+
+	// only flow string field are support for dedup as only few make sense
+	// for dedup like ANodeTID, NodeTID, etc.
+	return flow.GetFieldString(field)
+}
+
+// mergeDedup merges the flowset given as argument. Both of the flowset have
+// to be dedup before calling this function.
+func (fs *FlowSet) mergeDedup(ofs *FlowSet, field string) error {
+	if len(ofs.Flows) == 0 {
+		return nil
+	}
+
+	visited := make(map[interface{}]bool)
+	for _, flow := range fs.Flows {
+		kvisited, err := getDedupField(flow, field)
+		if err != nil {
+			return err
+		}
+		visited[kvisited] = true
+	}
+
+	for _, flow := range ofs.Flows {
+		kvisited, err := getDedupField(flow, field)
+		if err != nil {
+			return err
+		}
+
+		if _, ok := visited[kvisited]; !ok {
+			fs.Flows = append(fs.Flows, flow)
+		}
+	}
+
+	return nil
+}
+
+// Merge merges two FlowSet. If Sorted both of the FlowSet have to be sorted
+// first. If Dedup both of the FlowSet have to be dedup first too.
+func (fs *FlowSet) Merge(ofs *FlowSet, context MergeContext) error {
 	fs.Start = common.MinInt64(fs.Start, ofs.Start)
 	if fs.Start == 0 {
 		fs.Start = ofs.Start
 	}
 	fs.End = common.MaxInt64(fs.End, ofs.End)
 
+	var err error
 	if context.Sorted {
-		fs.Flows = fs.mergeFlows(fs.Flows, ofs.Flows, context)
+		if fs.Flows, err = fs.mergeSortedFlows(fs.Flows, ofs.Flows, context); err != nil {
+			return err
+		}
 	} else if context.Dedup {
-		uuids := make(map[string]bool)
-		for _, flow := range fs.Flows {
-			uuids[flow.TrackingID] = true
-		}
-
-		for _, flow := range ofs.Flows {
-			if !uuids[flow.TrackingID] {
-				fs.Flows = append(fs.Flows, flow)
-			}
-		}
+		return fs.mergeDedup(ofs, context.DedupBy)
 	} else {
 		fs.Flows = append(fs.Flows, ofs.Flows...)
 	}
+
+	return nil
 }
 
-func (fs *FlowSet) mergeFlows(left, right []*Flow, context MergeContext) []*Flow {
+func (fs *FlowSet) mergeSortedFlows(left, right []*Flow, context MergeContext) ([]*Flow, error) {
 	var ret []*Flow
 
 	if !context.Dedup {
 		ret = make([]*Flow, 0, len(left)+len(right))
 	}
 
-	uuids := make(map[string]bool)
+	visited := make(map[interface{}]bool)
 	for len(left) > 0 || len(right) > 0 {
 		if len(left) == 0 {
 			if context.Dedup {
 				for _, flow := range right {
-					if !uuids[flow.TrackingID] {
+					kvisited, err := getDedupField(flow, context.DedupBy)
+					if err != nil {
+						return ret, err
+					}
+
+					if _, ok := visited[kvisited]; !ok {
 						ret = append(ret, flow)
-						uuids[flow.TrackingID] = true
+						visited[kvisited] = true
 					}
 				}
-				return ret
+				return ret, nil
 			}
-			return append(ret, right...)
+			return append(ret, right...), nil
 		}
 		if len(right) == 0 {
 			if context.Dedup {
 				for _, flow := range left {
-					if !uuids[flow.TrackingID] {
+					kvisited, err := getDedupField(flow, context.DedupBy)
+					if err != nil {
+						return ret, err
+					}
+
+					if _, ok := visited[kvisited]; !ok {
 						ret = append(ret, flow)
-						uuids[flow.TrackingID] = true
+						visited[kvisited] = true
 					}
 				}
-				return ret
+				return ret, nil
 			}
-			return append(ret, left...)
+			return append(ret, left...), nil
 		}
 
 		lf, rf := left[0], right[0]
 		if lf.Metric.Last >= rf.Metric.Last {
-			if !context.Dedup || !uuids[lf.TrackingID] {
+			if !context.Dedup {
 				ret = append(ret, lf)
-				uuids[lf.TrackingID] = true
+			} else {
+				kvisited, err := getDedupField(lf, context.DedupBy)
+				if err != nil {
+					return ret, err
+				}
+
+				if _, ok := visited[kvisited]; !ok {
+					ret = append(ret, lf)
+					visited[kvisited] = true
+				}
 			}
 			left = left[1:]
 		} else {
-			if !context.Dedup || !uuids[rf.TrackingID] {
+			if !context.Dedup {
 				ret = append(ret, rf)
-				uuids[rf.TrackingID] = true
+			} else {
+				kvisited, err := getDedupField(rf, context.DedupBy)
+				if err != nil {
+					return ret, err
+				}
+
+				if _, ok := visited[kvisited]; !ok {
+					ret = append(ret, rf)
+					visited[kvisited] = true
+				}
 			}
+
 			right = right[1:]
 		}
 	}
-	return ret
+
+	return ret, nil
 }
 
 func (fs *FlowSet) Slice(from, to int) {
@@ -139,19 +208,28 @@ func (fs *FlowSet) Slice(from, to int) {
 	fs.Flows = fs.Flows[from:to]
 }
 
-func (fs *FlowSet) Dedup() {
+func (fs *FlowSet) Dedup(field string) error {
 	var deduped []*Flow
 
-	uuids := make(map[string]bool)
+	if len(fs.Flows) == 0 {
+		return nil
+	}
+
+	visited := make(map[interface{}]bool)
 	for _, flow := range fs.Flows {
-		if _, ok := uuids[flow.TrackingID]; ok {
-			continue
+		kvisited, err := getDedupField(flow, field)
+		if err != nil {
+			return err
 		}
 
-		deduped = append(deduped, flow)
-		uuids[flow.TrackingID] = true
+		if _, ok := visited[kvisited]; !ok {
+			deduped = append(deduped, flow)
+			visited[kvisited] = true
+		}
 	}
 	fs.Flows = deduped
+
+	return nil
 }
 
 func (s sortByLast) Len() int {

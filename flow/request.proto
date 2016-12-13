@@ -105,6 +105,7 @@ message FlowSearchQuery {
   Range PaginationRange = 2;
   bool Sort = 3;
   bool Dedup = 4;
+  string DedupBy = 5;
 }
 
 message FlowSearchReply {

@@ -149,13 +149,13 @@ func TestFlowStorage(t *testing.T) {
 
 	filters := flow.NewFilterForNodes([]*graph.Node{node})
 	flowSearchQuery := flow.FlowSearchQuery{Filter: filters}
-	flows, err := aa.Analyzer.Storage.SearchFlows(flowSearchQuery)
+	flowset, err := aa.Analyzer.Storage.SearchFlows(flowSearchQuery)
 	if err != nil {
 		t.Fatalf("Failed to query flows: %s", err.Error())
 	}
 
-	if len(flows) == 0 {
-		t.Fatalf("SearchFlows should return at least one flow, got %d", len(flows))
+	if len(flowset.Flows) == 0 {
+		t.Fatalf("SearchFlows should return at least one flow, got %d", len(flowset.Flows))
 	}
 
 	queryFlowMetrics(t, now.Add(9*time.Second).Unix(), 15)
