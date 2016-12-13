@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.6.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.8.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -220,7 +220,15 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Getting-Started</span>
+      
+    
+      
+    
       
     
       
@@ -284,6 +292,18 @@
 
 
 
+<a  title="Vagrant" href="//skydive-project.github.io/skydive/getting-started/vagrant/">
+	
+	Vagrant
+</a>
+
+  
+      
+        
+        
+
+
+
 <a  title="Kubernetes" href="//skydive-project.github.io/skydive/getting-started/kubernetes/">
 	
 	Kubernetes
@@ -327,7 +347,15 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Api</span>
+      
+    
+      
+    
       
     
       
@@ -392,6 +420,23 @@
 
 
 
+<a  title="Deployment" href="//skydive-project.github.io/skydive/deployment/">
+	
+	Deployment
+</a>
+
+  
+  
+</li>
+
+
+
+<li>
+  
+    
+
+
+
 <a  title="Architecture" href="//skydive-project.github.io/skydive/architecture/">
 	
 	Architecture
@@ -415,6 +460,75 @@
 </a>
 
   
+  
+</li>
+
+
+
+<li>
+  
+  <li>
+    
+
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+      <span class="section">Use-Cases</span>
+      
+    
+      
+    
+    
+
+    <ul>
+      
+        
+        
+
+
+
+<a  title="Packet Injector" href="//skydive-project.github.io/skydive/use-cases/packet-injector/">
+	
+	Packet Injector
+</a>
+
+  
+      
+    </ul>
+  </li>
   
 </li>
 
@@ -606,6 +720,28 @@ selected links.</p>
 <pre><code class="language-console">G.V().Count()
 </code></pre>
 
+<h3 id="values-step">Values step</h3>
+
+<p><code>Values</code> returns the property value of elements retrieved by the previous step.</p>
+
+<pre><code class="language-console">G.V().Values('Name')
+</code></pre>
+
+<h3 id="keys-step">Keys step</h3>
+
+<p><code>Keys</code> returns the list of properties of the elements retrieved by the previous step.</p>
+
+<pre><code class="language-console">G.V().Keys()
+</code></pre>
+
+<h3 id="sum-step">Sum step</h3>
+
+<p><code>Sum</code> returns sum of elements, named &lsquo;Name&rsquo;, retrieved by the previous step.
+When attribute &lsquo;Name&rsquo; exists, must be integer type.</p>
+
+<pre><code class="language-console">G.V().Sum('Name')
+</code></pre>
+
 <h3 id="limit-step">Limit step</h3>
 
 <p><code>Limit</code> limits the number of elements returned.</p>
@@ -664,6 +800,59 @@ from the nodes to the host node they belong to.</p>
 <p>The format of the path returned is the following:
 <code>node_name[Type=node_type]/.../node_name[Type=node_type]</code>`</p>
 
+<h3 id="at-step">At step</h3>
+
+<p><code>At</code> allows to set the time context of the Gremlin request. It means that
+we can contextualize a request to a specific point of time therefore being
+able to see how was the graph in the past.
+Supported formats for time argument are :</p>
+
+<ul>
+<li>Timestamp</li>
+<li>RFC1123 format</li>
+<li><a href="https://golang.org/pkg/time/#ParseDuration">Go Duration format</a></li>
+</ul>
+
+<pre><code>G.At(1479899809).V()
+G.At('-1m').V()
+G.At('Sun, 06 Nov 2016 08:49:37 GMT').V()
+</code></pre>
+
+<h3 id="predicates">Predicates</h3>
+
+<p>Predicates which can be used with <code>Has</code>, <code>In*</code>, <code>Out*</code> steps :</p>
+
+<ul>
+<li><code>NE</code>, matches graph elements for which metadata don&rsquo;t match specified values</li>
+</ul>
+
+<pre><code class="language-console">G.V().Has('Type', NE('ovsbridge'))
+</code></pre>
+
+<ul>
+<li><code>Within</code>, matches graph elements for which metadata values match one member of
+the given array.</li>
+</ul>
+
+<pre><code class="language-console">G.V().Has('Type', Within('ovsbridge', 'ovsport'))
+</code></pre>
+
+<ul>
+<li><code>Without</code>, matches graph elements for which metadata values don&rsquo;t match any of
+the members of the given array.</li>
+</ul>
+
+<pre><code class="language-console">G.V().Has('Type', Without('ovsbridge', 'ovsport'))
+</code></pre>
+
+<ul>
+<li><code>Regex</code>, matches graph elements for which metadata matches the given regular
+expression.</li>
+</ul>
+
+<pre><code class="language-console">G.V().Has('Name', Regex('tap-'))
+</code></pre>
+
 <h3 id="flows-step">Flows step</h3>
 
 <p>Flows step returns flows of nodes where a capture has been started or of nodes
@@ -702,6 +891,7 @@ G.V().Has('Name', 'br-int').Flows().Out()
 <li><code>ANodeUUID</code></li>
 <li><code>BNodeUUID</code></li>
 <li><code>LayersPath</code></li>
+<li><code>Application</code></li>
 <li><code>Link.A</code></li>
 <li><code>Link.B</code></li>
 <li><code>Link.Protocol</code></li>
@@ -722,39 +912,69 @@ G.V().Has('Name', 'br-int').Flows().Out()
 <p>Lt, Lte, Gt, Gte predicates can be used on numerical fields.
 See <a href="//skydive-project.github.io/skydive/api/flows/">Flow Schema</a> for further explanations.</p>
 
-<h3 id="predicates">Predicates</h3>
+<h3 id="flows-sort-step">Flows Sort step</h3>
 
-<p>Predicates can be used with <code>Has</code>, <code>In*</code>, <code>Out*</code> steps.</p>
+<p><code>Sort</code> step sorts flows by their <code>Metric.Last</code> field.</p>
 
-<ul>
-<li><code>NE</code>, matches graph elements for which metadata don&rsquo;t match specified values</li>
-</ul>
-
-<pre><code class="language-console">G.V().Has('Type', NE('ovsbridge'))
+<pre><code class="language-console">G.Flows().Sort()
 </code></pre>
 
-<ul>
-<li><code>Within</code>, matches graph elements for which metadata values match one member of
-the given array.</li>
-</ul>
+<h3 id="flows-dedup-step">Flows Dedup step</h3>
 
-<pre><code class="language-console">G.V().Has('Type', Within('ovsbridge', 'ovsport'))
+<p><code>Dedup</code> step de-duplicates flows having the same TrackingID.</p>
+
+<pre><code class="language-console">G.Flows().Dedup()
 </code></pre>
 
-<ul>
-<li><code>Without</code>, matches graph elements for which metadata values don&rsquo;t match any of
-the members of the given array.</li>
-</ul>
+<h3 id="flows-since-predicate">Flows Since predicate</h3>
 
-<pre><code class="language-console">G.V().Has('Type', Without('ovsbridge', 'ovsport'))
+<p><code>Since</code> can be used in a timed context request(see <code>At</code> step) meaning having
+specified a time point thanks to the <code>At</code> step. <code>Since</code> allows to do a lookup
+from that point in the past. <code>Since</code> will return the flows which were active
+during the period. <code>Since</code> takes the number of seconds to go back in past.</p>
+
+<p>The following request returns flows which were active between
+(now - 2 hours) and (now - 1 hour).</p>
+
+<pre><code class="language-console">G.At('-1h').Flows(Since(3600))
 </code></pre>
 
-<ul>
-<li><code>Regex</code>, matches graph elements for which metadata matches the given regular
-expression.</li>
-</ul>
+<h3 id="metrics-step">Metrics step</h3>
 
-<pre><code class="language-console">G.V().Has('Name', Regex('tap-'))
+<p><code>Metrics</code> returns arrays of metrics of a set of flow, grouped by
+the flows UUIDs.</p>
+
+<pre><code class="language-console">G.Flows().Metrics()
+[
+  {
+    &quot;64249da029a25d09668ea4a61b14a02c3d083da0&quot;: [
+      {
+        &quot;ABBytes&quot;: 980,
+        &quot;ABPackets&quot;: 10,
+        &quot;BABytes&quot;: 980,
+        &quot;BAPackets&quot;: 10,
+        &quot;Last&quot;: 1479899789,
+        &quot;Start&quot;: 1479899779
+      }
+  }
+]
+</code></pre>
+
+<h3 id="bandwidth-step">Bandwidth step</h3>
+
+<p><code>Bandwidth</code> returns a sum of all the previously selected metrics.</p>
+
+<pre><code class="language-console">G.Flows().Dedup().Metrics().Bandwidth()&quot;
+[
+  {
+    &quot;ABbytes&quot;: 4900,
+    &quot;ABpackets&quot;: 50,
+    &quot;BAbytes&quot;: 4900,
+    &quot;BApackets&quot;: 50,
+    &quot;Duration&quot;: 10,
+    &quot;NBFlow&quot;: 1
+  }
+]
 </code></pre>
 
 			

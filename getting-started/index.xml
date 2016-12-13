@@ -6,8 +6,30 @@
     <description>Recent content in Getting-starteds on Skydive Docs</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 14 May 2016 11:02:01 +0200</lastBuildDate>
+    <lastBuildDate>Mon, 28 Nov 2016 15:21:44 +0100</lastBuildDate>
     <atom:link href="//skydive-project.github.io/skydive/getting-started/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>vagrant</title>
+      <link>//skydive-project.github.io/skydive/getting-started/vagrant/</link>
+      <pubDate>Mon, 28 Nov 2016 15:21:44 +0100</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/getting-started/vagrant/</guid>
+      <description>
+
+&lt;h2 id=&#34;vagrant-deployment&#34;&gt;Vagrant deployment&lt;/h2&gt;
+
+&lt;p&gt;You can use Vagrant to deploy a Skydive environment with one virtual machine
+running both Skydive analyzer and Elasticsearch, and two virtual machines with the
+Skydive agent. This &lt;code&gt;Vagrantfile&lt;/code&gt;, hosted in &lt;code&gt;contrib/vagrant&lt;/code&gt; of the Git
+repository, makes use of the (libvirt Vagrant provider)[&lt;a href=&#34;https://github.com/vagrant-libvirt/vagrant-libvirt&#34;&gt;https://github.com/vagrant-libvirt/vagrant-libvirt&lt;/a&gt;] and uses Fedora as the
+box image.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;cd contrib/vagrant
+vagrant up
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+    </item>
     
     <item>
       <title>How to deploy Skydive with kubernetes</title>
@@ -100,6 +122,9 @@ enable_service skydive-agent skydive-analyzer
 
 # Set the default log level, default: INFO
 #SKYDIVE_LOGLEVEL=DEBUG
+
+# List of public interfaces for the agents to register in fabric
+#SKYDIVE_PUBLIC_INTERFACES=devstack1/eth0 devstack2/eth1
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h2 id=&#34;the-classical-two-nodes-deployment&#34;&gt;The classical two nodes deployment&lt;/h2&gt;
@@ -108,6 +133,15 @@ enable_service skydive-agent skydive-analyzer
 that can be used in order to deployment two Devstack with Skydive. The first
 file will install a full Devstack with Skydive analyzer and agent. The second
 one will install a compute Devstack with only the skydive agent.&lt;/p&gt;
+
+&lt;p&gt;For Skydive to create a TOR object that links both Devstack, add the following
+line to your local.conf file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;SKYDIVE_PUBLIC_INTERFACES=devstack1/eth0 devstack2/eth1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;where &lt;code&gt;devstack1&lt;/code&gt; and &lt;code&gt;devstack2&lt;/code&gt; are the hostnames of the two nodes followed
+by their respective public interface.&lt;/p&gt;
 
 &lt;p&gt;Skydive will be set with the probes for OpenvSwitch and Neutron. It will be set
 to use Keystone as authentication mechanism, so the credentials will be the same
@@ -126,11 +160,12 @@ the &lt;code&gt;br-int&lt;/code&gt; bridges.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
+$ export SKYDIVE_AGENT_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
 
 $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;)&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client -c /tmp/skydive.yaml capture list
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture list
 {
   &amp;quot;d62b3176-ebc8-44ed-7001-191270dc4d76&amp;quot;: {
     &amp;quot;UUID&amp;quot;: &amp;quot;d62b3176-ebc8-44ed-7001-191270dc4d76&amp;quot;,
@@ -244,6 +279,7 @@ informations will be captured&lt;/li&gt;
 &lt;li&gt;Elasticsearch &amp;gt;= 2.0&lt;/li&gt;
 &lt;li&gt;libpcap&lt;/li&gt;
 &lt;li&gt;libxml2&lt;/li&gt;
+&lt;li&gt;protoc &amp;gt;= 3.0&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&#34;install&#34;&gt;Install&lt;/h2&gt;

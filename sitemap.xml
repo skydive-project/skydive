@@ -3,8 +3,18 @@
   
   <url>
     <loc>//skydive-project.github.io/skydive/</loc>
-    <lastmod>2016-09-29T11:02:01+02:00</lastmod>
+    <lastmod>2016-11-28T15:21:44+01:00</lastmod>
     <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/getting-started/vagrant/</loc>
+    <lastmod>2016-11-28T15:21:44+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/deployment/</loc>
+    <lastmod>2016-11-23T01:07:31+00:00</lastmod>
   </url>
   
   <url>
@@ -80,6 +90,14 @@
   <url>
     <loc>//skydive-project.github.io/skydive/license/</loc>
     <lastmod>2016-05-04T17:28:04+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/use-cases/</loc>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/use-cases/packet-injector/</loc>
   </url>
   
 </urlset>

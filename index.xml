@@ -6,8 +6,118 @@
     <description>Recent content on Skydive Docs</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 29 Sep 2016 11:02:01 +0200</lastBuildDate>
+    <lastBuildDate>Mon, 28 Nov 2016 15:21:44 +0100</lastBuildDate>
     <atom:link href="//skydive-project.github.io/skydive/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>vagrant</title>
+      <link>//skydive-project.github.io/skydive/getting-started/vagrant/</link>
+      <pubDate>Mon, 28 Nov 2016 15:21:44 +0100</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/getting-started/vagrant/</guid>
+      <description>
+
+&lt;h2 id=&#34;vagrant-deployment&#34;&gt;Vagrant deployment&lt;/h2&gt;
+
+&lt;p&gt;You can use Vagrant to deploy a Skydive environment with one virtual machine
+running both Skydive analyzer and Elasticsearch, and two virtual machines with the
+Skydive agent. This &lt;code&gt;Vagrantfile&lt;/code&gt;, hosted in &lt;code&gt;contrib/vagrant&lt;/code&gt; of the Git
+repository, makes use of the (libvirt Vagrant provider)[&lt;a href=&#34;https://github.com/vagrant-libvirt/vagrant-libvirt&#34;&gt;https://github.com/vagrant-libvirt/vagrant-libvirt&lt;/a&gt;] and uses Fedora as the
+box image.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;cd contrib/vagrant
+vagrant up
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Deployment</title>
+      <link>//skydive-project.github.io/skydive/deployment/</link>
+      <pubDate>Wed, 23 Nov 2016 01:07:31 +0000</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/deployment/</guid>
+      <description>
+
+&lt;h2 id=&#34;configuration-file&#34;&gt;Configuration file&lt;/h2&gt;
+
+&lt;p&gt;Skydive is based on an unique binary and configuration file for the Agent and Analyzer.
+Each Agent and Analyzer have his own section.&lt;/p&gt;
+
+&lt;p&gt;A configuration example can be found (here)[&lt;a href=&#34;https://github.com/skydive-project/skydive/blob/master/etc/skydive.yml.default&#34;&gt;https://github.com/skydive-project/skydive/blob/master/etc/skydive.yml.default&lt;/a&gt;]&lt;/p&gt;
+
+&lt;h2 id=&#34;security&#34;&gt;Security&lt;/h2&gt;
+
+&lt;p&gt;To secure communication between Agent(s) and Analyzer, Skydive relies on TLS communication with strict cross validation.
+TLS communication can be enabled by defining X509 certificates in their respective section in the configuration file, like :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;analyzer:
+  X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
+  X509_key:  /etc/ssl/certs/analyzer.domain.com.key
+
+agent:
+  X509_cert: /etc/ssl/certs/agent.domain.com.crt
+  X509_key:  /etc/ssl/certs/agent.domain.com.key
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;generate-the-certificates&#34;&gt;Generate the certificates&lt;/h3&gt;
+
+&lt;h3 id=&#34;certificate-signing-request-csr&#34;&gt;Certificate Signing Request (CSR)&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;openssl genrsa -out analyzer/analyzer.domain.com.key 2048
+chmod 400 analyzer/analyzer.domain.com.key
+openssl req -new -key analyzer/analyzer.domain.com.key -out analyzer/analyzer.domain.com.csr -subj &amp;quot;/CN=skydive-analyzer&amp;quot; -config skydive-openssl.cnf
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;analyzer-server-certificate-crt&#34;&gt;Analyzer (Server certificate CRT)&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;yes &#39;&#39; | openssl x509 -req -days 365  -signkey analyzer/analyzer.domain.com.key -in analyzer/analyzer.domain.com.csr -out analyzer/analyzer.domain.com.crt -extfile skydive-openssl.cnf -extensions v3_req
+chmod 444 analyzer/analyzer.domain.com.crt
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;agent-client-certificate-crt&#34;&gt;Agent (Client certificate CRT)&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;openssl genrsa -out agent/agent.domain.com.key 2048
+chmod 400 agent/agent.domain.com.key
+yes &#39;&#39; | openssl req -new -key agent/agent.domain.com.key -out agent/agent.domain.com.csr -subj &amp;quot;/CN=skydive-agent&amp;quot; -config skydive-openssl.cnf
+openssl x509 -req -days 365 -signkey agent/agent.domain.com.key -in agent/agent.domain.com.csr -out agent/agent.domain.com.crt -extfile skydive-openssl.cnf -extensions v3_req
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;skydive-openssl-cnf&#34;&gt;skydive-openssl.cnf&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+
+[req_distinguished_name]
+countryName = Country Name (2 letter code)
+countryName_default = FR
+stateOrProvinceName = State or Province Name (full name)
+stateOrProvinceName_default = Paris
+localityName = Locality Name (eg, city)
+localityName_default = Paris
+organizationalUnitName	= Organizational Unit Name (eg, section)
+organizationalUnitName_default	= Skydive Team
+commonName = skydive.domain.com
+commonName_max	= 64
+
+[ v3_req ]
+# Extensions to add to a certificate request
+basicConstraints = CA:TRUE
+keyUsage = digitalSignature, keyEncipherment, keyCertSign
+extendedKeyUsage = serverAuth,clientAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = agent.domain.com
+DNS.2 = analyzer.domain.com
+DNS.3 = localhost
+IP.1 = 192.168.1.1
+IP.2 = 192.168.69.14
+IP.3 = 127.0.0.1
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+    </item>
     
     <item>
       <title>Architecture</title>
@@ -422,6 +532,28 @@ selected links.&lt;/p&gt;
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Count()
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;h3 id=&#34;values-step&#34;&gt;Values step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Values&lt;/code&gt; returns the property value of elements retrieved by the previous step.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Values(&#39;Name&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;keys-step&#34;&gt;Keys step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Keys&lt;/code&gt; returns the list of properties of the elements retrieved by the previous step.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Keys()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;sum-step&#34;&gt;Sum step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Sum&lt;/code&gt; returns sum of elements, named &amp;lsquo;Name&amp;rsquo;, retrieved by the previous step.
+When attribute &amp;lsquo;Name&amp;rsquo; exists, must be integer type.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Sum(&#39;Name&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
 &lt;h3 id=&#34;limit-step&#34;&gt;Limit step&lt;/h3&gt;
 
 &lt;p&gt;&lt;code&gt;Limit&lt;/code&gt; limits the number of elements returned.&lt;/p&gt;
@@ -480,6 +612,59 @@ from the nodes to the host node they belong to.&lt;/p&gt;
 &lt;p&gt;The format of the path returned is the following:
 &lt;code&gt;node_name[Type=node_type]/.../node_name[Type=node_type]&lt;/code&gt;`&lt;/p&gt;
 
+&lt;h3 id=&#34;at-step&#34;&gt;At step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;At&lt;/code&gt; allows to set the time context of the Gremlin request. It means that
+we can contextualize a request to a specific point of time therefore being
+able to see how was the graph in the past.
+Supported formats for time argument are :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Timestamp&lt;/li&gt;
+&lt;li&gt;RFC1123 format&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://golang.org/pkg/time/#ParseDuration&#34;&gt;Go Duration format&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code&gt;G.At(1479899809).V()
+G.At(&#39;-1m&#39;).V()
+G.At(&#39;Sun, 06 Nov 2016 08:49:37 GMT&#39;).V()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;predicates&#34;&gt;Predicates&lt;/h3&gt;
+
+&lt;p&gt;Predicates which can be used with &lt;code&gt;Has&lt;/code&gt;, &lt;code&gt;In*&lt;/code&gt;, &lt;code&gt;Out*&lt;/code&gt; steps :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;NE&lt;/code&gt;, matches graph elements for which metadata don&amp;rsquo;t match specified values&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, NE(&#39;ovsbridge&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Within&lt;/code&gt;, matches graph elements for which metadata values match one member of
+the given array.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Within(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Without&lt;/code&gt;, matches graph elements for which metadata values don&amp;rsquo;t match any of
+the members of the given array.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Without(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Regex&lt;/code&gt;, matches graph elements for which metadata matches the given regular
+expression.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, Regex(&#39;tap-&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
 &lt;h3 id=&#34;flows-step&#34;&gt;Flows step&lt;/h3&gt;
 
 &lt;p&gt;Flows step returns flows of nodes where a capture has been started or of nodes
@@ -518,6 +703,7 @@ G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().Out()
 &lt;li&gt;&lt;code&gt;ANodeUUID&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;BNodeUUID&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;LayersPath&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Application&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.A&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.B&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.Protocol&lt;/code&gt;&lt;/li&gt;
@@ -538,39 +724,69 @@ G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().Out()
 &lt;p&gt;Lt, Lte, Gt, Gte predicates can be used on numerical fields.
 See &lt;a href=&#34;//skydive-project.github.io/skydive/api/flows/&#34;&gt;Flow Schema&lt;/a&gt; for further explanations.&lt;/p&gt;
 
-&lt;h3 id=&#34;predicates&#34;&gt;Predicates&lt;/h3&gt;
+&lt;h3 id=&#34;flows-sort-step&#34;&gt;Flows Sort step&lt;/h3&gt;
 
-&lt;p&gt;Predicates can be used with &lt;code&gt;Has&lt;/code&gt;, &lt;code&gt;In*&lt;/code&gt;, &lt;code&gt;Out*&lt;/code&gt; steps.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Sort&lt;/code&gt; step sorts flows by their &lt;code&gt;Metric.Last&lt;/code&gt; field.&lt;/p&gt;
 
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;NE&lt;/code&gt;, matches graph elements for which metadata don&amp;rsquo;t match specified values&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, NE(&#39;ovsbridge&#39;))
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Sort()
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;Within&lt;/code&gt;, matches graph elements for which metadata values match one member of
-the given array.&lt;/li&gt;
-&lt;/ul&gt;
+&lt;h3 id=&#34;flows-dedup-step&#34;&gt;Flows Dedup step&lt;/h3&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Within(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;p&gt;&lt;code&gt;Dedup&lt;/code&gt; step de-duplicates flows having the same TrackingID.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Dedup()
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;Without&lt;/code&gt;, matches graph elements for which metadata values don&amp;rsquo;t match any of
-the members of the given array.&lt;/li&gt;
-&lt;/ul&gt;
+&lt;h3 id=&#34;flows-since-predicate&#34;&gt;Flows Since predicate&lt;/h3&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Without(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;p&gt;&lt;code&gt;Since&lt;/code&gt; can be used in a timed context request(see &lt;code&gt;At&lt;/code&gt; step) meaning having
+specified a time point thanks to the &lt;code&gt;At&lt;/code&gt; step. &lt;code&gt;Since&lt;/code&gt; allows to do a lookup
+from that point in the past. &lt;code&gt;Since&lt;/code&gt; will return the flows which were active
+during the period. &lt;code&gt;Since&lt;/code&gt; takes the number of seconds to go back in past.&lt;/p&gt;
+
+&lt;p&gt;The following request returns flows which were active between
+(now - 2 hours) and (now - 1 hour).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.At(&#39;-1h&#39;).Flows(Since(3600))
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;Regex&lt;/code&gt;, matches graph elements for which metadata matches the given regular
-expression.&lt;/li&gt;
-&lt;/ul&gt;
+&lt;h3 id=&#34;metrics-step&#34;&gt;Metrics step&lt;/h3&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, Regex(&#39;tap-&#39;))
+&lt;p&gt;&lt;code&gt;Metrics&lt;/code&gt; returns arrays of metrics of a set of flow, grouped by
+the flows UUIDs.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Metrics()
+[
+  {
+    &amp;quot;64249da029a25d09668ea4a61b14a02c3d083da0&amp;quot;: [
+      {
+        &amp;quot;ABBytes&amp;quot;: 980,
+        &amp;quot;ABPackets&amp;quot;: 10,
+        &amp;quot;BABytes&amp;quot;: 980,
+        &amp;quot;BAPackets&amp;quot;: 10,
+        &amp;quot;Last&amp;quot;: 1479899789,
+        &amp;quot;Start&amp;quot;: 1479899779
+      }
+  }
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;bandwidth-step&#34;&gt;Bandwidth step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Bandwidth&lt;/code&gt; returns a sum of all the previously selected metrics.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Dedup().Metrics().Bandwidth()&amp;quot;
+[
+  {
+    &amp;quot;ABbytes&amp;quot;: 4900,
+    &amp;quot;ABpackets&amp;quot;: 50,
+    &amp;quot;BAbytes&amp;quot;: 4900,
+    &amp;quot;BApackets&amp;quot;: 50,
+    &amp;quot;Duration&amp;quot;: 10,
+    &amp;quot;NBFlow&amp;quot;: 1
+  }
+]
 &lt;/code&gt;&lt;/pre&gt;
 </description>
     </item>
@@ -744,6 +960,9 @@ enable_service skydive-agent skydive-analyzer
 
 # Set the default log level, default: INFO
 #SKYDIVE_LOGLEVEL=DEBUG
+
+# List of public interfaces for the agents to register in fabric
+#SKYDIVE_PUBLIC_INTERFACES=devstack1/eth0 devstack2/eth1
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h2 id=&#34;the-classical-two-nodes-deployment&#34;&gt;The classical two nodes deployment&lt;/h2&gt;
@@ -752,6 +971,15 @@ enable_service skydive-agent skydive-analyzer
 that can be used in order to deployment two Devstack with Skydive. The first
 file will install a full Devstack with Skydive analyzer and agent. The second
 one will install a compute Devstack with only the skydive agent.&lt;/p&gt;
+
+&lt;p&gt;For Skydive to create a TOR object that links both Devstack, add the following
+line to your local.conf file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;SKYDIVE_PUBLIC_INTERFACES=devstack1/eth0 devstack2/eth1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;where &lt;code&gt;devstack1&lt;/code&gt; and &lt;code&gt;devstack2&lt;/code&gt; are the hostnames of the two nodes followed
+by their respective public interface.&lt;/p&gt;
 
 &lt;p&gt;Skydive will be set with the probes for OpenvSwitch and Neutron. It will be set
 to use Keystone as authentication mechanism, so the credentials will be the same
@@ -770,11 +998,12 @@ the &lt;code&gt;br-int&lt;/code&gt; bridges.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
+$ export SKYDIVE_AGENT_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
 
 $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;)&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client -c /tmp/skydive.yaml capture list
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture list
 {
   &amp;quot;d62b3176-ebc8-44ed-7001-191270dc4d76&amp;quot;: {
     &amp;quot;UUID&amp;quot;: &amp;quot;d62b3176-ebc8-44ed-7001-191270dc4d76&amp;quot;,
@@ -888,6 +1117,7 @@ informations will be captured&lt;/li&gt;
 &lt;li&gt;Elasticsearch &amp;gt;= 2.0&lt;/li&gt;
 &lt;li&gt;libpcap&lt;/li&gt;
 &lt;li&gt;libxml2&lt;/li&gt;
+&lt;li&gt;protoc &amp;gt;= 3.0&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&#34;install&#34;&gt;Install&lt;/h2&gt;
@@ -1063,240 +1293,6 @@ In order to know the list of supported capture types, see the usage doc of flow 
       
       <guid>//skydive-project.github.io/skydive/getting-started/</guid>
       <description></description>
-    </item>
-    
-    <item>
-      <title>Overview</title>
-      <link>//skydive-project.github.io/skydive/</link>
-      <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
-      
-      <guid>//skydive-project.github.io/skydive/</guid>
-      <description>
-
-&lt;p&gt;Skydive is an open source real-time network topology and protocols analyzer.
-It aims to provide a comprehensive way of understanding what is happening in
-the network infrastructure.&lt;/p&gt;
-
-&lt;p&gt;Skydive agents collect topology informations and flows and forward them to a
-central agent for further analysis. All the informations are stored in an
-Elasticsearch database.&lt;/p&gt;
-
-&lt;p&gt;Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
-topology and flows informations.&lt;/p&gt;
-
-&lt;h2 id=&#34;topology-probes-supported&#34;&gt;Topology Probes supported&lt;/h2&gt;
-
-&lt;p&gt;Topology probes currently implemented:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;OVSDB&lt;/li&gt;
-&lt;li&gt;NetLINK&lt;/li&gt;
-&lt;li&gt;NetNS&lt;/li&gt;
-&lt;li&gt;Ethtool&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Topology connectors:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;Neutron&lt;/li&gt;
-&lt;li&gt;Docker&lt;/li&gt;
-&lt;li&gt;Opencontrail&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 id=&#34;flow-probes-supported&#34;&gt;Flow Probes supported&lt;/h2&gt;
-
-&lt;p&gt;Flow probes currently implemented:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;sFlow&lt;/li&gt;
-&lt;li&gt;PCAP&lt;/li&gt;
-&lt;/ul&gt;
-</description>
-    </item>
-    
-    <item>
-      <title>License</title>
-      <link>//skydive-project.github.io/skydive/license/</link>
-      <pubDate>Wed, 04 May 2016 17:28:04 +0200</pubDate>
-      
-      <guid>//skydive-project.github.io/skydive/license/</guid>
-      <description>&lt;p&gt;Apache License
-                           Version 2.0, January 2004
-                        &lt;a href=&#34;http://www.apache.org/licenses/&#34;&gt;http://www.apache.org/licenses/&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION&lt;/p&gt;
-
-&lt;ol&gt;
-&lt;li&gt;&lt;p&gt;Definitions.&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;License&amp;rdquo; shall mean the terms and conditions for use, reproduction,
-  and distribution as defined by Sections 1 through 9 of this document.&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;Licensor&amp;rdquo; shall mean the copyright owner or entity authorized by
-  the copyright owner that is granting the License.&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;Legal Entity&amp;rdquo; shall mean the union of the acting entity and all
-  other entities that control, are controlled by, or are under common
-  control with that entity. For the purposes of this definition,
-  &amp;ldquo;control&amp;rdquo; means (i) the power, direct or indirect, to cause the
-  direction or management of such entity, whether by contract or
-  otherwise, or (ii) ownership of fifty percent (50%) or more of the
-  outstanding shares, or (iii) beneficial ownership of such entity.&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;You&amp;rdquo; (or &amp;ldquo;Your&amp;rdquo;) shall mean an individual or Legal Entity
-  exercising permissions granted by this License.&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;Source&amp;rdquo; form shall mean the preferred form for making modifications,
-  including but not limited to software source code, documentation
-  source, and configuration files.&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;Object&amp;rdquo; form shall mean any form resulting from mechanical
-  transformation or translation of a Source form, including but
-  not limited to compiled object code, generated documentation,
-  and conversions to other media types.&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;Work&amp;rdquo; shall mean the work of authorship, whether in Source or
-  Object form, made available under the License, as indicated by a
-  copyright notice that is included in or attached to the work
-  (an example is provided in the Appendix below).&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;Derivative Works&amp;rdquo; shall mean any work, whether in Source or Object
-  form, that is based on (or derived from) the Work and for which the
-  editorial revisions, annotations, elaborations, or other modifications
-  represent, as a whole, an original work of authorship. For the purposes
-  of this License, Derivative Works shall not include works that remain
-  separable from, or merely link (or bind by name) to the interfaces of,
-  the Work and Derivative Works thereof.&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;Contribution&amp;rdquo; shall mean any work of authorship, including
-  the original version of the Work and any modifications or additions
-  to that Work or Derivative Works thereof, that is intentionally
-  submitted to Licensor for inclusion in the Work by the copyright owner
-  or by an individual or Legal Entity authorized to submit on behalf of
-  the copyright owner. For the purposes of this definition, &amp;ldquo;submitted&amp;rdquo;
-  means any form of electronic, verbal, or written communication sent
-  to the Licensor or its representatives, including but not limited to
-  communication on electronic mailing lists, source code control systems,
-  and issue tracking systems that are managed by, or on behalf of, the
-  Licensor for the purpose of discussing and improving the Work, but
-  excluding communication that is conspicuously marked or otherwise
-  designated in writing by the copyright owner as &amp;ldquo;Not a Contribution.&amp;rdquo;&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;Contributor&amp;rdquo; shall mean Licensor and any individual or Legal Entity
-  on behalf of whom a Contribution has been received by Licensor and
-  subsequently incorporated within the Work.&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;Grant of Copyright License. Subject to the terms and conditions of
-  this License, each Contributor hereby grants to You a perpetual,
-  worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-  copyright license to reproduce, prepare Derivative Works of,
-  publicly display, publicly perform, sublicense, and distribute the
-  Work and such Derivative Works in Source or Object form.&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;Grant of Patent License. Subject to the terms and conditions of
-  this License, each Contributor hereby grants to You a perpetual,
-  worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-  (except as stated in this section) patent license to make, have made,
-  use, offer to sell, sell, import, and otherwise transfer the Work,
-  where such license applies only to those patent claims licensable
-  by such Contributor that are necessarily infringed by their
-  Contribution(s) alone or by combination of their Contribution(s)
-  with the Work to which such Contribution(s) was submitted. If You
-  institute patent litigation against any entity (including a
-  cross-claim or counterclaim in a lawsuit) alleging that the Work
-  or a Contribution incorporated within the Work constitutes direct
-  or contributory patent infringement, then any patent licenses
-  granted to You under this License for that Work shall terminate
-  as of the date such litigation is filed.&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;Redistribution. You may reproduce and distribute copies of the
-  Work or Derivative Works thereof in any medium, with or without
-  modifications, and in Source or Object form, provided that You
-  meet the following conditions:&lt;/p&gt;
-
-&lt;p&gt;(a) You must give any other recipients of the Work or
-      Derivative Works a copy of this License; and&lt;/p&gt;
-
-&lt;p&gt;(b) You must cause any modified files to carry prominent notices
-      stating that You changed the files; and&lt;/p&gt;
-
-&lt;p&gt;&amp;copy; You must retain, in the Source form of any Derivative Works
-      that You distribute, all copyright, patent, trademark, and
-      attribution notices from the Source form of the Work,
-      excluding those notices that do not pertain to any part of
-      the Derivative Works; and&lt;/p&gt;
-
-&lt;p&gt;(d) If the Work includes a &amp;ldquo;NOTICE&amp;rdquo; text file as part of its
-      distribution, then any Derivative Works that You distribute must
-      include a readable copy of the attribution notices contained
-      within such NOTICE file, excluding those notices that do not
-      pertain to any part of the Derivative Works, in at least one
-      of the following places: within a NOTICE text file distributed
-      as part of the Derivative Works; within the Source form or
-      documentation, if provided along with the Derivative Works; or,
-      within a display generated by the Derivative Works, if and
-      wherever such third-party notices normally appear. The contents
-      of the NOTICE file are for informational purposes only and
-      do not modify the License. You may add Your own attribution
-      notices within Derivative Works that You distribute, alongside
-      or as an addendum to the NOTICE text from the Work, provided
-      that such additional attribution notices cannot be construed
-      as modifying the License.&lt;/p&gt;
-
-&lt;p&gt;You may add Your own copyright statement to Your modifications and
-  may provide additional or different license terms and conditions
-  for use, reproduction, or distribution of Your modifications, or
-  for any such Derivative Works as a whole, provided Your use,
-  reproduction, and distribution of the Work otherwise complies with
-  the conditions stated in this License.&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;Submission of Contributions. Unless You explicitly state otherwise,
-  any Contribution intentionally submitted for inclusion in the Work
-  by You to the Licensor shall be under the terms and conditions of
-  this License, without any additional terms or conditions.
-  Notwithstanding the above, nothing herein shall supersede or modify
-  the terms of any separate license agreement you may have executed
-  with Licensor regarding such Contributions.&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;Trademarks. This License does not grant permission to use the trade
-  names, trademarks, service marks, or product names of the Licensor,
-  except as required for reasonable and customary use in describing the
-  origin of the Work and reproducing the content of the NOTICE file.&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;Disclaimer of Warranty. Unless required by applicable law or
-  agreed to in writing, Licensor provides the Work (and each
-  Contributor provides its Contributions) on an &amp;ldquo;AS IS&amp;rdquo; BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-  implied, including, without limitation, any warranties or conditions
-  of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
-  PARTICULAR PURPOSE. You are solely responsible for determining the
-  appropriateness of using or redistributing the Work and assume any
-  risks associated with Your exercise of permissions under this License.&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;Limitation of Liability. In no event and under no legal theory,
-  whether in tort (including negligence), contract, or otherwise,
-  unless required by applicable law (such as deliberate and grossly
-  negligent acts) or agreed to in writing, shall any Contributor be
-  liable to You for damages, including any direct, indirect, special,
-  incidental, or consequential damages of any character arising as a
-  result of this License or out of the use or inability to use the
-  Work (including but not limited to damages for loss of goodwill,
-  work stoppage, computer failure or malfunction, or any and all
-  other commercial damages or losses), even if such Contributor
-  has been advised of the possibility of such damages.&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;Accepting Warranty or Additional Liability. While redistributing
-  the Work or Derivative Works thereof, You may choose to offer,
-  and charge a fee for, acceptance of support, warranty, indemnity,
-  or other liability obligations and/or rights consistent with this
-  License. However, in accepting such obligations, You may act only
-  on Your own behalf and on Your sole responsibility, not on behalf
-  of any other Contributor, and only if You agree to indemnify,
-  defend, and hold each Contributor harmless for any liability
-  incurred by, or claims asserted against, such Contributor by reason
-  of your accepting any such warranty or additional liability.&lt;/p&gt;&lt;/li&gt;
-&lt;/ol&gt;
-</description>
     </item>
     
   </channel>

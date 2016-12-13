@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.6.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.8.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -220,7 +220,15 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Getting-Started</span>
+      
+    
+      
+    
       
     
       
@@ -287,6 +295,18 @@
 
 
 
+<a  title="Vagrant" href="//skydive-project.github.io/skydive/getting-started/vagrant/">
+	
+	Vagrant
+</a>
+
+  
+      
+        
+        
+
+
+
 <a  title="Kubernetes" href="//skydive-project.github.io/skydive/getting-started/kubernetes/">
 	
 	Kubernetes
@@ -330,7 +350,15 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Api</span>
+      
+    
+      
+    
       
     
       
@@ -392,6 +420,23 @@
 
 
 
+<a  title="Deployment" href="//skydive-project.github.io/skydive/deployment/">
+	
+	Deployment
+</a>
+
+  
+  
+</li>
+
+
+
+<li>
+  
+    
+
+
+
 <a  title="Architecture" href="//skydive-project.github.io/skydive/architecture/">
 	
 	Architecture
@@ -415,6 +460,75 @@
 </a>
 
   
+  
+</li>
+
+
+
+<li>
+  
+  <li>
+    
+
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+      <span class="section">Use-Cases</span>
+      
+    
+      
+    
+    
+
+    <ul>
+      
+        
+        
+
+
+
+<a  title="Packet Injector" href="//skydive-project.github.io/skydive/use-cases/packet-injector/">
+	
+	Packet Injector
+</a>
+
+  
+      
+    </ul>
+  </li>
   
 </li>
 
@@ -527,6 +641,9 @@ enable_service skydive-agent skydive-analyzer
 
 # Set the default log level, default: INFO
 #SKYDIVE_LOGLEVEL=DEBUG
+
+# List of public interfaces for the agents to register in fabric
+#SKYDIVE_PUBLIC_INTERFACES=devstack1/eth0 devstack2/eth1
 </code></pre>
 
 <h2 id="the-classical-two-nodes-deployment">The classical two nodes deployment</h2>
@@ -535,6 +652,15 @@ enable_service skydive-agent skydive-analyzer
 that can be used in order to deployment two Devstack with Skydive. The first
 file will install a full Devstack with Skydive analyzer and agent. The second
 one will install a compute Devstack with only the skydive agent.</p>
+
+<p>For Skydive to create a TOR object that links both Devstack, add the following
+line to your local.conf file:</p>
+
+<pre><code class="language-console">SKYDIVE_PUBLIC_INTERFACES=devstack1/eth0 devstack2/eth1
+</code></pre>
+
+<p>where <code>devstack1</code> and <code>devstack2</code> are the hostnames of the two nodes followed
+by their respective public interface.</p>
 
 <p>Skydive will be set with the probes for OpenvSwitch and Neutron. It will be set
 to use Keystone as authentication mechanism, so the credentials will be the same
@@ -553,11 +679,12 @@ the <code>br-int</code> bridges.</p>
 
 <pre><code class="language-console">$ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
+$ export SKYDIVE_AGENT_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
 
 $ skydive client capture create --gremlin &quot;G.V().Has('Name', 'br-int')&quot;
 </code></pre>
 
-<pre><code class="language-console">$ skydive client -c /tmp/skydive.yaml capture list
+<pre><code class="language-console">$ skydive client capture list
 {
   &quot;d62b3176-ebc8-44ed-7001-191270dc4d76&quot;: {
     &quot;UUID&quot;: &quot;d62b3176-ebc8-44ed-7001-191270dc4d76&quot;,

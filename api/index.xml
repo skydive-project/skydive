@@ -352,6 +352,28 @@ selected links.&lt;/p&gt;
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Count()
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;h3 id=&#34;values-step&#34;&gt;Values step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Values&lt;/code&gt; returns the property value of elements retrieved by the previous step.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Values(&#39;Name&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;keys-step&#34;&gt;Keys step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Keys&lt;/code&gt; returns the list of properties of the elements retrieved by the previous step.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Keys()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;sum-step&#34;&gt;Sum step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Sum&lt;/code&gt; returns sum of elements, named &amp;lsquo;Name&amp;rsquo;, retrieved by the previous step.
+When attribute &amp;lsquo;Name&amp;rsquo; exists, must be integer type.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Sum(&#39;Name&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
 &lt;h3 id=&#34;limit-step&#34;&gt;Limit step&lt;/h3&gt;
 
 &lt;p&gt;&lt;code&gt;Limit&lt;/code&gt; limits the number of elements returned.&lt;/p&gt;
@@ -410,6 +432,59 @@ from the nodes to the host node they belong to.&lt;/p&gt;
 &lt;p&gt;The format of the path returned is the following:
 &lt;code&gt;node_name[Type=node_type]/.../node_name[Type=node_type]&lt;/code&gt;`&lt;/p&gt;
 
+&lt;h3 id=&#34;at-step&#34;&gt;At step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;At&lt;/code&gt; allows to set the time context of the Gremlin request. It means that
+we can contextualize a request to a specific point of time therefore being
+able to see how was the graph in the past.
+Supported formats for time argument are :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Timestamp&lt;/li&gt;
+&lt;li&gt;RFC1123 format&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://golang.org/pkg/time/#ParseDuration&#34;&gt;Go Duration format&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code&gt;G.At(1479899809).V()
+G.At(&#39;-1m&#39;).V()
+G.At(&#39;Sun, 06 Nov 2016 08:49:37 GMT&#39;).V()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;predicates&#34;&gt;Predicates&lt;/h3&gt;
+
+&lt;p&gt;Predicates which can be used with &lt;code&gt;Has&lt;/code&gt;, &lt;code&gt;In*&lt;/code&gt;, &lt;code&gt;Out*&lt;/code&gt; steps :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;NE&lt;/code&gt;, matches graph elements for which metadata don&amp;rsquo;t match specified values&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, NE(&#39;ovsbridge&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Within&lt;/code&gt;, matches graph elements for which metadata values match one member of
+the given array.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Within(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Without&lt;/code&gt;, matches graph elements for which metadata values don&amp;rsquo;t match any of
+the members of the given array.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Without(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Regex&lt;/code&gt;, matches graph elements for which metadata matches the given regular
+expression.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, Regex(&#39;tap-&#39;))
+&lt;/code&gt;&lt;/pre&gt;
+
 &lt;h3 id=&#34;flows-step&#34;&gt;Flows step&lt;/h3&gt;
 
 &lt;p&gt;Flows step returns flows of nodes where a capture has been started or of nodes
@@ -448,6 +523,7 @@ G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().Out()
 &lt;li&gt;&lt;code&gt;ANodeUUID&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;BNodeUUID&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;LayersPath&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Application&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.A&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.B&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.Protocol&lt;/code&gt;&lt;/li&gt;
@@ -468,39 +544,69 @@ G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().Out()
 &lt;p&gt;Lt, Lte, Gt, Gte predicates can be used on numerical fields.
 See &lt;a href=&#34;//skydive-project.github.io/skydive/api/flows/&#34;&gt;Flow Schema&lt;/a&gt; for further explanations.&lt;/p&gt;
 
-&lt;h3 id=&#34;predicates&#34;&gt;Predicates&lt;/h3&gt;
+&lt;h3 id=&#34;flows-sort-step&#34;&gt;Flows Sort step&lt;/h3&gt;
 
-&lt;p&gt;Predicates can be used with &lt;code&gt;Has&lt;/code&gt;, &lt;code&gt;In*&lt;/code&gt;, &lt;code&gt;Out*&lt;/code&gt; steps.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Sort&lt;/code&gt; step sorts flows by their &lt;code&gt;Metric.Last&lt;/code&gt; field.&lt;/p&gt;
 
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;NE&lt;/code&gt;, matches graph elements for which metadata don&amp;rsquo;t match specified values&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, NE(&#39;ovsbridge&#39;))
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Sort()
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;Within&lt;/code&gt;, matches graph elements for which metadata values match one member of
-the given array.&lt;/li&gt;
-&lt;/ul&gt;
+&lt;h3 id=&#34;flows-dedup-step&#34;&gt;Flows Dedup step&lt;/h3&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Within(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;p&gt;&lt;code&gt;Dedup&lt;/code&gt; step de-duplicates flows having the same TrackingID.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Dedup()
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;Without&lt;/code&gt;, matches graph elements for which metadata values don&amp;rsquo;t match any of
-the members of the given array.&lt;/li&gt;
-&lt;/ul&gt;
+&lt;h3 id=&#34;flows-since-predicate&#34;&gt;Flows Since predicate&lt;/h3&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Type&#39;, Without(&#39;ovsbridge&#39;, &#39;ovsport&#39;))
+&lt;p&gt;&lt;code&gt;Since&lt;/code&gt; can be used in a timed context request(see &lt;code&gt;At&lt;/code&gt; step) meaning having
+specified a time point thanks to the &lt;code&gt;At&lt;/code&gt; step. &lt;code&gt;Since&lt;/code&gt; allows to do a lookup
+from that point in the past. &lt;code&gt;Since&lt;/code&gt; will return the flows which were active
+during the period. &lt;code&gt;Since&lt;/code&gt; takes the number of seconds to go back in past.&lt;/p&gt;
+
+&lt;p&gt;The following request returns flows which were active between
+(now - 2 hours) and (now - 1 hour).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.At(&#39;-1h&#39;).Flows(Since(3600))
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;Regex&lt;/code&gt;, matches graph elements for which metadata matches the given regular
-expression.&lt;/li&gt;
-&lt;/ul&gt;
+&lt;h3 id=&#34;metrics-step&#34;&gt;Metrics step&lt;/h3&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, Regex(&#39;tap-&#39;))
+&lt;p&gt;&lt;code&gt;Metrics&lt;/code&gt; returns arrays of metrics of a set of flow, grouped by
+the flows UUIDs.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Metrics()
+[
+  {
+    &amp;quot;64249da029a25d09668ea4a61b14a02c3d083da0&amp;quot;: [
+      {
+        &amp;quot;ABBytes&amp;quot;: 980,
+        &amp;quot;ABPackets&amp;quot;: 10,
+        &amp;quot;BABytes&amp;quot;: 980,
+        &amp;quot;BAPackets&amp;quot;: 10,
+        &amp;quot;Last&amp;quot;: 1479899789,
+        &amp;quot;Start&amp;quot;: 1479899779
+      }
+  }
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;bandwidth-step&#34;&gt;Bandwidth step&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;Bandwidth&lt;/code&gt; returns a sum of all the previously selected metrics.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Dedup().Metrics().Bandwidth()&amp;quot;
+[
+  {
+    &amp;quot;ABbytes&amp;quot;: 4900,
+    &amp;quot;ABpackets&amp;quot;: 50,
+    &amp;quot;BAbytes&amp;quot;: 4900,
+    &amp;quot;BApackets&amp;quot;: 50,
+    &amp;quot;Duration&amp;quot;: 10,
+    &amp;quot;NBFlow&amp;quot;: 1
+  }
+]
 &lt;/code&gt;&lt;/pre&gt;
 </description>
     </item>
