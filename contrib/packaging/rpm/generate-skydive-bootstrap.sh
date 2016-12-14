@@ -22,18 +22,23 @@ fi
 
 set -e
 
-echo "git archive --format=tar --prefix=skydive-${version}/src/github.com/skydive-project/skydive/ $from > skydive-${version}.tar"
-git archive --format=tar --prefix=skydive-${version}/src/github.com/skydive-project/skydive/ $from > skydive-${version}.tar
+tmpdir=`mktemp -d -u --suffix=skydive-pkg`
+godir=${tmpdir}/skydive-${version}
+skydivedir=${godir}/src/github.com/skydive-project/skydive
+gitdir=$(cd "$(dirname "$0")/../../.."; pwd)
 
+mkdir -p `dirname $skydivedir`
+git clone $gitdir $skydivedir
+
+pushd $skydivedir
+export GOPATH=$godir
+cd $skydivedir
 echo "go take a coffee, govendor sync takes time ..."
-make govendor
-
-# Append the vendor and govendor src to the archive then gzip it
-tar -k -r --file=skydive-${version}.tar --show-transformed --transform "s,vendor,skydive-${version}/src/github.com/skydive-project/skydive/vendor," vendor
-tar -P -k -r --file=skydive-${version}.tar --exclude=.git --show-transformed --transform "s,$GOPATH/src/github.com/kardianos/govendor,skydive-${version}/src/github.com/kardianos/govendor," $GOPATH/src/github.com/kardianos/govendor
-gzip -f skydive-${version}.tar
+make govendor genlocalfiles
+popd
 
 mkdir -p rpmbuild/SOURCES
-mv -f skydive-${version}.tar.gz rpmbuild/SOURCES
+tar -C $tmpdir --exclude=skydive-${version}/src/github.com/skydive-project/skydive/.git -cvf rpmbuild/SOURCES/skydive-${version}.tar.gz skydive-${version}/src
+rm -rf $tmpdir
 
 rpmbuild -ba --define "$define" --define "_topdir $PWD/rpmbuild" contrib/packaging/rpm/skydive.spec

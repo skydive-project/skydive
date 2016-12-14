@@ -25,7 +25,7 @@ URL:            https://github.com/skydive-project/skydive
 ExclusiveArch:  x86_64
 Source0:        https://github.com/skydive-project/skydive/archive/skydive-%{source}.tar.gz
 Requires:       libpcap libxml2
-BuildRequires:  make
+BuildRequires:  make git
 BuildRequires:  golang >= 1.5
 BuildRequires:  systemd
 BuildRequires:  libpcap-devel libxml2-devel
@@ -75,7 +75,7 @@ export PATH=$PATH:$GOPATH/bin
 export GO15VENDOREXPERIMENT=1
 # compile govendor locally
 go install github.com/kardianos/govendor
-make install
+govendor install +local
 
 %install
 export GOPATH=%{_builddir}/skydive-%{source}
