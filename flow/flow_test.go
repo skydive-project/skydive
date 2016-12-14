@@ -24,11 +24,14 @@ package flow
 
 import (
 	"encoding/json"
+	"io"
 	"reflect"
 	"testing"
 
 	v "github.com/gima/govalid/v1"
+	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcap"
 )
 
 func TestFlowSimple(t *testing.T) {
@@ -220,4 +223,217 @@ func TestFlowJSON(t *testing.T) {
 	if !reflect.DeepEqual(f, e) {
 		t.Fatal("Unmarshalled flow not equal to the original")
 	}
+}
+
+func compareFlowLayer(expected, tested *FlowLayer) bool {
+	if tested == nil {
+		return false
+	}
+
+	return expected.Protocol == tested.Protocol && expected.A == tested.A && expected.B == tested.B
+}
+
+func compareFlowMetric(expected, tested *FlowMetric) bool {
+	if tested == nil {
+		return false
+	}
+
+	return expected.ABBytes == tested.ABBytes && expected.ABPackets == tested.ABPackets &&
+		expected.BABytes == tested.BABytes && expected.BAPackets == tested.BAPackets
+}
+
+func compareFlow(expected, tested *Flow) bool {
+	if expected.LayersPath != "" && expected.LayersPath != tested.LayersPath {
+		return false
+	}
+	if expected.Application != "" && expected.Application != tested.Application {
+		return false
+	}
+	if expected.TrackingID != "" && expected.TrackingID != tested.TrackingID {
+		return false
+	}
+	if expected.ParentUUID != "" && expected.ParentUUID != tested.ParentUUID {
+		return false
+	}
+	if expected.Link != nil && !compareFlowLayer(expected.Link, tested.Link) {
+		return false
+	}
+	if expected.Network != nil && !compareFlowLayer(expected.Network, tested.Network) {
+		return false
+	}
+	if expected.Transport != nil && !compareFlowLayer(expected.Transport, tested.Transport) {
+		return false
+	}
+	if expected.Metric != nil && !compareFlowMetric(expected.Metric, tested.Metric) {
+		return false
+	}
+
+	return true
+}
+
+func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expected []*Flow) {
+	handleRead, err := pcap.OpenOffline(filename)
+	if err != nil {
+		t.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+	}
+	defer handleRead.Close()
+
+	table := NewTable(nil, nil)
+
+	for {
+		data, _, err := handleRead.ReadPacketData()
+		if err != nil && err != io.EOF {
+			t.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+		} else if err == io.EOF {
+			break
+		} else {
+			p := gopacket.NewPacket(data, linkType, gopacket.Default)
+			if p.ErrorLayer() != nil {
+				t.Fatal("Failed to decode packet: ", p.ErrorLayer().Error())
+			}
+
+			fp := FlowPacketsFromGoPacket(&p, 0)
+			if fp == nil {
+				t.Fatal("Failed to get FlowPackets: ", err)
+			}
+			table.FlowPacketsToFlow(fp)
+		}
+	}
+
+	flows := table.GetFlows(&FlowSearchQuery{}).Flows
+	for _, e := range expected {
+		found := false
+		for _, f := range flows {
+			if compareFlow(e, f) {
+				found = true
+			}
+		}
+		if !found {
+			je, _ := json.MarshalIndent(e, "", "\t")
+			f, _ := json.MarshalIndent(flows, "", "\t")
+			t.Errorf("Flows mismatch, \nexpected %s\ngot  %s\n", string(je), string(f))
+		}
+	}
+}
+
+func TestPCAP1(t *testing.T) {
+	expected := []*Flow{
+		&Flow{
+			LayersPath:  "Ethernet/ARP",
+			Application: "ARP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "fa:16:3e:29:e0:82",
+				B:        "ff:ff:ff:ff:ff:ff",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   42,
+				BAPackets: 1,
+				BABytes:   42,
+			},
+		},
+		&Flow{
+			LayersPath:  "Ethernet/IPv4/UDP/DNS",
+			Application: "DNS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "fa:16:3e:29:e0:82",
+				B:        "fa:16:3e:96:06:e8",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.5",
+				B:        "8.8.8.8",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_UDPPORT,
+				A:        "37686",
+				B:        "53",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   148,
+				BAPackets: 2,
+				BABytes:   256,
+			},
+		},
+		&Flow{
+			LayersPath:  "Ethernet/IPv4/TCP",
+			Application: "TCP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "fa:16:3e:29:e0:82",
+				B:        "fa:16:3e:96:06:e8",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.5",
+				B:        "173.194.40.147",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_TCPPORT,
+				A:        "47838",
+				B:        "80",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 6,
+				ABBytes:   516,
+				BAPackets: 4,
+				BABytes:   760,
+			},
+		},
+		&Flow{
+			LayersPath:  "Ethernet/IPv4/UDP/DNS",
+			Application: "DNS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "fa:16:3e:29:e0:82",
+				B:        "fa:16:3e:96:06:e8",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.5",
+				B:        "8.8.8.8",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_UDPPORT,
+				A:        "33553",
+				B:        "53",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   146,
+				BAPackets: 2,
+				BABytes:   190,
+			},
+		},
+		&Flow{
+			LayersPath:  "Ethernet/IPv4/TCP",
+			Application: "TCP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "fa:16:3e:29:e0:82",
+				B:        "fa:16:3e:96:06:e8",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.5",
+				B:        "216.58.211.67",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_TCPPORT,
+				A:        "54785",
+				B:        "80",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 20,
+				ABBytes:   1475,
+				BAPackets: 18,
+				BABytes:   21080,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", layers.LinkTypeEthernet, expected)
 }

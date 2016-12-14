@@ -574,7 +574,6 @@ func (f *Flow) GetFields() []interface{} {
 var fields []interface{}
 
 func introspectFields(t reflect.Type, prefix string) []interface{} {
-
 	var fFields []interface{}
 
 	for i := 0; i < t.NumField(); i++ {
@@ -597,7 +596,5 @@ func introspectFields(t reflect.Type, prefix string) []interface{} {
 }
 
 func init() {
-
 	fields = introspectFields(reflect.TypeOf(Flow{}), "")
-
 }

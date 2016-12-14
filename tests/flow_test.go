@@ -24,7 +24,6 @@ package tests
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -36,7 +35,6 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
-	"github.com/skydive-project/skydive/tools"
 	"github.com/skydive-project/skydive/topology"
 )
 
@@ -126,31 +124,6 @@ logging:
   default: {{.LogLevel}}
 `
 
-type flowStat struct {
-	Path      string
-	ABPackets int64
-	ABBytes   int64
-	BAPackets int64
-	BABytes   int64
-}
-type flowsTraceInfo struct {
-	filename string
-	flowStat []flowStat
-}
-
-var flowsTraces = [...]flowsTraceInfo{
-	{
-		filename: "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap",
-		flowStat: []flowStat{
-			{"Ethernet/ARP/Payload", 1, 42, 1, 42},
-			{"Ethernet/IPv4/UDP/DNS", 2, 148, 2, 256},
-			{"Ethernet/IPv4/TCP", 4, 384, 3, 694},
-			{"Ethernet/IPv4/UDP/DNS", 2, 146, 2, 190},
-			{"Ethernet/IPv4/TCP", 4, 272, 2, 140},
-		},
-	},
-}
-
 type TestStorage struct {
 	lock  sync.RWMutex
 	flows map[string]*flow.Flow
@@ -198,83 +171,6 @@ func (s *TestStorage) GetFlows() []*flow.Flow {
 	}
 
 	return flows
-}
-
-func pcapTraceCheckFlow(t *testing.T, f *flow.Flow, trace *flowsTraceInfo) bool {
-	eth := f.Metric
-	if eth == nil || f.Link.Protocol != flow.FlowProtocol_ETHERNET {
-		t.Fail()
-	}
-
-	for _, fi := range trace.flowStat {
-		if fi.Path == f.LayersPath {
-			if (fi.ABPackets == eth.ABPackets) && (fi.ABBytes == eth.ABBytes) && (fi.BAPackets == eth.BAPackets) && (fi.BABytes == eth.BABytes) {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-func pcapTraceValidate(t *testing.T, flows []*flow.Flow, trace *flowsTraceInfo) {
-	found := 0
-	for _, f := range flows {
-		if pcapTraceCheckFlow(t, f, trace) {
-			found++
-		}
-	}
-
-	if found != len(trace.flowStat) {
-		t.Errorf("Flow expected not found %v != %v", trace.flowStat, flows)
-	}
-}
-
-func TestSFlowWithPCAP(t *testing.T) {
-	ts := NewTestStorage()
-
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
-	aa.Start()
-	defer aa.Stop()
-
-	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	capture := api.NewCapture("G.V().Has('Name', 'br-sflow', 'Type', 'ovsbridge')", "")
-	if err := client.Create("capture", capture); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	time.Sleep(1 * time.Second)
-	setupCmds := []helper.Cmd{
-		{"ovs-vsctl add-br br-sflow", true},
-	}
-
-	tearDownCmds := []helper.Cmd{
-		{"ovs-vsctl del-br br-sflow", true},
-	}
-
-	helper.ExecCmds(t, setupCmds...)
-	defer helper.ExecCmds(t, tearDownCmds...)
-
-	time.Sleep(5 * time.Second)
-
-	// FIX(safchain): need to be reworked as there is no more static sflow agent
-	// running at a specific port and agent couldn't speak sflow at all
-	for _, trace := range flowsTraces {
-		fulltrace, _ := filepath.Abs(trace.filename)
-		err := tools.PCAP2SFlowReplay("localhost", 55000, fulltrace, 1000, 5)
-		if err != nil {
-			t.Fatalf("Error during the replay: %s", err.Error())
-		}
-
-		aa.Flush()
-		pcapTraceValidate(t, ts.GetFlows(), &trace)
-	}
-
-	client.Delete("capture", capture.ID())
 }
 
 func TestSFlowProbeNode(t *testing.T) {
