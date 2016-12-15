@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: skydive
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: skydive-analyzer
+    name: skydive-analyzer
+  spec:
+    ports:
+    - name: api
+      port: 8082
+      protocol: TCP
+      targetPort: 8082
+    - name: protobuf
+      port: 8082
+      protocol: UDP
+      targetPort: 8082
+    - name: etcd
+      port: 2379
+      protocol: TCP
+      targetPort: 2379
+    - name: es
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+    selector:
+      app: skydive
+      tier: analyzer
+    sessionAffinity: None
+    type: NodePort
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    creationTimestamp: null
+    generation: 1
+    name: skydive-analyzer
+  spec:
+    replicas: 1
+    selector:
+      app: skydive
+      tier: analyzer
+    strategy:
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: skydive
+          tier: analyzer
+      spec:
+        containers:
+        - args:
+          - analyzer
+          - --listen=0.0.0.0:8082
+          env:
+          - name: SKYDIVE_ANALYZER_STORAGE
+            value: elasticsearch
+          - name: SKYDIVE_GRAPH_BACKEND
+            value: elasticsearch
+          image: skydive/skydive
+          imagePullPolicy: Always
+          name: skydive-analyzer
+          ports:
+          - containerPort: 8082
+            protocol: TCP
+          - containerPort: 8082
+            protocol: UDP
+          - containerPort: 2379
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+        - image: elasticsearch:2
+          imagePullPolicy: IfNotPresent
+          name: skydive-elasticsearch
+          ports:
+          - containerPort: 9200
+            protocol: TCP
+          resources: {}
+          securityContext:
+            privileged: true
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+  status: {}
+- apiVersion: extensions/v1beta1
+  kind: DaemonSet
+  metadata:
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: skydive
+      tier: agent
+    name: skydive-agent
+  spec:
+    selector:
+      matchLabels:
+        app: skydive
+        tier: agent
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: skydive
+          tier: agent
+      spec:
+        containers:
+        - args:
+          - agent
+          env:
+          - name: SKYDIVE_AGENT_ANALYZERS
+            value: $(SKYDIVE_ANALYZER_SERVICE_HOST):$(SKYDIVE_ANALYZER_SERVICE_PORT_API)
+          image: skydive/skydive
+          imagePullPolicy: Always
+          name: skydive-agent
+          ports:
+          - containerPort: 8081
+            hostPort: 8081
+            protocol: TCP
+          resources: {}
+          securityContext:
+            privileged: true
+          terminationMessagePath: /dev/termination-log
+          volumeMounts:
+          - mountPath: /var/run/docker.sock
+            name: docker
+          - mountPath: /host/run
+            name: run
+        dnsPolicy: ClusterFirst
+        hostNetwork: true
+        hostPID: true
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - hostPath:
+            path: /var/run/docker.sock
+          name: docker
+        - hostPath:
+            path: /var/run/netns
+          name: run
+- apiVersion: v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+    creationTimestamp: null
+    labels:
+      app: skydive-analyzer
+    name: skydive-analyzer
+  spec:
+    host: skydive-analyzer-skydive.paas.example.com
+    port:
+      targetPort: api
+    to:
+      kind: Service
+      name: skydive-analyzer
+      weight: 100
+    wildcardPolicy: None
