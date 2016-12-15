@@ -344,24 +344,7 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	var intf *graph.Node
-
-	intfs := u.Graph.GetNodes(graph.Metadata{"IfIndex": int64(index)})
-	switch l := len(intfs); {
-	case l == 1:
-		intf = intfs[0]
-	case l > 1:
-	Loop:
-		for _, i := range intfs {
-			parents := u.Graph.LookupParents(i, nil)
-			for _, parent := range parents {
-				if parent.ID == u.Root.ID {
-					intf = i
-					break Loop
-				}
-			}
-		}
-	}
+	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 
 	// case of removing the interface from a bridge
 	if intf != nil {
@@ -386,6 +369,64 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 	delete(u.indexToChildrenQueue, int64(index))
 }
 
+func getFamilyKey(family int) string {
+	switch family {
+	case netlink.FAMILY_V4:
+		return "IPV4"
+	case netlink.FAMILY_V6:
+		return "IPV6"
+	}
+	return ""
+}
+
+func (u *NetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int) {
+	u.Graph.Lock()
+	defer u.Graph.Unlock()
+
+	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
+	if intf == nil {
+		logging.GetLogger().Errorf("No interface with index %d for new address %s", index, addr.IPNet.String())
+		return
+	}
+
+	key := getFamilyKey(family)
+	ips := addr.IPNet.String()
+	if v, ok := intf.Metadata()[key]; ok {
+		ips = v.(string) + "," + ips
+	}
+	u.Graph.AddMetadata(intf, key, ips)
+}
+
+func (u *NetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int) {
+	u.Graph.Lock()
+	defer u.Graph.Unlock()
+
+	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
+	if intf == nil {
+		logging.GetLogger().Errorf("No interface with index %d for new address %s", index, addr.IPNet.String())
+		return
+	}
+
+	key := getFamilyKey(family)
+	m := intf.Metadata()
+	if v, ok := m[key]; ok {
+		ips := strings.Split(v.(string), ",")
+		for i, ip := range ips {
+			if ip == addr.IPNet.String() {
+				ips = append(ips[:i], ips[i+1:]...)
+				break
+			}
+		}
+
+		if len(ips) == 0 {
+			delete(m, key)
+			u.Graph.SetMetadata(intf, m)
+		} else {
+			u.Graph.AddMetadata(intf, key, strings.Join(ips, ","))
+		}
+	}
+}
+
 func (u *NetLinkProbe) initialize() {
 	links, err := u.netlink.LinkList()
 	if err != nil {
@@ -400,6 +441,50 @@ func (u *NetLinkProbe) initialize() {
 
 func (u *NetLinkProbe) isRunning() bool {
 	return atomic.LoadInt64(&u.state) == common.RunningState
+}
+
+func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
+	msg := nl.DeserializeIfAddrmsg(m)
+
+	family = -1
+	index = -1
+
+	attrs, err1 := nl.ParseRouteAttr(m[msg.Len():])
+	if err1 != nil {
+		err = err1
+		return
+	}
+
+	family = int(msg.Family)
+	index = int(msg.Index)
+
+	var local, dst *net.IPNet
+	for _, attr := range attrs {
+		switch attr.Attr.Type {
+		case syscall.IFA_ADDRESS:
+			dst = &net.IPNet{
+				IP:   attr.Value,
+				Mask: net.CIDRMask(int(msg.Prefixlen), 8*len(attr.Value)),
+			}
+			addr.Peer = dst
+		case syscall.IFA_LOCAL:
+			local = &net.IPNet{
+				IP:   attr.Value,
+				Mask: net.CIDRMask(int(msg.Prefixlen), 8*len(attr.Value)),
+			}
+			addr.IPNet = local
+		}
+	}
+
+	// IFA_LOCAL should be there but if not, fall back to IFA_ADDRESS
+	if local != nil {
+		addr.IPNet = local
+	} else {
+		addr.IPNet = dst
+	}
+	addr.Scope = int(msg.Scope)
+
+	return
 }
 
 func (u *NetLinkProbe) start(nsPath string) {
@@ -424,9 +509,9 @@ func (u *NetLinkProbe) start(nsPath string) {
 	}
 	defer h.Delete()
 
-	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK)
+	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to subscribe to netlink RTNLGRP_LINK messages: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to subscribe to netlink messages: %s", err.Error())
 		context.Close()
 		return
 	}
@@ -512,6 +597,20 @@ func (u *NetLinkProbe) start(nsPath string) {
 					continue
 				}
 				u.onLinkDeleted(link)
+			case syscall.RTM_NEWADDR:
+				addr, family, ifindex, err := parseAddr(msg.Data)
+				if err != nil {
+					logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
+					continue
+				}
+				u.onAddressAdded(addr, family, ifindex)
+			case syscall.RTM_DELADDR:
+				addr, family, ifindex, err := parseAddr(msg.Data)
+				if err != nil {
+					logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
+					continue
+				}
+				u.onAddressDeleted(addr, family, ifindex)
 			}
 		}
 	}
