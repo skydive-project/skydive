@@ -44,8 +44,8 @@ Content-Type: application/json
 ```console
 [
   {
-    "ANodeUUID": "d9d6f8cf-4aa6-4a06-6785-3dc56032ef82",
-    "BNodeUUID": "488789f9-38be-4eba-704a-79996382de41",
+    "ANodeTID": "d9d6f8cf-4aa6-4a06-6785-3dc56032ef82",
+    "BNodeTID": "488789f9-38be-4eba-704a-79996382de41",
     "LastUpdateMetric": {
       "ABBytes": 490,
       "ABPackets": 5,
@@ -73,7 +73,7 @@ Content-Type: application/json
       "B": "192.168.0.2",
       "Protocol": "IPV4"
     },
-    "NodeUUID": "488789f9-38be-4eba-704a-79996382de41",
+    "NodeTID": "488789f9-38be-4eba-704a-79996382de41",
     "TrackingID": "f745fb1f59298a1773e35827adfa42dab4f469f9",
     "UUID": "ee29fc47f425d7a2e6de9379b0131f64a70fc991"
   }

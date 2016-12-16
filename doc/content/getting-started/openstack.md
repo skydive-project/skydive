@@ -108,8 +108,8 @@ To get Flows captured :
 skydive client topology query --gremlin "G.Flows()"
 [
   {
-    "ANodeUUID": "422190f1-bbde-4eb0-4849-1fd1209229fe",
-    "BNodeUUID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
+    "ANodeTID": "422190f1-bbde-4eb0-4849-1fd1209229fe",
+    "BNodeTID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
     "LastUpdateMetric": {
       "ABBytes": 490,
       "ABPackets": 5,
@@ -137,7 +137,7 @@ skydive client topology query --gremlin "G.Flows()"
       "B": "192.168.0.2",
       "Protocol": "IPV4"
     },
-    "NodeUUID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
+    "NodeTID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
     "TrackingID": "f745fb1f59298a1773e35827adfa42dab4f469f9",
     "UUID": "caa24da240cb3b40c84ebb708e2e5dcbe3c54784"
   }

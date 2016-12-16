@@ -13,8 +13,8 @@ structure.
 $ skydive client topology query --gremlin "G.Flows().Limit(1)"
 [
   {
-    "ANodeUUID": "422190f1-bbde-4eb0-4849-1fd1209229fe",
-    "BNodeUUID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
+    "ANodeTID": "422190f1-bbde-4eb0-4849-1fd1209229fe",
+    "BNodeTID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
     "LastUpdateMetric": {
       "ABBytes": 490,
       "ABPackets": 5,
@@ -42,7 +42,7 @@ $ skydive client topology query --gremlin "G.Flows().Limit(1)"
       "B": "192.168.0.2",
       "Protocol": "IPV4"
     },
-    "NodeUUID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
+    "NodeTID": "f3f1256b-7097-487c-7a02-38a32e009b3c",
     "TrackingID": "f745fb1f59298a1773e35827adfa42dab4f469f9",
     "UUID": "caa24da240cb3b40c84ebb708e2e5dcbe3c54784"
   }
@@ -55,11 +55,11 @@ Below the description of the fields :
   that a same flow will get a different ID for a different capture.
 * `TrackingID`, ID of the Flow which is the same across all the
    captures point. This ID can be used to follow a Flow on each capture points.
-* `NodeUUID`, ID of the interface node in the topology where the flow was
+* `NodeTID`, TID metadata of the interface node in the topology where the flow was
   captured.
-* `ANodeUUID`, ID of the interface node in the topology where the packet is
+* `ANodeTID`, TID metadata of the interface node in the topology where the packet is
   coming from.
-* `ANodeUUID`, ID of the interface node in the topology where the packet is
+* `BNodeTID`, TID metadata of the interface node in the topology where the packet is
   going to.
 * `LayersPath`, All the layers composing the packets.
 * `Link`, Link layer of the flow. A, B and Protocol describing the endpoints and
