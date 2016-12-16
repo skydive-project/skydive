@@ -14,11 +14,6 @@ curl -sL -o ~/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master
 chmod +x ~/bin/gimme
 eval "$(gimme 1.7)"
 
-# pcap.h is required to build skydive
-sudo yum -y install libpcap-devel
-# for opencontrail probe
-sudo yum -y install libxml2-devel
-
 export GOPATH=$WORKSPACE
 
 # Get the Go dependencies
@@ -30,11 +25,9 @@ go get -f -u github.com/golang/lint/golint
 export PATH=$PATH:$GOPATH/bin
 
 # speedup govendor sync command
+REVISION=`curl -q "https://softwarefactory-project.io/r/changes/5923/detail?O=404" | sed '1d' | jq .current_revision | tr -d '"'`
+curl -o /tmp/vendor.tgz https://softwarefactory-project.io/r/changes/5923/revisions/$REVISION/archive?format=tgz
+
 pushd ${GOPATH}/src/github.com/skydive-project/skydive
-rm -f vendor.base64
-for i in $(seq 540 634) ; do
-    curl -sL http://softwarefactory-project.io/paste/raw/$i/ >> vendor.base64
-done
-base64 -d vendor.base64 | tar xvzf -
-rm -f vendor.base64
+tar -xvzf /tmp/vendor.tgz --exclude "vendor/vendor.json"
 popd
