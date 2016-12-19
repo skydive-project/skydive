@@ -13,7 +13,7 @@ Skydive relies on two main components:
 
 ## Dependencies
 
-* Go >= 1.5
+* Go >= 1.6
 * Elasticsearch >= 2.0
 * libpcap
 * libxml2
