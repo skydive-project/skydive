@@ -596,7 +596,7 @@ Layout.prototype.Tick = function(e) {
   this.node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 
   var _this = this;
-  if (!this.group.empty())
+  if (this.group.length > 0)
     this.group.data(this.Groups()).attr("d", function(d) {
       return _this.DrawCluster(d);
     });
