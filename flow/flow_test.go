@@ -289,7 +289,7 @@ func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expec
 		} else {
 			p := gopacket.NewPacket(data, linkType, gopacket.Default)
 			if p.ErrorLayer() != nil {
-				t.Fatal("Failed to decode packet: ", p.ErrorLayer().Error())
+				t.Fatalf("Failed to decode packet with layer path '%s': %s\n", layerPathFromGoPacket(&p), p.ErrorLayer().Error())
 			}
 
 			fp := FlowPacketsFromGoPacket(&p, 0)
