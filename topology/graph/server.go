@@ -42,6 +42,14 @@ type GraphServer struct {
 	Graph    *Graph
 }
 
+func (s *GraphServer) OnUnregisterClient(c *shttp.WSClient) {
+	s.Graph.Lock()
+	defer s.Graph.Unlock()
+	if host, kind := c.GetHostInfo(); kind == "skydive-agent" {
+		s.Graph.DelHostGraph(host)
+	}
+}
+
 func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	if msg.Type == "SyncRequest" {
 		var obj map[string]interface{}
