@@ -553,6 +553,5 @@ func TestPCAPMplsContrail(t *testing.T) {
 	}
 
 	layers.RegisterUDPPortLayerType(layers.UDPPort(51234), layers.LayerTypeMPLS)
-	layers.MPLSPayloadDecoder = LayerTypeInMplsEthOrIp
 	validatePCAP(t, "pcaptraces/contrail-udp-mpls-eth-and-ipv4.pcap", layers.LinkTypeEthernet, expected)
 }

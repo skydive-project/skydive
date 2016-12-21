@@ -108,3 +108,10 @@ func decodeInMplsEthOrIpLayer(data []byte, p gopacket.PacketBuilder) error {
 		return p.NextDecoder(eth.NextLayerType())
 	}
 }
+
+func init() {
+	// By default, gopacket tries to decode IPv4 or IPv6 in the
+	// MPLS next layer and fails otherwise. Instead, we also tries
+	// to decode it as Ethernet.
+	layers.MPLSPayloadDecoder = LayerTypeInMplsEthOrIp
+}
