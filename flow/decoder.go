@@ -31,6 +31,9 @@ import (
 // giving it a name and a decoder to use.
 var LayerTypeInGRE = gopacket.RegisterLayerType(55555, gopacket.LayerTypeMetadata{Name: "LayerTypeInGRE", Decoder: gopacket.DecodeFunc(decodeInGRELayer)})
 
+// Try to find if the next layer is IPv4, or IPv6. If it fails, it considers it is Ethernet.
+var LayerTypeInMplsEthOrIp = gopacket.RegisterLayerType(55556, gopacket.LayerTypeMetadata{Name: "LayerTypeInMplsEthOrIp", Decoder: gopacket.DecodeFunc(decodeInMplsEthOrIpLayer)})
+
 type InGRELayer struct {
 	StrangeHeader []byte
 	payload       []byte
@@ -48,31 +51,60 @@ func (m InGRELayer) LayerPayload() []byte {
 	return m.payload
 }
 
-func decodeInGRELayer(data []byte, p gopacket.PacketBuilder) error {
+// Try to decode data as IP4 or IP6. If data starts by 4 or 6,
+// ipPrefix is set to true to indicate it seems to be an IP header,
+// and a decoding failure would be reported in error.
+func ipDecoderFromRawData(data []byte, p gopacket.PacketBuilder) (ipPrefix bool, e error) {
 	switch (data[0] >> 4) & 0xf {
 	case 4:
 		ip4 := &layers.IPv4{}
 		err := ip4.DecodeFromBytes(data, p)
 		p.AddLayer(ip4)
+
+		// Only the first call to this function is kept by
+		// gopacket. So, this works even if this layer is not
+		// the network layer (in case of encapsulation).
 		p.SetNetworkLayer(ip4)
 		if err != nil {
-			return err
+			return true, err
 		}
-		return p.NextDecoder(ip4.NextLayerType())
+		return true, p.NextDecoder(ip4.NextLayerType())
 	case 6:
 		ip6 := &layers.IPv6{}
 		err := ip6.DecodeFromBytes(data, p)
 		p.AddLayer(ip6)
 		p.SetNetworkLayer(ip6)
 		if err != nil {
+			return true, err
+		}
+		return true, p.NextDecoder(ip6.NextLayerType())
+	default:
+		return false, nil
+	}
+}
+
+func decodeInGRELayer(data []byte, p gopacket.PacketBuilder) error {
+	if ipPrefix, err := ipDecoderFromRawData(data, p); ipPrefix {
+		return err
+	} else {
+		packet := gopacket.NewPacket(data, layers.LayerTypeARP, gopacket.Lazy)
+		layer := packet.Layer(layers.LayerTypeARP)
+		p.AddLayer(layer)
+		return nil
+	}
+}
+
+func decodeInMplsEthOrIpLayer(data []byte, p gopacket.PacketBuilder) error {
+	if ipPrefix, err := ipDecoderFromRawData(data, p); ipPrefix && err == nil {
+		return nil
+	} else {
+		// If IPv4 or IPv6 fails, we fallback to Ethernet
+		eth := &layers.Ethernet{}
+		err := eth.DecodeFromBytes(data, p)
+		p.AddLayer(eth)
+		if err != nil {
 			return err
 		}
-		return p.NextDecoder(ip6.NextLayerType())
+		return p.NextDecoder(eth.NextLayerType())
 	}
-	packet := gopacket.NewPacket(data, layers.LayerTypeARP, gopacket.Lazy)
-	layer := packet.Layer(layers.LayerTypeARP)
-
-	p.AddLayer(layer)
-
-	return nil
 }
