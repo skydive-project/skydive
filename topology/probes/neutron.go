@@ -24,6 +24,7 @@ package probes
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -50,6 +51,7 @@ type NeutronMapper struct {
 	// detect any updates on these metadatas.
 	cache           *cache.Cache
 	nodeUpdaterChan chan graph.Identifier
+	interfaceRegexp *regexp.Regexp
 }
 
 type Attributes struct {
@@ -68,6 +70,11 @@ type PortMetadata struct {
 	mac    string
 	portID string
 }
+
+var (
+	PendingPortMetadata  = PortMetadata{mac: "00:00:00:00:00:00", portID: "Pending"}
+	NotFoundPortMetadata = PortMetadata{mac: "00:00:00:00:00:00", portID: "NotFound"}
+)
 
 func (e NeutronPortNotFound) Error() string {
 	return "Unable to find port for MAC address: " + e.MAC
@@ -157,6 +164,7 @@ func (mapper *NeutronMapper) retrieveAttributes(portMd PortMetadata) (*Attribute
 
 func (mapper *NeutronMapper) nodeUpdater() {
 	logging.GetLogger().Debugf("Starting Neutron updater")
+
 	for nodeID := range mapper.nodeUpdaterChan {
 		node := mapper.graph.GetNode(nodeID)
 		if node == nil {
@@ -172,7 +180,7 @@ func (mapper *NeutronMapper) nodeUpdater() {
 		if err != nil {
 			if nerr, ok := err.(NeutronPortNotFound); ok {
 				logging.GetLogger().Debugf("Setting in cache not found MAC %s", nerr.MAC)
-				mapper.cache.Set(nerr.MAC, PortMetadata{}, cache.DefaultExpiration)
+				mapper.cache.Set(nerr.MAC, NotFoundPortMetadata, cache.DefaultExpiration)
 			} else {
 				logging.GetLogger().Errorf("Failed to retrieve attributes for port %s/%s : %v",
 					portMd.portID, portMd.mac, err)
@@ -181,7 +189,6 @@ func (mapper *NeutronMapper) nodeUpdater() {
 		}
 		mapper.updateNode(node, attrs)
 		mapper.cache.Set(node.Metadata()["MAC"].(string), portMd, cache.DefaultExpiration)
-
 	}
 	logging.GetLogger().Debugf("Stopping Neutron updater")
 }
@@ -215,7 +222,7 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	var registerLink *FabricRegisterLinkWSMessage
 	if vm, ok := node.Metadata()["ExtID/vm-uuid"]; ok {
 		if mac, ok := node.Metadata()["ExtID/attached-mac"]; ok {
-			if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Type": "tun"}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
+			if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Type": "tun", "MAC": mac}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
 				registerLink = &FabricRegisterLinkWSMessage{
 					ParentNodeID:   path[len(path)-1].ID,
 					ParentMetadata: graph.Metadata{"Type": "host", "InstanceID": vm},
@@ -234,6 +241,10 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 }
 
 func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
+	if name, ok := node.Metadata()["Name"]; !ok || !mapper.interfaceRegexp.MatchString(name.(string)) {
+		return
+	}
+
 	mac, ok := node.Metadata()["MAC"]
 	if !ok {
 		return
@@ -241,9 +252,10 @@ func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
 
 	portMd, f := mapper.cache.Get(mac.(string))
 	// If port metadatas have not changed, we return
-	if f && portMd == retrievePortMetadata(node.Metadata()) {
+	if f && (portMd == PendingPortMetadata || portMd == retrievePortMetadata(node.Metadata())) {
 		return
 	}
+	mapper.cache.Set(mac.(string), PendingPortMetadata, cache.DefaultExpiration)
 
 	mapper.nodeUpdaterChan <- node.ID
 }
@@ -266,7 +278,10 @@ func (mapper *NeutronMapper) Stop() {
 }
 
 func NewNeutronMapper(g *graph.Graph, wsClient *shttp.WSAsyncClient, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronMapper, error) {
-	mapper := &NeutronMapper{graph: g, wsClient: wsClient}
+	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
+	regex := regexp.MustCompile(`(tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2}`)
+
+	mapper := &NeutronMapper{graph: g, wsClient: wsClient, interfaceRegexp: regex}
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
