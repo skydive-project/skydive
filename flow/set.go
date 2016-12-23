@@ -29,12 +29,19 @@ import (
 )
 
 type MergeContext struct {
-	Sorted  bool
+	Sort    bool
+	SortBy  string
 	Dedup   bool
 	DedupBy string
 }
 
-type sortByLast []*Flow
+type sortFlows []*Flow
+type sortByStart struct{ sortFlows }
+type sortByLast struct{ sortFlows }
+type sortByABPackets struct{ sortFlows }
+type sortByABBytes struct{ sortFlows }
+type sortByBAPackets struct{ sortFlows }
+type sortByBABytes struct{ sortFlows }
 
 func NewFlowSet() *FlowSet {
 	return &FlowSet{
@@ -50,6 +57,17 @@ func getDedupField(flow *Flow, field string) (string, error) {
 	// only flow string field are support for dedup as only few make sense
 	// for dedup like ANodeTID, NodeTID, etc.
 	return flow.GetFieldString(field)
+}
+
+func getSortField(flow *Flow, field string) int64 {
+	if field == "" {
+		return flow.Metric.Last
+	}
+	val, err := flow.GetFieldInt64(field)
+	if err != nil {
+		return flow.Metric.Last
+	}
+	return val
 }
 
 // mergeDedup merges the flowset given as argument. Both of the flowset have
@@ -92,7 +110,7 @@ func (fs *FlowSet) Merge(ofs *FlowSet, context MergeContext) error {
 	fs.End = common.MaxInt64(fs.End, ofs.End)
 
 	var err error
-	if context.Sorted {
+	if context.Sort {
 		if fs.Flows, err = fs.mergeSortedFlows(fs.Flows, ofs.Flows, context); err != nil {
 			return err
 		}
@@ -150,7 +168,7 @@ func (fs *FlowSet) mergeSortedFlows(left, right []*Flow, context MergeContext) (
 		}
 
 		lf, rf := left[0], right[0]
-		if lf.Metric.Last >= rf.Metric.Last {
+		if getSortField(lf, context.SortBy) >= getSortField(rf, context.SortBy) {
 			if !context.Dedup {
 				ret = append(ret, lf)
 			} else {
@@ -222,20 +240,53 @@ func (fs *FlowSet) Dedup(field string) error {
 	return nil
 }
 
-func (s sortByLast) Len() int {
+func (s sortFlows) Len() int {
 	return len(s)
 }
 
-func (s sortByLast) Swap(i, j int) {
+func (s sortFlows) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
 func (s sortByLast) Less(i, j int) bool {
-	return s[i].Metric.Last > s[j].Metric.Last
+	return s.sortFlows[i].Metric.Last > s.sortFlows[j].Metric.Last
 }
 
-func (fs *FlowSet) Sort() {
-	sort.Sort(sortByLast(fs.Flows))
+func (s sortByStart) Less(i, j int) bool {
+	return s.sortFlows[i].Metric.Start > s.sortFlows[j].Metric.Start
+}
+
+func (s sortByABPackets) Less(i, j int) bool {
+	return s.sortFlows[i].Metric.ABPackets > s.sortFlows[j].Metric.ABPackets
+}
+
+func (s sortByABBytes) Less(i, j int) bool {
+	return s.sortFlows[i].Metric.ABBytes > s.sortFlows[j].Metric.ABBytes
+}
+
+func (s sortByBAPackets) Less(i, j int) bool {
+	return s.sortFlows[i].Metric.BAPackets > s.sortFlows[j].Metric.BAPackets
+}
+
+func (s sortByBABytes) Less(i, j int) bool {
+	return s.sortFlows[i].Metric.BABytes > s.sortFlows[j].Metric.BABytes
+}
+
+func (fs *FlowSet) Sort(field string) {
+	switch field {
+	case "Metric.Start":
+		sort.Sort(sortByStart{fs.Flows})
+	case "Metric.Last":
+		sort.Sort(sortByLast{fs.Flows})
+	case "Metric.ABPackets":
+		sort.Sort(sortByABPackets{fs.Flows})
+	case "Metric.ABBytes":
+		sort.Sort(sortByABBytes{fs.Flows})
+	case "Metric.BAPackets":
+		sort.Sort(sortByBAPackets{fs.Flows})
+	case "Metric.BABytes":
+		sort.Sort(sortByBABytes{fs.Flows})
+	}
 }
 
 func (fs *FlowSet) Filter(filter *Filter) *FlowSet {

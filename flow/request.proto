@@ -106,6 +106,7 @@ message FlowSearchQuery {
   bool Sort = 3;
   bool Dedup = 4;
   string DedupBy = 5;
+  string SortBy = 6;
 }
 
 message FlowSearchReply {

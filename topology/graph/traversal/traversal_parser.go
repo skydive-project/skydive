@@ -776,7 +776,17 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		}
 		return &GremlinTraversalStepCount{gremlinStepContext}, nil
 	case SORT:
-		return &GremlinTraversalStepSort{gremlinStepContext}, nil
+		switch len(params) {
+		case 0:
+			return &GremlinTraversalStepSort{gremlinStepContext}, nil
+		case 1:
+			if _, ok := params[0].(string); !ok {
+				return nil, fmt.Errorf("Sort parameter has to be a string key")
+			}
+			return &GremlinTraversalStepSort{gremlinStepContext}, nil
+		default:
+			return nil, fmt.Errorf("Sort accepts at most 1 string parameter")
+		}
 	case RANGE:
 		if len(params) != 2 {
 			return nil, fmt.Errorf("Range requires 2 parameters")

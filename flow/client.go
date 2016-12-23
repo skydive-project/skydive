@@ -100,7 +100,12 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 		}
 
 		fs := NewFlowSet()
-		context := MergeContext{Sorted: flowSearchQuery.Sort, Dedup: flowSearchQuery.Dedup, DedupBy: flowSearchQuery.DedupBy}
+		context := MergeContext{
+			Sort:    flowSearchQuery.Sort,
+			SortBy:  flowSearchQuery.SortBy,
+			Dedup:   flowSearchQuery.Dedup,
+			DedupBy: flowSearchQuery.DedupBy,
+		}
 		for _, b := range reply.Obj {
 			var fsr FlowSearchReply
 			if err := proto.Unmarshal(b, &fsr); err != nil {
@@ -130,7 +135,12 @@ func (f *TableClient) LookupFlows(flowSearchQuery FlowSearchQuery) (*FlowSet, er
 
 	flowset := NewFlowSet()
 
-	context := MergeContext{Sorted: flowSearchQuery.Sort, Dedup: flowSearchQuery.Dedup, DedupBy: flowSearchQuery.DedupBy}
+	context := MergeContext{
+		Sort:    flowSearchQuery.Sort,
+		SortBy:  flowSearchQuery.SortBy,
+		Dedup:   flowSearchQuery.Dedup,
+		DedupBy: flowSearchQuery.DedupBy,
+	}
 	for i := 0; i != len(clients); i++ {
 		fs := <-ch
 		flowset.Merge(fs, context)
@@ -149,7 +159,12 @@ func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSear
 
 	flowset := NewFlowSet()
 
-	context := MergeContext{Sorted: flowSearchQuery.Sort, Dedup: flowSearchQuery.Dedup, DedupBy: flowSearchQuery.DedupBy}
+	context := MergeContext{
+		Sort:    flowSearchQuery.Sort,
+		SortBy:  flowSearchQuery.SortBy,
+		Dedup:   flowSearchQuery.Dedup,
+		DedupBy: flowSearchQuery.DedupBy,
+	}
 	for i := 0; i != len(hnmap); i++ {
 		fs := <-ch
 		flowset.Merge(fs, context)

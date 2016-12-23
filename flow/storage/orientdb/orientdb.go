@@ -145,7 +145,7 @@ func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, 
 	}
 
 	if fsq.Sort {
-		sql += " ORDER BY Metric.Last"
+		sql += " ORDER BY " + fsq.SortBy
 	}
 
 	docs, err := c.client.Sql(sql)

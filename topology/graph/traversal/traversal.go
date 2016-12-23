@@ -41,7 +41,6 @@ type GraphTraversalStep interface {
 
 type GraphStepContext struct {
 	PaginationRange *GraphTraversalRange
-	Sort            bool
 }
 
 func (r *GraphTraversalRange) Iterator() *common.Iterator {

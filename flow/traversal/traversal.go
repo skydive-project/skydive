@@ -66,6 +66,8 @@ type FlowGremlinTraversalStep struct {
 	metricsNextStep bool
 	dedup           bool
 	dedupBy         string
+	sort            bool
+	sortBy          string
 }
 
 type FlowTraversalStep struct {
@@ -496,12 +498,25 @@ func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraver
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
-func (f *FlowTraversalStep) Sort() *FlowTraversalStep {
+func (f *FlowTraversalStep) Sort(keys ...interface{}) *FlowTraversalStep {
 	if f.error != nil {
 		return f
 	}
+	sortBy := "Metric.Last"
+	switch len(keys) {
+	case 0:
+	case 1:
+		key, ok := keys[0].(string)
+		if !ok {
+			return &FlowTraversalStep{error: fmt.Errorf("Sort parameter has to be a string key")}
+		} else {
+			sortBy = key
+		}
+	default:
+		return &FlowTraversalStep{error: fmt.Errorf("Sort accept utmost 1 parameter")}
+	}
 
-	f.flowset.Sort()
+	f.flowset.Sort(sortBy)
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset, since: f.since}
 }
 
@@ -738,9 +753,10 @@ func (s *FlowGremlinTraversalStep) makeFlowSearchQuery() (fsq flow.FlowSearchQue
 	fsq = flow.FlowSearchQuery{
 		Filter:          paramsFilter,
 		PaginationRange: interval,
-		Sort:            s.context.StepContext.Sort,
 		Dedup:           s.dedup,
 		DedupBy:         s.dedupBy,
+		Sort:            s.sort,
+		SortBy:          s.sortBy,
 	}
 
 	return
@@ -890,8 +906,12 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 		}
 	}
 
-	if _, ok := next.(*traversal.GremlinTraversalStepSort); ok {
-		s.context.StepContext.Sort = true
+	if sortStep, ok := next.(*traversal.GremlinTraversalStepSort); ok {
+		s.sort = true
+		s.sortBy = "Metric.Last"
+		if len(sortStep.Params) > 0 {
+			s.sortBy = sortStep.Params[0].(string)
+		}
 		return s
 	}
 
