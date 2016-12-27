@@ -33,9 +33,16 @@ analyzer:
   # The listen port+1 will be used
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
+
+  # Wihout any new packets, a flow expires after flowtable_expire
+  # seconds
   flowtable_expire: 600
+  # Seconds between flow updates (metrics, enhancements,...)
   flowtable_update: 60
+  # Agent expires and updates flows based on this analyzer values
+  # ratio
   flowtable_agent_ratio: 0.5
+
   # Flow storage engine
   # Available: elasticsearch, orientdb
   # storage: elasticsearch
