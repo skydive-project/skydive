@@ -82,7 +82,8 @@ message Flow {
    the bytes of the first packet of his session.
    flow.TrackingID can be used as a Tag.
 */
-	string TrackingID = 5;
+	string TrackingID = 50;
+	string L3TrackingID = 51;
 
 /* Flow Parent UUID is used as reference to the parent flow
    Flow.ParentUUID is the same value that point to his parent flow.UUID
