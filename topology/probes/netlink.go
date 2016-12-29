@@ -380,6 +380,13 @@ func (u *NetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int) 
 	}
 
 	key := getFamilyKey(family)
+	m := intf.Metadata()
+	if v, ok := m[key]; ok {
+		if strings.Contains(v.(string)+",", addr.IPNet.String()+",") {
+			return
+		}
+	}
+
 	ips := addr.IPNet.String()
 	if v, ok := intf.Metadata()[key]; ok {
 		ips = v.(string) + "," + ips
