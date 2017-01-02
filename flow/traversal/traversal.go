@@ -67,6 +67,7 @@ type FlowGremlinTraversalStep struct {
 	dedupBy         string
 	sort            bool
 	sortBy          string
+	sortOrder       string
 }
 
 type FlowTraversalStep struct {
@@ -347,21 +348,24 @@ func (f *FlowTraversalStep) Sort(keys ...interface{}) *FlowTraversalStep {
 	if f.error != nil {
 		return f
 	}
+
 	sortBy := "Last"
+	order := common.SortAscending
+
 	switch len(keys) {
 	case 0:
-	case 1:
-		key, ok := keys[0].(string)
-		if !ok {
+	case 2:
+		key1, ok1 := keys[0].(string)
+		key2, ok2 := keys[1].(string)
+		if !ok1 || !ok2 {
 			return &FlowTraversalStep{error: fmt.Errorf("Sort parameter has to be a string key")}
-		} else {
-			sortBy = key
 		}
+		order, sortBy = key1, key2
 	default:
-		return &FlowTraversalStep{error: fmt.Errorf("Sort accept utmost 1 parameter")}
+		return &FlowTraversalStep{error: fmt.Errorf("Sort accepts up to 2 parameters only")}
 	}
 
-	f.flowset.Sort(sortBy)
+	f.flowset.Sort(order, sortBy)
 	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset}
 }
 
@@ -593,6 +597,7 @@ func (s *FlowGremlinTraversalStep) makeSearchQuery() (fsq filters.SearchQuery, e
 		DedupBy:         s.dedupBy,
 		Sort:            s.sort,
 		SortBy:          s.sortBy,
+		SortOrder:       s.sortOrder,
 	}
 
 	return
@@ -736,8 +741,10 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 	if sortStep, ok := next.(*traversal.GremlinTraversalStepSort); ok {
 		s.sort = true
 		s.sortBy = "Last"
+		s.sortOrder = common.SortAscending
 		if len(sortStep.Params) > 0 {
-			s.sortBy = sortStep.Params[0].(string)
+			s.sortOrder = sortStep.Params[0].(string)
+			s.sortBy = sortStep.Params[1].(string)
 		}
 		return s
 	}

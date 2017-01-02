@@ -211,7 +211,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 	if fsq.Sort {
 		request["sort"] = map[string]interface{}{
 			fsq.SortBy: map[string]string{
-				"order": "asc",
+				"order": fsq.SortOrder,
 			},
 		}
 	}
@@ -265,7 +265,7 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 	if fsq.Sort {
 		request["sort"] = map[string]interface{}{
 			fsq.SortBy: map[string]string{
-				"order": "desc",
+				"order": fsq.SortOrder,
 			},
 		}
 	}

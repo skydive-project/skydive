@@ -110,4 +110,5 @@ message SearchQuery {
   bool Dedup = 4;
   string DedupBy = 5;
   string SortBy = 6;
+  string SortOrder = 7;
 }

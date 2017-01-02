@@ -23,26 +23,19 @@
 package flow
 
 import (
-	"sort"
+	"strings"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 )
 
 type MergeContext struct {
-	Sort    bool
-	SortBy  string
-	Dedup   bool
-	DedupBy string
+	Sort      bool
+	SortBy    string
+	SortOrder string
+	Dedup     bool
+	DedupBy   string
 }
-
-type sortFlows []*Flow
-type sortByStart struct{ sortFlows }
-type sortByLast struct{ sortFlows }
-type sortByABPackets struct{ sortFlows }
-type sortByABBytes struct{ sortFlows }
-type sortByBAPackets struct{ sortFlows }
-type sortByBABytes struct{ sortFlows }
 
 func NewFlowSet() *FlowSet {
 	return &FlowSet{
@@ -60,15 +53,21 @@ func getDedupField(flow *Flow, field string) (string, error) {
 	return flow.GetFieldString(field)
 }
 
-func getSortField(flow *Flow, field string) int64 {
+func compareByField(lf, rf *Flow, field string) (bool, error) {
 	if field == "" {
-		return flow.Last
+		return lf.Last <= rf.Last, nil
 	}
-	val, err := flow.GetFieldInt64(field)
-	if err != nil {
-		return flow.Last
+
+	if v1, err := lf.GetFieldString(field); err == nil {
+		v2, _ := rf.GetFieldString(field)
+		return v1 <= v2, nil
 	}
-	return val
+
+	if v1, err := lf.GetFieldInt64(field); err == nil {
+		v2, _ := rf.GetFieldInt64(field)
+		return v1 <= v2, nil
+	}
+	return false, common.ErrFieldNotFound
 }
 
 // mergeDedup merges the flowset given as argument. Both of the flowset have
@@ -124,6 +123,23 @@ func (fs *FlowSet) Merge(ofs *FlowSet, context MergeContext) error {
 	return nil
 }
 
+func (fs *FlowSet) sortFlows(f []*Flow, context MergeContext) []*Flow {
+	if len(f) <= 1 {
+		return f
+	}
+
+	mid := len(f) / 2
+	left := f[:mid]
+	right := f[mid:]
+
+	left = fs.sortFlows(left, context)
+	right = fs.sortFlows(right, context)
+
+	flows, _ := fs.mergeSortedFlows(left, right, context)
+
+	return flows
+}
+
 func (fs *FlowSet) mergeSortedFlows(left, right []*Flow, context MergeContext) ([]*Flow, error) {
 	var ret []*Flow
 
@@ -169,7 +185,15 @@ func (fs *FlowSet) mergeSortedFlows(left, right []*Flow, context MergeContext) (
 		}
 
 		lf, rf := left[0], right[0]
-		if getSortField(lf, context.SortBy) >= getSortField(rf, context.SortBy) {
+		cv, err := compareByField(lf, rf, context.SortBy)
+		if err != nil {
+			return nil, err
+		}
+		if strings.ToUpper(context.SortOrder) != common.SortAscending {
+			cv = !cv
+		}
+
+		if cv {
 			if !context.Dedup {
 				ret = append(ret, lf)
 			} else {
@@ -241,53 +265,9 @@ func (fs *FlowSet) Dedup(field string) error {
 	return nil
 }
 
-func (s sortFlows) Len() int {
-	return len(s)
-}
-
-func (s sortFlows) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s sortByLast) Less(i, j int) bool {
-	return s.sortFlows[i].Last > s.sortFlows[j].Last
-}
-
-func (s sortByStart) Less(i, j int) bool {
-	return s.sortFlows[i].Start > s.sortFlows[j].Start
-}
-
-func (s sortByABPackets) Less(i, j int) bool {
-	return s.sortFlows[i].Metric.ABPackets > s.sortFlows[j].Metric.ABPackets
-}
-
-func (s sortByABBytes) Less(i, j int) bool {
-	return s.sortFlows[i].Metric.ABBytes > s.sortFlows[j].Metric.ABBytes
-}
-
-func (s sortByBAPackets) Less(i, j int) bool {
-	return s.sortFlows[i].Metric.BAPackets > s.sortFlows[j].Metric.BAPackets
-}
-
-func (s sortByBABytes) Less(i, j int) bool {
-	return s.sortFlows[i].Metric.BABytes > s.sortFlows[j].Metric.BABytes
-}
-
-func (fs *FlowSet) Sort(field string) {
-	switch field {
-	case "Start":
-		sort.Sort(sortByStart{fs.Flows})
-	case "Last":
-		sort.Sort(sortByLast{fs.Flows})
-	case "Metric.ABPackets":
-		sort.Sort(sortByABPackets{fs.Flows})
-	case "Metric.ABBytes":
-		sort.Sort(sortByABBytes{fs.Flows})
-	case "Metric.BAPackets":
-		sort.Sort(sortByBAPackets{fs.Flows})
-	case "Metric.BABytes":
-		sort.Sort(sortByBABytes{fs.Flows})
-	}
+func (fs *FlowSet) Sort(order string, field string) {
+	context := MergeContext{Sort: true, SortBy: field, SortOrder: order}
+	fs.Flows = fs.sortFlows(fs.Flows, context)
 }
 
 func (fs *FlowSet) Filter(filter *filters.Filter) *FlowSet {

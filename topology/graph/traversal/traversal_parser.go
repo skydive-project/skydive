@@ -29,8 +29,10 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -770,6 +772,10 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 			default:
 				return nil, fmt.Errorf("REGEX predicate expects a string as parameter, got: %s", lit)
 			}
+		case ASC:
+			params = append(params, common.SortAscending)
+		case DESC:
+			params = append(params, common.SortDescending)
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}
@@ -872,9 +878,28 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			if _, ok := params[0].(string); !ok {
 				return nil, fmt.Errorf("Sort parameter has to be a string key")
 			}
+			var p []interface{}
+			p = append(p, common.SortAscending)
+			p = append(p, params[0])
+			gremlinStepContext.Params = p
+			return &GremlinTraversalStepSort{gremlinStepContext}, nil
+		case 2:
+			if order, ok := params[0].(string); !ok {
+				return nil, fmt.Errorf("Use ASC or DESC predicate")
+			} else {
+				switch strings.ToUpper(order) {
+				case common.SortAscending:
+				case common.SortDescending:
+				default:
+					return nil, fmt.Errorf("Use ASC or DESC predicate")
+				}
+			}
+			if _, ok := params[1].(string); !ok {
+				return nil, fmt.Errorf("Second sort parameter has to be a string key")
+			}
 			return &GremlinTraversalStepSort{gremlinStepContext}, nil
 		default:
-			return nil, fmt.Errorf("Sort accepts at most 1 string parameter")
+			return nil, fmt.Errorf("Sort accepts 1 predicate and 1 string parameter, got: %d", len(params))
 		}
 	case RANGE:
 		if len(params) != 2 {

@@ -52,6 +52,11 @@ const (
 	StoppingState
 )
 
+const (
+	SortAscending  string = "ASC"
+	SortDescending string = "DESC"
+)
+
 type ServiceAddress struct {
 	Addr string
 	Port int

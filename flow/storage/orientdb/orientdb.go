@@ -186,6 +186,10 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 		}
 	}
 
+	if fsq.Sort {
+		flowset.Sort(fsq.SortOrder, fsq.SortBy)
+	}
+
 	return flowset, nil
 }
 
