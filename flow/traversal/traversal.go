@@ -792,7 +792,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		return nil, err
 	}
 
-	var flowset *flow.FlowSet
+	flowset := &flow.FlowSet{}
 
 	switch tv := last.(type) {
 	case *traversal.GraphTraversal:
