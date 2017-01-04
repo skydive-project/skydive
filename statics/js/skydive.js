@@ -357,6 +357,9 @@ function LayersPathToProtocol(layers) {
 }
 
 function ShowNodeFlows(node) {
+  if (!node.IsCaptureOn())
+    return;
+
   var query = "G.V('" + node.ID + "').Flows().Sort().Dedup().Limit(20)";
   $.ajax({
     dataType: "json",
