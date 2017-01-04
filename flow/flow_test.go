@@ -271,7 +271,7 @@ func compareFlow(expected, tested *Flow) bool {
 	return true
 }
 
-func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expected []*Flow) {
+func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*Flow {
 	handleRead, err := pcap.OpenOffline(filename)
 	if err != nil {
 		t.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
@@ -299,8 +299,11 @@ func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expec
 			table.FlowPacketsToFlow(fp)
 		}
 	}
+	return table.GetFlows(&FlowSearchQuery{}).Flows
+}
 
-	flows := table.GetFlows(&FlowSearchQuery{}).Flows
+func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expected []*Flow) {
+	flows := flowsFromPCAP(t, filename, linkType)
 	for _, e := range expected {
 		found := false
 		for _, f := range flows {
@@ -554,4 +557,21 @@ func TestPCAPMplsContrail(t *testing.T) {
 
 	layers.RegisterUDPPortLayerType(layers.UDPPort(51234), layers.LayerTypeMPLS)
 	validatePCAP(t, "pcaptraces/contrail-udp-mpls-eth-and-ipv4.pcap", layers.LinkTypeEthernet, expected)
+}
+
+func TestPCAPL3TrackingID(t *testing.T) {
+	var l3TrackingID string
+
+	flows := flowsFromPCAP(t, "pcaptraces/ping-with-without-ethernet.pcap", layers.LinkTypeEthernet)
+	for _, flow := range flows {
+		if flow.Application == "ICMPv4" {
+			if l3TrackingID == "" {
+				l3TrackingID = flow.L3TrackingID
+			} else {
+				if l3TrackingID != flow.L3TrackingID {
+					t.Errorf("L3TrackingID are not equal: %s != %s\n", l3TrackingID, flow.L3TrackingID)
+				}
+			}
+		}
+	}
 }
