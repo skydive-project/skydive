@@ -140,17 +140,6 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	}
 }
 
-func (u *NetLinkProbe) handleIntfIsBond(intf *graph.Node, link netlink.Link) {
-	if link.Type() != "bond" {
-		return
-	}
-
-	bond := link.(*netlink.Bond)
-	u.Graph.AddMetadata(intf, "BondMode", bond.Mode.String())
-
-	// TODO(safchain) Add more info there like xmit_hash_policy
-}
-
 func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
@@ -176,10 +165,6 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if intf == nil {
-		return nil
-	}
-
 	if !u.Graph.AreLinked(u.Root, intf) {
 		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
 	}
@@ -190,10 +175,6 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 	if name == "ovs-system" {
 		return intf
 	}
-
-	u.handleIntfIsChild(intf, link)
-	u.handleIntfIsVeth(intf, link)
-	u.handleIntfIsBond(intf, link)
 
 	return intf
 }
@@ -300,6 +281,10 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		metadata["State"] = "DOWN"
 	}
 
+	if link.Type() == "bond" {
+		metadata["BondMode"] = link.(*netlink.Bond).Mode.String()
+	}
+
 	var intf *graph.Node
 
 	switch driver {
@@ -313,23 +298,28 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		intf = u.addGenericLinkToTopology(link, metadata)
 	}
 
-	// merge metadata if the interface returned is not a new one
-	if intf != nil {
-		m := intf.Metadata()
-
-		updated := false
-		for k, nv := range metadata {
-			if ov, ok := m[k]; ok && nv == ov {
-				continue
-			}
-			m[k] = nv
-			updated = true
-		}
-
-		if updated {
-			u.Graph.SetMetadata(intf, m)
-		}
+	if intf == nil {
+		return
 	}
+
+	m := intf.Metadata()
+
+	// update metadata in case of an old interface
+	updated := false
+	for k, nv := range metadata {
+		if ov, ok := m[k]; ok && nv == ov {
+			continue
+		}
+		m[k] = nv
+		updated = true
+	}
+
+	if updated {
+		u.Graph.SetMetadata(intf, m)
+	}
+
+	u.handleIntfIsChild(intf, link)
+	u.handleIntfIsVeth(intf, link)
 }
 
 func (u *NetLinkProbe) onLinkAdded(link netlink.Link) {
