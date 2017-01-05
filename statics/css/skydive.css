@@ -161,12 +161,16 @@ path.group {
     fill: #fff;
 }
 
-.groups rect.host {
-  fill: #b3b3b3;
+.groups path.host {
+  fill: #d0d0d0;
 }
 
-.groups rect.netns {
+.groups path.netns {
   fill: #e6e6e6;
+}
+
+.groups path.vm {
+  fill: #e9ffd9;
 }
 
 .pane-label {

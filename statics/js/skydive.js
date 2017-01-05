@@ -781,7 +781,7 @@ Layout.prototype.AddNodeToGroup = function(ID, type, node, groups) {
 
   // padding around group path
   var pad = 24;
-  if (group.Type == "host")
+  if (group.Type == "host" || group.Type == "vm")
     pad = 48;
   if (group.Type == "fabric")
     pad = 60;
@@ -837,6 +837,10 @@ Layout.prototype.UpdateGroups = function() {
       // these node a group holder
       switch (node.Metadata.Type) {
         case "host":
+          if ("InstanceID" in node.Metadata) {
+            this.AddNodeToGroup(node.ID, "vm", node, this.groups);
+            break;
+          }
         case "ovsbridge":
         case "netns":
           this.AddNodeToGroup(node.ID, node.Metadata.Type, node, this.groups);
