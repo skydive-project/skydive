@@ -348,14 +348,6 @@ Layout.prototype.SetNodeClass = function(ID, clazz, active) {
   d3.select("#node-" + ID).classed(clazz, active);
 };
 
-function LayersPathToProtocol(layers) {
-  var els = layers.split('/');
-
-  if (els[els.length-1] == 'Payload')
-    return els[els.length-2];
-  return els[els.length-1];
-}
-
 function ShowNodeFlows(node) {
   if (!node.IsCaptureOn())
     return;
@@ -396,7 +388,6 @@ function ShowNodeFlows(node) {
           }
         }
 
-        var protocol = LayersPathToProtocol(flow.LayersPath);
         var parent = {
           id: id,
           parent: null,
@@ -404,7 +395,7 @@ function ShowNodeFlows(node) {
           UUID: flow.UUID,
           TrackingID: flow.TrackingID,
           ID: flow.TrackingID,
-          Protocol: ("Network" in flow) ? flow.Network.Protocol + '/' + protocol : protocol,
+          Application: flow.Application,
           A: a,
           B: b,
           ABPackets: flow.Metric.ABPackets,
@@ -422,7 +413,7 @@ function ShowNodeFlows(node) {
             indent: 1,
             TrackingID: flow.TrackingID,
             ID: '',
-            Protocol: flow.Link.Protocol,
+            Application: '',
             A:flow.Link.A,
             B: flow.Link.B
           });
@@ -1602,7 +1593,7 @@ function SetupFlowGrid() {
 
   var columns = [
     {id: "ID", name: "ID", field: "ID", formatter: trackIdFormatter},
-    {id: "Protocol", name: "Protocol", field: "Protocol"},
+    {id: "Application", name: "App.", field: "Application"},
     {id: "A", name: "A", field: "A"},
     {id: "B", name: "B", field: "B"},
     {id: "AB Pkts", name: "AB Pkts", field: "ABPackets", cssClass: "cell-metric"},
