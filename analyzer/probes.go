@@ -23,14 +23,14 @@
 package analyzer
 
 import (
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
-func NewTopologyProbeBundleFromConfig(g *graph.Graph, wsServer *shttp.WSServer) (*probe.ProbeBundle, error) {
+func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error) {
 	probes := make(map[string]probe.Probe)
-	probes["fabric"] = tprobes.NewFabricProbe(g, wsServer)
+	probes["fabric"] = tprobes.NewFabricProbe(g)
+	probes["peering"] = tprobes.NewPeeringProbe(g)
 	return probe.NewProbeBundle(probes), nil
 }

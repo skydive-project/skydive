@@ -213,7 +213,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	wsServer := shttp.NewWSServerFromConfig(httpServer, "/ws")
 
-	probeBundle, err := NewTopologyProbeBundleFromConfig(g, wsServer)
+	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
 		return nil, err
 	}

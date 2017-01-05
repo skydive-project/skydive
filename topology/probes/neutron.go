@@ -51,7 +51,8 @@ type NeutronMapper struct {
 	// detect any updates on these metadatas.
 	cache           *cache.Cache
 	nodeUpdaterChan chan graph.Identifier
-	interfaceRegexp *regexp.Regexp
+	intfRegexp      *regexp.Regexp
+	nsRegexp        *regexp.Regexp
 }
 
 type Attributes struct {
@@ -196,52 +197,69 @@ func (mapper *NeutronMapper) nodeUpdater() {
 func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	mapper.graph.Lock()
 
-	tr := mapper.graph.StartMetadataTransaction(node)
-	tr.AddMetadata("Manager", "neutron")
+	metadata := map[string]interface{}{"Manager": "neutron"}
 
 	if attrs.PortID != "" {
-		tr.AddMetadata("Neutron/PortID", attrs.PortID)
+		metadata["Neutron/PortID"] = "neutron"
 	}
 
 	if attrs.TenantID != "" {
-		tr.AddMetadata("Neutron/TenantID", attrs.TenantID)
+		metadata["Neutron/TenantID"] = attrs.TenantID
 	}
 
 	if attrs.NetworkID != "" {
-		tr.AddMetadata("Neutron/NetworkID", attrs.NetworkID)
+		metadata["Neutron/NetworkID"] = attrs.NetworkID
 	}
 
 	if attrs.NetworkName != "" {
-		tr.AddMetadata("Neutron/NetworkName", attrs.NetworkName)
+		metadata["Neutron/NetworkName"] = attrs.NetworkName
 	}
 
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
-		tr.AddMetadata("Neutron/VNI", uint64(segID))
+		metadata["Neutron/VNI"] = uint64(segID)
 	}
 
-	var registerLink *FabricRegisterLinkWSMessage
-	if vm, ok := node.Metadata()["ExtID/vm-uuid"]; ok {
+	tr := mapper.graph.StartMetadataTransaction(node)
+	for k, v := range metadata {
+		tr.AddMetadata(k, v)
+	}
+	tr.Commit()
+
+	if _, ok := node.Metadata()["ExtID/vm-uuid"]; ok {
 		if mac, ok := node.Metadata()["ExtID/attached-mac"]; ok {
-			if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Type": "tun", "MAC": mac}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
-				registerLink = &FabricRegisterLinkWSMessage{
-					ParentNodeID:   path[len(path)-1].ID,
-					ParentMetadata: graph.Metadata{"Type": "host", "InstanceID": vm},
-					ChildMetadata:  graph.Metadata{"Type": "device", "MAC": mac},
+			if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Type": "tun"}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
+				metadata["ExtID/vm-uuid"] = node.Metadata()["ExtID/vm-uuid"]
+				metadata["ExtID/attached-mac"] = node.Metadata()["ExtID/attached-mac"]
+				for i, n := range path {
+					tr := mapper.graph.StartMetadataTransaction(n)
+					for k, v := range metadata {
+						tr.AddMetadata(k, v)
+					}
+
+					// add vm peering info, going to be used by peering probe
+					if i == len(path)-1 {
+						tr.AddMetadata("PeerIntfMAC", mac)
+					}
+					tr.Commit()
 				}
 			}
 		}
 	}
-	tr.Commit()
 	mapper.graph.Unlock()
-
-	if registerLink != nil {
-		msg := shttp.NewWSMessage(FabricNamespace, "RegisterLink", registerLink)
-		mapper.wsClient.SendWSMessage(msg)
-	}
 }
 
 func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
-	if name, ok := node.Metadata()["Name"]; !ok || !mapper.interfaceRegexp.MatchString(name.(string)) {
+	name, ok := node.Metadata()["Name"]
+	if !ok {
+		return
+	}
+
+	if mapper.nsRegexp.MatchString(name.(string)) {
+		mapper.graph.AddMetadata(node, "Manager", "neutron")
+		return
+	}
+
+	if !mapper.intfRegexp.MatchString(name.(string)) {
 		return
 	}
 
@@ -279,9 +297,10 @@ func (mapper *NeutronMapper) Stop() {
 
 func NewNeutronMapper(g *graph.Graph, wsClient *shttp.WSAsyncClient, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronMapper, error) {
 	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
-	regex := regexp.MustCompile(`(tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2}`)
+	intfRegexp := regexp.MustCompile(`(tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2}`)
+	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9]{8}`)
 
-	mapper := &NeutronMapper{graph: g, wsClient: wsClient, interfaceRegexp: regex}
+	mapper := &NeutronMapper{graph: g, wsClient: wsClient, intfRegexp: intfRegexp, nsRegexp: nsRegexp}
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
