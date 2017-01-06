@@ -29,21 +29,23 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-type OvsFlowEnhancer struct {
+type NeutronFlowEnhancer struct {
 	Graph *graph.Graph
 }
 
-func (gfe *OvsFlowEnhancer) getNodeTID(mac string) string {
+func (nfe *NeutronFlowEnhancer) getNodeTID(mac string) string {
 	if packet.IsBroadcastMac(mac) || packet.IsMulticastMac(mac) {
 		return "*"
 	}
 
-	gfe.Graph.RLock()
-	defer gfe.Graph.RUnlock()
+	nfe.Graph.RLock()
+	defer nfe.Graph.RUnlock()
 
-	intfs := gfe.Graph.GetNodes(graph.Metadata{"ExtID/attached-mac": mac})
+	// use the PeerIntfMAC metadata provided by the neutron probe. The interface used is the
+	// one attached to the VM interface.
+	intfs := nfe.Graph.GetNodes(graph.Metadata{"PeerIntfMAC": mac, "Manager": "neutron"})
 	if len(intfs) > 1 {
-		logging.GetLogger().Infof("OvsFlowEnhancer found more than one interface for the mac: %s", mac)
+		logging.GetLogger().Infof("NeutronFlowEnhancer found more than one interface with the PeerIntfMAC: %s", mac)
 	} else if len(intfs) == 1 {
 		if t, ok := intfs[0].Metadata()["TID"]; ok {
 			return t.(string)
@@ -52,22 +54,22 @@ func (gfe *OvsFlowEnhancer) getNodeTID(mac string) string {
 	return ""
 }
 
-func (gfe *OvsFlowEnhancer) Enhance(f *flow.Flow) {
+func (nfe *NeutronFlowEnhancer) Enhance(f *flow.Flow) {
 	if f.ANodeTID == "" || f.BNodeTID == "" {
 		if f.Link == nil {
 			return
 		}
 	}
 	if f.ANodeTID == "" {
-		f.ANodeTID = gfe.getNodeTID(f.Link.A)
+		f.ANodeTID = nfe.getNodeTID(f.Link.A)
 	}
 	if f.BNodeTID == "" {
-		f.BNodeTID = gfe.getNodeTID(f.Link.B)
+		f.BNodeTID = nfe.getNodeTID(f.Link.B)
 	}
 }
 
-func NewOvsFlowEnhancer(g *graph.Graph) *OvsFlowEnhancer {
-	return &OvsFlowEnhancer{
+func NewNeutronFlowEnhancer(g *graph.Graph) *NeutronFlowEnhancer {
+	return &NeutronFlowEnhancer{
 		Graph: g,
 	}
 }

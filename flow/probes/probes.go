@@ -90,8 +90,6 @@ func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *fl
 	list := config.GetConfig().GetStringSlice("agent.flow.probes")
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
-	gfe := mappings.NewGraphFlowEnhancer(g)
-
 	var aclient *analyzer.Client
 
 	addr, port, err := config.GetAnalyzerClientAddr()
@@ -108,6 +106,13 @@ func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *fl
 		}
 	}
 
+	pipeline := mappings.NewFlowMappingPipeline(mappings.NewGraphFlowEnhancer(g))
+
+	// check that the neutron probe if loaded if so add the neutron flow enhancer
+	if tb.GetProbe("neutron") != nil {
+		pipeline.AddEnhancer(mappings.NewNeutronFlowEnhancer(g))
+	}
+
 	probes := make(map[string]probe.Probe)
 	for _, t := range list {
 		if _, ok := probes[t]; ok {
@@ -118,14 +123,11 @@ func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *fl
 		case "ovssflow":
 			o := NewOvsSFlowProbesHandler(tb, g)
 			if o != nil {
-				ofe := mappings.NewOvsFlowEnhancer(g)
-				pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
 				probes[t] = FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
 			}
 		case "gopacket":
 			o := NewGoPacketProbesHandler(g)
 			if o != nil {
-				pipeline := mappings.NewFlowMappingPipeline(gfe)
 				gopacket := FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
 
 				probes["afpacket"] = gopacket

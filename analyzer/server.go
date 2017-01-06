@@ -278,17 +278,20 @@ func NewServerFromConfig() (*Server, error) {
 
 	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureApiHandler, wsServer)
 
-	gfe := mappings.NewGraphFlowEnhancer(g)
-	ofe := mappings.NewOvsFlowEnhancer(g)
-	pipeline := mappings.NewFlowMappingPipeline(gfe, ofe)
+	pipeline := mappings.NewFlowMappingPipeline(mappings.NewGraphFlowEnhancer(g))
+
+	// check that the neutron probe is loaded if so add the neutron flow enhancer
+	if probeBundle.GetProbe("neutron") != nil {
+		pipeline.AddEnhancer(mappings.NewNeutronFlowEnhancer(g))
+	}
 
 	tableClient := flow.NewTableClient(wsServer)
-	storage, err := storage.NewStorageFromConfig()
+	store, err := storage.NewStorageFromConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	aserver := alert.NewAlertServer(g, alertApiHandler, wsServer, tableClient, storage)
+	aserver := alert.NewAlertServer(g, alertApiHandler, wsServer, tableClient, store)
 	gserver := graph.NewServer(g, wsServer)
 
 	piClient := packet_injector.NewPacketInjectorClient(wsServer)
@@ -304,7 +307,7 @@ func NewServerFromConfig() (*Server, error) {
 		EmbeddedEtcd:        etcdServer,
 		EtcdClient:          etcdClient,
 		ProbeBundle:         probeBundle,
-		Storage:             storage,
+		Storage:             store,
 	}
 
 	updateHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerUpdate))
