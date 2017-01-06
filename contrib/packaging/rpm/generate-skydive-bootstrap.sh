@@ -61,7 +61,10 @@ make govendor genlocalfiles
 popd
 
 mkdir -p rpmbuild/SOURCES
-tar -C $tmpdir --exclude=skydive-${version}/src/github.com/skydive-project/skydive/.git -cvf rpmbuild/SOURCES/skydive-${version}.tar.gz skydive-${version}/src
-rm -rf $tmpdir
+tar -C $tmpdir --exclude=skydive-${version}/src/github.com/skydive-project/skydive/.git -cvzf rpmbuild/SOURCES/skydive-${version}.tar.gz skydive-${version}/src
+$(dirname "$0")/specfile-update-bundles $gitdir/vendor/vendor.json > $tmpdir/skydive.spec
 
-rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $PWD/rpmbuild" contrib/packaging/rpm/skydive.spec
+rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $PWD/rpmbuild" $tmpdir/skydive.spec
+
+echo $tmpdir/skydive.spec
+rm -rf $tmpdir

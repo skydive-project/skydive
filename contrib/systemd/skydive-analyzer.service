@@ -1,10 +1,12 @@
 [Unit]
 Description=Skydive analyzer
-After=network-online.target
+After=network-online.target elasticsearch.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/skydive analyzer --conf /etc/skydive/skydive.yml
+EnvironmentFile=-/etc/sysconfig/skydive-analyzer
+ExecStart=/usr/bin/skydive analyzer $SKYDIVE_ANALYZER_OPTIONS --conf /etc/skydive/skydive.yml
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
