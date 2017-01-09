@@ -200,6 +200,8 @@ var Layout = function(selector) {
   this.groups = {};
   this.synced = false;
   this.live = false;
+  this.lscachetimeout = 60 * 24 * 7;
+  this.keeplayout = false;
 
   this.width = $(selector).width() - 20;
   this.height = $(selector).height();
@@ -236,6 +238,7 @@ var Layout = function(selector) {
 
   this.drag = this.force.stop().drag()
     .on("dragstart", function(d) {
+      _this.keeplayout = true;
       d3.event.sourceEvent.stopPropagation();
     });
 
@@ -461,10 +464,17 @@ Layout.prototype.AddNode = function(node) {
 
   this.elements[node.ID] = node;
 
-  // distribute node on a circle depending on the host
-  var place = this.Hash(node.Host) % 100;
-  node.x = Math.cos(place / 100 * 2 * Math.PI) * 500 + this.width / 2 + Math.random();
-  node.y = Math.sin(place / 100 * 2 * Math.PI) * 500 + this.height / 2 + Math.random();
+  // get postion for cache otherwise distribute node on a circle depending on the host
+  var data = lscache.get(node.Metadata.TID);
+  if (data) {
+    node.x = data.x;
+    node.y = data.y;
+    node.fixed = data.fixed;
+  } else {
+    var place = this.Hash(node.Host) % 100;
+    node.x = Math.cos(place / 100 * 2 * Math.PI) * 500 + this.width / 2 + Math.random();
+    node.y = Math.sin(place / 100 * 2 * Math.PI) * 500 + this.height / 2 + Math.random();
+  }
 
   this.nodes.push(node);
 
@@ -481,7 +491,6 @@ Layout.prototype.UpdateNode = function(node, metadata) {
 };
 
 Layout.prototype.DelNode = function(node) {
-
   if (typeof CurrentNodeDetails != "undefined" && node.ID == CurrentNodeDetails.ID) {
     CurrentNodeDetails = undefined;
     $("#node-details").hide();
@@ -1158,6 +1167,17 @@ Layout.prototype.StartLiveUpdate = function() {
   this.updatesocket = new WebSocket("ws://" + location.host + "/ws");
 
   var _this = this;
+
+  setInterval(function() {
+    // keep track of position once one drag occured
+    if (_this.keeplayout) {
+      for (var i in _this.nodes) {
+        var node = _this.nodes[i];
+        lscache.set(_this.nodes[i].Metadata.TID, {x: node.x, y: node.y, fixed: node.fixed}, _this.lscachetimeout);
+      }
+    }
+  }, 30000);
+
   this.updatesocket.onopen = function() {
     if (!connected) {
       $.notify({
