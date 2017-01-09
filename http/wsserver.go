@@ -179,7 +179,6 @@ func (c *WSClient) processMessages(wg *sync.WaitGroup, quit chan struct{}) {
 func (c *WSClient) readPump() {
 	defer func() {
 		c.server.unregister <- c
-		c.conn.Close()
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -207,7 +206,6 @@ func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
 
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
 	}()
 
 	for {
@@ -255,24 +253,17 @@ func (s *WSServer) SendWSMessageTo(msg *WSMessage, host string) bool {
 }
 
 func (s *WSServer) listenAndServe() {
-	quit := false
-
 	for {
 		select {
 		case <-s.quit:
-			s.RLock()
-			if len(s.clients) == 0 {
-				s.RUnlock()
-				return
-			}
-
 			// close all the client so that they will call unregister
+			s.Lock()
 			for c := range s.clients {
 				c.conn.Close()
+				delete(s.clients, c)
 			}
-
-			s.RUnlock()
-			quit = true
+			s.Unlock()
+			return
 		case c := <-s.register:
 			s.Lock()
 			s.clients[c] = true
@@ -285,13 +276,9 @@ func (s *WSServer) listenAndServe() {
 				e.OnUnregisterClient(c)
 			}
 			s.Lock()
+			c.conn.Close()
 			delete(s.clients, c)
 			s.Unlock()
-
-			// if quit has been requested and there is no more clients then leave
-			if quit && len(s.clients) == 0 {
-				return
-			}
 		case m := <-s.broadcast:
 			s.broadcastMessage(m)
 		}
@@ -317,6 +304,9 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 				logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, hostID)
 				w.WriteHeader(http.StatusConflict)
 				s.RUnlock()
+
+				s.unregister <- c
+
 				return
 			}
 		}
