@@ -644,8 +644,6 @@ func (f *FlowTraversalStep) Metrics() *MetricsTraversalStep {
 		for _, flow := range f.flowset.Flows {
 			if flow.LastUpdateMetric.Start != 0 || flow.LastUpdateMetric.Last != 0 {
 				metrics[flow.UUID] = append(metrics[flow.UUID], flow.LastUpdateMetric)
-			} else {
-				metrics[flow.UUID] = append(metrics[flow.UUID], flow.Metric)
 			}
 		}
 	}
