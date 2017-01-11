@@ -382,3 +382,38 @@ func TestEvents(t *testing.T) {
 		t.Error("Didn't get the notification")
 	}
 }
+
+type FakeRecursiveListener1 struct {
+	DefaultGraphListener
+	graph *Graph
+}
+
+type FakeRecursiveListener2 struct {
+	DefaultGraphListener
+	events []*Node
+}
+
+func (f *FakeRecursiveListener1) OnNodeAdded(n *Node) {
+	f.graph.NewNode(GenID(), Metadata{"Value": 2})
+}
+
+func (f *FakeRecursiveListener2) OnNodeAdded(n *Node) {
+	f.events = append(f.events, n)
+}
+
+func TestRecursiveEvents(t *testing.T) {
+	g := newGraph(t)
+
+	l1 := &FakeRecursiveListener1{graph: g}
+	g.AddEventListener(l1)
+
+	l2 := &FakeRecursiveListener2{}
+	g.AddEventListener(l2)
+
+	g.AddNode(g.NewNode(GenID(), Metadata{"Value": 1}))
+
+	// check if the notification are in the right order
+	if l2.events[0].Metadata()["Value"] != 1 && l2.events[0].Metadata()["Value"] != 2 {
+		t.Error("Events are not in the right order")
+	}
+}
