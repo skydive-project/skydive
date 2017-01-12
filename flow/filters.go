@@ -23,9 +23,7 @@
 package flow
 
 import (
-	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -59,54 +57,6 @@ func (f *Filter) Eval(flow *Flow) bool {
 	return true
 }
 
-func (f *Filter) Expression(prefix string) string {
-	if f.BoolFilter != nil {
-		return f.BoolFilter.Expression(prefix)
-	}
-	if f.TermStringFilter != nil {
-		return f.TermStringFilter.Expression(prefix)
-	}
-	if f.TermInt64Filter != nil {
-		return f.TermInt64Filter.Expression(prefix)
-	}
-	if f.GtInt64Filter != nil {
-		return f.GtInt64Filter.Expression(prefix)
-	}
-	if f.LtInt64Filter != nil {
-		return f.LtInt64Filter.Expression(prefix)
-	}
-	if f.GteInt64Filter != nil {
-		return f.GteInt64Filter.Expression(prefix)
-	}
-	if f.LteInt64Filter != nil {
-		return f.LteInt64Filter.Expression(prefix)
-	}
-	if f.RegexFilter != nil {
-		return f.RegexFilter.Expression(prefix)
-	}
-
-	return ""
-}
-
-func (b *BoolFilter) Expression(prefix string) string {
-	keyword := ""
-	switch b.Op {
-	case BoolFilterOp_NOT:
-		// FIX not yet implemented for the orientdb backend
-		// http://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
-		return "NOT " + b.Filters[0].Expression(prefix)
-	case BoolFilterOp_OR:
-		keyword = "OR"
-	case BoolFilterOp_AND:
-		keyword = "AND"
-	}
-	var conditions []string
-	for _, item := range b.Filters {
-		conditions = append(conditions, "("+item.Expression(prefix)+")")
-	}
-	return strings.Join(conditions, " "+keyword+" ")
-}
-
 func (b *BoolFilter) Eval(flow *Flow) bool {
 	for _, filter := range b.Filters {
 		result := filter.Eval(flow)
@@ -120,22 +70,6 @@ func (b *BoolFilter) Eval(flow *Flow) bool {
 		}
 	}
 	return b.Op == BoolFilterOp_AND || len(b.Filters) == 0
-}
-
-func (r *GtInt64Filter) Expression(prefix string) string {
-	return fmt.Sprintf("%v > %v", prefix+r.Key, r.Value)
-}
-
-func (r *LtInt64Filter) Expression(prefix string) string {
-	return fmt.Sprintf("%v < %v", prefix+r.Key, r.Value)
-}
-
-func (r *GteInt64Filter) Expression(prefix string) string {
-	return fmt.Sprintf("%v >= %v", prefix+r.Key, r.Value)
-}
-
-func (r *LteInt64Filter) Expression(prefix string) string {
-	return fmt.Sprintf("%v <= %v", prefix+r.Key, r.Value)
 }
 
 func (r *GtInt64Filter) Eval(f *Flow) bool {
@@ -186,10 +120,6 @@ func (r *LteInt64Filter) Eval(f *Flow) bool {
 	return false
 }
 
-func (t *TermStringFilter) Expression(prefix string) string {
-	return fmt.Sprintf(`%s = "%s"`, prefix+t.Key, t.Value)
-}
-
 func (t *TermStringFilter) Eval(f *Flow) bool {
 	field, err := f.GetFieldString(t.Key)
 	if err != nil {
@@ -199,10 +129,6 @@ func (t *TermStringFilter) Eval(f *Flow) bool {
 	return field == t.Value
 }
 
-func (t *TermInt64Filter) Expression(prefix string) string {
-	return fmt.Sprintf(`%s = %d`, prefix+t.Key, t.Value)
-}
-
 func (t *TermInt64Filter) Eval(f *Flow) bool {
 	field, err := f.GetFieldInt64(t.Key)
 	if err != nil {
@@ -210,10 +136,6 @@ func (t *TermInt64Filter) Eval(f *Flow) bool {
 	}
 
 	return field == t.Value
-}
-
-func (r *RegexFilter) Expression(prefix string) string {
-	return fmt.Sprintf(`%s MATCHES "%s"`, prefix+r.Key, r.Value)
 }
 
 func (r *RegexFilter) Eval(f *Flow) bool {
