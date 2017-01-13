@@ -549,6 +549,7 @@ func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalVa
 func (f *FlowTraversalStep) propertyInt64Values(field string) *traversal.GraphTraversalValue {
 	var s []interface{}
 	for _, fl := range f.flowset.Flows {
+		// ignore errors as not all flows have the all layers(Link/Network) thus not all fields
 		if v, err := fl.GetFieldInt64(field); err == nil {
 			s = append(s, v)
 		}
@@ -560,12 +561,8 @@ func (f *FlowTraversalStep) propertyInt64Values(field string) *traversal.GraphTr
 func (f *FlowTraversalStep) propertyStringValues(field string) *traversal.GraphTraversalValue {
 	var s []interface{}
 	for _, fl := range f.flowset.Flows {
-
-		v, err := fl.GetFieldString(field)
-		if err != nil {
-			return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, err)
-		}
-		if v != "" {
+		// ignore errors as not all flows have the all layers(Link/Network) thus not all fields
+		if v, err := fl.GetFieldString(field); err == nil {
 			s = append(s, v)
 		}
 	}
