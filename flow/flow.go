@@ -449,14 +449,10 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample) []FlowPackets {
 	var flowPacketsSet []FlowPackets
 
 	for _, rec := range sample.Records {
-		/* FIX(safchain): just keeping the raw packet for now */
 		switch rec.(type) {
 		case layers.SFlowRawPacketFlowRecord:
 			/* We only support RawPacket from SFlow probe */
-		case layers.SFlowExtendedSwitchFlowRecord:
-			continue
 		default:
-			logging.GetLogger().Critical("1st layer is not a SFlow supported type")
 			continue
 		}
 
