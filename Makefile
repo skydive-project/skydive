@@ -19,7 +19,7 @@ DOCKER_TAG?=devel
 	protoc --go_out . ${PROTO_FILES}
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
-	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -i flow/flow.pb.go
+	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i flow/flow.pb.go
 
 .bindata: govendor builddep
 	go-bindata -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/*
