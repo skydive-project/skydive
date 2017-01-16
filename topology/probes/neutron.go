@@ -72,11 +72,6 @@ type PortMetadata struct {
 	portID string
 }
 
-var (
-	PendingPortMetadata  = PortMetadata{mac: "00:00:00:00:00:00", portID: "Pending"}
-	NotFoundPortMetadata = PortMetadata{mac: "00:00:00:00:00:00", portID: "NotFound"}
-)
-
 func (e NeutronPortNotFound) Error() string {
 	return "Unable to find port for MAC address: " + e.MAC
 }
@@ -177,19 +172,18 @@ func (mapper *NeutronMapper) nodeUpdater() {
 		}
 
 		portMd := retrievePortMetadata(node.Metadata())
+
 		attrs, err := mapper.retrieveAttributes(portMd)
 		if err != nil {
 			if nerr, ok := err.(NeutronPortNotFound); ok {
 				logging.GetLogger().Debugf("Setting in cache not found MAC %s", nerr.MAC)
-				mapper.cache.Set(nerr.MAC, NotFoundPortMetadata, cache.DefaultExpiration)
 			} else {
 				logging.GetLogger().Errorf("Failed to retrieve attributes for port %s/%s : %v",
 					portMd.portID, portMd.mac, err)
 			}
-			continue
+		} else {
+			mapper.updateNode(node, attrs)
 		}
-		mapper.updateNode(node, attrs)
-		mapper.cache.Set(node.Metadata()["MAC"].(string), portMd, cache.DefaultExpiration)
 	}
 	logging.GetLogger().Debugf("Stopping Neutron updater")
 }
@@ -249,7 +243,8 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 }
 
 func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
-	name, ok := node.Metadata()["Name"]
+	md := node.Metadata()
+	name, ok := md["Name"]
 	if !ok {
 		return
 	}
@@ -263,17 +258,21 @@ func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
 		return
 	}
 
-	mac, ok := node.Metadata()["MAC"]
+	mac, ok := md["MAC"]
 	if !ok {
 		return
 	}
 
-	portMd, f := mapper.cache.Get(mac.(string))
+	portMdCache, f := mapper.cache.Get(mac.(string))
+	portMdNode := retrievePortMetadata(md)
+
 	// If port metadatas have not changed, we return
-	if f && (portMd == PendingPortMetadata || portMd == retrievePortMetadata(node.Metadata())) {
+	if f && (portMdCache == portMdNode) {
 		return
 	}
-	mapper.cache.Set(mac.(string), PendingPortMetadata, cache.DefaultExpiration)
+	// We only try to get Neutron metadatas one time per port
+	// metadata values
+	mapper.cache.Set(mac.(string), portMdNode, cache.DefaultExpiration)
 
 	mapper.nodeUpdaterChan <- node.ID
 }
