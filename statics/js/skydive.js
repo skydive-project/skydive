@@ -952,12 +952,6 @@ Layout.prototype.Redraw = function() {
   var nodeEnter = this.node.enter().append("g")
     .attr("class", "node")
     .on("click", function(d) {
-      // node selection callback registered, so in selection mode
-      if (nodeSelectedCallback) {
-        nodeSelectedCallback(d);
-        return;
-      }
-
       if (d3.event.shiftKey) {
         if (d.fixed)
           d.fixed = false;
@@ -1292,76 +1286,6 @@ function StartCheckAPIAccess() {
   }, 5000);
 }
 
-function SetupNodeDetails() {
-  $("#node-id").mouseenter(function() {
-    var id = $("#node-id").html();
-    topologyLayout.SetNodeClass(id, "highlighted", true);
-  });
-  $("#node-id").mouseleave(function() {
-    var id = $("#node-id").html();
-    topologyLayout.SetNodeClass(id, "highlighted", false);
-  });
-}
-
-var nodeSelectedCallback;
-function SetupPacketGenerator() {
-  $('.node-selector').focusin(function() {
-    $('.topology-d3').addClass('node-selection');
-    $(this).val('');
-    var _this = $(this);
-    nodeSelectedCallback = function(n) {
-      if (n.IsCaptureAllowed())
-        _this.val(n.Metadata.TID);
-      nodeSelectedCallback = undefined;
-    };
-  });
-  $('.node-selector').focusout(function() {
-    $('.topology-d3').removeClass('node-selection');
-  });
-
-  $("#inject-packet").click(function(e) {
-    var node1 = $('#inject-node1').val();
-    if (node1 === "") {
-      alert("Please select a source node");
-      return;
-    }
-
-    var node2 = $('#inject-node2').val();
-    if (node2 === "") {
-      alert("Please select a destination node");
-      return;
-    }
-
-    $.ajax({
-      dataType: "json",
-      url: '/api/injectpacket',
-      data: JSON.stringify({
-        "Src": "G.V().Has('TID', '" + node1 + "')",
-        "Dst": "G.V().Has('TID', '" + node2 + "')",
-        "Type": $("#inject-type").val(),
-        "Count": parseInt($("#inject-count").val())
-      }),
-      contentType: "application/json; charset=utf-8",
-      method: 'POST',
-      success: function(e) {
-        $.notify({
-          message: 'Packet injected'
-        },{
-          type: 'success'
-        });
-        ShowNodeFlows(CurrentNodeDetails);
-      },
-      error: function(e) {
-        $.notify({
-          message: 'Packet injection error: ' + e.responseText
-        },{
-          type: 'danger'
-        });
-      }
-    });
-  });
-}
-
 function SetupFlowRefresh() {
   $("#flow-refresh").click(function(e) {
     ShowNodeFlows(CurrentNodeDetails);
@@ -1610,9 +1534,7 @@ $(document).ready(function() {
   if (Service != "agent") {
     SetupTimeSlider();
     SetupFlowRefresh();
-    SetupNodeDetails();
     SetupFlowGrid();
     SetupControlButtons();
-    SetupPacketGenerator();
   }
 });

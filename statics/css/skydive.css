@@ -318,6 +318,10 @@ li.capture-item {
   font-style: normal;
 }
 
+.inject-target {
+  margin-bottom: 5px;
+}
+
 .passive-capture-title {
   color: grey
 }
@@ -434,16 +438,13 @@ circle.manager {
   height: 100px;
 }
 
-.fa{
+.form-control + .fa-crosshairs {
+  color: black;
   font-size: 1.3em;
-  color: #000;
-}
-
-.form-control + .fa-crosshairs{
   left: 0;
 }
 
-.form-control:focus+.fa-crosshairs{
+.form-control:focus + .fa-crosshairs {
   color: #66afe9;
 }
 

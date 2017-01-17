@@ -8,13 +8,17 @@ Vue.component('node-selector', {
     placeholder: {
       type: String,
     },
+    attr: {
+      type: String,
+      default: "Metadata.TID"
+    }
   },
 
   template: '\
     <div style="position:relative">\
       <input class="form-control input-sm has-left-icon"\
              readonly\
-             @focus="select" \
+             @focus="select"\
              :placeholder="placeholder"\
              :value="value" />\
       <span class="fa fa-crosshairs form-control-feedback"></span>\
@@ -27,12 +31,25 @@ Vue.component('node-selector', {
       var self = this;
       $(".topology-d3").off('click');
       $(".topology-d3").on('click', function(e) {
-        if (e.target.__data__ && e.target.__data__.Metadata && e.target.__data__.Metadata.TID) {
-          self.$emit('input', e.target.__data__.Metadata.TID);
-          self.$emit('selected', e.target.__data__);
-          e.preventDefault();
-          $(".topology-d3").off('click');
+        var value, node;
+        if (! e.target.__data__) {
+          return;
+        } else {
+          node = value = e.target.__data__;
         }
+
+        self.attr.split(".").forEach(function(key) {
+          if (! value[key]) {
+            return;
+          } else {
+            value = value[key];
+          }
+        });
+
+        self.$emit('input', value);
+        self.$emit('selected', node);
+        e.preventDefault();
+        $(".topology-d3").off('click');
       });
     }
 

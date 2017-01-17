@@ -44,6 +44,7 @@
   <script src="/statics/js/components/node-selector.js"></script>
   <script src="/statics/js/components/capture-form.js"></script>
   <script src="/statics/js/components/capture-list.js"></script>
+  <script src="/statics/js/components/inject-form.js"></script>
   <script src="/statics/js/vue-sidebar.js"></script>
 
   <script>
@@ -109,6 +110,7 @@
           </li>
         </ul>
         <div class="tab-content clearfix">
+
           <div class="tab-pane active" id="1a">
             <div class="left-cont ">
               <div class="left-panel">
@@ -121,28 +123,7 @@
           <div class="tab-pane" id="2a">
             <div class="left-cont">
               <div class="left-panel">
-                <div class="title-left-panel">Packet generator :</div>
-                <form action="#" id="inject_form">
-                  <label>Type : </label></br>
-                  <select id="inject-type" class="form-control">
-                    <option value="icmp" selected>ICMPv4/Echo request</option>
-                  </select></br>
-                  <label>Target : </label></br>
-                  <div style="position:relative">
-                    <input class="form-control input-sm has-left-icon node-selector" id="inject-node1" placeholder="From" readonly>
-                    <span class="fa fa-crosshairs form-control-feedback"></span>
-                  </div>
-                  </br>
-                  <div style="position:relative">
-                    <input class="form-control input-sm has-left-icon node-selector" id="inject-node2" placeholder="To" readonly>
-                    <span class="fa fa-crosshairs form-control-feedback"></span>
-                  </div>
-                  <br/>
-                  <label>No. of packets: </label></br>
-                  <input type="number" id="inject-count" class="capture-input" min="1" value="1"/><br/>
-                  <input type="button" class="btn btn-primary" id="inject-packet" value="Inject"/>
-                  <br/>
-                </form>
+                <inject-form></inject-form>
               </div>
             </div>
           </div>
