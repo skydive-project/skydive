@@ -1388,18 +1388,7 @@ function SetupNodeDetails() {
 }
 
 var nodeSelectedCallback;
-function SetupCaptureOptions() {
-  $('input[type=radio][name=capture-target]').change(function() {
-    if (this.value == 'selection') {
-      $('#capture-selection').show();
-      $('#capture-gremlin').hide();
-    }
-    else if (this.value == 'gremlin') {
-      $('#capture-gremlin').show();
-      $('#capture-selection').hide();
-    }
-  });
-
+function SetupPacketGenerator() {
   $('.node-selector').focusin(function() {
     $('.topology-d3').addClass('node-selection');
     $(this).val('');
@@ -1413,17 +1402,7 @@ function SetupCaptureOptions() {
   $('.node-selector').focusout(function() {
     $('.topology-d3').removeClass('node-selection');
   });
-}
 
-var ResetCaptureForm = function() {
-  $("#capture-name").val("");
-  $("#capture-desc").val("");
-  $("#capture-query").val("");
-  $('#capture-node1').val("");
-  $('#capture-node2').val("");
-};
-
-function SetupPacketGenerator() {
   $("#inject-packet").click(function(e) {
     var node1 = $('#inject-node1').val();
     if (node1 === "") {
@@ -1468,68 +1447,6 @@ function SetupPacketGenerator() {
 }
 
 function SetupCaptureList() {
-  $("#capture-cancel").click(function(e) {
-    $("#capture").slideToggle(500, function () {});
-  });
-
-  $("#add-capture").click(function(e) {
-    $("#capture").slideToggle(500, function () {});
-    ResetCaptureForm();
-
-    if (CurrentNodeDetails && CurrentNodeDetails.IsCaptureAllowed())
-       $('#capture-node1').val(CurrentNodeDetails.Metadata.TID);
-  });
-
-  $("#capture-create").click(function(e) {
-    var name = $("#capture-name").val();
-    var desc = $("#capture-desc").val();
-    var query;
-
-    var mode = $('input[type=radio][name=capture-target]:checked').val();
-    if (mode == "gremlin") {
-      query = $("#capture-query").val();
-    } else {
-      var node1 = $('#capture-node1').val();
-      if (node1 === "") {
-        alert("At least one node have to be selected");
-        return;
-      }
-
-      var node2 = $('#capture-node2').val();
-      if (node2 !== "") {
-        query = "G.V().Has('TID', '" + node1 + "').ShortestPathTo(Metadata('TID', '" + node2 + "'), Metadata('RelationType', 'layer2'))";
-      } else {
-        query = "G.V().Has('TID', '" + node1 + "')";
-      }
-    }
-
-    if (query === "") {
-      alert("Gremlin query can't be empty");
-    } else {
-      $.ajax({
-        dataType: "json",
-        url: '/api/capture',
-        data: JSON.stringify({"GremlinQuery": query, "Name": name, "Description": desc}),
-        contentType: "application/json; charset=utf-8",
-        method: 'POST',
-        success: function() {
-          $.notify({
-            message: 'Capture created'
-          },{
-            type: 'success'
-          });
-        },
-        error: function(e) {
-          $.notify({
-            message: 'Capture create error: ' + e.responseText
-          },{
-            type: 'danger'
-          });
-        }
-      });
-      $("#capture").slideToggle(500, function () {});
-    }
-  });
   setInterval(RefreshCaptureList, 1000);
 }
 
@@ -1771,6 +1688,8 @@ $(document).ready(function() {
   $('.conversation').hide();
   $('.discovery').hide();
 
+  vueSidebar = new Vue(VueSidebar);
+
   topologyLayout = new Layout(".topology-d3");
   topologyLayout.StartLiveUpdate();
 
@@ -1781,7 +1700,6 @@ $(document).ready(function() {
     SetupFlowRefresh();
     SetupCaptureList();
     SetupNodeDetails();
-    SetupCaptureOptions();
     SetupFlowGrid();
     SetupControlButtons();
     SetupPacketGenerator();

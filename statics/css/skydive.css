@@ -388,15 +388,11 @@ circle.manager {
   fill: #fff;
 }
 
-#capture {
-  display: none;
-}
-
-#capture_form label {
+.capture-form label {
   font-weight: normal;
 }
 
-.capture_input {
+.capture-input {
   margin-bottom: 6px;
   width: 100%;
   box-sizing: border-box;
@@ -405,7 +401,7 @@ circle.manager {
   color: black;
 }
 
-#capture_form textarea {
+.capture-form textarea {
   height: 100px;
 }
 
@@ -545,4 +541,16 @@ circle.manager {
   -o-filter: grayscale(0%);
   -o-transition: 1.5s ease-in-out;
   filter: grayscale(0%);
+}
+
+.slide-enter-active {
+  transition: all .2s ease;
+}
+.slide-leave-active {
+  transition: all .2s cubic-bezier(1.0, 0.5, 0.8, 1.0);
+}
+.slide-enter, .slide-leave-to
+/* .slide-fade-leave-active for <2.1.8 */ {
+  transform: translateX(300px);
+  opacity: 0;
 }
