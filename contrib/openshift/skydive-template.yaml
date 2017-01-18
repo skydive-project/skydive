@@ -145,7 +145,6 @@ objects:
       app: skydive-analyzer
     name: skydive-analyzer
   spec:
-    host: skydive-analyzer-skydive.paas.example.com
     port:
       targetPort: api
     to:

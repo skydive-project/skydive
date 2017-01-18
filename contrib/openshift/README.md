@@ -40,6 +40,3 @@ oc delete route skydive-analyzer
 oc expose svc skydive-analyzer
 ```
 
-## TODO
-* Paraemtrize template to set the route hostname
-
