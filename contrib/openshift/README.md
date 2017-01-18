@@ -1,6 +1,6 @@
 # OpenShift template for skydive agent
 
-This OpenShift template allows you to instanciate skydive in OpenShift.
+This OpenShift template allows you to instantiate skydive in OpenShift.
 
 Assuming you work on project skydive:
 
