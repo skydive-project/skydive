@@ -349,10 +349,10 @@ func paramsToFilter(s ...interface{}) (*flow.Filter, error) {
 					BoolFilter: &flow.BoolFilter{
 						Op: flow.BoolFilterOp_AND,
 						Filters: []*flow.Filter{
-							&flow.Filter{
+							{
 								GtInt64Filter: &flow.GtInt64Filter{Key: k, Value: f64},
 							},
-							&flow.Filter{
+							{
 								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: t64},
 							},
 						},
@@ -374,10 +374,10 @@ func paramsToFilter(s ...interface{}) (*flow.Filter, error) {
 					BoolFilter: &flow.BoolFilter{
 						Op: flow.BoolFilterOp_AND,
 						Filters: []*flow.Filter{
-							&flow.Filter{
+							{
 								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: f64},
 							},
-							&flow.Filter{
+							{
 								GtInt64Filter: &flow.GtInt64Filter{Key: k, Value: t64},
 							},
 						},
@@ -399,10 +399,10 @@ func paramsToFilter(s ...interface{}) (*flow.Filter, error) {
 					BoolFilter: &flow.BoolFilter{
 						Op: flow.BoolFilterOp_AND,
 						Filters: []*flow.Filter{
-							&flow.Filter{
+							{
 								GteInt64Filter: &flow.GteInt64Filter{Key: k, Value: f64},
 							},
-							&flow.Filter{
+							{
 								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: t64},
 							},
 						},

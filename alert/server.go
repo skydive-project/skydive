@@ -349,7 +349,7 @@ func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
 		}
 		ticker := time.NewTicker(duration)
 		go func() {
-			for _ = range ticker.C {
+			for range ticker.C {
 				a.Graph.RLock()
 				if err := a.evaluateAlert(alert); err != nil {
 					logging.GetLogger().Warning(err.Error())

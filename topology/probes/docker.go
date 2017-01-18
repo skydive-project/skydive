@@ -53,7 +53,7 @@ type ContainerInfo struct {
 
 type DockerProbe struct {
 	sync.RWMutex
-	NetNSProbe
+	*NetNSProbe
 	url          string
 	client       *client.Client
 	cancel       context.CancelFunc
@@ -261,7 +261,7 @@ func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) (probe *Doc
 	}
 
 	return &DockerProbe{
-		NetNSProbe:   *nsProbe,
+		NetNSProbe:   nsProbe,
 		url:          dockerURL,
 		containerMap: make(map[string]ContainerInfo),
 		state:        common.StoppedState,

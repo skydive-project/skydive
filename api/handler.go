@@ -56,7 +56,7 @@ type ResourceHandler interface {
 	New() ApiResource
 }
 
-// basic implementation of an ApiHandler, should be used as embeded struct
+// basic implementation of an ApiHandler, should be used as embedded struct
 // for the most part of the resources
 type BasicApiHandler struct {
 	ResourceHandler ResourceHandler

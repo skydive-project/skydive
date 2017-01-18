@@ -345,7 +345,7 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 	}
 
 	// check whether the interface has been deleted or not
-	// we get a delete event when an interace is removed from a bridge
+	// we get a delete event when an interface is removed from a bridge
 	_, err := u.netlink.LinkByIndex(index)
 	if err != nil && intf != nil {
 		// if openvswitch do not remove let's do the job by ovs piece of code

@@ -109,7 +109,7 @@ func (b *ElasticSearchBackend) getTimedQuery(t *time.Time) []map[string]interfac
 	}
 
 	return []map[string]interface{}{
-		map[string]interface{}{
+		{
 			"range": map[string]interface{}{
 				"CreatedAt": &struct {
 					Lte interface{} `json:"lte,omitempty"`
@@ -118,15 +118,15 @@ func (b *ElasticSearchBackend) getTimedQuery(t *time.Time) []map[string]interfac
 				},
 			},
 		},
-		map[string]interface{}{
+		{
 			"bool": map[string]interface{}{
 				"should": []map[string]interface{}{
-					map[string]interface{}{
+					{
 						"term": map[string]interface{}{
 							"DeletedAt": 0,
 						},
 					},
-					map[string]interface{}{
+					{
 						"range": map[string]interface{}{
 							"DeletedAt": &struct {
 								Gt interface{} `json:"gt,omitempty"`
@@ -340,12 +340,12 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edg
 	idsFilter := map[string]interface{}{
 		"bool": map[string]interface{}{
 			"should": []map[string]interface{}{
-				map[string]interface{}{
+				{
 					"term": map[string]interface{}{
 						"Parent": n.ID,
 					},
 				},
-				map[string]interface{}{
+				{
 					"term": map[string]interface{}{
 						"Child": n.ID,
 					},
@@ -527,9 +527,11 @@ func (b *ElasticSearchBackend) GetEdges(t *time.Time, m Metadata) (edges []*Edge
 }
 
 func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
-	var newGraph = *graph
-	newGraph.context = context
-	return &newGraph, nil
+	return &Graph{
+		backend: graph.backend,
+		context: context,
+		host:    graph.host,
+	}, nil
 }
 
 func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int) (*ElasticSearchBackend, error) {

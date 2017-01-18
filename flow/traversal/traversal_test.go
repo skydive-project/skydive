@@ -32,8 +32,8 @@ import (
 func TestFlowMetricsAggregates(t *testing.T) {
 	step := MetricsTraversalStep{
 		metrics: map[string][]*flow.FlowMetric{
-			"aa": []*flow.FlowMetric{
-				&flow.FlowMetric{
+			"aa": {
+				{
 					ABBytes:   1,
 					ABPackets: 1,
 					BABytes:   1,
@@ -41,7 +41,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					Start:     10,
 					Last:      20,
 				},
-				&flow.FlowMetric{
+				{
 					ABBytes:   2,
 					ABPackets: 2,
 					BABytes:   2,
@@ -50,8 +50,8 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					Last:      30,
 				},
 			},
-			"bb": []*flow.FlowMetric{
-				&flow.FlowMetric{
+			"bb": {
+				{
 					ABBytes:   4,
 					ABPackets: 4,
 					BABytes:   4,
@@ -59,7 +59,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					Start:     15,
 					Last:      25,
 				},
-				&flow.FlowMetric{
+				{
 					ABBytes:   8,
 					ABPackets: 8,
 					BABytes:   8,
@@ -68,8 +68,8 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					Last:      50,
 				},
 			},
-			"cc": []*flow.FlowMetric{
-				&flow.FlowMetric{
+			"cc": {
+				{
 					ABBytes:   16,
 					ABPackets: 16,
 					BABytes:   16,
@@ -83,8 +83,8 @@ func TestFlowMetricsAggregates(t *testing.T) {
 
 	expected := MetricsTraversalStep{
 		metrics: map[string][]*flow.FlowMetric{
-			"Aggregated": []*flow.FlowMetric{
-				&flow.FlowMetric{
+			"Aggregated": {
+				{
 					ABBytes:   5,
 					ABPackets: 5,
 					BABytes:   5,
@@ -92,7 +92,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					Start:     10,
 					Last:      20,
 				},
-				&flow.FlowMetric{
+				{
 					ABBytes:   2,
 					ABPackets: 2,
 					BABytes:   2,
@@ -100,7 +100,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					Start:     20,
 					Last:      30,
 				},
-				&flow.FlowMetric{
+				{
 					ABBytes:   24,
 					ABPackets: 24,
 					BABytes:   24,

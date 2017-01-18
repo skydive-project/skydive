@@ -129,13 +129,13 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 		BoolFilter: &BoolFilter{
 			Op: BoolFilterOp_OR,
 			Filters: []*Filter{
-				&Filter{
+				{
 					TermStringFilter: &TermStringFilter{Key: "NodeTID", Value: "probe-tid1"},
 				},
-				&Filter{
+				{
 					TermStringFilter: &TermStringFilter{Key: "ANodeTID", Value: "probe-tid1"},
 				},
-				&Filter{
+				{
 					TermStringFilter: &TermStringFilter{Key: "BNodeTID", Value: "probe-tid1"},
 				},
 			},

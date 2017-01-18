@@ -352,9 +352,11 @@ func (o *OrientDBBackend) GetEdges(t *time.Time, m Metadata) (edges []*Edge) {
 }
 
 func (o *OrientDBBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
-	var newGraph = *graph
-	newGraph.context = context
-	return &newGraph, nil
+	return &Graph{
+		backend: graph.backend,
+		context: context,
+		host:    graph.host,
+	}, nil
 }
 
 func NewOrientDBBackend(addr string, database string, username string, password string) (*OrientDBBackend, error) {

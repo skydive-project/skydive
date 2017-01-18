@@ -318,7 +318,7 @@ func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expec
 
 func TestPCAP1(t *testing.T) {
 	expected := []*Flow{
-		&Flow{
+		{
 			LayersPath:  "Ethernet/ARP",
 			Application: "ARP",
 			Link: &FlowLayer{
@@ -333,7 +333,7 @@ func TestPCAP1(t *testing.T) {
 				BABytes:   42,
 			},
 		},
-		&Flow{
+		{
 			LayersPath:  "Ethernet/IPv4/UDP/DNS",
 			Application: "DNS",
 			Link: &FlowLayer{
@@ -358,7 +358,7 @@ func TestPCAP1(t *testing.T) {
 				BABytes:   256,
 			},
 		},
-		&Flow{
+		{
 			LayersPath:  "Ethernet/IPv4/TCP",
 			Application: "TCP",
 			Link: &FlowLayer{
@@ -383,7 +383,7 @@ func TestPCAP1(t *testing.T) {
 				BABytes:   760,
 			},
 		},
-		&Flow{
+		{
 			LayersPath:  "Ethernet/IPv4/UDP/DNS",
 			Application: "DNS",
 			Link: &FlowLayer{
@@ -408,7 +408,7 @@ func TestPCAP1(t *testing.T) {
 				BABytes:   190,
 			},
 		},
-		&Flow{
+		{
 			LayersPath:  "Ethernet/IPv4/TCP",
 			Application: "TCP",
 			Link: &FlowLayer{
@@ -468,7 +468,7 @@ func TestEmptyParentUUIDExported(t *testing.T) {
 // IP.
 func TestPCAPMplsContrail(t *testing.T) {
 	expected := []*Flow{
-		&Flow{
+		{
 			LayersPath:  "IPv4/ICMPv4/Payload",
 			Application: "ICMPv4",
 			Network: &FlowLayer{
@@ -481,7 +481,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				ABBytes:   104,
 			},
 		},
-		&Flow{
+		{
 			LayersPath:  "Ethernet/IPv4/UDP/MPLS",
 			Application: "MPLS",
 			Link: &FlowLayer{
@@ -504,7 +504,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				ABBytes:   120,
 			},
 		},
-		&Flow{
+		{
 			LayersPath:  "Ethernet/IPv4/TCP",
 			Application: "TCP",
 			Link: &FlowLayer{
@@ -527,7 +527,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				ABBytes:   74,
 			},
 		},
-		&Flow{
+		{
 			LayersPath:  "Ethernet/IPv4/UDP/MPLS",
 			Application: "MPLS",
 			Link: &FlowLayer{

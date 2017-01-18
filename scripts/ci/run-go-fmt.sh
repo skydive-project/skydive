@@ -9,6 +9,7 @@ dir="$(dirname "$0")"
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 make fmt
+make vet
 
 # check if unused package are listed in the vendor directory
 if [ -n "$(${GOPATH}/bin/govendor list +u)" ]; then

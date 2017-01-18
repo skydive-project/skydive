@@ -419,14 +419,14 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64) FlowPac
 			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
 			flowPackets = append(flowPackets, FlowPacket{gopacket: &p, length: topLayerLength})
 
-			// substract the current encapsulation header length as we are going to change the
+			// subtract the current encapsulation header length as we are going to change the
 			// encapsulation layer
 			topLayerLength -= int64(innerLength)
 
 			start += innerLength
 			innerLength = 0
 
-			// change topLayer in case of mutliple encapsulation
+			// change topLayer in case of multiple encapsulation
 			if i+1 < len(packetLayers)-1 {
 				topLayer = packetLayers[i+1]
 			}
@@ -458,7 +458,7 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample) []FlowPackets {
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
-		// each record can generate mutliple FlowPacket in case of encapsulation
+		// each record can generate multiple FlowPacket in case of encapsulation
 		if flowPackets := FlowPacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved)); len(flowPackets) > 0 {
 			flowPacketsSet = append(flowPacketsSet, flowPackets)
 		}

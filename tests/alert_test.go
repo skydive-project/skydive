@@ -228,9 +228,9 @@ func TestAlertWithTimer(t *testing.T) {
 	}
 
 	ws, err := helper.WSConnect(config.GetConfig().GetString("analyzer.listen"), 5, func(*websocket.Conn) {
-		helper.ExecCmds(t, helper.Cmd{"ip netns add alert-ns", true})
+		helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns add alert-ns", Check: true})
 	})
-	defer helper.ExecCmds(t, helper.Cmd{"ip netns del alert-ns", true})
+	defer helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns del alert-ns", Check: true})
 
 	if err != nil {
 		t.Fatal(err.Error())

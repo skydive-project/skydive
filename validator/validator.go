@@ -28,7 +28,7 @@ import (
 	"net"
 	"strings"
 
-	"gopkg.in/validator.v2"
+	valid "gopkg.in/validator.v2"
 
 	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	"github.com/skydive-project/skydive/topology"
@@ -36,14 +36,14 @@ import (
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
-var skydiveValidator = validator.NewValidator()
+var skydiveValidator = valid.NewValidator()
 
 var (
 	IPNotValid = func() error {
-		return validator.TextErr{errors.New("Not a IP addr")}
+		return valid.TextErr{Err: errors.New("Not a IP addr")}
 	}
 	GremlinNotValid = func(err error) error {
-		return validator.TextErr{fmt.Errorf("Not a valid Gremlin expression: %s", err.Error())}
+		return valid.TextErr{Err: fmt.Errorf("Not a valid Gremlin expression: %s", err.Error())}
 	}
 )
 

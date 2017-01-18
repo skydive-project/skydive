@@ -380,7 +380,7 @@ func (s *WSServer) AddEventHandler(h WSServerEventHandler) {
 
 func (s *WSServer) GetClients() (clients []*WSClient) {
 	s.RLock()
-	for client, _ := range s.clients {
+	for client := range s.clients {
 		clients = append(clients, client)
 	}
 	s.RUnlock()
@@ -389,7 +389,7 @@ func (s *WSServer) GetClients() (clients []*WSClient) {
 
 func (s *WSServer) GetClientsByType(kind string) (clients []*WSClient) {
 	s.RLock()
-	for client, _ := range s.clients {
+	for client := range s.clients {
 		if client.kind == kind {
 			clients = append(clients, client)
 		}

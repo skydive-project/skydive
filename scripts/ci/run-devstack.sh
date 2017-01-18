@@ -78,4 +78,4 @@ export GOROOT=/opt/go
 export GOPATH=/opt/stack/go
 export GO_VERSION=1.6
 cd /opt/stack/go/src/github.com/skydive-project/skydive/
-SKYDIVE_AGENT_ANALYZERS=localhost:8082 make test.functionals GOFLAGS="-tags neutron" VERBOSE=true TIMEOUT=2m TEST_PATTERN=Neutron
+SKYDIVE_AGENT_ANALYZERS=localhost:8082 make test.functionals TAGS="neutron" VERBOSE=true TIMEOUT=2m TEST_PATTERN=Neutron

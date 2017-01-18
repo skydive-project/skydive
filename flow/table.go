@@ -247,7 +247,7 @@ func (ft *Table) updated(updateFrom int64) {
 			f.LastUpdateMetric.Start = updateFrom
 			f.LastUpdateMetric.Last = updateFrom + every
 
-			// substract previous values to get the diff so that we store the
+			// subtract previous values to get the diff so that we store the
 			// amount of data between two updates
 			if s, ok := ft.stats[f.UUID]; ok {
 				f.LastUpdateMetric.ABPackets -= s.ABPackets

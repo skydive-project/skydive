@@ -31,15 +31,17 @@ case "$BACKEND" in
     ${ORIENTDBPATH}/bin/server.sh &
     sleep 5
     ARGS="-graph.backend orientdb -storage.backend orientdb"
-    GOFLAGS="$GOFLAGS -tags storage"
+    GOFLAGS="$GOFLAGS"
+    TAGS="storage"
     ;;
   "elasticsearch")
     . "${dir}/install-elasticsearch.sh"
     ARGS="-graph.backend elasticsearch -storage.backend elasticsearch"
-    GOFLAGS="$GOFLAGS -tags storage"
+    GOFLAGS="$GOFLAGS"
+    TAGS="storage"
     ;;
 esac
 
 set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
-make test.functionals GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=2m ARGS="$ARGS -etcd.server http://localhost:2379"
+make test.functionals TAGS="$TAGS" GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=2m ARGS="$ARGS -etcd.server http://localhost:2379"

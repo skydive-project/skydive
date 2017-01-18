@@ -1,3 +1,5 @@
+// +build test
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -19,8 +21,6 @@
  * under the License.
  *
  */
-
-// +build test
 
 package flow
 
@@ -69,7 +69,7 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 			case MPLS:
 				greLayer.Protocol = layers.EthernetTypeMPLSUnicast
 			default:
-				t.Error(fmt.Sprintf("Protocol %s can not be encapsulated in GRE", protos[i+1]))
+				t.Error(fmt.Sprintf("Protocol %d can not be encapsulated in GRE", protos[i+1]))
 			}
 			protoStack = append(protoStack, greLayer)
 		case ETH:

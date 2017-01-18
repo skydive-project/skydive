@@ -126,7 +126,7 @@ func (c *testAPIClient) create(kind string, resource interface{}) error {
 }
 
 func (s *testAPIServer) GetClient() (*testAPIClient, error) {
-	authenticationOpts := shttp.AuthenticationOpts{"admin", "password"}
+	authenticationOpts := shttp.AuthenticationOpts{Username: "admin", Password: "password"}
 	client := shttp.NewCrudClient(s.analyzer.HTTPServer.Addr, s.analyzer.HTTPServer.Port, &authenticationOpts, "api")
 	if client == nil {
 		return nil, errors.New("Failed to create client")

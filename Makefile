@@ -46,7 +46,7 @@ test.functionals.cleanup:
 	rm -f tests/functionals
 
 test.functionals.compile: govendor genlocalfiles
-	${GOPATH}/bin/govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+	${GOPATH}/bin/govendor test -tags "${TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
 ifneq ($(VERBOSE_FLAGS),)
@@ -65,7 +65,7 @@ test.functionals: test.functionals.compile
 	done
 
 test: govendor genlocalfiles
-	${GOPATH}/bin/govendor test ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+	${GOPATH}/bin/govendor test -tags "${TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 
 govendor:
 	go get github.com/kardianos/govendor
@@ -75,6 +75,10 @@ fmt: govendor
 	@echo "+ $@"
 	@test -z "$$(${GOPATH}/bin/govendor fmt +local)" || \
 		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
+
+vet: govendor
+	@echo "+ $@"
+	govendor tool vet $$(ls -d */ | grep -v vendor)
 
 ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
 	@go get github.com/alecthomas/gometalinter

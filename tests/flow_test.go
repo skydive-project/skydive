@@ -1069,7 +1069,7 @@ func TestFlowMetricsSum(t *testing.T) {
 
 	gremlin := `g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Sum()`
 
-	// this check needs to be close to the beginnig of the test since it's a time
+	// this check needs to be close to the beginning of the test since it's a time
 	// based test and it will fail if we wait one more update tick
 	metric := gh.GetFlowMetricFromGremlinReply(t, gremlin)
 	if metric.ABPackets != 1 || metric.BAPackets != 1 || metric.ABBytes < 1066 || metric.BABytes < 1066 {
