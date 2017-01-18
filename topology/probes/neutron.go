@@ -194,7 +194,7 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	metadata := map[string]interface{}{"Manager": "neutron"}
 
 	if attrs.PortID != "" {
-		metadata["Neutron/PortID"] = "neutron"
+		metadata["Neutron/PortID"] = attrs.PortID
 	}
 
 	if attrs.TenantID != "" {
