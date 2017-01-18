@@ -41,6 +41,5 @@ oc expose svc skydive-analyzer
 ```
 
 ## TODO
-* Parametrize template to set the number of agent
 * Paraemtrize template to set the route hostname
 
