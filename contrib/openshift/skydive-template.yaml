@@ -66,6 +66,14 @@ objects:
             value: elasticsearch
           image: skydive/skydive
           imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
           name: skydive-analyzer
           ports:
           - containerPort: 8082
@@ -74,12 +82,36 @@ objects:
             protocol: UDP
           - containerPort: 2379
             protocol: TCP
+          readinessProbe:
+            failureThreshold: 1
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
         - image: elasticsearch:2
           imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            tcpSocket:
+              port: 9200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
           name: skydive-elasticsearch
           ports:
           - containerPort: 9200
             protocol: TCP
+          readinessProbe:
+            failureThreshold: 1
+            tcpSocket:
+              port: 9200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
           securityContext:
             privileged: true
         dnsPolicy: ClusterFirst
