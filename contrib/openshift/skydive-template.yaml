@@ -42,7 +42,6 @@ objects:
       app: skydive
       tier: analyzer
     strategy:
-      resources: {}
       rollingParams:
         intervalSeconds: 1
         maxSurge: 25%
@@ -120,7 +119,6 @@ objects:
           - containerPort: 8081
             hostPort: 8081
             protocol: TCP
-          resources: {}
           securityContext:
             privileged: true
           volumeMounts:
@@ -132,7 +130,6 @@ objects:
         hostNetwork: true
         hostPID: true
         restartPolicy: Always
-        securityContext: {}
         terminationGracePeriodSeconds: 30
         volumes:
         - hostPath:
