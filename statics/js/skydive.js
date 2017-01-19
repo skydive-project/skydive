@@ -352,8 +352,12 @@ Layout.prototype.SetNodeClass = function(ID, clazz, active) {
 };
 
 function ShowNodeFlows(node) {
-  if (!node.IsCaptureOn())
+  if (!node.IsCaptureOn()) {
+    FlowDataView.beginUpdate();
+    FlowDataView.setItems([]);
+    FlowDataView.endUpdate();
     return;
+  }
 
   var query = "G.V('" + node.ID + "').Flows().Sort().Dedup().Limit(20)";
   $.ajax({
