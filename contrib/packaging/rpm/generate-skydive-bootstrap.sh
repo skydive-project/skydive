@@ -45,26 +45,11 @@ fi
 
 set -e
 
-tmpdir=`mktemp -d -u --suffix=skydive-pkg`
-godir=${tmpdir}/skydive-${version}
-skydivedir=${godir}/src/github.com/skydive-project/skydive
 gitdir=$(cd "$(dirname "$0")/../../.."; pwd)
+rpmbuilddir=$gitdir/rpmbuild
 
-mkdir -p `dirname $skydivedir`
-git clone $gitdir $skydivedir
-
-pushd $skydivedir
-export GOPATH=$godir
-cd $skydivedir
-echo "go take a coffee, govendor sync takes time ..."
-make govendor genlocalfiles
-popd
-
-mkdir -p rpmbuild/SOURCES
-tar -C $tmpdir --exclude=skydive-${version}/src/github.com/skydive-project/skydive/.git -cvzf rpmbuild/SOURCES/skydive-${version}.tar.gz skydive-${version}/src
-$(dirname "$0")/specfile-update-bundles $gitdir/vendor/vendor.json > $tmpdir/skydive.spec
-
-rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $PWD/rpmbuild" $tmpdir/skydive.spec
-
-echo $tmpdir/skydive.spec
-rm -rf $tmpdir
+mkdir -p $rpmbuilddir/SOURCES
+mkdir -p $rpmbuilddir/SPECS
+make -C $gitdir dist DESTDIR=$rpmbuilddir/SOURCES
+$(dirname "$0")/specfile-update-bundles $gitdir/vendor/vendor.json $gitdir/contrib/packaging/rpm/skydive.spec > $rpmbuilddir/SPECS/skydive.spec
+rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $rpmbuilddir" $rpmbuilddir/SPECS/skydive.spec

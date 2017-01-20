@@ -6,9 +6,9 @@ import sys
 BUNDLE_MARKER = "### AUTO-BUNDLED-GEN-ENTRY-POINT"
 
 def usage():
-    print sys.argv[0], "<vendor.json>"
+    print sys.argv[0], "<vendor.json> <specfile>"
 
-if len(sys.argv) != 2:
+if len(sys.argv) != 3:
     usage()
     sys.exit(0)
 
@@ -17,6 +17,6 @@ vendor = json.load(open(sys.argv[1]))
 for package in vendor["package"]:
     provides.append("Provides: bundled(golang(%s)) = %s" % (package["path"], package["revision"]))
 
-spec = open("contrib/packaging/rpm/skydive.spec").read()
+spec = open(sys.argv[2]).read()
 spec = spec.replace(BUNDLE_MARKER, "\n".join(provides))
 print spec

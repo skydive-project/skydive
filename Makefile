@@ -1,3 +1,5 @@
+VERSION?=0.8.0
+
 # really Basic Makefile for Skydive
 export GO15VENDOREXPERIMENT=1
 
@@ -14,6 +16,7 @@ FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*f
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 DOCKER_IMAGE?=skydive/skydive
 DOCKER_TAG?=devel
+DESTDIR?=$(shell pwd)
 
 .proto: govendor builddep ${PROTO_FILES}
 	protoc --go_out . ${PROTO_FILES}
@@ -117,3 +120,18 @@ rpm:
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
 	sudo -E docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
+
+dist:
+	tmpdir=`mktemp -d -u --suffix=skydive-pkg`; \
+	godir=$${tmpdir}/skydive-${VERSION}; \
+	skydivedir=$${godir}/src/github.com/skydive-project/skydive; \
+	mkdir -p `dirname $$skydivedir`; \
+	git clone . $$skydivedir; \
+	pushd $$skydivedir; \
+	export GOPATH=$$godir; \
+	cd $$skydivedir; \
+	echo "go take a coffee, govendor sync takes time ..."; \
+	make govendor genlocalfiles; \
+	popd; \
+	tar -C $$tmpdir --exclude=skydive-${VERSION}/src/github.com/skydive-project/skydive/.git -cvzf ${DESTDIR}/skydive-${VERSION}.tar.gz skydive-${VERSION}/src; \
+	rm -rf $$tmpdir
