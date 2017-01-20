@@ -356,6 +356,8 @@ function ShowNodeFlows(node) {
     FlowDataView.beginUpdate();
     FlowDataView.setItems([]);
     FlowDataView.endUpdate();
+    $('#flow-uuid').html('');
+    $("#flow-details").html('');
     return;
   }
 
@@ -1452,6 +1454,7 @@ function SetupPacketGenerator() {
         },{
           type: 'success'
         });
+        ShowNodeFlows(CurrentNodeDetails);
       },
       error: function(e) {
         $.notify({
