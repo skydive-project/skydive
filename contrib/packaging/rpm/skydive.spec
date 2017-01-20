@@ -31,7 +31,7 @@ Release:        %{tag}%{?dist}
 Summary:        Real-time network topology and protocols analyzer.
 License:        ASL 2.0
 URL:            https://%{import_path}
-Source0:        https://%{import_path}/archive/skydive-%{source}.tar.gz
+Source0:        https://%{import_path}/releases/download/v%{source}/skydive-%{source}.tar.gz
 BuildRequires:  systemd
 BuildRequires:  libpcap-devel libxml2-devel
 

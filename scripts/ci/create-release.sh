@@ -79,3 +79,4 @@ changelog=$(scripts/ci/extract-changelog.py CHANGELOG.md $VERSION)
 go get github.com/aktau/github-release
 github-release release --user skydive-project --repo skydive --tag ${TAG} --description "$changelog"
 github-release upload --user skydive-project --repo skydive --tag ${TAG} --name skydive --file $GOPATH/bin/skydive
+github-release upload --user skydive-project --repo skydive --tag ${TAG} --name skydive --file rpmbuild/SOURCES/skydive-${VERSION}.tar.gz
