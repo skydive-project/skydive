@@ -1,13 +1,11 @@
 apiVersion: v1
 kind: Template
 metadata:
-  creationTimestamp: null
   name: skydive
 objects:
 - apiVersion: v1
   kind: Service
   metadata:
-    creationTimestamp: null
     labels:
       app: skydive-analyzer
     name: skydive-analyzer
@@ -34,13 +32,9 @@ objects:
       tier: analyzer
     sessionAffinity: None
     type: NodePort
-  status:
-    loadBalancer: {}
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
-    creationTimestamp: null
-    generation: 1
     name: skydive-analyzer
   spec:
     replicas: 1
@@ -48,7 +42,6 @@ objects:
       app: skydive
       tier: analyzer
     strategy:
-      resources: {}
       rollingParams:
         intervalSeconds: 1
         maxSurge: 25%
@@ -58,7 +51,6 @@ objects:
       type: Rolling
     template:
       metadata:
-        creationTimestamp: null
         labels:
           app: skydive
           tier: analyzer
@@ -74,6 +66,14 @@ objects:
             value: elasticsearch
           image: skydive/skydive
           imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
           name: skydive-analyzer
           ports:
           - containerPort: 8082
@@ -82,31 +82,47 @@ objects:
             protocol: UDP
           - containerPort: 2379
             protocol: TCP
-          resources: {}
-          terminationMessagePath: /dev/termination-log
+          readinessProbe:
+            failureThreshold: 1
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
         - image: elasticsearch:2
           imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            tcpSocket:
+              port: 9200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
           name: skydive-elasticsearch
           ports:
           - containerPort: 9200
             protocol: TCP
-          resources: {}
+          readinessProbe:
+            failureThreshold: 1
+            tcpSocket:
+              port: 9200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
           securityContext:
             privileged: true
-          terminationMessagePath: /dev/termination-log
         dnsPolicy: ClusterFirst
         restartPolicy: Always
-        securityContext: {}
         terminationGracePeriodSeconds: 30
     test: false
     triggers:
     - type: ConfigChange
-  status: {}
 - apiVersion: extensions/v1beta1
   kind: DaemonSet
   metadata:
-    creationTimestamp: null
-    generation: 1
     labels:
       app: skydive
       tier: agent
@@ -118,7 +134,6 @@ objects:
         tier: agent
     template:
       metadata:
-        creationTimestamp: null
         labels:
           app: skydive
           tier: agent
@@ -136,10 +151,8 @@ objects:
           - containerPort: 8081
             hostPort: 8081
             protocol: TCP
-          resources: {}
           securityContext:
             privileged: true
-          terminationMessagePath: /dev/termination-log
           volumeMounts:
           - mountPath: /var/run/docker.sock
             name: docker
@@ -149,7 +162,6 @@ objects:
         hostNetwork: true
         hostPID: true
         restartPolicy: Always
-        securityContext: {}
         terminationGracePeriodSeconds: 30
         volumes:
         - hostPath:
@@ -161,14 +173,10 @@ objects:
 - apiVersion: v1
   kind: Route
   metadata:
-    annotations:
-      openshift.io/host.generated: "true"
-    creationTimestamp: null
     labels:
       app: skydive-analyzer
     name: skydive-analyzer
   spec:
-    host: skydive-analyzer-skydive.paas.example.com
     port:
       targetPort: api
     to:

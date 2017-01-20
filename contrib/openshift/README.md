@@ -1,6 +1,6 @@
 # OpenShift template for skydive agent
 
-This OpenShift template allows you to instanciate skydive in OpenShift.
+This OpenShift template allows you to instantiate skydive in OpenShift.
 
 Assuming you work on project skydive:
 
@@ -39,8 +39,4 @@ Expose your route:
 oc delete route skydive-analyzer
 oc expose svc skydive-analyzer
 ```
-
-## TODO
-* Parametrize template to set the number of agent
-* Paraemtrize template to set the route hostname
 
