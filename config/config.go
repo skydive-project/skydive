@@ -63,7 +63,7 @@ func init() {
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
 	cfg.SetDefault("netns.run_path", "/var/run/netns")
-	cfg.SetDefault("etcd.data_dir", "/tmp/skydive-etcd")
+	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
 	cfg.SetDefault("etcd.port", 2379)
 	cfg.SetDefault("auth.type", "noauth")
