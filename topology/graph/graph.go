@@ -662,12 +662,10 @@ func (g *Graph) AreLinked(n1 *Node, n2 *Node, m Metadata) bool {
 }
 
 func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata) *Edge {
-	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(string(n1.ID)+string(n2.ID)))
-
 	if len(m) > 0 {
-		return g.NewEdge(Identifier(u.String()), n1, n2, m)
+		return g.NewEdge(GenID(), n1, n2, m)
 	}
-	return g.NewEdge(Identifier(u.String()), n1, n2, nil)
+	return g.NewEdge(GenID(), n1, n2, nil)
 }
 
 func (g *Graph) Unlink(n1 *Node, n2 *Node) {

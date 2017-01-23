@@ -234,7 +234,9 @@ func TestBridgeOVS(t *testing.T) {
 			tv = tv.Out("Type", "ovsport", "Name", "br-test1")
 			tv = tv.Out("Type", "internal", "Name", "br-test1", "Driver", "openvswitch")
 
-			if len(tv.Values()) == 1 {
+			// we have 2 links between ovsbridge and ovsport, this
+			// results in 2 out nodes which are the same node so we Dedup
+			if len(tv.Dedup().Values()) == 1 {
 				testPassed = true
 				ws.Close()
 			}

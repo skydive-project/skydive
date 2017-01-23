@@ -106,7 +106,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 		"Docker/ContainerPID":  info.State.Pid,
 	}
 	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
-	probe.Graph.Link(n, containerNode, graph.Metadata{"RelationType": "membership"})
+	probe.Graph.Link(n, containerNode, ownershipMetadata)
 	probe.Graph.Unlock()
 
 	probe.containerMap[info.ID] = ContainerInfo{

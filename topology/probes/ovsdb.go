@@ -81,6 +81,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 			port, ok := o.uuidToPort[u]
 			if ok && !o.Graph.AreLinked(bridge, port, layer2Metadata) {
 				o.Graph.Link(bridge, port, layer2Metadata)
+				o.Graph.Link(bridge, port, ownershipMetadata)
 			} else {
 				/* will be filled later when the port update for this port will be triggered */
 				o.portBridgeQueue[u] = bridge
@@ -93,6 +94,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 		port, ok := o.uuidToPort[u]
 		if ok && !o.Graph.AreLinked(bridge, port, layer2Metadata) {
 			o.Graph.Link(bridge, port, layer2Metadata)
+			o.Graph.Link(bridge, port, ownershipMetadata)
 		} else {
 			/* will be filled later when the port update for this port will be triggered */
 			o.portBridgeQueue[u] = bridge

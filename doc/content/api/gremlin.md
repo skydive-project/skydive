@@ -12,7 +12,7 @@ as query language for topology and flow requests.
 A Gremlin expression is a chain of steps that are evaluated from left to right.
 In the context of Skydive nodes stand for interfaces, ports, bridges,
 namespaces, etc. Links stand for any kind of relation between two nodes,
-ownership(host), membership(containers), layer2, etc.
+ownership(host, netns, ovsbridge, containers), layer2, etc.
 
 The following expression will return all the OpenvSwitch ports belonging to
 an OpenvSwitch bridge named `br-int`.
