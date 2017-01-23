@@ -31,6 +31,8 @@
   <script src="/statics/js/discovery.js"></script>
   <script src="/statics/js/conversation.js"></script>
   <script src="/statics/js/skydive.js"></script>
+  <script src="/statics/js/capture.js"></script>
+  <script src="/statics/js/topology.js"></script>
 
   <script src="/statics/js/jquery.event.drag-2.3.0.js"></script>
   <script src="/statics/js/slick.core.js"></script>
@@ -41,6 +43,7 @@
   <!--<script src="/statics/js/dev/vue-2.1.9.js"></script>-->
   <script src="/statics/js/components/node-selector.js"></script>
   <script src="/statics/js/components/capture-form.js"></script>
+  <script src="/statics/js/components/capture-list.js"></script>
   <script src="/statics/js/vue-sidebar.js"></script>
 
   <script>
@@ -109,11 +112,7 @@
           <div class="tab-pane active" id="1a">
             <div class="left-cont ">
               <div class="left-panel">
-                <div class="sub-left-panel" id="metadata-panel">
-                  <div id="captures">
-                    <ul class="capture-list"></ul>
-                  </div>
-                </div>
+                <capture-list></capture-list>
                 <capture-form></capture-form>
               </div>
             </div>

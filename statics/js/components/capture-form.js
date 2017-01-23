@@ -97,24 +97,15 @@ Vue.component('capture-form', {
         this.resetQueryNodes();
         return;
       }
-      $.ajax({
-        dataType: "json",
-        url: '/api/topology',
-        data: JSON.stringify({"GremlinQuery": newQuery}),
-        contentType: "application/json; charset=utf-8",
-        method: 'POST',
-        success: function(data) {
+      TopologyAPI.query(newQuery)
+        .then(function(nodes) {
           self.resetQueryNodes();
-          // Result can be [Node] or [[Node, Node]]
-          if (data.length > 0 && data[0] instanceof Array)
-            data = data[0];
-          self.queryNodes = data;
+          self.queryNodes = nodes;
           self.highlightQueryNodes(true);
-        },
-        error: function() {
+        })
+        .fail(function() {
           self.resetQueryNodes();
-        }
-      });
+        });
     }
 
   },
@@ -133,29 +124,10 @@ Vue.component('capture-form', {
         $.notify({message: this.queryError}, {type: 'danger'});
         return;
       }
-      $.ajax({
-        dataType: "json",
-        url: '/api/capture',
-        data: JSON.stringify({"GremlinQuery": this.query, "Name": this.name, "Description": this.desc}),
-        contentType: "application/json; charset=utf-8",
-        method: 'POST',
-        success: function() {
-          $.notify({
-            message: 'Capture created'
-          },{
-            type: 'success'
-          });
-          $("#capture").slideToggle(500, function () {});
+      CaptureAPI.create(this.query, this.name, this.desc)
+        .then(function() {
           self.reset();
-        },
-        error: function(e) {
-          $.notify({
-            message: 'Capture create error: ' + e.responseText
-          },{
-            type: 'danger'
-          });
-        }
-      });
+        });
     },
 
     resetQueryNodes: function() {

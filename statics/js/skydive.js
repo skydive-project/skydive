@@ -1292,90 +1292,6 @@ function StartCheckAPIAccess() {
   }, 5000);
 }
 
-var Captures = {};
-function RefreshCaptureList() {
-  if (!connected)
-    return;
-
-  $.ajax({
-    dataType: "json",
-    url: '/api/capture',
-    contentType: "application/json; charset=utf-8",
-    method: 'GET',
-    error: function(e) {
-
-      $.notify({
-        message: 'Capture list error: ' + e.responseText
-      },{
-        type: 'danger'
-      });
-    },
-    success: function(data) {
-      var clist = $('.capture-list');
-
-      var key;
-      for (key in Captures) {
-        if (! (key in data)) {
-          var id = "#" + key;
-          $(id).remove();
-          delete Captures[key];
-        }
-      }
-
-      for (key in data) {
-        if (!(key in Captures)) {
-          Captures[key] = data[key];
-          var li = $('<li/>', {id: key})
-            .addClass('capture-item')
-            .appendTo(clist);
-
-          var item = $('<div/>').appendTo(li);
-          var capture = $('<div/>').appendTo(item);
-          var title_style = "capture-title";
-
-          if (!data[key].Count) {
-            title_style = "passive-capture-title";
-          }
-          var title = $('<div/>').addClass(title_style).html(key).appendTo(capture);
-          var trash = $('<div/>').addClass("capture-trash").css({"text-align": "right", "float": "right"}).appendTo(title);
-
-          $('<div/>').addClass("capture-content").html("Gremlin Query: " + data[key].GremlinQuery).appendTo(capture);
-          if (data[key].Name)
-            $('<div/>').addClass("capture-content").html("Name: " + data[key].Name).appendTo(capture);
-          if (data[key].Description)
-            $('<div/>').addClass("capture-content").html("Description: " + data[key].Description).appendTo(capture);
-          if (data[key].Type)
-            $('<div/>').addClass("capture-content").html("Type: " + data[key].Type).appendTo(capture);
-
-          var img = $('<img/>', {src:trashImg, width: 24, height: 24}).appendTo(trash);
-          img.css('cursor', 'pointer').click(DeleteCapture);
-        }
-      }
-    }
-  });
-}
-
-function DeleteCapture() {
-  var li = $(this).closest('li');
-  var id = li.attr('id');
-
-  $.ajax({
-    url: '/api/capture/' + id + '/',
-    method: 'DELETE',
-    error: function(e) {
-      if (e.status == 200)
-        return;
-      $.notify({
-        message: 'Capture delete error: ' + e.responseText
-      },{
-        type: 'danger'
-      });
-    }
-  });
-  li.remove();
-  delete Captures[id];
-}
-
 function SetupNodeDetails() {
   $("#node-id").mouseenter(function() {
     var id = $("#node-id").html();
@@ -1444,10 +1360,6 @@ function SetupPacketGenerator() {
       }
     });
   });
-}
-
-function SetupCaptureList() {
-  setInterval(RefreshCaptureList, 1000);
 }
 
 function SetupFlowRefresh() {
@@ -1698,7 +1610,6 @@ $(document).ready(function() {
   if (Service != "agent") {
     SetupTimeSlider();
     SetupFlowRefresh();
-    SetupCaptureList();
     SetupNodeDetails();
     SetupFlowGrid();
     SetupControlButtons();

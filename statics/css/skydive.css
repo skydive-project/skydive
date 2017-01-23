@@ -282,11 +282,40 @@ ul.capture-list {
 
 li.capture-item {
   padding: 0px;
-  padding-bottom: 25px;
+  padding-bottom: 10px;
+}
+
+.capture-item dl {
+  margin-bottom: 0px;
+}
+
+.capture-item dt {
+  width: 60px;
+}
+
+.capture-item dd {
+  margin-left: 70px;
+}
+
+.capture-item dd.query {
+  font-family: monospace;
+  font-size: 11px;
+  background: #333;
+  border-radius: 3px;
+  word-break: break-all
 }
 
 .capture-title {
   font-weight: bold;
+  padding-bottom: 5px;
+}
+
+.capture-delete {
+  float: right;
+  color: #a94442 !important;
+  cursor: pointer;
+  font-size: 1.3em;
+  font-style: normal;
 }
 
 .passive-capture-title {
