@@ -603,11 +603,6 @@
 			"revision": "7b486932bea218beb6e85f7ed28650d283dd6ce6"
 		},
 		{
-			"checksumSHA1": "m6AqTIVXWc1j/Lks9D/VkvU/lTQ=",
-			"path": "github.com/go-gremlin/gremlin",
-			"revision": "e74ebaf231668d5133d3794ac6cb654309da5a8f"
-		},
-		{
 			"checksumSHA1": "KW2AI9WtxFZTNzewuw8eA+TPFd0=",
 			"comment": "v0.1-126-gff05bbb",
 			"path": "github.com/gogo/protobuf/proto",
@@ -1073,11 +1068,6 @@
 			"checksumSHA1": "95gBkstnaYEQv3HefuJL+kj4lW4=",
 			"path": "github.com/safchain/ethtool",
 			"revision": "680f7a033d0a34d012f46958d85324913d792f21"
-		},
-		{
-			"checksumSHA1": "TvF3ym5sZVNqGlUOS9HgOIl/sZM=",
-			"path": "github.com/satori/go.uuid",
-			"revision": "d41af8bb6a7704f00bc3b7cba9355ae6a5a80048"
 		},
 		{
 			"checksumSHA1": "/HwlJqv7kKCmWqX88A2rehLiOic=",

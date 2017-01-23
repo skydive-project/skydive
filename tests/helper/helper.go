@@ -304,10 +304,6 @@ func NewGraph(t *testing.T) *graph.Graph {
 	var backend graph.GraphBackend
 	var err error
 	switch graphBackend {
-	case "gremlin-ws":
-		backend, err = graph.NewGremlinBackend("ws://127.0.0.1:8182")
-	case "gremlin-rest":
-		backend, err = graph.NewGremlinBackend("http://127.0.0.1:8182?gremlin=")
 	case "elasticsearch":
 		backend, err = graph.NewElasticSearchBackend("127.0.0.1", "9200", 10, 60, 1)
 		if err == nil {

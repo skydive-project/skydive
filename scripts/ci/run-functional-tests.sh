@@ -10,20 +10,6 @@ dir="$(dirname "$0")"
 GOFLAGS="-race"
 
 case "$BACKEND" in
-  "gremlin-ws")
-    . "${dir}/install-gremlin.sh"
-    cd ${GREMLINPATH}
-    ${GREMLINPATH}/bin/gremlin-server.sh ${GREMLINPATH}/conf/gremlin-server.yaml &
-    sleep 5
-    ARGS="-graph.backend gremlin-ws"
-    ;;
-  "gremlin-rest")
-    . "${dir}/install-gremlin.sh"
-    cd ${GREMLINPATH}
-    ${GREMLINPATH}/bin/gremlin-server.sh ${GREMLINPATH}/conf/gremlin-server-rest-modern.yaml &
-    sleep 5
-    ARGS="-graph.backend gremlin-rest"
-    ;;
   "orientdb")
     . "${dir}/install-orientdb.sh"
     cd ${ORIENTDBPATH}
