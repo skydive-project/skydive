@@ -91,7 +91,7 @@ func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 		updateHandler: updateHandler,
 		expireHandler: expireHandler,
 	}
-	atomic.StoreInt64(&t.tableClock, time.Now().Unix())
+	atomic.StoreInt64(&t.tableClock, time.Now().UTC().Unix())
 	return t
 }
 
@@ -185,7 +185,7 @@ func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
 /* Return a new flow.Table that contain <last> active flows */
 func (ft *Table) FilterLast(last time.Duration) []*Flow {
 	var flows []*Flow
-	selected := time.Now().Unix() - int64((last).Seconds())
+	selected := time.Now().UTC().Unix() - int64((last).Seconds())
 	ft.RLock()
 	defer ft.RUnlock()
 	for _, f := range ft.table {
@@ -223,7 +223,7 @@ func (ft *Table) expired(expireBefore int64) {
 }
 
 func (ft *Table) Updated(now time.Time) {
-	timepoint := now.Unix() - int64((ft.updateHandler.every).Seconds())
+	timepoint := now.UTC().Unix() - int64((ft.updateHandler.every).Seconds())
 	ft.RLock()
 	ft.updated(timepoint)
 	ft.RUnlock()
@@ -277,7 +277,7 @@ func (ft *Table) expireNow() {
 }
 
 func (ft *Table) Expire(now time.Time) {
-	timepoint := now.Unix() - int64((ft.expireHandler.every).Seconds())
+	timepoint := now.UTC().Unix() - int64((ft.expireHandler.every).Seconds())
 	ft.Lock()
 	ft.expired(timepoint)
 	ft.Unlock()
@@ -414,7 +414,7 @@ func (ft *Table) Run() {
 				ft.reply <- ft.onQuery(query)
 			}
 		case now := <-nowTicker.C:
-			atomic.StoreInt64(&ft.tableClock, now.Unix())
+			atomic.StoreInt64(&ft.tableClock, now.UTC().Unix())
 		case packets := <-ft.PacketsChan:
 			ft.FlowPacketsToFlow(packets)
 		}

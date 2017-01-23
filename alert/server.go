@@ -243,7 +243,7 @@ type AlertMessage struct {
 func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
 	msg := AlertMessage{
 		UUID:       al.UUID,
-		Timestamp:  time.Now(),
+		Timestamp:  time.Now().UTC(),
 		ReasonData: data,
 	}
 

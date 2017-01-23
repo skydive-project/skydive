@@ -357,11 +357,11 @@ func (t *GraphTraversal) Error() error {
 
 func parseTimeContext(param string) (time.Time, error) {
 	if at, err := time.Parse(time.RFC1123, param); err == nil {
-		return at, nil
+		return at.UTC(), nil
 	}
 
 	if d, err := time.ParseDuration(param); err == nil {
-		return time.Now().Add(d), nil
+		return time.Now().UTC().Add(d), nil
 	}
 
 	return time.Time{}, errors.New("Time must be in RFC1123 or in Go Duration format")
@@ -394,7 +394,7 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	t.Graph.RLock()
 	defer t.Graph.RUnlock()
 
-	if at.After(time.Now()) {
+	if at.After(time.Now().UTC()) {
 		return &GraphTraversal{error: errors.New("Sorry, I can't predict the future")}
 	}
 

@@ -105,7 +105,7 @@ func (b *ElasticSearchBackend) getTimedQuery(t *time.Time) []map[string]interfac
 	if t != nil {
 		t2 = *t
 	} else {
-		t2 = time.Now()
+		t2 = time.Now().UTC()
 	}
 
 	return []map[string]interface{}{
@@ -253,7 +253,7 @@ func (b *ElasticSearchBackend) archiveElement(kind string, id Identifier) bool {
 		return false
 	}
 
-	obj["DeletedAt"] = time.Now().Unix()
+	obj["DeletedAt"] = time.Now().UTC().Unix()
 	obj["CreatedAt"] = int64(obj["CreatedAt"].(float64))
 
 	// Archive the element with a different ES id
@@ -266,7 +266,7 @@ func (b *ElasticSearchBackend) archiveElement(kind string, id Identifier) bool {
 }
 
 func (b *ElasticSearchBackend) deleteElement(kind string, id string) bool {
-	obj := map[string]interface{}{"DeletedAt": time.Now().Unix()}
+	obj := map[string]interface{}{"DeletedAt": time.Now().UTC().Unix()}
 
 	if err := b.client.UpdateWithPartialDoc(kind, id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while marking %s as deleted %s: %s", kind, id, err.Error())
@@ -313,7 +313,7 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 
 func (b *ElasticSearchBackend) AddNode(n *Node) bool {
 	obj := b.mapNode(n)
-	obj["CreatedAt"] = time.Now().Unix()
+	obj["CreatedAt"] = time.Now().UTC().Unix()
 	obj["DeletedAt"] = 0
 
 	if err := b.client.Index("node", string(n.ID), obj); err != nil {
@@ -382,7 +382,7 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edg
 }
 
 func (b *ElasticSearchBackend) AddEdge(e *Edge) bool {
-	now := time.Now().Unix()
+	now := time.Now().UTC().Unix()
 	obj := b.mapEdge(e)
 	obj["CreatedAt"] = now
 	obj["DeletedAt"] = 0

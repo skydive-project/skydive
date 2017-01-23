@@ -641,9 +641,9 @@ func (f *FlowTraversalStep) Metrics() *MetricsTraversalStep {
 
 		// contruct metrics filter according to the time context and the since
 		// predicate given to Flows.
-		fr := flow.Range{To: context.Time.Unix()}
+		fr := flow.Range{To: context.Time.UTC().Unix()}
 		if f.since.Seconds > 0 {
-			fr.From = context.Time.Unix() - f.since.Seconds
+			fr.From = context.Time.UTC().Unix() - f.since.Seconds
 		}
 		metricFilter := flow.NewFilterIncludedIn(fr, "")
 
@@ -797,14 +797,14 @@ func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *flow.FlowSearchQuery, time
 	var timeFilter *flow.Filter
 	if s.hasSinceParam() {
 		tr := flow.Range{
-			From: timeContext.Unix() - s.context.Params[0].(traversal.Since).Seconds,
-			To:   timeContext.Unix(),
+			From: timeContext.UTC().Unix() - s.context.Params[0].(traversal.Since).Seconds,
+			To:   timeContext.UTC().Unix(),
 		}
 		// flow need to have at least one metric included in the time range
 		timeFilter = flow.NewFilterActiveIn(tr, "Metric.")
 	} else {
 		// flow having at least one metric at that time meaning being active
-		timeFilter = flow.NewFilterActiveAt(timeContext.Unix(), "Metric.")
+		timeFilter = flow.NewFilterActiveAt(timeContext.UTC().Unix(), "Metric.")
 	}
 	fsq.Filter = flow.NewAndFilter(fsq.Filter, timeFilter)
 }

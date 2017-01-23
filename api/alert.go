@@ -50,7 +50,7 @@ func NewAlert() *Alert {
 
 	return &Alert{
 		UUID:       id.String(),
-		CreateTime: time.Now(),
+		CreateTime: time.Now().UTC(),
 	}
 }
 

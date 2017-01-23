@@ -133,7 +133,7 @@ func orientDBDocumentToEdge(doc orientdb.Document) *Edge {
 func (o *OrientDBBackend) AddNode(n *Node) bool {
 	doc := graphElementToOrientDBDocument(n.graphElement)
 	doc["@class"] = "Node"
-	doc["CreatedAt"] = time.Now().String()
+	doc["CreatedAt"] = time.Now().UTC().String()
 	_, err := o.client.CreateDocument(doc)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
@@ -143,7 +143,7 @@ func (o *OrientDBBackend) AddNode(n *Node) bool {
 }
 
 func (o *OrientDBBackend) DelNode(n *Node) bool {
-	query := fmt.Sprintf("UPDATE Node SET DeletedAt = '%s' WHERE DeletedAt IS NULL AND ID = '%s'", time.Now(), n.ID)
+	query := fmt.Sprintf("UPDATE Node SET DeletedAt = '%s' WHERE DeletedAt IS NULL AND ID = '%s'", time.Now().UTC(), n.ID)
 	docs, err := o.client.Sql(query)
 	if err != nil || (err == nil && len(docs) != 1) {
 		logging.GetLogger().Errorf("Error while deleting node %s: %s (sql: %s)", n.ID, err.Error(), query)
@@ -185,7 +185,7 @@ func (o *OrientDBBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edge) {
 }
 
 func (o *OrientDBBackend) AddEdge(e *Edge) bool {
-	query := fmt.Sprintf("CREATE EDGE Link FROM (SELECT FROM Node WHERE DeletedAt IS NULL AND ID = '%s') TO (SELECT FROM Node WHERE DeletedAt IS NULL AND ID = '%s') SET %s, Parent = '%s', Child = '%s', CreatedAt = '%s' RETRY 100 WAIT 20", e.parent, e.child, graphElementToOrientDBSetString(e.graphElement), e.parent, e.child, time.Now().String())
+	query := fmt.Sprintf("CREATE EDGE Link FROM (SELECT FROM Node WHERE DeletedAt IS NULL AND ID = '%s') TO (SELECT FROM Node WHERE DeletedAt IS NULL AND ID = '%s') SET %s, Parent = '%s', Child = '%s', CreatedAt = '%s' RETRY 100 WAIT 20", e.parent, e.child, graphElementToOrientDBSetString(e.graphElement), e.parent, e.child, time.Now().UTC().String())
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s (sql: %s)", e.ID, err.Error(), query)
@@ -195,7 +195,7 @@ func (o *OrientDBBackend) AddEdge(e *Edge) bool {
 }
 
 func (o *OrientDBBackend) DelEdge(e *Edge) bool {
-	query := fmt.Sprintf("UPDATE Link SET DeletedAt = '%s' WHERE DeletedAt IS NULL AND ID = '%s'", time.Now(), e.ID)
+	query := fmt.Sprintf("UPDATE Link SET DeletedAt = '%s' WHERE DeletedAt IS NULL AND ID = '%s'", time.Now().UTC(), e.ID)
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while deleting edge %s: %s", e.ID, err.Error())
@@ -250,7 +250,7 @@ func (o *OrientDBBackend) updateGraphElement(i interface{}) bool {
 	switch i.(type) {
 	case *Node:
 		node := i.(*Node)
-		now := time.Now()
+		now := time.Now().UTC()
 		edges := o.GetNodeEdges(node, &now)
 
 		if !o.DelNode(node) {
@@ -307,7 +307,7 @@ func (o *OrientDBBackend) SetMetadata(i interface{}, m Metadata) bool {
 func (*OrientDBBackend) getTimeClause(t *time.Time) string {
 	var t2 time.Time
 	if t == nil {
-		t2 = time.Now()
+		t2 = time.Now().UTC()
 	} else {
 		t2 = *t
 	}

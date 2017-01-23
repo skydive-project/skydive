@@ -105,7 +105,7 @@ func TestFlowStorage(t *testing.T) {
 	defer client.Delete("capture", capture.ID())
 
 	time.Sleep(3 * time.Second)
-	now := time.Now()
+	now := time.Now().UTC()
 
 	setupCmds := []helper.Cmd{
 		{"ovs-vsctl add-br br-sflow", true},
