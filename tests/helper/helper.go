@@ -291,13 +291,11 @@ func ExecCmds(t *testing.T, cmds ...Cmd) {
 	for _, cmd := range cmds {
 		args := strings.Split(cmd.Cmd, " ")
 		command := exec.Command(args[0], args[1:]...)
+		logging.GetLogger().Debugf("Executing command %s with args %+v", args[0], args[1:])
 		stdouterr, err := command.CombinedOutput()
+		logging.GetLogger().Debugf("Command returned %s", stdouterr)
 		if err != nil && cmd.Check {
-			output := ""
-			if testing.Verbose() {
-				output = string(stdouterr)
-			}
-			t.Fatal("cmd : ("+cmd.Cmd+") ", err.Error(), output)
+			t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error())
 		}
 	}
 }

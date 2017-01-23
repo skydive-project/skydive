@@ -116,6 +116,8 @@ func NewNetNsNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetNsNetLinkTopo
 }
 
 func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.Node {
+	logging.GetLogger().Debugf("Register Network Namespace: %s", path)
+
 	// When a new network namespace has been seen by inotify, the path to
 	// the namespace may still be a regular file, not a bind mount to the
 	// file in /proc/<pid>/tasks/<tid>/ns/net yet, so we wait a bit for the
@@ -238,12 +240,13 @@ func (u *NetNSProbe) start() {
 		if err == nil {
 			break
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Second)
 	}
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a new Watcher: %s", err.Error())
+		return
 	}
 
 	err = watcher.Add(u.runPath)
@@ -253,6 +256,7 @@ func (u *NetNSProbe) start() {
 	}
 
 	u.initialize()
+	logging.GetLogger().Debugf("NetNSProbe initialized")
 
 	for {
 		select {
