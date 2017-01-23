@@ -312,12 +312,15 @@ Key can be any attributes of the Flow data structure :
 * `BNodeTID`
 * `LayersPath`
 * `Application`
+* `Link`
 * `Link.A`
 * `Link.B`
 * `Link.Protocol`
+* `Network`
 * `Network.A`
 * `Network.B`
 * `Network.Protocol`
+* `Transport`
 * `Transport.A`
 * `Transport.B`
 * `Transport.Protocol`
@@ -330,6 +333,8 @@ Key can be any attributes of the Flow data structure :
 
 Lt, Lte, Gt, Gte predicates can be used on numerical fields.
 See [Flow Schema](/api/flows/) for further explanations.
+
+Link, Network and Transport keys shall be matched with any of A or B by using OR operator.
 
 ### Flows Sort step
 

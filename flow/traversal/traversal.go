@@ -424,11 +424,26 @@ func paramsToFilter(s ...interface{}) (*flow.Filter, error) {
 				},
 			)
 		case string:
-			andFilter.Filters = append(andFilter.Filters,
-				&flow.Filter{
-					TermStringFilter: &flow.TermStringFilter{Key: k, Value: v},
-				},
-			)
+			if k == "Network" || k == "Link" || k == "Transport" {
+				orFilters := &flow.BoolFilter{Op: flow.BoolFilterOp_OR}
+				for _, val := range [2]string{".A", ".B"} {
+					orFilters.Filters = append(orFilters.Filters,
+						&flow.Filter{
+							TermStringFilter: &flow.TermStringFilter{Key: k + val, Value: v},
+						})
+				}
+				andFilter.Filters = append(andFilter.Filters,
+					&flow.Filter{
+						BoolFilter: orFilters,
+					},
+				)
+			} else {
+				andFilter.Filters = append(andFilter.Filters,
+					&flow.Filter{
+						TermStringFilter: &flow.TermStringFilter{Key: k, Value: v},
+					},
+				)
+			}
 		case int64:
 			andFilter.Filters = append(andFilter.Filters,
 				&flow.Filter{
