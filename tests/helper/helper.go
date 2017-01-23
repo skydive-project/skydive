@@ -30,7 +30,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"flag"
@@ -45,17 +44,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
-	cmd "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -63,10 +61,6 @@ import (
 type Cmd struct {
 	Cmd   string
 	Check bool
-}
-
-type GremlinQueryHelper struct {
-	authOptions *shttp.AuthenticationOpts
 }
 
 var (
@@ -350,64 +344,6 @@ func CleanGraph(g *graph.Graph) {
 	g.DelHostGraph(hostname)
 }
 
-func (g *GremlinQueryHelper) GremlinQuery(t *testing.T, query string, values interface{}) {
-	body, err := cmd.SendGremlinQuery(g.authOptions, query)
-	if err != nil {
-		t.Fatalf("Error while executing query %s: %s", query, err.Error())
-	}
-
-	err = json.NewDecoder(body).Decode(values)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-}
-
-func (g *GremlinQueryHelper) GetNodesFromGremlinReply(t *testing.T, query string) []graph.Node {
-	var values []interface{}
-	g.GremlinQuery(t, query, &values)
-	nodes := make([]graph.Node, len(values))
-	for i, node := range values {
-		if err := nodes[i].Decode(node); err != nil {
-			t.Fatal(err.Error())
-		}
-	}
-	return nodes
-}
-
-func (g *GremlinQueryHelper) GetNodeFromGremlinReply(t *testing.T, query string) *graph.Node {
-	nodes := g.GetNodesFromGremlinReply(t, query)
-	if len(nodes) > 0 {
-		return &nodes[0]
-	}
-	return nil
-}
-
-func (g *GremlinQueryHelper) GetFlowsFromGremlinReply(t *testing.T, query string) (flows []*flow.Flow) {
-	g.GremlinQuery(t, query, &flows)
-	return
-}
-
-func (g *GremlinQueryHelper) GetFlowMetricFromGremlinReply(t *testing.T, query string) flow.FlowMetric {
-	body, err := cmd.SendGremlinQuery(g.authOptions, query)
-	if err != nil {
-		t.Fatalf("%s: %s", query, err.Error())
-	}
-
-	var metric flow.FlowMetric
-	err = json.NewDecoder(body).Decode(&metric)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	return metric
-}
-
-func NewGremlinQueryHelper(authOptions *shttp.AuthenticationOpts) *GremlinQueryHelper {
-	return &GremlinQueryHelper{
-		authOptions: authOptions,
-	}
-}
-
 func FilterIPv6AddrAnd(flows []*flow.Flow, A, B string) (r []*flow.Flow) {
 	for _, f := range flows {
 		if f.Network == nil || (f.Network.Protocol != flow.FlowProtocol_IPV6) {
@@ -574,4 +510,42 @@ func WSConnect(endpoint string, timeout int, onReady func(*websocket.Conn)) (*we
 	ws.SetPingHandler(h)
 
 	return ws, nil
+}
+
+func SendPCAPFile(filename string, socket string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("Failed to open file %s: %s", filename, err.Error())
+	}
+
+	stats, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("Failed to get informations for %s: %s", filename, err.Error())
+	}
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", socket)
+	if err != nil {
+		return fmt.Errorf("Failed to parse address %s: %s", tcpAddr.String(), err.Error())
+	}
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to TCP socket %s: %s", tcpAddr.String(), err.Error())
+	}
+
+	unixFile, err := conn.File()
+	if err != nil {
+		return fmt.Errorf("Failed to get file description from socket %s: %s", socket, err.Error())
+	}
+	defer unixFile.Close()
+
+	dst := unixFile.Fd()
+	src := file.Fd()
+
+	_, err = syscall.Sendfile(int(dst), int(src), nil, int(stats.Size()))
+	if err != nil {
+		logging.GetLogger().Fatalf("Failed to send file %s to socket %s: %s", filename, socket, err.Error())
+	}
+
+	return nil
 }

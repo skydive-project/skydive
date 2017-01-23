@@ -354,8 +354,38 @@ func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 	return true
 }
 
+func (g *Graph) DelMetadata(i interface{}, k string) bool {
+	var m Metadata
+	ge := graphEvent{element: i}
+
+	switch i.(type) {
+	case *Node:
+		m = i.(*Node).graphElement.metadata
+		ge.kind = nodeUpdated
+	case *Edge:
+		m = i.(*Edge).graphElement.metadata
+		ge.kind = edgeUpdated
+	}
+
+	if _, ok := m[k]; !ok {
+		return false
+	}
+
+	delete(m, k)
+	if !g.backend.SetMetadata(i, m) {
+		return false
+	}
+
+	g.notifyEvent(ge)
+	return true
+}
+
 func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
 	t.metadata[k] = v
+}
+
+func (t *MetadataTransaction) DelMetadata(k string, v interface{}) {
+	delete(t.metadata, k)
 }
 
 func (t *MetadataTransaction) Commit() {
@@ -810,6 +840,10 @@ func (g *Graph) WithContext(c GraphContext) (*Graph, error) {
 
 func (g *Graph) GetContext() GraphContext {
 	return g.context
+}
+
+func (g *Graph) GetHost() string {
+	return g.host
 }
 
 func NewGraph(hostID string, backend GraphBackend) *Graph {

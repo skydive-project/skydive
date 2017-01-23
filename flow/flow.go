@@ -54,7 +54,10 @@ type FlowPacket struct {
 }
 
 // FlowPackets represents a suite of parent/child FlowPacket
-type FlowPackets []FlowPacket
+type FlowPackets struct {
+	Packets   []FlowPacket
+	Timestamp int64
+}
 
 func (x FlowProtocol) Value() int32 {
 	return int32(x)
@@ -378,14 +381,14 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 
 // FlowPacketsFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
-func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64) FlowPackets {
+func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64) *FlowPackets {
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
 		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
 		logging.GetLogger().Debug((*packet).Dump())
 		return nil
 	}
 
-	var flowPackets FlowPackets
+	flowPackets := &FlowPackets{Timestamp: t}
 
 	packetData := (*packet).Data()
 	packetLayers := (*packet).Layers()
@@ -420,7 +423,7 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64) FlowPac
 			fallthrough
 		case layers.LayerTypeVXLAN, layers.LayerTypeMPLS, layers.LayerTypeGeneve:
 			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
-			flowPackets = append(flowPackets, FlowPacket{gopacket: &p, length: topLayerLength})
+			flowPackets.Packets = append(flowPackets.Packets, FlowPacket{gopacket: &p, length: topLayerLength})
 
 			// subtract the current encapsulation header length as we are going to change the
 			// encapsulation layer
@@ -436,11 +439,11 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64) FlowPac
 		}
 	}
 
-	if len(flowPackets) > 0 {
+	if len(flowPackets.Packets) > 0 {
 		p := gopacket.NewPacket(packetData[start:], topLayer.LayerType(), gopacket.NoCopy)
-		flowPackets = append(flowPackets, FlowPacket{gopacket: &p, length: 0})
+		flowPackets.Packets = append(flowPackets.Packets, FlowPacket{gopacket: &p, length: 0})
 	} else {
-		flowPackets = append(flowPackets, FlowPacket{gopacket: packet, length: outerLength})
+		flowPackets.Packets = append(flowPackets.Packets, FlowPacket{gopacket: packet, length: outerLength})
 	}
 
 	return flowPackets
@@ -448,8 +451,8 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64) FlowPac
 
 // FlowPacketsFromSFlowSample returns an array of FlowPackets as a sample
 // contains mutlple records which generate a FlowPackets each.
-func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample) []FlowPackets {
-	var flowPacketsSet []FlowPackets
+func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64) []*FlowPackets {
+	var flowPacketsSet []*FlowPackets
 
 	for _, rec := range sample.Records {
 		switch rec.(type) {
@@ -462,7 +465,7 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample) []FlowPackets {
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
 		// each record can generate multiple FlowPacket in case of encapsulation
-		if flowPackets := FlowPacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved)); len(flowPackets) > 0 {
+		if flowPackets := FlowPacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), t); len(flowPackets.Packets) > 0 {
 			flowPacketsSet = append(flowPacketsSet, flowPackets)
 		}
 	}

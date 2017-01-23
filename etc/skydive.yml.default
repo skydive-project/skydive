@@ -95,6 +95,9 @@ agent:
       # gopacket probe will use either pcap or afpacket according to the type of
       # the capture. Default is afpacket.
       # - gopacket
+      # pcapsocket probe creates a TCP socket where PCAP traces can
+      # be written into
+      # - pcapsocket
   metadata:
     info: This is compute node
 
@@ -131,7 +134,6 @@ opencontrail:
   # port: 8086
   # UDP dest port for MPLS traffic
   # mpls_udp_port: 51234
-
 
 storage:
   elasticsearch:

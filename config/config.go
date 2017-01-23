@@ -74,6 +74,9 @@ func init() {
 	cfg.SetDefault("storage.orientdb.password", "root")
 	cfg.SetDefault("openstack.endpoint_type", "public")
 	cfg.SetDefault("agent.topology.probes", []string{"netlink", "netns"})
+	cfg.SetDefault("agent.flow.pcapsocket.bind_address", "127.0.0.1")
+	cfg.SetDefault("agent.flow.pcapsocket.min_port", 8100)
+	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
 

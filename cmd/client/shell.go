@@ -23,7 +23,6 @@
 package client
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -55,18 +54,10 @@ var (
 )
 
 func actionGremlinQuery(s *Session, query string) error {
-	body, err := SendGremlinQuery(&s.authenticationOpts, query)
-	if err != nil {
-		return err
-	}
-
 	var values interface{}
 
-	decoder := json.NewDecoder(body)
-	decoder.UseNumber()
-
-	err = decoder.Decode(&values)
-	if err != nil {
+	queryHelper := NewGremlinQueryHelper(&s.authenticationOpts)
+	if err := queryHelper.Query(query, &values); err != nil {
 		return err
 	}
 

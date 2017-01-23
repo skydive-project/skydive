@@ -64,7 +64,7 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *FlowHandler
 
 type Table struct {
 	sync.RWMutex
-	PacketsChan   chan FlowPackets
+	PacketsChan   chan *FlowPackets
 	table         map[string]*Flow
 	stats         map[string]*FlowMetric
 	flush         chan bool
@@ -82,7 +82,7 @@ type Table struct {
 
 func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 	t := &Table{
-		PacketsChan:   make(chan FlowPackets, 1000),
+		PacketsChan:   make(chan *FlowPackets, 1000),
 		table:         make(map[string]*Flow),
 		stats:         make(map[string]*FlowMetric),
 		flush:         make(chan bool),
@@ -358,22 +358,27 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string) *Flow {
+func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string, t int64) *Flow {
 	key := FlowKeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.GetOrCreateFlow(key)
 	if new {
-		flow.Init(key, ft.GetTime(), packet.gopacket, packet.length, ft.nodeTID, parentUUID)
+		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID)
 	} else {
-		flow.Update(ft.GetTime(), packet.gopacket, packet.length)
+		flow.Update(t, packet.gopacket, packet.length)
 	}
 	return flow
 }
 
-func (ft *Table) FlowPacketsToFlow(flowPackets FlowPackets) {
+func (ft *Table) FlowPacketsToFlow(flowPackets *FlowPackets) {
+	t := flowPackets.Timestamp
+	if t == -1 {
+		t = ft.GetTime()
+	}
+
 	var parentUUID string
-	logging.GetLogger().Debugf("%d FlowPackets received for capture node %s", len(flowPackets), ft.nodeTID)
-	for _, packet := range flowPackets {
-		parentUUID = ft.FlowPacketToFlow(&packet, parentUUID).UUID
+	logging.GetLogger().Debugf("%d FlowPackets received for capture node %s", len(flowPackets.Packets), ft.nodeTID)
+	for _, packet := range flowPackets.Packets {
+		parentUUID = ft.FlowPacketToFlow(&packet, parentUUID, t).UUID
 	}
 }
 
@@ -415,7 +420,7 @@ func (ft *Table) Run() {
 	}
 }
 
-func (ft *Table) Start() chan FlowPackets {
+func (ft *Table) Start() chan *FlowPackets {
 	go ft.Run()
 	return ft.PacketsChan
 }

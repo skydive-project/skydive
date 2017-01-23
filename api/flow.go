@@ -272,9 +272,8 @@ func (f *FlowApi) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterFlowApi(s string, f *flow.Table, st storage.Storage, r *shttp.Server) {
+func RegisterFlowApi(f *flow.Table, st storage.Storage, r *shttp.Server) {
 	fa := &FlowApi{
-		Service:   s,
 		FlowTable: f,
 		Storage:   st,
 	}

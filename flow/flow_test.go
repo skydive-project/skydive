@@ -37,7 +37,7 @@ import (
 func TestFlowSimple(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.FlowPacketsToFlow(flowPackets)
 
 	flows := table.GetFlows(nil).GetFlows()
@@ -52,7 +52,7 @@ func TestFlowSimple(t *testing.T) {
 func TestFlowSimpleIPv6(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, IPv6, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.FlowPacketsToFlow(flowPackets)
 
 	flows := table.GetFlows(nil).GetFlows()
@@ -83,7 +83,7 @@ func sortFlowByRelationship(flows []*Flow) []*Flow {
 func TestFlowParentUUID(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, UDP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.FlowPacketsToFlow(flowPackets)
 
 	flows := table.GetFlows(nil).GetFlows()
@@ -104,7 +104,7 @@ func TestFlowParentUUID(t *testing.T) {
 func TestFlowEncaspulation(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, GRE, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.FlowPacketsToFlow(flowPackets)
 
 	flows := table.GetFlows(nil).GetFlows()
@@ -123,7 +123,7 @@ func TestFlowEncaspulationMplsUdp(t *testing.T) {
 	layers.RegisterUDPPortLayerType(layers.UDPPort(444), layers.LayerTypeMPLS)
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, UDP_MPLS, MPLS, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.FlowPacketsToFlow(flowPackets)
 
 	flows := table.GetFlows(nil).GetFlows()
@@ -141,7 +141,7 @@ func TestFlowEncaspulationMplsUdp(t *testing.T) {
 func TestFlowEncaspulationMplsGRE(t *testing.T) {
 	table := NewTable(nil, nil)
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, MPLS, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.FlowPacketsToFlow(flowPackets)
 
 	flows := table.GetFlows(nil).GetFlows()
@@ -292,7 +292,7 @@ func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expec
 				t.Fatalf("Failed to decode packet with layer path '%s': %s\n", layerPathFromGoPacket(&p), p.ErrorLayer().Error())
 			}
 
-			fp := FlowPacketsFromGoPacket(&p, 0)
+			fp := FlowPacketsFromGoPacket(&p, 0, -1)
 			if fp == nil {
 				t.Fatal("Failed to get FlowPackets: ", err)
 			}

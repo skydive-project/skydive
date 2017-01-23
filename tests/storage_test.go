@@ -25,10 +25,12 @@
 package tests
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/skydive-project/skydive/api"
+	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -143,9 +145,12 @@ func TestFlowStorage(t *testing.T) {
 	// Wait for the flows to be indexed in elasticsearch
 	time.Sleep(5 * time.Second)
 
-	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+	gh := gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
-	node := gh.GetNodeFromGremlinReply(t, `g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	node, err := gh.GetNode(`g.V().Has("Name", "br-sflow", "Type", "ovsbridge")`)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 
 	filters := flow.NewFilterForNodes([]*graph.Node{node})
 	flowSearchQuery := flow.FlowSearchQuery{Filter: filters}
@@ -159,4 +164,39 @@ func TestFlowStorage(t *testing.T) {
 	}
 
 	queryFlowMetrics(t, now.Add(9*time.Second).Unix(), 15)
+}
+
+func TestPcapInject(t *testing.T) {
+	aa := helper.NewAgentAnalyzerWithConfig(t, confStorage, nil)
+	aa.Start()
+	defer aa.Stop()
+
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	file, err := os.Open("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer file.Close()
+
+	resp, err := client.Request("POST", "api/pcap", file)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if resp.StatusCode != 200 {
+		t.Fatalf("Should get 200 status code, got %d", resp.StatusCode)
+	}
+
+	aa.Flush()
+	time.Sleep(3 * time.Second)
+
+	gh := gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+	flows, _ := gh.GetFlows(`G.Context(1454659513).Flows().Has('Application', 'DNS')`)
+	if len(flows) != 2 {
+		t.Fatalf("Wrong number of DNS flows. Expected 2, got %d", len(flows))
+	}
 }

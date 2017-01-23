@@ -63,14 +63,14 @@ const (
 	snaplen int32 = 256
 )
 
-func (p *GoPacketProbe) feedFlowTable(packetsChan chan flow.FlowPackets) {
+func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := p.packetSource.NextPacket()
 		if err == io.EOF {
 			time.Sleep(20 * time.Millisecond)
 		} else if err == nil {
-			if packets := flow.FlowPacketsFromGoPacket(&packet, 0); len(packets) > 0 {
-				packetsChan <- packets
+			if flowPackets := flow.FlowPacketsFromGoPacket(&packet, 0, -1); len(flowPackets.Packets) > 0 {
+				packetsChan <- flowPackets
 			}
 		} else {
 			// sleep awhile in case of error to reduce the presure on cpu
@@ -253,10 +253,9 @@ func (p *GoPacketProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
-func NewGoPacketProbesHandler(g *graph.Graph) *GoPacketProbesHandler {
-	handler := &GoPacketProbesHandler{
+func NewGoPacketProbesHandler(g *graph.Graph) (*GoPacketProbesHandler, error) {
+	return &GoPacketProbesHandler{
 		graph:  g,
 		probes: make(map[string]*GoPacketProbe),
-	}
-	return handler
+	}, nil
 }

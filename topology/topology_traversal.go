@@ -24,6 +24,7 @@ package topology
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
@@ -106,4 +107,15 @@ func (s *GraphPathGremlinTraversalStep) Reduce(next traversal.GremlinTraversalSt
 
 func (s *GraphPathGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &traversal.GremlinTraversalContext{}
+}
+
+func ExecuteGremlinQuery(g *graph.Graph, query string) (traversal.GraphTraversalStep, error) {
+	tr := traversal.NewGremlinTraversalParser(g)
+	tr.AddTraversalExtension(NewTopologyTraversalExtension())
+	ts, err := tr.Parse(strings.NewReader(query))
+	if err != nil {
+		return nil, err
+	}
+
+	return ts.Exec()
 }

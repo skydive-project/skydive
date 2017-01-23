@@ -23,6 +23,8 @@
 package probes
 
 import (
+	"fmt"
+
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/config"
@@ -113,6 +115,9 @@ func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *fl
 		pipeline.AddEnhancer(mappings.NewNeutronFlowEnhancer(g))
 	}
 
+	var captureTypes []string
+	var fpi FlowProbeInterface
+
 	probes := make(map[string]probe.Probe)
 	for _, t := range list {
 		if _, ok := probes[t]; ok {
@@ -120,21 +125,27 @@ func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *fl
 		}
 
 		switch t {
+		case "pcapsocket":
+			fpi, err = NewPcapSocketProbeHandler(g)
+			captureTypes = []string{"pcapsocket"}
 		case "ovssflow":
-			o := NewOvsSFlowProbesHandler(tb, g)
-			if o != nil {
-				probes[t] = FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
-			}
+			fpi, err = NewOvsSFlowProbesHandler(tb, g)
+			captureTypes = []string{"ovssflow"}
 		case "gopacket":
-			o := NewGoPacketProbesHandler(g)
-			if o != nil {
-				gopacket := FlowProbe{fpi: o, pipeline: pipeline, client: aclient}
-
-				probes["afpacket"] = gopacket
-				probes["pcap"] = gopacket
-			}
+			fpi, err = NewGoPacketProbesHandler(g)
+			captureTypes = []string{"afpacket", "pcap"}
 		default:
-			logging.GetLogger().Errorf("unknown probe type %s", t)
+			err = fmt.Errorf("unknown probe type %s", t)
+		}
+
+		if err != nil {
+			logging.GetLogger().Errorf("failed to create %s probe: %s", t, err.Error())
+			continue
+		}
+
+		flowProbe := FlowProbe{fpi: fpi, pipeline: pipeline, client: aclient}
+		for _, captureType := range captureTypes {
+			probes[captureType] = flowProbe
 		}
 	}
 

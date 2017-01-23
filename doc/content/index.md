@@ -35,4 +35,8 @@ Topology connectors:
 Flow probes currently implemented:
 
 * sFlow
+* AFPacket
 * PCAP
+* PCAP socket
+
+For more information, check section [Captures](/api/captures)

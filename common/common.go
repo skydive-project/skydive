@@ -31,6 +31,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/vishvananda/netns"
@@ -49,12 +50,14 @@ type CaptureType struct {
 
 var (
 	CantCompareInterface error = errors.New("Can't compare interface")
+	InvalidPortRange     error = errors.New("Invalid port range")
+	NoPortLeft           error = errors.New("No free port left")
 	CaptureTypes               = map[string]CaptureType{}
 )
 
 func initCaptureTypes() {
 	// add ovs type
-	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow"}, Default: "ovssflow"}
+	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow", "pcapsocket"}, Default: "ovssflow"}
 
 	// anything else will be handled by gopacket
 	types := []string{
@@ -65,7 +68,7 @@ func initCaptureTypes() {
 	}
 
 	for _, t := range types {
-		CaptureTypes[t] = CaptureType{Allowed: []string{"afpacket", "pcap"}, Default: "afpacket"}
+		CaptureTypes[t] = CaptureType{Allowed: []string{"afpacket", "pcap", "pcapsocket"}, Default: "afpacket"}
 	}
 }
 
@@ -320,4 +323,57 @@ func IPToString(ip net.IP) string {
 		return "[" + ip.String() + "]"
 	}
 	return ip.String()
+}
+
+type PortAllocator struct {
+	sync.RWMutex
+	MinPort int
+	MaxPort int
+	PortMap map[int]interface{}
+}
+
+func (p *PortAllocator) Allocate() (int, error) {
+	p.Lock()
+	defer p.Unlock()
+
+	for i := p.MinPort; i <= p.MaxPort; i++ {
+		if _, ok := p.PortMap[i]; !ok {
+			p.PortMap[i] = struct{}{}
+			return i, nil
+		}
+	}
+	return 0, NoPortLeft
+}
+
+func (p *PortAllocator) Set(i int, obj interface{}) {
+	p.Lock()
+	defer p.Unlock()
+
+	p.PortMap[i] = obj
+}
+
+func (p *PortAllocator) Release(i int) {
+	p.Lock()
+	defer p.Unlock()
+
+	delete(p.PortMap, i)
+}
+
+func (p *PortAllocator) ReleaseAll() {
+	p.Lock()
+	defer p.Unlock()
+
+	p.PortMap = make(map[int]interface{})
+}
+
+func NewPortAllocator(min, max int) (*PortAllocator, error) {
+	if min <= 0 || max < min {
+		return nil, InvalidPortRange
+	}
+
+	return &PortAllocator{
+		MinPort: min,
+		MaxPort: max,
+		PortMap: make(map[int]interface{}),
+	}, nil
 }

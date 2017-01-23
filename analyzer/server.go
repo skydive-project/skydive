@@ -315,11 +315,13 @@ func NewServerFromConfig() (*Server, error) {
 	flowtable := flow.NewTable(updateHandler, expireHandler)
 	server.FlowTable = flowtable
 
-	api.RegisterTopologyApi("analyzer", g, httpServer, tableClient, server.Storage)
+	api.RegisterTopologyApi(g, httpServer, tableClient, server.Storage)
 
-	api.RegisterFlowApi("analyzer", flowtable, server.Storage, httpServer)
+	api.RegisterFlowApi(flowtable, server.Storage, httpServer)
 
-	api.RegisterPacketInjectorApi("analyzer", piClient, g, httpServer)
+	api.RegisterPacketInjectorApi(piClient, g, httpServer)
+
+	api.RegisterPcapApi(httpServer, flowtable.PacketsChan)
 
 	return server, nil
 }

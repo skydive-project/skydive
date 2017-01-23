@@ -52,26 +52,6 @@ func writeError(w http.ResponseWriter, status int, err error) {
 	w.Write([]byte(err.Error()))
 }
 
-func (a *ApiServer) Index(n string) map[string]ApiResource {
-	return a.handlers[n].Index()
-}
-
-func (a *ApiServer) Get(n string, id string) (ApiResource, bool) {
-	return a.handlers[n].Get(id)
-}
-
-func (a *ApiServer) Create(n string, resource ApiResource) error {
-	return a.handlers[n].Create(resource)
-}
-
-func (a *ApiServer) Delete(n string, id string) error {
-	return a.handlers[n].Delete(id)
-}
-
-func (a *ApiServer) AsyncWatch(n string, f ApiWatcherCallback) StoppableWatcher {
-	return a.handlers[n].AsyncWatch(f)
-}
-
 func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 	name := handler.Name()
 	title := strings.Title(name)
@@ -86,6 +66,10 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 				w.WriteHeader(http.StatusOK)
 
 				resources := handler.Index()
+				for _, resource := range resources {
+					handler.Decorate(resource)
+				}
+
 				if err := json.NewEncoder(w).Encode(resources); err != nil {
 					logging.GetLogger().Criticalf("Failed to display %s: %s", name, err.Error())
 				}
@@ -109,6 +93,7 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 				}
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
+				handler.Decorate(resource)
 				if err := json.NewEncoder(w).Encode(resource); err != nil {
 					logging.GetLogger().Criticalf("Failed to display %s: %s", name, err.Error())
 				}

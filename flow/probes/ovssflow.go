@@ -24,6 +24,7 @@ package probes
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -287,19 +288,21 @@ func (o *OvsSFlowProbesHandler) Stop() {
 	o.allocator.ReleaseAll()
 }
 
-func NewOvsSFlowProbesHandler(tb *probe.ProbeBundle, g *graph.Graph) *OvsSFlowProbesHandler {
+func NewOvsSFlowProbesHandler(tb *probe.ProbeBundle, g *graph.Graph) (*OvsSFlowProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
-		logging.GetLogger().Error("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
-		return nil
+		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
 	p := probe.(*probes.OvsdbProbe)
 
-	o := &OvsSFlowProbesHandler{
-		Graph:     g,
-		ovsClient: p.OvsMon.OvsClient,
-		allocator: sflow.NewSFlowAgentAllocator(),
+	allocator, err := sflow.NewSFlowAgentAllocator()
+	if err != nil {
+		return nil, err
 	}
 
-	return o
+	return &OvsSFlowProbesHandler{
+		Graph:     g,
+		ovsClient: p.OvsMon.OvsClient,
+		allocator: allocator,
+	}, nil
 }

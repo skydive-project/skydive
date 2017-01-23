@@ -67,14 +67,8 @@ explanations about the syntax and the functions available.
 
 ## Flow captures
 
-Flow captures can be started from the WebUI or thanks to the Skydive client.
-Skydive leverages the Gremlin language in order to select nodes on which a
-capture will be started. The gremlin expression is continuously evaluated which
-means that it is possible to define a capture on nodes that don't exist yet.
-It useful when you want to start a capture on all OpenvSwitch whatever the
-number of Skydive agents you will start.
-
-The following command start a capture on all docker0 interfaces
+Captures are described in [this section](/api/captures/)
+The following command starts a capture on all `docker0` interfaces:
 
 ```console
 $ skydive client capture create --gremlin "G.V().Has('Name', 'docker0')"
@@ -85,19 +79,6 @@ $ skydive client capture create --gremlin "G.V().Has('Name', 'docker0')"
 }
 
 ```
-
-While starting the capture, you can specify the capture name,
-capture description and capture type optionally.
-In order to know the list of supported capture types, see the usage doc of flow capture.
-
-Node types that support captures are :
-
-* ovsbridge
-* veth
-* device
-* internal
-* tun
-* bridge
 
 To delete a capture :
 

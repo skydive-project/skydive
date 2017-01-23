@@ -36,9 +36,13 @@ import (
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
-var skydiveValidator = valid.NewValidator()
+type Validator interface {
+	Validate() error
+}
 
 var (
+	skydiveValidator = valid.NewValidator()
+
 	IPNotValid = func() error {
 		return valid.TextErr{Err: errors.New("Not a IP addr")}
 	}
@@ -79,6 +83,10 @@ func isGremlinExpr(v interface{}, param string) error {
 func Validate(v interface{}) error {
 	if err := skydiveValidator.Validate(v); err != nil {
 		return err
+	}
+
+	if obj, ok := v.(Validator); ok {
+		return obj.Validate()
 	}
 
 	return nil

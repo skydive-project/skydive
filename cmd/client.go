@@ -54,7 +54,8 @@ func init() {
 
 	Client.AddCommand(client.AlertCmd)
 	Client.AddCommand(client.CaptureCmd)
-	Client.AddCommand(client.TopologyCmd)
-	Client.AddCommand(client.ShellCmd)
 	Client.AddCommand(client.PacketInjectorCmd)
+	Client.AddCommand(client.PcapCmd)
+	Client.AddCommand(client.ShellCmd)
+	Client.AddCommand(client.TopologyCmd)
 }

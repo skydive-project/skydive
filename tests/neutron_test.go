@@ -36,6 +36,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 
+	gclient "github.com/skydive-project/skydive/cmd/client"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -127,13 +128,18 @@ func TestNeutron(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	gh := helper.NewGremlinQueryHelper(authOptions)
+	gh := gclient.NewGremlinQueryHelper(authOptions)
 
 	// let neutron update the port
 	time.Sleep(5 * time.Second)
 
-	nodes := gh.GetNodesFromGremlinReply(t, `g.V().Has("Manager", "neutron", "ExtID/vm-uuid", "skydive-vm", "Name", "`+dev+`", "Neutron/PortID", "`+port.ID+`")`)
+	nodes, err := gh.GetNodes(`g.V().Has("Manager", "neutron", "ExtID/vm-uuid", "skydive-vm", "Name", "` + dev + `", "Neutron/PortID", "` + port.ID + `")`)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	if len(nodes) != 1 {
-		t.Errorf("Should find the neutron port in the topology: %v", gh.GetNodesFromGremlinReply(t, `g.V()`))
+		nodes, _ := gh.GetNodes(`g.V()`)
+		t.Errorf("Should find the neutron port in the topology: %v", nodes)
 	}
 }

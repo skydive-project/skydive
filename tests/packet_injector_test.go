@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/api"
+	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -89,9 +90,14 @@ func TestPacketInjector(t *testing.T) {
 
 	time.Sleep(11 * time.Second)
 
-	gh := helper.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+	gh := gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 	flowQuery := "G.Flows().Has('Network.A', '169.254.33.33').Has('Network.B', '169.254.33.34').Dedup()"
-	flows := gh.GetFlowsFromGremlinReply(t, flowQuery)
+
+	flows, err := gh.GetFlows(flowQuery)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 	if len(flows) != 1 {
 		t.Fatalf("we should recived only one flow, got %+v", flows)
 	}

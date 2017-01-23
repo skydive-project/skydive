@@ -32,6 +32,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -55,10 +56,8 @@ type SFlowAgent struct {
 
 type SFlowAgentAllocator struct {
 	sync.RWMutex
-	Addr      string
-	MinPort   int
-	MaxPort   int
-	allocated map[int]*SFlowAgent
+	portAllocator *common.PortAllocator
+	Addr          string
 }
 
 func (sfa *SFlowAgent) GetTarget() string {
@@ -66,7 +65,7 @@ func (sfa *SFlowAgent) GetTarget() string {
 	return strings.Join(target, ":")
 }
 
-func (sfa *SFlowAgent) feedFlowTable(packetsChan chan flow.FlowPackets) {
+func (sfa *SFlowAgent) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 	var buf [maxDgramSize]byte
 	for {
 		_, _, err := sfa.Conn.ReadFromUDP(buf[:])
@@ -87,7 +86,7 @@ func (sfa *SFlowAgent) feedFlowTable(packetsChan chan flow.FlowPackets) {
 			for _, sample := range sflowPacket.FlowSamples {
 				// iterate over a set of FlowPackets as a sample contains multiple
 				// records each generating FlowPackets.
-				for _, flowPackets := range flow.FlowPacketsFromSFlowSample(&sample) {
+				for _, flowPackets := range flow.FlowPacketsFromSFlowSample(&sample, -1) {
 					packetsChan <- flowPackets
 				}
 			}
@@ -148,86 +147,69 @@ func NewSFlowAgentFromConfig(u string, ft *flow.Table) (*SFlowAgent, error) {
 	return NewSFlowAgent(u, addr, port, ft), nil
 }
 
-func (a *SFlowAgentAllocator) Agents() []*SFlowAgent {
-	a.Lock()
-	defer a.Unlock()
-
-	agents := make([]*SFlowAgent, 0)
-
-	for _, agent := range a.allocated {
-		agents = append(agents, agent)
-	}
-
-	return agents
-}
-
 func (a *SFlowAgentAllocator) Release(uuid string) {
 	a.Lock()
 	defer a.Unlock()
 
-	for i, agent := range a.allocated {
+	for i, obj := range a.portAllocator.PortMap {
+		agent := obj.(*SFlowAgent)
 		if uuid == agent.UUID {
 			agent.Stop()
-
-			delete(a.allocated, i)
+			a.portAllocator.Release(i)
 		}
 	}
 }
 
 func (a *SFlowAgentAllocator) ReleaseAll() {
 	a.Lock()
+	for _, agent := range a.portAllocator.PortMap {
+		agent.(*SFlowAgent).Stop()
+	}
 	defer a.Unlock()
 
-	for i, agent := range a.allocated {
-		agent.Stop()
-
-		delete(a.allocated, i)
-	}
+	a.portAllocator.ReleaseAll()
 }
 
-func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table) (*SFlowAgent, error) {
+func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table) (agent *SFlowAgent, _ error) {
 	address := config.GetConfig().GetString("sflow.bind_address")
 	if address == "" {
 		address = "127.0.0.1"
-	}
-
-	min := config.GetConfig().GetInt("sflow.port_min")
-	if min == 0 {
-		min = 6345
-	}
-
-	max := config.GetConfig().GetInt("sflow.port_max")
-	if max == 0 {
-		max = 6355
 	}
 
 	a.Lock()
 	defer a.Unlock()
 
 	// check if there is an already allocated agent for this uuid
-	for _, agent := range a.allocated {
-		if uuid == agent.UUID {
-			return agent, AgentAlreadyAllocated
+	a.portAllocator.RLock()
+	for _, obj := range a.portAllocator.PortMap {
+		if uuid == obj.(*SFlowAgent).UUID {
+			agent = obj.(*SFlowAgent)
 		}
 	}
-
-	for i := min; i != max+1; i++ {
-		if _, ok := a.allocated[i]; !ok {
-			s := NewSFlowAgent(uuid, address, i, ft)
-
-			a.allocated[i] = s
-
-			s.Start()
-
-			return s, nil
-		}
+	a.portAllocator.RUnlock()
+	if agent != nil {
+		return agent, AgentAlreadyAllocated
 	}
 
-	return nil, errors.New("sflow port exhausted")
+	port, err := a.portAllocator.Allocate()
+	if port <= 0 {
+		return nil, errors.New("failed to allocate sflow port: " + err.Error())
+	}
+
+	s := NewSFlowAgent(uuid, address, port, ft)
+	a.portAllocator.Set(port, s)
+	s.Start()
+	return s, nil
 }
 
-func NewSFlowAgentAllocator() *SFlowAgentAllocator {
-	return &SFlowAgentAllocator{
-		allocated: make(map[int]*SFlowAgent),
+func NewSFlowAgentAllocator() (*SFlowAgentAllocator, error) {
+	min := config.GetConfig().GetInt("sflow.port_min")
+	max := config.GetConfig().GetInt("sflow.port_max")
+
+	portAllocator, err := common.NewPortAllocator(min, max)
+	if err != nil {
+		return nil, err
 	}
+
+	return &SFlowAgentAllocator{portAllocator: portAllocator}, nil
 }

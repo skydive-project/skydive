@@ -23,18 +23,10 @@
 package client
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/skydive-project/skydive/api"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -47,56 +39,20 @@ var TopologyCmd = &cobra.Command{
 	SilenceUsage: false,
 }
 
-func SendGremlinQuery(auth *shttp.AuthenticationOpts, query string) (io.ReadCloser, error) {
-	client, err := shttp.NewRestClientFromConfig(auth)
-	if err != nil {
-		return nil, err
-	}
-
-	gq := api.Topology{GremlinQuery: query}
-	s, err := json.Marshal(gq)
-	if err != nil {
-		return nil, err
-	}
-
-	contentReader := bytes.NewReader(s)
-
-	resp, err := client.Request("POST", "api/topology", contentReader)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("%s: %s", resp.Status, string(data))
-	}
-
-	return resp.Body, nil
-}
-
 var TopologyRequest = &cobra.Command{
 	Use:   "query",
 	Short: "query topology",
 	Long:  "query topology",
 	Run: func(cmd *cobra.Command, args []string) {
-		body, err := SendGremlinQuery(&AuthenticationOpts, gremlinQuery)
-		if err != nil {
+		var value interface{}
+
+		queryHelper := NewGremlinQueryHelper(&AuthenticationOpts)
+		if err := queryHelper.Query(gremlinQuery, &value); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
 		}
 
-		var values interface{}
-
-		decoder := json.NewDecoder(body)
-		decoder.UseNumber()
-
-		err = decoder.Decode(&values)
-		if err != nil {
-			logging.GetLogger().Errorf("Unable to decode response: %s", err.Error())
-			os.Exit(1)
-		}
-
-		printJSON(values)
+		printJSON(value)
 	},
 }
 
@@ -106,6 +62,5 @@ func addTopologyFlags(cmd *cobra.Command) {
 
 func init() {
 	TopologyCmd.AddCommand(TopologyRequest)
-
-	addTopologyFlags(TopologyRequest)
+	TopologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
 }

@@ -46,6 +46,7 @@ type ApiHandler interface {
 	New() ApiResource
 	Index() map[string]ApiResource
 	Get(id string) (ApiResource, bool)
+	Decorate(resource ApiResource)
 	Create(resource ApiResource) error
 	Delete(id string) error
 	AsyncWatch(f ApiWatcherCallback) StoppableWatcher
@@ -95,14 +96,25 @@ func (h *BasicApiHandler) New() ApiResource {
 	return h.ResourceHandler.New()
 }
 
+func (h *BasicApiHandler) Unmarshal(b []byte) (resource ApiResource, err error) {
+	resource = h.ResourceHandler.New()
+	err = json.Unmarshal(b, resource)
+	return
+}
+
+func (h *BasicApiHandler) Decorate(resource ApiResource) {
+}
+
 func (h *BasicApiHandler) collectNodes(flatten map[string]ApiResource, nodes etcd.Nodes) {
 	for _, node := range nodes {
 		if node.Dir {
 			h.collectNodes(flatten, node.Nodes)
 		} else {
-			resource := h.ResourceHandler.New()
-
-			json.Unmarshal([]byte(node.Value), resource)
+			resource, err := h.Unmarshal([]byte(node.Value))
+			if err != nil {
+				logging.GetLogger().Warningf("Failed to unmarshal capture: %s", err.Error())
+				continue
+			}
 			flatten[resource.ID()] = resource
 		}
 	}
@@ -129,9 +141,8 @@ func (h *BasicApiHandler) Get(id string) (ApiResource, bool) {
 		return nil, false
 	}
 
-	resource := h.ResourceHandler.New()
-	json.Unmarshal([]byte(resp.Node.Value), resource)
-	return resource, true
+	resource, err := h.Unmarshal([]byte(resp.Node.Value))
+	return resource, err == nil
 }
 
 func (h *BasicApiHandler) Create(resource ApiResource) error {

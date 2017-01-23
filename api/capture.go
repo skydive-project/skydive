@@ -24,16 +24,13 @@ package api
 
 import (
 	"fmt"
-	"strings"
 
-	etcd "github.com/coreos/etcd/client"
 	"github.com/nu7hatch/gouuid"
-	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 type Capture struct {
@@ -44,6 +41,7 @@ type Capture struct {
 	Description  string `json:"Description,omitempty"`
 	Type         string `json:"Type,omitempty"`
 	Count        int    `json:"Count,omitempty"`
+	PCAPSocket   string `json:"PCAPSocket,omitempty"`
 }
 
 type CaptureResourceHandler struct {
@@ -68,24 +66,20 @@ func (c *CaptureResourceHandler) New() ApiResource {
 	id, _ := uuid.NewV4()
 
 	return &Capture{
-		UUID:  id.String(),
-		Count: 0,
+		UUID: id.String(),
 	}
 }
 
-func (c *CaptureApiHandler) getCaptureCount(r ApiResource) ApiResource {
-	capture := r.(*Capture)
-	tr := traversal.NewGremlinTraversalParser(c.Graph)
-	ts, err := tr.Parse(strings.NewReader(capture.GremlinQuery))
-	if err != nil {
-		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
-		return r
-	}
+func (c *CaptureApiHandler) Decorate(resource ApiResource) {
+	capture := resource.(*Capture)
 
-	res, err := ts.Exec()
+	count := 0
+	pcapSocket := ""
+
+	res, err := topology.ExecuteGremlinQuery(c.Graph, capture.GremlinQuery)
 	if err != nil {
-		logging.GetLogger().Errorf("Gremlin execution error: %s", err.Error())
-		return r
+		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
+		return
 	}
 
 	for _, value := range res.Values() {
@@ -93,41 +87,20 @@ func (c *CaptureApiHandler) getCaptureCount(r ApiResource) ApiResource {
 		case *graph.Node:
 			n := value.(*graph.Node)
 			if t, ok := n.Metadata()["Type"]; ok && common.IsCaptureAllowed(t.(string)) {
-				capture.Count = capture.Count + 1
+				count++
+			}
+			if p, ok := n.Metadata()["PCAPSocket"]; ok {
+				pcapSocket = p.(string)
 			}
 		case []*graph.Node:
-			capture.Count = capture.Count + len(value.([]*graph.Node))
+			count += len(value.([]*graph.Node))
 		default:
-			capture.Count = 0
+			count = 0
 		}
 	}
-	return capture
-}
 
-func (c *CaptureApiHandler) Index() map[string]ApiResource {
-	etcdPath := fmt.Sprintf("/%s/", c.ResourceHandler.Name())
-
-	resp, err := c.EtcdKeyAPI.Get(context.Background(), etcdPath, &etcd.GetOptions{Recursive: true})
-	resources := make(map[string]ApiResource)
-
-	if err == nil {
-		c.collectNodes(resources, resp.Node.Nodes)
-	}
-
-	if c.ResourceHandler.Name() == "capture" {
-		mr := make(map[string]ApiResource)
-		for _, resource := range resources {
-			mr[resource.ID()] = c.getCaptureCount(resource)
-		}
-		return mr
-	}
-	return resources
-}
-
-// List returns the default list without any Count
-// basically use by ondemand
-func (c *CaptureApiHandler) List() map[string]ApiResource {
-	return c.BasicApiHandler.Index()
+	capture.Count = count
+	capture.PCAPSocket = pcapSocket
 }
 
 func (c *CaptureResourceHandler) Name() string {
@@ -144,11 +117,13 @@ func (c *Capture) SetID(i string) {
 
 // Create tests that resource GremlinQuery does not exists already
 func (c *CaptureApiHandler) Create(r ApiResource) error {
+	capture := r.(*Capture)
 	resources := c.BasicApiHandler.Index()
 	for _, resource := range resources {
-		if resource.(*Capture).GremlinQuery == r.(*Capture).GremlinQuery {
+		if resource.(*Capture).GremlinQuery == capture.GremlinQuery {
 			return fmt.Errorf("Duplicate capture, uuid=%s", resource.(*Capture).UUID)
 		}
 	}
+
 	return c.BasicApiHandler.Create(r)
 }

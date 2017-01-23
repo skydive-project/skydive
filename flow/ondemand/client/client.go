@@ -23,15 +23,14 @@
 package client
 
 import (
-	"strings"
 	"sync"
 
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 type OnDemandProbeClient struct {
@@ -42,7 +41,6 @@ type OnDemandProbeClient struct {
 	wsServer       *shttp.WSServer
 	captures       map[string]*api.Capture
 	watcher        api.StoppableWatcher
-	parser         *traversal.GremlinTraversalParser
 }
 
 func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.Capture) {
@@ -104,15 +102,9 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node) bool {
 }
 
 func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
-	ts, err := o.parser.Parse(strings.NewReader(query))
+	res, err := topology.ExecuteGremlinQuery(o.graph, query)
 	if err != nil {
-		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
-		return nil
-	}
-
-	res, err := ts.Exec()
-	if err != nil {
-		logging.GetLogger().Errorf("Gremlin execution error: %s", err.Error())
+		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
 		return nil
 	}
 	return res.Values()
@@ -163,15 +155,9 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 
 	delete(o.captures, capture.UUID)
 
-	ts, err := o.parser.Parse(strings.NewReader(capture.GremlinQuery))
+	res, err := topology.ExecuteGremlinQuery(o.graph, capture.GremlinQuery)
 	if err != nil {
-		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
-		return
-	}
-
-	res, err := ts.Exec()
-	if err != nil {
-		logging.GetLogger().Errorf("Gremlin execution error: %s", err.Error())
+		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
 		return
 	}
 
@@ -216,7 +202,7 @@ func (o *OnDemandProbeClient) Stop() {
 }
 
 func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureApiHandler, w *shttp.WSServer) *OnDemandProbeClient {
-	resources := ch.List()
+	resources := ch.Index()
 	captures := make(map[string]*api.Capture)
 	for _, resource := range resources {
 		captures[resource.ID()] = resource.(*api.Capture)
@@ -227,6 +213,5 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureApiHandler, w *shttp.
 		captureHandler: ch,
 		wsServer:       w,
 		captures:       captures,
-		parser:         traversal.NewGremlinTraversalParser(g),
 	}
 }

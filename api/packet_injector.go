@@ -26,18 +26,16 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/abbot/go-http-auth"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/packet_injector"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 	"github.com/skydive-project/skydive/validator"
 )
 
 type PacketInjectorApi struct {
-	Service  string
 	PIClient *packet_injector.PacketInjectorClient
 	Graph    *graph.Graph
 }
@@ -116,13 +114,7 @@ func (pi *PacketInjectorApi) getNode(gremlinQuery string) *graph.Node {
 	pi.Graph.RLock()
 	defer pi.Graph.RUnlock()
 
-	tr := traversal.NewGremlinTraversalParser(pi.Graph)
-	ts, err := tr.Parse(strings.NewReader(gremlinQuery))
-	if err != nil {
-		return nil
-	}
-
-	res, err := ts.Exec()
+	res, err := topology.ExecuteGremlinQuery(pi.Graph, gremlinQuery)
 	if err != nil {
 		return nil
 	}
@@ -151,9 +143,8 @@ func (pi *PacketInjectorApi) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterPacketInjectorApi(s string, pic *packet_injector.PacketInjectorClient, g *graph.Graph, r *shttp.Server) {
+func RegisterPacketInjectorApi(pic *packet_injector.PacketInjectorClient, g *graph.Graph, r *shttp.Server) {
 	pia := &PacketInjectorApi{
-		Service:  s,
 		PIClient: pic,
 		Graph:    g,
 	}

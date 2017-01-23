@@ -39,6 +39,7 @@ var (
 	captureName        string
 	captureDescription string
 	captureType        string
+	nodeTID            string
 )
 
 var CaptureCmd = &cobra.Command{
@@ -52,10 +53,18 @@ var CaptureCreate = &cobra.Command{
 	Use:   "create",
 	Short: "Create capture",
 	Long:  "Create capture",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if nodeTID != "" {
+			if gremlinQuery != "" {
+				logging.GetLogger().Fatal("Options --node and --gremlin are exclusive")
+			}
+			gremlinQuery = fmt.Sprintf("g.V().Has('TID', '%s')", nodeTID)
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Fatalf(err.Error())
 		}
 
 		capture := api.NewCapture(gremlinQuery, bpfFilter)
@@ -64,7 +73,6 @@ var CaptureCreate = &cobra.Command{
 		capture.Type = captureType
 		if err := validator.Validate(capture); err != nil {
 			fmt.Println(err.Error())
-			cmd.Usage()
 			os.Exit(1)
 		}
 		if err := client.Create("capture", &capture); err != nil {
@@ -155,6 +163,7 @@ func addCaptureFlags(cmd *cobra.Command) {
 	}
 	helpText := fmt.Sprintf("Allowed capture types: %v", types)
 	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
+	cmd.Flags().StringVarP(&nodeTID, "node", "", "", "node TID")
 	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")
 	cmd.Flags().StringVarP(&captureName, "name", "", "", "capture name")
 	cmd.Flags().StringVarP(&captureDescription, "description", "", "", "capture description")

@@ -40,7 +40,6 @@ import (
 )
 
 type TopologyApi struct {
-	Service     string
 	Graph       *graph.Graph
 	TableClient *flow.TableClient
 	Storage     storage.Storage
@@ -128,9 +127,8 @@ func (t *TopologyApi) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterTopologyApi(s string, g *graph.Graph, r *shttp.Server, tc *flow.TableClient, st storage.Storage) {
+func RegisterTopologyApi(g *graph.Graph, r *shttp.Server, tc *flow.TableClient, st storage.Storage) {
 	t := &TopologyApi{
-		Service:     s,
 		Graph:       g,
 		TableClient: tc,
 		Storage:     st,

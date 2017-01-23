@@ -176,40 +176,47 @@ func (o *OnDemandProbeServer) OnMessage(msg shttp.WSMessage) {
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
-	status := http.StatusOK
-	n := o.Graph.GetNode(graph.Identifier(query.NodeID))
-	if n == nil {
-		logging.GetLogger().Errorf("Unknown node %s for new capture", query.NodeID)
-		status = http.StatusNotFound
-	} else {
-		var ok bool
-		switch msg.Type {
-		case "CaptureStart":
-			if state, ok := n.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
-				logging.GetLogger().Debugf("Capture already started on node %s", n.ID)
-			} else {
-				if ok = o.registerProbe(n, &query.Capture); ok {
-					t := o.Graph.StartMetadataTransaction(n)
-					t.AddMetadata("State/FlowCapture", "ON")
-					t.AddMetadata("CaptureID", query.Capture.UUID)
-					t.Commit()
-				}
-			}
-		case "CaptureStop":
-			if ok = o.unregisterProbe(n); ok {
-				metadata := n.Metadata()
-				metadata["State/FlowCapture"] = "OFF"
-				delete(metadata, "CaptureID")
-				o.Graph.SetMetadata(n, metadata)
-			}
+	status := http.StatusBadRequest
+	ok := false
+
+	switch msg.Type {
+	case "CaptureStart":
+		n := o.Graph.GetNode(graph.Identifier(query.NodeID))
+		if n == nil {
+			logging.GetLogger().Errorf("Unknown node %s for new capture", query.NodeID)
+			status = http.StatusNotFound
+			break
 		}
 
-		if !ok {
-			status = http.StatusBadRequest
+		if state, ok := n.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
+			logging.GetLogger().Debugf("Capture already started on node %s", n.ID)
+		} else {
+			if ok = o.registerProbe(n, &query.Capture); ok {
+				t := o.Graph.StartMetadataTransaction(n)
+				t.AddMetadata("State/FlowCapture", "ON")
+				t.AddMetadata("CaptureID", query.Capture.UUID)
+				t.Commit()
+			}
 		}
+	case "CaptureStop":
+		n := o.Graph.GetNode(graph.Identifier(query.NodeID))
+		if n == nil {
+			logging.GetLogger().Errorf("Unknown node %s for new capture", query.NodeID)
+			status = http.StatusNotFound
+			break
+		}
+
+		if ok = o.unregisterProbe(n); ok {
+			metadata := n.Metadata()
+			metadata["State/FlowCapture"] = "OFF"
+			delete(metadata, "CaptureID")
+			o.Graph.SetMetadata(n, metadata)
+		}
+	default:
+		return
 	}
 
-	reply := msg.Reply(&ondemand.CaptureQuery{}, "CaptureStopReply", status)
+	reply := msg.Reply(&ondemand.CaptureQuery{}, msg.Type+"Reply", status)
 	o.wsClient.SendWSMessage(reply)
 }
 

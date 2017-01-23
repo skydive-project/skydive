@@ -189,7 +189,7 @@ func NewAgent() *Agent {
 	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
 
 	root := CreateRootNode(g)
-	api.RegisterTopologyApi("agent", g, hserver, nil, nil)
+	api.RegisterTopologyApi(g, hserver, nil, nil)
 
 	gserver := graph.NewServer(g, wsServer)
 

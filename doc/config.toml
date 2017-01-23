@@ -103,6 +103,12 @@ googleAnalytics = ""
 	weight = 1400
 
 [[menu.main]]
+	name = "Captures"
+	parent = "api"
+	url = "api/captures/"
+	weight = 1400
+
+[[menu.main]]
 	name = "Gremlin language"
 	parent = "api"
 	url = "api/gremlin/"
