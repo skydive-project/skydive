@@ -29,5 +29,6 @@ REVISION=`curl -q "https://softwarefactory-project.io/r/changes/5923/detail?O=40
 curl -o /tmp/vendor.tgz https://softwarefactory-project.io/r/changes/5923/revisions/$REVISION/archive?format=tgz
 
 pushd ${GOPATH}/src/github.com/skydive-project/skydive
-tar -xvzf /tmp/vendor.tgz --exclude "vendor/vendor.json"
+go get -f -u github.com/kardianos/govendor
+govendor sync -n | perl -pe 's|fetch \"(.*)\"$|vendor/\1|g' | xargs tar -xvzf /tmp/vendor.tgz --exclude "vendor/vendor.json"
 popd
