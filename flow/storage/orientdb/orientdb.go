@@ -111,15 +111,16 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 	metricDoc := metricToDocument(flow.Metric)
 
 	flowDoc := orient.Document{
-		"@class":     "Flow",
-		"UUID":       flow.UUID,
-		"TrackingID": flow.TrackingID,
-		"LayersPath": flow.LayersPath,
-		"NodeTID":    flow.NodeTID,
-		"ANodeTID":   flow.ANodeTID,
-		"BNodeTID":   flow.BNodeTID,
-		"Metric":     metricDoc,
-		"LinkLayer":  linkLayer,
+		"@class":      "Flow",
+		"UUID":        flow.UUID,
+		"TrackingID":  flow.TrackingID,
+		"LayersPath":  flow.LayersPath,
+		"Application": flow.Application,
+		"NodeTID":     flow.NodeTID,
+		"ANodeTID":    flow.ANodeTID,
+		"BNodeTID":    flow.BNodeTID,
+		"Metric":      metricDoc,
+		"LinkLayer":   linkLayer,
 	}
 
 	if flow.Network != nil {
@@ -298,6 +299,7 @@ func New() (*OrientDBStorage, error) {
 			Properties: []orient.Property{
 				{Name: "UUID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "LayersPath", Type: "STRING", Mandatory: true, NotNull: true},
+				{Name: "Application", Type: "STRING"},
 				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
 				{Name: "TrackingID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "NodeTID", Type: "STRING"},
