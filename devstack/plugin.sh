@@ -164,6 +164,7 @@ openstack:
 etcd:
   servers:
     - $SKYDIVE_AGENT_ETCD
+  data_dir: /tmp/skydive-etcd
 
 graph:
   backend: elasticsearch
