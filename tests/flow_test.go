@@ -1703,3 +1703,99 @@ func TestReplayCapture(t *testing.T) {
 
 	client.Delete("capture", capture.ID())
 }
+
+func TestFlowVLANSegmentation(t *testing.T) {
+	ts := NewTestStorage()
+
+	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, ts)
+	aa.Start()
+	defer aa.Stop()
+
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	capture1 := api.NewCapture("G.V().Has('Name', 'vlan-vm1').Out().Has('Name', 'vlan')", "")
+	if err := client.Create("capture", capture1); err != nil {
+		t.Fatal(err.Error())
+	}
+	capture1.Type = "pcap"
+
+	capture2 := api.NewCapture("G.V().Has('Name', 'vlan-vm2-eth0')", "")
+	if err := client.Create("capture", capture2); err != nil {
+		t.Fatal(err.Error())
+	}
+	capture2.Type = "pcap"
+
+	time.Sleep(1 * time.Second)
+	setupCmds := []helper.Cmd{
+		{"sudo ovs-vsctl add-br br-vlan", true},
+
+		{"sudo ip netns add vlan-vm1", true},
+		{"sudo ip link add vlan-vm1-eth0 type veth peer name eth0 netns vlan-vm1", true},
+		{"sudo ip link set vlan-vm1-eth0 up", true},
+
+		{"sudo ip netns exec vlan-vm1 ip link set eth0 up", true},
+		{"sudo ip netns exec vlan-vm1 ip link add link eth0 name vlan type vlan id 8", true},
+		{"sudo ip netns exec vlan-vm1 ip address add 172.16.0.1/24 dev vlan", true},
+
+		{"sudo ip netns add vlan-vm2", true},
+		{"sudo ip link add vlan-vm2-eth0 type veth peer name eth0 netns vlan-vm2", true},
+		{"sudo ip link set vlan-vm2-eth0 up", true},
+		{"sudo ip netns exec vlan-vm2 ip link set eth0 up", true},
+		{"sudo ip netns exec vlan-vm2 ip link add link eth0 name vlan type vlan id 8", true},
+		{"sudo ip netns exec vlan-vm2 ip address add 172.16.0.2/24 dev vlan", true},
+
+		{"sudo ovs-vsctl add-port br-vlan vlan-vm1-eth0", true},
+		{"sudo ovs-vsctl add-port br-vlan vlan-vm2-eth0", true},
+
+		{"sudo ip netns exec vlan-vm1 ip l set vlan up", true},
+
+		{"sudo ip netns exec vlan-vm2 ip l set vlan up", true},
+
+		{"sleep 10", false},
+
+		{"sudo ip netns exec vlan-vm1 ping -c 10 -I 172.16.0.1 172.16.0.2", false},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del vlan-vm1", true},
+		{"ip netns del vlan-vm2", true},
+		{"ovs-vsctl del-br br-vlan", true},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	gh := gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{})
+
+	time.Sleep(3 * time.Second)
+	flowsInnerTunnel, _ := gh.GetFlows(`G.V().Has('Name', 'vlan-vm1').Out().Has('Name', 'vlan').Flows()`)
+	flowsBridge, _ := gh.GetFlows(`G.V().Has('Name', 'vlan-vm2-eth0').Flows()`)
+
+	var TrackID string
+	for _, flow := range flowsInnerTunnel {
+		if flow.LayersPath == "Ethernet/IPv4/ICMPv4/Payload" {
+			if TrackID != "" {
+				t.Errorf("We should only found one ICMPv4 flow in the VLAN link %v", flowsInnerTunnel)
+			}
+			TrackID = flow.L3TrackingID
+		}
+	}
+
+	success := false
+	for _, f := range flowsBridge {
+		if TrackID == f.L3TrackingID && strings.Contains(f.LayersPath, "ICMPv4/Payload") && f.Network != nil && f.Network.Protocol == flow.FlowProtocol_IPV4 {
+			success = true
+			break
+		}
+	}
+
+	if !success {
+		t.Errorf("L3TrackingID not found in VLANs: %v == %v", flowsInnerTunnel, flowsBridge)
+	}
+
+	client.Delete("capture", capture1.ID())
+	client.Delete("capture", capture2.ID())
+}

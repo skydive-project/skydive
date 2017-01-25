@@ -2,8 +2,8 @@
 
 # create/delete a test topology
 # syntax:
-#   ./tunnel.sh start gre|vxlan|geneve
-#   ./tunnel.sh stop gre|vxlan|geneve
+#   ./tunnel.sh start gre|vxlan|geneve|vlan
+#   ./tunnel.sh stop gre|vxlan|geneve|vlan
 
 function start() {
 	set -x
@@ -15,14 +15,22 @@ function start() {
 	sudo ip link set vm1-eth0 up
 
 	sudo ip netns exec vm1 ip link set eth0 up
-	sudo ip netns exec vm1 ip address add 172.16.0.1/24 dev eth0
+        ipdev=eth0
+	if [ "$1" == "vlan" ]; then
+            sudo ip netns exec vm1 ip link add link eth0 name ${1} type vlan id 8
+            ipdev=${1}
+        fi
+        sudo ip netns exec vm1 ip address add 172.16.0.1/24 dev ${ipdev}
 
 	sudo ip netns add vm2
 	sudo ip link add vm2-eth0 type veth peer name eth0 netns vm2
 	sudo ip link set vm2-eth0 up
 
 	sudo ip netns exec vm2 ip link set eth0 up
-	sudo ip netns exec vm2 ip address add 172.16.0.2/24 dev eth0
+	if [ "$1" == "vlan" ]; then
+            sudo ip netns exec vm2 ip link add link eth0 name ${1} type vlan id 8
+        fi
+	sudo ip netns exec vm2 ip address add 172.16.0.2/24 dev ${ipdev}
 
 	sudo ovs-vsctl add-port br-${1} vm1-eth0
 	sudo ovs-vsctl add-port br-${1} vm2-eth0
@@ -32,7 +40,7 @@ function start() {
 	    sudo ip netns exec vm1 ip tunnel add ${1} mode gre remote 172.16.0.2 local 172.16.0.1 ttl 255
 	elif [ "$1" == "geneve" ]; then
 	    sudo ip netns exec vm1 ip link add ${1} type geneve id 10 remote 172.16.0.2
-	else
+	elif [ "$1" == "vxlan" ]; then
 	    sudo ip netns exec vm1 ip link add ${1} type vxlan id 10 group 239.0.0.10 ttl 10 dev eth0 dstport 4789
 	fi
 	sudo ip netns exec vm1 ip l set ${1} up
@@ -45,7 +53,7 @@ function start() {
 	    sudo ip netns exec vm2 ip tunnel add ${1} mode gre remote 172.16.0.1 local 172.16.0.2 ttl 255
 	elif [ "$1" == "geneve" ]; then
 	    sudo ip netns exec vm2 ip link add ${1} type geneve id 10 remote 172.16.0.1
-	else
+	elif [ "$1" == "vxlan" ]; then
 	    sudo ip netns exec vm2 ip link add ${1} type vxlan id 10 group 239.0.0.10 ttl 10 dev eth0 dstport 4789
 	fi
 	sudo ip netns exec vm2 ip l set ${1} up
@@ -66,9 +74,9 @@ function stop() {
 	sudo ip netns del vm2
 }
 
-if [ "$2" != "gre" ] && [ "$2" != "vxlan" ] && [ "$2" != "geneve" ]
+if [ "$2" != "gre" ] && [ "$2" != "vxlan" ] && [ "$2" != "geneve" ] && [ "$2" != "vlan" ]
 then
-    echo -n "Second argument must be 'gre' or 'vxlan'. Exiting."
+    echo -n "Second argument must be one of 'gre', 'vxlan', 'geneve', 'vlan'. Exiting."
     exit 1
 fi
 

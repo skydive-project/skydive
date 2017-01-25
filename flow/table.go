@@ -359,11 +359,11 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string, t int64) *Flow {
+func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
 	key := FlowKeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.GetOrCreateFlow(key)
 	if new {
-		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID)
+		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID, L2ID, L3ID)
 	} else {
 		flow.Update(t, packet.gopacket, packet.length)
 	}
@@ -377,9 +377,18 @@ func (ft *Table) FlowPacketsToFlow(flowPackets *FlowPackets) {
 	}
 
 	var parentUUID string
+	var L2ID int64
+	var L3ID int64
 	logging.GetLogger().Debugf("%d FlowPackets received for capture node %s", len(flowPackets.Packets), ft.nodeTID)
 	for _, packet := range flowPackets.Packets {
-		parentUUID = ft.FlowPacketToFlow(&packet, parentUUID, t).UUID
+		f := ft.FlowPacketToFlow(&packet, parentUUID, t, L2ID, L3ID)
+		parentUUID = f.UUID
+		if f.Link != nil {
+			L2ID = f.Link.ID
+		}
+		if f.Network != nil {
+			L3ID = f.Network.ID
+		}
 	}
 }
 

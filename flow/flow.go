@@ -68,10 +68,12 @@ func (s *FlowLayer) MarshalJSON() ([]byte, error) {
 		Protocol string
 		A        string
 		B        string
+		ID       int64
 	}{
 		Protocol: s.Protocol.String(),
 		A:        s.A,
 		B:        s.B,
+		ID:       s.ID,
 	}
 
 	return json.Marshal(&obj)
@@ -82,6 +84,7 @@ func (s *FlowLayer) UnmarshalJSON(b []byte) error {
 		Protocol string
 		A        string
 		B        string
+		ID       int64
 	}{}
 
 	if err := json.Unmarshal(b, &m); err != nil {
@@ -95,6 +98,7 @@ func (s *FlowLayer) UnmarshalJSON(b []byte) error {
 	s.Protocol = FlowProtocol(protocol)
 	s.A = m.A
 	s.B = m.B
+	s.ID = m.ID
 
 	return nil
 }
@@ -120,7 +124,6 @@ func (f FlowKey) String() string {
 func FlowKeyFromGoPacket(p *gopacket.Packet, parentUUID string) FlowKey {
 	network := layerFlow((*p).NetworkLayer()).FastHash()
 	transport := layerFlow((*p).TransportLayer()).FastHash()
-
 	return FlowKey(parentUUID + strconv.FormatUint(uint64(network^transport), 10))
 }
 
@@ -135,16 +138,58 @@ func layerPathFromGoPacket(packet *gopacket.Packet) string {
 	return strings.Replace(path, "Linux SLL/", "", 1)
 }
 
-func (flow *Flow) UpdateUUID(key string) {
+func linkID(p *gopacket.Packet) int64 {
+	id := int64(0)
+	allLayers := (*p).Layers()
+	for i := range allLayers {
+		layer := allLayers[len(allLayers)-1-i]
+		if layer.LayerType() == layers.LayerTypeDot1Q {
+			id = (id << 12) | int64(layer.(*layers.Dot1Q).VLANIdentifier)
+		}
+	}
+	return id
+}
+
+func networkID(p *gopacket.Packet) int64 {
+	id := int64(0)
+	allLayers := (*p).Layers()
+	for i := range allLayers {
+		layer := allLayers[len(allLayers)-1-i]
+		if layer.LayerType() == layers.LayerTypeVXLAN {
+			return int64(layer.(*layers.VXLAN).VNI)
+		}
+		if layer.LayerType() == layers.LayerTypeGRE {
+			return int64(layer.(*layers.GRE).Key)
+		}
+		if layer.LayerType() == layers.LayerTypeGeneve {
+			return int64(layer.(*layers.Geneve).VNI)
+		}
+	}
+	return id
+}
+
+func (flow *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
+	layersPath := strings.Replace(flow.LayersPath, "Dot1Q/", "", -1)
+
 	hasher := sha1.New()
 
 	hasher.Write(flow.Transport.Hash())
 	hasher.Write(flow.Network.Hash())
-	hasher.Write([]byte(strings.TrimPrefix(flow.LayersPath, "Ethernet/")))
+	if flow.Network != nil {
+		netID := make([]byte, 8)
+		binary.BigEndian.PutUint64(netID, uint64(flow.Network.ID))
+		hasher.Write(netID)
+	}
+	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
 	flow.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
 	hasher.Write(flow.Link.Hash())
-	hasher.Write([]byte(flow.LayersPath))
+	if flow.Link != nil {
+		linkID := make([]byte, 8)
+		binary.BigEndian.PutUint64(linkID, uint64(flow.Link.ID))
+		hasher.Write(linkID)
+	}
+	hasher.Write([]byte(layersPath))
 	flow.TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
 	bfStart := make([]byte, 8)
@@ -155,6 +200,12 @@ func (flow *Flow) UpdateUUID(key string) {
 	// include key so that we are sure that two flows with different keys don't
 	// give the same UUID due to different ways of hash the headers.
 	hasher.Write([]byte(key))
+	bL2ID := make([]byte, 8)
+	binary.BigEndian.PutUint64(bL2ID, uint64(L2ID))
+	hasher.Write(bL2ID)
+	bL3ID := make([]byte, 8)
+	binary.BigEndian.PutUint64(bL3ID, uint64(L3ID))
+	hasher.Write(bL3ID)
 
 	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
 }
@@ -179,7 +230,7 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string) {
+func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
 	f.Metric.Start = now
 	f.Metric.Last = now
 
@@ -198,7 +249,7 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 	}
 
 	// need to have as most variable filled as possible to get correct UUID
-	f.UpdateUUID(key)
+	f.UpdateUUID(key, L2ID, L3ID)
 }
 
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
@@ -246,6 +297,7 @@ func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) {
 		Protocol: FlowProtocol_ETHERNET,
 		A:        ethernetPacket.SrcMAC.String(),
 		B:        ethernetPacket.DstMAC.String(),
+		ID:       linkID(packet),
 	}
 
 	f.updateMetricsWithLinkLayer(packet, length)
@@ -262,7 +314,7 @@ func getLinkLayerLength(packet *layers.Ethernet) int64 {
 func (f *Flow) updateMetricsWithLinkLayer(packet *gopacket.Packet, length int64) bool {
 	ethernetLayer := (*packet).Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
-	if !ok {
+	if !ok || f.Link == nil {
 		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
 		return false
 	}
@@ -290,6 +342,7 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
 			Protocol: FlowProtocol_IPV4,
 			A:        ipv4Packet.SrcIP.String(),
 			B:        ipv4Packet.DstIP.String(),
+			ID:       networkID(packet),
 		}
 		return f.updateMetricsWithNetworkLayer(packet)
 	}
@@ -300,7 +353,9 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
 			Protocol: FlowProtocol_IPV6,
 			A:        ipv6Packet.SrcIP.String(),
 			B:        ipv6Packet.DstIP.String(),
+			ID:       networkID(packet),
 		}
+
 		return f.updateMetricsWithNetworkLayer(packet)
 	}
 
@@ -421,6 +476,7 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64
 				continue
 			}
 			fallthrough
+			// We don't split on vlan layers.LayerTypeDot1Q
 		case layers.LayerTypeVXLAN, layers.LayerTypeMPLS, layers.LayerTypeGeneve:
 			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
 			flowPackets.Packets = append(flowPackets.Packets, FlowPacket{gopacket: &p, length: topLayerLength})
@@ -433,7 +489,7 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64
 			innerLength = 0
 
 			// change topLayer in case of multiple encapsulation
-			if i+1 < len(packetLayers)-1 {
+			if i+1 <= len(packetLayers)-1 {
 				topLayer = packetLayers[i+1]
 			}
 		}
@@ -487,6 +543,18 @@ func (f *FlowLayer) GetField(field string) (string, error) {
 		return f.Protocol.String(), nil
 	}
 	return "", common.ErrFieldNotFound
+}
+
+func (f *FlowLayer) GetFieldInt64(field string) (int64, error) {
+	if f == nil {
+		return 0, common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "ID":
+		return f.ID, nil
+	}
+	return 0, common.ErrFieldNotFound
 }
 
 func (f *FlowMetric) GetField(field string) (int64, error) {
@@ -569,6 +637,12 @@ func (f *Flow) GetFieldInt64(field string) (int64, error) {
 		return f.Metric.GetField(fields[1])
 	case "LastUpdateMetric":
 		return f.LastUpdateMetric.GetField(fields[1])
+	case "Link":
+		return f.Link.GetFieldInt64(fields[1])
+	case "Network":
+		return f.Network.GetFieldInt64(fields[1])
+	case "Transport":
+		return f.Transport.GetFieldInt64(fields[1])
 	}
 	return 0, common.ErrFieldNotFound
 }

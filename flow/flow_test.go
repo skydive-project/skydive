@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 
 	v "github.com/gima/govalid/v1"
@@ -79,6 +80,27 @@ func sortFlowByRelationship(flows []*Flow) []*Flow {
 		}
 	}
 	return res
+}
+
+func TestFlowParentUUIDVLAN(t *testing.T) {
+	table := NewTable(nil, nil)
+	packet := forgeTestPacket(t, 64, false, ETH, VLAN, VLAN, VLAN, IPv4, UDP)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
+	table.FlowPacketsToFlow(flowPackets)
+
+	flows := table.GetFlows(nil).GetFlows()
+	if len(flows) != 1 {
+		t.Fatal("An encapsulated VLAN packet must generate 1 flows ", len(flows))
+	}
+
+	flows = sortFlowByRelationship(flows)
+
+	if flows[0].ParentUUID != "" {
+		t.Errorf("Encapsulated VLAN flow must not have ParentUUID == %s", flows[0].UUID)
+	}
+	if flows[0].LayersPath != "Ethernet/Dot1Q/Dot1Q/Dot1Q/IPv4/UDP/Payload" {
+		t.Errorf("Flows LayersPath must be Ethernet/Dot1Q/Dot1Q/Dot1Q/IPv4/UDP/Payload")
+	}
 }
 
 func TestFlowParentUUID(t *testing.T) {
@@ -231,7 +253,7 @@ func compareFlowLayer(expected, tested *FlowLayer) bool {
 		return false
 	}
 
-	return expected.Protocol == tested.Protocol && expected.A == tested.A && expected.B == tested.B
+	return expected.Protocol == tested.Protocol && expected.A == tested.A && expected.B == tested.B && expected.ID == tested.ID
 }
 
 func compareFlowMetric(expected, tested *FlowMetric) bool {
@@ -281,6 +303,7 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*F
 
 	table := NewTable(nil, nil)
 
+	var pcapPacketNB int
 	for {
 		data, _, err := handleRead.ReadPacketData()
 		if err != nil && err != io.EOF {
@@ -292,10 +315,19 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*F
 			if p.ErrorLayer() != nil {
 				t.Fatalf("Failed to decode packet with layer path '%s': %s\n", layerPathFromGoPacket(&p), p.ErrorLayer().Error())
 			}
+			pcapPacketNB++
+			if strings.Contains(layerPathFromGoPacket(&p), "DecodeFailure") {
+				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
+			}
 
 			fp := FlowPacketsFromGoPacket(&p, 0, -1)
 			if fp == nil {
 				t.Fatal("Failed to get FlowPackets: ", err)
+			}
+			for level, f := range fp.Packets {
+				if strings.Contains(layerPathFromGoPacket((&f).gopacket), "DecodeFailure") {
+					t.Fatalf("GoPacket decode this pcap packet %d level %d as DecodeFailure :\n%s", pcapPacketNB, level+1, (*(&f).gopacket).Dump())
+				}
 			}
 			table.FlowPacketsToFlow(fp)
 		}
@@ -575,4 +607,103 @@ func TestPCAPL3TrackingID(t *testing.T) {
 			}
 		}
 	}
+}
+
+// This trace contains two packets sniffed by one capture, on one
+// interface. There are 4 pings running in parallel (10 echo, 10 reply) each
+//
+// Ethernet/VLAN/VLAN/VLAN/VLAN/IPv4/ICMPv4
+// Ethernet/VLAN/VLAN/VLAN/IPv4/ICMPv4
+// Ethernet/VLAN/VLAN/IPv4/ICMPv4
+// Ethernet/VLAN/IPv4/ICMPv4
+//
+func TestPCAPVlansQinQ(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/Dot1Q/IPv4/ICMPv4/Payload",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "92:b6:d9:98:93:bb",
+				B:        "f2:74:63:a0:e3:7f",
+				ID:       8,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.0.2",
+				B:        "172.16.0.1",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 10,
+				ABBytes:   1020,
+				BAPackets: 8,
+				BABytes:   816,
+			},
+		},
+		{
+			LayersPath:  "Ethernet/Dot1Q/Dot1Q/IPv4/ICMPv4/Payload",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "92:b6:d9:98:93:bb",
+				B:        "f2:74:63:a0:e3:7f",
+				ID:       40968,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.10.2",
+				B:        "172.16.10.1",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 10,
+				ABBytes:   1060,
+				BAPackets: 10,
+				BABytes:   1060,
+			},
+		},
+		{
+			LayersPath:  "Ethernet/Dot1Q/Dot1Q/Dot1Q/IPv4/ICMPv4/Payload",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "92:b6:d9:98:93:bb",
+				B:        "f2:74:63:a0:e3:7f",
+				ID:       335585288,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.20.2",
+				B:        "172.16.20.1",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 10,
+				ABBytes:   1100,
+				BAPackets: 9,
+				BABytes:   990,
+			},
+		},
+		{
+			LayersPath:  "Ethernet/Dot1Q/Dot1Q/Dot1Q/Dot1Q/IPv4/ICMPv4/Payload",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "92:b6:d9:98:93:bb",
+				B:        "f2:74:63:a0:e3:7f",
+				ID:       2061919887368,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.30.2",
+				B:        "172.16.30.1",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 10,
+				ABBytes:   1140,
+				BAPackets: 8,
+				BABytes:   912,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/icmpv4-4vlanQinQ-id-8-10-20-30.pcap", layers.LinkTypeEthernet, expected)
 }

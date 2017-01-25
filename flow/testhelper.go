@@ -41,6 +41,7 @@ type ProtocolType int
 
 const (
 	ETH ProtocolType = 1 + iota
+	VLAN
 	IPv4
 	IPv6
 	TCP
@@ -74,14 +75,40 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 			protoStack = append(protoStack, greLayer)
 		case ETH:
 			ethernetLayer := &layers.Ethernet{
-				SrcMAC:       net.HardwareAddr{0x00, 0x0F, 0xAA, 0xFA, 0xAA, byte(rnd.Intn(0x100))},
-				DstMAC:       net.HardwareAddr{0x00, 0x0D, 0xBD, 0xBD, byte(rnd.Intn(0x100)), 0xBD},
-				EthernetType: layers.EthernetTypeIPv4,
+				SrcMAC: net.HardwareAddr{0x00, 0x0F, 0xAA, 0xFA, 0xAA, byte(rnd.Intn(0x100))},
+				DstMAC: net.HardwareAddr{0x00, 0x0D, 0xBD, 0xBD, byte(rnd.Intn(0x100)), 0xBD},
+			}
+			switch protos[i+1] {
+			case VLAN:
+				ethernetLayer.EthernetType = layers.EthernetTypeDot1Q
+			case IPv4:
+				ethernetLayer.EthernetType = layers.EthernetTypeIPv4
+			case IPv6:
+				ethernetLayer.EthernetType = layers.EthernetTypeIPv6
+			case MPLS:
+				ethernetLayer.EthernetType = layers.EthernetTypeMPLSUnicast
 			}
 			if swap {
 				ethernetLayer.SrcMAC, ethernetLayer.DstMAC = ethernetLayer.DstMAC, ethernetLayer.SrcMAC
 			}
 			protoStack = append(protoStack, ethernetLayer)
+		case VLAN:
+			vlanLayer := &layers.Dot1Q{
+				VLANIdentifier: uint16(rnd.Intn(0x1000)),
+			}
+			switch protos[i+1] {
+			case VLAN:
+				vlanLayer.Type = layers.EthernetTypeDot1Q
+			case IPv4:
+				vlanLayer.Type = layers.EthernetTypeIPv4
+			case IPv6:
+				vlanLayer.Type = layers.EthernetTypeIPv6
+			case MPLS:
+				vlanLayer.Type = layers.EthernetTypeMPLSUnicast
+			default:
+				t.Error(fmt.Sprintf("Protocol %d can not be over VLAN 802.1Q", protos[i+1]))
+			}
+			protoStack = append(protoStack, vlanLayer)
 		case IPv4:
 			ipv4Layer := &layers.IPv4{
 				Version: 4,
@@ -181,6 +208,8 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 
 	firstLayerType := layers.LayerTypeEthernet
 	switch protos[0] {
+	case VLAN:
+		firstLayerType = layers.LayerTypeDot1Q
 	case IPv4:
 		firstLayerType = layers.LayerTypeIPv4
 	case IPv6:
@@ -194,7 +223,7 @@ func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, nodeTID 
 	key := FlowKeyFromGoPacket(packet, "").String()
 	flow, new := ft.GetOrCreateFlow(key)
 	if new {
-		flow.Init(key, ft.GetTime(), packet, length, nodeTID, "")
+		flow.Init(key, ft.GetTime(), packet, length, nodeTID, "", 0, 0)
 	} else {
 		flow.Update(ft.GetTime(), packet, length)
 	}
