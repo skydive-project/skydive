@@ -23,9 +23,11 @@
 package probes
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gophercloud/gophercloud"
@@ -36,6 +38,7 @@ import (
 	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/pmylund/go-cache"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -190,6 +193,7 @@ func (mapper *NeutronMapper) nodeUpdater() {
 
 func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	mapper.graph.Lock()
+	defer mapper.graph.Unlock()
 
 	metadata := map[string]interface{}{"Manager": "neutron"}
 
@@ -219,27 +223,42 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	}
 	tr.Commit()
 
+	if !strings.HasPrefix(node.Metadata()["Name"].(string), "qvo") {
+		return
+	}
+
+	// tap to qvo path
+	tap := strings.Replace(node.Metadata()["Name"].(string), "qvo", "tap", 1)
+
 	if _, ok := node.Metadata()["ExtID/vm-uuid"]; ok {
 		if mac, ok := node.Metadata()["ExtID/attached-mac"]; ok {
-			if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Type": "tun"}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
-				metadata["ExtID/vm-uuid"] = node.Metadata()["ExtID/vm-uuid"]
-				metadata["ExtID/attached-mac"] = node.Metadata()["ExtID/attached-mac"]
-				for i, n := range path {
-					tr := mapper.graph.StartMetadataTransaction(n)
-					for k, v := range metadata {
-						tr.AddMetadata(k, v)
+			retryFnc := func() error {
+				mapper.graph.Lock()
+				defer mapper.graph.Unlock()
+
+				if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
+					metadata["ExtID/vm-uuid"] = node.Metadata()["ExtID/vm-uuid"]
+					metadata["ExtID/attached-mac"] = node.Metadata()["ExtID/attached-mac"]
+					for i, n := range path {
+						tr := mapper.graph.StartMetadataTransaction(n)
+						for k, v := range metadata {
+							tr.AddMetadata(k, v)
+						}
+
+						// add vm peering info, going to be used by peering probe
+						if i == len(path)-1 {
+							tr.AddMetadata("PeerIntfMAC", mac)
+						}
+						tr.Commit()
 					}
 
-					// add vm peering info, going to be used by peering probe
-					if i == len(path)-1 {
-						tr.AddMetadata("PeerIntfMAC", mac)
-					}
-					tr.Commit()
+					return nil
 				}
+				return errors.New("Path not found")
 			}
+			go common.Retry(retryFnc, 60, 1*time.Second)
 		}
 	}
-	mapper.graph.Unlock()
 }
 
 func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
