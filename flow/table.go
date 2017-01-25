@@ -131,19 +131,9 @@ func (ft *Table) GetFlows(query *FlowSearchQuery) *FlowSet {
 	ft.RLock()
 	defer ft.RUnlock()
 
-	var it *common.Iterator
-	if query != nil && query.PaginationRange != nil {
-		it = common.NewIterator(0, query.PaginationRange.From, query.PaginationRange.To)
-	} else {
-		it = common.NewIterator()
-	}
-
 	flowset := NewFlowSet()
 	for _, f := range ft.table {
-		if it.Done() {
-			break
-		}
-		if (query == nil || query.Filter == nil || query.Filter.Eval(f)) && it.Next() {
+		if query == nil || query.Filter == nil || query.Filter.Eval(f) {
 			if flowset.Start == 0 || flowset.Start > f.Metric.Start {
 				flowset.Start = f.Metric.Start
 			}
@@ -302,6 +292,10 @@ func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchRepl
 
 	if fsq.Dedup {
 		flowset.Dedup(fsq.DedupBy)
+	}
+
+	if fsq.PaginationRange != nil {
+		flowset.Slice(int(fsq.PaginationRange.From), int(fsq.PaginationRange.To))
 	}
 
 	return &FlowSearchReply{
