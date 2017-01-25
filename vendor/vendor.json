@@ -634,12 +634,6 @@
 			"revisionTime": "2016-12-14T09:11:46Z"
 		},
 		{
-			"checksumSHA1": "ZGjkFAvXg6X7ITBAAaouP6nvrro=",
-			"path": "github.com/google/gopacket/afpacket",
-			"revision": "cc1eec85c8f685de32dfb09f6abb16b4ebd22c07",
-			"revisionTime": "2016-12-14T09:11:46Z"
-		},
-		{
 			"checksumSHA1": "2BnmpgLvZyCQ2KQxg2Kkf8yAbSo=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
