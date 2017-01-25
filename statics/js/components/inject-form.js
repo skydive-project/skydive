@@ -36,6 +36,17 @@ Vue.component('inject-form', {
     };
   },
 
+  beforeDestroy: function() {
+    // FIXME: we should just call reset() here,
+    // but the watchers are not being evaluated :/
+    if (this.node1) {
+      this.highlightNode(this.node1, false);
+    }
+    if (this.node2) {
+      this.highlightNode(this.node2, false);
+    }
+  },
+
   computed: {
 
     error: function() {

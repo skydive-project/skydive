@@ -20,7 +20,6 @@
 
   <script src="/statics/js/jquery.1.9.1.min.js" type="text/javascript"></script>
   <script src="/statics/js/jquery-ui.1.10.1.js" type="text/javascript"></script>
-  <script src="/statics/js/bootstrap.3.3.5.min.js"></script>
   <script src="/statics/js/bootstrap-switch.min.js"></script>
   <script src="/statics/js/bootstrap-notify.min.js"></script>
   <script src="/statics/js/bootstrap-slider.min.js"></script>
@@ -45,6 +44,7 @@
   <script src="/statics/js/components/capture-form.js"></script>
   <script src="/statics/js/components/capture-list.js"></script>
   <script src="/statics/js/components/inject-form.js"></script>
+  <script src="/statics/js/components/tabs.js"></script>
   <script src="/statics/js/vue-sidebar.js"></script>
 
   <script>
@@ -100,36 +100,17 @@
       <div class="topology-d3" tabindex="0"></div>
     </div>
     <div class="col-sm-4 fill info" id="vue-sidebar">
-      <div class="flow-ops-panel analyzer-only">
-        <ul class="nav nav-pills">
-          <li class="active">
-            <a  href="#1a" data-toggle="tab">Captures</a>
-          </li>
-          <li>
-            <a href="#2a" data-toggle="tab">Generator</a>
-          </li>
-        </ul>
-        <div class="tab-content clearfix">
 
-          <div class="tab-pane active" id="1a">
-            <div class="left-cont ">
-              <div class="left-panel">
-                <capture-list></capture-list>
-                <capture-form></capture-form>
-              </div>
-            </div>
-          </div>
+      <tabs class="analyzer-only">
+        <tab-pane title="Capture">
+          <capture-list></capture-list>
+          <capture-form></capture-form>
+        </tab-pane>
 
-          <div class="tab-pane" id="2a">
-            <div class="left-cont">
-              <div class="left-panel">
-                <inject-form></inject-form>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
+        <tab-pane title="Generator">
+          <inject-form></inject-form>
+        </tab-pane>
+      </tabs>
 
       <div class="left-panel" id="node-details" style="display: none">
         <div class="title-left-panel">

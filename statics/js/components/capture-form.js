@@ -52,6 +52,10 @@ Vue.component('capture-form', {
     };
   },
 
+  beforeDestroy: function() {
+    this.resetQueryNodes();
+  },
+
   computed: {
 
     queryError: function() {

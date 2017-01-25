@@ -32,12 +32,17 @@ Vue.component('capture-list', {
   data: function() {
     return {
       captures: {},
-      deleting: []
+      deleting: [],
+      timer: null,
     };
   },
 
   created: function() {
-    setInterval(this.refresh, 1000);
+    this.timer = setInterval(this.refresh, 1000);
+  },
+
+  beforeDestroy: function() {
+    clearInterval(this.timer);
   },
 
   computed: {
