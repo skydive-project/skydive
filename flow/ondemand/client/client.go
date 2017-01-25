@@ -198,8 +198,10 @@ func (o *OnDemandProbeClient) onApiWatcherEvent(action string, id string, resour
 	capture := resource.(*api.Capture)
 	switch action {
 	case "init", "create", "set", "update":
+		o.wsServer.BroadcastWSMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureAdded", capture))
 		o.onCaptureAdded(capture)
 	case "expire", "delete":
+		o.wsServer.BroadcastWSMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureDeleted", capture))
 		o.onCaptureDeleted(capture)
 	}
 }
