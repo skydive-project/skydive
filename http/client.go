@@ -30,6 +30,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 type RestClient struct {
@@ -99,7 +101,7 @@ func (c *CrudClient) List(resource string, values interface{}) error {
 		return errors.New(fmt.Sprintf("Failed to list %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
-	return json.NewDecoder(resp.Body).Decode(values)
+	return common.JsonDecode(resp.Body, values)
 }
 
 func (c *CrudClient) Get(resource string, id string, value interface{}) error {
@@ -114,7 +116,7 @@ func (c *CrudClient) Get(resource string, id string, value interface{}) error {
 		return errors.New(fmt.Sprintf("Failed to get %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
-	return json.NewDecoder(resp.Body).Decode(value)
+	return common.JsonDecode(resp.Body, value)
 }
 
 func (c *CrudClient) Create(resource string, value interface{}) error {
@@ -137,7 +139,7 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 		return errors.New(fmt.Sprintf("Failed to create %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
-	return json.NewDecoder(resp.Body).Decode(value)
+	return common.JsonDecode(resp.Body, value)
 }
 
 func (c *CrudClient) Update(resource string, id string, value interface{}) error {
@@ -159,7 +161,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 		return errors.New(fmt.Sprintf("Failed to update %s, %s: %s", resource, resp.Status, readBody(resp)))
 	}
 
-	return json.NewDecoder(resp.Body).Decode(value)
+	return common.JsonDecode(resp.Body, value)
 }
 
 func (c *CrudClient) Delete(resource string, id string) error {

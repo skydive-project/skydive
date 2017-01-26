@@ -23,12 +23,14 @@
 package graph
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
@@ -207,18 +209,15 @@ func (b *ElasticSearchBackend) getElement(kind string, i Identifier, t *time.Tim
 
 	if resp.Found {
 		var obj map[string]interface{}
-		if err := json.Unmarshal([]byte(*resp.Source), &obj); err != nil {
+		if err := common.JsonDecode(bytes.NewReader([]byte(*resp.Source)), &obj); err != nil {
 			return err
 		}
 
-		deletedAt, ok := obj["DeletedAt"].(float64)
-		if ok && deletedAt == 0 {
-			switch e := element.(type) {
-			case *Node:
-				e.Decode(obj)
-			case *Edge:
-				e.Decode(obj)
-			}
+		switch e := element.(type) {
+		case *Node:
+			e.Decode(obj)
+		case *Edge:
+			e.Decode(obj)
 		}
 	}
 
@@ -289,7 +288,7 @@ func (b *ElasticSearchBackend) unflattenMetadata(obj map[string]interface{}) {
 
 func (b *ElasticSearchBackend) hitToNode(source *json.RawMessage, node *Node) error {
 	var obj map[string]interface{}
-	if err := json.Unmarshal([]byte(*source), &obj); err != nil {
+	if err := common.JsonDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
 		return err
 	}
 	b.unflattenMetadata(obj)
@@ -301,7 +300,7 @@ func (b *ElasticSearchBackend) hitToNode(source *json.RawMessage, node *Node) er
 
 func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) error {
 	var obj map[string]interface{}
-	if err := json.Unmarshal([]byte(*source), &obj); err != nil {
+	if err := common.JsonDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
 		return err
 	}
 	b.unflattenMetadata(obj)

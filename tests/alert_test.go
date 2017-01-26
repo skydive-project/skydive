@@ -23,7 +23,7 @@
 package tests
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -38,6 +38,7 @@ import (
 	"github.com/hydrogen18/stoppableListener"
 	"github.com/skydive-project/skydive/alert"
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -46,7 +47,7 @@ import (
 
 func checkMessage(t *testing.T, b []byte, al *api.Alert) (bool, error) {
 	var alertMsg alert.AlertMessage
-	if err := json.Unmarshal(b, &alertMsg); err == nil {
+	if err := common.JsonDecode(bytes.NewReader(b), &alertMsg); err == nil {
 		if alertMsg.UUID == al.UUID {
 			var nodes []*graph.Node
 			switch arr := alertMsg.ReasonData.(type) {
@@ -254,7 +255,7 @@ func TestAlertWithTimer(t *testing.T) {
 		}
 
 		var msg shttp.WSMessage
-		if err = json.Unmarshal(m, &msg); err != nil {
+		if err = common.JsonDecode(bytes.NewReader(m), &msg); err != nil {
 			t.Fatalf("Failed to unmarshal message: %s", err.Error())
 		}
 

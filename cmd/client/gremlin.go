@@ -30,6 +30,7 @@ import (
 	"net/http"
 
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -63,10 +64,7 @@ func (g *GremlinQueryHelper) Query(query string, values interface{}) error {
 		return fmt.Errorf("%s: %s", resp.Status, string(data))
 	}
 
-	decoder := json.NewDecoder(resp.Body)
-	decoder.UseNumber()
-
-	if err = decoder.Decode(values); err != nil {
+	if err = common.JsonDecode(resp.Body, values); err != nil {
 		return err
 	}
 

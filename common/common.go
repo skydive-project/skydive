@@ -23,8 +23,10 @@
 package common
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -415,4 +417,10 @@ func ServiceAddressFromString(addressPort string) (ServiceAddress, error) {
 		Addr: addr,
 		Port: port,
 	}, nil
+}
+
+func JsonDecode(r io.Reader, i interface{}) error {
+	decoder := json.NewDecoder(r)
+	decoder.UseNumber()
+	return decoder.Decode(i)
 }

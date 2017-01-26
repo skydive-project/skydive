@@ -32,6 +32,7 @@ import (
 	etcd "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -117,7 +118,7 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 				// keep the original ID
 				id := resource.ID()
 
-				if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
+				if err := common.JsonDecode(r.Body, &resource); err != nil {
 					writeError(w, http.StatusBadRequest, err)
 					return
 				}

@@ -27,24 +27,21 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
+	var obj interface{}
+	if err := common.JsonDecode(bytes.NewReader([]byte(*msg.Obj)), &obj); err != nil {
+		return "", msg, err
+	}
+
 	switch msg.Type {
 	case "SyncRequest":
-		var obj map[string]interface{}
-		if msg.Obj != nil {
-			decoder := json.NewDecoder(bytes.NewReader([]byte(*msg.Obj)))
-			decoder.UseNumber()
-
-			if err := decoder.Decode(&obj); err != nil {
-				return "", msg, err
-			}
-		}
-
+		m := obj.(map[string]interface{})
 		var context GraphContext
-		switch v := obj["Time"].(type) {
+		switch v := m["Time"].(type) {
 		case json.Number:
 			i, err := v.Int64()
 			if err != nil {
@@ -57,17 +54,8 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 		return msg.Type, context, nil
 
 	case "HostGraphDeleted":
-		var obj interface{}
-		if err := json.Unmarshal([]byte(*msg.Obj), &obj); err != nil {
-			return "", msg, err
-		}
 		return msg.Type, obj, nil
 	case "NodeUpdated", "NodeDeleted", "NodeAdded":
-		var obj interface{}
-		if err := json.Unmarshal([]byte(*msg.Obj), &obj); err != nil {
-			return "", msg, err
-		}
-
 		var node Node
 		if err := node.Decode(obj); err != nil {
 			return "", msg, err
@@ -75,12 +63,6 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 
 		return msg.Type, &node, nil
 	case "EdgeUpdated", "EdgeDeleted", "EdgeAdded":
-		var obj interface{}
-		err := json.Unmarshal([]byte(*msg.Obj), &obj)
-		if err != nil {
-			return "", msg, err
-		}
-
 		var edge Edge
 		if err := edge.Decode(obj); err != nil {
 			return "", msg, err

@@ -23,7 +23,6 @@
 package probes
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"sync"
@@ -200,10 +199,9 @@ func (probe *DockerProbe) connect() error {
 
 	defer probe.wg.Done()
 
-	dec := json.NewDecoder(body)
 	for {
 		var event events.Message
-		err := dec.Decode(&event)
+		err := common.JsonDecode(body, &event)
 		if err != nil {
 			if err == io.EOF {
 				break

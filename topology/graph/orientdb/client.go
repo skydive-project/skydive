@@ -32,6 +32,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 type Document map[string]interface{}
@@ -100,7 +102,7 @@ type DocumentClass struct {
 
 func parseError(body io.Reader) error {
 	var errs Errors
-	if err := json.NewDecoder(body).Decode(&errs); err != nil {
+	if err := common.JsonDecode(body, &errs); err != nil {
 		return fmt.Errorf("Error while parsing error: %s (%s)", err.Error(), body)
 	}
 	var s string
@@ -134,9 +136,7 @@ func parseResponse(resp *http.Response, result interface{}) error {
 	} else {
 		content, _ := ioutil.ReadAll(body)
 		if len(content) != 0 {
-			decoder := json.NewDecoder(bytes.NewBuffer(content))
-			decoder.UseNumber()
-			if err := decoder.Decode(result); err != nil {
+			if err := common.JsonDecode(bytes.NewBuffer(content), result); err != nil {
 				return fmt.Errorf("Error while parsing OrientDB response: %s (%s)", err.Error(), content)
 			}
 		}

@@ -23,10 +23,11 @@
 package packet_injector
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"net/http"
 
+	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -50,7 +51,7 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (bool, string
 		Payload string
 		Count   int
 	}{}
-	if err := json.Unmarshal([]byte(*msg.Obj), &params); err != nil {
+	if err := common.JsonDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
 		e := fmt.Sprintf("Unable to decode packet inject param message %v", msg)
 		return false, e
 	}
