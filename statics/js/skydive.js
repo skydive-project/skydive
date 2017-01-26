@@ -32,15 +32,18 @@ var minusImg = 'statics/img/minus-outline-16.png';
 var plusImg = 'statics/img/plus-16.png';
 var probeIndicatorImg = 'statics/img/media-record.png';
 var pinIndicatorImg = 'statics/img/pin.png';
-var trashImg = 'statics/img/trash.png';
 
 var alerts = {};
 
-var connected = false;
 var CurrentNodeDetails;
 var FlowGrid;
 var FlowDataView;
 var FlowDataGrid;
+
+var topologyLayout;
+var conversationLayout;
+var discoveryLayout;
+var websocket;
 
 var Group = function(ID, type) {
   this.ID = ID;
@@ -193,15 +196,30 @@ Graph.prototype.InitFromSyncMessage = function(msg) {
 };
 
 var Layout = function(selector) {
+  var self = this;
   this.graph = new Graph();
   this.selector = selector;
-  this.updatesocket = '';
   this.elements = {};
   this.groups = {};
   this.synced = false;
-  this.live = false;
+  // we are live by default
+  this.live = true;
   this.lscachetimeout = 60 * 24 * 7;
   this.keeplayout = false;
+  setInterval(function() {
+    // keep track of position once one drag occured
+    if (self.keeplayout) {
+      for (var i in self.nodes) {
+        var node = self.nodes[i];
+        lscache.set(self.nodes[i].Metadata.TID, {x: node.x, y: node.y, fixed: node.fixed}, self.lscachetimeout);
+      }
+    }
+  }, 30000);
+
+  websocket.addConnectHandler(this.SyncRequest.bind(this));
+  websocket.addDisconnectHandler(this.Invalidate.bind(this));
+  websocket.addMsgHandler('Graph', this.ProcessGraphMessage.bind(this));
+  websocket.addMsgHandler('Alert', this.ProcessAlertMessage.bind(this));
 
   this.width = $(selector).width() - 20;
   this.height = $(selector).height();
@@ -1159,68 +1177,8 @@ Layout.prototype.SyncRequest = function(t) {
     obj.Time = t;
   }
   var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
-  this.updatesocket.send(JSON.stringify(msg));
+  websocket.send(msg);
 };
-
-Layout.prototype.StartLiveUpdate = function() {
-  this.live = true;
-  this.updatesocket = new WebSocket("ws://" + location.host + "/ws");
-
-  var _this = this;
-
-  setInterval(function() {
-    // keep track of position once one drag occured
-    if (_this.keeplayout) {
-      for (var i in _this.nodes) {
-        var node = _this.nodes[i];
-        lscache.set(_this.nodes[i].Metadata.TID, {x: node.x, y: node.y, fixed: node.fixed}, _this.lscachetimeout);
-      }
-    }
-  }, 30000);
-
-  this.updatesocket.onopen = function() {
-    if (!connected) {
-      $.notify({
-      	message: 'Connected'
-      },{
-      	type: 'success'
-      });
-      connected = true;
-    }
-
-    _this.SyncRequest(null);
-  };
-
-  this.updatesocket.onclose = function() {
-    if (connected) {
-      $.notify({
-        message: 'Connection lost'
-      },{
-        type: 'danger'
-      });
-      connected = false;
-    }
-
-    _this.Invalidate();
-    setTimeout(function() { _this.StartLiveUpdate(); }, 1000);
-  };
-
-  this.updatesocket.onmessage = function(e) {
-    var msg = jQuery.parseJSON(e.data);
-    switch(msg.Namespace) {
-      case "Graph":
-        _this.ProcessGraphMessage(msg);
-        break;
-      case "Alert":
-        _this.ProcessAlertMessage(msg);
-        break;
-    }
-  };
-};
-
-var topologyLayout;
-var conversationLayout;
-var discoveryLayout;
 
 function AgentReady() {
   $(".analyzer-only").hide();
@@ -1524,11 +1482,11 @@ $(document).ready(function() {
   $('.conversation').hide();
   $('.discovery').hide();
 
-  vueSidebar = new Vue(VueSidebar);
+  websocket = new WSHandler();
+  websocket.connect();
 
   topologyLayout = new Layout(".topology-d3");
-  topologyLayout.StartLiveUpdate();
-
+  vueSidebar = new Vue(VueSidebar);
   StartCheckAPIAccess();
 
   if (Service != "agent") {

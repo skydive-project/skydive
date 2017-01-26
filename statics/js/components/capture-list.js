@@ -38,11 +38,12 @@ Vue.component('capture-list', {
   },
 
   created: function() {
-    this.timer = setInterval(this.refresh, 1000);
+    websocket.addMsgHandler('OnDemand', this.onMsg.bind(this));
+    websocket.addConnectHandler(this.init.bind(this));
   },
 
   beforeDestroy: function() {
-    clearInterval(this.timer);
+    websocket.delConnectHandler(this.init.bind(this));
   },
 
   computed: {
@@ -53,11 +54,7 @@ Vue.component('capture-list', {
 
   methods: {
 
-    refresh: function() {
-      // global var from skydive.js
-      if (!connected) {
-        return;
-      }
+    init: function() {
       var self = this;
       CaptureAPI.list()
         .then(function(data) {
@@ -65,14 +62,22 @@ Vue.component('capture-list', {
         });
     },
 
+    onMsg: function(msg) {
+      switch(msg.Type) {
+        case "CaptureDeleted":
+          Vue.delete(this.captures, msg.Obj.UUID);
+          break;
+        case "CaptureAdded":
+          Vue.set(this.captures, msg.Obj.UUID, msg.Obj);
+          break;
+      }
+    },
+
     remove: function(capture) {
       var self = this,
           uuid = capture.UUID;
       self.deleting.push(uuid);
       CaptureAPI.delete(uuid)
-        .then(function() {
-          Vue.delete(self.captures, uuid);
-        })
         .always(function() {
           self.deleting.splice(self.deleting.indexOf(uuid), 1);
         });
