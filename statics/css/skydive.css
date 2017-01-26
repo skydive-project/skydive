@@ -421,23 +421,6 @@ circle.manager {
   fill: #fff;
 }
 
-.capture-form label {
-  font-weight: normal;
-}
-
-.capture-input {
-  margin-bottom: 6px;
-  width: 100%;
-  box-sizing: border-box;
-  -webkit-box-sizing:&box;
-  -moz-box-sizing: border-box;
-  color: black;
-}
-
-.capture-form textarea {
-  height: 100px;
-}
-
 .form-control + .fa-crosshairs {
   color: black;
   font-size: 1.3em;

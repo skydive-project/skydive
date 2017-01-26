@@ -1,33 +1,41 @@
+/* jshint multistr: true */
+
 Vue.component('capture-form', {
 
   template: '\
     <transition name="slide" mode="out-in">\
       <div class="sub-left-panel" v-if="visible">\
-        <div class="title-left-panel">New Capture :</div>\
         <form @submit.prevent="start" class="capture-form">\
-          <label>Name : </label></br>\
-          <input type="text" class="capture-input" v-model="name" /><br/>\
-          <label>Description : </label></br>\
-          <textarea type="text" class="capture-input" rows="2" v-model="desc"></textarea><br/>\
-          <label>Target : </label></br>\
-          <label class="radio-inline">\
-            <input type="radio" name="capture-target" value="selection" v-model="mode"> Nodes selection\
-          </label>\
-          <label class="radio-inline">\
-            <input type="radio" name="capture-target" value="gremlin" v-model="mode"> Gremlin Expression\
-          </label>\
-          <div v-if="mode == \'selection\'">\
-            <node-selector placeholder="Interface 1" v-model="node1"></node-selector>\
-            </br>\
-            <node-selector placeholder="Interface 2 (Optionnal)" v-model="node2"></node-selector>\
+          <div class="form-group">\
+            <label for="capture-name">Name</label>\
+            <input id="capture-name" type="text" class="form-control input-sm" v-model="name" />\
           </div>\
-          <br/>\
-          <div v-if="mode == \'gremlin\'">\
-            <textarea type="text" class="capture-input" v-model="userQuery"></textarea><br/>\
+          <div class="form-group">\
+            <label for="capture-desc">Description</label>\
+            <textarea id="capture-desc" type="text" class="form-control input-sm" rows="2" v-model="desc"></textarea>\
+          </div>\
+          <div class="form-group">\
+            <label class="radio-inline">\
+              <input type="radio" name="capture-target" value="selection" v-model="mode"> Nodes selection\
+            </label>\
+            <label class="radio-inline">\
+              <input type="radio" name="capture-target" value="gremlin" v-model="mode"> Gremlin Expression\
+            </label>\
+          </div>\
+          <div class="form-group" v-if="mode == \'selection\'">\
+            <label>Targets</label>\
+            <node-selector class="inject-target"\
+                           placeholder="Interface 1"\
+                           v-model="node1"></node-selector>\
+            <node-selector placeholder="Interface 2 (Optionnal)"\
+                           v-model="node2"></node-selector>\
+          </div>\
+          <div class="form-group" v-if="mode == \'gremlin\'">\
+            <label for="capture-query">Query</label>\
+            <textarea id="capture-query" type="text" class="form-control input-sm" rows="5" v-model="userQuery"></textarea>\
           </div>\
           <button type="submit" class="btn btn-primary">Start</button>\
           <button type="button" class="btn btn-danger" @click="reset">Cancel</button>\
-          <br/>\
         </form>\
       </div>\
       <button type="button"\
