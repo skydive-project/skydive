@@ -46,7 +46,10 @@ type PacketInjectorServer struct {
 func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (bool, string) {
 	params := struct {
 		SrcNode interface{}
-		DstNode interface{}
+		SrcIP   string
+		SrcMAC  string
+		DstIP   string
+		DstMAC  string
 		Type    string
 		Payload string
 		Count   int
@@ -62,15 +65,12 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (bool, string
 		return false, e
 	}
 
-	var dstNode graph.Node
-	if err := dstNode.Decode(params.DstNode); err != nil {
-		e := fmt.Sprintf("Unable to decode destination node %s", err.Error())
-		return false, e
-	}
-
 	pip := PacketParams{
 		SrcNode: &srcNode,
-		DstNode: &dstNode,
+		SrcIP:   params.SrcIP,
+		SrcMAC:  params.SrcMAC,
+		DstIP:   params.DstIP,
+		DstMAC:  params.DstMAC,
 		Type:    params.Type,
 		Payload: params.Payload,
 		Count:   params.Count,

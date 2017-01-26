@@ -41,8 +41,12 @@ type PacketInjectorApi struct {
 }
 
 type PacketParamsReq struct {
-	Src     string `valid:"isGremlinExpr"`
-	Dst     string `valid:"isGremlinExpr"`
+	Src     string
+	Dst     string
+	SrcIP   string
+	DstIP   string
+	SrcMAC  string
+	DstMAC  string
 	Type    string
 	Payload string
 	Count   int
@@ -59,43 +63,79 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 	}
 	defer r.Body.Close()
 
-	if errs := validator.Validate(&ppr); errs != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
 	srcNode := pi.getNode(ppr.Src)
 	dstNode := pi.getNode(ppr.Dst)
-	if srcNode == nil || dstNode == nil {
-		writeError(w, http.StatusBadRequest, errors.New("Not able to find a Node"))
-		return
+
+	if ppr.SrcIP == "" {
+		if srcNode != nil {
+			srcdata := srcNode.Metadata()
+			if ip, ok := srcdata["IPV4"]; !ok || ip == "" {
+				writeError(w, http.StatusBadRequest, errors.New("No source IP in node and user input"))
+				return
+			}
+			ppr.SrcIP = srcdata["IPV4"].(string)
+		} else {
+			writeError(w, http.StatusBadRequest, errors.New("Not able to find a source node and source IP also empty"))
+			return
+		}
 	}
 
-	srcdata := srcNode.Metadata()
-	dstdata := dstNode.Metadata()
-
-	if _, ok := srcdata["IPV4"]; !ok {
-		writeError(w, http.StatusBadRequest, errors.New("Source Node doesn't have an IP"))
-		return
+	if ppr.DstIP == "" {
+		if dstNode != nil {
+			dstdata := dstNode.Metadata()
+			if ip, ok := dstdata["IPV4"]; !ok || ip == "" {
+				writeError(w, http.StatusBadRequest, errors.New("No dest IP in node and user input"))
+				return
+			}
+			ppr.DstIP = dstdata["IPV4"].(string)
+		} else {
+			writeError(w, http.StatusBadRequest, errors.New("Not able to find a dest node and dest IP also empty"))
+			return
+		}
 	}
-	if _, ok := dstdata["IPV4"]; !ok {
-		writeError(w, http.StatusBadRequest, errors.New("Destination Node doesn't have an IP"))
-		return
+
+	if ppr.SrcMAC == "" {
+		if srcNode != nil {
+			srcdata := srcNode.Metadata()
+			if mac, ok := srcdata["MAC"]; !ok || mac == "" {
+				writeError(w, http.StatusBadRequest, errors.New("No source MAC in node and user input"))
+				return
+			}
+			ppr.SrcMAC = srcdata["MAC"].(string)
+		} else {
+			writeError(w, http.StatusBadRequest, errors.New("Not able to find a source node and source MAC also empty"))
+			return
+		}
 	}
 
-	if srcdata["IPV4"] == "" || srcdata["MAC"] == "" ||
-		dstdata["IPV4"] == "" || dstdata["MAC"] == "" {
-		writeError(w, http.StatusBadRequest, errors.New("Selected nodes are not proper"))
-		return
+	if ppr.DstMAC == "" {
+		if dstNode != nil {
+			dstdata := dstNode.Metadata()
+			if mac, ok := dstdata["MAC"]; !ok || mac == "" {
+				writeError(w, http.StatusBadRequest, errors.New("No dest MAC in node and user input"))
+				return
+			}
+			ppr.DstMAC = dstdata["MAC"].(string)
+		} else {
+			writeError(w, http.StatusBadRequest, errors.New("Not able to find a dest node and dest MAC also empty"))
+			return
+		}
 	}
 
 	pp := packet_injector.PacketParams{
 		SrcNode: srcNode,
-		DstNode: dstNode,
+		SrcIP:   ppr.SrcIP,
+		SrcMAC:  ppr.SrcMAC,
+		DstIP:   ppr.DstIP,
+		DstMAC:  ppr.DstMAC,
 		Type:    ppr.Type,
 		Payload: ppr.Payload,
 		Count:   ppr.Count,
+	}
+
+	if errs := validator.Validate(&pp); errs != nil {
+		writeError(w, http.StatusBadRequest, errors.New("All the parms not set properly."))
+		return
 	}
 
 	host := srcNode.Host()

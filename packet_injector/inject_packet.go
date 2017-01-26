@@ -44,41 +44,35 @@ var (
 )
 
 type PacketParams struct {
-	SrcNode *graph.Node
-	DstNode *graph.Node
-	Type    string
+	SrcNode *graph.Node `valid:"nonzero"`
+	SrcIP   string      `valid:"nonzero"`
+	SrcMAC  string      `valid:"nonzero"`
+	DstIP   string      `valid:"nonzero"`
+	DstMAC  string      `valid:"nonzero"`
+	Type    string      `valid:"nonzero"`
 	Payload string
-	Count   int
+	Count   int `valid:"nonzero"`
 }
 
 func InjectPacket(pp *PacketParams, g *graph.Graph) error {
 	srcdata := pp.SrcNode.Metadata()
-	dstdata := pp.DstNode.Metadata()
 
-	if _, ok := srcdata["IPV4"]; !ok {
-		return errors.New("Source Node doesn't have an IP")
-	}
-
-	srcIP := getIP(srcdata["IPV4"].(string))
+	srcIP := getIP(pp.SrcIP)
 	if srcIP == nil {
 		return errors.New("Source Node doesn't have proper IP")
 	}
 
-	if _, ok := dstdata["IPV4"]; !ok {
-		return errors.New("Destination Node doesn't have an IP")
-	}
-
-	dstIP := getIP(dstdata["IPV4"].(string))
+	dstIP := getIP(pp.DstIP)
 	if dstIP == nil {
 		return errors.New("Destination Node doesn't have proper IP")
 	}
 
-	srcMAC, err := net.ParseMAC(srcdata["MAC"].(string))
+	srcMAC, err := net.ParseMAC(pp.SrcMAC)
 	if err != nil || srcMAC == nil {
 		return errors.New("Source Node doesn't have proper MAC")
 	}
 
-	dstMAC, err := net.ParseMAC(dstdata["MAC"].(string))
+	dstMAC, err := net.ParseMAC(pp.DstMAC)
 	if err != nil || dstMAC == nil {
 		return errors.New("Destination Node doesn't have proper MAC")
 	}

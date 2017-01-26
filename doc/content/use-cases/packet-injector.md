@@ -7,10 +7,13 @@ The packet injector can be used with either the command line or the WebUI.
 To use the packet injector we need to provide the below parameters,
 
 * Source node, needs to be expressed in gremlin query format.
-* Destination node, needs to be expressed in gremlin query format.
+* Destination node, needs to be expressed in gremlin query format, optional if dstIP and dstMAC given.
+* Source IP of the packet, optional if source node given.
+* Source MAC of the packet, optional if source node given.
+* Destination IP of the packet, optional if destination node given.
+* Destination MAC of the packet, optional if destination node given.
 * Type of packet. currently only ICMP is supported.
 * Number of packets to be generated, default is 1.
-* Payload of the packet.
 
 ```console
 $ skydive client inject-packet [flags]
@@ -18,8 +21,12 @@ $ skydive client inject-packet [flags]
 Flags:
       --count int        number of packets to be generated (default 1)
       --dst string       destination node gremlin expression
+      --dstIP string     destination node IP
+      --dstMAC string    destination node MAC
       --payload string   payload
       --src string       source node gremlin expression
+      --srcIP string     source node IP
+      --srcMAC string    source node MAC
       --type string      packet type: icmp (default "icmp")
 ```
 

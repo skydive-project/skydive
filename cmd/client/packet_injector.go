@@ -36,6 +36,10 @@ import (
 var (
 	srcNode    string
 	dstNode    string
+	srcIP      string
+	srcMAC     string
+	dstIP      string
+	dstMAC     string
 	packetType string
 	payload    string
 	count      int
@@ -55,6 +59,10 @@ var PacketInjectorCmd = &cobra.Command{
 		packet := &api.PacketParamsReq{}
 		packet.Src = srcNode
 		packet.Dst = dstNode
+		packet.SrcIP = srcIP
+		packet.SrcMAC = srcMAC
+		packet.DstIP = dstIP
+		packet.DstMAC = dstMAC
 		packet.Type = packetType
 		packet.Payload = payload
 		packet.Count = count
@@ -73,6 +81,10 @@ var PacketInjectorCmd = &cobra.Command{
 func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&srcNode, "src", "", "", "source node gremlin expression")
 	cmd.Flags().StringVarP(&dstNode, "dst", "", "", "destination node gremlin expression")
+	cmd.Flags().StringVarP(&srcIP, "srcIP", "", "", "source node IP")
+	cmd.Flags().StringVarP(&dstIP, "dstIP", "", "", "destination node IP")
+	cmd.Flags().StringVarP(&srcMAC, "srcMAC", "", "", "source node MAC")
+	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
 	cmd.Flags().StringVarP(&packetType, "type", "", "icmp", "packet type: icmp")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
 	cmd.Flags().IntVarP(&count, "count", "", 1, "number of packets to be generated")
