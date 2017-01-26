@@ -185,13 +185,16 @@ func (o *OnDemandProbeServer) OnMessage(msg shttp.WSMessage) {
 		var ok bool
 		switch msg.Type {
 		case "CaptureStart":
-			if ok = o.registerProbe(n, &query.Capture); ok {
-				t := o.Graph.StartMetadataTransaction(n)
-				t.AddMetadata("State/FlowCapture", "ON")
-				t.AddMetadata("CaptureID", query.Capture.UUID)
-				t.Commit()
+			if state, ok := n.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
+				logging.GetLogger().Debugf("Capture already started on node %s", n.ID)
+			} else {
+				if ok = o.registerProbe(n, &query.Capture); ok {
+					t := o.Graph.StartMetadataTransaction(n)
+					t.AddMetadata("State/FlowCapture", "ON")
+					t.AddMetadata("CaptureID", query.Capture.UUID)
+					t.Commit()
+				}
 			}
-
 		case "CaptureStop":
 			if ok = o.unregisterProbe(n); ok {
 				metadata := n.Metadata()

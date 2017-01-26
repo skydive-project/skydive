@@ -45,19 +45,50 @@ type OnDemandProbeClient struct {
 	parser         *traversal.GremlinTraversalParser
 }
 
-func (o *OnDemandProbeClient) registerProbe(node *graph.Node, capture *api.Capture) bool {
+func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.Capture) {
+
+	for _, i := range nodes {
+		switch i.(type) {
+		case *graph.Node:
+			o.graph.RLock()
+			node := i.(*graph.Node)
+			if state, ok := node.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
+				o.graph.RUnlock()
+				return
+			}
+			nodeID := node.ID
+			host := node.Host()
+			o.graph.RUnlock()
+			o.registerProbe(nodeID, host, capture)
+		case []*graph.Node:
+			// case of shortestpath that return a list of nodes
+			for _, node := range i.([]*graph.Node) {
+				o.graph.RLock()
+				if state, ok := node.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
+					o.graph.RUnlock()
+					return
+				}
+				nodeID := node.ID
+				host := node.Host()
+				o.graph.RUnlock()
+				o.registerProbe(nodeID, host, capture)
+			}
+		}
+	}
+}
+
+func (o *OnDemandProbeClient) registerProbe(id graph.Identifier, host string, capture *api.Capture) bool {
 	cq := ondemand.CaptureQuery{
-		NodeID:  string(node.ID),
+		NodeID:  string(id),
 		Capture: *capture,
 	}
 
 	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStart", cq)
 
-	if !o.wsServer.SendWSMessageTo(msg, node.Host()) {
-		logging.GetLogger().Errorf("Unable to send message to agent: %s", node.Host())
+	if !o.wsServer.SendWSMessageTo(msg, host) {
+		logging.GetLogger().Errorf("Unable to send message to agent: %s", host)
 		return false
 	}
-
 	return true
 }
 
@@ -72,61 +103,40 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node) bool {
 	return true
 }
 
-func (o *OnDemandProbeClient) matchGremlinExpr(node *graph.Node, gremlin string) bool {
-	ts, err := o.parser.Parse(strings.NewReader(gremlin))
+func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
+	ts, err := o.parser.Parse(strings.NewReader(query))
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
-		return false
+		return nil
 	}
 
 	res, err := ts.Exec()
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin execution error: %s", err.Error())
-		return false
+		return nil
 	}
-
-	for _, value := range res.Values() {
-		n, ok := value.(*graph.Node)
-		if !ok {
-			logging.GetLogger().Error("Gremlin expression doesn't return node")
-			return false
-		}
-
-		if node.ID == n.ID {
-			return true
-		}
-	}
-
-	return false
+	return res.Values()
 }
 
-func (o *OnDemandProbeClient) onNodeEvent(n *graph.Node) {
-	if state, ok := n.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
-		return
-	}
-
+func (o *OnDemandProbeClient) onNodeEvent() {
 	for _, capture := range o.captures {
-		if o.matchGremlinExpr(n, capture.GremlinQuery) {
-			go o.registerProbe(n, capture)
+		res := o.applyGremlinExpr(capture.GremlinQuery)
+		if len(res) > 0 {
+			go o.registerProbes(res, capture)
 		}
 	}
 }
 
 func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
-	o.onNodeEvent(n)
+	o.onNodeEvent()
 }
 
 func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
-	o.onNodeEvent(n)
+	o.onNodeEvent()
 }
 
 func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
-	parent, child := o.graph.GetEdgeNodes(e)
-	if parent == nil || child == nil || e.Metadata()["RelationType"] != "ownership" {
-		return
-	}
-
-	o.onNodeEvent(child)
+	o.onNodeEvent()
 }
 
 func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
@@ -138,34 +148,9 @@ func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
 
 	o.captures[capture.UUID] = capture
 
-	ts, err := o.parser.Parse(strings.NewReader(capture.GremlinQuery))
-	if err != nil {
-		logging.GetLogger().Errorf("Gremlin expression error: %s", err.Error())
-		return
-	}
-
-	res, err := ts.Exec()
-	if err != nil {
-		logging.GetLogger().Errorf("Gremlin execution error: %s", err.Error())
-		return
-	}
-
-	for _, value := range res.Values() {
-		switch e := value.(type) {
-		case *graph.Node:
-			if !o.registerProbe(e, capture) {
-				logging.GetLogger().Errorf("Failed to start capture on %s", e.ID)
-			}
-		case []*graph.Node:
-			for _, node := range e {
-				if !o.registerProbe(node, capture) {
-					logging.GetLogger().Errorf("Failed to start capture on %s", node.ID)
-				}
-			}
-		default:
-			logging.GetLogger().Error("Gremlin expression doesn't return node")
-			return
-		}
+	nodes := o.applyGremlinExpr(capture.GremlinQuery)
+	if len(nodes) > 0 {
+		go o.registerProbes(nodes, capture)
 	}
 }
 
@@ -203,7 +188,6 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 				}
 			}
 		default:
-			logging.GetLogger().Error("Gremlin expression doesn't return node")
 			return
 		}
 	}
