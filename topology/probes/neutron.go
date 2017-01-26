@@ -63,6 +63,7 @@ type Attributes struct {
 	NetworkID   string
 	NetworkName string
 	TenantID    string
+	IPs         string
 	VNI         string
 }
 
@@ -150,11 +151,17 @@ func (mapper *NeutronMapper) retrieveAttributes(portMd PortMetadata) (*Attribute
 		return nil, err
 	}
 
+	var IPs []string
+	for _, element := range port.FixedIPs {
+		IPs = append(IPs, element.IPAddress)
+	}
+
 	a := &Attributes{
 		PortID:      port.ID,
 		NetworkID:   port.NetworkID,
 		NetworkName: network.Name,
 		TenantID:    port.TenantID,
+		IPs:         strings.Join(IPs[:], ","),
 		VNI:         network.SegmentationID,
 	}
 
@@ -211,6 +218,10 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 
 	if attrs.NetworkName != "" {
 		metadata["Neutron/NetworkName"] = attrs.NetworkName
+	}
+
+	if attrs.IPs != "" {
+		metadata["Neutron/IPs"] = attrs.IPs
 	}
 
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
