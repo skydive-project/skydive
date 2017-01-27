@@ -9,7 +9,7 @@
 %define gotest() go test -compiler gc -ldflags "${LDFLAGS:-}" %{?**};
 %endif
 
-%{!?tagversion:%global tagversion 0.8.0}
+%{!?tagversion:%global tagversion 0.9.0}
 
 # commit or tagversion need to be defined on command line
 %if %{defined commit}
@@ -21,8 +21,7 @@
 %define source %{tagversion}
 %endif
 
-%{!?tagversion:%global tagversion 0.8.0}
-%{!?source:%global source 0.8.0}
+%{!?source:%global source 0.9.0}
 %{!?tag:%global tag 1}
 
 Name:           skydive
@@ -133,6 +132,10 @@ install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/sk
 %{_unitdir}/skydive-analyzer.service
 
 %changelog
+* Fri Jan 27 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.9.0-1
+- Bump to version 0.9.0
+- Use Fedora golang macros and guidelines for packaging
+
 * Fri Dec 9 2016 Sylvain Baubeau <sbaubeau@redhat.com> - 0.8.0-1
 - Bump to version 0.8.0
 

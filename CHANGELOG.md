@@ -1,6 +1,38 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2017-01-27
+### Added
+- Alerting:
+  - Use Gremlin expression for alerts on both graph and flows
+  - Allow writing alerts in JavaScript
+  - Alerts can now execute scripts and trigger Webhooks
+- New Grafana plugin (https://github.com/skydive-project/skydive-grafana-datasource)
+- New OpenShift template
+- Gremlin:
+  - Add 'Aggregates' step
+  - Allow sorting and deduplicating against a property
+- Topology:
+  - Handle IP adding / removal on interfaces
+  - Add peering probe which creates a link based on MAC addresses
+- Flows:
+  - Support Geneve tunneling
+  - Add Layer 3 tracking ID
+  - Add support for Ethernet and IP over MPLS
+- Neutron:
+  - Adding Neutron attributed IPs to nodes
+  - Add metadata on Neutron managed namespaces
+- WebUI:
+  - Keep position of nodes in local storage across browser refresh
+
+### Changed
+- Flows:
+  - Use persistent ID in flows to handle agent restarts
+- Topology:
+  - Remove unsupported titan and gremlin backends
+- Gremlin:
+  - Convert 'Bandwidth' step to 'Metrics' and 'Sum'
+
 ## [0.8.0] - 2016-12-09
 ### Added
 - Flows:
