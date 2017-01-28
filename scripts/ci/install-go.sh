@@ -8,7 +8,7 @@ echo ${PATH} | grep -q "${HOME}/bin" || {
   export PATH="${PATH}:${HOME}/bin"
 }
 
-# Install Go 1.6
+# Install Go
 mkdir -p ~/bin
 curl -sL -o ~/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master/gimme
 chmod +x ~/bin/gimme
@@ -30,5 +30,11 @@ curl -o /tmp/vendor.tgz https://softwarefactory-project.io/r/changes/5923/revisi
 
 pushd ${GOPATH}/src/github.com/skydive-project/skydive
 go get -f -u github.com/kardianos/govendor
-govendor sync -n | perl -pe 's|fetch \"(.*)\"$|vendor/\1|g' | xargs tar -xvzf /tmp/vendor.tgz --exclude "vendor/vendor.json"
+govendor sync -n | perl -pe 's|fetch \"(.*)\"$|vendor/\1|g' | sort -u > vendor.fetch.list
+cat vendor.fetch.list | xargs tar -xvzf /tmp/vendor.tgz --exclude "vendor/vendor.json"
+# remove installed
+find vendor/ -mindepth 2 -type f | xargs dirname | sort -u > vendor.installed.list
+toremove=$(diff -u vendor.fetch.list vendor.installed.list | grep '^\+v' | perl -pe 's|^\+(.*)|\1|')
+rm -f "$toremove"
+rm -f vendor.fetch.list vendor.installed.list
 popd
