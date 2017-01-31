@@ -48,11 +48,6 @@
   <script src="/statics/js/components/inject-form.js"></script>
   <script src="/statics/js/components/tabs.js"></script>
   <script src="/statics/js/vue-sidebar.js"></script>
-
-  <script>
-    // define here globals with values from agent/analyzers
-    var Service = "{{.Service}}";
-  </script>
 </head>
 
 <body>
@@ -65,7 +60,7 @@
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand" href="#">Skydive <span class="mode">{{.Service}}</span></a>
+        <a class="navbar-brand" href="#">Skydive <span class="mode" id="service"></span></a>
       </div>
       <div id="navbar" class="collapse navbar-collapse">
         <ul class="nav navbar-nav">
@@ -103,7 +98,7 @@
     </div>
     <div class="col-sm-4 fill info" id="vue-sidebar">
 
-      <tabs class="analyzer-only">
+      <tabs v-if="service == 'Analyzer'">
         <tab-pane title="Capture">
           <capture-list></capture-list>
           <capture-form></capture-form>

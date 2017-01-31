@@ -197,7 +197,7 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	_, err = api.NewApi(hserver, nil)
+	_, err = api.NewApi(hserver, nil, "Agent")
 	if err != nil {
 		panic(err)
 	}

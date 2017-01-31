@@ -247,7 +247,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	apiServer, err := api.NewApi(httpServer, etcdClient.KeysApi)
+	apiServer, err := api.NewApi(httpServer, etcdClient.KeysApi, "Analyzer")
 	if err != nil {
 		return nil, err
 	}

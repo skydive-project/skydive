@@ -137,7 +137,15 @@ func serveStatics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	s.renderTemplate(w, "topology.html")
+	html, err := statics.Asset("statics/topology.html")
+	if err != nil {
+		logging.GetLogger().Error("Unable to find the asset topology.html")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(html)
 }
 
 func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
