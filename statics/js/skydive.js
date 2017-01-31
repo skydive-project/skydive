@@ -656,7 +656,7 @@ Layout.prototype.GroupClass = function(d) {
 };
 
 Layout.prototype.NodeClass = function(d) {
-  clazz = "node " + d.Metadata.Type;
+  var clazz = "node " + d.Metadata.Type;
 
   if (d.ID in alerts)
     clazz += " alert";

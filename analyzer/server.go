@@ -323,5 +323,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	api.RegisterPcapApi(httpServer, flowtable.PacketsChan)
 
+	api.RegisterConfigApi(httpServer)
+
 	return server, nil
 }
