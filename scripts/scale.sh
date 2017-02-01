@@ -46,6 +46,17 @@ function start_analyzer() {
 	sudo -E screen -S skydive-scale -X screen -t skydive-analyzer $WINDOW ip netns exec ${NAME} $SKYDIVE analyzer --listen=0.0.0.0:8082
 
 	WINDOW=$(( $WINDOW + 1 ))
+
+    rm /tmp/skydive.yml
+    cat <<EOF > /tmp/skydive.yml
+agent:
+    analyzers: ${IP}:8082
+    flow:
+        probes:
+            - gopacket
+            - ovssflow
+EOF
+
 }
 
 function stop_analyzer() {
@@ -61,11 +72,10 @@ function start_capture() {
 function start_agent() {
 	NAME=$1
 	IP=$2
-	ANALYZER=$3
 
 	create_ns $NAME $IP
 
-	sudo -E screen -S skydive-scale -X screen -t skydive-agent $WINDOW ip netns exec ${NAME} $SKYDIVE agent ${AGENT_ARGS} --host-id=agent-$AGENT
+	sudo -E screen -S skydive-scale -X screen -t skydive-agent $WINDOW ip netns exec ${NAME} $SKYDIVE agent --conf=/tmp/skydive.yml --host-id=agent-$AGENT
 
 	AGENT=$(( $AGENT + 1 ))
 	WINDOW=$(( $WINDOW + 1 ))
@@ -91,17 +101,17 @@ function start_locust() {
 
 	rm /tmp/skydive-locust.py
 	cat<<'EOF'>> /tmp/skydive-locust.py
-	from locust import HttpLocust, TaskSet, task
+from locust import HttpLocust, TaskSet, task
 
-	class UserBehavior(TaskSet):
-	@task(1)
-	def index(self):
-	self.client.get("/")
+class UserBehavior(TaskSet):
+    @task(1)
+    def index(self):
+        self.client.get("/")
 
-	class WebsiteUser(HttpLocust):
-	task_set = UserBehavior
-	min_wait=5000
-	max_wait=9000
+class WebsiteUser(HttpLocust):
+    task_set = UserBehavior
+    min_wait=5000
+    max_wait=9000
 EOF
 	create_ns $NAME $IP
 
@@ -143,7 +153,7 @@ function start() {
 	start_analyzer analyzer $PREFIX.250
 
 	for i in $( seq $NUM ); do
-		start_agent agent-$i $PREFIX.$i $PREFIX.250:8082
+		start_agent agent-$i $PREFIX.$i
 	done
 
 	sleep 1
