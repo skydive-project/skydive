@@ -24,6 +24,7 @@ package probes
 
 import (
 	"errors"
+	"math"
 	"net"
 	"strings"
 	"sync"
@@ -250,6 +251,12 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		"MAC":       link.Attrs().HardwareAddr.String(),
 		"MTU":       int64(link.Attrs().MTU),
 		"Driver":    driver,
+	}
+
+	if speed, err := u.ethtool.CmdGet(&ethtool.EthtoolCmd{}, link.Attrs().Name); err == nil {
+		if speed != math.MaxUint32 {
+			metadata["Speed"] = speed
+		}
 	}
 
 	if link.Type() == "veth" {
