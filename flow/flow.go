@@ -382,13 +382,13 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 // FlowPacketsFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
 func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64) *FlowPackets {
+	flowPackets := &FlowPackets{Timestamp: t}
+
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
 		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
 		logging.GetLogger().Debug((*packet).Dump())
-		return nil
+		return flowPackets
 	}
-
-	flowPackets := &FlowPackets{Timestamp: t}
 
 	packetData := (*packet).Data()
 	packetLayers := (*packet).Layers()
