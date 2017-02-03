@@ -117,12 +117,12 @@ func (t *TIDMapper) onEdgeEvent(e *graph.Edge) {
 		return
 	}
 
-	parent, child := t.Graph.GetEdgeNodes(e)
-	if parent == nil {
+	parents, children := t.Graph.GetEdgeNodes(e, graph.Metadata{}, graph.Metadata{})
+	if len(parents) == 0 || len(children) == 0 {
 		return
 	}
 
-	t.setTID(parent, child)
+	t.setTID(parents[0], children[0])
 }
 
 func (t *TIDMapper) OnEdgeUpdated(e *graph.Edge) {

@@ -24,68 +24,17 @@ package orientdb
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
-	orient "github.com/skydive-project/skydive/topology/graph/orientdb"
+	orient "github.com/skydive-project/skydive/storage/orientdb"
 )
 
 type OrientDBStorage struct {
 	client *orient.Client
-}
-
-func filterToExpression(f *flow.Filter, prefix string) string {
-	if f.BoolFilter != nil {
-		keyword := ""
-		switch f.BoolFilter.Op {
-		case flow.BoolFilterOp_NOT:
-			// FIX not yet implemented for the orientdb backend
-			// http://orientdb.com/docs/2.0/orientdb.wiki/SQL-Where.html
-			return "NOT " + filterToExpression(f.BoolFilter.Filters[0], prefix)
-		case flow.BoolFilterOp_OR:
-			keyword = "OR"
-		case flow.BoolFilterOp_AND:
-			keyword = "AND"
-		}
-		var conditions []string
-		for _, item := range f.BoolFilter.Filters {
-			conditions = append(conditions, "("+filterToExpression(item, prefix)+")")
-		}
-		return strings.Join(conditions, " "+keyword+" ")
-	}
-
-	if f.TermStringFilter != nil {
-		return fmt.Sprintf(`%s = "%s"`, prefix+f.TermStringFilter.Key, f.TermStringFilter.Value)
-	}
-
-	if f.TermInt64Filter != nil {
-		return fmt.Sprintf(`%s = %d`, prefix+f.TermInt64Filter.Key, f.TermInt64Filter.Value)
-	}
-
-	if f.GtInt64Filter != nil {
-		return fmt.Sprintf("%v > %v", prefix+f.GtInt64Filter.Key, f.GtInt64Filter.Value)
-	}
-
-	if f.LtInt64Filter != nil {
-		return fmt.Sprintf("%v < %v", prefix+f.LtInt64Filter.Key, f.LtInt64Filter.Value)
-	}
-
-	if f.GteInt64Filter != nil {
-		return fmt.Sprintf("%v >= %v", prefix+f.GteInt64Filter.Key, f.GteInt64Filter.Value)
-	}
-
-	if f.LteInt64Filter != nil {
-		return fmt.Sprintf("%v <= %v", prefix+f.LteInt64Filter.Key, f.LteInt64Filter.Value)
-	}
-
-	if f.RegexFilter != nil {
-		return fmt.Sprintf(`%s MATCHES "%s"`, prefix+f.RegexFilter.Key, f.RegexFilter.Value)
-	}
-
-	return ""
 }
 
 func metricToDocument(metric *flow.FlowMetric) orient.Document {
@@ -185,24 +134,8 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error) {
-	interval := fsq.PaginationRange
-	filter := fsq.Filter
-
-	sql := "SELECT FROM Flow"
-	if conditional := filterToExpression(filter, ""); conditional != "" {
-		sql += " WHERE " + conditional
-	}
-
-	if interval != nil {
-		sql += fmt.Sprintf(" LIMIT %d, %d", interval.To-interval.From, interval.From)
-	}
-
-	if fsq.Sort {
-		sql += " ORDER BY " + fsq.SortBy
-	}
-
-	docs, err := c.client.Sql(sql)
+func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
+	docs, err := c.client.Query("Flow", &fsq)
 	if err != nil {
 		return nil, err
 	}
@@ -225,13 +158,13 @@ func (c *OrientDBStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, 
 	return flowset, nil
 }
 
-func (c *OrientDBStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error) {
+func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*flow.FlowMetric, error) {
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
 
-	sql += " WHERE " + filterToExpression(metricFilter, "")
+	sql += " WHERE " + orient.FilterToExpression(metricFilter, "")
 
-	if conditional := filterToExpression(filter, "Flow."); conditional != "" {
+	if conditional := orient.FilterToExpression(filter, "Flow."); conditional != "" {
 		sql += " AND " + conditional
 	}
 

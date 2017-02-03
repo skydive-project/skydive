@@ -28,6 +28,7 @@ import (
 	"io"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -197,14 +198,40 @@ func (s *GremlinTraversalStepV) Reduce(next GremlinTraversalStep) GremlinTravers
 	return next
 }
 
-func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTraversalStep, err error) {
 	g, ok := last.(*GraphTraversal)
 	if !ok {
 		return nil, ExecutionError
 	}
 
-	if len(s.Params) != 1 {
-		return nil, ExecutionError
+	switch len(s.Params) {
+	case 0:
+		return nil, errors.New("At least one parameter must be provided to 'Context'")
+	case 2:
+		switch param := s.Params[1].(type) {
+		case string:
+			if s.Params[1], err = time.ParseDuration(param); err != nil {
+				return nil, err
+			}
+		case int64:
+			s.Params[1] = time.Duration(param) * time.Second
+		default:
+			return nil, errors.New("Key must be either an integer or a string")
+		}
+		fallthrough
+	case 1:
+		switch param := s.Params[0].(type) {
+		case string:
+			if s.Params[0], err = parseTimeContext(param); err != nil {
+				return nil, err
+			}
+		case int64:
+			s.Params[0] = time.Unix(param, 0)
+		default:
+			return nil, errors.New("Key must be either an integer or a string")
+		}
+	default:
+		return nil, errors.New("At most two parameters must be provided")
 	}
 
 	return g.Context(s.Params...), nil
@@ -400,7 +427,7 @@ func (s *GremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (Grap
 			}
 			return last.(*GraphTraversalV).ShortestPathTo(s.Params[0].(graph.Metadata), s.Params[1].(graph.Metadata)), nil
 		}
-		return last.(*GraphTraversalV).ShortestPathTo(s.Params[0].(graph.Metadata)), nil
+		return last.(*GraphTraversalV).ShortestPathTo(s.Params[0].(graph.Metadata), nil), nil
 	}
 
 	return nil, ExecutionError

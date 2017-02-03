@@ -26,6 +26,7 @@ import (
 	"sort"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 )
 
 type MergeContext struct {
@@ -289,7 +290,7 @@ func (fs *FlowSet) Sort(field string) {
 	}
 }
 
-func (fs *FlowSet) Filter(filter *Filter) *FlowSet {
+func (fs *FlowSet) Filter(filter *filters.Filter) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range fs.Flows {
 		if filter == nil || filter.Eval(f) {

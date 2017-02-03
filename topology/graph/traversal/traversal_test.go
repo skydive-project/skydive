@@ -46,11 +46,11 @@ func newTransversalGraph(t *testing.T) *graph.Graph {
 	n3 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 3})
 	n4 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 4, "Name": "Node4", "Bytes": 4024})
 
-	g.Link(n1, n2, graph.Metadata{"Direction": "Left"})
-	g.Link(n2, n3, graph.Metadata{"Direction": "Left"})
-	g.Link(n3, n4)
-	g.Link(n1, n4)
-	g.Link(n1, n3, graph.Metadata{"Mode": "Direct"})
+	g.Link(n1, n2, graph.Metadata{"Direction": "Left", "Name": "e1"})
+	g.Link(n2, n3, graph.Metadata{"Direction": "Left", "Name": "e2"})
+	g.Link(n3, n4, graph.Metadata{"Name": "e3"})
+	g.Link(n1, n4, graph.Metadata{"Name": "e4"})
+	g.Link(n1, n3, graph.Metadata{"Mode": "Direct", "Name": "e5"})
 
 	return g
 }
@@ -246,9 +246,9 @@ func TestTraversalNe(t *testing.T) {
 	}
 
 	// next test
-	tv = tr.V().Has("Name", Ne(""))
-	if len(tv.Values()) != 1 {
-		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
+	tv = tr.V().Has("Type", Ne("intf"))
+	if len(tv.Values()) != 2 {
+		t.Fatalf("Should return 2 node, returned: %v", tv.Values())
 	}
 }
 
@@ -299,7 +299,7 @@ func TestTraversalShortestPathTo(t *testing.T) {
 
 	tr := NewGraphTraversal(g)
 
-	tv := tr.V().Has("Value", 1).ShortestPathTo(graph.Metadata{"Value": 3})
+	tv := tr.V().Has("Value", 1).ShortestPathTo(graph.Metadata{"Value": 3}, nil)
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 path, returned: %v", tv.Values())
 	}
@@ -310,7 +310,7 @@ func TestTraversalShortestPathTo(t *testing.T) {
 	}
 
 	// next test
-	tv = tr.V().Has("Value", Within(1, 2)).ShortestPathTo(graph.Metadata{"Value": 3})
+	tv = tr.V().Has("Value", Within(1, 2)).ShortestPathTo(graph.Metadata{"Value": 3}, nil)
 	if len(tv.Values()) != 2 {
 		t.Fatalf("Should return 2 paths, returned: %v", tv.Values())
 	}
@@ -407,7 +407,7 @@ func TestTraversalParser(t *testing.T) {
 	query = `G.V().Dedup("Type")`
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 3 {
-		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+		t.Fatalf("Should return 3 nodes, returned: %v", res.Values())
 	}
 
 	// next traversal test
@@ -435,7 +435,7 @@ func TestTraversalParser(t *testing.T) {
 	query = `G.V("` + string(node.ID) + `")`
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 1 || res.Values()[0].(*graph.Node).ID != node.ID {
-		t.Fatalf("Should return 1 nodes, returned: %v", res.Values())
+		t.Fatalf("Should return 1 nodes, returned: %v, expected %s", res.Values(), node.ID)
 	}
 
 	// next traversal test
@@ -446,10 +446,10 @@ func TestTraversalParser(t *testing.T) {
 	}
 
 	// next traversal test
-	query = `G.V().Has("Name", Ne(""))`
+	query = `G.V().Has("Type", Ne("intf"))`
 	res = execTraversalQuery(t, g, query)
-	if len(res.Values()) != 1 {
-		t.Fatalf("Should return 1 node, returned: %v", res.Values())
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
 	}
 
 	// next traversal test

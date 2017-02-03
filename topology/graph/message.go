@@ -25,7 +25,6 @@ package graph
 import (
 	"bytes"
 	"encoding/json"
-	"time"
 
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
@@ -47,10 +46,8 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 			if err != nil {
 				return "", msg, err
 			}
-			unix := time.Unix(i/1000, 0).UTC()
-			context.Time = &unix
+			context.TimeSlice = common.NewTimeSlice(i/1000, i/1000)
 		}
-
 		return msg.Type, context, nil
 
 	case "HostGraphDeleted":

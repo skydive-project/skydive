@@ -31,6 +31,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -127,7 +128,7 @@ func (ft *Table) GetTime() int64 {
 	return atomic.LoadInt64(&ft.tableClock)
 }
 
-func (ft *Table) GetFlows(query *FlowSearchQuery) *FlowSet {
+func (ft *Table) GetFlows(query *filters.SearchQuery) *FlowSet {
 	ft.RLock()
 	defer ft.RUnlock()
 
@@ -278,7 +279,7 @@ func (ft *Table) Flush() {
 	<-ft.flushDone
 }
 
-func (ft *Table) onFlowSearchQueryMessage(fsq *FlowSearchQuery) (*FlowSearchReply, int) {
+func (ft *Table) onSearchQueryMessage(fsq *filters.SearchQuery) (*FlowSearchReply, int) {
 	flowset := ft.GetFlows(fsq)
 	if len(flowset.Flows) == 0 {
 		return &FlowSearchReply{
@@ -310,14 +311,14 @@ func (ft *Table) onQuery(query *TableQuery) *TableReply {
 	}
 
 	switch query.Type {
-	case "FlowSearchQuery":
-		var fsq FlowSearchQuery
+	case "SearchQuery":
+		var fsq filters.SearchQuery
 		if err := proto.Unmarshal(query.Obj, &fsq); err != nil {
 			logging.GetLogger().Errorf("Unable to decode the flow search query: %s", err.Error())
 			break
 		}
 
-		fsr, status := ft.onFlowSearchQueryMessage(&fsq)
+		fsr, status := ft.onSearchQueryMessage(&fsq)
 		if status != http.StatusOK {
 			reply.status = status
 			break

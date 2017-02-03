@@ -24,7 +24,8 @@ package graph
 
 import (
 	"sync/atomic"
-	"time"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 const (
@@ -73,7 +74,7 @@ func (c *CachedBackend) DelNode(n *Node) bool {
 	return r
 }
 
-func (c *CachedBackend) GetNode(i Identifier, t *time.Time) *Node {
+func (c *CachedBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PERSISTENT_ONLY_MODE {
@@ -87,15 +88,15 @@ func (c *CachedBackend) GetNode(i Identifier, t *time.Time) *Node {
 	return nil
 }
 
-func (c *CachedBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edge) {
+func (c *CachedBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PERSISTENT_ONLY_MODE {
-		return c.memory.GetNodeEdges(n, t)
+		return c.memory.GetNodeEdges(n, t, m)
 	}
 
 	if mode != CACHE_ONLY_MODE {
-		return c.persistent.GetNodeEdges(n, t)
+		return c.persistent.GetNodeEdges(n, t, m)
 	}
 
 	return edges
@@ -131,7 +132,7 @@ func (c *CachedBackend) DelEdge(e *Edge) bool {
 	return r
 }
 
-func (c *CachedBackend) GetEdge(i Identifier, t *time.Time) *Edge {
+func (c *CachedBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PERSISTENT_ONLY_MODE {
@@ -145,15 +146,15 @@ func (c *CachedBackend) GetEdge(i Identifier, t *time.Time) *Edge {
 	return nil
 }
 
-func (c *CachedBackend) GetEdgeNodes(e *Edge, t *time.Time) (*Node, *Node) {
+func (c *CachedBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PERSISTENT_ONLY_MODE {
-		return c.memory.GetEdgeNodes(e, t)
+		return c.memory.GetEdgeNodes(e, t, parentMetadata, childMetadata)
 	}
 
 	if mode != CACHE_ONLY_MODE {
-		return c.persistent.GetEdgeNodes(e, t)
+		return c.persistent.GetEdgeNodes(e, t, parentMetadata, childMetadata)
 	}
 
 	return nil, nil
@@ -163,12 +164,12 @@ func (c *CachedBackend) AddMetadata(i interface{}, k string, v interface{}) bool
 	mode := c.cacheMode.Load()
 
 	r := false
-	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.AddMetadata(i, k, v)
-	}
-
 	if mode != CACHE_ONLY_MODE {
 		r = c.persistent.AddMetadata(i, k, v)
+	}
+
+	if mode != PERSISTENT_ONLY_MODE {
+		r = c.memory.AddMetadata(i, k, v)
 	}
 
 	return r
@@ -178,18 +179,18 @@ func (c *CachedBackend) SetMetadata(i interface{}, metadata Metadata) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
-	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.SetMetadata(i, metadata)
-	}
-
 	if mode != CACHE_ONLY_MODE {
 		r = c.persistent.SetMetadata(i, metadata)
+	}
+
+	if mode != PERSISTENT_ONLY_MODE {
+		r = c.memory.SetMetadata(i, metadata)
 	}
 
 	return r
 }
 
-func (c *CachedBackend) GetNodes(t *time.Time, m Metadata) []*Node {
+func (c *CachedBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PERSISTENT_ONLY_MODE {
@@ -203,7 +204,7 @@ func (c *CachedBackend) GetNodes(t *time.Time, m Metadata) []*Node {
 	return []*Node{}
 }
 
-func (c *CachedBackend) GetEdges(t *time.Time, m Metadata) []*Edge {
+func (c *CachedBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PERSISTENT_ONLY_MODE {

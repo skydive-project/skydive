@@ -31,6 +31,7 @@ import (
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
 	shttp "github.com/skydive-project/skydive/http"
@@ -43,15 +44,11 @@ type FlowApi struct {
 }
 
 func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	andFilter := &flow.BoolFilter{Op: flow.BoolFilterOp_AND}
+	var andFilters []*filters.Filter
 	for k, v := range r.URL.Query() {
-		andFilter.Filters = append(andFilter.Filters,
-			&flow.Filter{
-				TermStringFilter: &flow.TermStringFilter{Key: k, Value: v[0]},
-			},
-		)
+		andFilters = append(andFilters, filters.NewTermStringFilter(k, v[0]))
 	}
-	filter := &flow.Filter{BoolFilter: andFilter}
+	filter := filters.NewAndFilter(andFilters...)
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	if f.Storage == nil {
@@ -59,7 +56,7 @@ func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest
 		return
 	}
 
-	flows, err := f.Storage.SearchFlows(flow.FlowSearchQuery{Filter: filter})
+	flows, err := f.Storage.SearchFlows(filters.SearchQuery{Filter: filter})
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return

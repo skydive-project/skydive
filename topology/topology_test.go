@@ -44,10 +44,10 @@ func TestMarshal(t *testing.T) {
 	n2 := g.NewNode(graph.GenID(), graph.Metadata{"Name": "N2", "Type": "T2"})
 	n3 := g.NewNode(graph.GenID(), graph.Metadata{"Name": "N3", "Type": "T3"})
 
-	g.Link(n1, n2)
-	g.Link(n2, n3)
+	g.Link(n1, n2, nil)
+	g.Link(n2, n3, nil)
 
-	r := g.LookupShortestPath(n3, graph.Metadata{"Name": "N1"})
+	r := g.LookupShortestPath(n3, graph.Metadata{"Name": "N1"}, nil)
 	if len(r) == 0 {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}

@@ -44,22 +44,22 @@ func TestLinks(t *testing.T) {
 	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 
 	g.NewEdge(GenID(), n1, n2, nil)
-	if !g.AreLinked(n1, n2) {
+	if !g.AreLinked(n1, n2, Metadata{}) {
 		t.Error("nodes should be linked")
 	}
 
 	g.Unlink(n1, n2)
-	if g.AreLinked(n1, n2) {
+	if g.AreLinked(n1, n2, Metadata{}) {
 		t.Error("nodes shouldn't be linked")
 	}
 
-	g.Link(n1, n2)
-	if !g.AreLinked(n1, n2) {
+	g.Link(n1, n2, Metadata{})
+	if !g.AreLinked(n1, n2, Metadata{}) {
 		t.Error("nodes should be linked")
 	}
 
 	g.DelNode(n2)
-	if g.AreLinked(n1, n2) {
+	if g.AreLinked(n1, n2, Metadata{}) {
 		t.Error("nodes shouldn't be linked")
 	}
 }
@@ -71,7 +71,7 @@ func TestAreLinkedWithMetadata(t *testing.T) {
 	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 
 	g.Link(n1, n2, Metadata{"Type": "aaa"})
-	if !g.AreLinked(n1, n2) {
+	if !g.AreLinked(n1, n2, Metadata{}) {
 		t.Error("nodes should be linked")
 	}
 
@@ -94,7 +94,7 @@ func TestBasicLookup(t *testing.T) {
 
 	g.NewEdge(GenID(), n1, n2, nil)
 	g.NewEdge(GenID(), n2, n3, nil)
-	g.Link(n1, n4)
+	g.Link(n1, n4, Metadata{})
 
 	if n1.ID != g.GetNode(n1.ID).ID {
 		t.Error("Wrong node returned")
@@ -105,17 +105,6 @@ func TestBasicLookup(t *testing.T) {
 	}
 
 	r := g.GetNodes(Metadata{"Type": "intf"})
-	if len(r) != 2 {
-		t.Error("Wrong number of nodes returned")
-	}
-
-	for i := range r {
-		if !(r[i].ID == n1.ID || r[i].ID == n2.ID) {
-			t.Error("Wrong nodes returned")
-		}
-	}
-
-	r = g.LookupNodesFromKey("Type")
 	if len(r) != 2 {
 		t.Error("Wrong number of nodes returned")
 	}
@@ -153,12 +142,12 @@ func TestHierarchyLookup(t *testing.T) {
 	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
 	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
-	g.Link(n1, n2)
-	g.Link(n2, n3)
-	g.Link(n3, n4)
-	g.Link(n2, n4)
+	g.Link(n1, n2, Metadata{})
+	g.Link(n2, n3, Metadata{})
+	g.Link(n3, n4, Metadata{})
+	g.Link(n2, n4, Metadata{})
 
-	r := g.LookupParents(n4, nil)
+	r := g.LookupParents(n4, nil, Metadata{})
 	if len(r) != 2 {
 		t.Error("Wrong number of nodes returned")
 	}
@@ -169,7 +158,7 @@ func TestHierarchyLookup(t *testing.T) {
 		}
 	}
 
-	r = g.LookupParents(n4, Metadata{"Type": "intf"})
+	r = g.LookupParents(n4, Metadata{"Type": "intf"}, nil)
 	if len(r) != 1 {
 		t.Error("Wrong number of nodes returned")
 	}
@@ -177,9 +166,9 @@ func TestHierarchyLookup(t *testing.T) {
 		t.Error("Wrong nodes returned")
 	}
 
-	r = g.LookupChildren(n2, nil)
+	r = g.LookupChildren(n2, nil, nil)
 	if len(r) != 2 {
-		t.Error("Wrong number of nodes returned")
+		t.Errorf("Wrong number of nodes returned: %+v", r)
 	}
 
 	for i := range r {
@@ -188,7 +177,7 @@ func TestHierarchyLookup(t *testing.T) {
 		}
 	}
 
-	r = g.LookupChildren(n2, Metadata{"Name": "Node4"})
+	r = g.LookupChildren(n2, Metadata{"Name": "Node4"}, nil)
 	if len(r) != 1 {
 		t.Error("Wrong number of nodes returned")
 	}
@@ -220,25 +209,25 @@ func TestPath(t *testing.T) {
 	g.Link(n2, n3, Metadata{"Type": "Layer2"})
 	g.Link(n3, n4, Metadata{"Type": "Layer2"})
 
-	r := g.LookupShortestPath(n4, Metadata{"Value": 1})
+	r := g.LookupShortestPath(n4, Metadata{"Value": 1}, nil)
 	if len(r) == 0 || !validatePath(r, "4/3/2/1") {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}
 
 	// add a shorter link
 	g.Link(n4, n1, Metadata{"Type": "Layer2"})
-	r = g.LookupShortestPath(n4, Metadata{"Value": 1})
+	r = g.LookupShortestPath(n4, Metadata{"Value": 1}, nil)
 	if len(r) == 0 || !validatePath(r, "4/1") {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}
 	g.Unlink(n4, n1)
 
-	r = g.LookupShortestPath(n4, Metadata{"Value": 2})
+	r = g.LookupShortestPath(n4, Metadata{"Value": 2}, nil)
 	if len(r) == 0 || !validatePath(r, "4/3/2") {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}
 
-	r = g.LookupShortestPath(n4, Metadata{"Value": 55})
+	r = g.LookupShortestPath(n4, Metadata{"Value": 55}, nil)
 	if len(r) > 0 {
 		t.Errorf("Shouldn't have true returned: %v", r)
 	}
@@ -279,7 +268,7 @@ func TestPath(t *testing.T) {
 	g.Link(n121, n122, Metadata{"Type": "Layer2"})
 	g.Link(n122, n5, Metadata{"Type": "Layer2"})
 
-	r = g.LookupShortestPath(n1, Metadata{"Value": 5})
+	r = g.LookupShortestPath(n1, Metadata{"Value": 5}, nil)
 	if len(r) == 0 || !validatePath(r, "1/11/12/5") {
 		t.Errorf("Wrong nodes returned: %v", r)
 	}

@@ -35,10 +35,16 @@ import (
 	elastigo "github.com/lebauce/elastigo/lib"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 )
 
 const indexVersion = 3
+
+const (
+	AscendingOrder = iota
+	DescendingOrder
+)
 
 type ElasticSearchClient struct {
 	connection *elastigo.Conn
@@ -119,6 +125,104 @@ func (c *ElasticSearchClient) start(mappings []map[string][]byte) error {
 
 	logging.GetLogger().Infof("ElasticSearchStorage started")
 
+	return nil
+}
+
+func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string) map[string]interface{} {
+	if filter == nil {
+		return map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		}
+	}
+
+	if f := filter.BoolFilter; f != nil {
+		keyword := ""
+		switch f.Op {
+		case filters.BoolFilterOp_NOT:
+			keyword = "must_not"
+		case filters.BoolFilterOp_OR:
+			keyword = "should"
+		case filters.BoolFilterOp_AND:
+			keyword = "must"
+		}
+		filters := []interface{}{}
+		for _, item := range f.Filters {
+			filters = append(filters, c.FormatFilter(item, prefix))
+		}
+		return map[string]interface{}{
+			"bool": map[string]interface{}{
+				keyword: filters,
+			},
+		}
+	}
+
+	if f := filter.TermStringFilter; f != nil {
+		return map[string]interface{}{
+			"term": map[string]string{
+				prefix + f.Key: f.Value,
+			},
+		}
+	}
+	if f := filter.TermInt64Filter; f != nil {
+		return map[string]interface{}{
+			"term": map[string]int64{
+				prefix + f.Key: f.Value,
+			},
+		}
+	}
+
+	if f := filter.RegexFilter; f != nil {
+		return map[string]interface{}{
+			"regexp": map[string]string{
+				prefix + f.Key: f.Value,
+			},
+		}
+	}
+
+	if f := filter.GtInt64Filter; f != nil {
+		return map[string]interface{}{
+			"range": map[string]interface{}{
+				prefix + f.Key: &struct {
+					Gt interface{} `json:"gt,omitempty"`
+				}{
+					Gt: f.Value,
+				},
+			},
+		}
+	}
+	if f := filter.LtInt64Filter; f != nil {
+		return map[string]interface{}{
+			"range": map[string]interface{}{
+				prefix + f.Key: &struct {
+					Lt interface{} `json:"lt,omitempty"`
+				}{
+					Lt: f.Value,
+				},
+			},
+		}
+	}
+	if f := filter.GteInt64Filter; f != nil {
+		return map[string]interface{}{
+			"range": map[string]interface{}{
+				prefix + f.Key: &struct {
+					Gte interface{} `json:"gte,omitempty"`
+				}{
+					Gte: f.Value,
+				},
+			},
+		}
+	}
+	if f := filter.LteInt64Filter; f != nil {
+		return map[string]interface{}{
+			"range": map[string]interface{}{
+				prefix + f.Key: &struct {
+					Lte interface{} `json:"lte,omitempty"`
+				}{
+					Lte: f.Value,
+				},
+			},
+		}
+	}
 	return nil
 }
 

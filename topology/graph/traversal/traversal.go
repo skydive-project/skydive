@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -86,14 +87,128 @@ type WithinMetadataMatcher struct {
 	List []interface{}
 }
 
-func (w *WithinMetadataMatcher) Match(v interface{}) bool {
-	for _, el := range w.List {
-		if common.CrossTypeEqual(v, el) {
-			return true
+func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
+	switch v := v.(type) {
+	case *RegexMetadataMatcher:
+		return &filters.Filter{
+			RegexFilter: &filters.RegexFilter{Key: k, Value: v.pattern},
+		}, nil
+	case *NEMetadataMatcher:
+		switch t := v.value.(type) {
+		case string:
+			return filters.NewNotFilter(filters.NewTermStringFilter(k, t)), nil
+		default:
+			i, err := common.ToInt64(t)
+			if err != nil {
+				return nil, err
+			}
+			return filters.NewNotFilter(filters.NewTermInt64Filter(k, i)), nil
 		}
+	case *LTMetadataMatcher:
+		i, err := common.ToInt64(v.value)
+		if err != nil {
+			return nil, errors.New("LT values should be of int64 type")
+		}
+		return filters.NewLtInt64Filter(k, i), nil
+	case *GTMetadataMatcher:
+		i, err := common.ToInt64(v.value)
+		if err != nil {
+			return nil, errors.New("GT values should be of int64 type")
+		}
+		return filters.NewGtInt64Filter(k, i), nil
+	case *GTEMetadataMatcher:
+		i, err := common.ToInt64(v.value)
+		if err != nil {
+			return nil, errors.New("GTE values should be of int64 type")
+		}
+		return &filters.Filter{
+			GteInt64Filter: &filters.GteInt64Filter{Key: k, Value: i},
+		}, nil
+	case *LTEMetadataMatcher:
+		i, err := common.ToInt64(v.value)
+		if err != nil {
+			return nil, errors.New("LTE values should be of int64 type")
+		}
+		return &filters.Filter{
+			LteInt64Filter: &filters.LteInt64Filter{Key: k, Value: i},
+		}, nil
+	case *InsideMetadataMatcher:
+		f64, fok := common.ToInt64(v.from)
+		t64, tok := common.ToInt64(v.to)
+
+		if fok != nil || tok != nil {
+			return nil, errors.New("Inside values should be of int64 type")
+		}
+
+		return filters.NewAndFilter(filters.NewGtInt64Filter(k, f64), filters.NewLtInt64Filter(k, t64)), nil
+	case *OutsideMetadataMatcher:
+		f64, fok := common.ToInt64(v.from)
+		t64, tok := common.ToInt64(v.to)
+
+		if fok != nil || tok != nil {
+			return nil, errors.New("Outside values should be of int64 type")
+		}
+
+		return filters.NewAndFilter(filters.NewLtInt64Filter(k, f64), filters.NewGtInt64Filter(k, t64)), nil
+	case *BetweenMetadataMatcher:
+		f64, fok := common.ToInt64(v.from)
+		t64, tok := common.ToInt64(v.to)
+
+		if fok != nil || tok != nil {
+			return nil, errors.New("Between values should be of int64 type")
+		}
+
+		return filters.NewAndFilter(filters.NewGteInt64Filter(k, f64), filters.NewLtInt64Filter(k, t64)), nil
+	case *WithinMetadataMatcher:
+		var orFilters []*filters.Filter
+		for _, val := range v.List {
+			switch v := val.(type) {
+			case string:
+				orFilters = append(orFilters, filters.NewTermStringFilter(k, v))
+			default:
+				i, err := common.ToInt64(v)
+				if err != nil {
+					return nil, err
+				}
+
+				orFilters = append(orFilters, filters.NewTermInt64Filter(k, i))
+			}
+		}
+
+		return filters.NewOrFilter(orFilters...), nil
+	case string:
+		return filters.NewTermStringFilter(k, v), nil
+	case int64:
+		return filters.NewTermInt64Filter(k, v), nil
+	default:
+		i, err := common.ToInt64(v)
+		if err != nil {
+			return nil, err
+		}
+		return filters.NewTermInt64Filter(k, i), nil
+	}
+}
+
+func ParamsToFilter(params ...interface{}) (*filters.Filter, error) {
+	if len(params)%2 != 0 {
+		return nil, fmt.Errorf("Slice must be defined by pair k,v: %v", params)
 	}
 
-	return false
+	var andFilters []*filters.Filter
+	for i := 0; i < len(params); i += 2 {
+		k, ok := params[i].(string)
+		if !ok {
+			return nil, errors.New("Keys should be of string type")
+		}
+
+		filter, err := ParamToFilter(k, params[i+1])
+		if err != nil {
+			return nil, err
+		}
+		andFilters = append(andFilters, filter)
+	}
+
+	return filters.NewAndFilter(andFilters...), nil
 }
 
 func Within(s ...interface{}) *WithinMetadataMatcher {
@@ -104,34 +219,12 @@ type WithoutMetadataMatcher struct {
 	list []interface{}
 }
 
-func (w *WithoutMetadataMatcher) Match(v interface{}) bool {
-	for _, el := range w.list {
-		if common.CrossTypeEqual(v, el) {
-			return false
-		}
-	}
-
-	return true
-}
-
 func Without(s ...interface{}) *WithoutMetadataMatcher {
 	return &WithoutMetadataMatcher{list: s}
 }
 
 type NEMetadataMatcher struct {
 	value interface{}
-}
-
-func (n *NEMetadataMatcher) Match(v interface{}) bool {
-	if !common.CrossTypeEqual(v, n.value) {
-		return true
-	}
-
-	return false
-}
-
-func (n *NEMetadataMatcher) Value() interface{} {
-	return n.value
 }
 
 func Ne(s interface{}) *NEMetadataMatcher {
@@ -142,36 +235,12 @@ type LTMetadataMatcher struct {
 	value interface{}
 }
 
-func (lt *LTMetadataMatcher) Match(v interface{}) bool {
-	if result, err := common.CrossTypeCompare(v, lt.value); err == nil && result == -1 {
-		return true
-	}
-
-	return false
-}
-
-func (lt *LTMetadataMatcher) Value() interface{} {
-	return lt.value
-}
-
 func Lt(s interface{}) *LTMetadataMatcher {
 	return &LTMetadataMatcher{value: s}
 }
 
 type GTMetadataMatcher struct {
 	value interface{}
-}
-
-func (gt *GTMetadataMatcher) Match(v interface{}) bool {
-	if result, err := common.CrossTypeCompare(v, gt.value); err == nil && result == 1 {
-		return true
-	}
-
-	return false
-}
-
-func (gt *GTMetadataMatcher) Value() interface{} {
-	return gt.value
 }
 
 func Gt(s interface{}) *GTMetadataMatcher {
@@ -182,36 +251,12 @@ type LTEMetadataMatcher struct {
 	value interface{}
 }
 
-func (lte *LTEMetadataMatcher) Match(v interface{}) bool {
-	if result, err := common.CrossTypeCompare(v, lte.value); err == nil && result <= 0 {
-		return true
-	}
-
-	return false
-}
-
-func (lte *LTEMetadataMatcher) Value() interface{} {
-	return lte.value
-}
-
 func Lte(s interface{}) *LTEMetadataMatcher {
 	return &LTEMetadataMatcher{value: s}
 }
 
 type GTEMetadataMatcher struct {
 	value interface{}
-}
-
-func (gte *GTEMetadataMatcher) Match(v interface{}) bool {
-	if result, err := common.CrossTypeCompare(v, gte.value); err == nil && result >= 0 {
-		return true
-	}
-
-	return false
-}
-
-func (gte *GTEMetadataMatcher) Value() interface{} {
-	return gte.value
 }
 
 func Gte(s interface{}) *GTEMetadataMatcher {
@@ -223,21 +268,6 @@ type InsideMetadataMatcher struct {
 	to   interface{}
 }
 
-func (i *InsideMetadataMatcher) Match(v interface{}) bool {
-	result, err := common.CrossTypeCompare(v, i.from)
-	result2, err2 := common.CrossTypeCompare(v, i.to)
-
-	if err == nil && err2 == nil && result == 1 && result2 == -1 {
-		return true
-	}
-
-	return false
-}
-
-func (i *InsideMetadataMatcher) Value() (interface{}, interface{}) {
-	return i.from, i.to
-}
-
 func Inside(from, to interface{}) *InsideMetadataMatcher {
 	return &InsideMetadataMatcher{from: from, to: to}
 }
@@ -245,21 +275,6 @@ func Inside(from, to interface{}) *InsideMetadataMatcher {
 type OutsideMetadataMatcher struct {
 	from interface{}
 	to   interface{}
-}
-
-func (i *OutsideMetadataMatcher) Match(v interface{}) bool {
-	result, err := common.CrossTypeCompare(v, i.from)
-	result2, err2 := common.CrossTypeCompare(v, i.to)
-
-	if err == nil && err2 == nil && result == -1 && result2 == 1 {
-		return true
-	}
-
-	return false
-}
-
-func (i *OutsideMetadataMatcher) Value() (interface{}, interface{}) {
-	return i.from, i.to
 }
 
 func Outside(from, to interface{}) *OutsideMetadataMatcher {
@@ -271,21 +286,6 @@ type BetweenMetadataMatcher struct {
 	to   interface{}
 }
 
-func (b *BetweenMetadataMatcher) Match(v interface{}) bool {
-	result, err := common.CrossTypeCompare(v, b.from)
-	result2, err2 := common.CrossTypeCompare(v, b.to)
-
-	if err == nil && err2 == nil && result >= 0 && result2 == -1 {
-		return true
-	}
-
-	return false
-}
-
-func (b *BetweenMetadataMatcher) Value() (interface{}, interface{}) {
-	return b.from, b.to
-}
-
 func Between(from interface{}, to interface{}) *BetweenMetadataMatcher {
 	return &BetweenMetadataMatcher{from: from, to: to}
 }
@@ -293,23 +293,6 @@ func Between(from interface{}, to interface{}) *BetweenMetadataMatcher {
 type RegexMetadataMatcher struct {
 	regexp  *regexp.Regexp
 	pattern string
-}
-
-func (r *RegexMetadataMatcher) Value() interface{} {
-	return r.pattern
-}
-
-func (r *RegexMetadataMatcher) Match(v interface{}) bool {
-	if r.regexp == nil {
-		return false
-	}
-
-	switch v.(type) {
-	case string:
-		return r.regexp.MatchString(v.(string))
-	}
-
-	return false
 }
 
 func Regex(expr string) *RegexMetadataMatcher {
@@ -333,7 +316,12 @@ func SliceToMetadata(s ...interface{}) (graph.Metadata, error) {
 			return m, errors.New("keys should be of string type")
 		}
 
-		m[k] = s[i+1]
+		filter, err := ParamToFilter(k, s[i+1])
+		if err != nil {
+			return m, err
+		}
+
+		m[k] = filter
 	}
 
 	return m, nil
@@ -367,38 +355,37 @@ func parseTimeContext(param string) (time.Time, error) {
 	return time.Time{}, errors.New("Time must be in RFC1123 or in Go Duration format")
 }
 
+func (t *GraphTraversal) getPaginationRange() (filter *filters.Range) {
+	if t.currentStepContext.PaginationRange != nil {
+		filter = &filters.Range{
+			From: t.currentStepContext.PaginationRange[0],
+			To:   t.currentStepContext.PaginationRange[1],
+		}
+	}
+	return
+}
+
 func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	if t.error != nil {
 		return t
 	}
 
-	if len(s) != 1 {
-		return &GraphTraversal{error: errors.New("At least one parameter must be provided")}
-	}
-
 	var (
-		at  time.Time
-		err error
+		at       time.Time
+		duration time.Duration
+		err      error
 	)
-	switch param := s[0].(type) {
-	case string:
-		if at, err = parseTimeContext(param); err != nil {
-			return &GraphTraversal{error: err}
-		}
-	case int64:
-		at = time.Unix(param, 0)
-	default:
-		return &GraphTraversal{error: errors.New("Key must be either an integer or a string")}
-	}
 
-	t.Graph.RLock()
-	defer t.Graph.RUnlock()
+	at = s[0].(time.Time)
+	if len(s) > 1 {
+		duration = s[1].(time.Duration)
+	}
 
 	if at.After(time.Now().UTC()) {
 		return &GraphTraversal{error: errors.New("Sorry, I can't predict the future")}
 	}
 
-	g, err := t.Graph.WithContext(graph.GraphContext{Time: &at})
+	g, err := t.Graph.WithContext(graph.GraphContext{TimeSlice: common.NewTimeSlice(at.Add(-duration).Unix(), at.Unix())})
 	if err != nil {
 		return &GraphTraversal{error: err}
 	}
@@ -597,7 +584,7 @@ func (sp *GraphTraversalShortestPath) Error() error {
 	return sp.error
 }
 
-func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e ...graph.Metadata) *GraphTraversalShortestPath {
+func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e graph.Metadata) *GraphTraversalShortestPath {
 	if tv.error != nil {
 		return &GraphTraversalShortestPath{error: tv.error}
 	}
@@ -606,7 +593,7 @@ func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e ...graph.Metadata)
 	visited := make(map[graph.Identifier]bool)
 	for _, n := range tv.nodes {
 		if _, ok := visited[n.ID]; !ok {
-			path := tv.GraphTraversal.Graph.LookupShortestPath(n, m, e...)
+			path := tv.GraphTraversal.Graph.LookupShortestPath(n, m, e)
 			if len(path) > 0 {
 				sp.paths = append(sp.paths, path)
 			}
@@ -646,17 +633,19 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 		return tv.hasKey(k)
 	}
 
-	m, err := SliceToMetadata(s...)
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	filter, err := ParamsToFilter(s...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
 
-	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 	for _, n := range tv.nodes {
 		if it.Done() {
 			break
-		} else if n.MatchMetadata(m) && it.Next() {
+		}
+		if (filter == nil || filter.Eval(n)) && it.Next() {
 			ntv.nodes = append(ntv.nodes, n)
 		}
 	}
@@ -671,7 +660,7 @@ func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 
 	metadata, err := SliceToMetadata(s...)
 	if err != nil {
-		return &GraphTraversalV{GraphTraversal: tv.GraphTraversal, error: err}
+		return &GraphTraversalV{error: err}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
@@ -679,19 +668,20 @@ func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 
 nodeloop:
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
-			if it.Done() {
-				break nodeloop
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, nil) {
+			var nodes []*graph.Node
+			if e.GetChild() == n.ID {
+				nodes, _ = tv.GraphTraversal.Graph.GetEdgeNodes(e, metadata, nil)
+			} else {
+				_, nodes = tv.GraphTraversal.Graph.GetEdgeNodes(e, nil, metadata)
 			}
 
-			parent, child := tv.GraphTraversal.Graph.GetEdgeNodes(e)
-
-			if parent != nil && parent.ID == n.ID && child.MatchMetadata(metadata) && it.Next() {
-				ntv.nodes = append(ntv.nodes, child)
-			}
-
-			if !it.Done() && child != nil && child.ID == n.ID && parent.MatchMetadata(metadata) && it.Next() {
-				ntv.nodes = append(ntv.nodes, parent)
+			for _, node := range nodes {
+				if it.Done() {
+					break nodeloop
+				} else if it.Next() {
+					ntv.nodes = append(ntv.nodes, node)
+				}
 			}
 		}
 	}
@@ -750,14 +740,10 @@ func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 
 nodeloop:
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
+		for _, child := range tv.GraphTraversal.Graph.LookupChildren(n, metadata, nil) {
 			if it.Done() {
 				break nodeloop
-			}
-
-			parent, child := tv.GraphTraversal.Graph.GetEdgeNodes(e)
-
-			if parent != nil && parent.ID == n.ID && child.MatchMetadata(metadata) && it.Next() {
+			} else if it.Next() {
 				ntv.nodes = append(ntv.nodes, child)
 			}
 		}
@@ -781,15 +767,13 @@ func (tv *GraphTraversalV) OutE(s ...interface{}) *GraphTraversalE {
 
 nodeloop:
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
-			if it.Done() {
-				break nodeloop
-			}
-
-			parent, _ := tv.GraphTraversal.Graph.GetEdgeNodes(e)
-
-			if parent != nil && parent.ID == n.ID && e.MatchMetadata(metadata) && it.Next() {
-				nte.edges = append(nte.edges, e)
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, metadata) {
+			if e.GetParent() == n.ID {
+				if it.Done() {
+					break nodeloop
+				} else {
+					nte.edges = append(nte.edges, e)
+				}
 			}
 		}
 	}
@@ -812,14 +796,10 @@ func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
 
 nodeloop:
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
+		for _, parent := range tv.GraphTraversal.Graph.LookupParents(n, metadata, nil) {
 			if it.Done() {
 				break nodeloop
-			}
-
-			parent, child := tv.GraphTraversal.Graph.GetEdgeNodes(e)
-
-			if child != nil && child.ID == n.ID && parent.MatchMetadata(metadata) && it.Next() {
+			} else {
 				ntv.nodes = append(ntv.nodes, parent)
 			}
 		}
@@ -843,15 +823,13 @@ func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
 
 nodeloop:
 	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n) {
-			if it.Done() {
-				break nodeloop
-			}
-
-			_, child := tv.GraphTraversal.Graph.GetEdgeNodes(e)
-
-			if child != nil && child.ID == n.ID && e.MatchMetadata(metadata) && it.Next() {
-				nte.edges = append(nte.edges, e)
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, metadata) {
+			if e.GetChild() == n.ID {
+				if it.Done() {
+					break nodeloop
+				} else if it.Next() {
+					nte.edges = append(nte.edges, e)
+				}
 			}
 		}
 	}
@@ -1019,12 +997,13 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
 	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 	for _, e := range te.edges {
-		if it.Done() {
-			break
-		}
-		parent, _ := te.GraphTraversal.Graph.GetEdgeNodes(e)
-		if parent != nil && parent.MatchMetadata(metadata) && it.Next() {
-			ntv.nodes = append(ntv.nodes, parent)
+		parents, _ := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, graph.Metadata{})
+		for _, parent := range parents {
+			if it.Done() {
+				break
+			} else if it.Next() {
+				ntv.nodes = append(ntv.nodes, parent)
+			}
 		}
 	}
 
@@ -1044,12 +1023,13 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
 	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 	for _, e := range te.edges {
-		if it.Done() {
-			break
-		}
-		_, child := te.GraphTraversal.Graph.GetEdgeNodes(e)
-		if child != nil && child.MatchMetadata(metadata) && it.Next() {
-			ntv.nodes = append(ntv.nodes, child)
+		_, children := te.GraphTraversal.Graph.GetEdgeNodes(e, graph.Metadata{}, metadata)
+		for _, child := range children {
+			if it.Done() {
+				break
+			} else if it.Next() {
+				ntv.nodes = append(ntv.nodes, child)
+			}
 		}
 	}
 

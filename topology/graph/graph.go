@@ -26,6 +26,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,11 +35,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-)
-
-const (
-	Direct int64 = iota
-	Shadowed
+	"github.com/skydive-project/skydive/filters"
 )
 
 const (
@@ -81,9 +79,11 @@ type MetadataTransaction struct {
 }
 
 type graphElement struct {
-	ID       Identifier
-	metadata Metadata
-	host     string
+	ID        Identifier
+	metadata  Metadata
+	host      string
+	createdAt time.Time
+	deletedAt time.Time
 }
 
 type Node struct {
@@ -99,25 +99,25 @@ type Edge struct {
 type GraphBackend interface {
 	AddNode(n *Node) bool
 	DelNode(n *Node) bool
-	GetNode(i Identifier, at *time.Time) *Node
-	GetNodeEdges(n *Node, at *time.Time) []*Edge
+	GetNode(i Identifier, at *common.TimeSlice) []*Node
+	GetNodeEdges(n *Node, at *common.TimeSlice, m Metadata) []*Edge
 
 	AddEdge(e *Edge) bool
 	DelEdge(e *Edge) bool
-	GetEdge(i Identifier, at *time.Time) *Edge
-	GetEdgeNodes(e *Edge, at *time.Time) (*Node, *Node)
+	GetEdge(i Identifier, at *common.TimeSlice) []*Edge
+	GetEdgeNodes(e *Edge, at *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node)
 
 	AddMetadata(e interface{}, k string, v interface{}) bool
 	SetMetadata(e interface{}, m Metadata) bool
 
-	GetNodes(at *time.Time, m Metadata) []*Node
-	GetEdges(at *time.Time, m Metadata) []*Edge
+	GetNodes(t *common.TimeSlice, m Metadata) []*Node
+	GetEdges(t *common.TimeSlice, m Metadata) []*Edge
 
 	WithContext(graph *Graph, context GraphContext) (*Graph, error)
 }
 
 type GraphContext struct {
-	Time *time.Time
+	TimeSlice *common.TimeSlice
 }
 
 type Graph struct {
@@ -129,10 +129,6 @@ type Graph struct {
 	eventChan            chan graphEvent
 	eventConsumed        bool
 	currentEventListener GraphEventListener
-}
-
-type MetadataMatcher interface {
-	Match(v interface{}) bool
 }
 
 type HostNodeTIDMap map[string][]string
@@ -185,17 +181,54 @@ func (e *graphElement) Host() string {
 	return e.host
 }
 
+func (e *graphElement) GetFieldInt64(field string) (_ int64, err error) {
+	f, found := e.GetField(field)
+	if !found {
+		return 0, common.ErrFieldNotFound
+	}
+	return common.ToInt64(f)
+}
+
+func (e *graphElement) GetFieldString(field string) (_ string, err error) {
+	f, found := e.GetField(field)
+	if !found {
+		return "", common.ErrFieldNotFound
+	}
+	s, ok := f.(string)
+	if !ok {
+		return "", common.ErrFieldNotFound
+	}
+	return s, nil
+}
+
+func (e *graphElement) GetField(name string) (interface{}, bool) {
+	switch name {
+	case "ID":
+		return string(e.ID), true
+	case "Host":
+		return e.host, true
+	case "CreatedAt":
+		return e.createdAt.Unix(), true
+	case "DeletedAt":
+		return e.deletedAt.Unix(), true
+	default:
+		if strings.HasPrefix(name, "Metadata/") {
+			name = name[9:]
+		}
+		v, ok := e.Metadata()[name]
+		return v, ok
+	}
+}
+
 func (e *graphElement) Metadata() Metadata {
 	return e.metadata
 }
 
 func (e *graphElement) MatchMetadata(f Metadata) bool {
 	for k, v := range f {
-		switch v.(type) {
-		case MetadataMatcher:
-			nv, ok := e.metadata[k]
-			matcher := v.(MetadataMatcher)
-			if !ok || !matcher.Match(nv) {
+		switch v := v.(type) {
+		case *filters.Filter:
+			if !v.Eval(e) {
 				return false
 			}
 		default:
@@ -210,27 +243,99 @@ func (e *graphElement) MatchMetadata(f Metadata) bool {
 }
 
 func (e *graphElement) String() string {
+	deletedAt := ""
+	if !e.deletedAt.IsZero() {
+		deletedAt = e.deletedAt.String()
+	}
+
 	j, _ := json.Marshal(&struct {
-		ID       Identifier
-		Metadata Metadata `json:",omitempty"`
-		Host     string
+		ID        Identifier
+		Metadata  Metadata `json:",omitempty"`
+		Host      string
+		CreatedAt string
+		DeletedAt string `json:",omitempty"`
 	}{
-		ID:       e.ID,
-		Metadata: e.metadata,
-		Host:     e.host,
+		ID:        e.ID,
+		Metadata:  e.metadata,
+		Host:      e.host,
+		CreatedAt: e.createdAt.String(),
+		DeletedAt: deletedAt,
 	})
 	return string(j)
 }
 
+func parseTime(i interface{}) (t time.Time, err error) {
+	var epoch int64
+	switch i := i.(type) {
+	case int64:
+		epoch = i
+	case json.Number:
+		epoch, err = i.Int64()
+		if err != nil {
+			return t, err
+		}
+	default:
+		return t, fmt.Errorf("Invalid time: %+v", i)
+	}
+	return time.Unix(epoch, 0), err
+}
+
+func (e *graphElement) Decode(i interface{}) (err error) {
+	objMap, ok := i.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("Unable to decode graph element: %v, %+v", i, reflect.TypeOf(i))
+	}
+
+	e.ID = Identifier(objMap["ID"].(string))
+	e.host = objMap["Host"].(string)
+
+	if createdAt, ok := objMap["CreatedAt"]; ok {
+		if e.createdAt, err = parseTime(createdAt); err != nil {
+			return err
+		}
+	}
+
+	if deletedAt, ok := objMap["DeletedAt"]; ok {
+		if e.deletedAt, err = parseTime(deletedAt); err != nil {
+			return err
+		}
+	}
+
+	if m, ok := objMap["Metadata"]; ok {
+		e.metadata = make(Metadata)
+		for field, value := range m.(map[string]interface{}) {
+			if n, ok := value.(json.Number); ok {
+				if value, err = n.Int64(); err == nil {
+					value = value.(int64)
+				} else {
+					value, _ = n.Float64()
+				}
+			}
+			e.metadata[field] = value
+		}
+	}
+
+	return nil
+}
+
 func (n *Node) MarshalJSON() ([]byte, error) {
+	deletedAt := int64(0)
+	if !n.deletedAt.IsZero() {
+		deletedAt = n.deletedAt.Unix()
+	}
+
 	return json.Marshal(&struct {
-		ID       Identifier
-		Metadata Metadata `json:",omitempty"`
-		Host     string
+		ID        Identifier
+		Metadata  Metadata `json:",omitempty"`
+		Host      string
+		CreatedAt int64
+		DeletedAt int64 `json:",omitempty"`
 	}{
-		ID:       n.ID,
-		Metadata: n.metadata,
-		Host:     n.host,
+		ID:        n.ID,
+		Metadata:  n.metadata,
+		Host:      n.host,
+		CreatedAt: n.createdAt.Unix(),
+		DeletedAt: deletedAt,
 	})
 }
 
@@ -241,34 +346,42 @@ func (n *Node) JsonRawMessage() *json.RawMessage {
 }
 
 func (n *Node) Decode(i interface{}) error {
-	objMap, ok := i.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("Unable to decode node: %v", i)
-	}
+	return n.graphElement.Decode(i)
+}
 
-	n.graphElement.ID = Identifier(objMap["ID"].(string))
-	n.graphElement.host = objMap["Host"].(string)
-	n.metadata = make(Metadata)
-	if m, ok := objMap["Metadata"]; ok {
-		n.metadata = Metadata(m.(map[string]interface{}))
+func (e *Edge) GetFieldString(name string) (string, error) {
+	switch name {
+	case "Parent":
+		return string(e.parent), nil
+	case "Child":
+		return string(e.child), nil
+	default:
+		return e.graphElement.GetFieldString(name)
 	}
-
-	return nil
 }
 
 func (e *Edge) MarshalJSON() ([]byte, error) {
+	deletedAt := int64(0)
+	if !e.deletedAt.IsZero() {
+		deletedAt = e.deletedAt.Unix()
+	}
+
 	return json.Marshal(&struct {
-		ID       Identifier
-		Metadata Metadata `json:",omitempty"`
-		Parent   Identifier
-		Child    Identifier
-		Host     string
+		ID        Identifier
+		Metadata  Metadata `json:",omitempty"`
+		Parent    Identifier
+		Child     Identifier
+		Host      string
+		CreatedAt int64
+		DeletedAt int64 `json:",omitempty"`
 	}{
-		ID:       e.ID,
-		Metadata: e.metadata,
-		Parent:   e.parent,
-		Child:    e.child,
-		Host:     e.host,
+		ID:        e.ID,
+		Metadata:  e.metadata,
+		Parent:    e.parent,
+		Child:     e.child,
+		Host:      e.host,
+		CreatedAt: e.createdAt.Unix(),
+		DeletedAt: deletedAt,
 	})
 }
 
@@ -279,20 +392,13 @@ func (e *Edge) JsonRawMessage() *json.RawMessage {
 }
 
 func (e *Edge) Decode(i interface{}) error {
-	objMap, ok := i.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("Unable to decode node: %v", i)
+	if err := e.graphElement.Decode(i); err != nil {
+		return err
 	}
 
-	e.graphElement.ID = Identifier(objMap["ID"].(string))
-	e.graphElement.host = objMap["Host"].(string)
+	objMap := i.(map[string]interface{})
 	e.parent = Identifier(objMap["Parent"].(string))
 	e.child = Identifier(objMap["Child"].(string))
-	e.metadata = make(Metadata)
-	if m, ok := objMap["Metadata"]; ok {
-		e.metadata = Metadata(m.(map[string]interface{}))
-	}
-
 	return nil
 }
 
@@ -304,51 +410,68 @@ func (e *Edge) GetChild() Identifier {
 	return e.child
 }
 
-func (c *GraphContext) GetTime() *time.Time {
-	return c.Time
+func (c *GraphContext) GetTimeSlice() *common.TimeSlice {
+	return c.TimeSlice
 }
 
 func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
+	var e *graphElement
 	ge := graphEvent{element: i}
 
-	switch i.(type) {
+	switch i := i.(type) {
 	case *Node:
-		i.(*Node).metadata = m
+		e = &i.graphElement
 		ge.kind = nodeUpdated
 	case *Edge:
-		i.(*Edge).metadata = m
+		e = &i.graphElement
 		ge.kind = edgeUpdated
+	}
+
+	if len(m) == len(e.metadata) {
+		unchanged := true
+		for k, v := range m {
+			if e.metadata[k] != v {
+				unchanged = false
+				break
+			}
+		}
+		if unchanged {
+			return false
+		}
 	}
 
 	if !g.backend.SetMetadata(i, m) {
 		return false
 	}
 
+	e.metadata = m
+
 	g.notifyEvent(ge)
 	return true
 }
 
 func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
-	var e graphElement
+	var e *graphElement
 	ge := graphEvent{element: i}
 
 	switch i.(type) {
 	case *Node:
-		e = i.(*Node).graphElement
+		e = &i.(*Node).graphElement
 		ge.kind = nodeUpdated
 	case *Edge:
-		e = i.(*Edge).graphElement
+		e = &i.(*Edge).graphElement
 		ge.kind = edgeUpdated
 	}
 
 	if o, ok := e.metadata[k]; ok && o == v {
 		return false
 	}
-	e.metadata[k] = v
 
 	if !g.backend.AddMetadata(i, k, v) {
 		return false
 	}
+
+	e.metadata[k] = v
 
 	g.notifyEvent(ge)
 	return true
@@ -371,10 +494,11 @@ func (g *Graph) DelMetadata(i interface{}, k string) bool {
 		return false
 	}
 
-	delete(m, k)
 	if !g.backend.SetMetadata(i, m) {
 		return false
 	}
+
+	delete(m, k)
 
 	g.notifyEvent(ge)
 	return true
@@ -386,6 +510,10 @@ func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
 
 func (t *MetadataTransaction) DelMetadata(k string, v interface{}) {
 	delete(t.metadata, k)
+}
+
+func (t *MetadataTransaction) Metadata() Metadata {
+	return t.metadata
 }
 
 func (t *MetadataTransaction) Commit() {
@@ -438,7 +566,7 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	return &t
 }
 
-func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, em ...Metadata) []*Node {
+func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, em Metadata) []*Node {
 	v[n.ID] = true
 
 	newPath := make([]*Node, len(path)+1)
@@ -449,18 +577,15 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 		return newPath
 	}
 
-	t := g.context.GetTime()
+	t := g.context.GetTimeSlice()
 	shortest := []*Node{}
-	for _, e := range g.backend.GetNodeEdges(n, t) {
-		if len(em) > 0 && !e.MatchMetadata(em[0]) {
+	for _, e := range g.backend.GetNodeEdges(n, t, em) {
+		parents, children := g.backend.GetEdgeNodes(e, t, nil, nil)
+		if len(parents) == 0 || len(children) == 0 {
 			continue
 		}
 
-		parent, child := g.backend.GetEdgeNodes(e, t)
-		if parent == nil || child == nil {
-			continue
-		}
-
+		parent, child := parents[0], children[0]
 		var neighbor *Node
 		if parent.ID != n.ID && !v[parent.ID] {
 			neighbor = parent
@@ -476,7 +601,7 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 				nv[k] = v
 			}
 
-			sub := g.lookupShortestPath(neighbor, m, newPath, nv, em...)
+			sub := g.lookupShortestPath(neighbor, m, newPath, nv, em)
 			if len(sub) > 0 && (len(shortest) == 0 || len(sub) < len(shortest)) {
 				shortest = sub
 			}
@@ -491,82 +616,56 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 	return shortest
 }
 
-func (g *Graph) LookupShortestPath(n *Node, m Metadata, em ...Metadata) []*Node {
-	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), em...)
+func (g *Graph) LookupShortestPath(n *Node, m Metadata, em Metadata) []*Node {
+	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), em)
 }
 
-func (g *Graph) LookupParents(n *Node, f Metadata, em ...Metadata) []*Node {
-	parents := []*Node{}
-	t := g.context.GetTime()
-	for _, e := range g.backend.GetNodeEdges(n, t) {
-		if len(em) > 0 && !e.MatchMetadata(em[0]) {
-			continue
-		}
-
-		parent, child := g.backend.GetEdgeNodes(e, t)
-
-		if child != nil && child.ID == n.ID && parent.MatchMetadata(f) {
-			parents = append(parents, parent)
+func (g *Graph) LookupParents(n *Node, f Metadata, em Metadata) (nodes []*Node) {
+	t := g.context.GetTimeSlice()
+	for _, e := range g.backend.GetNodeEdges(n, t, em) {
+		if e.GetChild() == n.ID {
+			parents, _ := g.backend.GetEdgeNodes(e, t, f, Metadata{})
+			for _, parent := range parents {
+				nodes = append(nodes, parent)
+			}
 		}
 	}
 
-	return parents
+	return
 }
 
 func (g *Graph) LookupFirstChild(n *Node, f Metadata) *Node {
-	nodes := g.LookupChildren(n, f)
+	nodes := g.LookupChildren(n, f, Metadata{})
 	if len(nodes) > 0 {
 		return nodes[0]
 	}
 	return nil
 }
 
-func (g *Graph) LookupChildren(n *Node, f Metadata, em ...Metadata) []*Node {
-	children := []*Node{}
-	t := g.context.GetTime()
-	for _, e := range g.backend.GetNodeEdges(n, t) {
-		if len(em) > 0 && !e.MatchMetadata(em[0]) {
-			continue
-		}
-
-		parent, child := g.backend.GetEdgeNodes(e, t)
-
-		if parent != nil && parent.ID == n.ID && child.MatchMetadata(f) {
-			children = append(children, child)
+func (g *Graph) LookupChildren(n *Node, f Metadata, em Metadata) (nodes []*Node) {
+	t := g.context.GetTimeSlice()
+	for _, e := range g.backend.GetNodeEdges(n, t, em) {
+		if e.GetParent() == n.ID {
+			_, children := g.backend.GetEdgeNodes(e, t, Metadata{}, f)
+			for _, child := range children {
+				nodes = append(nodes, child)
+			}
 		}
 	}
 
-	return children
+	return nodes
 }
 
-func (g *Graph) LookupEdges(pm Metadata, cm Metadata, em Metadata) []*Edge {
-	edges := []*Edge{}
-	t := g.context.GetTime()
-	for _, e := range g.backend.GetEdges(t, em) {
-		parent, child := g.backend.GetEdgeNodes(e, t)
-
-		if parent != nil && child != nil && parent.MatchMetadata(pm) && child.MatchMetadata(cm) {
-			edges = append(edges, e)
-		}
-	}
-
-	return edges
-}
-
-func (g *Graph) AreLinked(n1 *Node, n2 *Node, m ...Metadata) bool {
-	t := g.context.GetTime()
-	for _, e := range g.backend.GetNodeEdges(n1, t) {
-		parent, child := g.backend.GetEdgeNodes(e, t)
-		if parent == nil || child == nil {
+func (g *Graph) AreLinked(n1 *Node, n2 *Node, m Metadata) bool {
+	t := g.context.GetTimeSlice()
+	for _, e := range g.backend.GetNodeEdges(n1, t, m) {
+		parents, children := g.backend.GetEdgeNodes(e, t, Metadata{}, Metadata{})
+		if len(parents) == 0 || len(children) == 0 {
 			continue
 		}
 
-		if child.ID == n2.ID || parent.ID == n2.ID {
-			if len(m) > 0 {
-				if e.MatchMetadata(m[0]) {
-					return true
-				}
-			} else {
+		for i, parent := range parents {
+			if children[i].ID == n2.ID || parent.ID == n2.ID {
 				return true
 			}
 		}
@@ -575,22 +674,23 @@ func (g *Graph) AreLinked(n1 *Node, n2 *Node, m ...Metadata) bool {
 	return false
 }
 
-func (g *Graph) Link(n1 *Node, n2 *Node, m ...Metadata) *Edge {
+func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata) *Edge {
 	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(string(n1.ID)+string(n2.ID)))
 
 	if len(m) > 0 {
-		return g.NewEdge(Identifier(u.String()), n1, n2, m[0])
+		return g.NewEdge(Identifier(u.String()), n1, n2, m)
 	}
 	return g.NewEdge(Identifier(u.String()), n1, n2, nil)
 }
 
 func (g *Graph) Unlink(n1 *Node, n2 *Node) {
-	for _, e := range g.backend.GetNodeEdges(n1, nil) {
-		parent, child := g.backend.GetEdgeNodes(e, nil)
-		if parent == nil || child == nil {
+	for _, e := range g.backend.GetNodeEdges(n1, nil, Metadata{}) {
+		parents, children := g.backend.GetEdgeNodes(e, nil, Metadata{}, Metadata{})
+		if len(parents) == 0 || len(children) == 0 {
 			continue
 		}
 
+		parent, child := parents[0], children[0]
 		if child.ID == n2.ID || parent.ID == n2.ID {
 			g.DelEdge(e)
 		}
@@ -598,11 +698,12 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 }
 
 func (g *Graph) Replace(o *Node, n *Node) *Node {
-	for _, e := range g.backend.GetNodeEdges(o, nil) {
-		parent, child := g.backend.GetEdgeNodes(e, nil)
-		if parent == nil || child == nil {
+	for _, e := range g.backend.GetNodeEdges(o, nil, Metadata{}) {
+		parents, children := g.backend.GetEdgeNodes(e, nil, Metadata{}, Metadata{})
+		if len(parents) == 0 || len(children) == 0 {
 			continue
 		}
+		parent, child := parents[0], children[0]
 
 		g.DelEdge(e)
 
@@ -629,19 +730,6 @@ func (g *Graph) LookupFirstNode(m Metadata) *Node {
 	return nil
 }
 
-func (g *Graph) LookupNodesFromKey(key string) []*Node {
-	nodes := []*Node{}
-
-	for _, n := range g.backend.GetNodes(g.context.GetTime(), Metadata{}) {
-		_, ok := n.metadata[key]
-		if ok {
-			nodes = append(nodes, n)
-		}
-	}
-
-	return nodes
-}
-
 func (g *Graph) AddEdge(e *Edge) bool {
 	if !g.backend.AddEdge(e) {
 		return false
@@ -652,7 +740,10 @@ func (g *Graph) AddEdge(e *Edge) bool {
 }
 
 func (g *Graph) GetEdge(i Identifier) *Edge {
-	return g.backend.GetEdge(i, g.context.GetTime())
+	if edges := g.backend.GetEdge(i, g.context.GetTimeSlice()); len(edges) != 0 {
+		return edges[0]
+	}
+	return nil
 }
 
 func (g *Graph) AddNode(n *Node) bool {
@@ -665,7 +756,10 @@ func (g *Graph) AddNode(n *Node) bool {
 }
 
 func (g *Graph) GetNode(i Identifier) *Node {
-	return g.backend.GetNode(i, g.context.GetTime())
+	if nodes := g.backend.GetNode(i, g.context.GetTimeSlice()); len(nodes) != 0 {
+		return nodes[0]
+	}
+	return nil
 }
 
 func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
@@ -675,8 +769,9 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
 	}
 	n := &Node{
 		graphElement: graphElement{
-			ID:   i,
-			host: hostname,
+			ID:        i,
+			host:      hostname,
+			createdAt: time.Now().UTC(),
 		},
 	}
 
@@ -698,8 +793,9 @@ func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
 		parent: p.ID,
 		child:  c.ID,
 		graphElement: graphElement{
-			ID:   i,
-			host: g.host,
+			ID:        i,
+			host:      g.host,
+			createdAt: time.Now().UTC(),
 		},
 	}
 
@@ -718,16 +814,18 @@ func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
 
 func (g *Graph) DelEdge(e *Edge) {
 	if g.backend.DelEdge(e) {
+		e.deletedAt = time.Now().UTC()
 		g.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
 	}
 }
 
 func (g *Graph) DelNode(n *Node) {
-	for _, e := range g.backend.GetNodeEdges(n, nil) {
+	for _, e := range g.backend.GetNodeEdges(n, nil, Metadata{}) {
 		g.DelEdge(e)
 	}
 
 	if g.backend.DelNode(n) {
+		n.deletedAt = time.Now().UTC()
 		g.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
 	}
 }
@@ -741,19 +839,19 @@ func (g *Graph) DelHostGraph(host string) {
 }
 
 func (g *Graph) GetNodes(m Metadata) []*Node {
-	return g.backend.GetNodes(g.context.GetTime(), m)
+	return g.backend.GetNodes(g.context.GetTimeSlice(), m)
 }
 
 func (g *Graph) GetEdges(m Metadata) []*Edge {
-	return g.backend.GetEdges(g.context.GetTime(), m)
+	return g.backend.GetEdges(g.context.GetTimeSlice(), m)
 }
 
-func (g *Graph) GetEdgeNodes(e *Edge) (*Node, *Node) {
-	return g.backend.GetEdgeNodes(e, g.context.GetTime())
+func (g *Graph) GetEdgeNodes(e *Edge, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
+	return g.backend.GetEdgeNodes(e, g.context.GetTimeSlice(), parentMetadata, childMetadata)
 }
 
-func (g *Graph) GetNodeEdges(n *Node) []*Edge {
-	return g.backend.GetNodeEdges(n, g.context.GetTime())
+func (g *Graph) GetNodeEdges(n *Node, m Metadata) []*Edge {
+	return g.backend.GetNodeEdges(n, g.context.GetTimeSlice(), m)
 }
 
 func (g *Graph) String() string {

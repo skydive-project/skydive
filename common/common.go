@@ -64,6 +64,7 @@ type CaptureType struct {
 
 var (
 	CantCompareInterface error = errors.New("Can't compare interface")
+	ErrFieldNotFound           = errors.New("Field not found")
 	InvalidPortRange     error = errors.New("Invalid port range")
 	NoPortLeft           error = errors.New("No free port left")
 	CaptureTypes               = map[string]CaptureType{}
@@ -423,4 +424,13 @@ func JsonDecode(r io.Reader, i interface{}) error {
 	decoder := json.NewDecoder(r)
 	decoder.UseNumber()
 	return decoder.Decode(i)
+}
+
+type TimeSlice struct {
+	Start int64 `json:"Start"`
+	Last  int64 `json:"Last"`
+}
+
+func NewTimeSlice(s, l int64) *TimeSlice {
+	return &TimeSlice{Start: s, Last: l}
 }

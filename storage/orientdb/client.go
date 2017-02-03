@@ -34,6 +34,7 @@ import (
 	"strings"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 )
 
 type Document map[string]interface{}
@@ -125,6 +126,10 @@ func getResponseBody(resp *http.Response) (io.ReadCloser, error) {
 }
 
 func parseResponse(resp *http.Response, result interface{}) error {
+	if resp.StatusCode < 400 && resp.ContentLength == 0 {
+		return nil
+	}
+
 	body, err := getResponseBody(resp)
 	if err != nil {
 		return err
@@ -151,6 +156,61 @@ func compressBody(body io.Reader) io.Reader {
 	io.Copy(compressor, body)
 	compressor.Close()
 	return buffer
+}
+
+func replaceSlashes(key string) string {
+	return strings.Replace(key, "/", ".", -1)
+}
+
+func FilterToExpression(f *filters.Filter, prefix string) string {
+	if f.BoolFilter != nil {
+		keyword := ""
+		switch f.BoolFilter.Op {
+		case filters.BoolFilterOp_NOT:
+			return "NOT " + FilterToExpression(f.BoolFilter.Filters[0], prefix)
+		case filters.BoolFilterOp_OR:
+			keyword = "OR"
+		case filters.BoolFilterOp_AND:
+			keyword = "AND"
+		}
+		var conditions []string
+		for _, item := range f.BoolFilter.Filters {
+			if expr := FilterToExpression(item, prefix); expr != "" {
+				conditions = append(conditions, "("+FilterToExpression(item, prefix)+")")
+			}
+		}
+		return strings.Join(conditions, " "+keyword+" ")
+	}
+
+	if f.TermStringFilter != nil {
+		return fmt.Sprintf(`%s = "%s"`, prefix+replaceSlashes(f.TermStringFilter.Key), f.TermStringFilter.Value)
+	}
+
+	if f.TermInt64Filter != nil {
+		return fmt.Sprintf(`%s = %d`, prefix+replaceSlashes(f.TermInt64Filter.Key), f.TermInt64Filter.Value)
+	}
+
+	if f.GtInt64Filter != nil {
+		return fmt.Sprintf("%v > %v", prefix+replaceSlashes(f.GtInt64Filter.Key), f.GtInt64Filter.Value)
+	}
+
+	if f.LtInt64Filter != nil {
+		return fmt.Sprintf("%v < %v", prefix+replaceSlashes(f.LtInt64Filter.Key), f.LtInt64Filter.Value)
+	}
+
+	if f.GteInt64Filter != nil {
+		return fmt.Sprintf("%v >= %v", prefix+replaceSlashes(f.GteInt64Filter.Key), f.GteInt64Filter.Value)
+	}
+
+	if f.LteInt64Filter != nil {
+		return fmt.Sprintf("%v <= %v", prefix+replaceSlashes(f.LteInt64Filter.Key), f.LteInt64Filter.Value)
+	}
+
+	if f.RegexFilter != nil {
+		return fmt.Sprintf(`%s MATCHES "%s"`, prefix+replaceSlashes(f.RegexFilter.Key), f.RegexFilter.Value)
+	}
+
+	return ""
 }
 
 func NewClient(url string, database string, username string, password string) (*Client, error) {
@@ -433,6 +493,26 @@ func (c *Client) Sql(query string) ([]Document, error) {
 		return nil, err
 	}
 	return result.Result, nil
+}
+
+func (c *Client) Query(obj string, query *filters.SearchQuery) ([]Document, error) {
+	interval := query.PaginationRange
+	filter := query.Filter
+
+	sql := "SELECT FROM " + obj
+	if conditional := FilterToExpression(filter, ""); conditional != "" {
+		sql += " WHERE " + conditional
+	}
+
+	if interval != nil {
+		sql += fmt.Sprintf(" LIMIT %d, %d", interval.To-interval.From, interval.From)
+	}
+
+	if query.Sort {
+		sql += " ORDER BY " + query.SortBy
+	}
+
+	return c.Sql(sql)
 }
 
 func (c *Client) Connect() error {

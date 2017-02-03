@@ -31,6 +31,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -64,10 +65,10 @@ func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	}
 }
 
-func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery FlowSearchQuery) {
+func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery filters.SearchQuery) {
 	obj, _ := proto.Marshal(&flowSearchQuery)
 	tq := TableQuery{
-		Type: "FlowSearchQuery",
+		Type: "SearchQuery",
 		Obj:  obj,
 	}
 	msg := shttp.NewWSMessage(Namespace, "TableQuery", tq)
@@ -125,7 +126,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 	flowset <- NewFlowSet()
 }
 
-func (f *TableClient) LookupFlows(flowSearchQuery FlowSearchQuery) (*FlowSet, error) {
+func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
 	clients := f.WSServer.GetClientsByType(common.AgentService)
 	ch := make(chan *FlowSet, len(clients))
 
@@ -149,13 +150,13 @@ func (f *TableClient) LookupFlows(flowSearchQuery FlowSearchQuery) (*FlowSet, er
 	return flowset, nil
 }
 
-func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSearchQuery FlowSearchQuery) (*FlowSet, error) {
+func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
 	// We conserve the original filter to reuse it for each host
 	searchQuery := flowSearchQuery.Filter
 	for host, tids := range hnmap {
-		flowSearchQuery.Filter = NewAndFilter(NewFilterForNodeTIDs(tids), searchQuery)
+		flowSearchQuery.Filter = filters.NewAndFilter(NewFilterForNodeTIDs(tids), searchQuery)
 		go f.lookupFlows(ch, host, flowSearchQuery)
 	}
 

@@ -25,6 +25,8 @@ package flow
 import (
 	"testing"
 	"time"
+
+	"github.com/skydive-project/skydive/filters"
 )
 
 func TestNewTable(t *testing.T) {
@@ -125,24 +127,13 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	GenerateTestFlows(t, ft, 1, "probe-tid1")
 	GenerateTestFlows(t, ft, 2, "probe-tid2")
 
-	filters := &Filter{
-		BoolFilter: &BoolFilter{
-			Op: BoolFilterOp_OR,
-			Filters: []*Filter{
-				{
-					TermStringFilter: &TermStringFilter{Key: "NodeTID", Value: "probe-tid1"},
-				},
-				{
-					TermStringFilter: &TermStringFilter{Key: "ANodeTID", Value: "probe-tid1"},
-				},
-				{
-					TermStringFilter: &TermStringFilter{Key: "BNodeTID", Value: "probe-tid1"},
-				},
-			},
-		},
-	}
+	f := filters.NewOrFilter(
+		filters.NewTermStringFilter("NodeTID", "probe-tid1"),
+		filters.NewTermStringFilter("ANodeTID", "probe-tid1"),
+		filters.NewTermStringFilter("BNodeTID", "probe-tid1"),
+	)
 
-	flowset := ft.GetFlows(&FlowSearchQuery{Filter: filters})
+	flowset := ft.GetFlows(&filters.SearchQuery{Filter: f})
 	if len(flowset.Flows) == 0 {
 		t.Errorf("Should have flows with from probe1 returned")
 	}

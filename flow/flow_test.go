@@ -32,6 +32,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"github.com/skydive-project/skydive/filters"
 )
 
 func TestFlowSimple(t *testing.T) {
@@ -299,7 +300,7 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*F
 			table.FlowPacketsToFlow(fp)
 		}
 	}
-	return table.GetFlows(&FlowSearchQuery{}).Flows
+	return table.GetFlows(&filters.SearchQuery{}).Flows
 }
 
 func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expected []*Flow) {

@@ -38,11 +38,11 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
 var ErrFlowProtocol = errors.New("FlowProtocol invalid")
-var ErrFieldNotFound = errors.New("Flow field not found")
 
 type GetAttr interface {
 	GetAttr(name string) interface{}
@@ -475,7 +475,7 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64) []*Flow
 
 func (f *FlowLayer) GetField(field string) (string, error) {
 	if f == nil {
-		return "", ErrFieldNotFound
+		return "", common.ErrFieldNotFound
 	}
 
 	switch field {
@@ -486,7 +486,7 @@ func (f *FlowLayer) GetField(field string) (string, error) {
 	case "Protocol":
 		return f.Protocol.String(), nil
 	}
-	return "", ErrFieldNotFound
+	return "", common.ErrFieldNotFound
 }
 
 func (f *FlowMetric) GetField(field string) (int64, error) {
@@ -504,13 +504,13 @@ func (f *FlowMetric) GetField(field string) (int64, error) {
 	case "BABytes":
 		return f.BABytes, nil
 	}
-	return 0, ErrFieldNotFound
+	return 0, common.ErrFieldNotFound
 }
 
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
 	if len(fields) < 1 {
-		return "", ErrFieldNotFound
+		return "", common.ErrFieldNotFound
 	}
 
 	// root field
@@ -538,7 +538,7 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 
 	// sub field
 	if len(fields) != 2 {
-		return "", ErrFieldNotFound
+		return "", common.ErrFieldNotFound
 	}
 
 	switch name {
@@ -555,13 +555,13 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 	case "ETHERNET":
 		return f.Link.GetField(fields[1])
 	}
-	return "", ErrFieldNotFound
+	return "", common.ErrFieldNotFound
 }
 
 func (f *Flow) GetFieldInt64(field string) (int64, error) {
 	fields := strings.Split(field, ".")
 	if len(fields) != 2 {
-		return 0, ErrFieldNotFound
+		return 0, common.ErrFieldNotFound
 	}
 	name := fields[0]
 	switch name {
@@ -570,7 +570,7 @@ func (f *Flow) GetFieldInt64(field string) (int64, error) {
 	case "LastUpdateMetric":
 		return f.LastUpdateMetric.GetField(fields[1])
 	}
-	return 0, ErrFieldNotFound
+	return 0, common.ErrFieldNotFound
 }
 
 func (f *Flow) GetFields() []interface{} {

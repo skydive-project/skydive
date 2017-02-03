@@ -33,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -154,11 +155,11 @@ func (s *TestStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (s *TestStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error) {
+func (s *TestStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	return nil, nil
 }
 
-func (s *TestStorage) SearchMetrics(ffsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error) {
+func (s *TestStorage) SearchMetrics(ffsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*flow.FlowMetric, error) {
 	return nil, nil
 }
 
@@ -668,27 +669,16 @@ func TestFlowQuery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	obj, _ := proto.Marshal(&flow.FlowSearchQuery{
-		Filter: &flow.Filter{
-			BoolFilter: &flow.BoolFilter{
-				Op: flow.BoolFilterOp_OR,
-				Filters: []*flow.Filter{
-					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "NodeTID", Value: "probe-tid2"},
-					},
-					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "ANodeTID", Value: "probe-tid2"},
-					},
-					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: "BNodeTID", Value: "probe-tid2"},
-					},
-				},
-			},
-		},
+	obj, _ := proto.Marshal(&filters.SearchQuery{
+		Filter: filters.NewOrFilter(
+			filters.NewTermStringFilter("NodeTID", "probe-tid2"),
+			filters.NewTermStringFilter("ANodeTID", "probe-tid2"),
+			filters.NewTermStringFilter("BNodeTID", "probe-tid2"),
+		),
 	})
 
 	query := &flow.TableQuery{
-		Type: "FlowSearchQuery",
+		Type: "SearchQuery",
 		Obj:  obj,
 	}
 	reply := al.QueryTable(query)
@@ -762,7 +752,7 @@ func TestTableServer(t *testing.T) {
 	hnmap := make(topology.HostNodeTIDMap)
 	hnmap[node.Host()] = append(hnmap[node.Host()], node.Metadata()["TID"].(string))
 
-	fsq := flow.FlowSearchQuery{}
+	fsq := filters.SearchQuery{}
 	flowset, err := fclient.LookupFlowsByNodes(hnmap, fsq)
 	if err != nil {
 		t.Fatal(err.Error())

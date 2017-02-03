@@ -31,6 +31,7 @@ import (
 
 	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -153,8 +154,8 @@ func TestFlowStorage(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	filters := flow.NewFilterForNodes([]*graph.Node{node})
-	flowSearchQuery := flow.FlowSearchQuery{Filter: filters}
+	f := flow.NewFilterForNodes([]*graph.Node{node})
+	flowSearchQuery := filters.SearchQuery{Filter: f}
 	flowset, err := aa.Analyzer.Storage.SearchFlows(flowSearchQuery)
 	if err != nil {
 		t.Fatalf("Failed to query flows: %s", err.Error())

@@ -3,7 +3,8 @@ VERSION?=0.9.0
 # really Basic Makefile for Skydive
 export GO15VENDOREXPERIMENT=1
 
-PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
+FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
+FILTERS_PROTO_FILES=filters/filters.proto
 VERBOSE_FLAGS?=-v
 VERBOSE?=true
 ifeq ($(VERBOSE), false)
@@ -18,8 +19,9 @@ DOCKER_IMAGE?=skydive/skydive
 DOCKER_TAG?=devel
 DESTDIR?=$(shell pwd)
 
-.proto: govendor builddep ${PROTO_FILES}
-	protoc --go_out . ${PROTO_FILES}
+.proto: govendor builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
+	protoc --go_out . ${FLOW_PROTO_FILES}
+	protoc --go_out . ${FILTERS_PROTO_FILES}
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i flow/flow.pb.go

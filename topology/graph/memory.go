@@ -24,7 +24,8 @@ package graph
 
 import (
 	"errors"
-	"time"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 type MemoryBackendNode struct {
@@ -41,15 +42,15 @@ type MemoryBackend struct {
 	edges map[Identifier]*MemoryBackendEdge
 }
 
-func (m MemoryBackend) SetMetadata(i interface{}, meta Metadata) bool {
+func (m *MemoryBackend) SetMetadata(i interface{}, meta Metadata) bool {
 	return true
 }
 
-func (m MemoryBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
+func (m *MemoryBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
 	return true
 }
 
-func (m MemoryBackend) AddEdge(e *Edge) bool {
+func (m *MemoryBackend) AddEdge(e *Edge) bool {
 	edge := &MemoryBackendEdge{
 		Edge: e,
 	}
@@ -71,24 +72,24 @@ func (m MemoryBackend) AddEdge(e *Edge) bool {
 	return true
 }
 
-func (m MemoryBackend) GetEdge(i Identifier, t *time.Time) *Edge {
+func (m *MemoryBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 	if e, ok := m.edges[i]; ok {
-		return e.Edge
+		return []*Edge{e.Edge}
 	}
 	return nil
 }
 
-func (m MemoryBackend) GetEdgeNodes(e *Edge, t *time.Time) (*Node, *Node) {
+func (m *MemoryBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
 	var parent *MemoryBackendNode
 	if e, ok := m.edges[e.ID]; ok {
-		if n, ok := m.nodes[e.parent]; ok {
+		if n, ok := m.nodes[e.parent]; ok && n.MatchMetadata(parentMetadata) {
 			parent = n
 		}
 	}
 
 	var child *MemoryBackendNode
 	if e, ok := m.edges[e.ID]; ok {
-		if n, ok := m.nodes[e.child]; ok {
+		if n, ok := m.nodes[e.child]; ok && n.MatchMetadata(childMetadata) {
 			child = n
 		}
 	}
@@ -97,10 +98,10 @@ func (m MemoryBackend) GetEdgeNodes(e *Edge, t *time.Time) (*Node, *Node) {
 		return nil, nil
 	}
 
-	return parent.Node, child.Node
+	return []*Node{parent.Node}, []*Node{child.Node}
 }
 
-func (m MemoryBackend) AddNode(n *Node) bool {
+func (m *MemoryBackend) AddNode(n *Node) bool {
 	m.nodes[n.ID] = &MemoryBackendNode{
 		Node:  n,
 		edges: make(map[Identifier]*MemoryBackendEdge),
@@ -109,26 +110,28 @@ func (m MemoryBackend) AddNode(n *Node) bool {
 	return true
 }
 
-func (m MemoryBackend) GetNode(i Identifier, t *time.Time) *Node {
+func (m *MemoryBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 	if n, ok := m.nodes[i]; ok {
-		return n.Node
+		return []*Node{n.Node}
 	}
 	return nil
 }
 
-func (m MemoryBackend) GetNodeEdges(n *Node, t *time.Time) []*Edge {
+func (m *MemoryBackend) GetNodeEdges(n *Node, t *common.TimeSlice, meta Metadata) []*Edge {
 	edges := []*Edge{}
 
 	if n, ok := m.nodes[n.ID]; ok {
 		for _, e := range n.edges {
-			edges = append(edges, e.Edge)
+			if e.MatchMetadata(meta) {
+				edges = append(edges, e.Edge)
+			}
 		}
 	}
 
 	return edges
 }
 
-func (m MemoryBackend) DelEdge(e *Edge) bool {
+func (m *MemoryBackend) DelEdge(e *Edge) bool {
 	if _, ok := m.edges[e.ID]; !ok {
 		return false
 	}
@@ -146,38 +149,32 @@ func (m MemoryBackend) DelEdge(e *Edge) bool {
 	return true
 }
 
-func (m MemoryBackend) DelNode(n *Node) bool {
+func (m *MemoryBackend) DelNode(n *Node) bool {
 	delete(m.nodes, n.ID)
 
 	return true
 }
 
-func (m MemoryBackend) GetNodes(t *time.Time, metadata Metadata) []*Node {
-	nodes := []*Node{}
-
+func (m MemoryBackend) GetNodes(t *common.TimeSlice, metadata Metadata) (nodes []*Node) {
 	for _, n := range m.nodes {
 		if n.MatchMetadata(metadata) {
 			nodes = append(nodes, n.Node)
 		}
 	}
-
-	return nodes
+	return
 }
 
-func (m MemoryBackend) GetEdges(t *time.Time, metadata Metadata) []*Edge {
-	edges := []*Edge{}
-
+func (m MemoryBackend) GetEdges(t *common.TimeSlice, metadata Metadata) (edges []*Edge) {
 	for _, e := range m.edges {
 		if e.MatchMetadata(metadata) {
 			edges = append(edges, e.Edge)
 		}
 	}
-
-	return edges
+	return
 }
 
-func (m MemoryBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
-	if context.Time != nil {
+func (m *MemoryBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
+	if context.TimeSlice != nil {
 		return nil, errors.New("Memory backend does not support history")
 	}
 	return graph, nil

@@ -57,11 +57,12 @@ type FabricRegisterLinkWSMessage struct {
 }
 
 func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
-	parent, child := fb.Graph.GetEdgeNodes(e)
-	if parent == nil || child == nil {
+	parents, children := fb.Graph.GetEdgeNodes(e, graph.Metadata{}, graph.Metadata{})
+	if len(parents) == 0 || len(children) == 0 {
 		return
 	}
 
+	parent, child := parents[0], children[0]
 	for node, links := range fb.links {
 		for _, link := range links {
 			if parent.MatchMetadata(link.parentMetadata) && child.MatchMetadata(link.childMetadata) {
@@ -214,7 +215,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 				continue
 			}
 
-			if !fb.Graph.AreLinked(node1, node2) {
+			if !fb.Graph.AreLinked(node1, node2, fabricL2Link) {
 				fb.Graph.Link(node1, node2, fabricL2Link)
 			}
 		}

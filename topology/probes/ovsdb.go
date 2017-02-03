@@ -36,6 +36,11 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+var (
+	layer2Metadata = graph.Metadata{"RelationType": "layer2"}
+	patchMetadata  = graph.Metadata{"RelationType": "layer2", "Type": "patch"}
+)
+
 type OvsdbProbe struct {
 	sync.Mutex
 	Graph           *graph.Graph
@@ -74,8 +79,8 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 			u := i.(libovsdb.UUID).GoUUID
 
 			port, ok := o.uuidToPort[u]
-			if ok && !o.Graph.AreLinked(bridge, port) {
-				o.Graph.Link(bridge, port, graph.Metadata{"RelationType": "layer2"})
+			if ok && !o.Graph.AreLinked(bridge, port, layer2Metadata) {
+				o.Graph.Link(bridge, port, layer2Metadata)
 			} else {
 				/* will be filled later when the port update for this port will be triggered */
 				o.portBridgeQueue[u] = bridge
@@ -86,8 +91,8 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 		u := row.New.Fields["ports"].(libovsdb.UUID).GoUUID
 
 		port, ok := o.uuidToPort[u]
-		if ok && !o.Graph.AreLinked(bridge, port) {
-			o.Graph.Link(bridge, port, graph.Metadata{"RelationType": "layer2"})
+		if ok && !o.Graph.AreLinked(bridge, port, layer2Metadata) {
+			o.Graph.Link(bridge, port, layer2Metadata)
 		} else {
 			/* will be filled later when the port update for this port will be triggered */
 			o.portBridgeQueue[u] = bridge
@@ -186,7 +191,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		// if this interface has no UUID it means that it has been added by NETLINK
 		// and this is the same interface thus replace one by the other to keep only
 		// one interface.
-		nodes := o.Graph.LookupChildren(o.Root, graph.Metadata{"Name": name, "IfIndex": index})
+		nodes := o.Graph.LookupChildren(o.Root, graph.Metadata{"Name": name, "IfIndex": index}, graph.Metadata{})
 		for _, node := range nodes {
 			if node.Metadata()["UUID"] != uuid {
 				m := node.Metadata()
@@ -256,14 +261,14 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 			peer := o.Graph.LookupFirstNode(graph.Metadata{"Name": peerName, "Type": "patch"})
 			if peer != nil {
-				if !o.Graph.AreLinked(intf, peer) {
-					o.Graph.Link(intf, peer, graph.Metadata{"RelationType": "layer2", "Type": "patch"})
+				if !o.Graph.AreLinked(intf, peer, patchMetadata) {
+					o.Graph.Link(intf, peer, patchMetadata)
 				}
 			} else {
 				// lookup in the intf queue
 				for _, peer := range o.uuidToIntf {
-					if peer.Metadata()["Name"] == peerName && !o.Graph.AreLinked(intf, peer) {
-						o.Graph.Link(intf, peer, graph.Metadata{"RelationType": "layer2", "Type": "patch"})
+					if peer.Metadata()["Name"] == peerName && !o.Graph.AreLinked(intf, peer, patchMetadata) {
+						o.Graph.Link(intf, peer, patchMetadata)
 					}
 				}
 			}
@@ -354,8 +359,8 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		for _, i := range set.GoSet {
 			u := i.(libovsdb.UUID).GoUUID
 			intf, ok := o.uuidToIntf[u]
-			if ok && !o.Graph.AreLinked(port, intf) {
-				o.Graph.Link(port, intf, graph.Metadata{"RelationType": "layer2"})
+			if ok && !o.Graph.AreLinked(port, intf, layer2Metadata) {
+				o.Graph.Link(port, intf, layer2Metadata)
 			} else {
 				/* will be filled later when the interface update for this interface will be triggered */
 				o.intfPortQueue[u] = port
@@ -364,8 +369,8 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	case libovsdb.UUID:
 		u := row.New.Fields["interfaces"].(libovsdb.UUID).GoUUID
 		intf, ok := o.uuidToIntf[u]
-		if ok && !o.Graph.AreLinked(port, intf) {
-			o.Graph.Link(port, intf, graph.Metadata{"RelationType": "layer2"})
+		if ok && !o.Graph.AreLinked(port, intf, layer2Metadata) {
+			o.Graph.Link(port, intf, layer2Metadata)
 		} else {
 			/* will be filled later when the interface update for this interface will be triggered */
 			o.intfPortQueue[u] = port
@@ -374,7 +379,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 	/* set pending port of a container */
 	if bridge, ok := o.portBridgeQueue[uuid]; ok {
-		o.Graph.Link(bridge, port, graph.Metadata{"RelationType": "layer2"})
+		o.Graph.Link(bridge, port, layer2Metadata)
 		delete(o.portBridgeQueue, uuid)
 	}
 }

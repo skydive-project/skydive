@@ -26,9 +26,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/logging"
@@ -74,7 +74,7 @@ type FlowTraversalStep struct {
 	GraphTraversal  *traversal.GraphTraversal
 	Storage         storage.Storage
 	flowset         *flow.FlowSet
-	flowSearchQuery flow.FlowSearchQuery
+	flowSearchQuery filters.SearchQuery
 	since           traversal.Since
 	error           error
 }
@@ -250,212 +250,38 @@ func (f *FlowTraversalStep) Count(s ...interface{}) *traversal.GraphTraversalVal
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, len(f.flowset.Flows))
 }
 
-func paramsToFilter(s ...interface{}) (*flow.Filter, error) {
-	if len(s) < 2 {
+func paramsToFilter(params ...interface{}) (*filters.Filter, error) {
+	if len(params) < 2 {
 		return nil, errors.New("At least two parameters must be provided")
 	}
 
-	if len(s)%2 != 0 {
-		return nil, fmt.Errorf("slice must be defined by pair k,v: %v", s)
+	if len(params)%2 != 0 {
+		return nil, fmt.Errorf("slice must be defined by pair k,v: %v", params)
 	}
 
-	andFilter := &flow.BoolFilter{Op: flow.BoolFilterOp_AND}
+	var andFilters []*filters.Filter
+	for i := 0; i < len(params); i += 2 {
+		var filter *filters.Filter
 
-	for i := 0; i < len(s); i += 2 {
-		k, ok := s[i].(string)
+		k, ok := params[i].(string)
 		if !ok {
 			return nil, errors.New("keys should be of string type")
 		}
 
-		switch v := s[i+1].(type) {
-		case *traversal.RegexMetadataMatcher:
-			andFilter.Filters = append(andFilter.Filters,
-				&flow.Filter{
-					RegexFilter: &flow.RegexFilter{Key: k, Value: v.Value().(string)},
-				})
-		case *traversal.NEMetadataMatcher:
-			notFilters := &flow.Filter{}
-			switch t := v.Value().(type) {
-			case string:
-				notFilters.TermStringFilter = &flow.TermStringFilter{Key: k, Value: t}
-			case int64:
-				notFilters.TermInt64Filter = &flow.TermInt64Filter{Key: k, Value: t}
+		if v, ok := params[i+1].(string); ok && (k == "Network" || k == "Link" || k == "Transport") {
+			filter = filters.NewOrFilter(filters.NewTermStringFilter(k+".A", v), filters.NewTermStringFilter(k+".B", v))
+		} else {
+			f, err := traversal.ParamToFilter(k, params[i+1])
+			if err != nil {
+				return nil, err
 			}
-
-			andFilter.Filters = append(andFilter.Filters,
-				&flow.Filter{
-					BoolFilter: &flow.BoolFilter{
-						Op:      flow.BoolFilterOp_NOT,
-						Filters: []*flow.Filter{notFilters},
-					},
-				},
-			)
-		case *traversal.LTMetadataMatcher:
-			switch t := v.Value().(type) {
-			case int64:
-				andFilter.Filters = append(andFilter.Filters,
-					&flow.Filter{
-						LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: t},
-					},
-				)
-			default:
-				return nil, errors.New("LT values should be of int64 type")
-			}
-		case *traversal.GTMetadataMatcher:
-			switch t := v.Value().(type) {
-			case int64:
-				andFilter.Filters = append(andFilter.Filters,
-					&flow.Filter{
-						GtInt64Filter: &flow.GtInt64Filter{Key: k, Value: t},
-					},
-				)
-			default:
-				return nil, errors.New("GT values should be of int64 type")
-			}
-		case *traversal.GTEMetadataMatcher:
-			switch t := v.Value().(type) {
-			case int64:
-				andFilter.Filters = append(andFilter.Filters,
-					&flow.Filter{
-						GteInt64Filter: &flow.GteInt64Filter{Key: k, Value: t},
-					},
-				)
-			default:
-				return nil, errors.New("GTE values should be of int64 type")
-			}
-		case *traversal.LTEMetadataMatcher:
-			switch t := v.Value().(type) {
-			case int64:
-				andFilter.Filters = append(andFilter.Filters,
-					&flow.Filter{
-						LteInt64Filter: &flow.LteInt64Filter{Key: k, Value: t},
-					},
-				)
-			default:
-				return nil, errors.New("LTE values should be of int64 type")
-			}
-		case *traversal.InsideMetadataMatcher:
-			from, to := v.Value()
-
-			f64, fok := from.(int64)
-			t64, tok := to.(int64)
-
-			if !fok || !tok {
-				return nil, errors.New("Inside values should be of int64 type")
-			}
-
-			andFilter.Filters = append(andFilter.Filters,
-				&flow.Filter{
-					BoolFilter: &flow.BoolFilter{
-						Op: flow.BoolFilterOp_AND,
-						Filters: []*flow.Filter{
-							{
-								GtInt64Filter: &flow.GtInt64Filter{Key: k, Value: f64},
-							},
-							{
-								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: t64},
-							},
-						},
-					},
-				},
-			)
-		case *traversal.OutsideMetadataMatcher:
-			from, to := v.Value()
-
-			f64, fok := from.(int64)
-			t64, tok := to.(int64)
-
-			if !fok || !tok {
-				return nil, errors.New("Outside values should be of int64 type")
-			}
-
-			andFilter.Filters = append(andFilter.Filters,
-				&flow.Filter{
-					BoolFilter: &flow.BoolFilter{
-						Op: flow.BoolFilterOp_AND,
-						Filters: []*flow.Filter{
-							{
-								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: f64},
-							},
-							{
-								GtInt64Filter: &flow.GtInt64Filter{Key: k, Value: t64},
-							},
-						},
-					},
-				},
-			)
-		case *traversal.BetweenMetadataMatcher:
-			from, to := v.Value()
-
-			f64, fok := from.(int64)
-			t64, tok := to.(int64)
-
-			if !fok || !tok {
-				return nil, errors.New("Between values should be of int64 type")
-			}
-
-			andFilter.Filters = append(andFilter.Filters,
-				&flow.Filter{
-					BoolFilter: &flow.BoolFilter{
-						Op: flow.BoolFilterOp_AND,
-						Filters: []*flow.Filter{
-							{
-								GteInt64Filter: &flow.GteInt64Filter{Key: k, Value: f64},
-							},
-							{
-								LtInt64Filter: &flow.LtInt64Filter{Key: k, Value: t64},
-							},
-						},
-					},
-				},
-			)
-		case *traversal.WithinMetadataMatcher:
-			orFilters := &flow.BoolFilter{Op: flow.BoolFilterOp_OR}
-			for _, val := range v.List {
-				orFilters.Filters = append(orFilters.Filters,
-					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: k, Value: val.(string)},
-					})
-			}
-
-			andFilter.Filters = append(andFilter.Filters,
-				&flow.Filter{
-					BoolFilter: orFilters,
-				},
-			)
-		case string:
-			if k == "Network" || k == "Link" || k == "Transport" {
-				orFilters := &flow.BoolFilter{Op: flow.BoolFilterOp_OR}
-				for _, val := range [2]string{".A", ".B"} {
-					orFilters.Filters = append(orFilters.Filters,
-						&flow.Filter{
-							TermStringFilter: &flow.TermStringFilter{Key: k + val, Value: v},
-						})
-				}
-				andFilter.Filters = append(andFilter.Filters,
-					&flow.Filter{
-						BoolFilter: orFilters,
-					},
-				)
-			} else {
-				andFilter.Filters = append(andFilter.Filters,
-					&flow.Filter{
-						TermStringFilter: &flow.TermStringFilter{Key: k, Value: v},
-					},
-				)
-			}
-		case int64:
-			andFilter.Filters = append(andFilter.Filters,
-				&flow.Filter{
-					TermInt64Filter: &flow.TermInt64Filter{Key: k, Value: v},
-				},
-			)
-		default:
-			return nil, fmt.Errorf("value type unknown: %v", v)
+			filter = f
 		}
+
+		andFilters = append(andFilters, filter)
 	}
 
-	return &flow.Filter{BoolFilter: andFilter}, nil
+	return filters.NewAndFilter(andFilters...), nil
 }
 
 func (f *FlowTraversalStep) Has(s ...interface{}) *FlowTraversalStep {
@@ -600,7 +426,7 @@ func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.Graph
 		return f.propertyStringValues(key)
 	}
 
-	return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, flow.ErrFieldNotFound)
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, common.ErrFieldNotFound)
 }
 
 func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTraversalValue {
@@ -626,7 +452,7 @@ func (f *FlowTraversalStep) Metrics() *MetricsTraversalStep {
 	var metrics map[string][]*flow.FlowMetric
 
 	context := f.GraphTraversal.Graph.GetContext()
-	if context.Time != nil {
+	if context.TimeSlice != nil {
 		metrics = make(map[string][]*flow.FlowMetric)
 
 		// two cases, either we have a flowset and we need to use it in order to filter
@@ -634,18 +460,18 @@ func (f *FlowTraversalStep) Metrics() *MetricsTraversalStep {
 		// if none of these cases it's an error.
 		if f.flowset != nil {
 			flowFilter := flow.NewFilterForFlowSet(f.flowset)
-			f.flowSearchQuery.Filter = flow.NewAndFilter(f.flowSearchQuery.Filter, flowFilter)
+			f.flowSearchQuery.Filter = filters.NewAndFilter(f.flowSearchQuery.Filter, flowFilter)
 		} else if f.flowSearchQuery.Filter == nil {
 			return &MetricsTraversalStep{error: errors.New("Unable to filter flows")}
 		}
 
 		// contruct metrics filter according to the time context and the since
 		// predicate given to Flows.
-		fr := flow.Range{To: context.Time.UTC().Unix()}
+		fr := filters.Range{To: context.TimeSlice.Last}
 		if f.since.Seconds > 0 {
-			fr.From = context.Time.UTC().Unix() - f.since.Seconds
+			fr.From = context.TimeSlice.Start
 		}
-		metricFilter := flow.NewFilterIncludedIn(fr, "")
+		metricFilter := filters.NewFilterIncludedIn(fr, "")
 
 		var err error
 		if metrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {
@@ -744,8 +570,8 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 	return nil, nil
 }
 
-func (s *FlowGremlinTraversalStep) makeFlowSearchQuery() (fsq flow.FlowSearchQuery, err error) {
-	var paramsFilter *flow.Filter
+func (s *FlowGremlinTraversalStep) makeSearchQuery() (fsq filters.SearchQuery, err error) {
+	var paramsFilter *filters.Filter
 
 	if len(s.hasParams) > 0 {
 		if paramsFilter, err = paramsToFilter(s.hasParams...); err != nil {
@@ -753,14 +579,14 @@ func (s *FlowGremlinTraversalStep) makeFlowSearchQuery() (fsq flow.FlowSearchQue
 		}
 	}
 
-	var interval *flow.Range
+	var interval *filters.Range
 	if s.context.StepContext.PaginationRange != nil {
 		// not using the From parameter as the pagination will be applied after
 		// flow request.
-		interval = &flow.Range{From: 0, To: s.context.StepContext.PaginationRange[1]}
+		interval = &filters.Range{From: 0, To: s.context.StepContext.PaginationRange[1]}
 	}
 
-	fsq = flow.FlowSearchQuery{
+	fsq = filters.SearchQuery{
 		Filter:          paramsFilter,
 		PaginationRange: interval,
 		Dedup:           s.dedup,
@@ -793,27 +619,22 @@ func (s *FlowGremlinTraversalStep) sinceParam() traversal.Since {
 	return traversal.Since{Seconds: 0}
 }
 
-func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *flow.FlowSearchQuery, timeContext *time.Time) {
-	var timeFilter *flow.Filter
-	if s.hasSinceParam() {
-		tr := flow.Range{
-			From: timeContext.UTC().Unix() - s.context.Params[0].(traversal.Since).Seconds,
-			To:   timeContext.UTC().Unix(),
-		}
-		// flow need to have at least one metric included in the time range
-		timeFilter = flow.NewFilterActiveIn(tr, "Metric.")
-	} else {
-		// flow having at least one metric at that time meaning being active
-		timeFilter = flow.NewFilterActiveAt(timeContext.UTC().Unix(), "Metric.")
+func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeContext *common.TimeSlice) {
+	var timeFilter *filters.Filter
+	tr := filters.Range{
+		From: timeContext.Start,
+		To:   timeContext.Last,
 	}
-	fsq.Filter = flow.NewAndFilter(fsq.Filter, timeFilter)
+	// flow need to have at least one metric included in the time range
+	timeFilter = filters.NewFilterActiveIn(tr, "Metric.")
+	fsq.Filter = filters.NewAndFilter(fsq.Filter, timeFilter)
 }
 
 func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	var graphTraversal *traversal.GraphTraversal
 	var err error
 
-	flowSearchQuery, err := s.makeFlowSearchQuery()
+	flowSearchQuery, err := s.makeSearchQuery()
 	if err != nil {
 		return nil, err
 	}
@@ -826,16 +647,16 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		context := graphTraversal.Graph.GetContext()
 
 		// if Since predicate present in a non time context query
-		if s.hasSinceParam() && context.Time == nil {
+		if s.hasSinceParam() && context.TimeSlice == nil {
 			return nil, errors.New("Since predicate has to be used with Context step")
 		}
 
-		if context.Time != nil {
+		if context.TimeSlice != nil {
 			if s.Storage == nil {
 				return nil, storage.NoStorageConfigured
 			}
 
-			s.addTimeFilter(&flowSearchQuery, context.Time)
+			s.addTimeFilter(&flowSearchQuery, context.TimeSlice)
 
 			// We do nothing as the following step is Metrics
 			// and we'll make a request on metrics instead of flows
@@ -854,23 +675,23 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		context := graphTraversal.Graph.GetContext()
 
 		// if Since predicate present in a non time context query
-		if s.hasSinceParam() && context.Time == nil {
+		if s.hasSinceParam() && context.TimeSlice == nil {
 			return nil, errors.New("Since predicate has to be used with Context step")
 		}
 
 		// not need to get flows from node not supporting capture
 		nodes := captureAllowedNodes(tv.GetNodes())
 		if len(nodes) != 0 {
-			if context.Time != nil {
+			if context.TimeSlice != nil {
 				if s.Storage == nil {
 					return nil, storage.NoStorageConfigured
 				}
 
-				s.addTimeFilter(&flowSearchQuery, context.Time)
+				s.addTimeFilter(&flowSearchQuery, context.TimeSlice)
 
 				// previously selected nodes then need to filter flow belonging to them
 				nodeFilter := flow.NewFilterForNodes(nodes)
-				flowSearchQuery.Filter = flow.NewAndFilter(flowSearchQuery.Filter, nodeFilter)
+				flowSearchQuery.Filter = filters.NewAndFilter(flowSearchQuery.Filter, nodeFilter)
 
 				// We do nothing as the following step is Metrics
 				// and we'll make a request on metrics instead of flows

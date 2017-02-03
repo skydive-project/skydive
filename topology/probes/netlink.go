@@ -46,6 +46,8 @@ const (
 	maxEpollEvents = 32
 )
 
+var ownershipMetadata = graph.Metadata{"RelationType": "ownership"}
+
 type NetLinkProbe struct {
 	sync.RWMutex
 	Graph                *graph.Graph
@@ -82,8 +84,8 @@ func (u *NetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
 			return
 		}
 
-		if !u.Graph.AreLinked(parent, intf) {
-			u.Graph.Link(parent, intf, graph.Metadata{"RelationType": "layer2"})
+		if !u.Graph.AreLinked(parent, intf, layer2Metadata) {
+			u.Graph.Link(parent, intf, layer2Metadata)
 		}
 	} else {
 		// not yet the bridge so, enqueue for a later add
@@ -121,8 +123,9 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 
 			// got more than 1 peer, unable to find the right one, wait for the other to discover
 			peer := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": index.(int64), "Type": "veth"})
-			if peer != nil && !u.Graph.AreLinked(peer, intf) {
-				u.Graph.Link(peer, intf, graph.Metadata{"RelationType": "layer2", "Type": "veth"})
+			linkMetadata := graph.Metadata{"RelationType": "layer2", "Type": "veth"}
+			if peer != nil && !u.Graph.AreLinked(peer, intf, linkMetadata) {
+				u.Graph.Link(peer, intf, linkMetadata)
 				return nil
 			}
 			return errors.New("Nodes not linked")
@@ -169,8 +172,8 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Graph.AreLinked(u.Root, intf) {
-		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
+	if !u.Graph.AreLinked(u.Root, intf, ownershipMetadata) {
+		u.Graph.Link(u.Root, intf, ownershipMetadata)
 	}
 
 	// ignore ovs-system interface as it doesn't make any sense according to
@@ -196,8 +199,8 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Graph.AreLinked(u.Root, intf) {
-		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
+	if !u.Graph.AreLinked(u.Root, intf, ownershipMetadata) {
+		u.Graph.Link(u.Root, intf, ownershipMetadata)
 	}
 
 	u.linkPendingChildren(intf, index)
@@ -213,8 +216,8 @@ func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata)
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Graph.AreLinked(u.Root, intf) {
-		u.Graph.Link(u.Root, intf, graph.Metadata{"RelationType": "ownership"})
+	if !u.Graph.AreLinked(u.Root, intf, ownershipMetadata) {
+		u.Graph.Link(u.Root, intf, ownershipMetadata)
 	}
 
 	return intf
@@ -346,21 +349,12 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	u.links[link.Attrs().Name] = intf
 	u.Unlock()
 
-	m := intf.Metadata()
-
-	// update metadata in case of an old interface
-	updated := false
-	for k, nv := range metadata {
-		if ov, ok := m[k]; ok && nv == ov {
-			continue
+	for k, nv := range intf.Metadata() {
+		if _, ok := metadata[k]; !ok {
+			metadata[k] = nv
 		}
-		m[k] = nv
-		updated = true
 	}
-
-	if updated {
-		u.Graph.SetMetadata(intf, m)
-	}
+	u.Graph.SetMetadata(intf, metadata)
 
 	u.handleIntfIsChild(intf, link)
 	u.handleIntfIsVeth(intf, link)
@@ -384,7 +378,7 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 
 	// case of removing the interface from a bridge
 	if intf != nil {
-		parents := u.Graph.LookupParents(intf, graph.Metadata{"Type": "bridge"})
+		parents := u.Graph.LookupParents(intf, graph.Metadata{"Type": "bridge"}, graph.Metadata{})
 		for _, parent := range parents {
 			u.Graph.Unlink(parent, intf)
 		}
@@ -465,8 +459,7 @@ func (u *NetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int
 		}
 
 		if len(ips) == 0 {
-			delete(m, key)
-			u.Graph.SetMetadata(intf, m)
+			u.Graph.DelMetadata(intf, key)
 		} else {
 			u.Graph.AddMetadata(intf, key, strings.Join(ips, ","))
 		}
@@ -629,7 +622,8 @@ func (u *NetLinkProbe) start(nsPath string) {
 					if link, err := h.LinkByName(name); err == nil {
 						if stats := link.Attrs().Statistics; stats != nil {
 							u.Graph.Lock()
-							m := node.Metadata()
+							tr := u.Graph.StartMetadataTransaction(node)
+							m := tr.Metadata()
 							metric := netlink.LinkStatistics{
 								Collisions:        stats.Collisions - m["Statistics/Collisions"].(uint64),
 								Multicast:         stats.Multicast - m["Statistics/Multicast"].(uint64),
@@ -659,7 +653,7 @@ func (u *NetLinkProbe) start(nsPath string) {
 							u.updateMetadataStatistics(&metric, m, "LastMetric")
 							m["LastMetric/Start"] = last.Unix()
 							m["LastMetric/Last"] = now.Unix()
-							u.Graph.SetMetadata(node, m)
+							tr.Commit()
 							u.Graph.Unlock()
 						}
 					}

@@ -27,6 +27,7 @@ import (
 	"errors"
 
 	"github.com/lebauce/elastigo/lib"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	esclient "github.com/skydive-project/skydive/storage/elasticsearch"
@@ -147,105 +148,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *ElasticSearchStorage) formatFilter(filter *flow.Filter) map[string]interface{} {
-	if filter == nil {
-		return map[string]interface{}{
-			"match_all": map[string]interface{}{},
-		}
-	}
-
-	if f := filter.BoolFilter; f != nil {
-		keyword := ""
-		switch f.Op {
-		case flow.BoolFilterOp_NOT:
-			keyword = "must_not"
-		case flow.BoolFilterOp_OR:
-			keyword = "should"
-		case flow.BoolFilterOp_AND:
-			keyword = "must"
-		}
-		filters := []interface{}{}
-		for _, item := range f.Filters {
-			filters = append(filters, c.formatFilter(item))
-		}
-		return map[string]interface{}{
-			"bool": map[string]interface{}{
-				keyword: filters,
-			},
-		}
-	}
-
-	if f := filter.TermStringFilter; f != nil {
-		return map[string]interface{}{
-			"term": map[string]string{
-				f.Key: f.Value,
-			},
-		}
-	}
-	if f := filter.TermInt64Filter; f != nil {
-		return map[string]interface{}{
-			"term": map[string]int64{
-				f.Key: f.Value,
-			},
-		}
-	}
-
-	if f := filter.RegexFilter; f != nil {
-		return map[string]interface{}{
-			"regexp": map[string]string{
-				f.Key: f.Value,
-			},
-		}
-	}
-
-	if f := filter.GtInt64Filter; f != nil {
-		return map[string]interface{}{
-			"range": map[string]interface{}{
-				f.Key: &struct {
-					Gt interface{} `json:"gt,omitempty"`
-				}{
-					Gt: f.Value,
-				},
-			},
-		}
-	}
-	if f := filter.LtInt64Filter; f != nil {
-		return map[string]interface{}{
-			"range": map[string]interface{}{
-				f.Key: &struct {
-					Lt interface{} `json:"lt,omitempty"`
-				}{
-					Lt: f.Value,
-				},
-			},
-		}
-	}
-	if f := filter.GteInt64Filter; f != nil {
-		return map[string]interface{}{
-			"range": map[string]interface{}{
-				f.Key: &struct {
-					Gte interface{} `json:"gte,omitempty"`
-				}{
-					Gte: f.Value,
-				},
-			},
-		}
-	}
-	if f := filter.LteInt64Filter; f != nil {
-		return map[string]interface{}{
-			"range": map[string]interface{}{
-				f.Key: &struct {
-					Lte interface{} `json:"lte,omitempty"`
-				}{
-					Lte: f.Value,
-				},
-			},
-		}
-	}
-	return nil
-}
-
-func (c *ElasticSearchStorage) requestFromQuery(fsq flow.FlowSearchQuery) (map[string]interface{}, error) {
+func (c *ElasticSearchStorage) requestFromQuery(fsq filters.SearchQuery) (map[string]interface{}, error) {
 	request := map[string]interface{}{"size": 10000}
 
 	if fsq.PaginationRange != nil {
@@ -268,7 +171,7 @@ func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]in
 	return c.client.Search(docType, string(q))
 }
 
-func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error) {
+func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*flow.FlowMetric, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -278,7 +181,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFil
 		return nil, err
 	}
 
-	flowQuery := c.formatFilter(fsq.Filter)
+	flowQuery := c.client.FormatFilter(fsq.Filter, "")
 	musts := []map[string]interface{}{{
 		"has_parent": map[string]interface{}{
 			"type":  "flow",
@@ -286,7 +189,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFil
 		},
 	}}
 
-	metricQuery := c.formatFilter(metricFilter)
+	metricQuery := c.client.FormatFilter(metricFilter, "")
 	musts = append(musts, metricQuery)
 
 	request["query"] = map[string]interface{}{
@@ -322,7 +225,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq flow.FlowSearchQuery, metricFil
 	return metrics, nil
 }
 
-func (c *ElasticSearchStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error) {
+func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -334,7 +237,7 @@ func (c *ElasticSearchStorage) SearchFlows(fsq flow.FlowSearchQuery) (*flow.Flow
 
 	var query map[string]interface{}
 	if fsq.Filter != nil {
-		query = c.formatFilter(fsq.Filter)
+		query = c.client.FormatFilter(fsq.Filter, "")
 	}
 
 	request["query"] = query

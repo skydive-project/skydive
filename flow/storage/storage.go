@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
 	"github.com/skydive-project/skydive/flow/storage/orientdb"
@@ -40,8 +41,8 @@ var (
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
-	SearchFlows(fsq flow.FlowSearchQuery) (*flow.FlowSet, error)
-	SearchMetrics(fsq flow.FlowSearchQuery, metricFilter *flow.Filter) (map[string][]*flow.FlowMetric, error)
+	SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error)
+	SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*flow.FlowMetric, error)
 	Stop()
 }
 

@@ -30,8 +30,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lebauce/elastigo/lib"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
 )
@@ -78,10 +80,23 @@ type ElasticSearchBackend struct {
 	client *elasticsearch.ElasticSearchClient
 }
 
+type TimedSearchQuery struct {
+	filters.SearchQuery
+	TimeFilter     *filters.Filter
+	MetadataFilter *filters.Filter
+}
+
 func (b *ElasticSearchBackend) mapElement(e *graphElement) map[string]interface{} {
 	obj := map[string]interface{}{
-		"ID":   string(e.ID),
-		"Host": e.host,
+		"ID":        string(e.ID),
+		"Host":      e.host,
+		"CreatedAt": e.createdAt.Unix(),
+	}
+
+	if !e.deletedAt.IsZero() {
+		obj["DeletedAt"] = e.deletedAt.Unix()
+	} else {
+		obj["DeletedAt"] = 0
 	}
 
 	for k, v := range e.metadata {
@@ -102,162 +117,44 @@ func (b *ElasticSearchBackend) mapEdge(e *Edge) map[string]interface{} {
 	return obj
 }
 
-func (b *ElasticSearchBackend) getTimedQuery(t *time.Time) []map[string]interface{} {
-	var t2 time.Time
-	if t != nil {
-		t2 = *t
-	} else {
-		t2 = time.Now().UTC()
-	}
-
-	return []map[string]interface{}{
-		{
-			"range": map[string]interface{}{
-				"CreatedAt": &struct {
-					Lte interface{} `json:"lte,omitempty"`
-				}{
-					Lte: t2.Unix(),
-				},
-			},
-		},
-		{
-			"bool": map[string]interface{}{
-				"should": []map[string]interface{}{
-					{
-						"term": map[string]interface{}{
-							"DeletedAt": 0,
-						},
-					},
-					{
-						"range": map[string]interface{}{
-							"DeletedAt": &struct {
-								Gt interface{} `json:"gt,omitempty"`
-							}{
-								Gt: t2.Unix(),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func (b *ElasticSearchBackend) createQuery(filters ...map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"must": filters,
-			},
-		},
-		"size": 10000,
-	}
-}
-
-func (b *ElasticSearchBackend) getRequest(i Identifier, t *time.Time) map[string]interface{} {
-	idFilter := map[string]interface{}{
-		"term": map[string]string{
-			"ID": string(i),
-		},
-	}
-
-	timedQuery := b.getTimedQuery(t)
-	timedQuery = append(timedQuery, idFilter)
-	return b.createQuery(timedQuery...)
-}
-
-func (b *ElasticSearchBackend) searchElement(kind string, i Identifier, t *time.Time, element interface{}) error {
-	request := b.getRequest(i, t)
-	q, err := json.Marshal(request)
-	if err != nil {
-		return err
-	}
-
-	out, err := b.client.Search(kind, string(q))
-	if err != nil {
-		return err
-	}
-
-	if out.Hits.Len() > 0 {
-		for _, d := range out.Hits.Hits {
-			switch e := element.(type) {
-			case *Node:
-				if err := b.hitToNode(d.Source, e); err != nil {
-					return err
-				}
-			case *Edge:
-				if err := b.hitToEdge(d.Source, e); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}
-
-	return fmt.Errorf("Element %s not found", string(i))
-}
-
-func (b *ElasticSearchBackend) getElement(kind string, i Identifier, t *time.Time, element interface{}) error {
-	if t != nil {
-		return b.searchElement(kind, i, t, element)
-	}
-
+func (b *ElasticSearchBackend) getElement(kind string, i Identifier, element interface{}) error {
 	resp, err := b.client.Get(kind, string(i))
 	if err != nil {
 		return err
 	}
 
 	if resp.Found {
-		var obj map[string]interface{}
-		if err := common.JsonDecode(bytes.NewReader([]byte(*resp.Source)), &obj); err != nil {
-			return err
-		}
-
 		switch e := element.(type) {
 		case *Node:
-			e.Decode(obj)
+			return b.hitToNode(resp.Source, e)
 		case *Edge:
-			e.Decode(obj)
+			return b.hitToEdge(resp.Source, e)
 		}
 	}
 
 	return fmt.Errorf("No object found %s", string(i))
 }
 
-func (b *ElasticSearchBackend) metadataToTerms(m Metadata) []map[string]interface{} {
-	terms := make([]map[string]interface{}, 0, len(m))
-	for k, v := range m {
-		terms = append(terms, map[string]interface{}{
-			"term": map[string]interface{}{
-				"Metadata/" + k: v,
-			},
-		})
-	}
-	return terms
-}
-
-func (b *ElasticSearchBackend) archiveElement(kind string, id Identifier) bool {
-	resp, err := b.client.Get(kind, string(id))
-	if err != nil || !resp.Found {
-		return false
-	}
-
+func (b *ElasticSearchBackend) archiveElement(kind string, i interface{}) bool {
 	var obj map[string]interface{}
-	if err := json.Unmarshal([]byte(*resp.Source), &obj); err != nil {
-		return false
+	var id string
+	switch i := i.(type) {
+	case *Node:
+		id = string(i.ID)
+		obj = b.mapNode(i)
+	case *Edge:
+		id = string(i.ID)
+		obj = b.mapEdge(i)
 	}
 
-	if _, err := b.client.Delete(kind, string(id)); err != nil {
+	if _, err := b.client.Delete(kind, id); err != nil {
 		logging.GetLogger().Errorf("Error while deleting %s %s: %s", kind, id, err.Error())
 		return false
 	}
-
-	obj["DeletedAt"] = time.Now().UTC().Unix()
-	obj["CreatedAt"] = int64(obj["CreatedAt"].(float64))
 
 	// Archive the element with a different ES id
 	if err := b.client.Index(kind, string(GenID()), obj); err != nil {
-		logging.GetLogger().Errorf("Error while deleting %s %s: %s", kind, id, err.Error())
+		logging.GetLogger().Errorf("Error while archiving %s %s: %s", kind, id, err.Error())
 		return false
 	}
 
@@ -312,8 +209,6 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 
 func (b *ElasticSearchBackend) AddNode(n *Node) bool {
 	obj := b.mapNode(n)
-	obj["CreatedAt"] = time.Now().UTC().Unix()
-	obj["DeletedAt"] = 0
 
 	if err := b.client.Index("node", string(n.ID), obj); err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
@@ -327,64 +222,25 @@ func (b *ElasticSearchBackend) DelNode(n *Node) bool {
 	return b.deleteElement("node", string(n.ID))
 }
 
-func (b *ElasticSearchBackend) GetNode(i Identifier, t *time.Time) *Node {
+func (b *ElasticSearchBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 	var node Node
-	if b.getElement("node", i, t, &node) != nil {
-		return nil
-	}
-	return &node
-}
-
-func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *time.Time) (edges []*Edge) {
-	idsFilter := map[string]interface{}{
-		"bool": map[string]interface{}{
-			"should": []map[string]interface{}{
-				{
-					"term": map[string]interface{}{
-						"Parent": n.ID,
-					},
-				},
-				{
-					"term": map[string]interface{}{
-						"Child": n.ID,
-					},
-				},
-			},
-		},
-	}
-
-	timedQuery := b.getTimedQuery(t)
-	timedQuery = append(timedQuery, idsFilter)
-	query := b.createQuery(timedQuery...)
-
-	q, err := json.Marshal(query)
-	if err != nil {
-		return
-	}
-
-	out, err := b.client.Search("edge", string(q))
-	if err != nil {
-		return
-	}
-
-	if out.Hits.Len() > 0 {
-		for _, d := range out.Hits.Hits {
-			var edge Edge
-			if err := b.hitToEdge(d.Source, &edge); err != nil {
-				logging.GetLogger().Debugf("Failed to unmarshal edge: %+v", d.Source)
-			}
-			edges = append(edges, &edge)
+	if t == nil {
+		if b.getElement("node", i, &node) != nil {
+			return nil
 		}
+		return []*Node{&node}
+	} else {
+		return b.SearchNodes(&TimedSearchQuery{
+			SearchQuery: filters.SearchQuery{
+				Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
+			},
+			TimeFilter: NewFilterForTimeSlice(t),
+		})
 	}
-
-	return edges
 }
 
 func (b *ElasticSearchBackend) AddEdge(e *Edge) bool {
-	now := time.Now().UTC().Unix()
 	obj := b.mapEdge(e)
-	obj["CreatedAt"] = now
-	obj["DeletedAt"] = 0
 
 	if err := b.client.Index("edge", string(e.ID), obj); err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
@@ -398,63 +254,93 @@ func (b *ElasticSearchBackend) DelEdge(e *Edge) bool {
 	return b.deleteElement("edge", string(e.ID))
 }
 
-func (b *ElasticSearchBackend) GetEdge(i Identifier, t *time.Time) *Edge {
+func (b *ElasticSearchBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 	var edge Edge
-	if b.getElement("edge", i, t, &edge) != nil {
-		return nil
+	if t == nil {
+		if b.getElement("edge", i, &edge) != nil {
+			return nil
+		}
+		return []*Edge{&edge}
+	} else {
+		return b.SearchEdges(&TimedSearchQuery{
+			SearchQuery: filters.SearchQuery{
+				Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
+			},
+			TimeFilter: NewFilterForTimeSlice(t),
+		})
 	}
-	return &edge
 }
 
-func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *time.Time) (*Node, *Node) {
-	return b.GetNode(e.parent, t), b.GetNode(e.child, t)
-}
-
-func (b *ElasticSearchBackend) updateGraphElement(i interface{}) bool {
+func (b *ElasticSearchBackend) updateMetadata(i interface{}, m Metadata) bool {
 	success := true
+	now := time.Now().UTC()
 
 	switch i.(type) {
 	case *Node:
-		node := i.(*Node)
-		edges := b.GetNodeEdges(node, nil)
+		var oldNode = *i.(*Node)
+		edges := b.GetNodeEdges(&oldNode, nil, nil)
 
-		if !b.archiveElement("node", node.ID) {
+		oldNode.deletedAt = now
+		if !b.archiveElement("node", &oldNode) {
 			return false
 		}
 
-		if !b.AddNode(node) {
+		var newNode = *i.(*Node)
+		newNode.createdAt = now
+		newNode.deletedAt = time.Time{}
+		newNode.metadata = m
+		if !b.AddNode(&newNode) {
 			return false
 		}
 
 		for _, e := range edges {
-			parent, child := b.GetEdgeNodes(e, nil)
+			parent, child := b.GetEdgeNodes(e, nil, nil, nil)
 			if parent == nil || child == nil {
 				continue
 			}
 
-			if !b.archiveElement("edge", e.ID) {
+			var oldEdge = *e
+			oldEdge.deletedAt = now
+			if !b.archiveElement("edge", &oldEdge) {
 				return false
 			}
 
-			if !b.AddEdge(e) {
+			var newEdge = *e
+			newEdge.createdAt = now
+			newEdge.deletedAt = time.Time{}
+			if !b.AddEdge(&newEdge) {
 				return false
 			}
 		}
 
 	case *Edge:
 		edge := i.(*Edge)
-		if success = b.DelEdge(edge); !success {
-			break
+
+		if !b.archiveElement("edge", edge) {
+			return false
 		}
 
-		success = b.AddEdge(edge)
+		var newEdge = *edge
+		newEdge.createdAt = now
+		newEdge.deletedAt = time.Time{}
+		newEdge.metadata = m
+		success = b.AddEdge(&newEdge)
 	}
 
 	return success
 }
 
 func (b *ElasticSearchBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
-	success := b.updateGraphElement(i)
+	var m Metadata
+	switch e := i.(type) {
+	case *Node:
+		m = e.metadata
+	case *Edge:
+		m = e.metadata
+	}
+
+	m[k] = v
+	success := b.updateMetadata(i, m)
 	if !success {
 		logging.GetLogger().Errorf("Error while adding metadata")
 	}
@@ -462,25 +348,59 @@ func (b *ElasticSearchBackend) AddMetadata(i interface{}, k string, v interface{
 }
 
 func (b *ElasticSearchBackend) SetMetadata(i interface{}, m Metadata) bool {
-	success := b.updateGraphElement(i)
+	success := b.updateMetadata(i, m)
 	if !success {
 		logging.GetLogger().Errorf("Error while setting metadata")
 	}
 	return success
 }
 
-func (b *ElasticSearchBackend) GetNodes(t *time.Time, m Metadata) (nodes []*Node) {
-	timedQuery := b.getTimedQuery(t)
-	timedQuery = append(timedQuery, b.metadataToTerms(m)...)
-	query := b.createQuery(timedQuery...)
+func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elastigo.SearchResult, _ error) {
+	if tsq.TimeFilter == nil {
+		tsq.TimeFilter = NewFilterForTime(time.Now())
+	}
 
-	q, err := json.Marshal(query)
+	request := map[string]interface{}{"size": 10000}
+
+	if tsq.PaginationRange != nil {
+		if tsq.PaginationRange.To < tsq.PaginationRange.From {
+			return sr, errors.New("Incorrect PaginationRange, To < From")
+		}
+
+		request["from"] = tsq.PaginationRange.From
+		request["size"] = tsq.PaginationRange.To - tsq.PaginationRange.From
+	}
+
+	request["query"] = map[string]interface{}{
+		"bool": map[string]interface{}{
+			"must": []map[string]interface{}{
+				b.client.FormatFilter(tsq.TimeFilter, ""),
+				b.client.FormatFilter(tsq.Filter, ""),
+				b.client.FormatFilter(tsq.MetadataFilter, "Metadata/"),
+			},
+		},
+	}
+
+	if tsq.Sort {
+		request["sort"] = map[string]interface{}{
+			tsq.SortBy: map[string]string{
+				"order": "asc",
+			},
+		}
+	}
+
+	q, err := json.Marshal(request)
 	if err != nil {
 		return
 	}
 
-	out, err := b.client.Search("node", string(q))
+	return b.client.Search(obj, string(q))
+}
+
+func (b *ElasticSearchBackend) SearchNodes(tsq *TimedSearchQuery) (nodes []*Node) {
+	out, err := b.Query("node", tsq)
 	if err != nil {
+		logging.GetLogger().Errorf("Failed to query nodes: %s", err.Error())
 		return
 	}
 
@@ -494,21 +414,13 @@ func (b *ElasticSearchBackend) GetNodes(t *time.Time, m Metadata) (nodes []*Node
 		}
 	}
 
-	return nodes
+	return
 }
 
-func (b *ElasticSearchBackend) GetEdges(t *time.Time, m Metadata) (edges []*Edge) {
-	timedQuery := b.getTimedQuery(t)
-	timedQuery = append(timedQuery, b.metadataToTerms(m)...)
-	query := b.createQuery(timedQuery...)
-
-	q, err := json.Marshal(query)
+func (b *ElasticSearchBackend) SearchEdges(tsq *TimedSearchQuery) (edges []*Edge) {
+	out, err := b.Query("edge", tsq)
 	if err != nil {
-		return
-	}
-
-	out, err := b.client.Search("edge", string(q))
-	if err != nil {
+		logging.GetLogger().Errorf("Failed to query edges: %s", err.Error())
 		return
 	}
 
@@ -522,7 +434,66 @@ func (b *ElasticSearchBackend) GetEdges(t *time.Time, m Metadata) (edges []*Edge
 		}
 	}
 
-	return edges
+	return
+}
+
+func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge {
+	filter, err := NewFilterForMetadata(m)
+	if err != nil {
+		return []*Edge{}
+	}
+
+	return b.SearchEdges(&TimedSearchQuery{
+		SearchQuery:    filters.SearchQuery{Sort: true, SortBy: "CreatedAt"},
+		TimeFilter:     NewFilterForTimeSlice(t),
+		MetadataFilter: filter,
+	})
+}
+
+func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node {
+	filter, err := NewFilterForMetadata(m)
+	if err != nil {
+		return []*Node{}
+	}
+
+	return b.SearchNodes(&TimedSearchQuery{
+		SearchQuery:    filters.SearchQuery{Sort: true, SortBy: "CreatedAt"},
+		TimeFilter:     NewFilterForTimeSlice(t),
+		MetadataFilter: filter,
+	})
+}
+
+func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) (parents []*Node, children []*Node) {
+	for _, parent := range b.GetNode(e.parent, t) {
+		if parent.MatchMetadata(parentMetadata) {
+			parents = append(parents, parent)
+		}
+	}
+
+	for _, child := range b.GetNode(e.child, t) {
+		if child.MatchMetadata(childMetadata) {
+			children = append(children, child)
+		}
+	}
+
+	return
+}
+
+func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
+	metadataFilter, err := NewFilterForMetadata(m)
+	if err != nil {
+		return
+	}
+
+	return b.SearchEdges(&TimedSearchQuery{
+		SearchQuery: filters.SearchQuery{
+			Filter: NewFilterForEdge(n.ID, n.ID),
+		},
+		TimeFilter: filters.NewAndFilter(
+			NewFilterForTimeSlice(t),
+			metadataFilter,
+		),
+	})
 }
 
 func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
@@ -544,11 +515,9 @@ func NewElasticSearchBackend(addr string, port string, maxConns int, retrySecond
 		{"edge": []byte(graphElementMapping)},
 	})
 
-	backend := &ElasticSearchBackend{
+	return &ElasticSearchBackend{
 		client: client,
-	}
-
-	return backend, nil
+	}, nil
 }
 
 func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
