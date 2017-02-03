@@ -943,6 +943,17 @@ Layout.prototype.CollapseNode = function(d) {
 };
 
 Layout.prototype.Redraw = function() {
+  var self = this;
+
+  if (typeof this.redrawTimeout == "undefined")
+    this.redrawTimeout = setTimeout(function() {
+      self.redraw();
+      clearTimeout(self.redrawTimeout);
+      self.redrawTimeout = undefined;
+    }, 100);
+};
+
+Layout.prototype.redraw = function() {
   var _this = this;
 
   this.link = this.link.data(this.links, function(d) { return d.source.ID + "-" + d.target.ID; });
@@ -975,7 +986,7 @@ Layout.prototype.Redraw = function() {
           d.fixed = false;
         else
           d.fixed = true;
-        _this.Redraw();
+        _this.redraw();
         return;
       }
 
