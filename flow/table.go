@@ -122,6 +122,9 @@ func (ft *Table) Update(flows []*Flow) {
 		if _, ok := ft.table[f.UUID]; !ok {
 			ft.table[f.UUID] = f
 		} else {
+			ft.table[f.UUID].Last = f.Last
+			ft.table[f.UUID].LastUpdateStart = f.LastUpdateStart
+			ft.table[f.UUID].LastUpdateLast = f.LastUpdateLast
 			ft.table[f.UUID].Metric = f.Metric
 		}
 	}
@@ -139,11 +142,11 @@ func (ft *Table) GetFlows(query *filters.SearchQuery) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range ft.table {
 		if query == nil || query.Filter == nil || query.Filter.Eval(f) {
-			if flowset.Start == 0 || flowset.Start > f.Metric.Start {
-				flowset.Start = f.Metric.Start
+			if flowset.Start == 0 || flowset.Start > f.Start {
+				flowset.Start = f.Start
 			}
-			if flowset.End == 0 || flowset.Start < f.Metric.Last {
-				flowset.End = f.Metric.Last
+			if flowset.End == 0 || flowset.Start < f.Last {
+				flowset.End = f.Last
 			}
 			flowset.Flows = append(flowset.Flows, f)
 		}
@@ -184,7 +187,7 @@ func (ft *Table) FilterLast(last time.Duration) []*Flow {
 	ft.RLock()
 	defer ft.RUnlock()
 	for _, f := range ft.table {
-		if f.Metric.Last >= selected {
+		if f.Last >= selected {
 			flows = append(flows, f)
 		}
 	}
@@ -196,10 +199,10 @@ func (ft *Table) expired(expireBefore int64) {
 	var expiredFlows []*Flow
 	flowTableSzBefore := len(ft.table)
 	for k, f := range ft.table {
-		if f.Metric.Last < expireBefore {
-			duration := time.Duration(f.Metric.Last - f.Metric.Start)
-			if f.Metric.Last > ft.lastUpdate {
-				ft.updateMetric(f, ft.lastUpdate, f.Metric.Last)
+		if f.Last < expireBefore {
+			duration := time.Duration(f.Last - f.Start)
+			if f.Last > ft.lastUpdate {
+				ft.updateMetric(f, ft.lastUpdate, f.Last)
 			}
 
 			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
@@ -242,23 +245,25 @@ func (ft *Table) updateMetric(f *Flow, start, last int64) {
 		f.LastUpdateMetric.ABBytes -= s.ABBytes
 		f.LastUpdateMetric.BAPackets -= s.BAPackets
 		f.LastUpdateMetric.BABytes -= s.BABytes
-		f.LastUpdateMetric.Start = start
+		f.LastUpdateStart = start
 	} else {
-		f.LastUpdateMetric.Start = f.Metric.Start
+		f.LastUpdateStart = f.Start
 	}
 
-	f.LastUpdateMetric.Last = last
+	f.LastUpdateLast = last
 }
 
 /* Internal call only, Must be called under ft.RLock() */
 func (ft *Table) updated(updateFrom, updateTime int64) {
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
-		if f.Metric.Last > updateFrom {
+		if f.Last > updateFrom {
 			ft.updateMetric(f, updateFrom, updateTime)
 			updatedFlows = append(updatedFlows, f)
 		} else {
-			f.LastUpdateMetric = &FlowMetric{Start: updateFrom, Last: updateTime}
+			f.LastUpdateMetric = &FlowMetric{}
+			f.LastUpdateStart = updateFrom
+			f.LastUpdateLast = updateTime
 		}
 
 		ft.stats[f.UUID] = f.Metric.Copy()

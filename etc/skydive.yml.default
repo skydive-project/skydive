@@ -86,6 +86,9 @@ agent:
       # - docker
       # - neutron
       # - opencontrail
+    netlink:
+      # delay in seconds between to metric update
+      # metrics_update: 30
   flow:
     # Probes used to capture traffic.
     probes:

@@ -62,11 +62,11 @@ func getDedupField(flow *Flow, field string) (string, error) {
 
 func getSortField(flow *Flow, field string) int64 {
 	if field == "" {
-		return flow.Metric.Last
+		return flow.Last
 	}
 	val, err := flow.GetFieldInt64(field)
 	if err != nil {
-		return flow.Metric.Last
+		return flow.Last
 	}
 	return val
 }
@@ -250,11 +250,11 @@ func (s sortFlows) Swap(i, j int) {
 }
 
 func (s sortByLast) Less(i, j int) bool {
-	return s.sortFlows[i].Metric.Last > s.sortFlows[j].Metric.Last
+	return s.sortFlows[i].Last > s.sortFlows[j].Last
 }
 
 func (s sortByStart) Less(i, j int) bool {
-	return s.sortFlows[i].Metric.Start > s.sortFlows[j].Metric.Start
+	return s.sortFlows[i].Start > s.sortFlows[j].Start
 }
 
 func (s sortByABPackets) Less(i, j int) bool {
@@ -275,9 +275,9 @@ func (s sortByBABytes) Less(i, j int) bool {
 
 func (fs *FlowSet) Sort(field string) {
 	switch field {
-	case "Metric.Start":
+	case "Start":
 		sort.Sort(sortByStart{fs.Flows})
-	case "Metric.Last":
+	case "Last":
 		sort.Sort(sortByLast{fs.Flows})
 	case "Metric.ABPackets":
 		sort.Sort(sortByABPackets{fs.Flows})
@@ -294,11 +294,11 @@ func (fs *FlowSet) Filter(filter *filters.Filter) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range fs.Flows {
 		if filter == nil || filter.Eval(f) {
-			if flowset.Start == 0 || flowset.Start > f.Metric.Start {
-				flowset.Start = f.Metric.Start
+			if flowset.Start == 0 || flowset.Start > f.Start {
+				flowset.Start = f.Start
 			}
-			if flowset.End == 0 || flowset.Start < f.Metric.Last {
-				flowset.End = f.Metric.Last
+			if flowset.End == 0 || flowset.Start < f.Last {
+				flowset.End = f.Last
 			}
 			flowset.Flows = append(flowset.Flows, f)
 		}

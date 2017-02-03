@@ -46,6 +46,8 @@ agent:
       - netns
       - ovsdb
       - docker
+    netlink:
+      metrics_update: 5
 
 cache:
   expire: 300

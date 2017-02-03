@@ -44,12 +44,10 @@ message FlowLayer {
 }
 
 message FlowMetric {
-	int64 Start = 1;
-	int64 Last = 2;
-	int64 ABPackets = 3;
-	int64 ABBytes = 4;
-	int64 BAPackets = 5;
-	int64 BABytes = 6;
+	int64 ABPackets = 2;
+	int64 ABBytes = 3;
+	int64 BAPackets = 4;
+	int64 BABytes = 5;
 }
 
 message Flow {
@@ -76,6 +74,11 @@ message Flow {
 	FlowMetric LastUpdateMetric = 31;
 /* Total amount of data for the whole flow duration */
 	FlowMetric Metric = 32;
+
+  int64 Start = 10;
+  int64 Last = 11;
+  int64 LastUpdateStart = 12;
+  int64 LastUpdateLast = 13;
 
 /* Flow Tracking IDentifier, from 1st packet bytes
    flow.TrackingID could be used to identify an unique flow whatever it has

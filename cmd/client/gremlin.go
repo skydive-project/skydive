@@ -25,6 +25,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -35,6 +36,8 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology/graph"
 )
+
+var NotFound = errors.New("No result found")
 
 type GremlinQueryHelper struct {
 	authOptions *shttp.AuthenticationOpts
@@ -77,13 +80,24 @@ func (g *GremlinQueryHelper) GetNodes(query string) ([]*graph.Node, error) {
 		return nil, err
 	}
 
-	nodes := make([]*graph.Node, len(values))
-	for i, node := range values {
-		n := new(graph.Node)
-		if err := n.Decode(node); err != nil {
-			return nil, err
+	var nodes []*graph.Node
+	for _, obj := range values {
+		switch t := obj.(type) {
+		case []interface{}:
+			for _, node := range t {
+				n := new(graph.Node)
+				if err := n.Decode(node); err != nil {
+					return nil, err
+				}
+				nodes = append(nodes, n)
+			}
+		case interface{}:
+			n := new(graph.Node)
+			if err := n.Decode(t); err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, n)
 		}
-		nodes[i] = n
 	}
 
 	return nodes, nil
@@ -96,10 +110,10 @@ func (g *GremlinQueryHelper) GetNode(query string) (node *graph.Node, _ error) {
 	}
 
 	if len(nodes) > 0 {
-		node = nodes[0]
+		return nodes[0], nil
 	}
 
-	return
+	return nil, NotFound
 }
 
 func (g *GremlinQueryHelper) GetFlows(query string) (flows []*flow.Flow, err error) {
@@ -107,9 +121,71 @@ func (g *GremlinQueryHelper) GetFlows(query string) (flows []*flow.Flow, err err
 	return
 }
 
-func (g *GremlinQueryHelper) GetFlowMetric(query string) (metric flow.FlowMetric, err error) {
-	err = g.Query(query, &metric)
-	return
+func (g *GremlinQueryHelper) GetFlowMetric(query string) (m *flow.FlowMetric, _ error) {
+	flows, err := g.GetFlows(query)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(flows) == 0 {
+		return nil, NotFound
+	}
+
+	return flows[0].Metric, nil
+}
+
+func (g *GremlinQueryHelper) GetMetrics(query string) (m []*flow.FlowMetric, _ error) {
+	if err := g.Query(query, &m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func (g *GremlinQueryHelper) GetMetric(query string) (m *flow.FlowMetric, _ error) {
+	if err := g.Query(query, &m); err != nil {
+		return nil, err
+	}
+
+	if m == nil {
+		return nil, NotFound
+	}
+
+	return m, nil
+}
+
+func (g *GremlinQueryHelper) GetInterfaceAggregatedMetrics(query string) (metrics []*graph.InterfaceMetric, _ error) {
+	var obj []map[string]interface{}
+	if err := g.Query(query, &obj); err != nil {
+		return nil, err
+	}
+
+	if len(obj) == 0 {
+		return nil, errors.New("No metrics found")
+	}
+
+	if aggregated, ok := obj[0]["Aggregated"]; ok && aggregated != nil {
+		for _, i := range aggregated.([]interface{}) {
+			obj := i.(map[string]interface{})
+			RxPackets, _ := obj["RxPackets"].(json.Number).Int64()
+			TxPackets, _ := obj["TxPackets"].(json.Number).Int64()
+			RxBytes, _ := obj["RxBytes"].(json.Number).Int64()
+			TxBytes, _ := obj["TxBytes"].(json.Number).Int64()
+
+			metric := &graph.InterfaceMetric{
+				RxPackets: RxPackets,
+				TxPackets: TxPackets,
+				RxBytes:   RxBytes,
+				TxBytes:   TxBytes,
+			}
+
+			metrics = append(metrics, metric)
+		}
+
+		return metrics, nil
+	}
+
+	return nil, errors.New("No metrics found")
 }
 
 func NewGremlinQueryHelper(authOptions *shttp.AuthenticationOpts) *GremlinQueryHelper {

@@ -264,10 +264,10 @@ func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow) {
 	f.Metric.BAPackets = int64(rnd.Int63n(0x10000))
 	f.Metric.BABytes = f.Metric.BAPackets * int64(14+rnd.Intn(1501))
 
-	f.Metric.Start = now - rnd.Int63n(100)
-	f.Metric.Last = f.Metric.Start
+	f.Start = now - rnd.Int63n(100)
+	f.Last = f.Start
 	if (rnd.Int() % 2) == 0 {
-		f.Metric.Last = f.Metric.Start + rnd.Int63n(100)
+		f.Last = f.Start + rnd.Int63n(100)
 	}
 	return
 }
@@ -304,8 +304,8 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 	minStart := int64(^uint64(0) >> 1)
 	maxEnd := int64(0)
 	for _, f := range flows {
-		fstart := f.Metric.Start
-		fend := f.Metric.Last
+		fstart := f.Start
+		fend := f.Last
 		if fstart < minStart {
 			minStart = fstart
 		}
@@ -317,9 +317,8 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 	scale := float64(maxEnd-minStart) / float64(nbCol)
 	fmt.Printf("%d ----- %d (%d) scale %.2f\n", minStart-now, maxEnd-now, maxEnd-minStart, scale)
 	for _, f := range flows {
-		s := f.Metric
-		fstart := s.Start
-		fend := s.Last
+		fstart := f.Start
+		fend := f.Last
 		duration := fend - fstart
 		hstr := hex.EncodeToString(f.Link.Hash())
 
@@ -343,7 +342,7 @@ func graphFlows(now int64, flows []*Flow, tagsUUID ...string) string {
 		fdt := float64(duration)
 		ppsAB := float64(e.ABPackets) / fdt
 		bpsAB := float64(e.ABBytes) / fdt
-		fmt.Printf(" %s %d (%d) %.0f %.0f\n", hstr[:6], s.Start-now, duration, ppsAB, bpsAB)
+		fmt.Printf(" %s %d (%d) %.0f %.0f\n", hstr[:6], fstart-now, duration, ppsAB, bpsAB)
 		if needTag {
 			fmt.Print(logging.ColorSeq(0))
 		}

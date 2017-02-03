@@ -188,13 +188,11 @@ func TestFlowJSON(t *testing.T) {
 			A:        "value-1",
 			B:        "value-2",
 		},
+		Start: 1111,
+		Last:  222,
 		Metric: &FlowMetric{
-			Start: 1111,
-			Last:  222,
-
 			ABBytes:   33,
 			ABPackets: 34,
-
 			BABytes:   44,
 			BAPackets: 55,
 		},
@@ -214,14 +212,14 @@ func TestFlowJSON(t *testing.T) {
 		v.ObjKV("NodeTID", v.String()),
 		v.ObjKV("ANodeTID", v.String()),
 		v.ObjKV("BNodeTID", v.String()),
+		v.ObjKV("Start", v.Number()),
+		v.ObjKV("Last", v.Number()),
 		v.ObjKV("Link", v.Object(
 			v.ObjKV("Protocol", v.String()),
 			v.ObjKV("A", v.String()),
 			v.ObjKV("B", v.String()),
 		)),
 		v.ObjKV("Metric", v.Object(
-			v.ObjKV("Start", v.Number()),
-			v.ObjKV("Last", v.Number()),
 			v.ObjKV("ABPackets", v.Number()),
 			v.ObjKV("ABBytes", v.Number()),
 			v.ObjKV("BAPackets", v.Number()),

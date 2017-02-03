@@ -81,25 +81,25 @@ func TestDedupBy(t *testing.T) {
 func TestMergeDedup(t *testing.T) {
 	flowset1 := FlowSet{
 		Flows: []*Flow{
-			{TrackingID: "aaa", NodeTID: "111", Metric: &FlowMetric{Start: 0, Last: 1}},
-			{TrackingID: "bbb", NodeTID: "111", Metric: &FlowMetric{Start: 2, Last: 3}},
-			{TrackingID: "aaa", NodeTID: "222", Metric: &FlowMetric{Start: 0, Last: 1}},
+			{TrackingID: "aaa", NodeTID: "111", Start: 0, Last: 1, Metric: &FlowMetric{}},
+			{TrackingID: "bbb", NodeTID: "111", Start: 2, Last: 3, Metric: &FlowMetric{}},
+			{TrackingID: "aaa", NodeTID: "222", Start: 0, Last: 1, Metric: &FlowMetric{}},
 		},
 	}
 	flowset2 := FlowSet{
 		Flows: []*Flow{
-			{TrackingID: "aaa", NodeTID: "111", Metric: &FlowMetric{Start: 0, Last: 1}},
-			{TrackingID: "bbb", NodeTID: "111", Metric: &FlowMetric{Start: 4, Last: 6}},
-			{TrackingID: "aaa", NodeTID: "222", Metric: &FlowMetric{Start: 7, Last: 8}},
-			{TrackingID: "ccc", NodeTID: "333", Metric: &FlowMetric{Start: 0, Last: 1}},
+			{TrackingID: "aaa", NodeTID: "111", Start: 0, Last: 1, Metric: &FlowMetric{}},
+			{TrackingID: "bbb", NodeTID: "111", Start: 4, Last: 6, Metric: &FlowMetric{}},
+			{TrackingID: "aaa", NodeTID: "222", Start: 7, Last: 8, Metric: &FlowMetric{}},
+			{TrackingID: "ccc", NodeTID: "333", Start: 0, Last: 1, Metric: &FlowMetric{}},
 		},
 	}
 
 	expected := FlowSet{
 		Flows: []*Flow{
-			{TrackingID: "aaa", NodeTID: "111", Metric: &FlowMetric{Start: 0, Last: 1}},
-			{TrackingID: "aaa", NodeTID: "222", Metric: &FlowMetric{Start: 0, Last: 1}},
-			{TrackingID: "ccc", NodeTID: "333", Metric: &FlowMetric{Start: 0, Last: 1}},
+			{TrackingID: "aaa", NodeTID: "111", Start: 0, Last: 1, Metric: &FlowMetric{}},
+			{TrackingID: "aaa", NodeTID: "222", Start: 0, Last: 1, Metric: &FlowMetric{}},
+			{TrackingID: "ccc", NodeTID: "333", Start: 0, Last: 1, Metric: &FlowMetric{}},
 		},
 	}
 

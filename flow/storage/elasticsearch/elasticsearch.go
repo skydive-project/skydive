@@ -27,6 +27,8 @@ import (
 	"errors"
 
 	"github.com/lebauce/elastigo/lib"
+	"github.com/mitchellh/mapstructure"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -136,9 +138,17 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 			continue
 		}
 
-		if f.LastUpdateMetric.Start != 0 {
+		if f.LastUpdateStart != 0 {
 			// TODO submit a pull request to add bulk request with parent supported
-			if err := c.client.IndexChild("metric", f.UUID, "", f.LastUpdateMetric); err != nil {
+			metric := map[string]interface{}{
+				"ABBytes":   f.LastUpdateMetric.ABBytes,
+				"BABytes":   f.LastUpdateMetric.BABytes,
+				"ABPackets": f.LastUpdateMetric.ABPackets,
+				"BAPackets": f.LastUpdateMetric.BAPackets,
+				"Start":     f.LastUpdateStart,
+				"Last":      f.LastUpdateLast,
+			}
+			if err := c.client.IndexChild("metric", f.UUID, "", metric); err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
 			}
@@ -171,7 +181,7 @@ func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]in
 	return c.client.Search(docType, string(q))
 }
 
-func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*flow.FlowMetric, error) {
+func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -211,14 +221,24 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 		return nil, err
 	}
 
-	metrics := map[string][]*flow.FlowMetric{}
+	metrics := map[string][]*common.TimedMetric{}
 	if out.Hits.Len() > 0 {
 		for _, d := range out.Hits.Hits {
-			m := new(flow.FlowMetric)
-			if err := json.Unmarshal([]byte(*d.Source), m); err != nil {
+			tm := new(common.TimedMetric)
+			var obj map[string]interface{}
+			if err := json.Unmarshal([]byte(*d.Source), &obj); err != nil {
 				return nil, err
 			}
-			metrics[d.Parent] = append(metrics[d.Parent], m)
+
+			m := new(flow.FlowMetric)
+			if err := mapstructure.Decode(obj, m); err != nil {
+				return nil, err
+			}
+
+			tm.Start = int64(obj["Start"].(float64))
+			tm.Last = int64(obj["Last"].(float64))
+			tm.Metric = m
+			metrics[d.Parent] = append(metrics[d.Parent], tm)
 		}
 	}
 

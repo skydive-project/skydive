@@ -193,7 +193,7 @@ func (flow *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	flow.TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
 	bfStart := make([]byte, 8)
-	binary.BigEndian.PutUint64(bfStart, uint64(flow.Metric.Start))
+	binary.BigEndian.PutUint64(bfStart, uint64(flow.Start))
 	hasher.Write(bfStart)
 	hasher.Write([]byte(flow.NodeTID))
 
@@ -231,8 +231,8 @@ func (flow *Flow) GetData() ([]byte, error) {
 }
 
 func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
-	f.Metric.Start = now
-	f.Metric.Last = now
+	f.Start = now
+	f.Last = now
 
 	f.newLinkLayer(packet, length)
 
@@ -253,21 +253,10 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 }
 
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
-	f.Metric.Last = now
+	f.Last = now
 
 	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
 		f.updateMetricsWithNetworkLayer(packet)
-	}
-}
-
-func (fm *FlowMetric) Copy() *FlowMetric {
-	return &FlowMetric{
-		Start:     fm.Start,
-		Last:      fm.Last,
-		ABPackets: fm.ABPackets,
-		ABBytes:   fm.ABBytes,
-		BAPackets: fm.BAPackets,
-		BABytes:   fm.BABytes,
 	}
 }
 
@@ -325,10 +314,10 @@ func (f *Flow) updateMetricsWithLinkLayer(packet *gopacket.Packet, length int64)
 	}
 
 	if f.Link.A == ethernetPacket.SrcMAC.String() {
-		f.Metric.ABPackets += int64(1)
+		f.Metric.ABPackets++
 		f.Metric.ABBytes += length
 	} else {
-		f.Metric.BAPackets += int64(1)
+		f.Metric.BAPackets++
 		f.Metric.BABytes += length
 	}
 
@@ -371,10 +360,10 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
 	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
 		if f.Network.A == ipv4Packet.SrcIP.String() {
-			f.Metric.ABPackets += int64(1)
+			f.Metric.ABPackets++
 			f.Metric.ABBytes += int64(ipv4Packet.Length)
 		} else {
-			f.Metric.BAPackets += int64(1)
+			f.Metric.BAPackets++
 			f.Metric.BABytes += int64(ipv4Packet.Length)
 		}
 		return nil
@@ -382,10 +371,10 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
 	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
 		if f.Network.A == ipv6Packet.SrcIP.String() {
-			f.Metric.ABPackets += int64(1)
+			f.Metric.ABPackets++
 			f.Metric.ABBytes += int64(ipv6Packet.Length)
 		} else {
-			f.Metric.BAPackets += int64(1)
+			f.Metric.BAPackets++
 			f.Metric.BABytes += int64(ipv6Packet.Length)
 		}
 		return nil
@@ -557,24 +546,6 @@ func (f *FlowLayer) GetFieldInt64(field string) (int64, error) {
 	return 0, common.ErrFieldNotFound
 }
 
-func (f *FlowMetric) GetField(field string) (int64, error) {
-	switch field {
-	case "Start":
-		return f.Start, nil
-	case "Last":
-		return f.Last, nil
-	case "ABPackets":
-		return f.ABPackets, nil
-	case "ABBytes":
-		return f.ABBytes, nil
-	case "BAPackets":
-		return f.BAPackets, nil
-	case "BABytes":
-		return f.BABytes, nil
-	}
-	return 0, common.ErrFieldNotFound
-}
-
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
 	if len(fields) < 1 {
@@ -626,7 +597,7 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 	return "", common.ErrFieldNotFound
 }
 
-func (f *Flow) GetFieldInt64(field string) (int64, error) {
+func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	fields := strings.Split(field, ".")
 	if len(fields) != 2 {
 		return 0, common.ErrFieldNotFound
@@ -643,8 +614,9 @@ func (f *Flow) GetFieldInt64(field string) (int64, error) {
 		return f.Network.GetFieldInt64(fields[1])
 	case "Transport":
 		return f.Transport.GetFieldInt64(fields[1])
+	default:
+		return 0, common.ErrFieldNotFound
 	}
-	return 0, common.ErrFieldNotFound
 }
 
 func (f *Flow) GetFields() []interface{} {

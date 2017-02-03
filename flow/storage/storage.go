@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
@@ -42,7 +43,7 @@ type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
 	SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error)
-	SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*flow.FlowMetric, error)
+	SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error)
 	Stop()
 }
 

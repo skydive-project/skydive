@@ -29,13 +29,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 const confStorage = `---
@@ -203,4 +207,114 @@ func TestPcapInject(t *testing.T) {
 	if len(flows) != 2 {
 		t.Fatalf("Wrong number of DNS flows. Expected 2, got %d", len(flows))
 	}
+}
+
+func TestInterfaceUpdate(t *testing.T) {
+	g := helper.NewGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	time.Sleep(time.Second)
+	start := time.Now()
+
+	setupCmds := []helper.Cmd{
+		{"ip netns add ns1", true},
+		{"sleep 1", false},
+		{"ip netns exec ns1 ip link set lo up", true},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del ns1", true},
+	}
+
+	tr := traversal.NewGraphTraversal(g)
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed {
+			now := time.Now()
+			tv := tr.Context(now, now.Sub(start)).V().Has("Name", "ns1", "Type", "netns").Out().Has("Name", "lo")
+			if len(tv.Values()) >= 2 {
+				nodes := tv.GetNodes()
+				hasDown := false
+				hasUp := false
+				for i := range nodes {
+					if !hasDown && nodes[i].Metadata()["State"].(string) == "DOWN" {
+						hasDown = true
+					}
+					if !hasUp && nodes[i].Metadata()["State"].(string) == "UP" {
+						hasUp = true
+					}
+				}
+				if hasUp && hasDown {
+					testPassed = true
+					ws.Close()
+				}
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{})
+}
+
+func TestInterfaceMetrics(t *testing.T) {
+	g := helper.NewGraph(t)
+
+	agent := helper.StartAgentWithConfig(t, confTopology)
+	defer agent.Stop()
+
+	time.Sleep(time.Second)
+	start := time.Now()
+
+	tearDownCmds := []helper.Cmd{
+		{"ip netns del ns1", true},
+	}
+
+	setupCmds := []helper.Cmd{
+		{"ip netns add ns1", true},
+		{"sleep 1", false},
+		{"ip netns exec ns1 ip link set lo up", true},
+		{"ip netns exec ns1 ping -c 3 127.0.0.1", true},
+	}
+
+	time.Sleep(time.Second)
+
+	tr := traversal.NewGraphTraversal(g)
+
+	testPassed := false
+	onChange := func(ws *websocket.Conn) {
+		g.Lock()
+		defer g.Unlock()
+
+		if !testPassed {
+			now := time.Now()
+			values := tr.Context(now, now.Sub(start)).V().Has("Name", "ns1", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates().Values()
+			if len(values) != 0 {
+				metrics := values[0].(map[string][]*common.TimedMetric)
+				if len(metrics) > 0 && len(metrics["Aggregated"]) > 0 {
+					txPackets, _ := metrics["Aggregated"][0].GetField("TxPackets")
+					if txPackets >= 6 {
+						testPassed = true
+						ws.Close()
+					}
+				}
+			}
+		}
+	}
+
+	testTopology(t, g, setupCmds, onChange)
+	if !testPassed {
+		t.Error("test not executed or failed")
+	}
+
+	testCleanup(t, g, tearDownCmds, []string{"ns1"})
 }

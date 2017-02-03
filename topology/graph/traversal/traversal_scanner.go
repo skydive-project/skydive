@@ -83,6 +83,7 @@ const (
 	VALUES
 	KEYS
 	SUM
+	METRICS
 
 	// extensions token have to start after 1000
 )
@@ -261,6 +262,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return KEYS, buf.String()
 	case "SUM":
 		return SUM, buf.String()
+	case "METRICS":
+		return METRICS, buf.String()
 	}
 
 	for _, e := range s.extensions {

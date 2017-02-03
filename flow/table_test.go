@@ -206,9 +206,8 @@ func TestTable_FilterLast(t *testing.T) {
 	ft := NewTestFlowTableComplex(t, nil, nil)
 	/* hack to put the FlowTable 1 second older */
 	for _, f := range ft.table {
-		fs := f.Metric
-		fs.Start -= int64(1)
-		fs.Last -= int64(1)
+		f.Start -= int64(1)
+		f.Last -= int64(1)
 	}
 	flows := ft.FilterLast(10 * time.Minute)
 	if len(flows) != 10 {

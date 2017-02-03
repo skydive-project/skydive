@@ -23,9 +23,11 @@
 package orientdb
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
@@ -37,12 +39,12 @@ type OrientDBStorage struct {
 	client *orient.Client
 }
 
-func metricToDocument(metric *flow.FlowMetric) orient.Document {
+func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Document {
 	return orient.Document{
 		"@class":    "FlowMetric",
 		"@type":     "d",
-		"Start":     metric.Start,
-		"Last":      metric.Last,
+		"Start":     flow.LastUpdateStart,
+		"Last":      flow.LastUpdateLast,
 		"ABPackets": metric.ABPackets,
 		"ABBytes":   metric.ABBytes,
 		"BAPackets": metric.BAPackets,
@@ -51,31 +53,39 @@ func metricToDocument(metric *flow.FlowMetric) orient.Document {
 }
 
 func flowToDocument(flow *flow.Flow) orient.Document {
-	linkLayer := orient.Document{
-		"Protocol": flow.Link.Protocol,
-		"A":        flow.Link.A,
-		"B":        flow.Link.B,
-		"ID":       flow.Link.ID,
-	}
-
-	metricDoc := metricToDocument(flow.Metric)
+	metricDoc := flowMetricToDocument(flow, flow.Metric)
+	lastMetricDoc := flowMetricToDocument(flow, flow.LastUpdateMetric)
 
 	flowDoc := orient.Document{
-		"@class":       "Flow",
-		"UUID":         flow.UUID,
-		"TrackingID":   flow.TrackingID,
-		"L3TrackingID": flow.L3TrackingID,
-		"LayersPath":   flow.LayersPath,
-		"Application":  flow.Application,
-		"NodeTID":      flow.NodeTID,
-		"ANodeTID":     flow.ANodeTID,
-		"BNodeTID":     flow.BNodeTID,
-		"Metric":       metricDoc,
-		"LinkLayer":    linkLayer,
+		"@class":           "Flow",
+		"UUID":             flow.UUID,
+		"LayersPath":       flow.LayersPath,
+		"Application":      flow.Application,
+		"LastUpdateMetric": lastMetricDoc,
+		"Metric":           metricDoc,
+		"Start":            flow.Start,
+		"Last":             flow.Last,
+		"LastUpdateStart":  flow.LastUpdateStart,
+		"LastUpdateLast":   flow.LastUpdateLast,
+		"TrackingID":       flow.TrackingID,
+		"L3TrackingID":     flow.L3TrackingID,
+		"ParentUUID":       flow.ParentUUID,
+		"NodeTID":          flow.NodeTID,
+		"ANodeTID":         flow.ANodeTID,
+		"BNodeTID":         flow.BNodeTID,
+	}
+
+	if flow.Link != nil {
+		flowDoc["Link"] = orient.Document{
+			"Protocol": flow.Link.Protocol,
+			"A":        flow.Link.A,
+			"B":        flow.Link.B,
+			"ID":       flow.Link.ID,
+		}
 	}
 
 	if flow.Network != nil {
-		flowDoc["NetworkLayer"] = orient.Document{
+		flowDoc["Network"] = orient.Document{
 			"Protocol": flow.Network.Protocol,
 			"A":        flow.Network.A,
 			"B":        flow.Network.B,
@@ -84,7 +94,7 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 	}
 
 	if flow.Transport != nil {
-		flowDoc["TransportLayer"] = orient.Document{
+		flowDoc["Transport"] = orient.Document{
 			"Protocol": flow.Transport.Protocol,
 			"A":        flow.Transport.A,
 			"B":        flow.Transport.B,
@@ -102,11 +112,29 @@ func documentToFlow(document orient.Document) (flow *flow.Flow, err error) {
 	return
 }
 
-func documentToMetric(document orient.Document) (metric *flow.FlowMetric, err error) {
-	if err = mapstructure.WeakDecode(document, &metric); err != nil {
+func documentToMetric(document orient.Document) (*common.TimedMetric, error) {
+	flowMetric := new(flow.FlowMetric)
+	if err := mapstructure.WeakDecode(document, flowMetric); err != nil {
 		return nil, err
 	}
-	return
+
+	start, err := document["Start"].(json.Number).Int64()
+	if err != nil {
+		return nil, err
+	}
+
+	last, err := document["Last"].(json.Number).Int64()
+	if err != nil {
+		return nil, err
+	}
+
+	return &common.TimedMetric{
+		TimeSlice: common.TimeSlice{
+			Start: start,
+			Last:  last,
+		},
+		Metric: flowMetric,
+	}, nil
 }
 
 func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
@@ -124,8 +152,8 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 			return err
 		}
 
-		if flow.LastUpdateMetric.Start != 0 {
-			doc := metricToDocument(flow.LastUpdateMetric)
+		if flow.LastUpdateStart != 0 {
+			doc := flowMetricToDocument(flow, flow.LastUpdateMetric)
 			doc["Flow"] = flowID
 			if _, err := c.client.CreateDocument(doc); err != nil {
 				logging.GetLogger().Errorf("Error while pushing metric %+v: %s\n", flow.LastUpdateMetric, err.Error())
@@ -161,7 +189,7 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 	return flowset, nil
 }
 
-func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*flow.FlowMetric, error) {
+func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
 
@@ -177,7 +205,7 @@ func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *f
 		return nil, err
 	}
 
-	metrics := map[string][]*flow.FlowMetric{}
+	metrics := make(map[string][]*common.TimedMetric)
 	for _, doc := range docs {
 		metric, err := documentToMetric(doc)
 		if err != nil {
@@ -237,9 +265,15 @@ func New() (*OrientDBStorage, error) {
 				{Name: "UUID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "LayersPath", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "Application", Type: "STRING"},
+				{Name: "LastUpdateMetric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
 				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
+				{Name: "Start", Type: "INTEGER"},
+				{Name: "Last", Type: "INTEGER"},
+				{Name: "LastUpdateStart", Type: "INTEGER"},
+				{Name: "LastUpdateLast", Type: "INTEGER"},
 				{Name: "TrackingID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "L3TrackingID", Type: "STRING"},
+				{Name: "ParentUUID", Type: "STRING"},
 				{Name: "NodeTID", Type: "STRING"},
 				{Name: "ANodeTID", Type: "STRING"},
 				{Name: "BNodeTID", Type: "STRING"},
@@ -247,6 +281,7 @@ func New() (*OrientDBStorage, error) {
 			Indexes: []orient.Index{
 				{Name: "Flow.UUID", Fields: []string{"UUID"}, Type: "UNIQUE"},
 				{Name: "Flow.TrackingID", Fields: []string{"TrackingID"}, Type: "NOTUNIQUE"},
+				{Name: "Flow.TimeSpan", Fields: []string{"Start", "Last"}, Type: "NOTUNIQUE"},
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {

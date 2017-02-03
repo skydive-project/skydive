@@ -158,7 +158,7 @@ func (s *TestStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error
 	return nil, nil
 }
 
-func (s *TestStorage) SearchMetrics(ffsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*flow.FlowMetric, error) {
+func (s *TestStorage) SearchMetrics(ffsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
 	return nil, nil
 }
 
@@ -1128,7 +1128,11 @@ func TestFlowMetricsSum(t *testing.T) {
 
 	// this check needs to be close to the beginning of the test since it's a time
 	// based test and it will fail if we wait one more update tick
-	metric, err := gh.GetFlowMetric(gremlin)
+	metric, err := gh.GetMetric(gremlin)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if metric.ABPackets != 1 || metric.BAPackets != 1 || metric.ABBytes < 1066 || metric.BABytes < 1066 {
 		t.Errorf("Wrong metric returned, got : %v (error: %+v)", metric, err)
 	}

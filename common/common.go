@@ -63,11 +63,11 @@ type CaptureType struct {
 }
 
 var (
-	CantCompareInterface error = errors.New("Can't compare interface")
-	ErrFieldNotFound           = errors.New("Field not found")
-	InvalidPortRange     error = errors.New("Invalid port range")
-	NoPortLeft           error = errors.New("No free port left")
-	CaptureTypes               = map[string]CaptureType{}
+	CantCompareInterface = errors.New("Can't compare interface")
+	ErrFieldNotFound     = errors.New("Field not found")
+	InvalidPortRange     = errors.New("Invalid port range")
+	NoPortLeft           = errors.New("No free port left")
+	CaptureTypes         = map[string]CaptureType{}
 )
 
 func (st ServiceType) String() string {
@@ -433,4 +433,32 @@ type TimeSlice struct {
 
 func NewTimeSlice(s, l int64) *TimeSlice {
 	return &TimeSlice{Start: s, Last: l}
+}
+
+type Metric interface {
+	GetField(field string) (int64, error)
+	Add(m Metric) Metric
+}
+
+type TimedMetric struct {
+	TimeSlice
+	Metric Metric
+}
+
+func (tm *TimedMetric) GetField(field string) (int64, error) {
+	return tm.Metric.GetField(field)
+}
+
+func (tm *TimedMetric) MarshalJSON() ([]byte, error) {
+	var s string
+	if tm.Metric != nil {
+		b, err := json.Marshal(tm.Metric)
+		if err != nil {
+			return nil, err
+		}
+		s = fmt.Sprintf(`{"Start":%d,"Last":%d,%s`, tm.Start, tm.Last, string(b[1:]))
+	} else {
+		s = "null"
+	}
+	return []byte(s), nil
 }
