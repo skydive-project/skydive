@@ -37,6 +37,7 @@ import (
 	"github.com/vishvananda/netlink/nl"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -46,12 +47,14 @@ const (
 )
 
 type NetLinkProbe struct {
+	sync.RWMutex
 	Graph                *graph.Graph
 	Root                 *graph.Node
 	state                int64
 	ethtool              *ethtool.Ethtool
 	netlink              *netlink.Handle
 	indexToChildrenQueue map[int64][]graph.Identifier
+	links                map[string]*graph.Node
 	wg                   sync.WaitGroup
 }
 
@@ -232,6 +235,32 @@ func (u *NetLinkProbe) getLinkIPs(link netlink.Link, family int) string {
 	return strings.Join(ips, ",")
 }
 
+func (u *NetLinkProbe) updateMetadataStatistics(statistics *netlink.LinkStatistics, metadata graph.Metadata, prefix string) {
+	metadata[prefix+"/Collisions"] = uint64(statistics.Collisions)
+	metadata[prefix+"/Multicast"] = uint64(statistics.Multicast)
+	metadata[prefix+"/RxBytes"] = uint64(statistics.RxBytes)
+	metadata[prefix+"/RxCompressed"] = uint64(statistics.RxCompressed)
+	metadata[prefix+"/RxCrcErrors"] = uint64(statistics.RxCrcErrors)
+	metadata[prefix+"/RxDropped"] = uint64(statistics.RxDropped)
+	metadata[prefix+"/RxErrors"] = uint64(statistics.RxErrors)
+	metadata[prefix+"/RxFifoErrors"] = uint64(statistics.RxFifoErrors)
+	metadata[prefix+"/RxFrameErrors"] = uint64(statistics.RxFrameErrors)
+	metadata[prefix+"/RxLengthErrors"] = uint64(statistics.RxLengthErrors)
+	metadata[prefix+"/RxMissedErrors"] = uint64(statistics.RxMissedErrors)
+	metadata[prefix+"/RxOverErrors"] = uint64(statistics.RxOverErrors)
+	metadata[prefix+"/RxPackets"] = uint64(statistics.RxPackets)
+	metadata[prefix+"/TxAbortedErrors"] = uint64(statistics.TxAbortedErrors)
+	metadata[prefix+"/TxBytes"] = uint64(statistics.TxBytes)
+	metadata[prefix+"/TxCarrierErrors"] = uint64(statistics.TxCarrierErrors)
+	metadata[prefix+"/TxCompressed"] = uint64(statistics.TxCompressed)
+	metadata[prefix+"/TxDropped"] = uint64(statistics.TxDropped)
+	metadata[prefix+"/TxErrors"] = uint64(statistics.TxErrors)
+	metadata[prefix+"/TxFifoErrors"] = uint64(statistics.TxFifoErrors)
+	metadata[prefix+"/TxHeartbeatErrors"] = uint64(statistics.TxHeartbeatErrors)
+	metadata[prefix+"/TxPackets"] = uint64(statistics.TxPackets)
+	metadata[prefix+"/TxWindowErrors"] = uint64(statistics.TxWindowErrors)
+}
+
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	logging.GetLogger().Debugf("Link \"%s(%d)\" added", link.Attrs().Name, link.Attrs().Index)
 
@@ -257,6 +286,10 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		if speed != math.MaxUint32 {
 			metadata["Speed"] = speed
 		}
+	}
+
+	if statistics := link.Attrs().Statistics; statistics != nil {
+		u.updateMetadataStatistics(statistics, metadata, "Statistics")
 	}
 
 	if link.Type() == "veth" {
@@ -308,6 +341,10 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	if intf == nil {
 		return
 	}
+
+	u.Lock()
+	u.links[link.Attrs().Name] = intf
+	u.Unlock()
 
 	m := intf.Metadata()
 
@@ -363,7 +400,10 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 		}
 	}
 
+	u.Lock()
 	delete(u.indexToChildrenQueue, int64(index))
+	delete(u.links, link.Attrs().Name)
+	u.Unlock()
 }
 
 func getFamilyKey(family int) string {
@@ -562,6 +602,74 @@ func (u *NetLinkProbe) start(nsPath string) {
 	}
 	events := make([]syscall.EpollEvent, maxEpollEvents)
 
+	u.wg.Add(1)
+	seconds := config.GetConfig().GetInt("agent.topology.netlink.metrics_update")
+	ticker := time.NewTicker(time.Duration(seconds) * time.Second)
+	done := make(chan struct{})
+
+	defer func() {
+		ticker.Stop()
+		done <- struct{}{}
+	}()
+
+	// Go routine to update the interface statistics
+	go func() {
+		defer u.wg.Done()
+
+		last := time.Now().UTC()
+		for {
+			select {
+			case <-ticker.C:
+				now := time.Now().UTC()
+
+				u.RLock()
+				for name, node := range u.links {
+					if link, err := h.LinkByName(name); err == nil {
+						if stats := link.Attrs().Statistics; stats != nil {
+							u.Graph.Lock()
+							m := node.Metadata()
+							metric := netlink.LinkStatistics{
+								Collisions:        stats.Collisions - m["Statistics/Collisions"].(uint64),
+								Multicast:         stats.Multicast - m["Statistics/Multicast"].(uint64),
+								RxBytes:           stats.RxBytes - m["Statistics/RxBytes"].(uint64),
+								RxCompressed:      stats.RxCompressed - m["Statistics/RxCompressed"].(uint64),
+								RxCrcErrors:       stats.RxCrcErrors - m["Statistics/RxCrcErrors"].(uint64),
+								RxDropped:         stats.RxDropped - m["Statistics/RxDropped"].(uint64),
+								RxErrors:          stats.RxErrors - m["Statistics/RxErrors"].(uint64),
+								RxFifoErrors:      stats.RxFifoErrors - m["Statistics/RxFifoErrors"].(uint64),
+								RxFrameErrors:     stats.RxFrameErrors - m["Statistics/RxFrameErrors"].(uint64),
+								RxLengthErrors:    stats.RxLengthErrors - m["Statistics/RxLengthErrors"].(uint64),
+								RxMissedErrors:    stats.RxMissedErrors - m["Statistics/RxMissedErrors"].(uint64),
+								RxOverErrors:      stats.RxOverErrors - m["Statistics/RxOverErrors"].(uint64),
+								RxPackets:         stats.RxPackets - m["Statistics/RxPackets"].(uint64),
+								TxAbortedErrors:   stats.TxAbortedErrors - m["Statistics/TxAbortedErrors"].(uint64),
+								TxBytes:           stats.TxBytes - m["Statistics/TxBytes"].(uint64),
+								TxCarrierErrors:   stats.TxCarrierErrors - m["Statistics/TxCarrierErrors"].(uint64),
+								TxCompressed:      stats.TxCompressed - m["Statistics/TxCompressed"].(uint64),
+								TxDropped:         stats.TxDropped - m["Statistics/TxDropped"].(uint64),
+								TxErrors:          stats.TxErrors - m["Statistics/TxErrors"].(uint64),
+								TxFifoErrors:      stats.TxFifoErrors - m["Statistics/TxFifoErrors"].(uint64),
+								TxHeartbeatErrors: stats.TxHeartbeatErrors - m["Statistics/TxHeartbeatErrors"].(uint64),
+								TxPackets:         stats.TxPackets - m["Statistics/TxPackets"].(uint64),
+								TxWindowErrors:    stats.TxWindowErrors - m["Statistics/TxWindowErrors"].(uint64),
+							}
+							u.updateMetadataStatistics(stats, m, "Statistics")
+							u.updateMetadataStatistics(&metric, m, "LastMetric")
+							m["LastMetric/Start"] = last.Unix()
+							m["LastMetric/Last"] = now.Unix()
+							u.Graph.SetMetadata(node, m)
+							u.Graph.Unlock()
+						}
+					}
+				}
+				u.RUnlock()
+				last = now
+			case <-done:
+				return
+			}
+		}
+	}()
+
 	for atomic.LoadInt64(&u.state) == common.RunningState {
 		n, err := syscall.EpollWait(epfd, events[:], 1000)
 		if err != nil {
@@ -588,14 +696,14 @@ func (u *NetLinkProbe) start(nsPath string) {
 		for _, msg := range msgs {
 			switch msg.Header.Type {
 			case syscall.RTM_NEWLINK:
-				link, err := netlink.LinkDeserialize(msg.Data)
+				link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
 				if err != nil {
 					logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
 					continue
 				}
 				u.onLinkAdded(link)
 			case syscall.RTM_DELLINK:
-				link, err := netlink.LinkDeserialize(msg.Data)
+				link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
 				if err != nil {
 					logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
 					continue
@@ -639,6 +747,7 @@ func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
 		Graph:                g,
 		Root:                 n,
 		indexToChildrenQueue: make(map[int64][]graph.Identifier),
+		links:                make(map[string]*graph.Node),
 		state:                common.StoppedState,
 	}
 	return np
