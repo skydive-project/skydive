@@ -45,7 +45,7 @@ Open a browser to http://localhost:8082 to access the analyzer Web UI.
 
 You can also use the Skydive [command line client](https://skydive-project.github.io/skydive/getting-started/client/) with:
 ```console
-docker run -ti skydive/skydive client topology query --gremlin "g.V()"
+docker run --net=host -ti skydive/skydive client topology query --gremlin "g.V()"
 ```
 
 ### All-in-one
