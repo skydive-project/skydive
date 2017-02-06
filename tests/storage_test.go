@@ -177,6 +177,9 @@ func TestPcapInject(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
+	// Give the analyzer some time to connect to storage
+	time.Sleep(3 * time.Second)
+
 	file, err := os.Open("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap")
 	if err != nil {
 		t.Fatal(err.Error())
