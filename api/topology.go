@@ -111,16 +111,16 @@ func (t *TopologyApi) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 func (t *TopologyApi) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
-			"TopologiesIndex",
-			"GET",
-			"/api/topology",
-			t.topologyIndex,
+			Name:        "TopologiesIndex",
+			Method:      "GET",
+			Path:        "/api/topology",
+			HandlerFunc: t.topologyIndex,
 		},
 		{
-			"TopologiesSearch",
-			"POST",
-			"/api/topology",
-			t.topologySearch,
+			Name:        "TopologiesSearch",
+			Method:      "POST",
+			Path:        "/api/topology",
+			HandlerFunc: t.topologySearch,
 		},
 	}
 

@@ -31,10 +31,10 @@ func (c *ConfigApi) configGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 func (c *ConfigApi) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
-			"ConfigGet",
-			"GET",
-			"/api/config/{key}",
-			c.configGet,
+			Name:        "ConfigGet",
+			Method:      "GET",
+			Path:        "/api/config/{key}",
+			HandlerFunc: c.configGet,
 		},
 	}
 

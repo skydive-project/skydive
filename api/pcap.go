@@ -51,10 +51,10 @@ func (p *PcapApi) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 func (p *PcapApi) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
-			"PCAP",
-			"POST",
-			"/api/pcap",
-			p.injectPcap,
+			Name:        "PCAP",
+			Method:      "POST",
+			Path:        "/api/pcap",
+			HandlerFunc: p.injectPcap,
 		},
 	}
 

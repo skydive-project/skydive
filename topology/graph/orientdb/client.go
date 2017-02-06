@@ -79,7 +79,7 @@ type Property struct {
 
 type Index struct {
 	Name   string   `json:"name"`
-	Type   string   `json:"name"`
+	Type   string   `json:"type"`
 	Fields []string `json:"fields"`
 }
 

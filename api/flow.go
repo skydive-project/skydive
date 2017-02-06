@@ -250,22 +250,22 @@ func (f *FlowApi) discoveryType(w http.ResponseWriter, r *auth.AuthenticatedRequ
 func (f *FlowApi) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
-			"FlowSearch",
-			"GET",
-			"/api/flow/search",
-			f.flowSearch,
+			Name:        "FlowSearch",
+			Method:      "GET",
+			Path:        "/api/flow/search",
+			HandlerFunc: f.flowSearch,
 		},
 		{
-			"ConversationLayer",
-			"GET",
-			"/api/flow/conversation/{layer}",
-			f.conversationLayer,
+			Name:        "ConversationLayer",
+			Method:      "GET",
+			Path:        "/api/flow/conversation/{layer}",
+			HandlerFunc: f.conversationLayer,
 		},
 		{
-			"Discovery",
-			"GET",
-			"/api/flow/discovery/{type}",
-			f.discoveryType,
+			Name:        "Discovery",
+			Method:      "GET",
+			Path:        "/api/flow/discovery/{type}",
+			HandlerFunc: f.discoveryType,
 		},
 	}
 

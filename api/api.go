@@ -58,10 +58,10 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 
 	routes := []shttp.Route{
 		{
-			title + "Index",
-			"GET",
-			"/api/" + name,
-			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+			Name:   title + "Index",
+			Method: "GET",
+			Path:   "/api/" + name,
+			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
 
@@ -76,10 +76,10 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 			},
 		},
 		{
-			title + "Show",
-			"GET",
-			shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
-			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+			Name:   title + "Show",
+			Method: "GET",
+			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
+			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
 				if id == "" {
 					w.WriteHeader(http.StatusBadRequest)
@@ -100,10 +100,10 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 			},
 		},
 		{
-			title + "Insert",
-			"POST",
-			"/api/" + name,
-			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+			Name:   title + "Insert",
+			Method: "POST",
+			Path:   "/api/" + name,
+			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				resource := handler.New()
 
 				// keep the original ID
@@ -140,10 +140,10 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 			},
 		},
 		{
-			title + "Delete",
-			"DELETE",
-			shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
-			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+			Name:   title + "Delete",
+			Method: "DELETE",
+			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
+			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
 				if id == "" {
 					w.WriteHeader(http.StatusBadRequest)
@@ -183,10 +183,10 @@ func (a *ApiServer) addAPIRootRoute() {
 
 	routes := []shttp.Route{
 		{
-			"Skydive API",
-			"GET",
-			"/api",
-			func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+			Name:   "Skydive API",
+			Method: "GET",
+			Path:   "/api",
+			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
 

@@ -133,10 +133,10 @@ func (pi *PacketInjectorApi) getNode(gremlinQuery string) *graph.Node {
 func (pi *PacketInjectorApi) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
-			"InjectPacket",
-			"POST",
-			"/api/injectpacket",
-			pi.injectPacket,
+			Name:        "InjectPacket",
+			Method:      "POST",
+			Path:        "/api/injectpacket",
+			HandlerFunc: pi.injectPacket,
 		},
 	}
 
