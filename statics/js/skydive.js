@@ -969,7 +969,6 @@ Layout.prototype.redraw = function() {
     });
 
   this.node = this.node.data(this.nodes, function(d) { return d.ID; })
-    .attr("id", function(d) { return "node-" + d.ID; })
     .attr("class", function(d) {
       return _this.NodeClass(d);
     })
@@ -979,7 +978,10 @@ Layout.prototype.redraw = function() {
   this.node.exit().remove();
 
   var nodeEnter = this.node.enter().append("g")
-    .attr("class", "node")
+    .attr("id", function(d) { return "node-" + d.ID; })
+    .attr("class", function(d) {
+      return _this.NodeClass(d);
+    })
     .on("click", function(d) {
       if (d3.event.shiftKey) {
         if (d.fixed)
