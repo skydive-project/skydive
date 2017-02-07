@@ -78,7 +78,7 @@ fmt: govendor
 
 vet: govendor
 	@echo "+ $@"
-	govendor tool vet $$(ls -d */ | grep -v vendor)
+	govendor tool vet $$(govendor list -no-status +local  | perl -pe 's|github.com/skydive-project/skydive/?||g' | grep -v '^tests')
 
 ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
 	@go get github.com/alecthomas/gometalinter
