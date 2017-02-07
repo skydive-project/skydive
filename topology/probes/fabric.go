@@ -45,7 +45,7 @@ type fabricLink struct {
 type FabricProbe struct {
 	graph.DefaultGraphListener
 	Graph *graph.Graph
-	links map[*graph.Node]fabricLink
+	links map[*graph.Node][]fabricLink
 }
 
 var fabricL2Link = graph.Metadata{"RelationType": "layer2", "Type": "fabric"}
@@ -62,9 +62,11 @@ func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 		return
 	}
 
-	for node, link := range fb.links {
-		if parent.MatchMetadata(link.parentMetadata) && child.MatchMetadata(link.childMetadata) {
-			fb.LinkNodes(node, child)
+	for node, links := range fb.links {
+		for _, link := range links {
+			if parent.MatchMetadata(link.parentMetadata) && child.MatchMetadata(link.childMetadata) {
+				fb.LinkNodes(node, child)
+			}
 		}
 	}
 }
@@ -145,7 +147,7 @@ func (fb *FabricProbe) Stop() {
 func NewFabricProbe(g *graph.Graph) *FabricProbe {
 	fb := &FabricProbe{
 		Graph: g,
-		links: make(map[*graph.Node]fabricLink),
+		links: make(map[*graph.Node][]fabricLink),
 	}
 
 	g.AddEventListener(fb)
@@ -197,7 +199,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 			}
 
 			// queue it as the node doesn't exist at start
-			fb.links[parentNode] = fabricLink{childMetadata: childMetadata, parentMetadata: parentMetadata}
+			fb.links[parentNode] = append(fb.links[parentNode], fabricLink{childMetadata: childMetadata, parentMetadata: parentMetadata})
 		} else {
 			// Fabric Node to Fabric Node
 			node1, err := fb.getOrCreateFabricNodeFromDef(parentDef)
