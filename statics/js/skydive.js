@@ -266,6 +266,7 @@ var Layout = function(selector) {
       d3.event.preventDefault();
     });
 
+  this.deferredActions = [];
   this.links = this.force.links();
   this.nodes = this.force.nodes();
 
@@ -947,7 +948,15 @@ Layout.prototype.Redraw = function() {
 
   if (typeof this.redrawTimeout == "undefined")
     this.redrawTimeout = setTimeout(function() {
+      for (var i in self.deferredActions)
+      {
+        var action = self.deferredActions[i];
+        action.fn.apply(self, action.params);
+      }
+      self.deferredActions = [];
+
       self.redraw();
+
       clearTimeout(self.redrawTimeout);
       self.redrawTimeout = undefined;
     }, 100);
@@ -1125,7 +1134,8 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
     case "NodeUpdated":
       node = this.graph.GetNode(msg.Obj.ID);
 
-      this.UpdateNode(node, msg.Obj.Metadata);
+      this.deferredActions.push({fn: this.UpdateNode, params: [node, msg.Obj.Metadata]});
+      this.Redraw();
       break;
 
     case "NodeAdded":
@@ -1133,7 +1143,8 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
       if ("Metadata" in msg.Obj)
         node.Metadata = msg.Obj.Metadata;
 
-      this.AddNode(node);
+      this.deferredActions.push({fn: this.AddNode, params: [node]});
+      this.Redraw();
       break;
 
     case "NodeDeleted":
@@ -1142,7 +1153,8 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
         return;
 
       this.graph.DelNode(node);
-      this.DelNode(node);
+      this.deferredActions.push({fn: this.DelNode, params: [node]});
+      this.Redraw();
       break;
 
     case "EdgeUpdated":
@@ -1160,7 +1172,8 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
       if ("Metadata" in msg.Obj)
         edge.Metadata = msg.Obj.Metadata;
 
-      this.AddEdge(edge);
+      this.deferredActions.push({fn: this.AddEdge, params: [edge]});
+      this.Redraw();
       break;
 
     case "EdgeDeleted":
@@ -1169,7 +1182,8 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
         break;
 
       this.graph.DelEdge(edge);
-      this.DelEdge(edge);
+      this.deferredActions.push({fn: this.DelEdge, params: [edge]});
+      this.Redraw();
       break;
   }
 };
