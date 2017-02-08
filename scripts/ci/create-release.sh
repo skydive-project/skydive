@@ -23,7 +23,6 @@ export DOCKER_IMAGE=skydive/skydive
 export DOCKER_EMAIL=skydivesoftware@gmail.com
 export DOCKER_USERNAME=skydiveproject
 export DOCKER_TAG=$VERSION
-export BINARIES_REPO=https://github.com/skydive-project/skydive-binaries.git
 export COPR_USERNAME=skydive
 
 dir="$(dirname "$0")"
@@ -40,25 +39,6 @@ sudo docker login -e "${DOCKER_EMAIL}" -u "${DOCKER_USERNAME}" -p "${DOCKER_PASS
 sudo docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
 sudo docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
 sudo docker push ${DOCKER_IMAGE}:latest
-
-echo "--- BINARIES ---"
-rev=`git rev-parse HEAD`
-git remote add binaries ${BINARIES_REPO}
-git fetch binaries
-git checkout -b travis-builds binaries/travis-builds
-git config --global user.email "skydivesoftware@gmail.com"
-git config --global user.name "Skydive Build Bot"
-mkdir ${TAG}
-cp ${GOPATH}/bin/skydive ${TAG}/
-git add ${TAG}/skydive
-test -L latest && unlink latest
-ln -s ${TAG} latest
-git add latest
-git commit -m "${TAG} SF build"
-git config credential.helper "store --file=.git/credentials"
-echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > .git/credentials
-git push -f -q binaries travis-builds
-git checkout -f $rev
 
 echo "--- COPR ---"
 sudo dnf -y install copr-cli rpm-build
