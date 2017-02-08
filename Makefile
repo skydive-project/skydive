@@ -25,7 +25,7 @@ DESTDIR?=$(shell pwd)
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i flow/flow.pb.go
 
 .bindata: govendor builddep
-	go-bindata -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/components/*
+	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/components/*
 	gofmt -w -s statics/bindata.go
 
 all: govendor genlocalfiles
