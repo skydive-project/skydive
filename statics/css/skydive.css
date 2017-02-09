@@ -60,10 +60,6 @@ label {
   cursor: not-allowed !important;
 }
 
-#node-id {
-  cursor: default;
-}
-
 text {
   fill: #111;
   pointer-events: none;
@@ -110,6 +106,11 @@ text {
 
 .highlighted circle {
   fill: yellow;
+}
+
+.highlighted.current circle {
+  stroke: orange;
+  stroke-width: 3;
 }
 
 .active circle {
@@ -232,22 +233,6 @@ path.group {
   right: 0px;
 }
 
-.jsonview .num {
-  color: yellow;
-}
-
-.jsonview .string {
-  color: #aaa;
-}
-
-.jsonview {
-  font-size: 0.9em;
-}
-
-.jsonview ul {
-  margin: 0 0 0 1em;
-}
-
 .left-cont {
   width: 100%;
   margin-top: 10px;
@@ -263,16 +248,11 @@ path.group {
 }
 
 .sub-left-panel {
-  overflow: auto;
   border-radius: 5px;
   background-color: #111;
   padding: 5px;
   margin-top: 10px;
   margin-bottom: 10px;
-}
-
-#capture {
-  font-size: 1.2em;
 }
 
 ul.capture-list {
@@ -295,6 +275,7 @@ li.capture-item {
 
 .capture-item dd {
   margin-left: 70px;
+  margin-bottom: 5px;
 }
 
 .capture-item dd.query {
@@ -302,7 +283,8 @@ li.capture-item {
   font-size: 11px;
   background: #333;
   border-radius: 3px;
-  word-break: break-all
+  word-break: break-all;
+  cursor: pointer;
 }
 
 .capture-title {
@@ -310,20 +292,21 @@ li.capture-item {
   padding-bottom: 5px;
 }
 
-.capture-delete {
+.capture-action {
   float: right;
-  color: #a94442 !important;
   cursor: pointer;
-  font-size: 1.3em;
+  font-size: 1.2em;
   font-style: normal;
+  color: white !important;
+  padding-left: 10px;
+}
+
+.capture-delete {
+  color: #a94442 !important;
 }
 
 .inject-target {
   margin-bottom: 5px;
-}
-
-.passive-capture-title {
-  color: grey
 }
 
 .title-left-panel {
@@ -334,15 +317,6 @@ li.capture-item {
 
 .sub-left-panel .title-left-panel {
   font-size: 1.1em;
-}
-
-.title-capture-switch {
-  float: right;
-  display: none;
-}
-
-#flows {
-  clear: both;
 }
 
 .bootstrap-switch {
@@ -437,62 +411,6 @@ circle.manager {
   padding-right: 10px !important;
 }
 
-#flowgrid {
-  font-size: 12px;
-  background: silver;
-}
-
-#flowgrid .slick-cell {
-  cursor: pointer;
-  background: #111;
-  color: white;
-}
-
-#flowgrid .toggle {
-  height: 9px;
-  width: 9px;
-  display: inline-block;
-}
-
-#flowgrid .toggle.expand {
-  background: url(/statics/img/expand.gif) no-repeat center center;
-}
-
-#flowgrid .toggle.collapse {
-  background: url(/statics/img/collapse.gif) no-repeat center center;
-}
-
-#flowgrid .cell-metric {
-  text-align: right;
-}
-
-#flowgrid .cell-highlighted {
-  background-color: yellow;
-  color: black;
-}
-
-#flowgrid .slick-header-columns {
-    padding-left: 1px;
-}
-
-#flowgrid .slick-header-column {
-  background: #333;
-  color: white;
-  font-weight: bold;
-}
-
-#flowgrid .slick-header-column.ui-state-default {
-  height: 22px;
-}
-
-#flowgrid .slick-cell {
-  border-right: 1px solid silver
-}
-
-#flowgrid .l0 {
-  border-left: 1px solid silver;
-}
-
 .button-wrapper .btn {
     margin:2px;
 }
@@ -536,24 +454,107 @@ circle.manager {
   margin-top: 0px;
 }
 
-.slowmotion-effect-in {
-  -webkit-filter: grayscale(100%);
-  -webkit-transition: 1s ease-in-out;
-  -moz-filter: grayscale(100%);
-  -moz-transition: 1s ease-in-out;
-  -o-filter: grayscale(100%);
-  -o-transition: 1s ease-in-out;
-  filter: grayscale(100%);
+.flow-table {
+  border-radius: 5px;
+  border: 2px solid #666;
 }
 
-.slowmotion-effect-out {
-  -webkit-filter: grayscale(0%);
-  -webkit-transition: 1.5s ease-in-out;
-  -moz-filter: grayscale(0%);
-  -moz-transition: 1.5s ease-in-out;
-  -o-filter: grayscale(0%);
-  -o-transition: 1.5s ease-in-out;
-  filter: grayscale(0%);
+.flow-table .flow-table-wrapper {
+  overflow-x: auto;
+}
+
+.flow-table table {
+  font-size: small;
+  border: hidden;
+  margin-bottom: 0px;
+}
+
+.flow-table div.actions {
+  background: #666;
+  color: black;
+  padding: 5px 3px 3px 3px;
+}
+
+.flow-table div.actions .pull-right {
+  margin-left: 3px;
+}
+
+.flow-table td, .flow-table thead th {
+  border-color: #666 !important;
+}
+
+.flow-table thead {
+  background: #111;
+}
+
+.flow-table thead th:hover {
+  cursor: pointer;
+}
+
+.flow-table tbody {
+  background: #333;
+}
+
+.flow-table tbody tr.flow-row:hover {
+  cursor: pointer;
+  background: #444;
+}
+
+.flow-table tbody tr.flow-detail-row {
+  background: #333;
+}
+
+.flow-table .flow-row.flow-detail {
+  background: #2e2e2e;
+  font-weight: bold;
+}
+
+.filter-selector .label {
+  margin-right: 3px;
+}
+
+.filter-form {
+  min-width: 292px;
+  padding-left: 7px;
+}
+
+.filter-form input {
+  width: 120px !important;
+}
+
+.filter-form div {
+  display: inline-block;
+}
+
+ul.dropdown-menu .fa.pull-right {
+  line-height: 1.8;
+}
+
+.object-key {
+  font-weight: bold;
+}
+
+.object-value.string  {
+  color: #ccc;
+}
+
+.object-value.number {
+  color: yellow;
+}
+
+.object-key-value.application .object-value,
+.object-key-value.a .object-value,
+.object-key-value.b .object-value {
+  color: #47AAFF;
+}
+
+.object-sub-detail {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.object-sub-detail .object-detail {
+  margin-left: 20px;
 }
 
 .slide-enter-active {

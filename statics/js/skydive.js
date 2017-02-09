@@ -35,7 +35,6 @@ var pinIndicatorImg = 'statics/img/pin.png';
 
 var alerts = {};
 
-var Service;
 var CurrentNodeDetails;
 var FlowGrid;
 var FlowDataView;
@@ -341,7 +340,6 @@ Layout.prototype.Clear = function() {
   var ID;
 
   CurrentNodeDetails = undefined;
-  $("#node-details").hide();
 
   for (ID in this.graph.Edges)
     this.DelEdge(this.graph.Edges[ID]);
@@ -461,19 +459,6 @@ function ShowNodeFlows(node) {
   });
 }
 
-Layout.prototype.NodeDetails = function(node) {
-  CurrentNodeDetails = node;
-  $("#node-details").show();
-
-  var json = JSON.stringify(node.Metadata);
-  $("#metadata").JSONView(json);
-  $("#node-id").html(node.ID);
-
-  if (Service == 'Analyzer') {
-    ShowNodeFlows(node);
-  }
-};
-
 Layout.prototype.Hash = function(str) {
   var chars = str.split('');
 
@@ -511,18 +496,14 @@ Layout.prototype.AddNode = function(node) {
 
 Layout.prototype.UpdateNode = function(node, metadata) {
   node.Metadata = metadata;
-
-  if (typeof CurrentNodeDetails != "undefined" && node.ID == CurrentNodeDetails.ID)
-    this.NodeDetails(node);
-
   this.Redraw();
 };
 
 Layout.prototype.DelNode = function(node) {
   if (typeof CurrentNodeDetails != "undefined" && node.ID == CurrentNodeDetails.ID) {
     CurrentNodeDetails = undefined;
-    $("#node-details").hide();
   }
+  vueSidebar.$emit('NODE_DELETED', node);
 
   if (!(node.ID in this.elements))
     return;
@@ -1009,7 +990,8 @@ Layout.prototype.redraw = function() {
         old.classed('active', false);
         old.select('circle').attr('r', parseInt(old.select('circle').attr('r')) - 3);
       }
-      _this.NodeDetails(d);
+      CurrentNodeDetails = d;
+      vueSidebar.$emit('NODE_SELECTED', d);
       var current = d3.select(this);
       current.classed('active', true);
       current.select('circle').attr('r', parseInt(current.select('circle').attr('r')) + 3);
@@ -1229,8 +1211,6 @@ function AnalyzerReady() {
     $('.discovery').hide();
   });
 
-  $(".title-capture-switch").hide();
-
   $('#conversation-btn').click(function() {
     $('#topology').removeClass('active');
     $('#conversation').addClass('active');
@@ -1257,8 +1237,6 @@ function AnalyzerReady() {
   });
 
   SetupTimeSlider();
-  SetupFlowRefresh();
-  SetupFlowGrid();
   SetupControlButtons();
 }
 
@@ -1280,10 +1258,10 @@ function CheckAPI() {
 function StartCheckAPIAccess() {
   CheckAPI()
     .then(function(r) {
-      Service = r.Service;
-      $('#service').html(Service + " " + r.Version);
-      vueSidebar.service = Service;
-      if (Service == "Agent") {
+      var service = r.Service;
+      $('#service').html(service + " " + r.Version);
+      vueSidebar.service = service;
+      if (service == "Agent") {
         AgentReady();
       }
       else {
@@ -1293,158 +1271,6 @@ function StartCheckAPIAccess() {
     .then(function() {
       setInterval(CheckAPI, 5000);
     });
-}
-
-function SetupFlowRefresh() {
-  $("#flow-refresh").click(function(e) {
-    ShowNodeFlows(CurrentNodeDetails);
-  });
-}
-
-function ShowFlowDetails(uuid) {
-  $('#flow-uuid').html(uuid);
-  $("#flow-details").html('');
-
-  var query = "G.Flows().Has('UUID', '" + uuid + "')";
-   $.ajax({
-     dataType: "json",
-     url: '/api/topology',
-     data: JSON.stringify({"GremlinQuery": query}),
-     method: 'POST',
-     success: function(data) {
-       var json = JSON.stringify(data);
-       $("#flow-details").JSONView(json);
-       $('#flow-details').JSONView('toggle', 10);
-     },
-     error: function(e) {
-       $.notify({
-         message: 'Node details error: ' + e.responseText
-       },{
-         type: 'danger'
-       });
-     }
-   });
-}
-
-function SetupFlowGrid() {
-  var trackIdFormatter = function(row, cell, value, columnDef, dataContext) {
-    var spacer = "<span style='display:inline-block;height:1px;width:" + (15 * dataContext.indent) + "px'></span>";
-    var idx = FlowDataView.getIdxById(dataContext.id);
-    if (FlowDataGrid[idx + 1] && FlowDataGrid[idx + 1].indent > FlowDataGrid[idx].indent) {
-      if (dataContext._collapsed) {
-        return spacer + "<span class='flowids toggle expand' _uuid='" + dataContext.UUID + "' _trackid='" + dataContext.TrackingID + "'></span>&nbsp;" + value;
-      } else {
-        return spacer + "<span class='flowids toggle collapse' _uuid='" + dataContext.UUID + "' _trackid='" + dataContext.TrackingID + "'></span>&nbsp;" + value;
-      }
-    } else {
-      return spacer + "<span class='flowids toggle' _uuid='" + dataContext.UUID + "' _trackid='" + dataContext.TrackingID + "'></span>&nbsp;" + value;
-    }
-  };
-
-  $(document).on('click', ".slick-row", function () {
-      ShowFlowDetails($(this).find('.flowids').attr('_uuid'));
-  });
-
-  $(document).on('mouseenter', ".slick-row", function () {
-      $(this).children('.slick-cell').addClass('cell-highlighted');
-
-      var query = "G.Flows().Has('TrackingID', '" + $(this).find('.flowids').attr('_trackid') + "').Hops()";
-      $.ajax({
-        dataType: "json",
-        url: '/api/topology',
-        data: JSON.stringify({"GremlinQuery": query}),
-        method: 'POST',
-        success: function(data) {
-          for (var i in data) {
-            var id = data[i].ID;
-            var n = topologyLayout.graph.GetNode(id);
-            n.Highlighted = true;
-            topologyLayout.SetNodeClass(id, "highlighted", true);
-          }
-        },
-        error: function(e) {
-          $.notify({
-            message: 'Gremlin request error: ' + e.responseText
-          },{
-            type: 'danger'
-          });
-        }
-      });
-  }).on('mouseleave', ".slick-row", function () {
-      $(this).children('.slick-cell').removeClass('cell-highlighted');
-
-      for (var i in topologyLayout.graph.Nodes) {
-        var node = topologyLayout.graph.Nodes[i];
-        node.Highlighted = false;
-        topologyLayout.SetNodeClass(node.ID, "highlighted", false);
-      }
-  });
-
-  var columns = [
-    {id: "ID", name: "ID", field: "ID", formatter: trackIdFormatter},
-    {id: "Application", name: "App.", field: "Application"},
-    {id: "A", name: "A", field: "A"},
-    {id: "B", name: "B", field: "B"},
-    {id: "AB Pkts", name: "AB Pkts", field: "ABPackets", cssClass: "cell-metric"},
-    {id: "BA Pkts", name: "BA Pkts", field: "BAPackets", cssClass: "cell-metric"},
-    {id: "AB Bytes", name: "AB Bytes", field: "ABBytes", cssClass: "cell-metric"},
-    {id: "BA Bytes", name: "BA Bytes", field: "BABytes", cssClass: "cell-metric"},
-  ];
-
-  var options = {
-    enableCellNavigation: true,
-    enableColumnReorder: false,
-    autoHeight: true,
-    fullWidthRows: true,
-    forceFitColumns: true,
-  };
-
-  var flowFilter = function(item, data) {
-    if (item.parent !== null) {
-      var parent = data[item.parent.id];
-
-      while (parent) {
-        if (parent._collapsed) {
-          return false;
-        }
-        parent = data[parent.parent ? parent.parent.id : null];
-      }
-    }
-
-    return true;
-  };
-
-  FlowDataView = new Slick.Data.DataView({ inlineFilters: true });
-  FlowDataView.beginUpdate();
-  FlowDataView.setFilter(flowFilter);
-  FlowDataView.endUpdate();
-
-  FlowGrid = new Slick.Grid("#flowgrid", FlowDataView, columns, options);
-  FlowGrid.onClick.subscribe(function (e, args) {
-    if ($(e.target).hasClass("toggle")) {
-      var item = FlowDataView.getItem(args.row);
-      if (item) {
-        if (!item._collapsed) {
-          item._collapsed = true;
-        } else {
-          item._collapsed = false;
-        }
-
-        FlowDataView.updateItem(item.id, item);
-      }
-      e.stopImmediatePropagation();
-    }
-  });
-
-  FlowDataView.onRowCountChanged.subscribe(function (e, args) {
-    FlowGrid.updateRowCount();
-    FlowGrid.render();
-  });
-
-    FlowDataView.onRowsChanged.subscribe(function (e, args) {
-    FlowGrid.invalidateRows(args.rows);
-    FlowGrid.render();
-  });
 }
 
 function zoomclicked(direction) {
@@ -1519,7 +1345,6 @@ $(document).ready(function() {
         ele.siblings().eq(idx).css('height',y+'px');
         ele.siblings().eq(idx).width((factor-f2)+'px');
       });
-      FlowGrid.resizeCanvas();
     }
   });
 

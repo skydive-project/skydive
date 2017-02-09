@@ -9,6 +9,8 @@ var TopologyAPI = {
         method: 'POST',
       })
       .then(function(data) {
+        if (data === null)
+          return [];
         // Result can be [Node] or [[Node, Node]]
         if (data.length > 0 && data[0] instanceof Array)
           data = data[0];

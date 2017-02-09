@@ -11,34 +11,31 @@
   <link rel="stylesheet" href="/statics/css/bootstrap.3.3.5.min.css" />
   <link rel="stylesheet" href="/statics/css/bootstrap-switch.min.css" />
   <link rel="stylesheet" href="/statics/css/bootstrap-slider.min.css" />
-  <link rel="stylesheet" href="/statics/css/font-awesome.4.6.3.min.css" />
+  <link rel="stylesheet" href="/statics/css/font-awesome.4.7.0.min.css" />
   <link rel="stylesheet" href="/statics/css/jquery-ui.1.10.1.css" media="all" type="text/css" />
   <link rel="stylesheet" href="/statics/css/jquery.jsonview.css" />
   <link rel="stylesheet" href="/statics/css/timeslider.css" />
-  <link rel="stylesheet" href="/statics/css/slick.grid.css" />
   <link rel="stylesheet" href="/statics/css/skydive.css" />
 
   <script src="/statics/js/jquery.1.9.1.min.js" type="text/javascript"></script>
   <script src="/statics/js/jquery-ui.1.10.1.js" type="text/javascript"></script>
+  <script src="/statics/js/jquery.event.drag-2.3.0.js"></script>
+
   <script src="/statics/js/bootstrap-switch.min.js"></script>
   <script src="/statics/js/bootstrap-notify.min.js"></script>
   <script src="/statics/js/bootstrap-slider.min.js"></script>
   <script src="/statics/js/jquery.jsonview.js"></script>
   <script src="/statics/js/d3.3.5.10.js"></script>
-  <script src="/statics/js/timeslider.js"></script>
   <script src="/statics/js/lscache.min.js"></script>
 
+  <script src="/statics/js/utils.js"></script>
+  <script src="/statics/js/timeslider.js"></script>
   <script src="/statics/js/websocket.js"></script>
   <script src="/statics/js/discovery.js"></script>
   <script src="/statics/js/conversation.js"></script>
   <script src="/statics/js/skydive.js"></script>
   <script src="/statics/js/capture.js"></script>
   <script src="/statics/js/topology.js"></script>
-
-  <script src="/statics/js/jquery.event.drag-2.3.0.js"></script>
-  <script src="/statics/js/slick.core.js"></script>
-  <script src="/statics/js/slick.grid.js"></script>
-  <script src="/statics/js/slick.dataview.js"></script>
 
   <script src="/statics/js/vue.min-2.1.9.js"></script>
   <!--<script src="/statics/js/dev/vue-2.1.9.js"></script>-->
@@ -47,6 +44,10 @@
   <script src="/statics/js/components/capture-list.js"></script>
   <script src="/statics/js/components/inject-form.js"></script>
   <script src="/statics/js/components/tabs.js"></script>
+  <script src="/statics/js/components/autocomplete.js"></script>
+  <script src="/statics/js/components/buttons.js"></script>
+  <script src="/statics/js/components/object-detail.js"></script>
+  <script src="/statics/js/components/flow-table.js"></script>
   <script src="/statics/js/vue-sidebar.js"></script>
 </head>
 
@@ -84,7 +85,7 @@
     </div>
   </div>
   <div class="topology">
-    <div class="col-sm-8 fill content">
+    <div class="col-sm-7 fill content">
       <div class="main-toolbar analyzer-only">
         <div class="timeslider">
           <div>
@@ -96,10 +97,10 @@
       <!-- tabindex makes the div focusable so event handlers can be attached -->
       <div class="topology-d3" tabindex="0"></div>
     </div>
-    <div class="col-sm-4 fill info" id="vue-sidebar">
+    <div class="col-sm-5 fill info" id="vue-sidebar">
 
       <tabs v-if="service == 'Analyzer'">
-        <tab-pane title="Capture">
+        <tab-pane title="Captures">
           <capture-list></capture-list>
           <capture-form></capture-form>
         </tab-pane>
@@ -107,35 +108,20 @@
         <tab-pane title="Generator">
           <inject-form></inject-form>
         </tab-pane>
+
+        <tab-pane title="Flows">
+          <flow-table-control></flow-table-control>
+        </tab-pane>
       </tabs>
 
-      <div class="left-panel" id="node-details" style="display: none">
+      <div class="left-panel" v-if="currentNode">
         <div class="title-left-panel">
-          <div style="float:left">Node : <span id="node-id"></span></div>
-          <div class="sub-left-panel" id="metadata-panel" style="clear: both">
-            <div class="title-left-panel">Metadata :</div>
-            <div id="metadata"></div>
-          </div>
-          <div class="sub-left-panel analyzer-only">
-            <div class="title-left-panel">
-              <div style="float:left">Flows : </div>
-              <div style="text-align: right">
-                <img id="flow-refresh" style="cursor: pointer" src="statics/img/refresh.png" width="24" height="24">
-              </div>
-            </div>
-            <div style="clear: both">
-              <div id="flowgrid"></div>
-            </div>
-          </div>
-          <div class="sub-left-panel analyzer-only">
-            <div class="title-left-panel">
-              <div style="float:left">Flow Details : <span id="flow-uuid"></span></div>
-            </div>
-            <div style="clear: both">
-              <div id="flow-details"></div>
-            </div>
-          </div>
+          Node: {{currentNode.ID}}
         </div>
+        <div class="sub-left-panel">
+          <object-detail :object="currentNode.Metadata"></object-detail>
+        </div>
+        <flow-table :value="currentNodeFlowsQuery"></flow-table>
       </div>
     </div>
   </div>
