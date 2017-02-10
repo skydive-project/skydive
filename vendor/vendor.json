@@ -916,6 +916,12 @@
 			"revisionTime": "2016-06-21T17:42:43Z"
 		},
 		{
+			"checksumSHA1": "sWdAYPKyaT4SW8hNQNpRS0sU4lU=",
+			"path": "github.com/mitchellh/hashstructure",
+			"revision": "ab25296c0f51f1022f01cd99dfb45f1775de8799",
+			"revisionTime": "2017-01-16T05:20:23Z"
+		},
+		{
 			"checksumSHA1": "4Js6Jlu93Wa0o6Kjt393L9Z7diE=",
 			"path": "github.com/mitchellh/mapstructure",
 			"revision": "281073eb9eb092240d33ef253c404f1cca550309"

@@ -775,17 +775,12 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	case INE:
 		return &GremlinTraversalStepInE{gremlinStepContext}, nil
 	case DEDUP:
-		switch len(params) {
-		case 0:
-			return &GremlinTraversalStepDedup{gremlinStepContext}, nil
-		case 1:
-			if _, ok := params[0].(string); !ok {
-				return nil, fmt.Errorf("Dedup parameter has to be a string key")
+		for _, param := range params {
+			if _, ok := param.(string); !ok {
+				return nil, fmt.Errorf("Dedup parameters have to be string keys")
 			}
-			return &GremlinTraversalStepDedup{gremlinStepContext}, nil
-		default:
-			return nil, fmt.Errorf("Dedup accepts at most 1 string parameter")
 		}
+		return &GremlinTraversalStepDedup{gremlinStepContext}, nil
 	case HAS:
 		return &GremlinTraversalStepHas{gremlinStepContext}, nil
 	case SHORTESTPATHTO:

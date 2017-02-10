@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/mitchellh/hashstructure"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -528,39 +529,61 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
 }
 
-func (tv *GraphTraversalV) Dedup(keys ...interface{}) *GraphTraversalV {
+func (tv *GraphTraversalV) Dedup(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
 
-	var key string
-	if len(keys) > 0 {
-		k, ok := keys[0].(string)
-		if !ok {
-			return &GraphTraversalV{error: fmt.Errorf("Dedup parameter has to be a string key")}
+	var keys []string
+	if len(s) > 0 {
+		for _, key := range s {
+			k, ok := key.(string)
+			if !ok {
+				return &GraphTraversalV{error: fmt.Errorf("Dedup parameters have to be string keys")}
+			}
+			keys = append(keys, k)
 		}
-		key = k
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
 	visited := make(map[interface{}]bool)
-
 	var kvisited interface{}
+	var err error
+
+nodeLoop:
 	for _, n := range tv.nodes {
-
-		kvisited = n.ID
-		if key != "" {
-			if v, ok := n.Metadata()[key]; ok {
-				kvisited = v
-			}
-		}
-
 		if it.Done() {
 			break
-		} else if _, ok := visited[kvisited]; !ok && it.Next() {
-			ntv.nodes = append(ntv.nodes, n)
+		}
+
+		skip := false
+		if len(keys) != 0 {
+			values := make([]interface{}, len(keys))
+			for i, key := range keys {
+				v, ok := n.GetField(key)
+				if !ok {
+					continue nodeLoop
+				}
+				values[i] = v
+			}
+
+			kvisited, err = hashstructure.Hash(values, nil)
+			if err != nil {
+				skip = true
+			}
+		} else {
+			kvisited = n.ID
+		}
+
+		_, ok := visited[kvisited]
+		if ok || !it.Next() {
+			continue
+		}
+
+		ntv.nodes = append(ntv.nodes, n)
+		if !skip {
 			visited[kvisited] = true
 		}
 	}
