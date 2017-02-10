@@ -72,12 +72,10 @@ var CaptureCreate = &cobra.Command{
 		capture.Description = captureDescription
 		capture.Type = captureType
 		if err := validator.Validate(capture); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			logging.GetLogger().Fatalf(err.Error())
 		}
 		if err := client.Create("capture", &capture); err != nil {
-			logging.GetLogger().Errorf(err.Error())
-			os.Exit(1)
+			logging.GetLogger().Fatalf(err.Error())
 		}
 		printJSON(&capture)
 	},
@@ -91,12 +89,11 @@ var CaptureList = &cobra.Command{
 		var captures map[string]api.Capture
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Fatalf(err.Error())
 		}
 
 		if err := client.List("capture", &captures); err != nil {
-			logging.GetLogger().Errorf(err.Error())
-			os.Exit(1)
+			logging.GetLogger().Fatalf(err.Error())
 		}
 		printJSON(captures)
 	},
@@ -116,12 +113,11 @@ var CaptureGet = &cobra.Command{
 		var capture api.Capture
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Fatalf(err.Error())
 		}
 
 		if err := client.Get("capture", args[0], &capture); err != nil {
-			logging.GetLogger().Errorf(err.Error())
-			os.Exit(1)
+			logging.GetLogger().Fatalf(err.Error())
 		}
 		printJSON(&capture)
 	},
@@ -140,12 +136,11 @@ var CaptureDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Fatalf(err.Error())
 		}
 
 		if err := client.Delete("capture", args[0]); err != nil {
-			logging.GetLogger().Errorf(err.Error())
-			os.Exit(1)
+			logging.GetLogger().Fatalf(err.Error())
 		}
 	},
 }
