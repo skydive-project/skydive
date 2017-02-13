@@ -223,6 +223,13 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 			},
 		}
 	}
+	if f := filter.NullFilter; f != nil {
+		return map[string]interface{}{
+			"missing": map[string]interface{}{
+				"field": prefix + f.Key,
+			},
+		}
+	}
 	return nil
 }
 

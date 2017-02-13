@@ -54,6 +54,9 @@ func (f *Filter) Eval(g Getter) bool {
 	if f.RegexFilter != nil {
 		return f.RegexFilter.Eval(g)
 	}
+	if f.NullFilter != nil {
+		return f.NullFilter.Eval(g)
+	}
 
 	return true
 }
@@ -149,6 +152,16 @@ func (r *RegexFilter) Eval(g Getter) bool {
 	return re.MatchString(field)
 }
 
+func (r *NullFilter) Eval(g Getter) bool {
+	if _, err := g.GetFieldString(r.Key); err == nil {
+		return false
+	}
+	if _, err := g.GetFieldInt64(r.Key); err == nil {
+		return false
+	}
+	return true
+}
+
 func NewBoolFilter(op BoolFilterOp, filters ...*Filter) *Filter {
 	boolFilter := &BoolFilter{
 		Op:      op,
@@ -198,6 +211,10 @@ func NewTermInt64Filter(key string, value int64) *Filter {
 
 func NewTermStringFilter(key string, value string) *Filter {
 	return &Filter{TermStringFilter: &TermStringFilter{Key: key, Value: value}}
+}
+
+func NewNullFilter(key string) *Filter {
+	return &Filter{NullFilter: &NullFilter{Key: key}}
 }
 
 func NewFilterForIds(uuids []string, attrs ...string) *Filter {

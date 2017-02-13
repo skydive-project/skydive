@@ -95,8 +95,6 @@ func (b *ElasticSearchBackend) mapElement(e *graphElement) map[string]interface{
 
 	if !e.deletedAt.IsZero() {
 		obj["DeletedAt"] = e.deletedAt.Unix()
-	} else {
-		obj["DeletedAt"] = 0
 	}
 
 	for k, v := range e.metadata {

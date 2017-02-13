@@ -75,6 +75,10 @@ message RegexFilter {
   string Value = 2;
 }
 
+message NullFilter {
+  string Key = 1;
+}
+
 message Filter {
   TermStringFilter TermStringFilter = 1;
   TermInt64Filter TermInt64Filter = 2;
@@ -86,6 +90,7 @@ message Filter {
 
   BoolFilter BoolFilter = 7;
   RegexFilter RegexFilter = 8;
+  NullFilter NullFilter = 9;
 }
 
 message BoolFilter {

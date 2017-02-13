@@ -65,7 +65,7 @@ func NewFilterForTimeSlice(t *common.TimeSlice) *filters.Filter {
 	return filters.NewAndFilter(
 		filters.NewLteInt64Filter("CreatedAt", t.Last),
 		filters.NewOrFilter(
-			filters.NewTermInt64Filter("DeletedAt", 0),
+			filters.NewNullFilter("DeletedAt"),
 			filters.NewGteInt64Filter("DeletedAt", t.Start),
 		),
 	)

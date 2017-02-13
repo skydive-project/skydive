@@ -651,6 +651,8 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 		return tv
 	}
 
+	var err error
+	var filter *filters.Filter
 	switch len(s) {
 	case 0:
 		return &GraphTraversalV{error: errors.New("At least one parameter must be provided")}
@@ -659,16 +661,16 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 		if !ok {
 			return &GraphTraversalV{error: errors.New("Key must be a string")}
 		}
-		return tv.hasKey(k)
+		filter = filters.NewNotFilter(filters.NewNullFilter(k))
+	default:
+		filter, err = ParamsToFilter(s...)
+		if err != nil {
+			return &GraphTraversalV{error: err}
+		}
 	}
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
-
-	filter, err := ParamsToFilter(s...)
-	if err != nil {
-		return &GraphTraversalV{error: err}
-	}
 
 	for _, n := range tv.nodes {
 		if it.Done() {
