@@ -45,6 +45,7 @@ type PcapWriter struct {
 
 func (p *PcapWriter) Start() {
 	if atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
+		p.Add(1)
 		go p.FeedFlowTable()
 	}
 }
@@ -66,7 +67,6 @@ func (p *PcapWriter) FeedFlowTable() {
 		timestamp int64
 	)
 
-	p.Add(1)
 	defer p.Done()
 
 	atomic.StoreInt64(&p.state, common.RunningState)
