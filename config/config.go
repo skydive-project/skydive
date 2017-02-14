@@ -84,6 +84,7 @@ func init() {
 	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
+	cfg.SetDefault("agent.flow.stats_update", 1)
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")

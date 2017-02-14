@@ -34,6 +34,7 @@ import (
 	"github.com/google/gopacket/pcap"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -63,6 +64,22 @@ const (
 	snaplen int32 = 256
 )
 
+func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker) {
+	for _ = range ticker.C {
+		if stats, e := handle.Stats(); e != nil {
+			logging.GetLogger().Errorf("Can not get pcap capture stats")
+		} else {
+			g.Lock()
+			t := g.StartMetadataTransaction(n)
+			t.AddMetadata("Capture/PacketsReceived", stats.PacketsReceived)
+			t.AddMetadata("Capture/PacketsDropped", stats.PacketsDropped)
+			t.AddMetadata("Capture/PacketsIfDropped", stats.PacketsIfDropped)
+			t.Commit()
+			g.Unlock()
+		}
+	}
+}
+
 func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := p.packetSource.NextPacket()
@@ -77,11 +94,10 @@ func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-
-	p.handle.Close()
 }
 
 func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture) error {
+	var ticker *time.Ticker
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	g.RLock()
@@ -111,6 +127,11 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		p.handle = handle
 		p.packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
 
+		// Go routine to update the interface statistics
+		statsUpdate := config.GetConfig().GetInt("agent.flow.stats_update")
+		ticker = time.NewTicker(time.Duration(statsUpdate) * time.Second)
+		go pcapUpdateStats(g, n, handle, ticker)
+
 		logging.GetLogger().Infof("PCAP Capture started on %s with First layer: %s", ifName, firstLayerType)
 	default:
 		var handle *AFPacketHandle
@@ -139,7 +160,10 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	defer p.flowTable.Stop()
 
 	p.feedFlowTable(packetsChan)
-
+	if ticker != nil {
+		ticker.Stop()
+	}
+	p.handle.Close()
 	return nil
 }
 

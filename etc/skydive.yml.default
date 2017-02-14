@@ -97,6 +97,9 @@ agent:
       # pcapsocket probe creates a TCP socket where PCAP traces can
       # be written into
       # - pcapsocket
+    # Period in second to get capture stats from the probe. Note this
+    # currently only works for the pcap probe
+    # stats_update: 1
   metadata:
     info: This is compute node
 
