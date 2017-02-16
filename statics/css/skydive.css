@@ -9,6 +9,10 @@ body {
   background-color: #333;
 }
 
+#app {
+  height: 100%;
+}
+
 select {
   color: #111;
 }
@@ -31,13 +35,12 @@ label {
 .topology-d3, .conversation-d3, .discovery-d3 {
   width: 100%;
   text-align: center;
-  padding-top: 5px;
   outline: none;
 }
 
 .topology-d3 {
-  margin-top: 15px;
-  height: 90%;
+  height: 99%;
+  overflow: hidden;
 }
 
 .node-selection {
@@ -211,10 +214,6 @@ path.group {
 
 .main-toolbar .tooltip-inner {
   background-color: #333;
-}
-
-.main-toolbar .slider.slider-horizontal {
-  width: 400px;
 }
 
 .fill {
@@ -415,40 +414,24 @@ circle.manager {
     margin:2px;
 }
 
-.topology-control-container {
+.topology-controls {
   position: absolute;
-  bottom: 50px;
+  bottom: 20px;
   left: 20px;
-  height: 80px;
-  width: 84px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 10px;
 }
 
-.topology-control-container .btn-group-vertical {
-  z-index: 999;
-  position:relative;
-}
-
-.topology-control-container .button-wrapper {
-  width: 80px;
-}
-
-.topology-control-container .button-wrapper .btn {
-    margin: 0px;
-    margin-bottom: 4px;
-}
-
-.topology-control-container #zoomin {
-  width: 34px;
-}
-
-.topology-control-container #zoomout {
-  width: 34px;
-  float: right;
+.flow-ops-panel {
+  margin-top: 10px;
 }
 
 .flow-ops-panel .tab-content {
   color : white;
   background-color: #222;
+  border-radius: 5px;
+  border-top-left-radius: 0px;
 }
 
 .flow-ops-panel .nav>li>a {
@@ -471,6 +454,11 @@ circle.manager {
 .flow-table {
   border-radius: 5px;
   border: 2px solid #666;
+}
+
+.flow-table-time {
+  border-radius: .25em .25em 0 0;
+  background: #529DE1;
 }
 
 .flow-table .flow-table-wrapper {
@@ -581,4 +569,27 @@ ul.dropdown-menu .fa.pull-right {
 /* .slide-fade-leave-active for <2.1.8 */ {
   transform: translateX(300px);
   opacity: 0;
+}
+
+.slider {
+  padding: 0px 10px;
+  color: white;
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.slider input {
+  width: 400px;
+  display: inline-block;
+  margin-right: 10px;
+  background: transparent;
+}
+
+.slider span {
+  color: white;
+  font-weight: bold;
+  line-height: 32px;
 }

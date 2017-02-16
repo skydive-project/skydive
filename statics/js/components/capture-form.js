@@ -2,6 +2,8 @@
 
 Vue.component('capture-form', {
 
+  mixins: [apiMixin, notificationMixin],
+
   template: '\
     <transition name="slide" mode="out-in">\
       <div class="sub-left-panel" v-if="visible">\
@@ -96,10 +98,10 @@ Vue.component('capture-form', {
 
     visible: function(newValue) {
       if (newValue === true &&
-          CurrentNodeDetails &&
-          CurrentNodeDetails.Metadata.TID &&
-          CurrentNodeDetails.IsCaptureAllowed()) {
-        this.node1 = CurrentNodeDetails.Metadata.TID;
+          this.$store.state.currentNode &&
+          this.$store.state.currentNode.IsCaptureAllowed() &&
+          this.$store.state.currentNode.Metadata.TID) {
+        this.node1 = this.$store.state.currentNode.Metadata.TID;
       }
     },
 
@@ -109,7 +111,7 @@ Vue.component('capture-form', {
         this.resetQueryNodes();
         return;
       }
-      TopologyAPI.query(newQuery)
+      this.$topologyQuery(newQuery)
         .then(function(nodes) {
           self.resetQueryNodes();
           self.queryNodes = nodes;
@@ -133,10 +135,10 @@ Vue.component('capture-form', {
     start: function() {
       var self = this;
       if (this.queryError) {
-        $.notify({message: this.queryError}, {type: 'danger'});
+        this.$error({message: this.queryError});
         return;
       }
-      CaptureAPI.create(this.query, this.name, this.desc)
+      this.$captureCreate(this.query, this.name, this.desc)
         .then(function() {
           self.reset();
         });
@@ -148,8 +150,12 @@ Vue.component('capture-form', {
     },
 
     highlightQueryNodes: function(bool) {
+      var self = this;
       this.queryNodes.forEach(function(n) {
-        topologyLayout.SetNodeClass(n.ID, "highlighted", bool);
+        if (bool)
+          self.$store.commit('highlight', n.ID);
+        else
+          self.$store.commit('unhighlight', n.ID);
       });
     }
 

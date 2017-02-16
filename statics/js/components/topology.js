@@ -1,23 +1,223 @@
-/*
- * Copyright (C) 2016 Red Hat, Inc.
- *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
+/* jshint multistr: true */
+
+var TopologyComponent = {
+
+  name: 'topology',
+
+  mixins: [apiMixin, notificationMixin],
+
+  template: '\
+    <div class="topology">\
+      <div class="col-sm-7 fill content">\
+        <div class="topology-d3"></div>\
+        <slider v-if="history" class="slider" :min="timeRange[0]" :max="timeRange[1]" \
+                v-model="time" :info="topologyTimeHuman"></slider>\
+        <div class="topology-controls">\
+          <button type="button" class="btn btn-primary"\
+                  title="Zoom In" @click="zoomIn">\
+            <span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span>\
+          </button>\
+          <button type="button" class="btn btn-primary"\
+                  title="Zoom Out" @click="zoomOut">\
+            <span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span>\
+          </button>\
+          <button type="button" class="btn btn-primary" \
+                  title="Reset" @click="zoomReset">Reset</button>\
+          <button type="button" class="btn btn-primary" \
+                  @click="collapseAll">{{collapsed ? "Expand" : "Collapse"}}</button>\
+        </div>\
+      </div>\
+      <div class="col-sm-5 fill info">\
+        <tabs v-if="isAnalyzer">\
+          <tab-pane title="Captures">\
+            <capture-list></capture-list>\
+            <capture-form v-if="time === 0"></capture-form>\
+          </tab-pane>\
+          <tab-pane title="Generator" v-if="time === 0">\
+            <inject-form></inject-form>\
+          </tab-pane>\
+          <tab-pane title="Flows">\
+            <flow-table-control></flow-table-control>\
+          </tab-pane>\
+        </tabs>\
+        <div class="left-panel" v-if="currentNode">\
+          <div class="title-left-panel">\
+            Node: {{currentNode.ID}}\
+          </div>\
+          <div class="sub-left-panel">\
+            <object-detail :object="currentNode.Metadata"></object-detail>\
+          </div>\
+          <flow-table v-if="isAnalyzer" :value="currentNodeFlowsQuery"></flow-table>\
+        </div>\
+      </div>\
+    </div>\
+  ',
+
+  data: function() {
+    return {
+      time: 0,
+      timeRange: [-120, 0],
+      collapsed: false,
+    };
+  },
+
+  mounted: function() {
+    var self = this;
+    // run d3 layout
+    this.layout = new TopologyLayout(this, ".topology-d3");
+
+    this.syncTopo = debounce(this.layout.SyncRequest.bind(this.layout), 300);
+
+    $(this.$el).find('.content').resizable({
+      handles: 'e',
+      minWidth: 300,
+      resize: function(event, ui){
+        var x = ui.element.outerWidth();
+        var y = ui.element.outerHeight();
+        var ele = ui.element;
+        var factor = $(this).parent().width() - x;
+        var f2 = $(this).parent().width() * 0.02999;
+        $.each(ele.siblings(), function(idx, item) {
+          ele.siblings().eq(idx).css('height', y+'px');
+          ele.siblings().eq(idx).width((factor-f2)+'px');
+        });
+      }
+    });
+
+    // trigered when some component wants to highlight some nodes
+    this.$store.subscribe(function(mutation) {
+      if (mutation.type == "highlight")
+        self.layout.SetNodeClass(mutation.payload, "highlighted", true);
+      else if (mutation.type == "unhighlight")
+        self.layout.SetNodeClass(mutation.payload, "highlighted", false);
+    });
+
+    // trigered when a node is selected
+    this.unwatch = this.$store.watch(
+      function() {
+        return self.$store.state.currentNode;
+      },
+      function(newNode, oldNode) {
+        if (oldNode) {
+          var old = d3.select('#node-' + oldNode.ID);
+          old.classed('active', false);
+          old.select('circle').attr('r', parseInt(old.select('circle').attr('r')) - 3);
+        }
+        if (newNode) {
+          var current = d3.select('#node-' + newNode.ID);
+          current.classed('active', true);
+          current.select('circle').attr('r', parseInt(current.select('circle').attr('r')) + 3);
+        }
+      }
+    );
+  },
+
+  beforeDestroy: function() {
+    this.$store.commit('unselected');
+    this.unwatch();
+  },
+
+  watch: {
+
+    topologyTime: function(at) {
+      if (this.time === 0) {
+        this.syncTopo();
+      }
+      else {
+        this.syncTopo(at);
+      }
+    },
+
+  },
+
+  computed: {
+
+    history: function() {
+      return this.$store.state.history;
+    },
+
+    isAnalyzer: function() {
+      return this.$store.state.service === 'Analyzer';
+    },
+
+    currentNode: function() {
+      return this.$store.state.currentNode;
+    },
+
+    live: function() {
+      return this.time === 0;
+    },
+
+    topologyTime: function() {
+      var time = new Date();
+      time.setMinutes(time.getMinutes() + this.time);
+      time.setSeconds(0);
+      return time.getTime();
+    },
+
+    topologyTimeHuman: function() {
+      if (this.live) {
+        return "live";
+      }
+      var date = new Date(this.topologyTime).toLocaleTimeString();
+      return -this.time + ' min. ago (' + date + ')';
+    },
+
+    currentNodeFlowsQuery: function() {
+      if (this.currentNode)
+        return "G.V('" + this.currentNode.ID + "').Flows().Sort().Dedup()";
+      return "";
+    },
+
+  },
+
+  methods: {
+
+    rescale: function(factor) {
+      var width = this.layout.width,
+          height = this.layout.height,
+          translate = this.layout.zoom.translate(),
+          newScale = this.layout.zoom.scale() * factor,
+          newTranslate = [width / 2 + (translate[0] - width / 2) * factor,
+                          height / 2 + (translate[1] - height / 2) * factor];
+      this.layout.zoom
+        .scale(newScale)
+        .translate(newTranslate)
+        .event(this.layout.view);
+    },
+
+    zoomIn: function() {
+      this.rescale(1.1);
+    },
+
+    zoomOut: function() {
+      this.rescale(0.9);
+    },
+
+    zoomReset: function() {
+      this.layout.zoom
+        .scale(1)
+        .translate([0, 0])
+        .event(this.layout.view);
+    },
+
+    collapseAll: function() {
+      this.collapsed = !this.collapsed;
+      var nodes = this.layout.nodes;
+      for (var i in nodes) {
+        if (nodes[i].Metadata.Type !== "host") {
+          continue;
+        }
+        if (nodes[i].Collapsed !== this.collapsed) {
+          this.layout.CollapseHost(nodes[i]);
+          this.layout.Redraw();
+        }
+      }
+    },
+
+  },
+
+};
 
 var hostImg = 'statics/img/host.png';
 var switchImg = 'statics/img/switch.png';
@@ -32,18 +232,6 @@ var minusImg = 'statics/img/minus-outline-16.png';
 var plusImg = 'statics/img/plus-16.png';
 var probeIndicatorImg = 'statics/img/media-record.png';
 var pinIndicatorImg = 'statics/img/pin.png';
-
-var alerts = {};
-
-var CurrentNodeDetails;
-var FlowGrid;
-var FlowDataView;
-var FlowDataGrid;
-
-var topologyLayout;
-var conversationLayout;
-var discoveryLayout;
-var websocket;
 
 var Group = function(ID, type) {
   this.ID = ID;
@@ -63,13 +251,18 @@ var Node = function(ID) {
   this.Group = '';
 };
 
-Node.prototype.IsCaptureOn = function() {
-  return "Capture/ID" in this.Metadata;
-};
+Node.prototype = {
 
-Node.prototype.IsCaptureAllowed = function() {
-  var allowedTypes = ["device", "veth", "ovsbridge", "internal", "tun", "bridge"];
-  return allowedTypes.indexOf(this.Metadata.Type) >= 0;
+  IsCaptureOn: function() {
+    return "Capture/ID" in this.Metadata;
+  },
+
+  IsCaptureAllowed: function() {
+    var allowedTypes = ["device", "veth", "ovsbridge",
+                        "internal", "tun", "bridge"];
+    return allowedTypes.indexOf(this.Metadata.Type) >= 0;
+  }
+
 };
 
 var Edge = function(ID) {
@@ -172,7 +365,7 @@ Graph.prototype.InitFromSyncMessage = function(msg) {
   var g = msg.Obj;
 
   var i;
-  for (i in g.Nodes) {
+  for (i in g.Nodes || []) {
     var n = g.Nodes[i];
 
     var node = this.NewNode(n.ID);
@@ -181,11 +374,14 @@ Graph.prototype.InitFromSyncMessage = function(msg) {
     node.Host = n.Host;
   }
 
-  for (i in g.Edges) {
+  for (i in g.Edges || []) {
     var e = g.Edges[i];
 
     var parent = this.GetNode(e.Parent);
     var child = this.GetNode(e.Child);
+
+    if (!parent || !child)
+      continue
 
     var edge = this.NewEdge(e.ID, parent, child);
 
@@ -195,17 +391,18 @@ Graph.prototype.InitFromSyncMessage = function(msg) {
   }
 };
 
-var Layout = function(selector) {
+var TopologyLayout = function(vm, selector) {
   var self = this;
+  this.vm = vm;
   this.graph = new Graph();
   this.selector = selector;
   this.elements = {};
   this.groups = {};
   this.synced = false;
-  // we are live by default
-  this.live = true;
   this.lscachetimeout = 60 * 24 * 7;
   this.keeplayout = false;
+  this.alerts = {};
+
   setInterval(function() {
     // keep track of position once one drag occured
     if (self.keeplayout) {
@@ -221,7 +418,7 @@ var Layout = function(selector) {
   websocket.addMsgHandler('Graph', this.ProcessGraphMessage.bind(this));
   websocket.addMsgHandler('Alert', this.ProcessAlertMessage.bind(this));
 
-  this.width = $(selector).width() - 20;
+  this.width = $(selector).width() - 8;
   this.height = $(selector).height();
 
   this.svg = d3.select(selector).append("svg")
@@ -233,11 +430,8 @@ var Layout = function(selector) {
 
   var _this = this;
 
-  d3.behavior.zoom();
-  var zoom = d3.behavior.zoom()
+  this.zoom = d3.behavior.zoom()
     .on("zoom", function() { _this.Rescale(); });
-
-  this.zoom = zoom;
 
   this.force = d3.layout.force()
     .size([this.width, this.height])
@@ -253,7 +447,9 @@ var Layout = function(selector) {
     });
 
   this.view = this.svg.append('g');
-  this.svg.call(zoom).on("dblclick.zoom", null);
+
+  this.svg.call(this.zoom)
+    .on("dblclick.zoom", null);
 
   this.drag = this.force.stop().drag()
     .on("dragstart", function(d) {
@@ -292,7 +488,7 @@ var Layout = function(selector) {
     .attr("d", "M0,-5L10,0L0,5");*/
 };
 
-Layout.prototype.LinkDistance = function(d, i) {
+TopologyLayout.prototype.LinkDistance = function(d, i) {
   var distance = 60;
 
   if (d.source.Group == d.target.Group) {
@@ -311,13 +507,9 @@ Layout.prototype.LinkDistance = function(d, i) {
   return 80;
 };
 
-Layout.prototype.InitFromSyncMessage = function(msg) {
+TopologyLayout.prototype.InitFromSyncMessage = function(msg) {
   if (msg.Status != 200) {
-    $.notify({
-      message: 'Unable to init topology'
-    },{
-      type: 'danger'
-    });
+    this.vm.$error({message: 'Unable to init topology'});
     return;
   }
 
@@ -333,14 +525,14 @@ Layout.prototype.InitFromSyncMessage = function(msg) {
   this.synced = true;
 };
 
-Layout.prototype.Invalidate = function() {
+TopologyLayout.prototype.Invalidate = function() {
   this.synced = false;
 };
 
-Layout.prototype.Clear = function() {
+TopologyLayout.prototype.Clear = function() {
   var ID;
 
-  CurrentNodeDetails = undefined;
+  store.commit('unselected');
 
   for (ID in this.graph.Edges)
     this.DelEdge(this.graph.Edges[ID]);
@@ -355,112 +547,22 @@ Layout.prototype.Clear = function() {
     this.graph.DelNode(this.graph.Nodes[ID]);
 };
 
-Layout.prototype.Rescale = function() {
+TopologyLayout.prototype.Rescale = function() {
   var trans = d3.event.translate;
   var scale = d3.event.scale;
 
   this.view.attr("transform", "translate(" + trans + ")" + " scale(" + scale + ")");
 };
 
-Layout.prototype.SetPosition = function(x, y) {
+TopologyLayout.prototype.SetPosition = function(x, y) {
   this.view.attr("x", x).attr("y", y);
 };
 
-Layout.prototype.SetNodeClass = function(ID, clazz, active) {
+TopologyLayout.prototype.SetNodeClass = function(ID, clazz, active) {
   d3.select("#node-" + ID).classed(clazz, active);
 };
 
-function ShowNodeFlows(node) {
-  if (!node.IsCaptureOn()) {
-    FlowDataView.beginUpdate();
-    FlowDataView.setItems([]);
-    FlowDataView.endUpdate();
-    $('#flow-uuid').html('');
-    $("#flow-details").html('');
-    return;
-  }
-
-  var query = "G.V('" + node.ID + "').Flows().Sort().Dedup().Limit(20)";
-  $.ajax({
-    dataType: "json",
-    url: '/api/topology',
-    data: JSON.stringify({"GremlinQuery": query}),
-    method: 'POST',
-    error: function(e) {
-      $.notify({
-        message: 'Gremlin request error: ' + e.responseText
-      },{
-        type: 'danger'
-      });
-    },
-    success: function(data) {
-      FlowDataGrid = [];
-
-      var id = 0;
-      for (var i in data) {
-        var flow = data[i];
-
-        var a = ('Link' in flow) ? flow.Link.A : '';
-        if ("Network" in flow) {
-          a = flow.Network.A;
-          if ("Transport" in flow) {
-            a += ':' + flow.Transport.A;
-          }
-        }
-
-        var b = ('Link' in flow) ? flow.Link.B : '';
-        if ("Network" in flow) {
-          b = flow.Network.B;
-          if ("Transport" in flow) {
-            b += ':' + flow.Transport.B;
-          }
-        }
-
-        var parent = {
-          id: id,
-          parent: null,
-          indent: 0,
-          UUID: flow.UUID,
-          TrackingID: flow.TrackingID,
-          ID: flow.TrackingID,
-          Application: flow.Application,
-          A: a,
-          B: b,
-          ABPackets: flow.Metric.ABPackets,
-          BAPackets: flow.Metric.BAPackets,
-          ABBytes: flow.Metric.ABBytes,
-          BABytes: flow.Metric.BABytes
-        };
-
-        FlowDataGrid.push(parent);
-        if ("Network" in flow && "Link" in flow) {
-          parent._collapsed = true;
-          FlowDataGrid.push({
-            id: id + 1,
-            parent: {id: id},
-            indent: 1,
-            TrackingID: flow.TrackingID,
-            ID: '',
-            Application: '',
-            A:flow.Link.A,
-            B: flow.Link.B
-          });
-          id++;
-        }
-        id++;
-      }
-
-      FlowDataView.beginUpdate();
-      FlowDataView.setItems(FlowDataGrid);
-      FlowDataView.setFilterArgs(FlowDataGrid);
-      FlowDataView.endUpdate();
-      FlowDataView.refresh();
-      FlowGrid.invalidate();
-    }
-  });
-}
-
-Layout.prototype.Hash = function(str) {
+TopologyLayout.prototype.Hash = function(str) {
   var chars = str.split('');
 
   var hash = 2342;
@@ -472,7 +574,7 @@ Layout.prototype.Hash = function(str) {
   return hash;
 };
 
-Layout.prototype.AddNode = function(node) {
+TopologyLayout.prototype.AddNode = function(node) {
   if (node.ID in this.elements)
     return;
 
@@ -495,15 +597,14 @@ Layout.prototype.AddNode = function(node) {
   this.Redraw();
 };
 
-Layout.prototype.UpdateNode = function(node, metadata) {
+TopologyLayout.prototype.UpdateNode = function(node, metadata) {
   node.Metadata = metadata;
 };
 
-Layout.prototype.DelNode = function(node) {
-  if (typeof CurrentNodeDetails != "undefined" && node.ID == CurrentNodeDetails.ID) {
-    CurrentNodeDetails = undefined;
+TopologyLayout.prototype.DelNode = function(node) {
+  if (store.state.currentNode && store.state.currentNode.ID == node.ID) {
+    store.commit('unselected');
   }
-  vueSidebar.$emit('NODE_DELETED', node);
 
   if (!(node.ID in this.elements))
     return;
@@ -519,7 +620,7 @@ Layout.prototype.DelNode = function(node) {
   this.Redraw();
 };
 
-Layout.prototype.AddEdge = function(edge) {
+TopologyLayout.prototype.AddEdge = function(edge) {
   if (edge.ID in this.elements)
     return;
 
@@ -570,7 +671,7 @@ Layout.prototype.AddEdge = function(edge) {
   this.Redraw();
 };
 
-Layout.prototype.DelEdge = function(edge) {
+TopologyLayout.prototype.DelEdge = function(edge) {
   if (!(edge.ID in this.elements))
     return;
 
@@ -599,7 +700,7 @@ Layout.prototype.DelEdge = function(edge) {
   this.Redraw();
 };
 
-Layout.prototype.Tick = function(e) {
+TopologyLayout.prototype.Tick = function(e) {
   this.link.attr("d", this.linkArc);
 
   this.node.attr("cx", function(d) { return d.x; })
@@ -614,14 +715,14 @@ Layout.prototype.Tick = function(e) {
     });
 };
 
-Layout.prototype.linkArc = function(d) {
+TopologyLayout.prototype.linkArc = function(d) {
   var dx = d.target.x - d.source.x,
       dy = d.target.y - d.source.y,
       dr = Math.sqrt(dx * dx + dy * dy) * 1.3;
   return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
 };
 
-Layout.prototype.CircleSize = function(d) {
+TopologyLayout.prototype.CircleSize = function(d) {
   var size;
   switch(d.Metadata.Type) {
     case "host":
@@ -640,21 +741,21 @@ Layout.prototype.CircleSize = function(d) {
       break;
   }
 
-  if (CurrentNodeDetails && CurrentNodeDetails.ID === d.ID) {
+  if (store.state.currentNode && store.state.currentNode.ID === d.ID) {
     size += 3;
   }
 
   return size;
 };
 
-Layout.prototype.GroupClass = function(d) {
+TopologyLayout.prototype.GroupClass = function(d) {
   return "group " + d.Type;
 };
 
-Layout.prototype.NodeClass = function(d) {
+TopologyLayout.prototype.NodeClass = function(d) {
   var clazz = "node " + d.Metadata.Type;
 
-  if (d.ID in alerts)
+  if (d.ID in this.alerts)
     clazz += " alert";
 
   if (d.Metadata.State == "DOWN")
@@ -663,13 +764,13 @@ Layout.prototype.NodeClass = function(d) {
   if (d.Highlighted)
     clazz = "highlighted " + clazz;
 
-  if (CurrentNodeDetails && d.ID == CurrentNodeDetails.ID)
+  if (store.state.currentNode && store.state.currentNode.ID === d.ID)
     clazz = "active " + clazz;
 
   return clazz;
 };
 
-Layout.prototype.EdgeClass = function(d) {
+TopologyLayout.prototype.EdgeClass = function(d) {
   if (d.edge.Metadata.Type == "fabric") {
     if ((d.edge.Parent.Metadata.Probe == "fabric" && !d.edge.Child.Metadata.Probe) ||
       (!d.edge.Parent.Metadata.Probe && d.edge.Child.Metadata.Probe == "fabric")) {
@@ -680,19 +781,19 @@ Layout.prototype.EdgeClass = function(d) {
   return "link " + (d.edge.Metadata.Type || '')  + " " + (d.edge.Metadata.RelationType || '');
 };
 
-Layout.prototype.CircleOpacity = function(d) {
+TopologyLayout.prototype.CircleOpacity = function(d) {
   if (d.Metadata.Type == "netns" && d.Metadata.Manager === null)
     return 0.0;
   return 1.0;
 };
 
-Layout.prototype.EdgeOpacity = function(d) {
+TopologyLayout.prototype.EdgeOpacity = function(d) {
   if (d.source.Metadata.Type == "netns" || d.target.Metadata.Type == "netns")
     return 0.0;
   return 1.0;
 };
 
-Layout.prototype.NodeManagerPicto = function(d) {
+TopologyLayout.prototype.NodeManagerPicto = function(d) {
   switch(d.Metadata.Manager) {
     case "docker":
       return dockerImg;
@@ -701,7 +802,7 @@ Layout.prototype.NodeManagerPicto = function(d) {
   }
 };
 
-Layout.prototype.NodeManagerStyle = function(d) {
+TopologyLayout.prototype.NodeManagerStyle = function(d) {
   switch(d.Metadata.Manager) {
     case "docker":
       return "";
@@ -712,7 +813,7 @@ Layout.prototype.NodeManagerStyle = function(d) {
   return "visibility: hidden";
 };
 
-Layout.prototype.NodePicto = function(d) {
+TopologyLayout.prototype.NodePicto = function(d) {
   switch(d.Metadata.Type) {
     case "host":
       return hostImg;
@@ -737,21 +838,20 @@ Layout.prototype.NodePicto = function(d) {
   }
 };
 
-Layout.prototype.NodeProbeStatePicto = function(d) {
+TopologyLayout.prototype.NodeProbeStatePicto = function(d) {
   if (d.IsCaptureOn())
     return probeIndicatorImg;
   return "";
 };
 
-Layout.prototype.NodePinStatePicto = function(d) {
+TopologyLayout.prototype.NodePinStatePicto = function(d) {
   if (d.fixed)
     return pinIndicatorImg;
   return "";
 };
 
-Layout.prototype.NodeStatePicto = function(d) {
-  if (d.Metadata.Type != "netns" &&
-      d.Metadata.Type != "host" )
+TopologyLayout.prototype.NodeStatePicto = function(d) {
+  if (d.Metadata.Type !== "netns" && d.Metadata.Type !== "host")
     return "";
 
   if (d.Collapsed)
@@ -762,7 +862,7 @@ Layout.prototype.NodeStatePicto = function(d) {
 // return the parent for a give node as a node can have mutliple parent
 // return the best one. For ex an ovsport is not considered as a parent,
 // host node will be a better candiate.
-Layout.prototype.ParentNodeForGroup = function(node) {
+TopologyLayout.prototype.ParentNodeForGroup = function(node) {
   var parent;
   for (var i in node.Edges) {
     var edge = node.Edges[i];
@@ -788,7 +888,7 @@ Layout.prototype.ParentNodeForGroup = function(node) {
   return parent;
 };
 
-Layout.prototype.AddNodeToGroup = function(ID, type, node, groups) {
+TopologyLayout.prototype.AddNodeToGroup = function(ID, type, node, groups) {
   var group = groups[ID] || (groups[ID] = new Group(ID, type));
   if (node.ID in group.Nodes)
     return;
@@ -818,7 +918,7 @@ Layout.prototype.AddNodeToGroup = function(ID, type, node, groups) {
 
 // add node to parent group until parent is of type host
 // this means a node can be in multiple group
-Layout.prototype.addNodeToParentGroup = function(parent, node, groups) {
+TopologyLayout.prototype.addNodeToParentGroup = function(parent, node, groups) {
   if (parent) {
     groupID = parent.ID;
 
@@ -833,7 +933,7 @@ Layout.prototype.addNodeToParentGroup = function(parent, node, groups) {
   }
 };
 
-Layout.prototype.UpdateGroups = function() {
+TopologyLayout.prototype.UpdateGroups = function() {
   var node;
   var i;
 
@@ -884,7 +984,7 @@ Layout.prototype.UpdateGroups = function() {
   }
 };
 
-Layout.prototype.Groups = function() {
+TopologyLayout.prototype.Groups = function() {
   var groupArray = [];
 
   this.UpdateGroups();
@@ -895,7 +995,7 @@ Layout.prototype.Groups = function() {
   return groupArray;
 };
 
-Layout.prototype.DrawCluster = function(d) {
+TopologyLayout.prototype.DrawCluster = function(d) {
   var curve = d3.svg.line()
   .interpolate("cardinal-closed")
   .tension(0.90);
@@ -903,7 +1003,7 @@ Layout.prototype.DrawCluster = function(d) {
   return curve(d.path);
 };
 
-Layout.prototype.GetNodeText = function(d) {
+TopologyLayout.prototype.GetNodeText = function(d) {
   var name = this.graph.GetNode(d.ID).Metadata.Name;
   if (name.length > 10)
     name = name.substr(0, 8) + ".";
@@ -911,7 +1011,7 @@ Layout.prototype.GetNodeText = function(d) {
   return name;
 };
 
-Layout.prototype.CollapseNetNS = function(node) {
+TopologyLayout.prototype.CollapseNetNS = function(node) {
   for (var i in node.Edges) {
     var edge = node.Edges[i];
 
@@ -927,18 +1027,18 @@ Layout.prototype.CollapseNetNS = function(node) {
   }
 };
 
-Layout.prototype.CollapseHost = function(theNode) {
+TopologyLayout.prototype.CollapseHost = function(hostNode) {
   var fabricNode;
-  var isCollapsed = theNode.Collapsed ? false : true;
+  var isCollapsed = hostNode.Collapsed ? false : true;
 
   // All nodes in the group
   for (var i in this.nodes) {
     var node = this.nodes[i];
 
-    if (node.Host != theNode.Host)
+    if (node.Host != hostNode.Host)
       continue;
 
-    if (node == theNode)
+    if (node == hostNode)
       continue;
 
     // All edges (connected to all nodes in the group)
@@ -950,7 +1050,7 @@ Layout.prototype.CollapseHost = function(theNode) {
         continue;
       }
 
-      if ((edge.Parent == theNode) || (edge.Child == theNode)) {
+      if ((edge.Parent == hostNode) || (edge.Child == hostNode)) {
         child = edge.Child
         var found = false;
         for (n in child.Edges) {
@@ -973,13 +1073,10 @@ Layout.prototype.CollapseHost = function(theNode) {
     node.Visible = isCollapsed ? false : true;
   }
 
-  theNode.Collapsed = isCollapsed;
-
-  this.Redraw();
-
+  hostNode.Collapsed = isCollapsed;
 };
 
-Layout.prototype.CollapseNode = function(d) {
+TopologyLayout.prototype.CollapseNode = function(d) {
   if (d3.event.defaultPrevented)
     return;
 
@@ -997,7 +1094,7 @@ Layout.prototype.CollapseNode = function(d) {
   this.Redraw();
 };
 
-Layout.prototype.Redraw = function() {
+TopologyLayout.prototype.Redraw = function() {
   var self = this;
 
   if (typeof this.redrawTimeout == "undefined")
@@ -1016,7 +1113,7 @@ Layout.prototype.Redraw = function() {
     }, 100);
 };
 
-Layout.prototype.redraw = function() {
+TopologyLayout.prototype.redraw = function() {
   var _this = this;
 
   this.link = this.link.data(this.links, function(d) { return d.source.ID + "-" + d.target.ID; });
@@ -1054,17 +1151,7 @@ Layout.prototype.redraw = function() {
         _this.redraw();
         return;
       }
-
-      if (CurrentNodeDetails) {
-        var old = d3.select('#node-' + CurrentNodeDetails.ID);
-        old.classed('active', false);
-        old.select('circle').attr('r', parseInt(old.select('circle').attr('r')) - 3);
-      }
-      CurrentNodeDetails = d;
-      vueSidebar.$emit('NODE_SELECTED', d);
-      var current = d3.select(this);
-      current.classed('active', true);
-      current.select('circle').attr('r', parseInt(current.select('circle').attr('r')) + 3);
+      store.commit('selected', d);
     })
     .on("dblclick", function(d) {
       return _this.CollapseNode(d);
@@ -1172,8 +1259,8 @@ Layout.prototype.redraw = function() {
   this.force.start();
 };
 
-Layout.prototype.ProcessGraphMessage = function(msg) {
- if (msg.Type != "SyncReply" && (!this.live || !this.synced) ) {
+TopologyLayout.prototype.ProcessGraphMessage = function(msg) {
+ if (msg.Type != "SyncReply" && (!this.vm.live || !this.synced) ) {
     console.log("Skipping message " + msg.Type);
     return;
   }
@@ -1254,214 +1341,24 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
   }
 };
 
-Layout.prototype.ProcessAlertMessage = function(msg) {
+TopologyLayout.prototype.ProcessAlertMessage = function(msg) {
   var _this = this;
 
   var ID  = msg.Obj.ReasonData.ID;
-  alerts[ID] = msg.Obj;
+  this.alerts[ID] = msg.Obj;
   this.Redraw();
 
-  setTimeout(function() { delete alerts[ID]; _this.Redraw(); }, 1000);
+  setTimeout(function() { delete this.alerts[ID]; _this.Redraw(); }, 1000);
 };
 
-Layout.prototype.SyncRequest = function(t) {
+TopologyLayout.prototype.SyncRequest = function(t) {
   var obj = {};
-  if (t !== null) {
+  if (t) {
     obj.Time = t;
+    store.commit('time', t);
+  } else {
+    store.commit('time', 0);
   }
   var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
   websocket.send(msg);
 };
-
-function AgentReady() {
-  $(".analyzer-only").hide();
-}
-
-function AnalyzerReady() {
-  conversationLayout = new ConversationLayout(".conversation-d3");
-  discoveryLayout = new DiscoveryLayout(".discovery-d3");
-
-  $('#topology-btn').click(function() {
-    $('#topology').addClass('active');
-    $('#conversation').removeClass('active');
-    $('#discovery').removeClass('active');
-
-    $('.topology').show();
-    $('.topology-control-container').show();
-    $('.conversation').hide();
-    $('.discovery').hide();
-  });
-
-  $('#conversation-btn').click(function() {
-    $('#topology').removeClass('active');
-    $('#conversation').addClass('active');
-    $('#discovery').removeClass('active');
-
-    $('.topology').hide();
-    $('.topology-control-container').hide();
-    $('.conversation').show();
-    $('.discovery').hide();
-
-    conversationLayout.ShowConversation("ethernet");
-  });
-  $('#discovery-btn').click(function() {
-    $('#topology').removeClass('active');
-    $('#conversation').removeClass('active');
-    $('#discovery').addClass('active');
-
-    $('.topology').hide();
-    $('.topology-control-container').hide();
-    $('.conversation').hide();
-    $('.discovery').show();
-
-    discoveryLayout.DrawChart();
-  });
-
-  SetupTimeSlider();
-  SetupControlButtons();
-}
-
-function Logout() {
-  window.location.href = "/login";
-}
-
-function CheckAPI() {
-  return $.ajax({
-    dataType: "json",
-    url: '/api',
-    error: function(e) {
-      if (e.status == 401)
-        Logout();
-    }
-  });
-}
-
-function StartCheckAPIAccess() {
-  CheckAPI()
-    .then(function(r) {
-      var service = r.Service;
-      $('#service').html(service + " " + r.Version);
-      vueSidebar.service = service;
-      if (service == "agent") {
-        AgentReady();
-      }
-      else {
-        AnalyzerReady();
-      }
-    })
-    .then(function() {
-      setInterval(CheckAPI, 5000);
-    });
-}
-
-function zoomclicked(direction) {
-
-  var scale = topologyLayout.zoom.scale();
-  var translate = topologyLayout.zoom.translate();
-
-  if (direction == "zoomreset") {
-      newscale = 1;
-      newtranslate = [0,0];
-  } else {
-      if (direction == "zoomin") {
-          factor = 1.1;
-      } else {
-          factor = 0.9;
-      }
-
-      newscale = (scale * factor);
-      newtranslate = [topologyLayout.width / 2 + (translate[0] - topologyLayout.width / 2 )*factor,
-                      topologyLayout.height / 2 + (translate[1] - topologyLayout.height / 2)*factor];
-  }
-
-  topologyLayout.zoom.scale(newscale);
-  topologyLayout.zoom.translate(newtranslate);
-  topologyLayout.zoom.event(topologyLayout.view);
-}
-
-function ToggleCollapseAllHosts() {
-  // global collapse all status
-  var isCollapsed = $("#collapseall").attr("value") == "true";
-
-  $("#collapseall")
-    .html(isCollapsed ? "Collapse" : "Expand")
-    .attr("value", isCollapsed ? "false" : "true");
-
-  for (var i in this.topologyLayout.nodes) {
-    var node = this.topologyLayout.nodes[i];
-
-    if (node.Metadata.Type == "host") {
-      // toggle host only when host collapse state same as global
-      if (isCollapsed == node.Collapsed) {
-       this.topologyLayout.CollapseHost(node);
-      }
-    }
-  }
-}
-
-function SetupControlButtons() {
-
-  $("#collapseall").click(function(e) {
-    ToggleCollapseAllHosts();
-    e.preventDefault();
-  });
-
-  $("#zoomin").click(function(e) {
-    zoomclicked("zoomin");
-    e.preventDefault();
-  });
-  $("#zoomout").click(function(e) {
-    zoomclicked("zoomout");
-    e.preventDefault();
-  });
-  $("#zoomreset").click(function(e) {
-    zoomclicked("zoomreset");
-    e.preventDefault();
-  });
-  $('.topology-d3').mouseover(function(e) {
-    // focus so that keypress can be captured
-    $('.topology-d3').focus();
-  });
-  $('.topology-d3').keypress(function(e) {
-    var char = e.which || e.keyCode;
-    switch (char) {
-      case 43:
-      zoomclicked("zoomin");
-      e.preventDefault();
-      break;
-      case 45:
-      zoomclicked("zoomout");
-      e.preventDefault();
-      break;
-      default:
-    }
-  });
-}
-
-$(document).ready(function() {
-  $('.content').resizable({
-    handles: 'e',
-    minWidth: 300,
-    resize:function(event,ui){
-      var x=ui.element.outerWidth();
-      var y=ui.element.outerHeight();
-      var ele=ui.element;
-      var factor = $(this).parent().width()-x;
-      var f2 = $(this).parent().width() * 0.02999;
-      $.each(ele.siblings(),function(idx,item) {
-        ele.siblings().eq(idx).css('height',y+'px');
-        ele.siblings().eq(idx).width((factor-f2)+'px');
-      });
-    }
-  });
-
-  $('.conversation').hide();
-  $('.discovery').hide();
-
-  websocket = new WSHandler();
-  websocket.connect();
-
-  topologyLayout = new Layout(".topology-d3");
-  vueSidebar = new Vue(VueSidebar);
-  StartCheckAPIAccess();
-});

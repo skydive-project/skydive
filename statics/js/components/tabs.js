@@ -43,8 +43,8 @@ Vue.component('tabs', {
   template: '\
     <div class="flow-ops-panel">\
       <ul class="nav nav-pills">\
-        <li v-for="(pane, index) in panes" v-bind:class="{active: pane.selected}">\
-          <a href="#" @click="select(index)">{{pane.title}}</a>\
+        <li v-for="(pane, index) in panes" v-bind:class="{active: pane.selected}" @click="select(index)" style="cursor: pointer">\
+          <a>{{pane.title}}</a>\
         </li>\
       </ul>\
       <div class="tab-content clearfix">\
@@ -71,7 +71,11 @@ Vue.component('tabs', {
     },
 
     removePane: function(pane) {
-      this.panes.splice(this.panes.indexOf(this), 1);
+      var idx = this.panes.indexOf(pane);
+      this.panes.splice(idx, 1);
+      if (idx <= this.selected) {
+        this.selected -= 1;
+      }
     },
 
   }

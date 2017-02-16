@@ -13,19 +13,11 @@ WSHandler.prototype = {
   connect: function() {
     var self = this;
 
-    this._connect()
-      .fail(function() {
-        console.error("Failed to connect to WS server, trying again in 1s");
-        setTimeout(self.connect.bind(self), 1000);
-      })
-      .then(function() {
-        // once we are connected we can react on disconnections
-        self.disconnected
-          .then(function() {
-            console.error("Disconnected from WS server, reconnecting");
-            self.connect();
-          });
-      });
+    if (this.conn && this.conn.readyState == WebSocket.OPEN) {
+      return;
+    }
+
+    this._connect();
   },
 
   _connect: function() {
@@ -47,30 +39,17 @@ WSHandler.prototype = {
 
     this.conn = new WebSocket("ws://" + this.host + "/ws");
     this.conn.onopen = function() {
-      $.notify({
-      	message: 'Connected'
-      },{
-      	type: 'success'
-      });
       self.connecting = false;
       self.connected.resolve(true);
     };
     this.conn.onclose = function() {
       // connection closed after a succesful connection
       if (self.connecting === false) {
-        $.notify({
-          message: 'Connection lost'
-        },{
-          type: 'danger'
-        });
+        store.commit('addNotification', {message: 'Connection lost', type: 'danger'});
+        store.commit('logout');
         self.disconnected.resolve(true);
       // client never succeed to connect in the first place
       } else {
-        $.notify({
-          message: 'Failed to connect'
-        },{
-          type: 'danger'
-        });
         self.connecting = false;
         self.connected.reject(false);
       }

@@ -1,34 +1,103 @@
+/* jshint multistr: true */
 
-var ConversationLayout = function(selector) {
+var ConversationComponent = {
+
+  name: 'Conversation',
+
+  template: '\
+    <div class="conversation">\
+      <div class="col-sm-8 fill content">\
+        <div class="conversation-d3"></div>\
+      </div>\
+      <div class="col-sm-4 fill info">\
+        <div class="left-cont">\
+          <div class="left-panel">\
+            <form>\
+              <div class="form-group" v-if="false">\
+                <label for="order-type">Order</label>\
+                <select id="order-type" v-model="order" class="form-control input-sm">\
+                  <option v-for="order in orders" :value="order.value">{{ order.label }}</option>\
+                </select>\
+              </div>\
+              <div class="form-group">\
+                <label for="layer-type">Layer</label>\
+                <select id="layer-type" v-model="layer" class="form-control input-sm">\
+                  <option v-for="layer in layers" :value="layer.value">{{ layer.label }}</option>\
+                </select>\
+              </div>\
+            </form>\
+          </div>\
+          <div class="left-panel" v-if="node">\
+            <div class="title-left-panel">Interface detail</div>\
+            <object-detail :object="node"></object-detail>\
+          </div>\
+        </div>\
+      </div>\
+    </div>\
+  ',
+
+  data: function() {
+    return {
+      layers: [
+        {label: "Ethernet", value: "ethernet"},
+        {label: "IPv4", value: "ipv4"},
+        {label: "IPv6", value: "ipv6"},
+        {label: "TCP", value: "tcp"},
+        {label: "UDP", value: "udp"},
+        {label: "SCTP", value: "sctp"},
+      ],
+      layer: "ethernet",
+      orders: [
+        {label: "by Name", value: "name"},
+        {label: "by Frequency", value: "count"},
+        {label: "by Application", value: "group"},
+      ],
+      order: "name",
+      node: null,
+    };
+  },
+
+  mounted: function() {
+    this.layout = new ConversationLayout(this, ".conversation-d3");
+    this.layout.ShowConversation("ethernet");
+  },
+
+  watch: {
+
+    layer: function() {
+      this.layout.ShowConversation(this.layer);
+    },
+
+    order: function() {
+      this.layout.Order(this.order);
+    },
+
+  },
+
+};
+
+var ConversationLayout = function(vm, selector) {
+  this.vm = vm;
   this.width = 600;
   this.height = 600;
 
   var margin = {top: 100, right: 0, bottom: 10, left: 100};
 
   this.svg = d3.select(selector).append("svg")
-  .attr("width", this.width + margin.left + margin.right)
-  .attr("height", this.height + margin.top + margin.bottom)
-  .style("margin-left", -margin.left + 20 + "px")
-  .append("g")
-  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    .attr("width", this.width + margin.left + margin.right)
+    .attr("height", this.height + margin.top + margin.bottom)
+    .style("margin-left", -margin.left + 20 + "px")
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
   this.orders = {};
-
-  var _this = this;
-  d3.select("#layer").on("change", function() {
-    _this.ShowConversation(this.value);
-  });
-
-  d3.select("#order").on("change", function() {
-    _this.Order(this.value);
-  });
 };
 
 ConversationLayout.prototype.Order = function(order) {
   if (!(order in this.orders))
     return;
 
-  var x = d3.scale.ordinal().rangeBands([0, _this.width]);
+  var x = d3.scale.ordinal().rangeBands([0, this.width]);
 
   x.domain(this.orders[order]);
 
@@ -51,8 +120,7 @@ ConversationLayout.prototype.Order = function(order) {
 };
 
 ConversationLayout.prototype.NodeDetails = function(node) {
-  var json = JSON.stringify(node);
-  $("#metadata_app").JSONView(json);
+  this.vm.node = node;
 };
 
 ConversationLayout.prototype.ShowConversation = function(layer) {
@@ -123,7 +191,7 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
       .on("mouseover", function(p) {
         d3.selectAll(".row text").classed("active", function(d, i) { return i == p.y; });
         d3.selectAll(".column text").classed("active", function(d, i) { return i == p.x; });
-        _this.NodeDetails(nodes[p.x]);
+        //_this.NodeDetails(nodes[p.x]);
       })
       .on("mouseout", function(p) {
         d3.selectAll("text").classed("active", false);

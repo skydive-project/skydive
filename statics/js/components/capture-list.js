@@ -2,6 +2,8 @@
 
 var Capture = {
 
+  mixins: [apiMixin],
+
   props: {
 
     capture: {
@@ -66,22 +68,26 @@ var Capture = {
       var self = this,
           uuid = capture.UUID;
       this.deleting = true;
-      CaptureAPI.delete(uuid)
+      this.$captureDelete(uuid)
         .always(function() {
           self.deleting = false;
         });
     },
 
     highlightCaptureNodes: function(capture, bool) {
+      var self = this;
       // Avoid highlighting the nodes while the capture
       // is being deleted
       if (this.deleting) {
         return;
       }
-      TopologyAPI.query(capture.GremlinQuery)
+      this.$topologyQuery(capture.GremlinQuery)
         .then(function(nodes) {
           nodes.forEach(function(n) {
-            topologyLayout.SetNodeClass(n.ID, "highlighted", bool);
+            if (bool)
+              self.$store.commit("highlight", n.ID);
+            else
+              self.$store.commit("unhighlight", n.ID);
           });
         });
     }
@@ -92,6 +98,8 @@ var Capture = {
 
 
 Vue.component('capture-list', {
+
+  mixins: [apiMixin],
 
   components: {
     'capture': Capture,
@@ -136,7 +144,7 @@ Vue.component('capture-list', {
 
     init: function() {
       var self = this;
-      CaptureAPI.list()
+      this.$captureList()
         .then(function(data) {
           self.captures = data;
         });
@@ -151,30 +159,6 @@ Vue.component('capture-list', {
           Vue.set(this.captures, msg.Obj.UUID, msg.Obj);
           break;
       }
-    },
-
-    remove: function(capture) {
-      var self = this,
-          uuid = capture.UUID;
-      self.deleting.push(uuid);
-      CaptureAPI.delete(uuid)
-        .always(function() {
-          self.deleting.splice(self.deleting.indexOf(uuid), 1);
-        });
-    },
-
-    highlightCaptureNodes: function(capture, bool) {
-      // Avoid highlighting the nodes while the capture
-      // is being deleted
-      if (this.deleting.indexOf(capture.UUID) !== -1) {
-        return;
-      }
-      TopologyAPI.query(capture.GremlinQuery)
-        .then(function(nodes) {
-          nodes.forEach(function(n) {
-            topologyLayout.SetNodeClass(n.ID, "highlighted", bool);
-          });
-        });
     }
 
   }

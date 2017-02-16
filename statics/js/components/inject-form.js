@@ -1,4 +1,8 @@
+/* jshint multistr: true */
+
 Vue.component('inject-form', {
+
+  mixins: [apiMixin, notificationMixin],
 
   template: '\
     <form @submit.prevent="inject">\
@@ -34,6 +38,12 @@ Vue.component('inject-form', {
       count: 1,
       type: "icmp",
     };
+  },
+
+  created: function() {
+    if (this.$store.state.currentNode) {
+      this.node1 = this.$store.state.currentNode.ID;
+    }
   },
 
   beforeDestroy: function() {
@@ -80,7 +90,10 @@ Vue.component('inject-form', {
   methods: {
 
     highlightNode: function(id, bool) {
-      topologyLayout.SetNodeClass(id, "highlighted", bool);
+      if (bool)
+        this.$store.commit('highlight', id);
+      else
+        this.$store.commit('unhighlight', id);
     },
 
     reset: function() {
@@ -93,7 +106,7 @@ Vue.component('inject-form', {
     inject: function() {
       var self = this;
       if (this.error) {
-        $.notify({message: this.error}, {type: 'danger'});
+        this.$error({message: this.error});
         return;
       }
       $.ajax({
@@ -109,18 +122,10 @@ Vue.component('inject-form', {
         method: 'POST',
       })
       .then(function() {
-        $.notify({
-          message: 'Packet injected'
-        },{
-          type: 'success'
-        });
+        self.$success({message: 'Packet injected'});
       })
       .fail(function(e) {
-        $.notify({
-          message: 'Packet injection error: ' + e.responseText
-        },{
-          type: 'danger'
-        });
+        self.$error({message: 'Packet injection error: ' + e.responseText});
       });
     },
 

@@ -2,6 +2,8 @@
 
 var FilterSelector = {
 
+  mixins: [apiMixin],
+
   props: {
 
     filters: {
@@ -69,13 +71,13 @@ var FilterSelector = {
   methods: {
 
     keySuggestions: function() {
-      return TopologyAPI.query(this.query + ".Keys()");
+      return this.$topologyQuery(this.query + ".Keys()");
     },
 
     valueSuggestions: function() {
       if (!this.key)
         return $.Deferred().resolve([]);
-      return TopologyAPI.query(this.query + ".Values('"+this.key+"').Dedup()")
+      return this.$topologyQuery(this.query + ".Values('"+this.key+"').Dedup()")
         .then(function(values) {
           return values.map(function(v) { return v.toString(); });
         });
@@ -317,6 +319,8 @@ var TableHeader = {
 
 Vue.component('flow-table', {
 
+  mixins: [apiMixin],
+
   props: {
 
     value: {
@@ -328,6 +332,9 @@ Vue.component('flow-table', {
 
   template: '\
     <div v-if="!queryError" class="flow-table">\
+      <span v-if="time" class="label center-block flow-table-time">\
+        Flows at {{timeHuman}}\
+      </span>\
       <div class="flow-table-wrapper">\
         <table class="table table-condensed table-bordered">\
           <table-header :fields="visibleFields"\
@@ -538,6 +545,15 @@ Vue.component('flow-table', {
 
   computed: {
 
+    time: function() {
+      return this.$store.state.time;
+    },
+
+    timeHuman: function() {
+      var d = new Date(this.time);
+      return d.toLocaleTimeString();
+    },
+
     sortedResults: function() {
       return this.queryResults.sort(this.compareFlows);
     },
@@ -558,8 +574,12 @@ Vue.component('flow-table', {
       });
     },
 
+    timedQuery: function() {
+      return this.setQueryTime(this.value);
+    },
+
     filteredQuery: function() {
-      var filteredQuery = this.value;
+      var filteredQuery = this.timedQuery;
       for (var k of Object.keys(this.filters)) {
         if (this.filters[k].length === 1) {
           filteredQuery += ".Has('"+k+"', '"+this.filters[k][0]+"')";
@@ -596,7 +616,7 @@ Vue.component('flow-table', {
 
     getFlows: function() {
       var self = this;
-      TopologyAPI.query(this.limitedQuery)
+      this.$topologyQuery(this.limitedQuery)
         .then(function(flows) {
           // much faster than replacing
           // the array with vuejs
@@ -606,9 +626,16 @@ Vue.component('flow-table', {
           });
         })
         .fail(function(r) {
-          self.queryError = r.responseText;
+          self.queryError = r.responseText + "Query was : " + self.limitedQuery;
           self.stopAutoRefresh();
         });
+    },
+
+    setQueryTime: function(query) {
+      if (this.time !== 0) {
+        return query.replace("G.", "G.At("+parseInt(this.time / 1000)+").");
+      }
+      return query;
     },
 
     hasFlowDetail: function(flow) {
@@ -627,13 +654,17 @@ Vue.component('flow-table', {
     highlightNodes: function(obj, bool) {
       var self = this,
           query = "G.Flows().Has('" + this.highlightMode + "', '" + obj[this.highlightMode] + "').Nodes()";
-      TopologyAPI.query(query)
+      query = this.setQueryTime(query);
+      this.$topologyQuery(query)
         .then(function(nodes) {
           nodes.forEach(function(n) {
-            topologyLayout.SetNodeClass(n.ID, "highlighted", bool);
-            if (n.Metadata.TID == obj.NodeTID) {
-              topologyLayout.SetNodeClass(n.ID, "current", bool);
-            }
+            if (bool)
+              self.$store.commit('highlight', n.ID);
+            else
+              self.$store.commit('unhighlight', n.ID);
+            //if (n.Metadata.TID == obj.NodeTID) {
+              //topologyLayout.SetNodeClass(n.ID, "current", bool);
+            //}
           });
         });
     },
@@ -697,6 +728,8 @@ Vue.component('flow-table', {
 
 Vue.component('flow-table-control', {
 
+  mixins: [apiMixin],
+
   template: '\
     <form @submit.prevent="validateQuery">\
       <div class="form-group has-feedback" :class="{\'has-success\': !error, \'has-error\': error}">\
@@ -735,7 +768,7 @@ Vue.component('flow-table-control', {
 
     validateQuery: function() {
       var self = this;
-      TopologyAPI.query(self.query)
+      this.$topologyQuery(self.query)
         .then(function() {
           self.validatedQuery = self.query;
           self.error = "";

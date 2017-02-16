@@ -25,7 +25,6 @@ package http
 import (
 	"errors"
 	"fmt"
-	"html/template"
 	"mime"
 	"net"
 	"net/http"
@@ -136,10 +135,10 @@ func serveStatics(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
-func (s *Server) serveIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	html, err := statics.Asset("statics/topology.html")
+func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
+	html, err := statics.Asset("statics/index.html")
 	if err != nil {
-		logging.GetLogger().Error("Unable to find the asset topology.html")
+		logging.GetLogger().Error("Unable to find the asset index.html")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -162,56 +161,20 @@ func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
 					}
 					http.SetCookie(w, cookie)
 				}
-				http.Redirect(w, r, "/", http.StatusFound)
-				return
+				w.WriteHeader(http.StatusOK)
+			} else {
+				unauthorized(w, r)
 			}
+		} else {
+			unauthorized(w, r)
 		}
-		unauthorized(w, r)
 	} else {
-		s.renderTemplate(w, "login.html")
-	}
-}
-
-func (s *Server) getTemplateData() interface{} {
-	return &struct {
-		Service string
-	}{
-		Service: s.ServiceType.String(),
-	}
-}
-
-func (s *Server) renderTemplate(w http.ResponseWriter, page string) {
-	html, err := statics.Asset("statics/" + page)
-	if err != nil {
-		logging.GetLogger().Error("Unable to find the asset " + page)
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	t := template.New(page)
-	t, err = t.Parse(string(html))
-	if err != nil {
-		panic(err)
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	if err = t.Execute(w, s.getTemplateData()); err != nil {
-		logging.GetLogger().Errorf("Unable to render template: %s", err.Error())
+		http.Redirect(w, r, "/", http.StatusFound)
 	}
 }
 
 func unauthorized(w http.ResponseWriter, r *http.Request) {
-	if acceptHeader, ok := r.Header["Accept"]; ok {
-		for _, contentType := range strings.Split(acceptHeader[0], ",") {
-			if contentType == "text/html" {
-				http.Redirect(w, r, "/login", http.StatusFound)
-				return
-			}
-		}
-	}
-
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte("401 Unauthorized\n"))
 }
 
@@ -235,7 +198,7 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 	}
 
 	router.HandleFunc("/login", server.serveLogin)
-	router.HandleFunc("/", auth.Wrap(server.serveIndex))
+	router.HandleFunc("/", server.serveIndex)
 
 	return server
 }
