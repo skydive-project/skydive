@@ -52,14 +52,16 @@ analyzer:
     #
     # A description language similar to the dot language is used to define
     # interfaces and links. An arrow (->) is used to define a link between
-    # two interfaces (parent -> child). Each interface described will be
+    # two interfaces (parent -> child).
+    # Square brackets after the arrow is used to define additional metadata
+    # of the link (->[key=value,..]). Each interface described will be
     # created in the topology excepted interfaces with the local prefix.
     # In that specific case the interface of the local host will be used.
     # Attributes of interfaces are declared using square brackets ([]).
     # The following example creates a TOR1 node linked to a TOR1_PORT1 which is
     # linked to the local interface eth0.
     fabric:
-      # - TOR1[Name=tor1] -> TOR1_PORT1[Name=port1, MTU=1500]
+      # - TOR1[Name=tor1] -> [color=red] TOR1_PORT1[Name=port1, MTU=1500]
       # - TOR1_PORT1 -> *[Type=host]/eth0
 
 # list of analyzers used by analyzers and agents

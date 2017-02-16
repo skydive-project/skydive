@@ -40,6 +40,7 @@ const (
 type fabricLink struct {
 	parentMetadata graph.Metadata
 	childMetadata  graph.Metadata
+	linkMetadata   graph.Metadata
 }
 
 type FabricProbe struct {
@@ -47,8 +48,6 @@ type FabricProbe struct {
 	Graph *graph.Graph
 	links map[*graph.Node][]fabricLink
 }
-
-var fabricL2Link = graph.Metadata{"RelationType": "layer2", "Type": "fabric"}
 
 type FabricRegisterLinkWSMessage struct {
 	ParentNodeID   graph.Identifier
@@ -66,7 +65,7 @@ func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 	for node, links := range fb.links {
 		for _, link := range links {
 			if parent.MatchMetadata(link.parentMetadata) && child.MatchMetadata(link.childMetadata) {
-				fb.LinkNodes(node, child)
+				fb.LinkNodes(node, child, &link.linkMetadata)
 			}
 		}
 	}
@@ -78,10 +77,27 @@ func (fb *FabricProbe) OnNodeDeleted(n *graph.Node) {
 	}
 }
 
-func (fb *FabricProbe) LinkNodes(parent *graph.Node, child *graph.Node) {
-	if !fb.Graph.AreLinked(child, parent, fabricL2Link) {
-		fb.Graph.Link(parent, child, fabricL2Link)
+func (fb *FabricProbe) LinkNodes(parent *graph.Node, child *graph.Node, linkMetadata *graph.Metadata) {
+	if !fb.Graph.AreLinked(child, parent, *linkMetadata) {
+		fb.Graph.Link(parent, child, *linkMetadata)
 	}
+}
+
+func defToMetadata(def string, metadata graph.Metadata) (graph.Metadata, error) {
+	for _, pair := range strings.Split(def, ",") {
+		pair = strings.TrimSpace(pair)
+
+		kv := strings.Split(pair, "=")
+		if len(kv)%2 != 0 {
+			return nil, fmt.Errorf("attributes must be defined by pair k=v: %v", def)
+		}
+		key := strings.Trim(kv[0], `"`)
+		value := strings.Trim(kv[1], `"`)
+
+		metadata[key] = value
+	}
+
+	return metadata, nil
 }
 
 func nodeDefToMetadata(nodeDef string) (string, graph.Metadata, error) {
@@ -98,23 +114,13 @@ func nodeDefToMetadata(nodeDef string) (string, graph.Metadata, error) {
 		metadata["Name"] = f[0]
 	}
 
+	var err error
 	// parse attributes metadata given
 	if len(f) > 1 {
-		for _, pair := range strings.Split(f[1], ",") {
-			pair = strings.TrimSpace(pair)
-
-			kv := strings.Split(pair, "=")
-			if len(kv)%2 != 0 {
-				return "", nil, fmt.Errorf("attributes must be defined by pair k=v: %v", nodeDef)
-			}
-			key := strings.Trim(kv[0], `"`)
-			value := strings.Trim(kv[1], `"`)
-
-			metadata[key] = value
-		}
+		metadata, err = defToMetadata(f[1], metadata)
 	}
 
-	return f[0], metadata, nil
+	return f[0], metadata, err
 }
 
 func (fb *FabricProbe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, error) {
@@ -166,6 +172,17 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 
 		parentDef := strings.TrimSpace(pc[0])
 		childDef := strings.TrimSpace(pc[1])
+		linkMetadata := graph.Metadata{"RelationType": "layer2", "Type": "fabric"}
+
+		if strings.HasPrefix(childDef, "[") {
+			// Parse link metadata
+			index := strings.Index(childDef, "]")
+			f := strings.FieldsFunc(childDef[:index+1], func(r rune) bool {
+				return r == '[' || r == ']'
+			})
+			linkMetadata, _ = defToMetadata(f[0], linkMetadata)
+			childDef = strings.TrimSpace(childDef[index+1:])
+		}
 
 		if strings.HasPrefix(parentDef, "*") {
 			logging.GetLogger().Error("FabricProbe doesn't support wildcard node as parent node")
@@ -200,7 +217,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 			}
 
 			// queue it as the node doesn't exist at start
-			fb.links[parentNode] = append(fb.links[parentNode], fabricLink{childMetadata: childMetadata, parentMetadata: parentMetadata})
+			fb.links[parentNode] = append(fb.links[parentNode], fabricLink{childMetadata: childMetadata, parentMetadata: parentMetadata, linkMetadata: linkMetadata})
 		} else {
 			// Fabric Node to Fabric Node
 			node1, err := fb.getOrCreateFabricNodeFromDef(parentDef)
@@ -215,8 +232,9 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 				continue
 			}
 
-			if !fb.Graph.AreLinked(node1, node2, fabricL2Link) {
-				fb.Graph.Link(node1, node2, fabricL2Link)
+			if !fb.Graph.AreLinked(node1, node2, linkMetadata) {
+
+				fb.Graph.Link(node1, node2, linkMetadata)
 			}
 		}
 	}
