@@ -24,7 +24,6 @@ package probes
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
@@ -49,17 +48,16 @@ type FlowProbeInterface interface {
 }
 
 type FlowProbe struct {
-	sync.RWMutex
 	fpi            FlowProbeInterface
 	pipeline       *mappings.FlowMappingPipeline
 	flowClientPool *analyzer.FlowClientPool
 }
 
-func (fp FlowProbe) Start() {
+func (fp *FlowProbe) Start() {
 	fp.fpi.Start()
 }
 
-func (fp FlowProbe) Stop() {
+func (fp *FlowProbe) Stop() {
 	fp.fpi.Stop()
 }
 
@@ -73,10 +71,6 @@ func (fp *FlowProbe) UnregisterProbe(n *graph.Node) error {
 
 func (fp *FlowProbe) AsyncFlowPipeline(flows []*flow.Flow) {
 	fp.pipeline.Enhance(flows)
-
-	fp.RLock()
-	defer fp.RUnlock()
-
 	fp.flowClientPool.SendFlows(flows)
 }
 
