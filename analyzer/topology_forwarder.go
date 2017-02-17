@@ -109,7 +109,7 @@ func (p *TopologyForwarderPeer) OnConnected(c *shttp.WSAsyncClient) {
 	}
 }
 
-func (p *TopologyForwarderPeer) connect(wg sync.WaitGroup) {
+func (p *TopologyForwarderPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// check whether the peer is the analyzer itself or not thanks to the /api
@@ -155,7 +155,7 @@ func (a *TopologyForwarder) addPeer(addr string, port int, g *graph.Graph) {
 func (a *TopologyForwarder) ConnectAll() {
 	for _, peer := range a.peers {
 		a.wg.Add(1)
-		go peer.connect(a.wg)
+		go peer.connect(&a.wg)
 	}
 }
 
