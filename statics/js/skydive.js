@@ -496,7 +496,6 @@ Layout.prototype.AddNode = function(node) {
 
 Layout.prototype.UpdateNode = function(node, metadata) {
   node.Metadata = metadata;
-  this.Redraw();
 };
 
 Layout.prototype.DelNode = function(node) {
@@ -622,18 +621,25 @@ Layout.prototype.linkArc = function(d) {
 };
 
 Layout.prototype.CircleSize = function(d) {
+  var size;
   switch(d.Metadata.Type) {
     case "host":
-      return 22;
+      size = 22;
     case "port":
     case "ovsport":
-      return 18;
+      size = 18;
     case "switch":
     case "ovsbridge":
-      return 20;
+      size = 20;
     default:
-      return 16;
+      size = 16;
   }
+
+  if (CurrentNodeDetails && CurrentNodeDetails.ID === d.ID) {
+    size += 3;
+  }
+
+  return size;
 };
 
 Layout.prototype.GroupClass = function(d) {
@@ -651,6 +657,9 @@ Layout.prototype.NodeClass = function(d) {
 
   if (d.Highlighted)
     clazz = "highlighted " + clazz;
+
+  if (CurrentNodeDetails && d.ID == CurrentNodeDetails.ID)
+    clazz = "active " + clazz;
 
   return clazz;
 };
@@ -1118,9 +1127,20 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
 
     case "NodeUpdated":
       node = this.graph.GetNode(msg.Obj.ID);
+      var redrawOn = ['State/FlowCapture', 'Status'],
+          redraw = redrawOn.reduce(function(acc, key) {
+            if (msg.Obj.Metadata[key] !== node.Metadata[key]) {
+              acc = true;
+            }
+            return acc;
+          }, false);
 
-      this.deferredActions.push({fn: this.UpdateNode, params: [node, msg.Obj.Metadata]});
-      this.Redraw();
+      if (redraw) {
+        this.deferredActions.push({fn: this.UpdateNode, params: [node, msg.Obj.Metadata]});
+        this.Redraw();
+      } else {
+        this.UpdateNode(node, msg.Obj.Metadata);
+      }
       break;
 
     case "NodeAdded":
