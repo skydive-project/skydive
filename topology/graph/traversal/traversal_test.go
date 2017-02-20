@@ -248,7 +248,24 @@ func TestTraversalNe(t *testing.T) {
 	// next test
 	tv = tr.V().Has("Type", Ne("intf"))
 	if len(tv.Values()) != 2 {
-		t.Fatalf("Should return 2 node, returned: %v", tv.Values())
+		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
+	}
+}
+
+func TestTraversalHasKey(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	// next test
+	tv := tr.V().HasKey("Name")
+	if len(tv.Values()) != 1 {
+		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
+	}
+
+	tv = tr.V().HasKey("Unknown")
+	if len(tv.Values()) != 0 {
+		t.Fatalf("Should return 0 node, returned: %v", tv.Values())
 	}
 }
 

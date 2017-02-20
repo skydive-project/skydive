@@ -631,21 +631,6 @@ func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e graph.Metadata) *G
 	return sp
 }
 
-func (tv *GraphTraversalV) hasKey(k string) *GraphTraversalV {
-	if tv.error != nil {
-		return tv
-	}
-
-	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
-	for _, n := range tv.nodes {
-		if _, ok := n.Metadata()[k]; ok {
-			ntv.nodes = append(ntv.nodes, n)
-		}
-	}
-
-	return ntv
-}
-
 func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -682,6 +667,10 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	}
 
 	return ntv
+}
+
+func (tv *GraphTraversalV) HasKey(s string) *GraphTraversalV {
+	return tv.Has(s)
 }
 
 func (tv *GraphTraversalV) HasNot(s string) *GraphTraversalV {
@@ -1044,18 +1033,36 @@ func (te *GraphTraversalE) Dedup(keys ...interface{}) *GraphTraversalE {
 	return ntv
 }
 
-func (te *GraphTraversalE) hasKey(k string) *GraphTraversalE {
+func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
 	}
 
+	var err error
+	var filter *filters.Filter
+	switch len(s) {
+	case 0:
+		return &GraphTraversalE{error: errors.New("At least one parameter must be provided")}
+	case 1:
+		k, ok := s[0].(string)
+		if !ok {
+			return &GraphTraversalE{error: errors.New("Key must be a string")}
+		}
+		filter = filters.NewNotFilter(filters.NewNullFilter(k))
+	default:
+		filter, err = ParamsToFilter(s...)
+		if err != nil {
+			return &GraphTraversalE{error: err}
+		}
+	}
+
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
 	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
-
 	for _, e := range te.edges {
 		if it.Done() {
 			break
-		} else if _, ok := e.Metadata()[k]; ok && it.Next() {
+		}
+		if (filter == nil || filter.Eval(e)) && it.Next() {
 			nte.edges = append(nte.edges, e)
 		}
 	}
@@ -1063,38 +1070,8 @@ func (te *GraphTraversalE) hasKey(k string) *GraphTraversalE {
 	return nte
 }
 
-func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
-	if te.error != nil {
-		return te
-	}
-
-	switch len(s) {
-	case 0:
-		return &GraphTraversalE{error: errors.New("At least one parameters must be provided")}
-	case 1:
-		k, ok := s[0].(string)
-		if !ok {
-			return &GraphTraversalE{error: errors.New("Key must be a string")}
-		}
-		return te.hasKey(k)
-	}
-
-	m, err := SliceToMetadata(s...)
-	if err != nil {
-		return &GraphTraversalE{error: err}
-	}
-
-	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
-	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
-	for _, e := range te.edges {
-		if it.Done() {
-			break
-		} else if e.MatchMetadata(m) && it.Next() {
-			nte.edges = append(nte.edges, e)
-		}
-	}
-
-	return nte
+func (te *GraphTraversalE) HasKey(s string) *GraphTraversalE {
+	return te.Has(s)
 }
 
 func (te *GraphTraversalE) HasNot(s string) *GraphTraversalE {

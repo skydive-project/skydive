@@ -53,6 +53,7 @@ const (
 	G
 	V
 	HAS
+	HASKEY
 	HASNOT
 	OUT
 	IN
@@ -205,6 +206,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return V, buf.String()
 	case "HAS":
 		return HAS, buf.String()
+	case "HASKEY":
+		return HASKEY, buf.String()
 	case "HASNOT":
 		return HASNOT, buf.String()
 	case "OUT":
