@@ -47,17 +47,17 @@ func (t *TopologyForwarder) triggerResync() {
 	defer t.Graph.RUnlock()
 
 	// request for deletion of everything belonging to Root node
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "HostGraphDeleted", t.Host))
+	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.Host))
 
 	// re-add all the nodes and edges
 	nodes := t.Graph.GetNodes(graph.Metadata{})
 	for _, n := range nodes {
-		t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "NodeAdded", n))
+		t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 	}
 
 	edges := t.Graph.GetEdges(graph.Metadata{})
 	for _, e := range edges {
-		t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "EdgeAdded", e))
+		t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 	}
 }
 
@@ -81,27 +81,27 @@ func (t *TopologyForwarder) OnDisconnected(c *shttp.WSAsyncClient) {
 }
 
 func (t *TopologyForwarder) OnNodeUpdated(n *graph.Node) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "NodeUpdated", n))
+	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
 }
 
 func (t *TopologyForwarder) OnNodeAdded(n *graph.Node) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "NodeAdded", n))
+	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 }
 
 func (t *TopologyForwarder) OnNodeDeleted(n *graph.Node) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "NodeDeleted", n))
+	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 }
 
 func (t *TopologyForwarder) OnEdgeUpdated(e *graph.Edge) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "EdgeUpdated", e))
+	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
 }
 
 func (t *TopologyForwarder) OnEdgeAdded(e *graph.Edge) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "EdgeAdded", e))
+	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 }
 
 func (t *TopologyForwarder) OnEdgeDeleted(e *graph.Edge) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, "EdgeDeleted", e))
+	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }
 
 func NewTopologyForwarder(host string, g *graph.Graph, wspool *shttp.WSAsyncClientPool) *TopologyForwarder {

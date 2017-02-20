@@ -54,40 +54,40 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	}
 
 	switch msgType {
-	case "SyncRequest":
+	case SyncRequestMsgType:
 		status := http.StatusOK
 		graph, err := s.Graph.WithContext(obj.(GraphContext))
 		if err != nil {
 			logging.GetLogger().Errorf("Graph: unable to get a graph with context %+v: %s", obj.(GraphContext), err.Error())
 			graph, status = nil, http.StatusBadRequest
 		}
-		reply := msg.Reply(graph, "SyncReply", status)
+		reply := msg.Reply(graph, SyncReplyMsgType, status)
 		c.SendWSMessage(reply)
 	}
 }
 
 func (s *GraphServer) OnNodeUpdated(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "NodeUpdated", n))
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeUpdatedMsgType, n))
 }
 
 func (s *GraphServer) OnNodeAdded(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "NodeAdded", n))
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeAddedMsgType, n))
 }
 
 func (s *GraphServer) OnNodeDeleted(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "NodeDeleted", n))
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeDeletedMsgType, n))
 }
 
 func (s *GraphServer) OnEdgeUpdated(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "EdgeUpdated", e))
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeUpdatedMsgType, e))
 }
 
 func (s *GraphServer) OnEdgeAdded(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "EdgeAdded", e))
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeAddedMsgType, e))
 }
 
 func (s *GraphServer) OnEdgeDeleted(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, "EdgeDeleted", e))
+	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeDeletedMsgType, e))
 }
 
 func NewServer(g *Graph, server *shttp.WSServer) *GraphServer {

@@ -83,28 +83,28 @@ func processGraphMessage(g *graph.Graph, m []byte) error {
 	}
 
 	switch msgType {
-	case "NodeUpdated":
+	case graph.NodeUpdatedMsgType:
 		n := obj.(*graph.Node)
 		node := g.GetNode(n.ID)
 		if node != nil {
 			g.SetMetadata(node, n.Metadata())
 		}
-	case "NodeDeleted":
+	case graph.NodeDeletedMsgType:
 		g.DelNode(obj.(*graph.Node))
-	case "NodeAdded":
+	case graph.NodeAddedMsgType:
 		n := obj.(*graph.Node)
 		if g.GetNode(n.ID) == nil {
 			g.AddNode(n)
 		}
-	case "EdgeUpdated":
+	case graph.EdgeUpdatedMsgType:
 		e := obj.(*graph.Edge)
 		edge := g.GetEdge(e.ID)
 		if edge != nil {
 			g.SetMetadata(edge, e.Metadata())
 		}
-	case "EdgeDeleted":
+	case graph.EdgeDeletedMsgType:
 		g.DelEdge(obj.(*graph.Edge))
-	case "EdgeAdded":
+	case graph.EdgeAddedMsgType:
 		e := obj.(*graph.Edge)
 		if g.GetEdge(e.ID) == nil {
 			g.AddEdge(e)

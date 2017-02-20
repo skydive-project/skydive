@@ -97,10 +97,10 @@ func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	// force the deletion from the cache and force the delete from the persistent
 	// backend. We need to use the persistent only to be use to retrieve nodes/edges
 	// from the persistent backend otherwise the memory backend would be used.
-	if msgType == "HostGraphDeleted" {
+	if msgType == graph.HostGraphDeletedMsgType {
 		host := obj.(string)
 
-		logging.GetLogger().Debugf("Got HostGraphDeleted event for host %s", host)
+		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, host)
 
 		t.hostGraphDeleted(obj.(string), graph.CACHE_ONLY_MODE)
 		if c.ClientType != common.AnalyzerService {
@@ -116,26 +116,26 @@ func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	defer t.cached.SetMode(graph.DEFAULT_MODE)
 
 	switch msgType {
-	case "NodeUpdated":
+	case graph.NodeUpdatedMsgType:
 		n := obj.(*graph.Node)
 		if node := t.Graph.GetNode(n.ID); node != nil {
 			t.Graph.SetMetadata(node, n.Metadata())
 		}
-	case "NodeDeleted":
+	case graph.NodeDeletedMsgType:
 		t.Graph.DelNode(obj.(*graph.Node))
-	case "NodeAdded":
+	case graph.NodeAddedMsgType:
 		n := obj.(*graph.Node)
 		if t.Graph.GetNode(n.ID) == nil {
 			t.Graph.AddNode(n)
 		}
-	case "EdgeUpdated":
+	case graph.EdgeUpdatedMsgType:
 		e := obj.(*graph.Edge)
 		if edge := t.Graph.GetEdge(e.ID); edge != nil {
 			t.Graph.SetMetadata(edge, e.Metadata())
 		}
-	case "EdgeDeleted":
+	case graph.EdgeDeletedMsgType:
 		t.Graph.DelEdge(obj.(*graph.Edge))
-	case "EdgeAdded":
+	case graph.EdgeAddedMsgType:
 		e := obj.(*graph.Edge)
 		if t.Graph.GetEdge(e.ID) == nil {
 			t.Graph.AddEdge(e)

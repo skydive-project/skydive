@@ -30,6 +30,18 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 )
 
+const (
+	SyncRequestMsgType      = "SyncRequest"
+	SyncReplyMsgType        = "SyncReply"
+	HostGraphDeletedMsgType = "HostGraphDeleted"
+	NodeUpdatedMsgType      = "NodeUpdated"
+	NodeDeletedMsgType      = "NodeDeleted"
+	NodeAddedMsgType        = "NodeAdded"
+	EdgeUpdatedMsgType      = "EdgeUpdated"
+	EdgeDeletedMsgType      = "EdgeDeleted"
+	EdgeAddedMsgType        = "EdgeAdded"
+)
+
 func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	var obj interface{}
 	if err := common.JsonDecode(bytes.NewReader([]byte(*msg.Obj)), &obj); err != nil {
@@ -37,7 +49,7 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	}
 
 	switch msg.Type {
-	case "SyncRequest":
+	case SyncRequestMsgType:
 		m := obj.(map[string]interface{})
 		var context GraphContext
 		switch v := m["Time"].(type) {
@@ -50,16 +62,16 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 		}
 		return msg.Type, context, nil
 
-	case "HostGraphDeleted":
+	case HostGraphDeletedMsgType:
 		return msg.Type, obj, nil
-	case "NodeUpdated", "NodeDeleted", "NodeAdded":
+	case NodeUpdatedMsgType, NodeDeletedMsgType, NodeAddedMsgType:
 		var node Node
 		if err := node.Decode(obj); err != nil {
 			return "", msg, err
 		}
 
 		return msg.Type, &node, nil
-	case "EdgeUpdated", "EdgeDeleted", "EdgeAdded":
+	case EdgeUpdatedMsgType, EdgeDeletedMsgType, EdgeAddedMsgType:
 		var edge Edge
 		if err := edge.Decode(obj); err != nil {
 			return "", msg, err

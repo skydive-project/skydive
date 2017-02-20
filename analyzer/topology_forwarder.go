@@ -100,12 +100,12 @@ func (p *TopologyForwarderPeer) OnConnected(c *shttp.WSAsyncClient) {
 	// re-added all the nodes and edges
 	nodes := p.Graph.GetNodes(graph.Metadata{})
 	for _, n := range nodes {
-		p.wsclient.SendWSMessage(shttp.NewWSMessage(graph.Namespace, "NodeAdded", n))
+		p.wsclient.SendWSMessage(shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 	}
 
 	edges := p.Graph.GetEdges(graph.Metadata{})
 	for _, e := range edges {
-		p.wsclient.SendWSMessage(shttp.NewWSMessage(graph.Namespace, "EdgeAdded", e))
+		p.wsclient.SendWSMessage(shttp.NewWSMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 	}
 }
 
