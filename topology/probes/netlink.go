@@ -262,10 +262,10 @@ func (u *NetLinkProbe) updateMetadataStatistics(statistics *netlink.LinkStatisti
 }
 
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
-	logging.GetLogger().Debugf("Link \"%s(%d)\" added", link.Attrs().Name, link.Attrs().Index)
-
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
+
+	logging.GetLogger().Debugf("Netlink ADD event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.String())
 
 	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
 	if driver == "" && link.Type() == "bridge" {
@@ -294,7 +294,7 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 
 	if link.Type() == "veth" {
 		stats, err := u.ethtool.Stats(link.Attrs().Name)
-		if err != nil {
+		if err != nil && err != syscall.ENODEV {
 			logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", link.Attrs().Name, err.Error())
 		} else if index, ok := stats["peer_ifindex"]; ok {
 			metadata["PeerIfIndex"] = int64(index)
@@ -377,6 +377,8 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
+
+	logging.GetLogger().Debugf("Netlink DEL event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.String())
 
 	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 
