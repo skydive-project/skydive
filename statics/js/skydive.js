@@ -625,14 +625,18 @@ Layout.prototype.CircleSize = function(d) {
   switch(d.Metadata.Type) {
     case "host":
       size = 22;
+      break;
     case "port":
     case "ovsport":
       size = 18;
+      break;
     case "switch":
     case "ovsbridge":
       size = 20;
+      break;
     default:
       size = 16;
+      break;
   }
 
   if (CurrentNodeDetails && CurrentNodeDetails.ID === d.ID) {
