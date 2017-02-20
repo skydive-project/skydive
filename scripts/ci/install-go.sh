@@ -34,7 +34,7 @@ govendor sync -n | perl -pe 's|fetch \"(.*)\"$|vendor/\1|g' | sort -u > vendor.f
 cat vendor.fetch.list | xargs tar -xvzf /tmp/vendor.tgz --exclude "vendor/vendor.json"
 # remove installed
 find vendor/ -mindepth 2 -type f | xargs dirname | sort -u > vendor.installed.list
-toremove=$(diff -u vendor.fetch.list vendor.installed.list | grep '^\+v' | perl -pe 's|^\+(.*)|\1|')
-rm -f "$toremove"
+echo "package to be removed/cleanup"
+diff -u vendor.fetch.list vendor.installed.list | grep '^\+v' | perl -pe 's|^\+(.*)|\1|' | tee /dev/stdout | xargs -n 1 rm -rf
 rm -f vendor.fetch.list vendor.installed.list
 popd
