@@ -684,6 +684,27 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	return ntv
 }
 
+func (tv *GraphTraversalV) HasNot(s string) *GraphTraversalV {
+	if tv.error != nil {
+		return tv
+	}
+
+	filter := filters.NewNullFilter(s)
+	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	for _, n := range tv.nodes {
+		if it.Done() {
+			break
+		}
+		if (filter == nil || filter.Eval(n)) && it.Next() {
+			ntv.nodes = append(ntv.nodes, n)
+		}
+	}
+
+	return ntv
+}
+
 func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -1069,6 +1090,27 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 		if it.Done() {
 			break
 		} else if e.MatchMetadata(m) && it.Next() {
+			nte.edges = append(nte.edges, e)
+		}
+	}
+
+	return nte
+}
+
+func (te *GraphTraversalE) HasNot(s string) *GraphTraversalE {
+	if te.error != nil {
+		return te
+	}
+
+	filter := filters.NewNullFilter(s)
+	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
+	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	for _, e := range te.edges {
+		if it.Done() {
+			break
+		}
+		if (filter == nil || filter.Eval(e)) && it.Next() {
 			nte.edges = append(nte.edges, e)
 		}
 	}

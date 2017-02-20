@@ -252,6 +252,18 @@ func TestTraversalNe(t *testing.T) {
 	}
 }
 
+func TestTraversalHasNot(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g)
+
+	// next test
+	tv := tr.V().HasNot("Name")
+	if len(tv.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
+	}
+}
+
 func TestTraversalRegex(t *testing.T) {
 	g := newTransversalGraph(t)
 

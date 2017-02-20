@@ -88,6 +88,9 @@ type (
 	GremlinTraversalStepHas struct {
 		GremlinTraversalContext
 	}
+	GremlinTraversalStepHasNot struct {
+		GremlinTraversalContext
+	}
 	GremlinTraversalStepShortestPathTo struct {
 		GremlinTraversalContext
 	}
@@ -256,6 +259,25 @@ func (s *GremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalS
 }
 
 func (s *GremlinTraversalStepHas) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if s.ReduceRange(next) {
+		return s
+	}
+
+	return next
+}
+
+func (s *GremlinTraversalStepHasNot) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalV:
+		return last.(*GraphTraversalV).HasNot(s.Params[0].(string)), nil
+	case *GraphTraversalE:
+		return last.(*GraphTraversalE).HasNot(s.Params[0].(string)), nil
+	}
+
+	return invokeStepFnc(last, "HasNot", s)
+}
+
+func (s *GremlinTraversalStepHasNot) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if s.ReduceRange(next) {
 		return s
 	}
@@ -794,6 +816,16 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &GremlinTraversalStepDedup{gremlinStepContext}, nil
 	case HAS:
 		return &GremlinTraversalStepHas{gremlinStepContext}, nil
+	case HASNOT:
+		switch len(params) {
+		case 1:
+			if _, ok := params[0].(string); ok {
+				return &GremlinTraversalStepHasNot{gremlinStepContext}, nil
+			}
+			fallthrough
+		default:
+			return nil, fmt.Errorf("HasNot requires one parameter of type string")
+		}
 	case SHORTESTPATHTO:
 		if len(params) == 0 || len(params) > 2 {
 			return nil, fmt.Errorf("ShortestPathTo predicate accepts only 1 or 2 parameters")
