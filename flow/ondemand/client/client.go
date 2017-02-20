@@ -208,7 +208,7 @@ func (o *OnDemandProbeClient) onApiWatcherEvent(action string, id string, resour
 }
 
 func (o *OnDemandProbeClient) Start() {
-	o.elector.Start()
+	o.elector.StartAndWait()
 
 	o.watcher = o.captureHandler.AsyncWatch(o.onApiWatcherEvent)
 	o.graph.AddEventListener(o)

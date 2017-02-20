@@ -405,7 +405,7 @@ func (a *AlertServer) onApiWatcherEvent(action string, id string, resource api.A
 }
 
 func (a *AlertServer) Start() {
-	a.elector.Start()
+	a.elector.StartAndWait()
 
 	a.watcher = a.AlertHandler.AsyncWatch(a.onApiWatcherEvent)
 	a.Graph.AddEventListener(a)

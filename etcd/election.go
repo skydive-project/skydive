@@ -89,7 +89,9 @@ func (le *EtcdMasterElector) IsMaster() bool {
 	return le.master
 }
 
-func (le *EtcdMasterElector) start() {
+// start starts the election process and send something to the chan when the first
+// election is done
+func (le *EtcdMasterElector) start(first chan struct{}) {
 	// delete previous Lock
 	le.EtcdKeyAPI.Delete(context.Background(), le.path, &etcd.DeleteOptions{PrevValue: le.Host})
 
@@ -118,6 +120,10 @@ func (le *EtcdMasterElector) start() {
 		for _, listener := range le.listeners {
 			listener.OnSlave()
 		}
+	}
+
+	if first != nil {
+		first <- struct{}{}
 	}
 
 	// now watch for changes
@@ -173,7 +179,17 @@ func (le *EtcdMasterElector) start() {
 }
 
 func (le *EtcdMasterElector) Start() {
-	go le.start()
+	go le.start(nil)
+}
+
+// StartAndWait starts the election mechanism and wait for the first election
+// before returning
+func (le *EtcdMasterElector) StartAndWait() {
+	first := make(chan struct{})
+	defer close(first)
+
+	go le.start(first)
+	<-first
 }
 
 func (le *EtcdMasterElector) Stop() {
