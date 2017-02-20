@@ -36,11 +36,11 @@ import (
 
 type EtcdClient struct {
 	Client  *etcd.Client
-	KeysApi etcd.KeysAPI
+	KeysAPI etcd.KeysAPI
 }
 
 func (client *EtcdClient) GetInt64(key string) (int64, error) {
-	resp, err := client.KeysApi.Get(context.Background(), key, nil)
+	resp, err := client.KeysAPI.Get(context.Background(), key, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -48,7 +48,7 @@ func (client *EtcdClient) GetInt64(key string) (int64, error) {
 }
 
 func (client *EtcdClient) SetInt64(key string, value int64) error {
-	_, err := client.KeysApi.Set(context.Background(), key, strconv.FormatInt(value, 10), nil)
+	_, err := client.KeysAPI.Set(context.Background(), key, strconv.FormatInt(value, 10), nil)
 	return err
 }
 
@@ -76,7 +76,7 @@ func NewEtcdClient(etcdServers []string, clientTimeout time.Duration) (*EtcdClie
 
 	return &EtcdClient{
 		Client:  &etcdClient,
-		KeysApi: kapi,
+		KeysAPI: kapi,
 	}, nil
 }
 

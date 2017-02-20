@@ -36,35 +36,35 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-type ApiResource interface {
+type APIResource interface {
 	ID() string
 	SetID(string)
 }
 
-type ApiHandler interface {
+type APIHandler interface {
 	Name() string
-	New() ApiResource
-	Index() map[string]ApiResource
-	Get(id string) (ApiResource, bool)
-	Decorate(resource ApiResource)
-	Create(resource ApiResource) error
+	New() APIResource
+	Index() map[string]APIResource
+	Get(id string) (APIResource, bool)
+	Decorate(resource APIResource)
+	Create(resource APIResource) error
 	Delete(id string) error
-	AsyncWatch(f ApiWatcherCallback) StoppableWatcher
+	AsyncWatch(f APIWatcherCallback) StoppableWatcher
 }
 
 type ResourceHandler interface {
 	Name() string
-	New() ApiResource
+	New() APIResource
 }
 
-// basic implementation of an ApiHandler, should be used as embedded struct
+// basic implementation of an APIHandler, should be used as embedded struct
 // for the most part of the resources
-type BasicApiHandler struct {
+type BasicAPIHandler struct {
 	ResourceHandler ResourceHandler
 	EtcdKeyAPI      etcd.KeysAPI
 }
 
-type ApiWatcherCallback func(action string, id string, resource ApiResource)
+type APIWatcherCallback func(action string, id string, resource APIResource)
 
 type StoppableWatcher interface {
 	Stop()
@@ -78,8 +78,8 @@ type BasicStoppableWatcher struct {
 	wg      sync.WaitGroup
 }
 
-type ApiResourceWatcher interface {
-	AsyncWatch(f ApiWatcherCallback) StoppableWatcher
+type APIResourceWatcher interface {
+	AsyncWatch(f APIWatcherCallback) StoppableWatcher
 }
 
 func (s *BasicStoppableWatcher) Stop() {
@@ -88,24 +88,24 @@ func (s *BasicStoppableWatcher) Stop() {
 	s.wg.Wait()
 }
 
-func (h *BasicApiHandler) Name() string {
+func (h *BasicAPIHandler) Name() string {
 	return h.ResourceHandler.Name()
 }
 
-func (h *BasicApiHandler) New() ApiResource {
+func (h *BasicAPIHandler) New() APIResource {
 	return h.ResourceHandler.New()
 }
 
-func (h *BasicApiHandler) Unmarshal(b []byte) (resource ApiResource, err error) {
+func (h *BasicAPIHandler) Unmarshal(b []byte) (resource APIResource, err error) {
 	resource = h.ResourceHandler.New()
 	err = json.Unmarshal(b, resource)
 	return
 }
 
-func (h *BasicApiHandler) Decorate(resource ApiResource) {
+func (h *BasicAPIHandler) Decorate(resource APIResource) {
 }
 
-func (h *BasicApiHandler) collectNodes(flatten map[string]ApiResource, nodes etcd.Nodes) {
+func (h *BasicAPIHandler) collectNodes(flatten map[string]APIResource, nodes etcd.Nodes) {
 	for _, node := range nodes {
 		if node.Dir {
 			h.collectNodes(flatten, node.Nodes)
@@ -120,11 +120,11 @@ func (h *BasicApiHandler) collectNodes(flatten map[string]ApiResource, nodes etc
 	}
 }
 
-func (h *BasicApiHandler) Index() map[string]ApiResource {
+func (h *BasicAPIHandler) Index() map[string]APIResource {
 	etcdPath := fmt.Sprintf("/%s/", h.ResourceHandler.Name())
 
 	resp, err := h.EtcdKeyAPI.Get(context.Background(), etcdPath, &etcd.GetOptions{Recursive: true})
-	resources := make(map[string]ApiResource)
+	resources := make(map[string]APIResource)
 
 	if err == nil {
 		h.collectNodes(resources, resp.Node.Nodes)
@@ -133,7 +133,7 @@ func (h *BasicApiHandler) Index() map[string]ApiResource {
 	return resources
 }
 
-func (h *BasicApiHandler) Get(id string) (ApiResource, bool) {
+func (h *BasicAPIHandler) Get(id string) (APIResource, bool) {
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
 
 	resp, err := h.EtcdKeyAPI.Get(context.Background(), etcdPath, nil)
@@ -145,7 +145,7 @@ func (h *BasicApiHandler) Get(id string) (ApiResource, bool) {
 	return resource, err == nil
 }
 
-func (h *BasicApiHandler) Create(resource ApiResource) error {
+func (h *BasicAPIHandler) Create(resource APIResource) error {
 	data, err := json.Marshal(&resource)
 	if err != nil {
 		return err
@@ -156,7 +156,7 @@ func (h *BasicApiHandler) Create(resource ApiResource) error {
 	return err
 }
 
-func (h *BasicApiHandler) Delete(id string) error {
+func (h *BasicAPIHandler) Delete(id string) error {
 	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
 
 	if _, err := h.EtcdKeyAPI.Delete(context.Background(), etcdPath, nil); err != nil {
@@ -166,7 +166,7 @@ func (h *BasicApiHandler) Delete(id string) error {
 	return nil
 }
 
-func (h *BasicApiHandler) AsyncWatch(f ApiWatcherCallback) StoppableWatcher {
+func (h *BasicAPIHandler) AsyncWatch(f APIWatcherCallback) StoppableWatcher {
 	etcdPath := fmt.Sprintf("/%s/", h.ResourceHandler.Name())
 
 	watcher := h.EtcdKeyAPI.Watcher(etcdPath, &etcd.WatcherOptions{Recursive: true})

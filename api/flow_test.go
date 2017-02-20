@@ -33,7 +33,7 @@ import (
 
 func TestFlowTable_jsonFlowConversation(t *testing.T) {
 	ft := flow.NewTestFlowTableComplex(t, nil, nil)
-	fa := &FlowApi{
+	fa := &FlowAPI{
 		FlowTable: ft,
 	}
 
@@ -66,7 +66,7 @@ func TestFlowTable_jsonFlowConversation(t *testing.T) {
 
 func test_jsonFlowDiscovery(t *testing.T, DiscoType discoType) {
 	ft := flow.NewTestFlowTableComplex(t, nil, nil)
-	fa := &FlowApi{
+	fa := &FlowAPI{
 		FlowTable: ft,
 	}
 	disco := fa.jsonFlowDiscovery(DiscoType)

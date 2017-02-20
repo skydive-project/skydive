@@ -186,7 +186,7 @@ func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, pa
 
 func (h *HelperAgentAnalyzer) startAnalyzer() {
 	h.Analyzer.ListenAndServe()
-	WaitApi(h.t, h.Analyzer)
+	WaitAPI(h.t, h.Analyzer)
 }
 
 func (h *HelperAgentAnalyzer) Start() {
@@ -238,7 +238,7 @@ func NewAgent() *agent.Agent {
 	return agent.NewAgent()
 }
 
-func WaitApi(t *testing.T, analyzer *analyzer.Server) {
+func WaitAPI(t *testing.T, analyzer *analyzer.Server) {
 	// waiting for the api endpoint
 	for i := 1; i <= 5; i++ {
 		url := fmt.Sprintf("http://%s:%d/api", analyzer.HTTPServer.Addr, analyzer.HTTPServer.Port)
@@ -257,7 +257,7 @@ func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, param
 	analyzer := NewAnalyzerStorage(t, s)
 	s.Start()
 	analyzer.ListenAndServe()
-	WaitApi(t, analyzer)
+	WaitAPI(t, analyzer)
 	return analyzer
 }
 

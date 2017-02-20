@@ -35,7 +35,7 @@ import (
 	"github.com/skydive-project/skydive/validator"
 )
 
-type PacketInjectorApi struct {
+type PacketInjectorAPI struct {
 	PIClient *packet_injector.PacketInjectorClient
 	Graph    *graph.Graph
 }
@@ -52,7 +52,7 @@ type PacketParamsReq struct {
 	Count   int
 }
 
-func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	decoder := json.NewDecoder(r.Body)
 	var ppr PacketParamsReq
 	err := decoder.Decode(&ppr)
@@ -150,7 +150,7 @@ func (pi *PacketInjectorApi) injectPacket(w http.ResponseWriter, r *auth.Authent
 	}
 }
 
-func (pi *PacketInjectorApi) getNode(gremlinQuery string) *graph.Node {
+func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
 	pi.Graph.RLock()
 	defer pi.Graph.RUnlock()
 
@@ -170,7 +170,7 @@ func (pi *PacketInjectorApi) getNode(gremlinQuery string) *graph.Node {
 	return nil
 }
 
-func (pi *PacketInjectorApi) registerEndpoints(r *shttp.Server) {
+func (pi *PacketInjectorAPI) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
 			Name:        "InjectPacket",
@@ -183,8 +183,8 @@ func (pi *PacketInjectorApi) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterPacketInjectorApi(pic *packet_injector.PacketInjectorClient, g *graph.Graph, r *shttp.Server) {
-	pia := &PacketInjectorApi{
+func RegisterPacketInjectorAPI(pic *packet_injector.PacketInjectorClient, g *graph.Graph, r *shttp.Server) {
+	pia := &PacketInjectorAPI{
 		PIClient: pic,
 		Graph:    g,
 	}

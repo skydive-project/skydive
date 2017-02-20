@@ -247,22 +247,22 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	apiServer, err := api.NewApi(httpServer, etcdClient.KeysApi, "Analyzer")
+	apiServer, err := api.NewAPI(httpServer, etcdClient.KeysAPI, "Analyzer")
 	if err != nil {
 		return nil, err
 	}
 
-	var captureApiHandler *api.CaptureApiHandler
-	if captureApiHandler, err = api.RegisterCaptureApi(apiServer, topology.Graph); err != nil {
+	var captureAPIHandler *api.CaptureAPIHandler
+	if captureAPIHandler, err = api.RegisterCaptureAPI(apiServer, topology.Graph); err != nil {
 		return nil, err
 	}
 
-	var alertApiHandler *api.AlertApiHandler
-	if alertApiHandler, err = api.RegisterAlertApi(apiServer); err != nil {
+	var alertAPIHandler *api.AlertAPIHandler
+	if alertAPIHandler, err = api.RegisterAlertAPI(apiServer); err != nil {
 		return nil, err
 	}
 
-	onDemandClient := ondemand.NewOnDemandProbeClient(topology.Graph, captureApiHandler, wsServer, etcdClient)
+	onDemandClient := ondemand.NewOnDemandProbeClient(topology.Graph, captureAPIHandler, wsServer, etcdClient)
 
 	pipeline := mappings.NewFlowMappingPipeline(mappings.NewGraphFlowEnhancer(topology.Graph))
 
@@ -277,7 +277,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	aserver := alert.NewAlertServer(topology.Graph, alertApiHandler, wsServer, tableClient, store, etcdClient)
+	aserver := alert.NewAlertServer(topology.Graph, alertAPIHandler, wsServer, tableClient, store, etcdClient)
 
 	piClient := packet_injector.NewPacketInjectorClient(wsServer)
 
@@ -305,15 +305,15 @@ func NewServerFromConfig() (*Server, error) {
 	flowtable := flow.NewTable(updateHandler, expireHandler)
 	server.FlowTable = flowtable
 
-	api.RegisterTopologyApi(topology.Graph, httpServer, tableClient, server.Storage)
+	api.RegisterTopologyAPI(topology.Graph, httpServer, tableClient, server.Storage)
 
-	api.RegisterFlowApi(flowtable, server.Storage, httpServer)
+	api.RegisterFlowAPI(flowtable, server.Storage, httpServer)
 
-	api.RegisterPacketInjectorApi(piClient, topology.Graph, httpServer)
+	api.RegisterPacketInjectorAPI(piClient, topology.Graph, httpServer)
 
-	api.RegisterPcapApi(httpServer, flowtable.PacketsChan)
+	api.RegisterPcapAPI(httpServer, flowtable.PacketsChan)
 
-	api.RegisterConfigApi(httpServer)
+	api.RegisterConfigAPI(httpServer)
 
 	return server, nil
 }

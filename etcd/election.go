@@ -205,7 +205,7 @@ func (le *EtcdMasterElector) AddEventListener(listener EtcdMasterElectionListene
 
 func NewEtcdMasterElector(host string, serviceType common.ServiceType, key string, etcdClient *EtcdClient) *EtcdMasterElector {
 	return &EtcdMasterElector{
-		EtcdKeyAPI: etcdClient.KeysApi,
+		EtcdKeyAPI: etcdClient.KeysAPI,
 		Host:       host,
 		path:       "/master-" + serviceType.String() + "-" + key,
 		master:     false,

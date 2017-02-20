@@ -38,12 +38,12 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-type FlowApi struct {
+type FlowAPI struct {
 	FlowTable *flow.Table
 	Storage   storage.Storage
 }
 
-func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (f *FlowAPI) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	var andFilters []*filters.Filter
 	for k, v := range r.URL.Query() {
 		andFilters = append(andFilters, filters.NewTermStringFilter(k, v[0]))
@@ -69,13 +69,13 @@ func (f *FlowApi) flowSearch(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	}
 }
 
-func (f *FlowApi) serveDataIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest, message string) {
+func (f *FlowAPI) serveDataIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest, message string) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(message))
 }
 
-func (f *FlowApi) jsonFlowConversation(layer string) string {
+func (f *FlowAPI) jsonFlowConversation(layer string) string {
 	//	{"nodes":[{"name":"Myriel","group":1}, ... ],"links":[{"source":1,"target":0,"value":1},...]}
 	nodes := []string{}
 	links := []string{}
@@ -126,7 +126,7 @@ func (f *FlowApi) jsonFlowConversation(layer string) string {
 	return fmt.Sprintf(`{"nodes":[%s], "links":[%s]}`, strings.Join(nodes, ","), strings.Join(links, ","))
 }
 
-func (f *FlowApi) conversationLayer(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (f *FlowAPI) conversationLayer(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	vars := mux.Vars(&r.Request)
 	f.serveDataIndex(w, r, f.jsonFlowConversation(vars["layer"]))
 }
@@ -179,7 +179,7 @@ type flowMetricStat struct {
 	Packets int64
 }
 
-func (f *FlowApi) jsonFlowDiscovery(DiscoType discoType) string {
+func (f *FlowAPI) jsonFlowDiscovery(DiscoType discoType) string {
 	// {"name":"root","children":[{"name":"Ethernet","children":[{"name":"IPv4","children":
 	//		[{"name":"UDP","children":[{"name":"Payload","size":360,"children":[]}]},
 	//     {"name":"TCP","children":[{"name":"Payload","size":240,"children":[]}]}]}]}]}
@@ -231,7 +231,7 @@ func (f *FlowApi) jsonFlowDiscovery(DiscoType discoType) string {
 	return string(bytes)
 }
 
-func (f *FlowApi) discoveryType(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (f *FlowAPI) discoveryType(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	vars := mux.Vars(&r.Request)
 	discoType := vars["type"]
 	dtype := bytes
@@ -243,7 +243,7 @@ func (f *FlowApi) discoveryType(w http.ResponseWriter, r *auth.AuthenticatedRequ
 	}
 	f.serveDataIndex(w, r, f.jsonFlowDiscovery(dtype))
 }
-func (f *FlowApi) registerEndpoints(r *shttp.Server) {
+func (f *FlowAPI) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
 			Name:        "FlowSearch",
@@ -268,8 +268,8 @@ func (f *FlowApi) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterFlowApi(f *flow.Table, st storage.Storage, r *shttp.Server) {
-	fa := &FlowApi{
+func RegisterFlowAPI(f *flow.Table, st storage.Storage, r *shttp.Server) {
+	fa := &FlowAPI{
 		FlowTable: f,
 		Storage:   st,
 	}

@@ -47,8 +47,8 @@ type Capture struct {
 type CaptureResourceHandler struct {
 }
 
-type CaptureApiHandler struct {
-	BasicApiHandler
+type CaptureAPIHandler struct {
+	BasicAPIHandler
 	Graph *graph.Graph
 }
 
@@ -62,7 +62,7 @@ func NewCapture(query string, bpfFilter string) *Capture {
 	}
 }
 
-func (c *CaptureResourceHandler) New() ApiResource {
+func (c *CaptureResourceHandler) New() APIResource {
 	id, _ := uuid.NewV4()
 
 	return &Capture{
@@ -70,7 +70,7 @@ func (c *CaptureResourceHandler) New() ApiResource {
 	}
 }
 
-func (c *CaptureApiHandler) Decorate(resource ApiResource) {
+func (c *CaptureAPIHandler) Decorate(resource APIResource) {
 	capture := resource.(*Capture)
 
 	count := 0
@@ -116,28 +116,28 @@ func (c *Capture) SetID(i string) {
 }
 
 // Create tests that resource GremlinQuery does not exists already
-func (c *CaptureApiHandler) Create(r ApiResource) error {
+func (c *CaptureAPIHandler) Create(r APIResource) error {
 	capture := r.(*Capture)
-	resources := c.BasicApiHandler.Index()
+	resources := c.BasicAPIHandler.Index()
 	for _, resource := range resources {
 		if resource.(*Capture).GremlinQuery == capture.GremlinQuery {
 			return fmt.Errorf("Duplicate capture, uuid=%s", resource.(*Capture).UUID)
 		}
 	}
 
-	return c.BasicApiHandler.Create(r)
+	return c.BasicAPIHandler.Create(r)
 }
 
-func RegisterCaptureApi(apiServer *ApiServer, g *graph.Graph) (*CaptureApiHandler, error) {
-	captureApiHandler := &CaptureApiHandler{
-		BasicApiHandler: BasicApiHandler{
+func RegisterCaptureAPI(apiServer *APIServer, g *graph.Graph) (*CaptureAPIHandler, error) {
+	captureAPIHandler := &CaptureAPIHandler{
+		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},
 		Graph: g,
 	}
-	if err := apiServer.RegisterApiHandler(captureApiHandler); err != nil {
+	if err := apiServer.RegisterAPIHandler(captureAPIHandler); err != nil {
 		return nil, err
 	}
-	return captureApiHandler, nil
+	return captureAPIHandler, nil
 }

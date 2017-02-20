@@ -30,11 +30,11 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 )
 
-type PcapApi struct {
+type PcapAPI struct {
 	packetsChan chan *flow.FlowPackets
 }
 
-func (p *PcapApi) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	writer, err := flow.NewPcapWriter(r.Body, p.packetsChan, false)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
@@ -48,7 +48,7 @@ func (p *PcapApi) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	w.WriteHeader(http.StatusOK)
 }
 
-func (p *PcapApi) registerEndpoints(r *shttp.Server) {
+func (p *PcapAPI) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
 			Name:        "PCAP",
@@ -61,8 +61,8 @@ func (p *PcapApi) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterPcapApi(r *shttp.Server, packetsChan chan *flow.FlowPackets) {
-	p := &PcapApi{packetsChan: packetsChan}
+func RegisterPcapAPI(r *shttp.Server, packetsChan chan *flow.FlowPackets) {
+	p := &PcapAPI{packetsChan: packetsChan}
 
 	p.registerEndpoints(r)
 }

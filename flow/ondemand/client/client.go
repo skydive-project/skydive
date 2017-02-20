@@ -39,7 +39,7 @@ type OnDemandProbeClient struct {
 	sync.RWMutex
 	graph.DefaultGraphListener
 	graph          *graph.Graph
-	captureHandler *api.CaptureApiHandler
+	captureHandler *api.CaptureAPIHandler
 	wsServer       *shttp.WSServer
 	captures       map[string]*api.Capture
 	watcher        api.StoppableWatcher
@@ -193,7 +193,7 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 	}
 }
 
-func (o *OnDemandProbeClient) onApiWatcherEvent(action string, id string, resource api.ApiResource) {
+func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resource api.APIResource) {
 	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
 	capture := resource.(*api.Capture)
 	switch action {
@@ -209,7 +209,7 @@ func (o *OnDemandProbeClient) onApiWatcherEvent(action string, id string, resour
 func (o *OnDemandProbeClient) Start() {
 	o.elector.StartAndWait()
 
-	o.watcher = o.captureHandler.AsyncWatch(o.onApiWatcherEvent)
+	o.watcher = o.captureHandler.AsyncWatch(o.onAPIWatcherEvent)
 	o.graph.AddEventListener(o)
 }
 
@@ -218,7 +218,7 @@ func (o *OnDemandProbeClient) Stop() {
 	o.elector.Stop()
 }
 
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureApiHandler, w *shttp.WSServer, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
+func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.WSServer, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*api.Capture)
 	for _, resource := range resources {

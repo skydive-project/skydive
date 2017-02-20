@@ -41,8 +41,8 @@ type Alert struct {
 type AlertResourceHandler struct {
 }
 
-type AlertApiHandler struct {
-	BasicApiHandler
+type AlertAPIHandler struct {
+	BasicAPIHandler
 }
 
 func NewAlert() *Alert {
@@ -54,7 +54,7 @@ func NewAlert() *Alert {
 	}
 }
 
-func (a *AlertResourceHandler) New() ApiResource {
+func (a *AlertResourceHandler) New() APIResource {
 	id, _ := uuid.NewV4()
 
 	return &Alert{
@@ -74,15 +74,15 @@ func (a *Alert) SetID(i string) {
 	a.UUID = i
 }
 
-func RegisterAlertApi(apiServer *ApiServer) (*AlertApiHandler, error) {
-	alertApiHandler := &AlertApiHandler{
-		BasicApiHandler: BasicApiHandler{
+func RegisterAlertAPI(apiServer *APIServer) (*AlertAPIHandler, error) {
+	alertAPIHandler := &AlertAPIHandler{
+		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &AlertResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},
 	}
-	if err := apiServer.RegisterApiHandler(alertApiHandler); err != nil {
+	if err := apiServer.RegisterAPIHandler(alertAPIHandler); err != nil {
 		return nil, err
 	}
-	return alertApiHandler, nil
+	return alertAPIHandler, nil
 }

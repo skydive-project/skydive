@@ -39,7 +39,7 @@ import (
 	"github.com/skydive-project/skydive/validator"
 )
 
-type TopologyApi struct {
+type TopologyAPI struct {
 	Graph       *graph.Graph
 	TableClient *flow.TableClient
 	Storage     storage.Storage
@@ -49,7 +49,7 @@ type Topology struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 }
 
-func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	w.WriteHeader(http.StatusOK)
@@ -58,7 +58,7 @@ func (t *TopologyApi) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 	}
 }
 
-func (t *TopologyApi) topologySearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	resource := Topology{}
@@ -108,7 +108,7 @@ func (t *TopologyApi) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 	}
 }
 
-func (t *TopologyApi) registerEndpoints(r *shttp.Server) {
+func (t *TopologyAPI) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
 			Name:        "TopologiesIndex",
@@ -127,8 +127,8 @@ func (t *TopologyApi) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterTopologyApi(g *graph.Graph, r *shttp.Server, tc *flow.TableClient, st storage.Storage) {
-	t := &TopologyApi{
+func RegisterTopologyAPI(g *graph.Graph, r *shttp.Server, tc *flow.TableClient, st storage.Storage) {
+	t := &TopologyAPI{
 		Graph:       g,
 		TableClient: tc,
 		Storage:     st,

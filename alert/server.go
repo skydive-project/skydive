@@ -229,7 +229,7 @@ type AlertServer struct {
 	shttp.DefaultWSServerEventHandler
 	Graph         *graph.Graph
 	WSServer      *shttp.WSServer
-	AlertHandler  api.ApiHandler
+	AlertHandler  api.APIHandler
 	watcher       api.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
 	alertTimers   map[string]*time.Ticker
@@ -393,7 +393,7 @@ func (a *AlertServer) UnregisterAlert(id string) {
 	}
 }
 
-func (a *AlertServer) onApiWatcherEvent(action string, id string, resource api.ApiResource) {
+func (a *AlertServer) onAPIWatcherEvent(action string, id string, resource api.APIResource) {
 	switch action {
 	case "init", "create", "set", "update":
 		if err := a.RegisterAlert(resource.(*api.Alert)); err != nil {
@@ -407,7 +407,7 @@ func (a *AlertServer) onApiWatcherEvent(action string, id string, resource api.A
 func (a *AlertServer) Start() {
 	a.elector.StartAndWait()
 
-	a.watcher = a.AlertHandler.AsyncWatch(a.onApiWatcherEvent)
+	a.watcher = a.AlertHandler.AsyncWatch(a.onAPIWatcherEvent)
 	a.Graph.AddEventListener(a)
 	a.WSServer.AddEventHandler(a)
 }
@@ -416,7 +416,7 @@ func (a *AlertServer) Stop() {
 	a.elector.Stop()
 }
 
-func NewAlertServer(g *graph.Graph, ah api.ApiHandler, wsServer *shttp.WSServer, tc *flow.TableClient, s storage.Storage, etcdClient *etcd.EtcdClient) *AlertServer {
+func NewAlertServer(g *graph.Graph, ah api.APIHandler, wsServer *shttp.WSServer, tc *flow.TableClient, s storage.Storage, etcdClient *etcd.EtcdClient) *AlertServer {
 	gremlinParser := traversal.NewGremlinTraversalParser(g)
 	gremlinParser.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	gremlinParser.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tc, s))

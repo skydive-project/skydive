@@ -43,7 +43,7 @@ import (
 	sversion "github.com/skydive-project/skydive/version"
 )
 
-const DockerClientApiVersion = "1.18"
+const DockerClientAPIVersion = "1.18"
 
 type ContainerInfo struct {
 	Pid  int
@@ -152,7 +152,7 @@ func (probe *DockerProbe) connect() error {
 
 	logging.GetLogger().Debugf("Connecting to Docker daemon: %s", probe.url)
 	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("skydive-agent-%s", sversion.Version)}
-	probe.client, err = client.NewClient(probe.url, DockerClientApiVersion, nil, defaultHeaders)
+	probe.client, err = client.NewClient(probe.url, DockerClientAPIVersion, nil, defaultHeaders)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to create client to Docker daemon: %s", err.Error())
 		return err

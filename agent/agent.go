@@ -197,7 +197,7 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	_, err = api.NewApi(hserver, nil, "Agent")
+	_, err = api.NewAPI(hserver, nil, "Agent")
 	if err != nil {
 		panic(err)
 	}
@@ -205,7 +205,7 @@ func NewAgent() *Agent {
 	wsServer := shttp.NewWSServerFromConfig(common.AgentService, hserver, "/ws")
 
 	root := CreateRootNode(g)
-	api.RegisterTopologyApi(g, hserver, nil, nil)
+	api.RegisterTopologyAPI(g, hserver, nil, nil)
 
 	gserver := graph.NewServer(g, wsServer)
 

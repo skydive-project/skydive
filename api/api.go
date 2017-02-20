@@ -40,14 +40,14 @@ import (
 	"github.com/skydive-project/skydive/version"
 )
 
-type ApiServer struct {
+type APIServer struct {
 	HTTPServer  *shttp.Server
 	EtcdKeyAPI  etcd.KeysAPI
 	ServiceName string
-	handlers    map[string]ApiHandler
+	handlers    map[string]APIHandler
 }
 
-type ApiInfo struct {
+type APIInfo struct {
 	Host    string
 	Version string
 	Service string
@@ -61,7 +61,7 @@ func writeError(w http.ResponseWriter, status int, err error) {
 	w.Write([]byte(err.Error()))
 }
 
-func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
+func (a *APIServer) RegisterAPIHandler(handler APIHandler) error {
 	name := handler.Name()
 	title := strings.Title(name)
 
@@ -183,8 +183,8 @@ func (a *ApiServer) RegisterApiHandler(handler ApiHandler) error {
 	return nil
 }
 
-func (a *ApiServer) addAPIRootRoute() {
-	info := ApiInfo{
+func (a *APIServer) addAPIRootRoute() {
+	info := APIInfo{
 		Host:    config.GetConfig().GetString("host_id"),
 		Version: version.Version,
 		Service: a.ServiceName,
@@ -208,16 +208,16 @@ func (a *ApiServer) addAPIRootRoute() {
 	a.HTTPServer.RegisterRoutes(routes)
 }
 
-func (a *ApiServer) GetHandler(s string) ApiHandler {
+func (a *APIServer) GetHandler(s string) APIHandler {
 	return a.handlers[s]
 }
 
-func NewApi(server *shttp.Server, kapi etcd.KeysAPI, serviceName string) (*ApiServer, error) {
-	apiServer := &ApiServer{
+func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, serviceName string) (*APIServer, error) {
+	apiServer := &APIServer{
 		HTTPServer:  server,
 		EtcdKeyAPI:  kapi,
 		ServiceName: serviceName,
-		handlers:    make(map[string]ApiHandler),
+		handlers:    make(map[string]APIHandler),
 	}
 
 	apiServer.addAPIRootRoute()

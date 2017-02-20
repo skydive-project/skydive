@@ -43,7 +43,7 @@ type testAPIServer struct {
 	analyzer     *analyzer.Server
 }
 
-const confApi = `---
+const confAPI = `---
 auth:
   type: {{.AuthType}}
   basic:
@@ -96,7 +96,7 @@ func createAPIServer(t *testing.T, auth string) (*testAPIServer, error) {
 	params["PasswordFile"] = passwordFile
 	params["EtcdDataDir"] = tmpDir
 
-	analyzer := helper.StartAnalyzerWithConfig(t, confApi, ts, params)
+	analyzer := helper.StartAnalyzerWithConfig(t, confAPI, ts, params)
 
 	return &testAPIServer{
 		authType:     auth,
@@ -149,7 +149,7 @@ func (s *testAPIServer) Stop() {
 	}
 }
 
-func TestAlertApi(t *testing.T) {
+func TestAlertAPI(t *testing.T) {
 	apiServer, err := createAPIServer(t, "noauth")
 	if err != nil {
 		t.Fatal(err)
@@ -204,7 +204,7 @@ func TestAlertApi(t *testing.T) {
 	}
 }
 
-func TestCaptureApi(t *testing.T) {
+func TestCaptureAPI(t *testing.T) {
 	apiServer, err := createAPIServer(t, "basic")
 	if err != nil {
 		t.Fatal(err)
