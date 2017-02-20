@@ -239,11 +239,11 @@ func NewServerFromConfig() (*Server, error) {
 	agentUpdate := int64(float64(analyzerUpdate) * agentRatio)
 	agentExpire := int64(float64(analyzerExpire) * agentRatio)
 
-	if err := etcdClient.SetInt64("/agent/config/flowtable_update", agentUpdate); err != nil {
+	if err = etcdClient.SetInt64("/agent/config/flowtable_update", agentUpdate); err != nil {
 		return nil, err
 	}
 
-	if err := etcdClient.SetInt64("/agent/config/flowtable_expire", agentExpire); err != nil {
+	if err = etcdClient.SetInt64("/agent/config/flowtable_expire", agentExpire); err != nil {
 		return nil, err
 	}
 
@@ -252,26 +252,13 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	captureApiHandler := &api.CaptureApiHandler{
-		BasicApiHandler: api.BasicApiHandler{
-			ResourceHandler: &api.CaptureResourceHandler{},
-			EtcdKeyAPI:      etcdClient.KeysApi,
-		},
-		Graph: topology.Graph,
-	}
-	err = apiServer.RegisterApiHandler(captureApiHandler)
-	if err != nil {
+	var captureApiHandler *api.CaptureApiHandler
+	if captureApiHandler, err = api.RegisterCaptureApi(apiServer, topology.Graph); err != nil {
 		return nil, err
 	}
 
-	alertApiHandler := &api.AlertApiHandler{
-		BasicApiHandler: api.BasicApiHandler{
-			ResourceHandler: &api.AlertResourceHandler{},
-			EtcdKeyAPI:      etcdClient.KeysApi,
-		},
-	}
-	err = apiServer.RegisterApiHandler(alertApiHandler)
-	if err != nil {
+	var alertApiHandler *api.AlertApiHandler
+	if alertApiHandler, err = api.RegisterAlertApi(apiServer); err != nil {
 		return nil, err
 	}
 

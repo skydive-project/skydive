@@ -127,3 +127,17 @@ func (c *CaptureApiHandler) Create(r ApiResource) error {
 
 	return c.BasicApiHandler.Create(r)
 }
+
+func RegisterCaptureApi(apiServer *ApiServer, g *graph.Graph) (*CaptureApiHandler, error) {
+	captureApiHandler := &CaptureApiHandler{
+		BasicApiHandler: BasicApiHandler{
+			ResourceHandler: &CaptureResourceHandler{},
+			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
+		},
+		Graph: g,
+	}
+	if err := apiServer.RegisterApiHandler(captureApiHandler); err != nil {
+		return nil, err
+	}
+	return captureApiHandler, nil
+}

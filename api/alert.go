@@ -73,3 +73,16 @@ func (a *Alert) ID() string {
 func (a *Alert) SetID(i string) {
 	a.UUID = i
 }
+
+func RegisterAlertApi(apiServer *ApiServer) (*AlertApiHandler, error) {
+	alertApiHandler := &AlertApiHandler{
+		BasicApiHandler: BasicApiHandler{
+			ResourceHandler: &AlertResourceHandler{},
+			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
+		},
+	}
+	if err := apiServer.RegisterApiHandler(alertApiHandler); err != nil {
+		return nil, err
+	}
+	return alertApiHandler, nil
+}
