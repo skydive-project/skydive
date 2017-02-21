@@ -52,6 +52,9 @@ func (t *TopologyServer) hostGraphDeleted(host string, mode int) {
 
 func (t *TopologyServer) OnUnregisterClient(c *shttp.WSClient) {
 	if (c.ClientType != "") && (c.ClientType != common.AnalyzerService) {
+		t.Graph.Lock()
+		defer t.Graph.Unlock()
+
 		t.hostGraphDeleted(c.Host, graph.CACHE_ONLY_MODE)
 
 		t.RLock()
