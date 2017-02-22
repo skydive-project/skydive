@@ -75,7 +75,7 @@ type Metadata map[string]interface{}
 type MetadataTransaction struct {
 	graph        *Graph
 	graphElement interface{}
-	metadata     Metadata
+	Metadata     Metadata
 }
 
 type graphElement struct {
@@ -220,8 +220,15 @@ func (e *graphElement) GetField(name string) (interface{}, bool) {
 	}
 }
 
+// Metadata returns a copy in order to avoid direct modification of metadata leading in
+// loosing notification.
 func (e *graphElement) Metadata() Metadata {
-	return e.metadata
+	m := Metadata{}
+
+	for k, v := range e.metadata {
+		m[k] = v
+	}
+	return m
 }
 
 func (e *graphElement) MatchMetadata(f Metadata) bool {
@@ -450,6 +457,21 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 	return true
 }
 
+func (g *Graph) DelMetadata(i interface{}, k string) bool {
+	var e *graphElement
+
+	switch i.(type) {
+	case *Node:
+		e = &i.(*Node).graphElement
+	case *Edge:
+		e = &i.(*Edge).graphElement
+	}
+
+	m := e.Metadata()
+	delete(m, k)
+	return g.SetMetadata(i, m)
+}
+
 func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 	var e *graphElement
 	ge := graphEvent{element: i}
@@ -477,43 +499,8 @@ func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 	return true
 }
 
-func (g *Graph) DelMetadata(i interface{}, k string) bool {
-	var m Metadata
-	ge := graphEvent{element: i}
-
-	switch i.(type) {
-	case *Node:
-		m = i.(*Node).graphElement.metadata
-		ge.kind = nodeUpdated
-	case *Edge:
-		m = i.(*Edge).graphElement.metadata
-		ge.kind = edgeUpdated
-	}
-
-	if _, ok := m[k]; !ok {
-		return false
-	}
-
-	if !g.backend.SetMetadata(i, m) {
-		return false
-	}
-
-	delete(m, k)
-
-	g.notifyEvent(ge)
-	return true
-}
-
 func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
-	t.metadata[k] = v
-}
-
-func (t *MetadataTransaction) DelMetadata(k string, v interface{}) {
-	delete(t.metadata, k)
-}
-
-func (t *MetadataTransaction) Metadata() Metadata {
-	return t.metadata
+	t.Metadata[k] = v
 }
 
 func (t *MetadataTransaction) Commit() {
@@ -530,7 +517,7 @@ func (t *MetadataTransaction) Commit() {
 	}
 
 	updated := false
-	for k, v := range t.metadata {
+	for k, v := range t.Metadata {
 		if e.metadata[k] != v {
 			e.metadata[k] = v
 			if !t.graph.backend.AddMetadata(t.graphElement, k, v) {
@@ -557,10 +544,10 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	t := MetadataTransaction{
 		graph:        g,
 		graphElement: i,
-		metadata:     make(Metadata),
+		Metadata:     make(Metadata),
 	}
 	for k, v := range e.metadata {
-		t.metadata[k] = v
+		t.Metadata[k] = v
 	}
 
 	return &t

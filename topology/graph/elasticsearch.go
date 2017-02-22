@@ -229,14 +229,13 @@ func (b *ElasticSearchBackend) GetNode(i Identifier, t *common.TimeSlice) []*Nod
 			return nil
 		}
 		return []*Node{&node}
-	} else {
-		return b.SearchNodes(&TimedSearchQuery{
-			SearchQuery: filters.SearchQuery{
-				Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
-			},
-			TimeFilter: NewFilterForTimeSlice(t),
-		})
 	}
+	return b.SearchNodes(&TimedSearchQuery{
+		SearchQuery: filters.SearchQuery{
+			Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
+		},
+		TimeFilter: NewFilterForTimeSlice(t),
+	})
 }
 
 func (b *ElasticSearchBackend) AddEdge(e *Edge) bool {
@@ -261,14 +260,13 @@ func (b *ElasticSearchBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edg
 			return nil
 		}
 		return []*Edge{&edge}
-	} else {
-		return b.SearchEdges(&TimedSearchQuery{
-			SearchQuery: filters.SearchQuery{
-				Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
-			},
-			TimeFilter: NewFilterForTimeSlice(t),
-		})
 	}
+	return b.SearchEdges(&TimedSearchQuery{
+		SearchQuery: filters.SearchQuery{
+			Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
+		},
+		TimeFilter: NewFilterForTimeSlice(t),
+	})
 }
 
 func (b *ElasticSearchBackend) updateMetadata(i interface{}, m Metadata) bool {
@@ -339,7 +337,6 @@ func (b *ElasticSearchBackend) AddMetadata(i interface{}, k string, v interface{
 		m = e.metadata
 	}
 
-	m[k] = v
 	success := b.updateMetadata(i, m)
 	if !success {
 		logging.GetLogger().Errorf("Error while adding metadata")

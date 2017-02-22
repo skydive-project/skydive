@@ -188,13 +188,12 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 			break
 		}
 
-		if state, ok := n.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
+		if _, ok := n.Metadata()["Capture/ID"]; ok {
 			logging.GetLogger().Debugf("Capture already started on node %s", n.ID)
 		} else {
 			if ok = o.registerProbe(n, &query.Capture); ok {
 				t := o.Graph.StartMetadataTransaction(n)
-				t.AddMetadata("State/FlowCapture", "ON")
-				t.AddMetadata("CaptureID", query.Capture.UUID)
+				t.AddMetadata("Capture/ID", query.Capture.UUID)
 				t.Commit()
 			}
 		}
@@ -208,8 +207,7 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 
 		if ok = o.unregisterProbe(n); ok {
 			metadata := n.Metadata()
-			metadata["State/FlowCapture"] = "OFF"
-			delete(metadata, "CaptureID")
+			delete(metadata, "Capture/ID")
 			delete(metadata, "Capture/PacketsReceived")
 			delete(metadata, "Capture/PacketsDropped")
 			delete(metadata, "Capture/PacketsIfDropped")
@@ -224,16 +222,11 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 }
 
 func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
-	if state, ok := n.Metadata()["State/FlowCapture"]; !ok || state.(string) == "OFF" {
+	if _, ok := n.Metadata()["Capture/ID"]; !ok {
 		return
 	}
 
-	if o.unregisterProbe(n) {
-		metadata := n.Metadata()
-		metadata["State/FlowCapture"] = "OFF"
-		delete(metadata, "CaptureID")
-		o.Graph.SetMetadata(n, metadata)
-	}
+	o.unregisterProbe(n)
 }
 
 func (o *OnDemandProbeServer) Start() error {

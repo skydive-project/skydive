@@ -64,7 +64,7 @@ var Node = function(ID) {
 };
 
 Node.prototype.IsCaptureOn = function() {
-  return "State/FlowCapture" in this.Metadata && this.Metadata["State/FlowCapture"] == "ON";
+  return "Capture/ID" in this.Metadata;
 };
 
 Node.prototype.IsCaptureAllowed = function() {
@@ -1131,7 +1131,7 @@ Layout.prototype.ProcessGraphMessage = function(msg) {
 
     case "NodeUpdated":
       node = this.graph.GetNode(msg.Obj.ID);
-      var redrawOn = ['State/FlowCapture', 'Status'],
+      var redrawOn = ['Capture/ID', 'Status'],
           redraw = redrawOn.reduce(function(acc, key) {
             if (msg.Obj.Metadata[key] !== node.Metadata[key]) {
               acc = true;

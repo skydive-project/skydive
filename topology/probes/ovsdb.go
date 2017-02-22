@@ -194,9 +194,8 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		nodes := o.Graph.LookupChildren(o.Root, graph.Metadata{"Name": name, "IfIndex": index}, graph.Metadata{})
 		for _, node := range nodes {
 			if node.Metadata()["UUID"] != uuid {
-				m := node.Metadata()
-				m["UUID"] = uuid
 				intf = o.Graph.Replace(node, intf)
+				o.Graph.AddMetadata(node, "UUID", uuid)
 			}
 		}
 	}

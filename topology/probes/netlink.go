@@ -449,9 +449,8 @@ func (u *NetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int
 	}
 
 	key := getFamilyKey(family)
-	m := intf.Metadata()
-	if v, ok := m[key]; ok {
-		ips := strings.Split(v.(string), ",")
+	if v, err := intf.GetFieldString(key); err == nil {
+		ips := strings.Split(v, ",")
 		for i, ip := range ips {
 			if ip == addr.IPNet.String() {
 				ips = append(ips[:i], ips[i+1:]...)
@@ -624,7 +623,9 @@ func (u *NetLinkProbe) start(nsPath string) {
 						if stats := link.Attrs().Statistics; stats != nil {
 							u.Graph.Lock()
 							tr := u.Graph.StartMetadataTransaction(node)
-							m := tr.Metadata()
+
+							// get and update the metadata transaction instance
+							m := tr.Metadata
 							metric := netlink.LinkStatistics{
 								Collisions:        stats.Collisions - m["Statistics/Collisions"].(uint64),
 								Multicast:         stats.Multicast - m["Statistics/Multicast"].(uint64),

@@ -47,13 +47,12 @@ type OnDemandProbeClient struct {
 }
 
 func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.Capture) {
-
 	for _, i := range nodes {
 		switch i.(type) {
 		case *graph.Node:
 			o.graph.RLock()
 			node := i.(*graph.Node)
-			if state, ok := node.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
+			if _, ok := node.Metadata()["Capture/ID"]; ok {
 				o.graph.RUnlock()
 				return
 			}
@@ -65,7 +64,7 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 			// case of shortestpath that return a list of nodes
 			for _, node := range i.([]*graph.Node) {
 				o.graph.RLock()
-				if state, ok := node.Metadata()["State/FlowCapture"]; ok && state.(string) == "ON" {
+				if _, ok := node.Metadata()["Capture/ID"]; ok {
 					o.graph.RUnlock()
 					return
 				}
