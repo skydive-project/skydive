@@ -265,6 +265,9 @@ func (u *NetLinkProbe) updateMetadataStatistics(statistics *netlink.LinkStatisti
 }
 
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
+	u.Lock()
+	defer u.Unlock()
+
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -345,9 +348,7 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		return
 	}
 
-	u.Lock()
 	u.links[link.Attrs().Name] = intf
-	u.Unlock()
 
 	for k, nv := range intf.Metadata() {
 		if _, ok := metadata[k]; !ok {
