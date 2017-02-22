@@ -23,6 +23,7 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -222,7 +223,7 @@ func TestSFlowProbeNode(t *testing.T) {
 
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.NodeTID == node.Metadata()["TID"].(string) && f.LayersPath == "Ethernet/ARP/Payload" {
+		if tid, _ := node.GetFieldString("TID"); tid == f.NodeTID && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}
@@ -282,7 +283,7 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 
 	ok := false
 	for _, f := range ts.GetFlows() {
-		if f.NodeTID == node.Metadata()["TID"].(string) && f.LayersPath == "Ethernet/ARP/Payload" {
+		if tid, _ := node.GetFieldString("TID"); tid == f.NodeTID && f.LayersPath == "Ethernet/ARP/Payload" {
 			ok = true
 			break
 		}
@@ -386,13 +387,21 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	if flows[0].NodeTID != node1.Metadata()["TID"].(string) &&
-		flows[0].NodeTID != node2.Metadata()["TID"].(string) {
+	tid1, _ := node1.GetFieldString("TID")
+	if tid1 == "" {
+		t.Fatal(errors.New("Node TID not Found"))
+	}
+
+	tid2, _ := node2.GetFieldString("TID")
+	if tid2 == "" {
+		t.Fatal(errors.New("Node TID not Found"))
+	}
+
+	if flows[0].NodeTID != tid1 && flows[0].NodeTID != tid2 {
 		t.Errorf("Bad NodeTID for the first flow: %s", flows[0].NodeTID)
 	}
 
-	if flows[1].NodeTID != node1.Metadata()["TID"].(string) &&
-		flows[1].NodeTID != node2.Metadata()["TID"].(string) {
+	if flows[1].NodeTID != tid1 && flows[1].NodeTID != tid2 {
 		t.Errorf("Bad NodeTID for the second flow: %s", flows[1].NodeTID)
 	}
 
@@ -470,7 +479,7 @@ func TestPCAPProbe(t *testing.T) {
 	ok := false
 	flows := ts.GetFlows()
 	for _, f := range flows {
-		if f.NodeTID == node.Metadata()["TID"].(string) {
+		if tid, _ := node.GetFieldString("TID"); f.NodeTID == tid {
 			ok = true
 			break
 		}
@@ -552,7 +561,7 @@ func TestPCAPProbeTLS(t *testing.T) {
 	ok := false
 	flows := ts.GetFlows()
 	for _, f := range flows {
-		if f.NodeTID == node.Metadata()["TID"].(string) {
+		if tid, _ := node.GetFieldString("TID"); tid == f.NodeTID {
 			ok = true
 			break
 		}
@@ -637,9 +646,18 @@ func TestSFlowSrcDstPath(t *testing.T) {
 
 	ok := false
 	for _, f := range ts.GetFlows() {
+		tid1, _ := node1.GetFieldString("TID")
+		if tid1 == "" {
+			break
+		}
+
+		tid2, _ := node2.GetFieldString("TID")
+		if tid2 == "" {
+			break
+		}
+
 		// we can have both way depending on which packet has been seen first
-		if (f.ANodeTID == node1.Metadata()["TID"].(string) && f.BNodeTID == node2.Metadata()["TID"].(string)) ||
-			(f.ANodeTID == node2.Metadata()["TID"].(string) && f.BNodeTID == node1.Metadata()["TID"].(string)) {
+		if (f.ANodeTID == tid1 && f.BNodeTID == tid2) || (f.ANodeTID == tid2 && f.BNodeTID == tid1) {
 			ok = true
 			break
 		}
@@ -749,8 +767,13 @@ func TestTableServer(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
+	tid, _ := node.GetFieldString("TID")
+	if tid == "" {
+		t.Fatal(errors.New("Node TID not Found"))
+	}
+
 	hnmap := make(topology.HostNodeTIDMap)
-	hnmap[node.Host()] = append(hnmap[node.Host()], node.Metadata()["TID"].(string))
+	hnmap[node.Host()] = append(hnmap[node.Host()], tid)
 
 	fsq := filters.SearchQuery{}
 	flowset, err := fclient.LookupFlowsByNodes(hnmap, fsq)
@@ -765,7 +788,7 @@ func TestTableServer(t *testing.T) {
 	}
 
 	for _, f := range flowset.Flows {
-		if f.NodeTID != node.Metadata()["TID"].(string) {
+		if f.NodeTID != tid {
 			t.Fatalf("Returned a non expected flow: %v", f)
 		}
 	}
@@ -819,7 +842,10 @@ func TestFlowGremlin(t *testing.T) {
 		t.Fatalf("Should return 1, got: %d (error: %+v)", count, err)
 	}
 
-	tid := node.Metadata()["TID"].(string)
+	tid, _ := node.GetFieldString("TID")
+	if tid == "" {
+		t.Fatal(errors.New("Node TID not Found"))
+	}
 
 	flows, err := gh.GetFlows(`g.V().Has("Name", "br-sflow", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `")`)
 	if len(flows) == 0 {
@@ -1684,12 +1710,17 @@ func TestReplayCapture(t *testing.T) {
 		t.Fatalf("Failed to find node matching query %s", gremlin)
 	}
 
-	if err := helper.SendPCAPFile("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", capture.PCAPSocket); err != nil {
+	if err = helper.SendPCAPFile("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", capture.PCAPSocket); err != nil {
 		t.Fatal(err.Error())
 	}
 
+	tid, _ := node.GetFieldString("TID")
+	if tid == "" {
+		t.Fatal(errors.New("Node TID not Found"))
+	}
+
 	time.Sleep(3 * time.Second)
-	gremlin = fmt.Sprintf("G.Flows().Has('NodeTID', '%s')", node.Metadata()["TID"].(string))
+	gremlin = fmt.Sprintf("G.Flows().Has('NodeTID', '%s')", tid)
 	flows, _ := gh.GetFlows(gremlin)
 
 	if len(flows) != 5 {

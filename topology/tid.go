@@ -44,13 +44,19 @@ func (t *TIDMapper) Stop() {
 }
 
 func (t *TIDMapper) setTID(parent, child *graph.Node) {
-	if t, ok := child.Metadata()["Type"]; !ok || t == "" {
+	tp, _ := child.GetFieldString("Type")
+	if tp == "" {
 		return
 	}
 
-	if tid, ok := parent.Metadata()["TID"]; ok {
-		tid = tid.(string) + child.Metadata()["Name"].(string) + child.Metadata()["Type"].(string)
-		u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid.(string)))
+	name, _ := child.GetFieldString("Name")
+	if name == "" {
+		return
+	}
+
+	if tid, _ := parent.GetFieldString("TID"); tid != "" {
+		tid = tid + name + tp
+		u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
 		t.Graph.AddMetadata(child, "TID", u.String())
 	}
 }
@@ -66,28 +72,32 @@ func (t *TIDMapper) setChildrenTID(parent *graph.Node) {
 // TID is UUIDV5(ID/UUID) of "root" node like host, netns, ovsport, fabric
 // for other nodes TID is UUIDV5(rootTID + Name + Type)
 func (t *TIDMapper) onNodeEvent(n *graph.Node) {
-	if _, ok := n.Metadata()["TID"]; !ok {
-		if tp, ok := n.Metadata()["Type"]; ok {
-			switch tp.(string) {
+	if _, err := n.GetFieldString("TID"); err != nil {
+		if tp, err := n.GetFieldString("Type"); err == nil {
+			switch tp {
 			case "host":
 				t.hostID = n.ID
 				t.Graph.AddMetadata(n, "TID", string(n.ID))
 
 				t.setChildrenTID(n)
 			case "netns":
-				tid := string(t.hostID) + n.Metadata()["Path"].(string) + tp.(string)
-				u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
-				t.Graph.AddMetadata(n, "TID", u.String())
+				if path, _ := n.GetFieldString("Path"); path != "" {
+					tid := string(t.hostID) + path + tp
+					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
+					t.Graph.AddMetadata(n, "TID", u.String())
 
-				t.setChildrenTID(n)
+					t.setChildrenTID(n)
+				}
 			case "ovsport":
-				tid := string(t.hostID) + n.Metadata()["UUID"].(string) + tp.(string)
-				u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
-				t.Graph.AddMetadata(n, "TID", u.String())
+				if u, _ := n.GetFieldString("UUID"); u != "" {
+					tid := string(t.hostID) + u + tp
+					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
+					t.Graph.AddMetadata(n, "TID", u.String())
 
-				t.setChildrenTID(n)
+					t.setChildrenTID(n)
+				}
 			default:
-				if n.Metadata()["Probe"] == "fabric" {
+				if probe, _ := n.GetFieldString("Probe"); probe == "fabric" {
 					t.Graph.AddMetadata(n, "TID", string(n.ID))
 				} else {
 					parents := t.Graph.LookupParents(n, graph.Metadata{}, graph.Metadata{"RelationType": "ownership"})
@@ -113,7 +123,7 @@ func (t *TIDMapper) OnNodeAdded(n *graph.Node) {
 // onEdgeEvent set TID for child TID nodes which is composed of the name
 // the TID of the parent node and the type.
 func (t *TIDMapper) onEdgeEvent(e *graph.Edge) {
-	if e.Metadata()["RelationType"] != "ownership" {
+	if rl, _ := e.GetFieldString("RelationType"); rl != "ownership" {
 		return
 	}
 

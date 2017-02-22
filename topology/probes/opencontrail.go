@@ -23,6 +23,7 @@
 package probes
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -56,20 +57,20 @@ func (mapper *OpenContrailMapper) retrieveExtIDs(metadata graph.Metadata, itf co
 
 	logging.GetLogger().Debugf("Retrieving extIDs from OpenContrail for Name: %s", name)
 
-	port_uuid, err := itf.GetField("uuid")
-	if err != nil {
-		return nil, err
+	portUUID, _ := itf.GetField("uuid")
+	if portUUID == "" {
+		return nil, errors.New("No uuid field")
 	}
 
-	mac, err := itf.GetField("mac_addr")
-	if err != nil {
-		return nil, err
+	mac, _ := itf.GetField("mac_addr")
+	if mac == "" {
+		return nil, errors.New("No mac_addr field")
 	}
 
-	logging.GetLogger().Debugf("Interface from contrail: port: %s mac: %s", port_uuid, mac)
+	logging.GetLogger().Debugf("Interface from contrail: port: %s mac: %s", portUUID, mac)
 
 	e := &ExtIDs{
-		IfaceID:     port_uuid,
+		IfaceID:     portUUID,
 		AttachedMac: mac,
 	}
 
@@ -104,8 +105,8 @@ func getInterfaceFromIntrospect(host string, port int, name string) (collection.
 }
 
 func (mapper *OpenContrailMapper) onVhostAdded(node *graph.Node, itf collection.Element) {
-	phyItf, err := itf.GetField("physical_interface")
-	if err != nil {
+	phyItf, _ := itf.GetField("physical_interface")
+	if phyItf == "" {
 		return
 	}
 
@@ -133,31 +134,34 @@ func (mapper *OpenContrailMapper) onVhostAdded(node *graph.Node, itf collection.
 }
 
 func (mapper *OpenContrailMapper) linkToVhost(node *graph.Node) {
-	name := node.Metadata()["Name"].(string)
 	if mapper.vHost != nil {
 		md := graph.Metadata{"RelationType": "layer2"}
 		if !mapper.graph.AreLinked(node, mapper.vHost, md) {
-			logging.GetLogger().Debugf("Link %s to %s", name, mapper.vHost.Metadata()["Name"].(string))
+			logging.GetLogger().Debugf("Link %s to %s", node.String(), mapper.vHost.String())
 			mapper.graph.Link(node, mapper.vHost, md)
 		}
 	} else {
-		logging.GetLogger().Debugf("Add node %s to pending link list", name)
+		logging.GetLogger().Debugf("Add node %s to pending link list", node.String())
 		mapper.pendingLinks = append(mapper.pendingLinks, node)
 	}
 }
 
 func (mapper *OpenContrailMapper) nodeUpdater() {
 	body := func(nodeID graph.Identifier) {
+		mapper.graph.RLock()
 		node := mapper.graph.GetNode(nodeID)
 		if node == nil {
+			mapper.graph.RUnlock()
 			return
 		}
-		name, ok := node.Metadata()["Name"]
-		if !ok {
+		name, _ := node.GetFieldString("Name")
+		mapper.graph.RUnlock()
+
+		if name == "" {
 			return
 		}
 
-		itf, err := getInterfaceFromIntrospect(mapper.agentHost, mapper.agentPort, name.(string))
+		itf, err := getInterfaceFromIntrospect(mapper.agentHost, mapper.agentPort, name)
 		if err != nil {
 			logging.GetLogger().Debugf("%s\n", err)
 			return
@@ -168,16 +172,21 @@ func (mapper *OpenContrailMapper) nodeUpdater() {
 
 		// We get the node again to be sure to have the latest
 		// version.
+		// NOTE(safchain) does this really useful, I mean why getter one more time the same node ?
 		node = mapper.graph.GetNode(nodeID)
-		if node == nil || node.Metadata()["Name"] != name {
+		if node == nil {
+			return
+		}
+
+		if n, _ := node.GetFieldString("Name"); n != name {
 			logging.GetLogger().Warningf("Node with name %s has changed", name)
 			return
 		}
 
-		if node.Metadata()["Type"].(string) == "vhost" {
+		if tp, _ := node.GetFieldString("Type"); tp == "vhost" {
 			mapper.onVhostAdded(node, itf)
 		} else {
-			logging.GetLogger().Debugf("Retrieve extIDs for %s", name.(string))
+			logging.GetLogger().Debugf("Retrieve extIDs for %s", name)
 			extIDs, err := mapper.retrieveExtIDs(node.Metadata(), itf)
 			if err != nil {
 				return
@@ -207,12 +216,12 @@ func (mapper *OpenContrailMapper) updateNode(node *graph.Node, extIDs *ExtIDs) {
 
 func (mapper *OpenContrailMapper) enhanceNode(node *graph.Node) {
 	// To break update loops
-	if _, ok := node.Metadata()["ExtID/attached-mac"]; ok {
+	if attachedMAC, _ := node.GetFieldString("ExtID/attached-mac"); attachedMAC != "" {
 		return
 	}
 
-	ifType, ok := node.Metadata()["Type"]
-	if !ok {
+	ifType, _ := node.GetFieldString("Type")
+	if ifType == "" {
 		return
 	}
 
@@ -230,12 +239,12 @@ func (mapper *OpenContrailMapper) OnNodeAdded(n *graph.Node) {
 }
 
 func (mapper *OpenContrailMapper) OnNodeDeleted(n *graph.Node) {
-	name, ok := n.Metadata()["Name"]
-	if !ok {
+	name, _ := n.GetFieldString("Name")
+	if name == "" {
 		return
 	}
 	if n.ID == mapper.vHost.ID {
-		logging.GetLogger().Debugf("Removed %s", name.(string))
+		logging.GetLogger().Debugf("Removed %s", name)
 		mapper.vHost = nil
 	}
 }

@@ -80,19 +80,19 @@ func (e NeutronPortNotFound) Error() string {
 	return "Unable to find port for MAC address: " + e.MAC
 }
 
-func retrievePortMetadata(metadata graph.Metadata) PortMetadata {
+func retrievePortMetadata(node *graph.Node) PortMetadata {
 	md := PortMetadata{}
 
 	// We prefer to use the 'ExtID/attached-mac' metadata to get
 	// the port, and we fallback to the 'mac' metadata.
-	if attached_mac, ok := metadata["ExtID/attached-mac"]; ok {
-		md.mac = attached_mac.(string)
-	} else if mac, ok := metadata["MAC"]; ok {
-		md.mac = mac.(string)
+	if attachedMAC, _ := node.GetFieldString("ExtID/attached-mac"); attachedMAC != "" {
+		md.mac = attachedMAC
+	} else if mac, _ := node.GetFieldString("MAC"); mac != "" {
+		md.mac = mac
 	}
 
-	if iface_id, ok := metadata["ExtID/iface-id"]; ok {
-		md.portID = iface_id.(string)
+	if ifaceID, _ := node.GetFieldString("ExtID/iface-id"); ifaceID != "" {
+		md.portID = ifaceID
 	}
 	return md
 }
@@ -177,11 +177,11 @@ func (mapper *NeutronMapper) nodeUpdater() {
 			continue
 		}
 
-		if _, ok := node.Metadata()["MAC"]; !ok {
+		if mac, _ := node.GetFieldString("MAC"); mac == "" {
 			continue
 		}
 
-		portMd := retrievePortMetadata(node.Metadata())
+		portMd := retrievePortMetadata(node)
 
 		attrs, err := mapper.retrieveAttributes(portMd)
 		if err != nil {
@@ -202,7 +202,7 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
 
-	metadata := map[string]interface{}{"Manager": "neutron"}
+	metadata := graph.Metadata{"Manager": "neutron"}
 
 	if attrs.PortID != "" {
 		metadata["Neutron/PortID"] = attrs.PortID
@@ -234,22 +234,28 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	}
 	tr.Commit()
 
-	if !strings.HasPrefix(node.Metadata()["Name"].(string), "qvo") {
+	name, _ := node.GetFieldString("Name")
+	if name == "" {
+		return
+	}
+
+	if !strings.HasPrefix(name, "qvo") {
 		return
 	}
 
 	// tap to qvo path
-	tap := strings.Replace(node.Metadata()["Name"].(string), "qvo", "tap", 1)
+	tap := strings.Replace(name, "qvo", "tap", 1)
 
-	if _, ok := node.Metadata()["ExtID/vm-uuid"]; ok {
-		if mac, ok := node.Metadata()["ExtID/attached-mac"]; ok {
+	if uuid, _ := node.GetFieldString("ExtID/vm-uuid"); uuid != "" {
+		if attachedMac, _ := node.GetFieldString("ExtID/attached-mac"); attachedMac != "" {
 			retryFnc := func() error {
 				mapper.graph.Lock()
 				defer mapper.graph.Unlock()
 
 				if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
-					metadata["ExtID/vm-uuid"] = node.Metadata()["ExtID/vm-uuid"]
-					metadata["ExtID/attached-mac"] = node.Metadata()["ExtID/attached-mac"]
+					metadata["ExtID/vm-uuid"] = uuid
+					metadata["ExtID/attached-mac"] = attachedMac
+
 					for i, n := range path {
 						tr := mapper.graph.StartMetadataTransaction(n)
 						for k, v := range metadata {
@@ -258,7 +264,7 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 
 						// add vm peering info, going to be used by peering probe
 						if i == len(path)-1 {
-							tr.AddMetadata("PeerIntfMAC", mac)
+							tr.AddMetadata("PeerIntfMAC", attachedMac)
 						}
 						tr.Commit()
 					}
@@ -273,28 +279,27 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 }
 
 func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
-	md := node.Metadata()
-	name, ok := md["Name"]
-	if !ok {
+	name, _ := node.GetFieldString("Name")
+	if name == "" {
 		return
 	}
 
-	if mapper.nsRegexp.MatchString(name.(string)) {
+	if mapper.nsRegexp.MatchString(name) {
 		mapper.graph.AddMetadata(node, "Manager", "neutron")
 		return
 	}
 
-	if !mapper.intfRegexp.MatchString(name.(string)) {
+	if !mapper.intfRegexp.MatchString(name) {
 		return
 	}
 
-	mac, ok := md["MAC"]
-	if !ok {
+	mac, _ := node.GetFieldString("MAC")
+	if mac == "" {
 		return
 	}
 
-	portMdCache, f := mapper.cache.Get(mac.(string))
-	portMdNode := retrievePortMetadata(md)
+	portMdCache, f := mapper.cache.Get(mac)
+	portMdNode := retrievePortMetadata(node)
 
 	// If port metadatas have not changed, we return
 	if f && (portMdCache == portMdNode) {
@@ -302,7 +307,7 @@ func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
 	}
 	// We only try to get Neutron metadatas one time per port
 	// metadata values
-	mapper.cache.Set(mac.(string), portMdNode, cache.DefaultExpiration)
+	mapper.cache.Set(mac, portMdNode, cache.DefaultExpiration)
 
 	mapper.nodeUpdaterChan <- node.ID
 }

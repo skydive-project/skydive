@@ -34,8 +34,8 @@ func NewFilterForNodeTIDs(uuids []string) *filters.Filter {
 func NewFilterForNodes(nodes []*graph.Node) *filters.Filter {
 	var ids []string
 	for _, node := range nodes {
-		if t, ok := node.Metadata()["TID"]; ok {
-			ids = append(ids, t.(string))
+		if tid, _ := node.GetFieldString("TID"); tid != "" {
+			ids = append(ids, tid)
 		}
 	}
 	return NewFilterForNodeTIDs(ids)

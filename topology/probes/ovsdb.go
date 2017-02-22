@@ -195,7 +195,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		// one interface.
 		nodes := o.Graph.LookupChildren(o.Root, graph.Metadata{"Name": name, "IfIndex": index}, graph.Metadata{})
 		for _, node := range nodes {
-			if node.Metadata()["UUID"] != uuid {
+			if u, err := node.GetFieldString("UUID"); err == nil && u != uuid {
 				intf = o.Graph.Replace(node, intf)
 				o.Graph.AddMetadata(node, "UUID", uuid)
 			}
@@ -268,7 +268,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 			} else {
 				// lookup in the intf queue
 				for _, peer := range o.uuidToIntf {
-					if peer.Metadata()["Name"] == peerName && !o.Graph.AreLinked(intf, peer, patchMetadata) {
+					if name, _ := peer.GetFieldString("Name"); name == peerName && !o.Graph.AreLinked(intf, peer, patchMetadata) {
 						o.Graph.Link(intf, peer, patchMetadata)
 					}
 				}
@@ -300,7 +300,7 @@ func (o *OvsdbProbe) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, r
 	defer o.Graph.Unlock()
 
 	// do not delete if not an openvswitch interface
-	if driver, ok := intf.Metadata()["Driver"]; ok && driver == "openvswitch" {
+	if driver, _ := intf.GetFieldString("Driver"); driver == "openvswitch" {
 		o.Graph.DelNode(intf)
 	}
 

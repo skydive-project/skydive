@@ -518,7 +518,7 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 
 	var s float64
 	for _, n := range tv.nodes {
-		if value, ok := n.Metadata()[key]; ok {
+		if value, err := n.GetFieldInt64(key); err == nil {
 			if v, err := common.ToFloat64(value); err == nil {
 				s += v
 			} else {

@@ -34,15 +34,15 @@ type PeeringProbe struct {
 }
 
 func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
-	if mac, ok := n.Metadata()["MAC"]; ok {
-		if node, ok := p.peers[mac.(string)]; ok {
+	if mac, _ := n.GetFieldString("MAC"); mac != "" {
+		if node, ok := p.peers[mac]; ok {
 			if !p.graph.AreLinked(node, n, layer2Metadata) {
 				p.graph.Link(node, n, layer2Metadata)
 			}
 			return
 		}
 	}
-	if mac, ok := n.Metadata()["PeerIntfMAC"]; ok {
+	if mac, _ := n.GetFieldString("PeerIntfMAC"); mac != "" {
 		nodes := p.graph.GetNodes(graph.Metadata{"MAC": mac})
 		switch len(nodes) {
 		case 1:
@@ -51,9 +51,9 @@ func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
 			}
 			fallthrough
 		case 0:
-			p.peers[mac.(string)] = n
+			p.peers[mac] = n
 		default:
-			logging.GetLogger().Errorf("Multiple peer MAC found: %s", mac.(string))
+			logging.GetLogger().Errorf("Multiple peer MAC found: %s", mac)
 		}
 
 	}

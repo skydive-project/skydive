@@ -52,7 +52,7 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 		case *graph.Node:
 			o.graph.RLock()
 			node := i.(*graph.Node)
-			if _, ok := node.Metadata()["Capture/ID"]; ok {
+			if _, err := node.GetFieldString("Capture/ID"); err == nil {
 				o.graph.RUnlock()
 				return
 			}
@@ -64,7 +64,7 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 			// case of shortestpath that return a list of nodes
 			for _, node := range i.([]*graph.Node) {
 				o.graph.RLock()
-				if _, ok := node.Metadata()["Capture/ID"]; ok {
+				if _, err := node.GetFieldString("Capture/ID"); err == nil {
 					o.graph.RUnlock()
 					return
 				}

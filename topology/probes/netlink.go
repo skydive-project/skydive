@@ -80,7 +80,7 @@ func (u *NetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
 		// ignore ovs-system interface as it doesn't make any sense according to
 		// the following thread:
 		// http://openvswitch.org/pipermail/discuss/2013-October/011657.html
-		if parent.Metadata()["Name"] == "ovs-system" {
+		if name, _ := parent.GetFieldString("Name"); name == "ovs-system" {
 			return
 		}
 
@@ -103,7 +103,7 @@ func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 	}
 
 	if link.Attrs().ParentIndex != 0 {
-		if _, ok := intf.Metadata()["Vlan"]; ok {
+		if _, err := intf.GetFieldString("Vlan"); err == nil {
 			u.linkIntfToIndex(intf, int64(int64(link.Attrs().ParentIndex)))
 		}
 	}
@@ -114,7 +114,12 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 		return
 	}
 
-	if index, ok := intf.Metadata()["PeerIfIndex"]; ok {
+	ifIndex, err := intf.GetFieldInt64("IfIndex")
+	if err != nil {
+		return
+	}
+
+	if peerIndex, err := intf.GetFieldInt64("PeerIfIndex"); err == nil {
 		peerResolver := func() error {
 			// re get the interface from the graph since the interface could have been deleted
 			if u.Graph.GetNode(intf.ID) == nil {
@@ -122,7 +127,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			}
 
 			// got more than 1 peer, unable to find the right one, wait for the other to discover
-			peer := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": index.(int64), "Type": "veth"})
+			peer := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": peerIndex, "Type": "veth"})
 			linkMetadata := graph.Metadata{"RelationType": "layer2", "Type": "veth"}
 			if peer != nil && !u.Graph.AreLinked(peer, intf, linkMetadata) {
 				u.Graph.Link(peer, intf, linkMetadata)
@@ -131,7 +136,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			return errors.New("Nodes not linked")
 		}
 
-		if index.(int64) > intf.Metadata()["IfIndex"].(int64) {
+		if peerIndex > ifIndex {
 			if err := peerResolver(); err != nil {
 				retryFnc := func() error {
 					if u.isRunning() == false {
@@ -162,7 +167,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 		"IfIndex": index,
 	})
 	for _, i := range intfs {
-		if _, ok := i.Metadata()["UUID"]; ok {
+		if uuid, _ := i.GetFieldString("UUID"); uuid != "" {
 			intf = i
 			break
 		}
@@ -339,7 +344,9 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	case "openvswitch":
 		intf = u.addOvsLinkToTopology(link, metadata)
 		// always prefer Type from ovs
-		metadata["Type"] = intf.Metadata()["Type"]
+		if tp, _ := intf.GetFieldString("Type"); tp != "" {
+			metadata["Type"] = tp
+		}
 	default:
 		intf = u.addGenericLinkToTopology(link, metadata)
 	}
@@ -350,12 +357,12 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 
 	u.links[link.Attrs().Name] = intf
 
-	for k, nv := range intf.Metadata() {
-		if _, ok := metadata[k]; !ok {
-			metadata[k] = nv
-		}
+	// merge metadata
+	tr := u.Graph.StartMetadataTransaction(intf)
+	for k, v := range metadata {
+		tr.AddMetadata(k, v)
 	}
-	u.Graph.SetMetadata(intf, metadata)
+	tr.Commit()
 
 	u.handleIntfIsChild(intf, link)
 	u.handleIntfIsVeth(intf, link)
@@ -390,7 +397,10 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 	_, err := u.netlink.LinkByIndex(index)
 	if err != nil && intf != nil {
 		// if openvswitch do not remove let's do the job by ovs piece of code
-		if intf.Metadata()["Driver"] == "openvswitch" && intf.Metadata()["UUID"] != "" {
+		driver, _ := intf.GetFieldString("Driver")
+		uuid, _ := intf.GetFieldString("UUID")
+
+		if driver == "openvswitch" && uuid != "" {
 			u.Graph.Unlink(u.Root, intf)
 		} else {
 			u.Graph.DelNode(intf)
@@ -424,16 +434,15 @@ func (u *NetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int) 
 	}
 
 	key := getFamilyKey(family)
-	m := intf.Metadata()
-	if v, ok := m[key]; ok {
-		if strings.Contains(v.(string)+",", addr.IPNet.String()+",") {
+	if v, err := intf.GetFieldString(key); err == nil {
+		if strings.Contains(v+",", addr.IPNet.String()+",") {
 			return
 		}
 	}
 
 	ips := addr.IPNet.String()
-	if v, ok := intf.Metadata()[key]; ok {
-		ips = v.(string) + "," + ips
+	if v, err := intf.GetFieldString(key); err == nil {
+		ips = v + "," + ips
 	}
 	u.Graph.AddMetadata(intf, key, ips)
 }

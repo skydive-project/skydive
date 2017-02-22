@@ -194,7 +194,8 @@ func TestPath(t *testing.T) {
 		var values []string
 
 		for _, n := range nodes {
-			values = append(values, strconv.FormatInt(int64(n.Metadata()["Value"].(int)), 10))
+			value, _ := n.GetFieldInt64("Value")
+			values = append(values, strconv.FormatInt(value, 10))
 		}
 
 		return expected == strings.Join(values, "/")
@@ -280,24 +281,24 @@ func TestMetadata(t *testing.T) {
 	n := g.NewNode(GenID(), Metadata{"Value": 1, "Type": "intf"})
 
 	g.AddMetadata(n, "Name", "Node1")
-	v, ok := n.Metadata()["Name"]
-	if !ok || v != "Node1" {
+	v, _ := n.GetFieldString("Name")
+	if v != "Node1" {
 		t.Error("Metadata not updated")
 	}
 
 	g.AddMetadata(n, "Value", "Value1")
-	v, ok = n.Metadata()["Value"]
-	if !ok || v != "Value1" {
+	v, _ = n.GetFieldString("Value")
+	if v != "Value1" {
 		t.Error("Metadata not updated")
 	}
 
 	g.SetMetadata(n, Metadata{"Temp": 35})
-	_, ok = n.Metadata()["Value"]
-	if ok {
+	_, err := n.GetFieldString("Value")
+	if err == nil {
 		t.Error("Metadata should be removed")
 	}
-	v, ok = n.Metadata()["Temp"]
-	if !ok || v != 35 {
+	i, err := n.GetFieldInt64("Temp")
+	if err != nil || i != 35 {
 		t.Error("Metadata not updated")
 	}
 }
@@ -399,10 +400,13 @@ func TestRecursiveEvents(t *testing.T) {
 	l2 := &FakeRecursiveListener2{}
 	g.AddEventListener(l2)
 
-	g.AddNode(g.NewNode(GenID(), Metadata{"Value": 1}))
+	g.NewNode(GenID(), Metadata{"Value": 1})
+
+	ev1, _ := l2.events[0].GetFieldInt64("Value")
+	ev2, _ := l2.events[1].GetFieldInt64("Value")
 
 	// check if the notification are in the right order
-	if l2.events[0].Metadata()["Value"] != 1 && l2.events[0].Metadata()["Value"] != 2 {
+	if ev1 != 1 || ev2 != 2 {
 		t.Error("Events are not in the right order")
 	}
 }

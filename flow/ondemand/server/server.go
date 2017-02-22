@@ -59,9 +59,11 @@ func (o *OnDemandProbeServer) isActive(n *graph.Node) bool {
 }
 
 func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (*probes.FlowProbe, error) {
+	tp, _ := n.GetFieldString("Type")
+
 	capType := ""
 	if capture.Type != "" {
-		types := common.CaptureTypes[n.Metadata()["Type"].(string)].Allowed
+		types := common.CaptureTypes[tp].Allowed
 		for _, t := range types {
 			if t == capture.Type {
 				capType = t
@@ -73,7 +75,7 @@ func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (*pr
 		}
 	} else {
 		// no capture type defined for this type of node, ex: ovsport
-		c, ok := common.CaptureTypes[n.Metadata()["Type"].(string)]
+		c, ok := common.CaptureTypes[tp]
 		if !ok {
 			return nil, nil
 		}
@@ -89,19 +91,26 @@ func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (*pr
 }
 
 func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture) bool {
-	logging.GetLogger().Debugf("Attempting to register probe on node %s", n.Metadata()["Name"].(string))
+	name, _ := n.GetFieldString("Name")
+	if name == "" {
+		logging.GetLogger().Debugf("Unable to register flow probe, name of node unknown %s", n.ID)
+		return false
+	}
+
+	logging.GetLogger().Debugf("Attempting to register probe on node %s", name)
 
 	if o.isActive(n) {
 		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
 		return false
 	}
 
-	if _, ok := n.Metadata()["Type"]; !ok {
+	if _, err := n.GetFieldString("Type"); err != nil {
 		logging.GetLogger().Infof("Unable to register flow probe type of node unknown %v", n)
 		return false
 	}
 
-	if _, ok := n.Metadata()["TID"]; !ok {
+	tid, _ := n.GetFieldString("TID")
+	if tid == "" {
 		logging.GetLogger().Infof("Unable to register flow probe without node TID %v", n)
 		return false
 	}
@@ -118,7 +127,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 	}
 
 	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline)
-	ft.SetNodeTID(n.Metadata()["TID"].(string))
+	ft.SetNodeTID(tid)
 
 	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
@@ -188,7 +197,7 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 			break
 		}
 
-		if _, ok := n.Metadata()["Capture/ID"]; ok {
+		if _, err := n.GetFieldString("Capture/ID"); err == nil {
 			logging.GetLogger().Debugf("Capture already started on node %s", n.ID)
 		} else {
 			if ok = o.registerProbe(n, &query.Capture); ok {
@@ -222,7 +231,7 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 }
 
 func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
-	if _, ok := n.Metadata()["Capture/ID"]; !ok {
+	if _, err := n.GetFieldString("Capture/ID"); err != nil {
 		return
 	}
 

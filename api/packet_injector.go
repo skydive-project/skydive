@@ -68,12 +68,12 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 
 	if ppr.SrcIP == "" {
 		if srcNode != nil {
-			srcdata := srcNode.Metadata()
-			if ip, ok := srcdata["IPV4"]; !ok || ip == "" {
+			ip, _ := srcNode.GetFieldString("IPV4")
+			if ip == "" {
 				writeError(w, http.StatusBadRequest, errors.New("No source IP in node and user input"))
 				return
 			}
-			ppr.SrcIP = srcdata["IPV4"].(string)
+			ppr.SrcIP = ip
 		} else {
 			writeError(w, http.StatusBadRequest, errors.New("Not able to find a source node and source IP also empty"))
 			return
@@ -82,12 +82,12 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 
 	if ppr.DstIP == "" {
 		if dstNode != nil {
-			dstdata := dstNode.Metadata()
-			if ip, ok := dstdata["IPV4"]; !ok || ip == "" {
+			ip, _ := dstNode.GetFieldString("IPV4")
+			if ip == "" {
 				writeError(w, http.StatusBadRequest, errors.New("No dest IP in node and user input"))
 				return
 			}
-			ppr.DstIP = dstdata["IPV4"].(string)
+			ppr.DstIP = ip
 		} else {
 			writeError(w, http.StatusBadRequest, errors.New("Not able to find a dest node and dest IP also empty"))
 			return
@@ -96,12 +96,12 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 
 	if ppr.SrcMAC == "" {
 		if srcNode != nil {
-			srcdata := srcNode.Metadata()
-			if mac, ok := srcdata["MAC"]; !ok || mac == "" {
+			mac, _ := srcNode.GetFieldString("MAC")
+			if mac == "" {
 				writeError(w, http.StatusBadRequest, errors.New("No source MAC in node and user input"))
 				return
 			}
-			ppr.SrcMAC = srcdata["MAC"].(string)
+			ppr.SrcMAC = mac
 		} else {
 			writeError(w, http.StatusBadRequest, errors.New("Not able to find a source node and source MAC also empty"))
 			return
@@ -110,12 +110,12 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 
 	if ppr.DstMAC == "" {
 		if dstNode != nil {
-			dstdata := dstNode.Metadata()
-			if mac, ok := dstdata["MAC"]; !ok || mac == "" {
+			mac, _ := dstNode.GetFieldString("MAC")
+			if mac == "" {
 				writeError(w, http.StatusBadRequest, errors.New("No dest MAC in node and user input"))
 				return
 			}
-			ppr.DstMAC = dstdata["MAC"].(string)
+			ppr.DstMAC = mac
 		} else {
 			writeError(w, http.StatusBadRequest, errors.New("Not able to find a dest node and dest MAC also empty"))
 			return

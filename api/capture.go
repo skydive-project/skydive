@@ -86,11 +86,11 @@ func (c *CaptureAPIHandler) Decorate(resource APIResource) {
 		switch value.(type) {
 		case *graph.Node:
 			n := value.(*graph.Node)
-			if t, ok := n.Metadata()["Type"]; ok && common.IsCaptureAllowed(t.(string)) {
+			if tp, _ := n.GetFieldString("Type"); tp != "" && common.IsCaptureAllowed(tp) {
 				count++
 			}
-			if p, ok := n.Metadata()["PCAPSocket"]; ok {
-				pcapSocket = p.(string)
+			if p, _ := n.GetFieldString("PCAPSocket"); p != "" {
+				pcapSocket = p
 			}
 		case []*graph.Node:
 			count += len(value.([]*graph.Node))

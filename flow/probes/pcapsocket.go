@@ -80,11 +80,10 @@ func (p *PcapSocketProbe) run() {
 }
 
 func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table) error {
-	prop, ok := n.Metadata()["TID"]
-	if !ok {
+	tid, _ := n.GetFieldString("TID")
+	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
 	}
-	tid := prop.(string)
 
 	if _, ok := p.probes[tid]; ok {
 		return fmt.Errorf("Already registered %s", tid)
@@ -136,16 +135,16 @@ func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node) error {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
 
-	tid, ok := n.Metadata()["TID"]
-	if !ok {
+	tid, _ := n.GetFieldString("TID")
+	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
 	}
 
-	probe, ok := p.probes[tid.(string)]
+	probe, ok := p.probes[tid]
 	if !ok {
-		return fmt.Errorf("No registered probe for %s", tid.(string))
+		return fmt.Errorf("No registered probe for %s", tid)
 	}
-	delete(p.probes, tid.(string))
+	delete(p.probes, tid)
 
 	atomic.StoreInt64(&probe.state, common.StoppingState)
 	probe.listener.Close()

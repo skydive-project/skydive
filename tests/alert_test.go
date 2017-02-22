@@ -61,8 +61,10 @@ func checkMessage(t *testing.T, b []byte, al *api.Alert) (bool, error) {
 				}
 			}
 
-			if len(nodes) > 0 && nodes[0].Metadata()["Name"].(string) == "alert-ns" {
-				return true, nil
+			if len(nodes) > 0 {
+				if name, _ := nodes[0].GetFieldString("Name"); name == "alert-ns" {
+					return true, nil
+				}
 			}
 		}
 	}

@@ -62,21 +62,32 @@ func GraphPath(g *graph.Graph, n *graph.Node) string {
 }
 
 func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NetNSContext, error) {
-	name, ok := n.Metadata()["Name"]
-	if !ok || name == "" {
-		return nil, fmt.Errorf("No name for node %v", n)
+	name, _ := n.GetFieldString("Name")
+	if name == "" {
+		return nil, fmt.Errorf("No Name for node %v", n)
 	}
-	ifName := name.(string)
 
 	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
 	if len(nodes) == 0 {
-		return nil, fmt.Errorf("Failed to determine probePath for %s", ifName)
+		return nil, fmt.Errorf("Failed to determine probePath for %s", name)
 	}
 
 	for _, node := range nodes {
-		if node.Metadata()["Type"] == "netns" {
-			name := node.Metadata()["Name"].(string)
-			path := node.Metadata()["Path"].(string)
+		tp, _ := node.GetFieldString("Type")
+		if tp == "" {
+			return nil, fmt.Errorf("No Type for node %v", n)
+		}
+
+		if tp == "netns" {
+			name, _ := node.GetFieldString("Name")
+			if name == "" {
+				return nil, fmt.Errorf("No Name for node %v", node)
+			}
+
+			path, _ := node.GetFieldString("Path")
+			if path == "" {
+				return nil, fmt.Errorf("No Path for node %v", node)
+			}
 			logging.GetLogger().Debugf("Switching to namespace %s (path: %s)", name, path)
 
 			return common.NewNetNsContext(path)
@@ -91,8 +102,8 @@ type HostNodeTIDMap map[string][]string
 func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
 	hnmap := make(HostNodeTIDMap)
 	for _, node := range nodes {
-		if t, ok := node.Metadata()["TID"]; ok {
-			hnmap[node.Host()] = append(hnmap[node.Host()], t.(string))
+		if tid, _ := node.GetFieldString("TID"); tid != "" {
+			hnmap[node.Host()] = append(hnmap[node.Host()], tid)
 		}
 	}
 	return hnmap

@@ -72,7 +72,7 @@ func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 }
 
 func (fb *FabricProbe) OnNodeDeleted(n *graph.Node) {
-	if probe, ok := n.Metadata()["Probe"]; !ok || probe != "fabric" {
+	if probe, _ := n.GetFieldString("Probe"); probe != "fabric" {
 		delete(fb.links, n)
 	}
 }

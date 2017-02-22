@@ -45,8 +45,8 @@ func (gfe *GraphFlowEnhancer) getNodeTID(mac string) string {
 	if len(intfs) > 1 {
 		logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
 	} else if len(intfs) == 1 {
-		if t, ok := intfs[0].Metadata()["TID"]; ok {
-			return t.(string)
+		if tid, _ := intfs[0].GetFieldString("TID"); tid != "" {
+			return tid
 		}
 	}
 	return ""

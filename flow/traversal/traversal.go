@@ -604,7 +604,7 @@ func (s *FlowGremlinTraversalStep) makeSearchQuery() (fsq filters.SearchQuery, e
 func captureAllowedNodes(nodes []*graph.Node) []*graph.Node {
 	var allowed []*graph.Node
 	for _, n := range nodes {
-		if t, ok := n.Metadata()["Type"]; ok && common.IsCaptureAllowed(t.(string)) {
+		if tp, _ := n.GetFieldString("Type"); tp != "" && common.IsCaptureAllowed(tp) {
 			allowed = append(allowed, n)
 		}
 	}

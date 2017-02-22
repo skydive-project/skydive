@@ -101,7 +101,12 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	g.RLock()
-	ifName := n.Metadata()["Name"].(string)
+	ifName, _ := n.GetFieldString("Name")
+	if ifName == "" {
+		g.RUnlock()
+		return fmt.Errorf("No name for node %v", n)
+	}
+
 	firstLayerType := getGoPacketFirstLayerType(n)
 
 	nscontext, err := topology.NewNetNSContextByNode(g, n)
@@ -172,8 +177,13 @@ func (p *GoPacketProbe) stop() {
 }
 
 func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
-	if encapType, ok := n.Metadata()["EncapType"]; ok {
-		switch encapType.(string) {
+	name, _ := n.GetFieldString("Name")
+	if name == "" {
+		return layers.LayerTypeEthernet
+	}
+
+	if encapType, err := n.GetFieldString("EncapType"); err == nil {
+		switch encapType {
 		case "ether":
 			return layers.LayerTypeEthernet
 		case "gre":
@@ -183,39 +193,37 @@ func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
 		case "tunnel6", "gre6":
 			return layers.LayerTypeIPv6
 		default:
-			logging.GetLogger().Warningf("Encapsulation unknown %s on link %s, defaulting to Ethernet", encapType, n.Metadata()["Name"])
+			logging.GetLogger().Warningf("Encapsulation unknown %s on link %s, defaulting to Ethernet", encapType, name)
 		}
 	} else {
-		logging.GetLogger().Warningf("EncapType not found on link %s, defaulting to Ethernet", n.Metadata()["Name"])
+		logging.GetLogger().Warningf("EncapType not found on link %s, defaulting to Ethernet", name)
 	}
 	return layers.LayerTypeEthernet
 }
 
 func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
-	name, ok := n.Metadata()["Name"]
-	if !ok || name == "" {
+	name, _ := n.GetFieldString("Name")
+	if name == "" {
 		return fmt.Errorf("No name for node %v", n)
 	}
 
-	encapType, ok := n.Metadata()["EncapType"]
-	if !ok || encapType == "" {
+	encapType, _ := n.GetFieldString("EncapType")
+	if encapType == "" {
 		return fmt.Errorf("No EncapType for node %v", n)
 	}
 
-	tid, ok := n.Metadata()["TID"]
-	if !ok {
+	tid, _ := n.GetFieldString("TID")
+	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
 	}
 
 	id := string(n.ID)
-	ifName := name.(string)
 
-	if _, ok = p.probes[id]; ok {
-		return fmt.Errorf("Already registered %s", ifName)
+	if _, ok := p.probes[id]; ok {
+		return fmt.Errorf("Already registered %s", name)
 	}
 
-	port, ok := n.Metadata()["MPLSUDPPort"].(int)
-	if ok {
+	if port, err := n.GetFieldInt64("MPLSUDPPort"); err == nil {
 		// All gopacket instance of this agent will classify UDP packets coming
 		// from UDP port MPLSUDPPort as MPLS whatever the source interface
 		layers.RegisterUDPPortLayerType(layers.UDPPort(port), layers.LayerTypeMPLS)
@@ -223,7 +231,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 	}
 
 	probe := &GoPacketProbe{
-		NodeTID:   tid.(string),
+		NodeTID:   tid,
 		state:     common.StoppedState,
 		flowTable: ft,
 	}

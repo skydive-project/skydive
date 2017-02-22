@@ -245,19 +245,28 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 }
 
 func isOvsBridge(n *graph.Node) bool {
-	return n.Metadata()["UUID"] != "" && n.Metadata()["Type"] == "ovsbridge"
+	if uuid, _ := n.GetFieldString("UUID"); uuid == "" {
+		return false
+	}
+	if tp, _ := n.GetFieldString("Type"); tp == "ovsbridge" {
+		return true
+	}
+
+	return false
 }
 
 func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
-	tid, ok := n.Metadata()["TID"]
-	if !ok {
+	tid, _ := n.GetFieldString("TID")
+	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
 	}
 
 	if isOvsBridge(n) {
-		err := o.RegisterProbeOnBridge(n.Metadata()["UUID"].(string), tid.(string), ft)
-		if err != nil {
-			return err
+		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
+			err := o.RegisterProbeOnBridge(uuid, tid, ft)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -273,9 +282,11 @@ func (o *OvsSFlowProbesHandler) unregisterProbe(bridgeUUID string) error {
 
 func (o *OvsSFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
 	if isOvsBridge(n) {
-		err := o.unregisterProbe(n.Metadata()["UUID"].(string))
-		if err != nil {
-			return err
+		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
+			err := o.unregisterProbe(uuid)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

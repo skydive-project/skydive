@@ -91,7 +91,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	node := tv.Values()[0].(*graph.Node)
-	if node.Metadata()["Name"] != "Node4" {
+	if name, _ := node.GetFieldString("Name"); name != "Node4" {
 		t.Fatalf("Should return Node4, returned: %v", tv.Values())
 	}
 
@@ -126,7 +126,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	node = tv.Values()[0].(*graph.Node)
-	if node.Metadata()["Value"] != 3 {
+	if value, _ := node.GetFieldInt64("Value"); value != 3 {
 		t.Fatalf("Should return Node3, returned: %v", tv.Values())
 	}
 
@@ -378,7 +378,7 @@ func TestTraversalParser(t *testing.T) {
 	}
 
 	node := res.Values()[0].(*graph.Node)
-	if node.Metadata()["Name"] != "Node4" {
+	if name, _ := node.GetFieldString("Name"); name != "Node4" {
 		t.Fatalf("Should return Node4, returned: %v", res.Values())
 	}
 
