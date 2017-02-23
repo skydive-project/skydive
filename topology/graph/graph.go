@@ -300,6 +300,8 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 		if e.createdAt, err = parseTime(createdAt); err != nil {
 			return err
 		}
+	} else {
+		e.createdAt = time.Now().UTC()
 	}
 
 	if deletedAt, ok := objMap["DeletedAt"]; ok {
@@ -404,8 +406,26 @@ func (e *Edge) Decode(i interface{}) error {
 	}
 
 	objMap := i.(map[string]interface{})
-	e.parent = Identifier(objMap["Parent"].(string))
-	e.child = Identifier(objMap["Child"].(string))
+	id, ok := objMap["Parent"]
+	if !ok {
+		return errors.New("parent ID missing")
+	}
+	parentID, ok := id.(string)
+	if !ok {
+		return errors.New("parent ID wrong format")
+	}
+	e.parent = Identifier(parentID)
+
+	id, ok = objMap["Child"]
+	if !ok {
+		return errors.New("child ID missing")
+	}
+	childID, ok := id.(string)
+	if !ok {
+		return errors.New("child ID wrong format")
+	}
+	e.child = Identifier(childID)
+
 	return nil
 }
 
