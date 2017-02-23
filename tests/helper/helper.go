@@ -30,6 +30,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"flag"
@@ -64,6 +65,8 @@ type Cmd struct {
 }
 
 var (
+	Standalone bool
+
 	etcdServer             string
 	graphBackend           string
 	storageBackend         string
@@ -71,6 +74,7 @@ var (
 )
 
 func init() {
+	flag.BoolVar(&Standalone, "standalone", false, "Start an analyzer and an agent")
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
 	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
 	flag.StringVar(&storageBackend, "storage.backend", "", "Specify the storage backend used")
@@ -78,10 +82,10 @@ func init() {
 	flag.Parse()
 }
 
-func InitConfig(t *testing.T, conf string, params ...HelperParams) {
+func InitConfig(conf string, params ...HelperParams) error {
 	f, err := ioutil.TempFile("", "skydive_agent")
 	if err != nil {
-		t.Fatal(err.Error())
+		return err
 	}
 
 	if len(params) == 0 {
@@ -98,7 +102,7 @@ func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 		params[0]["EtcdServer"] = etcdServer
 	} else {
 		params[0]["EmbeddedEtcd"] = "true"
-		params[0]["EtcdServer"] = "http://localhost:2374"
+		params[0]["EtcdServer"] = "http://localhost:2379"
 	}
 	if storageBackend != "" {
 		params[0]["Storage"] = storageBackend
@@ -124,7 +128,7 @@ func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 
 	tmpl, err := template.New("config").Parse(conf)
 	if err != nil {
-		t.Fatal(err.Error())
+		return err
 	}
 	buff := bytes.NewBufferString("")
 	tmpl.Execute(buff, params[0])
@@ -132,17 +136,19 @@ func InitConfig(t *testing.T, conf string, params ...HelperParams) {
 	f.Write(buff.Bytes())
 	f.Close()
 
-	t.Logf("Configuration: %s", buff.String())
+	fmt.Printf("Config: %s\n", string(buff.Bytes()))
 
 	err = config.InitConfig("file", f.Name())
 	if err != nil {
-		t.Fatal(err.Error())
+		return err
 	}
 
 	err = logging.InitLogger()
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
+
+	return nil
 }
 
 type helperService int
@@ -166,7 +172,10 @@ type HelperAgentAnalyzer struct {
 type HelperParams map[string]interface{}
 
 func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params ...HelperParams) *HelperAgentAnalyzer {
-	InitConfig(t, conf, params...)
+	if err := InitConfig(conf, params...); err != nil {
+		t.Fatal(err)
+	}
+
 	agent := NewAgent()
 	analyzer := NewAnalyzerStorage(t, s)
 
@@ -252,7 +261,10 @@ func WaitAPI(t *testing.T, analyzer *analyzer.Server) {
 }
 
 func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params ...HelperParams) *analyzer.Server {
-	InitConfig(t, conf, params...)
+	if err := InitConfig(conf, params...); err != nil {
+		t.Fatal(err)
+	}
+
 	analyzer := NewAnalyzerStorage(t, s)
 	s.Start()
 	analyzer.Start()
@@ -261,7 +273,10 @@ func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, param
 }
 
 func StartAgentWithConfig(t *testing.T, conf string, params ...HelperParams) *agent.Agent {
-	InitConfig(t, conf, params...)
+	if err := InitConfig(conf, params...); err != nil {
+		t.Fatal(err)
+	}
+
 	agent := NewAgent()
 	agent.Start()
 	return agent
@@ -490,7 +505,9 @@ func WSConnect(endpoint string, timeout int, onReady func(*websocket.Conn)) (*we
 		}
 		if !ready {
 			ready = true
-			onReady(ws)
+			if onReady != nil {
+				onReady(ws)
+			}
 		}
 		return nil
 	}
@@ -535,4 +552,11 @@ func SendPCAPFile(filename string, socket string) error {
 	}
 
 	return nil
+}
+
+func FlowsToString(flows []*flow.Flow) string {
+	s := fmt.Sprintf("%d flows:\n", len(flows))
+	b, _ := json.MarshalIndent(flows, "", "\t")
+	s += string(b) + "\n"
+	return s
 }

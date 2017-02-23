@@ -10,6 +10,9 @@ dir="$(dirname "$0")"
 GOFLAGS="-race"
 
 case "$BACKEND" in
+  "memory")
+    exit 0
+    ;;
   "orientdb")
     . "${dir}/install-orientdb.sh"
     cd ${ORIENTDBPATH}
@@ -30,4 +33,4 @@ esac
 
 set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
-make test.functionals TAGS="$TAGS" GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=2m ARGS="$ARGS -etcd.server http://localhost:2379"
+make test.functionals TAGS="$TAGS" GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=20m ARGS="$ARGS -standalone -etcd.server http://localhost:2379"

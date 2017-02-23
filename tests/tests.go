@@ -21,3 +21,245 @@
  */
 
 package tests
+
+import (
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/skydive-project/skydive/agent"
+	"github.com/skydive-project/skydive/analyzer"
+	"github.com/skydive-project/skydive/api"
+	gclient "github.com/skydive-project/skydive/cmd/client"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/tests/helper"
+)
+
+const (
+	Replay = iota
+	OneShot
+)
+
+const testConfig = `---
+ws_pong_timeout: 5
+
+analyzers:
+  - 127.0.0.1:8082
+
+analyzer:
+  listen: 127.0.0.1:8082
+  flowtable_expire: 600
+  flowtable_update: 10
+  storage: {{.Storage}}
+  analyzer_username: admin
+  analyzer_password: password
+
+agent:
+  listen: 8081
+  topology:
+    probes:
+      - netlink
+      - netns
+      - ovsdb
+      - docker
+    netlink:
+      metrics_update: 15
+
+  flow:
+    probes:
+      - ovssflow
+      - gopacket
+      - pcapsocket
+  metadata:
+    info: This is compute node
+
+ovs:
+  ovsdb: unix:///var/run/openvswitch/db.sock
+
+storage:
+  elasticsearch: 127.0.0.1:9200
+  orientdb:
+    addr: http://127.0.0.1:2480
+    database: Skydive
+    username: root
+    password: {{.OrientDBRootPassword}}
+
+graph:
+  backend: {{.GraphBackend}}
+
+logging:
+  default: DEBUG
+  topology/probes: DEBUG
+  topology/graph: DEBUG
+  topology/probes/docker.go: INFO
+
+auth:
+  type: noauth
+
+etcd:
+  data_dir: /tmp/skydive-etcd
+  embedded: {{.EmbeddedEtcd}}
+  servers:
+    - {{.EtcdServer}}
+
+elasticsearch:
+  addr: 127.0.0.1:9200
+`
+
+type TestContext struct {
+	gh          *gclient.GremlinQueryHelper
+	client      *http.CrudClient
+	captures    []*api.Capture
+	time        time.Time
+	startTime   time.Time
+	successTime time.Time
+}
+
+type Test struct {
+	setupCmds        []helper.Cmd
+	setupFunction    func(c *TestContext) error
+	tearDownCmds     []helper.Cmd
+	tearDownFunction func(c *TestContext) error
+	captureType      string
+	captures         []string
+	retries          int
+	mode             int
+	check            func(c *TestContext) error
+}
+
+func RunTest(t *testing.T, test *Test) {
+	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	if err != nil {
+		t.Fatalf("Failed to create client: %s", err.Error())
+	}
+
+	var captures []*api.Capture
+	defer func() {
+		for _, capture := range captures {
+			client.Delete("capture", capture.ID())
+		}
+	}()
+
+	for _, gremlin := range test.captures {
+		capture := api.NewCapture(gremlin, "")
+		capture.Type = test.captureType
+		if err = client.Create("capture", capture); err != nil {
+			t.Fatal(err)
+		}
+		captures = append(captures, capture)
+	}
+
+	helper.ExecCmds(t, test.setupCmds...)
+
+	context := &TestContext{
+		gh:       gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{}),
+		client:   client,
+		captures: captures,
+	}
+
+	err = common.Retry(func() error {
+		for _, capture := range captures {
+			nodes, err := context.gh.GetNodes(capture.GremlinQuery)
+			if err != nil {
+				return err
+			}
+
+			if len(nodes) == 0 {
+				return fmt.Errorf("No node matching capture %s", capture.GremlinQuery)
+			}
+
+			for _, node := range nodes {
+				t, err := node.GetFieldString("Type")
+				if err != nil || !common.IsCaptureAllowed(t) {
+					continue
+				}
+
+				captureID, err := node.GetFieldString("Capture/ID")
+				if err != nil {
+					return fmt.Errorf("Node %+v matched the capture but capture is not enabled", node)
+				}
+
+				if captureID != capture.ID() {
+					return fmt.Errorf("Node %s matches multiple captures", node.ID)
+				}
+			}
+		}
+
+		return nil
+	}, 15, time.Second)
+
+	if err != nil {
+		helper.ExecCmds(t, test.tearDownCmds...)
+		t.Fatalf("Failed to setup captures: %s", err.Error())
+	}
+
+	if test.setupFunction != nil {
+		if err := test.setupFunction(context); err != nil {
+			helper.ExecCmds(t, test.tearDownCmds...)
+			t.Fatalf("Failed to setup test: %s", err.Error())
+		}
+	}
+
+	retries := test.retries
+	if retries <= 0 {
+		retries = 30
+	}
+
+	context.startTime = time.Now()
+
+	err = common.Retry(func() error {
+		if err := test.check(context); err != nil {
+			return err
+		}
+		context.successTime = time.Now()
+		if context.time.IsZero() {
+			context.time = context.successTime
+		}
+		return nil
+	}, retries, time.Second)
+
+	if err != nil {
+		helper.ExecCmds(t, test.tearDownCmds...)
+		t.Errorf("Test failed: %s", err.Error())
+		return
+	}
+
+	if test.tearDownFunction != nil {
+		if err := test.tearDownFunction(context); err != nil {
+			helper.ExecCmds(t, test.tearDownCmds...)
+			t.Fatalf("Fail to tear test down: %s", err.Error())
+		}
+	}
+
+	helper.ExecCmds(t, test.tearDownCmds...)
+
+	if test.mode == Replay {
+		t.Logf("Replaying test with time %s (Unix: %d), startTime %s (Unix: %d)", context.time, context.time.Unix(), context.startTime, context.startTime.Unix())
+		err = common.Retry(func() error {
+			return test.check(context)
+		}, retries, time.Second)
+
+		if err != nil {
+			t.Errorf("Failed to replay test: %s", err.Error())
+		}
+	}
+}
+
+func init() {
+	if helper.Standalone {
+		helper.InitConfig(testConfig)
+
+		server, err := analyzer.NewServerFromConfig()
+		if err != nil {
+			panic(fmt.Sprintf("Can't start Analyzer : %v", err))
+		}
+		server.Start()
+
+		agent := agent.NewAgent()
+		agent.Start()
+
+		// TODO: check for storage status instead of sleeping
+		time.Sleep(3 * time.Second)
+	}
+}

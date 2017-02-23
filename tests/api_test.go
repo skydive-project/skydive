@@ -23,152 +23,27 @@
 package tests
 
 import (
-	"errors"
-	"io/ioutil"
-	"net/http"
-	"os"
 	"testing"
-	"time"
 
-	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/tests/helper"
 )
 
-type testAPIServer struct {
-	authType     string
-	dataDir      string
-	passwordFile string
-	analyzer     *analyzer.Server
-}
-
-const confAPI = `---
-auth:
-  type: {{.AuthType}}
-  basic:
-    file: {{.PasswordFile}}
-
-analyzer:
-  listen: :{{.AnalyzerPort}}
-  flowtable_expire: 600
-  flowtable_update: 10
-
-etcd:
-  embedded: {{.EmbeddedEtcd}}
-  port: 2374
-  data_dir: {{.EtcdDataDir}}
-  servers: {{.EtcdServer}}
-
-logging:
-  default: {{.LogLevel}}
-`
-
-func createAPIServer(t *testing.T, auth string) (*testAPIServer, error) {
-	tmpDir, err := ioutil.TempDir("/tmp", "skydive-api-tests")
-	if err != nil {
-		return nil, err
-	}
-
-	var passwordFile string
-	switch auth {
-	case "basic":
-		f, err := ioutil.TempFile("/tmp", "api-test-basicauth")
-		if err != nil {
-			return nil, err
-		}
-		passwordFile = f.Name()
-
-		if _, err := f.WriteString("admin:$apr1$/tk0tCNm$fBaXEudF9OTyFUhuqoIwp/"); err != nil {
-			return nil, err
-		}
-
-		if err := f.Close(); err != nil {
-			return nil, err
-		}
-	}
-
-	ts := NewTestStorage()
-
-	params := make(helper.HelperParams)
-	params["AuthType"] = auth
-	params["PasswordFile"] = passwordFile
-	params["EtcdDataDir"] = tmpDir
-
-	analyzer := helper.StartAnalyzerWithConfig(t, confAPI, ts, params)
-
-	return &testAPIServer{
-		authType:     auth,
-		analyzer:     analyzer,
-		dataDir:      tmpDir,
-		passwordFile: passwordFile,
-	}, nil
-}
-
-type testAPIClient struct {
-	*shttp.CrudClient
-}
-
-func (c *testAPIClient) create(kind string, resource interface{}) error {
-	tries := 1
-	for {
-		if err := c.Create(kind, resource); err == nil {
-			return nil
-		} else {
-			if tries == 5 {
-				return err
-			}
-		}
-		time.Sleep(time.Second)
-		tries += 1
-	}
-}
-
-func (s *testAPIServer) GetClient() (*testAPIClient, error) {
-	authenticationOpts := shttp.AuthenticationOpts{Username: "admin", Password: "password"}
-	client := shttp.NewCrudClient(s.analyzer.HTTPServer.Addr, s.analyzer.HTTPServer.Port, &authenticationOpts, "api")
-	if client == nil {
-		return nil, errors.New("Failed to create client")
-	}
-	return &testAPIClient{client}, nil
-}
-
-func (s *testAPIServer) Stop() {
-	s.analyzer.Stop()
-	if tr, ok := http.DefaultTransport.(interface {
-		CloseIdleConnections()
-	}); ok {
-		tr.CloseIdleConnections()
-	}
-	if s.passwordFile != "" {
-		os.Remove(s.passwordFile)
-	}
-	if s.dataDir != "" {
-		os.RemoveAll(s.dataDir)
-	}
-}
-
 func TestAlertAPI(t *testing.T) {
-	apiServer, err := createAPIServer(t, "noauth")
+	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer apiServer.Stop()
-	apiClient, err := apiServer.GetClient()
-	if err != nil {
-		t.Fatal(err)
+		t.Fatal(err.Error())
 	}
 
 	alert := api.NewAlert()
 	alert.Expression = "G.V().Has('MTU', GT(1500))"
-	if err := apiClient.create("alert", alert); err != nil {
-		t.Fatalf("Failed to create alert: %s", err.Error())
+	if err := client.Create("alert", alert); err != nil {
+		t.Errorf("Failed to create alert: %s", err.Error())
 	}
 
 	alert2 := api.NewAlert()
 	alert2.Expression = "G.V().Has('MTU', Gt(1500))"
-	if err := apiClient.Get("alert", alert.UUID, &alert2); err != nil {
+	if err := client.Get("alert", alert.UUID, &alert2); err != nil {
 		t.Error(err)
 	}
 
@@ -177,7 +52,7 @@ func TestAlertAPI(t *testing.T) {
 	}
 
 	var alerts map[string]api.Alert
-	if err := apiClient.List("alert", &alerts); err != nil {
+	if err := client.List("alert", &alerts); err != nil {
 		t.Error(err)
 	} else {
 		if len(alerts) != 1 {
@@ -189,12 +64,12 @@ func TestAlertAPI(t *testing.T) {
 		t.Errorf("Alert corrupted: %+v != %+v", alerts[alert.UUID], alert)
 	}
 
-	if err := apiClient.Delete("alert", alert.UUID); err != nil {
+	if err := client.Delete("alert", alert.UUID); err != nil {
 		t.Errorf("Failed to delete alert: %s", err.Error())
 	}
 
 	var alerts2 map[string]api.Alert
-	if err := apiClient.List("alert", &alerts2); err != nil {
+	if err := client.List("alert", &alerts2); err != nil {
 		t.Errorf("Failed to list alerts: %s", err.Error())
 	} else {
 		if len(alerts2) != 0 {
@@ -204,24 +79,18 @@ func TestAlertAPI(t *testing.T) {
 }
 
 func TestCaptureAPI(t *testing.T) {
-	apiServer, err := createAPIServer(t, "basic")
+	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer apiServer.Stop()
-	apiClient, err := apiServer.GetClient()
-	if err != nil {
-		t.Fatal(err)
+		t.Fatal(err.Error())
 	}
 
 	capture := api.NewCapture("G.V().Has('Name', 'br-int')", "port 80")
-	if err := apiClient.create("capture", capture); err != nil {
+	if err := client.Create("capture", capture); err != nil {
 		t.Fatalf("Failed to create alert: %s", err.Error())
 	}
 
 	capture2 := &api.Capture{}
-	if err := apiClient.Get("capture", capture.ID(), &capture2); err != nil {
+	if err := client.Get("capture", capture.ID(), &capture2); err != nil {
 		t.Error(err)
 	}
 
@@ -230,7 +99,7 @@ func TestCaptureAPI(t *testing.T) {
 	}
 
 	var captures map[string]api.Capture
-	if err := apiClient.List("capture", &captures); err != nil {
+	if err := client.List("capture", &captures); err != nil {
 		t.Error(err)
 	} else {
 		if len(captures) != 1 {
@@ -242,12 +111,12 @@ func TestCaptureAPI(t *testing.T) {
 		t.Errorf("Capture corrupted: %+v != %+v", captures[capture.ID()], capture)
 	}
 
-	if err := apiClient.Delete("capture", capture.ID()); err != nil {
+	if err := client.Delete("capture", capture.ID()); err != nil {
 		t.Errorf("Failed to delete capture: %s", err.Error())
 	}
 
 	var captures2 map[string]api.Capture
-	if err := apiClient.List("capture", &captures2); err != nil {
+	if err := client.List("capture", &captures2); err != nil {
 		t.Errorf("Failed to list captures: %s", err.Error())
 	} else {
 		if len(captures2) != 0 {
@@ -255,7 +124,7 @@ func TestCaptureAPI(t *testing.T) {
 		}
 	}
 
-	if err := apiClient.Get("capture", capture.ID(), &capture2); err == nil {
+	if err := client.Get("capture", capture.ID(), &capture2); err == nil {
 		t.Errorf("Found delete capture: %s", capture.ID())
 	}
 }

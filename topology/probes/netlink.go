@@ -276,7 +276,7 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	logging.GetLogger().Debugf("Netlink ADD event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.String())
+	logging.GetLogger().Debugf("Netlink ADD event for %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.String())
 
 	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
 	if driver == "" && link.Type() == "bridge" {

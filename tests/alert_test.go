@@ -24,17 +24,17 @@ package tests
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/gorilla/websocket"
-
 	"github.com/hydrogen18/stoppableListener"
 	"github.com/skydive-project/skydive/alert"
 	"github.com/skydive-project/skydive/api"
@@ -72,27 +72,16 @@ func checkMessage(t *testing.T, b []byte, al *api.Alert) (bool, error) {
 }
 
 func TestAlertWebhook(t *testing.T) {
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, NewTestStorage())
-	aa.Start()
-	defer aa.Stop()
+	var (
+		err        error
+		al         *api.Alert
+		sl         *stoppableListener.StoppableListener
+		wg         sync.WaitGroup
+		testPassed atomic.Value
+	)
 
-	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	testPassed.Store(false)
 
-	al := api.NewAlert()
-	al.Expression = `Gremlin("G.V().Has('Name', 'alert-ns', 'Type', 'netns')")`
-	al.Action = "http://localhost:8080/"
-
-	if err := client.Create("alert", al); err != nil {
-		t.Fatalf("Failed to create alert: %s", err.Error())
-	}
-	defer client.Delete("alert", al.ID())
-
-	testPassed := false
-	var sl *stoppableListener.StoppableListener
-	var wg sync.WaitGroup
 	ListenAndServe := func(addr string, port int) {
 		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", addr, port))
 		if err != nil {
@@ -110,10 +99,8 @@ func TestAlertWebhook(t *testing.T) {
 
 			if r.Method == "POST" {
 				b, _ := ioutil.ReadAll(r.Body)
-				testPassed, err = checkMessage(t, b, al)
-				if !testPassed {
-					t.Errorf("Wrong message %+v (error: %+v)", string(b), err)
-				}
+				result, _ := checkMessage(t, b, al)
+				testPassed.Store(result)
 			}
 		})
 
@@ -123,31 +110,60 @@ func TestAlertWebhook(t *testing.T) {
 		}()
 	}
 
-	wg.Add(1)
-	ListenAndServe("localhost", 8080)
+	test := &Test{
+		mode: OneShot,
 
-	setupCmds := []helper.Cmd{
-		{"ip netns add alert-ns", true},
+		setupCmds: []helper.Cmd{
+			{"ip netns add alert-ns", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			al = api.NewAlert()
+			al.Expression = "G.V().Has('Name', 'alert-ns', 'Type', 'netns')"
+			al.Action = "http://localhost:8080/"
+
+			if err = c.client.Create("alert", al); err != nil {
+				return fmt.Errorf("Failed to create alert: %s", err.Error())
+			}
+
+			wg.Add(1)
+			ListenAndServe("localhost", 8080)
+
+			return nil
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ip netns del alert-ns", true},
+		},
+
+		tearDownFunction: func(c *TestContext) error {
+			sl.Close()
+			wg.Wait()
+
+			return c.client.Delete("alert", al.ID())
+		},
+
+		check: func(c *TestContext) error {
+			if testPassed.Load() == false {
+				if err != nil {
+					return err
+				}
+				return errors.New("Webhook was not triggered")
+			}
+			return nil
+		},
 	}
 
-	tearDownCmds := []helper.Cmd{
-		{"ip netns del alert-ns", true},
-	}
-
-	helper.ExecCmds(t, setupCmds...)
-	defer helper.ExecCmds(t, tearDownCmds...)
-
-	time.Sleep(3 * time.Second)
-
-	sl.Close()
-	wg.Wait()
-
-	if !testPassed {
-		t.Error("No alert was triggered")
-	}
+	RunTest(t, test)
 }
 
 func TestAlertScript(t *testing.T) {
+	var (
+		err        error
+		al         *api.Alert
+		testPassed = false
+	)
+
 	cookie, err := ioutil.TempFile("", "test-alert-script")
 	if err == nil {
 		err = os.Remove(cookie.Name())
@@ -173,103 +189,125 @@ func TestAlertScript(t *testing.T) {
 	tmpfile.Close()
 	defer os.Remove(tmpfile.Name())
 
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, NewTestStorage())
-	aa.Start()
-	defer aa.Stop()
+	test := &Test{
+		mode: OneShot,
 
-	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
-	if err != nil {
-		t.Fatal(err.Error())
+		setupCmds: []helper.Cmd{
+			{"ip netns add alert-ns", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			al = api.NewAlert()
+			al.Expression = "G.V().Has('Name', 'alert-ns', 'Type', 'netns')"
+			al.Action = "file://" + tmpfile.Name()
+
+			if err = c.client.Create("alert", al); err != nil {
+				return fmt.Errorf("Failed to create alert: %s", err.Error())
+			}
+
+			return nil
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ip netns del alert-ns", true},
+		},
+
+		tearDownFunction: func(c *TestContext) error {
+			return c.client.Delete("alert", al.ID())
+		},
+
+		check: func(c *TestContext) error {
+			if _, err := os.Stat(cookie.Name()); err != nil {
+				return errors.New("No alert was triggered")
+			}
+
+			b, err := ioutil.ReadFile(cookie.Name())
+			if err != nil {
+				return errors.New("No alert was triggered")
+			}
+
+			testPassed, err = checkMessage(t, b, al)
+			if !testPassed {
+				return fmt.Errorf("Wrong message %+v (error: %+v)", string(b), err)
+			}
+
+			return nil
+		},
 	}
 
-	al := api.NewAlert()
-	al.Expression = "G.V().Has('Name', 'alert-ns', 'Type', 'netns')"
-	al.Action = "file://" + tmpfile.Name()
-
-	if err := client.Create("alert", al); err != nil {
-		t.Fatalf("Failed to create alert: %s", err.Error())
-	}
-	defer client.Delete("alert", al.ID())
-
-	setupCmds := []helper.Cmd{
-		{"ip netns add alert-ns", true},
-	}
-
-	tearDownCmds := []helper.Cmd{
-		{"ip netns del alert-ns", true},
-	}
-
-	helper.ExecCmds(t, setupCmds...)
-	defer helper.ExecCmds(t, tearDownCmds...)
-
-	time.Sleep(3 * time.Second)
-
-	if _, err := os.Stat(cookie.Name()); err != nil {
-		t.Error("No alert was triggered")
-	}
-
-	b, err := ioutil.ReadFile(cookie.Name())
-	if err != nil {
-		t.Error("No alert was triggered")
-		return
-	}
-
-	testPassed, err := checkMessage(t, b, al)
-	if !testPassed {
-		t.Errorf("Wrong message %+v (error: %+v)", string(b), err)
-	}
+	RunTest(t, test)
 }
 
 func TestAlertWithTimer(t *testing.T) {
-	aa := helper.NewAgentAnalyzerWithConfig(t, confAgentAnalyzer, NewTestStorage())
-	aa.Start()
-	defer aa.Stop()
+	var (
+		err error
+		ws  *websocket.Conn
+		al  *api.Alert
+	)
 
-	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
-	if err != nil {
-		t.Fatal(err.Error())
+	test := &Test{
+		mode:    OneShot,
+		retries: 1,
+		setupCmds: []helper.Cmd{
+			{"ip netns add alert-ns", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			ws, err = helper.WSConnect(config.GetConfig().GetString("analyzer.listen"), 5, nil)
+			if err != nil {
+				return err
+			}
+
+			al = api.NewAlert()
+			al.Expression = "G.V().Has('Name', 'alert-ns', 'Type', 'netns')"
+			al.Trigger = "duration:+1s"
+
+			if err = c.client.Create("alert", al); err != nil {
+				return fmt.Errorf("Failed to create alert: %s", err.Error())
+			}
+
+			return nil
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ip netns del alert-ns", true},
+		},
+
+		tearDownFunction: func(c *TestContext) error {
+			return c.client.Delete("alert", al.ID())
+		},
+
+		check: func(c *TestContext) error {
+			for {
+				_, m, err := ws.ReadMessage()
+				if err != nil {
+					return err
+				}
+
+				var msg shttp.WSMessage
+				if err = common.JsonDecode(bytes.NewReader(m), &msg); err != nil {
+					t.Fatalf("Failed to unmarshal message: %s", err.Error())
+				}
+
+				if msg.Namespace != "Alert" {
+					continue
+				}
+
+				testPassed, err := checkMessage(t, []byte(*msg.Obj), al)
+				if err != nil {
+					return err
+				}
+
+				if !testPassed {
+					return fmt.Errorf("Wrong alert message: %+v (error: %+v)", string([]byte(*msg.Obj)), err)
+				}
+
+				break
+			}
+
+			return nil
+		},
 	}
 
-	ws, err := helper.WSConnect(config.GetConfig().GetString("analyzer.listen"), 5, func(*websocket.Conn) {
-		helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns add alert-ns", Check: true})
-	})
-	defer helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns del alert-ns", Check: true})
-
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	al := api.NewAlert()
-	al.Expression = "G.V().Has('Name', 'alert-ns', 'Type', 'netns')"
-	al.Trigger = "duration:+1s"
-
-	if err := client.Create("alert", al); err != nil {
-		t.Fatalf("Failed to create alert: %s", err.Error())
-	}
-	defer client.Delete("alert", al.ID())
-
-	time.Sleep(3 * time.Second)
-
-	for {
-		_, m, err := ws.ReadMessage()
-		if err != nil {
-			break
-		}
-
-		var msg shttp.WSMessage
-		if err = common.JsonDecode(bytes.NewReader(m), &msg); err != nil {
-			t.Fatalf("Failed to unmarshal message: %s", err.Error())
-		}
-
-		if msg.Namespace != "Alert" {
-			continue
-		}
-
-		testPassed, err := checkMessage(t, []byte(*msg.Obj), al)
-		if !testPassed {
-			t.Errorf("Wrong alert message: %+v (error: %+v)", string([]byte(*msg.Obj)), err)
-		}
-
-		break
-	}
+	RunTest(t, test)
 }

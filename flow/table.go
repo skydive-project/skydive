@@ -138,7 +138,7 @@ func (ft *Table) expire(expireBefore int64) {
 	for k, f := range ft.table {
 		if f.Last < expireBefore {
 			duration := time.Duration(f.Last - f.Start)
-			if f.Last > ft.lastUpdate {
+			if f.Last >= ft.lastUpdate {
 				ft.updateMetric(f, ft.lastUpdate, f.Last)
 			}
 

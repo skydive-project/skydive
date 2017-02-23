@@ -60,6 +60,13 @@ endif
 test.functionals.all: test.functionals.compile
 	make TIMEOUT="8m" ARGS=${ARGS} test.functionals.run
 
+test.functionals.batch: test.functionals.compile
+ifneq ($(TEST_PATTERN),)
+	set -e ; make ARGS="${ARGS} -test.run ${TEST_PATTERN}" test.functionals.run
+else
+	set -e ; make ARGS="${ARGS}" test.functionals.run
+endif
+
 test.functionals: test.functionals.compile
 	set -e ; \
 	for functest in ${FUNC_TESTS} ; do \
