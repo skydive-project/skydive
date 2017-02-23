@@ -105,6 +105,11 @@ func (probe *DockerProbe) registerContainer(id string) {
 		"Docker/ContainerName": info.Name,
 		"Docker/ContainerPID":  info.State.Pid,
 	}
+
+	for k, v := range info.Config.Labels {
+		metadata["Docker/Labels/"+k] = v
+	}
+
 	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
 	probe.Graph.Link(n, containerNode, ownershipMetadata)
 	probe.Graph.Unlock()
