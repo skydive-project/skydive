@@ -473,6 +473,9 @@ func (f *FlowTraversalStep) Metrics() *MetricsTraversalStep {
 		}
 		metricFilter := filters.NewFilterIncludedIn(fr, "")
 
+		f.flowSearchQuery.Sort = true
+		f.flowSearchQuery.SortBy = "Last"
+
 		var err error
 		if metrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {
 			return &MetricsTraversalStep{error: err}
