@@ -22,7 +22,7 @@ var VueSidebar = {
 
     currentNodeFlowsQuery: function() {
       if (this.currentNode)
-        return "G.V('" + this.currentNode.ID + "').Flows().Dedup()";
+        return "G.V('" + this.currentNode.ID + "').Flows().Sort().Dedup()";
       return "";
     },
 

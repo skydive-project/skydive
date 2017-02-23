@@ -204,6 +204,63 @@ var IntervalButton = {
 
 };
 
+var LimitButton = {
+
+  props: {
+
+    value: {
+      type: Number,
+      required: true,
+    },
+
+  },
+
+  template: '\
+    <button-dropdown :text="buttonText" b-class="btn-xs">\
+      <li v-for="val in values">\
+        <a href="#" @click="select(val)">\
+          <small><i class="fa fa-check text-success pull-right"\
+             aria-hidden="true" v-show="val == value"></i>\
+             {{valueText(val)}}</small>\
+        </a>\
+      </li>\
+    </button-dropdown>\
+  ',
+
+  data: function() {
+    return {
+      values: [10, 30, 50, 100, 200, 500, 0],
+    };
+  },
+
+  computed: {
+
+    buttonText: function() {
+      if (this.value === 0) {
+        return "No limit";
+      }
+      return "Limit: " + this.value;
+    },
+
+  },
+
+  methods: {
+
+    valueText: function(value) {
+      if (value === 0)
+        return "No limit";
+      return value;
+    },
+
+    select: function(value) {
+      this.$emit('input', value);
+    },
+
+  }
+
+};
+
+
 var TableHeader = {
 
   props: {
@@ -318,6 +375,7 @@ Vue.component('flow-table', {
                          :filters="filters"\
                          @add="addFilter"\
                          @remove="removeFilter"></filter-selector>\
+        <limit-button v-model="limit"></limit-button>\
         <highlight-mode v-model="highlightMode"></highlight-mode>\
         <button-state class="btn-xs pull-right"\
                       v-model="autoRefresh"\
@@ -343,12 +401,14 @@ Vue.component('flow-table', {
     'interval-button': IntervalButton,
     'highlight-mode': HighlightMode,
     'filter-selector': FilterSelector,
+    'limit-button': LimitButton,
   },
 
   data: function() {
     return {
       queryResults: [],
       queryError: "",
+      limit: 30,
       sortBy: null,
       sortOrder: -1,
       interval: 1000,
@@ -470,7 +530,7 @@ Vue.component('flow-table', {
       this.getFlows();
     },
 
-    filteredQuery: function() {
+    limitedQuery: function() {
       this.getFlows();
     },
 
@@ -512,6 +572,13 @@ Vue.component('flow-table', {
       return filteredQuery;
     },
 
+    limitedQuery: function() {
+      if (this.limit === 0) {
+        return this.filteredQuery;
+      }
+      return this.filteredQuery + '.Limit(' + this.limit + ')';
+    },
+
   },
 
   methods: {
@@ -529,7 +596,7 @@ Vue.component('flow-table', {
 
     getFlows: function() {
       var self = this;
-      TopologyAPI.query(this.filteredQuery)
+      TopologyAPI.query(this.limitedQuery)
         .then(function(flows) {
           // much faster than replacing
           // the array with vuejs
@@ -645,8 +712,8 @@ Vue.component('flow-table-control', {
 
   data: function() {
     return {
-      query: "G.Flows().Sort().Limit(500)",
-      validatedQuery: "G.Flows().Sort().Limit(500)",
+      query: "G.Flows().Sort()",
+      validatedQuery: "G.Flows().Sort()",
       validationId: null,
       error: "",
     };
