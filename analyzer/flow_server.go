@@ -177,11 +177,11 @@ func NewFlowServerConn(addr *net.UDPAddr) (a *FlowServerConn, err error) {
 		}
 		rootPEM, err := ioutil.ReadFile(clientCertPEM)
 		if err != nil {
-			logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", certPEM, err.Error())
+			logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", clientCertPEM, err.Error())
 		}
 		roots := x509.NewCertPool()
 		if ok := roots.AppendCertsFromPEM([]byte(rootPEM)); !ok {
-			logging.GetLogger().Fatal("Failed to parse root certificate " + certPEM)
+			logging.GetLogger().Fatalf("Failed to parse root certificate '%s'", clientCertPEM)
 		}
 		cfgTLS := &tls.Config{
 			ClientCAs:                roots,
@@ -255,11 +255,11 @@ func NewFlowClientConn(addr *net.UDPAddr) (a *FlowClientConn, err error) {
 		}
 		rootPEM, err := ioutil.ReadFile(serverCertPEM)
 		if err != nil {
-			logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", certPEM, err.Error())
+			logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", serverCertPEM, err.Error())
 		}
 		roots := x509.NewCertPool()
 		if ok := roots.AppendCertsFromPEM(rootPEM); !ok {
-			logging.GetLogger().Fatal("Failed to parse root certificate " + certPEM)
+			logging.GetLogger().Fatalf("Failed to parse root certificate '%s'", serverCertPEM)
 		}
 		cfgTLS := &tls.Config{
 			Certificates: []tls.Certificate{cert},
