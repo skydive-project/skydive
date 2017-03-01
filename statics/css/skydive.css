@@ -417,10 +417,10 @@ circle.manager {
 
 .topology-control-container {
   position: absolute;
-  bottom: 20px;
+  bottom: 50px;
   left: 20px;
   height: 80px;
-  width: 80px;
+  width: 84px;
 }
 
 .topology-control-container .btn-group-vertical {
@@ -429,7 +429,21 @@ circle.manager {
 }
 
 .topology-control-container .button-wrapper {
-  text-align: center;
+  width: 80px;
+}
+
+.topology-control-container .button-wrapper .btn {
+    margin: 0px;
+    margin-bottom: 4px;
+}
+
+.topology-control-container #zoomin {
+  width: 34px;
+}
+
+.topology-control-container #zoomout {
+  width: 34px;
+  float: right;
 }
 
 .flow-ops-panel .tab-content {

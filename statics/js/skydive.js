@@ -230,13 +230,14 @@ var Layout = function(selector) {
     .attr("y", 60)
     .attr('viewBox', -this.width/2 + ' ' + -this.height/2 + ' ' + this.width * 2 + ' ' + this.height * 2)
     .attr('preserveAspectRatio', 'xMidYMid meet')
-    .on("dblclick.zoom", null);
 
   var _this = this;
 
   d3.behavior.zoom();
-  zoom = d3.behavior.zoom()
+  var zoom = d3.behavior.zoom()
     .on("zoom", function() { _this.Rescale(); });
+
+  this.zoom = zoom;
 
   this.force = d3.layout.force()
     .size([this.width, this.height])
@@ -252,7 +253,7 @@ var Layout = function(selector) {
     });
 
   this.view = this.svg.append('g');
-  this.svg.call(zoom).call(zoom.event);
+  this.svg.call(zoom).on("dblclick.zoom", null);
 
   this.drag = this.force.stop().drag()
     .on("dragstart", function(d) {
@@ -749,7 +750,8 @@ Layout.prototype.NodePinStatePicto = function(d) {
 };
 
 Layout.prototype.NodeStatePicto = function(d) {
-  if (d.Metadata.Type != "netns")
+  if (d.Metadata.Type != "netns" &&
+      d.Metadata.Type != "host" )
     return "";
 
   if (d.Collapsed)
@@ -925,6 +927,58 @@ Layout.prototype.CollapseNetNS = function(node) {
   }
 };
 
+Layout.prototype.CollapseHost = function(theNode) {
+  var fabricNode;
+  var isCollapsed = theNode.Collapsed ? false : true;
+
+  // All nodes in the group
+  for (var i in this.nodes) {
+    var node = this.nodes[i];
+
+    if (node.Host != theNode.Host)
+      continue;
+
+    if (node == theNode)
+      continue;
+
+    // All edges (connected to all nodes in the group)
+    for (var j in node.Edges) {
+      var edge = node.Edges[j];
+
+      if (edge.Metadata.Type == "fabric") {
+        fabricNode = node;
+        continue;
+      }
+
+      if ((edge.Parent == theNode) || (edge.Child == theNode)) {
+        child = edge.Child
+        var found = false;
+        for (n in child.Edges) {
+          nEdge = edge.Child.Edges[n]
+          if (nEdge.Metadata.Type == "fabric")
+            found = true;
+            continue;
+        }
+
+        if (found)
+          continue;
+      }
+
+      edge.Visible = isCollapsed ? false : true;
+    }
+
+    if (node == fabricNode)
+      continue;
+
+    node.Visible = isCollapsed ? false : true;
+  }
+
+  theNode.Collapsed = isCollapsed;
+
+  this.Redraw();
+
+};
+
 Layout.prototype.CollapseNode = function(d) {
   if (d3.event.defaultPrevented)
     return;
@@ -932,6 +986,9 @@ Layout.prototype.CollapseNode = function(d) {
   switch(d.Metadata.Type) {
     case "netns":
       this.CollapseNetNS(d);
+      break;
+    case "host":
+      this.CollapseHost(d);
       break;
     default:
       return;
@@ -1299,8 +1356,8 @@ function StartCheckAPIAccess() {
 
 function zoomclicked(direction) {
 
-  var scale = this.zoom.scale();
-  var translate = this.zoom.translate();
+  var scale = topologyLayout.zoom.scale();
+  var translate = topologyLayout.zoom.translate();
 
   if (direction == "zoomreset") {
       newscale = 1;
@@ -1317,12 +1374,38 @@ function zoomclicked(direction) {
                       topologyLayout.height / 2 + (translate[1] - topologyLayout.height / 2)*factor];
   }
 
-  this.zoom.scale(newscale);
-  this.zoom.translate(newtranslate);
-  this.zoom.event(topologyLayout.view);
+  topologyLayout.zoom.scale(newscale);
+  topologyLayout.zoom.translate(newtranslate);
+  topologyLayout.zoom.event(topologyLayout.view);
+}
+
+function ToggleCollapseAllHosts() {
+  // global collapse all status
+  var isCollapsed = $("#collapseall").attr("value") == "true";
+
+  $("#collapseall")
+    .html(isCollapsed ? "Collapse" : "Expand")
+    .attr("value", isCollapsed ? "false" : "true");
+
+  for (var i in this.topologyLayout.nodes) {
+    var node = this.topologyLayout.nodes[i];
+
+    if (node.Metadata.Type == "host") {
+      // toggle host only when host collapse state same as global
+      if (isCollapsed == node.Collapsed) {
+       this.topologyLayout.CollapseHost(node);
+      }
+    }
+  }
 }
 
 function SetupControlButtons() {
+
+  $("#collapseall").click(function(e) {
+    ToggleCollapseAllHosts();
+    e.preventDefault();
+  });
+
   $("#zoomin").click(function(e) {
     zoomclicked("zoomin");
     e.preventDefault();
