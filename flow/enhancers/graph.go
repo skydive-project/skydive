@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2015 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,56 +20,73 @@
  *
  */
 
-package mappings
+package enhancers
 
 import (
+	"github.com/pmylund/go-cache"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/packet"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-type NeutronFlowEnhancer struct {
-	Graph *graph.Graph
+type GraphFlowEnhancer struct {
+	Graph    *graph.Graph
+	tidCache *tidCache
 }
 
-func (nfe *NeutronFlowEnhancer) getNodeTID(mac string) string {
+func (gfe *GraphFlowEnhancer) getNodeTID(mac string) string {
 	if packet.IsBroadcastMac(mac) || packet.IsMulticastMac(mac) {
 		return "*"
 	}
 
-	nfe.Graph.RLock()
-	defer nfe.Graph.RUnlock()
+	var ce *tidCacheEntry
 
-	// use the PeerIntfMAC metadata provided by the neutron probe. The interface used is the
-	// one attached to the VM interface.
-	intfs := nfe.Graph.GetNodes(graph.Metadata{"PeerIntfMAC": mac, "Manager": "neutron"})
-	if len(intfs) > 1 {
-		logging.GetLogger().Infof("NeutronFlowEnhancer found more than one interface with the PeerIntfMAC: %s", mac)
-	} else if len(intfs) == 1 {
-		if tid, _ := intfs[0].GetFieldString("TID"); tid != "" {
-			return tid
+	if gfe.tidCache != nil {
+		var f bool
+		if ce, f = gfe.tidCache.get(mac); f {
+			return ce.tid
 		}
 	}
-	return ""
+
+	gfe.Graph.RLock()
+	defer gfe.Graph.RUnlock()
+
+	var tid string
+
+	intfs := gfe.Graph.GetNodes(graph.Metadata{"MAC": mac})
+	if len(intfs) > 1 {
+		logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
+	} else if len(intfs) == 1 {
+		tid, _ = intfs[0].GetFieldString("TID")
+	}
+
+	if gfe.tidCache != nil {
+		gfe.tidCache.set(ce, mac, tid)
+	}
+
+	return tid
 }
 
-func (nfe *NeutronFlowEnhancer) Enhance(f *flow.Flow) {
-	if f.ANodeTID == "" || f.BNodeTID == "" {
-		if f.Link == nil {
-			return
-		}
+func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
+	if f.Link == nil {
+		return
 	}
 	if f.ANodeTID == "" {
-		f.ANodeTID = nfe.getNodeTID(f.Link.A)
+		f.ANodeTID = gfe.getNodeTID(f.Link.A)
 	}
 	if f.BNodeTID == "" {
-		f.BNodeTID = nfe.getNodeTID(f.Link.B)
+		f.BNodeTID = gfe.getNodeTID(f.Link.B)
 	}
 }
 
-func NewNeutronFlowEnhancer(g *graph.Graph) *NeutronFlowEnhancer {
-	return &NeutronFlowEnhancer{
+func NewGraphFlowEnhancer(g *graph.Graph, cache *cache.Cache) *GraphFlowEnhancer {
+	fe := &GraphFlowEnhancer{
 		Graph: g,
 	}
+	if cache != nil {
+		fe.tidCache = &tidCache{cache}
+	}
+
+	return fe
 }

@@ -185,7 +185,7 @@ func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, pa
 }
 
 func (h *HelperAgentAnalyzer) startAnalyzer() {
-	h.Analyzer.ListenAndServe()
+	h.Analyzer.Start()
 	WaitAPI(h.t, h.Analyzer)
 }
 
@@ -215,7 +215,6 @@ func (h *HelperAgentAnalyzer) run() {
 		case flush:
 			h.Agent.FlowTableAllocator.Flush()
 			time.Sleep(500 * time.Millisecond)
-			h.Analyzer.FlowTable.Flush()
 		}
 		h.serviceDone <- true
 	}
@@ -256,7 +255,7 @@ func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, param
 	InitConfig(t, conf, params...)
 	analyzer := NewAnalyzerStorage(t, s)
 	s.Start()
-	analyzer.ListenAndServe()
+	analyzer.Start()
 	WaitAPI(t, analyzer)
 	return analyzer
 }

@@ -24,18 +24,38 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/abbot/go-http-auth"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/storage"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type PcapAPI struct {
-	packetsChan chan *flow.FlowPackets
+	Storage storage.Storage
+}
+
+func (p *PcapAPI) flowExpireUpdate(flows []*flow.Flow) {
+	if p.Storage != nil && len(flows) > 0 {
+		p.Storage.StoreFlows(flows)
+		logging.GetLogger().Debugf("%d flows stored", len(flows))
+	}
 }
 
 func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	writer, err := flow.NewPcapWriter(r.Body, p.packetsChan, false)
+	update := config.GetConfig().GetInt("analyzer.flowtable_update")
+	expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
+
+	updateHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(update))
+	expireHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(expire))
+
+	flowtable := flow.NewTable(updateHandler, expireHandler, flow.NewFlowEnhancerPipeline())
+	packetsChan := flowtable.Start()
+
+	writer, err := flow.NewPcapWriter(r.Body, packetsChan, false)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
@@ -43,6 +63,9 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 
 	writer.Start()
 	writer.Wait()
+
+	// stop/flush flowtable
+	flowtable.Stop()
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
@@ -61,8 +84,10 @@ func (p *PcapAPI) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterPcapAPI(r *shttp.Server, packetsChan chan *flow.FlowPackets) {
-	p := &PcapAPI{packetsChan: packetsChan}
+func RegisterPcapAPI(r *shttp.Server, store storage.Storage) {
+	p := &PcapAPI{
+		Storage: store,
+	}
 
 	p.registerEndpoints(r)
 }

@@ -60,7 +60,6 @@ func init() {
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.flowtable_expire", 600)
 	cfg.SetDefault("analyzer.flowtable_update", 60)
-	cfg.SetDefault("analyzer.flowtable_agent_ratio", 0.5)
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
 	cfg.SetDefault("storage.elasticsearch.maxconns", 10)
 	cfg.SetDefault("storage.elasticsearch.retry", 60)
@@ -86,6 +85,8 @@ func init() {
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
 	cfg.SetDefault("agent.flow.stats_update", 1)
+	cfg.SetDefault("cache.expire", 300)
+	cfg.SetDefault("cache.cleanup", 30)
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")

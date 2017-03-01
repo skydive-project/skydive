@@ -273,7 +273,7 @@ func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow) {
 }
 
 func NewTestFlowTableSimple(t *testing.T) *Table {
-	ft := NewTable(nil, nil)
+	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	var flows []*Flow
 	f := &Flow{}
 	f.UUID = "1234"
@@ -295,7 +295,7 @@ func NewTestFlowTableSimple(t *testing.T) *Table {
 }
 
 func NewTestFlowTableComplex(t *testing.T, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
-	ft := NewTable(updateHandler, expireHandler)
+	ft := NewTable(updateHandler, expireHandler, NewFlowEnhancerPipeline())
 	GenerateTestFlows(t, ft, 0xca55e77e, "probe-tid")
 	return ft
 }

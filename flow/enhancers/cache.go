@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Red Hat, Inc.
+ * Copyright (C) 2016 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,38 +20,48 @@
  *
  */
 
-package mappings
+package enhancers
 
 import (
-	"github.com/skydive-project/skydive/flow"
+	"sync"
+
+	"github.com/pmylund/go-cache"
 )
 
-type FlowEnhancer interface {
-	Enhance(flow *flow.Flow)
+const (
+	maxCacheUpdateTry = 10
+)
+
+type tidCacheEntry struct {
+	sync.RWMutex
+	tid string
+	try int
 }
 
-type FlowMappingPipeline struct {
-	Enhancers []FlowEnhancer
+type tidCache struct {
+	*cache.Cache
 }
 
-func (fe *FlowMappingPipeline) EnhanceFlow(flow *flow.Flow) {
-	for _, enhancer := range fe.Enhancers {
-		enhancer.Enhance(flow)
+func (c *tidCache) get(key string) (*tidCacheEntry, bool) {
+	if entry, f := c.Get(key); f {
+		ce := entry.(*tidCacheEntry)
+		ce.RLock()
+		defer ce.RUnlock()
+
+		if ce.tid != "" || ce.try > maxCacheUpdateTry {
+			return ce, f
+		}
+		return ce, false
 	}
+
+	return &tidCacheEntry{}, false
 }
 
-func (fe *FlowMappingPipeline) Enhance(flows []*flow.Flow) {
-	for _, flow := range flows {
-		fe.EnhanceFlow(flow)
-	}
-}
+func (c *tidCache) set(ce *tidCacheEntry, key, tid string) {
+	ce.Lock()
+	ce.tid = tid
+	ce.try++
+	ce.Unlock()
 
-func (fe *FlowMappingPipeline) AddEnhancer(e FlowEnhancer) {
-	fe.Enhancers = append(fe.Enhancers, e)
-}
-
-func NewFlowMappingPipeline(enhancers ...FlowEnhancer) *FlowMappingPipeline {
-	return &FlowMappingPipeline{
-		Enhancers: enhancers,
-	}
+	c.Set(key, ce, cache.DefaultExpiration)
 }

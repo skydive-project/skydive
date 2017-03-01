@@ -29,11 +29,20 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"strconv"
+	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/pmylund/go-cache"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/enhancers"
+	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 var ErrFlowUDPAcceptNotSupported = errors.New("UDP connection is datagram based (not connected), accept() not supported")
@@ -52,6 +61,17 @@ type FlowServerConn struct {
 	tlsListen net.Listener
 }
 
+type FlowServer struct {
+	Addr                 string
+	Port                 int
+	Storage              storage.Storage
+	FlowEnhancerPipeline *flow.FlowEnhancerPipeline
+	conn                 *FlowServerConn
+	state                int64
+	wgServer             sync.WaitGroup
+	wgFlowsHandlers      sync.WaitGroup
+}
+
 func (a *FlowServerConn) Mode() FlowConnectionType {
 	return a.mode
 }
@@ -68,12 +88,10 @@ func (a *FlowServerConn) Accept() (*FlowServerConn, error) {
 		if !ok {
 			logging.GetLogger().Fatalf("This is not a TLS connection %v", a.tlsConn)
 		}
-		err = tlsConn.Handshake()
-		if err != nil {
+		if err = tlsConn.Handshake(); err != nil {
 			return nil, err
 		}
-		state := tlsConn.ConnectionState()
-		if state.HandshakeComplete == false {
+		if state := tlsConn.ConnectionState(); state.HandshakeComplete == false {
 			return nil, errors.New("TLS Handshake is not complete")
 		}
 		return &FlowServerConn{
@@ -88,8 +106,7 @@ func (a *FlowServerConn) Accept() (*FlowServerConn, error) {
 
 func (a *FlowServerConn) Cleanup() {
 	if a.mode == TLS {
-		err := a.tlsListen.Close()
-		if err != nil {
+		if err := a.tlsListen.Close(); err != nil {
 			logging.GetLogger().Errorf("Close error %v", err)
 		}
 	}
@@ -98,13 +115,11 @@ func (a *FlowServerConn) Cleanup() {
 func (a *FlowServerConn) Close() {
 	switch a.mode {
 	case TLS:
-		err := a.tlsConn.Close()
-		if err != nil {
+		if err := a.tlsConn.Close(); err != nil {
 			logging.GetLogger().Errorf("Close error %v", err)
 		}
 	case UDP:
-		err := a.udpConn.Close()
-		if err != nil {
+		if err := a.udpConn.Close(); err != nil {
 			logging.GetLogger().Errorf("Close error %v", err)
 		}
 	}
@@ -113,13 +128,11 @@ func (a *FlowServerConn) Close() {
 func (a *FlowServerConn) SetDeadline(t time.Time) {
 	switch a.mode {
 	case TLS:
-		err := a.tlsConn.SetReadDeadline(t)
-		if err != nil {
+		if err := a.tlsConn.SetReadDeadline(t); err != nil {
 			logging.GetLogger().Errorf("SetReadDeadline %v", err)
 		}
 	case UDP:
-		err := a.udpConn.SetDeadline(t)
-		if err != nil {
+		if err := a.udpConn.SetDeadline(t); err != nil {
 			logging.GetLogger().Errorf("SetDeadline %v", err)
 		}
 	}
@@ -167,8 +180,7 @@ func NewFlowServerConn(addr *net.UDPAddr) (a *FlowServerConn, err error) {
 			logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", certPEM, err.Error())
 		}
 		roots := x509.NewCertPool()
-		ok := roots.AppendCertsFromPEM([]byte(rootPEM))
-		if !ok {
+		if ok := roots.AppendCertsFromPEM([]byte(rootPEM)); !ok {
 			logging.GetLogger().Fatal("Failed to parse root certificate " + certPEM)
 		}
 		cfgTLS := &tls.Config{
@@ -193,8 +205,7 @@ func NewFlowServerConn(addr *net.UDPAddr) (a *FlowServerConn, err error) {
 			},
 		}
 		cfgTLS.BuildNameToCertificate()
-		a.tlsListen, err = tls.Listen("tcp", fmt.Sprintf("%s:%d", common.IPToString(addr.IP), addr.Port+1), cfgTLS)
-		if err != nil {
+		if a.tlsListen, err = tls.Listen("tcp", fmt.Sprintf("%s:%d", common.IPToString(addr.IP), addr.Port+1), cfgTLS); err != nil {
 			return nil, err
 		}
 		a.mode = TLS
@@ -213,14 +224,12 @@ type FlowClientConn struct {
 
 func (a *FlowClientConn) Close() {
 	if a.tlsConnClient != nil {
-		err := a.tlsConnClient.Close()
-		if err != nil {
+		if err := a.tlsConnClient.Close(); err != nil {
 			logging.GetLogger().Errorf("Close error %v", err)
 		}
 		return
 	}
-	err := a.udpConn.Close()
-	if err != nil {
+	if err := a.udpConn.Close(); err != nil {
 		logging.GetLogger().Errorf("Close error %v", err)
 	}
 }
@@ -249,8 +258,7 @@ func NewFlowClientConn(addr *net.UDPAddr) (a *FlowClientConn, err error) {
 			logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", certPEM, err.Error())
 		}
 		roots := x509.NewCertPool()
-		ok := roots.AppendCertsFromPEM(rootPEM)
-		if !ok {
+		if ok := roots.AppendCertsFromPEM(rootPEM); !ok {
 			logging.GetLogger().Fatal("Failed to parse root certificate " + certPEM)
 		}
 		cfgTLS := &tls.Config{
@@ -259,8 +267,7 @@ func NewFlowClientConn(addr *net.UDPAddr) (a *FlowClientConn, err error) {
 		}
 		cfgTLS.BuildNameToCertificate()
 		logging.GetLogger().Debugf("TLS client connection ... Dial %s:%d", common.IPToString(addr.IP), addr.Port+1)
-		a.tlsConnClient, err = tls.Dial("tcp", fmt.Sprintf("%s:%d", common.IPToString(addr.IP), addr.Port+1), cfgTLS)
-		if err != nil {
+		if a.tlsConnClient, err = tls.Dial("tcp", fmt.Sprintf("%s:%d", common.IPToString(addr.IP), addr.Port+1), cfgTLS); err != nil {
 			logging.GetLogger().Errorf("TLS error %s:%d : %s", common.IPToString(addr.IP), addr.Port+1, err.Error())
 			return nil, err
 		}
@@ -272,10 +279,125 @@ func NewFlowClientConn(addr *net.UDPAddr) (a *FlowClientConn, err error) {
 		logging.GetLogger().Debugf("TLS v%d Handshake is complete on %s:%d", state.Version, common.IPToString(addr.IP), addr.Port+1)
 		return a, nil
 	}
-	a.udpConn, err = net.DialUDP("udp", nil, addr)
-	if err != nil {
+	if a.udpConn, err = net.DialUDP("udp", nil, addr); err != nil {
 		return nil, err
 	}
 	logging.GetLogger().Debugf("UDP client dialup done for: %s:%d", addr.IP, addr.Port)
 	return a, nil
+}
+
+func (s *FlowServer) storeFlows(flows []*flow.Flow) {
+	if s.Storage != nil && len(flows) > 0 {
+		s.FlowEnhancerPipeline.Enhance(flows)
+		s.Storage.StoreFlows(flows)
+
+		logging.GetLogger().Debugf("%d flows stored", len(flows))
+	}
+}
+
+// handleFlowPacket can handle connection based on TCP or UDP
+func (s *FlowServer) handleFlowPacket(conn *FlowServerConn) {
+	defer s.wgFlowsHandlers.Done()
+	defer conn.Close()
+
+	conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
+	data := make([]byte, 4096)
+
+	for atomic.LoadInt64(&s.state) == common.RunningState {
+		n, err := conn.Read(data)
+		if err != nil {
+			if conn.Timeout(err) {
+				conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
+				continue
+			}
+			if atomic.LoadInt64(&s.state) != common.RunningState {
+				return
+			}
+			logging.GetLogger().Errorf("Error while reading: %s", err.Error())
+			return
+		}
+
+		f, err := flow.FromData(data[0:n])
+		if err != nil {
+			logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
+			continue
+		}
+
+		s.storeFlows([]*flow.Flow{f})
+	}
+}
+
+// TODO(safchain) will be removed when only using real datastore for functional tests
+func (s *FlowServer) SetStorage(store storage.Storage) {
+	s.Storage = store
+}
+
+func (s *FlowServer) Start() {
+	host := s.Addr + ":" + strconv.FormatInt(int64(s.Port), 10)
+	addr, err := net.ResolveUDPAddr("udp", host)
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to start flow server: %s", err.Error())
+		return
+	}
+
+	if s.conn, err = NewFlowServerConn(addr); err != nil {
+		logging.GetLogger().Errorf("Unable to start flow server: %s", err.Error())
+		return
+	}
+	atomic.StoreInt64(&s.state, common.RunningState)
+
+	s.wgServer.Add(1)
+	go func() {
+		defer s.wgServer.Done()
+
+		for atomic.LoadInt64(&s.state) == common.RunningState {
+			switch s.conn.Mode() {
+			case TLS:
+				conn, err := s.conn.Accept()
+				if atomic.LoadInt64(&s.state) != common.RunningState {
+					break
+				}
+				if err != nil {
+					logging.GetLogger().Errorf("Accept error : %s", err.Error())
+					time.Sleep(200 * time.Millisecond)
+					continue
+				}
+
+				s.wgFlowsHandlers.Add(1)
+				go s.handleFlowPacket(conn)
+			case UDP:
+				s.wgFlowsHandlers.Add(1)
+				s.handleFlowPacket(s.conn)
+			}
+		}
+		s.wgFlowsHandlers.Wait()
+	}()
+}
+
+func (s *FlowServer) Stop() {
+	if atomic.CompareAndSwapInt64(&s.state, common.RunningState, common.StoppingState) {
+		s.conn.Cleanup()
+		s.wgServer.Wait()
+	}
+}
+
+func NewFlowServer(addr string, port int, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle) (*FlowServer, error) {
+	expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
+	cleanup := config.GetConfig().GetInt("cache.cleanup")
+
+	cache := cache.New(time.Duration(expire*2)*time.Second, time.Duration(cleanup)*time.Second)
+
+	pipeline := flow.NewFlowEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g, cache))
+
+	// check that the neutron probe is loaded if so add the neutron flow enhancer
+	if probe.GetProbe("neutron") != nil {
+		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g, cache))
+	}
+
+	return &FlowServer{
+		Addr:                 addr,
+		Port:                 port,
+		Storage:              store,
+		FlowEnhancerPipeline: pipeline,
+	}, nil
 }

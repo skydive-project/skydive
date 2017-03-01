@@ -23,12 +23,9 @@
 package analyzer
 
 import (
-	"net"
 	"net/http"
-	"strconv"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/skydive-project/skydive/alert"
 	"github.com/skydive-project/skydive/api"
@@ -36,83 +33,35 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/mappings"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/storage"
+	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 type Server struct {
 	shttp.DefaultWSServerEventHandler
-	HTTPServer          *shttp.Server
-	WSServer            *shttp.WSServer
-	TopologyForwarder   *TopologyForwarder
-	TopologyServer      *TopologyServer
-	AlertServer         *alert.AlertServer
-	OnDemandClient      *ondemand.OnDemandProbeClient
-	FlowMappingPipeline *mappings.FlowMappingPipeline
-	ProbeBundle         *probe.ProbeBundle
-	Storage             storage.Storage
-	FlowTable           *flow.Table
-	TableClient         *flow.TableClient
-	conn                *FlowServerConn
-	EmbeddedEtcd        *etcd.EmbeddedEtcd
-	EtcdClient          *etcd.EtcdClient
-	running             atomic.Value
-	wgServers           sync.WaitGroup
-	wgFlowsHandlers     sync.WaitGroup
+	HTTPServer        *shttp.Server
+	WSServer          *shttp.WSServer
+	TopologyForwarder *TopologyForwarder
+	TopologyServer    *TopologyServer
+	AlertServer       *alert.AlertServer
+	OnDemandClient    *ondemand.OnDemandProbeClient
+	FlowServer        *FlowServer
+	ProbeBundle       *probe.ProbeBundle
+	Storage           storage.Storage
+	EmbeddedEtcd      *etcd.EmbeddedEtcd
+	EtcdClient        *etcd.EtcdClient
+	running           atomic.Value
+	wgServers         sync.WaitGroup
+	wgFlowsHandlers   sync.WaitGroup
 }
 
-func (s *Server) flowExpireUpdate(flows []*flow.Flow) {
-	if s.Storage != nil && len(flows) > 0 {
-		s.Storage.StoreFlows(flows)
-		logging.GetLogger().Debugf("%d flows stored", len(flows))
-	}
-}
-
-func (s *Server) AnalyzeFlows(flows []*flow.Flow) {
-	s.FlowTable.Update(flows)
-	s.FlowMappingPipeline.Enhance(flows)
-
-	logging.GetLogger().Debugf("%d flows received", len(flows))
-}
-
-/* handleFlowPacket can handle connection based on TCP or UDP */
-func (s *Server) handleFlowPacket(conn *FlowServerConn) {
-	defer s.wgFlowsHandlers.Done()
-	defer conn.Close()
-
-	conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
-	data := make([]byte, 4096)
-
-	for s.running.Load() == true {
-		n, err := conn.Read(data)
-		if err != nil {
-			if conn.Timeout(err) {
-				conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
-				continue
-			}
-			if s.running.Load() == false {
-				return
-			}
-			logging.GetLogger().Errorf("Error while reading: %s", err.Error())
-			return
-		}
-
-		f, err := flow.FromData(data[0:n])
-		if err != nil {
-			logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
-			continue
-		}
-
-		s.AnalyzeFlows([]*flow.Flow{f})
-	}
-}
-
-func (s *Server) ListenAndServe() {
+func (s *Server) Start() {
 	s.running.Store(true)
 
 	if s.Storage != nil {
@@ -125,7 +74,7 @@ func (s *Server) ListenAndServe() {
 	s.OnDemandClient.Start()
 	s.AlertServer.Start()
 
-	s.wgServers.Add(3)
+	s.wgServers.Add(2)
 	go func() {
 		defer s.wgServers.Done()
 		s.HTTPServer.ListenAndServe()
@@ -136,45 +85,11 @@ func (s *Server) ListenAndServe() {
 		s.WSServer.ListenAndServe()
 	}()
 
-	host := s.HTTPServer.Addr + ":" + strconv.FormatInt(int64(s.HTTPServer.Port), 10)
-	addr, err := net.ResolveUDPAddr("udp", host)
-	s.conn, err = NewFlowServerConn(addr)
-	if err != nil {
-		panic(err)
-	}
-	go func() {
-		defer s.wgServers.Done()
-
-		for s.running.Load() == true {
-			switch s.conn.Mode() {
-			case TLS:
-				conn, err := s.conn.Accept()
-				if s.running.Load() == false {
-					break
-				}
-				if err != nil {
-					logging.GetLogger().Errorf("Accept error : %s", err.Error())
-					time.Sleep(200 * time.Millisecond)
-					continue
-				}
-
-				s.wgFlowsHandlers.Add(1)
-				go s.handleFlowPacket(conn)
-			case UDP:
-				s.wgFlowsHandlers.Add(1)
-				s.handleFlowPacket(s.conn)
-			}
-		}
-		s.wgFlowsHandlers.Wait()
-		logging.GetLogger().Debug("server flows : wait for opened connection done")
-	}()
-
-	s.FlowTable.Start()
+	s.FlowServer.Start()
 }
 
 func (s *Server) Stop() {
-	s.running.Store(false)
-	s.FlowTable.Stop()
+	s.FlowServer.Stop()
 	s.WSServer.Stop()
 	s.HTTPServer.Stop()
 	if s.EmbeddedEtcd != nil {
@@ -187,7 +102,6 @@ func (s *Server) Stop() {
 	s.OnDemandClient.Stop()
 	s.AlertServer.Stop()
 	s.EtcdClient.Stop()
-	s.conn.Cleanup()
 	s.wgServers.Wait()
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -196,8 +110,10 @@ func (s *Server) Stop() {
 	}
 }
 
-func (s *Server) SetStorage(storage storage.Storage) {
-	s.Storage = storage
+// TODO(safchain) will be removed when only using real datastore for functional tests
+func (s *Server) SetStorage(store storage.Storage) {
+	s.Storage = store
+	s.FlowServer.Storage = store
 }
 
 func NewServerFromConfig() (*Server, error) {
@@ -210,9 +126,9 @@ func NewServerFromConfig() (*Server, error) {
 
 	wsServer := shttp.NewWSServerFromConfig(common.AnalyzerService, httpServer, "/ws")
 
-	topology := NewTopologyServerFromConfig(wsServer)
+	tserver := NewTopologyServerFromConfig(wsServer)
 
-	probeBundle, err := NewTopologyProbeBundleFromConfig(topology.Graph)
+	probeBundle, err := NewTopologyProbeBundleFromConfig(tserver.Graph)
 	if err != nil {
 		return nil, err
 	}
@@ -231,29 +147,22 @@ func NewServerFromConfig() (*Server, error) {
 
 	analyzerUpdate := config.GetConfig().GetInt("analyzer.flowtable_update")
 	analyzerExpire := config.GetConfig().GetInt("analyzer.flowtable_expire")
-	agentRatio := config.GetConfig().GetFloat64("analyzer.flowtable_agent_ratio")
-	if agentRatio == 0.0 {
-		agentRatio = 0.5
-	}
 
-	agentUpdate := int64(float64(analyzerUpdate) * agentRatio)
-	agentExpire := int64(float64(analyzerExpire) * agentRatio)
-
-	if err = etcdClient.SetInt64("/agent/config/flowtable_update", agentUpdate); err != nil {
+	if err = etcdClient.SetInt64("/agent/config/flowtable_update", int64(analyzerUpdate)); err != nil {
 		return nil, err
 	}
 
-	if err = etcdClient.SetInt64("/agent/config/flowtable_expire", agentExpire); err != nil {
+	if err = etcdClient.SetInt64("/agent/config/flowtable_expire", int64(analyzerExpire)); err != nil {
 		return nil, err
 	}
 
-	apiServer, err := api.NewAPI(httpServer, etcdClient.KeysAPI, "Analyzer")
+	apiServer, err := api.NewAPI(httpServer, etcdClient.KeysAPI, common.AnalyzerService)
 	if err != nil {
 		return nil, err
 	}
 
 	var captureAPIHandler *api.CaptureAPIHandler
-	if captureAPIHandler, err = api.RegisterCaptureAPI(apiServer, topology.Graph); err != nil {
+	if captureAPIHandler, err = api.RegisterCaptureAPI(apiServer, tserver.Graph); err != nil {
 		return nil, err
 	}
 
@@ -262,56 +171,51 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	onDemandClient := ondemand.NewOnDemandProbeClient(topology.Graph, captureAPIHandler, wsServer, etcdClient)
-
-	pipeline := mappings.NewFlowMappingPipeline(mappings.NewGraphFlowEnhancer(topology.Graph))
-
-	// check that the neutron probe is loaded if so add the neutron flow enhancer
-	if probeBundle.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(mappings.NewNeutronFlowEnhancer(topology.Graph))
-	}
+	onDemandClient := ondemand.NewOnDemandProbeClient(tserver.Graph, captureAPIHandler, wsServer, etcdClient)
 
 	tableClient := flow.NewTableClient(wsServer)
+
 	store, err := storage.NewStorageFromConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	aserver := alert.NewAlertServer(topology.Graph, alertAPIHandler, wsServer, tableClient, store, etcdClient)
+	fserver, err := NewFlowServer(httpServer.Addr, httpServer.Port, tserver.Graph, store, probeBundle)
+	if err != nil {
+		return nil, err
+	}
+
+	tr := traversal.NewGremlinTraversalParser(tserver.Graph)
+	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
+	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tableClient, store))
+
+	aserver := alert.NewAlertServer(alertAPIHandler, wsServer, tr, etcdClient)
 
 	piClient := packet_injector.NewPacketInjectorClient(wsServer)
 
-	forwarder := NewTopologyForwarderFromConfig(topology.Graph, wsServer)
+	forwarder := NewTopologyForwarderFromConfig(tserver.Graph, wsServer)
 
 	server := &Server{
-		HTTPServer:          httpServer,
-		WSServer:            wsServer,
-		TopologyForwarder:   forwarder,
-		TopologyServer:      topology,
-		AlertServer:         aserver,
-		OnDemandClient:      onDemandClient,
-		FlowMappingPipeline: pipeline,
-		TableClient:         tableClient,
-		EmbeddedEtcd:        etcdServer,
-		EtcdClient:          etcdClient,
-		ProbeBundle:         probeBundle,
-		Storage:             store,
+		HTTPServer:        httpServer,
+		WSServer:          wsServer,
+		TopologyForwarder: forwarder,
+		TopologyServer:    tserver,
+		AlertServer:       aserver,
+		OnDemandClient:    onDemandClient,
+		EmbeddedEtcd:      etcdServer,
+		EtcdClient:        etcdClient,
+		FlowServer:        fserver,
+		ProbeBundle:       probeBundle,
+		Storage:           store,
 	}
 
 	wsServer.AddEventHandler(server)
 
-	updateHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerUpdate))
-	expireHandler := flow.NewFlowHandler(server.flowExpireUpdate, time.Second*time.Duration(analyzerExpire))
-	flowtable := flow.NewTable(updateHandler, expireHandler)
-	server.FlowTable = flowtable
+	api.RegisterTopologyAPI(httpServer, tr)
 
-	api.RegisterTopologyAPI(topology.Graph, httpServer, tableClient, server.Storage)
+	api.RegisterPacketInjectorAPI(piClient, tserver.Graph, httpServer)
 
-	api.RegisterFlowAPI(flowtable, server.Storage, httpServer)
-
-	api.RegisterPacketInjectorAPI(piClient, topology.Graph, httpServer)
-
-	api.RegisterPcapAPI(httpServer, flowtable.PacketsChan)
+	api.RegisterPcapAPI(httpServer, store)
 
 	api.RegisterConfigAPI(httpServer)
 

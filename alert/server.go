@@ -37,12 +37,8 @@ import (
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
-	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/storage"
-	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
@@ -58,7 +54,6 @@ const (
 
 type GremlinAlert struct {
 	*api.Alert
-	graph             *graph.Graph
 	triggered         bool
 	kind              int
 	data              string
@@ -203,14 +198,13 @@ func (ga *GremlinAlert) Trigger(payload []byte) error {
 	return nil
 }
 
-func NewGremlinAlert(alert *api.Alert, g *graph.Graph, p *traversal.GremlinTraversalParser) (*GremlinAlert, error) {
+func NewGremlinAlert(alert *api.Alert, p *traversal.GremlinTraversalParser) (*GremlinAlert, error) {
 	ts, _ := p.Parse(strings.NewReader(alert.Expression))
 
 	ga := &GremlinAlert{
 		Alert:             alert,
 		traversalSequence: ts,
 		gremlinParser:     p,
-		graph:             g,
 	}
 
 	if strings.HasPrefix(alert.Action, "http://") || strings.HasPrefix(alert.Action, "https://") {
@@ -338,7 +332,7 @@ func parseTrigger(trigger string) (string, string) {
 }
 
 func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
-	alert, err := NewGremlinAlert(apiAlert, a.Graph, a.gremlinParser)
+	alert, err := NewGremlinAlert(apiAlert, a.gremlinParser)
 	if err != nil {
 		return err
 	}
@@ -416,20 +410,16 @@ func (a *AlertServer) Stop() {
 	a.elector.Stop()
 }
 
-func NewAlertServer(g *graph.Graph, ah api.APIHandler, wsServer *shttp.WSServer, tc *flow.TableClient, s storage.Storage, etcdClient *etcd.EtcdClient) *AlertServer {
-	gremlinParser := traversal.NewGremlinTraversalParser(g)
-	gremlinParser.AddTraversalExtension(topology.NewTopologyTraversalExtension())
-	gremlinParser.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tc, s))
-
+func NewAlertServer(ah api.APIHandler, wsServer *shttp.WSServer, parser *traversal.GremlinTraversalParser, etcdClient *etcd.EtcdClient) *AlertServer {
 	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
 	as := &AlertServer{
-		Graph:         g,
 		WSServer:      wsServer,
 		AlertHandler:  ah,
+		Graph:         parser.Graph,
 		graphAlerts:   make(map[string]*GremlinAlert),
 		alertTimers:   make(map[string]*time.Ticker),
-		gremlinParser: gremlinParser,
+		gremlinParser: parser,
 		elector:       elector,
 	}
 

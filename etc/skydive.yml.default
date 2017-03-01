@@ -39,9 +39,6 @@ analyzer:
   flowtable_expire: 600
   # Seconds between flow updates (metrics, enhancements,...)
   flowtable_update: 60
-  # Agent expires and updates flows based on this analyzer values
-  # ratio
-  flowtable_agent_ratio: 0.5
 
   # Flow storage engine
   # Available: elasticsearch, orientdb

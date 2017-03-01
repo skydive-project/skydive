@@ -72,8 +72,7 @@ analyzer:
   X509_cert: {{.AnalyzerX509_cert}}
   X509_key: {{.AnalyzerX509_key}}
   flowtable_expire: 600
-  flowtable_update: 20
-  flowtable_agent_ratio: 0.5
+  flowtable_update: 10
 
 etcd:
   embedded: {{.EmbeddedEtcd}}
@@ -116,8 +115,7 @@ analyzer:
   X509_cert: {{.AnalyzerX509_cert}}
   X509_key: {{.AnalyzerX509_key}}
   flowtable_expire: 600
-  flowtable_update: 20
-  flowtable_agent_ratio: 0.5
+  flowtable_update: 10
 
 etcd:
   embedded: {{.EmbeddedEtcd}}
@@ -670,7 +668,7 @@ func TestSFlowSrcDstPath(t *testing.T) {
 
 func TestFlowQuery(t *testing.T) {
 	delay := 500 * time.Second
-	al := flow.NewTableAllocator(delay, delay)
+	al := flow.NewTableAllocator(delay, delay, flow.NewFlowEnhancerPipeline())
 
 	f := func(flows []*flow.Flow) {}
 
@@ -1406,12 +1404,12 @@ func testFlowTunnel(t *testing.T, tunnelType string) {
 
 	gh := gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{})
 
-	flowsInnerTunnel, err := gh.GetFlows(`G.V().Has('Name', 'tunnel-vm1').Out().Has('Name', 'tunnel').Flows()`)
+	flowsInnerTunnel, err := gh.GetFlows(`G.V().Has('Name', 'tunnel-vm1').Out().Has('Name', 'tunnel').Flows().Dedup()`)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	flowsBridge, err := gh.GetFlows(`G.V().Has('Name', 'tunnel-vm2-eth0').Flows()`)
+	flowsBridge, err := gh.GetFlows(`G.V().Has('Name', 'tunnel-vm2-eth0').Flows().Dedup()`)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

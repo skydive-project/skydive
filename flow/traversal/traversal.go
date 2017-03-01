@@ -484,6 +484,11 @@ func (f *FlowTraversalStep) Metrics() *MetricsTraversalStep {
 		for _, flow := range f.flowset.Flows {
 			if flow.LastUpdateMetric.Start != 0 || flow.LastUpdateMetric.Last != 0 {
 				metrics[flow.UUID] = append(metrics[flow.UUID], flow.LastUpdateMetric)
+			} else {
+				// if we get empty LastUpdateMetric it means that we got flow not already updated
+				// by the flow table update ticker, so packets between the start of the flow and
+				// the first update.
+				metrics[flow.UUID] = append(metrics[flow.UUID], flow.Metric)
 			}
 		}
 	}

@@ -1342,7 +1342,7 @@ function StartCheckAPIAccess() {
       var service = r.Service;
       $('#service').html(service + " " + r.Version);
       vueSidebar.service = service;
-      if (service == "Agent") {
+      if (service == "agent") {
         AgentReady();
       }
       else {

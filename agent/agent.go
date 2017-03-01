@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/nu7hatch/gouuid"
+	"github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
@@ -37,6 +38,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/enhancers"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	shttp "github.com/skydive-project/skydive/http"
@@ -45,6 +47,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 type Agent struct {
@@ -132,7 +135,19 @@ func (a *Agent) Start() {
 
 		updateTime := time.Duration(flowtableUpdate) * time.Second
 		expireTime := time.Duration(flowtableExpire) * time.Second
-		a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime)
+
+		cleanup := config.GetConfig().GetInt("cache.cleanup")
+
+		cache := cache.New(time.Duration(expireTime*2)*time.Second, time.Duration(cleanup)*time.Second)
+
+		pipeline := flow.NewFlowEnhancerPipeline(enhancers.NewGraphFlowEnhancer(a.Graph, cache))
+
+		// check that the neutron probe if loaded if so add the neutron flow enhancer
+		if a.TopologyProbeBundle.GetProbe("neutron") != nil {
+			pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(a.Graph, cache))
+		}
+
+		a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime, pipeline)
 
 		// expose a flow server through the client connections
 		flow.NewServer(a.FlowTableAllocator, a.WSAsyncClientPool)
@@ -197,15 +212,17 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	_, err = api.NewAPI(hserver, nil, "Agent")
-	if err != nil {
+	if _, err = api.NewAPI(hserver, nil, common.AgentService); err != nil {
 		panic(err)
 	}
 
 	wsServer := shttp.NewWSServerFromConfig(common.AgentService, hserver, "/ws")
 
+	tr := traversal.NewGremlinTraversalParser(g)
+	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
+
 	root := CreateRootNode(g)
-	api.RegisterTopologyAPI(g, hserver, nil, nil)
+	api.RegisterTopologyAPI(hserver, tr)
 
 	gserver := graph.NewServer(g, wsServer)
 

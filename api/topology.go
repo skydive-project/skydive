@@ -29,20 +29,13 @@ import (
 	"strings"
 
 	"github.com/abbot/go-http-auth"
-	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/storage"
-	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 	"github.com/skydive-project/skydive/validator"
 )
 
 type TopologyAPI struct {
-	Graph       *graph.Graph
-	TableClient *flow.TableClient
-	Storage     storage.Storage
+	gremlinParser *traversal.GremlinTraversalParser
 }
 
 type Topology struct {
@@ -52,8 +45,11 @@ type Topology struct {
 func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
+	t.gremlinParser.Graph.RLock()
+	defer t.gremlinParser.Graph.RUnlock()
+
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(t.Graph); err != nil {
+	if err := json.NewEncoder(w).Encode(t.gremlinParser.Graph); err != nil {
 		panic(err)
 	}
 }
@@ -82,13 +78,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		return
 	}
 
-	tr := traversal.NewGremlinTraversalParser(t.Graph)
-	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
-	if t.TableClient != nil {
-		tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(t.TableClient, t.Storage))
-	}
-
-	ts, err := tr.Parse(strings.NewReader(resource.GremlinQuery))
+	ts, err := t.gremlinParser.Parse(strings.NewReader(resource.GremlinQuery))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
@@ -127,11 +117,9 @@ func (t *TopologyAPI) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-func RegisterTopologyAPI(g *graph.Graph, r *shttp.Server, tc *flow.TableClient, st storage.Storage) {
+func RegisterTopologyAPI(r *shttp.Server, parser *traversal.GremlinTraversalParser) {
 	t := &TopologyAPI{
-		Graph:       g,
-		TableClient: tc,
-		Storage:     st,
+		gremlinParser: parser,
 	}
 
 	t.registerEndpoints(r)

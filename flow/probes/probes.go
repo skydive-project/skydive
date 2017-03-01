@@ -29,7 +29,6 @@ import (
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/mappings"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -49,7 +48,6 @@ type FlowProbeInterface interface {
 
 type FlowProbe struct {
 	fpi            FlowProbeInterface
-	pipeline       *mappings.FlowMappingPipeline
 	flowClientPool *analyzer.FlowClientPool
 }
 
@@ -70,7 +68,6 @@ func (fp *FlowProbe) UnregisterProbe(n *graph.Node) error {
 }
 
 func (fp *FlowProbe) AsyncFlowPipeline(flows []*flow.Flow) {
-	fp.pipeline.Enhance(flows)
 	fp.flowClientPool.SendFlows(flows)
 }
 
@@ -89,13 +86,6 @@ func (fpb *FlowProbeBundle) UnregisterAllProbes() {
 func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.flow.probes")
 	logging.GetLogger().Infof("Flow probes: %v", list)
-
-	pipeline := mappings.NewFlowMappingPipeline(mappings.NewGraphFlowEnhancer(g))
-
-	// check that the neutron probe if loaded if so add the neutron flow enhancer
-	if tb.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(mappings.NewNeutronFlowEnhancer(g))
-	}
 
 	var captureTypes []string
 	var fpi FlowProbeInterface
@@ -126,7 +116,7 @@ func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *fl
 			continue
 		}
 
-		flowProbe := &FlowProbe{fpi: fpi, pipeline: pipeline, flowClientPool: fcpool}
+		flowProbe := &FlowProbe{fpi: fpi, flowClientPool: fcpool}
 		for _, captureType := range captureTypes {
 			probes[captureType] = flowProbe
 		}

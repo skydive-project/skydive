@@ -136,7 +136,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 			continue
 		}
 
-		if f.LastUpdateMetric != nil {
+		if f.LastUpdateMetric.Start != 0 {
 			// TODO submit a pull request to add bulk request with parent supported
 			if err := c.client.IndexChild("metric", f.UUID, "", f.LastUpdateMetric); err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())

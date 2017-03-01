@@ -43,7 +43,7 @@ import (
 type APIServer struct {
 	HTTPServer  *shttp.Server
 	EtcdKeyAPI  etcd.KeysAPI
-	ServiceName string
+	ServiceType common.ServiceType
 	handlers    map[string]APIHandler
 }
 
@@ -187,7 +187,7 @@ func (a *APIServer) addAPIRootRoute() {
 	info := APIInfo{
 		Host:    config.GetConfig().GetString("host_id"),
 		Version: version.Version,
-		Service: a.ServiceName,
+		Service: string(a.ServiceType),
 	}
 
 	routes := []shttp.Route{
@@ -212,11 +212,11 @@ func (a *APIServer) GetHandler(s string) APIHandler {
 	return a.handlers[s]
 }
 
-func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, serviceName string) (*APIServer, error) {
+func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, serviceType common.ServiceType) (*APIServer, error) {
 	apiServer := &APIServer{
 		HTTPServer:  server,
 		EtcdKeyAPI:  kapi,
-		ServiceName: serviceName,
+		ServiceType: serviceType,
 		handlers:    make(map[string]APIHandler),
 	}
 

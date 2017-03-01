@@ -63,8 +63,7 @@ sflow:
 analyzer:
   listen: :{{.AnalyzerPort}}
   flowtable_expire: 600
-  flowtable_update: 20
-  flowtable_agent_ratio: 0.5
+  flowtable_update: 10
   storage: {{.Storage}}
 
 etcd:

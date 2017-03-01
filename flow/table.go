@@ -79,9 +79,10 @@ type Table struct {
 	expireHandler *FlowHandler
 	tableClock    int64
 	nodeTID       string
+	pipeline      *FlowEnhancerPipeline
 }
 
-func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
+func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler, pipeline *FlowEnhancerPipeline) *Table {
 	t := &Table{
 		PacketsChan:   make(chan *FlowPackets, 1000),
 		table:         make(map[string]*Flow),
@@ -91,13 +92,15 @@ func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 		state:         common.StoppedState,
 		updateHandler: updateHandler,
 		expireHandler: expireHandler,
+		pipeline:      pipeline,
 	}
 	atomic.StoreInt64(&t.tableClock, time.Now().UTC().Unix())
 	return t
 }
 
+// TODO: to deprecate as it is use only for testing purpose
 func NewTableFromFlows(flows []*Flow, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
-	nft := NewTable(updateHandler, expireHandler)
+	nft := NewTable(updateHandler, expireHandler, NewFlowEnhancerPipeline())
 	nft.Update(flows)
 	return nft
 }
@@ -229,17 +232,11 @@ func (ft *Table) updated(updateFrom int64) {
 		if f.Metric.Last > updateFrom {
 			updatedFlows = append(updatedFlows, f)
 
-			e := f.Metric
-			f.LastUpdateMetric.ABPackets = e.ABPackets
-			f.LastUpdateMetric.ABBytes = e.ABBytes
-			f.LastUpdateMetric.BAPackets = e.BAPackets
-			f.LastUpdateMetric.BABytes = e.BABytes
+			f.LastUpdateMetric.ABPackets = f.Metric.ABPackets
+			f.LastUpdateMetric.ABBytes = f.Metric.ABBytes
+			f.LastUpdateMetric.BAPackets = f.Metric.BAPackets
+			f.LastUpdateMetric.BABytes = f.Metric.BABytes
 
-			f.LastUpdateMetric.Start = updateFrom
-			f.LastUpdateMetric.Last = updateFrom + every
-
-			// subtract previous values to get the diff so that we store the
-			// amount of data between two updates
 			if s, ok := ft.stats[f.UUID]; ok {
 				f.LastUpdateMetric.ABPackets -= s.ABPackets
 				f.LastUpdateMetric.ABBytes -= s.ABBytes
@@ -249,6 +246,8 @@ func (ft *Table) updated(updateFrom int64) {
 		} else {
 			f.LastUpdateMetric = &FlowMetric{}
 		}
+		f.LastUpdateMetric.Start = updateFrom
+		f.LastUpdateMetric.Last = updateFrom + every
 
 		ft.stats[f.UUID] = f.Metric.Copy()
 	}
@@ -364,6 +363,7 @@ func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string, t int64
 	flow, new := ft.GetOrCreateFlow(key)
 	if new {
 		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID, L2ID, L3ID)
+		ft.pipeline.EnhanceFlow(flow)
 	} else {
 		flow.Update(t, packet.gopacket, packet.length)
 	}
@@ -446,8 +446,5 @@ func (ft *Table) Stop() {
 		ft.lockState.Unlock()
 	}
 
-	// FIX trigger deadlock since Stop is called from a place where the graph
-	// is locked and usually the enhance pipeline lock the graph as well.
-	// expireNow calls the enhance.
-	//ft.expireNow()
+	ft.expireNow()
 }

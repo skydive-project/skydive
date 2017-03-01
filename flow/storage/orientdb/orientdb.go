@@ -124,7 +124,7 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 			return err
 		}
 
-		if flow.LastUpdateMetric != nil {
+		if flow.LastUpdateMetric.Start != 0 {
 			doc := metricToDocument(flow.LastUpdateMetric)
 			doc["Flow"] = flowID
 			if _, err := c.client.CreateDocument(doc); err != nil {

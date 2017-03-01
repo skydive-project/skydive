@@ -30,14 +30,14 @@ import (
 )
 
 func TestNewTable(t *testing.T) {
-	ft := NewTable(nil, nil)
+	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	if ft == nil {
 		t.Error("new FlowTable return null")
 	}
 }
 
 func TestTable_String(t *testing.T) {
-	ft := NewTable(nil, nil)
+	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	if "0 flows" != ft.String() {
 		t.Error("FlowTable too big")
 	}
@@ -123,7 +123,7 @@ func TestTable_AsyncUpdated(t *testing.T) {
 }
 
 func TestTable_LookupFlowByProbePath(t *testing.T) {
-	ft := NewTable(nil, nil)
+	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	GenerateTestFlows(t, ft, 1, "probe-tid1")
 	GenerateTestFlows(t, ft, 2, "probe-tid2")
 
@@ -221,7 +221,7 @@ func TestTable_FilterLast(t *testing.T) {
 }
 
 func TestTable_SymmeticsHash(t *testing.T) {
-	ft1 := NewTable(nil, nil)
+	ft1 := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	GenerateTestFlows(t, ft1, 0xca55e77e, "probe-tid")
 
 	UUIDS := make(map[string]bool)
@@ -232,7 +232,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 		TRIDS[f.TrackingID] = true
 	}
 
-	ft2 := NewTable(nil, nil)
+	ft2 := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe-tid")
 
 	for _, f := range ft2.GetFlows(nil).Flows {
