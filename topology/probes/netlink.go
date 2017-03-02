@@ -119,35 +119,49 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 		return
 	}
 
+	linkMetadata := graph.Metadata{"RelationType": "layer2", "Type": "veth"}
+
 	if peerIndex, err := intf.GetFieldInt64("PeerIfIndex"); err == nil {
-		peerResolver := func() error {
+		peerResolver := func(root *graph.Node) error {
+			u.Graph.Lock()
+			defer u.Graph.Unlock()
+
 			// re get the interface from the graph since the interface could have been deleted
 			if u.Graph.GetNode(intf.ID) == nil {
 				return errors.New("Node not found")
 			}
 
-			// got more than 1 peer, unable to find the right one, wait for the other to discover
-			peer := u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": peerIndex, "Type": "veth"})
-			linkMetadata := graph.Metadata{"RelationType": "layer2", "Type": "veth"}
-			if peer != nil && !u.Graph.AreLinked(peer, intf, linkMetadata) {
-				u.Graph.Link(peer, intf, linkMetadata)
-				return nil
+			var peer *graph.Node
+			if root == nil {
+				peer = u.Graph.LookupFirstNode(graph.Metadata{"IfIndex": peerIndex, "Type": "veth"})
+			} else {
+				peer = u.Graph.LookupFirstChild(root, graph.Metadata{"IfIndex": peerIndex, "Type": "veth"})
 			}
-			return errors.New("Nodes not linked")
+			if peer == nil {
+				return errors.New("Peer not found")
+			}
+			if !u.Graph.AreLinked(peer, intf, linkMetadata) {
+				u.Graph.Link(peer, intf, linkMetadata)
+			}
+
+			return nil
 		}
 
 		if peerIndex > ifIndex {
-			if err := peerResolver(); err != nil {
-				retryFnc := func() error {
+			go func() {
+				// lookup first in the local namespace then in the whole graph
+				// since we can have the exact same interface (name/index) in different namespaces
+				// we always take first the closer one.
+				localFnc := func() error {
 					if u.isRunning() == false {
 						return nil
 					}
-					u.Graph.Lock()
-					defer u.Graph.Unlock()
-					return peerResolver()
+					return peerResolver(u.Root)
 				}
-				go common.Retry(retryFnc, 10, 200*time.Millisecond)
-			}
+				if err := common.Retry(localFnc, 10, 100*time.Millisecond); err != nil {
+					peerResolver(nil)
+				}
+			}()
 		}
 	}
 }
