@@ -282,9 +282,15 @@ func (u *NetNSProbe) Stop() {
 	u.Lock()
 	defer u.Unlock()
 
+	var wg sync.WaitGroup
 	for _, probe := range u.nsnlProbes {
-		probe.Stop()
+		wg.Add(1)
+		go func(nl *NetNsNetLinkTopoUpdater) {
+			nl.Stop()
+			wg.Done()
+		}(probe)
 	}
+	wg.Wait()
 }
 
 func NewNetNSProbe(g *graph.Graph, n *graph.Node, runPath ...string) (*NetNSProbe, error) {
