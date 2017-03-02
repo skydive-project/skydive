@@ -626,7 +626,7 @@ Vue.component('flow-table', {
 
     highlightNodes: function(obj, bool) {
       var self = this,
-          query = "G.Flows().Has('" + this.highlightMode + "', '" + obj[this.highlightMode] + "').Hops()";
+          query = "G.Flows().Has('" + this.highlightMode + "', '" + obj[this.highlightMode] + "').Nodes()";
       TopologyAPI.query(query)
         .then(function(nodes) {
           nodes.forEach(function(n) {
