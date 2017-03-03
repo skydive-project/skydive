@@ -30,11 +30,11 @@ generate_cover_data() {
     # add fonctional testing
     PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor' | tr '\n' ',' | sed -e 's/,$//')
     coverfile="$workdir/functional.cover"
-    govendor test -tags "${TAGS} test" -v -cover -covermode="$mode" -coverprofile="$f" -coverpkg=${PKG} -timeout 2m -c -o tests/functionals ./tests/
+    govendor test -tags "${TAGS} test" -cover -covermode="$mode" -coverprofile="$f" -coverpkg=${PKG} -timeout 2m -c -o tests/functionals ./tests/
     FUNC_TESTS=$( grep -e 'func Test' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf )
     for functest in ${FUNC_TESTS} ; do
         coverfile="../$workdir/$functest.cover"
-        cd tests && sudo -E ./functionals -test.v -test.timeout 2m -test.coverprofile="$coverfile" -test.run $functest$ && cd ..
+        cd tests && sudo -E ./functionals -test.timeout 2m -test.coverprofile="$coverfile" -test.run $functest$ && cd ..
     done
 
     # merge all together
