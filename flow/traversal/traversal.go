@@ -28,6 +28,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage"
@@ -623,7 +624,14 @@ func (s *FlowGremlinTraversalStep) sinceParam() traversal.Since {
 func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeContext *common.TimeSlice) {
 	var timeFilter *filters.Filter
 	tr := filters.Range{
-		From: timeContext.Start,
+		// When we query the flows on the agents, we get the flows that have not
+		// expired yet. To replicate this behaviour for stored storage, we need
+		// to add the expire duration:
+		// [-----------------------------------]         |
+		// Start                            Last       Query
+		//                      ^                        ^
+		//                     From                      To
+		From: timeContext.Start - config.GetConfig().GetInt64("analyzer.flowtable_expire"),
 		To:   timeContext.Last,
 	}
 	// flow need to have at least one metric included in the time range
