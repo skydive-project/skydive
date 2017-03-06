@@ -67,7 +67,7 @@ const flowMapping = `
 			"start": {
 				"match": "Start",
 				"mapping": {
-					"type": "date", "format": "epoch_second"
+					"type": "date", "format": "epoch_millis"
 				}
 			}
 		},
@@ -75,7 +75,7 @@ const flowMapping = `
 			"last": {
 				"match": "Last",
 				"mapping": {
-					"type": "date", "format": "epoch_second"
+					"type": "date", "format": "epoch_millis"
 				}
 			}
 		}
@@ -108,7 +108,7 @@ const metricMapping = `
 			"start": {
 				"match": "Start",
 				"mapping": {
-					"type": "date", "format": "epoch_second"
+					"type": "date", "format": "epoch_millis"
 				}
 			}
 		},
@@ -116,7 +116,7 @@ const metricMapping = `
 			"last": {
 				"match": "Last",
 				"mapping": {
-					"type": "date", "format": "epoch_second"
+					"type": "date", "format": "epoch_millis"
 				}
 			}
 		}

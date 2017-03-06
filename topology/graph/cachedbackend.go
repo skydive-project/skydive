@@ -24,6 +24,7 @@ package graph
 
 import (
 	"sync/atomic"
+	"time"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -160,31 +161,31 @@ func (c *CachedBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadat
 	return nil, nil
 }
 
-func (c *CachedBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
+func (c *CachedBackend) AddMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
 	if mode != CACHE_ONLY_MODE {
-		r = c.persistent.AddMetadata(i, k, v)
+		r = c.persistent.AddMetadata(i, k, v, t)
 	}
 
 	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.AddMetadata(i, k, v)
+		r = c.memory.AddMetadata(i, k, v, t)
 	}
 
 	return r
 }
 
-func (c *CachedBackend) SetMetadata(i interface{}, metadata Metadata) bool {
+func (c *CachedBackend) SetMetadata(i interface{}, metadata Metadata, t time.Time) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
 	if mode != CACHE_ONLY_MODE {
-		r = c.persistent.SetMetadata(i, metadata)
+		r = c.persistent.SetMetadata(i, metadata, t)
 	}
 
 	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.SetMetadata(i, metadata)
+		r = c.memory.SetMetadata(i, metadata, t)
 	}
 
 	return r

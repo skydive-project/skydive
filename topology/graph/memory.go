@@ -24,6 +24,7 @@ package graph
 
 import (
 	"errors"
+	"time"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -42,11 +43,11 @@ type MemoryBackend struct {
 	edges map[Identifier]*MemoryBackendEdge
 }
 
-func (m *MemoryBackend) SetMetadata(i interface{}, meta Metadata) bool {
+func (m *MemoryBackend) SetMetadata(i interface{}, meta Metadata, t time.Time) bool {
 	return true
 }
 
-func (m *MemoryBackend) AddMetadata(i interface{}, k string, v interface{}) bool {
+func (m *MemoryBackend) AddMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
 	return true
 }
 

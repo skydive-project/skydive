@@ -72,6 +72,6 @@ func NewFilterForTimeSlice(t *common.TimeSlice) *filters.Filter {
 }
 
 func NewFilterForTime(t time.Time) *filters.Filter {
-	u := t.UTC().Unix()
+	u := common.UnixMillis(t)
 	return NewFilterForTimeSlice(common.NewTimeSlice(u, u))
 }

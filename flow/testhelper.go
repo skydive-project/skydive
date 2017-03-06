@@ -31,10 +31,12 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/op/go-logging"
+	"github.com/skydive-project/skydive/common"
 )
 
 type ProtocolType int
@@ -219,19 +221,19 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 	return &gpacket
 }
 
-func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, nodeTID string) *Flow {
+func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, nodeTID string, timestamp time.Time) *Flow {
 	key := FlowKeyFromGoPacket(packet, "").String()
 	flow, new := ft.GetOrCreateFlow(key)
 	if new {
-		flow.Init(key, ft.GetTime(), packet, length, nodeTID, "", 0, 0)
+		flow.Init(key, common.UnixMillis(timestamp), packet, length, nodeTID, "", 0, 0)
 	} else {
-		flow.Update(ft.GetTime(), packet, length)
+		flow.Update(common.UnixMillis(timestamp), packet, length)
 	}
 
 	return flow
 }
 
-func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, tid string) []*Flow {
+func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, tid string, timestamp time.Time) []*Flow {
 	flows := []*Flow{}
 	for i := int64(0); i < 10; i++ {
 		var packet *gopacket.Packet
@@ -241,7 +243,7 @@ func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, tid s
 			packet = forgeTestPacket(t, i+baseSeed*10, swap, ETH, IPv4, UDP)
 		}
 
-		flow := flowFromGoPacket(ft, packet, int64(len((*packet).Data())), tid)
+		flow := flowFromGoPacket(ft, packet, int64(len((*packet).Data())), tid, timestamp)
 		if flow == nil {
 			t.Fail()
 		}
@@ -250,11 +252,11 @@ func generateTestFlows(t *testing.T, ft *Table, baseSeed int64, swap bool, tid s
 	return flows
 }
 
-func GenerateTestFlows(t *testing.T, ft *Table, baseSeed int64, tid string) []*Flow {
-	return generateTestFlows(t, ft, baseSeed, false, tid)
+func GenerateTestFlows(t *testing.T, ft *Table, baseSeed int64, tid string, timestamp time.Time) []*Flow {
+	return generateTestFlows(t, ft, baseSeed, false, tid, timestamp)
 }
-func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, tid string) []*Flow {
-	return generateTestFlows(t, ft, baseSeed, true, tid)
+func GenerateTestFlowsSymmetric(t *testing.T, ft *Table, baseSeed int64, tid string, timestamp time.Time) []*Flow {
+	return generateTestFlows(t, ft, baseSeed, true, tid, timestamp)
 }
 
 func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow) {
@@ -296,7 +298,7 @@ func NewTestFlowTableSimple(t *testing.T) *Table {
 
 func NewTestFlowTableComplex(t *testing.T, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
 	ft := NewTable(updateHandler, expireHandler, NewFlowEnhancerPipeline())
-	GenerateTestFlows(t, ft, 0xca55e77e, "probe-tid")
+	GenerateTestFlows(t, ft, 0xca55e77e, "probe-tid", time.Now())
 	return ft
 }
 

@@ -392,7 +392,7 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 		return &GraphTraversal{error: errors.New("Sorry, I can't predict the future")}
 	}
 
-	g, err := t.Graph.WithContext(graph.GraphContext{TimeSlice: common.NewTimeSlice(at.Add(-duration).Unix(), at.Unix())})
+	g, err := t.Graph.WithContext(graph.GraphContext{TimeSlice: common.NewTimeSlice(common.UnixMillis(at.Add(-duration)), common.UnixMillis(at))})
 	if err != nil {
 		return &GraphTraversal{error: err}
 	}

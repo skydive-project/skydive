@@ -662,8 +662,8 @@ func (u *NetLinkProbe) start(nsPath string) {
 							}
 							u.updateMetadataStatistics(stats, m, "Statistics")
 							u.updateMetadataStatistics(&metric, m, "LastMetric")
-							m["LastMetric/Start"] = last.Unix()
-							m["LastMetric/Last"] = now.Unix()
+							m["LastMetric/Start"] = common.UnixMillis(last)
+							m["LastMetric/Last"] = common.UnixMillis(now)
 							tr.Commit()
 							u.Graph.Unlock()
 						}

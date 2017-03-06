@@ -94,7 +94,7 @@ func (p *PcapWriter) FeedFlowTable() {
 			lastSend = time.Now()
 			lastTS = ci.Timestamp
 		} else {
-			timestamp = ci.Timestamp.Unix()
+			timestamp = common.UnixMillis(ci.Timestamp)
 		}
 
 		flowPackets := FlowPacketsFromGoPacket(&packet, 0, timestamp)

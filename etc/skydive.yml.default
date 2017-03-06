@@ -87,7 +87,7 @@ agent:
       # - neutron
       # - opencontrail
     netlink:
-      # delay in seconds between to metric update
+      # delay in seconds between two metric updates
       # metrics_update: 30
   flow:
     # Probes used to capture traffic.

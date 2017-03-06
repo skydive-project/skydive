@@ -123,9 +123,10 @@ func TestTable_AsyncUpdated(t *testing.T) {
 }
 
 func TestTable_LookupFlowByProbePath(t *testing.T) {
+	now := time.Now()
 	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	GenerateTestFlows(t, ft, 1, "probe-tid1")
-	GenerateTestFlows(t, ft, 2, "probe-tid2")
+	GenerateTestFlows(t, ft, 1, "probe-tid1", now)
+	GenerateTestFlows(t, ft, 2, "probe-tid2", now)
 
 	f := filters.NewOrFilter(
 		filters.NewTermStringFilter("NodeTID", "probe-tid1"),
@@ -160,7 +161,7 @@ func TestTable_GetFlow(t *testing.T) {
 
 func TestTable_GetOrCreateFlow(t *testing.T) {
 	ft := NewTestFlowTableComplex(t, nil, nil)
-	flows := GenerateTestFlows(t, ft, 0, "probe-tid1")
+	flows := GenerateTestFlows(t, ft, 0, "probe-tid1", time.Now())
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
 	}
@@ -220,8 +221,9 @@ func TestTable_FilterLast(t *testing.T) {
 }
 
 func TestTable_SymmeticsHash(t *testing.T) {
+	now := time.Now()
 	ft1 := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	GenerateTestFlows(t, ft1, 0xca55e77e, "probe-tid")
+	GenerateTestFlows(t, ft1, 0xca55e77e, "probe-tid", now)
 
 	UUIDS := make(map[string]bool)
 	TRIDS := make(map[string]bool)
@@ -232,7 +234,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 	}
 
 	ft2 := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe-tid")
+	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe-tid", now)
 
 	for _, f := range ft2.GetFlows(nil).Flows {
 		if _, found := UUIDS[f.UUID]; !found {

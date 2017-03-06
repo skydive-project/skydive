@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"strconv"
 	"time"
@@ -235,7 +236,11 @@ func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTrav
 				return nil, err
 			}
 		case int64:
-			s.Params[0] = time.Unix(param, 0)
+			if param > math.MaxInt32 {
+				s.Params[0] = time.Unix(0, param*1000000)
+			} else {
+				s.Params[0] = time.Unix(param, 0)
+			}
 		default:
 			return nil, errors.New("Key must be either an integer or a string")
 		}

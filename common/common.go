@@ -426,6 +426,10 @@ func JsonDecode(r io.Reader, i interface{}) error {
 	return decoder.Decode(i)
 }
 
+func UnixMillis(t time.Time) int64 {
+	return t.UTC().UnixNano() / 1000000
+}
+
 type TimeSlice struct {
 	Start int64 `json:"Start"`
 	Last  int64 `json:"Last"`

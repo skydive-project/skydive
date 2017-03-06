@@ -83,6 +83,7 @@ type graphElement struct {
 	metadata  Metadata
 	host      string
 	createdAt time.Time
+	updatedAt time.Time
 	deletedAt time.Time
 }
 
@@ -107,8 +108,8 @@ type GraphBackend interface {
 	GetEdge(i Identifier, at *common.TimeSlice) []*Edge
 	GetEdgeNodes(e *Edge, at *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node)
 
-	AddMetadata(e interface{}, k string, v interface{}) bool
-	SetMetadata(e interface{}, m Metadata) bool
+	AddMetadata(e interface{}, k string, v interface{}, t time.Time) bool
+	SetMetadata(e interface{}, m Metadata, t time.Time) bool
 
 	GetNodes(t *common.TimeSlice, m Metadata) []*Node
 	GetEdges(t *common.TimeSlice, m Metadata) []*Edge
@@ -208,9 +209,11 @@ func (e *graphElement) GetField(name string) (interface{}, bool) {
 	case "Host":
 		return e.host, true
 	case "CreatedAt":
-		return e.createdAt.Unix(), true
+		return common.UnixMillis(e.createdAt), true
+	case "UpdatedAt":
+		return common.UnixMillis(e.updatedAt), true
 	case "DeletedAt":
-		return e.deletedAt.Unix(), true
+		return common.UnixMillis(e.deletedAt), true
 	default:
 		if strings.HasPrefix(name, "Metadata/") {
 			name = name[9:]
@@ -260,31 +263,33 @@ func (e *graphElement) String() string {
 		Metadata  Metadata `json:",omitempty"`
 		Host      string
 		CreatedAt string
+		UpdatedAt string `json:",omitempty"`
 		DeletedAt string `json:",omitempty"`
 	}{
 		ID:        e.ID,
 		Metadata:  e.metadata,
 		Host:      e.host,
 		CreatedAt: e.createdAt.String(),
+		UpdatedAt: e.updatedAt.String(),
 		DeletedAt: deletedAt,
 	})
 	return string(j)
 }
 
 func parseTime(i interface{}) (t time.Time, err error) {
-	var epoch int64
+	var nano int64
 	switch i := i.(type) {
 	case int64:
-		epoch = i
+		nano = i
 	case json.Number:
-		epoch, err = i.Int64()
+		nano, err = i.Int64()
 		if err != nil {
 			return t, err
 		}
 	default:
 		return t, fmt.Errorf("Invalid time: %+v", i)
 	}
-	return time.Unix(epoch, 0), err
+	return time.Unix(0, nano*1000000), err
 }
 
 func (e *graphElement) Decode(i interface{}) (err error) {
@@ -302,6 +307,14 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 		}
 	} else {
 		e.createdAt = time.Now().UTC()
+	}
+
+	if updatedAt, ok := objMap["UpdatedAt"]; ok {
+		if e.updatedAt, err = parseTime(updatedAt); err != nil {
+			return err
+		}
+	} else {
+		e.updatedAt = e.createdAt
 	}
 
 	if deletedAt, ok := objMap["DeletedAt"]; ok {
@@ -330,7 +343,7 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 func (n *Node) MarshalJSON() ([]byte, error) {
 	deletedAt := int64(0)
 	if !n.deletedAt.IsZero() {
-		deletedAt = n.deletedAt.Unix()
+		deletedAt = common.UnixMillis(n.deletedAt)
 	}
 
 	return json.Marshal(&struct {
@@ -338,12 +351,14 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 		Metadata  Metadata `json:",omitempty"`
 		Host      string
 		CreatedAt int64
+		UpdatedAt int64 `json:",omitempty"`
 		DeletedAt int64 `json:",omitempty"`
 	}{
 		ID:        n.ID,
 		Metadata:  n.metadata,
 		Host:      n.host,
-		CreatedAt: n.createdAt.Unix(),
+		CreatedAt: common.UnixMillis(n.createdAt),
+		UpdatedAt: common.UnixMillis(n.updatedAt),
 		DeletedAt: deletedAt,
 	})
 }
@@ -372,7 +387,7 @@ func (e *Edge) GetFieldString(name string) (string, error) {
 func (e *Edge) MarshalJSON() ([]byte, error) {
 	deletedAt := int64(0)
 	if !e.deletedAt.IsZero() {
-		deletedAt = e.deletedAt.Unix()
+		deletedAt = common.UnixMillis(e.deletedAt)
 	}
 
 	return json.Marshal(&struct {
@@ -382,6 +397,7 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		Child     Identifier
 		Host      string
 		CreatedAt int64
+		UpdatedAt int64 `json:",omitempty"`
 		DeletedAt int64 `json:",omitempty"`
 	}{
 		ID:        e.ID,
@@ -389,7 +405,8 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		Parent:    e.parent,
 		Child:     e.child,
 		Host:      e.host,
-		CreatedAt: e.createdAt.Unix(),
+		CreatedAt: common.UnixMillis(e.createdAt),
+		UpdatedAt: common.UnixMillis(e.updatedAt),
 		DeletedAt: deletedAt,
 	})
 }
@@ -463,11 +480,13 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 		}
 	}
 
-	if !g.backend.SetMetadata(i, m) {
+	now := time.Now().UTC()
+	if !g.backend.SetMetadata(i, m, now) {
 		return false
 	}
 
 	e.metadata = m
+	e.updatedAt = now
 
 	g.notifyEvent(ge)
 	return true
@@ -505,11 +524,13 @@ func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 		return false
 	}
 
-	if !g.backend.AddMetadata(i, k, v) {
+	now := time.Now().UTC()
+	if !g.backend.AddMetadata(i, k, v, now) {
 		return false
 	}
 
 	e.metadata[k] = v
+	e.updatedAt = now
 
 	g.notifyEvent(ge)
 	return true
@@ -532,11 +553,12 @@ func (t *MetadataTransaction) Commit() {
 		ge.kind = edgeUpdated
 	}
 
+	now := time.Now().UTC()
 	updated := false
 	for k, v := range t.Metadata {
 		if e.metadata[k] != v {
 			e.metadata[k] = v
-			if !t.graph.backend.AddMetadata(t.graphElement, k, v) {
+			if !t.graph.backend.AddMetadata(t.graphElement, k, v, now) {
 				return
 			}
 			updated = true
@@ -764,6 +786,7 @@ func (g *Graph) GetNode(i Identifier) *Node {
 }
 
 func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
+	now := time.Now().UTC()
 	hostname := g.host
 	if len(h) > 0 {
 		hostname = h[0]
@@ -772,7 +795,8 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
 		graphElement: graphElement{
 			ID:        i,
 			host:      hostname,
-			createdAt: time.Now().UTC(),
+			createdAt: now,
+			updatedAt: now,
 		},
 	}
 
@@ -790,13 +814,15 @@ func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
 }
 
 func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
+	now := time.Now().UTC()
 	e := &Edge{
 		parent: p.ID,
 		child:  c.ID,
 		graphElement: graphElement{
 			ID:        i,
 			host:      g.host,
-			createdAt: time.Now().UTC(),
+			createdAt: now,
+			updatedAt: now,
 		},
 	}
 

@@ -23,16 +23,15 @@
 package flow
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
@@ -230,6 +229,18 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
+func (f *Flow) GetStartTime() time.Time {
+	return time.Unix(0, f.Start*1000000)
+}
+
+func (f *Flow) GetLastTime() time.Time {
+	return time.Unix(0, f.Last*1000000)
+}
+
+func (f *Flow) GetDuration() time.Duration {
+	return f.GetLastTime().Sub(f.GetStartTime())
+}
+
 func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
 	f.Start = now
 	f.Last = now
@@ -258,20 +269,6 @@ func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
 	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
 		f.updateMetricsWithNetworkLayer(packet)
 	}
-}
-
-func (f *Flow) DumpInfo(layerSeparator ...string) string {
-	fm := f.GetMetric()
-	sep := " | "
-	if len(layerSeparator) > 0 {
-		sep = layerSeparator[0]
-	}
-	buf := bytes.NewBufferString("")
-	buf.WriteString(fmt.Sprintf("%s\t", f.Link.Protocol))
-	buf.WriteString(fmt.Sprintf("(%d %d)", fm.ABPackets, fm.ABBytes))
-	buf.WriteString(fmt.Sprintf(" (%d %d)", fm.BAPackets, fm.BABytes))
-	buf.WriteString(fmt.Sprintf("\t(%s -> %s)%s", f.Link.A, f.Link.B, sep))
-	return buf.String()
 }
 
 func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) {

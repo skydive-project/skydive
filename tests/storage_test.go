@@ -203,7 +203,7 @@ func TestPcapInject(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	gh := gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{})
-	flows, _ := gh.GetFlows(`G.Context(1454659513).Flows().Has('Application', 'DNS')`)
+	flows, _ := gh.GetFlows(`G.Context(1454659514).Flows().Has('Application', 'DNS')`)
 	if len(flows) != 2 {
 		t.Fatalf("Wrong number of DNS flows. Expected 2, got %d", len(flows))
 	}
@@ -297,7 +297,7 @@ func TestInterfaceMetrics(t *testing.T) {
 
 		if !testPassed {
 			now := time.Now()
-			values := tr.Context(now, now.Sub(start)).V().Has("Name", "ns1", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates().Values()
+			values := tr.Context(now, now.Sub(start.Add(-5*time.Second))).V().Has("Name", "ns1", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates().Values()
 			if len(values) != 0 {
 				metrics := values[0].(map[string][]*common.TimedMetric)
 				if len(metrics) > 0 && len(metrics["Aggregated"]) > 0 {

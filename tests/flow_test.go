@@ -674,11 +674,12 @@ func TestFlowQuery(t *testing.T) {
 
 	ft1 := al.Alloc(f)
 
-	flow.GenerateTestFlows(t, ft1, 1, "probe-tid1")
-	flows1 := flow.GenerateTestFlows(t, ft1, 2, "probe-tid2")
+	now := time.Now()
+	flow.GenerateTestFlows(t, ft1, 1, "probe-tid1", now)
+	flows1 := flow.GenerateTestFlows(t, ft1, 2, "probe-tid2", now)
 
 	ft2 := al.Alloc(f)
-	flows2 := flow.GenerateTestFlows(t, ft2, 3, "probe-tid2")
+	flows2 := flow.GenerateTestFlows(t, ft2, 3, "probe-tid2", now)
 
 	ft1.Start()
 	ft2.Start()

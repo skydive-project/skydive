@@ -78,6 +78,7 @@ type Table struct {
 	updateHandler *FlowHandler
 	lastUpdate    int64
 	expireHandler *FlowHandler
+	lastExpire    int64
 	tableClock    int64
 	nodeTID       string
 	pipeline      *FlowEnhancerPipeline
@@ -95,7 +96,7 @@ func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler, pipeline *
 		expireHandler: expireHandler,
 		pipeline:      pipeline,
 	}
-	atomic.StoreInt64(&t.tableClock, time.Now().UTC().Unix())
+	atomic.StoreInt64(&t.tableClock, common.UnixMillis(time.Now()))
 	return t
 }
 
@@ -183,7 +184,7 @@ func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
 /* Return a new flow.Table that contain <last> active flows */
 func (ft *Table) FilterLast(last time.Duration) []*Flow {
 	var flows []*Flow
-	selected := time.Now().UTC().Unix() - int64((last).Seconds())
+	selected := common.UnixMillis(time.Now()) - (int64((last).Nanoseconds()) / 1000000)
 	ft.RLock()
 	defer ft.RUnlock()
 	for _, f := range ft.table {
@@ -226,7 +227,7 @@ func (ft *Table) expired(expireBefore int64) {
 
 func (ft *Table) Updated(now time.Time) {
 	ft.RLock()
-	updateTime := ft.lastUpdate + int64(ft.updateHandler.every.Seconds())
+	updateTime := common.UnixMillis(now)
 	ft.updated(ft.lastUpdate, updateTime)
 	ft.lastUpdate = updateTime
 	ft.RUnlock()
@@ -284,9 +285,9 @@ func (ft *Table) expireNow() {
 }
 
 func (ft *Table) Expire(now time.Time) {
-	timepoint := now.UTC().Unix() - int64((ft.expireHandler.every).Seconds())
 	ft.Lock()
-	ft.expired(timepoint)
+	ft.expired(ft.lastExpire)
+	ft.lastExpire = common.UnixMillis(now)
 	ft.Unlock()
 }
 
@@ -422,8 +423,7 @@ func (ft *Table) Run() {
 	nowTicker := time.NewTicker(time.Second * 1)
 	defer nowTicker.Stop()
 
-	ft.lastUpdate = time.Now().UTC().Unix()
-
+	ft.lastUpdate = common.UnixMillis(time.Now())
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan *TableReply, 100)
 
@@ -442,7 +442,7 @@ func (ft *Table) Run() {
 				ft.reply <- ft.onQuery(query)
 			}
 		case now := <-nowTicker.C:
-			atomic.StoreInt64(&ft.tableClock, now.UTC().Unix())
+			atomic.StoreInt64(&ft.tableClock, common.UnixMillis(now))
 		case packets := <-ft.PacketsChan:
 			ft.FlowPacketsToFlow(packets)
 		}

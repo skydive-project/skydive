@@ -626,7 +626,7 @@ func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeC
 		// Start                            Last       Query
 		//                      ^                        ^
 		//                     From                      To
-		From: timeContext.Start - config.GetConfig().GetInt64("analyzer.flowtable_expire"),
+		From: timeContext.Start - config.GetConfig().GetInt64("analyzer.flowtable_expire")*1000,
 		To:   timeContext.Last,
 	}
 	// flow need to have at least one metric included in the time range

@@ -233,7 +233,6 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 			}
 
 			if !fb.Graph.AreLinked(node1, node2, linkMetadata) {
-
 				fb.Graph.Link(node1, node2, linkMetadata)
 			}
 		}
