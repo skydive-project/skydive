@@ -465,10 +465,8 @@ func (f *FlowTraversalStep) Metrics() *MetricsTraversalStep {
 			return &MetricsTraversalStep{error: errors.New("Unable to filter flows")}
 		}
 
-		// contruct metrics filter according to the time context and the since
-		// predicate given to Flows.
 		fr := filters.Range{To: context.TimeSlice.Last}
-		if f.since.Seconds > 0 {
+		if context.TimeSlice.Start != context.TimeSlice.Last {
 			fr.From = context.TimeSlice.Start
 		}
 		metricFilter := filters.NewFilterIncludedIn(fr, "")

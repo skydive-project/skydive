@@ -67,7 +67,7 @@ type Server struct {
 }
 
 func (s *Server) flowExpireUpdate(flows []*flow.Flow) {
-	if s.Storage != nil {
+	if s.Storage != nil && len(flows) > 0 {
 		s.Storage.StoreFlows(flows)
 		logging.GetLogger().Debugf("%d flows stored", len(flows))
 	}
