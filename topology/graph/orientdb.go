@@ -61,19 +61,23 @@ func metadataToOrientDBSetString(m Metadata) string {
 	return ""
 }
 
+func metadataFormatter(s string) string {
+	return fmt.Sprintf("Metadata['%s']", s)
+}
+
 func metadataToOrientDBSelectString(m Metadata) string {
 	i := 0
 	props := make([]string, len(m))
 	for key, value := range m {
 		switch v := value.(type) {
 		case string:
-			props[i] = fmt.Sprintf("Metadata.%s='%s'\n", key, v)
+			props[i] = fmt.Sprintf("%s='%s'\n", metadataFormatter(key), v)
 		case *filters.Filter:
-			if expr := orientdb.FilterToExpression(v, "Metadata."); expr != "" {
+			if expr := orientdb.FilterToExpression(v, metadataFormatter); expr != "" {
 				props[i] = expr
 			}
 		default:
-			props[i] = fmt.Sprintf("Metadata.%s=%s", key, value)
+			props[i] = fmt.Sprintf("%s=%s", metadataFormatter(key), value)
 		}
 		i++
 	}

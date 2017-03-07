@@ -158,16 +158,16 @@ func compressBody(body io.Reader) io.Reader {
 	return buffer
 }
 
-func replaceSlashes(key string) string {
-	return strings.Replace(key, "/", ".", -1)
-}
+func FilterToExpression(f *filters.Filter, formatter func(string) string) string {
+	if formatter == nil {
+		formatter = func(s string) string { return s }
+	}
 
-func FilterToExpression(f *filters.Filter, prefix string) string {
 	if f.BoolFilter != nil {
 		keyword := ""
 		switch f.BoolFilter.Op {
 		case filters.BoolFilterOp_NOT:
-			return "NOT " + FilterToExpression(f.BoolFilter.Filters[0], prefix)
+			return "NOT (" + FilterToExpression(f.BoolFilter.Filters[0], formatter) + ")"
 		case filters.BoolFilterOp_OR:
 			keyword = "OR"
 		case filters.BoolFilterOp_AND:
@@ -175,39 +175,39 @@ func FilterToExpression(f *filters.Filter, prefix string) string {
 		}
 		var conditions []string
 		for _, item := range f.BoolFilter.Filters {
-			if expr := FilterToExpression(item, prefix); expr != "" {
-				conditions = append(conditions, "("+FilterToExpression(item, prefix)+")")
+			if expr := FilterToExpression(item, formatter); expr != "" {
+				conditions = append(conditions, "("+FilterToExpression(item, formatter)+")")
 			}
 		}
 		return strings.Join(conditions, " "+keyword+" ")
 	}
 
 	if f.TermStringFilter != nil {
-		return fmt.Sprintf(`%s = "%s"`, prefix+replaceSlashes(f.TermStringFilter.Key), f.TermStringFilter.Value)
+		return fmt.Sprintf(`%s = "%s"`, formatter(f.TermStringFilter.Key), f.TermStringFilter.Value)
 	}
 
 	if f.TermInt64Filter != nil {
-		return fmt.Sprintf(`%s = %d`, prefix+replaceSlashes(f.TermInt64Filter.Key), f.TermInt64Filter.Value)
+		return fmt.Sprintf(`%s = %d`, formatter(f.TermInt64Filter.Key), f.TermInt64Filter.Value)
 	}
 
 	if f.GtInt64Filter != nil {
-		return fmt.Sprintf("%v > %v", prefix+replaceSlashes(f.GtInt64Filter.Key), f.GtInt64Filter.Value)
+		return fmt.Sprintf("%v > %v", formatter(f.GtInt64Filter.Key), f.GtInt64Filter.Value)
 	}
 
 	if f.LtInt64Filter != nil {
-		return fmt.Sprintf("%v < %v", prefix+replaceSlashes(f.LtInt64Filter.Key), f.LtInt64Filter.Value)
+		return fmt.Sprintf("%v < %v", formatter(f.LtInt64Filter.Key), f.LtInt64Filter.Value)
 	}
 
 	if f.GteInt64Filter != nil {
-		return fmt.Sprintf("%v >= %v", prefix+replaceSlashes(f.GteInt64Filter.Key), f.GteInt64Filter.Value)
+		return fmt.Sprintf("%v >= %v", formatter(f.GteInt64Filter.Key), f.GteInt64Filter.Value)
 	}
 
 	if f.LteInt64Filter != nil {
-		return fmt.Sprintf("%v <= %v", prefix+replaceSlashes(f.LteInt64Filter.Key), f.LteInt64Filter.Value)
+		return fmt.Sprintf("%v <= %v", formatter(f.LteInt64Filter.Key), f.LteInt64Filter.Value)
 	}
 
 	if f.RegexFilter != nil {
-		return fmt.Sprintf(`%s MATCHES "%s"`, prefix+replaceSlashes(f.RegexFilter.Key), f.RegexFilter.Value)
+		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.RegexFilter.Key), f.RegexFilter.Value)
 	}
 
 	return ""
@@ -500,7 +500,7 @@ func (c *Client) Query(obj string, query *filters.SearchQuery) ([]Document, erro
 	filter := query.Filter
 
 	sql := "SELECT FROM " + obj
-	if conditional := FilterToExpression(filter, ""); conditional != "" {
+	if conditional := FilterToExpression(filter, nil); conditional != "" {
 		sql += " WHERE " + conditional
 	}
 

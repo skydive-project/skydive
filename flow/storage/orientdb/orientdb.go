@@ -165,9 +165,9 @@ func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *f
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
 
-	sql += " WHERE " + orient.FilterToExpression(metricFilter, "")
+	sql += " WHERE " + orient.FilterToExpression(metricFilter, nil)
 
-	if conditional := orient.FilterToExpression(filter, "Flow."); conditional != "" {
+	if conditional := orient.FilterToExpression(filter, func(s string) string { return "Flow." + s }); conditional != "" {
 		sql += " AND " + conditional
 	}
 
