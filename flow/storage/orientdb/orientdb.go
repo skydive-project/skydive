@@ -55,6 +55,7 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 		"Protocol": flow.Link.Protocol,
 		"A":        flow.Link.A,
 		"B":        flow.Link.B,
+		"ID":       flow.Link.ID,
 	}
 
 	metricDoc := metricToDocument(flow.Metric)
@@ -78,6 +79,7 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 			"Protocol": flow.Network.Protocol,
 			"A":        flow.Network.A,
 			"B":        flow.Network.B,
+			"ID":       flow.Network.ID,
 		}
 	}
 
@@ -86,6 +88,7 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 			"Protocol": flow.Transport.Protocol,
 			"A":        flow.Transport.A,
 			"B":        flow.Transport.B,
+			"ID":       flow.Transport.ID,
 		}
 	}
 
