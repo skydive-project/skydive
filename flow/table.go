@@ -76,6 +76,7 @@ type Table struct {
 	lockState     sync.RWMutex
 	wg            sync.WaitGroup
 	updateHandler *FlowHandler
+	lastUpdate    int64
 	expireHandler *FlowHandler
 	tableClock    int64
 	nodeTID       string
@@ -197,6 +198,10 @@ func (ft *Table) expired(expireBefore int64) {
 	for k, f := range ft.table {
 		if f.Metric.Last < expireBefore {
 			duration := time.Duration(f.Metric.Last - f.Metric.Start)
+			if f.Metric.Last > ft.lastUpdate {
+				ft.updateMetric(f, ft.lastUpdate, f.Metric.Last)
+			}
+
 			logging.GetLogger().Debugf("Expire flow %s Duration %v", f.UUID, duration)
 			expiredFlows = append(expiredFlows, f)
 
@@ -217,37 +222,44 @@ func (ft *Table) expired(expireBefore int64) {
 }
 
 func (ft *Table) Updated(now time.Time) {
-	timepoint := now.UTC().Unix() - int64((ft.updateHandler.every).Seconds())
 	ft.RLock()
-	ft.updated(timepoint)
+	updateTime := ft.lastUpdate + int64(ft.updateHandler.every.Seconds())
+	ft.updated(ft.lastUpdate, updateTime)
+	ft.lastUpdate = updateTime
 	ft.RUnlock()
 }
 
-/* Internal call only, Must be called under ft.RLock() */
-func (ft *Table) updated(updateFrom int64) {
-	every := int64(ft.updateHandler.every.Seconds())
+func (ft *Table) updateMetric(f *Flow, start, last int64) {
+	f.LastUpdateMetric.ABPackets = f.Metric.ABPackets
+	f.LastUpdateMetric.ABBytes = f.Metric.ABBytes
+	f.LastUpdateMetric.BAPackets = f.Metric.BAPackets
+	f.LastUpdateMetric.BABytes = f.Metric.BABytes
 
+	// subtract previous values to get the diff so that we store the
+	// amount of data between two updates
+	if s, ok := ft.stats[f.UUID]; ok {
+		f.LastUpdateMetric.ABPackets -= s.ABPackets
+		f.LastUpdateMetric.ABBytes -= s.ABBytes
+		f.LastUpdateMetric.BAPackets -= s.BAPackets
+		f.LastUpdateMetric.BABytes -= s.BABytes
+		f.LastUpdateMetric.Start = start
+	} else {
+		f.LastUpdateMetric.Start = f.Metric.Start
+	}
+
+	f.LastUpdateMetric.Last = last
+}
+
+/* Internal call only, Must be called under ft.RLock() */
+func (ft *Table) updated(updateFrom, updateTime int64) {
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
 		if f.Metric.Last > updateFrom {
+			ft.updateMetric(f, updateFrom, updateTime)
 			updatedFlows = append(updatedFlows, f)
-
-			f.LastUpdateMetric.ABPackets = f.Metric.ABPackets
-			f.LastUpdateMetric.ABBytes = f.Metric.ABBytes
-			f.LastUpdateMetric.BAPackets = f.Metric.BAPackets
-			f.LastUpdateMetric.BABytes = f.Metric.BABytes
-
-			if s, ok := ft.stats[f.UUID]; ok {
-				f.LastUpdateMetric.ABPackets -= s.ABPackets
-				f.LastUpdateMetric.ABBytes -= s.ABBytes
-				f.LastUpdateMetric.BAPackets -= s.BAPackets
-				f.LastUpdateMetric.BABytes -= s.BABytes
-			}
 		} else {
-			f.LastUpdateMetric = &FlowMetric{}
+			f.LastUpdateMetric = &FlowMetric{Start: updateFrom, Last: updateTime}
 		}
-		f.LastUpdateMetric.Start = updateFrom
-		f.LastUpdateMetric.Last = updateFrom + every
 
 		ft.stats[f.UUID] = f.Metric.Copy()
 	}
@@ -404,6 +416,8 @@ func (ft *Table) Run() {
 
 	nowTicker := time.NewTicker(time.Second * 1)
 	defer nowTicker.Stop()
+
+	ft.lastUpdate = time.Now().UTC().Unix()
 
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan *TableReply, 100)

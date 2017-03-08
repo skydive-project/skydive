@@ -99,7 +99,7 @@ func TestTable_updated(t *testing.T) {
 	fc := MyTestFlowCounter{}
 	ft := NewTestFlowTableComplex(t, &FlowHandler{callback: fc.countFlowsCallback}, nil)
 	beforeNbFlow := fc.NbFlow
-	ft.updated(0)
+	ft.updated(0, 0)
 	afterNbFlow := fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 10 {
 		t.Error("all flows should be updated")
@@ -107,7 +107,7 @@ func TestTable_updated(t *testing.T) {
 
 	fc = MyTestFlowCounter{}
 	beforeNbFlow = fc.NbFlow
-	ft.updated(MaxInt64)
+	ft.updated(MaxInt64, MaxInt64)
 	afterNbFlow = fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 0 {
 		t.Error("no flows should be updated")
