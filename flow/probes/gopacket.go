@@ -96,7 +96,7 @@ func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 	}
 }
 
-func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture) error {
+func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture) {
 	var ticker *time.Ticker
 	atomic.StoreInt64(&p.state, common.RunningState)
 
@@ -104,7 +104,8 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	ifName, _ := n.GetFieldString("Name")
 	if ifName == "" {
 		g.RUnlock()
-		return fmt.Errorf("No name for node %v", n)
+		logging.GetLogger().Errorf("No name for node %v", n)
+		return
 	}
 
 	firstLayerType := getGoPacketFirstLayerType(n)
@@ -115,18 +116,21 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	defer nscontext.Close()
 
 	if err != nil {
-		return err
+		logging.GetLogger().Error(err)
+		return
 	}
 
 	switch capture.Type {
 	case "pcap":
 		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
 		if err != nil {
-			return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
+			logging.GetLogger().Errorf("Error while opening device %s: %s", ifName, err.Error())
+			return
 		}
 
 		if err := handle.SetBPFFilter(capture.BPFFilter); err != nil {
-			return fmt.Errorf("BPF Filter failed: %s", err)
+			logging.GetLogger().Errorf("BPF Filter failed: %s", err)
+			return
 		}
 
 		p.handle = handle
@@ -149,7 +153,8 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		}
 
 		if err = common.Retry(fnc, 2, 100*time.Millisecond); err != nil {
-			return err
+			logging.GetLogger().Error(err)
+			return
 		}
 
 		p.handle = handle
@@ -169,7 +174,6 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		ticker.Stop()
 	}
 	p.handle.Close()
-	return nil
 }
 
 func (p *GoPacketProbe) stop() {
@@ -205,6 +209,10 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return fmt.Errorf("No name for node %v", n)
+	}
+
+	if state, _ := n.GetFieldString("State"); capture.Type == "pcap" && state != "UP" {
+		return fmt.Errorf("Can't start pcap capture on node down %s", name)
 	}
 
 	encapType, _ := n.GetFieldString("EncapType")
