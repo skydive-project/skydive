@@ -49,3 +49,16 @@ script:
     - sudo -E docker tag ${DOCKER_IMAGE}:${BUILD_TAG} ${DOCKER_IMAGE}:latest
     - sudo -E docker push docker.io/${DOCKER_IMAGE}:${BUILD_TAG}
     - sudo -E docker push docker.io/${DOCKER_IMAGE}:latest
+
+    - echo "--- BINARIES ---"
+    - git remote add binaries ${BINARIES_REPO}
+    - git fetch binaries
+    - git checkout -b travis-builds binaries/travis-builds
+    - git config --global user.email "builds@travis-ci.com"
+    - git config --global user.name "Travis CI"
+    - cp ${GOPATH}/bin/skydive skydive-latest
+    - git add skydive-latest
+    - git commit -m "${BUILD_TAG} travis build" --amend
+    - git config credential.helper "store --file=.git/credentials"
+    - echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > .git/credentials
+    - git push -f -q binaries travis-builds
