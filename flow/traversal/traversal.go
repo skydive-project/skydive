@@ -105,6 +105,9 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	f.GraphTraversal.RLock()
+	defer f.GraphTraversal.RUnlock()
+
 	for _, flow := range f.flowset.Flows {
 		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
 			m["TID"] = flow.BNodeTID
@@ -129,6 +132,9 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
 
+	f.GraphTraversal.RLock()
+	defer f.GraphTraversal.RUnlock()
+
 	for _, flow := range f.flowset.Flows {
 		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
 			m["TID"] = flow.ANodeTID
@@ -152,6 +158,9 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
+
+	f.GraphTraversal.RLock()
+	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
 		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
@@ -182,6 +191,9 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
+
+	f.GraphTraversal.RLock()
+	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
 		if flow.NodeTID != "" && flow.NodeTID != "*" {
@@ -217,6 +229,9 @@ func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
+
+	f.GraphTraversal.RLock()
+	defer f.GraphTraversal.RUnlock()
 
 	for _, fl := range f.flowset.Flows {
 		m["TID"] = fl.NodeTID
@@ -315,6 +330,9 @@ func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraver
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
+
+	f.GraphTraversal.RLock()
+	defer f.GraphTraversal.RUnlock()
 
 	for _, fl := range f.flowset.Flows {
 		m["TID"] = fl.NodeTID
@@ -622,7 +640,9 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 	switch tv := last.(type) {
 	case *traversal.GraphTraversal:
 		graphTraversal = tv
+		graphTraversal.RLock()
 		context := graphTraversal.Graph.GetContext()
+		graphTraversal.RUnlock()
 
 		if context.TimeSlice != nil {
 			if s.Storage == nil {
@@ -645,10 +665,13 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		}
 	case *traversal.GraphTraversalV:
 		graphTraversal = tv.GraphTraversal
-		context := graphTraversal.Graph.GetContext()
 
+		graphTraversal.RLock()
+		context := graphTraversal.Graph.GetContext()
 		// not need to get flows from node not supporting capture
 		nodes := captureAllowedNodes(tv.GetNodes())
+		graphTraversal.RUnlock()
+
 		if len(nodes) != 0 {
 			if context.TimeSlice != nil {
 				if s.Storage == nil {
@@ -658,8 +681,10 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				s.addTimeFilter(&flowSearchQuery, context.TimeSlice)
 
 				// previously selected nodes then need to filter flow belonging to them
+				tv.GraphTraversal.RLock()
 				nodeFilter := flow.NewFilterForNodes(nodes)
 				flowSearchQuery.Filter = filters.NewAndFilter(flowSearchQuery.Filter, nodeFilter)
+				tv.GraphTraversal.RUnlock()
 
 				// We do nothing as the following step is Metrics
 				// and we'll make a request on metrics instead of flows
@@ -671,7 +696,9 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 					return nil, err
 				}
 			} else {
+				tv.GraphTraversal.RLock()
 				hnmap := topology.BuildHostNodeTIDMap(nodes)
+				tv.GraphTraversal.RUnlock()
 				flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, flowSearchQuery)
 			}
 		}

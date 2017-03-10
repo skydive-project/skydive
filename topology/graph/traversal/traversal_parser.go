@@ -916,11 +916,11 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	return nil, fmt.Errorf("Expected step function, got: %s", lit)
 }
 
-func (p *GremlinTraversalParser) Parse(r io.Reader) (*GremlinTraversalSequence, error) {
+func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTraversalSequence, error) {
 	p.scanner = NewGremlinTraversalScanner(r, p.extensions)
 
 	seq := &GremlinTraversalSequence{
-		GraphTraversal: NewGraphTraversal(p.Graph),
+		GraphTraversal: NewGraphTraversal(p.Graph, lockGraph),
 		extensions:     p.extensions,
 	}
 

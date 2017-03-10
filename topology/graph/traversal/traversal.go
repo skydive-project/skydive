@@ -58,6 +58,7 @@ type GraphTraversal struct {
 	Graph              *graph.Graph
 	error              error
 	currentStepContext GraphStepContext
+	lockGraph          bool
 }
 
 type GraphTraversalV struct {
@@ -334,11 +335,26 @@ func SliceToMetadata(s ...interface{}) (graph.Metadata, error) {
 	return m, nil
 }
 
-func NewGraphTraversal(g *graph.Graph) *GraphTraversal {
-	return &GraphTraversal{Graph: g}
+func NewGraphTraversal(g *graph.Graph, lockGraph bool) *GraphTraversal {
+	return &GraphTraversal{Graph: g, lockGraph: lockGraph}
+}
+
+func (t *GraphTraversal) RLock() {
+	if t.lockGraph {
+		t.Graph.RLock()
+	}
+}
+
+func (t *GraphTraversal) RUnlock() {
+	if t.lockGraph {
+		t.Graph.RUnlock()
+	}
 }
 
 func (t *GraphTraversal) Values() []interface{} {
+	t.RLock()
+	defer t.RUnlock()
+
 	return []interface{}{t.Graph}
 }
 
@@ -392,6 +408,9 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 		return &GraphTraversal{error: errors.New("Sorry, I can't predict the future")}
 	}
 
+	t.RLock()
+	defer t.RUnlock()
+
 	g, err := t.Graph.WithContext(graph.GraphContext{TimeSlice: common.NewTimeSlice(common.UnixMillis(at.Add(-duration)), common.UnixMillis(at))})
 	if err != nil {
 		return &GraphTraversal{error: err}
@@ -408,6 +427,9 @@ func (t *GraphTraversal) V(s ...interface{}) *GraphTraversalV {
 	if t.error != nil {
 		return &GraphTraversalV{error: t.error}
 	}
+
+	t.RLock()
+	defer t.RUnlock()
 
 	switch len(s) {
 	case 1:
@@ -463,6 +485,9 @@ func (tv *GraphTraversalV) Error() error {
 }
 
 func (tv *GraphTraversalV) Values() []interface{} {
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
 	s := make([]interface{}, len(tv.nodes))
 	for i, n := range tv.nodes {
 		s[i] = n
@@ -485,6 +510,9 @@ func (tv *GraphTraversalV) PropertyValues(keys ...interface{}) *GraphTraversalVa
 
 	key := keys[0].(string)
 
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
 	var s []interface{}
 	for _, n := range tv.nodes {
 		if value, ok := n.Metadata()[key]; ok {
@@ -498,6 +526,9 @@ func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValu
 	if tv.error != nil {
 		return &GraphTraversalValue{error: tv.error}
 	}
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
 
 	var s []interface{}
 	for _, n := range tv.nodes {
@@ -521,6 +552,9 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	if !ok {
 		return &GraphTraversalValue{error: fmt.Errorf("Sum parameter has to be a string key")}
 	}
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
 
 	var s float64
 	for _, n := range tv.nodes {
@@ -557,6 +591,9 @@ func (tv *GraphTraversalV) Dedup(s ...interface{}) *GraphTraversalV {
 	visited := make(map[interface{}]bool)
 	var kvisited interface{}
 	var err error
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
 
 nodeLoop:
 	for _, n := range tv.nodes {
@@ -598,6 +635,9 @@ nodeLoop:
 }
 
 func (sp *GraphTraversalShortestPath) Values() []interface{} {
+	sp.GraphTraversal.RLock()
+	defer sp.GraphTraversal.RUnlock()
+
 	s := make([]interface{}, len(sp.paths))
 	for i, p := range sp.paths {
 		s[i] = p
@@ -617,7 +657,11 @@ func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e graph.Metadata) *G
 	if tv.error != nil {
 		return &GraphTraversalShortestPath{error: tv.error}
 	}
+
 	sp := &GraphTraversalShortestPath{GraphTraversal: tv.GraphTraversal, paths: [][]*graph.Node{}}
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
 
 	visited := make(map[graph.Identifier]bool)
 	for _, n := range tv.nodes {
@@ -657,6 +701,9 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
 	for _, n := range tv.nodes {
 		if it.Done() {
 			break
@@ -682,6 +729,9 @@ func (tv *GraphTraversalV) HasNot(s string) *GraphTraversalV {
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
 	for _, n := range tv.nodes {
 		if it.Done() {
 			break
@@ -706,6 +756,9 @@ func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
 
 nodeloop:
 	for _, n := range tv.nodes {
@@ -740,8 +793,11 @@ func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
 
 func (tv *GraphTraversalV) Range(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
-		return &GraphTraversalV{error: tv.error}
+		return tv
 	}
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
 
 	if len(s) == 2 {
 		from, ok := s[0].(int64)
@@ -779,6 +835,9 @@ func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
 nodeloop:
 	for _, n := range tv.nodes {
 		for _, child := range tv.GraphTraversal.Graph.LookupChildren(n, metadata, nil) {
@@ -805,6 +864,9 @@ func (tv *GraphTraversalV) OutE(s ...interface{}) *GraphTraversalE {
 
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
 
 nodeloop:
 	for _, n := range tv.nodes {
@@ -835,6 +897,9 @@ func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
 	ntv := &GraphTraversalV{GraphTraversal: tv.GraphTraversal, nodes: []*graph.Node{}}
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
 nodeloop:
 	for _, n := range tv.nodes {
 		for _, parent := range tv.GraphTraversal.Graph.LookupParents(n, metadata, nil) {
@@ -861,8 +926,10 @@ func (tv *GraphTraversalV) Metrics() *MetricsTraversalStep {
 
 	metrics := make(map[string][]*common.TimedMetric)
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
-
 	gslice := tv.GraphTraversal.Graph.GetContext().TimeSlice
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
 
 nodeloop:
 	for _, n := range tv.nodes {
@@ -923,6 +990,9 @@ func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
 	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
 	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
 nodeloop:
 	for _, n := range tv.nodes {
 		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, metadata) {
@@ -944,6 +1014,9 @@ func (te *GraphTraversalE) Error() error {
 }
 
 func (te *GraphTraversalE) Values() []interface{} {
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
 	s := make([]interface{}, len(te.edges))
 	for i, v := range te.edges {
 		s[i] = v
@@ -1012,12 +1085,13 @@ func (te *GraphTraversalE) Dedup(keys ...interface{}) *GraphTraversalE {
 	}
 
 	ntv := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
-
 	visited := make(map[interface{}]bool)
-
 	var kvisited interface{}
-	for _, e := range te.edges {
 
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
+	for _, e := range te.edges {
 		kvisited = e.ID
 		if key != "" {
 			if v, ok := e.Metadata()[key]; ok {
@@ -1058,6 +1132,10 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
 	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
 	for _, e := range te.edges {
 		if it.Done() {
 			break
@@ -1083,6 +1161,9 @@ func (te *GraphTraversalE) HasNot(s string) *GraphTraversalE {
 	nte := &GraphTraversalE{GraphTraversal: te.GraphTraversal, edges: []*graph.Edge{}}
 	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
 
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
 	for _, e := range te.edges {
 		if it.Done() {
 			break
@@ -1107,6 +1188,10 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
 	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
 	for _, e := range te.edges {
 		parents, _ := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, graph.Metadata{})
 		for _, parent := range parents {
@@ -1133,6 +1218,10 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 
 	ntv := &GraphTraversalV{GraphTraversal: te.GraphTraversal, nodes: []*graph.Node{}}
 	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
 	for _, e := range te.edges {
 		_, children := te.GraphTraversal.Graph.GetEdgeNodes(e, graph.Metadata{}, metadata)
 		for _, child := range children {

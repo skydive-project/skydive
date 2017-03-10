@@ -45,7 +45,7 @@ func TestGraphPathTraversal(t *testing.T) {
 	tp := traversal.NewGremlinTraversalParser(g)
 	tp.AddTraversalExtension(NewTopologyTraversalExtension())
 
-	ts, err := tp.Parse(strings.NewReader(query))
+	ts, err := tp.Parse(strings.NewReader(query), false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -69,7 +69,7 @@ func TestRegexPredicate(t *testing.T) {
 	tp := traversal.NewGremlinTraversalParser(g)
 	tp.AddTraversalExtension(NewTopologyTraversalExtension())
 
-	ts, err := tp.Parse(strings.NewReader(query))
+	ts, err := tp.Parse(strings.NewReader(query), false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

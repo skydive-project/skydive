@@ -112,7 +112,7 @@ func (s *GraphPathGremlinTraversalStep) Context() *traversal.GremlinTraversalCon
 func ExecuteGremlinQuery(g *graph.Graph, query string) (traversal.GraphTraversalStep, error) {
 	tr := traversal.NewGremlinTraversalParser(g)
 	tr.AddTraversalExtension(NewTopologyTraversalExtension())
-	ts, err := tr.Parse(strings.NewReader(query))
+	ts, err := tr.Parse(strings.NewReader(query), false)
 	if err != nil {
 		return nil, err
 	}

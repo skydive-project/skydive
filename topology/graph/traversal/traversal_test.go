@@ -58,7 +58,7 @@ func newTransversalGraph(t *testing.T) *graph.Graph {
 func TestBasicTraversal(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	// next traversal test
 	tv := tr.V().Has("Value", 1)
@@ -160,7 +160,7 @@ func TestBasicTraversal(t *testing.T) {
 func TestTraversalWithin(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	tv := tr.V().Has("Value", Within(1, 2, 4))
 	if len(tv.Values()) != 3 {
@@ -171,7 +171,7 @@ func TestTraversalWithin(t *testing.T) {
 func TestTraversalLt(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	tv := tr.V().Has("Value", Lt(3))
 	if len(tv.Values()) != 2 {
@@ -182,7 +182,7 @@ func TestTraversalLt(t *testing.T) {
 func TestTraversalGt(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	tv := tr.V().Has("Value", Gt(3))
 	if len(tv.Values()) != 1 {
@@ -193,7 +193,7 @@ func TestTraversalGt(t *testing.T) {
 func TestTraversalLte(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	tv := tr.V().Has("Value", Lte(3))
 	if len(tv.Values()) != 3 {
@@ -204,7 +204,7 @@ func TestTraversalLte(t *testing.T) {
 func TestTraversalGte(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	tv := tr.V().Has("Value", Gte(3))
 	if len(tv.Values()) != 2 {
@@ -215,7 +215,7 @@ func TestTraversalGte(t *testing.T) {
 func TestTraversalInside(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	tv := tr.V().Has("Value", Inside(1, 4))
 	if len(tv.Values()) != 2 {
@@ -226,7 +226,7 @@ func TestTraversalInside(t *testing.T) {
 func TestTraversalBetween(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	tv := tr.V().Has("Value", Between(1, 4))
 	if len(tv.Values()) != 3 {
@@ -237,7 +237,7 @@ func TestTraversalBetween(t *testing.T) {
 func TestTraversalNe(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	// next test
 	tv := tr.V().Has("Value", Ne(1))
@@ -255,7 +255,7 @@ func TestTraversalNe(t *testing.T) {
 func TestTraversalHasKey(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	// next test
 	tv := tr.V().HasKey("Name")
@@ -272,7 +272,7 @@ func TestTraversalHasKey(t *testing.T) {
 func TestTraversalHasNot(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	// next test
 	tv := tr.V().HasNot("Name")
@@ -284,7 +284,7 @@ func TestTraversalHasNot(t *testing.T) {
 func TestTraversalRegex(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	// next test
 	tv := tr.V().Has("Name", Regex("ode"))
@@ -302,7 +302,7 @@ func TestTraversalRegex(t *testing.T) {
 func TestTraversalBoth(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	// next test
 	tv := tr.V().Has("Value", 2).Both()
@@ -314,7 +314,7 @@ func TestTraversalBoth(t *testing.T) {
 func TestTraversalCount(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	// next test
 	tv := tr.V().Count()
@@ -326,7 +326,7 @@ func TestTraversalCount(t *testing.T) {
 func TestTraversalShortestPathTo(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	tr := NewGraphTraversal(g)
+	tr := NewGraphTraversal(g, false)
 
 	tv := tr.V().Has("Value", 1).ShortestPathTo(graph.Metadata{"Value": 3}, nil)
 	if len(tv.Values()) != 1 {
@@ -362,7 +362,7 @@ func TestTraversalShortestPathTo(t *testing.T) {
 }
 
 func execTraversalQuery(t *testing.T, g *graph.Graph, query string) GraphTraversalStep {
-	ts, err := NewGremlinTraversalParser(g).Parse(strings.NewReader(query))
+	ts, err := NewGremlinTraversalParser(g).Parse(strings.NewReader(query), false)
 	if err != nil {
 		t.Fatalf("%s: %s", query, err.Error())
 	}

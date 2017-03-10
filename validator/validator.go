@@ -73,7 +73,7 @@ func isGremlinExpr(v interface{}, param string) error {
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(nil, nil))
 
-	if _, err := tr.Parse(strings.NewReader(query)); err != nil {
+	if _, err := tr.Parse(strings.NewReader(query), false); err != nil {
 		return GremlinNotValid(err)
 	}
 

@@ -384,14 +384,15 @@ func (ft *Table) Start() chan *FlowPackets {
 }
 
 func (ft *Table) Stop() {
+	ft.lockState.Lock()
+	defer ft.lockState.Unlock()
+
 	if atomic.CompareAndSwapInt64(&ft.state, common.RunningState, common.StoppingState) {
 		ft.wg.Wait()
 
-		ft.lockState.Lock()
 		close(ft.query)
 		close(ft.reply)
 		close(ft.PacketsChan)
-		ft.lockState.Unlock()
 	}
 
 	ft.expireNow()

@@ -228,7 +228,7 @@ func TestInterfaceUpdate(t *testing.T) {
 		{"ip netns del ns1", true},
 	}
 
-	tr := traversal.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g, false)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {
@@ -288,7 +288,7 @@ func TestInterfaceMetrics(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	tr := traversal.NewGraphTraversal(g)
+	tr := traversal.NewGraphTraversal(g, false)
 
 	testPassed := false
 	onChange := func(ws *websocket.Conn) {

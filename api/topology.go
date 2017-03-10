@@ -78,7 +78,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		return
 	}
 
-	ts, err := t.gremlinParser.Parse(strings.NewReader(resource.GremlinQuery))
+	ts, err := t.gremlinParser.Parse(strings.NewReader(resource.GremlinQuery), true)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))

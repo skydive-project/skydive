@@ -88,7 +88,7 @@ func (ga *GremlinAlert) Evaluate() (interface{}, error) {
 		query := call.Argument(0).String()
 
 		// TODO(sbaubeau) Cache the queries
-		ts, err := ga.gremlinParser.Parse(strings.NewReader(query))
+		ts, err := ga.gremlinParser.Parse(strings.NewReader(query), false)
 		if err != nil {
 			return vm.MakeCustomError("ParseError", err.Error())
 		}
@@ -199,7 +199,7 @@ func (ga *GremlinAlert) Trigger(payload []byte) error {
 }
 
 func NewGremlinAlert(alert *api.Alert, p *traversal.GremlinTraversalParser) (*GremlinAlert, error) {
-	ts, _ := p.Parse(strings.NewReader(alert.Expression))
+	ts, _ := p.Parse(strings.NewReader(alert.Expression), false)
 
 	ga := &GremlinAlert{
 		Alert:             alert,
