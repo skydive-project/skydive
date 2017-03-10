@@ -770,19 +770,6 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 			default:
 				return nil, fmt.Errorf("REGEX predicate expects a string as parameter, got: %s", lit)
 			}
-		case SINCE:
-			sinceParams, err := p.parseStepParams()
-			if err != nil {
-				return nil, err
-			}
-			if len(sinceParams) != 1 {
-				return nil, fmt.Errorf("One parameter expected with SINCE: %v", sinceParams)
-			}
-			param, ok := sinceParams[0].(int64)
-			if !ok {
-				return nil, fmt.Errorf("SINCE predicate expects a number of second as parameter, got: %s", lit)
-			}
-			params = append(params, Since{param})
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}

@@ -81,7 +81,6 @@ const (
 	RANGE
 	LIMIT
 	SORT
-	SINCE
 	VALUES
 	KEYS
 	SUM
@@ -260,8 +259,6 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return LIMIT, buf.String()
 	case "SORT":
 		return SORT, buf.String()
-	case "SINCE":
-		return SINCE, buf.String()
 	case "VALUES":
 		return VALUES, buf.String()
 	case "KEYS":

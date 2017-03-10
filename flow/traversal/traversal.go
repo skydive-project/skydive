@@ -74,7 +74,6 @@ type FlowTraversalStep struct {
 	Storage         storage.Storage
 	flowset         *flow.FlowSet
 	flowSearchQuery filters.SearchQuery
-	since           traversal.Since
 	error           error
 }
 
@@ -302,7 +301,7 @@ func (f *FlowTraversalStep) Dedup(keys ...interface{}) *FlowTraversalStep {
 		return &FlowTraversalStep{error: err}
 	}
 
-	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset, since: f.since}
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset}
 }
 
 func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraversalV {
@@ -345,7 +344,7 @@ func (f *FlowTraversalStep) Sort(keys ...interface{}) *FlowTraversalStep {
 	}
 
 	f.flowset.Sort(sortBy)
-	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset, since: f.since}
+	return &FlowTraversalStep{GraphTraversal: f.GraphTraversal, Storage: f.Storage, flowset: f.flowset}
 }
 
 // Sum aggregates integer values mapped by 'key' cross flows
@@ -537,23 +536,9 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 }
 
 func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
-	var wrongParams bool
 	switch t {
 	case e.FlowToken:
-		// parse flows step parameters
-		step := &FlowGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage, context: p}
-		switch len(p.Params) {
-		case 0:
-		case 1:
-			_, ok := p.Params[0].(traversal.Since)
-			wrongParams = !ok
-		case 2:
-			wrongParams = true
-		}
-		if wrongParams {
-			return nil, fmt.Errorf("Flows accepts at most one 'Since' parameter")
-		}
-		return step, nil
+		return &FlowGremlinTraversalStep{TableClient: e.TableClient, Storage: e.Storage, context: p}, nil
 	case e.HopsToken:
 		return &HopsGremlinTraversalStep{context: p}, nil
 	case e.NodesToken:
@@ -605,17 +590,6 @@ func captureAllowedNodes(nodes []*graph.Node) []*graph.Node {
 	return allowed
 }
 
-func (s *FlowGremlinTraversalStep) hasSinceParam() bool {
-	return len(s.context.Params) == 1
-}
-
-func (s *FlowGremlinTraversalStep) sinceParam() traversal.Since {
-	if s.hasSinceParam() {
-		return s.context.Params[0].(traversal.Since)
-	}
-	return traversal.Since{Seconds: 0}
-}
-
 func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeContext *common.TimeSlice) {
 	var timeFilter *filters.Filter
 	tr := filters.Range{
@@ -660,7 +634,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 			// We do nothing as the following step is Metrics
 			// and we'll make a request on metrics instead of flows
 			if s.metricsNextStep {
-				return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
+				return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery}, nil
 			}
 
 			if flowset, err = s.Storage.SearchFlows(flowSearchQuery); err != nil {
@@ -690,7 +664,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 				// We do nothing as the following step is Metrics
 				// and we'll make a request on metrics instead of flows
 				if s.metricsNextStep {
-					return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
+					return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery}, nil
 				}
 
 				if flowset, err = s.Storage.SearchFlows(flowSearchQuery); err != nil {
@@ -714,7 +688,7 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 		flowset.Slice(int(r[0]), int(r[1]))
 	}
 
-	return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowset: flowset, flowSearchQuery: flowSearchQuery, since: s.sinceParam()}, nil
+	return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowset: flowset, flowSearchQuery: flowSearchQuery}, nil
 }
 
 func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {

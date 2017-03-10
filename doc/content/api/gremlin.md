@@ -240,6 +240,15 @@ G.At('-1m').V()
 G.At('Sun, 06 Nov 2016 08:49:37 GMT').V()
 ```
 
+`At` takes also an optional duration parameter which allows to specify a
+period of time in second for the lookup. This is useful especially when retrieving
+metrics. See [`Metrics` step](/api/gremlin#metrics-step) for more information.
+
+```
+G.At('-1m', 500).V()
+G.At('-1m', 3600).Flows()
+```
+
 ### Predicates
 
 Predicates which can be used with `Has`, `In*`, `Out*` steps :
@@ -352,24 +361,12 @@ G.Flows().Sort()
 G.Flows().Dedup()
 ```
 
-### Flows Since predicate
-
-`Since` can be used in a timed context request(see `At` step) meaning having
-specified a time point thanks to the `At` step. `Since` allows to do a lookup
-from that point in the past. `Since` will return the flows which were active
-during the period. `Since` takes the number of seconds to go back in past.
-
-The following request returns flows which were active between
-(now - 2 hours) and (now - 1 hour).
-
-```console
-G.At('-1h').Flows(Since(3600))
-```
-
 ### Metrics step
 
-`Metrics` returns arrays of metrics of a set of flow, grouped by
-the flows UUIDs.
+`Metrics` returns arrays of metrics of a set of flows or interfaces, grouped by
+the flows UUIDs or Node IDs.
+
+For flow metrics :
 
 ```console
 G.Flows().Metrics()
@@ -388,20 +385,41 @@ G.Flows().Metrics()
 ]
 ```
 
-### Bandwidth step
-
-`Bandwidth` returns a sum of all the previously selected metrics.
+and for interface metrics :
 
 ```console
-G.Flows().Dedup().Metrics().Bandwidth()"
+G.V().Metrics()
 [
   {
-    "ABbytes": 4900,
-    "ABpackets": 50,
-    "BAbytes": 4900,
-    "BApackets": 50,
-    "Duration": 10,
-    "NBFlow": 1
+    "fc2a6103-599e-4821-4c87-c8224bd0e84e": [
+    {
+      "Collisions": 0,
+      "Last": 1489161773820,
+      "Multicast": 0,
+      "RxBytes": 7880,
+      "RxCompressed": 0,
+      "RxCrcErrors": 0,
+      "RxDropped": 0,
+      "RxErrors": 0,
+      "RxFifoErrors": 0,
+      "RxFrameErrors": 0,
+      "RxLengthErrors": 0,
+      "RxMissedErrors": 0,
+      "RxOverErrors": 0,
+      "RxPackets": 10,
+      "Start": 1489161768820,
+      "TxAbortedErrors": 0,
+      "TxBytes": 7880,
+      "TxCarrierErrors": 0,
+      "TxCompressed": 0,
+      "TxDropped": 0,
+      "TxErrors": 0,
+      "TxFifoErrors": 0,
+      "TxHeartbeatErrors": 0,
+      "TxPackets": 10,
+      "TxWindowErrors": 0
+    }
+
   }
 ]
 ```
