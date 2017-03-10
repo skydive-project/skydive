@@ -23,7 +23,6 @@
 package flow
 
 import (
-	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -64,7 +63,6 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *FlowHandler
 }
 
 type Table struct {
-	sync.RWMutex
 	PacketsChan   chan *FlowPackets
 	table         map[string]*Flow
 	stats         map[string]*FlowMetric
@@ -96,50 +94,15 @@ func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler, pipeline *
 		expireHandler: expireHandler,
 		pipeline:      pipeline,
 	}
-	atomic.StoreInt64(&t.tableClock, common.UnixMillis(time.Now()))
+	t.tableClock = common.UnixMillis(time.Now())
 	return t
-}
-
-// TODO: to deprecate as it is use only for testing purpose
-func NewTableFromFlows(flows []*Flow, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
-	nft := NewTable(updateHandler, expireHandler, NewFlowEnhancerPipeline())
-	nft.Update(flows)
-	return nft
-}
-
-func (ft *Table) String() string {
-	ft.RLock()
-	defer ft.RUnlock()
-	return fmt.Sprintf("%d flows", len(ft.table))
 }
 
 func (ft *Table) SetNodeTID(tid string) {
 	ft.nodeTID = tid
 }
 
-func (ft *Table) Update(flows []*Flow) {
-	ft.Lock()
-	for _, f := range flows {
-		if _, ok := ft.table[f.UUID]; !ok {
-			ft.table[f.UUID] = f
-		} else {
-			ft.table[f.UUID].Last = f.Last
-			ft.table[f.UUID].LastUpdateStart = f.LastUpdateStart
-			ft.table[f.UUID].LastUpdateLast = f.LastUpdateLast
-			ft.table[f.UUID].Metric = f.Metric
-		}
-	}
-	ft.Unlock()
-}
-
-func (ft *Table) GetTime() int64 {
-	return atomic.LoadInt64(&ft.tableClock)
-}
-
-func (ft *Table) GetFlows(query *filters.SearchQuery) *FlowSet {
-	ft.RLock()
-	defer ft.RUnlock()
-
+func (ft *Table) getFlows(query *filters.SearchQuery) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range ft.table {
 		if query == nil || query.Filter == nil || query.Filter.Eval(f) {
@@ -155,19 +118,7 @@ func (ft *Table) GetFlows(query *filters.SearchQuery) *FlowSet {
 	return flowset
 }
 
-func (ft *Table) GetFlow(key string) *Flow {
-	ft.RLock()
-	defer ft.RUnlock()
-	if flow, found := ft.table[key]; found {
-		return flow
-	}
-
-	return nil
-}
-
-func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
-	ft.Lock()
-	defer ft.Unlock()
+func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
 	if flow, found := ft.table[key]; found {
 		return flow, false
 	}
@@ -181,22 +132,7 @@ func (ft *Table) GetOrCreateFlow(key string) (*Flow, bool) {
 	return new, true
 }
 
-/* Return a new flow.Table that contain <last> active flows */
-func (ft *Table) FilterLast(last time.Duration) []*Flow {
-	var flows []*Flow
-	selected := common.UnixMillis(time.Now()) - (int64((last).Nanoseconds()) / 1000000)
-	ft.RLock()
-	defer ft.RUnlock()
-	for _, f := range ft.table {
-		if f.Last >= selected {
-			flows = append(flows, f)
-		}
-	}
-	return flows
-}
-
-/* Internal call only, Must be called under ft.Lock() */
-func (ft *Table) expired(expireBefore int64) {
+func (ft *Table) expire(expireBefore int64) {
 	var expiredFlows []*Flow
 	flowTableSzBefore := len(ft.table)
 	for k, f := range ft.table {
@@ -225,12 +161,10 @@ func (ft *Table) expired(expireBefore int64) {
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
 }
 
-func (ft *Table) Updated(now time.Time) {
-	ft.RLock()
+func (ft *Table) updateAt(now time.Time) {
 	updateTime := common.UnixMillis(now)
-	ft.updated(ft.lastUpdate, updateTime)
+	ft.update(ft.lastUpdate, updateTime)
 	ft.lastUpdate = updateTime
-	ft.RUnlock()
 }
 
 func (ft *Table) updateMetric(f *Flow, start, last int64) {
@@ -254,8 +188,7 @@ func (ft *Table) updateMetric(f *Flow, start, last int64) {
 	f.LastUpdateLast = last
 }
 
-/* Internal call only, Must be called under ft.RLock() */
-func (ft *Table) updated(updateFrom, updateTime int64) {
+func (ft *Table) update(updateFrom, updateTime int64) {
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
 		if f.Last > updateFrom {
@@ -279,16 +212,12 @@ func (ft *Table) updated(updateFrom, updateTime int64) {
 
 func (ft *Table) expireNow() {
 	const Now = int64(^uint64(0) >> 1)
-	ft.Lock()
-	ft.expired(Now)
-	ft.Unlock()
+	ft.expire(Now)
 }
 
-func (ft *Table) Expire(now time.Time) {
-	ft.Lock()
-	ft.expired(ft.lastExpire)
+func (ft *Table) expireAt(now time.Time) {
+	ft.expire(ft.lastExpire)
 	ft.lastExpire = common.UnixMillis(now)
-	ft.Unlock()
 }
 
 func (ft *Table) Flush() {
@@ -297,7 +226,7 @@ func (ft *Table) Flush() {
 }
 
 func (ft *Table) onSearchQueryMessage(fsq *filters.SearchQuery) (*FlowSearchReply, int) {
-	flowset := ft.GetFlows(fsq)
+	flowset := ft.getFlows(fsq)
 	if len(flowset.Flows) == 0 {
 		return &FlowSearchReply{
 			FlowSet: flowset,
@@ -378,7 +307,7 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 
 func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
 	key := FlowKeyFromGoPacket(packet.gopacket, parentUUID).String()
-	flow, new := ft.GetOrCreateFlow(key)
+	flow, new := ft.getOrCreateFlow(key)
 	if new {
 		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID, L2ID, L3ID)
 		ft.pipeline.EnhanceFlow(flow)
@@ -391,7 +320,7 @@ func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string, t int64
 func (ft *Table) FlowPacketsToFlow(flowPackets *FlowPackets) {
 	t := flowPackets.Timestamp
 	if t == -1 {
-		t = ft.GetTime()
+		t = ft.tableClock
 	}
 
 	var parentUUID string
@@ -431,9 +360,9 @@ func (ft *Table) Run() {
 	for atomic.LoadInt64(&ft.state) == common.RunningState {
 		select {
 		case now := <-expireTicker.C:
-			ft.Expire(now)
+			ft.expireAt(now)
 		case now := <-updateTicker.C:
-			ft.Updated(now)
+			ft.updateAt(now)
 		case <-ft.flush:
 			ft.expireNow()
 			ft.flushDone <- true
@@ -442,7 +371,7 @@ func (ft *Table) Run() {
 				ft.reply <- ft.onQuery(query)
 			}
 		case now := <-nowTicker.C:
-			atomic.StoreInt64(&ft.tableClock, common.UnixMillis(now))
+			ft.tableClock = common.UnixMillis(now)
 		case packets := <-ft.PacketsChan:
 			ft.FlowPacketsToFlow(packets)
 		}

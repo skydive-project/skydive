@@ -29,6 +29,12 @@ import (
 	"github.com/skydive-project/skydive/filters"
 )
 
+func NewTableFromFlows(flows []*Flow, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
+	nft := NewTable(updateHandler, expireHandler, NewFlowEnhancerPipeline())
+	nft.updateFlows(flows)
+	return nft
+}
+
 func TestNewTable(t *testing.T) {
 	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	if ft == nil {
@@ -36,16 +42,6 @@ func TestNewTable(t *testing.T) {
 	}
 }
 
-func TestTable_String(t *testing.T) {
-	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	if "0 flows" != ft.String() {
-		t.Error("FlowTable too big")
-	}
-	ft = NewTestFlowTableSimple(t)
-	if "2 flows" != ft.String() {
-		t.Error("FlowTable too big")
-	}
-}
 func TestTable_Update(t *testing.T) {
 	ft := NewTestFlowTableSimple(t)
 	/* simulate a collision */
@@ -54,14 +50,14 @@ func TestTable_Update(t *testing.T) {
 	ft.table["789"].UUID = "78910"
 	f = &Flow{}
 	f.UUID = "789"
-	ft.Update([]*Flow{f})
+	ft.updateFlows([]*Flow{f})
 
 	ft2 := NewTestFlowTableComplex(t, nil, nil)
-	if "10 flows" != ft2.String() {
+	if len(ft2.table) != 10 {
 		t.Error("We should got only 10 flows")
 	}
-	ft2.Update([]*Flow{f})
-	if "11 flows" != ft2.String() {
+	ft2.updateFlows([]*Flow{f})
+	if len(ft2.table) != 11 {
 		t.Error("We should got only 11 flows")
 	}
 }
@@ -79,7 +75,7 @@ func TestTable_expire(t *testing.T) {
 	fc := MyTestFlowCounter{}
 	ft := NewTestFlowTableComplex(t, nil, &FlowHandler{callback: fc.countFlowsCallback})
 	beforeNbFlow := fc.NbFlow
-	ft.expired(0)
+	ft.expire(0)
 	afterNbFlow := fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 0 {
 		t.Error("we should not expire a flow")
@@ -87,7 +83,7 @@ func TestTable_expire(t *testing.T) {
 
 	fc = MyTestFlowCounter{}
 	beforeNbFlow = fc.NbFlow
-	ft.expired(MaxInt64)
+	ft.expire(MaxInt64)
 	afterNbFlow = fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 10 {
 		t.Error("we should expire all flows")
@@ -99,7 +95,7 @@ func TestTable_updated(t *testing.T) {
 	fc := MyTestFlowCounter{}
 	ft := NewTestFlowTableComplex(t, &FlowHandler{callback: fc.countFlowsCallback}, nil)
 	beforeNbFlow := fc.NbFlow
-	ft.updated(0, 0)
+	ft.update(0, 0)
 	afterNbFlow := fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 10 {
 		t.Error("all flows should be updated")
@@ -107,7 +103,7 @@ func TestTable_updated(t *testing.T) {
 
 	fc = MyTestFlowCounter{}
 	beforeNbFlow = fc.NbFlow
-	ft.updated(MaxInt64, MaxInt64)
+	ft.update(MaxInt64, MaxInt64)
 	afterNbFlow = fc.NbFlow
 	if beforeNbFlow != 0 || afterNbFlow != 0 {
 		t.Error("no flows should be updated")
@@ -134,7 +130,7 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 		filters.NewTermStringFilter("BNodeTID", "probe-tid1"),
 	)
 
-	flowset := ft.GetFlows(&filters.SearchQuery{Filter: f})
+	flowset := ft.getFlows(&filters.SearchQuery{Filter: f})
 	if len(flowset.Flows) == 0 {
 		t.Errorf("Should have flows with from probe1 returned")
 	}
@@ -146,37 +142,24 @@ func TestTable_LookupFlowByProbePath(t *testing.T) {
 	}
 }
 
-func TestTable_GetFlow(t *testing.T) {
-	ft := NewTestFlowTableSimple(t)
-	flow := &Flow{}
-	flow.UUID = "1234"
-	if ft.GetFlow(flow.UUID) == nil {
-		t.Fail()
-	}
-	flow.UUID = "12345"
-	if ft.GetFlow(flow.UUID) != nil {
-		t.Fail()
-	}
-}
-
-func TestTable_GetOrCreateFlow(t *testing.T) {
+func TestTable_getOrCreateFlow(t *testing.T) {
 	ft := NewTestFlowTableComplex(t, nil, nil)
 	flows := GenerateTestFlows(t, ft, 0, "probe-tid1", time.Now())
 	if len(flows) != 10 {
 		t.Error("missing some flows ", len(flows))
 	}
 	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
-	_, new := ft.GetOrCreateFlow("abcd")
+	_, new := ft.getOrCreateFlow("abcd")
 	if !new {
 		t.Error("Collision in the FlowTable, should be new")
 	}
 	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
-	_, new = ft.GetOrCreateFlow("abcd")
+	_, new = ft.getOrCreateFlow("abcd")
 	if new {
 		t.Error("Collision in the FlowTable, should be an update")
 	}
 	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
-	_, new = ft.GetOrCreateFlow("abcde")
+	_, new = ft.getOrCreateFlow("abcde")
 	if !new {
 		t.Error("Collision in the FlowTable, should be a new flow")
 	}
@@ -203,24 +186,7 @@ func TestTable_NewTableFromFlows(t *testing.T) {
 	}
 }
 
-func TestTable_FilterLast(t *testing.T) {
-	ft := NewTestFlowTableComplex(t, nil, nil)
-	/* hack to put the FlowTable 1 second older */
-	for _, f := range ft.table {
-		f.Start -= int64(1)
-		f.Last -= int64(1)
-	}
-	flows := ft.FilterLast(10 * time.Minute)
-	if len(flows) != 10 {
-		t.Error("FilterLast should return more/less flows", len(flows), 10)
-	}
-	flows = ft.FilterLast(0 * time.Minute)
-	if len(flows) != 0 {
-		t.Error("FilterLast should return less flows", len(flows), 0)
-	}
-}
-
-func TestTable_SymmeticsHash(t *testing.T) {
+func TestTable_SymmetricHash(t *testing.T) {
 	now := time.Now()
 	ft1 := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	GenerateTestFlows(t, ft1, 0xca55e77e, "probe-tid", now)
@@ -228,7 +194,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 	UUIDS := make(map[string]bool)
 	TRIDS := make(map[string]bool)
 
-	for _, f := range ft1.GetFlows(nil).Flows {
+	for _, f := range ft1.getFlows(nil).Flows {
 		UUIDS[f.UUID] = true
 		TRIDS[f.TrackingID] = true
 	}
@@ -236,7 +202,7 @@ func TestTable_SymmeticsHash(t *testing.T) {
 	ft2 := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe-tid", now)
 
-	for _, f := range ft2.GetFlows(nil).Flows {
+	for _, f := range ft2.getFlows(nil).Flows {
 		if _, found := UUIDS[f.UUID]; !found {
 			t.Errorf("Flow UUID should support symmetrically, not found : %s", f.UUID)
 		}

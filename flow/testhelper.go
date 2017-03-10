@@ -223,7 +223,7 @@ func forgeTestPacket(t *testing.T, seed int64, swap bool, protos ...ProtocolType
 
 func flowFromGoPacket(ft *Table, packet *gopacket.Packet, length int64, nodeTID string, timestamp time.Time) *Flow {
 	key := FlowKeyFromGoPacket(packet, "").String()
-	flow, new := ft.GetOrCreateFlow(key)
+	flow, new := ft.getOrCreateFlow(key)
 	if new {
 		flow.Init(key, common.UnixMillis(timestamp), packet, length, nodeTID, "", 0, 0)
 	} else {
@@ -274,23 +274,36 @@ func randomizeLayerStats(t *testing.T, seed int64, now int64, f *Flow) {
 	return
 }
 
+func (ft *Table) updateFlows(flows []*Flow) {
+	for _, f := range flows {
+		if _, ok := ft.table[f.UUID]; !ok {
+			ft.table[f.UUID] = f
+		} else {
+			ft.table[f.UUID].Last = f.Last
+			ft.table[f.UUID].LastUpdateStart = f.LastUpdateStart
+			ft.table[f.UUID].LastUpdateLast = f.LastUpdateLast
+			ft.table[f.UUID].Metric = f.Metric
+		}
+	}
+}
+
 func NewTestFlowTableSimple(t *testing.T) *Table {
 	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	var flows []*Flow
 	f := &Flow{}
 	f.UUID = "1234"
 	flows = append(flows, f)
-	ft.Update(flows)
-	ft.Update(flows)
-	if "1 flows" != ft.String() {
+	ft.updateFlows(flows)
+	ft.updateFlows(flows)
+	if len(ft.table) != 1 {
 		t.Error("We should got only 1 flow")
 	}
 	f = &Flow{}
 	f.UUID = "4567"
 	flows = append(flows, f)
-	ft.Update(flows)
-	ft.Update(flows)
-	if "2 flows" != ft.String() {
+	ft.updateFlows(flows)
+	ft.updateFlows(flows)
+	if len(ft.table) != 2 {
 		t.Error("We should got only 2 flows")
 	}
 	return ft
