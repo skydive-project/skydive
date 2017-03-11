@@ -24,7 +24,7 @@ package probes
 
 import (
 	"github.com/google/gopacket"
-	"github.com/skydive-project/skydive/flow/probes/afpacket"
+	"github.com/google/gopacket/afpacket"
 )
 
 type AFPacketHandle struct {

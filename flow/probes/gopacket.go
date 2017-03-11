@@ -29,6 +29,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/net/bpf"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -108,7 +110,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		return
 	}
 
-	firstLayerType := getGoPacketFirstLayerType(n)
+	firstLayerType, linkType := getGoPacketFirstLayerType(n)
 
 	nscontext, err := topology.NewNetNSContextByNode(g, n)
 	g.RUnlock()
@@ -125,11 +127,6 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
 		if err != nil {
 			logging.GetLogger().Errorf("Error while opening device %s: %s", ifName, err.Error())
-			return
-		}
-
-		if err := handle.SetBPFFilter(capture.BPFFilter); err != nil {
-			logging.GetLogger().Errorf("BPF Filter failed: %s", err)
 			return
 		}
 
@@ -166,6 +163,30 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	// leave the namespace, stay lock in the current thread
 	nscontext.Quit()
 
+	// manage BPF outside namespace because of syscall
+	switch capture.Type {
+	case "pcap":
+		h := p.handle.(*pcap.Handle)
+		err = h.SetBPFFilter(capture.BPFFilter)
+	default:
+		// use pcap bpf compiler to get raw bpf instruction
+		h := p.handle.(*AFPacketHandle)
+		var pcapBPF []pcap.BPFInstruction
+		if pcapBPF, err = pcap.CompileBPFFilter(linkType, int(snaplen), capture.BPFFilter); err == nil {
+			rawBPF := make([]bpf.RawInstruction, len(pcapBPF))
+			for i, ri := range pcapBPF {
+				rawBPF[i] = bpf.RawInstruction{Op: ri.Code, Jt: ri.Jt, Jf: ri.Jf, K: ri.K}
+			}
+
+			err = h.tpacket.SetBPF(rawBPF)
+		}
+	}
+
+	if err != nil {
+		logging.GetLogger().Errorf("BPF Filter failed: %s", err)
+		return
+	}
+
 	packetsChan := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
@@ -180,29 +201,29 @@ func (p *GoPacketProbe) stop() {
 	atomic.StoreInt64(&p.state, common.StoppingState)
 }
 
-func getGoPacketFirstLayerType(n *graph.Node) gopacket.LayerType {
+func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
-		return layers.LayerTypeEthernet
+		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 	}
 
 	if encapType, err := n.GetFieldString("EncapType"); err == nil {
 		switch encapType {
 		case "ether":
-			return layers.LayerTypeEthernet
+			return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 		case "gre":
-			return flow.LayerTypeInGRE
+			return flow.LayerTypeInGRE, layers.LinkTypeIPv4
 		case "sit", "ipip":
-			return layers.LayerTypeIPv4
+			return layers.LayerTypeIPv4, layers.LinkTypeIPv4
 		case "tunnel6", "gre6":
-			return layers.LayerTypeIPv6
+			return layers.LayerTypeIPv6, layers.LinkTypeIPv6
 		default:
 			logging.GetLogger().Warningf("Encapsulation unknown %s on link %s, defaulting to Ethernet", encapType, name)
 		}
 	} else {
 		logging.GetLogger().Warningf("EncapType not found on link %s, defaulting to Ethernet", name)
 	}
-	return layers.LayerTypeEthernet
+	return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 }
 
 func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
