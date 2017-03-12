@@ -56,6 +56,12 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 				o.graph.RUnlock()
 				return
 			}
+			tp, _ := node.GetFieldString("Type")
+			if !common.IsCaptureAllowed(tp) {
+				o.graph.RUnlock()
+				return
+			}
+
 			nodeID := node.ID
 			host := node.Host()
 			o.graph.RUnlock()
@@ -68,6 +74,12 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 					o.graph.RUnlock()
 					return
 				}
+				tp, _ := node.GetFieldString("Type")
+				if !common.IsCaptureAllowed(tp) {
+					o.graph.RUnlock()
+					return
+				}
+
 				nodeID := node.ID
 				host := node.Host()
 				o.graph.RUnlock()
