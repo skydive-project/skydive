@@ -116,7 +116,7 @@ func (b *ElasticSearchBackend) mapElement(e *graphElement) map[string]interface{
 	}
 
 	for k, v := range e.metadata {
-		obj["Metadata/"+k] = v
+		obj["Metadata/"+elasticsearch.EscapeField(k)] = v
 	}
 
 	return obj
@@ -195,7 +195,7 @@ func (b *ElasticSearchBackend) unflattenMetadata(obj map[string]interface{}) {
 	metadata := make(map[string]interface{})
 	for k, v := range obj {
 		if strings.HasPrefix(k, "Metadata/") {
-			metadata[k[9:]] = v
+			metadata[elasticsearch.UnescapeField(k[9:])] = v
 			delete(obj, k)
 		}
 	}
@@ -393,9 +393,9 @@ func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elas
 	request["query"] = map[string]interface{}{
 		"bool": map[string]interface{}{
 			"must": []map[string]interface{}{
-				b.client.FormatFilter(tsq.TimeFilter, ""),
-				b.client.FormatFilter(tsq.Filter, ""),
-				b.client.FormatFilter(tsq.MetadataFilter, "Metadata/"),
+				b.client.FormatFilter(tsq.TimeFilter, "", true),
+				b.client.FormatFilter(tsq.Filter, "", true),
+				b.client.FormatFilter(tsq.MetadataFilter, "Metadata/", true),
 			},
 		},
 	}

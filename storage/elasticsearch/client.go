@@ -54,6 +54,24 @@ type ElasticSearchClient struct {
 
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
 
+var fieldEscaper = strings.NewReplacer(
+	".", "~;",
+	"~", "~~;",
+)
+
+var fieldUnescaper = strings.NewReplacer(
+	"~~;", "~",
+	"~;", ".",
+)
+
+func EscapeField(f string) string {
+	return fieldEscaper.Replace(f)
+}
+
+func UnescapeField(f string) string {
+	return fieldUnescaper.Replace(f)
+}
+
 func (c *ElasticSearchClient) request(method string, path string, query string, body string) (int, []byte, error) {
 	req, err := c.connection.NewRequest(method, path, query)
 	if err != nil {
@@ -128,10 +146,17 @@ func (c *ElasticSearchClient) start(mappings []map[string][]byte) error {
 	return nil
 }
 
-func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string) map[string]interface{} {
+func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string, escape bool) map[string]interface{} {
 	if filter == nil {
 		return map[string]interface{}{
 			"match_all": map[string]interface{}{},
+		}
+	}
+
+	esc := EscapeField
+	if !escape {
+		esc = func(k string) string {
+			return k
 		}
 	}
 
@@ -147,7 +172,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 		}
 		filters := []interface{}{}
 		for _, item := range f.Filters {
-			filters = append(filters, c.FormatFilter(item, prefix))
+			filters = append(filters, c.FormatFilter(item, prefix, escape))
 		}
 		return map[string]interface{}{
 			"bool": map[string]interface{}{
@@ -159,14 +184,14 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.TermStringFilter; f != nil {
 		return map[string]interface{}{
 			"term": map[string]string{
-				prefix + f.Key: f.Value,
+				prefix + esc(f.Key): f.Value,
 			},
 		}
 	}
 	if f := filter.TermInt64Filter; f != nil {
 		return map[string]interface{}{
 			"term": map[string]int64{
-				prefix + f.Key: f.Value,
+				prefix + esc(f.Key): f.Value,
 			},
 		}
 	}
@@ -174,7 +199,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.RegexFilter; f != nil {
 		return map[string]interface{}{
 			"regexp": map[string]string{
-				prefix + f.Key: f.Value,
+				prefix + esc(f.Key): f.Value,
 			},
 		}
 	}
@@ -182,7 +207,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.GtInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
-				prefix + f.Key: &struct {
+				prefix + esc(f.Key): &struct {
 					Gt interface{} `json:"gt,omitempty"`
 				}{
 					Gt: f.Value,
@@ -193,7 +218,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.LtInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
-				prefix + f.Key: &struct {
+				prefix + esc(f.Key): &struct {
 					Lt interface{} `json:"lt,omitempty"`
 				}{
 					Lt: f.Value,
@@ -204,7 +229,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.GteInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
-				prefix + f.Key: &struct {
+				prefix + esc(f.Key): &struct {
 					Gte interface{} `json:"gte,omitempty"`
 				}{
 					Gte: f.Value,
@@ -215,7 +240,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.LteInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
-				prefix + f.Key: &struct {
+				prefix + esc(f.Key): &struct {
 					Lte interface{} `json:"lte,omitempty"`
 				}{
 					Lte: f.Value,
@@ -226,7 +251,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.NullFilter; f != nil {
 		return map[string]interface{}{
 			"missing": map[string]interface{}{
-				"field": prefix + f.Key,
+				"field": prefix + esc(f.Key),
 			},
 		}
 	}
