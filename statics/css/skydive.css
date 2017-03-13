@@ -203,7 +203,8 @@ path.group {
   border-left: 5px #222 solid;
   color: #fff;
   padding-top: 5px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .main-toolbar {
@@ -246,12 +247,27 @@ path.group {
   margin-bottom: 10px;
 }
 
+.left-panel h1 {
+  font-size: 1.1em;
+  font-weight: bold;
+  border-bottom: 1px solid #777;
+  padding-bottom: 5px;
+}
+
+.left-panel > h1:first-child {
+  margin-top: 0px;
+}
+
 .sub-left-panel {
   border-radius: 5px;
   background-color: #111;
   padding: 5px;
   margin-top: 10px;
   margin-bottom: 10px;
+}
+
+.node-time {
+  background: #529DE1;
 }
 
 ul.capture-list {
@@ -312,10 +328,6 @@ li.capture-item {
   font-size: 1.2em;
   padding-bottom: 5px;
   color: #fff;
-}
-
-.sub-left-panel .title-left-panel {
-  font-size: 1.1em;
 }
 
 .bootstrap-switch {
@@ -451,62 +463,57 @@ circle.manager {
   margin-top: 0px;
 }
 
-.flow-table {
+.dynamic-table {
   border-radius: 5px;
   border: 2px solid #666;
 }
 
-.flow-table-time {
-  border-radius: .25em .25em 0 0;
-  background: #529DE1;
-}
-
-.flow-table .flow-table-wrapper {
+.dynamic-table .dynamic-table-wrapper {
   overflow-x: auto;
 }
 
-.flow-table table {
+.dynamic-table table {
   font-size: small;
   border: hidden;
   margin-bottom: 0px;
 }
 
-.flow-table div.actions {
+.dynamic-table .dynamic-table-actions {
   background: #666;
   color: black;
   padding: 5px 3px 3px 3px;
 }
 
-.flow-table div.actions .pull-right {
+.dynamic-table .dynamic-table-actions .pull-right {
   margin-left: 3px;
 }
 
-.flow-table td, .flow-table thead th {
+.dynamic-table td, .dynamic-table thead th {
   border-color: #666 !important;
 }
 
-.flow-table thead {
+.dynamic-table thead {
   background: #111;
 }
 
-.flow-table thead th:hover {
+.dynamic-table thead th:hover {
   cursor: pointer;
 }
 
-.flow-table tbody {
+.dynamic-table tbody {
   background: #333;
 }
 
-.flow-table tbody tr.flow-row:hover {
+.dynamic-table tbody tr.flow-row:hover {
   cursor: pointer;
   background: #444;
 }
 
-.flow-table tbody tr.flow-detail-row {
+.dynamic-table tbody tr.flow-detail-row {
   background: #333;
 }
 
-.flow-table .flow-row.flow-detail {
+.dynamic-table .flow-row.flow-detail {
   background: #2e2e2e;
   font-weight: bold;
 }

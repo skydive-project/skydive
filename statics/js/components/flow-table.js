@@ -263,60 +263,6 @@ var LimitButton = {
 };
 
 
-var TableHeader = {
-
-  props: {
-
-    fields: {
-      type: Array,
-      required: true,
-    },
-
-    sortBy: {
-      type: Array,
-      required: true,
-    },
-
-    sortOrder: {
-      type: Number,
-      required: true,
-    },
-
-  },
-
-  template: '\
-    <thead>\
-      <tr>\
-        <th v-for="field in fields"\
-            v-if="field.show"\
-            @click="sort(field.name)"\
-            >\
-          {{field.label}}\
-          <i v-if="field.name == sortBy"\
-             class="pull-right fa"\
-             :class="{\'fa-chevron-down\': sortOrder == 1,\
-                      \'fa-chevron-up\': sortOrder == -1}"\
-             aria-hidden="true"></i>\
-        </th>\
-      </tr>\
-    </thead>\
-  ',
-
-  methods: {
-
-    sort: function(name) {
-      if (name == this.sortBy) {
-        this.$emit('order', this.sortOrder * -1);
-      } else {
-        this.$emit('sort', name);
-      }
-    },
-
-  }
-
-};
-
-
 Vue.component('flow-table', {
 
   mixins: [apiMixin],
@@ -331,53 +277,34 @@ Vue.component('flow-table', {
   },
 
   template: '\
-    <div v-if="!queryError" class="flow-table">\
-      <span v-if="time" class="label center-block flow-table-time">\
-        Flows at {{timeHuman}}\
-      </span>\
-      <div class="flow-table-wrapper">\
-        <table class="table table-condensed table-bordered">\
-          <table-header :fields="visibleFields"\
-                        :sortOrder="sortOrder"\
-                        :sortBy="sortBy"\
-                        @sort="sort"\
-                        @order="order"></table-header>\
-          <tbody>\
-            <template v-for="flow in sortedResults">\
-              <tr class="flow-row"\
-                  :class="{\'flow-detail\': hasFlowDetail(flow)}"\
-                  @click="toggleFlowDetail(flow)"\
-                  @mouseenter="highlightNodes(flow, true)"\
-                  @mouseleave="highlightNodes(flow, false)">\
-                <td v-for="field in visibleFields">\
-                  {{fieldValue(flow, field.name)}}\
-                </td>\
-              </tr>\
-              <tr class="flow-detail-row"\
-                  v-if="hasFlowDetail(flow)"\
-                  @mouseenter="highlightNodes(flow, true)"\
-                  @mouseleave="highlightNodes(flow, false)">\
-                <td :colspan="visibleFields.length">\
-                  <object-detail :object="flow"></object-detail>\
-                </td>\
-              </tr>\
-            </template>\
-          </tbody>\
-        </table>\
-      </div>\
-      <div class="actions">\
-        <button-dropdown b-class="btn-xs" :auto-close="false">\
-          <span slot="button-text">\
-            <i class="fa fa-cog" aria-hidden="true"></i>\
-          </span>\
-          <li v-for="field in fields">\
-            <a href="#" @click="field.show = !field.show">\
-              <small><i class="fa fa-check text-success pull-right"\
-                 aria-hidden="true" v-show="field.show"></i>\
-              {{field.label}}</small>\
-            </a>\
-          </li>\
-        </button-dropdown>\
+    <dynamic-table :rows="sortedResults"\
+                   :error="queryError"\
+                   :sortOrder="sortOrder"\
+                   :sortBy="sortBy"\
+                   :fields="fields"\
+                   @sort="sort"\
+                   @order="order"\
+                   @toggleField="toggleField">\
+      <template slot="row" scope="flows">\
+        <tr class="flow-row"\
+            :class="{\'flow-detail\': hasFlowDetail(flows.row)}"\
+            @click="toggleFlowDetail(flows.row)"\
+            @mouseenter="highlightNodes(flows.row, true)"\
+            @mouseleave="highlightNodes(flows.row, false)">\
+          <td v-for="field in visibleFields">\
+            {{fieldValue(flows.row, field.name)}}\
+          </td>\
+        </tr>\
+        <tr class="flow-detail-row"\
+            v-if="hasFlowDetail(flows.row)"\
+            @mouseenter="highlightNodes(flows.row, true)"\
+            @mouseleave="highlightNodes(flows.row, false)">\
+          <td :colspan="visibleFields.length">\
+            <object-detail :object="flows.row"></object-detail>\
+          </td>\
+        </tr>\
+      </template>\
+      <template slot="actions">\
         <filter-selector :query="value"\
                          :filters="filters"\
                          @add="addFilter"\
@@ -398,13 +325,11 @@ Vue.component('flow-table', {
                 v-if="!autoRefresh">\
           <i class="fa fa-refresh" aria-hidden="true"></i>\
         </button>\
-      </div>\
-    </div>\
-    <div v-else class="alert-danger">{{queryError}}</div>\
+      </template>\
+    </dynamic-table>\
   ',
 
   components: {
-    'table-header': TableHeader,
     'interval-button': IntervalButton,
     'highlight-mode': HighlightMode,
     'filter-selector': FilterSelector,
@@ -550,8 +475,7 @@ Vue.component('flow-table', {
     },
 
     timeHuman: function() {
-      var d = new Date(this.time);
-      return d.toLocaleTimeString();
+      return this.$store.getters.timeHuman;
     },
 
     sortedResults: function() {
@@ -633,7 +557,7 @@ Vue.component('flow-table', {
 
     setQueryTime: function(query) {
       if (this.time !== 0) {
-        return query.replace("G.", "G.At("+parseInt(this.time / 1000)+").");
+        return query.replace("G.", "G.At("+ this.time +").");
       }
       return query;
     },
@@ -722,6 +646,10 @@ Vue.component('flow-table', {
       }
     },
 
+    toggleField: function(field) {
+      field.show = !field.show;
+    },
+
   },
 
 });
@@ -732,6 +660,9 @@ Vue.component('flow-table-control', {
 
   template: '\
     <form @submit.prevent="validateQuery">\
+      <p v-if="time" class="label center-block node-time">\
+        Flows at {{timeHuman}}\
+      </p>\
       <div class="form-group has-feedback" :class="{\'has-success\': !error, \'has-error\': error}">\
         <label for="flow-table-query">Flow query</label>\
         <input id="flow-table-query" type="text" class="form-control" v-model="query" />\
@@ -760,6 +691,18 @@ Vue.component('flow-table-control', {
 
     query: function() {
       this.debouncedValidation();
+    },
+
+  },
+
+  computed: {
+
+    time: function() {
+      return this.$store.state.time;
+    },
+
+    timeHuman: function() {
+      return this.$store.getters.timeHuman;
     },
 
   },

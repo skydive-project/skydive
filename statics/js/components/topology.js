@@ -40,15 +40,29 @@ var TopologyComponent = {
             <flow-table-control></flow-table-control>\
           </tab-pane>\
         </tabs>\
-        <div class="left-panel" v-if="currentNode">\
-          <div class="title-left-panel">\
-            Node: {{currentNode.ID}}\
+        <transition name="slide" mode="out-in">\
+          <div class="left-panel" v-if="currentNode">\
+            <span v-if="time" class="label center-block node-time">\
+              Interface state at {{timeHuman}}\
+            </span>\
+            <h1>Metadatas<span class="pull-right">(ID: {{currentNode.ID}})</span></h1>\
+            <div class="sub-left-panel">\
+              <object-detail :object="currentNodeMetadata"></object-detail>\
+            </div>\
+            <div v-if="Object.keys(currentNodeStats).length">\
+              <h1>Interface metrics</h1>\
+              <statistics-table :object="currentNodeStats"></statistics-table>\
+            </div>\
+            <div v-if="Object.keys(currentNodeLastStats).length && time === 0">\
+              <h1>Last metrics</h1>\
+              <statistics-table :object="currentNodeLastStats"></statistics-table>\
+            </div>\
+            <div v-if="isAnalyzer">\
+              <h1>Flows</h1>\
+              <flow-table :value="currentNodeFlowsQuery"></flow-table>\
+            </div>\
           </div>\
-          <div class="sub-left-panel">\
-            <object-detail :object="currentNode.Metadata"></object-detail>\
-          </div>\
-          <flow-table v-if="isAnalyzer" :value="currentNodeFlowsQuery"></flow-table>\
-        </div>\
+        </transition>\
       </div>\
     </div>\
   ',
@@ -155,18 +169,33 @@ var TopologyComponent = {
       return time.getTime();
     },
 
+    timeHuman: function() {
+      return this.$store.getters.timeHuman;
+    },
+
     topologyTimeHuman: function() {
       if (this.live) {
         return "live";
       }
-      var date = new Date(this.topologyTime).toLocaleTimeString();
-      return -this.time + ' min. ago (' + date + ')';
+      return -this.time + ' min. ago (' + this.timeHuman + ')';
     },
 
     currentNodeFlowsQuery: function() {
       if (this.currentNode)
         return "G.V('" + this.currentNode.ID + "').Flows().Sort().Dedup()";
       return "";
+    },
+
+    currentNodeMetadata: function() {
+      return this.extractMetadata(this.currentNode.Metadata, null, ['LastMetric', 'Statistics', '__']);
+    },
+
+    currentNodeStats: function() {
+      return this.extractMetadata(this.currentNode.Metadata, "Statistics");
+    },
+
+    currentNodeLastStats: function() {
+      return this.extractMetadata(this.currentNode.Metadata, "LastMetric");
     },
 
   },
@@ -213,6 +242,26 @@ var TopologyComponent = {
           this.layout.Redraw();
         }
       }
+    },
+
+    extractMetadata: function(metadata, namespace, exclude) {
+      return Object.getOwnPropertyNames(metadata).reduce(function(mdata, key) {
+        var use = true;
+        if (namespace && key.search(namespace) === -1) {
+          use = false;
+        }
+        if (exclude) {
+          exclude.forEach(function(e) {
+            if (key.search(e) !== -1) {
+              use = false;
+            }
+          });
+        }
+        if (use) {
+          mdata[key] = metadata[key];
+        }
+        return mdata;
+      }, {});
     },
 
   },
@@ -531,8 +580,6 @@ TopologyLayout.prototype.Invalidate = function() {
 
 TopologyLayout.prototype.Clear = function() {
   var ID;
-
-  store.commit('unselected');
 
   for (ID in this.graph.Edges)
     this.DelEdge(this.graph.Edges[ID]);
@@ -1352,6 +1399,7 @@ TopologyLayout.prototype.ProcessAlertMessage = function(msg) {
 };
 
 TopologyLayout.prototype.SyncRequest = function(t) {
+  store.commit('unselected');
   var obj = {};
   if (t) {
     obj.Time = t;
@@ -1359,6 +1407,6 @@ TopologyLayout.prototype.SyncRequest = function(t) {
   } else {
     store.commit('time', 0);
   }
-  var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
+  var msg = {Namespace: "Graph", Type: "SyncRequest", Obj: obj};
   websocket.send(msg);
 };

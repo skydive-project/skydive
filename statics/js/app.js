@@ -13,6 +13,15 @@ var store = new Vuex.Store({
     notifications: [],
   },
 
+  getters: {
+
+    timeHuman: function(state) {
+      var d = new Date(state.time);
+      return d.toLocaleTimeString();
+    },
+
+  },
+
   mutations: {
 
     history: function(state, support) {
