@@ -730,6 +730,7 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 		if len(dedupStep.Params) > 0 {
 			s.dedupBy = dedupStep.Params[0].(string)
 		}
+		return s
 	}
 
 	if sortStep, ok := next.(*traversal.GremlinTraversalStepSort); ok {
