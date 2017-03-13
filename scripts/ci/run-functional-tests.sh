@@ -33,4 +33,4 @@ esac
 
 set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
-make test.functionals TAGS="$TAGS" GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=20m ARGS="$ARGS -standalone -etcd.server http://localhost:2379"
+make test.functionals.batch TAGS="$TAGS" GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=20m ARGS="$ARGS -standalone -etcd.server http://localhost:2379"
