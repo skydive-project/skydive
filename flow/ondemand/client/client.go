@@ -72,12 +72,12 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 				o.graph.RLock()
 				if _, err := node.GetFieldString("Capture/ID"); err == nil {
 					o.graph.RUnlock()
-					return
+					continue
 				}
 				tp, _ := node.GetFieldString("Type")
 				if !common.IsCaptureAllowed(tp) {
 					o.graph.RUnlock()
-					return
+					continue
 				}
 
 				nodeID := node.ID
