@@ -23,6 +23,8 @@
 package probes
 
 import (
+	"time"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
 )
@@ -43,7 +45,7 @@ func NewAFPacketHandle(ifName string, snaplen int32) (*AFPacketHandle, error) {
 	tpacket, err := afpacket.NewTPacket(
 		afpacket.OptInterface(ifName),
 		afpacket.OptFrameSize(snaplen),
-		afpacket.OptPollTimeout(1000),
+		afpacket.OptPollTimeout(1*time.Second),
 	)
 
 	if err != nil {

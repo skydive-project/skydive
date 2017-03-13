@@ -32,6 +32,7 @@ import (
 	"golang.org/x/net/bpf"
 
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/skydive-project/skydive/api"
@@ -92,15 +93,17 @@ func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker 
 func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := p.packetSource.NextPacket()
-		if err == io.EOF {
-			time.Sleep(20 * time.Millisecond)
-		} else if err == nil {
+		switch err {
+		case nil:
 			if flowPackets := flow.FlowPacketsFromGoPacket(&packet, 0, -1); len(flowPackets.Packets) > 0 {
 				packetsChan <- flowPackets
 			}
-		} else {
-			// sleep awhile in case of error to reduce the presure on cpu
-			time.Sleep(100 * time.Millisecond)
+		case io.EOF:
+			time.Sleep(20 * time.Millisecond)
+		case afpacket.ErrTimeout:
+			// nothing to do, poll wait for new packet or timeout
+		default:
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 }
@@ -210,6 +213,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		statsTicker.Stop()
 	}
 	p.handle.Close()
+	atomic.StoreInt64(&p.state, common.StoppedState)
 }
 
 func (p *GoPacketProbe) stop() {
