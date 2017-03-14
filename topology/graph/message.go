@@ -58,7 +58,7 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 			if err != nil {
 				return "", msg, err
 			}
-			context.TimeSlice = common.NewTimeSlice(i/1000, i/1000)
+			context.TimeSlice = common.NewTimeSlice(i, i)
 		}
 		return msg.Type, context, nil
 
