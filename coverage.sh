@@ -28,17 +28,14 @@ generate_cover_data() {
     done
 
     # add fonctional testing
+    export SKYDIVE_ANALYZERS=localhost:8082
+
+    coverfile="../$workdir/functional.cover"
     PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor' | tr '\n' ',' | sed -e 's/,$//')
-    coverfile="$workdir/functional.cover"
-    govendor test -tags "${TAGS} test" -cover -covermode="$mode" -coverprofile="$f" -coverpkg=${PKG} -timeout 2m -c -o tests/functionals ./tests/
-    FUNC_TESTS=$( grep -e 'func Test' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf )
-    for functest in ${FUNC_TESTS} ; do
-        coverfile="../$workdir/$functest.cover"
-        cd tests && sudo -E ./functionals -test.timeout 2m -test.coverprofile="$coverfile" -test.run $functest$ && cd ..
-    done
+    make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="-test.coverprofile=$coverfile -standalone -graph.backend elasticsearch -storage.backend elasticsearch"
 
     # merge all together
-    echo "mode: $mode" >"$profile"
+    echo "mode: $mode" > "$profile"
     grep -h -v "^mode:" "$workdir"/*.cover | grep -v "skydive/statics" | awk '{ stmt[$1] += $2; count[$1] += $3 } END{ for(e in stmt) { print e, stmt[e], count[e] } }' >> "$profile"
 }
 
