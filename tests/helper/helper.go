@@ -50,13 +50,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/skydive-project/skydive/agent"
-	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/flow/storage"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type Cmd struct {
@@ -72,6 +68,8 @@ var (
 	storageBackend         string
 	useFlowsConnectionType string
 )
+
+type HelperParams map[string]interface{}
 
 func init() {
 	flag.BoolVar(&Standalone, "standalone", false, "Start an analyzer and an agent")
@@ -151,137 +149,6 @@ func InitConfig(conf string, params ...HelperParams) error {
 	return nil
 }
 
-type helperService int
-
-const (
-	start helperService = iota
-	stop
-	flush
-)
-
-type HelperAgentAnalyzer struct {
-	t        *testing.T
-	storage  storage.Storage
-	Agent    *agent.Agent
-	Analyzer *analyzer.Server
-
-	service     chan helperService
-	serviceDone chan bool
-}
-
-type HelperParams map[string]interface{}
-
-func NewAgentAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params ...HelperParams) *HelperAgentAnalyzer {
-	if err := InitConfig(conf, params...); err != nil {
-		t.Fatal(err)
-	}
-
-	agent := NewAgent()
-	analyzer := NewAnalyzerStorage(t, s)
-
-	helper := &HelperAgentAnalyzer{
-		t:        t,
-		storage:  s,
-		Agent:    agent,
-		Analyzer: analyzer,
-
-		service:     make(chan helperService),
-		serviceDone: make(chan bool),
-	}
-
-	go helper.run()
-	return helper
-}
-
-func (h *HelperAgentAnalyzer) startAnalyzer() {
-	h.Analyzer.Start()
-	WaitAPI(h.t, h.Analyzer)
-}
-
-func (h *HelperAgentAnalyzer) Start() {
-	h.service <- start
-	<-h.serviceDone
-}
-func (h *HelperAgentAnalyzer) Stop() {
-	h.service <- stop
-	<-h.serviceDone
-
-	CleanGraph(h.Analyzer.TopologyServer.Graph)
-}
-func (h *HelperAgentAnalyzer) Flush() {
-	h.service <- flush
-	<-h.serviceDone
-}
-func (h *HelperAgentAnalyzer) run() {
-	for {
-		switch <-h.service {
-		case start:
-			h.startAnalyzer()
-			h.Agent.Start()
-		case stop:
-			h.Agent.Stop()
-			h.Analyzer.Stop()
-		case flush:
-			h.Agent.FlowTableAllocator.Flush()
-			time.Sleep(500 * time.Millisecond)
-		}
-		h.serviceDone <- true
-	}
-}
-
-func NewAnalyzerStorage(t *testing.T, s storage.Storage) *analyzer.Server {
-	server, err := analyzer.NewServerFromConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if server.Storage == nil {
-		server.SetStorage(s)
-	}
-
-	return server
-}
-
-func NewAgent() *agent.Agent {
-	return agent.NewAgent()
-}
-
-func WaitAPI(t *testing.T, analyzer *analyzer.Server) {
-	// waiting for the api endpoint
-	for i := 1; i <= 5; i++ {
-		url := fmt.Sprintf("http://%s:%d/api", analyzer.HTTPServer.Addr, analyzer.HTTPServer.Port)
-		_, err := http.Get(url)
-		if err == nil {
-			return
-		}
-		time.Sleep(time.Second)
-	}
-
-	t.Fatal("Fail to start the analyzer")
-}
-
-func StartAnalyzerWithConfig(t *testing.T, conf string, s storage.Storage, params ...HelperParams) *analyzer.Server {
-	if err := InitConfig(conf, params...); err != nil {
-		t.Fatal(err)
-	}
-
-	analyzer := NewAnalyzerStorage(t, s)
-	s.Start()
-	analyzer.Start()
-	WaitAPI(t, analyzer)
-	return analyzer
-}
-
-func StartAgentWithConfig(t *testing.T, conf string, params ...HelperParams) *agent.Agent {
-	if err := InitConfig(conf, params...); err != nil {
-		t.Fatal(err)
-	}
-
-	agent := NewAgent()
-	agent.Start()
-	return agent
-}
-
 func ExecCmds(t *testing.T, cmds ...Cmd) {
 	for _, cmd := range cmds {
 		args := strings.Split(cmd.Cmd, " ")
@@ -293,57 +160,6 @@ func ExecCmds(t *testing.T, cmds ...Cmd) {
 			t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error())
 		}
 	}
-}
-
-func NewGraph(t *testing.T) *graph.Graph {
-	var backend graph.GraphBackend
-	var err error
-	switch graphBackend {
-	case "elasticsearch":
-		backend, err = graph.NewElasticSearchBackend("127.0.0.1", "9200", 10, 60, 1)
-		if err == nil {
-			// need to use cache backend with ES as the indexing is async
-			backend, err = graph.NewCachedBackend(backend)
-		}
-	case "orientdb":
-		password := os.Getenv("ORIENTDB_ROOT_PASSWORD")
-		if password == "" {
-			password = "root"
-		}
-		backend, err = graph.NewOrientDBBackend("http://127.0.0.1:2480", "TestSkydive", "root", password)
-	default:
-		backend, err = graph.NewMemoryBackend()
-	}
-
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	t.Logf("Using %s as backend", graphBackend)
-
-	g := graph.NewGraphFromConfig(backend)
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	root := g.LookupFirstNode(graph.Metadata{"Name": hostname, "Type": "host"})
-	if root == nil {
-		root = agent.CreateRootNode(g)
-		if root == nil {
-			t.Fatal("fail while adding root node")
-		}
-	}
-
-	return g
-}
-
-func CleanGraph(g *graph.Graph) {
-	g.Lock()
-	defer g.Unlock()
-	hostname, _ := os.Hostname()
-	g.DelHostGraph(hostname)
 }
 
 func FilterIPv6AddrAnd(flows []*flow.Flow, A, B string) (r []*flow.Flow) {

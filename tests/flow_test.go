@@ -367,7 +367,9 @@ func TestSFlowSrcDstPath(t *testing.T) {
 			}
 
 			if len(flows) == 0 {
-				return fmt.Errorf("Unable to find flows with the expected path: %v", flows)
+				flows, _ = gh.GetFlows(fmt.Sprintf(prefix + `.Flows()`))
+				gr := fmt.Sprintf(prefix+`.Flows().Has("ANodeTID", %s, "BNodeTID", %s)`, within, within)
+				return fmt.Errorf("Unable to find flows with the expected path %s: %v", gr, flows)
 			}
 
 			return nil

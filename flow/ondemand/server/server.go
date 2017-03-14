@@ -182,11 +182,10 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 		return
 	}
 
-	o.Graph.Lock()
-	defer o.Graph.Unlock()
-
 	status := http.StatusBadRequest
 	ok := false
+
+	o.Graph.Lock()
 
 	switch msg.Type {
 	case "CaptureStart":
@@ -223,8 +222,11 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 			o.Graph.SetMetadata(n, metadata)
 		}
 	default:
-		return
+		status = http.StatusBadRequest
 	}
+
+	// be sure to unlock before sending message
+	o.Graph.Unlock()
 
 	reply := msg.Reply(&ondemand.CaptureQuery{}, msg.Type+"Reply", status)
 	c.SendWSMessage(reply)

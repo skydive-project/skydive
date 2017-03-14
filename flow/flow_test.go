@@ -40,7 +40,7 @@ func TestFlowSimple(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, IPv4, TCP)
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
-	table.FlowPacketsToFlow(flowPackets)
+	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(nil).GetFlows()
 	if len(flows) != 1 {
@@ -55,7 +55,7 @@ func TestFlowSimpleIPv6(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, IPv6, TCP)
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
-	table.FlowPacketsToFlow(flowPackets)
+	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(nil).GetFlows()
 	if len(flows) != 1 {
@@ -86,7 +86,7 @@ func TestFlowParentUUIDVLAN(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, VLAN, VLAN, VLAN, IPv4, UDP)
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
-	table.FlowPacketsToFlow(flowPackets)
+	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(nil).GetFlows()
 	if len(flows) != 1 {
@@ -107,7 +107,7 @@ func TestFlowParentUUID(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, UDP)
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
-	table.FlowPacketsToFlow(flowPackets)
+	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(nil).GetFlows()
 	if len(flows) != 2 {
@@ -128,7 +128,7 @@ func TestFlowEncaspulation(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, GRE, IPv4, TCP)
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
-	table.FlowPacketsToFlow(flowPackets)
+	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(nil).GetFlows()
 	if len(flows) != 3 {
@@ -147,7 +147,7 @@ func TestFlowEncaspulationMplsUdp(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, UDP_MPLS, MPLS, IPv4, TCP)
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
-	table.FlowPacketsToFlow(flowPackets)
+	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(nil).GetFlows()
 	if len(flows) != 2 {
@@ -165,7 +165,7 @@ func TestFlowEncaspulationMplsGRE(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, MPLS, IPv4, TCP)
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
-	table.FlowPacketsToFlow(flowPackets)
+	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(nil).GetFlows()
 	if len(flows) != 2 {
@@ -327,7 +327,7 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*F
 					t.Fatalf("GoPacket decode this pcap packet %d level %d as DecodeFailure :\n%s", pcapPacketNB, level+1, (*(&f).gopacket).Dump())
 				}
 			}
-			table.FlowPacketsToFlow(fp)
+			table.flowPacketsToFlow(fp)
 		}
 	}
 	return table.getFlows(&filters.SearchQuery{}).Flows

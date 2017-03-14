@@ -327,11 +327,6 @@ func (s *FlowServer) handleFlowPacket(conn *FlowServerConn) {
 	}
 }
 
-// TODO(safchain) will be removed when only using real datastore for functional tests
-func (s *FlowServer) SetStorage(store storage.Storage) {
-	s.Storage = store
-}
-
 func (s *FlowServer) Start() {
 	host := s.Addr + ":" + strconv.FormatInt(int64(s.Port), 10)
 	addr, err := net.ResolveUDPAddr("udp", host)

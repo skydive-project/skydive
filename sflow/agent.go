@@ -124,11 +124,6 @@ func (sfa *SFlowAgent) Stop() {
 	}
 }
 
-func (sfa *SFlowAgent) Flush() {
-	logging.GetLogger().Critical("Flush() MUST be called for testing purpose only, not in production")
-	sfa.FlowTable.Flush()
-}
-
 func NewSFlowAgent(u string, a string, p int, ft *flow.Table) *SFlowAgent {
 	return &SFlowAgent{
 		UUID:      u,

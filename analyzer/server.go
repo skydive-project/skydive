@@ -110,12 +110,6 @@ func (s *Server) Stop() {
 	}
 }
 
-// TODO(safchain) will be removed when only using real datastore for functional tests
-func (s *Server) SetStorage(store storage.Storage) {
-	s.Storage = store
-	s.FlowServer.Storage = store
-}
-
 func NewServerFromConfig() (*Server, error) {
 	embedEtcd := config.GetConfig().GetBool("etcd.embedded")
 

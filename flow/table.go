@@ -190,9 +190,11 @@ func (ft *Table) updateMetric(f *Flow, start, last int64) {
 }
 
 func (ft *Table) update(updateFrom, updateTime int64) {
+	logging.GetLogger().Debugf("flow table update: %d, %d", updateFrom, updateTime)
+
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
-		if f.Last > updateFrom {
+		if f.Last >= updateFrom {
 			ft.updateMetric(f, updateFrom, updateTime)
 			updatedFlows = append(updatedFlows, f)
 		} else {
@@ -205,10 +207,11 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 	}
 
 	/* Advise Clients */
-	if ft.updateHandler.callback != nil {
+	if ft.updateHandler.callback != nil && len(updatedFlows) != 0 {
 		ft.updateHandler.callback(updatedFlows)
+
+		logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
 	}
-	logging.GetLogger().Debugf("Send updated Flow %d", len(updatedFlows))
 }
 
 func (ft *Table) expireNow() {
@@ -219,11 +222,6 @@ func (ft *Table) expireNow() {
 func (ft *Table) expireAt(now time.Time) {
 	ft.expire(ft.lastExpire)
 	ft.lastExpire = common.UnixMillis(now)
-}
-
-func (ft *Table) Flush() {
-	ft.flush <- true
-	<-ft.flushDone
 }
 
 func (ft *Table) onSearchQueryMessage(fsq *filters.SearchQuery) (*FlowSearchReply, int) {
@@ -306,7 +304,7 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
+func (ft *Table) flowPacketToFlow(packet *FlowPacket, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
 	key := FlowKeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
@@ -318,7 +316,7 @@ func (ft *Table) FlowPacketToFlow(packet *FlowPacket, parentUUID string, t int64
 	return flow
 }
 
-func (ft *Table) FlowPacketsToFlow(flowPackets *FlowPackets) {
+func (ft *Table) flowPacketsToFlow(flowPackets *FlowPackets) {
 	t := flowPackets.Timestamp
 	if t == -1 {
 		t = ft.tableClock
@@ -329,7 +327,7 @@ func (ft *Table) FlowPacketsToFlow(flowPackets *FlowPackets) {
 	var L3ID int64
 	logging.GetLogger().Debugf("%d FlowPackets received for capture node %s", len(flowPackets.Packets), ft.nodeTID)
 	for _, packet := range flowPackets.Packets {
-		f := ft.FlowPacketToFlow(&packet, parentUUID, t, L2ID, L3ID)
+		f := ft.flowPacketToFlow(&packet, parentUUID, t, L2ID, L3ID)
 		parentUUID = f.UUID
 		if f.Link != nil {
 			L2ID = f.Link.ID
@@ -373,7 +371,7 @@ func (ft *Table) Run() {
 		case now := <-nowTicker.C:
 			ft.tableClock = common.UnixMillis(now)
 		case packets := <-ft.PacketsChan:
-			ft.FlowPacketsToFlow(packets)
+			ft.flowPacketsToFlow(packets)
 		}
 	}
 }

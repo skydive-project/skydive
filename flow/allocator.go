@@ -36,15 +36,6 @@ type TableAllocator struct {
 	pipeline *FlowEnhancerPipeline
 }
 
-func (a *TableAllocator) Flush() {
-	a.RLock()
-	defer a.RUnlock()
-
-	for table := range a.tables {
-		table.Flush()
-	}
-}
-
 func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableReply) *TableReply {
 	reply := &TableReply{
 		status: http.StatusOK,
