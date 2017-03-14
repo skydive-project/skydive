@@ -120,7 +120,10 @@ func NewServerFromConfig() (*Server, error) {
 
 	wsServer := shttp.NewWSServerFromConfig(common.AnalyzerService, httpServer, "/ws")
 
-	tserver := NewTopologyServerFromConfig(wsServer)
+	tserver, err := NewTopologyServerFromConfig(wsServer)
+	if err != nil {
+		return nil, err
+	}
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(tserver.Graph)
 	if err != nil {

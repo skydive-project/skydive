@@ -143,17 +143,15 @@ func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	}
 }
 
-func NewTopologyServer(host string, server *shttp.WSServer) *TopologyServer {
+func NewTopologyServer(host string, server *shttp.WSServer) (*TopologyServer, error) {
 	persistent, err := graph.BackendFromConfig()
 	if err != nil {
-		logging.GetLogger().Error(err.Error())
-		return nil
+		return nil, err
 	}
 
 	cached, err := graph.NewCachedBackend(persistent)
 	if err != nil {
-		logging.GetLogger().Error(err.Error())
-		return nil
+		return nil, err
 	}
 
 	g := graph.NewGraphFromConfig(cached)
@@ -166,10 +164,10 @@ func NewTopologyServer(host string, server *shttp.WSServer) *TopologyServer {
 	}
 	server.AddEventHandler(t)
 
-	return t
+	return t, nil
 }
 
-func NewTopologyServerFromConfig(server *shttp.WSServer) *TopologyServer {
+func NewTopologyServerFromConfig(server *shttp.WSServer) (*TopologyServer, error) {
 	host := config.GetConfig().GetString("host_id")
 	return NewTopologyServer(host, server)
 }
