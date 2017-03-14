@@ -111,7 +111,7 @@ func orientDBDocumentToEdge(doc orientdb.Document) *Edge {
 }
 
 func (o *OrientDBBackend) updateTime(e string, id string, attr string, t time.Time) bool {
-	query := fmt.Sprintf("UPDATE %s SET %s = %d WHERE %s IS NULL AND ID = '%s'", e, attr, common.UnixMillis(t), attr, id)
+	query := fmt.Sprintf("UPDATE %s SET %s = %d WHERE DeletedAt IS NULL AND UpdatedAt IS NULL AND ID = '%s'", e, attr, common.UnixMillis(t), id)
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while deleting %s %s: %s", t, id, err.Error())
