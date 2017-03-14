@@ -347,10 +347,14 @@ Link, Network and Transport keys shall be matched with any of A or B by using OR
 
 ### Flows Sort step
 
-`Sort` step sorts flows by their `Metric.Last` field.
+`Sort` step sorts flows by the given field and requested order.
+By default, the flows are in ascending order by their `Last` field.
+`ASC` and `DESC` predicates can be used to specify ascending and descending order respectively.
 
 ```console
 G.Flows().Sort()
+G.Flows().Sort("Metric.ABPackets")
+G.Flows().Sort(DESC, "Metric.ABPackets")
 ```
 
 ### Flows Dedup step
