@@ -226,7 +226,7 @@ type AlertServer struct {
 	AlertHandler  api.APIHandler
 	watcher       api.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
-	alertTimers   map[string]*time.Ticker
+	alertTimers   map[string]chan bool
 	gremlinParser *traversal.GremlinTraversalParser
 	elector       *etcd.EtcdMasterElector
 }
@@ -348,18 +348,27 @@ func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
 		if err != nil {
 			return err
 		}
-		ticker := time.NewTicker(duration)
+
+		done := make(chan bool)
 		go func() {
-			for range ticker.C {
-				a.Graph.RLock()
-				if err := a.evaluateAlert(alert); err != nil {
-					logging.GetLogger().Warning(err.Error())
+			ticker := time.NewTicker(duration)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ticker.C:
+					a.Graph.RLock()
+					if err := a.evaluateAlert(alert); err != nil {
+						logging.GetLogger().Warning(err.Error())
+					}
+					a.Graph.RUnlock()
+				case <-done:
+					return
 				}
-				a.Graph.RUnlock()
 			}
 		}()
 		a.Lock()
-		a.alertTimers[apiAlert.UUID] = ticker
+		a.alertTimers[apiAlert.UUID] = done
 		a.Unlock()
 	case "graph":
 		fallthrough
@@ -379,8 +388,8 @@ func (a *AlertServer) UnregisterAlert(id string) {
 	a.Lock()
 	defer a.Unlock()
 
-	if timer, found := a.alertTimers[id]; found {
-		timer.Stop()
+	if ch, found := a.alertTimers[id]; found {
+		close(ch)
 		delete(a.alertTimers, id)
 	} else {
 		delete(a.graphAlerts, id)
@@ -418,7 +427,7 @@ func NewAlertServer(ah api.APIHandler, wsServer *shttp.WSServer, parser *travers
 		AlertHandler:  ah,
 		Graph:         parser.Graph,
 		graphAlerts:   make(map[string]*GremlinAlert),
-		alertTimers:   make(map[string]*time.Ticker),
+		alertTimers:   make(map[string]chan bool),
 		gremlinParser: parser,
 		elector:       elector,
 	}

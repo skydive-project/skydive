@@ -202,10 +202,7 @@ func (c *WSClient) readPump() {
 
 func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
 	ticker := time.NewTicker(c.server.pingPeriod)
-
-	defer func() {
-		ticker.Stop()
-	}()
+	defer ticker.Stop()
 
 	// send a first ping to help firefox and some other client which wait for a
 	// first ping before doing something

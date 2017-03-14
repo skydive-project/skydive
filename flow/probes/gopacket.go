@@ -66,18 +66,25 @@ const (
 	snaplen int32 = 256
 )
 
-func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker) {
-	for _ = range ticker.C {
-		if stats, e := handle.Stats(); e != nil {
-			logging.GetLogger().Errorf("Can not get pcap capture stats")
-		} else {
-			g.Lock()
-			t := g.StartMetadataTransaction(n)
-			t.AddMetadata("Capture/PacketsReceived", stats.PacketsReceived)
-			t.AddMetadata("Capture/PacketsDropped", stats.PacketsDropped)
-			t.AddMetadata("Capture/PacketsIfDropped", stats.PacketsIfDropped)
-			t.Commit()
-			g.Unlock()
+func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
+		select {
+		case <-ticker.C:
+			if stats, e := handle.Stats(); e != nil {
+				logging.GetLogger().Errorf("Can not get pcap capture stats")
+			} else {
+				g.Lock()
+				t := g.StartMetadataTransaction(n)
+				t.AddMetadata("Capture/PacketsReceived", stats.PacketsReceived)
+				t.AddMetadata("Capture/PacketsDropped", stats.PacketsDropped)
+				t.AddMetadata("Capture/PacketsIfDropped", stats.PacketsIfDropped)
+				t.Commit()
+				g.Unlock()
+			}
+		case <-done:
+			return
 		}
 	}
 }
@@ -99,7 +106,6 @@ func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 }
 
 func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture) {
-	var ticker *time.Ticker
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	g.RLock()
@@ -122,6 +128,10 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		return
 	}
 
+	var wg sync.WaitGroup
+	var statsTicker *time.Ticker
+	statsDone := make(chan bool)
+
 	switch capture.Type {
 	case "pcap":
 		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
@@ -135,8 +145,10 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 
 		// Go routine to update the interface statistics
 		statsUpdate := config.GetConfig().GetInt("agent.flow.stats_update")
-		ticker = time.NewTicker(time.Duration(statsUpdate) * time.Second)
-		go pcapUpdateStats(g, n, handle, ticker)
+		statsTicker = time.NewTicker(time.Duration(statsUpdate) * time.Second)
+
+		wg.Add(1)
+		go pcapUpdateStats(g, n, handle, statsTicker, statsDone, &wg)
 
 		logging.GetLogger().Infof("PCAP Capture started on %s with First layer: %s", ifName, firstLayerType)
 	default:
@@ -191,8 +203,11 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	defer p.flowTable.Stop()
 
 	p.feedFlowTable(packetsChan)
-	if ticker != nil {
-		ticker.Stop()
+
+	if statsTicker != nil {
+		close(statsDone)
+		wg.Wait()
+		statsTicker.Stop()
 	}
 	p.handle.Close()
 }
