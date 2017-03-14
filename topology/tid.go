@@ -76,8 +76,11 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 		if tp, err := n.GetFieldString("Type"); err == nil {
 			switch tp {
 			case "host":
-				t.hostID = n.ID
-				t.Graph.AddMetadata(n, "TID", string(n.ID))
+				if name, err := n.GetFieldString("Name"); err == nil {
+					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(name))
+					t.hostID = graph.Identifier(u.String())
+					t.Graph.AddMetadata(n, "TID", u.String())
+				}
 
 				t.setChildrenTID(n)
 			case "netns":

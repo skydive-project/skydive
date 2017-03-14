@@ -29,7 +29,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
 	"github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/analyzer"
@@ -249,6 +248,5 @@ func CreateRootNode(g *graph.Graph) *graph.Node {
 	if err == nil {
 		m["InstanceID"] = strings.TrimSpace(string(buffer))
 	}
-	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(hostID))
-	return g.NewNode(graph.Identifier(u.String()), m)
+	return g.NewNode(graph.GenID(), m)
 }
