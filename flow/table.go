@@ -95,6 +95,7 @@ func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler, pipeline *
 		pipeline:      pipeline,
 	}
 	t.tableClock = common.UnixMillis(time.Now())
+	t.lastUpdate = t.tableClock
 	return t
 }
 
@@ -352,7 +353,6 @@ func (ft *Table) Run() {
 	nowTicker := time.NewTicker(time.Second * 1)
 	defer nowTicker.Stop()
 
-	ft.lastUpdate = common.UnixMillis(time.Now())
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan *TableReply, 100)
 
