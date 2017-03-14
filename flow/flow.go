@@ -595,6 +595,13 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 }
 
 func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
+	switch field {
+	case "Last":
+		return f.Last, nil
+	case "Start":
+		return f.Start, nil
+	}
+
 	fields := strings.Split(field, ".")
 	if len(fields) != 2 {
 		return 0, common.ErrFieldNotFound
