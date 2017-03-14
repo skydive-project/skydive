@@ -49,13 +49,20 @@ func (t *TIDMapper) setTID(parent, child *graph.Node) {
 		return
 	}
 
-	name, _ := child.GetFieldString("Name")
-	if name == "" {
+	var key string
+	switch tp {
+	case "netns":
+		key, _ = child.GetFieldString("Path")
+	default:
+		key, _ = child.GetFieldString("Name")
+	}
+
+	if key == "" {
 		return
 	}
 
 	if tid, _ := parent.GetFieldString("TID"); tid != "" {
-		tid = tid + name + tp
+		tid = tid + key + tp
 		u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
 		t.Graph.AddMetadata(child, "TID", u.String())
 	}
