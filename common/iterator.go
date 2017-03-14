@@ -22,22 +22,29 @@
 
 package common
 
-import "time"
+type Iterator struct {
+	at, from, to int64
+}
 
-// Retry tries to execute the given function until a success applying a delay
-// between each try
-func Retry(fnc func() error, try int, delay time.Duration) error {
-	var err error
-	if err = fnc(); err == nil {
-		return nil
+func (it *Iterator) Done() bool {
+	return it.to != -1 && it.at >= it.to
+}
+
+func (it *Iterator) Next() bool {
+	it.at++
+	return it.at-1 >= it.from
+}
+
+func NewIterator(values ...int64) (it *Iterator) {
+	it = &Iterator{to: -1}
+	if len(values) > 0 {
+		it.at = values[0]
 	}
-
-	for i := 0; i != try; i++ {
-		time.Sleep(delay)
-		if err = fnc(); err == nil {
-			return nil
-		}
+	if len(values) > 1 {
+		it.from = values[1]
 	}
-
-	return err
+	if len(values) > 2 {
+		it.to = values[2]
+	}
+	return
 }

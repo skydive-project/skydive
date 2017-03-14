@@ -22,22 +22,52 @@
 
 package common
 
-import "time"
+import (
+	"net"
+	"strings"
+)
 
-// Retry tries to execute the given function until a success applying a delay
-// between each try
-func Retry(fnc func() error, try int, delay time.Duration) error {
-	var err error
-	if err = fnc(); err == nil {
-		return nil
+type ServiceType string
+
+const (
+	AnalyzerService ServiceType = "analyzer"
+	AgentService    ServiceType = "agent"
+)
+
+const (
+	StoppedState = iota
+	RunningState
+	StoppingState
+)
+
+type ServiceAddress struct {
+	Addr string
+	Port int
+}
+
+func (st ServiceType) String() string {
+	return string(st)
+}
+
+func ServiceAddressFromString(addressPort string) (ServiceAddress, error) {
+	/* Backward compatibility for old format like : listen = 1234 */
+	if !strings.ContainsAny(addressPort, ".:") {
+		addressPort = ":" + addressPort
 	}
-
-	for i := 0; i != try; i++ {
-		time.Sleep(delay)
-		if err = fnc(); err == nil {
-			return nil
-		}
+	/* validate IPv4 and IPv6 address */
+	IPAddr, err := net.ResolveUDPAddr("", addressPort)
+	if err != nil {
+		return ServiceAddress{}, err
 	}
+	IPaddr := IPAddr.IP
+	port := IPAddr.Port
 
-	return err
+	addr := "localhost"
+	if IPaddr != nil {
+		addr = IPToString(IPaddr)
+	}
+	return ServiceAddress{
+		Addr: addr,
+		Port: port,
+	}, nil
 }

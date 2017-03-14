@@ -22,22 +22,37 @@
 
 package common
 
-import "time"
+type CaptureType struct {
+	Allowed []string
+	Default string
+}
 
-// Retry tries to execute the given function until a success applying a delay
-// between each try
-func Retry(fnc func() error, try int, delay time.Duration) error {
-	var err error
-	if err = fnc(); err == nil {
-		return nil
+var (
+	CaptureTypes = map[string]CaptureType{}
+)
+
+func initCaptureTypes() {
+	// add ovs type
+	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow", "pcapsocket"}, Default: "ovssflow"}
+
+	// anything else will be handled by gopacket
+	types := []string{
+		"device", "internal", "veth", "tun", "bridge", "dummy", "gre",
+		"bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan",
+		"gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan",
+		"lowpan", "ip6tnl", "ip6gre", "sit",
 	}
 
-	for i := 0; i != try; i++ {
-		time.Sleep(delay)
-		if err = fnc(); err == nil {
-			return nil
-		}
+	for _, t := range types {
+		CaptureTypes[t] = CaptureType{Allowed: []string{"afpacket", "pcap", "pcapsocket"}, Default: "afpacket"}
 	}
+}
 
-	return err
+func IsCaptureAllowed(nodeType string) bool {
+	_, ok := CaptureTypes[nodeType]
+	return ok
+}
+
+func init() {
+	initCaptureTypes()
 }
