@@ -49,11 +49,11 @@ var TopologyComponent = {
             <div class="sub-left-panel">\
               <object-detail :object="currentNodeMetadata"></object-detail>\
             </div>\
-            <div v-if="Object.keys(currentNodeStats).length">\
+            <div v-show="Object.keys(currentNodeStats).length">\
               <h1>Interface metrics</h1>\
               <statistics-table :object="currentNodeStats"></statistics-table>\
             </div>\
-            <div v-if="Object.keys(currentNodeLastStats).length && time === 0">\
+            <div v-show="Object.keys(currentNodeLastStats).length && time === 0">\
               <h1>Last metrics</h1>\
               <statistics-table :object="currentNodeLastStats"></statistics-table>\
             </div>\
@@ -578,14 +578,22 @@ TopologyLayout.prototype.InitFromSyncMessage = function(msg) {
 
   this.graph.InitFromSyncMessage(msg);
 
-  var ID;
-  for (ID in this.graph.Nodes)
+  for (var ID in this.graph.Nodes) {
     this.AddNode(this.graph.Nodes[ID]);
+  }
 
-  for (ID in this.graph.Edges)
+  for (var ID in this.graph.Edges)
     this.AddEdge(this.graph.Edges[ID]);
 
-  this.synced = true;
+  if (store.state.currentNode) {
+    var id = store.state.currentNode.ID;
+    if (id in this.elements) {
+      store.commit('selected', this.elements[id]);
+    } else {
+      store.commit('unselected');
+    }
+  }
+
 };
 
 TopologyLayout.prototype.Invalidate = function() {
@@ -663,7 +671,8 @@ TopologyLayout.prototype.UpdateNode = function(node, metadata) {
 };
 
 TopologyLayout.prototype.DelNode = function(node) {
-  if (store.state.currentNode && store.state.currentNode.ID == node.ID) {
+  if (this.synced && store.state.currentNode &&
+      store.state.currentNode.ID == node.ID) {
     store.commit('unselected');
   }
 
@@ -1330,8 +1339,10 @@ TopologyLayout.prototype.ProcessGraphMessage = function(msg) {
   var edge;
   switch(msg.Type) {
     case "SyncReply":
+      this.synced = false;
       this.Clear();
       this.InitFromSyncMessage(msg);
+      this.synced = true;
       break;
 
     case "NodeUpdated":
@@ -1416,7 +1427,6 @@ TopologyLayout.prototype.SyncRequest = function(t) {
   if (t && t === store.state.time) {
     return;
   }
-  store.commit('unselected');
   var obj = {};
   if (t) {
     obj.Time = t;
