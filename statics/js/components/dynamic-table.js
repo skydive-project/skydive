@@ -47,6 +47,11 @@ Vue.component('dynamic-table', {
             </tr>\
           </thead>\
           <tbody>\
+            <tr v-if="!rows.length" class="bg-warning text-warning">\
+              <td :colspan="fields.length">\
+                <slot name="empty">No results</slot>\
+              </td>\
+            </tr>\
             <slot name="row" v-for="row in rows" :row="row"></slot>\
           </tbody>\
         </table>\

@@ -285,6 +285,7 @@ Vue.component('flow-table', {
                    @sort="sort"\
                    @order="order"\
                    @toggleField="toggleField">\
+      <template slot="empty">No flows found</template>\
       <template slot="row" scope="flows">\
         <tr class="flow-row"\
             :class="{\'flow-detail\': hasFlowDetail(flows.row)}"\

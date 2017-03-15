@@ -57,7 +57,7 @@ var TopologyComponent = {
               <h1>Last metrics</h1>\
               <statistics-table :object="currentNodeLastStats"></statistics-table>\
             </div>\
-            <div v-if="isAnalyzer">\
+            <div v-if="isAnalyzer && currentNodeFlowsQuery">\
               <h1>Flows</h1>\
               <flow-table :value="currentNodeFlowsQuery"></flow-table>\
             </div>\
@@ -195,7 +195,7 @@ var TopologyComponent = {
     },
 
     currentNodeFlowsQuery: function() {
-      if (this.currentNode)
+      if (this.currentNode && this.currentNode.IsCaptureAllowed())
         return "G.V('" + this.currentNode.ID + "').Flows().Sort().Dedup()";
       return "";
     },
