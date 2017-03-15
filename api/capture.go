@@ -76,6 +76,9 @@ func (c *CaptureAPIHandler) Decorate(resource APIResource) {
 	count := 0
 	pcapSocket := ""
 
+	c.Graph.RLock()
+	defer c.Graph.RUnlock()
+
 	res, err := topology.ExecuteGremlinQuery(c.Graph, capture.GremlinQuery)
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
