@@ -8,4 +8,4 @@ dir="$(dirname "$0")"
 
 set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
-make test GOFLAGS=-race VERBOSE=true TIMEOUT=1m
+make test GOFLAGS=-race VERBOSE=true TIMEOUT=1m | go2xunit -output $WORKSPACE/tests.xml
