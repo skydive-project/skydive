@@ -337,8 +337,8 @@ Key can be any attributes of the Flow data structure :
 * `Metric.BABytes`
 * `Metric.ABPackets`
 * `Metric.BAPackets`
-* `Metric.Start`
-* `Metric.Last`
+* `Start`
+* `Last`
 
 Lt, Lte, Gt, Gte predicates can be used on numerical fields.
 See [Flow Schema](/api/flows/) for further explanations.
