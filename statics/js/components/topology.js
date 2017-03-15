@@ -209,7 +209,13 @@ var TopologyComponent = {
     },
 
     currentNodeLastStats: function() {
-      return this.extractMetadata(this.currentNode.Metadata, "LastMetric");
+      var s = this.extractMetadata(this.currentNode.Metadata, "LastMetric");
+      ['LastMetric/Start', 'LastMetric/Last'].forEach(function(k) {
+        if (s[k]) {
+          s[k] = new Date(s[k]).toLocaleTimeString();
+        }
+      });
+      return s;
     },
 
   },

@@ -33,8 +33,7 @@ Vue.component('dynamic-table', {
         <table class="table table-condensed table-bordered">\
           <thead>\
             <tr>\
-              <th v-for="field in fields"\
-                  v-if="field.show"\
+              <th v-for="field in visibleFields"\
                   @click="sort(field.name)"\
                   >\
                 {{field.label}}\
@@ -52,7 +51,14 @@ Vue.component('dynamic-table', {
                 <slot name="empty">No results</slot>\
               </td>\
             </tr>\
-            <slot name="row" v-for="row in rows" :row="row"></slot>\
+            <slot name="row" v-for="row in rows"\
+                  :row="row" :visibleFields="visibleFields">\
+              <tr class="flow-row">\
+                <td v-for="field in visibleFields">\
+                  {{fieldValue(row, field.name)}}\
+                </td>\
+              </tr>\
+            </slot>\
           </tbody>\
         </table>\
       </div>\
@@ -75,6 +81,16 @@ Vue.component('dynamic-table', {
     <div v-else class="alert-danger">{{error}}</div>\
   ',
 
+  computed: {
+
+    visibleFields: function() {
+      return this.fields.filter(function(f) {
+        return f.show === true;
+      });
+    },
+
+  },
+
   methods: {
 
     sort: function(name) {
@@ -87,6 +103,10 @@ Vue.component('dynamic-table', {
 
     toggleField: function(field, index) {
       this.$emit('toggleField', field, index);
+    },
+
+    fieldValue: function(object, key) {
+      return object[key[0]];
     },
 
   },

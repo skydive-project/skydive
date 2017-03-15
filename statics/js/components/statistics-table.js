@@ -13,19 +13,13 @@ Vue.component('statistics-table', {
     <dynamic-table :rows="rows"\
                    :fields="fields"\
                    @toggleField="toggleField">\
-      <template slot="row" scope="stats">\
-        <tr class="flow-row">\
-          <td v-for="field in visibleFields">\
-            {{fieldValue(stats.row, field.name)}}\
-          </td>\
-        </tr>\
-      </template>\
     </dynamic-table>\
   ',
 
   data: function() {
     return {
-      fields: []
+      fields: [],
+      defaultFields: ['RxBytes', 'RxPackets', 'TxBytes', 'TxPackets'],
     };
   },
 
@@ -37,6 +31,22 @@ Vue.component('statistics-table', {
 
     object: function() {
       this.updateFields();
+    },
+
+    // check if all metrics eq to 0, after fields
+    // are updated. if yes we show defaultFields
+    fields: {
+      handler: function() {
+        if (this.zeroMetrics) {
+          var self = this;
+          this.fields.forEach(function(f) {
+            if (self.defaultFields.indexOf(f.label) !== -1) {
+              f.show = true;
+            }
+          });
+        }
+      },
+      deep: true
     },
 
   },
@@ -55,18 +65,22 @@ Vue.component('statistics-table', {
       return [this.object];
     },
 
-    visibleFields: function() {
-      return this.fields.filter(function(f) {
-        return f.show === true;
-      });
+    zeroMetrics: function() {
+      var self = this;
+      return this.fields.reduce(function(zero, f) {
+        if (!self.isTime(f) && f.show === true) {
+          zero = false;
+        }
+        return zero;
+      }, true);
     },
 
   },
 
   methods: {
 
-    isTime: function(key) {
-      return ['Start', 'Last'].indexOf(key.split('/')[1]) !== -1;
+    isTime: function(field) {
+      return ['Start', 'Last'].indexOf(field.label) !== -1;
     },
 
     toggleField: function(field) {
@@ -82,13 +96,15 @@ Vue.component('statistics-table', {
         var f = {
           name: [key],
           label: key.split('/')[1],
-          show: self.object[key] > 0,
+          show: false,
           showChanged: false
         };
         // put Start and Last fields at the beginning
-        if (self.isTime(key)) {
+        if (self.isTime(f)) {
+          f.show = true;
           self.fields.splice(0, 0, f);
         } else {
+          f.show = self.object[f.name[0]] > 0;
           self.fields.push(f);
         }
       });
@@ -101,18 +117,14 @@ Vue.component('statistics-table', {
       var self = this;
       this.fields.forEach(function(f) {
         var newVal = self.object[f.name[0]];
-        if (f.showChanged === false && newVal > 0) {
-          f.show = true;
+        if (f.showChanged === false) {
+          if (newVal > 0 || self.isTime(f)) {
+            f.show = true;
+          } else {
+            f.show = false;
+          }
         }
       });
-    },
-
-    fieldValue: function(object, key) {
-      key = key[0];
-      if (this.isTime(key)) {
-        return new Date(object[key]).toLocaleTimeString();
-      }
-      return object[key];
     },
 
   },

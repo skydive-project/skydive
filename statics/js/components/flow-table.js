@@ -292,7 +292,7 @@ Vue.component('flow-table', {
             @click="toggleFlowDetail(flows.row)"\
             @mouseenter="highlightNodes(flows.row, true)"\
             @mouseleave="highlightNodes(flows.row, false)">\
-          <td v-for="field in visibleFields">\
+          <td v-for="field in flows.visibleFields">\
             {{fieldValue(flows.row, field.name)}}\
           </td>\
         </tr>\
@@ -300,7 +300,7 @@ Vue.component('flow-table', {
             v-if="hasFlowDetail(flows.row)"\
             @mouseenter="highlightNodes(flows.row, true)"\
             @mouseleave="highlightNodes(flows.row, false)">\
-          <td :colspan="visibleFields.length">\
+          <td :colspan="flows.visibleFields.length">\
             <object-detail :object="flows.row"></object-detail>\
           </td>\
         </tr>\
@@ -491,12 +491,6 @@ Vue.component('flow-table', {
         return 'TrackingID';
       }
       return 'UUID';
-    },
-
-    visibleFields: function() {
-      return this.fields.filter(function(f) {
-        return f.show === true;
-      });
     },
 
     timedQuery: function() {
