@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
@@ -1315,5 +1316,112 @@ func TestFlowVLANSegmentation(t *testing.T) {
 		},
 	}
 
+	RunTest(t, test)
+}
+
+func TestSort(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-int", true},
+
+			{"ip netns add dst-vm", true},
+			{"ip link add dst-vm-eth0 type veth peer name dst-eth0 netns dst-vm", true},
+			{"ip link set dst-vm-eth0 up", true},
+			{"ip netns exec dst-vm ip link set dst-eth0 up", true},
+			{"ip netns exec dst-vm ip address add 169.254.33.33/24 dev dst-eth0", true},
+
+			{"ip netns add src-vm1", true},
+			{"ip link add src-vm1-eth0 type veth peer name src1-eth0 netns src-vm1", true},
+			{"ip link set src-vm1-eth0 up", true},
+			{"ip netns exec src-vm1 ip link set src1-eth0 up", true},
+			{"ip netns exec src-vm1 ip address add 169.254.33.34/24 dev src1-eth0", true},
+
+			{"ip netns add src-vm2", true},
+			{"ip link add src-vm2-eth0 type veth peer name src2-eth0 netns src-vm2", true},
+			{"ip link set src-vm2-eth0 up", true},
+			{"ip netns exec src-vm2 ip link set src2-eth0 up", true},
+			{"ip netns exec src-vm2 ip address add 169.254.33.35/24 dev src2-eth0", true},
+
+			{"ovs-vsctl add-port br-int dst-vm-eth0", true},
+			{"ovs-vsctl add-port br-int src-vm1-eth0", true},
+			{"ovs-vsctl add-port br-int src-vm2-eth0", true},
+		},
+
+		setupFunction: func(c *TestContext) (err error) {
+			packet1 := &api.PacketParamsReq{
+				Src:   "G.V().Has('Name', 'src1-eth0')",
+				Dst:   "G.V().Has('Name', 'dst-eth0')",
+				Type:  "icmp",
+				Count: 10,
+			}
+			packet2 := &api.PacketParamsReq{
+				Src:   "G.V().Has('Name', 'src2-eth0')",
+				Dst:   "G.V().Has('Name', 'dst-eth0')",
+				Type:  "icmp",
+				Count: 20,
+			}
+
+			if err := common.Retry(func() error {
+				return c.client.Create("injectpacket", &packet1)
+			}, 10, time.Second); err != nil {
+				return err
+			}
+			if err := common.Retry(func() error {
+				return c.client.Create("injectpacket", &packet2)
+			}, 10, time.Second); err != nil {
+				return err
+			}
+			return nil
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ovs-vsctl del-br br-int", true},
+			{"ip link del dst-vm-eth0", true},
+			{"ip link del src-vm1-eth0", true},
+			{"ip link del src-vm2-eth0", true},
+			{"ip netns del dst-vm", true},
+			{"ip netns del src-vm1", true},
+			{"ip netns del src-vm2", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'dst-eth0', 'Type', 'veth')`},
+		},
+
+		check: func(c *TestContext) error {
+			g := "g"
+			if !c.time.IsZero() {
+				g += fmt.Sprintf(".Context(%d, %d)", common.UnixMillis(c.startTime), 5)
+			}
+			gremlin := g + ".Flows().Has('Network.B', '169.254.33.33').Sort()"
+
+			flows, err := c.gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+			if len(flows) != 2 {
+				return fmt.Errorf("Expected two flow, got %+v", flows)
+			}
+			//check is it in ascending order by Last field
+			if flows[0].Last > flows[1].Last {
+				return fmt.Errorf("Flows not in expected order, expected ASC got DESC")
+			}
+
+			gremlin = g + ".Flows().Has('Network.B', '169.254.33.33').Sort(DESC, 'Start')"
+
+			flows, err = c.gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+			if len(flows) != 2 {
+				return fmt.Errorf("Expected two flow, got %+v", flows)
+			}
+			//check is it in descending order by Start field
+			if flows[0].Start < flows[1].Start {
+				return fmt.Errorf("Flows not in expected order, expected DESC got ASC")
+			}
+			return nil
+		},
+	}
 	RunTest(t, test)
 }
