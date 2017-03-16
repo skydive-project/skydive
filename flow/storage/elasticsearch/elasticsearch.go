@@ -25,6 +25,7 @@ package elasticsearch
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/lebauce/elastigo/lib"
 	"github.com/mitchellh/mapstructure"
@@ -212,7 +213,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 	if fsq.Sort {
 		request["sort"] = map[string]interface{}{
 			fsq.SortBy: map[string]string{
-				"order": fsq.SortOrder,
+				"order": strings.ToLower(fsq.SortOrder),
 			},
 		}
 	}
@@ -266,7 +267,7 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 	if fsq.Sort {
 		request["sort"] = map[string]interface{}{
 			fsq.SortBy: map[string]string{
-				"order": fsq.SortOrder,
+				"order": strings.ToLower(fsq.SortOrder),
 			},
 		}
 	}

@@ -40,9 +40,11 @@ var (
 	ErrFieldNotFound     = errors.New("Field not found")
 )
 
+type SortOrder string
+
 const (
-	SortAscending  string = "ASC"
-	SortDescending string = "DESC"
+	SortAscending  SortOrder = "ASC"
+	SortDescending SortOrder = "DESC"
 )
 
 func ToInt64(i interface{}) (int64, error) {

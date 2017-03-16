@@ -27,12 +27,17 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"time"
 
 	"github.com/mitchellh/hashstructure"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/topology/graph"
+)
+
+const (
+	defaultSortBy = "CreatedAt"
 )
 
 type GraphTraversalStep interface {
@@ -569,6 +574,108 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
 }
 
+func ParseSortParameter(keys ...interface{}) (order common.SortOrder, sortBy string, err error) {
+	order = common.SortAscending
+
+	switch len(keys) {
+	case 0:
+	case 2:
+		var ok1, ok2 bool
+
+		order, ok1 = keys[0].(common.SortOrder)
+		sortBy, ok2 = keys[1].(string)
+		if !ok1 || !ok2 {
+			return order, sortBy, fmt.Errorf("Sort parameters has to be SortOrder(ASC/DESC) and a sort string Key")
+		}
+	default:
+		return order, sortBy, fmt.Errorf("Sort accepts up to 2 parameters only")
+	}
+
+	return order, sortBy, err
+}
+
+const (
+	sortByInt64 int = iota + 1
+	sortByString
+)
+
+type sortableNodeSlice struct {
+	sortBy     string
+	sortOrder  common.SortOrder
+	nodes      []*graph.Node
+	sortByType int
+}
+
+func (s sortableNodeSlice) Len() int {
+	return len(s.nodes)
+}
+
+func (s sortableNodeSlice) lessInt64(i, j int) bool {
+	i1, _ := s.nodes[i].GetFieldInt64(s.sortBy)
+	i2, _ := s.nodes[j].GetFieldInt64(s.sortBy)
+
+	if s.sortOrder == common.SortAscending {
+		return i1 < i2
+	}
+	return i1 > i2
+}
+
+func (s sortableNodeSlice) lessString(i, j int) bool {
+	s1, _ := s.nodes[i].GetFieldString(s.sortBy)
+	s2, _ := s.nodes[j].GetFieldString(s.sortBy)
+
+	if s.sortOrder == common.SortAscending {
+		return s1 < s2
+	}
+	return s1 > s2
+}
+
+func (s sortableNodeSlice) Less(i, j int) bool {
+	switch s.sortByType {
+	case sortByInt64:
+		return s.lessInt64(i, j)
+	case sortByString:
+		return s.lessString(i, j)
+	}
+
+	// detection of type
+	if _, err := s.nodes[i].GetFieldInt64(s.sortBy); err == nil {
+		s.sortByType = sortByInt64
+		return s.lessInt64(i, j)
+	}
+
+	s.sortByType = sortByString
+	return s.lessString(i, j)
+}
+
+func (s sortableNodeSlice) Swap(i, j int) {
+	s.nodes[i], s.nodes[j] = s.nodes[j], s.nodes[i]
+}
+
+func (tv *GraphTraversalV) Sort(keys ...interface{}) *GraphTraversalV {
+	if tv.error != nil {
+		return tv
+	}
+
+	order, sortBy, err := ParseSortParameter(keys...)
+	if err != nil {
+		return &GraphTraversalV{error: err}
+	}
+
+	if sortBy == "" {
+		sortBy = defaultSortBy
+	}
+
+	sortable := sortableNodeSlice{
+		sortBy:    sortBy,
+		sortOrder: order,
+		nodes:     tv.nodes,
+	}
+	sort.Sort(sortable)
+
+	return tv
+}
+
 func (tv *GraphTraversalV) Dedup(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -919,7 +1026,7 @@ func (tv *GraphTraversalV) Metrics() *MetricsTraversalStep {
 		return &MetricsTraversalStep{error: tv.error}
 	}
 
-	tv = tv.Dedup("ID", "LastMetric/Last")
+	tv = tv.Dedup("ID", "LastMetric/Start").Sort(common.SortAscending, "LastMetric/Start")
 	if tv.error != nil {
 		return &MetricsTraversalStep{error: tv.error}
 	}

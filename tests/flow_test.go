@@ -31,6 +31,7 @@ import (
 
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -282,6 +283,8 @@ func TestPCAPProbe(t *testing.T) {
 			`G.V().Has('Name', 'br-pp', 'Type', 'bridge')`,
 		},
 
+		captureType: "pcap",
+
 		check: func(c *TestContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
@@ -424,32 +427,32 @@ func TestFlowGremlin(t *testing.T) {
 				return errors.New("Node TID not Found")
 			}
 
-			flows, err := gh.GetFlows(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `")`)
+			flows, _ := gh.GetFlows(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `")`)
 			if len(flows) == 0 {
 				return fmt.Errorf("Should return at least 1 flow, got: %v", flows)
 			}
 
-			flowsOpt, err := gh.GetFlows(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `")`)
+			flowsOpt, _ := gh.GetFlows(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `")`)
 			if len(flowsOpt) != len(flows) {
 				return fmt.Errorf("Should return the same number of flows that without optimisation, got: %v", flowsOpt)
 			}
 
-			nodes, err := gh.GetNodes(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `").Out()`)
+			nodes, _ := gh.GetNodes(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `").Out()`)
 			if len(nodes) != 0 {
 				return fmt.Errorf("Should return no destination node, got %d", len(nodes))
 			}
 
-			nodes, err = gh.GetNodes(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `").Both().Dedup()`)
+			nodes, _ = gh.GetNodes(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `").Both().Dedup()`)
 			if len(nodes) != 1 {
 				return fmt.Errorf("Should return one node, got %d", len(nodes))
 			}
 
-			nodes, err = gh.GetNodes(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `").In().Dedup()`)
+			nodes, _ = gh.GetNodes(prefix + `.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "` + tid + `").In().Dedup()`)
 			if len(nodes) != 1 {
 				return fmt.Errorf("Should return one source node, got %d", len(nodes))
 			}
 
-			err = gh.Query(prefix+`.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`").Count()`, &count)
+			gh.Query(prefix+`.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`").Count()`, &count)
 			if int(count) != len(flows) {
 				return fmt.Errorf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
 			}
@@ -468,8 +471,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	ovsGremlin := graphGremlin + fmt.Sprintf(`.V().Has("Name", "%s", "Type", "ovsbridge")`, bridge)
-	ovsBridge, err := gh.GetNode(ovsGremlin)
-	if err != nil {
+	if _, err := gh.GetNode(ovsGremlin); err != nil {
 		return err
 	}
 
@@ -571,13 +573,6 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 		return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 	}
 
-	nodes, err := gh.GetNodes(gremlin + ".Hops()")
-	if len(nodes) != 1 {
-		return fmt.Errorf("Hops should return one node, got %d (error: %+v)", len(nodes), err)
-	} else if nodes[0].ID != ovsBridge.ID {
-		return fmt.Errorf("Hops should return the node %v, got %v (error: %+v)", ovsBridge, nodes[0], err)
-	}
-
 	return nil
 }
 
@@ -630,8 +625,9 @@ func TestFlowMetrics(t *testing.T) {
 	RunTest(t, test)
 }
 
-func TestFlowMetricsSum(t *testing.T) {
+func TestFlowMetricsStep(t *testing.T) {
 	test := &Test{
+		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-fms", true},
 
@@ -649,7 +645,10 @@ func TestFlowMetricsSum(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec fms-vm1 ping -c 1 -s 1024 -I fms-intf1 169.254.33.34", Check: false})
+			helper.ExecCmds(t,
+				helper.Cmd{Cmd: "ip netns exec fms-vm1 ping -c 15 -s 1024 -I fms-intf1 169.254.33.34", Check: false},
+				helper.Cmd{Cmd: "sleep 15", Check: false},
+			)
 			return nil
 		},
 
@@ -664,25 +663,61 @@ func TestFlowMetricsSum(t *testing.T) {
 		},
 
 		check: func(c *TestContext) error {
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
-
 			gh := c.gh
-			gremlin := prefix + `.V().Has("Name", "br-fms", "Type", "ovsbridge").Flows()`
+			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
+			gremlin += `.V().Has("Name", "br-fms", "Type", "ovsbridge").Flows()`
 
-			// this check needs to be close to the beginning of the test since it's a time
-			// based test and it will fail if we wait one more update tick
-			metric, err := gh.GetMetric(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Sum()`)
+			tm, err := gh.GetMetric(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Sum()`)
 			if err != nil {
 				flows, _ := gh.GetFlows(gremlin)
-				return fmt.Errorf("Could not find metrics (%+v) for flows %s", metric, helper.FlowsToString(flows))
+				return fmt.Errorf("Could not find metrics (%+v) for flows %s", tm, helper.FlowsToString(flows))
+			}
+			metric := tm.Metric.(*flow.FlowMetric)
+
+			if metric.ABPackets != 15 || metric.BAPackets != 15 || metric.ABBytes < 15360 || metric.BABytes < 15360 {
+				flows, _ := gh.GetFlows(gremlin)
+				return fmt.Errorf("Wrong metric returned, got : %+v for flows %+v, request: %s", metric, helper.FlowsToString(flows), gremlin+`.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Sum()`)
 			}
 
-			if metric.ABPackets != 1 || metric.BAPackets != 1 || metric.ABBytes < 1066 || metric.BABytes < 1066 {
-				flows, _ := gh.GetFlows(gremlin)
-				return fmt.Errorf("Wrong metric returned, got : %+v for flows %+v", metric, helper.FlowsToString(flows))
+			checkMetrics := func(metrics map[string][]*common.TimedMetric) error {
+				if len(metrics) != 1 {
+					return fmt.Errorf("Should return only one metric array (%+v)", metrics)
+				}
+
+				// check it's sorted
+				var start int64
+				for _, metricsOfID := range metrics {
+					if len(metricsOfID) <= 1 {
+						return fmt.Errorf("metric array should have more that 1 element (%+v)", metricsOfID)
+					}
+
+					for _, tm := range metricsOfID {
+						if tm.Start < start {
+							return fmt.Errorf("Metrics not correctly sorted (%+v)", metricsOfID)
+						}
+						start = tm.Start
+					}
+				}
+
+				return nil
+			}
+
+			metrics, err := gh.GetMetrics(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics()`)
+			if err != nil || len(metrics) == 0 {
+				return fmt.Errorf("Could not find metrics (%+v)", metrics)
+			}
+
+			if err = checkMetrics(metrics); err != nil {
+				return err
+			}
+
+			metrics, err = gh.GetMetrics(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Aggregates()`)
+			if err != nil || len(metrics) == 0 {
+				return fmt.Errorf("Could not find metrics (%+v)", metrics)
+			}
+
+			if err = checkMetrics(metrics); err != nil {
+				return err
 			}
 
 			return nil
@@ -1189,8 +1224,6 @@ func TestFlowVLANSegmentation(t *testing.T) {
 			`G.V().Has('Name', 'vlan-vm1').Out().Has('Name', 'vlan')`,
 			`G.V().Has('Name', 'vlan-vm2-eth0')`,
 		},
-
-		captureType: "pcap",
 
 		check: func(c *TestContext) error {
 			prefix := "g"

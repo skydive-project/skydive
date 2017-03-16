@@ -233,7 +233,7 @@ func (ft *Table) onSearchQueryMessage(fsq *filters.SearchQuery) (*FlowSearchRepl
 	}
 
 	if fsq.Sort {
-		flowset.Sort(fsq.SortOrder, fsq.SortBy)
+		flowset.Sort(common.SortOrder(fsq.SortOrder), fsq.SortBy)
 	}
 
 	if fsq.Dedup {

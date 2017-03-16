@@ -277,19 +277,19 @@ func (e *graphElement) String() string {
 }
 
 func parseTime(i interface{}) (t time.Time, err error) {
-	var nano int64
+	var ms int64
 	switch i := i.(type) {
 	case int64:
-		nano = i
+		ms = i
 	case json.Number:
-		nano, err = i.Int64()
+		ms, err = i.Int64()
 		if err != nil {
 			return t, err
 		}
 	default:
 		return t, fmt.Errorf("Invalid time: %+v", i)
 	}
-	return time.Unix(0, nano*1000000), err
+	return time.Unix(0, ms*int64(time.Millisecond)), err
 }
 
 func (e *graphElement) Decode(i interface{}) (err error) {

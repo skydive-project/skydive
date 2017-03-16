@@ -29,7 +29,6 @@ import (
 	"math"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
@@ -559,6 +558,11 @@ func (s *GremlinTraversalStepLimit) Reduce(next GremlinTraversalStep) GremlinTra
 }
 
 func (s *GremlinTraversalStepSort) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalV:
+		return last.(*GraphTraversalV).Sort(s.Params...), nil
+	}
+
 	return invokeStepFnc(last, "Sort", s)
 }
 
@@ -878,21 +882,11 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			if _, ok := params[0].(string); !ok {
 				return nil, fmt.Errorf("Sort parameter has to be a string key")
 			}
-			var p []interface{}
-			p = append(p, common.SortAscending)
-			p = append(p, params[0])
-			gremlinStepContext.Params = p
+			gremlinStepContext.Params = []interface{}{common.SortAscending, params[0]}
 			return &GremlinTraversalStepSort{gremlinStepContext}, nil
 		case 2:
-			if order, ok := params[0].(string); !ok {
+			if _, ok := params[0].(common.SortOrder); !ok {
 				return nil, fmt.Errorf("Use ASC or DESC predicate")
-			} else {
-				switch strings.ToUpper(order) {
-				case common.SortAscending:
-				case common.SortDescending:
-				default:
-					return nil, fmt.Errorf("Use ASC or DESC predicate")
-				}
 			}
 			if _, ok := params[1].(string); !ok {
 				return nil, fmt.Errorf("Second sort parameter has to be a string key")

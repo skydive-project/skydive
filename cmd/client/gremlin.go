@@ -30,6 +30,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
@@ -134,58 +136,70 @@ func (g *GremlinQueryHelper) GetFlowMetric(query string) (m *flow.FlowMetric, _ 
 	return flows[0].Metric, nil
 }
 
-func (g *GremlinQueryHelper) GetMetrics(query string) (m []*flow.FlowMetric, _ error) {
-	if err := g.Query(query, &m); err != nil {
-		return nil, err
+func flatMetrictoTimedMetric(flat map[string]interface{}) (*common.TimedMetric, error) {
+	start, _ := flat["Start"].(json.Number).Int64()
+	last, _ := flat["Last"].(json.Number).Int64()
+
+	tm := &common.TimedMetric{
+		TimeSlice: common.TimeSlice{
+			Start: start,
+			Last:  last,
+		},
 	}
 
-	return m, nil
-}
-
-func (g *GremlinQueryHelper) GetMetric(query string) (m *flow.FlowMetric, _ error) {
-	if err := g.Query(query, &m); err != nil {
-		return nil, err
-	}
-
-	if m == nil {
-		return nil, NotFound
-	}
-
-	return m, nil
-}
-
-func (g *GremlinQueryHelper) GetInterfaceAggregatedMetrics(query string) (metrics []*graph.InterfaceMetric, _ error) {
-	var obj []map[string]interface{}
-	if err := g.Query(query, &obj); err != nil {
-		return nil, err
-	}
-
-	if len(obj) == 0 {
-		return nil, errors.New("No metrics found")
-	}
-
-	if aggregated, ok := obj[0]["Aggregated"]; ok && aggregated != nil {
-		for _, i := range aggregated.([]interface{}) {
-			obj := i.(map[string]interface{})
-			RxPackets, _ := obj["RxPackets"].(json.Number).Int64()
-			TxPackets, _ := obj["TxPackets"].(json.Number).Int64()
-			RxBytes, _ := obj["RxBytes"].(json.Number).Int64()
-			TxBytes, _ := obj["TxBytes"].(json.Number).Int64()
-
-			metric := &graph.InterfaceMetric{
-				RxPackets: RxPackets,
-				TxPackets: TxPackets,
-				RxBytes:   RxBytes,
-				TxBytes:   TxBytes,
-			}
-
-			metrics = append(metrics, metric)
+	// check whether interface metrics or flow metrics
+	if _, ok := flat["ABBytes"]; ok {
+		metric := flow.FlowMetric{}
+		if err := mapstructure.WeakDecode(flat, &metric); err != nil {
+			return nil, err
 		}
-
-		return metrics, nil
+		tm.Metric = &metric
+	} else {
+		metric := graph.InterfaceMetric{}
+		if err := mapstructure.WeakDecode(flat, &metric); err != nil {
+			return nil, err
+		}
+		tm.Metric = &metric
 	}
 
-	return nil, errors.New("No metrics found")
+	return tm, nil
+}
+
+func (g *GremlinQueryHelper) GetMetrics(query string) (map[string][]*common.TimedMetric, error) {
+	flat := []map[string][]map[string]interface{}{}
+
+	if err := g.Query(query, &flat); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string][]*common.TimedMetric)
+
+	if len(flat) == 0 {
+		return result, nil
+	}
+
+	for id, metrics := range flat[0] {
+		result[id] = make([]*common.TimedMetric, len(metrics))
+		for i, metric := range metrics {
+			tm, err := flatMetrictoTimedMetric(metric)
+			if err != nil {
+				return nil, err
+			}
+			result[id][i] = tm
+		}
+	}
+
+	return result, nil
+}
+
+func (g *GremlinQueryHelper) GetMetric(query string) (*common.TimedMetric, error) {
+	flat := map[string]interface{}{}
+
+	if err := g.Query(query, &flat); err != nil {
+		return nil, err
+	}
+
+	return flatMetrictoTimedMetric(flat)
 }
 
 func NewGremlinQueryHelper(authOptions *shttp.AuthenticationOpts) *GremlinQueryHelper {

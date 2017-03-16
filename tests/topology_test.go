@@ -23,6 +23,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 func TestBridgeOVS(t *testing.T) {
@@ -569,14 +571,20 @@ func TestInterfaceUpdate(t *testing.T) {
 }
 
 func TestInterfaceMetrics(t *testing.T) {
-	start := time.Now()
-
 	test := &Test{
+		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"ip netns add im", true},
 			{"sleep 1", false},
 			{"ip netns exec im ip link set lo up", true},
-			{"ip netns exec im ping -c 3 127.0.0.1", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			helper.ExecCmds(t,
+				helper.Cmd{Cmd: "ip netns exec im ping -c 15 127.0.0.1", Check: true},
+				helper.Cmd{Cmd: "sleep 5", Check: false},
+			)
+			return nil
 		},
 
 		tearDownCmds: []helper.Cmd{
@@ -585,13 +593,11 @@ func TestInterfaceMetrics(t *testing.T) {
 
 		check: func(c *TestContext) error {
 			gh := c.gh
-			gremlin := "g"
-			if !c.time.IsZero() {
-				gremlin += fmt.Sprintf(".Context(%d, %d)", common.UnixMillis(c.time), int(c.time.Sub(start).Seconds()+5))
-			}
 
+			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
 			gremlin += `.V().Has("Name", "im", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates()`
-			metrics, err := gh.GetInterfaceAggregatedMetrics(gremlin)
+
+			metrics, err := gh.GetMetrics(gremlin)
 			if err != nil {
 				return err
 			}
@@ -600,8 +606,36 @@ func TestInterfaceMetrics(t *testing.T) {
 				return fmt.Errorf("Expected one aggregated metric, got %+v", metrics)
 			}
 
-			if metrics[0].TxPackets != 6 {
-				return fmt.Errorf("Expected 6 TxPackets, got %d", metrics[0].TxPackets)
+			if len(metrics["Aggregated"]) <= 1 {
+				return fmt.Errorf("Should have more metrics entry, got %+v", metrics["Aggregated"])
+			}
+
+			var start, tx int64
+			for _, tm := range metrics["Aggregated"] {
+				if tm.Start < start {
+					j, _ := json.MarshalIndent(metrics, "", "\t")
+					return fmt.Errorf("Metrics not correctly sorted (%+v)", string(j))
+				}
+				start = tm.Start
+
+				im := tm.Metric.(*graph.InterfaceMetric)
+				tx += im.TxPackets
+			}
+
+			if tx != 30 {
+				return fmt.Errorf("Expected 30 TxPackets, got %d", tx)
+			}
+
+			gremlin += `.Sum()`
+
+			tm, err := gh.GetMetric(gremlin)
+			if err != nil {
+				return fmt.Errorf("Could not find metrics with: %s", gremlin)
+			}
+
+			im := tm.Metric.(*graph.InterfaceMetric)
+			if im.TxPackets != 30 {
+				return fmt.Errorf("Expected 30 TxPackets, got %d", tx)
 			}
 
 			return nil

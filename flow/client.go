@@ -105,7 +105,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 		context := MergeContext{
 			Sort:      flowSearchQuery.Sort,
 			SortBy:    flowSearchQuery.SortBy,
-			SortOrder: flowSearchQuery.SortOrder,
+			SortOrder: common.SortOrder(flowSearchQuery.SortOrder),
 			Dedup:     flowSearchQuery.Dedup,
 			DedupBy:   flowSearchQuery.DedupBy,
 		}
@@ -137,10 +137,12 @@ func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet
 
 	flowset := NewFlowSet()
 
+	// for sort order we assume that the SortOrder of a flowSearchQuery comes from
+	// an already validated entry.
 	context := MergeContext{
 		Sort:      flowSearchQuery.Sort,
 		SortBy:    flowSearchQuery.SortBy,
-		SortOrder: flowSearchQuery.SortOrder,
+		SortOrder: common.SortOrder(flowSearchQuery.SortOrder),
 		Dedup:     flowSearchQuery.Dedup,
 		DedupBy:   flowSearchQuery.DedupBy,
 	}
@@ -164,10 +166,12 @@ func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSear
 
 	flowset := NewFlowSet()
 
+	// for sort order we assume that the SortOrder of a flowSearchQuery comes from
+	// an already validated entry.
 	context := MergeContext{
 		Sort:      flowSearchQuery.Sort,
 		SortBy:    flowSearchQuery.SortBy,
-		SortOrder: flowSearchQuery.SortOrder,
+		SortOrder: common.SortOrder(flowSearchQuery.SortOrder),
 		Dedup:     flowSearchQuery.Dedup,
 		DedupBy:   flowSearchQuery.DedupBy,
 	}

@@ -186,8 +186,9 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 		}
 	}
 
+	// TODO this should be done via orientdb itself
 	if fsq.Sort {
-		flowset.Sort(fsq.SortOrder, fsq.SortBy)
+		flowset.Sort(common.SortOrder(fsq.SortOrder), fsq.SortBy)
 	}
 
 	return flowset, nil

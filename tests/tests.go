@@ -64,7 +64,7 @@ agent:
       - ovsdb
       - docker
     netlink:
-      metrics_update: 15
+      metrics_update: 5
 
   flow:
     probes:
@@ -112,6 +112,7 @@ type TestContext struct {
 	client      *http.CrudClient
 	captures    []*api.Capture
 	time        time.Time
+	setupTime   time.Time
 	startTime   time.Time
 	successTime time.Time
 }
@@ -194,8 +195,10 @@ func RunTest(t *testing.T, test *Test) {
 		t.Fatalf("Failed to setup captures: %s", err.Error())
 	}
 
+	context.setupTime = time.Now()
+
 	if test.setupFunction != nil {
-		if err := test.setupFunction(context); err != nil {
+		if err = test.setupFunction(context); err != nil {
 			helper.ExecCmds(t, test.tearDownCmds...)
 			t.Fatalf("Failed to setup test: %s", err.Error())
 		}
@@ -209,7 +212,7 @@ func RunTest(t *testing.T, test *Test) {
 	context.startTime = time.Now()
 
 	err = common.Retry(func() error {
-		if err := test.check(context); err != nil {
+		if err = test.check(context); err != nil {
 			return err
 		}
 		context.successTime = time.Now()
@@ -226,7 +229,7 @@ func RunTest(t *testing.T, test *Test) {
 	}
 
 	if test.tearDownFunction != nil {
-		if err := test.tearDownFunction(context); err != nil {
+		if err = test.tearDownFunction(context); err != nil {
 			helper.ExecCmds(t, test.tearDownCmds...)
 			t.Fatalf("Fail to tear test down: %s", err.Error())
 		}

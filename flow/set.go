@@ -23,8 +23,6 @@
 package flow
 
 import (
-	"strings"
-
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 )
@@ -32,7 +30,7 @@ import (
 type MergeContext struct {
 	Sort      bool
 	SortBy    string
-	SortOrder string
+	SortOrder common.SortOrder
 	Dedup     bool
 	DedupBy   string
 }
@@ -58,15 +56,17 @@ func compareByField(lf, rf *Flow, field string) (bool, error) {
 		return lf.Last <= rf.Last, nil
 	}
 
+	// compare first int64 has it is more often used with sort
+	if v1, err := lf.GetFieldInt64(field); err == nil {
+		v2, _ := rf.GetFieldInt64(field)
+		return v1 <= v2, nil
+	}
+
 	if v1, err := lf.GetFieldString(field); err == nil {
 		v2, _ := rf.GetFieldString(field)
 		return v1 <= v2, nil
 	}
 
-	if v1, err := lf.GetFieldInt64(field); err == nil {
-		v2, _ := rf.GetFieldInt64(field)
-		return v1 <= v2, nil
-	}
 	return false, common.ErrFieldNotFound
 }
 
@@ -189,7 +189,7 @@ func (fs *FlowSet) mergeSortedFlows(left, right []*Flow, context MergeContext) (
 		if err != nil {
 			return nil, err
 		}
-		if strings.ToUpper(context.SortOrder) != common.SortAscending {
+		if context.SortOrder != common.SortAscending {
 			cv = !cv
 		}
 
@@ -265,8 +265,8 @@ func (fs *FlowSet) Dedup(field string) error {
 	return nil
 }
 
-func (fs *FlowSet) Sort(order string, field string) {
-	context := MergeContext{Sort: true, SortBy: field, SortOrder: order}
+func (fs *FlowSet) Sort(order common.SortOrder, orberBy string) {
+	context := MergeContext{Sort: true, SortBy: orberBy, SortOrder: order}
 	fs.Flows = fs.sortFlows(fs.Flows, context)
 }
 

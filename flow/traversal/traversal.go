@@ -46,6 +46,10 @@ const (
 	AGGREGATES_TOKEN   traversal.Token = 1005
 )
 
+const (
+	defaultSortBy = "Last"
+)
+
 type FlowTraversalExtension struct {
 	FlowToken        traversal.Token
 	BandwidthToken   traversal.Token
@@ -67,7 +71,7 @@ type FlowGremlinTraversalStep struct {
 	dedupBy         string
 	sort            bool
 	sortBy          string
-	sortOrder       string
+	sortOrder       common.SortOrder
 }
 
 type FlowTraversalStep struct {
@@ -349,20 +353,13 @@ func (f *FlowTraversalStep) Sort(keys ...interface{}) *FlowTraversalStep {
 		return f
 	}
 
-	sortBy := "Last"
-	order := common.SortAscending
+	order, sortBy, err := traversal.ParseSortParameter(keys...)
+	if err != nil {
+		return &FlowTraversalStep{error: err}
+	}
 
-	switch len(keys) {
-	case 0:
-	case 2:
-		key1, ok1 := keys[0].(string)
-		key2, ok2 := keys[1].(string)
-		if !ok1 || !ok2 {
-			return &FlowTraversalStep{error: fmt.Errorf("Sort parameter has to be a string key")}
-		}
-		order, sortBy = key1, key2
-	default:
-		return &FlowTraversalStep{error: fmt.Errorf("Sort accepts up to 2 parameters only")}
+	if sortBy == "" {
+		sortBy = defaultSortBy
 	}
 
 	f.flowset.Sort(order, sortBy)
@@ -480,7 +477,7 @@ func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
 		metricFilter := filters.NewFilterIncludedIn(fr, "")
 
 		f.flowSearchQuery.Sort = true
-		f.flowSearchQuery.SortBy = "Last"
+		f.flowSearchQuery.SortBy = defaultSortBy
 
 		var err error
 		if flowMetrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {
@@ -597,7 +594,7 @@ func (s *FlowGremlinTraversalStep) makeSearchQuery() (fsq filters.SearchQuery, e
 		DedupBy:         s.dedupBy,
 		Sort:            s.sort,
 		SortBy:          s.sortBy,
-		SortOrder:       s.sortOrder,
+		SortOrder:       string(s.sortOrder),
 	}
 
 	return
@@ -740,12 +737,16 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 
 	if sortStep, ok := next.(*traversal.GremlinTraversalStepSort); ok {
 		s.sort = true
-		s.sortBy = "Last"
+		s.sortBy = defaultSortBy
 		s.sortOrder = common.SortAscending
 		if len(sortStep.Params) > 0 {
-			s.sortOrder = sortStep.Params[0].(string)
-			s.sortBy = sortStep.Params[1].(string)
+			var err error
+			if s.sortOrder, s.sortBy, err = traversal.ParseSortParameter(sortStep.Params...); err != nil {
+				// in case of error no reduce, the error will be triggered by the non reduce version
+				return next
+			}
 		}
+
 		return s
 	}
 
