@@ -133,6 +133,19 @@ var TopologyComponent = {
 
   watch: {
 
+    time: function() {
+      var self = this;
+      if (this.timeId) {
+        clearTimeout(this.timeId);
+        this.timeId = null;
+      }
+      if (this.time !== 0) {
+        this.timeId = setTimeout(function() {
+          self.time -= 1;
+        }, 1000 * 60);
+      }
+    },
+
     topologyTime: function(at) {
       if (this.time === 0) {
         this.syncTopo();
@@ -166,6 +179,7 @@ var TopologyComponent = {
       var time = new Date();
       time.setMinutes(time.getMinutes() + this.time);
       time.setSeconds(0);
+      time.setMilliseconds(0);
       return time.getTime();
     },
 
@@ -1399,6 +1413,9 @@ TopologyLayout.prototype.ProcessAlertMessage = function(msg) {
 };
 
 TopologyLayout.prototype.SyncRequest = function(t) {
+  if (t && t === store.state.time) {
+    return;
+  }
   store.commit('unselected');
   var obj = {};
   if (t) {
