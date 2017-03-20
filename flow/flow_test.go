@@ -42,7 +42,7 @@ func TestFlowSimple(t *testing.T) {
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.flowPacketsToFlow(flowPackets)
 
-	flows := table.getFlows(nil).GetFlows()
+	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
 	}
@@ -57,7 +57,7 @@ func TestFlowSimpleIPv6(t *testing.T) {
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.flowPacketsToFlow(flowPackets)
 
-	flows := table.getFlows(nil).GetFlows()
+	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
 	}
@@ -88,7 +88,7 @@ func TestFlowParentUUIDVLAN(t *testing.T) {
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.flowPacketsToFlow(flowPackets)
 
-	flows := table.getFlows(nil).GetFlows()
+	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
 	if len(flows) != 1 {
 		t.Fatal("An encapsulated VLAN packet must generate 1 flows ", len(flows))
 	}
@@ -109,7 +109,7 @@ func TestFlowParentUUID(t *testing.T) {
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.flowPacketsToFlow(flowPackets)
 
-	flows := table.getFlows(nil).GetFlows()
+	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
 	if len(flows) != 2 {
 		t.Error("An encapsulated encaspsulated packet must generate 2 flows")
 	}
@@ -130,7 +130,7 @@ func TestFlowEncaspulation(t *testing.T) {
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.flowPacketsToFlow(flowPackets)
 
-	flows := table.getFlows(nil).GetFlows()
+	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
 	if len(flows) != 3 {
 		t.Error("An encapsulated encaspsulated packet must generate 3 flows")
 	}
@@ -149,7 +149,7 @@ func TestFlowEncaspulationMplsUdp(t *testing.T) {
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.flowPacketsToFlow(flowPackets)
 
-	flows := table.getFlows(nil).GetFlows()
+	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
 	if len(flows) != 2 {
 		t.Error("An MPLSoUDP packet must generate 2 flows")
 	}
@@ -167,7 +167,7 @@ func TestFlowEncaspulationMplsGRE(t *testing.T) {
 	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
 	table.flowPacketsToFlow(flowPackets)
 
-	flows := table.getFlows(nil).GetFlows()
+	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
 	if len(flows) != 2 {
 		t.Error("An MPLSoGRE packet must generate 2 flows")
 	}
@@ -292,14 +292,12 @@ func compareFlow(expected, tested *Flow) bool {
 	return true
 }
 
-func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*Flow {
+func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType layers.LinkType) {
 	handleRead, err := pcap.OpenOffline(filename)
 	if err != nil {
 		t.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
 	}
 	defer handleRead.Close()
-
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 
 	var pcapPacketNB int
 	for {
@@ -330,6 +328,13 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*F
 			table.flowPacketsToFlow(fp)
 		}
 	}
+}
+
+func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*Flow {
+	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
+
+	fillTableFromPCAP(t, table, filename, linkType)
+
 	return table.getFlows(&filters.SearchQuery{}).Flows
 }
 

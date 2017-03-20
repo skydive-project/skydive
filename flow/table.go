@@ -116,6 +116,19 @@ func (ft *Table) getFlows(query *filters.SearchQuery) *FlowSet {
 			flowset.Flows = append(flowset.Flows, f)
 		}
 	}
+
+	if query.Sort {
+		flowset.Sort(common.SortOrder(query.SortOrder), query.SortBy)
+	}
+
+	if query.Dedup {
+		flowset.Dedup(query.DedupBy)
+	}
+
+	if query.PaginationRange != nil {
+		flowset.Slice(int(query.PaginationRange.From), int(query.PaginationRange.To))
+	}
+
 	return flowset
 }
 
@@ -154,7 +167,7 @@ func (ft *Table) expire(expireBefore int64) {
 		}
 	}
 	/* Advise Clients */
-	if ft.expireHandler.callback != nil {
+	if ft.expireHandler != nil {
 		ft.expireHandler.callback(expiredFlows)
 	}
 
@@ -207,7 +220,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 	}
 
 	/* Advise Clients */
-	if ft.updateHandler.callback != nil && len(updatedFlows) != 0 {
+	if ft.updateHandler != nil && len(updatedFlows) != 0 {
 		ft.updateHandler.callback(updatedFlows)
 
 		logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
@@ -230,18 +243,6 @@ func (ft *Table) onSearchQueryMessage(fsq *filters.SearchQuery) (*FlowSearchRepl
 		return &FlowSearchReply{
 			FlowSet: flowset,
 		}, http.StatusNoContent
-	}
-
-	if fsq.Sort {
-		flowset.Sort(common.SortOrder(fsq.SortOrder), fsq.SortBy)
-	}
-
-	if fsq.Dedup {
-		flowset.Dedup(fsq.DedupBy)
-	}
-
-	if fsq.PaginationRange != nil {
-		flowset.Slice(int(fsq.PaginationRange.From), int(fsq.PaginationRange.To))
 	}
 
 	return &FlowSearchReply{

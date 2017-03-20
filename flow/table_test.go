@@ -26,188 +26,247 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/gopacket/layers"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 )
 
-func NewTableFromFlows(flows []*Flow, updateHandler *FlowHandler, expireHandler *FlowHandler) *Table {
-	nft := NewTable(updateHandler, expireHandler, NewFlowEnhancerPipeline())
-	nft.updateFlows(flows)
-	return nft
-}
+func TestFlowCreateUpdate(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet)
 
-func TestNewTable(t *testing.T) {
-	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	if ft == nil {
-		t.Error("new FlowTable return null")
+	// 200 packets, 50 icmp request with different endpoints, test we have only 50 flow keys
+	if len(flows) != 50 {
+		t.Errorf("Should return 50 flows got : %+v", flows)
+	}
+
+	// test we have only 50 uuids
+	uuids := make(map[string]bool)
+	for _, f := range flows {
+		uuids[f.UUID] = true
+	}
+
+	if len(uuids) != 50 {
+		t.Errorf("Should return 50 flow uuids got : %+v", flows)
 	}
 }
 
-func TestTable_Update(t *testing.T) {
-	ft := NewTestFlowTableSimple(t)
-	/* simulate a collision */
-	f := &Flow{}
-	ft.table["789"] = f
-	ft.table["789"].UUID = "78910"
-	f = &Flow{}
-	f.UUID = "789"
-	ft.updateFlows([]*Flow{f})
-
-	ft2 := NewTestFlowTableComplex(t, nil, nil)
-	if len(ft2.table) != 10 {
-		t.Error("We should got only 10 flows")
+func TestFlowExpire(t *testing.T) {
+	var received int
+	callback := func(f []*Flow) {
+		received += len(f)
 	}
-	ft2.updateFlows([]*Flow{f})
-	if len(ft2.table) != 11 {
-		t.Error("We should got only 11 flows")
-	}
-}
+	handler := NewFlowHandler(callback, time.Second)
 
-type MyTestFlowCounter struct {
-	NbFlow int
-}
+	table := NewTable(nil, handler, NewFlowEnhancerPipeline())
 
-func (fo *MyTestFlowCounter) countFlowsCallback(flows []*Flow) {
-	fo.NbFlow += len(flows)
-}
+	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet)
+	table.expireNow()
 
-func TestTable_expire(t *testing.T) {
-	const MaxInt64 = int64(^uint64(0) >> 1)
-	fc := MyTestFlowCounter{}
-	ft := NewTestFlowTableComplex(t, nil, &FlowHandler{callback: fc.countFlowsCallback})
-	beforeNbFlow := fc.NbFlow
-	ft.expire(0)
-	afterNbFlow := fc.NbFlow
-	if beforeNbFlow != 0 || afterNbFlow != 0 {
-		t.Error("we should not expire a flow")
+	flows := table.getFlows(&filters.SearchQuery{}).Flows
+
+	// check that everything is expired
+	if len(flows) != 0 {
+		t.Errorf("Should return 0 flows got : %+v", flows)
 	}
 
-	fc = MyTestFlowCounter{}
-	beforeNbFlow = fc.NbFlow
-	ft.expire(MaxInt64)
-	afterNbFlow = fc.NbFlow
-	if beforeNbFlow != 0 || afterNbFlow != 10 {
-		t.Error("we should expire all flows")
+	// check that the handler sent all the flows
+	if received != 50 {
+		t.Errorf("Should receive 50 flows got : %d", received)
 	}
 }
 
-func TestTable_updated(t *testing.T) {
-	const MaxInt64 = int64(^uint64(0) >> 1)
-	fc := MyTestFlowCounter{}
-	ft := NewTestFlowTableComplex(t, &FlowHandler{callback: fc.countFlowsCallback}, nil)
-	beforeNbFlow := fc.NbFlow
-	ft.update(0, 0)
-	afterNbFlow := fc.NbFlow
-	if beforeNbFlow != 0 || afterNbFlow != 10 {
-		t.Error("all flows should be updated")
+type fakeEnhancer struct {
+	enhanced bool
+}
+
+func (e *fakeEnhancer) Enhance(f *Flow) {
+	if !e.enhanced {
+		f.ANodeTID = "aaa"
+		f.BNodeTID = "bbb"
+	}
+	e.enhanced = true
+}
+
+func TestEnhancer(t *testing.T) {
+	table := NewTable(nil, nil, NewFlowEnhancerPipeline(&fakeEnhancer{}))
+
+	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet)
+	flows := table.getFlows(&filters.SearchQuery{}).Flows
+
+	// check for one flow enhanced
+	var enhanced int
+	for _, f := range flows {
+		if f.ANodeTID == "aaa" && f.BNodeTID == "bbb" {
+			enhanced++
+		}
 	}
 
-	fc = MyTestFlowCounter{}
-	beforeNbFlow = fc.NbFlow
-	ft.update(MaxInt64, MaxInt64)
-	afterNbFlow = fc.NbFlow
-	if beforeNbFlow != 0 || afterNbFlow != 0 {
-		t.Error("no flows should be updated")
+	if enhanced != 1 {
+		t.Errorf("One flow should be enhanced got : %d", enhanced)
 	}
 }
 
-func TestTable_AsyncExpire(t *testing.T) {
-	t.Skip()
-}
+func TestGetFlowsWithFilters(t *testing.T) {
+	table := NewTable(nil, nil, NewFlowEnhancerPipeline(&fakeEnhancer{}))
+	table.SetNodeTID("probe-1")
 
-func TestTable_AsyncUpdated(t *testing.T) {
-	t.Skip()
-}
+	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet)
 
-func TestTable_LookupFlowByProbePath(t *testing.T) {
-	now := time.Now()
-	ft := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	GenerateTestFlows(t, ft, 1, "probe-tid1", now)
-	GenerateTestFlows(t, ft, 2, "probe-tid2", now)
-
-	f := filters.NewOrFilter(
-		filters.NewTermStringFilter("NodeTID", "probe-tid1"),
-		filters.NewTermStringFilter("ANodeTID", "probe-tid1"),
-		filters.NewTermStringFilter("BNodeTID", "probe-tid1"),
+	filter := filters.NewOrFilter(
+		filters.NewTermStringFilter("NodeTID", "probe-1"),
 	)
 
-	flowset := ft.getFlows(&filters.SearchQuery{Filter: f})
-	if len(flowset.Flows) == 0 {
-		t.Errorf("Should have flows with from probe1 returned")
+	searchQuery := &filters.SearchQuery{
+		Filter: filter,
 	}
 
-	for _, f := range flowset.Flows {
-		if f.NodeTID != "probe-tid1" {
-			t.Errorf("Only flow with probe-tid1 as NodeTID is expected, got %s", f.NodeTID)
+	flows := table.getFlows(searchQuery).Flows
+	if len(flows) != 50 {
+		t.Errorf("Should return 50 flow uuids got : %+v", flows)
+	}
+
+	filter = filters.NewAndFilter(
+		filters.NewTermStringFilter("NodeTID", "probe-1"),
+		filters.NewTermStringFilter("ANodeTID", "aaa"),
+	)
+
+	searchQuery = &filters.SearchQuery{
+		Filter: filter,
+	}
+
+	flows = table.getFlows(searchQuery).Flows
+	if len(flows) != 1 {
+		t.Errorf("Should return 50 flow uuids got : %+v", flows)
+	}
+
+	searchQuery.Filter = filters.NewAndFilter(
+		filters.NewTermStringFilter("NodeTID", "probe-1"),
+		filters.NewNotFilter(filters.NewTermStringFilter("ANodeTID", "aaa")),
+	)
+
+	flows = table.getFlows(searchQuery).Flows
+	if len(flows) != 49 {
+		t.Errorf("Should return 49 flow uuids got : %+v", flows)
+	}
+
+	// sort test
+	searchQuery.Sort = true
+	searchQuery.SortBy = "Network.A"
+	searchQuery.SortOrder = string(common.SortAscending)
+
+	flows = table.getFlows(searchQuery).Flows
+
+	var last string
+	for _, f := range flows {
+		if last != "" && f.Network.A < last {
+			t.Errorf("Not sorted in the right order got : %s < %s", f.Network.A, last)
 		}
+		last = f.Network.A
+	}
+
+	searchQuery.SortOrder = string(common.SortDescending)
+
+	flows = table.getFlows(searchQuery).Flows
+
+	last = ""
+	for _, f := range flows {
+		if last != "" && f.Network.A > last {
+			t.Errorf("Not sorted in the right order got : %+v", flows)
+		}
+		last = f.Network.A
+	}
+
+	// dedup test
+	searchQuery.Dedup = true
+	searchQuery.DedupBy = "NodeTID"
+
+	flows = table.getFlows(searchQuery).Flows
+	if len(flows) != 1 {
+		t.Errorf("Should return 1 flow uuids got : %+v", flows)
 	}
 }
 
-func TestTable_getOrCreateFlow(t *testing.T) {
-	ft := NewTestFlowTableComplex(t, nil, nil)
-	flows := GenerateTestFlows(t, ft, 0, "probe-tid1", time.Now())
-	if len(flows) != 10 {
-		t.Error("missing some flows ", len(flows))
+func TestUpdate(t *testing.T) {
+	var received int
+	callback := func(f []*Flow) {
+		received += len(f)
 	}
-	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
-	_, new := ft.getOrCreateFlow("abcd")
-	if !new {
-		t.Error("Collision in the FlowTable, should be new")
-	}
-	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
-	_, new = ft.getOrCreateFlow("abcd")
-	if new {
-		t.Error("Collision in the FlowTable, should be an update")
-	}
-	forgeTestPacket(t, int64(1234), false, ETH, IPv4, TCP)
-	_, new = ft.getOrCreateFlow("abcde")
-	if !new {
-		t.Error("Collision in the FlowTable, should be a new flow")
-	}
-}
+	handler := NewFlowHandler(callback, time.Second)
 
-func TestTable_NewTableFromFlows(t *testing.T) {
-	ft := NewTestFlowTableComplex(t, nil, nil)
-	var flows []*Flow
-	for _, f := range ft.table {
-		flow := *f
-		flows = append(flows, &flow)
-	}
-	ft2 := NewTableFromFlows(flows, nil, nil)
-	if len(ft.table) != len(ft2.table) {
-		t.Error("NewFlowTable(copy) are not the same size")
-	}
-	flows = flows[:0]
-	for _, f := range ft.table {
-		flows = append(flows, f)
-	}
-	ft3 := NewTableFromFlows(flows, nil, nil)
-	if len(ft.table) != len(ft3.table) {
-		t.Error("NewFlowTable(ref) are not the same size")
-	}
-}
+	table := NewTable(handler, nil, NewFlowEnhancerPipeline())
 
-func TestTable_SymmetricHash(t *testing.T) {
-	now := time.Now()
-	ft1 := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	GenerateTestFlows(t, ft1, 0xca55e77e, "probe-tid", now)
+	flow1, _ := table.getOrCreateFlow("flow1")
 
-	UUIDS := make(map[string]bool)
-	TRIDS := make(map[string]bool)
+	flow1.Metric.ABBytes = 1
+	flow1.Last = table.tableClock
 
-	for _, f := range ft1.getFlows(nil).Flows {
-		UUIDS[f.UUID] = true
-		TRIDS[f.TrackingID] = true
+	// check that LastUpdateMetric is filled after a expire before an update
+	table.expire(table.tableClock + 1)
+
+	if flow1.LastUpdateMetric.ABBytes != 1 {
+		t.Errorf("Flow should have been updated by expire : %+v", flow1)
 	}
 
-	ft2 := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	GenerateTestFlowsSymmetric(t, ft2, 0xca55e77e, "probe-tid", now)
+	flow2, _ := table.getOrCreateFlow("flow2")
 
-	for _, f := range ft2.getFlows(nil).Flows {
-		if _, found := UUIDS[f.UUID]; !found {
-			t.Errorf("Flow UUID should support symmetrically, not found : %s", f.UUID)
-		}
-		if _, found := TRIDS[f.TrackingID]; !found {
-			t.Errorf("Flow TrackingID should support symmetrically, not found : %s", f.TrackingID)
-		}
+	// clock is used to simulate real clock
+	clock := table.tableClock
+
+	flow2.Metric.ABBytes = 2
+	flow2.Last = clock + 1
+
+	updatedAt := clock + 5
+
+	// should update everything between tableClock and clock
+	table.updateAt(time.Unix(0, updatedAt*int64(time.Millisecond)))
+
+	if flow2.LastUpdateMetric.ABBytes != 2 {
+		t.Errorf("Flow should have been updated : %+v", flow2)
+	}
+
+	if received != 1 {
+		t.Errorf("Should have been notified : %+v", flow2)
+	}
+
+	// should update everything between previous updateAt and the new one
+	updatedAt += 5
+	table.updateAt(time.Unix(0, updatedAt*int64(time.Millisecond)))
+
+	if flow2.LastUpdateMetric.ABBytes != 0 {
+		t.Errorf("Flow should have been updated : %+v", flow2)
+	}
+
+	if received != 1 {
+		t.Errorf("Should not have been notified : %+v", flow2)
+	}
+
+	flow2.Metric.ABBytes = 10
+	flow2.Last = updatedAt + 1
+
+	// should update everything between previous updateAt and the new one
+	updatedAt += 5
+	table.updateAt(time.Unix(0, updatedAt*int64(time.Millisecond)))
+
+	if flow2.LastUpdateMetric.ABBytes != 8 {
+		t.Errorf("Flow should have been updated : %+v", flow2)
+	}
+
+	if received != 2 {
+		t.Errorf("Should have been notified : %+v", flow2)
+	}
+
+	flow2.Metric.ABBytes = 15
+	flow2.Last = updatedAt + 1
+
+	// should update everything between previous updateAt and the new one
+	updatedAt += 5
+	table.updateAt(time.Unix(0, updatedAt*int64(time.Millisecond)))
+
+	if flow2.LastUpdateMetric.ABBytes != 5 {
+		t.Errorf("Flow should have been updated : %+v", flow2)
+	}
+
+	if received != 3 {
+		t.Errorf("Should have been notified : %+v", flow2)
 	}
 }
