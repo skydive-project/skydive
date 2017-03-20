@@ -26,7 +26,8 @@ import (
 	"time"
 
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/afpacket"
+	//"github.com/google/gopacket/afpacket"
+	"github.com/skydive-project/skydive/flow/probes/afpacket"
 )
 
 type AFPacketHandle struct {
