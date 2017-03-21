@@ -36,146 +36,23 @@ import (
 	"github.com/skydive-project/skydive/filters"
 )
 
-func TestFlowSimple(t *testing.T) {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	packet := forgeTestPacket(t, 64, false, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
-	table.flowPacketsToFlow(flowPackets)
-
-	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
+func TestFlowSimpleIPv4(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet)
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
 	}
-	if flows[0].LayersPath != "IPv4/TCP/Payload" {
-		t.Error("Flow LayersPath must be IPv4/TCP/Payload")
+	if flows[0].LayersPath != "Ethernet/IPv4/TCP" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/TCP got : %s", flows[0].LayersPath)
 	}
 }
 
 func TestFlowSimpleIPv6(t *testing.T) {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	packet := forgeTestPacket(t, 64, false, IPv6, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
-	table.flowPacketsToFlow(flowPackets)
-
-	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
+	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv6.pcap", layers.LinkTypeEthernet)
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
 	}
-	if flows[0].LayersPath != "IPv6/TCP/Payload" {
-		t.Error("Flow LayersPath must be IPv6/TCP/Payload")
-	}
-}
-
-func sortFlowByRelationship(flows []*Flow) []*Flow {
-	res := make([]*Flow, len(flows))
-
-	var parentUUID string
-	for i := range flows {
-		for _, flow := range flows {
-			if flow.ParentUUID == parentUUID {
-				res[i] = flow
-				parentUUID = flow.UUID
-				break
-			}
-		}
-	}
-	return res
-}
-
-func TestFlowParentUUIDVLAN(t *testing.T) {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	packet := forgeTestPacket(t, 64, false, ETH, VLAN, VLAN, VLAN, IPv4, UDP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
-	table.flowPacketsToFlow(flowPackets)
-
-	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
-	if len(flows) != 1 {
-		t.Fatal("An encapsulated VLAN packet must generate 1 flows ", len(flows))
-	}
-
-	flows = sortFlowByRelationship(flows)
-
-	if flows[0].ParentUUID != "" {
-		t.Errorf("Encapsulated VLAN flow must not have ParentUUID == %s", flows[0].UUID)
-	}
-	if flows[0].LayersPath != "Ethernet/Dot1Q/Dot1Q/Dot1Q/IPv4/UDP/Payload" {
-		t.Errorf("Flows LayersPath must be Ethernet/Dot1Q/Dot1Q/Dot1Q/IPv4/UDP/Payload")
-	}
-}
-
-func TestFlowParentUUID(t *testing.T) {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, UDP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
-	table.flowPacketsToFlow(flowPackets)
-
-	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
-	if len(flows) != 2 {
-		t.Error("An encapsulated encaspsulated packet must generate 2 flows")
-	}
-
-	flows = sortFlowByRelationship(flows)
-
-	if flows[1].ParentUUID == "" || flows[1].ParentUUID != flows[0].UUID {
-		t.Errorf("Encapsulated flow must have ParentUUID == %s", flows[0].UUID)
-	}
-	if flows[0].LayersPath != "Ethernet/IPv4/GRE" || flows[1].LayersPath != "IPv4/UDP/Payload" {
-		t.Errorf("Flows LayersPath must be Ethernet/IPv4/GRE | IPv4/UDP/Payload")
-	}
-}
-
-func TestFlowEncaspulation(t *testing.T) {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, GRE, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
-	table.flowPacketsToFlow(flowPackets)
-
-	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
-	if len(flows) != 3 {
-		t.Error("An encapsulated encaspsulated packet must generate 3 flows")
-	}
-
-	flows = sortFlowByRelationship(flows)
-
-	if flows[0].LayersPath != "Ethernet/IPv4/GRE" || flows[1].LayersPath != "IPv4/GRE" || flows[2].LayersPath != "IPv4/TCP/Payload" {
-		t.Errorf("Flows LayersPath must be Ethernet/IPv4/GRE | IPv4/GRE | IPv4/TCP/Payload")
-	}
-}
-
-func TestFlowEncaspulationMplsUdp(t *testing.T) {
-	layers.RegisterUDPPortLayerType(layers.UDPPort(444), layers.LayerTypeMPLS)
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	packet := forgeTestPacket(t, 64, false, ETH, IPv4, UDP_MPLS, MPLS, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
-	table.flowPacketsToFlow(flowPackets)
-
-	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
-	if len(flows) != 2 {
-		t.Error("An MPLSoUDP packet must generate 2 flows")
-	}
-
-	flows = sortFlowByRelationship(flows)
-
-	if flows[0].LayersPath != "Ethernet/IPv4/UDP/MPLS" || flows[1].LayersPath != "IPv4/TCP/Payload" {
-		t.Errorf("Flows LayersPath must be Ethernet/IPv4/UDP/MPLS | IPv4/TCP/Payload")
-	}
-}
-
-func TestFlowEncaspulationMplsGRE(t *testing.T) {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
-	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, MPLS, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
-	table.flowPacketsToFlow(flowPackets)
-
-	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
-	if len(flows) != 2 {
-		t.Error("An MPLSoGRE packet must generate 2 flows")
-	}
-
-	flows = sortFlowByRelationship(flows)
-
-	if flows[0].LayersPath != "Ethernet/IPv4/GRE/MPLS" || flows[1].LayersPath != "IPv4/TCP/Payload" {
-		t.Errorf("Flows LayersPath must be Ethernet/IPv4/GRE/MPLS | IPv4/TCP/Payload")
+	if flows[0].LayersPath != "Ethernet/IPv6/TCP" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv6/TCP got : %s", flows[0].LayersPath)
 	}
 }
 
@@ -330,10 +207,64 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 	}
 }
 
+func getFlowChain(t *testing.T, table *Table, uuid string) []*Flow {
+	// lookup for the parent
+	searchQuery := &filters.SearchQuery{
+		Filter: filters.NewTermStringFilter("UUID", uuid),
+	}
+
+	flows := table.getFlows(searchQuery).GetFlows()
+	if len(flows) != 1 {
+		t.Errorf("Should return only one flow got : %+v", flows)
+	}
+	fl := flows[0]
+
+	flowChain := []*Flow{}
+Chain:
+	for {
+		flowChain = append(flowChain, fl)
+
+		searchQuery.Filter = filters.NewTermStringFilter("ParentUUID", fl.UUID)
+		children := table.getFlows(searchQuery).GetFlows()
+		switch len(children) {
+		case 0:
+			break Chain
+		case 1:
+			fl = children[0]
+		default:
+			t.Errorf("Should return only one flow got : %+v", children)
+		}
+	}
+
+	return flowChain
+}
+
+func validateAllParentChains(t *testing.T, table *Table) {
+	searchQuery := &filters.SearchQuery{
+		Filter: filters.NewTermStringFilter("ParentUUID", ""),
+	}
+
+	flowChained := []*Flow{}
+
+	flows := table.getFlows(searchQuery).GetFlows()
+	for _, f := range flows {
+		fls := getFlowChain(t, table, f.UUID)
+		flowChained = append(flowChained, fls...)
+	}
+
+	// we should have touch all the flow
+	flows = table.getFlows(&filters.SearchQuery{}).GetFlows()
+	if len(flows) != len(flowChained) {
+		t.Errorf("Flow parent chain is incorrect : %+v", flows)
+	}
+}
+
 func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*Flow {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 
 	fillTableFromPCAP(t, table, filename, linkType)
+
+	validateAllParentChains(t, table)
 
 	return table.getFlows(&filters.SearchQuery{}).Flows
 }
@@ -620,7 +551,7 @@ func TestPCAPL3TrackingID(t *testing.T) {
 // Ethernet/VLAN/VLAN/IPv4/ICMPv4
 // Ethernet/VLAN/IPv4/ICMPv4
 //
-func TestPCAPVlansQinQ(t *testing.T) {
+func TestVlansQinQ(t *testing.T) {
 	expected := []*Flow{
 		{
 			LayersPath:  "Ethernet/Dot1Q/IPv4/ICMPv4/Payload",
@@ -709,4 +640,110 @@ func TestPCAPVlansQinQ(t *testing.T) {
 	}
 
 	validatePCAP(t, "pcaptraces/icmpv4-4vlanQinQ-id-8-10-20-30.pcap", layers.LinkTypeEthernet, expected)
+}
+
+func TestGREEthernet(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/IPv4/GRE",
+			Application: "GRE",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "00:0f:fe:dd:22:42",
+				B:        "00:1b:d5:ff:54:d9",
+				ID:       0,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "72.205.54.70",
+				B:        "86.106.164.150",
+				ID:       0,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 5,
+				ABBytes:   810,
+				BAPackets: 5,
+				BABytes:   810,
+			},
+		},
+		{
+			LayersPath:  "IPv4/GRE",
+			Application: "GRE",
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.10.11.2",
+				B:        "10.10.13.2",
+				ID:       0,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 5,
+				ABBytes:   620,
+				BAPackets: 5,
+				BABytes:   620,
+			},
+		},
+		{
+			LayersPath:  "IPv4/ICMPv4/Payload",
+			Application: "ICMPv4",
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.10.25.1",
+				B:        "192.168.1.2",
+				ID:       0,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 5,
+				ABBytes:   500,
+				BAPackets: 5,
+				BABytes:   500,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet, expected)
+}
+
+func TestGREMPLS(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/IPv4/GRE/MPLS",
+			Application: "MPLS",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "1e:1a:51:f4:45:46",
+				B:        "ce:6e:35:76:f0:ab",
+				ID:       0,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.0.1",
+				B:        "172.16.0.2",
+				ID:       0,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   252,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+		{
+			LayersPath:  "IPv4/ICMPv4/Payload",
+			Application: "ICMPv4",
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.0.1",
+				B:        "192.168.0.2",
+				ID:       0,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   168,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/gre-mpls-icmpv4.pcap", layers.LinkTypeEthernet, expected)
 }
