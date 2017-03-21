@@ -52,6 +52,7 @@ type SFlowAgent struct {
 	Port      int
 	FlowTable *flow.Table
 	Conn      *net.UDPConn
+	BPFFilter string
 }
 
 type SFlowAgentAllocator struct {
@@ -66,6 +67,14 @@ func (sfa *SFlowAgent) GetTarget() string {
 }
 
 func (sfa *SFlowAgent) feedFlowTable(packetsChan chan *flow.FlowPackets) {
+	var bpf *flow.BPF
+
+	if b, err := flow.NewBPF(layers.LinkTypeEthernet, flow.CaptureLength, sfa.BPFFilter); err == nil {
+		bpf = b
+	} else {
+		logging.GetLogger().Error(err.Error())
+	}
+
 	var buf [maxDgramSize]byte
 	for {
 		_, _, err := sfa.Conn.ReadFromUDP(buf[:])
@@ -86,7 +95,7 @@ func (sfa *SFlowAgent) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 			for _, sample := range sflowPacket.FlowSamples {
 				// iterate over a set of FlowPackets as a sample contains multiple
 				// records each generating FlowPackets.
-				for _, flowPackets := range flow.FlowPacketsFromSFlowSample(&sample, -1) {
+				for _, flowPackets := range flow.FlowPacketsFromSFlowSample(&sample, -1, bpf) {
 					packetsChan <- flowPackets
 				}
 			}
@@ -124,22 +133,14 @@ func (sfa *SFlowAgent) Stop() {
 	}
 }
 
-func NewSFlowAgent(u string, a string, p int, ft *flow.Table) *SFlowAgent {
+func NewSFlowAgent(u string, a string, p int, ft *flow.Table, bpfFilter string) *SFlowAgent {
 	return &SFlowAgent{
 		UUID:      u,
 		Addr:      a,
 		Port:      p,
 		FlowTable: ft,
+		BPFFilter: bpfFilter,
 	}
-}
-
-func NewSFlowAgentFromConfig(u string, ft *flow.Table) (*SFlowAgent, error) {
-	sa, err := common.ServiceAddressFromString("sflow.listen")
-	if err != nil {
-		return nil, err
-	}
-
-	return NewSFlowAgent(u, sa.Addr, sa.Port, ft), nil
 }
 
 func (a *SFlowAgentAllocator) Release(uuid string) {
@@ -165,7 +166,7 @@ func (a *SFlowAgentAllocator) ReleaseAll() {
 	a.portAllocator.ReleaseAll()
 }
 
-func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table) (agent *SFlowAgent, _ error) {
+func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string) (agent *SFlowAgent, _ error) {
 	address := config.GetConfig().GetString("sflow.bind_address")
 	if address == "" {
 		address = "127.0.0.1"
@@ -191,7 +192,7 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table) (agent *SFlowAg
 		return nil, errors.New("failed to allocate sflow port: " + err.Error())
 	}
 
-	s := NewSFlowAgent(uuid, address, port, ft)
+	s := NewSFlowAgent(uuid, address, port, ft, bpfFilter)
 	a.portAllocator.Set(port, s)
 	s.Start()
 	return s, nil

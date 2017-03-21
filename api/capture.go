@@ -36,7 +36,7 @@ import (
 type Capture struct {
 	UUID         string
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
-	BPFFilter    string `json:"BPFFilter,omitempty"`
+	BPFFilter    string `json:"BPFFilter,omitempty" valid:"isBPFFilter"`
 	Name         string `json:"Name,omitempty"`
 	Description  string `json:"Description,omitempty"`
 	Type         string `json:"Type,omitempty"`

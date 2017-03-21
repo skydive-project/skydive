@@ -43,6 +43,10 @@ import (
 
 var ErrFlowProtocol = errors.New("FlowProtocol invalid")
 
+const (
+	CaptureLength uint32 = 256
+)
+
 type GetAttr interface {
 	GetAttr(name string) interface{}
 }
@@ -422,7 +426,7 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 
 // FlowPacketsFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
-func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64) *FlowPackets {
+func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bpf *BPF) *FlowPackets {
 	flowPackets := &FlowPackets{Timestamp: t}
 
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
@@ -432,6 +436,10 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64
 	}
 
 	packetData := (*packet).Data()
+	if bpf != nil && !bpf.Matches(packetData) {
+		return flowPackets
+	}
+
 	packetLayers := (*packet).Layers()
 
 	var topLayer = packetLayers[0]
@@ -493,7 +501,7 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64
 
 // FlowPacketsFromSFlowSample returns an array of FlowPackets as a sample
 // contains mutlple records which generate a FlowPackets each.
-func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64) []*FlowPackets {
+func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BPF) []*FlowPackets {
 	var flowPacketsSet []*FlowPackets
 
 	for _, rec := range sample.Records {
@@ -507,7 +515,7 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64) []*Flow
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
 		// each record can generate multiple FlowPacket in case of encapsulation
-		if flowPackets := FlowPacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), t); len(flowPackets.Packets) > 0 {
+		if flowPackets := FlowPacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), t, bpf); len(flowPackets.Packets) > 0 {
 			flowPacketsSet = append(flowPacketsSet, flowPackets)
 		}
 	}

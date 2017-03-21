@@ -42,6 +42,7 @@ type PcapSocketProbe struct {
 	flowTable *flow.Table
 	listener  *net.TCPListener
 	port      int
+	bpfFilter string
 }
 
 type PcapSocketProbeHandler struct {
@@ -68,7 +69,7 @@ func (p *PcapSocketProbe) run() {
 			break
 		}
 
-		pcapWriter, err := flow.NewPcapWriter(conn, packetsChan, true)
+		pcapWriter, err := flow.NewPcapWriter(conn, packetsChan, true, p.bpfFilter)
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to create pcap writer: %s", err.Error())
 			return
@@ -79,7 +80,7 @@ func (p *PcapSocketProbe) run() {
 	}
 }
 
-func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table) error {
+func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table, bpfFilter string) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -109,6 +110,7 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table) er
 		flowTable: ft,
 		listener:  listener,
 		port:      port,
+		bpfFilter: bpfFilter,
 	}
 
 	p.probesLock.Lock()
@@ -128,7 +130,7 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table) er
 }
 
 func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
-	return p.registerProbe(n, ft)
+	return p.registerProbe(n, ft, capture.BPFFilter)
 }
 
 func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node) error {

@@ -39,7 +39,7 @@ import (
 func TestFlowSimple(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
 	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
@@ -54,7 +54,7 @@ func TestFlowSimple(t *testing.T) {
 func TestFlowSimpleIPv6(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, IPv6, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
 	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
@@ -85,7 +85,7 @@ func sortFlowByRelationship(flows []*Flow) []*Flow {
 func TestFlowParentUUIDVLAN(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, VLAN, VLAN, VLAN, IPv4, UDP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
 	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
@@ -106,7 +106,7 @@ func TestFlowParentUUIDVLAN(t *testing.T) {
 func TestFlowParentUUID(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, UDP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
 	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
@@ -127,7 +127,7 @@ func TestFlowParentUUID(t *testing.T) {
 func TestFlowEncaspulation(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, IPv4, GRE, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
 	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
@@ -146,7 +146,7 @@ func TestFlowEncaspulationMplsUdp(t *testing.T) {
 	layers.RegisterUDPPortLayerType(layers.UDPPort(444), layers.LayerTypeMPLS)
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, UDP_MPLS, MPLS, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
 	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
@@ -164,7 +164,7 @@ func TestFlowEncaspulationMplsUdp(t *testing.T) {
 func TestFlowEncaspulationMplsGRE(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 	packet := forgeTestPacket(t, 64, false, ETH, IPv4, GRE, MPLS, IPv4, TCP)
-	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1)
+	flowPackets := FlowPacketsFromGoPacket(packet, 0, -1, nil)
 	table.flowPacketsToFlow(flowPackets)
 
 	flows := table.getFlows(&filters.SearchQuery{}).GetFlows()
@@ -316,7 +316,7 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
 			}
 
-			fp := FlowPacketsFromGoPacket(&p, 0, -1)
+			fp := FlowPacketsFromGoPacket(&p, 0, -1, nil)
 			if fp == nil {
 				t.Fatal("Failed to get FlowPackets: ", err)
 			}

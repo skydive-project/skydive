@@ -220,17 +220,17 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 	return nil
 }
 
-func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, ft *flow.Table) error {
+func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, ft *flow.Table, bpfFilter string) error {
 	probe := OvsSFlowProbe{
 		ID:         probeID(bridgeUUID),
 		Interface:  "lo",
-		HeaderSize: 256,
+		HeaderSize: flow.CaptureLength,
 		Sampling:   1,
 		Polling:    0,
 		NodeTID:    tid,
 	}
 
-	agent, err := o.allocator.Alloc(bridgeUUID, ft)
+	agent, err := o.allocator.Alloc(bridgeUUID, ft, bpfFilter)
 	if err != nil && err != sflow.AgentAlreadyAllocated {
 		return err
 	}
@@ -263,7 +263,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 
 	if isOvsBridge(n) {
 		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			err := o.RegisterProbeOnBridge(uuid, tid, ft)
+			err := o.RegisterProbeOnBridge(uuid, tid, ft, capture.BPFFilter)
 			if err != nil {
 				return err
 			}

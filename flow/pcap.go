@@ -41,6 +41,7 @@ type PcapWriter struct {
 	r           io.ReadCloser
 	handleRead  *pcapgo.Reader
 	packetsChan chan *FlowPackets
+	bpfFilter   string
 }
 
 func (p *PcapWriter) Start() {
@@ -68,6 +69,13 @@ func (p *PcapWriter) FeedFlowTable() {
 	)
 
 	defer p.Done()
+
+	var bpf *BPF
+	if b, err := NewBPF(p.handleRead.LinkType(), CaptureLength, p.bpfFilter); err == nil {
+		bpf = b
+	} else {
+		logging.GetLogger().Error(err.Error())
+	}
 
 	atomic.StoreInt64(&p.state, common.RunningState)
 	for atomic.LoadInt64(&p.state) == common.RunningState {
@@ -97,7 +105,7 @@ func (p *PcapWriter) FeedFlowTable() {
 			timestamp = common.UnixMillis(ci.Timestamp)
 		}
 
-		flowPackets := FlowPacketsFromGoPacket(&packet, 0, timestamp)
+		flowPackets := FlowPacketsFromGoPacket(&packet, 0, timestamp, bpf)
 		if flowPackets == nil {
 			logging.GetLogger().Warningf("Failed to parse packet")
 		} else if len(flowPackets.Packets) > 0 {
@@ -109,7 +117,7 @@ func (p *PcapWriter) FeedFlowTable() {
 	}
 }
 
-func NewPcapWriter(r io.ReadCloser, packetsChan chan *FlowPackets, replay bool) (*PcapWriter, error) {
+func NewPcapWriter(r io.ReadCloser, packetsChan chan *FlowPackets, replay bool, bpfFilter string) (*PcapWriter, error) {
 	handle, err := pcapgo.NewReader(r)
 	if err != nil {
 		return nil, err
@@ -121,5 +129,6 @@ func NewPcapWriter(r io.ReadCloser, packetsChan chan *FlowPackets, replay bool) 
 		handleRead:  handle,
 		state:       common.StoppedState,
 		packetsChan: packetsChan,
+		bpfFilter:   bpfFilter,
 	}, nil
 }

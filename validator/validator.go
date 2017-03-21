@@ -28,8 +28,10 @@ import (
 	"net"
 	"strings"
 
+	"github.com/google/gopacket/layers"
 	valid "gopkg.in/validator.v2"
 
+	"github.com/skydive-project/skydive/flow"
 	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -48,6 +50,9 @@ var (
 	}
 	GremlinNotValid = func(err error) error {
 		return valid.TextErr{Err: fmt.Errorf("Not a valid Gremlin expression: %s", err.Error())}
+	}
+	BPFFilterNotValid = func(err error) error {
+		return valid.TextErr{Err: fmt.Errorf("Not a valid BPF expression: %s", err.Error())}
 	}
 )
 
@@ -80,6 +85,19 @@ func isGremlinExpr(v interface{}, param string) error {
 	return nil
 }
 
+func isBPFFilter(v interface{}, param string) error {
+	bpfFilter, ok := v.(string)
+	if !ok {
+		return BPFFilterNotValid(errors.New("not a string"))
+	}
+
+	if _, err := flow.BPFFilterToRaw(layers.LinkTypeEthernet, flow.CaptureLength, bpfFilter); err != nil {
+		return BPFFilterNotValid(err)
+	}
+
+	return nil
+}
+
 func Validate(v interface{}) error {
 	if err := skydiveValidator.Validate(v); err != nil {
 		return err
@@ -95,5 +113,6 @@ func Validate(v interface{}) error {
 func init() {
 	skydiveValidator.SetValidationFunc("isIP", isIP)
 	skydiveValidator.SetValidationFunc("isGremlinExpr", isGremlinExpr)
+	skydiveValidator.SetValidationFunc("isBPFFilter", isBPFFilter)
 	skydiveValidator.SetTag("valid")
 }

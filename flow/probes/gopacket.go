@@ -63,10 +63,6 @@ type GoPacketProbesHandler struct {
 	probesLock sync.RWMutex
 }
 
-const (
-	snaplen int32 = 256
-)
-
 func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -95,7 +91,7 @@ func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 		packet, err := p.packetSource.NextPacket()
 		switch err {
 		case nil:
-			if flowPackets := flow.FlowPacketsFromGoPacket(&packet, 0, -1); len(flowPackets.Packets) > 0 {
+			if flowPackets := flow.FlowPacketsFromGoPacket(&packet, 0, -1, nil); len(flowPackets.Packets) > 0 {
 				packetsChan <- flowPackets
 			}
 		case io.EOF:
@@ -137,7 +133,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 
 	switch capture.Type {
 	case "pcap":
-		handle, err := pcap.OpenLive(ifName, snaplen, true, time.Second)
+		handle, err := pcap.OpenLive(ifName, int32(flow.CaptureLength), true, time.Second)
 		if err != nil {
 			logging.GetLogger().Errorf("Error while opening device %s: %s", ifName, err.Error())
 			return
@@ -157,7 +153,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	default:
 		var handle *AFPacketHandle
 		fnc := func() error {
-			handle, err = NewAFPacketHandle(ifName, snaplen)
+			handle, err = NewAFPacketHandle(ifName, int32(flow.CaptureLength))
 			if err != nil {
 				return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
 			}
@@ -179,27 +175,23 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	nscontext.Quit()
 
 	// manage BPF outside namespace because of syscall
-	switch capture.Type {
-	case "pcap":
-		h := p.handle.(*pcap.Handle)
-		err = h.SetBPFFilter(capture.BPFFilter)
-	default:
-		// use pcap bpf compiler to get raw bpf instruction
-		h := p.handle.(*AFPacketHandle)
-		var pcapBPF []pcap.BPFInstruction
-		if pcapBPF, err = pcap.CompileBPFFilter(linkType, int(snaplen), capture.BPFFilter); err == nil {
-			rawBPF := make([]bpf.RawInstruction, len(pcapBPF))
-			for i, ri := range pcapBPF {
-				rawBPF[i] = bpf.RawInstruction{Op: ri.Code, Jt: ri.Jt, Jf: ri.Jf, K: ri.K}
+	if capture.BPFFilter != "" {
+		switch capture.Type {
+		case "pcap":
+			h := p.handle.(*pcap.Handle)
+			err = h.SetBPFFilter(capture.BPFFilter)
+		default:
+			h := p.handle.(*AFPacketHandle)
+			var rawBPF []bpf.RawInstruction
+			if rawBPF, err = flow.BPFFilterToRaw(linkType, flow.CaptureLength, capture.BPFFilter); err == nil {
+				err = h.tpacket.SetBPF(rawBPF)
 			}
-
-			err = h.tpacket.SetBPF(rawBPF)
 		}
-	}
 
-	if err != nil {
-		logging.GetLogger().Errorf("BPF Filter failed: %s", err)
-		return
+		if err != nil {
+			logging.GetLogger().Errorf("BPF Filter failed: %s", err)
+			return
+		}
 	}
 
 	packetsChan := p.flowTable.Start()
