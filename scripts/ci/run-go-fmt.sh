@@ -1,10 +1,9 @@
 #!/bin/bash
 
 set -v
-dir="$(dirname "$0")"
 
-. "${dir}/install-requirements.sh"
-. "${dir}/install-go.sh"
+dir="$(dirname "$0")"
+. "${dir}/install-go-deps.sh"
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
