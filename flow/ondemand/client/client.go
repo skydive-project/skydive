@@ -23,6 +23,8 @@
 package client
 
 import (
+	"encoding/json"
+	"net/http"
 	"sync"
 
 	"github.com/skydive-project/skydive/api"
@@ -37,53 +39,89 @@ import (
 
 type OnDemandProbeClient struct {
 	sync.RWMutex
+	shttp.DefaultWSServerEventHandler
 	graph.DefaultGraphListener
-	graph          *graph.Graph
-	captureHandler *api.CaptureAPIHandler
-	wsServer       *shttp.WSServer
-	captures       map[string]*api.Capture
-	watcher        api.StoppableWatcher
-	elector        *etcd.EtcdMasterElector
+	graph           *graph.Graph
+	captureHandler  *api.CaptureAPIHandler
+	wsServer        *shttp.WSServer
+	captures        map[string]*api.Capture
+	watcher         api.StoppableWatcher
+	elector         *etcd.EtcdMasterElector
+	registeredNodes map[graph.Identifier]bool
+}
+
+func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
+	if m.Namespace != ondemand.Namespace {
+		return
+	}
+
+	var query ondemand.CaptureQuery
+	if err := json.Unmarshal([]byte(*m.Obj), &query); err != nil {
+		logging.GetLogger().Errorf("Unable to decode capture %v", m)
+		return
+	}
+
+	switch m.Type {
+	case "CaptureStartReply":
+		// not registered thus remove from registered cache
+		if m.Status != http.StatusOK {
+			logging.GetLogger().Debugf("Capture start request failed %v", m)
+			o.Lock()
+			delete(o.registeredNodes, graph.Identifier(query.NodeID))
+			o.Unlock()
+		} else {
+			logging.GetLogger().Debugf("Capture start request succeeded %v", m)
+		}
+	case "CaptureStopReply":
+		if m.Status == http.StatusOK {
+			logging.GetLogger().Debugf("Capture stop request succeeded %v", m)
+			o.Lock()
+			delete(o.registeredNodes, graph.Identifier(query.NodeID))
+			o.Unlock()
+		} else {
+			logging.GetLogger().Debugf("Capture stop request failed %v", m)
+		}
+	}
 }
 
 func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.Capture) {
+	toRegister := func(node *graph.Node, capture *api.Capture) (nodeID graph.Identifier, host string, register bool) {
+		o.graph.RLock()
+		defer o.graph.RUnlock()
+
+		// check not already registered
+		o.RLock()
+		_, ok := o.registeredNodes[node.ID]
+		o.RUnlock()
+
+		if ok {
+			return
+		}
+
+		if _, err := node.GetFieldString("Capture/ID"); err == nil {
+			return
+		}
+		tp, _ := node.GetFieldString("Type")
+		if !common.IsCaptureAllowed(tp) {
+			return
+		}
+
+		return node.ID, node.Host(), true
+	}
+
 	for _, i := range nodes {
 		switch i.(type) {
 		case *graph.Node:
-			o.graph.RLock()
 			node := i.(*graph.Node)
-			if _, err := node.GetFieldString("Capture/ID"); err == nil {
-				o.graph.RUnlock()
-				return
+			if nodeID, host, ok := toRegister(node, capture); ok {
+				o.registerProbe(nodeID, host, capture)
 			}
-			tp, _ := node.GetFieldString("Type")
-			if !common.IsCaptureAllowed(tp) {
-				o.graph.RUnlock()
-				return
-			}
-
-			nodeID := node.ID
-			host := node.Host()
-			o.graph.RUnlock()
-			o.registerProbe(nodeID, host, capture)
 		case []*graph.Node:
 			// case of shortestpath that return a list of nodes
 			for _, node := range i.([]*graph.Node) {
-				o.graph.RLock()
-				if _, err := node.GetFieldString("Capture/ID"); err == nil {
-					o.graph.RUnlock()
-					continue
+				if nodeID, host, ok := toRegister(node, capture); ok {
+					o.registerProbe(nodeID, host, capture)
 				}
-				tp, _ := node.GetFieldString("Type")
-				if !common.IsCaptureAllowed(tp) {
-					o.graph.RUnlock()
-					continue
-				}
-
-				nodeID := node.ID
-				host := node.Host()
-				o.graph.RUnlock()
-				o.registerProbe(nodeID, host, capture)
 			}
 		}
 	}
@@ -101,11 +139,27 @@ func (o *OnDemandProbeClient) registerProbe(id graph.Identifier, host string, ca
 		logging.GetLogger().Errorf("Unable to send message to agent: %s", host)
 		return false
 	}
+	o.Lock()
+	o.registeredNodes[id] = true
+	o.Unlock()
+
 	return true
 }
 
 func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node) bool {
 	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStop", ondemand.CaptureQuery{NodeID: string(node.ID)})
+
+	o.RLock()
+	_, ok := o.registeredNodes[node.ID]
+	o.RUnlock()
+
+	if !ok {
+		return false
+	}
+
+	if _, err := node.GetFieldString("Capture/ID"); err != nil {
+		return false
+	}
 
 	if !o.wsServer.SendWSMessageTo(msg, node.Host()) {
 		logging.GetLogger().Errorf("Unable to send message to agent: %s", node.Host())
@@ -154,13 +208,12 @@ func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
 		return
 	}
 
-	o.Lock()
-	defer o.Unlock()
-
 	o.graph.RLock()
 	defer o.graph.RUnlock()
 
+	o.Lock()
 	o.captures[capture.UUID] = capture
+	o.Unlock()
 
 	nodes := o.applyGremlinExpr(capture.GremlinQuery)
 	if len(nodes) > 0 {
@@ -173,13 +226,12 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 		return
 	}
 
-	o.Lock()
-	defer o.Unlock()
-
 	o.graph.Lock()
 	defer o.graph.Unlock()
 
+	o.Lock()
 	delete(o.captures, capture.UUID)
+	o.Unlock()
 
 	res, err := topology.ExecuteGremlinQuery(o.graph, capture.GremlinQuery)
 	if err != nil {
@@ -190,14 +242,10 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 	for _, value := range res.Values() {
 		switch e := value.(type) {
 		case *graph.Node:
-			if !o.unregisterProbe(e) {
-				logging.GetLogger().Errorf("Failed to stop capture on %s", e.ID)
-			}
+			o.unregisterProbe(e)
 		case []*graph.Node:
 			for _, node := range e {
-				if !o.unregisterProbe(node) {
-					logging.GetLogger().Errorf("Failed to stop capture on %s", node.ID)
-				}
+				o.unregisterProbe(node)
 			}
 		default:
 			return
@@ -239,11 +287,15 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.
 
 	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "ondemand-client", etcdClient)
 
-	return &OnDemandProbeClient{
-		graph:          g,
-		captureHandler: ch,
-		wsServer:       w,
-		captures:       captures,
-		elector:        elector,
+	o := &OnDemandProbeClient{
+		graph:           g,
+		captureHandler:  ch,
+		wsServer:        w,
+		captures:        captures,
+		elector:         elector,
+		registeredNodes: make(map[graph.Identifier]bool),
 	}
+	w.AddEventHandler(o)
+
+	return o
 }

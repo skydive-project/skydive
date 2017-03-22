@@ -205,6 +205,8 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 				t.Commit()
 			}
 		}
+
+		status = http.StatusOK
 	case "CaptureStop":
 		n := o.Graph.GetNode(graph.Identifier(query.NodeID))
 		if n == nil {
@@ -220,6 +222,8 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 			delete(metadata, "Capture/PacketsDropped")
 			delete(metadata, "Capture/PacketsIfDropped")
 			o.Graph.SetMetadata(n, metadata)
+
+			status = http.StatusOK
 		}
 	default:
 		status = http.StatusBadRequest
@@ -228,7 +232,7 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 	// be sure to unlock before sending message
 	o.Graph.Unlock()
 
-	reply := msg.Reply(&ondemand.CaptureQuery{}, msg.Type+"Reply", status)
+	reply := msg.Reply(&ondemand.CaptureQuery{NodeID: query.NodeID}, msg.Type+"Reply", status)
 	c.SendWSMessage(reply)
 }
 
