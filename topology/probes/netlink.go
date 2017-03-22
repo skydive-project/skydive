@@ -284,9 +284,6 @@ func (u *NetLinkProbe) updateMetadataStatistics(statistics *netlink.LinkStatisti
 }
 
 func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
-	u.Lock()
-	defer u.Unlock()
-
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -369,7 +366,9 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 		return
 	}
 
+	u.Lock()
 	u.links[link.Attrs().Name] = intf
+	u.Unlock()
 
 	// merge metadata
 	tr := u.Graph.StartMetadataTransaction(intf)
@@ -392,7 +391,6 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 	index := link.Attrs().Index
 
 	u.Graph.Lock()
-	defer u.Graph.Unlock()
 
 	logging.GetLogger().Debugf("Netlink DEL event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.String())
 
@@ -420,6 +418,7 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 			u.Graph.DelNode(intf)
 		}
 	}
+	u.Graph.Unlock()
 
 	u.Lock()
 	delete(u.indexToChildrenQueue, int64(index))
@@ -640,8 +639,16 @@ func (u *NetLinkProbe) start(nsPath string) {
 			case <-ticker.C:
 				now := time.Now().UTC()
 
+				// do a copy of the original in order to avoid inter locks
+				// between graph lock and netlink lock while iterating
 				u.RLock()
-				for name, node := range u.links {
+				links := make(map[string]*graph.Node)
+				for k, v := range u.links {
+					links[k] = v
+				}
+				u.RUnlock()
+
+				for name, node := range links {
 					if link, err := h.LinkByName(name); err == nil {
 						if stats := link.Attrs().Statistics; stats != nil {
 							u.Graph.Lock()
@@ -683,7 +690,6 @@ func (u *NetLinkProbe) start(nsPath string) {
 						}
 					}
 				}
-				u.RUnlock()
 				last = now
 			case <-done:
 				return
