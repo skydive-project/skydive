@@ -90,7 +90,7 @@ func (p *TopologyForwarderPeer) getHostID() string {
 	}
 }
 
-// OnConnected send the whole local graph the remote peer once connected
+// OnConnected send the whole local graph the remote peer(analyzer) once connected
 func (p *TopologyForwarderPeer) OnConnected(c *shttp.WSAsyncClient) {
 	logging.GetLogger().Infof("Send the whole graph to: %s", p.host)
 
@@ -98,15 +98,7 @@ func (p *TopologyForwarderPeer) OnConnected(c *shttp.WSAsyncClient) {
 	defer p.Graph.RUnlock()
 
 	// re-added all the nodes and edges
-	nodes := p.Graph.GetNodes(graph.Metadata{})
-	for _, n := range nodes {
-		p.wsclient.SendWSMessage(shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n))
-	}
-
-	edges := p.Graph.GetEdges(graph.Metadata{})
-	for _, e := range edges {
-		p.wsclient.SendWSMessage(shttp.NewWSMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
-	}
+	p.wsclient.SendWSMessage(shttp.NewWSMessage(graph.Namespace, graph.SyncReplyMsgType, p.Graph))
 }
 
 func (p *TopologyForwarderPeer) connect(wg *sync.WaitGroup) {

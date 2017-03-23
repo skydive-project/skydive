@@ -116,6 +116,18 @@ func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	defer t.cached.SetMode(graph.DEFAULT_MODE)
 
 	switch msgType {
+	case graph.SyncReplyMsgType:
+		r := obj.(*graph.SyncReplyMsg)
+		for _, n := range r.Nodes {
+			if t.Graph.GetNode(n.ID) == nil {
+				t.Graph.AddNode(n)
+			}
+		}
+		for _, e := range r.Edges {
+			if t.Graph.GetEdge(e.ID) == nil {
+				t.Graph.AddEdge(e)
+			}
+		}
 	case graph.NodeUpdatedMsgType:
 		n := obj.(*graph.Node)
 		if node := t.Graph.GetNode(n.ID); node != nil {

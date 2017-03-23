@@ -25,6 +25,7 @@ package graph
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
@@ -42,6 +43,16 @@ const (
 	EdgeAddedMsgType        = "EdgeAdded"
 )
 
+var (
+	SyncRequestMalFormed  = errors.New("SyncRequestMsg malformed")
+	SyncReplyMsgMalFormed = errors.New("SyncReplyMsg malformed")
+)
+
+type SyncReplyMsg struct {
+	Nodes []*Node
+	Edges []*Edge
+}
+
 func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	var obj interface{}
 	if err := common.JsonDecode(bytes.NewReader([]byte(*msg.Obj)), &obj); err != nil {
@@ -50,7 +61,11 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 
 	switch msg.Type {
 	case SyncRequestMsgType:
-		m := obj.(map[string]interface{})
+		m, ok := obj.(map[string]interface{})
+		if !ok {
+			return "", msg, SyncRequestMalFormed
+		}
+
 		var context GraphContext
 		switch v := m["Time"].(type) {
 		case json.Number:
@@ -61,7 +76,44 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 			context.TimeSlice = common.NewTimeSlice(i, i)
 		}
 		return msg.Type, context, nil
+	case SyncReplyMsgType:
+		result := &SyncReplyMsg{}
 
+		els, ok := obj.(map[string]interface{})
+		if !ok {
+			return "", msg, SyncReplyMsgMalFormed
+		}
+		if _, ok = els["Nodes"]; !ok {
+			return "", msg, SyncReplyMsgMalFormed
+		}
+		nodes, ok := els["Nodes"].([]interface{})
+		if !ok {
+			return "", msg, SyncReplyMsgMalFormed
+		}
+
+		for _, n := range nodes {
+			var node Node
+			if err := node.Decode(n); err != nil {
+				return "", msg, err
+			}
+			result.Nodes = append(result.Nodes, &node)
+		}
+
+		if _, ok = els["Edges"]; ok {
+			edges, ok := els["Edges"].([]interface{})
+			if !ok {
+				return "", msg, SyncReplyMsgMalFormed
+			}
+			for _, e := range edges {
+				var edge Edge
+				if err := edge.Decode(e); err != nil {
+					return "", msg, err
+				}
+				result.Edges = append(result.Edges, &edge)
+			}
+		}
+
+		return msg.Type, result, nil
 	case HostGraphDeletedMsgType:
 		return msg.Type, obj, nil
 	case NodeUpdatedMsgType, NodeDeletedMsgType, NodeAddedMsgType:

@@ -50,15 +50,7 @@ func (t *TopologyForwarder) triggerResync() {
 	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.Host))
 
 	// re-add all the nodes and edges
-	nodes := t.Graph.GetNodes(graph.Metadata{})
-	for _, n := range nodes {
-		t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n))
-	}
-
-	edges := t.Graph.GetEdges(graph.Metadata{})
-	for _, e := range edges {
-		t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
-	}
+	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.SyncReplyMsgType, t.Graph))
 }
 
 func (t *TopologyForwarder) OnConnected(c *shttp.WSAsyncClient) {
