@@ -36,6 +36,10 @@ Vue.component('capture-form', {
             <label for="capture-query">Query</label>\
             <textarea id="capture-query" type="text" class="form-control input-sm" rows="5" v-model="userQuery"></textarea>\
           </div>\
+          <div class="form-group">\
+            <label for="capture-bpf">BPF filter</label>\
+            <input id="capture-bpf" type="text" class="form-control input-sm" v-model="bpf" />\
+          </div>\
           <button type="submit" class="btn btn-primary">Start</button>\
           <button type="button" class="btn btn-danger" @click="reset">Cancel</button>\
         </form>\
@@ -56,6 +60,7 @@ Vue.component('capture-form', {
       queryNodes: [],
       name: "",
       desc: "",
+      bpf: "",
       userQuery: "",
       mode: "selection",
       visible: false,
@@ -128,7 +133,7 @@ Vue.component('capture-form', {
 
     reset: function() {
       this.node1 = this.node2 = this.userQuery = "";
-      this.name = this.desc = "";
+      this.name = this.desc = this.bpf = "";
       this.visible = false;
     },
 
@@ -138,7 +143,7 @@ Vue.component('capture-form', {
         this.$error({message: this.queryError});
         return;
       }
-      this.$captureCreate(this.query, this.name, this.desc)
+      this.$captureCreate(this.query, this.name, this.desc, this.bpf)
         .then(function() {
           self.reset();
         });

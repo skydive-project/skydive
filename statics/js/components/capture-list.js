@@ -38,6 +38,8 @@ var Capture = {
         </dd>\
         <dt v-if="capture.Description">Desc</dt>\
         <dd v-if="capture.Description">{{capture.Description}}</dd>\
+        <dt v-if="capture.BPFFilter">BPF</dt>\
+        <dd v-if="capture.BPFFilter">{{capture.BPFFilter}}</dd>\
         <dt v-if="showFlows">Flows</dt>\
         <dd v-if="showFlows">\
           <flow-table :value="capture.GremlinQuery + \'.Flows().Dedup()\'"></flow-table>\

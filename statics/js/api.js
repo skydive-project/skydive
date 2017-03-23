@@ -33,14 +33,15 @@ var apiMixin = {
       });
     },
 
-    $captureCreate: function(query, name, description) {
+    $captureCreate: function(query, name, description, bpf) {
       var self = this;
       return $.ajax({
         dataType: "json",
         url: '/api/capture',
         data: JSON.stringify({GremlinQuery: query,
                               Name: name || null,
-                              Description: description || null}),
+                              Description: description || null,
+                              BPFFilter: bpf || null}),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
       })
