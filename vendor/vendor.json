@@ -1285,10 +1285,6 @@
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
-			"path": "golang.org/x/sys/bpf",
-			"revision": ""
-		},
-		{
 			"checksumSHA1": "/oZpHfYc+ZgOwYAhlvcMhmETYpw=",
 			"path": "golang.org/x/sys/unix",
 			"revision": "99f16d856c9836c42d24e7ab64ea72916925fa97",

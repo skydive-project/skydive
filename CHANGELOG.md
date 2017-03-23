@@ -1,6 +1,52 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2017-03-30
+### Added
+- Support multiple analyzers for high availability and scalability
+- Store interface metrics as node metadata
+- Flows:
+  - New 'pcapsocket' flow probe to inject pcap files
+  - Support for VLANs
+  - BPF support for afpacket, pcap and sFlow
+  - Packet statistics counter for the 'pcap' capture type
+- API:
+  - New /api/config route to access configuration values
+  - Introduce a WebSocket Python client
+- Topology:
+  - Report link speed
+  - Allow link metadata definition in 'fabric' probe
+  - Add Docker labels to metadata
+- Gremlin:
+  - Allow querying graph with a time slice: the Gremlin 'Context' step
+    now accepts a second argument which is a duration. When specified, graph
+    queries will return all the revisions of the matching nodes during this
+    time period
+  - Allow 'Metrics' step on graph queries
+  - New 'HasNot' and 'HasKey' steps
+  - Allow sorting in ascending and descending order for both flow and
+    graph queries
+- WebUI:
+  - Add flow-table component
+  - Allow to limit number of flows in flow-table
+  - Allow collapsing all nodes belonging to a host
+  - Show interface statistics in table
+
+### Changed
+- Switch all timestamps to milliseconds
+- Changed analyzer.storage config section from a string to a dictionary
+- Flows:
+  - Consistent querying for live and stored flows
+  - Remove analyzer flow table
+- Gremlin:
+  - 'Dedup' step now handles many keys
+  - Remove since predicate as replace by context duration
+- Topology:
+  - Allow 'netns' probe to work within a containerized agent
+- WebUI:
+  - Speed up the topology display by reducing number of redraw
+  - Migration to 'vuejs' JavaScript framework
+
 ## [0.9.0] - 2017-01-27
 ### Added
 - Alerting:
