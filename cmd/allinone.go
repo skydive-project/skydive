@@ -30,6 +30,7 @@ import (
 	"github.com/kardianos/osext"
 	"github.com/spf13/cobra"
 
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -80,7 +81,14 @@ var AllInOne = &cobra.Command{
 			logging.GetLogger().Fatalf("Can't start Skydive All-in-One : %v", err)
 		}
 
-		os.Setenv("SKYDIVE_ANALYZERS", "localhost:8082")
+		if cfgPath != "" {
+			if err := config.InitConfig(cfgBackend, cfgPath); err != nil {
+				logging.GetLogger().Fatalf("Can't initialize config: %v", err)
+			}
+		}
+
+		os.Setenv("SKYDIVE_ANALYZERS", config.GetConfig().GetString("analyzer.listen"))
+
 		agentAttr := &os.ProcAttr{
 			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 			Env:   os.Environ(),
