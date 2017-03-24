@@ -79,7 +79,8 @@ ovs:
   ovsdb: unix:///var/run/openvswitch/db.sock
 
 storage:
-  elasticsearch: 127.0.0.1:9200
+  elasticsearch:
+    host: 127.0.0.1:9200
   orientdb:
     addr: http://127.0.0.1:2480
     database: Skydive
@@ -103,9 +104,6 @@ etcd:
   embedded: {{.EmbeddedEtcd}}
   servers:
     - {{.EtcdServer}}
-
-elasticsearch:
-  addr: 127.0.0.1:9200
 `
 
 type TestContext struct {

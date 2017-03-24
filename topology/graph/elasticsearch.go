@@ -522,8 +522,8 @@ func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (
 	}, nil
 }
 
-func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int) (*ElasticSearchBackend, error) {
-	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds, bulkMaxDocs)
+func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchBackend, error) {
+	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 	if err != nil {
 		return nil, err
 	}
@@ -548,6 +548,7 @@ func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
 	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
 	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
 	bulkMaxDocs := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdocs")
+	bulkMaxDelay := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdelay")
 
-	return NewElasticSearchBackend(c[0], c[1], maxConns, retrySeconds, bulkMaxDocs)
+	return NewElasticSearchBackend(c[0], c[1], maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 }

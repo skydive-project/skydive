@@ -70,6 +70,8 @@ type FlowServer struct {
 	state                int64
 	wgServer             sync.WaitGroup
 	wgFlowsHandlers      sync.WaitGroup
+	bulkInsert           int
+	bulkDeadline         int
 }
 
 func (a *FlowServerConn) Mode() FlowConnectionType {
@@ -303,27 +305,43 @@ func (s *FlowServer) handleFlowPacket(conn *FlowServerConn) {
 	conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
 	data := make([]byte, 4096)
 
+	var flowBuffer []*flow.Flow
+	defer s.storeFlows(flowBuffer)
+
+	dlTimer := time.NewTicker(time.Duration(s.bulkDeadline) * time.Second)
+	defer dlTimer.Stop()
+
 	for atomic.LoadInt64(&s.state) == common.RunningState {
-		n, err := conn.Read(data)
-		if err != nil {
-			if conn.Timeout(err) {
-				conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
-				continue
-			}
-			if atomic.LoadInt64(&s.state) != common.RunningState {
+		select {
+		case <-dlTimer.C:
+			s.storeFlows(flowBuffer)
+			flowBuffer = flowBuffer[:0]
+		default:
+			n, err := conn.Read(data)
+			if err != nil {
+				if conn.Timeout(err) {
+					conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
+					continue
+				}
+				if atomic.LoadInt64(&s.state) != common.RunningState {
+					return
+				}
+				logging.GetLogger().Errorf("Error while reading: %s", err.Error())
 				return
 			}
-			logging.GetLogger().Errorf("Error while reading: %s", err.Error())
-			return
-		}
 
-		f, err := flow.FromData(data[0:n])
-		if err != nil {
-			logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
-			continue
-		}
+			f, err := flow.FromData(data[0:n])
+			if err != nil {
+				logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
+				continue
+			}
 
-		s.storeFlows([]*flow.Flow{f})
+			flowBuffer = append(flowBuffer, f)
+			if len(flowBuffer) >= s.bulkInsert {
+				s.storeFlows(flowBuffer)
+				flowBuffer = flowBuffer[:0]
+			}
+		}
 	}
 }
 
@@ -389,10 +407,15 @@ func NewFlowServer(addr string, port int, g *graph.Graph, store storage.Storage,
 		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g, cache))
 	}
 
+	bulk := config.GetConfig().GetInt("analyzer.storage.bulk_insert")
+	deadline := config.GetConfig().GetInt("analyzer.storage.bulk_insert_deadline")
+
 	return &FlowServer{
 		Addr:                 addr,
 		Port:                 port,
 		Storage:              store,
 		FlowEnhancerPipeline: pipeline,
+		bulkInsert:           bulk,
+		bulkDeadline:         deadline,
 	}, nil
 }

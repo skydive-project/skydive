@@ -313,15 +313,19 @@ func (c *ElasticSearchClient) Started() bool {
 	return c.started.Load() == true
 }
 
-func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int) (*ElasticSearchClient, error) {
+func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchClient, error) {
 	c := elastigo.NewConn()
 
 	c.Domain = addr
 	c.Port = port
 
 	indexer := c.NewBulkIndexerErrors(maxConns, retrySeconds)
-	if bulkMaxDocs <= 0 {
+	if bulkMaxDocs > 0 {
 		indexer.BulkMaxDocs = bulkMaxDocs
+	}
+
+	if bulkMaxDelay > 0 {
+		indexer.BufferDelayMax = time.Duration(bulkMaxDelay) * time.Second
 	}
 
 	client := &ElasticSearchClient{
@@ -342,6 +346,7 @@ func NewElasticSearchClientFromConfig() (*ElasticSearchClient, error) {
 	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
 	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
 	bulkMaxDocs := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdocs")
+	bulkMaxDelay := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdelay")
 
-	return NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds, bulkMaxDocs)
+	return NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 }

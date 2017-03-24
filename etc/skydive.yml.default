@@ -44,6 +44,10 @@ analyzer:
   # storage:
       # Available: elasticsearch, orientdb
       # backend: elasticsearch
+      # maximum number of flows aggregated between two data store inserts
+      # bulk_insert: 100
+      # deadline of each bulk insert in second
+      # bulk_insert_deadline: 5
   topology:
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.
@@ -143,8 +147,10 @@ opencontrail:
 storage:
   elasticsearch:
     host: 127.0.0.1:9200
-    maxconns: 10
-    retry: 60
+    # maxconns: 10
+    # retry: 60
+    # bulk_maxdocs: 100
+    # bulk_maxdelay: 5
 
   # OrientDB connection informations
   # orientdb:
