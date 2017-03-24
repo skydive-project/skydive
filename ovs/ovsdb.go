@@ -87,6 +87,7 @@ func (n Notifier) Echo([]interface{}) {
 func (n Notifier) Disconnected(c *libovsdb.OvsdbClient) {
 	/* trigger re-connection */
 	atomic.StoreUint64(&n.monitor.OvsClient.connected, 0)
+	logging.GetLogger().Warningf("Disconnected from OVSDB")
 }
 
 func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error) {
@@ -364,16 +365,24 @@ func (o *OvsMonitor) monitorOvsdb() error {
 
 // startMonitoring() is a watchdog of OvsClient connection with ConnectionPollInterval
 func (o *OvsMonitor) startMonitoring() error {
+	connectedOnce := false
 	o.ticker = time.NewTicker(ConnectionPollInterval)
+
+	if err := o.monitorOvsdb(); err != nil {
+		logging.GetLogger().Warningf("Could not connect to OVSDB, will retry every %s", ConnectionPollInterval.String())
+	}
 
 	for {
 		select {
 		case <-o.ticker.C:
 			if o.isConnected() {
+				connectedOnce = true
 				continue
 			}
 			if err := o.monitorOvsdb(); err != nil {
-				logging.GetLogger().Errorf(": re-connect error %v, will try again", err)
+				if connectedOnce {
+					logging.GetLogger().Errorf(": re-connect error %v, will try again", err)
+				}
 			}
 		case <-o.done:
 			break

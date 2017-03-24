@@ -83,8 +83,8 @@ spec:
           mountPath: /var/run/docker.sock
         - name: run
           mountPath: /host/run
-#        - name: ovsdb
-#          mountPath: /var/run/openvswitch/db.sock
+        - name: ovsdb
+          mountPath: /var/run/openvswitch/db.sock
       volumes:
       - name: docker
         hostPath:

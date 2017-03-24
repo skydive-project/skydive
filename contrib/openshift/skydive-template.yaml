@@ -158,6 +158,8 @@ objects:
             name: docker
           - mountPath: /host/run
             name: run
+          - mountPath: /var/run/openvswitch/db.sock
+            name: ovsdb
         dnsPolicy: ClusterFirst
         hostNetwork: true
         hostPID: true
@@ -170,6 +172,9 @@ objects:
         - hostPath:
             path: /var/run/netns
           name: run
+        - hostPath:
+            path: /var/run/openvswitch/db.sock
+          name: ovsdb
 - apiVersion: v1
   kind: Route
   metadata:

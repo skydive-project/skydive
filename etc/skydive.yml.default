@@ -82,7 +82,7 @@ agent:
     probes:
       - netlink
       - netns
-      # - ovsdb
+      - ovsdb
       # - docker
       # - neutron
       # - opencontrail
