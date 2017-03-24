@@ -388,11 +388,11 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 func TestDockerSimple(t *testing.T) {
 	test := &Test{
 		setupCmds: []helper.Cmd{
-			{"docker run -d -t -i --name test-skydive-docker busybox", false},
+			{"docker run -d -t -i --name test-skydive-docker-simple busybox", false},
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{"docker rm -f test-skydive-docker", false},
+			{"docker rm -f test-skydive-docker-simple", false},
 		},
 
 		check: func(c *TestContext) error {
@@ -402,8 +402,8 @@ func TestDockerSimple(t *testing.T) {
 				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 			}
 
-			gremlin += `.V().Has("Name", "test-skydive-docker", "Type", "netns", "Manager", "docker")`
-			gremlin += `.Out("Type", "container", "Docker/ContainerName", "/test-skydive-docker")`
+			gremlin += `.V().Has("Name", "test-skydive-docker-simple", "Type", "netns", "Manager", "docker")`
+			gremlin += `.Out("Type", "container", "Docker/ContainerName", "/test-skydive-docker-simple")`
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
@@ -424,13 +424,13 @@ func TestDockerSimple(t *testing.T) {
 func TestDockerShareNamespace(t *testing.T) {
 	test := &Test{
 		setupCmds: []helper.Cmd{
-			{"docker run -d -t -i --name test-skydive-docker busybox", false},
-			{"docker run -d -t -i --name test-skydive-docker2 --net=container:test-skydive-docker busybox", false},
+			{"docker run -d -t -i --name test-skydive-docker-share-ns busybox", false},
+			{"docker run -d -t -i --name test-skydive-docker-share-ns2 --net=container:test-skydive-docker-share-ns busybox", false},
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{"docker rm -f test-skydive-docker", false},
-			{"docker rm -f test-skydive-docker2", false},
+			{"docker rm -f test-skydive-docker-share-ns", false},
+			{"docker rm -f test-skydive-docker-share-ns2", false},
 		},
 
 		check: func(c *TestContext) error {
@@ -451,7 +451,7 @@ func TestDockerShareNamespace(t *testing.T) {
 			case 0:
 				return errors.New("No namespace found")
 			case 1:
-				gremlin += `.Out().Has("Type", "container", "Docker/ContainerName", Within("/test-skydive-docker", "/test-skydive-docker2"))`
+				gremlin += `.Out().Has("Type", "container", "Docker/ContainerName", Within("/test-skydive-docker-share-ns", "/test-skydive-docker-share-ns2"))`
 
 				nodes, err = gh.GetNodes(gremlin)
 				if err != nil {
@@ -475,11 +475,11 @@ func TestDockerShareNamespace(t *testing.T) {
 func TestDockerNetHost(t *testing.T) {
 	test := &Test{
 		setupCmds: []helper.Cmd{
-			{"docker run -d -t -i --net=host --name test-skydive-docker busybox", false},
+			{"docker run -d -t -i --net=host --name test-skydive-docker-net-host busybox", false},
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{"docker rm -f test-skydive-docker", false},
+			{"docker rm -f test-skydive-docker-net-host", false},
 		},
 
 		check: func(c *TestContext) error {
@@ -490,7 +490,7 @@ func TestDockerNetHost(t *testing.T) {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 			}
 
-			gremlin := prefix + `.V().Has("Docker/ContainerName", "/test-skydive-docker", "Type", "container")`
+			gremlin := prefix + `.V().Has("Docker/ContainerName", "/test-skydive-docker-net-host", "Type", "container")`
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -500,7 +500,7 @@ func TestDockerNetHost(t *testing.T) {
 				return fmt.Errorf("Expected 1 container, got %+v", nodes)
 			}
 
-			gremlin = prefix + `.V().Has("Type", "netns", "Manager", "docker", "Name", "test-skydive-docker")`
+			gremlin = prefix + `.V().Has("Type", "netns", "Manager", "docker", "Name", "test-skydive-docker-net-host")`
 			nodes, err = gh.GetNodes(gremlin)
 			if err != nil {
 				return err
