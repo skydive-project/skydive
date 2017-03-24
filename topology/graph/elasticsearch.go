@@ -179,10 +179,8 @@ func (b *ElasticSearchBackend) archiveElement(kind string, i interface{}, t time
 	return true
 }
 
-func (b *ElasticSearchBackend) deleteElement(kind string, id string) bool {
-	t := common.UnixMillis(time.Now())
-	obj := map[string]interface{}{"DeletedAt": t}
-
+func (b *ElasticSearchBackend) deleteElement(kind string, id string, t time.Time) bool {
+	obj := map[string]interface{}{"DeletedAt": common.UnixMillis(t)}
 	if err := b.client.UpdateWithPartialDoc(kind, id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while marking %s as deleted %s: %s", kind, id, err.Error())
 		return false
@@ -262,7 +260,7 @@ func (b *ElasticSearchBackend) AddNode(n *Node) bool {
 }
 
 func (b *ElasticSearchBackend) DelNode(n *Node) bool {
-	return b.deleteElement("node", string(n.ID))
+	return b.deleteElement("node", string(n.ID), n.deletedAt)
 }
 
 func (b *ElasticSearchBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
@@ -299,7 +297,7 @@ func (b *ElasticSearchBackend) AddEdge(e *Edge) bool {
 }
 
 func (b *ElasticSearchBackend) DelEdge(e *Edge) bool {
-	return b.deleteElement("edge", string(e.ID))
+	return b.deleteElement("edge", string(e.ID), e.deletedAt)
 }
 
 func (b *ElasticSearchBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {

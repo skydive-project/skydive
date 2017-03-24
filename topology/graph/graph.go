@@ -840,8 +840,8 @@ func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
 }
 
 func (g *Graph) DelEdge(e *Edge) {
+	e.deletedAt = time.Now().UTC()
 	if g.backend.DelEdge(e) {
-		e.deletedAt = time.Now().UTC()
 		g.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
 	}
 }
@@ -851,8 +851,8 @@ func (g *Graph) DelNode(n *Node) {
 		g.DelEdge(e)
 	}
 
+	n.deletedAt = time.Now().UTC()
 	if g.backend.DelNode(n) {
-		n.deletedAt = time.Now().UTC()
 		g.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
 	}
 }
