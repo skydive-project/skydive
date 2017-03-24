@@ -32,7 +32,7 @@ import (
 )
 
 func TestFlowCreateUpdate(t *testing.T) {
-	flows := flowsFromPCAP(t, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet)
+	flows := flowsFromPCAP(t, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 
 	// 200 packets, 50 icmp request with different endpoints, test we have only 50 flow keys
 	if len(flows) != 50 {
@@ -59,7 +59,7 @@ func TestFlowExpire(t *testing.T) {
 
 	table := NewTable(nil, handler, NewFlowEnhancerPipeline())
 
-	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet)
+	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 	table.expireNow()
 
 	flows := table.getFlows(&filters.SearchQuery{}).Flows
@@ -90,7 +90,7 @@ func (e *fakeEnhancer) Enhance(f *Flow) {
 func TestEnhancer(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline(&fakeEnhancer{}))
 
-	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet)
+	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 	flows := table.getFlows(&filters.SearchQuery{}).Flows
 
 	// check for one flow enhanced
@@ -110,7 +110,7 @@ func TestGetFlowsWithFilters(t *testing.T) {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline(&fakeEnhancer{}))
 	table.SetNodeTID("probe-1")
 
-	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet)
+	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 
 	filter := filters.NewOrFilter(
 		filters.NewTermStringFilter("NodeTID", "probe-1"),

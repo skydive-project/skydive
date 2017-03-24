@@ -138,7 +138,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 	o.activeProbes[n.ID] = ft
 	o.captures[n.ID] = capture
 
-	logging.GetLogger().Debugf("New active probe on: %v", n)
+	logging.GetLogger().Debugf("New active probe on: %v(%v)", n, capture)
 	return true
 }
 

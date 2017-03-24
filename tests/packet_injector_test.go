@@ -71,7 +71,9 @@ func TestPacketInjector(t *testing.T) {
 			{"ip netns del pi-vm2", true},
 		},
 
-		captures: []string{`G.V().Has('Name', 'pi-eth-src').ShortestPathTo(Metadata('Name', 'pi-eth-dst'), Metadata('RelationType', 'layer2'))`},
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'pi-eth-src').ShortestPathTo(Metadata('Name', 'pi-eth-dst'), Metadata('RelationType', 'layer2'))`},
+		},
 
 		check: func(c *TestContext) error {
 			gremlin := "g"

@@ -117,13 +117,18 @@ type TestContext struct {
 	successTime time.Time
 }
 
+type TestCapture struct {
+	gremlin string
+	kind    string
+	bpf     string
+}
+
 type Test struct {
 	setupCmds        []helper.Cmd
 	setupFunction    func(c *TestContext) error
 	tearDownCmds     []helper.Cmd
 	tearDownFunction func(c *TestContext) error
-	captureType      string
-	captures         []string
+	captures         []TestCapture
 	retries          int
 	mode             int
 	check            func(c *TestContext) error
@@ -142,9 +147,9 @@ func RunTest(t *testing.T, test *Test) {
 		}
 	}()
 
-	for _, gremlin := range test.captures {
-		capture := api.NewCapture(gremlin, "")
-		capture.Type = test.captureType
+	for _, tc := range test.captures {
+		capture := api.NewCapture(tc.gremlin, tc.bpf)
+		capture.Type = tc.kind
 		if err = client.Create("capture", capture); err != nil {
 			t.Fatal(err)
 		}

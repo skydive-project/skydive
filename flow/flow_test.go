@@ -37,7 +37,7 @@ import (
 )
 
 func TestFlowSimpleIPv4(t *testing.T) {
-	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet)
+	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet, nil)
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
 	}
@@ -47,12 +47,24 @@ func TestFlowSimpleIPv4(t *testing.T) {
 }
 
 func TestFlowSimpleIPv6(t *testing.T) {
-	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv6.pcap", layers.LinkTypeEthernet)
+	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv6.pcap", layers.LinkTypeEthernet, nil)
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
 	}
 	if flows[0].LayersPath != "Ethernet/IPv6/TCP" {
 		t.Errorf("Flow LayersPath must be Ethernet/IPv6/TCP got : %s", flows[0].LayersPath)
+	}
+}
+
+func TestBPFFilter(t *testing.T) {
+	bpf, err := NewBPF(layers.LinkTypeEthernet, CaptureLength, "port 53 or port 80")
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	flows := flowsFromPCAP(t, "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", layers.LinkTypeEthernet, bpf)
+	if len(flows) != 4 {
+		t.Errorf("A single packet must generate 1 flow got : %v", flows)
 	}
 }
 
@@ -169,7 +181,7 @@ func compareFlow(expected, tested *Flow) bool {
 	return true
 }
 
-func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType layers.LinkType) {
+func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType layers.LinkType, bpf *BPF) {
 	handleRead, err := pcap.OpenOffline(filename)
 	if err != nil {
 		t.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
@@ -193,7 +205,7 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
 			}
 
-			fp := FlowPacketsFromGoPacket(&p, 0, -1, nil)
+			fp := FlowPacketsFromGoPacket(&p, 0, -1, bpf)
 			if fp == nil {
 				t.Fatal("Failed to get FlowPackets: ", err)
 			}
@@ -259,18 +271,18 @@ func validateAllParentChains(t *testing.T, table *Table) {
 	}
 }
 
-func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType) []*Flow {
+func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF) []*Flow {
 	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
 
-	fillTableFromPCAP(t, table, filename, linkType)
+	fillTableFromPCAP(t, table, filename, linkType, bpf)
 
 	validateAllParentChains(t, table)
 
 	return table.getFlows(&filters.SearchQuery{}).Flows
 }
 
-func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, expected []*Flow) {
-	flows := flowsFromPCAP(t, filename, linkType)
+func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF, expected []*Flow) {
+	flows := flowsFromPCAP(t, filename, linkType, bpf)
 	for _, e := range expected {
 		found := false
 		for _, f := range flows {
@@ -405,7 +417,7 @@ func TestPCAP1(t *testing.T) {
 		},
 	}
 
-	validatePCAP(t, "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", layers.LinkTypeEthernet, expected)
+	validatePCAP(t, "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", layers.LinkTypeEthernet, nil, expected)
 }
 
 func TestEmptyParentUUIDExported(t *testing.T) {
@@ -523,13 +535,13 @@ func TestPCAPMplsContrail(t *testing.T) {
 	}
 
 	layers.RegisterUDPPortLayerType(layers.UDPPort(51234), layers.LayerTypeMPLS)
-	validatePCAP(t, "pcaptraces/contrail-udp-mpls-eth-and-ipv4.pcap", layers.LinkTypeEthernet, expected)
+	validatePCAP(t, "pcaptraces/contrail-udp-mpls-eth-and-ipv4.pcap", layers.LinkTypeEthernet, nil, expected)
 }
 
 func TestPCAPL3TrackingID(t *testing.T) {
 	var l3TrackingID string
 
-	flows := flowsFromPCAP(t, "pcaptraces/ping-with-without-ethernet.pcap", layers.LinkTypeEthernet)
+	flows := flowsFromPCAP(t, "pcaptraces/ping-with-without-ethernet.pcap", layers.LinkTypeEthernet, nil)
 	for _, flow := range flows {
 		if flow.Application == "ICMPv4" {
 			if l3TrackingID == "" {
@@ -639,7 +651,7 @@ func TestVlansQinQ(t *testing.T) {
 		},
 	}
 
-	validatePCAP(t, "pcaptraces/icmpv4-4vlanQinQ-id-8-10-20-30.pcap", layers.LinkTypeEthernet, expected)
+	validatePCAP(t, "pcaptraces/icmpv4-4vlanQinQ-id-8-10-20-30.pcap", layers.LinkTypeEthernet, nil, expected)
 }
 
 func TestGREEthernet(t *testing.T) {
@@ -700,7 +712,7 @@ func TestGREEthernet(t *testing.T) {
 		},
 	}
 
-	validatePCAP(t, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet, expected)
+	validatePCAP(t, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet, nil, expected)
 }
 
 func TestGREMPLS(t *testing.T) {
@@ -745,5 +757,5 @@ func TestGREMPLS(t *testing.T) {
 		},
 	}
 
-	validatePCAP(t, "pcaptraces/gre-mpls-icmpv4.pcap", layers.LinkTypeEthernet, expected)
+	validatePCAP(t, "pcaptraces/gre-mpls-icmpv4.pcap", layers.LinkTypeEthernet, nil, expected)
 }

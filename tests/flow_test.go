@@ -53,7 +53,9 @@ func TestSFlowProbeNode(t *testing.T) {
 			{"ovs-vsctl del-br br-spn", true},
 		},
 
-		captures: []string{`g.V().Has("Name", "br-spn", "Type", "ovsbridge")`},
+		captures: []TestCapture{
+			{gremlin: `g.V().Has("Name", "br-spn", "Type", "ovsbridge")`},
+		},
 
 		check: func(c *TestContext) error {
 			prefix := "g"
@@ -104,7 +106,9 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 			{"ovs-vsctl del-br br-sntoin", true},
 		},
 
-		captures: []string{`g.V().Has("Name", "br-sntoin", "Type", "ovsbridge")`},
+		captures: []TestCapture{
+			{gremlin: `g.V().Has("Name", "br-sntoin", "Type", "ovsbridge")`},
+		},
 
 		check: func(c *TestContext) error {
 			prefix := "g"
@@ -178,9 +182,9 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 			{"brctl delbr br-stnt-link", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-stnt1', 'Type', 'ovsbridge')`,
-			`G.V().Has('Name', 'br-stnt2', 'Type', 'ovsbridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-stnt1', 'Type', 'ovsbridge')`},
+			{gremlin: `G.V().Has('Name', 'br-stnt2', 'Type', 'ovsbridge')`},
 		},
 
 		check: func(c *TestContext) error {
@@ -245,6 +249,66 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 	RunTest(t, test)
 }
 
+func TestBPF(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"brctl addbr br-bpf", true},
+			{"ip link set br-bpf up", true},
+			{"ip netns add bpf-vm1", true},
+			{"ip link add name bpf-vm1-eth0 type veth peer name eth0 netns bpf-vm1", true},
+			{"ip link set bpf-vm1-eth0 up", true},
+			{"ip netns exec bpf-vm1 ip link set eth0 up", true},
+			{"ip netns exec bpf-vm1 ip address add 169.254.66.66/24 dev eth0", true},
+			{"brctl addif br-bpf bpf-vm1-eth0", true},
+
+			{"ip netns add bpf-vm2", true},
+			{"ip link add name bpf-vm2-eth0 type veth peer name eth0 netns bpf-vm2", true},
+			{"ip link set bpf-vm2-eth0 up", true},
+			{"ip netns exec bpf-vm2 ip link set eth0 up", true},
+			{"ip netns exec bpf-vm2 ip address add 169.254.66.67/24 dev eth0", true},
+			{"brctl addif br-bpf bpf-vm2-eth0", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec bpf-vm1 ping -c 5 169.254.66.67", Check: false})
+			return nil
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ip link set br-bpf down", true},
+			{"brctl delbr br-bpf", true},
+			{"ip link del bpf-vm1-eth0", true},
+			{"ip link del bpf-vm2-eth0", true},
+			{"ip netns del bpf-vm1", true},
+			{"ip netns del bpf-vm2", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'bpf-vm1-eth0')`, bpf: "icmp and host 169.254.66.67"},
+		},
+
+		check: func(c *TestContext) error {
+			prefix := "g"
+			if !c.time.IsZero() {
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+
+			flows, err := c.gh.GetFlows(prefix + `.V().Has('Name', 'bpf-vm1-eth0').Flows()`)
+			if err != nil {
+				return err
+			}
+
+			if len(flows) != 1 {
+				return fmt.Errorf("Should only get icmp packets, got : %v", flows)
+			}
+
+			return nil
+		},
+	}
+
+	RunTest(t, test)
+}
+
 func TestPCAPProbe(t *testing.T) {
 	test := &Test{
 		setupCmds: []helper.Cmd{
@@ -279,11 +343,9 @@ func TestPCAPProbe(t *testing.T) {
 			{"ip netns del pp-vm2", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-pp', 'Type', 'bridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-pp', 'Type', 'bridge')`, kind: "pcap"},
 		},
-
-		captureType: "pcap",
 
 		check: func(c *TestContext) error {
 			prefix := "g"
@@ -342,8 +404,8 @@ func TestSFlowSrcDstPath(t *testing.T) {
 			{"ovs-vsctl del-br br-ssdp", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-ssdp', 'Type', 'ovsbridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-ssdp', 'Type', 'ovsbridge')`},
 		},
 
 		check: func(c *TestContext) error {
@@ -400,8 +462,8 @@ func TestFlowGremlin(t *testing.T) {
 			{"ovs-vsctl del-br br-fg", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-fg', 'Type', 'ovsbridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-fg', 'Type', 'ovsbridge')`},
 		},
 
 		check: func(c *TestContext) error {
@@ -608,8 +670,8 @@ func TestFlowMetrics(t *testing.T) {
 			{"ovs-vsctl del-br br-fm", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-fm', 'Type', 'ovsbridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-fm', 'Type', 'ovsbridge')`},
 		},
 
 		check: func(c *TestContext) error {
@@ -658,8 +720,8 @@ func TestFlowMetricsStep(t *testing.T) {
 			{"ovs-vsctl del-br br-fms", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-fms', 'Type', 'ovsbridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-fms', 'Type', 'ovsbridge')`},
 		},
 
 		check: func(c *TestContext) error {
@@ -759,8 +821,8 @@ func TestFlowHops(t *testing.T) {
 			{"ovs-vsctl del-br br-fh", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-fh', 'Type', 'ovsbridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-fh', 'Type', 'ovsbridge')`},
 		},
 
 		// since the agent update ticker is about 10 sec according to the configuration
@@ -858,8 +920,8 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			{"ovs-vsctl del-br br-ipv6fh", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-ipv6fh', 'Type', 'ovsbridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-ipv6fh', 'Type', 'ovsbridge')`},
 		},
 
 		// since the agent update ticker is about 10 sec according to the configuration
@@ -1016,9 +1078,9 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 			{"ovs-vsctl del-br " + bridge, true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'tunnel-vm1').Out().Has('Name', 'tunnel')`,
-			`G.V().Has('Name', 'tunnel-vm2-eth0')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'tunnel-vm1').Out().Has('Name', 'tunnel')`},
+			{gremlin: `G.V().Has('Name', 'tunnel-vm2-eth0')`},
 		},
 
 		setupFunction: func(c *TestContext) error {
@@ -1103,11 +1165,9 @@ func TestReplayCapture(t *testing.T) {
 			{"ovs-vsctl del-br br-rc", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'br-rc', 'Type', 'ovsbridge')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-rc', 'Type', 'ovsbridge')`, kind: "pcapsocket"},
 		},
-
-		captureType: "pcapsocket",
 
 		check: func(c *TestContext) error {
 			prefix := "g"
@@ -1220,9 +1280,9 @@ func TestFlowVLANSegmentation(t *testing.T) {
 			{"ovs-vsctl del-br br-vlan", true},
 		},
 
-		captures: []string{
-			`G.V().Has('Name', 'vlan-vm1').Out().Has('Name', 'vlan')`,
-			`G.V().Has('Name', 'vlan-vm2-eth0')`,
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'vlan-vm1').Out().Has('Name', 'vlan')`},
+			{gremlin: `G.V().Has('Name', 'vlan-vm2-eth0')`},
 		},
 
 		check: func(c *TestContext) error {
