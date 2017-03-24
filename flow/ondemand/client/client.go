@@ -47,7 +47,13 @@ type OnDemandProbeClient struct {
 	captures        map[string]*api.Capture
 	watcher         api.StoppableWatcher
 	elector         *etcd.EtcdMasterElector
-	registeredNodes map[graph.Identifier]bool
+	registeredNodes map[string]bool
+}
+
+type nodeProbe struct {
+	id      string
+	host    string
+	capture *api.Capture
 }
 
 func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
@@ -67,7 +73,7 @@ func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 		if m.Status != http.StatusOK {
 			logging.GetLogger().Debugf("Capture start request failed %v", m)
 			o.Lock()
-			delete(o.registeredNodes, graph.Identifier(query.NodeID))
+			delete(o.registeredNodes, query.NodeID)
 			o.Unlock()
 		} else {
 			logging.GetLogger().Debugf("Capture start request succeeded %v", m)
@@ -76,7 +82,7 @@ func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 		if m.Status == http.StatusOK {
 			logging.GetLogger().Debugf("Capture stop request succeeded %v", m)
 			o.Lock()
-			delete(o.registeredNodes, graph.Identifier(query.NodeID))
+			delete(o.registeredNodes, query.NodeID)
 			o.Unlock()
 		} else {
 			logging.GetLogger().Debugf("Capture stop request failed %v", m)
@@ -91,7 +97,7 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 
 		// check not already registered
 		o.RLock()
-		_, ok := o.registeredNodes[node.ID]
+		_, ok := o.registeredNodes[string(node.ID)]
 		o.RUnlock()
 
 		if ok {
@@ -109,38 +115,47 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 		return node.ID, node.Host(), true
 	}
 
+	nps := map[graph.Identifier]nodeProbe{}
 	for _, i := range nodes {
 		switch i.(type) {
 		case *graph.Node:
 			node := i.(*graph.Node)
 			if nodeID, host, ok := toRegister(node, capture); ok {
-				o.registerProbe(nodeID, host, capture)
+				nps[nodeID] = nodeProbe{string(nodeID), host, capture}
 			}
 		case []*graph.Node:
 			// case of shortestpath that return a list of nodes
 			for _, node := range i.([]*graph.Node) {
 				if nodeID, host, ok := toRegister(node, capture); ok {
-					o.registerProbe(nodeID, host, capture)
+					nps[nodeID] = nodeProbe{string(nodeID), host, capture}
 				}
 			}
 		}
 	}
+
+	if len(nps) > 0 {
+		go func() {
+			for _, np := range nps {
+				o.registerProbe(np)
+			}
+		}()
+	}
 }
 
-func (o *OnDemandProbeClient) registerProbe(id graph.Identifier, host string, capture *api.Capture) bool {
+func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 	cq := ondemand.CaptureQuery{
-		NodeID:  string(id),
-		Capture: *capture,
+		NodeID:  np.id,
+		Capture: *np.capture,
 	}
 
 	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStart", cq)
 
-	if !o.wsServer.SendWSMessageTo(msg, host) {
-		logging.GetLogger().Errorf("Unable to send message to agent: %s", host)
+	if !o.wsServer.SendWSMessageTo(msg, np.host) {
+		logging.GetLogger().Errorf("Unable to send message to agent: %s", np.host)
 		return false
 	}
 	o.Lock()
-	o.registeredNodes[id] = true
+	o.registeredNodes[np.id] = true
 	o.Unlock()
 
 	return true
@@ -150,7 +165,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node) bool {
 	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStop", ondemand.CaptureQuery{NodeID: string(node.ID)})
 
 	o.RLock()
-	_, ok := o.registeredNodes[node.ID]
+	_, ok := o.registeredNodes[string(node.ID)]
 	o.RUnlock()
 
 	if !ok {
@@ -293,7 +308,7 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.
 		wsServer:        w,
 		captures:        captures,
 		elector:         elector,
-		registeredNodes: make(map[graph.Identifier]bool),
+		registeredNodes: make(map[string]bool),
 	}
 	w.AddEventHandler(o)
 
