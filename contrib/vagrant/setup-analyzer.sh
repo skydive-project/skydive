@@ -20,7 +20,8 @@ analyzer:
   flowtable_expire: 60
   flowtable_update: 5
   flowtable_agent_ratio: 0.5
-  storage: elasticsearch
+  storage:
+    backend: elasticsearch
   topology:
     fabric:
       - TOR1[Name=tor1] -> TOR1_PORT1[Name=port1, MTU=1500]

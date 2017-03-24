@@ -41,8 +41,9 @@ analyzer:
   flowtable_update: 60
 
   # Flow storage engine
-  # Available: elasticsearch, orientdb
-  # storage: elasticsearch
+  # storage:
+      # Available: elasticsearch, orientdb
+      # backend: elasticsearch
   topology:
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.

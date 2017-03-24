@@ -44,7 +44,7 @@ spec:
           protocol: UDP
         - containerPort: 2379
         env:
-        - name: SKYDIVE_ANALYZER_STORAGE
+        - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
           value: elasticsearch
         - name: SKYDIVE_GRAPH_BACKEND
           value: elasticsearch

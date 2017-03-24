@@ -51,7 +51,8 @@ analyzer:
   listen: 127.0.0.1:8082
   flowtable_expire: 600
   flowtable_update: 10
-  storage: {{.Storage}}
+  storage:
+    backend: {{.Storage}}
   analyzer_username: admin
   analyzer_password: password
 

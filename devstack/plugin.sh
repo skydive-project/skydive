@@ -185,7 +185,8 @@ agent:
 $(get_probes_for_config $SKYDIVE_AGENT_PROBES)
 
 analyzer:
-  storage: $SKYDIVE_STORAGE
+  storage:
+    backend: $SKYDIVE_STORAGE
   topology:
     probes:
 $(get_probes_for_config $SKYDIVE_ANALYZER_PROBES)

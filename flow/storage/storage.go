@@ -73,5 +73,5 @@ func NewStorage(backend string) (s Storage, err error) {
 }
 
 func NewStorageFromConfig() (s Storage, err error) {
-	return NewStorage(config.GetConfig().GetString("analyzer.storage"))
+	return NewStorage(config.GetConfig().GetString("analyzer.storage.backend"))
 }

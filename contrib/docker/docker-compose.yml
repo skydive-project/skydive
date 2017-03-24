@@ -18,7 +18,7 @@ services:
     command: analyzer --listen=0.0.0.0:8082
     environment:
       - SKYDIVE_STORAGE_ELASTICSEARCH_HOST=elasticsearch:9200
-      - SKYDIVE_ANALYZER_STORAGE=elasticsearch
+      - SKYDIVE_ANALYZER_STORAGE_BACKEND=elasticsearch
       - SKYDIVE_GRAPH_BACKEND=elasticsearch
 
   skydive-agent:
