@@ -15,24 +15,29 @@ set -e
 workdir=".cover"
 profile="$workdir/cover.out"
 mode=count
+functionals=1
+coveralls=0
 
 generate_cover_data() {
     rm -rf "$workdir"
     mkdir "$workdir"
 
     # unit test
-    PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor')
+    [ -z "$PKG" ] && PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor')
     for pkg in ${PKG}; do
         coverfile="$workdir/$(echo $pkg | tr / -).cover"
-        govendor test -tags "${TAGS} test" -timeout 6m -covermode="$mode" -coverprofile="$coverfile" "$pkg"
+        make test GOFLAGS="-covermode=$mode -coverprofile=$coverfile" UT_PACKAGES=$pkg
     done
 
-    # add fonctional testing
-    export SKYDIVE_ANALYZERS=localhost:8082
+    if [ "$functionals" -eq 1 ];
+    then
+        # add fonctional testing
+        export SKYDIVE_ANALYZERS=localhost:8082
 
-    coverfile="../$workdir/functional.cover"
-    PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor' | tr '\n' ',' | sed -e 's/,$//')
-    make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="-test.coverprofile=$coverfile -standalone -graph.backend elasticsearch -storage.backend elasticsearch"
+        coverfile="../$workdir/functional.cover"
+        PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor' | tr '\n' ',' | sed -e 's/,$//')
+        make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="-test.coverprofile=$coverfile -standalone -graph.backend elasticsearch -storage.backend elasticsearch" TEST_PATTERN=$TEST_PATTERN
+    fi
 
     # merge all together
     echo "mode: $mode" > "$profile"
@@ -40,7 +45,12 @@ generate_cover_data() {
 }
 
 show_cover_report() {
-    go tool cover -${1}="$profile"
+    if [ "$1" == "xml" ]; then
+        go get github.com/t-yuki/gocover-cobertura
+        gocover-cobertura < $profile > $profile.xml
+    else
+        go tool cover -${1}="$profile"
+    fi
 }
 
 push_to_coveralls() {
@@ -48,15 +58,26 @@ push_to_coveralls() {
     goveralls -coverprofile="$profile"
 }
 
+for arg in "$@"
+do
+    case "$arg" in
+    "")
+        ;;
+    --html)
+        format=html ;;
+    --xml)
+        format=xml ;;
+    --no-functionals)
+        functionals=0 ;;
+    --coveralls)
+        coveralls=1 ;;
+    *)
+        echo >&2 "error: invalid option: $1"; exit 1 ;;
+    esac
+done
+
 generate_cover_data
 show_cover_report func
-case "$1" in
-"")
-    ;;
---html)
-    show_cover_report html ;;
---coveralls)
-    push_to_coveralls ;;
-*)
-    echo >&2 "error: invalid option: $1"; exit 1 ;;
-esac
+
+show_cover_report $format
+[ "$coveralls" -eq 1 ] && push_to_coveralls

@@ -8,25 +8,30 @@ FILTERS_PROTO_FILES=filters/filters.proto
 VERBOSE_FLAGS?=-v
 VERBOSE?=true
 ifeq ($(VERBOSE), false)
-	VERBOSE_FLAGS:=
+  VERBOSE_FLAGS:=
+endif
+ifeq ($(COVERAGE), true)
+  COVERAGE_ARGS:= -test.coverprofile=../functionals.cover
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
-UT_PACKAGES=$(shell ${GOPATH}/bin/govendor list -no-status +local | grep -v '/tests')
+UT_PACKAGES?=$(shell ${GOPATH}/bin/govendor list -no-status +local | grep -v '/tests')
 FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 DOCKER_IMAGE?=skydive/skydive
 DOCKER_TAG?=devel
 DESTDIR?=$(shell pwd)
+COVERAGE?=0
+COVERAGE_MODE?=atomic
 
-.proto: govendor builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
+.proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
 	protoc --go_out . ${FLOW_PROTO_FILES}
 	protoc --go_out . ${FILTERS_PROTO_FILES}
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i flow/flow.pb.go
 
-.bindata: govendor builddep
+.bindata: builddep
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/*
 	gofmt -w -s statics/bindata.go
 
@@ -68,13 +73,23 @@ else
 endif
 
 test.functionals: test.functionals.compile
-	set -e ; \
 	for functest in ${FUNC_TESTS} ; do \
-		make ARGS="-test.run $$functest$$\$$ ${ARGS}" test.functionals.run ; \
+		make ARGS="-test.run $$functest$$\$$ ${ARGS} ${COVERAGE_ARGS}" test.functionals.run; \
 	done
 
 test: govendor genlocalfiles
+ifeq ($(COVERAGE), true)
+	set -v ; \
+	for pkg in ${UT_PACKAGES}; do \
+		if [ -n "$$pkg" ]; then \
+			coverfile="$$(echo $$pkg | tr / -).cover"; \
+			${GOPATH}/bin/govendor test -tags "${TAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
+		fi; \
+	done
+else
+	set -v ; \
 	${GOPATH}/bin/govendor test -tags "${TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+endif
 
 govendor:
 	go get github.com/kardianos/govendor

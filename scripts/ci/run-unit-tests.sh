@@ -6,4 +6,4 @@ dir="$(dirname "$0")"
 . "${dir}/install-go-deps.sh"
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
-make test GOFLAGS=-race VERBOSE=true TIMEOUT=1m | go2xunit -output $WORKSPACE/tests.xml
+make test GOFLAGS=-race VERBOSE=true TIMEOUT=1m COVERAGE=${COVERAGE} | go2xunit -output $WORKSPACE/tests.xml
