@@ -391,6 +391,12 @@ func (ft *Table) Stop() {
 
 		close(ft.query)
 		close(ft.reply)
+
+		for len(ft.PacketsChan) != 0 {
+			packets := <-ft.PacketsChan
+			ft.flowPacketsToFlow(packets)
+		}
+
 		close(ft.PacketsChan)
 	}
 
