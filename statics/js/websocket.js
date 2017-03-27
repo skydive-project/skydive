@@ -6,6 +6,7 @@ function WSHandler() {
   this.msgHandlers = {};
   this.discHandlers = [];
   this.connHandlers = [];
+  this.errorHandlers = [];
 }
 
 WSHandler.prototype = {
@@ -45,10 +46,8 @@ WSHandler.prototype = {
     this.conn.onclose = function() {
       // connection closed after a succesful connection
       if (self.connecting === false) {
-        store.commit('addNotification', {message: 'Connection lost', type: 'danger'});
-        store.commit('logout');
         self.disconnected.resolve(true);
-      // client never succeed to connect in the first place
+        // client never succeed to connect in the first place
       } else {
         self.connecting = false;
         self.connected.reject(false);
@@ -62,8 +61,11 @@ WSHandler.prototype = {
         });
       }
     };
-
-    return self.connected;
+    this.conn.onerror = function(r) {
+      self.errorHandlers.forEach(function(callback) {
+        callback();
+      });
+    };
   },
 
   addMsgHandler: function(namespace, callback) {
@@ -72,7 +74,7 @@ WSHandler.prototype = {
     }
     this.msgHandlers[namespace].push(callback);
   },
-  
+
   addConnectHandler: function(callback) {
     this.connHandlers.push(callback);
     if (this.connected !== null) {
@@ -95,7 +97,11 @@ WSHandler.prototype = {
       });
     }
   },
- 
+
+  addErrorHandler: function(callback) {
+    this.errorHandlers.push(callback);
+  },
+
   send: function(msg) {
     this.conn.send(JSON.stringify(msg));
   }

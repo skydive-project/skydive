@@ -209,7 +209,7 @@ DiscoveryLayout.prototype.DrawChart = function(type) {
 
     entering.append("svg:polygon")
       .attr("points", breadcrumbPoints)
-      .style("fill", function(d) { return self.color((d.children ? d : d.parent).name); })
+      .style("fill", function(d) { return self.color((d.children ? d : d.parent).name); });
 
     entering.append("svg:text")
       .attr("x", (self.b.w + self.b.t) / 2)

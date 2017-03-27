@@ -89,7 +89,7 @@
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <router-link tag="li" to="/logout">
-              <a>Logout</a>
+              <a>Logout <i class="fa fa-exclamation-triangle text-danger" aria-hidden="true" title="Connection lost" v-if="!connected"></i></a>
             </router-link>
           </ul>
         </div>

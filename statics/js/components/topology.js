@@ -450,7 +450,7 @@ Graph.prototype.InitFromSyncMessage = function(msg) {
     var child = this.GetNode(e.Child);
 
     if (!parent || !child)
-      continue
+      continue;
 
     var edge = this.NewEdge(e.ID, parent, child);
 
@@ -495,7 +495,7 @@ var TopologyLayout = function(vm, selector) {
     .attr("height", this.height)
     .attr("y", 60)
     .attr('viewBox', -this.width/2 + ' ' + -this.height/2 + ' ' + this.width * 2 + ' ' + this.height * 2)
-    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .attr('preserveAspectRatio', 'xMidYMid meet');
 
   var _this = this;
 
@@ -1127,10 +1127,10 @@ TopologyLayout.prototype.CollapseHost = function(hostNode) {
       }
 
       if ((edge.Parent == hostNode) || (edge.Child == hostNode)) {
-        child = edge.Child
+        child = edge.Child;
         var found = false;
-        for (n in child.Edges) {
-          nEdge = edge.Child.Edges[n]
+        for (var n in child.Edges) {
+          nEdge = edge.Child.Edges[n];
           if (nEdge.Metadata.Type == "fabric")
             found = true;
             continue;

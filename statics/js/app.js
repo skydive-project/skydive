@@ -3,6 +3,7 @@ var websocket = new WSHandler();
 var store = new Vuex.Store({
 
   state: {
+    connected: null,
     logged: null,
     service: null,
     version: null,
@@ -40,6 +41,14 @@ var store = new Vuex.Store({
       state.logged = false;
     },
 
+    connected: function(state) {
+      state.connected = true;
+    },
+
+    disconnected: function(state) {
+      state.connected = false;
+    },
+
     selected: function(state, node) {
       state.currentNode = node;
     },
@@ -59,7 +68,7 @@ var store = new Vuex.Store({
     },
 
     service: function(state, service) {
-      state.service = service.charAt(0).toUpperCase() + service.slice(1);;
+      state.service = service.charAt(0).toUpperCase() + service.slice(1);
     },
 
     version: function(state, version) {
@@ -129,6 +138,14 @@ var app = new Vue({
   created: function() {
     var self = this;
 
+    websocket.addConnectHandler(self.onConnected.bind(self));
+    websocket.addDisconnectHandler(self.onDisconnected.bind(self));
+    websocket.addErrorHandler(self.onError.bind(self));
+
+    this.checkAPI();
+
+    this.interval = null;
+
     // global handler to detect authorization errors
     $(document).ajaxError(function(evt, e) {
       switch (e.status) {
@@ -137,24 +154,25 @@ var app = new Vue({
           self.$store.commit('logout');
           break;
       }
+
       return e;
     });
-
-    this.checkAPI();
   },
 
-  computed: Vuex.mapState(['service', 'version', 'logged']),
+  computed: Vuex.mapState(['service', 'version', 'logged', 'connected']),
 
   watch: {
 
     logged: function(newVal) {
       var self = this;
       if (newVal === true) {
-        websocket.connect();
         this.checkAPI();
-        this.interval = setInterval(this.checkAPI, 5000);
         router.push('/topology');
-        this.$success({message: 'Connected'});
+        websocket.connect();
+
+        if (!this.interval)
+          this.interval = setInterval(this.checkAPI, 5000);
+
         // check if the Analyzer supports history
         this.$topologyQuery("G.At('-1m').V().Limit(1)")
           .then(function() {
@@ -165,7 +183,7 @@ var app = new Vue({
           });
       } else {
         if (this.interval) {
-          clearInterval(this.interval);
+          clearInterval(self.interval);
           this.interval = null;
         }
         router.push('/login');
@@ -193,6 +211,31 @@ var app = new Vue({
       });
     },
 
+    onConnected: function() {
+      var self = this;
+
+      self.$store.commit('connected');
+      self.$success({message: 'Connected'});
+    },
+
+    onDisconnected: function() {
+      var self = this;
+
+      self.$store.commit('disconnected');
+      self.$error({message: 'Disconnected'});
+
+      if (self.$store.state.logged)
+        setTimeout(function(){websocket.connect();}, 1000);
+    },
+
+    onError: function() {
+      var self = this;
+
+      if (self.$store.state.connected)
+        self.$store.commit('disconnected');
+
+      setTimeout(function(){websocket.connect();}, 1000);
+    },
   }
 
 });

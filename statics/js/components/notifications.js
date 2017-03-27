@@ -100,4 +100,3 @@ var notificationMixin = {
   }
 
 };
-
