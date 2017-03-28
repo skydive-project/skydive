@@ -23,6 +23,7 @@
 package analyzer
 
 import (
+	"errors"
 	"math/rand"
 	"net"
 	"strconv"
@@ -71,6 +72,10 @@ func (c *FlowClient) close() {
 }
 
 func (c *FlowClient) SendFlow(f *flow.Flow) error {
+	if c.connection == nil {
+		return errors.New("Not connected")
+	}
+
 	data, err := f.GetData()
 	if err != nil {
 		return err

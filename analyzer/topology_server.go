@@ -51,26 +51,25 @@ func (t *TopologyServer) hostGraphDeleted(host string, mode int) {
 }
 
 func (t *TopologyServer) OnUnregisterClient(c *shttp.WSClient) {
-	if (c.ClientType != "") && (c.ClientType != common.AnalyzerService) {
-		t.Graph.Lock()
-		defer t.Graph.Unlock()
+	t.RLock()
+	_, ok := t.authors[c.Host]
+	t.RUnlock()
 
-		t.hostGraphDeleted(c.Host, graph.CACHE_ONLY_MODE)
-
-		t.RLock()
-		_, ok := t.authors[c.Host]
-		t.RUnlock()
-
-		// it's an authors so already received a message meaning that the client chose this analyzer as master
-		if ok {
-			logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", c.Host)
-			t.hostGraphDeleted(c.Host, graph.PERSISTENT_ONLY_MODE)
-
-			t.Lock()
-			delete(t.authors, c.Host)
-			t.Unlock()
-		}
+	// not an author so do not delete resources
+	if !ok {
+		return
 	}
+
+	t.Graph.Lock()
+	defer t.Graph.Unlock()
+
+	// it's an authors so already received a message meaning that the client chose this analyzer as master
+	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", c.Host)
+	t.hostGraphDeleted(c.Host, graph.DEFAULT_MODE)
+
+	t.Lock()
+	delete(t.authors, c.Host)
+	t.Unlock()
 }
 
 func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
@@ -87,7 +86,8 @@ func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 		return
 	}
 
-	if c.ClientType != common.AnalyzerService {
+	// author if message coming from another client than analyzer
+	if c.ClientType != "" && c.ClientType != common.AnalyzerService {
 		t.Lock()
 		t.authors[c.Host] = true
 		t.Unlock()

@@ -284,10 +284,7 @@ func init() {
 	if helper.Standalone {
 		helper.InitConfig(testConfig)
 
-		server, err := analyzer.NewServerFromConfig()
-		if err != nil {
-			panic(fmt.Sprintf("Can't start Analyzer : %v", err))
-		}
+		server := analyzer.NewServerFromConfig()
 		server.Start()
 
 		agent := agent.NewAgent()

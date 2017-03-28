@@ -43,11 +43,7 @@ var Analyzer = &cobra.Command{
 		logging.SetLoggingID("analyzer")
 		logging.GetLogger().Notice("Skydive Analyzer starting...")
 
-		server, err := analyzer.NewServerFromConfig()
-		if err != nil {
-			logging.GetLogger().Fatalf("Can't start Analyzer : %v", err)
-		}
-
+		server := analyzer.NewServerFromConfig()
 		server.Start()
 
 		logging.GetLogger().Notice("Skydive Analyzer started !")
