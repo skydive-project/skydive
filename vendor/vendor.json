@@ -933,10 +933,10 @@
 			"revision": "281073eb9eb092240d33ef253c404f1cca550309"
 		},
 		{
-			"checksumSHA1": "2JXZ6pJKogkjw9PkcBT8wukFass=",
+			"checksumSHA1": "X7OZtFYf2LxbQ8xDjuBjl1owCS4=",
 			"path": "github.com/nlewo/contrail-introspect-cli/collection",
-			"revision": "1c02f4368ea7528e36ee7cc692096745393d3bfa",
-			"revisionTime": "2016-10-10T08:11:42Z"
+			"revision": "2196e66a7317b2f109fb5aa311a71a91231c096a",
+			"revisionTime": "2017-03-28T08:08:32Z"
 		},
 		{
 			"checksumSHA1": "ccMHhIHDv9TFYnNfikxKtD6uMXA=",

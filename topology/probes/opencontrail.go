@@ -82,7 +82,7 @@ func (mapper *OpenContrailMapper) retrieveExtIDs(metadata graph.Metadata, itf co
 // for instance, the tap is first created by nova and this information
 // is then propagated to contrail. We then retry to get interface from
 // contrail introspect with a delay between each attempt.
-func getInterfaceFromIntrospect(host string, port int, name string) (collection.Element, error) {
+func getInterfaceFromIntrospect(host string, port int, name string) (collection.Collection, collection.Element, error) {
 	var err error
 	try := 3
 	delay := 500 * time.Millisecond
@@ -94,13 +94,14 @@ func getInterfaceFromIntrospect(host string, port int, name string) (collection.
 			itf, e := col.SearchStrictUnique(name)
 			err = e
 			if e == nil {
-				return itf, e
+				return col, itf, e
 			}
 		}
+		col.Close()
 		logging.GetLogger().Debugf("Retry %d: Load interface collection (previous error message: %s)\n", i+1, err)
 		time.Sleep(delay)
 	}
-	return collection.Element{}, err
+	return collection.Collection{}, collection.Element{}, err
 
 }
 
@@ -161,11 +162,12 @@ func (mapper *OpenContrailMapper) nodeUpdater() {
 			return
 		}
 
-		itf, err := getInterfaceFromIntrospect(mapper.agentHost, mapper.agentPort, name)
+		col, itf, err := getInterfaceFromIntrospect(mapper.agentHost, mapper.agentPort, name)
 		if err != nil {
 			logging.GetLogger().Debugf("%s\n", err)
 			return
 		}
+		defer col.Close()
 
 		mapper.graph.Lock()
 		defer mapper.graph.Unlock()
@@ -231,7 +233,7 @@ func (mapper *OpenContrailMapper) enhanceNode(node *graph.Node) {
 }
 
 func (mapper *OpenContrailMapper) OnNodeUpdated(n *graph.Node) {
-	mapper.enhanceNode(n)
+	return
 }
 
 func (mapper *OpenContrailMapper) OnNodeAdded(n *graph.Node) {
