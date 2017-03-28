@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -379,6 +380,11 @@ func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalVa
 	key, ok := keys[0].(string)
 	if !ok {
 		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, fmt.Errorf("Sum parameter has to be a string key"))
+	}
+
+	k := strings.Split(key, ".")
+	if k[0] != "Metric" && k[0] != "LastUpdateMetric" {
+		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, fmt.Errorf("Sum accepts only sub fields of Metric and LastUpadteMetric"))
 	}
 
 	var s float64
