@@ -255,6 +255,31 @@ func RunTest(t *testing.T, test *Test) {
 	}
 }
 
+func ping(t *testing.T, context *TestContext, src string, dst string, count int) error {
+	packet := &api.PacketParamsReq{
+		Src:   src,
+		Dst:   dst,
+		Type:  "icmp",
+		Count: 1,
+	}
+
+	// TODO for now generate packet as ping with a loop and a sleep
+	// would be better to add a delay within the packet-inject API.
+	// Add a delay to let the ARP generated
+	for count > 0 {
+		if err := common.Retry(func() error {
+			return context.client.Create("injectpacket", &packet)
+		}, 10, time.Second); err != nil {
+			return err
+		}
+		count--
+
+		time.Sleep(time.Second)
+	}
+
+	return nil
+}
+
 func init() {
 	if helper.Standalone {
 		helper.InitConfig(testConfig)
