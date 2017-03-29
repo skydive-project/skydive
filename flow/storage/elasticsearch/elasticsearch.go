@@ -213,7 +213,8 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 	if fsq.Sort {
 		request["sort"] = map[string]interface{}{
 			fsq.SortBy: map[string]string{
-				"order": strings.ToLower(fsq.SortOrder),
+				"order":         strings.ToLower(fsq.SortOrder),
+				"unmapped_type": "date",
 			},
 		}
 	}
@@ -267,7 +268,8 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 	if fsq.Sort {
 		request["sort"] = map[string]interface{}{
 			fsq.SortBy: map[string]string{
-				"order": strings.ToLower(fsq.SortOrder),
+				"order":         strings.ToLower(fsq.SortOrder),
+				"unmapped_type": "date",
 			},
 		}
 	}

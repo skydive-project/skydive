@@ -401,7 +401,8 @@ func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elas
 	if tsq.Sort {
 		request["sort"] = map[string]interface{}{
 			tsq.SortBy: map[string]string{
-				"order": strings.ToLower(tsq.SortOrder),
+				"order":         strings.ToLower(tsq.SortOrder),
+				"unmapped_type": "date",
 			},
 		}
 	}

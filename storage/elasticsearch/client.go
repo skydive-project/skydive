@@ -39,7 +39,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-const indexVersion = 3
+const indexVersion = 4
 
 const (
 	AscendingOrder = iota
