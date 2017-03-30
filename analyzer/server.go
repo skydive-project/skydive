@@ -97,6 +97,7 @@ func (s *Server) initialize() (err error) {
 		host := config.GetConfig().GetString("host_id")
 		if err = s.EtcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
 			logging.GetLogger().Errorf("Etcd server not ready: %s", err.Error())
+			time.Sleep(time.Second)
 		} else {
 			break
 		}

@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/pmylund/go-cache"
-
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
@@ -121,6 +120,7 @@ func (a *Agent) Start() {
 		// waiting for some config coming from etcd
 		var flowtableUpdate, flowtableExpire int64
 		for {
+			logging.GetLogger().Info("Waiting for Etcd to be ready")
 			if flowtableUpdate, err = a.EtcdClient.GetInt64("/agent/config/flowtable_update"); err != nil {
 				time.Sleep(time.Second)
 				continue

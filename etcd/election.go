@@ -104,7 +104,7 @@ func (le *EtcdMasterElector) start(first chan struct{}) {
 	}
 
 	if _, err := le.EtcdKeyAPI.Set(context.Background(), le.path, le.Host, setOptions); err == nil {
-		logging.GetLogger().Infof("starting as the master: %s", le.Host)
+		logging.GetLogger().Infof("starting as the master for %s: %s", le.path, le.Host)
 
 		le.Lock()
 		le.master = true
@@ -116,7 +116,7 @@ func (le *EtcdMasterElector) start(first chan struct{}) {
 			listener.OnMaster()
 		}
 	} else {
-		logging.GetLogger().Infof("starting as a follower: %s", le.Host)
+		logging.GetLogger().Infof("starting as a follower for %s: %s", le.path, le.Host)
 		for _, listener := range le.listeners {
 			listener.OnSlave()
 		}
