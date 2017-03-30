@@ -575,6 +575,10 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 			} else {
 				return &GraphTraversalValue{error: err}
 			}
+		} else {
+			if err != common.ErrFieldNotFound {
+				return &GraphTraversalValue{error: err}
+			}
 		}
 	}
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
