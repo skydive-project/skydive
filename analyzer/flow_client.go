@@ -84,7 +84,7 @@ func (c *FlowClient) SendFlow(f *flow.Flow) error {
 retry:
 	_, err = c.connection.Write(data)
 	if err != nil {
-		logging.GetLogger().Errorf("flows connection to analyzer error %s : try to reconnect" + err.Error())
+		logging.GetLogger().Errorf("flows connection to analyzer error %s : try to reconnect", err.Error())
 		c.connection.Close()
 		c.connect()
 		goto retry

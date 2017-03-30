@@ -2,12 +2,6 @@
 
 export SKYDIVE_ANALYZERS=
 
-SKYDIVE_BIN=$( which skydive )
-SKYDIVE_PATH=$( realpath $SKYDIVE_BIN )
-SKYDIVE=${SKYDIVE:-$SKYDIVE_PATH}
-TLS=${TLS:-false}
-ELASTICSEARCH=${ELASTICSEARCH:-}
-
 WINDOW=0
 AGENT=0
 PREFIX=192.168.0
@@ -18,13 +12,29 @@ CURR_ANALYZER_PORT=8082
 GW_ADDR=$PREFIX.254
 AGENT_STOCK=5
 
+
+SKYDIVE_BIN=$( which skydive )
+SKYDIVE_PATH=$( realpath $SKYDIVE_BIN )
+SKYDIVE=${SKYDIVE:-$SKYDIVE_PATH}
+TLS=${TLS:-false}
+ELASTICSEARCH=${ELASTICSEARCH:-}
+ETCD=${ETCD:-}
+if [ -z "$ETCD" ]; then
+	ETCD=$GW_ADDR:2379
+	ETCD_EMBEDDED=true
+else
+	ETCD_EMBEDDED=false
+fi
+
 mkdir -p $TEMP_DIR
 
 # create the main bridge which will connect all the analyzer/agent namespaces
 function create_main_bridge() {
 	echo Create central bridge
 
-	sudo ovs-vsctl add-br br-central
+	sudo brctl addbr br-central
+	sudo brctl stp br-central off
+
 	sudo ip l set br-central up
 	sudo ip a add $GW_ADDR/24 dev br-central
 }
@@ -32,7 +42,7 @@ function create_main_bridge() {
 function delete_main_bridge() {
 	echo Delete central bridge
 
-	sudo ovs-vsctl del-br br-central
+	sudo ip link del br-central
 }
 
 # create a namespace with a veth connected to the main bridge
@@ -50,8 +60,9 @@ function create_host() {
 
 	sudo ip netns exec $NAME ip link set eth0 up
 	sudo ip netns exec $NAME ip address add $ADDR/24 dev eth0
+	sudo ip netns exec $NAME ip route add 0.0.0.0/0 via $GW_ADDR
 
-	sudo ovs-vsctl add-port br-central $NAME-eth0
+	sudo brctl addif br-central $NAME-eth0
 }
 
 function generate_ssl_conf() {
@@ -98,6 +109,10 @@ EOF
 
 function generate_tls_crt() {
 	NAME=$1
+
+	if [ -e $TEMP_DIR/$NAME.crt ]; then
+		return
+	fi
 
 	sudo openssl genrsa -out $TEMP_DIR/$NAME.key 2048
 	sudo chmod 400 $TEMP_DIR/$NAME.key
@@ -175,7 +190,7 @@ netns:
 etcd:
   data_dir: $TEMP_DIR/$NAME-etcd
   servers:
-    - http://$GW_ADDR:2379
+    - http://$ETCD
 ovs:
   ovsdb: unix://$TEMP_DIR/$NAME.sock
 logging:
@@ -186,7 +201,7 @@ EOF
 	WINDOW=$(( $WINDOW + 1 ))
 
 	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-br $NAME
-        sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock set bridge $NAME stp_enable=true
+	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock set bridge $NAME rstp_enable=true
 
 	# create a VM
 	for VM_I in $( seq $VM_NUM ); do
@@ -242,7 +257,6 @@ function create_analyzer() {
 	IDX=$1
 	ANALYZER_NUM=$2
 	AGENT_NUM=$3
-	ETCD_EMBEDDED=$4
 
 	NAME=analyzer-$IDX
 
@@ -278,7 +292,7 @@ etcd:
   embedded: $ETCD_EMBEDDED
   data_dir: $TEMP_DIR/$NAME-etcd
   servers:
-    - http://localhost:2379
+    - http://$ETCD
 storage:
   elasticsearch:
     host: $ELASTICSEARCH
@@ -348,7 +362,8 @@ function start() {
 	VM_NUM=$3
 
 	if [ ! -e $TEMP_DIR/screen.lock ]; then
-		sudo -E screen -dmS skydive-stress
+		sudo screen -dmS skydive-stress
+		sudo screen -ls
 		touch $TEMP_DIR/screen.lock
 	fi
 
@@ -363,15 +378,13 @@ function start() {
 
 	start_inotify
 
-	ETCD_EMBEDDED=false
 	for ANALYZER_I in $( seq $ANALYZER_NUM ); do
-		if [ $ANALYZER_I -eq 1 ]; then
-			ETCD_EMBEDDED=true
-		else
+		# if embedded only the first analyzer will be used as etcd server
+		if [ $ANALYZER_I -gt 1 ]; then
 			ETCD_EMBEDDED=false
 		fi
 		if [ ! -f $TEMP_DIR/analyzer-$ANALYZER_I.lock ]; then
-			create_analyzer $ANALYZER_I $ANALYZER_NUM $AGENT_NUM $ETCD_EMBEDDED
+			create_analyzer $ANALYZER_I $ANALYZER_NUM $AGENT_NUM
 		fi
 	done
 
@@ -403,6 +416,9 @@ function start_inotify() {
 	fi
 
 	echo Start inotify netns watcher
+
+	# create this folder if netns never created
+	sudo mkdir -p /var/run/netns
 
 	cat <<EOF > $TEMP_DIR/inotify.sh
 inotifywait -m -r -e create -e delete /var/run/netns | while read PATH EVENT FOLDER; do

@@ -45,6 +45,7 @@ func TestHA(t *testing.T) {
 
 	setupCmds := []helper.Cmd{
 		{fmt.Sprintf("%s start 2 2 2", scale), true},
+		{"sleep 30", false},
 	}
 
 	tearDownCmds := []helper.Cmd{
@@ -90,8 +91,6 @@ func TestHA(t *testing.T) {
 
 	checkFlows := func(flowExpected int) {
 		t.Logf("Check for flows: %d", flowExpected)
-
-		// test to get some flows
 		retry = func() error {
 			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')"); err != nil {
 				return err
@@ -111,7 +110,7 @@ func TestHA(t *testing.T) {
 
 		// check in the storage
 		retry = func() error {
-			if flows, err = gh.GetFlows("G.At('-5s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')"); err != nil {
+			if flows, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')"); err != nil {
 				return err
 			}
 
@@ -136,25 +135,31 @@ func TestHA(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	retry = func() error {
-		if nodes, err = gh.GetNodes(`g.V().HasKey("Capture/ID")`); err != nil {
-			return err
+	checkCaptures := func(captureExpected int) {
+		t.Logf("Check for captures: %d", captureExpected)
+		retry = func() error {
+			if nodes, err = gh.GetNodes(`g.V().HasKey("Capture/ID")`); err != nil {
+				return err
+			}
+
+			if len(nodes) != captureExpected {
+				return fmt.Errorf("Should return %d capture got : %v", captureExpected, nodes)
+			}
+
+			return nil
 		}
 
-		if len(nodes) != 2 {
-			return fmt.Errorf("Should return 2 host nodes got : %v", nodes)
+		if err = common.Retry(retry, 10, time.Second); err != nil {
+			helper.ExecCmds(t, tearDownCmds...)
+			t.Fatalf(err.Error())
 		}
-
-		return nil
 	}
 
-	if err = common.Retry(retry, 10, time.Second); err != nil {
-		helper.ExecCmds(t, tearDownCmds...)
-		t.Fatalf(err.Error())
-	}
+	// check that we have 2 captures, one per vm1
+	checkCaptures(2)
 
 	// generate some packet, do not check because connectivity is not ensured
-	for i := 0; i != 20; i++ {
+	for i := 0; i != 30; i++ {
 		setupCmds = []helper.Cmd{
 			{fmt.Sprintf("%s ping agent-1-vm1 agent-2-vm1 -c 1", scale), false},
 		}
@@ -173,9 +178,13 @@ func TestHA(t *testing.T) {
 	// test if we have now 3 hosts
 	checkHostNodes(3)
 
+	// check that we have 2 captures, one per vm1
+	checkCaptures(3)
+
 	// destroy the second analyzer
 	setupCmds = []helper.Cmd{
 		{fmt.Sprintf("%s stop-analyzer 2", scale), false},
+		{"sleep 5", false},
 	}
 	helper.ExecCmds(t, setupCmds...)
 
@@ -186,7 +195,7 @@ func TestHA(t *testing.T) {
 	checkHostNodes(3)
 
 	// generate more icmp traffic
-	for i := 0; i != 20; i++ {
+	for i := 0; i != 30; i++ {
 		setupCmds = []helper.Cmd{
 			{fmt.Sprintf("%s ping agent-3-vm1 agent-1-vm1 -c 1", scale), false},
 		}

@@ -8,7 +8,18 @@ dir="$(dirname "$0")"
 # this should deploy in the CI image
 sudo yum install -y screen inotify-tools
 
+sudo systemctl stop etcd.service
+sleep 15
+
+sudo iptables -F
+
 set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 make install
-TLS=false ELASTICSEARCH=localhost:9200 SKYDIVE=${GOPATH}/bin/skydive make test.functionals TAGS="scale test" VERBOSE=true TIMEOUT=10m TEST_PATTERN=HA
+
+export SKYDIVE_ANALYZERS=localhost:8082
+export ELASTICSEARCH=localhost:9200
+export TLS=true
+export SKYDIVE=${GOPATH}/bin/skydive
+
+make test.functionals TAGS="scale test" VERBOSE=true TIMEOUT=10m TEST_PATTERN=HA
