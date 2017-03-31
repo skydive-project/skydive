@@ -27,8 +27,8 @@ export COPR_USERNAME=skydive
 
 dir="$(dirname "$0")"
 
-. "${dir}/install-go.sh"
 . "${dir}/install-requirements.sh"
+. "${dir}/install-go.sh"
 . "${dir}/install-static-requirements.sh"
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
