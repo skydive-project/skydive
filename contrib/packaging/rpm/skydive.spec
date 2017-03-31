@@ -132,7 +132,7 @@ install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/sk
 %{_unitdir}/skydive-analyzer.service
 
 %changelog
-* Fri Mar 30 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.10.0-1
+* Thu Mar 30 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.10.0-1
 - Bump to version 0.10.0
 
 * Fri Jan 27 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.9.0-1
