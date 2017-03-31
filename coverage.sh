@@ -58,6 +58,7 @@ push_to_coveralls() {
     goveralls -coverprofile="$profile"
 }
 
+format=func
 for arg in "$@"
 do
     case "$arg" in
@@ -77,7 +78,5 @@ do
 done
 
 generate_cover_data
-show_cover_report func
-
 show_cover_report $format
 [ "$coveralls" -eq 1 ] && push_to_coveralls
