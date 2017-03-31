@@ -418,24 +418,23 @@ func TestSFlowSrcDstPath(t *testing.T) {
 			gh := c.gh
 			node1, err := gh.GetNode(prefix + `.V().Has("Name", "ssdp-intf1", "Type", "internal")`)
 			if err != nil {
-				return err
+				var res interface{}
+				gh.Query("g", &res)
+				return fmt.Errorf("ssdp-intf1 not found, %v", res)
 			}
 
 			node2, err := gh.GetNode(prefix + `.V().Has("Name", "ssdp-intf2", "Type", "internal")`)
 			if err != nil {
-				return err
+				var res interface{}
+				gh.Query("G", &res)
+				return fmt.Errorf("ssdp-intf2 not found, %v", res)
 			}
 
 			within := fmt.Sprintf(`Within("%s", "%s")`, node1.Metadata()["TID"], node2.Metadata()["TID"])
 			flows, err := gh.GetFlows(fmt.Sprintf(prefix+`.Flows().Has("ANodeTID", %s, "BNodeTID", %s)`, within, within))
 			if err != nil {
-				return err
-			}
-
-			if len(flows) == 0 {
-				flows, _ = gh.GetFlows(fmt.Sprintf(prefix + `.Flows()`))
-				gr := fmt.Sprintf(prefix+`.Flows().Has("ANodeTID", %s, "BNodeTID", %s)`, within, within)
-				return fmt.Errorf("Unable to find flows with the expected path %s: %v", gr, flows)
+				flows, _ = gh.GetFlows("g.Flows()")
+				return fmt.Errorf("flow with ANodeTID and BNodeTID not found: %v", flows)
 			}
 
 			return nil
@@ -853,7 +852,7 @@ func TestFlowHops(t *testing.T) {
 			}
 
 			if len(tnodes) != 3 {
-				return errors.New("We should have 3 nodes NodeTID,A,B")
+				return fmt.Errorf("We should have 3 nodes NodeTID,A,B got : %v for flows : %v", tnodes, flows)
 			}
 
 			gremlin = prefix + `.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Hops()`
