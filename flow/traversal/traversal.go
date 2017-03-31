@@ -635,6 +635,8 @@ func (s *FlowGremlinTraversalStep) addTimeFilter(fsq *filters.SearchQuery, timeC
 func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	var graphTraversal *traversal.GraphTraversal
 	var err error
+	var context graph.GraphContext
+	var nodes []*graph.Node
 
 	flowSearchQuery, err := s.makeSearchQuery()
 	if err != nil {
@@ -647,69 +649,66 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 	case *traversal.GraphTraversal:
 		graphTraversal = tv
 		graphTraversal.RLock()
-		context := graphTraversal.Graph.GetContext()
+		context = graphTraversal.Graph.GetContext()
 		graphTraversal.RUnlock()
-
-		if context.TimeSlice != nil {
-			if s.Storage == nil {
-				return nil, storage.NoStorageConfigured
-			}
-
-			s.addTimeFilter(&flowSearchQuery, context.TimeSlice)
-
-			// We do nothing as the following step is Metrics
-			// and we'll make a request on metrics instead of flows
-			if s.metricsNextStep {
-				return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery}, nil
-			}
-
-			if flowset, err = s.Storage.SearchFlows(flowSearchQuery); err != nil {
-				return nil, err
-			}
-		} else {
-			flowset, err = s.TableClient.LookupFlows(flowSearchQuery)
-		}
 	case *traversal.GraphTraversalV:
 		graphTraversal = tv.GraphTraversal
 
 		graphTraversal.RLock()
-		context := graphTraversal.Graph.GetContext()
+		context = graphTraversal.Graph.GetContext()
 		// not need to get flows from node not supporting capture
-		nodes := captureAllowedNodes(tv.GetNodes())
-		graphTraversal.RUnlock()
-
-		if len(nodes) != 0 {
-			if context.TimeSlice != nil {
-				if s.Storage == nil {
-					return nil, storage.NoStorageConfigured
-				}
-
-				s.addTimeFilter(&flowSearchQuery, context.TimeSlice)
-
-				// previously selected nodes then need to filter flow belonging to them
-				tv.GraphTraversal.RLock()
-				nodeFilter := flow.NewFilterForNodes(nodes)
-				flowSearchQuery.Filter = filters.NewAndFilter(flowSearchQuery.Filter, nodeFilter)
-				tv.GraphTraversal.RUnlock()
-
-				// We do nothing as the following step is Metrics
-				// and we'll make a request on metrics instead of flows
-				if s.metricsNextStep {
-					return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery}, nil
-				}
-
-				if flowset, err = s.Storage.SearchFlows(flowSearchQuery); err != nil {
-					return nil, err
-				}
-			} else {
-				tv.GraphTraversal.RLock()
-				hnmap := topology.BuildHostNodeTIDMap(nodes)
-				tv.GraphTraversal.RUnlock()
-				flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, flowSearchQuery)
-			}
+		if nodes = captureAllowedNodes(tv.GetNodes()); len(nodes) == 0 {
+			graphTraversal.RUnlock()
+			return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowset: flowset, flowSearchQuery: flowSearchQuery}, nil
 		}
+		graphTraversal.RUnlock()
+	case *traversal.GraphTraversalShortestPath:
+		graphTraversal = tv.GraphTraversal
+
+		graphTraversal.RLock()
+		context = graphTraversal.Graph.GetContext()
+		// not need to get flows from node not supporting capture
+		if nodes = captureAllowedNodes(tv.GetNodes()); len(nodes) == 0 {
+			graphTraversal.RUnlock()
+			return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowset: flowset, flowSearchQuery: flowSearchQuery}, nil
+		}
+		graphTraversal.RUnlock()
 	default:
 		return nil, traversal.ExecutionError
+	}
+
+	if context.TimeSlice != nil {
+		if s.Storage == nil {
+			return nil, storage.NoStorageConfigured
+		}
+
+		s.addTimeFilter(&flowSearchQuery, context.TimeSlice)
+
+		if len(nodes) != 0 {
+			graphTraversal.RLock()
+			nodeFilter := flow.NewFilterForNodes(nodes)
+			flowSearchQuery.Filter = filters.NewAndFilter(flowSearchQuery.Filter, nodeFilter)
+			graphTraversal.RUnlock()
+		}
+
+		// We do nothing as the following step is Metrics
+		// and we'll make a request on metrics instead of flows
+		if s.metricsNextStep {
+			return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery}, nil
+		}
+
+		if flowset, err = s.Storage.SearchFlows(flowSearchQuery); err != nil {
+			return nil, err
+		}
+	} else {
+		if len(nodes) != 0 {
+			graphTraversal.RLock()
+			hnmap := topology.BuildHostNodeTIDMap(nodes)
+			graphTraversal.RUnlock()
+			flowset, err = s.TableClient.LookupFlowsByNodes(hnmap, flowSearchQuery)
+		} else {
+			flowset, err = s.TableClient.LookupFlows(flowSearchQuery)
+		}
 	}
 
 	if err != nil {

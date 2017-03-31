@@ -773,6 +773,16 @@ func (sp *GraphTraversalShortestPath) Error() error {
 	return sp.error
 }
 
+//This method will return all the nodes in single array, so it will used to
+//find flows.
+func (sp *GraphTraversalShortestPath) GetNodes() []*graph.Node {
+	var nodes []*graph.Node
+	for _, v := range sp.paths {
+		nodes = append(nodes, v...)
+	}
+	return nodes
+}
+
 func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e graph.Metadata) *GraphTraversalShortestPath {
 	if tv.error != nil {
 		return &GraphTraversalShortestPath{error: tv.error}
