@@ -24,15 +24,14 @@ package probes
 
 import (
 	"fmt"
-	"io"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/docker/engine-api/client"
-	"github.com/docker/engine-api/types"
-	"github.com/docker/engine-api/types/events"
-	"github.com/docker/engine-api/types/filters"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	"github.com/vishvananda/netns"
 	"golang.org/x/net/context"
 
@@ -162,6 +161,7 @@ func (probe *DockerProbe) connect() error {
 		logging.GetLogger().Errorf("Failed to create client to Docker daemon: %s", err.Error())
 		return err
 	}
+	defer probe.client.Close()
 
 	if _, err := probe.client.ServerVersion(context.Background()); err != nil {
 		logging.GetLogger().Errorf("Failed to connect to Docker daemon: %s", err.Error())
@@ -173,13 +173,9 @@ func (probe *DockerProbe) connect() error {
 	eventsFilter.Add("event", "die")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	body, err := probe.client.Events(ctx, types.EventsOptions{Filters: eventsFilter})
-	if err != nil {
-		return err
-	}
-	defer body.Close()
-	probe.cancel = cancel
+	eventChan, errChan := probe.client.Events(ctx, types.EventsOptions{Filters: eventsFilter})
 
+	probe.cancel = cancel
 	probe.wg.Add(2)
 
 	probe.connected.Store(true)
@@ -205,22 +201,16 @@ func (probe *DockerProbe) connect() error {
 	defer probe.wg.Done()
 
 	for {
-		var event events.Message
-		err := common.JsonDecode(body, &event)
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				if atomic.LoadInt64(&probe.state) != common.StoppingState {
-					logging.GetLogger().Errorf("Got error while waiting for Docker event: %s", err.Error())
-				}
-				return err
+		select {
+		case err := <-errChan:
+			if atomic.LoadInt64(&probe.state) != common.StoppingState {
+				logging.GetLogger().Errorf("Got error while waiting for Docker event: %s", err.Error())
 			}
+			return err
+		case event := <-eventChan:
+			probe.handleDockerEvent(&event)
 		}
-		probe.handleDockerEvent(&event)
 	}
-
-	return nil
 }
 
 func (probe *DockerProbe) Start() {
