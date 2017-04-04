@@ -104,6 +104,10 @@ vet: govendor
 	@echo "+ $@"
 	govendor tool vet $$(govendor list -no-status +local  | perl -pe 's|github.com/skydive-project/skydive/?||g' | grep -v '^tests')
 
+check: govendor
+	@test -z "$$(${GOPATH}/bin/govendor list +u)" || \
+		(echo -e "You must remove these unused packages:\n$$($${GOPATH}/bin/govendor list +u)" && /bin/false)
+
 ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
 	@go get github.com/alecthomas/gometalinter
 	@command -v $@ >/dev/null || gometalinter --install --update
@@ -148,6 +152,9 @@ rpm:
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
 	sudo -E docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
+
+vendor: govendor check
+	tar cvzf vendor.tar.gz vendor/
 
 dist:
 	tmpdir=`mktemp -d -u --suffix=skydive-pkg`; \

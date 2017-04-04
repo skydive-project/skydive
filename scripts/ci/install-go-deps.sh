@@ -16,8 +16,7 @@ go get -f -u github.com/tebeka/go2xunit
 export PATH=$PATH:$GOPATH/bin
 
 # speedup govendor sync command
-REVISION=`curl -q "https://softwarefactory-project.io/r/changes/5923/detail?O=404" | sed '1d' | jq .current_revision | tr -d '"'`
-curl -o /tmp/vendor.tgz https://softwarefactory-project.io/r/changes/5923/revisions/$REVISION/archive?format=tgz
+curl -o /tmp/vendor.tgz http://46.231.132.68:8080/v1/AUTH_0ec9e4f4f3044236b4d18536ccfcb182/skydive/vendor/vendor.tar.gz
 
 pushd ${GOPATH}/src/github.com/skydive-project/skydive
 go get -f -u github.com/kardianos/govendor
