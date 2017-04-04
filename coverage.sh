@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Generate test coverage statistics for Go packages.
 #
 # Works around the fact that `go test -coverprofile` currently does not work
