@@ -262,9 +262,17 @@ func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) err
 	return err
 }
 
+func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{}) error {
+	return c.indexer.Index("skydive", obj, id, "", "", nil, data)
+}
+
 func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, data interface{}) error {
 	_, err := c.connection.IndexWithParameters("skydive", obj, id, parent, 0, "", "", "", 0, "", "", false, nil, data)
 	return err
+}
+
+func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) error {
+	return c.indexer.Index("skydive", obj, id, parent, "", nil, data)
 }
 
 func (c *ElasticSearchClient) Update(obj string, id string, data interface{}) error {
@@ -272,9 +280,17 @@ func (c *ElasticSearchClient) Update(obj string, id string, data interface{}) er
 	return err
 }
 
+func (c *ElasticSearchClient) BulkUpdate(obj string, id string, data interface{}) error {
+	return c.indexer.Update("skydive", obj, id, "", "", nil, data)
+}
+
 func (c *ElasticSearchClient) UpdateWithPartialDoc(obj string, id string, data interface{}) error {
 	_, err := c.connection.UpdateWithPartialDoc("skydive", obj, id, nil, data, false)
 	return err
+}
+
+func (c *ElasticSearchClient) BulkUpdateWithPartialDoc(obj string, id string, data interface{}) error {
+	return c.indexer.UpdateWithPartialDoc("skydive", obj, id, "", "", nil, data, false)
 }
 
 func (c *ElasticSearchClient) Get(obj string, id string) (elastigo.BaseResponse, error) {
@@ -283,6 +299,10 @@ func (c *ElasticSearchClient) Get(obj string, id string) (elastigo.BaseResponse,
 
 func (c *ElasticSearchClient) Delete(obj string, id string) (elastigo.BaseResponse, error) {
 	return c.connection.Delete("skydive", obj, id, nil)
+}
+
+func (c *ElasticSearchClient) BulkDelete(obj string, id string) {
+	c.indexer.Delete("skydive", obj, id)
 }
 
 func (c *ElasticSearchClient) Search(obj string, query string) (elastigo.SearchResult, error) {

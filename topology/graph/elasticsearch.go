@@ -171,7 +171,7 @@ func (b *ElasticSearchBackend) archiveElement(kind string, i interface{}, t time
 	// it is set in the archived version
 	obj["UpdatedAt"] = common.UnixMillis(t)
 	obj["Timestamp"] = common.UnixMillis(timestamp)
-	if err := b.client.Index(kind, string(GenID()), obj); err != nil {
+	if err := b.client.BulkIndex(kind, string(GenID()), obj); err != nil {
 		logging.GetLogger().Errorf("Error while archiving %s %s: %s", kind, id, err.Error())
 		return false
 	}
@@ -181,7 +181,7 @@ func (b *ElasticSearchBackend) archiveElement(kind string, i interface{}, t time
 
 func (b *ElasticSearchBackend) deleteElement(kind string, id string, t time.Time) bool {
 	obj := map[string]interface{}{"DeletedAt": common.UnixMillis(t)}
-	if err := b.client.UpdateWithPartialDoc(kind, id, obj); err != nil {
+	if err := b.client.BulkUpdateWithPartialDoc(kind, id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while marking %s as deleted %s: %s", kind, id, err.Error())
 		return false
 	}
@@ -247,7 +247,7 @@ func (b *ElasticSearchBackend) getTimeFilter(t *common.TimeSlice) *filters.Filte
 func (b *ElasticSearchBackend) createNode(n *Node, t time.Time) bool {
 	obj := b.mapNode(n)
 	obj["Timestamp"] = common.UnixMillis(t)
-	if err := b.client.Index("node", string(n.ID), obj); err != nil {
+	if err := b.client.BulkIndex("node", string(n.ID), obj); err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
 		return false
 	}
@@ -284,7 +284,7 @@ func (b *ElasticSearchBackend) GetNode(i Identifier, t *common.TimeSlice) []*Nod
 func (b *ElasticSearchBackend) createEdge(e *Edge, t time.Time) bool {
 	obj := b.mapEdge(e)
 	obj["Timestamp"] = common.UnixMillis(t)
-	if err := b.client.Index("edge", string(e.ID), obj); err != nil {
+	if err := b.client.BulkIndex("edge", string(e.ID), obj); err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
 		return false
 	}

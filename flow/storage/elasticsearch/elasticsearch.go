@@ -134,13 +134,12 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	}
 
 	for _, f := range flows {
-		if err := c.client.Index("flow", f.UUID, f); err != nil {
+		if err := c.client.BulkIndex("flow", f.UUID, f); err != nil {
 			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 			continue
 		}
 
 		if f.LastUpdateStart != 0 {
-			// TODO submit a pull request to add bulk request with parent supported
 			metric := map[string]interface{}{
 				"ABBytes":   f.LastUpdateMetric.ABBytes,
 				"BABytes":   f.LastUpdateMetric.BABytes,
@@ -149,7 +148,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				"Start":     f.LastUpdateStart,
 				"Last":      f.LastUpdateLast,
 			}
-			if err := c.client.IndexChild("metric", f.UUID, "", metric); err != nil {
+			if err := c.client.BulkIndexChild("metric", f.UUID, "", metric); err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
 			}
