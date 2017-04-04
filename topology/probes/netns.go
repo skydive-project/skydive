@@ -142,7 +142,7 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 
 		newns = &NetNs{path: path, dev: stats.Dev, ino: stats.Ino}
 		return nil
-	}, 10, time.Millisecond*20)
+	}, 10, time.Millisecond*100)
 
 	if err != nil {
 		logging.GetLogger().Errorf("Could not register namespace: %s", err.Error())
