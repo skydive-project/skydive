@@ -86,12 +86,14 @@ func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker 
 	}
 }
 
-func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
+func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets, bpf *flow.BPF) {
+	var count int
+
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := p.packetSource.NextPacket()
 		switch err {
 		case nil:
-			if flowPackets := flow.FlowPacketsFromGoPacket(&packet, 0, -1, nil); len(flowPackets.Packets) > 0 {
+			if flowPackets := flow.FlowPacketsFromGoPacket(&packet, 0, -1, bpf); len(flowPackets.Packets) > 0 {
 				packetsChan <- flowPackets
 			}
 		case io.EOF:
@@ -101,6 +103,13 @@ func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 		default:
 			time.Sleep(200 * time.Millisecond)
 		}
+
+		// NOTE: bpf usperspace filter is applied to the few first packets in order to avoid
+		// to get unexpected packets between capture start and bpf applying
+		if count > 50 {
+			bpf = nil
+		}
+		count++
 	}
 }
 
@@ -125,6 +134,17 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	if err != nil {
 		logging.GetLogger().Error(err)
 		return
+	}
+
+	// Apply temporary the pbf in the userspace to prevent non expected packet
+	// between capture creation and the filter apply.
+	var bpfFilter *flow.BPF
+	if capture.BPFFilter != "" {
+		bpfFilter, err = flow.NewBPF(linkType, flow.CaptureLength, capture.BPFFilter)
+		if err != nil {
+			logging.GetLogger().Error(err)
+			return
+		}
 	}
 
 	var wg sync.WaitGroup
@@ -197,7 +217,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	packetsChan := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
-	p.feedFlowTable(packetsChan)
+	p.feedFlowTable(packetsChan, bpfFilter)
 
 	if statsTicker != nil {
 		close(statsDone)
