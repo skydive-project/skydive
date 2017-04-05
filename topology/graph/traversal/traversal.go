@@ -364,7 +364,10 @@ func (t *GraphTraversal) Values() []interface{} {
 }
 
 func (t *GraphTraversal) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.Values())
+	values := t.Values()
+	t.RLock()
+	defer t.RUnlock()
+	return json.Marshal(values)
 }
 
 func (t *GraphTraversal) Error() error {
@@ -501,7 +504,10 @@ func (tv *GraphTraversalV) Values() []interface{} {
 }
 
 func (tv *GraphTraversalV) MarshalJSON() ([]byte, error) {
-	return json.Marshal(tv.Values())
+	values := tv.Values()
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+	return json.Marshal(values)
 }
 
 func (tv *GraphTraversalV) GetNodes() (nodes []*graph.Node) {
@@ -753,7 +759,10 @@ func (sp *GraphTraversalShortestPath) Values() []interface{} {
 }
 
 func (sp *GraphTraversalShortestPath) MarshalJSON() ([]byte, error) {
-	return json.Marshal(sp.Values())
+	values := sp.Values()
+	sp.GraphTraversal.RLock()
+	defer sp.GraphTraversal.RUnlock()
+	return json.Marshal(values)
 }
 
 func (sp *GraphTraversalShortestPath) Error() error {
@@ -1132,7 +1141,10 @@ func (te *GraphTraversalE) Values() []interface{} {
 }
 
 func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
-	return json.Marshal(te.Values())
+	values := te.Values()
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+	return json.Marshal(values)
 }
 
 func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
@@ -1367,6 +1379,8 @@ func (t *GraphTraversalValue) Values() []interface{} {
 }
 
 func (t *GraphTraversalValue) MarshalJSON() ([]byte, error) {
+	t.GraphTraversal.RLock()
+	defer t.GraphTraversal.RUnlock()
 	return json.Marshal(t.value)
 }
 
@@ -1503,7 +1517,10 @@ func (m *MetricsTraversalStep) Values() []interface{} {
 }
 
 func (b *MetricsTraversalStep) MarshalJSON() ([]byte, error) {
-	return json.Marshal(b.Values())
+	values := b.Values()
+	b.GraphTraversal.RLock()
+	defer b.GraphTraversal.RUnlock()
+	return json.Marshal(values)
 }
 
 func (b *MetricsTraversalStep) Error() error {
