@@ -118,7 +118,7 @@ func (c *ElasticSearchClient) createAlias() error {
 }
 
 func (c *ElasticSearchClient) start(mappings []map[string][]byte) error {
-	indexPath := fmt.Sprintf("/skydive_v%d", indexVersion)
+	indexPath := fmt.Sprintf("skydive_v%d", indexVersion)
 
 	if _, err := c.connection.OpenIndex(indexPath); err != nil {
 		if _, err := c.connection.CreateIndex(indexPath); err != nil {
@@ -250,8 +250,12 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	}
 	if f := filter.NullFilter; f != nil {
 		return map[string]interface{}{
-			"missing": map[string]interface{}{
-				"field": prefix + esc(f.Key),
+			"bool": map[string]interface{}{
+				"must_not": map[string]interface{}{
+					"exists": map[string]interface{}{
+						"field": prefix + esc(f.Key),
+					},
+				},
 			},
 		}
 	}
