@@ -47,12 +47,13 @@ const (
 )
 
 type WSClient struct {
-	Host       string
-	ClientType common.ServiceType
-	conn       *websocket.Conn
-	read       chan []byte
-	send       chan []byte
-	server     *WSServer
+	Host         string
+	ClientType   common.ServiceType
+	conn         *websocket.Conn
+	read         chan []byte
+	send         chan []byte
+	server       *WSServer
+	nsSubscribed map[string]bool
 }
 
 type WSMessage struct {
@@ -72,16 +73,19 @@ type WSServerEventHandler interface {
 type DefaultWSServerEventHandler struct {
 }
 
+type broadcastMessage struct {
+	namespace string
+	message   string
+}
+
 type WSServer struct {
 	sync.RWMutex
 	DefaultWSServerEventHandler
 	Server          *Server
-	Host            string
-	ServiceType     common.ServiceType
 	eventHandlers   []WSServerEventHandler
 	nsEventHandlers map[string][]WSServerEventHandler
 	clients         map[*WSClient]bool
-	broadcast       chan string
+	broadcast       chan broadcastMessage
 	quit            chan bool
 	register        chan *WSClient
 	unregister      chan *WSClient
@@ -143,8 +147,17 @@ func (d *DefaultWSServerEventHandler) OnRegisterClient(c *WSClient) {
 func (d *DefaultWSServerEventHandler) OnUnregisterClient(c *WSClient) {
 }
 
-func (c *WSClient) SendWSMessage(msg *WSMessage) {
-	c.send <- []byte(msg.String())
+func (c *WSClient) SendWSMessage(msg *WSMessage) bool {
+	if _, ok := c.nsSubscribed[msg.Namespace]; ok {
+		c.send <- []byte(msg.String())
+		return true
+	}
+	if _, ok := c.nsSubscribed[WilcardNamespace]; ok {
+		c.send <- []byte(msg.String())
+		return true
+	}
+
+	return false
 }
 
 func (c *WSClient) processMessage(m []byte) {
@@ -239,8 +252,7 @@ func (s *WSServer) SendWSMessageTo(msg *WSMessage, host string) bool {
 
 	for c := range s.clients {
 		if c.Host == host {
-			c.SendWSMessage(msg)
-			return true
+			return c.SendWSMessage(msg)
 		}
 	}
 
@@ -280,13 +292,42 @@ func (s *WSServer) listenAndServe() {
 	}
 }
 
-func (s *WSServer) broadcastMessage(m string) {
+func (s *WSServer) broadcastMessage(m broadcastMessage) {
 	s.RLock()
 	defer s.RUnlock()
 
 	for c := range s.clients {
-		c.send <- []byte(m)
+		if _, ok := c.nsSubscribed[m.namespace]; ok {
+			c.send <- []byte(m.message)
+		} else if _, ok := c.nsSubscribed[WilcardNamespace]; ok {
+			c.send <- []byte(m.message)
+		}
 	}
+}
+
+func nsSubscribed(r *auth.AuthenticatedRequest) map[string]bool {
+	subscribed := make(map[string]bool)
+
+	// from header
+	if namespaces, ok := r.Header["X-Websocket-Namespace"]; ok {
+		for _, ns := range namespaces {
+			subscribed[ns] = true
+		}
+	}
+
+	// from parameter, useful for browser client
+	if namespaces, ok := r.URL.Query()["x-websocket-namespace"]; ok {
+		for _, ns := range namespaces {
+			subscribed[ns] = true
+		}
+	}
+
+	// if empty use wilcard for backward compatibility
+	if len(subscribed) == 0 {
+		subscribed[WilcardNamespace] = true
+	}
+
+	return subscribed
 }
 
 func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
@@ -308,23 +349,19 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 		s.RUnlock()
 	}
 
-	var upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-
-	conn, err := upgrader.Upgrade(w, &r.Request, nil)
+	conn, err := websocket.Upgrade(w, &r.Request, nil, 1024, 1024)
 	if err != nil {
 		return
 	}
 
 	c := &WSClient{
-		read:       make(chan []byte, maxMessages),
-		send:       make(chan []byte, maxMessages),
-		conn:       conn,
-		server:     s,
-		Host:       host,
-		ClientType: common.ServiceType(r.Header.Get("X-Client-Type")),
+		read:         make(chan []byte, maxMessages),
+		send:         make(chan []byte, maxMessages),
+		conn:         conn,
+		server:       s,
+		Host:         host,
+		ClientType:   common.ServiceType(r.Header.Get("X-Client-Type")),
+		nsSubscribed: nsSubscribed(r),
 	}
 	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
@@ -350,7 +387,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 }
 
 func (s *WSServer) BroadcastWSMessage(msg *WSMessage) {
-	s.broadcast <- msg.String()
+	s.broadcast <- broadcastMessage{namespace: msg.Namespace, message: msg.String()}
 }
 
 func (s *WSServer) ListenAndServe() {
@@ -402,12 +439,10 @@ func (s *WSServer) GetClientsByType(clientType common.ServiceType) (clients []*W
 	return clients
 }
 
-func NewWSServer(host string, serviceType common.ServiceType, server *Server, pongWait time.Duration, endpoint string) *WSServer {
+func NewWSServer(server *Server, pongWait time.Duration, endpoint string) *WSServer {
 	s := &WSServer{
-		Host:            host,
-		ServiceType:     serviceType,
 		Server:          server,
-		broadcast:       make(chan string, 100000),
+		broadcast:       make(chan broadcastMessage, 100000),
 		quit:            make(chan bool, 1),
 		register:        make(chan *WSClient),
 		unregister:      make(chan *WSClient),
@@ -422,9 +457,8 @@ func NewWSServer(host string, serviceType common.ServiceType, server *Server, po
 	return s
 }
 
-func NewWSServerFromConfig(serviceType common.ServiceType, server *Server, endpoint string) *WSServer {
+func NewWSServerFromConfig(server *Server, endpoint string) *WSServer {
 	w := config.GetConfig().GetInt("ws_pong_timeout")
-	host := config.GetConfig().GetString("host_id")
 
-	return NewWSServer(host, serviceType, server, time.Duration(w)*time.Second, endpoint)
+	return NewWSServer(server, time.Duration(w)*time.Second, endpoint)
 }

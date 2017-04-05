@@ -215,7 +215,7 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	wsServer := shttp.NewWSServerFromConfig(common.AgentService, hserver, "/ws")
+	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
 
 	tr := traversal.NewGremlinTraversalParser(g)
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())

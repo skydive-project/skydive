@@ -120,7 +120,12 @@ func (c *WSAsyncClient) connect() {
 	var err error
 	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
 	endpoint := "ws://" + host + c.Path
-	headers := http.Header{"X-Host-ID": {c.Host}, "Origin": {endpoint}, "X-Client-Type": {c.ClientType.String()}}
+	headers := http.Header{
+		"X-Host-ID":             {c.Host},
+		"Origin":                {endpoint},
+		"X-Client-Type":         {c.ClientType.String()},
+		"X-Websocket-Namespace": {WilcardNamespace},
+	}
 
 	if c.AuthClient != nil {
 		if err = c.AuthClient.Authenticate(); err != nil {

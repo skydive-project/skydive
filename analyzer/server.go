@@ -68,7 +68,7 @@ func (s *Server) initialize() (err error) {
 		return
 	}
 
-	s.WSServer = shttp.NewWSServerFromConfig(common.AnalyzerService, s.HTTPServer, "/ws")
+	s.WSServer = shttp.NewWSServerFromConfig(s.HTTPServer, "/ws")
 
 	if s.TopologyServer, err = NewTopologyServerFromConfig(s.WSServer); err != nil {
 		return
