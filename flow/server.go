@@ -52,10 +52,6 @@ func (s *TableServer) OnTableQuery(c *shttp.WSAsyncClient, msg shttp.WSMessage) 
 }
 
 func (s *TableServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
-	if msg.Namespace != Namespace {
-		return
-	}
-
 	switch msg.Type {
 	case "TableQuery":
 		s.OnTableQuery(c, msg)
@@ -67,7 +63,7 @@ func NewServer(allocator *TableAllocator, wspool *shttp.WSAsyncClientPool) *Tabl
 		TableAllocator:    allocator,
 		WSAsyncClientPool: wspool,
 	}
-	wspool.AddEventHandler(s)
+	wspool.AddEventHandler(s, []string{Namespace})
 
 	return s
 }

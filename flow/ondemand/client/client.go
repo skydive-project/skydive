@@ -57,10 +57,6 @@ type nodeProbe struct {
 }
 
 func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
-	if m.Namespace != ondemand.Namespace {
-		return
-	}
-
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*m.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", m)
@@ -302,7 +298,7 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.
 		elector:         elector,
 		registeredNodes: make(map[string]bool),
 	}
-	w.AddEventHandler(o)
+	w.AddEventHandler(o, []string{ondemand.Namespace})
 
 	return o
 }

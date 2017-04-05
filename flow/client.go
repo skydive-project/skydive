@@ -45,10 +45,6 @@ type TableClient struct {
 }
 
 func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
-	if m.Namespace != Namespace {
-		return
-	}
-
 	f.replyChanMutex.RLock()
 	defer f.replyChanMutex.RUnlock()
 
@@ -188,7 +184,7 @@ func NewTableClient(w *shttp.WSServer) *TableClient {
 		WSServer:  w,
 		replyChan: make(map[string]chan *json.RawMessage),
 	}
-	w.AddEventHandler(tc)
+	w.AddEventHandler(tc, []string{Namespace})
 
 	return tc
 }

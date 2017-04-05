@@ -104,7 +104,7 @@ func NewTopologyForwarder(host string, g *graph.Graph, wspool *shttp.WSAsyncClie
 	}
 
 	g.AddEventListener(t)
-	wspool.AddEventHandler(t)
+	wspool.AddEventHandler(t, []string{})
 
 	return t
 }

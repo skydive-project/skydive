@@ -40,10 +40,6 @@ type PacketInjectorClient struct {
 }
 
 func (pc *PacketInjectorClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
-	if m.Namespace != Namespace {
-		return
-	}
-
 	pc.replyChanMutex.RLock()
 	defer pc.replyChanMutex.RUnlock()
 
@@ -108,7 +104,7 @@ func NewPacketInjectorClient(w *shttp.WSServer) *PacketInjectorClient {
 		WSServer:  w,
 		replyChan: make(map[string]chan *json.RawMessage),
 	}
-	w.AddEventHandler(pic)
+	w.AddEventHandler(pic, []string{Namespace})
 
 	return pic
 }

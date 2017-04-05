@@ -39,7 +39,8 @@ import (
 )
 
 const (
-	Namespace      = "WSServer"
+	WilcardNamespace = "*"
+
 	writeWait      = 10 * time.Second
 	maxMessages    = 1024
 	maxMessageSize = 0
@@ -74,19 +75,20 @@ type DefaultWSServerEventHandler struct {
 type WSServer struct {
 	sync.RWMutex
 	DefaultWSServerEventHandler
-	Server        *Server
-	Host          string
-	ServiceType   common.ServiceType
-	eventHandlers []WSServerEventHandler
-	clients       map[*WSClient]bool
-	broadcast     chan string
-	quit          chan bool
-	register      chan *WSClient
-	unregister    chan *WSClient
-	pongWait      time.Duration
-	pingPeriod    time.Duration
-	wg            sync.WaitGroup
-	listening     atomic.Value
+	Server          *Server
+	Host            string
+	ServiceType     common.ServiceType
+	eventHandlers   []WSServerEventHandler
+	nsEventHandlers map[string][]WSServerEventHandler
+	clients         map[*WSClient]bool
+	broadcast       chan string
+	quit            chan bool
+	register        chan *WSClient
+	unregister      chan *WSClient
+	pongWait        time.Duration
+	pingPeriod      time.Duration
+	wg              sync.WaitGroup
+	listening       atomic.Value
 }
 
 func (g WSMessage) Marshal() []byte {
@@ -152,10 +154,12 @@ func (c *WSClient) processMessage(m []byte) {
 		return
 	}
 
-	if msg.Namespace != Namespace {
-		for _, e := range c.server.eventHandlers {
-			e.OnMessage(c, msg)
-		}
+	for _, e := range c.server.nsEventHandlers[msg.Namespace] {
+		e.OnMessage(c, msg)
+	}
+
+	for _, e := range c.server.nsEventHandlers[WilcardNamespace] {
+		e.OnMessage(c, msg)
 	}
 }
 
@@ -365,8 +369,17 @@ func (s *WSServer) Stop() {
 	s.listening.Store(false)
 }
 
-func (s *WSServer) AddEventHandler(h WSServerEventHandler) {
+func (s *WSServer) AddEventHandler(h WSServerEventHandler, namespaces []string) {
 	s.eventHandlers = append(s.eventHandlers, h)
+
+	// add this handler per namespace
+	for _, ns := range namespaces {
+		if _, ok := s.nsEventHandlers[ns]; !ok {
+			s.nsEventHandlers[ns] = []WSServerEventHandler{h}
+		} else {
+			s.nsEventHandlers[ns] = append(s.nsEventHandlers[ns], h)
+		}
+	}
 }
 
 func (s *WSServer) GetClients() (clients []*WSClient) {
@@ -391,16 +404,17 @@ func (s *WSServer) GetClientsByType(clientType common.ServiceType) (clients []*W
 
 func NewWSServer(host string, serviceType common.ServiceType, server *Server, pongWait time.Duration, endpoint string) *WSServer {
 	s := &WSServer{
-		Host:        host,
-		ServiceType: serviceType,
-		Server:      server,
-		broadcast:   make(chan string, 100000),
-		quit:        make(chan bool, 1),
-		register:    make(chan *WSClient),
-		unregister:  make(chan *WSClient),
-		clients:     make(map[*WSClient]bool),
-		pongWait:    pongWait,
-		pingPeriod:  (pongWait * 8) / 10,
+		Host:            host,
+		ServiceType:     serviceType,
+		Server:          server,
+		broadcast:       make(chan string, 100000),
+		quit:            make(chan bool, 1),
+		register:        make(chan *WSClient),
+		unregister:      make(chan *WSClient),
+		clients:         make(map[*WSClient]bool),
+		nsEventHandlers: make(map[string][]WSServerEventHandler),
+		pongWait:        pongWait,
+		pingPeriod:      (pongWait * 8) / 10,
 	}
 
 	server.HandleFunc(endpoint, s.serveMessages)

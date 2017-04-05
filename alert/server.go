@@ -220,7 +220,6 @@ func NewGremlinAlert(alert *api.Alert, p *traversal.GremlinTraversalParser) (*Gr
 
 type AlertServer struct {
 	sync.RWMutex
-	shttp.DefaultWSServerEventHandler
 	Graph         *graph.Graph
 	WSServer      *shttp.WSServer
 	AlertHandler  api.APIHandler
@@ -412,7 +411,6 @@ func (a *AlertServer) Start() {
 
 	a.watcher = a.AlertHandler.AsyncWatch(a.onAPIWatcherEvent)
 	a.Graph.AddEventListener(a)
-	a.WSServer.AddEventHandler(a)
 }
 
 func (a *AlertServer) Stop() {

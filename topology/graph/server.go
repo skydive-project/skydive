@@ -40,10 +40,6 @@ type GraphServer struct {
 }
 
 func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
-	if msg.Namespace != Namespace {
-		return
-	}
-
 	s.Graph.Lock()
 	defer s.Graph.Unlock()
 
@@ -96,7 +92,7 @@ func NewServer(g *Graph, server *shttp.WSServer) *GraphServer {
 		WSServer: server,
 	}
 	s.Graph.AddEventListener(s)
-	server.AddEventHandler(s)
+	server.AddEventHandler(s, []string{Namespace})
 
 	return s
 }

@@ -172,10 +172,6 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 }
 
 func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
-	if msg.Namespace != ondemand.Namespace {
-		return
-	}
-
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", msg)
@@ -246,7 +242,7 @@ func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
 
 func (o *OnDemandProbeServer) Start() error {
 	o.Graph.AddEventListener(o)
-	o.WSAsyncClientPool.AddEventHandler(o)
+	o.WSAsyncClientPool.AddEventHandler(o, []string{ondemand.Namespace})
 
 	return nil
 }

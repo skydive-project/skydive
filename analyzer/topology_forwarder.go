@@ -112,7 +112,7 @@ func (p *TopologyForwarderPeer) connect(wg *sync.WaitGroup) {
 
 	authClient := shttp.NewAuthenticationClient(p.Addr, p.Port, p.AuthOptions)
 	p.wsclient = shttp.NewWSAsyncClientFromConfig(common.AnalyzerService, p.Addr, p.Port, "/ws", authClient)
-	p.wsclient.AddEventHandler(p)
+	p.wsclient.AddEventHandler(p, []string{})
 
 	p.wsclient.Connect()
 }
@@ -127,7 +127,7 @@ func (a *TopologyForwarder) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	for _, peer := range a.peers {
 		// we forward message whether the service is not an analyzer or the HosID is not the same
 		// so that we forward all external messages to skydive and we avoid loop.
-		if peer.wsclient != nil && (c.ClientType != common.AnalyzerService || peer.host != c.Host) && msg.Namespace == graph.Namespace {
+		if peer.wsclient != nil && (c.ClientType != common.AnalyzerService || peer.host != c.Host) {
 			peer.wsclient.SendWSMessage(&msg)
 		}
 	}
@@ -164,7 +164,7 @@ func NewTopologyForwarder(g *graph.Graph, server *shttp.WSServer, authOptions *s
 		AuthOptions: authOptions,
 		peers:       make([]*TopologyForwarderPeer, 0),
 	}
-	server.AddEventHandler(tf)
+	server.AddEventHandler(tf, []string{graph.Namespace})
 
 	return tf
 }

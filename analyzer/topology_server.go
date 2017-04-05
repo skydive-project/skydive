@@ -73,10 +73,6 @@ func (t *TopologyServer) OnUnregisterClient(c *shttp.WSClient) {
 }
 
 func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
-	if msg.Namespace != graph.Namespace {
-		return
-	}
-
 	t.Graph.Lock()
 	defer t.Graph.Unlock()
 
@@ -174,7 +170,7 @@ func NewTopologyServer(host string, server *shttp.WSServer) (*TopologyServer, er
 		cached:      cached,
 		authors:     make(map[string]bool),
 	}
-	server.AddEventHandler(t)
+	server.AddEventHandler(t, []string{graph.Namespace})
 
 	return t, nil
 }

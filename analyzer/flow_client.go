@@ -163,7 +163,7 @@ func NewFlowClientPool(wspool *shttp.WSAsyncClientPool) *FlowClientPool {
 		flowClients: make([]*FlowClient, 0),
 	}
 
-	wspool.AddEventHandler(p)
+	wspool.AddEventHandler(p, []string{})
 
 	return p
 }

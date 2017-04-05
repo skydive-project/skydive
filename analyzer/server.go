@@ -46,7 +46,6 @@ import (
 )
 
 type Server struct {
-	shttp.DefaultWSServerEventHandler
 	HTTPServer        *shttp.Server
 	WSServer          *shttp.WSServer
 	TopologyForwarder *TopologyForwarder
@@ -147,8 +146,6 @@ func (s *Server) initialize() (err error) {
 	piClient := packet_injector.NewPacketInjectorClient(s.WSServer)
 
 	s.TopologyForwarder = NewTopologyForwarderFromConfig(s.TopologyServer.Graph, s.WSServer)
-
-	s.WSServer.AddEventHandler(s)
 
 	api.RegisterTopologyAPI(s.HTTPServer, tr)
 

@@ -84,10 +84,6 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (bool, string
 }
 
 func (pis *PacketInjectorServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
-	if msg.Namespace != Namespace {
-		return
-	}
-
 	switch msg.Type {
 	case "InjectPacket":
 		status := http.StatusOK
@@ -106,7 +102,7 @@ func NewServer(wspool *shttp.WSAsyncClientPool, graph *graph.Graph) *PacketInjec
 		WSAsyncClientPool: wspool,
 		Graph:             graph,
 	}
-	wspool.AddEventHandler(s)
+	wspool.AddEventHandler(s, []string{Namespace})
 
 	return s
 }
