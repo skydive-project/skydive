@@ -205,6 +205,10 @@ func TestHA(t *testing.T) {
 	// 4 expected because the gremlin expression matches all the eth0
 	checkFlows(4)
 
+	// delete the capture to check that all captures will be delete at the agent side
+	client.Delete("capture", capture.ID())
+	checkCaptures(0)
+
 	// delete an agent
 	setupCmds = []helper.Cmd{
 		{fmt.Sprintf("%s stop-agent 1", scale), false},

@@ -164,14 +164,6 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node) bool {
 	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStop", ondemand.CaptureQuery{NodeID: string(node.ID)})
 
-	o.RLock()
-	_, ok := o.registeredNodes[string(node.ID)]
-	o.RUnlock()
-
-	if !ok {
-		return false
-	}
-
 	if _, err := node.GetFieldString("Capture/ID"); err != nil {
 		return false
 	}
