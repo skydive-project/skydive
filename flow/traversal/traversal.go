@@ -484,6 +484,7 @@ func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
 
 		f.flowSearchQuery.Sort = true
 		f.flowSearchQuery.SortBy = defaultSortBy
+		f.flowSearchQuery.SortOrder = string(common.SortAscending)
 
 		var err error
 		if flowMetrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {

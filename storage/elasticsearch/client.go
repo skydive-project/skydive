@@ -41,11 +41,6 @@ import (
 
 const indexVersion = 4
 
-const (
-	AscendingOrder = iota
-	DescendingOrder
-)
-
 type ElasticSearchClient struct {
 	connection *elastigo.Conn
 	indexer    *elastigo.BulkIndexer

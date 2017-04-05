@@ -510,6 +510,10 @@ func (c *Client) Query(obj string, query *filters.SearchQuery) ([]Document, erro
 
 	if query.Sort {
 		sql += " ORDER BY " + query.SortBy
+
+		if query.SortOrder != "" {
+			sql += " " + strings.ToUpper(query.SortOrder)
+		}
 	}
 
 	return c.Sql(sql)

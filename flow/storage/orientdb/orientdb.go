@@ -25,6 +25,7 @@ package orientdb
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
@@ -186,25 +187,24 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 		}
 	}
 
-	// TODO this should be done via orientdb itself
-	if fsq.Sort {
-		flowset.Sort(common.SortOrder(fsq.SortOrder), fsq.SortBy)
-	}
-
 	return flowset, nil
 }
 
 func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
-
 	sql += " WHERE " + orient.FilterToExpression(metricFilter, nil)
-
 	if conditional := orient.FilterToExpression(filter, func(s string) string { return "Flow." + s }); conditional != "" {
 		sql += " AND " + conditional
 	}
 
-	sql += " ORDER BY Start"
+	if fsq.Sort {
+		sql += " ORDER BY " + fsq.SortBy
+		if fsq.SortOrder != "" {
+			sql += " " + strings.ToUpper(fsq.SortOrder)
+		}
+	}
+
 	docs, err := c.client.Sql(sql)
 	if err != nil {
 		return nil, err
