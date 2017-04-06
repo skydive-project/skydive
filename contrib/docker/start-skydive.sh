@@ -29,7 +29,8 @@ agent:
       - gopacket
 analyzer:
   listen: 0.0.0.0:8082
-  storage: elasticsearch
+  storage:
+    backend: elasticsearch
   flowtable_update: $FLOWTABLE_UPDATE
   flowtable_expire: $FLOWTABLE_EXPIRE
 etcd:
