@@ -168,10 +168,11 @@ func (o *OrientDBBackend) GetNode(i Identifier, t *common.TimeSlice) (nodes []*N
 }
 
 func (o *OrientDBBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
-	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (Parent = '%s' OR Child = '%s') ORDER BY Timestamp", o.getTimeSliceClause(t), n.ID, n.ID)
+	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (Parent = '%s' OR Child = '%s')", o.getTimeSliceClause(t), n.ID, n.ID)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
 	}
+	query += " ORDER BY Timestamp"
 	docs, err := o.client.Sql(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges for node %s: %s", n.ID, err.Error())

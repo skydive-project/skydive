@@ -1579,6 +1579,61 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 			return nil
 		},
 	}
+	RunTest(t, test)
+}
 
+func TestFlowsWithShortestPath(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-spt", true},
+
+			{"ip netns add src-vm", true},
+			{"ip link add src-vm-eth0 type veth peer name spt-src-eth0 netns src-vm", true},
+			{"ip link set src-vm-eth0 up", true},
+			{"ip netns exec src-vm ip link set spt-src-eth0 up", true},
+			{"ip netns exec src-vm ip address add 169.254.37.33/24 dev spt-src-eth0", true},
+
+			{"ip netns add dst-vm", true},
+			{"ip link add dst-vm-eth0 type veth peer name spt-dst-eth0 netns dst-vm", true},
+			{"ip link set dst-vm-eth0 up", true},
+			{"ip netns exec dst-vm ip link set spt-dst-eth0 up", true},
+			{"ip netns exec dst-vm ip address add 169.254.37.34/24 dev spt-dst-eth0", true},
+
+			{"ovs-vsctl add-port br-spt src-vm-eth0", true},
+			{"ovs-vsctl add-port br-spt dst-vm-eth0", true},
+		},
+
+		setupFunction: func(c *TestContext) (err error) {
+			return ping(t, c, "G.V().Has('Name', 'spt-src-eth0')", "G.V().Has('Name', 'spt-dst-eth0')", 10)
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ovs-vsctl del-br br-spt", true},
+			{"ip link del dst-vm-eth0", true},
+			{"ip link del src-vm-eth0", true},
+			{"ip netns del src-vm", true},
+			{"ip netns del dst-vm", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'spt-src-eth0').ShortestPathTo(Metadata('Name', 'spt-dst-eth0'), Metadata('RelationType', 'layer2'))`},
+		},
+
+		check: func(c *TestContext) error {
+			g := "g"
+			if !c.time.IsZero() {
+				g += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+			gremlin := g + ".V().Has('Name', 'spt-src-eth0').ShortestPathTo(Metadata('Name', 'spt-dst-eth0'), Metadata('RelationType', 'layer2')).Flows().Has('Network', '169.254.37.33').Dedup()"
+			flows, err := c.gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+			if len(flows) != 1 {
+				return fmt.Errorf("Expected one flow, got %+v", flows)
+			}
+			return nil
+		},
+	}
 	RunTest(t, test)
 }
