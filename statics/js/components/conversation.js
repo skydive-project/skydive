@@ -4,6 +4,8 @@ var ConversationComponent = {
 
   name: 'Conversation',
 
+  mixins: [apiMixin],
+
   template: '\
     <div class="conversation">\
       <div class="col-sm-8 fill content">\
@@ -127,103 +129,160 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
   this.svg.selectAll("*").remove();
 
   var _this = this;
-  d3.json("/api/flow/conversation/" + layer, function(data) {
-    var matrix = [];
-    var nodes = data.nodes;
-    var n = nodes.length;
+  var gremlinQuery = "g.Flows()";
+  var flowLayer = "";
+  var layerMap = {};
 
-    // Compute index per node.
-    nodes.forEach(function(node, i) {
-      node.index = i;
-      node.count = 0;
-      matrix[i] = d3.range(n).map(function(j) { return {x: j, y: i, z: 0}; });
-    });
+  switch (layer) {
+    case "ethernet":
+      gremlinQuery += ".Has('Link.Protocol', 'ETHERNET')";
+      flowLayer = "Link";
+      break;
+    case "ipv4":
+      gremlinQuery += ".Has('Network.Protocol', 'IPV4')";
+      flowLayer = "Network";
+      break;
+    case "ipv6":
+      gremlinQuery += ".Has('Network.Protocol', 'IPV6')";
+      flowLayer = "Network";
+      break;
+    case "udp":
+      gremlinQuery += ".Has('Transport.Protocol', 'UDPPORT')";
+      flowLayer = "Transport";
+      break;
+    case "tcp":
+      gremlinQuery += ".Has('Transport.Protocol', 'TCPPORT')";
+      flowLayer = "Transport";
+      break;
+    case "sctp":
+      gremlinQuery += ".Has('Transport.Protocol', 'SCTPPORT')";
+      flowLayer = "Transport";
+      break;
+    default:
+      return;
+  }
 
-    // Convert links to matrix; count character occurrences.
-    data.links.forEach(function(link) {
-      matrix[link.source][link.target].z += link.value;
-      matrix[link.target][link.source].z += link.value;
-      nodes[link.source].count += link.value;
-      nodes[link.target].count += link.value;
-    });
+  this.vm.$topologyQuery(gremlinQuery)
+    .then(function(data) {
+      var nodes = [];
+      var links = [];
 
-    // Precompute the orders.
-    _this.orders = {
-      name: d3.range(n).sort(function(a, b) {
-        return d3.ascending(nodes[a].name, nodes[b].name);
-      }),
-      count: d3.range(n).sort(function(a, b) {
-        return nodes[b].count - nodes[a].count;
-      }),
-      group: d3.range(n).sort(function(a, b) {
-        return nodes[b].group - nodes[a].group;
-      })
-    };
+      if (data === null)
+        return [];
 
-    var x = d3.scale.ordinal().rangeBands([0, _this.width]);
-    var z = d3.scale.linear().domain([0, 4]).clamp(true);
-    var c = d3.scale.category10().domain(d3.range(10));
+      data.forEach(function(flow, i) {
+        var l = flow[flowLayer];
+        var AB = l.A;
+        var BA = l.B;
 
-    // The default sort order.
-    x.domain(_this.orders.name);
+        if (layerMap[AB] === undefined) {
+          layerMap[AB] = Object.keys(layerMap).length;
+          nodes.push({"name": AB, "group": 0});
+        }
 
-    _this.svg.append("rect")
-    .attr("class", "background")
-    .attr("width", _this.width)
-    .attr("height", _this.height);
+        if (layerMap[BA] === undefined) {
+          layerMap[BA] = Object.keys(layerMap).length;
+          nodes.push({"name": BA, "group": 0});
+        }
 
-    var row = _this.svg.selectAll(".row")
-    .data(matrix)
-    .enter().append("g")
-    .attr("class", "row")
-    .attr("transform", function(d, i) {
-      return "translate(0," + x(i) + ")"; })
-    .each(function(row) {
-      var cell = d3.select(this).selectAll(".cell")
-      .data(row.filter(function(d) { return d.z; }))
-      .enter().append("rect")
-      .attr("class", "cell")
-      .attr("x", function(d) { return x(d.x); })
-      .attr("width", x.rangeBand())
-      .attr("height", x.rangeBand())
-      .style("fill-opacity", function(d) { return z(d.z); })
-      .style("fill", function(d) { return "rgb(31, 119, 180)"; })
-      .on("mouseover", function(p) {
-        d3.selectAll(".row text").classed("active", function(d, i) { return i == p.y; });
-        d3.selectAll(".column text").classed("active", function(d, i) { return i == p.x; });
-        //_this.NodeDetails(nodes[p.x]);
-      })
-      .on("mouseout", function(p) {
-        d3.selectAll("text").classed("active", false);
+        links.push({"source": layerMap[AB], "target": layerMap[BA], "value": flow.Metric.ABBytes + flow.Metric.BABytes});
       });
+
+      var matrix = [];
+      var n = nodes.length;
+
+      // Compute index per node.
+      nodes.forEach(function(node, i) {
+        node.index = i;
+        node.count = 0;
+        matrix[i] = d3.range(n).map(function(j) { return {x: j, y: i, z: 0}; });
+      });
+
+      // Convert links to matrix; count character occurrences.
+      links.forEach(function(link) {
+        matrix[link.source][link.target].z += link.value;
+        matrix[link.target][link.source].z += link.value;
+        nodes[link.source].count += link.value;
+        nodes[link.target].count += link.value;
+      });
+
+      // Precompute the orders.
+      _this.orders = {
+        name: d3.range(n).sort(function(a, b) {
+          return d3.ascending(nodes[a].name, nodes[b].name);
+        }),
+        count: d3.range(n).sort(function(a, b) {
+          return nodes[b].count - nodes[a].count;
+        }),
+        group: d3.range(n).sort(function(a, b) {
+          return nodes[b].group - nodes[a].group;
+        })
+      };
+
+      var x = d3.scale.ordinal().rangeBands([0, _this.width]);
+      var z = d3.scale.linear().domain([0, 4]).clamp(true);
+      var c = d3.scale.category10().domain(d3.range(10));
+
+      // The default sort order.
+      x.domain(_this.orders.name);
+
+      _this.svg.append("rect")
+      .attr("class", "background")
+      .attr("width", _this.width)
+      .attr("height", _this.height);
+
+      var row = _this.svg.selectAll(".row")
+      .data(matrix)
+      .enter().append("g")
+      .attr("class", "row")
+      .attr("transform", function(d, i) {
+        return "translate(0," + x(i) + ")"; })
+      .each(function(row) {
+        var cell = d3.select(this).selectAll(".cell")
+        .data(row.filter(function(d) { return d.z; }))
+        .enter().append("rect")
+        .attr("class", "cell")
+        .attr("x", function(d) { return x(d.x); })
+        .attr("width", x.rangeBand())
+        .attr("height", x.rangeBand())
+        .style("fill-opacity", function(d) { return z(d.z); })
+        .style("fill", function(d) { return "rgb(31, 119, 180)"; })
+        .on("mouseover", function(p) {
+          d3.selectAll(".row text").classed("active", function(d, i) { return i == p.y; });
+          d3.selectAll(".column text").classed("active", function(d, i) { return i == p.x; });
+          //_this.NodeDetails(nodes[p.x]);
+        })
+        .on("mouseout", function(p) {
+          d3.selectAll("text").classed("active", false);
+        });
+      });
+
+      row.append("line")
+        .attr("x2", _this.width);
+
+      row.append("text")
+      .attr("x", -6)
+      .attr("y", x.rangeBand() / 2)
+      .attr("dy", ".32em")
+      .attr("text-anchor", "end")
+      .text(function(d, i) { return nodes[i].name; });
+
+      var column = _this.svg.selectAll(".column")
+      .data(matrix)
+      .enter().append("g")
+      .attr("class", "column")
+      .attr("transform", function(d, i) {
+        return "translate(" + x(i) + ")rotate(-90)";
+      });
+
+      column.append("line")
+      .attr("x1", -_this.width);
+
+      column.append("text")
+      .attr("x", 6)
+      .attr("y", x.rangeBand() / 2)
+      .attr("dy", ".32em")
+      .attr("text-anchor", "start")
+      .text(function(d, i) { return nodes[i].name; });
     });
-
-    row.append("line")
-      .attr("x2", _this.width);
-
-    row.append("text")
-    .attr("x", -6)
-    .attr("y", x.rangeBand() / 2)
-    .attr("dy", ".32em")
-    .attr("text-anchor", "end")
-    .text(function(d, i) { return nodes[i].name; });
-
-    var column = _this.svg.selectAll(".column")
-    .data(matrix)
-    .enter().append("g")
-    .attr("class", "column")
-    .attr("transform", function(d, i) {
-      return "translate(" + x(i) + ")rotate(-90)";
-    });
-
-    column.append("line")
-    .attr("x1", -_this.width);
-
-    column.append("text")
-    .attr("x", 6)
-    .attr("y", x.rangeBand() / 2)
-    .attr("dy", ".32em")
-    .attr("text-anchor", "start")
-    .text(function(d, i) { return nodes[i].name; });
-  });
 };
