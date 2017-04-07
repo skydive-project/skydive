@@ -162,11 +162,7 @@ func (c *WSClient) processMessage(m []byte) {
 func (c *WSClient) processMessages(wg *sync.WaitGroup, quit chan struct{}) {
 	for {
 		select {
-		case m, ok := <-c.read:
-			if !ok {
-				wg.Done()
-				return
-			}
+		case m := <-c.read:
 			c.processMessage(m)
 		case <-quit:
 			wg.Done()
@@ -209,28 +205,17 @@ func (c *WSClient) writePump(wg *sync.WaitGroup, quit chan struct{}) {
 
 	// send a first ping to help firefox and some other client which wait for a
 	// first ping before doing something
-	if err := c.write(websocket.PingMessage, []byte{}); err != nil {
-		wg.Done()
-		return
-	}
+	c.write(websocket.PingMessage, []byte{})
 
 	for {
 		select {
-		case message, ok := <-c.send:
-			if !ok {
-				c.write(websocket.CloseMessage, []byte{})
-				wg.Done()
-				return
-			}
+		case message := <-c.send:
 			if err := c.write(websocket.TextMessage, message); err != nil {
 				logging.GetLogger().Warningf("Error while writing to the websocket: %s", err.Error())
-				wg.Done()
-				return
 			}
 		case <-ticker.C:
 			if err := c.write(websocket.PingMessage, []byte{}); err != nil {
-				wg.Done()
-				return
+				logging.GetLogger().Warningf("Error while sending ping to the websocket: %s", err.Error())
 			}
 		case <-quit:
 			wg.Done()
@@ -409,7 +394,7 @@ func NewWSServer(host string, serviceType common.ServiceType, server *Server, po
 		Host:        host,
 		ServiceType: serviceType,
 		Server:      server,
-		broadcast:   make(chan string, 500),
+		broadcast:   make(chan string, 100000),
 		quit:        make(chan bool, 1),
 		register:    make(chan *WSClient),
 		unregister:  make(chan *WSClient),
