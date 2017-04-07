@@ -43,6 +43,10 @@ label {
   overflow: hidden;
 }
 
+.conversation-d3 {
+  margin-top: 20px;
+}
+
 .node-selection {
   cursor: crosshair;
 }

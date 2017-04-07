@@ -4,6 +4,8 @@ var DiscoveryComponent = {
 
   name: 'discovery',
 
+  mixins: [apiMixin],
+
   template: '\
     <div class="discovery">\
       <div class="col-sm-8 fill content">\
@@ -13,30 +15,16 @@ var DiscoveryComponent = {
       <div class="col-sm-4 fill info">\
         <div class="left-cont">\
           <div class="left-panel">\
-            <div class="title-left-panel">Type</div>\
-            <form>\
-              <div class="form-group">\
-                <label class="radio-inline">\
-                  <input type="radio" name="type" value="bytes" v-model="type"> Bytes\
-                </label>\
-                <label class="radio-inline">\
-                  <input type="radio" name="type" value="packets" v-model="type"> Packets\
-                </label>\
-              </div>\
-            </form>\
-          </div>\
-          <div class="left-panel">\
-            <div class="title-left-panel">Mode</div>\
-            <form>\
-              <div class="form-group">\
-                <label class="radio-inline">\
-                  <input type="radio" name="mode" value="size" v-model="mode"> Size\
-                </label>\
-                <label class="radio-inline">\
-                  <input type="radio" name="mode" value="count" v-model="mode"> Count\
-                </label>\
-              </div>\
-            </form>\
+            <label for="mode">Type</label>\
+            <select id="type" v-model="type" class="form-control input-sm">\
+              <option value="bytes">Bytes</option>\
+              <option value="packets">Packets</option>\
+            </select>\
+            <label for="mode">Mode</label>\
+            <select id="mode" v-model="mode" class="form-control input-sm">\
+              <option value="size">Size</option>\
+              <option value="count">Count</option>\
+            </select>\
           </div>\
           <div class="left-panel" v-if="protocolData">\
             <div class="title-left-panel">Protocol Data</div>\
@@ -130,24 +118,76 @@ DiscoveryLayout.prototype.ChangeMode = function(mode) {
 
 DiscoveryLayout.prototype.DrawChart = function(type) {
   var totalSize = 0;
-  this.svg.selectAll("*").remove();
   var self = this;
-  d3.json("/api/flow/discovery/" + type, function(root) {
-    self.path = self.svg.datum(root).selectAll("path")
-      .data(self.partition.nodes)
-      .enter().append("path")
-      .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
-      .attr("d", self.arc)
-      .style("stroke", "#fff")
-      .style("fill", function(d) { return self.color((d.children ? d : d.parent).name); })
-      .style("fill-rule", "evenodd")
-      .on("mouseover", mouseover)
-      .each(stash);
-    totalSize = self.path.node().__data__.value;
+  var gremlinQuery = "g.Flows().Has('Link.Protocol', 'ETHERNET')";
 
-    // Add the mouseleave handler to the bounding circle
-    d3.select("#container").on("mouseleave", mouseleave);
-  });
+  this.svg.selectAll("*").remove();
+  this.vm.$topologyQuery(gremlinQuery)
+    .then(function(data) {
+      if (data === null)
+        return [];
+
+      var pathMap = {};
+      data.forEach(function(flow, i) {
+        var linkMetric = flow.Metric;
+        var layersPath = flow.LayersPath;
+        var metric = pathMap[layersPath];
+        if (metric === undefined) {
+          metric = { Bytes: 0, Packets: 0 };
+        }
+        metric.Bytes += linkMetric.ABBytes;
+        metric.Bytes += linkMetric.BABytes;
+        metric.Packets += linkMetric.ABPackets;
+        metric.Packets += linkMetric.BAPackets;
+        pathMap[layersPath] = metric;
+      });
+
+      var root = {name: "root", children: []};
+      for (var path in pathMap) {
+        var stats = pathMap[path];
+        var node = root;
+        var layers = path.split("/");
+        for (var i in layers) {
+          var l = undefined;
+          var layer = layers[i];
+          for (var c in node.children) {
+            if (node.children[c].name == layer) {
+              l = node.children[c];
+              break;
+            }
+          }
+          if (l === undefined) {
+            l = {"name": layer, children: [], size: 0};
+            node.children.push(l);
+          }
+          if (i == layers.length - 1) {
+            if (type == "bytes") {
+              l.size = stats.Bytes;
+            } else {
+              l.size = stats.Packets;
+            }
+          }
+          node = l;
+        }
+      }
+
+      self.path = self.svg.datum(root).selectAll("path")
+        .data(self.partition.nodes)
+        .enter().append("path")
+        .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
+        .attr("d", self.arc)
+        .style("stroke", "#fff")
+        .style("fill", function(d) {
+          return self.color((d.children ? d : d.parent).name);
+        })
+        .style("fill-rule", "evenodd")
+        .on("mouseover", mouseover)
+        .each(stash);
+      totalSize = self.path.node().__data__.value;
+
+      // Add the mouseleave handler to the bounding circle
+      d3.select("#container").on("mouseleave", mouseleave);
+    });
 
   // On mouseover function
   function mouseover(d) {

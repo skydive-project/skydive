@@ -250,7 +250,6 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
         .on("mouseover", function(p) {
           d3.selectAll(".row text").classed("active", function(d, i) { return i == p.y; });
           d3.selectAll(".column text").classed("active", function(d, i) { return i == p.x; });
-          //_this.NodeDetails(nodes[p.x]);
         })
         .on("mouseout", function(p) {
           d3.selectAll("text").classed("active", false);
