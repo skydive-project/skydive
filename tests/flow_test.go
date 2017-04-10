@@ -23,6 +23,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -1409,5 +1410,80 @@ func TestSort(t *testing.T) {
 			return nil
 		},
 	}
+	RunTest(t, test)
+}
+
+func TestFlowSumStep(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-sum", true},
+
+			{"ip netns add vm1", true},
+			{"ip link add vm1-eth0 type veth peer name intf1 netns vm1", true},
+			{"ip link set vm1-eth0 up", true},
+			{"ip netns exec vm1 ip link set intf1 up", true},
+			{"ip netns exec vm1 ip address add 169.254.34.33/24 dev intf1", true},
+
+			{"ip netns add vm2", true},
+			{"ip link add vm2-eth0 type veth peer name intf2 netns vm2", true},
+			{"ip link set vm2-eth0 up", true},
+			{"ip netns exec vm2 ip link set intf2 up", true},
+			{"ip netns exec vm2 ip address add 169.254.34.34/24 dev intf2", true},
+
+			{"ip netns add vm3", true},
+			{"ip link add vm3-eth0 type veth peer name intf3 netns vm3", true},
+			{"ip link set vm3-eth0 up", true},
+			{"ip netns exec vm3 ip link set intf3 up", true},
+			{"ip netns exec vm3 ip address add 169.254.34.35/24 dev intf3", true},
+
+			{"ovs-vsctl add-port br-sum vm1-eth0", true},
+			{"ovs-vsctl add-port br-sum vm2-eth0", true},
+			{"ovs-vsctl add-port br-sum vm3-eth0", true},
+		},
+
+		setupFunction: func(c *TestContext) (err error) {
+			if err = ping(t, c, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 3); err != nil {
+				return
+			}
+			if err = ping(t, c, "G.V().Has('Name', 'intf2')", "G.V().Has('Name', 'intf3')", 4); err != nil {
+				return
+			}
+			if err = ping(t, c, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf3')", 3); err != nil {
+				return
+			}
+			return
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ovs-vsctl del-br br-sum", true},
+			{"ip link del vm1-eth0", true},
+			{"ip link del vm2-eth0", true},
+			{"ip link del vm3-eth0", true},
+			{"ip netns del vm1", true},
+			{"ip netns del vm2", true},
+			{"ip netns del vm3", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-sum', 'Type', 'ovsbridge')`},
+		},
+
+		check: func(c *TestContext) error {
+			gh := c.gh
+			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
+			gremlin += `.V().Has("Name", "br-sum", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4").dedup().sum("Metric.ABPackets")`
+
+			var s interface{}
+			if err := gh.Query(gremlin, &s); err != nil {
+				return fmt.Errorf("Error while retriving SUM: %v", err)
+			}
+			sum, _ := s.(json.Number).Int64()
+			if sum != 10 {
+				return fmt.Errorf("Got wrong sum value, Expected 10 got %v", sum)
+			}
+			return nil
+		},
+	}
+
 	RunTest(t, test)
 }
