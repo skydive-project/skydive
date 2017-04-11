@@ -44,19 +44,17 @@ var (
 )
 
 type PacketParams struct {
-	SrcNode *graph.Node `valid:"nonzero"`
-	SrcIP   string      `valid:"nonzero"`
-	SrcMAC  string      `valid:"nonzero"`
-	DstIP   string      `valid:"nonzero"`
-	DstMAC  string      `valid:"nonzero"`
-	Type    string      `valid:"nonzero"`
-	Payload string
-	Count   int `valid:"nonzero"`
+	SrcNodeID graph.Identifier `valid:"nonzero"`
+	SrcIP     string           `valid:"nonzero"`
+	SrcMAC    string           `valid:"nonzero"`
+	DstIP     string           `valid:"nonzero"`
+	DstMAC    string           `valid:"nonzero"`
+	Type      string           `valid:"nonzero"`
+	Payload   string
+	Count     int `valid:"nonzero"`
 }
 
 func InjectPacket(pp *PacketParams, g *graph.Graph) error {
-	srcdata := pp.SrcNode.Metadata()
-
 	srcIP := getIP(pp.SrcIP)
 	if srcIP == nil {
 		return errors.New("Source Node doesn't have proper IP")
@@ -99,11 +97,13 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) error {
 
 	g.RLock()
 
-	srcNode := g.GetNode(pp.SrcNode.ID)
+	srcNode := g.GetNode(pp.SrcNodeID)
 	if srcNode == nil {
 		g.RUnlock()
 		return errors.New("Unable to find source node")
 	}
+
+	ifName, _ := srcNode.GetFieldString("Name")
 
 	nscontext, err := topology.NewNetNSContextByNode(g, srcNode)
 	defer nscontext.Close()
@@ -114,7 +114,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) error {
 		return err
 	}
 
-	handle, err := pcap.OpenLive(srcdata["Name"].(string), 1024, false, 2000)
+	handle, err := pcap.OpenLive(ifName, 1024, false, 2000)
 	if err != nil {
 		return fmt.Errorf("Unable to open the source node: %s", err.Error())
 	}

@@ -43,56 +43,29 @@ type PacketInjectorServer struct {
 	Graph             *graph.Graph
 }
 
-func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (bool, string) {
-	params := struct {
-		SrcNode interface{}
-		SrcIP   string
-		SrcMAC  string
-		DstIP   string
-		DstMAC  string
-		Type    string
-		Payload string
-		Count   int
-	}{}
+func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) error {
+	var params PacketParams
 	if err := common.JsonDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
-		e := fmt.Sprintf("Unable to decode packet inject param message %v", msg)
-		return false, e
+		return fmt.Errorf("Unable to decode packet inject param message %v", msg)
 	}
 
-	var srcNode graph.Node
-	if err := srcNode.Decode(params.SrcNode); err != nil {
-		e := fmt.Sprintf("Unable to decode source node %s", err.Error())
-		return false, e
+	if err := InjectPacket(&params, pis.Graph); err != nil {
+		return fmt.Errorf("Failed to inject packet: %s", err.Error())
 	}
-
-	pip := PacketParams{
-		SrcNode: &srcNode,
-		SrcIP:   params.SrcIP,
-		SrcMAC:  params.SrcMAC,
-		DstIP:   params.DstIP,
-		DstMAC:  params.DstMAC,
-		Type:    params.Type,
-		Payload: params.Payload,
-		Count:   params.Count,
-	}
-
-	if err := InjectPacket(&pip, pis.Graph); err != nil {
-		e := fmt.Sprintf("Failed to inject packet: %s", err.Error())
-		return false, e
-	}
-	return true, ""
+	return nil
 }
 
 func (pis *PacketInjectorServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	switch msg.Type {
-	case "InjectPacket":
-		status := http.StatusOK
-		result, e := pis.injectPacket(msg)
-		if !result {
-			logging.GetLogger().Errorf(e)
-			status = http.StatusBadRequest
+	case "PIRequest":
+		var reply *shttp.WSMessage
+		if err := pis.injectPacket(msg); err != nil {
+			logging.GetLogger().Error(err.Error())
+			reply = msg.Reply(err.Error(), "PIResult", http.StatusBadRequest)
+		} else {
+			reply = msg.Reply("", "PIResult", http.StatusOK)
 		}
-		reply := msg.Reply(e, "PIResult", status)
+
 		c.SendWSMessage(reply)
 	}
 }

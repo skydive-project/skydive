@@ -122,16 +122,18 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 		}
 	}
 
+	pi.Graph.RLock()
 	pp := packet_injector.PacketParams{
-		SrcNode: srcNode,
-		SrcIP:   ppr.SrcIP,
-		SrcMAC:  ppr.SrcMAC,
-		DstIP:   ppr.DstIP,
-		DstMAC:  ppr.DstMAC,
-		Type:    ppr.Type,
-		Payload: ppr.Payload,
-		Count:   ppr.Count,
+		SrcNodeID: srcNode.ID,
+		SrcIP:     ppr.SrcIP,
+		SrcMAC:    ppr.SrcMAC,
+		DstIP:     ppr.DstIP,
+		DstMAC:    ppr.DstMAC,
+		Type:      ppr.Type,
+		Payload:   ppr.Payload,
+		Count:     ppr.Count,
 	}
+	pi.Graph.RUnlock()
 
 	if errs := validator.Validate(&pp); errs != nil {
 		writeError(w, http.StatusBadRequest, errors.New("All the parms not set properly."))
