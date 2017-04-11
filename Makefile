@@ -38,11 +38,12 @@ COVERAGE_MODE?=atomic
 skydive-bash-completion.sh: cmd/completion/completion.go
 	go run cmd/completion/completion.go
 
-all: govendor genlocalfiles
+all: install
+
+.compile:
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
-install: govendor genlocalfiles
-	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
+install: govendor genlocalfiles .compile
 
 build: govendor genlocalfiles
 	${GOPATH}/bin/govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
