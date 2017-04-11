@@ -5,6 +5,10 @@
 
 # WebSocket Ping/Pong timeout in second
 ws_pong_timeout: 5
+# maximum number of topology aggregated messages before sending
+# ws_bulk_maxmsgs: 100
+# duration in seconds before flushing topology aggregated messages
+# ws_bulk_maxdelay: 2
 
 cache:
   # expiration time in second

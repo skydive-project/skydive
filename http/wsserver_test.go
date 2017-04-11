@@ -73,7 +73,7 @@ func TestSubscription(t *testing.T) {
 	go httpserver.ListenAndServe()
 	defer httpserver.Stop()
 
-	wsserver := NewWSServer(httpserver, 10*time.Second, "/wstest")
+	wsserver := NewWSServer(httpserver, 10*time.Second, 100, time.Second, "/wstest")
 
 	serverHanlder := &fakeServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
 	wsserver.AddEventHandler(serverHanlder, []string{"ClientValidNS"})

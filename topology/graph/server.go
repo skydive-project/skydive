@@ -63,27 +63,27 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 }
 
 func (s *GraphServer) OnNodeUpdated(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeUpdatedMsgType, n))
+	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeUpdatedMsgType, n))
 }
 
 func (s *GraphServer) OnNodeAdded(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeAddedMsgType, n))
+	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeAddedMsgType, n))
 }
 
 func (s *GraphServer) OnNodeDeleted(n *Node) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeDeletedMsgType, n))
+	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeDeletedMsgType, n))
 }
 
 func (s *GraphServer) OnEdgeUpdated(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeUpdatedMsgType, e))
+	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeUpdatedMsgType, e))
 }
 
 func (s *GraphServer) OnEdgeAdded(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeAddedMsgType, e))
+	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeAddedMsgType, e))
 }
 
 func (s *GraphServer) OnEdgeDeleted(e *Edge) {
-	s.WSServer.BroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeDeletedMsgType, e))
+	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeDeletedMsgType, e))
 }
 
 func NewServer(g *Graph, server *shttp.WSServer) *GraphServer {

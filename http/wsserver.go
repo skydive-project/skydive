@@ -40,10 +40,10 @@ import (
 
 const (
 	WilcardNamespace = "*"
-
-	writeWait      = 10 * time.Second
-	maxMessages    = 1024
-	maxMessageSize = 0
+	BulkMsgType      = "BulkMessage"
+	writeWait        = 10 * time.Second
+	maxMessages      = 1024
+	maxMessageSize   = 0
 )
 
 type WSClient struct {
@@ -63,6 +63,8 @@ type WSMessage struct {
 	Obj       *json.RawMessage
 	Status    int
 }
+
+type WSBulkMessage []json.RawMessage
 
 type WSServerEventHandler interface {
 	OnMessage(c *WSClient, m WSMessage)
@@ -91,6 +93,9 @@ type WSServer struct {
 	unregister      chan *WSClient
 	pongWait        time.Duration
 	pingPeriod      time.Duration
+	bulkMaxMsgs     int
+	bulkMaxDelay    time.Duration
+	eventBuffer     []*WSMessage
 	wg              sync.WaitGroup
 	listening       atomic.Value
 }
@@ -167,12 +172,21 @@ func (c *WSClient) processMessage(m []byte) {
 		return
 	}
 
-	for _, e := range c.server.nsEventHandlers[msg.Namespace] {
-		e.OnMessage(c, msg)
-	}
+	if msg.Type == BulkMsgType {
+		var bulkMessage WSBulkMessage
+		if err := json.Unmarshal([]byte(*msg.Obj), &bulkMessage); err != nil {
+			for _, msg := range bulkMessage {
+				c.processMessage([]byte(msg))
+			}
+		}
+	} else {
+		for _, e := range c.server.nsEventHandlers[msg.Namespace] {
+			e.OnMessage(c, msg)
+		}
 
-	for _, e := range c.server.nsEventHandlers[WilcardNamespace] {
-		e.OnMessage(c, msg)
+		for _, e := range c.server.nsEventHandlers[WilcardNamespace] {
+			e.OnMessage(c, msg)
+		}
 	}
 }
 
@@ -260,6 +274,9 @@ func (s *WSServer) SendWSMessageTo(msg *WSMessage, host string) bool {
 }
 
 func (s *WSServer) listenAndServe() {
+	bulkTicker := time.NewTicker(s.bulkMaxDelay)
+	defer bulkTicker.Stop()
+
 	for {
 		select {
 		case <-s.quit:
@@ -288,6 +305,11 @@ func (s *WSServer) listenAndServe() {
 			s.Unlock()
 		case m := <-s.broadcast:
 			s.broadcastMessage(m)
+		case <-bulkTicker.C:
+			s.Lock()
+			msgs := s.flushMessages()
+			s.Unlock()
+			s.broadcastMessages(msgs)
 		}
 	}
 }
@@ -386,8 +408,41 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	wg.Wait()
 }
 
+func (s *WSServer) broadcastMessages(msgs []*WSMessage) {
+	namespace := ""
+	var bulkMessage WSBulkMessage
+	for _, msg := range msgs {
+		if namespace != "" && msg.Namespace != namespace {
+			s.BroadcastWSMessage(NewWSMessage(namespace, BulkMsgType, bulkMessage))
+			bulkMessage = bulkMessage[:0]
+		}
+		b, _ := json.Marshal(msg)
+		raw := json.RawMessage(b)
+		namespace = msg.Namespace
+		bulkMessage = append(bulkMessage, raw)
+	}
+	s.BroadcastWSMessage(NewWSMessage(namespace, BulkMsgType, bulkMessage))
+}
+
+func (s *WSServer) flushMessages() (msgs []*WSMessage) {
+	msgs = make([]*WSMessage, len(s.eventBuffer))
+	copy(msgs, s.eventBuffer)
+	s.eventBuffer = s.eventBuffer[:0]
+	return
+}
+
 func (s *WSServer) BroadcastWSMessage(msg *WSMessage) {
 	s.broadcast <- broadcastMessage{namespace: msg.Namespace, message: msg.String()}
+}
+
+func (s *WSServer) QueueBroadcastWSMessage(msg *WSMessage) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.eventBuffer = append(s.eventBuffer, msg)
+	if len(s.eventBuffer) == s.bulkMaxMsgs {
+		s.broadcastMessages(s.flushMessages())
+	}
 }
 
 func (s *WSServer) ListenAndServe() {
@@ -439,7 +494,7 @@ func (s *WSServer) GetClientsByType(clientType common.ServiceType) (clients []*W
 	return clients
 }
 
-func NewWSServer(server *Server, pongWait time.Duration, endpoint string) *WSServer {
+func NewWSServer(server *Server, pongWait time.Duration, bulkMaxMsgs int, bulkMaxDelay time.Duration, endpoint string) *WSServer {
 	s := &WSServer{
 		Server:          server,
 		broadcast:       make(chan broadcastMessage, 100000),
@@ -450,6 +505,8 @@ func NewWSServer(server *Server, pongWait time.Duration, endpoint string) *WSSer
 		nsEventHandlers: make(map[string][]WSServerEventHandler),
 		pongWait:        pongWait,
 		pingPeriod:      (pongWait * 8) / 10,
+		bulkMaxMsgs:     bulkMaxMsgs,
+		bulkMaxDelay:    bulkMaxDelay,
 	}
 
 	server.HandleFunc(endpoint, s.serveMessages)
@@ -458,7 +515,9 @@ func NewWSServer(server *Server, pongWait time.Duration, endpoint string) *WSSer
 }
 
 func NewWSServerFromConfig(server *Server, endpoint string) *WSServer {
-	w := config.GetConfig().GetInt("ws_pong_timeout")
+	pongTimeout := config.GetConfig().GetInt("ws_pong_timeout")
+	bulkMaxMsgs := config.GetConfig().GetInt("ws_bulk_maxmsgs")
+	bulkMaxDelay := config.GetConfig().GetInt("ws_bulk_maxdelay")
 
-	return NewWSServer(server, time.Duration(w)*time.Second, endpoint)
+	return NewWSServer(server, time.Duration(pongTimeout)*time.Second, bulkMaxMsgs, time.Duration(bulkMaxDelay)*time.Second, endpoint)
 }
