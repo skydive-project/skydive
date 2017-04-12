@@ -15,8 +15,20 @@ Vue.component('object-detail', {
 
   template: '\
     <div class="object-detail">\
-      <div class="object-key-value" v-for="(value, key) in object" :class="key.toLowerCase()">\
-        <div v-if="typeof value == \'object\'" class="object-sub-detail">\
+      <div class="object-key-value" v-for="(value, key) in object" :class="[typeof(key) == \'string\' ? key.toLowerCase() : key]">\
+        <div v-if="Array.isArray(value)">\
+          <span class="object-key">{{key}}</span> :\
+          <div v-for="(v, index) in value">\
+            <div v-if="typeof v == \'object\'" class="object-sub-detail">\
+              <span class="object-key" :class="typeof(value)">- </span>\
+              <object-detail :object="v"></object-detail>\
+            </div>\
+            <div v-else>\
+              <span class="object-value" :class="typeof(value)">- {{v}}</span>\
+            </div>\
+          </div>\
+        </div>\
+        <div v-else-if="typeof value == \'object\'" class="object-sub-detail">\
           <span class="object-key">{{key}}</span>\
           <object-detail :object="value"></object-detail>\
         </div>\

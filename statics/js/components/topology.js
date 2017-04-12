@@ -27,7 +27,7 @@ var TopologyComponent = {
                   @click="collapseAll">{{collapsed ? "Expand" : "Collapse"}}</button>\
         </div>\
       </div>\
-      <div class="col-sm-5 fill info">\
+      <div class="col-sm-5 fill sidebar">\
         <tabs v-if="isAnalyzer">\
           <tab-pane title="Captures">\
             <capture-list></capture-list>\

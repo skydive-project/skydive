@@ -221,7 +221,7 @@ path.group {
   overflow: auto;
 }
 
-.info {
+.sidebar {
   border-left: 5px #222 solid;
   color: #fff;
   padding-top: 5px;
@@ -586,6 +586,10 @@ ul.dropdown-menu .fa.pull-right {
 
 .object-sub-detail .object-detail {
   margin-left: 20px;
+}
+
+.object-sub-detail .object-key {
+  float: left;
 }
 
 .slide-enter-active {

@@ -12,7 +12,7 @@ var DiscoveryComponent = {
         <div id="sequence"></div>\
         <div class="discovery-d3"></div>\
       </div>\
-      <div class="col-sm-4 fill info">\
+      <div class="col-sm-4 fill sidebar">\
         <div class="left-cont">\
           <div class="left-panel">\
             <label for="mode">Type</label>\

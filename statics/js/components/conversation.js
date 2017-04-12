@@ -11,7 +11,7 @@ var ConversationComponent = {
       <div class="col-sm-8 fill content">\
         <div class="conversation-d3"></div>\
       </div>\
-      <div class="col-sm-4 fill info">\
+      <div class="col-sm-4 fill sidebar">\
         <div class="left-cont">\
           <div class="left-panel">\
             <form>\
