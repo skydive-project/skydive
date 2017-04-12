@@ -84,6 +84,7 @@ flows informations will be captured.
 export GOPATH=%{_builddir}/skydive-%{source}
 export GO15VENDOREXPERIMENT=1
 %gobuild -o bin/skydive %{import_path}
+go run %{import_path}/cmd/completion/completion.go
 
 %install
 export GOPATH=%{_builddir}/skydive-%{source}
@@ -94,6 +95,7 @@ do
   install -D -m 644 contrib/packaging/rpm/skydive-${bin}.sysconfig %{buildroot}/%{_sysconfdir}/sysconfig/skydive-${bin}
 done
 install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/skydive.yml
+install -D -m 644 skydive-bash-completion.sh %{buildroot}/%{_sysconfdir}/bash_completion.d/skydive-bash-completion.sh
 
 %post agent
 %systemd_post %{basename:%{name}-agent.service}
@@ -121,6 +123,7 @@ install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/sk
 %files
 %doc README.md LICENSE CHANGELOG.md
 %{_bindir}/skydive
+%{_sysconfdir}/bash_completion.d/skydive-bash-completion.sh
 %config(noreplace) %{_sysconfdir}/skydive/skydive.yml
 
 %files agent
