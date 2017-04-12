@@ -95,7 +95,7 @@ Vue.component('statistics-table', {
       Object.getOwnPropertyNames(this.object).forEach(function(key) {
         var f = {
           name: [key],
-          label: key.split('/')[1],
+          label: key,
           show: false,
           showChanged: false
         };

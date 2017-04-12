@@ -192,12 +192,12 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 		}
 
 		status = http.StatusOK
-		if _, err := n.GetFieldString("Capture/ID"); err == nil {
+		if _, err := n.GetFieldString("Capture.ID"); err == nil {
 			logging.GetLogger().Debugf("Capture already started on node %s", n.ID)
 		} else {
 			if ok := o.registerProbe(n, &query.Capture); ok {
 				t := o.Graph.StartMetadataTransaction(n)
-				t.AddMetadata("Capture/ID", query.Capture.UUID)
+				t.AddMetadata("Capture.ID", query.Capture.UUID)
 				t.Commit()
 			} else {
 				status = http.StatusInternalServerError
@@ -215,10 +215,7 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 		status = http.StatusOK
 		if ok := o.unregisterProbe(n); ok {
 			metadata := n.Metadata()
-			delete(metadata, "Capture/ID")
-			delete(metadata, "Capture/PacketsReceived")
-			delete(metadata, "Capture/PacketsDropped")
-			delete(metadata, "Capture/PacketsIfDropped")
+			delete(metadata, "Capture")
 			o.Graph.SetMetadata(n, metadata)
 		} else {
 			status = http.StatusInternalServerError
@@ -233,7 +230,7 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 }
 
 func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
-	if _, err := n.GetFieldString("Capture/ID"); err != nil {
+	if _, err := n.GetFieldString("Capture.ID"); err != nil {
 		return
 	}
 

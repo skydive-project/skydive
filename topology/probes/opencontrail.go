@@ -227,15 +227,15 @@ func (mapper *OpenContrailMapper) updateNode(node *graph.Node, mdata *OpenContra
 	tr := mapper.graph.StartMetadataTransaction(node)
 	defer tr.Commit()
 
-	tr.AddMetadata("ExtID/iface-id", mdata.UUID)
-	tr.AddMetadata("ExtID/attached-mac", mdata.Mac)
-	tr.AddMetadata("Contrail/VRF", mdata.VRF)
-	tr.AddMetadata("Contrail/LocalIP", mdata.LocalIP)
+	tr.AddMetadata("ExtID.iface-id", mdata.UUID)
+	tr.AddMetadata("ExtID.attached-mac", mdata.Mac)
+	tr.AddMetadata("Contrail.VRF", mdata.VRF)
+	tr.AddMetadata("Contrail.LocalIP", mdata.LocalIP)
 }
 
 func (mapper *OpenContrailMapper) enhanceNode(node *graph.Node) {
 	// To break update loops
-	if attachedMAC, _ := node.GetFieldString("ExtID/attached-mac"); attachedMAC != "" {
+	if attachedMAC, _ := node.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
 		return
 	}
 

@@ -109,14 +109,11 @@ func (b *ElasticSearchBackend) mapElement(e *graphElement) map[string]interface{
 		"ID":        string(e.ID),
 		"Host":      e.host,
 		"CreatedAt": common.UnixMillis(e.createdAt),
+		"Metadata":  e.metadata,
 	}
 
 	if !e.deletedAt.IsZero() {
 		obj["DeletedAt"] = common.UnixMillis(e.deletedAt)
-	}
-
-	for k, v := range e.metadata {
-		obj["Metadata/"+elasticsearch.EscapeField(k)] = v
 	}
 
 	return obj
@@ -190,23 +187,11 @@ func (b *ElasticSearchBackend) deleteElement(kind string, id string, t time.Time
 	return true
 }
 
-func (b *ElasticSearchBackend) unflattenMetadata(obj map[string]interface{}) {
-	metadata := make(map[string]interface{})
-	for k, v := range obj {
-		if strings.HasPrefix(k, "Metadata/") {
-			metadata[elasticsearch.UnescapeField(k[9:])] = v
-			delete(obj, k)
-		}
-	}
-	obj["Metadata"] = metadata
-}
-
 func (b *ElasticSearchBackend) hitToNode(source *json.RawMessage, node *Node) error {
 	var obj map[string]interface{}
 	if err := common.JsonDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
 		return err
 	}
-	b.unflattenMetadata(obj)
 	if err := node.Decode(obj); err != nil {
 		return err
 	}
@@ -218,7 +203,6 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 	if err := common.JsonDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
 		return err
 	}
-	b.unflattenMetadata(obj)
 	if err := edge.Decode(obj); err != nil {
 		return err
 	}
@@ -392,9 +376,9 @@ func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elas
 	request["query"] = map[string]interface{}{
 		"bool": map[string]interface{}{
 			"must": []map[string]interface{}{
-				b.client.FormatFilter(tsq.TimeFilter, "", true),
-				b.client.FormatFilter(tsq.Filter, "", true),
-				b.client.FormatFilter(tsq.MetadataFilter, "Metadata/", true),
+				b.client.FormatFilter(tsq.TimeFilter, ""),
+				b.client.FormatFilter(tsq.Filter, ""),
+				b.client.FormatFilter(tsq.MetadataFilter, "Metadata"),
 			},
 		},
 	}

@@ -722,8 +722,8 @@ nodeLoop:
 		if len(keys) != 0 {
 			values := make([]interface{}, len(keys))
 			for i, key := range keys {
-				v, ok := n.GetField(key)
-				if !ok {
+				v, err := n.GetField(key)
+				if err != nil {
 					continue nodeLoop
 				}
 				values[i] = v
@@ -1049,7 +1049,7 @@ func (tv *GraphTraversalV) Metrics() *MetricsTraversalStep {
 		return &MetricsTraversalStep{error: tv.error}
 	}
 
-	tv = tv.Dedup("ID", "LastMetric/Start").Sort(common.SortAscending, "LastMetric/Start")
+	tv = tv.Dedup("ID", "LastMetric.Start").Sort(common.SortAscending, "LastMetric.Start")
 	if tv.error != nil {
 		return &MetricsTraversalStep{error: tv.error}
 	}
@@ -1068,39 +1068,42 @@ nodeloop:
 		}
 
 		m := n.Metadata()
-		start, hasStart := m["LastMetric/Start"]
-		last, hasLast := m["LastMetric/Last"]
-		if hasStart && hasLast && (gslice == nil || (start.(int64) > gslice.Start && last.(int64) < gslice.Last)) {
-			im := &graph.InterfaceMetric{
-				RxPackets:         m["LastMetric/RxPackets"].(int64),
-				TxPackets:         m["LastMetric/TxPackets"].(int64),
-				RxBytes:           m["LastMetric/RxBytes"].(int64),
-				TxBytes:           m["LastMetric/TxBytes"].(int64),
-				RxErrors:          m["LastMetric/RxErrors"].(int64),
-				TxErrors:          m["LastMetric/TxErrors"].(int64),
-				RxDropped:         m["LastMetric/RxDropped"].(int64),
-				TxDropped:         m["LastMetric/TxDropped"].(int64),
-				Multicast:         m["LastMetric/Multicast"].(int64),
-				Collisions:        m["LastMetric/Collisions"].(int64),
-				RxLengthErrors:    m["LastMetric/RxLengthErrors"].(int64),
-				RxOverErrors:      m["LastMetric/RxOverErrors"].(int64),
-				RxCrcErrors:       m["LastMetric/RxCrcErrors"].(int64),
-				RxFrameErrors:     m["LastMetric/RxFrameErrors"].(int64),
-				RxFifoErrors:      m["LastMetric/RxFifoErrors"].(int64),
-				RxMissedErrors:    m["LastMetric/RxMissedErrors"].(int64),
-				TxAbortedErrors:   m["LastMetric/TxAbortedErrors"].(int64),
-				TxCarrierErrors:   m["LastMetric/TxCarrierErrors"].(int64),
-				TxFifoErrors:      m["LastMetric/TxFifoErrors"].(int64),
-				TxHeartbeatErrors: m["LastMetric/TxHeartbeatErrors"].(int64),
-				TxWindowErrors:    m["LastMetric/TxWindowErrors"].(int64),
-				RxCompressed:      m["LastMetric/RxCompressed"].(int64),
-				TxCompressed:      m["LastMetric/TxCompressed"].(int64),
+		lastMetric, hasLastMetric := m["LastMetric"].(map[string]interface{})
+		if hasLastMetric {
+			start := lastMetric["Start"].(int64)
+			last := lastMetric["Last"].(int64)
+			if gslice == nil || (start > gslice.Start && last < gslice.Last) {
+				im := &graph.InterfaceMetric{
+					RxPackets:         lastMetric["RxPackets"].(int64),
+					TxPackets:         lastMetric["TxPackets"].(int64),
+					RxBytes:           lastMetric["RxBytes"].(int64),
+					TxBytes:           lastMetric["TxBytes"].(int64),
+					RxErrors:          lastMetric["RxErrors"].(int64),
+					TxErrors:          lastMetric["TxErrors"].(int64),
+					RxDropped:         lastMetric["RxDropped"].(int64),
+					TxDropped:         lastMetric["TxDropped"].(int64),
+					Multicast:         lastMetric["Multicast"].(int64),
+					Collisions:        lastMetric["Collisions"].(int64),
+					RxLengthErrors:    lastMetric["RxLengthErrors"].(int64),
+					RxOverErrors:      lastMetric["RxOverErrors"].(int64),
+					RxCrcErrors:       lastMetric["RxCrcErrors"].(int64),
+					RxFrameErrors:     lastMetric["RxFrameErrors"].(int64),
+					RxFifoErrors:      lastMetric["RxFifoErrors"].(int64),
+					RxMissedErrors:    lastMetric["RxMissedErrors"].(int64),
+					TxAbortedErrors:   lastMetric["TxAbortedErrors"].(int64),
+					TxCarrierErrors:   lastMetric["TxCarrierErrors"].(int64),
+					TxFifoErrors:      lastMetric["TxFifoErrors"].(int64),
+					TxHeartbeatErrors: lastMetric["TxHeartbeatErrors"].(int64),
+					TxWindowErrors:    lastMetric["TxWindowErrors"].(int64),
+					RxCompressed:      lastMetric["RxCompressed"].(int64),
+					TxCompressed:      lastMetric["TxCompressed"].(int64),
+				}
+				metric := &common.TimedMetric{
+					TimeSlice: *common.NewTimeSlice(start, last),
+					Metric:    im,
+				}
+				metrics[string(n.ID)] = append(metrics[string(n.ID)], metric)
 			}
-			metric := &common.TimedMetric{
-				TimeSlice: *common.NewTimeSlice(start.(int64), last.(int64)),
-				Metric:    im,
-			}
-			metrics[string(n.ID)] = append(metrics[string(n.ID)], metric)
 		}
 	}
 
@@ -1438,7 +1441,7 @@ func (m *MetricsTraversalStep) Sum(keys ...interface{}) *GraphTraversalValue {
 		var total int64
 		for _, metrics := range m.metrics {
 			for _, metric := range metrics {
-				value, err := metric.GetField(key)
+				value, err := metric.GetFieldInt64(key)
 				if err != nil {
 					NewGraphTraversalValue(m.GraphTraversal, nil, err)
 				}

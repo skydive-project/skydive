@@ -133,7 +133,7 @@ func TestNeutron(t *testing.T) {
 	// let neutron update the port
 	time.Sleep(5 * time.Second)
 
-	nodes, err := gh.GetNodes(`g.V().Has("Manager", "neutron", "ExtID/vm-uuid", "skydive-vm", "Name", "` + dev + `", "Neutron/PortID", "` + port.ID + `")`)
+	nodes, err := gh.GetNodes(`g.V().Has("Manager", "neutron", "ExtID.vm-uuid", "skydive-vm", "Name", "` + dev + `", "Neutron.PortID", "` + port.ID + `")`)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

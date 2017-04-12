@@ -523,7 +523,7 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BP
 	return flowPacketsSet
 }
 
-func (f *FlowLayer) GetField(field string) (string, error) {
+func (f *FlowLayer) GetStringField(field string) (string, error) {
 	if f == nil {
 		return "", common.ErrFieldNotFound
 	}
@@ -587,17 +587,17 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 
 	switch name {
 	case "Link":
-		return f.Link.GetField(fields[1])
+		return f.Link.GetStringField(fields[1])
 	case "Network":
-		return f.Network.GetField(fields[1])
+		return f.Network.GetStringField(fields[1])
 	case "Transport":
-		return f.Transport.GetField(fields[1])
+		return f.Transport.GetStringField(fields[1])
 	case "UDPPORT", "TCPPORT", "SCTPPORT":
-		return f.Transport.GetField(fields[1])
+		return f.Transport.GetStringField(fields[1])
 	case "IPV4", "IPV6":
-		return f.Network.GetField(fields[1])
+		return f.Network.GetStringField(fields[1])
 	case "ETHERNET":
-		return f.Link.GetField(fields[1])
+		return f.Link.GetStringField(fields[1])
 	}
 	return "", common.ErrFieldNotFound
 }
@@ -617,9 +617,9 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	name := fields[0]
 	switch name {
 	case "Metric":
-		return f.Metric.GetField(fields[1])
+		return f.Metric.GetFieldInt64(fields[1])
 	case "LastUpdateMetric":
-		return f.LastUpdateMetric.GetField(fields[1])
+		return f.LastUpdateMetric.GetFieldInt64(fields[1])
 	case "Link":
 		return f.Link.GetFieldInt64(fields[1])
 	case "Network":
@@ -629,6 +629,13 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	default:
 		return 0, common.ErrFieldNotFound
 	}
+}
+
+func (f *Flow) GetField(field string) (interface{}, error) {
+	if i, err := f.GetFieldInt64(field); err == nil {
+		return i, nil
+	}
+	return f.GetFieldString(field)
 }
 
 func (f *Flow) GetFields() []interface{} {

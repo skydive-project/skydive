@@ -195,7 +195,7 @@ func RunTest(t *testing.T, test *Test) {
 					continue
 				}
 
-				captureID, err := node.GetFieldString("Capture/ID")
+				captureID, err := node.GetFieldString("Capture.ID")
 				if err != nil {
 					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t))
 				}

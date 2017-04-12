@@ -138,7 +138,7 @@ func TestHA(t *testing.T) {
 	checkCaptures := func(captureExpected int) {
 		t.Logf("Check for captures: %d", captureExpected)
 		retry = func() error {
-			if nodes, err = gh.GetNodes(`g.V().HasKey("Capture/ID")`); err != nil {
+			if nodes, err = gh.GetNodes(`g.V().HasKey("Capture.ID")`); err != nil {
 				return err
 			}
 

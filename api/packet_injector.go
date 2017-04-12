@@ -61,11 +61,11 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 
 	if ppr.SrcIP == "" {
 		if srcNode != nil {
-			ip, _ := srcNode.GetFieldString("IPV4")
-			if ip == "" {
+			ips, _ := srcNode.GetFieldStringList("IPV4")
+			if len(ips) == 0 {
 				return "", nil, errors.New("No source IP in node and user input")
 			}
-			ppr.SrcIP = ip
+			ppr.SrcIP = ips[0]
 		} else {
 			return "", nil, errors.New("Not able to find a source node and source IP also empty")
 		}
@@ -73,11 +73,11 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 
 	if ppr.DstIP == "" {
 		if dstNode != nil {
-			ip, _ := dstNode.GetFieldString("IPV4")
-			if ip == "" {
+			ips, _ := dstNode.GetFieldStringList("IPV4")
+			if len(ips) == 0 {
 				return "", nil, errors.New("No dest IP in node and user input")
 			}
-			ppr.DstIP = ip
+			ppr.DstIP = ips[0]
 		} else {
 			return "", nil, errors.New("Not able to find a dest node and dest IP also empty")
 		}

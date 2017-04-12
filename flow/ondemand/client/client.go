@@ -100,7 +100,7 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 			return
 		}
 
-		if _, err := node.GetFieldString("Capture/ID"); err == nil {
+		if _, err := node.GetFieldString("Capture.ID"); err == nil {
 			return
 		}
 		tp, _ := node.GetFieldString("Type")
@@ -165,7 +165,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *api.Cap
 
 	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStop", cq)
 
-	if _, err := node.GetFieldString("Capture/ID"); err != nil {
+	if _, err := node.GetFieldString("Capture.ID"); err != nil {
 		return false
 	}
 

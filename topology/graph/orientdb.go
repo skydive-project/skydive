@@ -30,7 +30,6 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage/orientdb"
 )
@@ -67,27 +66,18 @@ func metadataToOrientDBSetString(m Metadata) string {
 	return ""
 }
 
-func metadataFormatter(s string) string {
-	return fmt.Sprintf("Metadata['%s']", s)
-}
-
 func metadataToOrientDBSelectString(m Metadata) string {
-	i := 0
-	props := make([]string, len(m))
-	for key, value := range m {
-		switch v := value.(type) {
-		case string:
-			props[i] = fmt.Sprintf("%s='%s'\n", metadataFormatter(key), v)
-		case *filters.Filter:
-			if expr := orientdb.FilterToExpression(v, metadataFormatter); expr != "" {
-				props[i] = expr
-			}
-		default:
-			props[i] = fmt.Sprintf("%s=%s", metadataFormatter(key), value)
-		}
-		i++
+	metadataFilter, err := NewFilterForMetadata(m)
+	if err != nil {
+		return ""
 	}
-	return strings.Join(props, " AND ")
+	return orientdb.FilterToExpression(metadataFilter, func(k string) string {
+		key := "Metadata"
+		for _, s := range strings.Split(k, ".") {
+			key += "['" + s + "']"
+		}
+		return key
+	})
 }
 
 func graphElementToOrientDBDocument(e graphElement) orientdb.Document {

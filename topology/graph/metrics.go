@@ -50,7 +50,7 @@ type InterfaceMetric struct {
 	TxCompressed      int64
 }
 
-func (im *InterfaceMetric) GetField(field string) (int64, error) {
+func (im *InterfaceMetric) GetFieldInt64(field string) (int64, error) {
 	switch field {
 	case "RxPackets":
 		return im.RxPackets, nil

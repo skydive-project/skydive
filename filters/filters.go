@@ -22,9 +22,14 @@
 
 package filters
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/skydive-project/skydive/common"
+)
 
 type Getter interface {
+	GetField(field string) (interface{}, error)
 	GetFieldInt64(field string) (int64, error)
 	GetFieldString(field string) (string, error)
 }
@@ -56,6 +61,12 @@ func (f *Filter) Eval(g Getter) bool {
 	}
 	if f.NullFilter != nil {
 		return f.NullFilter.Eval(g)
+	}
+	if f.InInt64Filter != nil {
+		return f.InInt64Filter.Eval(g)
+	}
+	if f.InStringFilter != nil {
+		return f.InStringFilter.Eval(g)
 	}
 
 	return true
@@ -152,14 +163,58 @@ func (r *RegexFilter) Eval(g Getter) bool {
 	return re.MatchString(field)
 }
 
-func (r *NullFilter) Eval(g Getter) bool {
-	if _, err := g.GetFieldString(r.Key); err == nil {
+func (n *NullFilter) Eval(g Getter) bool {
+	if _, err := g.GetFieldString(n.Key); err == nil {
 		return false
 	}
-	if _, err := g.GetFieldInt64(r.Key); err == nil {
+	if _, err := g.GetFieldInt64(n.Key); err == nil {
 		return false
 	}
 	return true
+}
+
+func (i *InInt64Filter) Eval(g Getter) bool {
+	field, err := g.GetField(i.Key)
+	if err != nil {
+		return false
+	}
+	switch field := field.(type) {
+	case []interface{}:
+		for _, intf := range field {
+			if v, err := common.ToInt64(intf); err == nil && v == i.Value {
+				return true
+			}
+		}
+	case []int64:
+		for _, v := range field {
+			if v == i.Value {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (i *InStringFilter) Eval(g Getter) bool {
+	field, err := g.GetField(i.Key)
+	if err != nil {
+		return false
+	}
+	switch field := field.(type) {
+	case []interface{}:
+		for _, intf := range field {
+			if s, ok := intf.(string); ok && s == i.Value {
+				return true
+			}
+		}
+	case []string:
+		for _, s := range field {
+			if s == i.Value {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func NewBoolFilter(op BoolFilterOp, filters ...*Filter) *Filter {
@@ -211,6 +266,14 @@ func NewTermInt64Filter(key string, value int64) *Filter {
 
 func NewTermStringFilter(key string, value string) *Filter {
 	return &Filter{TermStringFilter: &TermStringFilter{Key: key, Value: value}}
+}
+
+func NewInInt64Filter(key string, value int64) *Filter {
+	return &Filter{InInt64Filter: &InInt64Filter{Key: key, Value: value}}
+}
+
+func NewInStringFilter(key string, value string) *Filter {
+	return &Filter{InStringFilter: &InStringFilter{Key: key, Value: value}}
 }
 
 func NewNullFilter(key string) *Filter {

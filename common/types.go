@@ -30,6 +30,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,7 @@ import (
 var (
 	CantCompareInterface = errors.New("Can't compare interface")
 	ErrFieldNotFound     = errors.New("Field not found")
+	ErrFieldWrongType    = errors.New("Field has wrong type")
 )
 
 type SortOrder string
@@ -49,6 +51,13 @@ const (
 
 func ToInt64(i interface{}) (int64, error) {
 	switch v := i.(type) {
+	case json.Number:
+		if i, err := v.Int64(); err == nil {
+			return i, nil
+		}
+		if f, err := v.Float64(); err == nil {
+			return int64(f), nil
+		}
 	case string:
 		return strconv.ParseInt(v, 10, 64)
 	case int:
@@ -68,7 +77,7 @@ func ToInt64(i interface{}) (int64, error) {
 	case float64:
 		return int64(v), nil
 	}
-	return 0, fmt.Errorf("not an integer: %v", i)
+	return 0, fmt.Errorf("failed to convert to an integer: %v", i)
 }
 
 func integerCompare(a interface{}, b interface{}) (int, error) {
@@ -216,7 +225,7 @@ func NewTimeSlice(s, l int64) *TimeSlice {
 }
 
 type Metric interface {
-	GetField(field string) (int64, error)
+	GetFieldInt64(field string) (int64, error)
 	Add(m Metric) Metric
 }
 
@@ -225,8 +234,8 @@ type TimedMetric struct {
 	Metric Metric
 }
 
-func (tm *TimedMetric) GetField(field string) (int64, error) {
-	return tm.Metric.GetField(field)
+func (tm *TimedMetric) GetFieldInt64(field string) (int64, error) {
+	return tm.Metric.GetFieldInt64(field)
 }
 
 func (tm *TimedMetric) MarshalJSON() ([]byte, error) {
@@ -241,4 +250,56 @@ func (tm *TimedMetric) MarshalJSON() ([]byte, error) {
 		s = "null"
 	}
 	return []byte(s), nil
+}
+
+func SetField(obj map[string]interface{}, k string, v interface{}) bool {
+	components := strings.Split(k, ".")
+	for n, component := range components {
+		if n == len(components)-1 {
+			obj[component] = v
+		} else {
+			m, ok := obj[component]
+			if !ok {
+				m := make(map[string]interface{})
+				obj[component] = m
+				obj = m
+			} else if obj, ok = m.(map[string]interface{}); !ok {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func GetField(obj map[string]interface{}, k string) (interface{}, error) {
+	components := strings.Split(k, ".")
+	for n, component := range components {
+		i, ok := obj[component]
+		if !ok {
+			return nil, ErrFieldNotFound
+		}
+
+		if n == len(components)-1 {
+			return i, nil
+		}
+
+		if list, ok := i.([]interface{}); ok {
+			var results []interface{}
+			for _, v := range list {
+				switch v := v.(type) {
+				case map[string]interface{}:
+					if obj, err := GetField(v, strings.Join(components[n+1:], ".")); err == nil {
+						results = append(results, obj)
+					}
+				}
+			}
+			return results, nil
+		}
+
+		if obj, ok = i.(map[string]interface{}); !ok {
+			return nil, fmt.Errorf("%s is not a map, but a %+v", component, reflect.TypeOf(obj))
+		}
+	}
+
+	return obj, nil
 }

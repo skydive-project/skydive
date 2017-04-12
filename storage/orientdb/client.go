@@ -210,6 +210,14 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.RegexFilter.Key), f.RegexFilter.Value)
 	}
 
+	if f.InStringFilter != nil {
+		return fmt.Sprintf(`"%s" IN %s`, f.InStringFilter.Value, formatter(f.InStringFilter.Key))
+	}
+
+	if f.InInt64Filter != nil {
+		return fmt.Sprintf(`%d IN %s`, f.InInt64Filter.Value, formatter(f.InInt64Filter.Key))
+	}
+
 	return ""
 }
 

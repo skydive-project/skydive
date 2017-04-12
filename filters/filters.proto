@@ -70,6 +70,16 @@ message LteInt64Filter {
   int64 Value = 2;
 }
 
+message InInt64Filter {
+  string Key = 1;
+  int64 Value = 2;
+}
+
+message InStringFilter {
+  string Key = 1;
+  string Value = 2;
+}
+
 message RegexFilter {
   string Key = 1;
   string Value = 2;
@@ -87,10 +97,12 @@ message Filter {
   LtInt64Filter LtInt64Filter = 4;
   GteInt64Filter GteInt64Filter = 5;
   LteInt64Filter LteInt64Filter = 6;
+  InInt64Filter InInt64Filter = 7;
+  InStringFilter InStringFilter = 8;
 
-  BoolFilter BoolFilter = 7;
-  RegexFilter RegexFilter = 8;
-  NullFilter NullFilter = 9;
+  BoolFilter BoolFilter = 9;
+  RegexFilter RegexFilter = 10;
+  NullFilter NullFilter = 11;
 }
 
 message BoolFilter {

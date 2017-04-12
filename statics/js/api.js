@@ -75,7 +75,7 @@ var apiMixin = {
         url: "/api/config/" + key,
         contentType: "application/json; charset=utf-8",
         method: 'GET',
-      })
+      });
     }
   }
 

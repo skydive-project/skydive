@@ -39,6 +39,12 @@ func NewFilterForMetadata(m Metadata) (*filters.Filter, error) {
 			termFilters = append(termFilters, filters.NewTermInt64Filter(k, v))
 		case string:
 			termFilters = append(termFilters, filters.NewTermStringFilter(k, v))
+		case map[string]interface{}:
+			filters, err := NewFilterForMetadata(Metadata(v))
+			if err != nil {
+				return nil, err
+			}
+			termFilters = append(termFilters, filters)
 		default:
 			i, err := common.ToInt64(v)
 			if err != nil {

@@ -119,14 +119,14 @@ func TestBasicLookup(t *testing.T) {
 func TestBasicLookupMultipleTypes(t *testing.T) {
 	g := newGraph(t)
 
-	n1 := g.NewNode(GenID(), Metadata{"Value": uint32(1), "Type": float64(44.5)})
+	n1 := g.NewNode(GenID(), Metadata{"Value": int32(1), "Type": float64(44.5)})
 
-	if n1.ID != g.LookupFirstNode(Metadata{"Value": int64(1)}).ID {
-		t.Error("Wrong node returned")
+	if g.LookupFirstNode(Metadata{"Value": uint64(1)}) != nil {
+		t.Error("Should return no node")
 	}
 
-	if n1.ID != g.LookupFirstNode(Metadata{"Value": 1}).ID {
-		t.Error("Wrong node returned")
+	if g.LookupFirstNode(Metadata{"Value": 1}) != nil {
+		t.Error("Should return no node")
 	}
 
 	if n1.ID != g.LookupFirstNode(Metadata{"Type": 44.5}).ID {

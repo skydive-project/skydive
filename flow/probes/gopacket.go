@@ -74,9 +74,9 @@ func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker 
 			} else {
 				g.Lock()
 				t := g.StartMetadataTransaction(n)
-				t.AddMetadata("Capture/PacketsReceived", stats.PacketsReceived)
-				t.AddMetadata("Capture/PacketsDropped", stats.PacketsDropped)
-				t.AddMetadata("Capture/PacketsIfDropped", stats.PacketsIfDropped)
+				t.AddMetadata("Capture.PacketsReceived", stats.PacketsReceived)
+				t.AddMetadata("Capture.PacketsDropped", stats.PacketsDropped)
+				t.AddMetadata("Capture.PacketsIfDropped", stats.PacketsIfDropped)
 				t.Commit()
 				g.Unlock()
 			}

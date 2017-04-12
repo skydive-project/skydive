@@ -33,7 +33,7 @@ func (fm *FlowMetric) Copy() *FlowMetric {
 	}
 }
 
-func (f *FlowMetric) GetField(field string) (int64, error) {
+func (f *FlowMetric) GetFieldInt64(field string) (int64, error) {
 	switch field {
 	case "ABPackets":
 		return f.ABPackets, nil

@@ -192,7 +192,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 	}
 
 	// do not escape flow as ES use sub object in that case
-	flowQuery := c.client.FormatFilter(fsq.Filter, "", false)
+	flowQuery := c.client.FormatFilter(fsq.Filter, "")
 	musts := []map[string]interface{}{{
 		"has_parent": map[string]interface{}{
 			"type":  "flow",
@@ -200,7 +200,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 		},
 	}}
 
-	metricQuery := c.client.FormatFilter(metricFilter, "", false)
+	metricQuery := c.client.FormatFilter(metricFilter, "")
 	musts = append(musts, metricQuery)
 
 	request["query"] = map[string]interface{}{
@@ -264,7 +264,7 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 
 	var query map[string]interface{}
 	if fsq.Filter != nil {
-		query = c.client.FormatFilter(fsq.Filter, "", false)
+		query = c.client.FormatFilter(fsq.Filter, "")
 	}
 
 	request["query"] = query

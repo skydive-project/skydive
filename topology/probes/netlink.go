@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"math"
 	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -255,45 +254,45 @@ func (u *NetNsNetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Meta
 	return intf
 }
 
-func (u *NetNsNetLinkProbe) getLinkIPs(link netlink.Link, family int) string {
-	var ips []string
-
+func (u *NetNsNetLinkProbe) getLinkIPs(link netlink.Link, family int) (ips []string) {
 	addrs, err := u.handle.AddrList(link, family)
 	if err != nil {
-		return ""
+		return
 	}
 
 	for _, addr := range addrs {
 		ips = append(ips, addr.IPNet.String())
 	}
 
-	return strings.Join(ips, ",")
+	return
 }
 
-func (u *NetNsNetLinkProbe) updateMetadataStatistics(statistics *netlink.LinkStatistics, metadata graph.Metadata, prefix string) {
-	metadata[prefix+"/Collisions"] = uint64(statistics.Collisions)
-	metadata[prefix+"/Multicast"] = uint64(statistics.Multicast)
-	metadata[prefix+"/RxBytes"] = uint64(statistics.RxBytes)
-	metadata[prefix+"/RxCompressed"] = uint64(statistics.RxCompressed)
-	metadata[prefix+"/RxCrcErrors"] = uint64(statistics.RxCrcErrors)
-	metadata[prefix+"/RxDropped"] = uint64(statistics.RxDropped)
-	metadata[prefix+"/RxErrors"] = uint64(statistics.RxErrors)
-	metadata[prefix+"/RxFifoErrors"] = uint64(statistics.RxFifoErrors)
-	metadata[prefix+"/RxFrameErrors"] = uint64(statistics.RxFrameErrors)
-	metadata[prefix+"/RxLengthErrors"] = uint64(statistics.RxLengthErrors)
-	metadata[prefix+"/RxMissedErrors"] = uint64(statistics.RxMissedErrors)
-	metadata[prefix+"/RxOverErrors"] = uint64(statistics.RxOverErrors)
-	metadata[prefix+"/RxPackets"] = uint64(statistics.RxPackets)
-	metadata[prefix+"/TxAbortedErrors"] = uint64(statistics.TxAbortedErrors)
-	metadata[prefix+"/TxBytes"] = uint64(statistics.TxBytes)
-	metadata[prefix+"/TxCarrierErrors"] = uint64(statistics.TxCarrierErrors)
-	metadata[prefix+"/TxCompressed"] = uint64(statistics.TxCompressed)
-	metadata[prefix+"/TxDropped"] = uint64(statistics.TxDropped)
-	metadata[prefix+"/TxErrors"] = uint64(statistics.TxErrors)
-	metadata[prefix+"/TxFifoErrors"] = uint64(statistics.TxFifoErrors)
-	metadata[prefix+"/TxHeartbeatErrors"] = uint64(statistics.TxHeartbeatErrors)
-	metadata[prefix+"/TxPackets"] = uint64(statistics.TxPackets)
-	metadata[prefix+"/TxWindowErrors"] = uint64(statistics.TxWindowErrors)
+func (u *NetNsNetLinkProbe) statsToMap(statistics *netlink.LinkStatistics) map[string]int64 {
+	return map[string]int64{
+		"Collisions":        int64(statistics.Collisions),
+		"Multicast":         int64(statistics.Multicast),
+		"RxBytes":           int64(statistics.RxBytes),
+		"RxCompressed":      int64(statistics.RxCompressed),
+		"RxCrcErrors":       int64(statistics.RxCrcErrors),
+		"RxDropped":         int64(statistics.RxDropped),
+		"RxErrors":          int64(statistics.RxErrors),
+		"RxFifoErrors":      int64(statistics.RxFifoErrors),
+		"RxFrameErrors":     int64(statistics.RxFrameErrors),
+		"RxLengthErrors":    int64(statistics.RxLengthErrors),
+		"RxMissedErrors":    int64(statistics.RxMissedErrors),
+		"RxOverErrors":      int64(statistics.RxOverErrors),
+		"RxPackets":         int64(statistics.RxPackets),
+		"TxAbortedErrors":   int64(statistics.TxAbortedErrors),
+		"TxBytes":           int64(statistics.TxBytes),
+		"TxCarrierErrors":   int64(statistics.TxCarrierErrors),
+		"TxCompressed":      int64(statistics.TxCompressed),
+		"TxDropped":         int64(statistics.TxDropped),
+		"TxErrors":          int64(statistics.TxErrors),
+		"TxFifoErrors":      int64(statistics.TxFifoErrors),
+		"TxHeartbeatErrors": int64(statistics.TxHeartbeatErrors),
+		"TxPackets":         int64(statistics.TxPackets),
+		"TxWindowErrors":    int64(statistics.TxWindowErrors),
+	}
 }
 
 func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
@@ -317,12 +316,12 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 
 	if speed, err := u.ethtool.CmdGet(&ethtool.EthtoolCmd{}, link.Attrs().Name); err == nil {
 		if speed != math.MaxUint32 {
-			metadata["Speed"] = speed
+			metadata["Speed"] = int64(speed)
 		}
 	}
 
 	if statistics := link.Attrs().Statistics; statistics != nil {
-		u.updateMetadataStatistics(statistics, metadata, "Statistics")
+		metadata["Statistics"] = u.statsToMap(statistics)
 	}
 
 	if link.Type() == "veth" {
@@ -405,7 +404,7 @@ func (u *NetNsNetLinkProbe) onLinkAdded(link netlink.Link) {
 }
 
 func (u *NetNsNetLinkProbe) onLinkDeleted(link netlink.Link) {
-	index := link.Attrs().Index
+	index := int64(link.Attrs().Index)
 
 	u.Graph.Lock()
 
@@ -421,7 +420,7 @@ func (u *NetNsNetLinkProbe) onLinkDeleted(link netlink.Link) {
 
 	// check whether the interface has been deleted or not
 	// we get a delete event when an interface is removed from a bridge
-	if _, err := u.handle.LinkByIndex(index); err != nil && intf != nil {
+	if _, err := u.handle.LinkByIndex(int(index)); err != nil && intf != nil {
 		// if openvswitch do not remove let's do the job by ovs piece of code
 		driver, _ := intf.GetFieldString("Driver")
 		uuid, _ := intf.GetFieldString("UUID")
@@ -435,7 +434,7 @@ func (u *NetNsNetLinkProbe) onLinkDeleted(link netlink.Link) {
 	u.Graph.Unlock()
 
 	u.Lock()
-	delete(u.indexToChildrenQueue, int64(index))
+	delete(u.indexToChildrenQueue, index)
 	delete(u.links, link.Attrs().Name)
 	u.Unlock()
 }
@@ -450,7 +449,7 @@ func getFamilyKey(family int) string {
 	return ""
 }
 
-func (u *NetNsNetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int) {
+func (u *NetNsNetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int64) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -460,21 +459,25 @@ func (u *NetNsNetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index 
 		return
 	}
 
+	var ips []string
 	key := getFamilyKey(family)
-	if v, err := intf.GetFieldString(key); err == nil {
-		if strings.Contains(v+",", addr.IPNet.String()+",") {
+	if v, err := intf.GetField(key); err == nil {
+		ips, ok := v.([]string)
+		if !ok {
+			logging.GetLogger().Errorf("Failed to get IP addresses for node %s", intf.ID)
 			return
+		}
+		for _, ip := range ips {
+			if ip == addr.IPNet.String() {
+				return
+			}
 		}
 	}
 
-	ips := addr.IPNet.String()
-	if v, err := intf.GetFieldString(key); err == nil {
-		ips = v + "," + ips
-	}
-	u.Graph.AddMetadata(intf, key, ips)
+	u.Graph.AddMetadata(intf, key, append(ips, addr.IPNet.String()))
 }
 
-func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int) {
+func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int64) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -485,8 +488,12 @@ func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, inde
 	}
 
 	key := getFamilyKey(family)
-	if v, err := intf.GetFieldString(key); err == nil {
-		ips := strings.Split(v, ",")
+	if v, err := intf.GetField(key); err == nil {
+		ips, ok := v.([]string)
+		if !ok {
+			logging.GetLogger().Errorf("Failed to get IP addresses for node %s", intf.ID)
+			return
+		}
 		for i, ip := range ips {
 			if ip == addr.IPNet.String() {
 				ips = append(ips[:i], ips[i+1:]...)
@@ -497,7 +504,7 @@ func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, inde
 		if len(ips) == 0 {
 			u.Graph.DelMetadata(intf, key)
 		} else {
-			u.Graph.AddMetadata(intf, key, strings.Join(ips, ","))
+			u.Graph.AddMetadata(intf, key, ips)
 		}
 	}
 }
@@ -618,36 +625,37 @@ Ready:
 						tr := u.Graph.StartMetadataTransaction(node)
 
 						// get and update the metadata transaction instance
-						m := tr.Metadata
+						m := tr.Metadata["Statistics"].(map[string]int64)
 						metric := netlink.LinkStatistics{
-							Collisions:        stats.Collisions - m["Statistics/Collisions"].(uint64),
-							Multicast:         stats.Multicast - m["Statistics/Multicast"].(uint64),
-							RxBytes:           stats.RxBytes - m["Statistics/RxBytes"].(uint64),
-							RxCompressed:      stats.RxCompressed - m["Statistics/RxCompressed"].(uint64),
-							RxCrcErrors:       stats.RxCrcErrors - m["Statistics/RxCrcErrors"].(uint64),
-							RxDropped:         stats.RxDropped - m["Statistics/RxDropped"].(uint64),
-							RxErrors:          stats.RxErrors - m["Statistics/RxErrors"].(uint64),
-							RxFifoErrors:      stats.RxFifoErrors - m["Statistics/RxFifoErrors"].(uint64),
-							RxFrameErrors:     stats.RxFrameErrors - m["Statistics/RxFrameErrors"].(uint64),
-							RxLengthErrors:    stats.RxLengthErrors - m["Statistics/RxLengthErrors"].(uint64),
-							RxMissedErrors:    stats.RxMissedErrors - m["Statistics/RxMissedErrors"].(uint64),
-							RxOverErrors:      stats.RxOverErrors - m["Statistics/RxOverErrors"].(uint64),
-							RxPackets:         stats.RxPackets - m["Statistics/RxPackets"].(uint64),
-							TxAbortedErrors:   stats.TxAbortedErrors - m["Statistics/TxAbortedErrors"].(uint64),
-							TxBytes:           stats.TxBytes - m["Statistics/TxBytes"].(uint64),
-							TxCarrierErrors:   stats.TxCarrierErrors - m["Statistics/TxCarrierErrors"].(uint64),
-							TxCompressed:      stats.TxCompressed - m["Statistics/TxCompressed"].(uint64),
-							TxDropped:         stats.TxDropped - m["Statistics/TxDropped"].(uint64),
-							TxErrors:          stats.TxErrors - m["Statistics/TxErrors"].(uint64),
-							TxFifoErrors:      stats.TxFifoErrors - m["Statistics/TxFifoErrors"].(uint64),
-							TxHeartbeatErrors: stats.TxHeartbeatErrors - m["Statistics/TxHeartbeatErrors"].(uint64),
-							TxPackets:         stats.TxPackets - m["Statistics/TxPackets"].(uint64),
-							TxWindowErrors:    stats.TxWindowErrors - m["Statistics/TxWindowErrors"].(uint64),
+							Collisions:        stats.Collisions - uint64(m["Collisions"]),
+							Multicast:         stats.Multicast - uint64(m["Multicast"]),
+							RxBytes:           stats.RxBytes - uint64(m["RxBytes"]),
+							RxCompressed:      stats.RxCompressed - uint64(m["RxCompressed"]),
+							RxCrcErrors:       stats.RxCrcErrors - uint64(m["RxCrcErrors"]),
+							RxDropped:         stats.RxDropped - uint64(m["RxDropped"]),
+							RxErrors:          stats.RxErrors - uint64(m["RxErrors"]),
+							RxFifoErrors:      stats.RxFifoErrors - uint64(m["RxFifoErrors"]),
+							RxFrameErrors:     stats.RxFrameErrors - uint64(m["RxFrameErrors"]),
+							RxLengthErrors:    stats.RxLengthErrors - uint64(m["RxLengthErrors"]),
+							RxMissedErrors:    stats.RxMissedErrors - uint64(m["RxMissedErrors"]),
+							RxOverErrors:      stats.RxOverErrors - uint64(m["RxOverErrors"]),
+							RxPackets:         stats.RxPackets - uint64(m["RxPackets"]),
+							TxAbortedErrors:   stats.TxAbortedErrors - uint64(m["TxAbortedErrors"]),
+							TxBytes:           stats.TxBytes - uint64(m["TxBytes"]),
+							TxCarrierErrors:   stats.TxCarrierErrors - uint64(m["TxCarrierErrors"]),
+							TxCompressed:      stats.TxCompressed - uint64(m["TxCompressed"]),
+							TxDropped:         stats.TxDropped - uint64(m["TxDropped"]),
+							TxErrors:          stats.TxErrors - uint64(m["TxErrors"]),
+							TxFifoErrors:      stats.TxFifoErrors - uint64(m["TxFifoErrors"]),
+							TxHeartbeatErrors: stats.TxHeartbeatErrors - uint64(m["TxHeartbeatErrors"]),
+							TxPackets:         stats.TxPackets - uint64(m["TxPackets"]),
+							TxWindowErrors:    stats.TxWindowErrors - uint64(m["TxWindowErrors"]),
 						}
-						u.updateMetadataStatistics(stats, m, "Statistics")
-						u.updateMetadataStatistics(&metric, m, "LastMetric")
-						m["LastMetric/Start"] = common.UnixMillis(last)
-						m["LastMetric/Last"] = common.UnixMillis(now)
+						tr.Metadata["Statistics"] = u.statsToMap(stats)
+						lastMetrics := u.statsToMap(&metric)
+						lastMetrics["Start"] = int64(common.UnixMillis(last))
+						lastMetrics["Last"] = int64(common.UnixMillis(now))
+						tr.Metadata["LastMetric"] = lastMetrics
 						tr.Commit()
 						u.Graph.Unlock()
 					}
@@ -693,14 +701,14 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 				logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
 				continue
 			}
-			u.onAddressAdded(addr, family, ifindex)
+			u.onAddressAdded(addr, family, int64(ifindex))
 		case syscall.RTM_DELADDR:
 			addr, family, ifindex, err := parseAddr(msg.Data)
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
 				continue
 			}
-			u.onAddressDeleted(addr, family, ifindex)
+			u.onAddressDeleted(addr, family, int64(ifindex))
 		}
 	}
 }

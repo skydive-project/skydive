@@ -45,7 +45,7 @@ var TopologyComponent = {
             <span v-if="time" class="label center-block node-time">\
               Interface state at {{timeHuman}}\
             </span>\
-            <h1>Metadatas<span class="pull-right">(ID: {{currentNode.ID}})</span></h1>\
+            <h1>Metadata<span class="pull-right">(ID: {{currentNode.ID}})</span></h1>\
             <div class="sub-left-panel">\
               <object-detail :object="currentNodeMetadata"></object-detail>\
             </div>\
@@ -207,12 +207,12 @@ var TopologyComponent = {
     },
 
     currentNodeStats: function() {
-      return this.extractMetadata(this.currentNode.Metadata, "Statistics");
+      return this.currentNode.Metadata.Statistics || {};
     },
 
     currentNodeLastStats: function() {
-      var s = this.extractMetadata(this.currentNode.Metadata, "LastMetric");
-      ['LastMetric/Start', 'LastMetric/Last'].forEach(function(k) {
+      var s = this.currentNode.Metadata.LastMetric || {};
+      ['Start', 'Last'].forEach(function(k) {
         if (s[k]) {
           s[k] = new Date(s[k]).toLocaleTimeString();
         }
@@ -325,7 +325,7 @@ var Node = function(ID) {
 Node.prototype = {
 
   IsCaptureOn: function() {
-    return "Capture/ID" in this.Metadata;
+    return "Capture" in this.Metadata && "ID" in this.Metadata.Capture;
   },
 
   IsCaptureAllowed: function() {
@@ -1257,7 +1257,7 @@ TopologyLayout.prototype.redraw = function() {
             })
            .style("text-anchor","middle")
            .attr("startOffset", "50%")
-           .text(function(d,i){return ""});
+           .text(function(d,i){return "";});
 
   this.node = this.node.data(this.nodes, function(d) { return d.ID; })
       .attr("class", function(d) {
@@ -1408,13 +1408,8 @@ TopologyLayout.prototype.ProcessGraphMessage = function(msg) {
 
     case "NodeUpdated":
       node = this.graph.GetNode(msg.Obj.ID);
-      var redrawOn = ['Capture/ID', 'Status'],
-          redraw = redrawOn.reduce(function(acc, key) {
-            if (msg.Obj.Metadata[key] !== node.Metadata[key]) {
-              acc = true;
-            }
-            return acc;
-          }, false);
+      var redraw = (msg.Obj.Metadata.State !== node.Metadata.State) ||
+                   (JSON.stringify(msg.Obj.Metadata.Capture) !== JSON.stringify(node.Metadata.Capture));
 
       if (redraw) {
         this.deferredActions.push({fn: this.UpdateNode, params: [node, msg.Obj.Metadata]});
@@ -1519,16 +1514,16 @@ function getBandwidth(res, source) {
   var totalByte = 0;
   var deltaTime = 0;
 
-  if (res === null || typeof res === 'undefined')
+  if (res === null || typeof res === 'undefined' || res.LastMetric === undefined)
     return 0;
 
   if (source == "netlink") {
-    totalByte = res["LastMetric/RxBytes"] + res["LastMetric/TxBytes"];
+    totalByte = res.LastMetric.RxBytes + res.LastMetric.TxBytes;
 
     if (typeof totalByte === 'undefined')
       return 0;
 
-    deltaTime = res["LastMetric/Last"] - res["LastMetric/Start"];
+    deltaTime = res.LastMetric.Last - res.LastMetric.Start;
   } else if (source == "flows") {
     deltaTime = res.Last - res.Start;
     totalByte = res.ABBytes + res.BABytes;

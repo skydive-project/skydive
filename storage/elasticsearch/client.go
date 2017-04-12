@@ -39,7 +39,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-const indexVersion = 4
+const indexVersion = 5
 
 type ElasticSearchClient struct {
 	connection *elastigo.Conn
@@ -48,24 +48,6 @@ type ElasticSearchClient struct {
 }
 
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
-
-var fieldEscaper = strings.NewReplacer(
-	".", "~;",
-	"~", "~~;",
-)
-
-var fieldUnescaper = strings.NewReplacer(
-	"~~;", "~",
-	"~;", ".",
-)
-
-func EscapeField(f string) string {
-	return fieldEscaper.Replace(f)
-}
-
-func UnescapeField(f string) string {
-	return fieldUnescaper.Replace(f)
-}
 
 func (c *ElasticSearchClient) request(method string, path string, query string, body string) (int, []byte, error) {
 	req, err := c.connection.NewRequest(method, path, query)
@@ -141,17 +123,15 @@ func (c *ElasticSearchClient) start(mappings []map[string][]byte) error {
 	return nil
 }
 
-func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string, escape bool) map[string]interface{} {
+func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string) map[string]interface{} {
+	prefix := mapKey
+	if prefix != "" {
+		prefix += "."
+	}
+
 	if filter == nil {
 		return map[string]interface{}{
 			"match_all": map[string]interface{}{},
-		}
-	}
-
-	esc := EscapeField
-	if !escape {
-		esc = func(k string) string {
-			return k
 		}
 	}
 
@@ -167,7 +147,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 		}
 		filters := []interface{}{}
 		for _, item := range f.Filters {
-			filters = append(filters, c.FormatFilter(item, prefix, escape))
+			filters = append(filters, c.FormatFilter(item, mapKey))
 		}
 		return map[string]interface{}{
 			"bool": map[string]interface{}{
@@ -179,14 +159,14 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.TermStringFilter; f != nil {
 		return map[string]interface{}{
 			"term": map[string]string{
-				prefix + esc(f.Key): f.Value,
+				prefix + f.Key: f.Value,
 			},
 		}
 	}
 	if f := filter.TermInt64Filter; f != nil {
 		return map[string]interface{}{
 			"term": map[string]int64{
-				prefix + esc(f.Key): f.Value,
+				prefix + f.Key: f.Value,
 			},
 		}
 	}
@@ -194,7 +174,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.RegexFilter; f != nil {
 		return map[string]interface{}{
 			"regexp": map[string]string{
-				prefix + esc(f.Key): f.Value,
+				prefix + f.Key: f.Value,
 			},
 		}
 	}
@@ -202,7 +182,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.GtInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
-				prefix + esc(f.Key): &struct {
+				prefix + f.Key: &struct {
 					Gt interface{} `json:"gt,omitempty"`
 				}{
 					Gt: f.Value,
@@ -213,7 +193,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.LtInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
-				prefix + esc(f.Key): &struct {
+				prefix + f.Key: &struct {
 					Lt interface{} `json:"lt,omitempty"`
 				}{
 					Lt: f.Value,
@@ -224,7 +204,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.GteInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
-				prefix + esc(f.Key): &struct {
+				prefix + f.Key: &struct {
 					Gte interface{} `json:"gte,omitempty"`
 				}{
 					Gte: f.Value,
@@ -235,7 +215,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 	if f := filter.LteInt64Filter; f != nil {
 		return map[string]interface{}{
 			"range": map[string]interface{}{
-				prefix + esc(f.Key): &struct {
+				prefix + f.Key: &struct {
 					Lte interface{} `json:"lte,omitempty"`
 				}{
 					Lte: f.Value,
@@ -248,9 +228,23 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, prefix string
 			"bool": map[string]interface{}{
 				"must_not": map[string]interface{}{
 					"exists": map[string]interface{}{
-						"field": prefix + esc(f.Key),
+						"field": prefix + f.Key,
 					},
 				},
+			},
+		}
+	}
+	if f := filter.InStringFilter; f != nil {
+		return map[string]interface{}{
+			"term": map[string]string{
+				prefix + f.Key: f.Value,
+			},
+		}
+	}
+	if f := filter.InInt64Filter; f != nil {
+		return map[string]interface{}{
+			"term": map[string]int64{
+				prefix + f.Key: f.Value,
 			},
 		}
 	}

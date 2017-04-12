@@ -26,10 +26,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -403,7 +407,7 @@ func TestDockerSimple(t *testing.T) {
 			}
 
 			gremlin += `.V().Has("Name", "test-skydive-docker-simple", "Type", "netns", "Manager", "docker")`
-			gremlin += `.Out("Type", "container", "Docker/ContainerName", "/test-skydive-docker-simple")`
+			gremlin += `.Out("Type", "container", "Docker.ContainerName", "/test-skydive-docker-simple")`
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
@@ -451,7 +455,7 @@ func TestDockerShareNamespace(t *testing.T) {
 			case 0:
 				return errors.New("No namespace found")
 			case 1:
-				gremlin += `.Out().Has("Type", "container", "Docker/ContainerName", Within("/test-skydive-docker-share-ns", "/test-skydive-docker-share-ns2"))`
+				gremlin += `.Out().Has("Type", "container", "Docker.ContainerName", Within("/test-skydive-docker-share-ns", "/test-skydive-docker-share-ns2"))`
 
 				nodes, err = gh.GetNodes(gremlin)
 				if err != nil {
@@ -490,7 +494,7 @@ func TestDockerNetHost(t *testing.T) {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 			}
 
-			gremlin := prefix + `.V().Has("Docker/ContainerName", "/test-skydive-docker-net-host", "Type", "container")`
+			gremlin := prefix + `.V().Has("Docker.ContainerName", "/test-skydive-docker-net-host", "Type", "container")`
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -636,6 +640,94 @@ func TestInterfaceMetrics(t *testing.T) {
 			im := tm.Metric.(*graph.InterfaceMetric)
 			if im.TxPackets != 30 {
 				return fmt.Errorf("Expected 30 TxPackets, got %d", tx)
+			}
+
+			return nil
+		},
+	}
+
+	RunTest(t, test)
+}
+
+type TopologyInjecter struct {
+	shttp.DefaultWSClientEventHandler
+	connected int32
+}
+
+func (t *TopologyInjecter) OnConnected(c *shttp.WSAsyncClient) {
+	atomic.StoreInt32(&t.connected, 1)
+}
+
+func TestQueryMetadata(t *testing.T) {
+	test := &Test{
+		setupFunction: func(c *TestContext) error {
+			authOptions := &shttp.AuthenticationOpts{}
+			addresses, err := config.GetAnalyzerServiceAddresses()
+			if err != nil || len(addresses) == 0 {
+				return fmt.Errorf("Unable to get the analyzers list: %s", err.Error())
+			}
+
+			hostname, _ := os.Hostname()
+			wspool := shttp.NewWSAsyncClientPool()
+			for _, sa := range addresses {
+				authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
+				wsclient := shttp.NewWSAsyncClient(hostname+"-cli", "", sa.Addr, sa.Port, "/ws", authClient)
+				wspool.AddWSAsyncClient(wsclient)
+			}
+
+			eventHandler := &TopologyInjecter{}
+			wspool.AddEventHandler(eventHandler, []string{"*"})
+			wspool.ConnectAll()
+
+			err = common.Retry(func() error {
+				if atomic.LoadInt32(&eventHandler.connected) != 1 {
+					return errors.New("Not connected through WebSocket")
+				}
+				return nil
+			}, 10, time.Second)
+
+			if err != nil {
+				return err
+			}
+
+			n := new(graph.Node)
+			n.Decode(map[string]interface{}{
+				"ID":   "123",
+				"Host": "test",
+				"Metadata": map[string]interface{}{
+					"A": map[string]interface{}{
+						"B": map[string]interface{}{
+							"C": 123,
+							"D": []interface{}{1, 2, 3},
+						},
+						"F": map[string]interface{}{
+							"G": 123,
+						},
+					},
+				},
+			})
+
+			msg := shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+			wspool.MasterClient().SendWSMessage(msg)
+
+			return nil
+		},
+		check: func(c *TestContext) error {
+			gh := c.gh
+
+			prefix := "g"
+			if !c.time.IsZero() {
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+
+			_, err := gh.GetNode(prefix + `.V().Has("A.F.G", 123)`)
+			if err != nil {
+				return err
+			}
+
+			_, err = gh.GetNode(prefix + `.V().Has("A.B.C", 123)`)
+			if err != nil {
+				return err
 			}
 
 			return nil

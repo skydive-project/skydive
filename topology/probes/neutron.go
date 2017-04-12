@@ -86,13 +86,13 @@ func retrievePortMetadata(node *graph.Node) PortMetadata {
 
 	// We prefer to use the 'ExtID/attached-mac' metadata to get
 	// the port, and we fallback to the 'mac' metadata.
-	if attachedMAC, _ := node.GetFieldString("ExtID/attached-mac"); attachedMAC != "" {
+	if attachedMAC, _ := node.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
 		md.mac = attachedMAC
 	} else if mac, _ := node.GetFieldString("MAC"); mac != "" {
 		md.mac = mac
 	}
 
-	if ifaceID, _ := node.GetFieldString("ExtID/iface-id"); ifaceID != "" {
+	if ifaceID, _ := node.GetFieldString("ExtID.iface-id"); ifaceID != "" {
 		md.portID = ifaceID
 	}
 	return md
@@ -203,36 +203,35 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
 
-	metadata := graph.Metadata{"Manager": "neutron"}
+	metadata := make(map[string]interface{})
 
 	if attrs.PortID != "" {
-		metadata["Neutron/PortID"] = attrs.PortID
+		metadata["PortID"] = attrs.PortID
 	}
 
 	if attrs.TenantID != "" {
-		metadata["Neutron/TenantID"] = attrs.TenantID
+		metadata["TenantID"] = attrs.TenantID
 	}
 
 	if attrs.NetworkID != "" {
-		metadata["Neutron/NetworkID"] = attrs.NetworkID
+		metadata["NetworkID"] = attrs.NetworkID
 	}
 
 	if attrs.NetworkName != "" {
-		metadata["Neutron/NetworkName"] = attrs.NetworkName
+		metadata["NetworkName"] = attrs.NetworkName
 	}
 
 	if attrs.IPs != "" {
-		metadata["Neutron/IPs"] = attrs.IPs
+		metadata["IPs"] = attrs.IPs
 	}
 
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
-		metadata["Neutron/VNI"] = uint64(segID)
+		metadata["VNI"] = int64(segID)
 	}
 
 	tr := mapper.graph.StartMetadataTransaction(node)
-	for k, v := range metadata {
-		tr.AddMetadata(k, v)
-	}
+	tr.AddMetadata("Neutron", metadata)
+	tr.AddMetadata("Manager", "neutron")
 	tr.Commit()
 
 	name, _ := node.GetFieldString("Name")
@@ -247,15 +246,15 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	// tap to qvo path
 	tap := strings.Replace(name, "qvo", "tap", 1)
 
-	if uuid, _ := node.GetFieldString("ExtID/vm-uuid"); uuid != "" {
-		if attachedMac, _ := node.GetFieldString("ExtID/attached-mac"); attachedMac != "" {
+	if uuid, _ := node.GetFieldString("ExtID.vm-uuid"); uuid != "" {
+		if attachedMac, _ := node.GetFieldString("ExtID.attached-mac"); attachedMac != "" {
 			retryFnc := func() error {
 				mapper.graph.Lock()
 				defer mapper.graph.Unlock()
 
 				if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata); len(path) > 0 {
-					metadata["ExtID/vm-uuid"] = uuid
-					metadata["ExtID/attached-mac"] = attachedMac
+					metadata["ExtID.vm-uuid"] = uuid
+					metadata["ExtID.attached-mac"] = attachedMac
 
 					for i, n := range path {
 						tr := mapper.graph.StartMetadataTransaction(n)

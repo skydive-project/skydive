@@ -214,7 +214,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	extIds := row.New.Fields["external_ids"].(libovsdb.OvsMap)
 	for k, v := range extIds.GoMap {
-		tr.AddMetadata("ExtID/"+k.(string), v.(string))
+		tr.AddMetadata("ExtID."+k.(string), v.(string))
 	}
 
 	o.uuidToIntf[uuid] = intf
@@ -330,10 +330,18 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		case libovsdb.OvsSet:
 			set := tag.(libovsdb.OvsSet)
 			if len(set.GoSet) > 0 {
-				o.Graph.AddMetadata(port, "Vlans", set.GoSet)
+				var vlans []int64
+				for _, vlan := range set.GoSet {
+					if vlan, ok := vlan.(float64); ok {
+						vlans = append(vlans, int64(vlan))
+					}
+				}
+				if len(vlans) > 0 {
+					o.Graph.AddMetadata(port, "Vlans", vlans)
+				}
 			}
 		case float64:
-			o.Graph.AddMetadata(port, "Vlans", int(tag.(float64)))
+			o.Graph.AddMetadata(port, "Vlans", int64(tag.(float64)))
 		}
 	}
 

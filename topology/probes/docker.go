@@ -99,15 +99,21 @@ func (probe *DockerProbe) registerContainer(id string) {
 
 	probe.Graph.Lock()
 	metadata := graph.Metadata{
-		"Type":                 "container",
-		"Name":                 info.Name[1:],
-		"Docker/ContainerID":   info.ID,
-		"Docker/ContainerName": info.Name,
-		"Docker/ContainerPID":  info.State.Pid,
+		"Type": "container",
+		"Name": info.Name[1:],
+		"Docker": map[string]interface{}{
+			"ContainerID":   info.ID,
+			"ContainerName": info.Name,
+			"ContainerPID":  int64(info.State.Pid),
+		},
 	}
 
-	for k, v := range info.Config.Labels {
-		metadata["Docker/Labels/"+k] = v
+	if len(info.Config.Labels) != 0 {
+		labels := make(map[string]interface{})
+		for k, v := range info.Config.Labels {
+			labels[k] = v
+		}
+		metadata["Docker"].(map[string]interface{})["Labels"] = labels
 	}
 
 	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)

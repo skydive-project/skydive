@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 	"sync"
 	"time"
 
@@ -183,17 +182,17 @@ func (e *graphElement) Host() string {
 }
 
 func (e *graphElement) GetFieldInt64(field string) (_ int64, err error) {
-	f, found := e.GetField(field)
-	if !found {
-		return 0, common.ErrFieldNotFound
+	f, err := e.GetField(field)
+	if err != nil {
+		return 0, err
 	}
 	return common.ToInt64(f)
 }
 
 func (e *graphElement) GetFieldString(field string) (_ string, err error) {
-	f, found := e.GetField(field)
-	if !found {
-		return "", common.ErrFieldNotFound
+	f, err := e.GetField(field)
+	if err != nil {
+		return "", err
 	}
 	s, ok := f.(string)
 	if !ok {
@@ -202,24 +201,44 @@ func (e *graphElement) GetFieldString(field string) (_ string, err error) {
 	return s, nil
 }
 
-func (e *graphElement) GetField(name string) (interface{}, bool) {
+func (e *graphElement) GetField(name string) (interface{}, error) {
 	switch name {
 	case "ID":
-		return string(e.ID), true
+		return string(e.ID), nil
 	case "Host":
-		return e.host, true
+		return e.host, nil
 	case "CreatedAt":
-		return common.UnixMillis(e.createdAt), true
+		return common.UnixMillis(e.createdAt), nil
 	case "UpdatedAt":
-		return common.UnixMillis(e.updatedAt), true
+		return common.UnixMillis(e.updatedAt), nil
 	case "DeletedAt":
-		return common.UnixMillis(e.deletedAt), true
+		return common.UnixMillis(e.deletedAt), nil
 	default:
-		if strings.HasPrefix(name, "Metadata/") {
-			name = name[9:]
+		return common.GetField(e.metadata, name)
+	}
+}
+
+func (e *graphElement) GetFieldStringList(name string) ([]string, error) {
+	v, err := e.GetField(name)
+	if err != nil {
+		return nil, err
+	}
+
+	switch l := v.(type) {
+	case []interface{}:
+		var l2 []string
+		for _, i := range l {
+			s, ok := i.(string)
+			if !ok {
+				return nil, common.ErrFieldWrongType
+			}
+			l2 = append(l2, s)
 		}
-		v, ok := e.Metadata()[name]
-		return v, ok
+		return l2, nil
+	case []string:
+		return l, nil
+	default:
+		return nil, common.ErrFieldWrongType
 	}
 }
 
@@ -248,7 +267,7 @@ func (e *graphElement) MatchMetadata(f Metadata) bool {
 			}
 		default:
 			nv, ok := e.metadata[k]
-			if !ok || !common.CrossTypeEqual(nv, v) {
+			if !ok || !reflect.DeepEqual(nv, v) {
 				return false
 			}
 		}
@@ -295,6 +314,25 @@ func parseTime(i interface{}) (t time.Time, err error) {
 		return t, fmt.Errorf("Invalid time: %+v", i)
 	}
 	return time.Unix(0, ms*int64(time.Millisecond)), err
+}
+
+func decodeMap(m map[string]interface{}) {
+	for field, value := range m {
+		switch v := value.(type) {
+		case json.Number:
+			var err error
+			if value, err = v.Int64(); err != nil {
+				if value, err = v.Float64(); err != nil {
+					value = v.String()
+				}
+			}
+			m[field] = value
+		case map[string]interface{}:
+			decodeMap(v)
+		default:
+			m[field] = value
+		}
+	}
 }
 
 func (e *graphElement) Decode(i interface{}) (err error) {
@@ -344,17 +382,9 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 	}
 
 	if m, ok := objMap["Metadata"]; ok {
-		e.metadata = make(Metadata)
-		for field, value := range m.(map[string]interface{}) {
-			if n, ok := value.(json.Number); ok {
-				if value, err = n.Int64(); err == nil {
-					value = value.(int64)
-				} else {
-					value, _ = n.Float64()
-				}
-			}
-			e.metadata[field] = value
-		}
+		metadata := m.(map[string]interface{})
+		decodeMap(metadata)
+		e.metadata = metadata
 	}
 
 	return nil
@@ -487,17 +517,8 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 		ge.kind = edgeUpdated
 	}
 
-	if len(m) == len(e.metadata) {
-		unchanged := true
-		for k, v := range m {
-			if e.metadata[k] != v {
-				unchanged = false
-				break
-			}
-		}
-		if unchanged {
-			return false
-		}
+	if reflect.DeepEqual(m, e.metadata) {
+		return false
 	}
 
 	now := time.Now().UTC()
@@ -540,7 +561,7 @@ func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 		ge.kind = edgeUpdated
 	}
 
-	if o, ok := e.metadata[k]; ok && o == v {
+	if o, ok := e.metadata[k]; ok && reflect.DeepEqual(o, v) {
 		return false
 	}
 
@@ -549,15 +570,17 @@ func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 		return false
 	}
 
-	e.metadata[k] = v
-	e.updatedAt = now
+	if !common.SetField(e.metadata, k, v) {
+		return false
+	}
 
+	e.updatedAt = now
 	g.notifyEvent(ge)
 	return true
 }
 
 func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
-	t.Metadata[k] = v
+	common.SetField(t.Metadata, k, v)
 }
 
 func (t *MetadataTransaction) Commit() {
