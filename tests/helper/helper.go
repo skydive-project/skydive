@@ -117,7 +117,7 @@ func InitConfig(conf string, params ...HelperParams) error {
 
 	fmt.Printf("Config: %s\n", string(buff.Bytes()))
 
-	err = config.InitConfig("file", f.Name())
+	err = config.InitConfig("file", []string{f.Name()})
 	if err != nil {
 		return err
 	}

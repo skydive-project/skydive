@@ -36,8 +36,6 @@ import (
 
 var (
 	analyzerUID uint32
-	cfgPath     string
-	cfgBackend  string
 )
 
 var AllInOne = &cobra.Command{
@@ -63,9 +61,9 @@ var AllInOne = &cobra.Command{
 
 		args = []string{"skydive"}
 
-		if cfgPath != "" {
+		for _, cfgFile := range cfgFiles {
 			args = append(args, "-c")
-			args = append(args, cfgPath)
+			args = append(args, cfgFile)
 		}
 
 		if cfgBackend != "" {
@@ -81,8 +79,8 @@ var AllInOne = &cobra.Command{
 			logging.GetLogger().Fatalf("Can't start Skydive All-in-One : %v", err)
 		}
 
-		if cfgPath != "" {
-			if err := config.InitConfig(cfgBackend, cfgPath); err != nil {
+		if len(cfgFiles) != 0 {
+			if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
 				logging.GetLogger().Fatalf("Can't initialize config: %v", err)
 			}
 		}
@@ -127,7 +125,7 @@ func init() {
 		uid = fi.Sys().(*syscall.Stat_t).Uid
 	}
 
-	AllInOne.Flags().StringVarP(&cfgPath, "conf", "c", "", "location of Skydive agent config file")
+	AllInOne.Flags().StringArrayVarP(&cfgFiles, "conf", "c", []string{}, "location of Skydive agent config files")
 	AllInOne.Flags().StringVarP(&cfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
 	AllInOne.Flags().Uint32VarP(&analyzerUID, "analyzer-uid", "", uid, "uid used for analyzer process")
 }

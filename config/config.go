@@ -28,7 +28,6 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -151,27 +150,29 @@ func checkViperSupportedExts(ext string) bool {
 	return false
 }
 
-func InitConfig(backend string, path string) error {
-	if path == "" {
+func InitConfig(backend string, paths []string) error {
+	if len(paths) == 0 {
 		return fmt.Errorf("Empty configuration path")
 	}
 
-	ext := strings.TrimPrefix(filepath.Ext(path), ".")
-	if ext == "" || !checkViperSupportedExts(ext) {
-		ext = "yaml"
-	}
-	cfg.SetConfigType(ext)
+	cfg.SetConfigType("yaml")
 
 	switch backend {
 	case "file":
-		configFile, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		if err := cfg.ReadConfig(configFile); err != nil {
-			return err
+		for _, path := range paths {
+			configFile, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			if err := cfg.MergeConfig(configFile); err != nil {
+				return err
+			}
 		}
 	case "etcd":
+		if len(paths) != 1 {
+			return fmt.Errorf("You can specify only one etcd endpoint for configuration")
+		}
+		path := paths[0]
 		u, err := url.Parse(path)
 		if err != nil {
 			return err
