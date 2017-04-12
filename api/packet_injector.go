@@ -52,16 +52,9 @@ type PacketParamsReq struct {
 	Count   int
 }
 
-func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	decoder := json.NewDecoder(r.Body)
-	var ppr PacketParamsReq
-	err := decoder.Decode(&ppr)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	defer r.Body.Close()
+func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *packet_injector.PacketParams, error) {
+	pi.Graph.RLock()
+	defer pi.Graph.RUnlock()
 
 	srcNode := pi.getNode(ppr.Src)
 	dstNode := pi.getNode(ppr.Dst)
@@ -70,13 +63,11 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 		if srcNode != nil {
 			ip, _ := srcNode.GetFieldString("IPV4")
 			if ip == "" {
-				writeError(w, http.StatusBadRequest, errors.New("No source IP in node and user input"))
-				return
+				return "", nil, errors.New("No source IP in node and user input")
 			}
 			ppr.SrcIP = ip
 		} else {
-			writeError(w, http.StatusBadRequest, errors.New("Not able to find a source node and source IP also empty"))
-			return
+			return "", nil, errors.New("Not able to find a source node and source IP also empty")
 		}
 	}
 
@@ -84,13 +75,11 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 		if dstNode != nil {
 			ip, _ := dstNode.GetFieldString("IPV4")
 			if ip == "" {
-				writeError(w, http.StatusBadRequest, errors.New("No dest IP in node and user input"))
-				return
+				return "", nil, errors.New("No dest IP in node and user input")
 			}
 			ppr.DstIP = ip
 		} else {
-			writeError(w, http.StatusBadRequest, errors.New("Not able to find a dest node and dest IP also empty"))
-			return
+			return "", nil, errors.New("Not able to find a dest node and dest IP also empty")
 		}
 	}
 
@@ -98,13 +87,11 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 		if srcNode != nil {
 			mac, _ := srcNode.GetFieldString("MAC")
 			if mac == "" {
-				writeError(w, http.StatusBadRequest, errors.New("No source MAC in node and user input"))
-				return
+				return "", nil, errors.New("No source MAC in node and user input")
 			}
 			ppr.SrcMAC = mac
 		} else {
-			writeError(w, http.StatusBadRequest, errors.New("Not able to find a source node and source MAC also empty"))
-			return
+			return "", nil, errors.New("Not able to find a source node and source MAC also empty")
 		}
 	}
 
@@ -112,18 +99,15 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 		if dstNode != nil {
 			mac, _ := dstNode.GetFieldString("MAC")
 			if mac == "" {
-				writeError(w, http.StatusBadRequest, errors.New("No dest MAC in node and user input"))
-				return
+				return "", nil, errors.New("No dest MAC in node and user input")
 			}
 			ppr.DstMAC = mac
 		} else {
-			writeError(w, http.StatusBadRequest, errors.New("Not able to find a dest node and dest MAC also empty"))
-			return
+			return "", nil, errors.New("Not able to find a dest node and dest MAC also empty")
 		}
 	}
 
-	pi.Graph.RLock()
-	pp := packet_injector.PacketParams{
+	pp := &packet_injector.PacketParams{
 		SrcNodeID: srcNode.ID,
 		SrcIP:     ppr.SrcIP,
 		SrcMAC:    ppr.SrcMAC,
@@ -133,18 +117,34 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 		Payload:   ppr.Payload,
 		Count:     ppr.Count,
 	}
-	pi.Graph.RUnlock()
 
-	if errs := validator.Validate(&pp); errs != nil {
-		writeError(w, http.StatusBadRequest, errors.New("All the parms not set properly."))
-		return
+	if errs := validator.Validate(pp); errs != nil {
+		return "", nil, errors.New("All the parms not set properly.")
 	}
 
-	host := srcNode.Host()
-	if err := pi.PIClient.InjectPacket(host, &pp); err != nil {
+	return srcNode.Host(), pp, nil
+}
+
+func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	decoder := json.NewDecoder(r.Body)
+	var ppr PacketParamsReq
+	if err := decoder.Decode(&ppr); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	defer r.Body.Close()
+
+	host, pp, err := pi.requestToParams(&ppr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := pi.PIClient.InjectPacket(host, pp); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(pp); err != nil {
@@ -153,9 +153,6 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 }
 
 func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
-	pi.Graph.RLock()
-	defer pi.Graph.RUnlock()
-
 	res, err := topology.ExecuteGremlinQuery(pi.Graph, gremlinQuery)
 	if err != nil {
 		return nil
