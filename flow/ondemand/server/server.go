@@ -179,7 +179,6 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 	}
 
 	status := http.StatusBadRequest
-	ok := false
 
 	o.Graph.Lock()
 
@@ -192,17 +191,19 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 			break
 		}
 
+		status = http.StatusOK
 		if _, err := n.GetFieldString("Capture/ID"); err == nil {
 			logging.GetLogger().Debugf("Capture already started on node %s", n.ID)
 		} else {
-			if ok = o.registerProbe(n, &query.Capture); ok {
+			if ok := o.registerProbe(n, &query.Capture); ok {
 				t := o.Graph.StartMetadataTransaction(n)
 				t.AddMetadata("Capture/ID", query.Capture.UUID)
 				t.Commit()
+			} else {
+				status = http.StatusInternalServerError
 			}
 		}
 
-		status = http.StatusOK
 	case "CaptureStop":
 		n := o.Graph.GetNode(graph.Identifier(query.NodeID))
 		if n == nil {
@@ -211,24 +212,23 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 			break
 		}
 
-		if ok = o.unregisterProbe(n); ok {
+		status = http.StatusOK
+		if ok := o.unregisterProbe(n); ok {
 			metadata := n.Metadata()
 			delete(metadata, "Capture/ID")
 			delete(metadata, "Capture/PacketsReceived")
 			delete(metadata, "Capture/PacketsDropped")
 			delete(metadata, "Capture/PacketsIfDropped")
 			o.Graph.SetMetadata(n, metadata)
-
-			status = http.StatusOK
+		} else {
+			status = http.StatusInternalServerError
 		}
-	default:
-		status = http.StatusBadRequest
 	}
 
 	// be sure to unlock before sending message
 	o.Graph.Unlock()
 
-	reply := msg.Reply(&ondemand.CaptureQuery{NodeID: query.NodeID}, msg.Type+"Reply", status)
+	reply := msg.Reply(&query, msg.Type+"Reply", status)
 	c.SendWSMessage(reply)
 }
 

@@ -157,8 +157,13 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 	return true
 }
 
-func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node) bool {
-	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStop", ondemand.CaptureQuery{NodeID: string(node.ID)})
+func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *api.Capture) bool {
+	cq := ondemand.CaptureQuery{
+		NodeID:  string(node.ID),
+		Capture: *capture,
+	}
+
+	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStop", cq)
 
 	if _, err := node.GetFieldString("Capture/ID"); err != nil {
 		return false
@@ -245,10 +250,10 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 	for _, value := range res.Values() {
 		switch e := value.(type) {
 		case *graph.Node:
-			o.unregisterProbe(e)
+			o.unregisterProbe(e, capture)
 		case []*graph.Node:
 			for _, node := range e {
-				o.unregisterProbe(node)
+				o.unregisterProbe(node, capture)
 			}
 		default:
 			return
