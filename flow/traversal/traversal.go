@@ -53,7 +53,6 @@ const (
 
 type FlowTraversalExtension struct {
 	FlowToken        traversal.Token
-	BandwidthToken   traversal.Token
 	HopsToken        traversal.Token
 	NodesToken       traversal.Token
 	CaptureNodeToken traversal.Token
@@ -547,8 +546,6 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 	switch s {
 	case "FLOWS":
 		return e.FlowToken, true
-	case "BANDWIDTH":
-		return e.BandwidthToken, true
 	case "HOPS":
 		return e.HopsToken, true
 	case "NODES":
