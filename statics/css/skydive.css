@@ -121,6 +121,24 @@ text {
   stroke-width: 3;
 }
 
+.linklabel {
+  fill: none;
+  stroke: #222222;
+  stroke-width: 1;
+}
+
+.link-active  {
+  stroke: green;
+}
+
+.link-warning  {
+  stroke: yellow;
+}
+
+.link-alert  {
+  stroke: red;
+}
+
 .link {
   fill: none;
 }

@@ -555,6 +555,18 @@ var TopologyLayout = function(vm, selector) {
     .attr("orient", "auto")
     .append("svg:path")
     .attr("d", "M0,-5L10,0L0,5");*/
+  this.bandwidth = {source: 'netlink',
+    bandwidth_threshold: 'absolute',
+    updatePeriod: 3000,
+    active: 5,
+    warning: 100,
+    alert: 1000,
+    outstandingAjax: 0};
+
+    this.getBandwidthConfiguration()
+      .then(function() {
+        self.refreshLinksInterval = setInterval(self.RefreshLinks.bind(self), self.bandwidth.updatePeriod);
+      });
 };
 
 TopologyLayout.prototype.LinkDistance = function(d, i) {
@@ -777,7 +789,11 @@ TopologyLayout.prototype.DelEdge = function(edge) {
 };
 
 TopologyLayout.prototype.Tick = function(e) {
-  this.link.attr("d", this.linkArc);
+
+  var _this = this;
+
+  this.link.select(".linkpath").attr("d", function(d) { return _this.linkArc(d, false, 0.1);});
+  this.link.select(".textpath").attr("d", function(d) { return _this.linkArc(d, d.source.x < d.target.x, 0.2);});
 
   this.node.attr("cx", function(d) { return d.x; })
   .attr("cy", function(d) { return d.y; });
@@ -791,11 +807,15 @@ TopologyLayout.prototype.Tick = function(e) {
     });
 };
 
-TopologyLayout.prototype.linkArc = function(d) {
-  var dx = d.target.x - d.source.x,
-      dy = d.target.y - d.source.y,
-      dr = Math.sqrt(dx * dx + dy * dy) * 1.3;
-  return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+TopologyLayout.prototype.linkArc = function(d, leftHand,arcDelta) {
+  var start = leftHand ? d.source : d.target,
+      end = leftHand ? d.target : d.source,
+      dx = end.x - start.x,
+      dy = end.y - start.y,
+      drx = Math.sqrt(dx * dx + dy * dy) * 1 + arcDelta,
+      dry = Math.sqrt(dx * dx + dy * dy) * 1 - arcDelta,
+      sweep = leftHand ? 0 : 1;
+      return "M" + start.x + "," + start.y + "A" + drx + "," + dry + " 0 0," + sweep + " " + end.x + "," + end.y;
 };
 
 TopologyLayout.prototype.CircleSize = function(d) {
@@ -857,6 +877,10 @@ TopologyLayout.prototype.EdgeClass = function(d) {
   return "link " + (d.edge.Metadata.Type || '')  + " " + (d.edge.Metadata.RelationType || '');
 };
 
+TopologyLayout.prototype.EdgeTextClass = function(d) {
+  return "linklabel";
+};
+
 TopologyLayout.prototype.CircleOpacity = function(d) {
   if (d.Metadata.Type == "netns" && d.Metadata.Manager === null)
     return 0.0;
@@ -864,8 +888,10 @@ TopologyLayout.prototype.CircleOpacity = function(d) {
 };
 
 TopologyLayout.prototype.EdgeOpacity = function(d) {
-  if (d.source.Metadata.Type == "netns" || d.target.Metadata.Type == "netns")
+  if (d.edge.Visible == false) {
     return 0.0;
+  }
+
   return 1.0;
 };
 
@@ -1192,21 +1218,48 @@ TopologyLayout.prototype.Redraw = function() {
 TopologyLayout.prototype.redraw = function() {
   var _this = this;
 
-  this.link = this.link.data(this.links, function(d) { return d.source.ID + "-" + d.target.ID; });
+  this.link = this.link.data(this.links, function(d) { return d.edge.ID; });
   this.link.exit().remove();
 
-  this.link.enter().append("path")
+  this.link.select('path').style("opacity", function(d) {
+    return _this.EdgeOpacity(d);
+  });
+  this.link.select("textPath").style("opacity", function(d) {
+    return _this.EdgeOpacity(d);
+  });
+
+  var linkEnter = this.link.enter().append("g");
+
+  linkEnter.append("path")
+    .attr("class", function(d) {
+      return "linkpath " + _this.EdgeClass(d);
+    })
+    .attr("id",function(d) {
+      return "linkpath_" + d.edge.ID;
+    })
     .attr("marker-end", "url(#end)")
     .style("opacity", function(d) {
       return _this.EdgeOpacity(d);
-    })
-    .attr("class", function(d) {
-      return _this.EdgeClass(d);
     });
 
+  linkEnter.append('path')
+           .attr("class","textpath")
+           .style("opacity", "0")
+           .attr("id", function(d) { return "path_" + d.edge.ID; });
+
+  linkEnter.append('text').append('textPath')
+           .attr("id",function(d) { return "pathlabel_" + d.edge.ID;})
+           .attr("xlink:href", function(d) { return "#path_" + d.edge.ID; })
+           .attr("class", function(d) {
+             return "labelpath " + _this.EdgeTextClass(d);
+            })
+           .style("text-anchor","middle")
+           .attr("startOffset", "50%")
+           .text(function(d,i){return ""});
+
   this.node = this.node.data(this.nodes, function(d) { return d.ID; })
-    .attr("class", function(d) {
-      return _this.NodeClass(d);
+      .attr("class", function(d) {
+        return _this.NodeClass(d);
     })
     .style("display", function(d) {
       return !d.Visible ? "none" : "block";
@@ -1442,4 +1495,155 @@ TopologyLayout.prototype.SyncRequest = function(t) {
   }
   var msg = {Namespace: "Graph", Type: "SyncRequest", Obj: obj};
   websocket.send(msg);
+};
+
+// edge speed for some interfaces are not reported by netlink, defining 10Gps
+const DefaultInterfaceSpeed = 1048576;
+
+function isActive(kbps, bandwidth, speed) {
+  return (kbps > bandwidth.active*speed) && (kbps < bandwidth.warning*speed);
+}
+
+function isWarning(kbps, bandwidth, speed) {
+  return (kbps >= bandwidth.warning*speed) && (kbps < bandwidth.alert*speed);
+}
+
+function isAlert(kbps, bandwidth, speed) {
+  return kbps >= bandwidth.alert*speed;
+}
+
+function getBandwidth(res, source) {
+  var totalKbit = 0;
+  var totalByte = 0;
+  var deltaTime = 0;
+
+  if (res === null || typeof res === 'undefined')
+    return 0;
+
+  if (source == "netlink") {
+    totalByte = res["LastMetric/RxBytes"] + res["LastMetric/TxBytes"];
+
+    if (typeof totalByte === 'undefined')
+      return 0;
+
+    deltaTime = res["LastMetric/Last"] - res["LastMetric/Start"];
+  } else if (source == "flows") {
+    deltaTime = res.Last - res.Start;
+    totalByte = res.ABBytes + res.BABytes;
+  }
+
+  deltaTime = Math.floor(deltaTime / 1000); // ms to sec
+  if (deltaTime >=1 && totalByte >= 1) {
+    totalKbit = Math.floor(8*totalByte / (1024*deltaTime)); // to kbit per sec
+  }
+  return totalKbit;
+}
+
+TopologyLayout.prototype.getBandwidthConfiguration = function() {
+  var vm = this.vm;
+  var b = this.bandwidth;
+  var cfgNames = {};
+
+  cfgNames.relative = ['analyzer.bandwidth_relative_active',
+    'analyzer.bandwidth_relative_warning',
+    'analyzer.bandwidth_relative_alert'];
+  cfgNames.absolute = ['analyzer.bandwidth_absolute_active',
+    'analyzer.bandwidth_absolute_warning',
+    'analyzer.bandwidth_absolute_alert'];
+
+
+  return $.when(
+      vm.$getConfigValue('analyzer.bandwidth_update_rate'),
+      vm.$getConfigValue('analyzer.bandwidth_source'),
+      vm.$getConfigValue('analyzer.bandwidth_threshold'))
+    .then(function(period, src, threshold) {
+      b.updatePeriod = period[0]*1000; // in millisec
+      b.bandwidth_source = src[0];
+      b.bandwidth_threshold = threshold[0];
+      return b.bandwidth_threshold;
+    })
+  .then(function(t) {
+    return $.when(
+      vm.$getConfigValue(cfgNames[t][0]),
+      vm.$getConfigValue(cfgNames[t][1]),
+      vm.$getConfigValue(cfgNames[t][2]))
+      .then(function(active, warning, alert) {
+        b.active = active[0];
+        b.warning = warning[0];
+        b.alert = alert[0];
+      });
+  });
+};
+
+function displayBandwidth(ID, bandwidth, speed, totalKb) {
+  if (totalKb > bandwidth.active*speed) {
+    d3.select("#pathlabel_" + ID)
+      .classed ("path-link-active",  isActive(totalKb, bandwidth, speed))
+      .classed ("path-link-warning", isWarning(totalKb, bandwidth, speed))
+      .classed ("path-link-alert",   isAlert(totalKb, bandwidth, speed))
+      .text(bandwidthToString(totalKb));
+
+    d3.select("#linkpath_" + ID)
+      .style("stroke", (isActive(totalKb, bandwidth, speed) ? "green" :
+            (isWarning(totalKb, bandwidth, speed) ? "yellow" :
+             (isAlert(totalKb, bandwidth, speed) ? "red" : ""))));
+  } else {
+    d3.select("#pathlabel_" + ID)
+      .classed ("link-active",  false)
+      .classed ("link-warning", false)
+      .classed ("link-alert",  false)
+      .text("");
+
+    d3.select("#linkpath_" + ID)
+      .style("stroke", "");
+  }
+}
+
+function bandwidthCompletion(res) {
+  var totalKb = getBandwidth(res, this.bandwidth.source, this.link.target);
+  var speed = (this.bandwidth.bandwidth_threshold == 'relative') ? this.link.target.Metadata.Speed || DefaultInterfaceSpeed : 1;
+  displayBandwidth(this.ID, this.bandwidth, speed, totalKbit);
+  this.bandwidth.outstandingAjax--;
+}
+
+TopologyLayout.prototype.RefreshLinks = function() {
+  var query ='';
+  var bandwidth = this.bandwidth;
+  var netLinkBandwidth = 0;
+
+  if (this.bandwidth.outstandingAjax > 0) {
+    return;
+  }
+  for (var i in this.links) {
+    var link = this.links[i];
+
+    if (link.edge.Metadata.RelationType != "layer2") {
+      continue;
+    }
+    var speed = (this.bandwidth.bandwidth_threshold == 'relative') ?
+      link.target.Metadata.Speed || DefaultInterfaceSpeed : 1;
+
+    if (bandwidth.source == "netlink" && typeof link.target.Metadata.TID != "undefined") {
+      netLinkBandwidth = getBandwidth(this.vm.extractMetadata(this.graph.Nodes[link.target.ID].Metadata, "LastMetric"),
+          bandwidth.source);
+      displayBandwidth(link.edge.ID, bandwidth, speed, netLinkBandwidth);
+      continue;
+    } else { // source == "flows"
+      if (!link.target.IsCaptureOn()) {
+        d3.select("#pathlabel_" + ID)
+          .classed ("link-active",  false)
+          .classed ("link-warning", false)
+          .classed ("link-alert",  false)
+          .text("");
+        continue;
+      }
+      query = "G.Flows().Has('NodeTID', '" + link.target.Metadata.TID +"').Metrics().Sum()";
+    }
+
+    var ID =  link.edge.ID;
+    bandwidth.outstandingAjax++;
+    this.vm.$topologyQuery(query, {bandwidth:bandwidth, link:link, ID:ID})
+      .fail(function() { this.bandwidth.outstandingAjax--; })
+      .then(bandwidthCompletion);
+  }
 };

@@ -13,3 +13,11 @@ function debounce(func, wait, immediate) {
 		if (callNow) func.apply(context, args);
 	};
 }
+
+function bandwidthToString(kbit) {
+  if (kbit >= 1000000)
+    return (Math.floor(kbit / 1000000)).toString() + "Gbps";
+  if (kbit >= 1000)
+    return (Math.floor(kbit / 1000)).toString() + "Mbps";
+  return kbit.toString() + "Kbps";
+}

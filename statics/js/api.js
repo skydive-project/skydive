@@ -2,13 +2,14 @@ var apiMixin = {
 
   methods: {
 
-    $topologyQuery: function(gremlinQuery) {
+    $topologyQuery: function(gremlinQuery, cntx) {
       return $.ajax({
         dataType: "json",
         url: '/api/topology',
         data: JSON.stringify({"GremlinQuery": gremlinQuery}),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
+        context: cntx,
       })
       .then(function(data) {
         if (data === null)
@@ -66,8 +67,16 @@ var apiMixin = {
         self.$error({message: 'Capture delete error: ' + e.responseText});
         return e;
       });
-    }
+    },
 
+    $getConfigValue: function(key) {
+      return $.ajax({
+        dataType: 'json',
+        url: "/api/config/" + key,
+        contentType: "application/json; charset=utf-8",
+        method: 'GET',
+      })
+    }
   }
 
 };

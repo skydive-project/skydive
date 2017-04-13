@@ -65,6 +65,20 @@ analyzer:
     fabric:
       # - TOR1[Name=tor1] -> [color=red] TOR1_PORT1[Name=port1, MTU=1500]
       # - TOR1_PORT1 -> *[Type=host]/eth0
+  # update rate of links in seconds
+  bandwidth_update_rate: 5
+  # interface metrics - 'netlink'
+  # captured flows TxBytes + RxByte - 'flows' (need to turn on capture)
+  bandwidth_source: netlink
+  # 'absolute' - thresholds in Kbit
+  # 'relative' - thresholds in % relative to link speed reported by netlink
+  bandwidth_threshold: absolute
+  bandwidth_absolute_active: 1
+  bandwidth_absolute_warning: 10
+  bandwidth_absolute_alert: 100
+  bandwidth_relative_active: 0.1
+  bandwidth_relative_warning: 0.4
+  bandwidth_relative_alert: 0.8
 
 # list of analyzers used by analyzers and agents
 analyzers:
