@@ -805,13 +805,30 @@ func TestFlowHops(t *testing.T) {
 			{"ip link set fh-intf2 netns fh-vm2", true},
 			{"ip netns exec fh-vm2 ip address add 169.254.33.34/24 dev fh-intf2", true},
 			{"ip netns exec fh-vm2 ip link set fh-intf2 up", true},
-
-			// wait to have everything ready, sflow, interfaces
-			{"sleep 2", false},
 		},
 
 		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec fh-vm1 ping -c 1 -s 1024 -I fh-intf1 169.254.33.34", Check: false})
+			// check that src and dst interfaces are in the right place before doing the ping
+			retry := func() error {
+				gremlin := `G.V().Has("Name", "fh-vm1").Out().Has("Name", "fh-intf1")`
+				nodes, err := c.gh.GetNodes(gremlin)
+				if err != nil || len(nodes) == 0 {
+					return errors.New("fh-intf1 not found in the expected namespace")
+				}
+
+				gremlin = `G.V().Has("Name", "fh-vm2").Out().Has("Name", "fh-intf2")`
+				nodes, err = c.gh.GetNodes(gremlin)
+				if err != nil || len(nodes) == 0 {
+					return errors.New("fh-intf2 not found in the expected namespace")
+				}
+
+				return nil
+			}
+			if err := common.Retry(retry, 10, time.Second); err != nil {
+				return err
+			}
+
+			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec fh-vm1 ping -c 1 -s 1024 169.254.33.34", Check: false})
 			return nil
 		},
 
