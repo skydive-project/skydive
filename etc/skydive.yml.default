@@ -115,13 +115,14 @@ agent:
   flow:
     # Probes used to capture traffic.
     probes:
-      # - ovssflow
       # gopacket probe will use either pcap or afpacket according to the type of
       # the capture. Default is afpacket.
-      # - gopacket
+      - gopacket
       # pcapsocket probe creates a TCP socket where PCAP traces can
       # be written into
-      # - pcapsocket
+      - pcapsocket
+      # ovsflow probe will be used to capture traffic on openvswitch bridges
+      # - ovssflow
     # Period in second to get capture stats from the probe. Note this
     # currently only works for the pcap probe
     # stats_update: 1
