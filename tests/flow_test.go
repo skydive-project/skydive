@@ -921,13 +921,30 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			{"ip link set ipv6fh-intf2 netns ipv6fh-vm2", true},
 			{"ip netns exec ipv6fh-vm2 ip address add fd49:37c8:5229::2/48 dev ipv6fh-intf2", true},
 			{"ip netns exec ipv6fh-vm2 ip link set ipv6fh-intf2 up", true},
-
-			// wait to have everything ready, sflow, interfaces
-			{"sleep 2", false},
 		},
 
 		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec ipv6fh-vm1 ping6 -c 5 -s 1024 -I ipv6fh-intf1 fd49:37c8:5229::2", Check: false})
+			// check that src and dst interfaces are in the right place before doing the ping
+			retry := func() error {
+				gremlin := `G.V().Has("Name", "ipv6fh-vm1").Out().Has("Name", "ipv6fh-intf1")`
+				nodes, err := c.gh.GetNodes(gremlin)
+				if err != nil || len(nodes) == 0 {
+					return errors.New("ipv6fh-intf1 not found in the expected namespace")
+				}
+
+				gremlin = `G.V().Has("Name", "ipv6fh-vm2").Out().Has("Name", "ipv6fh-intf2")`
+				nodes, err = c.gh.GetNodes(gremlin)
+				if err != nil || len(nodes) == 0 {
+					return errors.New("ipv6fh-intf2 not found in the expected namespace")
+				}
+
+				return nil
+			}
+			if err := common.Retry(retry, 10, time.Second); err != nil {
+				return err
+			}
+
+			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec ipv6fh-vm1 ping6 -c 5 -s 1024 fd49:37c8:5229::2", Check: false})
 			return nil
 		},
 
