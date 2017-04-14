@@ -37,6 +37,7 @@ import (
 	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/types"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 
 	"golang.org/x/net/context"
@@ -45,9 +46,6 @@ import (
 const (
 	memberName   = "skydive"
 	startTimeout = 10 * time.Second
-	// No peer URL exists but etcd doesn't allow the value to be empty.
-	peerURL    = "http://localhost:2379"
-	clusterCfg = memberName + "=" + peerURL
 )
 
 // EmbeddedEtcd provides a single node etcd server.
@@ -58,10 +56,10 @@ type EmbeddedEtcd struct {
 	dataDir  string
 }
 
-func NewEmbeddedEtcd(port int, dataDir string) (*EmbeddedEtcd, error) {
+func NewEmbeddedEtcd(sa common.ServiceAddress, dataDir string) (*EmbeddedEtcd, error) {
 	var err error
-	se := &EmbeddedEtcd{Port: port}
-	se.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
+	se := &EmbeddedEtcd{Port: sa.Port}
+	se.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", sa.Addr, sa.Port))
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +71,8 @@ func NewEmbeddedEtcd(port int, dataDir string) (*EmbeddedEtcd, error) {
 		return nil, err
 	}
 
-	peerURLs, err := types.NewURLs([]string{peerURL})
+	endpoint := fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port)
+	peerURLs, err := types.NewURLs([]string{endpoint})
 	if err != nil {
 		se.Stop()
 		return nil, err
@@ -106,7 +105,7 @@ func NewEmbeddedEtcd(port int, dataDir string) (*EmbeddedEtcd, error) {
 	// Wait for etcd server to be ready
 	t := time.Now().Add(startTimeout)
 	etcdClient, err := etcd.New(etcd.Config{
-		Endpoints:               []string{fmt.Sprintf("http://localhost:%d", port)},
+		Endpoints:               []string{endpoint},
 		Transport:               etcd.DefaultTransport,
 		HeaderTimeoutPerRequest: time.Second,
 	})
@@ -130,9 +129,12 @@ func NewEmbeddedEtcd(port int, dataDir string) (*EmbeddedEtcd, error) {
 
 func NewEmbeddedEtcdFromConfig() (*EmbeddedEtcd, error) {
 	dataDir := config.GetConfig().GetString("etcd.data_dir")
-	port := config.GetConfig().GetInt("etcd.port")
-
-	return NewEmbeddedEtcd(port, dataDir)
+	listen := config.GetConfig().GetString("etcd.listen")
+	sa, err := common.ServiceAddressFromString(listen)
+	if err != nil {
+		return nil, err
+	}
+	return NewEmbeddedEtcd(sa, dataDir)
 }
 
 func (se *EmbeddedEtcd) Stop() error {

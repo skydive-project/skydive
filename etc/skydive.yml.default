@@ -199,6 +199,7 @@ auth:
 etcd:
   # when 'embedded' is set to true, the analyzer will start an embedded etcd server
   # embedded: true
+  # listen: localhost:2379
 
   # both the analyzers and the agents make use of etcd
   # servers:

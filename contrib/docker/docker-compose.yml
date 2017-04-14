@@ -20,6 +20,7 @@ services:
       - SKYDIVE_STORAGE_ELASTICSEARCH_HOST=elasticsearch:9200
       - SKYDIVE_ANALYZER_STORAGE_BACKEND=elasticsearch
       - SKYDIVE_GRAPH_BACKEND=elasticsearch
+      - SKYDIVE_ETCD_LISTEN=0.0.0.0:2379
 
   skydive-agent:
     image: skydive/skydive

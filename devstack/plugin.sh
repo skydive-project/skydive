@@ -29,7 +29,7 @@ SKYDIVE_ANALYZER_LISTEN=${SKYDIVE_ANALYZER_LISTEN:-$SERVICE_HOST:8082}
 SKYDIVE_ANALYZERS=${SKYDIVE_ANALYZERS:-$SKYDIVE_ANALYZER_LISTEN}
 
 # Configure the skydive agent with the etcd server address
-SKYDIVE_AGENT_ETCD=${SKYDIVE_AGENT_ETCD:-http://$SERVICE_HOST:2379}
+SKYDIVE_AGENT_ETCD=${SKYDIVE_AGENT_ETCD:-$SERVICE_HOST:2379}
 
 # ip:port address on which skydive agent listens for connections.
 SKYDIVE_AGENT_LISTEN=${SKYDIVE_AGENT_LISTEN:-"127.0.0.1:8081"}
@@ -165,8 +165,9 @@ openstack:
 
 etcd:
   servers:
-    - $SKYDIVE_AGENT_ETCD
+    - http://$SKYDIVE_AGENT_ETCD
   data_dir: /tmp/skydive-etcd
+  listen: $SKYDIVE_AGENT_ETCD
 
 graph:
   backend: elasticsearch

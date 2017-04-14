@@ -48,6 +48,8 @@ spec:
           value: elasticsearch
         - name: SKYDIVE_GRAPH_BACKEND
           value: elasticsearch
+        - name: SKYDIVE_ETCD_LISTEN
+          value: 0.0.0.0:2379
       - name: skydive-elasticsearch
         image: elasticsearch:2
         ports:
@@ -92,6 +94,6 @@ spec:
       - name: run
         hostPath:
           path: /var/run/netns
-#      - name: ovsdb
-#        hostPath:
-#          path: /var/run/openvswitch/db.sock
+      - name: ovsdb
+        hostPath:
+          path: /var/run/openvswitch/db.sock

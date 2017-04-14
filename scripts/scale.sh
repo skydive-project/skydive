@@ -293,6 +293,7 @@ etcd:
   data_dir: $TEMP_DIR/$NAME-etcd
   servers:
     - http://$ETCD
+  listen: $ETCD
 storage:
   elasticsearch:
     host: $ELASTICSEARCH

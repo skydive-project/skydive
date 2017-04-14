@@ -73,7 +73,7 @@ func init() {
 	cfg.SetDefault("netns.run_path", "/var/run/netns")
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
-	cfg.SetDefault("etcd.port", 2379)
+	cfg.SetDefault("etcd.listen", "localhost:2379")
 	cfg.SetDefault("auth.type", "noauth")
 	cfg.SetDefault("auth.keystone.tenant", "admin")
 	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")
