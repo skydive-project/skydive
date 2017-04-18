@@ -1520,3 +1520,65 @@ func TestFlowSumStep(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+func TestFlowCaptureNodeStep(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-fcn", true},
+
+			{"ip netns add vm1", true},
+			{"ip link add vm1-eth0 type veth peer name intf1 netns vm1", true},
+			{"ip link set vm1-eth0 up", true},
+			{"ip netns exec vm1 ip link set intf1 up", true},
+			{"ip netns exec vm1 ip address add 169.254.38.33/24 dev intf1", true},
+
+			{"ip netns add vm2", true},
+			{"ip link add vm2-eth0 type veth peer name intf2 netns vm2", true},
+			{"ip link set vm2-eth0 up", true},
+			{"ip netns exec vm2 ip link set intf2 up", true},
+			{"ip netns exec vm2 ip address add 169.254.38.34/24 dev intf2", true},
+
+			{"ovs-vsctl add-port br-fcn vm1-eth0", true},
+			{"ovs-vsctl add-port br-fcn vm2-eth0", true},
+		},
+
+		setupFunction: func(c *TestContext) (err error) {
+			return ping(t, c, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 1)
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ovs-vsctl del-br br-fcn", true},
+			{"ip link del vm1-eth0", true},
+			{"ip link del vm2-eth0", true},
+			{"ip netns del vm1", true},
+			{"ip netns del vm2", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-fcn', 'Type', 'ovsbridge')`},
+		},
+
+		check: func(c *TestContext) error {
+			gh := c.gh
+			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
+			gremlin += `.Flows().Has("Network", "169.254.38.33").dedup().CaptureNode()`
+
+			nodes, err := gh.GetNodes(gremlin)
+			if err != nil {
+				return err
+			}
+
+			if len(nodes) != 1 {
+				return fmt.Errorf("Expected one node, got %+v", nodes)
+			}
+
+			nodeName := nodes[0].Metadata()["Name"].(string)
+			if nodeName != "br-fcn" {
+				return fmt.Errorf("we should get br-fcn node, got %s", nodeName)
+			}
+			return nil
+		},
+	}
+
+	RunTest(t, test)
+}
