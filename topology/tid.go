@@ -68,13 +68,6 @@ func (t *TIDMapper) setTID(parent, child *graph.Node) {
 	}
 }
 
-func (t *TIDMapper) setChildrenTID(parent *graph.Node) {
-	children := t.Graph.LookupChildren(parent, graph.Metadata{}, OwnershipMetadata)
-	for _, child := range children {
-		t.setTID(parent, child)
-	}
-}
-
 // onNodeEvent set TID
 // TID is UUIDV5(ID/UUID) of "root" node like host, netns, ovsport, fabric
 // for other nodes TID is UUIDV5(rootTID + Name + Type)
@@ -88,23 +81,17 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 					t.hostID = graph.Identifier(u.String())
 					t.Graph.AddMetadata(n, "TID", u.String())
 				}
-
-				t.setChildrenTID(n)
 			case "netns":
 				if path, _ := n.GetFieldString("Path"); path != "" {
 					tid := string(t.hostID) + path + tp
 					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
 					t.Graph.AddMetadata(n, "TID", u.String())
-
-					t.setChildrenTID(n)
 				}
 			case "ovsport":
 				if u, _ := n.GetFieldString("UUID"); u != "" {
 					tid := string(t.hostID) + u + tp
 					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
 					t.Graph.AddMetadata(n, "TID", u.String())
-
-					t.setChildrenTID(n)
 				}
 			default:
 				if probe, _ := n.GetFieldString("Probe"); probe == "fabric" {
