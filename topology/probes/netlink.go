@@ -39,14 +39,13 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const (
 	maxEpollEvents = 32
 )
-
-var ownershipMetadata = graph.Metadata{"RelationType": "ownership"}
 
 type NetLinkProbe struct {
 	sync.RWMutex
@@ -66,7 +65,7 @@ func (u *NetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
 		for _, id := range children {
 			child := u.Graph.GetNode(id)
 			if child != nil {
-				u.Graph.Link(intf, child, graph.Metadata{"RelationType": "layer2"})
+				topology.AddLayer2Link(u.Graph, intf, child, nil)
 			}
 		}
 		delete(u.indexToChildrenQueue, index)
@@ -84,8 +83,8 @@ func (u *NetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
 			return
 		}
 
-		if !u.Graph.AreLinked(parent, intf, layer2Metadata) {
-			u.Graph.Link(parent, intf, layer2Metadata)
+		if !topology.HaveLayer2Link(u.Graph, parent, intf, nil) {
+			topology.AddLayer2Link(u.Graph, parent, intf, nil)
 		}
 	} else {
 		// not yet the bridge so, enqueue for a later add
@@ -119,7 +118,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 		return
 	}
 
-	linkMetadata := graph.Metadata{"RelationType": "layer2", "Type": "veth"}
+	linkMetadata := graph.Metadata{"Type": "veth"}
 
 	if peerIndex, err := intf.GetFieldInt64("PeerIfIndex"); err == nil {
 		peerResolver := func(root *graph.Node) error {
@@ -140,8 +139,8 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 			if peer == nil {
 				return errors.New("Peer not found")
 			}
-			if !u.Graph.AreLinked(peer, intf, linkMetadata) {
-				u.Graph.Link(peer, intf, linkMetadata)
+			if !topology.HaveLayer2Link(u.Graph, peer, intf, linkMetadata) {
+				topology.AddLayer2Link(u.Graph, peer, intf, linkMetadata)
 			}
 
 			return nil
@@ -191,8 +190,8 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Graph.AreLinked(u.Root, intf, ownershipMetadata) {
-		u.Graph.Link(u.Root, intf, ownershipMetadata)
+	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf, nil) {
+		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
 	}
 
 	// ignore ovs-system interface as it doesn't make any sense according to
@@ -218,8 +217,8 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Graph.AreLinked(u.Root, intf, ownershipMetadata) {
-		u.Graph.Link(u.Root, intf, ownershipMetadata)
+	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf, nil) {
+		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
 	}
 
 	u.linkPendingChildren(intf, index)
@@ -235,8 +234,8 @@ func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata)
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !u.Graph.AreLinked(u.Root, intf, ownershipMetadata) {
-		u.Graph.Link(u.Root, intf, ownershipMetadata)
+	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf, nil) {
+		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
 	}
 
 	return intf

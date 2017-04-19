@@ -37,8 +37,8 @@ func TestGraphPathTraversal(t *testing.T) {
 	n2 := g.NewNode(graph.GenID(), graph.Metadata{"Name": "N2", "Type": "T2"})
 	n3 := g.NewNode(graph.GenID(), graph.Metadata{"Name": "N3", "Type": "T3"})
 
-	g.Link(n1, n2, graph.Metadata{"RelationType": "ownership"})
-	g.Link(n2, n3, graph.Metadata{"RelationType": "ownership"})
+	g.Link(n1, n2, OwnershipMetadata)
+	g.Link(n2, n3, OwnershipMetadata)
 
 	query := `G.V().Has("Name", "N3").GraphPath()`
 

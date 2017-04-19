@@ -27,10 +27,12 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/packet"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type GraphFlowEnhancer struct {
+	graph.DefaultGraphListener
 	Graph    *graph.Graph
 	tidCache *tidCache
 }
@@ -62,6 +64,7 @@ func (gfe *GraphFlowEnhancer) getNodeTID(mac string) string {
 	}
 
 	if gfe.tidCache != nil {
+		logging.GetLogger().Debugf("GraphFlowEnhancer set cache %s: %s", mac, tid)
 		gfe.tidCache.set(ce, mac, tid)
 	}
 
@@ -80,10 +83,32 @@ func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
 	}
 }
 
+func (gfe *GraphFlowEnhancer) OnNodeDeleted(n *graph.Node) {
+	if mac, err := n.GetFieldString("MAC"); err == nil {
+		logging.GetLogger().Debugf("GraphFlowEnhancer node event del cache %s", mac)
+		gfe.tidCache.del(mac)
+	}
+}
+
+func (gfe *GraphFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
+	// need to reset the entry as edge event of type RelationType means TID update
+	if rt, _ := e.GetFieldString("RelationType"); rt == topology.OwnershipLink {
+		_, children := gfe.Graph.GetEdgeNodes(e, nil, nil)
+		for _, child := range children {
+			if mac, err := child.GetFieldString("MAC"); err == nil {
+				logging.GetLogger().Debugf("GraphFlowEnhancer edge event del cache %s", mac)
+				gfe.tidCache.del(mac)
+			}
+		}
+	}
+}
+
 func NewGraphFlowEnhancer(g *graph.Graph, cache *cache.Cache) *GraphFlowEnhancer {
 	fe := &GraphFlowEnhancer{
 		Graph: g,
 	}
+	g.AddEventListener(fe)
+
 	if cache != nil {
 		fe.tidCache = &tidCache{cache}
 	}

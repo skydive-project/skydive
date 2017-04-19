@@ -24,6 +24,7 @@ package probes
 
 import (
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -36,8 +37,8 @@ type PeeringProbe struct {
 func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
 	if mac, _ := n.GetFieldString("MAC"); mac != "" {
 		if node, ok := p.peers[mac]; ok {
-			if !p.graph.AreLinked(node, n, layer2Metadata) {
-				p.graph.Link(node, n, layer2Metadata)
+			if !topology.HaveLayer2Link(p.graph, node, n, nil) {
+				topology.AddLayer2Link(p.graph, node, n, nil)
 			}
 			return
 		}
@@ -46,8 +47,8 @@ func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
 		nodes := p.graph.GetNodes(graph.Metadata{"MAC": mac})
 		switch len(nodes) {
 		case 1:
-			if !p.graph.AreLinked(n, nodes[0], layer2Metadata) {
-				p.graph.Link(n, nodes[0], layer2Metadata)
+			if !topology.HaveLayer2Link(p.graph, n, nodes[0], nil) {
+				topology.AddLayer2Link(p.graph, n, nodes[0], nil)
 			}
 			fallthrough
 		case 0:

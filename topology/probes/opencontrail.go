@@ -29,6 +29,7 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"github.com/nlewo/contrail-introspect-cli/collection"
@@ -136,10 +137,9 @@ func (mapper *OpenContrailMapper) onVhostAdded(node *graph.Node, itf collection.
 
 func (mapper *OpenContrailMapper) linkToVhost(node *graph.Node) {
 	if mapper.vHost != nil {
-		md := graph.Metadata{"RelationType": "layer2"}
-		if !mapper.graph.AreLinked(node, mapper.vHost, md) {
+		if !topology.HaveOwnershipLink(mapper.graph, node, mapper.vHost, nil) {
 			logging.GetLogger().Debugf("Link %s to %s", node.String(), mapper.vHost.String())
-			mapper.graph.Link(node, mapper.vHost, md)
+			topology.AddOwnershipLink(mapper.graph, node, mapper.vHost, nil)
 		}
 	} else {
 		logging.GetLogger().Debugf("Add node %s to pending link list", node.String())

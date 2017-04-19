@@ -42,6 +42,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -252,7 +253,7 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 				mapper.graph.Lock()
 				defer mapper.graph.Unlock()
 
-				if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, graph.Metadata{"RelationType": "layer2"}); len(path) > 0 {
+				if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata); len(path) > 0 {
 					metadata["ExtID/vm-uuid"] = uuid
 					metadata["ExtID/attached-mac"] = attachedMac
 

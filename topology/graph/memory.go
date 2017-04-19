@@ -82,17 +82,13 @@ func (m *MemoryBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 
 func (m *MemoryBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
 	var parent *MemoryBackendNode
-	if e, ok := m.edges[e.ID]; ok {
-		if n, ok := m.nodes[e.parent]; ok && n.MatchMetadata(parentMetadata) {
-			parent = n
-		}
+	if n, ok := m.nodes[e.parent]; ok && n.MatchMetadata(parentMetadata) {
+		parent = n
 	}
 
 	var child *MemoryBackendNode
-	if e, ok := m.edges[e.ID]; ok {
-		if n, ok := m.nodes[e.child]; ok && n.MatchMetadata(childMetadata) {
-			child = n
-		}
+	if n, ok := m.nodes[e.child]; ok && n.MatchMetadata(childMetadata) {
+		child = n
 	}
 
 	if parent == nil || child == nil {

@@ -30,6 +30,16 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+const (
+	OwnershipLink = "ownership"
+	Layer2Link    = "layer2"
+)
+
+var (
+	OwnershipMetadata = graph.Metadata{"RelationType": OwnershipLink}
+	Layer2Metadata    = graph.Metadata{"RelationType": Layer2Link}
+)
+
 type NodePath []*graph.Node
 
 func (p NodePath) Marshal() string {
@@ -107,4 +117,44 @@ func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
 		}
 	}
 	return hnmap
+}
+
+func HaveOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) bool {
+	// do not add or change original metadata
+	m := metadata.Clone()
+	m["RelationType"] = OwnershipLink
+
+	return g.AreLinked(parent, child, m)
+}
+
+func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) *graph.Edge {
+	// a child node can only have one parent of type ownership, so delete the previous link
+	for _, e := range g.GetNodeEdges(child, graph.Metadata{"RelationType": OwnershipLink}) {
+		if e.GetChild() == child.ID {
+			logging.GetLogger().Debugf("Delete previous ownership link: %v", e)
+			g.DelEdge(e)
+		}
+	}
+
+	// do not add or change original metadata
+	m := metadata.Clone()
+	m["RelationType"] = OwnershipLink
+
+	return g.Link(parent, child, m)
+}
+
+func HaveLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadata graph.Metadata) bool {
+	// do not add or change original metadata
+	m := metadata.Clone()
+	m["RelationType"] = Layer2Link
+
+	return g.AreLinked(node1, node2, m)
+}
+
+func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadata graph.Metadata) *graph.Edge {
+	// do not add or change original metadata
+	m := metadata.Clone()
+	m["RelationType"] = Layer2Link
+
+	return g.Link(node1, node2, m)
 }

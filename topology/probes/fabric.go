@@ -30,6 +30,7 @@ import (
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -172,7 +173,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 
 		parentDef := strings.TrimSpace(pc[0])
 		childDef := strings.TrimSpace(pc[1])
-		linkMetadata := graph.Metadata{"RelationType": "layer2", "Type": "fabric"}
+		linkMetadata := graph.Metadata{"Type": "fabric"}
 
 		if strings.HasPrefix(childDef, "[") {
 			// Parse link metadata
@@ -232,8 +233,8 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 				continue
 			}
 
-			if !fb.Graph.AreLinked(node1, node2, linkMetadata) {
-				fb.Graph.Link(node1, node2, linkMetadata)
+			if !topology.HaveLayer2Link(fb.Graph, node1, node2, linkMetadata) {
+				topology.AddLayer2Link(fb.Graph, node1, node2, linkMetadata)
 			}
 		}
 	}

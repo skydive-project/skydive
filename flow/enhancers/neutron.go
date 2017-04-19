@@ -27,10 +27,12 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/packet"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
 type NeutronFlowEnhancer struct {
+	graph.DefaultGraphListener
 	Graph    *graph.Graph
 	tidCache *tidCache
 }
@@ -64,6 +66,7 @@ func (nfe *NeutronFlowEnhancer) getNodeTID(mac string) string {
 	}
 
 	if nfe.tidCache != nil {
+		logging.GetLogger().Debugf("NeutronFlowEnhancer set cache %s: %s", mac, tid)
 		nfe.tidCache.set(ce, mac, tid)
 	}
 
@@ -82,10 +85,30 @@ func (nfe *NeutronFlowEnhancer) Enhance(f *flow.Flow) {
 	}
 }
 
+func (nfe *NeutronFlowEnhancer) OnNodeDeleted(n *graph.Node) {
+	if mac, err := n.GetFieldString("MAC"); err == nil {
+		nfe.tidCache.del(mac)
+	}
+}
+
+func (nfe *NeutronFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
+	if rt, _ := e.GetFieldString("RelationType"); rt == topology.OwnershipLink {
+		_, children := nfe.Graph.GetEdgeNodes(e, nil, nil)
+		for _, child := range children {
+			if mac, err := child.GetFieldString("MAC"); err == nil {
+				logging.GetLogger().Debugf("NeutronFlowEnhancer edge event del cache %s", mac)
+				nfe.tidCache.del(mac)
+			}
+		}
+	}
+}
+
 func NewNeutronFlowEnhancer(g *graph.Graph, cache *cache.Cache) *NeutronFlowEnhancer {
 	fe := &NeutronFlowEnhancer{
 		Graph: g,
 	}
+	g.AddEventListener(fe)
+
 	if cache != nil {
 		fe.tidCache = &tidCache{cache}
 	}

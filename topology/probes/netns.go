@@ -37,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/vishvananda/netns"
 )
@@ -176,7 +177,7 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 		}
 	}
 	n := u.Graph.NewNode(graph.GenID(), metadata)
-	u.Graph.Link(u.Root, n, graph.Metadata{"RelationType": "ownership"})
+	topology.AddOwnershipLink(u.Graph, u.Root, n, nil)
 
 	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
 	nu.Start(newns)

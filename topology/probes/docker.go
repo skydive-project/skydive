@@ -38,6 +38,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	sversion "github.com/skydive-project/skydive/version"
 )
@@ -110,7 +111,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	}
 
 	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
-	probe.Graph.Link(n, containerNode, ownershipMetadata)
+	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
 	probe.Graph.Unlock()
 
 	probe.containerMap[info.ID] = ContainerInfo{

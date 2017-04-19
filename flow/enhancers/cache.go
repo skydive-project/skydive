@@ -65,3 +65,7 @@ func (c *tidCache) set(ce *tidCacheEntry, key, tid string) {
 
 	c.Set(key, ce, cache.DefaultExpiration)
 }
+
+func (c *tidCache) del(key string) {
+	c.Delete(key)
+}

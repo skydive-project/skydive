@@ -23,6 +23,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -133,6 +134,21 @@ type Test struct {
 	check            func(c *TestContext) error
 }
 
+func (c *TestContext) getWholeGraph(t *testing.T) string {
+	var g interface{}
+
+	if err := c.gh.Query("G", &g); err != nil {
+		t.Error(err.Error())
+	}
+
+	b, err := json.Marshal(&g)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	return string(b)
+}
+
 func RunTest(t *testing.T, test *Test) {
 	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
 	if err != nil {
@@ -171,22 +187,22 @@ func RunTest(t *testing.T, test *Test) {
 			}
 
 			if len(nodes) == 0 {
-				return fmt.Errorf("No node matching capture %s", capture.GremlinQuery)
+				return fmt.Errorf("No node matching capture %s, graph: %s", capture.GremlinQuery, context.getWholeGraph(t))
 			}
 
 			for _, node := range nodes {
-				t, err := node.GetFieldString("Type")
-				if err != nil || !common.IsCaptureAllowed(t) {
+				tp, err := node.GetFieldString("Type")
+				if err != nil || !common.IsCaptureAllowed(tp) {
 					continue
 				}
 
 				captureID, err := node.GetFieldString("Capture/ID")
 				if err != nil {
-					return fmt.Errorf("Node %+v matched the capture but capture is not enabled", node)
+					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t))
 				}
 
 				if captureID != capture.ID() {
-					return fmt.Errorf("Node %s matches multiple captures", node.ID)
+					return fmt.Errorf("Node %s matches multiple captures, graph: %s", node.ID, context.getWholeGraph(t))
 				}
 			}
 		}
@@ -195,16 +211,18 @@ func RunTest(t *testing.T, test *Test) {
 	}, 15, time.Second)
 
 	if err != nil {
+		g := context.getWholeGraph(t)
 		helper.ExecCmds(t, test.tearDownCmds...)
-		t.Fatalf("Failed to setup captures: %s", err.Error())
+		t.Fatalf("Failed to setup captures: %s, graph: %s", err.Error(), g)
 	}
 
 	context.setupTime = time.Now()
 
 	if test.setupFunction != nil {
 		if err = test.setupFunction(context); err != nil {
+			g := context.getWholeGraph(t)
 			helper.ExecCmds(t, test.tearDownCmds...)
-			t.Fatalf("Failed to setup test: %s", err.Error())
+			t.Fatalf("Failed to setup test: %s, graph: %s", err.Error(), g)
 		}
 	}
 
@@ -227,8 +245,9 @@ func RunTest(t *testing.T, test *Test) {
 	}, retries, time.Second)
 
 	if err != nil {
+		g := context.getWholeGraph(t)
 		helper.ExecCmds(t, test.tearDownCmds...)
-		t.Errorf("Test failed: %s", err.Error())
+		t.Errorf("Test failed: %s, graph: %s", err.Error(), g)
 		return
 	}
 
@@ -248,7 +267,7 @@ func RunTest(t *testing.T, test *Test) {
 		}, retries, time.Second)
 
 		if err != nil {
-			t.Errorf("Failed to replay test: %s", err.Error())
+			t.Errorf("Failed to replay test: %s, graph: %s", err.Error(), context.getWholeGraph(t))
 		}
 	}
 }

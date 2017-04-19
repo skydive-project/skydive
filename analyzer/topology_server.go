@@ -102,6 +102,8 @@ func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 		if c.ClientType != common.AnalyzerService {
 			t.hostGraphDeleted(obj.(string), graph.PERSISTENT_ONLY_MODE)
 		}
+
+		return
 	}
 
 	// If the message comes from analyzer we need to apply it only on cache only

@@ -223,15 +223,20 @@ func (e *graphElement) GetField(name string) (interface{}, bool) {
 	}
 }
 
+func (m Metadata) Clone() Metadata {
+	n := Metadata{}
+
+	for k, v := range m {
+		n[k] = v
+	}
+
+	return n
+}
+
 // Metadata returns a copy in order to avoid direct modification of metadata leading in
 // loosing notification.
 func (e *graphElement) Metadata() Metadata {
-	m := Metadata{}
-
-	for k, v := range e.metadata {
-		m[k] = v
-	}
-	return m
+	return e.metadata.Clone()
 }
 
 func (e *graphElement) MatchMetadata(f Metadata) bool {
@@ -718,30 +723,6 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 			g.DelEdge(e)
 		}
 	}
-}
-
-func (g *Graph) Replace(o *Node, n *Node) *Node {
-	for _, e := range g.backend.GetNodeEdges(o, nil, Metadata{}) {
-		parents, children := g.backend.GetEdgeNodes(e, nil, Metadata{}, Metadata{})
-		if len(parents) == 0 || len(children) == 0 {
-			continue
-		}
-		parent, child := parents[0], children[0]
-
-		g.DelEdge(e)
-
-		if parent.ID == n.ID {
-			g.Link(n, child, e.metadata)
-		} else {
-			g.Link(parent, n, e.metadata)
-		}
-	}
-	n.metadata = o.metadata
-	g.notifyEvent(graphEvent{element: n, kind: nodeUpdated})
-
-	g.DelNode(o)
-
-	return n
 }
 
 func (g *Graph) LookupFirstNode(m Metadata) *Node {
