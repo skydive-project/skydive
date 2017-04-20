@@ -29,7 +29,9 @@ import (
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/statics"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 type TopologyServer struct {
@@ -38,6 +40,8 @@ type TopologyServer struct {
 	Graph       *graph.Graph
 	GraphServer *graph.GraphServer
 	cached      *graph.CachedBackend
+	nodeSchema  gojsonschema.JSONLoader
+	edgeSchema  gojsonschema.JSONLoader
 	// map used to store agent which uses this analyzer as master
 	// basically sending graph messages
 	authors map[string]bool
@@ -72,22 +76,35 @@ func (t *TopologyServer) OnUnregisterClient(c *shttp.WSClient) {
 	t.Unlock()
 }
 
-func (t *TopologyServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
-	t.Graph.Lock()
-	defer t.Graph.Unlock()
-
-	msgType, obj, err := graph.UnmarshalWSMessage(msg)
-	if err != nil {
-		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
-		return
-	}
-
+func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, msgType string, obj interface{}) {
 	// author if message coming from another client than analyzer
 	if c.ClientType != "" && c.ClientType != common.AnalyzerService {
 		t.Lock()
 		t.authors[c.Host] = true
 		t.Unlock()
 	}
+
+	if c.ClientType != common.AnalyzerService && c.ClientType != common.AgentService {
+		loader := gojsonschema.NewGoLoader(obj)
+
+		var schema gojsonschema.JSONLoader
+		switch msgType {
+		case graph.NodeAddedMsgType, graph.NodeUpdatedMsgType, graph.NodeDeletedMsgType:
+			schema = t.nodeSchema
+		case graph.EdgeAddedMsgType, graph.EdgeUpdatedMsgType, graph.EdgeDeletedMsgType:
+			schema = t.edgeSchema
+		}
+
+		if schema != nil {
+			if _, err := gojsonschema.Validate(t.edgeSchema, loader); err != nil {
+				logging.GetLogger().Errorf("Invalid message: %s", err.Error())
+				return
+			}
+		}
+	}
+
+	t.Graph.Lock()
+	defer t.Graph.Unlock()
 
 	// got HostGraphDeleted, so if not an analyzer we need to do two things:
 	// force the deletion from the cache and force the delete from the persistent
@@ -165,13 +182,27 @@ func NewTopologyServer(host string, server *shttp.WSServer) (*TopologyServer, er
 	}
 
 	g := graph.NewGraphFromConfig(cached)
+	graphServer := graph.NewServer(g, server)
+
+	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
+	if err != nil {
+		return nil, err
+	}
+
+	edgeSchema, err := statics.Asset("statics/schemas/edge.schema")
+	if err != nil {
+		return nil, err
+	}
 
 	t := &TopologyServer{
 		Graph:       g,
-		GraphServer: graph.NewServer(g, server),
+		GraphServer: graphServer,
 		cached:      cached,
 		authors:     make(map[string]bool),
+		nodeSchema:  gojsonschema.NewBytesLoader(nodeSchema),
+		edgeSchema:  gojsonschema.NewBytesLoader(edgeSchema),
 	}
+	graphServer.AddEventHandler(t)
 	server.AddEventHandler(t, []string{graph.Namespace})
 
 	return t, nil

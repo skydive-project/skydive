@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "http://skydive.network/schemas/node.json",
+  "definitions": {
+    "graphElement": {
+      "properties": {
+        "ID": {
+          "type": "string"
+        },
+        "Host": {
+          "type": "string"
+        },
+        "CreatedAt": {
+          "type": "integer"
+        },
+        "UpdatedAt": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ID"
+      ]
+    },
+    "deviceMetadata": {
+      "properties": {
+        "MTU": {
+          "type": "integer"
+        }
+      }
+    },
+    "nsMetadata": {
+      "properties": {
+        "Path": {
+          "type": "string"
+        }
+      },
+      "required": [ "Path" ]
+    },
+    "ovsMetadata": {
+      "properties": {
+        "UUID": {
+          "type": "string"
+        }
+      },
+      "required": [ "UUID" ]
+    }
+  },
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "#/definitions/graphElement"
+    },
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "Metadata": {
+              "allOf": [
+                {
+                  "properties": {
+                    "Name": {
+                      "type": "string"
+                    },
+                    "Type": {
+                      "type": "string",
+                      "enum": [ "netns" ]
+                    }
+                  }
+                },
+                {
+                  "$ref": "#/definitions/nsMetadata"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "Metadata": {
+              "allOf": [
+                {
+                  "properties": {
+                    "Name": {
+                      "type": "string"
+                    },
+                    "Type": {
+                      "type": "string",
+                      "enum": [ "ovsport" ]
+                    }
+                  }
+                },
+                {
+                  "$ref": "#/definitions/ovsMetadata"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

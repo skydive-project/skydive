@@ -33,22 +33,25 @@ const (
 	Namespace = "Graph"
 )
 
+type GraphServerEventHandler interface {
+	OnGraphMessage(c *shttp.WSClient, m shttp.WSMessage, msgType string, obj interface{})
+}
+
 type GraphServer struct {
 	shttp.DefaultWSServerEventHandler
-	WSServer *shttp.WSServer
-	Graph    *Graph
+	WSServer      *shttp.WSServer
+	Graph         *Graph
+	eventHandlers []GraphServerEventHandler
 }
 
 func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
-	s.Graph.Lock()
-	defer s.Graph.Unlock()
-
 	msgType, obj, err := UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
 		return
 	}
 
+	s.Graph.RLock()
 	switch msgType {
 	case SyncRequestMsgType:
 		status := http.StatusOK
@@ -59,6 +62,11 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 		}
 		reply := msg.Reply(graph, SyncReplyMsgType, status)
 		c.SendWSMessage(reply)
+	}
+	s.Graph.RUnlock()
+
+	for _, h := range s.eventHandlers {
+		h.OnGraphMessage(c, msg, msgType, obj)
 	}
 }
 
@@ -86,11 +94,16 @@ func (s *GraphServer) OnEdgeDeleted(e *Edge) {
 	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeDeletedMsgType, e))
 }
 
+func (s *GraphServer) AddEventHandler(h GraphServerEventHandler) {
+	s.eventHandlers = append(s.eventHandlers, h)
+}
+
 func NewServer(g *Graph, server *shttp.WSServer) *GraphServer {
 	s := &GraphServer{
 		Graph:    g,
 		WSServer: server,
 	}
+
 	s.Graph.AddEventListener(s)
 	server.AddEventHandler(s, []string{Namespace})
 

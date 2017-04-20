@@ -1209,6 +1209,24 @@
 			"revision": "604eaf189ee867d8c147fafc28def2394e878d25"
 		},
 		{
+			"checksumSHA1": "B9K+5clCq0PU8n8/utbKT0QjQyU=",
+			"path": "github.com/xeipuuv/gojsonpointer",
+			"revision": "6fe8760cad3569743d51ddbb243b26f8456742dc",
+			"revisionTime": "2017-02-25T23:34:18Z"
+		},
+		{
+			"checksumSHA1": "pSoUW+qY6LwIJ5lFwGohPU5HUpg=",
+			"path": "github.com/xeipuuv/gojsonreference",
+			"revision": "e02fc20de94c78484cd5ffb007f8af96be030a45",
+			"revisionTime": "2015-08-08T06:50:54Z"
+		},
+		{
+			"checksumSHA1": "5+YVBClSfR0M/M/G5JI2cG7G+ak=",
+			"path": "github.com/xeipuuv/gojsonschema",
+			"revision": "702b404897d4364af44dc8dcabc9815947942325",
+			"revisionTime": "2017-03-24T00:22:21Z"
+		},
+		{
 			"checksumSHA1": "v07HA5tsu7ULnCwGMaw4RluvjpE=",
 			"path": "github.com/xiang90/probing",
 			"revision": "6a0cc1ae81b4cc11db5e491e030e4b98fba79c19"
