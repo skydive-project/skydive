@@ -6,7 +6,7 @@ git checkout -b software-factory
 SKYDIVE_PATH=`pwd`
 
 sudo yum -y install git iproute net-tools
-git clone https://git.openstack.org/openstack-dev/devstack devstack.git
+git clone -b stable/ocata https://git.openstack.org/openstack-dev/devstack devstack.git
 cd devstack.git
 
 export PATH=$PATH:/usr/sbin
