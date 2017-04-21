@@ -180,7 +180,8 @@ func (b *ElasticSearchBackend) archiveElement(kind string, i interface{}, t time
 }
 
 func (b *ElasticSearchBackend) deleteElement(kind string, id string, t time.Time) bool {
-	obj := map[string]interface{}{"DeletedAt": common.UnixMillis(t)}
+	milliseconds := common.UnixMillis(t)
+	obj := map[string]interface{}{"DeletedAt": milliseconds, "UpdatedAt": milliseconds}
 	if err := b.client.BulkUpdateWithPartialDoc(kind, id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while marking %s as deleted %s: %s", kind, id, err.Error())
 		return false

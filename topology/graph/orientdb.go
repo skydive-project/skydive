@@ -39,6 +39,11 @@ type OrientDBBackend struct {
 	client *orientdb.Client
 }
 
+type eventTime struct {
+	name string
+	t    time.Time
+}
+
 func graphElementToOrientDBSetString(e graphElement) (s string) {
 	properties := []string{
 		fmt.Sprintf("ID = \"%s\"", string(e.ID)),
@@ -110,11 +115,15 @@ func orientDBDocumentToEdge(doc orientdb.Document) *Edge {
 	return e
 }
 
-func (o *OrientDBBackend) updateTime(e string, id string, attr string, t time.Time) bool {
-	query := fmt.Sprintf("UPDATE %s SET %s = %d WHERE DeletedAt IS NULL AND UpdatedAt IS NULL AND ID = '%s'", e, attr, common.UnixMillis(t), id)
+func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) bool {
+	var attrs []string
+	for _, event := range events {
+		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, common.UnixMillis(event.t)))
+	}
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE DeletedAt IS NULL AND UpdatedAt IS NULL AND ID = '%s'", e, strings.Join(attrs, ", "), id)
 	docs, err := o.client.Sql(query)
 	if err != nil {
-		logging.GetLogger().Errorf("Error while deleting %s %s: %s", t, id, err.Error())
+		logging.GetLogger().Errorf("Error while deleting %s: %s", id, err.Error())
 		return false
 	}
 	value, ok := docs[0]["value"]
@@ -142,7 +151,7 @@ func (o *OrientDBBackend) AddNode(n *Node) bool {
 }
 
 func (o *OrientDBBackend) DelNode(n *Node) bool {
-	return o.updateTime("Node", string(n.ID), "DeletedAt", n.deletedAt)
+	return o.updateTimes("Node", string(n.ID), eventTime{"DeletedAt", n.deletedAt}, eventTime{"UpdatedAt", n.deletedAt})
 }
 
 func (o *OrientDBBackend) GetNode(i Identifier, t *common.TimeSlice) (nodes []*Node) {
@@ -194,7 +203,7 @@ func (o *OrientDBBackend) AddEdge(e *Edge) bool {
 }
 
 func (o *OrientDBBackend) DelEdge(e *Edge) bool {
-	return o.updateTime("Link", string(e.ID), "DeletedAt", e.deletedAt)
+	return o.updateTimes("Link", string(e.ID), eventTime{"DeletedAt", e.deletedAt}, eventTime{"UpdatedAt", e.deletedAt})
 }
 
 func (o *OrientDBBackend) GetEdge(i Identifier, t *common.TimeSlice) (edges []*Edge) {
@@ -233,7 +242,7 @@ func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetad
 func (o *OrientDBBackend) updateMetadata(i interface{}, m Metadata, t time.Time) bool {
 	switch i := i.(type) {
 	case *Node:
-		if !o.updateTime("Node", string(i.ID), "UpdatedAt", t) {
+		if !o.updateTimes("Node", string(i.ID), eventTime{"UpdatedAt", t}) {
 			return false
 		}
 
@@ -244,7 +253,7 @@ func (o *OrientDBBackend) updateMetadata(i interface{}, m Metadata, t time.Time)
 		}
 
 	case *Edge:
-		if !o.updateTime("Link", string(i.ID), "UpdatedAt", t) {
+		if !o.updateTimes("Link", string(i.ID), eventTime{"UpdatedAt", t}) {
 			return false
 		}
 
