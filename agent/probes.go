@@ -38,24 +38,29 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node, wspool *sht
 	probes := make(map[string]probe.Probe)
 	bundle := probe.NewProbeBundle(probes)
 
+	nlProbe, err := tprobes.NewNetLinkProbe(g)
+	if err != nil {
+		return nil, err
+	}
+	probes["netlink"] = nlProbe
+	nlProbe.Register("", n)
+
+	nsProbe, err := tprobes.NewNetNSProbeFromConfig(g, n, nlProbe)
+	if err != nil {
+		return nil, err
+	}
+	probes["netns"] = nsProbe
+
 	for _, t := range list {
 		if _, ok := probes[t]; ok {
 			continue
 		}
 
 		switch t {
-		case "netlink":
-			probes[t] = tprobes.NewNetLinkProbe(g, n)
-		case "netns":
-			nsProbe, err := tprobes.NewNetNSProbeFromConfig(g, n)
-			if err != nil {
-				return nil, err
-			}
-			probes[t] = nsProbe
 		case "ovsdb":
 			probes[t] = tprobes.NewOvsdbProbeFromConfig(g, n)
 		case "docker":
-			dockerProbe, err := tprobes.NewDockerProbeFromConfig(g, n)
+			dockerProbe, err := tprobes.NewDockerProbeFromConfig(nsProbe)
 			if err != nil {
 				return nil, err
 			}

@@ -18,8 +18,6 @@ agent:
   listen: 0.0.0.0:8081
   topology:
     probes:
-      - netlink
-      - netns
       - ovsdb
       - docker
       - neutron

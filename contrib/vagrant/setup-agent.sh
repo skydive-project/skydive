@@ -17,8 +17,6 @@ agent:
       - gopacket
   topology:
     probes:
-      - netlink
-      - netns
       - ovsdb
 etcd:
   client_timeout: 100

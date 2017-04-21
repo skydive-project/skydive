@@ -248,12 +248,7 @@ func (probe *DockerProbe) Stop() {
 	atomic.StoreInt64(&probe.state, common.StoppedState)
 }
 
-func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) (probe *DockerProbe, _ error) {
-	nsProbe, err := NewNetNSProbe(g, n)
-	if err != nil {
-		return nil, err
-	}
-
+func NewDockerProbe(nsProbe *NetNSProbe, dockerURL string) (probe *DockerProbe, _ error) {
 	return &DockerProbe{
 		NetNSProbe:   nsProbe,
 		url:          dockerURL,
@@ -262,7 +257,7 @@ func NewDockerProbe(g *graph.Graph, n *graph.Node, dockerURL string) (probe *Doc
 	}, nil
 }
 
-func NewDockerProbeFromConfig(g *graph.Graph, n *graph.Node) (*DockerProbe, error) {
+func NewDockerProbeFromConfig(nsProbe *NetNSProbe) (*DockerProbe, error) {
 	dockerURL := config.GetConfig().GetString("docker.url")
-	return NewDockerProbe(g, n, dockerURL)
+	return NewDockerProbe(nsProbe, dockerURL)
 }

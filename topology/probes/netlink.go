@@ -24,6 +24,7 @@ package probes
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"strings"
@@ -47,19 +48,32 @@ const (
 	maxEpollEvents = 32
 )
 
-type NetLinkProbe struct {
+type NetNsNetLinkProbe struct {
 	sync.RWMutex
 	Graph                *graph.Graph
 	Root                 *graph.Node
-	state                int64
+	NsPath               string
+	epollFd              int
 	ethtool              *ethtool.Ethtool
-	netlink              *netlink.Handle
+	handle               *netlink.Handle
+	socket               *nl.NetlinkSocket
 	indexToChildrenQueue map[int64][]graph.Identifier
 	links                map[string]*graph.Node
+	state                int64
 	wg                   sync.WaitGroup
+	quit                 chan bool
 }
 
-func (u *NetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
+type NetLinkProbe struct {
+	sync.RWMutex
+	Graph   *graph.Graph
+	epollFd int
+	probes  map[int32]*NetNsNetLinkProbe
+	state   int64
+	wg      sync.WaitGroup
+}
+
+func (u *NetNsNetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
 	// add children of this interface that was previously added
 	if children, ok := u.indexToChildrenQueue[index]; ok {
 		for _, id := range children {
@@ -72,7 +86,7 @@ func (u *NetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
 	}
 }
 
-func (u *NetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
+func (u *NetNsNetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
 	// assuming we have only one master with this index
 	parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 	if parent != nil {
@@ -92,7 +106,7 @@ func (u *NetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
 	}
 }
 
-func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
+func (u *NetNsNetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 	// handle pending relationship
 	u.linkPendingChildren(intf, int64(link.Attrs().Index))
 
@@ -108,7 +122,7 @@ func (u *NetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Link) {
 	}
 }
 
-func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
+func (u *NetNsNetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	if link.Type() != "veth" {
 		return
 	}
@@ -165,7 +179,7 @@ func (u *NetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link) {
 	}
 }
 
-func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
+func (u *NetNsNetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
 
@@ -204,7 +218,7 @@ func (u *NetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metad
 	return intf
 }
 
-func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
+func (u *NetNsNetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
 
@@ -226,7 +240,7 @@ func (u *NetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metada
 	return intf
 }
 
-func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
+func (u *NetNsNetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	name := link.Attrs().Name
 
 	intf := u.Graph.LookupFirstNode(graph.Metadata{"Name": name, "Driver": "openvswitch"})
@@ -241,10 +255,10 @@ func (u *NetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata)
 	return intf
 }
 
-func (u *NetLinkProbe) getLinkIPs(link netlink.Link, family int) string {
+func (u *NetNsNetLinkProbe) getLinkIPs(link netlink.Link, family int) string {
 	var ips []string
 
-	addrs, err := u.netlink.AddrList(link, family)
+	addrs, err := u.handle.AddrList(link, family)
 	if err != nil {
 		return ""
 	}
@@ -256,7 +270,7 @@ func (u *NetLinkProbe) getLinkIPs(link netlink.Link, family int) string {
 	return strings.Join(ips, ",")
 }
 
-func (u *NetLinkProbe) updateMetadataStatistics(statistics *netlink.LinkStatistics, metadata graph.Metadata, prefix string) {
+func (u *NetNsNetLinkProbe) updateMetadataStatistics(statistics *netlink.LinkStatistics, metadata graph.Metadata, prefix string) {
 	metadata[prefix+"/Collisions"] = uint64(statistics.Collisions)
 	metadata[prefix+"/Multicast"] = uint64(statistics.Multicast)
 	metadata[prefix+"/RxBytes"] = uint64(statistics.RxBytes)
@@ -282,11 +296,9 @@ func (u *NetLinkProbe) updateMetadataStatistics(statistics *netlink.LinkStatisti
 	metadata[prefix+"/TxWindowErrors"] = uint64(statistics.TxWindowErrors)
 }
 
-func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
+func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
-
-	logging.GetLogger().Debugf("Netlink ADD event for %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.String())
 
 	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
 	if driver == "" && link.Type() == "bridge" {
@@ -380,18 +392,22 @@ func (u *NetLinkProbe) addLinkToTopology(link netlink.Link) {
 	u.handleIntfIsVeth(intf, link)
 }
 
-func (u *NetLinkProbe) onLinkAdded(link netlink.Link) {
+func (u *NetNsNetLinkProbe) onLinkAdded(link netlink.Link) {
 	if u.isRunning() == true {
+		// has been deleted
+		index := link.Attrs().Index
+		if _, err := u.handle.LinkByIndex(index); err != nil {
+			return
+		}
+
 		u.addLinkToTopology(link)
 	}
 }
 
-func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
+func (u *NetNsNetLinkProbe) onLinkDeleted(link netlink.Link) {
 	index := link.Attrs().Index
 
 	u.Graph.Lock()
-
-	logging.GetLogger().Debugf("Netlink DEL event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.String())
 
 	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 
@@ -405,8 +421,7 @@ func (u *NetLinkProbe) onLinkDeleted(link netlink.Link) {
 
 	// check whether the interface has been deleted or not
 	// we get a delete event when an interface is removed from a bridge
-	_, err := u.netlink.LinkByIndex(index)
-	if err != nil && intf != nil {
+	if _, err := u.handle.LinkByIndex(index); err != nil && intf != nil {
 		// if openvswitch do not remove let's do the job by ovs piece of code
 		driver, _ := intf.GetFieldString("Driver")
 		uuid, _ := intf.GetFieldString("UUID")
@@ -435,7 +450,7 @@ func getFamilyKey(family int) string {
 	return ""
 }
 
-func (u *NetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int) {
+func (u *NetNsNetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -459,7 +474,7 @@ func (u *NetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int) 
 	u.Graph.AddMetadata(intf, key, ips)
 }
 
-func (u *NetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int) {
+func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
@@ -487,20 +502,18 @@ func (u *NetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, index int
 	}
 }
 
-func (u *NetLinkProbe) initialize() {
-	links, err := u.netlink.LinkList()
+func (u *NetNsNetLinkProbe) initialize() {
+	logging.GetLogger().Debugf("Initialize Netlink interfaces for %s", u.Root.String())
+	links, err := u.handle.LinkList()
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to list interfaces: %s", err.Error())
 		return
 	}
 
 	for _, link := range links {
+		logging.GetLogger().Debugf("Initialize ADD %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.String())
 		u.addLinkToTopology(link)
 	}
-}
-
-func (u *NetLinkProbe) isRunning() bool {
-	return atomic.LoadInt64(&u.state) == common.RunningState
 }
 
 func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
@@ -547,234 +560,322 @@ func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
 	return
 }
 
-func (u *NetLinkProbe) start(nsPath string) {
+func (u *NetNsNetLinkProbe) isRunning() bool {
+	return atomic.LoadInt64(&u.state) == common.RunningState
+}
+
+func (u *NetNsNetLinkProbe) start(nlProbe *NetLinkProbe) {
+	u.wg.Add(1)
+	defer u.wg.Done()
+
+	// wait for NetLinkProbe ready
+Ready:
+	for {
+		switch atomic.LoadInt64(&nlProbe.state) {
+		case common.StoppingState, common.StoppedState:
+			return
+		case common.RunningState:
+			break Ready
+		default:
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	atomic.StoreInt64(&u.state, common.RunningState)
+
+	fd := u.socket.GetFd()
+
+	logging.GetLogger().Debugf("Start polling netlink event for %s", u.Root)
+
+	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
+	if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
+		logging.GetLogger().Errorf("Failed to set the netlink fd as non-blocking: %s", err.Error())
+		return
+	}
+	u.initialize()
+
+	seconds := config.GetConfig().GetInt("agent.topology.netlink.metrics_update")
+	ticker := time.NewTicker(time.Duration(seconds) * time.Second)
+
+	last := time.Now().UTC()
+	for {
+		select {
+		case <-ticker.C:
+			now := time.Now().UTC()
+
+			// do a copy of the original in order to avoid inter locks
+			// between graph lock and netlink lock while iterating
+			u.RLock()
+			links := make(map[string]*graph.Node)
+			for k, v := range u.links {
+				links[k] = v
+			}
+			u.RUnlock()
+
+			for name, node := range links {
+				if link, err := u.handle.LinkByName(name); err == nil {
+					if stats := link.Attrs().Statistics; stats != nil {
+						u.Graph.Lock()
+						tr := u.Graph.StartMetadataTransaction(node)
+
+						// get and update the metadata transaction instance
+						m := tr.Metadata
+						metric := netlink.LinkStatistics{
+							Collisions:        stats.Collisions - m["Statistics/Collisions"].(uint64),
+							Multicast:         stats.Multicast - m["Statistics/Multicast"].(uint64),
+							RxBytes:           stats.RxBytes - m["Statistics/RxBytes"].(uint64),
+							RxCompressed:      stats.RxCompressed - m["Statistics/RxCompressed"].(uint64),
+							RxCrcErrors:       stats.RxCrcErrors - m["Statistics/RxCrcErrors"].(uint64),
+							RxDropped:         stats.RxDropped - m["Statistics/RxDropped"].(uint64),
+							RxErrors:          stats.RxErrors - m["Statistics/RxErrors"].(uint64),
+							RxFifoErrors:      stats.RxFifoErrors - m["Statistics/RxFifoErrors"].(uint64),
+							RxFrameErrors:     stats.RxFrameErrors - m["Statistics/RxFrameErrors"].(uint64),
+							RxLengthErrors:    stats.RxLengthErrors - m["Statistics/RxLengthErrors"].(uint64),
+							RxMissedErrors:    stats.RxMissedErrors - m["Statistics/RxMissedErrors"].(uint64),
+							RxOverErrors:      stats.RxOverErrors - m["Statistics/RxOverErrors"].(uint64),
+							RxPackets:         stats.RxPackets - m["Statistics/RxPackets"].(uint64),
+							TxAbortedErrors:   stats.TxAbortedErrors - m["Statistics/TxAbortedErrors"].(uint64),
+							TxBytes:           stats.TxBytes - m["Statistics/TxBytes"].(uint64),
+							TxCarrierErrors:   stats.TxCarrierErrors - m["Statistics/TxCarrierErrors"].(uint64),
+							TxCompressed:      stats.TxCompressed - m["Statistics/TxCompressed"].(uint64),
+							TxDropped:         stats.TxDropped - m["Statistics/TxDropped"].(uint64),
+							TxErrors:          stats.TxErrors - m["Statistics/TxErrors"].(uint64),
+							TxFifoErrors:      stats.TxFifoErrors - m["Statistics/TxFifoErrors"].(uint64),
+							TxHeartbeatErrors: stats.TxHeartbeatErrors - m["Statistics/TxHeartbeatErrors"].(uint64),
+							TxPackets:         stats.TxPackets - m["Statistics/TxPackets"].(uint64),
+							TxWindowErrors:    stats.TxWindowErrors - m["Statistics/TxWindowErrors"].(uint64),
+						}
+						u.updateMetadataStatistics(stats, m, "Statistics")
+						u.updateMetadataStatistics(&metric, m, "LastMetric")
+						m["LastMetric/Start"] = common.UnixMillis(last)
+						m["LastMetric/Last"] = common.UnixMillis(now)
+						tr.Commit()
+						u.Graph.Unlock()
+					}
+				}
+			}
+			last = now
+		case <-u.quit:
+			return
+		}
+	}
+}
+
+func (u *NetNsNetLinkProbe) onMessageAvailable() {
+	msgs, err := u.socket.Receive()
+	if err != nil {
+		if errno, ok := err.(syscall.Errno); !ok || !errno.Temporary() {
+			logging.GetLogger().Errorf("Failed to receive from netlink messages: %s", err.Error())
+		}
+		return
+	}
+
+	for _, msg := range msgs {
+		switch msg.Header.Type {
+		case syscall.RTM_NEWLINK:
+			link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
+			if err != nil {
+				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
+				continue
+			}
+			logging.GetLogger().Debugf("Netlink ADD event for %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.String())
+			u.onLinkAdded(link)
+		case syscall.RTM_DELLINK:
+			link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
+			if err != nil {
+				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
+				continue
+			}
+			logging.GetLogger().Debugf("Netlink DEL event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.String())
+			u.onLinkDeleted(link)
+		case syscall.RTM_NEWADDR:
+			addr, family, ifindex, err := parseAddr(msg.Data)
+			if err != nil {
+				logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
+				continue
+			}
+			u.onAddressAdded(addr, family, ifindex)
+		case syscall.RTM_DELADDR:
+			addr, family, ifindex, err := parseAddr(msg.Data)
+			if err != nil {
+				logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
+				continue
+			}
+			u.onAddressDeleted(addr, family, ifindex)
+		}
+	}
+}
+
+func (u *NetNsNetLinkProbe) closeFds() {
+	if u.handle != nil {
+		u.handle.Delete()
+	}
+	if u.socket != nil {
+		u.socket.Close()
+	}
+	if u.ethtool != nil {
+		u.ethtool.Close()
+	}
+	if u.epollFd != 0 {
+		syscall.Close(u.epollFd)
+	}
+}
+
+func (u *NetNsNetLinkProbe) stop() {
+	if atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
+		u.quit <- true
+		u.wg.Wait()
+	}
+	u.closeFds()
+}
+
+func newNetNsNetLinkProbe(g *graph.Graph, root *graph.Node, nsPath string) (*NetNsNetLinkProbe, error) {
+	probe := &NetNsNetLinkProbe{
+		Graph:                g,
+		Root:                 root,
+		NsPath:               nsPath,
+		indexToChildrenQueue: make(map[int64][]graph.Identifier),
+		links:                make(map[string]*graph.Node),
+		quit:                 make(chan bool),
+	}
+
 	var context *common.NetNSContext
 	var err error
+
+	errFnc := func(err error) (*NetNsNetLinkProbe, error) {
+		probe.closeFds()
+		context.Close()
+
+		return nil, err
+	}
 
 	// Enter the network namespace if necessary
 	if nsPath != "" {
 		context, err = common.NewNetNsContext(nsPath)
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to switch namespace: %s", err.Error())
-			return
+			return errFnc(fmt.Errorf("Failed to switch namespace: %s", err.Error()))
 		}
 	}
 
 	// Both NewHandle and Subscribe need to done in the network namespace.
-	h, err := netlink.NewHandle(syscall.NETLINK_ROUTE)
-	if err != nil {
-		logging.GetLogger().Errorf("Failed to create netlink handle: %s", err.Error())
-		context.Close()
-		return
+	if probe.handle, err = netlink.NewHandle(syscall.NETLINK_ROUTE); err != nil {
+		return errFnc(fmt.Errorf("Failed to create netlink handle: %s", err.Error()))
 	}
-	defer h.Delete()
 
-	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR)
-	if err != nil {
-		logging.GetLogger().Errorf("Failed to subscribe to netlink messages: %s", err.Error())
-		context.Close()
-		return
+	if probe.socket, err = nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR); err != nil {
+		return errFnc(fmt.Errorf("Failed to subscribe to netlink messages: %s", err.Error()))
 	}
-	defer s.Close()
 
-	u.ethtool, err = ethtool.NewEthtool()
-	if err != nil {
-		logging.GetLogger().Errorf("Failed to create ethtool object: %s", err.Error())
-		context.Close()
-		return
+	if probe.ethtool, err = ethtool.NewEthtool(); err != nil {
+		return errFnc(fmt.Errorf("Failed to create ethtool object: %s", err.Error()))
 	}
-	defer u.ethtool.Close()
 
-	epfd, e := syscall.EpollCreate1(0)
-	if e != nil {
-		logging.GetLogger().Errorf("Failed to create epoll: %s", err.Error())
-		return
+	if probe.epollFd, err = syscall.EpollCreate1(0); err != nil {
+		return errFnc(fmt.Errorf("Failed to create epoll: %s", err.Error()))
 	}
-	defer syscall.Close(epfd)
 
 	// Leave the network namespace
 	context.Close()
 
+	return probe, nil
+}
+
+func (u *NetLinkProbe) Register(nsPath string, root *graph.Node) (*NetNsNetLinkProbe, error) {
+	probe, err := newNetNsNetLinkProbe(u.Graph, root, nsPath)
+	if err != nil {
+		return nil, err
+	}
+
+	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(probe.epollFd)}
+	if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_ADD, probe.epollFd, &event); err != nil {
+		return nil, fmt.Errorf("Failed to add fd to epoll events set for %s: %s", root.String(), err.Error())
+	}
+
+	u.Lock()
+	u.probes[int32(probe.epollFd)] = probe
+	u.Unlock()
+
+	go probe.start(u)
+
+	return probe, nil
+}
+
+func (u *NetLinkProbe) Unregister(nsPath string) error {
+	u.Lock()
+	defer u.Unlock()
+
+	for fd, probe := range u.probes {
+		if probe.NsPath == nsPath {
+			if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_DEL, int(fd), nil); err != nil {
+				return fmt.Errorf("Failed to del fd from epoll events set for %s: %s", probe.Root.String(), err.Error())
+			}
+			delete(u.probes, fd)
+
+			return nil
+		}
+	}
+	return fmt.Errorf("failed to unregister, probe not found for %s", nsPath)
+}
+
+func (u *NetLinkProbe) start() {
 	u.wg.Add(1)
 	defer u.wg.Done()
 
-	atomic.StoreInt64(&u.state, common.RunningState)
-	defer atomic.StoreInt64(&u.state, common.StoppedState)
-
-	u.netlink = h
-	u.initialize()
-
-	fd := s.GetFd()
-	err = syscall.SetNonblock(fd, true)
-	if err != nil {
-		logging.GetLogger().Errorf("Failed to set the netlink fd as non-blocking: %s", err.Error())
-		return
-	}
-
-	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
-	if err = syscall.EpollCtl(epfd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
-		logging.GetLogger().Errorf("Failed to control epoll: %s", err.Error())
-		return
-	}
 	events := make([]syscall.EpollEvent, maxEpollEvents)
 
-	u.wg.Add(1)
-	seconds := config.GetConfig().GetInt("agent.topology.netlink.metrics_update")
-	ticker := time.NewTicker(time.Duration(seconds) * time.Second)
-	done := make(chan struct{})
-
-	defer func() {
-		ticker.Stop()
-		done <- struct{}{}
-	}()
-
-	// Go routine to update the interface statistics
-	go func() {
-		defer u.wg.Done()
-
-		last := time.Now().UTC()
-		for {
-			select {
-			case <-ticker.C:
-				now := time.Now().UTC()
-
-				// do a copy of the original in order to avoid inter locks
-				// between graph lock and netlink lock while iterating
-				u.RLock()
-				links := make(map[string]*graph.Node)
-				for k, v := range u.links {
-					links[k] = v
-				}
-				u.RUnlock()
-
-				for name, node := range links {
-					if link, err := h.LinkByName(name); err == nil {
-						if stats := link.Attrs().Statistics; stats != nil {
-							u.Graph.Lock()
-							tr := u.Graph.StartMetadataTransaction(node)
-
-							// get and update the metadata transaction instance
-							m := tr.Metadata
-							metric := netlink.LinkStatistics{
-								Collisions:        stats.Collisions - m["Statistics/Collisions"].(uint64),
-								Multicast:         stats.Multicast - m["Statistics/Multicast"].(uint64),
-								RxBytes:           stats.RxBytes - m["Statistics/RxBytes"].(uint64),
-								RxCompressed:      stats.RxCompressed - m["Statistics/RxCompressed"].(uint64),
-								RxCrcErrors:       stats.RxCrcErrors - m["Statistics/RxCrcErrors"].(uint64),
-								RxDropped:         stats.RxDropped - m["Statistics/RxDropped"].(uint64),
-								RxErrors:          stats.RxErrors - m["Statistics/RxErrors"].(uint64),
-								RxFifoErrors:      stats.RxFifoErrors - m["Statistics/RxFifoErrors"].(uint64),
-								RxFrameErrors:     stats.RxFrameErrors - m["Statistics/RxFrameErrors"].(uint64),
-								RxLengthErrors:    stats.RxLengthErrors - m["Statistics/RxLengthErrors"].(uint64),
-								RxMissedErrors:    stats.RxMissedErrors - m["Statistics/RxMissedErrors"].(uint64),
-								RxOverErrors:      stats.RxOverErrors - m["Statistics/RxOverErrors"].(uint64),
-								RxPackets:         stats.RxPackets - m["Statistics/RxPackets"].(uint64),
-								TxAbortedErrors:   stats.TxAbortedErrors - m["Statistics/TxAbortedErrors"].(uint64),
-								TxBytes:           stats.TxBytes - m["Statistics/TxBytes"].(uint64),
-								TxCarrierErrors:   stats.TxCarrierErrors - m["Statistics/TxCarrierErrors"].(uint64),
-								TxCompressed:      stats.TxCompressed - m["Statistics/TxCompressed"].(uint64),
-								TxDropped:         stats.TxDropped - m["Statistics/TxDropped"].(uint64),
-								TxErrors:          stats.TxErrors - m["Statistics/TxErrors"].(uint64),
-								TxFifoErrors:      stats.TxFifoErrors - m["Statistics/TxFifoErrors"].(uint64),
-								TxHeartbeatErrors: stats.TxHeartbeatErrors - m["Statistics/TxHeartbeatErrors"].(uint64),
-								TxPackets:         stats.TxPackets - m["Statistics/TxPackets"].(uint64),
-								TxWindowErrors:    stats.TxWindowErrors - m["Statistics/TxWindowErrors"].(uint64),
-							}
-							u.updateMetadataStatistics(stats, m, "Statistics")
-							u.updateMetadataStatistics(&metric, m, "LastMetric")
-							m["LastMetric/Start"] = common.UnixMillis(last)
-							m["LastMetric/Last"] = common.UnixMillis(now)
-							tr.Commit()
-							u.Graph.Unlock()
-						}
-					}
-				}
-				last = now
-			case <-done:
-				return
-			}
-		}
-	}()
-
+	atomic.StoreInt64(&u.state, common.RunningState)
 	for atomic.LoadInt64(&u.state) == common.RunningState {
-		n, err := syscall.EpollWait(epfd, events[:], 1000)
+		nevents, err := syscall.EpollWait(u.epollFd, events[:], 200)
 		if err != nil {
-			errno, ok := err.(syscall.Errno)
-			if ok && errno != syscall.EINTR {
+			if errno, ok := err.(syscall.Errno); ok && errno != syscall.EINTR {
 				logging.GetLogger().Errorf("Failed to receive from events from netlink: %s", err.Error())
 			}
 			continue
 		}
-		if n == 0 {
+
+		if nevents == 0 {
 			continue
 		}
 
-		msgs, err := s.Receive()
-		if err != nil {
-			if errno, ok := err.(syscall.Errno); !ok || !errno.Temporary() {
-				logging.GetLogger().Errorf("Failed to receive from netlink messages: %s", err.Error())
-				return
-			}
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		for _, msg := range msgs {
-			switch msg.Header.Type {
-			case syscall.RTM_NEWLINK:
-				link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
-				if err != nil {
-					logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
-					continue
-				}
-				u.onLinkAdded(link)
-			case syscall.RTM_DELLINK:
-				link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
-				if err != nil {
-					logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
-					continue
-				}
-				u.onLinkDeleted(link)
-			case syscall.RTM_NEWADDR:
-				addr, family, ifindex, err := parseAddr(msg.Data)
-				if err != nil {
-					logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
-					continue
-				}
-				u.onAddressAdded(addr, family, ifindex)
-			case syscall.RTM_DELADDR:
-				addr, family, ifindex, err := parseAddr(msg.Data)
-				if err != nil {
-					logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
-					continue
-				}
-				u.onAddressDeleted(addr, family, ifindex)
+		u.RLock()
+		for ev := 0; ev < nevents; ev++ {
+			if probe, ok := u.probes[events[ev].Fd]; ok {
+				probe.onMessageAvailable()
 			}
 		}
+		u.RUnlock()
 	}
 }
 
 func (u *NetLinkProbe) Start() {
-	go u.start("")
-}
-
-func (u *NetLinkProbe) Run(nsPath string) {
-	u.start(nsPath)
+	go u.start()
 }
 
 func (u *NetLinkProbe) Stop() {
 	if atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
 		u.wg.Wait()
+
+		u.RLock()
+		defer u.RUnlock()
+
+		for _, probe := range u.probes {
+			go probe.stop()
+		}
+
+		for _, probe := range u.probes {
+			probe.wg.Wait()
+		}
 	}
 }
 
-func NewNetLinkProbe(g *graph.Graph, n *graph.Node) *NetLinkProbe {
-	np := &NetLinkProbe{
-		Graph:                g,
-		Root:                 n,
-		indexToChildrenQueue: make(map[int64][]graph.Identifier),
-		links:                make(map[string]*graph.Node),
-		state:                common.StoppedState,
+func NewNetLinkProbe(g *graph.Graph) (*NetLinkProbe, error) {
+	epfd, err := syscall.EpollCreate1(0)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create epoll: %s", err.Error())
 	}
-	return np
+
+	return &NetLinkProbe{
+		Graph:   g,
+		epollFd: epfd,
+		probes:  make(map[int32]*NetNsNetLinkProbe),
+	}, nil
 }

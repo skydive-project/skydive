@@ -35,7 +35,7 @@ const (
 )
 
 const (
-	StoppedState = iota
+	StoppedState = iota + 1
 	RunningState
 	StoppingState
 )

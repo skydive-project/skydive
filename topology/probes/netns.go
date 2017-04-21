@@ -44,13 +44,13 @@ import (
 
 type NetNSProbe struct {
 	sync.RWMutex
-
-	Graph       *graph.Graph
-	Root        *graph.Node
-	nsnlProbes  map[string]*NetNsNetLinkTopoUpdater
-	pathToNetNS map[string]*NetNs
-	runPath     string
-	rootNsDev   uint64
+	Graph              *graph.Graph
+	Root               *graph.Node
+	NetLinkProbe       *NetLinkProbe
+	pathToNetNS        map[string]*NetNs
+	netNsNetLinkProbes map[string]*netNsNetLinkProbe
+	runPath            string
+	rootNsDev          uint64
 }
 
 type NetNs struct {
@@ -59,11 +59,9 @@ type NetNs struct {
 	ino  uint64
 }
 
-type NetNsNetLinkTopoUpdater struct {
-	sync.RWMutex
-	Graph    *graph.Graph
-	Root     *graph.Node
-	nlProbe  *NetLinkProbe
+// extends the original struct to add use count number
+type netNsNetLinkProbe struct {
+	*NetNsNetLinkProbe
 	useCount int
 }
 
@@ -74,46 +72,6 @@ func getNetNSName(path string) string {
 
 func (ns *NetNs) String() string {
 	return fmt.Sprintf("%d,%d", ns.dev, ns.ino)
-}
-
-func (nu *NetNsNetLinkTopoUpdater) Run(ns *NetNs) {
-	logging.GetLogger().Debugf("Starting NetLinkTopoUpdater for NetNS: %s", ns.path)
-
-	/* start a netlinks updater inside this namespace */
-	nu.Lock()
-	nu.nlProbe = NewNetLinkProbe(nu.Graph, nu.Root)
-	nu.Unlock()
-
-	/* NOTE(safchain) don't Start just Run, need to keep it alive for the time life of the netns
-	 * and there is no need to have a new goroutine here
-	 */
-	nu.nlProbe.Run(ns.path)
-
-	nu.Lock()
-	nu.nlProbe = nil
-	nu.Unlock()
-
-	logging.GetLogger().Debugf("NetLinkTopoUpdater stopped for NetNS: %s", ns.path)
-}
-
-func (nu *NetNsNetLinkTopoUpdater) Start(ns *NetNs) {
-	go nu.Run(ns)
-}
-
-func (nu *NetNsNetLinkTopoUpdater) Stop() {
-	nu.Lock()
-	if nu.nlProbe != nil {
-		nu.nlProbe.Stop()
-	}
-	nu.Unlock()
-}
-
-func NewNetNsNetLinkTopoUpdater(g *graph.Graph, n *graph.Node) *NetNsNetLinkTopoUpdater {
-	return &NetNsNetLinkTopoUpdater{
-		Graph:    g,
-		Root:     n,
-		useCount: 1,
-	}
 }
 
 func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.Node {
@@ -159,15 +117,13 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 	defer u.Unlock()
 
 	nsString := newns.String()
-	probe, ok := u.nsnlProbes[nsString]
-	if ok {
+	if probe, ok := u.netNsNetLinkProbes[nsString]; ok {
 		probe.useCount++
 		logging.GetLogger().Debugf("Increasing counter for namespace %s to %d", nsString, probe.useCount)
 		return probe.Root
 	}
 
 	u.Graph.Lock()
-	defer u.Graph.Unlock()
 
 	logging.GetLogger().Debugf("Network Namespace added: %s", nsString)
 	metadata := graph.Metadata{"Name": getNetNSName(path), "Type": "netns", "Path": path}
@@ -176,13 +132,18 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 			metadata[k] = v
 		}
 	}
+
 	n := u.Graph.NewNode(graph.GenID(), metadata)
 	topology.AddOwnershipLink(u.Graph, u.Root, n, nil)
 
-	nu := NewNetNsNetLinkTopoUpdater(u.Graph, n)
-	nu.Start(newns)
+	u.Graph.Unlock()
 
-	u.nsnlProbes[nsString] = nu
+	logging.GetLogger().Debugf("Registering Namespace: %s", nsString)
+	probe, err := u.NetLinkProbe.Register(path, n)
+	if err != nil {
+		logging.GetLogger().Errorf("Could not register netlink probe within namespace: %s", err.Error())
+	}
+	u.netNsNetLinkProbes[nsString] = &netNsNetLinkProbe{NetNsNetLinkProbe: probe, useCount: 1}
 
 	return n
 }
@@ -200,31 +161,30 @@ func (u *NetNSProbe) Unregister(path string) {
 
 	delete(u.pathToNetNS, path)
 	nsString := ns.String()
-	nu, ok := u.nsnlProbes[nsString]
+	probe, ok := u.netNsNetLinkProbes[nsString]
 	if !ok {
 		logging.GetLogger().Debugf("No existing Network Namespace found: %s (%s)", nsString)
 		return
 	}
 
-	if nu.useCount > 1 {
-		nu.useCount--
-		logging.GetLogger().Debugf("Decremented counter for namespace %s to %d", nsString, nu.useCount)
+	if probe.useCount > 1 {
+		probe.useCount--
+		logging.GetLogger().Debugf("Decremented counter for namespace %s to %d", nsString, probe.useCount)
 		return
 	}
 
-	nu.Stop()
+	u.NetLinkProbe.Unregister(path)
 	logging.GetLogger().Debugf("Network Namespace deleted: %s", nsString)
 
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	children := nu.Graph.LookupChildren(nu.Root, graph.Metadata{}, graph.Metadata{})
-	for _, child := range children {
+	for _, child := range u.Graph.LookupChildren(probe.Root, graph.Metadata{}, graph.Metadata{}) {
 		u.Graph.DelNode(child)
 	}
-	u.Graph.DelNode(nu.Root)
+	u.Graph.DelNode(probe.Root)
 
-	delete(u.nsnlProbes, nsString)
+	delete(u.netNsNetLinkProbes, nsString)
 }
 
 func (u *NetNSProbe) initialize() {
@@ -280,21 +240,10 @@ func (u *NetNSProbe) Start() {
 }
 
 func (u *NetNSProbe) Stop() {
-	u.Lock()
-	defer u.Unlock()
-
-	var wg sync.WaitGroup
-	for _, probe := range u.nsnlProbes {
-		wg.Add(1)
-		go func(nl *NetNsNetLinkTopoUpdater) {
-			nl.Stop()
-			wg.Done()
-		}(probe)
-	}
-	wg.Wait()
+	u.NetLinkProbe.Stop()
 }
 
-func NewNetNSProbe(g *graph.Graph, n *graph.Node, runPath ...string) (*NetNSProbe, error) {
+func NewNetNSProbe(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe, runPath ...string) (*NetNSProbe, error) {
 	if uid := os.Geteuid(); uid != 0 {
 		return nil, errors.New("NetNS probe has to be run as root")
 	}
@@ -316,16 +265,17 @@ func NewNetNSProbe(g *graph.Graph, n *graph.Node, runPath ...string) (*NetNSProb
 	}
 
 	return &NetNSProbe{
-		Graph:       g,
-		Root:        n,
-		nsnlProbes:  make(map[string]*NetNsNetLinkTopoUpdater),
-		pathToNetNS: make(map[string]*NetNs),
-		runPath:     path,
-		rootNsDev:   stats.Dev,
+		Graph:              g,
+		Root:               n,
+		NetLinkProbe:       nlProbe,
+		pathToNetNS:        make(map[string]*NetNs),
+		netNsNetLinkProbes: make(map[string]*netNsNetLinkProbe),
+		runPath:            path,
+		rootNsDev:          stats.Dev,
 	}, nil
 }
 
-func NewNetNSProbeFromConfig(g *graph.Graph, n *graph.Node) (*NetNSProbe, error) {
+func NewNetNSProbeFromConfig(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe) (*NetNSProbe, error) {
 	path := config.GetConfig().GetString("netns.run_path")
-	return NewNetNSProbe(g, n, path)
+	return NewNetNSProbe(g, n, nlProbe, path)
 }

@@ -81,7 +81,7 @@ func init() {
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
 	cfg.SetDefault("openstack.endpoint_type", "public")
-	cfg.SetDefault("agent.topology.probes", []string{"netlink", "netns", "ovsdb"})
+	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
 	cfg.SetDefault("agent.flow.probes", []string{"gopacket", "pcapsocket"})
 	cfg.SetDefault("agent.flow.pcapsocket.bind_address", "127.0.0.1")

@@ -524,7 +524,7 @@ func TestInterfaceUpdate(t *testing.T) {
 		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"ip netns add iu", true},
-			{"sleep 1", false},
+			{"sleep 5", false},
 			{"ip netns exec iu ip link set lo up", true},
 		},
 
@@ -575,8 +575,8 @@ func TestInterfaceMetrics(t *testing.T) {
 		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"ip netns add im", true},
-			{"sleep 1", false},
 			{"ip netns exec im ip link set lo up", true},
+			{"sleep 2", false},
 		},
 
 		setupFunction: func(c *TestContext) error {

@@ -115,6 +115,7 @@ type TestContext struct {
 	setupTime   time.Time
 	startTime   time.Time
 	successTime time.Time
+	data        map[string]interface{}
 }
 
 type TestCapture struct {
@@ -177,6 +178,7 @@ func RunTest(t *testing.T, test *Test) {
 		gh:       gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{}),
 		client:   client,
 		captures: captures,
+		data:     make(map[string]interface{}),
 	}
 
 	err = common.Retry(func() error {

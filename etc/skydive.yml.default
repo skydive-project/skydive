@@ -100,11 +100,8 @@ agent:
   topology:
     # Probes used to capture topology informations like interfaces,
     # bridges, namespaces, etc...
-    # Available: netlink, netns, ovsdb, docker, neutron, opencontrail
-    # Default: netlink, netns
+    # Available: ovsdb, docker, neutron, opencontrail
     probes:
-      - netlink
-      - netns
       - ovsdb
       # - docker
       # - neutron

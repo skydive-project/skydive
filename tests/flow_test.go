@@ -1107,6 +1107,8 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 		},
 
 		tearDownCmds: []helper.Cmd{
+			{"ip link del tunnel-vm1-eth0", true},
+			{"ip link del tunnel-vm2-eth0", true},
 			{"ip netns del tunnel-vm1", true},
 			{"ip netns del tunnel-vm2", true},
 			{"ovs-vsctl del-br " + bridge, true},
