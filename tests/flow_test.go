@@ -65,7 +65,7 @@ func TestSFlowProbeNode(t *testing.T) {
 			}
 
 			gh := c.gh
-			node, err := gh.GetNode(prefix + `.V().Has("Name", "br-spn", "Type", "ovsbridge")`)
+			node, err := gh.GetNode(prefix + `.V().Has("Name", "br-spn", "Type", "ovsbridge").HasKey("TID")`)
 			if err != nil {
 				return err
 			}
@@ -118,7 +118,7 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 			}
 
 			gh := c.gh
-			node, err := gh.GetNode(prefix + `.V().Has("Name", "br-sntoin", "Type", "ovsbridge")`)
+			node, err := gh.GetNode(prefix + `.V().Has("Name", "br-sntoin", "Type", "ovsbridge").HasKey("TID")`)
 			if err != nil {
 				return err
 			}
@@ -223,16 +223,6 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 
 			if flows[1].NodeTID != tid1 && flows[1].NodeTID != tid2 {
 				t.Errorf("Bad NodeTID for the second flow: %s", flows[1].NodeTID)
-			}
-
-			if flows[0].NodeTID != node1.Metadata()["TID"].(string) &&
-				flows[0].NodeTID != node2.Metadata()["TID"].(string) {
-				return fmt.Errorf("Bad NodeTID for the first flow: %s", flows[0].NodeTID)
-			}
-
-			if flows[1].NodeTID != node1.Metadata()["TID"].(string) &&
-				flows[1].NodeTID != node2.Metadata()["TID"].(string) {
-				return fmt.Errorf("Bad NodeTID for the second flow: %s", flows[1].NodeTID)
 			}
 
 			if flows[0].TrackingID != flows[1].TrackingID {
@@ -355,7 +345,7 @@ func TestPCAPProbe(t *testing.T) {
 			}
 
 			gh := c.gh
-			node, err := gh.GetNode(prefix + `.V().Has("Name", "br-pp", "Type", "bridge")`)
+			node, err := gh.GetNode(prefix + `.V().Has("Name", "br-pp", "Type", "bridge").HasKey("TID")`)
 			if err != nil {
 				return err
 			}
@@ -416,14 +406,14 @@ func TestSFlowSrcDstPath(t *testing.T) {
 			}
 
 			gh := c.gh
-			node1, err := gh.GetNode(prefix + `.V().Has("Name", "ssdp-intf1", "Type", "internal")`)
+			node1, err := gh.GetNode(prefix + `.V().Has("Name", "ssdp-intf1", "Type", "internal").HasKey("TID")`)
 			if err != nil {
 				var res interface{}
 				gh.Query("g", &res)
 				return fmt.Errorf("ssdp-intf1 not found, %v", res)
 			}
 
-			node2, err := gh.GetNode(prefix + `.V().Has("Name", "ssdp-intf2", "Type", "internal")`)
+			node2, err := gh.GetNode(prefix + `.V().Has("Name", "ssdp-intf2", "Type", "internal").HasKey("TID")`)
 			if err != nil {
 				var res interface{}
 				gh.Query("G", &res)
@@ -1141,12 +1131,12 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 			}
 
 			node := nodes[0]
-			tid, ok := node.Metadata()["TID"]
-			if !ok {
+			tid, err := node.GetFieldString("TID")
+			if err != nil {
 				return fmt.Errorf("Node %s has no TID", node.ID)
 			}
 
-			flowsInnerTunnel, err := gh.GetFlows(prefix + fmt.Sprintf(`.Flows().Has("NodeTID", "%s", "Application", "%s")`, tid.(string), icmpVersion))
+			flowsInnerTunnel, err := gh.GetFlows(prefix + fmt.Sprintf(`.Flows().Has("NodeTID", "%s", "Application", "%s")`, tid, icmpVersion))
 			if err != nil {
 				return err
 			}
@@ -1212,7 +1202,7 @@ func TestReplayCapture(t *testing.T) {
 			}
 
 			gh := c.gh
-			gremlin := prefix + ".V().Has('Name', 'br-rc', 'Type', 'ovsbridge')"
+			gremlin := prefix + ".V().Has('Name', 'br-rc', 'Type', 'ovsbridge').HasKey('TID')"
 			node, err := gh.GetNode(gremlin)
 			if err != nil {
 				return err
