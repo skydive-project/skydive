@@ -309,7 +309,9 @@ func (s *WSServer) listenAndServe() {
 			s.Lock()
 			msgs := s.flushMessages()
 			s.Unlock()
-			s.broadcastMessages(msgs)
+			if len(msgs) > 0 {
+				s.broadcastMessages(msgs)
+			}
 		}
 	}
 }
