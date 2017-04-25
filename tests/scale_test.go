@@ -78,7 +78,7 @@ func TestHA(t *testing.T) {
 			}
 
 			if len(nodes) != nodeExpected {
-				return fmt.Errorf("Should return 2 host nodes got : %v", nodes)
+				return fmt.Errorf("Should return %d host nodes got : %v", nodeExpected, nodes)
 			}
 
 			return nil
