@@ -336,6 +336,8 @@ func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
 		return err
 	}
 
+	logging.GetLogger().Debugf("Registering new alert: %v", alert)
+
 	a.Graph.RLock()
 	a.evaluateAlert(alert)
 	a.Graph.RUnlock()
@@ -377,7 +379,6 @@ func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
 		a.Unlock()
 	}
 
-	logging.GetLogger().Debugf("New alert registered: %v", alert)
 	return nil
 }
 
