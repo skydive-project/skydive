@@ -83,10 +83,11 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 		if !ok {
 			return "", msg, SyncReplyMsgMalFormed
 		}
-		if _, ok = els["Nodes"]; !ok {
-			return "", msg, SyncReplyMsgMalFormed
+		inodes, ok := els["Nodes"]
+		if !ok || inodes == nil {
+			return "", result, nil
 		}
-		nodes, ok := els["Nodes"].([]interface{})
+		nodes, ok := inodes.([]interface{})
 		if !ok {
 			return "", msg, SyncReplyMsgMalFormed
 		}
@@ -99,18 +100,21 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 			result.Nodes = append(result.Nodes, &node)
 		}
 
-		if _, ok = els["Edges"]; ok {
-			edges, ok := els["Edges"].([]interface{})
-			if !ok {
-				return "", msg, SyncReplyMsgMalFormed
+		iedges, ok := els["Edges"]
+		if !ok || iedges == nil {
+			return "", result, nil
+		}
+
+		edges, ok := iedges.([]interface{})
+		if !ok {
+			return "", msg, SyncReplyMsgMalFormed
+		}
+		for _, e := range edges {
+			var edge Edge
+			if err := edge.Decode(e); err != nil {
+				return "", msg, err
 			}
-			for _, e := range edges {
-				var edge Edge
-				if err := edge.Decode(e); err != nil {
-					return "", msg, err
-				}
-				result.Edges = append(result.Edges, &edge)
-			}
+			result.Edges = append(result.Edges, &edge)
 		}
 
 		return msg.Type, result, nil

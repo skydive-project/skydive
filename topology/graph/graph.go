@@ -303,8 +303,23 @@ func (e *graphElement) Decode(i interface{}) (err error) {
 		return fmt.Errorf("Unable to decode graph element: %v, %+v", i, reflect.TypeOf(i))
 	}
 
-	e.ID = Identifier(objMap["ID"].(string))
-	e.host = objMap["Host"].(string)
+	if _, ok = objMap["ID"]; !ok {
+		return errors.New("No ID found for graph element")
+	}
+
+	id, ok := objMap["ID"].(string)
+	if !ok {
+		return errors.New("Wrong type for ID")
+	}
+	e.ID = Identifier(id)
+
+	if _, ok := objMap["Host"]; ok {
+		if host, ok := objMap["Host"].(string); ok {
+			e.host = host
+		} else {
+			return errors.New("Wrong type for Host")
+		}
+	}
 
 	if createdAt, ok := objMap["CreatedAt"]; ok {
 		if e.createdAt, err = parseTime(createdAt); err != nil {
