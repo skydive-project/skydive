@@ -44,7 +44,7 @@ Vue.component('tabs', {
     <div class="flow-ops-panel">\
       <ul class="nav nav-pills">\
         <li v-for="(pane, index) in panes" v-bind:class="{active: pane.selected}" @click="select(index)" style="cursor: pointer">\
-          <a>{{pane.title}}</a>\
+          <a v-bind:id="pane.title">{{pane.title}}</a>\
         </li>\
       </ul>\
       <div class="tab-content clearfix">\

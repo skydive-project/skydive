@@ -1187,6 +1187,30 @@
 			"revision": "382f87b929b84ce13e9c8a375a4b217f224e6c65"
 		},
 		{
+			"checksumSHA1": "3GkzZHlhDZz0wSkOVjzbWlW5RJQ=",
+			"path": "github.com/tebeka/selenium",
+			"revision": "657e45ec600f26e76da253936c1f2adb6978ff72",
+			"revisionTime": "2017-03-14T20:04:59Z"
+		},
+		{
+			"checksumSHA1": "gjVGcbxJPgXZoFZ0NcL+xwlT7B0=",
+			"path": "github.com/tebeka/selenium/chrome",
+			"revision": "657e45ec600f26e76da253936c1f2adb6978ff72",
+			"revisionTime": "2017-03-14T20:04:59Z"
+		},
+		{
+			"checksumSHA1": "pJzQmkluRgGw+YuIGXRO0Rt341A=",
+			"path": "github.com/tebeka/selenium/firefox",
+			"revision": "657e45ec600f26e76da253936c1f2adb6978ff72",
+			"revisionTime": "2017-03-14T20:04:59Z"
+		},
+		{
+			"checksumSHA1": "ylpVK190UNacSoypkGH6Zm2hDmM=",
+			"path": "github.com/tebeka/selenium/internal/zip",
+			"revision": "657e45ec600f26e76da253936c1f2adb6978ff72",
+			"revisionTime": "2017-03-14T20:04:59Z"
+		},
+		{
 			"checksumSHA1": "UADS3X1kxl+/qqeGcmTo0rBiXlQ=",
 			"path": "github.com/ugorji/go/codec",
 			"revision": "b94837a2404ab90efe9289e77a70694c355739cb"

@@ -49,7 +49,7 @@ analyzers:
   - 127.0.0.1:8082
 
 analyzer:
-  listen: 127.0.0.1:8082
+  listen: 0.0.0.0:8082
   flowtable_expire: 600
   flowtable_update: 10
   storage:

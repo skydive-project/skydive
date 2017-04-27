@@ -18,10 +18,10 @@ Vue.component('capture-form', {
           </div>\
           <div class="form-group">\
             <label class="radio-inline">\
-              <input type="radio" name="capture-target" value="selection" v-model="mode"> Nodes selection\
+              <input type="radio" id="by-node" name="capture-target" value="selection" v-model="mode"> Nodes selection\
             </label>\
             <label class="radio-inline">\
-              <input type="radio" name="capture-target" value="gremlin" v-model="mode"> Gremlin Expression\
+              <input type="radio" id="by-gremlin" name="capture-target" value="gremlin" v-model="mode"> Gremlin Expression\
             </label>\
           </div>\
           <div class="form-group" v-if="mode == \'selection\'">\
@@ -40,11 +40,12 @@ Vue.component('capture-form', {
             <label for="capture-bpf">BPF filter</label>\
             <input id="capture-bpf" type="text" class="form-control input-sm" v-model="bpf" />\
           </div>\
-          <button type="submit" class="btn btn-primary">Start</button>\
+          <button type="submit" id="start-capture" class="btn btn-primary">Start</button>\
           <button type="button" class="btn btn-danger" @click="reset">Cancel</button>\
         </form>\
       </div>\
       <button type="button"\
+              id="create-capture"\
               class="btn btn-primary"\
               v-else\
               @click="visible = !visible">\
