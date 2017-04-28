@@ -48,15 +48,17 @@ type OpenContrailMapper struct {
 	mplsUDPPort     int
 }
 
-type ExtIDs struct {
-	IfaceID     string
-	AttachedMac string
+type OpenContrailMdata struct {
+	UUID    string
+	Mac     string
+	VRF     string
+	LocalIP string
 }
 
-func (mapper *OpenContrailMapper) retrieveExtIDs(metadata graph.Metadata, itf collection.Element) (*ExtIDs, error) {
+func (mapper *OpenContrailMapper) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*OpenContrailMdata, error) {
 	name := metadata["Name"].(string)
 
-	logging.GetLogger().Debugf("Retrieving extIDs from OpenContrail for Name: %s", name)
+	logging.GetLogger().Debugf("Retrieving metadata from OpenContrail for Name: %s", name)
 
 	portUUID, _ := itf.GetField("uuid")
 	if portUUID == "" {
@@ -68,11 +70,23 @@ func (mapper *OpenContrailMapper) retrieveExtIDs(metadata graph.Metadata, itf co
 		return nil, errors.New("No mac_addr field")
 	}
 
+	vrfName, _ := itf.GetField("vrf_name")
+	if vrfName == "" {
+		return nil, errors.New("No vrf_name field")
+	}
+
+	mdataIP, _ := itf.GetField("mdata_ip_addr")
+	if mdataIP == "" {
+		return nil, errors.New("No mdata_ip_addr field")
+	}
+
 	logging.GetLogger().Debugf("Interface from contrail: port: %s mac: %s", portUUID, mac)
 
-	e := &ExtIDs{
-		IfaceID:     portUUID,
-		AttachedMac: mac,
+	e := &OpenContrailMdata{
+		UUID:    portUUID,
+		Mac:     mac,
+		VRF:     vrfName,
+		LocalIP: mdataIP,
 	}
 
 	return e, nil
@@ -189,7 +203,7 @@ func (mapper *OpenContrailMapper) nodeUpdater() {
 			mapper.onVhostAdded(node, itf)
 		} else {
 			logging.GetLogger().Debugf("Retrieve extIDs for %s", name)
-			extIDs, err := mapper.retrieveExtIDs(node.Metadata(), itf)
+			extIDs, err := mapper.retrieveMetadata(node.Metadata(), itf)
 			if err != nil {
 				return
 			}
@@ -208,12 +222,14 @@ func (mapper *OpenContrailMapper) nodeUpdater() {
 	logging.GetLogger().Debugf("Stopping OpenContrail updater")
 }
 
-func (mapper *OpenContrailMapper) updateNode(node *graph.Node, extIDs *ExtIDs) {
+func (mapper *OpenContrailMapper) updateNode(node *graph.Node, mdata *OpenContrailMdata) {
 	tr := mapper.graph.StartMetadataTransaction(node)
 	defer tr.Commit()
 
-	tr.AddMetadata("ExtID/iface-id", extIDs.IfaceID)
-	tr.AddMetadata("ExtID/attached-mac", extIDs.AttachedMac)
+	tr.AddMetadata("ExtID/iface-id", mdata.UUID)
+	tr.AddMetadata("ExtID/attached-mac", mdata.Mac)
+	tr.AddMetadata("Contrail/VRF", mdata.VRF)
+	tr.AddMetadata("Contrail/LocalIP", mdata.LocalIP)
 }
 
 func (mapper *OpenContrailMapper) enhanceNode(node *graph.Node) {
