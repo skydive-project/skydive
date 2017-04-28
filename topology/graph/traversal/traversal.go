@@ -189,6 +189,17 @@ func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return filters.NewOrFilter(orFilters...), nil
+	case *ContainsMetadataMatcher:
+		switch t := v.value.(type) {
+		case string:
+			return filters.NewInStringFilter(k, t), nil
+		default:
+			i, err := common.ToInt64(t)
+			if err != nil {
+				return nil, err
+			}
+			return filters.NewInInt64Filter(k, i), nil
+		}
 	case string:
 		return filters.NewTermStringFilter(k, v), nil
 	case int64:
@@ -311,6 +322,14 @@ type RegexMetadataMatcher struct {
 func Regex(expr string) *RegexMetadataMatcher {
 	r, _ := regexp.Compile(expr)
 	return &RegexMetadataMatcher{regexp: r, pattern: expr}
+}
+
+type ContainsMetadataMatcher struct {
+	value interface{}
+}
+
+func Contains(s interface{}) *ContainsMetadataMatcher {
+	return &ContainsMetadataMatcher{value: s}
 }
 
 type Since struct {
