@@ -122,11 +122,6 @@ func InitConfig(conf string, params ...HelperParams) error {
 		return err
 	}
 
-	err = logging.InitLogger()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

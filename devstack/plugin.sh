@@ -153,7 +153,7 @@ auth:
   analyzer_password: $ADMIN_PASSWORD
 
 logging:
-  default: $SKYDIVE_LOGLEVEL
+  level: $SKYDIVE_LOGLEVEL
 
 openstack:
   auth_url: ${KEYSTONE_AUTH_PROTOCOL}://${KEYSTONE_AUTH_HOST}:${KEYSTONE_AUTH_PORT}/v3

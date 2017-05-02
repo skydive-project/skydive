@@ -23,129 +23,74 @@
 package logging
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
-	"sync"
 
 	"github.com/op/go-logging"
 	"github.com/skydive-project/skydive/config"
 )
 
-func getPackageFunction() (pkg string, fun string) {
-	pkg, fun = "???", "???"
-	if pc, _, _, ok := runtime.Caller(2); ok {
-		if fr := runtime.FuncForPC(pc); fr != nil {
-			f := fr.Name()
-			i := strings.LastIndex(f, "/")
-			j := strings.Index(f[i+1:], ".")
-			if j < 1 {
-				return "???", "???"
+var logger *logging.Logger
+
+func initLogger() (_ *logging.Logger, err error) {
+	cfg := config.GetConfig()
+	id := cfg.GetString("host_id") + ":" + cfg.GetString("logging.id")
+
+	format := cfg.GetString("logging.format")
+	format = strings.Replace(format, "%{id}", id, -1)
+
+	level, err := logging.LogLevel(cfg.GetString("logging.level"))
+	if err != nil {
+		return nil, err
+	}
+
+	var backends []logging.Backend
+	var backend logging.Backend
+	for _, name := range cfg.GetStringSlice("logging.backends") {
+		switch name {
+		case "file":
+			filename := cfg.GetString("logging.file.path")
+			file, err := os.Create(filename)
+			if err != nil {
+				return nil, err
 			}
-			pkg, fun = f[:i+j+1], f[i+j+2:]
+			backend = logging.NewLogBackend(file, "", 0)
+		case "syslog":
+			backend, err = logging.NewSyslogBackend("")
+			if err != nil {
+				return nil, err
+			}
+		case "stderr":
+			backend = logging.NewLogBackend(os.Stderr, "", 0)
+		default:
+			return nil, fmt.Errorf("Invalid logging backend: %s", name)
 		}
+
+		backend = logging.NewBackendFormatter(backend, logging.MustStringFormatter(format))
+		backends = append(backends, backend)
 	}
-	return pkg, fun
-}
 
-var skydiveLoggerLock sync.Mutex
-var skydiveLogger SkydiveLogger
-var skydiveLoggingID = "skydive"
+	backendLevel := logging.MultiLogger(backends...)
+	backendLevel.SetLevel(level, "")
 
-func SetLoggingID(ID string) {
-	skydiveLoggingID = ID
-}
-
-type SkydiveLogger struct {
-	loggers     map[string]*logging.Logger
-	id          string
-	format      string
-	formatDebug string
-	backend     logging.Backend
-}
-
-func initSkydiveLogger() {
-	id := config.GetConfig().GetString("host_id") + ":" + skydiveLoggingID
-	skydiveLogger = SkydiveLogger{
-		id:          id,
-		loggers:     make(map[string]*logging.Logger),
-		format:      "%{color}%{time} " + id + " %{shortfile} %{shortpkg} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}",
-		formatDebug: "%{color}%{time} " + id + " %{shortfile} %{shortpkg} %{callpath:5} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}",
-	}
-	newLogger("default", "INFO")
-}
-
-func newLogger(pkg string, loglevel string) error {
-	level, err := logging.LogLevel(loglevel)
+	logger, err := logging.GetLogger("")
 	if err != nil {
-		return err
-	}
-	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	format := skydiveLogger.format
-	if level == logging.DEBUG {
-		format = skydiveLogger.formatDebug
-	}
-	backendFormat := logging.NewBackendFormatter(backend, logging.MustStringFormatter(format))
-	backendLevel := logging.AddModuleLevel(backendFormat)
-	backendLevel.SetLevel(level, pkg)
-
-	logger, err := logging.GetLogger(pkg)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	logger.SetBackend(backendLevel)
-	skydiveLogger.loggers[pkg] = logger
 
-	skydiveLogger.loggers["default"].Debug("New Log Registered : " + pkg + " " + loglevel)
-	return nil
-}
-
-func InitLogger() error {
-	skydiveLoggerLock.Lock()
-	defer skydiveLoggerLock.Unlock()
-	return initLogger()
-}
-
-func initLogger() (err error) {
-	initSkydiveLogger()
-	cfg := config.GetConfig()
-
-	for cfgPkg, cfgLvl := range cfg.GetStringMapString("logging") {
-		pkg := strings.TrimSpace(cfgPkg)
-		lvl := strings.TrimSpace(cfgLvl)
-		if pkg == "default" {
-			err = newLogger("default", lvl)
-		} else {
-			err = newLogger("github.com/skydive-project/skydive/"+pkg, lvl)
-		}
-		if err != nil {
-			return errors.New("Can't parse logging line : \"" + pkg + " " + lvl + "\" " + err.Error())
-		}
-	}
-	return
+	return logger, nil
 }
 
 func GetLogger() (log *logging.Logger) {
-	skydiveLoggerLock.Lock()
-	defer skydiveLoggerLock.Unlock()
-
-	pkg, f := getPackageFunction()
-	log, found := skydiveLogger.loggers[pkg+"."+f]
-	if !found {
-		log, found = skydiveLogger.loggers[pkg]
-		if !found {
-			log, found = skydiveLogger.loggers["default"]
-			if !found {
-				err := initLogger()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "%v\n", err)
-					os.Exit(1)
-				}
-				log, _ = skydiveLogger.loggers["default"]
-			}
+	if logger == nil {
+		var err error
+		if logger, err = initLogger(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to initialize logging system: %s\n", err.Error())
+			os.Exit(1)
 		}
 	}
-	return log
+
+	return logger
 }

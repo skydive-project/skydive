@@ -194,7 +194,7 @@ etcd:
 ovs:
   ovsdb: unix://$TEMP_DIR/$NAME.sock
 logging:
-  default: DEBUG
+  level: DEBUG
 EOF
 
 	sudo -E screen -S skydive-stress -X screen -t skydive-agent $WINDOW ip netns exec $NAME sh -c "$SKYDIVE agent -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
@@ -298,7 +298,7 @@ storage:
   elasticsearch:
     host: $ELASTICSEARCH
 logging:
-  default: DEBUG
+  level: DEBUG
 graph:
   backend: $GRAPH
 agent:

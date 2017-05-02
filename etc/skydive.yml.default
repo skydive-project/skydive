@@ -180,9 +180,16 @@ graph:
   backend: memory
 
 logging:
-  default: INFO
-  topology/probes: INFO
-  topology/graph: WARNING
+  level: INFO
+  backends:
+    - stderr
+  # - file
+  # - syslog
+  # configuration of the 'file' backend
+  # file:
+  #   path: /var/log/skydive.log
+  # format of the logging messages
+  # format: "%{color}%{time} %{id} %{shortfile} %{shortpkg} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}"
 
 auth:
   # specify the type of authentication mechanism: noauth, basic, keystone (default: noauth)

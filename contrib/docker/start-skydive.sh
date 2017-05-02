@@ -47,7 +47,7 @@ docker:
 netns:
   run_path: $SKYDIVE_NETNS_RUN_PATH
 logging:
-  default: $SKYDIVE_LOG_LEVEL
+  level: $SKYDIVE_LOG_LEVEL
 EOF
 fi
 

@@ -92,10 +92,7 @@ graph:
   backend: {{.GraphBackend}}
 
 logging:
-  default: DEBUG
-  topology/probes: DEBUG
-  topology/graph: DEBUG
-  topology/probes/docker.go: INFO
+  level: DEBUG
 
 auth:
   type: noauth
