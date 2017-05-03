@@ -123,6 +123,7 @@ func getInterfaceFromIntrospect(host string, port int, name string) (collection.
 func (mapper *OpenContrailMapper) onVhostAdded(node *graph.Node, itf collection.Element) {
 	phyItf, _ := itf.GetField("physical_interface")
 	if phyItf == "" {
+		logging.GetLogger().Errorf("Physical interface not found")
 		return
 	}
 
@@ -151,9 +152,9 @@ func (mapper *OpenContrailMapper) onVhostAdded(node *graph.Node, itf collection.
 
 func (mapper *OpenContrailMapper) linkToVhost(node *graph.Node) {
 	if mapper.vHost != nil {
-		if !topology.HaveOwnershipLink(mapper.graph, node, mapper.vHost, nil) {
+		if !topology.HaveLayer2Link(mapper.graph, node, mapper.vHost, nil) {
 			logging.GetLogger().Debugf("Link %s to %s", node.String(), mapper.vHost.String())
-			topology.AddOwnershipLink(mapper.graph, node, mapper.vHost, nil)
+			topology.AddLayer2Link(mapper.graph, node, mapper.vHost, nil)
 		}
 	} else {
 		logging.GetLogger().Debugf("Add node %s to pending link list", node.String())
