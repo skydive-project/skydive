@@ -308,6 +308,7 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		driver = "bridge"
 	}
 
+	attrs := link.Attrs()
 	linkType := link.Type()
 
 	// force the veth type when driver if veth as a veth in bridge can have device type
@@ -316,19 +317,33 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	}
 
 	metadata := graph.Metadata{
-		"Name":      link.Attrs().Name,
+		"Name":      attrs.Name,
 		"Type":      linkType,
-		"EncapType": link.Attrs().EncapType,
-		"IfIndex":   int64(link.Attrs().Index),
-		"MAC":       link.Attrs().HardwareAddr.String(),
-		"MTU":       int64(link.Attrs().MTU),
+		"EncapType": attrs.EncapType,
+		"IfIndex":   int64(attrs.Index),
+		"MAC":       attrs.HardwareAddr.String(),
+		"MTU":       int64(attrs.MTU),
 		"Driver":    driver,
 	}
 
-	if speed, err := u.ethtool.CmdGet(&ethtool.EthtoolCmd{}, link.Attrs().Name); err == nil {
+	if speed, err := u.ethtool.CmdGet(&ethtool.EthtoolCmd{}, attrs.Name); err == nil {
 		if speed != math.MaxUint32 {
 			metadata["Speed"] = int64(speed)
 		}
+	}
+
+	neighList, err := u.handle.NeighList(attrs.Index, syscall.AF_BRIDGE)
+	if err == nil && len(neighList) > 0 {
+		neighbors := make([]map[string]interface{}, len(neighList))
+		for i, neighbor := range neighList {
+			neighbors[i] = map[string]interface{}{
+				"Flags": int64(neighbor.Flags),
+				"MAC":   neighbor.HardwareAddr.String(),
+				"State": int64(neighbor.State),
+				"Type":  int64(neighbor.Type),
+			}
+		}
+		metadata["FDB"] = neighbors
 	}
 
 	if statistics := link.Attrs().Statistics; statistics != nil {
@@ -336,9 +351,9 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	}
 
 	if linkType == "veth" {
-		stats, err := u.ethtool.Stats(link.Attrs().Name)
+		stats, err := u.ethtool.Stats(attrs.Name)
 		if err != nil && err != syscall.ENODEV {
-			logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", link.Attrs().Name, err.Error())
+			logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", attrs.Name, err.Error())
 		} else if index, ok := stats["peer_ifindex"]; ok {
 			metadata["PeerIfIndex"] = int64(index)
 		}
@@ -358,7 +373,7 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		metadata["Vlan"] = vlan.VlanId
 	}
 
-	if (link.Attrs().Flags & net.FlagUp) > 0 {
+	if (attrs.Flags & net.FlagUp) > 0 {
 		metadata["State"] = "UP"
 	} else {
 		metadata["State"] = "DOWN"
@@ -388,7 +403,7 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	}
 
 	u.Lock()
-	u.links[link.Attrs().Name] = intf
+	u.links[attrs.Name] = intf
 	u.Unlock()
 
 	// merge metadata
