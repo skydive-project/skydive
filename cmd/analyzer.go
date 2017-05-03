@@ -30,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/version"
 
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ var Analyzer = &cobra.Command{
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		config.GetConfig().Set("logging.id", "agent")
-		logging.GetLogger().Notice("Skydive Analyzer starting...")
+		logging.GetLogger().Noticef("Skydive Analyzer %s starting...", version.Version)
 
 		server := analyzer.NewServerFromConfig()
 		server.Start()

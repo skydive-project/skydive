@@ -30,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/version"
 
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ var Agent = &cobra.Command{
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		config.GetConfig().Set("logging.id", "agent")
-		logging.GetLogger().Notice("Skydive Agent starting...")
+		logging.GetLogger().Noticef("Skydive Agent %s starting...", version.Version)
 		agent := agent.NewAgent()
 		agent.Start()
 
