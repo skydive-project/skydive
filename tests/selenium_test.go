@@ -33,6 +33,8 @@ import (
 
 	"github.com/tebeka/selenium"
 
+	gclient "github.com/skydive-project/skydive/cmd/client"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -138,7 +140,91 @@ func TestSelenium(t *testing.T) {
 		return nil
 
 	}
+
+	injectPacket := func(wd selenium.WebDriver) error {
+		generatorTab, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='Generator']")
+		if err != nil || generatorTab == nil {
+			return fmt.Errorf("Generator tab not found: %v", err)
+		}
+		if err := generatorTab.Click(); err != nil {
+			return err
+		}
+
+		injectSrc, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='inject-src']/input")
+		if err != nil || injectSrc == nil {
+			return err
+		}
+		if err := injectSrc.Click(); err != nil {
+			return err
+		}
+
+		authOptions := &shttp.AuthenticationOpts{}
+		gh := gclient.NewGremlinQueryHelper(authOptions)
+
+		node1, err := gh.GetNode("G.V().Has('Name', 'eth0', 'IPV4', Contains('124.65.54.42/24')).HasKey('TID')")
+		if err != nil {
+			return err
+		}
+
+		node2, err := gh.GetNode("G.V().Has('Name', 'eth0', 'IPV4', Contains('124.65.54.43/24')).HasKey('TID')")
+		if err != nil {
+			return err
+		}
+
+		tid1, _ := node1.GetFieldString("TID")
+		tid2, _ := node2.GetFieldString("TID")
+
+		srcNode, err := wd.FindElement(selenium.ByXPATH, ".//*[@tid='"+tid1+"']")
+		if err != nil || srcNode == nil {
+			return err
+		}
+		if err := srcNode.Click(); err != nil {
+			return err
+		}
+
+		injectDst, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='inject-dst']/input")
+		if err != nil || injectDst == nil {
+			return err
+		}
+		if err := injectDst.Click(); err != nil {
+			return err
+		}
+		dstNode, err := wd.FindElement(selenium.ByXPATH, ".//*[@tid='"+tid2+"']")
+		if err != nil || dstNode == nil {
+			return err
+		}
+		if err := dstNode.Click(); err != nil {
+			return err
+		}
+
+		injectBtn, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='inject']")
+		if err != nil || injectBtn == nil {
+			return nil
+		}
+		if err := injectBtn.Click(); err != nil {
+			return err
+		}
+
+		var alertMsg selenium.WebElement
+		for i := 1; i <= 10; i++ {
+			alertMsg, err = wd.FindElement(selenium.ByClassName, "alert-success")
+			if err != nil {
+				time.Sleep(500 * time.Millisecond)
+				continue
+			}
+			break
+		}
+		if alertMsg == nil {
+			return fmt.Errorf("No success alert msg.")
+		}
+		return nil
+	}
+
 	if err := startCapture(webdriver); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := injectPacket(webdriver); err != nil {
 		t.Fatal(err)
 	}
 

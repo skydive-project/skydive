@@ -1270,6 +1270,7 @@ TopologyLayout.prototype.redraw = function() {
 
   var nodeEnter = this.node.enter().append("g")
     .attr("id", function(d) { return "node-" + d.ID; })
+    .attr("tid", function(d) {return d.Metadata["TID"]})
     .attr("class", function(d) {
       return _this.NodeClass(d);
     })

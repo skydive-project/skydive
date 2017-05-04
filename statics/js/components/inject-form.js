@@ -16,17 +16,19 @@ Vue.component('inject-form', {
         <label>Target</label>\
         <node-selector class="inject-target"\
                        placeholder="From"\
+                       id="inject-src"\
                        attr="ID"\
                        v-model="node1"></node-selector>\
         <node-selector placeholder="To"\
                        attr="ID"\
+                       id="inject-dst"\
                        v-model="node2"></node-selector>\
       </div>\
       <div class="form-group">\
         <label for="inject-count">Nb. of packets</label>\
         <input id="inject-count" type="number" class="form-control input-sm" v-model="count" min="1" />\
       </div>\
-      <button type="submit" class="btn btn-primary">Inject</button>\
+      <button type="submit" id="inject" class="btn btn-primary">Inject</button>\
       <button type="button" class="btn btn-danger" @click="reset">Reset</button>\
     </form>\
   ',
