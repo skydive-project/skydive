@@ -1,3 +1,5 @@
+// +build selenium
+
 /*
  * Copyright (C) 2017 Red Hat, Inc.
  *
