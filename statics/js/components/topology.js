@@ -114,8 +114,10 @@ var TopologyComponent = {
       function(newNode, oldNode) {
         if (oldNode) {
           var old = d3.select('#node-' + oldNode.ID);
-          old.classed('active', false);
-          old.select('circle').attr('r', parseInt(old.select('circle').attr('r')) - 3);
+          if (!old.empty()) {
+            old.classed('active', false);
+            old.select('circle').attr('r', parseInt(old.select('circle').attr('r')) - 3);
+          }
         }
         if (newNode) {
           var current = d3.select('#node-' + newNode.ID);
