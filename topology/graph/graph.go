@@ -561,32 +561,7 @@ func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
 }
 
 func (t *MetadataTransaction) Commit() {
-	var e graphElement
-	ge := graphEvent{element: t.graphElement}
-
-	switch t.graphElement.(type) {
-	case *Node:
-		e = t.graphElement.(*Node).graphElement
-		ge.kind = nodeUpdated
-	case *Edge:
-		e = t.graphElement.(*Edge).graphElement
-		ge.kind = edgeUpdated
-	}
-
-	now := time.Now().UTC()
-	updated := false
-	for k, v := range t.Metadata {
-		if e.metadata[k] != v {
-			e.metadata[k] = v
-			if !t.graph.backend.AddMetadata(t.graphElement, k, v, now) {
-				return
-			}
-			updated = true
-		}
-	}
-	if updated {
-		t.graph.notifyEvent(ge)
-	}
+	t.graph.SetMetadata(t.graphElement, t.Metadata)
 }
 
 func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
