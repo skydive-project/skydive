@@ -84,7 +84,7 @@ flows informations will be captured.
 export GOPATH=%{_builddir}/skydive-%{source}
 export GO15VENDOREXPERIMENT=1
 %gobuild -o bin/skydive %{import_path}
-go run %{import_path}/cmd/completion/completion.go
+go run cmd/completion/completion.go
 
 %install
 export GOPATH=%{_builddir}/skydive-%{source}
