@@ -9,7 +9,7 @@
 %define gotest() go test -compiler gc -ldflags "${LDFLAGS:-}" %{?**};
 %endif
 
-%{!?tagversion:%global tagversion 0.10.0}
+%{!?tagversion:%global tagversion 0.11.0}
 
 # commit or tagversion need to be defined on command line
 %if %{defined commit}
@@ -21,7 +21,7 @@
 %define source %{tagversion}
 %endif
 
-%{!?source:%global source 0.10.0}
+%{!?source:%global source 0.11.0}
 %{!?tag:%global tag 1}
 
 Name:           skydive
@@ -135,6 +135,9 @@ install -D -m 644 skydive-bash-completion.sh %{buildroot}/%{_sysconfdir}/bash_co
 %{_unitdir}/skydive-analyzer.service
 
 %changelog
+* Fri May 5 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.11.0-1
+- Bump to version 0.11.0
+
 * Thu Mar 30 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.10.0-1
 - Bump to version 0.10.0
 

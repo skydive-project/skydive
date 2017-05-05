@@ -1,6 +1,28 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2017-05-05
+### Added
+- Elasticsearch:
+  - Support Elasticsearch 5
+  - Bulk indexing for graph and flows for improved performance
+- WebUI:
+  - Display bandwidth on L2 edges
+  - Restore discovery and conversation views
+- Allow loading multiple configuration files
+- Support for logging to file and syslog
+- Bash completion file
+
+### Changed
+- Keep all netlink events ordered
+- Websocket:
+  - Introduced namespace subscription mechanism
+  - Validate messages using JSON schemas
+  - Use bulk to reduce graph messages number
+- Bug fixes:
+  - Fix analyzer deadlock on agent stop
+  - Return status error if capture registration failed
+
 ## [0.10.0] - 2017-03-30
 ### Added
 - Support multiple analyzers for high availability and scalability
