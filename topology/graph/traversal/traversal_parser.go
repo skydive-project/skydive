@@ -29,6 +29,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
@@ -133,6 +134,7 @@ var (
 )
 
 type GremlinTraversalParser struct {
+	sync.RWMutex
 	Graph   *graph.Graph
 	scanner *GremlinTraversalScanner
 	buf     struct {
@@ -936,6 +938,9 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 }
 
 func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTraversalSequence, error) {
+	p.Lock()
+	defer p.Unlock()
+
 	p.scanner = NewGremlinTraversalScanner(r, p.extensions)
 
 	seq := &GremlinTraversalSequence{
@@ -944,7 +949,7 @@ func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTra
 	}
 
 	if tok, lit := p.scanIgnoreWhitespace(); tok != G {
-		return nil, fmt.Errorf("found %q, expected G", lit)
+		return nil, fmt.Errorf("found %q, expected `G`", lit)
 	}
 
 	// loop over all dot-delimited steps
@@ -955,7 +960,7 @@ func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTra
 		}
 
 		if tok != DOT {
-			return nil, fmt.Errorf("found %q, expected .", lit)
+			return nil, fmt.Errorf("found %q, expected `.`", lit)
 		}
 
 		step, err := p.parserStep()
