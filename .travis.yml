@@ -53,6 +53,7 @@ script:
     - sudo -E docker push docker.io/${DOCKER_IMAGE}:latest
 
     - echo "--- BINARIES ---"
+    - git reset --hard
     - git remote add binaries ${BINARIES_REPO}
     - git fetch binaries
     - git checkout -b travis-builds binaries/travis-builds
