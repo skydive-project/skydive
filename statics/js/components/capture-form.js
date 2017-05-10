@@ -28,8 +28,10 @@ Vue.component('capture-form', {
             <label>Targets</label>\
             <node-selector class="inject-target"\
                            placeholder="Interface 1"\
+                           form="capture"\
                            v-model="node1"></node-selector>\
             <node-selector placeholder="Interface 2 (Optionnal)"\
+                           form="capture"\
                            v-model="node2"></node-selector>\
           </div>\
           <div class="form-group" v-if="mode == \'gremlin\'">\

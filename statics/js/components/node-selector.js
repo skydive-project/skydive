@@ -11,8 +11,13 @@ Vue.component('node-selector', {
     attr: {
       type: String,
       default: "Metadata.TID"
+    },
+    form: {
+      type: String,
     }
   },
+
+  mixins: [notificationMixin],
 
   template: '\
     <div style="position:relative">\
@@ -35,7 +40,17 @@ Vue.component('node-selector', {
         if (! e.target.__data__) {
           return;
         } else {
-          node = value = e.target.__data__;
+          if (self.form == "capture") {
+            var allowedTypes = ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy", "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan", "gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan", "lowpan", "ip6tnl", "ip6gre", "sit"];
+            if (allowedTypes.indexOf(e.target.__data__.Metadata['Type']) > -1) {
+              node = value = e.target.__data__;
+            } else {
+              self.$error({message: "Capture not allowed on this node"});
+              return;
+            }
+          } else {
+            node = value = e.target.__data__;
+          }
         }
 
         self.attr.split(".").forEach(function(key) {
