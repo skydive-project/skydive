@@ -214,8 +214,59 @@ func TestSelenium(t *testing.T) {
 			}
 			break
 		}
-		if alertMsg == nil {
+		if alertMsg != nil {
+			closeBtn, _ := alertMsg.FindElement(selenium.ByClassName, "close")
+			if closeBtn != nil {
+				closeBtn.Click()
+			}
+		} else {
 			return fmt.Errorf("No success alert msg.")
+		}
+		return nil
+	}
+
+	verifyFlows := func(wd selenium.WebDriver) error {
+		time.Sleep(3 * time.Second)
+
+		flowsTab, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='Flows']")
+		if err != nil || flowsTab == nil {
+			return fmt.Errorf("Flows tab not found: %v", err)
+		}
+		if err := flowsTab.Click(); err != nil {
+			return err
+		}
+
+		flowQuery, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='flow-table-query']")
+		if err != nil || flowQuery == nil {
+			return err
+		}
+		if err := flowQuery.Clear(); err != nil {
+			return err
+		}
+		query := "G.Flows().Has('Network.A', '124.65.54.42', 'Network.B', '124.65.54.43')"
+		if err := flowQuery.SendKeys(query); err != nil {
+			return err
+		}
+
+		time.Sleep(2 * time.Second)
+
+		flowRow, err := wd.FindElement(selenium.ByClassName, "flow-row")
+		if err != nil || flowRow == nil {
+			return err
+		}
+		rowData, err := flowRow.FindElements(selenium.ByTagName, "td")
+		if err != nil {
+			return err
+		}
+		if len(rowData) != 7 {
+			return fmt.Errorf("By default 7 rows should be return")
+		}
+		txt, err := rowData[1].Text()
+		if err != nil {
+			return err
+		}
+		if txt != "124.65.54.42" {
+			fmt.Errorf("Network.A should be '124.65.54.42' but got: %s", txt)
 		}
 		return nil
 	}
@@ -228,6 +279,9 @@ func TestSelenium(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if err := verifyFlows(webdriver); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func getIPv4Addr() (string, error) {
