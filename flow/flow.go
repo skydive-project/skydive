@@ -114,8 +114,55 @@ func layerFlow(l gopacket.Layer) gopacket.Flow {
 		return l.(gopacket.NetworkLayer).NetworkFlow()
 	case gopacket.TransportLayer:
 		return l.(gopacket.TransportLayer).TransportFlow()
+	case gopacket.ApplicationLayer:
+		switch l := l.(type) {
+		case *ICMPv4:
+			b := make([]byte, 4)
+			binary.BigEndian.PutUint32(b, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+			return gopacket.NewFlow(0, b, nil)
+		case *ICMPv6:
+			b := make([]byte, 4)
+			binary.BigEndian.PutUint32(b, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+			return gopacket.NewFlow(0, b, nil)
+		}
 	}
 	return gopacket.Flow{}
+}
+
+func (i *ICMPLayer) MarshalJSON() ([]byte, error) {
+	obj := &struct {
+		Type string
+		Code uint32
+		ID   uint32
+	}{
+		Type: i.Type.String(),
+		Code: i.Code,
+		ID:   i.ID,
+	}
+
+	return json.Marshal(&obj)
+}
+
+func (i *ICMPLayer) UnmarshalJSON(b []byte) error {
+	m := struct {
+		Type string
+		Code uint32
+		ID   uint32
+	}{}
+
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+
+	icmpType, ok := ICMPType_value[m.Type]
+	if !ok {
+		return ErrFlowProtocol
+	}
+	i.Type = ICMPType(icmpType)
+	i.Code = m.Code
+	i.ID = m.ID
+
+	return nil
 }
 
 type FlowKey string
@@ -127,7 +174,8 @@ func (f FlowKey) String() string {
 func FlowKeyFromGoPacket(p *gopacket.Packet, parentUUID string) FlowKey {
 	network := layerFlow((*p).NetworkLayer()).FastHash()
 	transport := layerFlow((*p).TransportLayer()).FastHash()
-	return FlowKey(parentUUID + strconv.FormatUint(uint64(network^transport), 10))
+	application := layerFlow((*p).ApplicationLayer()).FastHash()
+	return FlowKey(parentUUID + strconv.FormatUint(uint64(network^transport^application), 10))
 }
 
 func layerPathFromGoPacket(packet *gopacket.Packet) string {
@@ -192,6 +240,15 @@ func (flow *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 		binary.BigEndian.PutUint64(linkID, uint64(flow.Link.ID))
 		hasher.Write(linkID)
 	}
+
+	if flow.ICMP != nil {
+		icmpID := make([]byte, 8*3)
+		binary.BigEndian.PutUint64(icmpID, uint64(flow.ICMP.Type))
+		binary.BigEndian.PutUint64(icmpID, uint64(flow.ICMP.Code))
+		binary.BigEndian.PutUint64(icmpID, uint64(flow.ICMP.ID))
+		hasher.Write(icmpID)
+	}
+
 	hasher.Write([]byte(layersPath))
 	flow.TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
@@ -334,6 +391,16 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
 			B:        ipv4Packet.DstIP.String(),
 			ID:       networkID(packet),
 		}
+
+		icmpLayer := (*packet).Layer(layers.LayerTypeICMPv4)
+		if layer, ok := icmpLayer.(*ICMPv4); ok {
+			f.ICMP = &ICMPLayer{
+				Code: uint32(layer.TypeCode.Code()),
+				Type: layer.Type,
+				ID:   uint32(layer.Id),
+			}
+		}
+
 		return f.updateMetricsWithNetworkLayer(packet)
 	}
 
@@ -346,10 +413,19 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
 			ID:       networkID(packet),
 		}
 
+		icmpLayer := (*packet).Layer(layers.LayerTypeICMPv6)
+		if layer, ok := icmpLayer.(*ICMPv6); ok {
+			f.ICMP = &ICMPLayer{
+				Code: uint32(layer.TypeCode.Code()),
+				Type: layer.Type,
+				ID:   uint32(layer.Id),
+			}
+		}
+
 		return f.updateMetricsWithNetworkLayer(packet)
 	}
 
-	return errors.New("Unable to decode the IP layer")
+	return errors.New("Unable to decode the network layer")
 }
 
 func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
@@ -551,6 +627,32 @@ func (f *FlowLayer) GetFieldInt64(field string) (int64, error) {
 	return 0, common.ErrFieldNotFound
 }
 
+func (f *ICMPLayer) GetStringField(field string) (string, error) {
+	if f == nil {
+		return "", common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "Type":
+		return f.Type.String(), nil
+	default:
+		return "", common.ErrFieldNotFound
+	}
+}
+
+func (f *ICMPLayer) GetFieldInt64(field string) (int64, error) {
+	if f == nil {
+		return 0, common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "ID":
+		return int64(f.ID), nil
+	default:
+		return 0, common.ErrFieldNotFound
+	}
+}
+
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
 	if len(fields) < 1 {
@@ -590,6 +692,8 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.Link.GetStringField(fields[1])
 	case "Network":
 		return f.Network.GetStringField(fields[1])
+	case "ICMP":
+		return f.ICMP.GetStringField(fields[1])
 	case "Transport":
 		return f.Transport.GetStringField(fields[1])
 	case "UDPPORT", "TCPPORT", "SCTPPORT":
@@ -624,6 +728,8 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Link.GetFieldInt64(fields[1])
 	case "Network":
 		return f.Network.GetFieldInt64(fields[1])
+	case "ICMP":
+		return f.ICMP.GetFieldInt64(fields[1])
 	case "Transport":
 		return f.Transport.GetFieldInt64(fields[1])
 	default:

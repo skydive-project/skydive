@@ -111,7 +111,7 @@ func (o *OrientDBBackend) updateTimes(e string, id string, events ...eventTime) 
 		attrs = append(attrs, fmt.Sprintf("%s = %d", event.name, common.UnixMillis(event.t)))
 	}
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE DeletedAt IS NULL AND UpdatedAt IS NULL AND ID = '%s'", e, strings.Join(attrs, ", "), id)
-	docs, err := o.client.Sql(query)
+	docs, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while deleting %s: %s", id, err.Error())
 		return false
@@ -146,7 +146,7 @@ func (o *OrientDBBackend) DelNode(n *Node) bool {
 
 func (o *OrientDBBackend) GetNode(i Identifier, t *common.TimeSlice) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID = '%s' ORDER BY Timestamp", o.getTimeSliceClause(t), i)
-	docs, err := o.client.Sql(query)
+	docs, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving node %s: %s", i, err.Error())
 		return
@@ -163,7 +163,7 @@ func (o *OrientDBBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata)
 		query += " AND " + metadataQuery
 	}
 	query += " ORDER BY Timestamp"
-	docs, err := o.client.Sql(query)
+	docs, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges for node %s: %s", n.ID, err.Error())
 		return nil
@@ -181,7 +181,7 @@ func (o *OrientDBBackend) createEdge(e *Edge, t time.Time) bool {
 	toQuery := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID = '%s'", o.getTimeSliceClause(timeSlice), e.child)
 	setQuery := fmt.Sprintf("%s, Parent = '%s', Child = '%s', Timestamp = %d", graphElementToOrientDBSetString(e.graphElement), e.parent, e.child, common.UnixMillis(t))
 	query := fmt.Sprintf("CREATE EDGE Link FROM (%s) TO (%s) SET %s RETRY 100 WAIT 20", fromQuery, toQuery, setQuery)
-	docs, err := o.client.Sql(query)
+	docs, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s (sql: %s)", e.ID, err.Error(), query)
 		return false
@@ -199,7 +199,7 @@ func (o *OrientDBBackend) DelEdge(e *Edge) bool {
 
 func (o *OrientDBBackend) GetEdge(i Identifier, t *common.TimeSlice) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND ID = '%s'", o.getTimeSliceClause(t), i)
-	docs, err := o.client.Sql(query)
+	docs, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edge %s: %s", i, err.Error())
 		return nil
@@ -212,7 +212,7 @@ func (o *OrientDBBackend) GetEdge(i Identifier, t *common.TimeSlice) (edges []*E
 
 func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) (parents []*Node, children []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID in [\"%s\", \"%s\"]", o.getTimeSliceClause(t), e.parent, e.child)
-	docs, err := o.client.Sql(query)
+	docs, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving nodes for edge %s: %s", e.ID, err.Error())
 		return nil, nil
@@ -298,7 +298,7 @@ func (o *OrientDBBackend) GetNodes(t *common.TimeSlice, m Metadata) (nodes []*No
 	}
 	query += " ORDER BY Timestamp"
 
-	docs, err := o.client.Sql(query)
+	docs, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving nodes: %s (%+v)", err.Error(), docs)
 		return
@@ -318,7 +318,7 @@ func (o *OrientDBBackend) GetEdges(t *common.TimeSlice, m Metadata) (edges []*Ed
 	}
 	query += " ORDER BY Timestamp"
 
-	docs, err := o.client.Sql(query)
+	docs, err := o.client.Search(query)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while retrieving edges: %s (%+v)", err.Error(), docs)
 		return

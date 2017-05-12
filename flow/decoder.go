@@ -23,6 +23,8 @@
 package flow
 
 import (
+	"encoding/binary"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 )
@@ -33,6 +35,9 @@ var LayerTypeInGRE = gopacket.RegisterLayerType(55555, gopacket.LayerTypeMetadat
 
 // Try to find if the next layer is IPv4, or IPv6. If it fails, it considers it is Ethernet.
 var LayerTypeInMplsEthOrIp = gopacket.RegisterLayerType(55556, gopacket.LayerTypeMetadata{Name: "LayerTypeInMplsEthOrIp", Decoder: gopacket.DecodeFunc(decodeInMplsEthOrIpLayer)})
+
+var LayerTypeICMPv4 = gopacket.OverrideLayerType(19, gopacket.LayerTypeMetadata{Name: "ICMPv4", Decoder: gopacket.DecodeFunc(decodeICMPv4)})
+var LayerTypeICMPv6 = gopacket.OverrideLayerType(57, gopacket.LayerTypeMetadata{Name: "ICMPv6", Decoder: gopacket.DecodeFunc(decodeICMPv6)})
 
 type InGRELayer struct {
 	StrangeHeader []byte
@@ -50,6 +55,21 @@ func (m InGRELayer) LayerContents() []byte {
 func (m InGRELayer) LayerPayload() []byte {
 	return m.payload
 }
+
+type ICMPv4 struct {
+	layers.ICMPv4
+	Type ICMPType
+}
+
+func (i *ICMPv4) Payload() []byte { return i.LayerPayload() }
+
+type ICMPv6 struct {
+	layers.ICMPv6
+	Type ICMPType
+	Id   uint16
+}
+
+func (i *ICMPv6) Payload() []byte { return i.LayerPayload() }
 
 // Try to decode data as IP4 or IP6. If data starts by 4 or 6,
 // ipPrefix is set to true to indicate it seems to be an IP header,
@@ -107,6 +127,73 @@ func decodeInMplsEthOrIpLayer(data []byte, p gopacket.PacketBuilder) error {
 		}
 		return p.NextDecoder(eth.NextLayerType())
 	}
+}
+
+func decodeICMPv4(data []byte, p gopacket.PacketBuilder) error {
+	icmpv4 := &ICMPv4{}
+	err := icmpv4.DecodeFromBytes(data, p)
+	if err != nil {
+		return err
+	}
+
+	switch icmpv4.TypeCode.Type() {
+	case layers.ICMPv4TypeEchoRequest, layers.ICMPv4TypeEchoReply:
+		icmpv4.Type = ICMPType_ECHO
+	case layers.ICMPv4TypeAddressMaskRequest, layers.ICMPv4TypeAddressMaskReply:
+		icmpv4.Type = ICMPType_ADDRESS_MASK
+	case layers.ICMPv4TypeDestinationUnreachable:
+		icmpv4.Type = ICMPType_DESTINATION_UNREACHABLE
+	case layers.ICMPv4TypeInfoRequest, layers.ICMPv4TypeInfoReply:
+		icmpv4.Type = ICMPType_INFO
+	case layers.ICMPv4TypeParameterProblem:
+		icmpv4.Type = ICMPType_PARAMETER_PROBLEM
+	case layers.ICMPv4TypeRedirect:
+		icmpv4.Type = ICMPType_REDIRECT
+	case layers.ICMPv4TypeRouterSolicitation, layers.ICMPv4TypeRouterAdvertisement:
+		icmpv4.Type = ICMPType_ROUTER
+	case layers.ICMPv4TypeSourceQuench:
+		icmpv4.Type = ICMPType_SOURCE_QUENCH
+	case layers.ICMPv4TypeTimeExceeded:
+		icmpv4.Type = ICMPType_TIME_EXCEEDED
+	case layers.ICMPv4TypeTimestampRequest, layers.ICMPv4TypeTimestampReply:
+		icmpv4.Type = ICMPType_TIMESTAMP
+	}
+
+	p.AddLayer(icmpv4)
+	p.SetApplicationLayer(icmpv4)
+	return p.NextDecoder(icmpv4.NextLayerType())
+}
+
+func decodeICMPv6(data []byte, p gopacket.PacketBuilder) error {
+	icmpv6 := &ICMPv6{}
+	err := icmpv6.DecodeFromBytes(data, p)
+	if err != nil {
+		return err
+	}
+
+	switch icmpv6.TypeCode.Type() {
+	case layers.ICMPv6TypeEchoRequest, layers.ICMPv6TypeEchoReply:
+		icmpv6.Type = ICMPType_ECHO
+		icmpv6.Id = binary.BigEndian.Uint16(icmpv6.TypeBytes[0:2])
+	case layers.ICMPv6TypeNeighborSolicitation, layers.ICMPv6TypeNeighborAdvertisement:
+		icmpv6.Type = ICMPType_NEIGHBOR
+	case layers.ICMPv6TypeDestinationUnreachable:
+		icmpv6.Type = ICMPType_DESTINATION_UNREACHABLE
+	case layers.ICMPv6TypePacketTooBig:
+		icmpv6.Type = ICMPType_PACKET_TOO_BIG
+	case layers.ICMPv6TypeParameterProblem:
+		icmpv6.Type = ICMPType_PARAMETER_PROBLEM
+	case layers.ICMPv6TypeRedirect:
+		icmpv6.Type = ICMPType_REDIRECT
+	case layers.ICMPv6TypeRouterSolicitation, layers.ICMPv6TypeRouterAdvertisement:
+		icmpv6.Type = ICMPType_ROUTER
+	case layers.ICMPv6TypeTimeExceeded:
+		icmpv6.Type = ICMPType_TIME_EXCEEDED
+	}
+
+	p.AddLayer(icmpv6)
+	p.SetApplicationLayer(icmpv6)
+	return p.NextDecoder(icmpv6.NextLayerType())
 }
 
 func init() {

@@ -34,6 +34,8 @@ enum FlowProtocol {
 	UDPPORT = 3;
 	SCTPPORT = 4;
 	IPV6 = 5;
+	ICMPV4 = 6;
+	ICMPV6 = 7;
 }
 
 message FlowLayer {
@@ -41,6 +43,28 @@ message FlowLayer {
 	string A = 3;
 	string B = 4;
 	int64 ID = 5;
+}
+
+enum ICMPType {
+	UNKNOWN = 0;
+	DESTINATION_UNREACHABLE = 1;
+	ECHO = 2;
+	NEIGHBOR = 3;
+	ADDRESS_MASK = 4;
+	INFO = 5;
+	PARAMETER_PROBLEM = 6;
+	REDIRECT = 7;
+	ROUTER = 8;
+	SOURCE_QUENCH = 9;
+	TIME_EXCEEDED = 10;
+	TIMESTAMP = 11;
+	PACKET_TOO_BIG = 12;
+}
+
+message ICMPLayer {
+	ICMPType Type = 1;
+	uint32 Code = 2;
+	uint32 ID = 3;
 }
 
 message FlowMetric {
@@ -67,6 +91,7 @@ message Flow {
 	FlowLayer Link = 20;
 	FlowLayer Network = 21;
 	FlowLayer Transport = 22;
+	ICMPLayer ICMP = 23;
 
 /* Data Flow Metric info from the 1st layer
    amount of data between two updates

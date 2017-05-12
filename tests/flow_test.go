@@ -953,7 +953,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			prefix += `.V().Has("Name", "br-ipv6fh", "Type", "ovsbridge")`
 
 			gh := c.gh
-			gremlin := prefix + `.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6/Payload")`
+			gremlin := prefix + `.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6/Payload", "ICMP.Type", "ECHO")`
 			// filterIPv6AddrAnd() as we received multicast/broadcast from fresh registered interfaces announcement
 			allFlows, err := gh.GetFlows(gremlin)
 			if err != nil {

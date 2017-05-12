@@ -675,38 +675,38 @@
 			"revision": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
 		{
-			"checksumSHA1": "5HgC7V5oFyE4xPKkx44bgqpo7ps=",
+			"checksumSHA1": "341tqz63qq5mx1uHggKKI6g5pKI=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket",
-			"revision": "b28ce7147a06b23a37cacd4bf2119f9da8dd51c4",
-			"revisionTime": "2017-01-13T15:34:03Z"
+			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",
+			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
-			"checksumSHA1": "hfRW3AnXhQ2mK9C1Lk5FEBo3REs=",
+			"checksumSHA1": "+QK1kuQB3dsLI46R0a856gaLFiQ=",
 			"path": "github.com/google/gopacket/afpacket",
-			"revision": "b28ce7147a06b23a37cacd4bf2119f9da8dd51c4",
-			"revisionTime": "2017-01-13T15:34:03Z"
+			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",
+			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
-			"checksumSHA1": "+kzb2qrfnCCYSPWFLFXxCEltmUU=",
+			"checksumSHA1": "QLTkulYVPHfs813eI0fKKW0buPk=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
-			"revision": "b28ce7147a06b23a37cacd4bf2119f9da8dd51c4",
-			"revisionTime": "2017-01-13T15:34:03Z"
+			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",
+			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
-			"checksumSHA1": "NRsU2fMy7dKx+9iFgmju5obLweA=",
+			"checksumSHA1": "OO3xBXJ9iAv5lpVU1Wr/6f1i7Dc=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcap",
-			"revision": "b28ce7147a06b23a37cacd4bf2119f9da8dd51c4",
-			"revisionTime": "2017-01-13T15:34:03Z"
+			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",
+			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
 			"checksumSHA1": "3s4xVMFdqU6YDaNJI7pJiU+o4Lw=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcapgo",
-			"revision": "b28ce7147a06b23a37cacd4bf2119f9da8dd51c4",
-			"revisionTime": "2017-01-13T15:34:03Z"
+			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",
+			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
 			"checksumSHA1": "WJ/6nt4LiRCzFQcaxfc/iodURPM=",

@@ -40,7 +40,7 @@ import (
 type Document map[string]interface{}
 
 type Result struct {
-	Result []Document `json:"result"`
+	Result interface{} `json:"result"`
 }
 
 type Client struct {
@@ -140,7 +140,7 @@ func parseResponse(resp *http.Response, result interface{}) error {
 		return parseError(body)
 	} else {
 		content, _ := ioutil.ReadAll(body)
-		if len(content) != 0 {
+		if len(content) != 0 && result != nil {
 			if err := common.JsonDecode(bytes.NewBuffer(content), result); err != nil {
 				return fmt.Errorf("Error while parsing OrientDB response: %s (%s)", err.Error(), content)
 			}
@@ -344,7 +344,7 @@ func (c *Client) Upsert(doc Document, key string) (Document, error) {
 	}
 
 	query := fmt.Sprintf("UPDATE %s CONTENT %s UPSERT RETURN AFTER @rid WHERE %s = '%s'", class, string(content), key, id)
-	docs, err := c.Sql(query)
+	docs, err := c.Search(query)
 
 	if len(docs) > 0 {
 		return docs[0], err
@@ -371,17 +371,17 @@ func (c *Client) GetDocumentClass(name string) (*DocumentClass, error) {
 func (c *Client) AlterProperty(className string, prop Property) error {
 	alterQuery := fmt.Sprintf("ALTER PROPERTY %s.%s", className, prop.Name)
 	if prop.Mandatory {
-		if _, err := c.Sql(alterQuery + " MANDATORY true"); err != nil && err != io.EOF {
+		if err := c.Sql(alterQuery+" MANDATORY true", nil); err != nil && err != io.EOF {
 			return err
 		}
 	}
 	if prop.NotNull {
-		if _, err := c.Sql(alterQuery + " NOTNULL true"); err != nil && err != io.EOF {
+		if err := c.Sql(alterQuery+" NOTNULL true", nil); err != nil && err != io.EOF {
 			return err
 		}
 	}
 	if prop.ReadOnly {
-		if _, err := c.Sql(alterQuery + " READONLY true"); err != nil && err != io.EOF {
+		if err := c.Sql(alterQuery+" READONLY true", nil); err != nil && err != io.EOF {
 			return err
 		}
 	}
@@ -396,7 +396,7 @@ func (c *Client) CreateProperty(className string, prop Property) error {
 	if prop.LinkedType != "" {
 		query += " " + prop.LinkedType
 	}
-	if _, err := c.Sql(query); err != nil {
+	if err := c.Sql(query, nil); err != nil {
 		return err
 	}
 
@@ -409,14 +409,12 @@ func (c *Client) CreateClass(class ClassDefinition) error {
 		query += " EXTENDS " + class.SuperClass
 	}
 
-	_, err := c.Sql(query)
-	return err
+	return c.Sql(query, nil)
 }
 
 func (c *Client) CreateIndex(className string, index Index) error {
 	query := fmt.Sprintf("CREATE INDEX %s ON %s (%s) %s", index.Name, className, strings.Join(index.Fields, ", "), index.Type)
-	_, err := c.Sql(query)
-	return err
+	return c.Sql(query, nil)
 }
 
 func (c *Client) CreateDocumentClass(class ClassDefinition) error {
@@ -488,22 +486,23 @@ func (c *Client) CreateDatabase() (Document, error) {
 	return result, nil
 }
 
-func (c *Client) Sql(query string) ([]Document, error) {
+func (c *Client) Sql(query string, result interface{}) error {
 	url := fmt.Sprintf("%s/command/%s/sql", c.url, c.database)
 	resp, err := c.Request("POST", url, bytes.NewBufferString(query))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 
-	var result Result
-	if err := parseResponse(resp, &result); err != nil {
-		return nil, err
-	}
-	return result.Result, nil
+	return parseResponse(resp, &Result{Result: result})
 }
 
-func (c *Client) Query(obj string, query *filters.SearchQuery) ([]Document, error) {
+func (c *Client) Search(query string) ([]Document, error) {
+	var docs []Document
+	return docs, c.Sql(query, &docs)
+}
+
+func (c *Client) Query(obj string, query *filters.SearchQuery, result interface{}) error {
 	interval := query.PaginationRange
 	filter := query.Filter
 
@@ -524,7 +523,7 @@ func (c *Client) Query(obj string, query *filters.SearchQuery) ([]Document, erro
 		}
 	}
 
-	return c.Sql(sql)
+	return c.Sql(sql, result)
 }
 
 func (c *Client) Connect() error {

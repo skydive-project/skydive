@@ -78,7 +78,7 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 
 	if flow.Link != nil {
 		flowDoc["Link"] = orient.Document{
-			"Protocol": flow.Link.Protocol,
+			"Protocol": flow.Link.Protocol.String(),
 			"A":        flow.Link.A,
 			"B":        flow.Link.B,
 			"ID":       flow.Link.ID,
@@ -87,16 +87,24 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 
 	if flow.Network != nil {
 		flowDoc["Network"] = orient.Document{
-			"Protocol": flow.Network.Protocol,
+			"Protocol": flow.Network.Protocol.String(),
 			"A":        flow.Network.A,
 			"B":        flow.Network.B,
 			"ID":       flow.Network.ID,
 		}
 	}
 
+	if flow.ICMP != nil {
+		flowDoc["ICMP"] = orient.Document{
+			"Type": flow.ICMP.Type.String(),
+			"Code": flow.ICMP.Code,
+			"ID":   flow.ICMP.ID,
+		}
+	}
+
 	if flow.Transport != nil {
 		flowDoc["Transport"] = orient.Document{
-			"Protocol": flow.Transport.Protocol,
+			"Protocol": flow.Transport.Protocol.String(),
 			"A":        flow.Transport.A,
 			"B":        flow.Transport.B,
 			"ID":       flow.Transport.ID,
@@ -167,18 +175,11 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 }
 
 func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
-	docs, err := c.client.Query("Flow", &fsq)
+	flowset := flow.NewFlowSet()
+
+	err := c.client.Query("Flow", &fsq, &flowset.Flows)
 	if err != nil {
 		return nil, err
-	}
-
-	flowset := flow.NewFlowSet()
-	for _, doc := range docs {
-		flow, err := documentToFlow(doc)
-		if err != nil {
-			return nil, err
-		}
-		flowset.Flows = append(flowset.Flows, flow)
 	}
 
 	if fsq.Dedup {
@@ -205,7 +206,7 @@ func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *f
 		}
 	}
 
-	docs, err := c.client.Sql(sql)
+	docs, err := c.client.Search(sql)
 	if err != nil {
 		return nil, err
 	}

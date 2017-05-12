@@ -166,8 +166,8 @@ func TestHA(t *testing.T) {
 		helper.ExecCmds(t, setupCmds...)
 	}
 
-	// 2 flows expected as we have two captures
-	checkFlows(2)
+	// 60 flows expected as we have two captures
+	checkFlows(60)
 
 	// increase the agent number
 	setupCmds = []helper.Cmd{
@@ -202,8 +202,8 @@ func TestHA(t *testing.T) {
 		helper.ExecCmds(t, setupCmds...)
 	}
 
-	// 4 expected because the gremlin expression matches all the eth0
-	checkFlows(4)
+	// 4*30 expected because the gremlin expression matches all the eth0
+	checkFlows(120)
 
 	// delete the capture to check that all captures will be delete at the agent side
 	client.Delete("capture", capture.ID())

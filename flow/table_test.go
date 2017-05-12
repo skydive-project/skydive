@@ -35,8 +35,8 @@ func TestFlowCreateUpdate(t *testing.T) {
 	flows := flowsFromPCAP(t, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 
 	// 200 packets, 50 icmp request with different endpoints, test we have only 50 flow keys
-	if len(flows) != 50 {
-		t.Errorf("Should return 50 flows got : %+v", flows)
+	if len(flows) != 100 {
+		t.Errorf("Should return 100 flows got : %+v", flows)
 	}
 
 	// test we have only 50 uuids
@@ -45,8 +45,8 @@ func TestFlowCreateUpdate(t *testing.T) {
 		uuids[f.UUID] = true
 	}
 
-	if len(uuids) != 50 {
-		t.Errorf("Should return 50 flow uuids got : %+v", flows)
+	if len(uuids) != 100 {
+		t.Errorf("Should return 100 flow uuids got : %+v", flows)
 	}
 }
 
@@ -70,8 +70,8 @@ func TestFlowExpire(t *testing.T) {
 	}
 
 	// check that the handler sent all the flows
-	if received != 50 {
-		t.Errorf("Should receive 50 flows got : %d", received)
+	if received != 100 {
+		t.Errorf("Should receive 100 flows got : %d", received)
 	}
 }
 
@@ -121,8 +121,8 @@ func TestGetFlowsWithFilters(t *testing.T) {
 	}
 
 	flows := table.getFlows(searchQuery).Flows
-	if len(flows) != 50 {
-		t.Errorf("Should return 50 flow uuids got : %+v", flows)
+	if len(flows) != 100 {
+		t.Errorf("Should return 100 flow uuids got : %+v", flows)
 	}
 
 	filter = filters.NewAndFilter(
@@ -136,7 +136,7 @@ func TestGetFlowsWithFilters(t *testing.T) {
 
 	flows = table.getFlows(searchQuery).Flows
 	if len(flows) != 1 {
-		t.Errorf("Should return 50 flow uuids got : %+v", flows)
+		t.Errorf("Should return 1 flow uuids got : %+v", flows)
 	}
 
 	searchQuery.Filter = filters.NewAndFilter(
@@ -145,8 +145,8 @@ func TestGetFlowsWithFilters(t *testing.T) {
 	)
 
 	flows = table.getFlows(searchQuery).Flows
-	if len(flows) != 49 {
-		t.Errorf("Should return 49 flow uuids got : %+v", flows)
+	if len(flows) != 99 {
+		t.Errorf("Should return 99 flow uuids got : %+v", flows)
 	}
 
 	// sort test
@@ -182,7 +182,7 @@ func TestGetFlowsWithFilters(t *testing.T) {
 
 	flows = table.getFlows(searchQuery).Flows
 	if len(flows) != 1 {
-		t.Errorf("Should return 1 flow uuids got : %+v", flows)
+		t.Errorf("Should return 1 flow uuid got : %+v", flows)
 	}
 }
 
