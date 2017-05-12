@@ -41,15 +41,18 @@ type PacketInjectorAPI struct {
 }
 
 type PacketParamsReq struct {
-	Src     string
-	Dst     string
-	SrcIP   string
-	DstIP   string
-	SrcMAC  string
-	DstMAC  string
-	Type    string
-	Payload string
-	Count   int
+	Src        string
+	Dst        string
+	SrcIP      string
+	DstIP      string
+	SrcMAC     string
+	DstMAC     string
+	Type       string
+	Payload    string
+	TrackingID string
+	ID         int64
+	Count      int64
+	Interval   int64
 }
 
 func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *packet_injector.PacketParams, error) {
@@ -59,9 +62,14 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 	srcNode := pi.getNode(ppr.Src)
 	dstNode := pi.getNode(ppr.Dst)
 
+	ipField := "IPV4"
+	if ppr.Type == "icmp6" {
+		ipField = "IPV6"
+	}
+
 	if ppr.SrcIP == "" {
 		if srcNode != nil {
-			ips, _ := srcNode.GetFieldStringList("IPV4")
+			ips, _ := srcNode.GetFieldStringList(ipField)
 			if len(ips) == 0 {
 				return "", nil, errors.New("No source IP in node and user input")
 			}
@@ -73,7 +81,7 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 
 	if ppr.DstIP == "" {
 		if dstNode != nil {
-			ips, _ := dstNode.GetFieldStringList("IPV4")
+			ips, _ := dstNode.GetFieldStringList(ipField)
 			if len(ips) == 0 {
 				return "", nil, errors.New("No dest IP in node and user input")
 			}
@@ -116,6 +124,8 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 		Type:      ppr.Type,
 		Payload:   ppr.Payload,
 		Count:     ppr.Count,
+		Interval:  ppr.Interval,
+		ID:        ppr.ID,
 	}
 
 	if errs := validator.Validate(pp); errs != nil {
@@ -140,14 +150,17 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 		return
 	}
 
-	if err := pi.PIClient.InjectPacket(host, pp); err != nil {
+	trackingID, err := pi.PIClient.InjectPacket(host, pp)
+	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(pp); err != nil {
+
+	ppr.TrackingID = trackingID
+	if err := json.NewEncoder(w).Encode(ppr); err != nil {
 		panic(err)
 	}
 }

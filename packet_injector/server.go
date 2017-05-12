@@ -43,27 +43,31 @@ type PacketInjectorServer struct {
 	Graph             *graph.Graph
 }
 
-func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) error {
+func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (string, error) {
 	var params PacketParams
 	if err := common.JsonDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
-		return fmt.Errorf("Unable to decode packet inject param message %v", msg)
+		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
 	}
 
-	if err := InjectPacket(&params, pis.Graph); err != nil {
-		return fmt.Errorf("Failed to inject packet: %s", err.Error())
+	trackingID, err := InjectPacket(&params, pis.Graph)
+	if err != nil {
+		return "", fmt.Errorf("Failed to inject packet: %s", err.Error())
 	}
-	return nil
+
+	return trackingID, nil
 }
 
 func (pis *PacketInjectorServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	switch msg.Type {
 	case "PIRequest":
 		var reply *shttp.WSMessage
-		if err := pis.injectPacket(msg); err != nil {
+		trackingID, err := pis.injectPacket(msg)
+		replyObj := &PacketInjectorReply{err: err, TrackingID: trackingID}
+		if err != nil {
 			logging.GetLogger().Error(err.Error())
-			reply = msg.Reply(err.Error(), "PIResult", http.StatusBadRequest)
+			reply = msg.Reply(replyObj, "PIResult", http.StatusBadRequest)
 		} else {
-			reply = msg.Reply("", "PIResult", http.StatusOK)
+			reply = msg.Reply(replyObj, "PIResult", http.StatusOK)
 		}
 
 		c.SendWSMessage(reply)

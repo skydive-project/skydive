@@ -42,7 +42,9 @@ var (
 	dstMAC     string
 	packetType string
 	payload    string
-	count      int
+	id         int64
+	count      int64
+	interval   int64
 )
 
 var PacketInjectorCmd = &cobra.Command{
@@ -56,25 +58,32 @@ var PacketInjectorCmd = &cobra.Command{
 			logging.GetLogger().Criticalf(err.Error())
 		}
 
-		packet := &api.PacketParamsReq{}
-		packet.Src = srcNode
-		packet.Dst = dstNode
-		packet.SrcIP = srcIP
-		packet.SrcMAC = srcMAC
-		packet.DstIP = dstIP
-		packet.DstMAC = dstMAC
-		packet.Type = packetType
-		packet.Payload = payload
-		packet.Count = count
-		if errs := validator.Validate(packet); errs != nil {
-			fmt.Println("Error: ", errs)
+		packet := &api.PacketParamsReq{
+			Src:      srcNode,
+			Dst:      dstNode,
+			SrcIP:    srcIP,
+			SrcMAC:   srcMAC,
+			DstIP:    dstIP,
+			DstMAC:   dstMAC,
+			Type:     packetType,
+			Payload:  payload,
+			ID:       id,
+			Count:    count,
+			Interval: interval,
+		}
+
+		if err = validator.Validate(packet); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s", err.Error())
 			cmd.Usage()
 			os.Exit(1)
 		}
+
 		if err := client.Create("injectpacket", &packet); err != nil {
 			logging.GetLogger().Errorf(err.Error())
 			os.Exit(1)
 		}
+
+		printJSON(packet)
 	},
 }
 
@@ -85,9 +94,11 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&dstIP, "dstIP", "", "", "destination node IP")
 	cmd.Flags().StringVarP(&srcMAC, "srcMAC", "", "", "source node MAC")
 	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
-	cmd.Flags().StringVarP(&packetType, "type", "", "icmp", "packet type: icmp")
+	cmd.Flags().StringVarP(&packetType, "type", "", "icmp", "packet type: icmp4")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
-	cmd.Flags().IntVarP(&count, "count", "", 1, "number of packets to be generated")
+	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
+	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
+	cmd.Flags().Int64VarP(&interval, "interval", "", 1000, "wait interval seconds between sending each packet")
 }
 
 func init() {

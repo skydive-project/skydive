@@ -1005,6 +1005,147 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 	RunTest(t, test)
 }
 
+func TestICMP(t *testing.T) {
+	if !common.IPv6Supported() {
+		t.Skipf("Platform doesn't support IPv6")
+	}
+
+	ipv4TrackingID, ipv6TrackingID := "", ""
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-icmp", true},
+
+			{"ovs-vsctl add-port br-icmp icmp-intf1 -- set interface icmp-intf1 type=internal", true},
+			{"ip netns add icmp-vm1", true},
+			{"ip link set icmp-intf1 netns icmp-vm1", true},
+			{"ip netns exec icmp-vm1 ip address add 10.0.0.1/24 dev icmp-intf1", true},
+			{"ip netns exec icmp-vm1 ip address add fd49:37c8:5229::1/48 dev icmp-intf1", true},
+			{"ip netns exec icmp-vm1 ip link set icmp-intf1 up", true},
+
+			{"ovs-vsctl add-port br-icmp icmp-intf2 -- set interface icmp-intf2 type=internal", true},
+			{"ip netns add icmp-vm2", true},
+			{"ip link set icmp-intf2 netns icmp-vm2", true},
+			{"ip netns exec icmp-vm2 ip address add 10.0.0.2/24 dev icmp-intf2", true},
+			{"ip netns exec icmp-vm2 ip address add fd49:37c8:5229::2/48 dev icmp-intf2", true},
+			{"ip netns exec icmp-vm2 ip link set icmp-intf2 up", true},
+		},
+
+		settleFunction: func(c *TestContext) error {
+			// check that src and dst interfaces are in the right place before doing the ping
+			gremlin := `G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1")`
+			_, err := c.gh.GetNode(gremlin)
+			if err != nil {
+				return errors.New("icmp-intf1 not found in the expected namespace")
+			}
+
+			gremlin = `G.V().Has("Name", "icmp-vm2").Out().Has("Name", "icmp-intf2")`
+			_, err = c.gh.GetNode(gremlin)
+			if err != nil {
+				return errors.New("icmp-intf2 not found in the expected namespace")
+			}
+
+			return nil
+		},
+
+		setupFunction: func(c *TestContext) error {
+			req := &api.PacketParamsReq{
+				Type:     "icmp4",
+				Src:      "G.V().Has('Name', 'icmp-intf1', 'Type', 'internal')",
+				Dst:      "G.V().Has('Name', 'icmp-intf2', 'Type', 'internal')",
+				SrcIP:    "10.0.0.1/24",
+				DstIP:    "10.0.0.2/24",
+				Count:    1,
+				Interval: 1000,
+				ID:       123,
+			}
+			err := pingRequest(t, c, req)
+			if err != nil {
+				return err
+			}
+			ipv4TrackingID = req.TrackingID
+
+			req = &api.PacketParamsReq{
+				Type:     "icmp6",
+				Src:      "G.V().Has('Name', 'icmp-intf1', 'Type', 'internal')",
+				Dst:      "G.V().Has('Name', 'icmp-intf2', 'Type', 'internal')",
+				SrcIP:    "fd49:37c8:5229::1/48",
+				DstIP:    "fd49:37c8:5229::2/48",
+				Count:    1,
+				Interval: 1000,
+				ID:       456,
+			}
+			err = pingRequest(t, c, req)
+			ipv6TrackingID = req.TrackingID
+			return err
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ip netns del icmp-vm1", true},
+			{"ip netns del icmp-vm2", true},
+			{"ovs-vsctl del-br br-icmp", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'br-icmp', 'Type', 'ovsbridge')`},
+		},
+
+		// since the agent update ticker is about 10 sec according to the configuration
+		// we should wait 11 sec to have the first update and the MetricRange filled
+		check: func(c *TestContext) error {
+			prefix := "g"
+			if !c.time.IsZero() {
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+			prefix += `.V().Has("Name", "br-icmp", "Type", "ovsbridge")`
+
+			gh := c.gh
+			gremlin := prefix + `.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4', 'ICMP.ID', 123)`
+			icmpFlows, err := gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+
+			if len(icmpFlows) != 1 {
+				return fmt.Errorf("We should receive one ICMPv4 flow with ID 123, got %s", helper.FlowsToString(icmpFlows))
+			}
+
+			gremlin = prefix + fmt.Sprintf(`.Flows().Has('TrackingID', '%s')`, ipv4TrackingID)
+			icmpFlows, err = gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+
+			if len(icmpFlows) != 1 {
+				return fmt.Errorf("We should receive one ICMPv4 flow with TrackingID %s, got %s", ipv4TrackingID, helper.FlowsToString(icmpFlows))
+			}
+
+			gremlin = prefix + `.Flows().Has('LayersPath', 'Ethernet/IPv6/ICMPv6', 'ICMP.ID', 456)`
+			icmpFlows, err = gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+
+			if len(icmpFlows) != 1 {
+				return fmt.Errorf("We should receive one ICMPv6 flow with ID 456, got %s", helper.FlowsToString(icmpFlows))
+			}
+
+			gremlin = prefix + fmt.Sprintf(`.Flows().Has('TrackingID', '%s')`, ipv6TrackingID)
+			icmpFlows, err = gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+
+			if len(icmpFlows) != 1 {
+				return fmt.Errorf("We should receive one ICMPv6 flow with TrackingID %s, got %s", ipv6TrackingID, helper.FlowsToString(icmpFlows))
+			}
+
+			return nil
+		},
+	}
+
+	RunTest(t, test)
+}
+
 func TestFlowGRETunnel(t *testing.T) {
 	testFlowTunnel(t, "br-fgt", "gre", false, "192.168.0.1", "192.168.0.2",
 		"172.16.0.1", "172.16.0.2", "192.168.0.0/24")
@@ -1366,11 +1507,11 @@ func TestSort(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) (err error) {
-			if err = ping(t, c, "G.V().Has('Name', 'src1-eth0')", "G.V().Has('Name', 'dst-eth0')", 10); err != nil {
+			if err = ping(t, c, 4, "G.V().Has('Name', 'src1-eth0')", "G.V().Has('Name', 'dst-eth0')", 10, 0); err != nil {
 				return
 			}
 
-			if err = ping(t, c, "G.V().Has('Name', 'src2-eth0')", "G.V().Has('Name', 'dst-eth0')", 20); err != nil {
+			if err = ping(t, c, 4, "G.V().Has('Name', 'src2-eth0')", "G.V().Has('Name', 'dst-eth0')", 20, 0); err != nil {
 				return
 			}
 
@@ -1485,13 +1626,13 @@ func TestFlowSumStep(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) (err error) {
-			if err = ping(t, c, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 3); err != nil {
+			if err = ping(t, c, 4, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 3, 0); err != nil {
 				return
 			}
-			if err = ping(t, c, "G.V().Has('Name', 'intf2')", "G.V().Has('Name', 'intf3')", 4); err != nil {
+			if err = ping(t, c, 4, "G.V().Has('Name', 'intf2')", "G.V().Has('Name', 'intf3')", 4, 0); err != nil {
 				return
 			}
-			if err = ping(t, c, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf3')", 3); err != nil {
+			if err = ping(t, c, 4, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf3')", 3, 0); err != nil {
 				return
 			}
 			return
@@ -1513,8 +1654,13 @@ func TestFlowSumStep(t *testing.T) {
 
 		check: func(c *TestContext) error {
 			gh := c.gh
-			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
-			gremlin += `.V().Has("Name", "br-sum", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4").dedup().sum("Metric.ABPackets")`
+			gremlin := "g"
+
+			if !c.time.IsZero() {
+				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+
+			gremlin += `.V().Has("Name", "br-sum", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Sum("Metric.ABPackets")`
 
 			var s interface{}
 			if err := gh.Query(gremlin, &s); err != nil {
@@ -1565,7 +1711,7 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) (err error) {
-			return ping(t, c, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 3)
+			return ping(t, c, 4, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 3, 0)
 		},
 
 		tearDownCmds: []helper.Cmd{
@@ -1629,7 +1775,7 @@ func TestFlowsWithShortestPath(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) (err error) {
-			return ping(t, c, "G.V().Has('Name', 'spt-src-eth0')", "G.V().Has('Name', 'spt-dst-eth0')", 10)
+			return ping(t, c, 4, "G.V().Has('Name', 'spt-src-eth0')", "G.V().Has('Name', 'spt-dst-eth0')", 10, 0)
 		},
 
 		tearDownCmds: []helper.Cmd{

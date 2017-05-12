@@ -54,7 +54,7 @@ func TestPacketInjector(t *testing.T) {
 			packet := &api.PacketParamsReq{
 				Src:   "G.V().Has('Name', 'pi-eth-src')",
 				Dst:   "G.V().Has('Name', 'pi-eth-dst')",
-				Type:  "icmp",
+				Type:  "icmp4",
 				Count: 10,
 			}
 

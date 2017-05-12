@@ -9,7 +9,8 @@ Vue.component('inject-form', {
       <div class="form-group">\
         <label for="inject-type">Type</label>\
         <select id="inject-type" v-model="type" class="form-control input-sm">\
-          <option value="icmp">ICMPv4/Echo request</option>\
+          <option value="icmp4">ICMPv4/Echo request</option>\
+          <option value="icmp6">ICMPv6/Echo request</option>\
         </select>\
       </div>\
       <div class="form-group">\
@@ -28,6 +29,14 @@ Vue.component('inject-form', {
         <label for="inject-count">Nb. of packets</label>\
         <input id="inject-count" type="number" class="form-control input-sm" v-model="count" min="1" />\
       </div>\
+      <div class="form-group">\
+        <label for="inject-count">ICMP Identifier</label>\
+        <input id="inject-id" type="number" class="form-control input-sm" v-model="id" min="0" />\
+      </div>\
+      <div class="form-group">\
+        <label for="inject-interval">Interval</label>\
+        <input id="inject-interval" type="number" class="form-control input-sm" v-model="interval" min="0" />\
+      </div>\
       <button type="submit" id="inject" class="btn btn-primary">Inject</button>\
       <button type="button" class="btn btn-danger" @click="reset">Reset</button>\
     </form>\
@@ -38,7 +47,9 @@ Vue.component('inject-form', {
       node1: "",
       node2: "",
       count: 1,
-      type: "icmp",
+      type: "icmp4",
+      id: 0,
+      interval: 0,
     };
   },
 
@@ -118,7 +129,9 @@ Vue.component('inject-form', {
           "Src": "G.V('" + this.node1 + "')",
           "Dst": "G.V('" + this.node2 + "')",
           "Type": this.type,
-          "Count": this.count
+          "Count": this.count,
+          "ID": this.id,
+          "Interval": this.interval,
         }),
         contentType: "application/json; charset=utf-8",
         method: 'POST',

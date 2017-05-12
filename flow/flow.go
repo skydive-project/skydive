@@ -219,6 +219,13 @@ func networkID(p *gopacket.Packet) int64 {
 	return id
 }
 
+func NewFlow() *Flow {
+	return &Flow{
+		Metric:           &FlowMetric{},
+		LastUpdateMetric: &FlowMetric{},
+	}
+}
+
 func (flow *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	layersPath := strings.Replace(flow.LayersPath, "Dot1Q/", "", -1)
 

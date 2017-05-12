@@ -137,10 +137,7 @@ func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
 		return flow, false
 	}
 
-	new := &Flow{
-		Metric:           &FlowMetric{},
-		LastUpdateMetric: &FlowMetric{},
-	}
+	new := NewFlow()
 	ft.table[key] = new
 
 	return new, true
