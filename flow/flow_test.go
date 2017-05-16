@@ -451,7 +451,7 @@ func TestEmptyParentUUIDExported(t *testing.T) {
 func TestPCAPMplsContrail(t *testing.T) {
 	expected := []*Flow{
 		{
-			LayersPath:  "IPv4/ICMPv4/Payload",
+			LayersPath:  "IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Network: &FlowLayer{
 				Protocol: FlowProtocol_IPV4,
@@ -566,7 +566,7 @@ func TestPCAPL3TrackingID(t *testing.T) {
 func TestVlansQinQ(t *testing.T) {
 	expected := []*Flow{
 		{
-			LayersPath:  "Ethernet/Dot1Q/IPv4/ICMPv4/Payload",
+			LayersPath:  "Ethernet/Dot1Q/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
 				Protocol: FlowProtocol_ETHERNET,
@@ -587,7 +587,7 @@ func TestVlansQinQ(t *testing.T) {
 			},
 		},
 		{
-			LayersPath:  "Ethernet/Dot1Q/Dot1Q/IPv4/ICMPv4/Payload",
+			LayersPath:  "Ethernet/Dot1Q/Dot1Q/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
 				Protocol: FlowProtocol_ETHERNET,
@@ -608,7 +608,7 @@ func TestVlansQinQ(t *testing.T) {
 			},
 		},
 		{
-			LayersPath:  "Ethernet/Dot1Q/Dot1Q/Dot1Q/IPv4/ICMPv4/Payload",
+			LayersPath:  "Ethernet/Dot1Q/Dot1Q/Dot1Q/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
 				Protocol: FlowProtocol_ETHERNET,
@@ -629,7 +629,7 @@ func TestVlansQinQ(t *testing.T) {
 			},
 		},
 		{
-			LayersPath:  "Ethernet/Dot1Q/Dot1Q/Dot1Q/Dot1Q/IPv4/ICMPv4/Payload",
+			LayersPath:  "Ethernet/Dot1Q/Dot1Q/Dot1Q/Dot1Q/IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Link: &FlowLayer{
 				Protocol: FlowProtocol_ETHERNET,
@@ -695,7 +695,7 @@ func TestGREEthernet(t *testing.T) {
 			},
 		},
 		{
-			LayersPath:  "IPv4/ICMPv4/Payload",
+			LayersPath:  "IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Network: &FlowLayer{
 				Protocol: FlowProtocol_IPV4,
@@ -740,7 +740,7 @@ func TestGREMPLS(t *testing.T) {
 			},
 		},
 		{
-			LayersPath:  "IPv4/ICMPv4/Payload",
+			LayersPath:  "IPv4/ICMPv4",
 			Application: "ICMPv4",
 			Network: &FlowLayer{
 				Protocol: FlowProtocol_IPV4,

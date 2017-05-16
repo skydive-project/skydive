@@ -93,7 +93,7 @@ func TestHA(t *testing.T) {
 	checkFlows := func(flowExpected int) {
 		t.Logf("Check for flows: %d", flowExpected)
 		retry = func() error {
-			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')"); err != nil {
+			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')"); err != nil {
 				return err
 			}
 
@@ -111,7 +111,7 @@ func TestHA(t *testing.T) {
 
 		// check in the storage
 		retry = func() error {
-			if flows, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')"); err != nil {
+			if flows, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')"); err != nil {
 				return err
 			}
 
@@ -173,7 +173,7 @@ func TestHA(t *testing.T) {
 		t.Logf("Wait for first flows...")
 
 		retry = func() error {
-			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')"); err != nil {
+			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')"); err != nil {
 				return err
 			}
 

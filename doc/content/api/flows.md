@@ -23,7 +23,7 @@ $ skydive client topology query --gremlin "G.Flows().Limit(1)"
       "Last": 1477563666,
       "Start": 1477563661
     },
-    "LayersPath": "Ethernet/IPv4/ICMPv4/Payload",
+    "LayersPath": "Ethernet/IPv4/ICMPv4",
     "Link": {
       "A": "02:48:4f:c4:40:99",
       "B": "e2:d0:f0:61:e7:81",

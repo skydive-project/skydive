@@ -54,7 +54,7 @@ Content-Type: application/json
       "Last": 1477572621,
       "Start": 1477572616
     },
-    "LayersPath": "Ethernet/IPv4/ICMPv4/Payload",
+    "LayersPath": "Ethernet/IPv4/ICMPv4",
     "Link": {
       "A": "02:48:4f:c4:40:99",
       "B": "e2:d0:f0:61:e7:81",
