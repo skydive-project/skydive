@@ -27,11 +27,12 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"syscall"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -104,9 +105,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) error {
 	}
 
 	ifName, _ := srcNode.GetFieldString("Name")
-
-	nscontext, err := topology.NewNetNSContextByNode(g, srcNode)
-	defer nscontext.Close()
+	_, nsPath, err := topology.NamespaceFromNode(g, srcNode)
 
 	g.RUnlock()
 
@@ -114,15 +113,15 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) error {
 		return err
 	}
 
-	handle, err := pcap.OpenLive(ifName, 1024, false, 2000)
+	rawSocket, err := common.NewRawSocketInNs(nsPath, ifName)
 	if err != nil {
-		return fmt.Errorf("Unable to open the source node: %s", err.Error())
+		return err
 	}
-	defer handle.Close()
+	defer rawSocket.Close()
 
-	packet := buffer.Bytes()
+	packetData := buffer.Bytes()
 	for i := 0; i < pp.Count; i++ {
-		if err := handle.WritePacketData(packet); err != nil {
+		if _, err := syscall.Write(rawSocket.GetFd(), packetData); err != nil {
 			return fmt.Errorf("Write error: %s", err.Error())
 		}
 	}

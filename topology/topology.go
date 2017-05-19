@@ -71,40 +71,49 @@ func GraphPath(g *graph.Graph, n *graph.Node) string {
 	return ""
 }
 
-func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NetNSContext, error) {
+func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
-		return nil, fmt.Errorf("No Name for node %v", n)
+		return "", "", fmt.Errorf("No Name for node %v", n)
 	}
 
 	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
 	if len(nodes) == 0 {
-		return nil, fmt.Errorf("Failed to determine probePath for %s", name)
+		return "", "", fmt.Errorf("Failed to determine probePath for %s", name)
 	}
 
 	for _, node := range nodes {
 		tp, _ := node.GetFieldString("Type")
 		if tp == "" {
-			return nil, fmt.Errorf("No Type for node %v", n)
+			return "", "", fmt.Errorf("No Type for node %v", n)
 		}
 
 		if tp == "netns" {
 			name, _ := node.GetFieldString("Name")
 			if name == "" {
-				return nil, fmt.Errorf("No Name for node %v", node)
+				return "", "", fmt.Errorf("No Name for node %v", node)
 			}
 
 			path, _ := node.GetFieldString("Path")
 			if path == "" {
-				return nil, fmt.Errorf("No Path for node %v", node)
+				return "", "", fmt.Errorf("No Path for node %v", node)
 			}
-			logging.GetLogger().Debugf("Switching to namespace %s (path: %s)", name, path)
 
-			return common.NewNetNsContext(path)
+			return name, path, nil
 		}
 	}
 
-	return nil, nil
+	return "", "", nil
+}
+
+func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NetNSContext, error) {
+	name, path, err := NamespaceFromNode(g, n)
+	if err != nil || name == "" || path == "" {
+		return nil, err
+	}
+
+	logging.GetLogger().Debugf("Switching to namespace %s (path: %s)", name, path)
+	return common.NewNetNsContext(path)
 }
 
 type HostNodeTIDMap map[string][]string
