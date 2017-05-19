@@ -296,9 +296,6 @@ func (u *NetNsNetLinkProbe) statsToMap(statistics *netlink.LinkStatistics) map[s
 }
 
 func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
-	u.Graph.Lock()
-	defer u.Graph.Unlock()
-
 	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
 	if driver == "" && link.Type() == "bridge" {
 		driver = "bridge"
@@ -399,7 +396,9 @@ func (u *NetNsNetLinkProbe) onLinkAdded(link netlink.Link) {
 			return
 		}
 
+		u.Graph.Lock()
 		u.addLinkToTopology(link)
+		u.Graph.Unlock()
 	}
 }
 
@@ -519,7 +518,11 @@ func (u *NetNsNetLinkProbe) initialize() {
 
 	for _, link := range links {
 		logging.GetLogger().Debugf("Initialize ADD %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.String())
-		u.addLinkToTopology(link)
+		u.Graph.Lock()
+		if u.Graph.LookupFirstChild(u.Root, graph.Metadata{"Name": link.Attrs().Name, "IfIndex": int64(link.Attrs().Index)}) == nil {
+			u.addLinkToTopology(link)
+		}
+		u.Graph.Unlock()
 	}
 }
 
