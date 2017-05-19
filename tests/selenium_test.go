@@ -46,7 +46,7 @@ func TestSelenium(t *testing.T) {
 	setupCmds := []helper.Cmd{
 		{fmt.Sprintf("%s start 124.65.54.42/24 124.65.54.43/24", topology), true},
 		{"docker pull elgalu/selenium", true},
-		{"docker run -d --name=grid -p 4444:24444 -p 5900:25900 -e --shm-size=1g elgalu/selenium", true},
+		{"docker run -d --name=grid -p 4444:24444 -p 5900:25900 -e --shm-size=1g -p 6080:26080 -e SCREEN_WIDTH=1600 -e SCREEN_HEIGHT=1400 -e NOVNC=true elgalu/selenium", true},
 		{"docker exec grid wait_all_done 30s", true},
 	}
 
@@ -74,17 +74,97 @@ func TestSelenium(t *testing.T) {
 	if err := webdriver.Get("http://" + ipaddr + ":8082"); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 
-	startCapture := func(wd selenium.WebDriver) error {
-		captureTab, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='Captures']")
+	authOptions := &shttp.AuthenticationOpts{}
+	gh := gclient.NewGremlinQueryHelper(authOptions)
+
+	findElement := func(selection, xpath string) (el selenium.WebElement, err error) {
+		common.Retry(func() error {
+			el, err = webdriver.FindElement(selection, xpath)
+			if err != nil || el == nil {
+				return fmt.Errorf("Failed to find element for %s (error: %+v)", xpath, err)
+			}
+			return nil
+		}, 10, time.Second)
+		return
+	}
+
+	zoomOut := func() error {
+		for i := 0; i != 5; i++ {
+			zo, err := findElement(selenium.ByID, "zoom-out")
+			if err != nil {
+				return err
+			}
+			if err = zo.Click(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	expandGroup := func(gremlin string) error {
+		node, err := gh.GetNode(gremlin)
+		if err != nil {
+			return err
+		}
+		if err = webdriver.KeyDown(selenium.AltKey); err != nil {
+			return err
+		}
+
+		err = common.Retry(func() error {
+			el, err := findElement(selenium.ByXPATH, ".//*[@id='node-"+string(node.ID)+"']")
+			if err != nil {
+				return err
+			}
+
+			if err = el.Click(); err != nil {
+				zoomOut()
+				return err
+			}
+
+			return nil
+		}, 10, time.Second)
+
+		if err != nil {
+			return err
+		}
+
+		if err = webdriver.KeyUp(selenium.AltKey); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	selectNode := func(gremlin string) error {
+		node, err := gh.GetNode(gremlin)
+		if err != nil {
+			return err
+		}
+
+		el, err := findElement(selenium.ByXPATH, ".//*[@id='node-"+string(node.ID)+"']")
+		if err != nil {
+			return err
+		}
+		return common.Retry(func() error {
+			if err := el.Click(); err != nil {
+				zoomOut()
+				return fmt.Errorf("Failed to click on source node: %s", err.Error())
+			}
+			return nil
+		}, 10, time.Second)
+	}
+
+	startCapture := func() error {
+		captureTab, err := webdriver.FindElement(selenium.ByXPATH, ".//*[@id='Captures']")
 		if err != nil || captureTab == nil {
 			return fmt.Errorf("Not found capture tab: %v", err)
 		}
 		if err := captureTab.Click(); err != nil {
 			return fmt.Errorf("%v", err)
 		}
-		createBtn, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='create-capture']")
+		createBtn, err := webdriver.FindElement(selenium.ByXPATH, ".//*[@id='create-capture']")
 		if err != nil || createBtn == nil {
 			return fmt.Errorf("Not found create button : %v", err)
 		}
@@ -93,7 +173,7 @@ func TestSelenium(t *testing.T) {
 		}
 		time.Sleep(2 * time.Second)
 
-		gremlinRdoBtn, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='by-gremlin']")
+		gremlinRdoBtn, err := webdriver.FindElement(selenium.ByXPATH, ".//*[@id='by-gremlin']")
 		if err != nil || gremlinRdoBtn == nil {
 			return fmt.Errorf("Not found gremlin expression radio button: %v", err)
 		}
@@ -101,7 +181,7 @@ func TestSelenium(t *testing.T) {
 			return err
 		}
 
-		queryTxtBox, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='capture-query']")
+		queryTxtBox, err := webdriver.FindElement(selenium.ByXPATH, ".//*[@id='capture-query']")
 		if err != nil || queryTxtBox == nil {
 			return fmt.Errorf("Not found Query text box: %v", err)
 		}
@@ -112,7 +192,7 @@ func TestSelenium(t *testing.T) {
 			return err
 		}
 
-		startBtn, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='start-capture']")
+		startBtn, err := webdriver.FindElement(selenium.ByXPATH, ".//*[@id='start-capture']")
 		if err != nil || startBtn == nil {
 			return fmt.Errorf("Not found start button: %v", err)
 		}
@@ -122,7 +202,7 @@ func TestSelenium(t *testing.T) {
 		time.Sleep(3 * time.Second)
 
 		//check capture created with the given query
-		captures, err := wd.FindElements(selenium.ByClassName, "query")
+		captures, err := webdriver.FindElements(selenium.ByClassName, "query")
 		if err != nil {
 			return err
 		}
@@ -140,19 +220,8 @@ func TestSelenium(t *testing.T) {
 		return nil
 	}
 
-	findElement := func(wd selenium.WebDriver, selection, xpath string) (el selenium.WebElement, err error) {
-		common.Retry(func() error {
-			el, err = wd.FindElement(selection, xpath)
-			if err != nil || el == nil {
-				return fmt.Errorf("Failed to find element for %s (error: %+v)", xpath, err)
-			}
-			return nil
-		}, 10, time.Second)
-		return
-	}
-
-	injectPacket := func(wd selenium.WebDriver) error {
-		generatorTab, err := findElement(wd, selenium.ByXPATH, ".//*[@id='Generator']")
+	injectPacket := func() error {
+		generatorTab, err := findElement(selenium.ByXPATH, ".//*[@id='Generator']")
 		if err != nil {
 			return err
 		}
@@ -164,7 +233,7 @@ func TestSelenium(t *testing.T) {
 			return fmt.Errorf("Could not click on generator tab: %s", err.Error())
 		}
 
-		injectSrc, err := findElement(wd, selenium.ByXPATH, ".//*[@id='inject-src']/input")
+		injectSrc, err := findElement(selenium.ByXPATH, ".//*[@id='inject-src']/input")
 		if err != nil {
 			return err
 		}
@@ -173,32 +242,11 @@ func TestSelenium(t *testing.T) {
 			return fmt.Errorf("Failed to click on inject input: %s", err.Error())
 		}
 
-		authOptions := &shttp.AuthenticationOpts{}
-		gh := gclient.NewGremlinQueryHelper(authOptions)
-
-		node1, err := gh.GetNode("G.V().Has('Name', 'eth0', 'IPV4', Contains('124.65.54.42/24')).HasKey('TID')")
-		if err != nil {
+		if err = selectNode("G.V().Has('Name', 'eth0', 'IPV4', Contains('124.65.54.42/24'))"); err != nil {
 			return err
 		}
 
-		node2, err := gh.GetNode("G.V().Has('Name', 'eth0', 'IPV4', Contains('124.65.54.43/24')).HasKey('TID')")
-		if err != nil {
-			return err
-		}
-
-		tid1, _ := node1.GetFieldString("TID")
-		tid2, _ := node2.GetFieldString("TID")
-
-		srcNode, err := findElement(wd, selenium.ByXPATH, ".//*[@tid='"+tid1+"']")
-		if err != nil {
-			return err
-		}
-
-		if err := srcNode.Click(); err != nil {
-			return fmt.Errorf("Failed to click on source node: %s", err.Error())
-		}
-
-		injectDst, err := findElement(wd, selenium.ByXPATH, ".//*[@id='inject-dst']/input")
+		injectDst, err := findElement(selenium.ByXPATH, ".//*[@id='inject-dst']/input")
 		if err != nil {
 			return err
 		}
@@ -206,15 +254,11 @@ func TestSelenium(t *testing.T) {
 			return fmt.Errorf("Failed to click on destination input: %s", err.Error())
 		}
 
-		dstNode, err := findElement(wd, selenium.ByXPATH, ".//*[@tid='"+tid2+"']")
-		if err != nil {
+		if err = selectNode("G.V().Has('Name', 'eth0', 'IPV4', Contains('124.65.54.43/24'))"); err != nil {
 			return err
 		}
-		if err := dstNode.Click(); err != nil {
-			return fmt.Errorf("Failed to click on destination node: %s", err.Error())
-		}
 
-		injectBtn, err := findElement(wd, selenium.ByXPATH, ".//*[@id='inject']")
+		injectBtn, err := findElement(selenium.ByXPATH, ".//*[@id='inject']")
 		if err != nil {
 			return err
 		}
@@ -224,7 +268,7 @@ func TestSelenium(t *testing.T) {
 
 		var alertMsg selenium.WebElement
 		err = common.Retry(func() error {
-			alertMsg, err = findElement(wd, selenium.ByClassName, "alert-success")
+			alertMsg, err = findElement(selenium.ByClassName, "alert-success")
 			return err
 		}, 10, time.Second)
 		if err != nil {
@@ -239,19 +283,19 @@ func TestSelenium(t *testing.T) {
 		return nil
 	}
 
-	verifyFlows := func(wd selenium.WebDriver) error {
+	verifyFlows := func() error {
 		time.Sleep(3 * time.Second)
 
-		flowsTab, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='Flows']")
-		if err != nil || flowsTab == nil {
+		flowsTab, err := findElement(selenium.ByXPATH, ".//*[@id='Flows']")
+		if err != nil {
 			return fmt.Errorf("Flows tab not found: %v", err)
 		}
 		if err := flowsTab.Click(); err != nil {
 			return err
 		}
 
-		flowQuery, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='flow-table-query']")
-		if err != nil || flowQuery == nil {
+		flowQuery, err := findElement(selenium.ByXPATH, ".//*[@id='flow-table-query']")
+		if err != nil {
 			return err
 		}
 		if err := flowQuery.Clear(); err != nil {
@@ -264,8 +308,8 @@ func TestSelenium(t *testing.T) {
 
 		time.Sleep(2 * time.Second)
 
-		flowRow, err := wd.FindElement(selenium.ByClassName, "flow-row")
-		if err != nil || flowRow == nil {
+		flowRow, err := findElement(selenium.ByClassName, "flow-row")
+		if err != nil {
 			return err
 		}
 		rowData, err := flowRow.FindElements(selenium.ByTagName, "td")
@@ -285,15 +329,32 @@ func TestSelenium(t *testing.T) {
 		return nil
 	}
 
-	if err := startCapture(webdriver); err != nil {
+	// expand the topology to be sure to find nodes
+	expand, err := findElement(selenium.ByID, "expand-collapse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expand.Click()
+
+	if err = expandGroup("G.V().Has('Name', 'vm1', 'Type', 'netns')"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := injectPacket(webdriver); err != nil {
+	time.Sleep(2 * time.Second)
+
+	if err = expandGroup("G.V().Has('Name', 'vm2', 'Type', 'netns')"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := verifyFlows(webdriver); err != nil {
+	if err := startCapture(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := injectPacket(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := verifyFlows(); err != nil {
 		t.Fatal(err)
 	}
 }

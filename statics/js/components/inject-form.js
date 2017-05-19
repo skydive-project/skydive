@@ -18,10 +18,10 @@ Vue.component('inject-form', {
         <node-selector class="inject-target"\
                        placeholder="From"\
                        id="inject-src"\
-                       attr="ID"\
+                       attr="id"\
                        v-model="node1"></node-selector>\
         <node-selector placeholder="To"\
-                       attr="ID"\
+                       attr="id"\
                        id="inject-dst"\
                        v-model="node2"></node-selector>\
       </div>\
@@ -88,14 +88,18 @@ Vue.component('inject-form', {
       if (oldVal) {
         this.highlightNode(oldVal, false);
       }
-      this.highlightNode(newVal, true);
+      if (newVal) {
+        this.highlightNode(newVal, true);
+      }
     },
 
     node2: function(newVal, oldVal) {
       if (oldVal) {
         this.highlightNode(oldVal, false);
       }
-      this.highlightNode(newVal, true);
+      if (newVal) {
+        this.highlightNode(newVal, true);
+      }
     }
 
   },
@@ -103,6 +107,7 @@ Vue.component('inject-form', {
   methods: {
 
     highlightNode: function(id, bool) {
+      if (!id) return;
       if (bool)
         this.$store.commit('highlight', id);
       else

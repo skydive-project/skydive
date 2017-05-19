@@ -79,8 +79,8 @@ func (fb *FabricProbe) OnNodeDeleted(n *graph.Node) {
 }
 
 func (fb *FabricProbe) LinkNodes(parent *graph.Node, child *graph.Node, linkMetadata *graph.Metadata) {
-	if !fb.Graph.AreLinked(child, parent, *linkMetadata) {
-		fb.Graph.Link(parent, child, *linkMetadata)
+	if !topology.HaveLayer2Link(fb.Graph, child, parent, *linkMetadata) {
+		topology.AddLayer2Link(fb.Graph, parent, child, *linkMetadata)
 	}
 }
 
@@ -197,8 +197,6 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 				continue
 			}
 
-			// Fabric Node to Incoming Node
-
 			parentNode, err := fb.getOrCreateFabricNodeFromDef(parentDef)
 			if err != nil {
 				logging.GetLogger().Error(err.Error())
@@ -233,7 +231,8 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 				continue
 			}
 
-			if !topology.HaveLayer2Link(fb.Graph, node1, node2, linkMetadata) {
+			if !topology.HaveOwnershipLink(fb.Graph, node1, node2, nil) {
+				topology.AddOwnershipLink(fb.Graph, node1, node2, nil)
 				topology.AddLayer2Link(fb.Graph, node1, node2, linkMetadata)
 			}
 		}

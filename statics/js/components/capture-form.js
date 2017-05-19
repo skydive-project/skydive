@@ -107,9 +107,9 @@ Vue.component('capture-form', {
     visible: function(newValue) {
       if (newValue === true &&
           this.$store.state.currentNode &&
-          this.$store.state.currentNode.IsCaptureAllowed() &&
-          this.$store.state.currentNode.Metadata.TID) {
-        this.node1 = this.$store.state.currentNode.Metadata.TID;
+          this.$store.state.currentNode.isCaptureAllowed() &&
+          this.$store.state.currentNode.metadata.TID) {
+        this.node1 = this.$store.state.currentNode.metadata.TID;
       }
     },
 

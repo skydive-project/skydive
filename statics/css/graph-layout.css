@@ -1,0 +1,116 @@
+text {
+  fill: #111;
+  pointer-events: none;
+  font: 12px Helvetica, Arial, sans-serif;
+  stroke-width: 0;
+}
+
+.node {
+  stroke: #888;
+  stroke-width: 1;
+  opacity: 1;
+  cursor: pointer;
+}
+
+.node-selection .node {
+  cursor: crosshair !important;
+}
+
+.node-invalid-selection .node {
+  cursor: not-allowed !important;
+}
+
+.node circle {
+  fill: #c7e9c0;
+}
+
+.node circle.manager {
+  fill: #111;
+  stroke: #eee;
+}
+
+.node text {
+  font: 20px sans-serif;
+}
+
+.selected circle {
+  stroke: white;
+  stroke-width: 3;
+}
+
+.ovsbridge circle, .bridge circle {
+  fill: #c6dbef;
+}
+
+.ovsport circle, .port circle, .bond circle {
+  fill: #fdd0a2;
+}
+
+.highlighted circle {
+  fill: #FFF244;
+}
+
+.down circle {
+  fill: #FF3235;
+}
+
+.link {
+  stroke: #111;
+  stroke-width: 1.5;
+}
+
+.links path.ownership {
+  /*display: none;*/
+  opacity: 0.1;
+}
+
+.links path.veth {
+  stroke-dasharray: 5,5;
+}
+
+.links path.fabric {
+  stroke: #eee;
+  stroke-width: 2;
+}
+
+.group {
+  fill: #517587;
+  stroke: #517587;
+  stroke-linejoin: round;
+}
+
+.groups .netns {
+  fill: #D8C3FF;
+  stroke: #D8C3FF;
+}
+
+.groups .ovsbridge {
+  fill: #bbfda0;
+  stroke: #bbfda0;
+}
+
+.groups .fabric {
+  fill: #FAC24D;
+  stroke: #FAC24D;
+}
+
+text.link-label {
+  font-size: 18px;
+  text-anchor: middle;
+  stroke-linecap: butt;
+  stroke: #eee;
+  stroke-linejoin: miter;
+  paint-order: stroke;
+  fill: #000;
+  stroke-width: 3px;
+  font-weight: bold;
+}
+
+text.link-label-alert {
+  fill: #ff4a4a;;
+}
+
+text.link-label-warning {
+  stroke: #000;
+  fill: #ffa330;
+}

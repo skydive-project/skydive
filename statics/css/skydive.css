@@ -43,35 +43,8 @@ label {
   overflow: hidden;
 }
 
-.conversation-d3 {
-  margin-top: 20px;
-}
-
 .node-selection {
   cursor: crosshair;
-}
-
-.node {
-  fill: lightsteelblue;
-  stroke: #888;
-  stroke-width: 1;
-  opacity: 1;
-  cursor: pointer;
-}
-
-.node-selection .node {
-  cursor: crosshair !important;
-}
-
-.node-invalid-selection .node {
-  cursor: not-allowed !important;
-}
-
-text {
-  fill: #111;
-  pointer-events: none;
-  font: 12px Helvetica, Arial, sans-serif;
-  stroke-width: 0;
 }
 
 .row text, .column text {
@@ -85,118 +58,6 @@ text {
 
 .row line, .column line {
   stroke: #fff;
-}
-
-.default circle {
-  fill: rgb(199, 233, 192);
-}
-
-.host circle {
-  fill: #b5ffc5
-}
-
-.ovsbridge, .bridge circle {
-  fill: rgb(198, 219, 239);
-}
-
-.ovsport, .bond circle {
-  fill: rgb(253, 208, 162);
-}
-
-.down circle {
-  fill: rgb(255, 26, 0);
-}
-
-.alert circle {
-  fill: rgb(255, 255, 0);
-}
-
-.highlighted circle {
-  fill: yellow;
-}
-
-.highlighted.current circle {
-  stroke: orange;
-  stroke-width: 3;
-}
-
-.active circle {
-  stroke: white;
-  stroke-width: 3;
-}
-
-.linklabel {
-  fill: none;
-  stroke: #222222;
-  stroke-width: 1;
-}
-
-.link-active  {
-  stroke: green;
-}
-
-.link-warning  {
-  stroke: yellow;
-}
-
-.link-alert  {
-  stroke: red;
-}
-
-.link {
-  fill: none;
-}
-
-.links .veth {
-  stroke-width: 3;
-  stroke-dasharray: 5,5;
-}
-
-.links .layer2 {
-  stroke: #333;
-}
-
-.links .local2fabric {
-  stroke-width: 3;
-  stroke: #eee;
-}
-
-.links .ownership {
-  stroke: #080;
-  /* comment to see ownership link */
-  display: none;
-}
-
-.nodes .state {
-  opacity: 0.7;
-}
-
-.nodes .manager {
-  opacity: 0.9;
-}
-
-path.group {
-  fill: lightsteelblue;
-  fill-opacity: 0.5;
-  pointer-events: none;
-  font: 16px Helvetica, Arial, sans-serif;
-  stroke-width: 5;
-}
-
-.groups path.fabric {
-    fill: #fff;
-}
-
-.groups path.host {
-  fill: #d0d0d0;
-}
-
-.groups path.netns {
-  fill: #e6e6e6;
-}
-
-.groups path.vm {
-  fill: #e9ffd9;
 }
 
 .pane-label {
@@ -221,7 +82,7 @@ path.group {
   overflow: auto;
 }
 
-.sidebar {
+.info {
   border-left: 5px #222 solid;
   color: #fff;
   padding-top: 5px;
@@ -586,10 +447,6 @@ ul.dropdown-menu .fa.pull-right {
 
 .object-sub-detail .object-detail {
   margin-left: 20px;
-}
-
-.object-sub-detail .object-key {
-  float: left;
 }
 
 .slide-enter-active {

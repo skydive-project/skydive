@@ -241,5 +241,7 @@ var app = new Vue({
 });
 
 $(document).ready(function() {
+  Vue.config.devtools = true;
+
   app.$mount('#app');
 });
