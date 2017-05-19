@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
@@ -797,27 +798,24 @@ func TestFlowHops(t *testing.T) {
 			{"ip netns exec fh-vm2 ip link set fh-intf2 up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
+		settleFunction: func(c *TestContext) error {
 			// check that src and dst interfaces are in the right place before doing the ping
-			retry := func() error {
-				gremlin := `G.V().Has("Name", "fh-vm1").Out().Has("Name", "fh-intf1")`
-				nodes, err := c.gh.GetNodes(gremlin)
-				if err != nil || len(nodes) == 0 {
-					return errors.New("fh-intf1 not found in the expected namespace")
-				}
-
-				gremlin = `G.V().Has("Name", "fh-vm2").Out().Has("Name", "fh-intf2")`
-				nodes, err = c.gh.GetNodes(gremlin)
-				if err != nil || len(nodes) == 0 {
-					return errors.New("fh-intf2 not found in the expected namespace")
-				}
-
-				return nil
-			}
-			if err := common.Retry(retry, 10, time.Second); err != nil {
-				return err
+			gremlin := `G.V().Has("Name", "fh-vm1").Out().Has("Name", "fh-intf1")`
+			nodes, err := c.gh.GetNodes(gremlin)
+			if err != nil || len(nodes) == 0 {
+				return errors.New("fh-intf1 not found in the expected namespace")
 			}
 
+			gremlin = `G.V().Has("Name", "fh-vm2").Out().Has("Name", "fh-intf2")`
+			nodes, err = c.gh.GetNodes(gremlin)
+			if err != nil || len(nodes) == 0 {
+				return errors.New("fh-intf2 not found in the expected namespace")
+			}
+
+			return nil
+		},
+
+		setupFunction: func(c *TestContext) error {
 			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec fh-vm1 ping -c 1 -s 1024 169.254.33.34", Check: false})
 			return nil
 		},
@@ -913,27 +911,24 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			{"ip netns exec ipv6fh-vm2 ip link set ipv6fh-intf2 up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
+		settleFunction: func(c *TestContext) error {
 			// check that src and dst interfaces are in the right place before doing the ping
-			retry := func() error {
-				gremlin := `G.V().Has("Name", "ipv6fh-vm1").Out().Has("Name", "ipv6fh-intf1")`
-				nodes, err := c.gh.GetNodes(gremlin)
-				if err != nil || len(nodes) == 0 {
-					return errors.New("ipv6fh-intf1 not found in the expected namespace")
-				}
-
-				gremlin = `G.V().Has("Name", "ipv6fh-vm2").Out().Has("Name", "ipv6fh-intf2")`
-				nodes, err = c.gh.GetNodes(gremlin)
-				if err != nil || len(nodes) == 0 {
-					return errors.New("ipv6fh-intf2 not found in the expected namespace")
-				}
-
-				return nil
-			}
-			if err := common.Retry(retry, 10, time.Second); err != nil {
-				return err
+			gremlin := `G.V().Has("Name", "ipv6fh-vm1").Out().Has("Name", "ipv6fh-intf1")`
+			nodes, err := c.gh.GetNodes(gremlin)
+			if err != nil || len(nodes) == 0 {
+				return errors.New("ipv6fh-intf1 not found in the expected namespace")
 			}
 
+			gremlin = `G.V().Has("Name", "ipv6fh-vm2").Out().Has("Name", "ipv6fh-intf2")`
+			nodes, err = c.gh.GetNodes(gremlin)
+			if err != nil || len(nodes) == 0 {
+				return errors.New("ipv6fh-intf2 not found in the expected namespace")
+			}
+
+			return nil
+		},
+
+		setupFunction: func(c *TestContext) error {
 			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec ipv6fh-vm1 ping6 -c 5 -s 1024 fd49:37c8:5229::2", Check: false})
 			return nil
 		},
@@ -1163,27 +1158,25 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 }
 
 func TestReplayCapture(t *testing.T) {
+	var capture *api.Capture
+
 	test := &Test{
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-rc", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			capture := c.captures[0]
-			err := common.Retry(func() error {
-				// Wait for the capture to be created and the PCAPSocket attribute to be set
-				c.client.Get("capture", capture.UUID, capture)
-				if capture.PCAPSocket == "" {
-					return fmt.Errorf("Failed to retrieve PCAP socket for capture %s", capture.UUID)
-				}
-
-				return nil
-			}, 5, time.Second)
-
-			if err != nil {
-				return err
+		settleFunction: func(c *TestContext) error {
+			capture = c.captures[0]
+			// Wait for the capture to be created and the PCAPSocket attribute to be set
+			c.client.Get("capture", capture.UUID, capture)
+			if capture.PCAPSocket == "" {
+				return fmt.Errorf("Failed to retrieve PCAP socket for capture %s", capture.UUID)
 			}
 
+			return nil
+		},
+
+		setupFunction: func(c *TestContext) error {
 			return helper.SendPCAPFile("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", capture.PCAPSocket)
 		},
 
@@ -1446,24 +1439,49 @@ func TestFlowSumStep(t *testing.T) {
 			{"ip netns add vm1", true},
 			{"ip link add vm1-eth0 type veth peer name intf1 netns vm1", true},
 			{"ip link set vm1-eth0 up", true},
-			{"ip netns exec vm1 ip link set intf1 up", true},
 			{"ip netns exec vm1 ip address add 169.254.34.33/24 dev intf1", true},
+			{"ip netns exec vm1 ip link set intf1 up", true},
 
 			{"ip netns add vm2", true},
 			{"ip link add vm2-eth0 type veth peer name intf2 netns vm2", true},
 			{"ip link set vm2-eth0 up", true},
-			{"ip netns exec vm2 ip link set intf2 up", true},
 			{"ip netns exec vm2 ip address add 169.254.34.34/24 dev intf2", true},
+			{"ip netns exec vm2 ip link set intf2 up", true},
 
 			{"ip netns add vm3", true},
 			{"ip link add vm3-eth0 type veth peer name intf3 netns vm3", true},
 			{"ip link set vm3-eth0 up", true},
-			{"ip netns exec vm3 ip link set intf3 up", true},
 			{"ip netns exec vm3 ip address add 169.254.34.35/24 dev intf3", true},
+			{"ip netns exec vm3 ip link set intf3 up", true},
 
 			{"ovs-vsctl add-port br-sum vm1-eth0", true},
 			{"ovs-vsctl add-port br-sum vm2-eth0", true},
 			{"ovs-vsctl add-port br-sum vm3-eth0", true},
+		},
+
+		settleFunction: func(c *TestContext) (err error) {
+			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf1', 'State', 'UP')"); err != nil {
+				return err
+			}
+
+			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf2', 'State', 'UP')"); err != nil {
+				return err
+			}
+
+			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf3', 'State', 'UP')"); err != nil {
+				return err
+			}
+
+			nodes, err := c.gh.GetNodes("G.V().Has('Name', 'br-sum').Out().Has('Type', 'ovsport').Dedup()")
+			if err != nil {
+				return err
+			}
+
+			if len(nodes) != 4 {
+				return fmt.Errorf("There should be 4 ports in bridge br-sum, got %+v", nodes)
+			}
+
+			return nil
 		},
 
 		setupFunction: func(c *TestContext) (err error) {
@@ -1534,8 +1552,20 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 			{"ovs-vsctl add-port br-fcn vm2-eth0", true},
 		},
 
+		settleFunction: func(c *TestContext) (err error) {
+			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf1', 'State', 'UP')"); err != nil {
+				return err
+			}
+
+			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf2', 'State', 'UP')"); err != nil {
+				return err
+			}
+
+			return nil
+		},
+
 		setupFunction: func(c *TestContext) (err error) {
-			return ping(t, c, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 1)
+			return ping(t, c, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 3)
 		},
 
 		tearDownCmds: []helper.Cmd{
@@ -1552,8 +1582,11 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 
 		check: func(c *TestContext) error {
 			gh := c.gh
-			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
-			gremlin += `.Flows().Has("Network", "169.254.38.33").dedup().CaptureNode()`
+			gremlin := "g"
+			if !c.time.IsZero() {
+				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+			gremlin += `.Flows().Has("Network", "169.254.38.33").Dedup().CaptureNode()`
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {

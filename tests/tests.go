@@ -124,6 +124,7 @@ type TestCapture struct {
 type Test struct {
 	setupCmds        []helper.Cmd
 	setupFunction    func(c *TestContext) error
+	settleFunction   func(c *TestContext) error
 	tearDownCmds     []helper.Cmd
 	tearDownFunction func(c *TestContext) error
 	captures         []TestCapture
@@ -220,6 +221,24 @@ func RunTest(t *testing.T, test *Test) {
 		t.Fatalf("Failed to setup captures: %s, graph: %s", err.Error(), g)
 	}
 
+	retries := test.retries
+	if retries <= 0 {
+		retries = 30
+	}
+
+	if test.settleFunction != nil {
+		err = common.Retry(func() error {
+			return test.settleFunction(context)
+		}, retries, time.Second)
+
+		if err != nil {
+			g := context.getWholeGraph(t)
+			helper.ExecCmds(t, test.tearDownCmds...)
+			t.Errorf("Test failed to settle: %s, graph: %s", err.Error(), g)
+			return
+		}
+	}
+
 	context.setupTime = time.Now()
 
 	if test.setupFunction != nil {
@@ -228,11 +247,6 @@ func RunTest(t *testing.T, test *Test) {
 			helper.ExecCmds(t, test.tearDownCmds...)
 			t.Fatalf("Failed to setup test: %s, graph: %s", err.Error(), g)
 		}
-	}
-
-	retries := test.retries
-	if retries <= 0 {
-		retries = 30
 	}
 
 	context.startTime = time.Now()
