@@ -135,7 +135,12 @@ type Test struct {
 func (c *TestContext) getWholeGraph(t *testing.T) string {
 	var g interface{}
 
-	if err := c.gh.Query("G", &g); err != nil {
+	gremlin := "G"
+	if !c.time.IsZero() {
+		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+	}
+
+	if err := c.gh.Query(gremlin, &g); err != nil {
 		t.Error(err.Error())
 	}
 
