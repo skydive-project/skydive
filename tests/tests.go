@@ -153,6 +153,22 @@ func (c *TestContext) getWholeGraph(t *testing.T) string {
 	return string(b)
 }
 
+func (c *TestContext) getAllFlows(t *testing.T) string {
+	gremlin := "G"
+	if !c.time.IsZero() {
+		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+	}
+	gremlin += ".V().Flows()"
+
+	flows, err := c.gh.GetFlows(gremlin)
+	if err != nil {
+		t.Error(err.Error())
+		return ""
+	}
+
+	return helper.FlowsToString(flows)
+}
+
 func RunTest(t *testing.T, test *Test) {
 	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
 	if err != nil {
@@ -233,8 +249,9 @@ func RunTest(t *testing.T, test *Test) {
 
 		if err != nil {
 			g := context.getWholeGraph(t)
+			f := context.getAllFlows(t)
 			helper.ExecCmds(t, test.tearDownCmds...)
-			t.Errorf("Test failed to settle: %s, graph: %s", err.Error(), g)
+			t.Errorf("Test failed to settle: %s, graph: %s, flows: %s", err.Error(), g, f)
 			return
 		}
 	}
@@ -244,8 +261,9 @@ func RunTest(t *testing.T, test *Test) {
 	if test.setupFunction != nil {
 		if err = test.setupFunction(context); err != nil {
 			g := context.getWholeGraph(t)
+			f := context.getAllFlows(t)
 			helper.ExecCmds(t, test.tearDownCmds...)
-			t.Fatalf("Failed to setup test: %s, graph: %s", err.Error(), g)
+			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err.Error(), g, f)
 		}
 	}
 
@@ -264,8 +282,9 @@ func RunTest(t *testing.T, test *Test) {
 
 	if err != nil {
 		g := context.getWholeGraph(t)
+		f := context.getAllFlows(t)
 		helper.ExecCmds(t, test.tearDownCmds...)
-		t.Errorf("Test failed: %s, graph: %s", err.Error(), g)
+		t.Errorf("Test failed: %s, graph: %s, flows: %s", err.Error(), g, f)
 		return
 	}
 
@@ -285,7 +304,7 @@ func RunTest(t *testing.T, test *Test) {
 		}, retries, time.Second)
 
 		if err != nil {
-			t.Errorf("Failed to replay test: %s, graph: %s", err.Error(), context.getWholeGraph(t))
+			t.Errorf("Failed to replay test: %s, graph: %s, flows: %s", err.Error(), context.getWholeGraph(t), context.getAllFlows(t))
 		}
 	}
 }
