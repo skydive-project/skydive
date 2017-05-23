@@ -134,13 +134,14 @@ func (probe *DockerProbe) unregisterContainer(id string) {
 	if !ok {
 		return
 	}
-	namespace := probe.containerNamespace(infos.Pid)
-	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, infos.Pid)
-	probe.Unregister(namespace)
 
 	probe.Graph.Lock()
 	probe.Graph.DelNode(infos.Node)
 	probe.Graph.Unlock()
+
+	namespace := probe.containerNamespace(infos.Pid)
+	logging.GetLogger().Debugf("Stop listening for namespace %s with PID %d", namespace, infos.Pid)
+	probe.Unregister(namespace)
 
 	delete(probe.containerMap, id)
 }

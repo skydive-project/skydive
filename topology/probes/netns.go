@@ -108,13 +108,13 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 		return nil
 	}
 
+	u.Lock()
+	defer u.Unlock()
+
 	_, ok := u.pathToNetNS[path]
 	if !ok {
 		u.pathToNetNS[path] = newns
 	}
-
-	u.Lock()
-	defer u.Unlock()
 
 	nsString := newns.String()
 	if probe, ok := u.netNsNetLinkProbes[nsString]; ok {
@@ -151,13 +151,13 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 func (u *NetNSProbe) Unregister(path string) {
 	logging.GetLogger().Debugf("Unregister Network Namespace: %s", path)
 
+	u.Lock()
+	defer u.Unlock()
+
 	ns, ok := u.pathToNetNS[path]
 	if !ok {
 		return
 	}
-
-	u.Lock()
-	defer u.Unlock()
 
 	delete(u.pathToNetNS, path)
 	nsString := ns.String()
