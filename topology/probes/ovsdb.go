@@ -179,9 +179,6 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		if index > 0 {
 			lm["IfIndex"] = index
 		}
-		if mac != "" {
-			lm["MAC"] = mac
-		}
 
 		// added before by netlink ?
 		if intf = o.Graph.LookupFirstNode(lm); intf != nil {
