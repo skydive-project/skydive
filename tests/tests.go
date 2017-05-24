@@ -25,6 +25,9 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -33,7 +36,7 @@ import (
 	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/http"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -106,7 +109,7 @@ etcd:
 
 type TestContext struct {
 	gh          *gclient.GremlinQueryHelper
-	client      *http.CrudClient
+	client      *shttp.CrudClient
 	captures    []*api.Capture
 	time        time.Time
 	setupTime   time.Time
@@ -141,16 +144,51 @@ func (c *TestContext) getWholeGraph(t *testing.T) string {
 		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 	}
 
-	if err := c.gh.Query(gremlin, &g); err != nil {
-		t.Error(err.Error())
-	}
+	switch helper.GraphOutputFormat {
+	case "ascii":
+		header := make(http.Header)
+		header.Set("Accept", "vnd.graphviz")
+		resp, err := c.gh.Request(gremlin, header)
+		if err != nil {
+			return err.Error()
+		}
 
-	b, err := json.Marshal(&g)
-	if err != nil {
-		t.Error(err.Error())
-	}
+		b, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
 
-	return string(b)
+		cmd := exec.Command("graph-easy", "--as_ascii")
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return err.Error()
+		}
+
+		if _, err = stdin.Write(b); err != nil {
+			return err.Error()
+		}
+		stdin.Write([]byte("\n"))
+		stdin.Close()
+
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return err.Error()
+		}
+
+		return "\n" + string(output)
+
+	default:
+		if err := c.gh.Query(gremlin, &g); err != nil {
+			t.Error(err.Error())
+		}
+
+		b, err := json.Marshal(&g)
+		if err != nil {
+			t.Error(err.Error())
+		}
+
+		return string(b)
+
+		return ""
+	}
 }
 
 func (c *TestContext) getAllFlows(t *testing.T) string {
@@ -170,7 +208,7 @@ func (c *TestContext) getAllFlows(t *testing.T) string {
 }
 
 func RunTest(t *testing.T, test *Test) {
-	client, err := api.NewCrudClientFromConfig(&http.AuthenticationOpts{})
+	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err.Error())
 	}
@@ -194,7 +232,7 @@ func RunTest(t *testing.T, test *Test) {
 	helper.ExecCmds(t, test.setupCmds...)
 
 	context := &TestContext{
-		gh:       gclient.NewGremlinQueryHelper(&http.AuthenticationOpts{}),
+		gh:       gclient.NewGremlinQueryHelper(&shttp.AuthenticationOpts{}),
 		client:   client,
 		captures: captures,
 		data:     make(map[string]interface{}),

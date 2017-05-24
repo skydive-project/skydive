@@ -46,6 +46,9 @@ type Topology struct {
 }
 
 func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
+	g.RLock()
+	defer g.RUnlock()
+
 	w.Write([]byte("digraph g {\n"))
 
 	nodeMap := make(map[graph.Identifier]*graph.Node)

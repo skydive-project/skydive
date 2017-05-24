@@ -52,7 +52,8 @@ type Cmd struct {
 }
 
 var (
-	Standalone bool
+	Standalone        bool
+	GraphOutputFormat string
 
 	etcdServer     string
 	graphBackend   string
@@ -65,6 +66,7 @@ func init() {
 	flag.BoolVar(&Standalone, "standalone", false, "Start an analyzer and an agent")
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
 	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
+	flag.StringVar(&GraphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
 	flag.StringVar(&storageBackend, "storage.backend", "", "Specify the storage backend used")
 	flag.Parse()
 }

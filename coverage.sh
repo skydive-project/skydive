@@ -36,7 +36,7 @@ generate_cover_data() {
 
         coverfile="../$workdir/functional.cover"
         PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor' | tr '\n' ',' | sed -e 's/,$//')
-        make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="-test.coverprofile=$coverfile -standalone -graph.backend elasticsearch -storage.backend elasticsearch" TEST_PATTERN=$TEST_PATTERN
+        make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="$ARGS -test.coverprofile=$coverfile -standalone -graph.backend elasticsearch -storage.backend elasticsearch" TEST_PATTERN=$TEST_PATTERN
     fi
 
     # merge all together

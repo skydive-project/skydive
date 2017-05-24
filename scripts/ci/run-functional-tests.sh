@@ -24,7 +24,7 @@ case "$BACKEND" in
     ;;
 esac
 
-make test.functionals.batch TAGS="$TAGS" GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=20m COVERAGE=$COVERAGE ARGS="$ARGS -standalone -etcd.server http://localhost:2379" 2>&1 | tee $WORKSPACE/output.log
+make test.functionals.batch TAGS="$TAGS" GOFLAGS="$GOFLAGS" GORACE="history_size=5" VERBOSE=true TIMEOUT=20m COVERAGE=$COVERAGE ARGS="$ARGS -graph.output ascii -standalone -etcd.server http://localhost:2379" 2>&1 | tee $WORKSPACE/output.log
 go2xunit -fail -fail-on-race -input $WORKSPACE/output.log -output $WORKSPACE/tests.xml
 if [ -e functionals.cover ]; then
     mv functionals.cover functionals-${BACKEND}.cover

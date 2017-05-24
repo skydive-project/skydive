@@ -9,7 +9,7 @@ dist: trusty
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils libdb5.1-dev
+    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils libdb5.1-dev libgraph-easy-perl
     - sudo ovs-vsctl show
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
@@ -43,7 +43,7 @@ script:
 
     - make install
     - make static
-    - ./coverage.sh --coveralls
+    - ARGS="-graph.output ascii" ./coverage.sh --coveralls
 
     - echo "--- DOCKER IMAGE ---"
     - make docker-image DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
