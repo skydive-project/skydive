@@ -373,7 +373,8 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 	/* set pending port of a container */
 	if bridge, ok := o.portBridgeQueue[uuid]; ok {
-		if !topology.HaveLayer2Link(o.Graph, bridge, port, nil) {
+		if !topology.HaveOwnershipLink(o.Graph, bridge, port, nil) {
+			topology.AddOwnershipLink(o.Graph, bridge, port, nil)
 			topology.AddLayer2Link(o.Graph, bridge, port, nil)
 		}
 		delete(o.portBridgeQueue, uuid)
