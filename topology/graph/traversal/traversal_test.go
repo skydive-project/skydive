@@ -96,6 +96,16 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	// next traversal test
+	te := tr.V().Has("Value", 3).BothE()
+	if te.Error() != nil {
+		t.Fatal(te.Error())
+	}
+
+	if len(te.Values()) != 3 {
+		t.Fatalf("should return 3 edges, returned: %d", len(te.Values()))
+	}
+
+	// next traversal test
 	tv = tr.V().Has("Value", 1).Out().Has("Value", 4)
 	if tv.Error() != nil {
 		t.Fatal(tv.Error())

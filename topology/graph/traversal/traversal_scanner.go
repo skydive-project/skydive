@@ -61,6 +61,7 @@ const (
 	INV
 	OUTE
 	INE
+	BOTHE
 	DEDUP
 	WITHIN
 	WITHOUT
@@ -224,6 +225,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return OUTE, buf.String()
 	case "INE":
 		return INE, buf.String()
+	case "BOTHE":
+		return BOTHE, buf.String()
 	case "WITHIN":
 		return WITHIN, buf.String()
 	case "WITHOUT":

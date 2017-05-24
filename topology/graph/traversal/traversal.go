@@ -1033,6 +1033,36 @@ nodeloop:
 	return nte
 }
 
+func (tv *GraphTraversalV) BothE(s ...interface{}) *GraphTraversalE {
+	if tv.error != nil {
+		return &GraphTraversalE{error: tv.error}
+	}
+
+	metadata, err := SliceToMetadata(s...)
+	if err != nil {
+		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
+	}
+
+	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
+nodeloop:
+	for _, n := range tv.nodes {
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, metadata) {
+			if it.Done() {
+				break nodeloop
+			} else if it.Next() {
+				nte.edges = append(nte.edges, e)
+			}
+		}
+	}
+
+	return nte
+}
+
 func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv

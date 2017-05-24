@@ -85,6 +85,9 @@ type (
 	GremlinTraversalStepInE struct {
 		GremlinTraversalContext
 	}
+	GremlinTraversalStepBothE struct {
+		GremlinTraversalContext
+	}
 	GremlinTraversalStepDedup struct {
 		GremlinTraversalContext
 	}
@@ -470,6 +473,28 @@ func (s *GremlinTraversalStepInE) Reduce(next GremlinTraversalStep) GremlinTrave
 	return next
 }
 
+func (s *GremlinTraversalStepBothE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalV:
+		return last.(*GraphTraversalV).BothE(s.Params...), nil
+	}
+
+	return nil, ExecutionError
+}
+
+func (s *GremlinTraversalStepBothE) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
+		s.Params = hasStep.Params
+		return s
+	}
+
+	if s.ReduceRange(next) {
+		return s
+	}
+
+	return next
+}
+
 func (s *GremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -842,6 +867,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &GremlinTraversalStepOutE{gremlinStepContext}, nil
 	case INE:
 		return &GremlinTraversalStepInE{gremlinStepContext}, nil
+	case BOTHE:
+		return &GremlinTraversalStepBothE{gremlinStepContext}, nil
 	case DEDUP:
 		for _, param := range params {
 			if _, ok := param.(string); !ok {
