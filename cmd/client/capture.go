@@ -40,6 +40,7 @@ var (
 	captureDescription string
 	captureType        string
 	nodeTID            string
+	port               int
 )
 
 var CaptureCmd = &cobra.Command{
@@ -71,6 +72,7 @@ var CaptureCreate = &cobra.Command{
 		capture.Name = captureName
 		capture.Description = captureDescription
 		capture.Type = captureType
+		capture.Port = port
 		if err := validator.Validate(capture); err != nil {
 			logging.GetLogger().Fatalf(err.Error())
 		}
@@ -163,6 +165,7 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&captureName, "name", "", "", "capture name")
 	cmd.Flags().StringVarP(&captureDescription, "description", "", "", "capture description")
 	cmd.Flags().StringVarP(&captureType, "type", "", "", helpText)
+	cmd.Flags().IntVarP(&port, "port", "", 0, "capture port")
 }
 
 func init() {

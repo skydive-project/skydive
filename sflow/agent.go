@@ -133,11 +133,11 @@ func (sfa *SFlowAgent) Stop() {
 	}
 }
 
-func NewSFlowAgent(u string, a string, p int, ft *flow.Table, bpfFilter string) *SFlowAgent {
+func NewSFlowAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter string) *SFlowAgent {
 	return &SFlowAgent{
 		UUID:      u,
-		Addr:      a,
-		Port:      p,
+		Addr:      a.Addr,
+		Port:      a.Port,
 		FlowTable: ft,
 		BPFFilter: bpfFilter,
 	}
@@ -166,12 +166,7 @@ func (a *SFlowAgentAllocator) ReleaseAll() {
 	a.portAllocator.ReleaseAll()
 }
 
-func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string) (agent *SFlowAgent, _ error) {
-	address := config.GetConfig().GetString("sflow.bind_address")
-	if address == "" {
-		address = "127.0.0.1"
-	}
-
+func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, addr *common.ServiceAddress) (agent *SFlowAgent, _ error) {
 	a.Lock()
 	defer a.Unlock()
 
@@ -187,13 +182,16 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter strin
 		return agent, AgentAlreadyAllocated
 	}
 
-	port, err := a.portAllocator.Allocate()
-	if port <= 0 {
-		return nil, errors.New("failed to allocate sflow port: " + err.Error())
+	// get port, if port is not given by user.
+	var err error
+	if addr.Port <= 0 {
+		if addr.Port, err = a.portAllocator.Allocate(); addr.Port <= 0 {
+			return nil, errors.New("failed to allocate sflow port: " + err.Error())
+		}
 	}
 
-	s := NewSFlowAgent(uuid, address, port, ft, bpfFilter)
-	a.portAllocator.Set(port, s)
+	s := NewSFlowAgent(uuid, addr, ft, bpfFilter)
+	a.portAllocator.Set(addr.Port, s)
 	s.Start()
 	return s, nil
 }

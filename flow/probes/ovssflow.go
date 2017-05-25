@@ -31,6 +31,8 @@ import (
 	"github.com/socketplane/libovsdb"
 
 	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/ovs"
@@ -230,7 +232,13 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 		NodeTID:    tid,
 	}
 
-	agent, err := o.allocator.Alloc(bridgeUUID, ft, bpfFilter)
+	address := config.GetConfig().GetString("sflow.bind_address")
+	if address == "" {
+		address = "127.0.0.1"
+	}
+
+	addr := common.ServiceAddress{Addr: address, Port: 0}
+	agent, err := o.allocator.Alloc(bridgeUUID, ft, bpfFilter, &addr)
 	if err != nil && err != sflow.AgentAlreadyAllocated {
 		return err
 	}

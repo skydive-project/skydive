@@ -107,6 +107,9 @@ func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *fl
 		case "gopacket":
 			fpi, err = NewGoPacketProbesHandler(g)
 			captureTypes = []string{"afpacket", "pcap"}
+		case "sflow":
+			fpi, err = NewSFlowProbesHandler(g)
+			captureTypes = []string{"sflow"}
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}

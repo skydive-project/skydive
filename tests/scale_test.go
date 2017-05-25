@@ -120,7 +120,7 @@ func TestHA(t *testing.T) {
 
 			return nil
 		}
-		if err = common.Retry(retry, 20, time.Second); err != nil {
+		if err = common.Retry(retry, 40, time.Second); err != nil {
 			helper.ExecCmds(t, tearDownCmds...)
 			t.Fatalf(err.Error())
 		}

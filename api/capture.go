@@ -42,6 +42,7 @@ type Capture struct {
 	Type         string `json:"Type,omitempty"`
 	Count        int    `json:"Count,omitempty"`
 	PCAPSocket   string `json:"PCAPSocket,omitempty"`
+	Port         int    `json:"Port,omitempty"`
 }
 
 type CaptureResourceHandler struct {
