@@ -33,6 +33,9 @@ package common
 #include <linux/sched.h>
 #include <linux/if_packet.h>
 #include <net/ethernet.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <net/if.h>
 
 int open_raw_socket(const char *name)
 {
