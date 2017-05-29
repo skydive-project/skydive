@@ -688,14 +688,14 @@
 			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
-			"checksumSHA1": "QLTkulYVPHfs813eI0fKKW0buPk=",
+			"checksumSHA1": "ya8J9cG62UYf7m/vCTGQ1G5LNfI=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
 			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",
 			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
-			"checksumSHA1": "OO3xBXJ9iAv5lpVU1Wr/6f1i7Dc=",
+			"checksumSHA1": "gBH+9p7pMzemAVn5WQ6mGtkDg+s=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcap",
 			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",

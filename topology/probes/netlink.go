@@ -301,9 +301,16 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		driver = "bridge"
 	}
 
+	linkType := link.Type()
+
+	// force the veth type when driver if veth as a veth in bridge can have device type
+	if driver == "veth" {
+		linkType = "veth"
+	}
+
 	metadata := graph.Metadata{
 		"Name":      link.Attrs().Name,
-		"Type":      link.Type(),
+		"Type":      linkType,
 		"EncapType": link.Attrs().EncapType,
 		"IfIndex":   int64(link.Attrs().Index),
 		"MAC":       link.Attrs().HardwareAddr.String(),
@@ -321,7 +328,7 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		metadata["Statistics"] = u.statsToMap(statistics)
 	}
 
-	if link.Type() == "veth" {
+	if linkType == "veth" {
 		stats, err := u.ethtool.Stats(link.Attrs().Name)
 		if err != nil && err != syscall.ENODEV {
 			logging.GetLogger().Errorf("Unable get stats from ethtool (%s): %s", link.Attrs().Name, err.Error())
