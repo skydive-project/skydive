@@ -85,7 +85,7 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 		}
 		inodes, ok := els["Nodes"]
 		if !ok || inodes == nil {
-			return "", result, nil
+			return msg.Type, result, nil
 		}
 		nodes, ok := inodes.([]interface{})
 		if !ok {
@@ -102,7 +102,7 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 
 		iedges, ok := els["Edges"]
 		if !ok || iedges == nil {
-			return "", result, nil
+			return msg.Type, result, nil
 		}
 
 		edges, ok := iedges.([]interface{})
