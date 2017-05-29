@@ -24,9 +24,14 @@ package filters
 
 import (
 	"regexp"
+	"time"
+
+	"github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/common"
 )
+
+var regexpCache *cache.Cache
 
 type Getter interface {
 	GetField(field string) (interface{}, error)
@@ -158,9 +163,12 @@ func (r *RegexFilter) Eval(g Getter) bool {
 	if err != nil {
 		return false
 	}
-	// TODO: don't compile regex here
-	re := regexp.MustCompile(r.Value)
-	return re.MatchString(field)
+	re, found := regexpCache.Get(r.Value)
+	if !found {
+		re = regexp.MustCompile(r.Value)
+		regexpCache.Set(r.Value, re, cache.DefaultExpiration)
+	}
+	return re.(*regexp.Regexp).MatchString(field)
 }
 
 func (n *NullFilter) Eval(g Getter) bool {
@@ -306,4 +314,8 @@ func NewFilterIncludedIn(fr Range, prefix string) *Filter {
 		NewGteInt64Filter(prefix+"Start", fr.From),
 		NewLteInt64Filter(prefix+"Last", fr.To),
 	)
+}
+
+func init() {
+	regexpCache = cache.New(5*time.Minute, 10*time.Minute)
 }
