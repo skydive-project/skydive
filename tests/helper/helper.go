@@ -127,17 +127,21 @@ func InitConfig(conf string, params ...HelperParams) error {
 	return nil
 }
 
-func ExecCmds(t *testing.T, cmds ...Cmd) {
+func ExecCmds(t *testing.T, cmds ...Cmd) error {
 	for _, cmd := range cmds {
 		args := strings.Split(cmd.Cmd, " ")
 		command := exec.Command(args[0], args[1:]...)
 		logging.GetLogger().Debugf("Executing command %s with args %+v", args[0], args[1:])
 		stdouterr, err := command.CombinedOutput()
 		logging.GetLogger().Debugf("Command returned %s", stdouterr)
-		if err != nil && cmd.Check {
-			t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error())
+		if err != nil {
+			if cmd.Check {
+				t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error())
+			}
+			return err
 		}
 	}
+	return nil
 }
 
 func FilterIPv6AddrAnd(flows []*flow.Flow, A, B string) (r []*flow.Flow) {

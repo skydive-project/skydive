@@ -40,8 +40,10 @@ const (
 )
 
 type EtcdMasterElectionListener interface {
-	OnMaster()
-	OnSlave()
+	OnStartAsMaster()
+	OnStartAsSlave()
+	OnSwitchToMaster()
+	OnSwitchToSlave()
 }
 
 type EtcdMasterElector struct {
@@ -54,6 +56,10 @@ type EtcdMasterElector struct {
 	master     bool
 	state      int64
 	wg         sync.WaitGroup
+}
+
+func (le *EtcdMasterElector) TTL() time.Duration {
+	return timeout
 }
 
 func (le *EtcdMasterElector) holdLock(quit chan bool) {
@@ -113,12 +119,12 @@ func (le *EtcdMasterElector) start(first chan struct{}) {
 		go le.holdLock(quit)
 
 		for _, listener := range le.listeners {
-			listener.OnMaster()
+			listener.OnStartAsMaster()
 		}
 	} else {
 		logging.GetLogger().Infof("starting as a follower for %s: %s", le.path, le.Host)
 		for _, listener := range le.listeners {
-			listener.OnSlave()
+			listener.OnStartAsSlave()
 		}
 	}
 
@@ -157,7 +163,7 @@ func (le *EtcdMasterElector) start(first chan struct{}) {
 
 				logging.GetLogger().Infof("I'm now the master: %s", le.Host)
 				for _, listener := range le.listeners {
-					listener.OnMaster()
+					listener.OnSwitchToMaster()
 				}
 			}
 		case "create", "update":
@@ -168,7 +174,7 @@ func (le *EtcdMasterElector) start(first chan struct{}) {
 			if !master {
 				logging.GetLogger().Infof("The master is now: %s", resp.Node.Value)
 				for _, listener := range le.listeners {
-					listener.OnSlave()
+					listener.OnSwitchToSlave()
 				}
 			}
 		}

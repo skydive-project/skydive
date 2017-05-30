@@ -25,6 +25,7 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -48,9 +49,8 @@ func TestHA(t *testing.T) {
 		{"sleep 30", false},
 	}
 
-	tearDownCmds := []helper.Cmd{
-		{fmt.Sprintf("%s stop 2 3 2", scale), false},
-	}
+	tearDownCmds := []helper.Cmd{}
+
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
@@ -98,7 +98,7 @@ func TestHA(t *testing.T) {
 
 			// two capture 2 flows
 			if len(flows) != flowExpected {
-				return fmt.Errorf("Should get %d ICMPv4 flow got : %v", flowExpected, flows)
+				return fmt.Errorf("Should get %d ICMPv4 flow got %d : %v", flowExpected, len(flows), flows)
 			}
 
 			return nil
@@ -115,7 +115,7 @@ func TestHA(t *testing.T) {
 			}
 
 			if len(flows) != flowExpected {
-				return fmt.Errorf("Should get %d ICMPv4 flow got : %v", flowExpected, flows)
+				return fmt.Errorf("Should get %d ICMPv4 flow from datastore got %d : %v", flowExpected, len(flows), flows)
 			}
 
 			return nil
@@ -128,6 +128,15 @@ func TestHA(t *testing.T) {
 
 	// test if we have our 2 hosts
 	checkHostNodes(2)
+
+	// before creating the capture check that ovs if ready and the connectivity is ok
+	common.Retry(func() error {
+		pings := []helper.Cmd{
+			{fmt.Sprintf("%s ping agent-1-vm1 agent-2-vm1 -c 1", scale), false},
+			{fmt.Sprintf("%s ping agent-3-vm1 agent-1-vm1 -c 1", scale), false},
+		}
+		return helper.ExecCmds(t, pings...)
+	}, 30, time.Second)
 
 	// start a capture
 	capture := api.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
@@ -158,6 +167,39 @@ func TestHA(t *testing.T) {
 	// check that we have 2 captures, one per vm1
 	checkCaptures(2)
 
+	// generate some packet and wait for seeing them, to be sure that the capture is started
+	waitForFirstFlows := func() error {
+		t.Logf("Wait for first flows...")
+
+		retry = func() error {
+			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')"); err != nil {
+				return err
+			}
+
+			if len(flows) != 2 {
+				return errors.New("Should get at least one flow")
+			}
+			return nil
+		}
+		if err = common.Retry(retry, 10, time.Second); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	firstFlowsFnc := func() error {
+		setupCmds = []helper.Cmd{
+			{fmt.Sprintf("%s ping agent-1-vm1 agent-2-vm1 -c 1", scale), false},
+		}
+		helper.ExecCmds(t, setupCmds...)
+
+		return waitForFirstFlows()
+	}
+	if err = common.Retry(firstFlowsFnc, 10, time.Second); err != nil {
+		helper.ExecCmds(t, tearDownCmds...)
+		t.Fatalf(err.Error())
+	}
+
 	// generate some packet, do not check because connectivity is not ensured
 	for i := 0; i != 30; i++ {
 		setupCmds = []helper.Cmd{
@@ -167,7 +209,7 @@ func TestHA(t *testing.T) {
 	}
 
 	// 60 flows expected as we have two captures
-	checkFlows(60)
+	checkFlows(60 + 2)
 
 	// increase the agent number
 	setupCmds = []helper.Cmd{
@@ -203,7 +245,7 @@ func TestHA(t *testing.T) {
 	}
 
 	// 4*30 expected because the gremlin expression matches all the eth0
-	checkFlows(120)
+	checkFlows(120 + 2)
 
 	// delete the capture to check that all captures will be delete at the agent side
 	client.Delete("capture", capture.ID())

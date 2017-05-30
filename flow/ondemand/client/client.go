@@ -27,6 +27,8 @@ import (
 	"net/http"
 	"sync"
 
+	cache "github.com/pmylund/go-cache"
+
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
@@ -41,13 +43,14 @@ type OnDemandProbeClient struct {
 	sync.RWMutex
 	shttp.DefaultWSServerEventHandler
 	graph.DefaultGraphListener
-	graph           *graph.Graph
-	captureHandler  *api.CaptureAPIHandler
-	wsServer        *shttp.WSServer
-	captures        map[string]*api.Capture
-	watcher         api.StoppableWatcher
-	elector         *etcd.EtcdMasterElector
-	registeredNodes map[string]bool
+	graph            *graph.Graph
+	captureHandler   *api.CaptureAPIHandler
+	wsServer         *shttp.WSServer
+	captures         map[string]*api.Capture
+	watcher          api.StoppableWatcher
+	elector          *etcd.EtcdMasterElector
+	registeredNodes  map[string]bool
+	deletedNodeCache *cache.Cache
 }
 
 type nodeProbe struct {
@@ -211,11 +214,7 @@ func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
 	o.onNodeEvent()
 }
 
-func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
-	if !o.elector.IsMaster() {
-		return
-	}
-
+func (o *OnDemandProbeClient) registerCapture(capture *api.Capture) {
 	o.graph.RLock()
 	defer o.graph.RUnlock()
 
@@ -229,13 +228,19 @@ func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
 	}
 }
 
-func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
+func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
 	if !o.elector.IsMaster() {
 		return
 	}
 
+	o.registerCapture(capture)
+}
+
+func (o *OnDemandProbeClient) unregisterCapture(capture *api.Capture) {
 	o.graph.Lock()
 	defer o.graph.Unlock()
+
+	o.deletedNodeCache.Delete(capture.UUID)
 
 	o.Lock()
 	delete(o.captures, capture.UUID)
@@ -255,10 +260,42 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 			for _, node := range e {
 				o.unregisterProbe(node, capture)
 			}
-		default:
-			return
 		}
 	}
+}
+
+func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
+	if !o.elector.IsMaster() {
+		// fill the cache with recent delete in order to be able to delete then
+		// in case we lose the master and nobody is master yet. This cache will
+		// be used when becoming master.
+		o.deletedNodeCache.Set(capture.UUID, capture, cache.DefaultExpiration)
+		return
+	}
+
+	o.unregisterCapture(capture)
+}
+
+func (o *OnDemandProbeClient) OnStartAsMaster() {
+}
+
+func (o *OnDemandProbeClient) OnStartAsSlave() {
+}
+
+func (o *OnDemandProbeClient) OnSwitchToMaster() {
+	// try to delete recently added capture to handle case where the api got a delete but wasn't yet master
+	for _, item := range o.deletedNodeCache.Items() {
+		capture := item.Object.(*api.Capture)
+		o.unregisterCapture(capture)
+	}
+
+	for _, resource := range o.captureHandler.Index() {
+		capture := resource.(*api.Capture)
+		o.onCaptureAdded(capture)
+	}
+}
+
+func (o *OnDemandProbeClient) OnSwitchToSlave() {
 }
 
 func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resource api.APIResource) {
@@ -296,13 +333,16 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.
 	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "ondemand-client", etcdClient)
 
 	o := &OnDemandProbeClient{
-		graph:           g,
-		captureHandler:  ch,
-		wsServer:        w,
-		captures:        captures,
-		elector:         elector,
-		registeredNodes: make(map[string]bool),
+		graph:            g,
+		captureHandler:   ch,
+		wsServer:         w,
+		captures:         captures,
+		elector:          elector,
+		registeredNodes:  make(map[string]bool),
+		deletedNodeCache: cache.New(elector.TTL()*2, elector.TTL()*2),
 	}
+
+	elector.AddEventListener(o)
 	w.AddEventHandler(o, []string{ondemand.Namespace})
 
 	return o
