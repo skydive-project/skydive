@@ -37,6 +37,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 
 	gclient "github.com/skydive-project/skydive/cmd/client"
+	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -57,23 +58,35 @@ func TestNeutron(t *testing.T) {
 		DomainID:         domainID,
 	}
 
-	provider, err := openstack.AuthenticatedClient(opts)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	var client *gophercloud.ServiceClient
+	var netResult networks.CreateResult
 
-	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Name:         "neutron",
-		Region:       regionName,
-		Availability: gophercloud.AvailabilityPublic,
-	})
-	if err != nil {
-		t.Fatalf("Failed to create neutron client: %s", err.Error())
-	}
+	// wait a bit to have openstack ready
+	fnc := func() error {
+		provider, err := openstack.AuthenticatedClient(opts)
+		if err != nil {
+			return fmt.Errorf("Authentication error: %s", err.Error())
+		}
 
-	netResult := networks.Create(client, networks.CreateOpts{Name: "skydive-test-network"})
-	if netResult.Err != nil {
-		t.Fatalf("Failed to create neutron network: %s", netResult.Err.Error())
+		client, err = openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
+			Name:         "neutron",
+			Region:       regionName,
+			Availability: gophercloud.AvailabilityPublic,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to create neutron client: %s", err.Error())
+		}
+
+		netResult = networks.Create(client, networks.CreateOpts{Name: "skydive-test-network"})
+		if netResult.Err != nil {
+			return fmt.Errorf("Failed to create neutron network: %s", netResult.Err.Error())
+		}
+
+		return nil
+	}
+	// yes 2 minutes but that's openstack !
+	if err := common.Retry(fnc, 120, time.Second); err != nil {
+		t.Fatalf(err.Error())
 	}
 
 	network, err := netResult.Extract()
