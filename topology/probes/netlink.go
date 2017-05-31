@@ -73,6 +73,13 @@ type NetLinkProbe struct {
 }
 
 func (u *NetNsNetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
+	// ignore ovs-system interface as it doesn't make any sense according to
+	// the following thread:
+	// http://openvswitch.org/pipermail/discuss/2013-October/011657.html
+	if name, _ := intf.GetFieldString("Name"); name == "ovs-system" {
+		return
+	}
+
 	// add children of this interface that was previously added
 	if children, ok := u.indexToChildrenQueue[index]; ok {
 		for _, id := range children {
