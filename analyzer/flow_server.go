@@ -248,6 +248,7 @@ func NewFlowClientConn(addr *net.UDPAddr) (a *FlowClientConn, err error) {
 	certPEM := config.GetConfig().GetString("agent.X509_cert")
 	keyPEM := config.GetConfig().GetString("agent.X509_key")
 	serverCertPEM := config.GetConfig().GetString("analyzer.X509_cert")
+	serverNamePEM := config.GetConfig().GetString("agent.X509_servername")
 
 	if len(certPEM) > 0 && len(keyPEM) > 0 {
 		cert, err := tls.LoadX509KeyPair(certPEM, keyPEM)
@@ -267,8 +268,13 @@ func NewFlowClientConn(addr *net.UDPAddr) (a *FlowClientConn, err error) {
 			Certificates: []tls.Certificate{cert},
 			RootCAs:      roots,
 		}
+		if len(serverNamePEM) > 0 {
+			cfgTLS.ServerName = serverNamePEM
+		} else {
+			serverNamePEM = "unspecified"
+		}
 		cfgTLS.BuildNameToCertificate()
-		logging.GetLogger().Debugf("TLS client connection ... Dial %s:%d", common.IPToString(addr.IP), addr.Port+1)
+		logging.GetLogger().Debugf("TLS client connection ... Dial %s:%d serverName %s", common.IPToString(addr.IP), addr.Port+1, serverNamePEM)
 		if a.tlsConnClient, err = tls.Dial("tcp", fmt.Sprintf("%s:%d", common.IPToString(addr.IP), addr.Port+1), cfgTLS); err != nil {
 			logging.GetLogger().Errorf("TLS error %s:%d : %s", common.IPToString(addr.IP), addr.Port+1, err.Error())
 			return nil, err

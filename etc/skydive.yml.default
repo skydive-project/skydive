@@ -96,6 +96,9 @@ agent:
   # Must be different than the analyzer and unique per agent (recommended)
   # X509_cert: /etc/ssl/certs/agent.domain.com.crt
   # X509_key:  /etc/ssl/certs/agent.domain.com.key
+  # Server name field specified in TLS communications.
+  # Not required, but can be used to allow virtual hosting
+  # X509_servername: domain.com
   #
   topology:
     # Probes used to capture topology informations like interfaces,
