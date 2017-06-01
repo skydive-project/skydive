@@ -35,7 +35,7 @@ COVERAGE_MODE?=atomic
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/*
 	gofmt -w -s statics/bindata.go
 
-skydive-bash-completion.sh: cmd/completion/completion.go
+skydive-bash-completion.sh: govendor cmd/completion/completion.go
 	go run cmd/completion/completion.go
 
 all: install
