@@ -45,7 +45,12 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-func checkMessage(t *testing.T, b []byte, al *api.Alert) (bool, error) {
+var alertLock sync.Mutex
+
+func checkMessage(t *testing.T, b []byte, al *api.Alert, nsName string) (bool, error) {
+	alertLock.Lock()
+	defer alertLock.Unlock()
+
 	var alertMsg alert.AlertMessage
 	if err := common.JsonDecode(bytes.NewReader(b), &alertMsg); err == nil {
 		if alertMsg.UUID == al.UUID {
@@ -62,7 +67,7 @@ func checkMessage(t *testing.T, b []byte, al *api.Alert) (bool, error) {
 			}
 
 			if len(nodes) > 0 {
-				if name, _ := nodes[0].GetFieldString("Name"); name == "alert-ns" {
+				if name, _ := nodes[0].GetFieldString("Name"); name == nsName {
 					return true, nil
 				}
 			}
@@ -99,7 +104,7 @@ func TestAlertWebhook(t *testing.T) {
 
 			if r.Method == "POST" {
 				b, _ := ioutil.ReadAll(r.Body)
-				result, _ := checkMessage(t, b, al)
+				result, _ := checkMessage(t, b, al, "alert-ns-webhook")
 				testPassed.Store(result)
 			}
 		})
@@ -114,26 +119,29 @@ func TestAlertWebhook(t *testing.T) {
 		mode: OneShot,
 
 		setupCmds: []helper.Cmd{
-			{"ip netns add alert-ns", true},
+			{"ip netns add alert-ns-webhook", true},
 		},
 
 		setupFunction: func(c *TestContext) error {
+			wg.Add(1)
+			ListenAndServe("localhost", 8080)
+
+			alertLock.Lock()
+			defer alertLock.Unlock()
+
 			al = api.NewAlert()
-			al.Expression = "G.V().Has('Name', 'alert-ns', 'Type', 'netns')"
+			al.Expression = "G.V().Has('Name', 'alert-ns-webhook', 'Type', 'netns')"
 			al.Action = "http://localhost:8080/"
 
 			if err = c.client.Create("alert", al); err != nil {
 				return fmt.Errorf("Failed to create alert: %s", err.Error())
 			}
 
-			wg.Add(1)
-			ListenAndServe("localhost", 8080)
-
 			return nil
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{"ip netns del alert-ns", true},
+			{"ip netns del alert-ns-webhook", true},
 		},
 
 		tearDownFunction: func(c *TestContext) error {
@@ -193,12 +201,12 @@ func TestAlertScript(t *testing.T) {
 		mode: OneShot,
 
 		setupCmds: []helper.Cmd{
-			{"ip netns add alert-ns", true},
+			{"ip netns add alert-ns-script", true},
 		},
 
 		setupFunction: func(c *TestContext) error {
 			al = api.NewAlert()
-			al.Expression = "G.V().Has('Name', 'alert-ns', 'Type', 'netns')"
+			al.Expression = "G.V().Has('Name', 'alert-ns-script', 'Type', 'netns')"
 			al.Action = "file://" + tmpfile.Name()
 
 			if err = c.client.Create("alert", al); err != nil {
@@ -209,7 +217,7 @@ func TestAlertScript(t *testing.T) {
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{"ip netns del alert-ns", true},
+			{"ip netns del alert-ns-script", true},
 		},
 
 		tearDownFunction: func(c *TestContext) error {
@@ -226,7 +234,7 @@ func TestAlertScript(t *testing.T) {
 				return errors.New("No alert was triggered")
 			}
 
-			testPassed, err = checkMessage(t, b, al)
+			testPassed, err = checkMessage(t, b, al, "alert-ns-script")
 			if !testPassed {
 				return fmt.Errorf("Wrong message %+v (error: %+v)", string(b), err)
 			}
@@ -249,7 +257,7 @@ func TestAlertWithTimer(t *testing.T) {
 		mode:    OneShot,
 		retries: 1,
 		setupCmds: []helper.Cmd{
-			{"ip netns add alert-ns", true},
+			{"ip netns add alert-ns-timer", true},
 		},
 
 		setupFunction: func(c *TestContext) error {
@@ -259,7 +267,7 @@ func TestAlertWithTimer(t *testing.T) {
 			}
 
 			al = api.NewAlert()
-			al.Expression = "G.V().Has('Name', 'alert-ns', 'Type', 'netns')"
+			al.Expression = "G.V().Has('Name', 'alert-ns-timer', 'Type', 'netns')"
 			al.Trigger = "duration:+1s"
 
 			if err = c.client.Create("alert", al); err != nil {
@@ -270,10 +278,11 @@ func TestAlertWithTimer(t *testing.T) {
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{"ip netns del alert-ns", true},
+			{"ip netns del alert-ns-timer", true},
 		},
 
 		tearDownFunction: func(c *TestContext) error {
+			helper.WSClose(ws)
 			return c.client.Delete("alert", al.ID())
 		},
 
@@ -293,7 +302,7 @@ func TestAlertWithTimer(t *testing.T) {
 					continue
 				}
 
-				testPassed, err := checkMessage(t, []byte(*msg.Obj), al)
+				testPassed, err := checkMessage(t, []byte(*msg.Obj), al, "alert-ns-timer")
 				if err != nil {
 					return err
 				}

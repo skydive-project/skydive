@@ -216,6 +216,13 @@ func WSConnect(endpoint string, timeout int, onReady func(*websocket.Conn)) (*we
 	return ws, nil
 }
 
+func WSClose(ws *websocket.Conn) error {
+	if err := ws.WriteControl(websocket.CloseMessage, nil, time.Now().Add(3*time.Second)); err != nil {
+		return err
+	}
+	return ws.Close()
+}
+
 func SendPCAPFile(filename string, socket string) error {
 	file, err := os.Open(filename)
 	if err != nil {

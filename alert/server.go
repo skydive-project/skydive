@@ -336,7 +336,7 @@ func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
 		return err
 	}
 
-	logging.GetLogger().Debugf("Registering new alert: %v", alert)
+	logging.GetLogger().Debugf("Registering new alert: %+v", alert)
 
 	a.Graph.RLock()
 	a.evaluateAlert(alert)

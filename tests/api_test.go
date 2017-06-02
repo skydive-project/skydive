@@ -56,7 +56,7 @@ func TestAlertAPI(t *testing.T) {
 		t.Error(err)
 	} else {
 		if len(alerts) != 1 {
-			t.Errorf("Wrong number of alerts: got %d, expected 1", len(alerts))
+			t.Errorf("Wrong number of alerts: got %d, expected 1 (%+v)", len(alerts), alerts)
 		}
 	}
 

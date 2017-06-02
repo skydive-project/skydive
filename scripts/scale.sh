@@ -4,14 +4,13 @@ export SKYDIVE_ANALYZERS=
 
 WINDOW=0
 AGENT=0
-PREFIX=192.168.0
+PREFIX=${PREFIX:-192.168.50}
 VM_PREFIX=10.0 #/24
-TEMP_DIR=/tmp/skydive-scale
-ANALYZER_PORT=8082
-CURR_ANALYZER_PORT=8082
+TEMP_DIR=${TEMP_DIR:-/tmp/skydive-scale}
+ANALYZER_PORT=${ANALYZER_PORT:-8082}
+CURR_ANALYZER_PORT=${CURR_ANALYZER_PORT:-8082}
 GW_ADDR=$PREFIX.254
 AGENT_STOCK=5
-
 
 SKYDIVE_BIN=$( which skydive )
 SKYDIVE_PATH=$( realpath $SKYDIVE_BIN )
@@ -478,7 +477,7 @@ function stop() {
 
 	delete_main_bridge
 
-	sudo rm -rf $TEMP_DIR
+	sudo find $TEMP_DIR  -mindepth 1 ! -name "*.log" -exec rm -rf {} \;
 }
 
 function check_dependencies() {

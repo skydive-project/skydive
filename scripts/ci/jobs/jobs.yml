@@ -1,0 +1,228 @@
+- scm:
+    name: skydive-github
+    scm:
+      - git:
+          url: https://github.com/skydive-project/skydive
+          browser: githubweb
+          browser-url: http://github.com/skydive-project/skydive
+          timeout: 20
+          basedir: src/github.com/skydive-project/skydive
+          per-build-tag: false
+          skip-tag: true
+          refspec: +refs/pull/*:refs/remotes/origin/pr/*
+          branches:
+            - "${ghprbActualCommit}"
+
+- publisher:
+    name: publish-cobertura
+    publishers:
+      - cobertura:
+          report-file: "cover.out.xml"
+          targets:
+            - packages:
+                healthy: 7000000
+                unhealthy: 5000000
+                failing: 3000000
+            - files:
+                healthy: 7000000
+                unhealthy: 5000000
+                failing: 3000000
+            - classes:
+                healthy: 7000000
+                unhealthy: 5000000
+                failing: 3000000
+            - method:
+                healthy: 7000000
+                unhealthy: 5000000
+                failing: 3000000
+
+- defaults:
+    name: skydive
+    project-type: freestyle
+    wrappers:
+      - ansicolor:
+          colormap: gnome-terminal
+      - timestamps
+    scm:
+      - skydive-github
+    node: slaves
+
+- job:
+    name: skydive-go-fmt
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    scm:
+      - skydive-github
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run tests.*'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-go-fmt
+    builders:
+      - shell: cd src/github.com/skydive-project/skydive && scripts/ci/run-go-fmt.sh
+    publishers:
+      - publish-cobertura
+      - chuck-norris
+
+- job:
+    name: skydive-unit-tests
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    scm:
+      - skydive-github
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run tests.*'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-unit-tests
+    builders:
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          scripts/ci/run-unit-tests.sh
+    publishers:
+      - junit:
+          results: tests.xml
+      - publish-cobertura
+      - chuck-norris
+
+- job-template:
+    name: '{name}-functional-tests-backend-{backend}'
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    scm:
+      - skydive-github
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run tests.*'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: '{name}-functional-tests-backend-{backend}'
+    builders:
+      - shell: |
+          #!/bin/bash
+          set -v
+          cd src/github.com/skydive-project/skydive
+          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+          sudo systemctl restart etcd
+          BACKEND={backend} scripts/ci/run-functional-tests.sh
+          retcode=$?
+          # scripts/ci/coverage.sh
+          cd -
+          if [ -e src/github.com/skydive-project/skydive/cover.out.xml ]
+          then
+            mv src/github.com/skydive-project/skydive/cover.out.xml .
+          fi
+          exit $retcode
+    publishers:
+      - junit:
+          results: tests.xml
+      - chuck-norris
+
+- project:
+    name: skydive
+    backend:
+      - orientdb
+      - elasticsearch
+    jobs:
+      - '{name}-functional-tests-backend-{backend}'
+
+- job:
+    name: skydive-scale-tests
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run tests.*'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-scale-tests
+    builders:
+      - shell: |
+          #!/bin/bash
+          set -v
+          cd src/github.com/skydive-project/skydive
+          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+          SHELL=dumb scripts/ci/run-scale.sh
+    publishers:
+      - chuck-norris
+
+- job:
+    name: skydive-selenium-tests
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run tests.*'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-selenium-tests
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+          SHELL=dumb scripts/ci/run-selenium-tests.sh
+    publishers:
+      - chuck-norris
+
+- job:
+    name: skydive-devstack-plugin
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    wrappers:
+      - openstack:
+          instances:
+            - cloud-name: rcip-dev
+              template-name: devstack
+              count: 1
+          single-use: True
+    node: devstack
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: 'run devstack'
+          only-trigger-phrase: true
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-devstack-plugin
+    builders:
+      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-devstack.sh
+    publishers:
+      - chuck-norris

@@ -106,7 +106,7 @@ fmt: govendor
 
 vet: govendor
 	@echo "+ $@"
-	govendor tool vet $$(govendor list -no-status +local  | perl -pe 's|github.com/skydive-project/skydive/?||g' | grep -v '^tests')
+	test -z "$$(${GOPATH}/bin/govendor tool vet $$(${GOPATH}/bin/govendor list -no-status +local | perl -pe 's|github.com/skydive-project/skydive/?||g' | grep -v '^tests') 2>&1 | tee /dev/stderr | grep -v '^flow/probes/afpacket/' | grep -v 'exit status 1')"
 
 check: govendor
 	@test -z "$$(${GOPATH}/bin/govendor list +u)" || \

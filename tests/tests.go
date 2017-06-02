@@ -46,7 +46,7 @@ const (
 )
 
 const testConfig = `---
-ws_pong_timeout: 5
+ws_pong_timeout: 10
 
 analyzers:
   - 127.0.0.1:8082
@@ -365,6 +365,8 @@ func ping(t *testing.T, context *TestContext, ipVersion int, src string, dst str
 }
 
 func init() {
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
+
 	if helper.Standalone {
 		helper.InitConfig(testConfig)
 
