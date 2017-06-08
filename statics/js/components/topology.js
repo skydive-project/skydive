@@ -189,15 +189,17 @@ var TopologyComponent = {
     },
 
     currentNodeMetadata: function() {
+      if (!this.currentNode) return {};
       return this.extractMetadata(this.currentNode.metadata, ['LastMetric', 'Statistics']);
     },
 
     currentNodeStats: function() {
-      var s = this.extractMetadata(this.currentNode.metadata.Statistics);
-      return s;
+      if (!this.currentNode) return {};
+      return this.extractMetadata(this.currentNode.metadata.Statistics);
     },
 
     currentNodeLastStats: function() {
+      if (!this.currentNode) return {};
       var s = this.extractMetadata(this.currentNode.metadata.LastMetric);
       ['Start', 'Last'].forEach(function(k) {
         if (s[k]) {
@@ -515,12 +517,17 @@ Graph.prototype = {
   },
 
   syncRequest: function(t) {
+    if (t && t === store.state.time) {
+      return;
+    }
     var obj = {};
-
-    this.live = true;
     if (t) {
-      obj.Time = t;
       this.live = false;
+      obj.Time = t;
+      store.commit('time', t);
+    } else {
+      this.live = true;
+      store.commit('time', 0);
     }
 
     var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};

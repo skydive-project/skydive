@@ -449,37 +449,25 @@ ul.dropdown-menu .fa.pull-right {
   margin-left: 20px;
 }
 
-.slide-enter-active {
-  transition: all .2s ease;
-}
-.slide-leave-active {
-  transition: all .2s cubic-bezier(1.0, 0.5, 0.8, 1.0);
-}
-.slide-enter, .slide-leave-to
-/* .slide-fade-leave-active for <2.1.8 */ {
-  transform: translateX(300px);
-  opacity: 0;
-}
-
 .slider {
-  padding: 0px 10px;
-  color: white;
   position: absolute;
   left: 20px;
   top: 20px;
+  padding: 0px 10px;
+  color: white;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
 }
 
-.slider input {
-  width: 400px;
-  display: inline-block;
-  margin-right: 10px;
-  background: transparent;
+.slider .slide {
+  display: grid;
+  float: left;
+  width: 450px;
+  padding: 8px;
 }
 
-.slider span {
+.slider-info {
   color: white;
   font-weight: bold;
-  line-height: 32px;
+  line-height: 42px;
 }
