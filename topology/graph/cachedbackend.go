@@ -24,7 +24,6 @@ package graph
 
 import (
 	"sync/atomic"
-	"time"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -45,31 +44,31 @@ func (c *CachedBackend) SetMode(mode int) {
 	c.cacheMode.Store(mode)
 }
 
-func (c *CachedBackend) AddNode(n *Node) bool {
+func (c *CachedBackend) NodeAdded(n *Node) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
 	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.AddNode(n)
+		r = c.memory.NodeAdded(n)
 	}
 
 	if mode != CACHE_ONLY_MODE {
-		r = c.persistent.AddNode(n)
+		r = c.persistent.NodeAdded(n)
 	}
 
 	return r
 }
 
-func (c *CachedBackend) DelNode(n *Node) bool {
+func (c *CachedBackend) NodeDeleted(n *Node) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
 	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.DelNode(n)
+		r = c.memory.NodeDeleted(n)
 	}
 
 	if mode != CACHE_ONLY_MODE {
-		r = c.persistent.DelNode(n)
+		r = c.persistent.NodeDeleted(n)
 	}
 
 	return r
@@ -103,31 +102,31 @@ func (c *CachedBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (
 	return edges
 }
 
-func (c *CachedBackend) AddEdge(e *Edge) bool {
+func (c *CachedBackend) EdgeAdded(e *Edge) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
 	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.AddEdge(e)
+		r = c.memory.EdgeAdded(e)
 	}
 
 	if mode != CACHE_ONLY_MODE {
-		r = c.persistent.AddEdge(e)
+		r = c.persistent.EdgeAdded(e)
 	}
 
 	return r
 }
 
-func (c *CachedBackend) DelEdge(e *Edge) bool {
+func (c *CachedBackend) EdgeDeleted(e *Edge) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
 	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.DelEdge(e)
+		r = c.memory.EdgeDeleted(e)
 	}
 
 	if mode != CACHE_ONLY_MODE {
-		r = c.persistent.DelEdge(e)
+		r = c.persistent.EdgeDeleted(e)
 	}
 
 	return r
@@ -161,31 +160,16 @@ func (c *CachedBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadat
 	return nil, nil
 }
 
-func (c *CachedBackend) AddMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
+func (c *CachedBackend) MetadataUpdated(i interface{}) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
 	if mode != CACHE_ONLY_MODE {
-		r = c.persistent.AddMetadata(i, k, v, t)
+		r = c.persistent.MetadataUpdated(i)
 	}
 
 	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.AddMetadata(i, k, v, t)
-	}
-
-	return r
-}
-
-func (c *CachedBackend) SetMetadata(i interface{}, metadata Metadata, t time.Time) bool {
-	mode := c.cacheMode.Load()
-
-	r := false
-	if mode != CACHE_ONLY_MODE {
-		r = c.persistent.SetMetadata(i, metadata, t)
-	}
-
-	if mode != PERSISTENT_ONLY_MODE {
-		r = c.memory.SetMetadata(i, metadata, t)
+		r = c.memory.MetadataUpdated(i)
 	}
 
 	return r

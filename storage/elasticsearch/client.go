@@ -33,14 +33,31 @@ import (
 	"sync/atomic"
 	"time"
 
-	elastigo "github.com/lebauce/elastigo/lib"
+	elastigo "github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 )
 
-const indexVersion = 5
+const indexVersion = 6
+
+type ElasticSearchClientInterface interface {
+	FormatFilter(filter *filters.Filter, mapKey string) map[string]interface{}
+	Index(obj string, id string, data interface{}) error
+	BulkIndex(obj string, id string, data interface{}) error
+	IndexChild(obj string, parent string, id string, data interface{}) error
+	BulkIndexChild(obj string, parent string, id string, data interface{}) error
+	Update(obj string, id string, data interface{}) error
+	BulkUpdate(obj string, id string, data interface{}) error
+	UpdateWithPartialDoc(obj string, id string, data interface{}) error
+	BulkUpdateWithPartialDoc(obj string, id string, data interface{}) error
+	Get(obj string, id string) (elastigo.BaseResponse, error)
+	Delete(obj string, id string) (elastigo.BaseResponse, error)
+	BulkDelete(obj string, id string)
+	Search(obj string, query string) (elastigo.SearchResult, error)
+	Start(mappings []map[string][]byte)
+}
 
 type ElasticSearchClient struct {
 	connection *elastigo.Conn

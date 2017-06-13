@@ -135,38 +135,26 @@ func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, 
 		r := obj.(*graph.SyncReplyMsg)
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
-				t.Graph.AddNode(n)
+				t.Graph.NodeAdded(n)
 			}
 		}
 		for _, e := range r.Edges {
 			if t.Graph.GetEdge(e.ID) == nil {
-				t.Graph.AddEdge(e)
+				t.Graph.EdgeAdded(e)
 			}
 		}
 	case graph.NodeUpdatedMsgType:
-		n := obj.(*graph.Node)
-		if node := t.Graph.GetNode(n.ID); node != nil {
-			t.Graph.SetMetadata(node, n.Metadata())
-		}
+		t.Graph.NodeUpdated(obj.(*graph.Node))
 	case graph.NodeDeletedMsgType:
-		t.Graph.DelNode(obj.(*graph.Node))
+		t.Graph.NodeDeleted(obj.(*graph.Node))
 	case graph.NodeAddedMsgType:
-		n := obj.(*graph.Node)
-		if t.Graph.GetNode(n.ID) == nil {
-			t.Graph.AddNode(n)
-		}
+		t.Graph.NodeAdded(obj.(*graph.Node))
 	case graph.EdgeUpdatedMsgType:
-		e := obj.(*graph.Edge)
-		if edge := t.Graph.GetEdge(e.ID); edge != nil {
-			t.Graph.SetMetadata(edge, e.Metadata())
-		}
+		t.Graph.EdgeUpdated(obj.(*graph.Edge))
 	case graph.EdgeDeletedMsgType:
-		t.Graph.DelEdge(obj.(*graph.Edge))
+		t.Graph.EdgeDeleted(obj.(*graph.Edge))
 	case graph.EdgeAddedMsgType:
-		e := obj.(*graph.Edge)
-		if t.Graph.GetEdge(e.ID) == nil {
-			t.Graph.AddEdge(e)
-		}
+		t.Graph.EdgeAdded(obj.(*graph.Edge))
 	}
 }
 

@@ -24,7 +24,6 @@ package graph
 
 import (
 	"errors"
-	"time"
 
 	"github.com/skydive-project/skydive/common"
 )
@@ -43,15 +42,11 @@ type MemoryBackend struct {
 	edges map[Identifier]*MemoryBackendEdge
 }
 
-func (m *MemoryBackend) SetMetadata(i interface{}, meta Metadata, t time.Time) bool {
+func (m *MemoryBackend) MetadataUpdated(i interface{}) bool {
 	return true
 }
 
-func (m *MemoryBackend) AddMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
-	return true
-}
-
-func (m *MemoryBackend) AddEdge(e *Edge) bool {
+func (m *MemoryBackend) EdgeAdded(e *Edge) bool {
 	edge := &MemoryBackendEdge{
 		Edge: e,
 	}
@@ -98,7 +93,7 @@ func (m *MemoryBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadat
 	return []*Node{parent.Node}, []*Node{child.Node}
 }
 
-func (m *MemoryBackend) AddNode(n *Node) bool {
+func (m *MemoryBackend) NodeAdded(n *Node) bool {
 	m.nodes[n.ID] = &MemoryBackendNode{
 		Node:  n,
 		edges: make(map[Identifier]*MemoryBackendEdge),
@@ -128,7 +123,7 @@ func (m *MemoryBackend) GetNodeEdges(n *Node, t *common.TimeSlice, meta Metadata
 	return edges
 }
 
-func (m *MemoryBackend) DelEdge(e *Edge) bool {
+func (m *MemoryBackend) EdgeDeleted(e *Edge) bool {
 	if _, ok := m.edges[e.ID]; !ok {
 		return false
 	}
@@ -146,7 +141,7 @@ func (m *MemoryBackend) DelEdge(e *Edge) bool {
 	return true
 }
 
-func (m *MemoryBackend) DelNode(n *Node) bool {
+func (m *MemoryBackend) NodeDeleted(n *Node) bool {
 	delete(m.nodes, n.ID)
 
 	return true

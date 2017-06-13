@@ -69,6 +69,10 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 	for _, e := range g.GetEdges(nil) {
 		parent := nodeMap[e.GetParent()]
 		child := nodeMap[e.GetChild()]
+		if parent == nil || child == nil {
+			continue
+		}
+
 		childName, _ := child.GetFieldString("Name")
 		parentName, _ := parent.GetFieldString("Name")
 		relationType, _ := e.GetFieldString("RelationType")
