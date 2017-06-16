@@ -91,8 +91,6 @@ func init() {
 	cfg.SetDefault("agent.X509_servername", "")
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
 	cfg.SetDefault("agent.flow.stats_update", 1)
-	cfg.SetDefault("cache.expire", 300)
-	cfg.SetDefault("cache.cleanup", 30)
 	cfg.SetDefault("analyzer.bandwidth_source", "netlink")
 	cfg.SetDefault("analyzer.bandwidth_threshold", "relative")
 	cfg.SetDefault("analyzer.bandwidth_update_rate", 5)

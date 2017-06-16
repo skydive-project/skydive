@@ -125,7 +125,5 @@ func init() {
 		uid = fi.Sys().(*syscall.Stat_t).Uid
 	}
 
-	AllInOne.Flags().StringArrayVarP(&cfgFiles, "conf", "c", []string{}, "location of Skydive agent config files")
-	AllInOne.Flags().StringVarP(&cfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
 	AllInOne.Flags().Uint32VarP(&analyzerUID, "analyzer-uid", "", uid, "uid used for analyzer process")
 }

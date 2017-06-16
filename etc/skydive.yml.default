@@ -10,13 +10,6 @@ ws_pong_timeout: 5
 # duration in seconds before flushing topology aggregated messages
 # ws_bulk_maxdelay: 2
 
-cache:
-  # expiration time in second
-  expire: 300
-
-  # cleanup interval in second
-  cleanup: 30
-
 openstack:
   auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
   username: admin
