@@ -38,12 +38,6 @@ analyzer:
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
 
-  # Wihout any new packets, a flow expires after flowtable_expire
-  # seconds
-  flowtable_expire: 600
-  # Seconds between flow updates (metrics, enhancements,...)
-  flowtable_update: 60
-
   # Flow storage engine
   # storage:
       # Available: elasticsearch, orientdb
@@ -214,3 +208,10 @@ etcd:
   #   - http://127.0.0.1:2379
 
   # client_timeout: 5
+
+flow:
+  # Wihout any new packets, a flow expires after flow.expire
+  # seconds
+  expire: 600
+  # Seconds between flow updates (metrics, enhancements,...)
+  update: 60

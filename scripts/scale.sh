@@ -184,6 +184,9 @@ agent:
     probes:
       - gopacket
       - ovssflow
+flow:
+  expire: 600
+  update: 5
 netns:
   run_path: $TEMP_DIR/$NAME-netns
 etcd:
@@ -300,14 +303,15 @@ logging:
   level: DEBUG
 graph:
   backend: $GRAPH
+flow:
+  expire: 600
+  update: 5
 agent:
   X509_cert: $AGENT_CRT
 analyzer:
   listen: 0.0.0.0:$CURR_ANALYZER_PORT
   X509_cert: $ANALYZER_CRT
   X509_key: $ANALYZER_KEY
-  flowtable_expire: 600
-  flowtable_update: 5
   storage:
     backend: $STORAGE
   topology:

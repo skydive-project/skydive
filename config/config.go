@@ -56,9 +56,9 @@ func init() {
 	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
+	cfg.SetDefault("flow.expire", 600)
+	cfg.SetDefault("flow.update", 60)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
-	cfg.SetDefault("analyzer.flowtable_expire", 600)
-	cfg.SetDefault("analyzer.flowtable_update", 60)
 	cfg.SetDefault("analyzer.storage.bulk_insert", 100)
 	cfg.SetDefault("analyzer.storage.bulk_insert_deadline", 5)
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
@@ -130,17 +130,11 @@ func checkStrictRangeFloat(key string, min, max float64) error {
 }
 
 func checkConfig() error {
-	if err := checkStrictRangeFloat("analyzer.flowtable_agent_ratio", 0.0, 1.0); err != nil {
-		if cfg.GetFloat64("analyzer.flowtable_agent_ratio") != 0.0 {
-			return err
-		}
-	}
-
-	if err := checkStrictPositiveInt("analyzer.flowtable_expire"); err != nil {
+	if err := checkStrictPositiveInt("flow.expire"); err != nil {
 		return err
 	}
 
-	if err := checkStrictPositiveInt("analyzer.flowtable_update"); err != nil {
+	if err := checkStrictPositiveInt("flow.update"); err != nil {
 		return err
 	}
 

@@ -360,11 +360,9 @@ func NewNeutronMapper(g *graph.Graph, wspool *shttp.WSAsyncClientPool, authURL, 
 	}
 	mapper.client = client
 
-	// Create a cache with a default expiration time of 5 minutes, and which
+	// Create a cache with a expiration time of 5 minutes, and which
 	// purges expired items every 30 seconds
-	expire := config.GetConfig().GetInt("cache.expire")
-	cleanup := config.GetConfig().GetInt("cache.cleanup")
-	mapper.cache = cache.New(time.Duration(expire)*time.Second, time.Duration(cleanup)*time.Second)
+	mapper.cache = cache.New(time.Duration(300)*time.Second, time.Duration(30)*time.Second)
 	mapper.nodeUpdaterChan = make(chan graph.Identifier, 500)
 
 	g.AddEventListener(mapper)
