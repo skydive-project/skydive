@@ -25,6 +25,7 @@ package probes
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/skydive-project/skydive/config"
@@ -200,7 +201,7 @@ func (mapper *OpenContrailMapper) nodeUpdater() {
 			return
 		}
 
-		if tp, _ := node.GetFieldString("Type"); tp == "vhost" {
+		if tp, _ := node.GetFieldString("Type"); tp == "vhost" && strings.Contains(name, "vhost") {
 			mapper.onVhostAdded(node, itf)
 		} else {
 			logging.GetLogger().Debugf("Retrieve extIDs for %s", name)
