@@ -23,11 +23,7 @@ generate_cover_data() {
     mkdir "$workdir"
 
     # unit test
-    [ -z "$PKG" ] && PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor')
-    for pkg in ${PKG}; do
-        coverfile="$workdir/$(echo $pkg | tr / -).cover"
-        make test GOFLAGS="-covermode=$mode -coverprofile=$coverfile" UT_PACKAGES=$pkg
-    done
+    make test COVERAGE=true COVERAGE_WD=$workdir COVERAGE_MODE=$mode
 
     if [ "$functionals" -eq 1 ];
     then

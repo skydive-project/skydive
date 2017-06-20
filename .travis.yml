@@ -45,7 +45,7 @@ script:
 
     - make install
     - make static
-    # - ARGS="-graph.output ascii" ./coverage.sh --coveralls
+    - ARGS="-graph.output ascii" ./coverage.sh --coveralls
 
     - echo "--- DOCKER IMAGE ---"
     - make docker-image DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
