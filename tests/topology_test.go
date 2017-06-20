@@ -114,6 +114,16 @@ func TestPatchOVS(t *testing.T) {
 				return fmt.Errorf("Expected 1 node, got %+v", nodes)
 			}
 
+			gremlin += `.Dedup()`
+
+			if nodes, err = gh.GetNodes(gremlin); err != nil {
+				return err
+			}
+
+			if len(nodes) != 1 {
+				return fmt.Errorf("Expected 1 node, got %+v", nodes)
+			}
+
 			return nil
 		},
 	}
@@ -640,6 +650,59 @@ func TestInterfaceMetrics(t *testing.T) {
 			im := tm.Metric.(*graph.InterfaceMetric)
 			if im.TxPackets != 30 {
 				return fmt.Errorf("Expected 30 TxPackets, got %d", tx)
+			}
+
+			return nil
+		},
+	}
+
+	RunTest(t, test)
+}
+func TestOVSOwnershipLink(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-owner", true},
+			{"ovs-vsctl add-port br-owner patch-br-owner -- set interface patch-br-owner type=patch", true},
+			{"ovs-vsctl add-port br-owner gre-br-owner -- set interface gre-br-owner type=gre", true},
+			{"ovs-vsctl add-port br-owner vxlan-br-owner -- set interface vxlan-br-owner type=vxlan", true},
+			{"ovs-vsctl add-port br-owner geneve-br-owner -- set interface geneve-br-owner type=geneve", true},
+			{"ovs-vsctl add-port br-owner intf-owner -- set interface intf-owner type=internal", true},
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ovs-vsctl del-br br-owner", true},
+		},
+
+		check: func(c *TestContext) error {
+			gh := c.gh
+			prefix := "g"
+			if !c.time.IsZero() {
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+
+			intfs := []string{"patch-br-owner", "gre-br-owner", "vxlan-br-owner", "geneve-br-owner"}
+			for _, intf := range intfs {
+				gremlin := prefix + fmt.Sprintf(`.V().Has('Name', '%s', 'Type', NE('ovsport')).InE().Has('RelationType', 'ownership').InV().Has('Name', 'br-owner')`, intf)
+				nodes, err := gh.GetNodes(gremlin)
+				if err != nil {
+					return err
+				}
+
+				// only the host node shouldn't have a parent ownership link
+				if len(nodes) != 1 {
+					return errors.New("tunneling and patch interface should have one ownership link to the bridge")
+				}
+			}
+
+			gremlin := prefix + `.V().Has('Name', 'intf-owner', 'Type', NE('ovsport')).InE().Has('RelationType', 'ownership').InV().Has('Type', 'host')`
+			nodes, err := gh.GetNodes(gremlin)
+			if err != nil {
+				return err
+			}
+
+			// only the host node shouldn't have a parent ownership link
+			if len(nodes) != 1 {
+				return errors.New("internal interface should have one ownership link to the host")
 			}
 
 			return nil
