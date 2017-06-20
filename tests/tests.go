@@ -70,11 +70,6 @@ agent:
     netlink:
       metrics_update: 5
 
-  flow:
-    probes:
-      - ovssflow
-      - gopacket
-      - pcapsocket
   metadata:
     info: This is compute node
 

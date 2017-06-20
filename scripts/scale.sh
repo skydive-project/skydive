@@ -183,10 +183,6 @@ agent:
       - netlink
       - netns
       - ovsdb
-  flow:
-    probes:
-      - gopacket
-      - ovssflow
 flow:
   expire: 600
   update: 5

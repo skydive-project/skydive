@@ -135,7 +135,7 @@ func (a *Agent) Start() {
 
 	a.FlowClientPool = analyzer.NewFlowClientPool(a.WSAsyncClientPool)
 
-	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator, a.FlowClientPool)
+	a.FlowProbeBundle = fprobes.NewFlowProbeBundle(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator, a.FlowClientPool)
 	a.FlowProbeBundle.Start()
 
 	if a.OnDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, a.WSAsyncClientPool); err != nil {
