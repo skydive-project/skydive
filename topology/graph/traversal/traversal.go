@@ -603,6 +603,89 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
 }
 
+func (t *GraphTraversal) E(s ...interface{}) *GraphTraversalE {
+	var edges []*graph.Edge
+	var metadata graph.Metadata
+	var err error
+
+	if t.error != nil {
+		return &GraphTraversalE{error: t.error}
+	}
+
+	t.RLock()
+	defer t.RUnlock()
+
+	switch len(s) {
+	case 1:
+		id, ok := s[0].(string)
+		if !ok {
+			return &GraphTraversalE{error: fmt.Errorf("E accepts only a string when there is only one argument")}
+		}
+		edge := t.Graph.GetEdge(graph.Identifier(id))
+		if edge == nil {
+			return &GraphTraversalE{error: fmt.Errorf("Edge '%s' does not exist", id)}
+		}
+		edges = []*graph.Edge{edge}
+	default:
+		if metadata, err = SliceToMetadata(s...); err != nil {
+			return &GraphTraversalE{error: err}
+		}
+		fallthrough
+	case 0:
+		edges = t.Graph.GetEdges(metadata)
+	}
+
+	if t.currentStepContext.PaginationRange != nil {
+		var edgeRange []*graph.Edge
+		it := t.currentStepContext.PaginationRange.Iterator()
+		for _, edge := range edges {
+			if it.Done() {
+				break
+			} else if it.Next() {
+				edgeRange = append(edgeRange, edge)
+			}
+		}
+		edges = edgeRange
+	}
+
+	return &GraphTraversalE{GraphTraversal: t, edges: edges}
+}
+
+func NewGraphTraversalE(gt *GraphTraversal, edges []*graph.Edge, err ...error) *GraphTraversalE {
+	te := &GraphTraversalE{
+		GraphTraversal: gt,
+		edges:          edges,
+	}
+
+	if len(err) > 0 {
+		te.error = err[0]
+	}
+
+	return te
+}
+
+func (te *GraphTraversalE) Error() error {
+	return te.error
+}
+
+func (te *GraphTraversalE) Values() []interface{} {
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
+	s := make([]interface{}, len(te.edges))
+	for i, e := range te.edges {
+		s[i] = e
+	}
+	return s
+}
+
+func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
+	values := te.Values()
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+	return json.Marshal(values)
+}
+
 func ParseSortParameter(keys ...interface{}) (order common.SortOrder, sortBy string, err error) {
 	order = common.SortAscending
 
@@ -1189,28 +1272,6 @@ nodeloop:
 	}
 
 	return nte
-}
-
-func (te *GraphTraversalE) Error() error {
-	return te.error
-}
-
-func (te *GraphTraversalE) Values() []interface{} {
-	te.GraphTraversal.RLock()
-	defer te.GraphTraversal.RUnlock()
-
-	s := make([]interface{}, len(te.edges))
-	for i, v := range te.edges {
-		s[i] = v
-	}
-	return s
-}
-
-func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
-	values := te.Values()
-	te.GraphTraversal.RLock()
-	defer te.GraphTraversal.RUnlock()
-	return json.Marshal(values)
 }
 
 func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {

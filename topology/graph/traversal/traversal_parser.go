@@ -214,6 +214,30 @@ func (s *GremlinTraversalStepV) Reduce(next GremlinTraversalStep) GremlinTravers
 	return next
 }
 
+func (s *GremlinTraversalStepE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	g, ok := last.(*GraphTraversal)
+	if !ok {
+		return nil, ExecutionError
+	}
+
+	g.currentStepContext = s.StepContext
+
+	return g.E(s.Params...), nil
+}
+
+func (s *GremlinTraversalStepE) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if s.ReduceRange(next) {
+		return s
+	}
+
+	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 && len(hasStep.Params) >= 2 {
+		s.Params = hasStep.Params
+		return s
+	}
+
+	return next
+}
+
 func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTraversalStep, err error) {
 	g, ok := last.(*GraphTraversal)
 	if !ok {
@@ -855,6 +879,17 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 			return nil, fmt.Errorf("V accepts at most one parameter")
 		}
 		return &GremlinTraversalStepV{gremlinStepContext}, nil
+	case E:
+		switch len(params) {
+		case 0:
+		case 1:
+			if _, ok := params[0].(string); !ok {
+				return nil, fmt.Errorf("E parameter must be a string")
+			}
+		default:
+			return nil, fmt.Errorf("E accepts at most one parameter")
+		}
+		return &GremlinTraversalStepE{gremlinStepContext}, nil
 	case OUT:
 		return &GremlinTraversalStepOut{gremlinStepContext}, nil
 	case IN:
