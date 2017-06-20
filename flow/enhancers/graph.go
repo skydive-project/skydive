@@ -84,8 +84,8 @@ func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
 }
 
 func (gfe *GraphFlowEnhancer) OnNodeDeleted(n *graph.Node) {
-	if mac, err := n.GetFieldString("MAC"); err == nil {
-		logging.GetLogger().Debugf("GraphFlowEnhancer node event del cache %s", mac)
+	if mac, _ := n.GetFieldString("MAC"); mac != "" {
+		logging.GetLogger().Debugf("GraphFlowEnhancer node event del cache %s", n.String())
 		gfe.tidCache.del(mac)
 	}
 }
@@ -95,8 +95,8 @@ func (gfe *GraphFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
 	if rt, _ := e.GetFieldString("RelationType"); rt == topology.OwnershipLink {
 		_, children := gfe.Graph.GetEdgeNodes(e, nil, nil)
 		for _, child := range children {
-			if mac, err := child.GetFieldString("MAC"); err == nil {
-				logging.GetLogger().Debugf("GraphFlowEnhancer edge event del cache %s", mac)
+			if mac, _ := child.GetFieldString("MAC"); mac != "" {
+				logging.GetLogger().Debugf("GraphFlowEnhancer edge event del cache %s", child.String())
 				gfe.tidCache.del(mac)
 			}
 		}
