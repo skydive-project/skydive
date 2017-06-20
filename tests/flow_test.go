@@ -929,8 +929,9 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec ipv6fh-vm1 ping6 -c 5 -s 1024 fd49:37c8:5229::2", Check: false})
-			return nil
+			return common.Retry(func() error {
+				return helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec ipv6fh-vm1 ping6 -c 5 -s 1024 fd49:37c8:5229::2", Check: false})
+			}, 10, time.Second)
 		},
 
 		tearDownCmds: []helper.Cmd{
@@ -1387,6 +1388,7 @@ func TestPcapInject(t *testing.T) {
 				return fmt.Errorf("Should get 200 status code, got %d", resp.StatusCode)
 			}
 
+			c.time = time.Unix(1454659514, 0)
 			return nil
 		},
 		check: func(c *TestContext) error {

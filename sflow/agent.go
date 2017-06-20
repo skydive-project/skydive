@@ -47,6 +47,7 @@ var (
 )
 
 type SFlowAgent struct {
+	sync.RWMutex
 	UUID      string
 	Addr      string
 	Port      int
@@ -104,6 +105,7 @@ func (sfa *SFlowAgent) feedFlowTable(packetsChan chan *flow.FlowPackets) {
 }
 
 func (sfa *SFlowAgent) start() error {
+	sfa.Lock()
 	addr := net.UDPAddr{
 		Port: sfa.Port,
 		IP:   net.ParseIP(sfa.Addr),
@@ -111,9 +113,11 @@ func (sfa *SFlowAgent) start() error {
 	conn, err := net.ListenUDP("udp", &addr)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to listen on port %d: %s", sfa.Port, err.Error())
+		sfa.Unlock()
 		return err
 	}
 	sfa.Conn = conn
+	sfa.Unlock()
 
 	packetsChan := sfa.FlowTable.Start()
 	defer sfa.FlowTable.Stop()
@@ -128,6 +132,9 @@ func (sfa *SFlowAgent) Start() {
 }
 
 func (sfa *SFlowAgent) Stop() {
+	sfa.Lock()
+	defer sfa.Unlock()
+
 	if sfa.Conn != nil {
 		sfa.Conn.Close()
 	}

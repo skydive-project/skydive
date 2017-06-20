@@ -1,0 +1,25 @@
+---
+- name: Install elasticsearch GPG key
+  rpm_key:
+    state: present
+    key: https://packages.elastic.co/GPG-KEY-elasticsearch
+
+- name: Install elasticsearch YUM repository
+  yum_repository:
+    state: present
+    name: elasticsearch
+    description: Elasticsearch repository for 2.x packages
+    gpgcheck: true
+    gpgkey: https://packages.elastic.co/GPG-KEY-elasticsearch
+    baseurl: https://packages.elastic.co/elasticsearch/2.x/centos
+
+- name: Install elasticsearch package
+  package:
+    name: elasticsearch
+    state: present
+
+- name: Starts and enable elasticsearch
+  service:
+    name: elasticsearch
+    state: started
+    enabled: true

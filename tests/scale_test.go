@@ -48,10 +48,11 @@ func TestHA(t *testing.T) {
 		{fmt.Sprintf("%s start 2 2 2", scale), true},
 		{"sleep 30", false},
 	}
-
-	tearDownCmds := []helper.Cmd{}
-
 	helper.ExecCmds(t, setupCmds...)
+
+	tearDownCmds := []helper.Cmd{
+		{fmt.Sprintf("%s stop 2 3 2", scale), false},
+	}
 	defer helper.ExecCmds(t, tearDownCmds...)
 
 	authOptions := &shttp.AuthenticationOpts{}

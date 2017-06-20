@@ -1,0 +1,80 @@
+---
+- name: Set facts
+  set_fact: "orientdb_path=/opt/orientdb-community-{{ orientdb_version }}"
+
+- name: Create OrientDB group
+  group:
+    name: orientdb
+    state: present
+
+- name: Create OrientDB user
+  user:
+    name: orientdb
+    group: orientdb
+    home: "{{ orientdb_path }}"
+
+- name: Set execute bit on OrientDB home directory
+  file:
+    path: "{{ orientdb_path }}"
+    state: directory
+    mode: 0711
+
+- name: Download OrientDB
+  get_url:
+    url: "http://orientdb.com/download.php?email=unknown@unknown.com&file=orientdb-community-{{ orientdb_version }}.tar.gz&os=linux"
+    dest: /tmp/orientdb.tar.gz
+
+- name: Create symlink
+  file:
+    src: "{{ orientdb_path }}"
+    dest: /opt/orientdb
+    owner: orientdb
+    group: orientdb
+    state: link
+
+- name: Extract OrientDB
+  unarchive:
+    remote_src: True
+    src: /tmp/orientdb.tar.gz
+    dest: /opt
+    group: orientdb
+    owner: orientdb
+
+- name: Copy systemd unit file
+  copy:
+    remote_src: True
+    src: "{{ orientdb_path }}/bin/orientdb.service"
+    dest: /etc/systemd/system
+
+- name: Replace user in systemd unit file
+  replace:
+    path: /etc/systemd/system/orientdb.service
+    regexp: ORIENTDB_USER
+    replace: orientdb
+
+- name: Replace group in systemd unit file
+  replace:
+    path: /etc/systemd/system/orientdb.service
+    regexp: ORIENTDB_GROUP
+    replace: orientdb
+
+- name: Replace user in systemd unit file
+  replace:
+    path: /etc/systemd/system/orientdb.service
+    regexp: '\$ORIENTDB_HOME'
+    replace: "{{ orientdb_path }}"
+
+- name: Add environment to systemd unit file
+  lineinfile:
+    path: /etc/systemd/system/orientdb.service
+    line: "Environment=ORIENTDB_ROOT_PASSWORD={{ orientdb_root_password }}"
+
+- name: Refresh systemd cache
+  become: true
+  shell: systemctl daemon-reload
+
+- name: Starts and enable OrientDB
+  service:
+    name: orientdb
+    state: started
+    enabled: yes

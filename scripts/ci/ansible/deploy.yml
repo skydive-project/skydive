@@ -1,0 +1,275 @@
+---
+- name: Create security groups
+  hosts: localhost
+  tasks:
+  - os_network:
+      cloud: "{{ cloud }}"
+      state: present
+      name: "{{ network }}"
+    register: os_network
+
+  - os_image:
+      cloud: "{{ cloud }}"
+      state: present
+      name: "{{ image }}"
+    register: os_image
+
+  - os_flavor_facts:
+      cloud: "{{ cloud }}"
+      name: "{{ flavor }}"
+    register: os_flavor
+
+  - set_fact:
+      os_network: "{{ os_network.id }}"
+      os_flavor: "{{ os_flavor.ansible_facts.openstack_flavors[0].id }}"
+      os_image: "{{ os_image.id }}"
+
+  - os_security_group:
+      cloud: "{{ cloud }}"
+      state: present
+      name: jenkins
+      description: security group for Jenkins master
+
+  - os_security_group_rule:
+      cloud: "{{ cloud }}"
+      security_group: jenkins
+      protocol: tcp
+      state: present
+      port_range_min: 22
+      port_range_max: 22
+      remote_ip_prefix: 0.0.0.0/0
+
+  - os_security_group_rule:
+      cloud: "{{ cloud }}"
+      security_group: jenkins
+      protocol: tcp
+      state: present
+      port_range_min: 8080
+      port_range_max: 8080
+      remote_ip_prefix: 0.0.0.0/0
+
+  - os_security_group_rule:
+      cloud: "{{ cloud }}"
+      security_group: jenkins
+      protocol: tcp
+      state: present
+      port_range_min: 39553
+      port_range_max: 39553
+      remote_ip_prefix: 0.0.0.0/0
+
+- name: Create Jenkins master
+  hosts: localhost
+  roles:
+    - role: create_instances
+      instance_name: jenkins_master
+      security_group: jenkins
+      host_group: masters
+      network: "{{ network }}"
+      image: "{{ image }}"
+
+- name: Create Jenkins slaves
+  hosts: localhost
+  tasks:
+    - include_role:
+        name: create_instances
+        instance_name: "jenkins_slave-{{ item }}"
+        security_group: jenkins
+        host_group: slaves
+      with_sequence: count={{ slave_count }}
+
+- name: Install Python 2.x
+  hosts: jenkins_master, slaves
+  become: true
+  tasks:
+  - package:
+      name: python
+      state: present
+  - set_fact: ansible_python_interpreter="/usr/bin/python"
+
+- name: Deploy Jenkins master
+  hosts: jenkins_master
+  become: true
+  roles:
+    - role: geerlingguy.jenkins
+      jenkins_admin_password: "{{ jenkins_admin_password | default('admin', true) }}"
+      jenkins_plugins:
+        - github
+        - git
+        - monitoring
+        - embeddable-build-status
+        - postbuild-task
+        - openstack-cloud
+        - ghprb
+        - cobertura
+        - greenballs
+        - chucknorris
+
+- name: Install requirements
+  hosts: jenkins_master, slaves
+  become: yes
+  tasks:
+  - package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+       - unzip
+       - wget
+       - https://www.rdoproject.org/repos/rdo-release.rpm
+  - shell: |
+      cd /tmp
+      wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
+      unzip protoc-3.1.0-linux-x86_64.zip
+      chmod +x bin/protoc
+      mv bin/protoc /usr/bin/
+  - package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+       - git
+       - wget
+       - unzip
+       - gcc
+       - make
+       - openvswitch
+       - docker
+       - libpcap-devel
+       - etcd
+       - libxml2-devel
+       - jq
+       - screen
+       - libselinux-python
+       - bridge-utils
+       - perl-Graph-Easy
+       - java
+  - copy:
+      content: |
+        jenkins ALL=(root) NOPASSWD:ALL
+        Defaults:jenkins secure_path=/sbin:/usr/sbin:/usr/bin:/bin:/usr/local/sbin:/usr/local/bin
+        Defaults:jenkins !requiretty
+      mode: 0440
+      dest: /etc/sudoers.d/jenkins
+      owner: root
+      group: root
+  - service:
+      name: "{{ item }}"
+      state: started
+      enabled: true
+    with_items:
+      - etcd
+      - openvswitch
+      - docker
+  - selinux:
+      policy: targeted
+      state: permissive
+
+- name: Install orientdb and elasticsearch
+  hosts: slaves
+  become: yes
+  roles:
+   - role: orientdb
+   - role: elasticsearch
+
+- name: Register Jenkins slaves
+  hosts: jenkins_master
+  tasks:
+  - uri:
+      url: http://localhost:8080/scriptText
+      method: POST
+      user: admin
+      password: "{{ jenkins_admin_password | default('admin' )}}"
+      body: |
+        script=import jenkins.model.*
+        import hudson.model.*
+        import hudson.slaves.*
+
+        Jenkins.instance.setSlaveAgentPort(39553)
+
+        Jenkins.instance.addNode(
+          new DumbSlave(
+            "{{ item }}",
+            "",
+            "/var/lib/jenkins",
+            "1",
+            Node.Mode.NORMAL,
+            "slaves",
+            new JNLPLauncher(),
+            new RetentionStrategy.Always(),
+            new LinkedList()))
+      force_basic_auth: yes
+    with_items: "{{ groups.slaves }}"
+
+  - uri:
+      url: http://localhost:8080/scriptText
+      method: GET
+      user: admin
+      password: "{{ jenkins_admin_password | default('admin' )}}"
+      body: |
+        script=
+        for (aSlave in hudson.model.Hudson.instance.slaves) {
+            println aSlave.getComputer().getJnlpMac()
+        }
+      force_basic_auth: yes
+
+- name: Get JNLP slave secrets
+  hosts: jenkins_master
+  tasks:
+  - shell: curl --user "admin:{{ jenkins_admin_password | default('admin') }}" -d "script=for (aSlave in hudson.model.Hudson.instance.slaves) { println aSlave.getComputer().getJnlpMac() }" http://localhost:8080/scriptText
+    register: slave_secrets
+  - set_fact: slave_secrets="{{ slave_secrets.stdout_lines }}"
+
+- name: Start Jenkins slaves
+  hosts: slaves
+  become: true
+  tasks:
+  - group:
+      name: jenkins
+      state: present
+  - user:
+      name: jenkins
+      group: jenkins
+      home: /var/lib/jenkins
+  - get_url:
+      url: "http://{{ hostvars['jenkins_master']['public_ip'] }}:8080/jnlpJars/slave.jar"
+      dest: /var/lib/jenkins/slave.jar
+  - package:
+      name: java
+      state: present
+  - copy:
+      content: |
+        [Unit]
+        Description=Jenkins Slave
+        Wants=network.target
+        After=network.target
+
+        [Service]
+        ExecStart=/usr/bin/java -jar /var/lib/jenkins/slave.jar -jnlpUrl http://{{ hostvars['jenkins_master']['public_ip'] }}:8080/computer/jenkins_slave-{{ play_hosts.index(inventory_hostname) + 1 }}/slave-agent.jnlp -secret {{ hostvars['jenkins_master']['slave_secrets'][play_hosts.index(inventory_hostname)] }}
+        User=jenkins
+        Restart=always
+      mode: 0644
+      dest: /etc/systemd/system/jenkins-slave.service
+      owner: root
+      group: root
+    with_items: "{{ hostvars['jenkins_master']['slave_secrets'] }}"
+  - shell: systemctl daemon-reload
+  - service:
+      name: jenkins-slave
+      state: started
+      enabled: yes
+
+- name: Jenkins master post configuration
+  hosts: jenkins_master
+  become: true
+  roles:
+  - role: jenkins_master
+    jenkins_url: "http://{{ hostvars['jenkins_master']['public_ip'] }}:8080"
+    jenkins_admin_password: "{{ jenkins_admin_password }}"
+    cloud: "{{ cloud }}"
+    os_username: "{{ os_username }}"
+    os_password: "{{ os_password }}"
+    os_tenant_name: "{{ os_tenant_name }}"
+    os_image: "{{ image }}"
+    os_flavor: "{{ hostvars['localhost']['os_flavor'] }}"
+    os_network: "{{ hostvars['localhost']['os_network'] }}"
+    os_floating_ip_pool: "{{ os_floating_ip_pool | default('public') }}"
+    os_keypair: "{{ os_keypair }}"
+    github_secret: "{{ github_secret }}"
