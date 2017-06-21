@@ -24,6 +24,9 @@ DESTDIR?=$(shell pwd)
 COVERAGE?=0
 COVERAGE_MODE?=atomic
 
+.PHONY: all
+all: install
+
 .proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
 	protoc --go_out . ${FLOW_PROTO_FILES}
 	protoc --go_out . ${FILTERS_PROTO_FILES}
@@ -37,8 +40,6 @@ COVERAGE_MODE?=atomic
 
 skydive-bash-completion.sh: .proto govendor cmd/completion/completion.go
 	go run cmd/completion/completion.go
-
-all: install
 
 .compile:
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
@@ -132,8 +133,6 @@ genlocalfiles: .proto .bindata skydive-bash-completion.sh
 
 clean: test.functionals.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
-
-.PHONY: doc
 
 doc:
 	mkdir -p /tmp/skydive-doc
