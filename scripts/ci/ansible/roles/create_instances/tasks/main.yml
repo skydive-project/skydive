@@ -11,6 +11,7 @@
      - "{{ security_group }}"
     nics:
      - net-name: "{{ network }}"
+    floating_ips: "{{ floating_ips | default(omit) }}"
   register: vm
 
 - name: Add instance to the inventory
@@ -20,6 +21,7 @@
     ansible_ssh_user: "{{ cloud_user }}"
     ansible_python_interpreter: "{{ python_interpreter }}"
     public_ip: "{{ vm.openstack.public_v4 }}"
+    private_ip: "{{ vm.openstack.private_v4 }}"
     groups: "{{ host_group }}"
 
 - name: Wait for SSH to be available

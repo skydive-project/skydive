@@ -55,7 +55,7 @@
       state: present
       port_range_min: 39553
       port_range_max: 39553
-      remote_ip_prefix: 0.0.0.0/0
+      remote_group: jenkins
 
 - name: Create Jenkins master
   hosts: localhost
@@ -66,6 +66,8 @@
       host_group: masters
       network: "{{ network }}"
       image: "{{ image }}"
+      floating_ips:
+        - "{{ jenkins_public_ip }}"
 
 - name: Create Jenkins slaves
   hosts: localhost
@@ -103,6 +105,7 @@
         - cobertura
         - greenballs
         - chucknorris
+        - ansicolor
 
 - name: Install requirements
   hosts: jenkins_master, slaves
@@ -161,6 +164,10 @@
   - selinux:
       policy: targeted
       state: permissive
+  - lineinfile:
+      dest: /etc/hosts
+      line: "{{ hostvars['jenkins_master']['private_ip'] }} {{ jenkins_public_hostname }}"
+      state: present
 
 - name: Install orientdb and elasticsearch
   hosts: slaves
@@ -229,7 +236,7 @@
       group: jenkins
       home: /var/lib/jenkins
   - get_url:
-      url: "http://{{ hostvars['jenkins_master']['public_ip'] }}:8080/jnlpJars/slave.jar"
+      url: "http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/jnlpJars/slave.jar"
       dest: /var/lib/jenkins/slave.jar
   - package:
       name: java
@@ -242,7 +249,7 @@
         After=network.target
 
         [Service]
-        ExecStart=/usr/bin/java -jar /var/lib/jenkins/slave.jar -jnlpUrl http://{{ hostvars['jenkins_master']['public_ip'] }}:8080/computer/jenkins_slave-{{ play_hosts.index(inventory_hostname) + 1 }}/slave-agent.jnlp -secret {{ hostvars['jenkins_master']['slave_secrets'][play_hosts.index(inventory_hostname)] }}
+        ExecStart=/usr/bin/java -jar /var/lib/jenkins/slave.jar -jnlpUrl http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/computer/jenkins_slave-{{ play_hosts.index(inventory_hostname) + 1 }}/slave-agent.jnlp -secret {{ hostvars['jenkins_master']['slave_secrets'][play_hosts.index(inventory_hostname)] }}
         User=jenkins
         Restart=always
       mode: 0644
