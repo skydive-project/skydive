@@ -34,6 +34,7 @@ import (
 	"github.com/tebeka/selenium"
 
 	gclient "github.com/skydive-project/skydive/cmd/client"
+	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -44,16 +45,15 @@ func TestSelenium(t *testing.T) {
 
 	setupCmds := []helper.Cmd{
 		{fmt.Sprintf("%s start 124.65.54.42/24 124.65.54.43/24", topology), true},
-		{"sudo docker pull elgalu/selenium", true},
-		{"sudo docker run -d --name=grid -p 4444:24444 -p 5900:25900 -e --shm-size=1g elgalu/selenium", true},
+		{"docker pull elgalu/selenium", true},
+		{"docker run -d --name=grid -p 4444:24444 -p 5900:25900 -e --shm-size=1g elgalu/selenium", true},
 		{"docker exec grid wait_all_done 30s", true},
 	}
 
 	tearDownCmds := []helper.Cmd{
 		{fmt.Sprintf("%s stop", topology), true},
-		{"sudo docker exec grid stop", true},
-		{"sudo docker stop grid", true},
-		{"sudo docker rm grid", true},
+		{"docker stop grid", true},
+		{"docker rm -f grid", true},
 	}
 
 	helper.ExecCmds(t, setupCmds...)
@@ -68,7 +68,7 @@ func TestSelenium(t *testing.T) {
 
 	ipaddr, err := getIPv4Addr()
 	if err != nil {
-		t.Fatal("Not able to find Analayzer addr: %v", err)
+		t.Fatalf("Not able to find Analayzer addr: %v", err)
 	}
 
 	if err := webdriver.Get("http://" + ipaddr + ":8082"); err != nil {
@@ -138,24 +138,39 @@ func TestSelenium(t *testing.T) {
 			return fmt.Errorf("Capture not found in the list")
 		}
 		return nil
+	}
 
+	findElement := func(wd selenium.WebDriver, selection, xpath string) (el selenium.WebElement, err error) {
+		common.Retry(func() error {
+			el, err = wd.FindElement(selection, xpath)
+			if err != nil || el == nil {
+				return fmt.Errorf("Failed to find element for %s (error: %+v)", xpath, err)
+			}
+			return nil
+		}, 10, time.Second)
+		return
 	}
 
 	injectPacket := func(wd selenium.WebDriver) error {
-		generatorTab, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='Generator']")
-		if err != nil || generatorTab == nil {
-			return fmt.Errorf("Generator tab not found: %v", err)
-		}
-		if err := generatorTab.Click(); err != nil {
+		generatorTab, err := findElement(wd, selenium.ByXPATH, ".//*[@id='Generator']")
+		if err != nil {
 			return err
 		}
 
-		injectSrc, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='inject-src']/input")
-		if err != nil || injectSrc == nil {
+		err = common.Retry(func() error {
+			return generatorTab.Click()
+		}, 10, time.Second)
+		if err != nil {
+			return fmt.Errorf("Could not click on generator tab: %s", err.Error())
+		}
+
+		injectSrc, err := findElement(wd, selenium.ByXPATH, ".//*[@id='inject-src']/input")
+		if err != nil {
 			return err
 		}
+
 		if err := injectSrc.Click(); err != nil {
-			return err
+			return fmt.Errorf("Failed to click on inject input: %s", err.Error())
 		}
 
 		authOptions := &shttp.AuthenticationOpts{}
@@ -174,54 +189,53 @@ func TestSelenium(t *testing.T) {
 		tid1, _ := node1.GetFieldString("TID")
 		tid2, _ := node2.GetFieldString("TID")
 
-		srcNode, err := wd.FindElement(selenium.ByXPATH, ".//*[@tid='"+tid1+"']")
-		if err != nil || srcNode == nil {
-			return err
-		}
-		if err := srcNode.Click(); err != nil {
+		srcNode, err := findElement(wd, selenium.ByXPATH, ".//*[@tid='"+tid1+"']")
+		if err != nil {
 			return err
 		}
 
-		injectDst, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='inject-dst']/input")
-		if err != nil || injectDst == nil {
+		if err := srcNode.Click(); err != nil {
+			return fmt.Errorf("Failed to click on source node: %s", err.Error())
+		}
+
+		injectDst, err := findElement(wd, selenium.ByXPATH, ".//*[@id='inject-dst']/input")
+		if err != nil {
 			return err
 		}
 		if err := injectDst.Click(); err != nil {
-			return err
+			return fmt.Errorf("Failed to click on destination input: %s", err.Error())
 		}
-		dstNode, err := wd.FindElement(selenium.ByXPATH, ".//*[@tid='"+tid2+"']")
-		if err != nil || dstNode == nil {
+
+		dstNode, err := findElement(wd, selenium.ByXPATH, ".//*[@tid='"+tid2+"']")
+		if err != nil {
 			return err
 		}
 		if err := dstNode.Click(); err != nil {
-			return err
+			return fmt.Errorf("Failed to click on destination node: %s", err.Error())
 		}
 
-		injectBtn, err := wd.FindElement(selenium.ByXPATH, ".//*[@id='inject']")
-		if err != nil || injectBtn == nil {
-			return nil
+		injectBtn, err := findElement(wd, selenium.ByXPATH, ".//*[@id='inject']")
+		if err != nil {
+			return err
 		}
 		if err := injectBtn.Click(); err != nil {
-			return err
+			return fmt.Errorf("Failed to click on inject button: %s", err.Error())
 		}
 
 		var alertMsg selenium.WebElement
-		for i := 1; i <= 10; i++ {
-			alertMsg, err = wd.FindElement(selenium.ByClassName, "alert-success")
-			if err != nil {
-				time.Sleep(500 * time.Millisecond)
-				continue
-			}
-			break
+		err = common.Retry(func() error {
+			alertMsg, err = findElement(wd, selenium.ByClassName, "alert-success")
+			return err
+		}, 10, time.Second)
+		if err != nil {
+			return err
 		}
-		if alertMsg != nil {
-			closeBtn, _ := alertMsg.FindElement(selenium.ByClassName, "close")
-			if closeBtn != nil {
-				closeBtn.Click()
-			}
-		} else {
-			return fmt.Errorf("No success alert msg.")
+
+		closeBtn, _ := alertMsg.FindElement(selenium.ByClassName, "close")
+		if closeBtn != nil {
+			closeBtn.Click()
 		}
+
 		return nil
 	}
 
@@ -266,7 +280,7 @@ func TestSelenium(t *testing.T) {
 			return err
 		}
 		if txt != "124.65.54.42" {
-			fmt.Errorf("Network.A should be '124.65.54.42' but got: %s", txt)
+			return fmt.Errorf("Network.A should be '124.65.54.42' but got: %s", txt)
 		}
 		return nil
 	}
