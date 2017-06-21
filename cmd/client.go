@@ -59,4 +59,5 @@ func init() {
 	Client.AddCommand(client.PcapCmd)
 	Client.AddCommand(client.ShellCmd)
 	Client.AddCommand(client.TopologyCmd)
+	Client.AddCommand(client.UserMetadataCmd)
 }

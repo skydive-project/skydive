@@ -42,6 +42,7 @@ import (
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
@@ -53,6 +54,7 @@ type Server struct {
 	TopologyServer    *TopologyServer
 	AlertServer       *alert.AlertServer
 	OnDemandClient    *ondemand.OnDemandProbeClient
+	MetadataManager   *metadata.UserMetadataManager
 	FlowServer        *FlowServer
 	ProbeBundle       *probe.ProbeBundle
 	Storage           storage.Storage
@@ -110,12 +112,19 @@ func (s *Server) initialize() (err error) {
 		return
 	}
 
+	var metadataAPIHandler *api.UserMetadataAPIHandler
+	if metadataAPIHandler, err = api.RegisterUserMetadataAPI(apiServer, s.TopologyServer.Graph); err != nil {
+		return
+	}
+
 	var alertAPIHandler *api.AlertAPIHandler
 	if alertAPIHandler, err = api.RegisterAlertAPI(apiServer); err != nil {
 		return
 	}
 
 	s.OnDemandClient = ondemand.NewOnDemandProbeClient(s.TopologyServer.Graph, captureAPIHandler, s.WSServer, s.EtcdClient)
+
+	s.MetadataManager = metadata.NewUserMetadataManager(s.TopologyServer.Graph, metadataAPIHandler)
 
 	tableClient := flow.NewTableClient(s.WSServer)
 
@@ -163,6 +172,7 @@ func (s *Server) Start() {
 	s.ProbeBundle.Start()
 	s.OnDemandClient.Start()
 	s.AlertServer.Start()
+	s.MetadataManager.Start()
 
 	s.wgServers.Add(2)
 	go func() {
@@ -192,6 +202,7 @@ func (s *Server) Stop() {
 	s.ProbeBundle.Stop()
 	s.OnDemandClient.Stop()
 	s.AlertServer.Stop()
+	s.MetadataManager.Stop()
 	s.EtcdClient.Stop()
 	s.wgServers.Wait()
 	if tr, ok := http.DefaultTransport.(interface {
