@@ -105,6 +105,7 @@
         - cobertura
         - greenballs
         - chucknorris
+        - ansicolor
 
 - name: Install requirements
   hosts: jenkins_master, slaves
