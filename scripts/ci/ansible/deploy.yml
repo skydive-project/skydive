@@ -66,6 +66,8 @@
       host_group: masters
       network: "{{ network }}"
       image: "{{ image }}"
+      floating_ips:
+        - "{{ jenkins_public_ip }}"
 
 - name: Create Jenkins slaves
   hosts: localhost

@@ -11,6 +11,7 @@
      - "{{ security_group }}"
     nics:
      - net-name: "{{ network }}"
+    floating_ips: "{{ floating_ips | default(omit) }}"
   register: vm
 
 - name: Add instance to the inventory
