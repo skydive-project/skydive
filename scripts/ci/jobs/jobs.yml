@@ -59,7 +59,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run tests.*'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?go-fmt)'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -82,7 +82,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run tests.*'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?unit-tests)'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -109,7 +109,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run tests.*'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?functional-tests-backend-{backend})'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -155,7 +155,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run tests.*'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?scale-tests)'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -182,7 +182,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run tests.*'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?selenium-tests)'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -216,7 +216,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: 'run devstack'
+          trigger-phrase: '.*(re)?run devstack'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
