@@ -30,6 +30,7 @@ import (
 	"io/ioutil"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -45,23 +46,19 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// ErrFlowUDPAcceptNotSupported error the connection can't accept as it's UDP based
-var ErrFlowUDPAcceptNotSupported = errors.New("UDP connection is datagram based (not connected), accept() not supported")
-
-// FlowConnectionType describes an UDP or TLS connection
-type FlowConnectionType int
-
-const (
-	// UDP connection
-	UDP FlowConnectionType = 1 + iota
-	// TLS connection
-	TLS
-)
-
 // FlowServerConn describes a flow server connection
-type FlowServerConn struct {
-	mode      FlowConnectionType
-	udpConn   *net.UDPConn
+type FlowServerConn interface {
+	Accept() (net.Conn, error)
+	Cleanup() error
+}
+
+// FlowServerConn describes a UDP flow server connection
+type FlowServerUDPConn struct {
+	udpConn *net.UDPConn
+}
+
+// FlowServerConn describes a TCP flow server connection
+type FlowServerTCPConn struct {
 	tlsConn   net.Conn
 	tlsListen net.Listener
 }
@@ -72,7 +69,7 @@ type FlowServer struct {
 	Port             int
 	Storage          storage.Storage
 	EnhancerPipeline *flow.EnhancerPipeline
-	conn             *FlowServerConn
+	conn             FlowServerConn
 	state            int64
 	wgServer         sync.WaitGroup
 	wgFlowsHandlers  sync.WaitGroup
@@ -80,157 +77,121 @@ type FlowServer struct {
 	bulkDeadline     int
 }
 
-// Mode returns the connection mode UDP or TLS
-func (a *FlowServerConn) Mode() FlowConnectionType {
-	return a.mode
-}
-
 // Accept connection step
-func (a *FlowServerConn) Accept() (*FlowServerConn, error) {
-	switch a.mode {
-	case TLS:
-		acceptedTLSConn, err := a.tlsListen.Accept()
-		if err != nil {
-			return nil, err
-		}
-
-		tlsConn, ok := acceptedTLSConn.(*tls.Conn)
-		if !ok {
-			logging.GetLogger().Fatalf("This is not a TLS connection %v", a.tlsConn)
-		}
-		if err = tlsConn.Handshake(); err != nil {
-			return nil, err
-		}
-		if state := tlsConn.ConnectionState(); state.HandshakeComplete == false {
-			return nil, errors.New("TLS Handshake is not complete")
-		}
-		return &FlowServerConn{
-			mode:    TLS,
-			tlsConn: acceptedTLSConn,
-		}, nil
-	case UDP:
-		return a, ErrFlowUDPAcceptNotSupported
+func (c *FlowServerTCPConn) Accept() (net.Conn, error) {
+	acceptedTLSConn, err := c.tlsListen.Accept()
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.New("Connection mode is not set properly")
+
+	tlsConn, ok := acceptedTLSConn.(*tls.Conn)
+	if !ok {
+		logging.GetLogger().Fatalf("This is not a TLS connection %v", c.tlsConn)
+	}
+
+	if err = tlsConn.Handshake(); err != nil {
+		return nil, err
+	}
+
+	if state := tlsConn.ConnectionState(); state.HandshakeComplete == false {
+		return nil, errors.New("TLS Handshake is not complete")
+	}
+
+	return tlsConn, nil
 }
 
 // Cleanup stop listening on the connection
-func (a *FlowServerConn) Cleanup() {
-	if a.mode == TLS {
-		if err := a.tlsListen.Close(); err != nil {
-			logging.GetLogger().Errorf("Close error %v", err)
-		}
-	}
+func (c *FlowServerTCPConn) Cleanup() error {
+	return c.tlsListen.Close()
 }
 
-// Close the connection
-func (a *FlowServerConn) Close() {
-	switch a.mode {
-	case TLS:
-		if err := a.tlsConn.Close(); err != nil {
-			logging.GetLogger().Errorf("Close error %v", err)
-		}
-	case UDP:
-		if err := a.udpConn.Close(); err != nil {
-			logging.GetLogger().Errorf("Close error %v", err)
-		}
-	}
+// Accept connection step
+func (c *FlowServerUDPConn) Accept() (net.Conn, error) {
+	return c.udpConn, nil
 }
 
-// SetDeadline for the connection IO
-func (a *FlowServerConn) SetDeadline(t time.Time) {
-	switch a.mode {
-	case TLS:
-		if err := a.tlsConn.SetReadDeadline(t); err != nil {
-			logging.GetLogger().Errorf("SetReadDeadline %v", err)
-		}
-	case UDP:
-		if err := a.udpConn.SetDeadline(t); err != nil {
-			logging.GetLogger().Errorf("SetDeadline %v", err)
-		}
-	}
+// Cleanup stop listening on the connection
+func (c *FlowServerUDPConn) Cleanup() error {
+	return nil
 }
 
-// Read data from the connection
-func (a *FlowServerConn) Read(data []byte) (int, error) {
-	switch a.mode {
-	case TLS:
-		n, err := a.tlsConn.Read(data)
-		return n, err
-	case UDP:
-		n, _, err := a.udpConn.ReadFromUDP(data)
-		return n, err
+func NewFlowServerTCPConn(addr string, port int) (*FlowServerTCPConn, error) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", addr, port))
+	if err != nil {
+		return nil, err
 	}
-	return 0, errors.New("Mode didn't exist")
-}
 
-// Timeout returns true if the connection error timeouted
-func (a *FlowServerConn) Timeout(err error) bool {
-	switch a.mode {
-	case TLS:
-		if netErr, ok := err.(net.Error); ok {
-			return netErr.Timeout()
-		}
-	case UDP:
-		if netErr, ok := err.(*net.OpError); ok {
-			return netErr.Timeout()
-		}
-	}
-	return false
-}
-
-// NewFlowServerConn creates a new server listening at address
-func NewFlowServerConn(addr *net.UDPAddr) (a *FlowServerConn, err error) {
-	a = &FlowServerConn{mode: UDP}
 	certPEM := config.GetConfig().GetString("analyzer.X509_cert")
 	keyPEM := config.GetConfig().GetString("analyzer.X509_key")
 	clientCertPEM := config.GetConfig().GetString("agent.X509_cert")
 
-	if len(certPEM) > 0 && len(keyPEM) > 0 {
-		cert, err := tls.LoadX509KeyPair(certPEM, keyPEM)
-		if err != nil {
-			logging.GetLogger().Fatalf("Can't read X509 key pair set in config : cert '%s' key '%s'", certPEM, keyPEM)
-		}
-		rootPEM, err := ioutil.ReadFile(clientCertPEM)
-		if err != nil {
-			logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", clientCertPEM, err.Error())
-		}
-		roots := x509.NewCertPool()
-		if ok := roots.AppendCertsFromPEM([]byte(rootPEM)); !ok {
-			logging.GetLogger().Fatalf("Failed to parse root certificate '%s'", clientCertPEM)
-		}
-		cfgTLS := &tls.Config{
-			ClientCAs:                roots,
-			ClientAuth:               tls.RequireAndVerifyClientCert,
-			Certificates:             []tls.Certificate{cert},
-			MinVersion:               tls.VersionTLS12,
-			PreferServerCipherSuites: true,
-			CipherSuites: []uint16{
-				tls.TLS_RSA_WITH_AES_128_CBC_SHA,
-				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-				tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-				tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			},
-		}
-		cfgTLS.BuildNameToCertificate()
-		if a.tlsListen, err = tls.Listen("tcp", fmt.Sprintf("%s:%d", common.IPToString(addr.IP), addr.Port+1), cfgTLS); err != nil {
-			return nil, err
-		}
-		a.mode = TLS
-		logging.GetLogger().Info("Analyzer listen agents on TLS socket")
-		return a, nil
+	if len(certPEM) == 0 || len(keyPEM) == 0 {
+		return nil, errors.New("Certificates are required to use TCP for flows")
 	}
-	a.udpConn, err = net.ListenUDP("udp", addr)
+
+	cert, err := tls.LoadX509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		logging.GetLogger().Fatalf("Can't read X509 key pair set in config : cert '%s' key '%s'", certPEM, keyPEM)
+	}
+
+	rootPEM, err := ioutil.ReadFile(clientCertPEM)
+	if err != nil {
+		logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", clientCertPEM, err.Error())
+	}
+
+	roots := x509.NewCertPool()
+	if ok := roots.AppendCertsFromPEM([]byte(rootPEM)); !ok {
+		logging.GetLogger().Fatalf("Failed to parse root certificate '%s'", clientCertPEM)
+	}
+
+	cfgTLS := &tls.Config{
+		ClientCAs:                roots,
+		ClientAuth:               tls.RequireAndVerifyClientCert,
+		Certificates:             []tls.Certificate{cert},
+		MinVersion:               tls.VersionTLS12,
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		},
+	}
+
+	cfgTLS.BuildNameToCertificate()
+	tlsListen, err := tls.Listen("tcp", fmt.Sprintf("%s:%d", common.IPToString(tcpAddr.IP), port+1), cfgTLS)
+	if err != nil {
+		return nil, err
+	}
+
+	logging.GetLogger().Info("Analyzer listen agents on TLS socket")
+	return &FlowServerTCPConn{
+		tlsListen: tlsListen,
+	}, nil
+}
+
+func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
+	host := addr + ":" + strconv.FormatInt(int64(port), 10)
+	udpAddr, err := net.ResolveUDPAddr("udp", host)
+	if err != nil {
+		return nil, err
+	}
+
+	udpConn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		return nil, err
+	}
+
 	logging.GetLogger().Info("Analyzer listen agents on UDP socket")
-	return a, err
+	return &FlowServerUDPConn{udpConn: udpConn}, err
 }
 
 func (s *FlowServer) storeFlows(flows []*flow.Flow) {
@@ -243,8 +204,7 @@ func (s *FlowServer) storeFlows(flows []*flow.Flow) {
 }
 
 // handleFlowPacket can handle connection based on TCP or UDP
-func (s *FlowServer) handleFlowPacket(conn *FlowServerConn) {
-	defer s.wgFlowsHandlers.Done()
+func (s *FlowServer) handleFlowPacket(conn net.Conn) {
 	defer conn.Close()
 
 	conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
@@ -265,13 +225,23 @@ func (s *FlowServer) handleFlowPacket(conn *FlowServerConn) {
 		default:
 			n, err := conn.Read(data)
 			if err != nil {
-				if conn.Timeout(err) {
+				timeout := false
+				switch netErr := err.(type) {
+				case net.Error:
+					timeout = netErr.Timeout()
+				case *net.OpError:
+					timeout = netErr.Timeout()
+				}
+
+				if timeout {
 					conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
 					continue
 				}
+
 				if atomic.LoadInt64(&s.state) != common.RunningState {
 					return
 				}
+
 				logging.GetLogger().Errorf("Error while reading: %s", err.Error())
 				return
 			}
@@ -293,14 +263,18 @@ func (s *FlowServer) handleFlowPacket(conn *FlowServerConn) {
 
 // Start the flow server
 func (s *FlowServer) Start() {
-	host := s.Addr + ":" + strconv.FormatInt(int64(s.Port), 10)
-	addr, err := net.ResolveUDPAddr("udp", host)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to start flow server: %s", err.Error())
-		return
+	var err error
+	protocol := strings.ToLower(config.GetConfig().GetString("flow.protocol"))
+	switch protocol {
+	case "udp":
+		s.conn, err = NewFlowServerUDPConn(s.Addr, s.Port)
+	case "tcp":
+		s.conn, err = NewFlowServerTCPConn(s.Addr, s.Port)
+	default:
+		err = fmt.Errorf("Invalid protocol %s", protocol)
 	}
 
-	if s.conn, err = NewFlowServerConn(addr); err != nil {
+	if err != nil {
 		logging.GetLogger().Errorf("Unable to start flow server: %s", err.Error())
 		return
 	}
@@ -311,25 +285,19 @@ func (s *FlowServer) Start() {
 		defer s.wgServer.Done()
 
 		for atomic.LoadInt64(&s.state) == common.RunningState {
-			switch s.conn.Mode() {
-			case TLS:
-				conn, err := s.conn.Accept()
-				if atomic.LoadInt64(&s.state) != common.RunningState {
-					break
-				}
-				if err != nil {
-					logging.GetLogger().Errorf("Accept error : %s", err.Error())
-					time.Sleep(200 * time.Millisecond)
-					continue
-				}
-
-				s.wgFlowsHandlers.Add(1)
-				go s.handleFlowPacket(conn)
-			case UDP:
-				s.wgFlowsHandlers.Add(1)
-				s.handleFlowPacket(s.conn)
+			conn, err := s.conn.Accept()
+			if atomic.LoadInt64(&s.state) != common.RunningState {
+				break
 			}
+			if err != nil {
+				logging.GetLogger().Errorf("Accept error : %s", err.Error())
+				time.Sleep(200 * time.Millisecond)
+				continue
+			}
+
+			s.handleFlowPacket(conn)
 		}
+
 		s.wgFlowsHandlers.Wait()
 	}()
 }
