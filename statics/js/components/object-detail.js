@@ -23,8 +23,8 @@ Vue.component('object-detail', {
               <span class="object-key" :class="typeof(value)">- </span>\
               <object-detail :object="v"></object-detail>\
             </div>\
-            <div v-else>\
-              <span class="object-value" :class="typeof(value)">- {{v}}</span>\
+            <div v-else class="object-sub-detail">\
+              <div class="object-detail" :class="typeof(value)">- {{v}}</div>\
             </div>\
           </div>\
         </div>\

@@ -10,7 +10,7 @@ Vue.component('node-selector', {
     },
     attr: {
       type: String,
-      default: "Metadata.TID"
+      default: "metadata.TID"
     },
     form: {
       type: String,
@@ -42,7 +42,7 @@ Vue.component('node-selector', {
         } else {
           if (self.form == "capture") {
             var allowedTypes = ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy", "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan", "gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan", "lowpan", "ip6tnl", "ip6gre", "sit"];
-            if (allowedTypes.indexOf(e.target.__data__.Metadata['Type']) > -1) {
+            if (allowedTypes.indexOf(e.target.__data__.metadata.Type) > -1) {
               node = value = e.target.__data__;
             } else {
               self.$error({message: "Capture not allowed on this node"});

@@ -43,13 +43,27 @@ var (
 
 type OvsdbProbe struct {
 	sync.Mutex
-	Graph           *graph.Graph
-	Root            *graph.Node
-	OvsMon          *ovsdb.OvsMonitor
-	uuidToIntf      map[string]*graph.Node
-	uuidToPort      map[string]*graph.Node
-	intfPortQueue   map[string]*graph.Node
-	portBridgeQueue map[string]*graph.Node
+	Graph        *graph.Graph
+	Root         *graph.Node
+	OvsMon       *ovsdb.OvsMonitor
+	uuidToIntf   map[string]*graph.Node
+	uuidToPort   map[string]*graph.Node
+	intfToPort   map[string]*graph.Node
+	portToIntf   map[string]*graph.Node
+	portToBridge map[string]*graph.Node
+}
+
+func isOvsLogicalInterface(intf *graph.Node) bool {
+	if d, _ := intf.GetFieldString("Driver"); d != "openvswitch" {
+		return false
+	}
+
+	t, _ := intf.GetFieldString("Type")
+	switch t {
+	case "gre", "vxlan", "geneve", "patch":
+		return true
+	}
+	return false
 }
 
 func (o *OvsdbProbe) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
@@ -77,31 +91,33 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 
 		for _, i := range set.GoSet {
 			u := i.(libovsdb.UUID).GoUUID
+			o.portToBridge[u] = bridge
 
-			port, ok := o.uuidToPort[u]
-			if ok {
+			if port, ok := o.uuidToPort[u]; ok {
 				if !topology.HaveOwnershipLink(o.Graph, bridge, port, nil) {
 					topology.AddOwnershipLink(o.Graph, bridge, port, nil)
 					topology.AddLayer2Link(o.Graph, bridge, port, nil)
 				}
-			} else {
-				/* will be filled later when the port update for this port will be triggered */
-				o.portBridgeQueue[u] = bridge
+
+				// internal ovs interface that have to be linked to the bridge as they
+				// are just logical interface.
+				if intf, ok := o.portToIntf[uuid]; ok && isOvsLogicalInterface(intf) {
+					if !topology.HaveOwnershipLink(o.Graph, bridge, intf, nil) {
+						topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
+					}
+				}
 			}
 		}
 
 	case libovsdb.UUID:
 		u := row.New.Fields["ports"].(libovsdb.UUID).GoUUID
+		o.portToBridge[u] = bridge
 
-		port, ok := o.uuidToPort[u]
-		if ok {
+		if port, ok := o.uuidToPort[u]; ok {
 			if !topology.HaveOwnershipLink(o.Graph, bridge, port, nil) {
 				topology.AddOwnershipLink(o.Graph, bridge, port, nil)
 				topology.AddLayer2Link(o.Graph, bridge, port, nil)
 			}
-		} else {
-			/* will be filled later when the port update for this port will be triggered */
-			o.portBridgeQueue[u] = bridge
 		}
 	}
 }
@@ -241,7 +257,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 			peer := o.Graph.LookupFirstNode(graph.Metadata{"Name": peerName, "Type": "patch"})
 			if peer != nil {
-				if !topology.HaveLayer2Link(o.Graph, intf, peer, patchMetadata) {
+				if !topology.HaveLayer2Link(o.Graph, intf, peer, nil) {
 					topology.AddLayer2Link(o.Graph, intf, peer, patchMetadata)
 				}
 			} else {
@@ -255,12 +271,17 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		}
 	}
 
-	/* set pending interface for a port */
-	if port, ok := o.intfPortQueue[uuid]; ok {
+	if port, ok := o.intfToPort[uuid]; ok {
 		if !topology.HaveLayer2Link(o.Graph, port, intf, nil) {
 			topology.AddLayer2Link(o.Graph, port, intf, nil)
 		}
-		delete(o.intfPortQueue, uuid)
+
+		puuid, _ := port.GetFieldString("UUID")
+		if brige, ok := o.portToBridge[puuid]; ok && isOvsLogicalInterface(intf) {
+			if !topology.HaveOwnershipLink(o.Graph, brige, intf, nil) {
+				topology.AddOwnershipLink(o.Graph, brige, intf, nil)
+			}
+		}
 	}
 }
 
@@ -286,6 +307,7 @@ func (o *OvsdbProbe) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, r
 	}
 
 	delete(o.uuidToIntf, uuid)
+	delete(o.intfToPort, uuid)
 }
 
 func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
@@ -348,36 +370,40 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 
 		for _, i := range set.GoSet {
 			u := i.(libovsdb.UUID).GoUUID
-			intf, ok := o.uuidToIntf[u]
-			if ok {
+			o.intfToPort[u] = port
+
+			if intf, ok := o.uuidToIntf[u]; ok {
+				o.portToIntf[uuid] = intf
+
 				if !topology.HaveLayer2Link(o.Graph, port, intf, nil) {
 					topology.AddLayer2Link(o.Graph, port, intf, nil)
 				}
-			} else {
-				/* will be filled later when the interface update for this interface will be triggered */
-				o.intfPortQueue[u] = port
 			}
 		}
 	case libovsdb.UUID:
 		u := row.New.Fields["interfaces"].(libovsdb.UUID).GoUUID
-		intf, ok := o.uuidToIntf[u]
-		if ok {
+		o.intfToPort[u] = port
+
+		if intf, ok := o.uuidToIntf[u]; ok {
+			o.portToIntf[uuid] = intf
+
 			if !topology.HaveLayer2Link(o.Graph, port, intf, nil) {
 				topology.AddLayer2Link(o.Graph, port, intf, nil)
 			}
-		} else {
-			/* will be filled later when the interface update for this interface will be triggered */
-			o.intfPortQueue[u] = port
 		}
 	}
 
-	/* set pending port of a container */
-	if bridge, ok := o.portBridgeQueue[uuid]; ok {
+	if bridge, ok := o.portToBridge[uuid]; ok {
 		if !topology.HaveOwnershipLink(o.Graph, bridge, port, nil) {
 			topology.AddOwnershipLink(o.Graph, bridge, port, nil)
 			topology.AddLayer2Link(o.Graph, bridge, port, nil)
 		}
-		delete(o.portBridgeQueue, uuid)
+
+		if intf, ok := o.portToIntf[uuid]; ok && isOvsLogicalInterface(intf) {
+			if !topology.HaveOwnershipLink(o.Graph, bridge, intf, nil) {
+				topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
+			}
+		}
 	}
 }
 
@@ -400,6 +426,8 @@ func (o *OvsdbProbe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	o.Graph.DelNode(port)
 
 	delete(o.uuidToPort, uuid)
+	delete(o.portToBridge, uuid)
+	delete(o.portToIntf, uuid)
 }
 
 func (o *OvsdbProbe) Start() {
@@ -415,13 +443,14 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProb
 	mon.ExcludeColumn("statistics")
 
 	o := &OvsdbProbe{
-		Graph:           g,
-		Root:            n,
-		uuidToIntf:      make(map[string]*graph.Node),
-		uuidToPort:      make(map[string]*graph.Node),
-		intfPortQueue:   make(map[string]*graph.Node),
-		portBridgeQueue: make(map[string]*graph.Node),
-		OvsMon:          mon,
+		Graph:        g,
+		Root:         n,
+		uuidToIntf:   make(map[string]*graph.Node),
+		uuidToPort:   make(map[string]*graph.Node),
+		intfToPort:   make(map[string]*graph.Node),
+		portToIntf:   make(map[string]*graph.Node),
+		portToBridge: make(map[string]*graph.Node),
+		OvsMon:       mon,
 	}
 	o.OvsMon.AddMonitorHandler(o)
 

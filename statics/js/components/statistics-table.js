@@ -30,6 +30,7 @@ Vue.component('statistics-table', {
   watch: {
 
     object: function() {
+      if (this.fields.length === 0) this.generateFields();
       this.updateFields();
     },
 

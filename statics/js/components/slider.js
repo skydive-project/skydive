@@ -2,6 +2,10 @@
 
 Vue.component('slider', {
 
+  components: {
+    'vue-slider': vueSlider
+  },
+
   props: {
 
     value: {
@@ -32,10 +36,10 @@ Vue.component('slider', {
 
   template: '\
     <div>\
-      <div class="pull-left">\
-        <input type="range" :min="min" v-model="val" :max="max" :step="step" number>\
+      <div class="slide">\
+        <vue-slider ref="slider" v-model="val" :min="min" :max="max" width="300" height="8" dotSize="14" lazy=true :interval="step" show=true tooltip="hover" tooltip-dir="bottom" formatter="{value} min."></vue-slider>\
       </div>\
-      <span v-if="info">{{ info }}</span>\
+      <span class="slider-info" v-if="info">{{ info }}</span>\
     </div>\
   ',
 
