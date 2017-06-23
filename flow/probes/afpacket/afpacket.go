@@ -260,7 +260,7 @@ retry:
 			h.mu.Unlock()
 			return
 		}
-		// We can recieved empty block
+		// We can received empty block
 		if h.current.getLength() == 0 {
 			goto retry
 		}
