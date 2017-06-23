@@ -32,13 +32,18 @@ func NewFilterForNodeTIDs(uuids []string) *filters.Filter {
 }
 
 func NewFilterForNodes(nodes []*graph.Node) *filters.Filter {
-	var ids []string
+	var tids []string
+
+	seen := make(map[string]bool)
 	for _, node := range nodes {
 		if tid, _ := node.GetFieldString("TID"); tid != "" {
-			ids = append(ids, tid)
+			if _, ok := seen[tid]; !ok {
+				tids = append(tids, tid)
+				seen[tid] = true
+			}
 		}
 	}
-	return NewFilterForNodeTIDs(ids)
+	return NewFilterForNodeTIDs(tids)
 }
 
 func NewFilterForFlowSet(flowset *FlowSet) *filters.Filter {
