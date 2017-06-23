@@ -109,64 +109,39 @@ func (a *Agent) Start() {
 	}
 	a.TopologyProbeBundle.Start()
 
-	// at least one analyzer, so try to get info from etcd
-	if _, err := config.GetOneAnalyzerServiceAddress(); err == nil {
-		a.EtcdClient, err = etcd.NewEtcdClientFromConfig()
-		if err != nil {
-			logging.GetLogger().Errorf("Unable to start etcd client %s", err.Error())
-			os.Exit(1)
-		}
+	updateTime := time.Duration(config.GetConfig().GetInt("flow.update")) * time.Second
+	expireTime := time.Duration(config.GetConfig().GetInt("flow.expire")) * time.Second
+	cleanup := time.Duration(config.GetConfig().GetInt("cache.cleanup")) * time.Second
 
-		// waiting for some config coming from etcd
-		var flowtableUpdate, flowtableExpire int64
-		for {
-			logging.GetLogger().Info("Waiting for Etcd to be ready")
-			if flowtableUpdate, err = a.EtcdClient.GetInt64("/agent/config/flowtable_update"); err != nil {
-				time.Sleep(time.Second)
-				continue
-			}
-			if flowtableExpire, err = a.EtcdClient.GetInt64("/agent/config/flowtable_expire"); err != nil {
-				time.Sleep(time.Second)
-				continue
-			}
-			break
-		}
+	cache := cache.New(expireTime*2, cleanup)
 
-		updateTime := time.Duration(flowtableUpdate) * time.Second
-		expireTime := time.Duration(flowtableExpire) * time.Second
+	pipeline := flow.NewFlowEnhancerPipeline(enhancers.NewGraphFlowEnhancer(a.Graph, cache))
 
-		cleanup := config.GetConfig().GetInt("cache.cleanup")
-
-		cache := cache.New(time.Duration(expireTime*2)*time.Second, time.Duration(cleanup)*time.Second)
-
-		pipeline := flow.NewFlowEnhancerPipeline(enhancers.NewGraphFlowEnhancer(a.Graph, cache))
-
-		// check that the neutron probe if loaded if so add the neutron flow enhancer
-		if a.TopologyProbeBundle.GetProbe("neutron") != nil {
-			pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(a.Graph, cache))
-		}
-
-		a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime, pipeline)
-
-		// expose a flow server through the client connections
-		flow.NewServer(a.FlowTableAllocator, a.WSAsyncClientPool)
-
-		packet_injector.NewServer(a.WSAsyncClientPool, a.Graph)
-
-		a.FlowClientPool = analyzer.NewFlowClientPool(a.WSAsyncClientPool)
-
-		a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator, a.FlowClientPool)
-		a.FlowProbeBundle.Start()
-
-		if a.OnDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, a.WSAsyncClientPool); err != nil {
-			logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
-			os.Exit(1)
-		}
-		a.OnDemandProbeServer.Start()
-
-		// everything is ready, then initiate the websocket connection
-		go a.WSAsyncClientPool.ConnectAll()
+	// check that the neutron probe if loaded if so add the neutron flow enhancer
+	if a.TopologyProbeBundle.GetProbe("neutron") != nil {
+		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(a.Graph, cache))
 	}
+
+	a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime, pipeline)
+
+	// expose a flow server through the client connections
+	flow.NewServer(a.FlowTableAllocator, a.WSAsyncClientPool)
+
+	packet_injector.NewServer(a.WSAsyncClientPool, a.Graph)
+
+	a.FlowClientPool = analyzer.NewFlowClientPool(a.WSAsyncClientPool)
+
+	a.FlowProbeBundle = fprobes.NewFlowProbeBundleFromConfig(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator, a.FlowClientPool)
+	a.FlowProbeBundle.Start()
+
+	if a.OnDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, a.WSAsyncClientPool); err != nil {
+		logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
+		os.Exit(1)
+	}
+	a.OnDemandProbeServer.Start()
+
+	// everything is ready, then initiate the websocket connection
+	go a.WSAsyncClientPool.ConnectAll()
 }
 
 func (a *Agent) Stop() {

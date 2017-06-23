@@ -401,10 +401,7 @@ func (s *FlowServer) Stop() {
 }
 
 func NewFlowServer(addr string, port int, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle) (*FlowServer, error) {
-	expire := config.GetConfig().GetInt("analyzer.flowtable_expire")
-	cleanup := config.GetConfig().GetInt("cache.cleanup")
-
-	cache := cache.New(time.Duration(expire*2)*time.Second, time.Duration(cleanup)*time.Second)
+	cache := cache.New(time.Duration(600)*time.Second, time.Duration(600)*time.Second)
 
 	pipeline := flow.NewFlowEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g, cache))
 

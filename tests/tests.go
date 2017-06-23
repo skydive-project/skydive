@@ -53,8 +53,6 @@ analyzers:
 
 analyzer:
   listen: 0.0.0.0:8082
-  flowtable_expire: 600
-  flowtable_update: 10
   storage:
     backend: {{.Storage}}
   analyzer_username: admin
@@ -78,6 +76,10 @@ agent:
       - pcapsocket
   metadata:
     info: This is compute node
+
+flow:
+  expire: 600
+  update: 10
 
 ovs:
   ovsdb: unix:///var/run/openvswitch/db.sock

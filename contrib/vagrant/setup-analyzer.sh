@@ -17,9 +17,6 @@ sudo mkdir -p /etc/skydive
 sudo tee /etc/skydive/skydive.yml << EOF
 analyzer:
   listen: 0.0.0.0:8082
-  flowtable_expire: 60
-  flowtable_update: 5
-  flowtable_agent_ratio: 0.5
   storage:
     backend: elasticsearch
   topology:
@@ -35,6 +32,9 @@ graph:
   backend: elasticsearch
 elasticsearch:
   addr: 127.0.0.1:9200
+flow:
+  expire: 60
+  update: 5
 EOF
 sudo curl -o /usr/lib/systemd/system/skydive-analyzer.service https://raw.githubusercontent.com/skydive-project/skydive/master/contrib/systemd/skydive-analyzer.service
 sudo systemctl daemon-reload

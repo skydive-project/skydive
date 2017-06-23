@@ -68,7 +68,4 @@ func init() {
 
 	Agent.Flags().String("listen", "127.0.0.1:8081", "address and port for the agent API")
 	config.GetConfig().BindPFlag("agent.listen", Agent.Flags().Lookup("listen"))
-
-	Agent.Flags().String("ovsdb", "unix:///var/run/openvswitch/db.sock", "ovsdb connection")
-	config.GetConfig().BindPFlag("ovs.ovsdb", Agent.Flags().Lookup("ovsdb"))
 }

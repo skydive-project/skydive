@@ -88,9 +88,6 @@ func (s *Server) initialize() (err error) {
 		return
 	}
 
-	analyzerUpdate := config.GetConfig().GetInt("analyzer.flowtable_update")
-	analyzerExpire := config.GetConfig().GetInt("analyzer.flowtable_expire")
-
 	// wait for etcd to be ready
 	for {
 		host := config.GetConfig().GetString("host_id")
@@ -100,14 +97,6 @@ func (s *Server) initialize() (err error) {
 		} else {
 			break
 		}
-	}
-
-	if err = s.EtcdClient.SetInt64("/agent/config/flowtable_update", int64(analyzerUpdate)); err != nil {
-		return
-	}
-
-	if err = s.EtcdClient.SetInt64("/agent/config/flowtable_expire", int64(analyzerExpire)); err != nil {
-		return
 	}
 
 	var apiServer *api.APIServer
