@@ -56,6 +56,7 @@ type EmbeddedEtcd struct {
 	dataDir  string
 }
 
+// NewEmbeddedEtcd creates a new embedded ETCD server
 func NewEmbeddedEtcd(sa common.ServiceAddress, dataDir string) (*EmbeddedEtcd, error) {
 	var err error
 	se := &EmbeddedEtcd{Port: sa.Port}
@@ -127,6 +128,7 @@ func NewEmbeddedEtcd(sa common.ServiceAddress, dataDir string) (*EmbeddedEtcd, e
 	return se, nil
 }
 
+// NewEmbeddedEtcdFromConfig creates a new embedded ETCD server from configuration
 func NewEmbeddedEtcdFromConfig() (*EmbeddedEtcd, error) {
 	dataDir := config.GetConfig().GetString("etcd.data_dir")
 	listen := config.GetConfig().GetString("etcd.listen")
@@ -137,6 +139,7 @@ func NewEmbeddedEtcdFromConfig() (*EmbeddedEtcd, error) {
 	return NewEmbeddedEtcd(sa, dataDir)
 }
 
+// Stop the embedded server
 func (se *EmbeddedEtcd) Stop() error {
 	var err error
 	firstErr := func(e error) {

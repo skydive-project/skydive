@@ -35,6 +35,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Analyzer skydive analyzer root command
 var Analyzer = &cobra.Command{
 	Use:          "analyzer",
 	Short:        "Skydive analyzer",

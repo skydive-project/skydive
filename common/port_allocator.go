@@ -28,10 +28,13 @@ import (
 )
 
 var (
-	InvalidPortRange = errors.New("Invalid port range")
-	NoPortLeft       = errors.New("No free port left")
+	// ErrInvalidPortRange invalid port range
+	ErrInvalidPortRange = errors.New("Invalid port range")
+	// ErrNoPortLeft no port left in the range
+	ErrNoPortLeft = errors.New("No free port left")
 )
 
+// PortAllocator describes a threads safe port list that can be allocated
 type PortAllocator struct {
 	sync.RWMutex
 	MinPort int
@@ -39,6 +42,7 @@ type PortAllocator struct {
 	PortMap map[int]interface{}
 }
 
+// Allocate returns a new unused port between min and max ports
 func (p *PortAllocator) Allocate() (int, error) {
 	p.Lock()
 	defer p.Unlock()
@@ -49,23 +53,35 @@ func (p *PortAllocator) Allocate() (int, error) {
 			return i, nil
 		}
 	}
-	return 0, NoPortLeft
+	return 0, ErrNoPortLeft
 }
 
-func (p *PortAllocator) Set(i int, obj interface{}) {
+// Set associate an object to the port map
+func (p *PortAllocator) Set(i int, obj interface{}) error {
 	p.Lock()
 	defer p.Unlock()
 
+	if i < p.MinPort || i > p.MaxPort {
+		return ErrInvalidPortRange
+	}
 	p.PortMap[i] = obj
+	return nil
 }
 
-func (p *PortAllocator) Release(i int) {
+// Release a port
+func (p *PortAllocator) Release(i int) error {
 	p.Lock()
 	defer p.Unlock()
+
+	if i < p.MinPort || i > p.MaxPort {
+		return ErrInvalidPortRange
+	}
 
 	delete(p.PortMap, i)
+	return nil
 }
 
+// ReleaseAll ports
 func (p *PortAllocator) ReleaseAll() {
 	p.Lock()
 	defer p.Unlock()
@@ -73,9 +89,10 @@ func (p *PortAllocator) ReleaseAll() {
 	p.PortMap = make(map[int]interface{})
 }
 
+// NewPortAllocator creates a new port allocator range
 func NewPortAllocator(min, max int) (*PortAllocator, error) {
 	if min <= 0 || max < min {
-		return nil, InvalidPortRange
+		return nil, ErrInvalidPortRange
 	}
 
 	return &PortAllocator{

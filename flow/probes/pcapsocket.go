@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// PcapSocketProbe describes a TCP packet listener that inject packets in a flowtable
 type PcapSocketProbe struct {
 	node      *graph.Node
 	state     int64
@@ -45,6 +46,7 @@ type PcapSocketProbe struct {
 	bpfFilter string
 }
 
+// PcapSocketProbeHandler describes a Pcap socket probe in the graph
 type PcapSocketProbeHandler struct {
 	graph         *graph.Graph
 	addr          *net.TCPAddr
@@ -69,14 +71,14 @@ func (p *PcapSocketProbe) run() {
 			break
 		}
 
-		pcapWriter, err := flow.NewPcapWriter(conn, packetsChan, true, p.bpfFilter)
+		pcapInject, err := flow.NewPcapInject(conn, packetsChan, true, p.bpfFilter)
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to create pcap writer: %s", err.Error())
 			return
 		}
 
-		pcapWriter.Start()
-		defer pcapWriter.Stop()
+		pcapInject.Start()
+		defer pcapInject.Stop()
 	}
 }
 
@@ -129,10 +131,12 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table, bp
 	return nil
 }
 
+// RegisterProbe registers a new probe in the graph
 func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	return p.registerProbe(n, ft, capture.BPFFilter)
 }
 
+// UnregisterProbe a probe
 func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node) error {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
@@ -157,9 +161,11 @@ func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node) error {
 	return nil
 }
 
+// Start the probe
 func (p *PcapSocketProbeHandler) Start() {
 }
 
+// Stop the probe
 func (p *PcapSocketProbeHandler) Stop() {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
@@ -170,6 +176,7 @@ func (p *PcapSocketProbeHandler) Stop() {
 	p.wg.Wait()
 }
 
+// NewPcapSocketProbeHandler creates a new pcap socket probe
 func NewPcapSocketProbeHandler(g *graph.Graph) (*PcapSocketProbeHandler, error) {
 	listen := config.GetConfig().GetString("agent.flow.pcapsocket.bind_address")
 	minPort := config.GetConfig().GetInt("agent.flow.pcapsocket.min_port")

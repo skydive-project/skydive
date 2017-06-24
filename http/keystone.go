@@ -62,7 +62,7 @@ func (b *KeystoneAuthenticationBackend) checkUserV2(client *gophercloud.ServiceC
 	}
 
 	if token.Tenant.Name != b.Tenant {
-		return "", WrongCredentials
+		return "", ErrWrongCredentials
 	}
 
 	isAdmin := false
@@ -74,7 +74,7 @@ func (b *KeystoneAuthenticationBackend) checkUserV2(client *gophercloud.ServiceC
 	}
 
 	if !isAdmin {
-		return "", WrongCredentials
+		return "", ErrWrongCredentials
 	}
 
 	return user.UserName, nil
@@ -103,7 +103,7 @@ func (b *KeystoneAuthenticationBackend) checkUserV3(client *gophercloud.ServiceC
 
 	// test that the project is the same as the one provided in the conf file
 	if response.Token.Project.Name != b.Tenant || response.Token.Project.Domain.Name != b.Domain {
-		return "", WrongCredentials
+		return "", ErrWrongCredentials
 	}
 
 	// test that the user is the admin of the project
@@ -116,7 +116,7 @@ func (b *KeystoneAuthenticationBackend) checkUserV3(client *gophercloud.ServiceC
 	}
 
 	if !isAdmin {
-		return "", WrongCredentials
+		return "", ErrWrongCredentials
 	}
 
 	return response.Token.User.Name, nil
@@ -125,12 +125,12 @@ func (b *KeystoneAuthenticationBackend) checkUserV3(client *gophercloud.ServiceC
 func (b *KeystoneAuthenticationBackend) CheckUser(r *http.Request) (string, error) {
 	cookie, err := r.Cookie("authtok")
 	if err != nil {
-		return "", WrongCredentials
+		return "", ErrWrongCredentials
 	}
 
 	tokenID := cookie.Value
 	if tokenID == "" {
-		return "", WrongCredentials
+		return "", ErrWrongCredentials
 	}
 
 	provider, err := openstack.NewClient(b.AuthURL)

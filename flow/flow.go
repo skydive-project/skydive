@@ -41,48 +41,50 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// ErrFlowProtocol invalid protocol error
 var ErrFlowProtocol = errors.New("FlowProtocol invalid")
 
 const (
+	// CaptureLength : default packet capture length (256 bytes)
 	CaptureLength uint32 = 256
 )
 
-type GetAttr interface {
-	GetAttr(name string) interface{}
-}
-
-type FlowPacket struct {
+// Packet describes one packet
+type Packet struct {
 	gopacket *gopacket.Packet
 	length   int64
 }
 
-// FlowPackets represents a suite of parent/child FlowPacket
-type FlowPackets struct {
-	Packets   []FlowPacket
+// Packets represents a suite of parent/child Packet
+type Packets struct {
+	Packets   []Packet
 	Timestamp int64
 }
 
+// Value returns int32 value of a FlowProtocol
 func (x FlowProtocol) Value() int32 {
 	return int32(x)
 }
 
-func (s *FlowLayer) MarshalJSON() ([]byte, error) {
+// MarshalJSON serialize a FlowLayer in JSON
+func (f *FlowLayer) MarshalJSON() ([]byte, error) {
 	obj := &struct {
 		Protocol string
 		A        string
 		B        string
 		ID       int64
 	}{
-		Protocol: s.Protocol.String(),
-		A:        s.A,
-		B:        s.B,
-		ID:       s.ID,
+		Protocol: f.Protocol.String(),
+		A:        f.A,
+		B:        f.B,
+		ID:       f.ID,
 	}
 
 	return json.Marshal(&obj)
 }
 
-func (s *FlowLayer) UnmarshalJSON(b []byte) error {
+// UnmarshalJSON deserialize a JSON object in FlowLayer
+func (f *FlowLayer) UnmarshalJSON(b []byte) error {
 	m := struct {
 		Protocol string
 		A        string
@@ -98,10 +100,10 @@ func (s *FlowLayer) UnmarshalJSON(b []byte) error {
 	if !ok {
 		return ErrFlowProtocol
 	}
-	s.Protocol = FlowProtocol(protocol)
-	s.A = m.A
-	s.B = m.B
-	s.ID = m.ID
+	f.Protocol = FlowProtocol(protocol)
+	f.A = m.A
+	f.B = m.B
+	f.ID = m.ID
 
 	return nil
 }
@@ -129,6 +131,7 @@ func layerFlow(l gopacket.Layer) gopacket.Flow {
 	return gopacket.Flow{}
 }
 
+// MarshalJSON serialize a ICMPLayer in JSON
 func (i *ICMPLayer) MarshalJSON() ([]byte, error) {
 	obj := &struct {
 		Type string
@@ -143,6 +146,7 @@ func (i *ICMPLayer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&obj)
 }
 
+// UnmarshalJSON deserialize a JSON object in ICMPLayer
 func (i *ICMPLayer) UnmarshalJSON(b []byte) error {
 	m := struct {
 		Type string
@@ -165,17 +169,20 @@ func (i *ICMPLayer) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type FlowKey string
+// Key describes a unique flow Key
+type Key string
 
-func (f FlowKey) String() string {
+func (f Key) String() string {
 	return string(f)
 }
 
-func FlowKeyFromGoPacket(p *gopacket.Packet, parentUUID string) FlowKey {
+// KeyFromGoPacket returns the unique flow key
+// The unique key is calculated based on parentUUID, network, transport and applicable layers
+func KeyFromGoPacket(p *gopacket.Packet, parentUUID string) Key {
 	network := layerFlow((*p).NetworkLayer()).FastHash()
 	transport := layerFlow((*p).TransportLayer()).FastHash()
 	application := layerFlow((*p).ApplicationLayer()).FastHash()
-	return FlowKey(parentUUID + strconv.FormatUint(uint64(network^transport^application), 10))
+	return Key(parentUUID + strconv.FormatUint(uint64(network^transport^application), 10))
 }
 
 func layerPathFromGoPacket(packet *gopacket.Packet) string {
@@ -222,6 +229,7 @@ func networkID(p *gopacket.Packet) int64 {
 	return id
 }
 
+// NewFlow creates a new empty flow
 func NewFlow() *Flow {
 	return &Flow{
 		Metric:           &FlowMetric{},
@@ -229,43 +237,44 @@ func NewFlow() *Flow {
 	}
 }
 
-func (flow *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
-	layersPath := strings.Replace(flow.LayersPath, "Dot1Q/", "", -1)
+// UpdateUUID updates the flow UUID based on protocotols layers path and layers IDs
+func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
+	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
 
 	hasher := sha1.New()
 
-	hasher.Write(flow.Transport.Hash())
-	hasher.Write(flow.Network.Hash())
-	if flow.Network != nil {
+	hasher.Write(f.Transport.Hash())
+	hasher.Write(f.Network.Hash())
+	if f.Network != nil {
 		netID := make([]byte, 8)
-		binary.BigEndian.PutUint64(netID, uint64(flow.Network.ID))
+		binary.BigEndian.PutUint64(netID, uint64(f.Network.ID))
 		hasher.Write(netID)
 	}
 	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
-	flow.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
+	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
-	hasher.Write(flow.Link.Hash())
-	if flow.Link != nil {
+	hasher.Write(f.Link.Hash())
+	if f.Link != nil {
 		linkID := make([]byte, 8)
-		binary.BigEndian.PutUint64(linkID, uint64(flow.Link.ID))
+		binary.BigEndian.PutUint64(linkID, uint64(f.Link.ID))
 		hasher.Write(linkID)
 	}
 
-	if flow.ICMP != nil {
+	if f.ICMP != nil {
 		icmpID := make([]byte, 8*3)
-		binary.BigEndian.PutUint64(icmpID, uint64(flow.ICMP.Type))
-		binary.BigEndian.PutUint64(icmpID, uint64(flow.ICMP.Code))
-		binary.BigEndian.PutUint64(icmpID, uint64(flow.ICMP.ID))
+		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.Type))
+		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.Code))
+		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.ID))
 		hasher.Write(icmpID)
 	}
 
 	hasher.Write([]byte(layersPath))
-	flow.TrackingID = hex.EncodeToString(hasher.Sum(nil))
+	f.TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
 	bfStart := make([]byte, 8)
-	binary.BigEndian.PutUint64(bfStart, uint64(flow.Start))
+	binary.BigEndian.PutUint64(bfStart, uint64(f.Start))
 	hasher.Write(bfStart)
-	hasher.Write([]byte(flow.NodeTID))
+	hasher.Write([]byte(f.NodeTID))
 
 	// include key so that we are sure that two flows with different keys don't
 	// give the same UUID due to different ways of hash the headers.
@@ -277,9 +286,10 @@ func (flow *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	binary.BigEndian.PutUint64(bL3ID, uint64(L3ID))
 	hasher.Write(bL3ID)
 
-	flow.UUID = hex.EncodeToString(hasher.Sum(nil))
+	f.UUID = hex.EncodeToString(hasher.Sum(nil))
 }
 
+// FromData deserialize a protobuf message to a Flow
 func FromData(data []byte) (*Flow, error) {
 	flow := new(Flow)
 
@@ -291,8 +301,9 @@ func FromData(data []byte) (*Flow, error) {
 	return flow, nil
 }
 
-func (flow *Flow) GetData() ([]byte, error) {
-	data, err := proto.Marshal(flow)
+// GetData serialize a Flow to a protobuf
+func (f *Flow) GetData() ([]byte, error) {
+	data, err := proto.Marshal(f)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -300,18 +311,22 @@ func (flow *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
+// GetStartTime of the flow
 func (f *Flow) GetStartTime() time.Time {
 	return time.Unix(0, f.Start*1000000)
 }
 
+// GetLastTime of the flow
 func (f *Flow) GetLastTime() time.Time {
 	return time.Unix(0, f.Last*1000000)
 }
 
+// GetDuration of the flow
 func (f *Flow) GetDuration() time.Duration {
 	return f.GetLastTime().Sub(f.GetStartTime())
 }
 
+// Init a flow based on flow key and gopacket
 func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
 	f.Start = now
 	f.Last = now
@@ -334,6 +349,7 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 	f.UpdateUUID(key, L2ID, L3ID)
 }
 
+// Update a flow metrics
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
 	f.Last = now
 
@@ -510,10 +526,10 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 	return nil
 }
 
-// FlowPacketsFromGoPacket split original packet into multiple packets in
+// PacketsFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
-func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bpf *BPF) *FlowPackets {
-	flowPackets := &FlowPackets{Timestamp: t}
+func PacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bpf *BPF) *Packets {
+	flowPackets := &Packets{Timestamp: t}
 
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
 		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
@@ -551,7 +567,7 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64
 		switch layer.LayerType() {
 		case layers.LayerTypeGRE:
 			// If the next layer type is MPLS, we don't
-			// create the tunneling packet at this level, but at the next one.
+			// creates the tunneling packet at this level, but at the next one.
 			if i < len(packetLayers)-2 && packetLayers[i+1].LayerType() == layers.LayerTypeMPLS {
 				continue
 			}
@@ -559,7 +575,7 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64
 			// We don't split on vlan layers.LayerTypeDot1Q
 		case layers.LayerTypeVXLAN, layers.LayerTypeMPLS, layers.LayerTypeGeneve:
 			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
-			flowPackets.Packets = append(flowPackets.Packets, FlowPacket{gopacket: &p, length: topLayerLength})
+			flowPackets.Packets = append(flowPackets.Packets, Packet{gopacket: &p, length: topLayerLength})
 
 			// subtract the current encapsulation header length as we are going to change the
 			// encapsulation layer
@@ -577,18 +593,18 @@ func FlowPacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64
 
 	if len(flowPackets.Packets) > 0 {
 		p := gopacket.NewPacket(packetData[start:], topLayer.LayerType(), gopacket.NoCopy)
-		flowPackets.Packets = append(flowPackets.Packets, FlowPacket{gopacket: &p, length: 0})
+		flowPackets.Packets = append(flowPackets.Packets, Packet{gopacket: &p, length: 0})
 	} else {
-		flowPackets.Packets = append(flowPackets.Packets, FlowPacket{gopacket: packet, length: outerLength})
+		flowPackets.Packets = append(flowPackets.Packets, Packet{gopacket: packet, length: outerLength})
 	}
 
 	return flowPackets
 }
 
-// FlowPacketsFromSFlowSample returns an array of FlowPackets as a sample
-// contains mutlple records which generate a FlowPackets each.
-func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BPF) []*FlowPackets {
-	var flowPacketsSet []*FlowPackets
+// PacketsFromSFlowSample returns an array of Packets as a sample
+// contains mutlple records which generate a Packets each.
+func PacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BPF) []*Packets {
+	var flowPacketsSet []*Packets
 
 	for _, rec := range sample.Records {
 		switch rec.(type) {
@@ -600,8 +616,8 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BP
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
-		// each record can generate multiple FlowPacket in case of encapsulation
-		if flowPackets := FlowPacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), t, bpf); len(flowPackets.Packets) > 0 {
+		// each record can generate multiple Packet in case of encapsulation
+		if flowPackets := PacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), t, bpf); len(flowPackets.Packets) > 0 {
 			flowPacketsSet = append(flowPacketsSet, flowPackets)
 		}
 	}
@@ -609,6 +625,7 @@ func FlowPacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BP
 	return flowPacketsSet
 }
 
+// GetStringField returns the value of a flow field
 func (f *FlowLayer) GetStringField(field string) (string, error) {
 	if f == nil {
 		return "", common.ErrFieldNotFound
@@ -625,6 +642,7 @@ func (f *FlowLayer) GetStringField(field string) (string, error) {
 	return "", common.ErrFieldNotFound
 }
 
+// GetFieldInt64 returns the value of a flow field
 func (f *FlowLayer) GetFieldInt64(field string) (int64, error) {
 	if f == nil {
 		return 0, common.ErrFieldNotFound
@@ -637,32 +655,35 @@ func (f *FlowLayer) GetFieldInt64(field string) (int64, error) {
 	return 0, common.ErrFieldNotFound
 }
 
-func (f *ICMPLayer) GetStringField(field string) (string, error) {
-	if f == nil {
+// GetStringField returns the value of a ICMP field
+func (i *ICMPLayer) GetStringField(field string) (string, error) {
+	if i == nil {
 		return "", common.ErrFieldNotFound
 	}
 
 	switch field {
 	case "Type":
-		return f.Type.String(), nil
+		return i.Type.String(), nil
 	default:
 		return "", common.ErrFieldNotFound
 	}
 }
 
-func (f *ICMPLayer) GetFieldInt64(field string) (int64, error) {
-	if f == nil {
+// GetFieldInt64 returns the value of a ICMP field
+func (i *ICMPLayer) GetFieldInt64(field string) (int64, error) {
+	if i == nil {
 		return 0, common.ErrFieldNotFound
 	}
 
 	switch field {
 	case "ID":
-		return int64(f.ID), nil
+		return int64(i.ID), nil
 	default:
 		return 0, common.ErrFieldNotFound
 	}
 }
 
+// GetFieldString returns the value of a Flow field
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
 	if len(fields) < 1 {
@@ -716,6 +737,7 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 	return "", common.ErrFieldNotFound
 }
 
+// GetFieldInt64 returns the value of a Flow field
 func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	switch field {
 	case "Last":
@@ -747,6 +769,7 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	}
 }
 
+// GetField returns the value of a field
 func (f *Flow) GetField(field string) (interface{}, error) {
 	if i, err := f.GetFieldInt64(field); err == nil {
 		return i, nil
@@ -754,6 +777,7 @@ func (f *Flow) GetField(field string) (interface{}, error) {
 	return f.GetFieldString(field)
 }
 
+// GetFields returns the list of valid field of a Flow
 func (f *Flow) GetFields() []interface{} {
 	return fields
 }

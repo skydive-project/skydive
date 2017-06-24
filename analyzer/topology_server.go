@@ -34,11 +34,12 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+// TopologyServer describes a service to reply to topology queries
 type TopologyServer struct {
 	sync.RWMutex
 	shttp.DefaultWSServerEventHandler
 	Graph       *graph.Graph
-	GraphServer *graph.GraphServer
+	GraphServer *graph.Server
 	cached      *graph.CachedBackend
 	nodeSchema  gojsonschema.JSONLoader
 	edgeSchema  gojsonschema.JSONLoader
@@ -49,11 +50,12 @@ type TopologyServer struct {
 
 func (t *TopologyServer) hostGraphDeleted(host string, mode int) {
 	t.cached.SetMode(mode)
-	defer t.cached.SetMode(graph.DEFAULT_MODE)
+	defer t.cached.SetMode(graph.DefaultMode)
 
 	t.Graph.DelHostGraph(host)
 }
 
+// OnUnregisterClient websocket event
 func (t *TopologyServer) OnUnregisterClient(c *shttp.WSClient) {
 	t.RLock()
 	_, ok := t.authors[c.Host]
@@ -69,13 +71,14 @@ func (t *TopologyServer) OnUnregisterClient(c *shttp.WSClient) {
 
 	// it's an authors so already received a message meaning that the client chose this analyzer as master
 	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", c.Host)
-	t.hostGraphDeleted(c.Host, graph.DEFAULT_MODE)
+	t.hostGraphDeleted(c.Host, graph.DefaultMode)
 
 	t.Lock()
 	delete(t.authors, c.Host)
 	t.Unlock()
 }
 
+// OnGraphMessage websocket event
 func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, msgType string, obj interface{}) {
 	// author if message coming from another client than analyzer
 	if c.ClientType != "" && c.ClientType != common.AnalyzerService {
@@ -115,9 +118,9 @@ func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, 
 
 		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, host)
 
-		t.hostGraphDeleted(obj.(string), graph.CACHE_ONLY_MODE)
+		t.hostGraphDeleted(obj.(string), graph.CacheOnlyMode)
 		if c.ClientType != common.AnalyzerService {
-			t.hostGraphDeleted(obj.(string), graph.PERSISTENT_ONLY_MODE)
+			t.hostGraphDeleted(obj.(string), graph.PersistentOnlyMode)
 		}
 
 		return
@@ -126,9 +129,9 @@ func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, 
 	// If the message comes from analyzer we need to apply it only on cache only
 	// as it is a forwarded message.
 	if c.ClientType == common.AnalyzerService {
-		t.cached.SetMode(graph.CACHE_ONLY_MODE)
+		t.cached.SetMode(graph.CacheOnlyMode)
 	}
-	defer t.cached.SetMode(graph.DEFAULT_MODE)
+	defer t.cached.SetMode(graph.DefaultMode)
 
 	switch msgType {
 	case graph.SyncReplyMsgType:
@@ -158,6 +161,7 @@ func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, 
 	}
 }
 
+// NewTopologyServer creates a new topology server
 func NewTopologyServer(host string, server *shttp.WSServer) (*TopologyServer, error) {
 	persistent, err := graph.BackendFromConfig()
 	if err != nil {
@@ -196,6 +200,7 @@ func NewTopologyServer(host string, server *shttp.WSServer) (*TopologyServer, er
 	return t, nil
 }
 
+// NewTopologyServerFromConfig creates a new topology server based on configuration
 func NewTopologyServerFromConfig(server *shttp.WSServer) (*TopologyServer, error) {
 	host := config.GetConfig().GetString("host_id")
 	return NewTopologyServer(host, server)

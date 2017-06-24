@@ -35,6 +35,7 @@ var (
 	cfgBackend string
 )
 
+// LoadConfiguration from a configuration file
 func LoadConfiguration() {
 	if len(cfgFiles) != 0 {
 		if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
@@ -47,6 +48,7 @@ func LoadConfiguration() {
 	}
 }
 
+// RootCmd skydive root command
 var RootCmd = &cobra.Command{
 	Use:          "skydive [sub]",
 	Short:        "Skydive",

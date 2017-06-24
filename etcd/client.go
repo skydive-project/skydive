@@ -34,11 +34,13 @@ import (
 	"github.com/skydive-project/skydive/config"
 )
 
+// EtcdClient describes a ETCD configuration client
 type EtcdClient struct {
 	Client  *etcd.Client
 	KeysAPI etcd.KeysAPI
 }
 
+// GetInt64 returns an int64 value from the configuration key
 func (client *EtcdClient) GetInt64(key string) (int64, error) {
 	resp, err := client.KeysAPI.Get(context.Background(), key, nil)
 	if err != nil {
@@ -47,11 +49,13 @@ func (client *EtcdClient) GetInt64(key string) (int64, error) {
 	return strconv.ParseInt(resp.Node.Value, 10, 64)
 }
 
+// SetInt64 set an int64 value to the configuration key
 func (client *EtcdClient) SetInt64(key string, value int64) error {
 	_, err := client.KeysAPI.Set(context.Background(), key, strconv.FormatInt(value, 10), nil)
 	return err
 }
 
+// Stop the client
 func (client *EtcdClient) Stop() {
 	if tr, ok := etcd.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -60,6 +64,7 @@ func (client *EtcdClient) Stop() {
 	}
 }
 
+// NewEtcdClient creates a new ETCD client connection to ETCD servers
 func NewEtcdClient(etcdServers []string, clientTimeout time.Duration) (*EtcdClient, error) {
 	cfg := etcd.Config{
 		Endpoints:               etcdServers,
@@ -80,6 +85,7 @@ func NewEtcdClient(etcdServers []string, clientTimeout time.Duration) (*EtcdClie
 	}, nil
 }
 
+// NewEtcdClientFromConfig creates a new ETCD client from configuration
 func NewEtcdClientFromConfig() (*EtcdClient, error) {
 	etcdServers := config.GetEtcdServerAddrs()
 	etcdTimeout := config.GetConfig().GetInt("etcd.client_timeout")

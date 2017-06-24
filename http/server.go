@@ -55,7 +55,9 @@ type Route struct {
 type ConnectionType int
 
 const (
+	// TCP connection
 	TCP ConnectionType = 1 + iota
+	// TLS secure connection
 	TLS
 )
 

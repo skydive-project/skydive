@@ -43,6 +43,7 @@ var (
 	port               int
 )
 
+// CaptureCmd skdyive capture root command
 var CaptureCmd = &cobra.Command{
 	Use:          "capture",
 	Short:        "Manage captures",
@@ -50,6 +51,7 @@ var CaptureCmd = &cobra.Command{
 	SilenceUsage: false,
 }
 
+// CaptureCreate skydive capture creates command
 var CaptureCreate = &cobra.Command{
 	Use:   "create",
 	Short: "Create capture",
@@ -83,6 +85,7 @@ var CaptureCreate = &cobra.Command{
 	},
 }
 
+// CaptureList skydive capture list command
 var CaptureList = &cobra.Command{
 	Use:   "list",
 	Short: "List captures",
@@ -101,6 +104,7 @@ var CaptureList = &cobra.Command{
 	},
 }
 
+// CaptureGet skydive capture get command
 var CaptureGet = &cobra.Command{
 	Use:   "get [capture]",
 	Short: "Display capture",
@@ -125,6 +129,7 @@ var CaptureGet = &cobra.Command{
 	},
 }
 
+// CaptureDelete skydive capture delete command
 var CaptureDelete = &cobra.Command{
 	Use:   "delete [capture]",
 	Short: "Delete capture",

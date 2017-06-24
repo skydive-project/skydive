@@ -28,12 +28,13 @@ import (
 	"time"
 )
 
+// TableAllocator aims to create/allocate a new flow table
 type TableAllocator struct {
 	sync.RWMutex
 	update   time.Duration
 	expire   time.Duration
 	tables   map[*Table]bool
-	pipeline *FlowEnhancerPipeline
+	pipeline *EnhancerPipeline
 }
 
 func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableReply) *TableReply {
@@ -54,6 +55,7 @@ func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableRep
 	return reply
 }
 
+// QueryTable search/query within the flow table
 func (a *TableAllocator) QueryTable(query *TableQuery) *TableReply {
 	a.RLock()
 	defer a.RUnlock()
@@ -69,6 +71,7 @@ func (a *TableAllocator) QueryTable(query *TableQuery) *TableReply {
 	return a.aggregateReplies(query, replies)
 }
 
+// Alloc instanciate/allocate a new table
 func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc) *Table {
 	a.Lock()
 	defer a.Unlock()
@@ -81,13 +84,15 @@ func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc) *Table {
 	return t
 }
 
+// Release release/destroy a flow table
 func (a *TableAllocator) Release(t *Table) {
 	a.Lock()
 	delete(a.tables, t)
 	a.Unlock()
 }
 
-func NewTableAllocator(update, expire time.Duration, pipeline *FlowEnhancerPipeline) *TableAllocator {
+// NewTableAllocator creates a new flow table
+func NewTableAllocator(update, expire time.Duration, pipeline *EnhancerPipeline) *TableAllocator {
 	return &TableAllocator{
 		update:   update,
 		expire:   expire,

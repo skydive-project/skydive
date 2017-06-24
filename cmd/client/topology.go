@@ -37,6 +37,7 @@ var (
 	outputFormat string
 )
 
+// TopologyCmd skydive topology root command
 var TopologyCmd = &cobra.Command{
 	Use:          "topology",
 	Short:        "Request on topology",
@@ -44,6 +45,7 @@ var TopologyCmd = &cobra.Command{
 	SilenceUsage: false,
 }
 
+// TopologyRequest skydive topology query command
 var TopologyRequest = &cobra.Command{
 	Use:   "query",
 	Short: "query topology",

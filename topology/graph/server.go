@@ -29,22 +29,26 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// Namespace websocket message : Graph
 const (
 	Namespace = "Graph"
 )
 
-type GraphServerEventHandler interface {
+// ServerEventHandler interface event
+type ServerEventHandler interface {
 	OnGraphMessage(c *shttp.WSClient, m shttp.WSMessage, msgType string, obj interface{})
 }
 
-type GraphServer struct {
+// Server describes a graph server based on websocket
+type Server struct {
 	shttp.DefaultWSServerEventHandler
 	WSServer      *shttp.WSServer
 	Graph         *Graph
-	eventHandlers []GraphServerEventHandler
+	eventHandlers []ServerEventHandler
 }
 
-func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
+// OnMessage event
+func (s *Server) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	msgType, obj, err := UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
@@ -70,36 +74,44 @@ func (s *GraphServer) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	}
 }
 
-func (s *GraphServer) OnNodeUpdated(n *Node) {
+// OnNodeUpdated event
+func (s *Server) OnNodeUpdated(n *Node) {
 	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeUpdatedMsgType, n))
 }
 
-func (s *GraphServer) OnNodeAdded(n *Node) {
+// OnNodeAdded event
+func (s *Server) OnNodeAdded(n *Node) {
 	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeAddedMsgType, n))
 }
 
-func (s *GraphServer) OnNodeDeleted(n *Node) {
+// OnNodeDeleted event
+func (s *Server) OnNodeDeleted(n *Node) {
 	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeDeletedMsgType, n))
 }
 
-func (s *GraphServer) OnEdgeUpdated(e *Edge) {
+// OnEdgeUpdated event
+func (s *Server) OnEdgeUpdated(e *Edge) {
 	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeUpdatedMsgType, e))
 }
 
-func (s *GraphServer) OnEdgeAdded(e *Edge) {
+// OnEdgeAdded event
+func (s *Server) OnEdgeAdded(e *Edge) {
 	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeAddedMsgType, e))
 }
 
-func (s *GraphServer) OnEdgeDeleted(e *Edge) {
+// OnEdgeDeleted event
+func (s *Server) OnEdgeDeleted(e *Edge) {
 	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeDeletedMsgType, e))
 }
 
-func (s *GraphServer) AddEventHandler(h GraphServerEventHandler) {
+// AddEventHandler subscribe a new graph server event handler
+func (s *Server) AddEventHandler(h ServerEventHandler) {
 	s.eventHandlers = append(s.eventHandlers, h)
 }
 
-func NewServer(g *Graph, server *shttp.WSServer) *GraphServer {
-	s := &GraphServer{
+// NewServer creates a new graph server based on a websocket server
+func NewServer(g *Graph, server *shttp.WSServer) *Server {
+	s := &Server{
 		Graph:    g,
 		WSServer: server,
 	}

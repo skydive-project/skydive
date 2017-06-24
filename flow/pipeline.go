@@ -22,32 +22,38 @@
 
 package flow
 
-type FlowEnhancer interface {
+// Enhancer should Enhance the flow via this interface
+type Enhancer interface {
 	Enhance(flow *Flow)
 }
 
-type FlowEnhancerPipeline struct {
-	Enhancers []FlowEnhancer
+// EnhancerPipeline describes a list of flow enhancer
+type EnhancerPipeline struct {
+	Enhancers []Enhancer
 }
 
-func (fe *FlowEnhancerPipeline) EnhanceFlow(flow *Flow) {
-	for _, enhancer := range fe.Enhancers {
+// EnhanceFlow enhance a flow from with all registered enhancer
+func (e *EnhancerPipeline) EnhanceFlow(flow *Flow) {
+	for _, enhancer := range e.Enhancers {
 		enhancer.Enhance(flow)
 	}
 }
 
-func (fe *FlowEnhancerPipeline) Enhance(flows []*Flow) {
+// Enhance a list of flows
+func (e *EnhancerPipeline) Enhance(flows []*Flow) {
 	for _, flow := range flows {
-		fe.EnhanceFlow(flow)
+		e.EnhanceFlow(flow)
 	}
 }
 
-func (fe *FlowEnhancerPipeline) AddEnhancer(e FlowEnhancer) {
-	fe.Enhancers = append(fe.Enhancers, e)
+// AddEnhancer registers a new flow enhancer
+func (e *EnhancerPipeline) AddEnhancer(en Enhancer) {
+	e.Enhancers = append(e.Enhancers, en)
 }
 
-func NewFlowEnhancerPipeline(enhancers ...FlowEnhancer) *FlowEnhancerPipeline {
-	return &FlowEnhancerPipeline{
+// NewEnhancerPipeline registers a list of flow Enhancer
+func NewEnhancerPipeline(enhancers ...Enhancer) *EnhancerPipeline {
+	return &EnhancerPipeline{
 		Enhancers: enhancers,
 	}
 }

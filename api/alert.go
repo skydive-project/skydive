@@ -28,7 +28,9 @@ import (
 	"github.com/nu7hatch/gouuid"
 )
 
+// Alert is a set of parameters, the Alert Action will Trigger according to its Expression.
 type Alert struct {
+	Resource
 	UUID        string
 	Name        string `json:",omitempty"`
 	Description string `json:",omitempty"`
@@ -38,13 +40,17 @@ type Alert struct {
 	CreateTime  time.Time
 }
 
+// AlertResourceHandler aims to creates and manage a new Alert.
 type AlertResourceHandler struct {
+	ResourceHandler
 }
 
+// AlertAPIHandler aims to exposes the Alert API.
 type AlertAPIHandler struct {
 	BasicAPIHandler
 }
 
+// NewAlert creates a New empty Alert, only UUID and CreateTime are set.
 func NewAlert() *Alert {
 	id, _ := uuid.NewV4()
 
@@ -54,7 +60,8 @@ func NewAlert() *Alert {
 	}
 }
 
-func (a *AlertResourceHandler) New() APIResource {
+// New creates a new alert
+func (a *AlertResourceHandler) New() Resource {
 	id, _ := uuid.NewV4()
 
 	return &Alert{
@@ -62,19 +69,23 @@ func (a *AlertResourceHandler) New() APIResource {
 	}
 }
 
+// Name returns ressource name "alert"
 func (a *AlertResourceHandler) Name() string {
 	return "alert"
 }
 
+// ID returns the alert ID
 func (a *Alert) ID() string {
 	return a.UUID
 }
 
+// SetID set ID
 func (a *Alert) SetID(i string) {
 	a.UUID = i
 }
 
-func RegisterAlertAPI(apiServer *APIServer) (*AlertAPIHandler, error) {
+// RegisterAlertAPI registers an Alert's API to a designated API Server
+func RegisterAlertAPI(apiServer *Server) (*AlertAPIHandler, error) {
 	alertAPIHandler := &AlertAPIHandler{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &AlertResourceHandler{},

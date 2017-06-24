@@ -47,6 +47,7 @@ var (
 	interval   int64
 )
 
+// PacketInjectorCmd skydive inject-packet root command
 var PacketInjectorCmd = &cobra.Command{
 	Use:          "inject-packet",
 	Short:        "inject packets",

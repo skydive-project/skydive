@@ -94,14 +94,17 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+// RawSocket describes a raw socket C implemenation
 type RawSocket struct {
 	fd int
 }
 
+// GetFd returns the file descriptor
 func (s *RawSocket) GetFd() int {
 	return s.fd
 }
 
+// Close the file descriptor
 func (s *RawSocket) Close() error {
 	if s.fd != 0 {
 		_, _, err := syscall.RawSyscall(syscall.SYS_CLOSE, uintptr(s.fd), 0, 0)
@@ -112,6 +115,7 @@ func (s *RawSocket) Close() error {
 	return nil
 }
 
+// NewRawSocket creates a raw socket for the network interface ifName
 func NewRawSocket(ifName string) (*RawSocket, error) {
 	li := unsafe.Pointer(C.CString(ifName))
 	defer C.free(li)
@@ -126,6 +130,7 @@ func NewRawSocket(ifName string) (*RawSocket, error) {
 	}, nil
 }
 
+// NewRawSocketInNs create/open a socket in the namespace nsPath for the network interface ifName
 func NewRawSocketInNs(nsPath string, ifName string) (*RawSocket, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()

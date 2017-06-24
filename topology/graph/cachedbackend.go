@@ -28,185 +28,201 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
+// Define the running cache mode, memory and/or persisent
 const (
-	CACHE_ONLY_MODE int = iota
-	PERSISTENT_ONLY_MODE
-	DEFAULT_MODE
+	CacheOnlyMode int = iota
+	PersistentOnlyMode
+	DefaultMode
 )
 
+// CachedBackend describes a cache mechanism in memory and/or persistent database
 type CachedBackend struct {
 	memory     *MemoryBackend
 	persistent GraphBackend
 	cacheMode  atomic.Value
 }
 
+// SetMode set cache mode
 func (c *CachedBackend) SetMode(mode int) {
 	c.cacheMode.Store(mode)
 }
 
+// NodeAdded same the node in the cache
 func (c *CachedBackend) NodeAdded(n *Node) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
-	if mode != PERSISTENT_ONLY_MODE {
+	if mode != PersistentOnlyMode {
 		r = c.memory.NodeAdded(n)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		r = c.persistent.NodeAdded(n)
 	}
 
 	return r
 }
 
+// NodeDeleted Delete the node in the cache
 func (c *CachedBackend) NodeDeleted(n *Node) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
-	if mode != PERSISTENT_ONLY_MODE {
+	if mode != PersistentOnlyMode {
 		r = c.memory.NodeDeleted(n)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		r = c.persistent.NodeDeleted(n)
 	}
 
 	return r
 }
 
+// GetNode retrieve a node from the cache within a time slice
 func (c *CachedBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PERSISTENT_ONLY_MODE {
+	if t == nil && mode != PersistentOnlyMode {
 		return c.memory.GetNode(i, t)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		return c.persistent.GetNode(i, t)
 	}
 
 	return nil
 }
 
+// GetNodeEdges retrieve a list of edges from a node within a time slice, matching metadata
 func (c *CachedBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PERSISTENT_ONLY_MODE {
+	if t == nil && mode != PersistentOnlyMode {
 		return c.memory.GetNodeEdges(n, t, m)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		return c.persistent.GetNodeEdges(n, t, m)
 	}
 
 	return edges
 }
 
+// EdgeAdded add an edge in the cache
 func (c *CachedBackend) EdgeAdded(e *Edge) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
-	if mode != PERSISTENT_ONLY_MODE {
+	if mode != PersistentOnlyMode {
 		r = c.memory.EdgeAdded(e)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		r = c.persistent.EdgeAdded(e)
 	}
 
 	return r
 }
 
+// EdgeDeleted delete an edge in the cache
 func (c *CachedBackend) EdgeDeleted(e *Edge) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
-	if mode != PERSISTENT_ONLY_MODE {
+	if mode != PersistentOnlyMode {
 		r = c.memory.EdgeDeleted(e)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		r = c.persistent.EdgeDeleted(e)
 	}
 
 	return r
 }
 
+// GetEdge retrieve an edge within a time slice
 func (c *CachedBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PERSISTENT_ONLY_MODE {
+	if t == nil && mode != PersistentOnlyMode {
 		return c.memory.GetEdge(i, t)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		return c.persistent.GetEdge(i, t)
 	}
 
 	return nil
 }
 
+// GetEdgeNodes retrieve a list of nodes from an edge within a time slice, matching metadata
 func (c *CachedBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PERSISTENT_ONLY_MODE {
+	if t == nil && mode != PersistentOnlyMode {
 		return c.memory.GetEdgeNodes(e, t, parentMetadata, childMetadata)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		return c.persistent.GetEdgeNodes(e, t, parentMetadata, childMetadata)
 	}
 
 	return nil, nil
 }
 
+// MetadataUpdated updates metadata
 func (c *CachedBackend) MetadataUpdated(i interface{}) bool {
 	mode := c.cacheMode.Load()
 
 	r := false
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		r = c.persistent.MetadataUpdated(i)
 	}
 
-	if mode != PERSISTENT_ONLY_MODE {
+	if mode != PersistentOnlyMode {
 		r = c.memory.MetadataUpdated(i)
 	}
 
 	return r
 }
 
+// GetNodes returns a list of nodes with a time slice, matching metadata
 func (c *CachedBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PERSISTENT_ONLY_MODE {
+	if t == nil && mode != PersistentOnlyMode {
 		return c.memory.GetNodes(t, m)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		return c.persistent.GetNodes(t, m)
 	}
 
 	return []*Node{}
 }
 
+// GetEdges returns a list of edges with a time slice, matching metadata
 func (c *CachedBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PERSISTENT_ONLY_MODE {
+	if t == nil && mode != PersistentOnlyMode {
 		return c.memory.GetEdges(t, m)
 	}
 
-	if mode != CACHE_ONLY_MODE {
+	if mode != CacheOnlyMode {
 		return c.persistent.GetEdges(t, m)
 	}
 
 	return []*Edge{}
 }
 
+// WithContext returns a graph matching the context, usually within time slice
 func (c *CachedBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
 	return c.persistent.WithContext(graph, context)
 }
 
+// NewCachedBackend creates new graph cache mechanism
 func NewCachedBackend(persistent GraphBackend) (*CachedBackend, error) {
 	memory, err := NewMemoryBackend()
 	if err != nil {

@@ -33,12 +33,14 @@ import (
 
 var regexpCache *cache.Cache
 
+// Getter describes filter getter fields
 type Getter interface {
 	GetField(field string) (interface{}, error)
 	GetFieldInt64(field string) (int64, error)
 	GetFieldString(field string) (string, error)
 }
 
+// Eval evaluates a filter
 func (f *Filter) Eval(g Getter) bool {
 	if f.BoolFilter != nil {
 		return f.BoolFilter.Eval(g)
@@ -77,6 +79,7 @@ func (f *Filter) Eval(g Getter) bool {
 	return true
 }
 
+// Eval evaluates a boolean (not, and, or) filter
 func (b *BoolFilter) Eval(g Getter) bool {
 	for _, filter := range b.Filters {
 		result := filter.Eval(g)
@@ -92,6 +95,7 @@ func (b *BoolFilter) Eval(g Getter) bool {
 	return b.Op == BoolFilterOp_AND || len(b.Filters) == 0
 }
 
+// Eval evaluates an int64 > filter
 func (r *GtInt64Filter) Eval(g Getter) bool {
 	field, err := g.GetFieldInt64(r.Key)
 	if err != nil {
@@ -104,6 +108,7 @@ func (r *GtInt64Filter) Eval(g Getter) bool {
 	return false
 }
 
+// Eval evaluates an int64 < filter
 func (r *LtInt64Filter) Eval(g Getter) bool {
 	field, err := g.GetFieldInt64(r.Key)
 	if err != nil {
@@ -116,6 +121,7 @@ func (r *LtInt64Filter) Eval(g Getter) bool {
 	return false
 }
 
+// Eval evaluates an int64 >= filter
 func (r *GteInt64Filter) Eval(g Getter) bool {
 	field, err := g.GetFieldInt64(r.Key)
 	if err != nil {
@@ -128,6 +134,7 @@ func (r *GteInt64Filter) Eval(g Getter) bool {
 	return false
 }
 
+// Eval evaluates an int64 <= filter
 func (r *LteInt64Filter) Eval(g Getter) bool {
 	field, err := g.GetFieldInt64(r.Key)
 	if err != nil {
@@ -140,6 +147,7 @@ func (r *LteInt64Filter) Eval(g Getter) bool {
 	return false
 }
 
+// Eval evaluates an string type filter
 func (t *TermStringFilter) Eval(g Getter) bool {
 	field, err := g.GetFieldString(t.Key)
 	if err != nil {
@@ -149,6 +157,7 @@ func (t *TermStringFilter) Eval(g Getter) bool {
 	return field == t.Value
 }
 
+// Eval evaluates an int64 type filter
 func (t *TermInt64Filter) Eval(g Getter) bool {
 	field, err := g.GetFieldInt64(t.Key)
 	if err != nil {
@@ -158,6 +167,7 @@ func (t *TermInt64Filter) Eval(g Getter) bool {
 	return field == t.Value
 }
 
+// Eval evaluates an regex filter
 func (r *RegexFilter) Eval(g Getter) bool {
 	field, err := g.GetFieldString(r.Key)
 	if err != nil {
@@ -171,6 +181,7 @@ func (r *RegexFilter) Eval(g Getter) bool {
 	return re.(*regexp.Regexp).MatchString(field)
 }
 
+// Eval evaluates an null filter (not string and not int64 types)
 func (n *NullFilter) Eval(g Getter) bool {
 	if _, err := g.GetFieldString(n.Key); err == nil {
 		return false
@@ -181,6 +192,7 @@ func (n *NullFilter) Eval(g Getter) bool {
 	return true
 }
 
+// Eval evaluates an In filter
 func (i *InInt64Filter) Eval(g Getter) bool {
 	field, err := g.GetField(i.Key)
 	if err != nil {
@@ -203,6 +215,7 @@ func (i *InInt64Filter) Eval(g Getter) bool {
 	return false
 }
 
+// Eval evaluates an In String filter
 func (i *InStringFilter) Eval(g Getter) bool {
 	field, err := g.GetField(i.Key)
 	if err != nil {
@@ -225,6 +238,7 @@ func (i *InStringFilter) Eval(g Getter) bool {
 	return false
 }
 
+// NewBoolFilter creates a new boolean filter
 func NewBoolFilter(op BoolFilterOp, filters ...*Filter) *Filter {
 	boolFilter := &BoolFilter{
 		Op:      op,
@@ -240,54 +254,67 @@ func NewBoolFilter(op BoolFilterOp, filters ...*Filter) *Filter {
 	return &Filter{BoolFilter: boolFilter}
 }
 
+// NewAndFilter creates a new boolean And filter
 func NewAndFilter(filters ...*Filter) *Filter {
 	return NewBoolFilter(BoolFilterOp_AND, filters...)
 }
 
+// NewOrFilter creates a new boolean Or filter
 func NewOrFilter(filters ...*Filter) *Filter {
 	return NewBoolFilter(BoolFilterOp_OR, filters...)
 }
 
+// NewNotFilter creates a new boolean Not filter
 func NewNotFilter(filter *Filter) *Filter {
 	return NewBoolFilter(BoolFilterOp_NOT, filter)
 }
 
+// NewGtInt64Filter creates a new > filter
 func NewGtInt64Filter(key string, value int64) *Filter {
 	return &Filter{GtInt64Filter: &GtInt64Filter{Key: key, Value: value}}
 }
 
+// NewGteInt64Filter creates a new >= filter
 func NewGteInt64Filter(key string, value int64) *Filter {
 	return &Filter{GteInt64Filter: &GteInt64Filter{Key: key, Value: value}}
 }
 
+// NewLtInt64Filter creates a new < filter
 func NewLtInt64Filter(key string, value int64) *Filter {
 	return &Filter{LtInt64Filter: &LtInt64Filter{Key: key, Value: value}}
 }
 
+// NewLteInt64Filter creates a new <= filter
 func NewLteInt64Filter(key string, value int64) *Filter {
 	return &Filter{LteInt64Filter: &LteInt64Filter{Key: key, Value: value}}
 }
 
+// NewTermInt64Filter creates a new string iny64 filter
 func NewTermInt64Filter(key string, value int64) *Filter {
 	return &Filter{TermInt64Filter: &TermInt64Filter{Key: key, Value: value}}
 }
 
+// NewTermStringFilter creates a new string filter
 func NewTermStringFilter(key string, value string) *Filter {
 	return &Filter{TermStringFilter: &TermStringFilter{Key: key, Value: value}}
 }
 
+// NewInInt64Filter creates a new In int64 filter
 func NewInInt64Filter(key string, value int64) *Filter {
 	return &Filter{InInt64Filter: &InInt64Filter{Key: key, Value: value}}
 }
 
+// NewInStringFilter creates a new In string filter
 func NewInStringFilter(key string, value string) *Filter {
 	return &Filter{InStringFilter: &InStringFilter{Key: key, Value: value}}
 }
 
+// NewNullFilter creates a new null filter
 func NewNullFilter(key string) *Filter {
 	return &Filter{NullFilter: &NullFilter{Key: key}}
 }
 
+// NewFilterForIds creates a new filters based on IDs
 func NewFilterForIds(uuids []string, attrs ...string) *Filter {
 	terms := make([]*Filter, len(uuids)*len(attrs))
 	for i, uuid := range uuids {

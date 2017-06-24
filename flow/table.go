@@ -48,22 +48,26 @@ type TableReply struct {
 	status int
 }
 
+// ExpireUpdateFunc defines expire and updates callback
 type ExpireUpdateFunc func(f []*Flow)
 
-type FlowHandler struct {
+// Handler defines a flow callback called every time
+type Handler struct {
 	callback ExpireUpdateFunc
 	every    time.Duration
 }
 
-func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *FlowHandler {
-	return &FlowHandler{
+// NewFlowHandler creates a flow callback handler that will be asynchronously called every time
+func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
+	return &Handler{
 		callback: callback,
 		every:    every,
 	}
 }
 
+// Table store the flow table and related metrics mechanism
 type Table struct {
-	PacketsChan   chan *FlowPackets
+	PacketsChan   chan *Packets
 	table         map[string]*Flow
 	stats         map[string]*FlowMetric
 	flush         chan bool
@@ -73,18 +77,19 @@ type Table struct {
 	state         int64
 	lockState     sync.RWMutex
 	wg            sync.WaitGroup
-	updateHandler *FlowHandler
+	updateHandler *Handler
 	lastUpdate    int64
-	expireHandler *FlowHandler
+	expireHandler *Handler
 	lastExpire    int64
 	tableClock    int64
 	nodeTID       string
-	pipeline      *FlowEnhancerPipeline
+	pipeline      *EnhancerPipeline
 }
 
-func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler, pipeline *FlowEnhancerPipeline) *Table {
+// NewTable creates a new flow table
+func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *EnhancerPipeline) *Table {
 	t := &Table{
-		PacketsChan:   make(chan *FlowPackets, 1000),
+		PacketsChan:   make(chan *Packets, 1000),
 		table:         make(map[string]*Flow),
 		stats:         make(map[string]*FlowMetric),
 		flush:         make(chan bool),
@@ -99,6 +104,7 @@ func NewTable(updateHandler *FlowHandler, expireHandler *FlowHandler, pipeline *
 	return t
 }
 
+// SetNodeTID set the nodeTID of a flow table
 func (ft *Table) SetNodeTID(tid string) {
 	ft.nodeTID = tid
 }
@@ -278,6 +284,7 @@ func (ft *Table) onQuery(query *TableQuery) *TableReply {
 	return reply
 }
 
+// Query a flow table
 func (ft *Table) Query(query *TableQuery) *TableReply {
 	ft.lockState.Lock()
 	defer ft.lockState.Unlock()
@@ -302,8 +309,8 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) flowPacketToFlow(packet *FlowPacket, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
-	key := FlowKeyFromGoPacket(packet.gopacket, parentUUID).String()
+func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
+	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
 		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID, L2ID, L3ID)
@@ -314,7 +321,7 @@ func (ft *Table) flowPacketToFlow(packet *FlowPacket, parentUUID string, t int64
 	return flow
 }
 
-func (ft *Table) flowPacketsToFlow(flowPackets *FlowPackets) {
+func (ft *Table) flowPacketsToFlow(flowPackets *Packets) {
 	t := flowPackets.Timestamp
 	if t == -1 {
 		t = ft.tableClock
@@ -323,7 +330,7 @@ func (ft *Table) flowPacketsToFlow(flowPackets *FlowPackets) {
 	var parentUUID string
 	var L2ID int64
 	var L3ID int64
-	logging.GetLogger().Debugf("%d FlowPackets received for capture node %s", len(flowPackets.Packets), ft.nodeTID)
+	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(flowPackets.Packets), ft.nodeTID)
 	for _, packet := range flowPackets.Packets {
 		f := ft.flowPacketToFlow(&packet, parentUUID, t, L2ID, L3ID)
 		parentUUID = f.UUID
@@ -336,6 +343,7 @@ func (ft *Table) flowPacketsToFlow(flowPackets *FlowPackets) {
 	}
 }
 
+// Run background jobs, like update/expire entries event
 func (ft *Table) Run() {
 	ft.wg.Add(1)
 	defer ft.wg.Done()
@@ -374,11 +382,13 @@ func (ft *Table) Run() {
 	}
 }
 
-func (ft *Table) Start() chan *FlowPackets {
+// Start the flow table
+func (ft *Table) Start() chan *Packets {
 	go ft.Run()
 	return ft.PacketsChan
 }
 
+// Stop the flow table
 func (ft *Table) Stop() {
 	ft.lockState.Lock()
 	defer ft.lockState.Unlock()

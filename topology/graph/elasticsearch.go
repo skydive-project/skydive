@@ -94,13 +94,17 @@ const graphElementMapping = `
 }
 `
 
+// ErrBadConfig elasticsearch configuration file is incorrect
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
 
+// ElasticSearchBackend describes a presisent backend based on ElasticSearch
 type ElasticSearchBackend struct {
+	GraphBackend
 	client       elasticsearch.ElasticSearchClientInterface
 	prevRevision map[Identifier]int64
 }
 
+// TimedSearchQuery describes a search query within a time slice and metadata filters
 type TimedSearchQuery struct {
 	filters.SearchQuery
 	TimeFilter     *filters.Filter
@@ -191,7 +195,7 @@ func (b *ElasticSearchBackend) updateTimes(i interface{}) bool {
 
 func (b *ElasticSearchBackend) hitToNode(source *json.RawMessage, node *Node) error {
 	var obj map[string]interface{}
-	if err := common.JsonDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
+	if err := common.JSONDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
 		return err
 	}
 	if err := node.Decode(obj); err != nil {
@@ -202,7 +206,7 @@ func (b *ElasticSearchBackend) hitToNode(source *json.RawMessage, node *Node) er
 
 func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) error {
 	var obj map[string]interface{}
-	if err := common.JsonDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
+	if err := common.JSONDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
 		return err
 	}
 	if err := edge.Decode(obj); err != nil {
@@ -242,10 +246,12 @@ func (b *ElasticSearchBackend) createNode(n *Node) bool {
 	return true
 }
 
+// NodeAdded add a node
 func (b *ElasticSearchBackend) NodeAdded(n *Node) bool {
 	return b.createNode(n)
 }
 
+// NodeDeleted delete a node
 func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
 	delete(b.prevRevision, n.ID)
 
@@ -262,6 +268,7 @@ func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
 	return true
 }
 
+// GetNode get a node within a time slice
 func (b *ElasticSearchBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 	return b.SearchNodes(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
@@ -287,10 +294,12 @@ func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
 	return true
 }
 
+// EdgeAdded add an edge in the database
 func (b *ElasticSearchBackend) EdgeAdded(e *Edge) bool {
 	return b.createEdge(e)
 }
 
+// EdgeDeleted delete an edge in the database
 func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
 	delete(b.prevRevision, e.ID)
 
@@ -307,6 +316,7 @@ func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
 	return true
 }
 
+// GetEdge get an edge within a time slice
 func (b *ElasticSearchBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 	return b.SearchEdges(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
@@ -318,6 +328,7 @@ func (b *ElasticSearchBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edg
 	})
 }
 
+// MetadataUpdated updates a node metadata in the database
 func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 	if !b.updateTimes(i) {
 		return false
@@ -334,6 +345,7 @@ func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 	return success
 }
 
+// Query the database for a "node" or "edge"
 func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elastigo.SearchResult, _ error) {
 	if tsq.TimeFilter == nil {
 		t := common.UnixMillis(time.Now())
@@ -383,6 +395,7 @@ func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elas
 	return b.client.Search(obj, string(q))
 }
 
+// SearchNodes search nodes matching the query
 func (b *ElasticSearchBackend) SearchNodes(tsq *TimedSearchQuery) (nodes []*Node) {
 	out, err := b.Query("node", tsq)
 	if err != nil {
@@ -403,6 +416,7 @@ func (b *ElasticSearchBackend) SearchNodes(tsq *TimedSearchQuery) (nodes []*Node
 	return
 }
 
+// SearchEdges search edges matching the query
 func (b *ElasticSearchBackend) SearchEdges(tsq *TimedSearchQuery) (edges []*Edge) {
 	out, err := b.Query("edge", tsq)
 	if err != nil {
@@ -423,6 +437,7 @@ func (b *ElasticSearchBackend) SearchEdges(tsq *TimedSearchQuery) (edges []*Edge
 	return
 }
 
+// GetEdges returns a list of edges within time slice, matching metadata
 func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge {
 	filter, err := NewFilterForMetadata(m)
 	if err != nil {
@@ -436,6 +451,7 @@ func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge
 	})
 }
 
+// GetNodes returns a list of nodes within time slice, matching metadata
 func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node {
 	filter, err := NewFilterForMetadata(m)
 	if err != nil {
@@ -449,6 +465,7 @@ func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node
 	})
 }
 
+// GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadatas
 func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) (parents []*Node, children []*Node) {
 	for _, parent := range b.GetNode(e.parent, t) {
 		if parent.MatchMetadata(parentMetadata) {
@@ -465,6 +482,7 @@ func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parent
 	return
 }
 
+// GetNodeEdges returns a list of a node edges within time slice
 func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
 	metadataFilter, err := NewFilterForMetadata(m)
 	if err != nil {
@@ -482,6 +500,7 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Meta
 	})
 }
 
+// WithContext step
 func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
 	return &Graph{
 		backend: graph.backend,
@@ -502,6 +521,7 @@ func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) 
 	}, nil
 }
 
+// NewElasticSearchBackend creates a new graph backend and connect to an ElasticSearch database
 func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchBackend, error) {
 	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 	if err != nil {
@@ -511,6 +531,7 @@ func NewElasticSearchBackend(addr string, port string, maxConns int, retrySecond
 	return newElasticSearchBackend(client)
 }
 
+// NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
 func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
 	addr := config.GetConfig().GetString("storage.elasticsearch.host")
 	c := strings.Split(addr, ":")

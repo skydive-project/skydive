@@ -34,7 +34,9 @@ import (
 	"github.com/skydive-project/skydive/storage/orientdb"
 )
 
+// OrientDBBackend describes an OrientDB backend
 type OrientDBBackend struct {
+	GraphBackend
 	client orientdb.ClientInterface
 }
 
@@ -140,14 +142,17 @@ func (o *OrientDBBackend) createNode(n *Node) bool {
 	return true
 }
 
+// NodeAdded add a node in the database
 func (o *OrientDBBackend) NodeAdded(n *Node) bool {
 	return o.createNode(n)
 }
 
+// NodeDeleted delete a node in the database
 func (o *OrientDBBackend) NodeDeleted(n *Node) bool {
 	return o.updateTimes("Node", string(n.ID), eventTime{"DeletedAt", n.deletedAt}, eventTime{"ArchivedAt", n.deletedAt})
 }
 
+// GetNode get a node within a time slice
 func (o *OrientDBBackend) GetNode(i Identifier, t *common.TimeSlice) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID = '%s' ORDER BY Revision", o.getTimeSliceClause(t), i)
 	docs, err := o.client.Search(query)
@@ -161,6 +166,7 @@ func (o *OrientDBBackend) GetNode(i Identifier, t *common.TimeSlice) (nodes []*N
 	return
 }
 
+// GetNodeEdges returns a list of a node edges within time slice
 func (o *OrientDBBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (Parent = '%s' OR Child = '%s')", o.getTimeSliceClause(t), n.ID, n.ID)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
@@ -191,14 +197,17 @@ func (o *OrientDBBackend) createEdge(e *Edge) bool {
 	return len(docs) == 1
 }
 
+// EdgeAdded add a node in the database
 func (o *OrientDBBackend) EdgeAdded(e *Edge) bool {
 	return o.createEdge(e)
 }
 
+// EdgeDeleted delete a node in the database
 func (o *OrientDBBackend) EdgeDeleted(e *Edge) bool {
 	return o.updateTimes("Link", string(e.ID), eventTime{"DeletedAt", e.deletedAt}, eventTime{"ArchivedAt", e.deletedAt})
 }
 
+// GetEdge get an edge within a time slice
 func (o *OrientDBBackend) GetEdge(i Identifier, t *common.TimeSlice) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND ID = '%s' ORDER BY Revision", o.getTimeSliceClause(t), i)
 	docs, err := o.client.Search(query)
@@ -212,6 +221,7 @@ func (o *OrientDBBackend) GetEdge(i Identifier, t *common.TimeSlice) (edges []*E
 	return
 }
 
+// GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadata
 func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) (parents []*Node, children []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID in [\"%s\", \"%s\"]", o.getTimeSliceClause(t), e.parent, e.child)
 	docs, err := o.client.Search(query)
@@ -232,6 +242,7 @@ func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetad
 	return
 }
 
+// MetadataUpdated returns true if a metadata has been updated in the database, based on ArchivedAt
 func (o *OrientDBBackend) MetadataUpdated(i interface{}) bool {
 	success := true
 
@@ -262,6 +273,7 @@ func (*OrientDBBackend) getTimeSliceClause(t *common.TimeSlice) string {
 	return query
 }
 
+// GetNodes returns a list of nodes within time slice, matching metadata
 func (o *OrientDBBackend) GetNodes(t *common.TimeSlice, m Metadata) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeSliceClause(t))
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
@@ -282,6 +294,7 @@ func (o *OrientDBBackend) GetNodes(t *common.TimeSlice, m Metadata) (nodes []*No
 	return
 }
 
+// GetEdges returns a list of edges within time slice, matching metadata
 func (o *OrientDBBackend) GetEdges(t *common.TimeSlice, m Metadata) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeSliceClause(t))
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
@@ -302,6 +315,7 @@ func (o *OrientDBBackend) GetEdges(t *common.TimeSlice, m Metadata) (edges []*Ed
 	return
 }
 
+// WithContext step
 func (o *OrientDBBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
 	return &Graph{
 		backend: graph.backend,
@@ -364,6 +378,8 @@ func newOrientDBBackend(client orientdb.ClientInterface) (*OrientDBBackend, erro
 	}, nil
 }
 
+// NewOrientDBBackend creates a new graph backend and
+// connect to an OrientDB instance
 func NewOrientDBBackend(addr string, database string, username string, password string) (*OrientDBBackend, error) {
 	client, err := orientdb.NewClient(addr, database, username, password)
 	if err != nil {
@@ -373,6 +389,7 @@ func NewOrientDBBackend(addr string, database string, username string, password 
 	return newOrientDBBackend(client)
 }
 
+// NewOrientDBBackendFromConfig creates a new OrientDB database client based on configuration
 func NewOrientDBBackendFromConfig() (*OrientDBBackend, error) {
 	addr := config.GetConfig().GetString("storage.orientdb.addr")
 	database := config.GetConfig().GetString("storage.orientdb.database")

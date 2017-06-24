@@ -42,6 +42,7 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+// NetNSProbe describes a netlink probe in a network namespace
 type NetNSProbe struct {
 	sync.RWMutex
 	Graph              *graph.Graph
@@ -53,6 +54,7 @@ type NetNSProbe struct {
 	rootNsDev          uint64
 }
 
+// NetNs describes a network namespace path associated with a device / inode
 type NetNs struct {
 	path string
 	dev  uint64
@@ -74,6 +76,7 @@ func (ns *NetNs) String() string {
 	return fmt.Sprintf("%d,%d", ns.dev, ns.ino)
 }
 
+// Register a new network namespace path
 func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.Node {
 	logging.GetLogger().Debugf("Register Network Namespace: %s", path)
 
@@ -148,6 +151,7 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 	return n
 }
 
+// Unregister a network namespace path
 func (u *NetNSProbe) Unregister(path string) {
 	logging.GetLogger().Debugf("Unregister Network Namespace: %s", path)
 
@@ -235,14 +239,17 @@ func (u *NetNSProbe) start() {
 	}
 }
 
+// Start the probe
 func (u *NetNSProbe) Start() {
 	go u.start()
 }
 
+// Stop the probe
 func (u *NetNSProbe) Stop() {
 	u.NetLinkProbe.Stop()
 }
 
+// NewNetNSProbe creates a new network namespace probe
 func NewNetNSProbe(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe, runPath ...string) (*NetNSProbe, error) {
 	if uid := os.Geteuid(); uid != 0 {
 		return nil, errors.New("NetNS probe has to be run as root")
@@ -275,6 +282,7 @@ func NewNetNSProbe(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe, runPath
 	}, nil
 }
 
+// NewNetNSProbeFromConfig creates a new network namespace probe based on configuration
 func NewNetNSProbeFromConfig(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe) (*NetNSProbe, error) {
 	path := config.GetConfig().GetString("netns.run_path")
 	return NewNetNSProbe(g, n, nlProbe, path)

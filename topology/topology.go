@@ -30,18 +30,22 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// Describe the relation type between nodes
 const (
 	OwnershipLink = "ownership"
 	Layer2Link    = "layer2"
 )
 
+// Describe the relation type between nodes in the graph
 var (
 	OwnershipMetadata = graph.Metadata{"RelationType": OwnershipLink}
 	Layer2Metadata    = graph.Metadata{"RelationType": Layer2Link}
 )
 
+// NodePath describes a path in the graph between 2 nodes
 type NodePath []*graph.Node
 
+// Marshal Serialize the node path
 func (p NodePath) Marshal() string {
 	var path string
 	for i := len(p) - 1; i >= 0; i-- {
@@ -63,6 +67,7 @@ func (p NodePath) Marshal() string {
 	return path
 }
 
+// GraphPath returns a string representation of the shortestpath between 2 host on the same owner
 func GraphPath(g *graph.Graph, n *graph.Node) string {
 	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
 	if len(nodes) > 0 {
@@ -71,6 +76,7 @@ func GraphPath(g *graph.Graph, n *graph.Node) string {
 	return ""
 }
 
+// NamespaceFromNode returns the namespace name and the path of a node in the graph
 func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
@@ -106,6 +112,7 @@ func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 	return "", "", nil
 }
 
+// NewNetNSContextByNode creates a new network namespace context based on the node
 func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NetNSContext, error) {
 	name, path, err := NamespaceFromNode(g, n)
 	if err != nil || name == "" || path == "" {
@@ -116,8 +123,10 @@ func NewNetNSContextByNode(g *graph.Graph, n *graph.Node) (*common.NetNSContext,
 	return common.NewNetNsContext(path)
 }
 
+// HostNodeTIDMap a map that store the value node TID and the key node host
 type HostNodeTIDMap map[string][]string
 
+// BuildHostNodeTIDMap creates a new node and host (key) map
 func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
 	hnmap := make(HostNodeTIDMap)
 	for _, node := range nodes {
@@ -128,6 +137,7 @@ func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
 	return hnmap
 }
 
+// HaveOwnershipLink returns true parent and child have the same ownership
 func HaveOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) bool {
 	// do not add or change original metadata
 	m := metadata.Clone()
@@ -136,6 +146,7 @@ func HaveOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, me
 	return g.AreLinked(parent, child, m)
 }
 
+// AddOwnershipLink Link the parent and the child node, the child can have only one parent, previous will be overwritten
 func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) *graph.Edge {
 	// a child node can only have one parent of type ownership, so delete the previous link
 	for _, e := range g.GetNodeEdges(child, graph.Metadata{"RelationType": OwnershipLink}) {
@@ -152,6 +163,7 @@ func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, met
 	return g.Link(parent, child, m)
 }
 
+// HaveLayer2Link returns true if parent and child have the same layer 2
 func HaveLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadata graph.Metadata) bool {
 	// do not add or change original metadata
 	m := metadata.Clone()
@@ -160,6 +172,7 @@ func HaveLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metada
 	return g.AreLinked(node1, node2, m)
 }
 
+// AddLayer2Link Link the parent and the child node
 func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadata graph.Metadata) *graph.Edge {
 	// do not add or change original metadata
 	m := metadata.Clone()

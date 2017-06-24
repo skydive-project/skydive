@@ -35,6 +35,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Agent skydive agent root command
 var Agent = &cobra.Command{
 	Use:          "agent",
 	Short:        "Skydive agent",

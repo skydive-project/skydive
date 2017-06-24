@@ -34,43 +34,52 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// FlowProbeBundle describes a flow probes bundle
 type FlowProbeBundle struct {
 	probe.ProbeBundle
 	Graph              *graph.Graph
 	FlowTableAllocator *flow.TableAllocator
 }
 
+// FlowProbeInterface defines flow probe mechanism
 type FlowProbeInterface interface {
 	probe.Probe
 	RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error
 	UnregisterProbe(n *graph.Node) error
 }
 
+// FlowProbe link the pool of client and probes
 type FlowProbe struct {
 	fpi            FlowProbeInterface
 	flowClientPool *analyzer.FlowClientPool
 }
 
+// Start the probe
 func (fp *FlowProbe) Start() {
 	fp.fpi.Start()
 }
 
+// Stop the probe
 func (fp *FlowProbe) Stop() {
 	fp.fpi.Stop()
 }
 
+// RegisterProbe a probe
 func (fp *FlowProbe) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	return fp.fpi.RegisterProbe(n, capture, ft)
 }
 
+// UnregisterProbe a probe
 func (fp *FlowProbe) UnregisterProbe(n *graph.Node) error {
 	return fp.fpi.UnregisterProbe(n)
 }
 
+// AsyncFlowPipeline run the flow pipeline
 func (fp *FlowProbe) AsyncFlowPipeline(flows []*flow.Flow) {
 	fp.flowClientPool.SendFlows(flows)
 }
 
+// UnregisterAllProbes unregisters all registered probes
 func (fpb *FlowProbeBundle) UnregisterAllProbes() {
 	fpb.Graph.Lock()
 	defer fpb.Graph.Unlock()
@@ -83,6 +92,8 @@ func (fpb *FlowProbeBundle) UnregisterAllProbes() {
 	}
 }
 
+// NewFlowProbeBundleFromConfig creates a new flow probes bundle from configuration
+// valid flow probes are : pcapsocket, ovsflow, gopacket, sflow
 func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
 	list := config.GetConfig().GetStringSlice("agent.flow.probes")
 	logging.GetLogger().Infof("Flow probes: %v", list)

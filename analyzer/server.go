@@ -45,6 +45,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
+// Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
 	HTTPServer        *shttp.Server
 	WSServer          *shttp.WSServer
@@ -99,7 +100,7 @@ func (s *Server) initialize() (err error) {
 		}
 	}
 
-	var apiServer *api.APIServer
+	var apiServer *api.Server
 	if apiServer, err = api.NewAPI(s.HTTPServer, s.EtcdClient.KeysAPI, common.AnalyzerService); err != nil {
 		return
 	}
@@ -147,6 +148,7 @@ func (s *Server) initialize() (err error) {
 	return nil
 }
 
+// Start the analyzer server
 func (s *Server) Start() {
 	if err := s.initialize(); err != nil {
 		logging.GetLogger().Fatalf(err.Error())
@@ -176,6 +178,7 @@ func (s *Server) Start() {
 	s.FlowServer.Start()
 }
 
+// Stop the analyzer server
 func (s *Server) Stop() {
 	s.FlowServer.Stop()
 	s.WSServer.Stop()
@@ -198,6 +201,7 @@ func (s *Server) Stop() {
 	}
 }
 
+// NewServerFromConfig creates a new empty server
 func NewServerFromConfig() *Server {
 	return &Server{}
 }

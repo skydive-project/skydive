@@ -30,18 +30,21 @@ import (
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
+// TopologyTraversalExtension describes a new extension to enhance the topology
 type TopologyTraversalExtension struct {
 	graphPathToken traversal.Token
 }
 
-type GraphPathGremlinTraversalStep struct {
+type graphPathGremlinTraversalStep struct {
+	traversal.GremlinTraversalStep
 }
 
-type GraphPathTraversalStep struct {
+type graphPathTraversalStep struct {
+	traversal.GraphTraversalStep
 	paths []NodePath
 }
 
-func (p *GraphPathTraversalStep) Values() []interface{} {
+func (p *graphPathTraversalStep) Values() []interface{} {
 	s := make([]interface{}, len(p.paths))
 	for i, gp := range p.paths {
 		s[i] = gp.Marshal()
@@ -49,20 +52,22 @@ func (p *GraphPathTraversalStep) Values() []interface{} {
 	return s
 }
 
-func (p *GraphPathTraversalStep) MarshalJSON() ([]byte, error) {
+func (p *graphPathTraversalStep) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.Values())
 }
 
-func (p *GraphPathTraversalStep) Error() error {
+func (p *graphPathTraversalStep) Error() error {
 	return nil
 }
 
+// NewTopologyTraversalExtension returns a new graph traversal mechanism externsion
 func NewTopologyTraversalExtension() *TopologyTraversalExtension {
 	return &TopologyTraversalExtension{
 		graphPathToken: traversal.Token(1000),
 	}
 }
 
+// ScanIdent returns an associated graph token
 func (e *TopologyTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 	switch s {
 	case "GRAPHPATH":
@@ -71,16 +76,17 @@ func (e *TopologyTraversalExtension) ScanIdent(s string) (traversal.Token, bool)
 	return traversal.IDENT, false
 }
 
+// ParseStep parse the current step
 func (e *TopologyTraversalExtension) ParseStep(t traversal.Token, p traversal.GremlinTraversalContext) (traversal.GremlinTraversalStep, error) {
 	switch t {
 	case e.graphPathToken:
-		return &GraphPathGremlinTraversalStep{}, nil
+		return &graphPathGremlinTraversalStep{}, nil
 	}
 
 	return nil, nil
 }
 
-func (s *GraphPathGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
+func (s *graphPathGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	paths := []NodePath{}
 
 	switch last.(type) {
@@ -95,20 +101,21 @@ func (s *GraphPathGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) 
 			}
 		}
 
-		return &GraphPathTraversalStep{paths: paths}, nil
+		return &graphPathTraversalStep{paths: paths}, nil
 	}
 
-	return nil, traversal.ExecutionError
+	return nil, traversal.ErrExecutionError
 }
 
-func (s *GraphPathGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+func (s *graphPathGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
 	return next
 }
 
-func (s *GraphPathGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+func (s *graphPathGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &traversal.GremlinTraversalContext{}
 }
 
+// ExecuteGremlinQuery run a gremlin query on the graph g
 func ExecuteGremlinQuery(g *graph.Graph, query string) (traversal.GraphTraversalStep, error) {
 	tr := traversal.NewGremlinTraversalParser(g)
 	tr.AddTraversalExtension(NewTopologyTraversalExtension())

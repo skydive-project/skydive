@@ -24,6 +24,7 @@ package graph
 
 import "github.com/skydive-project/skydive/common"
 
+// InterfaceMetric the interface packets counters
 type InterfaceMetric struct {
 	RxPackets         int64
 	TxPackets         int64
@@ -50,6 +51,7 @@ type InterfaceMetric struct {
 	TxCompressed      int64
 }
 
+// GetFieldInt64 returns field by name
 func (im *InterfaceMetric) GetFieldInt64(field string) (int64, error) {
 	switch field {
 	case "RxPackets":
@@ -102,6 +104,7 @@ func (im *InterfaceMetric) GetFieldInt64(field string) (int64, error) {
 	return 0, common.ErrFieldNotFound
 }
 
+// Add do a sum operation on interface metric
 func (im *InterfaceMetric) Add(m common.Metric) common.Metric {
 	im2 := m.(*InterfaceMetric)
 

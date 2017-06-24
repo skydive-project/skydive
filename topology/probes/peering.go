@@ -28,6 +28,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// PeeringProbe describes graph peering based on MAC address and graph events
 type PeeringProbe struct {
 	graph.DefaultGraphListener
 	graph *graph.Graph
@@ -60,14 +61,17 @@ func (p *PeeringProbe) onNodeEvent(n *graph.Node) {
 	}
 }
 
+// OnNodeUpdated event
 func (p *PeeringProbe) OnNodeUpdated(n *graph.Node) {
 	p.onNodeEvent(n)
 }
 
+// OnNodeAdded event
 func (p *PeeringProbe) OnNodeAdded(n *graph.Node) {
 	p.onNodeEvent(n)
 }
 
+// OnNodeDeleted event
 func (p *PeeringProbe) OnNodeDeleted(n *graph.Node) {
 	for mac, node := range p.peers {
 		if n.ID == node.ID {
@@ -76,13 +80,16 @@ func (p *PeeringProbe) OnNodeDeleted(n *graph.Node) {
 	}
 }
 
+// Start the MAC peering resolver probe
 func (p *PeeringProbe) Start() {
 }
 
+// Stop the probe
 func (p *PeeringProbe) Stop() {
 	p.graph.RemoveEventListener(p)
 }
 
+// NewPeeringProbe creates a new graph node peering probe
 func NewPeeringProbe(g *graph.Graph) *PeeringProbe {
 	probe := &PeeringProbe{
 		graph: g,

@@ -38,6 +38,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// OnDemandProbeServer describes an ondemand probe server based on websocket
 type OnDemandProbeServer struct {
 	sync.RWMutex
 	graph.DefaultGraphListener
@@ -171,6 +172,7 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 	return true
 }
 
+// OnMessage websocket message, valid message type are CaptureStart, CaptureStop
 func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
@@ -229,6 +231,7 @@ func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMess
 	c.SendWSMessage(reply)
 }
 
+// OnNodeDeleted graph event
 func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
 	if _, err := n.GetFieldString("Capture.ID"); err != nil {
 		return
@@ -237,6 +240,7 @@ func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
 	o.unregisterProbe(n)
 }
 
+// Start the probe
 func (o *OnDemandProbeServer) Start() error {
 	o.Graph.AddEventListener(o)
 	o.WSAsyncClientPool.AddEventHandler(o, []string{ondemand.Namespace})
@@ -244,10 +248,12 @@ func (o *OnDemandProbeServer) Start() error {
 	return nil
 }
 
+// Stop the probe
 func (o *OnDemandProbeServer) Stop() {
 	o.Graph.RemoveEventListener(o)
 }
 
+// NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
 func NewOnDemandProbeServer(fb *probes.FlowProbeBundle, g *graph.Graph, wspool *shttp.WSAsyncClientPool) (*OnDemandProbeServer, error) {
 	return &OnDemandProbeServer{
 		Graph:             g,

@@ -27,19 +27,26 @@ import (
 	"strings"
 )
 
+// ServiceType describes the service type (analyzer or agent)
 type ServiceType string
 
 const (
+	// AnalyzerService analyzer
 	AnalyzerService ServiceType = "analyzer"
-	AgentService    ServiceType = "agent"
+	// AgentService agent
+	AgentService ServiceType = "agent"
 )
 
 const (
+	// StoppedState service stopped
 	StoppedState = iota + 1
+	// RunningState service running
 	RunningState
+	// StoppingState service stopping
 	StoppingState
 )
 
+// ServiceAddress describes the service listening address and port
 type ServiceAddress struct {
 	Addr string
 	Port int
@@ -49,6 +56,7 @@ func (st ServiceType) String() string {
 	return string(st)
 }
 
+// ServiceAddressFromString returns a service address from a string, could be IPv4 or IPv6
 func ServiceAddressFromString(addressPort string) (ServiceAddress, error) {
 	/* Backward compatibility for old format like : listen = 1234 */
 	if !strings.ContainsAny(addressPort, ".:") {

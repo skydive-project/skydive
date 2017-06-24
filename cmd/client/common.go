@@ -32,6 +32,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// AuthenticationOpts Authentication options
 var (
 	AuthenticationOpts shttp.AuthenticationOpts
 )

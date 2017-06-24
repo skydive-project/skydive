@@ -385,7 +385,7 @@ func TestElasticsearchForwarded(t *testing.T) {
 	updatedAt2 := node.updatedAt
 
 	client.searchResult.Hits.Hits = []elastigo.Hit{
-		{Source: node.JsonRawMessage()},
+		{Source: node.JSONRawMessage()},
 	}
 	g.NodeUpdated(node)
 
@@ -419,7 +419,7 @@ func TestElasticsearchForwarded(t *testing.T) {
 	updatedAt3 := node.updatedAt
 
 	client.searchResult.Hits.Hits = []elastigo.Hit{
-		{Source: node.JsonRawMessage()},
+		{Source: node.JSONRawMessage()},
 	}
 	g.NodeUpdated(node)
 

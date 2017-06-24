@@ -37,11 +37,13 @@ import (
 	"github.com/skydive-project/skydive/validator"
 )
 
+// TopologyAPI exposes the topology query API
 type TopologyAPI struct {
 	gremlinParser *traversal.GremlinTraversalParser
 }
 
-type Topology struct {
+// TopologyParam topology API parameter
+type TopologyParam struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 }
 
@@ -110,7 +112,7 @@ func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 }
 
 func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	resource := Topology{}
+	resource := TopologyParam{}
 
 	data, _ := ioutil.ReadAll(r.Body)
 	if len(data) != 0 {
@@ -177,6 +179,7 @@ func (t *TopologyAPI) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
+// RegisterTopologyAPI registers a new topology query API
 func RegisterTopologyAPI(r *shttp.Server, parser *traversal.GremlinTraversalParser) {
 	t := &TopologyAPI{
 		gremlinParser: parser,

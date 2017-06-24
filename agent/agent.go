@@ -48,12 +48,13 @@ import (
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
+// Agent object started on each hosts/namespaces
 type Agent struct {
 	shttp.DefaultWSClientEventHandler
 	Graph               *graph.Graph
 	WSAsyncClientPool   *shttp.WSAsyncClientPool
 	WSServer            *shttp.WSServer
-	GraphServer         *graph.GraphServer
+	GraphServer         *graph.Server
 	Root                *graph.Node
 	TopologyProbeBundle *probe.ProbeBundle
 	FlowProbeBundle     *fprobes.FlowProbeBundle
@@ -65,6 +66,8 @@ type Agent struct {
 	TIDMapper           *topology.TIDMapper
 }
 
+// NewAnalyzerWSClientPool creates a new http WebSocket client Pool
+// with authentification
 func NewAnalyzerWSClientPool() *shttp.WSAsyncClientPool {
 	wspool := shttp.NewWSAsyncClientPool()
 
@@ -89,6 +92,7 @@ func NewAnalyzerWSClientPool() *shttp.WSAsyncClientPool {
 	return wspool
 }
 
+// Start the agent services
 func (a *Agent) Start() {
 	var err error
 
@@ -115,7 +119,7 @@ func (a *Agent) Start() {
 
 	cache := cache.New(expireTime*2, cleanup)
 
-	pipeline := flow.NewFlowEnhancerPipeline(enhancers.NewGraphFlowEnhancer(a.Graph, cache))
+	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(a.Graph, cache))
 
 	// check that the neutron probe if loaded if so add the neutron flow enhancer
 	if a.TopologyProbeBundle.GetProbe("neutron") != nil {
@@ -124,7 +128,7 @@ func (a *Agent) Start() {
 
 	a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime, pipeline)
 
-	// expose a flow server through the client connections
+	// exposes a flow server through the client connections
 	flow.NewServer(a.FlowTableAllocator, a.WSAsyncClientPool)
 
 	packet_injector.NewServer(a.WSAsyncClientPool, a.Graph)
@@ -144,6 +148,7 @@ func (a *Agent) Start() {
 	go a.WSAsyncClientPool.ConnectAll()
 }
 
+// Stop agent services
 func (a *Agent) Stop() {
 	if a.FlowProbeBundle != nil {
 		a.FlowProbeBundle.UnregisterAllProbes()
@@ -170,6 +175,7 @@ func (a *Agent) Stop() {
 	a.TIDMapper.Stop()
 }
 
+// NewAgent instanciates a new Agent aiming to launch probes (topology and flow)
 func NewAgent() *Agent {
 	backend, err := graph.NewMemoryBackend()
 	if err != nil {
@@ -210,6 +216,7 @@ func NewAgent() *Agent {
 	}
 }
 
+// CreateRootNode creates a graph.Node based on the host properties and aims to have an unique ID
 func CreateRootNode(g *graph.Graph) *graph.Node {
 	hostID := config.GetConfig().GetString("host_id")
 	m := graph.Metadata{"Name": hostID, "Type": "host"}

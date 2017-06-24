@@ -43,13 +43,15 @@ import (
 	sversion "github.com/skydive-project/skydive/version"
 )
 
+// DockerClientAPIVersion Client API version used
 const DockerClientAPIVersion = "1.18"
 
-type ContainerInfo struct {
+type containerInfo struct {
 	Pid  int
 	Node *graph.Node
 }
 
+// DockerProbe describes a Docker topology graph that enhance the graph
 type DockerProbe struct {
 	sync.RWMutex
 	*NetNSProbe
@@ -60,7 +62,7 @@ type DockerProbe struct {
 	connected    atomic.Value
 	wg           sync.WaitGroup
 	hostNs       netns.NsHandle
-	containerMap map[string]ContainerInfo
+	containerMap map[string]containerInfo
 }
 
 func (probe *DockerProbe) containerNamespace(pid int) string {
@@ -120,7 +122,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
 	probe.Graph.Unlock()
 
-	probe.containerMap[info.ID] = ContainerInfo{
+	probe.containerMap[info.ID] = containerInfo{
 		Pid:  info.State.Pid,
 		Node: containerNode,
 	}
@@ -221,6 +223,7 @@ func (probe *DockerProbe) connect() error {
 	}
 }
 
+// Start the probe
 func (probe *DockerProbe) Start() {
 	if !atomic.CompareAndSwapInt64(&probe.state, common.StoppedState, common.RunningState) {
 		return
@@ -242,6 +245,7 @@ func (probe *DockerProbe) Start() {
 	}()
 }
 
+// Stop the probe
 func (probe *DockerProbe) Stop() {
 	if !atomic.CompareAndSwapInt64(&probe.state, common.RunningState, common.StoppingState) {
 		return
@@ -255,15 +259,17 @@ func (probe *DockerProbe) Stop() {
 	atomic.StoreInt64(&probe.state, common.StoppedState)
 }
 
+// NewDockerProbe creates a new topology Docker probe
 func NewDockerProbe(nsProbe *NetNSProbe, dockerURL string) (probe *DockerProbe, _ error) {
 	return &DockerProbe{
 		NetNSProbe:   nsProbe,
 		url:          dockerURL,
-		containerMap: make(map[string]ContainerInfo),
+		containerMap: make(map[string]containerInfo),
 		state:        common.StoppedState,
 	}, nil
 }
 
+// NewDockerProbeFromConfig creates a new topology Docker probe based on configuration
 func NewDockerProbeFromConfig(nsProbe *NetNSProbe) (*DockerProbe, error) {
 	dockerURL := config.GetConfig().GetString("docker.url")
 	return NewDockerProbe(nsProbe, dockerURL)

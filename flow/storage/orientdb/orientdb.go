@@ -36,6 +36,7 @@ import (
 	orient "github.com/skydive-project/skydive/storage/orientdb"
 )
 
+// OrientDBStorage describes a OrientDB database client
 type OrientDBStorage struct {
 	client *orient.Client
 }
@@ -146,6 +147,7 @@ func documentToMetric(document orient.Document) (*common.TimedMetric, error) {
 	}, nil
 }
 
+// StoreFlows push a set of flows in the database
 func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	// TODO: use batch of operations
 	for _, flow := range flows {
@@ -174,6 +176,7 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
+// SearchFlows search flow matching filters in the database
 func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	flowset := flow.NewFlowSet()
 
@@ -191,6 +194,7 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 	return flowset, nil
 }
 
+// SearchMetrics search flow metrics matching filters in the database
 func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
@@ -224,15 +228,19 @@ func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *f
 	return metrics, nil
 }
 
+// Start the database client
 func (c *OrientDBStorage) Start() {
 }
 
+// Stop the database client
 func (c *OrientDBStorage) Stop() {
 }
 
+// Close the database client
 func (c *OrientDBStorage) Close() {
 }
 
+// New creates a new OrientDB database client
 func New() (*OrientDBStorage, error) {
 	addr := config.GetConfig().GetString("storage.orientdb.addr")
 	database := config.GetConfig().GetString("storage.orientdb.database")

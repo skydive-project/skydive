@@ -93,7 +93,7 @@ func (f *fakeOrientDBClient) GetDatabase() (orientdb.Document, error) {
 func (f *fakeOrientDBClient) CreateDatabase() (orientdb.Document, error) {
 	return nil, nil
 }
-func (f *fakeOrientDBClient) Sql(query string, result interface{}) error {
+func (f *fakeOrientDBClient) SQL(query string, result interface{}) error {
 	return nil
 }
 func (f *fakeOrientDBClient) Search(query string) ([]orientdb.Document, error) {

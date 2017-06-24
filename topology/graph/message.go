@@ -31,6 +31,7 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 )
 
+// Graph message type
 const (
 	SyncRequestMsgType      = "SyncRequest"
 	SyncReplyMsgType        = "SyncReply"
@@ -43,19 +44,22 @@ const (
 	EdgeAddedMsgType        = "EdgeAdded"
 )
 
+// Graph error message
 var (
-	SyncRequestMalFormed  = errors.New("SyncRequestMsg malformed")
-	SyncReplyMsgMalFormed = errors.New("SyncReplyMsg malformed")
+	ErrSyncRequestMalFormed  = errors.New("SyncRequestMsg malformed")
+	ErrSyncReplyMsgMalFormed = errors.New("SyncReplyMsg malformed")
 )
 
+// SyncReplyMsg describes graph syncho message
 type SyncReplyMsg struct {
 	Nodes []*Node
 	Edges []*Edge
 }
 
+// UnmarshalWSMessage deserialize the websocket message
 func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	var obj interface{}
-	if err := common.JsonDecode(bytes.NewReader([]byte(*msg.Obj)), &obj); err != nil {
+	if err := common.JSONDecode(bytes.NewReader([]byte(*msg.Obj)), &obj); err != nil {
 		return "", msg, err
 	}
 
@@ -63,7 +67,7 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 	case SyncRequestMsgType:
 		m, ok := obj.(map[string]interface{})
 		if !ok {
-			return "", msg, SyncRequestMalFormed
+			return "", msg, ErrSyncRequestMalFormed
 		}
 
 		var context GraphContext
@@ -81,7 +85,7 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 
 		els, ok := obj.(map[string]interface{})
 		if !ok {
-			return "", msg, SyncReplyMsgMalFormed
+			return "", msg, ErrSyncReplyMsgMalFormed
 		}
 		inodes, ok := els["Nodes"]
 		if !ok || inodes == nil {
@@ -89,7 +93,7 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 		}
 		nodes, ok := inodes.([]interface{})
 		if !ok {
-			return "", msg, SyncReplyMsgMalFormed
+			return "", msg, ErrSyncReplyMsgMalFormed
 		}
 
 		for _, n := range nodes {
@@ -107,7 +111,7 @@ func UnmarshalWSMessage(msg shttp.WSMessage) (string, interface{}, error) {
 
 		edges, ok := iedges.([]interface{})
 		if !ok {
-			return "", msg, SyncReplyMsgMalFormed
+			return "", msg, ErrSyncReplyMsgMalFormed
 		}
 		for _, e := range edges {
 			var edge Edge

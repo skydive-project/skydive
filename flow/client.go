@@ -37,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/topology"
 )
 
+// TableClient describes a mechanism to Query a flow table via flowSet in JSON
 type TableClient struct {
 	shttp.DefaultWSServerEventHandler
 	WSServer       *shttp.WSServer
@@ -44,6 +45,7 @@ type TableClient struct {
 	replyChan      map[string]chan *json.RawMessage
 }
 
+// OnMessage event
 func (f *TableClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	f.replyChanMutex.RLock()
 	defer f.replyChanMutex.RUnlock()
@@ -123,6 +125,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 	flowset <- NewFlowSet()
 }
 
+// LookupFlows query flow table based on a filter search query
 func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
 	clients := f.WSServer.GetClientsByType(common.AgentService)
 	ch := make(chan *FlowSet, len(clients))
@@ -150,6 +153,7 @@ func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet
 	return flowset, nil
 }
 
+// LookupFlowsByNodes query flow table based on multiple nodes
 func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
 	ch := make(chan *FlowSet, len(hnmap))
 
@@ -179,6 +183,7 @@ func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSear
 	return flowset, nil
 }
 
+// NewTableClient creates a new table client based on websocket
 func NewTableClient(w *shttp.WSServer) *TableClient {
 	tc := &TableClient{
 		WSServer:  w,
