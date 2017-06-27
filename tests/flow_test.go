@@ -71,7 +71,7 @@ func TestSFlowProbeNode(t *testing.T) {
 				return err
 			}
 
-			flows, err := gh.GetFlows(prefix + fmt.Sprintf(`.Flows("NodeTID", "%s", "LayersPath", "Ethernet/ARP/Payload")`, node.Metadata()["TID"].(string)))
+			flows, err := gh.GetFlows(prefix + fmt.Sprintf(`.Flows("NodeTID", "%s", "LayersPath", "Ethernet/ARP")`, node.Metadata()["TID"].(string)))
 			if err != nil {
 				return err
 			}
@@ -124,7 +124,7 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 				return err
 			}
 
-			flows, err := gh.GetFlows(prefix + fmt.Sprintf(`.Flows("NodeTID", "%s", "LayersPath", "Ethernet/ARP/Payload")`, node.Metadata()["TID"].(string)))
+			flows, err := gh.GetFlows(prefix + fmt.Sprintf(`.Flows("NodeTID", "%s", "LayersPath", "Ethernet/ARP")`, node.Metadata()["TID"].(string)))
 			if err != nil {
 				return err
 			}
@@ -196,7 +196,7 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 			}
 
 			gh := c.gh
-			flows, err := gh.GetFlows(prefix + ".V().Has('Type', 'ovsbridge').Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')")
+			flows, err := gh.GetFlows(prefix + ".V().Has('Type', 'ovsbridge').Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')")
 			if err != nil {
 				return err
 			}
@@ -542,8 +542,8 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	default:
 		return fmt.Errorf("Should return only one icmp flow, got: %v", icmp)
 	}
-	if icmp[0].LayersPath != "Ethernet/IPv4/ICMPv4/Payload" {
-		return fmt.Errorf("Wrong layer path, should be 'Ethernet/IPv4/ICMPv4/Payload', got %s", icmp[0].LayersPath)
+	if icmp[0].LayersPath != "Ethernet/IPv4/ICMPv4" {
+		return fmt.Errorf("Wrong layer path, should be 'Ethernet/IPv4/ICMPv4', got %s", icmp[0].LayersPath)
 	}
 
 	ethernet := icmp[0].Metric
@@ -555,7 +555,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 		return fmt.Errorf("Number of bytes is wrong, got: %v", ethernet.BABytes)
 	}
 
-	flows, err := gh.GetFlows(fmt.Sprintf(`%s.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload", "Metric.ABPackets", %d)`, ovsGremlin, pings))
+	flows, err := gh.GetFlows(fmt.Sprintf(`%s.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "Metric.ABPackets", %d)`, ovsGremlin, pings))
 	if len(flows) != 1 || flows[0].Metric.BAPackets != pings {
 		return fmt.Errorf("Number of packets is wrong, got %d, flows: %v (error: %+v)", len(flows), flows, err)
 	}
@@ -720,7 +720,7 @@ func TestFlowMetricsStep(t *testing.T) {
 			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
 			gremlin += `.V().Has("Name", "br-fms", "Type", "ovsbridge").Flows()`
 
-			tm, err := gh.GetMetric(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Sum()`)
+			tm, err := gh.GetMetric(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum()`)
 			if err != nil {
 				flows, _ := gh.GetFlows(gremlin)
 				return fmt.Errorf("Could not find metrics (%+v) for flows %s", tm, helper.FlowsToString(flows))
@@ -729,7 +729,7 @@ func TestFlowMetricsStep(t *testing.T) {
 
 			if metric.ABPackets != 15 || metric.BAPackets != 15 || metric.ABBytes < 15360 || metric.BABytes < 15360 {
 				flows, _ := gh.GetFlows(gremlin)
-				return fmt.Errorf("Wrong metric returned, got : %+v for flows %+v, request: %s", metric, helper.FlowsToString(flows), gremlin+`.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Sum()`)
+				return fmt.Errorf("Wrong metric returned, got : %+v for flows %+v, request: %s", metric, helper.FlowsToString(flows), gremlin+`.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum()`)
 			}
 
 			checkMetrics := func(metrics map[string][]*common.TimedMetric) error {
@@ -755,7 +755,7 @@ func TestFlowMetricsStep(t *testing.T) {
 				return nil
 			}
 
-			metrics, err := gh.GetMetrics(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics()`)
+			metrics, err := gh.GetMetrics(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics()`)
 			if err != nil || len(metrics) == 0 {
 				return fmt.Errorf("Could not find metrics (%+v)", metrics)
 			}
@@ -764,7 +764,7 @@ func TestFlowMetricsStep(t *testing.T) {
 				return err
 			}
 
-			metrics, err = gh.GetMetrics(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Dedup().Metrics().Aggregates()`)
+			metrics, err = gh.GetMetrics(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Aggregates()`)
 			if err != nil || len(metrics) == 0 {
 				return fmt.Errorf("Could not find metrics (%+v)", metrics)
 			}
@@ -840,7 +840,7 @@ func TestFlowHops(t *testing.T) {
 			prefix += `.V().Has("Name", "br-fh", "Type", "ovsbridge")`
 
 			gh := c.gh
-			gremlin := prefix + `.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload")`
+			gremlin := prefix + `.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4")`
 			flows, err := gh.GetFlows(gremlin)
 			if err != nil {
 				return err
@@ -860,7 +860,7 @@ func TestFlowHops(t *testing.T) {
 				return fmt.Errorf("We should have 3 nodes NodeTID,A,B got : %v for flows : %v", tnodes, flows)
 			}
 
-			gremlin = prefix + `.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4/Payload").Hops()`
+			gremlin = prefix + `.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4").Hops()`
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -954,7 +954,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			prefix += `.V().Has("Name", "br-ipv6fh", "Type", "ovsbridge")`
 
 			gh := c.gh
-			gremlin := prefix + `.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6/Payload", "ICMP.Type", "ECHO")`
+			gremlin := prefix + `.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6", "ICMP.Type", "ECHO")`
 			// filterIPv6AddrAnd() as we received multicast/broadcast from fresh registered interfaces announcement
 			allFlows, err := gh.GetFlows(gremlin)
 			if err != nil {
@@ -977,7 +977,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			}
 
 			/* Dedup() here for same reason than above ^^^ */
-			gremlin = prefix + `.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6/Payload").Hops().Dedup()`
+			gremlin = prefix + `.Flows().Has("LayersPath", "Ethernet/IPv6/ICMPv6").Hops().Dedup()`
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -1454,7 +1454,7 @@ func TestFlowVLANSegmentation(t *testing.T) {
 			}
 
 			gh := c.gh
-			flowsInnerTunnel, err := gh.GetFlows(prefix + `.V().Has('Name', 'vlan-vm1').Out().Has('Name', 'vlan').Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4/Payload')`)
+			flowsInnerTunnel, err := gh.GetFlows(prefix + `.V().Has('Name', 'vlan-vm1').Out().Has('Name', 'vlan').Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')`)
 			if err != nil {
 				return err
 			}

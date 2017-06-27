@@ -181,6 +181,9 @@ func FlowKeyFromGoPacket(p *gopacket.Packet, parentUUID string) FlowKey {
 func layerPathFromGoPacket(packet *gopacket.Packet) string {
 	path := ""
 	for i, layer := range (*packet).Layers() {
+		if layer.LayerType() == gopacket.LayerTypePayload {
+			break
+		}
 		if i > 0 {
 			path += "/"
 		}
@@ -319,7 +322,7 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 	f.ParentUUID = parentUUID
 
 	f.LayersPath = layerPathFromGoPacket(packet)
-	appLayers := strings.Split(strings.TrimSuffix(f.LayersPath, "/Payload"), "/")
+	appLayers := strings.Split(f.LayersPath, "/")
 	f.Application = appLayers[len(appLayers)-1]
 
 	// no network layer then no transport layer
