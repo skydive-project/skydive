@@ -531,6 +531,39 @@ func TestDockerNetHost(t *testing.T) {
 	RunTest(t, test)
 }
 
+func TestDockerLabels(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"docker run -d -t -i --label a.b.c=123 --label a~b/c@d=456 --name test-skydive-docker-labels busybox", false},
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"docker rm -f test-skydive-docker-labels", false},
+		},
+
+		check: func(c *TestContext) error {
+			gh := c.gh
+
+			prefix := "g"
+			if !c.time.IsZero() {
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+
+			gremlin := prefix + `.V().Has("Docker.ContainerName", "/test-skydive-docker-labels",`
+			gremlin += ` "Type", "container", "Docker.Labels.a.b.c", "123", "Docker.Labels.a~b/c@d", "456")`
+			fmt.Printf("Gremlin: %s\n", gremlin)
+			_, err := gh.GetNode(gremlin)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	}
+
+	RunTest(t, test)
+}
+
 func TestInterfaceUpdate(t *testing.T) {
 	start := time.Now()
 
