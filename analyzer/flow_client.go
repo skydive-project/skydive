@@ -23,11 +23,7 @@
 package analyzer
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"strings"
@@ -53,25 +49,39 @@ type FlowClient struct {
 	addr           string
 	port           int
 	flowClientConn FlowClientConn
-	conn           net.Conn
 }
 
 type FlowClientConn interface {
-	Connect() (net.Conn, error)
+	Connect() error
+	Close() error
+	Send(data []byte) error
 }
 
 type FlowClientUDPConn struct {
 	addr *net.UDPAddr
+	conn *net.UDPConn
 }
 
-type FlowClientTCPConn struct {
-	addr      *net.TCPAddr
-	tlsConfig *tls.Config
+type FlowClientWebSocketConn struct {
+	shttp.DefaultWSClientEventHandler
+	addr     string
+	port     int
+	wsClient *shttp.WSAsyncClient
 }
 
-func (c *FlowClientUDPConn) Connect() (net.Conn, error) {
+func (c *FlowClientUDPConn) Close() error {
+	return c.conn.Close()
+}
+
+func (c *FlowClientUDPConn) Connect() (err error) {
 	logging.GetLogger().Debugf("UDP client dialup done for %s", c.addr.String())
-	return net.DialUDP("udp", nil, c.addr)
+	c.conn, err = net.DialUDP("udp", nil, c.addr)
+	return err
+}
+
+func (c *FlowClientUDPConn) Send(data []byte) error {
+	_, err := c.conn.Write(data)
+	return err
 }
 
 func NewFlowClientUDPConn(addr string, port int) (*FlowClientUDPConn, error) {
@@ -83,104 +93,58 @@ func NewFlowClientUDPConn(addr string, port int) (*FlowClientUDPConn, error) {
 	return &FlowClientUDPConn{addr: udpAddr}, nil
 }
 
-func (c *FlowClientTCPConn) Connect() (net.Conn, error) {
-	ip := common.IPToString(c.addr.IP)
-	port := c.addr.Port + 1
-
-	logging.GetLogger().Debugf("Dialing TLS client connection %s:%d", ip, port)
-	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", ip, port), c.tlsConfig)
-	if err != nil {
-		return nil, fmt.Errorf("TLS error %s:%d : %s", ip, port, err.Error())
-	}
-
-	state := conn.ConnectionState()
-	if state.HandshakeComplete == false {
-		return nil, fmt.Errorf("TLS Handshake is not complete %s:%d : %+v", ip, port, state)
-	}
-
-	logging.GetLogger().Debugf("TLS v%d Handshake is complete on %s:%d", state.Version, ip, port)
-	return conn, nil
+func (c *FlowClientWebSocketConn) Close() error {
+	return nil
 }
 
-func NewFlowClientTCPConn(addr string, port int) (*FlowClientTCPConn, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", addr, port))
-	if err != nil {
-		return nil, err
+func (c *FlowClientWebSocketConn) Connect() error {
+	authOptions := &shttp.AuthenticationOpts{
+		Username: config.GetConfig().GetString("auth.analyzer_username"),
+		Password: config.GetConfig().GetString("auth.analyzer_password"),
 	}
 
-	certPEM := config.GetConfig().GetString("agent.X509_cert")
-	keyPEM := config.GetConfig().GetString("agent.X509_key")
-	serverCertPEM := config.GetConfig().GetString("analyzer.X509_cert")
-	serverNamePEM := config.GetConfig().GetString("agent.X509_servername")
+	authClient := shttp.NewAuthenticationClient(c.addr, c.port, authOptions)
+	c.wsClient = shttp.NewWSAsyncClientFromConfig(common.AgentService, c.addr, c.port, "/ws/flow", authClient)
+	c.wsClient.Connect()
+	c.wsClient.AddEventHandler(c)
 
-	if len(certPEM) == 0 || len(keyPEM) == 0 {
-		return nil, errors.New("Certificates are required to use TCP for flows")
-	}
+	return nil
+}
 
-	cert, err := tls.LoadX509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		logging.GetLogger().Fatalf("Can't read X509 key pair set in config : cert '%s' key '%s'", certPEM, keyPEM)
-		return nil, err
-	}
+func (c *FlowClientWebSocketConn) Send(data []byte) error {
+	c.wsClient.SendMessage(string(data))
+	return nil
+}
 
-	rootPEM, err := ioutil.ReadFile(serverCertPEM)
-	if err != nil {
-		logging.GetLogger().Fatalf("Failed to open root certificate '%s' : %s", serverCertPEM, err.Error())
-	}
-
-	roots := x509.NewCertPool()
-	if ok := roots.AppendCertsFromPEM(rootPEM); !ok {
-		logging.GetLogger().Fatalf("Failed to parse root certificate '%s'", serverCertPEM)
-	}
-
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      roots,
-	}
-	if len(serverNamePEM) > 0 {
-		tlsConfig.ServerName = serverNamePEM
-	} else {
-		serverNamePEM = "unspecified"
-	}
-	tlsConfig.BuildNameToCertificate()
-
-	return &FlowClientTCPConn{addr: tcpAddr, tlsConfig: tlsConfig}, nil
+func NewFlowClientWebSocketConn(addr string, port int) (*FlowClientWebSocketConn, error) {
+	return &FlowClientWebSocketConn{addr: addr, port: port}, nil
 }
 
 func (c *FlowClient) connect() {
-	conn, err := c.flowClientConn.Connect()
-	if err != nil {
+	if err := c.flowClientConn.Connect(); err != nil {
 		logging.GetLogger().Errorf("Connection error to %s:%d : %s", c.addr, c.port, err.Error())
 		time.Sleep(200 * time.Millisecond)
-		return
 	}
-	c.conn = conn
 }
 
 func (c *FlowClient) close() {
-	if c.conn != nil {
-		if err := c.conn.Close(); err != nil {
-			logging.GetLogger().Errorf("Error while closing flow connection: %s", err.Error())
-		}
+	if err := c.flowClientConn.Close(); err != nil {
+		logging.GetLogger().Errorf("Error while closing flow connection: %s", err.Error())
 	}
 }
 
 // SendFlow sends a flow to the server
 func (c *FlowClient) SendFlow(f *flow.Flow) error {
-	if c.conn == nil {
-		return errors.New("Not connected")
-	}
-
 	data, err := f.GetData()
 	if err != nil {
 		return err
 	}
 
 retry:
-	_, err = c.conn.Write(data)
+	err = c.flowClientConn.Send(data)
 	if err != nil {
 		logging.GetLogger().Errorf("flows connection to analyzer error %s : try to reconnect", err.Error())
-		c.conn.Close()
+		c.close()
 		c.connect()
 		goto retry
 	}
@@ -208,8 +172,8 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 	switch protocol {
 	case "udp":
 		connection, err = NewFlowClientUDPConn(addr, port)
-	case "tcp":
-		connection, err = NewFlowClientTCPConn(addr, port)
+	case "websocket":
+		connection, err = NewFlowClientWebSocketConn(addr, port)
 	default:
 		return nil, fmt.Errorf("Invalid protocol %s", protocol)
 	}
@@ -218,7 +182,7 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 		return nil, err
 	}
 
-	fc := &FlowClient{flowClientConn: connection}
+	fc := &FlowClient{addr: addr, port: port, flowClientConn: connection}
 	fc.connect()
 
 	return fc, nil
@@ -283,12 +247,12 @@ func (p *FlowClientPool) Close() {
 // NewFlowClientPool returns a new FlowClientPool using the websocket connections
 // to maintain the pool of client up to date according to the websocket connections
 // status.
-func NewFlowClientPool(wspool *shttp.WSAsyncClientPool) *FlowClientPool {
+func NewFlowClientPool(wspool *shttp.WSMessageAsyncClientPool) *FlowClientPool {
 	p := &FlowClientPool{
 		flowClients: make([]*FlowClient, 0),
 	}
 
-	wspool.AddEventHandler(p, []string{})
+	wspool.AddEventHandler(p)
 
 	return p
 }

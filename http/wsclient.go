@@ -39,8 +39,51 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+type WSMessageClientMessageHandler interface {
+	OnWSMessage(c *WSAsyncClient, m WSMessage)
+}
+
+type WSClientNamespaceEventHandler struct {
+	eventHandlersLock sync.RWMutex
+	nsEventHandlers   map[string][]WSMessageClientMessageHandler
+}
+
+func (a *WSClientNamespaceEventHandler) AddMessageHandler(h WSMessageClientMessageHandler, namespaces []string) {
+	a.eventHandlersLock.Lock()
+	// add this handler per namespace
+	for _, ns := range namespaces {
+		if _, ok := a.nsEventHandlers[ns]; !ok {
+			a.nsEventHandlers[ns] = []WSMessageClientMessageHandler{h}
+		} else {
+			a.nsEventHandlers[ns] = append(a.nsEventHandlers[ns], h)
+		}
+	}
+	a.eventHandlersLock.Unlock()
+}
+
+func (a *WSClientNamespaceEventHandler) OnMessage(c *WSAsyncClient, m []byte) {
+	var msg WSMessage
+	if err := json.Unmarshal(m, &msg); err != nil {
+		logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
+		return
+	}
+
+	for _, l := range a.nsEventHandlers[msg.Namespace] {
+		l.OnWSMessage(c, msg)
+	}
+	for _, l := range a.nsEventHandlers[WilcardNamespace] {
+		l.OnWSMessage(c, msg)
+	}
+}
+
+func NewWSClientNamespaceEventHandler() *WSClientNamespaceEventHandler {
+	return &WSClientNamespaceEventHandler{
+		nsEventHandlers: make(map[string][]WSMessageClientMessageHandler),
+	}
+}
+
 type WSClientEventHandler interface {
-	OnMessage(c *WSAsyncClient, m WSMessage)
+	OnMessage(c *WSAsyncClient, m []byte)
 	OnConnected(c *WSAsyncClient)
 	OnDisconnected(c *WSAsyncClient)
 }
@@ -50,34 +93,34 @@ type DefaultWSClientEventHandler struct {
 
 type WSAsyncClient struct {
 	sync.RWMutex
-	Host            string
-	ClientType      common.ServiceType
-	Addr            string
-	Port            int
-	Path            string
-	AuthClient      *AuthenticationClient
-	messages        chan string
-	read            chan []byte
-	quit            chan bool
-	wg              sync.WaitGroup
-	wsConn          *websocket.Conn
-	eventHandlers   []WSClientEventHandler
-	nsEventHandlers map[string][]WSClientEventHandler
-	connected       atomic.Value
-	running         atomic.Value
+	Host              string
+	ClientType        common.ServiceType
+	Addr              string
+	Port              int
+	Path              string
+	AuthClient        *AuthenticationClient
+	messages          chan string
+	read              chan []byte
+	quit              chan bool
+	wg                sync.WaitGroup
+	wsConn            *websocket.Conn
+	eventHandlers     []WSClientEventHandler
+	eventHandlersLock sync.RWMutex
+	connected         atomic.Value
+	running           atomic.Value
 }
 
-type WSAsyncClientPool struct {
+type WSMessageAsyncClientPool struct {
 	sync.RWMutex
-	master            *WSAsyncClient
+	*WSClientNamespaceEventHandler
+	master            *WSMessageAsyncClient
 	masterLock        sync.RWMutex
-	clients           []*WSAsyncClient
+	clients           []*WSMessageAsyncClient
 	eventHandlers     []WSClientEventHandler
-	nsEventHandlers   map[string][]WSClientEventHandler
 	eventHandlersLock sync.RWMutex
 }
 
-func (d *DefaultWSClientEventHandler) OnMessage(c *WSAsyncClient, m WSMessage) {
+func (d *DefaultWSClientEventHandler) OnMessage(c *WSAsyncClient, m []byte) {
 }
 
 func (d *DefaultWSClientEventHandler) OnConnected(c *WSAsyncClient) {
@@ -86,7 +129,7 @@ func (d *DefaultWSClientEventHandler) OnConnected(c *WSAsyncClient) {
 func (d *DefaultWSClientEventHandler) OnDisconnected(c *WSAsyncClient) {
 }
 
-func (c *WSAsyncClient) sendMessage(m string) {
+func (c *WSAsyncClient) queueMessage(m string) {
 	if !c.IsConnected() {
 		return
 	}
@@ -95,14 +138,14 @@ func (c *WSAsyncClient) sendMessage(m string) {
 }
 
 func (c *WSAsyncClient) SendWSMessage(m *WSMessage) {
-	c.sendMessage(m.String())
+	c.queueMessage(m.String())
 }
 
 func (c *WSAsyncClient) IsConnected() bool {
 	return c.connected.Load() == true
 }
 
-func (c *WSAsyncClient) send(msg string) error {
+func (c *WSAsyncClient) SendMessage(msg string) error {
 	w, err := c.wsConn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
@@ -203,24 +246,16 @@ func (c *WSAsyncClient) connect() {
 	for {
 		select {
 		case msg := <-c.messages:
-			err := c.send(msg)
+			err := c.SendMessage(msg)
 			if err != nil {
 				logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
 			}
 		case m := <-c.read:
-			var msg WSMessage
-			if err := json.Unmarshal(m, &msg); err != nil {
-				logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
-			} else {
-				c.RLock()
-				for _, l := range c.nsEventHandlers[msg.Namespace] {
-					l.OnMessage(c, msg)
-				}
-				for _, l := range c.nsEventHandlers[WilcardNamespace] {
-					l.OnMessage(c, msg)
-				}
-				c.RUnlock()
+			c.RLock()
+			for _, l := range c.eventHandlers {
+				l.OnMessage(c, m)
 			}
+			c.RUnlock()
 		case <-c.quit:
 			return
 		}
@@ -236,18 +271,9 @@ func (c *WSAsyncClient) Connect() {
 	}()
 }
 
-func (c *WSAsyncClient) AddEventHandler(h WSClientEventHandler, namespaces []string) {
+func (c *WSAsyncClient) AddEventHandler(h WSClientEventHandler) {
 	c.Lock()
 	c.eventHandlers = append(c.eventHandlers, h)
-
-	// add this handler per namespace
-	for _, ns := range namespaces {
-		if _, ok := c.nsEventHandlers[ns]; !ok {
-			c.nsEventHandlers[ns] = []WSClientEventHandler{h}
-		} else {
-			c.nsEventHandlers[ns] = append(c.nsEventHandlers[ns], h)
-		}
-	}
 	c.Unlock()
 }
 
@@ -261,16 +287,15 @@ func (c *WSAsyncClient) Disconnect() {
 
 func NewWSAsyncClient(host string, clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSAsyncClient {
 	c := &WSAsyncClient{
-		Host:            host,
-		ClientType:      clientType,
-		Addr:            addr,
-		Port:            port,
-		Path:            path,
-		AuthClient:      authClient,
-		messages:        make(chan string, 500),
-		read:            make(chan []byte, 500),
-		quit:            make(chan bool),
-		nsEventHandlers: make(map[string][]WSClientEventHandler),
+		Host:       host,
+		ClientType: clientType,
+		Addr:       addr,
+		Port:       port,
+		Path:       path,
+		AuthClient: authClient,
+		messages:   make(chan string, 500),
+		read:       make(chan []byte, 500),
+		quit:       make(chan bool),
 	}
 	c.connected.Store(false)
 	c.running.Store(true)
@@ -282,7 +307,55 @@ func NewWSAsyncClientFromConfig(clientType common.ServiceType, addr string, port
 	return NewWSAsyncClient(host, clientType, addr, port, path, authClient)
 }
 
-func (a *WSAsyncClientPool) selectMaster() *WSAsyncClient {
+type WSMessageAsyncClient struct {
+	*WSAsyncClient
+	DefaultWSClientEventHandler
+	nsEventHandlers map[string][]WSMessageClientMessageHandler
+}
+
+func (c *WSMessageAsyncClient) AddMessageHandler(h WSMessageClientMessageHandler, namespaces []string) {
+	// add this handler per namespace
+	for _, ns := range namespaces {
+		if _, ok := c.nsEventHandlers[ns]; !ok {
+			c.nsEventHandlers[ns] = []WSMessageClientMessageHandler{h}
+		} else {
+			c.nsEventHandlers[ns] = append(c.nsEventHandlers[ns], h)
+		}
+	}
+}
+
+func (c *WSMessageAsyncClient) OnMessage(client *WSAsyncClient, m []byte) {
+	var msg WSMessage
+	if err := json.Unmarshal(m, &msg); err != nil {
+		logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
+		return
+	}
+	c.RLock()
+	for _, l := range c.nsEventHandlers[msg.Namespace] {
+		l.OnWSMessage(client, msg)
+	}
+	for _, l := range c.nsEventHandlers[WilcardNamespace] {
+		l.OnWSMessage(client, msg)
+	}
+	c.RUnlock()
+}
+
+func NewWSMessageAsyncClient(host string, clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSMessageAsyncClient {
+	client := NewWSAsyncClient(host, clientType, addr, port, path, authClient)
+	msgClient := &WSMessageAsyncClient{
+		WSAsyncClient:   client,
+		nsEventHandlers: make(map[string][]WSMessageClientMessageHandler),
+	}
+	client.AddEventHandler(msgClient)
+	return msgClient
+}
+
+func NewWSMessageAsyncClientFromConfig(clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSMessageAsyncClient {
+	host := config.GetConfig().GetString("host_id")
+	return NewWSMessageAsyncClient(host, clientType, addr, port, path, authClient)
+}
+
+func (a *WSMessageAsyncClientPool) selectMaster() *WSMessageAsyncClient {
 	a.RLock()
 	defer a.RUnlock()
 
@@ -313,7 +386,7 @@ func (a *WSAsyncClientPool) selectMaster() *WSAsyncClient {
 	return a.master
 }
 
-func (a *WSAsyncClientPool) MasterClient() *WSAsyncClient {
+func (a *WSMessageAsyncClientPool) MasterClient() *WSMessageAsyncClient {
 	a.masterLock.RLock()
 	if m := a.master; m != nil {
 		a.masterLock.RUnlock()
@@ -324,7 +397,7 @@ func (a *WSAsyncClientPool) MasterClient() *WSAsyncClient {
 	return a.selectMaster()
 }
 
-func (a *WSAsyncClientPool) BroadcastWSMessage(m *WSMessage) {
+func (a *WSMessageAsyncClientPool) BroadcastWSMessage(m *WSMessage) {
 	a.RLock()
 	defer a.RUnlock()
 
@@ -335,13 +408,13 @@ func (a *WSAsyncClientPool) BroadcastWSMessage(m *WSMessage) {
 	}
 }
 
-func (a *WSAsyncClientPool) SendWSMessageToMaster(m *WSMessage) {
+func (a *WSMessageAsyncClientPool) SendWSMessageToMaster(m *WSMessage) {
 	if master := a.MasterClient(); master != nil {
 		master.SendWSMessage(m)
 	}
 }
 
-func (a *WSAsyncClientPool) OnConnected(c *WSAsyncClient) {
+func (a *WSMessageAsyncClientPool) OnConnected(c *WSAsyncClient) {
 	a.eventHandlersLock.RLock()
 	defer a.eventHandlersLock.RUnlock()
 
@@ -350,10 +423,10 @@ func (a *WSAsyncClientPool) OnConnected(c *WSAsyncClient) {
 	}
 }
 
-func (a *WSAsyncClientPool) OnDisconnected(c *WSAsyncClient) {
+func (a *WSMessageAsyncClientPool) OnDisconnected(c *WSAsyncClient) {
 	// reset master
 	a.masterLock.Lock()
-	if a.master == c {
+	if a.master != nil && a.master.WSAsyncClient == c {
 		a.master = nil
 	}
 	a.masterLock.Unlock()
@@ -366,27 +439,27 @@ func (a *WSAsyncClientPool) OnDisconnected(c *WSAsyncClient) {
 	}
 }
 
-func (a *WSAsyncClientPool) OnMessage(c *WSAsyncClient, m WSMessage) {
+func (a *WSMessageAsyncClientPool) OnWSMessage(c *WSAsyncClient, msg WSMessage) {
 	a.eventHandlersLock.RLock()
 	defer a.eventHandlersLock.RUnlock()
 
-	for _, l := range a.nsEventHandlers[m.Namespace] {
-		l.OnMessage(c, m)
+	for _, l := range a.nsEventHandlers[msg.Namespace] {
+		l.OnWSMessage(c, msg)
 	}
 	for _, l := range a.nsEventHandlers[WilcardNamespace] {
-		l.OnMessage(c, m)
+		l.OnWSMessage(c, msg)
 	}
 }
 
-func (a *WSAsyncClientPool) AddWSAsyncClient(client *WSAsyncClient) {
+func (a *WSMessageAsyncClientPool) AddWSMessageAsyncClient(client *WSMessageAsyncClient) {
 	a.Lock()
 	defer a.Unlock()
 
 	a.clients = append(a.clients, client)
-	client.AddEventHandler(a, []string{WilcardNamespace})
+	client.AddEventHandler(a)
 }
 
-func (a *WSAsyncClientPool) ConnectAll() {
+func (a *WSMessageAsyncClientPool) ConnectAll() {
 	a.RLock()
 	defer a.RUnlock()
 
@@ -397,7 +470,7 @@ func (a *WSAsyncClientPool) ConnectAll() {
 	}
 }
 
-func (a *WSAsyncClientPool) DisconnectAll() {
+func (a *WSMessageAsyncClientPool) DisconnectAll() {
 	a.eventHandlersLock.Lock()
 	a.eventHandlers = a.eventHandlers[:0]
 	for k := range a.nsEventHandlers {
@@ -412,24 +485,15 @@ func (a *WSAsyncClientPool) DisconnectAll() {
 	}
 }
 
-func (a *WSAsyncClientPool) AddEventHandler(h WSClientEventHandler, namespaces []string) {
+func (a *WSMessageAsyncClientPool) AddEventHandler(h WSClientEventHandler) {
 	a.eventHandlersLock.Lock()
 	a.eventHandlers = append(a.eventHandlers, h)
-
-	// add this handler per namespace
-	for _, ns := range namespaces {
-		if _, ok := a.nsEventHandlers[ns]; !ok {
-			a.nsEventHandlers[ns] = []WSClientEventHandler{h}
-		} else {
-			a.nsEventHandlers[ns] = append(a.nsEventHandlers[ns], h)
-		}
-	}
 	a.eventHandlersLock.Unlock()
 }
 
-func NewWSAsyncClientPool() *WSAsyncClientPool {
-	return &WSAsyncClientPool{
-		clients:         make([]*WSAsyncClient, 0),
-		nsEventHandlers: make(map[string][]WSClientEventHandler),
+func NewWSMessageAsyncClientPool() *WSMessageAsyncClientPool {
+	return &WSMessageAsyncClientPool{
+		WSClientNamespaceEventHandler: NewWSClientNamespaceEventHandler(),
+		clients: make([]*WSMessageAsyncClient, 0),
 	}
 }

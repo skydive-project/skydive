@@ -45,7 +45,7 @@ type TopologyForwarderPeer struct {
 	Port        int
 	Graph       *graph.Graph
 	AuthOptions *shttp.AuthenticationOpts
-	wsclient    *shttp.WSAsyncClient
+	wsclient    *shttp.WSMessageAsyncClient
 	host        string
 }
 
@@ -113,8 +113,8 @@ func (p *TopologyForwarderPeer) connect(wg *sync.WaitGroup) {
 	}
 
 	authClient := shttp.NewAuthenticationClient(p.Addr, p.Port, p.AuthOptions)
-	p.wsclient = shttp.NewWSAsyncClientFromConfig(common.AnalyzerService, p.Addr, p.Port, "/ws", authClient)
-	p.wsclient.AddEventHandler(p, []string{})
+	p.wsclient = shttp.NewWSMessageAsyncClientFromConfig(common.AnalyzerService, p.Addr, p.Port, "/ws", authClient)
+	p.wsclient.AddEventHandler(p)
 
 	p.wsclient.Connect()
 }

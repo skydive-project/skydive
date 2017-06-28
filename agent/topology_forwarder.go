@@ -34,7 +34,7 @@ import (
 // the agent will do a full re-sync because some messages could have been lost.
 type TopologyForwarder struct {
 	shttp.DefaultWSClientEventHandler
-	WSAsyncClientPool *shttp.WSAsyncClientPool
+	WSAsyncClientPool *shttp.WSMessageAsyncClientPool
 	Graph             *graph.Graph
 	Host              string
 	master            *shttp.WSAsyncClient
@@ -55,7 +55,7 @@ func (t *TopologyForwarder) triggerResync() {
 
 // OnConnected websocket event handler
 func (t *TopologyForwarder) OnConnected(c *shttp.WSAsyncClient) {
-	if c == t.WSAsyncClientPool.MasterClient() {
+	if c == t.WSAsyncClientPool.MasterClient().WSAsyncClient {
 		// keep a track of the current master in order to detect master disconnection
 		t.master = c
 
@@ -67,7 +67,11 @@ func (t *TopologyForwarder) OnConnected(c *shttp.WSAsyncClient) {
 // OnDisconnected websocket event handler
 func (t *TopologyForwarder) OnDisconnected(c *shttp.WSAsyncClient) {
 	if c == t.master {
-		t.master = t.WSAsyncClientPool.MasterClient()
+		if t.WSAsyncClientPool.MasterClient() != nil {
+			t.master = t.WSAsyncClientPool.MasterClient().WSAsyncClient
+		} else {
+			t.master = nil
+		}
 
 		// re-sync as we changed of master and some message could have lost by the previous one
 		t.triggerResync()
@@ -105,7 +109,7 @@ func (t *TopologyForwarder) OnEdgeDeleted(e *graph.Edge) {
 }
 
 // NewTopologyForwarder is a mechanism aiming to distribute all graph node notifications to a WebSocket client pool
-func NewTopologyForwarder(host string, g *graph.Graph, wspool *shttp.WSAsyncClientPool) *TopologyForwarder {
+func NewTopologyForwarder(host string, g *graph.Graph, wspool *shttp.WSMessageAsyncClientPool) *TopologyForwarder {
 	t := &TopologyForwarder{
 		WSAsyncClientPool: wspool,
 		Graph:             g,
@@ -113,13 +117,13 @@ func NewTopologyForwarder(host string, g *graph.Graph, wspool *shttp.WSAsyncClie
 	}
 
 	g.AddEventListener(t)
-	wspool.AddEventHandler(t, []string{})
+	wspool.AddEventHandler(t)
 
 	return t
 }
 
 // NewTopologyForwarderFromConfig creates a TopologyForwarder from configuration
-func NewTopologyForwarderFromConfig(g *graph.Graph, wspool *shttp.WSAsyncClientPool) *TopologyForwarder {
+func NewTopologyForwarderFromConfig(g *graph.Graph, wspool *shttp.WSMessageAsyncClientPool) *TopologyForwarder {
 	host := config.GetConfig().GetString("host_id")
 	return NewTopologyForwarder(host, g, wspool)
 }

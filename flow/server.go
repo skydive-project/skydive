@@ -36,8 +36,7 @@ const (
 
 // TableServer describes a mechanism to Query a flow table via Websocket
 type TableServer struct {
-	shttp.DefaultWSClientEventHandler
-	WSAsyncClientPool *shttp.WSAsyncClientPool
+	WSAsyncClientPool *shttp.WSMessageAsyncClientPool
 	TableAllocator    *TableAllocator
 }
 
@@ -54,8 +53,8 @@ func (s *TableServer) OnTableQuery(c *shttp.WSAsyncClient, msg shttp.WSMessage) 
 	c.SendWSMessage(reply)
 }
 
-// OnMessage TableQuery
-func (s *TableServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
+// OnWSMessage TableQuery
+func (s *TableServer) OnWSMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	switch msg.Type {
 	case "TableQuery":
 		s.OnTableQuery(c, msg)
@@ -63,12 +62,12 @@ func (s *TableServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 }
 
 // NewServer creates a new flow table query server based on websocket
-func NewServer(allocator *TableAllocator, wspool *shttp.WSAsyncClientPool) *TableServer {
+func NewServer(allocator *TableAllocator, wspool *shttp.WSMessageAsyncClientPool) *TableServer {
 	s := &TableServer{
 		TableAllocator:    allocator,
 		WSAsyncClientPool: wspool,
 	}
-	wspool.AddEventHandler(s, []string{Namespace})
+	wspool.AddMessageHandler(s, []string{Namespace})
 
 	return s
 }

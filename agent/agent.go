@@ -52,7 +52,7 @@ import (
 type Agent struct {
 	shttp.DefaultWSClientEventHandler
 	Graph               *graph.Graph
-	WSAsyncClientPool   *shttp.WSAsyncClientPool
+	WSAsyncClientPool   *shttp.WSMessageAsyncClientPool
 	WSServer            *shttp.WSServer
 	GraphServer         *graph.Server
 	Root                *graph.Node
@@ -68,8 +68,8 @@ type Agent struct {
 
 // NewAnalyzerWSClientPool creates a new http WebSocket client Pool
 // with authentification
-func NewAnalyzerWSClientPool() *shttp.WSAsyncClientPool {
-	wspool := shttp.NewWSAsyncClientPool()
+func NewAnalyzerWSClientPool() *shttp.WSMessageAsyncClientPool {
+	wspool := shttp.NewWSMessageAsyncClientPool()
 
 	authOptions := &shttp.AuthenticationOpts{
 		Username: config.GetConfig().GetString("auth.analyzer_username"),
@@ -84,9 +84,9 @@ func NewAnalyzerWSClientPool() *shttp.WSAsyncClientPool {
 
 	for _, sa := range addresses {
 		authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
-		wsclient := shttp.NewWSAsyncClientFromConfig(common.AgentService, sa.Addr, sa.Port, "/ws", authClient)
+		wsclient := shttp.NewWSMessageAsyncClientFromConfig(common.AgentService, sa.Addr, sa.Port, "/ws", authClient)
 
-		wspool.AddWSAsyncClient(wsclient)
+		wspool.AddWSMessageAsyncClient(wsclient)
 	}
 
 	return wspool

@@ -63,7 +63,7 @@ func (f *fakeClientSubscriptionHandler) OnConnected(c *WSAsyncClient) {
 	c.SendWSMessage(NewWSMessage("ClientValidNS", "ClientValidNS3", "AAA", "001"))
 }
 
-func (f *fakeClientSubscriptionHandler) OnMessage(c *WSAsyncClient, m WSMessage) {
+func (f *fakeClientSubscriptionHandler) OnWSMessage(c *WSAsyncClient, m WSMessage) {
 	f.received[m.Type] = true
 }
 
@@ -75,42 +75,43 @@ func TestSubscription(t *testing.T) {
 
 	wsserver := NewWSServer(httpserver, 10*time.Second, 100, time.Second, "/wstest")
 
-	serverHanlder := &fakeServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
-	wsserver.AddEventHandler(serverHanlder, []string{"ClientValidNS"})
+	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
+	wsserver.AddEventHandler(serverHandler, []string{"ClientValidNS"})
 
 	go wsserver.ListenAndServe()
 	defer wsserver.Stop()
 
-	wsclient := NewWSAsyncClient("myhost", common.AgentService, "localhost", 59999, "/wstest", nil)
+	wsclient := NewWSMessageAsyncClient("myhost", common.AgentService, "localhost", 59999, "/wstest", nil)
 
-	wspool := NewWSAsyncClientPool()
-	wspool.AddWSAsyncClient(wsclient)
+	wspool := NewWSMessageAsyncClientPool()
+	wspool.AddWSMessageAsyncClient(wsclient)
 
 	clientHandler := &fakeClientSubscriptionHandler{t: t, received: make(map[string]bool)}
-	wspool.AddEventHandler(clientHandler, []string{"SrvValidNS"})
+	wspool.AddMessageHandler(clientHandler, []string{"SrvValidNS"})
+	wspool.AddEventHandler(clientHandler)
 
 	wsclient.Connect()
 	defer wsclient.Disconnect()
 
 	err := common.Retry(func() error {
-		if len(serverHanlder.received) != 2 {
-			return fmt.Errorf("Should have received 2 messages: %v", serverHanlder.received)
+		if len(serverHandler.received) != 2 {
+			return fmt.Errorf("Should have received 2 messages: %v", serverHandler.received)
 		}
 
 		if len(clientHandler.received) != 4 {
 			return fmt.Errorf("Should have received 2 messages: %v", clientHandler.received)
 		}
 
-		if _, ok := serverHanlder.received["ClientNotValidNS2"]; ok {
-			return fmt.Errorf("Received message from wrong namespace: %v", serverHanlder.received)
+		if _, ok := serverHandler.received["ClientNotValidNS2"]; ok {
+			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
 		}
 
 		if _, ok := clientHandler.received["SrvNotValidNSUnicast2"]; ok {
-			return fmt.Errorf("Received message from wrong namespace: %v", serverHanlder.received)
+			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
 		}
 
 		if _, ok := clientHandler.received["SrvNotValidNSBroacast2"]; ok {
-			return fmt.Errorf("Received message from wrong namespace: %v", serverHanlder.received)
+			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
 		}
 
 		return nil

@@ -43,12 +43,12 @@ type OnDemandProbeServer struct {
 	sync.RWMutex
 	graph.DefaultGraphListener
 	shttp.DefaultWSClientEventHandler
-	Graph             *graph.Graph
-	Probes            *probes.FlowProbeBundle
-	WSAsyncClientPool *shttp.WSAsyncClientPool
-	fta               *flow.TableAllocator
-	activeProbes      map[graph.Identifier]*flow.Table
-	captures          map[graph.Identifier]*api.Capture
+	Graph                    *graph.Graph
+	Probes                   *probes.FlowProbeBundle
+	WSMessageAsyncClientPool *shttp.WSMessageAsyncClientPool
+	fta                      *flow.TableAllocator
+	activeProbes             map[graph.Identifier]*flow.Table
+	captures                 map[graph.Identifier]*api.Capture
 }
 
 func (o *OnDemandProbeServer) isActive(n *graph.Node) bool {
@@ -174,8 +174,8 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 	return true
 }
 
-// OnMessage websocket message, valid message type are CaptureStart, CaptureStop
-func (o *OnDemandProbeServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
+// OnWSMessage websocket message, valid message type are CaptureStart, CaptureStop
+func (o *OnDemandProbeServer) OnWSMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", msg)
@@ -245,7 +245,7 @@ func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
 // Start the probe
 func (o *OnDemandProbeServer) Start() error {
 	o.Graph.AddEventListener(o)
-	o.WSAsyncClientPool.AddEventHandler(o, []string{ondemand.Namespace})
+	o.WSMessageAsyncClientPool.AddMessageHandler(o, []string{ondemand.Namespace})
 
 	return nil
 }
@@ -256,13 +256,13 @@ func (o *OnDemandProbeServer) Stop() {
 }
 
 // NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
-func NewOnDemandProbeServer(fb *probes.FlowProbeBundle, g *graph.Graph, wspool *shttp.WSAsyncClientPool) (*OnDemandProbeServer, error) {
+func NewOnDemandProbeServer(fb *probes.FlowProbeBundle, g *graph.Graph, wspool *shttp.WSMessageAsyncClientPool) (*OnDemandProbeServer, error) {
 	return &OnDemandProbeServer{
-		Graph:             g,
-		Probes:            fb,
-		WSAsyncClientPool: wspool,
-		fta:               fb.FlowTableAllocator,
-		activeProbes:      make(map[graph.Identifier]*flow.Table),
-		captures:          make(map[graph.Identifier]*api.Capture),
+		Graph:  g,
+		Probes: fb,
+		WSMessageAsyncClientPool: wspool,
+		fta:          fb.FlowTableAllocator,
+		activeProbes: make(map[graph.Identifier]*flow.Table),
+		captures:     make(map[graph.Identifier]*api.Capture),
 	}, nil
 }

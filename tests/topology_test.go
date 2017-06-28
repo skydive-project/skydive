@@ -764,15 +764,15 @@ func TestQueryMetadata(t *testing.T) {
 			}
 
 			hostname, _ := os.Hostname()
-			wspool := shttp.NewWSAsyncClientPool()
+			wspool := shttp.NewWSMessageAsyncClientPool()
 			for _, sa := range addresses {
 				authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
-				wsclient := shttp.NewWSAsyncClient(hostname+"-cli", "", sa.Addr, sa.Port, "/ws", authClient)
-				wspool.AddWSAsyncClient(wsclient)
+				wsclient := shttp.NewWSMessageAsyncClient(hostname+"-cli", "", sa.Addr, sa.Port, "/ws", authClient)
+				wspool.AddWSMessageAsyncClient(wsclient)
 			}
 
 			eventHandler := &TopologyInjecter{}
-			wspool.AddEventHandler(eventHandler, []string{"*"})
+			wspool.AddEventHandler(eventHandler)
 			wspool.ConnectAll()
 
 			err = common.Retry(func() error {

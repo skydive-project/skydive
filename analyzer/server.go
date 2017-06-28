@@ -123,7 +123,7 @@ func (s *Server) initialize() (err error) {
 		return
 	}
 
-	if s.FlowServer, err = NewFlowServer(s.HTTPServer.Addr, s.HTTPServer.Port, s.TopologyServer.Graph, s.Storage, s.ProbeBundle); err != nil {
+	if s.FlowServer, err = NewFlowServer(s.HTTPServer, s.TopologyServer.Graph, s.Storage, s.ProbeBundle); err != nil {
 		return
 	}
 
