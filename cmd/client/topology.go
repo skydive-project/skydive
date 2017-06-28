@@ -80,6 +80,6 @@ func addTopologyFlags(cmd *cobra.Command) {
 
 func init() {
 	TopologyCmd.AddCommand(TopologyRequest)
-	TopologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
+	TopologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "G", "Gremlin Query")
 	TopologyRequest.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json or dot)")
 }
