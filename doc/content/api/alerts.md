@@ -16,7 +16,12 @@ JavaScript expression. The alert will be triggered if it returns:
 * a non empty array
 * a non empty map
 
+The alert is triggered only if the evaluation result differs from the previous evaluation.
+
 Gremlin example:
+
+With the following command, the alert is triggered as soon as the Gremlin query
+returns something new (i.e. a new node returned by the query, an updated metadata in the returned nodes...).
 
 ```console
 $ skydive client alert create --expression "G.V().Has('Name', 'eth0', 'State', 'DOWN')"
@@ -28,6 +33,17 @@ $ skydive client alert create --expression "G.V().Has('Name', 'eth0', 'State', '
 ```
 
 JavaScript example:
+
+If you prefer to trigger the alert only when the state of one of the node returned by a gremlin query goes down,
+you can use the following JavaScript expression :
+
+```console
+$ skydive client alert create --expression "states = Gremlin(\"G.V().Has('Name', 'br-int-lb').Values('State')\"); result = false; for (var i = 0; i < states.length; i++){ if (states[i] == 'DOWN'){ result = true; break;}} result;"
+```
+The alert will be triggered every time the result of the JavaScript expression changes.
+
+With the following command, the alert is triggered when the bandwidth of the flow bypass 1Mbps.
+It gets trigerred again the next time the bandwidth bypass this threshold.
 
 ```console
 $ skydive client alert create --expression "Gremlin(\"G.Flows().Has('Network.A', '192.168.0.1').Metrics().Sum()\").ABBytes > 1*1024*1024" --trigger "duration:10s"
