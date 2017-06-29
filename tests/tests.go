@@ -189,8 +189,6 @@ func (c *TestContext) getWholeGraph(t *testing.T) string {
 		}
 
 		return string(b)
-
-		return ""
 	}
 }
 
