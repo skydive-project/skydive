@@ -750,7 +750,7 @@ type TopologyInjecter struct {
 	connected int32
 }
 
-func (t *TopologyInjecter) OnConnected(c *shttp.WSAsyncClient) {
+func (t *TopologyInjecter) OnConnected(c shttp.WSClient) {
 	atomic.StoreInt32(&t.connected, 1)
 }
 
@@ -764,12 +764,15 @@ func TestQueryMetadata(t *testing.T) {
 			}
 
 			hostname, _ := os.Hostname()
-			wspool := shttp.NewWSMessageAsyncClientPool()
+			wspool := shttp.NewWSMessageClientPool(shttp.NewWSClientPool())
 			for _, sa := range addresses {
 				authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
-				wsclient := shttp.NewWSMessageAsyncClient(hostname+"-cli", "", sa.Addr, sa.Port, "/ws", authClient)
-				wspool.AddWSMessageAsyncClient(wsclient)
+				client := shttp.NewWSAsyncClient(hostname+"-cli", common.ServiceType(""), sa.Addr, sa.Port, "/ws", authClient)
+				wsClient := shttp.NewWSMessageAsyncClient(client)
+				wspool.AddClient(wsClient)
 			}
+
+			masterElection := shttp.NewWSMasterElection(wspool.WSClientPool)
 
 			eventHandler := &TopologyInjecter{}
 			wspool.AddEventHandler(eventHandler)
@@ -804,7 +807,7 @@ func TestQueryMetadata(t *testing.T) {
 			})
 
 			msg := shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n)
-			wspool.MasterClient().SendWSMessage(msg)
+			masterElection.SendMessageToMaster(msg)
 
 			return nil
 		},

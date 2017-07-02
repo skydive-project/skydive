@@ -40,9 +40,8 @@ const (
 
 // PacketInjectorServer creates a packet injector server API
 type PacketInjectorServer struct {
-	shttp.DefaultWSClientEventHandler
-	WSAsyncClientPool *shttp.WSMessageAsyncClientPool
-	Graph             *graph.Graph
+	WSClientPool *shttp.WSMessageClientPool
+	Graph        *graph.Graph
 }
 
 func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (string, error) {
@@ -60,7 +59,7 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (string, erro
 }
 
 // OnWSMessage event, websocket PIRequest message
-func (pis *PacketInjectorServer) OnWSMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
+func (pis *PacketInjectorServer) OnWSMessage(c shttp.WSClient, msg shttp.WSMessage) {
 	switch msg.Type {
 	case "PIRequest":
 		var reply *shttp.WSMessage
@@ -73,17 +72,16 @@ func (pis *PacketInjectorServer) OnWSMessage(c *shttp.WSAsyncClient, msg shttp.W
 			reply = msg.Reply(replyObj, "PIResult", http.StatusOK)
 		}
 
-		c.SendWSMessage(reply)
+		c.Send(reply)
 	}
 }
 
 // NewServer creates a new packet injector server API based on websocket server
-func NewServer(wspool *shttp.WSMessageAsyncClientPool, graph *graph.Graph) *PacketInjectorServer {
+func NewServer(wspool *shttp.WSMessageClientPool, graph *graph.Graph) *PacketInjectorServer {
 	s := &PacketInjectorServer{
-		WSAsyncClientPool: wspool,
-		Graph:             graph,
+		WSClientPool: wspool,
+		Graph:        graph,
 	}
 	wspool.AddMessageHandler(s, []string{Namespace})
-
 	return s
 }

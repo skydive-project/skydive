@@ -25,15 +25,12 @@ package analyzer
 import (
 	"fmt"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/abbot/go-http-auth"
-	"github.com/gorilla/websocket"
 	"github.com/pmylund/go-cache"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -58,7 +55,9 @@ type FlowServerUDPConn struct {
 
 // FlowServerConn describes a WebSocket flow server connection
 type FlowServerWebSocketConn struct {
+	shttp.DefaultWSClientEventHandler
 	server *shttp.Server
+	ch     chan *flow.Flow
 }
 
 // FlowServer describes a flow server with pipeline enhancers mechanism
@@ -76,74 +75,34 @@ type FlowServer struct {
 	quit             chan struct{}
 }
 
-// Serve WebSocket connection and push flows to chan
-func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
-	serveMessages := func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-		pongWait := time.Duration(config.GetConfig().GetInt("ws_pong_timeout")) * time.Second
-		pingPeriod := (pongWait * 8) / 10
-
-		conn, err := websocket.Upgrade(w, &r.Request, nil, 1024, 1024)
-		if err != nil {
-			return
-		}
-
-		wg.Add(2)
-
-		go func() {
-			ticker := time.NewTicker(pingPeriod)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ticker.C:
-					if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-						logging.GetLogger().Warningf("Error while sending ping to the websocket: %s", err.Error())
-					}
-				case <-quit:
-					conn.Close()
-					wg.Done()
-					return
-				}
-			}
-		}()
-
-		go func() {
-			// conn.SetReadLimit(maxMessageSize)
-			conn.SetReadDeadline(time.Now().Add(pongWait))
-			conn.SetPongHandler(func(string) error {
-				conn.SetReadDeadline(time.Now().Add(pongWait))
-				return nil
-			})
-
-			for {
-				_, m, err := conn.ReadMessage()
-				if err != nil {
-					if e, ok := err.(*websocket.CloseError); ok && e.Code == websocket.CloseAbnormalClosure {
-						logging.GetLogger().Infof("Read on closed connection from %s: %s", r.Host, err.Error())
-					} else {
-						logging.GetLogger().Errorf("Error while reading websocket from %s: %s", r.Host, err.Error())
-					}
-					break
-				}
-				f, err := flow.FromData(m)
-				if err != nil {
-					logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
-					continue
-				}
-				ch <- f
-			}
-
-			wg.Done()
-		}()
+// OnMessage event
+func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSClient, m shttp.Message) {
+	f, err := flow.FromData(m.Bytes())
+	if err != nil {
+		logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
+		return
 	}
-
-	c.server.HandleFunc("/ws/flow", serveMessages)
+	c.ch <- f
 }
 
+// Start a WebSocket flow server
+func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
+	c.ch = ch
+	server := shttp.NewWSServerFromConfig(c.server, "/ws/flow")
+	server.AddEventHandler(c)
+	go func() {
+		server.Start()
+		<-quit
+		server.Stop()
+	}()
+}
+
+// NewFlowServerWebSocketConn returns a new WebSocket flow server
 func NewFlowServerWebSocketConn(server *shttp.Server) (*FlowServerWebSocketConn, error) {
 	return &FlowServerWebSocketConn{server: server}, nil
 }
 
+// Serve UDP connections
 func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
@@ -177,6 +136,7 @@ func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sy
 	}()
 }
 
+// NewFlowServerUDPConn return a new UDP flow server
 func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 	host := addr + ":" + strconv.FormatInt(int64(port), 10)
 	udpAddr, err := net.ResolveUDPAddr("udp", host)
@@ -239,6 +199,7 @@ func (s *FlowServer) Start() {
 func (s *FlowServer) Stop() {
 	if atomic.CompareAndSwapInt64(&s.state, common.RunningState, common.StoppingState) {
 		s.quit <- struct{}{}
+		s.quit <- struct{}{}
 		s.wgServer.Wait()
 	}
 }
@@ -279,7 +240,7 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		bulkInsert:       bulk,
 		bulkDeadline:     deadline,
 		conn:             conn,
-		quit:             make(chan struct{}, 1),
+		quit:             make(chan struct{}, 2),
 		ch:               make(chan *flow.Flow, 1000),
 	}, nil
 }

@@ -40,7 +40,6 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -50,7 +49,6 @@ import (
 type NeutronProbe struct {
 	graph.DefaultGraphListener
 	graph  *graph.Graph
-	wspool *shttp.WSMessageAsyncClientPool
 	client *gophercloud.ServiceClient
 	// The cache associates some metadatas to a MAC and is used to
 	// detect any updates on these metadatas.
@@ -339,12 +337,12 @@ func (mapper *NeutronProbe) Stop() {
 }
 
 // NewNeutronProbe creates a neutron probe that will enhance the graph
-func NewNeutronProbe(g *graph.Graph, wspool *shttp.WSMessageAsyncClientPool, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronProbe, error) {
+func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronProbe, error) {
 	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
 	intfRegexp := regexp.MustCompile(`(tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2}`)
 	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9]{8}`)
 
-	mapper := &NeutronProbe{graph: g, wspool: wspool, intfRegexp: intfRegexp, nsRegexp: nsRegexp}
+	mapper := &NeutronProbe{graph: g, intfRegexp: intfRegexp, nsRegexp: nsRegexp}
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
@@ -381,7 +379,7 @@ func NewNeutronProbe(g *graph.Graph, wspool *shttp.WSMessageAsyncClientPool, aut
 }
 
 // NewNeutronProbeFromConfig creates a new neutron probe based on configuration
-func NewNeutronProbeFromConfig(g *graph.Graph, wspool *shttp.WSMessageAsyncClientPool) (*NeutronProbe, error) {
+func NewNeutronProbeFromConfig(g *graph.Graph) (*NeutronProbe, error) {
 	authURL := config.GetConfig().GetString("openstack.auth_url")
 	username := config.GetConfig().GetString("openstack.username")
 	password := config.GetConfig().GetString("openstack.password")
@@ -397,7 +395,7 @@ func NewNeutronProbeFromConfig(g *graph.Graph, wspool *shttp.WSMessageAsyncClien
 	}
 
 	if a, ok := endpointTypes[endpointType]; ok {
-		return NewNeutronProbe(g, wspool, authURL, username, password, tenantName, regionName, domainName, a)
+		return NewNeutronProbe(g, authURL, username, password, tenantName, regionName, domainName, a)
 	}
 
 	return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)

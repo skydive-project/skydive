@@ -25,11 +25,8 @@ package packet_injector
 import (
 	"encoding/json"
 	"fmt"
-	"sync"
-	"time"
 
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 )
 
 type PacketInjectorReply struct {
@@ -38,76 +35,25 @@ type PacketInjectorReply struct {
 }
 
 type PacketInjectorClient struct {
-	shttp.DefaultWSServerEventHandler
-	WSServer       *shttp.WSServer
-	replyChanMutex sync.RWMutex
-	replyChan      map[string]chan PacketInjectorReply
-}
-
-func (pc *PacketInjectorClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
-	pc.replyChanMutex.RLock()
-	defer pc.replyChanMutex.RUnlock()
-
-	ch, ok := pc.replyChan[m.UUID]
-	if !ok {
-		logging.GetLogger().Errorf("Unable to send reply, chan not found for %s, available: %v", m.UUID, pc.replyChan)
-		return
-	}
-
-	var reply PacketInjectorReply
-	if err := json.Unmarshal([]byte(*m.Obj), &reply); err != nil {
-		ch <- PacketInjectorReply{err: fmt.Errorf("Failed to parse response from %s: %s", c.Host, err.Error())}
-		return
-	}
-
-	ch <- reply
-}
-
-func (pc *PacketInjectorClient) injectPacket(host string, pp *PacketParams) (string, error) {
-	msg := shttp.NewWSMessage(Namespace, "PIRequest", pp)
-
-	ch := make(chan PacketInjectorReply)
-	defer close(ch)
-
-	pc.replyChanMutex.Lock()
-	pc.replyChan[msg.UUID] = ch
-	pc.replyChanMutex.Unlock()
-
-	defer func() {
-		pc.replyChanMutex.Lock()
-		delete(pc.replyChan, msg.UUID)
-		pc.replyChanMutex.Unlock()
-	}()
-
-	if !pc.WSServer.SendWSMessageTo(msg, host) {
-		return "", fmt.Errorf("Unable to send message to agent: %s", host)
-	}
-
-	var reply PacketInjectorReply
-	select {
-	case reply = <-ch:
-		return reply.TrackingID, reply.err
-	case <-time.After(time.Second * 10):
-		return "", fmt.Errorf("Timeout while reading PIReply from: %s", host)
-	}
+	WSServer *shttp.WSMessageServer
 }
 
 func (pc *PacketInjectorClient) InjectPacket(host string, pp *PacketParams) (string, error) {
-	trackingID, err := pc.injectPacket(host, pp)
+	msg := shttp.NewWSMessage(Namespace, "PIRequest", pp)
+
+	resp, err := pc.WSServer.Request(host, msg, shttp.DefaultRequestTimeout)
 	if err != nil {
-		logging.GetLogger().Errorf(err.Error())
-		return "", err
+		return "", fmt.Errorf("Unable to send message to agent %s: %s", host, err.Error())
 	}
 
-	return trackingID, err
+	var reply PacketInjectorReply
+	if err := json.Unmarshal([]byte(*resp.Obj), &reply); err != nil {
+		return "", fmt.Errorf("Failed to parse response from %s: %s", host, err.Error())
+	}
+
+	return reply.TrackingID, reply.err
 }
 
-func NewPacketInjectorClient(w *shttp.WSServer) *PacketInjectorClient {
-	pic := &PacketInjectorClient{
-		WSServer:  w,
-		replyChan: make(map[string]chan PacketInjectorReply),
-	}
-	w.AddEventHandler(pic, []string{Namespace})
-
-	return pic
+func NewPacketInjectorClient(w *shttp.WSMessageServer) *PacketInjectorClient {
+	return &PacketInjectorClient{WSServer: w}
 }

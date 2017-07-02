@@ -24,6 +24,7 @@ package http
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,40 +32,46 @@ import (
 )
 
 type fakeServerSubscriptionHandler struct {
-	DefaultWSServerEventHandler
-	t        *testing.T
-	server   *WSServer
-	received map[string]bool
+	sync.RWMutex
+	DefaultWSClientEventHandler
+	t         *testing.T
+	server    *WSServer
+	received  int
+	connected int
 }
 
 type fakeClientSubscriptionHandler struct {
+	sync.RWMutex
 	DefaultWSClientEventHandler
-	t        *testing.T
-	received map[string]bool
+	t         *testing.T
+	received  int
+	connected int
 }
 
-func (f *fakeServerSubscriptionHandler) OnRegisterClient(c *WSClient) {
-	c.SendWSMessage(NewWSMessage("SrvValidNS", "SrvValidNSUnicast1", "AAA", "001"))
-	c.SendWSMessage(NewWSMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
-	c.SendWSMessage(NewWSMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
-
-	f.server.BroadcastWSMessage(NewWSMessage("SrvValidNS", "SrvValidNSBroadcast1", "AAA", "001"))
-	f.server.BroadcastWSMessage(NewWSMessage("SrvNotValidNS", "SrvNotValidNSBroacast2", "AAA", "001"))
-	f.server.BroadcastWSMessage(NewWSMessage("SrvValidNS", "SrvValidNSBroadcast3", "AAA", "001"))
+func (f *fakeServerSubscriptionHandler) OnConnected(c WSClient) {
+	f.Lock()
+	f.connected++
+	f.Unlock()
+	c.Send(WSRawMessage{})
 }
 
-func (f *fakeServerSubscriptionHandler) OnMessage(c *WSClient, m WSMessage) {
-	f.received[m.Type] = true
+func (f *fakeServerSubscriptionHandler) OnMessage(c WSClient, m Message) {
+	f.Lock()
+	f.received++
+	f.Unlock()
 }
 
-func (f *fakeClientSubscriptionHandler) OnConnected(c *WSAsyncClient) {
-	c.SendWSMessage(NewWSMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
-	c.SendWSMessage(NewWSMessage("ClientNotValidNS", "ClientNotValidNS2", "AAA", "001"))
-	c.SendWSMessage(NewWSMessage("ClientValidNS", "ClientValidNS3", "AAA", "001"))
+func (f *fakeClientSubscriptionHandler) OnConnected(c WSClient) {
+	f.Lock()
+	f.connected++
+	f.Unlock()
+	c.Send(WSRawMessage{})
 }
 
-func (f *fakeClientSubscriptionHandler) OnWSMessage(c *WSAsyncClient, m WSMessage) {
-	f.received[m.Type] = true
+func (f *fakeClientSubscriptionHandler) OnMessage(c WSClient, m Message) {
+	f.Lock()
+	f.received++
+	f.Unlock()
 }
 
 func TestSubscription(t *testing.T) {
@@ -73,45 +80,57 @@ func TestSubscription(t *testing.T) {
 	go httpserver.ListenAndServe()
 	defer httpserver.Stop()
 
-	wsserver := NewWSServer(httpserver, 10*time.Second, 100, time.Second, "/wstest")
+	wsserver := NewWSServer(httpserver, "/wstest")
 
-	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
-	wsserver.AddEventHandler(serverHandler, []string{"ClientValidNS"})
+	serverHandler := &fakeServerSubscriptionHandler{t: t, server: wsserver, connected: 0, received: 0}
+	wsserver.AddEventHandler(serverHandler)
 
-	go wsserver.ListenAndServe()
+	wsserver.Start()
 	defer wsserver.Stop()
 
-	wsclient := NewWSMessageAsyncClient("myhost", common.AgentService, "localhost", 59999, "/wstest", nil)
+	wsclient := NewWSAsyncClient("myhost", common.AgentService, "localhost", 59999, "/wstest", nil)
+	wspool := NewWSClientPool()
 
-	wspool := NewWSMessageAsyncClientPool()
-	wspool.AddWSMessageAsyncClient(wsclient)
+	wspool.AddClient(wsclient)
 
-	clientHandler := &fakeClientSubscriptionHandler{t: t, received: make(map[string]bool)}
-	wspool.AddMessageHandler(clientHandler, []string{"SrvValidNS"})
+	clientHandler := &fakeClientSubscriptionHandler{t: t, received: 0}
+	wsclient.AddEventHandler(clientHandler)
 	wspool.AddEventHandler(clientHandler)
-
 	wsclient.Connect()
 	defer wsclient.Disconnect()
 
 	err := common.Retry(func() error {
-		if len(serverHandler.received) != 2 {
-			return fmt.Errorf("Should have received 2 messages: %v", serverHandler.received)
+		clientHandler.Lock()
+		defer clientHandler.Unlock()
+		serverHandler.Lock()
+		defer serverHandler.Unlock()
+
+		if clientHandler.connected != 2 {
+			// clientHandler should be notified twice:
+			// - by wsclient (WSAsyncClient)
+			// - by wspool (WSClientPool)
+			return fmt.Errorf("Client should have received 2 OnConnected events: %v", clientHandler.connected)
 		}
 
-		if len(clientHandler.received) != 4 {
-			return fmt.Errorf("Should have received 2 messages: %v", clientHandler.received)
+		if clientHandler.received != 2 {
+			// clientHandler should be notified twice:
+			// - by wsclient (WSAsyncClient)
+			// - by wspool (WSClientPool)
+			// only one time, because only one message should be sent by the server
+			return fmt.Errorf("Client should have received 2 OnMessage events: %v", clientHandler.received)
 		}
 
-		if _, ok := serverHandler.received["ClientNotValidNS2"]; ok {
-			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
+		// serverHandler should be notified once:
+		// - by wsserver (WSServer)
+		if serverHandler.connected != 1 {
+			return fmt.Errorf("Server should have received 1 OnConnected event: %v", serverHandler.connected)
 		}
 
-		if _, ok := clientHandler.received["SrvNotValidNSUnicast2"]; ok {
-			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
-		}
-
-		if _, ok := clientHandler.received["SrvNotValidNSBroacast2"]; ok {
-			return fmt.Errorf("Received message from wrong namespace: %v", serverHandler.received)
+		// serverHandler should be notified by:
+		// - by wsserver (WSServer)
+		// 2 times, as there are 2 messages sent by the client
+		if serverHandler.received != 2 {
+			return fmt.Errorf("Server should have received 2 OnMessage event: %v", serverHandler.received)
 		}
 
 		return nil

@@ -48,7 +48,7 @@ import (
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
 	HTTPServer        *shttp.Server
-	WSServer          *shttp.WSServer
+	WSServer          *shttp.WSMessageServer
 	TopologyForwarder *TopologyForwarder
 	TopologyServer    *TopologyServer
 	AlertServer       *alert.AlertServer
@@ -69,7 +69,7 @@ func (s *Server) initialize() (err error) {
 		return
 	}
 
-	s.WSServer = shttp.NewWSServerFromConfig(s.HTTPServer, "/ws")
+	s.WSServer = shttp.NewWSMessageServer(shttp.NewWSServerFromConfig(s.HTTPServer, "/ws"))
 
 	if s.TopologyServer, err = NewTopologyServerFromConfig(s.WSServer); err != nil {
 		return
@@ -172,7 +172,7 @@ func (s *Server) Start() {
 
 	go func() {
 		defer s.wgServers.Done()
-		s.WSServer.ListenAndServe()
+		s.WSServer.Run()
 	}()
 
 	s.FlowServer.Start()

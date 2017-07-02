@@ -23,9 +23,6 @@
 package http
 
 import (
-	"encoding/json"
-	"io"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
@@ -39,58 +36,40 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-type WSMessageClientMessageHandler interface {
-	OnWSMessage(c *WSAsyncClient, m WSMessage)
+const (
+	maxMessages    = 1024
+	maxMessageSize = 0
+	writeWait      = 10 * time.Second
+)
+
+// Interface of a message to send over the wire
+type Message interface {
+	Bytes() []byte
 }
 
-type WSClientNamespaceEventHandler struct {
-	eventHandlersLock sync.RWMutex
-	nsEventHandlers   map[string][]WSMessageClientMessageHandler
+// WSRawMessage represents a raw message (array of bytes)
+type WSRawMessage []byte
+
+// Return the string representation of the raw message
+func (m WSRawMessage) Bytes() []byte {
+	return m
 }
 
-func (a *WSClientNamespaceEventHandler) AddMessageHandler(h WSMessageClientMessageHandler, namespaces []string) {
-	a.eventHandlersLock.Lock()
-	// add this handler per namespace
-	for _, ns := range namespaces {
-		if _, ok := a.nsEventHandlers[ns]; !ok {
-			a.nsEventHandlers[ns] = []WSMessageClientMessageHandler{h}
-		} else {
-			a.nsEventHandlers[ns] = append(a.nsEventHandlers[ns], h)
-		}
-	}
-	a.eventHandlersLock.Unlock()
+// WebSocket client interface
+type WSClient interface {
+	GetHost() string
+	GetAddrPort() (string, int)
+	GetClientType() common.ServiceType
+	IsConnected() bool
+	Send(m Message)
+	Connect()
+	Disconnect()
+	AddEventHandler(WSClientEventHandler)
 }
 
-func (a *WSClientNamespaceEventHandler) OnMessage(c *WSAsyncClient, m []byte) {
-	var msg WSMessage
-	if err := json.Unmarshal(m, &msg); err != nil {
-		logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
-		return
-	}
-
-	for _, l := range a.nsEventHandlers[msg.Namespace] {
-		l.OnWSMessage(c, msg)
-	}
-	for _, l := range a.nsEventHandlers[WilcardNamespace] {
-		l.OnWSMessage(c, msg)
-	}
-}
-
-func NewWSClientNamespaceEventHandler() *WSClientNamespaceEventHandler {
-	return &WSClientNamespaceEventHandler{
-		nsEventHandlers: make(map[string][]WSMessageClientMessageHandler),
-	}
-}
-
-type WSClientEventHandler interface {
-	OnMessage(c *WSAsyncClient, m []byte)
-	OnConnected(c *WSAsyncClient)
-	OnDisconnected(c *WSAsyncClient)
-}
-
-type DefaultWSClientEventHandler struct {
-}
-
+// WSAsyncClient describes a WebSocket connection. WSAsyncClient is used
+// by the client when connecting to a server, and also by the server when
+// a client connects
 type WSAsyncClient struct {
 	sync.RWMutex
 	Host              string
@@ -99,7 +78,8 @@ type WSAsyncClient struct {
 	Port              int
 	Path              string
 	AuthClient        *AuthenticationClient
-	messages          chan string
+	headers           http.Header
+	send              chan []byte
 	read              chan []byte
 	quit              chan bool
 	wg                sync.WaitGroup
@@ -108,57 +88,80 @@ type WSAsyncClient struct {
 	eventHandlersLock sync.RWMutex
 	connected         atomic.Value
 	running           atomic.Value
+	pongWait          time.Duration
+	pingPeriod        time.Duration
+	ticker            *time.Ticker
 }
 
-type WSMessageAsyncClientPool struct {
-	sync.RWMutex
-	*WSClientNamespaceEventHandler
-	master            *WSMessageAsyncClient
-	masterLock        sync.RWMutex
-	clients           []*WSMessageAsyncClient
-	eventHandlers     []WSClientEventHandler
-	eventHandlersLock sync.RWMutex
+// Interface to be implement by the client events listeners
+type WSClientEventHandler interface {
+	OnMessage(c WSClient, m Message)
+	OnConnected(c WSClient)
+	OnDisconnected(c WSClient)
 }
 
-func (d *DefaultWSClientEventHandler) OnMessage(c *WSAsyncClient, m []byte) {
+// DefaultWSClientEventHandler implements stubs for the WSClientEventHandler interface
+type DefaultWSClientEventHandler struct {
 }
 
-func (d *DefaultWSClientEventHandler) OnConnected(c *WSAsyncClient) {
+// OnMessage is called when a message is received
+func (d *DefaultWSClientEventHandler) OnMessage(c WSClient, m Message) {
 }
 
-func (d *DefaultWSClientEventHandler) OnDisconnected(c *WSAsyncClient) {
+// OnConnected is called when the connection is established
+func (d *DefaultWSClientEventHandler) OnConnected(c WSClient) {
 }
 
-func (c *WSAsyncClient) queueMessage(m string) {
-	if !c.IsConnected() {
-		return
-	}
-
-	c.messages <- m
+// OnDisconnected is called when the connection is closed or lost
+func (d *DefaultWSClientEventHandler) OnDisconnected(c WSClient) {
 }
 
-func (c *WSAsyncClient) SendWSMessage(m *WSMessage) {
-	c.queueMessage(m.String())
+// Return the hostname of the connection
+func (c *WSAsyncClient) GetHost() string {
+	return c.Host
 }
 
+// Return the address and the port of the remote end
+func (c *WSAsyncClient) GetAddrPort() (string, int) {
+	return c.Addr, c.Port
+}
+
+// Return the connection status
 func (c *WSAsyncClient) IsConnected() bool {
 	return c.connected.Load() == true
 }
 
-func (c *WSAsyncClient) SendMessage(msg string) error {
+// Add a message to the send queue
+func (c *WSAsyncClient) Send(m Message) {
+	if c.running.Load() == false {
+		return
+	}
+
+	c.send <- m.Bytes()
+}
+
+// Return the client type
+func (c *WSAsyncClient) GetClientType() common.ServiceType {
+	return c.ClientType
+}
+
+// Send a message directly over the wire
+func (c *WSAsyncClient) SendMessage(msg []byte) error {
+	c.wsConn.SetWriteDeadline(time.Now().Add(writeWait))
+
 	w, err := c.wsConn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
 	}
 
-	_, err = io.WriteString(w, msg)
-	if err != nil {
+	if _, err = w.Write(msg); err != nil {
 		return err
 	}
 
 	return w.Close()
 }
 
+// Return the URL scheme
 func (c *WSAsyncClient) scheme() string {
 	if config.IsTLSenabled() == true {
 		return "wss://"
@@ -166,6 +169,7 @@ func (c *WSAsyncClient) scheme() string {
 	return "ws://"
 }
 
+// Connect to the server
 func (c *WSAsyncClient) connect() {
 	var err error
 	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
@@ -210,15 +214,25 @@ func (c *WSAsyncClient) connect() {
 
 	logging.GetLogger().Infof("Connected to %s", endpoint)
 
-	c.wg.Add(1)
-	defer c.wg.Done()
-
 	// notify connected
 	c.RLock()
 	for _, l := range c.eventHandlers {
 		l.OnConnected(c)
 	}
 	c.RUnlock()
+
+	c.wg.Add(1)
+	c.run()
+}
+
+func (c *WSAsyncClient) start() {
+	c.wg.Add(1)
+	go c.run()
+}
+
+// Client main loop to read and send messages
+func (c *WSAsyncClient) run() {
+	defer c.wg.Done()
 
 	go func() {
 		for c.running.Load() == true {
@@ -243,25 +257,37 @@ func (c *WSAsyncClient) connect() {
 		c.RUnlock()
 	}()
 
+	defer c.ticker.Stop()
+
 	for {
 		select {
-		case msg := <-c.messages:
-			err := c.SendMessage(msg)
+		case <-c.quit:
+			return
+		case m := <-c.send:
+			err := c.SendMessage(m)
 			if err != nil {
 				logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
 			}
 		case m := <-c.read:
 			c.RLock()
 			for _, l := range c.eventHandlers {
-				l.OnMessage(c, m)
+				l.OnMessage(c, WSRawMessage(m))
 			}
 			c.RUnlock()
-		case <-c.quit:
-			return
+		case <-c.ticker.C:
+			c.SendPing()
 		}
 	}
 }
 
+func (c *WSAsyncClient) SendPing() {
+	c.wsConn.SetWriteDeadline(time.Now().Add(writeWait))
+	if err := c.wsConn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+		logging.GetLogger().Warningf("Error while sending ping to the websocket: %s", err.Error())
+	}
+}
+
+// Connect to the server - and reconnect if necessary
 func (c *WSAsyncClient) Connect() {
 	go func() {
 		for c.running.Load() == true {
@@ -271,21 +297,27 @@ func (c *WSAsyncClient) Connect() {
 	}()
 }
 
+// Register a new event handler
 func (c *WSAsyncClient) AddEventHandler(h WSClientEventHandler) {
 	c.Lock()
 	c.eventHandlers = append(c.eventHandlers, h)
 	c.Unlock()
 }
 
+// Disconnect the client without waiting for termination
 func (c *WSAsyncClient) Disconnect() {
 	c.running.Store(false)
 	if c.connected.Load() == true {
 		c.quit <- true
-		c.wg.Wait()
+		c.wsConn.Close()
+		close(c.send)
+		close(c.read)
 	}
 }
 
+// NewWSAsyncClient returns a client with a new connection
 func NewWSAsyncClient(host string, clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSAsyncClient {
+	pongTimeout := time.Duration(config.GetConfig().GetInt("ws_pong_timeout")) * time.Second
 	c := &WSAsyncClient{
 		Host:       host,
 		ClientType: clientType,
@@ -293,207 +325,43 @@ func NewWSAsyncClient(host string, clientType common.ServiceType, addr string, p
 		Port:       port,
 		Path:       path,
 		AuthClient: authClient,
-		messages:   make(chan string, 500),
-		read:       make(chan []byte, 500),
-		quit:       make(chan bool),
+		send:       make(chan []byte, maxMessages),
+		read:       make(chan []byte, maxMessages),
+		quit:       make(chan bool, 2),
+		pongWait:   pongTimeout,
+		pingPeriod: pongTimeout * 8 / 10,
+		ticker:     &time.Ticker{},
 	}
 	c.connected.Store(false)
 	c.running.Store(true)
 	return c
 }
 
+// NewWSAsyncClientFromConnection creates a client from an existing connection
+func NewWSAsyncClientFromConnection(host string, clientType common.ServiceType, conn *websocket.Conn) *WSAsyncClient {
+	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
+	c := NewWSAsyncClient(host, clientType, svc.Addr, svc.Port, "", nil)
+
+	conn.SetReadLimit(maxMessageSize)
+	conn.SetReadDeadline(time.Now().Add(100 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(c.pongWait))
+		return nil
+	})
+	c.wsConn = conn
+	c.ticker = time.NewTicker(c.pingPeriod)
+
+	// send a first ping to help firefox and some other client which wait for a
+	// first ping before doing something
+	c.SendPing()
+
+	c.connected.Store(true)
+	c.running.Store(true)
+	return c
+}
+
+// NewWSAsyncClientFromConnection creates a client based on the configuration
 func NewWSAsyncClientFromConfig(clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSAsyncClient {
 	host := config.GetConfig().GetString("host_id")
 	return NewWSAsyncClient(host, clientType, addr, port, path, authClient)
-}
-
-type WSMessageAsyncClient struct {
-	*WSAsyncClient
-	DefaultWSClientEventHandler
-	nsEventHandlers map[string][]WSMessageClientMessageHandler
-}
-
-func (c *WSMessageAsyncClient) AddMessageHandler(h WSMessageClientMessageHandler, namespaces []string) {
-	// add this handler per namespace
-	for _, ns := range namespaces {
-		if _, ok := c.nsEventHandlers[ns]; !ok {
-			c.nsEventHandlers[ns] = []WSMessageClientMessageHandler{h}
-		} else {
-			c.nsEventHandlers[ns] = append(c.nsEventHandlers[ns], h)
-		}
-	}
-}
-
-func (c *WSMessageAsyncClient) OnMessage(client *WSAsyncClient, m []byte) {
-	var msg WSMessage
-	if err := json.Unmarshal(m, &msg); err != nil {
-		logging.GetLogger().Errorf("Error while decoding WSMessage %s", err.Error())
-		return
-	}
-	c.RLock()
-	for _, l := range c.nsEventHandlers[msg.Namespace] {
-		l.OnWSMessage(client, msg)
-	}
-	for _, l := range c.nsEventHandlers[WilcardNamespace] {
-		l.OnWSMessage(client, msg)
-	}
-	c.RUnlock()
-}
-
-func NewWSMessageAsyncClient(host string, clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSMessageAsyncClient {
-	client := NewWSAsyncClient(host, clientType, addr, port, path, authClient)
-	msgClient := &WSMessageAsyncClient{
-		WSAsyncClient:   client,
-		nsEventHandlers: make(map[string][]WSMessageClientMessageHandler),
-	}
-	client.AddEventHandler(msgClient)
-	return msgClient
-}
-
-func NewWSMessageAsyncClientFromConfig(clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSMessageAsyncClient {
-	host := config.GetConfig().GetString("host_id")
-	return NewWSMessageAsyncClient(host, clientType, addr, port, path, authClient)
-}
-
-func (a *WSMessageAsyncClientPool) selectMaster() *WSMessageAsyncClient {
-	a.RLock()
-	defer a.RUnlock()
-
-	a.masterLock.Lock()
-	defer a.masterLock.Unlock()
-
-	a.master = nil
-
-	length := len(a.clients)
-	if length == 0 {
-		return nil
-	}
-
-	index := rand.Intn(length)
-	for i := 0; i != length; i++ {
-		if client := a.clients[index]; client != nil && client.IsConnected() {
-			a.master = client
-			break
-		}
-
-		if index+1 >= length {
-			index = 0
-		} else {
-			index++
-		}
-	}
-
-	return a.master
-}
-
-func (a *WSMessageAsyncClientPool) MasterClient() *WSMessageAsyncClient {
-	a.masterLock.RLock()
-	if m := a.master; m != nil {
-		a.masterLock.RUnlock()
-		return m
-	}
-	a.masterLock.RUnlock()
-
-	return a.selectMaster()
-}
-
-func (a *WSMessageAsyncClientPool) BroadcastWSMessage(m *WSMessage) {
-	a.RLock()
-	defer a.RUnlock()
-
-	for _, wsclient := range a.clients {
-		if wsclient.IsConnected() {
-			wsclient.SendWSMessage(m)
-		}
-	}
-}
-
-func (a *WSMessageAsyncClientPool) SendWSMessageToMaster(m *WSMessage) {
-	if master := a.MasterClient(); master != nil {
-		master.SendWSMessage(m)
-	}
-}
-
-func (a *WSMessageAsyncClientPool) OnConnected(c *WSAsyncClient) {
-	a.eventHandlersLock.RLock()
-	defer a.eventHandlersLock.RUnlock()
-
-	for _, l := range a.eventHandlers {
-		l.OnConnected(c)
-	}
-}
-
-func (a *WSMessageAsyncClientPool) OnDisconnected(c *WSAsyncClient) {
-	// reset master
-	a.masterLock.Lock()
-	if a.master != nil && a.master.WSAsyncClient == c {
-		a.master = nil
-	}
-	a.masterLock.Unlock()
-
-	a.eventHandlersLock.RLock()
-	defer a.eventHandlersLock.RUnlock()
-
-	for _, l := range a.eventHandlers {
-		l.OnDisconnected(c)
-	}
-}
-
-func (a *WSMessageAsyncClientPool) OnWSMessage(c *WSAsyncClient, msg WSMessage) {
-	a.eventHandlersLock.RLock()
-	defer a.eventHandlersLock.RUnlock()
-
-	for _, l := range a.nsEventHandlers[msg.Namespace] {
-		l.OnWSMessage(c, msg)
-	}
-	for _, l := range a.nsEventHandlers[WilcardNamespace] {
-		l.OnWSMessage(c, msg)
-	}
-}
-
-func (a *WSMessageAsyncClientPool) AddWSMessageAsyncClient(client *WSMessageAsyncClient) {
-	a.Lock()
-	defer a.Unlock()
-
-	a.clients = append(a.clients, client)
-	client.AddEventHandler(a)
-}
-
-func (a *WSMessageAsyncClientPool) ConnectAll() {
-	a.RLock()
-	defer a.RUnlock()
-
-	// shuffle connections to avoid election of the same client as master
-	indexes := rand.Perm(len(a.clients))
-	for _, i := range indexes {
-		a.clients[i].Connect()
-	}
-}
-
-func (a *WSMessageAsyncClientPool) DisconnectAll() {
-	a.eventHandlersLock.Lock()
-	a.eventHandlers = a.eventHandlers[:0]
-	for k := range a.nsEventHandlers {
-		delete(a.nsEventHandlers, k)
-	}
-	a.eventHandlersLock.Unlock()
-
-	a.RLock()
-	defer a.RUnlock()
-	for _, client := range a.clients {
-		client.Disconnect()
-	}
-}
-
-func (a *WSMessageAsyncClientPool) AddEventHandler(h WSClientEventHandler) {
-	a.eventHandlersLock.Lock()
-	a.eventHandlers = append(a.eventHandlers, h)
-	a.eventHandlersLock.Unlock()
-}
-
-func NewWSMessageAsyncClientPool() *WSMessageAsyncClientPool {
-	return &WSMessageAsyncClientPool{
-		WSClientNamespaceEventHandler: NewWSClientNamespaceEventHandler(),
-		clients: make([]*WSMessageAsyncClient, 0),
-	}
 }

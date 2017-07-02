@@ -52,8 +52,8 @@ import (
 type Agent struct {
 	shttp.DefaultWSClientEventHandler
 	Graph               *graph.Graph
-	WSAsyncClientPool   *shttp.WSMessageAsyncClientPool
-	WSServer            *shttp.WSServer
+	WSAsyncClientPool   *shttp.WSMessageClientPool
+	WSServer            *shttp.WSMessageServer
 	GraphServer         *graph.Server
 	Root                *graph.Node
 	TopologyProbeBundle *probe.ProbeBundle
@@ -68,8 +68,8 @@ type Agent struct {
 
 // NewAnalyzerWSClientPool creates a new http WebSocket client Pool
 // with authentification
-func NewAnalyzerWSClientPool() *shttp.WSMessageAsyncClientPool {
-	wspool := shttp.NewWSMessageAsyncClientPool()
+func NewAnalyzerWSClientPool() *shttp.WSMessageClientPool {
+	wspool := shttp.NewWSMessageClientPool(shttp.NewWSClientPool())
 
 	authOptions := &shttp.AuthenticationOpts{
 		Username: config.GetConfig().GetString("auth.analyzer_username"),
@@ -84,9 +84,9 @@ func NewAnalyzerWSClientPool() *shttp.WSMessageAsyncClientPool {
 
 	for _, sa := range addresses {
 		authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
-		wsclient := shttp.NewWSMessageAsyncClientFromConfig(common.AgentService, sa.Addr, sa.Port, "/ws", authClient)
-
-		wspool.AddWSMessageAsyncClient(wsclient)
+		client := shttp.NewWSAsyncClientFromConfig(common.AgentService, sa.Addr, sa.Port, "/ws", authClient)
+		wsClient := shttp.NewWSMessageAsyncClient(client)
+		wspool.AddClient(wsClient)
 	}
 
 	return wspool
@@ -97,16 +97,16 @@ func (a *Agent) Start() {
 	var err error
 
 	go a.HTTPServer.ListenAndServe()
-	go a.WSServer.ListenAndServe()
+	a.WSServer.Start()
 
 	a.WSAsyncClientPool = NewAnalyzerWSClientPool()
 	if a.WSAsyncClientPool == nil {
 		os.Exit(1)
 	}
 
-	NewTopologyForwarderFromConfig(a.Graph, a.WSAsyncClientPool)
+	NewTopologyForwarderFromConfig(a.Graph, a.WSAsyncClientPool.WSClientPool)
 
-	a.TopologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.Graph, a.Root, a.WSAsyncClientPool)
+	a.TopologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to instantiate topology probes: %s", err.Error())
 		os.Exit(1)
@@ -196,7 +196,7 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	wsServer := shttp.NewWSServerFromConfig(hserver, "/ws")
+	wsServer := shttp.NewWSMessageServer(shttp.NewWSServerFromConfig(hserver, "/ws"))
 
 	tr := traversal.NewGremlinTraversalParser(g)
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())

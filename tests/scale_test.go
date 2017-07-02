@@ -52,7 +52,7 @@ func TestHA(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 
 	tearDownCmds := []helper.Cmd{
-		{fmt.Sprintf("%s stop 2 3 2", scale), false},
+		{fmt.Sprintf("%s stop 2 4 2", scale), false},
 	}
 	defer helper.ExecCmds(t, tearDownCmds...)
 
@@ -217,15 +217,30 @@ func TestHA(t *testing.T) {
 
 	// increase the agent number
 	setupCmds = []helper.Cmd{
-		{fmt.Sprintf("%s start 2 3 2", scale), false},
+		{fmt.Sprintf("%s start 2 4 2", scale), false},
+	}
+	helper.ExecCmds(t, setupCmds...)
+
+	// test if we have now 4 hosts
+	checkHostNodes(4)
+
+	// check that we have 4 captures, one per vm1
+	checkCaptures(4)
+
+	// kill the last agent
+	setupCmds = []helper.Cmd{
+		{fmt.Sprintf("%s stop-agent 4", scale), false},
 	}
 	helper.ExecCmds(t, setupCmds...)
 
 	// test if we have now 3 hosts
 	checkHostNodes(3)
 
-	// check that we have 2 captures, one per vm1
-	checkCaptures(3)
+	// switch back to the first analyzer
+	os.Setenv("SKYDIVE_ANALYZERS", "localhost:8082")
+
+	// test if we have now 3 hosts
+	checkHostNodes(3)
 
 	// destroy the second analyzer
 	setupCmds = []helper.Cmd{
@@ -233,9 +248,6 @@ func TestHA(t *testing.T) {
 		{"sleep 5", false},
 	}
 	helper.ExecCmds(t, setupCmds...)
-
-	// switch back to the first analyzer
-	os.Setenv("SKYDIVE_ANALYZERS", "localhost:8082")
 
 	// test if the remaining analyzer have a correct graph
 	checkHostNodes(3)
