@@ -48,7 +48,9 @@ var TopologyGraphLayout = function(vm, selector) {
     .force("link", d3.forceLink(Object.values(this.links)).distance(this.linkDistance).strength(0.9).iterations(2))
     .force("collide", d3.forceCollide().radius(80).strength(0.1).iterations(1))
     .force("center", d3.forceCenter(this.width / 2, this.height / 2))
-    .alphaTarget(1);
+    .force("x", d3.forceX(0).strength(0.01))
+    .force("y", d3.forceY(0).strength(0.01))
+    .alphaDecay(0.0090);
 
   this.zoom = d3.zoom()
     .on("zoom", this.zoomed.bind(this));
