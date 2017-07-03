@@ -1,3 +1,2 @@
-jquery*.js linguist-vendored=true
-bootstrap*.js linguist-vendored=true
-d3*.js linguist-vendored=true
+statics/js/vendor/*.js linguist-vendored=true
+statics/js/dev/*.js linguist-vendored=true
