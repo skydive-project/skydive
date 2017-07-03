@@ -38,7 +38,11 @@ WSHandler.prototype = {
     });
     this.connecting = true;
 
-    this.conn = new WebSocket("ws://" + this.host + "/ws");
+    this.protocol = "ws://";
+    if (location.protocol == "https:") {
+      this.protocol = "wss://";
+    }
+    this.conn = new WebSocket(this.protocol + this.host + "/ws");
     this.conn.onopen = function() {
       self.connecting = false;
       self.connected.resolve(true);

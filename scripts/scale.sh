@@ -156,6 +156,7 @@ function create_agent() {
 			AGENT_KEY=$TEMP_DIR/agent.key
 
 			ANALYZER_CRT=$TEMP_DIR/analyzer.crt
+		        ANALYZER_KEY=$TEMP_DIR/analyzer.key
 		fi
 
 		echo "analyzers:" > $TEMP_DIR/$NAME.yml
@@ -169,10 +170,12 @@ host_id: $NAME
 ws_pong_timeout: 15
 analyzer:
   X509_cert: $ANALYZER_CRT
+  X509_key: $ANALYZER_KEY
 agent:
   listen: 0.0.0.0:8081
   X509_cert: $AGENT_CRT
   X509_key: $AGENT_KEY
+  X509_insecure: true
   topology:
     netlink:
       metrics_update: 5
@@ -285,6 +288,7 @@ function create_analyzer() {
 		ANALYZER_KEY=$TEMP_DIR/analyzer.key
 
 		AGENT_CRT=$TEMP_DIR/agent.crt
+		AGENT_KEY=$TEMP_DIR/agent.key
 	fi
 
 	cat <<EOF >> $TEMP_DIR/$NAME.yml
@@ -308,6 +312,8 @@ flow:
   update: 5
 agent:
   X509_cert: $AGENT_CRT
+  X509_key: $AGENT_KEY
+  X509_insecure: true
 analyzer:
   listen: 0.0.0.0:$CURR_ANALYZER_PORT
   X509_cert: $ANALYZER_CRT

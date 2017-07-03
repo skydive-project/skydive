@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -55,6 +56,8 @@ func TestHA(t *testing.T) {
 	}
 	defer helper.ExecCmds(t, tearDownCmds...)
 
+	// Load Agent-1 as default config for our client
+	config.InitConfig("file", []string{"/tmp/skydive-scale/agent-1.yml"})
 	authOptions := &shttp.AuthenticationOpts{}
 
 	client, err := api.NewCrudClientFromConfig(authOptions)

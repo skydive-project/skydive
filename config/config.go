@@ -238,3 +238,12 @@ func GetEtcdServerAddrs() []string {
 	}
 	return []string{"http://localhost:2379"}
 }
+
+func IsTLSenabled() bool {
+	certPEM := GetConfig().GetString("analyzer.X509_cert")
+	keyPEM := GetConfig().GetString("analyzer.X509_key")
+	if len(certPEM) > 0 && len(keyPEM) > 0 {
+		return true
+	}
+	return false
+}
