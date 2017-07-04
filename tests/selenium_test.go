@@ -336,15 +336,25 @@ func TestSelenium(t *testing.T) {
 	}
 	expand.Click()
 
+	fit, err := findElement(selenium.ByID, "zoom-fit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fit.Click()
+
 	if err = expandGroup("G.V().Has('Name', 'vm1', 'Type', 'netns')"); err != nil {
 		t.Fatal(err)
 	}
 
 	time.Sleep(2 * time.Second)
+	fit.Click()
 
 	if err = expandGroup("G.V().Has('Name', 'vm2', 'Type', 'netns')"); err != nil {
 		t.Fatal(err)
 	}
+
+	time.Sleep(2 * time.Second)
+	fit.Click()
 
 	if err := startCapture(); err != nil {
 		t.Fatal(err)
