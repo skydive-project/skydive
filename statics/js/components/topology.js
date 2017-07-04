@@ -13,7 +13,7 @@ var TopologyComponent = {
         <slider v-if="history" class="slider" :min="timeRange[0]" :max="timeRange[1]" \
                 v-model="time" :info="topologyTimeHuman"></slider>\
         <div class="topology-controls">\
-          <button type="button" class="btn btn-primary"\
+          <button id="zoom-in" type="button" class="btn btn-primary"\
                   title="Zoom In" @click="zoomIn">\
             <span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span>\
           </button>\
@@ -21,7 +21,11 @@ var TopologyComponent = {
                   title="Zoom Out" @click="zoomOut">\
             <span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span>\
           </button>\
-          <button type="button" class="btn btn-primary" \
+          <button id="zoom-fit" type="button" class="btn btn-primary"\
+                  title="Zoom Fit" @click="zoomFit">\
+            <span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>\
+          </button>\
+          <button id="zoom-reset" type="button" class="btn btn-primary" \
                   title="Reset" @click="zoomReset">Reset</button>\
           <button id="expand-collapse" type="button" class="btn btn-primary" \
                   @click="collapseAll">{{collapsed ? "Expand" : "Collapse"}}</button>\
@@ -227,6 +231,10 @@ var TopologyComponent = {
 
     zoomReset: function() {
       this.layout.zoomReset();
+    },
+
+    zoomFit: function() {
+      this.layout.zoomFit();
     },
 
     collapseAll: function() {

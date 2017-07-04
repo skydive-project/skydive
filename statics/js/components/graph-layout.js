@@ -108,6 +108,22 @@ TopologyGraphLayout.prototype = {
     this.svg.transition().duration(500).call(this.zoom.scaleBy, 0.9);
   },
 
+  zoomFit: function() {
+    var bounds = this.g.node().getBBox();
+    var parent = this.g.node().parentElement;
+    var fullWidth = parent.clientWidth, fullHeight = parent.clientHeight;
+    var width = bounds.width, height = bounds.height;
+    var midX = bounds.x + width / 2, midY = bounds.y + height / 2;
+    if (width === 0 || height === 0) return;
+    var scale = 0.75 / Math.max(width / fullWidth, height / fullHeight);
+    var translate = [fullWidth / 2 - midX * scale, fullHeight / 2 - midY * scale];
+
+    var t = d3.zoomIdentity
+      .translate(translate[0] + 30, translate[1])
+      .scale(scale);
+      this.svg.transition().duration(500).call(this.zoom.transform, t);
+  },
+
   zoomReset: function() {
     this.svg.transition().duration(500).call(this.zoom.transform, d3.zoomIdentity);
   },
