@@ -31,7 +31,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
@@ -45,8 +44,14 @@ import (
 var ErrFlowProtocol = errors.New("FlowProtocol invalid")
 
 const (
-	// CaptureLength : default packet capture length (256 bytes)
-	CaptureLength uint32 = 256
+	// DefaultCaptureLength : default packet capture length
+	DefaultCaptureLength uint32 = 256
+	// MaxCaptureLength : maximum capture length accepted
+	MaxCaptureLength uint32 = 4096
+	// MaxRawPacketLimit : maximum raw packet captured, limitation could be removed once flow over tcp
+	MaxRawPacketLimit uint32 = 10
+	// DefaultFlowProtobufSize : the default protobuf size without any raw packet for a flow
+	DefaultProtobufFlowSize = 500
 )
 
 // Packet describes one packet
@@ -59,6 +64,12 @@ type Packet struct {
 type Packets struct {
 	Packets   []Packet
 	Timestamp int64
+}
+
+// RawPackets embeds flow RawPacket array with the associated link type
+type RawPackets struct {
+	LinkType   layers.LinkType
+	RawPackets []*RawPacket
 }
 
 // Value returns int32 value of a FlowProtocol
@@ -311,19 +322,22 @@ func (f *Flow) GetData() ([]byte, error) {
 	return data, nil
 }
 
-// GetStartTime of the flow
-func (f *Flow) GetStartTime() time.Time {
-	return time.Unix(0, f.Start*1000000)
-}
+// LinkType returns the Link type of the flow according the its first available layer.
+func (f *Flow) LinkType() (layers.LinkType, error) {
+	if f.Link != nil {
+		return layers.LinkTypeEthernet, nil
+	}
 
-// GetLastTime of the flow
-func (f *Flow) GetLastTime() time.Time {
-	return time.Unix(0, f.Last*1000000)
-}
+	if f.Network != nil {
+		switch f.Network.Protocol {
+		case FlowProtocol_IPV4:
+			return layers.LinkTypeIPv4, nil
+		case FlowProtocol_IPV6:
+			return layers.LinkTypeIPv6, nil
+		}
+	}
 
-// GetDuration of the flow
-func (f *Flow) GetDuration() time.Duration {
-	return f.GetLastTime().Sub(f.GetStartTime())
+	return 0, errors.New("LinkType unknown")
 }
 
 // Init a flow based on flow key and gopacket
@@ -764,6 +778,8 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.ICMP.GetFieldInt64(fields[1])
 	case "Transport":
 		return f.Transport.GetFieldInt64(fields[1])
+	case "RawPacketsCaptured":
+		return f.RawPacketsCaptured, nil
 	default:
 		return 0, common.ErrFieldNotFound
 	}

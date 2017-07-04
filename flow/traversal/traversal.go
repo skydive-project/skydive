@@ -45,6 +45,7 @@ const (
 	traversalNodesToken       traversal.Token = 1003
 	traversalCaptureNodeToken traversal.Token = 1004
 	traversalAggregatesToken  traversal.Token = 1005
+	traversalRawPacketsToken  traversal.Token = 1006
 )
 
 const (
@@ -58,22 +59,24 @@ type FlowTraversalExtension struct {
 	NodesToken       traversal.Token
 	CaptureNodeToken traversal.Token
 	AggregatesToken  traversal.Token
+	RawPacketsToken  traversal.Token
 	TableClient      *flow.TableClient
 	Storage          storage.Storage
 }
 
 // FlowGremlinTraversalStep a flow Gremlin language step
 type FlowGremlinTraversalStep struct {
-	TableClient     *flow.TableClient
-	Storage         storage.Storage
-	context         traversal.GremlinTraversalContext
-	hasParams       []interface{}
-	metricsNextStep bool
-	dedup           bool
-	dedupBy         string
-	sort            bool
-	sortBy          string
-	sortOrder       common.SortOrder
+	TableClient        *flow.TableClient
+	Storage            storage.Storage
+	context            traversal.GremlinTraversalContext
+	hasParams          []interface{}
+	metricsNextStep    bool
+	rawpacketsNextStep bool
+	dedup              bool
+	dedupBy            string
+	sort               bool
+	sortBy             string
+	sortOrder          common.SortOrder
 }
 
 // FlowTraversalStep a flow step linked to a storage
@@ -83,6 +86,13 @@ type FlowTraversalStep struct {
 	flowset         *flow.FlowSet
 	flowSearchQuery filters.SearchQuery
 	error           error
+}
+
+// RawPacketsTraversalStep rawpackets step
+type RawPacketsTraversalStep struct {
+	GraphTraversal *traversal.GraphTraversal
+	rawPackets     map[string]*flow.RawPackets
+	error          error
 }
 
 // HopsGremlinTraversalStep hops step
@@ -100,12 +110,17 @@ type CaptureNodeGremlinTraversalStep struct {
 	context traversal.GremlinTraversalContext
 }
 
-// AggregatesGremlinTraversalStep Aggregates step
+// AggregatesGremlinTraversalStep aggregates step
 type AggregatesGremlinTraversalStep struct {
 	context traversal.GremlinTraversalContext
 }
 
-// Out way step
+// RawPacketsGremlinTraversalStep rawpackets step
+type RawPacketsGremlinTraversalStep struct {
+	context traversal.GremlinTraversalContext
+}
+
+// Out returns the B node
 func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
@@ -133,7 +148,7 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
-// In way step
+// In returns the A node
 func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
@@ -161,7 +176,7 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
-// Both way step
+// Both returns A and B nodes
 func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
@@ -195,7 +210,7 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
-// Nodes step
+// Nodes returns A, B and the capture nodes
 func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
@@ -234,7 +249,7 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 	return traversal.NewGraphTraversalV(f.GraphTraversal, nodes)
 }
 
-// Hops step
+// Hops returns all the capture nodes where the flow was seen
 func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 	var nodes []*graph.Node
 
@@ -457,7 +472,7 @@ func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.Graph
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, common.ErrFieldNotFound)
 }
 
-// PropertyKeys returns a flow fileds
+// PropertyKeys returns a flow field
 func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
 		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, f.error)
@@ -473,7 +488,7 @@ func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTr
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
 }
 
-// Metrics returns flow mertics interface counters
+// Metrics returns flow metric counters
 func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
 	if f.error != nil {
 		return traversal.NewMetricsTraversalStep(nil, nil, f.error)
@@ -483,8 +498,6 @@ func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
 
 	context := f.GraphTraversal.Graph.GetContext()
 	if context.TimeSlice != nil {
-		flowMetrics = make(map[string][]*common.TimedMetric)
-
 		// two cases, either we have a flowset and we need to use it in order to filter
 		// flows or we don't have flowset but we have the pre-built flowSearchQuery filter
 		// if none of these cases it's an error.
@@ -534,7 +547,72 @@ func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
 	return traversal.NewMetricsTraversalStep(f.GraphTraversal, flowMetrics, nil)
 }
 
-// Values returns flows
+// Values returns list of raw packets
+func (r *RawPacketsTraversalStep) Values() []interface{} {
+	return []interface{}{r.rawPackets}
+}
+
+// MarshalJSON serialize in JSON
+func (r *RawPacketsTraversalStep) MarshalJSON() ([]byte, error) {
+	values := r.Values()
+	r.GraphTraversal.RLock()
+	defer r.GraphTraversal.RUnlock()
+	return json.Marshal(values)
+}
+
+// Error returns tranversal error
+func (r *RawPacketsTraversalStep) Error() error {
+	return r.error
+}
+
+// RawPackets searches for RawPacket based on previous flow filter from
+// either agents or datastore.
+func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
+	if f.error != nil {
+		return &RawPacketsTraversalStep{error: f.error}
+	}
+
+	rawPackets := make(map[string]*flow.RawPackets)
+
+	context := f.GraphTraversal.Graph.GetContext()
+	if context.TimeSlice != nil {
+		// two cases, either we have a flowset and we need to use it in order to filter
+		// flows or we don't have flowset but we have the pre-built flowSearchQuery filter
+		// if none of these cases it's an error.
+		if f.flowset != nil {
+			flowFilter := flow.NewFilterForFlowSet(f.flowset)
+			f.flowSearchQuery.Filter = filters.NewAndFilter(f.flowSearchQuery.Filter, flowFilter)
+		} else if f.flowSearchQuery.Filter == nil {
+			return &RawPacketsTraversalStep{error: errors.New("Unable to filter flows")}
+		}
+
+		f.flowSearchQuery.Sort = true
+		f.flowSearchQuery.SortBy = "Index"
+		f.flowSearchQuery.SortOrder = string(common.SortAscending)
+
+		var err error
+		// do not filter raw packets for the moment, return all of them based on flow filter only
+		if rawPackets, err = f.Storage.SearchRawPackets(f.flowSearchQuery, nil); err != nil {
+			return &RawPacketsTraversalStep{error: err}
+		}
+	} else {
+		for _, fl := range f.flowset.Flows {
+			linkType, err := fl.LinkType()
+			if err != nil {
+				return &RawPacketsTraversalStep{error: err}
+			}
+
+			rawPackets[fl.UUID] = &flow.RawPackets{
+				LinkType:   linkType,
+				RawPackets: fl.GetLastRawPackets(),
+			}
+		}
+	}
+
+	return &RawPacketsTraversalStep{GraphTraversal: f.GraphTraversal, rawPackets: rawPackets}
+}
+
+// Values returns list of flows
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flowset.Flows))
 	for i, flow := range f.flowset.Flows {
@@ -561,6 +639,7 @@ func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage
 		NodesToken:       traversalNodesToken,
 		CaptureNodeToken: traversalCaptureNodeToken,
 		AggregatesToken:  traversalAggregatesToken,
+		RawPacketsToken:  traversalRawPacketsToken,
 		TableClient:      client,
 		Storage:          storage,
 	}
@@ -579,6 +658,8 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 		return e.CaptureNodeToken, true
 	case "AGGREGATES":
 		return e.AggregatesToken, true
+	case "RAWPACKETS":
+		return e.RawPacketsToken, true
 	}
 	return traversal.IDENT, false
 }
@@ -596,6 +677,8 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 		return &CaptureNodeGremlinTraversalStep{context: p}, nil
 	case e.AggregatesToken:
 		return &AggregatesGremlinTraversalStep{context: p}, nil
+	case e.RawPacketsToken:
+		return &RawPacketsGremlinTraversalStep{context: p}, nil
 	}
 
 	return nil, nil
@@ -724,6 +807,12 @@ func (s *FlowGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (trav
 			return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery}, nil
 		}
 
+		// We do nothing as the following step is Metrics
+		// and we'll make a request on rawpackets instead of flows
+		if s.rawpacketsNextStep {
+			return &FlowTraversalStep{GraphTraversal: graphTraversal, Storage: s.Storage, flowSearchQuery: flowSearchQuery}, nil
+		}
+
 		if flowset, err = s.Storage.SearchFlows(flowSearchQuery); err != nil {
 			return nil, err
 		}
@@ -781,8 +870,11 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 		return s
 	}
 
-	if _, ok := next.(*traversal.GremlinTraversalStepMetrics); ok {
+	switch next.(type) {
+	case *traversal.GremlinTraversalStepMetrics:
 		s.metricsNextStep = true
+	case *RawPacketsGremlinTraversalStep:
+		s.rawpacketsNextStep = true
 	}
 
 	if s.context.ReduceRange(next) {
@@ -890,4 +982,25 @@ func (a *AggregatesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalS
 // Context Aggregates step
 func (a *AggregatesGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &a.context
+}
+
+// Exec RawPackets step
+func (r *RawPacketsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
+	switch last.(type) {
+	case *FlowTraversalStep:
+		fs := last.(*FlowTraversalStep)
+		return fs.RawPackets(), nil
+	}
+
+	return nil, traversal.ErrExecutionError
+}
+
+// Reduce RawPackets step
+func (r *RawPacketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	return next
+}
+
+// Context RawPackets step
+func (r *RawPacketsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+	return &r.context
 }

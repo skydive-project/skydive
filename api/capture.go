@@ -34,15 +34,17 @@ import (
 
 // Capture describes a capture API
 type Capture struct {
-	UUID         string
-	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
-	BPFFilter    string `json:"BPFFilter,omitempty" valid:"isBPFFilter"`
-	Name         string `json:"Name,omitempty"`
-	Description  string `json:"Description,omitempty"`
-	Type         string `json:"Type,omitempty"`
-	Count        int    `json:"Count,omitempty"`
-	PCAPSocket   string `json:"PCAPSocket,omitempty"`
-	Port         int    `json:"Port,omitempty"`
+	UUID           string
+	GremlinQuery   string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
+	BPFFilter      string `json:"BPFFilter,omitempty" valid:"isBPFFilter"`
+	Name           string `json:"Name,omitempty"`
+	Description    string `json:"Description,omitempty"`
+	Type           string `json:"Type,omitempty"`
+	Count          int    `json:"Count,omitempty"`
+	PCAPSocket     string `json:"PCAPSocket,omitempty"`
+	Port           int    `json:"Port,omitempty"`
+	RawPacketLimit int    `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit"`
+	HeaderSize     int    `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize"`
 }
 
 // CaptureResourceHandler describes a capture ressouce handler

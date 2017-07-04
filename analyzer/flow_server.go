@@ -327,7 +327,8 @@ func (s *FlowServer) handleFlowPacket(conn *FlowServerConn) {
 	defer conn.Close()
 
 	conn.SetDeadline(time.Now().Add(200 * time.Millisecond))
-	data := make([]byte, 4096)
+	// each flow can be HeaderSize * RawPackets + flow size (~500)
+	data := make([]byte, flow.MaxCaptureLength*flow.MaxRawPacketLimit+flow.DefaultProtobufFlowSize)
 
 	var flowBuffer []*flow.Flow
 	defer s.storeFlows(flowBuffer)

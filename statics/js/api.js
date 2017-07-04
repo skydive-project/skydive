@@ -2,6 +2,55 @@ var apiMixin = {
 
   methods: {
 
+    // see : https://stackoverflow.com/questions/16086162/handle-file-download-from-ajax-post
+    $downloadRawPackets: function(UUID){
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/topology', true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onload = function () {
+        if (this.status === 200) {
+          var filename = UUID + 'pcap';
+          var type = xhr.getResponseHeader('Content-Type');
+
+          var blob = new Blob([this.response], { type: type });
+          if (typeof window.navigator.msSaveBlob !== 'undefined') {
+            window.navigator.msSaveBlob(blob, filename);
+          } else {
+            var URL = window.URL || window.webkitURL;
+            var downloadUrl = URL.createObjectURL(blob);
+
+            var a;
+            if (filename) {
+              // use HTML5 a[download] attribute to specify filename
+              a = document.createElement("a");
+              // safari doesn't support this yet
+              if (typeof a.download === 'undefined') {
+                window.location = downloadUrl;
+              } else {
+                a.href = downloadUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+              }
+            } else {
+              window.location = downloadUrl;
+            }
+
+            setTimeout(function () {
+              URL.revokeObjectURL(downloadUrl);
+              if (a)
+                document.body.removeChild(a);
+              }, 100); // cleanup
+          }
+        }
+      };
+      xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+      xhr.setRequestHeader('Accept', 'vnd.tcpdump.pcap');
+
+      var query = 'G.Flows().Has("UUID", "' + UUID + '").RawPackets()';
+      xhr.send(JSON.stringify({"GremlinQuery": query}));
+    },
+
     $topologyQuery: function(gremlinQuery, cntx) {
       return $.ajax({
         dataType: "json",
@@ -49,7 +98,7 @@ var apiMixin = {
       });
     },
 
-    $captureCreate: function(query, name, description, bpf) {
+    $captureCreate: function(query, name, description, bpf, headerSize, rawPackets) {
       var self = this;
       return $.ajax({
         dataType: "json",
@@ -57,7 +106,9 @@ var apiMixin = {
         data: JSON.stringify({GremlinQuery: query,
                               Name: name || null,
                               Description: description || null,
-                              BPFFilter: bpf || null}),
+                              BPFFilter: bpf || null,
+                              HeaderSize: headerSize || 0,
+                              RawPacketLimit: rawPackets || 0}),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
       })

@@ -301,7 +301,7 @@ Vue.component('flow-table', {
             @mouseenter="highlightNodes(flows.row, true)"\
             @mouseleave="highlightNodes(flows.row, false)">\
           <td :colspan="flows.visibleFields.length">\
-            <object-detail :object="flows.row"></object-detail>\
+            <object-detail :object="flows.row" :links="flowDetailLinks(flows.row)"></object-detail>\
           </td>\
         </tr>\
       </template>\
@@ -567,6 +567,18 @@ Vue.component('flow-table', {
         Vue.delete(this.showDetail, flow[this.showDetailField]);
       } else {
         Vue.set(this.showDetail, flow[this.showDetailField], true);
+      }
+    },
+
+    flowDetailLinks: function(flow) {
+      var self = this;
+
+      if (flow.RawPacketsCaptured > 0) {
+        return {
+          "RawPacketsCaptured": function() {
+            self.$downloadRawPackets(flow.UUID);
+          }
+        };
       }
     },
 

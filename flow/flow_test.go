@@ -57,7 +57,7 @@ func TestFlowSimpleIPv6(t *testing.T) {
 }
 
 func TestBPFFilter(t *testing.T) {
-	bpf, err := NewBPF(layers.LinkTypeEthernet, CaptureLength, "port 53 or port 80")
+	bpf, err := NewBPF(layers.LinkTypeEthernet, DefaultCaptureLength, "port 53 or port 80")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -272,7 +272,7 @@ func validateAllParentChains(t *testing.T, table *Table) {
 }
 
 func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF) []*Flow {
-	table := NewTable(nil, nil, NewEnhancerPipeline())
+	table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{})
 
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 

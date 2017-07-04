@@ -118,6 +118,11 @@ func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.Packets, bpf *flow.
 func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture) {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
+	headerSize := flow.DefaultCaptureLength
+	if capture.HeaderSize != 0 {
+		headerSize = uint32(capture.HeaderSize)
+	}
+
 	g.RLock()
 	ifName, _ := n.GetFieldString("Name")
 	if ifName == "" {
@@ -142,7 +147,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	// between capture creation and the filter apply.
 	var bpfFilter *flow.BPF
 	if capture.BPFFilter != "" {
-		bpfFilter, err = flow.NewBPF(linkType, flow.CaptureLength, capture.BPFFilter)
+		bpfFilter, err = flow.NewBPF(linkType, headerSize, capture.BPFFilter)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			return
@@ -155,7 +160,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 
 	switch capture.Type {
 	case "pcap":
-		handle, err := pcap.OpenLive(ifName, int32(flow.CaptureLength), true, time.Second)
+		handle, err := pcap.OpenLive(ifName, int32(headerSize), true, time.Second)
 		if err != nil {
 			logging.GetLogger().Errorf("Error while opening device %s: %s", ifName, err.Error())
 			return
@@ -175,7 +180,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	default:
 		var handle *AFPacketHandle
 		fnc := func() error {
-			handle, err = NewAFPacketHandle(ifName, int32(flow.CaptureLength))
+			handle, err = NewAFPacketHandle(ifName, int32(headerSize))
 			if err != nil {
 				return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
 			}
@@ -205,7 +210,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		default:
 			h := p.handle.(*AFPacketHandle)
 			var rawBPF []bpf.RawInstruction
-			if rawBPF, err = flow.BPFFilterToRaw(linkType, flow.CaptureLength, capture.BPFFilter); err == nil {
+			if rawBPF, err = flow.BPFFilterToRaw(linkType, uint32(headerSize), capture.BPFFilter); err == nil {
 				err = h.tpacket.SetBPF(rawBPF)
 			}
 		}

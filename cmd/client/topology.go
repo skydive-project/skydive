@@ -70,6 +70,16 @@ var TopologyRequest = &cobra.Command{
 			defer resp.Body.Close()
 			data, _ := ioutil.ReadAll(resp.Body)
 			fmt.Println(string(data))
+		case "pcap":
+			header := make(http.Header)
+			header.Set("Accept", "vnd.tcpdump.pcap")
+			resp, err := queryHelper.Request(gremlinQuery, header)
+			if err != nil {
+				logging.GetLogger().Fatalf(err.Error())
+			}
+			defer resp.Body.Close()
+			data, _ := ioutil.ReadAll(resp.Body)
+			fmt.Print(string(data))
 		default:
 			logging.GetLogger().Fatalf("Invalid output format %s", outputFormat)
 		}
@@ -83,5 +93,5 @@ func addTopologyFlags(cmd *cobra.Command) {
 func init() {
 	TopologyCmd.AddCommand(TopologyRequest)
 	TopologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "G", "Gremlin Query")
-	TopologyRequest.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json or dot)")
+	TopologyRequest.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json, dot or pcap)")
 }

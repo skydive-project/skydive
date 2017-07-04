@@ -117,9 +117,10 @@ type TestContext struct {
 }
 
 type TestCapture struct {
-	gremlin string
-	kind    string
-	bpf     string
+	gremlin    string
+	kind       string
+	bpf        string
+	rawPackets int
 }
 
 type Test struct {
@@ -219,6 +220,7 @@ func RunTest(t *testing.T, test *Test) {
 	for _, tc := range test.captures {
 		capture := api.NewCapture(tc.gremlin, tc.bpf)
 		capture.Type = tc.kind
+		capture.RawPacketLimit = tc.rawPackets
 		if err = client.Create("capture", capture); err != nil {
 			t.Fatal(err)
 		}

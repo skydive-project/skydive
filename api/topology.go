@@ -31,6 +31,8 @@ import (
 	"strings"
 
 	"github.com/abbot/go-http-auth"
+	"github.com/skydive-project/skydive/flow"
+	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
@@ -150,6 +152,23 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 			t.graphToDot(w, graphTraversal.Graph)
 		} else {
 			writeError(w, http.StatusNotAcceptable, errors.New("Only graph can be outputted as dot"))
+		}
+	} else if strings.Contains(r.Header.Get("Accept"), "vnd.tcpdump.pcap") {
+		if rawPacketsTraversal, ok := res.(*ftraversal.RawPacketsTraversalStep); ok {
+			w.Header().Set("Content-Type", "application/vnd.tcpdump.pcap; charset=UTF-8")
+			w.WriteHeader(http.StatusOK)
+
+			pw := flow.NewPcapWriter(w)
+			for _, pf := range rawPacketsTraversal.Values() {
+				m := pf.(map[string]*flow.RawPackets)
+				for _, fr := range m {
+					if err = pw.WriteRawPackets(fr); err != nil {
+						writeError(w, http.StatusNotAcceptable, errors.New(err.Error()))
+					}
+				}
+			}
+		} else {
+			writeError(w, http.StatusNotAcceptable, errors.New("Only RawPackets step result can be outputted as pcap"))
 		}
 	} else {
 		w.WriteHeader(http.StatusOK)

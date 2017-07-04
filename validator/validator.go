@@ -58,6 +58,14 @@ var (
 	BPFFilterNotValid = func(err error) error {
 		return valid.TextErr{Err: fmt.Errorf("Not a valid BPF expression: %s", err.Error())}
 	}
+	// CaptureHeaderSizeNotValid validator
+	CaptureHeaderSizeNotValid = func(min, max uint32) error {
+		return valid.TextErr{Err: fmt.Errorf("A valid header size is >= %d && <= %d", min, max)}
+	}
+	// RawPacketLimitNotValid validator
+	RawPacketLimitNotValid = func(min, max uint32) error {
+		return valid.TextErr{Err: fmt.Errorf("A valid raw packet limit size is > %d && <= %d", min, max)}
+	}
 )
 
 func isIP(v interface{}, param string) error {
@@ -95,8 +103,30 @@ func isBPFFilter(v interface{}, param string) error {
 		return BPFFilterNotValid(errors.New("not a string"))
 	}
 
-	if _, err := flow.BPFFilterToRaw(layers.LinkTypeEthernet, flow.CaptureLength, bpfFilter); err != nil {
+	if _, err := flow.BPFFilterToRaw(layers.LinkTypeEthernet, flow.MaxCaptureLength, bpfFilter); err != nil {
 		return BPFFilterNotValid(err)
+	}
+
+	return nil
+}
+
+func isValidCaptureHeaderSize(v interface{}, param string) error {
+	headerSize, ok := v.(int)
+	hs := uint32(headerSize)
+	if !ok || hs < 0 || (hs > 0 && hs < 14) || hs > flow.MaxCaptureLength {
+		return CaptureHeaderSizeNotValid(14, flow.MaxCaptureLength)
+	}
+
+	return nil
+}
+
+func isValidRawPacketLimit(v interface{}, param string) error {
+	limit, ok := v.(int)
+	l := uint32(limit)
+	// The current limitation of 10 packet could be removed once flow will be
+	// transfered over tcp.
+	if !ok || l < 0 || l > flow.MaxRawPacketLimit {
+		return RawPacketLimitNotValid(0, flow.MaxRawPacketLimit)
 	}
 
 	return nil
@@ -119,5 +149,7 @@ func init() {
 	skydiveValidator.SetValidationFunc("isIP", isIP)
 	skydiveValidator.SetValidationFunc("isGremlinExpr", isGremlinExpr)
 	skydiveValidator.SetValidationFunc("isBPFFilter", isBPFFilter)
+	skydiveValidator.SetValidationFunc("isValidCaptureHeaderSize", isValidCaptureHeaderSize)
+	skydiveValidator.SetValidationFunc("isValidRawPacketLimit", isValidRawPacketLimit)
 	skydiveValidator.SetTag("valid")
 }

@@ -226,11 +226,16 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 }
 
 // RegisterProbeOnBridge registers a new probe on the OVS bridge
-func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, ft *flow.Table, bpfFilter string) error {
+func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, ft *flow.Table, capture *api.Capture) error {
+	headerSize := flow.DefaultCaptureLength
+	if capture.HeaderSize != 0 {
+		headerSize = uint32(capture.HeaderSize)
+	}
+
 	probe := OvsSFlowProbe{
 		ID:         probeID(bridgeUUID),
 		Interface:  "lo",
-		HeaderSize: flow.CaptureLength,
+		HeaderSize: headerSize,
 		Sampling:   1,
 		Polling:    0,
 		NodeTID:    tid,
@@ -242,7 +247,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 	}
 
 	addr := common.ServiceAddress{Addr: address, Port: 0}
-	agent, err := o.allocator.Alloc(bridgeUUID, ft, bpfFilter, &addr)
+	agent, err := o.allocator.Alloc(bridgeUUID, ft, capture.BPFFilter, headerSize, &addr)
 	if err != nil && err != sflow.ErrAgentAlreadyAllocated {
 		return err
 	}
@@ -276,7 +281,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 
 	if isOvsBridge(n) {
 		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
-			err := o.RegisterProbeOnBridge(uuid, tid, ft, capture.BPFFilter)
+			err := o.RegisterProbeOnBridge(uuid, tid, ft, capture)
 			if err != nil {
 				return err
 			}

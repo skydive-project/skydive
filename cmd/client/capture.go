@@ -28,6 +28,7 @@ import (
 
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -41,6 +42,8 @@ var (
 	captureType        string
 	nodeTID            string
 	port               int
+	headerSize         int
+	rawPacketLimit     int
 )
 
 // CaptureCmd skdyive capture root command
@@ -75,9 +78,12 @@ var CaptureCreate = &cobra.Command{
 		capture.Description = captureDescription
 		capture.Type = captureType
 		capture.Port = port
+		capture.HeaderSize = headerSize
+		capture.RawPacketLimit = rawPacketLimit
 		if err := validator.Validate(capture); err != nil {
 			logging.GetLogger().Fatalf(err.Error())
 		}
+
 		if err := client.Create("capture", &capture); err != nil {
 			logging.GetLogger().Fatalf(err.Error())
 		}
@@ -171,6 +177,8 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&captureDescription, "description", "", "", "capture description")
 	cmd.Flags().StringVarP(&captureType, "type", "", "", helpText)
 	cmd.Flags().IntVarP(&port, "port", "", 0, "capture port")
+	cmd.Flags().IntVarP(&headerSize, "header-size", "", 0, fmt.Sprintf("Header size of packet used, default: %d", flow.MaxCaptureLength))
+	cmd.Flags().IntVarP(&rawPacketLimit, "rawpacket-limit", "", 0, "Set the limit of raw packet captured, 0 no packet, -1 infinite, default: 0")
 }
 
 func init() {

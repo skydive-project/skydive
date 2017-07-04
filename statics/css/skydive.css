@@ -475,3 +475,18 @@ ul.dropdown-menu .fa.pull-right {
   font-weight: bold;
   line-height: 42px;
 }
+
+.capture-advanced .panel-heading {
+  padding: 0px 0px;
+  margin-bottom: 10px;
+}
+
+.capture-advanced .panel-heading a {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.raw-packet-link {
+  color: skyblue;
+  cursor: pointer;
+}

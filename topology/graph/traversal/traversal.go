@@ -1741,8 +1741,9 @@ func (m *MetricsTraversalStep) MarshalJSON() ([]byte, error) {
 	return json.Marshal(values)
 }
 
+// Error returns error present at this step
 func (m *MetricsTraversalStep) Error() error {
-	return nil
+	return m.error
 }
 
 // Count step

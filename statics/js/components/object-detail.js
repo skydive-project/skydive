@@ -9,6 +9,10 @@ Vue.component('object-detail', {
     object: {
       type: Object,
       required: true,
+    },
+
+    links: {
+      type: Object
     }
 
   },
@@ -35,6 +39,7 @@ Vue.component('object-detail', {
         <div v-else>\
           <span class="object-key">{{key}}</span> :\
           <span class="object-value" :class="typeof(value)">{{value}}</span>\
+          <i v-if="links && links[key]" class="indicator glyphicon glyphicon-download-alt raw-packet-link" @click="links[key]"></i>\
         </div>\
       </div>\
     </div>\

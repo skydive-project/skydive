@@ -50,12 +50,13 @@ var (
 // SFlowAgent describes SFlow agent probe
 type SFlowAgent struct {
 	sync.RWMutex
-	UUID      string
-	Addr      string
-	Port      int
-	FlowTable *flow.Table
-	Conn      *net.UDPConn
-	BPFFilter string
+	UUID       string
+	Addr       string
+	Port       int
+	FlowTable  *flow.Table
+	Conn       *net.UDPConn
+	BPFFilter  string
+	HeaderSize uint32
 }
 
 // SFlowAgentAllocator describes an SFlow agent allocator to manage multiple SFlow agent probe
@@ -74,7 +75,7 @@ func (sfa *SFlowAgent) GetTarget() string {
 func (sfa *SFlowAgent) feedFlowTable(packetsChan chan *flow.Packets) {
 	var bpf *flow.BPF
 
-	if b, err := flow.NewBPF(layers.LinkTypeEthernet, flow.CaptureLength, sfa.BPFFilter); err == nil {
+	if b, err := flow.NewBPF(layers.LinkTypeEthernet, sfa.HeaderSize, sfa.BPFFilter); err == nil {
 		bpf = b
 	} else {
 		logging.GetLogger().Error(err.Error())
@@ -146,18 +147,23 @@ func (sfa *SFlowAgent) Stop() {
 	}
 }
 
-// NewSFlowAgent creates a new probe agent and populate the flowtable
-func NewSFlowAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter string) *SFlowAgent {
+// NewSFlowAgent creates a new sFlow agent which will populate the given flowtable
+func NewSFlowAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter string, headerSize uint32) *SFlowAgent {
+	if headerSize == 0 {
+		headerSize = flow.DefaultCaptureLength
+	}
+
 	return &SFlowAgent{
-		UUID:      u,
-		Addr:      a.Addr,
-		Port:      a.Port,
-		FlowTable: ft,
-		BPFFilter: bpfFilter,
+		UUID:       u,
+		Addr:       a.Addr,
+		Port:       a.Port,
+		FlowTable:  ft,
+		BPFFilter:  bpfFilter,
+		HeaderSize: headerSize,
 	}
 }
 
-// Release a probe agent
+// Release a sFlow agent
 func (a *SFlowAgentAllocator) Release(uuid string) {
 	a.Lock()
 	defer a.Unlock()
@@ -171,7 +177,7 @@ func (a *SFlowAgentAllocator) Release(uuid string) {
 	}
 }
 
-// ReleaseAll probes agent
+// ReleaseAll sFlow agents
 func (a *SFlowAgentAllocator) ReleaseAll() {
 	a.Lock()
 	for _, agent := range a.portAllocator.PortMap {
@@ -182,8 +188,8 @@ func (a *SFlowAgentAllocator) ReleaseAll() {
 	a.portAllocator.ReleaseAll()
 }
 
-// Alloc allocate a new probe
-func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, addr *common.ServiceAddress) (agent *SFlowAgent, _ error) {
+// Alloc allocates a new sFlow agent
+func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter string, headerSize uint32, addr *common.ServiceAddress) (agent *SFlowAgent, _ error) {
 	a.Lock()
 	defer a.Unlock()
 
@@ -207,13 +213,13 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter strin
 		}
 	}
 
-	s := NewSFlowAgent(uuid, addr, ft, bpfFilter)
+	s := NewSFlowAgent(uuid, addr, ft, bpfFilter, headerSize)
 	a.portAllocator.Set(addr.Port, s)
 	s.Start()
 	return s, nil
 }
 
-// NewSFlowAgentAllocator creates a new SFlow probes agent allocator
+// NewSFlowAgentAllocator creates a new sFlow agent allocator
 func NewSFlowAgentAllocator() (*SFlowAgentAllocator, error) {
 	min := config.GetConfig().GetInt("sflow.port_min")
 	max := config.GetConfig().GetInt("sflow.port_max")
