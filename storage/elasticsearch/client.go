@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -45,6 +46,8 @@ type ElasticSearchClient struct {
 	connection *elastigo.Conn
 	indexer    *elastigo.BulkIndexer
 	started    atomic.Value
+	quit       chan bool
+	wg         sync.WaitGroup
 }
 
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
@@ -303,7 +306,23 @@ func (c *ElasticSearchClient) Search(obj string, query string) (elastigo.SearchR
 	return c.connection.Search("skydive", obj, nil, query)
 }
 
+func (c *ElasticSearchClient) errorReader() {
+	defer c.wg.Done()
+
+	for {
+		select {
+		case err := <-c.indexer.ErrorChannel:
+			logging.GetLogger().Errorf("Elasticsearch request error: %s, %v", err.Err.Error(), err.Buf)
+		case <-c.quit:
+			return
+		}
+	}
+}
+
 func (c *ElasticSearchClient) Start(mappings []map[string][]byte) {
+	c.wg.Add(1)
+	go c.errorReader()
+
 	for {
 		err := c.start(mappings)
 		if err == nil {
@@ -317,6 +336,9 @@ func (c *ElasticSearchClient) Start(mappings []map[string][]byte) {
 
 func (c *ElasticSearchClient) Stop() {
 	if c.started.Load() == true {
+		c.quit <- true
+		c.wg.Wait()
+
 		c.indexer.Stop()
 		c.connection.Close()
 	}
@@ -344,6 +366,7 @@ func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds
 	client := &ElasticSearchClient{
 		connection: c,
 		indexer:    indexer,
+		quit:       make(chan bool),
 	}
 
 	client.started.Store(false)
