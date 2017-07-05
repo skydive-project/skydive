@@ -23,6 +23,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -74,15 +75,19 @@ var AllInOne = &cobra.Command{
 		analyzerArgs := make([]string, len(args))
 		copy(analyzerArgs, args)
 
+		if len(cfgFiles) != 0 {
+			if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
+				panic(fmt.Sprintf("Failed to initialize config: %s", err.Error()))
+			}
+		}
+
+		if err := logging.InitLogging(); err != nil {
+			panic(fmt.Sprintf("Failed to initialize logging system: %s", err.Error()))
+		}
+
 		analyzer, err := os.StartProcess(skydivePath, append(analyzerArgs, "analyzer"), analyzerAttr)
 		if err != nil {
 			logging.GetLogger().Fatalf("Can't start Skydive All-in-One : %v", err)
-		}
-
-		if len(cfgFiles) != 0 {
-			if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
-				logging.GetLogger().Fatalf("Can't initialize config: %v", err)
-			}
 		}
 
 		os.Setenv("SKYDIVE_ANALYZERS", config.GetConfig().GetString("analyzer.listen"))

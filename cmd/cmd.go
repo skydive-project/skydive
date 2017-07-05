@@ -24,9 +24,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -38,8 +38,11 @@ var (
 func LoadConfiguration() {
 	if len(cfgFiles) != 0 {
 		if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
+			panic(fmt.Sprintf("Failed to initialize config: %s", err.Error()))
+		}
+
+		if err := logging.InitLogging(); err != nil {
+			panic(fmt.Sprintf("Failed to initialize logging system: %s", err.Error()))
 		}
 	}
 }
