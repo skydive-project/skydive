@@ -37,6 +37,7 @@ import (
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -370,7 +371,13 @@ func init() {
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 100
 
 	if helper.Standalone {
-		helper.InitConfig(testConfig)
+		if err := helper.InitConfig(testConfig); err != nil {
+			panic(fmt.Sprintf("Failed to initialize config: %s", err.Error()))
+		}
+
+		if err := logging.InitLogging(); err != nil {
+			panic(fmt.Sprintf("Failed to initialize logging system: %s", err.Error()))
+		}
 
 		server := analyzer.NewServerFromConfig()
 		server.Start()

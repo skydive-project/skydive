@@ -85,12 +85,16 @@ func initLogger() (_ *logging.Logger, err error) {
 
 func GetLogger() (log *logging.Logger) {
 	if logger == nil {
-		var err error
-		if logger, err = initLogger(); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to initialize logging system: %s\n", err.Error())
-			os.Exit(1)
+		logger, err := logging.GetLogger("")
+		if err != nil {
+			panic(err)
 		}
+		return logger
 	}
-
 	return logger
+}
+
+func InitLogging() (err error) {
+	logger, err = initLogger()
+	return err
 }
