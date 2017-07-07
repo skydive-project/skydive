@@ -43,6 +43,27 @@ type Result struct {
 	Result interface{} `json:"result"`
 }
 
+type ClientInterface interface {
+	Request(method string, url string, body io.Reader) (*http.Response, error)
+	DeleteDocument(id string) error
+	GetDocument(id string) (Document, error)
+	CreateDocument(doc Document) (Document, error)
+	Upsert(doc Document, key string) (Document, error)
+	GetDocumentClass(name string) (*DocumentClass, error)
+	AlterProperty(className string, prop Property) error
+	CreateProperty(className string, prop Property) error
+	CreateClass(class ClassDefinition) error
+	CreateIndex(className string, index Index) error
+	CreateDocumentClass(class ClassDefinition) error
+	DeleteDocumentClass(name string) error
+	GetDatabase() (Document, error)
+	CreateDatabase() (Document, error)
+	Sql(query string, result interface{}) error
+	Search(query string) ([]Document, error)
+	Query(obj string, query *filters.SearchQuery, result interface{}) error
+	Connect() error
+}
+
 type Client struct {
 	url           string
 	authenticated bool

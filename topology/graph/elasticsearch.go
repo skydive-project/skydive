@@ -27,10 +27,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/lebauce/elastigo/lib"
+	"github.com/mattbaird/elastigo/lib"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
@@ -53,8 +55,8 @@ const graphElementMapping = `
 			}
 		},
 		{
-			"timestamp": {
-				"match": "Timestamp",
+			"archivedat": {
+				"match": "ArchivedAt",
 				"mapping": {
 					"type":"date",
 					"format": "epoch_millis"
@@ -95,7 +97,8 @@ const graphElementMapping = `
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
 
 type ElasticSearchBackend struct {
-	client *elasticsearch.ElasticSearchClient
+	client       elasticsearch.ElasticSearchClientInterface
+	prevRevision map[Identifier]int64
 }
 
 type TimedSearchQuery struct {
@@ -109,7 +112,9 @@ func (b *ElasticSearchBackend) mapElement(e *graphElement) map[string]interface{
 		"ID":        string(e.ID),
 		"Host":      e.host,
 		"CreatedAt": common.UnixMillis(e.createdAt),
-		"Metadata":  e.metadata,
+		"UpdatedAt": common.UnixMillis(e.updatedAt),
+		"Metadata":  e.metadata.Clone(),
+		"Revision":  e.revision,
 	}
 
 	if !e.deletedAt.IsZero() {
@@ -148,39 +153,36 @@ func (b *ElasticSearchBackend) getElement(kind string, i Identifier, element int
 	return fmt.Errorf("No object found %s", string(i))
 }
 
-func (b *ElasticSearchBackend) archiveElement(kind string, i interface{}, t time.Time) bool {
-	var obj map[string]interface{}
-	var id string
-	var timestamp time.Time
+func (b *ElasticSearchBackend) updateTimes(i interface{}) bool {
+	obj := make(map[string]interface{})
+	var id, kind string
 	switch i := i.(type) {
 	case *Node:
-		id = string(i.ID)
-		timestamp = i.updatedAt
-		obj = b.mapNode(i)
+		kind = "node"
+
+		revision, ok := b.prevRevision[i.ID]
+		if !ok {
+			logging.GetLogger().Errorf("Update from an unknow revision, node: %s", i.ID)
+			return false
+		}
+		id = string(i.ID) + "-" + strconv.FormatInt(revision, 10)
+
+		obj["ArchivedAt"] = common.UnixMillis(i.updatedAt)
 	case *Edge:
-		id = string(i.ID)
-		timestamp = i.updatedAt
-		obj = b.mapEdge(i)
+		kind = "edge"
+
+		revision, ok := b.prevRevision[i.ID]
+		if !ok {
+			logging.GetLogger().Errorf("Update from an unknow revision, edge: %s", i.ID)
+			return false
+		}
+		id = string(i.ID) + "-" + strconv.FormatInt(revision, 10)
+
+		obj["ArchivedAt"] = common.UnixMillis(i.updatedAt)
 	}
 
-	// Archive the element with a different ES id. As 'Timestamp' is not
-	// part of the 'Node' or 'Edge' structures, we need to add it here so that
-	// it is set in the archived version
-	obj["UpdatedAt"] = common.UnixMillis(t)
-	obj["Timestamp"] = common.UnixMillis(timestamp)
-	if err := b.client.BulkIndex(kind, string(GenID()), obj); err != nil {
-		logging.GetLogger().Errorf("Error while archiving %s %s: %s", kind, id, err.Error())
-		return false
-	}
-
-	return true
-}
-
-func (b *ElasticSearchBackend) deleteElement(kind string, id string, t time.Time) bool {
-	milliseconds := common.UnixMillis(t)
-	obj := map[string]interface{}{"DeletedAt": milliseconds, "UpdatedAt": milliseconds}
 	if err := b.client.BulkUpdateWithPartialDoc(kind, id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while marking %s as deleted %s: %s", kind, id, err.Error())
+		logging.GetLogger().Errorf("Error while archiving %s %s: %s", kind, id, err.Error())
 		return false
 	}
 
@@ -211,148 +213,124 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 
 func (b *ElasticSearchBackend) getTimeFilter(t *common.TimeSlice) *filters.Filter {
 	if t == nil {
-		now := common.UnixMillis(time.Now())
-		t = common.NewTimeSlice(now, now)
+		return filters.NewNullFilter("ArchivedAt")
 	}
 
 	return filters.NewAndFilter(
 		NewFilterForTimeSlice(t),
 		filters.NewAndFilter(
-			// Timestamp holds the creation time of the revision
-			filters.NewLteInt64Filter("Timestamp", t.Last),
+			filters.NewLteInt64Filter("UpdatedAt", t.Last),
 			filters.NewOrFilter(
-				// UpdatedAt holds the deletion time of the revision
-				filters.NewNullFilter("UpdatedAt"),
-				filters.NewGtInt64Filter("UpdatedAt", t.Start),
+				filters.NewNullFilter("ArchivedAt"),
+				filters.NewGtInt64Filter("ArchivedAt", t.Start),
 			),
 		),
 	)
 }
 
-func (b *ElasticSearchBackend) createNode(n *Node, t time.Time) bool {
+func (b *ElasticSearchBackend) createNode(n *Node) bool {
 	obj := b.mapNode(n)
-	obj["Timestamp"] = common.UnixMillis(t)
-	if err := b.client.BulkIndex("node", string(n.ID), obj); err != nil {
+
+	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
+
+	if err := b.client.BulkIndex("node", id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
+		return false
+	}
+	b.prevRevision[n.ID] = n.revision
+
+	return true
+}
+
+func (b *ElasticSearchBackend) NodeAdded(n *Node) bool {
+	return b.createNode(n)
+}
+
+func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
+	delete(b.prevRevision, n.ID)
+
+	ms := common.UnixMillis(n.deletedAt)
+	obj := map[string]interface{}{"DeletedAt": ms, "ArchivedAt": ms}
+
+	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
+
+	if err := b.client.BulkUpdateWithPartialDoc("node", id, obj); err != nil {
+		logging.GetLogger().Errorf("Error while marking node as deleted %s: %s", id, err.Error())
 		return false
 	}
 
 	return true
 }
 
-func (b *ElasticSearchBackend) AddNode(n *Node) bool {
-	return b.createNode(n, n.createdAt)
-}
-
-func (b *ElasticSearchBackend) DelNode(n *Node) bool {
-	return b.deleteElement("node", string(n.ID), n.deletedAt)
-}
-
 func (b *ElasticSearchBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
-	var node Node
-	if t == nil {
-		if b.getElement("node", i, &node) != nil {
-			return nil
-		}
-		return []*Node{&node}
-	}
 	return b.SearchNodes(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
 			Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
 			Sort:   true,
-			SortBy: "Timestamp",
+			SortBy: "Revision",
 		},
 		TimeFilter: b.getTimeFilter(t),
 	})
 }
 
-func (b *ElasticSearchBackend) createEdge(e *Edge, t time.Time) bool {
+func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
 	obj := b.mapEdge(e)
-	obj["Timestamp"] = common.UnixMillis(t)
-	if err := b.client.BulkIndex("edge", string(e.ID), obj); err != nil {
+
+	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
+
+	if err := b.client.BulkIndex("edge", id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
+		return false
+	}
+	b.prevRevision[e.ID] = e.revision
+
+	return true
+}
+
+func (b *ElasticSearchBackend) EdgeAdded(e *Edge) bool {
+	return b.createEdge(e)
+}
+
+func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
+	delete(b.prevRevision, e.ID)
+
+	ms := common.UnixMillis(e.deletedAt)
+	obj := map[string]interface{}{"DeletedAt": ms, "ArchivedAt": ms}
+
+	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
+
+	if err := b.client.BulkUpdateWithPartialDoc("edge", id, obj); err != nil {
+		logging.GetLogger().Errorf("Error while marking edge as deleted %s: %s", id, err.Error())
 		return false
 	}
 
 	return true
 }
 
-func (b *ElasticSearchBackend) AddEdge(e *Edge) bool {
-	return b.createEdge(e, e.createdAt)
-}
-
-func (b *ElasticSearchBackend) DelEdge(e *Edge) bool {
-	return b.deleteElement("edge", string(e.ID), e.deletedAt)
-}
-
 func (b *ElasticSearchBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
-	var edge Edge
-	if t == nil {
-		if b.getElement("edge", i, &edge) != nil {
-			return nil
-		}
-		return []*Edge{&edge}
-	}
 	return b.SearchEdges(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
 			Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
 			Sort:   true,
-			SortBy: "Timestamp",
+			SortBy: "Revision",
 		},
 		TimeFilter: b.getTimeFilter(t),
 	})
 }
 
-func (b *ElasticSearchBackend) updateMetadata(i interface{}, m Metadata, t time.Time) bool {
-	success := true
+func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
+	if !b.updateTimes(i) {
+		return false
+	}
 
+	success := true
 	switch i := i.(type) {
 	case *Node:
-		if !b.archiveElement("node", i, t) {
-			return false
-		}
-
-		var newNode = *i
-		newNode.metadata = m
-		if !b.createNode(&newNode, t) {
-			return false
-		}
-
+		success = b.createNode(i)
 	case *Edge:
-		if !b.archiveElement("edge", i, t) {
-			return false
-		}
-
-		var newEdge = *i
-		newEdge.metadata = m
-		success = b.createEdge(&newEdge, t)
+		success = b.createEdge(i)
 	}
 
-	return success
-}
-
-func (b *ElasticSearchBackend) AddMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
-	var m Metadata
-	switch e := i.(type) {
-	case *Node:
-		m = e.Metadata()
-	case *Edge:
-		m = e.Metadata()
-	}
-
-	m[k] = v
-	success := b.updateMetadata(i, m, t)
-	if !success {
-		logging.GetLogger().Errorf("Error while adding metadata")
-	}
-	return success
-}
-
-func (b *ElasticSearchBackend) SetMetadata(i interface{}, m Metadata, t time.Time) bool {
-	success := b.updateMetadata(i, m, t)
-	if !success {
-		logging.GetLogger().Errorf("Error while setting metadata")
-	}
 	return success
 }
 
@@ -452,7 +430,7 @@ func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge
 	}
 
 	return b.SearchEdges(&TimedSearchQuery{
-		SearchQuery:    filters.SearchQuery{Sort: true, SortBy: "Timestamp"},
+		SearchQuery:    filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"},
 		TimeFilter:     NewFilterForTimeSlice(t),
 		MetadataFilter: filter,
 	})
@@ -465,7 +443,7 @@ func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node
 	}
 
 	return b.SearchNodes(&TimedSearchQuery{
-		SearchQuery:    filters.SearchQuery{Sort: true, SortBy: "Timestamp"},
+		SearchQuery:    filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"},
 		TimeFilter:     b.getTimeFilter(t),
 		MetadataFilter: filter,
 	})
@@ -497,7 +475,7 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Meta
 		SearchQuery: filters.SearchQuery{
 			Filter: NewFilterForEdge(n.ID, n.ID),
 			Sort:   true,
-			SortBy: "Timestamp",
+			SortBy: "Revision",
 		},
 		TimeFilter:     b.getTimeFilter(t),
 		MetadataFilter: metadataFilter,
@@ -512,20 +490,25 @@ func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (
 	}, nil
 }
 
-func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchBackend, error) {
-	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
-	if err != nil {
-		return nil, err
-	}
-
+func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {
 	client.Start([]map[string][]byte{
 		{"node": []byte(graphElementMapping)},
 		{"edge": []byte(graphElementMapping)},
 	})
 
 	return &ElasticSearchBackend{
-		client: client,
+		client:       client,
+		prevRevision: make(map[Identifier]int64),
 	}, nil
+}
+
+func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchBackend, error) {
+	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+	if err != nil {
+		return nil, err
+	}
+
+	return newElasticSearchBackend(client)
 }
 
 func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {

@@ -27,7 +27,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/lebauce/elastigo/lib"
+	"github.com/mattbaird/elastigo/lib"
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"

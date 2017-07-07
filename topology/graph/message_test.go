@@ -30,16 +30,6 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 )
 
-/*
-type WSMessage struct {
-	Namespace string
-	Type      string
-	UUID      string `json:",omitempty"`
-	Obj       *json.RawMessage
-	Status    int
-}
-*/
-
 func TestNullNodesEdges(t *testing.T) {
 	nodesNull := []byte(`{"Nodes": null}`)
 
