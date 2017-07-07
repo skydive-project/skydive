@@ -124,7 +124,20 @@ ovs:
   # at least locally
   # % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
   # ovsdb: unix:///var/run/openvswitch/db.sock
-
+  oflow:
+    # Enable the parsing of openflow rules (disabled by default)
+    enable: false
+    # The probe can connect to remote bridge over TLS (ssl url). 
+    # The default value is empty for those options.
+    # Path to the private key file (TLS connection)
+    # key: /etc/ssl/private/agent.key
+    # Path to the certificate associated to the key (TLS connection)
+    # cert: /etc/ssl/certs/agent.crt
+    # Path to certificate authority validating bridge connections (TLS connection)
+    # ca: /etc/ssl/certs/ca.crt
+    address:
+      # Map translating bridge names into URL for remote connection
+      # - bridge: ssl:xxx.yyy.zzz.ttt:port
 docker:
   # url: unix:///var/run/docker.sock
 

@@ -1070,7 +1070,7 @@ TopologyGraphLayout.prototype = {
   },
 
   nodeTitle: function(d) {
-    return d.metadata.Name.substr(0, 12);
+    return d.metadata.Name ? d.metadata.Name.substr(0, 12) : "";
   },
 
   nodeSize: function(d) {
