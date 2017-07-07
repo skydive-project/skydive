@@ -197,6 +197,9 @@
           SHELL=dumb scripts/ci/run-selenium-tests.sh
     publishers:
       - chuck-norris
+      - archive:
+          artifacts: 'src/github.com/skydive-project/skydive/tests/postmortem.png'
+          allow-empty: 'true'
 
 - job:
     name: skydive-devstack-plugin
