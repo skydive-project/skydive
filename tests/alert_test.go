@@ -320,3 +320,87 @@ func TestAlertWithTimer(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+func TestMultipleTriggering(t *testing.T) {
+	var (
+		err error
+		ws  *websocket.Conn
+		al  *api.Alert
+	)
+
+	test := &Test{
+		mode:    OneShot,
+		retries: 1,
+		setupCmds: []helper.Cmd{
+			{"ip netns add alert-lo-down", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			ws, err = helper.WSConnect(config.GetConfig().GetString("analyzer.listen"), 5, nil)
+			if err != nil {
+				return err
+			}
+
+			al = api.NewAlert()
+			al.Expression = "G.V().Has('Name', 'alert-lo-down', 'Type', 'netns').Out('Name','lo').Values('State')"
+
+			if err = c.client.Create("alert", al); err != nil {
+				return fmt.Errorf("Failed to create alert: %s", err.Error())
+			}
+			t.Logf("alert created with UUID : %s", al.UUID)
+
+			return nil
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ip netns del alert-lo-down", true},
+		},
+
+		tearDownFunction: func(c *TestContext) error {
+			helper.WSClose(ws)
+			return c.client.Delete("alert", al.ID())
+		},
+
+		check: func(c *TestContext) error {
+			alertNumber := 0
+			cmd := []helper.Cmd{
+				{"ip netns exec alert-lo-down ip l set lo up", true},
+			}
+			downLo := []helper.Cmd{
+				{"ip netns exec alert-lo-down ip l set lo down", true},
+			}
+			for alertNumber < 2 {
+				_, m, err := ws.ReadMessage()
+				if err != nil {
+					return err
+				}
+
+				var msg shttp.WSMessage
+				if err = common.JsonDecode(bytes.NewReader(m), &msg); err != nil {
+					t.Fatalf("Failed to unmarshal message: %s", err.Error())
+				}
+
+				if msg.Namespace != "Alert" {
+					continue
+				}
+
+				var alertMsg alert.AlertMessage
+				if err := common.JsonDecode(bytes.NewReader([]byte(*msg.Obj)), &alertMsg); err != nil {
+					t.Fatalf("Failed to unmarshal alert : %s", err.Error())
+				}
+
+				t.Logf("ws msg received with namespace %s and alertMsg UUID %s", msg.Namespace, alertMsg.UUID)
+				if alertMsg.UUID != al.UUID {
+					continue
+				}
+				alertNumber++
+				helper.ExecCmds(t, cmd...)
+				cmd = downLo
+			}
+
+			return nil
+		},
+	}
+
+	RunTest(t, test)
+}
