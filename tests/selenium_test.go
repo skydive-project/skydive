@@ -329,20 +329,48 @@ func TestSelenium(t *testing.T) {
 		return nil
 	}
 
+	takeScreenshot := func(path string) error {
+		t.Logf("Taking screenshot %s", path)
+		content, err := webdriver.Screenshot()
+		if err != nil {
+			return err
+		}
+
+		f, err := os.Create(path)
+		if err != nil {
+			return err
+		}
+
+		if _, err = f.Write(content); err != nil {
+			return err
+		}
+
+		return f.Close()
+	}
+
 	// expand the topology to be sure to find nodes
 	expand, err := findElement(selenium.ByID, "expand-collapse")
 	if err != nil {
+		if err := takeScreenshot("postmortem.png"); err != nil {
+			t.Log(err)
+		}
 		t.Fatal(err)
 	}
 	expand.Click()
 
 	fit, err := findElement(selenium.ByID, "zoom-fit")
 	if err != nil {
+		if err := takeScreenshot("postmortem.png"); err != nil {
+			t.Log(err)
+		}
 		t.Fatal(err)
 	}
 	fit.Click()
 
 	if err = expandGroup("G.V().Has('Name', 'vm1', 'Type', 'netns')"); err != nil {
+		if err := takeScreenshot("postmortem.png"); err != nil {
+			t.Log(err)
+		}
 		t.Fatal(err)
 	}
 
@@ -350,6 +378,9 @@ func TestSelenium(t *testing.T) {
 	fit.Click()
 
 	if err = expandGroup("G.V().Has('Name', 'vm2', 'Type', 'netns')"); err != nil {
+		if err := takeScreenshot("postmortem.png"); err != nil {
+			t.Log(err)
+		}
 		t.Fatal(err)
 	}
 
@@ -357,14 +388,23 @@ func TestSelenium(t *testing.T) {
 	fit.Click()
 
 	if err := startCapture(); err != nil {
+		if err := takeScreenshot("postmortem.png"); err != nil {
+			t.Log(err)
+		}
 		t.Fatal(err)
 	}
 
 	if err := injectPacket(); err != nil {
+		if err := takeScreenshot("postmortem.png"); err != nil {
+			t.Log(err)
+		}
 		t.Fatal(err)
 	}
 
 	if err := verifyFlows(); err != nil {
+		if err := takeScreenshot("postmortem.png"); err != nil {
+			t.Log(err)
+		}
 		t.Fatal(err)
 	}
 }
