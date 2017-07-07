@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -54,7 +55,7 @@ const (
 
 type GremlinAlert struct {
 	*api.Alert
-	triggered         bool
+	lastEval          interface{}
 	kind              int
 	data              string
 	traversalSequence *traversal.GremlinTraversalSequence
@@ -270,18 +271,24 @@ func (a *AlertServer) evaluateAlert(al *GremlinAlert) error {
 		return nil
 	}
 
-	if al.triggered {
-		return nil
-	}
-
 	data, err := al.Evaluate()
 	if err != nil {
 		return err
 	}
 
 	if data != nil {
-		al.triggered = true
-		return a.TriggerAlert(al, data)
+		// Gremlin query/Javascript expression returned datas.
+		// Alert must but sent if those datas differ from the one that trigger
+		// the previous alert.
+		equal := reflect.DeepEqual(reflect.ValueOf(data).Interface(), al.lastEval)
+		if !equal {
+			al.lastEval = data
+			return a.TriggerAlert(al, data)
+		}
+	} else {
+		// Gremlin query returned no datas, or Javascript expression was unsuccessful
+		// Reset the lastEval to be able to trigger the alert next time
+		al.lastEval = nil
 	}
 
 	return nil
