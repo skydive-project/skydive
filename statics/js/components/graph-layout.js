@@ -739,7 +739,10 @@ TopologyGraphLayout.prototype = {
     }
     group.collapsed = true;
 
-    this.g.select("#node-" + group.owner.id).select('image.collapsexpand').attr('xlink:href', this.collapseImg);
+    this.g.select("#node-" + group.owner.id)
+      .attr('collapsed', group.collapsed)
+      .select('image.collapsexpand')
+      .attr('xlink:href', this.collapseImg);
   },
 
   uncollapseNode: function(n, group) {
@@ -788,7 +791,10 @@ TopologyGraphLayout.prototype = {
       this.collapseGroup(children[i]);
     }
 
-    this.g.select("#node-" + group.owner.id).select('image.collapsexpand').attr('xlink:href', this.collapseImg);
+    this.g.select("#node-" + group.owner.id)
+      .attr('collapsed', group.collapsed)
+      .select('image.collapsexpand')
+      .attr('xlink:href', this.collapseImg);
   },
 
   collapseByNode: function(d) {

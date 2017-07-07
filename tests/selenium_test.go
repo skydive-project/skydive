@@ -25,6 +25,7 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -121,6 +122,10 @@ func TestSelenium(t *testing.T) {
 			if err = el.Click(); err != nil {
 				zoomOut()
 				return err
+			}
+
+			if collapsed, err := el.GetAttribute("collapsed"); err != nil || collapsed != "false" {
+				return errors.New("group still collapsed")
 			}
 
 			return nil
