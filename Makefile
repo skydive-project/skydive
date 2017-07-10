@@ -121,7 +121,8 @@ gometalinter: ineffassign interfacer golint goimports varcheck structcheck align
 
 lint: gometalinter
 	@echo "+ $@"
-	@gometalinter --disable=gotype --skip=vendor/... --skip=statics/... --deadline 5m --sort=path ./...  2>&1 | grep -v -e 'error return value not checked' -e 'should have comment or be unexported' -e 'declaration of err shadows declaration'
+	@gometalinter -j 2 --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json > lint.json || true
+	cat lint.json
 
 # dependency package need for building the project
 builddep:
