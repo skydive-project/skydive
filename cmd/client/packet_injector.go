@@ -38,6 +38,8 @@ var (
 	dstNode    string
 	srcIP      string
 	srcMAC     string
+	srcPort    int64
+	dstPort    int64
 	dstIP      string
 	dstMAC     string
 	packetType string
@@ -64,8 +66,10 @@ var PacketInjectorCmd = &cobra.Command{
 			Dst:      dstNode,
 			SrcIP:    srcIP,
 			SrcMAC:   srcMAC,
+			SrcPort:  srcPort,
 			DstIP:    dstIP,
 			DstMAC:   dstMAC,
+			DstPort:  dstPort,
 			Type:     packetType,
 			Payload:  payload,
 			ID:       id,
@@ -95,7 +99,9 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&dstIP, "dstIP", "", "", "destination node IP")
 	cmd.Flags().StringVarP(&srcMAC, "srcMAC", "", "", "source node MAC")
 	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
-	cmd.Flags().StringVarP(&packetType, "type", "", "icmp", "packet type: icmp4")
+	cmd.Flags().Int64VarP(&srcPort, "srcPort", "", 0, "source port for TCP packet")
+	cmd.Flags().Int64VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
+	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4 and tcp6")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
 	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
 	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
