@@ -165,11 +165,12 @@ logging:
     - stderr
   # - file
   # - syslog
+  # - json
   # configuration of the 'file' backend
   # file:
   #   path: /var/log/skydive.log
-  # format of the logging messages
-  # format: "%{color}%{time} %{id} %{shortfile} %{shortpkg} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}"
+  # configuration encoder could be for all backends or for specific one
+  # encoder: json
 
 auth:
   # specify the type of authentication mechanism: noauth, basic, keystone (default: noauth)
