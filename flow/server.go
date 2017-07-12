@@ -29,16 +29,19 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// Namespace "Flow"
 const (
 	Namespace = "Flow"
 )
 
+// TableServer describes a mechanism to Query a flow table via Websocket
 type TableServer struct {
 	shttp.DefaultWSClientEventHandler
 	WSAsyncClientPool *shttp.WSAsyncClientPool
 	TableAllocator    *TableAllocator
 }
 
+// OnTableQuery event
 func (s *TableServer) OnTableQuery(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	var query TableQuery
 	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
@@ -51,6 +54,7 @@ func (s *TableServer) OnTableQuery(c *shttp.WSAsyncClient, msg shttp.WSMessage) 
 	c.SendWSMessage(reply)
 }
 
+// OnMessage TableQuery
 func (s *TableServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	switch msg.Type {
 	case "TableQuery":
@@ -58,6 +62,7 @@ func (s *TableServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	}
 }
 
+// NewServer creates a new flow table query server based on websocket
 func NewServer(allocator *TableAllocator, wspool *shttp.WSAsyncClientPool) *TableServer {
 	s := &TableServer{
 		TableAllocator:    allocator,

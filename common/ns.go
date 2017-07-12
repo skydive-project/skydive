@@ -29,11 +29,13 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+// NetNSContext describes a NameSpace Context switch API
 type NetNSContext struct {
 	origns netns.NsHandle
 	newns  netns.NsHandle
 }
 
+// Quit the NameSpace and go back to the original one
 func (n *NetNSContext) Quit() error {
 	if n != nil {
 		if err := netns.Set(n.origns); err != nil {
@@ -45,6 +47,7 @@ func (n *NetNSContext) Quit() error {
 	return nil
 }
 
+// Close the NameSpace
 func (n *NetNSContext) Close() {
 	if n != nil && n.origns.IsOpen() {
 		n.Quit()
@@ -53,6 +56,7 @@ func (n *NetNSContext) Close() {
 	runtime.UnlockOSThread()
 }
 
+// NewNetNsContext creates a new NameSpace context base on path
 func NewNetNsContext(path string) (*NetNSContext, error) {
 	runtime.LockOSThread()
 

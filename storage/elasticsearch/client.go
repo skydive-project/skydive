@@ -42,6 +42,7 @@ import (
 
 const indexVersion = 6
 
+// ElasticSearchClientInterface describes the mechanism API of ElasticSearch database client
 type ElasticSearchClientInterface interface {
 	FormatFilter(filter *filters.Filter, mapKey string) map[string]interface{}
 	Index(obj string, id string, data interface{}) error
@@ -59,6 +60,7 @@ type ElasticSearchClientInterface interface {
 	Start(mappings []map[string][]byte)
 }
 
+// ElasticSearchClient describes a ElasticSearch client connection
 type ElasticSearchClient struct {
 	connection *elastigo.Conn
 	indexer    *elastigo.BulkIndexer
@@ -67,6 +69,7 @@ type ElasticSearchClient struct {
 	wg         sync.WaitGroup
 }
 
+// ErrBadConfig error bad configuration file
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
 
 func (c *ElasticSearchClient) request(method string, path string, query string, body string) (int, []byte, error) {
@@ -143,6 +146,7 @@ func (c *ElasticSearchClient) start(mappings []map[string][]byte) error {
 	return nil
 }
 
+// FormatFilter creates a ElasticSearch request based on filters
 func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string) map[string]interface{} {
 	prefix := mapKey
 	if prefix != "" {
@@ -271,54 +275,66 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 	return nil
 }
 
+// Index returns the skydive index
 func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) error {
 	_, err := c.connection.Index("skydive", obj, id, nil, data)
 	return err
 }
 
+// BulkIndex returns the bulk index from the indexer
 func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{}) error {
 	return c.indexer.Index("skydive", obj, id, "", "", nil, data)
 }
 
+// IndexChild index a child object
 func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, data interface{}) error {
 	_, err := c.connection.IndexWithParameters("skydive", obj, id, parent, 0, "", "", "", 0, "", "", false, nil, data)
 	return err
 }
 
+// BulkIndexChild index a while object with the indexer
 func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) error {
 	return c.indexer.Index("skydive", obj, id, parent, "", nil, data)
 }
 
+// Update an object
 func (c *ElasticSearchClient) Update(obj string, id string, data interface{}) error {
 	_, err := c.connection.Update("skydive", obj, id, nil, data)
 	return err
 }
 
+// BulkUpdate and object with the indexer
 func (c *ElasticSearchClient) BulkUpdate(obj string, id string, data interface{}) error {
 	return c.indexer.Update("skydive", obj, id, "", "", nil, data)
 }
 
+// UpdateWithPartialDoc an object with partial data
 func (c *ElasticSearchClient) UpdateWithPartialDoc(obj string, id string, data interface{}) error {
 	_, err := c.connection.UpdateWithPartialDoc("skydive", obj, id, nil, data, false)
 	return err
 }
 
+// BulkUpdateWithPartialDoc  an object with partial data using the indexer
 func (c *ElasticSearchClient) BulkUpdateWithPartialDoc(obj string, id string, data interface{}) error {
 	return c.indexer.UpdateWithPartialDoc("skydive", obj, id, "", "", nil, data, false)
 }
 
+// Get an object
 func (c *ElasticSearchClient) Get(obj string, id string) (elastigo.BaseResponse, error) {
 	return c.connection.Get("skydive", obj, id, nil)
 }
 
+// Delete an object
 func (c *ElasticSearchClient) Delete(obj string, id string) (elastigo.BaseResponse, error) {
 	return c.connection.Delete("skydive", obj, id, nil)
 }
 
+// BulkDelete an object with the indexer
 func (c *ElasticSearchClient) BulkDelete(obj string, id string) {
 	c.indexer.Delete("skydive", obj, id)
 }
 
+// Search an object
 func (c *ElasticSearchClient) Search(obj string, query string) (elastigo.SearchResult, error) {
 	return c.connection.Search("skydive", obj, nil, query)
 }
@@ -336,6 +352,7 @@ func (c *ElasticSearchClient) errorReader() {
 	}
 }
 
+// Start the Elasticsearch client background jobs
 func (c *ElasticSearchClient) Start(mappings []map[string][]byte) {
 	c.wg.Add(1)
 	go c.errorReader()
@@ -351,6 +368,7 @@ func (c *ElasticSearchClient) Start(mappings []map[string][]byte) {
 	}
 }
 
+// Stop Elasticsearch background client
 func (c *ElasticSearchClient) Stop() {
 	if c.started.Load() == true {
 		c.quit <- true
@@ -361,10 +379,12 @@ func (c *ElasticSearchClient) Stop() {
 	}
 }
 
+// Started is the client already started ?
 func (c *ElasticSearchClient) Started() bool {
 	return c.started.Load() == true
 }
 
+// NewElasticSearchClient creates a new ElasticSearch client
 func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchClient, error) {
 	c := elastigo.NewConn()
 
@@ -390,6 +410,7 @@ func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds
 	return client, nil
 }
 
+// NewElasticSearchClientFromConfig creates a new ElasticSearch client based on configuration
 func NewElasticSearchClientFromConfig() (*ElasticSearchClient, error) {
 	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch.host"), ":")
 	if len(elasticonfig) != 2 {

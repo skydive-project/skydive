@@ -52,7 +52,7 @@ func checkMessage(t *testing.T, b []byte, al *api.Alert, nsName string) (bool, e
 	defer alertLock.Unlock()
 
 	var alertMsg alert.AlertMessage
-	if err := common.JsonDecode(bytes.NewReader(b), &alertMsg); err == nil {
+	if err := common.JSONDecode(bytes.NewReader(b), &alertMsg); err == nil {
 		if alertMsg.UUID == al.UUID {
 			var nodes []*graph.Node
 			switch arr := alertMsg.ReasonData.(type) {
@@ -294,7 +294,7 @@ func TestAlertWithTimer(t *testing.T) {
 				}
 
 				var msg shttp.WSMessage
-				if err = common.JsonDecode(bytes.NewReader(m), &msg); err != nil {
+				if err = common.JSONDecode(bytes.NewReader(m), &msg); err != nil {
 					t.Fatalf("Failed to unmarshal message: %s", err.Error())
 				}
 
@@ -376,7 +376,7 @@ func TestMultipleTriggering(t *testing.T) {
 				}
 
 				var msg shttp.WSMessage
-				if err = common.JsonDecode(bytes.NewReader(m), &msg); err != nil {
+				if err = common.JSONDecode(bytes.NewReader(m), &msg); err != nil {
 					t.Fatalf("Failed to unmarshal message: %s", err.Error())
 				}
 
@@ -385,7 +385,7 @@ func TestMultipleTriggering(t *testing.T) {
 				}
 
 				var alertMsg alert.AlertMessage
-				if err := common.JsonDecode(bytes.NewReader([]byte(*msg.Obj)), &alertMsg); err != nil {
+				if err := common.JSONDecode(bytes.NewReader([]byte(*msg.Obj)), &alertMsg); err != nil {
 					t.Fatalf("Failed to unmarshal alert : %s", err.Error())
 				}
 

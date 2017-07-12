@@ -12,15 +12,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-type ConfigAPI struct {
+type configAPI struct {
 	cfg *viper.Viper
 }
 
-func (c *ConfigAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (c *configAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
 	vars := mux.Vars(&r.Request)
-	// lookup into ConfigAPI
+	// lookup into configAPI
 	Value := c.cfg.GetString(vars["key"])
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(Value); err != nil {
@@ -28,7 +28,7 @@ func (c *ConfigAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 	}
 }
 
-func (c *ConfigAPI) registerEndpoints(r *shttp.Server) {
+func (c *configAPI) registerEndpoints(r *shttp.Server) {
 	routes := []shttp.Route{
 		{
 			Name:        "ConfigGet",
@@ -41,8 +41,9 @@ func (c *ConfigAPI) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
+// RegisterConfigAPI registers a configuration endpoint (read only) in API server
 func RegisterConfigAPI(r *shttp.Server) {
-	c := &ConfigAPI{
+	c := &configAPI{
 		cfg: config.GetConfig(),
 	}
 

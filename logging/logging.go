@@ -83,6 +83,7 @@ func initLogger() (_ *logging.Logger, err error) {
 	return logger, nil
 }
 
+// GetLogger returns the current logger instance
 func GetLogger() (log *logging.Logger) {
 	if logger == nil {
 		logger, err := logging.GetLogger("")
@@ -94,6 +95,7 @@ func GetLogger() (log *logging.Logger) {
 	return logger
 }
 
+// InitLogging initialize the logger
 func InitLogging() (err error) {
 	logger, err = initLogger()
 	return err

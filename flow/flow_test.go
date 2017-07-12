@@ -205,7 +205,7 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
 			}
 
-			fp := FlowPacketsFromGoPacket(&p, 0, -1, bpf)
+			fp := PacketsFromGoPacket(&p, 0, -1, bpf)
 			if fp == nil {
 				t.Fatal("Failed to get FlowPackets: ", err)
 			}
@@ -272,7 +272,7 @@ func validateAllParentChains(t *testing.T, table *Table) {
 }
 
 func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF) []*Flow {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline())
+	table := NewTable(nil, nil, NewEnhancerPipeline())
 
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 

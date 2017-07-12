@@ -29,46 +29,50 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-// Create a layer type, should be unique and high, so it doesn't conflict,
+// LayerTypeInGRE creates a layer type, should be unique and high, so it doesn't conflict,
 // giving it a name and a decoder to use.
 var LayerTypeInGRE = gopacket.RegisterLayerType(55555, gopacket.LayerTypeMetadata{Name: "LayerTypeInGRE", Decoder: gopacket.DecodeFunc(decodeInGRELayer)})
 
 // Try to find if the next layer is IPv4, or IPv6. If it fails, it considers it is Ethernet.
-var LayerTypeInMplsEthOrIp = gopacket.RegisterLayerType(55556, gopacket.LayerTypeMetadata{Name: "LayerTypeInMplsEthOrIp", Decoder: gopacket.DecodeFunc(decodeInMplsEthOrIpLayer)})
+var layerTypeInMplsEthOrIP = gopacket.RegisterLayerType(55556, gopacket.LayerTypeMetadata{Name: "LayerTypeInMplsEthOrIp", Decoder: gopacket.DecodeFunc(decodeInMplsEthOrIPLayer)})
 
-var LayerTypeICMPv4 = gopacket.OverrideLayerType(19, gopacket.LayerTypeMetadata{Name: "ICMPv4", Decoder: gopacket.DecodeFunc(decodeICMPv4)})
-var LayerTypeICMPv6 = gopacket.OverrideLayerType(57, gopacket.LayerTypeMetadata{Name: "ICMPv6", Decoder: gopacket.DecodeFunc(decodeICMPv6)})
+var layerTypeICMPv4 = gopacket.OverrideLayerType(19, gopacket.LayerTypeMetadata{Name: "ICMPv4", Decoder: gopacket.DecodeFunc(decodeICMPv4)})
+var layerTypeICMPv6 = gopacket.OverrideLayerType(57, gopacket.LayerTypeMetadata{Name: "ICMPv6", Decoder: gopacket.DecodeFunc(decodeICMPv6)})
 
-type InGRELayer struct {
+type inGRELayer struct {
 	StrangeHeader []byte
 	payload       []byte
 }
 
-func (m InGRELayer) LayerType() gopacket.LayerType {
+func (m inGRELayer) LayerType() gopacket.LayerType {
 	return LayerTypeInGRE
 }
 
-func (m InGRELayer) LayerContents() []byte {
+func (m inGRELayer) LayerContents() []byte {
 	return m.StrangeHeader
 }
 
-func (m InGRELayer) LayerPayload() []byte {
+func (m inGRELayer) LayerPayload() []byte {
 	return m.payload
 }
 
+// ICMPv4 aims to store ICMP metadata and aims to be used for the flow hash key
 type ICMPv4 struct {
 	layers.ICMPv4
 	Type ICMPType
 }
 
+// Payload returns the ICMP payload
 func (i *ICMPv4) Payload() []byte { return i.LayerPayload() }
 
+// ICMPv6 aims to store ICMP metadata and aims to be used for the flow hash key
 type ICMPv6 struct {
 	layers.ICMPv6
 	Type ICMPType
 	Id   uint16
 }
 
+// Payload returns the ICMP payload
 func (i *ICMPv6) Payload() []byte { return i.LayerPayload() }
 
 // Try to decode data as IP4 or IP6. If data starts by 4 or 6,
@@ -106,27 +110,25 @@ func ipDecoderFromRawData(data []byte, p gopacket.PacketBuilder) (ipPrefix bool,
 func decodeInGRELayer(data []byte, p gopacket.PacketBuilder) error {
 	if ipPrefix, err := ipDecoderFromRawData(data, p); ipPrefix {
 		return err
-	} else {
-		packet := gopacket.NewPacket(data, layers.LayerTypeARP, gopacket.Lazy)
-		layer := packet.Layer(layers.LayerTypeARP)
-		p.AddLayer(layer)
-		return nil
 	}
+	packet := gopacket.NewPacket(data, layers.LayerTypeARP, gopacket.Lazy)
+	layer := packet.Layer(layers.LayerTypeARP)
+	p.AddLayer(layer)
+	return nil
 }
 
-func decodeInMplsEthOrIpLayer(data []byte, p gopacket.PacketBuilder) error {
+func decodeInMplsEthOrIPLayer(data []byte, p gopacket.PacketBuilder) error {
 	if ipPrefix, err := ipDecoderFromRawData(data, p); ipPrefix && err == nil {
 		return nil
-	} else {
-		// If IPv4 or IPv6 fails, we fallback to Ethernet
-		eth := &layers.Ethernet{}
-		err := eth.DecodeFromBytes(data, p)
-		p.AddLayer(eth)
-		if err != nil {
-			return err
-		}
-		return p.NextDecoder(eth.NextLayerType())
 	}
+	// If IPv4 or IPv6 fails, we fallback to Ethernet
+	eth := &layers.Ethernet{}
+	err := eth.DecodeFromBytes(data, p)
+	p.AddLayer(eth)
+	if err != nil {
+		return err
+	}
+	return p.NextDecoder(eth.NextLayerType())
 }
 
 func decodeICMPv4(data []byte, p gopacket.PacketBuilder) error {
@@ -200,5 +202,5 @@ func init() {
 	// By default, gopacket tries to decode IPv4 or IPv6 in the
 	// MPLS next layer and fails otherwise. Instead, we also tries
 	// to decode it as Ethernet.
-	layers.MPLSPayloadDecoder = LayerTypeInMplsEthOrIp
+	layers.MPLSPayloadDecoder = layerTypeInMplsEthOrIP
 }

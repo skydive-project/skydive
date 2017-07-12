@@ -52,8 +52,10 @@ const (
 	edgeDeleted
 )
 
+// Identifier graph ID
 type Identifier string
 
+// GraphEventListener describes the graph events interface mechanism
 type GraphEventListener interface {
 	OnNodeUpdated(n *Node)
 	OnNodeAdded(n *Node)
@@ -69,8 +71,10 @@ type graphEvent struct {
 	listener GraphEventListener
 }
 
+// Metadata describes the graph node metadata type
 type Metadata map[string]interface{}
 
+// MetadataTransaction describes a metadata(s) transaction in the graph
 type MetadataTransaction struct {
 	graph        *Graph
 	graphElement interface{}
@@ -87,16 +91,19 @@ type graphElement struct {
 	revision  int64
 }
 
+// Node of the graph
 type Node struct {
 	graphElement
 }
 
+// Edge of the graph linked by a parent and a child
 type Edge struct {
 	graphElement
 	parent Identifier
 	child  Identifier
 }
 
+// GraphBackend interface mechanism used as storage
 type GraphBackend interface {
 	NodeAdded(n *Node) bool
 	NodeDeleted(n *Node) bool
@@ -116,10 +123,13 @@ type GraphBackend interface {
 	WithContext(graph *Graph, context GraphContext) (*Graph, error)
 }
 
+// GraphContext describes within time slice
 type GraphContext struct {
 	TimeSlice *common.TimeSlice
 }
 
+// Graph describes the graph object based on events and context mechanism
+// An associated backend is used as storage
 type Graph struct {
 	sync.RWMutex
 	backend              GraphBackend
@@ -131,8 +141,10 @@ type Graph struct {
 	currentEventListener GraphEventListener
 }
 
+// HostNodeTIDMap a map of host and node ID
 type HostNodeTIDMap map[string][]string
 
+// BuildHostNodeTIDMap creates a map filled with host and associated node.ID
 func BuildHostNodeTIDMap(nodes []*Node) HostNodeTIDMap {
 	hnmap := make(HostNodeTIDMap)
 	for _, node := range nodes {
@@ -143,29 +155,36 @@ func BuildHostNodeTIDMap(nodes []*Node) HostNodeTIDMap {
 	return hnmap
 }
 
-// default implementation of a graph listener, can be used when not implementing
+// DefaultGraphListener default implementation of a graph listener, can be used when not implementing
 // the whole set of callbacks
 type DefaultGraphListener struct {
 }
 
-func (d *DefaultGraphListener) OnNodeUpdated(n *Node) {
+// OnNodeUpdated event
+func (c *DefaultGraphListener) OnNodeUpdated(n *Node) {
 }
 
+// OnNodeAdded event
 func (c *DefaultGraphListener) OnNodeAdded(n *Node) {
 }
 
+// OnNodeDeleted event
 func (c *DefaultGraphListener) OnNodeDeleted(n *Node) {
 }
 
+// OnEdgeUpdated event
 func (c *DefaultGraphListener) OnEdgeUpdated(e *Edge) {
 }
 
+// OnEdgeAdded event
 func (c *DefaultGraphListener) OnEdgeAdded(e *Edge) {
 }
 
+// OnEdgeDeleted event
 func (c *DefaultGraphListener) OnEdgeDeleted(e *Edge) {
 }
 
+// GenID helper generate a node Identifier
 func GenID() Identifier {
 	u, _ := uuid.NewV4()
 
@@ -244,6 +263,7 @@ func (e *graphElement) GetFieldStringList(name string) ([]string, error) {
 	}
 }
 
+// Clone a metadata
 func (m Metadata) Clone() Metadata {
 	n := Metadata{}
 
@@ -386,6 +406,7 @@ func (n *Node) String() string {
 	return string(b)
 }
 
+// MarshalJSON serialize in JSON
 func (n *Node) MarshalJSON() ([]byte, error) {
 	deletedAt := int64(0)
 	if !n.deletedAt.IsZero() {
@@ -411,16 +432,19 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (n *Node) JsonRawMessage() *json.RawMessage {
+// JSONRawMessage creates JSON raw message
+func (n *Node) JSONRawMessage() *json.RawMessage {
 	r, _ := n.MarshalJSON()
 	raw := json.RawMessage(r)
 	return &raw
 }
 
+// Decode deserialize the node
 func (n *Node) Decode(i interface{}) error {
 	return n.graphElement.Decode(i)
 }
 
+// GetFieldString returns the associated Field name
 func (e *Edge) GetFieldString(name string) (string, error) {
 	switch name {
 	case "Parent":
@@ -440,6 +464,7 @@ func (e *Edge) String() string {
 	return string(b)
 }
 
+// MarshalJSON serialize in JSON
 func (e *Edge) MarshalJSON() ([]byte, error) {
 	deletedAt := int64(0)
 	if !e.deletedAt.IsZero() {
@@ -467,12 +492,14 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (e *Edge) JsonRawMessage() *json.RawMessage {
+// JSONRawMessage creates a JSON raw message
+func (e *Edge) JSONRawMessage() *json.RawMessage {
 	r, _ := e.MarshalJSON()
 	raw := json.RawMessage(r)
 	return &raw
 }
 
+// Decode deserialize the current edge
 func (e *Edge) Decode(i interface{}) error {
 	if err := e.graphElement.Decode(i); err != nil {
 		return err
@@ -502,14 +529,17 @@ func (e *Edge) Decode(i interface{}) error {
 	return nil
 }
 
+// GetParent returns parent
 func (e *Edge) GetParent() Identifier {
 	return e.parent
 }
 
+// GetChild returns child
 func (e *Edge) GetChild() Identifier {
 	return e.child
 }
 
+// NodeUpdated updates a node
 func (g *Graph) NodeUpdated(n *Node) bool {
 	if node := g.GetNode(n.ID); node != nil {
 		node.metadata = n.metadata
@@ -526,6 +556,7 @@ func (g *Graph) NodeUpdated(n *Node) bool {
 	return false
 }
 
+// EdgeUpdated updates an edge
 func (g *Graph) EdgeUpdated(e *Edge) bool {
 	if edge := g.GetEdge(e.ID); edge != nil {
 		edge.metadata = e.metadata
@@ -541,6 +572,7 @@ func (g *Graph) EdgeUpdated(e *Edge) bool {
 	return false
 }
 
+// SetMetadata associate metadata to an edge or node
 func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 	var e *graphElement
 	ge := graphEvent{element: i}
@@ -570,6 +602,7 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 	return true
 }
 
+// DelMetadata delete a metadata to an associated edge or node
 func (g *Graph) DelMetadata(i interface{}, k string) bool {
 	var e *graphElement
 
@@ -617,18 +650,22 @@ func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time)
 	return true
 }
 
+// AddMetadata add a metadata to an associated edge or node
 func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 	return g.addMetadata(i, k, v, time.Now().UTC())
 }
 
+// AddMetadata in the current transaction
 func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
 	common.SetField(t.Metadata, k, v)
 }
 
+// Commit the current transaction to the graph
 func (t *MetadataTransaction) Commit() {
 	t.graph.SetMetadata(t.graphElement, t.Metadata)
 }
 
+// StartMetadataTransaction start a new transaction
 func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	var e graphElement
 
@@ -701,10 +738,12 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 	return shortest
 }
 
+// LookupShortestPath returns the shortest path (list of node)
 func (g *Graph) LookupShortestPath(n *Node, m Metadata, em Metadata) []*Node {
 	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), em)
 }
 
+// LookupParents returns the associated parents edge of a node
 func (g *Graph) LookupParents(n *Node, f Metadata, em Metadata) (nodes []*Node) {
 	t := g.context.TimeSlice
 	for _, e := range g.backend.GetNodeEdges(n, t, em) {
@@ -719,6 +758,7 @@ func (g *Graph) LookupParents(n *Node, f Metadata, em Metadata) (nodes []*Node) 
 	return
 }
 
+// LookupFirstChild returns the child
 func (g *Graph) LookupFirstChild(n *Node, f Metadata) *Node {
 	nodes := g.LookupChildren(n, f, Metadata{})
 	if len(nodes) > 0 {
@@ -727,6 +767,7 @@ func (g *Graph) LookupFirstChild(n *Node, f Metadata) *Node {
 	return nil
 }
 
+// LookupChildren returns a list of children nodes
 func (g *Graph) LookupChildren(n *Node, f Metadata, em Metadata) (nodes []*Node) {
 	t := g.context.TimeSlice
 	for _, e := range g.backend.GetNodeEdges(n, t, em) {
@@ -741,6 +782,7 @@ func (g *Graph) LookupChildren(n *Node, f Metadata, em Metadata) (nodes []*Node)
 	return nodes
 }
 
+// AreLinked returns true if nodes n1, n2 are linked
 func (g *Graph) AreLinked(n1 *Node, n2 *Node, m Metadata) bool {
 	t := g.context.TimeSlice
 	for _, e := range g.backend.GetNodeEdges(n1, t, m) {
@@ -759,6 +801,7 @@ func (g *Graph) AreLinked(n1 *Node, n2 *Node, m Metadata) bool {
 	return false
 }
 
+// Link the nodes n1, n2 with a new edge
 func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata) *Edge {
 	if len(m) > 0 {
 		return g.NewEdge(GenID(), n1, n2, m)
@@ -766,6 +809,7 @@ func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata) *Edge {
 	return g.NewEdge(GenID(), n1, n2, nil)
 }
 
+// Unlink the nodes n1, n2 ; delete the associated edge
 func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 	for _, e := range g.backend.GetNodeEdges(n1, nil, Metadata{}) {
 		parents, children := g.backend.GetEdgeNodes(e, nil, Metadata{}, Metadata{})
@@ -780,6 +824,7 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 	}
 }
 
+// LookupFirstNode returns the fist node matching metadata
 func (g *Graph) LookupFirstNode(m Metadata) *Node {
 	nodes := g.GetNodes(m)
 	if len(nodes) > 0 {
@@ -789,6 +834,7 @@ func (g *Graph) LookupFirstNode(m Metadata) *Node {
 	return nil
 }
 
+// EdgeAdded add an edge
 func (g *Graph) EdgeAdded(e *Edge) bool {
 	if g.GetEdge(e.ID) == nil {
 		return g.AddEdge(e)
@@ -796,6 +842,7 @@ func (g *Graph) EdgeAdded(e *Edge) bool {
 	return false
 }
 
+// AddEdge in the graph
 func (g *Graph) AddEdge(e *Edge) bool {
 	if !g.backend.EdgeAdded(e) {
 		return false
@@ -805,6 +852,7 @@ func (g *Graph) AddEdge(e *Edge) bool {
 	return true
 }
 
+// GetEdge with Identifier i
 func (g *Graph) GetEdge(i Identifier) *Edge {
 	if edges := g.backend.GetEdge(i, g.context.TimeSlice); len(edges) != 0 {
 		return edges[0]
@@ -812,6 +860,7 @@ func (g *Graph) GetEdge(i Identifier) *Edge {
 	return nil
 }
 
+// NodeAdded in the graph
 func (g *Graph) NodeAdded(n *Node) bool {
 	if g.GetNode(n.ID) == nil {
 		return g.AddNode(n)
@@ -819,6 +868,7 @@ func (g *Graph) NodeAdded(n *Node) bool {
 	return false
 }
 
+// AddNode in the graph
 func (g *Graph) AddNode(n *Node) bool {
 	if !g.backend.NodeAdded(n) {
 		return false
@@ -828,6 +878,7 @@ func (g *Graph) AddNode(n *Node) bool {
 	return true
 }
 
+// GetNode from Identifier
 func (g *Graph) GetNode(i Identifier) *Node {
 	if nodes := g.backend.GetNode(i, g.context.TimeSlice); len(nodes) != 0 {
 		return nodes[0]
@@ -870,6 +921,7 @@ func (g *Graph) newNode(i Identifier, m Metadata, t time.Time, h ...string) *Nod
 	return n
 }
 
+// NewNode creates a new node in the graph with attached metadata
 func (g *Graph) NewNode(i Identifier, m Metadata, h ...string) *Node {
 	return g.newNode(i, m, time.Now().UTC(), h...)
 }
@@ -911,10 +963,12 @@ func (g *Graph) newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time,
 	return e
 }
 
+// NewEdge creates a new edge in the graph based on Identifier, parent, child nodes and metadata
 func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
 	return g.newEdge(i, p, c, m, time.Now().UTC())
 }
 
+// EdgeDeleted event
 func (g *Graph) EdgeDeleted(e *Edge) {
 	if g.backend.EdgeDeleted(e) {
 		g.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
@@ -928,10 +982,12 @@ func (g *Graph) delEdge(e *Edge, t time.Time) {
 	}
 }
 
+// DelEdge delete an edge
 func (g *Graph) DelEdge(e *Edge) {
 	g.delEdge(e, time.Now().UTC())
 }
 
+// NodeDeleted event
 func (g *Graph) NodeDeleted(n *Node) {
 	if g.backend.NodeDeleted(n) {
 		g.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
@@ -949,10 +1005,12 @@ func (g *Graph) delNode(n *Node, t time.Time) {
 	}
 }
 
+// DelNode delete the node n in the graph
 func (g *Graph) DelNode(n *Node) {
 	g.delNode(n, time.Now().UTC())
 }
 
+// DelHostGraph delete the associated node with the hostname host
 func (g *Graph) DelHostGraph(host string) {
 	t := time.Now().UTC()
 	for _, node := range g.GetNodes(Metadata{}) {
@@ -962,18 +1020,22 @@ func (g *Graph) DelHostGraph(host string) {
 	}
 }
 
+// GetNodes returns a list of nodes
 func (g *Graph) GetNodes(m Metadata) []*Node {
 	return g.backend.GetNodes(g.context.TimeSlice, m)
 }
 
+// GetEdges returns a list of edges
 func (g *Graph) GetEdges(m Metadata) []*Edge {
 	return g.backend.GetEdges(g.context.TimeSlice, m)
 }
 
+// GetEdgeNodes returns a list of nodes of an edge
 func (g *Graph) GetEdgeNodes(e *Edge, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
 	return g.backend.GetEdgeNodes(e, g.context.TimeSlice, parentMetadata, childMetadata)
 }
 
+// GetNodeEdges returns a list of edges of a node
 func (g *Graph) GetNodeEdges(n *Node, m Metadata) []*Edge {
 	return g.backend.GetNodeEdges(n, g.context.TimeSlice, m)
 }
@@ -983,6 +1045,7 @@ func (g *Graph) String() string {
 	return string(j)
 }
 
+// MarshalJSON serialize the graph in JSON
 func (g *Graph) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Nodes []*Node
@@ -1037,6 +1100,7 @@ func (g *Graph) notifyEvent(ge graphEvent) {
 	g.eventConsumed = false
 }
 
+// AddEventListener subscibe a new graph listener
 func (g *Graph) AddEventListener(l GraphEventListener) {
 	g.Lock()
 	defer g.Unlock()
@@ -1044,6 +1108,7 @@ func (g *Graph) AddEventListener(l GraphEventListener) {
 	g.eventListeners = append(g.eventListeners, l)
 }
 
+// RemoveEventListener unsubscribe a graph listener
 func (g *Graph) RemoveEventListener(l GraphEventListener) {
 	g.Lock()
 	defer g.Unlock()
@@ -1056,18 +1121,22 @@ func (g *Graph) RemoveEventListener(l GraphEventListener) {
 	}
 }
 
+// WithContext select a graph within a context
 func (g *Graph) WithContext(c GraphContext) (*Graph, error) {
 	return g.backend.WithContext(g, c)
 }
 
+// GetContext returns the current context
 func (g *Graph) GetContext() GraphContext {
 	return g.context
 }
 
+// GetHost returns the graph host
 func (g *Graph) GetHost() string {
 	return g.host
 }
 
+// NewGraph creates a new graph based on the backend
 func NewGraph(host string, backend GraphBackend) *Graph {
 	return &Graph{
 		backend:   backend,
@@ -1077,16 +1146,20 @@ func NewGraph(host string, backend GraphBackend) *Graph {
 	}
 }
 
+// NewGraphFromConfig creates a new graph based on configuration
 func NewGraphFromConfig(backend GraphBackend) *Graph {
 	host := config.GetConfig().GetString("host_id")
 	return NewGraph(host, backend)
 }
 
+// NewGraphWithContext creates a new graph based on backedn within the context
 func NewGraphWithContext(hostID string, backend GraphBackend, context GraphContext) (*Graph, error) {
 	graph := NewGraph(hostID, backend)
 	return graph.WithContext(context)
 }
 
+// BackendFromConfig creates a new graph backend based on configuration
+// memory, orientdb, elasticsearch backend are supported
 func BackendFromConfig() (backend GraphBackend, err error) {
 	name := config.GetConfig().GetString("graph.backend")
 	if len(name) == 0 {

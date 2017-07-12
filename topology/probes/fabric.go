@@ -34,28 +34,20 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-const (
-	FabricNamespace = "Fabric"
-)
-
 type fabricLink struct {
 	parentMetadata graph.Metadata
 	childMetadata  graph.Metadata
 	linkMetadata   graph.Metadata
 }
 
+// FabricProbe describes a topology probe
 type FabricProbe struct {
 	graph.DefaultGraphListener
 	Graph *graph.Graph
 	links map[*graph.Node][]fabricLink
 }
 
-type FabricRegisterLinkWSMessage struct {
-	ParentNodeID   graph.Identifier
-	ParentMetadata graph.Metadata
-	ChildMetadata  graph.Metadata
-}
-
+// OnEdgeAdded event
 func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 	parents, children := fb.Graph.GetEdgeNodes(e, graph.Metadata{}, graph.Metadata{})
 	if len(parents) == 0 || len(children) == 0 {
@@ -72,12 +64,14 @@ func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
 	}
 }
 
+// OnNodeDeleted event
 func (fb *FabricProbe) OnNodeDeleted(n *graph.Node) {
 	if probe, _ := n.GetFieldString("Probe"); probe != "fabric" {
 		delete(fb.links, n)
 	}
 }
 
+// LinkNodes link the parent and child (layer 2) if there not linked already
 func (fb *FabricProbe) LinkNodes(parent *graph.Node, child *graph.Node, linkMetadata *graph.Metadata) {
 	if !topology.HaveLayer2Link(fb.Graph, child, parent, *linkMetadata) {
 		topology.AddLayer2Link(fb.Graph, parent, child, *linkMetadata)
@@ -146,12 +140,15 @@ func (fb *FabricProbe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node
 	return fb.Graph.NewNode(id, metadata, ""), nil
 }
 
+// Start the probe
 func (fb *FabricProbe) Start() {
 }
 
+// Stop the probe
 func (fb *FabricProbe) Stop() {
 }
 
+// NewFabricProbe creates a new probe to enhance the graph
 func NewFabricProbe(g *graph.Graph) *FabricProbe {
 	fb := &FabricProbe{
 		Graph: g,

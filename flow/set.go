@@ -27,6 +27,7 @@ import (
 	"github.com/skydive-project/skydive/filters"
 )
 
+// MergeContext describes a mechanism to merge flow sets
 type MergeContext struct {
 	Sort      bool
 	SortBy    string
@@ -35,6 +36,7 @@ type MergeContext struct {
 	DedupBy   string
 }
 
+// NewFlowSet creates a new empty FlowSet
 func NewFlowSet() *FlowSet {
 	return &FlowSet{
 		Flows: make([]*Flow, 0),
@@ -230,6 +232,7 @@ func (fs *FlowSet) mergeSortedFlows(left, right []*Flow, context MergeContext) (
 	return ret, nil
 }
 
+// Slice returns a slice of a FlowSet
 func (fs *FlowSet) Slice(from, to int) {
 	if from > len(fs.Flows) {
 		from = len(fs.Flows)
@@ -241,6 +244,7 @@ func (fs *FlowSet) Slice(from, to int) {
 	fs.Flows = fs.Flows[from:to]
 }
 
+// Dedup deduplicate a flows in a FlowSet
 func (fs *FlowSet) Dedup(field string) error {
 	var deduped []*Flow
 
@@ -265,11 +269,13 @@ func (fs *FlowSet) Dedup(field string) error {
 	return nil
 }
 
+// Sort flows in a FlowSet
 func (fs *FlowSet) Sort(order common.SortOrder, orberBy string) {
 	context := MergeContext{Sort: true, SortBy: orberBy, SortOrder: order}
 	fs.Flows = fs.sortFlows(fs.Flows, context)
 }
 
+// Filter flows in a FlowSet
 func (fs *FlowSet) Filter(filter *filters.Filter) *FlowSet {
 	flowset := NewFlowSet()
 	for _, f := range fs.Flows {

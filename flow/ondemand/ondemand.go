@@ -24,10 +24,12 @@ package ondemand
 
 import "github.com/skydive-project/skydive/api"
 
+// Namespace "OnDemand"
 const (
 	Namespace = "OnDemand"
 )
 
+// CaptureQuery describes a query for the capture API
 type CaptureQuery struct {
 	NodeID  string
 	Capture api.Capture

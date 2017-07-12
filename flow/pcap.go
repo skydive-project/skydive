@@ -34,24 +34,27 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-type PcapWriter struct {
+// PcapInject replay a pcap file
+type PcapInject struct {
 	sync.WaitGroup
 	state       int64
 	replay      bool
 	r           io.ReadCloser
 	handleRead  *pcapgo.Reader
-	packetsChan chan *FlowPackets
+	packetsChan chan *Packets
 	bpfFilter   string
 }
 
-func (p *PcapWriter) Start() {
+// Start a pcap injector
+func (p *PcapInject) Start() {
 	if atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
 		p.Add(1)
 		go p.FeedFlowTable()
 	}
 }
 
-func (p *PcapWriter) Stop() {
+// Stop a pcap injector
+func (p *PcapInject) Stop() {
 	if atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
 		atomic.StoreInt64(&p.state, common.StoppingState)
 		p.r.Close()
@@ -60,7 +63,8 @@ func (p *PcapWriter) Stop() {
 	}
 }
 
-func (p *PcapWriter) FeedFlowTable() {
+// FeedFlowTable mechanism, inject pcap in a flow table
+func (p *PcapInject) FeedFlowTable() {
 	var (
 		lastTS    time.Time
 		lastSend  time.Time
@@ -105,7 +109,7 @@ func (p *PcapWriter) FeedFlowTable() {
 			timestamp = common.UnixMillis(ci.Timestamp)
 		}
 
-		flowPackets := FlowPacketsFromGoPacket(&packet, 0, timestamp, bpf)
+		flowPackets := PacketsFromGoPacket(&packet, 0, timestamp, bpf)
 		if flowPackets == nil {
 			logging.GetLogger().Warningf("Failed to parse packet")
 		} else if len(flowPackets.Packets) > 0 {
@@ -117,13 +121,14 @@ func (p *PcapWriter) FeedFlowTable() {
 	}
 }
 
-func NewPcapWriter(r io.ReadCloser, packetsChan chan *FlowPackets, replay bool, bpfFilter string) (*PcapWriter, error) {
+// NewPcapInject reads a pcap from a file reader and inject it in a flow table
+func NewPcapInject(r io.ReadCloser, packetsChan chan *Packets, replay bool, bpfFilter string) (*PcapInject, error) {
 	handle, err := pcapgo.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PcapWriter{
+	return &PcapInject{
 		replay:      replay,
 		r:           r,
 		handleRead:  handle,

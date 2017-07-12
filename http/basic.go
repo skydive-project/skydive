@@ -46,7 +46,7 @@ func (b *BasicAuthenticationBackend) Authenticate(username string, password stri
 	request.Header.Set("Authorization", "Basic "+creds)
 
 	if username := b.CheckAuth(request); username == "" {
-		return "", WrongCredentials
+		return "", ErrWrongCredentials
 	}
 
 	return creds, nil

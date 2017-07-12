@@ -29,16 +29,20 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// TIDMapper describes the hostID nodes stored in a graph
+// the mapper will broadcast node event to the registered listeners
 type TIDMapper struct {
 	graph.DefaultGraphListener
 	Graph  *graph.Graph
 	hostID graph.Identifier
 }
 
+// Start the mapper
 func (t *TIDMapper) Start() {
 	t.Graph.AddEventListener(t)
 }
 
+// Stop the mapper
 func (t *TIDMapper) Stop() {
 	t.Graph.RemoveEventListener(t)
 }
@@ -109,10 +113,12 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 	}
 }
 
+// OnNodeUpdated event
 func (t *TIDMapper) OnNodeUpdated(n *graph.Node) {
 	t.onNodeEvent(n)
 }
 
+// OnNodeAdded evetn
 func (t *TIDMapper) OnNodeAdded(n *graph.Node) {
 	t.onNodeEvent(n)
 }
@@ -132,14 +138,17 @@ func (t *TIDMapper) onEdgeEvent(e *graph.Edge) {
 	t.setTID(parents[0], children[0])
 }
 
+// OnEdgeUpdated event
 func (t *TIDMapper) OnEdgeUpdated(e *graph.Edge) {
 	t.onEdgeEvent(e)
 }
 
+// OnEdgeAdded event
 func (t *TIDMapper) OnEdgeAdded(e *graph.Edge) {
 	t.onEdgeEvent(e)
 }
 
+// OnEdgeDeleted event
 func (t *TIDMapper) OnEdgeDeleted(e *graph.Edge) {
 	if rl, _ := e.GetFieldString("RelationType"); rl != OwnershipLink {
 		return
@@ -153,6 +162,7 @@ func (t *TIDMapper) OnEdgeDeleted(e *graph.Edge) {
 	t.Graph.DelMetadata(children[0], "TID")
 }
 
+// NewTIDMapper creates a new node mapper in the graph g
 func NewTIDMapper(g *graph.Graph) *TIDMapper {
 	return &TIDMapper{
 		Graph: g,

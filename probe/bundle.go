@@ -22,34 +22,40 @@
 
 package probe
 
+// Probe describes a Probe (topology or flow) mechanism API
 type Probe interface {
 	Start()
 	Stop()
 }
 
+// ProbeBundle describes a bundle of probes (topology of flow)
 type ProbeBundle struct {
 	Probes map[string]Probe
 }
 
+// Start a bundle of probes
 func (p *ProbeBundle) Start() {
 	for _, p := range p.Probes {
 		p.Start()
 	}
 }
 
+// Stop a bundle of probes
 func (p *ProbeBundle) Stop() {
 	for _, p := range p.Probes {
 		p.Stop()
 	}
 }
 
-func (p *ProbeBundle) GetProbe(k string) Probe {
-	if probe, ok := p.Probes[k]; ok {
+// GetProbe retrieve a specific probe name
+func (p *ProbeBundle) GetProbe(name string) Probe {
+	if probe, ok := p.Probes[name]; ok {
 		return probe
 	}
 	return nil
 }
 
+// NewProbeBundle creates a new probe bundle
 func NewProbeBundle(p map[string]Probe) *ProbeBundle {
 	return &ProbeBundle{
 		Probes: p,

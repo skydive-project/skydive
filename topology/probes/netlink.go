@@ -47,6 +47,7 @@ const (
 	maxEpollEvents = 32
 )
 
+// NetNsNetLinkProbe describes a topology probe based on netlink in a network namespace
 type NetNsNetLinkProbe struct {
 	sync.RWMutex
 	Graph                *graph.Graph
@@ -63,6 +64,7 @@ type NetNsNetLinkProbe struct {
 	quit                 chan bool
 }
 
+// NetLinkProbe describes a list NetLink NameSpace probe to enhance the graph
 type NetLinkProbe struct {
 	sync.RWMutex
 	Graph   *graph.Graph
@@ -819,6 +821,7 @@ func newNetNsNetLinkProbe(g *graph.Graph, root *graph.Node, nsPath string) (*Net
 	return probe, nil
 }
 
+// Register a new network netlink/namespace probe in the graph
 func (u *NetLinkProbe) Register(nsPath string, root *graph.Node) (*NetNsNetLinkProbe, error) {
 	probe, err := newNetNsNetLinkProbe(u.Graph, root, nsPath)
 	if err != nil {
@@ -839,6 +842,7 @@ func (u *NetLinkProbe) Register(nsPath string, root *graph.Node) (*NetNsNetLinkP
 	return probe, nil
 }
 
+// Unregister a probe from a network namespace
 func (u *NetLinkProbe) Unregister(nsPath string) error {
 	u.Lock()
 	defer u.Unlock()
@@ -886,10 +890,12 @@ func (u *NetLinkProbe) start() {
 	}
 }
 
+// Start the probe
 func (u *NetLinkProbe) Start() {
 	go u.start()
 }
 
+// Stop the probe
 func (u *NetLinkProbe) Stop() {
 	if atomic.CompareAndSwapInt64(&u.state, common.RunningState, common.StoppingState) {
 		u.wg.Wait()
@@ -907,6 +913,7 @@ func (u *NetLinkProbe) Stop() {
 	}
 }
 
+// NewNetLinkProbe creates a new netlink probe
 func NewNetLinkProbe(g *graph.Graph) (*NetLinkProbe, error) {
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {

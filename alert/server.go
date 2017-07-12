@@ -45,12 +45,13 @@ import (
 )
 
 const (
+	// Namespace Alert
 	Namespace = "Alert"
 )
 
 const (
-	WEBHOOK = 1 + iota
-	SCRIPT
+	actionWebHook = 1 + iota
+	actionScript
 )
 
 type GremlinAlert struct {
@@ -160,7 +161,7 @@ func (ga *GremlinAlert) Evaluate() (interface{}, error) {
 
 func (ga *GremlinAlert) Trigger(payload []byte) error {
 	switch ga.kind {
-	case WEBHOOK:
+	case actionWebHook:
 		client := &http.Client{}
 
 		req, err := http.NewRequest("POST", ga.data, bytes.NewReader(payload))
@@ -173,7 +174,7 @@ func (ga *GremlinAlert) Trigger(payload []byte) error {
 		if err != nil {
 			return fmt.Errorf("Error while posting alert to %s: %s", ga.data, err.Error())
 		}
-	case SCRIPT:
+	case actionScript:
 		logging.GetLogger().Debugf("Executing command '%s'", ga.data)
 
 		cmd := exec.Command(ga.data)
@@ -209,10 +210,10 @@ func NewGremlinAlert(alert *api.Alert, p *traversal.GremlinTraversalParser) (*Gr
 	}
 
 	if strings.HasPrefix(alert.Action, "http://") || strings.HasPrefix(alert.Action, "https://") {
-		ga.kind = WEBHOOK
+		ga.kind = actionWebHook
 		ga.data = alert.Action
 	} else if strings.HasPrefix(alert.Action, "file://") {
-		ga.kind = SCRIPT
+		ga.kind = actionScript
 		ga.data = alert.Action[7:]
 	}
 
@@ -223,7 +224,7 @@ type AlertServer struct {
 	sync.RWMutex
 	Graph         *graph.Graph
 	WSServer      *shttp.WSServer
-	AlertHandler  api.APIHandler
+	AlertHandler  api.Handler
 	watcher       api.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
 	alertTimers   map[string]chan bool
@@ -403,7 +404,7 @@ func (a *AlertServer) UnregisterAlert(id string) {
 	}
 }
 
-func (a *AlertServer) onAPIWatcherEvent(action string, id string, resource api.APIResource) {
+func (a *AlertServer) onAPIWatcherEvent(action string, id string, resource api.Resource) {
 	switch action {
 	case "init", "create", "set", "update":
 		if err := a.RegisterAlert(resource.(*api.Alert)); err != nil {
@@ -425,7 +426,7 @@ func (a *AlertServer) Stop() {
 	a.elector.Stop()
 }
 
-func NewAlertServer(ah api.APIHandler, wsServer *shttp.WSServer, parser *traversal.GremlinTraversalParser, etcdClient *etcd.EtcdClient) *AlertServer {
+func NewAlertServer(ah api.Handler, wsServer *shttp.WSServer, parser *traversal.GremlinTraversalParser, etcdClient *etcd.EtcdClient) *AlertServer {
 	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
 	as := &AlertServer{

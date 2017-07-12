@@ -237,7 +237,7 @@ func TestHA(t *testing.T) {
 	// switch back to the first analyzer
 	os.Setenv("SKYDIVE_ANALYZERS", "localhost:8082")
 
-	// test if the remaing analyzer have a correct graph
+	// test if the remaining analyzer have a correct graph
 	checkHostNodes(3)
 
 	// generate more icmp traffic

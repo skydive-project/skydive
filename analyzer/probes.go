@@ -28,6 +28,7 @@ import (
 	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
+// NewTopologyProbeBundleFromConfig creates a new topology server probes from configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error) {
 	probes := make(map[string]probe.Probe)
 	probes["fabric"] = tprobes.NewFabricProbe(g)

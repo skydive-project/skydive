@@ -38,6 +38,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// ShellCmd skydive shell root command
 var ShellCmd = &cobra.Command{
 	Use:          "shell",
 	Short:        "Shell Command Line Interface",
@@ -49,8 +50,10 @@ var ShellCmd = &cobra.Command{
 }
 
 var (
+	// ErrContinue parser error continue input
 	ErrContinue = errors.New("<continue input>")
-	ErrQuit     = errors.New("<quit session>")
+	// ErrQuit parser error quit session
+	ErrQuit = errors.New("<quit session>")
 )
 
 func actionGremlinQuery(s *Session, query string) error {
@@ -317,11 +320,13 @@ func homeDir() (home string, err error) {
 	return
 }
 
+// Session describes a shell session
 type Session struct {
 	authenticationOpts shttp.AuthenticationOpts
 	analyzerAddr       string
 }
 
+// NewSession creates a new shell session
 func NewSession() (*Session, error) {
 	s := &Session{
 		analyzerAddr: "localhost:8082",
@@ -335,6 +340,7 @@ func NewSession() (*Session, error) {
 	return s, nil
 }
 
+// Eval evaluation a input expression
 func (s *Session) Eval(in string) error {
 	logging.GetLogger().Debugf("eval >>> %q", in)
 	for _, command := range commands {

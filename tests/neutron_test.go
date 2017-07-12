@@ -143,7 +143,7 @@ func TestNeutron(t *testing.T) {
 
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 
-	// let neutron update the port
+	// let neutron updates the port
 	time.Sleep(5 * time.Second)
 
 	nodes, err := gh.GetNodes(`g.V().Has("Manager", "neutron", "ExtID.vm-uuid", "skydive-vm", "Name", "` + dev + `", "Neutron.PortID", "` + port.ID + `")`)

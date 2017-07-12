@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// NeutronFlowEnhancer describes a neutron graph enhancer
 type NeutronFlowEnhancer struct {
 	graph.DefaultGraphListener
 	Graph    *graph.Graph
@@ -73,6 +74,7 @@ func (nfe *NeutronFlowEnhancer) getNodeTID(mac string) string {
 	return tid
 }
 
+// Enhance A and B node TID based on neutron database
 func (nfe *NeutronFlowEnhancer) Enhance(f *flow.Flow) {
 	if f.Link == nil {
 		return
@@ -85,12 +87,14 @@ func (nfe *NeutronFlowEnhancer) Enhance(f *flow.Flow) {
 	}
 }
 
+// OnNodeDeleted event
 func (nfe *NeutronFlowEnhancer) OnNodeDeleted(n *graph.Node) {
 	if mac, err := n.GetFieldString("MAC"); err == nil {
 		nfe.tidCache.del(mac)
 	}
 }
 
+// OnEdgeDeleted event
 func (nfe *NeutronFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
 	if rt, _ := e.GetFieldString("RelationType"); rt == topology.OwnershipLink {
 		_, children := nfe.Graph.GetEdgeNodes(e, nil, nil)
@@ -103,6 +107,7 @@ func (nfe *NeutronFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
 	}
 }
 
+// NewNeutronFlowEnhancer creates a new flow enhancer that will enhance A and B flow nodes TIDs
 func NewNeutronFlowEnhancer(g *graph.Graph, cache *cache.Cache) *NeutronFlowEnhancer {
 	fe := &NeutronFlowEnhancer{
 		Graph: g,

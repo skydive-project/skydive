@@ -38,6 +38,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// TopologyForwarderPeer describes a topology forwarder peer
 type TopologyForwarderPeer struct {
 	shttp.DefaultWSClientEventHandler
 	Addr        string
@@ -48,6 +49,7 @@ type TopologyForwarderPeer struct {
 	host        string
 }
 
+// TopologyForwarder describes a topology forwarder
 type TopologyForwarder struct {
 	shttp.DefaultWSServerEventHandler
 	Graph       *graph.Graph
@@ -61,7 +63,7 @@ func (p *TopologyForwarderPeer) getHostID() string {
 	contentReader := bytes.NewReader([]byte{})
 
 	var data []byte
-	var info api.APIInfo
+	var info api.Info
 
 	for {
 		resp, err := client.Request("GET", "api", contentReader, nil)
@@ -123,6 +125,7 @@ func (p *TopologyForwarderPeer) disconnect() {
 	}
 }
 
+// OnMessage websocket event
 func (a *TopologyForwarder) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 	for _, peer := range a.peers {
 		// we forward message whether the service is not an analyzer or the HosID is not the same
@@ -144,6 +147,7 @@ func (a *TopologyForwarder) addPeer(addr string, port int, g *graph.Graph) {
 	a.peers = append(a.peers, peer)
 }
 
+// ConnectAll peers
 func (a *TopologyForwarder) ConnectAll() {
 	for _, peer := range a.peers {
 		a.wg.Add(1)
@@ -151,6 +155,7 @@ func (a *TopologyForwarder) ConnectAll() {
 	}
 }
 
+// DisconnectAll peers
 func (a *TopologyForwarder) DisconnectAll() {
 	for _, peer := range a.peers {
 		peer.disconnect()
@@ -158,6 +163,7 @@ func (a *TopologyForwarder) DisconnectAll() {
 	a.wg.Wait()
 }
 
+// NewTopologyForwarder creates a new topology forwarder based graph and webserver
 func NewTopologyForwarder(g *graph.Graph, server *shttp.WSServer, authOptions *shttp.AuthenticationOpts) *TopologyForwarder {
 	tf := &TopologyForwarder{
 		Graph:       g,
@@ -169,6 +175,7 @@ func NewTopologyForwarder(g *graph.Graph, server *shttp.WSServer, authOptions *s
 	return tf
 }
 
+// NewTopologyForwarderFromConfig creates a new topology forwarder based on configration
 func NewTopologyForwarderFromConfig(g *graph.Graph, server *shttp.WSServer) *TopologyForwarder {
 	authOptions := &shttp.AuthenticationOpts{
 		Username: config.GetConfig().GetString("auth.analyzer_username"),

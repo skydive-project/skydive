@@ -26,6 +26,7 @@ import (
 	"net"
 )
 
+// IsMulticastMac helper
 func IsMulticastMac(mac string) bool {
 	hw, err := net.ParseMAC(mac)
 	if err != nil {
@@ -34,10 +35,12 @@ func IsMulticastMac(mac string) bool {
 	return (hw[0] & 0x01) == 0x01
 }
 
+// IsBroadcastMac helper
 func IsBroadcastMac(mac string) bool {
 	return mac == "ff:ff:ff:ff:ff:ff"
 }
 
+// IsMulticastIP helper (IPv4 or IPv6)
 func IsMulticastIP(ip string) bool {
 	netip := net.ParseIP(ip)
 	if netip == nil {

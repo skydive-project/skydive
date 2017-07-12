@@ -93,7 +93,7 @@ func (f *fakeOrientDBClient) GetDatabase() (orientdb.Document, error) {
 func (f *fakeOrientDBClient) CreateDatabase() (orientdb.Document, error) {
 	return nil, nil
 }
-func (f *fakeOrientDBClient) Sql(query string, result interface{}) error {
+func (f *fakeOrientDBClient) SQL(query string, result interface{}) error {
 	return nil
 }
 func (f *fakeOrientDBClient) Search(query string) ([]orientdb.Document, error) {
@@ -123,7 +123,7 @@ func TestLocalHistory(t *testing.T) {
 	g, client := newOrientDBGraph(t)
 
 	client.searchResult = []orientdb.Document{
-		orientdb.Document{"value": json.Number("1")},
+		{"value": json.Number("1")},
 	}
 
 	node := g.newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
@@ -228,7 +228,7 @@ func TestLocalHistory(t *testing.T) {
 	}
 
 	client.searchResult = []orientdb.Document{
-		orientdb.Document{"ID": "bbb"},
+		{"ID": "bbb"},
 	}
 
 	g.delNode(node, time.Unix(4, 0))

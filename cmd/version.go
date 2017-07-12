@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// VersionCmd skydive version root command
 var VersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of Skydive",

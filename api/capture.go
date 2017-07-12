@@ -33,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// Capture describes a capture API
 type Capture struct {
 	UUID         string
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
@@ -45,14 +46,18 @@ type Capture struct {
 	Port         int    `json:"Port,omitempty"`
 }
 
+// CaptureResourceHandler describes a capture ressouce handler
 type CaptureResourceHandler struct {
+	ResourceHandler
 }
 
+// CaptureAPIHandler based on BasicAPIHandler
 type CaptureAPIHandler struct {
 	BasicAPIHandler
 	Graph *graph.Graph
 }
 
+// NewCapture creates a new capture
 func NewCapture(query string, bpfFilter string) *Capture {
 	id, _ := uuid.NewV4()
 
@@ -63,7 +68,13 @@ func NewCapture(query string, bpfFilter string) *Capture {
 	}
 }
 
-func (c *CaptureResourceHandler) New() APIResource {
+// Name returns "capture"
+func (c *CaptureResourceHandler) Name() string {
+	return "capture"
+}
+
+// New creates a new capture resource
+func (c *CaptureResourceHandler) New() Resource {
 	id, _ := uuid.NewV4()
 
 	return &Capture{
@@ -71,7 +82,8 @@ func (c *CaptureResourceHandler) New() APIResource {
 	}
 }
 
-func (c *CaptureAPIHandler) Decorate(resource APIResource) {
+// Decorate populate the capture resource
+func (c *CaptureAPIHandler) Decorate(resource Resource) {
 	capture := resource.(*Capture)
 
 	count := 0
@@ -107,20 +119,18 @@ func (c *CaptureAPIHandler) Decorate(resource APIResource) {
 	capture.PCAPSocket = pcapSocket
 }
 
-func (c *CaptureResourceHandler) Name() string {
-	return "capture"
-}
-
+// ID returns the capture Identifier
 func (c *Capture) ID() string {
 	return c.UUID
 }
 
+// SetID set a new identifier for this capture
 func (c *Capture) SetID(i string) {
 	c.UUID = i
 }
 
 // Create tests that resource GremlinQuery does not exists already
-func (c *CaptureAPIHandler) Create(r APIResource) error {
+func (c *CaptureAPIHandler) Create(r Resource) error {
 	capture := r.(*Capture)
 	resources := c.BasicAPIHandler.Index()
 	for _, resource := range resources {
@@ -132,7 +142,8 @@ func (c *CaptureAPIHandler) Create(r APIResource) error {
 	return c.BasicAPIHandler.Create(r)
 }
 
-func RegisterCaptureAPI(apiServer *APIServer, g *graph.Graph) (*CaptureAPIHandler, error) {
+// RegisterCaptureAPI registers an new resource, capture
+func RegisterCaptureAPI(apiServer *Server, g *graph.Graph) (*CaptureAPIHandler, error) {
 	captureAPIHandler := &CaptureAPIHandler{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},

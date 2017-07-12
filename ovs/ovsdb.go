@@ -34,11 +34,13 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// OvsClient describes an OVS database client connection
 type OvsClient struct {
 	ovsdb     *libovsdb.OvsdbClient
 	connected uint64
 }
 
+// OvsMonitorHandler describes an OVS Monitor interface mechanism
 type OvsMonitorHandler interface {
 	OnOvsBridgeAdd(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 	OnOvsBridgeDel(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
@@ -51,6 +53,7 @@ type OvsMonitorHandler interface {
 	OnOvsPortUpdate(monitor *OvsMonitor, uuid string, row *libovsdb.RowUpdate)
 }
 
+// OvsMonitor describes an OVS client Monitor
 type OvsMonitor struct {
 	sync.RWMutex
 	Protocol        string
@@ -65,31 +68,39 @@ type OvsMonitor struct {
 	done            chan struct{}
 }
 
+// ConnectionPollInterval poll OVS database every 4 seconds
 const ConnectionPollInterval time.Duration = 4 * time.Second
 
+// Notifier describes a notification based on the monitor
 type Notifier struct {
 	monitor *OvsMonitor
 }
 
+// Update OVS notifier tables event
 func (n Notifier) Update(context interface{}, tableUpdates libovsdb.TableUpdates) {
 	n.monitor.updateHandler(&tableUpdates)
 }
 
+// Locked OVS notifier event
 func (n Notifier) Locked([]interface{}) {
 }
 
+// Stolen OVS notifier event
 func (n Notifier) Stolen([]interface{}) {
 }
 
+// Echo OVS notifier event
 func (n Notifier) Echo([]interface{}) {
 }
 
+// Disconnected OVS notifier event
 func (n Notifier) Disconnected(c *libovsdb.OvsdbClient) {
 	/* trigger re-connection */
 	atomic.StoreUint64(&n.monitor.OvsClient.connected, 0)
 	logging.GetLogger().Warningf("Disconnected from OVSDB")
 }
 
+// Exec execute a transaction on the OVS database
 func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.OperationResult, error) {
 	if atomic.LoadUint64(&o.connected) == 0 {
 		return nil, errors.New("OVSDB client is not connected")
@@ -315,6 +326,7 @@ func (o *OvsMonitor) setMonitorRequests(table string, r *map[string]libovsdb.Mon
 	return nil
 }
 
+// AddMonitorHandler subscribe a new monitor events handler
 func (o *OvsMonitor) AddMonitorHandler(handler OvsMonitorHandler) {
 	o.Lock()
 	defer o.Unlock()
@@ -322,6 +334,7 @@ func (o *OvsMonitor) AddMonitorHandler(handler OvsMonitorHandler) {
 	o.MonitorHandlers = append(o.MonitorHandlers, handler)
 }
 
+// ExcludeColumn exclude some column to be monitored
 func (o *OvsMonitor) ExcludeColumn(column string) {
 	o.columnsExcluded[column] = true
 }
@@ -390,11 +403,13 @@ func (o *OvsMonitor) startMonitoring() error {
 	}
 }
 
+// StartMonitoring start the OVS database monitoring
 func (o *OvsMonitor) StartMonitoring() {
 	o.monitorOvsdb()
 	go o.startMonitoring()
 }
 
+// StopMonitoring stop the OVS database monitoring
 func (o *OvsMonitor) StopMonitoring() {
 	if o.OvsClient != nil {
 		o.done <- struct{}{}
@@ -404,6 +419,7 @@ func (o *OvsMonitor) StopMonitoring() {
 	}
 }
 
+// NewOvsMonitor creates a new monitoring probe agent on target
 func NewOvsMonitor(protcol string, target string) *OvsMonitor {
 	return &OvsMonitor{
 		Protocol:        protcol,

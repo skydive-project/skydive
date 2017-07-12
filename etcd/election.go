@@ -39,6 +39,7 @@ const (
 	timeout = time.Second * 30
 )
 
+// EtcdMasterElectionListener describes the multi ETCD election mechanism
 type EtcdMasterElectionListener interface {
 	OnStartAsMaster()
 	OnStartAsSlave()
@@ -46,6 +47,7 @@ type EtcdMasterElectionListener interface {
 	OnSwitchToSlave()
 }
 
+// EtcdMasterElector describes an ETCD master elector
 type EtcdMasterElector struct {
 	sync.RWMutex
 	EtcdKeyAPI etcd.KeysAPI
@@ -58,6 +60,7 @@ type EtcdMasterElector struct {
 	wg         sync.WaitGroup
 }
 
+// TTL time to live
 func (le *EtcdMasterElector) TTL() time.Duration {
 	return timeout
 }
@@ -88,6 +91,7 @@ func (le *EtcdMasterElector) holdLock(quit chan bool) {
 	}
 }
 
+// IsMaster returns true if the current instance is master
 func (le *EtcdMasterElector) IsMaster() bool {
 	le.RLock()
 	defer le.RUnlock()
@@ -184,6 +188,7 @@ func (le *EtcdMasterElector) start(first chan struct{}) {
 	le.EtcdKeyAPI.Delete(context.Background(), le.path, &etcd.DeleteOptions{PrevValue: le.Host})
 }
 
+// Start the master election mechanism
 func (le *EtcdMasterElector) Start() {
 	go le.start(nil)
 }
@@ -198,6 +203,7 @@ func (le *EtcdMasterElector) StartAndWait() {
 	<-first
 }
 
+// Stop the election mechanism
 func (le *EtcdMasterElector) Stop() {
 	if atomic.CompareAndSwapInt64(&le.state, common.RunningState, common.StoppingState) {
 		le.cancel()
@@ -205,10 +211,12 @@ func (le *EtcdMasterElector) Stop() {
 	}
 }
 
+// AddEventListener registers a new listener
 func (le *EtcdMasterElector) AddEventListener(listener EtcdMasterElectionListener) {
 	le.listeners = append(le.listeners, listener)
 }
 
+// NewEtcdMasterElector creates a new ETCD master elector
 func NewEtcdMasterElector(host string, serviceType common.ServiceType, key string, etcdClient *EtcdClient) *EtcdMasterElector {
 	return &EtcdMasterElector{
 		EtcdKeyAPI: etcdClient.KeysAPI,
@@ -218,6 +226,7 @@ func NewEtcdMasterElector(host string, serviceType common.ServiceType, key strin
 	}
 }
 
+// NewEtcdMasterElectorFromConfig creates a new ETCD master elector from configuration
 func NewEtcdMasterElectorFromConfig(serviceType common.ServiceType, key string, etcdClient *EtcdClient) *EtcdMasterElector {
 	host := config.GetConfig().GetString("host_id")
 	return NewEtcdMasterElector(host, serviceType, key, etcdClient)

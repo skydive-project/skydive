@@ -18,3 +18,11 @@ if [ -n "$(${GOPATH}/bin/govendor list +u)" ]; then
    ${GOPATH}/bin/govendor list +u
    exit 1
 fi
+
+make lint
+nbnotcomment=$(grep '"linter":"golint"' lint.json | grep 'should have comment or be unexported' | wc -l)
+if [ $nbnotcomment -gt 134 ]; then
+   cat lint.json
+   echo "===> You should comment you code <==="
+   exit 1
+fi

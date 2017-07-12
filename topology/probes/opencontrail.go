@@ -37,7 +37,8 @@ import (
 	"github.com/nlewo/contrail-introspect-cli/descriptions"
 )
 
-type OpenContrailMapper struct {
+// OpenContrailProbe describes a probe that reads OpenContrail database and updates the graph
+type OpenContrailProbe struct {
 	graph.DefaultGraphListener
 	graph           *graph.Graph
 	root            *graph.Node
@@ -49,6 +50,7 @@ type OpenContrailMapper struct {
 	mplsUDPPort     int
 }
 
+// OpenContrailMdata metadata
 type OpenContrailMdata struct {
 	UUID    string
 	Mac     string
@@ -56,7 +58,7 @@ type OpenContrailMdata struct {
 	LocalIP string
 }
 
-func (mapper *OpenContrailMapper) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*OpenContrailMdata, error) {
+func (mapper *OpenContrailProbe) retrieveMetadata(metadata graph.Metadata, itf collection.Element) (*OpenContrailMdata, error) {
 	name := metadata["Name"].(string)
 
 	logging.GetLogger().Debugf("Retrieving metadata from OpenContrail for Name: %s", name)
@@ -93,7 +95,7 @@ func (mapper *OpenContrailMapper) retrieveMetadata(metadata graph.Metadata, itf 
 	return e, nil
 }
 
-// Since the node update is triggered by a netlink message, it happens
+// Since the node updates is triggered by a netlink message, it happens
 // the contrail vrouter agent doesn't have interface informations yet:
 // for instance, the tap is first created by nova and this information
 // is then propagated to contrail. We then retry to get interface from
@@ -121,7 +123,7 @@ func getInterfaceFromIntrospect(host string, port int, name string) (collection.
 
 }
 
-func (mapper *OpenContrailMapper) onVhostAdded(node *graph.Node, itf collection.Element) {
+func (mapper *OpenContrailProbe) onVhostAdded(node *graph.Node, itf collection.Element) {
 	phyItf, _ := itf.GetField("physical_interface")
 	if phyItf == "" {
 		logging.GetLogger().Errorf("Physical interface not found")
@@ -151,7 +153,7 @@ func (mapper *OpenContrailMapper) onVhostAdded(node *graph.Node, itf collection.
 	mapper.graph.AddMetadata(nodes[0], "MPLSUDPPort", mapper.mplsUDPPort)
 }
 
-func (mapper *OpenContrailMapper) linkToVhost(node *graph.Node) {
+func (mapper *OpenContrailProbe) linkToVhost(node *graph.Node) {
 	if mapper.vHost != nil {
 		if !topology.HaveLayer2Link(mapper.graph, node, mapper.vHost, nil) {
 			logging.GetLogger().Debugf("Link %s to %s", node.String(), mapper.vHost.String())
@@ -163,7 +165,7 @@ func (mapper *OpenContrailMapper) linkToVhost(node *graph.Node) {
 	}
 }
 
-func (mapper *OpenContrailMapper) nodeUpdater() {
+func (mapper *OpenContrailProbe) nodeUpdater() {
 	body := func(nodeID graph.Identifier) {
 		mapper.graph.RLock()
 		node := mapper.graph.GetNode(nodeID)
@@ -224,7 +226,7 @@ func (mapper *OpenContrailMapper) nodeUpdater() {
 	logging.GetLogger().Debugf("Stopping OpenContrail updater")
 }
 
-func (mapper *OpenContrailMapper) updateNode(node *graph.Node, mdata *OpenContrailMdata) {
+func (mapper *OpenContrailProbe) updateNode(node *graph.Node, mdata *OpenContrailMdata) {
 	tr := mapper.graph.StartMetadataTransaction(node)
 	defer tr.Commit()
 
@@ -234,7 +236,7 @@ func (mapper *OpenContrailMapper) updateNode(node *graph.Node, mdata *OpenContra
 	tr.AddMetadata("Contrail.LocalIP", mdata.LocalIP)
 }
 
-func (mapper *OpenContrailMapper) enhanceNode(node *graph.Node) {
+func (mapper *OpenContrailProbe) enhanceNode(node *graph.Node) {
 	// To break update loops
 	if attachedMAC, _ := node.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
 		return
@@ -250,15 +252,18 @@ func (mapper *OpenContrailMapper) enhanceNode(node *graph.Node) {
 	}
 }
 
-func (mapper *OpenContrailMapper) OnNodeUpdated(n *graph.Node) {
+// OnNodeUpdated event
+func (mapper *OpenContrailProbe) OnNodeUpdated(n *graph.Node) {
 	return
 }
 
-func (mapper *OpenContrailMapper) OnNodeAdded(n *graph.Node) {
+// OnNodeAdded event
+func (mapper *OpenContrailProbe) OnNodeAdded(n *graph.Node) {
 	mapper.enhanceNode(n)
 }
 
-func (mapper *OpenContrailMapper) OnNodeDeleted(n *graph.Node) {
+// OnNodeDeleted event
+func (mapper *OpenContrailProbe) OnNodeDeleted(n *graph.Node) {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return
@@ -269,16 +274,19 @@ func (mapper *OpenContrailMapper) OnNodeDeleted(n *graph.Node) {
 	}
 }
 
-func (mapper *OpenContrailMapper) Start() {
+// Start the probe
+func (mapper *OpenContrailProbe) Start() {
 	go mapper.nodeUpdater()
 }
 
-func (mapper *OpenContrailMapper) Stop() {
+// Stop the probe
+func (mapper *OpenContrailProbe) Stop() {
 	mapper.graph.RemoveEventListener(mapper)
 	close(mapper.nodeUpdaterChan)
 }
 
-func NewOpenContrailMapper(g *graph.Graph, r *graph.Node) *OpenContrailMapper {
+// NewOpenContrailProbeFromConfig creates a new OpenContrail probe based on configuration
+func NewOpenContrailProbeFromConfig(g *graph.Graph, r *graph.Node) *OpenContrailProbe {
 	host := config.GetConfig().GetString("opencontrail.host")
 	port := config.GetConfig().GetInt("opencontrail.port")
 	mplsUDPPort := config.GetConfig().GetInt("opencontrail.mpls_udp_port")
@@ -289,7 +297,7 @@ func NewOpenContrailMapper(g *graph.Graph, r *graph.Node) *OpenContrailMapper {
 		port = 8085
 	}
 
-	mapper := &OpenContrailMapper{graph: g, root: r, agentHost: host, agentPort: port, mplsUDPPort: mplsUDPPort}
+	mapper := &OpenContrailProbe{graph: g, root: r, agentHost: host, agentPort: port, mplsUDPPort: mplsUDPPort}
 	mapper.nodeUpdaterChan = make(chan graph.Identifier, 500)
 	g.AddEventListener(mapper)
 	return mapper

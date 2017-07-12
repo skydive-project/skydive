@@ -42,6 +42,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes"
 )
 
+// OvsSFlowProbe describes a SFlow probe from OVS switch
 type OvsSFlowProbe struct {
 	ID         string
 	Interface  string
@@ -52,6 +53,7 @@ type OvsSFlowProbe struct {
 	NodeTID    string
 }
 
+// OvsSFlowProbesHandler describes a flow probe in running in the graph
 type OvsSFlowProbesHandler struct {
 	FlowProbe
 	Graph     *graph.Graph
@@ -190,6 +192,7 @@ func (o *OvsSFlowProbesHandler) registerSFlowProbeOnBridge(probe OvsSFlowProbe, 
 	return nil
 }
 
+// UnregisterSFlowProbeFromBridge unregisters a flow probe from the bridge selected by UUID
 func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string) error {
 	o.allocator.Release(bridgeUUID)
 
@@ -222,6 +225,7 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 	return nil
 }
 
+// RegisterProbeOnBridge registers a new probe on the OVS bridge
 func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, ft *flow.Table, bpfFilter string) error {
 	probe := OvsSFlowProbe{
 		ID:         probeID(bridgeUUID),
@@ -239,7 +243,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 
 	addr := common.ServiceAddress{Addr: address, Port: 0}
 	agent, err := o.allocator.Alloc(bridgeUUID, ft, bpfFilter, &addr)
-	if err != nil && err != sflow.AgentAlreadyAllocated {
+	if err != nil && err != sflow.ErrAgentAlreadyAllocated {
 		return err
 	}
 
@@ -263,6 +267,7 @@ func isOvsBridge(n *graph.Node) bool {
 	return false
 }
 
+// RegisterProbe registers a probe on a graph node
 func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
@@ -288,6 +293,7 @@ func (o *OvsSFlowProbesHandler) unregisterProbe(bridgeUUID string) error {
 	return nil
 }
 
+// UnregisterProbe at the graph node
 func (o *OvsSFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
 	if isOvsBridge(n) {
 		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
@@ -300,13 +306,16 @@ func (o *OvsSFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
 	return nil
 }
 
+// Start the probe
 func (o *OvsSFlowProbesHandler) Start() {
 }
 
+// Stop the probe
 func (o *OvsSFlowProbesHandler) Stop() {
 	o.allocator.ReleaseAll()
 }
 
+// NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
 func NewOvsSFlowProbesHandler(tb *probe.ProbeBundle, g *graph.Graph) (*OvsSFlowProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {

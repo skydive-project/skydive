@@ -37,18 +37,25 @@ import (
 )
 
 var (
-	CantCompareInterface = errors.New("Can't compare interface")
-	ErrFieldNotFound     = errors.New("Field not found")
-	ErrFieldWrongType    = errors.New("Field has wrong type")
+	// ErrCantCompareInterface error can't compare inteface
+	ErrCantCompareInterface = errors.New("Can't compare interface")
+	// ErrFieldNotFound error field not found
+	ErrFieldNotFound = errors.New("Field not found")
+	// ErrFieldWrongType error field has wrong type
+	ErrFieldWrongType = errors.New("Field has wrong type")
 )
 
+// SortOrder describes ascending or descending order
 type SortOrder string
 
 const (
-	SortAscending  SortOrder = "ASC"
+	// SortAscending sorting order
+	SortAscending SortOrder = "ASC"
+	// SortDescending sorting order
 	SortDescending SortOrder = "DESC"
 )
 
+// ToInt64 Convert all number like type to int64
 func ToInt64(i interface{}) (int64, error) {
 	switch v := i.(type) {
 	case json.Number:
@@ -100,8 +107,16 @@ func integerCompare(a interface{}, b interface{}) (int, error) {
 	}
 }
 
+// ToFloat64 Convert all number like type to float64
 func ToFloat64(f interface{}) (float64, error) {
 	switch v := f.(type) {
+	case json.Number:
+		if i, err := v.Int64(); err == nil {
+			return float64(i), nil
+		}
+		if f, err := v.Float64(); err == nil {
+			return f, nil
+		}
 	case string:
 		return strconv.ParseFloat(v, 64)
 	case int, uint, int32, uint32, int64, uint64:
@@ -138,6 +153,7 @@ func floatCompare(a interface{}, b interface{}) (int, error) {
 	}
 }
 
+// CrossTypeCompare compare 2 differents number types like Float64 vs Float32
 func CrossTypeCompare(a interface{}, b interface{}) (int, error) {
 	switch a.(type) {
 	case float32, float64:
@@ -153,13 +169,14 @@ func CrossTypeCompare(a interface{}, b interface{}) (int, error) {
 	case int, uint, int32, uint32, int64, uint64:
 		return integerCompare(a, b)
 	default:
-		return 0, CantCompareInterface
+		return 0, ErrCantCompareInterface
 	}
 }
 
+// CrossTypeEqual compare 2 differents number types
 func CrossTypeEqual(a interface{}, b interface{}) bool {
 	result, err := CrossTypeCompare(a, b)
-	if err == CantCompareInterface {
+	if err == ErrCantCompareInterface {
 		return a == b
 	} else if err != nil {
 		return false
@@ -167,6 +184,7 @@ func CrossTypeEqual(a interface{}, b interface{}) bool {
 	return result == 0
 }
 
+// MinInt64 returns the lowest value
 func MinInt64(a, b int64) int64 {
 	if a < b {
 		return a
@@ -174,6 +192,7 @@ func MinInt64(a, b int64) int64 {
 	return b
 }
 
+// MaxInt64 returns the biggest value
 func MaxInt64(a, b int64) int64 {
 	if a > b {
 		return a
@@ -181,6 +200,7 @@ func MaxInt64(a, b int64) int64 {
 	return b
 }
 
+// IPv6Supported returns true if the platform support IPv6
 func IPv6Supported() bool {
 	if _, err := os.Stat("/proc/net/if_inet6"); os.IsNotExist(err) {
 		return false
@@ -198,6 +218,7 @@ func IPv6Supported() bool {
 	return true
 }
 
+// IPToString convert IPv4 or IPv6 to a string
 func IPToString(ip net.IP) string {
 	if ip.To4() == nil {
 		return "[" + ip.String() + "]"
@@ -205,39 +226,47 @@ func IPToString(ip net.IP) string {
 	return ip.String()
 }
 
-func JsonDecode(r io.Reader, i interface{}) error {
+// JSONDecode wrapper to UseNumber during JSON decoding
+func JSONDecode(r io.Reader, i interface{}) error {
 	decoder := json.NewDecoder(r)
 	decoder.UseNumber()
 	return decoder.Decode(i)
 }
 
+// UnixMillis returns the current time in miliseconds
 func UnixMillis(t time.Time) int64 {
 	return t.UTC().UnixNano() / 1000000
 }
 
+// TimeSlice defines a time boudary values
 type TimeSlice struct {
 	Start int64 `json:"Start"`
 	Last  int64 `json:"Last"`
 }
 
+// NewTimeSlice creates a new TimeSlice based on Start and Last
 func NewTimeSlice(s, l int64) *TimeSlice {
 	return &TimeSlice{Start: s, Last: l}
 }
 
+// Metric defines accessors
 type Metric interface {
 	GetFieldInt64(field string) (int64, error)
 	Add(m Metric) Metric
 }
 
+// TimedMetric defines Metric during a time slice
 type TimedMetric struct {
 	TimeSlice
 	Metric Metric
 }
 
+// GetFieldInt64 returns the field value
 func (tm *TimedMetric) GetFieldInt64(field string) (int64, error) {
 	return tm.Metric.GetFieldInt64(field)
 }
 
+// MarshalJSON serialized a TimedMetric in JSON
 func (tm *TimedMetric) MarshalJSON() ([]byte, error) {
 	var s string
 	if tm.Metric != nil {
@@ -252,6 +281,7 @@ func (tm *TimedMetric) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
+// SetField set a value in a tree based on dot key ("a.b.c.d" = "ok")
 func SetField(obj map[string]interface{}, k string, v interface{}) bool {
 	components := strings.Split(k, ".")
 	for n, component := range components {
@@ -271,6 +301,7 @@ func SetField(obj map[string]interface{}, k string, v interface{}) bool {
 	return true
 }
 
+// GetField retrieve a value from a tree from the dot key like "a.b.c.d"
 func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 	components := strings.Split(k, ".")
 	for n, component := range components {

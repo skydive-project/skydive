@@ -38,6 +38,7 @@ var (
 	pcapTrace string
 )
 
+// PcapCmd skydive pcap root command
 var PcapCmd = &cobra.Command{
 	Use:   "pcap",
 	Short: "Import flows from PCAP file",

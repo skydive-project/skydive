@@ -37,105 +37,135 @@ import (
 )
 
 type (
+	// GremlinTraversalSequence describes a sequence of steps
 	GremlinTraversalSequence struct {
 		GraphTraversal *GraphTraversal
 		steps          []GremlinTraversalStep
 		extensions     []GremlinTraversalExtension
 	}
 
+	// GremlinTraversalStep describes a step
 	GremlinTraversalStep interface {
 		Exec(last GraphTraversalStep) (GraphTraversalStep, error)
 		Reduce(previous GremlinTraversalStep) GremlinTraversalStep
 		Context() *GremlinTraversalContext
 	}
 
+	// GremlinTraversalContext describes the context of a step
 	GremlinTraversalContext struct {
 		StepContext GraphStepContext
 		Params      []interface{}
 	}
 
-	// built in steps
+	// GremlinTraversalStepG step
 	GremlinTraversalStepG struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepV step
 	GremlinTraversalStepV struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepE step
 	GremlinTraversalStepE struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepContext step
 	GremlinTraversalStepContext struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepOut step
 	GremlinTraversalStepOut struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepIn step
 	GremlinTraversalStepIn struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepOutV step
 	GremlinTraversalStepOutV struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepInV step
 	GremlinTraversalStepInV struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepOutE step
 	GremlinTraversalStepOutE struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepInE step
 	GremlinTraversalStepInE struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepBothE step
 	GremlinTraversalStepBothE struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepDedup step
 	GremlinTraversalStepDedup struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepHas step
 	GremlinTraversalStepHas struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepHasKey step
 	GremlinTraversalStepHasKey struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepHasNot step
 	GremlinTraversalStepHasNot struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepShortestPathTo step
 	GremlinTraversalStepShortestPathTo struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepBoth step
 	GremlinTraversalStepBoth struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepCount step
 	GremlinTraversalStepCount struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepRange step
 	GremlinTraversalStepRange struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepLimit step
 	GremlinTraversalStepLimit struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepSort step
 	GremlinTraversalStepSort struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepValues step
 	GremlinTraversalStepValues struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepKeys step
 	GremlinTraversalStepKeys struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepSum step
 	GremlinTraversalStepSum struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepMetrics step
 	GremlinTraversalStepMetrics struct {
 		GremlinTraversalContext
 	}
 )
 
 var (
-	ExecutionError error = errors.New("Error while executing the query")
+	// ErrExecutionError execution error
+	ErrExecutionError = errors.New("Error while executing the query")
 )
 
+// GremlinTraversalParser describes a parser of gremlin graph expression
+// The mechanism is based on Reduce and Exec steps
 type GremlinTraversalParser struct {
 	sync.RWMutex
 	Graph   *graph.Graph
@@ -164,6 +194,7 @@ func invokeStepFnc(last GraphTraversalStep, name string, gremlinStep GremlinTrav
 	return nil, fmt.Errorf("Invalid step '%s' on '%s'", name, reflect.TypeOf(last))
 }
 
+// ReduceRange Context step
 func (p *GremlinTraversalContext) ReduceRange(next GremlinTraversalStep) bool {
 	if p.StepContext.PaginationRange != nil {
 		return false
@@ -178,22 +209,26 @@ func (p *GremlinTraversalContext) ReduceRange(next GremlinTraversalStep) bool {
 	return p.StepContext.PaginationRange != nil
 }
 
+// Context step
 func (p *GremlinTraversalContext) Context() *GremlinTraversalContext {
 	return p
 }
 
+// Exec G step
 func (s *GremlinTraversalStepG) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	return nil, nil
 }
 
+// Reduce G step
 func (s *GremlinTraversalStepG) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec V step
 func (s *GremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	g, ok := last.(*GraphTraversal)
 	if !ok {
-		return nil, ExecutionError
+		return nil, ErrExecutionError
 	}
 
 	g.currentStepContext = s.StepContext
@@ -201,6 +236,7 @@ func (s *GremlinTraversalStepV) Exec(last GraphTraversalStep) (GraphTraversalSte
 	return g.V(s.Params...), nil
 }
 
+// Reduce V step
 func (s *GremlinTraversalStepV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if s.ReduceRange(next) {
 		return s
@@ -214,10 +250,11 @@ func (s *GremlinTraversalStepV) Reduce(next GremlinTraversalStep) GremlinTravers
 	return next
 }
 
+// Exec E step
 func (s *GremlinTraversalStepE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	g, ok := last.(*GraphTraversal)
 	if !ok {
-		return nil, ExecutionError
+		return nil, ErrExecutionError
 	}
 
 	g.currentStepContext = s.StepContext
@@ -225,6 +262,7 @@ func (s *GremlinTraversalStepE) Exec(last GraphTraversalStep) (GraphTraversalSte
 	return g.E(s.Params...), nil
 }
 
+// Reduce E step
 func (s *GremlinTraversalStepE) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if s.ReduceRange(next) {
 		return s
@@ -238,10 +276,11 @@ func (s *GremlinTraversalStepE) Reduce(next GremlinTraversalStep) GremlinTravers
 	return next
 }
 
+// Exec Context step
 func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTraversalStep, err error) {
 	g, ok := last.(*GraphTraversal)
 	if !ok {
-		return nil, ExecutionError
+		return nil, ErrExecutionError
 	}
 
 	switch len(s.Params) {
@@ -281,10 +320,12 @@ func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTrav
 	return g.Context(s.Params...), nil
 }
 
+// Reduce Context step
 func (s *GremlinTraversalStepContext) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Has step
 func (s *GremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -296,6 +337,7 @@ func (s *GremlinTraversalStepHas) Exec(last GraphTraversalStep) (GraphTraversalS
 	return invokeStepFnc(last, "Has", s)
 }
 
+// Reduce Has step
 func (s *GremlinTraversalStepHas) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if s.ReduceRange(next) {
 		return s
@@ -304,6 +346,7 @@ func (s *GremlinTraversalStepHas) Reduce(next GremlinTraversalStep) GremlinTrave
 	return next
 }
 
+// Exec HasKey step
 func (s *GremlinTraversalStepHasKey) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -315,6 +358,7 @@ func (s *GremlinTraversalStepHasKey) Exec(last GraphTraversalStep) (GraphTravers
 	return invokeStepFnc(last, "HasKey", s)
 }
 
+// Reduce HasKey step
 func (s *GremlinTraversalStepHasKey) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if s.ReduceRange(next) {
 		return s
@@ -323,6 +367,7 @@ func (s *GremlinTraversalStepHasKey) Reduce(next GremlinTraversalStep) GremlinTr
 	return next
 }
 
+// Exec HasNot
 func (s *GremlinTraversalStepHasNot) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -334,6 +379,7 @@ func (s *GremlinTraversalStepHasNot) Exec(last GraphTraversalStep) (GraphTravers
 	return invokeStepFnc(last, "HasNot", s)
 }
 
+// Reduce HasNot step
 func (s *GremlinTraversalStepHasNot) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if s.ReduceRange(next) {
 		return s
@@ -342,6 +388,7 @@ func (s *GremlinTraversalStepHasNot) Reduce(next GremlinTraversalStep) GremlinTr
 	return next
 }
 
+// Exec Dedup step
 func (s *GremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch g := last.(type) {
 	case *GraphTraversalV:
@@ -356,6 +403,7 @@ func (s *GremlinTraversalStepDedup) Exec(last GraphTraversalStep) (GraphTraversa
 	return invokeStepFnc(last, "Dedup", s)
 }
 
+// Reduce Dedup step
 func (s *GremlinTraversalStepDedup) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if s.ReduceRange(next) {
 		return s
@@ -364,6 +412,7 @@ func (s *GremlinTraversalStepDedup) Reduce(next GremlinTraversalStep) GremlinTra
 	return next
 }
 
+// Exec Out step
 func (s *GremlinTraversalStepOut) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -374,6 +423,7 @@ func (s *GremlinTraversalStepOut) Exec(last GraphTraversalStep) (GraphTraversalS
 	return invokeStepFnc(last, "Out", s)
 }
 
+// Reduce Out step
 func (s *GremlinTraversalStepOut) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
@@ -387,6 +437,7 @@ func (s *GremlinTraversalStepOut) Reduce(next GremlinTraversalStep) GremlinTrave
 	return next
 }
 
+// Exec In step
 func (s *GremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -396,6 +447,7 @@ func (s *GremlinTraversalStepIn) Exec(last GraphTraversalStep) (GraphTraversalSt
 	return invokeStepFnc(last, "In", s)
 }
 
+// Reduce In step
 func (s *GremlinTraversalStepIn) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
@@ -409,15 +461,17 @@ func (s *GremlinTraversalStepIn) Reduce(next GremlinTraversalStep) GremlinTraver
 	return next
 }
 
+// Exec OutV step
 func (s *GremlinTraversalStepOutV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalE:
 		return last.(*GraphTraversalE).OutV(s.Params...), nil
 	}
 
-	return nil, ExecutionError
+	return nil, ErrExecutionError
 }
 
+// Reduce OutV step
 func (s *GremlinTraversalStepOutV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
@@ -431,15 +485,17 @@ func (s *GremlinTraversalStepOutV) Reduce(next GremlinTraversalStep) GremlinTrav
 	return next
 }
 
+// Exec InV step
 func (s *GremlinTraversalStepInV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalE:
 		return last.(*GraphTraversalE).InV(s.Params...), nil
 	}
 
-	return nil, ExecutionError
+	return nil, ErrExecutionError
 }
 
+// Reduce InV step
 func (s *GremlinTraversalStepInV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
@@ -453,15 +509,17 @@ func (s *GremlinTraversalStepInV) Reduce(next GremlinTraversalStep) GremlinTrave
 	return next
 }
 
+// Exec OutE step
 func (s *GremlinTraversalStepOutE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).OutE(s.Params...), nil
 	}
 
-	return nil, ExecutionError
+	return nil, ErrExecutionError
 }
 
+// Reduce OutE step
 func (s *GremlinTraversalStepOutE) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
@@ -475,15 +533,17 @@ func (s *GremlinTraversalStepOutE) Reduce(next GremlinTraversalStep) GremlinTrav
 	return next
 }
 
+// Exec InE step
 func (s *GremlinTraversalStepInE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).InE(s.Params...), nil
 	}
 
-	return nil, ExecutionError
+	return nil, ErrExecutionError
 }
 
+// Reduce InE step
 func (s *GremlinTraversalStepInE) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
@@ -497,15 +557,17 @@ func (s *GremlinTraversalStepInE) Reduce(next GremlinTraversalStep) GremlinTrave
 	return next
 }
 
+// Exec BothE step
 func (s *GremlinTraversalStepBothE) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).BothE(s.Params...), nil
 	}
 
-	return nil, ExecutionError
+	return nil, ErrExecutionError
 }
 
+// Reduce BothE step
 func (s *GremlinTraversalStepBothE) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
@@ -519,28 +581,31 @@ func (s *GremlinTraversalStepBothE) Reduce(next GremlinTraversalStep) GremlinTra
 	return next
 }
 
+// Exec ShortestPathTo step
 func (s *GremlinTraversalStepShortestPathTo) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
 		if _, ok := s.Params[0].(graph.Metadata); !ok {
-			return nil, ExecutionError
+			return nil, ErrExecutionError
 		}
 		if len(s.Params) > 1 {
 			if _, ok := s.Params[1].(graph.Metadata); !ok {
-				return nil, ExecutionError
+				return nil, ErrExecutionError
 			}
 			return last.(*GraphTraversalV).ShortestPathTo(s.Params[0].(graph.Metadata), s.Params[1].(graph.Metadata)), nil
 		}
 		return last.(*GraphTraversalV).ShortestPathTo(s.Params[0].(graph.Metadata), nil), nil
 	}
 
-	return nil, ExecutionError
+	return nil, ErrExecutionError
 }
 
+// Reduce ShortestPathTo step
 func (s *GremlinTraversalStepShortestPathTo) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Both step
 func (s *GremlinTraversalStepBoth) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -550,6 +615,7 @@ func (s *GremlinTraversalStepBoth) Exec(last GraphTraversalStep) (GraphTraversal
 	return invokeStepFnc(last, "Both", s)
 }
 
+// Reduce Both step
 func (s *GremlinTraversalStepBoth) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
@@ -563,6 +629,7 @@ func (s *GremlinTraversalStepBoth) Reduce(next GremlinTraversalStep) GremlinTrav
 	return next
 }
 
+// Exec Count step
 func (s *GremlinTraversalStepCount) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -574,10 +641,12 @@ func (s *GremlinTraversalStepCount) Exec(last GraphTraversalStep) (GraphTraversa
 	return invokeStepFnc(last, "Count", s)
 }
 
+// Reduce Count step
 func (s *GremlinTraversalStepCount) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Range step
 func (s *GremlinTraversalStepRange) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -589,10 +658,12 @@ func (s *GremlinTraversalStepRange) Exec(last GraphTraversalStep) (GraphTraversa
 	return invokeStepFnc(last, "Range", s)
 }
 
+// Reduce Range step
 func (s *GremlinTraversalStepRange) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Limit step
 func (s *GremlinTraversalStepLimit) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -604,10 +675,12 @@ func (s *GremlinTraversalStepLimit) Exec(last GraphTraversalStep) (GraphTraversa
 	return invokeStepFnc(last, "Limit", s)
 }
 
+// Reduce Limit step
 func (s *GremlinTraversalStepLimit) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Sort step
 func (s *GremlinTraversalStepSort) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	switch last.(type) {
 	case *GraphTraversalV:
@@ -617,42 +690,52 @@ func (s *GremlinTraversalStepSort) Exec(last GraphTraversalStep) (GraphTraversal
 	return invokeStepFnc(last, "Sort", s)
 }
 
+// Reduce Sort step
 func (s *GremlinTraversalStepSort) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Values step
 func (s *GremlinTraversalStepValues) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	return invokeStepFnc(last, "PropertyValues", s)
 }
 
+// Reduce Values step
 func (s *GremlinTraversalStepValues) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Keys step
 func (s *GremlinTraversalStepKeys) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	return invokeStepFnc(last, "PropertyKeys", s)
 }
 
+// Reduce Keys step
 func (s *GremlinTraversalStepKeys) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Sum step
 func (s *GremlinTraversalStepSum) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	return invokeStepFnc(last, "Sum", s)
 }
 
+// Reduce Sum step
 func (s *GremlinTraversalStepSum) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec Metrics step
 func (s *GremlinTraversalStepMetrics) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	return invokeStepFnc(last, "Metrics", s)
 }
 
+// Reduce Metrics step
 func (s *GremlinTraversalStepMetrics) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
 
+// Exec sequence step
 func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 	var step GremlinTraversalStep
 	var last GraphTraversalStep
@@ -679,16 +762,18 @@ func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 
 	res, ok := last.(GraphTraversalStep)
 	if !ok {
-		return nil, ExecutionError
+		return nil, ErrExecutionError
 	}
 
 	return res, nil
 }
 
+// AddTraversalExtension registers a new gremlin traversal extension
 func (p *GremlinTraversalParser) AddTraversalExtension(e GremlinTraversalExtension) {
 	p.extensions = append(p.extensions, e)
 }
 
+// NewGremlinTraversalParser creates a new gremlin language parser on the graph
 func NewGremlinTraversalParser(g *graph.Graph) *GremlinTraversalParser {
 	return &GremlinTraversalParser{
 		Graph: g,
@@ -1008,6 +1093,7 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	return nil, fmt.Errorf("Expected step function, got: %s", lit)
 }
 
+// Parse the Gremlin language and returns a traversal sequence
 func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTraversalSequence, error) {
 	p.Lock()
 	defer p.Unlock()

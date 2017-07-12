@@ -40,16 +40,19 @@ const (
 	defaultSortBy = "CreatedAt"
 )
 
+// GraphTraversalStep describes a step in the graph containing Values
 type GraphTraversalStep interface {
 	Values() []interface{}
 	MarshalJSON() ([]byte, error)
 	Error() error
 }
 
+// GraphStepContext a step within a context
 type GraphStepContext struct {
 	PaginationRange *GraphTraversalRange
 }
 
+// Iterator on the range
 func (r *GraphTraversalRange) Iterator() *common.Iterator {
 	if r != nil {
 		return common.NewIterator(0, r[0], r[1])
@@ -57,8 +60,10 @@ func (r *GraphTraversalRange) Iterator() *common.Iterator {
 	return common.NewIterator()
 }
 
+// GraphTraversalRange is within a min and a max
 type GraphTraversalRange [2]int64
 
+// GraphTraversal describes multiple step within a graph
 type GraphTraversal struct {
 	Graph              *graph.Graph
 	error              error
@@ -66,40 +71,43 @@ type GraphTraversal struct {
 	lockGraph          bool
 }
 
+// GraphTraversalV traversal steps on nodes
 type GraphTraversalV struct {
 	GraphTraversal *GraphTraversal
 	nodes          []*graph.Node
 	error          error
 }
 
+// GraphTraversalE traversal steps on Edges
 type GraphTraversalE struct {
 	GraphTraversal *GraphTraversal
 	edges          []*graph.Edge
 	error          error
 }
 
+// GraphTraversalShortestPath traversal step shortest path
 type GraphTraversalShortestPath struct {
 	GraphTraversal *GraphTraversal
 	paths          [][]*graph.Node
 	error          error
 }
 
+// GraphTraversalValue traversal step value
 type GraphTraversalValue struct {
 	GraphTraversal *GraphTraversal
 	value          interface{}
 	error          error
 }
 
+// MetricsTraversalStep traversal step metric interface counters
 type MetricsTraversalStep struct {
 	GraphTraversal *GraphTraversal
 	metrics        map[string][]*common.TimedMetric
 	error          error
 }
 
-type WithinMetadataMatcher struct {
-	List []interface{}
-}
-
+// ParamToFilter creates a filter based on parameters
+// [RegexMetadataMatcher, NE/LT/GT/GTE/LTE/Inside/Outside/Between/Within/Contains/string,int64 MetadataMatcher]
 func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 	switch v := v.(type) {
 	case *RegexMetadataMatcher:
@@ -213,6 +221,7 @@ func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 	}
 }
 
+// ParamsToFilter convert multiple pairs to a unique filter, logically AND linked
 func ParamsToFilter(params ...interface{}) (*filters.Filter, error) {
 	if len(params)%2 != 0 {
 		return nil, fmt.Errorf("Slice must be defined by pair k,v: %v", params)
@@ -235,107 +244,7 @@ func ParamsToFilter(params ...interface{}) (*filters.Filter, error) {
 	return filters.NewAndFilter(andFilters...), nil
 }
 
-func Within(s ...interface{}) *WithinMetadataMatcher {
-	return &WithinMetadataMatcher{List: s}
-}
-
-type WithoutMetadataMatcher struct {
-	list []interface{}
-}
-
-func Without(s ...interface{}) *WithoutMetadataMatcher {
-	return &WithoutMetadataMatcher{list: s}
-}
-
-type NEMetadataMatcher struct {
-	value interface{}
-}
-
-func Ne(s interface{}) *NEMetadataMatcher {
-	return &NEMetadataMatcher{value: s}
-}
-
-type LTMetadataMatcher struct {
-	value interface{}
-}
-
-func Lt(s interface{}) *LTMetadataMatcher {
-	return &LTMetadataMatcher{value: s}
-}
-
-type GTMetadataMatcher struct {
-	value interface{}
-}
-
-func Gt(s interface{}) *GTMetadataMatcher {
-	return &GTMetadataMatcher{value: s}
-}
-
-type LTEMetadataMatcher struct {
-	value interface{}
-}
-
-func Lte(s interface{}) *LTEMetadataMatcher {
-	return &LTEMetadataMatcher{value: s}
-}
-
-type GTEMetadataMatcher struct {
-	value interface{}
-}
-
-func Gte(s interface{}) *GTEMetadataMatcher {
-	return &GTEMetadataMatcher{value: s}
-}
-
-type InsideMetadataMatcher struct {
-	from interface{}
-	to   interface{}
-}
-
-func Inside(from, to interface{}) *InsideMetadataMatcher {
-	return &InsideMetadataMatcher{from: from, to: to}
-}
-
-type OutsideMetadataMatcher struct {
-	from interface{}
-	to   interface{}
-}
-
-func Outside(from, to interface{}) *OutsideMetadataMatcher {
-	return &OutsideMetadataMatcher{from: from, to: to}
-}
-
-type BetweenMetadataMatcher struct {
-	from interface{}
-	to   interface{}
-}
-
-func Between(from interface{}, to interface{}) *BetweenMetadataMatcher {
-	return &BetweenMetadataMatcher{from: from, to: to}
-}
-
-type RegexMetadataMatcher struct {
-	regexp  *regexp.Regexp
-	pattern string
-}
-
-func Regex(expr string) *RegexMetadataMatcher {
-	r, _ := regexp.Compile(expr)
-	return &RegexMetadataMatcher{regexp: r, pattern: expr}
-}
-
-type ContainsMetadataMatcher struct {
-	value interface{}
-}
-
-func Contains(s interface{}) *ContainsMetadataMatcher {
-	return &ContainsMetadataMatcher{value: s}
-}
-
-type Since struct {
-	Seconds int64
-}
-
+// SliceToMetadata slice multiple filters pair to metadata
 func SliceToMetadata(s ...interface{}) (graph.Metadata, error) {
 	m := graph.Metadata{}
 	if len(s)%2 != 0 {
@@ -359,22 +268,156 @@ func SliceToMetadata(s ...interface{}) (graph.Metadata, error) {
 	return m, nil
 }
 
+// WithinMetadataMatcher describes a list of metadata that should match (within)
+type WithinMetadataMatcher struct {
+	List []interface{}
+}
+
+// Within step
+func Within(s ...interface{}) *WithinMetadataMatcher {
+	return &WithinMetadataMatcher{List: s}
+}
+
+// WithoutMetadataMatcher describes a list of metadata that shouldn't match (without)
+type WithoutMetadataMatcher struct {
+	list []interface{}
+}
+
+// Without step
+func Without(s ...interface{}) *WithoutMetadataMatcher {
+	return &WithoutMetadataMatcher{list: s}
+}
+
+// NEMetadataMatcher describes a list of metadata that match NotEqual
+type NEMetadataMatcher struct {
+	value interface{}
+}
+
+// Ne step
+func Ne(s interface{}) *NEMetadataMatcher {
+	return &NEMetadataMatcher{value: s}
+}
+
+// LTMetadataMatcher describes a list of metadata that match LessThan
+type LTMetadataMatcher struct {
+	value interface{}
+}
+
+// Lt step
+func Lt(s interface{}) *LTMetadataMatcher {
+	return &LTMetadataMatcher{value: s}
+}
+
+// GTMetadataMatcher describes a list of metadata that match GreaterThan
+type GTMetadataMatcher struct {
+	value interface{}
+}
+
+// Gt step
+func Gt(s interface{}) *GTMetadataMatcher {
+	return &GTMetadataMatcher{value: s}
+}
+
+// LTEMetadataMatcher describes a list of metadata that match Less Than Equal
+type LTEMetadataMatcher struct {
+	value interface{}
+}
+
+// Lte step
+func Lte(s interface{}) *LTEMetadataMatcher {
+	return &LTEMetadataMatcher{value: s}
+}
+
+// GTEMetadataMatcher describes a list of metadata that match Greater Than Equal
+type GTEMetadataMatcher struct {
+	value interface{}
+}
+
+// Gte step
+func Gte(s interface{}) *GTEMetadataMatcher {
+	return &GTEMetadataMatcher{value: s}
+}
+
+// InsideMetadataMatcher describes a list of metadata that match inside the range from, to
+type InsideMetadataMatcher struct {
+	from interface{}
+	to   interface{}
+}
+
+// Inside step
+func Inside(from, to interface{}) *InsideMetadataMatcher {
+	return &InsideMetadataMatcher{from: from, to: to}
+}
+
+// OutsideMetadataMatcher describes a list of metadata that match outside the range from, to
+type OutsideMetadataMatcher struct {
+	from interface{}
+	to   interface{}
+}
+
+// Outside step
+func Outside(from, to interface{}) *OutsideMetadataMatcher {
+	return &OutsideMetadataMatcher{from: from, to: to}
+}
+
+// BetweenMetadataMatcher describes a list of metadata that match between the range from, to
+type BetweenMetadataMatcher struct {
+	from interface{}
+	to   interface{}
+}
+
+// Between step
+func Between(from interface{}, to interface{}) *BetweenMetadataMatcher {
+	return &BetweenMetadataMatcher{from: from, to: to}
+}
+
+// RegexMetadataMatcher describes a list of metadata that match a regex
+type RegexMetadataMatcher struct {
+	regexp  *regexp.Regexp
+	pattern string
+}
+
+// Regex step
+func Regex(expr string) *RegexMetadataMatcher {
+	r, _ := regexp.Compile(expr)
+	return &RegexMetadataMatcher{regexp: r, pattern: expr}
+}
+
+// ContainsMetadataMatcher describes a list of metadata that contains a value
+type ContainsMetadataMatcher struct {
+	value interface{}
+}
+
+// Contains step
+func Contains(s interface{}) *ContainsMetadataMatcher {
+	return &ContainsMetadataMatcher{value: s}
+}
+
+// Since describes a list of metadata that match since seconds
+type Since struct {
+	Seconds int64
+}
+
+// NewGraphTraversal creates a new graph traversal
 func NewGraphTraversal(g *graph.Graph, lockGraph bool) *GraphTraversal {
 	return &GraphTraversal{Graph: g, lockGraph: lockGraph}
 }
 
+// RLock reads lock the graph
 func (t *GraphTraversal) RLock() {
 	if t.lockGraph {
 		t.Graph.RLock()
 	}
 }
 
+// RUnlock reads unlock the graph
 func (t *GraphTraversal) RUnlock() {
 	if t.lockGraph {
 		t.Graph.RUnlock()
 	}
 }
 
+// Values returns the graph values
 func (t *GraphTraversal) Values() []interface{} {
 	t.RLock()
 	defer t.RUnlock()
@@ -382,6 +425,7 @@ func (t *GraphTraversal) Values() []interface{} {
 	return []interface{}{t.Graph}
 }
 
+// MarshalJSON serialize in JSON
 func (t *GraphTraversal) MarshalJSON() ([]byte, error) {
 	values := t.Values()
 	t.RLock()
@@ -415,6 +459,7 @@ func (t *GraphTraversal) getPaginationRange() (filter *filters.Range) {
 	return
 }
 
+// Context step : at, [duration]
 func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	if t.error != nil {
 		return t
@@ -446,6 +491,7 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	return &GraphTraversal{Graph: g}
 }
 
+// V step : [node ID]
 func (t *GraphTraversal) V(s ...interface{}) *GraphTraversalV {
 	var nodes []*graph.Node
 	var metadata graph.Metadata
@@ -494,6 +540,7 @@ func (t *GraphTraversal) V(s ...interface{}) *GraphTraversalV {
 	return &GraphTraversalV{GraphTraversal: t, nodes: nodes}
 }
 
+// NewGraphTraversalV returns a new traversal step
 func NewGraphTraversalV(gt *GraphTraversal, nodes []*graph.Node, err ...error) *GraphTraversalV {
 	tv := &GraphTraversalV{
 		GraphTraversal: gt,
@@ -511,6 +558,7 @@ func (tv *GraphTraversalV) Error() error {
 	return tv.error
 }
 
+// Values returns the graph values
 func (tv *GraphTraversalV) Values() []interface{} {
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -522,6 +570,7 @@ func (tv *GraphTraversalV) Values() []interface{} {
 	return s
 }
 
+// MarshalJSON serialize in JSON
 func (tv *GraphTraversalV) MarshalJSON() ([]byte, error) {
 	values := tv.Values()
 	tv.GraphTraversal.RLock()
@@ -529,16 +578,18 @@ func (tv *GraphTraversalV) MarshalJSON() ([]byte, error) {
 	return json.Marshal(values)
 }
 
+// GetNodes returns the step nodes
 func (tv *GraphTraversalV) GetNodes() (nodes []*graph.Node) {
 	return tv.nodes
 }
 
-func (tv *GraphTraversalV) PropertyValues(keys ...interface{}) *GraphTraversalValue {
+// PropertyValues returns at this step, the values of each metadata selected by the first key
+func (tv *GraphTraversalV) PropertyValues(k ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return &GraphTraversalValue{error: tv.error}
 	}
 
-	key := keys[0].(string)
+	key := k[0].(string)
 
 	tv.GraphTraversal.RLock()
 	defer tv.GraphTraversal.RUnlock()
@@ -552,6 +603,7 @@ func (tv *GraphTraversalV) PropertyValues(keys ...interface{}) *GraphTraversalVa
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
 }
 
+// PropertyKeys returns at this step, all the metadata keys of each metadata
 func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return &GraphTraversalValue{error: tv.error}
@@ -570,6 +622,8 @@ func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValu
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
 }
 
+// Sum step : key
+// returns the sum of the metadata values of the first argument key
 func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return &GraphTraversalValue{error: tv.error}
@@ -603,6 +657,7 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
 }
 
+// E step : [edge ID]
 func (t *GraphTraversal) E(s ...interface{}) *GraphTraversalE {
 	var edges []*graph.Edge
 	var metadata graph.Metadata
@@ -651,6 +706,7 @@ func (t *GraphTraversal) E(s ...interface{}) *GraphTraversalE {
 	return &GraphTraversalE{GraphTraversal: t, edges: edges}
 }
 
+// NewGraphTraversalE creates a new graph traversal Edges
 func NewGraphTraversalE(gt *GraphTraversal, edges []*graph.Edge, err ...error) *GraphTraversalE {
 	te := &GraphTraversalE{
 		GraphTraversal: gt,
@@ -668,6 +724,7 @@ func (te *GraphTraversalE) Error() error {
 	return te.error
 }
 
+// Values returns the graph values
 func (te *GraphTraversalE) Values() []interface{} {
 	te.GraphTraversal.RLock()
 	defer te.GraphTraversal.RUnlock()
@@ -679,6 +736,7 @@ func (te *GraphTraversalE) Values() []interface{} {
 	return s
 }
 
+// MarshalJSON serialize in JSON
 func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
 	values := te.Values()
 	te.GraphTraversal.RLock()
@@ -686,6 +744,7 @@ func (te *GraphTraversalE) MarshalJSON() ([]byte, error) {
 	return json.Marshal(values)
 }
 
+// ParseSortParameter helper
 func ParseSortParameter(keys ...interface{}) (order common.SortOrder, sortBy string, err error) {
 	order = common.SortAscending
 
@@ -764,6 +823,7 @@ func (s sortableNodeSlice) Swap(i, j int) {
 	s.nodes[i], s.nodes[j] = s.nodes[j], s.nodes[i]
 }
 
+// Sort step
 func (tv *GraphTraversalV) Sort(keys ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -788,6 +848,7 @@ func (tv *GraphTraversalV) Sort(keys ...interface{}) *GraphTraversalV {
 	return tv
 }
 
+// Dedup step : deduplicate output
 func (tv *GraphTraversalV) Dedup(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -853,6 +914,7 @@ nodeLoop:
 	return ntv
 }
 
+// Values returns the graph values
 func (sp *GraphTraversalShortestPath) Values() []interface{} {
 	sp.GraphTraversal.RLock()
 	defer sp.GraphTraversal.RUnlock()
@@ -864,6 +926,7 @@ func (sp *GraphTraversalShortestPath) Values() []interface{} {
 	return s
 }
 
+// MarshalJSON serialize in JSON
 func (sp *GraphTraversalShortestPath) MarshalJSON() ([]byte, error) {
 	values := sp.Values()
 	sp.GraphTraversal.RLock()
@@ -875,8 +938,7 @@ func (sp *GraphTraversalShortestPath) Error() error {
 	return sp.error
 }
 
-//This method will return all the nodes in single array, so it will used to
-//find flows.
+// GetNodes : returns all the nodes in single array, so it will used to find flows.
 func (sp *GraphTraversalShortestPath) GetNodes() []*graph.Node {
 	var nodes []*graph.Node
 	for _, v := range sp.paths {
@@ -885,6 +947,7 @@ func (sp *GraphTraversalShortestPath) GetNodes() []*graph.Node {
 	return nodes
 }
 
+// ShortestPathTo step
 func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e graph.Metadata) *GraphTraversalShortestPath {
 	if tv.error != nil {
 		return &GraphTraversalShortestPath{error: tv.error}
@@ -907,6 +970,7 @@ func (tv *GraphTraversalV) ShortestPathTo(m graph.Metadata, e graph.Metadata) *G
 	return sp
 }
 
+// Has step
 func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -948,10 +1012,12 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 	return ntv
 }
 
+// HasKey step
 func (tv *GraphTraversalV) HasKey(s string) *GraphTraversalV {
 	return tv.Has(s)
 }
 
+// HasNot step
 func (tv *GraphTraversalV) HasNot(s string) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -976,6 +1042,7 @@ func (tv *GraphTraversalV) HasNot(s string) *GraphTraversalV {
 	return ntv
 }
 
+// Both step
 func (tv *GraphTraversalV) Both(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -1015,6 +1082,7 @@ nodeloop:
 	return ntv
 }
 
+// Count step
 func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
 		return &GraphTraversalValue{error: tv.error}
@@ -1023,6 +1091,7 @@ func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: len(tv.nodes)}
 }
 
+// Range step
 func (tv *GraphTraversalV) Range(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -1050,10 +1119,12 @@ func (tv *GraphTraversalV) Range(s ...interface{}) *GraphTraversalV {
 	return &GraphTraversalV{error: errors.New("2 parameters must be provided to 'range'")}
 }
 
+// Limit step
 func (tv *GraphTraversalV) Limit(s ...interface{}) *GraphTraversalV {
 	return tv.Range(int64(0), s[0])
 }
 
+// Out step : out of a node step
 func (tv *GraphTraversalV) Out(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -1084,6 +1155,7 @@ nodeloop:
 	return ntv
 }
 
+// OutE step : out of an edge
 func (tv *GraphTraversalV) OutE(s ...interface{}) *GraphTraversalE {
 	if tv.error != nil {
 		return &GraphTraversalE{error: tv.error}
@@ -1116,6 +1188,7 @@ nodeloop:
 	return nte
 }
 
+// BothE : both are edges
 func (tv *GraphTraversalV) BothE(s ...interface{}) *GraphTraversalE {
 	if tv.error != nil {
 		return &GraphTraversalE{error: tv.error}
@@ -1146,6 +1219,7 @@ nodeloop:
 	return nte
 }
 
+// In node step
 func (tv *GraphTraversalV) In(s ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
@@ -1176,6 +1250,40 @@ nodeloop:
 	return ntv
 }
 
+// InE step of an node
+func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
+	if tv.error != nil {
+		return &GraphTraversalE{error: tv.error}
+	}
+
+	metadata, err := SliceToMetadata(s...)
+	if err != nil {
+		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
+	}
+
+	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
+	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
+nodeloop:
+	for _, n := range tv.nodes {
+		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, metadata) {
+			if e.GetChild() == n.ID {
+				if it.Done() {
+					break nodeloop
+				} else if it.Next() {
+					nte.edges = append(nte.edges, e)
+				}
+			}
+		}
+	}
+
+	return nte
+}
+
+// Metrics step : packets counters
 func (tv *GraphTraversalV) Metrics() *MetricsTraversalStep {
 	if tv.error != nil {
 		return &MetricsTraversalStep{error: tv.error}
@@ -1242,38 +1350,7 @@ nodeloop:
 	return NewMetricsTraversalStep(tv.GraphTraversal, metrics, nil)
 }
 
-func (tv *GraphTraversalV) InE(s ...interface{}) *GraphTraversalE {
-	if tv.error != nil {
-		return &GraphTraversalE{error: tv.error}
-	}
-
-	metadata, err := SliceToMetadata(s...)
-	if err != nil {
-		return &GraphTraversalE{GraphTraversal: tv.GraphTraversal, error: err}
-	}
-
-	nte := &GraphTraversalE{GraphTraversal: tv.GraphTraversal, edges: []*graph.Edge{}}
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
-
-	tv.GraphTraversal.RLock()
-	defer tv.GraphTraversal.RUnlock()
-
-nodeloop:
-	for _, n := range tv.nodes {
-		for _, e := range tv.GraphTraversal.Graph.GetNodeEdges(n, metadata) {
-			if e.GetChild() == n.ID {
-				if it.Done() {
-					break nodeloop
-				} else if it.Next() {
-					nte.edges = append(nte.edges, e)
-				}
-			}
-		}
-	}
-
-	return nte
-}
-
+// Count step
 func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
 	if te.error != nil {
 		return &GraphTraversalValue{error: te.error}
@@ -1282,6 +1359,7 @@ func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
 	return &GraphTraversalValue{GraphTraversal: te.GraphTraversal, value: len(te.edges)}
 }
 
+// Range step
 func (te *GraphTraversalE) Range(s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
@@ -1308,6 +1386,7 @@ func (te *GraphTraversalE) Range(s ...interface{}) *GraphTraversalE {
 	}
 }
 
+// Limit step
 func (te *GraphTraversalE) Limit(s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
@@ -1316,6 +1395,7 @@ func (te *GraphTraversalE) Limit(s ...interface{}) *GraphTraversalE {
 	return te.Range(int64(0), s[0])
 }
 
+// Dedup step : deduplicate
 func (te *GraphTraversalE) Dedup(keys ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
@@ -1353,6 +1433,7 @@ func (te *GraphTraversalE) Dedup(keys ...interface{}) *GraphTraversalE {
 	return ntv
 }
 
+// Has step
 func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 	if te.error != nil {
 		return te
@@ -1394,10 +1475,12 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 	return nte
 }
 
+// HasKey step
 func (te *GraphTraversalE) HasKey(s string) *GraphTraversalE {
 	return te.Has(s)
 }
 
+// HasNot step
 func (te *GraphTraversalE) HasNot(s string) *GraphTraversalE {
 	if te.error != nil {
 		return te
@@ -1422,6 +1505,7 @@ func (te *GraphTraversalE) HasNot(s string) *GraphTraversalE {
 	return nte
 }
 
+// InV step, node in
 func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 	if te.error != nil {
 		return &GraphTraversalV{error: te.error}
@@ -1452,6 +1536,7 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 	return ntv
 }
 
+// OutV step, node out
 func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	if te.error != nil {
 		return &GraphTraversalV{error: te.error}
@@ -1482,6 +1567,7 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	return ntv
 }
 
+// NewGraphTraversalValue creates a new traversal value step
 func NewGraphTraversalValue(gt *GraphTraversal, value interface{}, err ...error) *GraphTraversalValue {
 	tv := &GraphTraversalValue{
 		GraphTraversal: gt,
@@ -1495,6 +1581,7 @@ func NewGraphTraversalValue(gt *GraphTraversal, value interface{}, err ...error)
 	return tv
 }
 
+// Values return the graph values
 func (t *GraphTraversalValue) Values() []interface{} {
 	// Values like all step has to return an array of interface
 	// if v is already an array return it otherwise instanciate an new array
@@ -1505,6 +1592,7 @@ func (t *GraphTraversalValue) Values() []interface{} {
 	return []interface{}{t.value}
 }
 
+// MarshalJSON serialize in JSON
 func (t *GraphTraversalValue) MarshalJSON() ([]byte, error) {
 	t.GraphTraversal.RLock()
 	defer t.GraphTraversal.RUnlock()
@@ -1515,6 +1603,7 @@ func (t *GraphTraversalValue) Error() error {
 	return t.error
 }
 
+// Dedup step : deduplicate
 func (t *GraphTraversalValue) Dedup(keys ...interface{}) *GraphTraversalValue {
 	if t.error != nil {
 		return t
@@ -1639,25 +1728,29 @@ func (m *MetricsTraversalStep) Aggregates() *MetricsTraversalStep {
 	return &MetricsTraversalStep{GraphTraversal: m.GraphTraversal, metrics: map[string][]*common.TimedMetric{"Aggregated": aggregated}}
 }
 
+// Values returns the graph metric values
 func (m *MetricsTraversalStep) Values() []interface{} {
 	return []interface{}{m.metrics}
 }
 
-func (b *MetricsTraversalStep) MarshalJSON() ([]byte, error) {
-	values := b.Values()
-	b.GraphTraversal.RLock()
-	defer b.GraphTraversal.RUnlock()
+// MarshalJSON serialize in JSON
+func (m *MetricsTraversalStep) MarshalJSON() ([]byte, error) {
+	values := m.Values()
+	m.GraphTraversal.RLock()
+	defer m.GraphTraversal.RUnlock()
 	return json.Marshal(values)
 }
 
-func (b *MetricsTraversalStep) Error() error {
+func (m *MetricsTraversalStep) Error() error {
 	return nil
 }
 
-func (f *MetricsTraversalStep) Count(s ...interface{}) *GraphTraversalValue {
-	return NewGraphTraversalValue(f.GraphTraversal, len(f.metrics))
+// Count step
+func (m *MetricsTraversalStep) Count(s ...interface{}) *GraphTraversalValue {
+	return NewGraphTraversalValue(m.GraphTraversal, len(m.metrics))
 }
 
+// NewMetricsTraversalStep creates a new tranversal metric step
 func NewMetricsTraversalStep(gt *GraphTraversal, metrics map[string][]*common.TimedMetric, err error) *MetricsTraversalStep {
 	return &MetricsTraversalStep{GraphTraversal: gt, metrics: metrics, error: err}
 }

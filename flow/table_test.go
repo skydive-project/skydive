@@ -57,7 +57,7 @@ func TestFlowExpire(t *testing.T) {
 	}
 	handler := NewFlowHandler(callback, time.Second)
 
-	table := NewTable(nil, handler, NewFlowEnhancerPipeline())
+	table := NewTable(nil, handler, NewEnhancerPipeline())
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 	table.expireNow()
@@ -88,7 +88,7 @@ func (e *fakeEnhancer) Enhance(f *Flow) {
 }
 
 func TestEnhancer(t *testing.T) {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline(&fakeEnhancer{}))
+	table := NewTable(nil, nil, NewEnhancerPipeline(&fakeEnhancer{}))
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
 	flows := table.getFlows(&filters.SearchQuery{}).Flows
@@ -107,7 +107,7 @@ func TestEnhancer(t *testing.T) {
 }
 
 func TestGetFlowsWithFilters(t *testing.T) {
-	table := NewTable(nil, nil, NewFlowEnhancerPipeline(&fakeEnhancer{}))
+	table := NewTable(nil, nil, NewEnhancerPipeline(&fakeEnhancer{}))
 	table.SetNodeTID("probe-1")
 
 	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
@@ -193,7 +193,7 @@ func TestUpdate(t *testing.T) {
 	}
 	handler := NewFlowHandler(callback, time.Second)
 
-	table := NewTable(handler, nil, NewFlowEnhancerPipeline())
+	table := NewTable(handler, nil, NewEnhancerPipeline())
 
 	flow1, _ := table.getOrCreateFlow("flow1")
 

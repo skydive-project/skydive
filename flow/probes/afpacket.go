@@ -30,18 +30,22 @@ import (
 	"github.com/skydive-project/skydive/flow/probes/afpacket"
 )
 
+// AFPacketHandle describes a AF network kernel packets
 type AFPacketHandle struct {
 	tpacket *afpacket.TPacket
 }
 
+// ReadPacketData reads one packet
 func (h *AFPacketHandle) ReadPacketData() ([]byte, gopacket.CaptureInfo, error) {
 	return h.tpacket.ReadPacketData()
 }
 
+// Close the AF packet handle
 func (h *AFPacketHandle) Close() {
 	h.tpacket.Close()
 }
 
+// NewAFPacketHandle creates a new network AF packet probe
 func NewAFPacketHandle(ifName string, snaplen int32) (*AFPacketHandle, error) {
 	tpacket, err := afpacket.NewTPacket(
 		afpacket.OptInterface(ifName),

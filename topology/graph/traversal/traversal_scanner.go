@@ -32,6 +32,7 @@ import (
 // Token represents a lexical token.
 type Token int
 
+// Default language token, extension token start at 1000
 const (
 	// Special tokens
 	ILLEGAL Token = iota
@@ -94,11 +95,13 @@ const (
 	// extensions token have to start after 1000
 )
 
+// GremlinTraversalScanner describes a buffer scanner for Gremlin expression extension
 type GremlinTraversalScanner struct {
 	reader     *bufio.Reader
 	extensions []GremlinTraversalExtension
 }
 
+// NewGremlinTraversalScanner creates a new Gremlin expression scanner
 func NewGremlinTraversalScanner(r io.Reader, e []GremlinTraversalExtension) *GremlinTraversalScanner {
 	return &GremlinTraversalScanner{
 		reader:     bufio.NewReader(r),
@@ -106,6 +109,7 @@ func NewGremlinTraversalScanner(r io.Reader, e []GremlinTraversalExtension) *Gre
 	}
 }
 
+// Scan and returns tokens
 func (s *GremlinTraversalScanner) Scan() (tok Token, lit string) {
 	ch := s.read()
 

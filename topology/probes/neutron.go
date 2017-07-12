@@ -46,7 +46,8 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-type NeutronMapper struct {
+// NeutronProbe describes a topology porbe that map neutron attribues in the graph
+type NeutronProbe struct {
 	graph.DefaultGraphListener
 	graph  *graph.Graph
 	wspool *shttp.WSAsyncClientPool
@@ -59,6 +60,7 @@ type NeutronMapper struct {
 	nsRegexp        *regexp.Regexp
 }
 
+// Attributes neutron attributes
 type Attributes struct {
 	PortID      string
 	NetworkID   string
@@ -68,13 +70,15 @@ type Attributes struct {
 	VNI         string
 }
 
-type NeutronPortNotFound struct {
-	MAC string
-}
-
+// PortMetadata neutron metadata
 type PortMetadata struct {
 	mac    string
 	portID string
+}
+
+// NeutronPortNotFound error
+type NeutronPortNotFound struct {
+	MAC string
 }
 
 func (e NeutronPortNotFound) Error() string {
@@ -98,7 +102,7 @@ func retrievePortMetadata(node *graph.Node) PortMetadata {
 	return md
 }
 
-func (mapper *NeutronMapper) retrievePort(portMd PortMetadata) (port ports.Port, err error) {
+func (mapper *NeutronProbe) retrievePort(portMd PortMetadata) (port ports.Port, err error) {
 	var opts ports.ListOpts
 
 	logging.GetLogger().Debugf("Retrieving attributes from Neutron for MAC: %s", portMd.mac)
@@ -140,7 +144,7 @@ func (mapper *NeutronMapper) retrievePort(portMd PortMetadata) (port ports.Port,
 	return port, err
 }
 
-func (mapper *NeutronMapper) retrieveAttributes(portMd PortMetadata) (*Attributes, error) {
+func (mapper *NeutronProbe) retrieveAttributes(portMd PortMetadata) (*Attributes, error) {
 	port, err := mapper.retrievePort(portMd)
 	if err != nil {
 		return nil, err
@@ -169,7 +173,7 @@ func (mapper *NeutronMapper) retrieveAttributes(portMd PortMetadata) (*Attribute
 	return a, nil
 }
 
-func (mapper *NeutronMapper) nodeUpdater() {
+func (mapper *NeutronProbe) nodeUpdater() {
 	logging.GetLogger().Debugf("Starting Neutron updater")
 
 	for nodeID := range mapper.nodeUpdaterChan {
@@ -199,7 +203,7 @@ func (mapper *NeutronMapper) nodeUpdater() {
 	logging.GetLogger().Debugf("Stopping Neutron updater")
 }
 
-func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
+func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *Attributes) {
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
 
@@ -278,7 +282,8 @@ func (mapper *NeutronMapper) updateNode(node *graph.Node, attrs *Attributes) {
 	}
 }
 
-func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
+// EnhanceNode enhance the graph node with neutron metadata (Name, MAC, Manager ...)
+func (mapper *NeutronProbe) EnhanceNode(node *graph.Node) {
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
 		return
@@ -312,29 +317,34 @@ func (mapper *NeutronMapper) EnhanceNode(node *graph.Node) {
 	mapper.nodeUpdaterChan <- node.ID
 }
 
-func (mapper *NeutronMapper) OnNodeUpdated(n *graph.Node) {
+// OnNodeUpdated event
+func (mapper *NeutronProbe) OnNodeUpdated(n *graph.Node) {
 	mapper.EnhanceNode(n)
 }
 
-func (mapper *NeutronMapper) OnNodeAdded(n *graph.Node) {
+// OnNodeAdded event
+func (mapper *NeutronProbe) OnNodeAdded(n *graph.Node) {
 	mapper.EnhanceNode(n)
 }
 
-func (mapper *NeutronMapper) Start() {
+// Start the probe
+func (mapper *NeutronProbe) Start() {
 	go mapper.nodeUpdater()
 }
 
-func (mapper *NeutronMapper) Stop() {
+// Stop the probe
+func (mapper *NeutronProbe) Stop() {
 	mapper.graph.RemoveEventListener(mapper)
 	close(mapper.nodeUpdaterChan)
 }
 
-func NewNeutronMapper(g *graph.Graph, wspool *shttp.WSAsyncClientPool, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronMapper, error) {
+// NewNeutronProbe creates a neutron probe that will enhance the graph
+func NewNeutronProbe(g *graph.Graph, wspool *shttp.WSAsyncClientPool, authURL, username, password, tenantName, regionName, domainName string, availability gophercloud.Availability) (*NeutronProbe, error) {
 	// only looking for interfaces matching the following regex as nova, neutron interfaces match this pattern
 	intfRegexp := regexp.MustCompile(`(tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2}`)
 	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9]{8}`)
 
-	mapper := &NeutronMapper{graph: g, wspool: wspool, intfRegexp: intfRegexp, nsRegexp: nsRegexp}
+	mapper := &NeutronProbe{graph: g, wspool: wspool, intfRegexp: intfRegexp, nsRegexp: nsRegexp}
 
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
@@ -370,7 +380,8 @@ func NewNeutronMapper(g *graph.Graph, wspool *shttp.WSAsyncClientPool, authURL, 
 	return mapper, nil
 }
 
-func NewNeutronMapperFromConfig(g *graph.Graph, wspool *shttp.WSAsyncClientPool) (*NeutronMapper, error) {
+// NewNeutronProbeFromConfig creates a new neutron probe based on configuration
+func NewNeutronProbeFromConfig(g *graph.Graph, wspool *shttp.WSAsyncClientPool) (*NeutronProbe, error) {
 	authURL := config.GetConfig().GetString("openstack.auth_url")
 	username := config.GetConfig().GetString("openstack.username")
 	password := config.GetConfig().GetString("openstack.password")
@@ -383,9 +394,8 @@ func NewNeutronMapperFromConfig(g *graph.Graph, wspool *shttp.WSAsyncClientPool)
 		"public":   gophercloud.AvailabilityPublic,
 		"admin":    gophercloud.AvailabilityAdmin,
 		"internal": gophercloud.AvailabilityInternal}
-	if a, ok := endpointTypes[endpointType]; !ok {
-		return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
-	} else {
-		return NewNeutronMapper(g, wspool, authURL, username, password, tenantName, regionName, domainName, a)
+	if a, ok := endpointTypes[endpointType]; ok {
+		return NewNeutronProbe(g, wspool, authURL, username, password, tenantName, regionName, domainName, a)
 	}
+	return nil, fmt.Errorf("Endpoint type '%s' is not valid (must be 'public', 'admin' or 'internal')", endpointType)
 }

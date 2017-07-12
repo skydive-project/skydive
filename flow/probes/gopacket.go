@@ -48,6 +48,7 @@ type packetHandle interface {
 	Close()
 }
 
+// GoPacketProbe describes a new probe that store packets from gopacket pcap library in a flowtable
 type GoPacketProbe struct {
 	handle       packetHandle
 	packetSource *gopacket.PacketSource
@@ -56,6 +57,7 @@ type GoPacketProbe struct {
 	state        int64
 }
 
+// GoPacketProbesHandler describes a flow probe handle in the graph
 type GoPacketProbesHandler struct {
 	graph      *graph.Graph
 	wg         sync.WaitGroup
@@ -86,14 +88,14 @@ func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker 
 	}
 }
 
-func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.FlowPackets, bpf *flow.BPF) {
+func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.Packets, bpf *flow.BPF) {
 	var count int
 
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := p.packetSource.NextPacket()
 		switch err {
 		case nil:
-			if flowPackets := flow.FlowPacketsFromGoPacket(&packet, 0, -1, bpf); len(flowPackets.Packets) > 0 {
+			if flowPackets := flow.PacketsFromGoPacket(&packet, 0, -1, bpf); len(flowPackets.Packets) > 0 {
 				packetsChan <- flowPackets
 			}
 		case io.EOF:
@@ -257,6 +259,7 @@ func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkTy
 	return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 }
 
+// RegisterProbe registers a gopacket probe
 func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
@@ -320,6 +323,7 @@ func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
 	return nil
 }
 
+// UnregisterProbe unregisters gopacket probe
 func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node) error {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
@@ -332,9 +336,11 @@ func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node) error {
 	return nil
 }
 
+// Start probe
 func (p *GoPacketProbesHandler) Start() {
 }
 
+// Stop probe
 func (p *GoPacketProbesHandler) Stop() {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
@@ -345,6 +351,7 @@ func (p *GoPacketProbesHandler) Stop() {
 	p.wg.Wait()
 }
 
+// NewGoPacketProbesHandler creates a new gopacket probe in the graph
 func NewGoPacketProbesHandler(g *graph.Graph) (*GoPacketProbesHandler, error) {
 	return &GoPacketProbesHandler{
 		graph:  g,

@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// PcapAPI exposes the pcap injector API
 type PcapAPI struct {
 	Storage storage.Storage
 }
@@ -52,17 +53,17 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	updateHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(update))
 	expireHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(expire))
 
-	flowtable := flow.NewTable(updateHandler, expireHandler, flow.NewFlowEnhancerPipeline())
+	flowtable := flow.NewTable(updateHandler, expireHandler, flow.NewEnhancerPipeline())
 	packetsChan := flowtable.Start()
 
-	writer, err := flow.NewPcapWriter(r.Body, packetsChan, false, "")
+	inject, err := flow.NewPcapInject(r.Body, packetsChan, false, "")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	writer.Start()
-	writer.Wait()
+	inject.Start()
+	inject.Wait()
 
 	// stop/flush flowtable
 	flowtable.Stop()
@@ -84,6 +85,7 @@ func (p *PcapAPI) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
+// RegisterPcapAPI registers a new pcap injector API
 func RegisterPcapAPI(r *shttp.Server, store storage.Storage) {
 	p := &PcapAPI{
 		Storage: store,

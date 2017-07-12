@@ -41,6 +41,7 @@ var (
 	patchMetadata = graph.Metadata{"Type": "patch"}
 )
 
+// OvsdbProbe describes a probe that reads OVS database and updates the graph
 type OvsdbProbe struct {
 	sync.Mutex
 	Graph        *graph.Graph
@@ -66,10 +67,12 @@ func isOvsLogicalInterface(intf *graph.Node) bool {
 	return false
 }
 
+// OnOvsBridgeUpdate event
 func (o *OvsdbProbe) OnOvsBridgeUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.OnOvsBridgeAdd(monitor, uuid, row)
 }
 
+// OnOvsBridgeAdd event
 func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
@@ -122,6 +125,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 	}
 }
 
+// OnOvsBridgeDel event
 func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
@@ -132,6 +136,7 @@ func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row 
 	}
 }
 
+// OnOvsInterfaceAdd event
 func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
@@ -285,10 +290,12 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	}
 }
 
+// OnOvsInterfaceUpdate event
 func (o *OvsdbProbe) OnOvsInterfaceUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.OnOvsInterfaceAdd(monitor, uuid, row)
 }
 
+// OnOvsInterfaceDel event
 func (o *OvsdbProbe) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
@@ -310,6 +317,7 @@ func (o *OvsdbProbe) OnOvsInterfaceDel(monitor *ovsdb.OvsMonitor, uuid string, r
 	delete(o.intfToPort, uuid)
 }
 
+// OnOvsPortAdd event
 func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
@@ -407,10 +415,12 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	}
 }
 
+// OnOvsPortUpdate event
 func (o *OvsdbProbe) OnOvsPortUpdate(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.OnOvsPortAdd(monitor, uuid, row)
 }
 
+// OnOvsPortDel event
 func (o *OvsdbProbe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
@@ -430,14 +440,17 @@ func (o *OvsdbProbe) OnOvsPortDel(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	delete(o.portToIntf, uuid)
 }
 
+// Start the probe
 func (o *OvsdbProbe) Start() {
 	o.OvsMon.StartMonitoring()
 }
 
+// Stop the probe
 func (o *OvsdbProbe) Stop() {
 	o.OvsMon.StopMonitoring()
 }
 
+// NewOvsdbProbe creates a new graph OVS database probe
 func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProbe {
 	mon := ovsdb.NewOvsMonitor(p, t)
 	mon.ExcludeColumn("statistics")
@@ -457,6 +470,7 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProb
 	return o
 }
 
+// NewOvsdbProbeFromConfig creates a new probe based on configuration
 func NewOvsdbProbeFromConfig(g *graph.Graph, n *graph.Node) *OvsdbProbe {
 	address := config.GetConfig().GetString("ovs.ovsdb")
 

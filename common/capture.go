@@ -22,12 +22,14 @@
 
 package common
 
+// CaptureType describes a list of allowed and default captures probes
 type CaptureType struct {
 	Allowed []string
 	Default string
 }
 
 var (
+	// CaptureTypes contain all registred capture type and associated probes
 	CaptureTypes = map[string]CaptureType{}
 )
 
@@ -49,6 +51,7 @@ func initCaptureTypes() {
 	}
 }
 
+// IsCaptureAllowed returns true if the node capture type exist
 func IsCaptureAllowed(nodeType string) bool {
 	_, ok := CaptureTypes[nodeType]
 	return ok

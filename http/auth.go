@@ -34,7 +34,8 @@ import (
 )
 
 var (
-	WrongCredentials error = errors.New("Wrong credentials")
+	// ErrWrongCredentials error wrong credentials
+	ErrWrongCredentials = errors.New("Wrong credentials")
 )
 
 type AuthenticationOpts struct {

@@ -35,10 +35,12 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// ErrNoStorageConfigured error no storage has been configured
 var (
-	NoStorageConfigured error = errors.New("No storage backend has been configured")
+	ErrNoStorageConfigured = errors.New("No storage backend has been configured")
 )
 
+// Storage interface a flow storage mechanism
 type Storage interface {
 	Start()
 	StoreFlows(flows []*flow.Flow) error
@@ -47,6 +49,7 @@ type Storage interface {
 	Stop()
 }
 
+// NewStorage creates a new flow storage based on the backend
 func NewStorage(backend string) (s Storage, err error) {
 	switch backend {
 	case "elasticsearch":
@@ -72,6 +75,7 @@ func NewStorage(backend string) (s Storage, err error) {
 	return
 }
 
+// NewStorageFromConfig creates a new storage based configuration
 func NewStorageFromConfig() (s Storage, err error) {
 	return NewStorage(config.GetConfig().GetString("analyzer.storage.backend"))
 }

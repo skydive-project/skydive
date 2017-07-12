@@ -28,24 +28,30 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
+// MemoryBackendNode a memory backend node
 type MemoryBackendNode struct {
 	*Node
 	edges map[Identifier]*MemoryBackendEdge
 }
 
+// MemoryBackendEdge a memory backend edge
 type MemoryBackendEdge struct {
 	*Edge
 }
 
+// MemoryBackend describes the memory backend
 type MemoryBackend struct {
+	GraphBackend
 	nodes map[Identifier]*MemoryBackendNode
 	edges map[Identifier]*MemoryBackendEdge
 }
 
+// MetadataUpdated returns true
 func (m *MemoryBackend) MetadataUpdated(i interface{}) bool {
 	return true
 }
 
+// EdgeAdded event add an edge in the memory backend
 func (m *MemoryBackend) EdgeAdded(e *Edge) bool {
 	edge := &MemoryBackendEdge{
 		Edge: e,
@@ -68,6 +74,7 @@ func (m *MemoryBackend) EdgeAdded(e *Edge) bool {
 	return true
 }
 
+// GetEdge in the graph backend
 func (m *MemoryBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 	if e, ok := m.edges[i]; ok {
 		return []*Edge{e.Edge}
@@ -75,6 +82,7 @@ func (m *MemoryBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 	return nil
 }
 
+// GetEdgeNodes returns a list of nodes of an edge
 func (m *MemoryBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
 	var parent *MemoryBackendNode
 	if n, ok := m.nodes[e.parent]; ok && n.MatchMetadata(parentMetadata) {
@@ -93,6 +101,7 @@ func (m *MemoryBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadat
 	return []*Node{parent.Node}, []*Node{child.Node}
 }
 
+// NodeAdded in the graph backend
 func (m *MemoryBackend) NodeAdded(n *Node) bool {
 	m.nodes[n.ID] = &MemoryBackendNode{
 		Node:  n,
@@ -102,6 +111,7 @@ func (m *MemoryBackend) NodeAdded(n *Node) bool {
 	return true
 }
 
+// GetNode from the graph backend
 func (m *MemoryBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 	if n, ok := m.nodes[i]; ok {
 		return []*Node{n.Node}
@@ -109,6 +119,7 @@ func (m *MemoryBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 	return nil
 }
 
+// GetNodeEdges returns a list of edges of a node
 func (m *MemoryBackend) GetNodeEdges(n *Node, t *common.TimeSlice, meta Metadata) []*Edge {
 	edges := []*Edge{}
 
@@ -123,6 +134,7 @@ func (m *MemoryBackend) GetNodeEdges(n *Node, t *common.TimeSlice, meta Metadata
 	return edges
 }
 
+// EdgeDeleted in the graph backend
 func (m *MemoryBackend) EdgeDeleted(e *Edge) bool {
 	if _, ok := m.edges[e.ID]; !ok {
 		return false
@@ -141,12 +153,14 @@ func (m *MemoryBackend) EdgeDeleted(e *Edge) bool {
 	return true
 }
 
+// NodeDeleted in the graph backend
 func (m *MemoryBackend) NodeDeleted(n *Node) bool {
 	delete(m.nodes, n.ID)
 
 	return true
 }
 
+// GetNodes from the graph backend
 func (m MemoryBackend) GetNodes(t *common.TimeSlice, metadata Metadata) (nodes []*Node) {
 	for _, n := range m.nodes {
 		if n.MatchMetadata(metadata) {
@@ -156,6 +170,7 @@ func (m MemoryBackend) GetNodes(t *common.TimeSlice, metadata Metadata) (nodes [
 	return
 }
 
+// GetEdges from the graph backend
 func (m MemoryBackend) GetEdges(t *common.TimeSlice, metadata Metadata) (edges []*Edge) {
 	for _, e := range m.edges {
 		if e.MatchMetadata(metadata) {
@@ -165,6 +180,7 @@ func (m MemoryBackend) GetEdges(t *common.TimeSlice, metadata Metadata) (edges [
 	return
 }
 
+// WithContext returns a graph based on context
 func (m *MemoryBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
 	if context.TimeSlice != nil {
 		return nil, errors.New("Memory backend does not support history")
@@ -172,6 +188,7 @@ func (m *MemoryBackend) WithContext(graph *Graph, context GraphContext) (*Graph,
 	return graph, nil
 }
 
+// NewMemoryBackend creates a new graph memory backend
 func NewMemoryBackend() (*MemoryBackend, error) {
 	return &MemoryBackend{
 		nodes: make(map[Identifier]*MemoryBackendNode),

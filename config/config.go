@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	// Viper remote client need to be internally initialized
 	_ "github.com/spf13/viper/remote"
 
 	"github.com/skydive-project/skydive/common"
@@ -38,8 +39,9 @@ import (
 
 var cfg *viper.Viper
 
+// ErrNoAnalyzerSpecified error no analyzer section is specified in the configuration file
 var (
-	ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the config file")
+	ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configuration file")
 )
 
 func init() {
@@ -148,6 +150,7 @@ func checkViperSupportedExts(ext string) bool {
 	return false
 }
 
+// InitConfig with a backend
 func InitConfig(backend string, paths []string) error {
 	if len(paths) == 0 {
 		return fmt.Errorf("Empty configuration path")
@@ -188,14 +191,17 @@ func InitConfig(backend string, paths []string) error {
 	return checkConfig()
 }
 
+// GetConfig get current config
 func GetConfig() *viper.Viper {
 	return cfg
 }
 
+// SetDefault set default configuration key the value
 func SetDefault(key string, value interface{}) {
 	cfg.SetDefault(key, value)
 }
 
+// GetAnalyzerServiceAddresses returns a list of connectable Analyzers
 func GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
 	var addresses []common.ServiceAddress
 	for _, a := range GetConfig().GetStringSlice("analyzers") {
@@ -215,6 +221,7 @@ func GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
 	return addresses, nil
 }
 
+// GetOneAnalyzerServiceAddress returns a random connectable Analyzer
 func GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
 	addresses, err := GetAnalyzerServiceAddresses()
 	if err != nil {
@@ -228,6 +235,7 @@ func GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
 	return addresses[rand.Intn(len(addresses))], nil
 }
 
+// GetEtcdServerAddrs returns the ETCD server address specified in the configuration file or embedded
 func GetEtcdServerAddrs() []string {
 	etcdServers := GetConfig().GetStringSlice("etcd.servers")
 	if len(etcdServers) > 0 {
@@ -239,6 +247,7 @@ func GetEtcdServerAddrs() []string {
 	return []string{"http://localhost:2379"}
 }
 
+// IsTLSenabled returns true is the analyzer certificates are set
 func IsTLSenabled() bool {
 	certPEM := GetConfig().GetString("analyzer.X509_cert")
 	keyPEM := GetConfig().GetString("analyzer.X509_key")

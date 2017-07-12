@@ -24,15 +24,17 @@ package flow
 
 import "github.com/skydive-project/skydive/common"
 
-func (fm *FlowMetric) Copy() *FlowMetric {
+// Copy a flow metric
+func (f *FlowMetric) Copy() *FlowMetric {
 	return &FlowMetric{
-		ABPackets: fm.ABPackets,
-		ABBytes:   fm.ABBytes,
-		BAPackets: fm.BAPackets,
-		BABytes:   fm.BABytes,
+		ABPackets: f.ABPackets,
+		ABBytes:   f.ABBytes,
+		BAPackets: f.BAPackets,
+		BABytes:   f.BABytes,
 	}
 }
 
+// GetFieldInt64 returns the field value
 func (f *FlowMetric) GetFieldInt64(field string) (int64, error) {
 	switch field {
 	case "ABPackets":
@@ -47,6 +49,7 @@ func (f *FlowMetric) GetFieldInt64(field string) (int64, error) {
 	return 0, common.ErrFieldNotFound
 }
 
+// Add sum flow metrics
 func (f *FlowMetric) Add(m common.Metric) common.Metric {
 	f2 := m.(*FlowMetric)
 

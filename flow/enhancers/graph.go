@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// GraphFlowEnhancer describes an cache node enhancer
 type GraphFlowEnhancer struct {
 	graph.DefaultGraphListener
 	Graph    *graph.Graph
@@ -71,6 +72,7 @@ func (gfe *GraphFlowEnhancer) getNodeTID(mac string) string {
 	return tid
 }
 
+// Enhance the graph with local TID node cache
 func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
 	if f.Link == nil {
 		return
@@ -83,6 +85,7 @@ func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
 	}
 }
 
+// OnNodeDeleted event
 func (gfe *GraphFlowEnhancer) OnNodeDeleted(n *graph.Node) {
 	if mac, _ := n.GetFieldString("MAC"); mac != "" {
 		logging.GetLogger().Debugf("GraphFlowEnhancer node event del cache %s", n.String())
@@ -90,6 +93,7 @@ func (gfe *GraphFlowEnhancer) OnNodeDeleted(n *graph.Node) {
 	}
 }
 
+// OnEdgeDeleted event
 func (gfe *GraphFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
 	// need to reset the entry as edge event of type RelationType means TID update
 	if rt, _ := e.GetFieldString("RelationType"); rt == topology.OwnershipLink {
@@ -103,6 +107,7 @@ func (gfe *GraphFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
 	}
 }
 
+// NewGraphFlowEnhancer creates a new flow enhancer that will enhance A and B flow nodes TIDs
 func NewGraphFlowEnhancer(g *graph.Graph, cache *cache.Cache) *GraphFlowEnhancer {
 	fe := &GraphFlowEnhancer{
 		Graph: g,

@@ -34,9 +34,11 @@ import (
 )
 
 const (
-	Namespace = "Packet_Injection"
+	// Namespace Packet_Injector
+	Namespace = "Packet_Injector"
 )
 
+// PacketInjectorServer creates a packet injector server API
 type PacketInjectorServer struct {
 	shttp.DefaultWSClientEventHandler
 	WSAsyncClientPool *shttp.WSAsyncClientPool
@@ -45,7 +47,7 @@ type PacketInjectorServer struct {
 
 func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (string, error) {
 	var params PacketParams
-	if err := common.JsonDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
+	if err := common.JSONDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
 		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
 	}
 
@@ -57,6 +59,7 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (string, erro
 	return trackingID, nil
 }
 
+// OnMessage event, websocket PIRequest message
 func (pis *PacketInjectorServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 	switch msg.Type {
 	case "PIRequest":
@@ -74,6 +77,7 @@ func (pis *PacketInjectorServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSM
 	}
 }
 
+// NewServer creates a new packet injector server API based on websocket server
 func NewServer(wspool *shttp.WSAsyncClientPool, graph *graph.Graph) *PacketInjectorServer {
 	s := &PacketInjectorServer{
 		WSAsyncClientPool: wspool,

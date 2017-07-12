@@ -32,6 +32,7 @@ import (
 
 var analyzerAddr string
 
+// Client skydive client root command
 var Client = &cobra.Command{
 	Use:          "client",
 	Short:        "Skydive client",

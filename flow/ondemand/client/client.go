@@ -39,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// OnDemandProbeClient describes an ondemand probe client based on a websocket
 type OnDemandProbeClient struct {
 	sync.RWMutex
 	shttp.DefaultWSServerEventHandler
@@ -59,6 +60,7 @@ type nodeProbe struct {
 	capture *api.Capture
 }
 
+// OnMessage event, valid message type : CaptureStartReply or CaptureStopReply message
 func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*m.Obj), &query); err != nil {
@@ -123,7 +125,7 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 				nps[nodeID] = nodeProbe{string(nodeID), host, capture}
 			}
 		case []*graph.Node:
-			// case of shortestpath that return a list of nodes
+			// case of shortestpath that returns a list of nodes
 			for _, node := range i.([]*graph.Node) {
 				if nodeID, host, ok := toRegister(node, capture); ok {
 					nps[nodeID] = nodeProbe{string(nodeID), host, capture}
@@ -202,14 +204,17 @@ func (o *OnDemandProbeClient) onNodeEvent() {
 	}
 }
 
+// OnNodeAdded event
 func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
 	o.onNodeEvent()
 }
 
+// OnNodeUpdated event
 func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
 	o.onNodeEvent()
 }
 
+// OnEdgeAdded event
 func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
 	o.onNodeEvent()
 }
@@ -276,12 +281,15 @@ func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
 	o.unregisterCapture(capture)
 }
 
+// OnStartAsMaster event
 func (o *OnDemandProbeClient) OnStartAsMaster() {
 }
 
+// OnStartAsSlave event
 func (o *OnDemandProbeClient) OnStartAsSlave() {
 }
 
+// OnSwitchToMaster event
 func (o *OnDemandProbeClient) OnSwitchToMaster() {
 	// try to delete recently added capture to handle case where the api got a delete but wasn't yet master
 	for _, item := range o.deletedNodeCache.Items() {
@@ -295,10 +303,11 @@ func (o *OnDemandProbeClient) OnSwitchToMaster() {
 	}
 }
 
+// OnSwitchToSlave event
 func (o *OnDemandProbeClient) OnSwitchToSlave() {
 }
 
-func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resource api.APIResource) {
+func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resource api.Resource) {
 	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
 	capture := resource.(*api.Capture)
 	switch action {
@@ -311,6 +320,7 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 	}
 }
 
+// Start the probe
 func (o *OnDemandProbeClient) Start() {
 	o.elector.StartAndWait()
 
@@ -318,11 +328,13 @@ func (o *OnDemandProbeClient) Start() {
 	o.graph.AddEventListener(o)
 }
 
+// Stop the probe
 func (o *OnDemandProbeClient) Stop() {
 	o.watcher.Stop()
 	o.elector.Stop()
 }
 
+// NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
 func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.WSServer, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*api.Capture)

@@ -33,8 +33,8 @@ import (
 
 func TestFlowMetricsAggregates(t *testing.T) {
 	metrics := map[string][]*common.TimedMetric{
-		"aa": []*common.TimedMetric{
-			&common.TimedMetric{
+		"aa": {
+			{
 				TimeSlice: common.TimeSlice{
 					Start: 10,
 					Last:  20,
@@ -46,7 +46,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					BAPackets: 1,
 				},
 			},
-			&common.TimedMetric{
+			{
 				TimeSlice: common.TimeSlice{
 					Start: 20,
 					Last:  30,
@@ -59,8 +59,8 @@ func TestFlowMetricsAggregates(t *testing.T) {
 				},
 			},
 		},
-		"bb": []*common.TimedMetric{
-			&common.TimedMetric{
+		"bb": {
+			{
 				TimeSlice: common.TimeSlice{
 					Start: 15,
 					Last:  25,
@@ -72,7 +72,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					BAPackets: 4,
 				},
 			},
-			&common.TimedMetric{
+			{
 				TimeSlice: common.TimeSlice{
 					Start: 40,
 					Last:  50,
@@ -85,8 +85,8 @@ func TestFlowMetricsAggregates(t *testing.T) {
 				},
 			},
 		},
-		"cc": []*common.TimedMetric{
-			&common.TimedMetric{
+		"cc": {
+			{
 				TimeSlice: common.TimeSlice{
 					Start: 48,
 					Last:  58,
@@ -103,8 +103,8 @@ func TestFlowMetricsAggregates(t *testing.T) {
 	step := traversal.NewMetricsTraversalStep(nil, metrics, nil)
 
 	metrics = map[string][]*common.TimedMetric{
-		"Aggregated": []*common.TimedMetric{
-			&common.TimedMetric{
+		"Aggregated": {
+			{
 				TimeSlice: common.TimeSlice{
 					Start: 10,
 					Last:  20,
@@ -116,7 +116,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					BAPackets: 5,
 				},
 			},
-			&common.TimedMetric{
+			{
 				TimeSlice: common.TimeSlice{
 					Start: 20,
 					Last:  30,
@@ -128,7 +128,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 					BAPackets: 2,
 				},
 			},
-			&common.TimedMetric{
+			{
 				TimeSlice: common.TimeSlice{
 					Start: 40,
 					Last:  50,

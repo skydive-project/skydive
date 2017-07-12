@@ -38,6 +38,7 @@ const (
 	defaultPort = 6343
 )
 
+// SFlowProbesHandler describes a SFlow probe in the graph
 type SFlowProbesHandler struct {
 	FlowProbe
 	Graph      *graph.Graph
@@ -46,6 +47,7 @@ type SFlowProbesHandler struct {
 	allocator  *sflow.SFlowAgentAllocator
 }
 
+// UnregisterProbe unregisters a probe from the graph
 func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
 	d.probesLock.Lock()
 	defer d.probesLock.Unlock()
@@ -66,6 +68,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
 	return nil
 }
 
+// RegisterProbe registers a probe in the graph
 func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
 	tid := ""
 	if tid, _ = n.GetFieldString("TID"); tid == "" {
@@ -102,13 +105,16 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, 
 	return nil
 }
 
+// Start a probe
 func (d *SFlowProbesHandler) Start() {
 }
 
+// Stop a probe
 func (d *SFlowProbesHandler) Stop() {
 	d.allocator.ReleaseAll()
 }
 
+// NewSFlowProbesHandler creates a new SFlow probe in the graph
 func NewSFlowProbesHandler(g *graph.Graph) (*SFlowProbesHandler, error) {
 	allocator, err := sflow.NewSFlowAgentAllocator()
 	if err != nil {

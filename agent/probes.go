@@ -31,6 +31,7 @@ import (
 	tprobes "github.com/skydive-project/skydive/topology/probes"
 )
 
+// NewTopologyProbeBundleFromConfig creates a new topology probe.ProbeBundle based on the configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node, wspool *shttp.WSAsyncClientPool) (*probe.ProbeBundle, error) {
 	list := config.GetConfig().GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
@@ -66,14 +67,14 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node, wspool *sht
 			}
 			probes[t] = dockerProbe
 		case "neutron":
-			neutron, err := tprobes.NewNeutronMapperFromConfig(g, wspool)
+			neutron, err := tprobes.NewNeutronProbeFromConfig(g, wspool)
 			if err != nil {
 				logging.GetLogger().Errorf("Failed to initialize Neutron probe: %s", err.Error())
 				return nil, err
 			}
 			probes["neutron"] = neutron
 		case "opencontrail":
-			probes[t] = tprobes.NewOpenContrailMapper(g, n)
+			probes[t] = tprobes.NewOpenContrailProbeFromConfig(g, n)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}

@@ -41,6 +41,7 @@ var (
 	alertTrigger     string
 )
 
+// AlertCmd skydive alert root command
 var AlertCmd = &cobra.Command{
 	Use:          "alert",
 	Short:        "Manage alerts",
@@ -48,6 +49,7 @@ var AlertCmd = &cobra.Command{
 	SilenceUsage: false,
 }
 
+// AlertCreate skydive alert creates command
 var AlertCreate = &cobra.Command{
 	Use:   "create",
 	Short: "Create alert",
@@ -78,6 +80,7 @@ var AlertCreate = &cobra.Command{
 	},
 }
 
+// AlertList skydive alert list command
 var AlertList = &cobra.Command{
 	Use:   "list",
 	Short: "List alerts",
@@ -96,6 +99,7 @@ var AlertList = &cobra.Command{
 	},
 }
 
+// AlertGet skydive alert get command
 var AlertGet = &cobra.Command{
 	Use:   "get [alert]",
 	Short: "Display alert",
@@ -121,6 +125,7 @@ var AlertGet = &cobra.Command{
 	},
 }
 
+// AlertDelete skydive alert delete command
 var AlertDelete = &cobra.Command{
 	Use:   "delete [alert]",
 	Short: "Delete alert",

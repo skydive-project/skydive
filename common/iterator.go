@@ -22,19 +22,23 @@
 
 package common
 
+// Iterator describes a int64 iterator
 type Iterator struct {
 	at, from, to int64
 }
 
+// Done returns true when the Iterator is at the end or uninitialized properly
 func (it *Iterator) Done() bool {
 	return it.to != -1 && it.at >= it.to
 }
 
+// Next returns true if we can continue to iterate
 func (it *Iterator) Next() bool {
 	it.at++
 	return it.at-1 >= it.from
 }
 
+// NewIterator creates a new iterator based on (at, from, to) parameters
 func NewIterator(values ...int64) (it *Iterator) {
 	it = &Iterator{to: -1}
 	if len(values) > 0 {

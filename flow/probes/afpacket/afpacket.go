@@ -260,7 +260,7 @@ retry:
 			h.mu.Unlock()
 			return
 		}
-		// We can recieved empty block
+		// We can received empty block
 		if h.current.getLength() == 0 {
 			goto retry
 		}
@@ -282,7 +282,7 @@ func (h *TPacket) Stats() (Stats, error) {
 	return h.stats, nil
 }
 
-// InitSocketStats clears socket counters and return empty stats.
+// InitSocketStats clears socket counters and returns empty stats.
 func (h *TPacket) InitSocketStats() error {
 	if h.tpVersion == TPacketVersion3 {
 		socklen := unsafe.Sizeof(h.socketStatsV3)

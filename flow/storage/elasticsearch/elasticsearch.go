@@ -124,10 +124,12 @@ const metricMapping = `
 	]
 }`
 
+// ElasticSearchStorage describes a ElasticSearch database client
 type ElasticSearchStorage struct {
 	client *esclient.ElasticSearchClient
 }
 
+// StoreFlows push a set of flows in the database
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	if !c.client.Started() {
 		return errors.New("ElasticSearchStorage is not yet started")
@@ -181,6 +183,7 @@ func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]in
 	return c.client.Search(docType, string(q))
 }
 
+// SearchMetrics search flow metrics matching filters in the database
 func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
@@ -252,6 +255,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 	return metrics, nil
 }
 
+// SearchFlows search flow matching filters in the database
 func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
@@ -308,6 +312,7 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 	return flowset, nil
 }
 
+// Start the Database client
 func (c *ElasticSearchStorage) Start() {
 	go c.client.Start([]map[string][]byte{
 		{"metric": []byte(metricMapping)},
@@ -315,10 +320,12 @@ func (c *ElasticSearchStorage) Start() {
 	)
 }
 
+// Stop the Database client
 func (c *ElasticSearchStorage) Stop() {
 	c.client.Stop()
 }
 
+// New creates a new ElasticSearch database client
 func New() (*ElasticSearchStorage, error) {
 	client, err := esclient.NewElasticSearchClientFromConfig()
 	if err != nil {

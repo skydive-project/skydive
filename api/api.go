@@ -40,19 +40,22 @@ import (
 	"github.com/skydive-project/skydive/version"
 )
 
-type APIServer struct {
+// Server object are created once for each ServiceType (agent or analyzer)
+type Server struct {
 	HTTPServer  *shttp.Server
 	EtcdKeyAPI  etcd.KeysAPI
 	ServiceType common.ServiceType
-	handlers    map[string]APIHandler
+	handlers    map[string]Handler
 }
 
-type APIInfo struct {
+// Info for each host describes his API version and service (agent or analyzer)
+type Info struct {
 	Host    string
 	Version string
 	Service string
 }
 
+// HandlerFunc describes an http(s) router handler callback function
 type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 
 func writeError(w http.ResponseWriter, status int, err error) {
@@ -61,7 +64,8 @@ func writeError(w http.ResponseWriter, status int, err error) {
 	w.Write([]byte(err.Error()))
 }
 
-func (a *APIServer) RegisterAPIHandler(handler APIHandler) error {
+// RegisterAPIHandler registers a new handler for an API
+func (a *Server) RegisterAPIHandler(handler Handler) error {
 	name := handler.Name()
 	title := strings.Title(name)
 
@@ -118,7 +122,7 @@ func (a *APIServer) RegisterAPIHandler(handler APIHandler) error {
 				// keep the original ID
 				id := resource.ID()
 
-				if err := common.JsonDecode(r.Body, &resource); err != nil {
+				if err := common.JSONDecode(r.Body, &resource); err != nil {
 					writeError(w, http.StatusBadRequest, err)
 					return
 				}
@@ -183,8 +187,8 @@ func (a *APIServer) RegisterAPIHandler(handler APIHandler) error {
 	return nil
 }
 
-func (a *APIServer) addAPIRootRoute() {
-	info := APIInfo{
+func (a *Server) addAPIRootRoute() {
+	info := Info{
 		Host:    config.GetConfig().GetString("host_id"),
 		Version: version.Version,
 		Service: string(a.ServiceType),
@@ -208,16 +212,18 @@ func (a *APIServer) addAPIRootRoute() {
 	a.HTTPServer.RegisterRoutes(routes)
 }
 
-func (a *APIServer) GetHandler(s string) APIHandler {
-	return a.handlers[s]
+// GetHandler returns the hander named hname
+func (a *Server) GetHandler(hname string) Handler {
+	return a.handlers[hname]
 }
 
-func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, serviceType common.ServiceType) (*APIServer, error) {
-	apiServer := &APIServer{
+// NewAPI creates a new API server based on http
+func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, serviceType common.ServiceType) (*Server, error) {
+	apiServer := &Server{
 		HTTPServer:  server,
 		EtcdKeyAPI:  kapi,
 		ServiceType: serviceType,
-		handlers:    make(map[string]APIHandler),
+		handlers:    make(map[string]Handler),
 	}
 
 	apiServer.addAPIRootRoute()
@@ -225,6 +231,7 @@ func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, serviceType common.ServiceT
 	return apiServer, nil
 }
 
+// NewCrudClientFromConfig creates a new REST client on /api
 func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.CrudClient, error) {
 	sa, err := config.GetOneAnalyzerServiceAddress()
 	if err != nil && err != config.ErrNoAnalyzerSpecified {
@@ -235,6 +242,7 @@ func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.Crud
 	return shttp.NewCrudClient(sa.Addr, sa.Port, authOptions, "api"), nil
 }
 
+// NewRestClientFromConfig creates a new REST client
 func NewRestClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.RestClient, error) {
 	sa, err := config.GetOneAnalyzerServiceAddress()
 	if err != nil && err != config.ErrNoAnalyzerSpecified {

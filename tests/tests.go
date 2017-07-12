@@ -153,7 +153,7 @@ func (c *TestContext) getWholeGraph(t *testing.T) string {
 		header.Set("Accept", "vnd.graphviz")
 		resp, err := c.gh.Request(gremlin, header)
 		if err != nil {
-			return err.Error()
+			t.Fatal(err.Error())
 		}
 
 		b, err := ioutil.ReadAll(resp.Body)
@@ -162,18 +162,18 @@ func (c *TestContext) getWholeGraph(t *testing.T) string {
 		cmd := exec.Command("graph-easy", "--as_ascii")
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
-			return err.Error()
+			t.Fatal(err.Error())
 		}
 
 		if _, err = stdin.Write(b); err != nil {
-			return err.Error()
+			t.Fatal(err.Error())
 		}
 		stdin.Write([]byte("\n"))
 		stdin.Close()
 
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			return err.Error()
+			t.Fatal(err.Error())
 		}
 
 		return "\n" + string(output)
@@ -185,7 +185,7 @@ func (c *TestContext) getWholeGraph(t *testing.T) string {
 
 		b, err := json.Marshal(&g)
 		if err != nil {
-			t.Error(err.Error())
+			t.Fatal(err.Error())
 		}
 
 		return string(b)
