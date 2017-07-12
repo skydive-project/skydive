@@ -169,6 +169,7 @@ TopologyGraphLayout.prototype = {
   },
 
   hideNode: function(d) {
+    if (this.hidden(d)) return;
     d.visible = false;
 
     delete this.nodes[d.id];
@@ -195,7 +196,12 @@ TopologyGraphLayout.prototype = {
     }
   },
 
+  hidden: function(d) {
+    return d.metadata.Type === "ofrule";
+  },
+
   showNode: function(d) {
+    if (this.hidden(d)) return;
     d.visible = true;
 
     delete this._nodes[d.id];
@@ -332,6 +338,7 @@ TopologyGraphLayout.prototype = {
   },
 
   onEdgeAdded: function(link) {
+    if (this.hidden(link.target) || this.hidden(link.source)) return;
     this.queue.defer(this._onEdgeAdded.bind(this), link);
   },
 
@@ -394,6 +401,7 @@ TopologyGraphLayout.prototype = {
   },
 
   onEdgeDeleted: function(link) {
+    if (this.hidden(link.target) || this.hidden(link.source)) return;
     this.queue.defer(this._onEdgeDeleted.bind(this), link);
   },
 
@@ -404,6 +412,7 @@ TopologyGraphLayout.prototype = {
   },
 
   onNodeAdded: function(node) {
+    if (this.hidden(node)) return;
     this.queue.defer(this._onNodeAdded.bind(this), node);
   },
 
@@ -427,6 +436,7 @@ TopologyGraphLayout.prototype = {
   },
 
   onNodeDeleted: function(node) {
+    if (this.hidden(node)) return;
     this.queue.defer(this._onNodeDeleted.bind(this), node);
   },
 
@@ -437,6 +447,7 @@ TopologyGraphLayout.prototype = {
   },
 
   onNodeUpdated: function(node) {
+    if (this.hidden(node)) return;
     this.queue.defer(this._onNodeUpdated.bind(this), node);
   },
 
