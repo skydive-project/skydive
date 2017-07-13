@@ -18,21 +18,9 @@ var TopologyGraphLayout = function(vm, selector) {
 
   this.vm = vm;
 
+  this.initD3Data();
+
   this.handlers = [];
-
-  this.nodes = {};
-  this._nodes = {};
-
-  this.links = {};
-  this._links = {};
-
-  this.groups = [];
-
-  this.linkLabels = {};
-
-  this.collapsed = false;
-  this.selectedNode = null;
-  this.invalid = false;
 
   this.queue = new Queue();
   this.queue.await(function() {
@@ -128,6 +116,37 @@ TopologyGraphLayout.prototype = {
 
   zoomReset: function() {
     this.svg.transition().duration(500).call(this.zoom.transform, d3.zoomIdentity);
+  },
+
+  initD3Data: function() {
+    this.nodes = {};
+    this._nodes = {};
+
+    this.links = {};
+    this._links = {};
+
+    this.groups = [];
+
+    this.linkLabels = {};
+
+    this.collapsed = true;
+    this.selectedNode = null;
+    this.invalid = false;
+  },
+
+  onPreInit: function() {
+    this.queue.stop();
+    this.queue.clear();
+
+    this.initD3Data();
+    this.update();
+  },
+
+  onPostInit: function() {
+    var self = this;
+    setTimeout(function() {
+      self.queue.start(100);
+    }, 1000);
   },
 
   linkDistance: function(e) {
@@ -453,7 +472,9 @@ TopologyGraphLayout.prototype = {
     var members = group.memberArray, n = members.length;
     if (n < 1) return null;
 
-    if (n == 1) return [[members[0].x, members[0].y], [members[0].x + 1, members[0].y + 1]];
+    if (n == 1) {
+      return members[0].x && members[0].y ? [[members[0].x, members[0].y], [members[0].x + 1, members[0].y + 1]] : null;
+    }
 
     var i, node, sortedPoints = [], flippedPoints = [];
     for (i = 0; i < n; ++i) {
@@ -489,7 +510,7 @@ TopologyGraphLayout.prototype = {
   tick: function() {
     var self = this;
 
-    this.link.attr("d", function(d) { return 'M ' + d.source.x + " " + d.source.y + " L " + d.target.x + " " + d.target.y; });
+    this.link.attr("d", function(d) { if (d.source.x && d.target.x) return 'M ' + d.source.x + " " + d.source.y + " L " + d.target.x + " " + d.target.y; });
     this.linkLabel.attr("transform", function(d, i){
         if (d.link.target.x < d.link.source.x){
           var bbox = this.getBBox();
@@ -507,10 +528,14 @@ TopologyGraphLayout.prototype = {
     this.group.attrs(function(d) {
       var hull = self.convexHull(d);
 
-      return {
-        'd': hull ? "M" + hull.join("L") + "Z" : d.d,
-        'stroke-width': 64 + d.depth * 50,
-      };
+      if (hull && hull.length) {
+        return {
+          'd': hull ? "M" + hull.join("L") + "Z" : d.d,
+          'stroke-width': 64 + d.depth * 50,
+        };
+      } else {
+        return { 'd': '' };
+      }
     });
   },
 
@@ -638,7 +663,7 @@ TopologyGraphLayout.prototype = {
       .classed('selected', false)
       .select('circle');
     if (!circle) return;
-    circle.transition().duration(500).attr('r', +circle.attr('r') - 3);
+    circle.transition().duration(500).attr('r', circle ? +circle.attr('r') - 3 : 0);
     d.selected = false;
     this.selectedNode = null;
   },
@@ -763,7 +788,7 @@ TopologyGraphLayout.prototype = {
           if (target.group.collapsed) {
             this.addCollapseLink(group, source, target.group.owner, e.metadata);
           }
-        } else {
+        } else if (source.group) {
           this.delCollapseLinks(source.group, group.owner);
 
           if (source.group.collapsed) {
@@ -1089,7 +1114,7 @@ TopologyGraphLayout.prototype = {
   },
 
   collapseImg: function(d) {
-    if (d.group.collapsed) return plusImg;
+    if (d.group && d.group.collapsed) return plusImg;
     return minusImg;
   }
 

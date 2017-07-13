@@ -56,6 +56,10 @@ Queue.prototype = {
     clearInterval(this.intervalID);
   },
 
+	clear: function() {
+	  this.calls = [];
+	},
+
   await: function() {
     this._await = Array.prototype.slice.call(arguments);
     return this;

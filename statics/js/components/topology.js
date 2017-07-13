@@ -28,7 +28,7 @@ var TopologyComponent = {
           <button id="zoom-reset" type="button" class="btn btn-primary" \
                   title="Reset" @click="zoomReset">Reset</button>\
           <button id="expand-collapse" type="button" class="btn btn-primary" \
-                  @click="collapseAll">{{collapsed ? "Expand" : "Collapse"}}</button>\
+                  @click="toggleCollapse">{{collapsed ? "Expand" : "Collapse"}}</button>\
         </div>\
       </div>\
       <div class="col-sm-5 fill info">\
@@ -85,7 +85,11 @@ var TopologyComponent = {
     this.graph = new Graph(websocket);
 
     this.layout = new TopologyGraphLayout(this, ".topology-d3");
-    this.collapseAll();
+    this.collapse();
+
+    websocket.addConnectHandler(function() {
+      self.collapse();
+    });
 
     this.graph.addHandler(this.layout);
     this.layout.addHandler(this);
@@ -237,8 +241,18 @@ var TopologyComponent = {
       this.layout.zoomFit();
     },
 
-    collapseAll: function() {
+    toggleCollapse: function() {
       this.collapsed = !this.collapsed;
+      this.layout.collapse(this.collapsed);
+    },
+
+    collapse: function() {
+      this.collapsed = true;
+      this.layout.collapse(this.collapsed);
+    },
+
+    expand: function() {
+      this.collapsed = false;
       this.layout.collapse(this.collapsed);
     },
 
@@ -346,6 +360,8 @@ Graph.prototype = {
     for (i = this.handlers.length - 1; i >= 0; i--) {
       h = this.handlers[i];
       switch (ev) {
+        case 'preInit': h.onPreInit(); break;
+        case 'postInit': h.onPostInit(); break;
         case 'nodeAdded': h.onNodeAdded(v1); break;
         case 'nodeDeleted': h.onNodeDeleted(v1); break;
         case 'nodeUpdated': h.onNodeUpdated(v1, v2); break;
@@ -486,21 +502,8 @@ Graph.prototype = {
     this.synced = false;
   },
 
-  initFromSyncMessage: function(msg) {
-    this.synced = false;
-
-    this.clear();
-
-    if (msg.Status != 200) {
-      $.notify({
-        message: 'Unable to init topology'
-      },{
-        type: 'danger'
-      });
-      return;
-    }
-
-    var n, e, i, g = msg.Obj;
+  init: function(g) {
+    var n, e, i;
     for (i in g.Nodes) {
       n = g.Nodes[i];
       this.addNode(n.ID, n.Host, n.Metadata || {});
@@ -520,8 +523,27 @@ Graph.prototype = {
         this.addEdge(e.ID, e.Host, e.Metadata || {}, this.nodes[e.Parent], this.nodes[e.Child]);
       }
     }
+  },
+
+  initFromSyncMessage: function(msg) {
+    this.notifyHandlers('preInit');
+    this.synced = false;
+
+    this.clear();
+
+    if (msg.Status != 200) {
+      $.notify({
+        message: 'Unable to init topology'
+      },{
+        type: 'danger'
+      });
+      return;
+    }
+
+    this.init(msg.Obj);
 
     this.synced = true;
+    this.notifyHandlers('postInit');
   },
 
   syncRequest: function(t) {
@@ -548,6 +570,7 @@ Graph.prototype = {
       return;
     }
 
+    var node, edge;
     switch(msg.Type) {
       case "SyncReply":
         this.initFromSyncMessage(msg);
@@ -558,11 +581,14 @@ Graph.prototype = {
         break;
 
       case "NodeAdded":
-        this.addNode(msg.Obj.ID, msg.Obj.Host, msg.Obj.Metadata || {});
+        node = this.nodes[msg.Obj.ID];
+        if (!node) {
+          this.addNode(msg.Obj.ID, msg.Obj.Host, msg.Obj.Metadata || {});
+        }
         break;
 
       case "NodeDeleted":
-        var node = this.nodes[msg.Obj.ID];
+        node = this.nodes[msg.Obj.ID];
         if (node) {
           this.delNode(node);
         }
@@ -573,14 +599,17 @@ Graph.prototype = {
         break;
 
       case "EdgeAdded":
-        var parent = this.nodes[msg.Obj.Parent];
-        var child = this.nodes[msg.Obj.Child];
+        edge = this.edges[msg.Obj.ID];
+        if (!edge) {
+          var parent = this.nodes[msg.Obj.Parent];
+          var child = this.nodes[msg.Obj.Child];
 
-        this.addEdge(msg.Obj.ID, msg.Obj.Host, msg.Obj.Metadata || {}, parent, child);
+          this.addEdge(msg.Obj.ID, msg.Obj.Host, msg.Obj.Metadata || {}, parent, child);
+        }
         break;
 
       case "EdgeDeleted":
-        var edge = this.edges[msg.Obj.ID];
+        edge = this.edges[msg.Obj.ID];
         if (edge) {
           this.delEdge(edge);
         }
@@ -590,7 +619,6 @@ Graph.prototype = {
 
   clear: function() {
     var id;
-
     for (id in this.groups) {
       this.delGroup(this.groups[id]);
     }
