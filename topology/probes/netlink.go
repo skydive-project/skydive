@@ -116,7 +116,7 @@ func (u *NetNsNetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Lin
 	}
 
 	if link.Attrs().ParentIndex != 0 {
-		if _, err := intf.GetFieldString("Vlan"); err == nil {
+		if _, err := intf.GetFieldInt64("Vlan"); err == nil {
 			u.linkIntfToIndex(intf, int64(int64(link.Attrs().ParentIndex)))
 		}
 	}
@@ -345,7 +345,9 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	}
 
 	if vlan, ok := link.(*netlink.Vlan); ok {
-		metadata["Vlan"] = vlan.VlanId
+		if vlan, err := common.ToInt64(vlan.VlanId); err == nil {
+			metadata["Vlan"] = vlan
+		}
 	}
 
 	if (link.Attrs().Flags & net.FlagUp) > 0 {
