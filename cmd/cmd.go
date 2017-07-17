@@ -66,4 +66,5 @@ func init() {
 	RootCmd.AddCommand(Analyzer)
 	RootCmd.AddCommand(Client)
 	RootCmd.AddCommand(AllInOne)
+	RootCmd.AddCommand(BashCompletion)
 }

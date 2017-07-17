@@ -38,9 +38,6 @@ all: install
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/*
 	gofmt -w -s statics/bindata.go
 
-skydive-bash-completion.sh: .proto govendor cmd/completion/completion.go
-	go run cmd/completion/completion.go
-
 .compile:
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
@@ -130,7 +127,7 @@ builddep:
 	go get github.com/golang/protobuf/protoc-gen-go
 	go get github.com/jteeuwen/go-bindata/...
 
-genlocalfiles: .proto .bindata skydive-bash-completion.sh
+genlocalfiles: .proto .bindata
 
 clean: test.functionals.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true

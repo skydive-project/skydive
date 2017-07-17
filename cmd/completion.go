@@ -20,10 +20,22 @@
  *
  */
 
-package main
+package cmd
 
-import "github.com/skydive-project/skydive/cmd"
+import (
+	"fmt"
 
-func main() {
-	cmd.RootCmd.GenBashCompletionFile("skydive-bash-completion.sh")
+	"github.com/spf13/cobra"
+)
+
+// BashCompletion skydive root command
+var BashCompletion = &cobra.Command{
+	Use:          "bash-completion",
+	Short:        "generate bash completion helper",
+	Long:         "generate bash completion helper (skydive-bash-completion.sh)",
+	SilenceUsage: true,
+	Run: func(cmd *cobra.Command, args []string) {
+		RootCmd.GenBashCompletionFile("skydive-bash-completion.sh")
+		fmt.Println("skydive-bash-completion.sh has been generated")
+	},
 }
