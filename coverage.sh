@@ -54,6 +54,14 @@ push_to_coveralls() {
     goveralls -coverprofile="$profile"
 }
 
+push_to_codecov() {
+    if [ -n $CODECOV_TOKEN ] ;then
+        echo "Pushing coverage statistics to codecov.io"
+        cp "$profile" coverage.txt
+        bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
+    fi
+}
+
 format=func
 for arg in "$@"
 do
@@ -76,3 +84,4 @@ done
 generate_cover_data
 show_cover_report $format
 [ "$coveralls" -eq 1 ] && push_to_coveralls
+push_to_codecov
