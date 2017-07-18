@@ -67,7 +67,8 @@ Skydive documentation can be found here:
 
 ## Contributing
 
-Your contributions are more than welcome. Please check https://skydive-project.github.io/skydive/contributing/
+Your contributions are more than welcome. Please check
+https://github.com/skydive-project/skydive/blob/master/CONTRIBUTING.md
 to know about the process.
 
 ## Contact
