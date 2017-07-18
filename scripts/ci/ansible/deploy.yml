@@ -129,6 +129,7 @@
       name: "{{ item }}"
       state: present
     with_items:
+       - http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-25.noarch.rpm
        - git
        - wget
        - unzip
@@ -145,6 +146,8 @@
        - bridge-utils
        - perl-Graph-Easy
        - java
+       - ffmpeg
+       - gifsicle
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL

@@ -287,7 +287,7 @@ Vue.component('flow-table', {
                    @toggleField="toggleField">\
       <template slot="empty">No flows found</template>\
       <template slot="row" scope="flows">\
-        <tr class="flow-row"\
+        <tr v-bind:id="\'flow-\' + flows.row.UUID" class="flow-row"\
             :class="{\'flow-detail\': hasFlowDetail(flows.row)}"\
             @click="toggleFlowDetail(flows.row)"\
             @mouseenter="highlightNodes(flows.row, true)"\
