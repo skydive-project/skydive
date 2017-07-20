@@ -5,6 +5,9 @@ set -v
 dir="$(dirname "$0")"
 . "${dir}/install-go.sh"
 
+sudo iptables -F
+for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
+
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 if [ "$COVERAGE" != "true" ]; then
