@@ -12,6 +12,7 @@ sudo systemctl stop etcd.service
 sleep 15
 
 sudo iptables -F
+for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 make install
