@@ -605,17 +605,28 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 // DelMetadata delete a metadata to an associated edge or node
 func (g *Graph) DelMetadata(i interface{}, k string) bool {
 	var e *graphElement
+	ge := graphEvent{element: i}
 
 	switch i.(type) {
 	case *Node:
 		e = &i.(*Node).graphElement
+		ge.kind = nodeUpdated
 	case *Edge:
 		e = &i.(*Edge).graphElement
+		ge.kind = edgeUpdated
 	}
 
-	m := e.Metadata()
-	delete(m, k)
-	return g.SetMetadata(i, m)
+	common.DelField(e.metadata, k)
+
+	e.updatedAt = time.Now().UTC()
+	e.revision++
+
+	if !g.backend.MetadataUpdated(i) {
+		return false
+	}
+
+	g.notifyEvent(ge)
+	return true
 }
 
 func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
