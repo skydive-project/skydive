@@ -25,6 +25,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"math/rand"
 	"net/http"
 
 	"github.com/abbot/go-http-auth"
@@ -33,6 +34,11 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/validator"
+)
+
+const (
+	min = 1024
+	max = 65535
 )
 
 // PacketInjectorAPI exposes the packet injector API
@@ -49,6 +55,8 @@ type PacketParamsReq struct {
 	DstIP      string
 	SrcMAC     string
 	DstMAC     string
+	SrcPort    int64
+	DstPort    int64
 	Type       string
 	Payload    string
 	TrackingID string
@@ -65,7 +73,7 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 	dstNode := pi.getNode(ppr.Dst)
 
 	ipField := "IPV4"
-	if ppr.Type == "icmp6" {
+	if ppr.Type == "icmp6" || ppr.Type == "tcp6" {
 		ipField = "IPV6"
 	}
 
@@ -117,12 +125,23 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 		}
 	}
 
+	if ppr.Type == "tcp4" || ppr.Type == "tcp6" {
+		if ppr.SrcPort == 0 {
+			ppr.SrcPort = rand.Int63n(max-min) + min
+		}
+		if ppr.DstPort == 0 {
+			ppr.DstPort = rand.Int63n(max-min) + min
+		}
+	}
+
 	pp := &packet_injector.PacketParams{
 		SrcNodeID: srcNode.ID,
 		SrcIP:     ppr.SrcIP,
 		SrcMAC:    ppr.SrcMAC,
+		SrcPort:   ppr.SrcPort,
 		DstIP:     ppr.DstIP,
 		DstMAC:    ppr.DstMAC,
+		DstPort:   ppr.DstPort,
 		Type:      ppr.Type,
 		Payload:   ppr.Payload,
 		Count:     ppr.Count,

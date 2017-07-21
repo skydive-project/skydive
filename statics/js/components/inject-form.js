@@ -11,6 +11,8 @@ Vue.component('inject-form', {
         <select id="inject-type" v-model="type" class="form-control input-sm">\
           <option value="icmp4">ICMPv4/Echo request</option>\
           <option value="icmp6">ICMPv6/Echo request</option>\
+          <option value="tcp4">TCP/IPv4</option>\
+          <option value="tcp6">TCP/IPv6</option>\
         </select>\
       </div>\
       <div class="form-group">\
@@ -29,9 +31,21 @@ Vue.component('inject-form', {
         <label for="inject-count">Nb. of packets</label>\
         <input id="inject-count" type="number" class="form-control input-sm" v-model="count" min="1" />\
       </div>\
-      <div class="form-group">\
-        <label for="inject-count">ICMP Identifier</label>\
-        <input id="inject-id" type="number" class="form-control input-sm" v-model="id" min="0" />\
+      <div v-if="type === \'icmp4\' || type === \'icmp6\'">\
+        <div class="form-group">\
+          <label for="inject-count">ICMP Identifier</label>\
+          <input id="inject-id" type="number" class="form-control input-sm" v-model="id" min="0" />\
+        </div>\
+      </div>\
+      <div v-if="type === \'tcp4\' || type === \'tcp6\'">\
+        <div class="form-group">\
+          <label for="src-port">Src Port</label>\
+          <input id="src-port" type="number" class="form-control input-sm" v-model="port1" min="0" />\
+        </div>\
+        <div class="form-group">\
+          <label for="dst-port">Dst Port</label>\
+          <input id="dst-port" type="number" class="form-control input-sm" v-model="port2" min="0" />\
+        </div>\
       </div>\
       <div class="form-group">\
         <label for="inject-interval">Interval</label>\
@@ -50,6 +64,8 @@ Vue.component('inject-form', {
       type: "icmp4",
       id: 0,
       interval: 0,
+      port1: 0,
+      port2: 0,
     };
   },
 
@@ -133,6 +149,8 @@ Vue.component('inject-form', {
         data: JSON.stringify({
           "Src": "G.V('" + this.node1 + "')",
           "Dst": "G.V('" + this.node2 + "')",
+          "SrcPort": this.port1,
+          "DstPort": this.port2,
           "Type": this.type,
           "Count": this.count,
           "ID": this.id,

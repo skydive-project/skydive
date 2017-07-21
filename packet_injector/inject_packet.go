@@ -25,6 +25,7 @@ package packet_injector
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"strings"
 	"syscall"
@@ -52,9 +53,11 @@ type PacketParams struct {
 	SrcNodeID graph.Identifier `valid:"nonzero"`
 	SrcIP     string           `valid:"nonzero"`
 	SrcMAC    string           `valid:"nonzero"`
+	SrcPort   int64            `valid:"min=0"`
 	DstIP     string           `valid:"nonzero"`
 	DstMAC    string           `valid:"nonzero"`
-	Type      string           `valid:"regexp=^(icmp4|icmp6)$"`
+	DstPort   int64            `valid:"min=0"`
+	Type      string           `valid:"regexp=^(icmp4|icmp6|tcp4|tcp6)$"`
 	Count     int64            `valid:"min=1"`
 	ID        int64            `valid:"min=0"`
 	Interval  int64            `valid:"min=0"`
@@ -117,6 +120,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 	}
 
 	var l []gopacket.SerializableLayer
+	var layerType gopacket.LayerType
 	ethLayer := &layers.Ethernet{SrcMAC: srcMAC, DstMAC: dstMAC}
 	payload := gopacket.Payload([]byte(pp.Payload))
 
@@ -128,6 +132,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
 			Id:       uint16(pp.ID),
 		}
+		layerType = layers.LayerTypeEthernet
 		l = append(l, ethLayer, ipLayer, icmpLayer, payload)
 	case "icmp6":
 		ethLayer.EthernetType = layers.EthernetTypeIPv6
@@ -136,8 +141,27 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 			TypeCode:  layers.CreateICMPv6TypeCode(layers.ICMPv6TypeEchoRequest, 0),
 			TypeBytes: []byte{byte(pp.ID & int64(0xFF00) >> 8), byte(pp.ID & int64(0xFF)), 0, 0},
 		}
+		layerType = layers.LayerTypeEthernet
 		icmpLayer.SetNetworkLayerForChecksum(ipLayer)
 		l = append(l, ethLayer, ipLayer, icmpLayer, payload)
+	case "tcp4":
+		ethLayer.EthernetType = layers.EthernetTypeIPv4
+		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolTCP, TTL: 64}
+		srcPort := layers.TCPPort(pp.SrcPort)
+		dstPort := layers.TCPPort(pp.DstPort)
+		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
+		layerType = layers.LayerTypeTCP
+		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ethLayer, ipLayer, tcpLayer)
+	case "tcp6":
+		ethLayer.EthernetType = layers.EthernetTypeIPv6
+		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolTCP}
+		srcPort := layers.TCPPort(pp.SrcPort)
+		dstPort := layers.TCPPort(pp.DstPort)
+		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
+		layerType = layers.LayerTypeTCP
+		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ethLayer, ipLayer, tcpLayer)
 	default:
 		rawSocket.Close()
 		return "", fmt.Errorf("Unsupported traffic type '%s'", pp.Type)
@@ -150,7 +174,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 	}
 
 	packetData := buffer.Bytes()
-	packet := gopacket.NewPacket(packetData, layers.LayerTypeEthernet, gopacket.Default)
+	packet := gopacket.NewPacket(packetData, layerType, gopacket.Default)
 	flowKey := flow.KeyFromGoPacket(&packet, "").String()
 	flow := flow.NewFlow()
 	flow.Init(flowKey, common.UnixMillis(time.Now()), &packet, int64(len(packetData)), tid, "", 0, 0)
