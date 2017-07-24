@@ -81,7 +81,7 @@ func (c *CaptureResourceHandler) New() Resource {
 	}
 }
 
-// Decorate populate the capture resource
+// Decorate populates the capture resource
 func (c *CaptureAPIHandler) Decorate(resource Resource) {
 	capture := resource.(*Capture)
 

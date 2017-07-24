@@ -243,5 +243,7 @@ var app = new Vue({
 $(document).ready(function() {
   Vue.config.devtools = true;
 
+  Vue.use(VTooltip, {});
+
   app.$mount('#app');
 });
