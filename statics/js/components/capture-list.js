@@ -24,7 +24,7 @@ var Capture = {
            v-if="canShowFlows"\
            :class="{\'fa-expand\': !showFlows, \'fa-compress\': showFlows}"\
            @click="showFlows = !showFlows"></i>\
-        {{capture.UUID}}\
+        {{capture.UUID}}  a{{capture.Count}}a\
       </div>\
       <dl class="dl-horizontal">\
         <dt v-if="capture.Name">Name</dt>\
@@ -44,6 +44,7 @@ var Capture = {
         <dd v-if="showFlows">\
           <flow-table :value="capture.GremlinQuery + \'.Flows().Dedup()\'"></flow-table>\
         </dd>\
+        <dd v-if="capture.Count == 0">Oh no !!!</dd>\
       </dl>\
     </div>\
   ',

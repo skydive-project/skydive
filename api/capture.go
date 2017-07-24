@@ -27,7 +27,6 @@ import (
 
 	"github.com/nu7hatch/gouuid"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -102,14 +101,21 @@ func (c *CaptureAPIHandler) Decorate(resource Resource) {
 		switch value.(type) {
 		case *graph.Node:
 			n := value.(*graph.Node)
-			if tp, _ := n.GetFieldString("Type"); tp != "" && common.IsCaptureAllowed(tp) {
+			if cuuid, _ := n.GetFieldString("Capture.ID"); cuuid != "" {
 				count++
 			}
 			if p, _ := n.GetFieldString("PCAPSocket"); p != "" {
 				pcapSocket = p
 			}
 		case []*graph.Node:
-			count += len(value.([]*graph.Node))
+			for _, n := range value.([]*graph.Node) {
+				if cuuid, _ := n.GetFieldString("Capture.ID"); cuuid != "" {
+					count++
+				}
+				if p, _ := n.GetFieldString("PCAPSocket"); p != "" {
+					pcapSocket = p
+				}
+			}
 		default:
 			count = 0
 		}
