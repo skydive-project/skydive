@@ -84,6 +84,12 @@ func TestCaptureAPI(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
+	var captures map[string]api.Capture
+	if err := client.List("capture", &captures); err != nil {
+		t.Error(err)
+	}
+	nbCaptures := len(captures)
+
 	capture := api.NewCapture("G.V().Has('Name', 'br-int')", "port 80")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatalf("Failed to create alert: %s", err.Error())
@@ -98,11 +104,10 @@ func TestCaptureAPI(t *testing.T) {
 		t.Errorf("Capture corrupted: %+v != %+v", capture, capture2)
 	}
 
-	var captures map[string]api.Capture
 	if err := client.List("capture", &captures); err != nil {
 		t.Error(err)
 	} else {
-		if len(captures) != 1 {
+		if (len(captures) - nbCaptures) != 1 {
 			t.Errorf("Wrong number of captures: got %d, expected 1", len(captures))
 		}
 	}
@@ -119,8 +124,8 @@ func TestCaptureAPI(t *testing.T) {
 	if err := client.List("capture", &captures2); err != nil {
 		t.Errorf("Failed to list captures: %s", err.Error())
 	} else {
-		if len(captures2) != 0 {
-			t.Errorf("Wrong number of captures: got %d, expected 0 (%+v)", len(captures2), captures2)
+		if (len(captures2) - nbCaptures) != 0 {
+			t.Errorf("Wrong number of captures: got %d, expected 0 (%+v)", len(captures2)-nbCaptures, captures2)
 		}
 	}
 

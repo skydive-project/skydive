@@ -41,7 +41,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-func TestHA(t *testing.T) {
+func TestScaleHA(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	scale := gopath + "/src/github.com/skydive-project/skydive/scripts/scale.sh"
 
