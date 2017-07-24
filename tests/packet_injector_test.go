@@ -40,13 +40,13 @@ func TestPacketInjector(t *testing.T) {
 			{"ip link add pi-vm1-eth0 type veth peer name pi-eth-src netns pi-vm1", true},
 			{"ip link set pi-vm1-eth0 up", true},
 			{"ip netns exec pi-vm1 ip link set pi-eth-src up", true},
-			{"ip netns exec pi-vm1 ip address add 169.254.33.33/24 dev pi-eth-src", true},
+			{"ip netns exec pi-vm1 ip address add 169.254.33.73/24 dev pi-eth-src", true},
 			{"ovs-vsctl add-port br-pi pi-vm1-eth0", true},
 			{"ip netns add pi-vm2", true},
 			{"ip link add pi-vm2-eth0 type veth peer name pi-eth-dst netns pi-vm2", true},
 			{"ip link set pi-vm2-eth0 up", true},
 			{"ip netns exec pi-vm2 ip link set pi-eth-dst up", true},
-			{"ip netns exec pi-vm2 ip address add 169.254.33.34/24 dev pi-eth-dst", true},
+			{"ip netns exec pi-vm2 ip address add 169.254.33.74/24 dev pi-eth-dst", true},
 			{"ovs-vsctl add-port br-pi pi-vm2-eth0", true},
 		},
 
@@ -58,9 +58,24 @@ func TestPacketInjector(t *testing.T) {
 				Count: 10,
 			}
 
-			return common.Retry(func() error {
+			err = common.Retry(func() error {
 				return c.client.Create("injectpacket", &packet)
 			}, 10, time.Second)
+			if err != nil {
+				return err
+			}
+
+			//tcp packet
+			packet.Type = "tcp4"
+			err = common.Retry(func() error {
+				return c.client.Create("injectpacket", &packet)
+			}, 10, time.Second)
+
+			if err != nil {
+				return err
+			}
+
+			return nil
 		},
 
 		tearDownCmds: []helper.Cmd{
@@ -80,15 +95,15 @@ func TestPacketInjector(t *testing.T) {
 			if !c.time.IsZero() {
 				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 			}
-			gremlin += ".V().Flows().Has('Network.A', '169.254.33.33').Has('Network.B', '169.254.33.34').Dedup()"
+			gremlin += ".V().Flows().Has('Network.A', '169.254.33.73').Has('Network.B', '169.254.33.74').Dedup()"
 
 			flows, err := c.gh.GetFlows(gremlin)
 			if err != nil {
 				return err
 			}
 
-			if len(flows) != 1 {
-				return fmt.Errorf("Expected one flow, got %+v", flows)
+			if len(flows) != 2 {
+				return fmt.Errorf("Expected two flows, got %+v", flows)
 			}
 
 			return nil
