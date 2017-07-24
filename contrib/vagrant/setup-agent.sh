@@ -11,10 +11,6 @@ sudo tee /etc/skydive/skydive.yml << EOF
 analyzers:
   - 192.168.50.10:8082
 agent:
-  flow:
-    probes:
-      - ovssflow
-      - gopacket
   topology:
     probes:
       - ovsdb

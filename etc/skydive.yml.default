@@ -100,16 +100,6 @@ agent:
       # delay in seconds between two metric updates
       # metrics_update: 30
   flow:
-    # Probes used to capture traffic.
-    probes:
-      # gopacket probe will use either pcap or afpacket according to the type of
-      # the capture. Default is afpacket.
-      - gopacket
-      # pcapsocket probe creates a TCP socket where PCAP traces can
-      # be written into
-      - pcapsocket
-      # ovsflow probe will be used to capture traffic on openvswitch bridges
-      # - ovssflow
     # Period in second to get capture stats from the probe. Note this
     # currently only works for the pcap probe
     # stats_update: 1

@@ -177,10 +177,6 @@ analyzers:
 
 agent:
   listen: $SKYDIVE_AGENT_LISTEN
-  flow:
-    probes:
-      - ovssflow
-      - gopacket
   topology:
     probes:
 $(get_probes_for_config $SKYDIVE_AGENT_PROBES)

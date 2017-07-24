@@ -27,7 +27,6 @@ import (
 
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -92,10 +91,8 @@ func (fpb *FlowProbeBundle) UnregisterAllProbes() {
 	}
 }
 
-// NewFlowProbeBundleFromConfig creates a new flow probes bundle from configuration
-// valid flow probes are : pcapsocket, ovsflow, gopacket, sflow
-func NewFlowProbeBundleFromConfig(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
-	list := config.GetConfig().GetStringSlice("agent.flow.probes")
+func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
+	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
