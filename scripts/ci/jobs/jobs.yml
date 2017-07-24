@@ -200,6 +200,9 @@
       - archive:
           artifacts: 'src/github.com/skydive-project/skydive/tests/postmortem.png'
           allow-empty: 'true'
+      - archive:
+          artifacts: 'src/github.com/skydive-project/skydive/output.gif'
+          allow-empty: 'true'
 
 - job:
     name: skydive-devstack-plugin

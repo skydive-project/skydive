@@ -53,6 +53,8 @@ func TestSelenium(t *testing.T) {
 
 	tearDownCmds := []helper.Cmd{
 		{fmt.Sprintf("%s stop", topology), true},
+		{"docker exec grid stop-video", true},
+		{"docker cp grid:/videos/. .", true},
 		{"docker stop grid", true},
 		{"docker rm -f grid", true},
 	}
@@ -353,6 +355,10 @@ func TestSelenium(t *testing.T) {
 		return f.Close()
 	}
 
+	if helper.RecordVideo {
+		helper.ExecCmds(t, helper.Cmd{"docker exec grid start-video", true})
+	}
+
 	// expand the topology to be sure to find nodes
 	expand, err := findElement(selenium.ByID, "expand-collapse")
 	if err != nil {
@@ -411,6 +417,10 @@ func TestSelenium(t *testing.T) {
 			t.Log(err)
 		}
 		t.Fatal(err)
+	}
+
+	if helper.RecordVideo {
+		helper.ExecCmds(t, helper.Cmd{"docker exec grid stop-video", true})
 	}
 }
 
