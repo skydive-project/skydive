@@ -68,19 +68,22 @@ else
 endif
 
 test.functionals.all: test.functionals.compile
-	make TIMEOUT="8m" ARGS=${ARGS} test.functionals.run
+	$(MAKE) TIMEOUT="8m" ARGS=${ARGS} test.functionals.run
 
 test.functionals.batch: test.functionals.compile
 ifneq ($(TEST_PATTERN),)
-	set -e ; make ARGS="${ARGS} -test.run ${TEST_PATTERN}" test.functionals.run
+	set -e ; $(MAKE) ARGS="${ARGS} -test.run ${TEST_PATTERN}" test.functionals.run
 else
-	set -e ; make ARGS="${ARGS}" test.functionals.run
+	set -e ; $(MAKE) ARGS="${ARGS}" test.functionals.run
 endif
 
 test.functionals: test.functionals.compile
 	for functest in ${FUNC_TESTS} ; do \
-		make ARGS="-test.run $$functest$$\$$ ${ARGS} ${COVERAGE_ARGS}" test.functionals.run; \
+		$(MAKE) ARGS="-test.run $$functest$$\$$ ${ARGS} ${COVERAGE_ARGS}" test.functionals.run; \
 	done
+
+functional:
+	$(MAKE) test.functionals VERBOSE=true TIMEOUT=10m ARGS='-standalone'
 
 test: govendor genlocalfiles
 ifeq ($(COVERAGE), true)
@@ -170,7 +173,7 @@ dist:
 	export GOPATH=$$godir; \
 	cd $$skydivedir; \
 	echo "go take a coffee, govendor sync takes time ..."; \
-	make govendor genlocalfiles; \
+	$(MAKE) govendor genlocalfiles; \
 	popd; \
 	tar -C $$tmpdir --exclude=skydive-${VERSION}/src/github.com/skydive-project/skydive/.git -cvzf ${DESTDIR}/skydive-${VERSION}.tar.gz skydive-${VERSION}/src; \
 	rm -rf $$tmpdir

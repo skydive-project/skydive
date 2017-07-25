@@ -4,6 +4,27 @@ Contributing to Skydive
 Your contributions are more than welcome. Please read the following notes to
 know about the process.
 
+Making Changes:
+---------------
+
+Before pushing your changes, please make sure the tests and the linters pass:
+
+* make fmt
+* make test
+* make functional
+
+_Please note, make functional will create local network resources
+(bridges, namespaces, ...)_
+
+Once ready push your changes to your Skydive fork our CI will check your
+pull request.
+
+We're much more likely to approve your changes if you:
+
+* Add tests for new functionality.
+* Write a good commit message, please see how to write below.
+* Maintain backward compatibility.
+
 How To Submit Code
 ------------------
 
