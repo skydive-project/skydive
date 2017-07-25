@@ -22,6 +22,7 @@ var apiMixin = {
     },
 
     $captureList: function() {
+      var self = this;
       return $.ajax({
         dataType: "json",
         url: '/api/capture',
@@ -30,6 +31,20 @@ var apiMixin = {
       })
       .fail(function(e) {
         self.$error({message: 'Capture list error: ' + e.responseText});
+        return e;
+      });
+    },
+
+    $captureGet: function(id) {
+      var self = this;
+      return $.ajax({
+        dataType: "json",
+        url: '/api/capture/' + id,
+        contentType: "application/json; charset=utf-8",
+        method: 'GET',
+      })
+      .fail(function(e) {
+        self.$error({message: 'Capture get error: ' + e.responseText});
         return e;
       });
     },

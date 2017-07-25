@@ -203,6 +203,10 @@ li.capture-item {
   color: #a94442 !important;
 }
 
+.capture-warning {
+  color: #ffa500 !important;
+}
+
 .inject-target {
   margin-bottom: 5px;
 }

@@ -24,6 +24,8 @@ var Capture = {
            v-if="canShowFlows"\
            :class="{\'fa-expand\': !showFlows, \'fa-compress\': showFlows}"\
            @click="showFlows = !showFlows"></i>\
+        <i v-if="!capture.Count" class="capture-action capture-warning fa fa-exclamation-triangle" \
+          v-tooltip.bottom-left="{content: warningMessage()}"></i>\
         {{capture.UUID}}\
       </div>\
       <dl class="dl-horizontal">\
@@ -65,6 +67,13 @@ var Capture = {
   },
 
   methods: {
+
+    warningMessage: function() {
+      return '\
+        <b>This capture doesn\'t currently match any node</b><br><br>\
+        Please check there is a Layer 2 link in case of 2 nodes capture.\
+      ';
+    },
 
     remove: function(capture) {
       var self = this,
@@ -153,6 +162,7 @@ Vue.component('capture-list', {
     },
 
     onMsg: function(msg) {
+      var self = this;
       switch(msg.Type) {
         case "CaptureDeleted":
           Vue.delete(this.captures, msg.Obj.UUID);
@@ -160,6 +170,11 @@ Vue.component('capture-list', {
         case "CaptureAdded":
           Vue.set(this.captures, msg.Obj.UUID, msg.Obj);
           break;
+        case "CaptureNodeUpdated":
+          this.$captureGet(msg.Obj)
+            .then(function(data) {
+              Vue.set(self.captures, data.UUID, data);
+            });
       }
     }
 

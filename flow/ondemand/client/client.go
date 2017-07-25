@@ -50,7 +50,7 @@ type OnDemandProbeClient struct {
 	captures         map[string]*api.Capture
 	watcher          api.StoppableWatcher
 	elector          *etcd.EtcdMasterElector
-	registeredNodes  map[string]bool
+	registeredNodes  map[string]string
 	deletedNodeCache *cache.Cache
 }
 
@@ -79,6 +79,7 @@ func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 		} else {
 			logging.GetLogger().Debugf("Capture start request succeeded %v", m)
 		}
+		o.wsServer.BroadcastWSMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureNodeUpdated", query.Capture.UUID))
 	case "CaptureStopReply":
 		if m.Status == http.StatusOK {
 			logging.GetLogger().Debugf("Capture stop request succeeded %v", m)
@@ -156,7 +157,7 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 		return false
 	}
 	o.Lock()
-	o.registeredNodes[np.id] = true
+	o.registeredNodes[np.id] = cq.Capture.ID()
 	o.Unlock()
 
 	return true
@@ -204,17 +205,26 @@ func (o *OnDemandProbeClient) onNodeEvent() {
 	}
 }
 
-// OnNodeAdded event
+// OnNodeAdded graph event
 func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
 	o.onNodeEvent()
 }
 
-// OnNodeUpdated event
+// OnNodeUpdated graph event
 func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
 	o.onNodeEvent()
 }
 
-// OnEdgeAdded event
+// OnNodeDeleted graph event
+func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
+	o.RLock()
+	if uuid, ok := o.registeredNodes[string(n.ID)]; ok {
+		o.wsServer.BroadcastWSMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureNodeUpdated", uuid))
+	}
+	o.RUnlock()
+}
+
+// OnEdgeAdded graph event
 func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
 	o.onNodeEvent()
 }
@@ -350,7 +360,7 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.
 		wsServer:         w,
 		captures:         captures,
 		elector:          elector,
-		registeredNodes:  make(map[string]bool),
+		registeredNodes:  make(map[string]string),
 		deletedNodeCache: cache.New(elector.TTL()*2, elector.TTL()*2),
 	}
 
