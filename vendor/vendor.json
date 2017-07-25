@@ -1011,11 +1011,6 @@
 			"revision": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 		},
 		{
-			"checksumSHA1": "J1BXZEMi0dnAJMM8wKHk/JvVkwU=",
-			"path": "github.com/op/go-logging",
-			"revision": "d2e44aa77b7195c0ef782189985dd8550e22e4de"
-		},
-		{
 			"checksumSHA1": "FV1FxF/25G8cx+qzKUGwbdJusrw=",
 			"path": "github.com/opencontainers/runc/libcontainer/user",
 			"revision": "8fa5343b0058459296399a89bc532aa5508de28d",
@@ -1291,6 +1286,54 @@
 			"comment": "v0.0.2-17-g749e360",
 			"path": "github.com/xordataexchange/crypt/encoding/secconf",
 			"revision": "749e360c8f236773f28fc6d3ddfce4a470795227"
+		},
+		{
+			"checksumSHA1": "HedK9m8E8iyib4bIBtIX7xprOgo=",
+			"path": "go.uber.org/atomic",
+			"revision": "0506d69f5564c56e25797bf7183c28921d4c6360",
+			"revisionTime": "2017-06-09T00:20:07Z"
+		},
+		{
+			"checksumSHA1": "JDGx7hehaQunZySwPs7yvdUs2m8=",
+			"path": "go.uber.org/multierr",
+			"revision": "3c4937480c32f4c13a875a1829af76c98ca3d40a",
+			"revisionTime": "2017-06-30T17:54:37Z"
+		},
+		{
+			"checksumSHA1": "3Jk0EqOkbHrqOGT0WfxihzfmwBE=",
+			"path": "go.uber.org/zap",
+			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revisionTime": "2017-07-09T03:22:36Z"
+		},
+		{
+			"checksumSHA1": "HYo/9nwrY08NQA+2ItPOAH8IFW8=",
+			"path": "go.uber.org/zap/buffer",
+			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revisionTime": "2017-07-09T03:22:36Z"
+		},
+		{
+			"checksumSHA1": "MuxOAtZEsJitlWBzhmpm2vGiHok=",
+			"path": "go.uber.org/zap/internal/bufferpool",
+			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revisionTime": "2017-07-09T03:22:36Z"
+		},
+		{
+			"checksumSHA1": "uC0L9eCSAYcCWNC8udJk/t1vvIU=",
+			"path": "go.uber.org/zap/internal/color",
+			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revisionTime": "2017-07-09T03:22:36Z"
+		},
+		{
+			"checksumSHA1": "b80CJExrVpXu3SA1iCQ6uLqTn2c=",
+			"path": "go.uber.org/zap/internal/exit",
+			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revisionTime": "2017-07-09T03:22:36Z"
+		},
+		{
+			"checksumSHA1": "oEiE5TfvK2rVixOUIJIKfGN6PC8=",
+			"path": "go.uber.org/zap/zapcore",
+			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revisionTime": "2017-07-09T03:22:36Z"
 		},
 		{
 			"checksumSHA1": "vE43s37+4CJ2CDU6TlOUOYE0K9c=",

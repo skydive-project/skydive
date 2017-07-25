@@ -104,7 +104,7 @@ func init() {
 	cfg.SetDefault("logging.backends", []string{"stderr"})
 	cfg.SetDefault("logging.level", "INFO")
 	cfg.SetDefault("logging.file.path", "/var/log/skydive.log")
-	cfg.SetDefault("logging.format", "%{color}%{time} %{id} %{shortfile} %{shortpkg} %{longfunc} > %{level:.4s} %{id:03x}%{color:reset} %{message}")
+	cfg.SetDefault("logging.encoder", "")
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")
