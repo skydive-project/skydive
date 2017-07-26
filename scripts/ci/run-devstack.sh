@@ -2,7 +2,7 @@
 
 set -v
 
-git checkout -b software-factory
+git checkout -b devstack
 SKYDIVE_PATH=`pwd`
 
 sudo yum -y install git iproute net-tools
@@ -15,14 +15,24 @@ host_ips=$(LC_ALL=C ip -f inet addr show ${host_ip_iface} | sed /temporary/d |aw
 echo "host_ip_iface=$host_ip_iface"
 echo "host_ips=$host_ips"
 
+# preset password for mariadb, workaround for
+# https://bugs.launchpad.net/devstack/+bug/1706125
+sudo yum -y install mariadb-server
+sudo systemctl start mariadb
+
+mysql -u root <<-EOF
+UPDATE mysql.user SET Password=PASSWORD('RTh56v9_33') WHERE User='root';
+FLUSH PRIVILEGES;
+EOF
+
 cat << EOF > local.conf
 [[local|localrc]]
 
-DATABASE_PASSWORD=password
-RABBIT_PASSWORD=password
-SERVICE_PASSWORD=password
-SERVICE_TOKEN=password
-ADMIN_PASSWORD=password
+DATABASE_PASSWORD=RTh56v9_33
+RABBIT_PASSWORD=RTh56v9_33
+SERVICE_PASSWORD=RTh56v9_33
+SERVICE_TOKEN=RTh56v9_33
+ADMIN_PASSWORD=RTh56v9_33
 
 HOST_IP=$host_ips
 HOST_IP_IFACE=eth0
@@ -61,7 +71,7 @@ disable_service horizon
 ENABLE_ISOLATED_METADATA=True
 
 # Skydive
-enable_plugin skydive file://$SKYDIVE_PATH software-factory
+enable_plugin skydive file://$SKYDIVE_PATH devstack
 enable_service skydive-analyzer skydive-agent
 
 SKYDIVE_ANALYZER_LISTEN=0.0.0.0:8082
