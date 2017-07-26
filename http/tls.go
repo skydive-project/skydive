@@ -39,6 +39,6 @@ func setTLSHeader(w http.ResponseWriter, r *http.Request) {
 func checkTLSConfig(tlsConfig *tls.Config) {
 	tlsConfig.InsecureSkipVerify = config.GetConfig().GetBool("agent.X509_insecure")
 	if tlsConfig.InsecureSkipVerify == true {
-		logging.GetLogger().Critical("======> You running the agent in Insecure, the certificate can't be verified, generally use for test purpose, Please make sure it what's you want <======\n PRODUCTION must not run in Insecure\n")
+		logging.GetLogger().Warning("======> You running the agent in Insecure, the certificate can't be verified, generally use for test purpose, Please make sure it what's you want <======\n PRODUCTION must not run in Insecure\n")
 	}
 }

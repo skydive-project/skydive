@@ -55,14 +55,18 @@ const (
 
 func (l *Logger) log(level level, format *string, args ...interface{}) {
 	s := l.Sugar()
-	fmt := l.id + " "
+	fmt := l.id
 	if format != nil {
-		fmt += *format
+		fmt += " " + *format
+	} else {
+		for _ = range args {
+			fmt += " %v"
+		}
 	}
 
 	switch level {
 	case CRITICAL:
-		s.Errorf(fmt, args...)
+		s.DPanicf(fmt, args...)
 	case ERROR:
 		s.Errorf(fmt, args...)
 	case WARNING:
@@ -80,7 +84,7 @@ func getZapLevel(level string) zapcore.Level {
 	lvl := zapcore.DebugLevel
 	switch level {
 	case "CRITICAL":
-		lvl = zapcore.ErrorLevel
+		lvl = zapcore.DPanicLevel
 	case "ERROR":
 		lvl = zapcore.ErrorLevel
 	case "WARNING":
