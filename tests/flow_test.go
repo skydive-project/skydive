@@ -26,10 +26,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/pcapgo"
 	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
@@ -1808,5 +1812,120 @@ func TestFlowsWithShortestPath(t *testing.T) {
 			return nil
 		},
 	}
+	RunTest(t, test)
+}
+
+func getRawPackets(gh *gclient.GremlinQueryHelper, query string) ([]gopacket.Packet, error) {
+	header := make(http.Header)
+	header.Set("Accept", "vnd.tcpdump.pcap")
+	resp, err := gh.Request(query, header)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	handle, err := pcapgo.NewReader(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var packets []gopacket.Packet
+	for {
+		data, _, err := handle.ReadPacketData()
+		if err != nil {
+			if err != io.EOF {
+				return nil, err
+			}
+			break
+		}
+		packet := gopacket.NewPacket(data, handle.LinkType(), gopacket.NoCopy)
+		packets = append(packets, packet)
+	}
+
+	return packets, nil
+}
+
+func TestRawPackets(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"brctl addbr br-rp", true},
+			{"ip link set br-rp up", true},
+			{"ip netns add rp-vm1", true},
+			{"ip link add name rp-vm1-eth0 type veth peer name eth0 netns rp-vm1", true},
+			{"ip link set rp-vm1-eth0 up", true},
+			{"ip netns exec rp-vm1 ip link set eth0 up", true},
+			{"ip netns exec rp-vm1 ip address add 169.254.122.66/24 dev eth0", true},
+			{"brctl addif br-rp rp-vm1-eth0", true},
+
+			{"ip netns add rp-vm2", true},
+			{"ip link add name rp-vm2-eth0 type veth peer name eth0 netns rp-vm2", true},
+			{"ip link set rp-vm2-eth0 up", true},
+			{"ip netns exec rp-vm2 ip link set eth0 up", true},
+			{"ip netns exec rp-vm2 ip address add 169.254.122.67/24 dev eth0", true},
+			{"brctl addif br-rp rp-vm2-eth0", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec rp-vm1 ping -c 2 169.254.122.67", Check: false})
+			return nil
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ip link set br-rp down", true},
+			{"brctl delbr br-rp", true},
+			{"ip link del rp-vm1-eth0", true},
+			{"ip link del rp-vm2-eth0", true},
+			{"ip netns del rp-vm1", true},
+			{"ip netns del rp-vm2", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'rp-vm1-eth0')`, rawPackets: 9},
+		},
+
+		check: func(c *TestContext) error {
+			prefix := "g"
+			if !c.time.IsZero() {
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+
+			gh := c.gh
+			node, err := gh.GetNode(prefix + `.V().Has("Name", "rp-vm1-eth0").HasKey("TID")`)
+			if err != nil {
+				return err
+			}
+
+			query := fmt.Sprintf(prefix+`.Flows().Has("NodeTID", "%s", "LayersPath", "Ethernet/IPv4/ICMPv4")`, node.Metadata()["TID"])
+
+			flows, err := gh.GetFlows(query)
+			if err != nil {
+				return err
+			}
+
+			if len(flows) != 1 {
+				return fmt.Errorf("Should get one ICMPv4 flow: %v", flows)
+			}
+
+			if flows[0].RawPacketsCaptured != 4 {
+				packets, err := getRawPackets(gh, query+".RawPackets()")
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("Should get 4 raw packets 2 echo/reply: %v, %+v", flows, packets)
+			}
+
+			packets, err := getRawPackets(gh, query+".RawPackets()")
+			if err != nil {
+				return err
+			}
+
+			if len(packets) != 4 {
+				return fmt.Errorf("Should get 4 pcap raw packets 2 echo/reply: %v, %+v", flows, packets)
+			}
+
+			return nil
+		},
+	}
+
 	RunTest(t, test)
 }

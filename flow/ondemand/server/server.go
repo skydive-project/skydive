@@ -127,8 +127,10 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		return false
 	}
 
-	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline)
-	ft.SetNodeTID(tid)
+	opts := flow.TableOpts{
+		RawPacketLimit: int64(capture.RawPacketLimit),
+	}
+	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline, tid, opts)
 
 	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())

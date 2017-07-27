@@ -23,19 +23,27 @@
 package flow
 
 import (
+	"errors"
 	"io"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
-// PcapInject replay a pcap file
-type PcapInject struct {
+// PcapWriter provides helpers on top of gopacket pcap to write pcap files.
+type PcapWriter struct {
+	writer *pcapgo.Writer
+}
+
+// PcapTableFeeder replaies a pcap file
+type PcapTableFeeder struct {
 	sync.WaitGroup
 	state       int64
 	replay      bool
@@ -46,15 +54,15 @@ type PcapInject struct {
 }
 
 // Start a pcap injector
-func (p *PcapInject) Start() {
+func (p *PcapTableFeeder) Start() {
 	if atomic.CompareAndSwapInt64(&p.state, common.StoppedState, common.RunningState) {
 		p.Add(1)
-		go p.FeedFlowTable()
+		go p.feedFlowTable()
 	}
 }
 
 // Stop a pcap injector
-func (p *PcapInject) Stop() {
+func (p *PcapTableFeeder) Stop() {
 	if atomic.CompareAndSwapInt64(&p.state, common.RunningState, common.StoppingState) {
 		atomic.StoreInt64(&p.state, common.StoppingState)
 		p.r.Close()
@@ -63,8 +71,7 @@ func (p *PcapInject) Stop() {
 	}
 }
 
-// FeedFlowTable mechanism, inject pcap in a flow table
-func (p *PcapInject) FeedFlowTable() {
+func (p *PcapTableFeeder) feedFlowTable() {
 	var (
 		lastTS    time.Time
 		lastSend  time.Time
@@ -75,7 +82,7 @@ func (p *PcapInject) FeedFlowTable() {
 	defer p.Done()
 
 	var bpf *BPF
-	if b, err := NewBPF(p.handleRead.LinkType(), CaptureLength, p.bpfFilter); err == nil {
+	if b, err := NewBPF(p.handleRead.LinkType(), MaxCaptureLength, p.bpfFilter); err == nil {
 		bpf = b
 	} else {
 		logging.GetLogger().Error(err.Error())
@@ -121,14 +128,14 @@ func (p *PcapInject) FeedFlowTable() {
 	}
 }
 
-// NewPcapInject reads a pcap from a file reader and inject it in a flow table
-func NewPcapInject(r io.ReadCloser, packetsChan chan *Packets, replay bool, bpfFilter string) (*PcapInject, error) {
+// NewPcapTableFeeder reads a pcap from a file reader and inject it in a flow table
+func NewPcapTableFeeder(r io.ReadCloser, packetsChan chan *Packets, replay bool, bpfFilter string) (*PcapTableFeeder, error) {
 	handle, err := pcapgo.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PcapInject{
+	return &PcapTableFeeder{
 		replay:      replay,
 		r:           r,
 		handleRead:  handle,
@@ -136,4 +143,47 @@ func NewPcapInject(r io.ReadCloser, packetsChan chan *Packets, replay bool, bpfF
 		packetsChan: packetsChan,
 		bpfFilter:   bpfFilter,
 	}, nil
+}
+
+// WriteRawPacket writes a RawPacket
+func (p *PcapWriter) WriteRawPacket(r *RawPacket) error {
+	ci := gopacket.CaptureInfo{
+		Length:         int(MaxCaptureLength),
+		CaptureLength:  len(r.Data),
+		InterfaceIndex: 1,
+		Timestamp:      time.Unix(0, r.Timestamp*int64(time.Millisecond)),
+	}
+
+	p.writer.WritePacket(ci, r.Data)
+
+	return nil
+}
+
+// WriteRawPackets writes a RawPackets iterating over the RawPackets and using
+// WriteRawPacket for each.
+func (p *PcapWriter) WriteRawPackets(fr *RawPackets) error {
+	if fr.LinkType != layers.LinkTypeEthernet {
+		return errors.New("Support only Ethernet link type for the moment")
+	}
+
+	for _, r := range fr.RawPackets {
+		if err := p.WriteRawPacket(r); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// NewPcapWriter returns a new PcapWriter based on the given io.Writer.
+// Due to the current limitation of the gopacket pcap implementation only
+// RawPacket with Ethernet link type are supported.
+func NewPcapWriter(w io.Writer) *PcapWriter {
+	writer := pcapgo.NewWriter(w)
+
+	writer.WriteFileHeader(MaxCaptureLength, layers.LinkTypeEthernet)
+
+	return &PcapWriter{
+		writer: writer,
+	}
 }

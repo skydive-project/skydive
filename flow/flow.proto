@@ -28,50 +28,56 @@ syntax = "proto3";
 package flow;
 
 enum FlowProtocol {
-	ETHERNET = 0;
-	IPV4 = 1;
-	TCPPORT = 2;
-	UDPPORT = 3;
-	SCTPPORT = 4;
-	IPV6 = 5;
-	ICMPV4 = 6;
-	ICMPV6 = 7;
+  ETHERNET = 0;
+  IPV4 = 1;
+  TCPPORT = 2;
+  UDPPORT = 3;
+  SCTPPORT = 4;
+  IPV6 = 5;
+  ICMPV4 = 6;
+  ICMPV6 = 7;
 }
 
 message FlowLayer {
-	FlowProtocol Protocol = 1;
-	string A = 3;
-	string B = 4;
-	int64 ID = 5;
+  FlowProtocol Protocol = 1;
+  string A = 3;
+  string B = 4;
+  int64 ID = 5;
 }
 
 enum ICMPType {
-	UNKNOWN = 0;
-	DESTINATION_UNREACHABLE = 1;
-	ECHO = 2;
-	NEIGHBOR = 3;
-	ADDRESS_MASK = 4;
-	INFO = 5;
-	PARAMETER_PROBLEM = 6;
-	REDIRECT = 7;
-	ROUTER = 8;
-	SOURCE_QUENCH = 9;
-	TIME_EXCEEDED = 10;
-	TIMESTAMP = 11;
-	PACKET_TOO_BIG = 12;
+  UNKNOWN = 0;
+  DESTINATION_UNREACHABLE = 1;
+  ECHO = 2;
+  NEIGHBOR = 3;
+  ADDRESS_MASK = 4;
+  INFO = 5;
+  PARAMETER_PROBLEM = 6;
+  REDIRECT = 7;
+  ROUTER = 8;
+  SOURCE_QUENCH = 9;
+  TIME_EXCEEDED = 10;
+  TIMESTAMP = 11;
+  PACKET_TOO_BIG = 12;
 }
 
 message ICMPLayer {
-	ICMPType Type = 1;
-	uint32 Code = 2;
-	uint32 ID = 3;
+  ICMPType Type = 1;
+  uint32 Code = 2;
+  uint32 ID = 3;
 }
 
 message FlowMetric {
-	int64 ABPackets = 2;
-	int64 ABBytes = 3;
-	int64 BAPackets = 4;
-	int64 BABytes = 5;
+  int64 ABPackets = 2;
+  int64 ABBytes = 3;
+  int64 BAPackets = 4;
+  int64 BABytes = 5;
+}
+
+message RawPacket {
+  int64 Timestamp = 1;
+  int64 Index = 2;
+  bytes Data = 3;
 }
 
 message Flow {
@@ -80,18 +86,18 @@ message Flow {
    hashtable. By design 2 different flows, their UUID are always different.
    flow.UUID can be used as Database Index.
 */
-	string UUID = 1;
-	string LayersPath = 2;
+  string UUID = 1;
+  string LayersPath = 2;
 
 /* Application is the last layer which is not a payload.
 */
-	string Application = 3;
+  string Application = 3;
 
 /* Data Flow info */
-	FlowLayer Link = 20;
-	FlowLayer Network = 21;
-	FlowLayer Transport = 22;
-	ICMPLayer ICMP = 23;
+  FlowLayer Link = 20;
+  FlowLayer Network = 21;
+  FlowLayer Transport = 22;
+  ICMPLayer ICMP = 23;
 
 /* Data Flow Metric info from the 1st layer
    amount of data between two updates
@@ -111,16 +117,21 @@ message Flow {
    the bytes of the first packet of his session.
    flow.TrackingID can be used as a Tag.
 */
-	string TrackingID = 50;
-	string L3TrackingID = 51;
+  string TrackingID = 50;
+  string L3TrackingID = 51;
 
 /* Flow Parent UUID is used as reference to the parent flow
    Flow.ParentUUID is the same value that point to his parent flow.UUID
 */
-	string ParentUUID = 6;
+  string ParentUUID = 6;
 
 /* Topology info */
-	string NodeTID = 33;
-	string ANodeTID = 34;
-	string BNodeTID = 35;
+  string NodeTID = 33;
+  string ANodeTID = 34;
+  string BNodeTID = 35;
+
+/* raw packets, will not be exported, see Makefile */
+  repeated RawPacket LastRawPackets = 36;
+/* number of raw packet captured */
+  int64 RawPacketsCaptured = 37;
 }

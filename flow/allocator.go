@@ -72,13 +72,13 @@ func (a *TableAllocator) QueryTable(query *TableQuery) *TableReply {
 }
 
 // Alloc instanciate/allocate a new table
-func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc) *Table {
+func (a *TableAllocator) Alloc(flowCallBack ExpireUpdateFunc, nodeTID string, opts TableOpts) *Table {
 	a.Lock()
 	defer a.Unlock()
 
 	updateHandler := NewFlowHandler(flowCallBack, a.update)
 	expireHandler := NewFlowHandler(flowCallBack, a.expire)
-	t := NewTable(updateHandler, expireHandler, a.pipeline)
+	t := NewTable(updateHandler, expireHandler, a.pipeline, nodeTID, opts)
 	a.tables[t] = true
 
 	return t

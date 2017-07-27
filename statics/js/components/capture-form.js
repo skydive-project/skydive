@@ -42,6 +42,26 @@ Vue.component('capture-form', {
             <label for="capture-bpf">BPF filter</label>\
             <input id="capture-bpf" type="text" class="form-control input-sm" v-model="bpf" />\
           </div>\
+          <div class="capture-advanced">\
+            <div class="panel-heading">\
+              <h4 class="panel-title">\
+                <a data-toggle="collapse" data-parent="#" href="#one">\
+                  Advanced options\
+                </a>\
+                <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
+              </h4>\
+            </div>\
+            <div id="one" class="panel-collapse collapse">\
+              <div class="form-group">\
+                <label for="capture-header-size">Header Size</label>\
+                <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
+              </div>\
+              <div class="form-group">\
+                <label for="capture-raw-packets">Raw packets limit</label>\
+                <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model="rawPackets" min="0" max="10"/>\
+              </div>\
+            </div>\
+          </div>\
           <button type="submit" id="start-capture" class="btn btn-primary">Start</button>\
           <button type="button" class="btn btn-danger" @click="reset">Cancel</button>\
         </form>\
@@ -64,6 +84,8 @@ Vue.component('capture-form', {
       name: "",
       desc: "",
       bpf: "",
+      headerSize: 0,
+      rawPackets: 0,
       userQuery: "",
       mode: "selection",
       visible: false,
@@ -137,6 +159,7 @@ Vue.component('capture-form', {
     reset: function() {
       this.node1 = this.node2 = this.userQuery = "";
       this.name = this.desc = this.bpf = "";
+      this.headerSize = this.rawPackets = 0;
       this.visible = false;
     },
 
@@ -146,7 +169,7 @@ Vue.component('capture-form', {
         this.$error({message: this.queryError});
         return;
       }
-      this.$captureCreate(this.query, this.name, this.desc, this.bpf)
+      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets)
         .then(function() {
           self.reset();
         });

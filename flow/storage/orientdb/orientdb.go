@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/gopacket/layers"
 	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -39,6 +40,17 @@ import (
 // OrientDBStorage describes a OrientDB database client
 type OrientDBStorage struct {
 	client *orient.Client
+}
+
+func flowRawPacketToDocument(linkType layers.LinkType, rawpacket *flow.RawPacket) orient.Document {
+	return orient.Document{
+		"@class":    "FlowRawPacket",
+		"@type":     "d",
+		"LinkType":  linkType,
+		"Timestamp": rawpacket.Timestamp,
+		"Index":     rawpacket.Index,
+		"Data":      rawpacket.Data,
+	}
 }
 
 func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Document {
@@ -59,22 +71,23 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 	lastMetricDoc := flowMetricToDocument(flow, flow.LastUpdateMetric)
 
 	flowDoc := orient.Document{
-		"@class":           "Flow",
-		"UUID":             flow.UUID,
-		"LayersPath":       flow.LayersPath,
-		"Application":      flow.Application,
-		"LastUpdateMetric": lastMetricDoc,
-		"Metric":           metricDoc,
-		"Start":            flow.Start,
-		"Last":             flow.Last,
-		"LastUpdateStart":  flow.LastUpdateStart,
-		"LastUpdateLast":   flow.LastUpdateLast,
-		"TrackingID":       flow.TrackingID,
-		"L3TrackingID":     flow.L3TrackingID,
-		"ParentUUID":       flow.ParentUUID,
-		"NodeTID":          flow.NodeTID,
-		"ANodeTID":         flow.ANodeTID,
-		"BNodeTID":         flow.BNodeTID,
+		"@class":             "Flow",
+		"UUID":               flow.UUID,
+		"LayersPath":         flow.LayersPath,
+		"Application":        flow.Application,
+		"LastUpdateMetric":   lastMetricDoc,
+		"Metric":             metricDoc,
+		"Start":              flow.Start,
+		"Last":               flow.Last,
+		"LastUpdateStart":    flow.LastUpdateStart,
+		"LastUpdateLast":     flow.LastUpdateLast,
+		"TrackingID":         flow.TrackingID,
+		"L3TrackingID":       flow.L3TrackingID,
+		"ParentUUID":         flow.ParentUUID,
+		"NodeTID":            flow.NodeTID,
+		"ANodeTID":           flow.ANodeTID,
+		"BNodeTID":           flow.BNodeTID,
+		"RawPacketsCaptured": flow.RawPacketsCaptured,
 	}
 
 	if flow.Link != nil {
@@ -147,7 +160,23 @@ func documentToMetric(document orient.Document) (*common.TimedMetric, error) {
 	}, nil
 }
 
-// StoreFlows push a set of flows in the database
+func documentToRawPacket(document orient.Document) (*flow.RawPacket, layers.LinkType, error) {
+	document["Data"] = []byte(document["Data"].(string))
+
+	rawpacket := new(flow.RawPacket)
+	if err := mapstructure.WeakDecode(document, rawpacket); err != nil {
+		return nil, layers.LinkType(0), err
+	}
+
+	l, err := document["LinkType"].(json.Number).Int64()
+	if err != nil {
+		return nil, layers.LinkType(0), err
+	}
+
+	return rawpacket, layers.LinkType(l), nil
+}
+
+// StoreFlows pushes a set of flows in the database
 func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 	// TODO: use batch of operations
 	for _, flow := range flows {
@@ -166,8 +195,22 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 		if flow.LastUpdateStart != 0 {
 			doc := flowMetricToDocument(flow, flow.LastUpdateMetric)
 			doc["Flow"] = flowID
-			if _, err := c.client.CreateDocument(doc); err != nil {
+			if _, err = c.client.CreateDocument(doc); err != nil {
 				logging.GetLogger().Errorf("Error while pushing metric %+v: %s\n", flow.LastUpdateMetric, err.Error())
+				continue
+			}
+		}
+
+		linkType, err := flow.LinkType()
+		if err != nil {
+			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+			continue
+		}
+		for _, r := range flow.GetLastRawPackets() {
+			doc := flowRawPacketToDocument(linkType, r)
+			doc["Flow"] = flowID
+			if _, err = c.client.CreateDocument(doc); err != nil {
+				logging.GetLogger().Errorf("Error while pushing raw packet %+v: %s\n", r, err.Error())
 				continue
 			}
 		}
@@ -194,7 +237,59 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 	return flowset, nil
 }
 
-// SearchMetrics search flow metrics matching filters in the database
+// SearchMetrics searches flow raw packets matching filters in the database
+func (c *OrientDBStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
+	filter := fsq.Filter
+	sql := "SELECT LinkType, Timestamp, Index, Data, Flow.UUID FROM FlowRawPacket"
+
+	where := false
+	if packetFilter != nil {
+		sql += " WHERE " + orient.FilterToExpression(packetFilter, nil)
+		where = true
+	}
+	if conditional := orient.FilterToExpression(filter, func(s string) string { return "Flow." + s }); conditional != "" {
+		if where {
+			sql += " AND " + conditional
+		} else {
+			sql += " WHERE " + conditional
+			where = true
+		}
+	}
+
+	if fsq.Sort {
+		sql += " ORDER BY " + fsq.SortBy
+		if fsq.SortOrder != "" {
+			sql += " " + strings.ToUpper(fsq.SortOrder)
+		}
+	}
+
+	docs, err := c.client.Search(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	rawpackets := make(map[string]*flow.RawPackets)
+	for _, doc := range docs {
+		r, linkType, err := documentToRawPacket(doc)
+		if err != nil {
+			return nil, err
+		}
+		flowID := doc["Flow"].(string)
+
+		if fr, ok := rawpackets[flowID]; ok {
+			fr.RawPackets = append(fr.RawPackets, r)
+		} else {
+			rawpackets[flowID] = &flow.RawPackets{
+				LinkType:   linkType,
+				RawPackets: []*flow.RawPacket{r},
+			}
+		}
+	}
+
+	return rawpackets, nil
+}
+
+// SearchMetrics searches flow metrics matching filters in the database
 func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
@@ -252,6 +347,24 @@ func New() (*OrientDBStorage, error) {
 		return nil, err
 	}
 
+	if _, err := client.GetDocumentClass("FlowRawPacket"); err != nil {
+		class := orient.ClassDefinition{
+			Name: "FlowRawPacket",
+			Properties: []orient.Property{
+				{Name: "LinkType", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "Timestamp", Type: "LONG", Mandatory: true, NotNull: true},
+				{Name: "Index", Type: "INTEGER", Mandatory: true, NotNull: true},
+				{Name: "Data", Type: "BINARY", Mandatory: true, NotNull: true},
+			},
+			Indexes: []orient.Index{
+				{Name: "FlowRawPacket.Timestamp", Fields: []string{"Timestamp"}, Type: "NOTUNIQUE"},
+			},
+		}
+		if err := client.CreateDocumentClass(class); err != nil {
+			return nil, fmt.Errorf("Failed to register class FlowRawPacket: %s", err.Error())
+		}
+	}
+
 	if _, err := client.GetDocumentClass("FlowMetric"); err != nil {
 		class := orient.ClassDefinition{
 			Name: "FlowMetric",
@@ -291,6 +404,7 @@ func New() (*OrientDBStorage, error) {
 				{Name: "NodeTID", Type: "STRING"},
 				{Name: "ANodeTID", Type: "STRING"},
 				{Name: "BNodeTID", Type: "STRING"},
+				{Name: "RawPacketsCaptured", Type: "LONG"},
 			},
 			Indexes: []orient.Index{
 				{Name: "Flow.UUID", Fields: []string{"UUID"}, Type: "UNIQUE"},

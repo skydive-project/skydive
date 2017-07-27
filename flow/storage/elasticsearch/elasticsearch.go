@@ -27,8 +27,10 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/gopacket/layers"
 	"github.com/mattbaird/elastigo/lib"
 	"github.com/mitchellh/mapstructure"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
@@ -124,7 +126,32 @@ const metricMapping = `
 	]
 }`
 
-// ElasticSearchStorage describes a ElasticSearch database client
+const rawPacketMapping = `
+{
+	"_parent": {
+		"type": "flow"
+	},
+	"dynamic_templates": [
+		{
+			"last": {
+				"match": "Timestamp",
+				"mapping": {
+					"type": "date", "format": "epoch_millis"
+				}
+			}
+		},
+		{
+			"bytes": {
+				"match": "Index",
+				"mapping": {
+					"type": "long"
+				}
+			}
+		}
+	]
+}`
+
+// ElasticSearchStorage describes an ElasticSearch flow backend
 type ElasticSearchStorage struct {
 	client *esclient.ElasticSearchClient
 }
@@ -151,6 +178,24 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				"Last":      f.LastUpdateLast,
 			}
 			if err := c.client.BulkIndexChild("metric", f.UUID, "", metric); err != nil {
+				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+				continue
+			}
+		}
+
+		linkType, err := f.LinkType()
+		if err != nil {
+			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+			continue
+		}
+		for _, r := range f.GetLastRawPackets() {
+			rawpacket := map[string]interface{}{
+				"LinkType":  linkType,
+				"Timestamp": r.Timestamp,
+				"Index":     r.Index,
+				"Data":      []byte(json.RawMessage(r.Data)),
+			}
+			if err := c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket); err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
 			}
@@ -183,7 +228,90 @@ func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]in
 	return c.client.Search(docType, string(q))
 }
 
-// SearchMetrics search flow metrics matching filters in the database
+// SearchRawPackets searches flow raw packets matching filters in the database
+func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
+	if !c.client.Started() {
+		return nil, errors.New("ElasticSearchStorage is not yet started")
+	}
+
+	request, err := c.requestFromQuery(fsq)
+	if err != nil {
+		return nil, err
+	}
+
+	// do not escape flow as ES use sub object in that case
+	flowQuery := c.client.FormatFilter(fsq.Filter, "")
+	musts := []map[string]interface{}{{
+		"has_parent": map[string]interface{}{
+			"type":  "flow",
+			"query": flowQuery,
+		},
+	}}
+
+	if packetFilter != nil {
+		packetQuery := c.client.FormatFilter(packetFilter, "")
+		musts = append(musts, packetQuery)
+	}
+
+	request["query"] = map[string]interface{}{
+		"bool": map[string]interface{}{
+			"must": musts,
+		},
+	}
+
+	if fsq.Sort {
+		sortOrder := fsq.SortOrder
+		if sortOrder == "" {
+			sortOrder = "asc"
+		}
+
+		request["sort"] = map[string]interface{}{
+			fsq.SortBy: map[string]string{
+				"order":         strings.ToLower(sortOrder),
+				"unmapped_type": "date",
+			},
+		}
+	}
+
+	out, err := c.sendRequest("rawpacket", request)
+	if err != nil {
+		return nil, err
+	}
+
+	rawpackets := make(map[string]*flow.RawPackets)
+	if out.Hits.Len() > 0 {
+		for _, d := range out.Hits.Hits {
+			obj := struct {
+				LinkType  layers.LinkType
+				Timestamp int64
+				Index     int64
+				Data      []byte
+			}{}
+			if err := json.Unmarshal([]byte(*d.Source), &obj); err != nil {
+				return nil, err
+			}
+
+			r := &flow.RawPacket{
+				Timestamp: obj.Timestamp,
+				Index:     obj.Index,
+				Data:      obj.Data,
+			}
+
+			if fr, ok := rawpackets[d.Parent]; ok {
+				fr.RawPackets = append(fr.RawPackets, r)
+			} else {
+				rawpackets[d.Parent] = &flow.RawPackets{
+					LinkType:   obj.LinkType,
+					RawPackets: []*flow.RawPacket{r},
+				}
+			}
+		}
+	}
+
+	return rawpackets, nil
+}
+
+// SearchMetrics searches flow metrics matching filters in the database
 func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
@@ -234,7 +362,6 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 	metrics := map[string][]*common.TimedMetric{}
 	if out.Hits.Len() > 0 {
 		for _, d := range out.Hits.Hits {
-			tm := new(common.TimedMetric)
 			var obj map[string]interface{}
 			if err := json.Unmarshal([]byte(*d.Source), &obj); err != nil {
 				return nil, err
@@ -245,6 +372,7 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 				return nil, err
 			}
 
+			tm := new(common.TimedMetric)
 			tm.Start = int64(obj["Start"].(float64))
 			tm.Last = int64(obj["Last"].(float64))
 			tm.Metric = m
@@ -316,7 +444,8 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 func (c *ElasticSearchStorage) Start() {
 	go c.client.Start([]map[string][]byte{
 		{"metric": []byte(metricMapping)},
-		{"flow": []byte(flowMapping)}},
+		{"flow": []byte(flowMapping)},
+		{"rawpacket": []byte(rawPacketMapping)}},
 	)
 }
 

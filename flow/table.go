@@ -65,8 +65,14 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
 	}
 }
 
+// TableOpt defines flow table options
+type TableOpts struct {
+	RawPacketLimit int64
+}
+
 // Table store the flow table and related metrics mechanism
 type Table struct {
+	Opts          TableOpts
 	PacketsChan   chan *Packets
 	table         map[string]*Flow
 	stats         map[string]*FlowMetric
@@ -87,7 +93,7 @@ type Table struct {
 }
 
 // NewTable creates a new flow table
-func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *EnhancerPipeline) *Table {
+func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *EnhancerPipeline, nodeTID string, opts ...TableOpts) *Table {
 	t := &Table{
 		PacketsChan:   make(chan *Packets, 1000),
 		table:         make(map[string]*Flow),
@@ -98,15 +104,15 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 		updateHandler: updateHandler,
 		expireHandler: expireHandler,
 		pipeline:      pipeline,
+		nodeTID:       nodeTID,
 	}
+	if len(opts) > 0 {
+		t.Opts = opts[0]
+	}
+
 	t.tableClock = common.UnixMillis(time.Now())
 	t.lastUpdate = t.tableClock
 	return t
-}
-
-// SetNodeTID set the nodeTID of a flow table
-func (ft *Table) SetNodeTID(tid string) {
-	ft.nodeTID = tid
 }
 
 func (ft *Table) getFlows(query *filters.SearchQuery) *FlowSet {
@@ -222,11 +228,24 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 		ft.stats[f.UUID] = f.Metric.Copy()
 	}
 
-	/* Advise Clients */
-	if ft.updateHandler != nil && len(updatedFlows) != 0 {
-		ft.updateHandler.callback(updatedFlows)
+	if len(updatedFlows) != 0 {
 
-		logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
+		/* Advise Clients */
+		if ft.updateHandler != nil {
+			ft.updateHandler.callback(updatedFlows)
+
+			logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
+		}
+
+		// cleanup raw packets
+		if ft.Opts.RawPacketLimit > 0 {
+			for _, f := range ft.table {
+				// do not cleanup the very last rawpackets
+				if f.RawPacketsCaptured > ft.Opts.RawPacketLimit {
+					f.lastRawPackets = f.lastRawPackets[:0]
+				}
+			}
+		}
 	}
 }
 
@@ -318,6 +337,17 @@ func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2
 	} else {
 		flow.Update(t, packet.gopacket, packet.length)
 	}
+
+	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
+		flow.RawPacketsCaptured++
+		data := &RawPacket{
+			Timestamp: t,
+			Index:     flow.RawPacketsCaptured,
+			Data:      (*packet.gopacket).Data(),
+		}
+		flow.lastRawPackets = append(flow.lastRawPackets, data)
+	}
+
 	return flow
 }
 

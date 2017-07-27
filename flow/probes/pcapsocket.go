@@ -71,14 +71,14 @@ func (p *PcapSocketProbe) run() {
 			break
 		}
 
-		pcapInject, err := flow.NewPcapInject(conn, packetsChan, true, p.bpfFilter)
+		feeder, err := flow.NewPcapTableFeeder(conn, packetsChan, true, p.bpfFilter)
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to create pcap writer: %s", err.Error())
+			logging.GetLogger().Errorf("Failed to create pcap table feeder: %s", err.Error())
 			return
 		}
 
-		pcapInject.Start()
-		defer pcapInject.Stop()
+		feeder.Start()
+		defer feeder.Stop()
 	}
 }
 
