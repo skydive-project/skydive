@@ -67,11 +67,44 @@ message ICMPLayer {
 	uint32 ID = 3;
 }
 
+//Option A 
+message TCPMetric {
+   string ABSynData = 9;
+   string BASynData = 10;
+   uint32 ABSynTTL = 11;
+   uint32 BASynTTL = 12;
+   int64 ABFinStart = 14;
+   int64 BAFinStart = 15;
+   int64 ABRstStart = 16;
+   int64 BARstStart = 17;
+   uint32 ABExpectedSeq = 18;
+   uint32 BAExpectedSeq = 19; 
+}
+
+//Option B
+message TCPMetric {
+    uint64 ABSynStart =7;
+    uint64 BASynStart = 8;
+    string ABSynData = 9;
+    string BASynData = 10;
+    uint32 ABSynTTL = 11;
+    uint32 BASynTTL = 12;
+    int64 ABFinStart = 14;
+    int64 BAFinStart = 15;
+    int64 ABRstStart = 16;
+    int64 BARstStart = 17;
+    uint32 ABExpectedSeq = 18;
+    uint32 BAExpectedSeq = 19;
+}
+
+//Option A
 message FlowMetric {
 	int64 ABPackets = 2;
 	int64 ABBytes = 3;
 	int64 BAPackets = 4;
 	int64 BABytes = 5;
+	int64 FirstRequest = 6;
+	int64 FirstReply = 7;
 }
 
 message Flow {
