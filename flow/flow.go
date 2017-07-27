@@ -71,6 +71,14 @@ type Packets struct {
 type RawPackets struct {
 	LinkType   layers.LinkType
 	RawPackets []*RawPacket
+
+// Flow attributes that are temporal and will be never stored should
+// be located as fileds of ExtendedFlow
+// Permanent fields are kept in its base (Flow)
+type ExtendedFlowInfo struct{
+	LenBySeq	bool
+	ABExpectedSeq	uint32
+	BAExpectedSeq	uint32
 }
 
 // Value returns int32 value of a FlowProtocol
@@ -241,10 +249,10 @@ func networkID(p *gopacket.Packet) int64 {
 	return id
 }
 
-// NewFlow creates a new empty flow
+// NewFlow returns extended with memory-only attributes Flow instance
 func NewFlow() *Flow {
 	return &Flow{
-		Metric:           &ExtFlowMetric{},
+		Metric:           &FlowMetric{},
 		LastUpdateMetric: &FlowMetric{},
 	}
 }
@@ -372,7 +380,7 @@ func getExpectedSeq(packet *gopacket.Packet) uint32 {
 	return expectedSeq
 }
 
-func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
+func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64, flowInfo *ExtendedFlowInfo) {
 	f.Start = now
 	f.Last = now
 
@@ -380,7 +388,6 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 
 	f.NodeTID = nodeTID
 	f.ParentUUID = parentUUID
-	f.Metric.LenBySeq = false
 
 	f.LayersPath = layerPathFromGoPacket(packet)
 	appLayers := strings.Split(f.LayersPath, "/")
@@ -400,13 +407,13 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 				ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
 				if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
 					if f.Network.A == ipv4Packet.SrcIP.String() {
-						f.Metric.ABExpectedSeq = getExpectedSeq(packet)
-						logging.GetLogger().Notice("SYN AB", f.Metric.ABExpectedSeq)
+						flowInfo.ABExpectedSeq = getExpectedSeq(packet)
+						logging.GetLogger().Notice("SYN AB", flowInfo.ABExpectedSeq)
 					} else {
-						f.Metric.BAExpectedSeq = getExpectedSeq(packet)
-						logging.GetLogger().Notice("SYN BA", f.Metric.BAExpectedSeq)
+						flowInfo.BAExpectedSeq = getExpectedSeq(packet)
+						logging.GetLogger().Notice("SYN BA", flowInfo.BAExpectedSeq)
 					}
-					f.Metric.LenBySeq = true
+					flowInfo.LenBySeq = true
 				}
 			}
 		}
@@ -417,17 +424,18 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 }
 
 // Update a flow metrics
-func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
+func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64, flowInfo *ExtendedFlowInfo) {
 	f.Last = now
 
-	if f.Metric.LenBySeq {
-		f.updateMetricsBySeq(packet)
+	if flowInfo.LenBySeq {
+		f.updateMetricsBySeq(packet, flowInfo)
 	} else if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
 		logging.GetLogger().Error("Update metrics with network\n")
 		f.updateMetricsWithNetworkLayer(packet)
 	}
-
-	f.updateMetricsSynCapture(packet)
+	if f.TCPFlowMetric != nil {
+		f.updateMetricsSynCapture(packet)
+	}
 }
 
 func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) {
@@ -560,9 +568,6 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 func (f *Flow) updateMetricsSynCapture(packet *gopacket.Packet) error {
 	// capture content of SYN packets
 
-	if !f.Metric.CaptureSyn {
-		return nil
-	}
 	//bypass if not TCP
 	if f.Transport == nil || f.Transport.Protocol != FlowProtocol_TCPPORT {
 		return nil
@@ -623,42 +628,42 @@ func (f *Flow) updateMetricsSynCapture(packet *gopacket.Packet) error {
 			logging.GetLogger().Notice("Capture SYN failed to parse app data. leaving empty")
 		}
 		if f.Network.A == srcIP {
-			if f.Metric.ABSynStart == 0 {
-				f.Metric.ABSynStart = captureTime
-				f.Metric.ABSynTTL = timeToLive
-				f.Metric.ABSynData = ""
-				f.Metric.ABSynData += synData
+			if f.TCPFlowMetric.ABSynStart == 0 {
+				f.TCPFlowMetric.ABSynStart = captureTime
+				f.TCPFlowMetric.ABSynTTL = timeToLive
+				f.TCPFlowMetric.ABSynData = ""
+				f.TCPFlowMetric.ABSynData += synData
 			} else {
-				logging.GetLogger().Notice("Duplicate SYNCapture AB", f.Metric.ABSynData)
+				logging.GetLogger().Notice("Duplicate SYNCapture AB", f.TCPFlowMetric.ABSynData)
 			}
 		} else {
-			if f.Metric.BASynStart == 0 {
-				f.Metric.BASynStart = captureTime
-				f.Metric.BASynTTL = timeToLive
-				f.Metric.BASynData = ""
-				f.Metric.BASynData += synData
+			if f.TCPFlowMetric.BASynStart == 0 {
+				f.TCPFlowMetric.BASynStart = captureTime
+				f.TCPFlowMetric.BASynTTL = timeToLive
+				f.TCPFlowMetric.BASynData = ""
+				f.TCPFlowMetric.BASynData += synData
 			} else {
-				logging.GetLogger().Notice("Duplicate SYNCapture BA", f.Metric.BASynData)
+				logging.GetLogger().Notice("Duplicate SYNCapture BA", f.TCPFlowMetric.BASynData)
 			}
 		}
 	case tcpPacket.FIN:
 		if f.Network.A == srcIP {
-			f.Metric.ABFinStart = captureTime
+			f.TCPFlowMetric.ABFinStart = captureTime
 		} else {
-			f.Metric.BAFinStart = captureTime
+			f.TCPFlowMetric.BAFinStart = captureTime
 		}
 	case tcpPacket.RST:
 		if f.Network.A == srcIP {
-			f.Metric.ABRstStart = captureTime
+			f.TCPFlowMetric.ABRstStart = captureTime
 		} else {
-			f.Metric.BARstStart = captureTime
+			f.TCPFlowMetric.BARstStart = captureTime
 		}
 	}
 
 	return nil
 }
 
-func (f *Flow) updateMetricsBySeq(packet *gopacket.Packet) error {
+func (f *Flow) updateMetricsBySeq(packet *gopacket.Packet, flowInfo *ExtendedFlowInfo) error {
 	transportLayer := (*packet).Layer(layers.LayerTypeTCP)
 	transportPacket, _ := transportLayer.(*layers.TCP)
 
@@ -669,18 +674,18 @@ func (f *Flow) updateMetricsBySeq(packet *gopacket.Packet) error {
 	if ok {
 		if f.Network.A == ipv4Packet.SrcIP.String() {
 			if transportPacket.SYN {
-				f.Metric.ABExpectedSeq = getExpectedSeq(packet)
-				logging.GetLogger().Notice("SYN AB", f.Metric.ABExpectedSeq)
+				flowInfo.ABExpectedSeq = getExpectedSeq(packet)
+				logging.GetLogger().Notice("SYN AB", flowInfo.ABExpectedSeq)
 				return nil
 			}
-			expectedSeq = f.Metric.ABExpectedSeq
+			expectedSeq = flowInfo.ABExpectedSeq
 		} else {
 			if transportPacket.SYN {
-				f.Metric.BAExpectedSeq = getExpectedSeq(packet)
-				logging.GetLogger().Notice("SYN BA", f.Metric.BAExpectedSeq)
+				flowInfo.BAExpectedSeq = getExpectedSeq(packet)
+				logging.GetLogger().Notice("SYN BA", flowInfo.BAExpectedSeq)
 				return nil
 			}
-			expectedSeq = f.Metric.BAExpectedSeq
+			expectedSeq = flowInfo.BAExpectedSeq
 		}
 	} else {
 		logging.GetLogger().Error("Error retrieving IP layer")
@@ -703,15 +708,15 @@ func (f *Flow) updateMetricsBySeq(packet *gopacket.Packet) error {
 	if f.Network.A == ipv4Packet.SrcIP.String() {
 		f.Metric.ABPackets += int64(1)
 		f.Metric.ABBytes += int64(length)
-		f.Metric.ABExpectedSeq = newExpectedSeq
+		flowInfo.ABExpectedSeq = newExpectedSeq
 	} else {
 		f.Metric.BAPackets += int64(1)
 		f.Metric.BABytes += int64(length)
-		f.Metric.BAExpectedSeq = newExpectedSeq
+		flowInfo.BAExpectedSeq = newExpectedSeq
 	}
 
 	if transportPacket.FIN {
-		logging.GetLogger().Notice("FIN", f.Metric.ABExpectedSeq, f.Metric.BAExpectedSeq, f.Metric.ABBytes, f.Metric.BABytes)
+		logging.GetLogger().Notice("FIN", flowInfo.ABExpectedSeq, flowInfo.BAExpectedSeq, f.Metric.ABBytes, f.Metric.BABytes)
 	}
 
 	return nil
@@ -747,9 +752,10 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
 		if config.GetConfig().GetBool("agent.capture_syn") {
-			f.Metric.CaptureSyn = true
-			f.Metric.ABSynStart = int64(0)
-			f.Metric.BASynStart = int64(0)
+			f.TCPFlowMetric = &TCPMetric{
+				ABSynStart: int64(0),
+				BASynStart: int64(0),
+			}
 			return f.updateMetricsSynCapture(packet)
 		}
 	case FlowProtocol_UDPPORT:
@@ -921,6 +927,50 @@ func (i *ICMPLayer) GetFieldInt64(field string) (int64, error) {
 	}
 }
 
+// GetStringField returns the value of a ICMP field
+func (i *TCPMetric) GetStringField(field string) (string, error) {
+	if i == nil {
+		return "", common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "ABSynData":
+		return i.ABSynData, nil
+	case "BASynData":
+		return i.BASynData, nil
+	default:
+		return "", common.ErrFieldNotFound
+	}
+}
+
+// GetFieldInt64 returns the value of a ICMP field
+func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
+	if i == nil {
+		return 0, common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "ABSynTTL":
+		return int64(i.ABSynTTL), nil
+	case "BASynTTL":
+		return int64(i.BASynTTL), nil
+	case "ABSynStart":
+		return i.ABSynStart, nil
+	case "BASynStart":
+		return i.BASynStart, nil
+	case "ABFinStart":
+		return i.ABFinStart, nil
+	case "BAFinStart":
+		return i.BAFinStart, nil
+	case "ABRstStart":
+		return i.BARstStart, nil
+	case "BARstStart":
+		return i.BARstStart, nil
+	default:
+		return 0, common.ErrFieldNotFound
+	}
+}
+
 // GetFieldString returns the value of a Flow field
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
@@ -971,6 +1021,10 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.Network.GetStringField(fields[1])
 	case "ETHERNET":
 		return f.Link.GetStringField(fields[1])
+	case "TCPFlowMetric":
+		if f.TCPFlowMetric != nil {
+			return f.TCPFlowMetric.GetStringField(fields[1])
+		}
 	}
 	return "", common.ErrFieldNotFound
 }
@@ -994,6 +1048,10 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Metric.GetFieldInt64(fields[1])
 	case "LastUpdateMetric":
 		return f.LastUpdateMetric.GetFieldInt64(fields[1])
+	case "TCPFlowMetric":
+		if f.TCPFlowMetric != nil {
+			return f.TCPFlowMetric.GetFieldInt64(fields[1])
+		}
 	case "Link":
 		return f.Link.GetFieldInt64(fields[1])
 	case "Network":
@@ -1007,6 +1065,7 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	default:
 		return 0, common.ErrFieldNotFound
 	}
+	return 0, common.ErrFieldNotFound
 }
 
 // GetField returns the value of a field

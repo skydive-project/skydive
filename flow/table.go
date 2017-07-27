@@ -75,7 +75,8 @@ type Table struct {
 	Opts          TableOpts
 	PacketsChan   chan *Packets
 	table         map[string]*Flow
-	stats         map[string]*ExtFlowMetric
+	stats         map[string]*FlowMetric
+	extFlowInfo   map[*Flow]*ExtendedFlowInfo
 	flush         chan bool
 	flushDone     chan bool
 	query         chan *TableQuery
@@ -97,7 +98,8 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 	t := &Table{
 		PacketsChan:   make(chan *Packets, 1000),
 		table:         make(map[string]*Flow),
-		stats:         make(map[string]*ExtFlowMetric),
+		stats:         make(map[string]*FlowMetric),
+		extFlowInfo:   make(map[*Flow]*ExtendedFlowInfo),
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
 		state:         common.StoppedState,
@@ -151,6 +153,7 @@ func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
 
 	new := NewFlow()
 	ft.table[key] = new
+	ft.extFlowInfo[new] = &ExtendedFlowInfo{LenBySeq: false}
 
 	return new, true
 }
@@ -332,10 +335,10 @@ func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2
 	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
-		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID, L2ID, L3ID)
+		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID, L2ID, L3ID, ft.extFlowInfo[flow])
 		ft.pipeline.EnhanceFlow(flow)
 	} else {
-		flow.Update(t, packet.gopacket, packet.length)
+		flow.Update(t, packet.gopacket, packet.length, ft.extFlowInfo[flow])
 	}
 
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {

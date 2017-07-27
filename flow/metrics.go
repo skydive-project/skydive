@@ -35,26 +35,19 @@ func (fm *FlowMetric) Copy() *FlowMetric {
 }
 
 // Copy extended metric
-func (fm *ExtFlowMetric) Copy() *ExtFlowMetric {
-	return &ExtFlowMetric{
-		ABPackets:     fm.ABPackets,
-		ABBytes:       fm.ABBytes,
-		BAPackets:     fm.BAPackets,
-		BABytes:       fm.BABytes,
+func (fm *TCPMetric) Copy() *TCPMetric {
+	return &TCPMetric{
+
 		ABSynStart:    fm.ABSynStart,
 		BASynStart:    fm.BASynStart,
 		ABSynData:     fm.ABSynData,
 		BASynData:     fm.BASynData,
 		ABSynTTL:      fm.ABSynTTL,
 		BASynTTL:      fm.BASynTTL,
-		CaptureSyn:    fm.CaptureSyn,
 		ABFinStart:    fm.ABFinStart,
 		BAFinStart:    fm.BAFinStart,
 		ABRstStart:    fm.ABRstStart,
 		BARstStart:    fm.BARstStart,
-		ABExpectedSeq: fm.ABExpectedSeq,
-		BAExpectedSeq: fm.BAExpectedSeq,
-		LenBySeq:      fm.LenBySeq,
 	}
 }
 
@@ -73,38 +66,9 @@ func (f *FlowMetric) GetFieldInt64(field string) (int64, error) {
 	return 0, common.ErrFieldNotFound
 }
 
-// GetFieldInt64 for extended metric
-func (f *ExtFlowMetric) GetFieldInt64(field string) (int64, error) {
-
-	switch field {
-	case "ABPackets":
-		return f.ABPackets, nil
-	case "ABBytes":
-		return f.ABBytes, nil
-	case "BAPackets":
-		return f.BAPackets, nil
-	case "BABytes":
-		return f.BABytes, nil
-	}
-	return 0, common.ErrFieldNotFound
-}
-
 // Add sum flow metrics
 func (f *FlowMetric) Add(m common.Metric) common.Metric {
 	f2 := m.(*FlowMetric)
-
-	f.ABBytes += f2.ABBytes
-	f.BABytes += f2.BABytes
-	f.ABPackets += f2.ABPackets
-	f.BAPackets += f2.BAPackets
-
-	return f
-}
-
-// Add sum for extended metric
-func (f *ExtFlowMetric) Add(m common.Metric) common.Metric {
-
-	f2 := m.(*ExtFlowMetric)
 
 	f.ABBytes += f2.ABBytes
 	f.BABytes += f2.BABytes

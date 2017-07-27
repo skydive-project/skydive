@@ -136,7 +136,7 @@ func (g *GremlinQueryHelper) GetFlows(query string) (flows []*flow.Flow, err err
 }
 
 // GetFlowMetric from Gremlin query
-func (g *GremlinQueryHelper) GetFlowMetric(query string) (m *flow.ExtFlowMetric, _ error) {
+func (g *GremlinQueryHelper) GetFlowMetric(query string) (m *flow.FlowMetric, _ error) {
 	flows, err := g.GetFlows(query)
 	if err != nil {
 		return nil, err
