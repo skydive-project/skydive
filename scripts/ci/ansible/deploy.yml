@@ -106,6 +106,7 @@
         - greenballs
         - chucknorris
         - ansicolor
+        - credentials-binding
 
 - name: Install requirements
   hosts: jenkins_master, slaves

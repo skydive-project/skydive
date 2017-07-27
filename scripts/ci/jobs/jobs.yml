@@ -205,6 +205,49 @@
           allow-empty: 'true'
 
 - job:
+    name: skydive-release
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    parameters:
+      - string:
+          name: REF
+          description: The tag or branch to build
+    scm:
+      - git:
+          url: https://github.com/skydive-project/skydive
+          browser: githubweb
+          browser-url: http://github.com/skydive-project/skydive
+          timeout: 20
+          basedir: src/github.com/skydive-project/skydive
+          per-build-tag: false
+          skip-tag: true
+          refspec: +refs/tags/*:refs/remotes/origin/tags/*
+          branches:
+            - "${REF}"
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: github
+              variable: GITHUB_TOKEN
+          - text:
+              credential-id: github-username
+              variable: GITHUB_USERNAME
+          - text:
+              credential-id: docker-password
+              variable: DOCKER_PASSWORD
+          - text:
+              credential-id: copr-login
+              variable: COPR_LOGIN
+          - text:
+              credential-id: copr-token
+              variable: COPR_TOKEN
+    builders:
+      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-release.sh
+    publishers:
+      - chuck-norris
+
+- job:
     name: skydive-devstack-plugin
     defaults: skydive
     properties:

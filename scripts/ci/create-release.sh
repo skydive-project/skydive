@@ -17,7 +17,7 @@ fi
 
 set -v
 
-export TAG=`echo $ZUUL_REF | awk -F '/' '{print $NF}'`
+export TAG=`echo $REF | awk -F '/' '{print $NF}'`
 export VERSION=`echo $TAG | tr -d [a-z]`
 export DOCKER_IMAGE=skydive/skydive
 export DOCKER_EMAIL=skydivesoftware@gmail.com
@@ -27,7 +27,6 @@ export COPR_USERNAME=skydive
 
 dir="$(dirname "$0")"
 
-. "${dir}/install-requirements.sh"
 . "${dir}/install-go.sh"
 . "${dir}/install-static-requirements.sh"
 
