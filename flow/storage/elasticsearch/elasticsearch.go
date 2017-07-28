@@ -193,7 +193,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				"LinkType":  linkType,
 				"Timestamp": r.Timestamp,
 				"Index":     r.Index,
-				"Data":      []byte(json.RawMessage(r.Data)),
+				"Data":      r.Data,
 			}
 			if err := c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket); err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())

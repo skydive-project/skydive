@@ -3,12 +3,18 @@ var apiMixin = {
   methods: {
 
     // see : https://stackoverflow.com/questions/16086162/handle-file-download-from-ajax-post
-    $downloadRawPackets: function(UUID){
+    $downloadRawPackets: function(UUID, datastore){
+      var self = this;
+
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/topology', true);
       xhr.responseType = 'arraybuffer';
       xhr.onload = function () {
-        if (this.status === 200) {
+        if (this.status === 404 && !datastore) {
+          // retry as rawpacket can be in the datastore and not any more in
+          // the agent
+          return self.$downloadRawPackets(UUID, true);
+        } else if (this.status === 200) {
           var filename = UUID + 'pcap';
           var type = xhr.getResponseHeader('Content-Type');
 
@@ -47,7 +53,11 @@ var apiMixin = {
       xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
       xhr.setRequestHeader('Accept', 'vnd.tcpdump.pcap');
 
-      var query = 'G.Flows().Has("UUID", "' + UUID + '").RawPackets()';
+      var query = 'G';
+      if (datastore) {
+        query += '.At("-1s")';
+      }
+      query += '.Flows().Has("UUID", "' + UUID + '").RawPackets()';
       xhr.send(JSON.stringify({"GremlinQuery": query}));
     },
 

@@ -32,13 +32,14 @@ import (
 	"golang.org/x/net/bpf"
 
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/flow/probes/afpacket"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"

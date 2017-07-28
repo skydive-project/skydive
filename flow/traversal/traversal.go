@@ -549,6 +549,9 @@ func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
 
 // Values returns list of raw packets
 func (r *RawPacketsTraversalStep) Values() []interface{} {
+	if len(r.rawPackets) == 0 {
+		return []interface{}{}
+	}
 	return []interface{}{r.rawPackets}
 }
 
@@ -586,13 +589,22 @@ func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
 			return &RawPacketsTraversalStep{error: errors.New("Unable to filter flows")}
 		}
 
+		fr := filters.Range{To: context.TimeSlice.Last}
+		if context.TimeSlice.Start != context.TimeSlice.Last {
+			fr.From = context.TimeSlice.Start
+		}
+
+		rawPacketsFilter := filters.NewAndFilter(
+			filters.NewGteInt64Filter("Timestamp", fr.From),
+			filters.NewLteInt64Filter("Timestamp", fr.To),
+		)
+
 		f.flowSearchQuery.Sort = true
 		f.flowSearchQuery.SortBy = "Index"
 		f.flowSearchQuery.SortOrder = string(common.SortAscending)
 
 		var err error
-		// do not filter raw packets for the moment, return all of them based on flow filter only
-		if rawPackets, err = f.Storage.SearchRawPackets(f.flowSearchQuery, nil); err != nil {
+		if rawPackets, err = f.Storage.SearchRawPackets(f.flowSearchQuery, rawPacketsFilter); err != nil {
 			return &RawPacketsTraversalStep{error: err}
 		}
 	} else {
@@ -602,9 +614,12 @@ func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
 				return &RawPacketsTraversalStep{error: err}
 			}
 
-			rawPackets[fl.UUID] = &flow.RawPackets{
-				LinkType:   linkType,
-				RawPackets: fl.GetLastRawPackets(),
+			rawpackets := fl.GetLastRawPackets()
+			if len(rawpackets) > 0 {
+				rawPackets[fl.UUID] = &flow.RawPackets{
+					LinkType:   linkType,
+					RawPackets: rawpackets,
+				}
 			}
 		}
 	}

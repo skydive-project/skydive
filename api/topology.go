@@ -155,15 +155,20 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		}
 	} else if strings.Contains(r.Header.Get("Accept"), "vnd.tcpdump.pcap") {
 		if rawPacketsTraversal, ok := res.(*ftraversal.RawPacketsTraversalStep); ok {
-			w.Header().Set("Content-Type", "application/vnd.tcpdump.pcap; charset=UTF-8")
-			w.WriteHeader(http.StatusOK)
+			values := rawPacketsTraversal.Values()
+			if len(values) == 0 {
+				writeError(w, http.StatusNotFound, errors.New("No raw packet found, please check your Gremlin request and the time context"))
+			} else {
+				w.Header().Set("Content-Type", "application/vnd.tcpdump.pcap; charset=UTF-8")
+				w.WriteHeader(http.StatusOK)
 
-			pw := flow.NewPcapWriter(w)
-			for _, pf := range rawPacketsTraversal.Values() {
-				m := pf.(map[string]*flow.RawPackets)
-				for _, fr := range m {
-					if err = pw.WriteRawPackets(fr); err != nil {
-						writeError(w, http.StatusNotAcceptable, errors.New(err.Error()))
+				pw := flow.NewPcapWriter(w)
+				for _, pf := range values {
+					m := pf.(map[string]*flow.RawPackets)
+					for _, fr := range m {
+						if err = pw.WriteRawPackets(fr); err != nil {
+							writeError(w, http.StatusNotAcceptable, errors.New(err.Error()))
+						}
 					}
 				}
 			}
