@@ -23,7 +23,6 @@
 package client
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/skydive-project/skydive/api"
@@ -57,7 +56,8 @@ var AlertCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 
 		alert := api.NewAlert()
@@ -68,12 +68,11 @@ var AlertCreate = &cobra.Command{
 		alert.Action = alertAction
 
 		if errs := validator.Validate(alert); errs != nil {
-			fmt.Println("Error: ", errs)
-			cmd.Usage()
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 		if err := client.Create("alert", &alert); err != nil {
-			logging.GetLogger().Errorf(err.Error())
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 		printJSON(&alert)
@@ -89,10 +88,11 @@ var AlertList = &cobra.Command{
 		var alerts map[string]api.Alert
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 		if err := client.List("alert", &alerts); err != nil {
-			logging.GetLogger().Errorf(err.Error())
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 		printJSON(alerts)
@@ -114,11 +114,12 @@ var AlertGet = &cobra.Command{
 		var alert api.Alert
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 
 		if err := client.Get("alert", args[0], &alert); err != nil {
-			logging.GetLogger().Errorf(err.Error())
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 		printJSON(&alert)
@@ -139,11 +140,12 @@ var AlertDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 
 		if err := client.Delete("alert", args[0]); err != nil {
-			logging.GetLogger().Errorf(err.Error())
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 	},

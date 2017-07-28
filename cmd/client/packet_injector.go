@@ -23,7 +23,6 @@
 package client
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/skydive-project/skydive/api"
@@ -58,7 +57,8 @@ var PacketInjectorCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Criticalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 
 		packet := &api.PacketParamsReq{
@@ -78,13 +78,12 @@ var PacketInjectorCmd = &cobra.Command{
 		}
 
 		if err = validator.Validate(packet); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", err.Error())
-			cmd.Usage()
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 
 		if err := client.Create("injectpacket", &packet); err != nil {
-			logging.GetLogger().Errorf(err.Error())
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 
