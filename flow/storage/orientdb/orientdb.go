@@ -23,6 +23,7 @@
 package orientdb
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -161,10 +162,15 @@ func documentToMetric(document orient.Document) (*common.TimedMetric, error) {
 }
 
 func documentToRawPacket(document orient.Document) (*flow.RawPacket, layers.LinkType, error) {
-	document["Data"] = []byte(document["Data"].(string))
+	// decode base64 by hand as the json decoder used by orient db client just see a string
+	// and can not know that this is a array of byte as it only see interface{} as value
+	var err error
+	if document["Data"], err = base64.StdEncoding.DecodeString(document["Data"].(string)); err != nil {
+		return nil, layers.LinkType(0), err
+	}
 
 	rawpacket := new(flow.RawPacket)
-	if err := mapstructure.WeakDecode(document, rawpacket); err != nil {
+	if err = mapstructure.WeakDecode(document, rawpacket); err != nil {
 		return nil, layers.LinkType(0), err
 	}
 

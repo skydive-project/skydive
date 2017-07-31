@@ -239,11 +239,8 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 
 		// cleanup raw packets
 		if ft.Opts.RawPacketLimit > 0 {
-			for _, f := range ft.table {
-				// do not cleanup the very last rawpackets
-				if f.RawPacketsCaptured > ft.Opts.RawPacketLimit {
-					f.lastRawPackets = f.lastRawPackets[:0]
-				}
+			for _, f := range updatedFlows {
+				f.lastRawPackets = f.lastRawPackets[:0]
 			}
 		}
 	}
@@ -341,7 +338,7 @@ func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
 		flow.RawPacketsCaptured++
 		data := &RawPacket{
-			Timestamp: t,
+			Timestamp: common.UnixMillis((*packet.gopacket).Metadata().CaptureInfo.Timestamp),
 			Index:     flow.RawPacketsCaptured,
 			Data:      (*packet.gopacket).Data(),
 		}

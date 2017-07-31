@@ -1880,7 +1880,7 @@ func TestRawPackets(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: `G.V().Has('Name', 'rp-vm1-eth0')`, rawPackets: 9},
+			{gremlin: `G.V().Has('Name', 'rp-vm1-eth0')`, rawPackets: 9, kind: "pcap"},
 		},
 
 		check: func(c *TestContext) error {

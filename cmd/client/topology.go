@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -79,6 +80,11 @@ var TopologyRequest = &cobra.Command{
 			}
 			defer resp.Body.Close()
 			data, _ := ioutil.ReadAll(resp.Body)
+			if resp.StatusCode != http.StatusOK {
+				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
+				os.Exit(1)
+			}
+
 			fmt.Print(string(data))
 		default:
 			logging.GetLogger().Fatalf("Invalid output format %s", outputFormat)

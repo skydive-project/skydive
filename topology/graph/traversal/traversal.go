@@ -1730,6 +1730,9 @@ func (m *MetricsTraversalStep) Aggregates() *MetricsTraversalStep {
 
 // Values returns the graph metric values
 func (m *MetricsTraversalStep) Values() []interface{} {
+	if len(m.metrics) == 0 {
+		return []interface{}{}
+	}
 	return []interface{}{m.metrics}
 }
 
