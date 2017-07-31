@@ -12,7 +12,9 @@ echo ${PATH} | grep -q "${HOME}/bin" || {
 mkdir -p ~/bin
 curl -sL -o ~/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master/gimme
 chmod +x ~/bin/gimme
-eval "$(gimme 1.7)"
+
+# before changing this be sure that it will not break the RHEL packaging
+eval "$(gimme 1.6)"
 
 export GOPATH=$WORKSPACE
 
