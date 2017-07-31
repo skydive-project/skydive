@@ -1,5 +1,47 @@
 # Change Log
+
 All notable changes to this project will be documented in this file.
+
+## [0.12.0] - 2017-07-28
+### Added
+- Full HTTPS support
+- WebUI:
+  - New implementation of the topology for better readability and performances
+  - Make time slider easier to use
+  - Add zoom fit button
+- Flows:
+  - New 'sflow' probe to support capture on physical interfaces
+  - Allow keeping raw packets for flows
+  - Add ICMP layer to flow structure
+- Graph:
+  - Make metadata a real JSON object
+  - Add forwarding database to the node metadata
+- Gremlin:
+  - Add CONTAINS predicate to test if a value is in an array
+  - Add BothE step that returns the incoming and outcoming edges for a node
+  - Add E() step to return all the edges of a graph
+- Packet injector:
+  - Add icmpv6 support
+  - Add TCP support
+  - Make use of raw sockets
+- API:
+  - Allow returning the graph as dot
+
+### Changed
+- Graph:
+  - Ensure correctness of the nodes and edges timestamps on both agents and
+    analyzers
+- Moved to Github and dedicated CI infrastructure
+- Trigger alert when a successful evaluation changes
+- Flows:
+  - Enable all flow probes by default
+  - Do not include payload in layer path
+- Agents do not use etcd any more
+- Use zap logger
+- Bug fixes:
+  - Resync captures when becoming master
+  - Fix orphaned VLAN interfaces thanks to Mark Goddard
+  - Fix handling of Docker labels containing a dot
 
 ## [0.11.0] - 2017-05-05
 ### Added

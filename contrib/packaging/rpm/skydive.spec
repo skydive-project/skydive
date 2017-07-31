@@ -21,7 +21,7 @@
 %define source %{tagversion}
 %endif
 
-%{!?source:%global source 0.11.0}
+%{!?source:%global source 0.12.0}
 %{!?tag:%global tag 1}
 
 Name:           skydive
@@ -135,6 +135,9 @@ install -D -m 644 skydive-bash-completion.sh %{buildroot}/%{_sysconfdir}/bash_co
 %{_unitdir}/skydive-analyzer.service
 
 %changelog
+* Fri Jul 28 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.12.0-1
+- Bump to version 0.12.0
+
 * Fri May 5 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.11.0-1
 - Bump to version 0.11.0
 
