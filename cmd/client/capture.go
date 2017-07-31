@@ -62,7 +62,8 @@ var CaptureCreate = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if nodeTID != "" {
 			if gremlinQuery != "" {
-				logging.GetLogger().Fatal("Options --node and --gremlin are exclusive")
+				logging.GetLogger().Error("Options --node and --gremlin are exclusive")
+				os.Exit(1)
 			}
 			gremlinQuery = fmt.Sprintf("g.V().Has('TID', '%s')", nodeTID)
 		}
@@ -70,7 +71,8 @@ var CaptureCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 
 		capture := api.NewCapture(gremlinQuery, bpfFilter)
@@ -81,11 +83,13 @@ var CaptureCreate = &cobra.Command{
 		capture.HeaderSize = headerSize
 		capture.RawPacketLimit = rawPacketLimit
 		if err := validator.Validate(capture); err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Error(err.Error())
+			os.Exit(1)
 		}
 
 		if err := client.Create("capture", &capture); err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Error(err.Error())
+			os.Exit(1)
 		}
 		printJSON(&capture)
 	},
@@ -100,11 +104,13 @@ var CaptureList = &cobra.Command{
 		var captures map[string]api.Capture
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 
 		if err := client.List("capture", &captures); err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Error(err.Error())
+			os.Exit(1)
 		}
 		printJSON(captures)
 	},
@@ -125,11 +131,13 @@ var CaptureGet = &cobra.Command{
 		var capture api.Capture
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 
 		if err := client.Get("capture", args[0], &capture); err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Error(err.Error())
+			os.Exit(1)
 		}
 		printJSON(&capture)
 	},
@@ -149,11 +157,13 @@ var CaptureDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
 		}
 
 		if err := client.Delete("capture", args[0]); err != nil {
-			logging.GetLogger().Fatalf(err.Error())
+			logging.GetLogger().Error(err.Error())
+			os.Exit(1)
 		}
 	},
 }

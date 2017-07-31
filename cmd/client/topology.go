@@ -58,7 +58,8 @@ var TopologyRequest = &cobra.Command{
 		case "json":
 			var value interface{}
 			if err := queryHelper.Query(gremlinQuery, &value); err != nil {
-				logging.GetLogger().Fatalf(err.Error())
+				logging.GetLogger().Error(err.Error())
+				os.Exit(1)
 			}
 			printJSON(value)
 		case "dot":
@@ -66,17 +67,8 @@ var TopologyRequest = &cobra.Command{
 			header.Set("Accept", "vnd.graphviz")
 			resp, err := queryHelper.Request(gremlinQuery, header)
 			if err != nil {
-				logging.GetLogger().Fatalf(err.Error())
-			}
-			defer resp.Body.Close()
-			data, _ := ioutil.ReadAll(resp.Body)
-			fmt.Println(string(data))
-		case "pcap":
-			header := make(http.Header)
-			header.Set("Accept", "vnd.tcpdump.pcap")
-			resp, err := queryHelper.Request(gremlinQuery, header)
-			if err != nil {
-				logging.GetLogger().Fatalf(err.Error())
+				logging.GetLogger().Error(err.Error())
+				os.Exit(1)
 			}
 			defer resp.Body.Close()
 			data, _ := ioutil.ReadAll(resp.Body)
@@ -84,10 +76,25 @@ var TopologyRequest = &cobra.Command{
 				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
 				os.Exit(1)
 			}
-
+			fmt.Println(string(data))
+		case "pcap":
+			header := make(http.Header)
+			header.Set("Accept", "vnd.tcpdump.pcap")
+			resp, err := queryHelper.Request(gremlinQuery, header)
+			if err != nil {
+				logging.GetLogger().Error(err.Error())
+				os.Exit(1)
+			}
+			defer resp.Body.Close()
+			data, _ := ioutil.ReadAll(resp.Body)
+			if resp.StatusCode != http.StatusOK {
+				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
+				os.Exit(1)
+			}
 			fmt.Print(string(data))
 		default:
-			logging.GetLogger().Fatalf("Invalid output format %s", outputFormat)
+			logging.GetLogger().Errorf("Invalid output format %s", outputFormat)
+			os.Exit(1)
 		}
 	},
 }
