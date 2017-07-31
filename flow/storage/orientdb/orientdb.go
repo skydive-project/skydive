@@ -102,6 +102,7 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 		"Last":               flow.Last,
 		"LastUpdateStart":    flow.LastUpdateStart,
 		"LastUpdateLast":     flow.LastUpdateLast,
+		"RTT":                flow.RTT,
 		"TrackingID":         flow.TrackingID,
 		"L3TrackingID":       flow.L3TrackingID,
 		"ParentUUID":         flow.ParentUUID,

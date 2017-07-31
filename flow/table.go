@@ -34,12 +34,6 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// flowState is used internally to track states within the flow table.
-// it is added to the generated Flow struct by Makefile
-type flowState struct {
-	lastMetric *FlowMetric
-}
-
 // TableQuery contains a type and a query obj as an array of bytes.
 // The query can be encoded in different ways according the type.
 type TableQuery struct {
