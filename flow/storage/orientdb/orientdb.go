@@ -212,7 +212,7 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 			continue
 		}
-		for _, r := range flow.GetLastRawPackets() {
+		for _, r := range flow.LastRawPackets {
 			doc := flowRawPacketToDocument(linkType, r)
 			doc["Flow"] = flowID
 			if _, err = c.client.CreateDocument(doc); err != nil {

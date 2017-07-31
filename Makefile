@@ -34,7 +34,9 @@ all: install
 	# if it's a Outer or Inner packet.
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i flow/flow.pb.go
 	# do not export LastRawPackets used internally
-	sed -e 's/LastRawPackets/lastRawPackets/g' -e 's/GetlastRawPackets/GetLastRawPackets/' -i flow/flow.pb.go
+	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i flow/flow.pb.go
+	# add flowState to flow generated struct
+	sed -e 's/type Flow struct {/type Flow struct {\n  state flowState/' -i flow/flow.pb.go
 
 .bindata: builddep
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/*

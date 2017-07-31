@@ -614,11 +614,10 @@ func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
 				return &RawPacketsTraversalStep{error: err}
 			}
 
-			rawpackets := fl.GetLastRawPackets()
-			if len(rawpackets) > 0 {
+			if len(fl.LastRawPackets) > 0 {
 				rawPackets[fl.UUID] = &flow.RawPackets{
 					LinkType:   linkType,
-					RawPackets: rawpackets,
+					RawPackets: fl.LastRawPackets,
 				}
 			}
 		}

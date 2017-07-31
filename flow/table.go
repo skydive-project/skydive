@@ -34,6 +34,12 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// flowState is used internally to track states within the flow table.
+// it is added to the generated Flow struct by Makefile
+type flowState struct {
+	lastMetric *FlowMetric
+}
+
 // TableQuery contains a type and a query obj as an array of bytes.
 // The query can be encoded in different ways according the type.
 type TableQuery struct {
@@ -75,7 +81,6 @@ type Table struct {
 	Opts          TableOpts
 	PacketsChan   chan *Packets
 	table         map[string]*Flow
-	stats         map[string]*FlowMetric
 	flush         chan bool
 	flushDone     chan bool
 	query         chan *TableQuery
@@ -97,7 +102,6 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 	t := &Table{
 		PacketsChan:   make(chan *Packets, 1000),
 		table:         make(map[string]*Flow),
-		stats:         make(map[string]*FlowMetric),
 		flush:         make(chan bool),
 		flushDone:     make(chan bool),
 		state:         common.StoppedState,
@@ -170,9 +174,6 @@ func (ft *Table) expire(expireBefore int64) {
 
 			// need to use the key as the key could be not equal to the UUID
 			delete(ft.table, k)
-
-			// stats are always indexed by UUID
-			delete(ft.stats, f.UUID)
 		}
 	}
 	/* Advise Clients */
@@ -198,11 +199,11 @@ func (ft *Table) updateMetric(f *Flow, start, last int64) {
 
 	// subtract previous values to get the diff so that we store the
 	// amount of data between two updates
-	if s, ok := ft.stats[f.UUID]; ok {
-		f.LastUpdateMetric.ABPackets -= s.ABPackets
-		f.LastUpdateMetric.ABBytes -= s.ABBytes
-		f.LastUpdateMetric.BAPackets -= s.BAPackets
-		f.LastUpdateMetric.BABytes -= s.BABytes
+	if lm := f.state.lastMetric; lm != nil {
+		f.LastUpdateMetric.ABPackets -= lm.ABPackets
+		f.LastUpdateMetric.ABBytes -= lm.ABBytes
+		f.LastUpdateMetric.BAPackets -= lm.BAPackets
+		f.LastUpdateMetric.BABytes -= lm.BABytes
 		f.LastUpdateStart = start
 	} else {
 		f.LastUpdateStart = f.Start
@@ -225,7 +226,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 			f.LastUpdateLast = updateTime
 		}
 
-		ft.stats[f.UUID] = f.Metric.Copy()
+		f.state.lastMetric = f.Metric.Copy()
 	}
 
 	if len(updatedFlows) != 0 {
@@ -240,7 +241,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 		// cleanup raw packets
 		if ft.Opts.RawPacketLimit > 0 {
 			for _, f := range updatedFlows {
-				f.lastRawPackets = f.lastRawPackets[:0]
+				f.LastRawPackets = f.LastRawPackets[:0]
 			}
 		}
 	}
@@ -342,7 +343,7 @@ func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2
 			Index:     flow.RawPacketsCaptured,
 			Data:      (*packet.gopacket).Data(),
 		}
-		flow.lastRawPackets = append(flow.lastRawPackets, data)
+		flow.LastRawPackets = append(flow.LastRawPackets, data)
 	}
 
 	return flow
