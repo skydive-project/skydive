@@ -10,7 +10,6 @@ services:
   skydive-analyzer:
     image: skydive/skydive
     ports:
-      - "2379:2379"
       - "8082:8082"
       - "8082:8082/udp"
     links:
