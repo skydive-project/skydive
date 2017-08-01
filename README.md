@@ -15,7 +15,7 @@ Elasticsearch database.
 Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
 topology and flows informations.
 
-![](https://raw.githubusercontent.com/skydive-project/skydive/master/doc/static/images/skydive-screenshot.png)
+![](https://github.com/skydive-project/skydive.network/raw/images/overview.gif)
 
 ## Key features
 
