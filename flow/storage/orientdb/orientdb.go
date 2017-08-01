@@ -67,28 +67,76 @@ func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Docum
 	}
 }
 
+func flowTCPMetricToDocument(flow *flow.Flow, tcp_metric *flow.TCPMetric) orient.Document {
+
+	if tcp_metric != nil {
+		return orient.Document{
+			"@class":        "TCPMetric",
+			"@type":         "d",
+			"Start":     	 flow.LastUpdateStart,
+			"Last":      	 flow.LastUpdateLast,
+			"ABSynStart":    tcp_metric.ABSynStart,
+			"BASynStart":    tcp_metric.BASynStart,
+			"ABSynData":     tcp_metric.ABSynData,
+			"BASynData":     tcp_metric.BASynData,
+			"ABSynTTL":      tcp_metric.ABSynTTL,
+			"BASynTTL":      tcp_metric.BASynTTL,
+			"ABFinStart":    tcp_metric.ABFinStart,
+			"BAFinStart":    tcp_metric.BAFinStart,
+			"ABRstStart":    tcp_metric.ABRstStart,
+			"BARstStart":    tcp_metric.BARstStart,
+		}
+
+	}
+	return nil
+}
+
 func flowToDocument(flow *flow.Flow) orient.Document {
 	metricDoc := flowMetricToDocument(flow, flow.Metric)
 	lastMetricDoc := flowMetricToDocument(flow, flow.LastUpdateMetric)
-
-	flowDoc := orient.Document{
-		"@class":             "Flow",
-		"UUID":               flow.UUID,
-		"LayersPath":         flow.LayersPath,
-		"Application":        flow.Application,
-		"LastUpdateMetric":   lastMetricDoc,
-		"Metric":             metricDoc,
-		"Start":              flow.Start,
-		"Last":               flow.Last,
-		"LastUpdateStart":    flow.LastUpdateStart,
-		"LastUpdateLast":     flow.LastUpdateLast,
-		"TrackingID":         flow.TrackingID,
-		"L3TrackingID":       flow.L3TrackingID,
-		"ParentUUID":         flow.ParentUUID,
-		"NodeTID":            flow.NodeTID,
-		"ANodeTID":           flow.ANodeTID,
-		"BNodeTID":           flow.BNodeTID,
-		"RawPacketsCaptured": flow.RawPacketsCaptured,
+	tcpMetric := flowTCPMetricToDocument(flow, flow.TCPFlowMetric)
+        var flowDoc orient.Document
+	if tcpMetric != nil {
+		flowDoc = orient.Document{
+			"@class":           "Flow",
+			"UUID":             flow.UUID,
+			"LayersPath":       flow.LayersPath,
+			"Application":      flow.Application,
+			"LastUpdateMetric": lastMetricDoc,
+			"Metric":           metricDoc,
+			"TCPFlowMetric":    tcpMetric,
+			"Start":            flow.Start,
+			"Last":             flow.Last,
+			"LastUpdateStart":  flow.LastUpdateStart,
+			"LastUpdateLast":   flow.LastUpdateLast,
+			"TrackingID":       flow.TrackingID,
+			"L3TrackingID":     flow.L3TrackingID,
+			"ParentUUID":       flow.ParentUUID,
+			"NodeTID":          flow.NodeTID,
+			"ANodeTID":         flow.ANodeTID,
+			"BNodeTID":         flow.BNodeTID,
+                        "RawPacketsCaptured": flow.RawPacketsCaptured,
+		}
+	} else {
+		flowDoc = orient.Document{
+			"@class":           "Flow",
+			"UUID":             flow.UUID,
+			"LayersPath":       flow.LayersPath,
+			"Application":      flow.Application,
+			"LastUpdateMetric": lastMetricDoc,
+			"Metric":           metricDoc,
+			"Start":            flow.Start,
+			"Last":             flow.Last,
+			"LastUpdateStart":  flow.LastUpdateStart,
+			"LastUpdateLast":   flow.LastUpdateLast,
+			"TrackingID":       flow.TrackingID,
+			"L3TrackingID":     flow.L3TrackingID,
+			"ParentUUID":       flow.ParentUUID,
+			"NodeTID":          flow.NodeTID,
+			"ANodeTID":         flow.ANodeTID,
+			"BNodeTID":         flow.BNodeTID,
+                        "RawPacketsCaptured": flow.RawPacketsCaptured,
+		}
 	}
 
 	if flow.Link != nil {
@@ -391,6 +439,32 @@ func New() (*OrientDBStorage, error) {
 		}
 	}
 
+	if _, err := client.GetDocumentClass("TCPMetric"); err != nil {
+		class := orient.ClassDefinition{
+			Name: "TCPMetric",
+			Properties: []orient.Property{
+				{Name: "Start", Type: "LONG", Mandatory: true, NotNull: true},
+				{Name: "Last", Type: "LONG", Mandatory: true, NotNull: true},
+				{Name: "ABSynStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "BASynStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "ABSynData", Type: "STRING", Mandatory: false, NotNull: false},
+				{Name: "BASynData", Type: "STRING", Mandatory: false, NotNull: false},
+				{Name: "ABSynTTL", Type: "INTEGER", Mandatory: false, NotNull: false},
+				{Name: "BASynTTL", Type: "INTEGER", Mandatory: false, NotNull: false},
+				{Name: "ABFinStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "BAFinStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "ABRstStart", Type: "LONG", Mandatory: false, NotNull: false},
+				{Name: "BARstStart", Type: "LONG", Mandatory: false, NotNull: false},
+			},
+			Indexes: []orient.Index{
+				{Name: "TCPMetric.TimeSpan", Fields: []string{"Start", "Last"}, Type: "NOTUNIQUE"},
+			},
+		}
+		if err := client.CreateDocumentClass(class); err != nil {
+			return nil, fmt.Errorf("Failed to register class ExtFlowMetric: %s", err.Error())
+		}
+	}
+
 	if _, err := client.GetDocumentClass("Flow"); err != nil {
 		class := orient.ClassDefinition{
 			Name: "Flow",
@@ -400,6 +474,7 @@ func New() (*OrientDBStorage, error) {
 				{Name: "Application", Type: "STRING"},
 				{Name: "LastUpdateMetric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
 				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
+				{Name: "TCPFlowMetric", Type: "EMBEDDED", LinkedClass: "TCPMetric"},
 				{Name: "Start", Type: "LONG"},
 				{Name: "Last", Type: "LONG"},
 				{Name: "LastUpdateStart", Type: "LONG"},
@@ -428,6 +503,11 @@ func New() (*OrientDBStorage, error) {
 
 	flowIndex := orient.Index{Name: "FlowMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
 	client.CreateIndex("FlowMetric", flowIndex)
+
+	client.CreateProperty("TCPMetric", flowProp)
+
+	extFlowIndex := orient.Index{Name: "TCPMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
+	client.CreateIndex("TCPMetric", extFlowIndex)
 
 	return &OrientDBStorage{
 		client: client,
