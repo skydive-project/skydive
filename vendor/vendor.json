@@ -1294,39 +1294,45 @@
 			"revisionTime": "2017-06-30T17:54:37Z"
 		},
 		{
-			"checksumSHA1": "3Jk0EqOkbHrqOGT0WfxihzfmwBE=",
+			"checksumSHA1": "4OERoRGdnmeX9hA8o0uwCZqMA1g=",
+			"origin": "github.com/safchain/zap",
 			"path": "go.uber.org/zap",
-			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
 			"revisionTime": "2017-07-09T03:22:36Z"
 		},
 		{
 			"checksumSHA1": "HYo/9nwrY08NQA+2ItPOAH8IFW8=",
+			"origin": "github.com/safchain/zap/buffer",
 			"path": "go.uber.org/zap/buffer",
-			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
 			"revisionTime": "2017-07-09T03:22:36Z"
 		},
 		{
 			"checksumSHA1": "MuxOAtZEsJitlWBzhmpm2vGiHok=",
+			"origin": "github.com/safchain/zap/internal/bufferpool",
 			"path": "go.uber.org/zap/internal/bufferpool",
-			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
 			"revisionTime": "2017-07-09T03:22:36Z"
 		},
 		{
 			"checksumSHA1": "uC0L9eCSAYcCWNC8udJk/t1vvIU=",
+			"origin": "github.com/safchain/zap/internal/color",
 			"path": "go.uber.org/zap/internal/color",
-			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
 			"revisionTime": "2017-07-09T03:22:36Z"
 		},
 		{
 			"checksumSHA1": "b80CJExrVpXu3SA1iCQ6uLqTn2c=",
+			"origin": "github.com/safchain/zap/internal/exit",
 			"path": "go.uber.org/zap/internal/exit",
-			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
 			"revisionTime": "2017-07-09T03:22:36Z"
 		},
 		{
-			"checksumSHA1": "oEiE5TfvK2rVixOUIJIKfGN6PC8=",
+			"checksumSHA1": "66VZR7l5jQfBlDLzV/b3p8+bzEo=",
+			"origin": "github.com/safchain/zap/zapcore",
 			"path": "go.uber.org/zap/zapcore",
-			"revision": "dadca013650a921313c28fa51e4e89e84e3e252d",
+			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
 			"revisionTime": "2017-07-09T03:22:36Z"
 		},
 		{
