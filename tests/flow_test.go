@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -1815,6 +1816,26 @@ func TestFlowsWithShortestPath(t *testing.T) {
 	RunTest(t, test)
 }
 
+func printRawPackets(t *testing.T, gh *gclient.GremlinQueryHelper, query string) error {
+	header := make(http.Header)
+	resp, err := gh.Request(query, header)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("PCAP request error: %s", resp.Status)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	t.Logf("RawPackets: %s", string(data))
+
+	return nil
+}
+
 func getRawPackets(gh *gclient.GremlinQueryHelper, query string) ([]gopacket.Packet, error) {
 	header := make(http.Header)
 	header.Set("Accept", "vnd.tcpdump.pcap")
@@ -1824,9 +1845,13 @@ func getRawPackets(gh *gclient.GremlinQueryHelper, query string) ([]gopacket.Pac
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("PCAP request error: %s", resp.Status)
+	}
+
 	handle, err := pcapgo.NewReader(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("PCAP opening error: %s", err)
 	}
 
 	var packets []gopacket.Packet
@@ -1834,7 +1859,7 @@ func getRawPackets(gh *gclient.GremlinQueryHelper, query string) ([]gopacket.Pac
 		data, _, err := handle.ReadPacketData()
 		if err != nil {
 			if err != io.EOF {
-				return nil, err
+				return nil, fmt.Errorf("PCAP reading error: %s", err)
 			}
 			break
 		}
@@ -1847,6 +1872,7 @@ func getRawPackets(gh *gclient.GremlinQueryHelper, query string) ([]gopacket.Pac
 
 func TestRawPackets(t *testing.T) {
 	test := &Test{
+		mode: OneShot,
 		setupCmds: []helper.Cmd{
 			{"brctl addbr br-rp", true},
 			{"ip link set br-rp up", true},
@@ -1884,18 +1910,13 @@ func TestRawPackets(t *testing.T) {
 		},
 
 		check: func(c *TestContext) error {
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
-
 			gh := c.gh
-			node, err := gh.GetNode(prefix + `.V().Has("Name", "rp-vm1-eth0").HasKey("TID")`)
+			node, err := gh.GetNode(`G.At("-1s").V().Has("Name", "rp-vm1-eth0").HasKey("TID")`)
 			if err != nil {
 				return err
 			}
 
-			query := fmt.Sprintf(prefix+`.Flows().Has("NodeTID", "%s", "LayersPath", "Ethernet/IPv4/ICMPv4")`, node.Metadata()["TID"])
+			query := fmt.Sprintf(`G.At("-1s").Flows().Has("NodeTID", "%s", "LayersPath", "Ethernet/IPv4/ICMPv4")`, node.Metadata()["TID"])
 
 			flows, err := gh.GetFlows(query)
 			if err != nil {
@@ -1912,6 +1933,10 @@ func TestRawPackets(t *testing.T) {
 					return err
 				}
 				return fmt.Errorf("Should get 4 raw packets 2 echo/reply: %v, %+v", flows, packets)
+			}
+
+			if err = printRawPackets(t, gh, query+".RawPackets()"); err != nil {
+				return nil
 			}
 
 			packets, err := getRawPackets(gh, query+".RawPackets()")
