@@ -689,6 +689,19 @@ Ready:
 						}
 						tr.Metadata["Statistics"] = u.statsToMap(stats)
 						lastMetrics := u.statsToMap(&metric)
+
+						changed := false
+						for _, v := range lastMetrics {
+							if v != 0 {
+								changed = true
+								break
+							}
+						}
+						if !changed {
+							u.Graph.Unlock()
+							continue
+						}
+
 						lastMetrics["Start"] = int64(common.UnixMillis(last))
 						lastMetrics["Last"] = int64(common.UnixMillis(now))
 						tr.Metadata["LastMetric"] = lastMetrics
