@@ -47,6 +47,7 @@ type OvsdbProbe struct {
 	Graph        *graph.Graph
 	Root         *graph.Node
 	OvsMon       *ovsdb.OvsMonitor
+	OvsOfProbe   *OvsOfProbe
 	uuidToIntf   map[string]*graph.Node
 	uuidToPort   map[string]*graph.Node
 	intfToPort   map[string]*graph.Node
@@ -123,6 +124,9 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 			}
 		}
 	}
+	if o.OvsOfProbe != nil {
+		o.OvsOfProbe.OnOvsBridgeAdd(bridge)
+	}
 }
 
 // OnOvsBridgeDel event
@@ -133,6 +137,9 @@ func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row 
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge != nil {
 		o.Graph.DelNode(bridge)
+	}
+	if o.OvsOfProbe != nil {
+		o.OvsOfProbe.OnOvsBridgeDel(uuid, row)
 	}
 }
 
@@ -464,6 +471,7 @@ func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProb
 		portToIntf:   make(map[string]*graph.Node),
 		portToBridge: make(map[string]*graph.Node),
 		OvsMon:       mon,
+		OvsOfProbe:   NewOvsOfProbe(g, n, mon.Target),
 	}
 	o.OvsMon.AddMonitorHandler(o)
 
