@@ -188,7 +188,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 			continue
 		}
-		for _, r := range f.GetLastRawPackets() {
+		for _, r := range f.LastRawPackets {
 			rawpacket := map[string]interface{}{
 				"LinkType":  linkType,
 				"Timestamp": r.Timestamp,
