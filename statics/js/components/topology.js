@@ -221,6 +221,11 @@ var TopologyComponent = {
 
   methods: {
 
+    unwatch: function() {
+      clearTimeout(this.timeId);
+      this.timeId = null;
+    },
+
     onNodeSelected: function(d) {
       this.$store.commit('selected', d);
     },
