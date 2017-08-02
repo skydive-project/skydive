@@ -1948,6 +1948,15 @@ func TestRawPackets(t *testing.T) {
 				return fmt.Errorf("Should get 4 pcap raw packets 2 echo/reply: %v, %+v", flows, packets)
 			}
 
+			replyPackets, err := getRawPackets(gh, query+".RawPackets().BPF('icmp[icmptype] == 0')")
+			if err != nil {
+				return err
+			}
+
+			if len(replyPackets) != 2 {
+				return fmt.Errorf("Should get 2 echo reply raw packets: %v, %+v", flows, replyPackets)
+			}
+
 			return nil
 		},
 	}

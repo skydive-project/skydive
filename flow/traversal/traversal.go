@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
@@ -46,6 +47,7 @@ const (
 	traversalCaptureNodeToken traversal.Token = 1004
 	traversalAggregatesToken  traversal.Token = 1005
 	traversalRawPacketsToken  traversal.Token = 1006
+	traversalBpfToken         traversal.Token = 1007
 )
 
 const (
@@ -60,6 +62,7 @@ type FlowTraversalExtension struct {
 	CaptureNodeToken traversal.Token
 	AggregatesToken  traversal.Token
 	RawPacketsToken  traversal.Token
+	BpfToken         traversal.Token
 	TableClient      *flow.TableClient
 	Storage          storage.Storage
 }
@@ -117,6 +120,11 @@ type AggregatesGremlinTraversalStep struct {
 
 // RawPacketsGremlinTraversalStep rawpackets step
 type RawPacketsGremlinTraversalStep struct {
+	context traversal.GremlinTraversalContext
+}
+
+// BpfGremlinTraversalStep step
+type BpfGremlinTraversalStep struct {
 	context traversal.GremlinTraversalContext
 }
 
@@ -626,6 +634,51 @@ func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
 	return &RawPacketsTraversalStep{GraphTraversal: f.GraphTraversal, rawPackets: rawPackets}
 }
 
+// BPF returns only the raw packets that matches the specified BPF filter
+func (r *RawPacketsTraversalStep) BPF(s ...interface{}) *RawPacketsTraversalStep {
+	if r.error != nil {
+		return &RawPacketsTraversalStep{error: r.error}
+	}
+
+	if len(s) != 1 {
+		return &RawPacketsTraversalStep{error: fmt.Errorf("BPF requires 1 parameter")}
+	}
+
+	filter, ok := s[0].(string)
+	if !ok {
+		return &RawPacketsTraversalStep{error: fmt.Errorf("BPF parameter has to be a string")}
+	}
+
+	// While very improbable, we may have different link types so we keep
+	// a map of BPF filters for the link types
+	bpfFilters := make(map[layers.LinkType]*flow.BPF)
+	rawPackets := make(map[string]*flow.RawPackets)
+	for key, value := range r.rawPackets {
+		var err error
+		bpf, ok := bpfFilters[value.LinkType]
+		if !ok {
+			bpf, err = flow.NewBPF(value.LinkType, flow.DefaultCaptureLength, filter)
+			if err != nil {
+				return &RawPacketsTraversalStep{error: err}
+			}
+			bpfFilters[value.LinkType] = bpf
+		}
+
+		var filteredPackets []*flow.RawPacket
+		for _, packet := range value.RawPackets {
+			if bpf.Matches(packet.Data) {
+				filteredPackets = append(filteredPackets, packet)
+			}
+		}
+		rawPackets[key] = &flow.RawPackets{
+			LinkType:   value.LinkType,
+			RawPackets: filteredPackets,
+		}
+	}
+
+	return &RawPacketsTraversalStep{GraphTraversal: r.GraphTraversal, rawPackets: rawPackets}
+}
+
 // Values returns list of flows
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flowset.Flows))
@@ -654,6 +707,7 @@ func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage
 		CaptureNodeToken: traversalCaptureNodeToken,
 		AggregatesToken:  traversalAggregatesToken,
 		RawPacketsToken:  traversalRawPacketsToken,
+		BpfToken:         traversalBpfToken,
 		TableClient:      client,
 		Storage:          storage,
 	}
@@ -674,6 +728,8 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 		return e.AggregatesToken, true
 	case "RAWPACKETS":
 		return e.RawPacketsToken, true
+	case "BPF":
+		return e.BpfToken, true
 	}
 	return traversal.IDENT, false
 }
@@ -693,6 +749,8 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 		return &AggregatesGremlinTraversalStep{context: p}, nil
 	case e.RawPacketsToken:
 		return &RawPacketsGremlinTraversalStep{context: p}, nil
+	case e.BpfToken:
+		return &BpfGremlinTraversalStep{context: p}, nil
 	}
 
 	return nil, nil
@@ -1017,4 +1075,24 @@ func (r *RawPacketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalS
 // Context RawPackets step
 func (r *RawPacketsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &r.context
+}
+
+// Exec BPF step
+func (s *BpfGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
+	switch last.(type) {
+	case *RawPacketsTraversalStep:
+		rs := last.(*RawPacketsTraversalStep)
+		return rs.BPF(s.context.Params...), nil
+	}
+	return nil, traversal.ErrExecutionError
+}
+
+// Reduce BPF step
+func (s *BpfGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
+	return next
+}
+
+// Context of BPF step
+func (s *BpfGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
+	return &s.context
 }
