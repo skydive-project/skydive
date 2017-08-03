@@ -217,7 +217,7 @@ func (c *WSClient) readPump() {
 	for {
 		_, m, err := c.conn.ReadMessage()
 		if err != nil {
-			if e, ok := err.(*websocket.CloseError); ok && e.Code == websocket.CloseAbnormalClosure {
+			if e, ok := err.(*websocket.CloseError); ok && (e.Code == websocket.CloseAbnormalClosure || e.Code == websocket.CloseGoingAway) {
 				logging.GetLogger().Infof("Read on closed connection from %s: %s", c.Host, err.Error())
 			} else {
 				logging.GetLogger().Errorf("Error while reading websocket from %s: %s", c.Host, err.Error())
