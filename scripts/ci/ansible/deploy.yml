@@ -1,83 +1,9 @@
 ---
-- name: Create security groups
+- name: Create resources
   hosts: localhost
   tasks:
-  - os_network:
-      cloud: "{{ cloud }}"
-      state: present
-      name: "{{ network }}"
-    register: os_network
-
-  - os_image:
-      cloud: "{{ cloud }}"
-      state: present
-      name: "{{ image }}"
-    register: os_image
-
-  - os_flavor_facts:
-      cloud: "{{ cloud }}"
-      name: "{{ flavor }}"
-    register: os_flavor
-
-  - set_fact:
-      os_network: "{{ os_network.id }}"
-      os_flavor: "{{ os_flavor.ansible_facts.openstack_flavors[0].id }}"
-      os_image: "{{ os_image.id }}"
-
-  - os_security_group:
-      cloud: "{{ cloud }}"
-      state: present
-      name: jenkins
-      description: security group for Jenkins master
-
-  - os_security_group_rule:
-      cloud: "{{ cloud }}"
-      security_group: jenkins
-      protocol: tcp
-      state: present
-      port_range_min: 22
-      port_range_max: 22
-      remote_ip_prefix: 0.0.0.0/0
-
-  - os_security_group_rule:
-      cloud: "{{ cloud }}"
-      security_group: jenkins
-      protocol: tcp
-      state: present
-      port_range_min: 8080
-      port_range_max: 8080
-      remote_ip_prefix: 0.0.0.0/0
-
-  - os_security_group_rule:
-      cloud: "{{ cloud }}"
-      security_group: jenkins
-      protocol: tcp
-      state: present
-      port_range_min: 39553
-      port_range_max: 39553
-      remote_group: jenkins
-
-- name: Create Jenkins master
-  hosts: localhost
-  roles:
-    - role: create_instances
-      instance_name: jenkins_master
-      security_group: jenkins
-      host_group: masters
-      network: "{{ network }}"
-      image: "{{ image }}"
-      floating_ips:
-        - "{{ jenkins_public_ip }}"
-
-- name: Create Jenkins slaves
-  hosts: localhost
-  tasks:
-    - include_role:
-        name: create_instances
-        instance_name: "jenkins_slave-{{ item }}"
-        security_group: jenkins
-        host_group: slaves
-      with_sequence: count={{ slave_count }}
+  - include: openstack.yml
+    when: os_username is defined
 
 - name: Install Python 2.x
   hosts: jenkins_master, slaves
@@ -93,6 +19,9 @@
   become: true
   roles:
     - role: geerlingguy.jenkins
+      when: deploy_master is defined
+      java_packages:
+        - java-1.8.0-openjdk
       jenkins_admin_password: "{{ jenkins_admin_password | default('admin', true) }}"
       jenkins_plugins:
         - github
@@ -109,7 +38,7 @@
         - credentials-binding
 
 - name: Install requirements
-  hosts: jenkins_master, slaves
+  hosts: slaves
   become: yes
   tasks:
   - package:
@@ -250,7 +179,7 @@
         After=network.target
 
         [Service]
-        ExecStart=/usr/bin/java -jar /var/lib/jenkins/slave.jar -jnlpUrl http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/computer/jenkins_slave-{{ play_hosts.index(inventory_hostname) + 1 }}/slave-agent.jnlp -secret {{ hostvars['jenkins_master']['slave_secrets'][play_hosts.index(inventory_hostname)] }}
+        ExecStart=/usr/bin/java -jar /var/lib/jenkins/slave.jar -jnlpUrl http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/computer/{{ inventory_hostname_short }}/slave-agent.jnlp -secret {{ hostvars['jenkins_master']['slave_secrets'][play_hosts.index(inventory_hostname)] }}
         User=jenkins
         Restart=always
       mode: 0644
@@ -269,15 +198,16 @@
   become: true
   roles:
   - role: jenkins_master
-    jenkins_url: "http://{{ hostvars['jenkins_master']['public_ip'] }}:8080"
-    jenkins_admin_password: "{{ jenkins_admin_password }}"
-    cloud: "{{ cloud }}"
-    os_username: "{{ os_username }}"
-    os_password: "{{ os_password }}"
-    os_tenant_name: "{{ os_tenant_name }}"
+    when: deploy_master is defined
+    jenkins_url: "http://{{ jenkins_public_ip }}:8080"
+    jenkins_admin_password: jenkins_admin_password | default('admin')
+    cloud: cloud | default(None)
+    os_username: os_username | default(None, True)
+    os_password: os_password | default(None, True)
+    os_tenant_name: os_tenant_name | default(None, True)
     os_image: "{{ image }}"
     os_flavor: "{{ hostvars['localhost']['os_flavor'] }}"
     os_network: "{{ hostvars['localhost']['os_network'] }}"
-    os_floating_ip_pool: "{{ os_floating_ip_pool | default('public') }}"
-    os_keypair: "{{ os_keypair }}"
-    github_secret: "{{ github_secret }}"
+    os_floating_ip_pool: os_floating_ip_pool | default('public')
+    os_keypair: os_keypair | default(None, True)
+    github_secret: github_secret | default(None, True)
