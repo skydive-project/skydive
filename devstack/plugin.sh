@@ -21,6 +21,9 @@ GO_VERSION=${GO_VERSION:-1.7}
 # GOPATH where the go src, pkgs are installed
 GOPATH=/opt/stack/go
 
+# Keystone API version used by Skydive
+SKYDIVE_KEYSTONE_API_VERSION=${SKYDIVE_KEYSTONE_API_VERSION:-v3}
+
 # Address on which skydive analyzer process listens for connections.
 # Must be in ip:port format
 SKYDIVE_ANALYZER_LISTEN=${SKYDIVE_ANALYZER_LISTEN:-$SERVICE_HOST:8082}
@@ -50,7 +53,10 @@ SKYDIVE_OVSDB_REMOTE_PORT=${SKYDIVE_OVSDB_REMOTE_PORT:-}
 SKYDIVE_LOGLEVEL=${SKYDIVE_LOGLEVEL:-INFO}
 
 # Storage used by the analyzer to store flows
-SKYDIVE_STORAGE=${SKYDIVE_STORAGE:-"elasticsearch"}
+SKYDIVE_FLOWS_STORAGE=${SKYDIVE_FLOWS_STORAGE:-"elasticsearch"}
+
+# Storage used by the analyzer to store the graph
+SKYDIVE_GRAPH_STORAGE=${SKYDIVE_GRAPH_STORAGE:-"elasticsearch"}
 
 # List of public interfaces for the agents to register in fabric
 # ex: "devstack1/eth0 devstack2/eth1"
@@ -60,6 +66,12 @@ fi
 
 ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution
 ELASTICSEARCH_VERSION=2.3.1
+
+USE_ELASTICSEARCH=0
+if [ "${SKYDIVE_FLOWS_STORAGE}" == "elasticsearch" ] || [ "${SKYDIVE_GRAPH_STORAGE}" == "elasticsearch" ]; then
+    USE_ELASTICSEARCH=1
+fi
+
 
 function install_protoc {
     mkdir -p $DEST/protoc
@@ -103,10 +115,12 @@ function download_elasticsearch {
 function pre_install_skydive {
     install_protoc
     install_go
-    if is_service_enabled skydive-analyzer; then
-        download_elasticsearch
-        export ELASTICSEARCH_VERSION
-        $TOP_DIR/pkg/elasticsearch.sh install
+    if [ ${USE_ELASTICSEARCH} -eq 1 ]; then
+        if is_service_enabled skydive-analyzer; then
+            download_elasticsearch
+            export ELASTICSEARCH_VERSION
+            $TOP_DIR/pkg/elasticsearch.sh install
+        fi
     fi
 }
 
@@ -156,7 +170,7 @@ logging:
   level: $SKYDIVE_LOGLEVEL
 
 openstack:
-  auth_url: ${KEYSTONE_AUTH_PROTOCOL}://${KEYSTONE_AUTH_HOST}:${KEYSTONE_AUTH_PORT}/v3
+  auth_url: ${KEYSTONE_AUTH_PROTOCOL}://${KEYSTONE_AUTH_HOST}:${KEYSTONE_AUTH_PORT}/${SKYDIVE_KEYSTONE_API_VERSION}
   username: admin
   password: $ADMIN_PASSWORD
   tenant_name: admin
@@ -170,7 +184,7 @@ etcd:
   listen: $SKYDIVE_AGENT_ETCD
 
 graph:
-  backend: elasticsearch
+  backend: $SKYDIVE_GRAPH_STORAGE
 
 analyzers:
   - $SKYDIVE_ANALYZERS
@@ -182,8 +196,16 @@ agent:
 $(get_probes_for_config $SKYDIVE_AGENT_PROBES)
 
 analyzer:
+EOF
+
+    if [ "$SKYDIVE_FLOWS_STORAGE" == "elasticsearch" ]; then
+        cat >> $SKYDIVE_CONFIG_FILE <<- EOF
   storage:
-    backend: $SKYDIVE_STORAGE
+    backend: $SKYDIVE_FLOWS_STORAGE
+EOF
+    fi
+
+    cat >> $SKYDIVE_CONFIG_FILE <<- EOF
   topology:
     probes:
 $(get_probes_for_config $SKYDIVE_ANALYZER_PROBES)
@@ -223,7 +245,9 @@ function start_skydive {
     fi
 
     if is_service_enabled skydive-analyzer ; then
-        $TOP_DIR/pkg/elasticsearch.sh start
+        if [ ${USE_ELASTICSEARCH} -eq 1 ]; then
+            $TOP_DIR/pkg/elasticsearch.sh start
+        fi
         run_process skydive-analyzer "$GOPATH/bin/skydive analyzer --conf $SKYDIVE_CONFIG_FILE"
     fi
 }
@@ -234,7 +258,9 @@ function stop_skydive {
     fi
 
     if is_service_enabled skydive-analyzer ; then
-        $TOP_DIR/pkg/elasticsearch.sh stop
+        if [ ${USE_ELASTICSEARCH} -eq 1 ]; then
+            $TOP_DIR/pkg/elasticsearch.sh stop
+        fi
         stop_process skydive-analyzer
     fi
 }
