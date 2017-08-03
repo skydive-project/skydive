@@ -21,8 +21,15 @@ export SKYDIVE_ANALYZERS=localhost:8082
 export ELASTICSEARCH=localhost:9200
 export TLS=true
 export SKYDIVE=${GOPATH}/bin/skydive
+export FLOW_PROTOCOL=websocket
 
 make test.functionals TAGS="scale test" VERBOSE=true TIMEOUT=10m TEST_PATTERN=HA
+status=$?
+
+cat /tmp/skydive-scale/{analyzer,agent}-?.log | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | perl -ne '$d=$1 if /^(\d+-\d+-\d+),/; $k{$d}.=$_; END{print $k{$_} for sort keys(%k);}'
+
+export FLOW_PROTOCOL=udp
+make test.functionals TAGS="scale test" VERBOSE=true TIMEOUT=10m FLOW_PROTOCOL=udp TEST_PATTERN=HA
 status=$?
 
 cat /tmp/skydive-scale/{analyzer,agent}-?.log | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | perl -ne '$d=$1 if /^(\d+-\d+-\d+),/; $k{$d}.=$_; END{print $k{$_} for sort keys(%k);}'

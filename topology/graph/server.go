@@ -36,19 +36,18 @@ const (
 
 // ServerEventHandler interface event
 type ServerEventHandler interface {
-	OnGraphMessage(c *shttp.WSClient, m shttp.WSMessage, msgType string, obj interface{})
+	OnGraphMessage(c shttp.WSClient, m shttp.WSMessage, msgType string, obj interface{})
 }
 
 // Server describes a graph server based on websocket
 type Server struct {
-	shttp.DefaultWSServerEventHandler
-	WSServer      *shttp.WSServer
+	WSServer      *shttp.WSMessageServer
 	Graph         *Graph
 	eventHandlers []ServerEventHandler
 }
 
-// OnMessage event
-func (s *Server) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
+// OnWSMessage event
+func (s *Server) OnWSMessage(c shttp.WSClient, msg shttp.WSMessage) {
 	msgType, obj, err := UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
@@ -65,7 +64,7 @@ func (s *Server) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 			graph, status = nil, http.StatusBadRequest
 		}
 		reply := msg.Reply(graph, SyncReplyMsgType, status)
-		c.SendWSMessage(reply)
+		c.Send(reply)
 	}
 	s.Graph.RUnlock()
 
@@ -76,32 +75,32 @@ func (s *Server) OnMessage(c *shttp.WSClient, msg shttp.WSMessage) {
 
 // OnNodeUpdated event
 func (s *Server) OnNodeUpdated(n *Node) {
-	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeUpdatedMsgType, n))
+	s.WSServer.QueueBroadcastMessage(shttp.NewWSMessage(Namespace, NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded event
 func (s *Server) OnNodeAdded(n *Node) {
-	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeAddedMsgType, n))
+	s.WSServer.QueueBroadcastMessage(shttp.NewWSMessage(Namespace, NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted event
 func (s *Server) OnNodeDeleted(n *Node) {
-	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, NodeDeletedMsgType, n))
+	s.WSServer.QueueBroadcastMessage(shttp.NewWSMessage(Namespace, NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated event
 func (s *Server) OnEdgeUpdated(e *Edge) {
-	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeUpdatedMsgType, e))
+	s.WSServer.QueueBroadcastMessage(shttp.NewWSMessage(Namespace, EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded event
 func (s *Server) OnEdgeAdded(e *Edge) {
-	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeAddedMsgType, e))
+	s.WSServer.QueueBroadcastMessage(shttp.NewWSMessage(Namespace, EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted event
 func (s *Server) OnEdgeDeleted(e *Edge) {
-	s.WSServer.QueueBroadcastWSMessage(shttp.NewWSMessage(Namespace, EdgeDeletedMsgType, e))
+	s.WSServer.QueueBroadcastMessage(shttp.NewWSMessage(Namespace, EdgeDeletedMsgType, e))
 }
 
 // AddEventHandler subscribe a new graph server event handler
@@ -110,14 +109,12 @@ func (s *Server) AddEventHandler(h ServerEventHandler) {
 }
 
 // NewServer creates a new graph server based on a websocket server
-func NewServer(g *Graph, server *shttp.WSServer) *Server {
+func NewServer(g *Graph, server *shttp.WSMessageServer) *Server {
 	s := &Server{
 		Graph:    g,
 		WSServer: server,
 	}
-
 	s.Graph.AddEventListener(s)
-	server.AddEventHandler(s, []string{Namespace})
-
+	server.AddMessageHandler(s, []string{Namespace})
 	return s
 }

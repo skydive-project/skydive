@@ -33,11 +33,9 @@ import (
 // messages between them in order to be synchronized. When switching from one analyzer to another one
 // the agent will do a full re-sync because some messages could have been lost.
 type TopologyForwarder struct {
-	shttp.DefaultWSClientEventHandler
-	WSAsyncClientPool *shttp.WSAsyncClientPool
-	Graph             *graph.Graph
-	Host              string
-	master            *shttp.WSAsyncClient
+	masterElection *shttp.WSMasterElection
+	Graph          *graph.Graph
+	Host           string
 }
 
 func (t *TopologyForwarder) triggerResync() {
@@ -47,79 +45,71 @@ func (t *TopologyForwarder) triggerResync() {
 	defer t.Graph.RUnlock()
 
 	// request for deletion of everything belonging to Root node
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.Host))
+	t.masterElection.SendMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.Host))
 
 	// re-add all the nodes and edges
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.SyncReplyMsgType, t.Graph))
+	t.masterElection.SendMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.SyncReplyMsgType, t.Graph))
 }
 
-// OnConnected websocket event handler
-func (t *TopologyForwarder) OnConnected(c *shttp.WSAsyncClient) {
-	if c == t.WSAsyncClientPool.MasterClient() {
-		// keep a track of the current master in order to detect master disconnection
-		t.master = c
-
-		logging.GetLogger().Infof("Using %s:%d as master of topology forwarder", c.Addr, c.Port)
-		t.triggerResync()
-	}
-}
-
-// OnDisconnected websocket event handler
-func (t *TopologyForwarder) OnDisconnected(c *shttp.WSAsyncClient) {
-	if c == t.master {
-		t.master = t.WSAsyncClientPool.MasterClient()
-
-		// re-sync as we changed of master and some message could have lost by the previous one
+// OnNewMaster websocket event handler
+func (t *TopologyForwarder) OnNewMaster(c shttp.WSClient) {
+	if c == nil {
+		logging.GetLogger().Warn("Lost connection to master")
+	} else {
+		addr, port := c.GetAddrPort()
+		logging.GetLogger().Infof("Using %s:%d as master of topology forwarder", addr, port)
 		t.triggerResync()
 	}
 }
 
 // OnNodeUpdated websocket event handler
 func (t *TopologyForwarder) OnNodeUpdated(n *graph.Node) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
+	t.masterElection.SendMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded websocket event handler
 func (t *TopologyForwarder) OnNodeAdded(n *graph.Node) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+	t.masterElection.SendMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted websocket event handler
 func (t *TopologyForwarder) OnNodeDeleted(n *graph.Node) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+	t.masterElection.SendMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated websocket event handler
 func (t *TopologyForwarder) OnEdgeUpdated(e *graph.Edge) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
+	t.masterElection.SendMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded websocket event handler
 func (t *TopologyForwarder) OnEdgeAdded(e *graph.Edge) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+	t.masterElection.SendMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted websocket event handler
 func (t *TopologyForwarder) OnEdgeDeleted(e *graph.Edge) {
-	t.WSAsyncClientPool.SendWSMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+	t.masterElection.SendMessageToMaster(shttp.NewWSMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }
 
 // NewTopologyForwarder is a mechanism aiming to distribute all graph node notifications to a WebSocket client pool
-func NewTopologyForwarder(host string, g *graph.Graph, wspool *shttp.WSAsyncClientPool) *TopologyForwarder {
+func NewTopologyForwarder(host string, g *graph.Graph, wspool *shttp.WSClientPool) *TopologyForwarder {
+	masterElection := shttp.NewWSMasterElection(wspool)
+
 	t := &TopologyForwarder{
-		WSAsyncClientPool: wspool,
-		Graph:             g,
-		Host:              host,
+		masterElection: masterElection,
+		Graph:          g,
+		Host:           host,
 	}
 
+	masterElection.AddEventHandler(t)
 	g.AddEventListener(t)
-	wspool.AddEventHandler(t, []string{})
 
 	return t
 }
 
 // NewTopologyForwarderFromConfig creates a TopologyForwarder from configuration
-func NewTopologyForwarderFromConfig(g *graph.Graph, wspool *shttp.WSAsyncClientPool) *TopologyForwarder {
+func NewTopologyForwarderFromConfig(g *graph.Graph, wspool *shttp.WSClientPool) *TopologyForwarder {
 	host := config.GetConfig().GetString("host_id")
 	return NewTopologyForwarder(host, g, wspool)
 }

@@ -27,7 +27,6 @@ analyzer:
   listen: :8082
   # File path to X509 Certificate and Private Key to enable TLS communication
   # Must be different than the agent
-  # The listen port+1 will be used
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
 
@@ -212,3 +211,5 @@ flow:
   expire: 600
   # Seconds between flow updates (metrics, enhancements,...)
   update: 60
+  # Protocol to use to send flows to the analyzer: websocket or udp
+  # protocol: udp

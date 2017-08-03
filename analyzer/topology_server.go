@@ -37,7 +37,7 @@ import (
 // TopologyServer describes a service to reply to topology queries
 type TopologyServer struct {
 	sync.RWMutex
-	shttp.DefaultWSServerEventHandler
+	shttp.DefaultWSClientEventHandler
 	Graph       *graph.Graph
 	GraphServer *graph.Server
 	cached      *graph.CachedBackend
@@ -55,10 +55,12 @@ func (t *TopologyServer) hostGraphDeleted(host string, mode int) {
 	t.Graph.DelHostGraph(host)
 }
 
-// OnUnregisterClient websocket event
-func (t *TopologyServer) OnUnregisterClient(c *shttp.WSClient) {
+// OnDisconnected websocket event
+func (t *TopologyServer) OnDisconnected(c shttp.WSClient) {
+	host := c.GetHost()
+
 	t.RLock()
-	_, ok := t.authors[c.Host]
+	_, ok := t.authors[host]
 	t.RUnlock()
 
 	// not an author so do not delete resources
@@ -70,24 +72,26 @@ func (t *TopologyServer) OnUnregisterClient(c *shttp.WSClient) {
 	defer t.Graph.Unlock()
 
 	// it's an authors so already received a message meaning that the client chose this analyzer as master
-	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", c.Host)
-	t.hostGraphDeleted(c.Host, graph.DefaultMode)
+	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", host)
+	t.hostGraphDeleted(host, graph.DefaultMode)
 
 	t.Lock()
-	delete(t.authors, c.Host)
+	delete(t.authors, host)
 	t.Unlock()
 }
 
 // OnGraphMessage websocket event
-func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, msgType string, obj interface{}) {
+func (t *TopologyServer) OnGraphMessage(c shttp.WSClient, msg shttp.WSMessage, msgType string, obj interface{}) {
+	clientType := c.GetClientType()
+
 	// author if message coming from another client than analyzer
-	if c.ClientType != "" && c.ClientType != common.AnalyzerService {
+	if clientType != "" && clientType != common.AnalyzerService {
 		t.Lock()
-		t.authors[c.Host] = true
+		t.authors[c.GetHost()] = true
 		t.Unlock()
 	}
 
-	if c.ClientType != common.AnalyzerService && c.ClientType != common.AgentService {
+	if clientType != common.AnalyzerService && clientType != common.AgentService {
 		loader := gojsonschema.NewGoLoader(obj)
 
 		var schema gojsonschema.JSONLoader
@@ -114,12 +118,10 @@ func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, 
 	// backend. We need to use the persistent only to be use to retrieve nodes/edges
 	// from the persistent backend otherwise the memory backend would be used.
 	if msgType == graph.HostGraphDeletedMsgType {
-		host := obj.(string)
-
-		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, host)
+		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, obj.(string))
 
 		t.hostGraphDeleted(obj.(string), graph.CacheOnlyMode)
-		if c.ClientType != common.AnalyzerService {
+		if clientType != common.AnalyzerService {
 			t.hostGraphDeleted(obj.(string), graph.PersistentOnlyMode)
 		}
 
@@ -128,7 +130,7 @@ func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, 
 
 	// If the message comes from analyzer we need to apply it only on cache only
 	// as it is a forwarded message.
-	if c.ClientType == common.AnalyzerService {
+	if clientType == common.AnalyzerService {
 		t.cached.SetMode(graph.CacheOnlyMode)
 	}
 	defer t.cached.SetMode(graph.DefaultMode)
@@ -162,7 +164,7 @@ func (t *TopologyServer) OnGraphMessage(c *shttp.WSClient, msg shttp.WSMessage, 
 }
 
 // NewTopologyServer creates a new topology server
-func NewTopologyServer(host string, server *shttp.WSServer) (*TopologyServer, error) {
+func NewTopologyServer(host string, server *shttp.WSMessageServer) (*TopologyServer, error) {
 	persistent, err := graph.BackendFromConfig()
 	if err != nil {
 		return nil, err
@@ -195,13 +197,13 @@ func NewTopologyServer(host string, server *shttp.WSServer) (*TopologyServer, er
 		edgeSchema:  gojsonschema.NewBytesLoader(edgeSchema),
 	}
 	graphServer.AddEventHandler(t)
-	server.AddEventHandler(t, []string{graph.Namespace})
+	server.AddEventHandler(t)
 
 	return t, nil
 }
 
 // NewTopologyServerFromConfig creates a new topology server based on configuration
-func NewTopologyServerFromConfig(server *shttp.WSServer) (*TopologyServer, error) {
+func NewTopologyServerFromConfig(server *shttp.WSMessageServer) (*TopologyServer, error) {
 	host := config.GetConfig().GetString("host_id")
 	return NewTopologyServer(host, server)
 }

@@ -42,11 +42,10 @@ import (
 // OnDemandProbeClient describes an ondemand probe client based on a websocket
 type OnDemandProbeClient struct {
 	sync.RWMutex
-	shttp.DefaultWSServerEventHandler
 	graph.DefaultGraphListener
 	graph            *graph.Graph
 	captureHandler   *api.CaptureAPIHandler
-	wsServer         *shttp.WSServer
+	wsServer         *shttp.WSMessageServer
 	captures         map[string]*api.Capture
 	watcher          api.StoppableWatcher
 	elector          *etcd.EtcdMasterElector
@@ -61,7 +60,7 @@ type nodeProbe struct {
 }
 
 // OnMessage event, valid message type : CaptureStartReply or CaptureStopReply message
-func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
+func (o *OnDemandProbeClient) OnWSMessage(c shttp.WSClient, m shttp.WSMessage) {
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*m.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", m)
@@ -79,7 +78,7 @@ func (o *OnDemandProbeClient) OnMessage(c *shttp.WSClient, m shttp.WSMessage) {
 		} else {
 			logging.GetLogger().Debugf("Capture start request succeeded %v", m)
 		}
-		o.wsServer.BroadcastWSMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureNodeUpdated", query.Capture.UUID))
+		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureNodeUpdated", query.Capture.UUID))
 	case "CaptureStopReply":
 		if m.Status == http.StatusOK {
 			logging.GetLogger().Debugf("Capture stop request succeeded %v", m)
@@ -152,8 +151,8 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 
 	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStart", cq)
 
-	if !o.wsServer.SendWSMessageTo(msg, np.host) {
-		logging.GetLogger().Errorf("Unable to send message to agent: %s", np.host)
+	if err := o.wsServer.SendMessageTo(msg, np.host); err != nil {
+		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", np.host, err.Error())
 		return false
 	}
 	o.Lock()
@@ -175,8 +174,8 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *api.Cap
 		return false
 	}
 
-	if !o.wsServer.SendWSMessageTo(msg, node.Host()) {
-		logging.GetLogger().Errorf("Unable to send message to agent: %s", node.Host())
+	if err := o.wsServer.SendMessageTo(msg, node.Host()); err != nil {
+		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", node.Host(), err.Error())
 		return false
 	}
 
@@ -219,7 +218,7 @@ func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
 func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 	o.RLock()
 	if uuid, ok := o.registeredNodes[string(n.ID)]; ok {
-		o.wsServer.BroadcastWSMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureNodeUpdated", uuid))
+		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureNodeUpdated", uuid))
 	}
 	o.RUnlock()
 }
@@ -322,10 +321,10 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 	capture := resource.(*api.Capture)
 	switch action {
 	case "init", "create", "set", "update":
-		o.wsServer.BroadcastWSMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureAdded", capture))
+		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureAdded", capture))
 		o.onCaptureAdded(capture)
 	case "expire", "delete":
-		o.wsServer.BroadcastWSMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureDeleted", capture))
+		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureDeleted", capture))
 		o.onCaptureDeleted(capture)
 	}
 }
@@ -345,7 +344,7 @@ func (o *OnDemandProbeClient) Stop() {
 }
 
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.WSServer, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
+func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.WSMessageServer, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*api.Capture)
 	for _, resource := range resources {
@@ -365,7 +364,7 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.
 	}
 
 	elector.AddEventListener(o)
-	w.AddEventHandler(o, []string{ondemand.Namespace})
+	w.AddMessageHandler(o, []string{ondemand.Namespace})
 
 	return o
 }

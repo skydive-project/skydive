@@ -43,6 +43,10 @@ var (
 	ErrFieldNotFound = errors.New("Field not found")
 	// ErrFieldWrongType error field has wrong type
 	ErrFieldWrongType = errors.New("Field has wrong type")
+	// ErrNotFound error no result was found
+	ErrNotFound = errors.New("No result found")
+	// ErrTimeout network timeout
+	ErrTimeout = errors.New("Timeout")
 )
 
 // SortOrder describes ascending or descending order

@@ -36,13 +36,12 @@ const (
 
 // TableServer describes a mechanism to Query a flow table via Websocket
 type TableServer struct {
-	shttp.DefaultWSClientEventHandler
-	WSAsyncClientPool *shttp.WSAsyncClientPool
-	TableAllocator    *TableAllocator
+	WSClientPool   *shttp.WSMessageClientPool
+	TableAllocator *TableAllocator
 }
 
 // OnTableQuery event
-func (s *TableServer) OnTableQuery(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
+func (s *TableServer) OnTableQuery(c shttp.WSClient, msg shttp.WSMessage) {
 	var query TableQuery
 	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
@@ -51,11 +50,11 @@ func (s *TableServer) OnTableQuery(c *shttp.WSAsyncClient, msg shttp.WSMessage) 
 
 	result := s.TableAllocator.QueryTable(&query)
 	reply := msg.Reply(result, "TableResult", result.status)
-	c.SendWSMessage(reply)
+	c.Send(reply)
 }
 
-// OnMessage TableQuery
-func (s *TableServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
+// OnWSMessage TableQuery
+func (s *TableServer) OnWSMessage(c shttp.WSClient, msg shttp.WSMessage) {
 	switch msg.Type {
 	case "TableQuery":
 		s.OnTableQuery(c, msg)
@@ -63,12 +62,11 @@ func (s *TableServer) OnMessage(c *shttp.WSAsyncClient, msg shttp.WSMessage) {
 }
 
 // NewServer creates a new flow table query server based on websocket
-func NewServer(allocator *TableAllocator, wspool *shttp.WSAsyncClientPool) *TableServer {
+func NewServer(allocator *TableAllocator, wspool *shttp.WSMessageClientPool) *TableServer {
 	s := &TableServer{
-		TableAllocator:    allocator,
-		WSAsyncClientPool: wspool,
+		TableAllocator: allocator,
+		WSClientPool:   wspool,
 	}
-	wspool.AddEventHandler(s, []string{Namespace})
-
+	wspool.AddMessageHandler(s, []string{Namespace})
 	return s
 }

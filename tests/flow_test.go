@@ -577,7 +577,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	metric, err = gh.GetFlowMetric(gremlin + fmt.Sprintf(`.Has("Metric.ABBytes", Gt(%d))`, pingLen))
-	if err != gclient.ErrNotFound {
+	if err != common.ErrNotFound {
 		return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 	}
 
@@ -587,7 +587,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	metric, err = gh.GetFlowMetric(gremlin + fmt.Sprintf(`.Has("Metric.ABBytes", Gte(%d))`, pingLen+1))
-	if err != gclient.ErrNotFound {
+	if err != common.ErrNotFound {
 		return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 	}
 
@@ -597,7 +597,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	metric, err = gh.GetFlowMetric(gremlin + fmt.Sprintf(`.Has("Metric.ABBytes", Lt(%d))`, pingLen))
-	if err != gclient.ErrNotFound {
+	if err != common.ErrNotFound {
 		return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 	}
 
@@ -607,7 +607,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	metric, err = gh.GetFlowMetric(gremlin + fmt.Sprintf(`.Has("Metric.ABBytes", Lte(%d))`, pingLen-1))
-	if err != gclient.ErrNotFound {
+	if err != common.ErrNotFound {
 		return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 	}
 
@@ -617,7 +617,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	metric, err = gh.GetFlowMetric(gremlin + fmt.Sprintf(`.Has("Metric.ABBytes", Inside(%d, %d))`, pingLen, pingLen+1))
-	if err != gclient.ErrNotFound {
+	if err != common.ErrNotFound {
 		return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 	}
 
@@ -627,7 +627,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	metric, err = gh.GetFlowMetric(gremlin + fmt.Sprintf(`.Has("Metric.ABBytes", Between(%d, %d))`, pingLen, pingLen))
-	if err != gclient.ErrNotFound {
+	if err != common.ErrNotFound {
 		return fmt.Errorf("Wrong number of flow, should have none, got : %v", metric)
 	}
 

@@ -23,13 +23,15 @@
 package analyzer
 
 import (
-	"errors"
+	"fmt"
 	"math/rand"
 	"net"
-	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -42,53 +44,119 @@ type FlowClientPool struct {
 	flowClients []*FlowClient
 }
 
-// FlowClient descibes a flow client connection
+// FlowClient describes a flow client connection
 type FlowClient struct {
-	Addr string
-	Port int
+	addr           string
+	port           int
+	flowClientConn FlowClientConn
+}
 
-	connection *FlowClientConn
+// FlowClientConn is the interface to be implemented by the flow clients
+type FlowClientConn interface {
+	Connect() error
+	Close() error
+	Send(data []byte) error
+}
+
+// FlowClientUDPConn describes UDP client connection
+type FlowClientUDPConn struct {
+	addr *net.UDPAddr
+	conn *net.UDPConn
+}
+
+// FlowClientUDPConn describes WebSocket client connection
+type FlowClientWebSocketConn struct {
+	shttp.DefaultWSClientEventHandler
+	addr     string
+	port     int
+	wsClient *shttp.WSAsyncClient
+}
+
+// Close the connection
+func (c *FlowClientUDPConn) Close() error {
+	return c.conn.Close()
+}
+
+// Connect to the UDP flow server
+func (c *FlowClientUDPConn) Connect() (err error) {
+	logging.GetLogger().Debugf("UDP client dialup done for %s", c.addr.String())
+	c.conn, err = net.DialUDP("udp", nil, c.addr)
+	return err
+}
+
+// Send data over the wire
+func (c *FlowClientUDPConn) Send(data []byte) error {
+	_, err := c.conn.Write(data)
+	return err
+}
+
+// NewFlowClientUDPConn returns a new UDP flow client
+func NewFlowClientUDPConn(addr string, port int) (*FlowClientUDPConn, error) {
+	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))
+	if err != nil {
+		return nil, err
+	}
+
+	return &FlowClientUDPConn{addr: udpAddr}, nil
+}
+
+// Close the connection
+func (c *FlowClientWebSocketConn) Close() error {
+	c.wsClient.Disconnect()
+	return nil
+}
+
+// Connect to the WebSocket flow server
+func (c *FlowClientWebSocketConn) Connect() error {
+	authOptions := &shttp.AuthenticationOpts{
+		Username: config.GetConfig().GetString("auth.analyzer_username"),
+		Password: config.GetConfig().GetString("auth.analyzer_password"),
+	}
+
+	authClient := shttp.NewAuthenticationClient(c.addr, c.port, authOptions)
+	c.wsClient = shttp.NewWSAsyncClientFromConfig(common.AgentService, c.addr, c.port, "/ws/flow", authClient)
+	c.wsClient.Connect()
+	c.wsClient.AddEventHandler(c)
+
+	return nil
+}
+
+// Send data over the wire
+func (c *FlowClientWebSocketConn) Send(data []byte) error {
+	c.wsClient.SendMessage(data)
+	return nil
+}
+
+// NewFlowClientUDPConn returns a new WebSocket flow client
+func NewFlowClientWebSocketConn(addr string, port int) (*FlowClientWebSocketConn, error) {
+	return &FlowClientWebSocketConn{addr: addr, port: port}, nil
 }
 
 func (c *FlowClient) connect() {
-	strAddr := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
-	srv, err := net.ResolveUDPAddr("udp", strAddr)
-	if err != nil {
-		logging.GetLogger().Errorf("Can't resolv address to %s", strAddr)
+	if err := c.flowClientConn.Connect(); err != nil {
+		logging.GetLogger().Errorf("Connection error to %s:%d : %s", c.addr, c.port, err.Error())
 		time.Sleep(200 * time.Millisecond)
-		return
 	}
-	connection, err := NewFlowClientConn(srv)
-	if err != nil {
-		logging.GetLogger().Errorf("Connection error to %s : %s", strAddr, err.Error())
-		time.Sleep(200 * time.Millisecond)
-		return
-	}
-	c.connection = connection
 }
 
 func (c *FlowClient) close() {
-	if c.connection != nil {
-		c.connection.Close()
+	if err := c.flowClientConn.Close(); err != nil {
+		logging.GetLogger().Errorf("Error while closing flow connection: %s", err.Error())
 	}
 }
 
 // SendFlow sends a flow to the server
 func (c *FlowClient) SendFlow(f *flow.Flow) error {
-	if c.connection == nil {
-		return errors.New("Not connected")
-	}
-
 	data, err := f.GetData()
 	if err != nil {
 		return err
 	}
 
 retry:
-	_, err = c.connection.Write(data)
+	err = c.flowClientConn.Send(data)
 	if err != nil {
 		logging.GetLogger().Errorf("flows connection to analyzer error %s : try to reconnect", err.Error())
-		c.connection.Close()
+		c.close()
 		c.connect()
 		goto retry
 	}
@@ -107,36 +175,63 @@ func (c *FlowClient) SendFlows(flows []*flow.Flow) {
 }
 
 // NewFlowClient creates a flow client and creates a new connection to the server
-func NewFlowClient(addr string, port int) *FlowClient {
-	FlowClient := &FlowClient{Addr: addr, Port: port}
-	FlowClient.connect()
-	return FlowClient
+func NewFlowClient(addr string, port int) (*FlowClient, error) {
+	var (
+		connection FlowClientConn
+		err        error
+	)
+	protocol := strings.ToLower(config.GetConfig().GetString("flow.protocol"))
+	switch protocol {
+	case "udp":
+		connection, err = NewFlowClientUDPConn(addr, port)
+	case "websocket":
+		connection, err = NewFlowClientWebSocketConn(addr, port)
+	default:
+		return nil, fmt.Errorf("Invalid protocol %s", protocol)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	fc := &FlowClient{addr: addr, port: port, flowClientConn: connection}
+	fc.connect()
+
+	return fc, nil
 }
 
 // OnConnected websocket event handler
-func (p *FlowClientPool) OnConnected(c *shttp.WSAsyncClient) {
+func (p *FlowClientPool) OnConnected(c shttp.WSClient) {
 	p.Lock()
 	defer p.Unlock()
 
+	addr, port := c.GetAddrPort()
 	for i, fc := range p.flowClients {
-		if fc.Addr == c.Addr && fc.Port == c.Port {
-			logging.GetLogger().Warningf("Got a connected event on already connected client: %s:%d", c.Addr, c.Port)
+		if fc.addr == addr && fc.port == port {
+			logging.GetLogger().Warningf("Got a connected event on already connected client: %s:%d", addr, port)
 			fc.close()
 
 			p.flowClients = append(p.flowClients[:i], p.flowClients[i+1:]...)
 		}
 	}
 
-	p.flowClients = append(p.flowClients, NewFlowClient(c.Addr, c.Port))
+	flowClient, err := NewFlowClient(addr, port)
+	if err != nil {
+		logging.GetLogger().Error(err)
+		return
+	}
+
+	p.flowClients = append(p.flowClients, flowClient)
 }
 
 // OnDisconnected websocket event handler
-func (p *FlowClientPool) OnDisconnected(c *shttp.WSAsyncClient) {
+func (p *FlowClientPool) OnDisconnected(c shttp.WSClient) {
 	p.Lock()
 	defer p.Unlock()
 
+	addr, port := c.GetAddrPort()
 	for i, fc := range p.flowClients {
-		if fc.Addr == c.Addr && fc.Port == c.Port {
+		if fc.addr == addr && fc.port == port {
 			fc.close()
 
 			p.flowClients = append(p.flowClients[:i], p.flowClients[i+1:]...)
@@ -167,12 +262,10 @@ func (p *FlowClientPool) Close() {
 // NewFlowClientPool returns a new FlowClientPool using the websocket connections
 // to maintain the pool of client up to date according to the websocket connections
 // status.
-func NewFlowClientPool(wspool *shttp.WSAsyncClientPool) *FlowClientPool {
+func NewFlowClientPool(wspool *shttp.WSMessageClientPool) *FlowClientPool {
 	p := &FlowClientPool{
 		flowClients: make([]*FlowClient, 0),
 	}
-
-	wspool.AddEventHandler(p, []string{})
-
+	wspool.AddEventHandler(p)
 	return p
 }

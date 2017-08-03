@@ -16,6 +16,7 @@ SKYDIVE_BIN=$( which skydive )
 SKYDIVE_PATH=$( realpath $SKYDIVE_BIN )
 SKYDIVE=${SKYDIVE:-$SKYDIVE_PATH}
 TLS=${TLS:-false}
+FLOW_PROTOCOL=${FLOW_PROTOCOL:-websocket}
 ELASTICSEARCH=${ELASTICSEARCH:-}
 ETCD=${ETCD:-}
 if [ -z "$ETCD" ]; then
@@ -186,6 +187,7 @@ agent:
 flow:
   expire: 600
   update: 5
+  protocol: $FLOW_PROTOCOL
 netns:
   run_path: $TEMP_DIR/$NAME-netns
 etcd:

@@ -25,7 +25,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -38,9 +37,6 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology/graph"
 )
-
-// ErrNotFound error no result found
-var ErrNotFound = errors.New("No result found")
 
 // GremlinQueryHelper describes a gremlin query request query helper mechanism
 type GremlinQueryHelper struct {
@@ -126,7 +122,7 @@ func (g *GremlinQueryHelper) GetNode(query string) (node *graph.Node, _ error) {
 		return nodes[0], nil
 	}
 
-	return nil, ErrNotFound
+	return nil, common.ErrNotFound
 }
 
 // GetFlows form the Gremlin query
@@ -143,7 +139,7 @@ func (g *GremlinQueryHelper) GetFlowMetric(query string) (m *flow.FlowMetric, _ 
 	}
 
 	if len(flows) == 0 {
-		return nil, ErrNotFound
+		return nil, common.ErrNotFound
 	}
 
 	return flows[0].Metric, nil
