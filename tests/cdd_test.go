@@ -1,0 +1,139 @@
+// +build cdd
+
+/*
+ * Copyright (C) 2017 Red Hat, Inc.
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+
+package tests
+
+import (
+	"fmt"
+	"os"
+	"testing"
+
+	"github.com/skydive-project/skydive/tests/helper"
+)
+
+func TestOverview(t *testing.T) {
+	gopath := os.Getenv("GOPATH")
+	scale := gopath + "/src/github.com/skydive-project/skydive/scripts/scale.sh"
+
+	setupCmds := []helper.Cmd{
+		{fmt.Sprintf("%s start 1 4 2", scale), true},
+	}
+
+	tearDownCmds := []helper.Cmd{
+		{fmt.Sprintf("%s stop 1 4 2", scale), false},
+	}
+
+	helper.ExecCmds(t, setupCmds...)
+	defer helper.ExecCmds(t, tearDownCmds...)
+
+	ipaddr, err := getFirstAvailableIPv4Addr()
+	if err != nil {
+		t.Errorf("Not able to find Analayzer addr: %v", err)
+		return
+	}
+
+	sh, err := newSeleniumHelper(t, ipaddr, 8082)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer sh.quit()
+
+	if err = delaySec(5, sh.connect()); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(1, sh.enableFakeMousePointer()); err != nil {
+		t.Error(err)
+		return
+	}
+
+	// start recording
+	sh.startVideoRecord("overview")
+
+	if err = delaySec(5, sh.expand()); err != nil {
+		t.Error(err)
+		return
+	}
+	if err = delaySec(1, sh.zoomFit()); err != nil {
+		t.Error(err)
+		return
+	}
+	if err = delaySec(1, sh.expandGroup("G.V().Has('Name', 'agent-1', 'Type', 'host').Out().Has('Name', 'vm1', 'Type', 'netns')")); err != nil {
+		t.Error(err)
+		return
+	}
+	if err = delaySec(1, sh.zoomFit()); err != nil {
+		t.Error(err)
+		return
+	}
+	if err = delaySec(1, sh.expandGroup("G.V().Has('Name', 'agent-3', 'Type', 'host').Out().Has('Name', 'vm1', 'Type', 'netns')")); err != nil {
+		t.Error(err)
+		return
+	}
+	if err = delaySec(1, sh.zoomFit()); err != nil {
+		t.Error(err)
+		return
+	}
+
+	ng1_eth0 := "G.V().Has('Name', 'agent-1', 'Type', 'host').Out().Has('Name', 'vm1', 'Type', 'netns').Out().Has('Name', 'eth0')"
+	ng1_bridge := "G.V().Has('Name', 'agent-1', 'Type', 'host').Out().Has('Type', 'ovsbridge')"
+	if err = sh.startShortestPathCapture(ng1_eth0, ng1_bridge, "icmp"); err != nil {
+		t.Error(err)
+		return
+	}
+
+	ng3_eth0 := "G.V().Has('Name', 'agent-3', 'Type', 'host').Out().Has('Name', 'vm1', 'Type', 'netns').Out().Has('Name', 'eth0')"
+	ng3_bridge := "G.V().Has('Name', 'agent-3', 'Type', 'host').Out().Has('Type', 'ovsbridge')"
+	if err = sh.startShortestPathCapture(ng3_eth0, ng3_bridge, "icmp"); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(1, sh.injectPacket(ng1_eth0, ng3_eth0, 4)); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(1, sh.showNodeFlowTable(ng1_eth0)); err != nil {
+		t.Error(err)
+		return
+	}
+	if err = delaySec(1, sh.highlightFlow(ng1_eth0+".Flows()")); err != nil {
+		t.Error(err)
+		return
+	}
+	if err = delaySec(1, sh.clickOnFlow(ng1_eth0+".Flows()")); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = delaySec(3, sh.scrollDownRightPanel()); err != nil {
+		t.Error(err)
+		return
+	}
+
+	sh.stopVideoRecord()
+}

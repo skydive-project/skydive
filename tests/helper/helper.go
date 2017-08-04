@@ -54,7 +54,6 @@ type Cmd struct {
 var (
 	Standalone        bool
 	GraphOutputFormat string
-	RecordVideo       bool
 
 	etcdServer     string
 	graphBackend   string
@@ -65,7 +64,6 @@ type HelperParams map[string]interface{}
 
 func init() {
 	flag.BoolVar(&Standalone, "standalone", false, "Start an analyzer and an agent")
-	flag.BoolVar(&RecordVideo, "record", false, "Record video (used for selenium tests)")
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
 	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
 	flag.StringVar(&GraphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")

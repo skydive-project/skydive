@@ -26,11 +26,11 @@ Vue.component('capture-form', {
           </div>\
           <div class="form-group" v-if="mode == \'selection\'">\
             <label>Targets</label>\
-            <node-selector class="inject-target"\
+            <node-selector id="node-selector-1" class="inject-target"\
                            placeholder="Interface 1"\
                            form="capture"\
                            v-model="node1"></node-selector>\
-            <node-selector placeholder="Interface 2 (Optionnal)"\
+            <node-selector id="node-selector-2" placeholder="Interface 2 (Optionnal)"\
                            form="capture"\
                            v-model="node2"></node-selector>\
           </div>\

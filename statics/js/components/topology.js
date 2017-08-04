@@ -31,7 +31,7 @@ var TopologyComponent = {
                   @click="toggleCollapse">{{collapsed ? "Expand" : "Collapse"}}</button>\
         </div>\
       </div>\
-      <div class="col-sm-5 fill info">\
+      <div id="right-panel" class="col-sm-5 fill info">\
         <tabs v-if="isAnalyzer">\
           <tab-pane title="Captures">\
             <capture-list></capture-list>\
@@ -50,7 +50,7 @@ var TopologyComponent = {
               Interface state at {{timeHuman}}\
             </span>\
             <h1>metadatas<span class="pull-right">(id: {{currentNode.id}})</span></h1>\
-            <div class="sub-left-panel">\
+            <div id="metadata-panel" class="sub-left-panel">\
               <object-detail :object="currentNodeMetadata"></object-detail>\
             </div>\
             <div v-show="Object.keys(currentNodeStats).length">\
@@ -61,7 +61,7 @@ var TopologyComponent = {
               <h1>Last metrics</h1>\
               <statistics-table :object="currentNodeLastStats"></statistics-table>\
             </div>\
-            <div v-if="isAnalyzer && currentNodeFlowsQuery">\
+            <div id="flow-table-panel" v-if="isAnalyzer && currentNodeFlowsQuery">\
               <h1>Flows</h1>\
               <flow-table :value="currentNodeFlowsQuery"></flow-table>\
             </div>\

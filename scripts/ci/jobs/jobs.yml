@@ -205,8 +205,42 @@
       - archive:
           artifacts: 'src/github.com/skydive-project/skydive/tests/postmortem.png'
           allow-empty: 'true'
+
+- job:
+    name: skydive-cdd-overview-tests
+    defaults: skydive
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run cdd-overview'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          only-trigger-phrase: true
+          status-context: skydive-cdd-overview-tests
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+          SHELL=dumb scripts/ci/run-cdd-overview-tests.sh
+    publishers:
+      - chuck-norris
       - archive:
-          artifacts: 'src/github.com/skydive-project/skydive/output.gif'
+          artifacts: 'src/github.com/skydive-project/skydive/tests/postmortem.png'
+          allow-empty: 'true'
+      - archive:
+          artifacts: 'src/github.com/skydive-project/skydive/tests/overview.mp4'
+          allow-empty: 'true'
+      - archive:
+          artifacts: 'src/github.com/skydive-project/skydive/tests/overview.gif'
           allow-empty: 'true'
 
 - job:

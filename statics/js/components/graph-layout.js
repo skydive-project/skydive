@@ -975,8 +975,10 @@ TopologyGraphLayout.prototype = {
     nodeEnter.append("circle")
       .attr("r", this.nodeSize);
 
+
     // node picto
     nodeEnter.append("image")
+      .attr("id", function(d) { return "node-img-" + d.id; })
       .attr("class", "picto")
       .attr("x", -12)
       .attr("y", -12)
