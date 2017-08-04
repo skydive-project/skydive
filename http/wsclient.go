@@ -23,6 +23,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"sync"
@@ -147,6 +148,10 @@ func (c *WSAsyncClient) GetClientType() common.ServiceType {
 
 // Send a message directly over the wire
 func (c *WSAsyncClient) SendMessage(msg []byte) error {
+	if !c.IsConnected() {
+		return errors.New("Not connected")
+	}
+
 	c.wsConn.SetWriteDeadline(time.Now().Add(writeWait))
 
 	w, err := c.wsConn.NextWriter(websocket.TextMessage)
