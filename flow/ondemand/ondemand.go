@@ -26,7 +26,8 @@ import "github.com/skydive-project/skydive/api"
 
 // Namespace "OnDemand"
 const (
-	Namespace = "OnDemand"
+	Namespace             = "OnDemand"
+	NotificationNamespace = "OnDemandNotification"
 )
 
 // CaptureQuery describes a query for the capture API
