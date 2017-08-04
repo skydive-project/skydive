@@ -1070,6 +1070,9 @@ TopologyGraphLayout.prototype = {
   },
 
   nodeTitle: function(d) {
+    if (d.metadata.Type === "host") {
+      return d.metadata.Name.split(".")[0];
+    }
     return d.metadata.Name ? d.metadata.Name.substr(0, 12) : "";
   },
 
