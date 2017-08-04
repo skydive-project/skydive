@@ -137,7 +137,7 @@ func BuildHostNodeTIDMap(nodes []*graph.Node) HostNodeTIDMap {
 	return hnmap
 }
 
-// HaveOwnershipLink returns true parent and child have the same ownership
+// HaveOwnershipLink returns true if parent and child have an ownership link
 func HaveOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) bool {
 	// do not add or change original metadata
 	m := metadata.Clone()
@@ -146,7 +146,13 @@ func HaveOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, me
 	return g.AreLinked(parent, child, m)
 }
 
-// AddOwnershipLink Link the parent and the child node, the child can have only one parent, previous will be overwritten
+// IsOwnershipLinked checks whether the node as an OwnershipLink
+func IsOwnershipLinked(g *graph.Graph, node *graph.Node) bool {
+	edges := g.GetNodeEdges(node, graph.Metadata{"RelationType": OwnershipLink})
+	return len(edges) != 0
+}
+
+// AddOwnershipLink Link between the parent and the child node, the child can have only one parent, previous will be overwritten
 func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) *graph.Edge {
 	// a child node can only have one parent of type ownership, so delete the previous link
 	for _, e := range g.GetNodeEdges(child, graph.Metadata{"RelationType": OwnershipLink}) {

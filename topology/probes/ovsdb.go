@@ -65,7 +65,7 @@ func isOvsLogicalInterface(intf *graph.Node) bool {
 	case "gre", "vxlan", "geneve", "patch":
 		return true
 	}
-	return false
+	return true
 }
 
 // OnOvsBridgeUpdate event
@@ -106,7 +106,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 				// internal ovs interface that have to be linked to the bridge as they
 				// are just logical interface.
 				if intf, ok := o.portToIntf[uuid]; ok && isOvsLogicalInterface(intf) {
-					if !topology.HaveOwnershipLink(o.Graph, bridge, intf, nil) {
+					if !topology.IsOwnershipLinked(o.Graph, intf) {
 						topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
 					}
 				}
@@ -290,7 +290,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 		puuid, _ := port.GetFieldString("UUID")
 		if brige, ok := o.portToBridge[puuid]; ok && isOvsLogicalInterface(intf) {
-			if !topology.HaveOwnershipLink(o.Graph, brige, intf, nil) {
+			if !topology.IsOwnershipLinked(o.Graph, intf) {
 				topology.AddOwnershipLink(o.Graph, brige, intf, nil)
 			}
 		}
@@ -415,7 +415,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		}
 
 		if intf, ok := o.portToIntf[uuid]; ok && isOvsLogicalInterface(intf) {
-			if !topology.HaveOwnershipLink(o.Graph, bridge, intf, nil) {
+			if !topology.IsOwnershipLinked(o.Graph, intf) {
 				topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
 			}
 		}
