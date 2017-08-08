@@ -33,11 +33,10 @@ var TopologyGraphLayout = function(vm, selector) {
 
   this.simulation = d3.forceSimulation(Object.values(this.nodes))
     .force("charge", d3.forceManyBody().strength(-500))
-    .force("link", d3.forceLink(Object.values(this.links)).distance(this.linkDistance).strength(0.9).iterations(2))
+    .force("link", d3.forceLink(Object.values(this.links)).distance(this.linkDistance).strength(this.linkStrength).iterations(2))
     .force("collide", d3.forceCollide().radius(80).strength(0.1).iterations(1))
-    .force("center", d3.forceCenter(this.width / 2, this.height / 2))
-    .force("x", d3.forceX(0).strength(0.01))
-    .force("y", d3.forceY(0).strength(0.01))
+    .force("x", d3.forceX(this.width / 2).strength(0.1))
+    .force("y", d3.forceY(this.height / 2).strength(0.1))
     .alphaDecay(0.0090);
 
   this.zoom = d3.zoom()
@@ -72,6 +71,14 @@ var TopologyGraphLayout = function(vm, selector) {
     .then(function() {
       self.bandwidth.intervalID = setInterval(self.updateBandwidth.bind(self), self.bandwidth.updatePeriod);
     });
+
+  this.loadBandwidthConfig()
+    .then(function() {
+      setInterval(self.updateNetworkPolicy.bind(self), self.bandwidth.updatePeriod);
+    });
+
+  this.sortedHostArray = [];
+  this.update();
 };
 
 TopologyGraphLayout.prototype = {
@@ -149,8 +156,13 @@ TopologyGraphLayout.prototype = {
     }, 1000);
   },
 
+  linkStrength: function(e) {
+    var strength = 0.9;
+    return strength;
+ },
+
   linkDistance: function(e) {
-    var distance = 100, coeff;
+    var distance = 150, coeff;
     if (e.source.group !== e.target.group) {
       if (e.source.isGroupOwner()) {
         coeff = e.source.group.collapsed ? 40 : 60;
@@ -193,6 +205,11 @@ TopologyGraphLayout.prototype = {
       if (group._memberArray.indexOf(d) < 0) group._memberArray.push(d);
       group = group.parent;
     }
+
+    if (this.isTopologyNode(d)) {
+      this.invalid = true;
+    }
+
   },
 
   showNode: function(d) {
@@ -1034,6 +1051,8 @@ TopologyGraphLayout.prototype = {
     this.simulation.nodes(nodes);
     this.simulation.force("link").links(links);
     this.simulation.alpha(1).restart();
+
+    this.reArrangeGraphFunc();
   },
 
   groupClass: function(d) {
@@ -1121,6 +1140,340 @@ TopologyGraphLayout.prototype = {
   collapseImg: function(d) {
     if (d.group && d.group.collapsed) return plusImg;
     return minusImg;
-  }
+  },
 
+  isHostNode: function(d) {
+    if (d.visible == false)
+      return false;
+
+    if (!d.metadata)
+      return false;
+
+    if (d.metadata.Type == "host")
+      return true;
+
+    return false;
+  },
+
+  isVMNode: function(d) {
+    if (d.visible == false)
+      return false;
+
+    if (!d.metadata)
+      return false;
+    if (d.metadata.Type == "netns")
+      return true;
+
+    return false;
+  },
+
+  isEdgeFabricNode: function(d) {
+    if (d.visible == false)
+      return false;
+
+    if (!d.metadata)
+      return false;
+
+    if (d.metadata.Probe != "fabric")
+      return false;
+
+    for (var e in d.edges) {
+      var edge = d.edges[e];
+      if (edge.target.host != '' || edge.source.host != '') {
+        return true;
+        }
+    }
+    return false;
+  },
+
+  isTopologyNode: function(d) {
+    if (this.isEdgeFabricNode(d) || this.isHostNode(d) || this.isVMNode(d)) {
+      return true;
+    }
+
+    return false;
+  },
+
+  getConnectedFabricNode: function(theNode) {
+    connectedLink = null;
+    for (var i in this.nodes) {
+      var node = this.nodes[i];
+      if (node.host != theNode.host)
+          continue;
+
+      for (var e in node.edges) {
+        var edge = node.edges[e];
+
+        if (edge.metadata.Type == "fabric") {
+          if (edge.source.host == theNode.host) {
+            //console.log ("getConnectedFabricNode: source(me) = " + theNode.id + " target =" + edge.target.id );
+            connectedLink =  edge.target;
+            }
+          if (edge.target.host == theNode.host) {
+            //console.log ("getConnectedFabricNode: target(me) = " + theNode.id + " source =" + edge.source.id );
+            connectedLink =  edge.source;
+            }
+        }
+      }
+    }
+
+    return connectedLink;
+  },
+
+  getHostNode: function(theNode) {
+    // All nodes
+    for (var i in this.nodes) {
+      var node = this.nodes[i];
+
+      if (this.isHostNode(node) && node.metadata.Name === theNode.host) {
+          return node;
+      }
+    }
+    return null;
+  },
+
+  getNodePosition: function(node, topology) {
+    position = {};
+
+    vmNode = null;
+    hostNode = null;
+    fabricNode = null;
+    position['numOfVms'] = -1;
+    position['numOfHosts'] = -1;
+    position['numOfFabrics'] = -1;
+    position['fabricIndex'] = -1;
+    position['hostIndex'] = -1;
+    position['vmIndex'] = -1;
+
+    if (this.isVMNode(node)) {
+      vmNode = node;
+      hostNode = this.getHostNode(node);
+      fabricNode = this.getConnectedFabricNode(hostNode);
+    } else if (this.isHostNode(node)) {
+      hostNode = node;
+      fabricNode = this.getConnectedFabricNode(node);
+    } else if (this.isEdgeFabricNode(node)) {
+      fabricNode = node;
+    }
+
+    if (fabricNode != null) {
+      position['numOfFabrics'] = Object.keys(topology).length;
+      fabricIndex = 0;
+      for (var key in topology) {
+        if (key == fabricNode.id) {
+          position['fabricIndex'] = fabricIndex;
+          break
+        }
+        fabricIndex++;
+      }
+      if ((hostNode != null) && (topology[fabricNode.id] != undefined)){
+        position['numOfHosts'] = Object.keys(topology[fabricNode.id]).length;
+        hostIndex = 0;
+        for (var key in topology[fabricNode.id]) {
+          if (key == hostNode.id) {
+            position['hostIndex'] = hostIndex;
+            break
+          }
+          hostIndex++;
+        }
+        if ((vmNode != null) && (topology[fabricNode.id] != undefined)) {
+          position['numOfVms'] = Object.keys(topology[fabricNode.id][hostNode.id]).length;
+          vmIndex = 0;
+          for (var key in topology[fabricNode.id][hostNode.id]) {
+            if (key == vmNode.id) {
+              position['vmIndex'] = vmIndex;
+              break
+            }
+            vmIndex++;
+          }
+        } else {
+          position['vmIndex'] = 0;
+        }
+      }
+    }
+
+    //console.log ("getNodePosition for node node = " + node.id)
+    //console.log ("numOfFabric = " + position['numOfFabrics'])
+    //console.log ("numOfHosts = " + position['numOfHosts'])
+    //console.log ("numOfVms = " + position['numOfVms'])
+    //console.log ("fabricIndex = " + position['fabricIndex'])
+    //console.log ("hostIndex = " + position['hostIndex'])
+    //console.log ("vmIndex = " + position['vmIndex'])
+
+    return position;
+  },
+
+  setNodeLocation: function(node, topology) {
+
+    function safe_div(x,y) {
+      if (y == 0)
+        return 0;
+
+      return x / y;
+    }
+
+    if (topology == null || !this.isTopologyNode(node)) {
+      return;
+    }
+
+    nodePosition = this.getNodePosition(node, topology);
+    if (nodePosition['fabricIndex'] == -1) {
+      return;
+    }
+
+    if (nodePosition['numOfFabrics'] == 0) {
+      return;
+    }
+
+    var distance = 200;
+    var place = 0.0;
+    var mul = 0.0;
+    var vmFactor = 40; // In percentage from the pie slice
+    var hostFactor = 50; // In percentage from the pie slice
+
+    if (this.isEdgeFabricNode(node)) {
+      //console.log ("locating edgefabric node = " + node.id)
+      var fabricPies  = nodePosition['numOfFabrics'];
+      var fabricIndex = nodePosition['fabricIndex'];
+      place = safe_div(fabricIndex,fabricPies);
+      //console.log ("fabricPies = "+ nodePosition['numOfFabrics']);
+      //console.log ("fabricIndex = "+ nodePosition['fabricIndex']);
+      //console.log ("edgeFabric place = "+ place);
+      mul = 1.0;
+
+      if (fabricPies == 1)
+        mul = 0.0;
+
+    } else if (this.isHostNode(node)) {
+      //console.log ("locating host node = " + node.id)
+      var fabricPies  = nodePosition['numOfFabrics'];
+      var fabricIndex = nodePosition['fabricIndex'];
+      var hostPies  = nodePosition['numOfHosts'];
+      var hostIndex = nodePosition['hostIndex'];
+
+      if (fabricPies == 1)
+        hostFactor = 100;
+
+      fabricPlace = safe_div(fabricIndex,fabricPies);
+      hostPlace = fabricPlace + safe_div(hostIndex-((hostPies-1)/2),(100/hostFactor)*(hostPies*fabricPies));
+      place = hostPlace;
+      //console.log ("fabricPies = "+ nodePosition['numOfFabrics']);
+      //console.log ("numOfHosts = "+ nodePosition['numOfHosts']);
+      //console.log ("fabricIndex = "+ nodePosition['fabricIndex']);
+      //console.log ("hostIndex = "+ nodePosition['hostIndex']);
+      //console.log ("host place = "+ place);
+      mul = 2.0 + hostPies;
+    } else if (this.isVMNode(node)) {
+      //console.log ("locating vm node = " + node.id)
+      var fabricPies  = nodePosition['numOfFabrics'];
+      var fabricIndex = nodePosition['fabricIndex'];
+      var hostPies  = nodePosition['numOfHosts'];
+      var hostIndex = nodePosition['hostIndex'];
+      var vmPies  = nodePosition['numOfVms'];
+      var vmIndex = nodePosition['vmIndex'];
+
+      if (fabricPies == 1)
+        hostFactor = 100;
+
+      fabricPlace = safe_div(fabricIndex,fabricPies);
+      hostPlace = fabricPlace + safe_div(hostIndex-((hostPies-1)/2),(100/hostFactor)*(hostPies*fabricPies));
+      vmPlace =  hostPlace + safe_div(vmIndex-((vmPies-1)/2),(100/vmFactor)*(vmPies*hostPies*fabricPies));
+      place = vmPlace;
+      //console.log ("fabricPies = "+ nodePosition['numOfFabrics']);
+      //console.log ("numOfHosts = "+ nodePosition['numOfHosts']);
+      //console.log ("numOfVms = "+ nodePosition['numOfVms']);
+      //console.log ("fabricIndex = "+ nodePosition['fabricIndex']);
+      //console.log ("hostIndex = "+ nodePosition['hostIndex']);
+      //console.log ("vmIndex = "+ nodePosition['vmIndex']);
+      //console.log ("vm place = "+ place);
+      mul = 9.0 + hostPies + vmPies;
+    }
+
+    var theNode = this.nodes[node.id];
+
+    this.unpinNode(node);
+    theNode.x = Math.cos(place  * 2.0 * Math.PI) * distance * mul + this.width/2;
+    theNode.fx = node.x;
+    theNode.y = Math.sin(place * 2.0 * Math.PI) * distance * mul + this.height/2;
+    theNode.fy = node.y;
+    this.pinNode(node);
+
+    return;
+  },
+
+  // Build topology object which is keys are ids of fabric nodes
+  // and values are objects of hosts inside each fabric.
+  // The keys for host objects are the ids of the host nodes
+  // and the values are objects of VMs which again the  keys are
+  // the node ids of the VMS.
+  computeTopology: function() {
+    topology = {};
+
+    //console.log("computeTopology:");
+    // insert all edgeFabrics
+    for (var i in this.nodes) {
+      var node = this.nodes[i];
+
+      if (this.isEdgeFabricNode(node)) {
+        //console.log("computeTopology: edgeFabric node = " + node.id);
+        topology[node.id] = {};
+      }
+    }
+
+    // insert all hosts
+    for (var i in this.nodes) {
+      var node = this.nodes[i];
+
+      if (this.isHostNode(node)) {
+        fabricNode = this.getConnectedFabricNode(node);
+        if (fabricNode == null) {
+          continue;
+        }
+
+        if (topology[fabricNode.id] == undefined) {
+            continue;
+            //console.log("computeTopology: edgeFabric node (from undefined) = " + node.id);
+            //topology[fabricNode.id] = {};
+          }
+
+        topology[fabricNode.id][node.id] = {};
+        //console.log("computeTopology: host node = " + node.id);
+      }
+    }
+
+    // insert all vms
+    for (var i in this.nodes) {
+      var node = this.nodes[i];
+
+      if (this.isVMNode(node)) {
+        hostNode = this.getHostNode(node);
+        if (hostNode == null) {
+          continue;
+        }
+        fabricNode = this.getConnectedFabricNode(hostNode);
+        if (fabricNode == null) {
+          continue;
+        }
+
+        if (topology[fabricNode.id] == undefined) {
+            continue;
+            //console.log("computeTopology: edgeFabric node (from undefined) = " + node.id);
+            //topology[fabricNode.id] = {};
+          }
+
+        //console.log("computeTopology: vm node = " + node.id);
+        topology[fabricNode.id][hostNode.id][node.id] = node;
+      }
+    }
+    return topology;
+  },
+
+  reArrangeGraphFunc: function () {
+    topology = this.computeTopology();
+    for (var i in this.nodes) {
+      var aNode = this.nodes[i];
+
+      this.setNodeLocation(aNode, topology);
+    }
+  }
 };
