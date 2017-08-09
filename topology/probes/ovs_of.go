@@ -490,12 +490,12 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	bridgeName := metadata["Name"].(string)
 	uuid := metadata["UUID"].(string)
 	hostName := o.Host
-	if _, ok := o.BridgeProbes[bridgeName]; ok {
+	if _, ok := o.BridgeProbes[uuid]; ok {
 		return
 	}
 	bridgeProbe, err := o.NewBridgeProbe(hostName, bridgeName, uuid, bridgeNode)
 	if err == nil {
-		o.BridgeProbes[bridgeName] = bridgeProbe
+		o.BridgeProbes[uuid] = bridgeProbe
 	} else {
 		logging.GetLogger().Errorf("Cannot add bridge %s@%s", bridgeName, hostName)
 	}
@@ -505,10 +505,9 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
-	bridgeName := row.New.Fields["name"].(string)
-	if bridgeProbe, ok := o.BridgeProbes[bridgeName]; ok {
+	if bridgeProbe, ok := o.BridgeProbes[uuid]; ok {
 		bridgeProbe.cancel()
-		delete(o.BridgeProbes, bridgeName)
+		delete(o.BridgeProbes, uuid)
 	}
 }
 
