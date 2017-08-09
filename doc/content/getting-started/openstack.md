@@ -33,7 +33,7 @@ The plugin accepts the following parameters:
 #SKYDIVE_AGENT_LISTEN=
 
 # Configure the skydive agent with the etcd server address
-# http://IP_ADDRESS:2379
+# http://IP_ADDRESS:12379
 #SKYDIVE_AGENT_ETCD=
 
 # The path for the generated skydive configuration file

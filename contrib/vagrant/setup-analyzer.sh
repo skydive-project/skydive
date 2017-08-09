@@ -27,7 +27,7 @@ analyzer:
       - TOR1_PORT2 -> *[Type=host,Name=agent2]/eth1
 etcd:
   client_timeout: 100
-  listen: 0.0.0.0:2379
+  listen: 0.0.0.0:12379
 graph:
   backend: elasticsearch
 elasticsearch:

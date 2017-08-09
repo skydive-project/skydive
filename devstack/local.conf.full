@@ -20,7 +20,7 @@ enable_service skydive-agent skydive-analyzer
 SKYDIVE_ANALYZER_LISTEN=${HOST_IP}:8082
 SKYDIVE_ANALYZERS=${HOST_IP}:8082
 SKYDIVE_AGENT_LISTEN=${HOST_IP}:8081
-SKYDIVE_AGENT_ETCD=http://${HOST_IP}:2379
+SKYDIVE_AGENT_ETCD=http://${HOST_IP}:12379
 
 # When using multiple nodes in your Devstack, you need to
 # specify the nodes and their public interface

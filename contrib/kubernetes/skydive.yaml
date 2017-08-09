@@ -12,7 +12,7 @@ spec:
   - port: 8082
     name: protobuf
     protocol: UDP
-  - port: 2379
+  - port: 12379
     name: etcd
   - port: 9200
     name: es
@@ -42,14 +42,14 @@ spec:
         - containerPort: 8082
         - containerPort: 8082
           protocol: UDP
-        - containerPort: 2379
+        - containerPort: 12379
         env:
         - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
           value: elasticsearch
         - name: SKYDIVE_GRAPH_BACKEND
           value: elasticsearch
         - name: SKYDIVE_ETCD_LISTEN
-          value: 0.0.0.0:2379
+          value: 0.0.0.0:12379
       - name: skydive-elasticsearch
         image: elasticsearch:2
         ports:
