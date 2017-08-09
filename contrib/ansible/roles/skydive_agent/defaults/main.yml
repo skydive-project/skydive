@@ -1,0 +1,3 @@
+skydive_agent_docker_extra_env:
+skydive_agent_docker_image: skydive/skydive
+skydive_agent_docker_command: agent

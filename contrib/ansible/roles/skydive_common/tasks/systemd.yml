@@ -1,0 +1,15 @@
+---
+- name: generate systemd unit file
+  become: true
+  template:
+    src: "{{ role_path }}/templates/skydive.service.j2"
+    dest: /etc/systemd/system/{{ service_name }}.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+
+- systemd:
+    name: "{{ service_name }}"
+    state: started
+    enabled: yes
+    daemon_reload: yes

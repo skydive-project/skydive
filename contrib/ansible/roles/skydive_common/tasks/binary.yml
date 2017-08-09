@@ -1,0 +1,7 @@
+---
+- name: download skydive binary
+  get_url:
+    url: "{{ skydive_binary_remote_location }}"
+    dest: "{{ skydive_binary_location }}"
+    force: true
+    mode: 0755

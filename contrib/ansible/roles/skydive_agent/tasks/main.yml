@@ -1,0 +1,24 @@
+---
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker
+    - openvswitch
+
+- service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - docker
+    - openvswitch
+
+- include: docker.yml
+  when: skydive_deployment_mode == "container"
+
+- include: package.yml
+  when: skydive_deployment_mode == "package"
+
+- include: binary.yml
+  when: skydive_deployment_mode == "binary"
