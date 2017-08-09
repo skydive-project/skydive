@@ -206,7 +206,7 @@ etcd:
   # client_timeout: 5
 
 flow:
-  # Wihout any new packets, a flow expires after flow.expire
+  # Without any new packets, a flow expires after flow.expire
   # seconds
   expire: 600
   # Seconds between flow updates (metrics, enhancements,...)
