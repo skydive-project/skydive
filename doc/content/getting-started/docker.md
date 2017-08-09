@@ -9,7 +9,7 @@ A Docker image is available on the [Skydive Docker Hub account](https://hub.dock
 
 To start the analyzer :
 ```console
-docker run -p 8082:8082 -p 2379:2379 skydive/skydive analyzer
+docker run -p 8082:8082 skydive/skydive analyzer
 ```
 
 To start the agent :

@@ -87,7 +87,7 @@ func init() {
 
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
-	cfg.SetDefault("etcd.listen", "localhost:2379")
+	cfg.SetDefault("etcd.listen", "0.0.0.0:12379")
 
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
@@ -261,9 +261,9 @@ func GetEtcdServerAddrs() []string {
 		return etcdServers
 	}
 	if addresse, err := GetOneAnalyzerServiceAddress(); err == nil {
-		return []string{"http://" + addresse.Addr + ":2379"}
+		return []string{"http://" + addresse.Addr + ":12379"}
 	}
-	return []string{"http://localhost:2379"}
+	return []string{"http://localhost:12379"}
 }
 
 // IsTLSenabled returns true is the analyzer certificates are set

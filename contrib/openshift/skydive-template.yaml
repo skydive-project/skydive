@@ -20,9 +20,9 @@ objects:
       protocol: UDP
       targetPort: 8082
     - name: etcd
-      port: 2379
+      port: 12379
       protocol: TCP
-      targetPort: 2379
+      targetPort: 12379
     - name: es
       port: 9200
       protocol: TCP
@@ -65,7 +65,7 @@ objects:
           - name: SKYDIVE_GRAPH_BACKEND
             value: elasticsearch
           - name: SKYDIVE_ETCD_LISTEN
-            value: 0.0.0.0:2379
+            value: 0.0.0.0:12379
           image: skydive/skydive
           imagePullPolicy: Always
           livenessProbe:
@@ -82,7 +82,7 @@ objects:
             protocol: TCP
           - containerPort: 8082
             protocol: UDP
-          - containerPort: 2379
+          - containerPort: 12379
             protocol: TCP
           readinessProbe:
             failureThreshold: 1

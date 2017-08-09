@@ -91,7 +91,7 @@ func InitConfig(conf string, params ...HelperParams) error {
 		params[0]["EtcdServer"] = etcdServer
 	} else {
 		params[0]["EmbeddedEtcd"] = "true"
-		params[0]["EtcdServer"] = "http://localhost:2379"
+		params[0]["EtcdServer"] = "http://localhost:12379"
 	}
 	if storageBackend != "" {
 		params[0]["Storage"] = storageBackend
