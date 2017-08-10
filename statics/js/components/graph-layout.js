@@ -416,6 +416,8 @@ TopologyGraphLayout.prototype = {
   },
 
   delNode: function(node) {
+    if (this.selectedNode === node) this.selectedNode = null;
+
     delete this.nodes[node.id];
     delete this._nodes[node.id];
 
