@@ -208,32 +208,36 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *Attributes) {
 	metadata := make(map[string]interface{})
 
 	if attrs.PortID != "" {
-		metadata["PortID"] = attrs.PortID
+		metadata["Neutron.PortID"] = attrs.PortID
 	}
 
 	if attrs.TenantID != "" {
-		metadata["TenantID"] = attrs.TenantID
+		metadata["Neutron.TenantID"] = attrs.TenantID
 	}
 
 	if attrs.NetworkID != "" {
-		metadata["NetworkID"] = attrs.NetworkID
+		metadata["Neutron.NetworkID"] = attrs.NetworkID
 	}
 
 	if attrs.NetworkName != "" {
-		metadata["NetworkName"] = attrs.NetworkName
+		metadata["Neutron.NetworkName"] = attrs.NetworkName
 	}
 
 	if attrs.IPs != "" {
-		metadata["IPs"] = attrs.IPs
+		metadata["Neutron.IPs"] = attrs.IPs
 	}
 
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
-		metadata["VNI"] = int64(segID)
+		metadata["Neutron.VNI"] = int64(segID)
 	}
 
 	tr := mapper.graph.StartMetadataTransaction(node)
-	tr.AddMetadata("Neutron", metadata)
 	tr.AddMetadata("Manager", "neutron")
+
+	for k, v := range metadata {
+		tr.AddMetadata(k, v)
+	}
+
 	tr.Commit()
 
 	name, _ := node.GetFieldString("Name")
@@ -255,11 +259,10 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *Attributes) {
 				defer mapper.graph.Unlock()
 
 				if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata); len(path) > 0 {
-					metadata["ExtID.vm-uuid"] = uuid
-					metadata["ExtID.attached-mac"] = attachedMac
-
 					for i, n := range path {
 						tr := mapper.graph.StartMetadataTransaction(n)
+						tr.AddMetadata("ExtID.vm-uuid", uuid)
+						tr.AddMetadata("ExtID.attached-mac", attachedMac)
 						for k, v := range metadata {
 							tr.AddMetadata(k, v)
 						}

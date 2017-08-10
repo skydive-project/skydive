@@ -143,16 +143,33 @@ func TestNeutron(t *testing.T) {
 
 	gh := gclient.NewGremlinQueryHelper(authOptions)
 
-	// let neutron updates the port
-	time.Sleep(5 * time.Second)
+	var histo bool
+	retry := func() error {
+		prefix := "g"
+		if histo {
+			prefix += ".At('-1s')"
+		}
 
-	nodes, err := gh.GetNodes(`g.V().Has("Manager", "neutron", "ExtID.vm-uuid", "skydive-vm", "Name", "` + dev + `", "Neutron.PortID", "` + port.ID + `")`)
-	if err != nil {
-		t.Fatal(err.Error())
+		nodes, err := gh.GetNodes(prefix + `.V().Has("Manager", "neutron", "ExtID.vm-uuid", "skydive-vm", "Name", "` + dev + `", "Neutron.PortID", "` + port.ID + `")`)
+		if err != nil {
+			return fmt.Errorf(err.Error())
+		}
+
+		if len(nodes) != 1 {
+			nodes, _ := gh.GetNodes(`g.V()`)
+			return fmt.Errorf("Should find the neutron port in the topology: %v", nodes)
+		}
+		return nil
 	}
 
-	if len(nodes) != 1 {
-		nodes, _ := gh.GetNodes(`g.V()`)
-		t.Errorf("Should find the neutron port in the topology: %v", nodes)
+	// test live mode
+	if err := common.Retry(retry, 10, time.Second); err != nil {
+		t.Error(err)
+	}
+
+	// test histo mode
+	histo = true
+	if err := common.Retry(retry, 20, time.Second); err != nil {
+		t.Error(err)
 	}
 }
