@@ -36,7 +36,7 @@ all: install
 	# do not export LastRawPackets used internally
 	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i flow/flow.pb.go
 	# add flowState to flow generated struct
-	sed -e 's/type Flow struct {/type Flow struct {\n  state flowState/' -i flow/flow.pb.go
+	sed -e 's/type Flow struct {/type Flow struct {\n\tstate flowState/' -i flow/flow.pb.go
 
 .bindata: builddep
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/*
@@ -104,7 +104,7 @@ govendor:
 	go get github.com/kardianos/govendor
 	${GOPATH}/bin/govendor sync
 
-fmt: govendor
+fmt: govendor genlocalfiles
 	@echo "+ $@"
 	@test -z "$$(${GOPATH}/bin/govendor fmt +local)" || \
 		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
