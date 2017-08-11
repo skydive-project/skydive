@@ -100,13 +100,15 @@ Vue.component('button-dropdown', {
     var self = this;
     // close the popup if we click elsewhere
     // from the target search if any parent has the id
-    $(document).on('click', function(event) {
+    var close_callback = function(event) {
+      $(document).off('click', close_callback);
       if (self.open === false)
         return;
       if ($(event.target).closest('#'+self.id).length === 0) {
         self.open = false;
       }
-    });
+    };
+    $(document).on('click', close_callback);
   },
 
   methods: {
