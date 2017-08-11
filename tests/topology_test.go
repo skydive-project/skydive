@@ -909,3 +909,101 @@ func TestAgentMetadata(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+//TestRouteTable tests route table update
+func TestRouteTable(t *testing.T) {
+	gopath := os.Getenv("GOPATH")
+	topology := gopath + "/src/github.com/skydive-project/skydive/scripts/simple.sh"
+
+	test := &Test{
+		mode: OneShot,
+
+		setupCmds: []helper.Cmd{
+			{fmt.Sprintf("%s start 124.65.91.42/24 124.65.92.43/24", topology), true},
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{fmt.Sprintf("%s stop", topology), true},
+		},
+
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				prefix := "g"
+				if !c.time.IsZero() {
+					prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+				}
+
+				node, err := c.gh.GetNode(prefix + ".V().Has('IPV4', '124.65.91.42/24')")
+				if err != nil {
+					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
+				}
+
+				routingTable := node.Metadata()["RoutingTable"].([]interface{})
+				noOfRoutingTable := len(routingTable)
+
+				helper.ExecCmds(t,
+					helper.Cmd{Cmd: "ip netns exec vm1 ip route add 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
+					helper.Cmd{Cmd: "sleep 5", Check: false},
+				)
+
+				node, err = c.gh.GetNode(prefix + ".V().Has('IPV4', '124.65.91.42/24')")
+				routingTable = node.Metadata()["RoutingTable"].([]interface{})
+				newNoOfRoutingTable := len(routingTable)
+
+				helper.ExecCmds(t,
+					helper.Cmd{Cmd: "ip netns exec vm1 ip route del 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
+					helper.Cmd{Cmd: "sleep 5", Check: false},
+				)
+				if newNoOfRoutingTable <= noOfRoutingTable {
+					return fmt.Errorf("Failed to add Route")
+				}
+				return nil
+			},
+		},
+	}
+	RunTest(t, test)
+}
+
+//TestRouteTableHistory tests route table update available in history
+func TestRouteTableHistory(t *testing.T) {
+	gopath := os.Getenv("GOPATH")
+	topology := gopath + "/src/github.com/skydive-project/skydive/scripts/simple.sh"
+
+	test := &Test{
+		mode: OneShot,
+
+		setupCmds: []helper.Cmd{
+			{fmt.Sprintf("%s start 124.65.75.42/24 124.65.76.43/24", topology), true},
+			{"sleep 5", false},
+			{"ip netns exec vm1 ip route add 124.65.75.0/24 via 124.65.75.42 table 2", true},
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{fmt.Sprintf("%s stop", topology), true},
+		},
+
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				prefix := fmt.Sprintf("g.Context(%d)", common.UnixMillis(time.Now()))
+				node, err := c.gh.GetNode(prefix + ".V().Has('IPV4', '124.65.75.42/24')")
+				if err != nil {
+					return fmt.Errorf("Failed to find a node with IP 124.65.75.42/24")
+				}
+				routingTable := node.Metadata()["RoutingTable"].([]interface{})
+				foundNewTable := false
+				for _, obj := range routingTable {
+					rt := obj.(map[string]interface{})
+					if (rt["Id"].(json.Number)).String() == "2" {
+						foundNewTable = true
+						break
+					}
+				}
+				if !foundNewTable {
+					return fmt.Errorf("Failed to get added Route from history")
+				}
+				return nil
+			},
+		},
+	}
+	RunTest(t, test)
+}
