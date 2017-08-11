@@ -36,6 +36,10 @@ Vue.component('inject-form', {
           <label for="inject-count">ICMP Identifier</label>\
           <input id="inject-id" type="number" class="form-control input-sm" v-model="id" min="0" />\
         </div>\
+        <div class="form-group">\
+          <label for="payload-length">Payload length</label>\
+          <input id="payload-length" type="number" class="form-control input-sm" v-model="payloadlength" min="0" />\
+        </div>\
       </div>\
       <div v-if="type === \'tcp4\' || type === \'tcp6\'">\
         <div class="form-group">\
@@ -48,7 +52,7 @@ Vue.component('inject-form', {
         </div>\
       </div>\
       <div class="form-group">\
-        <label for="inject-interval">Interval</label>\
+        <label for="inject-interval">Interval in milliseconds</label>\
         <input id="inject-interval" type="number" class="form-control input-sm" v-model="interval" min="0" />\
       </div>\
       <button type="submit" id="inject" class="btn btn-primary">Inject</button>\
@@ -66,6 +70,7 @@ Vue.component('inject-form', {
       interval: 0,
       port1: 0,
       port2: 0,
+      payloadlength: 0,
     };
   },
 
@@ -135,6 +140,7 @@ Vue.component('inject-form', {
       this.node1 = this.node2 = "";
       this.count = 1;
       this.type = "icmp";
+      this.payloadlength = 0;
     },
 
     inject: function() {
@@ -155,6 +161,7 @@ Vue.component('inject-form', {
           "Count": this.count,
           "ID": this.id,
           "Interval": this.interval,
+          "Payload": (new Array(this.payloadlength)).join("x").toString(),
         }),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
