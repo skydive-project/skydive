@@ -353,6 +353,8 @@ TopologyGraphLayout.prototype = {
     link.target.links[link.id] = link;
 
     if (link.metadata.RelationType == "ownership") {
+      if (this.isNeutronVMNode(link.target)) return;
+
       if (link.target.metadata.Driver === "openvswitch" &&
           ["patch", "vxlan", "gre", "geneve"].indexOf(link.target.metadata.Type) >= 0) return;
 
@@ -607,6 +609,10 @@ TopologyGraphLayout.prototype = {
       .attr("width", 20)
       .attr("height", 20)
       .attr("xlink:href", this.managerImg(d));
+  },
+
+  isNeutronVMNode: function(d) {
+    return d.metadata.Manager === "neutron" && d.metadata.Driver === "tun" && d.metadata.ExtID && d.metadata.ExtID["vm-uuid"] !== "";
   },
 
   captureStarted: function(d) {
