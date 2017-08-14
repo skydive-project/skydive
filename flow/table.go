@@ -23,6 +23,7 @@
 package flow
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -93,6 +94,8 @@ type Table struct {
 	nodeTID        string
 	pipeline       *EnhancerPipeline
 	pipelineConfig *EnhancerPipelineConfig
+
+	perf map[string]*common.PerfCounterIntRate
 }
 
 // NewTable creates a new flow table
@@ -116,7 +119,13 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 	}
 
 	t.updateVersion = 0
-
+	t.perf = make(map[string]*common.PerfCounterIntRate)
+	t.perf["Expire"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("flowTable.%s.Expire", nodeTID))
+	t.perf["Update"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("flowTable.%s.Update", nodeTID))
+	t.perf["Flush"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("flowTable.%s.Flush", nodeTID))
+	t.perf["Query"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("flowTable.%s.Query", nodeTID))
+	t.perf["Packets"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("flowTable.%s.Packets", nodeTID))
+	t.perf["Flows"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("flowTable.%s.Flows", nodeTID))
 	return t
 }
 
@@ -420,20 +429,32 @@ func (ft *Table) Run() {
 		case <-ft.quit:
 			return
 		case now := <-expireTicker.C:
+			//@perf ft.perf["Expire"].Prolog(1)
 			ft.expireAt(now)
+			//@perf ft.perf["Expire"].Epilog(1)
 		case now := <-updateTicker.C:
+			//@perf ft.perf["Update"].Prolog(1)
 			ft.updateAt(now)
+			//@perf ft.perf["Update"].Epilog(1)
 		case <-ft.flush:
+			//@perf ft.perf["Flush"].Prolog(1)
 			ft.expireNow()
 			ft.flushDone <- true
+			//@perf ft.perf["Flush"].Epilog(1)
 		case query, ok := <-ft.query:
 			if ok {
+				//@perf ft.perf["Query"].Prolog(1)
 				ft.reply <- ft.onQuery(query)
+				//@perf ft.perf["Query"].Epilog(1)
 			}
 		case ps := <-ft.packetSeqChan:
+			//@perf ft.perf["Packets"].Prolog(int64(len(ps.Packets)))
 			ft.processPacketSeq(ps)
+			//@perf ft.perf["Packets"].Epilog(int64(len(ps.Packets)))
 		case fl := <-ft.flowChan:
+			//@perf ft.perf["Flows"].Prolog(1)
 			ft.processFlow(fl)
+			//@perf ft.perf["Flows"].Epilog(1)
 		}
 	}
 }

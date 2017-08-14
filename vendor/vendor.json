@@ -1571,6 +1571,12 @@
 			"revisionTime": "2016-03-30T02:39:07Z"
 		},
 		{
+			"checksumSHA1": "jahZGF0UYGQhSibQ4uRUfdd6DMA=",
+			"path": "github.com/paulbellamy/ratecounter",
+			"revision": "a803f0e4f07116687bb30965e8f7d0c32981b63c",
+			"revisionTime": "2017-07-19T10:25:18Z"
+		},
+		{
 			"checksumSHA1": "8Y05Pz7onrQPcVWW6JStSsYRh6E=",
 			"path": "github.com/pelletier/go-buffruneio",
 			"revision": "df1e16fde7fc330a0ca68167c23bf7ed6ac31d6d",

@@ -41,6 +41,7 @@ import (
 // OrientDBStorage describes a OrientDB database client
 type OrientDBStorage struct {
 	client *orient.Client
+	perf   map[string]*common.PerfCounterIntRate
 }
 
 func flowRawPacketToDocument(linkType layers.LinkType, rawpacket *flow.RawPacket) orient.Document {
@@ -197,6 +198,9 @@ func documentToRawPacket(document orient.Document) (*flow.RawPacket, layers.Link
 
 // StoreFlows pushes a set of flows in the database
 func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
+	//@perf c.perf["StoreFlows"].Prolog(int64(len(flows)))
+	//@perf defer c.perf["StoreFlows"].Epilog(int64(len(flows)))
+
 	// TODO: use batch of operations
 	for _, flow := range flows {
 		flowDoc, err := c.client.Upsert(flowToDocument(flow), "UUID")
@@ -240,6 +244,9 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 
 // SearchFlows search flow matching filters in the database
 func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, error) {
+	//@perf c.perf["SearchFlows"].Prolog(1)
+	//@perf defer c.perf["SearchFlows"].Epilog(1)
+
 	flowset := flow.NewFlowSet()
 
 	err := c.client.Query("Flow", &fsq, &flowset.Flows)
@@ -258,6 +265,9 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 
 // SearchMetrics searches flow raw packets matching filters in the database
 func (c *OrientDBStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
+	//@perf c.perf["SearchRawPackets"].Prolog(1)
+	//@perf defer c.perf["SearchRawPackets"].Epilog(1)
+
 	filter := fsq.Filter
 	sql := "SELECT LinkType, Timestamp, Index, Data, Flow.UUID FROM FlowRawPacket"
 
@@ -310,6 +320,9 @@ func (c *OrientDBStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter
 
 // SearchMetrics searches flow metrics matching filters in the database
 func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error) {
+	//@perf c.perf["SearchMetrics"].Prolog(1)
+	//@perf defer c.perf["SearchMetrics"].Epilog(1)
+
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
 	sql += " WHERE " + orient.FilterToExpression(metricFilter, nil)
@@ -468,7 +481,13 @@ func New() (*OrientDBStorage, error) {
 	extFlowIndex := orient.Index{Name: "TCPMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
 	client.CreateIndex("TCPMetric", extFlowIndex)
 
-	return &OrientDBStorage{
+	odbs := &OrientDBStorage{
 		client: client,
-	}, nil
+		perf:   make(map[string]*common.PerfCounterIntRate),
+	}
+	odbs.perf["StoreFlows"] = common.NewPerfCounterIntPerMin("storage.orientdb.StoreFlows")
+	odbs.perf["SearchFlows"] = common.NewPerfCounterIntPerMin("storage.orientdb.SearchFlows")
+	odbs.perf["SearchMetrics"] = common.NewPerfCounterIntPerMin("storage.orientdb.SearchMetrics")
+	odbs.perf["SearchRawPackets"] = common.NewPerfCounterIntPerMin("storage.orientdb.SearchRawPackets")
+	return odbs, nil
 }

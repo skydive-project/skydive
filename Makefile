@@ -143,7 +143,6 @@ skydive.cleanup:
 	go clean -i $(SKYDIVE_GITHUB)
 
 skydive.perf:
-	go get github.com/nplanel/prego
 	[[ -d "$(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)" ]] && rm -rf "$(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)" || true
 	mkdir -p $(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)
 	rsync -av --exclude .git . $(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)

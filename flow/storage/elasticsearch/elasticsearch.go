@@ -161,6 +161,7 @@ const rawPacketMapping = `
 // ElasticSearchStorage describes an ElasticSearch flow backend
 type ElasticSearchStorage struct {
 	client *esclient.ElasticSearchClient
+	perf   map[string]*common.PerfCounterIntRate
 }
 
 // StoreFlows push a set of flows in the database
@@ -168,6 +169,8 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	if !c.client.Started() {
 		return errors.New("ElasticSearchStorage is not yet started")
 	}
+	//@perf c.perf["StoreFlows"].Prolog(int64(len(flows)))
+	//@perf defer c.perf["StoreFlows"].Epilog(int64(len(flows)))
 
 	for _, f := range flows {
 		if err := c.client.BulkIndex("flow", f.UUID, f); err != nil {
@@ -232,6 +235,8 @@ func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetF
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
+	//@perf c.perf["SearchRawPackets"].Prolog(1)
+	//@perf defer c.perf["SearchRawPackets"].Epilog(1)
 
 	request, err := c.requestFromQuery(fsq)
 	if err != nil {
@@ -315,6 +320,8 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
+	//@perf c.perf["SearchMetrics"].Prolog(1)
+	//@perf defer c.perf["SearchMetrics"].Epilog(1)
 
 	request, err := c.requestFromQuery(fsq)
 	if err != nil {
@@ -378,6 +385,8 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
+	//@perf c.perf["SearchFlows"].Prolog(1)
+	//@perf defer c.perf["SearchFlows"].Epilog(1)
 
 	request, err := c.requestFromQuery(fsq)
 	if err != nil {
@@ -450,6 +459,13 @@ func New() (*ElasticSearchStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return &ElasticSearchStorage{client: client}, nil
+	ess := &ElasticSearchStorage{
+		client: client,
+		perf:   make(map[string]*common.PerfCounterIntRate),
+	}
+	ess.perf["StoreFlows"] = common.NewPerfCounterIntPerMin("storage.elasticsearch.StoreFlows")
+	ess.perf["SearchFlows"] = common.NewPerfCounterIntPerMin("storage.elasticsearch.SearchFlows")
+	ess.perf["SearchMetrics"] = common.NewPerfCounterIntPerMin("storage.elasticsearch.SearchMetrics")
+	ess.perf["SearchRawPackets"] = common.NewPerfCounterIntPerMin("storage.elasticsearch.SearchRawPackets")
+	return ess, nil
 }

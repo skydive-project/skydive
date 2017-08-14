@@ -89,6 +89,7 @@ type Server struct {
 	CnxType     ConnectionType
 	wg          sync.WaitGroup
 	extraAssets map[string]ExtraAsset
+	perfRoutes  map[string]*common.PerfCounterIntRate
 }
 
 func copyRequestVars(old, new *http.Request) {
@@ -100,10 +101,11 @@ func copyRequestVars(old, new *http.Request) {
 
 func (s *Server) RegisterRoutes(routes []Route) {
 	for _, route := range routes {
+		s.perfRoutes[route.Name] = common.NewPerfCounterIntPerMin(fmt.Sprintf("%s.%s.api.%s", s.Host, s.ServiceType.String(), route.Name))
 		r := s.Router.
 			Methods(route.Method).
 			Name(route.Name).
-			Handler(s.Auth.Wrap(route.HandlerFunc))
+			Handler(common.PerfHttpHanderFuncWrap(s.Auth.Wrap(route.HandlerFunc), s.perfRoutes[route.Name]))
 		switch p := route.Path.(type) {
 		case string:
 			r.Path(p)
@@ -178,6 +180,9 @@ func (s *Server) readStatics(upath string) (content []byte, err error) {
 }
 
 func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
+	//@perf s.perfRoutes["Statics"].Prolog(1)
+	//@perf defer s.perfRoutes["Statics"].Epilog(1)
+
 	upath := r.URL.Path
 	if strings.HasPrefix(upath, "/") {
 		upath = strings.TrimPrefix(upath, "/")
@@ -201,8 +206,10 @@ func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
-	html, err := s.readStatics("statics/index.html")
+	//@perf s.perfRoutes["Index"].Prolog(1)
+	//@perf defer s.perfRoutes["Index"].Epilog(1)
 
+	html, err := s.readStatics("statics/index.html")
 	if err != nil {
 		logging.GetLogger().Error("Unable to find the asset index.html")
 		w.WriteHeader(http.StatusNotFound)
@@ -229,6 +236,9 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
+	//@perf s.perfRoutes["Login"].Prolog(1)
+	//@perf defer s.perfRoutes["Login"].Epilog(1)
+
 	setTLSHeader(w, r)
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -306,6 +316,28 @@ func (s *Server) loadExtraAssets(folder, prefix string) {
 	}
 }
 
+func (s *Server) registerPerfEndpoints() {
+	s.perfRoutes["Statics"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("%s.%s.http.nb-statics", s.Host, s.ServiceType.String()))
+	s.perfRoutes["Index"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("%s.%s.http.nb-index", s.Host, s.ServiceType.String()))
+	s.perfRoutes["Login"] = common.NewPerfCounterIntPerMin(fmt.Sprintf("%s.%s.http.nb-login", s.Host, s.ServiceType.String()))
+
+	routes := []Route{
+		{
+			Name:        "DebugVars",
+			Method:      "GET",
+			Path:        "/debug/vars",
+			HandlerFunc: common.PerfcountersHandlerAuth(),
+		},
+		{
+			Name:        "Perfcounters",
+			Method:      "GET",
+			Path:        "/perfcounters",
+			HandlerFunc: common.PerfcountersHandlerAuth(),
+		},
+	}
+	s.RegisterRoutes(routes)
+}
+
 func NewServer(host string, serviceType common.ServiceType, addr string, port int, auth AuthenticationBackend, assetsFolder string) *Server {
 	router := mux.NewRouter().StrictSlash(true)
 	router.Headers("X-Host-ID", host, "X-Service-Type", serviceType.String())
@@ -318,6 +350,7 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 		Port:        port,
 		Auth:        auth,
 		extraAssets: make(map[string]ExtraAsset),
+		perfRoutes:  make(map[string]*common.PerfCounterIntRate),
 	}
 
 	if assetsFolder != "" {
@@ -330,6 +363,7 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 	router.PathPrefix("/topology").HandlerFunc(server.serveIndex)
 	router.HandleFunc("/", server.serveIndex)
 
+	//@perf server.registerPerfEndpoints()
 	return server
 }
 
