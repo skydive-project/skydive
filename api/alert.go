@@ -69,7 +69,7 @@ func (a *AlertResourceHandler) New() Resource {
 	}
 }
 
-// Name returns ressource name "alert"
+// Name returns resource name "alert"
 func (a *AlertResourceHandler) Name() string {
 	return "alert"
 }

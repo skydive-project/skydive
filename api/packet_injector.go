@@ -216,7 +216,7 @@ func (pi *PacketInjectorAPI) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-// RegisterPacketInjectorAPI registers a new packet injector ressource in the API
+// RegisterPacketInjectorAPI registers a new packet injector resource in the API
 func RegisterPacketInjectorAPI(pic *packet_injector.PacketInjectorClient, g *graph.Graph, r *shttp.Server) {
 	pia := &PacketInjectorAPI{
 		PIClient: pic,

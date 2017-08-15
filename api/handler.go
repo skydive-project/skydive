@@ -67,7 +67,7 @@ type BasicAPIHandler struct {
 	EtcdKeyAPI      etcd.KeysAPI
 }
 
-// WatcherCallback callback called by the ressources watcher
+// WatcherCallback callback called by the resources watcher
 type WatcherCallback func(action string, id string, resource Resource)
 
 // StoppableWatcher interface
@@ -75,7 +75,7 @@ type StoppableWatcher interface {
 	Stop()
 }
 
-// BasicStoppableWatcher basic implementation of a ressources watcher
+// BasicStoppableWatcher basic implementation of a resources watcher
 type BasicStoppableWatcher struct {
 	StoppableWatcher
 	watcher etcd.Watcher
