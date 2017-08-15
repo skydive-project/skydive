@@ -104,7 +104,7 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
 	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
 	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
-	cmd.Flags().Int64VarP(&interval, "interval", "", 1000, "wait interval seconds between sending each packet")
+	cmd.Flags().Int64VarP(&interval, "interval", "", 1000, "wait interval milliseconds between sending each packet")
 }
 
 func init() {
