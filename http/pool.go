@@ -35,17 +35,16 @@ import (
 // WSClientPool represents a pool of WebSocket clients
 type WSClientPool struct {
 	sync.RWMutex
-	quit              chan bool
-	broadcast         chan Message
-	clients           []WSClient
-	eventHandlers     []WSClientEventHandler
-	eventHandlersLock sync.RWMutex
-	bulkMaxMsgs       int
-	bulkMaxDelay      time.Duration
-	eventBuffer       []Message
-	eventBufferLock   sync.RWMutex
-	wg                sync.WaitGroup
-	running           atomic.Value
+	quit            chan bool
+	broadcast       chan Message
+	clients         []WSClient
+	eventHandlers   []WSClientEventHandler
+	bulkMaxMsgs     int
+	bulkMaxDelay    time.Duration
+	eventBuffer     []Message
+	eventBufferLock sync.RWMutex
+	wg              sync.WaitGroup
+	running         atomic.Value
 }
 
 // OnConnected event
@@ -112,9 +111,9 @@ func (a *WSClientPool) ConnectAll() {
 
 // Disconnect all clients
 func (a *WSClientPool) DisconnectAll() {
-	a.eventHandlersLock.Lock()
+	a.Lock()
 	a.eventHandlers = a.eventHandlers[:0]
-	a.eventHandlersLock.Unlock()
+	a.Unlock()
 
 	a.RLock()
 	for _, client := range a.clients {
@@ -192,9 +191,9 @@ func (a *WSClientPool) broadcastMessages(msgs []Message) {
 
 // Register a new event handler
 func (a *WSClientPool) AddEventHandler(h WSClientEventHandler) {
-	a.eventHandlersLock.Lock()
+	a.Lock()
 	a.eventHandlers = append(a.eventHandlers, h)
-	a.eventHandlersLock.Unlock()
+	a.Unlock()
 }
 
 func (a *WSClientPool) Run() {
