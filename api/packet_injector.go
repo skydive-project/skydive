@@ -72,21 +72,21 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 	srcNode := pi.getNode(ppr.Src)
 	dstNode := pi.getNode(ppr.Dst)
 
+	if srcNode == nil {
+		return "", nil, errors.New("Not able to find a source node")
+	}
+
 	ipField := "IPV4"
 	if ppr.Type == "icmp6" || ppr.Type == "tcp6" {
 		ipField = "IPV6"
 	}
 
 	if ppr.SrcIP == "" {
-		if srcNode != nil {
-			ips, _ := srcNode.GetFieldStringList(ipField)
-			if len(ips) == 0 {
-				return "", nil, errors.New("No source IP in node and user input")
-			}
-			ppr.SrcIP = ips[0]
-		} else {
-			return "", nil, errors.New("Not able to find a source node and source IP also empty")
+		ips, _ := srcNode.GetFieldStringList(ipField)
+		if len(ips) == 0 {
+			return "", nil, errors.New("No source IP in node and user input")
 		}
+		ppr.SrcIP = ips[0]
 	}
 
 	if ppr.DstIP == "" {
