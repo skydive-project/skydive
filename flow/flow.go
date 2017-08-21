@@ -37,6 +37,7 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -340,7 +341,6 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
-// Init a flow based on flow key and gopacket
 func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
 	f.Start = now
 	f.Last = now
@@ -366,9 +366,11 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 // Update a flow metrics
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
 	f.Last = now
-
 	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
 		f.updateMetricsWithNetworkLayer(packet)
+	}
+	if f.TCPFlowMetric != nil {
+		f.updateTCPMetrics(packet)
 	}
 }
 
@@ -499,6 +501,85 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 	return errors.New("Unable to decode the IP layer")
 }
 
+func (f *Flow) updateTCPMetrics(packet *gopacket.Packet) error {
+	// capture content of SYN packets
+	//bypass if not TCP
+	if f.Network == nil || f.Transport == nil || f.Transport.Protocol != FlowProtocol_TCPPORT {
+		return nil
+	}
+	var metadata *gopacket.PacketMetadata
+	if metadata = (*packet).Metadata(); metadata == nil {
+		return nil
+	}
+
+	tcpLayer := (*packet).Layer(layers.LayerTypeTCP)
+	tcpPacket, ok := tcpLayer.(*layers.TCP)
+	if !ok {
+		logging.GetLogger().Notice("Capture SYN unable to decode TCP layer. ignoring")
+		return nil
+	}
+
+	// we capture SYN, FIN & RST
+	if !(tcpPacket.SYN || tcpPacket.FIN || tcpPacket.RST) {
+		return nil
+	}
+	var srcIP string
+	var timeToLive uint32
+	switch f.Network.Protocol {
+	case FlowProtocol_IPV4:
+		ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+		ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
+		if !ok {
+			return errors.New("Unable to decode IPv4 Layer")
+		}
+		srcIP = ipv4Packet.SrcIP.String()
+		timeToLive = uint32(ipv4Packet.TTL)
+	case FlowProtocol_IPV6:
+		ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
+		ipv6Packet, ok := ipv6Layer.(*layers.IPv6)
+		if !ok {
+			return errors.New("Unable to decode IPv4 Layer")
+		}
+		srcIP = ipv6Packet.SrcIP.String()
+		timeToLive = uint32(ipv6Packet.HopLimit)
+	default:
+		logging.GetLogger().Notice("Capture SYN unknown IP version. ignoring")
+		return nil
+
+	}
+
+	captureTime := common.UnixMillis(metadata.CaptureInfo.Timestamp)
+
+	switch {
+	case tcpPacket.SYN:
+		if f.Network.A == srcIP {
+			if f.TCPFlowMetric.ABSynStart == 0 {
+				f.TCPFlowMetric.ABSynStart = captureTime
+				f.TCPFlowMetric.ABSynTTL = timeToLive
+			}
+		} else {
+			if f.TCPFlowMetric.BASynStart == 0 {
+				f.TCPFlowMetric.BASynStart = captureTime
+				f.TCPFlowMetric.BASynTTL = timeToLive
+			}
+		}
+	case tcpPacket.FIN:
+		if f.Network.A == srcIP {
+			f.TCPFlowMetric.ABFinStart = captureTime
+		} else {
+			f.TCPFlowMetric.BAFinStart = captureTime
+		}
+	case tcpPacket.RST:
+		if f.Network.A == srcIP {
+			f.TCPFlowMetric.ABRstStart = captureTime
+		} else {
+			f.TCPFlowMetric.BARstStart = captureTime
+		}
+	}
+
+	return nil
+}
+
 func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 	var transportLayer gopacket.Layer
 	var ok bool
@@ -528,6 +609,10 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
+		if config.GetConfig().GetBool("agent.capture_syn") {
+			f.TCPFlowMetric = &TCPMetric{}
+			return f.updateTCPMetrics(packet)
+		}
 	case FlowProtocol_UDPPORT:
 		transportPacket, _ := transportLayer.(*layers.UDP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
@@ -544,7 +629,6 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 // case of encapsulation like GRE, VXLAN, etc.
 func PacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bpf *BPF) *Packets {
 	flowPackets := &Packets{Timestamp: t}
-
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
 		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
 		logging.GetLogger().Debug((*packet).Dump())
@@ -572,7 +656,6 @@ func PacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bp
 
 	// length of the encapsulation header + the inner packet
 	topLayerLength := outerLength
-
 	var start int
 	var innerLength int
 	for i, layer := range packetLayers {
@@ -607,6 +690,9 @@ func PacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bp
 
 	if len(flowPackets.Packets) > 0 {
 		p := gopacket.NewPacket(packetData[start:], topLayer.LayerType(), gopacket.NoCopy)
+		if metadata := (*packet).Metadata(); metadata != nil {
+			p.Metadata().CaptureInfo = metadata.CaptureInfo
+		}
 		flowPackets.Packets = append(flowPackets.Packets, Packet{gopacket: &p, length: 0})
 	} else {
 		flowPackets.Packets = append(flowPackets.Packets, Packet{gopacket: packet, length: outerLength})
@@ -697,6 +783,34 @@ func (i *ICMPLayer) GetFieldInt64(field string) (int64, error) {
 	}
 }
 
+// GetFieldInt64 returns the value of a ICMP field
+func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
+	if i == nil {
+		return 0, common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "ABSynTTL":
+		return int64(i.ABSynTTL), nil
+	case "BASynTTL":
+		return int64(i.BASynTTL), nil
+	case "ABSynStart":
+		return i.ABSynStart, nil
+	case "BASynStart":
+		return i.BASynStart, nil
+	case "ABFinStart":
+		return i.ABFinStart, nil
+	case "BAFinStart":
+		return i.BAFinStart, nil
+	case "ABRstStart":
+		return i.BARstStart, nil
+	case "BARstStart":
+		return i.BARstStart, nil
+	default:
+		return 0, common.ErrFieldNotFound
+	}
+}
+
 // GetFieldString returns the value of a Flow field
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
@@ -770,6 +884,8 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Metric.GetFieldInt64(fields[1])
 	case "LastUpdateMetric":
 		return f.LastUpdateMetric.GetFieldInt64(fields[1])
+	case "TCPFlowMetric":
+		return f.TCPFlowMetric.GetFieldInt64(fields[1])
 	case "Link":
 		return f.Link.GetFieldInt64(fields[1])
 	case "Network":

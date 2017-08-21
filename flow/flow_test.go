@@ -33,6 +33,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 )
 
@@ -77,8 +78,9 @@ func TestFlowJSON(t *testing.T) {
 			A:        "value-1",
 			B:        "value-2",
 		},
-		Start: 1111,
-		Last:  222,
+		Start:            1111,
+		Last:             222,
+		LastUpdateMetric: &FlowMetric{},
 		Metric: &FlowMetric{
 			ABBytes:   33,
 			ABPackets: 34,
@@ -108,13 +110,19 @@ func TestFlowJSON(t *testing.T) {
 			v.ObjKV("A", v.String()),
 			v.ObjKV("B", v.String()),
 		)),
-		v.ObjKV("Metric", v.Object(
+		v.ObjKV("LastUpdateMetric", v.Object(
 			v.ObjKV("ABPackets", v.Number()),
 			v.ObjKV("ABBytes", v.Number()),
 			v.ObjKV("BAPackets", v.Number()),
 			v.ObjKV("BABytes", v.Number()),
 		)),
-	)
+		v.ObjKV("Metric", v.Object(
+			v.ObjKV("ABPackets", v.Number()),
+			v.ObjKV("ABBytes", v.Number()),
+			v.ObjKV("BAPackets", v.Number()),
+			v.ObjKV("BABytes", v.Number()),
+		),
+		))
 
 	var data interface{}
 	if err := json.Unmarshal(j, &data); err != nil {
@@ -177,6 +185,10 @@ func compareFlow(expected, tested *Flow) bool {
 	if expected.Metric != nil && !compareFlowMetric(expected.Metric, tested.Metric) {
 		return false
 	}
+	if expected.LastUpdateMetric != nil && !compareFlowMetric(expected.LastUpdateMetric,
+		tested.LastUpdateMetric) {
+		return false
+	}
 
 	return true
 }
@@ -190,13 +202,14 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 
 	var pcapPacketNB int
 	for {
-		data, _, err := handleRead.ReadPacketData()
+		data, ci, err := handleRead.ReadPacketData()
 		if err != nil && err != io.EOF {
 			t.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
 		} else if err == io.EOF {
 			break
 		} else {
 			p := gopacket.NewPacket(data, linkType, gopacket.Default)
+			p.Metadata().CaptureInfo = ci
 			if p.ErrorLayer() != nil {
 				t.Fatalf("Failed to decode packet with layer path '%s': %s\n", layerPathFromGoPacket(&p), p.ErrorLayer().Error())
 			}
@@ -204,7 +217,6 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 			if strings.Contains(layerPathFromGoPacket(&p), "DecodeFailure") {
 				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
 			}
-
 			fp := PacketsFromGoPacket(&p, 0, -1, bpf)
 			if fp == nil {
 				t.Fatal("Failed to get FlowPackets: ", err)
@@ -235,7 +247,6 @@ func getFlowChain(t *testing.T, table *Table, uuid string) []*Flow {
 Chain:
 	for {
 		flowChain = append(flowChain, fl)
-
 		searchQuery.Filter = filters.NewTermStringFilter("ParentUUID", fl.UUID)
 		children := table.getFlows(searchQuery).GetFlows()
 		switch len(children) {
@@ -273,10 +284,11 @@ func validateAllParentChains(t *testing.T, table *Table) {
 
 func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF) []*Flow {
 	table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{})
-
+	prev_value := config.GetConfig().GetBool("agent.capture_syn")
+	config.GetConfig().Set("agent.capture_syn", true)
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
-
 	validateAllParentChains(t, table)
+	config.GetConfig().Set("agent.capture_syn", prev_value)
 
 	return table.getFlows(&filters.SearchQuery{}).Flows
 }
@@ -314,6 +326,7 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 1,
 				BABytes:   42,
 			},
+			LastUpdateMetric: &FlowMetric{},
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/UDP/DNS",
@@ -339,6 +352,7 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 2,
 				BABytes:   256,
 			},
+			LastUpdateMetric: &FlowMetric{},
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/TCP",
@@ -364,6 +378,7 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 4,
 				BABytes:   760,
 			},
+			LastUpdateMetric: &FlowMetric{},
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/UDP/DNS",
@@ -389,6 +404,7 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 2,
 				BABytes:   190,
 			},
+			LastUpdateMetric: &FlowMetric{},
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/TCP",
@@ -414,6 +430,7 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 18,
 				BABytes:   21080,
 			},
+			LastUpdateMetric: &FlowMetric{},
 		},
 	}
 
@@ -758,4 +775,39 @@ func TestGREMPLS(t *testing.T) {
 	}
 
 	validatePCAP(t, "pcaptraces/gre-mpls-icmpv4.pcap", layers.LinkTypeEthernet, nil, expected)
+}
+
+func TestFlowSimpleSynFin(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet, nil)
+	// In test pcap SYNs happen at 2017-03-21 10:58:23.768977 +0200 IST
+	synTimestamp := int64(1490086703768)
+	// In test pcap FINs happen at 2017-03-21 10:58:27.507679 +0200 IST
+	finTimestamp := int64(1490086707507)
+	synTTL := uint32(64)
+
+	if len(flows) != 1 {
+		t.Error("A single packet must generate 1 flow")
+	}
+	if flows[0].TCPFlowMetric == nil {
+		t.Errorf("Flow SYN/FIN is disabled")
+		return
+	}
+	if flows[0].TCPFlowMetric.ABSynStart != synTimestamp {
+		t.Errorf("In the flow AB-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPFlowMetric.ABSynStart)
+	}
+	if flows[0].TCPFlowMetric.BASynStart != synTimestamp {
+		t.Errorf("In the flow BA-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPFlowMetric.BASynStart)
+	}
+	if flows[0].TCPFlowMetric.ABSynTTL != synTTL {
+		t.Errorf("In flow AB-SYN TTL is: %d, supposed to be: %d", flows[0].TCPFlowMetric.ABSynTTL, synTTL)
+	}
+	if flows[0].TCPFlowMetric.BASynTTL != synTTL {
+		t.Errorf("In flow BA-SYN TTL is: %d, supposed to be: %d", flows[0].TCPFlowMetric.BASynTTL, synTTL)
+	}
+	if flows[0].TCPFlowMetric.ABFinStart != finTimestamp {
+		t.Errorf("In the flow AB-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPFlowMetric.ABFinStart)
+	}
+	if flows[0].TCPFlowMetric.BAFinStart != finTimestamp {
+		t.Errorf("In the flow BA-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPFlowMetric.BAFinStart)
+	}
 }

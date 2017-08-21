@@ -68,7 +68,7 @@ const flowMapping = `
 		},
 		{
 			"start": {
-				"match": "Start",
+				"match": "*Start",
 				"mapping": {
 					"type": "date", "format": "epoch_millis"
 				}
