@@ -29,6 +29,14 @@ var TopologyComponent = {
                   title="Reset" @click="zoomReset">Reset</button>\
           <button id="expand-collapse" type="button" class="btn btn-primary" \
                   @click="toggleCollapse">{{collapsed ? "Expand" : "Collapse"}}</button>\
+          <button v-if="currentNode != null" id="expand-all" type="button" class="btn btn-primary" \
+                  title="Expand/Collapse Current Node Tree" @click="toggleExpandAll(currentNode)">\
+            <span>\
+              <i class="fa" \
+                      :class="{\'fa-expand\': currentNode.group.collapsed, \'fa-compress\': !currentNode.group.collapsed}">\
+              </i>\
+            </span>\
+          </button>\
         </div>\
       </div>\
       <div id="right-panel" class="col-sm-5 fill info">\
@@ -49,7 +57,12 @@ var TopologyComponent = {
             <span v-if="time" class="label center-block node-time">\
               Interface state at {{timeHuman}}\
             </span>\
-            <h1>metadatas<span class="pull-right">(id: {{currentNode.id}})</span></h1>\
+            <h1>metadatas<span class="pull-right">(id: {{currentNode.id}})\
+	      <i class="node-action fa"\
+	         title="Expand/Collapse Node"\
+		 :class="{\'fa-expand\': currentNode.group.collapsed, \'fa-compress\': !currentNode.group.collapsed}"\
+		 @click="toggleExpandAll(currentNode)"></i></span>\
+	    </h1>\
             <div id="metadata-panel" class="sub-left-panel">\
               <object-detail :object="currentNodeMetadata"></object-detail>\
             </div>\
@@ -259,6 +272,10 @@ var TopologyComponent = {
     expand: function() {
       this.collapsed = false;
       this.layout.collapse(this.collapsed);
+    },
+
+    toggleExpandAll: function(node) {
+      this.layout.toggleExpandAll(node);
     },
 
     extractMetadata: function(metadata, exclude) {

@@ -190,7 +190,7 @@ li.capture-item {
   padding-bottom: 5px;
 }
 
-.capture-action {
+.capture-action, .node-action {
   float: right;
   cursor: pointer;
   font-size: 1.2em;
