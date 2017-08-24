@@ -56,15 +56,20 @@ type OvsOfProbe struct {
 	sslOk        bool                      // cert private key and ca are provisionned.
 }
 
-// BridgeOfProbe is the type of the probe retrieving Openflow rules on a Bridge
+// BridgeOfProbe is the type of the probe retrieving Openflow rules on a Bridge.
+//
+// An important notion is the rawUUID of a rule or the UUID obtained by ignoring the priority from the
+// rule filter. Several rules may differ only by their priority (and associated actions). In practice the
+// highest priority hides the other rules. It is important to handle rules with the same rawUUID as a group
+// because ovs-ofctl monitor does not report priorities.
 type BridgeOfProbe struct {
-	Host       string           // The global host
-	Bridge     string           // The bridge monitored
-	UUID       string           // The UUID of the bridge node
-	Address    string           // The address of the bridge if different from name
-	BridgeNode *graph.Node      // the bridge node on which the rule nodes are attached.
-	OvsOfProbe *OvsOfProbe      // Back pointer to the probe
-	Rules      map[string]*Rule // The set of rules found so far.
+	Host       string             // The global host
+	Bridge     string             // The bridge monitored
+	UUID       string             // The UUID of the bridge node
+	Address    string             // The address of the bridge if different from name
+	BridgeNode *graph.Node        // the bridge node on which the rule nodes are attached.
+	OvsOfProbe *OvsOfProbe        // Back pointer to the probe
+	Rules      map[string][]*Rule // The set of rules found so far grouped by rawUUID
 	cancel     context.CancelFunc
 }
 
@@ -81,10 +86,11 @@ type Rule struct {
 
 // Event is an event as monitored by ovs-ofctl monitor <br> watch:
 type Event struct {
-	Rule   *Rule  // The rule modified
-	Date   int64  // the date of the event
-	Action string // the action taken
-	Bridge string // The bridge whtere it ocured
+	RawRule *Rule   // The rule from the event
+	Rules   []*Rule // Rules found by ovs-ofctl matching the event rule filter.
+	Date    int64   // the date of the event
+	Action  string  // the action taken
+	Bridge  string  // The bridge whtere it ocured
 }
 
 // ProtectCommas substitute commas with semicolon
@@ -195,7 +201,7 @@ func parseEvent(line string, bridge string, prefix string) (Event, error) {
 	if !strings.HasPrefix(components[tentative], "cookie=") {
 		rule.Filter = components[tentative]
 	}
-	result.Rule = &rule
+	result.RawRule = &rule
 	fillUUID(&rule, prefix)
 	result.Date = time.Now().Unix()
 	result.Bridge = bridge
@@ -214,17 +220,17 @@ func fillUUID(rule *Rule, prefix string) {
 
 // parseRule transforms a single line of ofctl dump-flow in a rule.
 // The line DOES NOT include the terminating newline. Protected commas will be replaced.
-func parseRule(line string) (Rule, error) {
+func parseRule(line string) (*Rule, error) {
 	var rule Rule
 	if len(line) == 0 || line[0] != ' ' {
-		return rule, errors.New("No rule: " + line)
+		return nil, errors.New("No rule: " + line)
 	}
 	if strings.ContainsRune(line, '(') {
 		line = protectCommas(line)
 	}
 	components := strings.Split(line[1:], ", ")
 	if len(components) < 2 {
-		return rule, errors.New("Rule syntax")
+		return nil, errors.New("Rule syntax")
 	}
 	fillIn(components, &rule, nil)
 	tail := components[len(components)-1]
@@ -233,9 +239,9 @@ func parseRule(line string) (Rule, error) {
 		rule.Filter = components[0]
 		rule.Actions = components[1]
 	} else {
-		return rule, errors.New("Rule syntax split filter and actions")
+		return nil, errors.New("Rule syntax split filter and actions")
 	}
-	return rule, nil
+	return &rule, nil
 }
 
 func makeFilter(rule *Rule) string {
@@ -342,9 +348,9 @@ func countElements(filter string) int {
 	return l
 }
 
-// completeRule completes the rule by looking at it again but with dump-flows. This gives back more elements such as priority.
-func completeRule(o *OvsOfProbe, event *Event) error {
-	oldrule := event.Rule
+// completeEvent completes the event by looking at it again but with dump-flows and a filter including table. This gives back more elements such as priority.
+func completeEvent(o *OvsOfProbe, event *Event, prefix string) error {
+	oldrule := event.RawRule
 	bridge := event.Bridge
 	// We want exactly n+1 items where n was the number of items in old filters. The reason is that now
 	// the priority is provided. Another approach would be to use the shortest filter as it is the more generic
@@ -358,21 +364,13 @@ func completeRule(o *OvsOfProbe, event *Event) error {
 	if err != nil {
 		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, o.Host, filter, err.Error())
 	}
-	done := false
 	for _, line := range strings.Split(lines, "\n") {
 		rule, err2 := parseRule(line)
 		if err2 == nil && countElements(rule.Filter) == expected && oldrule.Cookie == rule.Cookie {
-			if done {
-				logging.GetLogger().Errorf("Multiple completion for rule on %s@%s with filter %s", bridge, o.Host, filter)
-			}
-			oldrule.Filter = rule.Filter
-			oldrule.Actions = rule.Actions
-			done = true
+			fillUUID(rule, prefix)
+			extractPriority(rule)
+			event.Rules = append(event.Rules, rule)
 		}
-	}
-	extractPriority(oldrule)
-	if !done {
-		return fmt.Errorf("Cannot complete rule on %s@%s with filter %s", bridge, o.Host, filter)
 	}
 	return nil
 }
@@ -410,6 +408,15 @@ func (probe *BridgeOfProbe) delRule(rule *Rule) {
 	}
 }
 
+func containsRule(rules []*Rule, searched *Rule) bool {
+	for _, rule := range rules {
+		if rule.UUID == searched.UUID {
+			return true
+		}
+	}
+	return false
+}
+
 // monitor monitors the openflow rules of a bridge by launching a goroutine. The context is used to control the execution of the routine.
 func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 	ofp := probe.OvsOfProbe
@@ -426,20 +433,32 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 		for line := range lines {
 			event, err := parseEvent(line, probe.Bridge, prefix)
 			if err == nil {
+				err = completeEvent(ofp, &event, prefix)
+				if err != nil {
+					logging.GetLogger().Error(err.Error())
+				}
+				rawUUID := event.RawRule.UUID
+				oldRules := probe.Rules[rawUUID]
 				switch event.Action {
 				case "ADDED":
-					err = completeRule(ofp, &event)
-					if err != nil {
-						logging.GetLogger().Error(err.Error())
+					for _, rule := range event.Rules {
+						if !containsRule(oldRules, rule) {
+							oldRules = append(oldRules, rule)
+							probe.addRule(rule)
+						}
 					}
-					rule := event.Rule
-					if _, here := probe.Rules[rule.UUID]; !here {
-						probe.Rules[rule.UUID] = rule
-						probe.addRule(rule)
-					}
+					probe.Rules[rawUUID] = oldRules
 				case "DELETED":
-					delete(probe.Rules, event.Rule.UUID)
-					probe.delRule(event.Rule)
+					for _, oldRule := range oldRules {
+						if !containsRule(event.Rules, oldRule) {
+							probe.delRule(oldRule)
+						}
+					}
+					if len(event.Rules) == 0 {
+						delete(probe.Rules, rawUUID)
+					} else {
+						probe.Rules[rawUUID] = event.Rules
+					}
 				}
 			} else {
 				if _, ok := err.(*noEventError); !ok {
@@ -447,7 +466,6 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 				}
 			}
 		}
-
 	}()
 	return nil
 }
@@ -466,7 +484,7 @@ func (o *OvsOfProbe) NewBridgeProbe(host string, bridge string, uuid string, bri
 		Address:    address,
 		BridgeNode: bridgeNode,
 		OvsOfProbe: o,
-		Rules:      make(map[string]*Rule),
+		Rules:      make(map[string][]*Rule),
 		cancel:     cancel}
 	err := probe.monitor(ctx)
 	return probe, err
