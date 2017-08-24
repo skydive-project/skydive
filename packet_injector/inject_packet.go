@@ -152,7 +152,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
 		layerType = layers.LayerTypeTCP
 		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ethLayer, ipLayer, tcpLayer)
+		l = append(l, ethLayer, ipLayer, tcpLayer, payload)
 	case "tcp6":
 		ethLayer.EthernetType = layers.EthernetTypeIPv6
 		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolTCP}
@@ -161,7 +161,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
 		layerType = layers.LayerTypeTCP
 		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ethLayer, ipLayer, tcpLayer)
+		l = append(l, ethLayer, ipLayer, tcpLayer, payload)
 	default:
 		rawSocket.Close()
 		return "", fmt.Errorf("Unsupported traffic type '%s'", pp.Type)
