@@ -100,7 +100,6 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *types.Captur
 		}
 		return false
 	}
-
 	o.Lock()
 	defer o.Unlock()
 

@@ -99,6 +99,51 @@ func TestFlowSimpleIPv6(t *testing.T) {
 	}
 }
 
+func TestFlowFramgmentIPv4Disabled(t *testing.T) {
+	oldFrag := IPv4Defragmentation
+	IPv4Defragmentation = false
+	flows := flowsFromPCAP(t, "pcaptraces/ipv4-fragments.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 2 {
+		t.Error("A fragmented packets must generate 2 flow", len(flows))
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/Fragment" {
+		if flows[1].LayersPath != "Ethernet/IPv4/Fragment" {
+			t.Errorf("Flow LayersPath must be Ethernet/IPv4/Fragment got : %s %s", flows[0].LayersPath, flows[1].LayersPath)
+		}
+	}
+	IPv4Defragmentation = oldFrag
+}
+
+func TestFlowFramgmentIPv4Enabled(t *testing.T) {
+	oldFrag := IPv4Defragmentation
+	IPv4Defragmentation = true
+	flows := flowsFromPCAP(t, "pcaptraces/ipv4-fragments.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 1 {
+		t.Error("A fragmented packets must generate 1 flow", len(flows))
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/Fragment/ICMPv4" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/Fragment/ICMPv4 got : %s", flows[0].LayersPath)
+	}
+	if flows[0].IPMetric.FragmentErrors != 0 || flows[0].IPMetric.Fragments != 1 {
+		t.Errorf("Flow IPMetric fragmentErrors %d fragments %d", flows[0].IPMetric.FragmentErrors, flows[0].IPMetric.Fragments)
+	}
+	IPv4Defragmentation = oldFrag
+}
+
+func TestFlowTCPSegments(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/eth-ipv4-tcp-http-ooo.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 1 {
+		t.Error("A out of order tcp packets must generate 1 flow", len(flows))
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/TCP" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/TCP got : %s", flows[0].LayersPath)
+	}
+	m := flows[0].TCPMetric
+	if !(m.ABSegmentOutOfOrder == 0 && m.BASegmentOutOfOrder == 3) {
+		t.Errorf("Flow SegmentOutOfOrder do not match, got : %d %d", m.ABSegmentOutOfOrder, m.BASegmentOutOfOrder)
+	}
+}
+
 func TestBPFFilter(t *testing.T) {
 	bpf, err := NewBPF(layers.LinkTypeEthernet, DefaultCaptureLength, "port 53 or port 80")
 	if err != nil {
@@ -331,7 +376,7 @@ func validateAllParentChains(t *testing.T, table *Table) {
 }
 
 func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF) []*Flow {
-	table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{TCPMetric: true})
+	table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{TCPIPMetric: true, TCPReassembly: true})
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 	validateAllParentChains(t, table)
 
@@ -828,27 +873,27 @@ func TestFlowSimpleSynFin(t *testing.T) {
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
 	}
-	if flows[0].TCPFlowMetric == nil {
+	if flows[0].TCPMetric == nil {
 		t.Errorf("Flow SYN/FIN is disabled")
 		return
 	}
-	if flows[0].TCPFlowMetric.ABSynStart != synTimestamp {
-		t.Errorf("In the flow AB-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPFlowMetric.ABSynStart)
+	if flows[0].TCPMetric.ABSynStart != synTimestamp {
+		t.Errorf("In the flow AB-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPMetric.ABSynStart)
 	}
-	if flows[0].TCPFlowMetric.BASynStart != synTimestamp {
-		t.Errorf("In the flow BA-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPFlowMetric.BASynStart)
+	if flows[0].TCPMetric.BASynStart != synTimestamp {
+		t.Errorf("In the flow BA-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPMetric.BASynStart)
 	}
-	if flows[0].TCPFlowMetric.ABSynTTL != synTTL {
-		t.Errorf("In flow AB-SYN TTL is: %d, supposed to be: %d", flows[0].TCPFlowMetric.ABSynTTL, synTTL)
+	if flows[0].TCPMetric.ABSynTTL != synTTL {
+		t.Errorf("In flow AB-SYN TTL is: %d, supposed to be: %d", flows[0].TCPMetric.ABSynTTL, synTTL)
 	}
-	if flows[0].TCPFlowMetric.BASynTTL != synTTL {
-		t.Errorf("In flow BA-SYN TTL is: %d, supposed to be: %d", flows[0].TCPFlowMetric.BASynTTL, synTTL)
+	if flows[0].TCPMetric.BASynTTL != synTTL {
+		t.Errorf("In flow BA-SYN TTL is: %d, supposed to be: %d", flows[0].TCPMetric.BASynTTL, synTTL)
 	}
-	if flows[0].TCPFlowMetric.ABFinStart != finTimestamp {
-		t.Errorf("In the flow AB-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPFlowMetric.ABFinStart)
+	if flows[0].TCPMetric.ABFinStart != finTimestamp {
+		t.Errorf("In the flow AB-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPMetric.ABFinStart)
 	}
-	if flows[0].TCPFlowMetric.BAFinStart != finTimestamp {
-		t.Errorf("In the flow BA-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPFlowMetric.BAFinStart)
+	if flows[0].TCPMetric.BAFinStart != finTimestamp {
+		t.Errorf("In the flow BA-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPMetric.BAFinStart)
 	}
 }
 

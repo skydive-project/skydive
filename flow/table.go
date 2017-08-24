@@ -29,6 +29,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/tcpassembly"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -65,34 +69,135 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
 	}
 }
 
-// TableOpt defines flow table options
+// TableOpts defines flow table options
 type TableOpts struct {
-	RawPacketLimit int64
-	TCPMetric      bool
+	RawPacketLimit                   int64
+	TCPIPMetric                      bool
+	TCPReassembly                    bool
+	TCPReassemblyBufferPerConnection int
+	TCPReassemblyBufferedTotal       int
 }
 
 // Table store the flow table and related metrics mechanism
 type Table struct {
-	Opts           TableOpts
-	packetSeqChan  chan *PacketSequence
-	flowChan       chan *Flow
-	table          map[string]*Flow
-	flush          chan bool
-	flushDone      chan bool
-	query          chan *TableQuery
-	reply          chan *TableReply
-	state          int64
-	lockState      sync.RWMutex
-	wg             sync.WaitGroup
-	quit           chan bool
-	updateHandler  *Handler
-	lastUpdate     int64
-	updateVersion  int64
-	expireHandler  *Handler
-	lastExpire     int64
-	nodeTID        string
-	pipeline       *EnhancerPipeline
-	pipelineConfig *EnhancerPipelineConfig
+	Opts                       TableOpts
+	packetSeqChan              chan *PacketSequence
+	flowChan                   chan *Flow
+	table                      map[string]*Flow
+	flush                      chan bool
+	flushDone                  chan bool
+	query                      chan *TableQuery
+	reply                      chan *TableReply
+	state                      int64
+	lockState                  sync.RWMutex
+	wg                         sync.WaitGroup
+	quit                       chan bool
+	updateHandler              *Handler
+	lastUpdate                 int64
+	updateVersion              int64
+	expireHandler              *Handler
+	lastExpire                 int64
+	nodeTID                    string
+	pipeline                   *EnhancerPipeline
+	pipelineConfig             *EnhancerPipelineConfig
+	tcpAssembler               *tcpassembly.Assembler
+	tcpReassemblyFlushDuration time.Duration
+	tcpReassemblyFlowKey       map[uint64]string
+}
+
+// TCPIPstatsStreamFactory implements tcpassembly.StreamFactory
+type TCPIPstatsStreamFactory struct {
+	flowTable *Table
+}
+
+// TCPIPstatsStream will handle the actual decoding of stats requests.
+type TCPIPstatsStream struct {
+	flowTable                                         *Table
+	key                                               uint64
+	net, transport                                    gopacket.Flow
+	bytes, packets, outOfOrder, skipped, skippedBytes int64
+	start, end                                        time.Time
+	sawStart, sawEnd                                  bool
+}
+
+// New creates a new stream.  It's called whenever the assembler sees a stream
+// it isn't currently following.
+func (factory *TCPIPstatsStreamFactory) New(net, transport gopacket.Flow) tcpassembly.Stream {
+	s := &TCPIPstatsStream{
+		flowTable: factory.flowTable,
+		key:       net.FastHash() ^ transport.FastHash(),
+		net:       net,
+		transport: transport,
+	}
+	return s
+}
+
+// Reassembled is called whenever new packet data is available for reading.
+// Reassembly objects contain stream data in received order.
+func (s *TCPIPstatsStream) Reassembled(reassemblies []tcpassembly.Reassembly) {
+	for _, reassembly := range reassemblies {
+		if s.start.IsZero() {
+			s.start = reassembly.Seen
+			s.end = s.start
+		}
+		if reassembly.Seen.Before(s.end) {
+			s.outOfOrder++
+		} else {
+			s.end = reassembly.Seen
+		}
+		s.bytes += int64(len(reassembly.Bytes))
+		s.packets++
+		if reassembly.Skip != 0 {
+			s.skipped++
+			if reassembly.Skip > 0 {
+				s.skippedBytes += int64(reassembly.Skip)
+			}
+		}
+		s.sawStart = s.sawStart || reassembly.Start
+		s.sawEnd = s.sawEnd || reassembly.End
+	}
+}
+
+// ReassemblyComplete is called when the TCP assembler believes a stream has finished.
+func (s *TCPIPstatsStream) ReassemblyComplete() {
+	flowKey, ok := s.flowTable.tcpReassemblyFlowKey[s.key]
+	if !ok {
+		return
+	}
+	f, ok := s.flowTable.table[flowKey]
+	if !ok {
+		return
+	}
+	m := f.TCPMetric
+	if m == nil {
+		m = &TCPMetric{}
+	}
+	if f.GetNetwork().A == s.net.Src().String() && f.GetTransport().A == s.transport.Src().String() {
+		m.ABSegmentOutOfOrder = s.outOfOrder
+		m.ABSegmentSkipped = s.skipped
+		m.ABSegmentSkippedBytes = s.skippedBytes
+		m.ABBytes = s.bytes
+		m.ABPackets = s.packets
+		if s.sawStart {
+			m.ABSawStart = 1
+		}
+		if s.sawEnd {
+			m.ABSawEnd = 1
+		}
+	} else {
+		m.BASegmentOutOfOrder = s.outOfOrder
+		m.BASegmentSkipped = s.skipped
+		m.BASegmentSkippedBytes = s.skippedBytes
+		m.BABytes = s.bytes
+		m.BAPackets = s.packets
+		if s.sawStart {
+			m.BASawStart = 1
+		}
+		if s.sawEnd {
+			m.BASawEnd = 1
+		}
+	}
+	f.TCPMetric = m
 }
 
 // NewTable creates a new flow table
@@ -115,8 +220,19 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 		t.Opts = opts[0]
 	}
 
-	t.updateVersion = 0
+	if t.Opts.TCPReassembly == true {
+		streamFactory := &TCPIPstatsStreamFactory{flowTable: t}
+		streamPool := tcpassembly.NewStreamPool(streamFactory)
+		t.tcpAssembler = tcpassembly.NewAssembler(streamPool)
+		t.tcpAssembler.MaxBufferedPagesPerConnection = t.Opts.TCPReassemblyBufferPerConnection
+		t.tcpAssembler.MaxBufferedPagesTotal = t.Opts.TCPReassemblyBufferedTotal
+		if expireHandler != nil {
+			t.tcpReassemblyFlushDuration = expireHandler.every
+		}
+		t.tcpReassemblyFlowKey = make(map[uint64]string)
+	}
 
+	t.updateVersion = 0
 	return t
 }
 
@@ -331,12 +447,27 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3ID int64) *Flow {
+func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3ID int64, ipFragStat IPFragmentStat) *Flow {
 	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
+
+	if ft.tcpAssembler != nil {
+		tcp := (*packet.gopacket).Layer(layers.LayerTypeTCP)
+		if tcp != nil {
+			netFlow := (*packet.gopacket).NetworkLayer().NetworkFlow()
+			tcp := tcp.(*layers.TCP)
+			ft.tcpReassemblyFlowKey[netFlow.FastHash()^tcp.TransportFlow().FastHash()] = key
+			ft.tcpAssembler.AssembleWithTimestamp(
+				netFlow,
+				tcp,
+				(*packet.gopacket).Metadata().CaptureInfo.Timestamp)
+		}
+	}
+
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
 		opts := FlowOpts{
-			TCPMetric: ft.Opts.TCPMetric,
+			TCPMetric:      ft.Opts.TCPIPMetric,
+			IPFragmentStat: ipFragStat,
 		}
 
 		uuids := FlowUUIDs{
@@ -372,7 +503,7 @@ func (ft *Table) processPacketSeq(ps *PacketSequence) {
 	var L3ID int64
 	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.nodeTID)
 	for _, packet := range ps.Packets {
-		f := ft.packetToFlow(&packet, parentUUID, L2ID, L3ID)
+		f := ft.packetToFlow(&packet, parentUUID, L2ID, L3ID, ps.IPFragmentStat)
 		parentUUID = f.UUID
 		if f.Link != nil {
 			L2ID = f.Link.ID
@@ -420,10 +551,16 @@ func (ft *Table) Run() {
 		case <-ft.quit:
 			return
 		case now := <-expireTicker.C:
+			if ft.tcpAssembler != nil {
+				ft.tcpAssembler.FlushOlderThan(time.Now().Add(ft.tcpReassemblyFlushDuration))
+			}
 			ft.expireAt(now)
 		case now := <-updateTicker.C:
 			ft.updateAt(now)
 		case <-ft.flush:
+			if ft.tcpAssembler != nil {
+				ft.tcpAssembler.FlushAll()
+			}
 			ft.expireNow()
 			ft.flushDone <- true
 		case query, ok := <-ft.query:

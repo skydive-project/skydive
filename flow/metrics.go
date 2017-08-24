@@ -48,17 +48,31 @@ func (fm *FlowMetric) Copy() *FlowMetric {
 	}
 }
 
-// Copy extended metric
+// Copy TCP metric
 func (tm *TCPMetric) Copy() *TCPMetric {
 	return &TCPMetric{
-		ABSynStart: tm.ABSynStart,
-		BASynStart: tm.BASynStart,
-		ABSynTTL:   tm.ABSynTTL,
-		BASynTTL:   tm.BASynTTL,
-		ABFinStart: tm.ABFinStart,
-		BAFinStart: tm.BAFinStart,
-		ABRstStart: tm.ABRstStart,
-		BARstStart: tm.BARstStart,
+		ABSynStart:            tm.ABSynStart,
+		BASynStart:            tm.BASynStart,
+		ABSynTTL:              tm.ABSynTTL,
+		BASynTTL:              tm.BASynTTL,
+		ABFinStart:            tm.ABFinStart,
+		BAFinStart:            tm.BAFinStart,
+		ABRstStart:            tm.ABRstStart,
+		BARstStart:            tm.BARstStart,
+		ABSegmentOutOfOrder:   tm.ABSegmentOutOfOrder,
+		ABSegmentSkipped:      tm.ABSegmentSkipped,
+		ABSegmentSkippedBytes: tm.ABSegmentSkippedBytes,
+		ABPackets:             tm.ABPackets,
+		ABBytes:               tm.ABBytes,
+		ABSawStart:            tm.ABSawStart,
+		ABSawEnd:              tm.ABSawEnd,
+		BASegmentOutOfOrder:   tm.BASegmentOutOfOrder,
+		BASegmentSkipped:      tm.BASegmentSkipped,
+		BASegmentSkippedBytes: tm.BASegmentSkippedBytes,
+		BAPackets:             tm.BAPackets,
+		BABytes:               tm.BABytes,
+		BASawStart:            tm.BASawStart,
+		BASawEnd:              tm.BASawEnd,
 	}
 }
 
