@@ -72,9 +72,10 @@ type flowState struct {
 type Packet struct {
 	GoPacket gopacket.Packet // orignal gopacket
 
-	Layers []gopacket.Layer // layer of the sub packet
-	Data   []byte           // byte of the sub packet
-	Length int64            // length of the original packet meaning layers + payload
+	Layers   []gopacket.Layer // layer of the sub packet
+	Data     []byte           // byte of the sub packet
+	Length   int64            // length of the original packet meaning layers + payload
+	IPMetric *IPMetric
 
 	linkLayer        gopacket.LinkLayer        // fast access to link layer
 	networkLayer     gopacket.NetworkLayer     // fast access to network layer
@@ -96,6 +97,7 @@ type RawPackets struct {
 // FlowOpts describes options that can be used to process flows
 type FlowOpts struct {
 	TCPMetric bool
+	IPDefrag  bool
 }
 
 // FlowUUIDs describes UUIDs that can be applied to flows
@@ -518,7 +520,7 @@ func (f *Flow) Update(packet *Packet) {
 	if updated := f.updateMetricsWithLinkLayer(packet); !updated {
 		f.updateMetricsWithNetworkLayer(packet)
 	}
-	if f.TCPFlowMetric != nil {
+	if f.TCPMetric != nil {
 		f.updateTCPMetrics(packet)
 	}
 }
@@ -591,6 +593,7 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 			B:        ipv4Packet.DstIP.String(),
 			ID:       networkID(packet),
 		}
+		f.IPMetric = packet.IPMetric
 
 		icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
 		if layer, ok := icmpLayer.(*ICMPv4); ok {
@@ -678,7 +681,7 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet) error {
 
 func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	// capture content of SYN packets
-	//bypass if not TCP
+	// bypass if not TCP
 	if f.Network == nil || f.Transport == nil || f.Transport.Protocol != FlowProtocol_TCP {
 		return nil
 	}
@@ -728,27 +731,27 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	switch {
 	case tcpPacket.SYN:
 		if f.Network.A == srcIP {
-			if f.TCPFlowMetric.ABSynStart == 0 {
-				f.TCPFlowMetric.ABSynStart = captureTime
-				f.TCPFlowMetric.ABSynTTL = timeToLive
+			if f.TCPMetric.ABSynStart == 0 {
+				f.TCPMetric.ABSynStart = captureTime
+				f.TCPMetric.ABSynTTL = timeToLive
 			}
 		} else {
-			if f.TCPFlowMetric.BASynStart == 0 {
-				f.TCPFlowMetric.BASynStart = captureTime
-				f.TCPFlowMetric.BASynTTL = timeToLive
+			if f.TCPMetric.BASynStart == 0 {
+				f.TCPMetric.BASynStart = captureTime
+				f.TCPMetric.BASynTTL = timeToLive
 			}
 		}
 	case tcpPacket.FIN:
 		if f.Network.A == srcIP {
-			f.TCPFlowMetric.ABFinStart = captureTime
+			f.TCPMetric.ABFinStart = captureTime
 		} else {
-			f.TCPFlowMetric.BAFinStart = captureTime
+			f.TCPMetric.BAFinStart = captureTime
 		}
 	case tcpPacket.RST:
 		if f.Network.A == srcIP {
-			f.TCPFlowMetric.ABRstStart = captureTime
+			f.TCPMetric.ABRstStart = captureTime
 		} else {
-			f.TCPFlowMetric.BARstStart = captureTime
+			f.TCPMetric.BARstStart = captureTime
 		}
 	}
 
@@ -763,7 +766,7 @@ func (f *Flow) newTransportLayer(packet *Packet, tcpMetric bool) error {
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
 		if tcpMetric {
-			f.TCPFlowMetric = &TCPMetric{}
+			f.TCPMetric = &TCPMetric{}
 			f.updateTCPMetrics(packet)
 		}
 	} else if layer := packet.Layer(layers.LayerTypeUDP); layer != nil {
@@ -787,8 +790,18 @@ func (f *Flow) newTransportLayer(packet *Packet, tcpMetric bool) error {
 
 // PacketSeqFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
-func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF) *PacketSequence {
+func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF, defragger *IPDefragger) *PacketSequence {
 	ps := &PacketSequence{}
+
+	// defragment and set ip metric if requested
+	var ipMetric *IPMetric
+	if defragger != nil {
+		m, ok := defragger.Defrag(packet)
+		if !ok {
+			return ps
+		}
+		ipMetric = m
+	}
 
 	if packet.LinkLayer() == nil && packet.NetworkLayer() == nil {
 		logging.GetLogger().Debugf("Unknown packet : %s\n", packet.Dump())
@@ -863,6 +876,7 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF) 
 		Layers:   packetLayers[topLayerIndex:],
 		Data:     packetData[topLayerOffset:],
 		Length:   int64(topLayerLength),
+		IPMetric: ipMetric,
 	}
 	if len(ps.Packets) == 0 {
 		// As this is the top flow, we can use the layer pointer from GoPacket
@@ -878,7 +892,7 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF) 
 
 // PacketSeqFromSFlowSample returns an array of Packets as a sample
 // contains mutlple records which generate a Packets each.
-func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF) []*PacketSequence {
+func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF, defragger *IPDefragger) []*PacketSequence {
 	var pss []*PacketSequence
 
 	for _, rec := range sample.Records {
@@ -895,7 +909,7 @@ func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF) []*Packe
 			m.CaptureInfo.Timestamp = time.Now()
 		}
 		// each record can generate multiple Packet in case of encapsulation
-		if ps := PacketSeqFromGoPacket(record.Header, int64(record.FrameLength-record.PayloadRemoved), bpf); len(ps.Packets) > 0 {
+		if ps := PacketSeqFromGoPacket(record.Header, int64(record.FrameLength-record.PayloadRemoved), bpf, defragger); len(ps.Packets) > 0 {
 			pss = append(pss, ps)
 		}
 	}
@@ -961,7 +975,22 @@ func (i *ICMPLayer) GetFieldInt64(field string) (int64, error) {
 	}
 }
 
-// GetFieldInt64 returns the value of a ICMP field
+// GetFieldInt64 returns the value of a IPMetric field
+func (i *IPMetric) GetFieldInt64(field string) (int64, error) {
+	if i == nil {
+		return 0, common.ErrFieldNotFound
+	}
+	switch field {
+	case "Fragments":
+		return i.Fragments, nil
+	case "FragmentErrors":
+		return i.FragmentErrors, nil
+	default:
+		return 0, common.ErrFieldNotFound
+	}
+}
+
+// GetFieldInt64 returns the value of a TCPMetric field
 func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
 	if i == nil {
 		return 0, common.ErrFieldNotFound
@@ -984,6 +1013,34 @@ func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
 		return i.BARstStart, nil
 	case "BARstStart":
 		return i.BARstStart, nil
+	case "ABSegmentOutOfOrder":
+		return i.ABSegmentOutOfOrder, nil
+	case "ABSegmentSkipped":
+		return i.ABSegmentSkipped, nil
+	case "ABSegmentSkippedBytes":
+		return i.ABSegmentSkippedBytes, nil
+	case "ABPackets":
+		return i.ABPackets, nil
+	case "ABBytes":
+		return i.ABBytes, nil
+	case "ABSawStart":
+		return i.ABSawStart, nil
+	case "ABSawEnd":
+		return i.ABSawEnd, nil
+	case "BASegmentOutOfOrder":
+		return i.BASegmentOutOfOrder, nil
+	case "BASegmentSkipped":
+		return i.BASegmentSkipped, nil
+	case "BASegmentSkippedBytes":
+		return i.BASegmentSkippedBytes, nil
+	case "BAPackets":
+		return i.BAPackets, nil
+	case "BABytes":
+		return i.BABytes, nil
+	case "BASawStart":
+		return i.BASawStart, nil
+	case "BASawEnd":
+		return i.BASawEnd, nil
 	default:
 		return 0, common.ErrFieldNotFound
 	}
@@ -1064,8 +1121,10 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Metric.GetFieldInt64(fields[1])
 	case "LastUpdateMetric":
 		return f.LastUpdateMetric.GetFieldInt64(fields[1])
-	case "TCPFlowMetric":
-		return f.TCPFlowMetric.GetFieldInt64(fields[1])
+	case "TCPMetric":
+		return f.TCPMetric.GetFieldInt64(fields[1])
+	case "IPMetric":
+		return f.IPMetric.GetFieldInt64(fields[1])
 	case "Link":
 		return f.Link.GetFieldInt64(fields[1])
 	case "Network":
@@ -1088,8 +1147,8 @@ func (f *Flow) GetFieldInterface(field string) (_ interface{}, err error) {
 		return f.Metric, nil
 	case "LastUpdateMetric":
 		return f.LastUpdateMetric, nil
-	case "TCPFlowMetric":
-		return f.TCPFlowMetric, nil
+	case "TCPMetric":
+		return f.TCPMetric, nil
 	case "Link":
 		return f.Link, nil
 	case "Network":

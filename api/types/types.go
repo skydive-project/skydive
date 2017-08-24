@@ -93,6 +93,8 @@ type Capture struct {
 	RawPacketLimit int    `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit"`
 	HeaderSize     int    `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize"`
 	ExtraTCPMetric bool   `json:"ExtraTCPMetric"`
+	IPDefrag       bool   `json:"IPDefrag"`
+	ReassembleTCP  bool   `json:"ReassembleTCP"`
 }
 
 // ID returns the capture Identifier

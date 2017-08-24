@@ -94,9 +94,7 @@ func packetHandler(packets []*packet.Packet, next []bool, nbPackets uint, contex
 
 	for i := uint(0); i < nbPackets; i++ {
 		packet := gopacket.NewPacket(packets[i].GetRawPacketBytes(), layers.LayerTypeEthernet, gopacket.Default)
-		if ps := flow.PacketSeqFromGoPacket(&packet, 0, nil); len(ps.Packets) > 0 {
-			ctx.packetSeqChan <- ps
-		}
+		ctx.ft.FeedWithGoPacket(packet, nil)
 		next[i] = false
 	}
 }
@@ -137,8 +135,8 @@ type dpdkPort struct {
 }
 
 type ctxQueue struct {
-	enabled       *atomic.Value
-	packetSeqChan chan *flow.PacketSequence
+	enabled *atomic.Value
+	ft      *flow.Table
 }
 
 func (c ctxQueue) Copy() interface{} {
@@ -180,7 +178,6 @@ func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKP
 
 	opts := flow.TableOpts{
 		RawPacketLimit: 0,
-		TCPMetric:      false,
 	}
 
 	dph := &DPDKProbesHandler{
@@ -219,10 +216,10 @@ func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKP
 		for i := 0; i < nbWorkers; i++ {
 			ft := fpta.Alloc(tid, opts)
 
-			ps, _ := ft.Start()
+			ft.Start()
 			ctx := ctxQueue{
-				packetSeqChan: ps,
-				enabled:       &atomic.Value{},
+				ft:      ft,
+				enabled: &atomic.Value{},
 			}
 			ctx.enabled.Store(false)
 			port.queues = append(port.queues, &ctx)
