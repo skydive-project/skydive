@@ -1,6 +1,6 @@
 import argparse
 import json
-
+import os
 try:
     import httplib
 except:
@@ -27,7 +27,6 @@ EdgeDeletedMsgType = "EdgeDeleted"
 EdgeAddedMsgType = "EdgeAdded"
 
 global args
-
 
 class JSONEncoder(json.JSONEncoder):
 
@@ -116,24 +115,38 @@ class WSClientDefaultProtocol(WebSocketClientProtocol):
         print("WebSocket connection closed: {0}".format(reason))
         self.transport.closeConnection()
 
-
-class WSClientReplayProtocol(WSClientDefaultProtocol):
+class WSClientModifyProtocol(WSClientDefaultProtocol):
 
     def onOpen(self):
         print("WebSocket connection open.")
 
-        print("Replaying: "+args.file)
-        with open(args.file) as replay_file:
-            data = json.load(replay_file)
+        if args.mode[-1] == 'e':
+            print(args.mode[:-1] + "ing: " + args.file)
+        else:
+            print(args.mode+"ing: "+args.file)
+
+        with open(args.file) as json_file:
+            data = json.load(json_file)
 
             for node in data["Nodes"]:
-                msg = WSMessage("Graph", NodeAddedMsgType, node).toJSON()
+                if args.mode == 'add':
+                    msg = WSMessage("Graph", NodeAddedMsgType, node).toJSON()
+                elif args.mode == 'delete':
+                    msg = WSMessage("Graph", NodeDeletedMsgType, node).toJSON()
+                elif args.mode == 'update':
+                    msg = WSMessage("Graph", NodeUpdatedMsgType, node).toJSON()
+
                 self.sendMessage(msg)
 
             for edge in data["Edges"]:
-                msg = WSMessage("Graph", EdgeAddedMsgType, edge).toJSON()
-                self.sendMessage(msg)
+                if args.mode == 'add':
+                    msg = WSMessage("Graph", EdgeAddedMsgType, edge).toJSON()
+                elif args.mode == 'delete':
+                    msg = WSMessage("Graph", EdgeDeletedMsgType, edge).toJSON()
+                elif args.mode == 'update':
+                    msg = WSMessage("Graph", EdgeUpdatedMsgType, edge).toJSON()
 
+                self.sendMessage(msg)
 
 class WSClient(WebSocketClientProtocol):
 
@@ -149,7 +162,6 @@ class WSClient(WebSocketClientProtocol):
         factory.protocol = self.protocol
         factory.headers["X-Host-ID"] = self.host_id
         factory.headers["X-Client-Type"] = self.type
-
         loop = asyncio.get_event_loop()
 
         u = urlparse(self.endpoint)
@@ -164,8 +176,8 @@ class WSClient(WebSocketClientProtocol):
         finally:
             loop.close()
 
-
 if __name__ == '__main__':
+
     try:
         import asyncio
     except ImportError:
@@ -178,16 +190,26 @@ if __name__ == '__main__':
                         help='address of the Skydive analyzer')
 
     subparsers = parser.add_subparsers(help='sub-command help', dest='mode')
-    parser_replay = subparsers.add_parser('replay', help='replay help')
-    parser_replay.add_argument('file', type=str, help='topology to replay')
+    parser_add = subparsers.add_parser('add', help='add edges and nodes in the given json files')
+    parser_add.add_argument('file', type=str, help='topology to add')
 
-    listen_replay = subparsers.add_parser('listen', help='listen help')
+    parser_delete = subparsers.add_parser('delete', help='delete edges and nodes in the given json files')
+    parser_delete.add_argument('file', type=str, help='topology to delete')
+
+    parser_update = subparsers.add_parser('update', help='update edges and nodes in the given json files')
+    parser_update.add_argument('file', type=str, help='topology to update')
+
+    parser_listen = subparsers.add_parser('listen', help='listen help')
+
     args = parser.parse_args()
 
-    if args.mode == "replay":
-        protocol = WSClientReplayProtocol
-    else:
+    if not os.path.isfile(args.file):
+        raise ValueError("The file %s does not exist" % args.file)
+
+    if args.mode == "listen":
         protocol = WSClientDefaultProtocol
+    else:
+        protocol = WSClientModifyProtocol
 
     client = WSClient("Test", "ws://"+args.analyzer+"/ws",
                       protocol=protocol)
