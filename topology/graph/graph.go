@@ -125,9 +125,14 @@ type GraphBackend interface {
 	WithContext(graph *Graph, context GraphContext) (*Graph, error)
 }
 
+type GraphFilter interface {
+	GetFilteredGraphElements(query string) ([]interface{}, error)
+}
+
 // GraphContext describes within time slice
 type GraphContext struct {
-	TimeSlice *common.TimeSlice
+	TimeSlice   *common.TimeSlice
+	FilterQuery string
 }
 
 // Graph describes the graph object based on events and context mechanism
@@ -141,6 +146,7 @@ type Graph struct {
 	eventChan            chan graphEvent
 	eventConsumed        bool
 	currentEventListener GraphEventListener
+	GraphFilter          *GraphFilter
 }
 
 // HostNodeTIDMap a map of host and node ID
@@ -1060,12 +1066,15 @@ func (g *Graph) String() string {
 
 // MarshalJSON serialize the graph in JSON
 func (g *Graph) MarshalJSON() ([]byte, error) {
+	nodes := g.GetFilteredNodes()
+	edges := g.GetFilteredEdges(nodes)
+
 	return json.Marshal(&struct {
 		Nodes []*Node
 		Edges []*Edge
 	}{
-		Nodes: g.GetNodes(Metadata{}),
-		Edges: g.GetEdges(Metadata{}),
+		Nodes: nodes,
+		Edges: edges,
 	})
 }
 
@@ -1147,6 +1156,63 @@ func (g *Graph) GetContext() GraphContext {
 // GetHost returns the graph host
 func (g *Graph) GetHost() string {
 	return g.host
+}
+
+func (g *Graph) SetFilter(graphFilter GraphFilter) {
+	g.Lock()
+	defer g.Unlock()
+	g.GraphFilter = &graphFilter
+}
+
+// Graph Nodes filtered by query
+// g.context must include FilterQuery
+// Note: policy in case of null GraphFilter, filter error or empty query
+// is to return all the Graph Nodes
+func (g *Graph) GetFilteredNodes() (FilteredNodes []*Node) {
+	if g.context.FilterQuery == "" || g.GraphFilter == nil {
+		FilteredNodes = g.GetNodes(Metadata{})
+		return
+	}
+
+	res, err := (*g.GraphFilter).GetFilteredGraphElements(g.context.FilterQuery)
+	if err != nil {
+		FilteredNodes = g.backend.GetNodes(g.context.TimeSlice, Metadata{})
+		return
+	}
+
+	for i := 0; i < len(res); i++ {
+		FilteredNodes = append(FilteredNodes, res[i].(*Node))
+	}
+
+	return
+}
+
+// Get Edges, whose both source and destination present in the
+// filtered array of Nodes
+// Note: policy in case of null GraphFilter or empty filter query
+// is to return all the Graph Edges
+func (g *Graph) GetFilteredEdges(Nodes []*Node) (FilteredEdges []*Edge) {
+	if g.context.FilterQuery == "" || g.GraphFilter == nil {
+		FilteredEdges = g.GetEdges(Metadata{})
+		return
+	}
+
+	// map is used as hashtable of selected node IDs
+	NodeIDs := make(map[Identifier]byte)
+	for _, node := range Nodes {
+		NodeIDs[node.ID] = 0
+	}
+
+	Edges := g.GetEdges(Metadata{})
+	for _, edge := range Edges {
+		_, edgeParentInNodes := NodeIDs[edge.GetParent()]
+		_, edgeChildInNodes := NodeIDs[edge.GetChild()]
+		if edgeParentInNodes && edgeChildInNodes {
+			FilteredEdges = append(FilteredEdges, edge)
+		}
+	}
+
+	return
 }
 
 // NewGraph creates a new graph based on the backend

@@ -170,6 +170,9 @@ func (s *Server) initialize() (err error) {
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tableClient, s.Storage))
 
+	topologyFilter := traversal.NewTraversalGraphFilter(tr)
+	s.TopologyServer.Graph.SetFilter(topologyFilter)
+
 	s.AlertServer = alert.NewAlertServer(alertAPIHandler, s.WSServer, tr, s.EtcdClient)
 
 	piClient := packet_injector.NewPacketInjectorClient(s.WSServer)

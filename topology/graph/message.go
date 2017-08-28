@@ -80,6 +80,10 @@ func UnmarshalWSMessage(msg *shttp.WSJSONMessage) (string, interface{}, error) {
 			}
 			context.TimeSlice = common.NewTimeSlice(i, i)
 		}
+		switch v := m["topologyFilter"].(type) {
+		case string:
+			context.FilterQuery = v
+		}
 		return msg.Type, context, nil
 	case SyncMsgType, SyncReplyMsgType:
 		result := &SyncMsg{}

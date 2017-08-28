@@ -50,6 +50,14 @@ var TopologyComponent = {
                  :class="{\'glyphicon-resize-full\': currentNode.group.collapsed, \'glyphicon-resize-small\': !currentNode.group.collapsed}" aria-hidden="true"></span>\
             </span>\
           </button>\
+          <div class="form-group">\
+                    <label for="topology-filter">Filter</label>\
+                    <input id="topology-filter" type="text" v-model="topologyFilter"></input>\
+                    <button type="button" class="btn btn-primary" \
+                            @click="topologyFilterQuery"> \
+                      <span class="glyphicon glyphicon-search" aria-hidden="true"></span>\
+                    </button>\
+          </div>\
         </div>\
       </div>\
       <div id="right-panel" class="col-sm-5 fill info">\
@@ -105,6 +113,7 @@ var TopologyComponent = {
     return {
       time: 0,
       timeRange: [-120, 0],
+      topologyFilter: "",
     };
   },
 
@@ -269,6 +278,11 @@ var TopologyComponent = {
 
     zoomFit: function() {
       this.layout.zoomFit();
+    },
+
+    topologyFilterQuery: function() {
+         this.$store.commit('topologyFilter', this.topologyFilter);
+         this.syncTopo();
     },
 
     collapse: function() {
@@ -658,6 +672,7 @@ Graph.prototype = {
       store.commit('time', 0);
     }
 
+    obj.topologyFilter=store.state.topologyFilter;
     var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
     this.websocket.send(msg);
   },

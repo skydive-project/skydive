@@ -185,7 +185,13 @@ func (m *MemoryBackend) WithContext(graph *Graph, context GraphContext) (*Graph,
 	if context.TimeSlice != nil {
 		return nil, errors.New("Memory backend does not support history")
 	}
-	return graph, nil
+
+	return &Graph{
+		backend:     graph.backend,
+		context:     GraphContext{FilterQuery: context.FilterQuery},
+		host:        graph.host,
+		GraphFilter: graph.GraphFilter,
+	}, nil
 }
 
 // NewMemoryBackend creates a new graph memory backend

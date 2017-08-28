@@ -318,9 +318,10 @@ func (o *OrientDBBackend) GetEdges(t *common.TimeSlice, m Metadata) (edges []*Ed
 // WithContext step
 func (o *OrientDBBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
 	return &Graph{
-		backend: graph.backend,
-		context: context,
-		host:    graph.host,
+		backend:     graph.backend,
+		context:     context,
+		host:        graph.host,
+		GraphFilter: graph.GraphFilter,
 	}, nil
 }
 
