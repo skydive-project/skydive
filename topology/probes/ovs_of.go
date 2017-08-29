@@ -292,29 +292,36 @@ func launchOnSwitch(cmd []string) (string, error) {
 	return "", err
 }
 
-// launchContinuousOnSwitch launches  a stream producing command on a given switch
+// launchContinuousOnSwitch launches  a stream producing command on a given switch. The command is resilient
+// and is relaunched until the context explicitely cancels it.
 func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string, error) {
 	var cout = make(chan string, 10)
-	out, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
-	if err != nil {
-		close(cout)
-		return cout, err
-	}
-	reader := bufio.NewReader(out)
-	var line string
 
 	go func() {
-		for {
-			line, err = reader.ReadString('\n')
-			if err == io.EOF {
+		for ctx.Err() == nil {
+			out, err := executor.ExecCommandPipe(ctx, cmd[0], cmd[1:]...)
+			if err != nil {
+				logging.GetLogger().Errorf("Can't execute command %v", cmd)
 				close(cout)
-				break
-			} else if err != nil {
-				logging.GetLogger().Errorf("IO Error on command %s: %s", cmd[0], err.Error())
-			} else {
-				cout <- line
+				return
 			}
+			reader := bufio.NewReader(out)
+			var line string
+			for {
+				line, err = reader.ReadString('\n')
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					logging.GetLogger().Errorf("IO Error on command %v: %s", cmd, err.Error())
+				} else {
+					cout <- line
+				}
+			}
+			logging.GetLogger().Debugf("Closing command: %v", cmd)
+			time.Sleep(time.Second)
 		}
+		close(cout)
+		logging.GetLogger().Debugf("Terminating command: %v", cmd)
 	}()
 
 	return cout, nil
@@ -372,6 +379,7 @@ func completeRule(o *OvsOfProbe, event *Event) error {
 
 // addRule adds a rule to the graph and links it to the bridge.
 func (probe *BridgeOfProbe) addRule(rule *Rule) {
+	logging.GetLogger().Infof("New rule %v added", rule.UUID)
 	g := probe.OvsOfProbe.Graph
 	g.Lock()
 	defer g.Unlock()
@@ -391,6 +399,7 @@ func (probe *BridgeOfProbe) addRule(rule *Rule) {
 
 // delRule deletes a rule from the the graph.
 func (probe *BridgeOfProbe) delRule(rule *Rule) {
+	logging.GetLogger().Infof("Rule %v deleted", rule.UUID)
 	g := probe.OvsOfProbe.Graph
 	g.Lock()
 	defer g.Unlock()
@@ -495,9 +504,10 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 	}
 	bridgeProbe, err := o.NewBridgeProbe(hostName, bridgeName, uuid, bridgeNode)
 	if err == nil {
+		logging.GetLogger().Infof("Probe added for %s on %s (%s)", bridgeName, hostName, uuid)
 		o.BridgeProbes[uuid] = bridgeProbe
 	} else {
-		logging.GetLogger().Errorf("Cannot add bridge %s@%s", bridgeName, hostName)
+		logging.GetLogger().Errorf("Cannot add probe for bridge %s on %s (%s)", bridgeName, hostName, uuid)
 	}
 }
 
@@ -517,6 +527,7 @@ func NewOvsOfProbe(g *graph.Graph, root *graph.Node, host string) *OvsOfProbe {
 	if !enable {
 		return nil
 	}
+	logging.GetLogger().Infof("Adding OVS probe on %s", host)
 	translate := config.GetConfig().GetStringMapString("ovs.oflow.address")
 	cert := config.GetConfig().GetString("ovs.oflow.cert")
 	pk := config.GetConfig().GetString("ovs.oflow.key")

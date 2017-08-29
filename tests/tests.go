@@ -85,6 +85,8 @@ flow:
 
 ovs:
   ovsdb: unix:///var/run/openvswitch/db.sock
+  oflow:
+    enable: true
 
 storage:
   elasticsearch:
