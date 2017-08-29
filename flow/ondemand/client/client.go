@@ -78,7 +78,7 @@ func (o *OnDemandProbeClient) OnWSMessage(c shttp.WSClient, m shttp.WSMessage) {
 		} else {
 			logging.GetLogger().Debugf("Capture start request succeeded %v", m)
 		}
-		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureNodeUpdated", query.Capture.UUID))
+		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
 	case "CaptureStopReply":
 		if m.Status == http.StatusOK {
 			logging.GetLogger().Debugf("Capture stop request succeeded %v", m)
@@ -218,7 +218,7 @@ func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
 func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 	o.RLock()
 	if uuid, ok := o.registeredNodes[string(n.ID)]; ok {
-		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureNodeUpdated", uuid))
+		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
 	}
 	o.RUnlock()
 }
@@ -321,10 +321,10 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 	capture := resource.(*api.Capture)
 	switch action {
 	case "init", "create", "set", "update":
-		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureAdded", capture))
+		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
 		o.onCaptureAdded(capture)
 	case "expire", "delete":
-		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.Namespace, "CaptureDeleted", capture))
+		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
 		o.onCaptureDeleted(capture)
 	}
 }
