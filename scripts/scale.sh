@@ -12,9 +12,10 @@ CURR_ANALYZER_PORT=${CURR_ANALYZER_PORT:-8082}
 GW_ADDR=$PREFIX.254
 AGENT_STOCK=5
 
-SKYDIVE_BIN=$( which skydive )
-SKYDIVE_PATH=$( realpath $SKYDIVE_BIN )
-SKYDIVE=${SKYDIVE:-$SKYDIVE_PATH}
+if [ -z "$SKYDIVE" ] ; then
+    SKYDIVE_BIN=$( which skydive )
+    SKYDIVE=$( readlink -f $SKYDIVE_BIN )
+fi
 TLS=${TLS:-false}
 FLOW_PROTOCOL=${FLOW_PROTOCOL:-websocket}
 ELASTICSEARCH=${ELASTICSEARCH:-}
@@ -308,6 +309,7 @@ graph:
 flow:
   expire: 600
   update: 5
+  protocol: $FLOW_PROTOCOL
 agent:
   X509_cert: $AGENT_CRT
   X509_key: $AGENT_KEY
