@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <title>Rest API - Skydive Docs</title>
-    <meta name="generator" content="Hugo 0.15" />
+    <meta name="generator" content="Hugo 0.16-DEV" />
 
     
     <meta name="description" content="Real-time network analyzer.">
@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.8.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.12.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -194,6 +194,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -351,6 +355,10 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Api</span>
       
     
@@ -385,6 +393,18 @@
 
 
 
+<a  title="Captures" href="//skydive-project.github.io/skydive/api/captures/">
+	
+	Captures
+</a>
+
+  
+      
+        
+        
+
+
+
 <a  title="Flows" href="//skydive-project.github.io/skydive/api/flows/">
 	
 	Flows
@@ -405,6 +425,18 @@
 
 <ul id="scrollspy">
 </ul>
+  
+      
+        
+        
+
+
+
+<a  title="Alerts" href="//skydive-project.github.io/skydive/api/alerts/">
+	
+	Alerts
+</a>
+
   
       
     </ul>
@@ -470,6 +502,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -635,8 +671,8 @@ Content-Type: application/json
 
 <pre><code class="language-console">[
   {
-    &quot;ANodeUUID&quot;: &quot;d9d6f8cf-4aa6-4a06-6785-3dc56032ef82&quot;,
-    &quot;BNodeUUID&quot;: &quot;488789f9-38be-4eba-704a-79996382de41&quot;,
+    &quot;ANodeTID&quot;: &quot;d9d6f8cf-4aa6-4a06-6785-3dc56032ef82&quot;,
+    &quot;BNodeTID&quot;: &quot;488789f9-38be-4eba-704a-79996382de41&quot;,
     &quot;LastUpdateMetric&quot;: {
       &quot;ABBytes&quot;: 490,
       &quot;ABPackets&quot;: 5,
@@ -645,7 +681,7 @@ Content-Type: application/json
       &quot;Last&quot;: 1477572621,
       &quot;Start&quot;: 1477572616
     },
-    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4/Payload&quot;,
+    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4&quot;,
     &quot;Link&quot;: {
       &quot;A&quot;: &quot;02:48:4f:c4:40:99&quot;,
       &quot;B&quot;: &quot;e2:d0:f0:61:e7:81&quot;,
@@ -664,7 +700,7 @@ Content-Type: application/json
       &quot;B&quot;: &quot;192.168.0.2&quot;,
       &quot;Protocol&quot;: &quot;IPV4&quot;
     },
-    &quot;NodeUUID&quot;: &quot;488789f9-38be-4eba-704a-79996382de41&quot;,
+    &quot;NodeTID&quot;: &quot;488789f9-38be-4eba-704a-79996382de41&quot;,
     &quot;TrackingID&quot;: &quot;f745fb1f59298a1773e35827adfa42dab4f469f9&quot;,
     &quot;UUID&quot;: &quot;ee29fc47f425d7a2e6de9379b0131f64a70fc991&quot;
   }
@@ -727,7 +763,7 @@ Content-Type: application/json; charset=UTF-8
 			
 			<aside class="copyright" role="note">
 				
-				&copy; 2016 Released under the Apache license 2.0 &ndash;
+				&copy; 2017 Released under the Apache license 2.0 &ndash;
 				
 				Documentation built with
 				<a href="https://www.gohugo.io" target="_blank">Hugo</a>

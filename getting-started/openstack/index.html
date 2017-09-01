@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <title>How to deploy Skydive with Devstack - Skydive Docs</title>
-    <meta name="generator" content="Hugo 0.15" />
+    <meta name="generator" content="Hugo 0.16-DEV" />
 
     
     <meta name="description" content="Real-time network analyzer.">
@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.8.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.12.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -194,6 +194,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -354,6 +358,10 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Api</span>
       
     
@@ -388,6 +396,18 @@
 
 
 
+<a  title="Captures" href="//skydive-project.github.io/skydive/api/captures/">
+	
+	Captures
+</a>
+
+  
+      
+        
+        
+
+
+
 <a  title="Flows" href="//skydive-project.github.io/skydive/api/flows/">
 	
 	Flows
@@ -403,6 +423,18 @@
 <a  title="Rest" href="//skydive-project.github.io/skydive/api/rest/">
 	
 	Rest
+</a>
+
+  
+      
+        
+        
+
+
+
+<a  title="Alerts" href="//skydive-project.github.io/skydive/api/alerts/">
+	
+	Alerts
 </a>
 
   
@@ -470,6 +502,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -620,13 +656,13 @@ enable_service skydive-agent skydive-analyzer
 
 # Inform the agent about the address on which analyzers are listening
 # Must be in ip:port format
-#SKYDIVE_AGENT_ANALYZERS=
+#SKYDIVE_ANALYZERS=
 
 # ip:port address on which skydive agent listens for connections.
 #SKYDIVE_AGENT_LISTEN=
 
 # Configure the skydive agent with the etcd server address
-# http://IP_ADDRESS:2379
+# http://IP_ADDRESS:12379
 #SKYDIVE_AGENT_ETCD=
 
 # The path for the generated skydive configuration file
@@ -679,7 +715,7 @@ the <code>br-int</code> bridges.</p>
 
 <pre><code class="language-console">$ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
-$ export SKYDIVE_AGENT_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
+$ export SKYDIVE_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
 
 $ skydive client capture create --gremlin &quot;G.V().Has('Name', 'br-int')&quot;
 </code></pre>
@@ -699,8 +735,8 @@ $ skydive client capture create --gremlin &quot;G.V().Has('Name', 'br-int')&quot
 <pre><code class="language-console">skydive client topology query --gremlin &quot;G.Flows()&quot;
 [
   {
-    &quot;ANodeUUID&quot;: &quot;422190f1-bbde-4eb0-4849-1fd1209229fe&quot;,
-    &quot;BNodeUUID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
+    &quot;ANodeTID&quot;: &quot;422190f1-bbde-4eb0-4849-1fd1209229fe&quot;,
+    &quot;BNodeTID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
     &quot;LastUpdateMetric&quot;: {
       &quot;ABBytes&quot;: 490,
       &quot;ABPackets&quot;: 5,
@@ -709,7 +745,7 @@ $ skydive client capture create --gremlin &quot;G.V().Has('Name', 'br-int')&quot
       &quot;Last&quot;: 1477567166,
       &quot;Start&quot;: 1477567161
     },
-    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4/Payload&quot;,
+    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4&quot;,
     &quot;Link&quot;: {
       &quot;A&quot;: &quot;02:48:4f:c4:40:99&quot;,
       &quot;B&quot;: &quot;e2:d0:f0:61:e7:81&quot;,
@@ -728,7 +764,7 @@ $ skydive client capture create --gremlin &quot;G.V().Has('Name', 'br-int')&quot
       &quot;B&quot;: &quot;192.168.0.2&quot;,
       &quot;Protocol&quot;: &quot;IPV4&quot;
     },
-    &quot;NodeUUID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
+    &quot;NodeTID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
     &quot;TrackingID&quot;: &quot;f745fb1f59298a1773e35827adfa42dab4f469f9&quot;,
     &quot;UUID&quot;: &quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&quot;
   }
@@ -741,7 +777,7 @@ $ skydive client capture create --gremlin &quot;G.V().Has('Name', 'br-int')&quot
 			
 			<aside class="copyright" role="note">
 				
-				&copy; 2016 Released under the Apache license 2.0 &ndash;
+				&copy; 2017 Released under the Apache license 2.0 &ndash;
 				
 				Documentation built with
 				<a href="https://www.gohugo.io" target="_blank">Hugo</a>

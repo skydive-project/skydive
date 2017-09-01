@@ -6,8 +6,58 @@
     <description>Recent content on Skydive Docs</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 28 Nov 2016 15:21:44 +0100</lastBuildDate>
+    <lastBuildDate>Thu, 05 Jan 2017 11:44:01 +0200</lastBuildDate>
     <atom:link href="//skydive-project.github.io/skydive/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Captures</title>
+      <link>//skydive-project.github.io/skydive/api/captures/</link>
+      <pubDate>Thu, 05 Jan 2017 11:44:01 +0200</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/api/captures/</guid>
+      <description>
+
+&lt;p&gt;Flow captures can be started from the WebUI or thanks to the &lt;a href=&#34;//skydive-project.github.io/skydive/getting-started/client&#34;&gt;Skydive client&lt;/a&gt;.
+Skydive leverages the &lt;a href=&#34;//skydive-project.github.io/skydive/api/gremlin/&#34;&gt;Gremlin language&lt;/a&gt; in order to select nodes on which a
+capture will be started. The Gremlin expression is continuously evaluated which
+means that it is possible to define a capture on nodes that do not exist yet.
+It useful when you want to start a capture on all OpenvSwitch whatever the
+number of Skydive agents you will start.&lt;/p&gt;
+
+&lt;p&gt;While starting the capture, you can specify the capture name,
+capture description and capture type optionally.&lt;/p&gt;
+
+&lt;p&gt;At this time, the following capture types are supported:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;ovssflow&lt;/code&gt;, for interfaces managed by OpenvSwitch such as OVS bridges&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;afpacket&lt;/code&gt;, for interfaces suchs as Linux bridges, veth, devices, &amp;hellip;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;pcap&lt;/code&gt;, same as &lt;code&gt;afpacket&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;pcapsocket&lt;/code&gt;. This capture type allows you to inject traffic from a PCAP file.
+See &lt;a href=&#34;//skydive-project.github.io/skydive/api/captures#pcap-files&#34;&gt;below&lt;/a&gt; for more information.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Node types that support captures are :&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;ovsbridge&lt;/li&gt;
+&lt;li&gt;veth&lt;/li&gt;
+&lt;li&gt;device&lt;/li&gt;
+&lt;li&gt;internal&lt;/li&gt;
+&lt;li&gt;tun&lt;/li&gt;
+&lt;li&gt;bridge&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&#34;pcap-files&#34;&gt;PCAP files&lt;/h3&gt;
+
+&lt;p&gt;If the flow probe &lt;code&gt;pcapsocket&lt;/code&gt; is enabled, you can create captures with the
+type &lt;code&gt;pcapsocket&lt;/code&gt;. Skydive will create a TCP socket where you can copy PCAP
+files (using &lt;code&gt;nc&lt;/code&gt; for instance). Traffic injected into this socket will have
+its capture point set to the selected node. The TCP socket address can be
+retrieved using the &lt;code&gt;PCAPSocket&lt;/code&gt; attribute of the node or using the
+&lt;code&gt;PCAPSocket&lt;/code&gt; attribute of the capture.&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>vagrant</title>
@@ -22,8 +72,9 @@
 &lt;p&gt;You can use Vagrant to deploy a Skydive environment with one virtual machine
 running both Skydive analyzer and Elasticsearch, and two virtual machines with the
 Skydive agent. This &lt;code&gt;Vagrantfile&lt;/code&gt;, hosted in &lt;code&gt;contrib/vagrant&lt;/code&gt; of the Git
-repository, makes use of the (libvirt Vagrant provider)[&lt;a href=&#34;https://github.com/vagrant-libvirt/vagrant-libvirt&#34;&gt;https://github.com/vagrant-libvirt/vagrant-libvirt&lt;/a&gt;] and uses Fedora as the
-box image.&lt;/p&gt;
+repository, makes use of the
+&lt;a href=&#34;https://github.com/vagrant-libvirt/vagrant-libvirt&#34;&gt;libvirt Vagrant provider&lt;/a&gt;
+and uses Fedora as the box image.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;cd contrib/vagrant
 vagrant up
@@ -120,6 +171,106 @@ IP.3 = 127.0.0.1
     </item>
     
     <item>
+      <title>Alerts</title>
+      <link>//skydive-project.github.io/skydive/api/alerts/</link>
+      <pubDate>Thu, 29 Sep 2016 11:02:01 +0200</pubDate>
+      
+      <guid>//skydive-project.github.io/skydive/api/alerts/</guid>
+      <description>
+
+&lt;p&gt;Skydive allows you to create alerts, based on queries on both topology graph
+and flows.&lt;/p&gt;
+
+&lt;h2 id=&#34;alert-evaluation&#34;&gt;Alert evaluation&lt;/h2&gt;
+
+&lt;p&gt;An alert can be specified through a &lt;a href=&#34;//skydive-project.github.io/skydive/api/gremlin&#34;&gt;Gremlin&lt;/a&gt; query or a
+JavaScript expression. The alert will be triggered if it returns:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;true&lt;/li&gt;
+&lt;li&gt;a non empty string&lt;/li&gt;
+&lt;li&gt;a number different from zero&lt;/li&gt;
+&lt;li&gt;a non empty array&lt;/li&gt;
+&lt;li&gt;a non empty map&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The alert is triggered only if the evaluation result differs from the previous evaluation.&lt;/p&gt;
+
+&lt;p&gt;Gremlin example:&lt;/p&gt;
+
+&lt;p&gt;With the following command, the alert is triggered as soon as the Gremlin query
+returns something new (i.e. a new node returned by the query, an updated metadata in the returned nodes&amp;hellip;).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client alert create --expression &amp;quot;G.V().Has(&#39;Name&#39;, &#39;eth0&#39;, &#39;State&#39;, &#39;DOWN&#39;)&amp;quot;
+{
+  &amp;quot;UUID&amp;quot;: &amp;quot;185c49ba-341d-41a0-6f96-f3224140b2fa&amp;quot;,
+  &amp;quot;Expression&amp;quot;: &amp;quot;G.V().Has(&#39;Name&#39;, &#39;eth0&#39;, &#39;State&#39;, &#39;DOWN&#39;)&amp;quot;,
+  &amp;quot;CreateTime&amp;quot;: &amp;quot;2016-12-29T13:29:05.273620179+01:00&amp;quot;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;JavaScript example:&lt;/p&gt;
+
+&lt;p&gt;If you prefer to trigger the alert only when the state of one of the node returned by a gremlin query goes down,
+you can use the following JavaScript expression :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client alert create --expression &amp;quot;states = Gremlin(\&amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int-lb&#39;).Values(&#39;State&#39;)\&amp;quot;); result = false; for (var i = 0; i &amp;lt; states.length; i++){ if (states[i] == &#39;DOWN&#39;){ result = true; break;}} result;&amp;quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The alert will be triggered every time the result of the JavaScript expression changes.&lt;/p&gt;
+
+&lt;p&gt;With the following command, the alert is triggered when the bandwidth of the flow bypass 1Mbps.
+It gets trigerred again the next time the bandwidth bypass this threshold.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client alert create --expression &amp;quot;Gremlin(\&amp;quot;G.Flows().Has(&#39;Network.A&#39;, &#39;192.168.0.1&#39;).Metrics().Sum()\&amp;quot;).ABBytes &amp;gt; 1*1024*1024&amp;quot; --trigger &amp;quot;duration:10s&amp;quot;
+{
+  &amp;quot;UUID&amp;quot;: &amp;quot;331b5590-c45d-4723-55f5-0087eef899eb&amp;quot;,
+  &amp;quot;Expression&amp;quot;: &amp;quot;Gremlin(\&amp;quot;G.Flows().Has(&#39;Network.A&#39;, &#39;192.168.0.1&#39;).Metrics().Sum()\&amp;quot;).ABBytes &amp;gt; 1*1024*1024&amp;quot;,
+  &amp;quot;Trigger&amp;quot;: &amp;quot;duration:10s&amp;quot;,
+  &amp;quot;CreateTime&amp;quot;: &amp;quot;2016-12-29T13:29:05.197612381+01:00&amp;quot;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;fields&#34;&gt;Fields&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;Name&lt;/code&gt;, the alert name (optional)&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Description&lt;/code&gt;, a description for the alert (optional)&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Expression&lt;/code&gt;, a Gremlin query or JavaScript expression&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Action&lt;/code&gt;, URL to trigger. Can be a &lt;a href=&#34;//skydive-project.github.io/skydive/api/alerts#webhook&#34;&gt;local file&lt;/a&gt; or a &lt;a href=&#34;//skydive-project.github.io/skydive/api/alerts#script&#34;&gt;WebHook&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Trigger&lt;/code&gt;, event that triggers the alert evaluation. Periodic alerts can be
+specified with &lt;code&gt;duration:5s&lt;/code&gt;, for an alert that will be evaluated every 5 seconds.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&#34;notifications&#34;&gt;Notifications&lt;/h2&gt;
+
+&lt;p&gt;When an alert is triggered, all the WebSocket clients will be notified with a
+message of type &lt;code&gt;Alert&lt;/code&gt; with a JSON object with the attributes:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;UUID&lt;/code&gt;, ID of the triggered alert&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Timestamp&lt;/code&gt;, timestamp of trigger&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;ReasonData&lt;/code&gt;, the result of the alert evaluation. If &lt;code&gt;expression&lt;/code&gt; is a
+Gremlin query, it will be the result of the query. If &lt;code&gt;expression&lt;/code&gt; is a
+JavaScript statement, it will be the result of the evaluation of this
+statement.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In addition to the WebSocket message, an alert can trigger different kind of
+actions.&lt;/p&gt;
+
+&lt;h3 id=&#34;webhook&#34;&gt;Webhook&lt;/h3&gt;
+
+&lt;p&gt;A POST request is issued with the JSON message as payload.&lt;/p&gt;
+
+&lt;h3 id=&#34;script&#34;&gt;Script&lt;/h3&gt;
+
+&lt;p&gt;A local file (prefixed by file://) to execute a script. It receives the JSON
+message through stdin&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
       <title>Architecture</title>
       <link>//skydive-project.github.io/skydive/architecture/</link>
       <pubDate>Thu, 29 Sep 2016 11:02:01 +0200</pubDate>
@@ -204,8 +355,8 @@ structure.&lt;/p&gt;
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client topology query --gremlin &amp;quot;G.Flows().Limit(1)&amp;quot;
 [
   {
-    &amp;quot;ANodeUUID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
-    &amp;quot;BNodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;ANodeTID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
+    &amp;quot;BNodeTID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
     &amp;quot;LastUpdateMetric&amp;quot;: {
       &amp;quot;ABBytes&amp;quot;: 490,
       &amp;quot;ABPackets&amp;quot;: 5,
@@ -214,7 +365,7 @@ structure.&lt;/p&gt;
       &amp;quot;Last&amp;quot;: 1477563666,
       &amp;quot;Start&amp;quot;: 1477563661
     },
-    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4/Payload&amp;quot;,
+    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4&amp;quot;,
     &amp;quot;Link&amp;quot;: {
       &amp;quot;A&amp;quot;: &amp;quot;02:48:4f:c4:40:99&amp;quot;,
       &amp;quot;B&amp;quot;: &amp;quot;e2:d0:f0:61:e7:81&amp;quot;,
@@ -233,7 +384,7 @@ structure.&lt;/p&gt;
       &amp;quot;B&amp;quot;: &amp;quot;192.168.0.2&amp;quot;,
       &amp;quot;Protocol&amp;quot;: &amp;quot;IPV4&amp;quot;
     },
-    &amp;quot;NodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;NodeTID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
     &amp;quot;TrackingID&amp;quot;: &amp;quot;f745fb1f59298a1773e35827adfa42dab4f469f9&amp;quot;,
     &amp;quot;UUID&amp;quot;: &amp;quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&amp;quot;
   }
@@ -247,11 +398,11 @@ structure.&lt;/p&gt;
 that a same flow will get a different ID for a different capture.&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;TrackingID&lt;/code&gt;, ID of the Flow which is the same across all the
 captures point. This ID can be used to follow a Flow on each capture points.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;NodeUUID&lt;/code&gt;, ID of the interface node in the topology where the flow was
+&lt;li&gt;&lt;code&gt;NodeTID&lt;/code&gt;, TID metadata of the interface node in the topology where the flow was
 captured.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;ANodeUUID&lt;/code&gt;, ID of the interface node in the topology where the packet is
+&lt;li&gt;&lt;code&gt;ANodeTID&lt;/code&gt;, TID metadata of the interface node in the topology where the packet is
 coming from.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;ANodeUUID&lt;/code&gt;, ID of the interface node in the topology where the packet is
+&lt;li&gt;&lt;code&gt;BNodeTID&lt;/code&gt;, TID metadata of the interface node in the topology where the packet is
 going to.&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;LayersPath&lt;/code&gt;, All the layers composing the packets.&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link&lt;/code&gt;, Link layer of the flow. A, B and Protocol describing the endpoints and
@@ -311,8 +462,8 @@ Content-Type: application/json
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;[
   {
-    &amp;quot;ANodeUUID&amp;quot;: &amp;quot;d9d6f8cf-4aa6-4a06-6785-3dc56032ef82&amp;quot;,
-    &amp;quot;BNodeUUID&amp;quot;: &amp;quot;488789f9-38be-4eba-704a-79996382de41&amp;quot;,
+    &amp;quot;ANodeTID&amp;quot;: &amp;quot;d9d6f8cf-4aa6-4a06-6785-3dc56032ef82&amp;quot;,
+    &amp;quot;BNodeTID&amp;quot;: &amp;quot;488789f9-38be-4eba-704a-79996382de41&amp;quot;,
     &amp;quot;LastUpdateMetric&amp;quot;: {
       &amp;quot;ABBytes&amp;quot;: 490,
       &amp;quot;ABPackets&amp;quot;: 5,
@@ -321,7 +472,7 @@ Content-Type: application/json
       &amp;quot;Last&amp;quot;: 1477572621,
       &amp;quot;Start&amp;quot;: 1477572616
     },
-    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4/Payload&amp;quot;,
+    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4&amp;quot;,
     &amp;quot;Link&amp;quot;: {
       &amp;quot;A&amp;quot;: &amp;quot;02:48:4f:c4:40:99&amp;quot;,
       &amp;quot;B&amp;quot;: &amp;quot;e2:d0:f0:61:e7:81&amp;quot;,
@@ -340,7 +491,7 @@ Content-Type: application/json
       &amp;quot;B&amp;quot;: &amp;quot;192.168.0.2&amp;quot;,
       &amp;quot;Protocol&amp;quot;: &amp;quot;IPV4&amp;quot;
     },
-    &amp;quot;NodeUUID&amp;quot;: &amp;quot;488789f9-38be-4eba-704a-79996382de41&amp;quot;,
+    &amp;quot;NodeTID&amp;quot;: &amp;quot;488789f9-38be-4eba-704a-79996382de41&amp;quot;,
     &amp;quot;TrackingID&amp;quot;: &amp;quot;f745fb1f59298a1773e35827adfa42dab4f469f9&amp;quot;,
     &amp;quot;UUID&amp;quot;: &amp;quot;ee29fc47f425d7a2e6de9379b0131f64a70fc991&amp;quot;
   }
@@ -419,7 +570,7 @@ as query language for topology and flow requests.&lt;/p&gt;
 &lt;p&gt;A Gremlin expression is a chain of steps that are evaluated from left to right.
 In the context of Skydive nodes stand for interfaces, ports, bridges,
 namespaces, etc. Links stand for any kind of relation between two nodes,
-ownership(host), membership(containers), layer2, etc.&lt;/p&gt;
+ownership(host, netns, ovsbridge, containers), layer2, etc.&lt;/p&gt;
 
 &lt;p&gt;The following expression will return all the OpenvSwitch ports belonging to
 an OpenvSwitch bridge named &lt;code&gt;br-int&lt;/code&gt;.&lt;/p&gt;
@@ -479,7 +630,7 @@ an OpenvSwitch bridge named &lt;code&gt;br-int&lt;/code&gt;.&lt;/p&gt;
 &lt;p&gt;&lt;code&gt;Has&lt;/code&gt; step filters out the nodes that don&amp;rsquo;t match the given metadata list. &lt;code&gt;Has&lt;/code&gt;
 can be applied either on nodes or edges.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;: test, &#39;Type&#39;: &#39;netns&#39;)
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, &#39;test&#39;, &#39;Type&#39;, &#39;netns&#39;)
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h3 id=&#34;in-out-both-steps&#34;&gt;In/Out/Both steps&lt;/h3&gt;
@@ -503,8 +654,8 @@ of steps &lt;code&gt;Out/Has&lt;/code&gt; for example.&lt;/p&gt;
 
 &lt;p&gt;&lt;code&gt;InE/OutE&lt;/code&gt; steps returns the incoming/ougoing links.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;: &#39;test&#39;, &#39;Type&#39;: &#39;netns&#39;).InE()
-G.V().Has(&#39;Name&#39;: &#39;test&#39;, &#39;Type&#39;: &#39;netns&#39;).OutE()
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, &#39;test&#39;, &#39;Type&#39;, &#39;netns&#39;).InE()
+G.V().Has(&#39;Name&#39;, &#39;test&#39;, &#39;Type&#39;, &#39;netns&#39;).OutE()
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;Like for the &lt;code&gt;In/Out/Both&lt;/code&gt; steps metadata list can be passed directly as
@@ -520,9 +671,12 @@ selected links.&lt;/p&gt;
 
 &lt;h3 id=&#34;dedup-step&#34;&gt;Dedup step&lt;/h3&gt;
 
-&lt;p&gt;&lt;code&gt;Dedup&lt;/code&gt; removes duplicated nodes/links.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Dedup&lt;/code&gt; removes duplicated nodes/links or flows. &lt;code&gt;Dedup&lt;/code&gt; can take a parameter
+in order to specify the field used for the deduplication.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Out().Both().Dedup()
+G.V().Out().Both().Dedup(&#39;Type&#39;)
+G.Flows().Dedup(&#39;NodeTID&#39;)
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h3 id=&#34;count-step&#34;&gt;Count step&lt;/h3&gt;
@@ -630,6 +784,14 @@ G.At(&#39;-1m&#39;).V()
 G.At(&#39;Sun, 06 Nov 2016 08:49:37 GMT&#39;).V()
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;p&gt;&lt;code&gt;At&lt;/code&gt; takes also an optional duration parameter which allows to specify a
+period of time in second for the lookup. This is useful especially when retrieving
+metrics. See &lt;a href=&#34;//skydive-project.github.io/skydive/api/gremlin#metrics-step&#34;&gt;&lt;code&gt;Metrics&lt;/code&gt; step&lt;/a&gt; for more information.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;G.At(&#39;-1m&#39;, 500).V()
+G.At(&#39;-1m&#39;, 3600).Flows()
+&lt;/code&gt;&lt;/pre&gt;
+
 &lt;h3 id=&#34;predicates&#34;&gt;Predicates&lt;/h3&gt;
 
 &lt;p&gt;Predicates which can be used with &lt;code&gt;Has&lt;/code&gt;, &lt;code&gt;In*&lt;/code&gt;, &lt;code&gt;Out*&lt;/code&gt; steps :&lt;/p&gt;
@@ -662,7 +824,7 @@ the members of the given array.&lt;/li&gt;
 expression.&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, Regex(&#39;tap-&#39;))
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Has(&#39;Name&#39;, Regex(&#39;^tap.*&#39;))
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h3 id=&#34;flows-step&#34;&gt;Flows step&lt;/h3&gt;
@@ -699,17 +861,20 @@ G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().Out()
 &lt;ul&gt;
 &lt;li&gt;&lt;code&gt;UUID&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;TrackingID&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;NodeUUID&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;ANodeUUID&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;BNodeUUID&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;NodeTID&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;ANodeTID&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;BNodeTID&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;LayersPath&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Application&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Link&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.A&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.B&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Link.Protocol&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Network&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Network.A&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Network.B&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Network.Protocol&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Transport&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Transport.A&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Transport.B&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Transport.Protocol&lt;/code&gt;&lt;/li&gt;
@@ -717,18 +882,24 @@ G.V().Has(&#39;Name&#39;, &#39;br-int&#39;).Flows().Out()
 &lt;li&gt;&lt;code&gt;Metric.BABytes&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Metric.ABPackets&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;Metric.BAPackets&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;Metric.Start&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;Metric.Last&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Start&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Last&lt;/code&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;Lt, Lte, Gt, Gte predicates can be used on numerical fields.
 See &lt;a href=&#34;//skydive-project.github.io/skydive/api/flows/&#34;&gt;Flow Schema&lt;/a&gt; for further explanations.&lt;/p&gt;
 
+&lt;p&gt;Link, Network and Transport keys shall be matched with any of A or B by using OR operator.&lt;/p&gt;
+
 &lt;h3 id=&#34;flows-sort-step&#34;&gt;Flows Sort step&lt;/h3&gt;
 
-&lt;p&gt;&lt;code&gt;Sort&lt;/code&gt; step sorts flows by their &lt;code&gt;Metric.Last&lt;/code&gt; field.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Sort&lt;/code&gt; step sorts flows by the given field and requested order.
+By default, the flows are in ascending order by their &lt;code&gt;Last&lt;/code&gt; field.
+&lt;code&gt;ASC&lt;/code&gt; and &lt;code&gt;DESC&lt;/code&gt; predicates can be used to specify ascending and descending order respectively.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Sort()
+G.Flows().Sort(&amp;quot;Metric.ABPackets&amp;quot;)
+G.Flows().Sort(DESC, &amp;quot;Metric.ABPackets&amp;quot;)
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h3 id=&#34;flows-dedup-step&#34;&gt;Flows Dedup step&lt;/h3&gt;
@@ -738,23 +909,12 @@ See &lt;a href=&#34;//skydive-project.github.io/skydive/api/flows/&#34;&gt;Flow 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Dedup()
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;h3 id=&#34;flows-since-predicate&#34;&gt;Flows Since predicate&lt;/h3&gt;
-
-&lt;p&gt;&lt;code&gt;Since&lt;/code&gt; can be used in a timed context request(see &lt;code&gt;At&lt;/code&gt; step) meaning having
-specified a time point thanks to the &lt;code&gt;At&lt;/code&gt; step. &lt;code&gt;Since&lt;/code&gt; allows to do a lookup
-from that point in the past. &lt;code&gt;Since&lt;/code&gt; will return the flows which were active
-during the period. &lt;code&gt;Since&lt;/code&gt; takes the number of seconds to go back in past.&lt;/p&gt;
-
-&lt;p&gt;The following request returns flows which were active between
-(now - 2 hours) and (now - 1 hour).&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.At(&#39;-1h&#39;).Flows(Since(3600))
-&lt;/code&gt;&lt;/pre&gt;
-
 &lt;h3 id=&#34;metrics-step&#34;&gt;Metrics step&lt;/h3&gt;
 
-&lt;p&gt;&lt;code&gt;Metrics&lt;/code&gt; returns arrays of metrics of a set of flow, grouped by
-the flows UUIDs.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Metrics&lt;/code&gt; returns arrays of metrics of a set of flows or interfaces, grouped by
+the flows UUIDs or Node IDs.&lt;/p&gt;
+
+&lt;p&gt;For flow metrics :&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Metrics()
 [
@@ -772,19 +932,40 @@ the flows UUIDs.&lt;/p&gt;
 ]
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;h3 id=&#34;bandwidth-step&#34;&gt;Bandwidth step&lt;/h3&gt;
+&lt;p&gt;and for interface metrics :&lt;/p&gt;
 
-&lt;p&gt;&lt;code&gt;Bandwidth&lt;/code&gt; returns a sum of all the previously selected metrics.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.Flows().Dedup().Metrics().Bandwidth()&amp;quot;
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;G.V().Metrics()
 [
   {
-    &amp;quot;ABbytes&amp;quot;: 4900,
-    &amp;quot;ABpackets&amp;quot;: 50,
-    &amp;quot;BAbytes&amp;quot;: 4900,
-    &amp;quot;BApackets&amp;quot;: 50,
-    &amp;quot;Duration&amp;quot;: 10,
-    &amp;quot;NBFlow&amp;quot;: 1
+    &amp;quot;fc2a6103-599e-4821-4c87-c8224bd0e84e&amp;quot;: [
+    {
+      &amp;quot;Collisions&amp;quot;: 0,
+      &amp;quot;Last&amp;quot;: 1489161773820,
+      &amp;quot;Multicast&amp;quot;: 0,
+      &amp;quot;RxBytes&amp;quot;: 7880,
+      &amp;quot;RxCompressed&amp;quot;: 0,
+      &amp;quot;RxCrcErrors&amp;quot;: 0,
+      &amp;quot;RxDropped&amp;quot;: 0,
+      &amp;quot;RxErrors&amp;quot;: 0,
+      &amp;quot;RxFifoErrors&amp;quot;: 0,
+      &amp;quot;RxFrameErrors&amp;quot;: 0,
+      &amp;quot;RxLengthErrors&amp;quot;: 0,
+      &amp;quot;RxMissedErrors&amp;quot;: 0,
+      &amp;quot;RxOverErrors&amp;quot;: 0,
+      &amp;quot;RxPackets&amp;quot;: 10,
+      &amp;quot;Start&amp;quot;: 1489161768820,
+      &amp;quot;TxAbortedErrors&amp;quot;: 0,
+      &amp;quot;TxBytes&amp;quot;: 7880,
+      &amp;quot;TxCarrierErrors&amp;quot;: 0,
+      &amp;quot;TxCompressed&amp;quot;: 0,
+      &amp;quot;TxDropped&amp;quot;: 0,
+      &amp;quot;TxErrors&amp;quot;: 0,
+      &amp;quot;TxFifoErrors&amp;quot;: 0,
+      &amp;quot;TxHeartbeatErrors&amp;quot;: 0,
+      &amp;quot;TxPackets&amp;quot;: 10,
+      &amp;quot;TxWindowErrors&amp;quot;: 0
+    }
+
   }
 ]
 &lt;/code&gt;&lt;/pre&gt;
@@ -859,53 +1040,9 @@ should show similar to the following capture.&lt;/p&gt;
       <pubDate>Fri, 06 May 2016 11:02:01 +0200</pubDate>
       
       <guid>//skydive-project.github.io/skydive/contributing/</guid>
-      <description>
-
-&lt;p&gt;This project accepts contributions. Skydive uses the Gerrit workflow
-through Software Factory.&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&#34;http://softwarefactory-project.io/r/#/q/project:skydive&#34;&gt;http://softwarefactory-project.io/r/#/q/project:skydive&lt;/a&gt;&lt;/p&gt;
-
-&lt;h2 id=&#34;setting-up-your-environment&#34;&gt;Setting up your environment&lt;/h2&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git clone https://softwarefactory-project.io/r/skydive
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;git-review installation :&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;yum install git-review
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;or&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;apt-get install git-review
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;or to get the latest version&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;sudo pip install git-review
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2 id=&#34;starting-a-change&#34;&gt;Starting a Change&lt;/h2&gt;
-
-&lt;p&gt;Create a topic branch :&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git checkout -b TOPIC-BRANCH
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Submit your change :&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git review
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Updating your Change :&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;git commit -a --amend
-git review
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;For a more complete documentation about
-&lt;a href=&#34;https://gerrit-documentation.storage.googleapis.com/Documentation/2.12/intro-quick.html#_the_life_and_times_of_a_change&#34;&gt;how to contribute to a gerrit hosted project&lt;/a&gt;.&lt;/p&gt;
+      <description>&lt;p&gt;Your contributions are more than welcome. Please check
+&lt;a href=&#34;https://github.com/skydive-project/skydive/blob/master/CONTRIBUTING.md&#34;&gt;https://github.com/skydive-project/skydive/blob/master/CONTRIBUTING.md&lt;/a&gt;
+to know about the process.&lt;/p&gt;
 </description>
     </item>
     
@@ -939,13 +1076,13 @@ enable_service skydive-agent skydive-analyzer
 
 # Inform the agent about the address on which analyzers are listening
 # Must be in ip:port format
-#SKYDIVE_AGENT_ANALYZERS=
+#SKYDIVE_ANALYZERS=
 
 # ip:port address on which skydive agent listens for connections.
 #SKYDIVE_AGENT_LISTEN=
 
 # Configure the skydive agent with the etcd server address
-# http://IP_ADDRESS:2379
+# http://IP_ADDRESS:12379
 #SKYDIVE_AGENT_ETCD=
 
 # The path for the generated skydive configuration file
@@ -998,7 +1135,7 @@ the &lt;code&gt;br-int&lt;/code&gt; bridges.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
-$ export SKYDIVE_AGENT_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
+$ export SKYDIVE_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
 
 $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;)&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
@@ -1018,8 +1155,8 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client topology query --gremlin &amp;quot;G.Flows()&amp;quot;
 [
   {
-    &amp;quot;ANodeUUID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
-    &amp;quot;BNodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;ANodeTID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
+    &amp;quot;BNodeTID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
     &amp;quot;LastUpdateMetric&amp;quot;: {
       &amp;quot;ABBytes&amp;quot;: 490,
       &amp;quot;ABPackets&amp;quot;: 5,
@@ -1028,7 +1165,7 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
       &amp;quot;Last&amp;quot;: 1477567166,
       &amp;quot;Start&amp;quot;: 1477567161
     },
-    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4/Payload&amp;quot;,
+    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4&amp;quot;,
     &amp;quot;Link&amp;quot;: {
       &amp;quot;A&amp;quot;: &amp;quot;02:48:4f:c4:40:99&amp;quot;,
       &amp;quot;B&amp;quot;: &amp;quot;e2:d0:f0:61:e7:81&amp;quot;,
@@ -1047,7 +1184,7 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
       &amp;quot;B&amp;quot;: &amp;quot;192.168.0.2&amp;quot;,
       &amp;quot;Protocol&amp;quot;: &amp;quot;IPV4&amp;quot;
     },
-    &amp;quot;NodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;NodeTID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
     &amp;quot;TrackingID&amp;quot;: &amp;quot;f745fb1f59298a1773e35827adfa42dab4f469f9&amp;quot;,
     &amp;quot;UUID&amp;quot;: &amp;quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&amp;quot;
   }
@@ -1073,7 +1210,7 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
 
 &lt;p&gt;To start the analyzer :&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;docker run -p 8082:8082 -p 2379:2379 skydive/skydive analyzer
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;docker run -p 8082:8082 skydive/skydive analyzer
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;To start the agent :&lt;/p&gt;
@@ -1113,7 +1250,7 @@ informations will be captured&lt;/li&gt;
 &lt;h2 id=&#34;dependencies&#34;&gt;Dependencies&lt;/h2&gt;
 
 &lt;ul&gt;
-&lt;li&gt;Go &amp;gt;= 1.5&lt;/li&gt;
+&lt;li&gt;Go &amp;gt;= 1.6&lt;/li&gt;
 &lt;li&gt;Elasticsearch &amp;gt;= 2.0&lt;/li&gt;
 &lt;li&gt;libpcap&lt;/li&gt;
 &lt;li&gt;libxml2&lt;/li&gt;
@@ -1231,14 +1368,8 @@ explanations about the syntax and the functions available.&lt;/p&gt;
 
 &lt;h2 id=&#34;flow-captures&#34;&gt;Flow captures&lt;/h2&gt;
 
-&lt;p&gt;Flow captures can be started from the WebUI or thanks to the Skydive client.
-Skydive leverages the Gremlin language in order to select nodes on which a
-capture will be started. The gremlin expression is continuously evaluated which
-means that it is possible to define a capture on nodes that don&amp;rsquo;t exist yet.
-It useful when you want to start a capture on all OpenvSwitch whatever the
-number of Skydive agents you will start.&lt;/p&gt;
-
-&lt;p&gt;The following command start a capture on all docker0 interfaces&lt;/p&gt;
+&lt;p&gt;Captures are described in &lt;a href=&#34;//skydive-project.github.io/skydive/api/captures/&#34;&gt;this section&lt;/a&gt;
+The following command starts a capture on all &lt;code&gt;docker0&lt;/code&gt; interfaces:&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;)&amp;quot;
 
@@ -1248,21 +1379,6 @@ number of Skydive agents you will start.&lt;/p&gt;
 }
 
 &lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;While starting the capture, you can specify the capture name,
-capture description and capture type optionally.
-In order to know the list of supported capture types, see the usage doc of flow capture.&lt;/p&gt;
-
-&lt;p&gt;Node types that support captures are :&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;ovsbridge&lt;/li&gt;
-&lt;li&gt;veth&lt;/li&gt;
-&lt;li&gt;device&lt;/li&gt;
-&lt;li&gt;internal&lt;/li&gt;
-&lt;li&gt;tun&lt;/li&gt;
-&lt;li&gt;bridge&lt;/li&gt;
-&lt;/ul&gt;
 
 &lt;p&gt;To delete a capture :&lt;/p&gt;
 
@@ -1275,24 +1391,6 @@ In order to know the list of supported capture types, see the usage doc of flow 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client topology query --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;).Flows()&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
 </description>
-    </item>
-    
-    <item>
-      <title>API</title>
-      <link>//skydive-project.github.io/skydive/api/</link>
-      <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
-      
-      <guid>//skydive-project.github.io/skydive/api/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Getting started</title>
-      <link>//skydive-project.github.io/skydive/getting-started/</link>
-      <pubDate>Wed, 04 May 2016 17:48:22 +0200</pubDate>
-      
-      <guid>//skydive-project.github.io/skydive/getting-started/</guid>
-      <description></description>
     </item>
     
   </channel>

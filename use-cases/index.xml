@@ -35,10 +35,13 @@
 
 &lt;ul&gt;
 &lt;li&gt;Source node, needs to be expressed in gremlin query format.&lt;/li&gt;
-&lt;li&gt;Destination node, needs to be expressed in gremlin query format.&lt;/li&gt;
+&lt;li&gt;Destination node, needs to be expressed in gremlin query format, optional if dstIP and dstMAC given.&lt;/li&gt;
+&lt;li&gt;Source IP of the packet, optional if source node given.&lt;/li&gt;
+&lt;li&gt;Source MAC of the packet, optional if source node given.&lt;/li&gt;
+&lt;li&gt;Destination IP of the packet, optional if destination node given.&lt;/li&gt;
+&lt;li&gt;Destination MAC of the packet, optional if destination node given.&lt;/li&gt;
 &lt;li&gt;Type of packet. currently only ICMP is supported.&lt;/li&gt;
 &lt;li&gt;Number of packets to be generated, default is 1.&lt;/li&gt;
-&lt;li&gt;Payload of the packet.&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client inject-packet [flags]
@@ -46,8 +49,12 @@
 Flags:
       --count int        number of packets to be generated (default 1)
       --dst string       destination node gremlin expression
+      --dstIP string     destination node IP
+      --dstMAC string    destination node MAC
       --payload string   payload
       --src string       source node gremlin expression
+      --srcIP string     source node IP
+      --srcMAC string    source node MAC
       --type string      packet type: icmp (default &amp;quot;icmp&amp;quot;)
 &lt;/code&gt;&lt;/pre&gt;
 

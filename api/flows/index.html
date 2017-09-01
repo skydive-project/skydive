@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <title>Flows - Skydive Docs</title>
-    <meta name="generator" content="Hugo 0.15" />
+    <meta name="generator" content="Hugo 0.16-DEV" />
 
     
     <meta name="description" content="Real-time network analyzer.">
@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.8.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.12.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -194,6 +194,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -351,6 +355,10 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Api</span>
       
     
@@ -385,6 +393,18 @@
 
 
 
+<a  title="Captures" href="//skydive-project.github.io/skydive/api/captures/">
+	
+	Captures
+</a>
+
+  
+      
+        
+        
+
+
+
 <a class="current" title="Flows" href="//skydive-project.github.io/skydive/api/flows/">
 	
 	Flows
@@ -403,6 +423,18 @@
 <a  title="Rest" href="//skydive-project.github.io/skydive/api/rest/">
 	
 	Rest
+</a>
+
+  
+      
+        
+        
+
+
+
+<a  title="Alerts" href="//skydive-project.github.io/skydive/api/alerts/">
+	
+	Alerts
 </a>
 
   
@@ -470,6 +502,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -605,8 +641,8 @@ structure.</p>
 <pre><code class="language-console">$ skydive client topology query --gremlin &quot;G.Flows().Limit(1)&quot;
 [
   {
-    &quot;ANodeUUID&quot;: &quot;422190f1-bbde-4eb0-4849-1fd1209229fe&quot;,
-    &quot;BNodeUUID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
+    &quot;ANodeTID&quot;: &quot;422190f1-bbde-4eb0-4849-1fd1209229fe&quot;,
+    &quot;BNodeTID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
     &quot;LastUpdateMetric&quot;: {
       &quot;ABBytes&quot;: 490,
       &quot;ABPackets&quot;: 5,
@@ -615,7 +651,7 @@ structure.</p>
       &quot;Last&quot;: 1477563666,
       &quot;Start&quot;: 1477563661
     },
-    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4/Payload&quot;,
+    &quot;LayersPath&quot;: &quot;Ethernet/IPv4/ICMPv4&quot;,
     &quot;Link&quot;: {
       &quot;A&quot;: &quot;02:48:4f:c4:40:99&quot;,
       &quot;B&quot;: &quot;e2:d0:f0:61:e7:81&quot;,
@@ -634,7 +670,7 @@ structure.</p>
       &quot;B&quot;: &quot;192.168.0.2&quot;,
       &quot;Protocol&quot;: &quot;IPV4&quot;
     },
-    &quot;NodeUUID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
+    &quot;NodeTID&quot;: &quot;f3f1256b-7097-487c-7a02-38a32e009b3c&quot;,
     &quot;TrackingID&quot;: &quot;f745fb1f59298a1773e35827adfa42dab4f469f9&quot;,
     &quot;UUID&quot;: &quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&quot;
   }
@@ -648,11 +684,11 @@ structure.</p>
 that a same flow will get a different ID for a different capture.</li>
 <li><code>TrackingID</code>, ID of the Flow which is the same across all the
 captures point. This ID can be used to follow a Flow on each capture points.</li>
-<li><code>NodeUUID</code>, ID of the interface node in the topology where the flow was
+<li><code>NodeTID</code>, TID metadata of the interface node in the topology where the flow was
 captured.</li>
-<li><code>ANodeUUID</code>, ID of the interface node in the topology where the packet is
+<li><code>ANodeTID</code>, TID metadata of the interface node in the topology where the packet is
 coming from.</li>
-<li><code>ANodeUUID</code>, ID of the interface node in the topology where the packet is
+<li><code>BNodeTID</code>, TID metadata of the interface node in the topology where the packet is
 going to.</li>
 <li><code>LayersPath</code>, All the layers composing the packets.</li>
 <li><code>Link</code>, Link layer of the flow. A, B and Protocol describing the endpoints and
@@ -668,7 +704,7 @@ endpoint <code>A</code> to endpoint <code>B</code>, and <code>BA*</code> for the
 			
 			<aside class="copyright" role="note">
 				
-				&copy; 2016 Released under the Apache license 2.0 &ndash;
+				&copy; 2017 Released under the Apache license 2.0 &ndash;
 				
 				Documentation built with
 				<a href="https://www.gohugo.io" target="_blank">Hugo</a>

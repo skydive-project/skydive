@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>Skydive client, API &amp; WebUI - Skydive Docs</title>
+    <title>Captures - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.16-DEV" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="//skydive-project.github.io/skydive/getting-started/client/">
+    <link rel="canonical" href="//skydive-project.github.io/skydive/api/captures/">
     
     <meta name="author" content="skydive-project/skydive">
     
 
-    <meta property="og:url" content="//skydive-project.github.io/skydive/getting-started/client/">
+    <meta property="og:url" content="//skydive-project.github.io/skydive/api/captures/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="//skydive-project.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Skydive client, API &amp; WebUI
+        Captures
       </div>
     </div>
 
@@ -260,14 +260,11 @@
 
 
 
-<a class="current" title="Client &amp; WebUI" href="//skydive-project.github.io/skydive/getting-started/client/">
+<a  title="Client &amp; WebUI" href="//skydive-project.github.io/skydive/getting-started/client/">
 	
 	Client &amp; WebUI
 </a>
 
-
-<ul id="scrollspy">
-</ul>
   
       
         
@@ -396,11 +393,14 @@
 
 
 
-<a  title="Captures" href="//skydive-project.github.io/skydive/api/captures/">
+<a class="current" title="Captures" href="//skydive-project.github.io/skydive/api/captures/">
 	
 	Captures
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
         
@@ -630,93 +630,49 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Skydive client, API &amp; WebUI </h1>
+			<h1>Captures </h1>
 
 			
 
-<h2 id="client">Client</h2>
+<p>Flow captures can be started from the WebUI or thanks to the <a href="//skydive-project.github.io/skydive/getting-started/client">Skydive client</a>.
+Skydive leverages the <a href="//skydive-project.github.io/skydive/api/gremlin/">Gremlin language</a> in order to select nodes on which a
+capture will be started. The Gremlin expression is continuously evaluated which
+means that it is possible to define a capture on nodes that do not exist yet.
+It useful when you want to start a capture on all OpenvSwitch whatever the
+number of Skydive agents you will start.</p>
 
-<p>Skydive client can be used to interact with Skydive Analyzer and Agents.
-Running it without any command will return all the commands available.</p>
+<p>While starting the capture, you can specify the capture name,
+capture description and capture type optionally.</p>
 
-<pre><code class="language-console">$ skydive client
+<p>At this time, the following capture types are supported:</p>
 
-Usage:
-  skydive client [command]
+<ul>
+<li><code>ovssflow</code>, for interfaces managed by OpenvSwitch such as OVS bridges</li>
+<li><code>afpacket</code>, for interfaces suchs as Linux bridges, veth, devices, &hellip;</li>
+<li><code>pcap</code>, same as <code>afpacket</code></li>
+<li><code>pcapsocket</code>. This capture type allows you to inject traffic from a PCAP file.
+See <a href="//skydive-project.github.io/skydive/api/captures#pcap-files">below</a> for more information.</li>
+</ul>
 
-Available Commands:
-  alert       Manage alerts
-  capture     Manage captures
+<p>Node types that support captures are :</p>
 
-Flags:
-  -h, --help[=false]: help for client
-      --password=&quot;&quot;: password auth parameter
-      --username=&quot;&quot;: username auth parameter
-</code></pre>
+<ul>
+<li>ovsbridge</li>
+<li>veth</li>
+<li>device</li>
+<li>internal</li>
+<li>tun</li>
+<li>bridge</li>
+</ul>
 
-<p>Specifying the subcommand will give the usage of the subcommand.</p>
+<h3 id="pcap-files">PCAP files</h3>
 
-<pre><code class="language-console">$ skydive client capture
-</code></pre>
-
-<p>If an authentication mechanism is defined in the configuration file the username
-and password parameter have to be used for each command. Environment variables
-SKYDIVE_USERNAME and SKYDIVE_PASSWORD can be used as default value for the
-username/password command line parameters.</p>
-
-<h2 id="webui">WebUI</h2>
-
-<p>To access to the WebUI of agents or analyzer:</p>
-
-<pre><code class="language-console">http://&lt;address&gt;:&lt;port&gt;
-</code></pre>
-
-<h2 id="topology-requests">Topology requests</h2>
-
-<p>Skydive uses the Gremlin traversal language as a topology request language.
-Requests on the topology can be done as following :</p>
-
-<pre><code class="language-console">$ skydive client topology query --gremlin &quot;G.V().Has('Name', 'br-int', 'Type' ,'ovsbridge')&quot;
-[
-  {
-    &quot;Host&quot;: &quot;pc48.home&quot;,
-    &quot;ID&quot;: &quot;1e4fc503-312c-4e4f-4bf5-26263ce82e0b&quot;,
-    &quot;Metadata&quot;: {
-      &quot;Name&quot;: &quot;br-int&quot;,
-      &quot;Type&quot;: &quot;ovsbridge&quot;,
-      &quot;UUID&quot;: &quot;c80cf5a7-998b-49ca-b2b2-7a1d050facc8&quot;
-    }
-  }
-]
-</code></pre>
-
-<p>Refer to the <a href="//skydive-project.github.io/skydive/api/gremlin/">Gremlin section</a> for further
-explanations about the syntax and the functions available.</p>
-
-<h2 id="flow-captures">Flow captures</h2>
-
-<p>Captures are described in <a href="//skydive-project.github.io/skydive/api/captures/">this section</a>
-The following command starts a capture on all <code>docker0</code> interfaces:</p>
-
-<pre><code class="language-console">$ skydive client capture create --gremlin &quot;G.V().Has('Name', 'docker0')&quot;
-
-{
-  &quot;UUID&quot;: &quot;76de5697-106a-4f50-7455-47c2fa7a964f&quot;,
-  &quot;GremlinQuery&quot;: &quot;G.V().Has('Name', 'docker0')&quot;
-}
-
-</code></pre>
-
-<p>To delete a capture :</p>
-
-<pre><code class="language-console">$ skydive client capture delete &lt;capture UUID&gt;
-</code></pre>
-
-<p>The Flows Gremlin step can be used in order to see the flows captured. See the
-<a href="//skydive-project.github.io/skydive/getting-started/gremlin/">Gremlin section</a> for further explanations.</p>
-
-<pre><code class="language-console">skydive client topology query --gremlin &quot;G.V().Has('Name', 'docker0').Flows()&quot;
-</code></pre>
+<p>If the flow probe <code>pcapsocket</code> is enabled, you can create captures with the
+type <code>pcapsocket</code>. Skydive will create a TCP socket where you can copy PCAP
+files (using <code>nc</code> for instance). Traffic injected into this socket will have
+its capture point set to the selected node. The TCP socket address can be
+retrieved using the <code>PCAPSocket</code> attribute of the node or using the
+<code>PCAPSocket</code> attribute of the capture.</p>
 
 			
 			<aside class="copyright" role="note">
@@ -737,7 +693,7 @@ The following command starts a capture on all <code>docker0</code> interfaces:</
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="//skydive-project.github.io/skydive/api/" title="API">
+      <a href="//skydive-project.github.io/skydive/getting-started/vagrant/" title="vagrant">
         <span class="direction">
           Previous
         </span>
@@ -747,7 +703,7 @@ The following command starts a capture on all <code>docker0</code> interfaces:</
           </div>
           <div class="stretch">
             <div class="title">
-              API
+              vagrant
             </div>
           </div>
         </div>
@@ -756,22 +712,6 @@ The following command starts a capture on all <code>docker0</code> interfaces:</
   </div>
 
   <div class="next">
-  
-      <a href="//skydive-project.github.io/skydive/getting-started/install/" title="Installation">
-        <span class="direction">
-          Next
-        </span>
-        <div class="page">
-          <div class="stretch">
-            <div class="title">
-              Installation
-            </div>
-          </div>
-          <div class="button button-next" role="button" aria-label="Next">
-            <i class="icon icon-forward"></i>
-          </div>
-        </div>
-      </a>
   
   </div>
 </nav>

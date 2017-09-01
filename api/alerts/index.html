@@ -8,18 +8,18 @@
   <head lang="en-us">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
-    <title>Skydive client, API &amp; WebUI - Skydive Docs</title>
+    <title>Alerts - Skydive Docs</title>
     <meta name="generator" content="Hugo 0.16-DEV" />
 
     
     <meta name="description" content="Real-time network analyzer.">
     
-    <link rel="canonical" href="//skydive-project.github.io/skydive/getting-started/client/">
+    <link rel="canonical" href="//skydive-project.github.io/skydive/api/alerts/">
     
     <meta name="author" content="skydive-project/skydive">
     
 
-    <meta property="og:url" content="//skydive-project.github.io/skydive/getting-started/client/">
+    <meta property="og:url" content="//skydive-project.github.io/skydive/api/alerts/">
     <meta property="og:title" content="Skydive Docs">
     <meta property="og:image" content="//skydive-project.github.io/skydive/images/skydive-logo.png">
     <meta name="apple-mobile-web-app-title" content="Skydive Docs">
@@ -95,7 +95,7 @@
     </div>
     <div class="stretch">
       <div class="title">
-        Skydive client, API &amp; WebUI
+        Alerts
       </div>
     </div>
 
@@ -260,14 +260,11 @@
 
 
 
-<a class="current" title="Client &amp; WebUI" href="//skydive-project.github.io/skydive/getting-started/client/">
+<a  title="Client &amp; WebUI" href="//skydive-project.github.io/skydive/getting-started/client/">
 	
 	Client &amp; WebUI
 </a>
 
-
-<ul id="scrollspy">
-</ul>
   
       
         
@@ -432,11 +429,14 @@
 
 
 
-<a  title="Alerts" href="//skydive-project.github.io/skydive/api/alerts/">
+<a class="current" title="Alerts" href="//skydive-project.github.io/skydive/api/alerts/">
 	
 	Alerts
 </a>
 
+
+<ul id="scrollspy">
+</ul>
   
       
     </ul>
@@ -630,93 +630,99 @@
 
 	<article class="article">
 		<div class="wrapper">
-			<h1>Skydive client, API &amp; WebUI </h1>
+			<h1>Alerts </h1>
 
 			
 
-<h2 id="client">Client</h2>
+<p>Skydive allows you to create alerts, based on queries on both topology graph
+and flows.</p>
 
-<p>Skydive client can be used to interact with Skydive Analyzer and Agents.
-Running it without any command will return all the commands available.</p>
+<h2 id="alert-evaluation">Alert evaluation</h2>
 
-<pre><code class="language-console">$ skydive client
+<p>An alert can be specified through a <a href="//skydive-project.github.io/skydive/api/gremlin">Gremlin</a> query or a
+JavaScript expression. The alert will be triggered if it returns:</p>
 
-Usage:
-  skydive client [command]
+<ul>
+<li>true</li>
+<li>a non empty string</li>
+<li>a number different from zero</li>
+<li>a non empty array</li>
+<li>a non empty map</li>
+</ul>
 
-Available Commands:
-  alert       Manage alerts
-  capture     Manage captures
+<p>The alert is triggered only if the evaluation result differs from the previous evaluation.</p>
 
-Flags:
-  -h, --help[=false]: help for client
-      --password=&quot;&quot;: password auth parameter
-      --username=&quot;&quot;: username auth parameter
-</code></pre>
+<p>Gremlin example:</p>
 
-<p>Specifying the subcommand will give the usage of the subcommand.</p>
+<p>With the following command, the alert is triggered as soon as the Gremlin query
+returns something new (i.e. a new node returned by the query, an updated metadata in the returned nodes&hellip;).</p>
 
-<pre><code class="language-console">$ skydive client capture
-</code></pre>
-
-<p>If an authentication mechanism is defined in the configuration file the username
-and password parameter have to be used for each command. Environment variables
-SKYDIVE_USERNAME and SKYDIVE_PASSWORD can be used as default value for the
-username/password command line parameters.</p>
-
-<h2 id="webui">WebUI</h2>
-
-<p>To access to the WebUI of agents or analyzer:</p>
-
-<pre><code class="language-console">http://&lt;address&gt;:&lt;port&gt;
-</code></pre>
-
-<h2 id="topology-requests">Topology requests</h2>
-
-<p>Skydive uses the Gremlin traversal language as a topology request language.
-Requests on the topology can be done as following :</p>
-
-<pre><code class="language-console">$ skydive client topology query --gremlin &quot;G.V().Has('Name', 'br-int', 'Type' ,'ovsbridge')&quot;
-[
-  {
-    &quot;Host&quot;: &quot;pc48.home&quot;,
-    &quot;ID&quot;: &quot;1e4fc503-312c-4e4f-4bf5-26263ce82e0b&quot;,
-    &quot;Metadata&quot;: {
-      &quot;Name&quot;: &quot;br-int&quot;,
-      &quot;Type&quot;: &quot;ovsbridge&quot;,
-      &quot;UUID&quot;: &quot;c80cf5a7-998b-49ca-b2b2-7a1d050facc8&quot;
-    }
-  }
-]
-</code></pre>
-
-<p>Refer to the <a href="//skydive-project.github.io/skydive/api/gremlin/">Gremlin section</a> for further
-explanations about the syntax and the functions available.</p>
-
-<h2 id="flow-captures">Flow captures</h2>
-
-<p>Captures are described in <a href="//skydive-project.github.io/skydive/api/captures/">this section</a>
-The following command starts a capture on all <code>docker0</code> interfaces:</p>
-
-<pre><code class="language-console">$ skydive client capture create --gremlin &quot;G.V().Has('Name', 'docker0')&quot;
-
+<pre><code class="language-console">$ skydive client alert create --expression &quot;G.V().Has('Name', 'eth0', 'State', 'DOWN')&quot;
 {
-  &quot;UUID&quot;: &quot;76de5697-106a-4f50-7455-47c2fa7a964f&quot;,
-  &quot;GremlinQuery&quot;: &quot;G.V().Has('Name', 'docker0')&quot;
+  &quot;UUID&quot;: &quot;185c49ba-341d-41a0-6f96-f3224140b2fa&quot;,
+  &quot;Expression&quot;: &quot;G.V().Has('Name', 'eth0', 'State', 'DOWN')&quot;,
+  &quot;CreateTime&quot;: &quot;2016-12-29T13:29:05.273620179+01:00&quot;
 }
-
 </code></pre>
 
-<p>To delete a capture :</p>
+<p>JavaScript example:</p>
 
-<pre><code class="language-console">$ skydive client capture delete &lt;capture UUID&gt;
+<p>If you prefer to trigger the alert only when the state of one of the node returned by a gremlin query goes down,
+you can use the following JavaScript expression :</p>
+
+<pre><code class="language-console">$ skydive client alert create --expression &quot;states = Gremlin(\&quot;G.V().Has('Name', 'br-int-lb').Values('State')\&quot;); result = false; for (var i = 0; i &lt; states.length; i++){ if (states[i] == 'DOWN'){ result = true; break;}} result;&quot;
 </code></pre>
 
-<p>The Flows Gremlin step can be used in order to see the flows captured. See the
-<a href="//skydive-project.github.io/skydive/getting-started/gremlin/">Gremlin section</a> for further explanations.</p>
+<p>The alert will be triggered every time the result of the JavaScript expression changes.</p>
 
-<pre><code class="language-console">skydive client topology query --gremlin &quot;G.V().Has('Name', 'docker0').Flows()&quot;
+<p>With the following command, the alert is triggered when the bandwidth of the flow bypass 1Mbps.
+It gets trigerred again the next time the bandwidth bypass this threshold.</p>
+
+<pre><code class="language-console">$ skydive client alert create --expression &quot;Gremlin(\&quot;G.Flows().Has('Network.A', '192.168.0.1').Metrics().Sum()\&quot;).ABBytes &gt; 1*1024*1024&quot; --trigger &quot;duration:10s&quot;
+{
+  &quot;UUID&quot;: &quot;331b5590-c45d-4723-55f5-0087eef899eb&quot;,
+  &quot;Expression&quot;: &quot;Gremlin(\&quot;G.Flows().Has('Network.A', '192.168.0.1').Metrics().Sum()\&quot;).ABBytes &gt; 1*1024*1024&quot;,
+  &quot;Trigger&quot;: &quot;duration:10s&quot;,
+  &quot;CreateTime&quot;: &quot;2016-12-29T13:29:05.197612381+01:00&quot;
+}
 </code></pre>
+
+<h2 id="fields">Fields</h2>
+
+<ul>
+<li><code>Name</code>, the alert name (optional)</li>
+<li><code>Description</code>, a description for the alert (optional)</li>
+<li><code>Expression</code>, a Gremlin query or JavaScript expression</li>
+<li><code>Action</code>, URL to trigger. Can be a <a href="//skydive-project.github.io/skydive/api/alerts#webhook">local file</a> or a <a href="//skydive-project.github.io/skydive/api/alerts#script">WebHook</a></li>
+<li><code>Trigger</code>, event that triggers the alert evaluation. Periodic alerts can be
+specified with <code>duration:5s</code>, for an alert that will be evaluated every 5 seconds.</li>
+</ul>
+
+<h2 id="notifications">Notifications</h2>
+
+<p>When an alert is triggered, all the WebSocket clients will be notified with a
+message of type <code>Alert</code> with a JSON object with the attributes:</p>
+
+<ul>
+<li><code>UUID</code>, ID of the triggered alert</li>
+<li><code>Timestamp</code>, timestamp of trigger</li>
+<li><code>ReasonData</code>, the result of the alert evaluation. If <code>expression</code> is a
+Gremlin query, it will be the result of the query. If <code>expression</code> is a
+JavaScript statement, it will be the result of the evaluation of this
+statement.</li>
+</ul>
+
+<p>In addition to the WebSocket message, an alert can trigger different kind of
+actions.</p>
+
+<h3 id="webhook">Webhook</h3>
+
+<p>A POST request is issued with the JSON message as payload.</p>
+
+<h3 id="script">Script</h3>
+
+<p>A local file (prefixed by file://) to execute a script. It receives the JSON
+message through stdin</p>
 
 			
 			<aside class="copyright" role="note">
@@ -737,7 +743,7 @@ The following command starts a capture on all <code>docker0</code> interfaces:</
 <nav class="pagination" aria-label="Footer">
   <div class="previous">
   
-      <a href="//skydive-project.github.io/skydive/api/" title="API">
+      <a href="//skydive-project.github.io/skydive/architecture/" title="Architecture">
         <span class="direction">
           Previous
         </span>
@@ -747,7 +753,7 @@ The following command starts a capture on all <code>docker0</code> interfaces:</
           </div>
           <div class="stretch">
             <div class="title">
-              API
+              Architecture
             </div>
           </div>
         </div>
@@ -757,14 +763,14 @@ The following command starts a capture on all <code>docker0</code> interfaces:</
 
   <div class="next">
   
-      <a href="//skydive-project.github.io/skydive/getting-started/install/" title="Installation">
+      <a href="//skydive-project.github.io/skydive/deployment/" title="Deployment">
         <span class="direction">
           Next
         </span>
         <div class="page">
           <div class="stretch">
             <div class="title">
-              Installation
+              Deployment
             </div>
           </div>
           <div class="button button-next" role="button" aria-label="Next">

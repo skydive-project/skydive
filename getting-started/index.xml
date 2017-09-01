@@ -22,8 +22,9 @@
 &lt;p&gt;You can use Vagrant to deploy a Skydive environment with one virtual machine
 running both Skydive analyzer and Elasticsearch, and two virtual machines with the
 Skydive agent. This &lt;code&gt;Vagrantfile&lt;/code&gt;, hosted in &lt;code&gt;contrib/vagrant&lt;/code&gt; of the Git
-repository, makes use of the (libvirt Vagrant provider)[&lt;a href=&#34;https://github.com/vagrant-libvirt/vagrant-libvirt&#34;&gt;https://github.com/vagrant-libvirt/vagrant-libvirt&lt;/a&gt;] and uses Fedora as the
-box image.&lt;/p&gt;
+repository, makes use of the
+&lt;a href=&#34;https://github.com/vagrant-libvirt/vagrant-libvirt&#34;&gt;libvirt Vagrant provider&lt;/a&gt;
+and uses Fedora as the box image.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;cd contrib/vagrant
 vagrant up
@@ -101,13 +102,13 @@ enable_service skydive-agent skydive-analyzer
 
 # Inform the agent about the address on which analyzers are listening
 # Must be in ip:port format
-#SKYDIVE_AGENT_ANALYZERS=
+#SKYDIVE_ANALYZERS=
 
 # ip:port address on which skydive agent listens for connections.
 #SKYDIVE_AGENT_LISTEN=
 
 # Configure the skydive agent with the etcd server address
-# http://IP_ADDRESS:2379
+# http://IP_ADDRESS:12379
 #SKYDIVE_AGENT_ETCD=
 
 # The path for the generated skydive configuration file
@@ -160,7 +161,7 @@ the &lt;code&gt;br-int&lt;/code&gt; bridges.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ export SKYDIVE_USERNAME=admin
 $ export SKYDIVE_PASSWORD=password
-$ export SKYDIVE_AGENT_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
+$ export SKYDIVE_ANALYZERS=localhost:8082 # Should be the same as SERVICE_HOST in local.conf
 
 $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;)&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
@@ -180,8 +181,8 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client topology query --gremlin &amp;quot;G.Flows()&amp;quot;
 [
   {
-    &amp;quot;ANodeUUID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
-    &amp;quot;BNodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;ANodeTID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
+    &amp;quot;BNodeTID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
     &amp;quot;LastUpdateMetric&amp;quot;: {
       &amp;quot;ABBytes&amp;quot;: 490,
       &amp;quot;ABPackets&amp;quot;: 5,
@@ -190,7 +191,7 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
       &amp;quot;Last&amp;quot;: 1477567166,
       &amp;quot;Start&amp;quot;: 1477567161
     },
-    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4/Payload&amp;quot;,
+    &amp;quot;LayersPath&amp;quot;: &amp;quot;Ethernet/IPv4/ICMPv4&amp;quot;,
     &amp;quot;Link&amp;quot;: {
       &amp;quot;A&amp;quot;: &amp;quot;02:48:4f:c4:40:99&amp;quot;,
       &amp;quot;B&amp;quot;: &amp;quot;e2:d0:f0:61:e7:81&amp;quot;,
@@ -209,7 +210,7 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
       &amp;quot;B&amp;quot;: &amp;quot;192.168.0.2&amp;quot;,
       &amp;quot;Protocol&amp;quot;: &amp;quot;IPV4&amp;quot;
     },
-    &amp;quot;NodeUUID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
+    &amp;quot;NodeTID&amp;quot;: &amp;quot;f3f1256b-7097-487c-7a02-38a32e009b3c&amp;quot;,
     &amp;quot;TrackingID&amp;quot;: &amp;quot;f745fb1f59298a1773e35827adfa42dab4f469f9&amp;quot;,
     &amp;quot;UUID&amp;quot;: &amp;quot;caa24da240cb3b40c84ebb708e2e5dcbe3c54784&amp;quot;
   }
@@ -235,7 +236,7 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
 
 &lt;p&gt;To start the analyzer :&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;docker run -p 8082:8082 -p 2379:2379 skydive/skydive analyzer
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;docker run -p 8082:8082 skydive/skydive analyzer
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;To start the agent :&lt;/p&gt;
@@ -275,7 +276,7 @@ informations will be captured&lt;/li&gt;
 &lt;h2 id=&#34;dependencies&#34;&gt;Dependencies&lt;/h2&gt;
 
 &lt;ul&gt;
-&lt;li&gt;Go &amp;gt;= 1.5&lt;/li&gt;
+&lt;li&gt;Go &amp;gt;= 1.6&lt;/li&gt;
 &lt;li&gt;Elasticsearch &amp;gt;= 2.0&lt;/li&gt;
 &lt;li&gt;libpcap&lt;/li&gt;
 &lt;li&gt;libxml2&lt;/li&gt;
@@ -393,14 +394,8 @@ explanations about the syntax and the functions available.&lt;/p&gt;
 
 &lt;h2 id=&#34;flow-captures&#34;&gt;Flow captures&lt;/h2&gt;
 
-&lt;p&gt;Flow captures can be started from the WebUI or thanks to the Skydive client.
-Skydive leverages the Gremlin language in order to select nodes on which a
-capture will be started. The gremlin expression is continuously evaluated which
-means that it is possible to define a capture on nodes that don&amp;rsquo;t exist yet.
-It useful when you want to start a capture on all OpenvSwitch whatever the
-number of Skydive agents you will start.&lt;/p&gt;
-
-&lt;p&gt;The following command start a capture on all docker0 interfaces&lt;/p&gt;
+&lt;p&gt;Captures are described in &lt;a href=&#34;//skydive-project.github.io/skydive/api/captures/&#34;&gt;this section&lt;/a&gt;
+The following command starts a capture on all &lt;code&gt;docker0&lt;/code&gt; interfaces:&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;)&amp;quot;
 
@@ -410,21 +405,6 @@ number of Skydive agents you will start.&lt;/p&gt;
 }
 
 &lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;While starting the capture, you can specify the capture name,
-capture description and capture type optionally.
-In order to know the list of supported capture types, see the usage doc of flow capture.&lt;/p&gt;
-
-&lt;p&gt;Node types that support captures are :&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;ovsbridge&lt;/li&gt;
-&lt;li&gt;veth&lt;/li&gt;
-&lt;li&gt;device&lt;/li&gt;
-&lt;li&gt;internal&lt;/li&gt;
-&lt;li&gt;tun&lt;/li&gt;
-&lt;li&gt;bridge&lt;/li&gt;
-&lt;/ul&gt;
 
 &lt;p&gt;To delete a capture :&lt;/p&gt;
 

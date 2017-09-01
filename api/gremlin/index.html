@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <title>Skydive Gremlin Query language - Skydive Docs</title>
-    <meta name="generator" content="Hugo 0.15" />
+    <meta name="generator" content="Hugo 0.16-DEV" />
 
     
     <meta name="description" content="Real-time network analyzer.">
@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.8.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.12.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -194,6 +194,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -351,6 +355,10 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Api</span>
       
     
@@ -388,6 +396,18 @@
 
 
 
+<a  title="Captures" href="//skydive-project.github.io/skydive/api/captures/">
+	
+	Captures
+</a>
+
+  
+      
+        
+        
+
+
+
 <a  title="Flows" href="//skydive-project.github.io/skydive/api/flows/">
 	
 	Flows
@@ -403,6 +423,18 @@
 <a  title="Rest" href="//skydive-project.github.io/skydive/api/rest/">
 	
 	Rest
+</a>
+
+  
+      
+        
+        
+
+
+
+<a  title="Alerts" href="//skydive-project.github.io/skydive/api/alerts/">
+	
+	Alerts
 </a>
 
   
@@ -470,6 +502,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -607,7 +643,7 @@ as query language for topology and flow requests.</p>
 <p>A Gremlin expression is a chain of steps that are evaluated from left to right.
 In the context of Skydive nodes stand for interfaces, ports, bridges,
 namespaces, etc. Links stand for any kind of relation between two nodes,
-ownership(host), membership(containers), layer2, etc.</p>
+ownership(host, netns, ovsbridge, containers), layer2, etc.</p>
 
 <p>The following expression will return all the OpenvSwitch ports belonging to
 an OpenvSwitch bridge named <code>br-int</code>.</p>
@@ -667,7 +703,7 @@ an OpenvSwitch bridge named <code>br-int</code>.</p>
 <p><code>Has</code> step filters out the nodes that don&rsquo;t match the given metadata list. <code>Has</code>
 can be applied either on nodes or edges.</p>
 
-<pre><code class="language-console">G.V().Has('Name': test, 'Type': 'netns')
+<pre><code class="language-console">G.V().Has('Name', 'test', 'Type', 'netns')
 </code></pre>
 
 <h3 id="in-out-both-steps">In/Out/Both steps</h3>
@@ -691,8 +727,8 @@ of steps <code>Out/Has</code> for example.</p>
 
 <p><code>InE/OutE</code> steps returns the incoming/ougoing links.</p>
 
-<pre><code class="language-console">G.V().Has('Name': 'test', 'Type': 'netns').InE()
-G.V().Has('Name': 'test', 'Type': 'netns').OutE()
+<pre><code class="language-console">G.V().Has('Name', 'test', 'Type', 'netns').InE()
+G.V().Has('Name', 'test', 'Type', 'netns').OutE()
 </code></pre>
 
 <p>Like for the <code>In/Out/Both</code> steps metadata list can be passed directly as
@@ -708,9 +744,12 @@ selected links.</p>
 
 <h3 id="dedup-step">Dedup step</h3>
 
-<p><code>Dedup</code> removes duplicated nodes/links.</p>
+<p><code>Dedup</code> removes duplicated nodes/links or flows. <code>Dedup</code> can take a parameter
+in order to specify the field used for the deduplication.</p>
 
 <pre><code class="language-console">G.V().Out().Both().Dedup()
+G.V().Out().Both().Dedup('Type')
+G.Flows().Dedup('NodeTID')
 </code></pre>
 
 <h3 id="count-step">Count step</h3>
@@ -818,6 +857,14 @@ G.At('-1m').V()
 G.At('Sun, 06 Nov 2016 08:49:37 GMT').V()
 </code></pre>
 
+<p><code>At</code> takes also an optional duration parameter which allows to specify a
+period of time in second for the lookup. This is useful especially when retrieving
+metrics. See <a href="//skydive-project.github.io/skydive/api/gremlin#metrics-step"><code>Metrics</code> step</a> for more information.</p>
+
+<pre><code>G.At('-1m', 500).V()
+G.At('-1m', 3600).Flows()
+</code></pre>
+
 <h3 id="predicates">Predicates</h3>
 
 <p>Predicates which can be used with <code>Has</code>, <code>In*</code>, <code>Out*</code> steps :</p>
@@ -850,7 +897,7 @@ the members of the given array.</li>
 expression.</li>
 </ul>
 
-<pre><code class="language-console">G.V().Has('Name', Regex('tap-'))
+<pre><code class="language-console">G.V().Has('Name', Regex('^tap.*'))
 </code></pre>
 
 <h3 id="flows-step">Flows step</h3>
@@ -887,17 +934,20 @@ G.V().Has('Name', 'br-int').Flows().Out()
 <ul>
 <li><code>UUID</code></li>
 <li><code>TrackingID</code></li>
-<li><code>NodeUUID</code></li>
-<li><code>ANodeUUID</code></li>
-<li><code>BNodeUUID</code></li>
+<li><code>NodeTID</code></li>
+<li><code>ANodeTID</code></li>
+<li><code>BNodeTID</code></li>
 <li><code>LayersPath</code></li>
 <li><code>Application</code></li>
+<li><code>Link</code></li>
 <li><code>Link.A</code></li>
 <li><code>Link.B</code></li>
 <li><code>Link.Protocol</code></li>
+<li><code>Network</code></li>
 <li><code>Network.A</code></li>
 <li><code>Network.B</code></li>
 <li><code>Network.Protocol</code></li>
+<li><code>Transport</code></li>
 <li><code>Transport.A</code></li>
 <li><code>Transport.B</code></li>
 <li><code>Transport.Protocol</code></li>
@@ -905,18 +955,24 @@ G.V().Has('Name', 'br-int').Flows().Out()
 <li><code>Metric.BABytes</code></li>
 <li><code>Metric.ABPackets</code></li>
 <li><code>Metric.BAPackets</code></li>
-<li><code>Metric.Start</code></li>
-<li><code>Metric.Last</code></li>
+<li><code>Start</code></li>
+<li><code>Last</code></li>
 </ul>
 
 <p>Lt, Lte, Gt, Gte predicates can be used on numerical fields.
 See <a href="//skydive-project.github.io/skydive/api/flows/">Flow Schema</a> for further explanations.</p>
 
+<p>Link, Network and Transport keys shall be matched with any of A or B by using OR operator.</p>
+
 <h3 id="flows-sort-step">Flows Sort step</h3>
 
-<p><code>Sort</code> step sorts flows by their <code>Metric.Last</code> field.</p>
+<p><code>Sort</code> step sorts flows by the given field and requested order.
+By default, the flows are in ascending order by their <code>Last</code> field.
+<code>ASC</code> and <code>DESC</code> predicates can be used to specify ascending and descending order respectively.</p>
 
 <pre><code class="language-console">G.Flows().Sort()
+G.Flows().Sort(&quot;Metric.ABPackets&quot;)
+G.Flows().Sort(DESC, &quot;Metric.ABPackets&quot;)
 </code></pre>
 
 <h3 id="flows-dedup-step">Flows Dedup step</h3>
@@ -926,23 +982,12 @@ See <a href="//skydive-project.github.io/skydive/api/flows/">Flow Schema</a> for
 <pre><code class="language-console">G.Flows().Dedup()
 </code></pre>
 
-<h3 id="flows-since-predicate">Flows Since predicate</h3>
-
-<p><code>Since</code> can be used in a timed context request(see <code>At</code> step) meaning having
-specified a time point thanks to the <code>At</code> step. <code>Since</code> allows to do a lookup
-from that point in the past. <code>Since</code> will return the flows which were active
-during the period. <code>Since</code> takes the number of seconds to go back in past.</p>
-
-<p>The following request returns flows which were active between
-(now - 2 hours) and (now - 1 hour).</p>
-
-<pre><code class="language-console">G.At('-1h').Flows(Since(3600))
-</code></pre>
-
 <h3 id="metrics-step">Metrics step</h3>
 
-<p><code>Metrics</code> returns arrays of metrics of a set of flow, grouped by
-the flows UUIDs.</p>
+<p><code>Metrics</code> returns arrays of metrics of a set of flows or interfaces, grouped by
+the flows UUIDs or Node IDs.</p>
+
+<p>For flow metrics :</p>
 
 <pre><code class="language-console">G.Flows().Metrics()
 [
@@ -960,19 +1005,40 @@ the flows UUIDs.</p>
 ]
 </code></pre>
 
-<h3 id="bandwidth-step">Bandwidth step</h3>
+<p>and for interface metrics :</p>
 
-<p><code>Bandwidth</code> returns a sum of all the previously selected metrics.</p>
-
-<pre><code class="language-console">G.Flows().Dedup().Metrics().Bandwidth()&quot;
+<pre><code class="language-console">G.V().Metrics()
 [
   {
-    &quot;ABbytes&quot;: 4900,
-    &quot;ABpackets&quot;: 50,
-    &quot;BAbytes&quot;: 4900,
-    &quot;BApackets&quot;: 50,
-    &quot;Duration&quot;: 10,
-    &quot;NBFlow&quot;: 1
+    &quot;fc2a6103-599e-4821-4c87-c8224bd0e84e&quot;: [
+    {
+      &quot;Collisions&quot;: 0,
+      &quot;Last&quot;: 1489161773820,
+      &quot;Multicast&quot;: 0,
+      &quot;RxBytes&quot;: 7880,
+      &quot;RxCompressed&quot;: 0,
+      &quot;RxCrcErrors&quot;: 0,
+      &quot;RxDropped&quot;: 0,
+      &quot;RxErrors&quot;: 0,
+      &quot;RxFifoErrors&quot;: 0,
+      &quot;RxFrameErrors&quot;: 0,
+      &quot;RxLengthErrors&quot;: 0,
+      &quot;RxMissedErrors&quot;: 0,
+      &quot;RxOverErrors&quot;: 0,
+      &quot;RxPackets&quot;: 10,
+      &quot;Start&quot;: 1489161768820,
+      &quot;TxAbortedErrors&quot;: 0,
+      &quot;TxBytes&quot;: 7880,
+      &quot;TxCarrierErrors&quot;: 0,
+      &quot;TxCompressed&quot;: 0,
+      &quot;TxDropped&quot;: 0,
+      &quot;TxErrors&quot;: 0,
+      &quot;TxFifoErrors&quot;: 0,
+      &quot;TxHeartbeatErrors&quot;: 0,
+      &quot;TxPackets&quot;: 10,
+      &quot;TxWindowErrors&quot;: 0
+    }
+
   }
 ]
 </code></pre>
@@ -980,7 +1046,7 @@ the flows UUIDs.</p>
 			
 			<aside class="copyright" role="note">
 				
-				&copy; 2016 Released under the Apache license 2.0 &ndash;
+				&copy; 2017 Released under the Apache license 2.0 &ndash;
 				
 				Documentation built with
 				<a href="https://www.gohugo.io" target="_blank">Hugo</a>

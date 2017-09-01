@@ -3,8 +3,12 @@
   
   <url>
     <loc>//skydive-project.github.io/skydive/</loc>
-    <lastmod>2016-11-28T15:21:44+01:00</lastmod>
-    <priority>0</priority>
+    <lastmod>2017-01-05T11:44:01+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/api/captures/</loc>
+    <lastmod>2017-01-05T11:44:01+02:00</lastmod>
   </url>
   
   <url>
@@ -15,6 +19,11 @@
   <url>
     <loc>//skydive-project.github.io/skydive/deployment/</loc>
     <lastmod>2016-11-23T01:07:31+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>//skydive-project.github.io/skydive/api/alerts/</loc>
+    <lastmod>2016-09-29T11:02:01+02:00</lastmod>
   </url>
   
   <url>

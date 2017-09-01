@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <title> - Skydive Docs</title>
-    <meta name="generator" content="Hugo 0.15" />
+    <meta name="generator" content="Hugo 0.16-DEV" />
 
     
     <meta name="description" content="Real-time network analyzer.">
@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.8.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.12.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -194,6 +194,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -351,6 +355,10 @@
       
     
       
+    
+      
+    
+      
       <span class="section">Api</span>
       
     
@@ -385,6 +393,18 @@
 
 
 
+<a  title="Captures" href="//skydive-project.github.io/skydive/api/captures/">
+	
+	Captures
+</a>
+
+  
+      
+        
+        
+
+
+
 <a  title="Flows" href="//skydive-project.github.io/skydive/api/flows/">
 	
 	Flows
@@ -400,6 +420,18 @@
 <a  title="Rest" href="//skydive-project.github.io/skydive/api/rest/">
 	
 	Rest
+</a>
+
+  
+      
+        
+        
+
+
+
+<a  title="Alerts" href="//skydive-project.github.io/skydive/api/alerts/">
+	
+	Alerts
 </a>
 
   
@@ -467,6 +499,10 @@
   <li>
     
 
+    
+      
+    
+      
     
       
     
@@ -608,10 +644,13 @@
 
 <ul>
 <li>Source node, needs to be expressed in gremlin query format.</li>
-<li>Destination node, needs to be expressed in gremlin query format.</li>
+<li>Destination node, needs to be expressed in gremlin query format, optional if dstIP and dstMAC given.</li>
+<li>Source IP of the packet, optional if source node given.</li>
+<li>Source MAC of the packet, optional if source node given.</li>
+<li>Destination IP of the packet, optional if destination node given.</li>
+<li>Destination MAC of the packet, optional if destination node given.</li>
 <li>Type of packet. currently only ICMP is supported.</li>
 <li>Number of packets to be generated, default is 1.</li>
-<li>Payload of the packet.</li>
 </ul>
 
 <pre><code class="language-console">$ skydive client inject-packet [flags]
@@ -619,8 +658,12 @@
 Flags:
       --count int        number of packets to be generated (default 1)
       --dst string       destination node gremlin expression
+      --dstIP string     destination node IP
+      --dstMAC string    destination node MAC
       --payload string   payload
       --src string       source node gremlin expression
+      --srcIP string     source node IP
+      --srcMAC string    source node MAC
       --type string      packet type: icmp (default &quot;icmp&quot;)
 </code></pre>
 
@@ -632,7 +675,7 @@ Flags:
 			
 			<aside class="copyright" role="note">
 				
-				&copy; 2016 Released under the Apache license 2.0 &ndash;
+				&copy; 2017 Released under the Apache license 2.0 &ndash;
 				
 				Documentation built with
 				<a href="https://www.gohugo.io" target="_blank">Hugo</a>
