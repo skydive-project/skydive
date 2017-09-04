@@ -54,17 +54,17 @@ func TestParseEvent(t *testing.T) {
 	if event.Bridge != "br" {
 		t.Error("wrong bridge assigned")
 	}
-	if event.Rule.Actions != "" {
+	if event.RawRule.Actions != "" {
 		t.Error("No action here")
 	}
-	if event.Rule.Filter != "dl_src=01:00:00:00:00:00/01:00:00:00:00:00" {
-		t.Errorf("Bad filter: %s", event.Rule.Filter)
+	if event.RawRule.Filter != "dl_src=01:00:00:00:00:00/01:00:00:00:00:00" {
+		t.Errorf("Bad filter: %s", event.RawRule.Filter)
 	}
-	if event.Rule.Cookie != 32 {
+	if event.RawRule.Cookie != 32 {
 		t.Errorf("Bad cookie")
 	}
-	if event.Rule.Table != 21 {
-		t.Errorf("Bad table: %d", event.Rule.Table)
+	if event.RawRule.Table != 21 {
+		t.Errorf("Bad table: %d", event.RawRule.Table)
 	}
 }
 
@@ -74,17 +74,17 @@ func TestParseEventWithAction(t *testing.T) {
 	if err != nil {
 		t.Error("parseEvent should succeed")
 	}
-	if event.Rule.Actions != "resubmit(;1)" {
-		t.Errorf("Bad action: %s", event.Rule.Actions)
+	if event.RawRule.Actions != "resubmit(;1)" {
+		t.Errorf("Bad action: %s", event.RawRule.Actions)
 	}
-	if event.Rule.Filter != "" {
-		t.Errorf("No filter here %s", event.Rule.Filter)
+	if event.RawRule.Filter != "" {
+		t.Errorf("No filter here %s", event.RawRule.Filter)
 	}
-	if event.Rule.Cookie != 32 {
+	if event.RawRule.Cookie != 32 {
 		t.Errorf("Bad cookie")
 	}
-	if event.Rule.Table != 21 {
-		t.Errorf("Bad table: %d", event.Rule.Table)
+	if event.RawRule.Table != 21 {
+		t.Errorf("Bad table: %d", event.RawRule.Table)
 	}
 }
 
@@ -94,17 +94,17 @@ func TestParseEventRemove(t *testing.T) {
 	if err != nil {
 		t.Error("parseEvent should succeed")
 	}
-	if event.Rule.Actions != "" {
+	if event.RawRule.Actions != "" {
 		t.Errorf("No action here")
 	}
-	if event.Rule.Filter != "ip,nw_dst=192.168.0.1" {
-		t.Errorf("Bad filter %s", event.Rule.Filter)
+	if event.RawRule.Filter != "ip,nw_dst=192.168.0.1" {
+		t.Errorf("Bad filter %s", event.RawRule.Filter)
 	}
-	if event.Rule.Cookie != 0 {
+	if event.RawRule.Cookie != 0 {
 		t.Errorf("Bad cookie")
 	}
-	if event.Rule.Table != 66 {
-		t.Errorf("Bad table: %d", event.Rule.Table)
+	if event.RawRule.Table != 66 {
+		t.Errorf("Bad table: %d", event.RawRule.Table)
 	}
 }
 
@@ -250,11 +250,11 @@ func TestCompleteRule(t *testing.T) {
 	executor = ExecuteForTest{Results: []string{"NXST_FLOW reply (xid=0x4):\n cookie=0x20, duration=57227.249s, table=21, n_packets=0, n_bytes=0, idle_age=57227, priority=1,dl_src=01:00:00:00:00:00/01:00:00:00:00:00 actions=drop"}}
 	var line = " event=ADDED table=21 cookie=32 dl_src=01:00:00:00:00:00/01:00:00:00:00:00\n"
 	event, _ := parseEvent(line, "br", "host-br-")
-	err := completeRule(probe, &event)
+	err := completeEvent(probe, &event, "host-br-")
 	if err != nil {
 		t.Error("completeRule: Should not err")
 	}
-	rule := event.Rule
+	rule := event.Rules[0]
 	if rule.Filter != "priority=1,dl_src=01:00:00:00:00:00/01:00:00:00:00:00" || rule.Actions != "drop" {
 		t.Errorf("completeRule: fails action=%s, filter=%s", rule.Actions, rule.Filter)
 	}
