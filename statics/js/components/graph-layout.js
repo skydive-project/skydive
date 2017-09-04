@@ -809,6 +809,42 @@ TopologyGraphLayout.prototype = {
     this.showNode(n);
   },
 
+  uncollapseGroupTree: function(group) {
+    this.delCollapseLinks(group);
+
+    var i;
+    for (i = group._memberArray.length -1; i >= 0; i--) {
+      this.uncollapseNode(group._memberArray[i], group);
+    }
+    group.collapsed = false;
+
+    var children = group.children;
+    for (i in children) {
+      this.uncollapseGroupTree(children[i]);
+    }
+    this.g.select("#node-" + group.owner.id)
+      .attr('collapsed', group.collapsed)
+      .select('image.collapsexpand')
+      .attr('xlink:href', this.collapseImg);
+  },
+
+  collapseGroupTree: function(group) {
+    var i, children = group.children;
+    for (i in children) {
+      if (children[i].collapsed) this.collapseGroupTree(children[i]);
+    }
+
+    for (i = group.memberArray.length - 1; i >= 0; i--) {
+      this.collapseNode(group.memberArray[i], group);
+    }
+    group.collapsed = true;
+
+    this.g.select("#node-" + group.owner.id)
+      .attr('collapsed', group.collapsed)
+      .select('image.collapsexpand')
+      .attr('xlink:href', this.collapseImg);
+  },
+
   uncollapseGroup: function(group) {
     this.delCollapseLinks(group);
 
@@ -828,6 +864,17 @@ TopologyGraphLayout.prototype = {
       .attr('collapsed', group.collapsed)
       .select('image.collapsexpand')
       .attr('xlink:href', this.collapseImg);
+  },
+
+  toggleExpandAll: function(d) {
+    if (d.isGroupOwner()) {
+      if(!d.group.collapsed) {
+        this.collapseGroupTree(d.group);
+      } else {
+        this.uncollapseGroupTree(d.group);
+      }
+    }
+    this.update();
   },
 
   collapseByNode: function(d) {
