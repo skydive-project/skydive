@@ -461,9 +461,13 @@ Vue.component('rule-detail', {
     }
   },
 
+  data: function() {
+    return { memoBridgeLayout:null };
+  },
+
   computed: {
     layout: function () {
-      if (this.memoBridgeLayout === undefined || this.memoBridgeLayout.bridge !== this.bridge) {
+      if (! this.memoBridgeLayout || this.memoBridgeLayout.bridge !== this.bridge) {
         this.memoBridgeLayout = new BridgeLayout(this.graph, this.bridge, this.$store);
         this.memoBridgeLayout.switchTab(0);
       }
@@ -473,10 +477,31 @@ Vue.component('rule-detail', {
 
   beforeDestroy: function () {
     this.unwatch();
+    this.graph.removeHandler(this.handler);
   },
 
   mounted: function () {
     var self = this;
+    var handle = function(e) {
+      if (! self.bridge) return;
+      if (e.target.metadata.Type === 'ofrule' && e.source.id == self.bridge.id ) {
+        self.memoBridgeLayout = null;
+      }
+    };
+    this.handler = {
+      onPostInit: function(v){},
+      onNodeAdded: function(v){},
+      onNodeDeleted: function(v){},
+      onGroupAdded: function(v){},
+      onGroupDeleted: function(v){},
+      onParentSet: function(v){},
+      onGroupMemberAdded: function(v1,v2){},
+      onGroupMemberDeleted: function(v1,v2){},
+      onNodeUpdated: function(v1,v2){},
+      onEdgeAdded: handle,
+      onEdgeDeleted: handle
+    };
+    this.graph.addHandler(this.handler);
     this.unwatch = this.$store.watch(
       function () {
         return self.$store.state.currentRule;

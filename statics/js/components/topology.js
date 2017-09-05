@@ -381,6 +381,13 @@ Graph.prototype = {
     this.handlers.push(handler);
   },
 
+  removeHandler: function(handler) {
+    var index = this.handlers.indexOf(handler);
+    if (index > -1) {
+      this.handlers.splice(index, 1);
+    }
+  },
+
   notifyHandlers: function(ev, v1, v2) {
     var i, h;
     for (i = this.handlers.length - 1; i >= 0; i--) {
