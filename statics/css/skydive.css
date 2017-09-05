@@ -478,12 +478,19 @@ ul.dropdown-menu .fa.pull-right {
 
 .capture-advanced .panel-heading {
   padding: 0px 0px;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
 }
 
 .capture-advanced .panel-heading a {
   font-weight: 700;
   font-size: 14px;
+}
+
+.capture-advanced legend {
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  border-bottom: 1px solid #444;
 }
 
 .raw-packet-link {

@@ -34,7 +34,6 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 )
 
@@ -297,12 +296,9 @@ func validateAllParentChains(t *testing.T, table *Table) {
 }
 
 func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF) []*Flow {
-	table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{})
-	prev_value := config.GetConfig().GetBool("agent.capture_syn")
-	config.GetConfig().Set("agent.capture_syn", true)
+	table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{TCPMetric: true})
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 	validateAllParentChains(t, table)
-	config.GetConfig().Set("agent.capture_syn", prev_value)
 
 	return table.getFlows(&filters.SearchQuery{}).Flows
 }
