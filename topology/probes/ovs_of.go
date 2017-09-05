@@ -39,7 +39,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/socketplane/libovsdb"
 )
 
 // OvsOfProbe is the type of the probe retrieving Openflow rules on an Open Vswitch
@@ -431,6 +430,9 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 	go func() {
 		prefix := probe.Host + "-" + probe.Bridge + "-"
 		for line := range lines {
+			if ctx.Err() != nil {
+				break
+			}
 			event, err := parseEvent(line, probe.Bridge, prefix)
 			if err == nil {
 				err = completeEvent(ofp, &event, prefix)
@@ -530,12 +532,20 @@ func (o *OvsOfProbe) OnOvsBridgeAdd(bridgeNode *graph.Node) {
 }
 
 // OnOvsBridgeDel is called when a bridge is deleted
-func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, row *libovsdb.RowUpdate) {
+func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, bridgeNode *graph.Node) {
 	o.Lock()
 	defer o.Unlock()
 	if bridgeProbe, ok := o.BridgeProbes[uuid]; ok {
 		bridgeProbe.cancel()
 		delete(o.BridgeProbes, uuid)
+	}
+	// Clean all the rules attached to the bridge.
+	if bridgeNode != nil {
+		rules := o.Graph.LookupChildren(bridgeNode, graph.Metadata{"Type": "ofrule"}, nil)
+		for _, ruleNode := range rules {
+			logging.GetLogger().Infof("Rule %v deleted (Bridge deleted)", ruleNode.Metadata()["UUID"])
+			o.Graph.DelNode(ruleNode)
+		}
 	}
 }
 
