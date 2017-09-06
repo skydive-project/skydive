@@ -66,6 +66,10 @@ var TopologyComponent = {
             <div id="metadata-panel" class="sub-left-panel">\
               <object-detail :object="currentNodeMetadata"></object-detail>\
             </div>\
+              <div v-if="currentNodeMetadata.Type == \'ovsbridge\'">\
+              <h1>Rules</h1>\
+              <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
+            </div>\
             <div v-show="Object.keys(currentNodeStats).length">\
               <h1>Interface metrics</h1>\
               <statistics-table :object="currentNodeStats"></statistics-table>\
@@ -377,6 +381,13 @@ Graph.prototype = {
     this.handlers.push(handler);
   },
 
+  removeHandler: function(handler) {
+    var index = this.handlers.indexOf(handler);
+    if (index > -1) {
+      this.handlers.splice(index, 1);
+    }
+  },
+
   notifyHandlers: function(ev, v1, v2) {
     var i, h;
     for (i = this.handlers.length - 1; i >= 0; i--) {
@@ -441,6 +452,26 @@ Graph.prototype = {
     }
 
     this.notifyHandlers('nodeDeleted', node);
+  },
+
+  getNeighbor: function(node, type) {
+    for (var id in node.edges) {
+      var edge = node.edges[id];
+      if (edge.source === node && edge.target.metadata.Type === type) return edge.source;
+      if (edge.target === node && edge.source.metadata.Type === type) return edge.target;
+    }
+    return undefined;
+  },
+
+  getTargets: function(node) {
+    var targets = [];
+
+    for (var i in node.edges) {
+      var e = node.edges[i];
+      if (e.source === node)
+         targets.push(e.target);
+      }
+    return targets;
   },
 
   delGroup: function(group) {

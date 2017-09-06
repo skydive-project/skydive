@@ -490,3 +490,44 @@ ul.dropdown-menu .fa.pull-right {
   color: skyblue;
   cursor: pointer;
 }
+
+.rules-detail .port-link {
+  color: skyblue;
+  cursor: pointer;
+}
+
+.rules-detail .table-link {
+  padding-left: 5px;
+  color: skyblue;
+  cursor: pointer;
+}
+
+.rules-detail .filters-column {
+  width: 45%;
+}
+
+.rules-detail .summary-column {
+  width: 20%;
+}
+
+.rules-detail .actions-column {
+  width: 35%;
+}
+
+.rules-detail .red {
+  color: #c00;
+}
+
+.rules-detail .blue {
+  color: #08c;
+}
+
+.rules-detail .rules {
+  padding: 5px;
+  background-color: #333;
+  border-radius: 5px;
+}
+
+.rules-detail .nav-pills>li.active>a, .rules-detail .nav-pills>li.active>a:focus, .rules-detail .nav-pills>li.active>a:hover {
+  background-color: #333;
+}
