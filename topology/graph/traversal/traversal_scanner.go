@@ -61,6 +61,7 @@ const (
 	IN
 	OUTV
 	INV
+	BOTHV
 	OUTE
 	INE
 	BOTHE
@@ -228,6 +229,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return OUTV, buf.String()
 	case "INV":
 		return INV, buf.String()
+	case "BOTHV":
+		return BOTHV, buf.String()
 	case "OUTE":
 		return OUTE, buf.String()
 	case "INE":

@@ -1567,6 +1567,44 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	return ntv
 }
 
+// BothV step, nodes in/out
+func (te *GraphTraversalE) BothV(s ...interface{}) *GraphTraversalV {
+	if te.error != nil {
+		return &GraphTraversalV{error: te.error}
+	}
+
+	metadata, err := SliceToMetadata(s...)
+	if err != nil {
+		return &GraphTraversalV{error: err}
+	}
+
+	ntv := NewGraphTraversalV(te.GraphTraversal, []*graph.Node{})
+	it := te.GraphTraversal.currentStepContext.PaginationRange.Iterator()
+
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
+	for _, e := range te.edges {
+		parents, children := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, metadata)
+		for _, parent := range parents {
+			if it.Done() {
+				break
+			} else if it.Next() {
+				ntv.nodes = append(ntv.nodes, parent)
+			}
+		}
+		for _, child := range children {
+			if it.Done() {
+				break
+			} else if it.Next() {
+				ntv.nodes = append(ntv.nodes, child)
+			}
+		}
+	}
+
+	return ntv
+}
+
 // NewGraphTraversalValue creates a new traversal value step
 func NewGraphTraversalValue(gt *GraphTraversal, value interface{}, err ...error) *GraphTraversalValue {
 	tv := &GraphTraversalValue{
