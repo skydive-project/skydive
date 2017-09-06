@@ -180,11 +180,7 @@ func (a *WSMessageAsyncClient) OnMessage(c WSClient, m Message) {
 func (c *WSMessageAsyncClient) OnWSMessage(client WSClient, msg WSMessage) {
 	c.replyChanMutex.RLock()
 	if ch, ok := c.replyChan[msg.UUID]; ok {
-		if msg.Status >= http.StatusBadRequest {
-			ch <- nil
-		} else {
-			ch <- &msg
-		}
+		ch <- &msg
 	}
 	c.replyChanMutex.RUnlock()
 }
