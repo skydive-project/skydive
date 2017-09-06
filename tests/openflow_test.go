@@ -96,3 +96,25 @@ func TestSuperimposedOFRule(t *testing.T) {
 		},
 		[]int{1, 0, 1, 1})
 }
+
+func TestDelRuleWithBridge(t *testing.T) {
+	setupCmds := []helper.Cmd{
+		{"ovs-vsctl add-br br-test1", true},
+		{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},
+		{"ovs-vsctl add-port br-test1 intf2 -- set interface intf2 type=internal", true},
+		{"sleep 1", true},
+		{"ovs-ofctl add-flow br-test1 table=0,priority=1,actions=resubmit(,1)", true},
+		{"sleep 1", true},
+		{"ovs-vsctl del-br br-test1", true},
+	}
+
+	test := &Test{
+		setupCmds: setupCmds,
+
+		tearDownCmds: []helper.Cmd{},
+
+		check: func(c *TestContext) error { return verify(c, []int{0}) },
+	}
+
+	RunTest(t, test)
+}

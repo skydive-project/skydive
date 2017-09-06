@@ -135,11 +135,11 @@ func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row 
 	defer o.Graph.Unlock()
 
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
+	if o.OvsOfProbe != nil {
+		o.OvsOfProbe.OnOvsBridgeDel(uuid, bridge)
+	}
 	if bridge != nil {
 		o.Graph.DelNode(bridge)
-	}
-	if o.OvsOfProbe != nil {
-		o.OvsOfProbe.OnOvsBridgeDel(uuid, row)
 	}
 }
 
