@@ -139,7 +139,7 @@ Vue.component('inject-form', {
       var self = this;
       this.node1 = this.node2 = "";
       this.count = 1;
-      this.type = "icmp";
+      this.type = "icmp4";
       this.payloadlength = 0;
     },
 
