@@ -18,16 +18,28 @@ Vue.component('inject-form', {
         </select>\
       </div>\
       <div class="form-group">\
-        <label>Target</label>\
+        <label>Source</label>\
         <node-selector class="inject-target"\
                        placeholder="From"\
                        id="inject-src"\
                        attr="id"\
                        v-model="node1"></node-selector>\
+        <div class="input-group">\
+          <span for="inject-src-ip" class="input-group-addon">IP: </span>\
+          <input id="inject-src-ip" class="form-control" v-model="srcIP" placeholder="Auto"/>\
+        </div>\
+      </div>\
+      <div class="form-group">\
+        <label>Destination</label>\
         <node-selector placeholder="To"\
+                       class="inject-target"\
                        attr="id"\
                        id="inject-dst"\
                        v-model="node2"></node-selector>\
+        <div class="input-group">\
+          <label for="inject-dst-ip" class="input-group-addon">IP: </label>\
+          <input id="inject-dst-ip" class="form-control" v-model="dstIP" placeholder="Auto"/>\
+        </div>\
       </div>\
       <div class="form-group">\
         <label for="inject-count">Nb. of packets</label>\
@@ -73,6 +85,10 @@ Vue.component('inject-form', {
       port1: 0,
       port2: 0,
       payloadlength: 0,
+      srcNode: null,
+      dstNode: null,
+      srcIP: "",
+      dstIP: "",
     };
   },
 
@@ -98,6 +114,12 @@ Vue.component('inject-form', {
     error: function() {
       if (!this.node1 || !this.node2) {
           return "Source and destination interfaces must be selected";
+      } else if (this.srcIP == "" && this.dstIP == "") {
+          return "Source and Destination IPs need to be given by user";
+      } else if (this.srcIP == "") {
+          return "Source IP need to be given by user";
+      } else if (this.dstIP == "") {
+          return "Destination IP need to be given by user";
       } else {
           return;
       }
@@ -113,6 +135,7 @@ Vue.component('inject-form', {
       }
       if (newVal) {
         this.highlightNode(newVal, true);
+        this.srcIP = this.getIP(this.srcNode = this.$store.state.currentNode);
       }
     },
 
@@ -122,6 +145,14 @@ Vue.component('inject-form', {
       }
       if (newVal) {
         this.highlightNode(newVal, true);
+        this.dstIP = this.getIP(this.dstNode = this.$store.state.currentNode);
+      }
+    },
+
+    type: function(newVal, oldVal) {
+      if(newVal.slice(-1) != oldVal.slice(-1)) {
+        if(this.srcNode != null) this.srcIP = this.getIP(this.srcNode);
+        if(this.dstNode != null) this.dstIP = this.getIP(this.dstNode);
       }
     }
 
@@ -137,12 +168,26 @@ Vue.component('inject-form', {
         this.$store.commit('unhighlight', id);
     },
 
+    getIP: function(node) {
+      md = node.metadata;
+      ipFamily = this.type.slice(-1);
+      if (ipFamily == "4" && "IPV4" in md) {
+        return md["IPV4"][0];
+      } else if (ipFamily == "6" && "IPV6" in md) {
+        return md["IPV6"][0];
+      } else {
+        return "";
+      }
+    },
+
     reset: function() {
       var self = this;
       this.node1 = this.node2 = "";
       this.count = 1;
       this.type = "icmp4";
       this.payloadlength = 0;
+      this.srcNode = this.dstNode = null;
+      this.srcIP = this.dstIP = "";
     },
 
     inject: function() {
@@ -159,6 +204,8 @@ Vue.component('inject-form', {
           "Dst": "G.V('" + this.node2 + "')",
           "SrcPort": this.port1,
           "DstPort": this.port2,
+          "SrcIP": this.srcIP,
+          "DstIP": this.dstIP,
           "Type": this.type,
           "Count": this.count,
           "ID": this.id,
