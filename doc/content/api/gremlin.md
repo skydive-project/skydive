@@ -65,7 +65,21 @@ G.V()
 A node ID can be passed to the V step which will return the corresponding node.
 
 ```console
-G.V('ca909ccf-203d-457d-70b8-06fe308221efca909ccf-203d-457d-70b8-06fe308221ef')
+G.V('ca909ccf-203d-457d-70b8-06fe308221ef')
+```
+
+### E Step
+
+E step returns the edges belonging to the graph.
+
+```console
+G.E()
+```
+
+A edge ID can be passed to the E step which will return the corresponding edge.
+
+```console
+G.E('c8aeb26f-0962-4c46-b700-a12dfe720af1')
 ```
 
 ### Has Step
@@ -96,13 +110,14 @@ of steps `Out/Has` for example.
 G.V().Has('Name', 'br-int', 'Type', 'ovsbridge').Out('Name', 'intf1')
 ```
 
-### InE/OutE steps
+### InE/OutE/BothE steps
 
-`InE/OutE` steps returns the incoming/ougoing links.
+`InE/OutE/BothE` steps returns the incoming/ougoing links.
 
 ```console
 G.V().Has('Name', 'test', 'Type', 'netns').InE()
 G.V().Has('Name', 'test', 'Type', 'netns').OutE()
+G.V().Has('Name', 'test', 'Type', 'netns').BothE()
 ```
 
 Like for the `In/Out/Both` steps metadata list can be passed directly as
