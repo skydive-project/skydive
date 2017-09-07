@@ -1083,7 +1083,7 @@ TopologyGraphLayout.prototype = {
     if (d.metadata.Type === "host") {
       return d.metadata.Name.split(".")[0];
     }
-    return d.metadata.Name ? d.metadata.Name.substr(0, 12) : "";
+    return d.metadata.Name ? d.metadata.Name.length > 12 ? d.metadata.Name.substr(0, 12)+"..." : d.metadata.Name : "";
   },
 
   nodeSize: function(d) {
