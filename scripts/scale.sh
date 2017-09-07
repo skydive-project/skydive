@@ -469,7 +469,7 @@ function stop_analyzer() {
         while pkill -0 -f $NAME.yml ; do
             sleep 1
             timeout=$[timeout - 1]
-            if $timeout -lt 0 ; then
+            if [ $timeout -lt 0 ] ; then
                 echo "Timeout on shutdown $NAME should not occur"
                 pgrep -a -f $NAME.yml
                 sudo pkill -9 -f $NAME.yml
@@ -491,7 +491,7 @@ function stop_agent() {
         while pkill -0 -f $NAME.yml ; do
             sleep 1
             timeout=$[timeout - 1]
-            if $timeout -lt 0 ; then
+            if [ $timeout -lt 0 ] ; then
                 echo "Timeout on shutdown $NAME should not occur"
                 pgrep -a -f $NAME.yml
                 sudo pkill -9 -f $NAME.yml
