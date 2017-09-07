@@ -222,6 +222,19 @@ predicate as a second parameter.
 G.V().Has('Type', 'netns').ShortestPathTo(Metadata('Type', 'host'), Metadata('Type', 'layer2'))
 ```
 
+### SubGraph step
+
+`SubGraph` step returns a new Graph based on the previous steps. Step V or E can
+be used to walk trough this new Graph.
+
+```
+G.E().Has('RelationType', 'layer2').SubGraph().V().Has('Name', 'eth0')
+```
+
+```
+G.V().Has('Type', 'veth').SubGraph().E()
+```
+
 ### GraphPath step
 
 `GraphPath` step returns a path string corresponding to the reverse path

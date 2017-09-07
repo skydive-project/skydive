@@ -1291,6 +1291,41 @@ nodeloop:
 	return nte
 }
 
+// SubGraph step, node/edge out
+func (tv *GraphTraversalV) SubGraph(s ...interface{}) *GraphTraversal {
+	if tv.error != nil {
+		return &GraphTraversal{error: tv.error}
+	}
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
+	memory, err := graph.NewMemoryBackend()
+	if err != nil {
+		return &GraphTraversal{error: err}
+	}
+
+	// first insert all the nodes
+	for _, n := range tv.nodes {
+		if !memory.NodeAdded(n) {
+			return &GraphTraversal{error: errors.New("Error while adding node to SubGraph")}
+		}
+	}
+
+	// then insert edges, ignore edge insert error since one of the linked node couldn't be part
+	// of the SubGraph
+	for _, n := range tv.nodes {
+		edges := tv.GraphTraversal.Graph.GetNodeEdges(n, nil)
+		for _, e := range edges {
+			memory.EdgeAdded(e)
+		}
+	}
+
+	ng := graph.NewGraph(tv.GraphTraversal.Graph.GetHost(), memory)
+
+	return NewGraphTraversal(ng, tv.GraphTraversal.lockGraph)
+}
+
 // Metrics step : packets counters
 func (tv *GraphTraversalV) Metrics() *MetricsTraversalStep {
 	if tv.error != nil {
@@ -1531,7 +1566,7 @@ func (te *GraphTraversalE) InV(s ...interface{}) *GraphTraversalV {
 	defer te.GraphTraversal.RUnlock()
 
 	for _, e := range te.edges {
-		parents, _ := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, graph.Metadata{})
+		parents, _ := te.GraphTraversal.Graph.GetEdgeNodes(e, metadata, nil)
 		for _, parent := range parents {
 			if it.Done() {
 				break
@@ -1562,7 +1597,7 @@ func (te *GraphTraversalE) OutV(s ...interface{}) *GraphTraversalV {
 	defer te.GraphTraversal.RUnlock()
 
 	for _, e := range te.edges {
-		_, children := te.GraphTraversal.Graph.GetEdgeNodes(e, graph.Metadata{}, metadata)
+		_, children := te.GraphTraversal.Graph.GetEdgeNodes(e, nil, metadata)
 		for _, child := range children {
 			if it.Done() {
 				break
@@ -1611,6 +1646,44 @@ func (te *GraphTraversalE) BothV(s ...interface{}) *GraphTraversalV {
 	}
 
 	return ntv
+}
+
+// SubGraph step, node/edge out
+func (te *GraphTraversalE) SubGraph(s ...interface{}) *GraphTraversal {
+	if te.error != nil {
+		return &GraphTraversal{error: te.error}
+	}
+
+	te.GraphTraversal.RLock()
+	defer te.GraphTraversal.RUnlock()
+
+	memory, err := graph.NewMemoryBackend()
+	if err != nil {
+		return &GraphTraversal{error: err}
+	}
+
+	for _, e := range te.edges {
+		parents, children := te.GraphTraversal.Graph.GetEdgeNodes(e, nil, nil)
+		for _, child := range children {
+			if !memory.NodeAdded(child) {
+				return &GraphTraversal{error: errors.New("Error while adding node to SubGraph")}
+			}
+		}
+
+		for _, parent := range parents {
+			if !memory.NodeAdded(parent) {
+				return &GraphTraversal{error: errors.New("Error while adding node to SubGraph")}
+			}
+		}
+
+		if !memory.EdgeAdded(e) {
+			return &GraphTraversal{error: errors.New("Error while adding edge to SubGraph")}
+		}
+	}
+
+	ng := graph.NewGraph(te.GraphTraversal.Graph.GetHost(), memory)
+
+	return NewGraphTraversal(ng, te.GraphTraversal.lockGraph)
 }
 
 // NewGraphTraversalValue creates a new traversal value step
