@@ -38,6 +38,11 @@ type GraphFlowEnhancer struct {
 	tidCache *tidCache
 }
 
+// Name return the Graph enahancer name
+func (gfe *GraphFlowEnhancer) Name() string {
+	return "Graph"
+}
+
 func (gfe *GraphFlowEnhancer) getNodeTID(mac string) string {
 	if packet.IsBroadcastMac(mac) || packet.IsMulticastMac(mac) {
 		return "*"

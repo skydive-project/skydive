@@ -62,17 +62,18 @@ type FlowServerWebSocketConn struct {
 
 // FlowServer describes a flow server with pipeline enhancers mechanism
 type FlowServer struct {
-	Storage          storage.Storage
-	EnhancerPipeline *flow.EnhancerPipeline
-	Server           *shttp.Server
-	conn             FlowServerConn
-	state            int64
-	wgServer         sync.WaitGroup
-	wgFlowsHandlers  sync.WaitGroup
-	bulkInsert       int
-	bulkDeadline     int
-	ch               chan *flow.Flow
-	quit             chan struct{}
+	Storage                storage.Storage
+	EnhancerPipeline       *flow.EnhancerPipeline
+	enhancerPipelineConfig *flow.EnhancerPipelineConfig
+	Server                 *shttp.Server
+	conn                   FlowServerConn
+	state                  int64
+	wgServer               sync.WaitGroup
+	wgFlowsHandlers        sync.WaitGroup
+	bulkInsert             int
+	bulkDeadline           int
+	ch                     chan *flow.Flow
+	quit                   chan struct{}
 }
 
 // OnMessage event
@@ -155,7 +156,7 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 
 func (s *FlowServer) storeFlows(flows []*flow.Flow) {
 	if s.Storage != nil && len(flows) > 0 {
-		s.EnhancerPipeline.Enhance(flows)
+		s.EnhancerPipeline.Enhance(s.enhancerPipelineConfig, flows)
 		s.Storage.StoreFlows(flows)
 
 		logging.GetLogger().Debugf("%d flows stored", len(flows))
@@ -234,13 +235,14 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 	}
 
 	return &FlowServer{
-		Server:           s,
-		Storage:          store,
-		EnhancerPipeline: pipeline,
-		bulkInsert:       bulk,
-		bulkDeadline:     deadline,
-		conn:             conn,
-		quit:             make(chan struct{}, 2),
-		ch:               make(chan *flow.Flow, 1000),
+		Server:                 s,
+		Storage:                store,
+		EnhancerPipeline:       pipeline,
+		enhancerPipelineConfig: flow.NewEnhancerPipelineConfig(),
+		bulkInsert:             bulk,
+		bulkDeadline:           deadline,
+		conn:                   conn,
+		quit:                   make(chan struct{}, 2),
+		ch:                     make(chan *flow.Flow, 1000),
 	}, nil
 }

@@ -1041,9 +1041,10 @@
 			"revisionTime": "2016-01-18T19:07:21Z"
 		},
 		{
-			"checksumSHA1": "rbn5H+j4wqth5Q2ITCzVO8RgdKI=",
+			"checksumSHA1": "asKDMHmA34wkDxXY18ch/jjLcEM=",
 			"path": "github.com/pmylund/go-cache",
-			"revision": "a122e14c4b8ee69022f62f24ba85cb36ce844366"
+			"revision": "a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0",
+			"revisionTime": "2017-07-22T04:01:10Z"
 		},
 		{
 			"checksumSHA1": "wQEloMPTblRcywDZnt3WJYjyiv8=",
