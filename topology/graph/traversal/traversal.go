@@ -111,9 +111,12 @@ type MetricsTraversalStep struct {
 func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 	switch v := v.(type) {
 	case *RegexMetadataMatcher:
-		return &filters.Filter{
-			RegexFilter: &filters.RegexFilter{Key: k, Value: v.pattern},
-		}, nil
+		rf, err := filters.NewRegexFilter(k, v.pattern)
+		if err != nil {
+			return nil, err
+		}
+
+		return &filters.Filter{RegexFilter: rf}, nil
 	case *NEMetadataMatcher:
 		switch t := v.value.(type) {
 		case string:

@@ -181,6 +181,14 @@ func (r *RegexFilter) Eval(g Getter) bool {
 	return re.(*regexp.Regexp).MatchString(field)
 }
 
+func NewRegexFilter(key string, pattern string) (*RegexFilter, error) {
+	if _, err := regexp.Compile(pattern); err != nil {
+		return nil, err
+	}
+
+	return &RegexFilter{Key: key, Value: pattern}, nil
+}
+
 // Eval evaluates an null filter (not string and not int64 types)
 func (n *NullFilter) Eval(g Getter) bool {
 	if _, err := g.GetFieldString(n.Key); err == nil {
