@@ -24,36 +24,67 @@ package flow
 
 // Enhancer should Enhance the flow via this interface
 type Enhancer interface {
+	Name() string
 	Enhance(flow *Flow)
 }
 
 // EnhancerPipeline describes a list of flow enhancer
 type EnhancerPipeline struct {
-	Enhancers []Enhancer
+	Enhancers map[string]Enhancer
+}
+
+type EnhancerPipelineConfig struct {
+	enabled map[string]bool
+}
+
+func NewEnhancerPipelineConfig() *EnhancerPipelineConfig {
+	return &EnhancerPipelineConfig{enabled: make(map[string]bool)}
+}
+
+func (epc *EnhancerPipelineConfig) Disable(name string) {
+	epc.enabled[name] = false
+}
+
+func (epc *EnhancerPipelineConfig) Enable(name string) {
+	epc.enabled[name] = true
+}
+
+func (epc *EnhancerPipelineConfig) IsEnabled(name string) bool {
+	v, ok := epc.enabled[name]
+	if !ok {
+		return true
+	}
+	return v
 }
 
 // EnhanceFlow enhance a flow from with all registered enhancer
-func (e *EnhancerPipeline) EnhanceFlow(flow *Flow) {
+func (e *EnhancerPipeline) EnhanceFlow(cfg *EnhancerPipelineConfig, flow *Flow) {
 	for _, enhancer := range e.Enhancers {
-		enhancer.Enhance(flow)
+		if cfg.IsEnabled(enhancer.Name()) {
+			enhancer.Enhance(flow)
+		}
 	}
 }
 
 // Enhance a list of flows
-func (e *EnhancerPipeline) Enhance(flows []*Flow) {
+func (e *EnhancerPipeline) Enhance(cfg *EnhancerPipelineConfig, flows []*Flow) {
 	for _, flow := range flows {
-		e.EnhanceFlow(flow)
+		e.EnhanceFlow(cfg, flow)
 	}
 }
 
 // AddEnhancer registers a new flow enhancer
 func (e *EnhancerPipeline) AddEnhancer(en Enhancer) {
-	e.Enhancers = append(e.Enhancers, en)
+	e.Enhancers[en.Name()] = en
 }
 
 // NewEnhancerPipeline registers a list of flow Enhancer
 func NewEnhancerPipeline(enhancers ...Enhancer) *EnhancerPipeline {
-	return &EnhancerPipeline{
-		Enhancers: enhancers,
+	ep := &EnhancerPipeline{
+		Enhancers: make(map[string]Enhancer),
 	}
+	for _, en := range enhancers {
+		ep.AddEnhancer(en)
+	}
+	return ep
 }

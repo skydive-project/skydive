@@ -79,6 +79,10 @@ type fakeEnhancer struct {
 	enhanced bool
 }
 
+func (e *fakeEnhancer) Name() string {
+	return "fake"
+}
+
 func (e *fakeEnhancer) Enhance(f *Flow) {
 	if !e.enhanced {
 		f.ANodeTID = "aaa"
