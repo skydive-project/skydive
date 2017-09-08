@@ -32,7 +32,8 @@ function cleanup() {
   if [ -e $DIR/docker.init ] && [ $DIR/docker.snapshot ]; then
     grep -v -F -x -f $DIR/{docker.init,docker.snapshot} | while read CONTAINER; do
       docker stop $CONTAINER
-      docker rm $CONTAINER
+
+      for i in $( seq 5 ); do docker rm -f $CONTAINER && break || sleep 1; done
     done
     rm -f $DIR/intf
   fi
