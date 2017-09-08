@@ -58,6 +58,9 @@ EOF
   systemctl restart etcd
 
   rm -rf /tmp/skydive_agent*
+
+  sudo docker ps -q | xargs -r sudo docker stop
+  sudo docker ps -q -all | xargs -r sudo docker rm
 }
 
 function init() {
