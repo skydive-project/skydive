@@ -365,6 +365,20 @@ function ping() {
 	sudo ip netns exec $SRC ping $IP_DST $ARGS
 }
 
+function iperf() {
+	SRC=$1
+	DST=$2
+	ARGS=${*: 3}
+
+	IP_DST=$( sudo ip netns exec $DST ip a show eth0 | grep "inet " | awk '{print $2}' | cut -d '/' -f 1 )
+	sudo ip netns exec $DST iperf -s -t 11 &
+        sleep 1
+	sudo ip netns exec $SRC iperf -c $IP_DST -t 10 -b 1M $ARGS
+        sudo pkill -f "iperf -s"
+        sleep 1
+        sudo pkill -f "iperf -s"
+}
+
 # start all the services within a screen.
 function start() {
 	ANALYZER_NUM=$1
@@ -506,6 +520,7 @@ function usage() {
 	echo -e "Usage:\t$0 start/stop <num analyzers> <num agents> <num vm> [elasticsearch address]"
 	echo ""
 	echo -e "      \t$0 ping <agent-1-vm1> <agent-2-vm1> [options]"
+	echo -e "      \t$0 iperf <agent-1-vm1> <agent-2-vm1> [options]"
 	echo -e "      \t$0 stop-analyzer <num>"
 	exit 1
 }
@@ -548,6 +563,12 @@ elif [ "$1" == "ping" ]; then
 	fi
 
 	ping $2 $3 ${*: 4}
+elif [ "$1" == "iperf" ]; then
+	if [ -z "$3" ]; then
+		usage
+	fi
+
+	iperf $2 $3 ${*: 4}
 else
 	usage
 fi

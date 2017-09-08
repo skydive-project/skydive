@@ -6,7 +6,7 @@ dir="$(dirname "$0")"
 . "${dir}/install-go.sh"
 
 # this should deploy in the CI image
-sudo yum install -y screen inotify-tools
+sudo yum install -y screen inotify-tools iperf
 
 sudo systemctl stop etcd.service
 sleep 15
