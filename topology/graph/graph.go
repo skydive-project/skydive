@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
+	"github.com/skydive-project/skydive/logging"
 )
 
 const (
@@ -1179,11 +1180,16 @@ func (g *Graph) GetFilteredNodes() (FilteredNodes []*Node) {
 		FilteredNodes = g.backend.GetNodes(g.context.TimeSlice, Metadata{})
 		return
 	}
-
-	for i := 0; i < len(res); i++ {
-		FilteredNodes = append(FilteredNodes, res[i].(*Node))
+	for _, value := range res{
+		switch value.(type) {
+			case *Node:
+				FilteredNodes = append(FilteredNodes, value.(*Node))
+			case []*Node:
+				FilteredNodes = append(FilteredNodes, value.([]*Node)...)
+			default:
+				logging.GetLogger().Debug("Filter received type of value: ", reflect.TypeOf(value))
+		}
 	}
-
 	return
 }
 
