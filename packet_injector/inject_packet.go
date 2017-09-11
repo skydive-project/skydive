@@ -114,7 +114,12 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 		return "", err
 	}
 
-	rawSocket, err := common.NewRawSocketInNs(nsPath, ifName)
+	var rawSocket *common.RawSocket
+	if nsPath != "" {
+		rawSocket, err = common.NewRawSocketInNs(nsPath, ifName)
+	} else {
+		rawSocket, err = common.NewRawSocket(ifName)
+	}
 	if err != nil {
 		return "", err
 	}

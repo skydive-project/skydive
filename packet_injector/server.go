@@ -64,9 +64,11 @@ func (pis *PacketInjectorServer) OnWSMessage(c shttp.WSClient, msg shttp.WSMessa
 	case "PIRequest":
 		var reply *shttp.WSMessage
 		trackingID, err := pis.injectPacket(msg)
-		replyObj := &PacketInjectorReply{err: err, TrackingID: trackingID}
+		replyObj := &PacketInjectorReply{TrackingID: trackingID}
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
+
+			replyObj.Error = err.Error()
 			reply = msg.Reply(replyObj, "PIResult", http.StatusBadRequest)
 		} else {
 			reply = msg.Reply(replyObj, "PIResult", http.StatusOK)

@@ -24,14 +24,16 @@ package packet_injector
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 type PacketInjectorReply struct {
 	TrackingID string
-	err        error
+	Error      string
 }
 
 type PacketInjectorClient struct {
@@ -51,7 +53,11 @@ func (pc *PacketInjectorClient) InjectPacket(host string, pp *PacketParams) (str
 		return "", fmt.Errorf("Failed to parse response from %s: %s", host, err.Error())
 	}
 
-	return reply.TrackingID, reply.err
+	if resp.Status != http.StatusOK {
+		return "", errors.New(reply.Error)
+	}
+
+	return reply.TrackingID, nil
 }
 
 func NewPacketInjectorClient(w *shttp.WSMessageServer) *PacketInjectorClient {
