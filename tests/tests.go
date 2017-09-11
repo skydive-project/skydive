@@ -457,7 +457,7 @@ func (s *seleniumHelper) clickOnNode(gremlin string) error {
 }
 
 func (s *seleniumHelper) expand() error {
-	expand, err := s.findElement(selenium.ByID, "expand-collapse")
+	expand, err := s.findElement(selenium.ByID, "expand")
 	if err != nil {
 		return err
 	}
