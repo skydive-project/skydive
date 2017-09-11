@@ -35,6 +35,7 @@ import (
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -199,6 +200,24 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 		return map[string]interface{}{
 			"regexp": map[string]string{
 				prefix + f.Key: f.Value,
+			},
+		}
+	}
+
+	if f := filter.IPV4RangeFilter; f != nil {
+		// NOTE(safchain) as for now the IP fields are not typed as IP
+		// use a regex
+
+		// ignore the error at this point it should have been catched earlier
+		regex, _ := common.IPV4CIDRToRegex(f.Value)
+
+		// remove anchors as ES matches the whole string and doesn't support them
+		value := strings.TrimPrefix(regex, "^")
+		value = strings.TrimSuffix(value, "$")
+
+		return map[string]interface{}{
+			"regexp": map[string]string{
+				prefix + f.Key: value,
 			},
 		}
 	}

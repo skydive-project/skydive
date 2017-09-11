@@ -238,7 +238,14 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 	}
 
 	if f.RegexFilter != nil {
-		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.RegexFilter.Key), f.RegexFilter.Value)
+		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.RegexFilter.Key), strings.Replace(f.RegexFilter.Value, `\`, `\\`, -1))
+	}
+
+	if f.IPV4RangeFilter != nil {
+		// ignore the error at this point it should have been catched earlier
+		regex, _ := common.IPV4CIDRToRegex(f.IPV4RangeFilter.Value)
+
+		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.IPV4RangeFilter.Key), strings.Replace(regex, `\`, `\\`, -1))
 	}
 
 	if f.InStringFilter != nil {

@@ -89,6 +89,11 @@ message NullFilter {
   string Key = 1;
 }
 
+message IPV4RangeFilter {
+  string Key = 1;
+  string Value = 2;
+}
+
 message Filter {
   TermStringFilter TermStringFilter = 1;
   TermInt64Filter TermInt64Filter = 2;
@@ -103,6 +108,7 @@ message Filter {
   BoolFilter BoolFilter = 9;
   RegexFilter RegexFilter = 10;
   NullFilter NullFilter = 11;
+  IPV4RangeFilter IPV4RangeFilter = 12;
 }
 
 message BoolFilter {

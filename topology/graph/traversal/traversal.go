@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
 	"time"
 
@@ -111,7 +110,7 @@ type MetricsTraversalStep struct {
 func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 	switch v := v.(type) {
 	case *RegexMetadataMatcher:
-		rf, err := filters.NewRegexFilter(k, v.pattern)
+		rf, err := filters.NewRegexFilter(k, v.regex)
 		if err != nil {
 			return nil, err
 		}
@@ -215,6 +214,18 @@ func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 		return filters.NewTermStringFilter(k, v), nil
 	case int64:
 		return filters.NewTermInt64Filter(k, v), nil
+	case *IPV4RangeMetadataMatcher:
+		cidr, ok := v.value.(string)
+		if !ok {
+			return nil, errors.New("Ipv4Range value has to be a string")
+		}
+
+		rf, err := filters.NewIPV4RangeFilter(k, cidr)
+		if err != nil {
+			return nil, err
+		}
+
+		return &filters.Filter{IPV4RangeFilter: rf}, nil
 	default:
 		i, err := common.ToInt64(v)
 		if err != nil {
@@ -376,14 +387,12 @@ func Between(from interface{}, to interface{}) *BetweenMetadataMatcher {
 
 // RegexMetadataMatcher describes a list of metadata that match a regex
 type RegexMetadataMatcher struct {
-	regexp  *regexp.Regexp
-	pattern string
+	regex string
 }
 
 // Regex step
-func Regex(expr string) *RegexMetadataMatcher {
-	r, _ := regexp.Compile(expr)
-	return &RegexMetadataMatcher{regexp: r, pattern: expr}
+func Regex(regex string) *RegexMetadataMatcher {
+	return &RegexMetadataMatcher{regex: regex}
 }
 
 // ContainsMetadataMatcher describes a list of metadata that contains a value
@@ -394,6 +403,16 @@ type ContainsMetadataMatcher struct {
 // Contains step
 func Contains(s interface{}) *ContainsMetadataMatcher {
 	return &ContainsMetadataMatcher{value: s}
+}
+
+// IPV4RangeMetadataMatcher matches ipv4 contained in an ipv4 range
+type IPV4RangeMetadataMatcher struct {
+	value interface{}
+}
+
+// IPV4RANGE step
+func IPV4Range(s interface{}) *IPV4RangeMetadataMatcher {
+	return &IPV4RangeMetadataMatcher{value: s}
 }
 
 // Since describes a list of metadata that match since seconds

@@ -953,6 +953,15 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 				return nil, fmt.Errorf("One parameter expected with CONTAINS: %v", containsParams)
 			}
 			params = append(params, Contains(containsParams[0]))
+		case IPV4RANGE:
+			ipParams, err := p.parseStepParams()
+			if err != nil {
+				return nil, err
+			}
+			if len(ipParams) != 1 {
+				return nil, fmt.Errorf("One parameter expected with IPV4RANGE: %v", ipParams)
+			}
+			params = append(params, IPV4Range(ipParams[0]))
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}

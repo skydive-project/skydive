@@ -1963,3 +1963,59 @@ func TestRawPackets(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+func TestFlowsWithIpv4Range(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-ipr", true},
+
+			{"ip netns add src-ipr", true},
+			{"ip link add src-ipr-eth0 type veth peer name ipr-src-eth0 netns src-ipr", true},
+			{"ip link set src-ipr-eth0 up", true},
+			{"ip netns exec src-ipr ip link set ipr-src-eth0 up", true},
+			{"ip netns exec src-ipr ip address add 169.254.40.33/24 dev ipr-src-eth0", true},
+
+			{"ip netns add dst-ipr", true},
+			{"ip link add dst-ipr-eth0 type veth peer name ipr-dst-eth0 netns dst-ipr", true},
+			{"ip link set dst-ipr-eth0 up", true},
+			{"ip netns exec dst-ipr ip link set ipr-dst-eth0 up", true},
+			{"ip netns exec dst-ipr ip address add 169.254.40.34/24 dev ipr-dst-eth0", true},
+
+			{"ovs-vsctl add-port br-ipr src-ipr-eth0", true},
+			{"ovs-vsctl add-port br-ipr dst-ipr-eth0", true},
+		},
+
+		setupFunction: func(c *TestContext) (err error) {
+			return ping(t, c, 4, "G.V().Has('Name', 'ipr-src-eth0')", "G.V().Has('Name', 'ipr-dst-eth0')", 10, 0)
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ovs-vsctl del-br br-ipr", true},
+			{"ip link del dst-ipr-eth0", true},
+			{"ip link del src-ipr-eth0", true},
+			{"ip netns del src-ipr", true},
+			{"ip netns del dst-ipr", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `G.V().Has('Name', 'ipr-src-eth0')`},
+		},
+
+		check: func(c *TestContext) error {
+			g := "g"
+			if !c.time.IsZero() {
+				g += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+			gremlin := g + ".Flows().Has('Network', Ipv4Range('169.254.40.0/24'))"
+			flows, err := c.gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+			if len(flows) != 1 {
+				return fmt.Errorf("Expected one flow, got %+v", flows)
+			}
+			return nil
+		},
+	}
+	RunTest(t, test)
+}
