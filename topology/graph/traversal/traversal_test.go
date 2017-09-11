@@ -297,7 +297,7 @@ func TestTraversalRegex(t *testing.T) {
 	tr := NewGraphTraversal(g, false)
 
 	// next test
-	tv := tr.V().Has("Name", Regex("ode"))
+	tv := tr.V().Has("Name", Regex(".*ode.*"))
 	if len(tv.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
 	}
@@ -559,7 +559,7 @@ func TestTraversalParser(t *testing.T) {
 	}
 
 	// next traversal test
-	query = `G.V().Has("Name", Regex("ode"))`
+	query = `G.V().Has("Name", Regex(".*ode.*"))`
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 1 {
 		t.Fatalf("Should return 1 node, returned: %v", res.Values())

@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/mitchellh/hashstructure"
@@ -110,7 +111,13 @@ type MetricsTraversalStep struct {
 func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 	switch v := v.(type) {
 	case *RegexMetadataMatcher:
-		rf, err := filters.NewRegexFilter(k, v.regex)
+		// As we force anchors raise an error if anchor provided by the user
+		if strings.HasPrefix(v.regex, "^") || strings.HasSuffix(v.regex, "$") {
+			return nil, errors.New("Regex are anchored by default, ^ and $ don't have to be provided")
+		}
+
+		// always anchored
+		rf, err := filters.NewRegexFilter(k, "^"+v.regex+"$")
 		if err != nil {
 			return nil, err
 		}

@@ -197,9 +197,13 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 	}
 
 	if f := filter.RegexFilter; f != nil {
+		// remove anchors as ES matches the whole string and doesn't support them
+		value := strings.TrimPrefix(f.Value, "^")
+		value = strings.TrimSuffix(value, "$")
+
 		return map[string]interface{}{
 			"regexp": map[string]string{
-				prefix + f.Key: f.Value,
+				prefix + f.Key: value,
 			},
 		}
 	}
