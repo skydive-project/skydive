@@ -104,7 +104,7 @@ do
 done
 install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/skydive.yml
 install -D -m 644 skydive-bash-completion.sh %{buildroot}/%{_sysconfdir}/bash_completion.d/skydive-bash-completion.sh
-install -d -m 755 %{_datadir}/ansible/skydive-ansible
+install -d -m 755 %{buildroot}/%{_datadir}/skydive-ansible
 cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 
 %post agent
