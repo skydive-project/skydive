@@ -1,0 +1,10 @@
+---
+- package:
+    name: skydive-analyzer
+    state: present
+
+- name: start service
+  service:
+    name: skydive-analyzer
+    state: started
+    enabled: yes

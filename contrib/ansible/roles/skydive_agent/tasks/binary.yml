@@ -1,0 +1,7 @@
+---
+- include_role:
+    name: skydive_common
+    tasks_from: systemd
+  vars:
+    service_name: skydive-agent
+    exec_start: "{{ skydive_binary_location }} agent --conf {{ skydive_config_file }}"

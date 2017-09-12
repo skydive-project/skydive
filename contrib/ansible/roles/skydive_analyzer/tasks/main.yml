@@ -1,0 +1,55 @@
+---
+- name: Set fabric facts
+  set_fact:
+    skydive_fabric: |
+      {% set comma = joiner(",") %}
+      [ {% for item in groups['agents'] -%}
+      {{ comma() }}"{{ skydive_fabric_tor_name | upper }}[Name={{ skydive_fabric_tor_name }}] -> {{ skydive_fabric_tor_name | upper }}_PORT{{ loop.index }}[Name=port{{ loop.index }}, MTU={{ skydive_fabric_tor_mtu }}]",
+      "{{ skydive_fabric_tor_name | upper }}_PORT{{ loop.index }} -> *[Type=host,Name={{ hostvars[item].ansible_hostname }}]/{{ skydive_fabric_default_interface }}"
+      {%- endfor %} ]
+  when: skydive_auto_fabric|bool and skydive_fabric is undefined
+
+- name: Determine analyzer IP
+  set_fact:
+    skydive_analyzer_ip: "{% if skydive_nic is defined %}{{ hostvars[inventory_hostname][skydive_nic].ipv4.address }}{% else %}{{ ansible_default_ipv4.address }}{% endif %}"
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: analyzer.topology.fabric
+    value: "{{ skydive_fabric }}"
+  when: skydive_fabric is defined
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: etcd.embedded
+    value: "{{ skydive_etcd_embedded and hostvars[groups['analyzers'][0]].ansible_hostname == hostvars[inventory_hostname].ansible_hostname }}"
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    analyzer.listen: "0.0.0.0:{{ skydive_analyzer_port }}"
+    etcd.listen: "0.0.0.0:{{ skydive_etcd_port }}"
+    etcd.servers: "http://localhost:{{ skydive_etcd_port }}"
+  when: skydive_deployment_mode == "container"
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    analyzer.listen: "{{ skydive_analyzer_ip }}:{{ skydive_analyzer_port }}"
+    etcd.listen: "{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
+    etcd.servers:
+    - "http://{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
+  when: skydive_deployment_mode != "container"
+
+- include: docker.yml
+  when: skydive_deployment_mode == "container"
+
+- include: package.yml
+  when: skydive_deployment_mode == "package"
+
+- include: binary.yml
+  when: skydive_deployment_mode == "binary"

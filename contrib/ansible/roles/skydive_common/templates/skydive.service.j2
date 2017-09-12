@@ -1,0 +1,22 @@
+[Unit]
+Description={{ service_name }}
+After=docker.service
+
+[Service]
+EnvironmentFile=-/etc/environment
+EnvironmentFile=-/etc/sysconfig/{{ service_name }}
+{% if exec_start_pre is defined %}
+ExecStartPre=-{{ exec_start_pre }}
+ExecStartPre=-/usr/bin/docker rm {{ service_name }}-{{ ansible_hostname }}
+{% endif %}
+ExecStart={{ exec_start }}
+{% if exec_start_post is defined %}
+ExecStopPost=-{{ exec_stop_post }}
+{% endif %}
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

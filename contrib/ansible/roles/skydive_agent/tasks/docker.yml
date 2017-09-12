@@ -1,0 +1,32 @@
+---
+- name: Install Docker
+  package:
+    name: docker
+    state: present
+
+- name: Enable Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Create systemd unit file
+  include_role:
+    name: skydive_common
+    tasks_from: systemd
+  vars:
+    service_name: skydive-agent
+    exec_start_pre: /usr/bin/docker stop skydive-agent-{{ ansible_hostname }}
+    exec_start: |
+      /usr/bin/docker run --rm \
+        --privileged --net=host --pid=host \
+        -v /var/run/openvswitch/db.sock:/var/run/openvswitch/db.sock \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v /var/run/netns:/host/run \
+        -v /etc/skydive/skydive.yml:/etc/skydive.yml \
+        -e SKYDIVE_NETNS_RUN_PATH=/host/run {{ skydive_agent_docker_extra_env }} \
+        -p {{ skydive_agent_port }}:{{ skydive_agent_port }} \
+        --name=skydive-agent-{{ ansible_hostname }} \
+        {{ skydive_docker_registry }}/{{ skydive_agent_docker_image }}:{{ skydive_docker_image_tag }} \
+        {{ skydive_agent_docker_command }}
+    exec_stop_post: /usr/bin/docker stop skydive-agent-{{ ansible_hostname }}

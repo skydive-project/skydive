@@ -1,0 +1,29 @@
+---
+- name: Install Docker
+  package:
+    name: docker
+    state: present
+
+- name: Enable Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Create systemd unit file
+  include_role:
+    name: skydive_common
+    tasks_from: systemd
+  vars:
+    service_name: skydive-analyzer
+    exec_start_pre: /usr/bin/docker stop skydive-analyzer-{{ ansible_hostname }}
+    exec_start: |
+      /usr/bin/docker run --rm \
+        {{ skydive_analyzer_docker_extra_env }} --name=skydive-analyzer-{{ ansible_hostname }} \
+        -v /etc/skydive/skydive.yml:/etc/skydive.yml \
+        -p {{ skydive_analyzer_port }}:{{ skydive_analyzer_port }} \
+        -p {{ skydive_analyzer_port }}:{{ skydive_analyzer_port }}/udp \
+        -p {{ skydive_etcd_port }}:{{ skydive_etcd_port }} \
+        {{ skydive_docker_registry }}/{{ skydive_analyzer_docker_image }}:{{ skydive_docker_image_tag }} \
+        {{ skydive_analyzer_docker_command }}
+    exec_stop_post: /usr/bin/docker stop skydive-analyzer-{{ ansible_hostname }}

@@ -1,0 +1,11 @@
+---
+- yum_repository:
+    name: centos-opstools-testing
+    description: CentOS-7 - OpsTools - release
+    baseurl: https://buildlogs.centos.org/centos/7/opstools/$basearch/
+    gpgcheck: no
+  when: ansible_os_family == "RedHat"
+
+- package:
+    name: skydive
+    state: present

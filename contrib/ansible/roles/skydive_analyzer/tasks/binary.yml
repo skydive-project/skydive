@@ -1,0 +1,7 @@
+---
+- include_role:
+    name: skydive_common
+    tasks_from: systemd
+  vars:
+    service_name: skydive-analyzer
+    exec_start: /usr/bin/skydive analyzer --conf /etc/skydive/skydive.yml

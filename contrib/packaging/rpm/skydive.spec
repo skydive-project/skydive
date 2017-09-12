@@ -77,6 +77,14 @@ Requires(postun): systemd
 The Skydive agent has to be started on each node where the topology and
 flows informations will be captured.
 
+%package ansible
+Summary:          Skydive ansible recipes
+Requires:         %{name} = %{version}-%{release}
+Requires:         ansible
+
+%description ansible
+Ansible recipes to deploy Skydive
+
 %prep
 %setup -q -n skydive-%{source}/src/%{import_path}
 
@@ -96,6 +104,8 @@ do
 done
 install -D -m 644 etc/skydive.yml.default %{buildroot}/%{_sysconfdir}/skydive/skydive.yml
 install -D -m 644 skydive-bash-completion.sh %{buildroot}/%{_sysconfdir}/bash_completion.d/skydive-bash-completion.sh
+install -d -m 755 %{_datadir}/ansible/skydive-ansible
+cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 
 %post agent
 %systemd_post %{basename:%{name}-agent.service}
@@ -133,6 +143,9 @@ install -D -m 644 skydive-bash-completion.sh %{buildroot}/%{_sysconfdir}/bash_co
 %files analyzer
 %config(noreplace) %{_sysconfdir}/sysconfig/skydive-analyzer
 %{_unitdir}/skydive-analyzer.service
+
+%files ansible
+%{_datadir}/skydive-ansible
 
 %changelog
 * Fri Jul 28 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.12.0-1

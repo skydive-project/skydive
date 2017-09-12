@@ -1,0 +1,10 @@
+---
+skydive_analyzer_docker_extra_env:
+skydive_analyzer_port: 8082
+skydive_etcd_port: 2379
+skydive_analyzer_docker_image: skydive/skydive
+skydive_analyzer_docker_command: analyzer
+skydive_auto_fabric: yes
+skydive_fabric_default_interface: eth0
+skydive_fabric_tor_name: tor1
+skydive_fabric_tor_mtu: 1500

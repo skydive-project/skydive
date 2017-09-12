@@ -1,0 +1,43 @@
+- name: Display all variables/facts known for a host
+  debug:
+    var: hostvars[inventory_hostname]
+
+- set_fact:
+    analyzers: "{% for i in groups['analyzers'] %}{% if skydive_nic is defined %}{{ hostvars[i][skydive_nic].ipv4.address }}{% else %}{{ hostvars[i].ansible_default_ipv4.address }}{% endif %}:8082{% if not loop.last %},{% endif %}{% endfor %}"
+
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - libselinux-python
+    - python2-ruamel-yaml
+  when: ansible_os_family == "RedHat"
+  ignore_errors: yes
+
+- include: binary.yml
+  when: skydive_deployment_mode == "binary"
+
+- include: package.yml
+  when: skydive_deployment_mode == "package"
+
+- name: ensures skydive configuration folder exists
+  file:
+    path: "{{ skydive_config_file | dirname }}"
+    state: directory
+
+- get_url:
+    url: https://raw.githubusercontent.com/skydive-project/skydive/{{ skydive_release }}/etc/skydive.yml.default
+    dest: "{{ skydive_config_file }}"
+    mode: 0644
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: analyzers
+    value: "{{ analyzers }}"
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict: "{{ skydive_extra_config }}"
+  when: skydive_extra_config is defined
