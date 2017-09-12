@@ -85,11 +85,11 @@ type Table struct {
 	state          int64
 	lockState      sync.RWMutex
 	wg             sync.WaitGroup
+	quit           chan bool
 	updateHandler  *Handler
 	lastUpdate     int64
 	expireHandler  *Handler
 	lastExpire     int64
-	tableClock     int64
 	nodeTID        string
 	pipeline       *EnhancerPipeline
 	pipelineConfig *EnhancerPipelineConfig
@@ -104,6 +104,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 		flush:          make(chan bool),
 		flushDone:      make(chan bool),
 		state:          common.StoppedState,
+		quit:           make(chan bool),
 		updateHandler:  updateHandler,
 		expireHandler:  expireHandler,
 		pipeline:       pipeline,
@@ -117,8 +118,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 		t.pipelineConfig.Disable("SocketInfo")
 	}
 
-	t.tableClock = common.UnixMillis(time.Now())
-	t.lastUpdate = t.tableClock
+	t.lastUpdate = common.UnixMillis(time.Now())
 	return t
 }
 
@@ -329,7 +329,7 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) packetToFlow(packet *Packet, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
+func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3ID int64) *Flow {
 	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
@@ -343,10 +343,10 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, t int64, L2ID i
 			L3ID:       L3ID,
 		}
 
-		flow.InitFromGoPacket(key, t, packet.gopacket, packet.length, ft.nodeTID, uuids, opts)
+		flow.InitFromGoPacket(key, packet.gopacket, packet.length, ft.nodeTID, uuids, opts)
 		ft.pipeline.EnhanceFlow(ft.pipelineConfig, flow)
 	} else {
-		flow.Update(t, packet.gopacket, packet.length)
+		flow.Update(packet.gopacket, packet.length)
 	}
 
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
@@ -363,17 +363,12 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, t int64, L2ID i
 }
 
 func (ft *Table) processPacketSeq(ps *PacketSequence) {
-	t := ps.Timestamp
-	if t == -1 {
-		t = ft.tableClock
-	}
-
 	var parentUUID string
 	var L2ID int64
 	var L3ID int64
 	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.nodeTID)
 	for _, packet := range ps.Packets {
-		f := ft.packetToFlow(&packet, parentUUID, t, L2ID, L3ID)
+		f := ft.packetToFlow(&packet, parentUUID, L2ID, L3ID)
 		parentUUID = f.UUID
 		if f.Link != nil {
 			L2ID = f.Link.ID
@@ -409,9 +404,6 @@ func (ft *Table) Run() {
 	expireTicker := time.NewTicker(ft.expireHandler.every)
 	defer expireTicker.Stop()
 
-	nowTicker := time.NewTicker(time.Second * 1)
-	defer nowTicker.Stop()
-
 	ft.query = make(chan *TableQuery, 100)
 	ft.reply = make(chan *TableReply, 100)
 
@@ -429,8 +421,7 @@ func (ft *Table) Run() {
 			if ok {
 				ft.reply <- ft.onQuery(query)
 			}
-		case now := <-nowTicker.C:
-			ft.tableClock = common.UnixMillis(now)
+		case <-ft.quit:
 		case ps := <-ft.packetSeqChan:
 			ft.processPacketSeq(ps)
 		case fl := <-ft.flowChan:
@@ -451,6 +442,7 @@ func (ft *Table) Stop() {
 	defer ft.lockState.Unlock()
 
 	if atomic.CompareAndSwapInt64(&ft.state, common.RunningState, common.StoppingState) {
+		ft.quit <- true
 		ft.wg.Wait()
 
 		close(ft.query)

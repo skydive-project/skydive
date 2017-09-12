@@ -39,7 +39,6 @@ import (
 	"github.com/google/gopacket/layers"
 	esclient "github.com/skydive-project/skydive/storage/elasticsearch"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -86,7 +85,7 @@ type SnortFlowEnhancer struct {
 
 type snortMessage struct {
 	TrackingID     string
-	Timestamp      int64
+	Timestamp      time.Time
 	Message        string
 	Classification string
 	Data           []byte
@@ -96,20 +95,21 @@ func flowFromSnortMessage(msg *snortMessage) *flow.Flow {
 	uuids := flow.FlowUUIDs{}
 	nodeTID := ""
 	gpkt := gopacket.NewPacket(msg.Data, layers.LayerTypeEthernet, gopacket.NoCopy)
+	gpkt.Metadata().CaptureInfo.Timestamp = msg.Timestamp
 	new := flow.NewFlow()
 	key := flow.KeyFromGoPacket(&gpkt, uuids.ParentUUID).String()
 
-	new.InitFromGoPacket(key, msg.Timestamp, &gpkt, int64(len(msg.Data)), nodeTID, uuids, flow.FlowOpts{})
+	new.InitFromGoPacket(key, &gpkt, int64(len(msg.Data)), nodeTID, uuids, flow.FlowOpts{})
 	return new
 }
 
-func parseSnortTimestamp(timestamp string) int64 {
+func parseSnortTimestamp(timestamp string) time.Time {
 	t := time.Now()
 	var months, days, hour, min, sec, usec int
 	fmt.Sscanf(timestamp, "%d/%d-%d:%d:%d.%d",
 		&months, &days, &hour, &min, &sec, &usec)
 	year, _, _ := t.Date()
-	return common.UnixMillis(time.Date(year, time.Month(months), days, hour, min, sec, usec*1000, t.Location()).UTC())
+	return time.Date(year, time.Month(months), days, hour, min, sec, usec*1000, t.Location()).UTC()
 }
 
 func (sfe *SnortFlowEnhancer) insertElasticSearch(msg *snortMessage, f *flow.Flow) error {

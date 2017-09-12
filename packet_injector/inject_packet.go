@@ -207,7 +207,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph, chnl *Channels) (string, err
 	packet := gopacket.NewPacket(packetData, layerType, gopacket.Default)
 	flowKey := flow.KeyFromGoPacket(&packet, "").String()
 	f := flow.NewFlow()
-	f.InitFromGoPacket(flowKey, common.UnixMillis(time.Now()), &packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
+	f.InitFromGoPacket(flowKey, &packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
 
 	p := make(chan bool)
 	chnl.Lock()

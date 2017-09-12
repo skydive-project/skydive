@@ -101,7 +101,7 @@ func (sfa *SFlowAgent) feedFlowTable(packetSeqChan chan *flow.PacketSequence) {
 			for _, sample := range sflowPacket.FlowSamples {
 				// iterate over a set of Packets as a sample contains multiple
 				// records each generating Packets.
-				for _, ps := range flow.PacketSeqFromSFlowSample(&sample, -1, bpf) {
+				for _, ps := range flow.PacketSeqFromSFlowSample(&sample, bpf) {
 					packetSeqChan <- ps
 				}
 			}
