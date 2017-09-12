@@ -69,12 +69,6 @@ func (f *Filter) Eval(g Getter) bool {
 	if f.NullFilter != nil {
 		return f.NullFilter.Eval(g)
 	}
-	if f.InInt64Filter != nil {
-		return f.InInt64Filter.Eval(g)
-	}
-	if f.InStringFilter != nil {
-		return f.InStringFilter.Eval(g)
-	}
 	if f.IPV4RangeFilter != nil {
 		return f.IPV4RangeFilter.Eval(g)
 	}
@@ -152,22 +146,56 @@ func (r *LteInt64Filter) Eval(g Getter) bool {
 
 // Eval evaluates an string type filter
 func (t *TermStringFilter) Eval(g Getter) bool {
-	field, err := g.GetFieldString(t.Key)
+	field, err := g.GetField(t.Key)
 	if err != nil {
 		return false
 	}
-
-	return field == t.Value
+	switch field := field.(type) {
+	case []interface{}:
+		for _, intf := range field {
+			if s, ok := intf.(string); ok && s == t.Value {
+				return true
+			}
+		}
+	case []string:
+		for _, s := range field {
+			if s == t.Value {
+				return true
+			}
+		}
+	case string:
+		if field == t.Value {
+			return true
+		}
+	}
+	return false
 }
 
 // Eval evaluates an int64 type filter
 func (t *TermInt64Filter) Eval(g Getter) bool {
-	field, err := g.GetFieldInt64(t.Key)
+	field, err := g.GetField(t.Key)
 	if err != nil {
 		return false
 	}
-
-	return field == t.Value
+	switch field := field.(type) {
+	case []interface{}:
+		for _, intf := range field {
+			if v, err := common.ToInt64(intf); err == nil && v == t.Value {
+				return true
+			}
+		}
+	case []int64:
+		for _, v := range field {
+			if v == t.Value {
+				return true
+			}
+		}
+	case int64:
+		if field == t.Value {
+			return true
+		}
+	}
+	return false
 }
 
 // Eval evaluates an regex filter
@@ -219,52 +247,6 @@ func (n *NullFilter) Eval(g Getter) bool {
 		return false
 	}
 	return true
-}
-
-// Eval evaluates an In filter
-func (i *InInt64Filter) Eval(g Getter) bool {
-	field, err := g.GetField(i.Key)
-	if err != nil {
-		return false
-	}
-	switch field := field.(type) {
-	case []interface{}:
-		for _, intf := range field {
-			if v, err := common.ToInt64(intf); err == nil && v == i.Value {
-				return true
-			}
-		}
-	case []int64:
-		for _, v := range field {
-			if v == i.Value {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// Eval evaluates an In String filter
-func (i *InStringFilter) Eval(g Getter) bool {
-	field, err := g.GetField(i.Key)
-	if err != nil {
-		return false
-	}
-	switch field := field.(type) {
-	case []interface{}:
-		for _, intf := range field {
-			if s, ok := intf.(string); ok && s == i.Value {
-				return true
-			}
-		}
-	case []string:
-		for _, s := range field {
-			if s == i.Value {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // Eval evaluates an ipv4 range filter
@@ -376,16 +358,6 @@ func NewTermInt64Filter(key string, value int64) *Filter {
 // NewTermStringFilter creates a new string filter
 func NewTermStringFilter(key string, value string) *Filter {
 	return &Filter{TermStringFilter: &TermStringFilter{Key: key, Value: value}}
-}
-
-// NewInInt64Filter creates a new In int64 filter
-func NewInInt64Filter(key string, value int64) *Filter {
-	return &Filter{InInt64Filter: &InInt64Filter{Key: key, Value: value}}
-}
-
-// NewInStringFilter creates a new In string filter
-func NewInStringFilter(key string, value string) *Filter {
-	return &Filter{InStringFilter: &InStringFilter{Key: key, Value: value}}
 }
 
 // NewNullFilter creates a new null filter

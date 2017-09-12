@@ -206,17 +206,6 @@ func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return filters.NewOrFilter(orFilters...), nil
-	case *ContainsMetadataMatcher:
-		switch t := v.value.(type) {
-		case string:
-			return filters.NewInStringFilter(k, t), nil
-		default:
-			i, err := common.ToInt64(t)
-			if err != nil {
-				return nil, err
-			}
-			return filters.NewInInt64Filter(k, i), nil
-		}
 	case string:
 		return filters.NewTermStringFilter(k, v), nil
 	case int64:
@@ -400,16 +389,6 @@ type RegexMetadataMatcher struct {
 // Regex step
 func Regex(regex string) *RegexMetadataMatcher {
 	return &RegexMetadataMatcher{regex: regex}
-}
-
-// ContainsMetadataMatcher describes a list of metadata that contains a value
-type ContainsMetadataMatcher struct {
-	value interface{}
-}
-
-// Contains step
-func Contains(s interface{}) *ContainsMetadataMatcher {
-	return &ContainsMetadataMatcher{value: s}
 }
 
 // IPV4RangeMetadataMatcher matches ipv4 contained in an ipv4 range

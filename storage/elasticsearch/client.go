@@ -281,20 +281,6 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 			},
 		}
 	}
-	if f := filter.InStringFilter; f != nil {
-		return map[string]interface{}{
-			"term": map[string]string{
-				prefix + f.Key: f.Value,
-			},
-		}
-	}
-	if f := filter.InInt64Filter; f != nil {
-		return map[string]interface{}{
-			"term": map[string]int64{
-				prefix + f.Key: f.Value,
-			},
-		}
-	}
 	return nil
 }
 

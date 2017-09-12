@@ -156,8 +156,8 @@ func TestPacketInjectionCapture(t *testing.T) {
 		return
 	}
 
-	node1 := "G.V().Has('Name', 'eth0', 'IPV4', Contains('124.65.54.42/24'))"
-	node2 := "G.V().Has('Name', 'eth0', 'IPV4', Contains('124.65.54.43/24'))"
+	node1 := "G.V().Has('Name', 'eth0', 'IPV4', '124.65.54.42/24')"
+	node2 := "G.V().Has('Name', 'eth0', 'IPV4', '124.65.54.43/24')"
 
 	if err = sh.injectPacket(node1, node2, 0); err != nil {
 		if err := sh.screenshot("postmortem.png"); err != nil {

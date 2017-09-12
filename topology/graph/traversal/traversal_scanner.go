@@ -91,7 +91,6 @@ const (
 	METRICS
 	ASC
 	DESC
-	CONTAINS
 	IPV4RANGE
 
 	// extensions token have to start after 1000
@@ -288,8 +287,6 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return ASC, buf.String()
 	case "DESC":
 		return DESC, buf.String()
-	case "CONTAINS":
-		return CONTAINS, buf.String()
 	case "IPV4RANGE":
 		return IPV4RANGE, buf.String()
 	}
