@@ -2,14 +2,14 @@
 - name: Gather facts
   hosts: all
 
-- name: Deploy Skydive analyzers
-  hosts: analyzers
-  become: true
-  roles:
-  - skydive_analyzer
-
 - name: Deploy Skydive agents
   hosts: agents
   become: true
   roles:
   - skydive_agent
+
+- name: Deploy Skydive analyzers
+  hosts: analyzers
+  become: true
+  roles:
+  - skydive_analyzer
