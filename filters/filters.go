@@ -215,10 +215,7 @@ func NewRegexFilter(key string, pattern string) (*RegexFilter, error) {
 
 // Eval evaluates an null filter (not string and not int64 types)
 func (n *NullFilter) Eval(g Getter) bool {
-	if _, err := g.GetFieldString(n.Key); err == nil {
-		return false
-	}
-	if _, err := g.GetFieldInt64(n.Key); err == nil {
+	if _, err := g.GetField(n.Key); err == nil {
 		return false
 	}
 	return true

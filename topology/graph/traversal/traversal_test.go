@@ -41,7 +41,7 @@ func newGraph(t *testing.T) *graph.Graph {
 func newTransversalGraph(t *testing.T) *graph.Graph {
 	g := newGraph(t)
 
-	n1 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 1, "Type": "intf", "Bytes": 1024})
+	n1 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 1, "Type": "intf", "Bytes": 1024, "List": []string{"111", "222"}})
 	n2 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 2, "Type": "intf", "Bytes": 2024, "IPV4": []string{"10.0.0.1", "10.0.1.2"}})
 	n3 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 3, "IPV4": "192.168.0.34/24"})
 	n4 := g.NewNode(graph.GenID(), graph.Metadata{"Value": 4, "Name": "Node4", "Bytes": 4024, "IPV4": "192.168.1.34"})
@@ -147,7 +147,7 @@ func TestBasicTraversal(t *testing.T) {
 	}
 
 	props := tr.V().PropertyKeys().Dedup()
-	if len(props.Values()) != 5 {
+	if len(props.Values()) != 6 {
 		t.Fatalf("Should return 11 properties, returned: %s", props.Values())
 	}
 
@@ -164,7 +164,6 @@ func TestBasicTraversal(t *testing.T) {
 	} else {
 		t.Logf("Error in Sum() step: %s", sum.Error())
 	}
-
 }
 
 func TestTraversalWithin(t *testing.T) {
@@ -276,6 +275,11 @@ func TestTraversalHasKey(t *testing.T) {
 	tv = tr.V().HasKey("Unknown")
 	if len(tv.Values()) != 0 {
 		t.Fatalf("Should return 0 node, returned: %v", tv.Values())
+	}
+
+	tv = tr.V().HasKey("List")
+	if len(tv.Values()) != 1 {
+		t.Fatalf("Should return 1 node, returned: %v", tv.Values())
 	}
 }
 
