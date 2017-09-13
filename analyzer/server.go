@@ -25,6 +25,7 @@ package analyzer
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -151,7 +152,8 @@ func (s *Server) initialize() (err error) {
 // Start the analyzer server
 func (s *Server) Start() {
 	if err := s.initialize(); err != nil {
-		logging.GetLogger().Fatalf(err.Error())
+		logging.GetLogger().Error(err)
+		os.Exit(1)
 	}
 
 	if s.Storage != nil {
