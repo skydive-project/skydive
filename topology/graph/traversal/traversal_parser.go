@@ -89,6 +89,10 @@ type (
 	GremlinTraversalStepInV struct {
 		GremlinTraversalContext
 	}
+	// GremlinTraversalStepBothV step
+	GremlinTraversalStepBothV struct {
+		GremlinTraversalContext
+	}
 	// GremlinTraversalStepOutE step
 	GremlinTraversalStepOutE struct {
 		GremlinTraversalContext
@@ -497,6 +501,30 @@ func (s *GremlinTraversalStepInV) Exec(last GraphTraversalStep) (GraphTraversalS
 
 // Reduce InV step
 func (s *GremlinTraversalStepInV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
+		s.Params = hasStep.Params
+		return s
+	}
+
+	if s.ReduceRange(next) {
+		return s
+	}
+
+	return next
+}
+
+// Exec BothV step
+func (s *GremlinTraversalStepBothV) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	switch last.(type) {
+	case *GraphTraversalE:
+		return last.(*GraphTraversalE).BothV(s.Params...), nil
+	}
+
+	return nil, ErrExecutionError
+}
+
+// Reduce BothV step
+func (s *GremlinTraversalStepBothV) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	if hasStep, ok := next.(*GremlinTraversalStepHas); ok && len(s.Params) == 0 {
 		s.Params = hasStep.Params
 		return s
@@ -983,6 +1011,8 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &GremlinTraversalStepOutV{gremlinStepContext}, nil
 	case INV:
 		return &GremlinTraversalStepInV{gremlinStepContext}, nil
+	case BOTHV:
+		return &GremlinTraversalStepBothV{gremlinStepContext}, nil
 	case OUTE:
 		return &GremlinTraversalStepOutE{gremlinStepContext}, nil
 	case INE:
