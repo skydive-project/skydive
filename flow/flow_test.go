@@ -24,6 +24,7 @@ package flow
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -36,6 +37,13 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 )
+
+func TestFlowReflection(t *testing.T) {
+	f := &Flow{}
+	if strings.Contains(fmt.Sprintf("%v", f), "PANIC=") == true {
+		t.Fail()
+	}
+}
 
 func TestFlowSimpleIPv4(t *testing.T) {
 	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet, nil)

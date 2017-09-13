@@ -199,7 +199,7 @@ func (ft *Table) updateMetric(f *Flow, start, last int64) {
 
 	// subtract previous values to get the diff so that we store the
 	// amount of data between two updates
-	if lm := f.state.lastMetric; lm != nil {
+	if lm := f.XXX_state.lastMetric; lm != nil {
 		f.LastUpdateMetric.ABPackets -= lm.ABPackets
 		f.LastUpdateMetric.ABBytes -= lm.ABBytes
 		f.LastUpdateMetric.BAPackets -= lm.BAPackets
@@ -226,7 +226,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 			f.LastUpdateLast = updateTime
 		}
 
-		f.state.lastMetric = f.Metric.Copy()
+		f.XXX_state.lastMetric = f.Metric.Copy()
 	}
 
 	if len(updatedFlows) != 0 {
