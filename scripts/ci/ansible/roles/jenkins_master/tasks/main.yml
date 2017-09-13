@@ -88,10 +88,10 @@
     domain = Domain.global();
     store = Jenkins.instance.getExtensionList('com.cloudbees.plugins.credentials.SystemCredentialsProvider')[0].getStore();
     secretText = new StringCredentialsImpl( \
-    	CredentialsScope.GLOBAL, \
-    	"github", \
-    	"Github API key", \
-    	Secret.fromString("{{ github_secret }}")); \
+      CredentialsScope.GLOBAL, \
+      "github", \
+      "Github API key", \
+      Secret.fromString("{{ github_secret }}")); \
     store.addCredentials(domain, secretText);
     ' http://localhost:8080/scriptText
 
@@ -154,6 +154,7 @@
     );
     Jenkins.instance.clouds.add(jcloud);
     ' http://localhost:8080/scriptText
+  when: os_username | bool
 
 - shell: |
     curl --user "admin:{{ jenkins_admin_password | default('admin') }}" \
@@ -180,6 +181,7 @@
     globalConfigFiles = exts[0];
     store = globalConfigFiles.save(config);
     ' http://localhost:8080/scriptText
+  when: os_username | bool
 
 - service:
    name: jenkins
