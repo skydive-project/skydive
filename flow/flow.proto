@@ -113,9 +113,9 @@ message Flow {
 /* Data Flow Metric info from the 1st layer
    amount of data between two updates
 */
-	FlowMetric LastUpdateMetric = 31;
+  FlowMetric LastUpdateMetric = 31;
 /* Total amount of data for the whole flow duration */
-	FlowMetric Metric = 32;
+  FlowMetric Metric = 32;
 
 /* Flow metric specific to the TCP Protocol only and optional */
   TCPMetric TCPFlowMetric = 38;
@@ -124,6 +124,7 @@ message Flow {
   int64 Last = 11;
   int64 LastUpdateStart = 12;
   int64 LastUpdateLast = 13;
+  int64 RTT = 14;
 
 /* Flow Tracking IDentifier, from 1st packet bytes
    flow.TrackingID could be used to identify an unique flow whatever it has

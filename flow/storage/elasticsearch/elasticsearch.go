@@ -67,6 +67,14 @@ const flowMapping = `
 			}
 		},
 		{
+			"rtt": {
+				"match": "RTT",
+				"mapping": {
+					"type": "long"
+				}
+			}
+		},
+		{
 			"start": {
 				"match": "*Start",
 				"mapping": {

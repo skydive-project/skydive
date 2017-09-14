@@ -40,7 +40,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-const indexVersion = 8
+const indexVersion = 9
 
 // ElasticSearchClientInterface describes the mechanism API of ElasticSearch database client
 type ElasticSearchClientInterface interface {

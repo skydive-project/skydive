@@ -55,6 +55,14 @@ const (
 	DefaultProtobufFlowSize = 500
 )
 
+// flowState is used internally to track states within the flow table.
+// it is added to the generated Flow struct by Makefile
+type flowState struct {
+	lastMetric       *FlowMetric
+	link1stPacket    int64
+	network1stPacket int64
+}
+
 // Packet describes one packet
 type Packet struct {
 	gopacket *gopacket.Packet
@@ -363,7 +371,7 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 	f.UpdateUUID(key, L2ID, L3ID)
 }
 
-// Update a flow metrics
+// Update a flow metrics and latency
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
 	f.Last = now
 	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
@@ -388,7 +396,6 @@ func (f *Flow) newLinkLayer(packet *gopacket.Packet, length int64) {
 		B:        ethernetPacket.DstMAC.String(),
 		ID:       linkID(packet),
 	}
-
 	f.updateMetricsWithLinkLayer(packet, length)
 }
 
@@ -421,6 +428,14 @@ func (f *Flow) updateMetricsWithLinkLayer(packet *gopacket.Packet, length int64)
 		f.Metric.BABytes += length
 	}
 
+	if f.XXX_state.link1stPacket == 0 {
+		f.XXX_state.link1stPacket = (*packet).Metadata().Timestamp.UnixNano()
+	} else {
+		if (f.RTT == 0) && (f.Link.A == ethernetPacket.DstMAC.String()) {
+			f.RTT = (*packet).Metadata().Timestamp.UnixNano() - f.XXX_state.link1stPacket
+		}
+	}
+
 	return true
 }
 
@@ -442,7 +457,6 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
 				ID:   uint32(layer.Id),
 			}
 		}
-
 		return f.updateMetricsWithNetworkLayer(packet)
 	}
 
@@ -463,7 +477,6 @@ func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
 				ID:   uint32(layer.Id),
 			}
 		}
-
 		return f.updateMetricsWithNetworkLayer(packet)
 	}
 
@@ -485,6 +498,15 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 			f.Metric.BAPackets++
 			f.Metric.BABytes += int64(ipv4Packet.Length)
 		}
+
+		// update RTT
+		if f.XXX_state.network1stPacket == 0 {
+			f.XXX_state.network1stPacket = (*packet).Metadata().Timestamp.UnixNano()
+		} else {
+			if (f.RTT == 0) && (f.Network.A == ipv4Packet.DstIP.String()) {
+				f.RTT = (*packet).Metadata().Timestamp.UnixNano() - f.XXX_state.network1stPacket
+			}
+		}
 		return nil
 	}
 	ipv6Layer := (*packet).Layer(layers.LayerTypeIPv6)
@@ -496,8 +518,18 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 			f.Metric.BAPackets++
 			f.Metric.BABytes += int64(ipv6Packet.Length)
 		}
+
+		// update RTT
+		if f.XXX_state.network1stPacket == 0 {
+			f.XXX_state.network1stPacket = (*packet).Metadata().Timestamp.UnixNano()
+		} else {
+			if (f.RTT == 0) && (f.Network.A == ipv6Packet.DstIP.String()) {
+				f.RTT = (*packet).Metadata().Timestamp.UnixNano() - f.XXX_state.network1stPacket
+			}
+		}
 		return nil
 	}
+
 	return errors.New("Unable to decode the IP layer")
 }
 
@@ -872,6 +904,8 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Last, nil
 	case "Start":
 		return f.Start, nil
+	case "RTT":
+		return f.RTT, nil
 	}
 
 	fields := strings.Split(field, ".")
