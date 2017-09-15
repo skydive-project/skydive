@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
@@ -834,6 +835,48 @@ func TestQueryMetadata(t *testing.T) {
 				return err
 			}
 
+			return nil
+		},
+	}
+
+	RunTest(t, test)
+}
+
+//TestUserMetadata tests user metadata functionality
+func TestUserMetadata(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-umd", true},
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ovs-vsctl del-br br-umd", true},
+		},
+
+		check: func(c *TestContext) error {
+			gh := c.gh
+
+			prefix := "g"
+			if !c.time.IsZero() {
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+			}
+
+			umd := api.NewUserMetadata("G.V().Has('Name', 'br-umd', 'Type', 'ovsbridge')", "testKey", "testValue")
+
+			c.client.Create("usermetadata", &umd)
+
+			_, err := gh.GetNode(prefix + ".V().Has('UserMetadata.testKey', 'testValue')")
+			if err != nil {
+				c.client.Delete("usermetadata", umd.ID())
+				return err
+			}
+
+			c.client.Delete("usermetadata", umd.ID())
+
+			node, err := gh.GetNode(prefix + ".V().Has('UserMetadata.testKey', 'testValue')")
+			if err != nil && err.Error() != "No result found" {
+				return fmt.Errorf("User Metadata not deleted on Node: %v", node)
+			}
 			return nil
 		},
 	}
