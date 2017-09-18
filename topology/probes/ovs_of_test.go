@@ -250,7 +250,11 @@ func TestCompleteRule(t *testing.T) {
 	executor = ExecuteForTest{Results: []string{"NXST_FLOW reply (xid=0x4):\n cookie=0x20, duration=57227.249s, table=21, n_packets=0, n_bytes=0, idle_age=57227, priority=1,dl_src=01:00:00:00:00:00/01:00:00:00:00:00 actions=drop"}}
 	var line = " event=ADDED table=21 cookie=32 dl_src=01:00:00:00:00:00/01:00:00:00:00:00\n"
 	event, _ := parseEvent(line, "br", "host-br-")
-	err := completeEvent(probe, &event, "host-br-")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := completeEvent(ctx, probe, &event, "host-br-")
 	if err != nil {
 		t.Error("completeRule: Should not err")
 	}
