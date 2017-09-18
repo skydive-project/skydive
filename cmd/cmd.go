@@ -32,14 +32,15 @@ import (
 )
 
 var (
-	cfgFiles   []string
+	// CfgFiles skydive configuration files
+	CfgFiles   []string
 	cfgBackend string
 )
 
 // LoadConfiguration from a configuration file
 func LoadConfiguration() {
-	if len(cfgFiles) != 0 {
-		if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
+	if len(CfgFiles) != 0 {
+		if err := config.InitConfig(cfgBackend, CfgFiles); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to initialize config: %s", err.Error())
 			os.Exit(1)
 		}
@@ -62,7 +63,7 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringArrayVarP(&cfgFiles, "conf", "c", []string{}, "location of Skydive agent config files")
+	RootCmd.PersistentFlags().StringArrayVarP(&CfgFiles, "conf", "c", []string{}, "location of Skydive agent config files")
 	RootCmd.PersistentFlags().StringVarP(&cfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
 	RootCmd.AddCommand(VersionCmd)
 	RootCmd.AddCommand(Agent)

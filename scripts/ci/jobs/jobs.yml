@@ -314,3 +314,38 @@
       - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-devstack.sh
     publishers:
       - chuck-norris
+
+- job:
+    name: skydive-coverage
+    defaults: skydive
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    scm:
+      - skydive-github
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?coverage)'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-coverage
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          ./scripts/ci/run-coverage.sh
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: codecov-token
+              variable: CODECOV_TOKEN
+          - text:
+              credential-id: coveralls-token
+              variable: COVERALLS_TOKEN
+    publishers:
+      - publish-cobertura
+      - chuck-norris
