@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/kardianos/osext"
@@ -46,7 +48,16 @@ var AllInOne = &cobra.Command{
 	Long:         "Skydive All-In-One (Analyzer + Agent)",
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
+		if uid := os.Geteuid(); uid != 0 {
+			fmt.Fprintln(os.Stderr, "All-In-One mode has to be run as root")
+			os.Exit(1)
+		}
+
 		skydivePath, _ := osext.Executable()
+		logFile := config.GetConfig().GetString("logging.file.path")
+		extension := filepath.Ext(logFile)
+		logFile = strings.TrimSuffix(logFile, extension)
+		os.Setenv("SKYDIVE_LOGGING_FILE_PATH", logFile+"-analyzer"+extension)
 
 		analyzerAttr := &os.ProcAttr{
 			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
@@ -78,20 +89,19 @@ var AllInOne = &cobra.Command{
 
 		if len(CfgFiles) != 0 {
 			if err := config.InitConfig(cfgBackend, CfgFiles); err != nil {
-				panic(fmt.Sprintf("Failed to initialize config: %s", err.Error()))
+				fmt.Fprintf(os.Stderr, "Failed to initialize config: %s", err.Error())
+				os.Exit(1)
 			}
-		}
-
-		if err := logging.InitLogging(); err != nil {
-			panic(fmt.Sprintf("Failed to initialize logging system: %s", err.Error()))
 		}
 
 		analyzer, err := os.StartProcess(skydivePath, append(analyzerArgs, "analyzer"), analyzerAttr)
 		if err != nil {
-			logging.GetLogger().Fatalf("Can't start Skydive All-in-One : %v", err)
+			logging.GetLogger().Errorf("Can't start Skydive analyzer: %v", err)
+			os.Exit(1)
 		}
 
 		os.Setenv("SKYDIVE_ANALYZERS", config.GetConfig().GetString("analyzer.listen"))
+		os.Setenv("SKYDIVE_LOGGING_FILE_PATH", logFile+"-agent"+extension)
 
 		agentAttr := &os.ProcAttr{
 			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
@@ -103,7 +113,8 @@ var AllInOne = &cobra.Command{
 
 		agent, err := os.StartProcess(skydivePath, append(agentArgs, "agent"), agentAttr)
 		if err != nil {
-			logging.GetLogger().Fatalf("Can't start Skydive All-in-One : %v", err)
+			logging.GetLogger().Errorf("Can't start Skydive agent: %s. Please check you are root", err.Error())
+			os.Exit(1)
 		}
 
 		logging.GetLogger().Notice("Skydive All-in-One starting !")
