@@ -1369,6 +1369,27 @@ TopologyGraphLayout.prototype = {
     this.simulation.nodes(nodes);
     this.simulation.force("link").links(links);
     this.simulation.alpha(1).restart();
+    this.reArrangeGraphNodes();
+  },
+
+  setFixedPosition: function(node) {
+    if(node.metadata.X && node.metadata.Y) {
+        var theNode = this.nodes[node.id];
+        if(theNode == null) return;
+        theNode.x = parseInt(node.metadata.X);
+        theNode.fx = node.x;
+        theNode.y = parseInt(node.metadata.Y);
+        theNode.fy = node.y;
+        this.pinNode(node);
+    }
+    return
+  },
+
+  reArrangeGraphNodes: function () {
+    for (var i in this.nodes) {
+        var aNode = this.nodes[i];
+        this.setFixedPosition(aNode);
+    }
   },
 
   highlightLink: function(d) {
