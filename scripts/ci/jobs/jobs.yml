@@ -295,11 +295,10 @@
     wrappers:
       - openstack:
           instances:
-            - cloud-name: rcip-dev
+            - cloud-name: rdo-cloud
               template-name: devstack
               count: 1
           single-use: True
-    node: devstack
     triggers:
       - github-pull-request:
           org-list:
@@ -310,6 +309,7 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-devstack-plugin
+      - timed: "@daily"
     builders:
       - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-devstack.sh
     publishers:
