@@ -676,7 +676,7 @@
 			"revisionTime": "2016-07-27T17:26:17Z"
 		},
 		{
-			"checksumSHA1": "me40nSy9NBr9MmAwe5vDvTgSVZs=",
+			"checksumSHA1": "GENxfNGiSzB9hzo2fPZkI4F/Zzg=",
 			"path": "github.com/google/btree",
 			"revision": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
@@ -688,14 +688,14 @@
 			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
-			"checksumSHA1": "ya8J9cG62UYf7m/vCTGQ1G5LNfI=",
+			"checksumSHA1": "QLTkulYVPHfs813eI0fKKW0buPk=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
 			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",
 			"revisionTime": "2017-03-19T20:07:28Z"
 		},
 		{
-			"checksumSHA1": "gBH+9p7pMzemAVn5WQ6mGtkDg+s=",
+			"checksumSHA1": "OO3xBXJ9iAv5lpVU1Wr/6f1i7Dc=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcap",
 			"revision": "f10e8ef82a38b32acce3de1d6cec5453a2a28c74",
@@ -1437,7 +1437,7 @@
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
-			"checksumSHA1": "/oZpHfYc+ZgOwYAhlvcMhmETYpw=",
+			"checksumSHA1": "TVEkpH3gq84iQ39I4R+mlDwjuVI=",
 			"path": "golang.org/x/sys/unix",
 			"revision": "99f16d856c9836c42d24e7ab64ea72916925fa97",
 			"revisionTime": "2017-03-08T15:04:45Z"
@@ -1455,7 +1455,7 @@
 			"revisionTime": "2016-04-13T10:07:35Z"
 		},
 		{
-			"checksumSHA1": "TisxVXIAh3Hb6QdUOMso4wdqAQU=",
+			"checksumSHA1": "OwypTTxsp/HEwbfXq9yMR4fACRM=",
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "02704b6b714738b763ba478766eb55a4b4851cd4",
 			"revisionTime": "2016-04-13T10:07:35Z"
