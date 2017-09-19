@@ -99,6 +99,14 @@ type TPacket struct {
 	v3 v3wrapper
 }
 
+func (s SocketStatsV3) Packets() uint64 {
+	return uint64(s.tp_packets)
+}
+
+func (s SocketStatsV3) Drops() uint64 {
+	return uint64(s.tp_drops)
+}
+
 // bindToInterface binds the TPacket socket to a particular named interface.
 func (h *TPacket) bindToInterface(ifaceName string) error {
 	ifIndex := 0
