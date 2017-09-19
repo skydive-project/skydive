@@ -64,7 +64,7 @@ func TestRegexPredicate(t *testing.T) {
 	g := newGraph(t)
 	g.NewNode(graph.GenID(), graph.Metadata{"Type": "host", "Name": "localhost"})
 
-	query := `G.V().Has("Name", Regex("^local.*st$")).Count()`
+	query := `G.V().Has("Name", Regex("local.*st")).Count()`
 
 	tp := traversal.NewGremlinTraversalParser(g)
 	tp.AddTraversalExtension(NewTopologyTraversalExtension())

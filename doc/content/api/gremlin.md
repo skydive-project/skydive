@@ -277,8 +277,11 @@ G.V().Has('Type', Without('ovsbridge', 'ovsport'))
   expression.
 
 ```console
-G.V().Has('Name', Regex('^tap.*'))
+G.V().Has('Name', Regex('tap.*'))
 ```
+
+Please note that the Regex step is always using anchors, ^ and $ don't have to
+be provided in the expression.
 
 ### Flows step
 

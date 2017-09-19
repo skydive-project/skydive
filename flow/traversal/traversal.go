@@ -310,8 +310,18 @@ func paramsToFilter(params ...interface{}) (*filters.Filter, error) {
 			return nil, errors.New("keys should be of string type")
 		}
 
-		if v, ok := params[i+1].(string); ok && (k == "Network" || k == "Link" || k == "Transport") {
-			filter = filters.NewOrFilter(filters.NewTermStringFilter(k+".A", v), filters.NewTermStringFilter(k+".B", v))
+		if k == "Network" || k == "Link" || k == "Transport" {
+			fa, err := traversal.ParamToFilter(k+".A", params[i+1])
+			if err != nil {
+				return nil, err
+			}
+
+			fb, err := traversal.ParamToFilter(k+".B", params[i+1])
+			if err != nil {
+				return nil, err
+			}
+
+			filter = filters.NewOrFilter(fa, fb)
 		} else {
 			f, err := traversal.ParamToFilter(k, params[i+1])
 			if err != nil {

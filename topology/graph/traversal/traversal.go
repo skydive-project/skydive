@@ -26,8 +26,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/mitchellh/hashstructure"
@@ -111,9 +111,18 @@ type MetricsTraversalStep struct {
 func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 	switch v := v.(type) {
 	case *RegexMetadataMatcher:
-		return &filters.Filter{
-			RegexFilter: &filters.RegexFilter{Key: k, Value: v.pattern},
-		}, nil
+		// As we force anchors raise an error if anchor provided by the user
+		if strings.HasPrefix(v.regex, "^") || strings.HasSuffix(v.regex, "$") {
+			return nil, errors.New("Regex are anchored by default, ^ and $ don't have to be provided")
+		}
+
+		// always anchored
+		rf, err := filters.NewRegexFilter(k, "^"+v.regex+"$")
+		if err != nil {
+			return nil, err
+		}
+
+		return &filters.Filter{RegexFilter: rf}, nil
 	case *NEMetadataMatcher:
 		switch t := v.value.(type) {
 		case string:
@@ -197,21 +206,22 @@ func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
 		}
 
 		return filters.NewOrFilter(orFilters...), nil
-	case *ContainsMetadataMatcher:
-		switch t := v.value.(type) {
-		case string:
-			return filters.NewInStringFilter(k, t), nil
-		default:
-			i, err := common.ToInt64(t)
-			if err != nil {
-				return nil, err
-			}
-			return filters.NewInInt64Filter(k, i), nil
-		}
 	case string:
 		return filters.NewTermStringFilter(k, v), nil
 	case int64:
 		return filters.NewTermInt64Filter(k, v), nil
+	case *IPV4RangeMetadataMatcher:
+		cidr, ok := v.value.(string)
+		if !ok {
+			return nil, errors.New("Ipv4Range value has to be a string")
+		}
+
+		rf, err := filters.NewIPV4RangeFilter(k, cidr)
+		if err != nil {
+			return nil, err
+		}
+
+		return &filters.Filter{IPV4RangeFilter: rf}, nil
 	default:
 		i, err := common.ToInt64(v)
 		if err != nil {
@@ -373,24 +383,22 @@ func Between(from interface{}, to interface{}) *BetweenMetadataMatcher {
 
 // RegexMetadataMatcher describes a list of metadata that match a regex
 type RegexMetadataMatcher struct {
-	regexp  *regexp.Regexp
-	pattern string
+	regex string
 }
 
 // Regex step
-func Regex(expr string) *RegexMetadataMatcher {
-	r, _ := regexp.Compile(expr)
-	return &RegexMetadataMatcher{regexp: r, pattern: expr}
+func Regex(regex string) *RegexMetadataMatcher {
+	return &RegexMetadataMatcher{regex: regex}
 }
 
-// ContainsMetadataMatcher describes a list of metadata that contains a value
-type ContainsMetadataMatcher struct {
+// IPV4RangeMetadataMatcher matches ipv4 contained in an ipv4 range
+type IPV4RangeMetadataMatcher struct {
 	value interface{}
 }
 
-// Contains step
-func Contains(s interface{}) *ContainsMetadataMatcher {
-	return &ContainsMetadataMatcher{value: s}
+// IPV4RANGE step
+func IPV4Range(s interface{}) *IPV4RangeMetadataMatcher {
+	return &IPV4RangeMetadataMatcher{value: s}
 }
 
 // Since describes a list of metadata that match since seconds

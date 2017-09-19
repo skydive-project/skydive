@@ -214,11 +214,11 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 	}
 
 	if f.TermStringFilter != nil {
-		return fmt.Sprintf(`%s = "%s"`, formatter(f.TermStringFilter.Key), f.TermStringFilter.Value)
+		return fmt.Sprintf(`"%s" IN %s`, f.TermStringFilter.Value, formatter(f.TermStringFilter.Key))
 	}
 
 	if f.TermInt64Filter != nil {
-		return fmt.Sprintf(`%s = %d`, formatter(f.TermInt64Filter.Key), f.TermInt64Filter.Value)
+		return fmt.Sprintf(`%d IN %s`, f.TermInt64Filter.Value, formatter(f.TermInt64Filter.Key))
 	}
 
 	if f.GtInt64Filter != nil {
@@ -238,15 +238,14 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 	}
 
 	if f.RegexFilter != nil {
-		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.RegexFilter.Key), f.RegexFilter.Value)
+		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.RegexFilter.Key), strings.Replace(f.RegexFilter.Value, `\`, `\\`, -1))
 	}
 
-	if f.InStringFilter != nil {
-		return fmt.Sprintf(`"%s" IN %s`, f.InStringFilter.Value, formatter(f.InStringFilter.Key))
-	}
+	if f.IPV4RangeFilter != nil {
+		// ignore the error at this point it should have been catched earlier
+		regex, _ := common.IPV4CIDRToRegex(f.IPV4RangeFilter.Value)
 
-	if f.InInt64Filter != nil {
-		return fmt.Sprintf(`%d IN %s`, f.InInt64Filter.Value, formatter(f.InInt64Filter.Key))
+		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.IPV4RangeFilter.Key), strings.Replace(regex, `\`, `\\`, -1))
 	}
 
 	return ""
