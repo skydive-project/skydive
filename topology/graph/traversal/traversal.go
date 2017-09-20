@@ -73,9 +73,8 @@ type GraphTraversal struct {
 
 type WrapperGraphTraversalStep struct {
 	values []interface{}
-	err error
+	err    error
 }
-
 
 func (w *WrapperGraphTraversalStep) Values() []interface{} {
 	return w.values

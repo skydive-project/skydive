@@ -29,9 +29,9 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
-	"strings"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -43,7 +43,7 @@ type (
 		GraphTraversal *GraphTraversal
 		steps          []GremlinTraversalStep
 		extensions     []GremlinTraversalExtension
-		initialStep GraphTraversalStep
+		initialStep    GraphTraversalStep
 	}
 
 	// GremlinTraversalStep describes a step
@@ -769,7 +769,7 @@ func (s *GremlinTraversalStepMetrics) Reduce(next GremlinTraversalStep) GremlinT
 	return next
 }
 
-func execSequences(init GraphTraversalStep, sequences []*GremlinTraversalSequence, combine func(left []interface{}, right [] interface{})[] interface{}) ([] interface{}, error) {
+func execSequences(init GraphTraversalStep, sequences []*GremlinTraversalSequence, combine func(left []interface{}, right []interface{}) []interface{}) ([]interface{}, error) {
 	acc := make([]interface{}, 0)
 	for _, child := range sequences {
 		child.initialStep = init
@@ -788,7 +788,7 @@ func execSequences(init GraphTraversalStep, sequences []*GremlinTraversalSequenc
 }
 
 func (s *GremlinTraversalStepOr) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
-	graphElements, err := execSequences(last, s.children, func(a [] interface{}, b [] interface{}) []interface{} { return append(a, b...) } )
+	graphElements, err := execSequences(last, s.children, func(a []interface{}, b []interface{}) []interface{} { return append(a, b...) })
 	if err != nil {
 		return nil, err
 	}
@@ -796,7 +796,7 @@ func (s *GremlinTraversalStepOr) Exec(last GraphTraversalStep) (GraphTraversalSt
 	// todo: implement efficiently (hash set)
 	distinct := make([]interface{}, 0)
 	len := len(graphElements)
-	loop:
+loop:
 	for j, e := range graphElements {
 		for i := j + 1; i < len; i += 1 {
 			if e == graphElements[i] {
@@ -1024,14 +1024,14 @@ func (p *GremlinTraversalParser) parseStep(lockGraph bool) (GremlinTraversalStep
 	// todo: refactor branching
 	tok, lit := p.scanIgnoreWhitespace()
 	switch tok {
-		case IDENT:
-			return nil, fmt.Errorf("Expected step function, got: %s", lit)
-		case G:
-			return &GremlinTraversalStepG{}, nil
-		case OR:
-			return p.parseNestingStep(tok, lit, lockGraph)
-		default:
-			return p.parseLeafStep(tok, lit)
+	case IDENT:
+		return nil, fmt.Errorf("Expected step function, got: %s", lit)
+	case G:
+		return &GremlinTraversalStepG{}, nil
+	case OR:
+		return p.parseNestingStep(tok, lit, lockGraph)
+	default:
+		return p.parseLeafStep(tok, lit)
 	}
 }
 
@@ -1060,17 +1060,17 @@ func (p *GremlinTraversalParser) parserNestedSequences(lockGraph bool) ([]*Greml
 
 func (p *GremlinTraversalParser) parseNestingStep(tok Token, lit string, lockGraph bool) (GremlinTraversalStep, error) {
 	switch tok {
-		case OR:
-			children, err := p.parserNestedSequences(lockGraph)
-			if err != nil {
-				return nil, err
-			}
-			if len(children) == 0 {
-				return nil, errors.New("No nested steps parsed (note: infix notation not supported)")
-			}
-			return &GremlinTraversalStepOr{ GremlinTraversalContext{Params: nil}, children }, nil
-		default:
-			return nil, fmt.Errorf("unknown token: %s", tok)
+	case OR:
+		children, err := p.parserNestedSequences(lockGraph)
+		if err != nil {
+			return nil, err
+		}
+		if len(children) == 0 {
+			return nil, errors.New("No nested steps parsed (note: infix notation not supported)")
+		}
+		return &GremlinTraversalStepOr{GremlinTraversalContext{Params: nil}, children}, nil
+	default:
+		return nil, fmt.Errorf("unknown token: %s", tok)
 	}
 }
 

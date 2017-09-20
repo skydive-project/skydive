@@ -27,7 +27,6 @@ import (
 	"testing"
 )
 
-
 func TestParseNonRooted(t *testing.T) {
 	g := newTransversalGraph(t)
 	q := "Has('Value', 2).Out()"

@@ -23,9 +23,9 @@
 package traversal
 
 import (
-	"testing"
 	"reflect"
 	"strings"
+	"testing"
 
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -41,8 +41,8 @@ func TestOrStepEmpty(t *testing.T) {
 func TestOrStepSimple(t *testing.T) {
 	g := newTransversalGraph(t)
 
-	expected := []interface{} { 
-		queryForValues(`G.V().Has('Value', 1)`, g, count(1), t), 
+	expected := []interface{}{
+		queryForValues(`G.V().Has('Value', 1)`, g, count(1), t),
 		queryForValues(`G.V().Has('Value', 2)`, g, count(1), t),
 	}
 
@@ -58,8 +58,8 @@ func TestOrStepNested(t *testing.T) {
 
 	actual := queryForValues(`G.V().Or(Has('Value', 1), Or(Has('Value', 2), Has('Value', 3)))`, g, count(3), t)
 
-	expected := []interface{} { 
-		queryForValues(`G.V().Has('Value', 1)`, g, count(1), t), 
+	expected := []interface{}{
+		queryForValues(`G.V().Has('Value', 1)`, g, count(1), t),
 		queryForValues(`G.V().Has('Value', 2)`, g, count(1), t),
 		queryForValues(`G.V().Has('Value', 3)`, g, count(1), t),
 	}
@@ -83,7 +83,7 @@ func TestOrStepWithDifferentNestedSteps(t *testing.T) {
 
 	actual := queryForValues(`G.V().Or(Has('Value', 2).In(), Has('Value', 3).Out())`, g, count(2), t)
 
-	expected := []interface{} { 
+	expected := []interface{}{
 		queryForValues(`G.V().Has('Value', 1)`, g, count(1), t), // inbound for 2
 		queryForValues(`G.V().Has('Value', 4)`, g, count(1), t), // outbound for 3
 	}
@@ -98,7 +98,7 @@ func TestOrStepWithDifferentNestedSteps(t *testing.T) {
 // todo: use unit-testing library
 
 func count(expectedCount int) func(s GraphTraversalStep, t *testing.T) {
-	return func (s GraphTraversalStep, t *testing.T) {
+	return func(s GraphTraversalStep, t *testing.T) {
 		if len(s.Values()) != expectedCount {
 			t.Fatalf("Expected %v value(s), actual: %v", expectedCount, len(s.Values()))
 		}

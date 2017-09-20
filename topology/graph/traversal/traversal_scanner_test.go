@@ -23,11 +23,10 @@
 package traversal
 
 import (
-	"testing"
-	"strings"
 	"reflect"
+	"strings"
+	"testing"
 )
-
 
 func newScanner(query string) *GremlinTraversalScanner {
 	return NewGremlinTraversalScanner(strings.NewReader(query), nil)
@@ -56,8 +55,8 @@ func TestScanBracketsEmpty(t *testing.T) {
 
 func TestScanBracketsSimple(t *testing.T) {
 	scanForBrackets("(x)", []string{"x"}, t)
-	scanForBrackets("(((x)))", []string{"((x))"}, t) // strip 1 level from many
-	scanForBrackets("(  x  )", []string{"x"}, t) // trim
+	scanForBrackets("(((x)))", []string{"((x))"}, t)       // strip 1 level from many
+	scanForBrackets("(  x  )", []string{"x"}, t)           // trim
 	scanForBrackets("(x,y,z)", []string{"x", "y", "z"}, t) // comma
 	scanForBrackets("(x,y,(z))", []string{"x", "y", "(z)"}, t)
 	scanForBrackets("(x,(y, z))", []string{"x", "(y, z)"}, t)

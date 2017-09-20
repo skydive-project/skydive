@@ -25,9 +25,9 @@ package traversal
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
-	"fmt"
 )
 
 // Token represents a lexical token.
@@ -93,7 +93,7 @@ const (
 	ASC
 	DESC
 	IPV4RANGE
-        OR
+	OR
 
 	// extensions token have to start after 1000
 )
@@ -121,8 +121,8 @@ func (s *GremlinTraversalScanner) ScanBraces() ([]string, error) {
 
 	isInsideString := false
 	isEscaping := false
-	
-	loop:
+
+loop:
 	for {
 		ch := s.read()
 
@@ -133,25 +133,25 @@ func (s *GremlinTraversalScanner) ScanBraces() ([]string, error) {
 			} else if ch == '\\' {
 				isEscaping = true
 			}
-			buf.WriteRune(ch) 
+			buf.WriteRune(ch)
 
 		} else if ch == '\'' {
 			isInsideString = true
 			isEscaping = false
-			buf.WriteRune(ch) 
+			buf.WriteRune(ch)
 
 		} else {
 			switch ch {
 			case '(':
 				level += 1
-				if level > 1 { 
-					buf.WriteRune(ch) 
+				if level > 1 {
+					buf.WriteRune(ch)
 				}
 			case ')':
 				level -= 1
 				switch {
 				case level > 0:
-					buf.WriteRune(ch) 
+					buf.WriteRune(ch)
 				case level < 0:
 					return nil, fmt.Errorf("Unbalanced brackets, current string=%s, previous=%s", buf.String(), buffers)
 				case level == 0:
@@ -164,7 +164,7 @@ func (s *GremlinTraversalScanner) ScanBraces() ([]string, error) {
 					buffers = append(buffers, buf)
 					buf = &bytes.Buffer{}
 				case level > 1:
-					buf.WriteRune(ch) 
+					buf.WriteRune(ch)
 				default:
 					return nil, fmt.Errorf("The string doesn't start with brackets, current string=%s, previous=%s", buf.String(), buffers)
 				}
@@ -172,7 +172,7 @@ func (s *GremlinTraversalScanner) ScanBraces() ([]string, error) {
 				return nil, fmt.Errorf("Unable to read nested traversal: eof reached (%d)", level)
 			default:
 				if level >= 1 {
-					buf.WriteRune(ch) 
+					buf.WriteRune(ch)
 				} else {
 					return nil, fmt.Errorf("The string doesn't start with brackets, current string=%s, previous=%s", buf.String(), buffers)
 				}
@@ -183,7 +183,9 @@ func (s *GremlinTraversalScanner) ScanBraces() ([]string, error) {
 	result := make([]string, 0)
 	for _, buf := range buffers {
 		tmp := strings.TrimSpace(buf.String())
-		if len(tmp) > 0 { result = append(result, tmp) }
+		if len(tmp) > 0 {
+			result = append(result, tmp)
+		}
 	}
 
 	return result, nil
