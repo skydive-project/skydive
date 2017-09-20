@@ -188,10 +188,7 @@ func NewTopologyForwarder(g *graph.Graph, server *shttp.WSMessageServer, authOpt
 
 // NewTopologyForwarderFromConfig creates a new topology forwarder based on configration
 func NewTopologyForwarderFromConfig(g *graph.Graph, server *shttp.WSMessageServer) *TopologyForwarder {
-	authOptions := &shttp.AuthenticationOpts{
-		Username: config.GetConfig().GetString("auth.analyzer_username"),
-		Password: config.GetConfig().GetString("auth.analyzer_password"),
-	}
+	authOptions := NewAnalyzerAuthenticationOpts()
 	tp := NewTopologyForwarder(g, server, authOptions)
 
 	addresses, err := config.GetAnalyzerServiceAddresses()

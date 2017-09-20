@@ -29,11 +29,15 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/kardianos/osext"
 	"github.com/spf13/cobra"
 
+	"github.com/skydive-project/skydive/analyzer"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -94,9 +98,22 @@ var AllInOne = &cobra.Command{
 			}
 		}
 
-		analyzer, err := os.StartProcess(skydivePath, append(analyzerArgs, "analyzer"), analyzerAttr)
+		analyzerProcess, err := os.StartProcess(skydivePath, append(analyzerArgs, "analyzer"), analyzerAttr)
 		if err != nil {
 			logging.GetLogger().Errorf("Can't start Skydive analyzer: %v", err)
+			os.Exit(1)
+		}
+
+		authOptions := analyzer.NewAnalyzerAuthenticationOpts()
+		svcAddr, _ := common.ServiceAddressFromString(config.GetConfig().GetString("analyzer.listen"))
+		restClient := http.NewRestClient(svcAddr.Addr, svcAddr.Port, authOptions)
+		err = common.Retry(func() error {
+			_, err := restClient.Request("GET", "/", nil, nil)
+			return err
+		}, 10, time.Second)
+
+		if err != nil {
+			logging.GetLogger().Errorf("Failed to start Skydive analyzer: %v", err)
 			os.Exit(1)
 		}
 
@@ -111,7 +128,7 @@ var AllInOne = &cobra.Command{
 		agentArgs := make([]string, len(args))
 		copy(agentArgs, args)
 
-		agent, err := os.StartProcess(skydivePath, append(agentArgs, "agent"), agentAttr)
+		agentProcess, err := os.StartProcess(skydivePath, append(agentArgs, "agent"), agentAttr)
 		if err != nil {
 			logging.GetLogger().Errorf("Can't start Skydive agent: %s. Please check you are root", err.Error())
 			os.Exit(1)
@@ -122,11 +139,11 @@ var AllInOne = &cobra.Command{
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
 
-		analyzer.Kill()
-		agent.Kill()
+		analyzerProcess.Kill()
+		agentProcess.Kill()
 
-		analyzer.Wait()
-		agent.Wait()
+		analyzerProcess.Wait()
+		agentProcess.Wait()
 
 		logging.GetLogger().Notice("Skydive All-in-One stopped.")
 	},

@@ -70,12 +70,7 @@ type Agent struct {
 // with authentification
 func NewAnalyzerWSClientPool() *shttp.WSMessageClientPool {
 	wspool := shttp.NewWSMessageClientPool(shttp.NewWSClientPool())
-
-	authOptions := &shttp.AuthenticationOpts{
-		Username: config.GetConfig().GetString("auth.analyzer_username"),
-		Password: config.GetConfig().GetString("auth.analyzer_password"),
-	}
-
+	authOptions := analyzer.NewAnalyzerAuthenticationOpts()
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
 		logging.GetLogger().Warningf("Unable to get the analyzers list: %s", err.Error())
