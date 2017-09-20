@@ -27,6 +27,7 @@ import (
 	"bytes"
 	"io"
 	"strings"
+	"fmt"
 )
 
 // Token represents a lexical token.
@@ -92,6 +93,7 @@ const (
 	ASC
 	DESC
 	CONTAINS
+	OR
 
 	// extensions token have to start after 1000
 )
@@ -108,6 +110,83 @@ func NewGremlinTraversalScanner(r io.Reader, e []GremlinTraversalExtension) *Gre
 		reader:     bufio.NewReader(r),
 		extensions: e,
 	}
+}
+
+// extract elements from braces optionally separated by comma, e.g. '(abc, cde(xyz))' => [abc, cde(xyz)]
+func (s *GremlinTraversalScanner) ScanBraces() ([]string, error) {
+
+	buf := &bytes.Buffer{}
+	buffers := []*bytes.Buffer{}
+	level := 0
+
+	isInsideString := false
+	isEscaping := false
+	
+	loop:
+	for {
+		ch := s.read()
+
+		if isInsideString {
+			if ch == '\'' {
+				isInsideString = isEscaping
+				isEscaping = false
+			} else if ch == '\\' {
+				isEscaping = true
+			}
+			buf.WriteRune(ch) 
+
+		} else if ch == '\'' {
+			isInsideString = true
+			isEscaping = false
+			buf.WriteRune(ch) 
+
+		} else {
+			switch ch {
+			case '(':
+				level += 1
+				if level > 1 { 
+					buf.WriteRune(ch) 
+				}
+			case ')':
+				level -= 1
+				switch {
+				case level > 0:
+					buf.WriteRune(ch) 
+				case level < 0:
+					return nil, fmt.Errorf("Unbalanced brackets, current string=%s, previous=%s", buf.String(), buffers)
+				case level == 0:
+					buffers = append(buffers, buf)
+					break loop
+				}
+			case ',':
+				switch {
+				case level == 1:
+					buffers = append(buffers, buf)
+					buf = &bytes.Buffer{}
+				case level > 1:
+					buf.WriteRune(ch) 
+				default:
+					return nil, fmt.Errorf("The string doesn't start with brackets, current string=%s, previous=%s", buf.String(), buffers)
+				}
+			case eof:
+				return nil, fmt.Errorf("Unable to read nested traversal: eof reached (%d)", level)
+			default:
+				if level >= 1 {
+					buf.WriteRune(ch) 
+				} else {
+					return nil, fmt.Errorf("The string doesn't start with brackets, current string=%s, previous=%s", buf.String(), buffers)
+				}
+			}
+		}
+	}
+
+	result := make([]string, 0)
+	for _, buf := range buffers {
+		tmp := strings.TrimSpace(buf.String())
+		if len(tmp) > 0 { result = append(result, tmp) }
+	}
+
+	return result, nil
 }
 
 // Scan and returns tokens
@@ -289,6 +368,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return DESC, buf.String()
 	case "CONTAINS":
 		return CONTAINS, buf.String()
+	case "OR", "UNION":
+		return OR, buf.String()
 	}
 
 	for _, e := range s.extensions {

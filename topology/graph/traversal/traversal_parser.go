@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"strings"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -42,6 +43,7 @@ type (
 		GraphTraversal *GraphTraversal
 		steps          []GremlinTraversalStep
 		extensions     []GremlinTraversalExtension
+		initialStep GraphTraversalStep
 	}
 
 	// GremlinTraversalStep describes a step
@@ -160,6 +162,10 @@ type (
 	// GremlinTraversalStepMetrics step
 	GremlinTraversalStepMetrics struct {
 		GremlinTraversalContext
+	}
+	GremlinTraversalStepOr struct {
+		GremlinTraversalContext
+		children []*GremlinTraversalSequence
 	}
 )
 
@@ -763,13 +769,65 @@ func (s *GremlinTraversalStepMetrics) Reduce(next GremlinTraversalStep) GremlinT
 	return next
 }
 
+func execSequences(init GraphTraversalStep, sequences []*GremlinTraversalSequence, combine func(left []interface{}, right [] interface{})[] interface{}) ([] interface{}, error) {
+	acc := make([]interface{}, 0)
+	for _, child := range sequences {
+		child.initialStep = init
+		out, err := child.Exec()
+		if err != nil {
+			return nil, fmt.Errorf("unable to execute child sequence: %s", err)
+		}
+
+		childValues := make([]interface{}, 0)
+		for _, v := range out.Values() {
+			childValues = append(childValues, v)
+		}
+		acc = combine(acc, childValues)
+	}
+	return acc, nil
+}
+
+func (s *GremlinTraversalStepOr) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
+	graphElements, err := execSequences(last, s.children, func(a [] interface{}, b [] interface{}) []interface{} { return append(a, b...) } )
+	if err != nil {
+		return nil, err
+	}
+
+	// todo: implement efficiently (hash set)
+	distinct := make([]interface{}, 0)
+	len := len(graphElements)
+	loop:
+	for j, e := range graphElements {
+		for i := j + 1; i < len; i += 1 {
+			if e == graphElements[i] {
+				continue loop
+			}
+		}
+		distinct = append(distinct, e)
+	}
+
+	return &WrapperGraphTraversalStep{values: distinct}, nil
+}
+
+func (s *GremlinTraversalStepOr) Context() *GremlinTraversalContext {
+	return &s.GremlinTraversalContext
+}
+func (s *GremlinTraversalStepOr) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
+	return next
+}
+
 // Exec sequence step
 func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
 	var step GremlinTraversalStep
 	var last GraphTraversalStep
 	var err error
 
-	last = s.GraphTraversal
+	if s.initialStep != nil {
+		last = s.initialStep
+	} else {
+		last = s.GraphTraversal
+	}
+
 	for i := 0; i < len(s.steps); {
 		step = s.steps[i]
 
@@ -954,7 +1012,7 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 			}
 			params = append(params, Contains(containsParams[0]))
 		default:
-			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
+			return nil, fmt.Errorf("Unexpected token while parsing parameters: %s", lit)
 		}
 		tok, lit = p.scanIgnoreWhitespace()
 	}
@@ -962,19 +1020,64 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 	return params, nil
 }
 
-func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
+func (p *GremlinTraversalParser) parseStep(lockGraph bool) (GremlinTraversalStep, error) {
+	// todo: refactor branching
 	tok, lit := p.scanIgnoreWhitespace()
-	if tok == IDENT {
-		return nil, fmt.Errorf("Expected step function, got: %s", lit)
+	switch tok {
+		case IDENT:
+			return nil, fmt.Errorf("Expected step function, got: %s", lit)
+		case G:
+			return &GremlinTraversalStepG{}, nil
+		case OR:
+			return p.parseNestingStep(tok, lit, lockGraph)
+		default:
+			return p.parseLeafStep(tok, lit)
+	}
+}
+
+func (p *GremlinTraversalParser) parserNestedSequences(lockGraph bool) ([]*GremlinTraversalSequence, error) {
+
+	// scan
+	childrenStr, err := p.scanner.ScanBraces()
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan child sequeqnces: %s", err)
 	}
 
-	if tok == G {
-		return &GremlinTraversalStepG{}, nil
+	// parse
+	children := make([]*GremlinTraversalSequence, len(childrenStr))
+	for i, s := range childrenStr {
+
+		seq, err := NewGremlinTraversalParser(p.Graph).ParseExt(strings.NewReader(s), lockGraph, false)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse child sequeqnce '%s': %s", s, err)
+		} else {
+			children[i] = seq
+		}
 	}
 
+	return children, nil
+}
+
+func (p *GremlinTraversalParser) parseNestingStep(tok Token, lit string, lockGraph bool) (GremlinTraversalStep, error) {
+	switch tok {
+		case OR:
+			children, err := p.parserNestedSequences(lockGraph)
+			if err != nil {
+				return nil, err
+			}
+			if len(children) == 0 {
+				return nil, errors.New("No nested steps parsed (note: infix notation not supported)")
+			}
+			return &GremlinTraversalStepOr{ GremlinTraversalContext{Params: nil}, children }, nil
+		default:
+			return nil, fmt.Errorf("unknown token: %s", tok)
+	}
+}
+
+func (p *GremlinTraversalParser) parseLeafStep(tok Token, lit string) (GremlinTraversalStep, error) {
 	params, err := p.parseStepParams()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to parse '%s' step params: %s", lit, err)
 	}
 
 	gremlinStepContext := GremlinTraversalContext{Params: params}
@@ -1123,8 +1226,12 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 	return nil, fmt.Errorf("Expected step function, got: %s", lit)
 }
 
-// Parse the Gremlin language and returns a traversal sequence
 func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTraversalSequence, error) {
+	return p.ParseExt(r, lockGraph, true)
+}
+
+// Parse the Gremlin language and returns a traversal sequence
+func (p *GremlinTraversalParser) ParseExt(r io.Reader, lockGraph bool, startWithRoot bool) (*GremlinTraversalSequence, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -1135,8 +1242,10 @@ func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTra
 		extensions:     p.extensions,
 	}
 
-	if tok, lit := p.scanIgnoreWhitespace(); tok != G {
-		return nil, fmt.Errorf("found %q, expected `G`", lit)
+	if startWithRoot {
+		if tok, lit := p.scanIgnoreWhitespace(); tok != G {
+			return nil, fmt.Errorf("found %q, expected `G`", lit)
+		}
 	}
 
 	// loop over all dot-delimited steps
@@ -1147,14 +1256,23 @@ func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTra
 		}
 
 		if tok != DOT {
-			return nil, fmt.Errorf("found %q, expected `.`", lit)
+			if startWithRoot || len(seq.steps) > 0 {
+				return nil, fmt.Errorf("found %q, expected `.`", lit)
+			}
+			if !startWithRoot {
+				p.unscan()
+			}
 		}
 
-		step, err := p.parserStep()
+		step, err := p.parseStep(lockGraph)
 		if err != nil {
 			return nil, err
 		}
 		seq.steps = append(seq.steps, step)
+	}
+
+	if len(seq.steps) == 0 {
+		return nil, fmt.Errorf("Empty sequence")
 	}
 
 	return seq, nil

@@ -71,6 +71,24 @@ type GraphTraversal struct {
 	lockGraph          bool
 }
 
+type WrapperGraphTraversalStep struct {
+	values []interface{}
+	err error
+}
+
+
+func (w *WrapperGraphTraversalStep) Values() []interface{} {
+	return w.values
+}
+
+func (w *WrapperGraphTraversalStep) MarshalJSON() ([]byte, error) {
+	return json.Marshal(w.values)
+}
+
+func (w *WrapperGraphTraversalStep) Error() error {
+	return w.err
+}
+
 // GraphTraversalV traversal steps on nodes
 type GraphTraversalV struct {
 	GraphTraversal *GraphTraversal
