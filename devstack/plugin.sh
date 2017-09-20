@@ -170,7 +170,7 @@ logging:
   level: $SKYDIVE_LOGLEVEL
 
 openstack:
-  auth_url: ${KEYSTONE_AUTH_PROTOCOL}://${KEYSTONE_AUTH_HOST}:${KEYSTONE_AUTH_PORT}/${SKYDIVE_KEYSTONE_API_VERSION}
+  auth_url: ${KEYSTONE_AUTH_URI}/${SKYDIVE_KEYSTONE_API_VERSION}
   username: admin
   password: $ADMIN_PASSWORD
   tenant_name: admin
@@ -241,7 +241,7 @@ EOF
 
 function start_skydive {
     if is_service_enabled skydive-agent ; then
-        run_process skydive-agent "sudo $GOPATH/bin/skydive agent --conf $SKYDIVE_CONFIG_FILE"
+        run_process skydive-agent "$GOPATH/bin/skydive agent --conf $SKYDIVE_CONFIG_FILE" "root" "root"
     fi
 
     if is_service_enabled skydive-analyzer ; then
