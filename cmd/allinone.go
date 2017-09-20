@@ -63,7 +63,7 @@ var AllInOne = &cobra.Command{
 
 		args = []string{"skydive"}
 
-		for _, cfgFile := range cfgFiles {
+		for _, cfgFile := range CfgFiles {
 			args = append(args, "-c")
 			args = append(args, cfgFile)
 		}
@@ -76,8 +76,8 @@ var AllInOne = &cobra.Command{
 		analyzerArgs := make([]string, len(args))
 		copy(analyzerArgs, args)
 
-		if len(cfgFiles) != 0 {
-			if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
+		if len(CfgFiles) != 0 {
+			if err := config.InitConfig(cfgBackend, CfgFiles); err != nil {
 				panic(fmt.Sprintf("Failed to initialize config: %s", err.Error()))
 			}
 		}

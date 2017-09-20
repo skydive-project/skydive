@@ -6,7 +6,7 @@ dir="$(dirname "$0")"
 . "${dir}/install-go.sh"
 
 # this should deploy in the CI image
-sudo yum install -y screen inotify-tools
+sudo yum install -y screen inotify-tools iperf
 
 sudo systemctl stop etcd.service
 sleep 15
@@ -24,7 +24,7 @@ export SKYDIVE=${GOPATH}/bin/skydive
 export FLOW_PROTOCOL=websocket
 export SKYDIVE_LOGGING_LEVEL=DEBUG
 
-make test.functionals TAGS="scale" VERBOSE=true TIMEOUT=10m TEST_PATTERN=HA
+make test.functionals TAGS="scale" VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
 status=$?
 
 cat /tmp/skydive-scale/{analyzer,agent}-?.log | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | perl -ne '$d=$1 if /^(\d+-\d+-\d+),/; $k{$d}.=$_; END{print $k{$_} for sort keys(%k);}'
@@ -37,7 +37,7 @@ fi
 curl -X DELETE http://localhost:9200/skydive
 
 export FLOW_PROTOCOL=udp
-make test.functionals TAGS="scale test" VERBOSE=true TIMEOUT=10m FLOW_PROTOCOL=udp TEST_PATTERN=HA
+make test.functionals TAGS="scale test" VERBOSE=true TIMEOUT=10m FLOW_PROTOCOL=udp TEST_PATTERN=Scale
 status=$?
 
 cat /tmp/skydive-scale/{analyzer,agent}-?.log | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | perl -ne '$d=$1 if /^(\d+-\d+-\d+),/; $k{$d}.=$_; END{print $k{$_} for sort keys(%k);}'

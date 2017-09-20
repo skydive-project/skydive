@@ -15,28 +15,45 @@ set -e
 workdir=".cover"
 profile="$workdir/cover.out"
 mode=count
+units=1
 functionals=1
+scale=1
 coveralls=0
 
 generate_cover_data() {
     rm -rf "$workdir"
     mkdir "$workdir"
 
-    # unit test
-    [ -z "$PKG" ] && PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor')
-    for pkg in ${PKG}; do
-        coverfile="$workdir/$(echo $pkg | tr / -).cover"
-        make test GOFLAGS="-covermode=$mode -coverprofile=$coverfile" UT_PACKAGES=$pkg
-    done
+    if [ "$units" -eq 1 ]; then
+        # unit test
+        make test COVERAGE=true COVERAGE_WD=$workdir COVERAGE_MODE=$mode
+    fi
 
-    if [ "$functionals" -eq 1 ];
-    then
+    PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor' | tr '\n' ',' | sed -e 's/,$//')
+    if [ "$functionals" -eq 1 ]; then
         # add fonctional testing
         export SKYDIVE_ANALYZERS=localhost:8082
 
         coverfile="../$workdir/functional.cover"
-        PKG=$(go list ./... | grep -v -e '/tests' -e '/vendor' | tr '\n' ',' | sed -e 's/,$//')
         make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="$ARGS -test.coverprofile=$coverfile -standalone -graph.backend elasticsearch -storage.backend elasticsearch" TEST_PATTERN=$TEST_PATTERN
+    fi
+
+    if [ "$scale" -eq 1 ]; then
+        # scale test
+        export SKYDIVE_ANALYZERS=localhost:8082
+        export ELASTICSEARCH=localhost:9200
+        export TLS=true
+        coverfile="../$workdir/scale.cover"
+        export SKYDIVE="${GOPATH}/src/github.com/skydive-project/skydive/scripts/skydive_coverage.sh"
+        export COVERFLAGS=" -cover -covermode=$mode -coverpkg=$PKG "
+        export FLOW_PROTOCOL=websocket
+        export SKYDIVE_LOGGING_LEVEL=DEBUG
+
+        curl -XDELETE 'localhost:9200/skydive*'
+        $SKYDIVE compile
+
+        make test.functionals TAGS="scale" VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
+        cp /tmp/skydive-scale/*.cover "$workdir"/
     fi
 
     # merge all together
@@ -58,6 +75,14 @@ push_to_coveralls() {
     goveralls -coverprofile="$profile"
 }
 
+push_to_codecov() {
+    if [ -n $CODECOV_TOKEN ]; then
+        echo "Pushing coverage statistics to codecov.io"
+        cp "$profile" coverage.txt
+        bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
+    fi
+}
+
 format=func
 for arg in "$@"
 do
@@ -68,8 +93,12 @@ do
         format=html ;;
     --xml)
         format=xml ;;
+    --no-units)
+        units=0 ;;
     --no-functionals)
         functionals=0 ;;
+    --no-scale)
+        scale=0 ;;
     --coveralls)
         coveralls=1 ;;
     *)
@@ -80,3 +109,4 @@ done
 generate_cover_data
 show_cover_report $format
 [ "$coveralls" -eq 1 ] && push_to_coveralls
+push_to_codecov

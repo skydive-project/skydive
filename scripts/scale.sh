@@ -144,7 +144,7 @@ function create_agent() {
 	  --certificate=db:Open_vSwitch,SSL,certificate \
 	  --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert \
 	  --log-file=$TEMP_DIR/$NAME-vswitchd.log \
-	  -vsyslog:dbg -vfile:dbg --pidfile=$TEMP_DIR/$NAME.pid --detach
+	  -vsyslog:dbg -vfile:dbg --pidfile=$TEMP_DIR/$NAME-dbserver.pid --detach
 	sudo ip netns exec $NAME ovs-vswitchd unix:$TEMP_DIR/$NAME.sock \
 		-vconsole:emer -vsyslog:err -vfile:info --mlockall --no-chdir \
 		--log-file=$TEMP_DIR/$NAME-vswitchd.log \
@@ -201,7 +201,9 @@ logging:
   level: DEBUG
 EOF
 
-	sudo -E screen -S skydive-stress -X screen -t skydive-agent $WINDOW ip netns exec $NAME sh -c "$SKYDIVE agent -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
+        COVERFILE="$TEMP_DIR/$NAME.cover"
+        PIDFILE="$TEMP_DIR/$NAME.pid"
+	sudo -E screen -S skydive-stress -X screen -t skydive-agent $WINDOW ip netns exec $NAME sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; $SKYDIVE agent -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
 	WINDOW=$(( $WINDOW + 1 ))
 
 	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-br $NAME
@@ -246,7 +248,7 @@ function delete_agent() {
 	echo Delete agent $NAME
 
 	sudo kill -9 `cat $TEMP_DIR/$NAME-vswitchd.pid`
-	sudo kill -9 `cat $TEMP_DIR/$NAME.pid`
+	sudo kill -9 `cat $TEMP_DIR/$NAME-dbserver.pid`
 
 	for VM_I in $( seq $VM_NUM ); do
 		sudo ip netns del $NAME-vm$VM_I
@@ -332,7 +334,9 @@ EOF
 		echo "      - TOR1_PORT_$AGENT_I -> *[Name=agent-$AGENT_I]/eth0" >> $TEMP_DIR/$NAME.yml
 	done
 
-	sudo -E screen -S skydive-stress -X screen -t skydive-analyzer $WINDOW sh -c "$SKYDIVE analyzer -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
+        COVERFILE="$TEMP_DIR/$NAME.cover"
+        PIDFILE="$TEMP_DIR/$NAME.pid"
+	sudo -E screen -S skydive-stress -X screen -t skydive-analyzer $WINDOW sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; $SKYDIVE analyzer -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
 	WINDOW=$(( $WINDOW + 1 ))
 
 	touch $TEMP_DIR/$NAME.lock
@@ -363,6 +367,20 @@ function ping() {
 
 	IP_DST=$( sudo ip netns exec $DST ip a show eth0 | grep "inet " | awk '{print $2}' | cut -d '/' -f 1 )
 	sudo ip netns exec $SRC ping $IP_DST $ARGS
+}
+
+function iperf() {
+	SRC=$1
+	DST=$2
+	ARGS=${*: 3}
+
+	IP_DST=$( sudo ip netns exec $DST ip a show eth0 | grep "inet " | awk '{print $2}' | cut -d '/' -f 1 )
+	sudo ip netns exec $DST iperf -s -t 11 &
+        sleep 1
+	sudo ip netns exec $SRC iperf -c $IP_DST -t 10 -b 1M $ARGS
+        sudo pkill -f "iperf -s"
+        sleep 1
+        sudo pkill -f "iperf -s"
 }
 
 # start all the services within a screen.
@@ -456,18 +474,44 @@ function stop_analyzer() {
 	ANALYZER=$1
 
 	NAME=analyzer-$ANALYZER
-	sudo pkill -f $NAME.yml
-
-	sudo rm $TEMP_DIR/$NAME.lock
+        if [ -e $TEMP_DIR/$NAME.pid ]; then
+            sudo kill $(cat $TEMP_DIR/$NAME.pid)
+        else
+	    sudo pkill -f $NAME.yml
+        fi
+        timeout=30
+        while pkill -0 -f $NAME.yml ; do
+            sleep 1
+            timeout=$[timeout - 1]
+            if [ $timeout -lt 0 ] ; then
+                echo "Timeout on shutdown $NAME should not occur"
+                pgrep -a -f $NAME.yml
+                sudo pkill -9 -f $NAME.yml
+            fi
+        done
+	sudo rm $TEMP_DIR/$NAME.lock $TEMP_DIR/$NAME.pid
 }
 
 function stop_agent() {
 	AGENT=$1
 
 	NAME=agent-$AGENT
-	sudo pkill -f $NAME.yml
-
-	sudo rm $TEMP_DIR/$NAME.lock
+        if [ -e $TEMP_DIR/$NAME.pid ]; then
+            sudo kill $(cat $TEMP_DIR/$NAME.pid)
+        else
+	    sudo pkill -f $NAME.yml
+        fi
+        timeout=30
+        while pkill -0 -f $NAME.yml ; do
+            sleep 1
+            timeout=$[timeout - 1]
+            if [ $timeout -lt 0 ] ; then
+                echo "Timeout on shutdown $NAME should not occur"
+                pgrep -a -f $NAME.yml
+                sudo pkill -9 -f $NAME.yml
+            fi
+        done
+	sudo rm $TEMP_DIR/$NAME.lock $TEMP_DIR/$NAME.pid
 }
 
 function stop() {
@@ -475,7 +519,15 @@ function stop() {
 	AGENT_NUM=$2
 	VM_NUM=$3
 
-	echo Stopping Analyzers...
+	echo "Stopping Agents..."
+        for A in $( seq $AGENT_NUM ); do
+            stop_agent $A
+        done
+	echo "Stopping Analyzers..."
+        for A in $( seq $ANALYZER_NUM ); do
+            stop_analyzer $A
+        done
+        sleep 5
 
 	sudo -E screen -S skydive-stress -X quit
 	rm $TEMP_DIR/screen.lock
@@ -487,7 +539,7 @@ function stop() {
 
 	delete_main_bridge
 
-	sudo find $TEMP_DIR  -mindepth 1 ! -name "*.log" -exec rm -rf {} \;
+	sudo find $TEMP_DIR  -mindepth 1 ! -name "*.log" -a ! -name "*.cover" -exec rm -rf {} \;
 }
 
 function check_dependencies() {
@@ -506,6 +558,7 @@ function usage() {
 	echo -e "Usage:\t$0 start/stop <num analyzers> <num agents> <num vm> [elasticsearch address]"
 	echo ""
 	echo -e "      \t$0 ping <agent-1-vm1> <agent-2-vm1> [options]"
+	echo -e "      \t$0 iperf <agent-1-vm1> <agent-2-vm1> [options]"
 	echo -e "      \t$0 stop-analyzer <num>"
 	exit 1
 }
@@ -548,6 +601,12 @@ elif [ "$1" == "ping" ]; then
 	fi
 
 	ping $2 $3 ${*: 4}
+elif [ "$1" == "iperf" ]; then
+	if [ -z "$3" ]; then
+		usage
+	fi
+
+	iperf $2 $3 ${*: 4}
 else
 	usage
 fi

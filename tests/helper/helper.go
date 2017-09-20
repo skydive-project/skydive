@@ -136,7 +136,7 @@ func ExecCmds(t *testing.T, cmds ...Cmd) error {
 		logging.GetLogger().Debugf("Command returned %s", stdouterr)
 		if err != nil {
 			if cmd.Check {
-				t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error())
+				t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error(), string(stdouterr))
 			}
 			return err
 		}

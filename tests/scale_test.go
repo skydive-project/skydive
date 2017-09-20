@@ -41,7 +41,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-func TestHA(t *testing.T) {
+func TestScaleHA(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	scale := gopath + "/src/github.com/skydive-project/skydive/scripts/scale.sh"
 
@@ -93,7 +93,7 @@ func TestHA(t *testing.T) {
 		}
 	}
 
-	checkFlows := func(flowExpected int) {
+	checkICMPv4Flows := func(flowExpected int) {
 		t.Logf("Check for flows: %d", flowExpected)
 		retry = func() error {
 			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')"); err != nil {
@@ -120,6 +120,43 @@ func TestHA(t *testing.T) {
 
 			if len(flows) != flowExpected {
 				return fmt.Errorf("Should get %d ICMPv4 flow from datastore got %d : %v", flowExpected, len(flows), flows)
+			}
+
+			return nil
+		}
+		if err = common.Retry(retry, 40, time.Second); err != nil {
+			helper.ExecCmds(t, tearDownCmds...)
+			t.Fatalf(err.Error())
+		}
+	}
+
+	checkIPerfFlows := func(flowExpected int) {
+		t.Logf("Check for flows: %d", flowExpected)
+		retry = func() error {
+			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Has('Transport.B', '5001')"); err != nil {
+				return err
+			}
+
+			// two capture 2 flows
+			if len(flows) != flowExpected {
+				return fmt.Errorf("Should get %d iperf(tcp/5001) flow got %d : %v", flowExpected, len(flows), flows)
+			}
+
+			return nil
+		}
+		if err = common.Retry(retry, 10, time.Second); err != nil {
+			helper.ExecCmds(t, tearDownCmds...)
+			t.Fatalf(err.Error())
+		}
+
+		// check in the storage
+		retry = func() error {
+			if flows, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Has('Transport.B', '5001')"); err != nil {
+				return err
+			}
+
+			if len(flows) != flowExpected {
+				return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %d : %#+v", flowExpected, len(flows), flows)
 			}
 
 			return nil
@@ -213,7 +250,7 @@ func TestHA(t *testing.T) {
 	}
 
 	// 60 flows expected as we have two captures
-	checkFlows(60 + 2)
+	checkICMPv4Flows(60 + 2)
 
 	// increase the agent number
 	setupCmds = []helper.Cmd{
@@ -261,7 +298,14 @@ func TestHA(t *testing.T) {
 	}
 
 	// 4*30 expected because the gremlin expression matches all the eth0
-	checkFlows(120 + 2)
+	checkICMPv4Flows(120 + 2)
+
+	// iperf test  10 sec, 1Mbits/s
+	setupCmds = []helper.Cmd{
+		{fmt.Sprintf("%s iperf agent-3-vm1 agent-1-vm1", scale), false},
+	}
+	helper.ExecCmds(t, setupCmds...)
+	checkIPerfFlows(2)
 
 	// delete the capture to check that all captures will be delete at the agent side
 	client.Delete("capture", capture.ID())

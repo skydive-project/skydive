@@ -830,7 +830,7 @@ func TestQueryMetadata(t *testing.T) {
 				return err
 			}
 
-			_, err = gh.GetNode(prefix + `.V().Has("A.B.D", Contains(1))`)
+			_, err = gh.GetNode(prefix + `.V().Has("A.B.D", 1)`)
 			if err != nil {
 				return err
 			}
