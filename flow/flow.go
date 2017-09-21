@@ -37,7 +37,6 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -79,6 +78,18 @@ type Packets struct {
 type RawPackets struct {
 	LinkType   layers.LinkType
 	RawPackets []*RawPacket
+}
+
+// FlowOpts describes options that can be used to process flows
+type FlowOpts struct {
+	TCPMetric bool
+}
+
+// FlowUUIDs describes UUIDs that can be applied to flows
+type FlowUUIDs struct {
+	ParentUUID string
+	L2ID       int64
+	L3ID       int64
 }
 
 // Value returns int32 value of a FlowProtocol
@@ -349,14 +360,14 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
-func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
+func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
 	f.Start = now
 	f.Last = now
 
 	f.newLinkLayer(packet, length)
 
 	f.NodeTID = nodeTID
-	f.ParentUUID = parentUUID
+	f.ParentUUID = uuids.ParentUUID
 
 	f.LayersPath = layerPathFromGoPacket(packet)
 	appLayers := strings.Split(f.LayersPath, "/")
@@ -364,11 +375,11 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 
 	// no network layer then no transport layer
 	if err := f.newNetworkLayer(packet); err == nil {
-		f.newTransportLayer(packet)
+		f.newTransportLayer(packet, opts.TCPMetric)
 	}
 
 	// need to have as most variable filled as possible to get correct UUID
-	f.UpdateUUID(key, L2ID, L3ID)
+	f.UpdateUUID(key, uuids.L2ID, uuids.L3ID)
 }
 
 // Update a flow metrics and latency
@@ -612,7 +623,7 @@ func (f *Flow) updateTCPMetrics(packet *gopacket.Packet) error {
 	return nil
 }
 
-func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
+func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error {
 	var transportLayer gopacket.Layer
 	var ok bool
 	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
@@ -641,7 +652,7 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
-		if config.GetConfig().GetBool("agent.capture_syn") {
+		if tcpMetric {
 			f.TCPFlowMetric = &TCPMetric{}
 			return f.updateTCPMetrics(packet)
 		}

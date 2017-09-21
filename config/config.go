@@ -124,7 +124,6 @@ func init() {
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("ws_bulk_maxmsgs", 100)
 	cfg.SetDefault("ws_bulk_maxdelay", 1)
-	cfg.SetDefault("agent.capture_syn", false)
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")
 	cfg.SetEnvKeyReplacer(replacer)

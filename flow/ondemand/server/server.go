@@ -129,6 +129,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 
 	opts := flow.TableOpts{
 		RawPacketLimit: int64(capture.RawPacketLimit),
+		TCPMetric:      capture.ExtraTCPMetric,
 	}
 	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline, tid, opts)
 

@@ -68,6 +68,7 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
 // TableOpt defines flow table options
 type TableOpts struct {
 	RawPacketLimit int64
+	TCPMetric      bool
 }
 
 // Table store the flow table and related metrics mechanism
@@ -324,7 +325,18 @@ func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2
 	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
-		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID, L2ID, L3ID)
+		opts := FlowOpts{
+
+			TCPMetric: ft.Opts.TCPMetric,
+		}
+
+		uuids := FlowUUIDs{
+			ParentUUID: parentUUID,
+			L2ID:       L2ID,
+			L3ID:       L3ID,
+		}
+
+		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, uuids, opts)
 		ft.pipeline.EnhanceFlow(flow)
 	} else {
 		flow.Update(t, packet.gopacket, packet.length)
