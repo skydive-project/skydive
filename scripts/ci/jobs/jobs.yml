@@ -292,13 +292,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    wrappers:
-      - openstack:
-          instances:
-            - cloud-name: rdo-cloud
-              template-name: devstack
-              count: 1
-          single-use: True
     triggers:
       - github-pull-request:
           org-list:
@@ -311,9 +304,18 @@
           status-context: skydive-devstack-plugin
       - timed: "@daily"
     builders:
-      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-devstack.sh
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          cd scripts/ci
+          vagrant up --no-provision
+          vagrant provision
+          retcode=$?
+          vagrant destroy
+          exit $retcode
     publishers:
       - chuck-norris
+    node: baremetal
 
 - job:
     name: skydive-vagrant

@@ -2,11 +2,10 @@
 
 set -v
 
-git checkout -b devstack
-SKYDIVE_PATH=`pwd`
+[ -z "$SKYDIVE_PATH" ] && SKYDIVE_PATH=`pwd`
 
 sudo yum -y install git iproute net-tools
-git clone -b stable/ocata https://git.openstack.org/openstack-dev/devstack devstack.git
+git clone https://git.openstack.org/openstack-dev/devstack devstack.git
 cd devstack.git
 
 export PATH=$PATH:/usr/sbin
@@ -79,13 +78,3 @@ SKYDIVE_AGENT_LISTEN=0.0.0.0:8081
 EOF
 
 ./stack.sh
-
-set -e
-
-source openrc admin admin
-export PATH=$PATH:/opt/go/bin:/opt/stack/go/bin:/opt/stack/protoc/bin
-export GOROOT=/opt/go
-export GOPATH=/opt/stack/go
-export GO_VERSION=1.7
-cd /opt/stack/go/src/github.com/skydive-project/skydive/
-SKYDIVE_ANALYZERS=localhost:8082 make test.functionals TAGS="neutron" VERBOSE=true TIMEOUT=5m TEST_PATTERN=Neutron
