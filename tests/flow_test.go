@@ -64,7 +64,7 @@ func TestSFlowProbeNode(t *testing.T) {
 			{gremlin: `g.V().Has("Name", "br-spn", "Type", "ovsbridge")`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context('-%dns')", time.Now().Sub(c.time).Nanoseconds())
@@ -86,7 +86,7 @@ func TestSFlowProbeNode(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -117,7 +117,7 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 			{gremlin: `g.V().Has("Name", "br-sntoin", "Type", "ovsbridge")`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context('-%dns')", time.Now().Sub(c.time).Nanoseconds())
@@ -139,7 +139,7 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -194,7 +194,7 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-stnt2', 'Type', 'ovsbridge')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -240,7 +240,7 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -284,7 +284,7 @@ func TestBPF(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'bpf-vm1-eth0')`, bpf: "icmp and host 169.254.66.67"},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -300,7 +300,7 @@ func TestBPF(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -344,7 +344,7 @@ func TestPCAPProbe(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-pp', 'Type', 'bridge')`, kind: "pcap"},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -366,7 +366,7 @@ func TestPCAPProbe(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -405,7 +405,7 @@ func TestSFlowSrcDstPath(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-ssdp', 'Type', 'ovsbridge')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -434,7 +434,7 @@ func TestSFlowSrcDstPath(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -462,7 +462,7 @@ func TestFlowGremlin(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-fg', 'Type', 'ovsbridge')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -516,7 +516,7 @@ func TestFlowGremlin(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -670,14 +670,14 @@ func TestFlowMetrics(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-fm', 'Type', 'ovsbridge')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			t := int64(-1)
 			if !c.time.IsZero() {
 				t = common.UnixMillis(c.time)
 			}
 
 			return queryFlowMetrics(c.gh, "br-fm", t, 1)
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -720,7 +720,7 @@ func TestFlowMetricsStep(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-fms', 'Type', 'ovsbridge')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
 			gremlin += `.V().Has("Name", "br-fms", "Type", "ovsbridge").Flows()`
@@ -779,7 +779,7 @@ func TestFlowMetricsStep(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -837,7 +837,7 @@ func TestFlowHops(t *testing.T) {
 
 		// since the agent update ticker is about 10 sec according to the configuration
 		// we should wait 11 sec to have the first update and the MetricRange filled
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -888,7 +888,7 @@ func TestFlowHops(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -951,7 +951,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 
 		// since the agent update ticker is about 10 sec according to the configuration
 		// we should wait 11 sec to have the first update and the MetricRange filled
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -1005,7 +1005,7 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -1097,7 +1097,7 @@ func TestICMP(t *testing.T) {
 
 		// since the agent update ticker is about 10 sec according to the configuration
 		// we should wait 11 sec to have the first update and the MetricRange filled
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -1146,7 +1146,7 @@ func TestICMP(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -1256,7 +1256,7 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 			return nil
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -1298,7 +1298,7 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -1335,7 +1335,7 @@ func TestReplayCapture(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-rc', 'Type', 'ovsbridge')`, kind: "pcapsocket"},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -1368,7 +1368,7 @@ func TestReplayCapture(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -1377,6 +1377,7 @@ func TestReplayCapture(t *testing.T) {
 func TestPcapInject(t *testing.T) {
 	test := &Test{
 		mode: OneShot,
+
 		setupFunction: func(c *TestContext) error {
 			file, err := os.Open("pcaptraces/eth-ip4-arp-dns-req-http-google.pcap")
 			if err != nil {
@@ -1393,16 +1394,16 @@ func TestPcapInject(t *testing.T) {
 				return fmt.Errorf("Should get 200 status code, got %d", resp.StatusCode)
 			}
 
-			c.time = time.Unix(1454659514, 0)
 			return nil
 		},
-		check: func(c *TestContext) error {
+
+		checks: []CheckFunction{func(c *CheckContext) error {
 			flows, _ := c.gh.GetFlows(`G.Context(1454659514).Flows().Has('Application', 'DNS')`)
 			if len(flows) != 2 {
 				return fmt.Errorf("Wrong number of DNS flows. Expected 2, got %d", len(flows))
 			}
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -1452,7 +1453,7 @@ func TestFlowVLANSegmentation(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'vlan-vm2-eth0')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
 				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -1479,7 +1480,7 @@ func TestFlowVLANSegmentation(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -1539,7 +1540,7 @@ func TestSort(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'dst-eth0', 'Type', 'veth')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			g := "g"
 			if !c.time.IsZero() {
 				g += fmt.Sprintf(".Context(%d, %d)", common.UnixMillis(c.time), 60)
@@ -1573,8 +1574,9 @@ func TestSort(t *testing.T) {
 			if flows[0].Start < flows[1].Start {
 				return fmt.Errorf("Flows not in expected order, expected DESC got ASC")
 			}
+
 			return nil
-		},
+		}},
 	}
 	RunTest(t, test)
 }
@@ -1659,7 +1661,7 @@ func TestFlowSumStep(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-sum', 'Type', 'ovsbridge')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			gremlin := "g"
 
@@ -1678,7 +1680,7 @@ func TestFlowSumStep(t *testing.T) {
 				return fmt.Errorf("Got wrong sum value, Expected 10 got %v", sum)
 			}
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -1733,7 +1735,7 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'br-fcn', 'Type', 'ovsbridge')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			gremlin := "g"
 			if !c.time.IsZero() {
@@ -1754,8 +1756,9 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 			if nodeName != "br-fcn" {
 				return fmt.Errorf("we should get br-fcn node, got %s", nodeName)
 			}
+
 			return nil
-		},
+		}},
 	}
 	RunTest(t, test)
 }
@@ -1797,7 +1800,7 @@ func TestFlowsWithShortestPath(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'spt-src-eth0').ShortestPathTo(Metadata('Name', 'spt-dst-eth0'), Metadata('RelationType', 'layer2'))`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			g := "g"
 			if !c.time.IsZero() {
 				g += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -1810,8 +1813,9 @@ func TestFlowsWithShortestPath(t *testing.T) {
 			if len(flows) != 1 {
 				return fmt.Errorf("Expected one flow, got %+v", flows)
 			}
+
 			return nil
-		},
+		}},
 	}
 	RunTest(t, test)
 }
@@ -1909,7 +1913,7 @@ func TestRawPackets(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'rp-vm1-eth0')`, rawPackets: 9, kind: "pcap"},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			node, err := gh.GetNode(`G.At("-1s").V().Has("Name", "rp-vm1-eth0").HasKey("TID")`)
 			if err != nil {
@@ -1958,7 +1962,7 @@ func TestRawPackets(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -2001,7 +2005,7 @@ func TestFlowsWithIpv4Range(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'ipr-src-eth0')`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			g := "g"
 			if !c.time.IsZero() {
 				g += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -2015,7 +2019,7 @@ func TestFlowsWithIpv4Range(t *testing.T) {
 				return fmt.Errorf("Expected one flow, got %+v", flows)
 			}
 			return nil
-		},
+		}},
 	}
 	RunTest(t, test)
 }

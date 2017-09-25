@@ -13,7 +13,7 @@ type ruleCmd struct {
 	add  bool
 }
 
-func verify(c *TestContext, expected []int) error {
+func verify(c *CheckContext, expected []int) error {
 	for i, e := range expected {
 		gh := c.gh
 		gremlin := "g"
@@ -59,9 +59,9 @@ func makeTest(t *testing.T, rules []ruleCmd, expected []int) {
 			{"ovs-vsctl del-br br-test1", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			return verify(c, expected)
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -113,7 +113,7 @@ func TestDelRuleWithBridge(t *testing.T) {
 
 		tearDownCmds: []helper.Cmd{},
 
-		check: func(c *TestContext) error { return verify(c, []int{0}) },
+		checks: []CheckFunction{func(c *CheckContext) error { return verify(c, []int{0}) }},
 	}
 
 	RunTest(t, test)
