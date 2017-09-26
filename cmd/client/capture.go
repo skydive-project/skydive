@@ -29,10 +29,10 @@ import (
 	"github.com/skydive-project/skydive/api/client"
 	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
-
 	"github.com/spf13/cobra"
 )
 
@@ -83,8 +83,13 @@ var CaptureCreate = &cobra.Command{
 		capture.Type = captureType
 		capture.Port = port
 		capture.HeaderSize = headerSize
-		capture.RawPacketLimit = rawPacketLimit
 		capture.ExtraTCPMetric = extraTCPMetric
+
+		if !config.GetConfig().GetBool("analyzer.packet_capture_enabled") {
+			capture.RawPacketLimit = 0
+		} else {
+			capture.RawPacketLimit = rawPacketLimit
+		}
 		if err := validator.Validate(capture); err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)

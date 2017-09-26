@@ -68,7 +68,7 @@ Vue.component('capture-form', {
                   <label for="capture-header-size">Header Size</label>\
                   <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
                 </div>\
-                <div class="form-group">\
+                <div class="form-group" v-if="isPacketCaptureEnabled">\
                   <label for="capture-raw-packets">Raw packets limit</label>\
                   <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model="rawPackets" min="0" max="10"/>\
                 </div>\
@@ -85,13 +85,9 @@ Vue.component('capture-form', {
           <button type="button" class="btn btn-danger" @click="reset">Cancel</button>\
         </form>\
       </div>\
-      <button type="button"\
-              id="create-capture"\
-              class="btn btn-primary"\
-              v-else\
-              @click="visible = !visible">\
-        Create\
-      </button>\
+      <div v-else>\
+        <button type="button" id="create-capture" class="btn btn-primary" @click="visible = !visible"> Create</button>\
+      </div>\
     </transition>\
   ',
 
@@ -113,6 +109,7 @@ Vue.component('capture-form', {
       nodeType: "",
       typeAllowed: false,
       port: 0,
+      isPacketCaptureEnabled: true,
     };
   },
 
@@ -168,6 +165,15 @@ Vue.component('capture-form', {
       }
     }
 
+  },
+
+  mounted: function() {
+    var self = this;
+
+    $.when(this.$getConfigValue('analyzer.packet_capture_enabled').
+      then(function(packetCaptureEnabled) {
+        self.isPacketCaptureEnabled = packetCaptureEnabled;
+    }));
   },
 
   watch: {

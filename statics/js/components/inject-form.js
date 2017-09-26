@@ -97,6 +97,7 @@ Vue.component('inject-form', {
   ',
 
   data: function() {
+
     return {
       node1: "",
       node2: "",

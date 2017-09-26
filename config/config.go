@@ -77,7 +77,10 @@ func init() {
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 	cfg.SetDefault("agent.X509_servername", "")
 
+	cfg.SetDefault("analyzer.capture_enabled", true)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
+	cfg.SetDefault("analyzer.packet_capture_enabled", true)
+	cfg.SetDefault("analyzer.packet_injection_enabled", true)
 	cfg.SetDefault("analyzer.replication.debug", false)
 	cfg.SetDefault("analyzer.ssh_enabled", false)
 	cfg.SetDefault("analyzer.storage.bulk_insert", 100)

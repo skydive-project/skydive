@@ -52,6 +52,12 @@ analyzer:
   # Enable/disable ssh to hosts
   # ssh_enabled: false
 
+  # Enable/disable capturing (enabled by default)
+  # capture_enabled: true
+  # Enable packet capturing (enabled by default)
+  # packet_capture_enabled: true
+  # Enable/disable packet injection (enabled by default)
+  # packet_injection_enabled: true
   # Flow storage engine
   storage:
     # Available: elasticsearch, orientdb
