@@ -83,18 +83,19 @@ func (u *UserMetadataManager) addUserMetadata(umd *api.UserMetadata) {
 }
 
 func (u *UserMetadataManager) deleteUserMetadata(umd *api.UserMetadata) {
+	u.Lock()
+	delete(u.metadata, umd.UUID)
+	u.Unlock()
+
 	nodes := u.applyGremlinExpr(umd.GremlinQuery)
 	for _, node := range nodes {
-		switch node.(type) {
+		switch node := node.(type) {
 		case *graph.Node:
 			u.graph.DelMetadata(node, "UserMetadata."+umd.Key)
 		default:
 			continue
 		}
 	}
-	u.Lock()
-	delete(u.metadata, umd.UUID)
-	u.Unlock()
 }
 
 func (u *UserMetadataManager) onAPIWatcherEvent(action string, id string, resource api.Resource) {
