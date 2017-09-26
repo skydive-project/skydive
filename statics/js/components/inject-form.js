@@ -75,6 +75,15 @@ Vue.component('inject-form', {
   ',
 
   data: function() {
+
+    $.when(this.$getConfigValue('analyzer.inject_enabled').
+                        then(function(injectEnabled) {
+                        try {
+                            if (injectEnabled.localeCompare("false") === 0) {
+                                document.getElementById("inject").disabled = true;
+                            }
+                         } catch(err) {}
+                        }));
     return {
       node1: "",
       node2: "",

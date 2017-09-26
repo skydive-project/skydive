@@ -176,8 +176,9 @@ func (s *Server) initialize() (err error) {
 
 	api.RegisterTopologyAPI(s.HTTPServer, tr)
 
-	api.RegisterPacketInjectorAPI(piClient, s.TopologyServer.Graph, s.HTTPServer)
-
+	if config.GetConfig().GetBool("analyzer.inject_enabled") {
+		api.RegisterPacketInjectorAPI(piClient, s.TopologyServer.Graph, s.HTTPServer)
+	}
 	api.RegisterPcapAPI(s.HTTPServer, s.Storage)
 
 	api.RegisterConfigAPI(s.HTTPServer)

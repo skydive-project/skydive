@@ -80,17 +80,25 @@ Vue.component('capture-form', {
           <button type="button" class="btn btn-danger" @click="reset">Cancel</button>\
         </form>\
       </div>\
-      <button type="button"\
-              id="create-capture"\
-              class="btn btn-primary"\
-              v-else\
-              @click="visible = !visible">\
-        Create\
-      </button>\
+      <div v-else>\
+          <button type="button" id="create-capture" class="btn btn-primary" @click="visible = !visible"> Create</button>\
+          <button type="button" id="capture-all" class="btn btn-primary" @click="captureall">All</button>\
+          <button type="button" id="capture-bpf" class="btn btn-primary" @click="captureallbpf">AllBPF</button>\
+      </div>\
     </transition>\
   ',
 
   data: function() {
+    $.when(this.$getConfigValue('analyzer.capture_enabled').
+                        then(function(captureEnabled) {
+                        try {
+                            if (captureEnabled.localeCompare("false") === 0) {
+                                document.getElementById("create-capture").disabled = true;
+                                document.getElementById("capture-all").disabled = true;
+                                document.getElementById("capture-bpf").disabled = true;
+                            }
+                         } catch(err) {}
+                        }));
     return {
       node1: "",
       node2: "",
@@ -149,6 +157,16 @@ Vue.component('capture-form', {
           this.$store.state.currentNode.metadata.TID) {
         this.node1 = this.$store.state.currentNode.metadata.TID;
       }
+      $.when(this.$getConfigValue('analyzer.packet_capture_enabled').
+                        then(function(pcapCaptureEnabled) {
+                        try {
+                            if (pcapCaptureEnabled.localeCompare("false") === 0) {
+                                $(".capture-advanced").hide();
+                                document.getElementById("capture-bpf").disabled = true;
+
+                            }
+                         } catch(err) {}
+                        }));
     },
 
     query: function(newQuery) {

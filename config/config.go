@@ -76,6 +76,9 @@ func init() {
 	cfg.SetDefault("analyzer.storage.bulk_insert", 100)
 	cfg.SetDefault("analyzer.storage.bulk_insert_deadline", 5)
 	cfg.SetDefault("analyzer.topology.probes", []string{})
+	cfg.SetDefault("analyzer.capture_enabled", true)
+	cfg.SetDefault("analyzer.inject_enabled", true)
+	cfg.SetDefault("analyzer.packet_capture_enabled", true)
 
 	cfg.SetDefault("auth.type", "noauth")
 	cfg.SetDefault("auth.keystone.tenant", "admin")

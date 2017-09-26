@@ -31,7 +31,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
-
+	"github.com/skydive-project/skydive/config"
 	"github.com/spf13/cobra"
 )
 
@@ -71,6 +71,10 @@ var CaptureCreate = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		if !config.GetConfig().GetBool("analyzer.capture_enabled") {
+			logging.GetLogger().Critical("Violation of disabled capturing is detected!")
+			os.Exit(1)
+		}
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
@@ -83,9 +87,14 @@ var CaptureCreate = &cobra.Command{
 		capture.Type = captureType
 		capture.Port = port
 		capture.HeaderSize = headerSize
-		capture.RawPacketLimit = rawPacketLimit
 		capture.ExtraTCPMetric = extraTCPMetric
 		capture.SocketInfo = socketInfo
+
+		if !config.GetConfig().GetBool("analyzer.packet_capture_enabled") {
+			capture.RawPacketLimit = 0
+		} else {
+			capture.RawPacketLimit = rawPacketLimit
+		}
 		if err := validator.Validate(capture); err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
