@@ -24,6 +24,7 @@ DESTDIR?=$(shell pwd)
 COVERAGE?=0
 COVERAGE_MODE?=atomic
 COVERAGE_WD?="."
+BOOTSTRAP_ARGS?=
 
 .PHONY: all
 all: install
@@ -154,10 +155,10 @@ doctest:
 	hugo server run -t hugo-material-docs -s doc -b http://localhost:1313/skydive
 
 srpm:
-	contrib/packaging/rpm/generate-skydive-bootstrap.sh -s
+	contrib/packaging/rpm/generate-skydive-bootstrap.sh -s ${BOOTSTRAP_ARGS}
 
 rpm:
-	contrib/packaging/rpm/generate-skydive-bootstrap.sh -b
+	contrib/packaging/rpm/generate-skydive-bootstrap.sh -b ${BOOTSTRAP_ARGS}
 
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
@@ -165,6 +166,9 @@ docker-image: static
 
 vendor: govendor check
 	tar cvzf vendor.tar.gz vendor/
+
+localdist: govendor genlocalfiles
+	tar -C $$GOPATH --transform "s/^src/skydive-${VERSION}\/src/" --exclude=src/github.com/skydive-project/skydive/rpmbuild --exclude=src/github.com/skydive-project/skydive/.git -cvzf ${DESTDIR}/skydive-${VERSION}.tar.gz src/github.com/skydive-project/skydive
 
 dist:
 	tmpdir=`mktemp -d -u --suffix=skydive-pkg`; \

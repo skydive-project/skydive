@@ -1,13 +1,14 @@
 #!/bin/bash
 
 function usage {
-  echo "Usage: $0 [-b|-s|-a] [-r tag_or_commit]"
+  echo "Usage: $0 [-b|-s|-a|-l] [-r tag_or_commit]"
 }
 
 from=HEAD
 build_opts=-ba
+target=dist
 
-while getopts ":asb:r:" opt; do
+while getopts ":asblr:" opt; do
   case $opt in
     a)
       build_opts="-ba"
@@ -17,6 +18,9 @@ while getopts ":asb:r:" opt; do
       ;;
     b)
       build_opts="-bb"
+      ;;
+    l)
+      target="localdist"
       ;;
     r)
       from=$OPTARG
@@ -50,6 +54,6 @@ rpmbuilddir=$gitdir/rpmbuild
 
 mkdir -p $rpmbuilddir/SOURCES
 mkdir -p $rpmbuilddir/SPECS
-make -C $gitdir dist DESTDIR=$rpmbuilddir/SOURCES
+make -C $gitdir $target DESTDIR=$rpmbuilddir/SOURCES
 $(dirname "$0")/specfile-update-bundles $gitdir/vendor/vendor.json $gitdir/contrib/packaging/rpm/skydive.spec > $rpmbuilddir/SPECS/skydive.spec
 rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $rpmbuilddir" $rpmbuilddir/SPECS/skydive.spec

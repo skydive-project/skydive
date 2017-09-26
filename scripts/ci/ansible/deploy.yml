@@ -78,6 +78,8 @@
        - ffmpeg
        - gifsicle
        - iperf
+       - rpm-build
+       - golang
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL

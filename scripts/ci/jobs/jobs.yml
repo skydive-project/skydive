@@ -316,6 +316,27 @@
       - chuck-norris
 
 - job:
+    name: skydive-packaging-tests
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?packaging-tests)'
+          only-trigger-phrase: true
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-packaging-tests
+    builders:
+      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-packaging-tests.sh
+    publishers:
+      - chuck-norris
+
+- job:
     name: skydive-coverage
     defaults: skydive
     concurrent: true
