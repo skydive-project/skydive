@@ -80,6 +80,8 @@
        - iperf
        - rpm-build
        - golang
+       - vagrant-libvirt
+       - ansible
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
