@@ -219,7 +219,9 @@ func (o *OnDemandProbeServer) OnWSMessage(c shttp.WSClient, msg shttp.WSMessage)
 
 		status = http.StatusOK
 		if ok := o.unregisterProbe(n); ok {
-			o.Graph.DelMetadata(n, "Capture")
+			metadata := n.Metadata()
+			delete(metadata, "Capture")
+			o.Graph.SetMetadata(n, metadata)
 		} else {
 			status = http.StatusInternalServerError
 		}

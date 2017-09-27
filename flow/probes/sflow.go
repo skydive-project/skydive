@@ -52,7 +52,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
 	d.probesLock.Lock()
 	defer d.probesLock.Unlock()
 
-	var tid string
+	tid := ""
 	if tid, _ = n.GetFieldString("TID"); tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
 	}
@@ -70,7 +70,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
 
 // RegisterProbe registers a probe in the graph
 func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
-	var tid string
+	tid := ""
 	if tid, _ = n.GetFieldString("TID"); tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
 	}
