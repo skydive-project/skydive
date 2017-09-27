@@ -51,14 +51,6 @@ type OnDemandProbeServer struct {
 	captures     map[graph.Identifier]*api.Capture
 }
 
-func (o *OnDemandProbeServer) isActive(n *graph.Node) bool {
-	o.RLock()
-	defer o.RUnlock()
-	_, active := o.activeProbes[n.ID]
-
-	return active
-}
-
 func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (*probes.FlowProbe, error) {
 	tp, _ := n.GetFieldString("Type")
 
@@ -100,11 +92,6 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 
 	logging.GetLogger().Debugf("Attempting to register probe on node %s", name)
 
-	if o.isActive(n) {
-		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
-		return false
-	}
-
 	if _, err := n.GetFieldString("Type"); err != nil {
 		logging.GetLogger().Infof("Unable to register flow probe type of node unknown %v", n)
 		return false
@@ -115,9 +102,6 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		logging.GetLogger().Infof("Unable to register flow probe without node TID %v", n)
 		return false
 	}
-
-	o.Lock()
-	defer o.Unlock()
 
 	fprobe, err := o.getProbe(n, capture)
 	if fprobe == nil {
@@ -131,6 +115,15 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		RawPacketLimit: int64(capture.RawPacketLimit),
 		TCPMetric:      capture.ExtraTCPMetric,
 	}
+
+	o.Lock()
+	defer o.Unlock()
+
+	if _, active := o.activeProbes[n.ID]; active {
+		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
+		return false
+	}
+
 	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline, tid, opts)
 
 	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
@@ -147,13 +140,18 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 }
 
 func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
-	if !o.isActive(n) {
+	o.RLock()
+	_, active := o.activeProbes[n.ID]
+	o.RUnlock()
+
+	if !active {
 		return false
 	}
 
 	o.Lock()
 	c := o.captures[n.ID]
 	o.Unlock()
+
 	fprobe, err := o.getProbe(n, c)
 	if fprobe == nil {
 		if err != nil {
