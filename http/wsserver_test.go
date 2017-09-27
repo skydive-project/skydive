@@ -33,7 +33,7 @@ import (
 
 type fakeServerSubscriptionHandler struct {
 	sync.RWMutex
-	DefaultWSClientEventHandler
+	DefaultWSSpeakerEventHandler
 	t         *testing.T
 	server    *WSServer
 	received  int
@@ -42,33 +42,33 @@ type fakeServerSubscriptionHandler struct {
 
 type fakeClientSubscriptionHandler struct {
 	sync.RWMutex
-	DefaultWSClientEventHandler
+	DefaultWSSpeakerEventHandler
 	t         *testing.T
 	received  int
 	connected int
 }
 
-func (f *fakeServerSubscriptionHandler) OnConnected(c WSClient) {
+func (f *fakeServerSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
 	c.Send(WSRawMessage{})
 }
 
-func (f *fakeServerSubscriptionHandler) OnMessage(c WSClient, m Message) {
+func (f *fakeServerSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
 	f.Lock()
 	f.received++
 	f.Unlock()
 }
 
-func (f *fakeClientSubscriptionHandler) OnConnected(c WSClient) {
+func (f *fakeClientSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
 	c.Send(WSRawMessage{})
 }
 
-func (f *fakeClientSubscriptionHandler) OnMessage(c WSClient, m Message) {
+func (f *fakeClientSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
 	f.Lock()
 	f.received++
 	f.Unlock()
@@ -88,7 +88,7 @@ func TestSubscription(t *testing.T) {
 	wsserver.Start()
 	defer wsserver.Stop()
 
-	wsclient := NewWSAsyncClient("myhost", common.AgentService, "localhost", 59999, "/wstest", nil)
+	wsclient := NewWSClient("myhost", common.AgentService, "localhost", 59999, "/wstest", nil)
 	wspool := NewWSClientPool()
 
 	wspool.AddClient(wsclient)

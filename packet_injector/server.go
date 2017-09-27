@@ -43,7 +43,7 @@ type PacketInjectorServer struct {
 	Graph *graph.Graph
 }
 
-func (pis *PacketInjectorServer) injectPacket(msg shttp.WSJSONMessage) (string, error) {
+func (pis *PacketInjectorServer) injectPacket(msg *shttp.WSJSONMessage) (string, error) {
 	var params PacketParams
 	if err := common.JSONDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
 		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
@@ -58,7 +58,7 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSJSONMessage) (string, 
 }
 
 // OnWSMessage event, websocket PIRequest message
-func (pis *PacketInjectorServer) OnWSJSONMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
+func (pis *PacketInjectorServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
 	switch msg.Type {
 	case "PIRequest":
 		var reply *shttp.WSJSONMessage

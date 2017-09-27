@@ -60,7 +60,7 @@ type nodeProbe struct {
 }
 
 // OnMessage event, valid message type : CaptureStartReply or CaptureStopReply message
-func (o *OnDemandProbeClient) OnWSJSONMessage(c shttp.WSSpeaker, m shttp.WSJSONMessage) {
+func (o *OnDemandProbeClient) OnWSJSONMessage(c shttp.WSSpeaker, m *shttp.WSJSONMessage) {
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*m.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", m)

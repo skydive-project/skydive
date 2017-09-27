@@ -293,7 +293,7 @@ func TestAlertWithTimer(t *testing.T) {
 					return err
 				}
 
-				var msg shttp.WSMessage
+				var msg shttp.WSJSONMessage
 				if err = common.JSONDecode(bytes.NewReader(m), &msg); err != nil {
 					t.Fatalf("Failed to unmarshal message: %s", err.Error())
 				}
@@ -375,7 +375,7 @@ func TestMultipleTriggering(t *testing.T) {
 					return err
 				}
 
-				var msg shttp.WSMessage
+				var msg shttp.WSJSONMessage
 				if err = common.JSONDecode(bytes.NewReader(m), &msg); err != nil {
 					t.Fatalf("Failed to unmarshal message: %s", err.Error())
 				}

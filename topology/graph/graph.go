@@ -38,6 +38,8 @@ import (
 )
 
 const (
+	// Namespace used for WebSocket message
+	Namespace = "Graph"
 	maxEvents = 50
 )
 

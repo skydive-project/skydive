@@ -30,20 +30,25 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// TopologyServer describes a graph server based on websocket
+// TopologyServer serves Graph events through websocket connections. It forwards
+// all the Graph events and handles specific websocket API calls. All the API calls
+// handled by the server are of type graph.*MsgType.
 type TopologyServer struct {
 	Graph *graph.Graph
 	Pool  shttp.WSJSONSpeakerPool
 }
 
-// OnWSMessage event
-func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
+// OnWSJSONMessage is called by the pool of Websocket JSON speakers. it Implements the
+// shttp.WSJSONMessageHandler interface.
+func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
 		return
 	}
 
+	// NOTE: currently the agent side server only support SyncRequestMsgType API call.
+	// It is then impossible to modify the graph from the websocket API calls.
 	if msgType == graph.SyncRequestMsgType {
 		t.Graph.RLock()
 		g, status := t.Graph, http.StatusOK
@@ -55,47 +60,49 @@ func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg shttp.WSJSONMess
 		c.Send(reply)
 		t.Graph.RUnlock()
 	}
-
-	// NOTE(safchain) currently agents don't support add/del operations
 }
 
-// OnNodeUpdated event
+// OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnNodeUpdated(n *graph.Node) {
 	t.Pool.QueueBroadcastMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
 }
 
-// OnNodeAdded event
+// OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnNodeAdded(n *graph.Node) {
 	t.Pool.QueueBroadcastMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 }
 
-// OnNodeDeleted event
+// OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnNodeDeleted(n *graph.Node) {
 	t.Pool.QueueBroadcastMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 }
 
-// OnEdgeUpdated event
+// OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnEdgeUpdated(e *graph.Edge) {
 	t.Pool.QueueBroadcastMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
 }
 
-// OnEdgeAdded event
+// OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnEdgeAdded(e *graph.Edge) {
 	t.Pool.QueueBroadcastMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 }
 
-// OnEdgeDeleted event
+// OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnEdgeDeleted(e *graph.Edge) {
 	t.Pool.QueueBroadcastMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }
 
-// NewTopologyServer creates a new topology graph server based on a websocket server
+// NewTopologyServer returns a new graph server for the given graph and WSJSONSpeakerPool.
 func NewTopologyServer(g *graph.Graph, pool shttp.WSJSONSpeakerPool) *TopologyServer {
 	t := &TopologyServer{
 		Graph: g,
 		Pool:  pool,
 	}
+
+	// listen to graph events
 	t.Graph.AddEventListener(t)
+
+	// will get OnWSJSONMessage events
 	pool.AddJSONMessageHandler(t, []string{graph.Namespace})
 	return t
 }

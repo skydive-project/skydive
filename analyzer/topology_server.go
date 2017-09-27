@@ -23,8 +23,16 @@
 package analyzer
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
@@ -34,18 +42,131 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// TopologyServer describes a service to reply to topology queries
+// TopologyReplicatorPeer is a remote connection to another Graph server. Only modification
+// of the local Graph made either by the local server, by an agent message or by an external
+// client will be forwarded to the peer.
+type TopologyReplicatorPeer struct {
+	shttp.DefaultWSSpeakerEventHandler
+	Addr        string
+	Port        int
+	Graph       *graph.Graph
+	AuthOptions *shttp.AuthenticationOpts
+	wsclient    *shttp.WSClient
+	host        string
+}
+
+// TopologyServer serves the local Graph and send local modification to its peers.
+// Only modification of the local Graph made either by the local server,
+// by an agent message or by an external client will be forwarded to the peers.
 type TopologyServer struct {
 	sync.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
-	Graph       *graph.Graph
-	GraphServer *graph.Server
-	cached      *graph.CachedBackend
-	nodeSchema  gojsonschema.JSONLoader
-	edgeSchema  gojsonschema.JSONLoader
-	// map used to store agent which uses this analyzer as master
-	// basically sending graph messages
-	authors map[string]bool
+	pool         shttp.WSJSONSpeakerPool
+	Graph        *graph.Graph
+	cached       *graph.CachedBackend
+	nodeSchema   gojsonschema.JSONLoader
+	edgeSchema   gojsonschema.JSONLoader
+	authors      map[string]bool // authors of graph modification meaning not forwarding them.
+	peers        []*TopologyReplicatorPeer
+	wg           sync.WaitGroup
+	replicateMsg atomic.Value
+}
+
+// getHostID loop until being able to get the host-id of the peer.
+func (p *TopologyReplicatorPeer) getHostID() string {
+	client := shttp.NewRestClient(p.Addr, p.Port, p.AuthOptions)
+	contentReader := bytes.NewReader([]byte{})
+
+	var data []byte
+	var info api.Info
+
+	for {
+		resp, err := client.Request("GET", "api", contentReader, nil)
+		if err != nil {
+			goto NotReady
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			goto NotReady
+		}
+
+		data, _ = ioutil.ReadAll(resp.Body)
+		if len(data) == 0 {
+			goto NotReady
+		}
+
+		if err := json.Unmarshal(data, &info); err != nil {
+			goto NotReady
+		}
+		p.host = info.Host
+
+		return p.host
+
+	NotReady:
+		time.Sleep(1 * time.Second)
+	}
+}
+
+// OnConnected is called when the peer gets connected then the whole graph
+// is send to initialize it.
+func (p *TopologyReplicatorPeer) OnConnected(c shttp.WSSpeaker) {
+	p.Graph.RLock()
+	defer p.Graph.RUnlock()
+
+	logging.GetLogger().Infof("Send the whole graph to: %s", p.Graph.GetHost())
+	p.wsclient.Send(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
+}
+
+func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// check whether the peer is the local server itself or not thanks to the /api
+	// the goal is to not add itself as peer.
+	if p.getHostID() == config.GetConfig().GetString("host_id") {
+		logging.GetLogger().Debugf("No connection to %s:%d since it's me", p.Addr, p.Port)
+		return
+	}
+
+	authClient := shttp.NewAuthenticationClient(p.Addr, p.Port, p.AuthOptions)
+	p.wsclient = shttp.NewWSClientFromConfig(common.AnalyzerService, p.Addr, p.Port, "/ws", authClient)
+
+	// will trigger shttp.WSSpeakerEventHandler, so OnConnected
+	p.wsclient.AddEventHandler(p)
+
+	p.wsclient.Connect()
+}
+
+func (p *TopologyReplicatorPeer) disconnect() {
+	if p.wsclient != nil {
+		p.wsclient.Disconnect()
+	}
+}
+
+func (t *TopologyServer) addPeer(addr string, port int, auth *shttp.AuthenticationOpts, g *graph.Graph) {
+	peer := &TopologyReplicatorPeer{
+		Addr:        addr,
+		Port:        port,
+		Graph:       g,
+		AuthOptions: auth,
+	}
+
+	t.peers = append(t.peers, peer)
+}
+
+// ConnectPeers starts a goroutine connecting all the peers.
+func (t *TopologyServer) ConnectPeers() {
+	for _, peer := range t.peers {
+		t.wg.Add(1)
+		go peer.connect(&t.wg)
+	}
+}
+
+// DisconnectPeers disconnects all the peers and wait until all disconnected.
+func (t *TopologyServer) DisconnectPeers() {
+	for _, peer := range t.peers {
+		peer.disconnect()
+	}
+	t.wg.Wait()
 }
 
 func (t *TopologyServer) hostGraphDeleted(host string, mode int) {
@@ -55,7 +176,8 @@ func (t *TopologyServer) hostGraphDeleted(host string, mode int) {
 	t.Graph.DelHostGraph(host)
 }
 
-// OnDisconnected websocket event
+// OnDisconnected called when a WSSpeaker got disconnected. The WSSPeaker can be
+// either a peer, an agent or an external client.
 func (t *TopologyServer) OnDisconnected(c shttp.WSSpeaker) {
 	host := c.GetHost()
 
@@ -80,18 +202,50 @@ func (t *TopologyServer) OnDisconnected(c shttp.WSSpeaker) {
 	t.Unlock()
 }
 
-// OnGraphMessage websocket event
-func (t *TopologyServer) OnGraphMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage, msgType string, obj interface{}) {
-	clientType := c.GetClientType()
+// OnWSJSONMessage is triggered by message coming from websocket Speaker. It can be
+// any kind of client, peer, agent, external client.
+func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+	msgType, obj, err := graph.UnmarshalWSMessage(msg)
+	if err != nil {
+		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
+		return
+	}
 
-	// author if message coming from another client than analyzer
-	if clientType != "" && clientType != common.AnalyzerService {
+	// this kind of message usually comes from external clients like the WebUI
+	if msgType == graph.SyncRequestMsgType {
+		t.Graph.RLock()
+		context, status := obj.(graph.GraphContext), http.StatusOK
+		g, err := t.Graph.WithContext(context)
+		if err != nil {
+			logging.GetLogger().Errorf("analyzer is unable to get a graph with context %+v: %s", context, err.Error())
+			g, status = nil, http.StatusBadRequest
+		}
+		reply := msg.Reply(g, graph.SyncReplyMsgType, status)
+		c.Send(reply)
+		t.Graph.RUnlock()
+
+		return
+	}
+
+	serviceType := c.GetServiceType()
+
+	// set this WSSpeaker as author if a serviceType is provided and it is not a peer.
+	// So basically an author is a WSSpeaker not forwarding a message.
+	if serviceType != "" && serviceType != common.AnalyzerService {
 		t.Lock()
 		t.authors[c.GetHost()] = true
 		t.Unlock()
+	} else {
+		// if the message doesn't come from an author meaning that it comes from
+		// a peer. In that case we don't have to forward it otherwise it leads to
+		// infinite forwarding loop.
+		t.replicateMsg.Store(false)
+		defer t.replicateMsg.Store(true)
 	}
 
-	if clientType != common.AnalyzerService && clientType != common.AgentService {
+	// If the message comes from an external WSSpeaker we use the schema to validate the
+	// message.
+	if serviceType != common.AnalyzerService && serviceType != common.AgentService {
 		loader := gojsonschema.NewGoLoader(obj)
 
 		var schema gojsonschema.JSONLoader
@@ -113,31 +267,30 @@ func (t *TopologyServer) OnGraphMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessa
 	t.Graph.Lock()
 	defer t.Graph.Unlock()
 
-	// got HostGraphDeleted, so if not an analyzer we need to do two things:
-	// force the deletion from the cache and force the delete from the persistent
-	// backend. We need to use the persistent only to be use to retrieve nodes/edges
-	// from the persistent backend otherwise the memory backend would be used.
+	// HostGraphDeletedMsgType is handled specifically as we need to be sure to not use the
+	// cache while deleting otherwise the delete mechanism is using the cache to walk throught
+	// the graph.
 	if msgType == graph.HostGraphDeletedMsgType {
 		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, obj.(string))
 
 		t.hostGraphDeleted(obj.(string), graph.CacheOnlyMode)
-		if clientType != common.AnalyzerService {
+		if serviceType != common.AnalyzerService {
 			t.hostGraphDeleted(obj.(string), graph.PersistentOnlyMode)
 		}
 
 		return
 	}
 
-	// If the message comes from analyzer we need to apply it only on cache only
+	// If the message comes from analyzer we only need to apply it on cache
 	// as it is a forwarded message.
-	if clientType == common.AnalyzerService {
+	if serviceType == common.AnalyzerService {
 		t.cached.SetMode(graph.CacheOnlyMode)
 	}
 	defer t.cached.SetMode(graph.DefaultMode)
 
 	switch msgType {
-	case graph.SyncReplyMsgType:
-		r := obj.(*graph.SyncReplyMsg)
+	case graph.SyncMsgType, graph.SyncReplyMsgType:
+		r := obj.(*graph.SyncMsg)
 		for _, n := range r.Nodes {
 			if t.Graph.GetNode(n.ID) == nil {
 				t.Graph.NodeAdded(n)
@@ -163,8 +316,83 @@ func (t *TopologyServer) OnGraphMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessa
 	}
 }
 
-// NewTopologyServer creates a new topology server
-func NewTopologyServer(host string, server *shttp.WSJSONMessageServer) (*TopologyServer, error) {
+// notifyClients aims to forward local graph modification to external clients
+// the goal here is not to handle analyzer replication.
+func (t *TopologyServer) notifyClients(msg *shttp.WSJSONMessage) {
+	for _, c := range t.pool.GetSpeakers() {
+		serviceType := c.GetServiceType()
+		if serviceType != common.AnalyzerService && serviceType != common.AgentService {
+			c.Send(msg)
+		}
+	}
+}
+
+// SendToPeers sends the message to all the peers
+func (t *TopologyServer) notifyPeers(msg *shttp.WSJSONMessage) {
+	for _, p := range t.peers {
+		if p.wsclient != nil {
+			p.wsclient.Send(msg)
+		}
+	}
+}
+
+// OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
+func (t *TopologyServer) OnNodeUpdated(n *graph.Node) {
+	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeUpdatedMsgType, n)
+	t.notifyClients(msg)
+	if t.replicateMsg.Load() == true {
+		t.notifyPeers(msg)
+	}
+}
+
+// OnNodeAdded graph node added event. Implements the GraphEventListener interface.
+func (t *TopologyServer) OnNodeAdded(n *graph.Node) {
+	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+	t.notifyClients(msg)
+	if t.replicateMsg.Load() == true {
+		t.notifyPeers(msg)
+	}
+}
+
+// OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
+func (t *TopologyServer) OnNodeDeleted(n *graph.Node) {
+	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeDeletedMsgType, n)
+	t.notifyClients(msg)
+	if t.replicateMsg.Load() == true {
+		t.notifyPeers(msg)
+	}
+}
+
+// OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
+func (t *TopologyServer) OnEdgeUpdated(e *graph.Edge) {
+	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e)
+	t.notifyClients(msg)
+	if t.replicateMsg.Load() == true {
+		t.notifyPeers(msg)
+	}
+}
+
+// OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
+func (t *TopologyServer) OnEdgeAdded(e *graph.Edge) {
+	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeAddedMsgType, e)
+	t.notifyClients(msg)
+	if t.replicateMsg.Load() == true {
+		t.notifyPeers(msg)
+	}
+}
+
+// OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
+func (t *TopologyServer) OnEdgeDeleted(e *graph.Edge) {
+	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e)
+	t.notifyClients(msg)
+	if t.replicateMsg.Load() == true {
+		t.notifyPeers(msg)
+	}
+}
+
+// NewTopologyServer returns a new server which servers the local Graph and replicates messages
+// coming from agents or external clients.
+func NewTopologyServer(pool shttp.WSJSONSpeakerPool, auth *shttp.AuthenticationOpts) (*TopologyServer, error) {
 	persistent, err := graph.BackendFromConfig()
 	if err != nil {
 		return nil, err
@@ -176,7 +404,6 @@ func NewTopologyServer(host string, server *shttp.WSJSONMessageServer) (*Topolog
 	}
 
 	g := graph.NewGraphFromConfig(cached)
-	graphServer := graph.NewServer(g, server)
 
 	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
 	if err != nil {
@@ -188,22 +415,32 @@ func NewTopologyServer(host string, server *shttp.WSJSONMessageServer) (*Topolog
 		return nil, err
 	}
 
-	t := &TopologyServer{
-		Graph:       g,
-		GraphServer: graphServer,
-		cached:      cached,
-		authors:     make(map[string]bool),
-		nodeSchema:  gojsonschema.NewBytesLoader(nodeSchema),
-		edgeSchema:  gojsonschema.NewBytesLoader(edgeSchema),
+	addresses, err := config.GetAnalyzerServiceAddresses()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
 	}
-	graphServer.AddEventHandler(t)
-	server.AddEventHandler(t)
+
+	t := &TopologyServer{
+		Graph:      g,
+		pool:       pool,
+		cached:     cached,
+		authors:    make(map[string]bool),
+		nodeSchema: gojsonschema.NewBytesLoader(nodeSchema),
+		edgeSchema: gojsonschema.NewBytesLoader(edgeSchema),
+	}
+	t.replicateMsg.Store(true)
+
+	pool.AddEventHandler(t)
+
+	// subscribe to the graph messages
+	pool.AddJSONMessageHandler(t, []string{graph.Namespace})
+
+	// subscribe to the local graph event
+	g.AddEventListener(t)
+
+	for _, sa := range addresses {
+		t.addPeer(sa.Addr, sa.Port, auth, g)
+	}
 
 	return t, nil
-}
-
-// NewTopologyServerFromConfig creates a new topology server based on configuration
-func NewTopologyServerFromConfig(server *shttp.WSJSONMessageServer) (*TopologyServer, error) {
-	host := config.GetConfig().GetString("host_id")
-	return NewTopologyServer(host, server)
 }

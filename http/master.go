@@ -24,12 +24,13 @@ package http
 
 import "sync"
 
-// Interface to be implemented by master election listeners
+// WSMasterEventHandler is the interface to be implemented by master election listeners.
 type WSMasterEventHandler interface {
 	OnNewMaster(c WSSpeaker)
 }
 
-// Defines a master election of a pool
+// WSMasterElection provides a mechanism based on etcd to elect a master from a
+// WSSpeakerPool.
 type WSMasterElection struct {
 	sync.RWMutex
 	DefaultWSSpeakerEventHandler
@@ -39,11 +40,11 @@ type WSMasterElection struct {
 }
 
 func (a *WSMasterElection) selectMaster() {
-	a.master = a.pool.GetConnectedClient()
+	a.master = a.pool.PickConnectedSpeaker()
 	return
 }
 
-// Send a message to the master
+// SendMessageToMaster sends a message to the master.
 func (a *WSMasterElection) SendMessageToMaster(m WSMessage) {
 	a.RLock()
 	if a.master != nil {
@@ -52,7 +53,8 @@ func (a *WSMasterElection) SendMessageToMaster(m WSMessage) {
 	a.RUnlock()
 }
 
-// OnConnected event
+// OnConnected is triggered when a new WSSpeaker get connected. If no master
+// was elected this WSSpeaker will be choosen as master.
 func (a *WSMasterElection) OnConnected(c WSSpeaker) {
 	a.Lock()
 	if a.master == nil {
@@ -63,7 +65,8 @@ func (a *WSMasterElection) OnConnected(c WSSpeaker) {
 	a.Unlock()
 }
 
-// OnDisconnected event
+// OnDisconnected is triggered when a new WSSpeaker get disconnected. If it was
+// the master a new election is triggered.
 func (a *WSMasterElection) OnDisconnected(c WSSpeaker) {
 	a.Lock()
 	if a.master != nil && a.master.GetHost() == c.GetHost() {
@@ -75,7 +78,6 @@ func (a *WSMasterElection) OnDisconnected(c WSSpeaker) {
 	a.Unlock()
 }
 
-// Notify all the listeners that a new master has been elected
 func (a *WSMasterElection) notifyNewMaster(c WSSpeaker) {
 	a.RLock()
 	for _, h := range a.eventHandlers {
@@ -84,14 +86,14 @@ func (a *WSMasterElection) notifyNewMaster(c WSSpeaker) {
 	a.RUnlock()
 }
 
-// Register a new event handler
+// AddEventHandler a new WSMasterEventHandler event handler.
 func (a *WSMasterElection) AddEventHandler(eventHandler WSMasterEventHandler) {
 	a.Lock()
 	a.eventHandlers = append(a.eventHandlers, eventHandler)
 	a.Unlock()
 }
 
-// Returns a new master election
+// NewWSMasterElection returns a new WSMasterElection.
 func NewWSMasterElection(pool WSSpeakerPool) *WSMasterElection {
 	me := &WSMasterElection{pool: pool}
 	pool.AddEventHandler(me)

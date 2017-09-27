@@ -599,6 +599,27 @@ Graph.prototype = {
     this.notifyHandlers('postInit');
   },
 
+  hostGraphDeleted: function(host) {
+    var n, e, i;
+    for (i in this.edges) {
+      e = this.edges[i];
+      if (e.host === host) {
+        this.delEdge(e);
+      }
+    }
+
+    for (i in this.nodes) {
+      n = this.nodes[i];
+      if (n.host === host) {
+        this.delNode(n);
+      }
+    }
+  },
+
+  sync: function(msg) {
+    this.init(msg.Obj);
+  },
+
   syncRequest: function(t) {
     if (t && t === store.state.time) {
       return;
@@ -627,6 +648,14 @@ Graph.prototype = {
     switch(msg.Type) {
       case "SyncReply":
         this.initFromSyncMessage(msg);
+        break;
+
+      case "Sync":
+        this.sync(msg);
+        break;
+
+      case "HostGraphDeleted":
+        this.hostGraphDeleted(msg.Obj);
         break;
 
       case "NodeUpdated":

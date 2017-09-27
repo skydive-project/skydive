@@ -35,9 +35,9 @@ func TestNullNodesEdges(t *testing.T) {
 
 	raw := json.RawMessage(nodesNull)
 
-	msg := shttp.WSJSONMessage{
+	msg := &shttp.WSJSONMessage{
 		Namespace: Namespace,
-		Type:      SyncReplyMsgType,
+		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Obj:       &raw,
 		Status:    http.StatusOK,
@@ -51,9 +51,9 @@ func TestNullNodesEdges(t *testing.T) {
 
 	raw = json.RawMessage(edgesNull)
 
-	msg = shttp.WSJSONMessage{
+	msg = &shttp.WSJSONMessage{
 		Namespace: Namespace,
-		Type:      SyncReplyMsgType,
+		Type:      SyncMsgType,
 		UUID:      "bbb",
 		Obj:       &raw,
 		Status:    http.StatusOK,
@@ -69,9 +69,9 @@ func TestID(t *testing.T) {
 
 	raw := json.RawMessage(idMissing)
 
-	msg := shttp.WSJSONMessage{
+	msg := &shttp.WSJSONMessage{
 		Namespace: Namespace,
-		Type:      SyncReplyMsgType,
+		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Obj:       &raw,
 		Status:    http.StatusOK,
@@ -85,9 +85,9 @@ func TestID(t *testing.T) {
 
 	raw = json.RawMessage(idWrongType)
 
-	msg = shttp.WSJSONMessage{
+	msg = &shttp.WSJSONMessage{
 		Namespace: Namespace,
-		Type:      SyncReplyMsgType,
+		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Obj:       &raw,
 		Status:    http.StatusOK,
@@ -103,9 +103,9 @@ func TestHost(t *testing.T) {
 
 	raw := json.RawMessage(hostWrongType)
 
-	msg := shttp.WSJSONMessage{
+	msg := &shttp.WSJSONMessage{
 		Namespace: Namespace,
-		Type:      SyncReplyMsgType,
+		Type:      SyncMsgType,
 		UUID:      "aaa",
 		Obj:       &raw,
 		Status:    http.StatusOK,

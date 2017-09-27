@@ -171,7 +171,7 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 }
 
 // OnWSJSONMessage websocket message, valid message type are CaptureStart, CaptureStop
-func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
+func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", msg)

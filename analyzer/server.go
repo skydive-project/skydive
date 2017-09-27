@@ -49,20 +49,19 @@ import (
 
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
-	HTTPServer        *shttp.Server
-	WSServer          *shttp.WSJSONMessageServer
-	TopologyForwarder *TopologyForwarder
-	TopologyServer    *TopologyServer
-	AlertServer       *alert.AlertServer
-	OnDemandClient    *ondemand.OnDemandProbeClient
-	MetadataManager   *metadata.UserMetadataManager
-	FlowServer        *FlowServer
-	ProbeBundle       *probe.ProbeBundle
-	Storage           storage.Storage
-	EmbeddedEtcd      *etcd.EmbeddedEtcd
-	EtcdClient        *etcd.EtcdClient
-	wgServers         sync.WaitGroup
-	wgFlowsHandlers   sync.WaitGroup
+	HTTPServer      *shttp.Server
+	WSServer        *shttp.WSJSONServer
+	TopologyServer  *TopologyServer
+	AlertServer     *alert.AlertServer
+	OnDemandClient  *ondemand.OnDemandProbeClient
+	MetadataManager *metadata.UserMetadataManager
+	FlowServer      *FlowServer
+	ProbeBundle     *probe.ProbeBundle
+	Storage         storage.Storage
+	EmbeddedEtcd    *etcd.EmbeddedEtcd
+	EtcdClient      *etcd.EtcdClient
+	wgServers       sync.WaitGroup
+	wgFlowsHandlers sync.WaitGroup
 }
 
 func (s *Server) initialize() (err error) {
@@ -72,9 +71,9 @@ func (s *Server) initialize() (err error) {
 		return
 	}
 
-	s.WSServer = shttp.NewWSJSONMessageServer(shttp.NewWSServerFromConfig(s.HTTPServer, "/ws"))
+	s.WSServer = shttp.NewWSJSONServer(shttp.NewWSServerFromConfig(s.HTTPServer, "/ws"))
 
-	if s.TopologyServer, err = NewTopologyServerFromConfig(s.WSServer); err != nil {
+	if s.TopologyServer, err = NewTopologyServer(s.WSServer, NewAnalyzerAuthenticationOpts()); err != nil {
 		return
 	}
 
@@ -145,8 +144,6 @@ func (s *Server) initialize() (err error) {
 
 	piClient := packet_injector.NewPacketInjectorClient(s.WSServer)
 
-	s.TopologyForwarder = NewTopologyForwarderFromConfig(s.TopologyServer.Graph, s.WSServer)
-
 	api.RegisterTopologyAPI(s.HTTPServer, tr)
 
 	api.RegisterPacketInjectorAPI(piClient, s.TopologyServer.Graph, s.HTTPServer)
@@ -169,7 +166,7 @@ func (s *Server) Start() {
 		s.Storage.Start()
 	}
 
-	s.TopologyForwarder.ConnectAll()
+	s.TopologyServer.ConnectPeers()
 
 	s.ProbeBundle.Start()
 	s.OnDemandClient.Start()

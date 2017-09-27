@@ -40,7 +40,7 @@ type TableServer struct {
 }
 
 // OnTableQuery event
-func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
+func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
 	var query TableQuery
 	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
@@ -53,7 +53,7 @@ func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
 }
 
 // OnWSMessage TableQuery
-func (s *TableServer) OnWSJSONMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
+func (s *TableServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
 	switch msg.Type {
 	case "TableQuery":
 		s.OnTableQuery(c, msg)

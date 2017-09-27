@@ -147,7 +147,7 @@ func TestScaleHA(t *testing.T) {
 			}
 
 			for _, f := range flows {
-				if f.SocketA.Process != "/usr/bin/iperf" || f.SocketB.Process != "/usr/bin/iperf" {
+				if f.SocketA == nil || f.SocketA.Process != "/usr/bin/iperf" || f.SocketB == nil || f.SocketB.Process != "/usr/bin/iperf" {
 					return fmt.Errorf("Should get iperf exe %v", f)
 				}
 				if f.SocketA.Name != "iperf" || f.SocketB.Name != "iperf" {

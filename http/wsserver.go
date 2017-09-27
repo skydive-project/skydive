@@ -33,8 +33,10 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// WSIncomerHandler incoming client handler interface.
 type WSIncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) WSSpeaker
 
+// WSServer implements a websocket server. It owns a WSPool of incoming WSSpeakers.
 type WSServer struct {
 	sync.RWMutex
 	*wsIncomerPool
@@ -58,7 +60,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	host := r.Header.Get("X-Host-ID")
 	if host != "" {
 		s.wsIncomerPool.RLock()
-		for _, c := range s.clients {
+		for _, c := range s.speakers {
 			if c.GetHost() == host {
 				logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, host)
 				w.Header().Set("Connection", "close")
@@ -85,6 +87,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	s.OnConnected(c)
 }
 
+// NewWSServer returns a new WSServer.
 func NewWSServer(server *Server, endpoint string) *WSServer {
 	s := &WSServer{
 		wsIncomerPool: newWSIncomerPool(), // server inherites from a WSSpeaker pool
@@ -97,6 +100,7 @@ func NewWSServer(server *Server, endpoint string) *WSServer {
 	return s
 }
 
+// NewWSServerFromConfig returns a new WSServer using configuration.
 func NewWSServerFromConfig(server *Server, endpoint string) *WSServer {
 	return NewWSServer(server, endpoint)
 }
