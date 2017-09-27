@@ -40,7 +40,7 @@ import (
 // FlowClientPool describes a flow client pool.
 type FlowClientPool struct {
 	sync.RWMutex
-	shttp.DefaultWSClientEventHandler
+	shttp.DefaultWSSpeakerEventHandler
 	flowClients []*FlowClient
 }
 
@@ -64,12 +64,12 @@ type FlowClientUDPConn struct {
 	conn *net.UDPConn
 }
 
-// FlowClientUDPConn describes WebSocket client connection
+// FlowClientWebSocketConn describes WebSocket client connection
 type FlowClientWebSocketConn struct {
-	shttp.DefaultWSClientEventHandler
+	shttp.DefaultWSSpeakerEventHandler
 	addr     string
 	port     int
-	wsClient *shttp.WSAsyncClient
+	wsClient *shttp.WSClient
 }
 
 // Close the connection
@@ -110,7 +110,7 @@ func (c *FlowClientWebSocketConn) Close() error {
 func (c *FlowClientWebSocketConn) Connect() error {
 	authOptions := NewAnalyzerAuthenticationOpts()
 	authClient := shttp.NewAuthenticationClient(c.addr, c.port, authOptions)
-	c.wsClient = shttp.NewWSAsyncClientFromConfig(common.AgentService, c.addr, c.port, "/ws/flow", authClient)
+	c.wsClient = shttp.NewWSClientFromConfig(common.AgentService, c.addr, c.port, "/ws/flow", authClient)
 	c.wsClient.Connect()
 	c.wsClient.AddEventHandler(c)
 
@@ -197,7 +197,7 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 }
 
 // OnConnected websocket event handler
-func (p *FlowClientPool) OnConnected(c shttp.WSClient) {
+func (p *FlowClientPool) OnConnected(c shttp.WSSpeaker) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -221,7 +221,7 @@ func (p *FlowClientPool) OnConnected(c shttp.WSClient) {
 }
 
 // OnDisconnected websocket event handler
-func (p *FlowClientPool) OnDisconnected(c shttp.WSClient) {
+func (p *FlowClientPool) OnDisconnected(c shttp.WSSpeaker) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -258,10 +258,10 @@ func (p *FlowClientPool) Close() {
 // NewFlowClientPool returns a new FlowClientPool using the websocket connections
 // to maintain the pool of client up to date according to the websocket connections
 // status.
-func NewFlowClientPool(wspool *shttp.WSMessageClientPool) *FlowClientPool {
+func NewFlowClientPool(pool shttp.WSSpeakerPool) *FlowClientPool {
 	p := &FlowClientPool{
 		flowClients: make([]*FlowClient, 0),
 	}
-	wspool.AddEventHandler(p)
+	pool.AddEventHandler(p)
 	return p
 }

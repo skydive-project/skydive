@@ -32,23 +32,40 @@ import (
 	"github.com/skydive-project/skydive/config"
 )
 
-// WSClientPool represents a pool of WebSocket clients
-type WSClientPool struct {
+type WSSpeakerPool interface {
+	AddClient(c WSSpeaker) error
+	AddEventHandler(h WSSpeakerEventHandler)
+	GetClients() []WSSpeaker
+	GetConnectedClient() WSSpeaker
+	BroadcastMessage(m WSMessage)
+	SendMessageTo(m WSMessage, host string) error
+}
+
+type WSPool struct {
 	sync.RWMutex
 	quit            chan bool
-	broadcast       chan Message
-	clients         []WSClient
-	eventHandlers   []WSClientEventHandler
+	broadcast       chan WSMessage
 	bulkMaxMsgs     int
 	bulkMaxDelay    time.Duration
-	eventBuffer     []Message
+	eventBuffer     []WSMessage
 	eventBufferLock sync.RWMutex
 	wg              sync.WaitGroup
 	running         atomic.Value
+	eventHandlers   []WSSpeakerEventHandler
+	clients         []WSSpeaker
 }
 
-// OnConnected event
-func (s *WSClientPool) OnConnected(c WSClient) {
+// WSSpeakerPool represents a pool of WebSocket clients
+type WSClientPool struct {
+	*WSPool
+}
+
+// wsIncomerPool represents a pool of WebSocket conections
+type wsIncomerPool struct {
+	*WSPool
+}
+
+func (s *WSPool) OnConnected(c WSSpeaker) {
 	s.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnConnected(c)
@@ -57,20 +74,37 @@ func (s *WSClientPool) OnConnected(c WSClient) {
 }
 
 // OnDisconnected event
-func (s *WSClientPool) OnDisconnected(c WSClient) {
+func (s *WSPool) OnDisconnected(c WSSpeaker) {
 	s.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnDisconnected(c)
 	}
 	s.RUnlock()
+}
+
+// OnDisconnected event
+func (s *wsIncomerPool) OnDisconnected(c WSSpeaker) {
+	s.WSPool.OnDisconnected(c)
 
 	s.Lock()
-	s.RemoveClient(c)
+	s.removeClient(c)
 	s.Unlock()
 }
 
+// AddClient a new client
+func (s *WSPool) AddClient(c WSSpeaker) error {
+	s.Lock()
+	s.clients = append(s.clients, c)
+	s.Unlock()
+
+	// This is to call WSSpeakerPool.On{Message,Disconnected}
+	c.AddEventHandler(s)
+
+	return nil
+}
+
 // OnMessage event
-func (s *WSClientPool) OnMessage(c WSClient, m Message) {
+func (s *WSPool) OnMessage(c WSSpeaker, m WSMessage) {
 	s.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnMessage(c, m)
@@ -78,73 +112,85 @@ func (s *WSClientPool) OnMessage(c WSClient, m Message) {
 	s.RUnlock()
 }
 
-// Register a new client
-func (a *WSClientPool) AddClient(client WSClient) {
-	a.Lock()
-	a.clients = append(a.clients, client)
-	a.Unlock()
-
-	// This is to call WSClientPool.On{Message,Connected,Disconnected}
-	client.AddEventHandler(a)
-}
-
-// Unregister a client
-func (a *WSClientPool) RemoveClient(client WSClient) {
-	for i, c := range a.clients {
-		if c.GetHost() == client.GetHost() {
-			a.clients = append(a.clients[:i], a.clients[i+1:]...)
+func (s *WSPool) removeClient(c WSSpeaker) {
+	for i, ic := range s.clients {
+		if ic.GetHost() == c.GetHost() {
+			s.clients = append(s.clients[:i], s.clients[i+1:]...)
 			return
 		}
 	}
 }
 
-// Connect all clients
-func (a *WSClientPool) ConnectAll() {
-	a.RLock()
-	// shuffle connections to avoid election of the same client as master
-	indexes := rand.Perm(len(a.clients))
-	for _, i := range indexes {
-		a.clients[i].Connect()
-	}
-	a.RUnlock()
+// GetClients returns all the clients
+func (s *WSPool) GetClients() (clients []WSSpeaker) {
+	s.RLock()
+	clients = append(clients, s.clients...)
+	s.RUnlock()
+	return
 }
 
-// Disconnect all clients
-func (a *WSClientPool) DisconnectAll() {
-	a.Lock()
-	a.eventHandlers = a.eventHandlers[:0]
-	a.Unlock()
+func (s *WSPool) GetConnectedClient() WSSpeaker {
+	s.RLock()
+	defer s.RUnlock()
 
-	a.RLock()
-	for _, client := range a.clients {
-		client.Disconnect()
+	length := len(s.clients)
+	if length == 0 {
+		return nil
 	}
-	a.RUnlock()
+
+	index := rand.Intn(length)
+	for i := 0; i != length; i++ {
+		if c := s.clients[index]; c != nil && c.IsConnected() {
+			return c
+		}
+
+		if index+1 >= length {
+			index = 0
+		} else {
+			index++
+		}
+	}
+
+	return nil
 }
 
-func (a *WSClientPool) broadcastMessage(m Message) {
-	a.RLock()
-	defer a.RUnlock()
+// DisconnectAll disconnect all clients
+func (s *WSPool) DisconnectAll() {
+	s.Lock()
+	s.eventHandlers = s.eventHandlers[:0]
+	s.Unlock()
 
-	for _, c := range a.clients {
+	s.RLock()
+	for _, c := range s.clients {
+		c.Disconnect()
+	}
+	s.RUnlock()
+}
+
+func (s *WSPool) broadcastMessage(m WSMessage) {
+	s.RLock()
+	defer s.RUnlock()
+
+	for _, c := range s.clients {
 		c.Send(m)
 	}
 }
 
-// Return the clients with the specified type
-func (s *WSClientPool) GetClientsByType(clientType common.ServiceType) (clients []WSClient) {
+// GetClientsByType returns the clients with the specified type
+func (s *WSPool) GetClientsByType(clientType common.ServiceType) (clients []WSSpeaker) {
 	s.RLock()
-	for _, client := range s.clients {
-		if client.GetClientType() == clientType {
-			clients = append(clients, client)
+	for _, c := range s.clients {
+		if c.GetClientType() == clientType {
+			clients = append(clients, c)
 		}
 	}
 	s.RUnlock()
-	return clients
+	return
 }
 
-func (a *WSClientPool) GetClient(host string) WSClient {
-	for _, c := range a.clients {
+// GetClient returns client for a given host
+func (s *WSPool) GetClientByHost(host string) WSSpeaker {
+	for _, c := range s.clients {
 		if c.GetHost() == host {
 			return c
 		}
@@ -152,100 +198,127 @@ func (a *WSClientPool) GetClient(host string) WSClient {
 	return nil
 }
 
-func (a *WSClientPool) SendMessageTo(msg Message, host string) error {
-	client := a.GetClient(host)
-	if client == nil {
+// SendMessageTo sends message to specific host
+func (s *WSPool) SendMessageTo(m WSMessage, host string) error {
+	c := s.GetClientByHost(host)
+	if c == nil {
 		return common.ErrNotFound
 	}
 
-	client.Send(msg)
+	c.Send(m)
 	return nil
 }
 
-func (a *WSClientPool) BroadcastMessage(msg Message) {
-	a.broadcast <- msg
+// BroadcastMessage broadcasts the given message
+func (s *WSPool) BroadcastMessage(m WSMessage) {
+	s.broadcast <- m
 }
 
-func (a *WSClientPool) flushMessages() (msgs []Message) {
-	msgs = make([]Message, len(a.eventBuffer))
-	copy(msgs, a.eventBuffer)
-	a.eventBuffer = a.eventBuffer[:0]
+func (s *WSPool) flushMessages() (ms []WSMessage) {
+	ms = make([]WSMessage, len(s.eventBuffer))
+	copy(ms, s.eventBuffer)
+	s.eventBuffer = s.eventBuffer[:0]
 	return
 }
 
-func (a *WSClientPool) QueueBroadcastMessage(msg Message) {
-	a.eventBufferLock.Lock()
-	a.eventBuffer = append(a.eventBuffer, msg)
-	if len(a.eventBuffer) == a.bulkMaxMsgs {
-		msgs := a.flushMessages()
-		defer a.broadcastMessages(msgs)
+// QueueBroadcastMessage enqueues a broadcast message
+func (s *WSPool) QueueBroadcastMessage(m WSMessage) {
+	s.eventBufferLock.Lock()
+	s.eventBuffer = append(s.eventBuffer, m)
+	if len(s.eventBuffer) == s.bulkMaxMsgs {
+		ms := s.flushMessages()
+		defer s.broadcastMessages(ms)
 	}
-	a.eventBufferLock.Unlock()
+	s.eventBufferLock.Unlock()
 }
 
-func (a *WSClientPool) broadcastMessages(msgs []Message) {
-	for _, msg := range msgs {
-		a.BroadcastMessage(msg)
+func (s *WSPool) broadcastMessages(ms []WSMessage) {
+	for _, m := range ms {
+		s.BroadcastMessage(m)
 	}
 }
 
-// Register a new event handler
-func (a *WSClientPool) AddEventHandler(h WSClientEventHandler) {
-	a.Lock()
-	a.eventHandlers = append(a.eventHandlers, h)
-	a.Unlock()
+// AddEventHandler registers a new event handler
+func (s *WSPool) AddEventHandler(h WSSpeakerEventHandler) {
+	s.Lock()
+	s.eventHandlers = append(s.eventHandlers, h)
+	s.Unlock()
 }
 
-func (a *WSClientPool) Run() {
-	a.wg.Add(1)
-	defer a.wg.Done()
+// Run starts the pool
+func (s *WSPool) Run() {
+	s.wg.Add(1)
+	defer s.wg.Done()
 
-	a.running.Store(true)
+	s.running.Store(true)
 
-	bulkTicker := time.NewTicker(a.bulkMaxDelay)
+	bulkTicker := time.NewTicker(s.bulkMaxDelay)
 	defer bulkTicker.Stop()
 
-	i := 1
 	for {
 		select {
-		case <-a.quit:
-			a.DisconnectAll()
+		case <-s.quit:
+			s.DisconnectAll()
 			return
-		case m := <-a.broadcast:
-			a.broadcastMessage(m)
+		case m := <-s.broadcast:
+			s.broadcastMessage(m)
 		case <-bulkTicker.C:
-			a.eventBufferLock.Lock()
-			msgs := a.flushMessages()
-			a.eventBufferLock.Unlock()
-			i++
-			if len(msgs) > 0 {
-				a.broadcastMessages(msgs)
+			s.eventBufferLock.Lock()
+			ms := s.flushMessages()
+			s.eventBufferLock.Unlock()
+			if len(ms) > 0 {
+				s.broadcastMessages(ms)
 			}
 		}
 	}
 }
 
-func (a *WSClientPool) Start() {
-	go a.Run()
+// Start starts the pool in a goroutine
+func (s *WSPool) Start() {
+	go s.Run()
 }
 
-func (a *WSClientPool) Stop() {
-	a.quit <- true
-	if a.running.Load() == true {
-		a.wg.Wait()
+// Stop stops the pool and wait until stopped
+func (s *WSPool) Stop() {
+	s.quit <- true
+	if s.running.Load() == true {
+		s.wg.Wait()
 	}
-	a.running.Store(false)
+	s.running.Store(false)
 }
 
-// NewWSClientPool a new pool of WebSocket clients
-func NewWSClientPool() *WSClientPool {
+func (s *WSClientPool) ConnectAll() {
+	s.RLock()
+	// shuffle connections to avoid election of the same client as master
+	indexes := rand.Perm(len(s.clients))
+	for _, i := range indexes {
+		s.clients[i].Connect()
+	}
+	s.RUnlock()
+}
+
+// NewWSSpeakerPool a new pool of WebSocket clients
+func newWSPool() *WSPool {
 	bulkMaxMsgs := config.GetConfig().GetInt("ws_bulk_maxmsgs")
 	bulkMaxDelay := config.GetConfig().GetInt("ws_bulk_maxdelay")
 
-	return &WSClientPool{
-		broadcast:    make(chan Message, 100000),
+	return &WSPool{
+		broadcast:    make(chan WSMessage, 100000),
 		quit:         make(chan bool, 2),
 		bulkMaxMsgs:  bulkMaxMsgs,
 		bulkMaxDelay: time.Duration(bulkMaxDelay) * time.Second,
+	}
+}
+
+func newWSIncomerPool() *wsIncomerPool {
+	return &wsIncomerPool{
+		WSPool: newWSPool(),
+	}
+}
+
+// NewWSSpeakerPool a new pool of WebSocket clients
+func NewWSClientPool() *WSClientPool {
+	return &WSClientPool{
+		WSPool: newWSPool(),
 	}
 }

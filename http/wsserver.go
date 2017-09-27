@@ -33,42 +33,41 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-type ClientHandler func(*websocket.Conn, *auth.AuthenticatedRequest) WSClient
+type WSIncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) WSSpeaker
 
 type WSServer struct {
 	sync.RWMutex
-	*WSClientPool
-	clientHandler ClientHandler
-	HTTPServer    *Server
+	*wsIncomerPool
+	incomerHandler WSIncomerHandler
 }
 
-func DefaultClientHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *WSAsyncClient {
+func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
 	host := r.Header.Get("X-Host-ID")
 	clientType := r.Header.Get("X-Client-Type")
 
 	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
-	wsClient := NewWSAsyncClientFromConnection(host, common.ServiceType(clientType), conn)
-	wsClient.start()
+	c := newIncomingWSClient(host, common.ServiceType(clientType), conn)
+	c.start()
 
-	return wsClient
+	return c
 }
 
 func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// if X-Host-ID specified avoid having twice the same ID
 	host := r.Header.Get("X-Host-ID")
 	if host != "" {
-		s.WSClientPool.RLock()
+		s.wsIncomerPool.RLock()
 		for _, c := range s.clients {
 			if c.GetHost() == host {
 				logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, host)
 				w.Header().Set("Connection", "close")
 				w.WriteHeader(http.StatusConflict)
-				s.WSClientPool.RUnlock()
+				s.wsIncomerPool.RUnlock()
 				return
 			}
 		}
-		s.WSClientPool.RUnlock()
+		s.wsIncomerPool.RUnlock()
 	}
 
 	conn, err := websocket.Upgrade(w, &r.Request, nil, 1024, 1024)
@@ -76,20 +75,22 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 		return
 	}
 
-	client := s.clientHandler(conn, r)
-	s.AddClient(client)
-	s.OnConnected(client)
+	// call the incomerHandler that will create the WSSpeaker
+	c := s.incomerHandler(conn, r)
+
+	// add the new WSSPeaker to the server pool
+	s.AddClient(c)
+
+	// notify the pool listeners that the speaker is connected
+	s.OnConnected(c)
 }
 
 func NewWSServer(server *Server, endpoint string) *WSServer {
 	s := &WSServer{
-		WSClientPool: NewWSClientPool(),
-		HTTPServer:   server,
-	}
-
-	s.clientHandler = func(c *websocket.Conn, r *auth.AuthenticatedRequest) WSClient {
-		client := DefaultClientHandler(c, r)
-		return client
+		wsIncomerPool: newWSIncomerPool(), // server inherites from a WSSpeaker pool
+		incomerHandler: func(c *websocket.Conn, a *auth.AuthenticatedRequest) WSSpeaker {
+			return defaultIncomerHandler(c, a)
+		},
 	}
 
 	server.HandleFunc(endpoint, s.serveMessages)

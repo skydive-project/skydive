@@ -44,7 +44,7 @@ const (
 )
 
 // Interface of a message to send over the wire
-type Message interface {
+type WSMessage interface {
 	Bytes() []byte
 }
 
@@ -56,105 +56,109 @@ func (m WSRawMessage) Bytes() []byte {
 	return m
 }
 
-// WebSocket client interface
-type WSClient interface {
+type WSSpeaker interface {
 	GetHost() string
 	GetAddrPort() (string, int)
 	GetClientType() common.ServiceType
 	IsConnected() bool
-	Send(m Message)
+	Send(m WSMessage)
 	Connect()
 	Disconnect()
-	AddEventHandler(WSClientEventHandler)
+	AddEventHandler(WSSpeakerEventHandler)
 }
 
-// WSAsyncClient describes a WebSocket connection. WSAsyncClient is used
+// WebSocket client interface
+type WSConn struct {
+	sync.RWMutex
+	Host          string
+	ClientType    common.ServiceType
+	Addr          string
+	Port          int
+	send          chan []byte
+	read          chan []byte
+	quit          chan bool
+	wg            sync.WaitGroup
+	conn          *websocket.Conn
+	running       atomic.Value
+	pingTicker    *time.Ticker // only used by incoming connections
+	connected     atomic.Value
+	eventHandlers []WSSpeakerEventHandler
+	wsSpeaker     WSSpeaker // speaker owning the connection
+}
+
+// wsIncomingClient describes a WebSocket connection. wsIncomingClient is used
 // by the client when connecting to a server, and also by the server when
 // a client connects
-type WSAsyncClient struct {
-	sync.RWMutex
-	Host              string
-	ClientType        common.ServiceType
-	Addr              string
-	Port              int
-	Path              string
-	AuthClient        *AuthenticationClient
-	headers           http.Header
-	send              chan []byte
-	read              chan []byte
-	quit              chan bool
-	wg                sync.WaitGroup
-	wsConn            *websocket.Conn
-	eventHandlers     []WSClientEventHandler
-	eventHandlersLock sync.RWMutex
-	connected         atomic.Value
-	running           atomic.Value
-	pongWait          time.Duration
-	pingPeriod        time.Duration
-	ticker            *time.Ticker
+type wsIncomingClient struct {
+	*WSConn
+}
+
+type WSClient struct {
+	*WSConn
+	Path       string
+	AuthClient *AuthenticationClient
 }
 
 // Interface to be implement by the client events listeners
-type WSClientEventHandler interface {
-	OnMessage(c WSClient, m Message)
-	OnConnected(c WSClient)
-	OnDisconnected(c WSClient)
+type WSSpeakerEventHandler interface {
+	OnMessage(c WSSpeaker, m WSMessage)
+	OnConnected(c WSSpeaker)
+	OnDisconnected(c WSSpeaker)
 }
 
-// DefaultWSClientEventHandler implements stubs for the WSClientEventHandler interface
-type DefaultWSClientEventHandler struct {
+// DefaultWSClientEventHandler implements stubs for the wsIncomingClientEventHandler interface
+type DefaultWSSpeakerEventHandler struct {
 }
 
 // OnMessage is called when a message is received
-func (d *DefaultWSClientEventHandler) OnMessage(c WSClient, m Message) {
+func (d *DefaultWSSpeakerEventHandler) OnMessage(c WSSpeaker, m WSMessage) {
 }
 
 // OnConnected is called when the connection is established
-func (d *DefaultWSClientEventHandler) OnConnected(c WSClient) {
+func (d *DefaultWSSpeakerEventHandler) OnConnected(c WSSpeaker) {
 }
 
 // OnDisconnected is called when the connection is closed or lost
-func (d *DefaultWSClientEventHandler) OnDisconnected(c WSClient) {
+func (d *DefaultWSSpeakerEventHandler) OnDisconnected(c WSSpeaker) {
 }
 
-// Return the hostname of the connection
-func (c *WSAsyncClient) GetHost() string {
+// GetHost returns the hostname of the connection
+func (c *WSConn) GetHost() string {
 	return c.Host
 }
 
-// Return the address and the port of the remote end
-func (c *WSAsyncClient) GetAddrPort() (string, int) {
+// GetAddrPort returns the address and the port of the remote end
+func (c *WSConn) GetAddrPort() (string, int) {
 	return c.Addr, c.Port
 }
 
-// Return the connection status
-func (c *WSAsyncClient) IsConnected() bool {
+// IsConnected returns the connection status
+func (c *WSConn) IsConnected() bool {
 	return c.connected.Load() == true
 }
 
-// Add a message to the send queue
-func (c *WSAsyncClient) Send(m Message) {
+// Send adds a message to the send queue
+func (c *WSConn) Send(m WSMessage) {
 	if c.running.Load() == false {
 		return
 	}
-
 	c.send <- m.Bytes()
 }
 
-// Return the client type
-func (c *WSAsyncClient) GetClientType() common.ServiceType {
+// GetClientType returns the client type
+func (c *WSConn) GetClientType() common.ServiceType {
 	return c.ClientType
 }
 
-// Send a message directly over the wire
-func (c *WSAsyncClient) SendMessage(msg []byte) error {
+// SendMessage sends a message directly over the wire
+func (c *WSConn) SendMessage(msg []byte) error {
 	if !c.IsConnected() {
 		return errors.New("Not connected")
 	}
 
-	c.wsConn.SetWriteDeadline(time.Now().Add(writeWait))
+	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 
-	w, err := c.wsConn.NextWriter(websocket.TextMessage)
+	w, err := c.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
 	}
@@ -167,7 +171,7 @@ func (c *WSAsyncClient) SendMessage(msg []byte) error {
 }
 
 // Return the URL scheme
-func (c *WSAsyncClient) scheme() string {
+func (c *WSClient) scheme() string {
 	if config.IsTLSenabled() == true {
 		return "wss://"
 	}
@@ -175,7 +179,7 @@ func (c *WSAsyncClient) scheme() string {
 }
 
 // Connect to the server
-func (c *WSAsyncClient) connect() {
+func (c *WSClient) connect() {
 	var err error
 	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
 	endpoint := c.scheme() + host + c.Path
@@ -205,14 +209,14 @@ func (c *WSAsyncClient) connect() {
 		d.TLSClientConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
 		checkTLSConfig(d.TLSClientConfig)
 	}
-	c.wsConn, _, err = d.Dial(endpoint, headers)
+	c.conn, _, err = d.Dial(endpoint, headers)
 
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
 	}
-	defer c.wsConn.Close()
-	c.wsConn.SetPingHandler(nil)
+	defer c.conn.Close()
+	c.conn.SetPingHandler(nil)
 
 	c.connected.Store(true)
 	defer c.connected.Store(false)
@@ -230,18 +234,18 @@ func (c *WSAsyncClient) connect() {
 	c.run()
 }
 
-func (c *WSAsyncClient) start() {
+func (c *WSConn) start() {
 	c.wg.Add(1)
 	go c.run()
 }
 
 // Client main loop to read and send messages
-func (c *WSAsyncClient) run() {
+func (c *WSConn) run() {
 	defer c.wg.Done()
 
 	go func() {
 		for c.running.Load() == true {
-			_, m, err := c.wsConn.ReadMessage()
+			_, m, err := c.conn.ReadMessage()
 			if err != nil {
 				if c.running.Load() != false {
 					c.quit <- true
@@ -257,12 +261,12 @@ func (c *WSAsyncClient) run() {
 		c.connected.Store(false)
 		c.RLock()
 		for _, l := range c.eventHandlers {
-			l.OnDisconnected(c)
+			l.OnDisconnected(c.wsSpeaker)
 		}
 		c.RUnlock()
 	}()
 
-	defer c.ticker.Stop()
+	defer c.pingTicker.Stop()
 
 	for {
 		select {
@@ -276,24 +280,26 @@ func (c *WSAsyncClient) run() {
 		case m := <-c.read:
 			c.RLock()
 			for _, l := range c.eventHandlers {
-				l.OnMessage(c, WSRawMessage(m))
+				l.OnMessage(c.wsSpeaker, WSRawMessage(m))
 			}
 			c.RUnlock()
-		case <-c.ticker.C:
-			c.SendPing()
+		case <-c.pingTicker.C:
+			c.sendPing()
 		}
 	}
 }
 
-func (c *WSAsyncClient) SendPing() {
-	c.wsConn.SetWriteDeadline(time.Now().Add(writeWait))
-	if err := c.wsConn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+// sendPing is used for remote connections by the server to send PingMessage
+// to remote client.
+func (c *WSConn) sendPing() {
+	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 		logging.GetLogger().Warningf("Error while sending ping to the websocket: %s", err.Error())
 	}
 }
 
 // Connect to the server - and reconnect if necessary
-func (c *WSAsyncClient) Connect() {
+func (c *WSClient) Connect() {
 	go func() {
 		for c.running.Load() == true {
 			c.connect()
@@ -302,71 +308,88 @@ func (c *WSAsyncClient) Connect() {
 	}()
 }
 
-// Register a new event handler
-func (c *WSAsyncClient) AddEventHandler(h WSClientEventHandler) {
+// AddEventHandler registers a new event handler
+func (c *WSConn) AddEventHandler(h WSSpeakerEventHandler) {
 	c.Lock()
 	c.eventHandlers = append(c.eventHandlers, h)
 	c.Unlock()
 }
 
+func (c *WSConn) Connect() {
+}
+
 // Disconnect the client without waiting for termination
-func (c *WSAsyncClient) Disconnect() {
+func (c *WSConn) Disconnect() {
 	c.running.Store(false)
 	if c.connected.Load() == true {
 		c.quit <- true
-		c.wsConn.Close()
+		c.conn.Close()
 		close(c.send)
 		close(c.read)
 	}
 }
 
-// NewWSAsyncClient returns a client with a new connection
-func NewWSAsyncClient(host string, clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSAsyncClient {
-	pongTimeout := time.Duration(config.GetConfig().GetInt("ws_pong_timeout")) * time.Second
-	c := &WSAsyncClient{
+func newWSCon(host string, clientType common.ServiceType, addr string, port int) *WSConn {
+	c := &WSConn{
 		Host:       host,
 		ClientType: clientType,
 		Addr:       addr,
 		Port:       port,
-		Path:       path,
-		AuthClient: authClient,
 		send:       make(chan []byte, maxMessages),
 		read:       make(chan []byte, maxMessages),
 		quit:       make(chan bool, 2),
-		pongWait:   pongTimeout,
-		pingPeriod: pongTimeout * 8 / 10,
-		ticker:     &time.Ticker{},
+		pingTicker: &time.Ticker{},
 	}
 	c.connected.Store(false)
 	c.running.Store(true)
 	return c
 }
 
-// NewWSAsyncClientFromConnection creates a client from an existing connection
-func NewWSAsyncClientFromConnection(host string, clientType common.ServiceType, conn *websocket.Conn) *WSAsyncClient {
-	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
-	c := NewWSAsyncClient(host, clientType, svc.Addr, svc.Port, "", nil)
-
-	conn.SetReadLimit(maxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(100 * time.Second))
-	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(c.pongWait))
-		return nil
-	})
-	c.wsConn = conn
-	c.ticker = time.NewTicker(c.pingPeriod)
-
-	// send a first ping to help firefox and some other client which wait for a
-	// first ping before doing something
-	c.SendPing()
-
-	c.connected.Store(true)
-	c.running.Store(true)
+// NewwsIncomingClient returns a client with a new connection
+func NewWSClient(host string, clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSClient {
+	wsconn := newWSCon(host, clientType, addr, port)
+	c := &WSClient{
+		WSConn:     wsconn,
+		Path:       path,
+		AuthClient: authClient,
+	}
+	wsconn.wsSpeaker = c
 	return c
 }
 
 // NewWSAsyncClientFromConnection creates a client based on the configuration
-func NewWSAsyncClientFromConfig(clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSAsyncClient {
+func NewWSClientFromConfig(clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSClient {
 	host := config.GetConfig().GetString("host_id")
-	return NewWSAsyncClient(host, clientType, addr, port, path, authClient)
+	return NewWSClient(host, clientType, addr, port, path, authClient)
+}
+
+// newIncomingWSConn is called by the server for incoming connections
+func newIncomingWSClient(host string, clientType common.ServiceType, conn *websocket.Conn) *wsIncomingClient {
+	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
+	wsconn := newWSCon(host, clientType, svc.Addr, svc.Port)
+	wsconn.conn = conn
+
+	pongTimeout := time.Duration(config.GetConfig().GetInt("ws_pong_timeout")) * time.Second
+
+	conn.SetReadLimit(maxMessageSize)
+	conn.SetReadDeadline(time.Now().Add(100 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(pongTimeout))
+		return nil
+	})
+
+	c := &wsIncomingClient{
+		WSConn: wsconn,
+	}
+	wsconn.wsSpeaker = c
+
+	c.connected.Store(true)
+
+	// send a first ping to help firefox and some other client which wait for a
+	// first ping before doing something
+	c.sendPing()
+
+	wsconn.pingTicker = time.NewTicker(pongTimeout * 8 / 10)
+
+	return c
 }

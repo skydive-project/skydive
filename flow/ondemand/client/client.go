@@ -45,7 +45,7 @@ type OnDemandProbeClient struct {
 	graph.DefaultGraphListener
 	graph            *graph.Graph
 	captureHandler   *api.CaptureAPIHandler
-	wsServer         *shttp.WSMessageServer
+	pool             shttp.WSJSONSpeakerPool
 	captures         map[string]*api.Capture
 	watcher          api.StoppableWatcher
 	elector          *etcd.EtcdMasterElector
@@ -60,7 +60,7 @@ type nodeProbe struct {
 }
 
 // OnMessage event, valid message type : CaptureStartReply or CaptureStopReply message
-func (o *OnDemandProbeClient) OnWSMessage(c shttp.WSClient, m shttp.WSMessage) {
+func (o *OnDemandProbeClient) OnWSJSONMessage(c shttp.WSSpeaker, m shttp.WSJSONMessage) {
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*m.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", m)
@@ -78,7 +78,7 @@ func (o *OnDemandProbeClient) OnWSMessage(c shttp.WSClient, m shttp.WSMessage) {
 		} else {
 			logging.GetLogger().Debugf("Capture start request succeeded %v", m)
 		}
-		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
+		o.pool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
 	case "CaptureStopReply":
 		if m.Status == http.StatusOK {
 			logging.GetLogger().Debugf("Capture stop request succeeded %v", m)
@@ -149,9 +149,9 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 		Capture: *np.capture,
 	}
 
-	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStart", cq)
+	msg := shttp.NewWSJSONMessage(ondemand.Namespace, "CaptureStart", cq)
 
-	if err := o.wsServer.SendMessageTo(msg, np.host); err != nil {
+	if err := o.pool.SendMessageTo(msg, np.host); err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", np.host, err.Error())
 		return false
 	}
@@ -168,13 +168,13 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *api.Cap
 		Capture: *capture,
 	}
 
-	msg := shttp.NewWSMessage(ondemand.Namespace, "CaptureStop", cq)
+	msg := shttp.NewWSJSONMessage(ondemand.Namespace, "CaptureStop", cq)
 
 	if _, err := node.GetFieldString("Capture.ID"); err != nil {
 		return false
 	}
 
-	if err := o.wsServer.SendMessageTo(msg, node.Host()); err != nil {
+	if err := o.pool.SendMessageTo(msg, node.Host()); err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", node.Host(), err.Error())
 		return false
 	}
@@ -218,7 +218,7 @@ func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
 func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 	o.RLock()
 	if uuid, ok := o.registeredNodes[string(n.ID)]; ok {
-		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
+		o.pool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
 	}
 	o.RUnlock()
 }
@@ -321,10 +321,10 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 	capture := resource.(*api.Capture)
 	switch action {
 	case "init", "create", "set", "update":
-		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
+		o.pool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
 		o.onCaptureAdded(capture)
 	case "expire", "delete":
-		o.wsServer.BroadcastMessage(shttp.NewWSMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
+		o.pool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
 		o.onCaptureDeleted(capture)
 	}
 }
@@ -344,7 +344,7 @@ func (o *OnDemandProbeClient) Stop() {
 }
 
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.WSMessageServer, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
+func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, pool shttp.WSJSONSpeakerPool, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*api.Capture)
 	for _, resource := range resources {
@@ -356,7 +356,7 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.
 	o := &OnDemandProbeClient{
 		graph:            g,
 		captureHandler:   ch,
-		wsServer:         w,
+		pool:             pool,
 		captures:         captures,
 		elector:          elector,
 		registeredNodes:  make(map[string]string),
@@ -364,7 +364,7 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, w *shttp.
 	}
 
 	elector.AddEventListener(o)
-	w.AddMessageHandler(o, []string{ondemand.Namespace})
+	pool.AddJSONMessageHandler(o, []string{ondemand.Namespace})
 
 	return o
 }

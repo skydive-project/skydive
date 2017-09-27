@@ -37,13 +37,13 @@ type PacketInjectorReply struct {
 }
 
 type PacketInjectorClient struct {
-	WSServer *shttp.WSMessageServer
+	pool shttp.WSJSONSpeakerPool
 }
 
 func (pc *PacketInjectorClient) InjectPacket(host string, pp *PacketParams) (string, error) {
-	msg := shttp.NewWSMessage(Namespace, "PIRequest", pp)
+	msg := shttp.NewWSJSONMessage(Namespace, "PIRequest", pp)
 
-	resp, err := pc.WSServer.Request(host, msg, shttp.DefaultRequestTimeout)
+	resp, err := pc.pool.Request(host, msg, shttp.DefaultRequestTimeout)
 	if err != nil {
 		return "", fmt.Errorf("Unable to send message to agent %s: %s", host, err.Error())
 	}
@@ -60,6 +60,6 @@ func (pc *PacketInjectorClient) InjectPacket(host string, pp *PacketParams) (str
 	return reply.TrackingID, nil
 }
 
-func NewPacketInjectorClient(w *shttp.WSMessageServer) *PacketInjectorClient {
-	return &PacketInjectorClient{WSServer: w}
+func NewPacketInjectorClient(pool shttp.WSJSONSpeakerPool) *PacketInjectorClient {
+	return &PacketInjectorClient{pool: pool}
 }

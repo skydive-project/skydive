@@ -37,7 +37,7 @@ import (
 // TopologyServer describes a service to reply to topology queries
 type TopologyServer struct {
 	sync.RWMutex
-	shttp.DefaultWSClientEventHandler
+	shttp.DefaultWSSpeakerEventHandler
 	Graph       *graph.Graph
 	GraphServer *graph.Server
 	cached      *graph.CachedBackend
@@ -56,7 +56,7 @@ func (t *TopologyServer) hostGraphDeleted(host string, mode int) {
 }
 
 // OnDisconnected websocket event
-func (t *TopologyServer) OnDisconnected(c shttp.WSClient) {
+func (t *TopologyServer) OnDisconnected(c shttp.WSSpeaker) {
 	host := c.GetHost()
 
 	t.RLock()
@@ -81,7 +81,7 @@ func (t *TopologyServer) OnDisconnected(c shttp.WSClient) {
 }
 
 // OnGraphMessage websocket event
-func (t *TopologyServer) OnGraphMessage(c shttp.WSClient, msg shttp.WSMessage, msgType string, obj interface{}) {
+func (t *TopologyServer) OnGraphMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage, msgType string, obj interface{}) {
 	clientType := c.GetClientType()
 
 	// author if message coming from another client than analyzer
@@ -164,7 +164,7 @@ func (t *TopologyServer) OnGraphMessage(c shttp.WSClient, msg shttp.WSMessage, m
 }
 
 // NewTopologyServer creates a new topology server
-func NewTopologyServer(host string, server *shttp.WSMessageServer) (*TopologyServer, error) {
+func NewTopologyServer(host string, server *shttp.WSJSONMessageServer) (*TopologyServer, error) {
 	persistent, err := graph.BackendFromConfig()
 	if err != nil {
 		return nil, err
@@ -203,7 +203,7 @@ func NewTopologyServer(host string, server *shttp.WSMessageServer) (*TopologySer
 }
 
 // NewTopologyServerFromConfig creates a new topology server based on configuration
-func NewTopologyServerFromConfig(server *shttp.WSMessageServer) (*TopologyServer, error) {
+func NewTopologyServerFromConfig(server *shttp.WSJSONMessageServer) (*TopologyServer, error) {
 	host := config.GetConfig().GetString("host_id")
 	return NewTopologyServer(host, server)
 }

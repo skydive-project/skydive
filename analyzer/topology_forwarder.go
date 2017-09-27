@@ -40,18 +40,18 @@ import (
 
 // TopologyForwarderPeer describes a topology forwarder peer
 type TopologyForwarderPeer struct {
-	shttp.DefaultWSClientEventHandler
+	shttp.DefaultWSSpeakerEventHandler
 	Addr        string
 	Port        int
 	Graph       *graph.Graph
 	AuthOptions *shttp.AuthenticationOpts
-	wsclient    *shttp.WSAsyncClient
+	wsclient    *shttp.WSClient
 	host        string
 }
 
 // TopologyForwarder describes a topology forwarder
 type TopologyForwarder struct {
-	shttp.DefaultWSClientEventHandler
+	shttp.DefaultWSSpeakerEventHandler
 	Graph       *graph.Graph
 	AuthOptions *shttp.AuthenticationOpts
 	peers       []*TopologyForwarderPeer
@@ -93,14 +93,14 @@ func (p *TopologyForwarderPeer) getHostID() string {
 }
 
 // OnConnected send the whole local graph the remote peer(analyzer) once connected
-func (p *TopologyForwarderPeer) OnConnected(c shttp.WSClient) {
+func (p *TopologyForwarderPeer) OnConnected(c shttp.WSSpeaker) {
 	logging.GetLogger().Infof("Send the whole graph to: %s", p.host)
 
 	p.Graph.RLock()
 	defer p.Graph.RUnlock()
 
 	// re-added all the nodes and edges
-	p.wsclient.Send(shttp.NewWSMessage(graph.Namespace, graph.SyncReplyMsgType, p.Graph))
+	p.wsclient.Send(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncReplyMsgType, p.Graph))
 }
 
 func (p *TopologyForwarderPeer) connect(wg *sync.WaitGroup) {
@@ -113,7 +113,7 @@ func (p *TopologyForwarderPeer) connect(wg *sync.WaitGroup) {
 	}
 
 	authClient := shttp.NewAuthenticationClient(p.Addr, p.Port, p.AuthOptions)
-	p.wsclient = shttp.NewWSAsyncClientFromConfig(common.AnalyzerService, p.Addr, p.Port, "/ws", authClient)
+	p.wsclient = shttp.NewWSClientFromConfig(common.AnalyzerService, p.Addr, p.Port, "/ws", authClient)
 	p.wsclient.AddEventHandler(p)
 
 	p.wsclient.Connect()
@@ -125,7 +125,7 @@ func (p *TopologyForwarderPeer) disconnect() {
 	}
 }
 
-func (a *TopologyForwarder) forwardMessage(c shttp.WSClient, msg shttp.WSMessage) {
+func (a *TopologyForwarder) forwardMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
 	for _, peer := range a.peers {
 		// we forward message whether the service is not an analyzer or the HostID is not the same
 		// so that we forward all external messages to skydive and we avoid loop.
@@ -136,7 +136,7 @@ func (a *TopologyForwarder) forwardMessage(c shttp.WSClient, msg shttp.WSMessage
 }
 
 // OnMessage websocket event
-func (a *TopologyForwarder) OnWSMessage(c shttp.WSClient, msg shttp.WSMessage) {
+func (a *TopologyForwarder) OnWSJSONMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
 	a.forwardMessage(c, msg)
 }
 
@@ -168,26 +168,26 @@ func (a *TopologyForwarder) DisconnectAll() {
 }
 
 // OnDisconnected WebSocket event
-func (a *TopologyForwarder) OnDisconnected(c shttp.WSClient) {
+func (a *TopologyForwarder) OnDisconnected(c shttp.WSSpeaker) {
 	if c.GetClientType() == common.AgentService {
-		a.forwardMessage(c, *shttp.NewWSMessage(graph.Namespace, graph.HostGraphDeletedMsgType, c.GetHost()))
+		a.forwardMessage(c, *shttp.NewWSJSONMessage(graph.Namespace, graph.HostGraphDeletedMsgType, c.GetHost()))
 	}
 }
 
 // NewTopologyForwarder creates a new topology forwarder based graph and webserver
-func NewTopologyForwarder(g *graph.Graph, server *shttp.WSMessageServer, authOptions *shttp.AuthenticationOpts) *TopologyForwarder {
+func NewTopologyForwarder(g *graph.Graph, server *shttp.WSJSONMessageServer, authOptions *shttp.AuthenticationOpts) *TopologyForwarder {
 	tf := &TopologyForwarder{
 		Graph:       g,
 		AuthOptions: authOptions,
 		peers:       make([]*TopologyForwarderPeer, 0),
 	}
-	server.AddMessageHandler(tf, []string{graph.Namespace})
+	server.AddJSONMessageHandler(tf, []string{graph.Namespace})
 	server.AddEventHandler(tf)
 	return tf
 }
 
 // NewTopologyForwarderFromConfig creates a new topology forwarder based on configration
-func NewTopologyForwarderFromConfig(g *graph.Graph, server *shttp.WSMessageServer) *TopologyForwarder {
+func NewTopologyForwarderFromConfig(g *graph.Graph, server *shttp.WSJSONMessageServer) *TopologyForwarder {
 	authOptions := NewAnalyzerAuthenticationOpts()
 	tp := NewTopologyForwarder(g, server, authOptions)
 

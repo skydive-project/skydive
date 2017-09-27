@@ -40,11 +40,10 @@ const (
 
 // PacketInjectorServer creates a packet injector server API
 type PacketInjectorServer struct {
-	WSClientPool *shttp.WSMessageClientPool
-	Graph        *graph.Graph
+	Graph *graph.Graph
 }
 
-func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (string, error) {
+func (pis *PacketInjectorServer) injectPacket(msg shttp.WSJSONMessage) (string, error) {
 	var params PacketParams
 	if err := common.JSONDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
 		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
@@ -59,10 +58,10 @@ func (pis *PacketInjectorServer) injectPacket(msg shttp.WSMessage) (string, erro
 }
 
 // OnWSMessage event, websocket PIRequest message
-func (pis *PacketInjectorServer) OnWSMessage(c shttp.WSClient, msg shttp.WSMessage) {
+func (pis *PacketInjectorServer) OnWSJSONMessage(c shttp.WSSpeaker, msg shttp.WSJSONMessage) {
 	switch msg.Type {
 	case "PIRequest":
-		var reply *shttp.WSMessage
+		var reply *shttp.WSJSONMessage
 		trackingID, err := pis.injectPacket(msg)
 		replyObj := &PacketInjectorReply{TrackingID: trackingID}
 		if err != nil {
@@ -79,11 +78,10 @@ func (pis *PacketInjectorServer) OnWSMessage(c shttp.WSClient, msg shttp.WSMessa
 }
 
 // NewServer creates a new packet injector server API based on websocket server
-func NewServer(wspool *shttp.WSMessageClientPool, graph *graph.Graph) *PacketInjectorServer {
+func NewServer(graph *graph.Graph, pool shttp.WSJSONSpeakerPool) *PacketInjectorServer {
 	s := &PacketInjectorServer{
-		WSClientPool: wspool,
-		Graph:        graph,
+		Graph: graph,
 	}
-	wspool.AddMessageHandler(s, []string{Namespace})
+	pool.AddJSONMessageHandler(s, []string{Namespace})
 	return s
 }
