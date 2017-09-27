@@ -51,7 +51,6 @@ type packetHandle interface {
 
 // GoPacketProbe describes a new probe that store packets from gopacket pcap library in a flowtable
 type GoPacketProbe struct {
-	sync.RWMutex
 	handle       packetHandle
 	packetSource *gopacket.PacketSource
 	NodeTID      string
@@ -67,7 +66,7 @@ type GoPacketProbesHandler struct {
 	probesLock sync.RWMutex
 }
 
-func (p *GoPacketProbe) pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
+func pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
@@ -76,43 +75,13 @@ func (p *GoPacketProbe) pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *p
 			if stats, e := handle.Stats(); e != nil {
 				logging.GetLogger().Errorf("Can not get pcap capture stats")
 			} else {
-				p.Lock()
-				if atomic.LoadInt64(&p.state) == common.RunningState {
-					g.Lock()
-					t := g.StartMetadataTransaction(n)
-					t.AddMetadata("Capture.PacketsReceived", stats.PacketsReceived)
-					t.AddMetadata("Capture.PacketsDropped", stats.PacketsDropped)
-					t.AddMetadata("Capture.PacketsIfDropped", stats.PacketsIfDropped)
-					t.Commit()
-					g.Unlock()
-				}
-				p.Unlock()
-			}
-		case <-done:
-			return
-		}
-	}
-}
-
-func (p *GoPacketProbe) afpacketUpdateStats(g *graph.Graph, n *graph.Node, handle *AFPacketHandle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for {
-		select {
-		case <-ticker.C:
-			if _, v3, e := handle.tpacket.SocketStats(); e != nil {
-				logging.GetLogger().Errorf("Can not get pcap capture stats")
-			} else {
-				p.Lock()
-				if atomic.LoadInt64(&p.state) == common.RunningState {
-					g.Lock()
-					t := g.StartMetadataTransaction(n)
-					t.AddMetadata("Capture.PacketsReceived", v3.Packets())
-					t.AddMetadata("Capture.PacketsDropped", v3.Drops())
-					t.Commit()
-					g.Unlock()
-				}
-				p.Unlock()
+				g.Lock()
+				t := g.StartMetadataTransaction(n)
+				t.AddMetadata("Capture.PacketsReceived", stats.PacketsReceived)
+				t.AddMetadata("Capture.PacketsDropped", stats.PacketsDropped)
+				t.AddMetadata("Capture.PacketsIfDropped", stats.PacketsIfDropped)
+				t.Commit()
+				g.Unlock()
 			}
 		case <-done:
 			return
@@ -187,11 +156,8 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	}
 
 	var wg sync.WaitGroup
+	var statsTicker *time.Ticker
 	statsDone := make(chan bool)
-
-	// Go routine to update the interface statistics
-	statsUpdate := config.GetConfig().GetInt("agent.flow.stats_update")
-	statsTicker := time.NewTicker(time.Duration(statsUpdate) * time.Second)
 
 	switch capture.Type {
 	case "pcap":
@@ -204,8 +170,12 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 		p.handle = handle
 		p.packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
 
+		// Go routine to update the interface statistics
+		statsUpdate := config.GetConfig().GetInt("agent.flow.stats_update")
+		statsTicker = time.NewTicker(time.Duration(statsUpdate) * time.Second)
+
 		wg.Add(1)
-		go p.pcapUpdateStats(g, n, handle, statsTicker, statsDone, &wg)
+		go pcapUpdateStats(g, n, handle, statsTicker, statsDone, &wg)
 
 		logging.GetLogger().Infof("PCAP Capture started on %s with First layer: %s", ifName, firstLayerType)
 	default:
@@ -225,9 +195,6 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 
 		p.handle = handle
 		p.packetSource = gopacket.NewPacketSource(handle, firstLayerType)
-
-		wg.Add(1)
-		go p.afpacketUpdateStats(g, n, handle, statsTicker, statsDone, &wg)
 
 		logging.GetLogger().Infof("AfPacket Capture started on %s with First layer: %s", ifName, firstLayerType)
 	}
@@ -270,9 +237,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 }
 
 func (p *GoPacketProbe) stop() {
-	p.Lock()
 	atomic.StoreInt64(&p.state, common.StoppingState)
-	p.Unlock()
 }
 
 func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
