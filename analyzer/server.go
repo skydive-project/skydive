@@ -218,3 +218,11 @@ func (s *Server) Stop() {
 func NewServerFromConfig() *Server {
 	return &Server{}
 }
+
+// NewAnalyzerAuthenticationOpts returns an object to authenticate to the analyzer
+func NewAnalyzerAuthenticationOpts() *shttp.AuthenticationOpts {
+	return &shttp.AuthenticationOpts{
+		Username: config.GetConfig().GetString("auth.analyzer_username"),
+		Password: config.GetConfig().GetString("auth.analyzer_password"),
+	}
+}

@@ -108,11 +108,7 @@ func (c *FlowClientWebSocketConn) Close() error {
 
 // Connect to the WebSocket flow server
 func (c *FlowClientWebSocketConn) Connect() error {
-	authOptions := &shttp.AuthenticationOpts{
-		Username: config.GetConfig().GetString("auth.analyzer_username"),
-		Password: config.GetConfig().GetString("auth.analyzer_password"),
-	}
-
+	authOptions := NewAnalyzerAuthenticationOpts()
 	authClient := shttp.NewAuthenticationClient(c.addr, c.port, authOptions)
 	c.wsClient = shttp.NewWSAsyncClientFromConfig(common.AgentService, c.addr, c.port, "/ws/flow", authClient)
 	c.wsClient.Connect()
