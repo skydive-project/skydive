@@ -1,6 +1,9 @@
 ---
 - name: Gather facts
   hosts: all
+  tasks:
+  - name: Gather facts on all hosts
+    setup: {}
 
 - name: Deploy Skydive agents
   hosts: agents
