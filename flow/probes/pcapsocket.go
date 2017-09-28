@@ -82,7 +82,7 @@ func (p *PcapSocketProbe) run() {
 	}
 }
 
-func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table, bpfFilter string) error {
+func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table, bpfFilter string, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -125,19 +125,23 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table, bp
 	go func() {
 		defer p.wg.Done()
 
+		e.OnStarted()
+
 		probe.run()
+
+		e.OnStopped()
 	}()
 
 	return nil
 }
 
 // RegisterProbe registers a new probe in the graph
-func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
-	return p.registerProbe(n, ft, capture.BPFFilter)
+func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
+	return p.registerProbe(n, ft, capture.BPFFilter, e)
 }
 
 // UnregisterProbe a probe
-func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node) error {
+func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
 
@@ -171,7 +175,7 @@ func (p *PcapSocketProbeHandler) Stop() {
 	defer p.probesLock.Unlock()
 
 	for _, probe := range p.probes {
-		p.UnregisterProbe(probe.node)
+		p.UnregisterProbe(probe.node, nil)
 	}
 	p.wg.Wait()
 }

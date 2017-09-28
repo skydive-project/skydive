@@ -43,14 +43,19 @@ type FlowProbeBundle struct {
 // FlowProbeInterface defines flow probe mechanism
 type FlowProbeInterface interface {
 	probe.Probe
-	RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error
-	UnregisterProbe(n *graph.Node) error
+	RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error
+	UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error
 }
 
 // FlowProbe link the pool of client and probes
 type FlowProbe struct {
 	fpi            FlowProbeInterface
 	flowClientPool *analyzer.FlowClientPool
+}
+
+type FlowProbeEventHandler interface {
+	OnStarted()
+	OnStopped()
 }
 
 // Start the probe
@@ -64,13 +69,13 @@ func (fp *FlowProbe) Stop() {
 }
 
 // RegisterProbe a probe
-func (fp *FlowProbe) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
-	return fp.fpi.RegisterProbe(n, capture, ft)
+func (fp *FlowProbe) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
+	return fp.fpi.RegisterProbe(n, capture, ft, e)
 }
 
 // UnregisterProbe a probe
-func (fp *FlowProbe) UnregisterProbe(n *graph.Node) error {
-	return fp.fpi.UnregisterProbe(n)
+func (fp *FlowProbe) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
+	return fp.fpi.UnregisterProbe(n, e)
 }
 
 // AsyncFlowPipeline run the flow pipeline

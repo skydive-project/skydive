@@ -39,10 +39,11 @@ import (
 )
 
 type activeProbe struct {
+	graph     *graph.Graph
+	node      *graph.Node
 	fprobe    *probes.FlowProbe
 	flowTable *flow.Table
 	capture   *api.Capture
-	node      *graph.Node
 }
 
 // OnDemandProbeServer describes an ondemand probe server based on websocket
@@ -133,18 +134,21 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 
 	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline, tid, opts)
 
-	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
+	activeProbe := &activeProbe{
+		graph:     o.Graph,
+		node:      n,
+		fprobe:    fprobe,
+		flowTable: ft,
+		capture:   capture,
+	}
+
+	if err := fprobe.RegisterProbe(n, capture, ft, activeProbe); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
 		o.fta.Release(ft)
 		return false
 	}
 
-	o.activeProbes[n.ID] = &activeProbe{
-		fprobe:    fprobe,
-		flowTable: ft,
-		capture:   capture,
-		node:      n,
-	}
+	o.activeProbes[n.ID] = activeProbe
 
 	logging.GetLogger().Debugf("New active probe on: %v(%v)", n, capture)
 	return true
@@ -160,7 +164,7 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 		return false
 	}
 
-	if err := probe.fprobe.UnregisterProbe(n); err != nil {
+	if err := probe.fprobe.UnregisterProbe(n, probe); err != nil {
 		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
 	}
 
@@ -170,6 +174,17 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 	o.Unlock()
 
 	return true
+}
+
+// OnStarted FlowProbeEventHandler implementation
+func (p *activeProbe) OnStarted() {
+}
+
+// OnStopped FlowProbeEventHandler implementation
+func (p *activeProbe) OnStopped() {
+	p.graph.Lock()
+	p.graph.DelMetadata(p.node, "Capture")
+	p.graph.Unlock()
 }
 
 // OnWSJSONMessage websocket message, valid message type are CaptureStart, CaptureStop
@@ -215,9 +230,7 @@ func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJS
 		}
 
 		status = http.StatusOK
-		if ok := o.unregisterProbe(n); ok {
-			o.Graph.DelMetadata(n, "Capture")
-		} else {
+		if ok := o.unregisterProbe(n); !ok {
 			status = http.StatusInternalServerError
 		}
 	}
