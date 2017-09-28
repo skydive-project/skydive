@@ -42,13 +42,13 @@ import (
 // OnDemandProbeClient describes an ondemand probe client based on a websocket
 type OnDemandProbeClient struct {
 	sync.RWMutex
+	*etcd.EtcdMasterElector
 	graph.DefaultGraphListener
 	graph            *graph.Graph
 	captureHandler   *api.CaptureAPIHandler
 	pool             shttp.WSJSONSpeakerPool
 	captures         map[string]*api.Capture
 	watcher          api.StoppableWatcher
-	elector          *etcd.EtcdMasterElector
 	registeredNodes  map[string]string
 	deletedNodeCache *cache.Cache
 }
@@ -192,7 +192,7 @@ func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
 }
 
 func (o *OnDemandProbeClient) onNodeEvent() {
-	if !o.elector.IsMaster() {
+	if !o.IsMaster() {
 		return
 	}
 
@@ -243,7 +243,7 @@ func (o *OnDemandProbeClient) registerCapture(capture *api.Capture) {
 }
 
 func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
-	if !o.elector.IsMaster() {
+	if !o.IsMaster() {
 		return
 	}
 
@@ -279,7 +279,7 @@ func (o *OnDemandProbeClient) unregisterCapture(capture *api.Capture) {
 }
 
 func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
-	if !o.elector.IsMaster() {
+	if !o.IsMaster() {
 		// fill the cache with recent delete in order to be able to delete then
 		// in case we lose the master and nobody is master yet. This cache will
 		// be used when becoming master.
@@ -331,7 +331,7 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 
 // Start the probe
 func (o *OnDemandProbeClient) Start() {
-	o.elector.StartAndWait()
+	o.EtcdMasterElector.StartAndWait()
 
 	o.watcher = o.captureHandler.AsyncWatch(o.onAPIWatcherEvent)
 	o.graph.AddEventListener(o)
@@ -340,7 +340,7 @@ func (o *OnDemandProbeClient) Start() {
 // Stop the probe
 func (o *OnDemandProbeClient) Stop() {
 	o.watcher.Stop()
-	o.elector.Stop()
+	o.EtcdMasterElector.Stop()
 }
 
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
@@ -354,13 +354,13 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, pool shtt
 	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "ondemand-client", etcdClient)
 
 	o := &OnDemandProbeClient{
-		graph:            g,
-		captureHandler:   ch,
-		pool:             pool,
-		captures:         captures,
-		elector:          elector,
-		registeredNodes:  make(map[string]string),
-		deletedNodeCache: cache.New(elector.TTL()*2, elector.TTL()*2),
+		EtcdMasterElector: elector,
+		graph:             g,
+		captureHandler:    ch,
+		pool:              pool,
+		captures:          captures,
+		registeredNodes:   make(map[string]string),
+		deletedNodeCache:  cache.New(elector.TTL()*2, elector.TTL()*2),
 	}
 
 	elector.AddEventListener(o)

@@ -45,11 +45,18 @@ type WSServer struct {
 
 func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
 	host := r.Header.Get("X-Host-ID")
-	clientType := r.Header.Get("X-Client-Type")
+	if host == "" {
+		host = r.RemoteAddr
+	}
+
+	clientType := common.ServiceType(r.Header.Get("X-Client-Type"))
+	if clientType == "" {
+		clientType = common.UnknownService
+	}
 
 	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
-	c := newIncomingWSClient(host, common.ServiceType(clientType), conn)
+	c := newIncomingWSClient(host, clientType, conn)
 	c.start()
 
 	return c
@@ -58,19 +65,21 @@ func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *
 func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// if X-Host-ID specified avoid having twice the same ID
 	host := r.Header.Get("X-Host-ID")
-	if host != "" {
-		s.wsIncomerPool.RLock()
-		for _, c := range s.speakers {
-			if c.GetHost() == host {
-				logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, host)
-				w.Header().Set("Connection", "close")
-				w.WriteHeader(http.StatusConflict)
-				s.wsIncomerPool.RUnlock()
-				return
-			}
-		}
-		s.wsIncomerPool.RUnlock()
+	if host == "" {
+		host = r.RemoteAddr
 	}
+
+	s.wsIncomerPool.RLock()
+	for _, c := range s.speakers {
+		if c.GetHost() == host {
+			logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, host)
+			w.Header().Set("Connection", "close")
+			w.WriteHeader(http.StatusConflict)
+			s.wsIncomerPool.RUnlock()
+			return
+		}
+	}
+	s.wsIncomerPool.RUnlock()
 
 	conn, err := websocket.Upgrade(w, &r.Request, nil, 1024, 1024)
 	if err != nil {

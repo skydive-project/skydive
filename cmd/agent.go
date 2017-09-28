@@ -44,7 +44,13 @@ var Agent = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.GetConfig().Set("logging.id", "agent")
 		logging.GetLogger().Noticef("Skydive Agent %s starting...", version.Version)
-		agent := agent.NewAgent()
+
+		agent, err := agent.NewAgent()
+		if err != nil {
+			logging.GetLogger().Errorf("Can't start Skydive agent: %v", err)
+			os.Exit(1)
+		}
+
 		agent.Start()
 
 		logging.GetLogger().Notice("Skydive Agent started")

@@ -23,7 +23,9 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -59,6 +61,7 @@ func (m WSRawMessage) Bytes() []byte {
 // WSSpeaker is the interface for a websocket speaking client. It is used for outgoing
 // or incoming connections.
 type WSSpeaker interface {
+	GetStatus() WSConnStatus
 	GetHost() string
 	GetAddrPort() (string, int)
 	GetServiceType() common.ServiceType
@@ -69,13 +72,48 @@ type WSSpeaker interface {
 	AddEventHandler(WSSpeakerEventHandler)
 }
 
+// WSConnState describes the connection state
+type WSConnState int32
+
+// WSConnStatus describes the status of a WebSocket connection
+type WSConnStatus struct {
+	ServiceType common.ServiceType
+	Addr        string
+	Port        int
+	Host        string       `json:"-"`
+	State       *WSConnState `json:"IsConnected"`
+}
+
+func (s *WSConnState) MarshalJSON() ([]byte, error) {
+	switch *s {
+	case common.RunningState:
+		return []byte("true"), nil
+	case common.StoppedState:
+		return []byte("false"), nil
+	}
+	return nil, fmt.Errorf("Invalid state: %d", s)
+}
+
+// UnmarshalJSON deserialize a connection state
+func (s *WSConnState) UnmarshalJSON(b []byte) error {
+	var state bool
+	if err := json.Unmarshal(b, &state); err != nil {
+		return err
+	}
+
+	if state {
+		*s = common.RunningState
+	} else {
+		*s = common.StoppedState
+	}
+
+	return nil
+}
+
 // WSConn is the connection object of a WSSpeaker
 type WSConn struct {
 	sync.RWMutex
-	Host          string
-	ClientType    common.ServiceType
-	Addr          string
-	Port          int
+	WSConnStatus
 	send          chan []byte
 	read          chan []byte
 	quit          chan bool
@@ -83,7 +121,6 @@ type WSConn struct {
 	conn          *websocket.Conn
 	running       atomic.Value
 	pingTicker    *time.Ticker // only used by incoming connections
-	connected     atomic.Value
 	eventHandlers []WSSpeakerEventHandler
 	wsSpeaker     WSSpeaker // speaker owning the connection
 }
@@ -136,7 +173,18 @@ func (c *WSConn) GetAddrPort() (string, int) {
 
 // IsConnected returns the connection status.
 func (c *WSConn) IsConnected() bool {
-	return c.connected.Load() == true
+	return atomic.LoadInt32((*int32)(c.State)) == common.RunningState
+}
+
+// GetStatus returns the status of a WebSocket connection
+func (c *WSConn) GetStatus() WSConnStatus {
+	c.RLock()
+	defer c.RUnlock()
+
+	status := c.WSConnStatus
+	status.State = new(WSConnState)
+	*status.State = WSConnState(atomic.LoadInt32((*int32)(c.State)))
+	return c.WSConnStatus
 }
 
 // SendMessage adds a message to sending queue.
@@ -163,7 +211,7 @@ func (c *WSConn) SendRaw(b []byte) error {
 
 // GetServiceType returns the client type.
 func (c *WSConn) GetServiceType() common.ServiceType {
-	return c.ClientType
+	return c.ServiceType
 }
 
 // SendMessage sends a message directly over the wire.
@@ -200,7 +248,7 @@ func (c *WSClient) connect() {
 	headers := http.Header{
 		"X-Host-ID":             {c.Host},
 		"Origin":                {endpoint},
-		"X-Client-Type":         {c.ClientType.String()},
+		"X-Client-Type":         {c.ServiceType.String()},
 		"X-Websocket-Namespace": {WilcardNamespace},
 	}
 
@@ -232,8 +280,8 @@ func (c *WSClient) connect() {
 	defer c.conn.Close()
 	c.conn.SetPingHandler(nil)
 
-	c.connected.Store(true)
-	defer c.connected.Store(false)
+	atomic.StoreInt32((*int32)(c.State), common.RunningState)
+	defer atomic.StoreInt32((*int32)(c.State), common.StoppedState)
 
 	logging.GetLogger().Infof("Connected to %s", endpoint)
 
@@ -272,7 +320,7 @@ func (c *WSConn) run() {
 	}()
 
 	defer func() {
-		c.connected.Store(false)
+		atomic.StoreInt32((*int32)(c.State), common.StoppedState)
 		c.RLock()
 		for _, l := range c.eventHandlers {
 			l.OnDisconnected(c.wsSpeaker)
@@ -336,7 +384,7 @@ func (c *WSConn) Connect() {
 // Disconnect the WSSpeakers without waiting for termination.
 func (c *WSConn) Disconnect() {
 	c.running.Store(false)
-	if c.connected.Load() == true {
+	if atomic.LoadInt32((*int32)(c.State)) == common.RunningState {
 		c.quit <- true
 		c.conn.Close()
 		close(c.send)
@@ -346,16 +394,19 @@ func (c *WSConn) Disconnect() {
 
 func newWSCon(host string, clientType common.ServiceType, addr string, port int) *WSConn {
 	c := &WSConn{
-		Host:       host,
-		ClientType: clientType,
-		Addr:       addr,
-		Port:       port,
+		WSConnStatus: WSConnStatus{
+			Host:        host,
+			ServiceType: clientType,
+			Addr:        addr,
+			Port:        port,
+			State:       new(WSConnState),
+		},
 		send:       make(chan []byte, maxMessages),
 		read:       make(chan []byte, maxMessages),
 		quit:       make(chan bool, 2),
 		pingTicker: &time.Ticker{},
 	}
-	c.connected.Store(false)
+	*c.State = common.StoppedState
 	c.running.Store(true)
 	return c
 }
@@ -398,7 +449,7 @@ func newIncomingWSClient(host string, clientType common.ServiceType, conn *webso
 	}
 	wsconn.wsSpeaker = c
 
-	c.connected.Store(true)
+	atomic.StoreInt32((*int32)(c.State), common.RunningState)
 
 	// send a first ping to help firefox and some other client which wait for a
 	// first ping before doing something

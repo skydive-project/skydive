@@ -52,19 +52,20 @@ import (
 // Agent object started on each hosts/namespaces
 type Agent struct {
 	shttp.DefaultWSSpeakerEventHandler
-	Graph               *graph.Graph
-	WSServer            *shttp.WSJSONServer
-	AnalyzerClientPool  *shttp.WSJSONClientPool
-	TopologyServer      *TopologyServer
-	Root                *graph.Node
-	TopologyProbeBundle *probe.ProbeBundle
-	FlowProbeBundle     *fprobes.FlowProbeBundle
-	FlowTableAllocator  *flow.TableAllocator
-	FlowClientPool      *analyzer.FlowClientPool
-	OnDemandProbeServer *ondemand.OnDemandProbeServer
-	HTTPServer          *shttp.Server
-	EtcdClient          *etcd.EtcdClient
-	TIDMapper           *topology.TIDMapper
+	graph               *graph.Graph
+	wsServer            *shttp.WSJSONServer
+	analyzerClientPool  *shttp.WSJSONClientPool
+	topologyServer      *TopologyServer
+	rootNode            *graph.Node
+	topologyProbeBundle *probe.ProbeBundle
+	flowProbeBundle     *fprobes.FlowProbeBundle
+	flowTableAllocator  *flow.TableAllocator
+	flowClientPool      *analyzer.FlowClientPool
+	onDemandProbeServer *ondemand.OnDemandProbeServer
+	httpServer          *shttp.Server
+	etcdClient          *etcd.EtcdClient
+	tidMapper           *topology.TIDMapper
+	topologyForwarder   *TopologyForwarder
 }
 
 // NewAnalyzerWSJSONClientPool creates a new http WebSocket client Pool
@@ -87,28 +88,58 @@ func NewAnalyzerWSJSONClientPool() (*shttp.WSJSONClientPool, error) {
 	return pool, nil
 }
 
+// AnalyzerConnStatus represents the status of a connection to an analyzer
+type AnalyzerConnStatus struct {
+	shttp.WSConnStatus
+	IsMaster bool
+}
+
+// AgentStatus represents the status of an agent
+type AgentStatus struct {
+	Clients   map[string]shttp.WSConnStatus
+	Analyzers map[string]AnalyzerConnStatus
+}
+
+// GetStatus returns the status of an agent
+func (a *Agent) GetStatus() interface{} {
+	var masterAddr string
+	var masterPort int
+	if master := a.topologyForwarder.GetMaster(); master != nil {
+		masterAddr, masterPort = master.GetAddrPort()
+	}
+
+	analyzers := make(map[string]AnalyzerConnStatus)
+	for id, status := range a.analyzerClientPool.GetStatus() {
+		analyzers[id] = AnalyzerConnStatus{
+			WSConnStatus: status,
+			IsMaster:     status.Addr == masterAddr && status.Port == masterPort,
+		}
+	}
+
+	return &AgentStatus{
+		Clients:   a.wsServer.GetStatus(),
+		Analyzers: analyzers,
+	}
+}
+
 // Start the agent services
 func (a *Agent) Start() {
 	var err error
 
-	go a.HTTPServer.ListenAndServe()
-	a.WSServer.Start()
-
-	pool, err := NewAnalyzerWSJSONClientPool()
-	if err != nil {
+	if err := a.httpServer.Listen(); err != nil {
 		logging.GetLogger().Error(err)
 		os.Exit(1)
 	}
-	a.AnalyzerClientPool = pool
 
-	NewTopologyForwarderFromConfig(a.Graph, pool)
+	go a.httpServer.Serve()
+	a.wsServer.Start()
 
-	a.TopologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
+	a.topologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.graph, a.rootNode)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to instantiate topology probes: %s", err.Error())
 		os.Exit(1)
 	}
-	a.TopologyProbeBundle.Start()
+	a.topologyProbeBundle.Start()
 
 	updateTime := time.Duration(config.GetConfig().GetInt("flow.update")) * time.Second
 	expireTime := time.Duration(config.GetConfig().GetInt("flow.expire")) * time.Second
@@ -117,69 +148,69 @@ func (a *Agent) Start() {
 	cache := cache.New(expireTime*2, cleanup)
 
 	pipeline := flow.NewEnhancerPipeline(
-		enhancers.NewGraphFlowEnhancer(a.Graph, cache),
+		enhancers.NewGraphFlowEnhancer(a.graph, cache),
 		enhancers.NewSocketInfoEnhancer(expireTime*2, cleanup),
 	)
 
 	// check that the neutron probe if loaded if so add the neutron flow enhancer
-	if a.TopologyProbeBundle.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(a.Graph, cache))
+	if a.topologyProbeBundle.GetProbe("neutron") != nil {
+		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(a.graph, cache))
 	}
 
-	a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime, pipeline)
+	a.flowTableAllocator = flow.NewTableAllocator(updateTime, expireTime, pipeline)
 
 	// exposes a flow server through the client connections
-	flow.NewServer(a.FlowTableAllocator, pool)
+	flow.NewServer(a.flowTableAllocator, a.analyzerClientPool)
 
-	packet_injector.NewServer(a.Graph, pool)
+	packet_injector.NewServer(a.graph, a.analyzerClientPool)
 
-	a.FlowClientPool = analyzer.NewFlowClientPool(pool)
+	a.flowClientPool = analyzer.NewFlowClientPool(a.analyzerClientPool)
 
-	a.FlowProbeBundle = fprobes.NewFlowProbeBundle(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator, a.FlowClientPool)
-	a.FlowProbeBundle.Start()
+	a.flowProbeBundle = fprobes.NewFlowProbeBundle(a.topologyProbeBundle, a.graph, a.flowTableAllocator, a.flowClientPool)
+	a.flowProbeBundle.Start()
 
-	if a.OnDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, pool); err != nil {
+	if a.onDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.flowProbeBundle, a.graph, a.analyzerClientPool); err != nil {
 		logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
 		os.Exit(1)
 	}
-	a.OnDemandProbeServer.Start()
+	a.onDemandProbeServer.Start()
 
 	// everything is ready, then initiate the websocket connection
-	go pool.ConnectAll()
+	go a.analyzerClientPool.ConnectAll()
 }
 
 // Stop agent services
 func (a *Agent) Stop() {
-	if a.FlowProbeBundle != nil {
-		a.FlowProbeBundle.Stop()
+	if a.flowProbeBundle != nil {
+		a.flowProbeBundle.Stop()
 	}
-	a.AnalyzerClientPool.Stop()
-	a.TopologyProbeBundle.Stop()
-	a.HTTPServer.Stop()
-	a.WSServer.Stop()
+	a.analyzerClientPool.Stop()
+	a.topologyProbeBundle.Stop()
+	a.httpServer.Stop()
+	a.wsServer.Stop()
 
-	if a.FlowClientPool != nil {
-		a.FlowClientPool.Close()
+	if a.flowClientPool != nil {
+		a.flowClientPool.Close()
 	}
-	if a.OnDemandProbeServer != nil {
-		a.OnDemandProbeServer.Stop()
+	if a.onDemandProbeServer != nil {
+		a.onDemandProbeServer.Stop()
 	}
-	if a.EtcdClient != nil {
-		a.EtcdClient.Stop()
+	if a.etcdClient != nil {
+		a.etcdClient.Stop()
 	}
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
 	}); ok {
 		tr.CloseIdleConnections()
 	}
-	a.TIDMapper.Stop()
+	a.tidMapper.Stop()
 }
 
 // NewAgent instanciates a new Agent aiming to launch probes (topology and flow)
-func NewAgent() *Agent {
+func NewAgent() (*Agent, error) {
 	backend, err := graph.NewMemoryBackend()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	g := graph.NewGraphFromConfig(backend)
@@ -189,11 +220,11 @@ func NewAgent() *Agent {
 
 	hserver, err := shttp.NewServerFromConfig(common.AgentService)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if _, err = api.NewAPI(hserver, nil, common.AgentService); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	wsServer := shttp.NewWSJSONServer(shttp.NewWSServerFromConfig(hserver, "/ws"))
@@ -201,19 +232,32 @@ func NewAgent() *Agent {
 	tr := traversal.NewGremlinTraversalParser(g)
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 
-	root := CreateRootNode(g)
+	rootNode := CreateRootNode(g)
 	api.RegisterTopologyAPI(hserver, tr)
 
 	tserver := NewTopologyServer(g, wsServer)
 
-	return &Agent{
-		Graph:          g,
-		WSServer:       wsServer,
-		TopologyServer: tserver,
-		Root:           root,
-		HTTPServer:     hserver,
-		TIDMapper:      tm,
+	analyzerClientPool, err := NewAnalyzerWSJSONClientPool()
+	if err != nil {
+		return nil, err
 	}
+
+	tforwarder := NewTopologyForwarderFromConfig(g, analyzerClientPool)
+
+	agent := &Agent{
+		graph:              g,
+		wsServer:           wsServer,
+		topologyServer:     tserver,
+		rootNode:           rootNode,
+		httpServer:         hserver,
+		tidMapper:          tm,
+		topologyForwarder:  tforwarder,
+		analyzerClientPool: analyzerClientPool,
+	}
+
+	api.RegisterStatusAPI(hserver, agent)
+
+	return agent, nil
 }
 
 // CreateRootNode creates a graph.Node based on the host properties and aims to have an unique ID

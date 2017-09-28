@@ -27,10 +27,13 @@ package tests
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	gclient "github.com/skydive-project/skydive/cmd/client"
 	"github.com/skydive-project/skydive/common"
@@ -74,6 +77,45 @@ func TestScaleHA(t *testing.T) {
 	var nodes []*graph.Node
 	var flows []*flow.Flow
 
+	getAnalyzerStatus := func() (status analyzer.AnalyzerStatus, err error) {
+		resp, err := client.Request("GET", client.Root+"/status", nil, nil)
+		if err != nil {
+			return status, err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			data, _ := ioutil.ReadAll(resp.Body)
+			return status, fmt.Errorf("Failed to get status, %s: %s", resp.Status, data)
+		}
+
+		if err := common.JSONDecode(resp.Body, &status); err != nil {
+			return status, err
+		}
+
+		return
+	}
+
+	checkClients := func(clientsExpected int, serviceType common.ServiceType) error {
+		status, err := getAnalyzerStatus()
+		if err != nil {
+			return err
+		}
+
+		count := 0
+		for _, client := range status.Clients {
+			if serviceType == "" || client.ServiceType == serviceType {
+				count++
+			}
+		}
+
+		if count != clientsExpected {
+			return fmt.Errorf("Expected %d '%s' client, got %d", clientsExpected, serviceType, count)
+		}
+
+		return nil
+	}
+
 	checkHostNodes := func(nodeExpected int) {
 		t.Logf("Check for host node: %d", nodeExpected)
 		retry = func() error {
@@ -85,12 +127,36 @@ func TestScaleHA(t *testing.T) {
 				return fmt.Errorf("Should return %d host nodes got : %v", nodeExpected, nodes)
 			}
 
+			if err := checkClients(nodeExpected, common.AgentService); err != nil {
+				return err
+			}
+
 			return nil
 		}
 		if err = common.Retry(retry, 10, 5*time.Second); err != nil {
 			helper.ExecCmds(t, tearDownCmds...)
 			t.Fatalf(err.Error())
 		}
+	}
+
+	checkPeers := func(peersExpected int, state shttp.WSConnState) error {
+		status, err := getAnalyzerStatus()
+		if err != nil {
+			return err
+		}
+
+		count := 0
+		for _, peer := range status.Peers {
+			if *peer.State == state {
+				count++
+			}
+		}
+
+		if count != peersExpected {
+			return fmt.Errorf("Expected %d peers, got %d", peersExpected, count)
+		}
+
+		return nil
 	}
 
 	checkICMPv4Flows := func(flowExpected int) {
@@ -189,6 +255,14 @@ func TestScaleHA(t *testing.T) {
 			helper.ExecCmds(t, tearDownCmds...)
 			t.Fatalf(err.Error())
 		}
+	}
+
+	if err := checkClients(1, common.AnalyzerService); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := checkPeers(1, common.RunningState); err != nil {
+		t.Fatal(err)
 	}
 
 	// test if we have our 2 hosts
@@ -312,6 +386,10 @@ func TestScaleHA(t *testing.T) {
 	}
 	helper.ExecCmds(t, setupCmds...)
 
+	if err := checkPeers(1, common.StoppedState); err != nil {
+		t.Fatal(err)
+	}
+
 	// test if the remaining analyzer have a correct graph
 	checkHostNodes(3)
 
@@ -336,6 +414,19 @@ func TestScaleHA(t *testing.T) {
 	// delete the capture to check that all captures will be delete at the agent side
 	client.Delete("capture", capture.ID())
 	checkCaptures(0)
+
+	// restore the second analyzer
+	setupCmds = []helper.Cmd{
+		{fmt.Sprintf("%s start 2 3 2", scale), false},
+		{"sleep 5", false},
+	}
+	helper.ExecCmds(t, setupCmds...)
+
+	if err = common.Retry(func() error {
+		return checkPeers(1, common.RunningState)
+	}, 15, time.Second); err != nil {
+		t.Fatal(err)
+	}
 
 	// delete an agent
 	setupCmds = []helper.Cmd{

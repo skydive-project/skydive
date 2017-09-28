@@ -128,6 +128,15 @@ func (s *WSPool) removeClient(c WSSpeaker) {
 	}
 }
 
+// GetStatus returns the states of the WebSocket clients
+func (s *WSPool) GetStatus() map[string]WSConnStatus {
+	clients := make(map[string]WSConnStatus)
+	for _, client := range s.GetSpeakers() {
+		clients[client.GetHost()] = client.GetStatus()
+	}
+	return clients
+}
+
 // GetSpeakers returns the WSSpeakers of the pool.
 func (s *WSPool) GetSpeakers() (speakers []WSSpeaker) {
 	s.RLock()
