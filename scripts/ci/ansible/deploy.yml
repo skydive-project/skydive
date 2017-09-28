@@ -172,6 +172,7 @@
   - user:
       name: jenkins
       group: jenkins
+      groups: jenkins,libvirt
       home: /var/lib/jenkins
   - get_url:
       url: "http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/jnlpJars/slave.jar"

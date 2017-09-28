@@ -1,0 +1,21 @@
+VAGRANTFILE_API_VERSION = "2"
+
+$script = <<SCRIPT
+sudo dnf -y install git
+cd /vagrant
+git checkout -b devstack
+SCRIPT
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    config.vm.define :devstack do |devstack|
+         devstack.vm.box = "fedora/25-cloud-base"
+         devstack.vm.synced_folder "../..", "/vagrant", :disabled => false
+         devstack.vm.provider :libvirt do |domain|
+             domain.memory = 8192
+             domain.cpus = 4
+         end
+         devstack.vm.provision "pre", type: "shell", inline: $script, privileged: false
+         devstack.vm.provision "devstack", type: "shell", path: "run-devstack.sh", privileged: false, env: {"SKYDIVE_PATH" => "/vagrant"}
+         devstack.vm.provision "test", type: "shell", path: "run-openstack-tests.sh", privileged: false
+    end
+end
