@@ -116,6 +116,8 @@ func (a *Agent) Start() {
 
 	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(a.Graph, cache))
 
+	pipeline.AddEnhancer(enhancers.NewSocketInfoEnhancer(expireTime*2, cleanup))
+
 	// check that the neutron probe if loaded if so add the neutron flow enhancer
 	if a.TopologyProbeBundle.GetProbe("neutron") != nil {
 		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(a.Graph, cache))

@@ -60,6 +60,7 @@ type flowState struct {
 	lastMetric       *FlowMetric
 	link1stPacket    int64
 	network1stPacket int64
+	skipSocketInfo   bool
 }
 
 // Packet describes one packet
@@ -90,6 +91,14 @@ type FlowUUIDs struct {
 	ParentUUID string
 	L2ID       int64
 	L3ID       int64
+}
+
+// SkipSocketInfo get or set the SocketInfo flow's state
+func (f *Flow) SkipSocketInfo(v ...bool) bool {
+	if len(v) > 0 {
+		f.XXX_state.skipSocketInfo = v[0]
+	}
+	return f.XXX_state.skipSocketInfo
 }
 
 // Value returns int32 value of a FlowProtocol
@@ -360,6 +369,7 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
+// Init initializes the flow based on packet data, flow key and ids
 func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
 	f.Start = now
 	f.Last = now
@@ -854,6 +864,42 @@ func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
 	}
 }
 
+// GetStringField returns the value of a SocketInfo field
+func (si *SocketInfo) GetStringField(field string) (string, error) {
+	if si == nil {
+		return "", common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "Process":
+		return si.Process, nil
+	case "Name":
+		return si.Name, nil
+	default:
+		return "", common.ErrFieldNotFound
+	}
+}
+
+// GetFieldInt64 returns the value of a SocketInfo field
+func (si *SocketInfo) GetFieldInt64(field string) (int64, error) {
+	if si == nil {
+		return 0, common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "Pid":
+		return si.Pid, nil
+	case "Ppid":
+		return si.Ppid, nil
+	case "Tid":
+		return si.Tid, nil
+	case "Uid":
+		return si.Uid, nil
+	default:
+		return 0, common.ErrFieldNotFound
+	}
+}
+
 // GetFieldString returns the value of a Flow field
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
@@ -904,6 +950,10 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.Network.GetStringField(fields[1])
 	case "ETHERNET":
 		return f.Link.GetStringField(fields[1])
+	case "SocketA":
+		return f.SocketA.GetStringField(fields[1])
+	case "SocketB":
+		return f.SocketB.GetStringField(fields[1])
 	}
 	return "", common.ErrFieldNotFound
 }
@@ -941,6 +991,10 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Transport.GetFieldInt64(fields[1])
 	case "RawPacketsCaptured":
 		return f.RawPacketsCaptured, nil
+	case "SocketA":
+		return f.SocketA.GetFieldInt64(fields[1])
+	case "SocketB":
+		return f.SocketB.GetFieldInt64(fields[1])
 	default:
 		return 0, common.ErrFieldNotFound
 	}

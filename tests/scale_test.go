@@ -139,9 +139,21 @@ func TestScaleHA(t *testing.T) {
 
 			// two capture 2 flows
 			if len(flows) != flowExpected {
-				return fmt.Errorf("Should get %d iperf(tcp/5001) flow got %d : %v", flowExpected, len(flows), flows)
+				var flowsTCP []*flow.Flow
+				if flowsTCP, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/TCP')"); err != nil {
+					return err
+				}
+				return fmt.Errorf("Should get %d iperf(tcp/5001) flow got %d : %v", flowExpected, len(flows), flowsTCP)
 			}
 
+			for _, f := range flows {
+				if f.SocketA.Process != "/usr/bin/iperf" || f.SocketB.Process != "/usr/bin/iperf" {
+					return fmt.Errorf("Should get iperf exe %v", f)
+				}
+				if f.SocketA.Name != "iperf" || f.SocketB.Name != "iperf" {
+					return fmt.Errorf("Should get iperf thread name %v", f)
+				}
+			}
 			return nil
 		}
 		if err = common.Retry(retry, 10, time.Second); err != nil {
@@ -156,9 +168,21 @@ func TestScaleHA(t *testing.T) {
 			}
 
 			if len(flows) != flowExpected {
-				return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %d : %#+v", flowExpected, len(flows), flows)
+				var flowsTCP []*flow.Flow
+				if flowsTCP, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP')"); err != nil {
+					return err
+				}
+				return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %d : %#+v", flowExpected, len(flows), flowsTCP)
 			}
 
+			for _, f := range flows {
+				if f.SocketA.Process != "/usr/bin/iperf" || f.SocketB.Process != "/usr/bin/iperf" {
+					return fmt.Errorf("Should get iperf exe %v", f)
+				}
+				if f.SocketA.Name != "iperf" || f.SocketB.Name != "iperf" {
+					return fmt.Errorf("Should get iperf thread name %v", f)
+				}
+			}
 			return nil
 		}
 		if err = common.Retry(retry, 40, time.Second); err != nil {
@@ -181,6 +205,7 @@ func TestScaleHA(t *testing.T) {
 
 	// start a capture
 	capture := api.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
+	capture.SocketInfo = true
 	if err = client.Create("capture", capture); err != nil {
 		t.Fatal(err)
 	}
