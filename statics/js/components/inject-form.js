@@ -13,6 +13,8 @@ Vue.component('inject-form', {
           <option value="icmp6">ICMPv6/Echo request</option>\
           <option value="tcp4">TCP/IPv4</option>\
           <option value="tcp6">TCP/IPv6</option>\
+          <option value="udp4">UDP/IPv4</option>\
+          <option value="udp6">UDP/IPv6</option>\
         </select>\
       </div>\
       <div class="form-group">\
@@ -41,7 +43,7 @@ Vue.component('inject-form', {
           <input id="payload-length" type="number" class="form-control input-sm" v-model="payloadlength" min="0" />\
         </div>\
       </div>\
-      <div v-if="type === \'tcp4\' || type === \'tcp6\'">\
+      <div v-if="type === \'tcp4\' || type === \'tcp6\' || type === \'udp4\' || type === \'udp6\'">\
         <div class="form-group">\
           <label for="src-port">Src Port</label>\
           <input id="src-port" type="number" class="form-control input-sm" v-model="port1" min="0" />\
