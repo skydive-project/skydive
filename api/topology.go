@@ -49,6 +49,13 @@ type TopologyParam struct {
 	GremlinQuery string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 }
 
+func shortID(s graph.Identifier) graph.Identifier {
+	if len(s) > 8 {
+		return s[:8]
+	}
+	return s
+}
+
 func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 	g.RLock()
 	defer g.RUnlock()
@@ -59,7 +66,7 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 	for _, n := range g.GetNodes(nil) {
 		nodeMap[n.ID] = n
 		name, _ := n.GetFieldString("Name")
-		title := fmt.Sprintf("%s-%s", name, n.ID[:7])
+		title := fmt.Sprintf("%s-%s", name, shortID(n.ID))
 		label := title
 		for k, v := range n.Metadata() {
 			switch k {
@@ -89,7 +96,7 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 		default:
 			linkLabel = fmt.Sprintf(" [label=%s]\n", relationType)
 		}
-		link := fmt.Sprintf("\"%s-%s\" %s \"%s-%s\"%s", parentName, parent.ID[:7], linkType, childName, child.ID[:7], linkLabel)
+		link := fmt.Sprintf("\"%s-%s\" %s \"%s-%s\"%s", parentName, shortID(parent.ID), linkType, childName, shortID(child.ID), linkLabel)
 		w.Write([]byte(link))
 	}
 
