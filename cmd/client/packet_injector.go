@@ -100,7 +100,7 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
 	cmd.Flags().Int64VarP(&srcPort, "srcPort", "", 0, "source port for TCP packet")
 	cmd.Flags().Int64VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
-	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4 and tcp6")
+	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
 	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
 	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")

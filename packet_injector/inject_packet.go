@@ -57,7 +57,7 @@ type PacketParams struct {
 	DstIP     string           `valid:"nonzero"`
 	DstMAC    string           `valid:"nonzero"`
 	DstPort   int64            `valid:"min=0"`
-	Type      string           `valid:"regexp=^(icmp4|icmp6|tcp4|tcp6)$"`
+	Type      string           `valid:"regexp=^(icmp4|icmp6|tcp4|tcp6|udp4|udp6)$"`
 	Count     int64            `valid:"min=1"`
 	ID        int64            `valid:"min=0"`
 	Interval  int64            `valid:"min=0"`
@@ -167,6 +167,24 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 		layerType = layers.LayerTypeTCP
 		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
 		l = append(l, ethLayer, ipLayer, tcpLayer, payload)
+	case "udp4":
+		ethLayer.EthernetType = layers.EthernetTypeIPv4
+		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolUDP, TTL: 64}
+		srcPort := layers.UDPPort(pp.SrcPort)
+		dstPort := layers.UDPPort(pp.DstPort)
+		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
+		layerType = layers.LayerTypeUDP
+		udpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ethLayer, ipLayer, udpLayer, payload)
+	case "udp6":
+		ethLayer.EthernetType = layers.EthernetTypeIPv6
+		ipLayer := &layers.IPv6{SrcIP: srcIP, DstIP: dstIP, Version: 6, NextHeader: layers.IPProtocolUDP}
+		srcPort := layers.UDPPort(pp.SrcPort)
+		dstPort := layers.UDPPort(pp.DstPort)
+		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
+		layerType = layers.LayerTypeUDP
+		udpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ethLayer, ipLayer, udpLayer, payload)
 	default:
 		rawSocket.Close()
 		return "", fmt.Errorf("Unsupported traffic type '%s'", pp.Type)
