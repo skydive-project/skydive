@@ -148,8 +148,15 @@ func (mapper *NeutronProbe) retrieveAttributes(portMd PortMetadata) (*Attributes
 		return nil, err
 	}
 
+	type netWithProvider struct {
+		networks.Network
+		provider.NetworkProviderExt
+	}
+
+	var network netWithProvider
 	result := networks.Get(mapper.client, port.NetworkID)
-	network, err := provider.ExtractGet(result)
+	err = result.ExtractInto(&network)
+
 	if err != nil {
 		return nil, err
 	}
