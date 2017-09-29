@@ -92,6 +92,7 @@ const (
 	ASC
 	DESC
 	IPV4RANGE
+	SUBGRAPH
 
 	// extensions token have to start after 1000
 )
@@ -289,6 +290,8 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return DESC, buf.String()
 	case "IPV4RANGE":
 		return IPV4RANGE, buf.String()
+	case "SUBGRAPH":
+		return SUBGRAPH, buf.String()
 	}
 
 	for _, e := range s.extensions {

@@ -65,7 +65,21 @@ G.V()
 A node ID can be passed to the V step which will return the corresponding node.
 
 ```console
-G.V('ca909ccf-203d-457d-70b8-06fe308221efca909ccf-203d-457d-70b8-06fe308221ef')
+G.V('ca909ccf-203d-457d-70b8-06fe308221ef')
+```
+
+### E Step
+
+E step returns the edges belonging to the graph.
+
+```console
+G.E()
+```
+
+A edge ID can be passed to the E step which will return the corresponding edge.
+
+```console
+G.E('c8aeb26f-0962-4c46-b700-a12dfe720af1')
 ```
 
 ### Has Step
@@ -96,13 +110,14 @@ of steps `Out/Has` for example.
 G.V().Has('Name', 'br-int', 'Type', 'ovsbridge').Out('Name', 'intf1')
 ```
 
-### InE/OutE steps
+### InE/OutE/BothE steps
 
-`InE/OutE` steps returns the incoming/ougoing links.
+`InE/OutE/BothE` steps returns the incoming/ougoing links.
 
 ```console
 G.V().Has('Name', 'test', 'Type', 'netns').InE()
 G.V().Has('Name', 'test', 'Type', 'netns').OutE()
+G.V().Has('Name', 'test', 'Type', 'netns').BothE()
 ```
 
 Like for the `In/Out/Both` steps metadata list can be passed directly as
@@ -205,6 +220,19 @@ predicate as a second parameter.
 
 ```
 G.V().Has('Type', 'netns').ShortestPathTo(Metadata('Type', 'host'), Metadata('Type', 'layer2'))
+```
+
+### SubGraph step
+
+`SubGraph` step returns a new Graph based on the previous steps. Step V or E can
+be used to walk trough this new Graph.
+
+```
+G.E().Has('RelationType', 'layer2').SubGraph().V().Has('Name', 'eth0')
+```
+
+```
+G.V().Has('Type', 'veth').SubGraph().E()
 ```
 
 ### GraphPath step
