@@ -76,17 +76,17 @@ func (p *GoPacketProbe) pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *p
 			if stats, e := handle.Stats(); e != nil {
 				logging.GetLogger().Errorf("Can not get pcap capture stats")
 			} else {
+				g.Lock()
 				p.Lock()
 				if atomic.LoadInt64(&p.state) == common.RunningState {
-					g.Lock()
 					t := g.StartMetadataTransaction(n)
 					t.AddMetadata("Capture.PacketsReceived", stats.PacketsReceived)
 					t.AddMetadata("Capture.PacketsDropped", stats.PacketsDropped)
 					t.AddMetadata("Capture.PacketsIfDropped", stats.PacketsIfDropped)
 					t.Commit()
-					g.Unlock()
 				}
 				p.Unlock()
+				g.Unlock()
 			}
 		case <-done:
 			return
@@ -103,16 +103,16 @@ func (p *GoPacketProbe) afpacketUpdateStats(g *graph.Graph, n *graph.Node, handl
 			if _, v3, e := handle.tpacket.SocketStats(); e != nil {
 				logging.GetLogger().Errorf("Can not get pcap capture stats")
 			} else {
+				g.Lock()
 				p.Lock()
 				if atomic.LoadInt64(&p.state) == common.RunningState {
-					g.Lock()
 					t := g.StartMetadataTransaction(n)
 					t.AddMetadata("Capture.PacketsReceived", v3.Packets())
 					t.AddMetadata("Capture.PacketsDropped", v3.Drops())
 					t.Commit()
-					g.Unlock()
 				}
 				p.Unlock()
+				g.Unlock()
 			}
 		case <-done:
 			return
