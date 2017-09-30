@@ -90,7 +90,7 @@ func TestPacketInjector(t *testing.T) {
 			{gremlin: `G.V().Has('Name', 'pi-eth-src').ShortestPathTo(Metadata('Name', 'pi-eth-dst'), Metadata('RelationType', 'layer2'))`},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gremlin := "g"
 			if !c.time.IsZero() {
 				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
@@ -107,7 +107,7 @@ func TestPacketInjector(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)

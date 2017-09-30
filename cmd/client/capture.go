@@ -44,6 +44,8 @@ var (
 	port               int
 	headerSize         int
 	rawPacketLimit     int
+	extraTCPMetric     bool
+	socketInfo         bool
 )
 
 // CaptureCmd skdyive capture root command
@@ -82,6 +84,8 @@ var CaptureCreate = &cobra.Command{
 		capture.Port = port
 		capture.HeaderSize = headerSize
 		capture.RawPacketLimit = rawPacketLimit
+		capture.ExtraTCPMetric = extraTCPMetric
+		capture.SocketInfo = socketInfo
 		if err := validator.Validate(capture); err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
@@ -189,6 +193,8 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&port, "port", "", 0, "capture port")
 	cmd.Flags().IntVarP(&headerSize, "header-size", "", 0, fmt.Sprintf("Header size of packet used, default: %d", flow.MaxCaptureLength))
 	cmd.Flags().IntVarP(&rawPacketLimit, "rawpacket-limit", "", 0, "Set the limit of raw packet captured, 0 no packet, -1 infinite, default: 0")
+	cmd.Flags().BoolVarP(&extraTCPMetric, "extra-tcp-metric", "", false, "Add additional TCP metric to flows, default: false")
+	cmd.Flags().BoolVarP(&socketInfo, "socket-info", "", false, "Add additional Socket process information to flows, default: false")
 }
 
 func init() {

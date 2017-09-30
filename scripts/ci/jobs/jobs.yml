@@ -292,13 +292,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    wrappers:
-      - openstack:
-          instances:
-            - cloud-name: rdo-cloud
-              template-name: devstack
-              count: 1
-          single-use: True
     triggers:
       - github-pull-request:
           org-list:
@@ -311,7 +304,70 @@
           status-context: skydive-devstack-plugin
       - timed: "@daily"
     builders:
-      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-devstack.sh
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          cd scripts/ci
+          vagrant up --no-provision
+          vagrant provision
+          retcode=$?
+          vagrant destroy
+          exit $retcode
+    publishers:
+      - chuck-norris
+    node: baremetal
+
+- job:
+    name: skydive-vagrant
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (skydive-)?vagrant'
+          only-trigger-phrase: true
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: false
+          status-context: skydive-vagrant
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          cd contrib/vagrant
+          for mode in binary package container
+          do
+            DEPLOYMENT_MODE=$mode vagrant up --provision-with common
+            DEPLOYMENT_MODE=$mode vagrant provision
+            retcode=$?
+            vagrant destroy
+            [ $retcode -ne 0 ] && exit $retcode || true
+          done
+    publishers:
+      - chuck-norris
+    node: baremetal
+
+- job:
+    name: skydive-packaging-tests
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (skydive-)?packaging-tests'
+          only-trigger-phrase: true
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-packaging-tests
+    builders:
+      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-packaging-tests.sh
     publishers:
       - chuck-norris
 

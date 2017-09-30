@@ -47,19 +47,33 @@ Vue.component('capture-form', {
               <h4 class="panel-title">\
                 <a data-toggle="collapse" data-parent="#" href="#one">\
                   Advanced options\
-                </a>\
                 <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
+                </a>\
               </h4>\
             </div>\
             <div id="one" class="panel-collapse collapse">\
-              <div class="form-group">\
-                <label for="capture-header-size">Header Size</label>\
-                <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
-              </div>\
-              <div class="form-group">\
-                <label for="capture-raw-packets">Raw packets limit</label>\
-                <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model="rawPackets" min="0" max="10"/>\
-              </div>\
+              <fieldset class="form-group">\
+                <div class="form-group">\
+                  <label for="capture-header-size">Header Size</label>\
+                  <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
+                </div>\
+                <div class="form-group">\
+                  <label for="capture-raw-packets">Raw packets limit</label>\
+                  <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model="rawPackets" min="0" max="10"/>\
+                </div>\
+                <div class="form-group">\
+                  <label class="form-check-label">\
+                    <input id="capture-tcp-metric" type="checkbox" class="form-check-input" v-model="tcpMetric">\
+                    Extra TCP metric\
+                  </label>\
+                </div>\
+                <div class="form-group">\
+                  <label class="form-check-label">\
+                    <input id="capture-socket-info" type="checkbox" class="form-check-input" v-model="socketInfo">\
+                    Socket Info\
+                  </label>\
+                </div>\
+              </fieldset>\
             </div>\
           </div>\
           <button type="submit" id="start-capture" class="btn btn-primary">Start</button>\
@@ -86,6 +100,8 @@ Vue.component('capture-form', {
       bpf: "",
       headerSize: 0,
       rawPackets: 0,
+      tcpMetric: true,
+      socketInfo: true,
       userQuery: "",
       mode: "selection",
       visible: false,
@@ -160,6 +176,8 @@ Vue.component('capture-form', {
       this.node1 = this.node2 = this.userQuery = "";
       this.name = this.desc = this.bpf = "";
       this.headerSize = this.rawPackets = 0;
+      this.tcpMetric = true;
+      this.socketInfo = true;
       this.visible = false;
     },
 
@@ -169,7 +187,7 @@ Vue.component('capture-form', {
         this.$error({message: this.queryError});
         return;
       }
-      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets)
+      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets, this.tcpMetric, this.socketInfo)
         .then(function() {
           self.reset();
         });

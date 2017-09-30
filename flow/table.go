@@ -68,44 +68,51 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
 // TableOpt defines flow table options
 type TableOpts struct {
 	RawPacketLimit int64
+	TCPMetric      bool
+	SocketInfo     bool
 }
 
 // Table store the flow table and related metrics mechanism
 type Table struct {
-	Opts          TableOpts
-	PacketsChan   chan *Packets
-	table         map[string]*Flow
-	flush         chan bool
-	flushDone     chan bool
-	query         chan *TableQuery
-	reply         chan *TableReply
-	state         int64
-	lockState     sync.RWMutex
-	wg            sync.WaitGroup
-	updateHandler *Handler
-	lastUpdate    int64
-	expireHandler *Handler
-	lastExpire    int64
-	tableClock    int64
-	nodeTID       string
-	pipeline      *EnhancerPipeline
+	Opts           TableOpts
+	PacketsChan    chan *Packets
+	table          map[string]*Flow
+	flush          chan bool
+	flushDone      chan bool
+	query          chan *TableQuery
+	reply          chan *TableReply
+	state          int64
+	lockState      sync.RWMutex
+	wg             sync.WaitGroup
+	updateHandler  *Handler
+	lastUpdate     int64
+	expireHandler  *Handler
+	lastExpire     int64
+	tableClock     int64
+	nodeTID        string
+	pipeline       *EnhancerPipeline
+	pipelineConfig *EnhancerPipelineConfig
 }
 
 // NewTable creates a new flow table
 func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *EnhancerPipeline, nodeTID string, opts ...TableOpts) *Table {
 	t := &Table{
-		PacketsChan:   make(chan *Packets, 1000),
-		table:         make(map[string]*Flow),
-		flush:         make(chan bool),
-		flushDone:     make(chan bool),
-		state:         common.StoppedState,
-		updateHandler: updateHandler,
-		expireHandler: expireHandler,
-		pipeline:      pipeline,
-		nodeTID:       nodeTID,
+		PacketsChan:    make(chan *Packets, 1000),
+		table:          make(map[string]*Flow),
+		flush:          make(chan bool),
+		flushDone:      make(chan bool),
+		state:          common.StoppedState,
+		updateHandler:  updateHandler,
+		expireHandler:  expireHandler,
+		pipeline:       pipeline,
+		pipelineConfig: NewEnhancerPipelineConfig(),
+		nodeTID:        nodeTID,
 	}
 	if len(opts) > 0 {
 		t.Opts = opts[0]
+	}
+	if t.Opts.SocketInfo == false {
+		t.pipelineConfig.Disable("SocketInfo")
 	}
 
 	t.tableClock = common.UnixMillis(time.Now())
@@ -324,8 +331,19 @@ func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2
 	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
-		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, parentUUID, L2ID, L3ID)
-		ft.pipeline.EnhanceFlow(flow)
+		opts := FlowOpts{
+
+			TCPMetric: ft.Opts.TCPMetric,
+		}
+
+		uuids := FlowUUIDs{
+			ParentUUID: parentUUID,
+			L2ID:       L2ID,
+			L3ID:       L3ID,
+		}
+
+		flow.Init(key, t, packet.gopacket, packet.length, ft.nodeTID, uuids, opts)
+		ft.pipeline.EnhanceFlow(ft.pipelineConfig, flow)
 	} else {
 		flow.Update(t, packet.gopacket, packet.length)
 	}

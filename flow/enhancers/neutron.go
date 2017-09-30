@@ -38,6 +38,11 @@ type NeutronFlowEnhancer struct {
 	tidCache *tidCache
 }
 
+// Name return the Neutron enahancer name
+func (nfe *NeutronFlowEnhancer) Name() string {
+	return "Neutron"
+}
+
 func (nfe *NeutronFlowEnhancer) getNodeTID(mac string) string {
 	if packet.IsBroadcastMac(mac) || packet.IsMulticastMac(mac) {
 		return "*"

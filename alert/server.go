@@ -259,9 +259,7 @@ func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
 	}()
 
 	wsMsg := shttp.NewWSMessage(Namespace, "Alert", msg)
-	a.WSServer.Lock()
 	a.WSServer.BroadcastMessage(wsMsg)
-	a.WSServer.Unlock()
 
 	logging.GetLogger().Debugf("Alert %s of type %s was triggerred", al.UUID, al.Action)
 	return nil

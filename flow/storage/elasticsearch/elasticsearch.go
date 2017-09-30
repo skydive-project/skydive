@@ -452,8 +452,8 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 func (c *ElasticSearchStorage) Start() {
 	go c.client.Start([]map[string][]byte{
 		{"metric": []byte(metricMapping)},
-		{"flow": []byte(flowMapping)},
-		{"rawpacket": []byte(rawPacketMapping)}},
+		{"rawpacket": []byte(rawPacketMapping)},
+		{"flow": []byte(flowMapping)}},
 	)
 }
 

@@ -40,11 +40,13 @@ type Capture struct {
 	Name           string `json:"Name,omitempty"`
 	Description    string `json:"Description,omitempty"`
 	Type           string `json:"Type,omitempty"`
-	Count          int    `json:"Count,omitempty"`
+	Count          int    `json:"Count"`
 	PCAPSocket     string `json:"PCAPSocket,omitempty"`
 	Port           int    `json:"Port,omitempty"`
 	RawPacketLimit int    `json:"RawPacketLimit,omitempty" valid:"isValidRawPacketLimit"`
 	HeaderSize     int    `json:"HeaderSize,omitempty" valid:"isValidCaptureHeaderSize"`
+	ExtraTCPMetric bool   `json:"ExtraTCPMetric"`
+	SocketInfo     bool   `json:"SocketInfo"`
 }
 
 // CaptureResourceHandler describes a capture ressouce handler

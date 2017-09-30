@@ -38,6 +38,12 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+type activeProbe struct {
+	fprobe    *probes.FlowProbe
+	flowTable *flow.Table
+	capture   *api.Capture
+}
+
 // OnDemandProbeServer describes an ondemand probe server based on websocket
 type OnDemandProbeServer struct {
 	sync.RWMutex
@@ -47,16 +53,7 @@ type OnDemandProbeServer struct {
 	Probes       *probes.FlowProbeBundle
 	WSClientPool *shttp.WSMessageClientPool
 	fta          *flow.TableAllocator
-	activeProbes map[graph.Identifier]*flow.Table
-	captures     map[graph.Identifier]*api.Capture
-}
-
-func (o *OnDemandProbeServer) isActive(n *graph.Node) bool {
-	o.RLock()
-	defer o.RUnlock()
-	_, active := o.activeProbes[n.ID]
-
-	return active
+	activeProbes map[graph.Identifier]*activeProbe
 }
 
 func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (*probes.FlowProbe, error) {
@@ -100,11 +97,6 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 
 	logging.GetLogger().Debugf("Attempting to register probe on node %s", name)
 
-	if o.isActive(n) {
-		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
-		return false
-	}
-
 	if _, err := n.GetFieldString("Type"); err != nil {
 		logging.GetLogger().Infof("Unable to register flow probe type of node unknown %v", n)
 		return false
@@ -116,9 +108,6 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		return false
 	}
 
-	o.Lock()
-	defer o.Unlock()
-
 	fprobe, err := o.getProbe(n, capture)
 	if fprobe == nil {
 		if err != nil {
@@ -129,7 +118,18 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 
 	opts := flow.TableOpts{
 		RawPacketLimit: int64(capture.RawPacketLimit),
+		TCPMetric:      capture.ExtraTCPMetric,
+		SocketInfo:     capture.SocketInfo,
 	}
+
+	o.Lock()
+	defer o.Unlock()
+
+	if _, active := o.activeProbes[n.ID]; active {
+		logging.GetLogger().Debugf("A probe already exists for %s", n.ID)
+		return false
+	}
+
 	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline, tid, opts)
 
 	if err := fprobe.RegisterProbe(n, capture, ft); err != nil {
@@ -138,37 +138,33 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		return false
 	}
 
-	o.activeProbes[n.ID] = ft
-	o.captures[n.ID] = capture
+	o.activeProbes[n.ID] = &activeProbe{
+		fprobe:    fprobe,
+		flowTable: ft,
+		capture:   capture,
+	}
 
 	logging.GetLogger().Debugf("New active probe on: %v(%v)", n, capture)
 	return true
 }
 
+// unregisterProbe should be executed under graph lock
 func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
-	if !o.isActive(n) {
+	o.RLock()
+	probe, active := o.activeProbes[n.ID]
+	o.RUnlock()
+
+	if !active {
 		return false
 	}
 
-	o.Lock()
-	c := o.captures[n.ID]
-	o.Unlock()
-	fprobe, err := o.getProbe(n, c)
-	if fprobe == nil {
-		if err != nil {
-			logging.GetLogger().Error(err.Error())
-		}
-		return false
-	}
-
-	if err := fprobe.UnregisterProbe(n); err != nil {
+	if err := probe.fprobe.UnregisterProbe(n); err != nil {
 		logging.GetLogger().Debugf("Failed to unregister flow probe: %s", err.Error())
 	}
 
 	o.Lock()
-	o.fta.Release(o.activeProbes[n.ID])
+	o.fta.Release(probe.flowTable)
 	delete(o.activeProbes, n.ID)
-	delete(o.captures, n.ID)
 	o.Unlock()
 
 	return true
@@ -260,7 +256,6 @@ func NewOnDemandProbeServer(fb *probes.FlowProbeBundle, g *graph.Graph, wspool *
 		Probes:       fb,
 		WSClientPool: wspool,
 		fta:          fb.FlowTableAllocator,
-		activeProbes: make(map[graph.Identifier]*flow.Table),
-		captures:     make(map[graph.Identifier]*api.Capture),
+		activeProbes: make(map[graph.Identifier]*activeProbe),
 	}, nil
 }

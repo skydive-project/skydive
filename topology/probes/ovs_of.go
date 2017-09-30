@@ -277,14 +277,19 @@ func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...st
 	if err != nil {
 		return out, err
 	}
+
 	err = command.Start()
-	go func() {
+	go func(kill bool) {
 		<-ctx.Done()
-		erk := command.Process.Kill()
-		if erk != nil {
-			logging.GetLogger().Errorf("Cannot kill background process: %s", com)
+		if kill {
+			erk := command.Process.Kill()
+			if erk != nil {
+				logging.GetLogger().Errorf("Cannot kill background process: %s", com)
+			}
+			command.Process.Wait()
 		}
-	}()
+	}(err == nil)
+
 	return out, err
 }
 
@@ -312,7 +317,7 @@ func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string,
 			}
 			reader := bufio.NewReader(out)
 			var line string
-			for {
+			for ctx.Err() == nil {
 				line, err = reader.ReadString('\n')
 				if err == io.EOF {
 					break
@@ -348,7 +353,7 @@ func countElements(filter string) int {
 }
 
 // completeEvent completes the event by looking at it again but with dump-flows and a filter including table. This gives back more elements such as priority.
-func completeEvent(o *OvsOfProbe, event *Event, prefix string) error {
+func completeEvent(ctx context.Context, o *OvsOfProbe, event *Event, prefix string) error {
 	oldrule := event.RawRule
 	bridge := event.Bridge
 	// We want exactly n+1 items where n was the number of items in old filters. The reason is that now
@@ -360,7 +365,7 @@ func completeEvent(o *OvsOfProbe, event *Event, prefix string) error {
 		return err1
 	}
 	lines, err := launchOnSwitch(command)
-	if err != nil {
+	if err != nil && ctx.Err() == nil {
 		return fmt.Errorf("Cannot launch ovs-ofctl dump-flows on %s@%s with filter %s: %s", bridge, o.Host, filter, err.Error())
 	}
 	for _, line := range strings.Split(lines, "\n") {
@@ -435,7 +440,7 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 			}
 			event, err := parseEvent(line, probe.Bridge, prefix)
 			if err == nil {
-				err = completeEvent(ofp, &event, prefix)
+				err = completeEvent(ctx, ofp, &event, prefix)
 				if err != nil {
 					logging.GetLogger().Error(err.Error())
 				}
@@ -467,6 +472,7 @@ func (probe *BridgeOfProbe) monitor(ctx context.Context) error {
 					logging.GetLogger().Errorf("Error while monitoring %s@%s: %s", probe.Bridge, probe.Host, err.Error())
 				}
 			}
+
 		}
 	}()
 	return nil

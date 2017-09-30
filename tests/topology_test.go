@@ -49,7 +49,7 @@ func TestBridgeOVS(t *testing.T) {
 			{"ovs-vsctl del-br br-test1", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			gremlin := "g"
 			if !c.time.IsZero() {
@@ -74,7 +74,7 @@ func TestBridgeOVS(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -96,7 +96,7 @@ func TestPatchOVS(t *testing.T) {
 			{"ovs-vsctl del-br br-test2", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			gremlin := "g"
 			if !c.time.IsZero() {
@@ -126,7 +126,7 @@ func TestPatchOVS(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -143,7 +143,7 @@ func TestInterfaceOVS(t *testing.T) {
 			{"ovs-vsctl del-br br-test1", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			prefix := "g"
 			if !c.time.IsZero() {
@@ -171,7 +171,7 @@ func TestInterfaceOVS(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -187,7 +187,7 @@ func TestVeth(t *testing.T) {
 			{"ip link del vm1-veth0", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			prefix := "g"
 			if !c.time.IsZero() {
@@ -202,7 +202,7 @@ func TestVeth(t *testing.T) {
 				return fmt.Errorf("Expected 1 node, got %+v", nodes)
 			}
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -221,7 +221,7 @@ func TestBridge(t *testing.T) {
 			{"ip link del intf1", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			prefix := "g"
 			if !c.time.IsZero() {
@@ -238,7 +238,7 @@ func TestBridge(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -256,7 +256,7 @@ func TestMacNameUpdate(t *testing.T) {
 			{"ip link del vm1-veth0", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
 			prefix := "g"
@@ -279,7 +279,7 @@ func TestMacNameUpdate(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -295,7 +295,7 @@ func TestNameSpace(t *testing.T) {
 			{"ip netns del ns1", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
 			prefix := "g"
@@ -313,7 +313,7 @@ func TestNameSpace(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -331,7 +331,7 @@ func TestNameSpaceVeth(t *testing.T) {
 			{"ip netns del ns1", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			prefix := "g"
 			if !c.time.IsZero() {
@@ -348,7 +348,7 @@ func TestNameSpaceVeth(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -368,7 +368,7 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 			{"ip netns del ns1", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			prefix := "g"
 			if !c.time.IsZero() {
@@ -394,7 +394,7 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -410,7 +410,7 @@ func TestDockerSimple(t *testing.T) {
 			{"docker rm -f test-skydive-docker-simple", false},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			gremlin := "g"
 			if !c.time.IsZero() {
@@ -430,7 +430,7 @@ func TestDockerSimple(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -448,7 +448,7 @@ func TestDockerShareNamespace(t *testing.T) {
 			{"docker rm -f test-skydive-docker-share-ns2", false},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
 			gremlin := "g"
@@ -481,7 +481,7 @@ func TestDockerShareNamespace(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -497,7 +497,7 @@ func TestDockerNetHost(t *testing.T) {
 			{"docker rm -f test-skydive-docker-net-host", false},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
 			prefix := "g"
@@ -526,7 +526,7 @@ func TestDockerNetHost(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -542,7 +542,7 @@ func TestDockerLabels(t *testing.T) {
 			{"docker rm -f test-skydive-docker-labels", false},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
 			prefix := "g"
@@ -559,7 +559,7 @@ func TestDockerLabels(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -580,7 +580,7 @@ func TestInterfaceUpdate(t *testing.T) {
 			{"ip netns del iu", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
 			now := time.Now()
@@ -612,7 +612,7 @@ func TestInterfaceUpdate(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -639,7 +639,7 @@ func TestInterfaceMetrics(t *testing.T) {
 			{"ip netns del im", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
 			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
@@ -687,7 +687,7 @@ func TestInterfaceMetrics(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -707,7 +707,7 @@ func TestOVSOwnershipLink(t *testing.T) {
 			{"ovs-vsctl del-br br-owner", true},
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 			prefix := "g"
 			if !c.time.IsZero() {
@@ -740,7 +740,7 @@ func TestOVSOwnershipLink(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -812,7 +812,8 @@ func TestQueryMetadata(t *testing.T) {
 
 			return nil
 		},
-		check: func(c *TestContext) error {
+
+		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
 			prefix := "g"
@@ -836,7 +837,7 @@ func TestQueryMetadata(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -844,40 +845,55 @@ func TestQueryMetadata(t *testing.T) {
 
 //TestUserMetadata tests user metadata functionality
 func TestUserMetadata(t *testing.T) {
+	umd := api.NewUserMetadata("G.V().Has('Name', 'br-umd', 'Type', 'ovsbridge')", "testKey", "testValue")
 	test := &Test{
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-umd", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			return c.client.Create("usermetadata", umd)
+		},
+
+		tearDownFunction: func(c *TestContext) error {
+			c.client.Delete("usermetadata", umd.ID())
+			return nil
 		},
 
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-umd", true},
 		},
 
-		check: func(c *TestContext) error {
-			gh := c.gh
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				prefix := "g"
+				if !c.time.IsZero() {
+					prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+				}
 
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+				_, err := c.gh.GetNode(prefix + ".V().Has('UserMetadata.testKey', 'testValue')")
+				if err != nil {
+					return fmt.Errorf("Failed to find a node with UserMetadata.testKey metadata")
+				}
 
-			umd := api.NewUserMetadata("G.V().Has('Name', 'br-umd', 'Type', 'ovsbridge')", "testKey", "testValue")
-
-			c.client.Create("usermetadata", &umd)
-
-			_, err := gh.GetNode(prefix + ".V().Has('UserMetadata.testKey', 'testValue')")
-			if err != nil {
-				c.client.Delete("usermetadata", umd.ID())
 				return err
-			}
+			},
 
-			c.client.Delete("usermetadata", umd.ID())
+			func(c *CheckContext) error {
+				prefix := "g"
+				if !c.time.IsZero() {
+					prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+				}
 
-			node, err := gh.GetNode(prefix + ".V().Has('UserMetadata.testKey', 'testValue')")
-			if err != nil && err.Error() != "No result found" {
-				return fmt.Errorf("User Metadata not deleted on Node: %v", node)
-			}
-			return nil
+				c.client.Delete("usermetadata", umd.ID())
+
+				node, err := c.gh.GetNode(prefix + ".V().Has('UserMetadata.testKey', 'testValue')")
+				if err != common.ErrNotFound {
+					return fmt.Errorf("Node %+v was found with metadata UserMetadata.testKey", node)
+				}
+
+				return nil
+			},
 		},
 	}
 

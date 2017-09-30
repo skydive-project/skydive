@@ -448,6 +448,32 @@ func TestTraversalBothV(t *testing.T) {
 	}
 }
 
+func TestTraversalSubGraph(t *testing.T) {
+	g := newTransversalGraph(t)
+
+	tr := NewGraphTraversal(g, false)
+
+	tv := tr.E().Has("Direction", "Left").SubGraph().V()
+	if len(tv.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", tv.Values())
+	}
+
+	te := tr.E().Has("Direction", "Left").SubGraph().E()
+	if len(te.Values()) != 2 {
+		t.Fatalf("Should return 2 edges, returned: %v", te.Values())
+	}
+
+	tv = tr.V().Has("Type", "intf").SubGraph().V()
+	if len(tv.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", tv.Values())
+	}
+
+	te = tr.V().Has("Type", "intf").SubGraph().E()
+	if len(te.Values()) != 1 {
+		t.Fatalf("Should return 1 edge, returned: %v", te.Values())
+	}
+}
+
 func parseTraversalQuery(t *testing.T, g *graph.Graph, query string) *GremlinTraversalSequence {
 	ts, err := NewGremlinTraversalParser(g).Parse(strings.NewReader(query), false)
 	if err != nil {
@@ -596,7 +622,21 @@ func TestTraversalParser(t *testing.T) {
 	query = `G.V().Values("Type")`
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 2 {
-		t.Fatalf("Should return 2 node, returned: %v", res.Values())
+		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.E().Has("Direction", "Left").SubGraph().V()`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
+	query = `G.V().Has("Type", "intf").SubGraph().V()`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 2 {
+		t.Fatalf("Should return 2 nodes, returned: %v", res.Values())
 	}
 
 	// next traversal test

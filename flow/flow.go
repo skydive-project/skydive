@@ -37,7 +37,6 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -61,6 +60,7 @@ type flowState struct {
 	lastMetric       *FlowMetric
 	link1stPacket    int64
 	network1stPacket int64
+	skipSocketInfo   bool
 }
 
 // Packet describes one packet
@@ -79,6 +79,26 @@ type Packets struct {
 type RawPackets struct {
 	LinkType   layers.LinkType
 	RawPackets []*RawPacket
+}
+
+// FlowOpts describes options that can be used to process flows
+type FlowOpts struct {
+	TCPMetric bool
+}
+
+// FlowUUIDs describes UUIDs that can be applied to flows
+type FlowUUIDs struct {
+	ParentUUID string
+	L2ID       int64
+	L3ID       int64
+}
+
+// SkipSocketInfo get or set the SocketInfo flow's state
+func (f *Flow) SkipSocketInfo(v ...bool) bool {
+	if len(v) > 0 {
+		f.XXX_state.skipSocketInfo = v[0]
+	}
+	return f.XXX_state.skipSocketInfo
 }
 
 // Value returns int32 value of a FlowProtocol
@@ -349,14 +369,15 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
-func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, parentUUID string, L2ID int64, L3ID int64) {
+// Init initializes the flow based on packet data, flow key and ids
+func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
 	f.Start = now
 	f.Last = now
 
 	f.newLinkLayer(packet, length)
 
 	f.NodeTID = nodeTID
-	f.ParentUUID = parentUUID
+	f.ParentUUID = uuids.ParentUUID
 
 	f.LayersPath = layerPathFromGoPacket(packet)
 	appLayers := strings.Split(f.LayersPath, "/")
@@ -364,11 +385,11 @@ func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64
 
 	// no network layer then no transport layer
 	if err := f.newNetworkLayer(packet); err == nil {
-		f.newTransportLayer(packet)
+		f.newTransportLayer(packet, opts.TCPMetric)
 	}
 
 	// need to have as most variable filled as possible to get correct UUID
-	f.UpdateUUID(key, L2ID, L3ID)
+	f.UpdateUUID(key, uuids.L2ID, uuids.L3ID)
 }
 
 // Update a flow metrics and latency
@@ -612,7 +633,7 @@ func (f *Flow) updateTCPMetrics(packet *gopacket.Packet) error {
 	return nil
 }
 
-func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
+func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error {
 	var transportLayer gopacket.Layer
 	var ok bool
 	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
@@ -641,7 +662,7 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet) error {
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
-		if config.GetConfig().GetBool("agent.capture_syn") {
+		if tcpMetric {
 			f.TCPFlowMetric = &TCPMetric{}
 			return f.updateTCPMetrics(packet)
 		}
@@ -843,6 +864,42 @@ func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
 	}
 }
 
+// GetStringField returns the value of a SocketInfo field
+func (si *SocketInfo) GetStringField(field string) (string, error) {
+	if si == nil {
+		return "", common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "Process":
+		return si.Process, nil
+	case "Name":
+		return si.Name, nil
+	default:
+		return "", common.ErrFieldNotFound
+	}
+}
+
+// GetFieldInt64 returns the value of a SocketInfo field
+func (si *SocketInfo) GetFieldInt64(field string) (int64, error) {
+	if si == nil {
+		return 0, common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "Pid":
+		return si.Pid, nil
+	case "Ppid":
+		return si.Ppid, nil
+	case "Tid":
+		return si.Tid, nil
+	case "Uid":
+		return si.Uid, nil
+	default:
+		return 0, common.ErrFieldNotFound
+	}
+}
+
 // GetFieldString returns the value of a Flow field
 func (f *Flow) GetFieldString(field string) (string, error) {
 	fields := strings.Split(field, ".")
@@ -893,6 +950,10 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.Network.GetStringField(fields[1])
 	case "ETHERNET":
 		return f.Link.GetStringField(fields[1])
+	case "SocketA":
+		return f.SocketA.GetStringField(fields[1])
+	case "SocketB":
+		return f.SocketB.GetStringField(fields[1])
 	}
 	return "", common.ErrFieldNotFound
 }
@@ -930,6 +991,10 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Transport.GetFieldInt64(fields[1])
 	case "RawPacketsCaptured":
 		return f.RawPacketsCaptured, nil
+	case "SocketA":
+		return f.SocketA.GetFieldInt64(fields[1])
+	case "SocketB":
+		return f.SocketB.GetFieldInt64(fields[1])
 	default:
 		return 0, common.ErrFieldNotFound
 	}

@@ -114,14 +114,11 @@ etcd:
 `
 
 type TestContext struct {
-	gh          *gclient.GremlinQueryHelper
-	client      *shttp.CrudClient
-	captures    []*api.Capture
-	time        time.Time
-	setupTime   time.Time
-	startTime   time.Time
-	successTime time.Time
-	data        map[string]interface{}
+	gh        *gclient.GremlinQueryHelper
+	client    *shttp.CrudClient
+	captures  []*api.Capture
+	setupTime time.Time
+	data      map[string]interface{}
 }
 
 type TestCapture struct {
@@ -129,6 +126,15 @@ type TestCapture struct {
 	kind       string
 	bpf        string
 	rawPackets int
+}
+
+type CheckFunction func(c *CheckContext) error
+
+type CheckContext struct {
+	*TestContext
+	startTime   time.Time
+	successTime time.Time
+	time        time.Time
 }
 
 type Test struct {
@@ -140,15 +146,16 @@ type Test struct {
 	captures         []TestCapture
 	retries          int
 	mode             int
-	check            func(c *TestContext) error
+	checks           []CheckFunction
+	checkContexts    []*CheckContext
 }
 
-func (c *TestContext) getWholeGraph(t *testing.T) string {
+func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 	var g interface{}
 
 	gremlin := "G"
-	if !c.time.IsZero() {
-		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+	if !at.IsZero() {
+		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
 	}
 
 	switch helper.GraphOutputFormat {
@@ -196,10 +203,10 @@ func (c *TestContext) getWholeGraph(t *testing.T) string {
 	}
 }
 
-func (c *TestContext) getAllFlows(t *testing.T) string {
+func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
 	gremlin := "G"
-	if !c.time.IsZero() {
-		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+	if !at.IsZero() {
+		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
 	}
 	gremlin += ".V().Flows()"
 
@@ -252,7 +259,7 @@ func RunTest(t *testing.T, test *Test) {
 			}
 
 			if len(nodes) == 0 {
-				return fmt.Errorf("No node matching capture %s, graph: %s", capture.GremlinQuery, context.getWholeGraph(t))
+				return fmt.Errorf("No node matching capture %s, graph: %s", capture.GremlinQuery, context.getWholeGraph(t, time.Now()))
 			}
 
 			for _, node := range nodes {
@@ -263,11 +270,11 @@ func RunTest(t *testing.T, test *Test) {
 
 				captureID, err := node.GetFieldString("Capture.ID")
 				if err != nil {
-					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t))
+					return fmt.Errorf("Node %+v matched the capture but capture is not enabled, graph: %s", node, context.getWholeGraph(t, time.Now()))
 				}
 
 				if captureID != capture.ID() {
-					return fmt.Errorf("Node %s matches multiple captures, graph: %s", node.ID, context.getWholeGraph(t))
+					return fmt.Errorf("Node %s matches multiple captures, graph: %s", node.ID, context.getWholeGraph(t, time.Now()))
 				}
 			}
 		}
@@ -276,7 +283,7 @@ func RunTest(t *testing.T, test *Test) {
 	}, 15, time.Second)
 
 	if err != nil {
-		g := context.getWholeGraph(t)
+		g := context.getWholeGraph(t, time.Now())
 		helper.ExecCmds(t, test.tearDownCmds...)
 		t.Fatalf("Failed to setup captures: %s, graph: %s", err.Error(), g)
 	}
@@ -286,14 +293,16 @@ func RunTest(t *testing.T, test *Test) {
 		retries = 30
 	}
 
+	settleTime := time.Now()
+
 	if test.settleFunction != nil {
 		err = common.Retry(func() error {
 			return test.settleFunction(context)
 		}, retries, time.Second)
 
 		if err != nil {
-			g := context.getWholeGraph(t)
-			f := context.getAllFlows(t)
+			g := context.getWholeGraph(t, settleTime)
+			f := context.getAllFlows(t, settleTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
 			t.Errorf("Test failed to settle: %s, graph: %s, flows: %s", err.Error(), g, f)
 			return
@@ -304,32 +313,40 @@ func RunTest(t *testing.T, test *Test) {
 
 	if test.setupFunction != nil {
 		if err = test.setupFunction(context); err != nil {
-			g := context.getWholeGraph(t)
-			f := context.getAllFlows(t)
+			g := context.getWholeGraph(t, context.setupTime)
+			f := context.getAllFlows(t, context.setupTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
 			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err.Error(), g, f)
 		}
 	}
 
-	context.startTime = time.Now()
+	test.checkContexts = make([]*CheckContext, len(test.checks))
 
-	err = common.Retry(func() error {
-		if err = test.check(context); err != nil {
-			return err
+	for i, check := range test.checks {
+		checkContext := &CheckContext{
+			TestContext: context,
+			startTime:   time.Now(),
 		}
-		context.successTime = time.Now()
-		if context.time.IsZero() {
-			context.time = context.successTime
-		}
-		return nil
-	}, retries, time.Second)
+		test.checkContexts[i] = checkContext
 
-	if err != nil {
-		g := context.getWholeGraph(t)
-		f := context.getAllFlows(t)
-		helper.ExecCmds(t, test.tearDownCmds...)
-		t.Errorf("Test failed: %s, graph: %s, flows: %s", err.Error(), g, f)
-		return
+		err = common.Retry(func() error {
+			if err = check(checkContext); err != nil {
+				return err
+			}
+			checkContext.successTime = time.Now()
+			if checkContext.time.IsZero() {
+				checkContext.time = checkContext.successTime
+			}
+			return nil
+		}, retries, time.Second)
+
+		if err != nil {
+			g := checkContext.getWholeGraph(t, checkContext.startTime)
+			f := checkContext.getAllFlows(t, checkContext.startTime)
+			helper.ExecCmds(t, test.tearDownCmds...)
+			t.Errorf("Test failed: %s, graph: %s, flows: %s", err.Error(), g, f)
+			return
+		}
 	}
 
 	if test.tearDownFunction != nil {
@@ -342,13 +359,16 @@ func RunTest(t *testing.T, test *Test) {
 	helper.ExecCmds(t, test.tearDownCmds...)
 
 	if test.mode == Replay {
-		t.Logf("Replaying test with time %s (Unix: %d), startTime %s (Unix: %d)", context.time, context.time.Unix(), context.startTime, context.startTime.Unix())
-		err = common.Retry(func() error {
-			return test.check(context)
-		}, retries, time.Second)
+		for i, check := range test.checks {
+			checkContext := test.checkContexts[i]
+			t.Logf("Replaying test with time %s (Unix: %d), startTime %s (Unix: %d)", checkContext.time, checkContext.time.Unix(), checkContext.startTime, checkContext.startTime.Unix())
+			err = common.Retry(func() error {
+				return check(checkContext)
+			}, retries, time.Second)
 
-		if err != nil {
-			t.Errorf("Failed to replay test: %s, graph: %s, flows: %s", err.Error(), context.getWholeGraph(t), context.getAllFlows(t))
+			if err != nil {
+				t.Errorf("Failed to replay test: %s, graph: %s, flows: %s", err.Error(), checkContext.getWholeGraph(t, checkContext.time), checkContext.getAllFlows(t, checkContext.time))
+			}
 		}
 	}
 }

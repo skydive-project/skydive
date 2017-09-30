@@ -151,7 +151,7 @@ func TestAlertWebhook(t *testing.T) {
 			return c.client.Delete("alert", al.ID())
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			if testPassed.Load() == false {
 				if err != nil {
 					return err
@@ -159,7 +159,7 @@ func TestAlertWebhook(t *testing.T) {
 				return errors.New("Webhook was not triggered")
 			}
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -224,7 +224,7 @@ func TestAlertScript(t *testing.T) {
 			return c.client.Delete("alert", al.ID())
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			if _, err := os.Stat(cookie.Name()); err != nil {
 				return errors.New("No alert was triggered")
 			}
@@ -240,7 +240,7 @@ func TestAlertScript(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -286,7 +286,7 @@ func TestAlertWithTimer(t *testing.T) {
 			return c.client.Delete("alert", al.ID())
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			for {
 				_, m, err := ws.ReadMessage()
 				if err != nil {
@@ -315,7 +315,7 @@ func TestAlertWithTimer(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
@@ -361,7 +361,7 @@ func TestMultipleTriggering(t *testing.T) {
 			return c.client.Delete("alert", al.ID())
 		},
 
-		check: func(c *TestContext) error {
+		checks: []CheckFunction{func(c *CheckContext) error {
 			alertNumber := 0
 			cmd := []helper.Cmd{
 				{"ip netns exec alert-lo-down ip l set lo up", true},
@@ -399,7 +399,7 @@ func TestMultipleTriggering(t *testing.T) {
 			}
 
 			return nil
-		},
+		}},
 	}
 
 	RunTest(t, test)
