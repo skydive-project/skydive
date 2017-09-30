@@ -33,14 +33,14 @@ func newScanner(query string) *GremlinTraversalScanner {
 }
 
 func scanForBracketsInvalid(query string, t *testing.T) {
-	_, err := newScanner(query).ScanBraces()
+	_, err := newScanner(query).scanBraces()
 	if err == nil {
 		t.Fatalf("Expected error, got some result for input '%s'", query)
 	}
 }
 
 func scanForBrackets(query string, expected []string, t *testing.T) {
-	actual, err := newScanner(query).ScanBraces()
+	actual, err := newScanner(query).scanBraces()
 	if err != nil {
 		t.Fatalf("error while scanning brackets in '%s': %s", query, err)
 	}
@@ -81,7 +81,7 @@ func TestScanBracketsSequence(t *testing.T) {
 	scanner := newScanner("(x)(y)xxx")
 
 	for _, expected := range []string{"x", "y"} {
-		actual, err := scanner.ScanBraces()
+		actual, err := scanner.scanBraces()
 		if err != nil {
 			t.Fatalf("error while scanning brackets: %s", err)
 		}

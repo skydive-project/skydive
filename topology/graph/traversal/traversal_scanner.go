@@ -114,7 +114,7 @@ func NewGremlinTraversalScanner(r io.Reader, e []GremlinTraversalExtension) *Gre
 }
 
 // extract elements from braces optionally separated by comma, e.g. '(abc, cde(xyz))' => [abc, cde(xyz)]
-func (s *GremlinTraversalScanner) ScanBraces() ([]string, error) {
+func (s *GremlinTraversalScanner) scanBraces() ([]string, error) {
 
 	buf := &bytes.Buffer{}
 	buffers := []*bytes.Buffer{}

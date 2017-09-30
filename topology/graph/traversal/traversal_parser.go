@@ -169,6 +169,7 @@ type (
 	GremlinTraversalStepMetrics struct {
 		GremlinTraversalContext
 	}
+	// union (or) step
 	GremlinTraversalStepOr struct {
 		GremlinTraversalContext
 		children []*GremlinTraversalSequence
@@ -810,6 +811,7 @@ func execSequences(init GraphTraversalStep, sequences []*GremlinTraversalSequenc
 	return acc, nil
 }
 
+// Exec Union step
 func (s *GremlinTraversalStepOr) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
 	graphElements, err := execSequences(last, s.children, func(a []interface{}, b []interface{}) []interface{} { return append(a, b...) })
 	if err != nil {
@@ -832,9 +834,12 @@ loop:
 	return &WrapperGraphTraversalStep{values: distinct}, nil
 }
 
+// Context Union step
 func (s *GremlinTraversalStepOr) Context() *GremlinTraversalContext {
 	return &s.GremlinTraversalContext
 }
+
+// Reduce Union step
 func (s *GremlinTraversalStepOr) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
 	return next
 }
@@ -1061,7 +1066,7 @@ func (p *GremlinTraversalParser) parseStep(lockGraph bool) (GremlinTraversalStep
 func (p *GremlinTraversalParser) parserNestedSequences(lockGraph bool) ([]*GremlinTraversalSequence, error) {
 
 	// scan
-	childrenStr, err := p.scanner.ScanBraces()
+	childrenStr, err := p.scanner.scanBraces()
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan child sequeqnces: %s", err)
 	}
