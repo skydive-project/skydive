@@ -1093,7 +1093,7 @@ func (p *GremlinTraversalParser) parseNestingStep(tok Token, lit string, lockGra
 		}
 		return &GremlinTraversalStepOr{GremlinTraversalContext{Params: nil}, children}, nil
 	default:
-		return nil, fmt.Errorf("unknown token: %s", tok)
+		return nil, fmt.Errorf("unknown token: %c", tok)
 	}
 }
 
