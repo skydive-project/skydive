@@ -308,11 +308,6 @@ func (s *WSClientPool) ConnectAll() {
 	s.RUnlock()
 }
 
-func (s *WSClientPool) Destroy() {
-	s.DisconnectAll()
-	s.Stop()
-}
-
 func newWSPool() *WSPool {
 	bulkMaxMsgs := config.GetConfig().GetInt("ws_bulk_maxmsgs")
 	bulkMaxDelay := config.GetConfig().GetInt("ws_bulk_maxdelay")
