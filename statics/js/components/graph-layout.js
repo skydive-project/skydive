@@ -114,10 +114,6 @@ TopologyGraphLayout.prototype = {
       this.svg.transition().duration(500).call(this.zoom.transform, t);
   },
 
-  zoomReset: function() {
-    this.svg.transition().duration(500).call(this.zoom.transform, d3.zoomIdentity);
-  },
-
   initD3Data: function() {
     this.nodes = {};
     this._nodes = {};
@@ -126,6 +122,7 @@ TopologyGraphLayout.prototype = {
     this._links = {};
 
     this.groups = [];
+    this.collapseLevel = 0;
 
     this.linkLabels = {};
 
@@ -913,6 +910,37 @@ TopologyGraphLayout.prototype = {
     }
 
     this.update();
+  },
+
+  toggleCollapseByLevel: function(collapse) {
+    if (collapse) {
+      if (this.collapseLevel == 0) {
+        return;
+      } else {
+        this.collapseLevel--;
+      }
+      this.collapseByLevel(this.collapseLevel, collapse, this.groups);
+    } else {
+      this.collapseByLevel(this.collapseLevel, collapse, this.groups);
+      this.collapseLevel++;
+    }
+  },
+
+  collapseByLevel: function(level, collapse, groups) {
+    if (level == 0) {
+      for (var i = groups.length - 1; i >= 0; i--) {
+        if (collapse) {
+          this.collapseGroup(groups[i]);
+          } else {
+          this.uncollapseGroup(groups[i]);
+        }
+      }
+      this.update();
+    } else {
+      for (i = groups.length - 1; i >= 0; i--) {
+        this.collapseByLevel((level-1), collapse, Object.values(groups[i].children));
+      }
+    }
   },
 
   loadBandwidthConfig: function() {

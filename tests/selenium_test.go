@@ -84,7 +84,7 @@ func TestPacketInjectionCapture(t *testing.T) {
 			return err
 		}
 		if len(rowData) != 7 {
-			return fmt.Errorf("By default 7 rows should be return")
+			return fmt.Errorf("By default 7 rows should be return, but got: %d", len(rowData))
 		}
 		txt, err := rowData[1].Text()
 		if err != nil {

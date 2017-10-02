@@ -25,10 +25,6 @@ var TopologyComponent = {
                   title="Zoom Fit" @click="zoomFit">\
             <span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>\
           </button>\
-          <button id="zoom-reset" type="button" class="btn btn-primary" \
-                  title="Reset" @click="zoomReset">Reset</button>\
-          <button id="expand-collapse" type="button" class="btn btn-primary" \
-                  @click="toggleCollapse">{{collapsed ? "Expand" : "Collapse"}}</button>\
           <button v-if="currentNode != null" id="expand-all" type="button" class="btn btn-primary" \
                   title="Expand/Collapse Current Node Tree" @click="toggleExpandAll(currentNode)">\
             <span>\
@@ -37,6 +33,10 @@ var TopologyComponent = {
               </i>\
             </span>\
           </button>\
+          <button id="expand" type="button" class="btn btn-primary" \
+                  title="Expand" @click="toggleCollapseByLevel(false)">++</button>\
+          <button id="collapse" type="button" class="btn btn-primary" \
+                  title="Collapse" @click="toggleCollapseByLevel(true)">--</button>\
         </div>\
       </div>\
       <div id="right-panel" class="col-sm-5 fill info">\
@@ -92,7 +92,6 @@ var TopologyComponent = {
     return {
       time: 0,
       timeRange: [-120, 0],
-      collapsed: false,
     };
   },
 
@@ -255,17 +254,8 @@ var TopologyComponent = {
       this.layout.zoomOut();
     },
 
-    zoomReset: function() {
-      this.layout.zoomReset();
-    },
-
     zoomFit: function() {
       this.layout.zoomFit();
-    },
-
-    toggleCollapse: function() {
-      this.collapsed = !this.collapsed;
-      this.layout.collapse(this.collapsed);
     },
 
     collapse: function() {
@@ -273,13 +263,12 @@ var TopologyComponent = {
       this.layout.collapse(this.collapsed);
     },
 
-    expand: function() {
-      this.collapsed = false;
-      this.layout.collapse(this.collapsed);
-    },
-
     toggleExpandAll: function(node) {
       this.layout.toggleExpandAll(node);
+    },
+
+    toggleCollapseByLevel: function(collapse) {
+      this.layout.toggleCollapseByLevel(collapse);
     },
 
     extractMetadata: function(metadata, exclude) {
