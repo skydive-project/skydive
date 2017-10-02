@@ -228,6 +228,8 @@ EOF
         cat >> $SKYDIVE_CONFIG_FILE <<- EOF
 ovs:
   ovsdb: $SKYDIVE_OVSDB_REMOTE_PORT
+  oflow:
+    enable: true
 
 EOF
     fi
