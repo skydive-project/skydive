@@ -25,18 +25,31 @@ var TopologyComponent = {
                   title="Zoom Fit" @click="zoomFit">\
             <span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>\
           </button>\
-          <button v-if="currentNode != null" id="expand-all" type="button" class="btn btn-primary" \
-                  title="Expand/Collapse Current Node Tree" @click="toggleExpandAll(currentNode)">\
-            <span>\
-              <i class="fa" \
-                      :class="{\'fa-expand\': currentNode.group.collapsed, \'fa-compress\': !currentNode.group.collapsed}">\
-              </i>\
+          <button id="expand" type="button" class="btn btn-primary" \
+                  title="Expand" @click="toggleCollapseByLevel(false)">\
+            <span class="expand-icon-stack">\
+              <i class="glyphicon glyphicon-resize-full icon-main"></i>\
+            </span>\
+            <span class="expand-icon-stack">\
+              <i class="glyphicon glyphicon-plus-sign icon-sub"></i>\
             </span>\
           </button>\
-          <button id="expand" type="button" class="btn btn-primary" \
-                  title="Expand" @click="toggleCollapseByLevel(false)">++</button>\
           <button id="collapse" type="button" class="btn btn-primary" \
-                  title="Collapse" @click="toggleCollapseByLevel(true)">--</button>\
+                  title="Collapse" @click="toggleCollapseByLevel(true)">\
+            <span class="expand-icon-stack">\
+              <i class="glyphicon glyphicon-resize-small icon-main"></i>\
+            </span>\
+            <span class="expand-icon-stack">\
+              <i class="glyphicon glyphicon-minus-sign icon-sub"></i>\
+            </span>\
+          </button>\
+          <button v-if="currentNode != null" id="expand-all" type="button" class="btn btn-primary" \
+                  title="Expand/Collapse Current Node Tree" @click="toggleExpandAll(currentNode)">\
+            <span class="expand-icon-stack">\
+              <span class="glyphicon icon-main" \
+                 :class="{\'glyphicon-resize-full\': currentNode.group.collapsed, \'glyphicon-resize-small\': !currentNode.group.collapsed}" aria-hidden="true"></span>\
+            </span>\
+          </button>\
         </div>\
       </div>\
       <div id="right-panel" class="col-sm-5 fill info">\
@@ -58,11 +71,11 @@ var TopologyComponent = {
               Interface state at {{timeHuman}}\
             </span>\
             <h1>metadatas<span class="pull-right">(id: {{currentNode.id}})\
-	      <i class="node-action fa"\
-	         title="Expand/Collapse Node"\
-		 :class="{\'fa-expand\': currentNode.group.collapsed, \'fa-compress\': !currentNode.group.collapsed}"\
-		 @click="toggleExpandAll(currentNode)"></i></span>\
-	    </h1>\
+              <i class="node-action fa"\
+	              title="Expand/Collapse Node"\
+		            :class="{\'fa-expand\': currentNode.group.collapsed, \'fa-compress\': !currentNode.group.collapsed}"\
+		            @click="toggleExpandAll(currentNode)"></i></span>\
+	          </h1>\
             <div id="metadata-panel" class="sub-left-panel">\
               <object-detail :object="currentNodeMetadata"></object-detail>\
             </div>\
