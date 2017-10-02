@@ -148,7 +148,6 @@ func (a *Agent) Start() {
 // Stop agent services
 func (a *Agent) Stop() {
 	if a.FlowProbeBundle != nil {
-		a.FlowProbeBundle.UnregisterAllProbes()
 		a.FlowProbeBundle.Stop()
 	}
 	a.TopologyProbeBundle.Stop()

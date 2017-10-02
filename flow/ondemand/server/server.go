@@ -42,6 +42,7 @@ type activeProbe struct {
 	fprobe    *probes.FlowProbe
 	flowTable *flow.Table
 	capture   *api.Capture
+	node      *graph.Node
 }
 
 // OnDemandProbeServer describes an ondemand probe server based on websocket
@@ -142,6 +143,7 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		fprobe:    fprobe,
 		flowTable: ft,
 		capture:   capture,
+		node:      n,
 	}
 
 	logging.GetLogger().Debugf("New active probe on: %v(%v)", n, capture)
@@ -247,6 +249,13 @@ func (o *OnDemandProbeServer) Start() error {
 // Stop the probe
 func (o *OnDemandProbeServer) Stop() {
 	o.Graph.RemoveEventListener(o)
+
+	o.Graph.Lock()
+	defer o.Graph.Unlock()
+
+	for _, p := range o.activeProbes {
+		o.unregisterProbe(p.node)
+	}
 }
 
 // NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
