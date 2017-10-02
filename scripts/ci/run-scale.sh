@@ -37,7 +37,7 @@ fi
 curl -X DELETE http://localhost:9200/skydive
 
 export FLOW_PROTOCOL=udp
-make test.functionals TAGS="scale test" VERBOSE=true TIMEOUT=10m FLOW_PROTOCOL=udp TEST_PATTERN=Scale
+make test.functionals TAGS="scale test" VERBOSE=true TIMEOUT=15m FLOW_PROTOCOL=udp TEST_PATTERN=Scale
 status=$?
 
 cat /tmp/skydive-scale/{analyzer,agent}-?.log | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | perl -ne '$d=$1 if /^(\d+-\d+-\d+),/; $k{$d}.=$_; END{print $k{$_} for sort keys(%k);}'

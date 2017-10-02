@@ -36,15 +36,15 @@ import (
 
 // TableClient describes a mechanism to Query a flow table via flowSet in JSON
 type TableClient struct {
-	WSMessageServer *shttp.WSMessageServer
+	WSJSONServer *shttp.WSJSONServer
 }
 
 func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery filters.SearchQuery) {
 	obj, _ := proto.Marshal(&flowSearchQuery)
 	tq := TableQuery{Type: "SearchQuery", Obj: obj}
-	msg := shttp.NewWSMessage(Namespace, "TableQuery", tq)
+	msg := shttp.NewWSJSONMessage(Namespace, "TableQuery", tq)
 
-	resp, err := f.WSMessageServer.Request(host, msg, shttp.DefaultRequestTimeout)
+	resp, err := f.WSJSONServer.Request(host, msg, shttp.DefaultRequestTimeout)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", host, err.Error())
 		flowset <- NewFlowSet()
@@ -78,11 +78,11 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 
 // LookupFlows query flow table based on a filter search query
 func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
-	clients := f.WSMessageServer.GetClientsByType(common.AgentService)
-	ch := make(chan *FlowSet, len(clients))
+	speakers := f.WSJSONServer.GetSpeakersByType(common.AgentService)
+	ch := make(chan *FlowSet, len(speakers))
 
-	for _, client := range clients {
-		go f.lookupFlows(ch, client.GetHost(), flowSearchQuery)
+	for _, c := range speakers {
+		go f.lookupFlows(ch, c.GetHost(), flowSearchQuery)
 	}
 
 	flowset := NewFlowSet()
@@ -96,7 +96,7 @@ func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet
 		Dedup:     flowSearchQuery.Dedup,
 		DedupBy:   flowSearchQuery.DedupBy,
 	}
-	for i := 0; i != len(clients); i++ {
+	for i := 0; i != len(speakers); i++ {
 		fs := <-ch
 		flowset.Merge(fs, context)
 	}
@@ -135,6 +135,6 @@ func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSear
 }
 
 // NewTableClient creates a new table client based on websocket
-func NewTableClient(w *shttp.WSMessageServer) *TableClient {
-	return &TableClient{WSMessageServer: w}
+func NewTableClient(w *shttp.WSJSONServer) *TableClient {
+	return &TableClient{WSJSONServer: w}
 }

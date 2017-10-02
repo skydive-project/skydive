@@ -55,7 +55,7 @@ type FlowServerUDPConn struct {
 
 // FlowServerConn describes a WebSocket flow server connection
 type FlowServerWebSocketConn struct {
-	shttp.DefaultWSClientEventHandler
+	shttp.DefaultWSSpeakerEventHandler
 	server *shttp.Server
 	ch     chan *flow.Flow
 }
@@ -77,7 +77,7 @@ type FlowServer struct {
 }
 
 // OnMessage event
-func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSClient, m shttp.Message) {
+func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMessage) {
 	f, err := flow.FromData(m.Bytes())
 	if err != nil {
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())

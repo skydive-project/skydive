@@ -747,11 +747,11 @@ func TestOVSOwnershipLink(t *testing.T) {
 }
 
 type TopologyInjecter struct {
-	shttp.DefaultWSClientEventHandler
+	shttp.DefaultWSSpeakerEventHandler
 	connected int32
 }
 
-func (t *TopologyInjecter) OnConnected(c shttp.WSClient) {
+func (t *TopologyInjecter) OnConnected(c shttp.WSSpeaker) {
 	atomic.StoreInt32(&t.connected, 1)
 }
 
@@ -765,15 +765,14 @@ func TestQueryMetadata(t *testing.T) {
 			}
 
 			hostname, _ := os.Hostname()
-			wspool := shttp.NewWSMessageClientPool(shttp.NewWSClientPool())
+			wspool := shttp.NewWSJSONClientPool()
 			for _, sa := range addresses {
 				authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
-				client := shttp.NewWSAsyncClient(hostname+"-cli", common.ServiceType(""), sa.Addr, sa.Port, "/ws", authClient)
-				wsClient := shttp.NewWSMessageAsyncClient(client)
-				wspool.AddClient(wsClient)
+				client := shttp.NewWSClient(hostname+"-cli", common.ServiceType(""), sa.Addr, sa.Port, "/ws", authClient)
+				wspool.AddClient(client)
 			}
 
-			masterElection := shttp.NewWSMasterElection(wspool.WSClientPool)
+			masterElection := shttp.NewWSMasterElection(wspool)
 
 			eventHandler := &TopologyInjecter{}
 			wspool.AddEventHandler(eventHandler)
@@ -807,7 +806,7 @@ func TestQueryMetadata(t *testing.T) {
 				},
 			})
 
-			msg := shttp.NewWSMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+			msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
 			return nil

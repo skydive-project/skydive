@@ -23,6 +23,7 @@
 package agent
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -50,11 +51,11 @@ import (
 
 // Agent object started on each hosts/namespaces
 type Agent struct {
-	shttp.DefaultWSClientEventHandler
+	shttp.DefaultWSSpeakerEventHandler
 	Graph               *graph.Graph
-	WSAsyncClientPool   *shttp.WSMessageClientPool
-	WSServer            *shttp.WSMessageServer
-	GraphServer         *graph.Server
+	WSServer            *shttp.WSJSONServer
+	AnalyzerClientPool  *shttp.WSJSONClientPool
+	TopologyServer      *TopologyServer
 	Root                *graph.Node
 	TopologyProbeBundle *probe.ProbeBundle
 	FlowProbeBundle     *fprobes.FlowProbeBundle
@@ -66,25 +67,24 @@ type Agent struct {
 	TIDMapper           *topology.TIDMapper
 }
 
-// NewAnalyzerWSClientPool creates a new http WebSocket client Pool
+// NewAnalyzerWSJSONClientPool creates a new http WebSocket client Pool
 // with authentification
-func NewAnalyzerWSClientPool() *shttp.WSMessageClientPool {
-	wspool := shttp.NewWSMessageClientPool(shttp.NewWSClientPool())
+func NewAnalyzerWSJSONClientPool() (*shttp.WSJSONClientPool, error) {
+	pool := shttp.NewWSJSONClientPool()
 	authOptions := analyzer.NewAnalyzerAuthenticationOpts()
+
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
-		logging.GetLogger().Warningf("Unable to get the analyzers list: %s", err.Error())
-		return nil
+		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
 	}
 
 	for _, sa := range addresses {
 		authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
-		client := shttp.NewWSAsyncClientFromConfig(common.AgentService, sa.Addr, sa.Port, "/ws", authClient)
-		wsClient := shttp.NewWSMessageAsyncClient(client)
-		wspool.AddClient(wsClient)
+		c := shttp.NewWSClientFromConfig(common.AgentService, sa.Addr, sa.Port, "/ws", authClient)
+		pool.AddClient(c)
 	}
 
-	return wspool
+	return pool, nil
 }
 
 // Start the agent services
@@ -94,12 +94,14 @@ func (a *Agent) Start() {
 	go a.HTTPServer.ListenAndServe()
 	a.WSServer.Start()
 
-	a.WSAsyncClientPool = NewAnalyzerWSClientPool()
-	if a.WSAsyncClientPool == nil {
+	pool, err := NewAnalyzerWSJSONClientPool()
+	if err != nil {
+		logging.GetLogger().Error(err)
 		os.Exit(1)
 	}
+	a.AnalyzerClientPool = pool
 
-	NewTopologyForwarderFromConfig(a.Graph, a.WSAsyncClientPool.WSClientPool)
+	NewTopologyForwarderFromConfig(a.Graph, pool)
 
 	a.TopologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.Graph, a.Root)
 	if err != nil {
@@ -116,8 +118,6 @@ func (a *Agent) Start() {
 
 	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(a.Graph, cache))
 
-	pipeline.AddEnhancer(enhancers.NewSocketInfoEnhancer(expireTime*2, cleanup))
-
 	// check that the neutron probe if loaded if so add the neutron flow enhancer
 	if a.TopologyProbeBundle.GetProbe("neutron") != nil {
 		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(a.Graph, cache))
@@ -126,23 +126,23 @@ func (a *Agent) Start() {
 	a.FlowTableAllocator = flow.NewTableAllocator(updateTime, expireTime, pipeline)
 
 	// exposes a flow server through the client connections
-	flow.NewServer(a.FlowTableAllocator, a.WSAsyncClientPool)
+	flow.NewServer(a.FlowTableAllocator, pool)
 
-	packet_injector.NewServer(a.WSAsyncClientPool, a.Graph)
+	packet_injector.NewServer(a.Graph, pool)
 
-	a.FlowClientPool = analyzer.NewFlowClientPool(a.WSAsyncClientPool)
+	a.FlowClientPool = analyzer.NewFlowClientPool(pool)
 
 	a.FlowProbeBundle = fprobes.NewFlowProbeBundle(a.TopologyProbeBundle, a.Graph, a.FlowTableAllocator, a.FlowClientPool)
 	a.FlowProbeBundle.Start()
 
-	if a.OnDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, a.WSAsyncClientPool); err != nil {
+	if a.OnDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.FlowProbeBundle, a.Graph, pool); err != nil {
 		logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
 		os.Exit(1)
 	}
 	a.OnDemandProbeServer.Start()
 
 	// everything is ready, then initiate the websocket connection
-	go a.WSAsyncClientPool.ConnectAll()
+	go pool.ConnectAll()
 }
 
 // Stop agent services
@@ -150,10 +150,11 @@ func (a *Agent) Stop() {
 	if a.FlowProbeBundle != nil {
 		a.FlowProbeBundle.Stop()
 	}
+	a.AnalyzerClientPool.Destroy()
 	a.TopologyProbeBundle.Stop()
 	a.HTTPServer.Stop()
 	a.WSServer.Stop()
-	a.WSAsyncClientPool.DisconnectAll()
+
 	if a.FlowClientPool != nil {
 		a.FlowClientPool.Close()
 	}
@@ -192,7 +193,7 @@ func NewAgent() *Agent {
 		panic(err)
 	}
 
-	wsServer := shttp.NewWSMessageServer(shttp.NewWSServerFromConfig(hserver, "/ws"))
+	wsServer := shttp.NewWSJSONServer(shttp.NewWSServerFromConfig(hserver, "/ws"))
 
 	tr := traversal.NewGremlinTraversalParser(g)
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
@@ -200,15 +201,15 @@ func NewAgent() *Agent {
 	root := CreateRootNode(g)
 	api.RegisterTopologyAPI(hserver, tr)
 
-	gserver := graph.NewServer(g, wsServer)
+	tserver := NewTopologyServer(g, wsServer)
 
 	return &Agent{
-		Graph:       g,
-		WSServer:    wsServer,
-		GraphServer: gserver,
-		Root:        root,
-		HTTPServer:  hserver,
-		TIDMapper:   tm,
+		Graph:          g,
+		WSServer:       wsServer,
+		TopologyServer: tserver,
+		Root:           root,
+		HTTPServer:     hserver,
+		TIDMapper:      tm,
 	}
 }
 

@@ -223,7 +223,7 @@ func NewGremlinAlert(alert *api.Alert, p *traversal.GremlinTraversalParser) (*Gr
 type AlertServer struct {
 	sync.RWMutex
 	Graph         *graph.Graph
-	WSServer      *shttp.WSMessageServer
+	Pool          shttp.WSJSONSpeakerPool
 	AlertHandler  api.Handler
 	watcher       api.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
@@ -258,8 +258,8 @@ func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
 		}
 	}()
 
-	wsMsg := shttp.NewWSMessage(Namespace, "Alert", msg)
-	a.WSServer.BroadcastMessage(wsMsg)
+	wsMsg := shttp.NewWSJSONMessage(Namespace, "Alert", msg)
+	a.Pool.BroadcastMessage(wsMsg)
 
 	logging.GetLogger().Debugf("Alert %s of type %s was triggerred", al.UUID, al.Action)
 	return nil
@@ -424,11 +424,11 @@ func (a *AlertServer) Stop() {
 	a.elector.Stop()
 }
 
-func NewAlertServer(ah api.Handler, wsServer *shttp.WSMessageServer, parser *traversal.GremlinTraversalParser, etcdClient *etcd.EtcdClient) *AlertServer {
+func NewAlertServer(ah api.Handler, pool shttp.WSJSONSpeakerPool, parser *traversal.GremlinTraversalParser, etcdClient *etcd.EtcdClient) *AlertServer {
 	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
 	as := &AlertServer{
-		WSServer:      wsServer,
+		Pool:          pool,
 		AlertHandler:  ah,
 		Graph:         parser.Graph,
 		graphAlerts:   make(map[string]*GremlinAlert),

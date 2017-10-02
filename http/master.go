@@ -22,55 +22,30 @@
 
 package http
 
-import (
-	"math/rand"
-	"sync"
-)
+import "sync"
 
-// Interface to be implemented by master election listeners
+// WSMasterEventHandler is the interface to be implemented by master election listeners.
 type WSMasterEventHandler interface {
-	OnNewMaster(c WSClient)
+	OnNewMaster(c WSSpeaker)
 }
 
-// Defines a master election of a pool
+// WSMasterElection provides a mechanism based on etcd to elect a master from a
+// WSSpeakerPool.
 type WSMasterElection struct {
 	sync.RWMutex
-	DefaultWSClientEventHandler
-	pool          *WSClientPool
-	master        WSClient
+	DefaultWSSpeakerEventHandler
+	pool          WSSpeakerPool
+	master        WSSpeaker
 	eventHandlers []WSMasterEventHandler
 }
 
-func (a *WSMasterElection) selectMaster() WSClient {
-	a.master = nil
-
-	a.pool.RLock()
-	defer a.pool.RUnlock()
-
-	length := len(a.pool.clients)
-	if length == 0 {
-		return nil
-	}
-
-	index := rand.Intn(length)
-	for i := 0; i != length; i++ {
-		if client := a.pool.clients[index]; client != nil && client.IsConnected() {
-			a.master = client
-			break
-		}
-
-		if index+1 >= length {
-			index = 0
-		} else {
-			index++
-		}
-	}
-
-	return a.master
+func (a *WSMasterElection) selectMaster() {
+	a.master = a.pool.PickConnectedSpeaker()
+	return
 }
 
-// Send a message to the master
-func (a *WSMasterElection) SendMessageToMaster(m Message) {
+// SendMessageToMaster sends a message to the master.
+func (a *WSMasterElection) SendMessageToMaster(m WSMessage) {
 	a.RLock()
 	if a.master != nil {
 		defer a.master.Send(m)
@@ -78,18 +53,21 @@ func (a *WSMasterElection) SendMessageToMaster(m Message) {
 	a.RUnlock()
 }
 
-// OnConnected event
-func (a *WSMasterElection) OnConnected(c WSClient) {
+// OnConnected is triggered when a new WSSpeaker get connected. If no master
+// was elected this WSSpeaker will be choosen as master.
+func (a *WSMasterElection) OnConnected(c WSSpeaker) {
 	a.Lock()
 	if a.master == nil {
-		a.master = c
-		defer a.notifyNewMaster(c)
+		master := c.(*WSClient)
+		a.master = master
+		defer a.notifyNewMaster(master)
 	}
 	a.Unlock()
 }
 
-// OnDisconnected event
-func (a *WSMasterElection) OnDisconnected(c WSClient) {
+// OnDisconnected is triggered when a new WSSpeaker get disconnected. If it was
+// the master a new election is triggered.
+func (a *WSMasterElection) OnDisconnected(c WSSpeaker) {
 	a.Lock()
 	if a.master != nil && a.master.GetHost() == c.GetHost() {
 		a.selectMaster()
@@ -100,8 +78,7 @@ func (a *WSMasterElection) OnDisconnected(c WSClient) {
 	a.Unlock()
 }
 
-// Notify all the listeners that a new master has been elected
-func (a *WSMasterElection) notifyNewMaster(c WSClient) {
+func (a *WSMasterElection) notifyNewMaster(c WSSpeaker) {
 	a.RLock()
 	for _, h := range a.eventHandlers {
 		defer h.OnNewMaster(c)
@@ -109,15 +86,15 @@ func (a *WSMasterElection) notifyNewMaster(c WSClient) {
 	a.RUnlock()
 }
 
-// Register a new event handler
+// AddEventHandler a new WSMasterEventHandler event handler.
 func (a *WSMasterElection) AddEventHandler(eventHandler WSMasterEventHandler) {
 	a.Lock()
 	a.eventHandlers = append(a.eventHandlers, eventHandler)
 	a.Unlock()
 }
 
-// Returns a new master election
-func NewWSMasterElection(pool *WSClientPool) *WSMasterElection {
+// NewWSMasterElection returns a new WSMasterElection.
+func NewWSMasterElection(pool WSSpeakerPool) *WSMasterElection {
 	me := &WSMasterElection{pool: pool}
 	pool.AddEventHandler(me)
 	return me
