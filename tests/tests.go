@@ -1013,7 +1013,10 @@ func init() {
 			panic(fmt.Sprintf("Failed to initialize logging system: %s", err.Error()))
 		}
 
-		server := analyzer.NewServerFromConfig()
+		server, err := analyzer.NewServerFromConfig()
+		if err != nil {
+			panic(err)
+		}
 		server.Start()
 
 		agent, err := agent.NewAgent()
