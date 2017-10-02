@@ -78,19 +78,6 @@ func (fp *FlowProbe) AsyncFlowPipeline(flows []*flow.Flow) {
 	fp.flowClientPool.SendFlows(flows)
 }
 
-// UnregisterAllProbes unregisters all registered probes
-func (fpb *FlowProbeBundle) UnregisterAllProbes() {
-	fpb.Graph.Lock()
-	defer fpb.Graph.Unlock()
-
-	for _, n := range fpb.Graph.GetNodes(graph.Metadata{}) {
-		for _, p := range fpb.ProbeBundle.Probes {
-			fprobe := p.(*FlowProbe)
-			fprobe.UnregisterProbe(n)
-		}
-	}
-}
-
 func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
 	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
