@@ -48,7 +48,7 @@ func (a *WSMasterElection) selectMaster() {
 func (a *WSMasterElection) SendMessageToMaster(m WSMessage) {
 	a.RLock()
 	if a.master != nil {
-		defer a.master.Send(m)
+		defer a.master.SendMessage(m)
 	}
 	a.RUnlock()
 }

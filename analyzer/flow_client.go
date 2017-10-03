@@ -119,7 +119,7 @@ func (c *FlowClientWebSocketConn) Connect() error {
 
 // Send data over the wire
 func (c *FlowClientWebSocketConn) Send(data []byte) error {
-	c.wsClient.SendMessage(data)
+	c.wsClient.SendRaw(data)
 	return nil
 }
 

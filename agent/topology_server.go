@@ -57,7 +57,7 @@ func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMes
 			g, status = nil, http.StatusBadRequest
 		}
 		reply := msg.Reply(g, graph.SyncReplyMsgType, status)
-		c.Send(reply)
+		c.SendMessage(reply)
 		t.Graph.RUnlock()
 	}
 }

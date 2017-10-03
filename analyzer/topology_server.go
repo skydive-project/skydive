@@ -114,7 +114,7 @@ func (p *TopologyReplicatorPeer) OnConnected(c shttp.WSSpeaker) {
 	defer p.Graph.RUnlock()
 
 	logging.GetLogger().Infof("Send the whole graph to: %s", p.Graph.GetHost())
-	p.wsclient.Send(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
+	p.wsclient.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
 }
 
 func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
@@ -221,7 +221,7 @@ func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMes
 			g, status = nil, http.StatusBadRequest
 		}
 		reply := msg.Reply(g, graph.SyncReplyMsgType, status)
-		c.Send(reply)
+		c.SendMessage(reply)
 		t.Graph.RUnlock()
 
 		return
@@ -322,7 +322,7 @@ func (t *TopologyServer) notifyClients(msg *shttp.WSJSONMessage) {
 	for _, c := range t.pool.GetSpeakers() {
 		serviceType := c.GetServiceType()
 		if serviceType != common.AnalyzerService && serviceType != common.AgentService {
-			c.Send(msg)
+			c.SendMessage(msg)
 		}
 	}
 }
@@ -331,7 +331,7 @@ func (t *TopologyServer) notifyClients(msg *shttp.WSJSONMessage) {
 func (t *TopologyServer) notifyPeers(msg *shttp.WSJSONMessage) {
 	for _, p := range t.peers {
 		if p.wsclient != nil {
-			p.wsclient.Send(msg)
+			p.wsclient.SendMessage(msg)
 		}
 	}
 }

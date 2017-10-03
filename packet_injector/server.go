@@ -73,7 +73,7 @@ func (pis *PacketInjectorServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.W
 			reply = msg.Reply(replyObj, "PIResult", http.StatusOK)
 		}
 
-		c.Send(reply)
+		c.SendMessage(reply)
 	}
 }
 
