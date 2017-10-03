@@ -229,11 +229,11 @@ func NewAgent() (*Agent, error) {
 
 	wsServer := shttp.NewWSJSONServer(shttp.NewWSServerFromConfig(hserver, "/ws"))
 
-	tr := traversal.NewGremlinTraversalParser(g)
+	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 
 	rootNode := CreateRootNode(g)
-	api.RegisterTopologyAPI(hserver, tr)
+	api.RegisterTopologyAPI(hserver, g, tr)
 
 	tserver := NewTopologyServer(g, wsServer)
 

@@ -178,7 +178,6 @@ var (
 // The mechanism is based on Reduce and Exec steps
 type GremlinTraversalParser struct {
 	sync.RWMutex
-	Graph   *graph.Graph
 	scanner *GremlinTraversalScanner
 	buf     struct {
 		tok Token
@@ -787,12 +786,14 @@ func (s *GremlinTraversalStepMetrics) Reduce(next GremlinTraversalStep) GremlinT
 }
 
 // Exec sequence step
-func (s *GremlinTraversalSequence) Exec() (GraphTraversalStep, error) {
+func (s *GremlinTraversalSequence) Exec(g *graph.Graph, lockGraph bool) (GraphTraversalStep, error) {
 	var step GremlinTraversalStep
 	var last GraphTraversalStep
 	var err error
 
+	s.GraphTraversal = NewGraphTraversal(g, lockGraph)
 	last = s.GraphTraversal
+
 	for i := 0; i < len(s.steps); {
 		step = s.steps[i]
 
@@ -825,10 +826,8 @@ func (p *GremlinTraversalParser) AddTraversalExtension(e GremlinTraversalExtensi
 }
 
 // NewGremlinTraversalParser creates a new gremlin language parser on the graph
-func NewGremlinTraversalParser(g *graph.Graph) *GremlinTraversalParser {
-	return &GremlinTraversalParser{
-		Graph: g,
-	}
+func NewGremlinTraversalParser() *GremlinTraversalParser {
+	return &GremlinTraversalParser{}
 }
 
 func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
@@ -1149,15 +1148,14 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 }
 
 // Parse the Gremlin language and returns a traversal sequence
-func (p *GremlinTraversalParser) Parse(r io.Reader, lockGraph bool) (*GremlinTraversalSequence, error) {
+func (p *GremlinTraversalParser) Parse(r io.Reader) (*GremlinTraversalSequence, error) {
 	p.Lock()
 	defer p.Unlock()
 
 	p.scanner = NewGremlinTraversalScanner(r, p.extensions)
 
 	seq := &GremlinTraversalSequence{
-		GraphTraversal: NewGraphTraversal(p.Graph, lockGraph),
-		extensions:     p.extensions,
+		extensions: p.extensions,
 	}
 
 	if tok, lit := p.scanIgnoreWhitespace(); tok != G {

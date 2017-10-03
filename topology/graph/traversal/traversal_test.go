@@ -475,12 +475,12 @@ func TestTraversalSubGraph(t *testing.T) {
 }
 
 func execTraversalQuery(t *testing.T, g *graph.Graph, query string) GraphTraversalStep {
-	ts, err := NewGremlinTraversalParser(g).Parse(strings.NewReader(query), false)
+	ts, err := NewGremlinTraversalParser().Parse(strings.NewReader(query))
 	if err != nil {
 		t.Fatalf("%s: %s", query, err.Error())
 	}
 
-	res, err := ts.Exec()
+	res, err := ts.Exec(g, false)
 	if err != nil {
 		t.Fatalf("%s: %s", query, err.Error())
 	}

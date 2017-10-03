@@ -34,7 +34,6 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	"github.com/skydive-project/skydive/topology"
-	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
@@ -86,11 +85,11 @@ func isGremlinExpr(v interface{}, param string) error {
 		return GremlinNotValid(errors.New("not a string"))
 	}
 
-	tr := traversal.NewGremlinTraversalParser(&graph.Graph{})
+	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(nil, nil))
 
-	if _, err := tr.Parse(strings.NewReader(query), false); err != nil {
+	if _, err := tr.Parse(strings.NewReader(query)); err != nil {
 		return GremlinNotValid(err)
 	}
 
