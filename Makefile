@@ -26,6 +26,10 @@ COVERAGE_MODE?=atomic
 COVERAGE_WD?="."
 BOOTSTRAP_ARGS?=
 
+ifeq ($(WITH_DPDK), true)
+  GOTAGS= -tags dpdk
+endif
+
 .PHONY: all
 all: install
 
@@ -45,12 +49,12 @@ all: install
 	gofmt -w -s statics/bindata.go
 
 .compile:
-	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
+	${GOPATH}/bin/govendor install ${GOFLAGS} ${GOTAGS} ${VERBOSE_FLAGS} +local
 
-install: govendor genlocalfiles contribs .compile
+install: govendor genlocalfiles dpdk.build contribs .compile
 
-build: govendor genlocalfiles contribs
-	${GOPATH}/bin/govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
+build: govendor genlocalfiles dpdk.build contribs
+	${GOPATH}/bin/govendor build ${GOFLAGS} ${GOTAGS} ${VERBOSE_FLAGS} +local
 
 static: govendor genlocalfiles
 	rm -f $$GOPATH/bin/skydive
@@ -59,6 +63,14 @@ static: govendor genlocalfiles
 
 contribs:
 	$(MAKE) -C contrib/snort
+
+dpdk.build:
+ifeq ($(WITH_DPDK), true)
+	$(MAKE) -C dpdk
+endif
+
+dpdk.cleanup:
+	$(MAKE) -C dpdk clean
 
 test.functionals.cleanup:
 	rm -f tests/functionals
@@ -109,6 +121,7 @@ endif
 govendor:
 	go get github.com/kardianos/govendor
 	${GOPATH}/bin/govendor sync
+	patch -p0 < dpdk/dpdk.govendor.patch
 
 fmt: govendor genlocalfiles
 	@echo "+ $@"
@@ -142,7 +155,7 @@ builddep:
 
 genlocalfiles: .proto .bindata
 
-clean: test.functionals.cleanup
+clean: test.functionals.cleanup dpdk.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 	$(MAKE) -C contrib/snort clean
 

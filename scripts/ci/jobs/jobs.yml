@@ -99,6 +99,31 @@
       - publish-cobertura
       - chuck-norris
 
+- job:
+    name: skydive-compile-dpdk
+    defaults: skydive
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    scm:
+      - skydive-github
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?compile-dpdk)'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-compile-dpdk
+    builders:
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          scripts/ci/run-compile-dpdk.sh
+    publishers:
+      - chuck-norris
+
 - job-template:
     name: '{name}-functional-tests-backend-{backend}'
     defaults: skydive

@@ -9,7 +9,7 @@ dist: trusty
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils libdb5.1-dev libgraph-easy-perl screen inotify-tools realpath
+    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils libdb5.1-dev libgraph-easy-perl screen inotify-tools realpath libnuma-dev linux-headers-$(uname -r)
     - sudo ovs-vsctl show
     - sudo iptables -F
     - for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
@@ -42,7 +42,7 @@ script:
     - export BUILD_TAG=$(date +%Y-%m-%d).${TRAVIS_JOB_NUMBER}
     - export PATH=${GOPATH}/bin:${PATH}
 
-    - make install
+    - make WITH_DPDK=true install
     - make static
 
     - echo "--- DOCKER IMAGE ---"

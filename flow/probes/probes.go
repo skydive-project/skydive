@@ -84,7 +84,7 @@ func (fp *FlowProbe) AsyncFlowPipeline(flows []*flow.Flow) {
 }
 
 func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
-	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket"}
+	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
@@ -110,6 +110,9 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 		case "sflow":
 			fpi, err = NewSFlowProbesHandler(g)
 			captureTypes = []string{"sflow"}
+		case "dpdk":
+			fpi, err = NewDPDKProbesHandler(g, fta, fcpool)
+			captureTypes = []string{"dpdk"}
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}

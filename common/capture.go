@@ -34,9 +34,9 @@ var (
 )
 
 func initCaptureTypes() {
-	// add ovs type
 	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow", "pcapsocket"}, Default: "ovssflow"}
 	CaptureTypes["device"] = CaptureType{Allowed: []string{"afpacket", "pcap", "pcapsocket", "sflow"}, Default: "afpacket"}
+	CaptureTypes["dpdkport"] = CaptureType{Allowed: []string{"dpdk"}, Default: "dpdk"}
 
 	// anything else will be handled by gopacket
 	types := []string{

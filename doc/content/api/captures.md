@@ -19,6 +19,7 @@ At this time, the following capture types are supported:
 * `ovssflow`, for interfaces managed by OpenvSwitch such as OVS bridges
 * `afpacket`, for interfaces suchs as Linux bridges, veth, devices, ...
 * `pcap`, same as `afpacket`
+* `dpdk`, for interfaces managed by DPDK
 * `pcapsocket`. This capture type allows you to inject traffic from a PCAP file.
   See [below](/api/captures#pcap-files) for more information.
 

@@ -105,6 +105,16 @@ agent:
   metadata:
     info: This is compute node
 
+dpdk:
+  # DPDK port listening flows from
+  # ports:
+  #    - 0
+  #    - 1
+  # nb workers per port
+  # workers: 4
+  # debug message every n seconds
+  # debug: 1
+
 sflow:
   # Default listening address is 127.0.0.1
   # bind_address: 127.0.0.1

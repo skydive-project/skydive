@@ -41,7 +41,7 @@ Vue.component('node-selector', {
           return;
         } else {
           if (self.form == "capture") {
-            var allowedTypes = ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy", "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan", "gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan", "lowpan", "ip6tnl", "ip6gre", "sit"];
+            var allowedTypes = ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy", "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan", "gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan", "lowpan", "ip6tnl", "ip6gre", "sit", "dpdkport"];
             if (allowedTypes.indexOf(e.target.__data__.metadata.Type) > -1) {
               node = value = e.target.__data__;
             } else {
