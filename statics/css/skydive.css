@@ -538,3 +538,11 @@ ul.dropdown-menu .fa.pull-right {
 .rules-detail .nav-pills>li.active>a, .rules-detail .nav-pills>li.active>a:focus, .rules-detail .nav-pills>li.active>a:hover {
   background-color: #333;
 }
+
+.expand-icon-stack .icon-main {
+  font-size: 15px;
+}
+
+.expand-icon-stack .icon-sub {
+  font-size: 11px;
+}
