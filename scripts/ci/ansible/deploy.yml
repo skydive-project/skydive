@@ -82,6 +82,8 @@
        - golang
        - vagrant-libvirt
        - ansible
+       - dpdk-devel
+       - dpdk-tools
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
