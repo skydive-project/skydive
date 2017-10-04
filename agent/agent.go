@@ -150,7 +150,7 @@ func (a *Agent) Stop() {
 	if a.FlowProbeBundle != nil {
 		a.FlowProbeBundle.Stop()
 	}
-	a.AnalyzerClientPool.Destroy()
+	a.AnalyzerClientPool.Stop()
 	a.TopologyProbeBundle.Stop()
 	a.HTTPServer.Stop()
 	a.WSServer.Stop()
