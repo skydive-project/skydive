@@ -51,6 +51,12 @@ var (
 	ErrSyncMsgMalFormed     = errors.New("SyncMsg/SyncReplyMsg malformed")
 )
 
+// type SyncRequestMsg describes a graph synchro request message
+type SyncRequestMsg struct {
+	GraphContext
+	GremlinFilter string
+}
+
 // SyncMsg describes graph syncho message
 type SyncMsg struct {
 	Nodes []*Node
@@ -71,16 +77,23 @@ func UnmarshalWSMessage(msg *shttp.WSJSONMessage) (string, interface{}, error) {
 			return "", msg, ErrSyncRequestMalFormed
 		}
 
-		var context GraphContext
+		var syncRequest SyncRequestMsg
 		switch v := m["Time"].(type) {
 		case json.Number:
 			i, err := v.Int64()
 			if err != nil {
 				return "", msg, err
 			}
-			context.TimeSlice = common.NewTimeSlice(i, i)
+			syncRequest.TimeSlice = common.NewTimeSlice(i, i)
 		}
-		return msg.Type, context, nil
+
+		if s, ok := m["GremlinFilter"]; ok {
+			if gremlinFilter, _ := s.(string); gremlinFilter != "" {
+				syncRequest.GremlinFilter = gremlinFilter
+			}
+		}
+
+		return msg.Type, syncRequest, nil
 	case SyncMsgType, SyncReplyMsgType:
 		result := &SyncMsg{}
 
