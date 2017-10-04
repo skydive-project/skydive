@@ -215,7 +215,7 @@ func (c *WSJSONSpeaker) Send(m WSMessage) {
 		}
 	}
 
-	c.WSSpeaker.Send(m)
+	c.WSSpeaker.SendMessage(m)
 }
 
 func (a *WSJSONSpeaker) onReply(m *WSJSONMessage) bool {

@@ -63,7 +63,7 @@ type WSSpeaker interface {
 	GetAddrPort() (string, int)
 	GetServiceType() common.ServiceType
 	IsConnected() bool
-	Send(m WSMessage)
+	SendMessage(m WSMessage) error
 	Connect()
 	Disconnect()
 	AddEventHandler(WSSpeakerEventHandler)
@@ -139,12 +139,26 @@ func (c *WSConn) IsConnected() bool {
 	return c.connected.Load() == true
 }
 
-// Send adds a message to the send queue.
-func (c *WSConn) Send(m WSMessage) {
-	if c.running.Load() == false {
-		return
+// SendMessage adds a message to sending queue.
+func (c *WSConn) SendMessage(m WSMessage) error {
+	if !c.IsConnected() {
+		return errors.New("Not connected")
 	}
+
 	c.send <- m.Bytes()
+
+	return nil
+}
+
+// SendRaw adds raw bytes to sending queue.
+func (c *WSConn) SendRaw(b []byte) error {
+	if !c.IsConnected() {
+		return errors.New("Not connected")
+	}
+
+	c.send <- b
+
+	return nil
 }
 
 // GetServiceType returns the client type.
@@ -153,7 +167,7 @@ func (c *WSConn) GetServiceType() common.ServiceType {
 }
 
 // SendMessage sends a message directly over the wire.
-func (c *WSConn) SendMessage(msg []byte) error {
+func (c *WSConn) write(msg []byte) error {
 	if !c.IsConnected() {
 		return errors.New("Not connected")
 	}
@@ -273,7 +287,7 @@ func (c *WSConn) run() {
 		case <-c.quit:
 			return
 		case m := <-c.send:
-			err := c.SendMessage(m)
+			err := c.write(m)
 			if err != nil {
 				logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
 			}

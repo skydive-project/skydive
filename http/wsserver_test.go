@@ -52,7 +52,7 @@ func (f *fakeServerSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
-	c.Send(WSRawMessage{})
+	c.SendMessage(WSRawMessage{})
 }
 
 func (f *fakeServerSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
@@ -65,7 +65,7 @@ func (f *fakeClientSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
-	c.Send(WSRawMessage{})
+	c.SendMessage(WSRawMessage{})
 }
 
 func (f *fakeClientSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {

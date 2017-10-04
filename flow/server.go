@@ -49,7 +49,7 @@ func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) 
 
 	result := s.TableAllocator.QueryTable(&query)
 	reply := msg.Reply(result, "TableResult", result.status)
-	c.Send(reply)
+	c.SendMessage(reply)
 }
 
 // OnWSMessage TableQuery

@@ -226,7 +226,7 @@ func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJS
 	o.Graph.Unlock()
 
 	reply := msg.Reply(&query, msg.Type+"Reply", status)
-	c.Send(reply)
+	c.SendMessage(reply)
 }
 
 // OnNodeDeleted graph event

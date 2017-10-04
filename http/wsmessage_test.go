@@ -50,9 +50,9 @@ type fakeWSMessageClientSubscriptionHandler struct {
 }
 
 func (f *fakeWSMessageServerSubscriptionHandler) OnConnected(c WSSpeaker) {
-	c.Send(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast666", "AAA", "001"))
-	c.Send(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
-	c.Send(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
+	c.SendMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast666", "AAA", "001"))
+	c.SendMessage(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
+	c.SendMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
 
 	f.server.BroadcastMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSBroadcast1", "AAA", "001"))
 	f.server.BroadcastMessage(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSBroacast2", "AAA", "001"))
@@ -71,9 +71,9 @@ func (f *fakeWSMessageClientSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.connected++
 	f.Unlock()
 
-	c.Send(NewWSJSONMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
-	c.Send(NewWSJSONMessage("ClientNotValidNS", "ClientNotValidNS2", "AAA", "001"))
-	c.Send(NewWSJSONMessage("ClientValidNS", "ClientValidNS3", "AAA", "001"))
+	c.SendMessage(NewWSJSONMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
+	c.SendMessage(NewWSJSONMessage("ClientNotValidNS", "ClientNotValidNS2", "AAA", "001"))
+	c.SendMessage(NewWSJSONMessage("ClientValidNS", "ClientValidNS3", "AAA", "001"))
 }
 
 func (f *fakeWSMessageClientSubscriptionHandler) OnWSJSONMessage(c WSSpeaker, m *WSJSONMessage) {

@@ -180,7 +180,7 @@ func (s *WSPool) broadcastMessage(m WSMessage) {
 	defer s.RUnlock()
 
 	for _, c := range s.speakers {
-		c.Send(m)
+		c.SendMessage(m)
 	}
 }
 
@@ -213,7 +213,7 @@ func (s *WSPool) SendMessageTo(m WSMessage, host string) error {
 		return common.ErrNotFound
 	}
 
-	c.Send(m)
+	c.SendMessage(m)
 	return nil
 }
 
