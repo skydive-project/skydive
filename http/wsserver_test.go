@@ -24,11 +24,13 @@ package http
 
 import (
 	"fmt"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 )
 
 type fakeServerSubscriptionHandler struct {
@@ -88,7 +90,7 @@ func TestSubscription(t *testing.T) {
 	wsserver.Start()
 	defer wsserver.Stop()
 
-	wsclient := NewWSClient("myhost", common.AgentService, "localhost", 59999, "/wstest", nil)
+	wsclient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{})
 	wspool := NewWSClientPool()
 
 	wspool.AddClient(wsclient)

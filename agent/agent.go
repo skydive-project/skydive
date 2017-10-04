@@ -76,8 +76,8 @@ func NewAnalyzerWSJSONClientPool() (*shttp.WSJSONClientPool, error) {
 	}
 
 	for _, sa := range addresses {
-		authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
-		c := shttp.NewWSClientFromConfig(common.AgentService, sa.Addr, sa.Port, "/ws", authClient)
+		authClient := shttp.NewAuthenticationClient(config.GetURL("http", sa.Addr, sa.Port, ""), authOptions)
+		c := shttp.NewWSClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws"), authClient, nil)
 		pool.AddClient(c)
 	}
 

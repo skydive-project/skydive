@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,8 +49,7 @@ import (
 // client will be forwarded to the peer.
 type TopologyReplicatorPeer struct {
 	shttp.DefaultWSSpeakerEventHandler
-	Addr        string
-	Port        int
+	URL         *url.URL
 	Graph       *graph.Graph
 	AuthOptions *shttp.AuthenticationOpts
 	wsclient    *shttp.WSClient
@@ -74,7 +75,8 @@ type TopologyServer struct {
 
 // getHostID loop until being able to get the host-id of the peer.
 func (p *TopologyReplicatorPeer) getHostID() string {
-	client := shttp.NewRestClient(p.Addr, p.Port, p.AuthOptions)
+	port, _ := strconv.Atoi(p.URL.Port())
+	client := shttp.NewRestClient(config.GetURL("http", p.URL.Hostname(), port, ""), p.AuthOptions)
 	contentReader := bytes.NewReader([]byte{})
 
 	var data []byte
@@ -123,12 +125,13 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	// check whether the peer is the local server itself or not thanks to the /api
 	// the goal is to not add itself as peer.
 	if p.getHostID() == config.GetConfig().GetString("host_id") {
-		logging.GetLogger().Debugf("No connection to %s:%d since it's me", p.Addr, p.Port)
+		logging.GetLogger().Debugf("No connection to %s since it's me", p.URL.String())
 		return
 	}
 
-	authClient := shttp.NewAuthenticationClient(p.Addr, p.Port, p.AuthOptions)
-	p.wsclient = shttp.NewWSClientFromConfig(common.AnalyzerService, p.Addr, p.Port, "/ws", authClient)
+	authPort, _ := strconv.Atoi(p.URL.Port())
+	authClient := shttp.NewAuthenticationClient(config.GetURL("http", p.URL.Hostname(), authPort, ""), p.AuthOptions)
+	p.wsclient = shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, authClient, http.Header{})
 
 	// will trigger shttp.WSSpeakerEventHandler, so OnConnected
 	p.wsclient.AddEventHandler(p)
@@ -142,10 +145,9 @@ func (p *TopologyReplicatorPeer) disconnect() {
 	}
 }
 
-func (t *TopologyServer) addPeer(addr string, port int, auth *shttp.AuthenticationOpts, g *graph.Graph) {
+func (t *TopologyServer) addPeer(url *url.URL, auth *shttp.AuthenticationOpts, g *graph.Graph) {
 	peer := &TopologyReplicatorPeer{
-		Addr:        addr,
-		Port:        port,
+		URL:         url,
 		Graph:       g,
 		AuthOptions: auth,
 	}
@@ -439,7 +441,7 @@ func NewTopologyServer(pool shttp.WSJSONSpeakerPool, auth *shttp.AuthenticationO
 	g.AddEventListener(t)
 
 	for _, sa := range addresses {
-		t.addPeer(sa.Addr, sa.Port, auth, g)
+		t.addPeer(config.GetURL("ws", sa.Addr, sa.Port, "/ws"), auth, g)
 	}
 
 	return t, nil

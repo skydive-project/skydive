@@ -64,7 +64,7 @@ var PcapCmd = &cobra.Command{
 		}
 		defer file.Close()
 
-		resp, err := client.Request("POST", "api/pcap", file, nil)
+		resp, err := client.Request("POST", "pcap", file, nil)
 		if err != nil {
 			logging.GetLogger().Critical(err)
 			os.Exit(1)

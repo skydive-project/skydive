@@ -78,7 +78,7 @@ func TestScaleHA(t *testing.T) {
 	var flows []*flow.Flow
 
 	getAnalyzerStatus := func() (status analyzer.AnalyzerStatus, err error) {
-		resp, err := client.Request("GET", client.Root+"/status", nil, nil)
+		resp, err := client.Request("GET", "status", nil, nil)
 		if err != nil {
 			return status, err
 		}

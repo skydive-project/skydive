@@ -1385,7 +1385,7 @@ func TestPcapInject(t *testing.T) {
 			}
 			defer file.Close()
 
-			resp, err := c.client.Request("POST", "api/pcap", file, nil)
+			resp, err := c.client.Request("POST", "pcap", file, nil)
 			if err != nil {
 				return err
 			}

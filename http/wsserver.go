@@ -24,12 +24,12 @@ package http
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -43,20 +43,18 @@ type WSServer struct {
 	incomerHandler WSIncomerHandler
 }
 
+func getRequestParameter(r *auth.AuthenticatedRequest, name string) string {
+	param := r.Header.Get(name)
+	if param == "" {
+		param = r.URL.Query().Get(strings.ToLower(name))
+	}
+	return param
+}
+
 func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
-	host := r.Header.Get("X-Host-ID")
-	if host == "" {
-		host = r.RemoteAddr
-	}
-
-	clientType := common.ServiceType(r.Header.Get("X-Client-Type"))
-	if clientType == "" {
-		clientType = common.UnknownService
-	}
-
 	logging.GetLogger().Infof("New WebSocket Connection from %s : URI path %s", conn.RemoteAddr().String(), r.URL.Path)
 
-	c := newIncomingWSClient(host, clientType, conn)
+	c := newIncomingWSClient(conn, r)
 	c.start()
 
 	return c
@@ -64,22 +62,20 @@ func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *
 
 func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// if X-Host-ID specified avoid having twice the same ID
-	host := r.Header.Get("X-Host-ID")
+	host := getRequestParameter(r, "X-Host-ID")
 	if host == "" {
 		host = r.RemoteAddr
 	}
 
 	s.wsIncomerPool.RLock()
-	for _, c := range s.speakers {
-		if c.GetHost() == host {
-			logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, host)
-			w.Header().Set("Connection", "close")
-			w.WriteHeader(http.StatusConflict)
-			s.wsIncomerPool.RUnlock()
-			return
-		}
-	}
+	c := s.GetSpeakerByHost(host)
 	s.wsIncomerPool.RUnlock()
+	if c != nil {
+		logging.GetLogger().Errorf("host_id error, connection from %s(%s) conflicts with another one", r.RemoteAddr, host)
+		w.Header().Set("Connection", "close")
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
 
 	conn, err := websocket.Upgrade(w, &r.Request, nil, 1024, 1024)
 	if err != nil {
@@ -87,7 +83,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	}
 
 	// call the incomerHandler that will create the WSSpeaker
-	c := s.incomerHandler(conn, r)
+	c = s.incomerHandler(conn, r)
 
 	// add the new WSSPeaker to the server pool
 	s.AddClient(c)

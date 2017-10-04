@@ -47,7 +47,7 @@ var StatusCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		resp, err := client.Request("GET", client.Root+"/status", nil, nil)
+		resp, err := client.Request("GET", "status", nil, nil)
 		if err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
