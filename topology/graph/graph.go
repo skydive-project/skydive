@@ -1151,6 +1151,35 @@ func (g *Graph) GetHost() string {
 	return g.host
 }
 
+// Diff computes the difference between two graphs
+func (g *Graph) Diff(newGraph *Graph) (addedNodes []*Node, removedNodes []*Node, addedEdges []*Edge, removedEdges []*Edge) {
+	for _, e := range newGraph.GetEdges(nil) {
+		if g.GetEdge(e.ID) == nil {
+			addedEdges = append(addedEdges, e)
+		}
+	}
+
+	for _, e := range g.GetEdges(nil) {
+		if newGraph.GetEdge(e.ID) == nil {
+			removedEdges = append(removedEdges, e)
+		}
+	}
+
+	for _, n := range newGraph.GetNodes(nil) {
+		if g.GetNode(n.ID) == nil {
+			addedNodes = append(addedNodes, n)
+		}
+	}
+
+	for _, n := range g.GetNodes(nil) {
+		if newGraph.GetNode(n.ID) == nil {
+			removedNodes = append(removedNodes, n)
+		}
+	}
+
+	return
+}
+
 // NewGraph creates a new graph based on the backend
 func NewGraph(host string, backend GraphBackend) *Graph {
 	return &Graph{
