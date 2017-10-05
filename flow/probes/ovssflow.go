@@ -56,9 +56,10 @@ type OvsSFlowProbe struct {
 // OvsSFlowProbesHandler describes a flow probe in running in the graph
 type OvsSFlowProbesHandler struct {
 	FlowProbe
-	Graph     *graph.Graph
-	ovsClient *ovsdb.OvsClient
-	allocator *sflow.SFlowAgentAllocator
+	Graph        *graph.Graph
+	ovsClient    *ovsdb.OvsClient
+	allocator    *sflow.SFlowAgentAllocator
+	eventHandler FlowProbeEventHandler
 }
 
 func probeID(i string) string {
@@ -273,7 +274,7 @@ func isOvsBridge(n *graph.Node) bool {
 }
 
 // RegisterProbe registers a probe on a graph node
-func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
+func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -285,6 +286,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 			if err != nil {
 				return err
 			}
+			go e.OnStarted()
 		}
 	}
 	return nil
@@ -299,13 +301,14 @@ func (o *OvsSFlowProbesHandler) unregisterProbe(bridgeUUID string) error {
 }
 
 // UnregisterProbe at the graph node
-func (o *OvsSFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
+func (o *OvsSFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
 	if isOvsBridge(n) {
 		if uuid, _ := n.GetFieldString("UUID"); uuid != "" {
 			err := o.unregisterProbe(uuid)
 			if err != nil {
 				return err
 			}
+			go e.OnStopped()
 		}
 	}
 	return nil

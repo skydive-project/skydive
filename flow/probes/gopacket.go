@@ -51,7 +51,6 @@ type packetHandle interface {
 
 // GoPacketProbe describes a new probe that store packets from gopacket pcap library in a flowtable
 type GoPacketProbe struct {
-	sync.RWMutex
 	handle       packetHandle
 	packetSource *gopacket.PacketSource
 	NodeTID      string
@@ -75,17 +74,13 @@ func (p *GoPacketProbe) pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *p
 		case <-ticker.C:
 			if stats, e := handle.Stats(); e != nil {
 				logging.GetLogger().Errorf("Can not get pcap capture stats")
-			} else {
+			} else if atomic.LoadInt64(&p.state) == common.RunningState {
 				g.Lock()
-				p.Lock()
-				if atomic.LoadInt64(&p.state) == common.RunningState {
-					t := g.StartMetadataTransaction(n)
-					t.AddMetadata("Capture.PacketsReceived", stats.PacketsReceived)
-					t.AddMetadata("Capture.PacketsDropped", stats.PacketsDropped)
-					t.AddMetadata("Capture.PacketsIfDropped", stats.PacketsIfDropped)
-					t.Commit()
-				}
-				p.Unlock()
+				t := g.StartMetadataTransaction(n)
+				t.AddMetadata("Capture.PacketsReceived", stats.PacketsReceived)
+				t.AddMetadata("Capture.PacketsDropped", stats.PacketsDropped)
+				t.AddMetadata("Capture.PacketsIfDropped", stats.PacketsIfDropped)
+				t.Commit()
 				g.Unlock()
 			}
 		case <-done:
@@ -102,16 +97,12 @@ func (p *GoPacketProbe) afpacketUpdateStats(g *graph.Graph, n *graph.Node, handl
 		case <-ticker.C:
 			if _, v3, e := handle.tpacket.SocketStats(); e != nil {
 				logging.GetLogger().Errorf("Can not get pcap capture stats")
-			} else {
+			} else if atomic.LoadInt64(&p.state) == common.RunningState {
 				g.Lock()
-				p.Lock()
-				if atomic.LoadInt64(&p.state) == common.RunningState {
-					t := g.StartMetadataTransaction(n)
-					t.AddMetadata("Capture.PacketsReceived", v3.Packets())
-					t.AddMetadata("Capture.PacketsDropped", v3.Drops())
-					t.Commit()
-				}
-				p.Unlock()
+				t := g.StartMetadataTransaction(n)
+				t.AddMetadata("Capture.PacketsReceived", v3.Packets())
+				t.AddMetadata("Capture.PacketsDropped", v3.Drops())
+				t.Commit()
 				g.Unlock()
 			}
 		case <-done:
@@ -270,9 +261,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 }
 
 func (p *GoPacketProbe) stop() {
-	p.Lock()
 	atomic.StoreInt64(&p.state, common.StoppingState)
-	p.Unlock()
 }
 
 func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkType) {
@@ -301,7 +290,7 @@ func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkTy
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
+func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return fmt.Errorf("No name for node %v", n)
@@ -348,7 +337,11 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 	go func() {
 		defer p.wg.Done()
 
+		e.OnStarted()
+
 		probe.run(p.graph, n, capture)
+
+		e.OnStopped()
 	}()
 
 	return nil
@@ -365,7 +358,7 @@ func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node) error {
+func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
 	p.probesLock.Lock()
 	defer p.probesLock.Unlock()
 

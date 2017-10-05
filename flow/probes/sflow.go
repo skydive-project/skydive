@@ -48,7 +48,7 @@ type SFlowProbesHandler struct {
 }
 
 // UnregisterProbe unregisters a probe from the graph
-func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
+func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
 	d.probesLock.Lock()
 	defer d.probesLock.Unlock()
 
@@ -65,11 +65,15 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node) error {
 
 	delete(d.probes, tid)
 
+	if e != nil {
+		e.OnStopped()
+	}
+
 	return nil
 }
 
 // RegisterProbe registers a probe in the graph
-func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table) error {
+func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
 	var tid string
 	if tid, _ = n.GetFieldString("TID"); tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -106,6 +110,8 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, 
 	d.probesLock.Lock()
 	d.probes[tid] = true
 	d.probesLock.Unlock()
+
+	e.OnStarted()
 
 	return nil
 }
