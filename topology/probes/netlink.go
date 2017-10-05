@@ -47,6 +47,11 @@ const (
 	maxEpollEvents = 32
 )
 
+type pendingLink struct {
+	ID       graph.Identifier
+	Metadata graph.Metadata
+}
+
 // NetNsNetLinkProbe describes a topology probe based on netlink in a network namespace
 type NetNsNetLinkProbe struct {
 	sync.RWMutex
@@ -57,7 +62,7 @@ type NetNsNetLinkProbe struct {
 	ethtool              *ethtool.Ethtool
 	handle               *netlink.Handle
 	socket               *nl.NetlinkSocket
-	indexToChildrenQueue map[int64][]graph.Identifier
+	indexToChildrenQueue map[int64][]pendingLink
 	links                map[string]*graph.Node
 	state                int64
 	wg                   sync.WaitGroup
@@ -84,17 +89,17 @@ func (u *NetNsNetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
 
 	// add children of this interface that was previously added
 	if children, ok := u.indexToChildrenQueue[index]; ok {
-		for _, id := range children {
-			child := u.Graph.GetNode(id)
+		for _, link := range children {
+			child := u.Graph.GetNode(link.ID)
 			if child != nil {
-				topology.AddLayer2Link(u.Graph, intf, child, nil)
+				topology.AddLayer2Link(u.Graph, intf, child, link.Metadata)
 			}
 		}
 		delete(u.indexToChildrenQueue, index)
 	}
 }
 
-func (u *NetNsNetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
+func (u *NetNsNetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64, m graph.Metadata) {
 	// assuming we have only one master with this index
 	parent := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 	if parent != nil {
@@ -106,11 +111,11 @@ func (u *NetNsNetLinkProbe) linkIntfToIndex(intf *graph.Node, index int64) {
 		}
 
 		if !topology.HaveLayer2Link(u.Graph, parent, intf, nil) {
-			topology.AddLayer2Link(u.Graph, parent, intf, nil)
+			topology.AddLayer2Link(u.Graph, parent, intf, m)
 		}
 	} else {
 		// not yet the bridge so, enqueue for a later add
-		u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], intf.ID)
+		u.indexToChildrenQueue[index] = append(u.indexToChildrenQueue[index], pendingLink{ID: intf.ID, Metadata: m})
 	}
 }
 
@@ -120,12 +125,12 @@ func (u *NetNsNetLinkProbe) handleIntfIsChild(intf *graph.Node, link netlink.Lin
 
 	// interface being a part of a bridge
 	if link.Attrs().MasterIndex != 0 {
-		u.linkIntfToIndex(intf, int64(link.Attrs().MasterIndex))
+		u.linkIntfToIndex(intf, int64(link.Attrs().MasterIndex), nil)
 	}
 
 	if link.Attrs().ParentIndex != 0 {
 		if _, err := intf.GetFieldInt64("Vlan"); err == nil {
-			u.linkIntfToIndex(intf, int64(int64(link.Attrs().ParentIndex)))
+			u.linkIntfToIndex(intf, int64(int64(link.Attrs().ParentIndex)), graph.Metadata{"Type": "vlan"})
 		}
 	}
 }
@@ -324,6 +329,14 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		"MAC":       attrs.HardwareAddr.String(),
 		"MTU":       int64(attrs.MTU),
 		"Driver":    driver,
+	}
+
+	if attrs.MasterIndex != 0 {
+		metadata["MasterIndex"] = int64(attrs.MasterIndex)
+	}
+
+	if attrs.ParentIndex != 0 {
+		metadata["ParentIndex"] = int64(attrs.ParentIndex)
 	}
 
 	if speed, err := u.ethtool.CmdGet(&ethtool.EthtoolCmd{}, attrs.Name); err == nil {
@@ -788,7 +801,7 @@ func newNetNsNetLinkProbe(g *graph.Graph, root *graph.Node, nsPath string) (*Net
 		Graph:                g,
 		Root:                 root,
 		NsPath:               nsPath,
-		indexToChildrenQueue: make(map[int64][]graph.Identifier),
+		indexToChildrenQueue: make(map[int64][]pendingLink),
 		links:                make(map[string]*graph.Node),
 		quit:                 make(chan bool),
 	}

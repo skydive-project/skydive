@@ -126,7 +126,7 @@ TopologyGraphLayout.prototype = {
 
     this.linkLabels = {};
 
-    this.collapsed = true;
+    this.collapsed = this.defaultCollpsed || false;
     this.selectedNode = null;
     this.invalid = false;
   },
@@ -172,6 +172,7 @@ TopologyGraphLayout.prototype = {
     delete this.nodes[d.id];
     this._nodes[d.id] = d;
 
+    // remove links with neighbors
     if (d.links) {
       for (var i in d.links) {
         var link = d.links[i];
@@ -229,7 +230,7 @@ TopologyGraphLayout.prototype = {
   },
 
   _onGroupAdded: function(group) {
-    group.type = group.owner.metadata.Type;
+    group.ownerType = group.owner.metadata.Type;
     group.level = 1;
     group.depth = 1;
     group.collapsed = this.collapsed;
@@ -240,17 +241,18 @@ TopologyGraphLayout.prototype = {
     group.collapseLinks = [];
 
     this.groups.push(group);
+
+    this.groupOwnerSet(group.owner);
   },
 
   delGroup: function(group) {
     var self = this;
 
-    group.memberArray.forEach(function(n) { self.delGroupMember(group, n); });
-    group._memberArray.forEach(function(n) { self.delGroupMember(group, n); });
-
     this.delCollapseLinks(group);
 
     this.groups = this.groups.filter(function(g) { return g.id !== group.id; });
+
+    this.groupOwnerUnset(group.owner);
   },
 
   onGroupDeleted: function(group) {
@@ -262,6 +264,8 @@ TopologyGraphLayout.prototype = {
   },
 
   addGroupMember: function(group, node) {
+    if (this.hidden(node)) return;
+
     while(group && group.memberArray) {
       if (node === group.owner) {
         if (group.memberArray.indexOf(node) < 0) group.memberArray.push(node);
@@ -275,6 +279,7 @@ TopologyGraphLayout.prototype = {
   },
 
   onGroupMemberAdded: function(group, node) {
+    if (this.hidden(node)) return;
     this.queue.defer(this._onGroupMemberAdded.bind(this), group, node);
   },
 
@@ -356,7 +361,7 @@ TopologyGraphLayout.prototype = {
     link.source.links[link.id] = link;
     link.target.links[link.id] = link;
 
-    if (link.metadata.RelationType == "ownership") {
+    if (link.metadata.RelationType === "ownership") {
       if (this.isNeutronVMNode(link.target)) return;
 
       if (link.target.metadata.Driver === "openvswitch" &&
@@ -365,30 +370,43 @@ TopologyGraphLayout.prototype = {
       link.target.linkToParent = link;
 
       // do not add ownership link for groups having outside link
-      if (link.target.isGroupOwner() && link.target.group && this.hasOutsideLink(link.target.group)) return;
+      if (link.target.isGroupOwner("ownership") && this.hasOutsideLink(link.target.group)) return;
     }
 
     var sourceGroup = link.source.group, targetGroup = link.target.group;
+    if (targetGroup && targetGroup.type === "ownership" && this.hasOutsideLink(targetGroup) &&
+        targetGroup.owner.linkToParent) this.delLink(targetGroup.owner.linkToParent);
+    if (sourceGroup && sourceGroup.type === "ownership" && this.hasOutsideLink(sourceGroup) &&
+        sourceGroup.owner.linkToParent) this.delLink(sourceGroup.owner.linkToParent);
 
-    if (targetGroup && this.hasOutsideLink(targetGroup) && targetGroup.owner.linkToParent) this.delLink(targetGroup.owner.linkToParent);
-    if (sourceGroup && this.hasOutsideLink(sourceGroup) && sourceGroup.owner.linkToParent) this.delLink(sourceGroup.owner.linkToParent);
-
-    var i, noc, edges;
+    var i, noc, edges, metadata;
     if (Object.values(link.target.edges).length >= 2 && link.target.linkToParent) {
       noc = 0; edges = link.target.edges;
       for (i in edges) {
-        if (edges[i].metadata.RelationType !== "ownership" && ++noc >= 2) this.delLink(link.target.linkToParent);
+        metadata = edges[i].metadata;
+        if (metadata.RelationType !== "ownership" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(link.target.linkToParent);
       }
     }
     if (Object.keys(link.source.edges).length >= 2 && link.source.linkToParent) {
       noc = 0; edges = link.source.edges;
       for (i in edges) {
-        if (edges[i].metadata.RelationType !== "ownership" && ++noc >= 2) this.delLink(link.source.linkToParent);
+        metadata = edges[i].metadata;
+        if (metadata.RelationType !== "ownership" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(link.source.linkToParent);
       }
     }
 
-    if (!link.source.visible || !link.target.visible) {
+    if (!link.source.visible && !link.target.visible) {
       this._links[link.id] = link;
+    } else if (!link.source.visible) {
+      this._links[link.id] = link;
+      if (link.source.group && link.source.group.collapsed && link.source.group != link.target.group) {
+        this.addCollapseLink(link.source.group, link.source.group.owner, link.target, link.metadata);
+      }
+    } else if (!link.target.visible) {
+      this._links[link.id] = link;
+      if (link.target.group && link.target.group.collapsed && link.source.group != link.target.group) {
+        this.addCollapseLink(link.target.group, link.taregt.group.owner, link.source, link.metadata);
+      }
     } else {
       this.links[link.id] = link;
     }
@@ -508,8 +526,8 @@ TopologyGraphLayout.prototype = {
         hull = [];
 
     for (i = upperIndexes.length - 1; i >= 0; --i) {
-      node = members[sortedPoints[upperIndexes[i]][2]];
-      hull.push([node.x, node.y]);
+        node = members[sortedPoints[upperIndexes[i]][2]];
+        hull.push([node.x, node.y]);
     }
     for (i = +skipLeft; i < lowerIndexes.length - skipRight; ++i) {
       node = members[sortedPoints[lowerIndexes[i]][2]];
@@ -538,6 +556,8 @@ TopologyGraphLayout.prototype = {
     this.node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 
     this.group.attrs(function(d) {
+      if (d.type !== "ownership") return;
+
       var hull = self.convexHull(d);
 
       if (hull && hull.length) {
@@ -636,6 +656,27 @@ TopologyGraphLayout.prototype = {
 
   captureStopped: function(d) {
     this.g.select("#node-" + d.id).select('image.capture').remove();
+  },
+
+  groupOwnerSet: function(d) {
+    var self = this;
+
+    var o = this.g.select("#node-" + d.id);
+
+    o.append("image")
+    .attr("class", "collapsexpand")
+    .attr("width", 16)
+    .attr("height", 16)
+    .attr("x", function(d) { return -self.nodeSize(d) - 4; })
+    .attr("y", function(d) { return -self.nodeSize(d) - 4; })
+    .attr("xlink:href", this.collapseImg);
+    o.select('circle').attr("r", this.nodeSize);
+  },
+
+  groupOwnerUnset: function(d) {
+    var o = this.g.select("#node-" + d.id);
+    o.select('image.collapsexpand').remove();
+    o.select('circle').attr("r", this.nodeSize);
   },
 
   pinNode: function(d) {
@@ -743,16 +784,16 @@ TopologyGraphLayout.prototype = {
       if (members.indexOf(e.source) < 0 || members.indexOf(e.target) < 0) {
         source = e.source; target = e.target;
         if (e.source.group === group) {
-          // group already collapsed, link owners together, delete on collapse links
-          // that where present between these two groups
+          // group already collapsed, link owners together, delete old collapse links
+          // that were present between these two groups
           if (e.target.group && e.target.group.collapsed) {
             this.delCollapseLinks(e.target.group, source);
             target = e.target.group.owner;
           }
           source = group.owner;
         } else {
-          // group already collapsed, link owners together, delete on collapse links
-          // that where present between these two groups
+          // group already collapsed, link owners together, delete old collapse links
+          // that were present between these two groups
           if (e.source.group && e.source.group.collapsed) {
             this.delCollapseLinks(e.source.group, target);
             source = e.source.group.owner;
@@ -760,7 +801,7 @@ TopologyGraphLayout.prototype = {
           target = group.owner;
         }
 
-        if (!source.group || !target.group || source.group.owner.visible && target.group.owner.visible) {
+        if (!source.group || !target.group || (source.group.owner.visible && target.group.owner.visible)) {
           this.addCollapseLink(group, source, target, e.metadata);
         }
       }
@@ -899,6 +940,7 @@ TopologyGraphLayout.prototype = {
 
   collapse: function(collapse) {
     this.collapsed = collapse;
+    this.defaultCollpsed = collapse;
 
     var i;
     for (i = this.groups.length - 1; i >= 0; i--) {
@@ -914,7 +956,7 @@ TopologyGraphLayout.prototype = {
 
   toggleCollapseByLevel: function(collapse) {
     if (collapse) {
-      if (this.collapseLevel == 0) {
+      if (this.collapseLevel === 0) {
         return;
       } else {
         this.collapseLevel--;
@@ -927,11 +969,12 @@ TopologyGraphLayout.prototype = {
   },
 
   collapseByLevel: function(level, collapse, groups) {
-    if (level == 0) {
-      for (var i = groups.length - 1; i >= 0; i--) {
+    var i;
+    if (level === 0) {
+      for (i = groups.length - 1; i >= 0; i--) {
         if (collapse) {
           this.collapseGroup(groups[i]);
-          } else {
+        } else {
           this.uncollapseGroup(groups[i]);
         }
       }
@@ -1069,7 +1112,6 @@ TopologyGraphLayout.prototype = {
     nodeEnter.append("circle")
       .attr("r", this.nodeSize);
 
-
     // node picto
     nodeEnter.append("image")
       .attr("id", function(d) { return "node-img-" + d.id; })
@@ -1089,13 +1131,7 @@ TopologyGraphLayout.prototype = {
       .text(this.nodeTitle);
 
     nodeEnter.filter(function(d) { return d.isGroupOwner(); })
-      .append("image")
-      .attr("class", "collapsexpand")
-      .attr("width", 16)
-      .attr("height", 16)
-      .attr("x", function(d) { return -self.nodeSize(d) - 4; })
-      .attr("y", function(d) { return -self.nodeSize(d) - 4; })
-      .attr("xlink:href", this.collapseImg);
+      .each(this.groupOwnerSet.bind(this));
 
     nodeEnter.filter(function(d) { return d.metadata.Capture; })
       .each(this.captureStarted.bind(this));
@@ -1131,7 +1167,7 @@ TopologyGraphLayout.prototype = {
   },
 
   groupClass: function(d) {
-    var clazz = "group " + d.type;
+    var clazz = "group " + d.ownerType;
 
     if (d.owner.metadata.Probe) clazz += " " + d.owner.metadata.Probe;
 

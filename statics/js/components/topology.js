@@ -297,12 +297,13 @@ var TopologyComponent = {
 
 };
 
-var Group = function(owner) {
+var Group = function(owner, type) {
   this.id = owner.id;
   this.owner = owner;
   this.members = {};
   this.parent = null;
   this.children = {};
+  this.type = type;
 };
 
 Group.prototype = {
@@ -333,8 +334,8 @@ var Node = function(id, host, metadata) {
 
 Node.prototype = {
 
-  isGroupOwner: function() {
-    return this.group && this.group.owner === this;
+  isGroupOwner: function(type) {
+    return this.group && this.group.owner === this && (!type || type === this.group.type);
   },
 
   isCaptureOn: function() {
@@ -411,8 +412,8 @@ Graph.prototype = {
     }
   },
 
-  addGroup: function(owner) {
-    var group = new Group(owner);
+  addGroup: function(owner, type) {
+    var group = new Group(owner, type);
     this.groups[owner.id] = group;
 
     this.notifyHandlers('groupAdded', group);
@@ -479,6 +480,12 @@ Graph.prototype = {
   delGroup: function(group) {
     if (group.parent) delete group.parent.children[group.id];
 
+    var members = Object.values(group.members);
+    for (var i = members.length - 1; i >= 0; i--) {
+      members[i].group = null;
+    }
+    group.members = [];
+
     delete this.groups[group.id];
 
     this.notifyHandlers('groupDeleted', group);
@@ -511,10 +518,14 @@ Graph.prototype = {
     this.notifyHandlers('edgeAdded', edge);
 
     // compute group
-    if (edge.metadata.RelationType === "ownership") {
+    if (edge.metadata.RelationType === "ownership" || edge.metadata.Type === "vlan") {
       var group = this.groups[source.id];
       if (!group) {
-        group = this.addGroup(source);
+        var type = edge.metadata.RelationType === "ownership" ? "ownership" : "interface";
+        console.log(type);
+
+
+        group = this.addGroup(source, type);
 
         if (source.group) {
           this.delGroupMember(source.group, source);
@@ -546,6 +557,17 @@ Graph.prototype = {
   },
 
   delEdge: function(edge) {
+    if (edge.metadata.RelationType === "ownership" || edge.metadata.Type === "vlan") {
+      var group = edge.source.group;
+      if (group) {
+        this.delGroupMember(group, edge.target);
+
+        if (Object.values(group.members).length === 1 && group.type === "interface") {
+          this.delGroup(group);
+        }
+      }
+    }
+
     delete edge.source.edges[edge.id];
     delete edge.target.edges[edge.id];
     delete this.edges[edge.id];
