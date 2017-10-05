@@ -385,6 +385,7 @@
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?coverage)'
+          only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
