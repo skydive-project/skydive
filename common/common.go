@@ -28,16 +28,11 @@ import "time"
 // between each try
 func Retry(fnc func() error, try int, delay time.Duration) error {
 	var err error
-	if err = fnc(); err == nil {
-		return nil
-	}
-
-	for i := 0; i != try; i++ {
-		time.Sleep(delay)
+	for i := 0; i < try; i++ {
 		if err = fnc(); err == nil {
 			return nil
 		}
+		time.Sleep(delay)
 	}
-
 	return err
 }
