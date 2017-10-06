@@ -34,21 +34,21 @@ import (
 // re-sync since some messages could have been lost.
 type TopologyForwarder struct {
 	masterElection *shttp.WSMasterElection
-	Graph          *graph.Graph
-	Host           string
+	graph          *graph.Graph
+	host           string
 }
 
 func (t *TopologyForwarder) triggerResync() {
-	logging.GetLogger().Infof("Start a re-sync for %s", t.Host)
+	logging.GetLogger().Infof("Start a re-sync for %s", t.host)
 
-	t.Graph.RLock()
-	defer t.Graph.RUnlock()
+	t.graph.RLock()
+	defer t.graph.RUnlock()
 
 	// request for deletion of everything belonging this host
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.Host))
+	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.host))
 
 	// re-add all the nodes and edges
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, t.Graph))
+	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, t.graph))
 }
 
 // OnNewMaster is called by the master election mechanism when a new master is elected. In
@@ -93,6 +93,11 @@ func (t *TopologyForwarder) OnEdgeDeleted(e *graph.Edge) {
 	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }
 
+// GetMaster returns the current analyzer the agent is sending its events to
+func (t *TopologyForwarder) GetMaster() shttp.WSSpeaker {
+	return t.masterElection.GetMaster()
+}
+
 // NewTopologyForwarder returns a new Graph forwarder which forwards event of the given graph
 // to the given WebSocket JSON speakers.
 func NewTopologyForwarder(host string, g *graph.Graph, pool shttp.WSJSONSpeakerPool) *TopologyForwarder {
@@ -100,8 +105,8 @@ func NewTopologyForwarder(host string, g *graph.Graph, pool shttp.WSJSONSpeakerP
 
 	t := &TopologyForwarder{
 		masterElection: masterElection,
-		Graph:          g,
-		Host:           host,
+		graph:          g,
+		host:           host,
 	}
 
 	masterElection.AddEventHandler(t)

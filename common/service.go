@@ -31,6 +31,8 @@ import (
 type ServiceType string
 
 const (
+	// UnknownService for unknown client types
+	UnknownService ServiceType = "unknown"
 	// AnalyzerService analyzer
 	AnalyzerService ServiceType = "analyzer"
 	// AgentService agent

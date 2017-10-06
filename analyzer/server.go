@@ -64,6 +64,36 @@ type Server struct {
 	wgFlowsHandlers sync.WaitGroup
 }
 
+// ElectionStatus describes the status of an election
+type ElectionStatus struct {
+	IsMaster bool
+}
+
+// AnalyzerStatus describes the status of an analyzer
+type AnalyzerStatus struct {
+	Clients  map[string]shttp.WSConnStatus
+	Peers    map[string]shttp.WSConnStatus
+	Alerts   ElectionStatus
+	Captures ElectionStatus
+}
+
+// GetStatus returns the status of an analyzer
+func (s *Server) GetStatus() interface{} {
+	peers := make(map[string]shttp.WSConnStatus)
+	for _, peer := range s.TopologyServer.peers {
+		if peer.wsclient != nil && peer.host != config.GetConfig().GetString("host_id") {
+			peers[peer.host] = peer.wsclient.GetStatus()
+		}
+	}
+
+	return &AnalyzerStatus{
+		Clients:  s.WSServer.GetStatus(),
+		Peers:    peers,
+		Alerts:   ElectionStatus{IsMaster: s.AlertServer.IsMaster()},
+		Captures: ElectionStatus{IsMaster: s.OnDemandClient.IsMaster()},
+	}
+}
+
 func (s *Server) initialize() (err error) {
 	embedEtcd := config.GetConfig().GetBool("etcd.embedded")
 
@@ -152,7 +182,9 @@ func (s *Server) initialize() (err error) {
 
 	api.RegisterConfigAPI(s.HTTPServer)
 
-	return nil
+	api.RegisterStatusAPI(s.HTTPServer, s)
+
+	return s.HTTPServer.Listen()
 }
 
 // Start the analyzer server
@@ -176,7 +208,7 @@ func (s *Server) Start() {
 	s.wgServers.Add(2)
 	go func() {
 		defer s.wgServers.Done()
-		s.HTTPServer.ListenAndServe()
+		s.HTTPServer.Serve()
 	}()
 
 	go func() {

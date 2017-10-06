@@ -204,7 +204,6 @@ EOF
         COVERFILE="$TEMP_DIR/$NAME.cover"
         PIDFILE="$TEMP_DIR/$NAME.pid"
 	sudo -E screen -S skydive-stress -X screen -t skydive-agent $WINDOW ip netns exec $NAME sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; $SKYDIVE agent -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
-	WINDOW=$(( $WINDOW + 1 ))
 
 	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-br $NAME
 	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock set bridge $NAME rstp_enable=true
@@ -326,18 +325,15 @@ analyzer:
     fabric:
 EOF
 
-	CURR_ANALYZER_PORT=$(( $CURR_ANALYZER_PORT + 2 ))
-
 	TOTAL_AGENT=$(( $AGENT_NUM + $AGENT_STOCK ))
   for AGENT_I in $( seq $TOTAL_AGENT ); do
 		echo "      - TOR1 -> TOR1_PORT_$AGENT_I" >> $TEMP_DIR/$NAME.yml
 		echo "      - TOR1_PORT_$AGENT_I -> *[Name=agent-$AGENT_I]/eth0" >> $TEMP_DIR/$NAME.yml
 	done
 
-        COVERFILE="$TEMP_DIR/$NAME.cover"
-        PIDFILE="$TEMP_DIR/$NAME.pid"
+	COVERFILE="$TEMP_DIR/$NAME.cover"
+	PIDFILE="$TEMP_DIR/$NAME.pid"
 	sudo -E screen -S skydive-stress -X screen -t skydive-analyzer $WINDOW sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; $SKYDIVE analyzer -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
-	WINDOW=$(( $WINDOW + 1 ))
 
 	touch $TEMP_DIR/$NAME.lock
 }
@@ -405,6 +401,7 @@ function start() {
 	create_main_bridge
 
 	start_inotify
+	WINDOW=$(( $WINDOW + 1 ))
 
 	for ANALYZER_I in $( seq $ANALYZER_NUM ); do
 		# if embedded only the first analyzer will be used as etcd server
@@ -414,6 +411,8 @@ function start() {
 		if [ ! -f $TEMP_DIR/analyzer-$ANALYZER_I.lock ]; then
 			create_analyzer $ANALYZER_I $ANALYZER_NUM $AGENT_NUM
 		fi
+		CURR_ANALYZER_PORT=$(( $CURR_ANALYZER_PORT + 2 ))
+		WINDOW=$(( $WINDOW + 1 ))
 	done
 
 	AGENTS=""
@@ -428,6 +427,8 @@ function start() {
 		else
 			AGENTS="$AGENTS,$PREFIX.$AGENT_I"
 		fi
+
+		WINDOW=$(( $WINDOW + 1 ))
 	done
 
 	for AGENT_I in $( seq $AGENT_NUM ); do
@@ -474,21 +475,21 @@ function stop_analyzer() {
 	ANALYZER=$1
 
 	NAME=analyzer-$ANALYZER
-        if [ -e $TEMP_DIR/$NAME.pid ]; then
-            sudo kill $(cat $TEMP_DIR/$NAME.pid)
-        else
-	    sudo pkill -f $NAME.yml
-        fi
-        timeout=30
-        while pkill -0 -f $NAME.yml ; do
-            sleep 1
-            timeout=$[timeout - 1]
-            if [ $timeout -lt 0 ] ; then
-                echo "Timeout on shutdown $NAME should not occur"
-                pgrep -a -f $NAME.yml
-                sudo pkill -9 -f $NAME.yml
-            fi
-        done
+	if [ -e $TEMP_DIR/$NAME.pid ]; then
+		sudo kill $(cat $TEMP_DIR/$NAME.pid)
+	else
+		sudo pkill -f $NAME.yml
+	fi
+	timeout=30
+	while pkill -0 -f $NAME.yml ; do
+		sleep 1
+		timeout=$[timeout - 1]
+		if [ $timeout -lt 0 ] ; then
+			echo "Timeout on shutdown $NAME should not occur"
+			pgrep -a -f $NAME.yml
+			sudo pkill -9 -f $NAME.yml
+		fi
+	done
 	sudo rm $TEMP_DIR/$NAME.lock $TEMP_DIR/$NAME.pid
 }
 

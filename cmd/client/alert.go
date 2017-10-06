@@ -140,7 +140,7 @@ var AlertDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 

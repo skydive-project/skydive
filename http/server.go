@@ -97,38 +97,43 @@ func (s *Server) RegisterRoutes(routes []Route) {
 	}
 }
 
-func (s *Server) ListenAndServe() {
-	defer s.wg.Done()
-	s.wg.Add(1)
-
-	s.CnxType = TCP
+func (s *Server) Listen() error {
 	listenAddrPort := fmt.Sprintf("%s:%d", s.Addr, s.Port)
-	var err error
+	socketType := "TCP"
 	ln, err := net.Listen("tcp", listenAddrPort)
 	if err != nil {
-		logging.GetLogger().Fatalf("Failed to listen on %s:%d: %s", s.Addr, s.Port, err.Error())
+		return fmt.Errorf("Failed to listen on %s:%d: %s", s.Addr, s.Port, err.Error())
 	}
 	s.listener = ln
 
 	if config.IsTLSenabled() == true {
-		s.CnxType = TLS
+		socketType = "TLS"
 		certPEM := config.GetConfig().GetString("analyzer.X509_cert")
 		keyPEM := config.GetConfig().GetString("analyzer.X509_key")
 		agentCertPEM := config.GetConfig().GetString("agent.X509_cert")
-		s.TLSConfig = common.SetupTLSServerConfig(certPEM, keyPEM)
-		s.TLSConfig.ClientCAs = common.SetupTLSLoadCertificate(agentCertPEM)
-		s.listener = tls.NewListener(ln.(*net.TCPListener), s.TLSConfig)
+		tlsConfig := common.SetupTLSServerConfig(certPEM, keyPEM)
+		tlsConfig.ClientCAs = common.SetupTLSLoadCertificate(agentCertPEM)
+		s.listener = tls.NewListener(ln.(*net.TCPListener), tlsConfig)
 	}
 
-	socketType := "TCP"
-	if s.CnxType == TLS {
-		socketType = "TLS"
-	}
 	logging.GetLogger().Infof("Listening on %s socket %s:%d", socketType, s.Addr, s.Port)
+	return nil
+}
+
+func (s *Server) ListenAndServe() {
+	if err := s.Listen(); err != nil {
+		logging.GetLogger().Critical(err)
+	}
+
+	go s.Serve()
+}
+
+func (s *Server) Serve() {
+	defer s.wg.Done()
+	s.wg.Add(1)
 
 	s.Handler = s.Router
-	err = s.Serve(s.listener)
-	if err != nil {
+	if err := s.Server.Serve(s.listener); err != nil {
 		logging.GetLogger().Errorf("Failed to Serve on %s:%d: %s", s.Addr, s.Port, err.Error())
 	}
 }

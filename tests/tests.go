@@ -1016,7 +1016,11 @@ func init() {
 		server := analyzer.NewServerFromConfig()
 		server.Start()
 
-		agent := agent.NewAgent()
+		agent, err := agent.NewAgent()
+		if err != nil {
+			panic(err)
+		}
+
 		agent.Start()
 
 		// TODO: check for storage status instead of sleeping

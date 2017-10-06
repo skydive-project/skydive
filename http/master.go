@@ -44,6 +44,14 @@ func (a *WSMasterElection) selectMaster() {
 	return
 }
 
+// GetMaster returns the current master.
+func (a *WSMasterElection) GetMaster() WSSpeaker {
+	a.RLock()
+	defer a.RUnlock()
+
+	return a.master
+}
+
 // SendMessageToMaster sends a message to the master.
 func (a *WSMasterElection) SendMessageToMaster(m WSMessage) {
 	a.RLock()
