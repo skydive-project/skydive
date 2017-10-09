@@ -14,7 +14,7 @@ curl -sL -o ~/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master
 chmod +x ~/bin/gimme
 
 # before changing this be sure that it will not break the RHEL packaging
-eval "$(gimme 1.6)"
+eval "$(gimme 1.8)"
 
 export GOPATH=$WORKSPACE
 

@@ -2,7 +2,7 @@ language: go
 go_import_path: github.com/skydive-project/skydive
 
 go:
-    - 1.7
+    - 1.8
 
 sudo: required
 dist: trusty
