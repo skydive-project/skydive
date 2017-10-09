@@ -448,6 +448,12 @@ TopologyGraphLayout.prototype = {
     delete this._nodes[node.id];
 
     if (node.group) this.delGroupMember(node.group, node);
+
+    for (var i in node.links) {
+      var link = node.links[i];
+
+      if (link.collapse) this.delCollapseLinks(link.collapse.group, node);
+    }
   },
 
   onNodeDeleted: function(node) {
@@ -467,6 +473,15 @@ TopologyGraphLayout.prototype = {
   },
 
   _onNodeUpdated: function(node) {
+    if (this.isNeutronVMNode(node)) {
+      for (var i in node.links) {
+	var link = node.links[i];
+        if (link.metadata.RelationType === "ownership" && this.links[link.id]) {
+          delete this.links[link.id];
+          this.invalid = true;
+        }
+      }
+    }
     if (node.metadata.Capture && !node._metadata.Capture) {
       this.captureStarted(node);
     } else if (!node.metadata.Capture && node._metadata.Capture) {
@@ -474,6 +489,9 @@ TopologyGraphLayout.prototype = {
     }
     if (node.metadata.Manager && !node._metadata.Manager) {
       this.managerSet(node);
+    }
+    if (node.metadata.State !== node._metadata.State) {
+       this.stateSet(node);
     }
     node._metadata = node.metadata;
   },
@@ -620,6 +638,10 @@ TopologyGraphLayout.prototype = {
     }
   },
 
+  stateSet: function(d) {
+    this.g.select("#node-" + d.id).attr("class", this.nodeClass);
+  },
+
   managerSet: function(d) {
     var size = this.nodeSize(d);
     var node = this.g.select("#node-" + d.id);
@@ -745,6 +767,9 @@ TopologyGraphLayout.prototype = {
         source: source,
         target: target,
         metadata: metadata,
+        collapse: {
+          group: group
+        }
       };
       group.collapseLinks.push(link);
 
