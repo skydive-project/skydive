@@ -1295,46 +1295,52 @@
 			"revisionTime": "2017-06-30T17:54:37Z"
 		},
 		{
-			"checksumSHA1": "4OERoRGdnmeX9hA8o0uwCZqMA1g=",
-			"origin": "github.com/safchain/zap",
+			"checksumSHA1": "5BYbiKEkYykvfjSaNYDuQpBqglo=",
 			"path": "go.uber.org/zap",
-			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
-			"revisionTime": "2017-07-09T03:22:36Z"
+			"revision": "35aad584952c3e7020db7b839f6b102de6271f89",
+			"revisionTime": "2017-09-25T19:53:02Z",
+			"version": "v1.7.1",
+			"versionExact": "v1.7.1"
 		},
 		{
 			"checksumSHA1": "HYo/9nwrY08NQA+2ItPOAH8IFW8=",
-			"origin": "github.com/safchain/zap/buffer",
 			"path": "go.uber.org/zap/buffer",
-			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
-			"revisionTime": "2017-07-09T03:22:36Z"
+			"revision": "35aad584952c3e7020db7b839f6b102de6271f89",
+			"revisionTime": "2017-09-25T19:53:02Z",
+			"version": "v1.7.1",
+			"versionExact": "v1.7.1"
 		},
 		{
 			"checksumSHA1": "MuxOAtZEsJitlWBzhmpm2vGiHok=",
-			"origin": "github.com/safchain/zap/internal/bufferpool",
 			"path": "go.uber.org/zap/internal/bufferpool",
-			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
-			"revisionTime": "2017-07-09T03:22:36Z"
+			"revision": "35aad584952c3e7020db7b839f6b102de6271f89",
+			"revisionTime": "2017-09-25T19:53:02Z",
+			"version": "v1.7.1",
+			"versionExact": "v1.7.1"
 		},
 		{
 			"checksumSHA1": "uC0L9eCSAYcCWNC8udJk/t1vvIU=",
-			"origin": "github.com/safchain/zap/internal/color",
 			"path": "go.uber.org/zap/internal/color",
-			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
-			"revisionTime": "2017-07-09T03:22:36Z"
+			"revision": "35aad584952c3e7020db7b839f6b102de6271f89",
+			"revisionTime": "2017-09-25T19:53:02Z",
+			"version": "v1.7.1",
+			"versionExact": "v1.7.1"
 		},
 		{
 			"checksumSHA1": "b80CJExrVpXu3SA1iCQ6uLqTn2c=",
-			"origin": "github.com/safchain/zap/internal/exit",
 			"path": "go.uber.org/zap/internal/exit",
-			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
-			"revisionTime": "2017-07-09T03:22:36Z"
+			"revision": "35aad584952c3e7020db7b839f6b102de6271f89",
+			"revisionTime": "2017-09-25T19:53:02Z",
+			"version": "v1.7.1",
+			"versionExact": "v1.7.1"
 		},
 		{
-			"checksumSHA1": "66VZR7l5jQfBlDLzV/b3p8+bzEo=",
-			"origin": "github.com/safchain/zap/zapcore",
+			"checksumSHA1": "mRD6lujPvXPkbC3+byNwO/bNVu8=",
 			"path": "go.uber.org/zap/zapcore",
-			"revision": "4fb11c3880cea6f9634f5f22d6025e4432542fc3",
-			"revisionTime": "2017-07-09T03:22:36Z"
+			"revision": "35aad584952c3e7020db7b839f6b102de6271f89",
+			"revisionTime": "2017-09-25T19:53:02Z",
+			"version": "v1.7.1",
+			"versionExact": "v1.7.1"
 		},
 		{
 			"checksumSHA1": "vE43s37+4CJ2CDU6TlOUOYE0K9c=",
