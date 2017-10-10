@@ -988,16 +988,17 @@ func (g *Graph) EdgeDeleted(e *Edge) {
 	}
 }
 
-func (g *Graph) delEdge(e *Edge, t time.Time) {
+func (g *Graph) delEdge(e *Edge, t time.Time) (success bool) {
 	e.deletedAt = t
-	if g.backend.EdgeDeleted(e) {
+	if success = g.backend.EdgeDeleted(e); success {
 		g.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
 	}
+	return
 }
 
 // DelEdge delete an edge
-func (g *Graph) DelEdge(e *Edge) {
-	g.delEdge(e, time.Now().UTC())
+func (g *Graph) DelEdge(e *Edge) bool {
+	return g.delEdge(e, time.Now().UTC())
 }
 
 // NodeDeleted event
@@ -1007,20 +1008,21 @@ func (g *Graph) NodeDeleted(n *Node) {
 	}
 }
 
-func (g *Graph) delNode(n *Node, t time.Time) {
+func (g *Graph) delNode(n *Node, t time.Time) (success bool) {
 	for _, e := range g.backend.GetNodeEdges(n, nil, Metadata{}) {
 		g.delEdge(e, t)
 	}
 
 	n.deletedAt = t
-	if g.backend.NodeDeleted(n) {
+	if success = g.backend.NodeDeleted(n); success {
 		g.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
 	}
+	return
 }
 
 // DelNode delete the node n in the graph
-func (g *Graph) DelNode(n *Node) {
-	g.delNode(n, time.Now().UTC())
+func (g *Graph) DelNode(n *Node) bool {
+	return g.delNode(n, time.Now().UTC())
 }
 
 // DelHostGraph delete the associated node with the hostname host

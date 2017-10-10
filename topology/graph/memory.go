@@ -154,10 +154,11 @@ func (m *MemoryBackend) EdgeDeleted(e *Edge) bool {
 }
 
 // NodeDeleted in the graph backend
-func (m *MemoryBackend) NodeDeleted(n *Node) bool {
-	delete(m.nodes, n.ID)
-
-	return true
+func (m *MemoryBackend) NodeDeleted(n *Node) (removed bool) {
+	if _, removed = m.nodes[n.ID]; removed {
+		delete(m.nodes, n.ID)
+	}
+	return
 }
 
 // GetNodes from the graph backend
