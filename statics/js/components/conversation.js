@@ -219,9 +219,9 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
         })
       };
 
-      var x = d3.scale.ordinal().rangeBands([0, _this.width]);
-      var z = d3.scale.linear().domain([0, 4]).clamp(true);
-      var c = d3.scale.category10().domain(d3.range(10));
+      var x = d3.scaleBand().range([0, _this.width]);
+      var z = d3.scaleLinear().domain([0, 4]).clamp(true);
+      var c = d3.scaleOrdinal(d3.schemeCategory10).domain(d3.range(10));
 
       // The default sort order.
       x.domain(_this.orders.name);
@@ -243,8 +243,8 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
         .enter().append("rect")
         .attr("class", "cell")
         .attr("x", function(d) { return x(d.x); })
-        .attr("width", x.rangeBand())
-        .attr("height", x.rangeBand())
+        .attr("width", x.bandwidth())
+        .attr("height", x.bandwidth())
         .style("fill-opacity", function(d) { return z(d.z); })
         .style("fill", function(d) { return "rgb(31, 119, 180)"; })
         .on("mouseover", function(p) {
@@ -261,7 +261,7 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
 
       row.append("text")
       .attr("x", -6)
-      .attr("y", x.rangeBand() / 2)
+      .attr("y", x.bandwidth() / 2)
       .attr("dy", ".32em")
       .attr("text-anchor", "end")
       .text(function(d, i) { return nodes[i].name; });
@@ -279,7 +279,7 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
 
       column.append("text")
       .attr("x", 6)
-      .attr("y", x.rangeBand() / 2)
+      .attr("y", x.bandwidth() / 2)
       .attr("dy", ".32em")
       .attr("text-anchor", "start")
       .text(function(d, i) { return nodes[i].name; });
