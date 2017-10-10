@@ -239,8 +239,8 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *Attributes) {
 	}
 
 	tr := mapper.graph.StartMetadataTransaction(node)
-	tr.AddMetadata("Manager", "neutron")
 
+	metadata["Manager"] = "neutron"
 	for k, v := range metadata {
 		tr.AddMetadata(k, v)
 	}
