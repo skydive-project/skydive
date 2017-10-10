@@ -36,7 +36,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/pagination"
-	"github.com/pmylund/go-cache"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -48,18 +47,19 @@ import (
 // NeutronProbe describes a topology porbe that map neutron attribues in the graph
 type NeutronProbe struct {
 	graph.DefaultGraphListener
-	graph  *graph.Graph
-	client *gophercloud.ServiceClient
-	// The cache associates some metadatas to a MAC and is used to
-	// detect any updates on these metadatas.
-	cache           *cache.Cache
+	graph           *graph.Graph
+	client          *gophercloud.ServiceClient
+	portMetadata    map[graph.Identifier]portMetadata
 	nodeUpdaterChan chan graph.Identifier
 	intfRegexp      *regexp.Regexp
 	nsRegexp        *regexp.Regexp
+	opts            gophercloud.AuthOptions
+	regionName      string
+	availability    gophercloud.Availability
 }
 
-// Attributes neutron attributes
-type Attributes struct {
+// attributes neutron attributes
+type attributes struct {
 	PortID      string
 	NetworkID   string
 	NetworkName string
@@ -68,8 +68,8 @@ type Attributes struct {
 	VNI         string
 }
 
-// PortMetadata neutron metadata
-type PortMetadata struct {
+// portMetadata neutron metadata
+type portMetadata struct {
 	mac    string
 	portID string
 }
@@ -83,8 +83,8 @@ func (e NeutronPortNotFound) Error() string {
 	return "Unable to find port for MAC address: " + e.MAC
 }
 
-func retrievePortMetadata(node *graph.Node) PortMetadata {
-	md := PortMetadata{}
+func retrieveportMetadata(node *graph.Node) portMetadata {
+	md := portMetadata{}
 
 	// We prefer to use the 'ExtID/attached-mac' metadata to get
 	// the port, and we fallback to the 'mac' metadata.
@@ -100,7 +100,7 @@ func retrievePortMetadata(node *graph.Node) PortMetadata {
 	return md
 }
 
-func (mapper *NeutronProbe) retrievePort(portMd PortMetadata) (port ports.Port, err error) {
+func (mapper *NeutronProbe) retrievePort(portMd portMetadata) (port ports.Port, err error) {
 	var opts ports.ListOpts
 
 	logging.GetLogger().Debugf("Retrieving attributes from Neutron for MAC: %s", portMd.mac)
@@ -142,7 +142,7 @@ func (mapper *NeutronProbe) retrievePort(portMd PortMetadata) (port ports.Port, 
 	return port, err
 }
 
-func (mapper *NeutronProbe) retrieveAttributes(portMd PortMetadata) (*Attributes, error) {
+func (mapper *NeutronProbe) retrieveAttributes(portMd portMetadata) (*attributes, error) {
 	port, err := mapper.retrievePort(portMd)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (mapper *NeutronProbe) retrieveAttributes(portMd PortMetadata) (*Attributes
 		IPs = append(IPs, element.IPAddress)
 	}
 
-	a := &Attributes{
+	a := &attributes{
 		PortID:      port.ID,
 		NetworkID:   port.NetworkID,
 		NetworkName: network.Name,
@@ -191,7 +191,7 @@ func (mapper *NeutronProbe) nodeUpdater() {
 			continue
 		}
 
-		portMd := retrievePortMetadata(node)
+		portMd := retrieveportMetadata(node)
 
 		attrs, err := mapper.retrieveAttributes(portMd)
 		if err != nil {
@@ -208,7 +208,7 @@ func (mapper *NeutronProbe) nodeUpdater() {
 	logging.GetLogger().Debugf("Stopping Neutron updater")
 }
 
-func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *Attributes) {
+func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
 	mapper.graph.Lock()
 	defer mapper.graph.Unlock()
 
@@ -290,8 +290,8 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *Attributes) {
 	}
 }
 
-// EnhanceNode enhance the graph node with neutron metadata (Name, MAC, Manager ...)
-func (mapper *NeutronProbe) EnhanceNode(node *graph.Node) {
+// enhanceNode enhance the graph node with neutron metadata (Name, MAC, Manager ...)
+func (mapper *NeutronProbe) enhanceNode(node *graph.Node) {
 	name, _ := node.GetFieldString("Name")
 	if name == "" {
 		return
@@ -311,33 +311,66 @@ func (mapper *NeutronProbe) EnhanceNode(node *graph.Node) {
 		return
 	}
 
-	portMdCache, f := mapper.cache.Get(mac)
-	portMdNode := retrievePortMetadata(node)
+	prevPortMd, f := mapper.portMetadata[node.ID]
+	currPortMd := retrieveportMetadata(node)
 
-	// If port metadatas have not changed, we return
-	if f && (portMdCache == portMdNode) {
+	// If port metadata have not changed, we return
+	if f && (prevPortMd == currPortMd) {
 		return
 	}
-	// We only try to get Neutron metadatas one time per port
+	// We only try to get Neutron metadata one time per port
 	// metadata values
-	mapper.cache.Set(mac, portMdNode, cache.DefaultExpiration)
+	mapper.portMetadata[node.ID] = currPortMd
 
 	mapper.nodeUpdaterChan <- node.ID
 }
 
 // OnNodeUpdated event
 func (mapper *NeutronProbe) OnNodeUpdated(n *graph.Node) {
-	mapper.EnhanceNode(n)
+	mapper.enhanceNode(n)
 }
 
 // OnNodeAdded event
 func (mapper *NeutronProbe) OnNodeAdded(n *graph.Node) {
-	mapper.EnhanceNode(n)
+	mapper.enhanceNode(n)
+}
+
+// OnNodeDeleted event
+func (mapper *NeutronProbe) OnNodeDeleted(n *graph.Node) {
+	delete(mapper.portMetadata, n.ID)
 }
 
 // Start the probe
 func (mapper *NeutronProbe) Start() {
-	go mapper.nodeUpdater()
+	go func() {
+		for mapper.client == nil {
+			provider, err := openstack.AuthenticatedClient(mapper.opts)
+			if err != nil {
+				logging.GetLogger().Errorf("keystone authentication error: %s", err)
+				time.Sleep(time.Second)
+				continue
+			}
+
+			client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
+				Name:         "neutron",
+				Region:       mapper.regionName,
+				Availability: mapper.availability,
+			})
+			if err != nil {
+				logging.GetLogger().Errorf("keystone authentication error: %s", err)
+				time.Sleep(time.Second)
+				continue
+			}
+			mapper.client = client
+		}
+		mapper.graph.RLock()
+		for _, n := range mapper.graph.GetNodes(nil) {
+			mapper.enhanceNode(n)
+		}
+		mapper.graph.RUnlock()
+
+		mapper.nodeUpdater()
+	}()
 }
 
 // Stop the probe
@@ -352,8 +385,6 @@ func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, re
 	intfRegexp := regexp.MustCompile(`(tap|qr-|qg-|qvo)[a-fA-F0-9]{8}-[a-fA-F0-9]{2}`)
 	nsRegexp := regexp.MustCompile(`(qrouter|qdhcp)-[a-fA-F0-9]{8}`)
 
-	mapper := &NeutronProbe{graph: g, intfRegexp: intfRegexp, nsRegexp: nsRegexp}
-
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: authURL,
 		Username:         username,
@@ -363,25 +394,16 @@ func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, re
 		AllowReauth:      true,
 	}
 
-	provider, err := openstack.AuthenticatedClient(opts)
-	if err != nil {
-		return nil, err
+	mapper := &NeutronProbe{
+		graph:           g,
+		intfRegexp:      intfRegexp,
+		nsRegexp:        nsRegexp,
+		regionName:      regionName,
+		availability:    availability,
+		opts:            opts,
+		nodeUpdaterChan: make(chan graph.Identifier, 500),
+		portMetadata:    make(map[graph.Identifier]portMetadata),
 	}
-
-	client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Name:         "neutron",
-		Region:       regionName,
-		Availability: availability,
-	})
-	if err != nil {
-		return nil, err
-	}
-	mapper.client = client
-
-	// Create a cache with a expiration time of 5 minutes, and which
-	// purges expired items every 30 seconds
-	mapper.cache = cache.New(time.Duration(300)*time.Second, time.Duration(30)*time.Second)
-	mapper.nodeUpdaterChan = make(chan graph.Identifier, 500)
 
 	g.AddEventListener(mapper)
 

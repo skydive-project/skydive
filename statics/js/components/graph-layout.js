@@ -405,7 +405,7 @@ TopologyGraphLayout.prototype = {
     } else if (!link.target.visible) {
       this._links[link.id] = link;
       if (link.target.group && link.target.group.collapsed && link.source.group != link.target.group) {
-        this.addCollapseLink(link.target.group, link.taregt.group.owner, link.source, link.metadata);
+        this.addCollapseLink(link.target.group, link.target.group.owner, link.source, link.metadata);
       }
     } else {
       this.links[link.id] = link;
