@@ -58,6 +58,8 @@ EOF
   systemctl restart orientdb
   systemctl restart etcd
 
+  virsh net-destroy vagrant0
+
   rm -rf /tmp/skydive_agent* /tmp/skydive-etcd
 
   # time to restart services
