@@ -361,7 +361,11 @@ Vue.component('rule-table-detail', {
             <tr v-for="rule in rules"\
                 :id="\'R-\' + rule.UUID"\
                 v-bind:class="{soft: layout.isHighlighted(rule)}">\
-                <td>{{rule.filters}}</td>\
+                <td>\
+                  <span v-for="filter in rule.filters.replace(/([;,])/g, \'$1#\').split(\'#\')">\
+                    {{ filter }}\
+                  </span>\
+                </td>\
                 <td>\
                     <table>\
                         <tr v-for="act in rule.outAction">\
@@ -373,11 +377,15 @@ Vue.component('rule-table-detail', {
                                 v-on:click="layout.select(act.port)">\
                                 <span class="port-link">{{layout.portname(act.port)}}</span>\
                             </td>\
-                            <td> <a class="table-link" v-on:click="layout.switchTab(act.table)">{{act.table}}</a></td>\
+                            <td><a class="table-link" v-on:click="layout.switchTab(act.table)">{{act.table}}</a></td>\
                         </tr>\
                     </table>\
                 </td>\
-                <td>{{rule.actions}}</td>\
+                <td>\
+                  <span v-for="act in rule.actions.replace(/([;,])/g, \'$1#\').split(\'#\')">\
+                    {{ act }}\
+                  </span>\
+                </td>\
             </tr>\
         </tbody>\
       </table>\
