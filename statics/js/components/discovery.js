@@ -66,37 +66,46 @@ var DiscoveryLayout = function(vm, selector) {
   this.width = 680;
   this.height = 600;
   this.radius = (Math.min(this.width, this.height) / 2) - 50;
-  this.color = d3.scale.category20c();
+  this.color = d3.scaleOrdinal(d3.schemeCategory20);
+
+  this.svg = d3.select(selector).append("svg")
+    .attr("width", this.width)
+    .attr("height", this.height)
+    .append("g")
+    .attr("id", "container")
+    .attr("transform", "translate(" + this.width / 2 + "," + this.height * 0.52 + ")");
+
+  this.partition = d3.partition()
+    .size([2 * Math.PI, this.radius * this.radius]);
+
+  var x = d3.scaleLinear()
+      .range([0, 2 * Math.PI]);
+
+  var y = d3.scaleSqrt()
+      .range([0, this.radius]);
+
+  this.arc = d3.arc()
+      .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x0))); })
+      .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x1))); })
+      .innerRadius(function(d) { return Math.max(0, y(d.y0)); })
+      .outerRadius(function(d) { return Math.max(0, y(d.y1)); });
+
+  this.color = d3.scaleOrdinal(d3.schemeCategory20);
+
+  this.partition = d3.partition();
+
+  this.sum = function(d) { return 1; };
 
   // Breadcrumb dimensions: width, height, spacing, width of tip/tail.
   this.b = {
     w: 75, h: 30, s: 3, t: 10
   };
-
-  this.svg = d3.select(selector).append("svg")
-  .attr("width", this.width)
-  .attr("height", this.height)
-  .append("g")
-  .attr("id", "container")
-  .attr("transform", "translate(" + this.width / 2 + "," + this.height * 0.52 + ")");
-
-  this.partition = d3.layout.partition()
-    .sort(null)
-    .size([2 * Math.PI, this.radius * this.radius])
-    .value(function(d) { return 1; });
-
-  this.arc = d3.svg.arc()
-    .startAngle(function(d) { return d.x; })
-    .endAngle(function(d) { return d.x + d.dx; })
-    .innerRadius(function(d) { return Math.sqrt(d.y); })
-    .outerRadius(function(d) { return Math.sqrt(d.y + d.dy); });
-
   this.initializeBreadcrumbTrail();
 };
 
 DiscoveryLayout.prototype.ChangeMode = function(mode) {
   var self = this;
-  var value = mode === "count" ? function() { return 1; } : function(d) { return d.size; };
+  self.sum = mode === "count" ? function() { return 1; } : function(d) { return d.size; };
 
   // Interpolate the arcs in data space.
   function arcTween(a) {
@@ -109,18 +118,21 @@ DiscoveryLayout.prototype.ChangeMode = function(mode) {
     };
   }
 
+  var root = d3.hierarchy(self.root);
+  root.sum(self.sum);
   this.path
-    .data(this.partition.value(value).nodes)
+    .data(self.partition(root).descendants())
     .transition()
     .duration(1500)
     .attrTween("d", arcTween);
+  this.totalSize = this.path.datum().value;
 };
 
 DiscoveryLayout.prototype.DrawChart = function(type) {
-  var totalSize = 0;
   var self = this;
   var gremlinQuery = "g.Flows().Has('Link.Protocol', 'ETHERNET')";
 
+  this.totalSize = 0;
   this.svg.selectAll("*").remove();
   this.vm.$topologyQuery(gremlinQuery)
     .then(function(data) {
@@ -161,41 +173,35 @@ DiscoveryLayout.prototype.DrawChart = function(type) {
             node.children.push(l);
           }
           if (i == layers.length - 1) {
-            if (type == "bytes") {
-              l.size = stats.Bytes;
-            } else {
-              l.size = stats.Packets;
-            }
+            l.size = type == "bytes" ? stats.Bytes : stats.Packets;
           }
           node = l;
         }
       }
 
-      self.path = self.svg.datum(root).selectAll("path")
-        .data(self.partition.nodes)
+      self.root = root
+      root = d3.hierarchy(root);
+      root.sum(self.sum);
+      self.path = self.svg.selectAll("path")
+          .data(self.partition(root).descendants())
         .enter().append("path")
-        .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
-        .attr("d", self.arc)
-        .style("stroke", "#fff")
-        .style("fill", function(d) {
-          return self.color((d.children ? d : d.parent).name);
-        })
-        .style("fill-rule", "evenodd")
-        .on("mouseover", mouseover)
-        .each(stash);
-      totalSize = self.path.node().__data__.value;
-
-      // Add the mouseleave handler to the bounding circle
-      d3.select("#container").on("mouseleave", mouseleave);
+          .attr("display", function(d) { return d.depth ? null : "none"; }) // hide inner ring
+          .attr("d", self.arc)
+          .style("stroke", "#fff")
+          .style("fill", function(d) { return self.color((d.children ? d : d.parent).data.name); })
+          .style("fill-rule", "evenodd")
+          .on("mouseover", mouseover)
+          .each(stash);
+      self.totalSize = self.path.datum().value;
     });
 
   // On mouseover function
   function mouseover(d) {
-    var percentage = (100 * d.value / totalSize).toPrecision(3) + " %";
+    var percentage = (100 * d.value / self.totalSize).toPrecision(3) + " %";
     self.vm.protocolData = {
-      "Name": d.name,
+      "Name": d.data.name,
       "Percentage": percentage,
-      "Size": d.size,
+      "Size": d.data.size,
       "Value": d.value,
       "Depth": d.depth
     };
@@ -242,7 +248,7 @@ DiscoveryLayout.prototype.DrawChart = function(type) {
     // Data join; key function combines name and depth (= position in sequence).
     var g = d3.select("#trail")
       .selectAll("g")
-      .data(nodeArray, function(d) { return d.name + d.depth; });
+      .data(nodeArray, function(d) { return d.data.name + d.depth; });
 
     // Add breadcrumb and label for entering nodes.
     var entering = g.enter().append("svg:g");
@@ -256,10 +262,10 @@ DiscoveryLayout.prototype.DrawChart = function(type) {
       .attr("y", self.b.h / 2)
       .attr("dy", "0.35em")
       .attr("text-anchor", "middle")
-      .text(function(d) { return d.name; });
+      .text(function(d) { return d.data.name; });
 
-    // Set position for entering and updating nodes.
-    g.attr("transform", function(d, i) {
+    // Merge enter and update selections; set position for all nodes.
+    entering.merge(g).attr("transform", function(d, i) {
       return "translate(" + i * (self.b.w + self.b.s) + ", 0)";
     });
 
