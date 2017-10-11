@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0] - 2017-10-21
+### Added
+- New probe to retrieve and display for Openflow rules on OVS switch
+- Flows:
+  - Enable SYN/FIN/RST capturing
+  - Add RTT per layer
+  - Map flows to process
+  - Use WebSocket for flows from the agents to the analyzers
+- Gremlin:
+  - Add `BPF` step to filter raw packets
+  - Add `BothV` step
+  - Add `Subgraph` step to provide a way to get a restricted view of the Graph.
+    For ex: only the "layer2" topology.
+  - Add `Ipv4Range` predicate which matches ipv4 in a range
+  - Make `HasKey` work with complex metadata value, ex: list
+- Packet injector:
+  - Add payload support for TCP packets
+  - Add support for UDP packets
+- Ansible module to deploy Skydive
+- API:
+  - Add and remove user metadata on nodes
+  - Add a status API
+
+### Changed
+- Change etcd default listen port
+
 ## [0.12.0] - 2017-07-28
 ### Added
 - Full HTTPS support
