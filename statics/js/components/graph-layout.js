@@ -988,6 +988,15 @@ TopologyGraphLayout.prototype = {
       }
       this.collapseByLevel(this.collapseLevel, collapse, this.groups);
     } else {
+      var maxLevel = 0;
+      for (var i in this.groups) {
+        var group = this.groups[i];
+        if (group.level > maxLevel) maxLevel = group.level;
+      }
+      if ((this.collapseLevel + 1) >= maxLevel) {
+        return;
+      }
+
       this.collapseByLevel(this.collapseLevel, collapse, this.groups);
       this.collapseLevel++;
     }
