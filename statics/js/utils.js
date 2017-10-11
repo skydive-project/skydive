@@ -22,6 +22,10 @@ function bandwidthToString(kbps) {
   return kbps.toString() + " Kbps";
 }
 
+function firstUppercase(string) {
+	return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 var Queue = function() {
   this.calls = [];
   this.intervalID = null;

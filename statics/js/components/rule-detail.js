@@ -497,15 +497,6 @@ Vue.component('rule-detail', {
       }
     };
     this.handler = {
-      onPostInit: function(v){},
-      onNodeAdded: function(v){},
-      onNodeDeleted: function(v){},
-      onGroupAdded: function(v){},
-      onGroupDeleted: function(v){},
-      onParentSet: function(v){},
-      onGroupMemberAdded: function(v1,v2){},
-      onGroupMemberDeleted: function(v1,v2){},
-      onNodeUpdated: function(v1,v2){},
       onEdgeAdded: handle,
       onEdgeDeleted: handle
     };
