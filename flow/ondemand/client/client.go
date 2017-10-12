@@ -191,11 +191,15 @@ func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
 	return res.Values()
 }
 
-func (o *OnDemandProbeClient) onNodeEvent() {
+// checkForRegistration check the capture gremlin expression in order to
+// register new probe.
+func (o *OnDemandProbeClient) checkForRegistration() {
 	if !o.IsMaster() {
 		return
 	}
 
+	o.RLock()
+	defer o.RUnlock()
 	for _, capture := range o.captures {
 		res := o.applyGremlinExpr(capture.GremlinQuery)
 		if len(res) > 0 {
@@ -206,12 +210,32 @@ func (o *OnDemandProbeClient) onNodeEvent() {
 
 // OnNodeAdded graph event
 func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
-	o.onNodeEvent()
+	// a node comes up with already a capture, this could be due to a re-connect of
+	// an agent. Check if the capture is still active.
+	if id, err := n.GetFieldString("Capture.ID"); err == nil {
+		if !o.IsMaster() {
+			return
+		}
+
+		o.RLock()
+		_, found := o.captures[id]
+		o.RUnlock()
+
+		if found {
+			return
+		}
+
+		// not present unregister it
+		logging.GetLogger().Debugf("Unregister remaining capture for node %s: %s", n.ID, id)
+		go o.unregisterProbe(n, &api.Capture{UUID: id})
+	} else {
+		o.checkForRegistration()
+	}
 }
 
 // OnNodeUpdated graph event
 func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
-	o.onNodeEvent()
+	o.checkForRegistration()
 }
 
 // OnNodeDeleted graph event
@@ -225,7 +249,7 @@ func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 
 // OnEdgeAdded graph event
 func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
-	o.onNodeEvent()
+	o.checkForRegistration()
 }
 
 func (o *OnDemandProbeClient) registerCapture(capture *api.Capture) {

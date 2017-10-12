@@ -1073,7 +1073,7 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 
 func (g *Graph) notifyEvent(ge graphEvent) {
 	// push event to chan so that nested notification will be sent in the
-	// right order. Assiociate the event with the current event listener so
+	// right order. Associate the event with the current event listener so
 	// we can avoid loop by not triggering event for the current listener.
 	ge.listener = g.currentEventListener
 	g.eventChan <- ge
