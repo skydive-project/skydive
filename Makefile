@@ -1,4 +1,4 @@
-VERSION?=0.12.0
+VERSION?=0.13.0
 
 # really Basic Makefile for Skydive
 export GO15VENDOREXPERIMENT=1
