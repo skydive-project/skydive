@@ -47,7 +47,7 @@ var TopologyComponent = {
                   title="Expand/Collapse Current Node Tree" @click="toggleExpandAll(currentNode)">\
             <span class="expand-icon-stack">\
               <span class="glyphicon icon-main" \
-                 :class="{\'glyphicon-resize-full\': currentNode.group.collapsed, \'glyphicon-resize-small\': !currentNode.group.collapsed}" aria-hidden="true"></span>\
+                 :class="{\'glyphicon-resize-full\': (currentNode.group && currentNode.group.collapsed), \'glyphicon-resize-small\': (!currentNode.group || !currentNode.group.collapsed)}" aria-hidden="true"></span>\
             </span>\
           </button>\
         </div>\
@@ -73,7 +73,7 @@ var TopologyComponent = {
             <h1>metadatas<span class="pull-right">(id: {{currentNode.id}})\
               <i class="node-action fa"\
 	              title="Expand/Collapse Node"\
-		            :class="{\'fa-expand\': currentNode.group.collapsed, \'fa-compress\': !currentNode.group.collapsed}"\
+		            :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
 		            @click="toggleExpandAll(currentNode)"></i></span>\
 	          </h1>\
             <div id="metadata-panel" class="sub-left-panel">\
@@ -395,19 +395,13 @@ Graph.prototype = {
     var i, h;
     for (i = this.handlers.length - 1; i >= 0; i--) {
       h = this.handlers[i];
-      switch (ev) {
-        case 'preInit': h.onPreInit(); break;
-        case 'postInit': h.onPostInit(); break;
-        case 'nodeAdded': h.onNodeAdded(v1); break;
-        case 'nodeDeleted': h.onNodeDeleted(v1); break;
-        case 'nodeUpdated': h.onNodeUpdated(v1, v2); break;
-        case 'edgeAdded': h.onEdgeAdded(v1); break;
-        case 'edgeDeleted': h.onEdgeDeleted(v1); break;
-        case 'groupAdded': h.onGroupAdded(v1); break;
-        case 'groupDeleted': h.onGroupDeleted(v1); break;
-        case 'groupMemberAdded': h.onGroupMemberAdded(v1, v2); break;
-        case 'groupMemberDeleted': h.onGroupMemberDeleted(v1, v2); break;
-        case 'parentSet': h.onParentSet(v1); break;
+      try {
+        var callback = h["on"+firstUppercase(ev)];
+        if (callback) {
+          callback.bind(h)(v1, v2);
+        }
+      } catch(e) {
+        console.log(e);
       }
     }
   },
