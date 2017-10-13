@@ -14,6 +14,7 @@ agent:
   topology:
     probes:
       - ovsdb
+      - docker
 etcd:
   client_timeout: 100
 EOF
