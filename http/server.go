@@ -23,6 +23,7 @@
 package http
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -32,9 +33,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/abbot/go-http-auth"
-	"github.com/gorilla/context"
+	gcontext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 
 	"github.com/skydive-project/skydive/common"
@@ -76,9 +78,9 @@ type Server struct {
 }
 
 func copyRequestVars(old, new *http.Request) {
-	kv := context.GetAll(old)
+	kv := gcontext.GetAll(old)
 	for k, v := range kv {
-		context.Set(new, k, v)
+		gcontext.Set(new, k, v)
 	}
 }
 
@@ -134,11 +136,19 @@ func (s *Server) Serve() {
 
 	s.Handler = s.Router
 	if err := s.Server.Serve(s.listener); err != nil {
+		if err == http.ErrServerClosed {
+			return
+		}
 		logging.GetLogger().Errorf("Failed to Serve on %s:%d: %s", s.Addr, s.Port, err.Error())
 	}
 }
 
 func (s *Server) Stop() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := s.Server.Shutdown(ctx); err != nil {
+		logging.GetLogger().Error("Shutdown error :", err.Error())
+	}
 	s.listener.Close()
 	s.wg.Wait()
 }
