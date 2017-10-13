@@ -42,15 +42,15 @@ func TestGraphPathTraversal(t *testing.T) {
 
 	query := `G.V().Has("Name", "N3").GraphPath()`
 
-	tp := traversal.NewGremlinTraversalParser(g)
+	tp := traversal.NewGremlinTraversalParser()
 	tp.AddTraversalExtension(NewTopologyTraversalExtension())
 
-	ts, err := tp.Parse(strings.NewReader(query), false)
+	ts, err := tp.Parse(strings.NewReader(query))
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	res, err := ts.Exec()
+	res, err := ts.Exec(g, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -66,15 +66,15 @@ func TestRegexPredicate(t *testing.T) {
 
 	query := `G.V().Has("Name", Regex("local.*st")).Count()`
 
-	tp := traversal.NewGremlinTraversalParser(g)
+	tp := traversal.NewGremlinTraversalParser()
 	tp.AddTraversalExtension(NewTopologyTraversalExtension())
 
-	ts, err := tp.Parse(strings.NewReader(query), false)
+	ts, err := tp.Parse(strings.NewReader(query))
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	res, err := ts.Exec()
+	res, err := ts.Exec(g, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

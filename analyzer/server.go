@@ -166,15 +166,15 @@ func (s *Server) initialize() (err error) {
 		return
 	}
 
-	tr := traversal.NewGremlinTraversalParser(s.TopologyServer.Graph)
+	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tableClient, s.Storage))
 
-	s.AlertServer = alert.NewAlertServer(alertAPIHandler, s.WSServer, tr, s.EtcdClient)
+	s.AlertServer = alert.NewAlertServer(alertAPIHandler, s.WSServer, s.TopologyServer.Graph, tr, s.EtcdClient)
 
 	piClient := packet_injector.NewPacketInjectorClient(s.WSServer)
 
-	api.RegisterTopologyAPI(s.HTTPServer, tr)
+	api.RegisterTopologyAPI(s.HTTPServer, s.TopologyServer.Graph, tr)
 
 	api.RegisterPacketInjectorAPI(piClient, s.TopologyServer.Graph, s.HTTPServer)
 

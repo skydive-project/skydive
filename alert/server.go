@@ -56,6 +56,7 @@ const (
 
 type GremlinAlert struct {
 	*api.Alert
+	graph             *graph.Graph
 	lastEval          interface{}
 	kind              int
 	data              string
@@ -67,7 +68,7 @@ func (ga *GremlinAlert) Evaluate() (interface{}, error) {
 	// If the alert is a simple Gremlin query, avoid
 	// converting to JavaScript
 	if ga.traversalSequence != nil {
-		result, err := ga.traversalSequence.Exec()
+		result, err := ga.traversalSequence.Exec(ga.graph, false)
 		if err != nil {
 			return nil, err
 		}
@@ -90,12 +91,12 @@ func (ga *GremlinAlert) Evaluate() (interface{}, error) {
 		query := call.Argument(0).String()
 
 		// TODO(sbaubeau) Cache the queries
-		ts, err := ga.gremlinParser.Parse(strings.NewReader(query), false)
+		ts, err := ga.gremlinParser.Parse(strings.NewReader(query))
 		if err != nil {
 			return vm.MakeCustomError("ParseError", err.Error())
 		}
 
-		result, err := ts.Exec()
+		result, err := ts.Exec(ga.graph, false)
 		if err != nil {
 			return vm.MakeCustomError("ExecuteError", err.Error())
 		}
@@ -200,13 +201,14 @@ func (ga *GremlinAlert) Trigger(payload []byte) error {
 	return nil
 }
 
-func NewGremlinAlert(alert *api.Alert, p *traversal.GremlinTraversalParser) (*GremlinAlert, error) {
-	ts, _ := p.Parse(strings.NewReader(alert.Expression), false)
+func NewGremlinAlert(alert *api.Alert, g *graph.Graph, p *traversal.GremlinTraversalParser) (*GremlinAlert, error) {
+	ts, _ := p.Parse(strings.NewReader(alert.Expression))
 
 	ga := &GremlinAlert{
 		Alert:             alert,
 		traversalSequence: ts,
 		gremlinParser:     p,
+		graph:             g,
 	}
 
 	if strings.HasPrefix(alert.Action, "http://") || strings.HasPrefix(alert.Action, "https://") {
@@ -337,7 +339,7 @@ func parseTrigger(trigger string) (string, string) {
 }
 
 func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
-	alert, err := NewGremlinAlert(apiAlert, a.gremlinParser)
+	alert, err := NewGremlinAlert(apiAlert, a.Graph, a.gremlinParser)
 	if err != nil {
 		return err
 	}
@@ -424,14 +426,14 @@ func (a *AlertServer) Stop() {
 	a.EtcdMasterElector.Stop()
 }
 
-func NewAlertServer(ah api.Handler, pool shttp.WSJSONSpeakerPool, parser *traversal.GremlinTraversalParser, etcdClient *etcd.EtcdClient) *AlertServer {
+func NewAlertServer(ah api.Handler, pool shttp.WSJSONSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.EtcdClient) *AlertServer {
 	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
 	as := &AlertServer{
 		EtcdMasterElector: elector,
 		Pool:              pool,
 		AlertHandler:      ah,
-		Graph:             parser.Graph,
+		Graph:             graph,
 		graphAlerts:       make(map[string]*GremlinAlert),
 		alertTimers:       make(map[string]chan bool),
 		gremlinParser:     parser,

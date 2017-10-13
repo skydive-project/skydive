@@ -41,6 +41,7 @@ import (
 
 // TopologyAPI exposes the topology query API
 type TopologyAPI struct {
+	graph         *graph.Graph
 	gremlinParser *traversal.GremlinTraversalParser
 }
 
@@ -104,17 +105,16 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 }
 
 func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	g := t.gremlinParser.Graph
-	g.RLock()
-	defer g.RUnlock()
+	t.graph.RLock()
+	defer t.graph.RUnlock()
 
 	w.WriteHeader(http.StatusOK)
 	if strings.Contains(r.Header.Get("Accept"), "vnd.graphviz") {
 		w.Header().Set("Content-Type", "text/vnd.graphviz; charset=UTF-8")
-		t.graphToDot(w, g)
+		t.graphToDot(w, t.graph)
 	} else {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		if err := json.NewEncoder(w).Encode(g); err != nil {
+		if err := json.NewEncoder(w).Encode(t.graph); err != nil {
 			panic(err)
 		}
 	}
@@ -140,13 +140,13 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		return
 	}
 
-	ts, err := t.gremlinParser.Parse(strings.NewReader(resource.GremlinQuery), true)
+	ts, err := t.gremlinParser.Parse(strings.NewReader(resource.GremlinQuery))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	res, err := ts.Exec()
+	res, err := ts.Exec(t.graph, true)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
@@ -211,9 +211,10 @@ func (t *TopologyAPI) registerEndpoints(r *shttp.Server) {
 }
 
 // RegisterTopologyAPI registers a new topology query API
-func RegisterTopologyAPI(r *shttp.Server, parser *traversal.GremlinTraversalParser) {
+func RegisterTopologyAPI(r *shttp.Server, g *graph.Graph, parser *traversal.GremlinTraversalParser) {
 	t := &TopologyAPI{
 		gremlinParser: parser,
+		graph:         g,
 	}
 
 	t.registerEndpoints(r)
