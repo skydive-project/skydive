@@ -14,6 +14,8 @@
   when: ansible_os_family == "RedHat"
   ignore_errors: yes
 
+- include: docker.yml
+
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
 
@@ -41,6 +43,13 @@
     src: "{{ skydive_config_file }}"
     key: analyzers
     value: "{{ analyzers }}"
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: agent.topology.probes
+    value:
+    - ovsdb
+    - docker
 
 - yedit:
     src: "{{ skydive_config_file }}"

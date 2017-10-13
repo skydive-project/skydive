@@ -1,15 +1,4 @@
 ---
-- name: Install Docker
-  package:
-    name: docker
-    state: present
-
-- name: Enable Docker service
-  service:
-    name: docker
-    state: started
-    enabled: yes
-
 - name: Create systemd unit file
   include_role:
     name: skydive_common
