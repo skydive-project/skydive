@@ -35,6 +35,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/provider"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
 
 	"github.com/skydive-project/skydive/common"
@@ -163,7 +164,12 @@ func (mapper *NeutronProbe) retrieveAttributes(portMd portMetadata) (*attributes
 
 	var IPs []string
 	for _, element := range port.FixedIPs {
-		IPs = append(IPs, element.IPAddress)
+		subnet, err := subnets.Get(mapper.client, element.SubnetID).Extract()
+		if err != nil {
+			return nil, err
+		}
+		neutronIPs := element.IPAddress + "/" + strings.Split(subnet.CIDR, "/")[1]
+		IPs = append(IPs, neutronIPs)
 	}
 
 	a := &attributes{
