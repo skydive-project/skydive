@@ -1,26 +1,19 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-Vagrant.configure(2) do |config|
-  config.vm.define "agent1" do |agent|
-    agent.vm.box = "fedora/26-cloud-base"
-    agent.vm.hostname = "agent1"
-    agent.vm.network "private_network", ip: "192.168.50.20"
-    agent.vm.synced_folder ".", "/vagrant", :disabled => true
-    agent.vm.provision "common", type: "shell", path: "setup-common.sh"
-    agent.vm.provider :libvirt do |domain|
-      domain.memory = 1536
-    end
-  end
+AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
 
-  config.vm.define "agent2" do |agent|
-    agent.vm.box = "fedora/26-cloud-base"
-    agent.vm.hostname = "agent2"
-    agent.vm.network "private_network", ip: "192.168.50.30"
-    agent.vm.synced_folder ".", "/vagrant", :disabled => true
-    agent.vm.provision "common", type: "shell", path: "setup-common.sh"
-    agent.vm.provider :libvirt do |domain|
-      domain.memory = 1536
+Vagrant.configure(2) do |config|
+  (1..AGENT_COUNT).each do |i|
+    config.vm.define "agent#{i}" do |agent|
+      agent.vm.box = "fedora/26-cloud-base"
+      agent.vm.hostname = "agent#{i}"
+      agent.vm.network "private_network", ip: "192.168.50.#{(i+1)*10}"
+      agent.vm.synced_folder ".", "/vagrant", :disabled => true
+      agent.vm.provision "common", type: "shell", path: "setup-common.sh"
+      agent.vm.provider :libvirt do |domain|
+        domain.memory = 1536
+      end
     end
   end
 
@@ -47,7 +40,7 @@ Vagrant.configure(2) do |config|
       ansible.extra_vars = ansible_extra_vars
       ansible.groups = {
         "analyzers" => ["analyzer"],
-        "agents" => ["agent1", "agent2"],
+        "agents" => Array.new(AGENT_COUNT){ |i| "agent#{(i+1).to_s}" },
       }
       ansible.limit = "all"
       ansible.verbose = true
