@@ -29,7 +29,13 @@ analyzer:
   # Must be different than the agent
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
-
+  # topology_filter: "{\"TOR1\":\"Name : TOR1\",\"AGGR1\":\"Name : AGGR1\",\"ALL\":\".*\"}"
+  # Enable/disable capturing (enabled by default)
+  # capture_enabled: true
+  # Enable/disable packet injection (enabled by default)
+  # inject_enabled: true
+  # Enable packet capturing (enabled by default)
+  # packet_capture_enabled: true
   # Flow storage engine
   # storage:
       # Available: elasticsearch, orientdb

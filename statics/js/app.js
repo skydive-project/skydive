@@ -12,6 +12,7 @@ var store = new Vuex.Store({
     currentNode: null,
     highlightedNodes: [],
     notifications: [],
+    topologyFilter: "",
   },
 
   getters: {
@@ -31,6 +32,10 @@ var store = new Vuex.Store({
 
     time: function(state, time) {
       state.time = time;
+    },
+
+    topologyFilter: function(state, filter) {
+      state.topologyFilter = filter;
     },
 
     login: function(state) {

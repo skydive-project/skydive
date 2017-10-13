@@ -37,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/config"
 )
 
 // OnDemandProbeClient describes an ondemand probe client based on a websocket
@@ -95,6 +96,9 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 	toRegister := func(node *graph.Node, capture *api.Capture) (nodeID graph.Identifier, host string, register bool) {
 		o.graph.RLock()
 		defer o.graph.RUnlock()
+		if !config.GetConfig().GetBool("analyzer.capture_enabled") {
+			return
+		}
 
 		// check not already registered
 		o.RLock()
@@ -144,6 +148,7 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.C
 }
 
 func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
+
 	cq := ondemand.CaptureQuery{
 		NodeID:  np.id,
 		Capture: *np.capture,

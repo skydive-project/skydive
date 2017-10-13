@@ -503,9 +503,10 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Meta
 // WithContext step
 func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
 	return &Graph{
-		backend: graph.backend,
-		context: context,
-		host:    graph.host,
+		backend:     graph.backend,
+		context:     context,
+		host:        graph.host,
+		GraphFilter: graph.GraphFilter,
 	}, nil
 }
 
