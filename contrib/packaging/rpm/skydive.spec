@@ -53,8 +53,7 @@ central agent for further analysis. All the informations are stored in an
 Elasticsearch database.
 
 Skydive is SDN-agnostic but provides SDN drivers in order to enhance the
-topology and flows informations. Currently only the Neutron driver is provided
-but more drivers will come soon.
+topology and flows informations.
 
 %package analyzer
 Summary:          Skydive analyzer
