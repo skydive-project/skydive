@@ -65,7 +65,8 @@ type attributes struct {
 	NetworkID   string
 	NetworkName string
 	TenantID    string
-	IPs         string
+	IPV4        []string
+	IPV6        []string
 	VNI         string
 }
 
@@ -162,14 +163,18 @@ func (mapper *NeutronProbe) retrieveAttributes(portMd portMetadata) (*attributes
 		return nil, err
 	}
 
-	var IPs []string
+	var IPV4, IPV6 []string
 	for _, element := range port.FixedIPs {
 		subnet, err := subnets.Get(mapper.client, element.SubnetID).Extract()
 		if err != nil {
 			return nil, err
 		}
-		neutronIPs := element.IPAddress + "/" + strings.Split(subnet.CIDR, "/")[1]
-		IPs = append(IPs, neutronIPs)
+		ip := element.IPAddress + "/" + strings.Split(subnet.CIDR, "/")[1]
+		if subnet.IPVersion == 4 {
+			IPV4 = append(IPV4, ip)
+		} else {
+			IPV6 = append(IPV6, ip)
+		}
 	}
 
 	a := &attributes{
@@ -177,7 +182,8 @@ func (mapper *NeutronProbe) retrieveAttributes(portMd portMetadata) (*attributes
 		NetworkID:   port.NetworkID,
 		NetworkName: network.Name,
 		TenantID:    port.TenantID,
-		IPs:         strings.Join(IPs[:], ","),
+		IPV4:        IPV4,
+		IPV6:        IPV6,
 		VNI:         network.SegmentationID,
 	}
 
@@ -236,8 +242,12 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
 		metadata["Neutron.NetworkName"] = attrs.NetworkName
 	}
 
-	if attrs.IPs != "" {
-		metadata["Neutron.IPs"] = attrs.IPs
+	if len(attrs.IPV4) != 0 {
+		metadata["Neutron.IPV4"] = attrs.IPV4
+	}
+
+	if len(attrs.IPV6) != 0 {
+		metadata["Neutron.IPV6"] = attrs.IPV6
 	}
 
 	if segID, err := strconv.Atoi(attrs.VNI); err != nil && segID > 0 {
