@@ -219,6 +219,16 @@ func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
 	return helper.FlowsToString(flows)
 }
 
+func (c *TestContext) getSystemState(t *testing.T) {
+	stateCmds := []helper.Cmd{
+		{"ip addr", false},
+		{"ip netns list", false},
+		{"ovs-vsctl show", false},
+		{"brctl show", false},
+	}
+	helper.ExecCmds(t, stateCmds...)
+}
+
 func RunTest(t *testing.T, test *Test) {
 	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
@@ -285,6 +295,7 @@ func RunTest(t *testing.T, test *Test) {
 	if err != nil {
 		g := context.getWholeGraph(t, time.Now())
 		helper.ExecCmds(t, test.tearDownCmds...)
+		context.getSystemState(t)
 		t.Fatalf("Failed to setup captures: %s, graph: %s", err.Error(), g)
 	}
 
@@ -304,6 +315,7 @@ func RunTest(t *testing.T, test *Test) {
 			g := context.getWholeGraph(t, settleTime)
 			f := context.getAllFlows(t, settleTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
+			context.getSystemState(t)
 			t.Errorf("Test failed to settle: %s, graph: %s, flows: %s", err.Error(), g, f)
 			return
 		}
@@ -316,6 +328,7 @@ func RunTest(t *testing.T, test *Test) {
 			g := context.getWholeGraph(t, context.setupTime)
 			f := context.getAllFlows(t, context.setupTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
+			context.getSystemState(t)
 			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err.Error(), g, f)
 		}
 	}
@@ -344,6 +357,7 @@ func RunTest(t *testing.T, test *Test) {
 			g := checkContext.getWholeGraph(t, checkContext.startTime)
 			f := checkContext.getAllFlows(t, checkContext.startTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
+			context.getSystemState(t)
 			t.Errorf("Test failed: %s, graph: %s, flows: %s", err.Error(), g, f)
 			return
 		}
@@ -352,6 +366,7 @@ func RunTest(t *testing.T, test *Test) {
 	if test.tearDownFunction != nil {
 		if err = test.tearDownFunction(context); err != nil {
 			helper.ExecCmds(t, test.tearDownCmds...)
+			context.getSystemState(t)
 			t.Fatalf("Fail to tear test down: %s", err.Error())
 		}
 	}
@@ -1013,7 +1028,10 @@ func init() {
 			panic(fmt.Sprintf("Failed to initialize logging system: %s", err.Error()))
 		}
 
-		server := analyzer.NewServerFromConfig()
+		server, err := analyzer.NewServerFromConfig()
+		if err != nil {
+			panic(err)
+		}
 		server.Start()
 
 		agent, err := agent.NewAgent()

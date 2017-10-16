@@ -26,22 +26,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	"github.com/pmylund/go-cache"
+	cache "github.com/pmylund/go-cache"
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/enhancers"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -63,7 +60,6 @@ type Agent struct {
 	flowClientPool      *analyzer.FlowClientPool
 	onDemandProbeServer *ondemand.OnDemandProbeServer
 	httpServer          *shttp.Server
-	etcdClient          *etcd.EtcdClient
 	tidMapper           *topology.TIDMapper
 	topologyForwarder   *TopologyForwarder
 }
@@ -76,7 +72,7 @@ func NewAnalyzerWSJSONClientPool() (*shttp.WSJSONClientPool, error) {
 
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
+		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err.Error())
 	}
 
 	for _, sa := range addresses {
@@ -124,55 +120,11 @@ func (a *Agent) GetStatus() interface{} {
 
 // Start the agent services
 func (a *Agent) Start() {
-	var err error
-
-	if err := a.httpServer.Listen(); err != nil {
-		logging.GetLogger().Error(err)
-		os.Exit(1)
-	}
-
 	go a.httpServer.Serve()
+
 	a.wsServer.Start()
-
-	a.topologyProbeBundle, err = NewTopologyProbeBundleFromConfig(a.graph, a.rootNode)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to instantiate topology probes: %s", err.Error())
-		os.Exit(1)
-	}
 	a.topologyProbeBundle.Start()
-
-	updateTime := time.Duration(config.GetConfig().GetInt("flow.update")) * time.Second
-	expireTime := time.Duration(config.GetConfig().GetInt("flow.expire")) * time.Second
-	cleanup := time.Duration(config.GetConfig().GetInt("cache.cleanup")) * time.Second
-
-	cache := cache.New(expireTime*2, cleanup)
-
-	pipeline := flow.NewEnhancerPipeline(
-		enhancers.NewGraphFlowEnhancer(a.graph, cache),
-		enhancers.NewSocketInfoEnhancer(expireTime*2, cleanup),
-	)
-
-	// check that the neutron probe if loaded if so add the neutron flow enhancer
-	if a.topologyProbeBundle.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(a.graph, cache))
-	}
-
-	a.flowTableAllocator = flow.NewTableAllocator(updateTime, expireTime, pipeline)
-
-	// exposes a flow server through the client connections
-	flow.NewServer(a.flowTableAllocator, a.analyzerClientPool)
-
-	packet_injector.NewServer(a.graph, a.analyzerClientPool)
-
-	a.flowClientPool = analyzer.NewFlowClientPool(a.analyzerClientPool)
-
-	a.flowProbeBundle = fprobes.NewFlowProbeBundle(a.topologyProbeBundle, a.graph, a.flowTableAllocator, a.flowClientPool)
 	a.flowProbeBundle.Start()
-
-	if a.onDemandProbeServer, err = ondemand.NewOnDemandProbeServer(a.flowProbeBundle, a.graph, a.analyzerClientPool); err != nil {
-		logging.GetLogger().Errorf("Unable to start on-demand flow probe %s", err.Error())
-		os.Exit(1)
-	}
 	a.onDemandProbeServer.Start()
 
 	// everything is ready, then initiate the websocket connection
@@ -181,28 +133,20 @@ func (a *Agent) Start() {
 
 // Stop agent services
 func (a *Agent) Stop() {
-	if a.flowProbeBundle != nil {
-		a.flowProbeBundle.Stop()
-	}
+	a.flowProbeBundle.Stop()
 	a.analyzerClientPool.Stop()
 	a.topologyProbeBundle.Stop()
 	a.httpServer.Stop()
 	a.wsServer.Stop()
+	a.flowClientPool.Close()
+	a.onDemandProbeServer.Stop()
 
-	if a.flowClientPool != nil {
-		a.flowClientPool.Close()
-	}
-	if a.onDemandProbeServer != nil {
-		a.onDemandProbeServer.Stop()
-	}
-	if a.etcdClient != nil {
-		a.etcdClient.Stop()
-	}
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
 	}); ok {
 		tr.CloseIdleConnections()
 	}
+
 	a.tidMapper.Stop()
 }
 
@@ -223,6 +167,10 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
+	if err := hserver.Listen(); err != nil {
+		return nil, err
+	}
+
 	if _, err = api.NewAPI(hserver, nil, common.AgentService); err != nil {
 		return nil, err
 	}
@@ -232,7 +180,7 @@ func NewAgent() (*Agent, error) {
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 
-	rootNode := CreateRootNode(g)
+	rootNode := createRootNode(g)
 	api.RegisterTopologyAPI(hserver, g, tr)
 
 	tserver := NewTopologyServer(g, wsServer)
@@ -244,15 +192,57 @@ func NewAgent() (*Agent, error) {
 
 	tforwarder := NewTopologyForwarderFromConfig(g, analyzerClientPool)
 
+	topologyProbeBundle, err := NewTopologyProbeBundleFromConfig(g, rootNode)
+	if err != nil {
+		return nil, err
+	}
+
+	updateTime := time.Duration(config.GetConfig().GetInt("flow.update")) * time.Second
+	expireTime := time.Duration(config.GetConfig().GetInt("flow.expire")) * time.Second
+	cleanup := time.Duration(config.GetConfig().GetInt("cache.cleanup")) * time.Second
+
+	cache := cache.New(expireTime*2, cleanup)
+
+	pipeline := flow.NewEnhancerPipeline(
+		enhancers.NewGraphFlowEnhancer(g, cache),
+		enhancers.NewSocketInfoEnhancer(expireTime*2, cleanup),
+	)
+
+	// check that the neutron probe if loaded if so add the neutron flow enhancer
+	if topologyProbeBundle.GetProbe("neutron") != nil {
+		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g, cache))
+	}
+
+	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime, pipeline)
+
+	// exposes a flow server through the client connections
+	flow.NewServer(flowTableAllocator, analyzerClientPool)
+
+	packet_injector.NewServer(g, analyzerClientPool)
+
+	flowClientPool := analyzer.NewFlowClientPool(analyzerClientPool)
+
+	flowProbeBundle := fprobes.NewFlowProbeBundle(topologyProbeBundle, g, flowTableAllocator, flowClientPool)
+
+	onDemandProbeServer, err := ondemand.NewOnDemandProbeServer(flowProbeBundle, g, analyzerClientPool)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to initialize on-demand flow probe %s", err.Error())
+	}
+
 	agent := &Agent{
-		graph:              g,
-		wsServer:           wsServer,
-		topologyServer:     tserver,
-		rootNode:           rootNode,
-		httpServer:         hserver,
-		tidMapper:          tm,
-		topologyForwarder:  tforwarder,
-		analyzerClientPool: analyzerClientPool,
+		graph:               g,
+		wsServer:            wsServer,
+		analyzerClientPool:  analyzerClientPool,
+		topologyServer:      tserver,
+		rootNode:            rootNode,
+		topologyProbeBundle: topologyProbeBundle,
+		flowProbeBundle:     flowProbeBundle,
+		flowTableAllocator:  flowTableAllocator,
+		flowClientPool:      flowClientPool,
+		onDemandProbeServer: onDemandProbeServer,
+		httpServer:          hserver,
+		tidMapper:           tm,
+		topologyForwarder:   tforwarder,
 	}
 
 	api.RegisterStatusAPI(hserver, agent)
@@ -261,7 +251,7 @@ func NewAgent() (*Agent, error) {
 }
 
 // CreateRootNode creates a graph.Node based on the host properties and aims to have an unique ID
-func CreateRootNode(g *graph.Graph) *graph.Node {
+func createRootNode(g *graph.Graph) *graph.Node {
 	hostID := config.GetConfig().GetString("host_id")
 	m := graph.Metadata{"Name": hostID, "Type": "host"}
 	if config.GetConfig().IsSet("agent.metadata") {

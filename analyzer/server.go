@@ -25,7 +25,6 @@ package analyzer
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -49,19 +48,18 @@ import (
 
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
-	HTTPServer      *shttp.Server
-	WSServer        *shttp.WSJSONServer
-	TopologyServer  *TopologyServer
-	AlertServer     *alert.AlertServer
-	OnDemandClient  *ondemand.OnDemandProbeClient
-	MetadataManager *metadata.UserMetadataManager
-	FlowServer      *FlowServer
-	ProbeBundle     *probe.ProbeBundle
-	Storage         storage.Storage
-	EmbeddedEtcd    *etcd.EmbeddedEtcd
-	EtcdClient      *etcd.EtcdClient
+	httpServer      *shttp.Server
+	wsServer        *shttp.WSJSONServer
+	topologyServer  *TopologyServer
+	alertServer     *alert.AlertServer
+	onDemandClient  *ondemand.OnDemandProbeClient
+	metadataManager *metadata.UserMetadataManager
+	flowServer      *FlowServer
+	probeBundle     *probe.ProbeBundle
+	storage         storage.Storage
+	embeddedEtcd    *etcd.EmbeddedEtcd
+	etcdClient      *etcd.EtcdClient
 	wgServers       sync.WaitGroup
-	wgFlowsHandlers sync.WaitGroup
 }
 
 // ElectionStatus describes the status of an election
@@ -80,161 +78,68 @@ type AnalyzerStatus struct {
 // GetStatus returns the status of an analyzer
 func (s *Server) GetStatus() interface{} {
 	peers := make(map[string]shttp.WSConnStatus)
-	for _, peer := range s.TopologyServer.peers {
+	for _, peer := range s.topologyServer.peers {
 		if peer.wsclient != nil && peer.host != config.GetConfig().GetString("host_id") {
 			peers[peer.host] = peer.wsclient.GetStatus()
 		}
 	}
 
 	return &AnalyzerStatus{
-		Clients:  s.WSServer.GetStatus(),
+		Clients:  s.wsServer.GetStatus(),
 		Peers:    peers,
-		Alerts:   ElectionStatus{IsMaster: s.AlertServer.IsMaster()},
-		Captures: ElectionStatus{IsMaster: s.OnDemandClient.IsMaster()},
+		Alerts:   ElectionStatus{IsMaster: s.alertServer.IsMaster()},
+		Captures: ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
 	}
-}
-
-func (s *Server) initialize() (err error) {
-	embedEtcd := config.GetConfig().GetBool("etcd.embedded")
-
-	if s.HTTPServer, err = shttp.NewServerFromConfig(common.AnalyzerService); err != nil {
-		return
-	}
-
-	s.WSServer = shttp.NewWSJSONServer(shttp.NewWSServerFromConfig(s.HTTPServer, "/ws"))
-
-	if s.TopologyServer, err = NewTopologyServer(s.WSServer, NewAnalyzerAuthenticationOpts()); err != nil {
-		return
-	}
-
-	if s.ProbeBundle, err = NewTopologyProbeBundleFromConfig(s.TopologyServer.Graph); err != nil {
-		return
-	}
-
-	if embedEtcd {
-		if s.EmbeddedEtcd, err = etcd.NewEmbeddedEtcdFromConfig(); err != nil {
-			return
-		}
-	}
-
-	if s.EtcdClient, err = etcd.NewEtcdClientFromConfig(); err != nil {
-		return
-	}
-
-	// wait for etcd to be ready
-	for {
-		host := config.GetConfig().GetString("host_id")
-		if err = s.EtcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
-			logging.GetLogger().Errorf("Etcd server not ready: %s", err.Error())
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
-	}
-
-	var apiServer *api.Server
-	if apiServer, err = api.NewAPI(s.HTTPServer, s.EtcdClient.KeysAPI, common.AnalyzerService); err != nil {
-		return
-	}
-
-	var captureAPIHandler *api.CaptureAPIHandler
-	if captureAPIHandler, err = api.RegisterCaptureAPI(apiServer, s.TopologyServer.Graph); err != nil {
-		return
-	}
-
-	var metadataAPIHandler *api.UserMetadataAPIHandler
-	if metadataAPIHandler, err = api.RegisterUserMetadataAPI(apiServer, s.TopologyServer.Graph); err != nil {
-		return
-	}
-
-	var alertAPIHandler *api.AlertAPIHandler
-	if alertAPIHandler, err = api.RegisterAlertAPI(apiServer); err != nil {
-		return
-	}
-
-	s.OnDemandClient = ondemand.NewOnDemandProbeClient(s.TopologyServer.Graph, captureAPIHandler, s.WSServer, s.EtcdClient)
-
-	s.MetadataManager = metadata.NewUserMetadataManager(s.TopologyServer.Graph, metadataAPIHandler)
-
-	tableClient := flow.NewTableClient(s.WSServer)
-
-	if s.Storage, err = storage.NewStorageFromConfig(); err != nil {
-		return
-	}
-
-	if s.FlowServer, err = NewFlowServer(s.HTTPServer, s.TopologyServer.Graph, s.Storage, s.ProbeBundle); err != nil {
-		return
-	}
-
-	tr := traversal.NewGremlinTraversalParser()
-	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
-	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tableClient, s.Storage))
-
-	s.AlertServer = alert.NewAlertServer(alertAPIHandler, s.WSServer, s.TopologyServer.Graph, tr, s.EtcdClient)
-
-	piClient := packet_injector.NewPacketInjectorClient(s.WSServer)
-
-	api.RegisterTopologyAPI(s.HTTPServer, s.TopologyServer.Graph, tr)
-
-	api.RegisterPacketInjectorAPI(piClient, s.TopologyServer.Graph, s.HTTPServer)
-
-	api.RegisterPcapAPI(s.HTTPServer, s.Storage)
-
-	api.RegisterConfigAPI(s.HTTPServer)
-
-	api.RegisterStatusAPI(s.HTTPServer, s)
-
-	return s.HTTPServer.Listen()
 }
 
 // Start the analyzer server
-func (s *Server) Start() {
-	if err := s.initialize(); err != nil {
-		logging.GetLogger().Error(err)
-		os.Exit(1)
+func (s *Server) Start() error {
+	if s.storage != nil {
+		s.storage.Start()
 	}
 
-	if s.Storage != nil {
-		s.Storage.Start()
+	if err := s.httpServer.Listen(); err != nil {
+		return err
 	}
 
-	s.TopologyServer.ConnectPeers()
+	s.topologyServer.ConnectPeers()
 
-	s.ProbeBundle.Start()
-	s.OnDemandClient.Start()
-	s.AlertServer.Start()
-	s.MetadataManager.Start()
+	s.probeBundle.Start()
+	s.onDemandClient.Start()
+	s.alertServer.Start()
+	s.metadataManager.Start()
+	s.flowServer.Start()
 
 	s.wgServers.Add(2)
 	go func() {
 		defer s.wgServers.Done()
-		s.HTTPServer.Serve()
+		s.httpServer.Serve()
 	}()
 
 	go func() {
 		defer s.wgServers.Done()
-		s.WSServer.Run()
+		s.wsServer.Run()
 	}()
 
-	s.FlowServer.Start()
+	return nil
 }
 
 // Stop the analyzer server
 func (s *Server) Stop() {
-	s.FlowServer.Stop()
-	s.WSServer.Stop()
-	s.HTTPServer.Stop()
-	if s.EmbeddedEtcd != nil {
-		s.EmbeddedEtcd.Stop()
+	s.flowServer.Stop()
+	s.wsServer.Stop()
+	s.httpServer.Stop()
+	if s.embeddedEtcd != nil {
+		s.embeddedEtcd.Stop()
 	}
-	if s.Storage != nil {
-		s.Storage.Stop()
+	if s.storage != nil {
+		s.storage.Stop()
 	}
-	s.ProbeBundle.Stop()
-	s.OnDemandClient.Stop()
-	s.AlertServer.Stop()
-	s.MetadataManager.Stop()
-	s.EtcdClient.Stop()
+	s.probeBundle.Stop()
+	s.onDemandClient.Stop()
+	s.alertServer.Stop()
+	s.metadataManager.Stop()
+	s.etcdClient.Stop()
 	s.wgServers.Wait()
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -244,8 +149,115 @@ func (s *Server) Stop() {
 }
 
 // NewServerFromConfig creates a new empty server
-func NewServerFromConfig() *Server {
-	return &Server{}
+func NewServerFromConfig() (*Server, error) {
+	embedEtcd := config.GetConfig().GetBool("etcd.embedded")
+
+	hserver, err := shttp.NewServerFromConfig(common.AnalyzerService)
+	if err != nil {
+		return nil, err
+	}
+
+	wsServer := shttp.NewWSJSONServer(shttp.NewWSServerFromConfig(hserver, "/ws"))
+
+	topologyServer, err := NewTopologyServer(wsServer, NewAnalyzerAuthenticationOpts())
+	if err != nil {
+		return nil, err
+	}
+	g := topologyServer.Graph
+
+	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
+	if err != nil {
+		return nil, err
+	}
+
+	var embeddedEtcd *etcd.EmbeddedEtcd
+	if embedEtcd {
+		if embeddedEtcd, err = etcd.NewEmbeddedEtcdFromConfig(); err != nil {
+			return nil, err
+		}
+	}
+
+	etcdClient, err := etcd.NewEtcdClientFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// wait for etcd to be ready
+	for {
+		host := config.GetConfig().GetString("host_id")
+		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
+			logging.GetLogger().Errorf("Etcd server not ready: %s", err.Error())
+			time.Sleep(time.Second)
+		} else {
+			break
+		}
+	}
+
+	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, common.AnalyzerService)
+	if err != nil {
+		return nil, err
+	}
+
+	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g)
+	if err != nil {
+		return nil, err
+	}
+
+	metadataAPIHandler, err := api.RegisterUserMetadataAPI(apiServer, g)
+	if err != nil {
+		return nil, err
+	}
+
+	alertAPIHandler, err := api.RegisterAlertAPI(apiServer)
+	if err != nil {
+		return nil, err
+	}
+
+	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, wsServer, etcdClient)
+
+	metadataManager := metadata.NewUserMetadataManager(g, metadataAPIHandler)
+
+	tableClient := flow.NewTableClient(wsServer)
+
+	storage, err := storage.NewStorageFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	flowServer, err := NewFlowServer(hserver, g, storage, probeBundle)
+	if err != nil {
+		return nil, err
+	}
+
+	tr := traversal.NewGremlinTraversalParser()
+	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
+	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tableClient, storage))
+
+	alertServer := alert.NewAlertServer(alertAPIHandler, wsServer, g, tr, etcdClient)
+
+	piClient := packet_injector.NewPacketInjectorClient(wsServer)
+
+	s := &Server{
+		httpServer:      hserver,
+		wsServer:        wsServer,
+		topologyServer:  topologyServer,
+		probeBundle:     probeBundle,
+		embeddedEtcd:    embeddedEtcd,
+		etcdClient:      etcdClient,
+		onDemandClient:  onDemandClient,
+		metadataManager: metadataManager,
+		storage:         storage,
+		flowServer:      flowServer,
+		alertServer:     alertServer,
+	}
+
+	api.RegisterTopologyAPI(hserver, g, tr)
+	api.RegisterPacketInjectorAPI(piClient, g, hserver)
+	api.RegisterPcapAPI(hserver, storage)
+	api.RegisterConfigAPI(hserver)
+	api.RegisterStatusAPI(hserver, s)
+
+	return s, nil
 }
 
 // NewAnalyzerAuthenticationOpts returns an object to authenticate to the analyzer

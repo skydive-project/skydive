@@ -62,16 +62,13 @@ type FlowServerWebSocketConn struct {
 
 // FlowServer describes a flow server with pipeline enhancers mechanism
 type FlowServer struct {
-	Storage                storage.Storage
-	EnhancerPipeline       *flow.EnhancerPipeline
+	storage                storage.Storage
+	enhancerPipeline       *flow.EnhancerPipeline
 	enhancerPipelineConfig *flow.EnhancerPipelineConfig
-	Server                 *shttp.Server
 	conn                   FlowServerConn
 	state                  int64
 	wgServer               sync.WaitGroup
-	wgFlowsHandlers        sync.WaitGroup
 	bulkInsert             int
-	bulkDeadline           int
 	ch                     chan *flow.Flow
 	quit                   chan struct{}
 }
@@ -155,9 +152,9 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 }
 
 func (s *FlowServer) storeFlows(flows []*flow.Flow) {
-	if s.Storage != nil && len(flows) > 0 {
-		s.EnhancerPipeline.Enhance(s.enhancerPipelineConfig, flows)
-		s.Storage.StoreFlows(flows)
+	if s.storage != nil && len(flows) > 0 {
+		s.enhancerPipeline.Enhance(s.enhancerPipelineConfig, flows)
+		s.storage.StoreFlows(flows)
 
 		logging.GetLogger().Debugf("%d flows stored", len(flows))
 	}
@@ -216,7 +213,6 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 	}
 
 	bulk := config.GetConfig().GetInt("analyzer.storage.bulk_insert")
-	deadline := config.GetConfig().GetInt("analyzer.storage.bulk_insert_deadline")
 
 	var err error
 	var conn FlowServerConn
@@ -235,12 +231,10 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 	}
 
 	return &FlowServer{
-		Server:                 s,
-		Storage:                store,
-		EnhancerPipeline:       pipeline,
+		storage:                store,
+		enhancerPipeline:       pipeline,
 		enhancerPipelineConfig: flow.NewEnhancerPipelineConfig(),
 		bulkInsert:             bulk,
-		bulkDeadline:           deadline,
 		conn:                   conn,
 		quit:                   make(chan struct{}, 2),
 		ch:                     make(chan *flow.Flow, 1000),

@@ -23,6 +23,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -45,8 +46,16 @@ var Analyzer = &cobra.Command{
 		config.GetConfig().Set("logging.id", "agent")
 		logging.GetLogger().Noticef("Skydive Analyzer %s starting...", version.Version)
 
-		server := analyzer.NewServerFromConfig()
-		server.Start()
+		server, err := analyzer.NewServerFromConfig()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create analyzer: %s", err.Error())
+			os.Exit(1)
+		}
+
+		if err := server.Start(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to start analyzer: %s", err.Error())
+			os.Exit(1)
+		}
 
 		logging.GetLogger().Notice("Skydive Analyzer started !")
 		ch := make(chan os.Signal)
