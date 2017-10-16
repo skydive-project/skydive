@@ -50,10 +50,22 @@ Vue.component('inject-form', {
           <label for="inject-count">ICMP Identifier</label>\
           <input id="inject-id" type="number" class="form-control input-sm" v-model="id" min="0" />\
         </div>\
-        <div class="form-group">\
-          <label for="payload-length">Payload length</label>\
-          <input id="payload-length" type="number" class="form-control input-sm" v-model="payloadlength" min="0" />\
-        </div>\
+      </div>\
+      <div class="form-group">\
+        <label class="radio-inline">\
+          <input type="radio" id="random" value="random" v-model="mode"> Payload Length\
+        </label>\
+        <label class="radio-inline">\
+          <input type="radio" id="custom" value="custom" v-model="mode"> Payload\
+        </label>\
+      </div>\
+      <div class="form-group" v-if="mode == \'random\'">\
+        <label for="payload-length">Payload length</label>\
+        <input id="payload-length" type="number" class="form-control input-sm" v-model="payloadlength" min="0" />\
+      </div>\
+      <div class="form-group" v-if="mode == \'custom\'">\
+        <label for="payld">Payload</label>\
+        <input id="payld" type="text" class="form-control input-sm" v-model="payload"/>\
       </div>\
       <div v-if="type === \'tcp4\' || type === \'tcp6\' || type === \'udp4\' || type === \'udp6\'">\
         <div class="form-group">\
@@ -89,6 +101,8 @@ Vue.component('inject-form', {
       dstNode: null,
       srcIP: "",
       dstIP: "",
+      mode: "random",
+      payload: "",
     };
   },
 
@@ -188,6 +202,8 @@ Vue.component('inject-form', {
       this.payloadlength = 0;
       this.srcNode = this.dstNode = null;
       this.srcIP = this.dstIP = "";
+      this.mode = "random";
+      this.payload = "";
     },
 
     inject: function() {
@@ -195,6 +211,9 @@ Vue.component('inject-form', {
       if (this.error) {
         this.$error({message: this.error});
         return;
+      }
+      if (this.mode == "random") {
+        this.payload = (new Array(this.payloadlength)).join("x").toString()
       }
       $.ajax({
         dataType: "json",
@@ -210,7 +229,7 @@ Vue.component('inject-form', {
           "Count": this.count,
           "ID": this.id,
           "Interval": this.interval,
-          "Payload": (new Array(this.payloadlength)).join("x").toString(),
+          "Payload": this.payload,
         }),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
