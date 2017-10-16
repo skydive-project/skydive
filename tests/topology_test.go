@@ -417,7 +417,7 @@ func TestDockerSimple(t *testing.T) {
 				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 			}
 
-			gremlin += `.V().Has("Name", "test-skydive-docker-simple", "Type", "netns", "Manager", "docker")`
+			gremlin += `.V().Has("Type", "netns", "Manager", "docker")`
 			gremlin += `.Out("Type", "container", "Docker.ContainerName", "/test-skydive-docker-simple")`
 
 			nodes, err := gh.GetNodes(gremlin)
@@ -457,27 +457,14 @@ func TestDockerShareNamespace(t *testing.T) {
 			}
 
 			gremlin += `.V().Has("Type", "netns", "Manager", "docker")`
+			gremlin += `.Out().Has("Type", "container", "Docker.ContainerName", Within("/test-skydive-docker-share-ns", "/test-skydive-docker-share-ns2"))`
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
 				return err
 			}
 
-			switch len(nodes) {
-			case 0:
-				return errors.New("No namespace found")
-			case 1:
-				gremlin += `.Out().Has("Type", "container", "Docker.ContainerName", Within("/test-skydive-docker-share-ns", "/test-skydive-docker-share-ns2"))`
-
-				nodes, err = gh.GetNodes(gremlin)
-				if err != nil {
-					return err
-				}
-
-				if len(nodes) != 2 {
-					return fmt.Errorf("Expected 2 nodes, got %+v", nodes)
-				}
-			default:
-				return fmt.Errorf("There should be only one namespace managed by Docker, got %+v", nodes)
+			if len(nodes) != 2 {
+				return fmt.Errorf("Expected 2 nodes, got %+v", nodes)
 			}
 
 			return nil

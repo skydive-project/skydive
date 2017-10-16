@@ -84,6 +84,7 @@ func init() {
 	cfg.SetDefault("cache.cleanup", 30)
 
 	cfg.SetDefault("docker.url", "unix:///var/run/docker.sock")
+	cfg.SetDefault("docker.netns.run_path", "/var/run/docker/netns")
 
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)

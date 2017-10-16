@@ -45,9 +45,12 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 	probes["netlink"] = nlProbe
 	nlProbe.Register("", n)
 
-	nsProbe, err := tprobes.NewNetNSProbeFromConfig(g, n, nlProbe)
+	nsProbe, err := tprobes.NewNetNSProbe(g, n, nlProbe)
 	if err != nil {
 		return nil, err
+	}
+	if path := config.GetConfig().GetString("netns.run_path"); path != "" {
+		nsProbe.Watch(path)
 	}
 	probes["netns"] = nsProbe
 
@@ -60,9 +63,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 		case "ovsdb":
 			probes[t] = tprobes.NewOvsdbProbeFromConfig(g, n)
 		case "docker":
-			dockerProbe, err := tprobes.NewDockerProbeFromConfig(nsProbe)
+			dockerURL := config.GetConfig().GetString("docker.url")
+			dockerProbe, err := tprobes.NewDockerProbe(nsProbe, dockerURL)
 			if err != nil {
 				return nil, err
+			}
+			if path := config.GetConfig().GetString("docker.netns.run_path"); path != "" {
+				nsProbe.Watch(path)
 			}
 			probes[t] = dockerProbe
 		case "neutron":
