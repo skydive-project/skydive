@@ -47,15 +47,18 @@ all: install
 .compile:
 	${GOPATH}/bin/govendor install ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
-install: govendor genlocalfiles .compile
+install: govendor genlocalfiles contribs .compile
 
-build: govendor genlocalfiles
+build: govendor genlocalfiles contribs
 	${GOPATH}/bin/govendor build ${GOFLAGS} ${VERBOSE_FLAGS} +local
 
 static: govendor genlocalfiles
 	rm -f $$GOPATH/bin/skydive
 	test -f /etc/redhat-release && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib64/libz.a /usr/lib64/liblzma.a /usr/lib64/libm.a"' ${VERBOSE_FLAGS} +local || true
 	test -f /etc/debian_version && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a"' ${VERBOSE_FLAGS} +local || true
+
+contribs:
+	$(MAKE) -C contrib/snort
 
 test.functionals.cleanup:
 	rm -f tests/functionals
@@ -141,6 +144,8 @@ genlocalfiles: .proto .bindata
 
 clean: test.functionals.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
+	$(MAKE) -C contrib/snort clean
+
 
 doc:
 	mkdir -p /tmp/skydive-doc
