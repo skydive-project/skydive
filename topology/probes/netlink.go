@@ -349,12 +349,17 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	if err == nil && len(neighList) > 0 {
 		neighbors := make([]map[string]interface{}, len(neighList))
 		for i, neighbor := range neighList {
-			neighbors[i] = map[string]interface{}{
+			n := map[string]interface{}{
 				"Flags": int64(neighbor.Flags),
 				"MAC":   neighbor.HardwareAddr.String(),
 				"State": int64(neighbor.State),
 				"Type":  int64(neighbor.Type),
 			}
+			if neighbor.IP != nil {
+				n["IP"] = neighbor.IP.String()
+			}
+
+			neighbors[i] = n
 		}
 		metadata["FDB"] = neighbors
 	}
