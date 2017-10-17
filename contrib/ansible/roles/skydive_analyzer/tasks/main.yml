@@ -45,6 +45,19 @@
     - "http://{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
   when: skydive_deployment_mode != "container"
 
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker
+
+- service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - docker
+
 - include: docker.yml
   when: skydive_deployment_mode == "container"
 
