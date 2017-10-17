@@ -711,6 +711,8 @@ TopologyGraphLayout.prototype = {
       .attr("height", 16)
       .attr("xlink:href", pinIndicatorImg);
     d.fixed = true;
+    d.fx = d.x;
+    d.fy = d.y;
   },
 
   unpinNode: function(d) {
