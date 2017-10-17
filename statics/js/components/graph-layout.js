@@ -993,7 +993,7 @@ TopologyGraphLayout.prototype = {
         var group = this.groups[i];
         if (group.level > maxLevel) maxLevel = group.level;
       }
-      if ((this.collapseLevel + 1) >= maxLevel) {
+      if (maxLevel > 1 && (this.collapseLevel + 1) >= maxLevel) {
         return;
       }
 
