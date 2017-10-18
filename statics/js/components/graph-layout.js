@@ -336,6 +336,22 @@ TopologyGraphLayout.prototype = {
     delete this.links[link.id];
     delete this._links[link.id];
 
+    // reattache is no outside link
+    var i, l, els = [link.source, link.target];
+    for (var j in els) {
+      var e = els[j];
+
+      if (!e.isGroupOwner() && e.group && !this.hasOutsideLink(e.group)) {
+        for (i in e.group.owner.links) {
+          l = e.group.owner.links[i];
+          if (l.metadata.RelationType === "ownership" && l.source.group !== l.target.group && l.source.visible && l.target.visible) {
+            this.links[l.id] = l;
+            delete this._links[l.id];
+          }
+        }
+      }
+    }
+
     this.delLinkLabel(link);
   },
 
@@ -347,9 +363,9 @@ TopologyGraphLayout.prototype = {
   hasOutsideLink: function(group) {
     var members = group.members;
     for (var i in members) {
-      var d = members[i], edges = d.edges;
-      for (var j in edges) {
-        var e = edges[j];
+      var d = members[i], links = d.links;
+      for (var j in links) {
+        var e = links[j];
         if (e.metadata.RelationType !== "ownership" && e.source.group !== e.source.target) return true;
       }
     }
@@ -445,6 +461,8 @@ TopologyGraphLayout.prototype = {
   },
 
   delNode: function(node) {
+    node.visible = false;
+
     if (this.selectedNode === node) this.selectedNode = null;
 
     delete this.nodes[node.id];
@@ -454,6 +472,9 @@ TopologyGraphLayout.prototype = {
 
     for (var i in node.links) {
       var link = node.links[i];
+
+      delete this.links[link.id];
+      delete this._links[link.id];
 
       if (link.collapse) this.delCollapseLinks(link.collapse.group, node);
     }
@@ -869,7 +890,7 @@ TopologyGraphLayout.prototype = {
 
       if (members.indexOf(e.source) < 0 || members.indexOf(e.target) < 0) {
         source = e.source; target = e.target;
-        if (source.group === group) {
+        if (source.group === group && target.group) {
           this.delCollapseLinks(target.group, group.owner);
 
           if (target.group.collapsed) {
