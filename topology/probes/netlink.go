@@ -553,7 +553,7 @@ func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, inde
 }
 
 func (u *NetNsNetLinkProbe) initialize() {
-	logging.GetLogger().Debugf("Initialize Netlink interfaces for %s", u.Root.String())
+	logging.GetLogger().Debugf("Initialize Netlink interfaces for %s", u.Root.ID)
 	links, err := u.handle.LinkList()
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to list interfaces: %s", err.Error())
@@ -561,7 +561,7 @@ func (u *NetNsNetLinkProbe) initialize() {
 	}
 
 	for _, link := range links {
-		logging.GetLogger().Debugf("Initialize ADD %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.String())
+		logging.GetLogger().Debugf("Initialize ADD %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.ID)
 		u.Graph.Lock()
 		if u.Graph.LookupFirstChild(u.Root, graph.Metadata{"Name": link.Attrs().Name, "IfIndex": int64(link.Attrs().Index)}) == nil {
 			u.addLinkToTopology(link)
@@ -638,7 +638,7 @@ Ready:
 
 	fd := u.socket.GetFd()
 
-	logging.GetLogger().Debugf("Start polling netlink event for %s", u.Root)
+	logging.GetLogger().Debugf("Start polling netlink event for %s", u.Root.ID)
 
 	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
 	if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
@@ -745,7 +745,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
 				continue
 			}
-			logging.GetLogger().Debugf("Netlink ADD event for %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.String())
+			logging.GetLogger().Debugf("Netlink ADD event for %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.ID)
 			u.onLinkAdded(link)
 		case syscall.RTM_DELLINK:
 			link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
@@ -753,7 +753,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
 				continue
 			}
-			logging.GetLogger().Debugf("Netlink DEL event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.String())
+			logging.GetLogger().Debugf("Netlink DEL event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.ID)
 			u.onLinkDeleted(link)
 		case syscall.RTM_NEWADDR:
 			addr, family, ifindex, err := parseAddr(msg.Data)
@@ -876,7 +876,7 @@ func (u *NetLinkProbe) Unregister(nsPath string) error {
 	for fd, probe := range u.probes {
 		if probe.NsPath == nsPath {
 			if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_DEL, int(fd), nil); err != nil {
-				return fmt.Errorf("Failed to del fd from epoll events set for %s: %s", probe.Root.String(), err.Error())
+				return fmt.Errorf("Failed to del fd from epoll events set for %s: %s", probe.Root.ID, err.Error())
 			}
 			delete(u.probes, fd)
 

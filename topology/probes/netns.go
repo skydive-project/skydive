@@ -35,7 +35,6 @@ import (
 	"gopkg.in/fsnotify.v1"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -50,8 +49,9 @@ type NetNSProbe struct {
 	NetLinkProbe       *NetLinkProbe
 	pathToNetNS        map[string]*NetNs
 	netNsNetLinkProbes map[string]*netNsNetLinkProbe
-	runPath            string
-	rootNsDev          uint64
+	rootNs             *NetNs
+	watcher            *fsnotify.Watcher
+	pending            chan string
 }
 
 // NetNs describes a network namespace path associated with a device / inode
@@ -76,8 +76,13 @@ func (ns *NetNs) String() string {
 	return fmt.Sprintf("%d,%d", ns.dev, ns.ino)
 }
 
+// Equal compares two NetNs objects
+func (ns *NetNs) Equal(o *NetNs) bool {
+	return (ns.dev == o.dev && ns.ino == o.ino)
+}
+
 // Register a new network namespace path
-func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.Node {
+func (u *NetNSProbe) Register(path string, name string) *graph.Node {
 	logging.GetLogger().Debugf("Register Network Namespace: %s", path)
 
 	// When a new network namespace has been seen by inotify, the path to
@@ -98,7 +103,7 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 			return err
 		}
 
-		if stats.Dev != u.rootNsDev {
+		if stats.Dev != u.rootNs.dev {
 			return fmt.Errorf("%s does not seem to be a valid namespace", path)
 		}
 
@@ -109,6 +114,11 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 	if err != nil {
 		logging.GetLogger().Errorf("Could not register namespace: %s", err.Error())
 		return nil
+	}
+
+	// avoid hard link to root ns
+	if u.rootNs.Equal(newns) {
+		return u.Root
 	}
 
 	u.Lock()
@@ -129,11 +139,12 @@ func (u *NetNSProbe) Register(path string, extraMetadata graph.Metadata) *graph.
 	u.Graph.Lock()
 
 	logging.GetLogger().Debugf("Network Namespace added: %s", nsString)
-	metadata := graph.Metadata{"Name": getNetNSName(path), "Type": "netns", "Path": path}
-	if extraMetadata != nil {
-		for k, v := range extraMetadata {
-			metadata[k] = v
-		}
+	metadata := graph.Metadata{
+		"Name":   name,
+		"Type":   "netns",
+		"Path":   path,
+		"Inode":  int64(newns.ino),
+		"Device": int64(newns.dev),
 	}
 
 	n := u.Graph.NewNode(graph.GenID(), metadata)
@@ -191,52 +202,48 @@ func (u *NetNSProbe) Unregister(path string) {
 	delete(u.netNsNetLinkProbes, nsString)
 }
 
-func (u *NetNSProbe) initialize() {
-	files, _ := ioutil.ReadDir(u.runPath)
-	for _, f := range files {
-		u.Register(u.runPath+"/"+f.Name(), nil)
-	}
-}
-
-func (u *NetNSProbe) start() {
-	// wait for the path creation
+func (u *NetNSProbe) initializeRunPath(path string) {
 	for {
-		_, err := os.Stat(u.runPath)
-		if err == nil {
+		if _, err := os.Stat(path); err == nil {
 			break
 		}
 		time.Sleep(time.Second)
 	}
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to create a new Watcher: %s", err.Error())
-		return
+	if err := u.watcher.Add(path); err != nil {
+		logging.GetLogger().Errorf("Unable to Watch %s: %s", path, err.Error())
 	}
 
-	err = watcher.Add(u.runPath)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to Watch %s: %s", u.runPath, err.Error())
-		return
+	files, _ := ioutil.ReadDir(path)
+	for _, f := range files {
+		u.Register(path+"/"+f.Name(), f.Name())
 	}
+	logging.GetLogger().Debugf("NetNSProbe initialized %s", path)
+}
 
-	u.initialize()
+func (u *NetNSProbe) start() {
 	logging.GetLogger().Debugf("NetNSProbe initialized")
-
 	for {
 		select {
-		case ev := <-watcher.Events:
+		case path := <-u.pending:
+			go u.initializeRunPath(path)
+		case ev := <-u.watcher.Events:
 			if ev.Op&fsnotify.Create == fsnotify.Create {
-				u.Register(ev.Name, nil)
+				u.Register(ev.Name, getNetNSName(ev.Name))
 			}
 			if ev.Op&fsnotify.Remove == fsnotify.Remove {
 				u.Unregister(ev.Name)
 			}
 
-		case err := <-watcher.Errors:
+		case err := <-u.watcher.Errors:
 			logging.GetLogger().Errorf("Error while watching network namespace: %s", err.Error())
 		}
 	}
+}
+
+// Watch add a path to the inotify watcher
+func (u *NetNSProbe) Watch(path string) {
+	u.pending <- path
 }
 
 // Start the probe
@@ -250,25 +257,26 @@ func (u *NetNSProbe) Stop() {
 }
 
 // NewNetNSProbe creates a new network namespace probe
-func NewNetNSProbe(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe, runPath ...string) (*NetNSProbe, error) {
+func NewNetNSProbe(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe) (*NetNSProbe, error) {
 	if uid := os.Geteuid(); uid != 0 {
 		return nil, errors.New("NetNS probe has to be run as root")
 	}
 
-	path := "/var/run/netns"
-	if len(runPath) > 0 && runPath[0] != "" {
-		path = runPath[0]
-	}
-
-	rootNs, err := netns.Get()
+	ns, err := netns.Get()
 	if err != nil {
 		return nil, errors.New("Failed to get root namespace")
 	}
-	defer rootNs.Close()
+	defer ns.Close()
 
 	var stats syscall.Stat_t
-	if err := syscall.Fstat(int(rootNs), &stats); err != nil {
+	if err = syscall.Fstat(int(ns), &stats); err != nil {
 		return nil, errors.New("Failed to stat root namespace")
+	}
+	rootNs := &NetNs{dev: stats.Dev, ino: stats.Ino}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err.Error())
 	}
 
 	return &NetNSProbe{
@@ -277,13 +285,8 @@ func NewNetNSProbe(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe, runPath
 		NetLinkProbe:       nlProbe,
 		pathToNetNS:        make(map[string]*NetNs),
 		netNsNetLinkProbes: make(map[string]*netNsNetLinkProbe),
-		runPath:            path,
-		rootNsDev:          stats.Dev,
+		rootNs:             rootNs,
+		watcher:            watcher,
+		pending:            make(chan string, 10),
 	}, nil
-}
-
-// NewNetNSProbeFromConfig creates a new network namespace probe based on configuration
-func NewNetNSProbeFromConfig(g *graph.Graph, n *graph.Node, nlProbe *NetLinkProbe) (*NetNSProbe, error) {
-	path := config.GetConfig().GetString("netns.run_path")
-	return NewNetNSProbe(g, n, nlProbe, path)
 }

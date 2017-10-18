@@ -36,7 +36,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -96,7 +95,11 @@ func (probe *DockerProbe) registerContainer(id string) {
 		// The container is in net=host mode
 		n = probe.Root
 	} else {
-		n = probe.Register(namespace, graph.Metadata{"Name": info.Name[1:], "Manager": "docker"})
+		n = probe.Register(namespace, info.Name[1:])
+
+		probe.Graph.Lock()
+		probe.Graph.AddMetadata(n, "Manager", "docker")
+		probe.Graph.Unlock()
 	}
 
 	probe.Graph.Lock()
@@ -267,10 +270,4 @@ func NewDockerProbe(nsProbe *NetNSProbe, dockerURL string) (probe *DockerProbe, 
 		containerMap: make(map[string]containerInfo),
 		state:        common.StoppedState,
 	}, nil
-}
-
-// NewDockerProbeFromConfig creates a new topology Docker probe based on configuration
-func NewDockerProbeFromConfig(nsProbe *NetNSProbe) (*DockerProbe, error) {
-	dockerURL := config.GetConfig().GetString("docker.url")
-	return NewDockerProbe(nsProbe, dockerURL)
 }
