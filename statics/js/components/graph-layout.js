@@ -397,6 +397,9 @@ TopologyGraphLayout.prototype = {
 
     if (!source.visible && !target.visible) {
       this._links[link.id] = link;
+      if (source.group !== target.group && source.group.owner.visible && target.group.owner.visible) {
+        this.addCollapseLink(source.group, source.group.owner, target.group.owner, link.metadata);
+      }
     } else if (!source.visible) {
       this._links[link.id] = link;
       if (source.group && source.group.collapsed && source.group != target.group) {
@@ -475,7 +478,7 @@ TopologyGraphLayout.prototype = {
   _onNodeUpdated: function(node) {
     if (this.isNeutronRelatedVMNode(node)) {
       for (var i in node.links) {
-	      var link = node.links[i];
+        var link = node.links[i];
         if (link.metadata.RelationType === "ownership" && this.links[link.id]) {
           delete this.links[link.id];
           this.invalid = true;
