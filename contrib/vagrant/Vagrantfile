@@ -2,13 +2,14 @@
 # vi: set ft=ruby :
 
 AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
+ANALYZER_COUNT=ENV.fetch("ANALYZER_COUNT", "1").to_i
 
 Vagrant.configure(2) do |config|
   (1..AGENT_COUNT).each do |i|
     config.vm.define "agent#{i}" do |agent|
       agent.vm.box = "fedora/26-cloud-base"
       agent.vm.hostname = "agent#{i}"
-      agent.vm.network "private_network", ip: "192.168.50.#{(i+1)*10}"
+      agent.vm.network "private_network", ip: "192.168.50.#{(i+ANALYZER_COUNT)*10}"
       agent.vm.synced_folder ".", "/vagrant", :disabled => true
       agent.vm.provision "common", type: "shell", path: "setup-common.sh"
       agent.vm.provider :libvirt do |domain|
@@ -17,36 +18,42 @@ Vagrant.configure(2) do |config|
     end
   end
 
-  config.vm.define "analyzer" do |analyzer|
-    analyzer.vm.box = "fedora/26-cloud-base"
-    analyzer.vm.hostname = "analyzer"
-    analyzer.vm.network "private_network", ip: "192.168.50.10"
-    analyzer.vm.synced_folder ".", "/vagrant", :disabled => true
-    analyzer.vm.provision "common", type: "shell", path: "setup-common.sh"
-    analyzer.vm.provision :ansible do |ansible|
-      ansible_extra_vars = {
-        "skydive_extra_config" => {
-          "ws_pong_timeout" => 10,
-        },
-        "skydive_nic" => "ansible_eth1"
-      }
+  skydive_extra_config = {
+    "ws_pong_timeout" => 10,
+  }
 
-      if ENV.fetch("DEPLOYMENT_MODE", "") == "dev"
-        ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/bin/skydive"
-        ansible_extra_vars["skydive_deployment_mode"] = "binary"
+  (1..ANALYZER_COUNT).each do |i|
+    config.vm.define "analyzer#{i}" do |analyzer|
+      analyzer.vm.box = "fedora/26-cloud-base"
+      analyzer.vm.hostname = "analyzer#{i}"
+      analyzer.vm.network "private_network", ip: "192.168.50.#{i*10}"
+      analyzer.vm.synced_folder ".", "/vagrant", :disabled => true
+      analyzer.vm.provision "common", type: "shell", path: "setup-common.sh"
+      if i == 1 then
+        analyzer.vm.provision :ansible do |ansible|
+          ansible_extra_vars = {
+            "skydive_extra_config" => skydive_extra_config,
+            "skydive_nic" => "ansible_eth1"
+          }
+
+          if ENV.fetch("DEPLOYMENT_MODE", "") == "dev"
+            ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/bin/skydive"
+            ansible_extra_vars["skydive_deployment_mode"] = "binary"
+          end
+
+          ansible.playbook = "provisioning/playbook.yml.sample"
+          ansible.extra_vars = ansible_extra_vars
+          ansible.groups = {
+            "analyzers" => Array.new(ANALYZER_COUNT){ |i| "analyzer#{(i+1).to_s}" },
+            "agents" => Array.new(AGENT_COUNT){ |i| "agent#{(i+1).to_s}" },
+          }
+          ansible.limit = "all"
+          ansible.verbose = true
+        end
       end
-
-      ansible.playbook = "provisioning/playbook.yml.sample"
-      ansible.extra_vars = ansible_extra_vars
-      ansible.groups = {
-        "analyzers" => ["analyzer"],
-        "agents" => Array.new(AGENT_COUNT){ |i| "agent#{(i+1).to_s}" },
-      }
-      ansible.limit = "all"
-      ansible.verbose = true
-    end
-    analyzer.vm.provider :libvirt do |domain|
-      domain.memory = 1024
+      analyzer.vm.provider :libvirt do |domain|
+        domain.memory = 1024
+      end
     end
   end
 end
