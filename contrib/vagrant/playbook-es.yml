@@ -1,0 +1,10 @@
+- name: Install elasticsearch
+  hosts: elasticsearch
+  roles:
+  - role: elastic.elasticsearch
+    es_instance_name: "{{ inventory_hostname }}"
+    es_heap_size: 256m
+    es_config:
+      network.host: 0.0.0.0
+      http.cors.enabled: true
+      http.cors.allow-origin: "*"

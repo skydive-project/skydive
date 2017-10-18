@@ -3,36 +3,69 @@
 
 AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
 ANALYZER_COUNT=ENV.fetch("ANALYZER_COUNT", "1").to_i
+ELASTICSEARCH_COUNT=ENV.fetch("ELASTICSEARCH_COUNT", "0").to_i
+
+$skydive_extra_config = {
+  "ws_pong_timeout" => 10,
+}
+
+def provision_es(vm, hosts)
+  vm.provision :ansible do |ansible|
+    ansible.playbook = "playbook-es.yml"
+    ansible.groups = { "elasticsearch": hosts }
+    ansible.limit = "all"
+    ansible.verbose = true
+    ansible.galaxy_role_file = 'requirements.yml'
+    ansible.sudo = true
+  end
+
+  $skydive_extra_config["analyzer.storage.backend"] = "elasticsearch"
+  $skydive_extra_config["graph.backend"] = "elasticsearch"
+  $skydive_extra_config["storage.elasticsearch.host"] = "#{hosts[0]}:9200"
+end
 
 Vagrant.configure(2) do |config|
   (1..AGENT_COUNT).each do |i|
     config.vm.define "agent#{i}" do |agent|
-      agent.vm.box = "fedora/26-cloud-base"
+      agent.vm.box = "centos/7"
       agent.vm.hostname = "agent#{i}"
-      agent.vm.network "private_network", ip: "192.168.50.#{(i+ANALYZER_COUNT)*10}"
+      agent.vm.network "private_network", ip: "192.168.50.#{(i+ANALYZER_COUNT+ELASTICSEARCH_COUNT)*10}"
       agent.vm.synced_folder ".", "/vagrant", :disabled => true
       agent.vm.provision "common", type: "shell", path: "setup-common.sh"
+      agent.vm.provision "openvswitch", type: "shell", inline: "sudo yum -y install centos-release-openstack-pike"
       agent.vm.provider :libvirt do |domain|
         domain.memory = 1536
       end
     end
   end
 
-  skydive_extra_config = {
-    "ws_pong_timeout" => 10,
-  }
+  (1..ELASTICSEARCH_COUNT).each do |i|
+    config.vm.define "elasticsearch#{i}" do |es|
+      es.vm.box = "centos/7"
+      es.vm.hostname = "elasticsearch#{i}"
+      es.vm.network "private_network", ip: "192.168.50.#{(i+ANALYZER_COUNT)*10}"
+      es.vm.synced_folder ".", "/vagrant", :disabled => true
+      es.vm.provision "common", type: "shell", path: "setup-common.sh"
+
+      provision_es(es.vm, Array.new(ELASTICSEARCH_COUNT){ |i| "elasticsearch#{(i+1).to_s}" })
+    end
+  end
 
   (1..ANALYZER_COUNT).each do |i|
     config.vm.define "analyzer#{i}" do |analyzer|
-      analyzer.vm.box = "fedora/26-cloud-base"
+      analyzer.vm.box = "centos/7"
       analyzer.vm.hostname = "analyzer#{i}"
       analyzer.vm.network "private_network", ip: "192.168.50.#{i*10}"
       analyzer.vm.synced_folder ".", "/vagrant", :disabled => true
       analyzer.vm.provision "common", type: "shell", path: "setup-common.sh"
       if i == 1 then
+        if ELASTICSEARCH_COUNT == 0
+          provision_es(analyzer.vm, Array.new(ANALYZER_COUNT){ |i| "analyzer#{(i+1).to_s}" })
+        end
+
         analyzer.vm.provision :ansible do |ansible|
           ansible_extra_vars = {
-            "skydive_extra_config" => skydive_extra_config,
+            "skydive_extra_config" => $skydive_extra_config,
             "skydive_nic" => "ansible_eth1"
           }
 
