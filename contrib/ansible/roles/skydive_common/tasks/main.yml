@@ -40,7 +40,7 @@
 - yedit:
     src: "{{ skydive_config_file }}"
     key: analyzers
-    value: "{{ analyzers }}"
+    value: "{{ analyzers.split(',') }}"
 
 - yedit:
     src: "{{ skydive_config_file }}"
