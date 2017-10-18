@@ -3,10 +3,706 @@
 	"ignore": "test",
 	"package": [
 		{
+			"path": "appengine",
+			"revision": ""
+		},
+		{
+			"path": "appengine_internal",
+			"revision": ""
+		},
+		{
+			"path": "appengine_internal/base",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "AH7jcN7pvaPDU6UjHdpT081DDGk=",
+			"path": "cloud.google.com/go/compute/metadata",
+			"revision": "da30b6d6aeb462b223228cc0b4e7952cba499d90",
+			"revisionTime": "2017-09-21T12:03:37Z"
+		},
+		{
+			"checksumSHA1": "iTUYo1vyD9psB6ONbgzDiZ4q78Q=",
+			"path": "github.com/FlorianOtel/client-go/discovery",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "Y8X2Tvx95IKbhPJPt12JDirasI0=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "cMq51+K8ICtBRRqa2lq4+AQQLms=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/apps/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "pVt0eS3qz7e4A45MDVWZi2aJqbs=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/authentication/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "5+40A7cXwz7w3xYBQmdtmLx4ziE=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/authorization/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "br6kTvGtKDMjY8x16cYCC1bKJ4M=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/autoscaling/v1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "XhIYyas9OkXWMnsu5iBFi1VLOZM=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/batch/v1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "sNlviQui4qiPHvLteffKuBmEo3g=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/batch/v2alpha1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "MrkuIjazB3CHL7vkHVSAynXi9cY=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/certificates/v1alpha1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "8Lxjyi9eOzCNNpRgC6MFRTDHLuk=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/core/v1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "rkFS3WCXsG2DWe6ulXoC1RP+Bkc=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/extensions/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "fvRTN4CEBP2RyBiah2rIY1zo0ms=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/policy/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "U69T0QJU3maXIuksa5ULeh7Qs9w=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/rbac/v1alpha1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "hpfq7q/QdRQBtIodyTp2+Q/ZzFc=",
+			"path": "github.com/FlorianOtel/client-go/kubernetes/typed/storage/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "xJ8eQZfjqCbo3FIVSqkD+pKo6EI=",
+			"path": "github.com/FlorianOtel/client-go/pkg/api",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "tSbyiOVHUW3UCGCWlG8rGSeaLEs=",
+			"path": "github.com/FlorianOtel/client-go/pkg/api/errors",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "dAoWROFUCBxLpEVide/ls/1EZFY=",
+			"path": "github.com/FlorianOtel/client-go/pkg/api/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "NxuAMSagTynKEaHJuTQwgKKY9GU=",
+			"path": "github.com/FlorianOtel/client-go/pkg/api/meta",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "XuPs89Tkh1y6T/BcTUY+8w31uWw=",
+			"path": "github.com/FlorianOtel/client-go/pkg/api/resource",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "6o0NAomjTSjX7daRA1QkpXQQbCk=",
+			"path": "github.com/FlorianOtel/client-go/pkg/api/v1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "ZeGFcbMdz4L68RFCCWLm0+3cknE=",
+			"path": "github.com/FlorianOtel/client-go/pkg/api/validation/path",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "PCZH4J4bVmjatntiRWvRN8gBjKI=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apimachinery",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "qEPpIIWoXKe/MA7LJVHzu9Nrc54=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apimachinery/announced",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "tMVl120jCy3FeXgKuZIngBeWETI=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apimachinery/registered",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "6Etczs+/kICldStZcto783J4sm4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/apps",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "h08D2JcyhM2C6XqavZr0g0FhCjI=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/apps/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "UPX1+nNIyzEyLaOxIibP2flRH44=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/apps/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "zM9lxekgKDNbBrMKJlBUu/LcRy4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/authentication",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "WETmk9jYDNmqAG1WD1E+25CVoWg=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/authentication/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "kePvBsQJwBJ+y1PezNM1rHW88J4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/authentication/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "yswez9lfRYHwTx5/nbrUfVOCH6U=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/authorization",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "+TBEzsJ8uN9KhNLf47znihMhQcQ=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/authorization/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "a+5sHEpk1vOD9xyQPCFyY6RTS/E=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/authorization/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "ikNOkqjvLoqebqSdD4nvhGsi3no=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/autoscaling",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "i0J6qDnqM8pc9D+mLpv2+cEXJFI=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/autoscaling/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "TuGQkY1VBjCHRK2Rmt05cyuwWgg=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/autoscaling/v1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "uwo1yStJ42yhMJiHLX69VkOgVlU=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/batch",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "rS6K+1v6j0wqlW8tSTrb09yF46w=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/batch/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "1iIcWbPpfyWT2nnm1d3NZl6T+IE=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/batch/v1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "+ptPOjLVVJVom4B5I9ThlA2QrFg=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/batch/v2alpha1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "Qd77/bT/HGhGXNJTQOq2ziJQZxM=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/certificates",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "mUrvxQTjN1ahVAucStU5AidWaQE=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/certificates/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "w+0xA8MQ2SM/kope0ar4vUAWH1o=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/certificates/v1alpha1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "nZb7VeBn7FR7eVejkXk8fkJ276E=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/extensions",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "AMa9zyvIaVMlenpn7+Ev5KCXZvk=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/extensions/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "ZeksbDZE1p3EIJ0mixm3jItSwg4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/extensions/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "B5waaNGQOUl0TjbUIzJLwF68mxw=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/meta/v1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "1Ru17dLpGcJ7R3WBsOkIBlyiwqY=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/meta/v1/unstructured",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "PtIQNHkIM72x8cKydJMFX9zdtbQ=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/policy",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "zRSDysRr2uoCSCsgDcx8CJ2RWJI=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/policy/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "RddtU6fx8AZPvBpP6YPXoEJh4Js=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/policy/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "7Jshf/ha+9KhHsBymFgtJf2LGko=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/rbac",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "P1WQNZZi8v5c3Rbv/zzOpt3sOO4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/rbac/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "9mWmVHQA/86l/bX8onTxhHD8dM8=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/rbac/v1alpha1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "wM7+FJMzNV30m8ZuvuZi74u+Dmk=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/storage",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "IehYGpS1960yB2vTXOZccsKzX1E=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/storage/install",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "y9JPKKOQJ25p6Egp0Cp6FBcTtNY=",
+			"path": "github.com/FlorianOtel/client-go/pkg/apis/storage/v1beta1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "tmYtsAPanHww3vyE42k1ha37H28=",
+			"path": "github.com/FlorianOtel/client-go/pkg/auth/user",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "nHl0Yh2+f7OBazsWHwmf9/tBcB4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/conversion",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "EGx6Bv3RehykSDD1iagWIcb0kj4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/conversion/queryparams",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "qU1dQl6BVD3IZQqbr7/71IyaaB4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/fields",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "b9dL1X26uDojOI1fX8gCK4yPE70=",
+			"path": "github.com/FlorianOtel/client-go/pkg/genericapiserver/openapi/common",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "ttvko7mw2SRw7xihU3mpyMiojE8=",
+			"path": "github.com/FlorianOtel/client-go/pkg/labels",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "+Dx/Y9NpinRvieoIY2Txd2De958=",
+			"path": "github.com/FlorianOtel/client-go/pkg/runtime",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "7ZYNZeDiCwfKiK1qYTBsg2ml7pQ=",
+			"path": "github.com/FlorianOtel/client-go/pkg/runtime/schema",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "1Li/qh6I5CFe394eN7z+WzKkYRY=",
+			"path": "github.com/FlorianOtel/client-go/pkg/runtime/serializer",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "PmWSPIf0zCVXOHlFeNDFO3SG0rQ=",
+			"path": "github.com/FlorianOtel/client-go/pkg/runtime/serializer/json",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "ESLi9rYNHORGMrQwW9lUqPBU4r0=",
+			"path": "github.com/FlorianOtel/client-go/pkg/runtime/serializer/protobuf",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "CR7px0NViPKd13PYaOX0qPraJss=",
+			"path": "github.com/FlorianOtel/client-go/pkg/runtime/serializer/recognizer",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "JmP7xIQ3jbtWixeA+tW7c8uJH/Y=",
+			"path": "github.com/FlorianOtel/client-go/pkg/runtime/serializer/streaming",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "N4RLEqek7/QQTSV4vHf5Rk21pmc=",
+			"path": "github.com/FlorianOtel/client-go/pkg/runtime/serializer/versioning",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "YwuynGke7tZyRuiaiEvMzx2VFss=",
+			"path": "github.com/FlorianOtel/client-go/pkg/selection",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "PvfnGH3MDXphoDCAzYUVB2BbpIE=",
+			"path": "github.com/FlorianOtel/client-go/pkg/third_party/forked/golang/reflect",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "HdK6UwpW9QFKRIcjHMQfSJMjFwk=",
+			"path": "github.com/FlorianOtel/client-go/pkg/third_party/forked/golang/template",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "9UHDzhBTWM+34r/pojPP9pHn5ic=",
+			"path": "github.com/FlorianOtel/client-go/pkg/types",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "i+LvonYoqYykZfjWPQYFXch2GMs=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "GmjjhpbDSQwnLpgsor3NgkxX4G0=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/cert",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "uoyAV7M6gwuQ2KBmm5sxKsCGeo0=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/clock",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "ZuZWjjbR1/06vZSeIeruIU2qiP0=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/errors",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "GKko1SL2b+YvHFIfhuVLmjjAy/0=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/flowcontrol",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "xMjh+7MBO6GWJw/2X1m2VsKPFX4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/framer",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "0fSV/CoJWTSL61T7tzaWrUBILNc=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/homedir",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "vW2h500GAB4w0sYHMQKl1zbh75U=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/integer",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "uHgwYTJRKGgyXzb9zxeaa9BQ6M4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/intstr",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "yHa1/7jJ918a8pfui8pKb16tj5k=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/json",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "l7iLxCE0757R9DzMboqzSBfhQO8=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/jsonpath",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "iJE5QuH1vAh9ZThAqaQHYKD0A54=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/labels",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "bLoCcFERKxe1ShUZiCNSsC3zAFU=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/net",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "JCD78CX52DxU/YreC6Kq8q/35fA=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/parsers",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "7rlqEhY6fNzbZHyXLN7oVpqECs8=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/rand",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "+tmkFLF6J0qxA4W4BcD9FNTPoCw=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/runtime",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "80IuG7n0hIJumMiD9zoT8RqcsqY=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/sets",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "H9xiIszwmxWzoahjNNQExCvgm2g=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/uuid",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "WJjwUBbWreBcEhyh6+NG9QxC1DQ=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/validation",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "dgBOB7iCPHUG2/y0c8jsxo9PS7A=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/validation/field",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "AB8EHRrxTLfaoMBVETlzg98+zWo=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/wait",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "bXvHAHxGNrIPbrqmB8OMnXo/7SE=",
+			"path": "github.com/FlorianOtel/client-go/pkg/util/yaml",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "zJgGQDLrgxgtaB1p9EL9GPm13c4=",
+			"path": "github.com/FlorianOtel/client-go/pkg/version",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "yh68UmhLfdmz7Z5PoDcsPrvUD9Q=",
+			"path": "github.com/FlorianOtel/client-go/pkg/watch",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "MEicGGU8us2m0CTG+A+JA66NbW0=",
+			"path": "github.com/FlorianOtel/client-go/pkg/watch/versioned",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "FZ24+2c/GQJbcPjPn3xxmlOkAHo=",
+			"path": "github.com/FlorianOtel/client-go/plugin/pkg/client/auth",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "MCo4+eJVDcSFSBAv4Q5WoUgnWDY=",
+			"path": "github.com/FlorianOtel/client-go/plugin/pkg/client/auth/gcp",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "w4Vqp/uni7GcGojmwzosgaJQNCI=",
+			"path": "github.com/FlorianOtel/client-go/plugin/pkg/client/auth/oidc",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "eVRXbkdMvlP5OIQ9RmBvzLJk4xY=",
+			"path": "github.com/FlorianOtel/client-go/rest",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "la0wyKkyN6LTrX/lZRi5+IPHrOE=",
+			"path": "github.com/FlorianOtel/client-go/tools/auth",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "q7bjfJ9HDSBQsUZDTacbS7T+G8A=",
+			"path": "github.com/FlorianOtel/client-go/tools/clientcmd",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "rORO/HRwgXqex1kG/BfVWqpm734=",
+			"path": "github.com/FlorianOtel/client-go/tools/clientcmd/api",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "0KzthQE0O3JUFxgQH9cahlGnDf4=",
+			"path": "github.com/FlorianOtel/client-go/tools/clientcmd/api/latest",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "Tl85Kd0yO94Vc65zoplgsg6FPfA=",
+			"path": "github.com/FlorianOtel/client-go/tools/clientcmd/api/v1",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "M+SU2X2vZvDqxZ2FUX/okYnZdH4=",
+			"path": "github.com/FlorianOtel/client-go/tools/metrics",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
+			"checksumSHA1": "EUarviorDNXPsWwIKJjnPF5mlWo=",
+			"path": "github.com/FlorianOtel/client-go/transport",
+			"revision": "b7ffd8d01090c803b208f1914b7d61f9d7e9b53d",
+			"revisionTime": "2016-12-24T10:25:27Z"
+		},
+		{
 			"checksumSHA1": "L9njXCkN30+qHaLayiiA2Q9jDlY=",
 			"path": "github.com/Microsoft/go-winio",
 			"revision": "fff283ad5116362ca252298cfc9b95828956d85d",
 			"revisionTime": "2017-02-01T00:43:30Z"
+		},
+		{
+			"checksumSHA1": "nJrp/CKnvpO+vzTfOeR8qmzRZ4c=",
+			"path": "github.com/PuerkitoBio/purell",
+			"revision": "fd18e053af8a4ff11039269006e8037ff374ce0e",
+			"revisionTime": "2017-09-17T14:39:11Z"
+		},
+		{
+			"checksumSHA1": "/jQPcsccvsC9GVM9pV6fESxWOUk=",
+			"path": "github.com/PuerkitoBio/urlesc",
+			"revision": "de5bf2ad457846296e2031421a34e2568e304e35",
+			"revisionTime": "2017-08-10T14:37:23Z"
 		},
 		{
 			"checksumSHA1": "DWPL08pD/SQ2GzLfoR7ZXnjj7Sw=",
@@ -443,6 +1139,36 @@
 			"revision": "003851be7bb0694fe3cc457a49529a19388ee7cf"
 		},
 		{
+			"checksumSHA1": "Jz6ug06Vpq3tsrsiGnjXd0i6XUs=",
+			"path": "github.com/coreos/go-oidc/http",
+			"revision": "a4973d9a4225417aecf5d450a9522f00c1f7130f",
+			"revisionTime": "2017-07-11T23:37:13Z"
+		},
+		{
+			"checksumSHA1": "4tTcNh86OwCSkCD6WeA6ajRYqDA=",
+			"path": "github.com/coreos/go-oidc/jose",
+			"revision": "a4973d9a4225417aecf5d450a9522f00c1f7130f",
+			"revisionTime": "2017-07-11T23:37:13Z"
+		},
+		{
+			"checksumSHA1": "r1oC4B8T20BNrRjyhtVE0Wbavt4=",
+			"path": "github.com/coreos/go-oidc/key",
+			"revision": "a4973d9a4225417aecf5d450a9522f00c1f7130f",
+			"revisionTime": "2017-07-11T23:37:13Z"
+		},
+		{
+			"checksumSHA1": "VDZdX1BgnrZ1pV5hZ98xOsN7Bbg=",
+			"path": "github.com/coreos/go-oidc/oauth2",
+			"revision": "a4973d9a4225417aecf5d450a9522f00c1f7130f",
+			"revisionTime": "2017-07-11T23:37:13Z"
+		},
+		{
+			"checksumSHA1": "JRmqnLrrYZWzHAeG6iu85hTuqlM=",
+			"path": "github.com/coreos/go-oidc/oidc",
+			"revision": "a4973d9a4225417aecf5d450a9522f00c1f7130f",
+			"revisionTime": "2017-07-11T23:37:13Z"
+		},
+		{
 			"checksumSHA1": "+pTlGYxKw3bD00BkE0RElG0kGvI=",
 			"path": "github.com/coreos/go-semver",
 			"revision": "8ab6407b697782a06568d4b7f1db25550ec2e4c6",
@@ -465,6 +1191,24 @@
 			"path": "github.com/coreos/pkg/capnslog",
 			"revision": "66fe44ad037ccb80329115cb4db0dbe8e9beb03a",
 			"revisionTime": "2016-02-21T03:53:41Z"
+		},
+		{
+			"checksumSHA1": "vhHfyZLaugP3bKfJjnZe2+5XaHc=",
+			"path": "github.com/coreos/pkg/health",
+			"revision": "459346e834d8e97be707cd0ea1236acaaa159ffc",
+			"revisionTime": "2017-09-01T14:55:54Z"
+		},
+		{
+			"checksumSHA1": "gRHhz6qleTtTUH/UIXwGeNxBFR8=",
+			"path": "github.com/coreos/pkg/httputil",
+			"revision": "459346e834d8e97be707cd0ea1236acaaa159ffc",
+			"revisionTime": "2017-09-01T14:55:54Z"
+		},
+		{
+			"checksumSHA1": "etBdQ0LN6ojGunfvUt6B5C3FNrQ=",
+			"path": "github.com/coreos/pkg/timeutil",
+			"revision": "459346e834d8e97be707cd0ea1236acaaa159ffc",
+			"revisionTime": "2017-09-01T14:55:54Z"
 		},
 		{
 			"checksumSHA1": "dvabztWVQX8f6oMLRyv4dLH+TGY=",
@@ -641,10 +1385,34 @@
 			"revision": "5d2041e26a699eaca682e2ea41c8f891e1060444"
 		},
 		{
+			"checksumSHA1": "g3z4plpw9F/ho3hdJb+X/bN/OgE=",
+			"path": "github.com/emicklei/go-restful",
+			"revision": "68c9750c36bb8cb433f1b88c807b4b30df4acc40",
+			"revisionTime": "2017-07-04T05:34:23Z"
+		},
+		{
+			"checksumSHA1": "rmsBHtFpV3osid71XnTZBo/b3bU=",
+			"path": "github.com/emicklei/go-restful/log",
+			"revision": "68c9750c36bb8cb433f1b88c807b4b30df4acc40",
+			"revisionTime": "2017-07-04T05:34:23Z"
+		},
+		{
+			"checksumSHA1": "8YXII1Wxu1nb5IUEndvrRCi4CX4=",
+			"path": "github.com/emicklei/go-restful/swagger",
+			"revision": "ad3e7d5a0a11fbbead57cc9353720a60a0a2793f",
+			"revisionTime": "2017-01-29T11:47:09Z"
+		},
+		{
 			"checksumSHA1": "LtBBfn+Uw7/gaB2tVsrLRBTprdo=",
 			"path": "github.com/fsnotify/fsnotify",
 			"revision": "30411dbcefb7a1da7e84f75530ad3abe4011b4f8",
 			"revisionTime": "2016-04-12T13:37:56Z"
+		},
+		{
+			"checksumSHA1": "ImX1uv6O09ggFeBPUJJ2nu7MPSA=",
+			"path": "github.com/ghodss/yaml",
+			"revision": "0ca9ea5df5451ffdf184b4428c902747c2c11cd7",
+			"revisionTime": "2017-03-27T23:54:44Z"
 		},
 		{
 			"checksumSHA1": "UnvK4UGLG1aEBZYaoUn7v5S8NQU=",
@@ -657,11 +1425,46 @@
 			"revision": "7b486932bea218beb6e85f7ed28650d283dd6ce6"
 		},
 		{
-			"checksumSHA1": "KW2AI9WtxFZTNzewuw8eA+TPFd0=",
-			"comment": "v0.1-126-gff05bbb",
+			"checksumSHA1": "6dTGC5A1Y1xnv+JSi9z8S6JfnH0=",
+			"path": "github.com/go-openapi/jsonpointer",
+			"revision": "779f45308c19820f1a69e9a4cd965f496e0da10f",
+			"revisionTime": "2017-01-02T17:42:23Z"
+		},
+		{
+			"checksumSHA1": "YMNc0I/ifBw9TsnF13NTpIN9yu4=",
+			"path": "github.com/go-openapi/jsonreference",
+			"revision": "36d33bfe519efae5632669801b180bf1a245da3b",
+			"revisionTime": "2016-11-05T16:21:50Z"
+		},
+		{
+			"checksumSHA1": "x1yvWanIW3DJS8I5HMuN6CdZXDg=",
+			"path": "github.com/go-openapi/spec",
+			"revision": "7abd5745472fff5eb3685386d5fb8bf38683154d",
+			"revisionTime": "2017-09-14T06:12:47Z"
+		},
+		{
+			"checksumSHA1": "Wz6dE9E9ZwCK4oWRr5lNazhgMY0=",
+			"path": "github.com/go-openapi/swag",
+			"revision": "f3f9494671f93fcff853e3c6e9e948b3eb71e590",
+			"revisionTime": "2017-06-06T14:27:51Z"
+		},
+		{
+			"checksumSHA1": "wn2shNJMwRZpvuvkf1s7h0wvqHI=",
 			"path": "github.com/gogo/protobuf/proto",
-			"revision": "ff05bbbb0ff143cc11fc3f8b700fc3a2864b884d",
-			"revisionTime": "2016-02-25T08:32:10Z"
+			"revision": "2adc21fd136931e0388e278825291678e1d98309",
+			"revisionTime": "2017-08-31T18:35:40Z"
+		},
+		{
+			"checksumSHA1": "HPVQZu059/Rfw2bAWM538bVTcUc=",
+			"path": "github.com/gogo/protobuf/sortkeys",
+			"revision": "2adc21fd136931e0388e278825291678e1d98309",
+			"revisionTime": "2017-08-31T18:35:40Z"
+		},
+		{
+			"checksumSHA1": "HmbftipkadrLlCfzzVQ+iFHbl6g=",
+			"path": "github.com/golang/glog",
+			"revision": "23def4e6c14b4da8ac2ed8007337bc5eb5007998",
+			"revisionTime": "2016-01-25T20:49:56Z"
 		},
 		{
 			"checksumSHA1": "NgOgDwqQnfQhahsECFCsSPEenE0=",
@@ -676,9 +1479,15 @@
 			"revisionTime": "2016-07-27T17:26:17Z"
 		},
 		{
-			"checksumSHA1": "GENxfNGiSzB9hzo2fPZkI4F/Zzg=",
+			"checksumSHA1": "me40nSy9NBr9MmAwe5vDvTgSVZs=",
 			"path": "github.com/google/btree",
 			"revision": "cc6329d4279e3f025a53a83c397d2339b5705c45"
+		},
+		{
+			"checksumSHA1": "PFtXkXPO7pwRtykVUUXtc07wc7U=",
+			"path": "github.com/google/gofuzz",
+			"revision": "24818f796faf91cd76ec7bddd72458fbced7a6c1",
+			"revisionTime": "2017-06-12T17:47:53Z"
 		},
 		{
 			"checksumSHA1": "CArPEPoLJwoKIPA+y0fBpbUMgr8=",
@@ -688,14 +1497,14 @@
 			"revisionTime": "2017-09-19T23:53:10Z"
 		},
 		{
-			"checksumSHA1": "vQPsnlc+09qSJAIqBEIOLiXJDwk=",
+			"checksumSHA1": "Rq1KcIqOcpNygdjzD1xE+gtiiDE=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
 			"revision": "93b782132903d1846aab74cb1f62e6138564949f",
 			"revisionTime": "2017-09-19T23:53:10Z"
 		},
 		{
-			"checksumSHA1": "tXt6u1ZReOCvbidLEjvj1gqdgaU=",
+			"checksumSHA1": "5adfB3KuxBKYp/GgRv+P9FIsA/k=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcap",
 			"revision": "93b782132903d1846aab74cb1f62e6138564949f",
@@ -871,9 +1680,21 @@
 			"revision": "1c284ec98f4b398443cbabb0d9197f7f4cc0077c"
 		},
 		{
+			"checksumSHA1": "K6exl2ouL7d8cR2i378EzZOdRVI=",
+			"path": "github.com/howeyc/gopass",
+			"revision": "bf9dde6d0d2c004a008c27aaee91170c786f6db8",
+			"revisionTime": "2017-01-09T16:22:49Z"
+		},
+		{
 			"checksumSHA1": "N4Uk5GHnDyx7s2ru1m4dsCN9Jmc=",
 			"path": "github.com/hydrogen18/stoppableListener",
 			"revision": "dadc9ccc400c712e5a316107a5c462863919e579"
+		},
+		{
+			"checksumSHA1": "66lykxpWgSmQodnhkADqn6tnroQ=",
+			"path": "github.com/imdario/mergo",
+			"revision": "e3000cb3d28c72b837601cac94debd91032d19fe",
+			"revisionTime": "2017-06-20T10:47:01Z"
 		},
 		{
 			"checksumSHA1": "40vJyUB4ezQSn/NSadsKEOrudMc=",
@@ -958,6 +1779,12 @@
 			"revision": "ed104f61ea4877bea08af6f759805674861e968d"
 		},
 		{
+			"checksumSHA1": "a8Ge6pE7oxux9ZMZVAlyEeGzCng=",
+			"path": "github.com/juju/ratelimit",
+			"revision": "5b9ff866471762aa2ab2dced63c9fb6f53921342",
+			"revisionTime": "2017-05-23T01:21:41Z"
+		},
+		{
 			"checksumSHA1": "g+afVQQVopBLiLB5pFZp/8s6aBs=",
 			"path": "github.com/kardianos/osext",
 			"revision": "c2c54e542fb797ad986b31721e1baedf214ca413",
@@ -974,6 +1801,24 @@
 			"comment": "v1.6.0-1-gc81f9d7",
 			"path": "github.com/magiconair/properties",
 			"revision": "c81f9d71af8f8cba1466501d30326b99a4e56c19"
+		},
+		{
+			"checksumSHA1": "T8soMJArSZrYnhmdpAnq1bVxQ6Q=",
+			"path": "github.com/mailru/easyjson/buffer",
+			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
+			"revisionTime": "2017-09-02T15:12:37Z"
+		},
+		{
+			"checksumSHA1": "Xw5HIdQ2vlr5wkKl+8ANM9xp5Zs=",
+			"path": "github.com/mailru/easyjson/jlexer",
+			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
+			"revisionTime": "2017-09-02T15:12:37Z"
+		},
+		{
+			"checksumSHA1": "tMeVsfYgDW9K0spDZkOBlvZYssw=",
+			"path": "github.com/mailru/easyjson/jwriter",
+			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
+			"revisionTime": "2017-09-02T15:12:37Z"
 		},
 		{
 			"checksumSHA1": "1AfJEGDJfegnLKaiGGCHNFAep8Y=",
@@ -1045,6 +1890,12 @@
 			"path": "github.com/opencontainers/runc/libcontainer/user",
 			"revision": "8fa5343b0058459296399a89bc532aa5508de28d",
 			"revisionTime": "2016-03-30T02:39:07Z"
+		},
+		{
+			"checksumSHA1": "Se195FlZ160eaEk/uVx4KdTPSxU=",
+			"path": "github.com/pborman/uuid",
+			"revision": "e790cca94e6cc75c7064b1332e63811d4aae1a53",
+			"revisionTime": "2017-06-12T15:36:48Z"
 		},
 		{
 			"checksumSHA1": "8Y05Pz7onrQPcVWW6JStSsYRh6E=",
@@ -1436,6 +2287,12 @@
 			"revisionTime": "2016-01-26T17:50:25Z"
 		},
 		{
+			"checksumSHA1": "nqWNlnMmVpt628zzvyo6Yv2CX5Q=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "7d9177d70076375b9a59c8fde23d52d9c4a7ecd5",
+			"revisionTime": "2017-09-15T19:08:28Z"
+		},
+		{
 			"checksumSHA1": "9Pcc1IiRqPxEcxU2KMpkrcEGb3k=",
 			"path": "golang.org/x/net/bpf",
 			"revision": "a6577fac2d73be281a500b310739095313165611",
@@ -1464,6 +2321,12 @@
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
+			"checksumSHA1": "1osdKBIU5mNqyQqiGmnutoTzdJA=",
+			"path": "golang.org/x/net/idna",
+			"revision": "0744d001aa8470aaa53df28d32e5ceeb8af9bd70",
+			"revisionTime": "2017-09-01T09:04:45Z"
+		},
+		{
 			"checksumSHA1": "/k7k6eJDkxXx6K9Zpo/OwNm58XM=",
 			"path": "golang.org/x/net/internal/timeseries",
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172"
@@ -1480,7 +2343,37 @@
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
-			"checksumSHA1": "TVEkpH3gq84iQ39I4R+mlDwjuVI=",
+			"checksumSHA1": "HmVJmSDDCwsPJQrp7ml2gXb2szg=",
+			"path": "golang.org/x/oauth2",
+			"revision": "13449ad91cb26cb47661c1b080790392170385fd",
+			"revisionTime": "2017-06-22T15:12:08Z"
+		},
+		{
+			"checksumSHA1": "JTBn9MQUhwHtjwv7rC9Zg4KRN7g=",
+			"path": "golang.org/x/oauth2/google",
+			"revision": "13449ad91cb26cb47661c1b080790392170385fd",
+			"revisionTime": "2017-06-22T15:12:08Z"
+		},
+		{
+			"checksumSHA1": "vryfsqFS63avRRqF2dR9K40oX2A=",
+			"path": "golang.org/x/oauth2/internal",
+			"revision": "13449ad91cb26cb47661c1b080790392170385fd",
+			"revisionTime": "2017-06-22T15:12:08Z"
+		},
+		{
+			"checksumSHA1": "huVltYnXdRFDJLgp/ZP9IALzG7g=",
+			"path": "golang.org/x/oauth2/jws",
+			"revision": "13449ad91cb26cb47661c1b080790392170385fd",
+			"revisionTime": "2017-06-22T15:12:08Z"
+		},
+		{
+			"checksumSHA1": "/eV4E08BY+f1ZikiR7OOMJAj3m0=",
+			"path": "golang.org/x/oauth2/jwt",
+			"revision": "13449ad91cb26cb47661c1b080790392170385fd",
+			"revisionTime": "2017-06-22T15:12:08Z"
+		},
+		{
+			"checksumSHA1": "/oZpHfYc+ZgOwYAhlvcMhmETYpw=",
 			"path": "golang.org/x/sys/unix",
 			"revision": "99f16d856c9836c42d24e7ab64ea72916925fa97",
 			"revisionTime": "2017-03-08T15:04:45Z"
@@ -1492,16 +2385,94 @@
 			"revisionTime": "2017-03-29T05:31:33Z"
 		},
 		{
-			"checksumSHA1": "0uwDStcjVf2LGzegKmTBWsaZ6Ns=",
+			"checksumSHA1": "tltivJ/uj/lqLk05IqGfCv2F/E8=",
+			"path": "golang.org/x/text/secure/bidirule",
+			"revision": "1cbadb444a806fd9430d14ad08967ed91da4fa0a",
+			"revisionTime": "2017-09-13T19:45:57Z"
+		},
+		{
+			"checksumSHA1": "ziMb9+ANGRJSSIuxYdRbA+cDRBQ=",
 			"path": "golang.org/x/text/transform",
+			"revision": "ab5ac5f9a8deb4855a60fab02bc61a4ec770bd49",
+			"revisionTime": "2017-09-13T16:58:53Z"
+		},
+		{
+			"checksumSHA1": "tk+lpF2CDV7e5RwwRY5ZTCGrd9o=",
+			"path": "golang.org/x/text/unicode/bidi",
+			"revision": "1cbadb444a806fd9430d14ad08967ed91da4fa0a",
+			"revisionTime": "2017-09-13T19:45:57Z"
+		},
+		{
+			"checksumSHA1": "TisxVXIAh3Hb6QdUOMso4wdqAQU=",
+			"path": "golang.org/x/text/unicode/norm",
 			"revision": "02704b6b714738b763ba478766eb55a4b4851cd4",
 			"revisionTime": "2016-04-13T10:07:35Z"
 		},
 		{
-			"checksumSHA1": "OwypTTxsp/HEwbfXq9yMR4fACRM=",
-			"path": "golang.org/x/text/unicode/norm",
-			"revision": "02704b6b714738b763ba478766eb55a4b4851cd4",
-			"revisionTime": "2016-04-13T10:07:35Z"
+			"checksumSHA1": "U1OTBlgTRUe9ZdMsbISL1E+eMm8=",
+			"path": "golang.org/x/text/width",
+			"revision": "ab5ac5f9a8deb4855a60fab02bc61a4ec770bd49",
+			"revisionTime": "2017-09-13T16:58:53Z"
+		},
+		{
+			"checksumSHA1": "WPEbk80NB3Esdh4Yk0PXr2K7xVU=",
+			"path": "google.golang.org/appengine",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "4o2JkeR2LyUfZ7BQIzHUejyqKno=",
+			"path": "google.golang.org/appengine/internal",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "x6Thdfyasqd68dWZWqzWWeIfAfI=",
+			"path": "google.golang.org/appengine/internal/app_identity",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "TsNO8P0xUlLNyh3Ic/tzSp/fDWM=",
+			"path": "google.golang.org/appengine/internal/base",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "5QsV5oLGSfKZqTCVXP6NRz5T4Tw=",
+			"path": "google.golang.org/appengine/internal/datastore",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "Gep2T9zmVYV8qZfK2gu3zrmG6QE=",
+			"path": "google.golang.org/appengine/internal/log",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "eLZVX1EHLclFtQnjDIszsdyWRHo=",
+			"path": "google.golang.org/appengine/internal/modules",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "a1XY7rz3BieOVqVI2Et6rKiwQCk=",
+			"path": "google.golang.org/appengine/internal/remote_api",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "QtAbHtHmDzcf6vOV9eqlCpKgjiw=",
+			"path": "google.golang.org/appengine/internal/urlfetch",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
+		},
+		{
+			"checksumSHA1": "akOV9pYnCbcPA8wJUutSQVibdyg=",
+			"path": "google.golang.org/appengine/urlfetch",
+			"revision": "24e4144ec923c2374f6b06610c0df16a9222c3d9",
+			"revisionTime": "2017-09-21T17:06:48Z"
 		},
 		{
 			"checksumSHA1": "D9M/719krq7NJYQu523UODpBKcI=",
@@ -1580,6 +2551,12 @@
 			"comment": "v1.2.9",
 			"path": "gopkg.in/fsnotify.v1",
 			"revision": "8611c35ab31c1c28aa903d33cf8b6e44a399b09e"
+		},
+		{
+			"checksumSHA1": "6f8MEU31llHM1sLM/GGH4/Qxu0A=",
+			"path": "gopkg.in/inf.v0",
+			"revision": "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4",
+			"revisionTime": "2015-09-11T12:57:57Z"
 		},
 		{
 			"checksumSHA1": "omNnn0E5H5b9BuDZN5fUXBnETl8=",
