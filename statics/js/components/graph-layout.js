@@ -362,7 +362,7 @@ TopologyGraphLayout.prototype = {
     link.target.links[link.id] = link;
 
     if (link.metadata.RelationType === "ownership") {
-      if (this.isNeutronVMNode(link.target)) return;
+      if (this.isNeutronRelatedVMNode(link.target)) return;
 
       if (link.target.metadata.Driver === "openvswitch" &&
           ["patch", "vxlan", "gre", "geneve"].indexOf(link.target.metadata.Type) >= 0) return;
@@ -379,33 +379,33 @@ TopologyGraphLayout.prototype = {
     if (sourceGroup && sourceGroup.type === "ownership" && this.hasOutsideLink(sourceGroup) &&
         sourceGroup.owner.linkToParent) this.delLink(sourceGroup.owner.linkToParent);
 
-    var i, noc, edges, metadata;
-    if (Object.values(link.target.edges).length >= 2 && link.target.linkToParent) {
-      noc = 0; edges = link.target.edges;
+    var i, noc, edges, metadata, source = link.source, target = link.target;
+    if (Object.values(target.edges).length >= 2 && target.linkToParent) {
+      noc = 0; edges = target.edges;
       for (i in edges) {
         metadata = edges[i].metadata;
-        if (metadata.RelationType !== "ownership" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(link.target.linkToParent);
+        if (metadata.RelationType !== "ownership" && target.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(target.linkToParent);
       }
     }
-    if (Object.keys(link.source.edges).length >= 2 && link.source.linkToParent) {
+    if (Object.keys(source.edges).length >= 2 && source.linkToParent) {
       noc = 0; edges = link.source.edges;
       for (i in edges) {
         metadata = edges[i].metadata;
-        if (metadata.RelationType !== "ownership" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(link.source.linkToParent);
+        if (metadata.RelationType !== "ownership" && source.metadata.Type !== "bridge" && metadata.Type !== "vlan" && ++noc >= 2) this.delLink(source.linkToParent);
       }
     }
 
-    if (!link.source.visible && !link.target.visible) {
+    if (!source.visible && !target.visible) {
       this._links[link.id] = link;
-    } else if (!link.source.visible) {
+    } else if (!source.visible) {
       this._links[link.id] = link;
-      if (link.source.group && link.source.group.collapsed && link.source.group != link.target.group) {
-        this.addCollapseLink(link.source.group, link.source.group.owner, link.target, link.metadata);
+      if (source.group && source.group.collapsed && source.group != target.group) {
+        this.addCollapseLink(source.group, source.group.owner, target, link.metadata);
       }
-    } else if (!link.target.visible) {
+    } else if (!target.visible) {
       this._links[link.id] = link;
-      if (link.target.group && link.target.group.collapsed && link.source.group != link.target.group) {
-        this.addCollapseLink(link.target.group, link.target.group.owner, link.source, link.metadata);
+      if (target.group && target.group.collapsed && source.group != target.group) {
+        this.addCollapseLink(target.group, target.group.owner, source, link.metadata);
       }
     } else {
       this.links[link.id] = link;
@@ -473,9 +473,9 @@ TopologyGraphLayout.prototype = {
   },
 
   _onNodeUpdated: function(node) {
-    if (this.isNeutronVMNode(node)) {
+    if (this.isNeutronRelatedVMNode(node)) {
       for (var i in node.links) {
-	var link = node.links[i];
+	      var link = node.links[i];
         if (link.metadata.RelationType === "ownership" && this.links[link.id]) {
           delete this.links[link.id];
           this.invalid = true;
@@ -661,8 +661,8 @@ TopologyGraphLayout.prototype = {
       .attr("xlink:href", this.managerImg(d));
   },
 
-  isNeutronVMNode: function(d) {
-    return d.metadata.Manager === "neutron" && d.metadata.Driver === "tun" && d.metadata.ExtID && d.metadata.ExtID["vm-uuid"] !== "";
+  isNeutronRelatedVMNode: function(d) {
+    return d.metadata.Manager === "neutron" && ["tun", "veth", "bridge"].includes(d.metadata.Driver);
   },
 
   captureStarted: function(d) {
