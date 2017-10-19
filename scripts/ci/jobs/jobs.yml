@@ -307,6 +307,9 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
+          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
           cd scripts/ci
           vagrant up --no-provision
           vagrant provision
