@@ -83,11 +83,11 @@ var TopologyComponent = {
               <h1>Rules</h1>\
               <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
             </div>\
-            <div v-show="Object.keys(currentNodeStats).length">\
+            <div id="interface-metrics" v-show="Object.keys(currentNodeStats).length">\
               <h1>Interface metrics</h1>\
               <statistics-table :object="currentNodeStats"></statistics-table>\
             </div>\
-            <div v-show="Object.keys(currentNodeLastStats).length && time === 0">\
+            <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastStats).length && time === 0">\
               <h1>Last metrics</h1>\
               <statistics-table :object="currentNodeLastStats"></statistics-table>\
             </div>\
