@@ -191,8 +191,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		case "gre", "vxlan", "geneve", "patch":
 			driver = "openvswitch"
 		default:
-			// need to be sure that we have the driver
-			return
+			driver = "unknown"
 		}
 	}
 
@@ -221,7 +220,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 	tr := o.Graph.StartMetadataTransaction(intf)
 	defer tr.Commit()
 
-	if ofport > 0 {
+	if ofport != 0 {
 		tr.AddMetadata("OfPort", ofport)
 	}
 
