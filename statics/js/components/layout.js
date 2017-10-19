@@ -7,6 +7,7 @@ var nsImg = 'statics/img/ns.png';
 var bridgeImg = 'statics/img/bridge.png';
 var dockerImg = 'statics/img/docker.png';
 var neutronImg = 'statics/img/openstack.png';
+var k8sImg = 'statics/img/k8s.png';
 
 var minusImg = 'statics/img/minus-outline-16.png';
 var plusImg = 'statics/img/plus-16.png';
@@ -28,5 +29,6 @@ var nodeImgMap = {
 
 var managerImgMap = {
   "docker": dockerImg,
-  "neutron": neutronImg
+  "neutron": neutronImg,
+  "k8s": k8sImg
 };

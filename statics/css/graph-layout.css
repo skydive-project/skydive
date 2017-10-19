@@ -86,6 +86,13 @@ text {
   stroke-width: 2;
 }
 
+.links path.netpolicy {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 80;
+  stroke: rgb(50, 109, 230);
+  stroke-width: 5;
+}
+
 .group {
   fill: #517587;
   stroke: #517587;
@@ -135,4 +142,10 @@ textPath.link-label-alert {
 textPath.link-label-warning {
   stroke: #000;
   fill: #ffa330;
+}
+
+textPath.link-label-net-policy {
+  font-size: 30px;
+  fill: white;
+  stroke: black;
 }
