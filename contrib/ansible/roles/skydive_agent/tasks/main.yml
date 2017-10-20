@@ -3,7 +3,6 @@
     name: "{{ item }}"
     state: present
   with_items:
-    - docker
     - openvswitch
 
 - service:
@@ -11,7 +10,6 @@
     state: started
     enabled: yes
   with_items:
-    - docker
     - openvswitch
 
 - include: docker.yml
