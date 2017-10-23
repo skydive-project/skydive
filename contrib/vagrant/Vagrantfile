@@ -5,6 +5,9 @@ AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
 ANALYZER_COUNT=ENV.fetch("ANALYZER_COUNT", "1").to_i
 ELASTICSEARCH_COUNT=ENV.fetch("ELASTICSEARCH_COUNT", "0").to_i
 
+AGENT_EXTRA_PROVISION_SCRIPT=ENV.fetch("AGENT_EXTRA_PROVISION_SCRIPT", "")
+ANALYZER_EXTRA_PROVISION_SCRIPT=ENV.fetch("ANALYZER_EXTRA_PROVISION_SCRIPT", "")
+
 $skydive_extra_config = {
   "ws_pong_timeout" => 10,
   "agent.topology.probes" => ["ovsdb", "docker"],
@@ -30,13 +33,17 @@ Vagrant.configure(2) do |config|
   (1..AGENT_COUNT).each do |i|
     config.vm.define "agent#{i}" do |agent|
       agent.vm.box = "centos/7"
+      agent.vm.provider :libvirt do |domain|
+        domain.memory = 1536
+      end
       agent.vm.hostname = "agent#{i}"
       agent.vm.network "private_network", ip: "192.168.50.#{(i+ANALYZER_COUNT+ELASTICSEARCH_COUNT)*10}"
       agent.vm.synced_folder ".", "/vagrant", :disabled => true
       agent.vm.provision "common", type: "shell", path: "setup-common.sh"
       agent.vm.provision "openvswitch", type: "shell", inline: "sudo yum -y install centos-release-openstack-pike"
-      agent.vm.provider :libvirt do |domain|
-        domain.memory = 1536
+
+      if AGENT_EXTRA_PROVISION_SCRIPT != ""
+        agent.vm.provision "extra", type: "shell", path: AGENT_EXTRA_PROVISION_SCRIPT
       end
     end
   end
@@ -87,6 +94,11 @@ Vagrant.configure(2) do |config|
           ansible.verbose = true
         end
       end
+
+      if ANALYZER_EXTRA_PROVISION_SCRIPT != ""
+        analyzer.vm.provision "extra", type: "shell", path: ANALYZER_EXTRA_PROVISION_SCRIPT
+      end
+
       analyzer.vm.provider :libvirt do |domain|
         domain.memory = 1024
       end
