@@ -7,6 +7,8 @@ ELASTICSEARCH_COUNT=ENV.fetch("ELASTICSEARCH_COUNT", "0").to_i
 
 $skydive_extra_config = {
   "ws_pong_timeout" => 10,
+  "agent.topology.probes" => ["ovsdb", "docker"],
+  "agent.topology.netlink.metrics_update" => 5
 }
 
 def provision_es(vm, hosts)
