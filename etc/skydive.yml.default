@@ -68,6 +68,8 @@ analyzer:
       # - TOR1[Name=tor1] -> [color=red] TOR1_PORT2[Name=port2, MTU=1500]
       # - TOR_PORT1 --> TOR1_PORT1
       # - TOR1_PORT2 --> *[Type=host]/eth0
+    probes:
+      # - k8sctl
   # update rate of links in seconds
   bandwidth_update_rate: 5
   # interface metrics - 'netlink'
@@ -108,6 +110,7 @@ agent:
       # - docker
       # - neutron
       # - opencontrail
+      # - k8s
     netlink:
       # delay in seconds between two metric updates
       # metrics_update: 30
@@ -246,3 +249,11 @@ ui:
   # Specify the extra assets folder. Javascript and CSS files present in this
   # folder will be added to the WebUI.
   # extra_assets: /usr/share/skydive/assets
+
+k8s:
+  # The KUBECONFIG yml file, if k8sctl is executed inside the cluster, you may use the empty config file - kube-config-empty.yml
+  # config_file: /etc/skydive/kube-cfg.yml
+  # Time between network policies updates
+  # polling_rate: 5s
+  # Maximum number of supported network policies
+  # max_network_policies: 50
