@@ -106,9 +106,9 @@ var AllInOne = &cobra.Command{
 
 		authOptions := analyzer.NewAnalyzerAuthenticationOpts()
 		svcAddr, _ := common.ServiceAddressFromString(config.GetConfig().GetString("analyzer.listen"))
-		restClient := http.NewRestClient(svcAddr.Addr, svcAddr.Port, authOptions)
+		restClient := http.NewRestClient(config.GetURL("http", svcAddr.Addr, svcAddr.Port, ""), authOptions)
 		err = common.Retry(func() error {
-			_, err := restClient.Request("GET", "/", nil, nil)
+			_, err := restClient.Request("GET", "/api", nil, nil)
 			return err
 		}, 10, time.Second)
 

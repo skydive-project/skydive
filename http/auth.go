@@ -46,17 +46,8 @@ type AuthenticationOpts struct {
 type AuthenticationClient struct {
 	authOptions   *AuthenticationOpts
 	authenticated bool
-	Addr          string
-	Port          int
+	Url           *url.URL
 	AuthToken     string
-}
-
-func (c *AuthenticationClient) getPrefix() string {
-	protocol := "http"
-	if config.IsTLSenabled() == true {
-		protocol = "https"
-	}
-	return fmt.Sprintf("%s://%s:%d", protocol, c.Addr, c.Port)
 }
 
 func (c *AuthenticationClient) Authenticated() bool {
@@ -76,7 +67,8 @@ func (c *AuthenticationClient) Cookie() *http.Cookie {
 func (c *AuthenticationClient) Authenticate() error {
 	values := url.Values{"username": {c.authOptions.Username}, "password": {c.authOptions.Password}}
 
-	req, err := http.NewRequest("POST", c.getPrefix()+"/login", strings.NewReader(values.Encode()))
+	u := c.Url.ResolveReference(&url.URL{Path: "/login"})
+	req, err := http.NewRequest("POST", u.String(), strings.NewReader(values.Encode()))
 	if err != nil {
 		return err
 	}
@@ -111,10 +103,9 @@ func (c *AuthenticationClient) Authenticate() error {
 	return nil
 }
 
-func NewAuthenticationClient(addr string, port int, authOptions *AuthenticationOpts) *AuthenticationClient {
+func NewAuthenticationClient(url *url.URL, authOptions *AuthenticationOpts) *AuthenticationClient {
 	return &AuthenticationClient{
-		Addr:        addr,
-		Port:        port,
+		Url:         url,
 		authOptions: authOptions,
 	}
 }

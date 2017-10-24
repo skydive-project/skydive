@@ -58,7 +58,7 @@ func (g *GremlinQueryHelper) Request(query string, header http.Header) (*http.Re
 
 	contentReader := bytes.NewReader(s)
 
-	return client.Request("POST", "api/topology", contentReader, header)
+	return client.Request("POST", "topology", contentReader, header)
 }
 
 // Query the topology API

@@ -29,6 +29,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -37,11 +38,11 @@ import (
 type RestClient struct {
 	authClient *AuthenticationClient
 	client     *http.Client
+	url        *url.URL
 }
 
 type CrudClient struct {
 	RestClient
-	Root string
 }
 
 func readBody(resp *http.Response) string {
@@ -68,12 +69,13 @@ func getHttpClient() *http.Client {
 	return client
 }
 
-func NewRestClient(addr string, port int, authOptions *AuthenticationOpts) *RestClient {
+func NewRestClient(url *url.URL, authOptions *AuthenticationOpts) *RestClient {
 	client := getHttpClient()
-	authClient := NewAuthenticationClient(addr, port, authOptions)
+	authClient := NewAuthenticationClient(url, authOptions)
 	return &RestClient{
 		client:     client,
 		authClient: authClient,
+		url:        url,
 	}
 }
 
@@ -84,8 +86,8 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		}
 	}
 
-	url := fmt.Sprintf("%s/%s", c.authClient.getPrefix(), path)
-	req, err := http.NewRequest(method, url, body)
+	url := c.url.ResolveReference(&url.URL{Path: path})
+	req, err := http.NewRequest(method, url.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -101,17 +103,15 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	return c.client.Do(req)
 }
 
-func NewCrudClient(addr string, port int, authOpts *AuthenticationOpts, root string) *CrudClient {
-	restClient := NewRestClient(addr, port, authOpts)
+func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts) *CrudClient {
+	restClient := NewRestClient(url, authOpts)
 	return &CrudClient{
 		RestClient: *restClient,
-		Root:       root,
 	}
 }
 
 func (c *CrudClient) List(resource string, values interface{}) error {
-	path := fmt.Sprintf("%s/%s", c.Root, resource)
-	resp, err := c.Request("GET", path, nil, nil)
+	resp, err := c.Request("GET", resource, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -125,8 +125,7 @@ func (c *CrudClient) List(resource string, values interface{}) error {
 }
 
 func (c *CrudClient) Get(resource string, id string, value interface{}) error {
-	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
-	resp, err := c.Request("GET", path, nil, nil)
+	resp, err := c.Request("GET", resource+"/"+id, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -146,10 +145,7 @@ func (c *CrudClient) Create(resource string, value interface{}) error {
 	}
 
 	contentReader := bytes.NewReader(s)
-
-	path := fmt.Sprintf("%s/%s", c.Root, resource)
-
-	resp, err := c.Request("POST", path, contentReader, nil)
+	resp, err := c.Request("POST", resource, contentReader, nil)
 	if err != nil {
 		return err
 	}
@@ -169,9 +165,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 	}
 
 	contentReader := bytes.NewReader(s)
-	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
-
-	resp, err := c.Request("PUT", path, contentReader, nil)
+	resp, err := c.Request("PUT", resource+"/"+id, contentReader, nil)
 	if err != nil {
 		return err
 	}
@@ -185,9 +179,7 @@ func (c *CrudClient) Update(resource string, id string, value interface{}) error
 }
 
 func (c *CrudClient) Delete(resource string, id string) error {
-	path := fmt.Sprintf("%s/%s/%s", c.Root, resource, id)
-
-	resp, err := c.Request("DELETE", path, nil, nil)
+	resp, err := c.Request("DELETE", resource+"/"+id, nil, nil)
 	if err != nil {
 		return err
 	}

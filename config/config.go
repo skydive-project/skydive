@@ -259,8 +259,8 @@ func GetEtcdServerAddrs() []string {
 	if len(etcdServers) > 0 {
 		return etcdServers
 	}
-	if addresse, err := GetOneAnalyzerServiceAddress(); err == nil {
-		return []string{"http://" + addresse.Addr + ":12379"}
+	if address, err := GetOneAnalyzerServiceAddress(); err == nil {
+		return []string{"http://" + address.Addr + ":12379"}
 	}
 	return []string{"http://localhost:12379"}
 }
@@ -273,4 +273,14 @@ func IsTLSenabled() bool {
 		return true
 	}
 	return false
+}
+
+func GetURL(protocol string, addr string, port int, path string) *url.URL {
+	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
+
+	if (protocol == "http" || protocol == "ws") && IsTLSenabled() == true {
+		u.Scheme += "s"
+	}
+
+	return u
 }

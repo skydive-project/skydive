@@ -27,11 +27,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
 	"github.com/skydive-project/skydive/common"
@@ -65,6 +67,8 @@ type WSSpeaker interface {
 	GetHost() string
 	GetAddrPort() (string, int)
 	GetServiceType() common.ServiceType
+	GetHeaders() http.Header
+	GetURL() *url.URL
 	IsConnected() bool
 	SendMessage(m WSMessage) error
 	Connect()
@@ -82,6 +86,8 @@ type WSConnStatus struct {
 	Port        int
 	Host        string       `json:"-"`
 	State       *WSConnState `json:"IsConnected"`
+	Url         *url.URL     `json:"-"`
+	headers     http.Header
 }
 
 func (s *WSConnState) MarshalJSON() ([]byte, error) {
@@ -171,6 +177,11 @@ func (c *WSConn) GetAddrPort() (string, int) {
 	return c.Addr, c.Port
 }
 
+// Return the URL of the connection
+func (c *WSConn) GetURL() *url.URL {
+	return c.Url
+}
+
 // IsConnected returns the connection status.
 func (c *WSConn) IsConnected() bool {
 	return atomic.LoadInt32((*int32)(c.State)) == common.RunningState
@@ -214,6 +225,11 @@ func (c *WSConn) GetServiceType() common.ServiceType {
 	return c.ServiceType
 }
 
+// GetHeaders returns the client HTTP headers.
+func (c *WSConn) GetHeaders() http.Header {
+	return c.headers
+}
+
 // SendMessage sends a message directly over the wire.
 func (c *WSConn) write(msg []byte) error {
 	if !c.IsConnected() {
@@ -243,8 +259,7 @@ func (c *WSClient) scheme() string {
 
 func (c *WSClient) connect() {
 	var err error
-	host := c.Addr + ":" + strconv.FormatInt(int64(c.Port), 10)
-	endpoint := c.scheme() + host + c.Path
+	endpoint := c.Url.String()
 	headers := http.Header{
 		"X-Host-ID":             {c.Host},
 		"Origin":                {endpoint},
@@ -254,7 +269,7 @@ func (c *WSClient) connect() {
 
 	if c.AuthClient != nil {
 		if err = c.AuthClient.Authenticate(); err != nil {
-			logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
+			logging.GetLogger().Errorf("Unable to authenticate %s : %s", endpoint, err.Error())
 			return
 		}
 		c.AuthClient.SetHeaders(headers)
@@ -392,14 +407,21 @@ func (c *WSConn) Disconnect() {
 	}
 }
 
-func newWSCon(host string, clientType common.ServiceType, addr string, port int) *WSConn {
+func newWSConn(host string, clientType common.ServiceType, url *url.URL, headers http.Header) *WSConn {
+	if headers == nil {
+		headers = http.Header{}
+	}
+
+	port, _ := strconv.Atoi(url.Port())
 	c := &WSConn{
 		WSConnStatus: WSConnStatus{
 			Host:        host,
 			ServiceType: clientType,
-			Addr:        addr,
+			Addr:        url.Hostname(),
 			Port:        port,
 			State:       new(WSConnState),
+			Url:         url,
+			headers:     headers,
 		},
 		send:       make(chan []byte, maxMessages),
 		read:       make(chan []byte, maxMessages),
@@ -412,11 +434,10 @@ func newWSCon(host string, clientType common.ServiceType, addr string, port int)
 }
 
 // NewWSClient returns a WSClient with a new connection.
-func NewWSClient(host string, clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSClient {
-	wsconn := newWSCon(host, clientType, addr, port)
+func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authClient *AuthenticationClient, headers http.Header) *WSClient {
+	wsconn := newWSConn(host, clientType, url, headers)
 	c := &WSClient{
 		WSConn:     wsconn,
-		Path:       path,
 		AuthClient: authClient,
 	}
 	wsconn.wsSpeaker = c
@@ -424,15 +445,26 @@ func NewWSClient(host string, clientType common.ServiceType, addr string, port i
 }
 
 // NewWSClientFromConfig creates a WSClient based on the configuration
-func NewWSClientFromConfig(clientType common.ServiceType, addr string, port int, path string, authClient *AuthenticationClient) *WSClient {
+func NewWSClientFromConfig(clientType common.ServiceType, url *url.URL, authClient *AuthenticationClient, headers http.Header) *WSClient {
 	host := config.GetConfig().GetString("host_id")
-	return NewWSClient(host, clientType, addr, port, path, authClient)
+	return NewWSClient(host, clientType, url, authClient, headers)
 }
 
 // newIncomingWSClient is called by the server for incoming connections
-func newIncomingWSClient(host string, clientType common.ServiceType, conn *websocket.Conn) *wsIncomingClient {
+func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *wsIncomingClient {
+	host := getRequestParameter(r, "X-Host-ID")
+	if host == "" {
+		host = r.RemoteAddr
+	}
+
+	clientType := common.ServiceType(getRequestParameter(r, "X-Client-Type"))
+	if clientType == "" {
+		clientType = common.UnknownService
+	}
+
 	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
-	wsconn := newWSCon(host, clientType, svc.Addr, svc.Port)
+	url := config.GetURL("http", svc.Addr, svc.Port, r.URL.Path+"?"+r.URL.RawQuery)
+	wsconn := newWSConn(host, clientType, url, r.Header)
 	wsconn.conn = conn
 
 	pongTimeout := time.Duration(config.GetConfig().GetInt("ws_pong_timeout")) * time.Second

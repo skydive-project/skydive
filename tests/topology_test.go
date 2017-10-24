@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -754,8 +755,8 @@ func TestQueryMetadata(t *testing.T) {
 			hostname, _ := os.Hostname()
 			wspool := shttp.NewWSJSONClientPool()
 			for _, sa := range addresses {
-				authClient := shttp.NewAuthenticationClient(sa.Addr, sa.Port, authOptions)
-				client := shttp.NewWSClient(hostname+"-cli", common.ServiceType(""), sa.Addr, sa.Port, "/ws", authClient)
+				authClient := shttp.NewAuthenticationClient(config.GetURL("http", sa.Addr, sa.Port, ""), authOptions)
+				client := shttp.NewWSClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws"), authClient, http.Header{})
 				wspool.AddClient(client)
 			}
 
