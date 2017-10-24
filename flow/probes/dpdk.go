@@ -55,7 +55,7 @@ type DPDKProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
+func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)

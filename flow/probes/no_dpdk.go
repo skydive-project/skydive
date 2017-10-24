@@ -38,7 +38,7 @@ type DPDKProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
+func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
 	return nil
 }
 

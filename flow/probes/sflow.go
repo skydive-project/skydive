@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
@@ -41,10 +42,12 @@ const (
 // SFlowProbesHandler describes a SFlow probe in the graph
 type SFlowProbesHandler struct {
 	FlowProbe
-	Graph      *graph.Graph
-	probes     map[string]bool
-	probesLock sync.RWMutex
-	allocator  *sflow.SFlowAgentAllocator
+	Graph          *graph.Graph
+	fta            *flow.TableAllocator
+	flowClientPool *analyzer.FlowClientPool
+	probes         map[string]*flow.Table
+	probesLock     sync.RWMutex
+	allocator      *sflow.SFlowAgentAllocator
 }
 
 // UnregisterProbe unregisters a probe from the graph
@@ -57,9 +60,11 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 		return fmt.Errorf("No TID for node %v", n)
 	}
 
-	if _, ok := d.probes[tid]; !ok {
+	ft, ok := d.probes[tid]
+	if !ok {
 		return fmt.Errorf("No registered probe for %s", tid)
 	}
+	d.fta.Release(ft)
 
 	d.allocator.Release(tid)
 
@@ -72,8 +77,13 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	return nil
 }
 
+// asyncFlowPipeline run the flow pipeline
+func (d *SFlowProbesHandler) asyncFlowPipeline(flows []*flow.Flow) {
+	d.flowClientPool.SendFlows(flows)
+}
+
 // RegisterProbe registers a probe in the graph
-func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
+func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
 	var tid string
 	if tid, _ = n.GetFieldString("TID"); tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -102,13 +112,20 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, 
 		headerSize = uint32(capture.HeaderSize)
 	}
 
+	opts := flow.TableOpts{
+		RawPacketLimit: int64(capture.RawPacketLimit),
+		TCPMetric:      capture.ExtraTCPMetric,
+		SocketInfo:     capture.SocketInfo,
+	}
+	ft := d.fta.Alloc(d.asyncFlowPipeline, tid, opts)
+
 	addr := common.ServiceAddress{Addr: address, Port: capture.Port}
 	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr); err != nil {
 		return err
 	}
 
 	d.probesLock.Lock()
-	d.probes[tid] = true
+	d.probes[tid] = ft
 	d.probesLock.Unlock()
 
 	e.OnStarted()
@@ -122,19 +139,26 @@ func (d *SFlowProbesHandler) Start() {
 
 // Stop a probe
 func (d *SFlowProbesHandler) Stop() {
+	d.probesLock.Lock()
+	for _, ft := range d.probes {
+		d.fta.Release(ft)
+	}
+	d.probesLock.Unlock()
 	d.allocator.ReleaseAll()
 }
 
 // NewSFlowProbesHandler creates a new SFlow probe in the graph
-func NewSFlowProbesHandler(g *graph.Graph) (*SFlowProbesHandler, error) {
+func NewSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) (*SFlowProbesHandler, error) {
 	allocator, err := sflow.NewSFlowAgentAllocator()
 	if err != nil {
 		return nil, err
 	}
 
 	return &SFlowProbesHandler{
-		Graph:     g,
-		allocator: allocator,
-		probes:    make(map[string]bool),
+		Graph:          g,
+		fta:            fta,
+		flowClientPool: fcpool,
+		allocator:      allocator,
+		probes:         make(map[string]*flow.Table),
 	}, nil
 }
