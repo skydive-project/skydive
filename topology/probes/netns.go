@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -81,17 +82,14 @@ func (ns *NetNs) Equal(o *NetNs) bool {
 	return (ns.dev == o.dev && ns.ino == o.ino)
 }
 
-// Register a new network namespace path
-func (u *NetNSProbe) Register(path string, name string) *graph.Node {
-	logging.GetLogger().Debugf("Register Network Namespace: %s", path)
-
+func (u *NetNSProbe) checkNamespace(path string) error {
 	// When a new network namespace has been seen by inotify, the path to
 	// the namespace may still be a regular file, not a bind mount to the
 	// file in /proc/<pid>/tasks/<tid>/ns/net yet, so we wait a bit for the
 	// bind mount to be set up
-	var newns *NetNs
-	err := common.Retry(func() error {
-		var stats syscall.Stat_t
+
+	return common.Retry(func() error {
+		var stats, parentStats syscall.Stat_t
 		fd, err := syscall.Open(path, syscall.O_RDONLY, 0)
 		if err != nil {
 			return err
@@ -103,18 +101,29 @@ func (u *NetNSProbe) Register(path string, name string) *graph.Node {
 			return err
 		}
 
-		if stats.Dev != u.rootNs.dev {
-			return fmt.Errorf("%s does not seem to be a valid namespace", path)
+		if parent := filepath.Dir(path); parent != "" {
+			if err := syscall.Stat(parent, &parentStats); err == nil {
+				if stats.Dev == parentStats.Dev {
+					return fmt.Errorf("%s does not seem to be a valid namespace", path)
+				}
+			}
 		}
 
-		newns = &NetNs{path: path, dev: stats.Dev, ino: stats.Ino}
 		return nil
 	}, 10, time.Millisecond*100)
+}
 
-	if err != nil {
-		logging.GetLogger().Errorf("Could not register namespace: %s", err.Error())
+// Register a new network namespace path
+func (u *NetNSProbe) Register(path string, name string) *graph.Node {
+	logging.GetLogger().Debugf("Register Network Namespace: %s", path)
+
+	var stats syscall.Stat_t
+	if err := syscall.Stat(path, &stats); err != nil {
+		logging.GetLogger().Errorf("Failed to stat namespace %s: %s", path, err.Error())
 		return nil
 	}
+
+	newns := &NetNs{path: path, dev: stats.Dev, ino: stats.Ino}
 
 	// avoid hard link to root ns
 	if u.rootNs.Equal(newns) {
@@ -216,6 +225,10 @@ func (u *NetNSProbe) initializeRunPath(path string) {
 
 	files, _ := ioutil.ReadDir(path)
 	for _, f := range files {
+		if err := u.checkNamespace(path + "/" + f.Name()); err != nil {
+			logging.GetLogger().Errorf("Failed to register namespace %s: %s", path+"/"+f.Name(), err.Error())
+			continue
+		}
 		u.Register(path+"/"+f.Name(), f.Name())
 	}
 	logging.GetLogger().Debugf("NetNSProbe initialized %s", path)
@@ -229,6 +242,10 @@ func (u *NetNSProbe) start() {
 			go u.initializeRunPath(path)
 		case ev := <-u.watcher.Events:
 			if ev.Op&fsnotify.Create == fsnotify.Create {
+				if err := u.checkNamespace(ev.Name); err != nil {
+					logging.GetLogger().Errorf("Failed to register namespace %s: %s", ev.Name, err.Error())
+					continue
+				}
 				u.Register(ev.Name, getNetNSName(ev.Name))
 			}
 			if ev.Op&fsnotify.Remove == fsnotify.Remove {
