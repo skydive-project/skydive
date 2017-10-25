@@ -52,7 +52,7 @@ func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMes
 	if msgType == graph.SyncRequestMsgType {
 		t.Graph.RLock()
 		g, status := t.Graph, http.StatusOK
-		if obj.(graph.GraphContext).TimeSlice != nil {
+		if obj.(graph.SyncRequestMsg).TimeSlice != nil {
 			logging.GetLogger().Error("agents don't support sync request with context")
 			g, status = nil, http.StatusBadRequest
 		}

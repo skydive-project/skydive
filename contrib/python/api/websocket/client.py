@@ -97,6 +97,20 @@ class WSMessage(object):
         return json.dumps(self, cls=JSONEncoder)
 
 
+class SyncRequestMsg:
+
+    def __init__(self, filter):
+        self.filter = filter
+
+    def reprJSON(self):
+        return {
+            "GremlinFilter": self.filter
+        }
+
+    def toJSON(self):
+        return json.dumps(self, cls=JSONEncoder)
+
+
 class WSClientDefaultProtocol(WebSocketClientProtocol):
 
     def onConnect(self, response):
@@ -110,6 +124,13 @@ class WSClientDefaultProtocol(WebSocketClientProtocol):
             print("Binary message received: {0} bytes".format(len(payload)))
         else:
             print("Text message received: {0}".format(payload.decode('utf8')))
+
+    def onOpen(self):
+        print("WebSocket connection open.")
+
+        if args.syncrequest:
+            msg = WSMessage("Graph", SyncRequestMsgType, SyncRequestMsg(args.gremlin)).toJSON()
+            self.sendMessage(msg)
 
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
@@ -151,10 +172,12 @@ class WSClientModifyProtocol(WSClientDefaultProtocol):
 class WSClient(WebSocketClientProtocol):
 
     def __init__(self, host_id, endpoint, type="",
-                 protocol=WSClientDefaultProtocol):
+                 protocol=WSClientDefaultProtocol,
+                 filter=""):
         self.host_id = host_id
         self.endpoint = endpoint
         self.protocol = protocol
+        self.filter = filter
         self.type = type
 
     def connect(self):
@@ -162,6 +185,7 @@ class WSClient(WebSocketClientProtocol):
         factory.protocol = self.protocol
         factory.headers["X-Host-ID"] = self.host_id
         factory.headers["X-Client-Type"] = self.type
+        factory.headers["X-Gremlin-Filter"] = self.filter
         loop = asyncio.get_event_loop()
 
         u = urlparse(self.endpoint)
@@ -188,6 +212,9 @@ if __name__ == '__main__':
     parser.add_argument('--analyzer', type=str, default="127.0.0.1:8082",
                         dest='analyzer',
                         help='address of the Skydive analyzer')
+    parser.add_argument('--host', type=str, default="Test",
+                        dest='host',
+                        help='client identifier')
 
     subparsers = parser.add_subparsers(help='sub-command help', dest='mode')
     parser_add = subparsers.add_parser('add', help='add edges and nodes in the given json files')
@@ -200,17 +227,21 @@ if __name__ == '__main__':
     parser_update.add_argument('file', type=str, help='topology to update')
 
     parser_listen = subparsers.add_parser('listen', help='listen help')
+    parser_listen.add_argument('--gremlin', type=str, default="", required=False, help='gremlin filter')
+    parser_listen.add_argument('--syncrequest', default=False, required=False, action='store_true', help='send a request message')
 
     args = parser.parse_args()
 
-    if not os.path.isfile(args.file):
-        raise ValueError("The file %s does not exist" % args.file)
-
     if args.mode == "listen":
         protocol = WSClientDefaultProtocol
+        gremlin_filter = args.gremlin
     else:
         protocol = WSClientModifyProtocol
+        gremlin_filter = ""
+        if not os.path.isfile(args.file):
+            raise ValueError("The file %s does not exist" % args.file)
 
-    client = WSClient("Test", "ws://"+args.analyzer+"/ws",
-                      protocol=protocol)
+    client = WSClient(args.host, "ws://"+args.analyzer+"/ws",
+                      protocol=protocol,
+                      filter=gremlin_filter)
     client.connect()
