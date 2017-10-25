@@ -29,7 +29,10 @@ analyzer:
   # Must be different than the agent
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
-
+  # topology_filter:
+  #   Namespaces: "g.V().Has('Type', 'netns').OutE().BothV().Subgraph()"
+  #   Layer2: "g.E().Has('RelationType', 'layer2').Subgraph()"
+  
   # Flow storage engine
   # storage:
       # Available: elasticsearch, orientdb
