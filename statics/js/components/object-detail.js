@@ -21,14 +21,18 @@ Vue.component('object-detail', {
     <div class="object-detail">\
       <div class="object-key-value" v-for="(value, key) in object" :class="[typeof(key) == \'string\' ? key.toLowerCase() : key]">\
         <div v-if="Array.isArray(value)">\
-          <span class="object-key">{{key}}</span> :\
-          <div v-for="(v, index) in value">\
-            <div v-if="typeof v == \'object\'" class="object-sub-detail">\
-              <span class="object-key" :class="typeof(value)">- </span>\
-              <object-detail :object="v"></object-detail>\
-            </div>\
-            <div v-else class="object-sub-detail">\
-              <div class="object-detail" :class="typeof(value)">- {{v}}</div>\
+          <a class="object-key" data-toggle="collapse" :href="\'#\' + key" class="collapse-title">{{key}} :\
+            <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
+          </a>\
+          <div :class="[collapsedByDefault(key) ? \'collapse\' : \'collapse in\']" :id="key">\
+            <div v-for="(v, index) in value">\
+              <div v-if="typeof v == \'object\'" class="object-sub-detail" style="margin-left: 20px;">\
+                <span class="object-key" :class="typeof(value)" style="float:left">- </span>\
+                <object-detail :object="v"></object-detail>\
+              </div>\
+              <div v-else class="object-sub-detail">\
+                <div class="object-detail" :class="typeof(value)">- {{v}}</div>\
+              </div>\
             </div>\
           </div>\
         </div>\
@@ -44,5 +48,14 @@ Vue.component('object-detail', {
       </div>\
     </div>\
   ',
+
+  methods: {
+
+    collapsedByDefault: function(key) {
+      if (key === "FDB" || key === "Neighbors") return true;
+      return false;
+    }
+
+  }
 
 });

@@ -45,9 +45,9 @@ Vue.component('capture-form', {
           <div class="capture-advanced">\
             <div class="panel-heading">\
               <h4 class="panel-title">\
-                <a data-toggle="collapse" data-parent="#" href="#one">\
+                <a data-toggle="collapse" data-parent="#" href="#one" class="collapse-title">\
                   Advanced options\
-                <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
+                  <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
                 </a>\
               </h4>\
             </div>\
