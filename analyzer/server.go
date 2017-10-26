@@ -157,7 +157,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	wsServer := shttp.NewWSJSONServer(shttp.NewWSServerFromConfig(hserver, "/ws"))
+	wsServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws"))
 
 	topologyServer, err := NewTopologyServer(wsServer, NewAnalyzerAuthenticationOpts())
 	if err != nil {

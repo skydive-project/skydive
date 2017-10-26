@@ -86,7 +86,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMe
 // Start a WebSocket flow server
 func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
-	server := shttp.NewWSServerFromConfig(c.server, "/ws/flow")
+	server := shttp.NewWSServer(c.server, "/ws/flow")
 	server.AddEventHandler(c)
 	go func() {
 		server.Start()

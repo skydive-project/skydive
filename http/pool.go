@@ -108,6 +108,18 @@ func (s *WSPool) AddClient(c WSSpeaker) error {
 	return nil
 }
 
+// AddClient adds the given WSSpeaker to the wsIncomerPool.
+func (s *wsIncomerPool) AddClient(c WSSpeaker) error {
+	s.Lock()
+	s.speakers = append(s.speakers, c)
+	s.Unlock()
+
+	// This is to call WSSpeakerPool.On{Message,Disconnected}
+	c.AddEventHandler(s)
+
+	return nil
+}
+
 // OnMessage forwards the OnMessage event to event listeners of the pool.
 func (s *WSPool) OnMessage(c WSSpeaker, m WSMessage) {
 	s.eventHandlersLock.RLock()
