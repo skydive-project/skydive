@@ -52,6 +52,14 @@ type pendingLink struct {
 	Metadata graph.Metadata
 }
 
+type neighbor struct {
+	Flags     []string `json:"Flags,omitempty"`
+	MAC       string
+	IP        string   `json:"IP,omitempty"`
+	State     []string `json:"State,omitempty"`
+	LinkIndex int
+}
+
 // NetNsNetLinkProbe describes a topology probe based on netlink in a network namespace
 type NetNsNetLinkProbe struct {
 	sync.RWMutex
@@ -307,6 +315,55 @@ func (u *NetNsNetLinkProbe) statsToMap(statistics *netlink.LinkStatistics) map[s
 	}
 }
 
+var neighStates = []string{
+	"NUD_INCOMPLETE",
+	"NUD_REACHABLE",
+	"NUD_STALE",
+	"NUD_DELAY",
+	"NUD_PROBE",
+	"NUD_FAILED",
+	"NUD_NOARP",
+	"NUD_PERMANENT",
+	"NUD_NONE",
+}
+
+var neighFlags = []string{
+	"NTF_USE",
+	"NTF_SELF",
+	"NTF_MASTER",
+	"NTF_PROXY",
+	"NTF_EXT_LEARNED",
+	"NTF_OFFLOADED",
+	"NTF_ROUTER",
+}
+
+func getFlagsString(flags []string, state int) (a []string) {
+	for i, s := range flags {
+		if state&(1<<uint(i)) != 0 {
+			a = append(a, s)
+		}
+	}
+	return
+}
+
+func (u *NetNsNetLinkProbe) getNeighbors(index, family int) (neighbors []neighbor) {
+	neighList, err := u.handle.NeighList(index, family)
+	if err == nil && len(neighList) > 0 {
+		for i, neigh := range neighList {
+			neighbors = append(neighbors, neighbor{
+				Flags:     getFlagsString(neighFlags, neigh.Flags),
+				MAC:       neigh.HardwareAddr.String(),
+				State:     getFlagsString(neighStates, neigh.State),
+				LinkIndex: neigh.LinkIndex,
+			})
+			if neigh.IP != nil {
+				neighbors[i].IP = neigh.IP.String()
+			}
+		}
+	}
+	return
+}
+
 func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
 	if driver == "" && link.Type() == "bridge" {
@@ -345,24 +402,13 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		}
 	}
 
-	neighList, err := u.handle.NeighList(attrs.Index, syscall.AF_BRIDGE)
-	if err == nil && len(neighList) > 0 {
-		neighbors := make([]map[string]interface{}, len(neighList))
-		for i, neighbor := range neighList {
-			n := map[string]interface{}{
-				"Flags": int64(neighbor.Flags),
-				"MAC":   neighbor.HardwareAddr.String(),
-				"State": int64(neighbor.State),
-				"Type":  int64(neighbor.Type),
-			}
-			if neighbor.IP != nil {
-				n["IP"] = neighbor.IP.String()
-			}
-
-			neighbors[i] = n
-		}
+	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); neighbors != nil {
 		metadata["FDB"] = neighbors
 	}
+
+	neighbors := u.getNeighbors(attrs.Index, syscall.AF_INET)
+	neighbors = append(neighbors, u.getNeighbors(attrs.Index, syscall.AF_INET6)...)
+	metadata["Neighbors"] = neighbors
 
 	if statistics := link.Attrs().Statistics; statistics != nil {
 		metadata["Statistics"] = u.statsToMap(statistics)
