@@ -82,6 +82,8 @@
        - golang
        - vagrant-libvirt
        - ansible
+       - numactl-devel
+       - kernel-devel
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL

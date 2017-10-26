@@ -28,6 +28,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -48,12 +49,14 @@ type PcapSocketProbe struct {
 
 // PcapSocketProbeHandler describes a Pcap socket probe in the graph
 type PcapSocketProbeHandler struct {
-	graph         *graph.Graph
-	addr          *net.TCPAddr
-	wg            sync.WaitGroup
-	probes        map[string]*PcapSocketProbe
-	probesLock    sync.RWMutex
-	portAllocator *common.PortAllocator
+	graph          *graph.Graph
+	fta            *flow.TableAllocator
+	flowClientPool *analyzer.FlowClientPool
+	addr           *net.TCPAddr
+	wg             sync.WaitGroup
+	probes         map[string]*PcapSocketProbe
+	probesLock     sync.RWMutex
+	portAllocator  *common.PortAllocator
 }
 
 func (p *PcapSocketProbe) run() {
@@ -82,7 +85,14 @@ func (p *PcapSocketProbe) run() {
 	}
 }
 
-func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table, bpfFilter string, e FlowProbeEventHandler) error {
+// asyncFlowPipeline run the flow pipeline
+func (p *PcapSocketProbeHandler) asyncFlowPipeline(flows []*flow.Flow) {
+	p.flowClientPool.SendFlows(flows)
+}
+
+// RegisterProbe registers a new probe in the graph
+func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -106,13 +116,20 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table, bp
 		return err
 	}
 
+	opts := flow.TableOpts{
+		RawPacketLimit: int64(capture.RawPacketLimit),
+		TCPMetric:      capture.ExtraTCPMetric,
+		SocketInfo:     capture.SocketInfo,
+	}
+	ft := p.fta.Alloc(p.asyncFlowPipeline, tid, opts)
+
 	probe := &PcapSocketProbe{
 		node:      n,
 		state:     common.StoppedState,
 		flowTable: ft,
 		listener:  listener,
 		port:      port,
-		bpfFilter: bpfFilter,
+		bpfFilter: capture.BPFFilter,
 	}
 
 	p.probesLock.Lock()
@@ -135,11 +152,6 @@ func (p *PcapSocketProbeHandler) registerProbe(n *graph.Node, ft *flow.Table, bp
 	return nil
 }
 
-// RegisterProbe registers a new probe in the graph
-func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
-	return p.registerProbe(n, ft, capture.BPFFilter, e)
-}
-
 // UnregisterProbe a probe
 func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
 	p.probesLock.Lock()
@@ -154,6 +166,7 @@ func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e FlowProbeEvent
 	if !ok {
 		return fmt.Errorf("No registered probe for %s", tid)
 	}
+	p.fta.Release(probe.flowTable)
 	delete(p.probes, tid)
 
 	atomic.StoreInt64(&probe.state, common.StoppingState)
@@ -181,7 +194,7 @@ func (p *PcapSocketProbeHandler) Stop() {
 }
 
 // NewPcapSocketProbeHandler creates a new pcap socket probe
-func NewPcapSocketProbeHandler(g *graph.Graph) (*PcapSocketProbeHandler, error) {
+func NewPcapSocketProbeHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) (*PcapSocketProbeHandler, error) {
 	listen := config.GetConfig().GetString("agent.flow.pcapsocket.bind_address")
 	minPort := config.GetConfig().GetInt("agent.flow.pcapsocket.min_port")
 	maxPort := config.GetConfig().GetInt("agent.flow.pcapsocket.max_port")
@@ -197,9 +210,11 @@ func NewPcapSocketProbeHandler(g *graph.Graph) (*PcapSocketProbeHandler, error) 
 	}
 
 	return &PcapSocketProbeHandler{
-		graph:         g,
-		addr:          addr,
-		probes:        make(map[string]*PcapSocketProbe),
-		portAllocator: portAllocator,
+		graph:          g,
+		fta:            fta,
+		flowClientPool: fcpool,
+		addr:           addr,
+		probes:         make(map[string]*PcapSocketProbe),
+		portAllocator:  portAllocator,
 	}, nil
 }

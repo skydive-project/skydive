@@ -43,7 +43,7 @@ type FlowProbeBundle struct {
 // FlowProbeInterface defines flow probe mechanism
 type FlowProbeInterface interface {
 	probe.Probe
-	RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error
+	RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error
 	UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error
 }
 
@@ -69,8 +69,8 @@ func (fp *FlowProbe) Stop() {
 }
 
 // RegisterProbe a probe
-func (fp *FlowProbe) RegisterProbe(n *graph.Node, capture *api.Capture, ft *flow.Table, e FlowProbeEventHandler) error {
-	return fp.fpi.RegisterProbe(n, capture, ft, e)
+func (fp *FlowProbe) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+	return fp.fpi.RegisterProbe(n, capture, e)
 }
 
 // UnregisterProbe a probe
@@ -78,13 +78,8 @@ func (fp *FlowProbe) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) err
 	return fp.fpi.UnregisterProbe(n, e)
 }
 
-// AsyncFlowPipeline run the flow pipeline
-func (fp *FlowProbe) AsyncFlowPipeline(flows []*flow.Flow) {
-	fp.flowClientPool.SendFlows(flows)
-}
-
 func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
-	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket"}
+	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
@@ -99,17 +94,20 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 
 		switch t {
 		case "pcapsocket":
-			fpi, err = NewPcapSocketProbeHandler(g)
+			fpi, err = NewPcapSocketProbeHandler(g, fta, fcpool)
 			captureTypes = []string{"pcapsocket"}
 		case "ovssflow":
-			fpi, err = NewOvsSFlowProbesHandler(tb, g)
+			fpi, err = NewOvsSFlowProbesHandler(g, fta, fcpool, tb)
 			captureTypes = []string{"ovssflow"}
 		case "gopacket":
-			fpi, err = NewGoPacketProbesHandler(g)
+			fpi, err = NewGoPacketProbesHandler(g, fta, fcpool)
 			captureTypes = []string{"afpacket", "pcap"}
 		case "sflow":
-			fpi, err = NewSFlowProbesHandler(g)
+			fpi, err = NewSFlowProbesHandler(g, fta, fcpool)
 			captureTypes = []string{"sflow"}
+		case "dpdk":
+			fpi, err = NewDPDKProbesHandler(g, fta, fcpool)
+			captureTypes = []string{"dpdk"}
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}

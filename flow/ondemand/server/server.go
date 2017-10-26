@@ -39,11 +39,10 @@ import (
 )
 
 type activeProbe struct {
-	graph     *graph.Graph
-	node      *graph.Node
-	fprobe    *probes.FlowProbe
-	flowTable *flow.Table
-	capture   *api.Capture
+	graph   *graph.Graph
+	node    *graph.Node
+	fprobe  *probes.FlowProbe
+	capture *api.Capture
 }
 
 // OnDemandProbeServer describes an ondemand probe server based on websocket
@@ -118,12 +117,6 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		return false
 	}
 
-	opts := flow.TableOpts{
-		RawPacketLimit: int64(capture.RawPacketLimit),
-		TCPMetric:      capture.ExtraTCPMetric,
-		SocketInfo:     capture.SocketInfo,
-	}
-
 	o.Lock()
 	defer o.Unlock()
 
@@ -132,19 +125,15 @@ func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture)
 		return false
 	}
 
-	ft := o.fta.Alloc(fprobe.AsyncFlowPipeline, tid, opts)
-
 	activeProbe := &activeProbe{
-		graph:     o.Graph,
-		node:      n,
-		fprobe:    fprobe,
-		flowTable: ft,
-		capture:   capture,
+		graph:   o.Graph,
+		node:    n,
+		fprobe:  fprobe,
+		capture: capture,
 	}
 
-	if err := fprobe.RegisterProbe(n, capture, ft, activeProbe); err != nil {
+	if err := fprobe.RegisterProbe(n, capture, activeProbe); err != nil {
 		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
-		o.fta.Release(ft)
 		return false
 	}
 
@@ -169,7 +158,6 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 	}
 
 	o.Lock()
-	o.fta.Release(probe.flowTable)
 	delete(o.activeProbes, n.ID)
 	o.Unlock()
 

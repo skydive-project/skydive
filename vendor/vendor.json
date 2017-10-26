@@ -881,6 +881,42 @@
 			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
 		},
 		{
+			"checksumSHA1": "6Qd6S6TUUbcfiusfWXAOVbFek3w=",
+			"path": "github.com/intel-go/yanff/asm",
+			"revision": "35804adce65005f76409327527e4e256569cacc6",
+			"revisionTime": "2017-10-04T13:30:35Z"
+		},
+		{
+			"checksumSHA1": "T49hsS7BTPkFBYOF4uYDAKSNaQY=",
+			"path": "github.com/intel-go/yanff/common",
+			"revision": "35804adce65005f76409327527e4e256569cacc6",
+			"revisionTime": "2017-10-04T13:30:35Z"
+		},
+		{
+			"checksumSHA1": "oJSvu+jduVzxLEpg+p7RTFNwgYw=",
+			"path": "github.com/intel-go/yanff/flow",
+			"revision": "35804adce65005f76409327527e4e256569cacc6",
+			"revisionTime": "2017-10-04T13:30:35Z"
+		},
+		{
+			"checksumSHA1": "hJGVebdXaT5fyw5bYdYeV21lPQ8=",
+			"path": "github.com/intel-go/yanff/low",
+			"revision": "35804adce65005f76409327527e4e256569cacc6",
+			"revisionTime": "2017-10-04T13:30:35Z"
+		},
+		{
+			"checksumSHA1": "eWaI75K1UJvLaIGBFCcC8sOBhhM=",
+			"path": "github.com/intel-go/yanff/packet",
+			"revision": "35804adce65005f76409327527e4e256569cacc6",
+			"revisionTime": "2017-10-04T13:30:35Z"
+		},
+		{
+			"checksumSHA1": "ei5kZp1lR7hRZ+eWc2JJX0mZ1gs=",
+			"path": "github.com/intel-go/yanff/scheduler",
+			"revision": "35804adce65005f76409327527e4e256569cacc6",
+			"revisionTime": "2017-10-04T13:30:35Z"
+		},
+		{
 			"checksumSHA1": "dY0KFmKy0CuFTgKzrIxlT8aW7+g=",
 			"path": "github.com/jbowtie/gokogiri",
 			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
