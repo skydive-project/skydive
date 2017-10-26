@@ -105,7 +105,7 @@ $ skydive client capture list
 To get Flows captured :
 
 ```console
-skydive client topology query --gremlin "G.Flows()"
+skydive client query "G.Flows()"
 [
   {
     "ANodeTID": "422190f1-bbde-4eb0-4849-1fd1209229fe",

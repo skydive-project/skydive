@@ -10,7 +10,7 @@ A typical Gremlin request on Flows will return a JSON version of the Flow
 structure.
 
 ```console
-$ skydive client topology query --gremlin "G.Flows().Limit(1)"
+$ skydive client query "G.Flows().Limit(1)"
 [
   {
     "ANodeTID": "422190f1-bbde-4eb0-4849-1fd1209229fe",

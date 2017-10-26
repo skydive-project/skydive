@@ -49,7 +49,7 @@ Skydive uses the Gremlin traversal language as a topology request language.
 Requests on the topology can be done as following :
 
 ```console
-$ skydive client topology query --gremlin "G.V().Has('Name', 'br-int', 'Type' ,'ovsbridge')"
+$ skydive client query "G.V().Has('Name', 'br-int', 'Type' ,'ovsbridge')"
 [
   {
     "Host": "pc48.home",
@@ -90,5 +90,5 @@ The Flows Gremlin step can be used in order to see the flows captured. See the
 [Gremlin section](/getting-started/gremlin/) for further explanations.
 
 ```console
-skydive client topology query --gremlin "G.V().Has('Name', 'docker0').Flows()"
+skydive client query "G.V().Has('Name', 'docker0').Flows()"
 ```
