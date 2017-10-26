@@ -70,7 +70,7 @@ Vue.component('capture-form', {
                 <div class="form-group">\
                   <label class="form-check-label">\
                     <input id="capture-socket-info" type="checkbox" class="form-check-input" v-model="socketInfo">\
-                    Socket Info\
+                    TCP Socket Info\
                   </label>\
                 </div>\
               </fieldset>\
@@ -101,7 +101,7 @@ Vue.component('capture-form', {
       headerSize: 0,
       rawPackets: 0,
       tcpMetric: true,
-      socketInfo: true,
+      socketInfo: false,
       userQuery: "",
       mode: "selection",
       visible: false,
@@ -177,7 +177,7 @@ Vue.component('capture-form', {
       this.name = this.desc = this.bpf = "";
       this.headerSize = this.rawPackets = 0;
       this.tcpMetric = true;
-      this.socketInfo = true;
+      this.socketInfo = false;
       this.visible = false;
     },
 

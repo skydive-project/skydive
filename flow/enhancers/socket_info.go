@@ -368,7 +368,7 @@ func (s *SocketInfoEnhancer) getFlowSocketInfoLocal(f *flow.Flow) {
 
 // Enhance the graph with process info
 func (s *SocketInfoEnhancer) Enhance(f *flow.Flow) {
-	if f.Transport == nil || f.SkipSocketInfo() || f.Transport.Protocol == flow.FlowProtocol_SCTPPORT {
+	if f.Transport == nil || f.SkipSocketInfo() || f.Transport.Protocol != flow.FlowProtocol_TCPPORT {
 		return
 	}
 	if f.SocketA == nil && f.SocketB == nil {
