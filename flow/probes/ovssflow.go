@@ -31,7 +31,6 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
-	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -58,15 +57,13 @@ type OvsSFlowProbe struct {
 
 // OvsSFlowProbesHandler describes a flow probe in running in the graph
 type OvsSFlowProbesHandler struct {
-	FlowProbe
-	probes         map[string]OvsSFlowProbe
-	probesLock     sync.Mutex
-	Graph          *graph.Graph
-	fta            *flow.TableAllocator
-	flowClientPool *analyzer.FlowClientPool
-	ovsClient      *ovsdb.OvsClient
-	allocator      *sflow.SFlowAgentAllocator
-	eventHandler   FlowProbeEventHandler
+	probes       map[string]OvsSFlowProbe
+	probesLock   sync.Mutex
+	Graph        *graph.Graph
+	fpta         *FlowProbeTableAllocator
+	ovsClient    *ovsdb.OvsClient
+	allocator    *sflow.SFlowAgentAllocator
+	eventHandler FlowProbeEventHandler
 }
 
 func probeID(i string) string {
@@ -126,11 +123,6 @@ func compareProbeID(row *map[string]interface{}, id string) (bool, error) {
 	}
 
 	return false, nil
-}
-
-// asyncFlowPipeline run the flow pipeline
-func (o *OvsSFlowProbesHandler) asyncFlowPipeline(flows []*flow.Flow) {
-	o.flowClientPool.SendFlows(flows)
 }
 
 func (o *OvsSFlowProbesHandler) retrieveSFlowProbeUUID(id string) (string, error) {
@@ -220,7 +212,7 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 		return fmt.Errorf("probe didn't exist on bridgeUUID %s", bridgeUUID)
 	}
 	o.probesLock.Unlock()
-	o.fta.Release(probe.flowTable)
+	o.fpta.Release(probe.flowTable)
 
 	probeUUID, err := o.retrieveSFlowProbeUUID(probeID(bridgeUUID))
 	if err != nil {
@@ -263,7 +255,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 		TCPMetric:      capture.ExtraTCPMetric,
 		SocketInfo:     capture.SocketInfo,
 	}
-	ft := o.fta.Alloc(o.asyncFlowPipeline, tid, opts)
+	ft := o.fpta.Alloc(tid, opts)
 
 	probe := OvsSFlowProbe{
 		ID:         probeID(bridgeUUID),
@@ -357,7 +349,7 @@ func (o *OvsSFlowProbesHandler) Stop() {
 }
 
 // NewOvsSFlowProbesHandler creates a new OVS SFlow porbes
-func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool, tb *probe.ProbeBundle) (*OvsSFlowProbesHandler, error) {
+func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb *probe.ProbeBundle) (*OvsSFlowProbesHandler, error) {
 	probe := tb.GetProbe("ovsdb")
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
@@ -370,11 +362,10 @@ func NewOvsSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *
 	}
 
 	return &OvsSFlowProbesHandler{
-		probes:         make(map[string]OvsSFlowProbe),
-		Graph:          g,
-		fta:            fta,
-		flowClientPool: fcpool,
-		ovsClient:      p.OvsMon.OvsClient,
-		allocator:      allocator,
+		probes:    make(map[string]OvsSFlowProbe),
+		Graph:     g,
+		fpta:      fpta,
+		ovsClient: p.OvsMon.OvsClient,
+		allocator: allocator,
 	}, nil
 }

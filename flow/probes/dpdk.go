@@ -35,7 +35,6 @@ import (
 	dpdkflow "github.com/intel-go/yanff/flow"
 	"github.com/intel-go/yanff/packet"
 
-	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -49,9 +48,8 @@ var (
 
 // DPDKProbesHandler describes a flow probe handle in the graph
 type DPDKProbesHandler struct {
-	graph          *graph.Graph
-	fta            *flow.TableAllocator
-	flowClientPool *analyzer.FlowClientPool
+	graph *graph.Graph
+	fpta  *FlowProbeTableAllocator
 }
 
 // RegisterProbe registers a gopacket probe
@@ -83,11 +81,6 @@ func (p *DPDKProbesHandler) Start() {
 
 // Stop probe
 func (p *DPDKProbesHandler) Stop() {
-}
-
-// asyncFlowPipeline run the flow pipeline
-func (p *DPDKProbesHandler) asyncFlowPipeline(flows []*flow.Flow) {
-	p.flowClientPool.SendFlows(flows)
 }
 
 func packetHandler(packets []*packet.Packet, next []bool, nbPackets uint, context dpdkflow.UserContext) {
@@ -165,7 +158,7 @@ func getDPDKMacAddress(port int) string {
 }
 
 // NewDPDKProbesHandler creates a new gopacket probe in the graph
-func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) (*DPDKProbesHandler, error) {
+func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKProbesHandler, error) {
 	ports := config.GetConfig().GetStringSlice("dpdk.ports")
 	nbWorkers := config.GetConfig().GetInt("dpdk.workers")
 
@@ -192,9 +185,8 @@ func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *anal
 	}
 
 	dph := &DPDKProbesHandler{
-		graph:          g,
-		fta:            fta,
-		flowClientPool: fcpool,
+		graph: g,
+		fpta:  fpta,
 	}
 
 	hostNode := g.LookupFirstNode(graph.Metadata{
@@ -226,7 +218,7 @@ func NewDPDKProbesHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *anal
 		outputFlows := dpdkflow.SetSplitter(inputFlow, l3Splitter, uint(dpdkNBWorkers), nil)
 
 		for i := 0; i < nbWorkers; i++ {
-			ft := fta.Alloc(dph.asyncFlowPipeline, tid, opts)
+			ft := fpta.Alloc(tid, opts)
 
 			ctx := ctxQueue{
 				packetsChan: ft.Start(),
