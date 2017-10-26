@@ -51,8 +51,8 @@ var (
 // PacketInjectorCmd skydive inject-packet root command
 var PacketInjectorCmd = &cobra.Command{
 	Use:          "inject-packet",
-	Short:        "inject packets",
-	Long:         "inject packets",
+	Short:        "Inject packets",
+	Long:         "Inject packets",
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
