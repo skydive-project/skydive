@@ -393,7 +393,7 @@ func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMes
 
 // notifyClients aims to forward local graph modification to external clients
 // the goal here is not to handle analyzer replication.
-func (t *TopologyServer) notifyClients(msg *shttp.WSJSONMessage) {
+func (t *TopologyServer) notifyClients(msg *shttp.WSJSONMessage, id graph.Identifier) {
 	for _, c := range t.pool.GetSpeakers() {
 		serviceType := c.GetServiceType()
 		if serviceType != common.AnalyzerService && serviceType != common.AgentService {
@@ -422,6 +422,11 @@ func (t *TopologyServer) notifyClients(msg *shttp.WSJSONMessage) {
 					c.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 				}
 
+				if (msg.Type == graph.NodeUpdatedMsgType && g.GetNode(id) != nil) ||
+					(msg.Type == graph.EdgeUpdatedMsgType && g.GetEdge(id) != nil) {
+					c.SendMessage(msg)
+				}
+
 				subscriber.graph = g
 			} else {
 				c.SendMessage(msg)
@@ -442,7 +447,7 @@ func (t *TopologyServer) notifyPeers(msg *shttp.WSJSONMessage) {
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnNodeUpdated(n *graph.Node) {
 	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeUpdatedMsgType, n)
-	t.notifyClients(msg)
+	t.notifyClients(msg, n.ID)
 	if t.replicateMsg.Load() == true {
 		t.notifyPeers(msg)
 	}
@@ -451,7 +456,7 @@ func (t *TopologyServer) OnNodeUpdated(n *graph.Node) {
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnNodeAdded(n *graph.Node) {
 	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n)
-	t.notifyClients(msg)
+	t.notifyClients(msg, n.ID)
 	if t.replicateMsg.Load() == true {
 		t.notifyPeers(msg)
 	}
@@ -460,7 +465,7 @@ func (t *TopologyServer) OnNodeAdded(n *graph.Node) {
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnNodeDeleted(n *graph.Node) {
 	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeDeletedMsgType, n)
-	t.notifyClients(msg)
+	t.notifyClients(msg, n.ID)
 	if t.replicateMsg.Load() == true {
 		t.notifyPeers(msg)
 	}
@@ -469,7 +474,7 @@ func (t *TopologyServer) OnNodeDeleted(n *graph.Node) {
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnEdgeUpdated(e *graph.Edge) {
 	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e)
-	t.notifyClients(msg)
+	t.notifyClients(msg, e.ID)
 	if t.replicateMsg.Load() == true {
 		t.notifyPeers(msg)
 	}
@@ -478,7 +483,7 @@ func (t *TopologyServer) OnEdgeUpdated(e *graph.Edge) {
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnEdgeAdded(e *graph.Edge) {
 	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeAddedMsgType, e)
-	t.notifyClients(msg)
+	t.notifyClients(msg, e.ID)
 	if t.replicateMsg.Load() == true {
 		t.notifyPeers(msg)
 	}
@@ -487,7 +492,7 @@ func (t *TopologyServer) OnEdgeAdded(e *graph.Edge) {
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *TopologyServer) OnEdgeDeleted(e *graph.Edge) {
 	msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e)
-	t.notifyClients(msg)
+	t.notifyClients(msg, e.ID)
 	if t.replicateMsg.Load() == true {
 		t.notifyPeers(msg)
 	}
