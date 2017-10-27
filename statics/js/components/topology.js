@@ -70,7 +70,7 @@ var TopologyComponent = {
             <span v-if="time" class="label center-block node-time">\
               Interface state at {{timeHuman}}\
             </span>\
-            <h1>metadatas<span class="pull-right">(id: {{currentNode.id}})\
+            <h1>Metadata<span class="pull-right">(id: {{currentNode.id}})\
               <i class="node-action fa"\
 	              title="Expand/Collapse Node"\
 		            :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
