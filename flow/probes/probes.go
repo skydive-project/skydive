@@ -36,46 +36,30 @@ import (
 // FlowProbeBundle describes a flow probes bundle
 type FlowProbeBundle struct {
 	probe.ProbeBundle
-	Graph              *graph.Graph
-	FlowTableAllocator *flow.TableAllocator
 }
 
-// FlowProbeInterface defines flow probe mechanism
-type FlowProbeInterface interface {
-	probe.Probe
+// FlowProbe defines flow probe mechanism
+type FlowProbe interface {
+	probe.Probe // inheritance of the probe.Probe interface Start/Stop functions
 	RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error
 	UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error
 }
 
-// FlowProbe link the pool of client and probes
-type FlowProbe struct {
-	fpi            FlowProbeInterface
-	flowClientPool *analyzer.FlowClientPool
-}
-
+// FlowProbeEventHandler used by probes to notify capture state
 type FlowProbeEventHandler interface {
 	OnStarted()
 	OnStopped()
 }
 
-// Start the probe
-func (fp *FlowProbe) Start() {
-	fp.fpi.Start()
+// FlowProbeTableAllocator allocates table and set the table update callback
+type FlowProbeTableAllocator struct {
+	*flow.TableAllocator
+	fcpool *analyzer.FlowClientPool
 }
 
-// Stop the probe
-func (fp *FlowProbe) Stop() {
-	fp.fpi.Stop()
-}
-
-// RegisterProbe a probe
-func (fp *FlowProbe) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
-	return fp.fpi.RegisterProbe(n, capture, e)
-}
-
-// UnregisterProbe a probe
-func (fp *FlowProbe) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
-	return fp.fpi.UnregisterProbe(n, e)
+// Alloc override the default implementation provide a default update function
+func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *flow.Table {
+	return a.TableAllocator.Alloc(a.fcpool.SendFlows, nodeTID, opts)
 }
 
 func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
@@ -83,8 +67,13 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
-	var fpi FlowProbeInterface
+	var fp FlowProbe
 	var err error
+
+	fpta := &FlowProbeTableAllocator{
+		TableAllocator: fta,
+		fcpool:         fcpool,
+	}
 
 	probes := make(map[string]probe.Probe)
 	for _, t := range list {
@@ -94,19 +83,19 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 
 		switch t {
 		case "pcapsocket":
-			fpi, err = NewPcapSocketProbeHandler(g, fta, fcpool)
+			fp, err = NewPcapSocketProbeHandler(g, fpta)
 			captureTypes = []string{"pcapsocket"}
 		case "ovssflow":
-			fpi, err = NewOvsSFlowProbesHandler(g, fta, fcpool, tb)
+			fp, err = NewOvsSFlowProbesHandler(g, fpta, tb)
 			captureTypes = []string{"ovssflow"}
 		case "gopacket":
-			fpi, err = NewGoPacketProbesHandler(g, fta, fcpool)
+			fp, err = NewGoPacketProbesHandler(g, fpta)
 			captureTypes = []string{"afpacket", "pcap"}
 		case "sflow":
-			fpi, err = NewSFlowProbesHandler(g, fta, fcpool)
+			fp, err = NewSFlowProbesHandler(g, fpta)
 			captureTypes = []string{"sflow"}
 		case "dpdk":
-			fpi, err = NewDPDKProbesHandler(g, fta, fcpool)
+			fp, err = NewDPDKProbesHandler(g, fpta)
 			captureTypes = []string{"dpdk"}
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
@@ -117,17 +106,14 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 			continue
 		}
 
-		flowProbe := &FlowProbe{fpi: fpi, flowClientPool: fcpool}
 		for _, captureType := range captureTypes {
-			probes[captureType] = flowProbe
+			probes[captureType] = fp
 		}
 	}
 
 	p := probe.NewProbeBundle(probes)
 
 	return &FlowProbeBundle{
-		ProbeBundle:        *p,
-		Graph:              g,
-		FlowTableAllocator: fta,
+		ProbeBundle: *p,
 	}
 }

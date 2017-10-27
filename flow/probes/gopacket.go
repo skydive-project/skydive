@@ -35,7 +35,6 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 
-	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -61,12 +60,11 @@ type GoPacketProbe struct {
 
 // GoPacketProbesHandler describes a flow probe handle in the graph
 type GoPacketProbesHandler struct {
-	graph          *graph.Graph
-	fta            *flow.TableAllocator
-	flowClientPool *analyzer.FlowClientPool
-	wg             sync.WaitGroup
-	probes         map[string]*GoPacketProbe
-	probesLock     sync.RWMutex
+	graph      *graph.Graph
+	fpta       *FlowProbeTableAllocator
+	wg         sync.WaitGroup
+	probes     map[string]*GoPacketProbe
+	probesLock sync.RWMutex
 }
 
 func (p *GoPacketProbe) pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {
@@ -292,11 +290,6 @@ func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkTy
 	return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 }
 
-// asyncFlowPipeline run the flow pipeline
-func (p *GoPacketProbesHandler) asyncFlowPipeline(flows []*flow.Flow) {
-	p.flowClientPool.SendFlows(flows)
-}
-
 // RegisterProbe registers a gopacket probe
 func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
 	name, _ := n.GetFieldString("Name")
@@ -336,7 +329,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 		TCPMetric:      capture.ExtraTCPMetric,
 		SocketInfo:     capture.SocketInfo,
 	}
-	ft := p.fta.Alloc(p.asyncFlowPipeline, tid, opts)
+	ft := p.fpta.Alloc(tid, opts)
 
 	probe := &GoPacketProbe{
 		NodeTID:   tid,
@@ -366,7 +359,7 @@ func (p *GoPacketProbesHandler) unregisterProbe(id string) error {
 	if probe, ok := p.probes[id]; ok {
 		logging.GetLogger().Debugf("Terminating gopacket capture on %s", id)
 		probe.stop()
-		p.fta.Release(probe.flowTable)
+		p.fpta.Release(probe.flowTable)
 		delete(p.probes, id)
 	}
 
@@ -402,11 +395,10 @@ func (p *GoPacketProbesHandler) Stop() {
 }
 
 // NewGoPacketProbesHandler creates a new gopacket probe in the graph
-func NewGoPacketProbesHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) (*GoPacketProbesHandler, error) {
+func NewGoPacketProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*GoPacketProbesHandler, error) {
 	return &GoPacketProbesHandler{
-		graph:          g,
-		fta:            fta,
-		flowClientPool: fcpool,
-		probes:         make(map[string]*GoPacketProbe),
+		graph:  g,
+		fpta:   fpta,
+		probes: make(map[string]*GoPacketProbe),
 	}, nil
 }

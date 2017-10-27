@@ -177,10 +177,9 @@ func (ft *Table) expire(expireBefore int64) {
 			delete(ft.table, k)
 		}
 	}
+
 	/* Advise Clients */
-	if ft.expireHandler != nil {
-		ft.expireHandler.callback(expiredFlows)
-	}
+	ft.expireHandler.callback(expiredFlows)
 
 	flowTableSz := len(ft.table)
 	logging.GetLogger().Debugf("Expire Flow : removed %v ; new size %v", flowTableSzBefore-flowTableSz, flowTableSz)
@@ -231,13 +230,9 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 	}
 
 	if len(updatedFlows) != 0 {
-
 		/* Advise Clients */
-		if ft.updateHandler != nil {
-			ft.updateHandler.callback(updatedFlows)
-
-			logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
-		}
+		ft.updateHandler.callback(updatedFlows)
+		logging.GetLogger().Debugf("Send updated Flows: %d", len(updatedFlows))
 
 		// cleanup raw packets
 		if ft.Opts.RawPacketLimit > 0 {

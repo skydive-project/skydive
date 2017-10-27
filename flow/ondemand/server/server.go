@@ -30,7 +30,6 @@ import (
 
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	"github.com/skydive-project/skydive/flow/probes"
 	shttp "github.com/skydive-project/skydive/http"
@@ -41,7 +40,7 @@ import (
 type activeProbe struct {
 	graph   *graph.Graph
 	node    *graph.Node
-	fprobe  *probes.FlowProbe
+	fprobe  probes.FlowProbe
 	capture *api.Capture
 }
 
@@ -53,11 +52,10 @@ type OnDemandProbeServer struct {
 	Graph            *graph.Graph
 	Probes           *probes.FlowProbeBundle
 	WSJSONClientPool *shttp.WSJSONClientPool
-	fta              *flow.TableAllocator
 	activeProbes     map[graph.Identifier]*activeProbe
 }
 
-func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (*probes.FlowProbe, error) {
+func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (probes.FlowProbe, error) {
 	tp, _ := n.GetFieldString("Type")
 
 	capType := ""
@@ -85,7 +83,7 @@ func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (*pr
 		return nil, fmt.Errorf("Unable to find probe for this capture type: %v", capType)
 	}
 
-	fprobe := probe.(*probes.FlowProbe)
+	fprobe := probe.(probes.FlowProbe)
 	return fprobe, nil
 }
 
@@ -265,7 +263,6 @@ func NewOnDemandProbeServer(fb *probes.FlowProbeBundle, g *graph.Graph, pool *sh
 		Graph:            g,
 		Probes:           fb,
 		WSJSONClientPool: pool,
-		fta:              fb.FlowTableAllocator,
 		activeProbes:     make(map[graph.Identifier]*activeProbe),
 	}, nil
 }

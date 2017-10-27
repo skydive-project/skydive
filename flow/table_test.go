@@ -194,9 +194,10 @@ func TestUpdate(t *testing.T) {
 	callback := func(f []*Flow) {
 		received += len(f)
 	}
-	handler := NewFlowHandler(callback, time.Second)
+	updHandler := NewFlowHandler(callback, time.Second)
+	expHandler := NewFlowHandler(func(f []*Flow) {}, 300*time.Second)
 
-	table := NewTable(handler, nil, NewEnhancerPipeline(), "", TableOpts{})
+	table := NewTable(updHandler, expHandler, NewEnhancerPipeline(), "", TableOpts{})
 
 	flow1, _ := table.getOrCreateFlow("flow1")
 

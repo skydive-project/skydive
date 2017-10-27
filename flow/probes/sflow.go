@@ -27,7 +27,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
@@ -41,13 +40,11 @@ const (
 
 // SFlowProbesHandler describes a SFlow probe in the graph
 type SFlowProbesHandler struct {
-	FlowProbe
-	Graph          *graph.Graph
-	fta            *flow.TableAllocator
-	flowClientPool *analyzer.FlowClientPool
-	probes         map[string]*flow.Table
-	probesLock     sync.RWMutex
-	allocator      *sflow.SFlowAgentAllocator
+	Graph      *graph.Graph
+	fpta       *FlowProbeTableAllocator
+	probes     map[string]*flow.Table
+	probesLock sync.RWMutex
+	allocator  *sflow.SFlowAgentAllocator
 }
 
 // UnregisterProbe unregisters a probe from the graph
@@ -64,7 +61,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	if !ok {
 		return fmt.Errorf("No registered probe for %s", tid)
 	}
-	d.fta.Release(ft)
+	d.fpta.Release(ft)
 
 	d.allocator.Release(tid)
 
@@ -75,11 +72,6 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	}
 
 	return nil
-}
-
-// asyncFlowPipeline run the flow pipeline
-func (d *SFlowProbesHandler) asyncFlowPipeline(flows []*flow.Flow) {
-	d.flowClientPool.SendFlows(flows)
 }
 
 // RegisterProbe registers a probe in the graph
@@ -117,7 +109,7 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, 
 		TCPMetric:      capture.ExtraTCPMetric,
 		SocketInfo:     capture.SocketInfo,
 	}
-	ft := d.fta.Alloc(d.asyncFlowPipeline, tid, opts)
+	ft := d.fpta.Alloc(tid, opts)
 
 	addr := common.ServiceAddress{Addr: address, Port: capture.Port}
 	if _, err := d.allocator.Alloc(tid, ft, capture.BPFFilter, headerSize, &addr); err != nil {
@@ -141,24 +133,23 @@ func (d *SFlowProbesHandler) Start() {
 func (d *SFlowProbesHandler) Stop() {
 	d.probesLock.Lock()
 	for _, ft := range d.probes {
-		d.fta.Release(ft)
+		d.fpta.Release(ft)
 	}
 	d.probesLock.Unlock()
 	d.allocator.ReleaseAll()
 }
 
 // NewSFlowProbesHandler creates a new SFlow probe in the graph
-func NewSFlowProbesHandler(g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) (*SFlowProbesHandler, error) {
+func NewSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*SFlowProbesHandler, error) {
 	allocator, err := sflow.NewSFlowAgentAllocator()
 	if err != nil {
 		return nil, err
 	}
 
 	return &SFlowProbesHandler{
-		Graph:          g,
-		fta:            fta,
-		flowClientPool: fcpool,
-		allocator:      allocator,
-		probes:         make(map[string]*flow.Table),
+		Graph:     g,
+		fpta:      fpta,
+		allocator: allocator,
+		probes:    make(map[string]*flow.Table),
 	}, nil
 }
