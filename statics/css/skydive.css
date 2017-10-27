@@ -546,3 +546,13 @@ ul.dropdown-menu .fa.pull-right {
 .expand-icon-stack .icon-sub {
   font-size: 11px;
 }
+
+#metadata-panel .object-key-value a, #metadata-panel .object-key-value a:focus, #metadata-panel .object-key-value a:hover  {
+  color: #fff;
+}
+
+.collapse-title {
+  display: inline-block;
+  width: 100%;
+  font-weight: bold;
+}
