@@ -384,8 +384,11 @@ func TestElasticsearchForwarded(t *testing.T) {
 	mg.AddMetadata(node, "MTU", 1500)
 	updatedAt2 := node.updatedAt
 
+	b, _ := node.MarshalJSON()
+	rawMessage := json.RawMessage(b)
+
 	client.searchResult.Hits.Hits = []elastigo.Hit{
-		{Source: node.JSONRawMessage()},
+		{Source: &rawMessage},
 	}
 	g.NodeUpdated(node)
 
@@ -418,8 +421,10 @@ func TestElasticsearchForwarded(t *testing.T) {
 	mg.AddMetadata(node, "MTU", 1510)
 	updatedAt3 := node.updatedAt
 
+	b, _ = node.MarshalJSON()
+	rawMessage = json.RawMessage(b)
 	client.searchResult.Hits.Hits = []elastigo.Hit{
-		{Source: node.JSONRawMessage()},
+		{Source: &rawMessage},
 	}
 	g.NodeUpdated(node)
 
