@@ -230,16 +230,16 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 			if strings.Contains(layerPathFromGoPacket(&p), "DecodeFailure") {
 				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
 			}
-			fp := PacketsFromGoPacket(&p, 0, -1, bpf)
-			if fp == nil {
-				t.Fatal("Failed to get FlowPackets: ", err)
+			ps := PacketSeqFromGoPacket(&p, 0, -1, bpf)
+			if ps == nil {
+				t.Fatal("Failed to get PacketSeq: ", err)
 			}
-			for level, f := range fp.Packets {
-				if strings.Contains(layerPathFromGoPacket((&f).gopacket), "DecodeFailure") {
-					t.Fatalf("GoPacket decode this pcap packet %d level %d as DecodeFailure :\n%s", pcapPacketNB, level+1, (*(&f).gopacket).Dump())
+			for level, p := range ps.Packets {
+				if strings.Contains(layerPathFromGoPacket((&p).gopacket), "DecodeFailure") {
+					t.Fatalf("GoPacket decode this pcap packet %d level %d as DecodeFailure :\n%s", pcapPacketNB, level+1, (*(&p).gopacket).Dump())
 				}
 			}
-			table.flowPacketsToFlow(fp)
+			table.processPacketSeq(ps)
 		}
 	}
 }

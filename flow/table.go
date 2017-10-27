@@ -75,7 +75,8 @@ type TableOpts struct {
 // Table store the flow table and related metrics mechanism
 type Table struct {
 	Opts           TableOpts
-	PacketsChan    chan *Packets
+	packetSeqChan  chan *PacketSequence
+	flowChan       chan *Flow
 	table          map[string]*Flow
 	flush          chan bool
 	flushDone      chan bool
@@ -97,7 +98,8 @@ type Table struct {
 // NewTable creates a new flow table
 func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *EnhancerPipeline, nodeTID string, opts ...TableOpts) *Table {
 	t := &Table{
-		PacketsChan:    make(chan *Packets, 1000),
+		packetSeqChan:  make(chan *PacketSequence, 1000),
+		flowChan:       make(chan *Flow, 1000),
 		table:          make(map[string]*Flow),
 		flush:          make(chan bool),
 		flushDone:      make(chan bool),
@@ -158,6 +160,13 @@ func (ft *Table) getOrCreateFlow(key string) (*Flow, bool) {
 	ft.table[key] = new
 
 	return new, true
+}
+
+func (ft *Table) putFlow(key string, f *Flow) bool {
+	_, found := ft.table[key]
+	ft.table[key] = f
+
+	return !found
 }
 
 func (ft *Table) expire(expireBefore int64) {
@@ -322,7 +331,7 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
+func (ft *Table) packetToFlow(packet *Packet, parentUUID string, t int64, L2ID int64, L3ID int64) *Flow {
 	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
@@ -356,8 +365,8 @@ func (ft *Table) flowPacketToFlow(packet *Packet, parentUUID string, t int64, L2
 	return flow
 }
 
-func (ft *Table) flowPacketsToFlow(flowPackets *Packets) {
-	t := flowPackets.Timestamp
+func (ft *Table) processPacketSeq(ps *PacketSequence) {
+	t := ps.Timestamp
 	if t == -1 {
 		t = ft.tableClock
 	}
@@ -365,9 +374,9 @@ func (ft *Table) flowPacketsToFlow(flowPackets *Packets) {
 	var parentUUID string
 	var L2ID int64
 	var L3ID int64
-	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(flowPackets.Packets), ft.nodeTID)
-	for _, packet := range flowPackets.Packets {
-		f := ft.flowPacketToFlow(&packet, parentUUID, t, L2ID, L3ID)
+	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.nodeTID)
+	for _, packet := range ps.Packets {
+		f := ft.packetToFlow(&packet, parentUUID, t, L2ID, L3ID)
 		parentUUID = f.UUID
 		if f.Link != nil {
 			L2ID = f.Link.ID
@@ -376,6 +385,10 @@ func (ft *Table) flowPacketsToFlow(flowPackets *Packets) {
 			L3ID = f.Network.ID
 		}
 	}
+}
+
+func (ft *Table) processFlow(fl *Flow) {
+	ft.putFlow(fl.UUID, fl)
 }
 
 // Run background jobs, like update/expire entries event
@@ -411,16 +424,18 @@ func (ft *Table) Run() {
 			}
 		case now := <-nowTicker.C:
 			ft.tableClock = common.UnixMillis(now)
-		case packets := <-ft.PacketsChan:
-			ft.flowPacketsToFlow(packets)
+		case ps := <-ft.packetSeqChan:
+			ft.processPacketSeq(ps)
+		case fl := <-ft.flowChan:
+			ft.processFlow(fl)
 		}
 	}
 }
 
 // Start the flow table
-func (ft *Table) Start() chan *Packets {
+func (ft *Table) Start() (chan *PacketSequence, chan *Flow) {
 	go ft.Run()
-	return ft.PacketsChan
+	return ft.packetSeqChan, ft.flowChan
 }
 
 // Stop the flow table
@@ -434,12 +449,17 @@ func (ft *Table) Stop() {
 		close(ft.query)
 		close(ft.reply)
 
-		for len(ft.PacketsChan) != 0 {
-			packets := <-ft.PacketsChan
-			ft.flowPacketsToFlow(packets)
+		for len(ft.packetSeqChan) != 0 {
+			ps := <-ft.packetSeqChan
+			ft.processPacketSeq(ps)
 		}
 
-		close(ft.PacketsChan)
+		for len(ft.flowChan) != 0 {
+			fl := <-ft.flowChan
+			ft.processFlow(fl)
+		}
+
+		close(ft.packetSeqChan)
 	}
 
 	ft.expireNow()

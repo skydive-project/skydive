@@ -49,7 +49,7 @@ type PcapTableFeeder struct {
 	replay      bool
 	r           io.ReadCloser
 	handleRead  *pcapgo.Reader
-	packetsChan chan *Packets
+	packetsChan chan *PacketSequence
 	bpfFilter   string
 }
 
@@ -116,20 +116,20 @@ func (p *PcapTableFeeder) feedFlowTable() {
 			timestamp = common.UnixMillis(ci.Timestamp)
 		}
 
-		flowPackets := PacketsFromGoPacket(&packet, 0, timestamp, bpf)
-		if flowPackets == nil {
+		ps := PacketSeqFromGoPacket(&packet, 0, timestamp, bpf)
+		if ps == nil {
 			logging.GetLogger().Warningf("Failed to parse packet")
-		} else if len(flowPackets.Packets) > 0 {
-			logging.GetLogger().Debugf("Sending %d packets to chan (%d)", len(flowPackets.Packets), pkt)
-			p.packetsChan <- flowPackets
-			logging.GetLogger().Debugf("Sent %d packets to chan (%d)", len(flowPackets.Packets), pkt)
+		} else if len(ps.Packets) > 0 {
+			logging.GetLogger().Debugf("Sending %d packets to chan (%d)", len(ps.Packets), pkt)
+			p.packetsChan <- ps
+			logging.GetLogger().Debugf("Sent %d packets to chan (%d)", len(ps.Packets), pkt)
 		}
 		pkt++
 	}
 }
 
 // NewPcapTableFeeder reads a pcap from a file reader and inject it in a flow table
-func NewPcapTableFeeder(r io.ReadCloser, packetsChan chan *Packets, replay bool, bpfFilter string) (*PcapTableFeeder, error) {
+func NewPcapTableFeeder(r io.ReadCloser, packetsChan chan *PacketSequence, replay bool, bpfFilter string) (*PcapTableFeeder, error) {
 	handle, err := pcapgo.NewReader(r)
 	if err != nil {
 		return nil, err

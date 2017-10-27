@@ -60,7 +60,7 @@ type PcapSocketProbeHandler struct {
 func (p *PcapSocketProbe) run() {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
-	packetsChan := p.flowTable.Start()
+	packetSeqChan, _ := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
 	for atomic.LoadInt64(&p.state) == common.RunningState {
@@ -72,7 +72,7 @@ func (p *PcapSocketProbe) run() {
 			break
 		}
 
-		feeder, err := flow.NewPcapTableFeeder(conn, packetsChan, true, p.bpfFilter)
+		feeder, err := flow.NewPcapTableFeeder(conn, packetSeqChan, true, p.bpfFilter)
 		if err != nil {
 			logging.GetLogger().Errorf("Failed to create pcap table feeder: %s", err.Error())
 			return
