@@ -159,15 +159,15 @@ func TestScaleHA(t *testing.T) {
 		return nil
 	}
 
-	checkICMPv4Flows := func(flowExpected int) {
-		t.Logf("Check for flows: %d", flowExpected)
+	checkICMPv4FlowsLive := func(flowExpected int, cmp func(seen, exp int) bool) {
+		t.Logf("Check for live flows: %d", flowExpected)
 		retry = func() error {
 			if flows, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')"); err != nil {
 				return err
 			}
 
 			// two capture 2 flows
-			if len(flows) != flowExpected {
+			if !cmp(len(flows), flowExpected) {
 				return fmt.Errorf("Should get %d ICMPv4 flow got %d : %v", flowExpected, len(flows), flows)
 			}
 
@@ -177,14 +177,16 @@ func TestScaleHA(t *testing.T) {
 			helper.ExecCmds(t, tearDownCmds...)
 			t.Fatalf(err.Error())
 		}
+	}
 
-		// check in the storage
+	checkICMPv4FlowsReplay := func(flowExpected int, cmp func(seen, exp int) bool) {
+		t.Logf("Check for replay flows: %d", flowExpected)
 		retry = func() error {
 			if flows, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')"); err != nil {
 				return err
 			}
 
-			if len(flows) != flowExpected {
+			if !cmp(len(flows), flowExpected) {
 				return fmt.Errorf("Should get %d ICMPv4 flow from datastore got %d : %v", flowExpected, len(flows), flows)
 			}
 
@@ -194,6 +196,11 @@ func TestScaleHA(t *testing.T) {
 			helper.ExecCmds(t, tearDownCmds...)
 			t.Fatalf(err.Error())
 		}
+	}
+
+	checkICMPv4Flows := func(flowExpected int, cmp func(seen, exp int) bool) {
+		checkICMPv4FlowsLive(flowExpected, cmp)
+		checkICMPv4FlowsReplay(flowExpected, cmp)
 	}
 
 	checkIPerfFlows := func(flowExpected int) {
@@ -350,7 +357,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// 60 flows expected as we have two captures
-	checkICMPv4Flows(60 + 2)
+	checkICMPv4Flows(60+2, func(seen, exp int) bool { return seen == exp })
 
 	// increase the agent number
 	setupCmds = []helper.Cmd{
@@ -402,7 +409,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// 4*30 expected because the gremlin expression matches all the eth0
-	checkICMPv4Flows(120 + 2)
+	checkICMPv4Flows(120+2, func(seen, exp int) bool { return seen == exp })
 
 	// iperf test  10 sec, 1Mbits/s
 	setupCmds = []helper.Cmd{
@@ -436,4 +443,36 @@ func TestScaleHA(t *testing.T) {
 
 	// test if we have now 2 hosts
 	checkHostNodes(2)
+
+	// restart the agent 1 to check that flows are still forwarded to analyzer
+	setupCmds = []helper.Cmd{
+		{fmt.Sprintf("%s start 2 3 2", scale), false},
+		{"sleep 5", false},
+	}
+	helper.ExecCmds(t, setupCmds...)
+
+	// test if we have now 2 hosts
+	checkHostNodes(3)
+
+	// restart a capture on all eth0
+	capture = api.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
+	capture.SocketInfo = true
+	capture.Type = "pcap"
+	if err = client.Create("capture", capture); err != nil {
+		t.Fatal(err)
+	}
+
+	// check that we have 3 captures, one per vm1
+	checkCaptures(3)
+
+	// generate some packet, do not check because connectivity is not ensured
+	for i := 0; i != 30; i++ {
+		setupCmds = []helper.Cmd{
+			{fmt.Sprintf("%s ping agent-1-vm1 agent-2-vm1 -c 1", scale), false},
+		}
+		helper.ExecCmds(t, setupCmds...)
+	}
+
+	// we generate a bit more flow just check that we have more than before
+	checkICMPv4FlowsReplay(130+2, func(seen, exp int) bool { return seen >= exp })
 }

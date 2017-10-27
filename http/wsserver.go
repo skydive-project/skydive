@@ -104,8 +104,3 @@ func NewWSServer(server *Server, endpoint string) *WSServer {
 	server.HandleFunc(endpoint, s.serveMessages)
 	return s
 }
-
-// NewWSServerFromConfig returns a new WSServer using configuration.
-func NewWSServerFromConfig(server *Server, endpoint string) *WSServer {
-	return NewWSServer(server, endpoint)
-}

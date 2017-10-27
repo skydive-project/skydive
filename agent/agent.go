@@ -175,7 +175,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	wsServer := shttp.NewWSJSONServer(shttp.NewWSServerFromConfig(hserver, "/ws"))
+	wsServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws"))
 
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
