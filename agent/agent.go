@@ -23,6 +23,7 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -180,7 +181,11 @@ func NewAgent() (*Agent, error) {
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 
-	rootNode := createRootNode(g)
+	rootNode, err := createRootNode(g)
+	if err != nil {
+		return nil, err
+	}
+
 	api.RegisterTopologyAPI(hserver, g, tr)
 
 	tserver := NewTopologyServer(g, wsServer)
@@ -251,18 +256,26 @@ func NewAgent() (*Agent, error) {
 }
 
 // CreateRootNode creates a graph.Node based on the host properties and aims to have an unique ID
-func createRootNode(g *graph.Graph) *graph.Node {
+func createRootNode(g *graph.Graph) (*graph.Node, error) {
 	hostID := config.GetConfig().GetString("host_id")
 	m := graph.Metadata{"Name": hostID, "Type": "host"}
+
+	// Fill the metadata from the configuration file
 	if config.GetConfig().IsSet("agent.metadata") {
-		subtree := config.GetConfig().Sub("agent.metadata")
-		for key, value := range subtree.AllSettings() {
-			m[key] = value
+		configMetadata, ok := common.NormalizeValue(config.GetConfig().Get("agent.metadata")).(map[string]interface{})
+		if !ok {
+			return nil, errors.New("agent.metadata has wrong format")
+		}
+		for k, v := range configMetadata {
+			m[k] = v
 		}
 	}
+
+	// Retrieves the instance ID from cloud-init
 	buffer, err := ioutil.ReadFile("/var/lib/cloud/data/instance-id")
 	if err == nil {
 		m["InstanceID"] = strings.TrimSpace(string(buffer))
 	}
-	return g.NewNode(graph.GenID(), m)
+
+	return g.NewNode(graph.GenID(), m), nil
 }

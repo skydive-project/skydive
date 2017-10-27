@@ -434,13 +434,6 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// JSONRawMessage creates JSON raw message
-func (n *Node) JSONRawMessage() *json.RawMessage {
-	r, _ := n.MarshalJSON()
-	raw := json.RawMessage(r)
-	return &raw
-}
-
 // Decode deserialize the node
 func (n *Node) Decode(i interface{}) error {
 	return n.graphElement.Decode(i)
@@ -492,13 +485,6 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 		UpdatedAt: common.UnixMillis(e.updatedAt),
 		DeletedAt: deletedAt,
 	})
-}
-
-// JSONRawMessage creates a JSON raw message
-func (e *Edge) JSONRawMessage() *json.RawMessage {
-	r, _ := e.MarshalJSON()
-	raw := json.RawMessage(r)
-	return &raw
 }
 
 // Decode deserialize the current edge

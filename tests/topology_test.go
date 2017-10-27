@@ -886,3 +886,26 @@ func TestUserMetadata(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+// TestAgentMetadata tests metadata set to the agent using the configuration file
+func TestAgentMetadata(t *testing.T) {
+	test := &Test{
+		checks: []CheckFunction{
+			func(c *CheckContext) error {
+				prefix := "g"
+				if !c.time.IsZero() {
+					prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
+				}
+
+				_, err := c.gh.GetNode(prefix + ".V().Has('mydict.value', 123)")
+				if err != nil {
+					return fmt.Errorf("Failed to find the host node with mydict.value metadata")
+				}
+
+				return nil
+			},
+		},
+	}
+
+	RunTest(t, test)
+}
