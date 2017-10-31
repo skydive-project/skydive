@@ -46,6 +46,7 @@ Vue.component('node-selector', {
               node = value = e.target.__data__;
             } else {
               self.$error({message: "Capture not allowed on this node"});
+              $(".topology-d3").off('click');
               return;
             }
           } else {
