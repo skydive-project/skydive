@@ -10,37 +10,74 @@ var TopologyComponent = {
     <div class="topology">\
       <div class="col-sm-7 fill content">\
       <div class="topology-d3"></div>\
-	        <div class="slider">\
-	          <slider v-if="history" :min="timeRange[0]" :max="timeRange[1]" \
-	                v-model="time" :info="topologyTimeHuman"></slider>\
-	          <div class="form-group input-sm" style="width: 450px">\
-	              <label for="topology-filter" style="width: 33px">Filter</label>\
-	              <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
-	              @click="topologyFilterClear" \
-	              id="topology-filter" type="text" style="color: black;width: 350px" \
-	              v-model="topologyFilter" @keyup.enter="topologyFilterQuery"></input>\
-	              <datalist id="topology-filter-list">\
-	              </datalist>\
-	              <button type="button" class="btn btn-primary btn-sm pull-right" \
-	                      @click="topologyFilterQuery"> \
-	                <span class="glyphicon glyphicon-search" aria-hidden="true"></span>\
-	              </button>\
-	          </div>\
-	          <div class="form-group input-sm" style="width: 450px">\
-	              <label for="topology-highlight" style="width: 33px">Find   </label>\
-	              <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
-	              @click="topologyHighlightClear" \
-	              id="topology-highlight" type="text" style="color: black;width: 350px" \
-	              v-model="topologyHighlight" @keyup.enter="topologyHighlightQuery"></input>\
-	              <datalist id="topology-filter-list">\
-	              </datalist>\
-	              <button type="button" class="btn btn-primary btn-sm pull-right" \
-	                      @click="topologyHighlightQuery"> \
-	                <span class="glyphicon glyphicon-search" aria-hidden="true"></span>\
-	              </button>\
-	          </div>\
-	        </div> \
-         <div class="topology-controls">\
+        <div id="topology-options" @mouseleave="hideTopologyOptions">\
+          <div id="topology-options-panel">\
+            <div v-if="history" class="form-group input-sm">\
+              <div class="form-group row">\
+                <label class="control-label" for="topology-datepicker">Date/Time</label>\
+                <div class="input">\
+                  <div class="switch switch--vertical">\
+                    <input id="radio-live" name="topology-mode" type="radio" value="live" v-model="topologyMode" checked="checked"/>\
+                    <label for="radio-live">Live</label>\
+                    <input id="radio-history" name="topology-mode" type="radio" value="history" v-model="topologyMode"/>\
+                    <label for="radio-history">History</label><span class="toggle-outside">\
+                    <span class="toggle-inside"></span></span>\
+                  </div>\
+                  <datepicker id="topology-datepicker" :calendar-class="\'topology-datepicker\'" \
+                    :format="\'dd/MM/yyyy\'" placeholder="dd/MM/yyyy" \
+                    v-on:opened="topologyOptionsExpanded" \
+                    v-on:closed="topologyOptionsCollapsed" \
+                    v-model="topologyDate" input-class="input-sm form-control"\
+                    :disabled-picker="topologyMode === \'live\'"></datepicker> \
+                  <input id="topology-timepicker" placeholder="HH:mm:ss" \
+                    v-model="topologyTime" class="input-sm form-control" \
+                    :disabled="topologyMode === \'live\'" style="margin-left: 10px" \
+                    @keyup.enter="topologyTimeTravel"></input>\
+                  <button type="button" class="btn btn-primary" \
+                          :disabled="topologyMode === \'live\'" @click="topologyTimeTravel"> \
+                    <span class="glyphicon glyphicon-time" aria-hidden="true"></span>\
+                  </button>\
+                </div>\
+              </div>\
+            </div>\
+            <div class="form-group input-sm">\
+                <div class="form-group row">\
+                  <label class="control-label" for="topology-filter">Filter</label>\
+                  <div class="input">\
+                    <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
+                    id="topology-filter" type="text" style="width: 400px" \
+                    v-model="topologyFilter" @keyup.enter="topologyFilterQuery" \
+                    class="input-sm form-control"></input>\
+                    <span class="clear-btn" @click.stop="topologyFilterClear">&times;</span>\
+                    <datalist id="topology-filter-list">\
+                    </datalist>\
+                  </div>\
+                </div>\
+            </div>\
+            <div class="form-group input-sm">\
+                <div class="form-group row">\
+                  <label class="control-label" for="topology-filter">Highlight</label>\
+                  <div class="input">\
+                    <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
+                    id="topology-highlight" type="text" style="width: 400px" \
+                    v-model="topologyHighlight" @keyup.enter="topologyHighlightQuery" \
+                    class="input-sm form-control"></input>\
+                    <span class="clear-btn" @click.stop="topologyHighlightClear">&times;</span>\
+                    <datalist id="topology-filter-list">\
+                    </datalist>\
+                  </div>\
+                </div>\
+            </div>\
+          </div>\
+          <div style="margin-top: 10px">\
+            <div class="trigger">\
+              <button @mouseenter="showTopologyOptions">\
+                <span class="glyphicon glyphicon-align-justify" aria-hidden="true"></span>\
+              </button>\
+            </div>\
+          </div>\
+        </div>\
+        <div class="topology-controls">\
           <button id="zoom-in" type="button" class="btn btn-primary"\
                   title="Zoom In" @click="zoomIn">\
             <span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span>\
@@ -78,32 +115,29 @@ var TopologyComponent = {
                  :class="{\'glyphicon-resize-full\': currentNode.group.collapsed, \'glyphicon-resize-small\': !currentNode.group.collapsed}" aria-hidden="true"></span>\
             </span>\
           </button>\
-        </div>\
-      </div>\
-      <div id="right-panel" class="col-sm-5 fill info">\
-        <tabs v-if="isAnalyzer">\
+          </div>\
+          </div>\
+          <div id="right-panel" class="col-sm-5 fill info">\
+          <tabs v-if="isAnalyzer">\
           <tab-pane title="Captures">\
             <capture-list></capture-list>\
-            <capture-form v-if="time === 0"></capture-form>\
+            <capture-form v-if="topologyMode ===  \'live\'"></capture-form>\
           </tab-pane>\
-          <tab-pane title="Generator" v-if="time === 0">\
+          <tab-pane title="Generator" v-if="topologyMode ===  \'live\'">\
             <inject-form></inject-form>\
           </tab-pane>\
           <tab-pane title="Flows">\
             <flow-table-control></flow-table-control>\
           </tab-pane>\
-        </tabs>\
-        <transition name="slide" mode="out-in">\
+          </tabs>\
+          <transition name="slide" mode="out-in">\
           <div class="left-panel" v-if="currentNode">\
-            <span v-if="time" class="label center-block node-time">\
-              Interface state at {{timeHuman}}\
-            </span>\
             <h1>Metadata<span class="pull-right">(id: {{currentNode.id}})\
               <i v-if="currentNode.group != null" class="node-action fa"\
-	              title="Expand/Collapse Node"\
-		            :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
-		            @click="toggleExpandAll(currentNode)"></i></span>\
-	        </h1>\
+                title="Expand/Collapse Node"\
+                :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
+                @click="toggleExpandAll(currentNode)"></i></span>\
+          </h1>\
             <div id="metadata-panel" class="sub-left-panel">\
               <object-detail :object="currentNodeMetadata"></object-detail>\
             </div>\
@@ -124,25 +158,32 @@ var TopologyComponent = {
               <flow-table :value="currentNodeFlowsQuery"></flow-table>\
             </div>\
           </div>\
-        </transition>\
-      </div>\
-    </div>\
+          </transition>\
+          </div>\
+        </div>\
   ',
 
   data: function() {
     return {
-      time: 0,
-      timeRange: [-120, 0],
+      topologyTimeContext: 0,
+      topologyTime: null,
+      topologyDate: '',
       collapsed: false,
       topologyFilter: "",
       topologyHighlight: "",
+      topologyMode: "live"
     };
   },
 
   mounted: function() {
     var self = this;
+
     // run d3 layout
-    this.graph = new Graph(websocket);
+    this.graph = new Graph(websocket, function(err) {
+      this.$error({
+        message: err
+      });
+    }.bind(this));
 
     this.layout = new TopologyGraphLayout(this, ".topology-d3");
     this.collapse();
@@ -187,39 +228,13 @@ var TopologyComponent = {
   },
 
   watch: {
-
-    topologyFilter: function() {
-       var self = this;
-       self.topologyFilterQuery();
-    },
-
-    topologyHighlight: function() {
-       var self = this;
-       self.topologyHighlightQuery();
-    },
-
-    time: function() {
-      var self = this;
-      if (this.timeId) {
-        clearTimeout(this.timeId);
-        this.timeId = null;
+    topologyMode: function (val) {
+      if (val === 'live') {
+        this.topologyTimeTravelClear();
+      } else {
+        this.graph.pauseLive();
       }
-      if (this.time !== 0) {
-        this.timeId = setTimeout(function() {
-          self.time -= 1;
-        }, 1000 * 60);
-      }
-    },
-
-    topologyTime: function(at) {
-      if (this.time === 0) {
-        this.syncTopo();
-      }
-      else {
-        this.syncTopo(at);
-      }
-    },
-
+    }
   },
 
   computed: {
@@ -236,32 +251,9 @@ var TopologyComponent = {
       return this.$store.state.currentNode;
     },
 
-    live: function() {
-      return this.time === 0;
-    },
-
-    topologyTime: function() {
-      var time = new Date();
-      time.setMinutes(time.getMinutes() + this.time);
-      time.setSeconds(0);
-      time.setMilliseconds(0);
-      return time.getTime();
-    },
-
-    timeHuman: function() {
-      return this.$store.getters.timeHuman;
-    },
-
-    topologyTimeHuman: function() {
-      if (this.live) {
-        return "live";
-      }
-      return -this.time + ' min. ago (' + this.timeHuman + ')';
-    },
-
     currentNodeFlowsQuery: function() {
       if (this.currentNode && this.currentNode.isCaptureAllowed())
-        return "G.V('" + this.currentNode.id + "').Flows().Sort().Dedup()";
+        return "G.V('" + this.currentNode.id + "').Flows().Dedup().Sort()";
       return "";
     },
 
@@ -296,7 +288,6 @@ var TopologyComponent = {
     },
 
     onNodeSelected: function(d) {
-
       this.$store.commit('selected', d);
     },
 
@@ -314,21 +305,74 @@ var TopologyComponent = {
 
     topologyFilterClear: function () {
       this.topologyFilter = '';
+      this.topologyFilterQuery();
      },
 
     topologyHighlightClear: function () {
       this.topologyHighlight = '';
+      this.topologyHighlightQuery();
      },
 
     endsWith: function (str, suffix) {
        return str.indexOf(suffix, str.length - suffix.length) !== -1;
     },
 
-    topologyFilterQuery: function() {
-        if ($("#topology-filter").val() == '' || this.endsWith(this.topologyFilter, ")")) {
-            this.$store.commit('topologyFilter', this.topologyFilter + ".SubGraph()");
-            this.syncTopo();
+    topologyTimeTravelClear: function() {
+      this.topologyDate = '';
+      this.topologyTime = '';
+      this.topologyTimeContext = 0;
+      this.$store.commit('topologyTimeContext', this.topologyTimeContext);
+      this.syncTopo(this.topologyTimeContext, this.topologyFilter);
+    },
+
+    topologyTimeTravel: function() {
+      var time = new Date(), live = true;
+      if (this.topologyDate) {
+        time = new Date(this.topologyDate);
+        live = false;
+      }
+
+      if (this.topologyTime) {
+        var tl = this.topologyTime.split(':');
+        time.setHours(tl[0]);
+        if (tl.length > 1) {
+          time.setMinutes(tl[1]);
         }
+        if (tl.length > 2) {
+          time.setSeconds(tl[2]);
+        }
+        live = false;
+      }
+
+      if (live) {
+        this.topologyTimeContext = '';
+      } else {
+        this.topologyTimeContext = time.getTime();
+      }
+
+      this.$store.commit('topologyTimeContext', this.topologyTimeContext);
+      this.syncTopo(this.topologyTimeContext, this.topologyFilter);
+    },
+
+    topologyFilterQuery: function() {
+      if (!this.topologyFilter || this.endsWith(this.topologyFilter, ")")) {
+        this.$store.commit('topologyFilter', this.topologyFilter);
+        this.syncTopo(this.topologyTimeContext, this.topologyFilter);
+      }
+    },
+
+    showTopologyOptions: function() {
+      if (this.topologyOptionsTimeoutID) {
+        clearTimeout(this.topologyOptionsTimeoutID);
+      }
+      $("#topology-options").css("left", "0");
+    },
+
+    hideTopologyOptions: function() {
+      this.topologyOptionsTimeoutID = setTimeout(function() {
+        $('input').blur();
+        $("#topology-options").css("left", "-568px");
+      }, 500);
     },
 
     highlightSelectedNodes: function(gremlinExpr, bool) {
@@ -338,25 +382,47 @@ var TopologyComponent = {
         .then(function(nodes) {
           nodes.forEach(function(n) {
             for (var i in n.Nodes) {
-                var myNode = n.Nodes[i];
-                if (bool) {
-                    self.layout.highlightNodeID(myNode.ID);
-                } else {
-                    self.layout.unhighlightNodeID(myNode.ID);
-                }
+              var myNode = n.Nodes[i];
+              if (bool) {
+                self.layout.highlightNodeID(myNode.ID);
+              } else {
+                self.layout.unhighlightNodeID(myNode.ID);
+              }
             }
           });
         });
     },
 
     topologyHighlightQuery: function() {
-        if ($("#topology-highlight").val() == '' || this.endsWith(this.topologyHighlight, ")")) {
-            var prevGremlinExpr = this.$store.getters.currTopologyHighlightExpr;
-            this.highlightSelectedNodes(prevGremlinExpr, false);
-            var newGremlinExpr = this.topologyHighlight + ".SubGraph()"
-            this.$store.commit('topologyHighlight', newGremlinExpr);
-            this.highlightSelectedNodes(newGremlinExpr, true);
+      if (!this.topologyHighlight || this.endsWith(this.topologyHighlight, ")")) {
+        var prevGremlinExpr = this.$store.getters.currTopologyHighlightExpr;
+        this.highlightSelectedNodes(prevGremlinExpr, false);
+
+        if (this.topologyHighlight) {
+          var expr = this.topologyHighlight;
+          if (this.topologyTimeContext !== 0) {
+            expr = expr.replace(/g/i, "g.at(" + this.topologyTimeContext + ")");
+          }
+
+          var newGremlinExpr = expr + ".SubGraph()";
+          this.$store.commit('topologyHighlight', newGremlinExpr);
+          this.highlightSelectedNodes(newGremlinExpr, true);
         }
+      }
+    },
+
+    topologyOptionsExpanded: function() {
+      if (this.topologyOptionsExpandedTimeoutID) {
+        clearTimeout(this.topologyOptionsExpandedTimeoutID);
+      }
+      $("#topology-options").addClass("topology-options-expanded");
+    },
+
+    topologyOptionsCollapsed: function() {
+      // wait 2 sec
+      this.topologyOptionsExpandedTimeoutID = setTimeout(function() {
+        $("#topology-options").removeClass("topology-options-expanded");
+      }, 2000);
     },
 
     collapse: function() {
@@ -449,8 +515,9 @@ var Edge = function(id, host, metadata, source, target) {
   target.edges[id] = this;
 };
 
-var Graph = function(websocket) {
+var Graph = function(websocket, onErrorCallback) {
   this.websocket = websocket;
+  this.onErrorCallback = onErrorCallback;
 
   this.nodes = {};
   this.edges = {};
@@ -671,6 +738,9 @@ Graph.prototype = {
     for (i in g.Edges) {
       e = g.Edges[i];
       if (e.Metadata.RelationType === "ownership") {
+        if (!this.nodes[e.Parent] || !this.nodes[e.Child])
+          continue;
+
         this.addEdge(e.ID, e.Host, e.Metadata || {}, this.nodes[e.Parent], this.nodes[e.Child]);
       }
     }
@@ -678,6 +748,9 @@ Graph.prototype = {
     for (i in g.Edges) {
       e = g.Edges[i];
       if (e.Metadata.RelationType !== "ownership") {
+        if (!this.nodes[e.Parent] || !this.nodes[e.Child])
+          continue;
+
         this.addEdge(e.ID, e.Host, e.Metadata || {}, this.nodes[e.Parent], this.nodes[e.Child]);
       }
     }
@@ -690,11 +763,9 @@ Graph.prototype = {
     this.clear();
 
     if (msg.Status != 200) {
-      $.notify({
-        message: 'Unable to init topology'
-      },{
-        type: 'danger'
-      });
+      if (this.onErrorCallback) {
+        this.onErrorCallback('Unable to get the topology, please check the filter');
+      }
       return;
     }
 
@@ -725,21 +796,22 @@ Graph.prototype = {
     this.init(msg.Obj);
   },
 
-  syncRequest: function(t) {
-    if (t && t === store.state.time) {
-      return;
-    }
+  pauseLive: function() {
+    this.live = false;
+  },
+
+  syncRequest: function(time, filter) {
     var obj = {};
-    if (t) {
+    if (time) {
       this.live = false;
-      obj.Time = t;
-      store.commit('time', t);
+      obj.Time = time;
     } else {
       this.live = true;
-      store.commit('time', 0);
     }
 
-    obj.GremlinFilter=store.state.topologyFilter;
+    if (filter) {
+      obj.GremlinFilter = filter + ".SubGraph()";
+    }
     var msg = {"Namespace": "Graph", "Type": "SyncRequest", "Obj": obj};
     this.websocket.send(msg);
   },
