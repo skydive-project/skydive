@@ -22,7 +22,9 @@
 
 package main
 
-import "github.com/skydive-project/skydive/cmd"
+import (
+	"github.com/skydive-project/skydive/cmd"
+)
 
 func main() {
 	cmd.RootCmd.Execute()
