@@ -155,7 +155,7 @@ function get_fabric_config {
         host=${hostintf%/*}
         intf=${hostintf#*/}
         echo "      - TOR[Name=TOR Switch, Type=switch] -> PORT_${host}[Name=${host} Port, Type=port]"
-        echo "      - PORT_${host} -> *[Type=host, Name=${host}]/${intf}"
+        echo "      - PORT_${host} --> *[Type=host, Name=${host}]/${intf}"
     done
 }
 
