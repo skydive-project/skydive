@@ -23,6 +23,8 @@
 package analyzer
 
 import (
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	tprobes "github.com/skydive-project/skydive/topology/probes"
@@ -30,8 +32,31 @@ import (
 
 // NewTopologyProbeBundleFromConfig creates a new topology server probes from configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error) {
+	list := config.GetConfig().GetStringSlice("analyzer.topology.probes")
+	var err error
 	probes := make(map[string]probe.Probe)
 	probes["fabric"] = tprobes.NewFabricProbe(g)
 	probes["peering"] = tprobes.NewPeeringProbe(g)
+
+	for _, t := range list {
+		if _, ok := probes[t]; ok {
+			continue
+		}
+
+		switch t {
+		case "k8sctl":
+			logging.GetLogger().Infof("Starting k8sctl probe")
+
+			probes[t], err = tprobes.NewK8SCtlProbe(g)
+			if err != nil {
+				logging.GetLogger().Errorf("Failed to initialize K8S probe: %s", err.Error())
+				return nil, err
+			}
+
+		default:
+			logging.GetLogger().Errorf("unknown probe type: %s", t)
+		}
+	}
+
 	return probe.NewProbeBundle(probes), nil
 }
