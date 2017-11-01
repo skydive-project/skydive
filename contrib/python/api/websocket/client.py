@@ -1,4 +1,5 @@
 import argparse
+import base64
 import json
 import os
 try:
@@ -173,12 +174,14 @@ class WSClient(WebSocketClientProtocol):
 
     def __init__(self, host_id, endpoint, type="",
                  protocol=WSClientDefaultProtocol,
-                 filter=""):
+                 filter="", username="", password=""):
         self.host_id = host_id
         self.endpoint = endpoint
         self.protocol = protocol
         self.filter = filter
         self.type = type
+        self.username = username
+        self.password = password
 
     def connect(self):
         factory = WebSocketClientFactory(self.endpoint)
@@ -186,6 +189,11 @@ class WSClient(WebSocketClientProtocol):
         factory.headers["X-Host-ID"] = self.host_id
         factory.headers["X-Client-Type"] = self.type
         factory.headers["X-Gremlin-Filter"] = self.filter
+
+        if self.username:
+            authorization = base64.b64encode(b"%s:%s" % (self.username, self.password)).decode("ascii")
+            factory.headers["Authorization"] = 'Basic %s' % authorization
+
         loop = asyncio.get_event_loop()
 
         u = urlparse(self.endpoint)
@@ -215,6 +223,12 @@ if __name__ == '__main__':
     parser.add_argument('--host', type=str, default="Test",
                         dest='host',
                         help='client identifier')
+    parser.add_argument('--username', type=str, default="",
+                        dest='username',
+                        help='client username')
+    parser.add_argument('--password', type=str, default="",
+                        dest='password',
+                        help='client password')
 
     subparsers = parser.add_subparsers(help='sub-command help', dest='mode')
     parser_add = subparsers.add_parser('add', help='add edges and nodes in the given json files')
@@ -243,5 +257,7 @@ if __name__ == '__main__':
 
     client = WSClient(args.host, "ws://"+args.analyzer+"/ws",
                       protocol=protocol,
-                      filter=gremlin_filter)
+                      filter=gremlin_filter,
+                      username=args.username,
+                      password=args.password)
     client.connect()
