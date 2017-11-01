@@ -263,6 +263,11 @@ func (t *TopologyServer) OnDisconnected(c shttp.WSSpeaker) {
 	t.Unlock()
 }
 
+func (t *TopologyServer) sendSyncReply(c shttp.WSSpeaker, msg *shttp.WSJSONMessage, result interface{}, status int) {
+	reply := msg.Reply(result, graph.SyncReplyMsgType, status)
+	c.SendMessage(reply)
+}
+
 // OnWSJSONMessage is triggered by message coming from websocket Speaker. It can be
 // any kind of client, peer, agent, external client.
 func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
@@ -275,18 +280,23 @@ func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMes
 	// this kind of message usually comes from external clients like the WebUI
 	if msgType == graph.SyncRequestMsgType {
 		t.Graph.RLock()
+		delete(t.subscribers, c.GetHost())
 		syncMsg, status := obj.(graph.SyncRequestMsg), http.StatusOK
 		g, err := t.Graph.WithContext(syncMsg.GraphContext)
 		var result interface{} = g
+
 		if err != nil {
 			logging.GetLogger().Errorf("analyzer is unable to get a graph with context %+v: %s", syncMsg, err.Error())
-			result, status = nil, http.StatusBadRequest
+			t.Graph.RUnlock()
+			t.sendSyncReply(c, msg, nil, http.StatusBadRequest)
+			return
 		}
-
 		if syncMsg.GremlinFilter != "" {
 			subscriber, err := t.newTopologySubscriber(c.GetHost(), syncMsg.GremlinFilter)
 			if err != nil {
 				logging.GetLogger().Error(err)
+				t.Graph.RUnlock()
+				t.sendSyncReply(c, msg, nil, http.StatusBadRequest)
 				return
 			}
 
@@ -294,11 +304,8 @@ func (t *TopologyServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMes
 			result = subscriber.graph
 			t.subscribers[c.GetHost()] = subscriber
 		}
-
-		reply := msg.Reply(result, graph.SyncReplyMsgType, status)
-		c.SendMessage(reply)
 		t.Graph.RUnlock()
-
+		t.sendSyncReply(c, msg, result, status)
 		return
 	}
 
