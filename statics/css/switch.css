@@ -1,0 +1,112 @@
+.switch {
+  width: 24rem;
+  position: relative;
+  display: inline-block;
+}
+.switch input {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch input:checked {
+  z-index: 1;
+}
+.switch input:checked + label {
+  opacity: 1;
+  cursor: default;
+}
+.switch input:not(:checked) + label:hover {
+  opacity: 0.5;
+}
+.switch label {
+  color: #fff;
+  opacity: 0.33;
+  transition: opacity 0.25s ease;
+  cursor: pointer;
+  margin: 0 !important;
+}
+.switch .toggle-outside {
+  height: 100%;
+  border-radius: 2rem;
+  padding: 0.25rem;
+  overflow: hidden;
+  transition: 0.25s ease all;
+}
+.switch .toggle-inside {
+  border-radius: 5rem;
+  background: #4a4a4a;
+  position: absolute;
+  transition: 0.25s ease all;
+}
+
+.switch--vertical {
+  width: 80px;
+  height: 30px;
+  margin-right: 10px;
+}
+.switch--vertical input {
+  height: 100%;
+  width: 3rem;
+  right: 0;
+  margin: 0;
+}
+.switch--vertical label {
+  font-size: 12px;
+  display: block;
+  width: 8rem;
+  height: 50%;
+  margin: 0;
+}
+.switch--vertical .toggle-outside {
+  background: #fff;
+  position: absolute;
+  width: 1.5rem;
+  height: 100%;
+  right: 0;
+  top: 0;
+}
+.switch--vertical .toggle-inside {
+  height: 0.9rem;
+  left: 0.25rem;
+  top: 0.25rem;
+  width: 0.9rem;
+}
+.switch--vertical input:checked ~ .toggle-outside .toggle-inside {
+  top: 0.25rem;
+}
+.switch--vertical input ~ input:checked ~ .toggle-outside .toggle-inside {
+  top: 1.7rem;
+}
+.switch--no-label label {
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  overflow: hidden;
+}
+.switch--no-label input:checked ~ .toggle-outside .toggle-inside {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(0,0,0,0.2);
+}
+.switch--no-label input ~ input:checked ~ .toggle-outside {
+  background: #fff;
+}
+.switch--no-label input ~ input:checked ~ .toggle-outside .toggle-inside {
+  background: #2ecc71;
+}
+.switch--no-label.switch--vertical {
+  width: 3rem;
+}
+.switch--expanding-inner input:checked + label:hover ~ .toggle-outside .toggle-inside {
+  height: 2.5rem;
+  width: 2.5rem;
+}
+
+.switch--expanding-inner.switch--vertical input:hover ~ .toggle-outside .toggle-inside {
+  height: 3.5rem;
+}
+.switch--expanding-inner.switch--vertical input:hover ~ input:checked ~ .toggle-outside .toggle-inside {
+  top: 2.25rem;
+}

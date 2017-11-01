@@ -8,20 +8,15 @@ var store = new Vuex.Store({
     service: null,
     version: null,
     history: null,
-    time: 0,
     currentNode: null,
     highlightedNodes: [],
     notifications: [],
     topologyFilter: "",
     topologyHighlight: "",
+    topologyTimeContext: 0,
   },
 
   getters: {
-
-    timeHuman: function(state) {
-      var d = new Date(state.time);
-      return d.toLocaleTimeString();
-    },
 
     currTopologyHighlightExpr: function(state) {
       return state.topologyHighlight;
@@ -34,16 +29,16 @@ var store = new Vuex.Store({
       state.history = support;
     },
 
-    time: function(state, time) {
-      state.time = time;
-    },
-
     topologyFilter: function(state, filter) {
       state.topologyFilter = filter;
     },
 
     topologyHighlight: function(state, filter) {
       state.topologyHighlight = filter;
+    },
+
+    topologyTimeContext: function(state, time) {
+      state.topologyTimeContext = time;
     },
 
     login: function(state) {
@@ -257,6 +252,7 @@ $(document).ready(function() {
   Vue.config.devtools = true;
 
   Vue.use(VTooltip, {});
+  Vue.component('datepicker', Datepicker);
 
   app.$mount('#app');
 });
