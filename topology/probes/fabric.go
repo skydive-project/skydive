@@ -162,10 +162,16 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 
 	list := config.GetConfig().GetStringSlice("analyzer.topology.fabric")
 	for _, link := range list {
-		pc := strings.Split(link, "->")
-		if len(pc) != 2 {
-			logging.GetLogger().Errorf("FabricProbe link definition should have two endpoint: %s", link)
-			continue
+		l2OnlyLink := false
+		pc := strings.Split(link, "-->")
+		if len(pc) == 2 {
+			l2OnlyLink = true
+		} else {
+			pc = strings.Split(link, "->")
+			if len(pc) != 2 {
+				logging.GetLogger().Errorf("FabricProbe link definition should have two endpoints: %s", link)
+				continue
+			}
 		}
 
 		parentDef := strings.TrimSpace(pc[0])
@@ -229,7 +235,9 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 			}
 
 			if !topology.HaveOwnershipLink(fb.Graph, node1, node2, nil) {
-				topology.AddOwnershipLink(fb.Graph, node1, node2, nil)
+				if !l2OnlyLink {
+					topology.AddOwnershipLink(fb.Graph, node1, node2, nil)
+				}
 				topology.AddLayer2Link(fb.Graph, node1, node2, linkMetadata)
 			}
 		}

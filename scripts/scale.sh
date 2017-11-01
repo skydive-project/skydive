@@ -327,8 +327,8 @@ EOF
 
 	TOTAL_AGENT=$(( $AGENT_NUM + $AGENT_STOCK ))
   for AGENT_I in $( seq $TOTAL_AGENT ); do
-		echo "      - TOR1 -> TOR1_PORT_$AGENT_I" >> $TEMP_DIR/$NAME.yml
-		echo "      - TOR1_PORT_$AGENT_I -> *[Name=agent-$AGENT_I]/eth0" >> $TEMP_DIR/$NAME.yml
+		echo "      - TOR -> TOR_PORT_$AGENT_I" >> $TEMP_DIR/$NAME.yml
+		echo "      - TOR_PORT_$AGENT_I --> *[Name=agent-$AGENT_I]/eth0" >> $TEMP_DIR/$NAME.yml
 	done
 
 	COVERFILE="$TEMP_DIR/$NAME.cover"
