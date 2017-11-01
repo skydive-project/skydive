@@ -27,6 +27,7 @@ import (
 	"errors"
 	"math/rand"
 	"net/http"
+	"strings"
 
 	"github.com/abbot/go-http-auth"
 	shttp "github.com/skydive-project/skydive/http"
@@ -65,6 +66,16 @@ type PacketParamsReq struct {
 	Interval   int64
 }
 
+func (pi *PacketInjectorAPI) normalizeIP(ip, ipFamily string) string {
+	if strings.Contains(ip, "/") {
+		return ip
+	}
+	if ipFamily == "IPV4" {
+		return ip + "/32"
+	}
+	return ip + "/64"
+}
+
 func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *packet_injector.PacketParams, error) {
 	pi.Graph.RLock()
 	defer pi.Graph.RUnlock()
@@ -87,6 +98,8 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 			return "", nil, errors.New("No source IP in node and user input")
 		}
 		ppr.SrcIP = ips[0]
+	} else {
+		ppr.SrcIP = pi.normalizeIP(ppr.SrcIP, ipField)
 	}
 
 	if ppr.DstIP == "" {
@@ -99,6 +112,8 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 		} else {
 			return "", nil, errors.New("Not able to find a dest node and dest IP also empty")
 		}
+	} else {
+		ppr.DstIP = pi.normalizeIP(ppr.DstIP, ipField)
 	}
 
 	if ppr.SrcMAC == "" {
