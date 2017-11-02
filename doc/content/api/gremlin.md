@@ -219,7 +219,7 @@ It is possible to filter the link traversed according to the given `Metadata`
 predicate as a second parameter.
 
 ```
-G.V().Has('Type', 'netns').ShortestPathTo(Metadata('Type', 'host'), Metadata('Type', 'layer2'))
+G.V().Has('Type', 'netns').ShortestPathTo(Metadata('Type', 'host'), Metadata('RelationType', 'layer2'))
 ```
 
 ### SubGraph step

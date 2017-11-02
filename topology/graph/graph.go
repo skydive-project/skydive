@@ -687,7 +687,10 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	return &t
 }
 
-func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, em Metadata) []*Node {
+func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, em Metadata, lenShort *int) []*Node {
+	if *lenShort > 0 && len(path)+1 > *lenShort {
+		return []*Node{}
+	}
 	v[n.ID] = true
 
 	newPath := make([]*Node, len(path)+1)
@@ -711,7 +714,6 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 		if parent.ID != n.ID && !v[parent.ID] {
 			neighbor = parent
 		}
-
 		if child.ID != n.ID && !v[child.ID] {
 			neighbor = child
 		}
@@ -722,8 +724,9 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 				nv[k] = v
 			}
 
-			sub := g.lookupShortestPath(neighbor, m, newPath, nv, em)
+			sub := g.lookupShortestPath(neighbor, m, newPath, nv, em, lenShort)
 			if len(sub) > 0 && (len(shortest) == 0 || len(sub) < len(shortest)) {
+				*lenShort = len(sub)
 				shortest = sub
 			}
 		}
@@ -739,7 +742,8 @@ func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Iden
 
 // LookupShortestPath returns the shortest path (list of node)
 func (g *Graph) LookupShortestPath(n *Node, m Metadata, em Metadata) []*Node {
-	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), em)
+	shortestPath := 0
+	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), em, &shortestPath)
 }
 
 // LookupParents returns the associated parents edge of a node
