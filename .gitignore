@@ -7,3 +7,4 @@ flow/*.pb.go
 statics/bindata.go
 contrib/vagrant/.vagrant/
 .idea
+contrib/snort/snortSkydive
