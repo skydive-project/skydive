@@ -13,6 +13,7 @@ var store = new Vuex.Store({
     highlightedNodes: [],
     notifications: [],
     topologyFilter: "",
+    topologyHighlight: "",
   },
 
   getters: {
@@ -22,6 +23,9 @@ var store = new Vuex.Store({
       return d.toLocaleTimeString();
     },
 
+    currTopologyHighlightExpr: function(state) {
+      return state.topologyHighlight;
+    },
   },
 
   mutations: {
@@ -36,6 +40,10 @@ var store = new Vuex.Store({
 
     topologyFilter: function(state, filter) {
       state.topologyFilter = filter;
+    },
+
+    topologyHighlight: function(state, filter) {
+      state.topologyHighlight = filter;
     },
 
     login: function(state) {
