@@ -549,6 +549,8 @@ func (s *GremlinTraversalStepSubGraph) Exec(last GraphTraversalStep) (GraphTrave
 		return last.(*GraphTraversalE).SubGraph(s.Params...), nil
 	case *GraphTraversalV:
 		return last.(*GraphTraversalV).SubGraph(s.Params...), nil
+	case *GraphTraversalShortestPath:
+		return last.(*GraphTraversalShortestPath).SubGraph(s.Params...), nil
 	}
 
 	return nil, ErrExecutionError
