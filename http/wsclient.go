@@ -250,67 +250,6 @@ func (c *WSConn) write(msg []byte) error {
 	return w.Close()
 }
 
-func (c *WSClient) scheme() string {
-	if config.IsTLSenabled() == true {
-		return "wss://"
-	}
-	return "ws://"
-}
-
-func (c *WSClient) connect() {
-	var err error
-	endpoint := c.Url.String()
-	headers := http.Header{
-		"X-Host-ID":             {c.Host},
-		"Origin":                {endpoint},
-		"X-Client-Type":         {c.ServiceType.String()},
-		"X-Websocket-Namespace": {WilcardNamespace},
-	}
-
-	if c.AuthClient != nil {
-		if err = c.AuthClient.Authenticate(); err != nil {
-			logging.GetLogger().Errorf("Unable to authenticate %s : %s", endpoint, err.Error())
-			return
-		}
-		c.AuthClient.SetHeaders(headers)
-	}
-
-	d := websocket.Dialer{
-		Proxy:           http.ProxyFromEnvironment,
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-	certPEM := config.GetConfig().GetString("agent.X509_cert")
-	keyPEM := config.GetConfig().GetString("agent.X509_key")
-	if certPEM != "" && keyPEM != "" {
-		d.TLSClientConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
-		checkTLSConfig(d.TLSClientConfig)
-	}
-	c.conn, _, err = d.Dial(endpoint, headers)
-
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
-		return
-	}
-	defer c.conn.Close()
-	c.conn.SetPingHandler(nil)
-
-	atomic.StoreInt32((*int32)(c.State), common.RunningState)
-	defer atomic.StoreInt32((*int32)(c.State), common.StoppedState)
-
-	logging.GetLogger().Infof("Connected to %s", endpoint)
-
-	// notify connected
-	c.RLock()
-	for _, l := range c.eventHandlers {
-		l.OnConnected(c)
-	}
-	c.RUnlock()
-
-	c.wg.Add(1)
-	c.run()
-}
-
 func (c *WSConn) start() {
 	c.wg.Add(1)
 	go c.run()
@@ -375,16 +314,6 @@ func (c *WSConn) sendPing() {
 	}
 }
 
-// Connect to the server - and reconnect if necessary
-func (c *WSClient) Connect() {
-	go func() {
-		for c.running.Load() == true {
-			c.connect()
-			time.Sleep(1 * time.Second)
-		}
-	}()
-}
-
 // AddEventHandler registers a new event handler
 func (c *WSConn) AddEventHandler(h WSSpeakerEventHandler) {
 	c.Lock()
@@ -431,6 +360,77 @@ func newWSConn(host string, clientType common.ServiceType, url *url.URL, headers
 	*c.State = common.StoppedState
 	c.running.Store(true)
 	return c
+}
+
+func (c *WSClient) scheme() string {
+	if config.IsTLSenabled() == true {
+		return "wss://"
+	}
+	return "ws://"
+}
+
+func (c *WSClient) connect() {
+	var err error
+	endpoint := c.Url.String()
+	headers := http.Header{
+		"X-Host-ID":             {c.Host},
+		"Origin":                {endpoint},
+		"X-Client-Type":         {c.ServiceType.String()},
+		"X-Websocket-Namespace": {WilcardNamespace},
+	}
+
+	if c.AuthClient != nil {
+		if err = c.AuthClient.Authenticate(); err != nil {
+			logging.GetLogger().Errorf("Unable to authenticate %s : %s", endpoint, err.Error())
+			return
+		}
+		c.AuthClient.SetHeaders(headers)
+	}
+
+	d := websocket.Dialer{
+		Proxy:           http.ProxyFromEnvironment,
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+	certPEM := config.GetConfig().GetString("agent.X509_cert")
+	keyPEM := config.GetConfig().GetString("agent.X509_key")
+	if certPEM != "" && keyPEM != "" {
+		d.TLSClientConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
+		checkTLSConfig(d.TLSClientConfig)
+	}
+	c.conn, _, err = d.Dial(endpoint, headers)
+
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
+		return
+	}
+	defer c.conn.Close()
+	c.conn.SetPingHandler(nil)
+
+	atomic.StoreInt32((*int32)(c.State), common.RunningState)
+	defer atomic.StoreInt32((*int32)(c.State), common.StoppedState)
+
+	logging.GetLogger().Infof("Connected to %s", endpoint)
+
+	// notify connected
+	c.RLock()
+	for _, l := range c.eventHandlers {
+		l.OnConnected(c)
+	}
+	c.RUnlock()
+
+	c.wg.Add(1)
+	c.run()
+}
+
+// Connect to the server - and reconnect if necessary
+func (c *WSClient) Connect() {
+	go func() {
+		for c.running.Load() == true {
+			c.connect()
+			time.Sleep(1 * time.Second)
+		}
+	}()
 }
 
 // NewWSClient returns a WSClient with a new connection.
