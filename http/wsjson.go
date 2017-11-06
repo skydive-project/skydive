@@ -108,36 +108,34 @@ func NewWSJSONMessage(ns string, tp string, v interface{}, uuids ...string) *WSJ
 // WSBulkMessage bulk of RawMessage.
 type WSBulkMessage []json.RawMessage
 
-// WSJSONMessageHandler interface used to receive JSON messages.
-type WSJSONMessageHandler interface {
+// WSSpeakerJSONMessageHandler interface used to receive JSON messages.
+type WSSpeakerJSONMessageHandler interface {
 	OnWSJSONMessage(c WSSpeaker, m *WSJSONMessage)
 }
 
-type wsJSONSpeakerEventHandler struct {
-	eventHandlersLock sync.RWMutex
-	nsEventHandlers   map[string][]WSJSONMessageHandler
+// WSSpeakerJSONMessageDispatcher interface is used to dispatch OnWSJSONMessage events.
+type WSSpeakerJSONMessageDispatcher interface {
+	AddJSONMessageHandler(h WSSpeakerJSONMessageHandler, namespaces []string)
 }
 
-func newWSJSONSpeakerEventHandler() *wsJSONSpeakerEventHandler {
-	return &wsJSONSpeakerEventHandler{
-		nsEventHandlers: make(map[string][]WSJSONMessageHandler),
+type wsJSONSpeakerEventDispatcher struct {
+	eventHandlersLock sync.RWMutex
+	nsEventHandlers   map[string][]WSSpeakerJSONMessageHandler
+}
+
+func newWSJSONSpeakerEventDispatcher() *wsJSONSpeakerEventDispatcher {
+	return &wsJSONSpeakerEventDispatcher{
+		nsEventHandlers: make(map[string][]WSSpeakerJSONMessageHandler),
 	}
 }
 
-// WSJSONSpeakerPool is the interface of a pool of WSJSONSpeakers.
-type WSJSONSpeakerPool interface {
-	WSSpeakerPool
-	AddJSONMessageHandler(h WSJSONMessageHandler, namespaces []string)
-	Request(host string, request *WSJSONMessage, timeout time.Duration) (*WSJSONMessage, error)
-}
-
 // AddJSONMessageHandler adds a new listener for JSON messages.
-func (a *wsJSONSpeakerEventHandler) AddJSONMessageHandler(h WSJSONMessageHandler, namespaces []string) {
+func (a *wsJSONSpeakerEventDispatcher) AddJSONMessageHandler(h WSSpeakerJSONMessageHandler, namespaces []string) {
 	a.eventHandlersLock.Lock()
 	// add this handler per namespace
 	for _, ns := range namespaces {
 		if _, ok := a.nsEventHandlers[ns]; !ok {
-			a.nsEventHandlers[ns] = []WSJSONMessageHandler{h}
+			a.nsEventHandlers[ns] = []WSSpeakerJSONMessageHandler{h}
 		} else {
 			a.nsEventHandlers[ns] = append(a.nsEventHandlers[ns], h)
 		}
@@ -145,7 +143,7 @@ func (a *wsJSONSpeakerEventHandler) AddJSONMessageHandler(h WSJSONMessageHandler
 	a.eventHandlersLock.Unlock()
 }
 
-func (a *wsJSONSpeakerEventHandler) dispatchMessage(c *WSJSONSpeaker, m *WSJSONMessage) {
+func (a *wsJSONSpeakerEventDispatcher) dispatchMessage(c *WSJSONSpeaker, m *WSJSONMessage) {
 	// check whether it is a reply
 	if c.onReply(m) {
 		return
@@ -161,10 +159,108 @@ func (a *wsJSONSpeakerEventHandler) dispatchMessage(c *WSJSONSpeaker, m *WSJSONM
 	a.eventHandlersLock.RUnlock()
 }
 
+// OnDisconnected is implemented here to avoid infinite loop since the default
+// implemtation is triggering OnDisconnected too.
+func (p *wsJSONSpeakerEventDispatcher) OnDisconnected(c WSSpeaker) {
+}
+
+// OnConnected is implemented here to avoid infinite loop since the default
+// implemtation is triggering OnDisconnected too.
+func (p *wsJSONSpeakerEventDispatcher) OnConnected(c WSSpeaker) {
+}
+
+type wsJSONSpeakerPoolEventDispatcher struct {
+	dispatcher *wsJSONSpeakerEventDispatcher
+	pool       WSSpeakerPool
+}
+
+// AddJSONMessageHandler adds a new listener for JSON messages.
+func (d *wsJSONSpeakerPoolEventDispatcher) AddJSONMessageHandler(h WSSpeakerJSONMessageHandler, namespaces []string) {
+	d.dispatcher.AddJSONMessageHandler(h, namespaces)
+	for _, client := range d.pool.GetSpeakers() {
+		client.(*WSJSONSpeaker).AddJSONMessageHandler(h, namespaces)
+	}
+}
+
+func (d *wsJSONSpeakerPoolEventDispatcher) AddJSONSpeaker(c *WSJSONSpeaker) {
+	d.dispatcher.eventHandlersLock.RLock()
+	for ns, handlers := range d.dispatcher.nsEventHandlers {
+		for _, handler := range handlers {
+			c.AddJSONMessageHandler(handler, []string{ns})
+		}
+	}
+	d.dispatcher.eventHandlersLock.RUnlock()
+}
+
+func newWSJSONSpeakerPoolEventDispatcher(pool WSSpeakerPool) *wsJSONSpeakerPoolEventDispatcher {
+	return &wsJSONSpeakerPoolEventDispatcher{
+		dispatcher: newWSJSONSpeakerEventDispatcher(),
+		pool:       pool,
+	}
+}
+
+// WSJSONSpeaker is a WSSPeaker able to handle JSON Message and Request/Reply calls.
+type WSJSONSpeaker struct {
+	WSSpeaker
+	*wsJSONSpeakerEventDispatcher
+	nsSubscribed   map[string]bool
+	replyChanMutex sync.RWMutex
+	replyChan      map[string]chan *WSJSONMessage
+}
+
+// Send sends a message according to the namespace.
+func (s *WSJSONSpeaker) Send(m WSMessage) {
+	if msg, ok := m.(WSJSONMessage); ok {
+		if _, ok := s.nsSubscribed[msg.Namespace]; !ok {
+			if _, ok := s.nsSubscribed[WilcardNamespace]; !ok {
+				return
+			}
+		}
+	}
+
+	s.WSSpeaker.SendMessage(m)
+}
+
+func (s *WSJSONSpeaker) onReply(m *WSJSONMessage) bool {
+	s.replyChanMutex.RLock()
+	ch, ok := s.replyChan[m.UUID]
+	if ok {
+		ch <- m
+	}
+	s.replyChanMutex.RUnlock()
+
+	return ok
+}
+
+// Request sends a JSON message request waiting for a reply using the given timeout.
+func (s *WSJSONSpeaker) Request(m *WSJSONMessage, timeout time.Duration) (*WSJSONMessage, error) {
+	ch := make(chan *WSJSONMessage, 1)
+
+	s.replyChanMutex.Lock()
+	s.replyChan[m.UUID] = ch
+	s.replyChanMutex.Unlock()
+
+	defer func() {
+		s.replyChanMutex.Lock()
+		delete(s.replyChan, m.UUID)
+		close(ch)
+		s.replyChanMutex.Unlock()
+	}()
+
+	s.Send(m)
+
+	select {
+	case resp := <-ch:
+		return resp, nil
+	case <-time.After(timeout):
+		return nil, common.ErrTimeout
+	}
+}
+
 // OnMessage checks that the WSMessage comes from a WSJSONSpeaker. It parses
 // the JSON message and then dispatch the message to the proper listeners according
 // to the namespace.
-func (p *wsJSONSpeakerEventHandler) OnMessage(c WSSpeaker, m WSMessage) {
+func (s *WSJSONSpeaker) OnMessage(c WSSpeaker, m WSMessage) {
 	if c, ok := c.(*WSJSONSpeaker); ok {
 		jm := &WSJSONMessage{}
 		if err := json.Unmarshal(m.Bytes(), jm); err != nil {
@@ -176,117 +272,61 @@ func (p *wsJSONSpeakerEventHandler) OnMessage(c WSSpeaker, m WSMessage) {
 			var bulkMessage WSBulkMessage
 			if err := json.Unmarshal([]byte(*jm.Obj), &bulkMessage); err != nil {
 				for _, jm := range bulkMessage {
-					p.OnMessage(c, WSRawMessage([]byte(jm)))
+					s.OnMessage(c, WSRawMessage([]byte(jm)))
 				}
 			}
 			return
 		}
 
-		p.dispatchMessage(c, jm)
+		s.wsJSONSpeakerEventDispatcher.dispatchMessage(c, jm)
 	}
 }
 
-// OnDisconnected is implemented here to avoid infinite loop since the default
-// implemtation is triggering OnDisconnected too.
-func (p *wsJSONSpeakerEventHandler) OnDisconnected(c WSSpeaker) {
-}
-
-// OnConnected is implemented here to avoid infinite loop since the default
-// implemtation is triggering OnDisconnected too.
-func (p *wsJSONSpeakerEventHandler) OnConnected(c WSSpeaker) {
-}
-
-// WSJSONSpeaker is a WSSPeaker able to handle JSON Message and Request/Reply calls.
-type WSJSONSpeaker struct {
-	WSSpeaker
-	*wsJSONSpeakerEventHandler
-	nsSubscribed   map[string]bool
-	replyChanMutex sync.RWMutex
-	replyChan      map[string]chan *WSJSONMessage
-}
-
-// Send sends a message according to the namespace.
-func (c *WSJSONSpeaker) Send(m WSMessage) {
-	if msg, ok := m.(WSJSONMessage); ok {
-		if _, ok := c.nsSubscribed[msg.Namespace]; !ok {
-			if _, ok := c.nsSubscribed[WilcardNamespace]; !ok {
-				return
-			}
-		}
+func newWSJSONSpeaker(c WSSpeaker) *WSJSONSpeaker {
+	s := &WSJSONSpeaker{
+		WSSpeaker:                    c,
+		wsJSONSpeakerEventDispatcher: newWSJSONSpeakerEventDispatcher(),
+		nsSubscribed:                 make(map[string]bool),
+		replyChan:                    make(map[string]chan *WSJSONMessage),
 	}
 
-	c.WSSpeaker.SendMessage(m)
+	// subscribing to itself so that the WSJSONSpeaker can get WSMessage and can convert them
+	// to WSJSONMessage and then forward them to its own even listeners.
+	s.AddEventHandler(s)
+	return s
 }
 
-func (a *WSJSONSpeaker) onReply(m *WSJSONMessage) bool {
-	a.replyChanMutex.RLock()
-	ch, ok := a.replyChan[m.UUID]
-	if ok {
-		ch <- m
-	}
-	a.replyChanMutex.RUnlock()
-
-	return ok
-}
-
-// Request sends a JSON message request waiting for a reply using the given timeout.
-func (a *WSJSONSpeaker) Request(m *WSJSONMessage, timeout time.Duration) (*WSJSONMessage, error) {
-	ch := make(chan *WSJSONMessage, 1)
-
-	a.replyChanMutex.Lock()
-	a.replyChan[m.UUID] = ch
-	a.replyChanMutex.Unlock()
-
-	defer func() {
-		a.replyChanMutex.Lock()
-		delete(a.replyChan, m.UUID)
-		close(ch)
-		a.replyChanMutex.Unlock()
-	}()
-
-	a.Send(m)
-
-	select {
-	case resp := <-ch:
-		return resp, nil
-	case <-time.After(timeout):
-		return nil, common.ErrTimeout
-	}
-}
-
-func (c *WSClient) upgradeToWSJSONSpeaker() *WSJSONSpeaker {
-	js := &WSJSONSpeaker{
-		WSSpeaker:                 c,
-		wsJSONSpeakerEventHandler: newWSJSONSpeakerEventHandler(),
-		nsSubscribed:              make(map[string]bool),
-		replyChan:                 make(map[string]chan *WSJSONMessage),
-	}
+func (c *WSClient) UpgradeToWSJSONSpeaker() *WSJSONSpeaker {
+	js := newWSJSONSpeaker(c)
 	c.wsSpeaker = js
-
 	return js
 }
 
 func (c *wsIncomingClient) upgradeToWSJSONSpeaker() *WSJSONSpeaker {
-	js := &WSJSONSpeaker{
-		WSSpeaker:    c,
-		nsSubscribed: make(map[string]bool),
-		replyChan:    make(map[string]chan *WSJSONMessage),
-	}
+	js := newWSJSONSpeaker(c)
 	c.wsSpeaker = js
-
 	return js
+}
+
+// WSJSONSpeakerPool is the interface of a pool of WSJSONSpeakers.
+type WSJSONSpeakerPool interface {
+	WSSpeakerPool
+	WSSpeakerJSONMessageDispatcher
+	Request(host string, request *WSJSONMessage, timeout time.Duration) (*WSJSONMessage, error)
 }
 
 // WSJSONClientPool is a WSClientPool able to send WSJSONMessage.
 type WSJSONClientPool struct {
 	*WSClientPool
-	*wsJSONSpeakerEventHandler
+	*wsJSONSpeakerPoolEventDispatcher
 }
 
 // AddClient adds a WSClient to the pool.
 func (a *WSJSONClientPool) AddClient(c WSSpeaker) error {
 	if wc, ok := c.(*WSClient); ok {
-		a.WSClientPool.AddClient(wc.upgradeToWSJSONSpeaker())
+		jsonSpeaker := wc.UpgradeToWSJSONSpeaker()
+		a.WSClientPool.AddClient(jsonSpeaker)
+		a.wsJSONSpeakerPoolEventDispatcher.AddJSONSpeaker(jsonSpeaker)
 	} else {
 		return errors.New("wrong client type")
 	}
@@ -305,18 +345,17 @@ func (s *WSJSONClientPool) Request(host string, request *WSJSONMessage, timeout 
 
 // NewWSJSONClientPool returns a new WSJSONClientPool.
 func NewWSJSONClientPool() *WSJSONClientPool {
-	mp := &WSJSONClientPool{
-		WSClientPool:              NewWSClientPool(),
-		wsJSONSpeakerEventHandler: newWSJSONSpeakerEventHandler(),
+	pool := NewWSClientPool()
+	return &WSJSONClientPool{
+		WSClientPool:                     pool,
+		wsJSONSpeakerPoolEventDispatcher: newWSJSONSpeakerPoolEventDispatcher(pool),
 	}
-	mp.WSClientPool.AddEventHandler(mp)
-	return mp
 }
 
 // WSJSONServer is a WSServer able to handle WSJSONSpeaker.
 type WSJSONServer struct {
 	*WSServer
-	*wsJSONSpeakerEventHandler
+	*wsJSONSpeakerPoolEventDispatcher
 }
 
 // Request sends a Request JSON message to the WSSpeaker of the given host.
@@ -329,6 +368,14 @@ func (s *WSJSONServer) Request(host string, request *WSJSONMessage, timeout time
 	return c.(*WSJSONSpeaker).Request(request, timeout)
 }
 
+// OnMessage websocket event.
+func (s *WSJSONServer) OnMessage(c WSSpeaker, m WSMessage) {
+}
+
+// OnConnected websocket event.
+func (s *WSJSONServer) OnConnected(c WSSpeaker) {
+}
+
 // OnDisconnected removes the WSSpeaker from the incomer pool.
 func (s *WSJSONServer) OnDisconnected(c WSSpeaker) {
 	s.WSServer.wsIncomerPool.removeClient(c)
@@ -337,11 +384,10 @@ func (s *WSJSONServer) OnDisconnected(c WSSpeaker) {
 // NewWSJSONServer returns a new WSJSONServer
 func NewWSJSONServer(server *WSServer) *WSJSONServer {
 	s := &WSJSONServer{
-		WSServer:                  server,
-		wsJSONSpeakerEventHandler: newWSJSONSpeakerEventHandler(),
+		WSServer: server,
+		wsJSONSpeakerPoolEventDispatcher: newWSJSONSpeakerPoolEventDispatcher(server),
 	}
-	// subcribing to itself so that the JSONServer can get WSMessage and can convert them
-	// to WSJSONMessage and then forward them to its own even listeners.
+
 	s.WSServer.wsIncomerPool.AddEventHandler(s)
 
 	// This incomerHandler upgrades the incomers to WSJSONSpeaker thus being able to parse JSONMessage.
@@ -370,6 +416,8 @@ func NewWSJSONServer(server *WSServer) *WSJSONServer {
 		if len(c.nsSubscribed) == 0 {
 			c.nsSubscribed[WilcardNamespace] = true
 		}
+
+		s.wsJSONSpeakerPoolEventDispatcher.AddJSONSpeaker(c)
 
 		return c
 	}
