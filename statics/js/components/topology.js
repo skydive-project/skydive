@@ -14,8 +14,8 @@ var TopologyComponent = {
 	          <slider v-if="history" :min="timeRange[0]" :max="timeRange[1]" \
 	                v-model="time" :info="topologyTimeHuman"></slider>\
 	          <div class="form-group input-sm" style="width: 450px">\
-	              <label for="topology-filter">Filter</label>\
-	              <input list="topology-filter-list" placeholder="e.g. Name : TOR" \
+	              <label for="topology-filter" style="width: 33px">Filter</label>\
+	              <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
 	              @click="topologyFilterClear" \
 	              id="topology-filter" type="text" style="color: black;width: 350px" \
 	              v-model="topologyFilter" @keyup.enter="topologyFilterQuery"></input>\
@@ -23,6 +23,19 @@ var TopologyComponent = {
 	              </datalist>\
 	              <button type="button" class="btn btn-primary btn-sm pull-right" \
 	                      @click="topologyFilterQuery"> \
+	                <span class="glyphicon glyphicon-search" aria-hidden="true"></span>\
+	              </button>\
+	          </div>\
+	          <div class="form-group input-sm" style="width: 450px">\
+	              <label for="topology-highlight" style="width: 33px">Find   </label>\
+	              <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
+	              @click="topologyHighlightClear" \
+	              id="topology-highlight" type="text" style="color: black;width: 350px" \
+	              v-model="topologyHighlight" @keyup.enter="topologyHighlightQuery"></input>\
+	              <datalist id="topology-filter-list">\
+	              </datalist>\
+	              <button type="button" class="btn btn-primary btn-sm pull-right" \
+	                      @click="topologyHighlightQuery"> \
 	                <span class="glyphicon glyphicon-search" aria-hidden="true"></span>\
 	              </button>\
 	          </div>\
@@ -122,6 +135,7 @@ var TopologyComponent = {
       timeRange: [-120, 0],
       collapsed: false,
       topologyFilter: "",
+      topologyHighlight: "",
     };
   },
 
@@ -165,7 +179,6 @@ var TopologyComponent = {
       else if (mutation.type == "unhighlight")
         self.layout.unhighlightNodeID(mutation.payload);
     });
-
   },
 
   beforeDestroy: function() {
@@ -178,6 +191,11 @@ var TopologyComponent = {
     topologyFilter: function() {
        var self = this;
        self.topologyFilterQuery();
+    },
+
+    topologyHighlight: function() {
+       var self = this;
+       self.topologyHighlightQuery();
     },
 
     time: function() {
@@ -298,14 +316,46 @@ var TopologyComponent = {
       this.topologyFilter = '';
      },
 
+    topologyHighlightClear: function () {
+      this.topologyHighlight = '';
+     },
+
     endsWith: function (str, suffix) {
        return str.indexOf(suffix, str.length - suffix.length) !== -1;
     },
 
     topologyFilterQuery: function() {
-        if ($("#topology-filter").val() == '' || this.endsWith(this.topologyFilter.toLowerCase(), "subgraph()")) {
-            this.$store.commit('topologyFilter', this.topologyFilter);
+        if ($("#topology-filter").val() == '' || this.endsWith(this.topologyFilter, ")")) {
+            this.$store.commit('topologyFilter', this.topologyFilter + ".SubGraph()");
             this.syncTopo();
+        }
+    },
+
+    highlightSelectedNodes: function(gremlinExpr, bool) {
+      var self = this;
+
+      this.$topologyQuery(gremlinExpr, bool)
+        .then(function(nodes) {
+          nodes.forEach(function(n) {
+            for (var i in n.Nodes) {
+                var myNode = n.Nodes[i];
+                if (bool) {
+                    self.layout.highlightNodeID(myNode.ID);
+                } else {
+                    self.layout.unhighlightNodeID(myNode.ID);
+                }
+            }
+          });
+        });
+    },
+
+    topologyHighlightQuery: function() {
+        if ($("#topology-highlight").val() == '' || this.endsWith(this.topologyHighlight, ")")) {
+            var prevGremlinExpr = this.$store.getters.currTopologyHighlightExpr;
+            this.highlightSelectedNodes(prevGremlinExpr, false);
+            var newGremlinExpr = this.topologyHighlight + ".SubGraph()"
+            this.$store.commit('topologyHighlight', newGremlinExpr);
+            this.highlightSelectedNodes(newGremlinExpr, true);
         }
     },
 

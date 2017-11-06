@@ -30,8 +30,8 @@ analyzer:
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
   # topology_filter:
-  #   Namespaces: "g.V().Has('Type', 'netns').OutE().BothV().Subgraph()"
-  #   Layer2: "g.E().Has('RelationType', 'layer2').Subgraph()"
+  #   Namespaces: "g.V().Has('Type', 'netns').OutE().BothV()"
+  #   Layer2: "g.E().Has('RelationType', 'layer2')"
   
   # Flow storage engine
   # storage:
