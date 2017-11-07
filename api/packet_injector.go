@@ -88,7 +88,7 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *PacketParamsReq) (string, *pac
 	}
 
 	ipField := "IPV4"
-	if ppr.Type == "icmp6" || ppr.Type == "tcp6" {
+	if ppr.Type == "icmp6" || ppr.Type == "tcp6" || ppr.Type == "udp6" {
 		ipField = "IPV6"
 	}
 
