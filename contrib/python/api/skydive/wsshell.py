@@ -111,18 +111,20 @@ def main():
 
     if args.mode == "listen":
         protocol = WSClientDebugProtocol
+        endpoint = "/ws/subscriber"
         file = ""
         gremlin_filter = args.gremlin
         sync_request = args.sync_request
     else:
         protocol = WSClientModifyProtocol
+        endpoint = "/ws/publisher"
         file = args.file
         gremlin_filter = ""
         sync_request = False
         if not os.path.isfile(args.file):
             raise ValueError("The file %s does not exist" % args.file)
 
-    client = WSClient(args.host, "ws://" + args.analyzer + "/ws",
+    client = WSClient(args.host, "ws://" + args.analyzer + endpoint,
                       username=args.username,
                       password=args.password,
                       protocol=protocol,
