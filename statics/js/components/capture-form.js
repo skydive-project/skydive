@@ -30,7 +30,7 @@ Vue.component('capture-form', {
                            placeholder="Interface 1"\
                            form="capture"\
                            v-model="node1"></node-selector>\
-            <node-selector id="node-selector-2" placeholder="Interface 2 (Optionnal)"\
+            <node-selector id="node-selector-2" placeholder="Interface 2 (Optional)"\
                            form="capture"\
                            v-model="node2"></node-selector>\
           </div>\
