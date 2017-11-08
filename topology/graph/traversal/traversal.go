@@ -1326,6 +1326,42 @@ func (tv *GraphTraversalV) SubGraph(s ...interface{}) *GraphTraversal {
 	return NewGraphTraversal(ng, tv.GraphTraversal.lockGraph)
 }
 
+// SubGraph step, node/edge out
+func (tv *GraphTraversalShortestPath) SubGraph(s ...interface{}) *GraphTraversal {
+	if tv.error != nil {
+		return &GraphTraversal{error: tv.error}
+	}
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
+	memory, err := graph.NewMemoryBackend()
+	if err != nil {
+		return &GraphTraversal{error: err}
+	}
+
+	// first insert all the nodes
+	for _, p := range tv.paths {
+		for _, n := range p {
+			if !memory.NodeAdded(n) {
+				return &GraphTraversal{error: errors.New("Error while adding node to SubGraph")}
+			}
+		}
+	}
+	for _, p := range tv.paths {
+		for _, n := range p {
+			edges := tv.GraphTraversal.Graph.GetNodeEdges(n, nil)
+			for _, e := range edges {
+				memory.EdgeAdded(e)
+			}
+		}
+	}
+
+	ng := graph.NewGraph(tv.GraphTraversal.Graph.GetHost(), memory)
+
+	return NewGraphTraversal(ng, tv.GraphTraversal.lockGraph)
+}
+
 // Metrics step : packets counters
 func (tv *GraphTraversalV) Metrics() *MetricsTraversalStep {
 	if tv.error != nil {

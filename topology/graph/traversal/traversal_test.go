@@ -637,6 +637,13 @@ func TestTraversalParser(t *testing.T) {
 	}
 
 	// next traversal test
+	query = `G.V().Has("Value", 2).ShortestPathTo(Metadata("Value", 4)).SubGraph().V()`
+	res = execTraversalQuery(t, g, query)
+	if len(res.Values()) != 3 {
+		t.Fatalf("Should return 3 nodes, returned: %v", res.Values())
+	}
+
+	// next traversal test
 	query = `G.V().Has("IPV4", Ipv4Range("192.168.0.0/24"))`
 	res = execTraversalQuery(t, g, query)
 	if len(res.Values()) != 1 {
