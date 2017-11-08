@@ -12,6 +12,10 @@ CURR_ANALYZER_PORT=${CURR_ANALYZER_PORT:-8082}
 GW_ADDR=$PREFIX.254
 AGENT_STOCK=5
 
+# linuxbridge or ovs
+BRIDGE_MODE=${BRIDGE_MODE:-linuxbridge}
+
+
 if [ -z "$SKYDIVE" ] ; then
     SKYDIVE_BIN=$( which skydive )
     SKYDIVE=$( readlink -f $SKYDIVE_BIN )
@@ -33,10 +37,18 @@ mkdir -p $TEMP_DIR
 function create_main_bridge() {
 	echo Create central bridge
 
+        echo 0 | sudo tee /proc/sys/net/ipv6/conf/default/accept_ra
+        echo 0 | sudo tee /proc/sys/net/ipv6/conf/all/accept_ra
+
 	sudo brctl addbr br-central
 	sudo brctl stp br-central off
+	sudo brctl setfd br-central 0
+#        sudo brctl setageing br-central 0
 
-	sudo ip l set br-central up
+        echo 0 | sudo tee /proc/sys/net/ipv6/conf/br-central/forwarding
+        echo 0 | sudo tee /proc/sys/net/ipv6/conf/br-central/accept_ra
+        sudo ip l set br-central up
+        sudo ip l set br-central allmulticast off
 	sudo ip a add $GW_ADDR/24 dev br-central
 }
 
@@ -54,12 +66,17 @@ function create_host() {
 	echo Create host $NAME
 
 	sudo ip netns add $NAME
+        sudo ip netns exec $NAME sh -c 'echo 0 > /proc/sys/net/ipv6/conf/default/accept_ra'
+        sudo ip netns exec $NAME sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/accept_ra'
+        sudo ip netns exec $NAME sh -c 'echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
 	sudo ip netns exec $NAME ip link set lo up
 
 	sudo ip link add $NAME-eth0 type veth peer name eth0 netns $NAME
 	sudo ip link set $NAME-eth0 up
+        sudo ip link set $NAME allmulticast off
 
 	sudo ip netns exec $NAME ip link set eth0 up
+        sudo ip netns exec $NAME ip link set $NAME allmulticast off
 	sudo ip netns exec $NAME ip address add $ADDR/24 dev eth0
 	sudo ip netns exec $NAME ip route add 0.0.0.0/0 via $GW_ADDR
 
@@ -135,39 +152,42 @@ function create_agent() {
 
 	echo Create agent $NAME
 
-	# nested ovs
-	sudo ip netns exec $NAME ovsdb-tool create $TEMP_DIR/$NAME.db
-	sudo ip netns exec $NAME ovsdb-server $TEMP_DIR/$NAME.db \
-		--remote=punix:$TEMP_DIR/$NAME.sock \
-	  --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
-	  --private-key=db:Open_vSwitch,SSL,private_key \
-	  --certificate=db:Open_vSwitch,SSL,certificate \
-	  --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert \
-	  --log-file=$TEMP_DIR/$NAME-vswitchd.log \
-	  -vsyslog:dbg -vfile:dbg --pidfile=$TEMP_DIR/$NAME-dbserver.pid --detach
-	sudo ip netns exec $NAME ovs-vswitchd unix:$TEMP_DIR/$NAME.sock \
-		-vconsole:emer -vsyslog:err -vfile:info --mlockall --no-chdir \
-		--log-file=$TEMP_DIR/$NAME-vswitchd.log \
-		--pidfile=$TEMP_DIR/$NAME-vswitchd.pid --detach --monitor
 
-		mkdir -p $TEMP_DIR/$NAME-netns
+        if [ "$BRIDGE_MODE" = "ovs" ]; then
+	    # nested ovs
+	    sudo ip netns exec $NAME ovsdb-tool create $TEMP_DIR/$NAME.db
+	    sudo ip netns exec $NAME ovsdb-server $TEMP_DIR/$NAME.db \
+		 --remote=punix:$TEMP_DIR/$NAME.sock \
+	         --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
+	         --private-key=db:Open_vSwitch,SSL,private_key \
+	         --certificate=db:Open_vSwitch,SSL,certificate \
+	         --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert \
+	         --log-file=$TEMP_DIR/$NAME-vswitchd.log \
+	         -vsyslog:dbg -vfile:dbg --pidfile=$TEMP_DIR/$NAME-dbserver.pid --detach
+	    sudo ip netns exec $NAME ovs-vswitchd unix:$TEMP_DIR/$NAME.sock \
+		 -vconsole:emer -vsyslog:err -vfile:info --mlockall --no-chdir \
+		 --log-file=$TEMP_DIR/$NAME-vswitchd.log \
+		 --pidfile=$TEMP_DIR/$NAME-vswitchd.pid --detach --monitor
+        fi
+        
+	mkdir -p $TEMP_DIR/$NAME-netns
 
-		# TLS if needed
-		if [ $TLS = true ]; then
-			AGENT_CRT=$TEMP_DIR/agent.crt
-			AGENT_KEY=$TEMP_DIR/agent.key
+	# TLS if needed
+	if [ $TLS = true ]; then
+	    AGENT_CRT=$TEMP_DIR/agent.crt
+	    AGENT_KEY=$TEMP_DIR/agent.key
+            
+	    ANALYZER_CRT=$TEMP_DIR/analyzer.crt
+	    ANALYZER_KEY=$TEMP_DIR/analyzer.key
+	fi
 
-			ANALYZER_CRT=$TEMP_DIR/analyzer.crt
-		        ANALYZER_KEY=$TEMP_DIR/analyzer.key
-		fi
-
-		echo "analyzers:" > $TEMP_DIR/$NAME.yml
-		for ANALYZER_I in $( seq $ANALYZER_NUM ); do
-			PORT=$(( $ANALYZER_PORT + ($ANALYZER_I - 1) * 2 ))
-			echo "  - $GW_ADDR:$PORT" >> $TEMP_DIR/$NAME.yml
-		done
-
-		cat <<EOF >> $TEMP_DIR/$NAME.yml
+	echo "analyzers:" > $TEMP_DIR/$NAME.yml
+	for ANALYZER_I in $( seq $ANALYZER_NUM ); do
+	    PORT=$(( $ANALYZER_PORT + ($ANALYZER_I - 1) * 2 ))
+	    echo "  - $GW_ADDR:$PORT" >> $TEMP_DIR/$NAME.yml
+	done
+        
+	cat <<EOF >> $TEMP_DIR/$NAME.yml
 host_id: $NAME
 ws_pong_timeout: 15
 analyzer:
@@ -205,23 +225,42 @@ EOF
         PIDFILE="$TEMP_DIR/$NAME.pid"
 	sudo -E screen -S skydive-stress -X screen -t skydive-agent $WINDOW ip netns exec $NAME sh -c "export COVERFILE=$COVERFILE ; export PIDFILE=$PIDFILE ; $SKYDIVE agent -c $TEMP_DIR/$NAME.yml 2>&1 | tee $TEMP_DIR/$NAME.log"
 
-	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-br $NAME
-	sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock set bridge $NAME rstp_enable=true
+        if [ "$BRIDGE_MODE" = "ovs" ]; then
+	    sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-br $NAME
+	    sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock set bridge $NAME rstp_enable=true
+        elif [ "$BRIDGE_MODE" = "linuxbridge" ]; then
+	    sudo ip netns exec $NAME brctl addbr $NAME
+	    sudo ip netns exec $NAME brctl stp $NAME off
+	    sudo ip netns exec $NAME brctl setfd $NAME 0
+#	    sudo ip netns exec $NAME brctl setageing $NAME 0
+	    sudo ip netns exec $NAME ip l set $NAME up
+            sudo ip netns exec $NAME ip l set $NAME allmulticast off
+        fi
+
 
 	# create a VM
 	for VM_I in $( seq $VM_NUM ); do
 		echo Create VM $NAME-vm$VM_I
 
 		sudo ip netns add $NAME-vm$VM_I
+                sudo ip netns exec $NAME-vm$VM_I sh -c 'echo 0 > /proc/sys/net/ipv6/conf/default/accept_ra'
+                sudo ip netns exec $NAME-vm$VM_I sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/accept_ra'
+                sudo ip netns exec $NAME-vm$VM_I sh -c 'echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
 		sudo ip netns exec $NAME-vm$VM_I ip l set lo up
 
 		sudo ip netns exec $NAME ip link add vm$VM_I-eth0 type veth peer name eth0 netns $NAME-vm$VM_I
 		sudo ip netns exec $NAME ip link set vm$VM_I-eth0 up
+                sudo ip netns exec $NAME ip link set vm$VM_I-eth0 allmulticast off
 
 		sudo ip netns exec $NAME-vm$VM_I ip link set eth0 up
+                sudo ip netns exec $NAME-mv$VM_I ip link set eth0 allmulticast off
 		sudo ip netns exec $NAME-vm$VM_I ip address add $VM_PREFIX.$IDX.$VM_I/16 dev eth0
 
-		sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-port $NAME vm$VM_I-eth0
+                if [ "$BRIDGE_MODE" = "ovs" ]; then
+		    sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-port $NAME vm$VM_I-eth0
+                elif [ "$BRIDGE_MODE" = "linuxbridge" ]; then
+		    sudo ip netns exec $NAME brctl addif $NAME vm$VM_I-eth0
+                fi
 	done
 
 	touch $TEMP_DIR/$NAME.lock
@@ -232,7 +271,11 @@ function delete_host() {
 
 	echo Delete Host $NAME
 
-	sudo ovs-vsctl del-port br-central $NAME-eth0
+        if [ "$BRIDGE_MODE" = "ovs" ]; then
+	    sudo ovs-vsctl del-port br-central $NAME-eth0
+        elif [ "$BRIDGE_MODE" = "linuxbridge" ]; then
+	    sudo brctl delif br-central $NAME-eth0
+        fi
 
 	sudo ip link del $NAME-eth0
 	sudo ip netns del $NAME
@@ -246,8 +289,10 @@ function delete_agent() {
 
 	echo Delete agent $NAME
 
-	sudo kill -9 `cat $TEMP_DIR/$NAME-vswitchd.pid`
-	sudo kill -9 `cat $TEMP_DIR/$NAME-dbserver.pid`
+        if [ "$BRIDGE_MODE" = "ovs" ]; then
+	    sudo kill -9 `cat $TEMP_DIR/$NAME-vswitchd.pid`
+	    sudo kill -9 `cat $TEMP_DIR/$NAME-dbserver.pid`
+        fi
 
 	for VM_I in $( seq $VM_NUM ); do
 		sudo ip netns del $NAME-vm$VM_I
@@ -341,7 +386,8 @@ EOF
 # create a full mesh tunnel between all the agent namespace so that VMs can ping
 # others. Packet injector can be used as well.
 function create_tunnel() {
-	NAME=$1
+        IDX=$1
+	NAME=agent-$1
 	ADDR=$2
 	AGENTS=$3
 
@@ -351,7 +397,15 @@ function create_tunnel() {
 		if [ $ADDR != $AGENT_I ]; then
 			echo "$ADDR -> $AGENT_I"
 
-			sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-port $NAME gre-$AGENT_I -- set interface gre-$AGENT_I type=gre options:remote_ip=$AGENT_I
+                        if [ "$BRIDGE_MODE" = "ovs" ]; then
+			    sudo ip netns exec $NAME ovs-vsctl --db=unix:$TEMP_DIR/$NAME.sock add-port $NAME gre-$AGENT_I -- set interface gre-$AGENT_I type=gre options:remote_ip=$AGENT_I
+                        elif [ "$BRIDGE_MODE" = "linuxbridge" ]; then
+                            AGENT_ID=$(echo $AGENT_I | sed "s/\.//g")
+                            sudo ip netns exec $NAME ip link add gre-$AGENT_ID type gretap remote $AGENT_I local $ADDR ttl 255
+	                    sudo ip netns exec $NAME ip l set gre-$AGENT_ID up
+                            sudo ip netns exec $NAME ip l set gre-$AGENT_ID allmulticast off
+                            sudo ip netns exec $NAME brctl addif $NAME gre-$AGENT_ID
+                        fi
 		fi
 	done
 }
@@ -432,7 +486,7 @@ function start() {
 	done
 
 	for AGENT_I in $( seq $AGENT_NUM ); do
-		create_tunnel agent-$AGENT_I $PREFIX.$AGENT_I $AGENTS
+		create_tunnel $AGENT_I $PREFIX.$AGENT_I $AGENTS
 	done
 }
 
