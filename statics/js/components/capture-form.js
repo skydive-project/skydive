@@ -54,6 +54,13 @@ Vue.component('capture-form', {
             <div id="one" class="panel-collapse collapse">\
               <fieldset class="form-group">\
                 <div class="form-group">\
+                  <label for="capture-type">Capture Type</label>\
+                  <select id="capture-type" v-model="captureType" class="form-control input-sm" :disabled="!typeAllowed">\
+                    <option disabled value="">Select capture type</option>\
+                    <option v-for="option in options">{{ option }}</option>\
+                  </select>\
+                </div>\
+                <div class="form-group">\
                   <label for="capture-header-size">Header Size</label>\
                   <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
                 </div>\
@@ -105,6 +112,9 @@ Vue.component('capture-form', {
       userQuery: "",
       mode: "selection",
       visible: false,
+      captureType: "",
+      nodeType: "",
+      typeAllowed: false,
     };
   },
 
@@ -113,6 +123,17 @@ Vue.component('capture-form', {
   },
 
   computed: {
+
+    options: function() {
+      var options = {};
+      for (let t of this.$allowedTypes()) {
+        options[t] = ["afpacket", "pcap", "pcapsocket"];
+      }
+      options["ovsbridge"] = ["ovssflow", "pcapsocket"];
+      options["device"] = ["afpacket", "pcap", "pcapsocket", "sflow"];
+      options["dpdkport"] = ["dpdk"];
+      return options[this.nodeType];
+    },
 
     queryError: function() {
       if (this.mode == "gremlin" && !this.userQuery) {
@@ -162,12 +183,49 @@ Vue.component('capture-form', {
           self.resetQueryNodes();
           self.queryNodes = nodes;
           self.highlightQueryNodes(true);
+          if (nodes.length === 1) {
+            self.typeAllowed = true;
+            self.nodeType = nodes[0].Metadata.Type;
+          } else {
+            self.typeAllowed = false;
+          }
         })
         .fail(function() {
           self.resetQueryNodes();
+          self.typeAllowed = false;
         });
-    }
+    },
 
+    node1: function(newNode) {
+      var node = this.$store.state.currentNode;
+      this.nodeType = node.metadata.Type;
+    },
+
+    node2: function(newNode) {
+      if (newNode) {
+        this.typeAllowed = false;
+      } else {
+        this.typeAllowed = true;
+      }
+    },
+
+    mode: function(newMode) {
+      if (newMode === "selection") {
+        if (this.node2) {
+          this.typeAllowed = false;
+        } else {
+          this.typeAllowed = true;
+          if (this.node1 != "")
+            this.checkQuery("G.V().Has('TID', '" + this.node1 + "')");
+        }
+      } else if (newMode === "gremlin") {
+        if (!this.query) {
+          this.typeAllowed = false;
+        } else {
+          this.checkQuery(this.query);
+        }
+      }
+    },
   },
 
   methods: {
@@ -179,6 +237,23 @@ Vue.component('capture-form', {
       this.tcpMetric = true;
       this.socketInfo = false;
       this.visible = false;
+      this.captureType = "";
+    },
+
+    checkQuery: function(query) {
+      var self = this;
+      this.$topologyQuery(query)
+        .then(function(nodes) {
+          if (nodes.length === 1) {
+            self.nodeType = nodes[0].Metadata.Type;
+            self.typeAllowed = true;
+          } else {
+            self.typeAllowed = false;
+          }
+        })
+        .fail(function(e) {
+          self.typeAllowed = false;
+        })
     },
 
     start: function() {
@@ -187,7 +262,9 @@ Vue.component('capture-form', {
         this.$error({message: this.queryError});
         return;
       }
-      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets, this.tcpMetric, this.socketInfo)
+      if (!this.typeAllowed)
+        this.captureType = "";
+      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets, this.tcpMetric, this.socketInfo, this.captureType)
         .then(function() {
           self.reset();
         });
