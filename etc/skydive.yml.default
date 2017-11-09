@@ -32,7 +32,7 @@ analyzer:
   # topology_filter:
   #   Namespaces: "g.V().Has('Type', 'netns').OutE().BothV()"
   #   Layer2: "g.E().Has('RelationType', 'layer2')"
-  
+
   # Flow storage engine
   # storage:
       # Available: elasticsearch, orientdb
