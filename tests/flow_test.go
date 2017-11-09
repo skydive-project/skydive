@@ -1514,6 +1514,19 @@ func TestSort(t *testing.T) {
 			{"ovs-vsctl add-port br-int src-vm2-eth0", true},
 		},
 
+		settleFunction: func(c *TestContext) (err error) {
+			if _, err = c.gh.GetNode("G.V().Has('Name', 'src1-eth0', 'State', 'UP')"); err != nil {
+				return
+			}
+
+			if _, err = c.gh.GetNode("G.V().Has('Name', 'src2-eth0', 'State', 'UP')"); err != nil {
+				return
+			}
+
+			_, err = c.gh.GetNode("G.V().Has('Name', 'dst-eth0', 'State', 'UP')")
+			return
+		},
+
 		setupFunction: func(c *TestContext) (err error) {
 			if err = ping(t, c, 4, "G.V().Has('Name', 'src1-eth0')", "G.V().Has('Name', 'dst-eth0')", 10, 0); err != nil {
 				return
