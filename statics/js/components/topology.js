@@ -9,7 +9,15 @@ var TopologyComponent = {
   template: '\
     <div class="topology">\
       <div class="col-sm-7 fill content">\
-      <div class="topology-d3"></div>\
+        <div class="topology-d3">\
+          <div class="topology-legend">\
+            <strong>Topology view</strong></br>\
+            <span v-if="currTopologyFilter">{{currTopologyFilter}}</span>\
+            <span v-else>Full</span>\
+            <div v-if="topologyHumanTimeContext">{{topologyHumanTimeContext}}</div>\
+            <span v-else>Live</span>\
+          </div>\
+        </div>\
         <div id="topology-options" @mouseleave="hideTopologyOptions">\
           <div id="topology-options-panel">\
             <div v-if="history" class="form-group input-sm">\
@@ -115,10 +123,10 @@ var TopologyComponent = {
                  :class="{\'glyphicon-resize-full\': currentNode.group.collapsed, \'glyphicon-resize-small\': !currentNode.group.collapsed}" aria-hidden="true"></span>\
             </span>\
           </button>\
-          </div>\
-          </div>\
-          <div id="right-panel" class="col-sm-5 fill info">\
-          <tabs v-if="isAnalyzer">\
+        </div>\
+      </div>\
+      <div id="right-panel" class="col-sm-5 fill info">\
+        <tabs v-if="isAnalyzer">\
           <tab-pane title="Captures">\
             <capture-list></capture-list>\
             <capture-form v-if="topologyMode ===  \'live\'"></capture-form>\
@@ -129,15 +137,15 @@ var TopologyComponent = {
           <tab-pane title="Flows">\
             <flow-table-control></flow-table-control>\
           </tab-pane>\
-          </tabs>\
-          <transition name="slide" mode="out-in">\
+        </tabs>\
+        <transition name="slide" mode="out-in">\
           <div class="left-panel" v-if="currentNode">\
             <h1>Metadata<span class="pull-right">(id: {{currentNode.id}})\
               <i v-if="currentNode.group != null" class="node-action fa"\
                 title="Expand/Collapse Node"\
                 :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
                 @click="toggleExpandAll(currentNode)"></i></span>\
-          </h1>\
+            </h1>\
             <div id="metadata-panel" class="sub-left-panel">\
               <object-detail :object="currentNodeMetadata"></object-detail>\
             </div>\
@@ -149,7 +157,7 @@ var TopologyComponent = {
               <h1>Interface metrics</h1>\
               <statistics-table :object="currentNodeStats"></statistics-table>\
             </div>\
-            <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastStats).length && time === 0">\
+            <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastStats).length && topologyTimeContext === 0">\
               <h1>Last metrics</h1>\
               <statistics-table :object="currentNodeLastStats"></statistics-table>\
             </div>\
@@ -158,9 +166,9 @@ var TopologyComponent = {
               <flow-table :value="currentNodeFlowsQuery"></flow-table>\
             </div>\
           </div>\
-          </transition>\
-          </div>\
-        </div>\
+        </transition>\
+      </div>\
+    </div>\
   ',
 
   data: function() {
@@ -170,8 +178,10 @@ var TopologyComponent = {
       topologyDate: '',
       collapsed: false,
       topologyFilter: "",
+      currTopologyFilter: "",
       topologyHighlight: "",
-      topologyMode: "live"
+      topologyMode: "live",
+      topologyHumanTimeContext: ""
     };
   },
 
@@ -220,6 +230,8 @@ var TopologyComponent = {
       else if (mutation.type == "unhighlight")
         self.layout.unhighlightNodeID(mutation.payload);
     });
+
+    this.setFilterFromConfig();
   },
 
   beforeDestroy: function() {
@@ -228,13 +240,26 @@ var TopologyComponent = {
   },
 
   watch: {
+
     topologyMode: function (val) {
       if (val === 'live') {
         this.topologyTimeTravelClear();
       } else {
         this.graph.pauseLive();
+
+        var dt = new Date();
+        this.topologyTimeContext = dt.getTime();
       }
-    }
+    },
+    topologyTimeContext: function(val) {
+      if (!this.topologyTimeContext) {
+        this.topologyHumanTimeContext = '';
+      } else {
+        var dt = new Date(this.topologyTimeContext);
+        this.topologyHumanTimeContext =  ' at ' + dt.toLocaleString();
+      }
+    },
+
   },
 
   computed: {
@@ -317,6 +342,17 @@ var TopologyComponent = {
        return str.indexOf(suffix, str.length - suffix.length) !== -1;
     },
 
+    setFilterFromConfig: function() {
+      return $.when(this.$getConfigValue('analyzer.topology_filter'))
+       .then(function(filter) {
+         if (!filter) return;
+         var options = $("#topology-filter-list");
+         $.each(filter, function(key, value) {
+           options.append($("<option/>").text(key).val(value));
+         });
+       });
+    },
+
     topologyTimeTravelClear: function() {
       this.topologyDate = '';
       this.topologyTime = '';
@@ -355,7 +391,17 @@ var TopologyComponent = {
     },
 
     topologyFilterQuery: function() {
+      var self = this;
+
       if (!this.topologyFilter || this.endsWith(this.topologyFilter, ")")) {
+        var filter = this.topologyFilter;
+        $("#topology-filter-list").find('option').filter(function() {
+          if (this.value === self.topologyFilter) {
+            filter = this.text;
+          }
+        });
+        this.currTopologyFilter = filter;
+
         this.$store.commit('topologyFilter', this.topologyFilter);
         this.syncTopo(this.topologyTimeContext, this.topologyFilter);
       }
@@ -371,8 +417,8 @@ var TopologyComponent = {
     hideTopologyOptions: function() {
       this.topologyOptionsTimeoutID = setTimeout(function() {
         $('input').blur();
-        $("#topology-options").css("left", "-568px");
-      }, 500);
+        $("#topology-options").css("left", "-543px");
+      }, 1000);
     },
 
     highlightSelectedNodes: function(gremlinExpr, bool) {

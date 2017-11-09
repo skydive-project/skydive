@@ -72,12 +72,6 @@ var TopologyGraphLayout = function(vm, selector) {
     .then(function() {
       self.bandwidth.intervalID = setInterval(self.updateBandwidth.bind(self), self.bandwidth.updatePeriod);
     });
-
-   this.filter = {
-     topologyFilter: '',
-   };
-
-  this.setFilterFromConfig();
 };
 
 TopologyGraphLayout.prototype = {
@@ -1053,24 +1047,6 @@ TopologyGraphLayout.prototype = {
         this.collapseByLevel((level-1), collapse, Object.values(groups[i].children));
       }
     }
-  },
-
-  setFilterFromConfig: function() {
-     var vm = this.vm, fl = this.filter;
-
-     return $.when(
-         vm.$getConfigValue('analyzer.topology_filter'))
-       .then(function(topology_filter) {
-          try {
-             fl.topologyFilter = topology_filter;
-
-             var options = $("#topology-filter-list");
-             $.each(fl.topologyFilter, function(key,value) {
-             options.append($("<option />").text(key).val(value));
-             });
-             }
-             catch(err) {}
-       })
   },
 
   loadBandwidthConfig: function() {

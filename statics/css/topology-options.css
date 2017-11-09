@@ -1,6 +1,6 @@
 #topology-options {
   position: absolute;
-  left: -534px;
+  left: -543px;
   top: 20px;
   width: 675px;
   transition: 0.5s;
@@ -83,7 +83,8 @@
 #topology-options-panel .row .clear-btn {
   display: inline-block;
   padding: 1px;
-  margin-left: -20px;
+  margin-left: -11px;
+  margin-top: -2px;
   width: 17px;
   color: black;
 }
