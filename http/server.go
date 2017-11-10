@@ -27,6 +27,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"html/template"
+	"io/ioutil"
 	"mime"
 	"net"
 	"net/http"
@@ -61,7 +63,16 @@ const (
 	TCP ConnectionType = 1 + iota
 	// TLS secure connection
 	TLS
+
+	// ExtraAssetPrefix is used for extra assets
+	ExtraAssetPrefix = "/extra-statics"
 )
+
+type ExtraAsset struct {
+	Filename string
+	Ext      string
+	Content  []byte
+}
 
 type Server struct {
 	http.Server
@@ -75,6 +86,7 @@ type Server struct {
 	listener    net.Listener
 	CnxType     ConnectionType
 	wg          sync.WaitGroup
+	extraAssets map[string]ExtraAsset
 }
 
 func copyRequestVars(old, new *http.Request) {
@@ -153,17 +165,24 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-func serveStatics(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
 	upath := r.URL.Path
 	if strings.HasPrefix(upath, "/") {
 		upath = strings.TrimPrefix(upath, "/")
 	}
 
-	content, err := statics.Asset(upath)
-	if err != nil {
-		logging.GetLogger().Errorf("Unable to find the asset: %s", upath)
-		w.WriteHeader(http.StatusNotFound)
-		return
+	var content []byte
+	var err error
+
+	if asset, ok := s.extraAssets[upath]; ok {
+		content = asset.Content
+	} else {
+		content, err = statics.Asset(upath)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to find the asset: %s", upath)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 	}
 
 	ext := filepath.Ext(upath)
@@ -182,10 +201,24 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	data := struct {
+		ExtraAssets map[string]ExtraAsset
+	}{
+		ExtraAssets: s.extraAssets,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
 	setTLSHeader(w, r)
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write(html)
+
+	tmpl := template.Must(template.New("index").Delims("<<", ">>").Parse(string(html)))
+	if err := tmpl.Execute(w, data); err != nil {
+		logging.GetLogger().Criticalf("Unable to execute index template: %s", err)
+	}
 }
 
 func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
@@ -224,11 +257,36 @@ func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc) {
 	s.Router.HandleFunc(path, s.Auth.Wrap(f))
 }
 
-func NewServer(host string, serviceType common.ServiceType, addr string, port int, auth AuthenticationBackend) *Server {
+func (s *Server) loadExtraAssets(folder string) {
+	files, err := ioutil.ReadDir(folder)
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to load extra assets from %s: %s", folder, err)
+		return
+	}
+
+	for _, file := range files {
+		path := filepath.Join(folder, file.Name())
+
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			logging.GetLogger().Errorf("Unable to load extra asset %s: %s", path, err)
+			return
+		}
+
+		ext := filepath.Ext(path)
+
+		key := strings.TrimPrefix(filepath.Join(ExtraAssetPrefix, file.Name()), "/")
+		s.extraAssets[key] = ExtraAsset{
+			Filename: filepath.Join(ExtraAssetPrefix, file.Name()),
+			Ext:      ext,
+			Content:  data,
+		}
+	}
+}
+
+func NewServer(host string, serviceType common.ServiceType, addr string, port int, auth AuthenticationBackend, assetsFolder string) *Server {
 	router := mux.NewRouter().StrictSlash(true)
 	router.Headers("X-Host-ID", host, "X-Service-Type", serviceType.String())
-
-	router.PathPrefix("/statics").HandlerFunc(serveStatics)
 
 	server := &Server{
 		Host:        host,
@@ -237,8 +295,15 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 		Addr:        addr,
 		Port:        port,
 		Auth:        auth,
+		extraAssets: make(map[string]ExtraAsset),
 	}
 
+	if assetsFolder != "" {
+		server.loadExtraAssets(assetsFolder)
+	}
+
+	router.PathPrefix("/statics").HandlerFunc(server.serveStatics)
+	router.PathPrefix(ExtraAssetPrefix).HandlerFunc(server.serveStatics)
 	router.HandleFunc("/login", server.serveLogin)
 	router.HandleFunc("/", server.serveIndex)
 
@@ -257,6 +322,7 @@ func NewServerFromConfig(serviceType common.ServiceType) (*Server, error) {
 	}
 
 	host := config.GetConfig().GetString("host_id")
+	assets := config.GetConfig().GetString("ui.extra_assets")
 
-	return NewServer(host, serviceType, sa.Addr, sa.Port, auth), nil
+	return NewServer(host, serviceType, sa.Addr, sa.Port, auth, assets), nil
 }

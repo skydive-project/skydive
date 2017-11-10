@@ -58,12 +58,23 @@
 
   <!-- views -->
   <script src="/statics/js/components/login.js"></script>
+  <script src="/statics/js/components/layout.js"></script>
   <script src="/statics/js/components/graph-layout.js"></script>
   <script src="/statics/js/components/topology.js"></script>
   <script src="/statics/js/components/conversation.js"></script>
   <script src="/statics/js/components/discovery.js"></script>
 
   <script src="/statics/js/app.js"></script>
+
+  <!-- extra assets -->
+  << range $i, $asset := .ExtraAssets >>
+    << if eq $asset.Ext ".css" >>
+  <link rel="stylesheet" href="<< $asset.Filename >>" />
+    << end >>
+    << if eq $asset.Ext ".js" >>
+  <script src="<< $asset.Filename >>"></script>
+    << end >>
+  << end >>
 </head>
 
 <body>
@@ -81,7 +92,7 @@
             <span class="icon-bar"></span>
           </button>
           <a class="navbar-brand" href="#">Skydive
-            <span class="mode">{{service}}  {{version}}</span>
+            <span class="mode">{{service}} {{version}}</span>
           </a>
         </div>
         <div class="collapse navbar-collapse" v-if="logged">
