@@ -57,7 +57,7 @@ type EmbeddedEtcd struct {
 }
 
 // NewEmbeddedEtcd creates a new embedded ETCD server
-func NewEmbeddedEtcd(sa common.ServiceAddress, dataDir string) (*EmbeddedEtcd, error) {
+func NewEmbeddedEtcd(sa common.ServiceAddress, dataDir string, maxWalFiles, maxSnapFiles uint) (*EmbeddedEtcd, error) {
 	var err error
 	se := &EmbeddedEtcd{Port: sa.Port}
 	se.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", sa.Addr, sa.Port))
@@ -90,6 +90,8 @@ func NewEmbeddedEtcd(sa common.ServiceAddress, dataDir string) (*EmbeddedEtcd, e
 		NewCluster:    true,
 		TickMs:        100,
 		ElectionTicks: 10,
+		MaxWALFiles:   uint(maxWalFiles),
+		MaxSnapFiles:  uint(maxSnapFiles),
 	}
 
 	se.server, err = etcdserver.NewServer(cfg)
@@ -136,7 +138,9 @@ func NewEmbeddedEtcdFromConfig() (*EmbeddedEtcd, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewEmbeddedEtcd(sa, dataDir)
+	maxWalFiles := uint(config.GetConfig().GetInt("etcd.max_wal_files"))
+	maxSnapFiles := uint(config.GetConfig().GetInt("etcd.max_snap_files"))
+	return NewEmbeddedEtcd(sa, dataDir, maxWalFiles, maxSnapFiles)
 }
 
 // Stop the embedded server

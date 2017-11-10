@@ -218,6 +218,10 @@ etcd:
 
   # client_timeout: 5
 
+  # maximum number of WAL and snapshot files. 0 means unlimited
+  # max_wal_files: 0
+  # max_snap_files: 0
+
 flow:
   # Without any new packets, a flow expires after flow.expire
   # seconds

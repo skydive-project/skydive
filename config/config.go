@@ -139,6 +139,14 @@ func checkStrictPositiveInt(key string) error {
 	return nil
 }
 
+func checkPositiveInt(key string) error {
+	if value := cfg.GetInt(key); value < 0 {
+		return fmt.Errorf("invalid value for %s (%d)", key, value)
+	}
+
+	return nil
+}
+
 func checkStrictRangeFloat(key string, min, max float64) error {
 	if value := cfg.GetFloat64(key); value <= min || value > max {
 		return fmt.Errorf("invalid value for %s (%f)", key, value)
@@ -153,6 +161,14 @@ func checkConfig() error {
 	}
 
 	if err := checkStrictPositiveInt("flow.update"); err != nil {
+		return err
+	}
+
+	if err := checkPositiveInt("etcd.max_wal_files"); err != nil {
+		return err
+	}
+
+	if err := checkPositiveInt("etcd.max_snap_files"); err != nil {
 		return err
 	}
 
