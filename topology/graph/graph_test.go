@@ -23,6 +23,7 @@
 package graph
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -272,6 +273,47 @@ func TestPath(t *testing.T) {
 	r = g.LookupShortestPath(n1, Metadata{"Value": 5}, nil)
 	if len(r) == 0 || !validatePath(r, "1/11/12/5") {
 		t.Errorf("Wrong nodes returned: %v", r)
+	}
+}
+
+func nodeExpand(g *Graph, nodes []*Node, n int, level int) []*Node {
+	var ret []*Node
+	for _, node := range nodes {
+		for i := 0; i < n; i++ {
+			n := g.NewNode(GenID(), Metadata{"Value": level*1000 + i, "Name": fmt.Sprintf("Node%d-%d", level, i)})
+			g.Link(node, n, Metadata{"Type": "Layer2"})
+			ret = append(ret, n)
+		}
+	}
+	return ret
+}
+
+func nodeCollapse(g *Graph, nodes []*Node, nodeEnd *Node) {
+	for _, node := range nodes {
+		g.Link(node, nodeEnd, Metadata{"Type": "Layer2"})
+	}
+}
+
+func TestComplexPath(t *testing.T) {
+	g := newGraph(t)
+
+	nstart := g.NewNode(GenID(), Metadata{"Value": 1, "Name": "NodeStart"})
+	nend := g.NewNode(GenID(), Metadata{"Value": 1, "Name": "NodeEnd"})
+
+	nprev := nodeExpand(g, []*Node{nstart}, 10, 1)
+	for i := 2; i < 4; i++ { // test complexity limit, as test.timeout = 1min
+		nprev = nodeExpand(g, nprev, 10, i)
+	}
+	nodeCollapse(g, []*Node{nprev[0]}, nend)
+	t.Log("nb nodes", len(g.GetNodes(nil)))
+
+	r := g.LookupShortestPath(nstart, nend.Metadata(), nil)
+	if len(r) != 5 {
+		t.Errorf("Wrong nodes returned (start -> end): %d %v", len(r), r)
+	}
+	r = g.LookupShortestPath(nend, nstart.Metadata(), nil)
+	if len(r) != 5 {
+		t.Errorf("Wrong nodes returned (end -> start): %d %v", len(r), r)
 	}
 }
 

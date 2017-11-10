@@ -687,63 +687,107 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	return &t
 }
 
-func (g *Graph) lookupShortestPath(n *Node, m Metadata, path []*Node, v map[Identifier]bool, em Metadata, lenShort *int) []*Node {
-	if *lenShort > 0 && len(path)+1 > *lenShort {
-		return []*Node{}
-	}
-	v[n.ID] = true
-
-	newPath := make([]*Node, len(path)+1)
-	copy(newPath, path)
-	newPath[len(path)] = n
-
-	if n.MatchMetadata(m) {
-		return newPath
-	}
-
+func (g *Graph) getNeighborNodes(n *Node, em Metadata) (nodes []*Node) {
 	t := g.context.TimeSlice
-	shortest := []*Node{}
 	for _, e := range g.backend.GetNodeEdges(n, t, em) {
-		parents, children := g.backend.GetEdgeNodes(e, t, nil, nil)
-		if len(parents) == 0 || len(children) == 0 {
-			continue
-		}
-
-		parent, child := parents[0], children[0]
-		var neighbor *Node
-		if parent.ID != n.ID && !v[parent.ID] {
-			neighbor = parent
-		}
-		if child.ID != n.ID && !v[child.ID] {
-			neighbor = child
-		}
-
-		if neighbor != nil {
-			nv := make(map[Identifier]bool)
-			for k, v := range v {
-				nv[k] = v
-			}
-
-			sub := g.lookupShortestPath(neighbor, m, newPath, nv, em, lenShort)
-			if len(sub) > 0 && (len(shortest) == 0 || len(sub) < len(shortest)) {
-				*lenShort = len(sub)
-				shortest = sub
-			}
-		}
+		parents, childrens := g.backend.GetEdgeNodes(e, t, nil, nil)
+		nodes = append(nodes, parents...)
+		nodes = append(nodes, childrens...)
 	}
-
-	// check that the last element if the one we looked for
-	if len(shortest) > 0 && !shortest[len(shortest)-1].MatchMetadata(m) {
-		return []*Node{}
-	}
-
-	return shortest
+	return nodes
 }
 
-// LookupShortestPath returns the shortest path (list of node)
+func (g *Graph) findNodeMatchMetadata(nodesMap map[Identifier]*Node, m Metadata) *Node {
+	for _, n := range nodesMap {
+		if n.MatchMetadata(m) {
+			return n
+		}
+	}
+	return nil
+}
+
+func getNodeMinDistance(nodesMap map[Identifier]*Node, distance map[Identifier]uint) *Node {
+	min := ^uint(0)
+	var minID Identifier
+	for ID, d := range distance {
+		_, ok := nodesMap[ID]
+		if !ok {
+			continue
+		}
+		if string(minID) == "" {
+			minID = ID
+		}
+
+		if d < min {
+			min = d
+			minID = ID
+		}
+	}
+	n, ok := nodesMap[minID]
+	if !ok {
+		return nil
+	}
+	return n
+}
+
+// GetNodesMap returns a map of nodes within a time slice
+func (g *Graph) GetNodesMap(t *common.TimeSlice) map[Identifier]*Node {
+	nodes := g.backend.GetNodes(t, nil)
+	nodesMap := make(map[Identifier]*Node, len(nodes))
+	for _, n := range nodes {
+		nodesMap[n.ID] = n
+	}
+	return nodesMap
+}
+
+// LookupShortestPath based on Dijkstra algorithm
 func (g *Graph) LookupShortestPath(n *Node, m Metadata, em Metadata) []*Node {
-	shortestPath := 0
-	return g.lookupShortestPath(n, m, []*Node{}, make(map[Identifier]bool), em, &shortestPath)
+	t := g.context.TimeSlice
+	nodesMap := g.GetNodesMap(t)
+	target := g.findNodeMatchMetadata(nodesMap, m)
+	if target == nil {
+		return []*Node{}
+	}
+	distance := make(map[Identifier]uint, len(nodesMap))
+	previous := make(map[Identifier]*Node, len(nodesMap))
+
+	for _, v := range nodesMap {
+		distance[v.ID] = ^uint(0)
+	}
+	distance[target.ID] = uint(0)
+
+	for len(nodesMap) > 0 {
+		u := getNodeMinDistance(nodesMap, distance)
+		if u == nil {
+			break
+		}
+		delete(nodesMap, u.ID)
+
+		for _, v := range g.getNeighborNodes(u, em) {
+			if _, ok := nodesMap[v.ID]; !ok {
+				continue
+			}
+			alt := distance[u.ID] + 1
+			if alt < distance[v.ID] {
+				distance[v.ID] = alt
+				previous[v.ID] = u
+			}
+		}
+	}
+
+	retNodes := []*Node{}
+	node := n
+	for {
+		retNodes = append(retNodes, node)
+
+		prevNode, ok := previous[node.ID]
+		if !ok || node.ID == prevNode.ID {
+			break
+		}
+		node = prevNode
+	}
+
+	return retNodes
 }
 
 // LookupParents returns the associated parents edge of a node
