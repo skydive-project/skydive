@@ -1,4 +1,6 @@
-VERSION?=0.13.0
+VERSION_CMD='define="";version=`git rev-parse --verify HEAD`;tagname=`git show-ref --tags | grep $$version`;if [ -n "$$tagname" ]; then define=`echo $$tagname | awk -F "/" "{print \\$$NF}"`;else define=`printf "%.12s" $$version`;fi;tainted=`git ls-files -m | wc -l`;if [ "$$tainted" -gt 0 ]; then define="$${define}-tainted";fi;echo "$$define"'
+VERSION?=$(shell sh -c $(VERSION_CMD))
+$(info ${VERSION})
 
 # really Basic Makefile for Skydive
 export GO15VENDOREXPERIMENT=1
@@ -49,12 +51,12 @@ all: install
 	gofmt -w -s statics/bindata.go
 
 .compile:
-	${GOPATH}/bin/govendor install ${GOFLAGS} ${GOTAGS} ${VERBOSE_FLAGS} +local
+	${GOPATH}/bin/govendor install -ldflags="-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} ${GOTAGS} ${VERBOSE_FLAGS} +local
 
 install: govendor genlocalfiles dpdk.build contribs .compile
 
 build: govendor genlocalfiles dpdk.build contribs
-	${GOPATH}/bin/govendor build ${GOFLAGS} ${GOTAGS} ${VERBOSE_FLAGS} +local
+	${GOPATH}/bin/govendor build -ldflags="-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} ${GOTAGS} ${VERBOSE_FLAGS} +local
 
 static: govendor genlocalfiles
 	rm -f $$GOPATH/bin/skydive
