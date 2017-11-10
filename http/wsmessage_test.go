@@ -86,7 +86,7 @@ func (f *fakeWSMessageClientSubscriptionHandler) OnWSJSONMessage(c WSSpeaker, m 
 }
 
 func TestWSMessageSubscription(t *testing.T) {
-	httpserver := NewServer("myhost", common.AnalyzerService, "localhost", 59999, NewNoAuthenticationBackend())
+	httpserver := NewServer("myhost", common.AnalyzerService, "localhost", 59999, NewNoAuthenticationBackend(), "")
 
 	go httpserver.ListenAndServe()
 	defer httpserver.Stop()
