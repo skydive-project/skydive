@@ -34,6 +34,12 @@
 #topology-options .trigger button {
   background-color: rgba(0, 0, 0, 0);
   border: none;
+  outline: none;
+}
+
+#topology-options button:active, #topology-options button:hover {
+  outline: none;
+  border: none;
 }
 
 #topology-options .trigger button span {
