@@ -18,7 +18,7 @@ var TopologyComponent = {
             <span v-else>Live</span>\
           </div>\
         </div>\
-        <div id="topology-options" @mouseleave="hideTopologyOptions">\
+        <div id="topology-options">\
           <div id="topology-options-panel">\
             <div v-if="history" class="form-group input-sm">\
               <div class="form-group row">\
@@ -55,9 +55,10 @@ var TopologyComponent = {
                     <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
                     id="topology-filter" type="text" style="width: 400px" \
                     v-model="topologyFilter" @keyup.enter="topologyFilterQuery" \
+                    v-on:input="onFilterDatalistSelect" \
                     class="input-sm form-control"></input>\
                     <span class="clear-btn" @click.stop="topologyFilterClear">&times;</span>\
-                    <datalist id="topology-filter-list">\
+                    <datalist id="topology-filter-list" class="topology-filter-list">\
                     </datalist>\
                   </div>\
                 </div>\
@@ -66,12 +67,13 @@ var TopologyComponent = {
                 <div class="form-group row">\
                   <label class="control-label" for="topology-filter">Highlight</label>\
                   <div class="input">\
-                    <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
+                    <input list="topology-highlight-list" placeholder="e.g. g.V().Has(,)" \
                     id="topology-highlight" type="text" style="width: 400px" \
                     v-model="topologyHighlight" @keyup.enter="topologyHighlightQuery" \
+                    v-on:input="onFilterDatalistSelect" \
                     class="input-sm form-control"></input>\
                     <span class="clear-btn" @click.stop="topologyHighlightClear">&times;</span>\
-                    <datalist id="topology-filter-list">\
+                    <datalist id="topology-highlight-list" class="topology-filter-list">\
                     </datalist>\
                   </div>\
                 </div>\
@@ -79,7 +81,7 @@ var TopologyComponent = {
           </div>\
           <div style="margin-top: 10px">\
             <div class="trigger">\
-              <button @mouseenter="showTopologyOptions">\
+              <button @mouseenter="showTopologyOptions" @click="hideTopologyOptions">\
                 <span class="glyphicon glyphicon-align-justify" aria-hidden="true"></span>\
               </button>\
             </div>\
@@ -346,11 +348,26 @@ var TopologyComponent = {
       return $.when(this.$getConfigValue('analyzer.topology_filter'))
        .then(function(filter) {
          if (!filter) return;
-         var options = $("#topology-filter-list");
+         var options = $(".topology-filter-list");
          $.each(filter, function(key, value) {
            options.append($("<option/>").text(key).val(value));
          });
        });
+    },
+
+    onFilterDatalistSelect: function(e) {
+      var val = e.target.value;
+      var listId = e.target.getAttribute("list");
+      var opts = document.getElementById(listId).childNodes;
+      for (var i = 0; i < opts.length; i++) {
+        if (opts[i].value === val) {
+          if (e.target.id === "topology-filter") {
+            this.topologyFilterQuery();
+          } else if (e.target.id === "topology-highlight") {
+            this.topologyHighlightQuery();
+          }
+        }
+      }
     },
 
     topologyTimeTravelClear: function() {
@@ -418,7 +435,7 @@ var TopologyComponent = {
       this.topologyOptionsTimeoutID = setTimeout(function() {
         $('input').blur();
         $("#topology-options").css("left", "-543px");
-      }, 1000);
+      }, 100);
     },
 
     highlightSelectedNodes: function(gremlinExpr, bool) {
