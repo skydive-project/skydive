@@ -85,7 +85,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	// call the incomerHandler that will create the WSSpeaker
 	c = s.incomerHandler(conn, r)
 
-	// add the new WSSPeaker to the server pool
+	// add the new WSSpeaker to the server pool
 	s.AddClient(c)
 
 	// notify the pool listeners that the speaker is connected

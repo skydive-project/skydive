@@ -196,7 +196,7 @@ func (p *wsJSONSpeakerEventHandler) OnDisconnected(c WSSpeaker) {
 func (p *wsJSONSpeakerEventHandler) OnConnected(c WSSpeaker) {
 }
 
-// WSJSONSpeaker is a WSSPeaker able to handle JSON Message and Request/Reply calls.
+// WSJSONSpeaker is a WSSpeaker able to handle JSON Message and Request/Reply calls.
 type WSJSONSpeaker struct {
 	WSSpeaker
 	*wsJSONSpeakerEventHandler
