@@ -301,7 +301,7 @@ Vue.component('flow-table', {
             @mouseenter="highlightNodes(flows.row, true)"\
             @mouseleave="highlightNodes(flows.row, false)">\
           <td :colspan="flows.visibleFields.length">\
-            <object-detail :object="flows.row" :links="flowDetailLinks(flows.row)"></object-detail>\
+            <object-detail :object="flows.row" :transformer="transform" :links="flowDetailLinks(flows.row)"></object-detail>\
           </td>\
         </tr>\
       </template>\
@@ -522,6 +522,25 @@ Vue.component('flow-table', {
 
   methods: {
 
+    transformer: function() {
+      return this.transform.bind(this);
+    },
+
+    transform: function(key, value) {
+      var dt;
+      switch (key) {
+        case "RTT":
+          return value/1000000 + " ms";
+        case "Start":
+        case "Last":
+        case "LastUpdateStart":
+        case "LastUpdateLast":
+          dt = new Date(value);
+          return dt.toLocaleString();
+      }
+      return value;
+    },
+
     startAutoRefresh: function() {
       this.intervalId = setInterval(this.getFlows.bind(this), this.interval);
     },
@@ -575,8 +594,11 @@ Vue.component('flow-table', {
 
       if (flow.RawPacketsCaptured > 0) {
         return {
-          "RawPacketsCaptured": function() {
-            self.$downloadRawPackets(flow.UUID);
+          "RawPacketsCaptured": {
+            "class": "indicator glyphicon glyphicon-download-alt raw-packet-link",
+            "fnc": function() {
+              self.$downloadRawPackets(flow.UUID);
+            }
           }
         };
       }
