@@ -108,7 +108,7 @@ func (c *CaptureAPIHandler) Decorate(resource Resource) {
 			if cuuid, _ := n.GetFieldString("Capture.ID"); cuuid != "" {
 				count++
 			}
-			if p, _ := n.GetFieldString("PCAPSocket"); p != "" {
+			if p, _ := n.GetFieldString("Capture.PCAPSocket"); p != "" {
 				pcapSocket = p
 			}
 		case []*graph.Node:
@@ -116,7 +116,7 @@ func (c *CaptureAPIHandler) Decorate(resource Resource) {
 				if cuuid, _ := n.GetFieldString("Capture.ID"); cuuid != "" {
 					count++
 				}
-				if p, _ := n.GetFieldString("PCAPSocket"); p != "" {
+				if p, _ := n.GetFieldString("Capture.PCAPSocket"); p != "" {
 					pcapSocket = p
 				}
 			}

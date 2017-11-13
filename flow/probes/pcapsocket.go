@@ -130,7 +130,7 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *api.Captu
 	p.probesLock.Unlock()
 	p.wg.Add(1)
 
-	p.graph.AddMetadata(n, "PCAPSocket", tcpAddr.String())
+	p.graph.AddMetadata(n, "Capture.PCAPSocket", tcpAddr.String())
 
 	go func() {
 		defer p.wg.Done()
@@ -166,7 +166,6 @@ func (p *PcapSocketProbeHandler) UnregisterProbe(n *graph.Node, e FlowProbeEvent
 	probe.listener.Close()
 
 	p.portAllocator.Release(probe.port)
-	p.graph.DelMetadata(probe.node, "PCAPSocket")
 
 	return nil
 }
