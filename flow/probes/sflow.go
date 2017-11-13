@@ -68,7 +68,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	delete(d.probes, tid)
 
 	if e != nil {
-		e.OnStopped()
+		go e.OnStopped()
 	}
 
 	return nil
