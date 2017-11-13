@@ -122,6 +122,8 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, 
 
 	e.OnStarted()
 
+	d.Graph.AddMetadata(n, "Capture.SflowSocket", addr.String())
+
 	return nil
 }
 

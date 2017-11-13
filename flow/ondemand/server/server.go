@@ -199,9 +199,7 @@ func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJS
 			logging.GetLogger().Debugf("Capture already started on node %s", n.ID)
 		} else {
 			if ok := o.registerProbe(n, &query.Capture); ok {
-				t := o.Graph.StartMetadataTransaction(n)
-				t.AddMetadata("Capture.ID", query.Capture.UUID)
-				t.Commit()
+				o.Graph.AddMetadata(n, "Capture.ID", query.Capture.UUID)
 			} else {
 				status = http.StatusInternalServerError
 			}
