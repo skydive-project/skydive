@@ -78,6 +78,13 @@ agent:
 
   metadata:
     info: This is compute node
+    mydict:
+      value: 123
+      onearray:
+      - name: first
+        value: 1
+      - name: last
+        value: 10
 
 flow:
   expire: 600

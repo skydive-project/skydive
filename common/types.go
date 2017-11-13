@@ -232,6 +232,30 @@ func IPToString(ip net.IP) string {
 	return ip.String()
 }
 
+// NormalizeValue returns a version of the passed value
+// that can be safely marshalled to JSON
+func NormalizeValue(v interface{}) interface{} {
+	switch v := v.(type) {
+	case map[string]interface{}:
+		for key, value := range v {
+			v[key] = NormalizeValue(value)
+		}
+	case map[interface{}]interface{}:
+		m := make(map[string]interface{}, len(v))
+		for key, value := range v {
+			key := key.(string)
+			value = NormalizeValue(value)
+			m[key] = value
+		}
+		return m
+	case []interface{}:
+		for i, value := range v {
+			v[i] = NormalizeValue(value)
+		}
+	}
+	return v
+}
+
 // JSONDecode wrapper to UseNumber during JSON decoding
 func JSONDecode(r io.Reader, i interface{}) error {
 	decoder := json.NewDecoder(r)
