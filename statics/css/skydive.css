@@ -453,29 +453,6 @@ ul.dropdown-menu .fa.pull-right {
   margin-left: 20px;
 }
 
-.slider {
-  position: absolute;
-  left: 20px;
-  top: 20px;
-  padding: 0px 10px;
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
-.slider .slide {
-  display: grid;
-  float: left;
-  width: 450px;
-  padding: 8px;
-}
-
-.slider-info {
-  color: white;
-  font-weight: bold;
-  line-height: 42px;
-}
-
 .capture-advanced .panel-heading {
   padding: 0px 0px;
   margin-bottom: 20px;

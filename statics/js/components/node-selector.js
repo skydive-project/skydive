@@ -54,16 +54,23 @@ Vue.component('node-selector', {
           }
         }
 
+        var found = true;
         self.attr.split(".").forEach(function(key) {
           if (! value[key]) {
+            found = false;
             return;
           } else {
             value = value[key];
           }
         });
 
-        self.$emit('input', value);
-        self.$emit('selected', node);
+        if (found) {
+          self.$emit('input', value);
+          self.$emit('selected', node);
+        } else {
+          self.$error({message: "Capture not allowed, required metadata missing `" + self.attr + "`"});
+        }
+
         e.preventDefault();
         $(".topology-d3").off('click');
       });

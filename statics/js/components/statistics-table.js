@@ -54,14 +54,6 @@ Vue.component('statistics-table', {
 
   computed: {
 
-    time: function() {
-      return this.$store.state.time;
-    },
-
-    timeHuman: function() {
-      return this.$store.getters.timeHuman;
-    },
-
     rows: function() {
       return [this.object];
     },

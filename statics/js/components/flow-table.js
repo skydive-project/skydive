@@ -472,11 +472,7 @@ Vue.component('flow-table', {
   computed: {
 
     time: function() {
-      return this.$store.state.time;
-    },
-
-    timeHuman: function() {
-      return this.$store.getters.timeHuman;
+      return this.$store.state.topologyTimeContext;
     },
 
     sortedResults: function() {
@@ -667,9 +663,6 @@ Vue.component('flow-table-control', {
 
   template: '\
     <form @submit.prevent="validateQuery">\
-      <p v-if="time" class="label center-block node-time">\
-        Flows at {{timeHuman}}\
-      </p>\
       <div class="form-group has-feedback" :class="{\'has-success\': !error, \'has-error\': error}">\
         <label for="flow-table-query">Flow query</label>\
         <input id="flow-table-query" type="text" class="form-control" v-model="query" />\
@@ -705,11 +698,7 @@ Vue.component('flow-table-control', {
   computed: {
 
     time: function() {
-      return this.$store.state.time;
-    },
-
-    timeHuman: function() {
-      return this.$store.getters.timeHuman;
+      return this.$store.state.topologyTimeContext;
     },
 
   },
