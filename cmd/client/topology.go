@@ -24,13 +24,9 @@ package client
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
-
-	"github.com/skydive-project/skydive/logging"
 )
 
 var (
@@ -49,58 +45,12 @@ var TopologyCmd = &cobra.Command{
 // TopologyRequest skydive topology query command
 var TopologyRequest = &cobra.Command{
 	Use:   "query",
-	Short: "query topology",
+	Short: "query topology [deprecated: use 'client query' instead]",
 	Long:  "query topology",
 	Run: func(cmd *cobra.Command, args []string) {
-		queryHelper := NewGremlinQueryHelper(&AuthenticationOpts)
-
-		switch outputFormat {
-		case "json":
-			var value interface{}
-			if err := queryHelper.Query(gremlinQuery, &value); err != nil {
-				logging.GetLogger().Error(err.Error())
-				os.Exit(1)
-			}
-			printJSON(value)
-		case "dot":
-			header := make(http.Header)
-			header.Set("Accept", "vnd.graphviz")
-			resp, err := queryHelper.Request(gremlinQuery, header)
-			if err != nil {
-				logging.GetLogger().Error(err.Error())
-				os.Exit(1)
-			}
-			defer resp.Body.Close()
-			data, _ := ioutil.ReadAll(resp.Body)
-			if resp.StatusCode != http.StatusOK {
-				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
-				os.Exit(1)
-			}
-			fmt.Println(string(data))
-		case "pcap":
-			header := make(http.Header)
-			header.Set("Accept", "vnd.tcpdump.pcap")
-			resp, err := queryHelper.Request(gremlinQuery, header)
-			if err != nil {
-				logging.GetLogger().Error(err.Error())
-				os.Exit(1)
-			}
-			defer resp.Body.Close()
-			data, _ := ioutil.ReadAll(resp.Body)
-			if resp.StatusCode != http.StatusOK {
-				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
-				os.Exit(1)
-			}
-			fmt.Print(string(data))
-		default:
-			logging.GetLogger().Errorf("Invalid output format %s", outputFormat)
-			os.Exit(1)
-		}
+		fmt.Fprintln(os.Stderr, "The 'client topology query' command is deprecated. Please use 'client query' instead")
+		QueryCmd.Run(cmd, []string{gremlinQuery})
 	},
-}
-
-func addTopologyFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
 }
 
 func init() {
