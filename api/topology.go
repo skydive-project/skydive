@@ -88,14 +88,14 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 		childName, _ := child.GetFieldString("Name")
 		parentName, _ := parent.GetFieldString("Name")
 		relationType, _ := e.GetFieldString("RelationType")
-		linkLabel, linkType := "", "->"
+		linkLabel, linkType, direction := "", "->", "forward"
 		switch relationType {
 		case "":
 		case "layer2":
-			linkType = "--"
+			direction = "both"
 			fallthrough
 		default:
-			linkLabel = fmt.Sprintf(" [label=%s]\n", relationType)
+			linkLabel = fmt.Sprintf(" [label=%s,dir=%s]\n", relationType, direction)
 		}
 		link := fmt.Sprintf("\"%s-%s\" %s \"%s-%s\"%s", parentName, shortID(parent.ID), linkType, childName, shortID(child.ID), linkLabel)
 		w.Write([]byte(link))
