@@ -23,6 +23,7 @@
 package common
 
 import (
+	"fmt"
 	"net"
 	"strings"
 )
@@ -56,6 +57,10 @@ type ServiceAddress struct {
 
 func (st ServiceType) String() string {
 	return string(st)
+}
+
+func (sa ServiceAddress) String() string {
+	return fmt.Sprintf("%s:%d", sa.Addr, sa.Port)
 }
 
 // ServiceAddressFromString returns a service address from a string, could be IPv4 or IPv6
