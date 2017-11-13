@@ -108,7 +108,7 @@ var apiMixin = {
       });
     },
 
-    $captureCreate: function(query, name, description, bpf, headerSize, rawPackets, tcpMetric, socketInfo) {
+    $captureCreate: function(query, name, description, bpf, headerSize, rawPackets, tcpMetric, socketInfo, type) {
       var self = this;
       return $.ajax({
         dataType: "json",
@@ -121,6 +121,7 @@ var apiMixin = {
                               RawPacketLimit: rawPackets || 0,
                               ExtraTCPMetric: tcpMetric,
                               SocketInfo: socketInfo,
+                              Type: type || null,
                              }),
         contentType: "application/json; charset=utf-8",
         method: 'POST',
@@ -155,6 +156,10 @@ var apiMixin = {
         contentType: "application/json; charset=utf-8",
         method: 'GET',
       });
+    },
+
+    $allowedTypes: function() {
+      return ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy", "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan", "gretap", "ip6gretap", "geneve", "ipoib", "vcan", "ipip", "ipvlan", "lowpan", "ip6tnl", "ip6gre", "sit", "dpdkport"];
     }
   }
 
