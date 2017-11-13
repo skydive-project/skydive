@@ -25,6 +25,7 @@ package topology
 import (
 	"fmt"
 
+	"github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -165,8 +166,9 @@ func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, met
 	// do not add or change original metadata
 	m := metadata.Clone()
 	m["RelationType"] = OwnershipLink
+	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(parent.ID+child.ID+OwnershipLink))
 
-	return g.Link(parent, child, m)
+	return g.NewEdge(graph.Identifier(id.String()), parent, child, m)
 }
 
 // HaveLayer2Link returns true if parent and child have the same layer 2
@@ -183,6 +185,6 @@ func AddLayer2Link(g *graph.Graph, node1 *graph.Node, node2 *graph.Node, metadat
 	// do not add or change original metadata
 	m := metadata.Clone()
 	m["RelationType"] = Layer2Link
-
-	return g.Link(node1, node2, m)
+	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(node1.ID+node2.ID+Layer2Link))
+	return g.NewEdge(graph.Identifier(id.String()), node1, node2, m)
 }
