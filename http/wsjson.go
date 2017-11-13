@@ -378,7 +378,7 @@ func (s *WSJSONServer) OnConnected(c WSSpeaker) {
 
 // OnDisconnected removes the WSSpeaker from the incomer pool.
 func (s *WSJSONServer) OnDisconnected(c WSSpeaker) {
-	s.WSServer.wsIncomerPool.removeClient(c)
+	s.WSServer.wsIncomerPool.RemoveClient(c)
 }
 
 // NewWSJSONServer returns a new WSJSONServer

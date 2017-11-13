@@ -414,10 +414,16 @@ func (c *WSClient) connect() {
 
 	// notify connected
 	c.RLock()
-	for _, l := range c.eventHandlers {
-		l.OnConnected(c)
-	}
+	var eventHandlers []WSSpeakerEventHandler
+	eventHandlers = append(eventHandlers, c.eventHandlers...)
 	c.RUnlock()
+
+	for _, l := range eventHandlers {
+		l.OnConnected(c)
+		if !c.IsConnected() {
+			return
+		}
+	}
 
 	c.wg.Add(1)
 	c.run()
