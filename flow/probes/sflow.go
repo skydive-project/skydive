@@ -68,7 +68,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 	delete(d.probes, tid)
 
 	if e != nil {
-		e.OnStopped()
+		go e.OnStopped()
 	}
 
 	return nil
@@ -121,6 +121,8 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, 
 	d.probesLock.Unlock()
 
 	e.OnStarted()
+
+	d.Graph.AddMetadata(n, "Capture.SflowSocket", addr.String())
 
 	return nil
 }
