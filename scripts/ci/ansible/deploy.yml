@@ -79,6 +79,7 @@
        - gifsicle
        - iperf
        - rpm-build
+       - rpmlint
        - golang
        - vagrant-libvirt
        - ansible
