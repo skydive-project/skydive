@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.0] - 2017-11-14
+### Added
+- New DPDK probe
+- Topology:
+  - Allow filtering per client
+  - Add ARP table to the node metadata
+- WebUI:
+  - Add sliding panel for filtering, highlighting and time selection
+  - Add legend to report filter and time
+  - Allow selecting capture type
+- Allow deploying multi analyzers and elasticsearch with Vagrant
+- Add support for Snort alert messages
+- Handle network namespaces created by `docker network`
+
+### Changed
+- Bump minimal Go version to 1.8
+
 ## [0.13.0] - 2017-10-21
 ### Added
 - New probe to retrieve and display for Openflow rules on OVS switch
