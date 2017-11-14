@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -v
+
 function usage {
   echo "Usage: $0 [-b|-s|-a|-l] [-r tag_or_commit]"
 }
@@ -44,7 +46,7 @@ if [ -n "$tagname" ]; then
     version=$(echo $tagname | awk -F '/' '{print $NF}' | tr -d [a-z])
     define="tagversion $version"
 else
-    define="commit $version"
+    define="commit ${version:0:12}"
 fi
 
 set -e
@@ -56,4 +58,5 @@ mkdir -p $rpmbuilddir/SOURCES
 mkdir -p $rpmbuilddir/SPECS
 make -C $gitdir $target DESTDIR=$rpmbuilddir/SOURCES
 $(dirname "$0")/specfile-update-bundles $gitdir/vendor/vendor.json $gitdir/contrib/packaging/rpm/skydive.spec > $rpmbuilddir/SPECS/skydive.spec
+echo rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $rpmbuilddir" $rpmbuilddir/SPECS/skydive.spec
 rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $rpmbuilddir" $rpmbuilddir/SPECS/skydive.spec
