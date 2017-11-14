@@ -9,8 +9,6 @@
 %define gotest() go test -compiler gc -ldflags "${LDFLAGS:-}" %{?**};
 %endif
 
-%{!?tagversion:%global tagversion 0.13.0}
-
 # commit or tagversion need to be defined on command line
 %if %{defined commit}
 %define source %{commit}
@@ -21,6 +19,7 @@
 %define source %{tagversion}
 %endif
 
+%{!?tagversion:%global tagversion 0.13.0}
 %{!?source:%global source 0.13.0}
 %{!?tag:%global tag 1}
 
