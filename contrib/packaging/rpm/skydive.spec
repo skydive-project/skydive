@@ -9,8 +9,6 @@
 %define gotest() go test -compiler gc -ldflags "${LDFLAGS:-}" %{?**};
 %endif
 
-%{!?tagversion:%global tagversion 0.13.0}
-
 # commit or tagversion need to be defined on command line
 %if %{defined commit}
 %define source %{commit}
@@ -21,6 +19,7 @@
 %define source %{tagversion}
 %endif
 
+%{!?tagversion:%global tagversion 0.13.0}
 %{!?source:%global source 0.13.0}
 %{!?tag:%global tag 1}
 
@@ -147,6 +146,9 @@ cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 %{_datadir}/skydive-ansible
 
 %changelog
+* Tue Nov 14 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.14.0-1
+- Bump to version 0.14.0
+
 * Wed Oct 11 2017 Sylvain Baubeau <sbaubeau@redhat.com> - 0.13.0-1
 - Bump to version 0.13.0
 - Add skydive-ansible subpackage
