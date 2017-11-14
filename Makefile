@@ -1,4 +1,4 @@
-VERSION_CMD='define="";version=`git rev-parse --verify HEAD`;tagname=`git show-ref --tags | grep $$version`;if [ -n "$$tagname" ]; then define=`echo $$tagname | awk -F "/" "{print \\$$NF}"`;else define=`printf "%.12s" $$version`;fi;tainted=`git ls-files -m | wc -l`;if [ "$$tainted" -gt 0 ]; then define="$${define}-tainted";fi;echo "$$define"'
+VERSION_CMD='define="";version=`git rev-parse --verify HEAD`;tagname=`git show-ref --tags | grep $$version`;if [ -n "$$tagname" ]; then define=`echo $$tagname | awk -F "/" "{print \\$$NF}" | tr -d [a-z]`;else define=`printf "%.12s" $$version`;fi;tainted=`git ls-files -m | wc -l`;if [ "$$tainted" -gt 0 ]; then define="$${define}-tainted";fi;echo "$$define"'
 VERSION?=$(shell sh -c $(VERSION_CMD))
 $(info ${VERSION})
 
