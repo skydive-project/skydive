@@ -23,8 +23,8 @@ analyzer:
     fabric:
       - TOR1[Name=tor1] -> TOR1_PORT1[Name=port1, MTU=1500]
       - TOR1[Name=tor1] -> TOR1_PORT2[Name=port2, MTU=1500]
-      - TOR1_PORT1 -> *[Type=host,Name=agent1]/eth1
-      - TOR1_PORT2 -> *[Type=host,Name=agent2]/eth1
+      - TOR1_PORT1 --> *[Type=host,Name=agent1]/eth1
+      - TOR1_PORT2 --> *[Type=host,Name=agent2]/eth1
 etcd:
   client_timeout: 100
   listen: 0.0.0.0:12379
