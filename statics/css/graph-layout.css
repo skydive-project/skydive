@@ -106,11 +106,20 @@ text.link-label {
   font-weight: bold;
 }
 
-text.link-label-alert {
-  fill: #ff4a4a;;
+path.link-label-alert {
+  stroke: #ff1414;
 }
 
-text.link-label-warning {
+path.link-label-warning {
+  stroke: #ff8e00;
+}
+
+textPath.link-label-alert {
+  stroke: #000;
+  fill: #ff4a4a;
+}
+
+textPath.link-label-warning {
   stroke: #000;
   fill: #ffa330;
 }

@@ -1089,6 +1089,9 @@ TopologyGraphLayout.prototype = {
     var totalByte = metrics.RxBytes + metrics.TxBytes;
     var deltaTime = metrics.Last - metrics.Start;
 
+    var now = new Date(), last = new Date(metrics.Last);
+    if ((now - last) > 2 * deltaTime) return 0;
+
     deltaTime = Math.floor(deltaTime / 1000); // ms to sec
     if (deltaTime >= 1 && totalByte >= 1) {
       return Math.floor(8 * totalByte / (1024 * deltaTime)); // to kbit per sec
@@ -1097,6 +1100,7 @@ TopologyGraphLayout.prototype = {
   },
 
   updateBandwidth: function() {
+    var self = this;
     var bandwidth = this.bandwidth, defaultInterfaceSpeed = 1048576;
 
     var i, link, links = this.links;
@@ -1112,36 +1116,46 @@ TopologyGraphLayout.prototype = {
       var kbps = this.bandwidthFromMetrics(link.target.metadata.LastMetric);
       if (link.target.metadata.LastMetric && kbps > bandwidth.active * speed) {
         this.linkLabels[link.id] = {
-          id: "link-label-" + link.id,
-          link: link,
-          text: bandwidthToString(kbps)
+          "id": "link-label-" + link.id,
+          "link": link,
+          "text": bandwidthToString(kbps),
+          "active": (kbps > bandwidth.active * speed) && (kbps < bandwidth.warning * speed),
+          "warning": (kbps >= bandwidth.warning * speed) && (kbps < bandwidth.alert * speed),
+          "alert": kbps >= bandwidth.alert * speed
         };
-
-        this.linkLabel = this.linkLabel.data(Object.values(this.linkLabels), function(d) { return d.id; });
-        this.linkLabel.exit().remove();
-
-        var linkLabelEnter = this.linkLabel.enter()
-          .append('text')
-          .attr("id", "link-label-" + link.id)
-          .attr("class", "link-label");
-        linkLabelEnter.append('textPath')
-          .attr("startOffset", "50%")
-          .attr("xlink:href", "#link-" + link.id);
-
-        this.linkLabel = linkLabelEnter.merge(this.linkLabel);
-
-        this.linkLabel.select('textPath')
-          .classed ("link-label-active", (kbps > bandwidth.active * speed) && (kbps < bandwidth.warning * speed))
-          .classed ("link-label-warning", (kbps >= bandwidth.warning * speed) && (kbps < bandwidth.alert * speed))
-          .classed ("link-label-alert", kbps >= bandwidth.alert * speed)
-          .text(function(d) { return d.text; });
-
-        // force a tick
-        this.tick();
       } else {
-        this.delLinkLabel(link);
+        delete this.linkLabels[link.id];
       }
     }
+
+    this.linkLabel = this.linkLabel.data(Object.values(this.linkLabels), function(d) { return d.id; });
+    this.linkLabel.exit().remove();
+
+    var linkLabelEnter = this.linkLabel.enter()
+      .append('text')
+      .attr("id", function(d) { return "link-label-" + d.id; })
+      .attr("class", "link-label");
+    linkLabelEnter.append('textPath')
+      .attr("startOffset", "50%")
+      .attr("xlink:href", function(d) { return "#link-" + d.link.id; } );
+
+    this.linkLabel = linkLabelEnter.merge(this.linkLabel);
+
+    this.linkLabel.select('textPath')
+      .classed ("link-label-active", function(d) { return d.active; })
+      .classed ("link-label-warning", function(d) { return d.warning; })
+      .classed ("link-label-alert",  function(d) { return d.alert; })
+      .text(function(d) { return d.text; });
+
+    this.linkLabel.each(function(d) {
+      self.g.select("#link-" + d.link.id)
+        .classed ("link-label-active", d.active)
+        .classed ("link-label-warning", d.warning)
+        .classed ("link-label-alert", d.alert);
+    });
+
+    // force a tick
+    this.tick();
   },
 
   delLinkLabel: function(link) {
@@ -1151,6 +1165,9 @@ TopologyGraphLayout.prototype = {
 
     this.linkLabel = this.linkLabel.data(Object.values(this.linkLabels), function(d) { return d.id; });
     this.linkLabel.exit().remove();
+
+    // force a tick
+    this.tick();
   },
 
   update: function() {
