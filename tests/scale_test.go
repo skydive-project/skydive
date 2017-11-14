@@ -279,7 +279,6 @@ func TestScaleHA(t *testing.T) {
 	common.Retry(func() error {
 		pings := []helper.Cmd{
 			{fmt.Sprintf("%s ping agent-1-vm1 agent-2-vm1 -c 1", scale), false},
-			{fmt.Sprintf("%s ping agent-3-vm1 agent-1-vm1 -c 1", scale), false},
 		}
 		return helper.ExecCmds(t, pings...)
 	}, 30, time.Second)
