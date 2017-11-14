@@ -141,31 +141,42 @@ var TopologyComponent = {
           </tab-pane>\
         </tabs>\
         <transition name="slide" mode="out-in">\
-          <div class="left-panel" v-if="currentNode">\
-            <h1>Metadata<span class="pull-right">(id: {{currentNode.id}})\
-              <i v-if="currentNode.group != null" class="node-action fa"\
-                title="Expand/Collapse Node"\
-                :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
-                @click="toggleExpandAll(currentNode)"></i></span>\
-            </h1>\
-            <div id="metadata-panel" class="sub-left-panel">\
-              <object-detail :object="currentNodeMetadata"></object-detail>\
-            </div>\
+          <div class="left-panel" v-if="currentNode || currentEdge">\
+            <div v-if="currentNode">\
+              <span v-if="time" class="label center-block node-time">\
+                Interface state at {{timeHuman}}\
+              </span>\
+              <h1>Node Metadata<span class="pull-right">(id: {{currentNode.id}})\
+                <i v-if="currentNode.group != null" class="node-action fa"\
+	                title="Expand/Collapse Node"\
+                        :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
+                        @click="toggleExpandAll(currentNode)"></i></span>\
+              </h1>\
+              <div id="metadata-panel" class="sub-left-panel">\
+                <object-detail :object="currentNodeMetadata"></object-detail>\
+              </div>\
               <div v-if="currentNodeMetadata.Type == \'ovsbridge\'">\
-              <h1>Rules</h1>\
-              <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
+                <h1>Rules</h1>\
+                <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
+              </div>\
+              <div id="interface-metrics" v-show="Object.keys(currentNodeStats).length">\
+                <h1>Interface metrics</h1>\
+                <statistics-table :object="currentNodeStats"></statistics-table>\
+              </div>\
+              <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastStats).length && time === 0">\
+                <h1>Last metrics</h1>\
+                <statistics-table :object="currentNodeLastStats"></statistics-table>\
+              </div>\
+              <div id="flow-table-panel" v-if="isAnalyzer && currentNodeFlowsQuery">\
+                <h1>Flows</h1>\
+                <flow-table :value="currentNodeFlowsQuery"></flow-table>\
+              </div>\
             </div>\
-            <div id="interface-metrics" v-show="Object.keys(currentNodeStats).length">\
-              <h1>Interface metrics</h1>\
-              <statistics-table :object="currentNodeStats"></statistics-table>\
-            </div>\
-            <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastStats).length && topologyTimeContext === 0">\
-              <h1>Last metrics</h1>\
-              <statistics-table :object="currentNodeLastStats"></statistics-table>\
-            </div>\
-            <div id="flow-table-panel" v-if="isAnalyzer && currentNodeFlowsQuery">\
-              <h1>Flows</h1>\
-              <flow-table :value="currentNodeFlowsQuery"></flow-table>\
+            <div v-if="currentEdge">\
+              <h1> Edge Metadata<span class="pull-right">(id: {{currentEdge.id}})</h1>\
+              <div id="metadata-panel" class="sub-left-panel">\
+                <object-detail :object="currentEdge.metadata"></object-detail>\
+              </div>\
             </div>\
           </div>\
         </transition>\
@@ -238,6 +249,7 @@ var TopologyComponent = {
 
   beforeDestroy: function() {
     this.$store.commit('unselected');
+    this.$store.commit('edgeUnselected');
     this.unwatch();
   },
 
@@ -278,6 +290,10 @@ var TopologyComponent = {
       return this.$store.state.currentNode;
     },
 
+    currentEdge: function() {
+      return this.$store.state.currentEdge;
+    },
+
     currentNodeFlowsQuery: function() {
       if (this.currentNode && this.currentNode.isCaptureAllowed())
         return "G.V('" + this.currentNode.id + "').Flows().Dedup().Sort()";
@@ -316,6 +332,10 @@ var TopologyComponent = {
 
     onNodeSelected: function(d) {
       this.$store.commit('selected', d);
+    },
+
+    onEdgeSelected: function(d) {
+      this.$store.commit('edgeSelected', d);
     },
 
     zoomIn: function() {
@@ -783,6 +803,7 @@ Graph.prototype = {
     delete edge.target.edges[edge.id];
     delete this.edges[edge.id];
 
+    store.commit('edgeUnselected');
     this.notifyHandlers('edgeDeleted', edge);
   },
 

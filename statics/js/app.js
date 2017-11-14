@@ -9,6 +9,7 @@ var store = new Vuex.Store({
     version: null,
     history: null,
     currentNode: null,
+    currentEdge: null,
     highlightedNodes: [],
     notifications: [],
     topologyFilter: "",
@@ -63,6 +64,14 @@ var store = new Vuex.Store({
 
     unselected: function(state) {
       state.currentNode = null;
+    },
+
+    edgeSelected: function(state, edge) {
+      state.currentEdge = edge;
+    },
+
+    edgeUnselected: function(state) {
+      state.currentEdge = null;
     },
 
     highlight: function(state, id) {
