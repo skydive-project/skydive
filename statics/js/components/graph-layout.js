@@ -1135,7 +1135,15 @@ TopologyGraphLayout.prototype = {
     }
 
     this.linkLabel = this.linkLabel.data(Object.values(this.linkLabels), function(d) { return d.id; });
-    this.linkLabel.exit().remove();
+    var exit = this.linkLabel.exit();
+
+    exit.each(function(d) {
+      self.g.select("#link-" + d.link.id)
+      .classed ("link-label-active", false)
+      .classed ("link-label-warning", false)
+      .classed ("link-label-alert", false);
+    })
+    .remove();
 
     var linkLabelEnter = this.linkLabel.enter()
       .append('text')
