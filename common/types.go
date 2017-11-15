@@ -390,7 +390,7 @@ func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 }
 
 func splitToRanges(min, max int) []int {
-	stops := make(map[int]bool)
+	stops := map[int]bool{max: true}
 
 	ninesCount := 1
 	stop := fillByNines(min, ninesCount)
