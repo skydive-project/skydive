@@ -26,5 +26,7 @@ sudo scripts/ci/cleanup.sh cleanup
 ./coverage.sh --no-units --no-scale
 sudo scripts/ci/cleanup.sh snapshot
 sudo scripts/ci/cleanup.sh cleanup
+./coverage.sh --no-units --no-scale --orientdb
+sudo scripts/ci/cleanup.sh snapshot
+sudo scripts/ci/cleanup.sh cleanup
 ./coverage.sh --no-units --no-functionals --coveralls
-
