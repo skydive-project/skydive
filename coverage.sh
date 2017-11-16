@@ -19,6 +19,7 @@ units=1
 functionals=1
 scale=1
 coveralls=0
+backend=elasticsearch
 
 generate_cover_data() {
     rm -rf "$workdir"
@@ -35,7 +36,7 @@ generate_cover_data() {
         export SKYDIVE_ANALYZERS=localhost:8082
 
         coverfile="../$workdir/functional.cover"
-        make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="$ARGS -test.coverprofile=$coverfile -standalone -graph.backend elasticsearch -storage.backend elasticsearch" TEST_PATTERN=$TEST_PATTERN
+        make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="$ARGS -test.coverprofile=$coverfile -standalone -graph.backend $backend -storage.backend $backend" TEST_PATTERN=$TEST_PATTERN
     fi
 
     if [ "$scale" -eq 1 ]; then
@@ -99,6 +100,8 @@ do
         functionals=0 ;;
     --no-scale)
         scale=0 ;;
+    --orientdb)
+        backend=orientdb ;;
     --coveralls)
         coveralls=1 ;;
     *)
