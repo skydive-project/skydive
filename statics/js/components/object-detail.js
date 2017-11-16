@@ -21,6 +21,10 @@ Vue.component('object-detail', {
 
     path: {
       type: String
+    },
+
+    toggleIndex: {
+      type: Number
     }
   },
 
@@ -28,14 +32,14 @@ Vue.component('object-detail', {
     <div class="object-detail">\
       <div class="object-key-value" v-for="(value, key) in object" :class="[typeof(key) == \'string\' ? key.toLowerCase() : key]">\
         <div v-if="Array.isArray(value)">\
-          <a class="object-key" data-toggle="collapse" :href="\'#\' + key" class="collapse-title">{{key}} :\
+          <a class="object-key" data-toggle="collapse" :href="\'#\' + getToggleIndex(key)" class="collapse-title">{{key}} :\
             <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
           </a>\
-          <div :class="[collapsedByDefault(key) ? \'collapse\' : \'collapse in\']" :id="key">\
+          <div :class="[collapsedByDefault(key) ? \'collapse\' : \'collapse in\']" :id="getToggleIndex(key)">\
             <div v-for="(v, index) in value">\
               <div v-if="typeof v == \'object\'" class="object-sub-detail" style="margin-left: 20px;">\
                 <span class="object-key" :class="typeof(value)" style="float:left">- </span>\
-                <object-detail :object="v" :path="path ? path+\'.\'+key : key" :transformer="transformer"></object-detail>\
+                <object-detail :object="v" :path="path ? path+\'.\'+key : key" :transformer="transformer" :toggleIndex="index"></object-detail>\
               </div>\
               <div v-else class="object-sub-detail">\
                 <div class="object-detail" :class="typeof(value)">- {{ transform(path ? path+\'.\'+key : key, v) }}</div>\
@@ -58,6 +62,16 @@ Vue.component('object-detail', {
 
   methods: {
 
+    getToggleIndex: function(key) {
+      if (this.toggleIndex && this.path)
+        return key + this.toggleIndex + this.path;
+      if (this.path)
+        return key + this.path
+      if (this.toggleIndex)
+        return key + this.toggleIndex
+      return key;
+    },
+
     transform: function(key, value) {
       if (this.transformer) {
         return this.transformer(key, value);
@@ -68,8 +82,6 @@ Vue.component('object-detail', {
     collapsedByDefault: function(key) {
       if (key === "FDB" || key === "Neighbors") return true;
       return false;
-    }
-
+    },
   }
-
 });
