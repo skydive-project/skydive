@@ -106,7 +106,9 @@ Vue.component('dynamic-table', {
     },
 
     fieldValue: function(object, key) {
-      return object[key[0]];
+      var value = object[key[0]];
+      if (isNaN(value)) return value;
+      return value.toLocaleString();
     },
 
   },
