@@ -26,6 +26,8 @@ package flow
 type Enhancer interface {
 	Name() string
 	Enhance(flow *Flow)
+	Start() error
+	Stop()
 }
 
 // EnhancerPipeline describes a list of flow enhancer
@@ -75,6 +77,20 @@ func (e *EnhancerPipeline) EnhanceFlow(cfg *EnhancerPipelineConfig, flow *Flow) 
 func (e *EnhancerPipeline) Enhance(cfg *EnhancerPipelineConfig, flows []*Flow) {
 	for _, flow := range flows {
 		e.EnhanceFlow(cfg, flow)
+	}
+}
+
+// Start starts all the enhancers
+func (e *EnhancerPipeline) Start() {
+	for _, enhancer := range e.Enhancers {
+		enhancer.Start()
+	}
+}
+
+// Stop stops all the enhancers
+func (e *EnhancerPipeline) Stop() {
+	for _, enhancer := range e.Enhancers {
+		enhancer.Stop()
 	}
 }
 

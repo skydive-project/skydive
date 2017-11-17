@@ -112,6 +112,15 @@ func (nfe *NeutronFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
 	}
 }
 
+// Start the neutron flow enhancer
+func (nfe *NeutronFlowEnhancer) Start() error {
+	return nil
+}
+
+// Stop the neutron flow enhancer
+func (nfe *NeutronFlowEnhancer) Stop() {
+}
+
 // NewNeutronFlowEnhancer creates a new flow enhancer that will enhance A and B flow nodes TIDs
 func NewNeutronFlowEnhancer(g *graph.Graph, cache *cache.Cache) *NeutronFlowEnhancer {
 	fe := &NeutronFlowEnhancer{

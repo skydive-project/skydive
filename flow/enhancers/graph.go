@@ -112,6 +112,15 @@ func (gfe *GraphFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
 	}
 }
 
+// Start the graph flow enhancer
+func (gfe *GraphFlowEnhancer) Start() error {
+	return nil
+}
+
+// Stop the graph flow enhancer
+func (gfe *GraphFlowEnhancer) Stop() {
+}
+
 // NewGraphFlowEnhancer creates a new flow enhancer that will enhance A and B flow nodes TIDs
 func NewGraphFlowEnhancer(g *graph.Graph, cache *cache.Cache) *GraphFlowEnhancer {
 	fe := &GraphFlowEnhancer{
