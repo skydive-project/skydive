@@ -112,7 +112,6 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 	opts := flow.TableOpts{
 		RawPacketLimit: int64(capture.RawPacketLimit),
 		TCPMetric:      capture.ExtraTCPMetric,
-		SocketInfo:     capture.SocketInfo,
 	}
 	ft := p.fpta.Alloc(tid, opts)
 

@@ -968,7 +968,7 @@ func (tv *GraphTraversalV) Has(s ...interface{}) *GraphTraversalV {
 		if !ok {
 			return &GraphTraversalV{error: errors.New("Key must be a string")}
 		}
-		filter = filters.NewNotFilter(filters.NewNullFilter(k))
+		filter = filters.NewNotNullFilter(k)
 	default:
 		filter, err = ParamsToFilter(s...)
 		if err != nil {
@@ -1435,7 +1435,7 @@ func (te *GraphTraversalE) Has(s ...interface{}) *GraphTraversalE {
 		if !ok {
 			return &GraphTraversalE{error: errors.New("Key must be a string")}
 		}
-		filter = filters.NewNotFilter(filters.NewNullFilter(k))
+		filter = filters.NewNotNullFilter(k)
 	default:
 		filter, err = ParamsToFilter(s...)
 		if err != nil {

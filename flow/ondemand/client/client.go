@@ -388,7 +388,6 @@ func (o *OnDemandProbeClient) InvokeCaptureFromConfig(ch *api.CaptureAPIHandler)
 	}
 	logging.GetLogger().Infof("Invoke capturing from the startup with gremlin: %s and BPF: %s", gremlin, bpf)
 	capture := types.NewCapture(gremlin, bpf)
-	capture.SocketInfo = true
 	capture.Type = "pcap"
 	ch.Create(capture)
 	return

@@ -183,10 +183,13 @@ agent:
   topology:
     netlink:
       metrics_update: 5
+    socketinfo:
+      host_update: 5
     probes:
       - netlink
       - netns
       - ovsdb
+      - socketinfo
 flow:
   expire: 600
   update: 5

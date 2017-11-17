@@ -23,11 +23,10 @@
 package enhancers
 
 import (
-	"github.com/pmylund/go-cache"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/packet"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -35,7 +34,7 @@ import (
 type GraphFlowEnhancer struct {
 	graph.DefaultGraphListener
 	Graph    *graph.Graph
-	tidCache *tidCache
+	tidCache *graph.MetadataIndexer
 }
 
 // Name return the Graph enahancer name
@@ -43,38 +42,22 @@ func (gfe *GraphFlowEnhancer) Name() string {
 	return "Graph"
 }
 
-func (gfe *GraphFlowEnhancer) getNodeTID(mac string) string {
+func (gfe *GraphFlowEnhancer) getNodeTID(mac string) (tid string) {
 	if packet.IsBroadcastMac(mac) || packet.IsMulticastMac(mac) {
 		return "*"
-	}
-
-	var ce *tidCacheEntry
-
-	if gfe.tidCache != nil {
-		var f bool
-		if ce, f = gfe.tidCache.get(mac); f {
-			return ce.tid
-		}
 	}
 
 	gfe.Graph.RLock()
 	defer gfe.Graph.RUnlock()
 
-	var tid string
-
-	intfs := gfe.Graph.GetNodes(graph.Metadata{"MAC": mac})
-	if len(intfs) > 1 {
-		logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface for the mac: %s", mac)
-	} else if len(intfs) == 1 {
-		tid, _ = intfs[0].GetFieldString("TID")
+	nodes, _ := gfe.tidCache.Get(mac)
+	if intfs := len(nodes); intfs > 1 {
+		logging.GetLogger().Infof("GraphFlowEnhancer found more than one interface with the MAC: %s", mac)
+	} else if intfs == 1 {
+		tid, _ = nodes[0].GetFieldString("TID")
 	}
 
-	if gfe.tidCache != nil {
-		logging.GetLogger().Debugf("GraphFlowEnhancer set cache %s: %s", mac, tid)
-		gfe.tidCache.set(ce, mac, tid)
-	}
-
-	return tid
+	return
 }
 
 // Enhance the graph with local TID node cache
@@ -90,47 +73,28 @@ func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
 	}
 }
 
-// OnNodeDeleted event
-func (gfe *GraphFlowEnhancer) OnNodeDeleted(n *graph.Node) {
-	if mac, _ := n.GetFieldString("MAC"); mac != "" {
-		logging.GetLogger().Debugf("GraphFlowEnhancer node event del cache %s", n.String())
-		gfe.tidCache.del(mac)
-	}
-}
-
-// OnEdgeDeleted event
-func (gfe *GraphFlowEnhancer) OnEdgeDeleted(e *graph.Edge) {
-	// need to reset the entry as edge event of type RelationType means TID update
-	if rt, _ := e.GetFieldString("RelationType"); rt == topology.OwnershipLink {
-		_, children := gfe.Graph.GetEdgeNodes(e, nil, nil)
-		for _, child := range children {
-			if mac, _ := child.GetFieldString("MAC"); mac != "" {
-				logging.GetLogger().Debugf("GraphFlowEnhancer edge event del cache %s", child.String())
-				gfe.tidCache.del(mac)
-			}
-		}
-	}
-}
-
 // Start the graph flow enhancer
 func (gfe *GraphFlowEnhancer) Start() error {
+	gfe.tidCache.Start()
 	return nil
 }
 
 // Stop the graph flow enhancer
 func (gfe *GraphFlowEnhancer) Stop() {
+	gfe.tidCache.Stop()
 }
 
 // NewGraphFlowEnhancer creates a new flow enhancer that will enhance A and B flow nodes TIDs
-func NewGraphFlowEnhancer(g *graph.Graph, cache *cache.Cache) *GraphFlowEnhancer {
+func NewGraphFlowEnhancer(g *graph.Graph) *GraphFlowEnhancer {
+	nodeFilter := graph.NewGraphElementFilter(filters.NewAndFilter(
+		filters.NewNotNullFilter("TID"),
+		filters.NewNotNullFilter("MAC"),
+	))
+
 	fe := &GraphFlowEnhancer{
-		Graph: g,
+		Graph:    g,
+		tidCache: graph.NewMetadataIndexer(g, nodeFilter, "MAC"),
 	}
 	g.AddEventListener(fe)
-
-	if cache != nil {
-		fe.tidCache = &tidCache{cache}
-	}
-
 	return fe
 }

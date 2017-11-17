@@ -533,6 +533,8 @@ func (o *OvsMirrorProbesHandler) Start() {
 
 	o.intfIndexer.AddEventListener(o.intfHandler)
 	o.portIndexer.AddEventListener(o.portHandler)
+	o.intfIndexer.Start()
+	o.portIndexer.Start()
 }
 
 // Stop the probe
@@ -551,6 +553,8 @@ func (o *OvsMirrorProbesHandler) Stop() {
 
 	o.intfIndexer.RemoveEventListener(o.intfHandler)
 	o.portIndexer.RemoveEventListener(o.portHandler)
+	o.intfIndexer.Stop()
+	o.portIndexer.Stop()
 
 	o.cleanupOvsMirrors()
 }

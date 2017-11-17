@@ -78,12 +78,6 @@ Vue.component('capture-form', {
                     Extra TCP metric\
                   </label>\
                 </div>\
-                <div class="form-group">\
-                  <label class="form-check-label">\
-                    <input id="capture-socket-info" type="checkbox" class="form-check-input" v-model="socketInfo">\
-                    TCP Socket Info\
-                  </label>\
-                </div>\
               </fieldset>\
             </div>\
           </div>\
@@ -112,7 +106,6 @@ Vue.component('capture-form', {
       headerSize: 0,
       rawPackets: 0,
       tcpMetric: true,
-      socketInfo: false,
       userQuery: "",
       mode: "selection",
       visible: false,
@@ -251,7 +244,6 @@ Vue.component('capture-form', {
       this.name = this.desc = this.bpf = "";
       this.headerSize = this.rawPackets = 0;
       this.tcpMetric = true;
-      this.socketInfo = false;
       this.visible = false;
       this.captureType = "";
     },
@@ -280,7 +272,7 @@ Vue.component('capture-form', {
       }
       if (!this.typeAllowed)
         this.captureType = "";
-      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets, this.tcpMetric, this.socketInfo, this.captureType, this.port)
+      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets, this.tcpMetric, this.captureType, this.port)
         .then(function() {
           self.reset();
         });

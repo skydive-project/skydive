@@ -95,6 +95,7 @@ def main():
 
     subparsers = parser.add_subparsers(
         help='sub-command help', dest='mode')
+
     parser_add = subparsers.add_parser(
         'add', help='add edges and nodes in the given json files')
     parser_add.add_argument('file', type=str, help='topology to add')

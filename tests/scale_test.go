@@ -186,17 +186,9 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 			return fmt.Errorf("Should get %d iperf(tcp/5001) flows, got %s", flowExpected, helper.FlowsToString(flowsTCP))
 		}
 
-		for _, f := range flows {
-			if f.SocketA == nil || f.SocketA.Process != "/usr/bin/iperf" || f.SocketB == nil || f.SocketB.Process != "/usr/bin/iperf" {
-				return fmt.Errorf("Should get iperf exe as socket info: %s", helper.FlowsToString(flows))
-			}
-			if f.SocketA.Name != "iperf" || f.SocketB.Name != "iperf" {
-				return fmt.Errorf("Should get iperf thread name %s", helper.FlowsToString(flows))
-			}
-		}
 		return nil
 	}
-	if err := common.Retry(retry, 10, time.Second); err != nil {
+	if err := common.Retry(retry, 20, time.Second); err != nil {
 		return err
 	}
 
@@ -215,12 +207,23 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 			return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %s", flowExpected, helper.FlowsToString(flowsTCP))
 		}
 
-		for _, f := range flows {
-			if f.SocketA == nil || f.SocketA.Process != "/usr/bin/iperf" || f.SocketB == nil || f.SocketB.Process != "/usr/bin/iperf" {
-				return fmt.Errorf("Should get iperf exe as socket info %s", helper.FlowsToString(flows))
-			}
-			if f.SocketA.Name != "iperf" || f.SocketB.Name != "iperf" {
-				return fmt.Errorf("Should get iperf thread name %s", helper.FlowsToString(flows))
+		maps, err := gh.GetSockets("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Sockets()")
+		if err != nil {
+			return err
+		}
+
+		if len(maps) != len(flows) {
+			return fmt.Errorf("Should get as many sockets as flows in datastore, %d != %d", len(maps), len(flows))
+		}
+
+		for _, sockets := range maps {
+			for _, socket := range sockets {
+				if socket == nil || socket.ProcessInfo.Process != "/usr/bin/iperf" {
+					return fmt.Errorf("Should get iperf exe as socket info %v", socket)
+				}
+				if socket.Name != "iperf" || socket.ProcessInfo.Name != "iperf" {
+					return fmt.Errorf("Should get iperf thread name %v", socket)
+				}
 			}
 		}
 		return nil
@@ -324,7 +327,6 @@ func TestScaleHA(t *testing.T) {
 
 	// start a capture
 	capture := types.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
-	capture.SocketInfo = true
 	capture.Type = "pcap"
 	if err = client.Create("capture", capture); err != nil {
 		helper.ExecCmds(t, tearDownCmds...)
@@ -486,7 +488,6 @@ func TestScaleHA(t *testing.T) {
 
 	// restart a capture on all eth0
 	capture = types.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
-	capture.SocketInfo = true
 	capture.Type = "pcap"
 	if err = client.Create("capture", capture); err != nil {
 		t.Fatal(err)

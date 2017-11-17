@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,52 +20,39 @@
  *
  */
 
-package enhancers
+package socketinfo
 
 import (
-	"sync"
-
-	"github.com/pmylund/go-cache"
+	"net"
+	"testing"
 )
 
-const (
-	maxCacheUpdateTry = 10
-)
-
-type tidCacheEntry struct {
-	sync.RWMutex
-	tid string
-	try int
-}
-
-type tidCache struct {
-	*cache.Cache
-}
-
-func (c *tidCache) get(key string) (*tidCacheEntry, bool) {
-	if entry, f := c.Get(key); f {
-		ce := entry.(*tidCacheEntry)
-		ce.RLock()
-		defer ce.RUnlock()
-
-		if ce.tid != "" || ce.try > maxCacheUpdateTry {
-			return ce, f
-		}
-		return ce, false
+func TestConnectionCache(t *testing.T) {
+	addr1 := &net.TCPAddr{
+		IP:   net.IPv4(127, 0, 0, 1),
+		Port: 1234,
+	}
+	addr2 := &net.TCPAddr{
+		IP:   net.IPv4(8, 8, 8, 8),
+		Port: 80,
 	}
 
-	return &tidCacheEntry{}, false
-}
+	c := NewConnectionCache()
+	conn := &ConnectionInfo{
+		LocalAddress:  addr1.IP.String(),
+		LocalPort:     int64(addr1.Port),
+		RemoteAddress: addr2.IP.String(),
+		RemotePort:    int64(addr2.Port),
+	}
+	c.Set(conn.Hash(), conn)
 
-func (c *tidCache) set(ce *tidCacheEntry, key, tid string) {
-	ce.Lock()
-	ce.tid = tid
-	ce.try++
-	ce.Unlock()
+	if c, _ := c.Get(addr1, addr2); c == nil {
+		t.Errorf("Expected entry for %s -> %s", addr1.String(), addr2.String())
+	}
 
-	c.Set(key, ce, cache.DefaultExpiration)
-}
+	c.Remove(addr1, addr2)
 
-func (c *tidCache) del(key string) {
-	c.Delete(key)
+	if c, _ := c.Get(addr1, addr2); c != nil {
+		t.Errorf("No entry expected for %s -> %s, got %+v", addr1.String(), addr2.String(), c)
+	}
 }

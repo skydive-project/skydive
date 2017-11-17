@@ -73,7 +73,7 @@ func (c *nodeProbe) onAdd(obj interface{}) {
 	defer c.graph.Unlock()
 
 	hostName := node.GetName()
-	nodeNodes := c.nodeIndexer.Get(hostName)
+	nodeNodes, _ := c.nodeIndexer.Get(hostName)
 	var nodeNode *graph.Node
 	if len(nodeNodes) == 0 {
 		nodeNode = newNode(c.graph, nodeUID(node), c.newMetadata(node))
@@ -82,9 +82,10 @@ func (c *nodeProbe) onAdd(obj interface{}) {
 		addMetadata(c.graph, nodeNode, node)
 	}
 
-	linkPodsToNode(c.graph, nodeNode, c.podIndexer.Get(hostName))
+	podNodes, _ := c.podIndexer.Get(hostName)
+	linkPodsToNode(c.graph, nodeNode, podNodes)
 
-	hostNodes := c.hostIndexer.Get(hostName)
+	hostNodes, _ := c.hostIndexer.Get(hostName)
 	if len(hostNodes) != 0 {
 		linkNodeToHost(c.graph, hostNodes[0], nodeNode)
 	}
@@ -110,16 +111,16 @@ func (c *nodeProbe) OnDelete(obj interface{}) {
 
 func (c *nodeProbe) Start() {
 	c.kubeCache.Start()
-	c.nodeIndexer.AddEventListener(c)
-	c.hostIndexer.AddEventListener(c)
-	c.podIndexer.AddEventListener(c)
+	c.nodeIndexer.Start()
+	c.hostIndexer.Start()
+	c.podIndexer.Start()
 }
 
 func (c *nodeProbe) Stop() {
 	c.kubeCache.Stop()
-	c.nodeIndexer.RemoveEventListener(c)
-	c.hostIndexer.RemoveEventListener(c)
-	c.podIndexer.RemoveEventListener(c)
+	c.nodeIndexer.Stop()
+	c.hostIndexer.Stop()
+	c.podIndexer.Stop()
 }
 
 func newNodeKubeCache(handler cache.ResourceEventHandler) *kubeCache {

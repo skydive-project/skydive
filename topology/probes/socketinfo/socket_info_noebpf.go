@@ -1,7 +1,7 @@
-// +build !linux
+// +build linux,!ebpf
 
 /*
- * Copyright (C) 2018 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -22,37 +22,13 @@
  *
  */
 
-package enhancers
+package socketinfo
 
 import (
-	"time"
-
-	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// SocketInfoEnhancer describes a SocketInfo Enhancer with TCP caches
-type SocketInfoEnhancer struct {
-}
-
-// Name returns the SocketInfo enhancer name
-func (s *SocketInfoEnhancer) Name() string {
-	return "SocketInfo"
-}
-
-// Enhance the graph with process info
-func (s *SocketInfoEnhancer) Enhance(f *flow.Flow) {
-}
-
-// Start the flow enhancer
-func (s *SocketInfoEnhancer) Start() error {
-	return nil
-}
-
-// Stop the flow enhancer
-func (s *SocketInfoEnhancer) Stop() {
-}
-
-// NewSocketInfoEnhancer create a new SocketInfo Enhancer
-func NewSocketInfoEnhancer(expire, cleanup time.Duration) *SocketInfoEnhancer {
-	return &SocketInfoEnhancer{}
+// NewSocketInfoEnhancer create a new socket info probe
+func NewSocketInfoProbe(g *graph.Graph, host *graph.Node) *ProcSocketInfoProbe {
+	return NewProcSocketInfoProbe(g, host)
 }
