@@ -431,6 +431,11 @@ Vue.component('flow-table', {
           label: 'Interface',
           show: false,
         },
+        {
+          name: ['RTT'],
+          label: 'RTT',
+          show: false,
+        },
       ]
     };
   },
@@ -526,13 +531,23 @@ Vue.component('flow-table', {
       var dt;
       switch (key) {
         case "RTT":
-          return value/1000000 + " ms";
+          return value / 1000000 + " ms";
         case "Start":
         case "Last":
         case "LastUpdateStart":
         case "LastUpdateLast":
           dt = new Date(value);
           return dt.toLocaleString();
+        case "Metric.ABPackets":
+        case "Metric.BAPackets":
+        case "LastUpdateMetric.ABPackets":
+        case "LastUpdateMetric.BAPackets":
+          return value.toLocaleString();
+        case "Metric.ABBytes":
+        case "Metric.BABytes":
+        case "LastUpdateMetric.ABBytes":
+        case "LastUpdateMetric.BABytes":
+          return prettyBytes(value);
       }
       return value;
     },
@@ -643,7 +658,8 @@ Vue.component('flow-table', {
           }
         }
         if (value !== null) {
-          return value;
+          if (isNaN(value)) return value;
+          return value.toLocaleString();
         }
       }
       return "";
