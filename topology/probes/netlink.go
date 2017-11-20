@@ -87,6 +87,25 @@ type NetLinkProbe struct {
 	wg      sync.WaitGroup
 }
 
+// RouteTable describes a list of Routes
+type RoutingTable struct {
+	Id     int
+	Src    net.IP `json:"Src,omitempty"`
+	Routes []Route
+}
+
+// Route describes a route
+type Route struct {
+	Prefix   string    `json:"Prefix,omitempty"`
+	Nexthops []NextHop `json:"Nexthops,omitempty"`
+}
+
+// NextHop describes a next hop
+type NextHop struct {
+	Priority int    `json:"Priority,omitempty"`
+	Ip       net.IP `json:"Ip,omitempty"`
+}
+
 func (u *NetNsNetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
 	// ignore ovs-system interface as it doesn't make any sense according to
 	// the following thread:
@@ -410,6 +429,10 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	neighbors = append(neighbors, u.getNeighbors(attrs.Index, syscall.AF_INET6)...)
 	metadata["Neighbors"] = neighbors
 
+	if rt := u.getRoutingTable(link, syscall.RTA_UNSPEC); rt != nil {
+		metadata["RoutingTable"] = rt
+	}
+
 	if statistics := link.Attrs().Statistics; statistics != nil {
 		metadata["Statistics"] = u.statsToMap(statistics)
 	}
@@ -483,6 +506,48 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	u.handleIntfIsVeth(intf, link)
 }
 
+func (u *NetNsNetLinkProbe) getRoutingTable(link netlink.Link, table int) []RoutingTable {
+	routeTableList := make(map[int]RoutingTable)
+	routeFilter := &netlink.Route{
+		LinkIndex: link.Attrs().Index,
+		Table:     table,
+	}
+	routeList, err := u.handle.RouteListFiltered(netlink.FAMILY_ALL, routeFilter, netlink.RT_FILTER_OIF|netlink.RT_FILTER_TABLE)
+	if err == nil && len(routeList) > 0 {
+		for _, route := range routeList {
+			var routeTable RoutingTable
+			if rt, ok := routeTableList[route.Table]; ok {
+				routeTable = rt
+			} else {
+				routeTable = RoutingTable{Id: route.Table, Src: route.Src}
+			}
+			var r Route
+			if route.Dst != nil {
+				r.Prefix = (*route.Dst).String()
+			}
+			var nh []NextHop
+			if len(route.MultiPath) > 0 {
+				for _, nexthop := range route.MultiPath {
+					var nhop = NextHop{Ip: nexthop.Gw, Priority: route.Priority}
+					nh = append(nh, nhop)
+				}
+			} else {
+				var nhop = NextHop{Ip: route.Gw, Priority: route.Priority}
+				nh = append(nh, nhop)
+			}
+			r.Nexthops = nh
+			routeTable.Routes = append(routeTable.Routes, r)
+			routeTableList[route.Table] = routeTable
+		}
+		rt := []RoutingTable{}
+		for _, r := range routeTableList {
+			rt = append(rt, r)
+		}
+		return rt
+	}
+	return nil
+}
+
 func (u *NetNsNetLinkProbe) onLinkAdded(link netlink.Link) {
 	if u.isRunning() == true {
 		// has been deleted
@@ -541,6 +606,23 @@ func getFamilyKey(family int) string {
 		return "IPV6"
 	}
 	return ""
+}
+
+func (u *NetNsNetLinkProbe) onRouteChanged(index int64, rt []RoutingTable) {
+	u.Graph.Lock()
+	defer u.Graph.Unlock()
+
+	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
+	if intf == nil {
+		logging.GetLogger().Errorf("No interface with index %d to add a new Route", index)
+		return
+	}
+	_, err := intf.GetField("RoutingTable")
+	if rt == nil && err == nil {
+		u.Graph.DelMetadata(intf, "RoutingTable")
+	} else if rt != nil {
+		u.Graph.AddMetadata(intf, "RoutingTable", rt)
+	}
 }
 
 func (u *NetNsNetLinkProbe) onAddressAdded(addr netlink.Addr, family int, index int64) {
@@ -619,6 +701,29 @@ func (u *NetNsNetLinkProbe) initialize() {
 		}
 		u.Graph.Unlock()
 	}
+}
+
+func (u *NetNsNetLinkProbe) getRoutingTables(m []byte) ([]RoutingTable, error, int) {
+	msg := nl.DeserializeRtMsg(m)
+	attrs, err := nl.ParseRouteAttr(m[msg.Len():])
+	if err != nil {
+		return nil, err, -1
+	}
+	native := nl.NativeEndian()
+	var linkIndex int
+	for _, attr := range attrs {
+		switch attr.Attr.Type {
+		case syscall.RTA_OIF:
+			linkIndex = int(native.Uint32(attr.Value[0:4]))
+			break
+		}
+	}
+
+	link, err := u.handle.LinkByIndex(linkIndex)
+	if err != nil {
+		return nil, err, linkIndex
+	}
+	return u.getRoutingTable(link, syscall.RTA_UNSPEC), nil, linkIndex
 }
 
 func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
@@ -820,6 +925,13 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 				continue
 			}
 			u.onAddressDeleted(addr, family, int64(ifindex))
+		case syscall.RTM_NEWROUTE, syscall.RTM_DELROUTE:
+			rt, err, index := u.getRoutingTables(msg.Data)
+			if err != nil {
+				logging.GetLogger().Warningf("Failed to get Routes: %s", err.Error())
+				continue
+			}
+			u.onRouteChanged(int64(index), rt)
 		}
 	}
 }
@@ -880,7 +992,7 @@ func newNetNsNetLinkProbe(g *graph.Graph, root *graph.Node, nsPath string) (*Net
 		return errFnc(fmt.Errorf("Failed to create netlink handle: %s", err.Error()))
 	}
 
-	if probe.socket, err = nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR); err != nil {
+	if probe.socket, err = nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR, syscall.RTNLGRP_IPV4_MROUTE, syscall.RTNLGRP_IPV4_ROUTE, syscall.RTNLGRP_IPV6_MROUTE, syscall.RTNLGRP_IPV6_ROUTE); err != nil {
 		return errFnc(fmt.Errorf("Failed to subscribe to netlink messages: %s", err.Error()))
 	}
 
