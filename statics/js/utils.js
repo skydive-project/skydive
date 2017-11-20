@@ -83,3 +83,13 @@ function prettyBytes(value) {
 
 	return b.toLocaleString() + " bytes";
 }
+
+_uniqueId = 0;
+function uniqueId() {
+	return "unique_id_" + _uniqueId;
+}
+
+function getNewUniqueId() {
+	_uniqueId++;
+	return uniqueId();
+}
