@@ -536,8 +536,17 @@ Vue.component('flow-table', {
         case "Last":
         case "LastUpdateStart":
         case "LastUpdateLast":
-          dt = new Date(value);
-          return dt.toLocaleString();
+        case "TCPFlowMetric.ABSynStart":
+        case "TCPFlowMetric.BASynStart":
+        case "TCPFlowMetric.ABFinStart":
+        case "TCPFlowMetric.BAFinStart":
+        case "TCPFlowMetric.ABRstStart":
+        case "TCPFlowMetric.BARstStart":
+          if (value) {
+            dt = new Date(value);
+            return dt.toLocaleString();
+          }
+          return value;
         case "Metric.ABPackets":
         case "Metric.BAPackets":
         case "LastUpdateMetric.ABPackets":
@@ -547,7 +556,10 @@ Vue.component('flow-table', {
         case "Metric.BABytes":
         case "LastUpdateMetric.ABBytes":
         case "LastUpdateMetric.BABytes":
-          return prettyBytes(value);
+          if (value) {
+            return prettyBytes(value);
+          }
+          return value;
       }
       return value;
     },
