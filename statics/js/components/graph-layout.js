@@ -37,6 +37,7 @@ var TopologyGraphLayout = function(vm, selector) {
   this.g = this.svg.append("g");
 
   this.group = this.g.append("g").attr('class', 'groups').selectAll(".group");
+  this.linkWrap = this.g.append("g").attr('class', 'link-wraps').selectAll(".link-wrap");
   this.link = this.g.append("g").attr('class', 'links').selectAll(".link");
   this.linkLabel = this.g.append("g").attr('class', 'link-labels').selectAll(".link-label");
   this.node = this.g.append("g").attr('class', 'nodes').selectAll(".node");
@@ -67,6 +68,7 @@ TopologyGraphLayout.prototype = {
     this.handlers.forEach(function(h) {
       switch (ev) {
         case 'nodeSelected': h.onNodeSelected(v1); break;
+        case 'edgeSelected': h.onEdgeSelected(v1); break;
       }
     });
   },
@@ -113,6 +115,7 @@ TopologyGraphLayout.prototype = {
 
     this.collapsed = this.defaultCollpsed || false;
     this.selectedNode = null;
+    this.selectedEdge = null;
     this.invalid = false;
   },
 
@@ -582,6 +585,11 @@ TopologyGraphLayout.prototype = {
         }
     });
 
+    this.linkWrap.attr('x1', function(d) { return d.link.source.x; })
+      .attr('y1', function(d) { return d.link.source.y; })
+      .attr('x2', function(d) { return d.link.target.x; })
+      .attr('y2', function(d) { return d.link.target.y; });
+
     this.node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 
     this.group.attrs(function(d) {
@@ -770,6 +778,13 @@ TopologyGraphLayout.prototype = {
     this.selectNode(d);
 
     this.notifyHandlers('nodeSelected', d);
+  },
+
+  onEdgeClick: function(e) {
+    if(e.collapse) return;
+    if(this.selectedEdge === e) return;
+    this.selectedEdge = e;
+    this.notifyHandlers('edgeSelected', e);
   },
 
   addCollapseLink: function(group, source, target, metadata) {
@@ -1168,6 +1183,11 @@ TopologyGraphLayout.prototype = {
 
     var nodes = Object.values(this.nodes), links = Object.values(this.links);
 
+    var linkWraps = [];
+    for (var i in links) {
+      linkWraps.push({link: links[i]});
+    }
+
     this.node = this.node.data(nodes, function(d) { return d.id; });
     this.node.exit().remove();
 
@@ -1219,10 +1239,26 @@ TopologyGraphLayout.prototype = {
 
     var linkEnter = this.link.enter()
       .append("path")
-      .attr("class", this.linkClass)
-      .attr("id", function(d) { return "link-" + d.id; });
+      .attr("id", function(d) { return "link-" + d.id; })
+      .on("click", this.onEdgeClick.bind(this))
+      .on("mouseover", this.highlightLink.bind(this))
+      .on("mouseout", this.unhighlightLink.bind(this))
+      .attr("class", this.linkClass);
 
     this.link = linkEnter.merge(this.link);
+
+    this.linkWrap = this.linkWrap.data(linkWraps, function(d) { return d.link.id; });
+    this.linkWrap.exit().remove();
+
+    var linkWrapEnter = this.linkWrap.enter()
+      .append("line")
+      .attr("id", function(d) { return "link-wrap-" + d.link.id; })
+      .on("click", function(d) {self.onEdgeClick(d.link); })
+      .on("mouseover", function(d) { self.highlightLink(d.link); })
+      .on("mouseout", function(d) { self.unhighlightLink(d.link); })
+      .attr("class", this.linkWrapClass);
+
+    this.linkWrap = linkWrapEnter.merge(this.linkWrap);
 
     this.group = this.group.data(this.groups, function(d) { return d.id; });
     this.group.exit().remove();
@@ -1237,6 +1273,24 @@ TopologyGraphLayout.prototype = {
     this.simulation.nodes(nodes);
     this.simulation.force("link").links(links);
     this.simulation.alpha(1).restart();
+  },
+
+  highlightLink: function(d) {
+    if(d.collapse) return;
+    var t = d3.transition()
+      .duration(300)
+      .ease(d3.easeLinear);
+    this.g.select("#link-wrap-" + d.id).transition(t).style("stroke", "rgba(30, 30, 30, 0.15)");
+    this.g.select("#link-" + d.id).transition(t).style("stroke-width", 2);
+  },
+
+  unhighlightLink: function(d) {
+    if(d.collapse) return;
+    var t = d3.transition()
+      .duration(300)
+      .ease(d3.easeLinear);
+    this.g.select("#link-wrap-" + d.id).transition(t).style("stroke", null);
+    this.g.select("#link-" + d.id).transition(t).style("stroke-width", null);
   },
 
   groupClass: function(d) {
@@ -1271,6 +1325,15 @@ TopologyGraphLayout.prototype = {
 
     if (d.metadata.Type) clazz += " " + d.metadata.Type;
 
+    if (!d.collapse) clazz += " real-edge";
+
+    return clazz;
+  },
+
+  linkWrapClass: function(d) {
+    var clazz = "link-wrap";
+
+    if (!d.link.collapse) clazz += " real-edge-wrap";
     return clazz;
   },
 
