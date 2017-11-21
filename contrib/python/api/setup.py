@@ -1,11 +1,11 @@
 from setuptools import setup
 
-setup(name='skydive-lib',
+setup(name='skydive-client',
       version='0.1',
-      description='Skydive library',
+      description='Skydive Python 3 client library',
       url='http://github.com/skydive-project/skydive',
-      author='Skydive Authors',
-      author_email='',
+      author='Sylvain Afchain',
+      author_email='safchain@gmail.com',
       license='Apache2',
       packages=['skydive', 'skydive.rest', 'skydive.websocket'],
       entry_points={

@@ -22,13 +22,13 @@
 import argparse
 import json
 import os
+import sys
 
-from websocket.client import WSClient
-from websocket.client import WSClientDebugProtocol
-from websocket.client import WSMessage
+from skydive.websocket.client import WSClient
+from skydive.websocket.client import WSClientDebugProtocol
+from skydive.websocket.client import WSMessage
 
-from websocket.client import SyncRequestMsgType, SyncReplyMsgType, \
-    HostGraphDeletedMsgType, NodeUpdatedMsgType, NodeDeletedMsgType, \
+from skydive.websocket.client import NodeUpdatedMsgType, NodeDeletedMsgType, \
     NodeAddedMsgType, EdgeUpdatedMsgType, EdgeDeletedMsgType, EdgeAddedMsgType
 
 
@@ -48,25 +48,29 @@ class WSClientModifyProtocol(WSClientDebugProtocol):
         with open(file) as json_file:
             data = json.load(json_file)
 
-            for node in data["Nodes"]:
-                if mode == 'add':
-                    msg = WSMessage("Graph", NodeAddedMsgType, node).toJSON()
-                elif mode == 'delete':
-                    msg = WSMessage("Graph", NodeDeletedMsgType, node).toJSON()
-                elif mode == 'update':
-                    msg = WSMessage("Graph", NodeUpdatedMsgType, node).toJSON()
+            if "Nodes" in data:
+                for node in data["Nodes"]:
+                    if mode == 'add':
+                        msg = WSMessage("Graph", NodeAddedMsgType, node)
+                    elif mode == 'delete':
+                        msg = WSMessage("Graph", NodeDeletedMsgType, node)
+                    elif mode == 'update':
+                        msg = WSMessage("Graph", NodeUpdatedMsgType, node)
 
-                self.sendMessage(msg)
+                    self.sendWSMessage(msg)
 
-            for edge in data["Edges"]:
-                if mode == 'add':
-                    msg = WSMessage("Graph", EdgeAddedMsgType, edge).toJSON()
-                elif mode == 'delete':
-                    msg = WSMessage("Graph", EdgeDeletedMsgType, edge).toJSON()
-                elif mode == 'update':
-                    msg = WSMessage("Graph", EdgeUpdatedMsgType, edge).toJSON()
+            if "Edges" in data:
+                for edge in data["Edges"]:
+                    if mode == 'add':
+                        msg = WSMessage("Graph", EdgeAddedMsgType, edge)
+                    elif mode == 'delete':
+                        msg = WSMessage("Graph", EdgeDeletedMsgType, edge)
+                    elif mode == 'update':
+                        msg = WSMessage("Graph", EdgeUpdatedMsgType, edge)
 
-                self.sendMessage(msg)
+                    self.sendWSMessage(msg)
+
+        self.stop()
 
 
 def main():
@@ -109,6 +113,10 @@ def main():
 
     args = parser.parse_args()
 
+    if not args.mode:
+        parser.print_help()
+        sys.exit(0)
+
     if args.mode == "listen":
         protocol = WSClientDebugProtocol
         file = ""
@@ -126,8 +134,8 @@ def main():
                       username=args.username,
                       password=args.password,
                       protocol=protocol,
-                      gremlin_filter=gremlin_filter,
-                      sync_request=sync_request,
+                      filter=gremlin_filter,
+                      sync=sync_request,
                       mode=args.mode,
                       file=file)
     client.connect()
