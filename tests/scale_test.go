@@ -135,6 +135,12 @@ func TestScaleHA(t *testing.T) {
 		}
 		if err = common.Retry(retry, 10, 5*time.Second); err != nil {
 			helper.ExecCmds(t, tearDownCmds...)
+			nodes, _ = gh.GetNodes(`g.V()`)
+			t.Logf("Nodes: %+v\n", nodes)
+
+			status, _ := getAnalyzerStatus()
+			t.Logf("Status: %+v\n", status)
+
 			t.Fatalf(err.Error())
 		}
 	}
