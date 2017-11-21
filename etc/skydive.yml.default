@@ -238,3 +238,8 @@ flow:
   update: 60
   # Protocol to use to send flows to the analyzer: websocket or udp
   # protocol: udp
+
+ui:
+  # Specify the extra assets folder. Javascript and CSS files present in this
+  # folder will be added to the WebUI.
+  # extra_assets: /usr/share/skydive/assets
