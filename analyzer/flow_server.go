@@ -80,6 +80,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMe
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
 		return
 	}
+	logging.GetLogger().Debugf("New flow from Websocket connection: %+v", f)
 	c.ch <- f
 }
 
@@ -128,6 +129,7 @@ func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sy
 					continue
 				}
 
+				logging.GetLogger().Debugf("New flow from UDP connection: %+v", f)
 				ch <- f
 			}
 		}

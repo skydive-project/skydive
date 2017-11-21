@@ -198,6 +198,9 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb scripts/ci/run-scale.sh
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+          SHELL=dumb FLOW_PROTOCOL=udp scripts/ci/run-scale.sh
     publishers:
       - chuck-norris
 

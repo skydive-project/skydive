@@ -896,7 +896,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 	for _, msg := range msgs {
 		switch msg.Header.Type {
 		case syscall.RTM_NEWLINK:
-			link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
+			link, err := netlink.LinkDeserialize(nil, msg.Data)
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
 				continue
@@ -904,7 +904,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 			logging.GetLogger().Debugf("Netlink ADD event for %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.ID)
 			u.onLinkAdded(link)
 		case syscall.RTM_DELLINK:
-			link, err := netlink.LinkDeserialize(&msg.Header, msg.Data)
+			link, err := netlink.LinkDeserialize(nil, msg.Data)
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
 				continue
