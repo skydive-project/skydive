@@ -67,6 +67,7 @@ TopologyGraphLayout.prototype = {
     this.handlers.forEach(function(h) {
       switch (ev) {
         case 'nodeSelected': h.onNodeSelected(v1); break;
+        case 'edgeSelected': h.onEdgeSelected(v1); break;
       }
     });
   },
@@ -772,6 +773,11 @@ TopologyGraphLayout.prototype = {
     this.notifyHandlers('nodeSelected', d);
   },
 
+  onEdgeClick: function(d) {
+    if (this.selectedEdge === d) return;
+    this.notifyHandlers('edgeSelected', d);
+  },
+
   addCollapseLink: function(group, source, target, metadata) {
     var id = source.id < target.id ? source.id + '-' + target.id : target.id + '-' + source.id;
     if (!this.links[id]) {
@@ -1220,7 +1226,8 @@ TopologyGraphLayout.prototype = {
     var linkEnter = this.link.enter()
       .append("path")
       .attr("class", this.linkClass)
-      .attr("id", function(d) { return "link-" + d.id; });
+      .attr("id", function(d) { return "link-" + d.id; })
+      .on("click", this.onEdgeClick.bind(this));
 
     this.link = linkEnter.merge(this.link);
 

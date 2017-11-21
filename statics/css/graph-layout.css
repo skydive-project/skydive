@@ -57,6 +57,7 @@ text {
 .link {
   stroke: #111;
   stroke-width: 1.5;
+  cursor: pointer;
 }
 
 .links path.ownership {
