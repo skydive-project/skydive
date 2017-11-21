@@ -62,7 +62,7 @@ var store = new Vuex.Store({
       state.currentNode = node;
     },
 
-    unselected: function(state) {
+    nodeUnselected: function(state) {
       state.currentNode = null;
     },
 

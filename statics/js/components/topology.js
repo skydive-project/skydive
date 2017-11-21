@@ -143,14 +143,11 @@ var TopologyComponent = {
         <transition name="slide" mode="out-in">\
           <div class="left-panel" v-if="currentNode || currentEdge">\
             <div v-if="currentNode">\
-              <span v-if="time" class="label center-block node-time">\
-                Interface state at {{timeHuman}}\
-              </span>\
               <h1>Node Metadata<span class="pull-right">(id: {{currentNode.id}})\
                 <i v-if="currentNode.group != null" class="node-action fa"\
-	                title="Expand/Collapse Node"\
-                        :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
-                        @click="toggleExpandAll(currentNode)"></i></span>\
+                  title="Expand/Collapse Node"\
+                  :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
+                  @click="toggleExpandAll(currentNode)"></i></span>\
               </h1>\
               <div id="metadata-panel" class="sub-left-panel">\
                 <object-detail :object="currentNodeMetadata"></object-detail>\
@@ -163,7 +160,7 @@ var TopologyComponent = {
                 <h1>Interface metrics</h1>\
                 <statistics-table :object="currentNodeStats"></statistics-table>\
               </div>\
-              <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastStats).length && time === 0">\
+              <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastStats).length && topologyTimeContext === 0">\
                 <h1>Last metrics</h1>\
                 <statistics-table :object="currentNodeLastStats"></statistics-table>\
               </div>\
@@ -248,7 +245,7 @@ var TopologyComponent = {
   },
 
   beforeDestroy: function() {
-    this.$store.commit('unselected');
+    this.$store.commit('nodeUnselected');
     this.$store.commit('edgeUnselected');
     this.unwatch();
   },
@@ -334,8 +331,8 @@ var TopologyComponent = {
       this.$store.commit('selected', d);
     },
 
-    onEdgeSelected: function(d) {
-      this.$store.commit('edgeSelected', d);
+    onEdgeSelected: function(e) {
+      this.$store.commit('edgeSelected', e);
     },
 
     zoomIn: function() {
@@ -683,7 +680,7 @@ Graph.prototype = {
     delete this.nodes[node.id];
 
     if (this.synced && store.state.currentNode && store.state.currentNode.id == node.id) {
-      store.commit('unselected');
+      store.commit('nodeUnselected');
     }
 
     this.notifyHandlers('nodeDeleted', node);

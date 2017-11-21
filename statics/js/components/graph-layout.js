@@ -41,6 +41,7 @@ var TopologyGraphLayout = function(vm, selector) {
   this.linkLabel = this.g.append("g").attr('class', 'link-labels').selectAll(".link-label");
   this.node = this.g.append("g").attr('class', 'nodes').selectAll(".node");
 
+
   this.simulation
     .on("tick", this.tick.bind(this));
 
@@ -114,6 +115,7 @@ TopologyGraphLayout.prototype = {
 
     this.collapsed = this.defaultCollpsed || false;
     this.selectedNode = null;
+    this.selectedEdge = null;
     this.invalid = false;
   },
 
@@ -773,9 +775,10 @@ TopologyGraphLayout.prototype = {
     this.notifyHandlers('nodeSelected', d);
   },
 
-  onEdgeClick: function(d) {
-    if (this.selectedEdge === d) return;
-    this.notifyHandlers('edgeSelected', d);
+  onEdgeClick: function(e) {
+    if(this.selectedEdge === e) return;
+    this.selectedEdge = e;
+    this.notifyHandlers('edgeSelected', e);
   },
 
   addCollapseLink: function(group, source, target, metadata) {
@@ -1224,10 +1227,11 @@ TopologyGraphLayout.prototype = {
     this.link.exit().remove();
 
     var linkEnter = this.link.enter()
+      .append("g")
+      .on("click", this.onEdgeClick.bind(this))
       .append("path")
       .attr("class", this.linkClass)
-      .attr("id", function(d) { return "link-" + d.id; })
-      .on("click", this.onEdgeClick.bind(this));
+      .attr("id", function(d) { return "link-" + d.id; });
 
     this.link = linkEnter.merge(this.link);
 
