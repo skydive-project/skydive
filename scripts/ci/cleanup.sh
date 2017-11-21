@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 DIR=/tmp/netcleanup
 CURDIR="$(dirname "$0")"
 
