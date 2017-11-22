@@ -177,7 +177,7 @@ func (c *WSConn) GetAddrPort() (string, int) {
 	return c.Addr, c.Port
 }
 
-// Return the URL of the connection
+// GetURL returns the URL of the connection
 func (c *WSConn) GetURL() *url.URL {
 	return c.Url
 }

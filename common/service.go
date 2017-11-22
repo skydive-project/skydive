@@ -67,22 +67,32 @@ func (sa ServiceAddress) String() string {
 func ServiceAddressFromString(addressPort string) (ServiceAddress, error) {
 	/* Backward compatibility for old format like : listen = 1234 */
 	if !strings.ContainsAny(addressPort, ".:") {
-		addressPort = ":" + addressPort
+		addressPort = "localhost:" + addressPort
 	}
-	/* validate IPv4 and IPv6 address */
-	IPAddr, err := net.ResolveUDPAddr("", addressPort)
+
+	host, port, err := net.SplitHostPort(addressPort)
 	if err != nil {
 		return ServiceAddress{}, err
 	}
-	IPaddr := IPAddr.IP
-	port := IPAddr.Port
 
-	addr := "localhost"
-	if IPaddr != nil {
-		addr = IPToString(IPaddr)
+	portNum, err := net.LookupPort("", port)
+	if err != nil {
+		return ServiceAddress{}, err
 	}
+
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return ServiceAddress{}, err
+	}
+	if len(ips) == 0 {
+		return ServiceAddress{}, fmt.Errorf("no address found for %s", host)
+	}
+
+	// just take the first address returned
+	addr := NormalizeIPForUrl(ips[0])
+
 	return ServiceAddress{
 		Addr: addr,
-		Port: port,
+		Port: portNum,
 	}, nil
 }
