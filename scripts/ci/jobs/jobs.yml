@@ -339,8 +339,7 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           cd scripts/ci
-          vagrant up --no-provision
-          vagrant provision
+          vagrant up --no-provision && vagrant provision
           retcode=$?
           vagrant destroy
           exit $retcode

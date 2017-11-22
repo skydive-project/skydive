@@ -194,16 +194,20 @@ func (mapper *NeutronProbe) nodeUpdater() {
 	logging.GetLogger().Debugf("Starting Neutron updater")
 
 	for nodeID := range mapper.nodeUpdaterChan {
+		mapper.graph.RLock()
 		node := mapper.graph.GetNode(nodeID)
 		if node == nil {
+			mapper.graph.RUnlock()
 			continue
 		}
 
 		if mac, _ := node.GetFieldString("MAC"); mac == "" {
+			mapper.graph.RUnlock()
 			continue
 		}
 
 		portMd := retrieveportMetadata(node)
+		mapper.graph.RUnlock()
 
 		attrs, err := mapper.retrieveAttributes(portMd)
 		if err != nil {
@@ -278,30 +282,39 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
 	if uuid, _ := node.GetFieldString("ExtID.vm-uuid"); uuid != "" {
 		if attachedMac, _ := node.GetFieldString("ExtID.attached-mac"); attachedMac != "" {
 			retryFnc := func() error {
+				mapper.graph.RLock()
+				path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata)
+				mapper.graph.RUnlock()
+
+				if len(path) == 0 {
+					return errors.New("Path not found")
+				}
+
 				mapper.graph.Lock()
 				defer mapper.graph.Unlock()
 
-				if path := mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": tap}, topology.Layer2Metadata); len(path) > 0 {
-					for i, n := range path {
-						tr := mapper.graph.StartMetadataTransaction(n)
-						tr.AddMetadata("ExtID.vm-uuid", uuid)
-						tr.AddMetadata("ExtID.attached-mac", attachedMac)
-						for k, v := range metadata {
-							tr.AddMetadata(k, v)
-						}
-
-						// add vm peering info, going to be used by peering probe
-						if i == len(path)-1 {
-							tr.AddMetadata("PeerIntfMAC", attachedMac)
-						}
-						tr.Commit()
+				for i, n := range path {
+					if mapper.graph.GetNode(n.ID) == nil {
+						continue
 					}
 
-					return nil
+					tr := mapper.graph.StartMetadataTransaction(n)
+					tr.AddMetadata("ExtID.vm-uuid", uuid)
+					tr.AddMetadata("ExtID.attached-mac", attachedMac)
+					for k, v := range metadata {
+						tr.AddMetadata(k, v)
+					}
+
+					// add vm peering info, going to be used by peering probe
+					if i == len(path)-1 {
+						tr.AddMetadata("PeerIntfMAC", attachedMac)
+					}
+					tr.Commit()
 				}
-				return errors.New("Path not found")
+
+				return nil
 			}
-			go common.Retry(retryFnc, 60, 1*time.Second)
+			go common.Retry(retryFnc, 30, 2*time.Second)
 		}
 	}
 }
@@ -322,8 +335,7 @@ func (mapper *NeutronProbe) enhanceNode(node *graph.Node) {
 		return
 	}
 
-	mac, _ := node.GetFieldString("MAC")
-	if mac == "" {
+	if mac, _ := node.GetFieldString("MAC"); mac == "" {
 		return
 	}
 
