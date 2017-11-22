@@ -1307,7 +1307,7 @@ TopologyGraphLayout.prototype = {
   },
 
   managerImg: function(d) {
-    return managerImgMap[d.metadata.Type];
+    return managerImgMap[d.metadata.Manager];
   },
 
   collapseImg: function(d) {
