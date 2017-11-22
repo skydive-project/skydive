@@ -82,7 +82,7 @@ label {
   overflow: auto;
 }
 
-.info {
+#right-panel {
   border-left: 5px #222 solid;
   color: #fff;
   padding-top: 5px;
