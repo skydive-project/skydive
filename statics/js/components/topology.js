@@ -127,7 +127,7 @@ var TopologyComponent = {
           </button>\
         </div>\
       </div>\
-      <div id="right-panel" class="col-sm-5 fill info">\
+      <div id="right-panel" class="col-sm-5 fill">\
         <tabs v-if="isAnalyzer">\
           <tab-pane title="Captures">\
             <capture-list></capture-list>\
