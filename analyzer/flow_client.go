@@ -110,8 +110,9 @@ func (c *FlowClientWebSocketConn) Close() error {
 // Connect to the WebSocket flow server
 func (c *FlowClientWebSocketConn) Connect() error {
 	authOptions := NewAnalyzerAuthenticationOpts()
+	authAddr := common.NormalizeAddrForURL(c.url.Hostname())
 	authPort, _ := strconv.Atoi(c.url.Port())
-	authClient := shttp.NewAuthenticationClient(config.GetURL("http", c.url.Hostname(), authPort, ""), authOptions)
+	authClient := shttp.NewAuthenticationClient(config.GetURL("http", authAddr, authPort, ""), authOptions)
 	c.wsClient = shttp.NewWSClientFromConfig(common.AgentService, c.url, authClient, nil)
 	c.wsClient.Connect()
 	c.wsClient.AddEventHandler(c)
@@ -125,7 +126,7 @@ func (c *FlowClientWebSocketConn) Send(data []byte) error {
 	return nil
 }
 
-// NewFlowClientUDPConn returns a new WebSocket flow client
+// NewFlowClientWebSocketConn returns a new WebSocket flow client
 func NewFlowClientWebSocketConn(url *url.URL) (*FlowClientWebSocketConn, error) {
 	return &FlowClientWebSocketConn{url: url}, nil
 }
@@ -183,7 +184,7 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 	case "udp":
 		connection, err = NewFlowClientUDPConn(addr, port)
 	case "websocket":
-		connection, err = NewFlowClientWebSocketConn(config.GetURL("ws", addr, port, "/ws/flow"))
+		connection, err = NewFlowClientWebSocketConn(config.GetURL("ws", common.NormalizeAddrForURL(addr), port, "/ws/flow"))
 	default:
 		return nil, fmt.Errorf("Invalid protocol %s", protocol)
 	}
