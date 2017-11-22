@@ -1082,8 +1082,14 @@ TopologyGraphLayout.prototype = {
     }
   },
 
+  getLocalValue: function(key) {
+    var v = localStorage.getItem(key)
+    if (!v || v === "0" || v === "null") return 0;
+    return Number(v);
+  },
+
   loadBandwidthConfig: function() {
-    var vm = this.vm, b = this.bandwidth;
+    var vm = this.vm, b = this.bandwidth, self = this;
 
     var cfgNames = {
       relative: ['analyzer.bandwidth_relative_active',
@@ -1094,14 +1100,34 @@ TopologyGraphLayout.prototype = {
                  'analyzer.bandwidth_absolute_alert']
      };
 
+    var cfgValues = {
+      absolute: [0, 0, 0],
+      relative: [0, 0, 0]
+    };
+
+    if (typeof(Storage) !== "undefined") {
+      cfgValues = {
+        absolute: [this.getLocalValue("bandwidthAbsoluteActive"),
+                   this.getLocalValue("bandwidthAbsoluteWarning"),
+                   this.getLocalValue("bandwidthAbsoluteAlert")],
+        relative: [this.getLocalValue("bandwidthRelativeActive"),
+                   this.getLocalValue("bandwidthRelativeWarning"),
+                   this.getLocalValue("bandwidthRelativeAlert")]
+      };
+    }
+
     return $.when(
         vm.$getConfigValue('analyzer.bandwidth_update_rate'),
         vm.$getConfigValue('analyzer.bandwidth_source'),
         vm.$getConfigValue('analyzer.bandwidth_threshold'))
       .then(function(period, src, threshold) {
         b.updatePeriod = period[0] * 1000; // in millisec
-        b.bandwidth_threshold = threshold[0];
-        return b.bandwidth_threshold;
+        if (localStorage.bandwidthThreshold) {
+          b.bandwidthThreshold = localStorage.bandwidthThreshold;
+        } else {
+          b.bandwidthThreshold = threshold[0];
+        }
+        return b.bandwidthThreshold;
       })
     .then(function(t) {
       return $.when(
@@ -1109,9 +1135,21 @@ TopologyGraphLayout.prototype = {
         vm.$getConfigValue(cfgNames[t][1]),
         vm.$getConfigValue(cfgNames[t][2]))
         .then(function(active, warning, alert) {
-          b.active = active[0];
-          b.warning = warning[0];
-          b.alert = alert[0];
+          if (cfgValues[b.bandwidthThreshold][0]) {
+            b.active = cfgValues[b.bandwidthThreshold][0]
+          } else {
+            b.active = active[0];
+          }
+          if (cfgValues[b.bandwidthThreshold][1]) {
+            b.warning = cfgValues[b.bandwidthThreshold][1]
+          } else {
+            b.warning = warning[0];
+          }
+          if (cfgValues[b.bandwidthThreshold][2]) {
+            b.alert = cfgValues[b.bandwidthThreshold][2]
+          } else {
+            b.alert = alert[0];
+          }
         });
     });
   },

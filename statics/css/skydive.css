@@ -553,3 +553,33 @@ ul.dropdown-menu .fa.pull-right {
   font-weight: bold;
   color: #fff;
 }
+
+.form-preference{
+  max-width: 450px;
+  padding: 15px;
+  margin: 0 auto;
+}
+
+.form-preference h2 {
+  color: white;
+  display: flex;
+  justify-content: center;
+}
+
+.filter-field {
+  margin-top: 10px;
+}
+
+.button-holder {
+  text-align: center;
+}
+
+.btn-round-xs {
+  border-radius: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.help-text {
+  cursor: help;
+}

@@ -433,10 +433,16 @@ var TopologyComponent = {
     },
 
     setFilterFromConfig: function() {
+      var options = $(".topology-filter-list");
+      if (typeof(Storage) !== "undefined") {
+        filters = JSON.parse(localStorage.getItem("filters"));
+        $.each(filters, function(i, f) {
+          options.append($("<option/>").text(f.name).val(f.filter));
+        });
+      }
       return $.when(this.$getConfigValue('analyzer.topology_filter'))
        .then(function(filter) {
          if (!filter) return;
-         var options = $(".topology-filter-list");
          $.each(filter, function(key, value) {
            options.append($("<option/>").text(key).val(value));
          });
