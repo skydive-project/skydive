@@ -379,29 +379,19 @@ var TopologyComponent = {
     },
 
     topologyTimeTravel: function() {
-      var time = new Date(), live = true;
-      if (this.topologyDate) {
-        time = new Date(this.topologyDate);
-        live = false;
-      }
+      var time = new Date();
+      if (this.topologyDate) time = new Date(this.topologyDate);
 
       if (this.topologyTime) {
         var tl = this.topologyTime.split(':');
         time.setHours(tl[0]);
-        if (tl.length > 1) {
-          time.setMinutes(tl[1]);
-        }
-        if (tl.length > 2) {
-          time.setSeconds(tl[2]);
-        }
-        live = false;
+
+        if (tl.length > 1) time.setMinutes(tl[1]);
+
+        if (tl.length > 2) time.setSeconds(tl[2]);
       }
 
-      if (live) {
-        this.topologyTimeContext = '';
-      } else {
-        this.topologyTimeContext = time.getTime();
-      }
+      this.topologyTimeContext = time.getTime();
 
       this.$store.commit('topologyTimeContext', this.topologyTimeContext);
       this.syncTopo(this.topologyTimeContext, this.topologyFilter);
