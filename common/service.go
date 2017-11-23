@@ -68,6 +68,8 @@ func ServiceAddressFromString(addressPort string) (ServiceAddress, error) {
 	/* Backward compatibility for old format like : listen = 1234 */
 	if !strings.ContainsAny(addressPort, ".:") {
 		addressPort = "localhost:" + addressPort
+	} else if strings.HasPrefix(addressPort, ":") {
+		addressPort = "localhost" + addressPort
 	}
 
 	host, port, err := net.SplitHostPort(addressPort)
