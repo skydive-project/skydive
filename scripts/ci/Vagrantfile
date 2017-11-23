@@ -8,7 +8,7 @@ SCRIPT
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define :devstack do |devstack|
-         devstack.vm.box = "fedora/25-cloud-base"
+         devstack.vm.box = "fedora/26-cloud-base"
          devstack.vm.synced_folder "../..", "/vagrant", :disabled => false
          devstack.vm.provider :libvirt do |domain|
              domain.memory = 8192
