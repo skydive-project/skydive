@@ -85,8 +85,9 @@ type TopologyServer struct {
 
 // getHostID loop until being able to get the host-id of the peer.
 func (p *TopologyReplicatorPeer) getHostID() string {
+	addr := common.NormalizeAddrForURL(p.URL.Hostname())
 	port, _ := strconv.Atoi(p.URL.Port())
-	client := shttp.NewRestClient(config.GetURL("http", p.URL.Hostname(), port, ""), p.AuthOptions)
+	client := shttp.NewRestClient(config.GetURL("http", addr, port, ""), p.AuthOptions)
 	contentReader := bytes.NewReader([]byte{})
 
 	var data []byte
@@ -139,8 +140,9 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 		return
 	}
 
+	authAddr := common.NormalizeAddrForURL(p.URL.Hostname())
 	authPort, _ := strconv.Atoi(p.URL.Port())
-	authClient := shttp.NewAuthenticationClient(config.GetURL("http", p.URL.Hostname(), authPort, ""), p.AuthOptions)
+	authClient := shttp.NewAuthenticationClient(config.GetURL("http", authAddr, authPort, ""), p.AuthOptions)
 	p.wsclient = shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, authClient, http.Header{})
 
 	// will trigger shttp.WSSpeakerEventHandler, so OnConnected
