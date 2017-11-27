@@ -43,23 +43,27 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/enhancers"
+	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
-	httpServer      *shttp.Server
-	wsServer        *shttp.WSJSONServer
-	topologyServer  *TopologyServer
-	alertServer     *alert.AlertServer
-	onDemandClient  *ondemand.OnDemandProbeClient
-	metadataManager *metadata.UserMetadataManager
-	flowServer      *FlowServer
-	probeBundle     *probe.ProbeBundle
-	storage         storage.Storage
-	embeddedEtcd    *etcd.EmbeddedEtcd
-	etcdClient      *etcd.EtcdClient
-	wgServers       sync.WaitGroup
+	httpServer          *shttp.Server
+	agentWSServer       *shttp.WSJSONServer
+	publisherWSServer   *shttp.WSJSONServer
+	replicationWSServer *shttp.WSJSONServer
+	subscriberWSServer  *shttp.WSJSONServer
+	replicationEndpoint *TopologyReplicationEndpoint
+	alertServer         *alert.AlertServer
+	onDemandClient      *ondemand.OnDemandProbeClient
+	metadataManager     *metadata.UserMetadataManager
+	flowServer          *FlowServer
+	probeBundle         *probe.ProbeBundle
+	storage             storage.Storage
+	embeddedEtcd        *etcd.EmbeddedEtcd
+	etcdClient          *etcd.EtcdClient
+	wgServers           sync.WaitGroup
 }
 
 // ElectionStatus describes the status of an election
@@ -69,26 +73,30 @@ type ElectionStatus struct {
 
 // AnalyzerStatus describes the status of an analyzer
 type AnalyzerStatus struct {
-	Clients  map[string]shttp.WSConnStatus
-	Peers    map[string]shttp.WSConnStatus
-	Alerts   ElectionStatus
-	Captures ElectionStatus
+	Agents      map[string]shttp.WSConnStatus
+	Peers       map[string]shttp.WSConnStatus
+	Publishers  map[string]shttp.WSConnStatus
+	Subscribers map[string]shttp.WSConnStatus
+	Alerts      ElectionStatus
+	Captures    ElectionStatus
 }
 
 // GetStatus returns the status of an analyzer
 func (s *Server) GetStatus() interface{} {
 	peers := make(map[string]shttp.WSConnStatus)
-	for _, peer := range s.topologyServer.peers {
+	for _, peer := range s.replicationEndpoint.peers {
 		if peer.wsclient != nil && peer.host != config.GetConfig().GetString("host_id") {
 			peers[peer.host] = peer.wsclient.GetStatus()
 		}
 	}
 
 	return &AnalyzerStatus{
-		Clients:  s.wsServer.GetStatus(),
-		Peers:    peers,
-		Alerts:   ElectionStatus{IsMaster: s.alertServer.IsMaster()},
-		Captures: ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
+		Agents:      s.agentWSServer.GetStatus(),
+		Peers:       peers,
+		Publishers:  s.publisherWSServer.GetStatus(),
+		Subscribers: s.subscriberWSServer.GetStatus(),
+		Alerts:      ElectionStatus{IsMaster: s.alertServer.IsMaster()},
+		Captures:    ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
 	}
 }
 
@@ -102,23 +110,22 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	s.topologyServer.ConnectPeers()
+	s.replicationEndpoint.ConnectPeers()
 
 	s.probeBundle.Start()
 	s.onDemandClient.Start()
 	s.alertServer.Start()
 	s.metadataManager.Start()
 	s.flowServer.Start()
+	s.agentWSServer.Start()
+	s.publisherWSServer.Start()
+	s.replicationWSServer.Start()
+	s.subscriberWSServer.Start()
 
-	s.wgServers.Add(2)
+	s.wgServers.Add(1)
 	go func() {
 		defer s.wgServers.Done()
 		s.httpServer.Serve()
-	}()
-
-	go func() {
-		defer s.wgServers.Done()
-		s.wsServer.Run()
 	}()
 
 	return nil
@@ -127,7 +134,10 @@ func (s *Server) Start() error {
 // Stop the analyzer server
 func (s *Server) Stop() {
 	s.flowServer.Stop()
-	s.wsServer.Stop()
+	s.agentWSServer.Stop()
+	s.publisherWSServer.Stop()
+	s.replicationWSServer.Stop()
+	s.subscriberWSServer.Stop()
 	s.httpServer.Stop()
 	if s.embeddedEtcd != nil {
 		s.embeddedEtcd.Stop()
@@ -157,13 +167,40 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	wsServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws"))
-
-	topologyServer, err := NewTopologyServer(wsServer, NewAnalyzerAuthenticationOpts())
+	persistent, err := graph.BackendFromConfig()
 	if err != nil {
 		return nil, err
 	}
-	g := topologyServer.Graph
+
+	cached, err := graph.NewCachedBackend(persistent)
+	if err != nil {
+		return nil, err
+	}
+
+	g := graph.NewGraphFromConfig(cached)
+
+	authOptions := NewAnalyzerAuthenticationOpts()
+
+	agentWSServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/agent"))
+	_, err = NewTopologyAgentEndpoint(agentWSServer, authOptions, cached, g)
+	if err != nil {
+		return nil, err
+	}
+
+	publisherWSServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/publisher"))
+	_, err = NewTopologyPublisherEndpoint(publisherWSServer, authOptions, g)
+	if err != nil {
+		return nil, err
+	}
+
+	replicationWSServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/replication"))
+	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, authOptions, cached, g)
+	if err != nil {
+		return nil, err
+	}
+
+	subscriberWSServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
+	topology.NewTopologySubscriberEndpoint(subscriberWSServer, authOptions, g)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)
 	if err != nil {
@@ -213,11 +250,11 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, wsServer, etcdClient)
+	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, agentWSServer, subscriberWSServer, etcdClient)
 
 	metadataManager := metadata.NewUserMetadataManager(g, metadataAPIHandler)
 
-	tableClient := flow.NewTableClient(wsServer)
+	tableClient := flow.NewTableClient(agentWSServer)
 
 	storage, err := storage.NewStorageFromConfig()
 	if err != nil {
@@ -233,22 +270,25 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
 	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tableClient, storage))
 
-	alertServer := alert.NewAlertServer(alertAPIHandler, wsServer, g, tr, etcdClient)
+	alertServer := alert.NewAlertServer(alertAPIHandler, subscriberWSServer, g, tr, etcdClient)
 
-	piClient := packet_injector.NewPacketInjectorClient(wsServer)
+	piClient := packet_injector.NewPacketInjectorClient(agentWSServer)
 
 	s := &Server{
-		httpServer:      hserver,
-		wsServer:        wsServer,
-		topologyServer:  topologyServer,
-		probeBundle:     probeBundle,
-		embeddedEtcd:    embeddedEtcd,
-		etcdClient:      etcdClient,
-		onDemandClient:  onDemandClient,
-		metadataManager: metadataManager,
-		storage:         storage,
-		flowServer:      flowServer,
-		alertServer:     alertServer,
+		httpServer:          hserver,
+		agentWSServer:       agentWSServer,
+		publisherWSServer:   publisherWSServer,
+		replicationWSServer: replicationWSServer,
+		subscriberWSServer:  subscriberWSServer,
+		replicationEndpoint: replicationEndpoint,
+		probeBundle:         probeBundle,
+		embeddedEtcd:        embeddedEtcd,
+		etcdClient:          etcdClient,
+		onDemandClient:      onDemandClient,
+		metadataManager:     metadataManager,
+		storage:             storage,
+		flowServer:          flowServer,
+		alertServer:         alertServer,
 	}
 
 	api.RegisterTopologyAPI(hserver, g, tr)

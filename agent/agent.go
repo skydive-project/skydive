@@ -53,7 +53,7 @@ type Agent struct {
 	graph               *graph.Graph
 	wsServer            *shttp.WSJSONServer
 	analyzerClientPool  *shttp.WSJSONClientPool
-	topologyServer      *TopologyServer
+	topologyEndpoint    *topology.TopologySubscriberEndpoint
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.ProbeBundle
 	flowProbeBundle     *fprobes.FlowProbeBundle
@@ -67,9 +67,8 @@ type Agent struct {
 
 // NewAnalyzerWSJSONClientPool creates a new http WebSocket client Pool
 // with authentification
-func NewAnalyzerWSJSONClientPool() (*shttp.WSJSONClientPool, error) {
+func NewAnalyzerWSJSONClientPool(authOptions *shttp.AuthenticationOpts) (*shttp.WSJSONClientPool, error) {
 	pool := shttp.NewWSJSONClientPool()
-	authOptions := analyzer.NewAnalyzerAuthenticationOpts()
 
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
@@ -78,7 +77,7 @@ func NewAnalyzerWSJSONClientPool() (*shttp.WSJSONClientPool, error) {
 
 	for _, sa := range addresses {
 		authClient := shttp.NewAuthenticationClient(config.GetURL("http", sa.Addr, sa.Port, ""), authOptions)
-		c := shttp.NewWSClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws"), authClient, nil)
+		c := shttp.NewWSClientFromConfig(common.AgentService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent"), authClient, nil)
 		pool.AddClient(c)
 	}
 
@@ -176,7 +175,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	wsServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws"))
+	wsServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
 
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
@@ -188,9 +187,11 @@ func NewAgent() (*Agent, error) {
 
 	api.RegisterTopologyAPI(hserver, g, tr)
 
-	tserver := NewTopologyServer(g, wsServer)
+	authOptions := analyzer.NewAnalyzerAuthenticationOpts()
 
-	analyzerClientPool, err := NewAnalyzerWSJSONClientPool()
+	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, authOptions, g)
+
+	analyzerClientPool, err := NewAnalyzerWSJSONClientPool(authOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +239,7 @@ func NewAgent() (*Agent, error) {
 		graph:               g,
 		wsServer:            wsServer,
 		analyzerClientPool:  analyzerClientPool,
-		topologyServer:      tserver,
+		topologyEndpoint:    topologyEndpoint,
 		rootNode:            rootNode,
 		topologyProbeBundle: topologyProbeBundle,
 		flowProbeBundle:     flowProbeBundle,

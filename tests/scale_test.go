@@ -96,21 +96,14 @@ func TestScaleHA(t *testing.T) {
 		return
 	}
 
-	checkClients := func(clientsExpected int, serviceType common.ServiceType) error {
+	checkAgents := func(agentsExpected int) error {
 		status, err := getAnalyzerStatus()
 		if err != nil {
 			return err
 		}
 
-		count := 0
-		for _, client := range status.Clients {
-			if serviceType == "" || client.ServiceType == serviceType {
-				count++
-			}
-		}
-
-		if count != clientsExpected {
-			return fmt.Errorf("Expected %d '%s' client, got %d", clientsExpected, serviceType, count)
+		if count := len(status.Agents); count != agentsExpected {
+			return fmt.Errorf("Expected %d agent(s), got %d", agentsExpected, count)
 		}
 
 		return nil
@@ -127,7 +120,7 @@ func TestScaleHA(t *testing.T) {
 				return fmt.Errorf("Should return %d host nodes got : %v", nodeExpected, nodes)
 			}
 
-			if err := checkClients(nodeExpected, common.AgentService); err != nil {
+			if err := checkAgents(nodeExpected); err != nil {
 				return err
 			}
 
@@ -262,10 +255,6 @@ func TestScaleHA(t *testing.T) {
 			helper.ExecCmds(t, tearDownCmds...)
 			t.Fatalf(err.Error())
 		}
-	}
-
-	if err := checkClients(1, common.AnalyzerService); err != nil {
-		t.Fatal(err)
 	}
 
 	if err := checkPeers(1, common.RunningState); err != nil {

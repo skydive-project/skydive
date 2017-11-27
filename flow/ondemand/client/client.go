@@ -46,7 +46,8 @@ type OnDemandProbeClient struct {
 	graph.DefaultGraphListener
 	graph            *graph.Graph
 	captureHandler   *api.CaptureAPIHandler
-	pool             shttp.WSJSONSpeakerPool
+	agentPool        shttp.WSJSONSpeakerPool
+	subscriberPool   shttp.WSJSONSpeakerPool
 	captures         map[string]*api.Capture
 	watcher          api.StoppableWatcher
 	registeredNodes  map[string]string
@@ -78,7 +79,7 @@ func (o *OnDemandProbeClient) OnWSJSONMessage(c shttp.WSSpeaker, m *shttp.WSJSON
 		} else {
 			logging.GetLogger().Debugf("Capture start request succeeded %v", m)
 		}
-		o.pool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
+		o.subscriberPool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", query.Capture.UUID))
 	case "CaptureStopReply":
 		if m.Status == http.StatusOK {
 			logging.GetLogger().Debugf("Capture stop request succeeded %v", m)
@@ -151,7 +152,7 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 
 	msg := shttp.NewWSJSONMessage(ondemand.Namespace, "CaptureStart", cq)
 
-	if err := o.pool.SendMessageTo(msg, np.host); err != nil {
+	if err := o.agentPool.SendMessageTo(msg, np.host); err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", np.host, err.Error())
 		return false
 	}
@@ -174,7 +175,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *api.Cap
 		return false
 	}
 
-	if err := o.pool.SendMessageTo(msg, node.Host()); err != nil {
+	if err := o.agentPool.SendMessageTo(msg, node.Host()); err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", node.Host(), err.Error())
 		return false
 	}
@@ -242,7 +243,7 @@ func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
 func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 	o.RLock()
 	if uuid, ok := o.registeredNodes[string(n.ID)]; ok {
-		o.pool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
+		o.subscriberPool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureNodeUpdated", uuid))
 	}
 	o.RUnlock()
 }
@@ -345,10 +346,10 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 	capture := resource.(*api.Capture)
 	switch action {
 	case "init", "create", "set", "update":
-		o.pool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
+		o.subscriberPool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
 		o.onCaptureAdded(capture)
 	case "expire", "delete":
-		o.pool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
+		o.subscriberPool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureDeleted", capture))
 		o.onCaptureDeleted(capture)
 	}
 }
@@ -368,7 +369,7 @@ func (o *OnDemandProbeClient) Stop() {
 }
 
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, pool shttp.WSJSONSpeakerPool, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
+func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool shttp.WSJSONSpeakerPool, subscriberPool shttp.WSJSONSpeakerPool, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*api.Capture)
 	for _, resource := range resources {
@@ -381,14 +382,15 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, pool shtt
 		EtcdMasterElector: elector,
 		graph:             g,
 		captureHandler:    ch,
-		pool:              pool,
+		agentPool:         agentPool,
+		subscriberPool:    subscriberPool,
 		captures:          captures,
 		registeredNodes:   make(map[string]string),
 		deletedNodeCache:  cache.New(elector.TTL()*2, elector.TTL()*2),
 	}
 
 	elector.AddEventListener(o)
-	pool.AddJSONMessageHandler(o, []string{ondemand.Namespace})
+	agentPool.AddJSONMessageHandler(o, []string{ondemand.Namespace})
 
 	return o
 }

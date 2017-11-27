@@ -169,7 +169,7 @@ func newWSClient(endpoint string) (*websocket.Conn, error) {
 	if config.IsTLSenabled() == true {
 		scheme = "wss"
 	}
-	endpoint = fmt.Sprintf("%s://%s/ws", scheme, endpoint)
+	endpoint = fmt.Sprintf("%s://%s/ws/subscriber", scheme, endpoint)
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
