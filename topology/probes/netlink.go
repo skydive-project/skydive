@@ -659,7 +659,7 @@ func (u *NetNsNetLinkProbe) onAddressDeleted(addr netlink.Addr, family int, inde
 
 	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{"IfIndex": index})
 	if intf == nil {
-		logging.GetLogger().Errorf("No interface with index %d for new address %s", index, addr.IPNet.String())
+		logging.GetLogger().Debugf("No interface with index %d for new address %s", index, addr.IPNet.String())
 		return
 	}
 
