@@ -224,9 +224,22 @@ func IPv6Supported() bool {
 	return true
 }
 
-// NormalizeIPForUrl returns a string normalized that can be used in URL. Brackets
-// will be used for IPV6 addresses.
-func NormalizeIPForUrl(ip net.IP) string {
+// NormalizeAddrForUrl returns a string normalized that can be used in URL. Brackets
+// will be used for IPV6 addresses. Accept net.IP or string as input.
+func NormalizeAddrForURL(addrI interface{}) string {
+	var ip net.IP
+	switch addrI.(type) {
+	case net.IP:
+		ip = addrI.(net.IP)
+	case string:
+		ip = net.ParseIP(addrI.(string))
+		if ip == nil {
+			// passthough in case of using domain name
+			return addrI.(string)
+		}
+	default:
+		return ""
+	}
 	if ip.To4() == nil {
 		return "[" + ip.String() + "]"
 	}
@@ -527,19 +540,4 @@ func IPV4CIDRToRegex(cidr string) (string, error) {
 		regex += ")"
 	}
 	return "^" + regex + `(\/[0-9]?[0-9])?$`, nil
-}
-
-// IsIPv6 returns whether is a IPV6 addresses or not
-func IsIPv6(str string) bool {
-	ip := net.ParseIP(str)
-	return ip != nil && strings.Contains(str, ":")
-}
-
-// NormalizeAddrForURL format the given address to be used in URL. For IPV6
-// addresses the brackets will be added.
-func NormalizeAddrForURL(addr string) string {
-	if IsIPv6(addr) {
-		return "[" + addr + "]"
-	}
-	return addr
 }

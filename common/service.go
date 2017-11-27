@@ -91,7 +91,7 @@ func ServiceAddressFromString(addressPort string) (ServiceAddress, error) {
 	}
 
 	// just take the first address returned
-	addr := NormalizeIPForUrl(ips[0])
+	addr := NormalizeAddrForURL(ips[0])
 
 	return ServiceAddress{
 		Addr: addr,
