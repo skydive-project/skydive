@@ -20,27 +20,12 @@
 #
 
 import json
-import urllib.request
-
-from skydive.graph import Node
 
 
-class RESTClient:
+class JSONEncoder(json.JSONEncoder):
 
-    def __init__(self, endpoint):
-        self.endpoint = endpoint
-
-    def lookup_nodes(self, gremlin):
-        data = json.dumps(
-            {"GremlinQuery": gremlin}
-        )
-        req = urllib.request.Request("http://%s/api/topology" % self.endpoint,
-                                     data.encode(),
-                                     {'Content-Type': 'application/json'})
-        resp = urllib.request.urlopen(req)
-        if resp.getcode() != 200:
-            return
-
-        data = resp.read()
-        objs = json.loads(data.decode())
-        return [Node.from_object(o) for o in objs]
+    def default(self, obj):
+        if hasattr(obj, 'repr_json'):
+            return obj.repr_json()
+        else:
+            return json.JSONEncoder.default(self, obj)

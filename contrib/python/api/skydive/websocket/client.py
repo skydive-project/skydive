@@ -19,29 +19,17 @@
 # under the License.
 #
 
+import asyncio
 import base64
 import json
-
-try:
-    import httplib
-except:
-    import http.client as httplib
-
+import http.client as httplib
 import uuid
-
-try:
-    from urlparse import urlparse
-except:
-    from urllib.parse import urlparse
+from urllib.parse import urlparse
 
 from autobahn.asyncio.websocket import WebSocketClientProtocol
 from autobahn.asyncio.websocket import WebSocketClientFactory
 
-try:
-    import asyncio
-except ImportError:
-    # Trollius >= 0.3 was renamed
-    import trollius as asyncio
+from skydive.encoder import JSONEncoder
 
 
 SyncRequestMsgType = "SyncRequest"
@@ -55,53 +43,6 @@ EdgeDeletedMsgType = "EdgeDeleted"
 EdgeAddedMsgType = "EdgeAdded"
 
 
-class JSONEncoder(json.JSONEncoder):
-
-    def default(self, obj):
-        if hasattr(obj, 'reprJSON'):
-            return obj.reprJSON()
-        else:
-            return json.JSONEncoder.default(self, obj)
-
-
-class GraphElement(object):
-
-    def __init__(self, id, host, **metadata):
-        self.id = id
-        self.host = host
-        self.metadata = metadata
-
-    def reprJSON(self):
-        return {
-            "ID": self.id,
-            "Host": self.host,
-            "Metadata": self.metadata
-        }
-
-
-class Node(GraphElement):
-    pass
-
-
-class Edge(GraphElement):
-
-    def __init__(self, id, host, parent, child, **metadata):
-        self.id = id
-        self.host = host
-        self.parent = parent
-        self.child = child
-        self.metadata = metadata
-
-    def reprJSON(self):
-        return {
-            "ID": self.id,
-            "Host": self.host,
-            "Metadata": self.metadata,
-            "Parent": self.parent,
-            "Child": self.child
-        }
-
-
 class WSMessage(object):
 
     def __init__(self, ns, type, obj):
@@ -111,7 +52,7 @@ class WSMessage(object):
         self.obj = obj
         self.status = httplib.OK
 
-    def reprJSON(self):
+    def repr_json(self):
         return {
             "UUID": self.uuid,
             "Namespace": self.ns,
@@ -120,7 +61,7 @@ class WSMessage(object):
             "Status": self.status
         }
 
-    def toJSON(self):
+    def to_json(self):
         return json.dumps(self, cls=JSONEncoder)
 
 
@@ -129,12 +70,12 @@ class SyncRequestMsg:
     def __init__(self, filter):
         self.filter = filter
 
-    def reprJSON(self):
+    def repr_json(self):
         return {
             "GremlinFilter": self.filter
         }
 
-    def toJSON(self):
+    def to_json(self):
         return json.dumps(self, cls=JSONEncoder)
 
 
@@ -143,8 +84,14 @@ class WSClientDefaultProtocol(WebSocketClientProtocol):
     def onClose(self, wasClean, code, reason):
         self.transport.closeConnection()
 
+    def sendWSMessage(self, msg):
+        self.sendMessage(msg.to_json().encode())
 
-class WSClientDebugProtocol(WebSocketClientProtocol):
+    def stop(self):
+        self.factory.client.loop.stop()
+
+
+class WSClientDebugProtocol(WSClientDefaultProtocol):
 
     def onConnect(self, response):
         print("Connected: {0}".format(response.peer))
@@ -156,24 +103,23 @@ class WSClientDebugProtocol(WebSocketClientProtocol):
             print("Text message received: {0}".format(payload.decode('utf8')))
 
     def onOpen(self):
-        print("WebSocket connection open.")
+        print("WebSocket connection opened.")
 
-        if self.factory.kwargs["sync_request"]:
+        if self.factory.client.sync:
             msg = WSMessage(
                 "Graph", SyncRequestMsgType,
-                SyncRequestMsg(self.factory.kwargs["gremlin_filter"])).toJSON()
-            self.sendMessage(msg)
+                SyncRequestMsg(self.factory.client.filter))
+            self.sendWSMessage(msg)
 
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
-        self.transport.closeConnection()
 
 
 class WSClient(WebSocketClientProtocol):
 
     def __init__(self, host_id, endpoint, type="",
                  protocol=WSClientDefaultProtocol,
-                 username="", password="",
+                 username="", password="", sync="", filter="",
                  **kwargs):
         self.host_id = host_id
         self.endpoint = endpoint
@@ -181,11 +127,14 @@ class WSClient(WebSocketClientProtocol):
         self.password = password
         self.protocol = protocol
         self.type = type
+        self.filter = filter
+        self.sync = sync
         self.kwargs = kwargs
 
     def connect(self):
         factory = WebSocketClientFactory(self.endpoint)
         factory.protocol = self.protocol
+        factory.client = self
         factory.kwargs = self.kwargs
         factory.headers["X-Host-ID"] = self.host_id
         factory.headers["X-Client-Type"] = self.type
@@ -195,19 +144,18 @@ class WSClient(WebSocketClientProtocol):
                 b"%s:%s" % (self.username, self.password)).decode("ascii")
             factory.headers["Authorization"] = 'Basic %s' % authorization
 
-        if "gremlin_filter" in self.kwargs:
-            factory.headers["X-Gremlin-Filter"] = self.kwargs["gremlin_filter"]
+        if self.filter:
+            factory.headers["X-Gremlin-Filter"] = self.filter
 
-        loop = asyncio.get_event_loop()
-
+        self.loop = asyncio.get_event_loop()
         u = urlparse(self.endpoint)
 
-        coro = loop.create_connection(factory, u.hostname, u.port)
-        loop.run_until_complete(coro)
+        coro = self.loop.create_connection(factory, u.hostname, u.port)
+        self.loop.run_until_complete(coro)
 
         try:
-            loop.run_forever()
+            self.loop.run_forever()
         except KeyboardInterrupt:
             pass
         finally:
-            loop.close()
+            self.loop.close()

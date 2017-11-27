@@ -1,2 +1,1 @@
 autobahn>=0.17.1
-trollius>=2.1
