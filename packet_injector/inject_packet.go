@@ -209,7 +209,12 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 			logging.GetLogger().Debugf("Injecting packet on interface %s", ifName)
 
 			if _, err := syscall.Write(rawSocket.GetFd(), packetData); err != nil {
-				logging.GetLogger().Errorf("Write error: %s", err.Error())
+				if err == syscall.ENXIO {
+					logging.GetLogger().Warningf("Write error: %s", err.Error())
+				} else {
+					logging.GetLogger().Errorf("Write error: %s", err.Error())
+				}
+				return
 			}
 
 			if i != pp.Count-1 {
