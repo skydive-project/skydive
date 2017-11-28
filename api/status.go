@@ -6,6 +6,7 @@ import (
 
 	auth "github.com/abbot/go-http-auth"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 )
 
 // WSSpeaker is the interface to report the status of a service
@@ -23,7 +24,7 @@ func (s *statusAPI) statusGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 	status := s.reporter.GetStatus()
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(status); err != nil {
-		panic(err)
+		logging.GetLogger().Warningf("Error while writing response: %s", err)
 	}
 }
 

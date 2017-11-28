@@ -30,7 +30,9 @@ import (
 	"strings"
 
 	"github.com/abbot/go-http-auth"
+
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -197,7 +199,7 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 
 	ppr.TrackingID = trackingID
 	if err := json.NewEncoder(w).Encode(ppr); err != nil {
-		panic(err)
+		logging.GetLogger().Warningf("Error while writing response: %s", err)
 	}
 }
 
