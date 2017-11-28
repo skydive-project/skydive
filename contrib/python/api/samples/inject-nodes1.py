@@ -47,6 +47,9 @@ class WSClientInjectProtocol(WSClientDebugProtocol):
         self.sendWSMessage(msg)
 
         print("Success!")
+        self.sendClose()
+
+    def onClose(self, wasClean, code, reason):
         self.stop()
 
 

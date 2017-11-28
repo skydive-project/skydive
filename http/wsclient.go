@@ -275,6 +275,8 @@ func (c *WSConn) run() {
 
 	defer func() {
 		atomic.StoreInt32((*int32)(c.State), common.StoppedState)
+		c.conn.Close()
+
 		c.RLock()
 		for _, l := range c.eventHandlers {
 			l.OnDisconnected(c.wsSpeaker)
@@ -330,7 +332,6 @@ func (c *WSConn) Disconnect() {
 	c.running.Store(false)
 	if atomic.LoadInt32((*int32)(c.State)) == common.RunningState {
 		c.quit <- true
-		c.conn.Close()
 		close(c.send)
 		close(c.read)
 	}
@@ -404,7 +405,6 @@ func (c *WSClient) connect() {
 		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
 		return
 	}
-	defer c.conn.Close()
 	c.conn.SetPingHandler(nil)
 
 	atomic.StoreInt32((*int32)(c.State), common.RunningState)

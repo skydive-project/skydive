@@ -81,9 +81,6 @@ class SyncRequestMsg:
 
 class WSClientDefaultProtocol(WebSocketClientProtocol):
 
-    def onClose(self, wasClean, code, reason):
-        self.transport.closeConnection()
-
     def sendWSMessage(self, msg):
         self.sendMessage(msg.to_json().encode())
 
