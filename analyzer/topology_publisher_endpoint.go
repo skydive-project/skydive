@@ -34,6 +34,16 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+// PersistencePolicy defines Persistent policy for publishers
+type PersistencePolicy string
+
+const (
+	// Persistent means that the graph elements created will always remain
+	Persistent PersistencePolicy = "Persistent"
+	// DeleteOnDisconnect means the graph elements created will be deleted on client disconnect
+	DeleteOnDisconnect PersistencePolicy = "DeleteOnDisconnect"
+)
+
 // TopologyPublisherEndpoint serves the graph for external publishers, for instance
 // an external program that interacts with the Skydive graph.
 type TopologyPublisherEndpoint struct {
@@ -50,6 +60,10 @@ type TopologyPublisherEndpoint struct {
 
 // OnDisconnected called when a publisher got disconnected.
 func (t *TopologyPublisherEndpoint) OnDisconnected(c shttp.WSSpeaker) {
+	policy := PersistencePolicy(c.GetHeaders().Get("X-Persistence-Policy"))
+	if policy == Persistent {
+		return
+	}
 	logging.GetLogger().Debugf("Authoritative client unregistered, delete resources %s", c.GetHost())
 
 	t.Graph.Lock()

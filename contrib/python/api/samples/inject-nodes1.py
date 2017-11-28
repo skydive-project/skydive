@@ -20,7 +20,7 @@ class WSClientInjectProtocol(WSClientDebugProtocol):
         print("WebSocket connection open.")
 
         # create a fabric port
-        node = Node("PORT_TEST", "",
+        node = Node("PORT_TEST", "host-test",
                     metadata={"Name": "Test port !", "Type": "fabric"})
         msg = WSMessage("Graph", NodeAddedMsgType, node)
         self.sendWSMessage(msg)
@@ -34,7 +34,7 @@ class WSClientInjectProtocol(WSClientDebugProtocol):
         tor_id = nodes[0].id
 
         # create a ownership + layer2 link
-        edge = Edge(tor_id + node.id + "ownership", "",
+        edge = Edge(tor_id + node.id + "ownership", "host-test",
                     tor_id, node.id,
                     metadata={"RelationType": "ownership"})
         msg = WSMessage("Graph", EdgeAddedMsgType, edge)
@@ -52,7 +52,7 @@ class WSClientInjectProtocol(WSClientDebugProtocol):
 
 def main():
     wsclient = WSClient("host-test", "ws://localhost:8082/ws/publisher",
-                        protocol=WSClientInjectProtocol)
+                        protocol=WSClientInjectProtocol, persistent=True)
     wsclient.connect()
 
 

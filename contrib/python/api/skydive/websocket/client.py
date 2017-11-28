@@ -119,7 +119,7 @@ class WSClient(WebSocketClientProtocol):
 
     def __init__(self, host_id, endpoint, type="",
                  protocol=WSClientDefaultProtocol,
-                 username="", password="", sync="", filter="",
+                 username="", password="", sync="", filter="", persistent=True,
                  **kwargs):
         self.host_id = host_id
         self.endpoint = endpoint
@@ -128,6 +128,7 @@ class WSClient(WebSocketClientProtocol):
         self.protocol = protocol
         self.type = type
         self.filter = filter
+        self.persistent = persistent
         self.sync = sync
         self.kwargs = kwargs
 
@@ -138,6 +139,10 @@ class WSClient(WebSocketClientProtocol):
         factory.kwargs = self.kwargs
         factory.headers["X-Host-ID"] = self.host_id
         factory.headers["X-Client-Type"] = self.type
+        if self.persistent:
+            factory.headers["X-Persistence-Policy"] = "Persistent"
+        else:
+            factory.headers["X-Persistence-Policy"] = "DeleteOnDisconnect"
 
         if self.username:
             authorization = base64.b64encode(
