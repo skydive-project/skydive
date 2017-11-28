@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	ftraversal "github.com/skydive-project/skydive/flow/traversal"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 	"github.com/skydive-project/skydive/validator"
@@ -115,7 +116,7 @@ func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 	} else {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		if err := json.NewEncoder(w).Encode(t.graph); err != nil {
-			panic(err)
+			logging.GetLogger().Warningf("Error while writing response: %s", err)
 		}
 	}
 }
@@ -186,7 +187,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		if err := json.NewEncoder(w).Encode(res); err != nil {
-			panic(err)
+			logging.GetLogger().Warningf("Error while writing response: %s", err)
 		}
 	}
 }

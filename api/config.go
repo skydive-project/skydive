@@ -10,6 +10,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/spf13/viper"
 )
 
@@ -25,7 +26,7 @@ func (c *configAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedReques
 	value := common.NormalizeValue(c.cfg.Get(key))
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(value); err != nil {
-		panic(err)
+		logging.GetLogger().Warningf("Error while writing response: %s", err)
 	}
 }
 
