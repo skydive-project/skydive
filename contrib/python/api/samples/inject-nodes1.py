@@ -50,7 +50,6 @@ class WSClientInjectProtocol(WSClientDebugProtocol):
         self.stop()
 
 
-
 def main():
     wsclient = WSClient("host-test", "ws://localhost:8082/ws/publisher",
                         protocol=WSClientInjectProtocol)

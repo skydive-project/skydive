@@ -85,6 +85,7 @@
        - ansible
        - numactl-devel
        - kernel-devel
+       - python3-virtualenv
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
@@ -172,10 +173,13 @@
   - group:
       name: jenkins
       state: present
+  - group:
+      name: docker
+      state: present
   - user:
       name: jenkins
       group: jenkins
-      groups: jenkins,libvirt
+      groups: jenkins,libvirt,docker
       home: /var/lib/jenkins
   - get_url:
       url: "http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/jnlpJars/slave.jar"

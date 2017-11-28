@@ -22,7 +22,7 @@
 import json
 import urllib.request
 
-from skydive.graph import Node
+from skydive.graph import Node, Edge
 
 
 class RESTClient:
@@ -30,7 +30,7 @@ class RESTClient:
     def __init__(self, endpoint):
         self.endpoint = endpoint
 
-    def lookup_nodes(self, gremlin):
+    def lookup(self, gremlin, klass):
         data = json.dumps(
             {"GremlinQuery": gremlin}
         )
@@ -43,4 +43,10 @@ class RESTClient:
 
         data = resp.read()
         objs = json.loads(data.decode())
-        return [Node.from_object(o) for o in objs]
+        return [klass.from_object(o) for o in objs]
+
+    def lookup_nodes(self, gremlin):
+        return self.lookup(gremlin, Node)
+
+    def lookup_edges(self, gremlin):
+        return self.lookup(gremlin, Edge)

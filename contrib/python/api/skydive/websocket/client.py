@@ -156,6 +156,6 @@ class WSClient(WebSocketClientProtocol):
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
-            pass
-        finally:
             self.loop.close()
+        finally:
+            pass

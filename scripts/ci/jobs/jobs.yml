@@ -402,6 +402,33 @@
       - chuck-norris
 
 - job:
+    name: skydive-python-tests
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (skydive-)?python-tests'
+          only-trigger-phrase: true
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-python-tests
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+          SHELL=dumb scripts/ci/run-python-tests.sh
+    publishers:
+      - chuck-norris
+
+- job:
     name: skydive-coverage
     defaults: skydive
     concurrent: true
