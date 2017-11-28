@@ -1449,6 +1449,42 @@
 			"revisionTime": "2017-06-06T14:27:51Z"
 		},
 		{
+			"checksumSHA1": "j+2QWtfa7AsYOoqpJuwwfgkOvr8=",
+			"path": "github.com/gobwas/httphead",
+			"revision": "01c9b01b368a438f615030bbbd5e4f9e0023e15c",
+			"revisionTime": "2017-10-16T04:39:08Z"
+		},
+		{
+			"checksumSHA1": "k2JgfxkzNCBHYQjcLq7kQmmNTCE=",
+			"path": "github.com/gobwas/pool",
+			"revision": "32dbaa12caca20fad12253c30591227e04f62cdd",
+			"revisionTime": "2017-08-29T09:47:49Z"
+		},
+		{
+			"checksumSHA1": "xSilIRcQJFjJVaVl1e2oRqsjeeg=",
+			"path": "github.com/gobwas/pool/pbufio",
+			"revision": "32dbaa12caca20fad12253c30591227e04f62cdd",
+			"revisionTime": "2017-08-29T09:47:49Z"
+		},
+		{
+			"checksumSHA1": "HNmQ5/HoIX1Pg+ZRD89bqspxstU=",
+			"path": "github.com/gobwas/pool/pbytes",
+			"revision": "32dbaa12caca20fad12253c30591227e04f62cdd",
+			"revisionTime": "2017-08-29T09:47:49Z"
+		},
+		{
+			"checksumSHA1": "Ro9VLS8Cx9pKtlyxtA6HLdfEpko=",
+			"path": "github.com/gobwas/ws",
+			"revision": "915eed3240022c5265584c55032ef1b8c8f84168",
+			"revisionTime": "2017-11-12T09:28:02Z"
+		},
+		{
+			"checksumSHA1": "++M73QiW+Gdz0S1HjHiTXjU3F9A=",
+			"path": "github.com/gobwas/ws/wsutil",
+			"revision": "915eed3240022c5265584c55032ef1b8c8f84168",
+			"revisionTime": "2017-11-12T09:28:02Z"
+		},
+		{
 			"checksumSHA1": "wn2shNJMwRZpvuvkf1s7h0wvqHI=",
 			"path": "github.com/gogo/protobuf/proto",
 			"revision": "2adc21fd136931e0388e278825291678e1d98309",
@@ -1827,6 +1863,12 @@
 			"revisionTime": "2013-11-06T22:25:44Z"
 		},
 		{
+			"checksumSHA1": "jHOLsfeMPcX84YQB2MXBqXFntBg=",
+			"path": "github.com/kr/pty",
+			"revision": "95d05c1eef33a45bd58676b6ce28d105839b8d0b",
+			"revisionTime": "2017-10-06T17:48:01Z"
+		},
+		{
 			"checksumSHA1": "KCgFx/QQG9vUtshnL9aUxeWGFyY=",
 			"comment": "v1.6.0-1-gc81f9d7",
 			"path": "github.com/magiconair/properties",
@@ -1914,6 +1956,12 @@
 			"checksumSHA1": "gcLub3oB+u4QrOJZcYmk/y2AP4k=",
 			"path": "github.com/nu7hatch/gouuid",
 			"revision": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+		},
+		{
+			"checksumSHA1": "BoXdUBWB8UnSlFlbnuTQaPqfCGk=",
+			"path": "github.com/op/go-logging",
+			"revision": "970db520ece77730c7e4724c61121037378659d9",
+			"revisionTime": "2016-03-15T20:05:05Z"
 		},
 		{
 			"checksumSHA1": "FV1FxF/25G8cx+qzKUGwbdJusrw=",
@@ -2042,6 +2090,18 @@
 			"checksumSHA1": "GN8zgTgvo+ouD9LClMmOL3NB+jM=",
 			"path": "github.com/safchain/ethtool",
 			"revision": "e01512671ed4c2248daf0c5e974ecf88a4947335"
+		},
+		{
+			"checksumSHA1": "mOYr9ML/yf+7tqHdf5dJSq3wPIc=",
+			"path": "github.com/skydive-project/dede/dede",
+			"revision": "09b5e309310bf46c1bffd2e6bd7c12a25d4a81d3",
+			"revisionTime": "2017-12-12T16:47:56Z"
+		},
+		{
+			"checksumSHA1": "LPxzXx+6DGiG/91JW6EzfpepDHY=",
+			"path": "github.com/skydive-project/dede/statics",
+			"revision": "09b5e309310bf46c1bffd2e6bd7c12a25d4a81d3",
+			"revisionTime": "2017-12-12T16:47:56Z"
 		},
 		{
 			"checksumSHA1": "/HwlJqv7kKCmWqX88A2rehLiOic=",

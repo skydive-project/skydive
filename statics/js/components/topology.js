@@ -150,7 +150,7 @@ var TopologyComponent = {
                   @click="toggleExpandAll(currentNode)"></i></span>\
               </h1>\
               <div id="metadata-panel" class="sub-left-panel">\
-                <object-detail :object="currentNodeMetadata"></object-detail>\
+                <object-detail :object="currentNodeMetadata" :links="dedeSSH(currentNodeMetadata)"></object-detail>\
               </div>\
               <div v-if="currentNodeMetadata.Type == \'ovsbridge\'">\
                 <h1>Rules</h1>\
@@ -324,6 +324,21 @@ var TopologyComponent = {
   },
 
   methods: {
+
+    dedeSSH: function(m) {
+      var self = this;
+
+      if (m.Type !== "host") return;
+
+      return {
+        "Name": {
+          "class": "indicator glyphicon glyphicon-new-window raw-packet-link",
+          "fnc": function() {
+            window.open(location.protocol + '//' + location.host + '/dede/terminal/'+m.Name+ '?title='+m.Name+'&cmd=ssh ' + m.Name, '_blank').focus();
+          }
+        }
+      };
+    },
 
     unwatch: function() {
       clearTimeout(this.timeId);
