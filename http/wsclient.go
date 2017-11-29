@@ -282,25 +282,37 @@ func (c *WSConn) run() {
 		c.RUnlock()
 	}()
 
-	defer c.pingTicker.Stop()
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case m := <-c.send:
+				err := c.write(m)
+				if err != nil {
+					logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
+				}
+			case <-c.pingTicker.C:
+				c.sendPing()
+			case <-done:
+				c.pingTicker.Stop()
+				return
+			}
+		}
+	}()
+	defer func() {
+		done <- true
+	}()
 
 	for {
 		select {
 		case <-c.quit:
 			return
-		case m := <-c.send:
-			err := c.write(m)
-			if err != nil {
-				logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
-			}
 		case m := <-c.read:
 			c.RLock()
 			for _, l := range c.eventHandlers {
 				l.OnMessage(c.wsSpeaker, WSRawMessage(m))
 			}
 			c.RUnlock()
-		case <-c.pingTicker.C:
-			c.sendPing()
 		}
 	}
 }
