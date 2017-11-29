@@ -64,11 +64,11 @@ type GremlinAlert struct {
 	gremlinParser     *traversal.GremlinTraversalParser
 }
 
-func (ga *GremlinAlert) Evaluate() (interface{}, error) {
+func (ga *GremlinAlert) Evaluate(lockGraph bool) (interface{}, error) {
 	// If the alert is a simple Gremlin query, avoid
 	// converting to JavaScript
 	if ga.traversalSequence != nil {
-		result, err := ga.traversalSequence.Exec(ga.graph, false)
+		result, err := ga.traversalSequence.Exec(ga.graph, lockGraph)
 		if err != nil {
 			return nil, err
 		}
@@ -267,12 +267,12 @@ func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
 	return nil
 }
 
-func (a *AlertServer) evaluateAlert(al *GremlinAlert) error {
+func (a *AlertServer) evaluateAlert(al *GremlinAlert, lockGraph bool) error {
 	if !a.IsMaster() {
 		return nil
 	}
 
-	data, err := al.Evaluate()
+	data, err := al.Evaluate(lockGraph)
 	if err != nil {
 		return err
 	}
@@ -295,39 +295,39 @@ func (a *AlertServer) evaluateAlert(al *GremlinAlert) error {
 	return nil
 }
 
-func (a *AlertServer) EvaluateAlerts(alerts map[string]*GremlinAlert) {
+func (a *AlertServer) EvaluateAlerts(alerts map[string]*GremlinAlert, lockGraph bool) {
 	a.RLock()
 	defer a.RUnlock()
 
 	for _, al := range alerts {
-		if err := a.evaluateAlert(al); err != nil {
+		if err := a.evaluateAlert(al, lockGraph); err != nil {
 			logging.GetLogger().Warning(err.Error())
 		}
 	}
 }
 
 func (a *AlertServer) OnNodeUpdated(n *graph.Node) {
-	a.EvaluateAlerts(a.graphAlerts)
+	a.EvaluateAlerts(a.graphAlerts, false)
 }
 
 func (a *AlertServer) OnNodeAdded(n *graph.Node) {
-	a.EvaluateAlerts(a.graphAlerts)
+	a.EvaluateAlerts(a.graphAlerts, false)
 }
 
 func (a *AlertServer) OnNodeDeleted(n *graph.Node) {
-	a.EvaluateAlerts(a.graphAlerts)
+	a.EvaluateAlerts(a.graphAlerts, false)
 }
 
 func (a *AlertServer) OnEdgeAdded(e *graph.Edge) {
-	a.EvaluateAlerts(a.graphAlerts)
+	a.EvaluateAlerts(a.graphAlerts, false)
 }
 
 func (a *AlertServer) OnEdgeUpdated(e *graph.Edge) {
-	a.EvaluateAlerts(a.graphAlerts)
+	a.EvaluateAlerts(a.graphAlerts, false)
 }
 
 func (a *AlertServer) OnEdgeDeleted(e *graph.Edge) {
-	a.EvaluateAlerts(a.graphAlerts)
+	a.EvaluateAlerts(a.graphAlerts, false)
 }
 
 func parseTrigger(trigger string) (string, string) {
@@ -346,9 +346,7 @@ func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
 
 	logging.GetLogger().Debugf("Registering new alert: %+v", alert)
 
-	a.Graph.RLock()
-	a.evaluateAlert(alert)
-	a.Graph.RUnlock()
+	a.evaluateAlert(alert, true)
 
 	trigger, data := parseTrigger(apiAlert.Trigger)
 	switch trigger {
@@ -366,11 +364,9 @@ func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
 			for {
 				select {
 				case <-ticker.C:
-					a.Graph.RLock()
-					if err := a.evaluateAlert(alert); err != nil {
+					if err := a.evaluateAlert(alert, true); err != nil {
 						logging.GetLogger().Warning(err.Error())
 					}
-					a.Graph.RUnlock()
 				case <-done:
 					return
 				}
