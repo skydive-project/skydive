@@ -164,6 +164,9 @@ func (o *OnDemandProbeServer) unregisterProbe(n *graph.Node) bool {
 
 // OnStarted FlowProbeEventHandler implementation
 func (p *activeProbe) OnStarted() {
+	p.graph.Lock()
+	p.graph.AddMetadata(p.node, "Capture.State", "active")
+	p.graph.Unlock()
 }
 
 // OnStopped FlowProbeEventHandler implementation
