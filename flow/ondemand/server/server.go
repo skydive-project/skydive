@@ -173,8 +173,7 @@ func (p *activeProbe) OnStopped() {
 	p.graph.Unlock()
 }
 
-// OnWSJSONMessage websocket message, valid message type are CaptureStart, CaptureStop
-func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+func (o *OnDemandProbeServer) processMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
 	var query ondemand.CaptureQuery
 	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", msg)
@@ -224,6 +223,11 @@ func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJS
 
 	reply := msg.Reply(&query, msg.Type+"Reply", status)
 	c.SendMessage(reply)
+}
+
+// OnWSJSONMessage websocket message, valid message type are CaptureStart, CaptureStop
+func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+	go o.processMessage(c, msg)
 }
 
 // OnNodeDeleted graph event
