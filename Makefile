@@ -8,9 +8,11 @@ export GO15VENDOREXPERIMENT=1
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 FILTERS_PROTO_FILES=filters/filters.proto
 VERBOSE_FLAGS?=-v
+VERBOSE_TESTS_FLAGS?=-test.v
 VERBOSE?=true
 ifeq ($(VERBOSE), false)
   VERBOSE_FLAGS:=
+  VERBOSE_TESTS_FLAGS:=
 endif
 ifeq ($(COVERAGE), true)
   COVERAGE_ARGS:= -test.coverprofile=../functionals.cover
@@ -81,11 +83,7 @@ test.functionals.compile: govendor genlocalfiles
 	${GOPATH}/bin/govendor test -tags "${TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
-ifneq ($(VERBOSE_FLAGS),)
-	cd tests && sudo -E ./functionals -test.v -test.timeout ${TIMEOUT} ${ARGS}
-else
-	cd tests && sudo -E ./functionals -test.timeout ${TIMEOUT} ${ARGS}
-endif
+	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS}
 
 test.functionals.all: test.functionals.compile
 	$(MAKE) TIMEOUT="8m" ARGS=${ARGS} test.functionals.run
