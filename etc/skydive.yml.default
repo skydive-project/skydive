@@ -196,9 +196,9 @@ logging:
   level: INFO
   backends:
     - stderr
+  # - stdout
   # - file
   # - syslog
-  # - json
   # configuration of the 'file' backend
   # file:
   #   path: /var/log/skydive.log

@@ -261,6 +261,11 @@ func initLogger() (err error) {
 				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
 			}
 			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(os.Stderr), msgPriority))
+		case "stdout":
+			if cfg.GetString("logging.stdout.encoder") == "json" {
+				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
+			}
+			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), msgPriority))
 		default:
 			return fmt.Errorf("Invalid logging backend: %s", name)
 		}
