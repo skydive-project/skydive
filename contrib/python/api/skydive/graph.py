@@ -74,7 +74,8 @@ class Edge(GraphElement):
     """
 
     def __init__(self, id, host, parent, child,
-                 created_at=0, updated_at=0, deleted_at=0, metadata=None):
+                 created_at=0, updated_at=0, deleted_at=0, revision=0,
+                 metadata=None):
         super(Edge, self).__init__(id, host,
                                    created_at=created_at,
                                    updated_at=updated_at,

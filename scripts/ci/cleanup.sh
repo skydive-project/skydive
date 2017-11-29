@@ -38,6 +38,14 @@ function cleanup() {
     rm -f $DIR/docker.snapshot
   fi
 
+  # cleanup old docker images
+  if [ -e $DIR/docker-images.init ] && [ -e $DIR/docker-images.snapshot ]; then
+    grep -v -F -x -f $DIR/{docker-images.init,docker-images.snapshot} | while read IMAGE; do
+      docker rmi -f $IMAGE
+    done
+    rm -f $DIR/docker-images.snapshot
+  fi
+
   "${CURDIR}/../scale.sh" stop 10 10 10
 
   # clean elasticsearch
@@ -67,43 +75,34 @@ EOF
   sleep 8
 }
 
-function init() {
+function snapshot() {
+  extension=$1
+
   mkdir -p $DIR
 
   # save netns
-  ip netns | awk '{print $1}' > $DIR/netns.init
+  ip netns | awk '{print $1}' > $DIR/netns.$extension
 
   # save interfaces
-  ip -o link show | awk -F': ' '{print $2}' | sort > $DIR/intf.init
+  ip -o link show | awk -F': ' '{print $2}' | sort > $DIR/intf.$extension
 
   # save ovsdb bridges
-  ovs-vsctl list-br | sort > $DIR/ovsdb.init
+  ovs-vsctl list-br | sort > $DIR/ovsdb.$extension
 
   # save docker containers
-  docker ps -a -q | sort > $DIR/docker.init
-}
+  docker ps -a -q | sort > $DIR/docker.$extension
 
-function snapshot() {
-  # save netns
-  ip netns | awk '{print $1}' > $DIR/netns.snapshot
-
-  # save interfaces
-  ip -o link show | awk -F': ' '{print $2}' | sort > $DIR/intf.snapshot
-
-  # save ovsdb bridges
-  ovs-vsctl list-br | sort > $DIR/ovsdb.snapshot
-
-  # save docker containers
-  docker ps -a -q | sort > $DIR/docker.snapshot
+  # save docker images
+  docker images -a -q | sort > $DIR/docker-images.$extension
 }
 
 case "$1" in
   init)
-    init
+    snapshot init
     ;;
 
   snapshot)
-    snapshot
+    snapshot snapshot
     ;;
 
   cleanup)
