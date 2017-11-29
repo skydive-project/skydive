@@ -81,8 +81,8 @@ var TopologyComponent = {
           </div>\
           <div style="margin-top: 10px">\
             <div class="trigger">\
-              <button @mouseenter="showTopologyOptions" @click="hideTopologyOptions">\
-                <span class="glyphicon glyphicon-align-justify" aria-hidden="true"></span>\
+              <button @mouseenter="showTopologyOptions" @mouseleave="clearTopologyTimeout" @click="hideTopologyOptions">\
+                <span :class="[\'glyphicon\', isTopologyOptionsVisible ? \'glyphicon-remove\' : \'glyphicon-align-justify\']" aria-hidden="true"></span>\
               </button>\
             </div>\
           </div>\
@@ -183,7 +183,8 @@ var TopologyComponent = {
       currTopologyFilter: "",
       topologyHighlight: "",
       topologyMode: "live",
-      topologyHumanTimeContext: ""
+      topologyHumanTimeContext: "",
+      isTopologyOptionsVisible: false,
     };
   },
 
@@ -250,6 +251,8 @@ var TopologyComponent = {
         this.graph.pauseLive();
 
         var dt = new Date();
+        this.topologyDate = dt;
+        this.topologyTime = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds();
         this.topologyTimeContext = dt.getTime();
       }
     },
@@ -415,17 +418,23 @@ var TopologyComponent = {
     },
 
     showTopologyOptions: function() {
+      var self = this;
+      this.topologyOptionsTimeoutID = setTimeout(function() {
+        $("#topology-options").css("left", "0");
+        self.isTopologyOptionsVisible = true;
+      }, 300);
+    },
+
+    clearTopologyTimeout: function() {
       if (this.topologyOptionsTimeoutID) {
         clearTimeout(this.topologyOptionsTimeoutID);
       }
-      $("#topology-options").css("left", "0");
     },
 
     hideTopologyOptions: function() {
-      this.topologyOptionsTimeoutID = setTimeout(function() {
-        $('input').blur();
-        $("#topology-options").css("left", "-543px");
-      }, 100);
+      $('input').blur();
+      $("#topology-options").css("left", "-543px");
+      this.isTopologyOptionsVisible = false;
     },
 
     highlightSelectedNodes: function(gremlinExpr, bool) {
