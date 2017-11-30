@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='skydive-client',
-      version='0.1.0',
+      version='0.2.0',
       description='Skydive Python 3 client library',
       url='http://github.com/skydive-project/skydive',
       author='Sylvain Afchain',
