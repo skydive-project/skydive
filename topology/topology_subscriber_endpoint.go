@@ -51,8 +51,8 @@ type TopologySubscriberEndpoint struct {
 	subscribers   map[string]*topologySubscriber
 }
 
-func (t *TopologySubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal.GremlinTraversalSequence) (*graph.Graph, error) {
-	res, err := ts.Exec(t.Graph, false)
+func (t *TopologySubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal.GremlinTraversalSequence, lockGraph bool) (*graph.Graph, error) {
+	res, err := ts.Exec(t.Graph, lockGraph)
 	if err != nil {
 		return nil, err
 	}
@@ -65,13 +65,13 @@ func (t *TopologySubscriberEndpoint) getGraph(gremlinQuery string, ts *traversal
 	return tv.Graph, nil
 }
 
-func (t *TopologySubscriberEndpoint) newTopologySubscriber(host string, gremlinFilter string) (*topologySubscriber, error) {
+func (t *TopologySubscriberEndpoint) newTopologySubscriber(host string, gremlinFilter string, lockGraph bool) (*topologySubscriber, error) {
 	ts, err := t.gremlinParser.Parse(strings.NewReader(gremlinFilter))
 	if err != nil {
 		return nil, fmt.Errorf("Invalid Gremlin filter '%s' for client %s", gremlinFilter, host)
 	}
 
-	g, err := t.getGraph(gremlinFilter, ts)
+	g, err := t.getGraph(gremlinFilter, ts, lockGraph)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (t *TopologySubscriberEndpoint) OnConnected(c shttp.WSSpeaker) {
 	}
 
 	if gremlinFilter != "" {
-		subscriber, err := t.newTopologySubscriber(c.GetHost(), gremlinFilter)
+		subscriber, err := t.newTopologySubscriber(c.GetHost(), gremlinFilter, false)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			return
@@ -127,7 +127,7 @@ func (t *TopologySubscriberEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sht
 		}
 
 		if syncMsg.GremlinFilter != "" {
-			subscriber, err := t.newTopologySubscriber(c.GetHost(), syncMsg.GremlinFilter)
+			subscriber, err := t.newTopologySubscriber(c.GetHost(), syncMsg.GremlinFilter, false)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				return
@@ -135,7 +135,9 @@ func (t *TopologySubscriberEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sht
 
 			logging.GetLogger().Infof("Client %s subscribed with filter %s", c.GetHost(), syncMsg.GremlinFilter)
 			result = subscriber.graph
+			t.Lock()
 			t.subscribers[c.GetHost()] = subscriber
+			t.Unlock()
 		}
 
 		reply := msg.Reply(result, graph.SyncReplyMsgType, status)
@@ -151,8 +153,12 @@ func (t *TopologySubscriberEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sht
 // for this subscriber and the current graph state.
 func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSJSONMessage) {
 	for _, c := range t.pool.GetSpeakers() {
-		if subscriber, found := t.subscribers[c.GetHost()]; found {
-			g, err := t.getGraph(subscriber.gremlinFilter, subscriber.ts)
+		t.RLock()
+		subscriber, found := t.subscribers[c.GetHost()]
+		t.RUnlock()
+
+		if found {
+			g, err := t.getGraph(subscriber.gremlinFilter, subscriber.ts, false)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				continue
