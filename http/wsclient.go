@@ -284,19 +284,23 @@ func (c *WSConn) run() {
 		c.RUnlock()
 	}()
 
-	done := make(chan bool)
+	done := make(chan bool, 2)
 	go func() {
 		for {
 			select {
 			case m := <-c.send:
-				err := c.write(m)
-				if err != nil {
-					logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err.Error())
+				if err := c.write(m); err != nil {
+					logging.GetLogger().Errorf("Error while writing to the WebSocket: %s", err)
 				}
 			case <-c.pingTicker.C:
-				c.sendPing()
+				if err := c.sendPing(); err != nil {
+					logging.GetLogger().Errorf("Error while sending ping to %+v: %s", c, err)
+
+					// stop the ticker and request a quit
+					c.pingTicker.Stop()
+					c.quit <- true
+				}
 			case <-done:
-				c.pingTicker.Stop()
 				return
 			}
 		}
@@ -321,11 +325,9 @@ func (c *WSConn) run() {
 
 // sendPing is used for remote connections by the server to send PingMessage
 // to remote client.
-func (c *WSConn) sendPing() {
+func (c *WSConn) sendPing() error {
 	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-	if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-		logging.GetLogger().Warningf("Error while sending ping to the websocket: %s", err.Error())
-	}
+	return c.conn.WriteMessage(websocket.PingMessage, []byte{})
 }
 
 // AddEventHandler registers a new event handler
@@ -344,8 +346,6 @@ func (c *WSConn) Disconnect() {
 	c.running.Store(false)
 	if atomic.LoadInt32((*int32)(c.State)) == common.RunningState {
 		c.quit <- true
-		close(c.send)
-		close(c.read)
 	}
 }
 
@@ -479,10 +479,11 @@ func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *ws
 	wsconn := newWSConn(host, clientType, url, r.Header)
 	wsconn.conn = conn
 
-	pongTimeout := time.Duration(config.GetConfig().GetInt("ws_pong_timeout")) * time.Second
+	pingDelay := time.Duration(config.GetConfig().GetInt("ws_ping_delay")) * time.Second
+	pongTimeout := time.Duration(config.GetConfig().GetInt("ws_pong_timeout"))*time.Second + pingDelay
 
 	conn.SetReadLimit(maxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(100 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(pongTimeout))
 	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(pongTimeout))
 		return nil
@@ -499,7 +500,7 @@ func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *ws
 	// first ping before doing something
 	c.sendPing()
 
-	wsconn.pingTicker = time.NewTicker(pongTimeout * 8 / 10)
+	wsconn.pingTicker = time.NewTicker(pingDelay)
 
 	return c
 }
