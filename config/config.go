@@ -104,6 +104,7 @@ func init() {
 	cfg.SetDefault("logging.encoder", "")
 	cfg.SetDefault("logging.file.path", "/var/log/skydive.log")
 	cfg.SetDefault("logging.level", "INFO")
+	cfg.SetDefault("logging.syslog.tag", "skydive")
 
 	cfg.SetDefault("netns.run_path", "/var/run/netns")
 
