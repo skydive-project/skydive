@@ -139,7 +139,7 @@ func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.Packets, bpf *flow.
 	}
 }
 
-func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture) {
+func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	headerSize := flow.DefaultCaptureLength
@@ -250,6 +250,9 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture)
 	packetsChan := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
+	// notify active
+	e.OnStarted()
+
 	p.feedFlowTable(packetsChan, bpfFilter)
 
 	if statsTicker != nil {
@@ -345,9 +348,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Captur
 	go func() {
 		defer p.wg.Done()
 
-		e.OnStarted()
-
-		probe.run(p.graph, n, capture)
+		probe.run(p.graph, n, capture, e)
 
 		e.OnStopped()
 	}()
