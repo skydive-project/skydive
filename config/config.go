@@ -100,6 +100,7 @@ func init() {
 	cfg.SetDefault("host_id", host)
 
 	cfg.SetDefault("logging.backends", []string{"stderr"})
+	cfg.SetDefault("logging.color", true)
 	cfg.SetDefault("logging.encoder", "")
 	cfg.SetDefault("logging.file.path", "/var/log/skydive.log")
 	cfg.SetDefault("logging.level", "INFO")

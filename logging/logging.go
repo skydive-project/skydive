@@ -195,7 +195,8 @@ func shortCallerWithClassFunctionEncoder(caller zapcore.EntryCaller, enc zapcore
 }
 
 func newEncoderConfig() zapcore.EncoderConfig {
-	return zapcore.EncoderConfig{
+	color := config.GetConfig().GetBool("logging.color")
+	encoder := zapcore.EncoderConfig{
 		// Keys can be anything except the empty string.
 		TimeKey:        "ts",
 		LevelKey:       "level",
@@ -209,6 +210,10 @@ func newEncoderConfig() zapcore.EncoderConfig {
 		EncodeDuration: zapcore.StringDurationEncoder,
 		EncodeCaller:   shortCallerWithClassFunctionEncoder,
 	}
+	if !color {
+		encoder.EncodeLevel = zapcore.CapitalLevelEncoder
+	}
+	return encoder
 }
 
 func newConfig() zap.Config {
