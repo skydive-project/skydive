@@ -165,6 +165,7 @@ retry:
 
 // SendFlows sends flows to the server
 func (c *FlowClient) SendFlows(flows []*flow.Flow) {
+	fmt.Printf("############################# %d\n", len(flows))
 	for _, flow := range flows {
 		err := c.SendFlow(flow)
 		if err != nil {
