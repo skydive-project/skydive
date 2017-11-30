@@ -64,7 +64,7 @@ static: govendor genlocalfiles
 	test -f /etc/debian_version && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a"' ${VERBOSE_FLAGS} +local || true
 
 contribs:
-	$(MAKE) -C contrib/snort
+	cd contrib/snort; $(MAKE)
 
 dpdk.build:
 ifeq ($(WITH_DPDK), true)
@@ -159,7 +159,7 @@ genlocalfiles: .proto .bindata
 
 clean: test.functionals.cleanup dpdk.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
-	$(MAKE) -C contrib/snort clean
+	cd contrib/snort; $(MAKE) clean
 
 
 doc:
