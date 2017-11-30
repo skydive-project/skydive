@@ -75,7 +75,7 @@ func (ga *GremlinAlert) Evaluate(lockGraph bool) (interface{}, error) {
 
 		values := result.Values()
 		if len(values) > 0 {
-			return values, nil
+			return result, nil
 		}
 
 		return nil, nil
@@ -96,7 +96,7 @@ func (ga *GremlinAlert) Evaluate(lockGraph bool) (interface{}, error) {
 			return vm.MakeCustomError("ParseError", err.Error())
 		}
 
-		result, err := ts.Exec(ga.graph, false)
+		result, err := ts.Exec(ga.graph, lockGraph)
 		if err != nil {
 			return vm.MakeCustomError("ExecuteError", err.Error())
 		}
