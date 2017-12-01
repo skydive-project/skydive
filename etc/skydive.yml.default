@@ -204,6 +204,7 @@ logging:
   #   path: /var/log/skydive.log
   # configuration encoder could be for all backends or for specific one
   # encoder: json
+  # color: false
 
 auth:
   # specify the type of authentication mechanism: noauth, basic, keystone (default: noauth)

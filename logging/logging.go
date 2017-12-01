@@ -195,7 +195,8 @@ func shortCallerWithClassFunctionEncoder(caller zapcore.EntryCaller, enc zapcore
 }
 
 func newEncoderConfig() zapcore.EncoderConfig {
-	return zapcore.EncoderConfig{
+	color := config.GetConfig().GetBool("logging.color")
+	encoder := zapcore.EncoderConfig{
 		// Keys can be anything except the empty string.
 		TimeKey:        "ts",
 		LevelKey:       "level",
@@ -209,6 +210,10 @@ func newEncoderConfig() zapcore.EncoderConfig {
 		EncodeDuration: zapcore.StringDurationEncoder,
 		EncodeCaller:   shortCallerWithClassFunctionEncoder,
 	}
+	if !color {
+		encoder.EncodeLevel = zapcore.CapitalLevelEncoder
+	}
+	return encoder
 }
 
 func newConfig() zap.Config {
@@ -226,9 +231,9 @@ func initLogger() (err error) {
 	cfg := config.GetConfig()
 	backendLevel := getZapLevel(cfg.GetString("logging.level"))
 
-	encoder := zapcore.NewConsoleEncoder(newEncoderConfig())
+	defaultEncoder := zapcore.NewConsoleEncoder(newEncoderConfig())
 	if cfg.GetString("logging.encoder") == "json" {
-		encoder = zapcore.NewJSONEncoder(newEncoderConfig())
+		defaultEncoder = zapcore.NewJSONEncoder(newEncoderConfig())
 	}
 	msgPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl >= backendLevel
@@ -243,25 +248,29 @@ func initLogger() (err error) {
 			if err != nil {
 				return err
 			}
+			encoder := defaultEncoder
 			if cfg.GetString("logging.file.encoder") == "json" {
 				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
 			}
 			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(file), msgPriority))
 		case "syslog":
-			w, err := syslog.New(syslog.LOG_CRIT, "")
+			w, err := syslog.New(syslog.LOG_CRIT, cfg.GetString("logging.syslog.tag"))
 			if err != nil {
 				return err
 			}
+			encoder := defaultEncoder
 			if cfg.GetString("logging.syslog.encoder") == "json" {
 				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
 			}
 			backends = append(backends, zapcore.NewCore(encoder, zapcore.AddSync(w), msgPriority))
 		case "stderr":
+			encoder := defaultEncoder
 			if cfg.GetString("logging.stderr.encoder") == "json" {
 				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
 			}
 			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(os.Stderr), msgPriority))
 		case "stdout":
+			encoder := defaultEncoder
 			if cfg.GetString("logging.stdout.encoder") == "json" {
 				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
 			}
