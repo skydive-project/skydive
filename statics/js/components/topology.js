@@ -52,13 +52,13 @@ var TopologyComponent = {
                 <div class="form-group row">\
                   <label class="control-label" for="topology-filter">Filter</label>\
                   <div class="input">\
-                    <input list="topology-filter-list" placeholder="e.g. g.V().Has(,)" \
+                    <input list="topology-gremlin-favorites" placeholder="e.g. g.V().Has(,)" \
                     id="topology-filter" type="text" style="width: 400px" \
                     v-model="topologyFilter" @keyup.enter="topologyFilterQuery" \
                     v-on:input="onFilterDatalistSelect" \
                     class="input-sm form-control"></input>\
                     <span class="clear-btn" @click.stop="topologyFilterClear">&times;</span>\
-                    <datalist id="topology-filter-list" class="topology-filter-list">\
+                    <datalist id="topology-gremlin-favorites" class="topology-gremlin-favorites">\
                     </datalist>\
                   </div>\
                 </div>\
@@ -73,7 +73,7 @@ var TopologyComponent = {
                     v-on:input="onFilterDatalistSelect" \
                     class="input-sm form-control"></input>\
                     <span class="clear-btn" @click.stop="topologyEmphasizeClear">&times;</span>\
-                    <datalist id="topology-highlight-list" class="topology-filter-list">\
+                    <datalist id="topology-highlight-list" class="topology-gremlin-favorites">\
                     </datalist>\
                   </div>\
                 </div>\
@@ -243,6 +243,7 @@ var TopologyComponent = {
     });
 
     this.graph.addHandler(this.layout);
+    this.graph.addHandler(this);
     this.layout.addHandler(this);
 
     this.emphasize = debounce(self.emphasizeGremlinExpr.bind(self), 300);
@@ -282,7 +283,7 @@ var TopologyComponent = {
         self.layout.deemphasizeNodeID(mutation.payload);
     });
 
-    this.setFilterFromConfig();
+    this.setGremlinFavoritesFromConfig();
 
     $.when(this.$getConfigValue('analyzer.ssh_enabled').
       then(function(sshEnabled) {
@@ -375,6 +376,9 @@ var TopologyComponent = {
 
   methods: {
 
+    onPostInit: function() {
+      setTimeout(this.emphasize.bind(this), 1000);
+    },
     metadataLinks: function(m) {
       var self = this;
 
@@ -433,22 +437,31 @@ var TopologyComponent = {
        return str.indexOf(suffix, str.length - suffix.length) !== -1;
     },
 
-    setFilterFromConfig: function() {
-      var options = $(".topology-filter-list");
+    setGremlinFavoritesFromConfig: function() {
+      var self = this;
+      var options = $(".topology-gremlin-favorites");
+
       if (typeof(Storage) !== "undefined") {
-        filters = JSON.parse(localStorage.getItem("filters"));
-        if (filters) {
-          $.each(filters, function(i, f) {
-            options.append($("<option/>").text(f.name).val(f.filter));
+        var favorites = JSON.parse(localStorage.getItem("favorites"));
+        if (favorites) {
+          $.each(favorites, function(i, f) {
+            options.append($("<option/>").text(f.name).val(f.expression));
           });
         }
       }
-      return $.when(this.$getConfigValue('analyzer.topology_filter'))
-       .then(function(filter) {
-         if (!filter) return;
-         $.each(filter, function(key, value) {
+
+      return $.when(this.$getConfigValue('ui.topology.favorites'))
+       .then(function(favorites) {
+         if (!favorites) return;
+
+         $.each(favorites, function(key, value) {
            options.append($("<option/>").text(key).val(value));
          });
+
+         $.when(self.$getConfigValue('ui.topology.default_highlight'))
+          .then(function(favorite) {
+            self.topologyEmphasize = favorite;
+          });
        });
     },
 
@@ -499,7 +512,7 @@ var TopologyComponent = {
 
       if (!this.topologyFilter || this.endsWith(this.topologyFilter, ")")) {
         var filter = this.topologyFilter;
-        $("#topology-filter-list").find('option').filter(function() {
+        $("#topology-gremlin-favorites").find('option').filter(function() {
           if (this.value === self.topologyFilter) {
             filter = this.text;
           }

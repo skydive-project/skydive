@@ -9,26 +9,26 @@ var PreferenceComponent = {
   template: '\
     <form class="form-preference" @submit.prevent="save">\
       <div class="form-group">\
-        <label for="default-filter">Filters</label>\
-        <a><i class="fa fa-question help-text" aria-hidden="true" title="filter and highlight gremlin queries, displayed in the left panel"></i></a>\
-        <div v-for="filter in filters">\
+        <label for="default-favorite">Favorite Gremlin Expressions</label>\
+        <a><i class="fa fa-question help-text" aria-hidden="true" title="Filter and highlight gremlin queries, displayed in the left panel"></i></a>\
+        <div v-for="favorite in favorites">\
           <div class="form-group">\
             <div class="input-group">\
               <label class="input-group-addon">Name: </label>\
-              <input class="form-control" v-model="filter.name"/>\
+              <input class="form-control" v-model="favorite.name"/>\
               <span class="input-group-btn">\
-                <button class="btn btn-danger" type="button" @click="removeFilter(filter)" title="delete filter">\
+                <button class="btn btn-danger" type="button" @click="removeFavorite(favorite)" title="Delete favorite expression">\
                   <i class="fa fa-trash-o" aria-hidden="true"></i>\
                 </button>\
               </span>\
             </div>\
-            <div class="input-group filter-field">\
+            <div class="input-group favorite-field">\
               <label class="input-group-addon">Filter:  </label>\
-              <input class="form-control" v-model="filter.filter"/>\
+              <input class="form-control" v-model="favorite.expression"/>\
             </div>\
           </div>\
         </div>\
-        <button class="btn btn-primary btn-round-xs btn-xs" type="button" @click="addFilter" title="add new filter">+</button>\
+        <button class="btn btn-primary btn-round-xs btn-xs" type="button" @click="addFavorite" title="Add new favorite expression">+</button>\
       </div>\
       <div class="form-group">\
         <label for="bw-threshold">Bandwidth Threshold</label>\
@@ -81,10 +81,10 @@ var PreferenceComponent = {
 
   data: function() {
     var self = this;
-    var filters = [{name:"", filter:""}];
-    
-    f = JSON.parse(localStorage.getItem("filters"));
-    if (f && f.length > 0) filters = f;
+    var favorites = [{name:"", expression:""}];
+
+    f = JSON.parse(localStorage.getItem("favorites"));
+    if (f && f.length > 0) favorites = f;
 
     var bwt = "relative";
     if (localStorage.bandwidthThreshold) {
@@ -97,7 +97,7 @@ var PreferenceComponent = {
     }
 
     return {
-      filters: filters,
+      favorites: favorites,
       bwThreshold: bwt,
       bwAbsActive: localStorage.bandwidthAbsoluteActive,
       bwAbsWarning: localStorage.bandwidthAbsoluteWarning,
@@ -116,7 +116,7 @@ var PreferenceComponent = {
         this.$error({message: 'Invalid value for bandwidth threshold. allowed values \'absolute\', \'relative\''});
         return;
       }
-      localStorage.setItem("filters", JSON.stringify(this.filterEmpty(this.filters)));
+      localStorage.setItem("favorites", JSON.stringify(this.filterEmpty(this.favorites)));
       localStorage.setItem("bandwidthThreshold", this.bwThreshold);
       localStorage.setItem("bandwidthAbsoluteActive", this.bwAbsActive);
       localStorage.setItem("bandwidthAbsoluteWarning", this.bwAbsWarning);
@@ -134,19 +134,19 @@ var PreferenceComponent = {
       this.$router.go(-1);
     },
 
-    addFilter: function() {
-      this.filters.push({name: "", filter: ""});
+    addFavorite: function() {
+      this.favorites.push({name: "", expression: ""});
     },
 
-    removeFilter: function(filter) {
-      i = this.filters.indexOf(filter);
-      this.filters.splice(i, 1);
+    removeFavorite: function(favorite) {
+      i = this.favorites.indexOf(favorite);
+      this.favorites.splice(i, 1);
     },
 
     filterEmpty: function(list) {
       var newList = [];
       $.each(list, function(i, f) {
-        if (f.name !== "" && f.filter !== "") newList.push(f);
+        if (f.name !== "" && f.expression !== "") newList.push(f);
       });
       return newList;
     }

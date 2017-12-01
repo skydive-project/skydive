@@ -1092,12 +1092,12 @@ TopologyGraphLayout.prototype = {
     var vm = this.vm, b = this.bandwidth, self = this;
 
     var cfgNames = {
-      relative: ['analyzer.bandwidth_relative_active',
-                 'analyzer.bandwidth_relative_warning',
-                 'analyzer.bandwidth_relative_alert'],
-      absolute: ['analyzer.bandwidth_absolute_active',
-                 'analyzer.bandwidth_absolute_warning',
-                 'analyzer.bandwidth_absolute_alert']
+      relative: ['ui.bandwidth_relative_active',
+                 'ui.bandwidth_relative_warning',
+                 'ui.bandwidth_relative_alert'],
+      absolute: ['ui.bandwidth_absolute_active',
+                 'ui.bandwidth_absolute_warning',
+                 'ui.bandwidth_absolute_alert']
      };
 
     var cfgValues = {
@@ -1117,9 +1117,9 @@ TopologyGraphLayout.prototype = {
     }
 
     return $.when(
-        vm.$getConfigValue('analyzer.bandwidth_update_rate'),
-        vm.$getConfigValue('analyzer.bandwidth_source'),
-        vm.$getConfigValue('analyzer.bandwidth_threshold'))
+        vm.$getConfigValue('ui.bandwidth_update_rate'),
+        vm.$getConfigValue('ui.bandwidth_source'),
+        vm.$getConfigValue('ui.bandwidth_threshold'))
       .then(function(period, src, threshold) {
         b.updatePeriod = period[0] * 1000; // in millisec
         if (localStorage.bandwidthThreshold) {
