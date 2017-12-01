@@ -216,6 +216,14 @@ var TopologyComponent = {
     this.graph.addHandler(this.layout);
     this.layout.addHandler(this);
 
+    var highlight = debounce(self.topologyHighlightQuery.bind(self), 300);
+    var highlightWatcher = {
+      onEdgeAdded: highlight,
+      onNodeAdded: highlight,
+      onNodeUpdated: highlight,
+    };
+    this.graph.addHandler(highlightWatcher);
+
     this.syncTopo = debounce(this.graph.syncRequest.bind(this.graph), 300);
 
     $(this.$el).find('.content').resizable({
@@ -338,6 +346,10 @@ var TopologyComponent = {
       this.$store.commit('edgeSelected', e);
     },
 
+    onExpanded: function(d) {
+      this.topologyHighlightQuery();
+    },
+
     zoomIn: function() {
       this.layout.zoomIn();
     },
@@ -365,12 +377,18 @@ var TopologyComponent = {
     },
 
     setFilterFromConfig: function() {
+      var self = this;
       return $.when(this.$getConfigValue('analyzer.topology_filter'))
        .then(function(filter) {
          if (!filter) return;
          var options = $(".topology-filter-list");
          $.each(filter, function(key, value) {
            options.append($("<option/>").text(key).val(value));
+
+           if (key === "default") {
+             self.topologyHighlight = value;
+             self.topologyHighlightQuery();
+           }
          });
        });
     },
