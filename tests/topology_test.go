@@ -756,7 +756,7 @@ func TestQueryMetadata(t *testing.T) {
 			wspool := shttp.NewWSJSONClientPool()
 			for _, sa := range addresses {
 				authClient := shttp.NewAuthenticationClient(config.GetURL("http", sa.Addr, sa.Port, ""), authOptions)
-				client := shttp.NewWSClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authClient, http.Header{})
+				client := shttp.NewWSClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authClient, http.Header{}, 1000)
 				wspool.AddClient(client)
 			}
 

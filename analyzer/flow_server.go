@@ -81,7 +81,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMe
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
 		return
 	}
-	//logging.GetLogger().Debugf("New flow from Websocket connection: %+v", f)
+	logging.GetLogger().Debugf("New flow from Websocket connection: %+v", f)
 	c.ch <- f
 }
 
