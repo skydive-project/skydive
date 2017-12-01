@@ -773,7 +773,7 @@ TopologyGraphLayout.prototype = {
   },
 
   selectNode: function(d) {
-    circle = this.g.select("#node-" + d.id)
+    var circle = this.g.select("#node-" + d.id)
       .classed('selected', true)
       .select('circle');
     circle.transition().duration(500).attr('r', +circle.attr('r') + 3);
@@ -782,7 +782,7 @@ TopologyGraphLayout.prototype = {
   },
 
   unselectNode: function(d) {
-    circle = this.g.select("#node-" + d.id)
+    var circle = this.g.select("#node-" + d.id)
       .classed('selected', false)
       .select('circle');
     if (!circle) return;
@@ -1325,6 +1325,9 @@ TopologyGraphLayout.prototype = {
     nodeEnter.filter(function(d) { return d.metadata.Manager; })
       .each(this.managerSet.bind(this));
 
+    nodeEnter.filter(function(d) { return d._emphasized; })
+      .each(this.emphasizeNode.bind(this));
+
     this.node = nodeEnter.merge(this.node);
 
     this.link = this.link.data(links, function(d) { return d.id; });
@@ -1394,12 +1397,57 @@ TopologyGraphLayout.prototype = {
     return clazz;
   },
 
-  highlightNodeID: function(id, s) {
-    this.g.select("#node-" + id).classed('highlighted', true);
+  highlightNodeID: function(id) {
+    var self = this;
+
+    if (id in this.nodes) this.nodes[id]._highlighted = true;
+    if (id in this._nodes) this._nodes[id]._highlighted = true;
+
+    if (!this.g.select("#node-highlight-" + id).empty()) return;
+
+    this.g.select("#node-" + id)
+      .insert("circle", ":first-child")
+      .attr("id", "node-highlight-" + id)
+      .attr("class", "highlighted")
+      .attr("r", function(d) { return self.nodeSize(d) + 16; });
   },
 
-  unhighlightNodeID: function(id, s) {
-    this.g.select("#node-" + id).classed('highlighted', false);
+  unhighlightNodeID: function(id) {
+    if (id in this.nodes) this.nodes[id]._highlighted = false;
+    if (id in this._nodes) this._nodes[id]._highlighted = false;
+
+    this.g.select("#node-highlight-" + id).remove();
+  },
+
+  emphasizeNodeID: function(id) {
+    var self = this;
+
+    if (id in this.nodes) this.nodes[id]._emphasized = true;
+    if (id in this._nodes) this._nodes[id]._emphasized = true;
+
+    if (!this.g.select("#node-emphasize-" + id).empty()) return;
+
+    var circle;
+    if (this.g.select("#node-highlight-" + id).empty()) {
+      circle = this.g.select("#node-" + id).insert("circle", ":first-child");
+    } else {
+      circle = this.g.select("#node-" + id).insert("circle", ":nth-child(2)");
+    }
+
+    circle.attr("id", "node-emphasize-" + id)
+      .attr("class", "emphasized")
+      .attr("r", function(d) { return self.nodeSize(d) + 8; });
+  },
+
+  deemphasizeNodeID: function(id) {
+    if (id in this.nodes) this.nodes[id]._emphasized = false;
+    if (id in this._nodes) this._nodes[id]._emphasized = false;
+
+    this.g.select("#node-emphasize-" + id).remove();
+  },
+
+  emphasizeNode: function(d) {
+    this.emphasizeNodeID(d.id);
   },
 
   nodeClass: function(d) {

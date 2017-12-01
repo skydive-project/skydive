@@ -290,16 +290,16 @@ Vue.component('flow-table', {
         <tr v-bind:id="\'flow-\' + flows.row.UUID" class="flow-row"\
             :class="{\'flow-detail\': hasFlowDetail(flows.row)}"\
             @click="toggleFlowDetail(flows.row)"\
-            @mouseenter="highlightNodes(flows.row, true)"\
-            @mouseleave="highlightNodes(flows.row, false)">\
+            @mouseenter="highlightNodes(flows.row)"\
+            @mouseleave="unhighlightNodes()">\
           <td v-for="field in flows.visibleFields">\
             {{fieldValue(flows.row, field.name)}}\
           </td>\
         </tr>\
         <tr class="flow-detail-row"\
             v-if="hasFlowDetail(flows.row)"\
-            @mouseenter="highlightNodes(flows.row, true)"\
-            @mouseleave="highlightNodes(flows.row, false)">\
+            @mouseenter="highlightNodes(flows.row)"\
+            @mouseleave="unhighlightNodes()">\
           <td :colspan="flows.visibleFields.length">\
             <object-detail :object="flows.row" :transformer="transform" :links="flowDetailLinks(flows.row)"></object-detail>\
           </td>\
@@ -627,20 +627,21 @@ Vue.component('flow-table', {
       }
     },
 
-    highlightNodes: function(obj, bool) {
+    unhighlightNodes: function() {
+      var ids = this.$store.state.highlightedNodes.slice();
+      for (var i in ids) {
+        this.$store.commit('unhighlight', ids[i]);
+      }
+    },
+
+    highlightNodes: function(obj) {
       var self = this,
           query = "G.Flows().Has('" + this.highlightMode + "', '" + obj[this.highlightMode] + "').Nodes()";
       query = this.setQueryTime(query);
       this.$topologyQuery(query)
         .then(function(nodes) {
           nodes.forEach(function(n) {
-            if (bool)
-              self.$store.commit('highlight', n.ID);
-            else
-              self.$store.commit('unhighlight', n.ID);
-            //if (n.Metadata.TID == obj.NodeTID) {
-              //topologyLayout.SetNodeClass(n.ID, "current", bool);
-            //}
+            self.$store.commit('highlight', n.ID);
           });
         });
     },

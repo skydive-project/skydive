@@ -290,7 +290,7 @@ var BridgeLayout = (function () {
     if (len === 4) {
       last = this.graph.getNeighbor(last, 'ovsbridge');
     }
-    this.store.commit('selected', last);
+    this.store.commit('nodeSelected', last);
     this.switchTab(0);
   };
 

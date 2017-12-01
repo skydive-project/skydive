@@ -46,8 +46,16 @@ text {
   fill: #fdd0a2;
 }
 
-.highlighted circle {
-  fill: #FFF244;
+circle.highlighted  {
+  fill: rgb(255, 230, 48);
+  stroke: rgb(255, 251, 104);
+  stroke-width: 3;
+}
+
+circle.emphasized  {
+  fill: rgb(25, 230, 48);
+  stroke: rgb(25, 251, 104);
+  stroke-width: 3;
 }
 
 .down circle {

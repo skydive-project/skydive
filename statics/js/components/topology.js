@@ -69,10 +69,10 @@ var TopologyComponent = {
                   <div class="input">\
                     <input list="topology-highlight-list" placeholder="e.g. g.V().Has(,)" \
                     id="topology-highlight" type="text" style="width: 400px" \
-                    v-model="topologyHighlight" @keyup.enter="topologyHighlightQuery" \
+                    v-model="topologyEmphasize" @keyup.enter="emphasizeGremlinExpr" \
                     v-on:input="onFilterDatalistSelect" \
                     class="input-sm form-control"></input>\
-                    <span class="clear-btn" @click.stop="topologyHighlightClear">&times;</span>\
+                    <span class="clear-btn" @click.stop="topologyEmphasizeClear">&times;</span>\
                     <datalist id="topology-highlight-list" class="topology-filter-list">\
                     </datalist>\
                   </div>\
@@ -189,7 +189,7 @@ var TopologyComponent = {
       collapsed: false,
       topologyFilter: "",
       currTopologyFilter: "",
-      topologyHighlight: "",
+      topologyEmphasize: "",
       topologyMode: "live",
       topologyHumanTimeContext: "",
       isTopologyOptionsVisible: false,
@@ -216,6 +216,13 @@ var TopologyComponent = {
     this.graph.addHandler(this.layout);
     this.layout.addHandler(this);
 
+    this.emphasize = debounce(self.emphasizeGremlinExpr.bind(self), 300);
+    var emphasizeWatcher = {
+      onEdgeAdded: this.emphasize,
+      onNodeAdded: this.emphasize,
+    };
+    this.graph.addHandler(emphasizeWatcher);
+
     this.syncTopo = debounce(this.graph.syncRequest.bind(this.graph), 300);
 
     $(this.$el).find('.content').resizable({
@@ -234,12 +241,16 @@ var TopologyComponent = {
       }
     });
 
-    // trigered when some component wants to highlight some nodes
+    // trigered when some component wants to highlight/emphasize some nodes
     this.$store.subscribe(function(mutation) {
-      if (mutation.type == "highlight")
+      if (mutation.type === "highlight")
         self.layout.highlightNodeID(mutation.payload);
-      else if (mutation.type == "unhighlight")
+      else if (mutation.type === "unhighlight")
         self.layout.unhighlightNodeID(mutation.payload);
+      else if (mutation.type === "emphasize")
+        self.layout.emphasizeNodeID(mutation.payload);
+      else if (mutation.type === "deemphasize")
+        self.layout.deemphasizeNodeID(mutation.payload);
     });
 
     this.setFilterFromConfig();
@@ -331,7 +342,7 @@ var TopologyComponent = {
     },
 
     onNodeSelected: function(d) {
-      this.$store.commit('selected', d);
+      this.$store.commit('nodeSelected', d);
     },
 
     onEdgeSelected: function(e) {
@@ -355,9 +366,9 @@ var TopologyComponent = {
       this.topologyFilterQuery();
      },
 
-    topologyHighlightClear: function () {
-      this.topologyHighlight = '';
-      this.topologyHighlightQuery();
+    topologyEmphasizeClear: function () {
+      this.topologyEmphasize = '';
+      this.emphasizeGremlinExpr();
      },
 
     endsWith: function (str, suffix) {
@@ -384,7 +395,7 @@ var TopologyComponent = {
           if (e.target.id === "topology-filter") {
             this.topologyFilterQuery();
           } else if (e.target.id === "topology-highlight") {
-            this.topologyHighlightQuery();
+            this.emphasizeGremlinExpr();
           }
         }
       }
@@ -454,38 +465,52 @@ var TopologyComponent = {
       this.isTopologyOptionsVisible = false;
     },
 
-    highlightSelectedNodes: function(gremlinExpr, bool) {
+    emphasizeNodes: function(gremlinExpr) {
       var self = this;
+      var i;
 
-      this.$topologyQuery(gremlinExpr, bool)
-        .then(function(nodes) {
-          nodes.forEach(function(n) {
-            for (var i in n.Nodes) {
-              var myNode = n.Nodes[i];
-              if (bool) {
-                self.layout.highlightNodeID(myNode.ID);
-              } else {
-                self.layout.unhighlightNodeID(myNode.ID);
+      this.$topologyQuery(gremlinExpr)
+        .then(function(data) {
+          data.forEach(function(sg) {
+            for (i in sg.Nodes) {
+              self.nodes
+              self.$store.commit('emphasize', sg.Nodes[i].ID);
+            }
+
+            var toDel = [];
+            for (i in self.$store.state.emphasizedNodes) {
+              var found = false;
+              for (var j in sg.Nodes) {
+                if (self.$store.state.emphasizedNodes[i] === sg.Nodes[j].ID) {
+                  found = true;
+                  break;
+                }
               }
+              if (!found) {
+                toDel.push(self.$store.state.emphasizedNodes[i]);
+              }
+            }
+
+            for (i in toDel) {
+              self.$store.commit('deemphasize', toDel[i]);
             }
           });
         });
     },
 
-    topologyHighlightQuery: function() {
-      if (!this.topologyHighlight || this.endsWith(this.topologyHighlight, ")")) {
-        var prevGremlinExpr = this.$store.getters.currTopologyHighlightExpr;
-        this.highlightSelectedNodes(prevGremlinExpr, false);
+    emphasizeGremlinExpr: function() {
+      if (this.endsWith(this.topologyEmphasize, ")")) {
+        var expr = this.topologyEmphasize;
+        if (this.topologyTimeContext !== 0) {
+          expr = expr.replace(/g/i, "g.at(" + this.topologyTimeContext + ")");
+        }
 
-        if (this.topologyHighlight) {
-          var expr = this.topologyHighlight;
-          if (this.topologyTimeContext !== 0) {
-            expr = expr.replace(/g/i, "g.at(" + this.topologyTimeContext + ")");
-          }
-
-          var newGremlinExpr = expr + ".SubGraph()";
-          this.$store.commit('topologyHighlight', newGremlinExpr);
-          this.highlightSelectedNodes(newGremlinExpr, true);
+        var newGremlinExpr = expr + ".SubGraph()";
+        this.emphasizeNodes(newGremlinExpr);
+      } else {
+        var ids = this.$store.state.emphasizedNodes.slice();
+        for (var i in ids) {
+          this.$store.commit('deemphasize', ids[i]);
         }
       }
     },
