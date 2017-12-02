@@ -3,48 +3,31 @@
 DIR=/tmp/netcleanup
 CURDIR="$(dirname "$0")"
 
+function cleanup_items() {
+  local label=$1
+  local cmd="$2"
+  if [ -e $DIR/$label.init ] && [ -e $DIR/$label.snapshot ]; then
+    grep -v -F -x -f $DIR/{$label.init,$label.snapshot} | while read i; do
+      eval "$cmd $i"
+    done
+    rm -f $DIR/$label.snapshot
+  fi
+}
+
+function docker_rm() {
+  local container=$1
+  docker stop $container
+  for i in $( seq 5 ); do 
+    docker rm -f $container && break || sleep 1
+  done
+}
+
 function cleanup() {
-  # cleanup old netns
-  if [ -e $DIR/netns.init ] && [ -e $DIR/netns.snapshot ]; then
-    grep -v -F -x -f $DIR/{netns.init,netns.snapshot} | while read NETNS; do
-      ip netns del $NETNS
-    done
-    rm -f $DIR/netns.snapshot
-  fi
-
-  # cleanup old interfaces
-  if [ -e $DIR/intf.init ] && [ -e $DIR/intf.snapshot ]; then
-    grep -v -F -x -f $DIR/{intf.init,intf.snapshot} | while read INTF; do
-      ip link del $INTF
-    done
-    rm -f $DIR/intf.snapshot
-  fi
-
-  # cleanup old ovsdb
-  if [ -e $DIR/ovsdb.init ] && [ -e $DIR/ovsdb.snapshot ]; then
-    grep -v -F -x -f $DIR/{ovsdb.init,ovsdb.snapshot} | while read BRIDGE; do
-      ovs-vsctl del-br $BRIDGE
-    done
-    rm -f $DIR/ovsdb.snapshot
-  fi
-
-  # cleanup old containers
-  if [ -e $DIR/docker.init ] && [ -e $DIR/docker.snapshot ]; then
-    grep -v -F -x -f $DIR/{docker.init,docker.snapshot} | while read CONTAINER; do
-      docker stop $CONTAINER
-
-      for i in $( seq 5 ); do docker rm -f $CONTAINER && break || sleep 1; done
-    done
-    rm -f $DIR/docker.snapshot
-  fi
-
-  # cleanup old docker images
-  if [ -e $DIR/docker-images.init ] && [ -e $DIR/docker-images.snapshot ]; then
-    grep -v -F -x -f $DIR/{docker-images.init,docker-images.snapshot} | while read IMAGE; do
-      docker rmi -f $IMAGE
-    done
-    rm -f $DIR/docker-images.snapshot
-  fi
+  cleanup_items netns "ip netns del"
+  cleanup_items intf "ip link del"
+  cleanup_items ovsdb "ovs-vsctl del-br"
+  cleanup_items docker "docker_rm"
+  cleanup_items docker-images "docker rmi -f"
 
   "${CURDIR}/../scale.sh" stop 10 10 10
 
@@ -75,25 +58,22 @@ EOF
   sleep 8
 }
 
-function snapshot() {
-  extension=$1
+function snapshot_items() {
+  local label=$1
+  local ext=$2
+  local cmd="$3"
+  eval "$cmd | sort | tee $DIR/$label.$ext"
+}
 
+function snapshot() {
+  local ext=$1
   mkdir -p $DIR
 
-  # save netns
-  ip netns | awk '{print $1}' > $DIR/netns.$extension
-
-  # save interfaces
-  ip -o link show | awk -F': ' '{print $2}' | sort > $DIR/intf.$extension
-
-  # save ovsdb bridges
-  ovs-vsctl list-br | sort > $DIR/ovsdb.$extension
-
-  # save docker containers
-  docker ps -a -q | sort > $DIR/docker.$extension
-
-  # save docker images
-  docker images -a -q | sort > $DIR/docker-images.$extension
+  snapshot_items netns $ext "ip netns | awk '{print \$1}'"
+  snapshot_items intf $ext "ip -o link show | awk -F': ' '{print \$2}'"
+  snapshot_items ovsdb $ext "ovs-vsctl list-br"
+  snapshot_items docker $ext "docker ps -a -q"
+  snapshot_items docker-images $ext "docker images -a -q"
 }
 
 case "$1" in
