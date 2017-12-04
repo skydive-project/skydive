@@ -124,6 +124,8 @@ func init() {
 	cfg.SetDefault("storage.orientdb.database", "Skydive")
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
+
+	cfg.SetDefault("ws_ping_delay", 2)
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("ws_bulk_maxmsgs", 100)
 	cfg.SetDefault("ws_bulk_maxdelay", 1)
