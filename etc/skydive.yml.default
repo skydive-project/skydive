@@ -31,6 +31,8 @@ analyzer:
   # Must be different than the agent
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
+  # Pre-defined filters used in the WebUI. Filter name `default` will be
+  # automatically applied on WebUI load.
   # topology_filter:
   #   Namespaces: "g.V().Has('Type', 'netns').OutE().BothV()"
   #   Layer2: "g.E().Has('RelationType', 'layer2')"

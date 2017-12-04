@@ -69,6 +69,7 @@ TopologyGraphLayout.prototype = {
       switch (ev) {
         case 'nodeSelected': h.onNodeSelected(v1); break;
         case 'edgeSelected': h.onEdgeSelected(v1); break;
+        case 'expanded': h.onExpanded(v1); break;
       }
     });
   },
@@ -908,6 +909,8 @@ TopologyGraphLayout.prototype = {
     }
 
     this.showNode(n);
+
+    this.notifyHandlers('expanded', n);
   },
 
   uncollapseGroupTree: function(group) {
