@@ -209,16 +209,16 @@ func (mapper *NeutronProbe) nodeUpdater() {
 		portMd := retrieveportMetadata(node)
 		mapper.graph.RUnlock()
 
-		attrs, err := mapper.retrieveAttributes(portMd)
-		if err != nil {
-			if nerr, ok := err.(NeutronPortNotFound); ok {
-				logging.GetLogger().Debugf("Setting in cache not found MAC %s", nerr.MAC)
-			} else {
-				logging.GetLogger().Errorf("Failed to retrieve attributes for port %s/%s : %v",
-					portMd.portID, portMd.mac, err)
+		retry := func() error {
+			attrs, err := mapper.retrieveAttributes(portMd)
+			if err != nil {
+				return fmt.Errorf("Failed to retrieve attributes for port %s/%s : %v", portMd.portID, portMd.mac, err)
 			}
-		} else {
 			mapper.updateNode(node, attrs)
+			return nil
+		}
+		if err := common.Retry(retry, 10, 2*time.Second); err != nil {
+			logging.GetLogger().Error(err)
 		}
 	}
 	logging.GetLogger().Debugf("Stopping Neutron updater")
