@@ -71,10 +71,15 @@ type ElectionStatus struct {
 	IsMaster bool
 }
 
+type PeersStatus struct {
+	Incomers map[string]shttp.WSConnStatus
+	Outgoers map[string]shttp.WSConnStatus
+}
+
 // AnalyzerStatus describes the status of an analyzer
 type AnalyzerStatus struct {
 	Agents      map[string]shttp.WSConnStatus
-	Peers       map[string]shttp.WSConnStatus
+	Peers       PeersStatus
 	Publishers  map[string]shttp.WSConnStatus
 	Subscribers map[string]shttp.WSConnStatus
 	Alerts      ElectionStatus
@@ -83,16 +88,21 @@ type AnalyzerStatus struct {
 
 // GetStatus returns the status of an analyzer
 func (s *Server) GetStatus() interface{} {
-	peers := make(map[string]shttp.WSConnStatus)
-	for _, peer := range s.replicationEndpoint.peers {
-		if peer.wsclient != nil && peer.host != config.GetConfig().GetString("host_id") {
-			peers[peer.host] = peer.wsclient.GetStatus()
+	peersStatus := PeersStatus{
+		Incomers: make(map[string]shttp.WSConnStatus),
+		Outgoers: make(map[string]shttp.WSConnStatus),
+	}
+	for host, peer := range s.replicationEndpoint.conns {
+		if host == peer.GetHost() {
+			peersStatus.Incomers[host] = peer.GetStatus()
+		} else {
+			peersStatus.Outgoers[host] = peer.GetStatus()
 		}
 	}
 
 	return &AnalyzerStatus{
 		Agents:      s.agentWSServer.GetStatus(),
-		Peers:       peers,
+		Peers:       peersStatus,
 		Publishers:  s.publisherWSServer.GetStatus(),
 		Subscribers: s.subscriberWSServer.GetStatus(),
 		Alerts:      ElectionStatus{IsMaster: s.alertServer.IsMaster()},

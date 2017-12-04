@@ -50,18 +50,22 @@ type TopologyReplicatorPeer struct {
 	URL         *url.URL
 	Graph       *graph.Graph
 	AuthOptions *shttp.AuthenticationOpts
-	wsclient    *shttp.WSClient
+	wsspeaker   shttp.WSSpeaker
+	endpoint    *TopologyReplicationEndpoint
 	host        string
+	ephemeral   bool
 }
 
 // TopologyReplicationEndpoint serves the local Graph and send local modification to its peers.
 type TopologyReplicationEndpoint struct {
 	sync.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
-	pool         shttp.WSJSONSpeakerPool
+	in           shttp.WSJSONSpeakerPool
+	out          *shttp.WSJSONClientPool
+	conns        map[string]shttp.WSSpeaker
+	candidates   []*TopologyReplicatorPeer
 	Graph        *graph.Graph
 	cached       *graph.CachedBackend
-	peers        []*TopologyReplicatorPeer
 	replicateMsg atomic.Value
 	wg           sync.WaitGroup
 }
@@ -109,8 +113,34 @@ func (p *TopologyReplicatorPeer) OnConnected(c shttp.WSSpeaker) {
 	p.Graph.RLock()
 	defer p.Graph.RUnlock()
 
-	logging.GetLogger().Infof("Send the whole graph to: %s", p.Graph.GetHost())
-	p.wsclient.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
+	p.endpoint.Lock()
+	defer p.endpoint.Unlock()
+
+	if _, found := p.endpoint.conns[p.host]; found {
+		c.Disconnect()
+		return
+	}
+
+	p.wsspeaker.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
+
+	p.endpoint.conns[p.host] = c
+	p.endpoint.out.AddClient(c)
+}
+
+// OnConnected is called when the peer gets Disconnected
+func (p *TopologyReplicatorPeer) OnDisconnected(c shttp.WSSpeaker) {
+	p.endpoint.Lock()
+	defer p.endpoint.Unlock()
+
+	if peer, found := p.endpoint.conns[p.host]; found {
+		for _, outgoer := range p.endpoint.out.GetSpeakers() {
+			if outgoer.GetHost() == peer.GetHost() {
+				p.endpoint.out.RemoveClient(c)
+				delete(p.endpoint.conns, p.host)
+				break
+			}
+		}
+	}
 }
 
 func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
@@ -126,42 +156,54 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	authAddr := common.NormalizeAddrForURL(p.URL.Hostname())
 	authPort, _ := strconv.Atoi(p.URL.Port())
 	authClient := shttp.NewAuthenticationClient(config.GetURL("http", authAddr, authPort, ""), p.AuthOptions)
-	p.wsclient = shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, authClient, http.Header{})
+	wsClient := shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, authClient, http.Header{}).UpgradeToWSJSONSpeaker()
 
 	// will trigger shttp.WSSpeakerEventHandler, so OnConnected
-	p.wsclient.AddEventHandler(p)
+	wsClient.AddEventHandler(p)
 
-	p.wsclient.Connect()
+	// subscribe to the graph messages
+	wsClient.AddJSONMessageHandler(p.endpoint, []string{graph.Namespace})
+
+	p.wsspeaker = wsClient
+	p.wsspeaker.Connect()
 }
 
 func (p *TopologyReplicatorPeer) disconnect() {
-	if p.wsclient != nil {
-		p.wsclient.Disconnect()
+	if p.wsspeaker != nil {
+		p.wsspeaker.Disconnect()
 	}
 }
 
-func (t *TopologyReplicationEndpoint) addPeer(url *url.URL, auth *shttp.AuthenticationOpts, g *graph.Graph) {
+func (t *TopologyReplicationEndpoint) addCandidate(url *url.URL, auth *shttp.AuthenticationOpts) *TopologyReplicatorPeer {
 	peer := &TopologyReplicatorPeer{
 		URL:         url,
-		Graph:       g,
+		Graph:       t.Graph,
 		AuthOptions: auth,
+		endpoint:    t,
 	}
 
-	t.peers = append(t.peers, peer)
+	t.candidates = append(t.candidates, peer)
+	return peer
 }
 
 // ConnectPeers starts a goroutine connecting all the peers.
 func (t *TopologyReplicationEndpoint) ConnectPeers() {
-	for _, peer := range t.peers {
+	t.RLock()
+	defer t.RUnlock()
+
+	for _, candidate := range t.candidates {
 		t.wg.Add(1)
-		go peer.connect(&t.wg)
+		go candidate.connect(&t.wg)
 	}
 }
 
 // DisconnectPeers disconnects all the peers and wait until all disconnected.
 func (t *TopologyReplicationEndpoint) DisconnectPeers() {
-	for _, peer := range t.peers {
-		peer.disconnect()
+	t.RLock()
+	defer t.RUnlock()
+
+	for _, candidate := range t.candidates {
+		candidate.disconnect()
 	}
 	t.wg.Wait()
 }
@@ -219,11 +261,8 @@ func (t *TopologyReplicationEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sh
 
 // SendToPeers sends the message to all the peers
 func (t *TopologyReplicationEndpoint) notifyPeers(msg *shttp.WSJSONMessage) {
-	for _, p := range t.peers {
-		if p.wsclient != nil {
-			p.wsclient.SendMessage(msg)
-		}
-	}
+	t.in.BroadcastMessage(msg)
+	t.out.BroadcastMessage(msg)
 }
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
@@ -274,6 +313,52 @@ func (t *TopologyReplicationEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	}
 }
 
+func (t *TopologyReplicationEndpoint) GetSpeakers() []shttp.WSSpeaker {
+	return append(t.in.GetSpeakers(), t.out.GetSpeakers()...)
+}
+
+func (t *TopologyReplicationEndpoint) getPeer(host string) shttp.WSSpeaker {
+	for _, peer := range t.GetSpeakers() {
+		if peer.GetHost() == host {
+			return peer
+		}
+	}
+
+	return nil
+}
+
+// OnConnected is called when an incoming peer got connected.
+func (t *TopologyReplicationEndpoint) OnConnected(c shttp.WSSpeaker) {
+	t.Graph.RLock()
+	defer t.Graph.RUnlock()
+
+	t.Lock()
+	defer t.Unlock()
+
+	if _, found := t.conns[c.GetHost()]; found {
+		c.Disconnect()
+		return
+	}
+
+	t.conns[c.GetHost()] = c
+
+	// subscribe to JSON messages
+	c.(*shttp.WSJSONSpeaker).AddJSONMessageHandler(t, []string{graph.Namespace})
+	c.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, t.Graph))
+}
+
+// OnDisconnected is called when an incoming peer got disconnected.
+func (t *TopologyReplicationEndpoint) OnDisconnected(c shttp.WSSpeaker) {
+	t.Lock()
+	defer t.Unlock()
+
+	if peer, found := t.conns[c.GetHost()]; found {
+		if peer.GetHost() == c.GetHost() {
+			delete(t.conns, c.GetHost())
+		}
+	}
+}
+
 // NewTopologyServer returns a new server to be used by other analyzers for replication.
 func NewTopologyReplicationEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph) (*TopologyReplicationEndpoint, error) {
 	addresses, err := config.GetAnalyzerServiceAddresses()
@@ -283,22 +368,21 @@ func NewTopologyReplicationEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.Au
 
 	t := &TopologyReplicationEndpoint{
 		Graph:  g,
-		pool:   pool,
 		cached: cached,
+		in:     pool,
+		out:    shttp.NewWSJSONClientPool(),
+		conns:  make(map[string]shttp.WSSpeaker),
 	}
 	t.replicateMsg.Store(true)
 
-	pool.AddEventHandler(t)
+	for _, sa := range addresses {
+		t.addCandidate(config.GetURL("ws", sa.Addr, sa.Port, "/ws/replication"), auth)
+	}
 
-	// subscribe to the graph messages
-	pool.AddJSONMessageHandler(t, []string{graph.Namespace})
+	pool.AddEventHandler(t)
 
 	// subscribe to the local graph event
 	g.AddEventListener(t)
-
-	for _, sa := range addresses {
-		t.addPeer(config.GetURL("ws", sa.Addr, sa.Port, "/ws/replication"), auth, g)
-	}
 
 	return t, nil
 }

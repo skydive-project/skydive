@@ -35,6 +35,7 @@ import (
 // WSSpeakerPool is the interface that WSSpeaker pools have to implement.
 type WSSpeakerPool interface {
 	AddClient(c WSSpeaker) error
+	RemoveClient(c WSSpeaker)
 	AddEventHandler(h WSSpeakerEventHandler)
 	GetSpeakers() []WSSpeaker
 	PickConnectedSpeaker() WSSpeaker
@@ -76,6 +77,9 @@ func (s *WSPool) OnConnected(c WSSpeaker) {
 	s.eventHandlersLock.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnConnected(c)
+		if !c.IsConnected() {
+			break
+		}
 	}
 	s.eventHandlersLock.RUnlock()
 }
@@ -93,7 +97,7 @@ func (s *WSPool) OnDisconnected(c WSSpeaker) {
 func (s *wsIncomerPool) OnDisconnected(c WSSpeaker) {
 	s.WSPool.OnDisconnected(c)
 
-	s.removeClient(c)
+	s.RemoveClient(c)
 }
 
 // AddClient adds the given WSSpeaker to the pool.
@@ -129,7 +133,7 @@ func (s *WSPool) OnMessage(c WSSpeaker, m WSMessage) {
 	s.eventHandlersLock.RUnlock()
 }
 
-func (s *WSPool) removeClient(c WSSpeaker) {
+func (s *WSPool) RemoveClient(c WSSpeaker) {
 	s.Lock()
 	defer s.Unlock()
 	for i, ic := range s.speakers {

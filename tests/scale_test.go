@@ -102,7 +102,13 @@ func checkPeers(client *shttp.CrudClient, peersExpected int, state shttp.WSConnS
 	}
 
 	count := 0
-	for _, peer := range status.Peers {
+	for _, peer := range status.Peers.Incomers {
+		if *peer.State == state {
+			count++
+		}
+	}
+
+	for _, peer := range status.Peers.Outgoers {
 		if *peer.State == state {
 			count++
 		}
@@ -399,7 +405,7 @@ func TestScaleHA(t *testing.T) {
 	}
 	helper.ExecCmds(t, setupCmds...)
 
-	if err = checkPeers(client, 1, common.StoppedState); err != nil {
+	if err = checkPeers(client, 0, common.RunningState); err != nil {
 		helper.ExecCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
