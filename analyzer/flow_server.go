@@ -69,6 +69,7 @@ type FlowServer struct {
 	state                  int64
 	wgServer               sync.WaitGroup
 	bulkInsert             int
+	bulkInsertDeadline     time.Duration
 	ch                     chan *flow.Flow
 	quit                   chan struct{}
 }
@@ -171,7 +172,7 @@ func (s *FlowServer) Start() {
 	go func() {
 		defer s.wgServer.Done()
 
-		dlTimer := time.NewTicker(time.Duration(10) * time.Second)
+		dlTimer := time.NewTicker(s.bulkInsertDeadline)
 		defer dlTimer.Stop()
 
 		var flowBuffer []*flow.Flow
@@ -215,6 +216,10 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 	}
 
 	bulk := config.GetConfig().GetInt("analyzer.storage.bulk_insert")
+	bulkDeadLine := config.GetConfig().GetInt("analyzer.storage.bulk_insert_deadline")
+	if bulkDeadLine < 1 {
+		return nil, fmt.Errorf("bulk_insert_deadline has to be >= 1")
+	}
 
 	var err error
 	var conn FlowServerConn
@@ -237,8 +242,9 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		enhancerPipeline:       pipeline,
 		enhancerPipelineConfig: flow.NewEnhancerPipelineConfig(),
 		bulkInsert:             bulk,
+		bulkInsertDeadline:     time.Duration(time.Duration(bulkDeadLine) * time.Second),
 		conn:                   conn,
 		quit:                   make(chan struct{}, 2),
-		ch:                     make(chan *flow.Flow, 1000),
+		ch:                     make(chan *flow.Flow, bulk*2),
 	}, nil
 }

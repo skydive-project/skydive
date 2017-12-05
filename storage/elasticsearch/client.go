@@ -403,6 +403,11 @@ func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds
 	indexer := c.NewBulkIndexerErrors(maxConns, retrySeconds)
 	if bulkMaxDocs > 0 {
 		indexer.BulkMaxDocs = bulkMaxDocs
+
+		// set chan to 80% of max doc
+		if bulkMaxDocs > 100 {
+			indexer.BulkChannel = make(chan []byte, int(float64(bulkMaxDocs)*0.8))
+		}
 	}
 	// override the default error chan size
 	indexer.ErrorChannel = make(chan *elastigo.ErrorBuffer, 100)

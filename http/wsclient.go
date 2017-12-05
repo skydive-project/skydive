@@ -42,7 +42,6 @@ import (
 )
 
 const (
-	maxMessages    = 1024
 	maxMessageSize = 0
 	writeWait      = 10 * time.Second
 )
@@ -349,7 +348,7 @@ func (c *WSConn) Disconnect() {
 	}
 }
 
-func newWSConn(host string, clientType common.ServiceType, url *url.URL, headers http.Header) *WSConn {
+func newWSConn(host string, clientType common.ServiceType, url *url.URL, headers http.Header, queueSize int) *WSConn {
 	if headers == nil {
 		headers = http.Header{}
 	}
@@ -365,8 +364,8 @@ func newWSConn(host string, clientType common.ServiceType, url *url.URL, headers
 			Url:         url,
 			headers:     headers,
 		},
-		send:       make(chan []byte, maxMessages),
-		read:       make(chan []byte, maxMessages),
+		send:       make(chan []byte, queueSize),
+		read:       make(chan []byte, queueSize),
 		quit:       make(chan bool, 2),
 		pingTicker: &time.Ticker{},
 	}
@@ -452,8 +451,8 @@ func (c *WSClient) Connect() {
 }
 
 // NewWSClient returns a WSClient with a new connection.
-func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authClient *AuthenticationClient, headers http.Header) *WSClient {
-	wsconn := newWSConn(host, clientType, url, headers)
+func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authClient *AuthenticationClient, headers http.Header, queueSize int) *WSClient {
+	wsconn := newWSConn(host, clientType, url, headers, queueSize)
 	c := &WSClient{
 		WSConn:     wsconn,
 		AuthClient: authClient,
@@ -465,7 +464,8 @@ func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authC
 // NewWSClientFromConfig creates a WSClient based on the configuration
 func NewWSClientFromConfig(clientType common.ServiceType, url *url.URL, authClient *AuthenticationClient, headers http.Header) *WSClient {
 	host := config.GetConfig().GetString("host_id")
-	return NewWSClient(host, clientType, url, authClient, headers)
+	queueSize := config.GetConfig().GetInt("ws_queue_size")
+	return NewWSClient(host, clientType, url, authClient, headers, queueSize)
 }
 
 // newIncomingWSClient is called by the server for incoming connections
@@ -480,9 +480,11 @@ func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *ws
 		clientType = common.UnknownService
 	}
 
+	queueSize := config.GetConfig().GetInt("ws_queue_size")
+
 	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
 	url := config.GetURL("http", svc.Addr, svc.Port, r.URL.Path+"?"+r.URL.RawQuery)
-	wsconn := newWSConn(host, clientType, url, r.Header)
+	wsconn := newWSConn(host, clientType, url, r.Header, queueSize)
 	wsconn.conn = conn
 
 	pingDelay := time.Duration(config.GetConfig().GetInt("ws_ping_delay")) * time.Second

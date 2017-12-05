@@ -979,15 +979,15 @@
 			"checksumSHA1": "1AfJEGDJfegnLKaiGGCHNFAep8Y=",
 			"origin": "github.com/safchain/elastigo",
 			"path": "github.com/mattbaird/elastigo",
-			"revision": "9dc64d2def002a03e8cbe3c4720652a5bc5ff1c0",
-			"revisionTime": "2017-07-05T21:36:00Z"
+			"revision": "441c1531dca50a19990385930149f6785f78fe59",
+			"revisionTime": "2017-12-01T10:39:43Z"
 		},
 		{
-			"checksumSHA1": "bj9+bd8GDNCZE4ZtiKmoZQedjQc=",
+			"checksumSHA1": "mSBTKRhZy0/SCae0FDdeEtITDkw=",
 			"origin": "github.com/safchain/elastigo/lib",
 			"path": "github.com/mattbaird/elastigo/lib",
-			"revision": "9dc64d2def002a03e8cbe3c4720652a5bc5ff1c0",
-			"revisionTime": "2017-07-05T21:36:00Z"
+			"revision": "441c1531dca50a19990385930149f6785f78fe59",
+			"revisionTime": "2017-12-01T10:39:43Z"
 		},
 		{
 			"checksumSHA1": "DdH3xAkzAWJ4B/LGYJyCeRsly2I=",
