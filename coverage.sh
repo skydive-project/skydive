@@ -53,7 +53,7 @@ generate_cover_data() {
         curl -XDELETE 'localhost:9200/skydive*'
         $SKYDIVE compile
 
-        make test.functionals TAGS="scale" VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
+        make test.functionals GOTAGS="scale" VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
         cp /tmp/skydive-scale/*.cover "$workdir"/
     fi
 
