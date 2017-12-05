@@ -33,6 +33,8 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+var ErrProbeNotCompiled = fmt.Errorf("probe is not compiled within skydive")
+
 // FlowProbeBundle describes a flow probes bundle
 type FlowProbeBundle struct {
 	probe.ProbeBundle
@@ -102,7 +104,9 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 		}
 
 		if err != nil {
-			logging.GetLogger().Errorf("failed to create %s probe: %s", t, err.Error())
+			if err != ErrProbeNotCompiled {
+				logging.GetLogger().Errorf("failed to create %s probe: %s", t, err.Error())
+			}
 			continue
 		}
 
