@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.0] - 2017-12-05
+### Added
+- Flow capture with eBPF probe
+- Add routing table to the node metadata
+- Python module `skydive-client` available through pypi
+- Allow dynamic peering between analyzers
+- Allow customizing the WebUI through external JS and CSS files
+
+### Changed
+- Use Dijkstra as graph shortest path algorithm
+- Fix use of domain name and IPV6 in service addresses
+- Scalability improvements:
+  - Improve ping mechanism for better disconnection handling
+  - Reduce graph lock pressure for Neutron and alerts.
+
 ## [0.14.0] - 2017-11-14
 ### Added
 - New DPDK probe
