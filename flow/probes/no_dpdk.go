@@ -25,8 +25,6 @@
 package probes
 
 import (
-	"fmt"
-
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -55,5 +53,5 @@ func (p *DPDKProbesHandler) Stop() {
 
 // NewDPDKProbesHandler creates a new gopacket probe in the graph
 func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKProbesHandler, error) {
-	return nil, fmt.Errorf("DPDK is not compiled within skydive")
+	return nil, ErrProbeNotCompiled
 }
