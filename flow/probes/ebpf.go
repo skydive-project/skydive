@@ -1,3 +1,5 @@
+// +build ebpf
+
 /*
  * Copyright (C) 2017 Red Hat, Inc.
  *

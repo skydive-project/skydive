@@ -97,23 +97,22 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 			fp, err = NewSFlowProbesHandler(g, fpta)
 			captureTypes = []string{"sflow"}
 		case "dpdk":
-			fp, err = NewDPDKProbesHandler(g, fpta)
-			if err == ErrProbeNotCompiled {
-				logging.GetLogger().Info("Not compiled with DPDK support, skipping it")
-				continue
-			} else if err == nil {
+			if fp, err = NewDPDKProbesHandler(g, fpta); err == nil {
 				captureTypes = []string{"dpdk"}
 			}
 		case "ebpf":
-			fp, err = NewEBPFProbesHandler(g, fpta)
-			captureTypes = []string{"ebpf"}
+			if fp, err = NewEBPFProbesHandler(g, fpta); err == nil {
+				captureTypes = []string{"ebpf"}
+			}
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}
 
 		if err != nil {
 			if err != ErrProbeNotCompiled {
-				logging.GetLogger().Errorf("failed to create %s probe: %s", t, err.Error())
+				logging.GetLogger().Errorf("Failed to create %s probe: %s", t, err)
+			} else {
+				logging.GetLogger().Infof("Not compiled with %s support, skipping it", t)
 			}
 			continue
 		}

@@ -20,7 +20,7 @@ Skydive relies on two main components:
 * protoc >= 3.0
 * llvm
 * clang
-* kernel-headers
+* kernel-headers / linux-libc-dev
 
 ## Install
 
