@@ -48,8 +48,8 @@ all: install
 	# add flowState to flow generated struct
 	sed -e 's/type Flow struct {/type Flow struct {\n\tXXX_state flowState `json:"-"`/' -i flow/flow.pb.go
 
-.bindata: builddep
-	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/*
+.bindata: builddep ebpf.build
+	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/* probe/ebpf/*.o
 	gofmt -w -s statics/bindata.go
 
 .compile:
@@ -75,6 +75,12 @@ endif
 
 dpdk.cleanup:
 	$(MAKE) -C dpdk clean
+
+ebpf.build:
+	$(MAKE) -C probe/ebpf
+
+ebpf.clean:
+	$(MAKE) -C probe/ebpf clean
 
 test.functionals.cleanup:
 	rm -f tests/functionals
@@ -158,7 +164,6 @@ genlocalfiles: .proto .bindata
 clean: test.functionals.cleanup dpdk.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 	$(MAKE) -C contrib/snort clean
-
 
 doc:
 	mkdir -p /tmp/skydive-doc

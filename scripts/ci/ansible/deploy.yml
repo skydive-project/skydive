@@ -86,6 +86,8 @@
        - numactl-devel
        - kernel-devel
        - python3-virtualenv
+       - llvm-devel
+       - clang-devel
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL

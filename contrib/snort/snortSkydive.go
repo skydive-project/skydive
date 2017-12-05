@@ -99,7 +99,7 @@ func flowFromSnortMessage(msg *snortMessage) *flow.Flow {
 	new := flow.NewFlow()
 	key := flow.KeyFromGoPacket(&gpkt, uuids.ParentUUID).String()
 
-	new.Init(key, msg.Timestamp, &gpkt, int64(len(msg.Data)), nodeTID, uuids, flow.FlowOpts{})
+	new.InitFromGoPacket(key, msg.Timestamp, &gpkt, int64(len(msg.Data)), nodeTID, uuids, flow.FlowOpts{})
 	return new
 }
 

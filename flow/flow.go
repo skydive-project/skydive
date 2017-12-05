@@ -69,8 +69,8 @@ type Packet struct {
 	length   int64
 }
 
-// Packets represents a suite of parent/child Packet
-type Packets struct {
+// PacketSequence represents a suite of parent/child Packet
+type PacketSequence struct {
 	Packets   []Packet
 	Timestamp int64
 }
@@ -225,7 +225,8 @@ func KeyFromGoPacket(p *gopacket.Packet, parentUUID string) Key {
 	return Key(parentUUID + strconv.FormatUint(uint64(network^transport^application), 10))
 }
 
-func layerPathFromGoPacket(packet *gopacket.Packet) string {
+// LayerPathFromGoPacket returns path of all the layers separated by a slash.
+func LayerPathFromGoPacket(packet *gopacket.Packet) string {
 	path := ""
 	for i, layer := range (*packet).Layers() {
 		if layer.LayerType() == gopacket.LayerTypePayload {
@@ -284,8 +285,8 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	hasher := sha1.New()
 
 	hasher.Write(f.Transport.Hash())
-	hasher.Write(f.Network.Hash())
 	if f.Network != nil {
+		hasher.Write(f.Network.Hash())
 		netID := make([]byte, 8)
 		binary.BigEndian.PutUint64(netID, uint64(f.Network.ID))
 		hasher.Write(netID)
@@ -293,8 +294,8 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
 	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
-	hasher.Write(f.Link.Hash())
 	if f.Link != nil {
+		hasher.Write(f.Link.Hash())
 		linkID := make([]byte, 8)
 		binary.BigEndian.PutUint64(linkID, uint64(f.Link.ID))
 		hasher.Write(linkID)
@@ -369,17 +370,21 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
-// Init initializes the flow based on packet data, flow key and ids
-func (f *Flow) Init(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
+func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
 	f.Start = now
 	f.Last = now
 
-	f.newLinkLayer(packet, length)
-
 	f.NodeTID = nodeTID
 	f.ParentUUID = uuids.ParentUUID
+}
 
-	f.LayersPath = layerPathFromGoPacket(packet)
+// InitFromGoPacket initializes the flow based on packet data, flow key and ids
+func (f *Flow) InitFromGoPacket(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
+	f.Init(now, nodeTID, uuids)
+
+	f.newLinkLayer(packet, length)
+
+	f.LayersPath = LayerPathFromGoPacket(packet)
 	appLayers := strings.Split(f.LayersPath, "/")
 	f.Application = appLayers[len(appLayers)-1]
 
@@ -678,19 +683,19 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error 
 	return nil
 }
 
-// PacketsFromGoPacket split original packet into multiple packets in
+// PacketSeqFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
-func PacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bpf *BPF) *Packets {
-	flowPackets := &Packets{Timestamp: t}
+func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bpf *BPF) *PacketSequence {
+	ps := &PacketSequence{Timestamp: t}
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
-		logging.GetLogger().Errorf("Decoding failure on layerpath %s", layerPathFromGoPacket(packet))
+		logging.GetLogger().Errorf("Decoding failure on layerpath %s", LayerPathFromGoPacket(packet))
 		logging.GetLogger().Debug((*packet).Dump())
-		return flowPackets
+		return ps
 	}
 
 	packetData := (*packet).Data()
 	if bpf != nil && !bpf.Matches(packetData) {
-		return flowPackets
+		return ps
 	}
 
 	packetLayers := (*packet).Layers()
@@ -725,7 +730,7 @@ func PacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bp
 			// We don't split on vlan layers.LayerTypeDot1Q
 		case layers.LayerTypeVXLAN, layers.LayerTypeMPLS, layers.LayerTypeGeneve:
 			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
-			flowPackets.Packets = append(flowPackets.Packets, Packet{gopacket: &p, length: topLayerLength})
+			ps.Packets = append(ps.Packets, Packet{gopacket: &p, length: topLayerLength})
 
 			// subtract the current encapsulation header length as we are going to change the
 			// encapsulation layer
@@ -741,23 +746,23 @@ func PacketsFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bp
 		}
 	}
 
-	if len(flowPackets.Packets) > 0 {
+	if len(ps.Packets) > 0 {
 		p := gopacket.NewPacket(packetData[start:], topLayer.LayerType(), gopacket.NoCopy)
 		if metadata := (*packet).Metadata(); metadata != nil {
 			p.Metadata().CaptureInfo = metadata.CaptureInfo
 		}
-		flowPackets.Packets = append(flowPackets.Packets, Packet{gopacket: &p, length: 0})
+		ps.Packets = append(ps.Packets, Packet{gopacket: &p, length: 0})
 	} else {
-		flowPackets.Packets = append(flowPackets.Packets, Packet{gopacket: packet, length: outerLength})
+		ps.Packets = append(ps.Packets, Packet{gopacket: packet, length: outerLength})
 	}
 
-	return flowPackets
+	return ps
 }
 
-// PacketsFromSFlowSample returns an array of Packets as a sample
+// PacketSeqFromSFlowSample returns an array of Packets as a sample
 // contains mutlple records which generate a Packets each.
-func PacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BPF) []*Packets {
-	var flowPacketsSet []*Packets
+func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BPF) []*PacketSequence {
+	var pss []*PacketSequence
 
 	for _, rec := range sample.Records {
 		switch rec.(type) {
@@ -770,12 +775,12 @@ func PacketsFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BPF) [
 		record := rec.(layers.SFlowRawPacketFlowRecord)
 
 		// each record can generate multiple Packet in case of encapsulation
-		if flowPackets := PacketsFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), t, bpf); len(flowPackets.Packets) > 0 {
-			flowPacketsSet = append(flowPacketsSet, flowPackets)
+		if ps := PacketSeqFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), t, bpf); len(ps.Packets) > 0 {
+			pss = append(pss, ps)
 		}
 	}
 
-	return flowPacketsSet
+	return pss
 }
 
 // GetStringField returns the value of a flow field

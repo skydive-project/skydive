@@ -112,15 +112,15 @@ func (p *GoPacketProbe) afpacketUpdateStats(g *graph.Graph, n *graph.Node, handl
 	}
 }
 
-func (p *GoPacketProbe) feedFlowTable(packetsChan chan *flow.Packets, bpf *flow.BPF) {
+func (p *GoPacketProbe) feedFlowTable(packetSeqChan chan *flow.PacketSequence, bpf *flow.BPF) {
 	var count int
 
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := p.packetSource.NextPacket()
 		switch err {
 		case nil:
-			if flowPackets := flow.PacketsFromGoPacket(&packet, 0, -1, bpf); len(flowPackets.Packets) > 0 {
-				packetsChan <- flowPackets
+			if ps := flow.PacketSeqFromGoPacket(&packet, 0, -1, bpf); len(ps.Packets) > 0 {
+				packetSeqChan <- ps
 			}
 		case io.EOF:
 			time.Sleep(20 * time.Millisecond)
@@ -247,13 +247,13 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture,
 		}
 	}
 
-	packetsChan := p.flowTable.Start()
+	packetSeqChan, _ := p.flowTable.Start()
 	defer p.flowTable.Stop()
 
 	// notify active
 	e.OnStarted()
 
-	p.feedFlowTable(packetsChan, bpfFilter)
+	p.feedFlowTable(packetSeqChan, bpfFilter)
 
 	if statsTicker != nil {
 		close(statsDone)
