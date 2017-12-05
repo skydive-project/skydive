@@ -57,6 +57,8 @@ type neighbor struct {
 	MAC       string
 	IP        string   `json:"IP,omitempty"`
 	State     []string `json:"State,omitempty"`
+	Vlan      int      `json:"Vlan,omitempty"`
+	VNI       int      `json:"VNI,omitempty"`
 	LinkIndex int
 }
 
@@ -374,6 +376,8 @@ func (u *NetNsNetLinkProbe) getNeighbors(index, family int) (neighbors []neighbo
 				MAC:       neigh.HardwareAddr.String(),
 				State:     getFlagsString(neighStates, neigh.State),
 				LinkIndex: neigh.LinkIndex,
+				Vlan:      neigh.Vlan,
+				VNI:       neigh.VNI,
 			})
 			if neigh.IP != nil {
 				neighbors[i].IP = neigh.IP.String()
