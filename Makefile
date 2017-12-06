@@ -66,7 +66,7 @@ install: govendor genlocalfiles dpdk.build contribs .compile
 build: govendor genlocalfiles dpdk.build contribs
 	${GOPATH}/bin/govendor build -ldflags="-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} +local
 
-static: #govendor genlocalfiles
+static: govendor genlocalfiles
 	rm -f $$GOPATH/bin/skydive
 	test -f /etc/redhat-release && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib64/libz.a /usr/lib64/liblzma.a /usr/lib64/libm.a"' ${VERBOSE_FLAGS} -tags "${BUILDTAGS} ${GOTAGS}" +local || true
 	test -f /etc/debian_version && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a"' ${VERBOSE_FLAGS} -tags "${BUILDTAGS} ${GOTAGS}" +local || true
@@ -208,6 +208,8 @@ dist:
 	mkdir -p `dirname $$skydivedir`; \
 	git clone . $$skydivedir; \
 	pushd $$skydivedir; \
+	mkdir -p $$godir/.cache; \
+	[ -d $$GOPATH/.cache/govendor ] && ln -s $$GOPATH/.cache/govendor $$godir/.cache/govendor; \
 	export GOPATH=$$godir; \
 	cd $$skydivedir; \
 	echo "go take a coffee, govendor sync takes time ..."; \

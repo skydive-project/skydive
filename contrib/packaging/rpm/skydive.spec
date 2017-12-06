@@ -32,6 +32,7 @@ URL:            https://%{import_path}
 Source0:        https://%{import_path}/releases/download/v%{source}/skydive-%{source}.tar.gz
 BuildRequires:  systemd
 BuildRequires:  libpcap-devel libxml2-devel
+BuildRequires:  llvm clang kernel-headers
 
 # This is used by the specfile-update-bundles script to automatically
 # generate the list of the Go libraries bundled into the Skydive binaries
