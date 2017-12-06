@@ -133,6 +133,8 @@ func init() {
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("ws_bulk_maxmsgs", 100)
 	cfg.SetDefault("ws_bulk_maxdelay", 1)
+	cfg.SetDefault("ws_queue_size", 10000)
+
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")
 	cfg.SetEnvKeyReplacer(replacer)

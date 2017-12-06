@@ -100,7 +100,7 @@ func TestWSMessageSubscription(t *testing.T) {
 	wsserver.Start()
 	defer wsserver.Stop()
 
-	wsclient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{})
+	wsclient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
 
 	wspool := NewWSJSONClientPool()
 	wspool.AddClient(wsclient)

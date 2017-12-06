@@ -72,7 +72,7 @@ func (sfa *SFlowAgent) GetTarget() string {
 	return strings.Join(target, ":")
 }
 
-func (sfa *SFlowAgent) feedFlowTable(packetsChan chan *flow.Packets) {
+func (sfa *SFlowAgent) feedFlowTable(packetSeqChan chan *flow.PacketSequence) {
 	var bpf *flow.BPF
 
 	if b, err := flow.NewBPF(layers.LinkTypeEthernet, sfa.HeaderSize, sfa.BPFFilter); err == nil {
@@ -101,8 +101,8 @@ func (sfa *SFlowAgent) feedFlowTable(packetsChan chan *flow.Packets) {
 			for _, sample := range sflowPacket.FlowSamples {
 				// iterate over a set of Packets as a sample contains multiple
 				// records each generating Packets.
-				for _, flowPackets := range flow.PacketsFromSFlowSample(&sample, -1, bpf) {
-					packetsChan <- flowPackets
+				for _, ps := range flow.PacketSeqFromSFlowSample(&sample, -1, bpf) {
+					packetSeqChan <- ps
 				}
 			}
 		}
@@ -124,10 +124,10 @@ func (sfa *SFlowAgent) start() error {
 	sfa.Conn = conn
 	sfa.Unlock()
 
-	packetsChan := sfa.FlowTable.Start()
+	packetSeqChan, _ := sfa.FlowTable.Start()
 	defer sfa.FlowTable.Stop()
 
-	sfa.feedFlowTable(packetsChan)
+	sfa.feedFlowTable(packetSeqChan)
 
 	return nil
 }

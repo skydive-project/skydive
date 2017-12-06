@@ -33,6 +33,8 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+var ErrProbeNotCompiled = fmt.Errorf("probe is not compiled within skydive")
+
 // FlowProbeBundle describes a flow probes bundle
 type FlowProbeBundle struct {
 	probe.ProbeBundle
@@ -63,7 +65,7 @@ func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *fl
 }
 
 func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
-	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk"}
+	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
@@ -95,14 +97,23 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 			fp, err = NewSFlowProbesHandler(g, fpta)
 			captureTypes = []string{"sflow"}
 		case "dpdk":
-			fp, err = NewDPDKProbesHandler(g, fpta)
-			captureTypes = []string{"dpdk"}
+			if fp, err = NewDPDKProbesHandler(g, fpta); err == nil {
+				captureTypes = []string{"dpdk"}
+			}
+		case "ebpf":
+			if fp, err = NewEBPFProbesHandler(g, fpta); err == nil {
+				captureTypes = []string{"ebpf"}
+			}
 		default:
 			err = fmt.Errorf("unknown probe type %s", t)
 		}
 
 		if err != nil {
-			logging.GetLogger().Errorf("failed to create %s probe: %s", t, err.Error())
+			if err != ErrProbeNotCompiled {
+				logging.GetLogger().Errorf("Failed to create %s probe: %s", t, err)
+			} else {
+				logging.GetLogger().Infof("Not compiled with %s support, skipping it", t)
+			}
 			continue
 		}
 

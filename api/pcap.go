@@ -54,9 +54,9 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 	expireHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(expire))
 
 	flowtable := flow.NewTable(updateHandler, expireHandler, flow.NewEnhancerPipeline(), "", flow.TableOpts{})
-	packetsChan := flowtable.Start()
+	packetSeqChan, _ := flowtable.Start()
 
-	feeder, err := flow.NewPcapTableFeeder(r.Body, packetsChan, false, "")
+	feeder, err := flow.NewPcapTableFeeder(r.Body, packetSeqChan, false, "")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return

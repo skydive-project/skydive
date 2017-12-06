@@ -37,6 +37,16 @@ type TableAllocator struct {
 	pipeline *EnhancerPipeline
 }
 
+// Expire returns the expire parameter used by allocated tables
+func (a *TableAllocator) Expire() time.Duration {
+	return a.expire
+}
+
+// Update returns the update parameter used by allocated tables
+func (a *TableAllocator) Update() time.Duration {
+	return a.update
+}
+
 func (a *TableAllocator) aggregateReplies(query *TableQuery, replies []*TableReply) *TableReply {
 	reply := &TableReply{
 		status: http.StatusOK,

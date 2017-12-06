@@ -200,7 +200,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 	packet := gopacket.NewPacket(packetData, layerType, gopacket.Default)
 	flowKey := flow.KeyFromGoPacket(&packet, "").String()
 	f := flow.NewFlow()
-	f.Init(flowKey, common.UnixMillis(time.Now()), &packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
+	f.InitFromGoPacket(flowKey, common.UnixMillis(time.Now()), &packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
 
 	go func() {
 		defer rawSocket.Close()

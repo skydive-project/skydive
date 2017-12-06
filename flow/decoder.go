@@ -131,6 +131,34 @@ func decodeInMplsEthOrIPLayer(data []byte, p gopacket.PacketBuilder) error {
 	return p.NextDecoder(eth.NextLayerType())
 }
 
+// ICMPV4TypeToFlowICMPType converts an ICMP type to a Flow ICMPType
+func ICMPV4TypeToFlowICMPType(kind uint8) ICMPType {
+	switch kind {
+	case layers.ICMPv4TypeEchoRequest, layers.ICMPv4TypeEchoReply:
+		return ICMPType_ECHO
+	case layers.ICMPv4TypeAddressMaskRequest, layers.ICMPv4TypeAddressMaskReply:
+		return ICMPType_ADDRESS_MASK
+	case layers.ICMPv4TypeDestinationUnreachable:
+		return ICMPType_DESTINATION_UNREACHABLE
+	case layers.ICMPv4TypeInfoRequest, layers.ICMPv4TypeInfoReply:
+		return ICMPType_INFO
+	case layers.ICMPv4TypeParameterProblem:
+		return ICMPType_PARAMETER_PROBLEM
+	case layers.ICMPv4TypeRedirect:
+		return ICMPType_REDIRECT
+	case layers.ICMPv4TypeRouterSolicitation, layers.ICMPv4TypeRouterAdvertisement:
+		return ICMPType_ROUTER
+	case layers.ICMPv4TypeSourceQuench:
+		return ICMPType_SOURCE_QUENCH
+	case layers.ICMPv4TypeTimeExceeded:
+		return ICMPType_TIME_EXCEEDED
+	case layers.ICMPv4TypeTimestampRequest, layers.ICMPv4TypeTimestampReply:
+		return ICMPType_TIMESTAMP
+	}
+
+	return ICMPType_UNKNOWN
+}
+
 func decodeICMPv4(data []byte, p gopacket.PacketBuilder) error {
 	icmpv4 := &ICMPv4{}
 	err := icmpv4.DecodeFromBytes(data, p)
@@ -138,32 +166,35 @@ func decodeICMPv4(data []byte, p gopacket.PacketBuilder) error {
 		return err
 	}
 
-	switch icmpv4.TypeCode.Type() {
-	case layers.ICMPv4TypeEchoRequest, layers.ICMPv4TypeEchoReply:
-		icmpv4.Type = ICMPType_ECHO
-	case layers.ICMPv4TypeAddressMaskRequest, layers.ICMPv4TypeAddressMaskReply:
-		icmpv4.Type = ICMPType_ADDRESS_MASK
-	case layers.ICMPv4TypeDestinationUnreachable:
-		icmpv4.Type = ICMPType_DESTINATION_UNREACHABLE
-	case layers.ICMPv4TypeInfoRequest, layers.ICMPv4TypeInfoReply:
-		icmpv4.Type = ICMPType_INFO
-	case layers.ICMPv4TypeParameterProblem:
-		icmpv4.Type = ICMPType_PARAMETER_PROBLEM
-	case layers.ICMPv4TypeRedirect:
-		icmpv4.Type = ICMPType_REDIRECT
-	case layers.ICMPv4TypeRouterSolicitation, layers.ICMPv4TypeRouterAdvertisement:
-		icmpv4.Type = ICMPType_ROUTER
-	case layers.ICMPv4TypeSourceQuench:
-		icmpv4.Type = ICMPType_SOURCE_QUENCH
-	case layers.ICMPv4TypeTimeExceeded:
-		icmpv4.Type = ICMPType_TIME_EXCEEDED
-	case layers.ICMPv4TypeTimestampRequest, layers.ICMPv4TypeTimestampReply:
-		icmpv4.Type = ICMPType_TIMESTAMP
-	}
+	icmpv4.Type = ICMPV4TypeToFlowICMPType(icmpv4.TypeCode.Type())
 
 	p.AddLayer(icmpv4)
 	p.SetApplicationLayer(icmpv4)
 	return p.NextDecoder(icmpv4.NextLayerType())
+}
+
+// ICMPV6TypeToFlowICMPType converts an ICMP type to a Flow ICMPType
+func ICMPV6TypeToFlowICMPType(kind uint8) ICMPType {
+	switch kind {
+	case layers.ICMPv6TypeEchoRequest, layers.ICMPv6TypeEchoReply:
+		return ICMPType_ECHO
+	case layers.ICMPv6TypeNeighborSolicitation, layers.ICMPv6TypeNeighborAdvertisement:
+		return ICMPType_NEIGHBOR
+	case layers.ICMPv6TypeDestinationUnreachable:
+		return ICMPType_DESTINATION_UNREACHABLE
+	case layers.ICMPv6TypePacketTooBig:
+		return ICMPType_PACKET_TOO_BIG
+	case layers.ICMPv6TypeParameterProblem:
+		return ICMPType_PARAMETER_PROBLEM
+	case layers.ICMPv6TypeRedirect:
+		return ICMPType_REDIRECT
+	case layers.ICMPv6TypeRouterSolicitation, layers.ICMPv6TypeRouterAdvertisement:
+		return ICMPType_ROUTER
+	case layers.ICMPv6TypeTimeExceeded:
+		return ICMPType_TIME_EXCEEDED
+	}
+
+	return ICMPType_UNKNOWN
 }
 
 func decodeICMPv6(data []byte, p gopacket.PacketBuilder) error {
@@ -173,24 +204,11 @@ func decodeICMPv6(data []byte, p gopacket.PacketBuilder) error {
 		return err
 	}
 
+	icmpv6.Type = ICMPV6TypeToFlowICMPType(icmpv6.TypeCode.Type())
+
 	switch icmpv6.TypeCode.Type() {
 	case layers.ICMPv6TypeEchoRequest, layers.ICMPv6TypeEchoReply:
-		icmpv6.Type = ICMPType_ECHO
 		icmpv6.Id = binary.BigEndian.Uint16(icmpv6.TypeBytes[0:2])
-	case layers.ICMPv6TypeNeighborSolicitation, layers.ICMPv6TypeNeighborAdvertisement:
-		icmpv6.Type = ICMPType_NEIGHBOR
-	case layers.ICMPv6TypeDestinationUnreachable:
-		icmpv6.Type = ICMPType_DESTINATION_UNREACHABLE
-	case layers.ICMPv6TypePacketTooBig:
-		icmpv6.Type = ICMPType_PACKET_TOO_BIG
-	case layers.ICMPv6TypeParameterProblem:
-		icmpv6.Type = ICMPType_PARAMETER_PROBLEM
-	case layers.ICMPv6TypeRedirect:
-		icmpv6.Type = ICMPType_REDIRECT
-	case layers.ICMPv6TypeRouterSolicitation, layers.ICMPv6TypeRouterAdvertisement:
-		icmpv6.Type = ICMPType_ROUTER
-	case layers.ICMPv6TypeTimeExceeded:
-		icmpv6.Type = ICMPType_TIME_EXCEEDED
 	}
 
 	p.AddLayer(icmpv6)

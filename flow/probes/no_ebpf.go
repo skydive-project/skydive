@@ -1,4 +1,4 @@
-// +build !dpdk
+// +build !ebpf
 
 /*
  * Copyright (C) 2017 Red Hat, Inc.
@@ -29,29 +29,29 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// DPDKProbesHandler describes a flow probe handle in the graph
-type DPDKProbesHandler struct {
+// EBPFProbesHandler describes a flow probe handle in the graph
+type EBPFProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
 	return nil
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *DPDKProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
+func (p *EBPFProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
 	return nil
 }
 
 // Start probe
-func (p *DPDKProbesHandler) Start() {
+func (p *EBPFProbesHandler) Start() {
 }
 
 // Stop probe
-func (p *DPDKProbesHandler) Stop() {
+func (p *EBPFProbesHandler) Stop() {
 }
 
-// NewDPDKProbesHandler creates a new gopacket probe in the graph
-func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKProbesHandler, error) {
+// NewEBPFProbesHandler creates a new gopacket probe in the graph
+func NewEBPFProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*EBPFProbesHandler, error) {
 	return nil, ErrProbeNotCompiled
 }

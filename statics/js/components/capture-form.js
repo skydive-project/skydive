@@ -57,7 +57,7 @@ Vue.component('capture-form', {
                   <label for="capture-type">Capture Type</label>\
                   <select id="capture-type" v-model="captureType" class="form-control input-sm" :disabled="!typeAllowed">\
                     <option disabled value="">Select capture type</option>\
-                    <option v-for="option in options">{{ option }}</option>\
+                    <option v-for="option in options" :value="option.type">{{ option.type }} ({{option.desc}})</option>\
                   </select>\
                 </div>\
                 <div class="form-group">\
@@ -127,11 +127,21 @@ Vue.component('capture-form', {
     options: function() {
       var options = {};
       for (let t of this.$allowedTypes()) {
-        options[t] = ["afpacket", "pcap", "pcapsocket"];
+        options[t] = [
+          {"type": "afpacket", "desc": "MMap'd AF_PACKET socket reading"},
+          {"type": "pcap", "desc": "Packet Capture library based probe"},
+          {"type": "pcapsocket", "desc": "Socket reading PCAP format data"},
+          {"type": "sflow", "desc": "Socket reading sFlow frames"},
+          {"type": "ebpf", "desc": "Flow capture within kernel - experimental"}
+        ];
       }
-      options["ovsbridge"] = ["ovssflow", "pcapsocket"];
-      options["device"] = ["afpacket", "pcap", "pcapsocket", "sflow"];
-      options["dpdkport"] = ["dpdk"];
+      options["ovsbridge"] = [
+        {"type": "ovssflow", "desc": "Reading sFlow from OVS"},
+        {"type": "pcapsocket", "desc": "Socket reading PCAP format data"}
+      ];
+      options["dpdkport"] = [
+        {"type": "dpdk", "desc": "DPDK based probe - experimental"}
+      ];
       return options[this.nodeType];
     },
 

@@ -33,7 +33,7 @@ dir="$(dirname "$0")"
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 echo "--- DOCKER IMAGE ---"
-make docker-image DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${DOCKER_TAG}
+make docker-image WITH_EBPF=true DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${DOCKER_TAG}
 sudo docker login -e "${DOCKER_EMAIL}" -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
 sudo docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
 sudo docker push ${DOCKER_IMAGE}:${DOCKER_TAG}

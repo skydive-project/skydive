@@ -13,11 +13,14 @@ Skydive relies on two main components:
 
 ## Dependencies
 
-* Go >= 1.6
+* Go >= 1.8
 * Elasticsearch >= 2.0
 * libpcap
 * libxml2
 * protoc >= 3.0
+* llvm
+* clang
+* kernel-headers / linux-libc-dev
 
 ## Install
 

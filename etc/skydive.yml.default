@@ -11,6 +11,8 @@
 # ws_bulk_maxmsgs: 100
 # duration in seconds before flushing topology aggregated messages
 # ws_bulk_maxdelay: 2
+# Maximum size of the message queue
+# ws_queue_size: 10000
 
 openstack:
   auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
