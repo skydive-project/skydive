@@ -56,25 +56,25 @@ MAP(flow_table) {
 	.max_entries = 500000,
 };
 
-static __always_inline void update_hash_byte(__u64 *key, __u8 byte)
+static inline void update_hash_byte(__u64 *key, __u8 byte)
 {
 	*key ^= (__u64)byte;
 	*key *= FNV_PRIME;
 }
 
-static __always_inline void update_hash_half(__u64 *key, __u16 half)
+static inline void update_hash_half(__u64 *key, __u16 half)
 {
 	update_hash_byte(key, (half >> 8) & 0xff);
 	update_hash_byte(key, half & 0xff);
 }
 
-static __always_inline void update_hash_word(__u64 *key, __u32 word)
+static inline void update_hash_word(__u64 *key, __u32 word)
 {
 	update_hash_half(key, (word >> 16) & 0xffff);
 	update_hash_half(key, word & 0xffff);
 }
 
-static __always_inline void fill_payload_bucket(struct __sk_buff *skb, int offset, __u8 *bucket, int bsize) {
+static inline void fill_payload_bucket(struct __sk_buff *skb, int offset, __u8 *bucket, int bsize) {
 	for (int i = 0; i != bsize; i++) {
 		bucket[i] = load_byte(skb, offset + i);
 	}
@@ -83,7 +83,7 @@ static __always_inline void fill_payload_bucket(struct __sk_buff *skb, int offse
 static void fill_payload(struct __sk_buff *skb, int offset, struct flow *flow, int len)
 {
 	// TODO add more data
-	return fill_payload_bucket(skb, offset, flow->payload, 30);
+	fill_payload_bucket(skb, offset, flow->payload, 30);
 }
 
 static void fill_transport(struct __sk_buff *skb, __u8 protocol, int offset,
@@ -177,14 +177,14 @@ static void fill_word(__u32 src, __u8 *dst, int offset)
 	dst[offset + 3] = src & 0xff;
 }
 
-static __always_inline void fill_ipv4(struct __sk_buff *skb, int offset, __u8 *dst, __u64 *hash)
+static inline void fill_ipv4(struct __sk_buff *skb, int offset, __u8 *dst, __u64 *hash)
 {
 	__u32 w = load_word(skb, offset);
 	fill_word(w, dst, 12);
 	update_hash_word(hash, w);
 }
 
-static __always_inline void fill_ipv6(struct __sk_buff *skb, int offset, __u8 *dst, __u64 *hash)
+static inline void fill_ipv6(struct __sk_buff *skb, int offset, __u8 *dst, __u64 *hash)
 {
 	__u32 w = load_word(skb, offset);
 	fill_word(w, dst, 0);
@@ -266,7 +266,7 @@ static void fill_network(struct __sk_buff *skb, __u16 protocol, int offset,
 	flow->layers |= NETWORK_LAYER;
 }
 
-static __always_inline void fill_haddr(struct __sk_buff *skb, int offset,
+static inline void fill_haddr(struct __sk_buff *skb, int offset,
 	unsigned char *mac)
 {
 	mac[0] = load_byte(skb, offset);

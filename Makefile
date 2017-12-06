@@ -32,7 +32,12 @@ BOOTSTRAP_ARGS?=
 GOTAGS?=
 
 ifeq ($(WITH_DPDK), true)
-  GOTAGS+=dpdk
+  BUILDTAGS+=dpdk
+endif
+
+ifeq ($(WITH_EBPF), true)
+  BUILDTAGS+=ebpf
+  EXTRABINDATA+=probe/ebpf/*.o
 endif
 
 .PHONY: all
@@ -50,21 +55,21 @@ all: install
 	sed -e 's/type Flow struct {/type Flow struct {\n\tXXX_state flowState `json:"-"`/' -i flow/flow.pb.go
 
 .bindata: builddep ebpf.build
-	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/* probe/ebpf/*.o
+	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/* ${EXTRABINDATA}
 	gofmt -w -s statics/bindata.go
 
 .compile:
-	${GOPATH}/bin/govendor install -ldflags="-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} -tags=" ${GOTAGS}" ${VERBOSE_FLAGS} +local
+	${GOPATH}/bin/govendor install -ldflags="-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} +local
 
 install: govendor genlocalfiles dpdk.build contribs .compile
 
 build: govendor genlocalfiles dpdk.build contribs
-	${GOPATH}/bin/govendor build -ldflags="-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} -tags=" ${GOTAGS}" ${VERBOSE_FLAGS} +local
+	${GOPATH}/bin/govendor build -ldflags="-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} +local
 
 static: #govendor genlocalfiles
 	rm -f $$GOPATH/bin/skydive
-	test -f /etc/redhat-release && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib64/libz.a /usr/lib64/liblzma.a /usr/lib64/libm.a"' ${VERBOSE_FLAGS} -tags " ${GOTAGS}" +local || true
-	test -f /etc/debian_version && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a"' ${VERBOSE_FLAGS} -tags " ${GOTAGS}" +local || true
+	test -f /etc/redhat-release && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib64/libz.a /usr/lib64/liblzma.a /usr/lib64/libm.a"' ${VERBOSE_FLAGS} -tags "${BUILDTAGS} ${GOTAGS}" +local || true
+	test -f /etc/debian_version && govendor install -tags netgo --ldflags '-extldflags "-static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a"' ${VERBOSE_FLAGS} -tags "${BUILDTAGS} ${GOTAGS}" +local || true
 
 contribs:
 	$(MAKE) -C contrib/snort
@@ -78,7 +83,9 @@ dpdk.cleanup:
 	$(MAKE) -C dpdk clean
 
 ebpf.build:
+ifeq ($(WITH_EBPF), true)
 	$(MAKE) -C probe/ebpf
+endif
 
 ebpf.clean:
 	$(MAKE) -C probe/ebpf clean
@@ -87,7 +94,7 @@ test.functionals.cleanup:
 	rm -f tests/functionals
 
 test.functionals.compile: govendor genlocalfiles
-	${GOPATH}/bin/govendor test -tags "${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+	${GOPATH}/bin/govendor test -tags "${BUILDTAGS} ${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
 	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS}
@@ -117,12 +124,12 @@ ifeq ($(COVERAGE), true)
 	for pkg in ${UT_PACKAGES}; do \
 		if [ -n "$$pkg" ]; then \
 			coverfile="${COVERAGE_WD}/$$(echo $$pkg | tr / -).cover"; \
-			${GOPATH}/bin/govendor test -tags "${GOTAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
+			${GOPATH}/bin/govendor test -tags "${BUILDTAGS} ${GOTAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
 		fi; \
 	done
 else
 	set -v ; \
-	${GOPATH}/bin/govendor test -tags "${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+	${GOPATH}/bin/govendor test -tags "${BUILDTAGS} ${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 endif
 
 govendor:
