@@ -40,7 +40,7 @@ ifeq ($(WITH_EBPF), true)
   EXTRABINDATA+=probe/ebpf/*.o
 endif
 
-.PHONY: all
+.PHONY: all doc
 all: install
 
 .proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
@@ -175,6 +175,7 @@ clean: test.functionals.cleanup dpdk.cleanup
 
 doc:
 	mkdir -p /tmp/skydive-doc
+	touch /tmp/skydive-doc/.nojekyll
 	hugo --theme=hugo-material-docs -s doc -d /tmp/skydive-doc
 	git checkout gh-pages
 	cp -dpR /tmp/skydive-doc/* .
