@@ -178,7 +178,7 @@ $ skydive client capture create --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#
 
 &lt;p&gt;To get Flows captured :&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client topology query --gremlin &amp;quot;G.Flows()&amp;quot;
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client query &amp;quot;G.Flows()&amp;quot;
 [
   {
     &amp;quot;ANodeTID&amp;quot;: &amp;quot;422190f1-bbde-4eb0-4849-1fd1209229fe&amp;quot;,
@@ -276,11 +276,15 @@ informations will be captured&lt;/li&gt;
 &lt;h2 id=&#34;dependencies&#34;&gt;Dependencies&lt;/h2&gt;
 
 &lt;ul&gt;
-&lt;li&gt;Go &amp;gt;= 1.6&lt;/li&gt;
+&lt;li&gt;Go &amp;gt;= 1.8&lt;/li&gt;
 &lt;li&gt;Elasticsearch &amp;gt;= 2.0&lt;/li&gt;
 &lt;li&gt;libpcap&lt;/li&gt;
 &lt;li&gt;libxml2&lt;/li&gt;
 &lt;li&gt;protoc &amp;gt;= 3.0&lt;/li&gt;
+&lt;li&gt;llvm&lt;/li&gt;
+&lt;li&gt;clang&lt;/li&gt;
+&lt;li&gt;kernel-headers / linux-libc-dev&lt;/li&gt;
+&lt;li&gt;bcc / bcc-devel&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&#34;install&#34;&gt;Install&lt;/h2&gt;
@@ -375,7 +379,7 @@ username/password command line parameters.&lt;/p&gt;
 &lt;p&gt;Skydive uses the Gremlin traversal language as a topology request language.
 Requests on the topology can be done as following :&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client topology query --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;, &#39;Type&#39; ,&#39;ovsbridge&#39;)&amp;quot;
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;$ skydive client query &amp;quot;G.V().Has(&#39;Name&#39;, &#39;br-int&#39;, &#39;Type&#39; ,&#39;ovsbridge&#39;)&amp;quot;
 [
   {
     &amp;quot;Host&amp;quot;: &amp;quot;pc48.home&amp;quot;,
@@ -414,7 +418,7 @@ The following command starts a capture on all &lt;code&gt;docker0&lt;/code&gt; i
 &lt;p&gt;The Flows Gremlin step can be used in order to see the flows captured. See the
 &lt;a href=&#34;//skydive-project.github.io/skydive/getting-started/gremlin/&#34;&gt;Gremlin section&lt;/a&gt; for further explanations.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client topology query --gremlin &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;).Flows()&amp;quot;
+&lt;pre&gt;&lt;code class=&#34;language-console&#34;&gt;skydive client query &amp;quot;G.V().Has(&#39;Name&#39;, &#39;docker0&#39;).Flows()&amp;quot;
 &lt;/code&gt;&lt;/pre&gt;
 </description>
     </item>

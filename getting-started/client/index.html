@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <title>Skydive client, API &amp; WebUI - Skydive Docs</title>
-    <meta name="generator" content="Hugo 0.16-DEV" />
+    <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.12.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.15.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -676,7 +676,7 @@ username/password command line parameters.</p>
 <p>Skydive uses the Gremlin traversal language as a topology request language.
 Requests on the topology can be done as following :</p>
 
-<pre><code class="language-console">$ skydive client topology query --gremlin &quot;G.V().Has('Name', 'br-int', 'Type' ,'ovsbridge')&quot;
+<pre><code class="language-console">$ skydive client query &quot;G.V().Has('Name', 'br-int', 'Type' ,'ovsbridge')&quot;
 [
   {
     &quot;Host&quot;: &quot;pc48.home&quot;,
@@ -715,7 +715,7 @@ The following command starts a capture on all <code>docker0</code> interfaces:</
 <p>The Flows Gremlin step can be used in order to see the flows captured. See the
 <a href="//skydive-project.github.io/skydive/getting-started/gremlin/">Gremlin section</a> for further explanations.</p>
 
-<pre><code class="language-console">skydive client topology query --gremlin &quot;G.V().Has('Name', 'docker0').Flows()&quot;
+<pre><code class="language-console">skydive client query &quot;G.V().Has('Name', 'docker0').Flows()&quot;
 </code></pre>
 
 			

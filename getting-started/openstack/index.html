@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <title>How to deploy Skydive with Devstack - Skydive Docs</title>
-    <meta name="generator" content="Hugo 0.16-DEV" />
+    <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.12.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.15.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -732,7 +732,7 @@ $ skydive client capture create --gremlin &quot;G.V().Has('Name', 'br-int')&quot
 
 <p>To get Flows captured :</p>
 
-<pre><code class="language-console">skydive client topology query --gremlin &quot;G.Flows()&quot;
+<pre><code class="language-console">skydive client query &quot;G.Flows()&quot;
 [
   {
     &quot;ANodeTID&quot;: &quot;422190f1-bbde-4eb0-4849-1fd1209229fe&quot;,

@@ -9,7 +9,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
     <title>Skydive Gremlin Query language - Skydive Docs</title>
-    <meta name="generator" content="Hugo 0.16-DEV" />
+    <meta name="generator" content="Hugo 0.15" />
 
     
     <meta name="description" content="Real-time network analyzer.">
@@ -136,7 +136,7 @@
         </div>
       
       <div class="name">
-        <strong>Skydive Docs <span class="version">0.12.0</span></strong>
+        <strong>Skydive Docs <span class="version">0.15.0</span></strong>
         
           <br>
           skydive-project/skydive
@@ -695,7 +695,19 @@ an OpenvSwitch bridge named <code>br-int</code>.</p>
 
 <p>A node ID can be passed to the V step which will return the corresponding node.</p>
 
-<pre><code class="language-console">G.V('ca909ccf-203d-457d-70b8-06fe308221efca909ccf-203d-457d-70b8-06fe308221ef')
+<pre><code class="language-console">G.V('ca909ccf-203d-457d-70b8-06fe308221ef')
+</code></pre>
+
+<h3 id="e-step">E Step</h3>
+
+<p>E step returns the edges belonging to the graph.</p>
+
+<pre><code class="language-console">G.E()
+</code></pre>
+
+<p>A edge ID can be passed to the E step which will return the corresponding edge.</p>
+
+<pre><code class="language-console">G.E('c8aeb26f-0962-4c46-b700-a12dfe720af1')
 </code></pre>
 
 <h3 id="has-step">Has Step</h3>
@@ -723,12 +735,13 @@ of steps <code>Out/Has</code> for example.</p>
 <pre><code>G.V().Has('Name', 'br-int', 'Type', 'ovsbridge').Out('Name', 'intf1')
 </code></pre>
 
-<h3 id="ine-oute-steps">InE/OutE steps</h3>
+<h3 id="ine-oute-bothe-steps">InE/OutE/BothE steps</h3>
 
-<p><code>InE/OutE</code> steps returns the incoming/ougoing links.</p>
+<p><code>InE/OutE/BothE</code> steps returns the incoming/ougoing links.</p>
 
 <pre><code class="language-console">G.V().Has('Name', 'test', 'Type', 'netns').InE()
 G.V().Has('Name', 'test', 'Type', 'netns').OutE()
+G.V().Has('Name', 'test', 'Type', 'netns').BothE()
 </code></pre>
 
 <p>Like for the <code>In/Out/Both</code> steps metadata list can be passed directly as
@@ -821,7 +834,18 @@ When attribute &lsquo;Name&rsquo; exists, must be integer type.</p>
 <p>It is possible to filter the link traversed according to the given <code>Metadata</code>
 predicate as a second parameter.</p>
 
-<pre><code>G.V().Has('Type', 'netns').ShortestPathTo(Metadata('Type', 'host'), Metadata('Type', 'layer2'))
+<pre><code>G.V().Has('Type', 'netns').ShortestPathTo(Metadata('Type', 'host'), Metadata('RelationType', 'layer2'))
+</code></pre>
+
+<h3 id="subgraph-step">SubGraph step</h3>
+
+<p><code>SubGraph</code> step returns a new Graph based on the previous steps. Step V or E can
+be used to walk trough this new Graph.</p>
+
+<pre><code>G.E().Has('RelationType', 'layer2').SubGraph().V().Has('Name', 'eth0')
+</code></pre>
+
+<pre><code>G.V().Has('Type', 'veth').SubGraph().E()
 </code></pre>
 
 <h3 id="graphpath-step">GraphPath step</h3>
@@ -897,8 +921,11 @@ the members of the given array.</li>
 expression.</li>
 </ul>
 
-<pre><code class="language-console">G.V().Has('Name', Regex('^tap.*'))
+<pre><code class="language-console">G.V().Has('Name', Regex('tap.*'))
 </code></pre>
+
+<p>Please note that the Regex step is always using anchors, ^ and $ don&rsquo;t have to
+be provided in the expression.</p>
 
 <h3 id="flows-step">Flows step</h3>
 
