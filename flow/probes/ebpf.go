@@ -418,7 +418,13 @@ func loadModule() (*elf.Module, error) {
 	// load to test if everything is ok
 	err = module.Load(nil)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to load eBPF elf binary from bindata: %s", err)
+		// split to skip to kernel stack trace
+		errs := strings.Split(err.Error(), ":")
+		if len(errs) > 1 {
+			logging.GetLogger().Debugf("eBPF kernel stacktrace: %s", errs[1])
+		}
+
+		return nil, fmt.Errorf("Unable to load eBPF elf binary from bindata: %s", errs[0])
 	}
 
 	return module, nil

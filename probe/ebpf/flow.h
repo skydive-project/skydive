@@ -26,6 +26,10 @@
 #include <linux/if_ether.h>
 
 enum {
+	RTT_SET = 1
+};
+
+enum {
 	START_TIME_NS    = 0,
 
 	LINK_LAYER       = 1,
@@ -101,6 +105,8 @@ struct flow {
 	__u64                  last;
 
 	__u8                   payload[PAYLOAD_LENGTH];
+
+	__u64                  _flags;
 };
 
 #endif
