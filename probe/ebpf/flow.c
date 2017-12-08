@@ -343,7 +343,7 @@ int bpf_flow_table(struct __sk_buff *skb)
 		bpf_map_update_element(&u64_config_values, &key, &tm, BPF_ANY);
 	}
 
-	struct flow flow = {.rtt = 0}, *prev;
+	struct flow flow = {}, *prev;
 	fill_flow(skb, &flow);
 
 	prev = bpf_map_lookup_element(&flow_table, &flow.key);
@@ -352,8 +352,9 @@ int bpf_flow_table(struct __sk_buff *skb)
 			flow.link_layer._hash_src == prev->link_layer._hash_src);
 		__sync_fetch_and_add(&prev->last, tm - prev->last);
 
-		if (prev->rtt == 0) {
+		if(prev->metrics.ab_packets >= 1 && prev->metrics.ba_packets >= 1 && prev->_flags != RTT_SET) {
 			__sync_fetch_and_add(&prev->rtt, tm - prev->start);
+			prev->_flags = RTT_SET;
 		}
 	} else {
 		update_metrics(skb, &flow, tm, 1);
