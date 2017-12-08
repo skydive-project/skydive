@@ -315,6 +315,41 @@
       - chuck-norris
 
 - job:
+    name: skydive-create-binaries
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    node: slaves
+    triggers:
+      - github
+    scm:
+      - git:
+          url: https://github.com/skydive-project/skydive
+          browser: githubweb
+          browser-url: http://github.com/skydive-project/skydive
+          timeout: 20
+          basedir: src/github.com/skydive-project/skydive
+          per-build-tag: false
+          skip-tag: true
+          branches:
+            - master
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: github
+              variable: GITHUB_TOKEN
+          - text:
+              credential-id: github-username
+              variable: GITHUB_USERNAME
+          - text:
+              credential-id: docker-password
+              variable: DOCKER_PASSWORD
+    builders:
+      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-binaries.sh
+    publishers:
+      - chuck-norris
+
+- job:
     name: skydive-devstack-plugin
     defaults: skydive
     properties:
