@@ -99,7 +99,6 @@ func (probe *DockerProbe) registerContainer(id string) {
 
 		probe.Graph.Lock()
 		probe.Graph.AddMetadata(n, "Manager", "docker")
-		probe.Graph.AddMetadata(n, "PodName", info.Name[1:])
 		probe.Graph.Unlock()
 	}
 
