@@ -28,6 +28,7 @@ import (
 	"math/rand"
 	"net"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -50,6 +51,7 @@ var (
 
 // PacketParams describes the packet parameters to be injected
 type PacketParams struct {
+	UUID      string
 	SrcNodeID graph.Identifier `valid:"nonzero"`
 	SrcIP     string           `valid:"nonzero"`
 	SrcMAC    string           `valid:"nonzero"`
@@ -64,8 +66,13 @@ type PacketParams struct {
 	Payload   string
 }
 
+type Channels struct {
+	sync.Mutex
+	Pipes map[string](chan bool)
+}
+
 // InjectPacket inject some packets based on the graph
-func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
+func InjectPacket(pp *PacketParams, g *graph.Graph, chnl *Channels) (string, error) {
 	srcIP := getIP(pp.SrcIP)
 	if srcIP == nil {
 		return "", errors.New("Source Node doesn't have proper IP")
@@ -202,26 +209,40 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 	f := flow.NewFlow()
 	f.InitFromGoPacket(flowKey, common.UnixMillis(time.Now()), &packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
 
-	go func() {
+	p := make(chan bool)
+	chnl.Lock()
+	chnl.Pipes[pp.UUID] = p
+	chnl.Unlock()
+
+	go func(c chan bool) {
 		defer rawSocket.Close()
 
+	stopInjection:
 		for i := int64(0); i < pp.Count; i++ {
-			logging.GetLogger().Debugf("Injecting packet on interface %s", ifName)
+			select {
+			case <-c:
+				logging.GetLogger().Debugf("Injection stoped on interface %s", ifName)
+				break stopInjection
+			default:
+				logging.GetLogger().Debugf("Injecting packet on interface %s", ifName)
 
-			if _, err := rawSocket.Write(packetData); err != nil {
-				if err == syscall.ENXIO {
-					logging.GetLogger().Warningf("Write error: %s", err.Error())
-				} else {
-					logging.GetLogger().Errorf("Write error: %s", err.Error())
+				if _, err := rawSocket.Write(packetData); err != nil {
+					if err == syscall.ENXIO {
+						logging.GetLogger().Warningf("Write error: %s", err.Error())
+					} else {
+						logging.GetLogger().Errorf("Write error: %s", err.Error())
+					}
+
+					if i != pp.Count-1 {
+						time.Sleep(time.Millisecond * time.Duration(pp.Interval))
+					}
 				}
-				return
-			}
-
-			if i != pp.Count-1 {
-				time.Sleep(time.Millisecond * time.Duration(pp.Interval))
 			}
 		}
-	}()
+		chnl.Lock()
+		delete(chnl.Pipes, pp.UUID)
+		chnl.Unlock()
+	}(p)
 
 	return f.TrackingID, nil
 }

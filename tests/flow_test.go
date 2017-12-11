@@ -1062,7 +1062,7 @@ func TestICMP(t *testing.T) {
 				DstIP:    "10.0.0.2/24",
 				Count:    1,
 				Interval: 1000,
-				ID:       123,
+				ICMPID:   123,
 			}
 			err := pingRequest(t, c, req)
 			if err != nil {
@@ -1078,7 +1078,7 @@ func TestICMP(t *testing.T) {
 				DstIP:    "fd49:37c8:5229::2/48",
 				Count:    1,
 				Interval: 1000,
-				ID:       456,
+				ICMPID:   456,
 			}
 			err = pingRequest(t, c, req)
 			ipv6TrackingID = req.TrackingID
