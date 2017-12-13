@@ -182,7 +182,7 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 	protocol := strings.ToLower(config.GetConfig().GetString("flow.protocol"))
 	switch protocol {
 	case "udp":
-		connection, err = NewFlowClientUDPConn(addr, port)
+		connection, err = NewFlowClientUDPConn(common.NormalizeAddrForURL(addr), port)
 	case "websocket":
 		connection, err = NewFlowClientWebSocketConn(config.GetURL("ws", common.NormalizeAddrForURL(addr), port, "/ws/flow"))
 	default:
