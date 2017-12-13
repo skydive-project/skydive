@@ -134,13 +134,10 @@ type GraphContext struct {
 // An associated backend is used as storage
 type Graph struct {
 	sync.RWMutex
-	backend              GraphBackend
-	context              GraphContext
-	host                 string
-	eventListeners       []GraphEventListener
-	eventChan            chan graphEvent
-	eventConsumed        bool
-	currentEventListener GraphEventListener
+	*GraphEventHandler
+	backend GraphBackend
+	context GraphContext
+	host    string
 }
 
 // HostNodeTIDMap a map of host and node ID
@@ -184,6 +181,85 @@ func (c *DefaultGraphListener) OnEdgeAdded(e *Edge) {
 
 // OnEdgeDeleted event
 func (c *DefaultGraphListener) OnEdgeDeleted(e *Edge) {
+}
+
+type GraphEventHandler struct {
+	sync.RWMutex
+	eventListeners       []GraphEventListener
+	eventChan            chan graphEvent
+	eventConsumed        bool
+	currentEventListener GraphEventListener
+}
+
+func (g *GraphEventHandler) notifyEvent(ge graphEvent) {
+	// push event to chan so that nested notification will be sent in the
+	// right order. Associate the event with the current event listener so
+	// we can avoid loop by not triggering event for the current listener.
+	ge.listener = g.currentEventListener
+	g.eventChan <- ge
+
+	// already a consumer no need to run another consumer
+	if g.eventConsumed {
+		return
+	}
+	g.eventConsumed = true
+
+	for len(g.eventChan) > 0 {
+		ge = <-g.eventChan
+
+		// notify only once per listener as if more than once we are in a recursion
+		// and we wont to notify a listener which generated a graph element
+		for _, g.currentEventListener = range g.eventListeners {
+			// do not notify the listener which generated the event
+			if g.currentEventListener == ge.listener {
+				continue
+			}
+
+			switch ge.kind {
+			case nodeAdded:
+				g.currentEventListener.OnNodeAdded(ge.element.(*Node))
+			case nodeUpdated:
+				g.currentEventListener.OnNodeUpdated(ge.element.(*Node))
+			case nodeDeleted:
+				g.currentEventListener.OnNodeDeleted(ge.element.(*Node))
+			case edgeAdded:
+				g.currentEventListener.OnEdgeAdded(ge.element.(*Edge))
+			case edgeUpdated:
+				g.currentEventListener.OnEdgeUpdated(ge.element.(*Edge))
+			case edgeDeleted:
+				g.currentEventListener.OnEdgeDeleted(ge.element.(*Edge))
+			}
+		}
+	}
+	g.currentEventListener = nil
+	g.eventConsumed = false
+}
+
+// AddEventListener subscibe a new graph listener
+func (g *GraphEventHandler) AddEventListener(l GraphEventListener) {
+	g.Lock()
+	defer g.Unlock()
+
+	g.eventListeners = append(g.eventListeners, l)
+}
+
+// RemoveEventListener unsubscribe a graph listener
+func (g *GraphEventHandler) RemoveEventListener(l GraphEventListener) {
+	g.Lock()
+	defer g.Unlock()
+
+	for i, el := range g.eventListeners {
+		if l == el {
+			g.eventListeners = append(g.eventListeners[:i], g.eventListeners[i+1:]...)
+			break
+		}
+	}
+}
+
+func NewGraphEventHandler(maxEvents int) *GraphEventHandler {
+	return &GraphEventHandler{
+		eventChan: make(chan graphEvent, maxEvents),
+	}
 }
 
 // GenID helper generate a node Identifier
@@ -1113,71 +1189,6 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (g *Graph) notifyEvent(ge graphEvent) {
-	// push event to chan so that nested notification will be sent in the
-	// right order. Associate the event with the current event listener so
-	// we can avoid loop by not triggering event for the current listener.
-	ge.listener = g.currentEventListener
-	g.eventChan <- ge
-
-	// already a consumer no need to run another consumer
-	if g.eventConsumed {
-		return
-	}
-	g.eventConsumed = true
-
-	for len(g.eventChan) > 0 {
-		ge = <-g.eventChan
-
-		// notify only once per listener as if more than once we are in a recursion
-		// and we wont to notify a listener which generated a graph element
-		for _, g.currentEventListener = range g.eventListeners {
-			// do not notify the listener which generated the event
-			if g.currentEventListener == ge.listener {
-				continue
-			}
-
-			switch ge.kind {
-			case nodeAdded:
-				g.currentEventListener.OnNodeAdded(ge.element.(*Node))
-			case nodeUpdated:
-				g.currentEventListener.OnNodeUpdated(ge.element.(*Node))
-			case nodeDeleted:
-				g.currentEventListener.OnNodeDeleted(ge.element.(*Node))
-			case edgeAdded:
-				g.currentEventListener.OnEdgeAdded(ge.element.(*Edge))
-			case edgeUpdated:
-				g.currentEventListener.OnEdgeUpdated(ge.element.(*Edge))
-			case edgeDeleted:
-				g.currentEventListener.OnEdgeDeleted(ge.element.(*Edge))
-			}
-		}
-	}
-	g.currentEventListener = nil
-	g.eventConsumed = false
-}
-
-// AddEventListener subscibe a new graph listener
-func (g *Graph) AddEventListener(l GraphEventListener) {
-	g.Lock()
-	defer g.Unlock()
-
-	g.eventListeners = append(g.eventListeners, l)
-}
-
-// RemoveEventListener unsubscribe a graph listener
-func (g *Graph) RemoveEventListener(l GraphEventListener) {
-	g.Lock()
-	defer g.Unlock()
-
-	for i, el := range g.eventListeners {
-		if l == el {
-			g.eventListeners = append(g.eventListeners[:i], g.eventListeners[i+1:]...)
-			break
-		}
-	}
-}
-
 // WithContext select a graph within a context
 func (g *Graph) WithContext(c GraphContext) (*Graph, error) {
 	return g.backend.WithContext(g, c)
@@ -1225,10 +1236,10 @@ func (g *Graph) Diff(newGraph *Graph) (addedNodes []*Node, removedNodes []*Node,
 // NewGraph creates a new graph based on the backend
 func NewGraph(host string, backend GraphBackend) *Graph {
 	return &Graph{
-		backend:   backend,
-		host:      host,
-		context:   GraphContext{},
-		eventChan: make(chan graphEvent, maxEvents),
+		GraphEventHandler: NewGraphEventHandler(maxEvents),
+		backend:           backend,
+		host:              host,
+		context:           GraphContext{},
 	}
 }
 
