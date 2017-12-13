@@ -1097,13 +1097,19 @@ func (g *Graph) String() string {
 // MarshalJSON serialize the graph in JSON
 func (g *Graph) MarshalJSON() ([]byte, error) {
 	nodes := make([]*Node, 0)
+	nodes = append(nodes, g.GetNodes(Metadata{})...)
+	SortNodes(nodes, "CreatedAt", common.SortAscending)
+
 	edges := make([]*Edge, 0)
+	edges = append(edges, g.GetEdges(Metadata{})...)
+	SortEdges(edges, "CreatedAt", common.SortAscending)
+
 	return json.Marshal(&struct {
 		Nodes []*Node
 		Edges []*Edge
 	}{
-		Nodes: append(nodes, g.GetNodes(Metadata{})...),
-		Edges: append(edges, g.GetEdges(Metadata{})...),
+		Nodes: nodes,
+		Edges: edges,
 	})
 }
 
