@@ -513,7 +513,7 @@ Vue.component('flow-table', {
     },
 
     limitedQuery: function() {
-      if (this.limit === 0) {
+      if (this.limit === 0 || this.filteredQuery.match(/limit/i)) {
         return this.filteredQuery;
       }
       return this.filteredQuery + '.Limit(' + this.limit + ')';
@@ -712,16 +712,18 @@ Vue.component('flow-table-control', {
   mixins: [apiMixin],
 
   template: '\
-    <form @submit.prevent="validateQuery">\
-      <div class="form-group has-feedback" :class="{\'has-success\': !error, \'has-error\': error}">\
-        <label for="flow-table-query">Flow query</label>\
-        <input id="flow-table-query" type="text" class="form-control" v-model="query" />\
-        <span v-if="error" class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>\
-        <span v-else class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>\
-        <span v-show="error" class="help-block">{{error}}</span>\
-      </div>\
+    <div>\
+      <form @submit.prevent="validateQuery">\
+        <div class="form-group has-feedback" :class="{\'has-success\': !error, \'has-error\': error}">\
+          <label for="flow-table-query">Flow query</label>\
+          <input id="flow-table-query" type="text" class="form-control" v-model="query" />\
+          <span v-if="error" class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>\
+          <span v-else class="glyphicon glyphicon-ok form-control-feedback" aria-hidden="true"></span>\
+          <span v-show="error" class="help-block">{{error}}</span>\
+        </div>\
+      </form>\
       <flow-table :value="validatedQuery"></flow-table>\
-    </form>\
+    </div>\
   ',
 
   data: function() {
