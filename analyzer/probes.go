@@ -46,7 +46,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error
 		switch t {
 		case "k8s":
 			var err error
-			probes[t], err = k8s.NewK8SProbe(g)
+			probes[t], err = k8s.NewProbe(g)
 			if err != nil {
 				logging.GetLogger().Errorf("Failed to initialize K8S probe: %s", err.Error())
 				return nil, err

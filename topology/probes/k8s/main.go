@@ -25,29 +25,29 @@ package k8s
 import (
 	"github.com/skydive-project/skydive/topology/graph"
 
-	api "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-type K8SProbe struct {
+type probe struct {
 	graph              *graph.Graph
 	client             *kubeClient
-	podCache           *podCache
-	networkPolicyCache *networkPolicyCache
+	podCache           *PodCache
+	networkPolicyCache *NetworkPolicyCache
 }
 
-func (k8s *K8SProbe) getPodsByNamespace(namespace string) (pods []*api.Pod) {
-	for _, pod := range k8s.podCache.cache.List() {
-		if pod := pod.(*api.Pod); namespace == api.NamespaceAll || pod.Namespace == namespace {
+func (p *probe) getPodsByNamespace(namespace string) (pods []*v1.Pod) {
+	for _, pod := range p.podCache.cache.List() {
+		if pod := pod.(*v1.Pod); namespace == v1.NamespaceAll || pod.Namespace == namespace {
 			pods = append(pods, pod)
 		}
 	}
 	return
 }
 
-func (k8s *K8SProbe) getPodsByLabels(selector labels.Selector) (pods []*api.Pod) {
-	for _, pod := range k8s.podCache.cache.List() {
-		if pod := pod.(*api.Pod); selector.Matches(labels.Set(pod.Labels)) {
+func (p *probe) getPodsByLabels(selector labels.Selector) (pods []*v1.Pod) {
+	for _, pod := range p.podCache.cache.List() {
+		if pod := pod.(*v1.Pod); selector.Matches(labels.Set(pod.Labels)) {
 			pods = append(pods, pod)
 		}
 	}
@@ -55,9 +55,9 @@ func (k8s *K8SProbe) getPodsByLabels(selector labels.Selector) (pods []*api.Pod)
 }
 
 /*
-func (k8s *K8SProbe) getNamespacesByLabels(selector labels.Selector) (namespaces []*api.Namespace) {
-	for _, namespace := range k8s.namespaceCache.cache.List() {
-		if namespace := pod.(*api.Namespace); selector.Matches(labels.Set(namespace.Labels)) {
+func (p *probe) getNamespacesByLabels(selector labels.Selector) (namespaces []*v1.Namespace) {
+	for _, namespace := range p.namespaceCache.cache.List() {
+		if namespace := pod.(*v1.Namespace); selector.Matches(labels.Set(namespace.Labels)) {
 			namespaces = append(namespaces, namespace)
 		}
 	}
@@ -65,23 +65,26 @@ func (k8s *K8SProbe) getNamespacesByLabels(selector labels.Selector) (namespaces
 }
 */
 
-func (k8s *K8SProbe) Start() {
-	k8s.networkPolicyCache.Start()
-	k8s.podCache.Start()
+// Start the k8s probe
+func (p *probe) Start() {
+	p.networkPolicyCache.Start()
+	p.podCache.Start()
 }
 
-func (k8s *K8SProbe) Stop() {
-	k8s.networkPolicyCache.Stop()
-	k8s.podCache.Stop()
+// Stop the k8s probe
+func (p *probe) Stop() {
+	p.networkPolicyCache.Stop()
+	p.podCache.Stop()
 }
 
-func NewK8SProbe(g *graph.Graph) (k8s *K8SProbe, err error) {
+// Newprobe for monitoring k8s events
+func NewProbe(g *graph.Graph) (*probe, error) {
 	client, err := newKubeClient()
 	if err != nil {
 		return nil, err
 	}
 
-	return &K8SProbe{
+	return &probe{
 		graph:              g,
 		client:             client,
 		podCache:           newPodCache(client, g),

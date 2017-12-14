@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,62 +18,77 @@
  * specific language governing permissions and limitations
  * under the License.
  *
-*/
+ */
 
 package k8s
 
 import (
+	"fmt"
+
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 
-	networking_v1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/api/extensions/v1beta1"
 )
 
-type networkPolicyCache struct {
+// NetworkPolicyCache for maintaining state of network policy objects
+type NetworkPolicyCache struct {
 	defaultKubeCacheEventHandler
 	*kubeCache
 	graph *graph.Graph
 }
 
-func (n *networkPolicyCache) networkPolicyMetadata(policy *networking_v1.NetworkPolicy) graph.Metadata {
+func (c *NetworkPolicyCache) getMetadata(np *v1beta1.NetworkPolicy) graph.Metadata {
 	return graph.Metadata{
-		"Type": "networkpolicy",
-		"Name": policy.GetName(),
+		"Type":       "k8s::networkpolicy",
+		"Name":       np.GetName(),
+		"UID":        np.GetUID(),
+		"ObjectMeta": np.ObjectMeta,
+		"Spec":       np.Spec,
 	}
 }
 
-func (n *networkPolicyCache) OnAdd(obj interface{}) {
-	if networkPolicy, ok := obj.(*networking_v1.NetworkPolicy); ok {
-		n.handleNetworkPolicy(networkPolicy)
+func (c *NetworkPolicyCache) getLabel(np *v1beta1.NetworkPolicy) string {
+	return fmt.Sprintf("k8s::networkpolicy::%s::%s", np.GetUID(), np.GetName())
+}
+
+func (c *NetworkPolicyCache) doUpdate(np *v1beta1.NetworkPolicy) {
+	c.graph.NewNode(graph.Identifier(np.GetUID()), c.getMetadata(np))
+	// TODO: create links between pod and pods
+}
+
+// OnAdd a network policy
+func (c *NetworkPolicyCache) OnAdd(obj interface{}) {
+	if np, ok := obj.(*v1beta1.NetworkPolicy); ok {
+		logging.GetLogger().Debugf("Adding %s", c.getLabel(np))
+		c.doUpdate(np)
 	}
 }
 
-func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
-	if networkPolicy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
-		n.handleNetworkPolicy(networkPolicy)
+// OnUpdate a network policy
+func (c *NetworkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
+	if np, ok := newObj.(*v1beta1.NetworkPolicy); ok {
+		logging.GetLogger().Debugf("Updating %s", c.getLabel(np))
+		c.doUpdate(np)
 	}
 }
 
-func (n *networkPolicyCache) OnDelete(obj interface{}) {
-	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID())); policyNode != nil {
-			n.graph.DelNode(policyNode)
+// OnDelete a network policy
+func (c *NetworkPolicyCache) OnDelete(obj interface{}) {
+	if np, ok := obj.(*v1beta1.NetworkPolicy); ok {
+		if node := c.graph.GetNode(graph.Identifier(np.GetUID())); node != nil {
+			logging.GetLogger().Debugf("Deleting %s", c.getLabel(np))
+			c.graph.DelNode(node)
 		}
 	}
 }
 
-func (n *networkPolicyCache) handleNetworkPolicy(policy *networking_v1.NetworkPolicy) {
-	logging.GetLogger().Debugf("Handling network policy %s:%s", policy.GetUID(), policy.ObjectMeta.Name)
-	n.graph.NewNode(graph.Identifier(policy.GetUID()), n.networkPolicyMetadata(policy))
-	// TODO: create links between network policy and pods
-}
-
-func newNetworkPolicyCache(client *kubeClient, g *graph.Graph) *networkPolicyCache {
-	n := &networkPolicyCache{graph: g}
-	n.kubeCache = client.getCacheFor(
+func newNetworkPolicyCache(client *kubeClient, g *graph.Graph) *NetworkPolicyCache {
+	c := &NetworkPolicyCache{graph: g}
+	c.kubeCache = client.getCacheFor(
 		client.ExtensionsV1beta1().RESTClient(),
-		&networking_v1.NetworkPolicy{},
+		&v1beta1.NetworkPolicy{},
 		"networkpolicies",
-		n)
-	return n
+		c)
+	return c
 }

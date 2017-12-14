@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,111 +18,77 @@
  * specific language governing permissions and limitations
  * under the License.
  *
-*/
+ */
 
 package k8s
 
 import (
-	"sync"
+	"fmt"
 
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 
-	api "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 )
 
-type podCache struct {
-	sync.RWMutex
+// PodCache for keeping state of pod objects
+type PodCache struct {
 	defaultKubeCacheEventHandler
-	graph.DefaultGraphListener
 	*kubeCache
-	graph      *graph.Graph
-	podToGraph map[string]*graph.Node
+	graph *graph.Graph
 }
 
-func (p *podCache) OnAdd(obj interface{}) {
-	if pod, ok := obj.(*api.Pod); ok {
-		logging.GetLogger().Debugf("Pod %s created with name %s", pod.GetUID(), pod.ObjectMeta.Name)
-		p.Lock()
-		defer p.Unlock()
-
-		if n, found := p.podToGraph[pod.GetName()]; found {
-			p.handlePod(pod, n)
-		}
-	}
-}
-
-func (p *podCache) podMetadata(pod *api.Pod) graph.Metadata {
+func (c *PodCache) getMetadata(pod *v1.Pod) graph.Metadata {
 	return graph.Metadata{
-		"Type": "pod",
-		"Name": pod.GetName(),
-		"Pod": map[string]interface{}{
-			"ClusterName":     pod.GetClusterName(),
-			"Namespace":       pod.GetNamespace(),
-			"UID":             pod.GetUID(),
-			"ResourceVersion": pod.GetResourceVersion(),
-			"Labels":          pod.GetLabels(),
-		},
+		"Type":       "k8s::pod",
+		"Name":       pod.GetName(),
+		"UID":        pod.GetUID(),
+		"ObjectMeta": pod.ObjectMeta,
+		"Spec":       pod.Spec,
 	}
 }
 
-func (p *podCache) OnDelete(obj interface{}) {
-	if pod, ok := obj.(*api.Pod); ok {
-		if podNode := p.graph.GetNode(graph.Identifier(pod.GetUID())); podNode != nil {
-			p.graph.DelNode(podNode)
+func (c *PodCache) getLabel(pod *v1.Pod) string {
+	return fmt.Sprintf("k8s::pod::%s::%s", pod.GetUID(), pod.GetName())
+}
+
+func (c *PodCache) doUpdate(pod *v1.Pod) {
+	c.graph.NewNode(graph.Identifier(pod.GetUID()), c.getMetadata(pod))
+	// TODO: create links between pod and pods
+}
+
+// OnAdd of a pod object
+func (c *PodCache) OnAdd(obj interface{}) {
+	if pod, ok := obj.(*v1.Pod); ok {
+		logging.GetLogger().Debugf("Adding %s", c.getLabel(pod))
+		c.doUpdate(pod)
+	}
+}
+
+// OnUpdate of a pod object
+func (c *PodCache) OnUpdate(oldObj, newObj interface{}) {
+	if pod, ok := newObj.(*v1.Pod); ok {
+		logging.GetLogger().Debugf("Updating %s", c.getLabel(pod))
+		c.doUpdate(pod)
+	}
+}
+
+// OnDelete of a pod object
+func (c *PodCache) OnDelete(obj interface{}) {
+	if pod, ok := obj.(*v1.Pod); ok {
+		logging.GetLogger().Debugf("Deleting %s", c.getLabel(pod))
+		if podNode := c.graph.GetNode(graph.Identifier(pod.GetUID())); podNode != nil {
+			c.graph.DelNode(podNode)
 		}
-		delete(p.podToGraph, pod.GetName())
 	}
 }
 
-func (p *podCache) handlePod(pod *api.Pod, containerNode *graph.Node) {
-	podNode := p.graph.NewNode(graph.Identifier(pod.GetUID()), p.podMetadata(pod))
-	p.graph.Link(containerNode, podNode, nil)
-}
-
-func (p *podCache) mapNode(n *graph.Node) {
-	namespace, _ := n.GetFieldString("Docker.Labels.io.kubernetes.pod.namespace")
-	podName, _ := n.GetFieldString("Docker.Labels.io.kubernetes.pod.name")
-	if namespace != "" && podName != "" {
-		p.Lock()
-		defer p.Unlock()
-
-		p.podToGraph[podName] = n
-		if pod, found, _ := p.cache.GetByKey(namespace + "/" + podName); found {
-			p.handlePod(pod.(*api.Pod), n)
-		}
-	}
-}
-
-func (p *podCache) OnNodeAdded(n *graph.Node) {
-	p.mapNode(n)
-}
-
-func (p *podCache) OnNodeDeleted(n *graph.Node) {
-	if podName, _ := n.GetFieldString("Docker.Labels.io.kubernetes.pod.name"); podName != "" {
-		p.Lock()
-		delete(p.podToGraph, podName)
-		p.Unlock()
-	}
-}
-
-func (p *podCache) Start() {
-	p.graph.AddEventListener(p)
-}
-
-func (p *podCache) Stop() {
-	p.graph.RemoveEventListener(p)
-}
-
-func newPodCache(client *kubeClient, g *graph.Graph) *podCache {
-	p := &podCache{
-		podToGraph: make(map[string]*graph.Node),
-		graph:      g,
-	}
-	p.kubeCache = client.getCacheFor(
-		client.Core().RESTClient(),
-		&api.Pod{},
+func newPodCache(client *kubeClient, g *graph.Graph) *PodCache {
+	c := &PodCache{graph: g}
+	c.kubeCache = client.getCacheFor(
+		client.CoreV1().RESTClient(),
+		&v1.Pod{},
 		"pods",
-		p)
-	return p
+		c)
+	return c
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,14 +18,14 @@
  * specific language governing permissions and limitations
  * under the License.
  *
-*/
+ */
 
 package k8s
 
 import (
 	"time"
 
-	api "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -51,7 +51,7 @@ func (d *defaultKubeCacheEventHandler) OnDelete(obj interface{}) {
 }
 
 func newKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler cache.ResourceEventHandler) *kubeCache {
-	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
+	watchlist := cache.NewListWatchFromClient(restClient, resources, v1.NamespaceAll, fields.Everything())
 	c := &kubeCache{stopController: make(chan struct{})}
 	c.cache, c.controller = cache.NewInformer(watchlist, objType, 30*time.Minute, cache.ResourceEventHandlerFuncs{
 		AddFunc:    handler.OnAdd,
