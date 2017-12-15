@@ -33,8 +33,8 @@ var Capture = {
         <dd v-if="capture.Name">{{capture.Name}}</dd>\
         <dt>Query</dt>\
         <dd class="query"\
-            @mouseover="highlightCaptureNodes(capture, true)"\
-            @mouseout="highlightCaptureNodes(capture, false)"\
+            @mouseover="highlightNodes(capture)"\
+            @mouseout="unhighlightNodes()"\
             @click="(canShowFlows ? showFlows = !showFlows : null)">\
           {{capture.GremlinQuery}}\
         </dd>\
@@ -91,7 +91,14 @@ var Capture = {
         });
     },
 
-    highlightCaptureNodes: function(capture, bool) {
+    unhighlightNodes: function() {
+      var ids = this.$store.state.highlightedNodes.slice();
+      for (var i in ids) {
+        this.$store.commit('unhighlight', ids[i]);
+      }
+    },
+
+    highlightNodes: function(capture) {
       var self = this;
       // Avoid highlighting the nodes while the capture
       // is being deleted
@@ -101,10 +108,7 @@ var Capture = {
       this.$topologyQuery(capture.GremlinQuery)
         .then(function(nodes) {
           nodes.forEach(function(n) {
-            if (bool)
-              self.$store.commit("highlight", n.ID);
-            else
-              self.$store.commit("unhighlight", n.ID);
+            self.$store.commit("highlight", n.ID);
           });
         });
     }

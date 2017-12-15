@@ -10,6 +10,7 @@ var store = new Vuex.Store({
     history: null,
     currentNode: null,
     currentEdge: null,
+    emphasizedNodes: [],
     highlightedNodes: [],
     notifications: [],
     topologyFilter: "",
@@ -58,7 +59,7 @@ var store = new Vuex.Store({
       state.connected = false;
     },
 
-    selected: function(state, node) {
+    nodeSelected: function(state, node) {
       state.currentNode = node;
     },
 
@@ -75,11 +76,21 @@ var store = new Vuex.Store({
     },
 
     highlight: function(state, id) {
-      state.highlightedNodes.push(id);
+      if (state.highlightedNodes.indexOf(id) < 0) state.highlightedNodes.push(id);
     },
 
     unhighlight: function(state, id) {
       state.highlightedNodes = state.highlightedNodes.filter(function(_id) {
+        return id !== _id;
+      });
+    },
+
+    emphasize: function(state, id) {
+      if (state.emphasizedNodes.indexOf(id) < 0) state.emphasizedNodes.push(id);
+    },
+
+    deemphasize: function(state, id) {
+      state.emphasizedNodes = state.emphasizedNodes.filter(function(_id) {
         return id !== _id;
       });
     },
