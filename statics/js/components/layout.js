@@ -8,6 +8,8 @@ var bridgeImg = 'statics/img/bridge.png';
 var dockerImg = 'statics/img/docker.png';
 var neutronImg = 'statics/img/openstack.png';
 var k8sImg = 'statics/img/k8s.png';
+var k8sPodImg = 'statics/img/k8s-pod.png';
+var k8sNpImg = 'statics/img/k8s-networkpolicy.png';
 
 var minusImg = 'statics/img/minus-outline-16.png';
 var plusImg = 'statics/img/plus-16.png';
@@ -24,7 +26,9 @@ var nodeImgMap = {
   "netns": nsImg,
   "veth": vethImg,
   "bond": portImg,
-  "container": dockerImg
+  "container": dockerImg,
+  "k8s::pod": k8sPodImg,
+  "k8s::networkpolicy": k8sNpImg,
 };
 
 var managerImgMap = {
