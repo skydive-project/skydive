@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skydive-project/dede/dede"
 	"github.com/skydive-project/skydive/alert"
 	"github.com/skydive-project/skydive/api"
 	"github.com/skydive-project/skydive/common"
@@ -306,6 +307,8 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterPcapAPI(hserver, storage)
 	api.RegisterConfigAPI(hserver)
 	api.RegisterStatusAPI(hserver, s)
+
+	dede.RegisterTerminalHandler("/dede", hserver.Router)
 
 	return s, nil
 }
