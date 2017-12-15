@@ -28,12 +28,12 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	tprobes "github.com/skydive-project/skydive/topology/probes"
+	"github.com/skydive-project/skydive/topology/probes/k8s"
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology server probes from configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error) {
 	list := config.GetConfig().GetStringSlice("analyzer.topology.probes")
-	var err error
 	probes := make(map[string]probe.Probe)
 	probes["fabric"] = tprobes.NewFabricProbe(g)
 	probes["peering"] = tprobes.NewPeeringProbe(g)
@@ -44,10 +44,9 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error
 		}
 
 		switch t {
-		case "k8sctl":
-			logging.GetLogger().Infof("Starting k8sctl probe")
-
-			probes[t], err = tprobes.NewK8SCtlProbe(g)
+		case "k8s":
+			var err error
+			probes[t], err = k8s.NewK8SProbe(g)
 			if err != nil {
 				logging.GetLogger().Errorf("Failed to initialize K8S probe: %s", err.Error())
 				return nil, err

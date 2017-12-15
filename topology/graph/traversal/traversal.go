@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -773,71 +772,13 @@ func ParseSortParameter(keys ...interface{}) (order common.SortOrder, sortBy str
 	return order, sortBy, err
 }
 
-const (
-	sortByInt64 int = iota + 1
-	sortByString
-)
-
-type sortableNodeSlice struct {
-	sortBy     string
-	sortOrder  common.SortOrder
-	nodes      []*graph.Node
-	sortByType int
-}
-
-func (s sortableNodeSlice) Len() int {
-	return len(s.nodes)
-}
-
-func (s sortableNodeSlice) lessInt64(i, j int) bool {
-	i1, _ := s.nodes[i].GetFieldInt64(s.sortBy)
-	i2, _ := s.nodes[j].GetFieldInt64(s.sortBy)
-
-	if s.sortOrder == common.SortAscending {
-		return i1 < i2
-	}
-	return i1 > i2
-}
-
-func (s sortableNodeSlice) lessString(i, j int) bool {
-	s1, _ := s.nodes[i].GetFieldString(s.sortBy)
-	s2, _ := s.nodes[j].GetFieldString(s.sortBy)
-
-	if s.sortOrder == common.SortAscending {
-		return s1 < s2
-	}
-	return s1 > s2
-}
-
-func (s sortableNodeSlice) Less(i, j int) bool {
-	switch s.sortByType {
-	case sortByInt64:
-		return s.lessInt64(i, j)
-	case sortByString:
-		return s.lessString(i, j)
-	}
-
-	// detection of type
-	if _, err := s.nodes[i].GetFieldInt64(s.sortBy); err == nil {
-		s.sortByType = sortByInt64
-		return s.lessInt64(i, j)
-	}
-
-	s.sortByType = sortByString
-	return s.lessString(i, j)
-}
-
-func (s sortableNodeSlice) Swap(i, j int) {
-	s.nodes[i], s.nodes[j] = s.nodes[j], s.nodes[i]
-}
-
 // Sort step
 func (tv *GraphTraversalV) Sort(keys ...interface{}) *GraphTraversalV {
 	if tv.error != nil {
 		return tv
 	}
 
-	order, sortBy, err := ParseSortParameter(keys...)
+	sortOrder, sortBy, err := ParseSortParameter(keys...)
 	if err != nil {
 		return &GraphTraversalV{error: err}
 	}
@@ -846,12 +787,7 @@ func (tv *GraphTraversalV) Sort(keys ...interface{}) *GraphTraversalV {
 		sortBy = defaultSortBy
 	}
 
-	sortable := sortableNodeSlice{
-		sortBy:    sortBy,
-		sortOrder: order,
-		nodes:     tv.nodes,
-	}
-	sort.Sort(sortable)
+	graph.SortNodes(tv.nodes, sortBy, sortOrder)
 
 	return tv
 }

@@ -71,7 +71,7 @@ analyzer:
       # - TOR_PORT1 --> TOR1_PORT1
       # - TOR1_PORT2 --> *[Type=host]/eth0
     probes:
-      # - k8sctl
+      # - k8s
   # update rate of links in seconds
   bandwidth_update_rate: 5
   # interface metrics - 'netlink'
@@ -254,7 +254,3 @@ ui:
 k8s:
   # The KUBECONFIG yml file, if k8sctl is executed inside the cluster, you may use the empty config file - kube-config-empty.yml
   # config_file: /etc/skydive/kube-cfg.yml
-  # Time between network policies updates
-  # polling_rate: 5s
-  # Maximum number of supported network policies
-  # max_network_policies: 50
