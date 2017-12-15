@@ -5,6 +5,9 @@ $(info ${VERSION})
 # really Basic Makefile for Skydive
 export GO15VENDOREXPERIMENT=1
 
+GOVENDOR:=${GOPATH}/bin/govendor 
+SKYDIVE_GITHUB:=github.com/skydive-project/skydive
+SKYDIVE_PKG:=skydive-${VERSION}
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 FILTERS_PROTO_FILES=filters/filters.proto
 VERBOSE_FLAGS?=-v
@@ -19,7 +22,7 @@ ifeq ($(COVERAGE), true)
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
-UT_PACKAGES?=$(shell ${GOPATH}/bin/govendor list -no-status +local | grep -v '/tests')
+UT_PACKAGES?=$(shell $(GOVENDOR) list -no-status +local | grep -v '/tests')
 FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
 DOCKER_IMAGE?=skydive/skydive
@@ -58,13 +61,20 @@ all: install
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/* ${EXTRABINDATA}
 	gofmt -w -s statics/bindata.go
 
+define govendor_do
+$(GOVENDOR) $1 \
+	-ldflags="-X $(SKYDIVE_GITHUB)/version.Version=${VERSION}" \
+	${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
+	+local
+endef
+
 .compile:
-	${GOPATH}/bin/govendor install -ldflags "-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} +local
+	$(call govendor_do,install)
 
 install: govendor genlocalfiles dpdk.build contribs .compile
 
 build: govendor genlocalfiles dpdk.build contribs
-	${GOPATH}/bin/govendor build -ldflags="-X github.com/skydive-project/skydive/version.Version=${VERSION}" ${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} +local
+	$(call govendor_do,build)
 
 static: govendor genlocalfiles
 	rm -f $$GOPATH/bin/skydive
@@ -94,7 +104,7 @@ test.functionals.cleanup:
 	rm -f tests/functionals
 
 test.functionals.compile: govendor genlocalfiles
-	${GOPATH}/bin/govendor test -tags "${BUILDTAGS} ${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+	$(GOVENDOR) test -tags "${BUILDTAGS} ${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
 	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS}
@@ -124,31 +134,31 @@ ifeq ($(COVERAGE), true)
 	for pkg in ${UT_PACKAGES}; do \
 		if [ -n "$$pkg" ]; then \
 			coverfile="${COVERAGE_WD}/$$(echo $$pkg | tr / -).cover"; \
-			${GOPATH}/bin/govendor test -tags "${BUILDTAGS} ${GOTAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
+			$(GOVENDOR) test -tags "${BUILDTAGS} ${GOTAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
 		fi; \
 	done
 else
 	set -v ; \
-	${GOPATH}/bin/govendor test -tags "${BUILDTAGS} ${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+	$(GOVENDOR) test -tags "${BUILDTAGS} ${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 endif
 
 govendor:
 	go get github.com/kardianos/govendor
-	${GOPATH}/bin/govendor sync
+	$(GOVENDOR) sync
 	patch -p0 < dpdk/dpdk.govendor.patch
 
 fmt: govendor genlocalfiles
 	@echo "+ $@"
-	@test -z "$$(${GOPATH}/bin/govendor fmt +local)" || \
+	@test -z "$$($(GOVENDOR) fmt +local)" || \
 		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
 
 vet: govendor
 	@echo "+ $@"
-	test -z "$$(${GOPATH}/bin/govendor tool vet $$(${GOPATH}/bin/govendor list -no-status +local | perl -pe 's|github.com/skydive-project/skydive/?||g' | grep -v '^tests') 2>&1 | tee /dev/stderr | grep -v '^flow/probes/afpacket/' | grep -v 'exit status 1')"
+	test -z "$$($(GOVENDOR) tool vet $$($(GOVENDOR) list -no-status +local | perl -pe 's|$(SKYDIVE_GITHUB)/?||g' | grep -v '^tests') 2>&1 | tee /dev/stderr | grep -v '^flow/probes/afpacket/' | grep -v 'exit status 1')"
 
 check: govendor
-	@test -z "$$(${GOPATH}/bin/govendor list +u)" || \
-		(echo -e "You must remove these unused packages:\n$$($${GOPATH}/bin/govendor list +u)" && /bin/false)
+	@test -z "$$($(GOVENDOR) list +u)" || \
+		(echo -e "You must remove these unused packages:\n$$($(GOVENDOR) list +u)" && /bin/false)
 
 ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
 	@go get github.com/alecthomas/gometalinter
@@ -200,12 +210,15 @@ vendor: govendor check
 	tar cvzf vendor.tar.gz vendor/
 
 localdist: govendor genlocalfiles
-	tar -C $$GOPATH --transform "s/^src/skydive-${VERSION}\/src/" --exclude=src/github.com/skydive-project/skydive/rpmbuild --exclude=src/github.com/skydive-project/skydive/.git -cvzf ${DESTDIR}/skydive-${VERSION}.tar.gz src/github.com/skydive-project/skydive
+	tar -C $$GOPATH --transform "s/^src/$(SKYDIVE_PKG)\/src/" \
+		--exclude=src/$(SKYDIVE_GITHUB)/rpmbuild \
+		--exclude=src/$(SKYDIVE_GITHUB)/.git \
+		-cvzf ${DESTDIR}/$(SKYDIVE_PKG).tar.gz src/$(SKYDIVE_GITHUB)
 
 dist:
 	tmpdir=`mktemp -d -u --suffix=skydive-pkg`; \
-	godir=$${tmpdir}/skydive-${VERSION}; \
-	skydivedir=$${godir}/src/github.com/skydive-project/skydive; \
+	godir=$${tmpdir}/$(SKYDIVE_PKG); \
+	skydivedir=$${godir}/src/$(SKYDIVE_GITHUB); \
 	mkdir -p `dirname $$skydivedir`; \
 	git clone . $$skydivedir; \
 	pushd $$skydivedir; \
@@ -216,5 +229,6 @@ dist:
 	echo "go take a coffee, govendor sync takes time ..."; \
 	$(MAKE) govendor genlocalfiles; \
 	popd; \
-	tar -C $$tmpdir --exclude=skydive-${VERSION}/src/github.com/skydive-project/skydive/.git -cvzf ${DESTDIR}/skydive-${VERSION}.tar.gz skydive-${VERSION}/src; \
+	tar -C $$tmpdir --exclude=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/.git \
+		-cvzf ${DESTDIR}/$(SKYDIVE_PKG).tar.gz $(SKYDIVE_PKG)/src; \
 	rm -rf $$tmpdir
