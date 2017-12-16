@@ -7,6 +7,7 @@ export GO15VENDOREXPERIMENT=1
 
 GOVENDOR:=${GOPATH}/bin/govendor 
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
+SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 SKYDIVE_PKG:=skydive-${VERSION}
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 FILTERS_PROTO_FILES=filters/filters.proto
@@ -63,7 +64,7 @@ all: install
 
 define govendor_do
 $(GOVENDOR) $1 \
-	-ldflags="-X $(SKYDIVE_GITHUB)/version.Version=${VERSION}" \
+	-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
 	${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
 	+local
 endef
@@ -76,10 +77,43 @@ install: govendor genlocalfiles dpdk.build contribs .compile
 build: govendor genlocalfiles dpdk.build contribs
 	$(call govendor_do,build)
 
+STATIC_DIR :=
+STATIC_LIBS :=
+
+OS_RHEL := $(shell test -f /etc/redhat-release && echo -n Y)
+ifeq ($(OS_RHEL),Y)
+	STATIC_DIR := /usr/lib64
+	STATIC_LIBS := \
+		libz.a \
+		liblzma.a \
+		libm.a
+endif
+
+OS_DEB := $(shell test -f /etc/debian_version && echo -n Y)
+ifeq ($(OS_DEB),Y)
+	STATIC_DIR := /usr/lib/x86_64-linux-gnu
+	STATIC_LIBS := \
+		libz.a \
+		liblzma.a \
+		libicuuc.a \
+		libicudata.a \
+		libxml2.a \
+		libc.a \
+		libdl.a \
+		libpthread.a \
+		libc++.a \
+		libm.a
+endif
+
+STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
+
 static: govendor genlocalfiles
 	rm -f $$GOPATH/bin/skydive
-	test -f /etc/redhat-release && govendor install -ldflags "-X github.com/skydive-project/skydive/version.Version=${VERSION} -extldflags \"-static /usr/lib64/libz.a /usr/lib64/liblzma.a /usr/lib64/libm.a\"" ${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS} ${GOTAGS}" -installsuffix netgo +local || true
-	test -f /etc/debian_version && govendor install -ldflags "-X github.com/skydive-project/skydive/version.Version=${VERSION} -extldflags \"-static /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-gnu/liblzma.a /usr/lib/x86_64-linux-gnu/libicuuc.a /usr/lib/x86_64-linux-gnu/libicudata.a /usr/lib/x86_64-linux-gnu/libxml2.a /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/libdl.a /usr/lib/x86_64-linux-gnu/libpthread.a /usr/lib/x86_64-linux-gnu/libc++.a /usr/lib/x86_64-linux-gnu/libm.a\"" ${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS} ${GOTAGS}" -installsuffix netgo +local || true
+	$(GOVENDOR) install \
+		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
+		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
+		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS} ${GOTAGS}" \
+		-installsuffix netgo +local || true
 
 contribs:
 	$(MAKE) -C contrib/snort
