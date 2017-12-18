@@ -100,6 +100,8 @@ func init() {
 
 	cfg.SetDefault("host_id", host)
 
+	cfg.SetDefault("k8s.subprobes", []string{"networkpolicy", "pod", "container", "node"})
+
 	cfg.SetDefault("logging.backends", []string{"stderr"})
 	cfg.SetDefault("logging.color", true)
 	cfg.SetDefault("logging.encoder", "")
@@ -116,8 +118,6 @@ func init() {
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
 
-	cfg.SetDefault("k8s.polling_rate", "5s")
-	cfg.SetDefault("k8s.max_network_policies", 50)
 	cfg.SetDefault("k8s.config_file", "/etc/skydive/kube-cfg.yml")
 
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
