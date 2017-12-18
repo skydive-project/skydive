@@ -132,7 +132,8 @@ Vue.component('capture-form', {
           {"type": "pcap", "desc": "Packet Capture library based probe"},
           {"type": "pcapsocket", "desc": "Socket reading PCAP format data"},
           {"type": "sflow", "desc": "Socket reading sFlow frames"},
-          {"type": "ebpf", "desc": "Flow capture within kernel - experimental"}
+          {"type": "ebpf", "desc": "Flow capture within kernel - experimental"},
+          {"type": "ovsmirror", "desc": "Leverages mirroring to capture - experimental"}
         ];
       }
       options["ovsbridge"] = [
@@ -225,7 +226,7 @@ Vue.component('capture-form', {
           this.typeAllowed = false;
         } else {
           this.typeAllowed = true;
-          if (this.node1 != "")
+          if (this.node1 !== "")
             this.checkQuery("G.V().Has('TID', '" + this.node1 + "')");
         }
       } else if (newMode === "gremlin") {
@@ -263,7 +264,7 @@ Vue.component('capture-form', {
         })
         .fail(function(e) {
           self.typeAllowed = false;
-        })
+        });
     },
 
     start: function() {

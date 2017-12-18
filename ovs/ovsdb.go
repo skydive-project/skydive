@@ -109,13 +109,12 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 
 	result, err := o.ovsdb.Transact("Open_vSwitch", operations...)
 	if err != nil {
-		return nil, errors.New(
-			"Replies number should be atleast equal to number of Operations ")
+		return nil, err
 	}
 
 	if len(result) < len(operations) {
 		return nil, errors.New(
-			"Replies number should be atleast equal to number of Operations ")
+			"Replies number should be atleast equal to number of Operations")
 	}
 
 	for i, o := range result {

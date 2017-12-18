@@ -35,11 +35,6 @@ import (
 
 var ErrProbeNotCompiled = fmt.Errorf("probe is not compiled within skydive")
 
-// FlowProbeBundle describes a flow probes bundle
-type FlowProbeBundle struct {
-	probe.ProbeBundle
-}
-
 // FlowProbe defines flow probe mechanism
 type FlowProbe interface {
 	probe.Probe // inheritance of the probe.Probe interface Start/Stop functions
@@ -64,8 +59,8 @@ func (a *FlowProbeTableAllocator) Alloc(nodeTID string, opts flow.TableOpts) *fl
 	return a.TableAllocator.Alloc(a.fcpool.SendFlows, nodeTID, opts)
 }
 
-func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *FlowProbeBundle {
-	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf"}
+func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAllocator, fcpool *analyzer.FlowClientPool) *probe.ProbeBundle {
+	list := []string{"pcapsocket", "ovssflow", "sflow", "gopacket", "dpdk", "ebpf", "ovsmirror"}
 	logging.GetLogger().Infof("Flow probes: %v", list)
 
 	var captureTypes []string
@@ -77,9 +72,10 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 		fcpool:         fcpool,
 	}
 
-	probes := make(map[string]probe.Probe)
+	fb := probe.NewProbeBundle(make(map[string]probe.Probe))
+
 	for _, t := range list {
-		if _, ok := probes[t]; ok {
+		if fb.GetProbe(t) != nil {
 			continue
 		}
 
@@ -90,6 +86,9 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 		case "ovssflow":
 			fp, err = NewOvsSFlowProbesHandler(g, fpta, tb)
 			captureTypes = []string{"ovssflow"}
+		case "ovsmirror":
+			fp, err = NewOvsMirrorProbesHandler(g, tb, fb)
+			captureTypes = []string{"ovsmirror"}
 		case "gopacket":
 			fp, err = NewGoPacketProbesHandler(g, fpta)
 			captureTypes = []string{"afpacket", "pcap"}
@@ -118,13 +117,9 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 		}
 
 		for _, captureType := range captureTypes {
-			probes[captureType] = fp
+			fb.AddProbe(captureType, fp)
 		}
 	}
 
-	p := probe.NewProbeBundle(probes)
-
-	return &FlowProbeBundle{
-		ProbeBundle: *p,
-	}
+	return fb
 }

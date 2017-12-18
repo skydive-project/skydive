@@ -2036,3 +2036,71 @@ func TestFlowsWithIpv4Range(t *testing.T) {
 	}
 	RunTest(t, test)
 }
+
+func TestOvsMirror(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-omir", true},
+			{"ovs-vsctl add-port br-omir omir-if1 -- set interface omir-if1 type=internal", true},
+			{"ip address add 169.254.93.33/24 dev omir-if1", true},
+			{"ip link set omir-if1 up", true},
+		},
+
+		setupFunction: func(c *TestContext) error {
+			helper.ExecCmds(t, helper.Cmd{Cmd: "ping -c 5 -I omir-if1 169.254.33.34", Check: false})
+			return nil
+		},
+
+		tearDownCmds: []helper.Cmd{
+			{"ovs-vsctl del-br br-omir", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: `g.V().Has("Name", "omir-if1", "Type", "ovsport")`},
+		},
+
+		checks: []CheckFunction{func(c *CheckContext) error {
+			prefix := "g"
+			if !c.time.IsZero() {
+				prefix += fmt.Sprintf(".Context('-%dns')", time.Now().Sub(c.time).Nanoseconds())
+			}
+
+			gh := c.gh
+			orig, err := gh.GetNode(prefix + `.V().Has("Name", "omir-if1", "Type", "ovsport")`)
+			if err != nil {
+				return fmt.Errorf("Unable to find the expected ovsport: %s", err)
+			}
+
+			node, err := gh.GetNode(prefix + `.V().Has("Name", regex("mir.*"), "Type", "internal").HasKey("TID")`)
+			if err != nil {
+				return fmt.Errorf("Unable to find the expected Mirror interface: %s", err)
+			}
+
+			mirrorOf, err := node.GetFieldString("Capture.MirrorOf")
+			if err != nil {
+				return err
+			}
+
+			if mirrorOf != string(orig.ID) {
+				aa, err := gh.GetNode(prefix + `.V("` + mirrorOf + `")`)
+				if err != nil {
+					return fmt.Errorf("Unable to find the expected ovsport: %s", err)
+				}
+				return fmt.Errorf("Unable to find expected Mirror information of %v on mirror node %v != %v", orig, node, aa)
+			}
+
+			flows, err := gh.GetFlows(prefix + fmt.Sprintf(`.Flows("NodeTID", "%s", "LayersPath", "Ethernet/ARP")`, node.Metadata()["TID"].(string)))
+			if err != nil {
+				return err
+			}
+
+			if len(flows) == 0 {
+				return errors.New("Unable to find a flow with the expected NodeTID")
+			}
+
+			return nil
+		}},
+	}
+
+	RunTest(t, test)
+}

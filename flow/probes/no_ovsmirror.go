@@ -1,7 +1,7 @@
 // +build !linux
 
 /*
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2018 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -21,38 +21,38 @@
  * under the License.
  *
  */
-
 package probes
 
 import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// GoPacketProbesHandler describes a flow probe handle in the graph
-type GoPacketProbesHandler struct {
+// OvsMirrorProbesHandler describes a flow probe handle in the graph
+type OvsMirrorProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
+func (p *OvsMirrorProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	return common.ErrNotImplemented
 }
 
 // UnregisterProbe unregisters gopacket probe
-func (p *GoPacketProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
+func (p *OvsMirrorProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error {
 	return common.ErrNotImplemented
 }
 
 // Start probe
-func (p *GoPacketProbesHandler) Start() {
+func (p *OvsMirrorProbesHandler) Start() {
 }
 
 // Stop probe
-func (p *GoPacketProbesHandler) Stop() {
+func (p *OvsMirrorProbesHandler) Stop() {
 }
 
-// NewGoPacketProbesHandler creates a new gopacket probe in the graph
-func NewGoPacketProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*GoPacketProbesHandler, error) {
+// NewOvsMirrorProbesHandler creates a new OVS Mirror probes
+func NewOvsMirrorProbesHandler(g *graph.Graph, tb, fb *probe.ProbeBundle) (*OvsMirrorProbesHandler, error) {
 	return nil, common.ErrNotImplemented
 }

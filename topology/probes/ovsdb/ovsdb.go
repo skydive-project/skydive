@@ -394,11 +394,14 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 		o.uuidToPort[uuid] = port
 	}
 
+	tr := o.Graph.StartMetadataTransaction(port)
+	defer tr.Commit()
+
 	// bond mode
 	if mode, ok := row.New.Fields["bond_mode"]; ok {
 		switch mode.(type) {
 		case string:
-			o.Graph.AddMetadata(port, "BondMode", mode.(string))
+			tr.AddMetadata("BondMode", mode.(string))
 		}
 	}
 
@@ -406,8 +409,13 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 	if lacp, ok := row.New.Fields["lacp"]; ok {
 		switch lacp.(type) {
 		case string:
-			o.Graph.AddMetadata(port, "LACP", lacp.(string))
+			tr.AddMetadata("LACP", lacp.(string))
 		}
+	}
+
+	extIds := row.New.Fields["external_ids"].(libovsdb.OvsMap)
+	for k, v := range extIds.GoMap {
+		tr.AddMetadata("ExtID."+k.(string), v.(string))
 	}
 
 	// vlan tag
@@ -423,11 +431,11 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 					}
 				}
 				if len(vlans) > 0 {
-					o.Graph.AddMetadata(port, "Vlans", vlans)
+					tr.AddMetadata("Vlans", vlans)
 				}
 			}
 		case float64:
-			o.Graph.AddMetadata(port, "Vlans", int64(tag.(float64)))
+			tr.AddMetadata("Vlans", int64(tag.(float64)))
 		}
 	}
 
