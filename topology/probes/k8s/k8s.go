@@ -36,24 +36,24 @@ var (
 	PolicyToPodMetadata    = graph.Metadata{"RelationType": PolicyToPodLink}
 )
 
-type K8SProbe struct {
+type probe struct {
 	graph              *graph.Graph
 	client             *kubeClient
 	podCache           *podCache
 	networkPolicyCache *networkPolicyCache
 }
 
-func (k8s *K8SProbe) Start() {
+func (k8s *probe) Start() {
 	k8s.networkPolicyCache.Start()
 	k8s.podCache.Start()
 }
 
-func (k8s *K8SProbe) Stop() {
+func (k8s *probe) Stop() {
 	k8s.networkPolicyCache.Stop()
 	k8s.podCache.Stop()
 }
 
-func NewK8SProbe(g *graph.Graph) (k8s *K8SProbe, err error) {
+func NewProbe(g *graph.Graph) (k8s *probe, err error) {
 	client, err := newKubeClient()
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func NewK8SProbe(g *graph.Graph) (k8s *K8SProbe, err error) {
 	podCache := newPodCache(client, g)
 	networkPolicyCache := newNetworkPolicyCache(client, g, podCache)
 
-	return &K8SProbe{
+	return &probe{
 		graph:              g,
 		client:             client,
 		podCache:           podCache,

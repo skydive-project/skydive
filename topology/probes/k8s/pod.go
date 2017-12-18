@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  *
-*/
+ */
 
 package k8s
 
@@ -44,19 +44,14 @@ type podCache struct {
 	podIndexer       *graph.MetadataIndexer
 }
 
-func (p *podCache) podMetadata(pod *api.Pod) graph.Metadata {
+func (p *podCache) getMetadata(pod *api.Pod) graph.Metadata {
 	return graph.Metadata{
-		"Type":    "pod",
-		"Name":    pod.GetName(),
-		"Manager": "k8s",
-		"Pod": map[string]interface{}{
-			"ClusterName":     pod.GetClusterName(),
-			"Namespace":       pod.GetNamespace(),
-			"NodeName":        pod.Spec.NodeName,
-			"UID":             pod.GetUID(),
-			"ResourceVersion": pod.GetResourceVersion(),
-			"Labels":          pod.GetLabels(),
-		},
+		"Type":       "pod",
+		"Manager":    "k8s",
+		"Name":       pod.GetName(),
+		"UID":        pod.GetUID(),
+		"ObjectMeta": pod.ObjectMeta,
+		"Spec":       pod.Spec,
 	}
 }
 
@@ -77,7 +72,7 @@ func (p *podCache) OnAdd(obj interface{}) {
 		defer p.graph.Unlock()
 
 		logging.GetLogger().Debugf("Creating node for pod %s", pod.GetUID())
-		podNode := p.graph.NewNode(graph.Identifier(pod.GetUID()), p.podMetadata(pod))
+		podNode := p.graph.NewNode(graph.Identifier(pod.GetUID()), p.getMetadata(pod))
 
 		containerNodes := p.containerIndexer.Get(pod.Namespace, pod.Name)
 		for _, containerNode := range containerNodes {
@@ -100,7 +95,7 @@ func (p *podCache) OnUpdate(obj, new interface{}) {
 		p.linkPodToHost(newPod, podNode)
 	}
 
-	p.graph.SetMetadata(podNode, p.podMetadata(newPod))
+	p.graph.SetMetadata(podNode, p.getMetadata(newPod))
 }
 
 func (p *podCache) OnDelete(obj interface{}) {

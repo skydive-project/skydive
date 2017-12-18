@@ -1503,15 +1503,13 @@ TopologyGraphLayout.prototype = {
   },
 
   nodeImg: function(d) {
-    if (nodeImgMap[d.metadata.Type]) {
-      return nodeImgMap[d.metadata.Type];
-    }
-
-    return intfImg;
+    var t = d.metadata.Type || "default";
+    return nodeImgMap[t];
   },
 
   managerImg: function(d) {
-    return managerImgMap[d.metadata.Orchestrator || d.metadata.Manager];
+    var t = d.metadata.Orchestrator || d.metadata.Manager || "default";
+    return managerImgMap[t];
   },
 
   collapseImg: function(d) {

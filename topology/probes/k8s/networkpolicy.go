@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Red Hat, Inc.
+ * Copyright (C) 2017 Red Hat, Inc.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  *
-*/
+ */
 
 package k8s
 
@@ -41,17 +41,21 @@ type networkPolicyCache struct {
 	podIndexer *graph.MetadataIndexer
 }
 
-func (n *networkPolicyCache) networkPolicyMetadata(policy *networking_v1.NetworkPolicy) graph.Metadata {
+func (n *networkPolicyCache) getMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
 	return graph.Metadata{
-		"Type": "networkpolicy",
-		"Name": policy.GetName(),
+		"Type":       "networkpolicy",
+		"Manager":    "k8s",
+		"Name":       np.GetName(),
+		"UID":        np.GetUID(),
+		"ObjectMeta": np.ObjectMeta,
+		"Spec":       np.Spec,
 	}
 }
 
 func (n *networkPolicyCache) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
-		policyNode := n.graph.NewNode(graph.Identifier(policy.GetUID()), n.networkPolicyMetadata(policy))
+		policyNode := n.graph.NewNode(graph.Identifier(policy.GetUID()), n.getMetadata(policy))
 		n.handleNetworkPolicy(policyNode, policy)
 		n.graph.Unlock()
 	}
@@ -61,7 +65,7 @@ func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
 	if policy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
 		if policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID())); policyNode != nil {
 			n.graph.Lock()
-			n.graph.SetMetadata(policyNode, n.networkPolicyMetadata(policy))
+			n.graph.SetMetadata(policyNode, n.getMetadata(policy))
 			n.handleNetworkPolicy(policyNode, policy)
 			n.graph.Unlock()
 		}
