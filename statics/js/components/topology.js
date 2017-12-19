@@ -156,13 +156,13 @@ var TopologyComponent = {
                 <h1>Rules</h1>\
                 <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
               </div>\
-              <div id="interface-metrics" v-show="Object.keys(currentNodeStats).length">\
+              <div id="interface-metrics" v-show="Object.keys(currentNodeMetric).length">\
                 <h1>Interface metrics</h1>\
-                <statistics-table :object="currentNodeStats"></statistics-table>\
+                <metrics-table :object="currentNodeMetric"></metrics-table>\
               </div>\
-              <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastStats).length && topologyTimeContext === 0">\
+              <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastUpdateMetric).length && topologyTimeContext === 0">\
                 <h1>Last metrics</h1>\
-                <statistics-table :object="currentNodeLastStats"></statistics-table>\
+                <metrics-table :object="currentNodeLastUpdateMetric"></metrics-table>\
               </div>\
               <div id="flow-table-panel" v-if="isAnalyzer && currentNodeFlowsQuery">\
                 <h1>Flows</h1>\
@@ -319,17 +319,17 @@ var TopologyComponent = {
 
     currentNodeMetadata: function() {
       if (!this.currentNode) return {};
-      return this.extractMetadata(this.currentNode.metadata, ['LastMetric', 'Statistics']);
+      return this.extractMetadata(this.currentNode.metadata, ['LastUpdateMetric', 'Metric']);
     },
 
-    currentNodeStats: function() {
+    currentNodeMetric: function() {
       if (!this.currentNode) return {};
-      return this.extractMetadata(this.currentNode.metadata.Statistics);
+      return this.extractMetadata(this.currentNode.metadata.Metric);
     },
 
-    currentNodeLastStats: function() {
+    currentNodeLastUpdateMetric: function() {
       if (!this.currentNode) return {};
-      var s = this.extractMetadata(this.currentNode.metadata.LastMetric);
+      var s = this.extractMetadata(this.currentNode.metadata.LastUpdateMetric);
       ['Start', 'Last'].forEach(function(k) {
         if (s[k]) {
           s[k] = new Date(s[k]).toLocaleTimeString();

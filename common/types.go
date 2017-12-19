@@ -280,36 +280,14 @@ func NewTimeSlice(s, l int64) *TimeSlice {
 	return &TimeSlice{Start: s, Last: l}
 }
 
-// Metric defines accessors
+// Metric defines a common metric interface
 type Metric interface {
 	GetFieldInt64(field string) (int64, error)
 	Add(m Metric) Metric
-}
-
-// TimedMetric defines Metric during a time slice
-type TimedMetric struct {
-	TimeSlice
-	Metric Metric
-}
-
-// GetFieldInt64 returns the field value
-func (tm *TimedMetric) GetFieldInt64(field string) (int64, error) {
-	return tm.Metric.GetFieldInt64(field)
-}
-
-// MarshalJSON serialized a TimedMetric in JSON
-func (tm *TimedMetric) MarshalJSON() ([]byte, error) {
-	var s string
-	if tm.Metric != nil {
-		b, err := json.Marshal(tm.Metric)
-		if err != nil {
-			return nil, err
-		}
-		s = fmt.Sprintf(`{"Start":%d,"Last":%d,%s`, tm.Start, tm.Last, string(b[1:]))
-	} else {
-		s = "null"
-	}
-	return []byte(s), nil
+	GetStart() int64
+	SetStart(start int64)
+	GetLast() int64
+	SetLast(last int64)
 }
 
 // SetField set a value in a tree based on dot key ("a.b.c.d" = "ok")

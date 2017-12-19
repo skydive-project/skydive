@@ -502,7 +502,7 @@ func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 		return NewMetricsTraversalStep(nil, nil, f.error)
 	}
 
-	var flowMetrics map[string][]*common.TimedMetric
+	var flowMetrics map[string][]common.Metric
 
 	context := f.GraphTraversal.Graph.GetContext()
 	if context.TimeSlice != nil {
@@ -531,24 +531,18 @@ func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 			return NewMetricsTraversalStep(nil, nil, f.error)
 		}
 	} else {
-		flowMetrics = make(map[string][]*common.TimedMetric, len(f.flowset.Flows))
-		for _, flow := range f.flowset.Flows {
-			var timedMetric *common.TimedMetric
-			if flow.LastUpdateStart != 0 || flow.LastUpdateLast != 0 {
-				timedMetric = &common.TimedMetric{
-					TimeSlice: *common.NewTimeSlice(flow.LastUpdateStart, flow.LastUpdateLast),
-					Metric:    flow.LastUpdateMetric,
-				}
+		flowMetrics = make(map[string][]common.Metric, len(f.flowset.Flows))
+		for _, f := range f.flowset.Flows {
+			var metric *flow.FlowMetric
+			if f.LastUpdateMetric != nil {
+				metric = f.LastUpdateMetric
 			} else {
 				// if we get empty LastUpdateMetric it means that we got flow not already updated
 				// by the flow table update ticker, so packets between the start of the flow and
 				// the first update.
-				timedMetric = &common.TimedMetric{
-					TimeSlice: *common.NewTimeSlice(flow.Start, flow.Last),
-					Metric:    flow.Metric,
-				}
+				metric = f.Metric
 			}
-			flowMetrics[flow.UUID] = append(flowMetrics[flow.UUID], timedMetric)
+			flowMetrics[f.UUID] = append(flowMetrics[f.UUID], metric)
 		}
 	}
 

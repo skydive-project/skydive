@@ -58,8 +58,8 @@ func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Docum
 	return orient.Document{
 		"@class":    "FlowMetric",
 		"@type":     "d",
-		"Start":     flow.LastUpdateStart,
-		"Last":      flow.LastUpdateLast,
+		"Start":     metric.Start,
+		"Last":      metric.Last,
 		"ABPackets": metric.ABPackets,
 		"ABBytes":   metric.ABBytes,
 		"BAPackets": metric.BAPackets,
@@ -100,8 +100,6 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 		"Metric":             metricDoc,
 		"Start":              flow.Start,
 		"Last":               flow.Last,
-		"LastUpdateStart":    flow.LastUpdateStart,
-		"LastUpdateLast":     flow.LastUpdateLast,
 		"RTT":                flow.RTT,
 		"TrackingID":         flow.TrackingID,
 		"L3TrackingID":       flow.L3TrackingID,
@@ -160,29 +158,13 @@ func documentToFlow(document orient.Document) (flow *flow.Flow, err error) {
 	return
 }
 
-func documentToMetric(document orient.Document) (*common.TimedMetric, error) {
+func documentToMetric(document orient.Document) (common.Metric, error) {
 	flowMetric := new(flow.FlowMetric)
 	if err := mapstructure.WeakDecode(document, flowMetric); err != nil {
 		return nil, err
 	}
 
-	start, err := document["Start"].(json.Number).Int64()
-	if err != nil {
-		return nil, err
-	}
-
-	last, err := document["Last"].(json.Number).Int64()
-	if err != nil {
-		return nil, err
-	}
-
-	return &common.TimedMetric{
-		TimeSlice: common.TimeSlice{
-			Start: start,
-			Last:  last,
-		},
-		Metric: flowMetric,
-	}, nil
+	return flowMetric, nil
 }
 
 func documentToRawPacket(document orient.Document) (*flow.RawPacket, layers.LinkType, error) {
@@ -222,7 +204,7 @@ func (c *OrientDBStorage) StoreFlows(flows []*flow.Flow) error {
 			return err
 		}
 
-		if flow.LastUpdateStart != 0 {
+		if flow.LastUpdateMetric != nil {
 			doc := flowMetricToDocument(flow, flow.LastUpdateMetric)
 			doc["Flow"] = flowID
 			if _, err = c.client.CreateDocument(doc); err != nil {
@@ -320,7 +302,7 @@ func (c *OrientDBStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter
 }
 
 // SearchMetrics searches flow metrics matching filters in the database
-func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
+func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error) {
 	filter := fsq.Filter
 	sql := "SELECT ABBytes, ABPackets, BABytes, BAPackets, Start, Last, Flow.UUID FROM FlowMetric"
 	sql += " WHERE " + orient.FilterToExpression(metricFilter, nil)
@@ -340,7 +322,7 @@ func (c *OrientDBStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *f
 		return nil, err
 	}
 
-	metrics := make(map[string][]*common.TimedMetric)
+	metrics := make(map[string][]common.Metric)
 	for _, doc := range docs {
 		metric, err := documentToMetric(doc)
 		if err != nil {
@@ -449,8 +431,6 @@ func New() (*OrientDBStorage, error) {
 				{Name: "TCPFlowMetric", Type: "EMBEDDED", LinkedClass: "TCPMetric"},
 				{Name: "Start", Type: "LONG"},
 				{Name: "Last", Type: "LONG"},
-				{Name: "LastUpdateStart", Type: "LONG"},
-				{Name: "LastUpdateLast", Type: "LONG"},
 				{Name: "TrackingID", Type: "STRING", Mandatory: true, NotNull: true},
 				{Name: "L3TrackingID", Type: "STRING"},
 				{Name: "ParentUUID", Type: "STRING"},

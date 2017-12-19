@@ -90,7 +90,7 @@ func (s *MetricsGremlinTraversalStep) Context() *traversal.GremlinTraversalConte
 // MetricsTraversalStep traversal step metric interface counters
 type MetricsTraversalStep struct {
 	GraphTraversal *traversal.GraphTraversal
-	metrics        map[string][]*common.TimedMetric
+	metrics        map[string][]common.Metric
 	error          error
 }
 
@@ -123,21 +123,21 @@ func (m *MetricsTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversa
 		return traversal.NewGraphTraversalValue(m.GraphTraversal, total)
 	}
 
-	total := common.TimedMetric{}
+	var total common.Metric
 	for _, metrics := range m.metrics {
 		for _, metric := range metrics {
-			if total.Metric == nil {
-				total.Metric = metric.Metric
+			if total == nil {
+				total = metric
 			} else {
-				total.Metric.Add(metric.Metric)
+				total = total.Add(metric)
 			}
 
-			if total.Start == 0 || total.Start > metric.Start {
-				total.Start = metric.Start
+			if total.GetStart() == 0 || total.GetStart() > metric.GetStart() {
+				total.SetStart(metric.GetStart())
 			}
 
-			if total.Last == 0 || total.Last < metric.Last {
-				total.Last = metric.Last
+			if total.GetLast() == 0 || total.GetLast() < metric.GetLast() {
+				total.SetLast(metric.GetLast())
 			}
 		}
 	}
@@ -145,8 +145,8 @@ func (m *MetricsTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversa
 	return traversal.NewGraphTraversalValue(m.GraphTraversal, &total)
 }
 
-func aggregateMetrics(a, b []*common.TimedMetric) []*common.TimedMetric {
-	var result []*common.TimedMetric
+func aggregateMetrics(a, b []common.Metric) []common.Metric {
+	var result []common.Metric
 	boundA, boundB := len(a)-1, len(b)-1
 
 	var i, j int
@@ -155,30 +155,28 @@ func aggregateMetrics(a, b []*common.TimedMetric) []*common.TimedMetric {
 			return append(result, b[j:]...)
 		} else if j > boundB && i <= boundA {
 			return append(result, a[i:]...)
-		} else if a[i].Last < b[j].Start {
+		} else if a[i].GetLast() < b[j].GetStart() {
 			// metric a is strictly before metric b
 			result = append(result, a[i])
 			i++
-		} else if b[j].Last < a[i].Start {
+		} else if b[j].GetLast() < a[i].GetStart() {
 			// metric b is strictly before metric a
 			result = append(result, b[j])
 			j++
 		} else {
-			start := a[i].Start
-			last := a[i].Last
-			if a[i].Start > b[j].Start {
-				start = b[j].Start
-				last = b[j].Last
+			start := a[i].GetStart()
+			last := a[i].GetLast()
+			if a[i].GetStart() > b[j].GetStart() {
+				start = b[j].GetStart()
+				last = b[j].GetLast()
 			}
 
 			// in case of an overlap then summing using the smallest start/last slice
-			var metric = a[i].Metric
-			metric.Add(b[j].Metric)
+			metric := a[i].Add(b[j])
+			metric.SetStart(start)
+			metric.SetLast(last)
 
-			result = append(result, &common.TimedMetric{
-				Metric:    metric,
-				TimeSlice: *common.NewTimeSlice(start, last),
-			})
+			result = append(result, metric)
 			i++
 			j++
 		}
@@ -193,12 +191,12 @@ func (m *MetricsTraversalStep) Aggregates() *MetricsTraversalStep {
 		return m
 	}
 
-	var aggregated []*common.TimedMetric
+	var aggregated []common.Metric
 	for _, metrics := range m.metrics {
 		aggregated = aggregateMetrics(aggregated, metrics)
 	}
 
-	return &MetricsTraversalStep{GraphTraversal: m.GraphTraversal, metrics: map[string][]*common.TimedMetric{"Aggregated": aggregated}}
+	return &MetricsTraversalStep{GraphTraversal: m.GraphTraversal, metrics: map[string][]common.Metric{"Aggregated": aggregated}}
 }
 
 // Values returns the graph metric values
@@ -228,6 +226,6 @@ func (m *MetricsTraversalStep) Count(s ...interface{}) *traversal.GraphTraversal
 }
 
 // NewMetricsTraversalStep creates a new tranversal metric step
-func NewMetricsTraversalStep(gt *traversal.GraphTraversal, metrics map[string][]*common.TimedMetric, err error) *MetricsTraversalStep {
+func NewMetricsTraversalStep(gt *traversal.GraphTraversal, metrics map[string][]common.Metric, err error) *MetricsTraversalStep {
 	return &MetricsTraversalStep{GraphTraversal: gt, metrics: metrics, error: err}
 }

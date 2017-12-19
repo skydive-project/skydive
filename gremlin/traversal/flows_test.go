@@ -31,113 +31,81 @@ import (
 )
 
 func TestFlowMetricsAggregates(t *testing.T) {
-	metrics := map[string][]*common.TimedMetric{
+	metrics := map[string][]common.Metric{
 		"aa": {
-			{
-				TimeSlice: common.TimeSlice{
-					Start: 10,
-					Last:  20,
-				},
-				Metric: &flow.FlowMetric{
-					ABBytes:   1,
-					ABPackets: 1,
-					BABytes:   1,
-					BAPackets: 1,
-				},
+			&flow.FlowMetric{
+				ABBytes:   1,
+				ABPackets: 1,
+				BABytes:   1,
+				BAPackets: 1,
+				Start:     10,
+				Last:      20,
 			},
-			{
-				TimeSlice: common.TimeSlice{
-					Start: 20,
-					Last:  30,
-				},
-				Metric: &flow.FlowMetric{
-					ABBytes:   2,
-					ABPackets: 2,
-					BABytes:   2,
-					BAPackets: 2,
-				},
+			&flow.FlowMetric{
+				ABBytes:   2,
+				ABPackets: 2,
+				BABytes:   2,
+				BAPackets: 2,
+				Start:     20,
+				Last:      30,
 			},
 		},
 		"bb": {
-			{
-				TimeSlice: common.TimeSlice{
-					Start: 15,
-					Last:  25,
-				},
-				Metric: &flow.FlowMetric{
-					ABBytes:   4,
-					ABPackets: 4,
-					BABytes:   4,
-					BAPackets: 4,
-				},
+			&flow.FlowMetric{
+				ABBytes:   4,
+				ABPackets: 4,
+				BABytes:   4,
+				BAPackets: 4,
+				Start:     15,
+				Last:      25,
 			},
-			{
-				TimeSlice: common.TimeSlice{
-					Start: 40,
-					Last:  50,
-				},
-				Metric: &flow.FlowMetric{
-					ABBytes:   8,
-					ABPackets: 8,
-					BABytes:   8,
-					BAPackets: 8,
-				},
+			&flow.FlowMetric{
+				ABBytes:   8,
+				ABPackets: 8,
+				BABytes:   8,
+				BAPackets: 8,
+				Start:     40,
+				Last:      50,
 			},
 		},
 		"cc": {
-			{
-				TimeSlice: common.TimeSlice{
-					Start: 48,
-					Last:  58,
-				},
-				Metric: &flow.FlowMetric{
-					ABBytes:   16,
-					ABPackets: 16,
-					BABytes:   16,
-					BAPackets: 16,
-				},
+			&flow.FlowMetric{
+				ABBytes:   16,
+				ABPackets: 16,
+				BABytes:   16,
+				BAPackets: 16,
+				Start:     48,
+				Last:      58,
 			},
 		},
 	}
 	step := NewMetricsTraversalStep(nil, metrics, nil)
 
-	metrics = map[string][]*common.TimedMetric{
+	metrics = map[string][]common.Metric{
 		"Aggregated": {
-			{
-				TimeSlice: common.TimeSlice{
-					Start: 10,
-					Last:  20,
-				},
-				Metric: &flow.FlowMetric{
-					ABBytes:   5,
-					ABPackets: 5,
-					BABytes:   5,
-					BAPackets: 5,
-				},
+			&flow.FlowMetric{
+				ABBytes:   5,
+				ABPackets: 5,
+				BABytes:   5,
+				BAPackets: 5,
+				Start:     10,
+				Last:      20,
 			},
-			{
-				TimeSlice: common.TimeSlice{
-					Start: 20,
-					Last:  30,
-				},
-				Metric: &flow.FlowMetric{
-					ABBytes:   2,
-					ABPackets: 2,
-					BABytes:   2,
-					BAPackets: 2,
-				},
+			&flow.FlowMetric{
+				ABBytes:   2,
+				ABPackets: 2,
+				BABytes:   2,
+				BAPackets: 2,
+				Start:     20,
+				Last:      30,
 			},
-			{
-				TimeSlice: common.TimeSlice{
-					Start: 40,
-					Last:  50,
-				},
-				Metric: &flow.FlowMetric{
-					ABBytes:   24,
-					ABPackets: 24,
-					BABytes:   24,
-					BAPackets: 24,
-				},
+			&flow.FlowMetric{
+				ABBytes:   24,
+				ABPackets: 24,
+				BABytes:   24,
+				BAPackets: 24,
+				Start:     40,
+				Last:      50,
 			},
 		},
 	}

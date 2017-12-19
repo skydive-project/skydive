@@ -25,24 +25,26 @@ package traversal
 import (
 	"strings"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
-// Metrics step : packets counters
+// InterfaceMetrics returns a Metrics step from interface metric metadata
 func InterfaceMetrics(tv *traversal.GraphTraversalV) *MetricsTraversalStep {
 	if tv.Error() != nil {
 		return &MetricsTraversalStep{error: tv.Error()}
 	}
 
-	tv = tv.Dedup("ID", "LastMetric.Start").Sort(common.SortAscending, "LastMetric.Start")
+	tv = tv.Dedup("ID", "LastUpdateMetric.Start").Sort(common.SortAscending, "LastUpdateMetric.Start")
 	if tv.Error() != nil {
 		return &MetricsTraversalStep{error: tv.Error()}
 	}
 
-	metrics := make(map[string][]*common.TimedMetric)
+	metrics := make(map[string][]common.Metric)
 	it := tv.GraphTraversal.CurrentStepContext().PaginationRange.Iterator()
 	gslice := tv.GraphTraversal.Graph.GetContext().TimeSlice
 
@@ -55,43 +57,20 @@ nodeloop:
 			break nodeloop
 		}
 
-		m := n.Metadata()
-		lastMetric, hasLastMetric := m["LastMetric"].(map[string]interface{})
-		if hasLastMetric {
-			start := lastMetric["Start"].(int64)
-			last := lastMetric["Last"].(int64)
-			if gslice == nil || (start > gslice.Start && last < gslice.Last) {
-				im := &topology.InterfaceMetric{
-					RxPackets:         lastMetric["RxPackets"].(int64),
-					TxPackets:         lastMetric["TxPackets"].(int64),
-					RxBytes:           lastMetric["RxBytes"].(int64),
-					TxBytes:           lastMetric["TxBytes"].(int64),
-					RxErrors:          lastMetric["RxErrors"].(int64),
-					TxErrors:          lastMetric["TxErrors"].(int64),
-					RxDropped:         lastMetric["RxDropped"].(int64),
-					TxDropped:         lastMetric["TxDropped"].(int64),
-					Multicast:         lastMetric["Multicast"].(int64),
-					Collisions:        lastMetric["Collisions"].(int64),
-					RxLengthErrors:    lastMetric["RxLengthErrors"].(int64),
-					RxOverErrors:      lastMetric["RxOverErrors"].(int64),
-					RxCrcErrors:       lastMetric["RxCrcErrors"].(int64),
-					RxFrameErrors:     lastMetric["RxFrameErrors"].(int64),
-					RxFifoErrors:      lastMetric["RxFifoErrors"].(int64),
-					RxMissedErrors:    lastMetric["RxMissedErrors"].(int64),
-					TxAbortedErrors:   lastMetric["TxAbortedErrors"].(int64),
-					TxCarrierErrors:   lastMetric["TxCarrierErrors"].(int64),
-					TxFifoErrors:      lastMetric["TxFifoErrors"].(int64),
-					TxHeartbeatErrors: lastMetric["TxHeartbeatErrors"].(int64),
-					TxWindowErrors:    lastMetric["TxWindowErrors"].(int64),
-					RxCompressed:      lastMetric["RxCompressed"].(int64),
-					TxCompressed:      lastMetric["TxCompressed"].(int64),
-				}
-				metric := &common.TimedMetric{
-					TimeSlice: *common.NewTimeSlice(start, last),
-					Metric:    im,
-				}
-				metrics[string(n.ID)] = append(metrics[string(n.ID)], metric)
-			}
+		m, _ := n.GetField("LastUpdateMetric")
+		if m == nil {
+			return nil
+		}
+
+		// NOTE(safchain) mapstructure for now, need to be change once converted from json to
+		// protobuf
+		var lastMetric topology.InterfaceMetric
+		if err := mapstructure.WeakDecode(m, &lastMetric); err != nil {
+			return &MetricsTraversalStep{error: err}
+		}
+
+		if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) {
+			metrics[string(n.ID)] = append(metrics[string(n.ID)], &lastMetric)
 		}
 	}
 

@@ -1229,14 +1229,14 @@ TopologyGraphLayout.prototype = {
     for (i in links) {
       link = links[i];
 
-      if (link.metadata.RelationType != "layer2" || !link.target.metadata.LastMetric) continue;
+      if (link.metadata.RelationType != "layer2" || !link.target.metadata.LastUpdateMetric) continue;
       if (!link.source.visible || !link.target.visible) continue;
 
       var speed = (this.bandwidth.bandwidthThreshold === 'relative') ?
         link.target.metadata.Speed || defaultInterfaceSpeed : 1;
 
-      var kbps = this.bandwidthFromMetrics(link.target.metadata.LastMetric);
-      if (link.target.metadata.LastMetric && kbps > bandwidth.active * speed) {
+      var kbps = this.bandwidthFromMetrics(link.target.metadata.LastUpdateMetric);
+      if (link.target.metadata.LastUpdateMetric && kbps > bandwidth.active * speed) {
         this.linkLabels[link.id] = {
           "id": "link-label-" + link.id,
           "link": link,

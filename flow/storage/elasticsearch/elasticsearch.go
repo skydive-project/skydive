@@ -29,7 +29,6 @@ import (
 
 	"github.com/google/gopacket/layers"
 	"github.com/mattbaird/elastigo/lib"
-	"github.com/mitchellh/mapstructure"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
@@ -176,16 +175,8 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 			continue
 		}
 
-		if f.LastUpdateStart != 0 {
-			metric := map[string]interface{}{
-				"ABBytes":   f.LastUpdateMetric.ABBytes,
-				"BABytes":   f.LastUpdateMetric.BABytes,
-				"ABPackets": f.LastUpdateMetric.ABPackets,
-				"BAPackets": f.LastUpdateMetric.BAPackets,
-				"Start":     f.LastUpdateStart,
-				"Last":      f.LastUpdateLast,
-			}
-			if err := c.client.BulkIndexChild("metric", f.UUID, "", metric); err != nil {
+		if f.LastUpdateMetric != nil {
+			if err := c.client.BulkIndexChild("metric", f.UUID, "", f.LastUpdateMetric); err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
 			}
@@ -320,7 +311,7 @@ func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetF
 }
 
 // SearchMetrics searches flow metrics matching filters in the database
-func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]*common.TimedMetric, error) {
+func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilter *filters.Filter) (map[string][]common.Metric, error) {
 	if !c.client.Started() {
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
@@ -367,24 +358,15 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 		return nil, err
 	}
 
-	metrics := map[string][]*common.TimedMetric{}
+	metrics := map[string][]common.Metric{}
 	if out.Hits.Len() > 0 {
 		for _, d := range out.Hits.Hits {
-			var obj map[string]interface{}
-			if err := json.Unmarshal([]byte(*d.Source), &obj); err != nil {
-				return nil, err
-			}
-
 			m := new(flow.FlowMetric)
-			if err := mapstructure.Decode(obj, m); err != nil {
+			if err := json.Unmarshal([]byte(*d.Source), m); err != nil {
 				return nil, err
 			}
 
-			tm := new(common.TimedMetric)
-			tm.Start = int64(obj["Start"].(float64))
-			tm.Last = int64(obj["Last"].(float64))
-			tm.Metric = m
-			metrics[d.Parent] = append(metrics[d.Parent], tm)
+			metrics[d.Parent] = append(metrics[d.Parent], m)
 		}
 	}
 

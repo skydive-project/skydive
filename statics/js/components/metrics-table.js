@@ -1,4 +1,4 @@
-Vue.component('statistics-table', {
+Vue.component('metrics-table', {
 
   props: {
 

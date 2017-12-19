@@ -72,6 +72,8 @@ message FlowMetric {
   int64 ABBytes = 3;
   int64 BAPackets = 4;
   int64 BABytes = 5;
+  int64 Start = 6;
+  int64 Last = 7;
 }
 
 message RawPacket {
@@ -131,8 +133,6 @@ message Flow {
 
   int64 Start = 10;
   int64 Last = 11;
-  int64 LastUpdateStart = 12;
-  int64 LastUpdateLast = 13;
   int64 RTT = 14;
 
 /* Flow Tracking IDentifier, from 1st packet bytes

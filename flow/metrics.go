@@ -24,6 +24,14 @@ package flow
 
 import "github.com/skydive-project/skydive/common"
 
+func (fm *FlowMetric) SetStart(start int64) {
+	fm.Start = start
+}
+
+func (fm *FlowMetric) SetLast(last int64) {
+	fm.Last = last
+}
+
 // Copy a flow metric
 func (fm *FlowMetric) Copy() *FlowMetric {
 	return &FlowMetric{
@@ -31,6 +39,8 @@ func (fm *FlowMetric) Copy() *FlowMetric {
 		ABBytes:   fm.ABBytes,
 		BAPackets: fm.BAPackets,
 		BABytes:   fm.BABytes,
+		Start:     fm.Start,
+		Last:      fm.Last,
 	}
 }
 

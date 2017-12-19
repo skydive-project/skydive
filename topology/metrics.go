@@ -22,33 +22,58 @@
 
 package topology
 
-import "github.com/skydive-project/skydive/common"
+import (
+	"github.com/skydive-project/skydive/common"
+	"github.com/vishvananda/netlink"
+)
 
 // InterfaceMetric the interface packets counters
 type InterfaceMetric struct {
-	RxPackets         int64
-	TxPackets         int64
-	RxBytes           int64
-	TxBytes           int64
-	RxErrors          int64
-	TxErrors          int64
-	RxDropped         int64
-	TxDropped         int64
-	Multicast         int64
-	Collisions        int64
-	RxLengthErrors    int64
-	RxOverErrors      int64
-	RxCrcErrors       int64
-	RxFrameErrors     int64
-	RxFifoErrors      int64
-	RxMissedErrors    int64
-	TxAbortedErrors   int64
-	TxCarrierErrors   int64
-	TxFifoErrors      int64
-	TxHeartbeatErrors int64
-	TxWindowErrors    int64
-	RxCompressed      int64
-	TxCompressed      int64
+	Collisions        int64 `json:"Collisions,omitempty"`
+	Multicast         int64 `json:"Multicast,omitempty"`
+	RxBytes           int64 `json:"RxBytes,omitempty"`
+	RxCompressed      int64 `json:"RxCompressed,omitempty"`
+	RxCrcErrors       int64 `json:"RxCrcErrors,omitempty"`
+	RxDropped         int64 `json:"RxDropped,omitempty"`
+	RxErrors          int64 `json:"RxErrors,omitempty"`
+	RxFifoErrors      int64 `json:"RxFifoErrors,omitempty"`
+	RxFrameErrors     int64 `json:"RxFrameErrors,omitempty"`
+	RxLengthErrors    int64 `json:"RxLengthErrors,omitempty"`
+	RxMissedErrors    int64 `json:"RxMissedErrors,omitempty"`
+	RxOverErrors      int64 `json:"RxOverErrors,omitempty"`
+	RxPackets         int64 `json:"RxPackets,omitempty"`
+	TxAbortedErrors   int64 `json:"TxAbortedErrors,omitempty"`
+	TxBytes           int64 `json:"TxBytes,omitempty"`
+	TxCarrierErrors   int64 `json:"TxCarrierErrors,omitempty"`
+	TxCompressed      int64 `json:"TxCompressed,omitempty"`
+	TxDropped         int64 `json:"TxDropped,omitempty"`
+	TxErrors          int64 `json:"TxErrors,omitempty"`
+	TxFifoErrors      int64 `json:"TxFifoErrors,omitempty"`
+	TxHeartbeatErrors int64 `json:"TxHeartbeatErrors,omitempty"`
+	TxPackets         int64 `json:"TxPackets,omitempty"`
+	TxWindowErrors    int64 `json:"TxWindowErrors,omitempty"`
+	Start             int64 `json:"Start"`
+	Last              int64 `json:"Last"`
+}
+
+// GetStart returns start time
+func (im *InterfaceMetric) GetStart() int64 {
+	return im.Start
+}
+
+// SetStart set start time
+func (im *InterfaceMetric) SetStart(start int64) {
+	im.Start = start
+}
+
+// GetLast returns last time
+func (im *InterfaceMetric) GetLast() int64 {
+	return im.Last
+}
+
+// SetLast set last tome
+func (im *InterfaceMetric) SetLast(last int64) {
+	im.Last = last
 }
 
 // GetFieldInt64 returns field by name
@@ -104,33 +129,131 @@ func (im *InterfaceMetric) GetFieldInt64(field string) (int64, error) {
 	return 0, common.ErrFieldNotFound
 }
 
-// Add do a sum operation on interface metric
+// Add sum two metrics and return a new Metrics object
 func (im *InterfaceMetric) Add(m common.Metric) common.Metric {
-	im2 := m.(*InterfaceMetric)
+	om := m.(*InterfaceMetric)
 
-	im.RxPackets += im2.RxPackets
-	im.TxPackets += im2.TxPackets
-	im.RxBytes += im2.RxBytes
-	im.TxBytes += im2.TxBytes
-	im.RxErrors += im2.RxErrors
-	im.TxErrors += im2.TxErrors
-	im.RxDropped += im2.RxDropped
-	im.TxDropped += im2.TxDropped
-	im.Multicast += im2.Multicast
-	im.Collisions += im2.Collisions
-	im.RxLengthErrors += im2.RxLengthErrors
-	im.RxOverErrors += im2.RxOverErrors
-	im.RxCrcErrors += im2.RxCrcErrors
-	im.RxFrameErrors += im2.RxFrameErrors
-	im.RxFifoErrors += im2.RxFifoErrors
-	im.RxMissedErrors += im2.RxMissedErrors
-	im.TxAbortedErrors += im2.TxAbortedErrors
-	im.TxCarrierErrors += im2.TxCarrierErrors
-	im.TxFifoErrors += im2.TxFifoErrors
-	im.TxHeartbeatErrors += im2.TxHeartbeatErrors
-	im.TxWindowErrors += im2.TxWindowErrors
-	im.RxCompressed += im2.RxCompressed
-	im.TxCompressed += im2.TxCompressed
+	return &InterfaceMetric{
+		Collisions:        im.Collisions + om.Collisions,
+		Multicast:         im.Multicast + om.Multicast,
+		RxBytes:           im.RxBytes + om.RxBytes,
+		RxCompressed:      im.RxCompressed + om.RxCompressed,
+		RxCrcErrors:       im.RxCrcErrors + om.RxCrcErrors,
+		RxDropped:         im.RxDropped + om.RxDropped,
+		RxErrors:          im.RxErrors + om.RxErrors,
+		RxFifoErrors:      im.RxFifoErrors + om.RxFifoErrors,
+		RxFrameErrors:     im.RxFrameErrors + om.RxFrameErrors,
+		RxLengthErrors:    im.RxLengthErrors + om.RxLengthErrors,
+		RxMissedErrors:    im.RxMissedErrors + om.RxMissedErrors,
+		RxOverErrors:      im.RxOverErrors + om.RxOverErrors,
+		RxPackets:         im.RxPackets + om.RxPackets,
+		TxAbortedErrors:   im.TxAbortedErrors + om.TxAbortedErrors,
+		TxBytes:           im.TxBytes + om.TxBytes,
+		TxCarrierErrors:   im.TxCarrierErrors + om.TxCarrierErrors,
+		TxCompressed:      im.TxCompressed + om.TxCompressed,
+		TxDropped:         im.TxDropped + om.TxDropped,
+		TxErrors:          im.TxErrors + om.TxErrors,
+		TxFifoErrors:      im.TxFifoErrors + om.TxFifoErrors,
+		TxHeartbeatErrors: im.TxHeartbeatErrors + om.TxHeartbeatErrors,
+		TxPackets:         im.TxPackets + om.TxPackets,
+		TxWindowErrors:    im.TxWindowErrors + om.TxWindowErrors,
+		Start:             im.Start,
+		Last:              im.Last,
+	}
+}
 
-	return im
+// Sub substracts two metrics and return a new Metrics object
+func (im *InterfaceMetric) Sub(m common.Metric) common.Metric {
+	om := m.(*InterfaceMetric)
+
+	return &InterfaceMetric{
+		Collisions:        im.Collisions - om.Collisions,
+		Multicast:         im.Multicast - om.Multicast,
+		RxBytes:           im.RxBytes - om.RxBytes,
+		RxCompressed:      im.RxCompressed - om.RxCompressed,
+		RxCrcErrors:       im.RxCrcErrors - om.RxCrcErrors,
+		RxDropped:         im.RxDropped - om.RxDropped,
+		RxErrors:          im.RxErrors - om.RxErrors,
+		RxFifoErrors:      im.RxFifoErrors - om.RxFifoErrors,
+		RxFrameErrors:     im.RxFrameErrors - om.RxFrameErrors,
+		RxLengthErrors:    im.RxLengthErrors - om.RxLengthErrors,
+		RxMissedErrors:    im.RxMissedErrors - om.RxMissedErrors,
+		RxOverErrors:      im.RxOverErrors - om.RxOverErrors,
+		RxPackets:         im.RxPackets - om.RxPackets,
+		TxAbortedErrors:   im.TxAbortedErrors - om.TxAbortedErrors,
+		TxBytes:           im.TxBytes - om.TxBytes,
+		TxCarrierErrors:   im.TxCarrierErrors - om.TxCarrierErrors,
+		TxCompressed:      im.TxCompressed - om.TxCompressed,
+		TxDropped:         im.TxDropped - om.TxDropped,
+		TxErrors:          im.TxErrors - om.TxErrors,
+		TxFifoErrors:      im.TxFifoErrors - om.TxFifoErrors,
+		TxHeartbeatErrors: im.TxHeartbeatErrors - om.TxHeartbeatErrors,
+		TxPackets:         im.TxPackets - om.TxPackets,
+		TxWindowErrors:    im.TxWindowErrors - om.TxWindowErrors,
+		Start:             im.Start,
+		Last:              im.Last,
+	}
+}
+
+// IsZero returns true if all the values are equal to zero
+func (im *InterfaceMetric) IsZero() bool {
+	// sum as these numbers can't be <= 0
+	return (im.Collisions +
+		im.Multicast +
+		im.RxBytes +
+		im.RxCompressed +
+		im.RxCrcErrors +
+		im.RxDropped +
+		im.RxErrors +
+		im.RxFifoErrors +
+		im.RxFrameErrors +
+		im.RxLengthErrors +
+		im.RxMissedErrors +
+		im.RxOverErrors +
+		im.RxPackets +
+		im.TxAbortedErrors +
+		im.TxBytes +
+		im.TxCarrierErrors +
+		im.TxCompressed +
+		im.TxDropped +
+		im.TxErrors +
+		im.TxFifoErrors +
+		im.TxHeartbeatErrors +
+		im.TxPackets +
+		im.TxWindowErrors) == 0
+}
+
+// NewInterfaceMetricsFromNetlink returns a new InterfaceMetric object using
+// values of netlink.
+func NewInterfaceMetricsFromNetlink(link netlink.Link) *InterfaceMetric {
+	statistics := link.Attrs().Statistics
+	if statistics == nil {
+		return nil
+	}
+
+	return &InterfaceMetric{
+		Collisions:        int64(statistics.Collisions),
+		Multicast:         int64(statistics.Multicast),
+		RxBytes:           int64(statistics.RxBytes),
+		RxCompressed:      int64(statistics.RxCompressed),
+		RxCrcErrors:       int64(statistics.RxCrcErrors),
+		RxDropped:         int64(statistics.RxDropped),
+		RxErrors:          int64(statistics.RxErrors),
+		RxFifoErrors:      int64(statistics.RxFifoErrors),
+		RxFrameErrors:     int64(statistics.RxFrameErrors),
+		RxLengthErrors:    int64(statistics.RxLengthErrors),
+		RxMissedErrors:    int64(statistics.RxMissedErrors),
+		RxOverErrors:      int64(statistics.RxOverErrors),
+		RxPackets:         int64(statistics.RxPackets),
+		TxAbortedErrors:   int64(statistics.TxAbortedErrors),
+		TxBytes:           int64(statistics.TxBytes),
+		TxCarrierErrors:   int64(statistics.TxCarrierErrors),
+		TxCompressed:      int64(statistics.TxCompressed),
+		TxDropped:         int64(statistics.TxDropped),
+		TxErrors:          int64(statistics.TxErrors),
+		TxFifoErrors:      int64(statistics.TxFifoErrors),
+		TxHeartbeatErrors: int64(statistics.TxHeartbeatErrors),
+		TxPackets:         int64(statistics.TxPackets),
+		TxWindowErrors:    int64(statistics.TxWindowErrors),
+	}
 }

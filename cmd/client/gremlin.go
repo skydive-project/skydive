@@ -166,55 +166,45 @@ func (g *GremlinQueryHelper) GetFlowMetric(query string) (m *flow.FlowMetric, _ 
 	return flows[0].Metric, nil
 }
 
-func flatMetrictoTimedMetric(flat map[string]interface{}) (*common.TimedMetric, error) {
-	start, _ := flat["Start"].(json.Number).Int64()
-	last, _ := flat["Last"].(json.Number).Int64()
-
-	tm := &common.TimedMetric{
-		TimeSlice: common.TimeSlice{
-			Start: start,
-			Last:  last,
-		},
-	}
+func flatMetricToTypedMetric(flat map[string]interface{}) (common.Metric, error) {
+	var metric common.Metric
 
 	// check whether interface metrics or flow metrics
 	if _, ok := flat["ABBytes"]; ok {
-		metric := flow.FlowMetric{}
-		if err := mapstructure.WeakDecode(flat, &metric); err != nil {
+		metric = &flow.FlowMetric{}
+		if err := mapstructure.WeakDecode(flat, metric); err != nil {
 			return nil, err
 		}
-		tm.Metric = &metric
 	} else {
-		metric := topology.InterfaceMetric{}
-		if err := mapstructure.WeakDecode(flat, &metric); err != nil {
+		metric = &topology.InterfaceMetric{}
+		if err := mapstructure.WeakDecode(flat, metric); err != nil {
 			return nil, err
 		}
-		tm.Metric = &metric
 	}
 
-	return tm, nil
+	return metric, nil
 }
 
 // GetMetrics from Gremlin query
-func (g *GremlinQueryHelper) GetMetrics(query string) (map[string][]*common.TimedMetric, error) {
+func (g *GremlinQueryHelper) GetMetrics(query string) (map[string][]common.Metric, error) {
 	flat := []map[string][]map[string]interface{}{}
 
 	if err := g.QueryObject(query, &flat); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("QueryObject error: %s", err)
 	}
 
-	result := make(map[string][]*common.TimedMetric)
+	result := make(map[string][]common.Metric)
 
 	if len(flat) == 0 {
 		return result, nil
 	}
 
 	for id, metrics := range flat[0] {
-		result[id] = make([]*common.TimedMetric, len(metrics))
+		result[id] = make([]common.Metric, len(metrics))
 		for i, metric := range metrics {
-			tm, err := flatMetrictoTimedMetric(metric)
+			tm, err := flatMetricToTypedMetric(metric)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Flat to typed metric error: %s", err)
 			}
 			result[id][i] = tm
 		}
@@ -224,14 +214,14 @@ func (g *GremlinQueryHelper) GetMetrics(query string) (map[string][]*common.Time
 }
 
 // GetMetric from Gremlin query
-func (g *GremlinQueryHelper) GetMetric(query string) (*common.TimedMetric, error) {
+func (g *GremlinQueryHelper) GetMetric(query string) (common.Metric, error) {
 	flat := map[string]interface{}{}
 
 	if err := g.QueryObject(query, &flat); err != nil {
 		return nil, err
 	}
 
-	return flatMetrictoTimedMetric(flat)
+	return flatMetricToTypedMetric(flat)
 }
 
 // NewGremlinQueryHelper creates a new Gremlin query helper based on authentication
