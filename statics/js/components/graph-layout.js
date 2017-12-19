@@ -1504,12 +1504,12 @@ TopologyGraphLayout.prototype = {
 
   nodeImg: function(d) {
     var t = d.metadata.Type || "default";
-    return nodeImgMap[t];
+    return (t in nodeImgMap) ? nodeImgMap[t] : nodeImgMap["default"];
   },
 
   managerImg: function(d) {
     var t = d.metadata.Orchestrator || d.metadata.Manager || "default";
-    return managerImgMap[t];
+    return (t in managerImgMap) ? managerImgMap[t] : managerImgMap["default"];
   },
 
   collapseImg: function(d) {
