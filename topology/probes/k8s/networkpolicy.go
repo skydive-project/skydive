@@ -43,12 +43,10 @@ type networkPolicyCache struct {
 
 func (n *networkPolicyCache) getMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
 	return graph.Metadata{
-		"Type":       "networkpolicy",
-		"Manager":    "k8s",
-		"Name":       np.GetName(),
-		"UID":        np.GetUID(),
-		"ObjectMeta": np.ObjectMeta,
-		"Spec":       np.Spec,
+		"Type":    "networkpolicy",
+		"Manager": "k8s",
+		"Name":    np.GetName(),
+		"K8s":     np,
 	}
 }
 
