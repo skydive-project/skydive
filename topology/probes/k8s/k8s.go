@@ -41,16 +41,19 @@ type probe struct {
 	client             *kubeClient
 	podCache           *podCache
 	networkPolicyCache *networkPolicyCache
+	nodeCache          *nodeCache
 }
 
 func (k8s *probe) Start() {
 	k8s.networkPolicyCache.Start()
 	k8s.podCache.Start()
+	k8s.nodeCache.Start()
 }
 
 func (k8s *probe) Stop() {
 	k8s.networkPolicyCache.Stop()
 	k8s.podCache.Stop()
+	k8s.nodeCache.Stop()
 }
 
 func NewProbe(g *graph.Graph) (k8s *probe, err error) {
@@ -61,11 +64,13 @@ func NewProbe(g *graph.Graph) (k8s *probe, err error) {
 
 	podCache := newPodCache(client, g)
 	networkPolicyCache := newNetworkPolicyCache(client, g, podCache)
+	nodeCache := newNodeCache(client, g)
 
 	return &probe{
 		graph:              g,
 		client:             client,
 		podCache:           podCache,
 		networkPolicyCache: networkPolicyCache,
+		nodeCache:          nodeCache,
 	}, nil
 }
