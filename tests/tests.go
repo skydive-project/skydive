@@ -23,7 +23,6 @@
 package tests
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -158,8 +157,6 @@ type Test struct {
 }
 
 func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
-	var g interface{}
-
 	gremlin := "G"
 	if !at.IsZero() {
 		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
@@ -197,16 +194,12 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		return "\n" + string(output)
 
 	default:
-		if err := c.gh.Query(gremlin, &g); err != nil {
-			t.Error(err.Error())
-		}
-
-		b, err := json.Marshal(&g)
+		data, err := c.gh.QueryRaw(gremlin)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
 
-		return string(b)
+		return string(data)
 	}
 }
 

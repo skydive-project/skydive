@@ -23,7 +23,9 @@
 package client
 
 import (
-	"fmt"
+	"bufio"
+	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -50,12 +52,15 @@ var QueryCmd = &cobra.Command{
 
 		switch outputFormat {
 		case "json":
-			var value interface{}
-			if err := queryHelper.Query(gremlinQuery, &value); err != nil {
+			data, err := queryHelper.QueryRaw(gremlinQuery)
+			if err != nil {
 				logging.GetLogger().Error(err.Error())
 				os.Exit(1)
 			}
-			printJSON(value)
+
+			var out bytes.Buffer
+			json.Indent(&out, data, "", "\t")
+			out.WriteTo(os.Stdout)
 		case "dot":
 			header := make(http.Header)
 			header.Set("Accept", "vnd.graphviz")
@@ -65,12 +70,13 @@ var QueryCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			defer resp.Body.Close()
-			data, _ := ioutil.ReadAll(resp.Body)
+
 			if resp.StatusCode != http.StatusOK {
+				data, _ := ioutil.ReadAll(resp.Body)
 				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
 				os.Exit(1)
 			}
-			fmt.Println(string(data))
+			bufio.NewReader(resp.Body).WriteTo(os.Stdout)
 		case "pcap":
 			header := make(http.Header)
 			header.Set("Accept", "vnd.tcpdump.pcap")
@@ -80,12 +86,14 @@ var QueryCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			defer resp.Body.Close()
-			data, _ := ioutil.ReadAll(resp.Body)
+
 			if resp.StatusCode != http.StatusOK {
+				data, _ := ioutil.ReadAll(resp.Body)
 				logging.GetLogger().Errorf("%s: %s", resp.Status, string(data))
 				os.Exit(1)
 			}
-			fmt.Print(string(data))
+
+			bufio.NewReader(resp.Body).WriteTo(os.Stdout)
 		default:
 			logging.GetLogger().Errorf("Invalid output format %s", outputFormat)
 			os.Exit(1)

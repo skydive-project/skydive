@@ -57,10 +57,10 @@ var (
 )
 
 func actionGremlinQuery(s *Session, query string) error {
-	var values interface{}
-
 	queryHelper := NewGremlinQueryHelper(&s.authenticationOpts)
-	if err := queryHelper.Query(query, &values); err != nil {
+
+	var values interface{}
+	if err := queryHelper.QueryObject(query, &values); err != nil {
 		return err
 	}
 
@@ -269,7 +269,7 @@ func shellMain() {
 			continue
 		}
 
-		if err := rl.Reindent(); err != nil {
+		if err = rl.Reindent(); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %s\n", err)
 			rl.Clear()
 			continue
