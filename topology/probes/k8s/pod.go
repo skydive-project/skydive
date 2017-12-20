@@ -74,7 +74,7 @@ func (p *podCache) OnAdd(obj interface{}) {
 
 		containerNodes := p.containerIndexer.Get(pod.Namespace, pod.Name)
 		for _, containerNode := range containerNodes {
-			p.graph.Link(podNode, containerNode, PodToContainerMetadata)
+			p.graph.Link(podNode, containerNode, podToContainerMetadata)
 		}
 
 		p.linkPodToHost(pod, podNode)
@@ -123,7 +123,7 @@ func (p *podCache) OnNodeAdded(n *graph.Node) {
 					logging.GetLogger().Warningf("Failed to find node for pod %s", pod.GetUID())
 					return
 				}
-				p.graph.Link(podNode, n, PodToContainerMetadata)
+				p.graph.Link(podNode, n, podToContainerMetadata)
 			}
 		}
 	case "host":

@@ -38,7 +38,7 @@ type nodeCache struct {
 	graph *graph.Graph
 }
 
-func (c *nodeCache) getMetadata(node *v1.Node) graph.Metadata{
+func (c *nodeCache) getMetadata(node *v1.Node) graph.Metadata {
 	return graph.Metadata{
 		"Type":    "host",
 		"Manager": "k8s",

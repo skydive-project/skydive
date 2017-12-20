@@ -27,16 +27,17 @@ import (
 )
 
 const (
-	PodToContainerLink = "pod2container"
-	PolicyToPodLink    = "policy2pod"
+	podToContainerLink = "pod2container"
+	policyToPodLink    = "policy2pod"
 )
 
 var (
-	PodToContainerMetadata = graph.Metadata{"RelationType": PodToContainerLink}
-	PolicyToPodMetadata    = graph.Metadata{"RelationType": PolicyToPodLink}
+	podToContainerMetadata = graph.Metadata{"RelationType": podToContainerLink}
+	policyToPodMetadata    = graph.Metadata{"RelationType": policyToPodLink}
 )
 
-type probe struct {
+// Probe for tracking k8s events
+type Probe struct {
 	graph              *graph.Graph
 	client             *kubeClient
 	podCache           *podCache
@@ -44,19 +45,22 @@ type probe struct {
 	nodeCache          *nodeCache
 }
 
-func (k8s *probe) Start() {
+// Start k8s probe
+func (k8s *Probe) Start() {
 	k8s.networkPolicyCache.Start()
 	k8s.podCache.Start()
 	k8s.nodeCache.Start()
 }
 
-func (k8s *probe) Stop() {
+// Stop k8s probe
+func (k8s *Probe) Stop() {
 	k8s.networkPolicyCache.Stop()
 	k8s.podCache.Stop()
 	k8s.nodeCache.Stop()
 }
 
-func NewProbe(g *graph.Graph) (k8s *probe, err error) {
+// NewProbe create the Probe for tracking k8s events
+func NewProbe(g *graph.Graph) (k8s *Probe, err error) {
 	client, err := newKubeClient()
 	if err != nil {
 		return nil, err
@@ -66,7 +70,7 @@ func NewProbe(g *graph.Graph) (k8s *probe, err error) {
 	networkPolicyCache := newNetworkPolicyCache(client, g, podCache)
 	nodeCache := newNodeCache(client, g)
 
-	return &probe{
+	return &Probe{
 		graph:              g,
 		client:             client,
 		podCache:           podCache,
