@@ -45,18 +45,31 @@ type Probe struct {
 	nodeCache          *nodeCache
 }
 
+type starter interface{
+	Start()
+	Stop()
+}
+
+func (probe *Probe) getSubProbes() []starter {
+	return []starter{
+		probe.podCache,
+		probe.networkPolicyCache,
+		probe.nodeCache,
+	 }
+}
+
 // Start k8s probe
 func (probe *Probe) Start() {
-	probe.networkPolicyCache.Start()
-	probe.podCache.Start()
-	probe.nodeCache.Start()
+	for _, sub := range probe.getSubProbes() {
+		sub.Start()
+	}
 }
 
 // Stop k8s probe
 func (probe *Probe) Stop() {
-	probe.networkPolicyCache.Stop()
-	probe.podCache.Stop()
-	probe.nodeCache.Stop()
+	for _, sub := range probe.getSubProbes() {
+		sub.Stop()
+	}
 }
 
 // NewProbe create the Probe for tracking k8s events
