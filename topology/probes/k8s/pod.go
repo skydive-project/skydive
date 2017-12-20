@@ -46,12 +46,10 @@ type podCache struct {
 
 func (p *podCache) getMetadata(pod *api.Pod) graph.Metadata {
 	return graph.Metadata{
-		"Type":       "pod",
-		"Manager":    "k8s",
-		"Name":       pod.GetName(),
-		"UID":        pod.GetUID(),
-		"ObjectMeta": pod.ObjectMeta,
-		"Spec":       pod.Spec,
+		"Type":    "pod",
+		"Manager": "k8s",
+		"Name":    pod.GetName(),
+		"K8s":     pod,
 	}
 }
 
