@@ -119,7 +119,7 @@ func (n *networkPolicyCache) handleNetworkPolicy(policyNode *graph.Node, policy 
 	}
 
 	existingChildren := make(map[graph.Identifier]*graph.Node)
-	for _, container := range n.graph.LookupChildren(policyNode, nil, PolicyToPodMetadata) {
+	for _, container := range n.graph.LookupChildren(policyNode, nil, policyToPodMetadata) {
 		existingChildren[container.ID] = container
 	}
 
@@ -127,7 +127,7 @@ func (n *networkPolicyCache) handleNetworkPolicy(policyNode *graph.Node, policy 
 		if _, found := existingChildren[pod.ID]; found {
 			delete(existingChildren, pod.ID)
 		} else {
-			n.graph.Link(policyNode, pod, PolicyToPodMetadata)
+			n.graph.Link(policyNode, pod, policyToPodMetadata)
 		}
 	}
 
@@ -161,7 +161,7 @@ func (n *networkPolicyCache) handlePod(podNode *graph.Node) {
 		}
 
 		if toLink {
-			n.graph.Link(policyNode, podNode, PolicyToPodMetadata)
+			n.graph.Link(policyNode, podNode, policyToPodMetadata)
 		} else {
 			n.graph.Unlink(policyNode, podNode)
 		}
