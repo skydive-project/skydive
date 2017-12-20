@@ -46,21 +46,21 @@ type Probe struct {
 }
 
 // Start k8s probe
-func (k8s *Probe) Start() {
-	k8s.networkPolicyCache.Start()
-	k8s.podCache.Start()
-	k8s.nodeCache.Start()
+func (probe *Probe) Start() {
+	probe.networkPolicyCache.Start()
+	probe.podCache.Start()
+	probe.nodeCache.Start()
 }
 
 // Stop k8s probe
-func (k8s *Probe) Stop() {
-	k8s.networkPolicyCache.Stop()
-	k8s.podCache.Stop()
-	k8s.nodeCache.Stop()
+func (probe *Probe) Stop() {
+	probe.networkPolicyCache.Stop()
+	probe.podCache.Stop()
+	probe.nodeCache.Stop()
 }
 
 // NewProbe create the Probe for tracking k8s events
-func NewProbe(g *graph.Graph) (k8s *Probe, err error) {
+func NewProbe(g *graph.Graph) (probe *Probe, err error) {
 	client, err := newKubeClient()
 	if err != nil {
 		return nil, err
