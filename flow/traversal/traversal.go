@@ -732,7 +732,7 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 		return e.HopsToken, true
 	case "NODES":
 		return e.NodesToken, true
-	case "CAPTURENODE":
+	case "NODE", "CAPTURENODE":
 		return e.CaptureNodeToken, true
 	case "AGGREGATES":
 		return e.AggregatesToken, true

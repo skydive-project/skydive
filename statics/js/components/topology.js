@@ -150,7 +150,7 @@ var TopologyComponent = {
                   @click="toggleExpandAll(currentNode)"></i></span>\
               </h1>\
               <div id="metadata-panel" class="sub-left-panel">\
-                <object-detail :object="currentNodeMetadata" :links="dedeSSH(currentNodeMetadata)"></object-detail>\
+                <object-detail :object="currentNodeMetadata" :links="metadataLinks(currentNodeMetadata)"></object-detail>\
               </div>\
               <div v-if="currentNodeMetadata.Type == \'ovsbridge\'">\
                 <h1>Rules</h1>\
@@ -182,13 +182,6 @@ var TopologyComponent = {
   ',
 
   data: function() {
-    var myTopology = this
-    $.when(this.$getConfigValue('analyzer.ssh_enabled').
-                        then(function(sshEnabled) {
-                        try {
-                            myTopology.isSSHEnabled = sshEnabled;
-                         } catch(err) { console.log(err); }
-                        }));
     return {
       topologyTimeContext: 0,
       topologyTime: null,
@@ -262,6 +255,11 @@ var TopologyComponent = {
     });
 
     this.setFilterFromConfig();
+
+    $.when(this.$getConfigValue('analyzer.ssh_enabled').
+      then(function(sshEnabled) {
+        self.isSSHEnabled = sshEnabled;
+    }));
   },
 
   beforeDestroy: function() {
@@ -344,18 +342,23 @@ var TopologyComponent = {
 
   methods: {
 
-    dedeSSH: function(m) {
+    metadataLinks: function(m) {
       var self = this;
-      if (m.Type !== "host" || !this.isSSHEnabled) return;
 
-      return {
-        "Name": {
+      var links = {};
+
+      if (m.Type === "host" && this.isSSHEnabled) {
+        links.Name = {
           "class": "indicator glyphicon glyphicon-new-window raw-packet-link",
-          "fnc": function() {
+          "onClick": function() {
             window.open(location.protocol + '//' + location.host + '/dede/terminal/'+m.Name+ '?title='+m.Name+'&cmd=ssh ' + m.Name, '_blank').focus();
-          }
-        }
-      };
+          },
+          "onMouseOver": function(){},
+          "onMouseOut": function(){}
+        };
+      }
+
+      return links;
     },
 
     unwatch: function() {
