@@ -38,6 +38,14 @@ type nodeCache struct {
 	graph *graph.Graph
 }
 
+func newHostIndexer(g *graph.Graph, manager string) *graph.MetadataIndexer {
+	m := graph.Metadata{"Type": "host"}
+	if manager != "" {
+		m["Manager"] = manager
+	}
+	return graph.NewMetadataIndexer(g, m, "Name")
+}
+
 func (c *nodeCache) getMetadata(node *v1.Node) graph.Metadata {
 	return graph.Metadata{
 		"Type":    "host",

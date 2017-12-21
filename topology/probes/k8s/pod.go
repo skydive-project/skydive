@@ -25,7 +25,6 @@ package k8s
 import (
 	"sync"
 
-	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -42,6 +41,10 @@ type podCache struct {
 	containerIndexer *graph.MetadataIndexer
 	hostIndexer      *graph.MetadataIndexer
 	podIndexer       *graph.MetadataIndexer
+}
+
+func newPodIndexer(g *graph.Graph) *graph.MetadataIndexer {
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, "Pod.NodeName")
 }
 
 func (p *podCache) getMetadata(pod *api.Pod) graph.Metadata {
@@ -106,6 +109,10 @@ func (p *podCache) OnDelete(obj interface{}) {
 	}
 }
 
+func makePodKey(namespace, pod string) string {
+	return namespace + "/" + pod
+}
+
 func (p *podCache) OnNodeAdded(n *graph.Node) {
 	nodeType, _ := n.GetFieldString("Type")
 	switch nodeType {
@@ -116,7 +123,7 @@ func (p *podCache) OnNodeAdded(n *graph.Node) {
 			p.Lock()
 			defer p.Unlock()
 
-			if pod := p.GetByKey(namespace + "/" + podName); pod != nil {
+			if pod := p.GetByKey(makePodKey(namespace, podName)); pod != nil {
 				// We already saw the pod through Kubernetes API
 				podNode := p.graph.GetNode(graph.Identifier(pod.GetUID()))
 				if podNode == nil {
@@ -161,14 +168,10 @@ func (p *podCache) Stop() {
 
 func newPodCache(client *kubeClient, g *graph.Graph) *podCache {
 	p := &podCache{
-		graph: g,
-		containerIndexer: graph.NewMetadataIndexer(g, graph.Metadata{
-			"Type": "container",
-			"Docker.Labels.io.kubernetes.pod.namespace": filters.NewNotFilter(filters.NewNullFilter("Docker.Labels.io.kubernetes.pod.namespace")),
-			"Docker.Labels.io.kubernetes.pod.name":      filters.NewNotFilter(filters.NewNullFilter("Docker.Labels.io.kubernetes.pod.name")),
-		}, "Docker.Labels.io.kubernetes.pod.namespace", "Docker.Labels.io.kubernetes.pod.name"),
-		hostIndexer: graph.NewMetadataIndexer(g, graph.Metadata{"Type": "host"}, "Name"),
-		podIndexer:  graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, "Pod.NodeName"),
+		graph:            g,
+		containerIndexer: newContainerIndexer(g, ""),
+		hostIndexer:      newHostIndexer(g, ""),
+		podIndexer:       newPodIndexer(g),
 	}
 	p.kubeCache = client.getCacheFor(client.Core().RESTClient(), &api.Pod{}, "pods", p)
 	return p

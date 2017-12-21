@@ -43,9 +43,10 @@ type Probe struct {
 	podCache           *podCache
 	networkPolicyCache *networkPolicyCache
 	nodeCache          *nodeCache
+	containerCache     *containerCache
 }
 
-type starter interface{
+type starter interface {
 	Start()
 	Stop()
 }
@@ -55,7 +56,8 @@ func (probe *Probe) getSubProbes() []starter {
 		probe.podCache,
 		probe.networkPolicyCache,
 		probe.nodeCache,
-	 }
+		probe.containerCache,
+	}
 }
 
 // Start k8s probe
@@ -82,6 +84,7 @@ func NewProbe(g *graph.Graph) (probe *Probe, err error) {
 	podCache := newPodCache(client, g)
 	networkPolicyCache := newNetworkPolicyCache(client, g, podCache)
 	nodeCache := newNodeCache(client, g)
+	containerCache := newContainerCache(client, g)
 
 	return &Probe{
 		graph:              g,
@@ -89,5 +92,6 @@ func NewProbe(g *graph.Graph) (probe *Probe, err error) {
 		podCache:           podCache,
 		networkPolicyCache: networkPolicyCache,
 		nodeCache:          nodeCache,
+		containerCache:     containerCache,
 	}, nil
 }
