@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -100,27 +101,22 @@ func (mapper *OpenContrailProbe) retrieveMetadata(metadata graph.Metadata, itf c
 // for instance, the tap is first created by nova and this information
 // is then propagated to contrail. We then retry to get interface from
 // contrail introspect with a delay between each attempt.
-func getInterfaceFromIntrospect(host string, port int, name string) (collection.Collection, collection.Element, error) {
-	var err error
-	try := 3
-	delay := 500 * time.Millisecond
-
-	for i := 0; i < try; i++ {
-		col, e := collection.LoadCollection(descriptions.Interface(), []string{fmt.Sprintf("%s:%d", host, port)})
-		err = e
-		if e == nil {
-			itf, e := col.SearchStrictUnique(name)
-			err = e
-			if e == nil {
-				return col, itf, e
-			}
+func getInterfaceFromIntrospect(host string, port int, name string) (col collection.Collection, elem collection.Element, err error) {
+	getFromIntrospect := func() (err error) {
+		col, err = collection.LoadCollection(descriptions.Interface(), []string{fmt.Sprintf("%s:%d", host, port)})
+		if err != nil {
+			return
 		}
-		col.Close()
-		logging.GetLogger().Debugf("Retry %d: Load interface collection (previous error message: %s)\n", i+1, err)
-		time.Sleep(delay)
+		elem, err = col.SearchStrictUnique(name)
+		if err != nil {
+			// Close collection before retrying
+			col.Close()
+			return
+		}
+		return
 	}
-	return collection.Collection{}, collection.Element{}, err
-
+	common.Retry(getFromIntrospect, 3, 500*time.Millisecond)
+	return
 }
 
 func (mapper *OpenContrailProbe) onVhostAdded(node *graph.Node, itf collection.Element) {
