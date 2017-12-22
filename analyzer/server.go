@@ -308,7 +308,9 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterConfigAPI(hserver)
 	api.RegisterStatusAPI(hserver, s)
 
-	dede.RegisterTerminalHandler("/dede", hserver.Router)
+	if config.GetConfig().GetBool("analyzer.ssh_enabled") {
+		dede.RegisterTerminalHandler("/dede", hserver.Router)
+	}
 
 	return s, nil
 }

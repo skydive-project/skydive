@@ -182,6 +182,13 @@ var TopologyComponent = {
   ',
 
   data: function() {
+    var myTopology = this
+    $.when(this.$getConfigValue('analyzer.ssh_enabled').
+                        then(function(sshEnabled) {
+                        try {
+                            myTopology.isSSHEnabled = sshEnabled;
+                         } catch(err) { console.log(err); }
+                        }));
     return {
       topologyTimeContext: 0,
       topologyTime: null,
@@ -193,6 +200,7 @@ var TopologyComponent = {
       topologyMode: "live",
       topologyHumanTimeContext: "",
       isTopologyOptionsVisible: false,
+      isSSHEnabled: false,
     };
   },
 
@@ -338,8 +346,7 @@ var TopologyComponent = {
 
     dedeSSH: function(m) {
       var self = this;
-
-      if (m.Type !== "host") return;
+      if (m.Type !== "host" || !this.isSSHEnabled) return;
 
       return {
         "Name": {
