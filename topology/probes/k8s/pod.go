@@ -46,12 +46,10 @@ type podCache struct {
 
 func (p *podCache) getMetadata(pod *api.Pod) graph.Metadata {
 	return graph.Metadata{
-		"Type":       "pod",
-		"Manager":    "k8s",
-		"Name":       pod.GetName(),
-		"UID":        pod.GetUID(),
-		"ObjectMeta": pod.ObjectMeta,
-		"Spec":       pod.Spec,
+		"Type":    "pod",
+		"Manager": "k8s",
+		"Name":    pod.GetName(),
+		"K8s":     pod,
 	}
 }
 
@@ -76,7 +74,7 @@ func (p *podCache) OnAdd(obj interface{}) {
 
 		containerNodes := p.containerIndexer.Get(pod.Namespace, pod.Name)
 		for _, containerNode := range containerNodes {
-			p.graph.Link(podNode, containerNode, PodToContainerMetadata)
+			p.graph.Link(podNode, containerNode, podToContainerMetadata)
 		}
 
 		p.linkPodToHost(pod, podNode)
@@ -125,7 +123,7 @@ func (p *podCache) OnNodeAdded(n *graph.Node) {
 					logging.GetLogger().Warningf("Failed to find node for pod %s", pod.GetUID())
 					return
 				}
-				p.graph.Link(podNode, n, PodToContainerMetadata)
+				p.graph.Link(podNode, n, podToContainerMetadata)
 			}
 		}
 	case "host":

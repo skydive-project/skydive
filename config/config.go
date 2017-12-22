@@ -116,8 +116,6 @@ func init() {
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
 
-	cfg.SetDefault("k8s.polling_rate", "5s")
-	cfg.SetDefault("k8s.max_network_policies", 50)
 	cfg.SetDefault("k8s.config_file", "/etc/skydive/kube-cfg.yml")
 
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
