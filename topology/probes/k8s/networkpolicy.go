@@ -41,19 +41,14 @@ type networkPolicyCache struct {
 	podIndexer *graph.MetadataIndexer
 }
 
-func (n *networkPolicyCache) getMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
-	return graph.Metadata{
-		"Type":    "networkpolicy",
-		"Manager": "k8s",
-		"Name":    np.GetName(),
-		"K8s":     np,
-	}
+func (n *networkPolicyCache) newMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
+	return newMetadata("networkpolicy", np.GetName(), np)
 }
 
 func (n *networkPolicyCache) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
-		policyNode := n.graph.NewNode(graph.Identifier(policy.GetUID()), n.getMetadata(policy))
+		policyNode := n.graph.NewNode(graph.Identifier(policy.GetUID()), n.newMetadata(policy))
 		n.handleNetworkPolicy(policyNode, policy)
 		n.graph.Unlock()
 	}
@@ -63,7 +58,7 @@ func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
 	if policy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
 		if policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID())); policyNode != nil {
 			n.graph.Lock()
-			n.graph.SetMetadata(policyNode, n.getMetadata(policy))
+			addMetadata(n.graph, policyNode, policy)
 			n.handleNetworkPolicy(policyNode, policy)
 			n.graph.Unlock()
 		}
@@ -190,7 +185,7 @@ func newNetworkPolicyCache(client *kubeClient, g *graph.Graph, podCache *podCach
 	n := &networkPolicyCache{
 		graph:      g,
 		podCache:   podCache,
-		podIndexer: graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, "Pod.Namespace"),
+		podIndexer: newPodIndexerByNamespace(g),
 	}
 	n.kubeCache = client.getCacheFor(
 		client.ExtensionsV1beta1().RESTClient(),

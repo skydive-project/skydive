@@ -35,32 +35,21 @@ type nodeCache struct {
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
 	*kubeCache
-	graph *graph.Graph
+	graph       *graph.Graph
+	hostIndexer *graph.MetadataIndexer
+	podIndexer  *graph.MetadataIndexer
 }
 
-func newHostIndexer(g *graph.Graph, manager string) *graph.MetadataIndexer {
-	m := graph.Metadata{"Type": "host"}
-	if manager != "" {
-		m["Manager"] = manager
-	}
-	return graph.NewMetadataIndexer(g, m, "Name")
+func newHostIndexer(g *graph.Graph) *graph.MetadataIndexer {
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "host"}, "Name")
 }
 
-func (c *nodeCache) getMetadata(node *v1.Node) graph.Metadata {
-	return graph.Metadata{
-		"Type":    "host",
-		"Manager": "k8s",
-		"Name":    node.GetName(),
-		"K8s":     node,
-	}
+func (c *nodeCache) newMetadata(node *v1.Node) graph.Metadata {
+	return newMetadata("host", node.GetName(), node)
 }
 
-func (c *nodeCache) OnAdd(obj interface{}) {
-	c.OnUpdate(obj, obj)
-}
-
-func (c *nodeCache) OnUpdate(old, new interface{}) {
-	newNode := new.(*v1.Node)
+func (c *nodeCache) onAdd(obj interface{}) {
+	host := obj.(*v1.Node)
 
 	c.Lock()
 	defer c.Unlock()
@@ -68,16 +57,25 @@ func (c *nodeCache) OnUpdate(old, new interface{}) {
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
-	graphMeta := c.getMetadata(newNode)
-	hostIndexer := graph.NewMetadataIndexer(c.graph, graph.Metadata{"Type": "host"}, "Name")
-	hostNodes := hostIndexer.Get(newNode.GetName())
+	hostName := host.GetName()
+	hostNodes := c.hostIndexer.Get(hostName)
+	var hostNode *graph.Node
 	if len(hostNodes) == 0 {
-		c.graph.NewNode(graph.Identifier(newNode.GetUID()), graphMeta)
+		hostNode = c.graph.NewNode(graph.Identifier(host.GetUID()), c.newMetadata(host))
 	} else {
-		if val, ok := graphMeta["Manager"]; ok && val == "k8s" {
-			c.graph.SetMetadata(hostNodes[0], graphMeta)
-		}
+		hostNode = hostNodes[0]
+		addMetadata(c.graph, hostNode, host)
 	}
+
+	linkPodsToHost(c.graph, hostNode, c.podIndexer.Get(hostName))
+}
+
+func (c *nodeCache) OnAdd(obj interface{}) {
+	c.onAdd(obj)
+}
+
+func (c *nodeCache) OnUpdate(oldObj, newObj interface{}) {
+	c.onAdd(newObj)
 }
 
 func (c *nodeCache) OnDelete(obj interface{}) {
@@ -92,15 +90,19 @@ func (c *nodeCache) OnDelete(obj interface{}) {
 
 func (c *nodeCache) Start() {
 	c.kubeCache.Start()
+	c.hostIndexer.AddEventListener(c)
 }
 
 func (c *nodeCache) Stop() {
 	c.kubeCache.Stop()
+	c.hostIndexer.RemoveEventListener(c)
 }
 
 func newNodeCache(client *kubeClient, g *graph.Graph) *nodeCache {
 	c := &nodeCache{
-		graph: g,
+		graph:       g,
+		hostIndexer: newHostIndexer(g),
+		podIndexer:  newPodIndexerByHost(g),
 	}
 	c.kubeCache = client.getCacheFor(client.Core().RESTClient(), &v1.Node{}, "nodes", c)
 	return c
