@@ -255,3 +255,8 @@ ui:
 k8s:
   # The KUBECONFIG yml file, if k8sctl is executed inside the cluster, you may use the empty config file - kube-config-empty.yml
   # config_file: /etc/skydive/kube-cfg.yml
+  subprobes:
+  - networkpolicy
+  - pod
+  - container
+  - node

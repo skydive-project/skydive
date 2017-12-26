@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 IBM Corp.
+ * Copyright 2017 IBM Corp.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -23,6 +23,8 @@
 package k8s
 
 import (
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -52,12 +54,24 @@ type starter interface {
 }
 
 func (probe *Probe) getSubProbes() []starter {
-	return []starter{
-		probe.podCache,
-		probe.networkPolicyCache,
-		probe.nodeCache,
-		probe.containerCache,
+	list := []starter{}
+	subprobes := config.GetConfig().GetStringSlice("k8s.subprobes")
+	logging.GetLogger().Infof("K8s subprobes: %v", subprobes)
+	for _, i := range subprobes {
+		switch i {
+		case "pod":
+			list = append(list, probe.podCache)
+		case "networkpolicy":
+			list = append(list, probe.networkPolicyCache)
+		case "container":
+			list = append(list, probe.containerCache)
+		case "node":
+			list = append(list, probe.nodeCache)
+		default:
+			logging.GetLogger().Errorf("skipping unsupported K8s subprobe %v", i)
+		}
 	}
+	return list
 }
 
 // Start k8s probe
@@ -75,23 +89,21 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe create the Probe for tracking k8s events
-func NewProbe(g *graph.Graph) (probe *Probe, err error) {
+func NewProbe(g *graph.Graph) (*Probe, error) {
 	client, err := newKubeClient()
 	if err != nil {
 		return nil, err
 	}
 
-	podCache := newPodCache(client, g)
-	networkPolicyCache := newNetworkPolicyCache(client, g, podCache)
-	nodeCache := newNodeCache(client, g)
-	containerCache := newContainerCache(client, g)
+	probe := &Probe{
+		graph:  g,
+		client: client,
+	}
 
-	return &Probe{
-		graph:              g,
-		client:             client,
-		podCache:           podCache,
-		networkPolicyCache: networkPolicyCache,
-		nodeCache:          nodeCache,
-		containerCache:     containerCache,
-	}, nil
+	probe.podCache = newPodCache(client, g)
+	probe.networkPolicyCache = newNetworkPolicyCache(client, g, probe.podCache)
+	probe.containerCache = newContainerCache(client, g)
+	probe.nodeCache = newNodeCache(client, g)
+
+	return probe, nil
 }
