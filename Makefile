@@ -211,7 +211,14 @@ fmt: govendor genlocalfiles
 
 vet: govendor
 	@echo "+ $@"
-	test -z "$$($(GOVENDOR) tool vet $$($(GOVENDOR) list -no-status +local | perl -pe 's|$(SKYDIVE_GITHUB)/?||g' | grep -v '^tests') 2>&1 | tee /dev/stderr | grep -v '^flow/probes/afpacket/' | grep -v 'exit status 1')"
+	test -z "$$($(GOVENDOR) tool vet $$( \
+			$(GOVENDOR) list -no-status +local \
+			| perl -pe 's|$(SKYDIVE_GITHUB)/?||g' \
+			| grep -v '^tests') 2>&1 \
+		| tee /dev/stderr \
+		| grep -v '^flow/probes/afpacket/' \
+		| grep -v 'exit status 1' \
+		)"
 
 check: govendor
 	@test -z "$$($(GOVENDOR) list +u)" || \
