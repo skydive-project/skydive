@@ -74,8 +74,15 @@ all: install
 	# add flowState to flow generated struct
 	sed -e 's/type Flow struct {/type Flow struct {\n\tXXX_state flowState `json:"-"`/' -i flow/flow.pb.go
 
+BINDATA_DIRS := \
+	statics/* \
+	statics/css/images/* \
+	statics/js/vendor/* \
+	statics/js/components/* \
+	${EXTRABINDATA}
+
 .bindata: builddep ebpf.build
-	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/* ${EXTRABINDATA}
+	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 
 define govendor_do
