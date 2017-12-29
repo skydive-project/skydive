@@ -28,6 +28,10 @@ Vue.component('inject-form', {
           <span for="inject-src-ip" class="input-group-addon">IP: </span>\
           <input id="inject-src-ip" class="form-control" v-model="srcIP" placeholder="Auto"/>\
         </div>\
+        <div class="input-group">\
+          <span for="inject-src-mac" class="input-group-addon">MAC: </span>\
+          <input id="inject-src-mac" class="form-control" v-model="srcMAC" placeholder="Auto"/>\
+        </div>\
       </div>\
       <div class="form-group">\
         <label>Destination</label>\
@@ -39,6 +43,10 @@ Vue.component('inject-form', {
         <div class="input-group">\
           <label for="inject-dst-ip" class="input-group-addon">IP: </label>\
           <input id="inject-dst-ip" class="form-control" v-model="dstIP" placeholder="Auto"/>\
+        </div>\
+        <div class="input-group">\
+          <span for="inject-dst-mac" class="input-group-addon">MAC: </span>\
+          <input id="inject-dst-mac" class="form-control" v-model="dstMAC" placeholder="Auto"/>\
         </div>\
       </div>\
       <div class="form-group">\
@@ -101,6 +109,8 @@ Vue.component('inject-form', {
       dstNode: null,
       srcIP: "",
       dstIP: "",
+      srcMAC: "",
+      dstMAC: "",
       mode: "random",
       payload: "",
     };
@@ -127,15 +137,21 @@ Vue.component('inject-form', {
 
     error: function() {
       if (!this.node1 || !this.node2) {
-          return "Source and destination interfaces must be selected";
-      } else if (this.srcIP == "" && this.dstIP == "") {
-          return "Source and Destination IPs need to be given by user";
-      } else if (this.srcIP == "") {
-          return "Source IP need to be given by user";
-      } else if (this.dstIP == "") {
-          return "Destination IP need to be given by user";
+        return "Source and destination interfaces must be selected";
+      } else if (this.srcIP === "" && this.dstIP === "") {
+        return "Source and Destination IPs need to be given by user";
+      } else if (this.srcIP === "") {
+        return "Source IP need to be given by user";
+      } else if (this.dstIP === "") {
+        return "Destination IP need to be given by user";
+      } else if (this.srcMAC === "" && this.dstMAC === "") {
+        return "Source and Destination MACs need to be given by user";
+      } else if (this.srcMAC === "") {
+        return "Source MAC need to be given by user";
+      } else if (this.dstMAC === "") {
+        return "Destination MAC need to be given by user";
       } else {
-          return;
+        return;
       }
     },
 
@@ -150,6 +166,7 @@ Vue.component('inject-form', {
       if (newVal) {
         this.highlightNode(newVal, true);
         this.srcIP = this.getIP(this.srcNode = this.$store.state.currentNode);
+        this.srcMAC = this.getMAC(this.srcNode);
       }
     },
 
@@ -160,6 +177,7 @@ Vue.component('inject-form', {
       if (newVal) {
         this.highlightNode(newVal, true);
         this.dstIP = this.getIP(this.dstNode = this.$store.state.currentNode);
+        this.dstMAC = this.getMAC(this.dstNode);
       }
     },
 
@@ -194,6 +212,10 @@ Vue.component('inject-form', {
       }
     },
 
+    getMAC: function(node) {
+      return node.metadata.MAC || "";
+    },
+
     reset: function() {
       var self = this;
       this.node1 = this.node2 = "";
@@ -202,6 +224,7 @@ Vue.component('inject-form', {
       this.payloadlength = 0;
       this.srcNode = this.dstNode = null;
       this.srcIP = this.dstIP = "";
+      this.srcMAC = this.dstMAC = "";
       this.mode = "random";
       this.payload = "";
     },
@@ -225,6 +248,8 @@ Vue.component('inject-form', {
           "DstPort": this.port2,
           "SrcIP": this.srcIP,
           "DstIP": this.dstIP,
+          "SrcMAC": this.srcMAC,
+          "DstMAC": this.dstMAC,
           "Type": this.type,
           "Count": this.count,
           "ID": this.id,
