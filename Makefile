@@ -60,8 +60,8 @@ ifeq ($(WITH_EBPF), true)
   EXTRABINDATA+=probe/ebpf/*.o
 endif
 
-.PHONY: all doc
-all: install
+.PHONY: all install
+all install: skydive
 
 .proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
 	protoc --go_out . ${FLOW_PROTO_FILES}
@@ -85,20 +85,14 @@ BINDATA_DIRS := \
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 
-define govendor_do
-$(GOVENDOR) $1 \
-	-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
-	${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
-	+local
-endef
+skydive: govendor genlocalfiles dpdk.build contribs
+	$(GOVENDOR) install \
+		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
+		${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
+		+local
 
-.compile:
-	$(call govendor_do,install)
-
-install: govendor genlocalfiles dpdk.build contribs .compile
-
-build: govendor genlocalfiles dpdk.build contribs
-	$(call govendor_do,build)
+skydive.cleanup:
+	go clean -i $(SKYDIVE_GITHUB)
 
 STATIC_DIR :=
 STATIC_LIBS :=
@@ -130,13 +124,15 @@ endif
 
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
 
-static: govendor genlocalfiles
-	rm -f $$GOPATH/bin/skydive
+static: skydive.cleanup govendor genlocalfiles
 	$(GOVENDOR) install \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
 		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS} ${GOTAGS}" \
 		-installsuffix netgo +local || true
+
+contribs.cleanup:
+	$(MAKE) -C contrib/snort clean
 
 contribs:
 	$(MAKE) -C contrib/snort
@@ -243,10 +239,10 @@ builddep:
 
 genlocalfiles: .proto .bindata
 
-clean: test.functionals.cleanup dpdk.cleanup
+clean: skydive.cleanup test.functionals.cleanup dpdk.cleanup contribs.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
-	$(MAKE) -C contrib/snort clean
 
+.PHONY: doc
 doc:
 	mkdir -p /tmp/skydive-doc
 	touch /tmp/skydive-doc/.nojekyll
