@@ -8,3 +8,4 @@ statics/bindata.go
 contrib/vagrant/.vagrant/
 .idea
 contrib/snort/snortSkydive
+skydive.yml

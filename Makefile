@@ -63,6 +63,25 @@ endif
 .PHONY: all install
 all install: skydive
 
+skydive.yml: etc/skydive.yml.default
+	cp $< $@
+	
+.PHONY: debug
+debug: GOFLAGS+=-gcflags='-N -l'
+debug: skydive.cleanup dlv skydive skydive.yml
+
+define skydive_debug
+sudo $$(which dlv) exec $$(which skydive) -- $1 -c skydive.yml
+endef
+
+.PHONY: debug.agent
+debug.agent:
+	$(call skydive_debug,agent)
+
+.PHONY: debug.analyzer
+debug.analyzer:
+	$(call skydive_debug,analyzer)
+
 .proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
 	protoc --go_out . ${FLOW_PROTO_FILES}
 	protoc --go_out . ${FILTERS_PROTO_FILES}
