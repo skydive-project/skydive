@@ -20,7 +20,7 @@
  *
  */
 
-package graph
+package topology
 
 import "github.com/skydive-project/skydive/common"
 

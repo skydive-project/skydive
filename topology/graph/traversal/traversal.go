@@ -98,13 +98,6 @@ type GraphTraversalValue struct {
 	error          error
 }
 
-// MetricsTraversalStep traversal step metric interface counters
-type MetricsTraversalStep struct {
-	GraphTraversal *GraphTraversal
-	metrics        map[string][]*common.TimedMetric
-	error          error
-}
-
 // ParamToFilter creates a filter based on parameters
 // [RegexMetadataMatcher, NE/LT/GT/GTE/LTE/Inside/Outside/Between/Within/Contains/string,int64 MetadataMatcher]
 func ParamToFilter(k string, v interface{}) (*filters.Filter, error) {
@@ -395,7 +388,7 @@ type IPV4RangeMetadataMatcher struct {
 	value interface{}
 }
 
-// IPV4RANGE step
+// IPV4Range step
 func IPV4Range(s interface{}) *IPV4RangeMetadataMatcher {
 	return &IPV4RangeMetadataMatcher{value: s}
 }
@@ -408,6 +401,10 @@ type Since struct {
 // NewGraphTraversal creates a new graph traversal
 func NewGraphTraversal(g *graph.Graph, lockGraph bool) *GraphTraversal {
 	return &GraphTraversal{Graph: g, lockGraph: lockGraph}
+}
+
+func (t *GraphTraversal) CurrentStepContext() GraphStepContext {
+	return t.currentStepContext
 }
 
 // RLock reads lock the graph
@@ -1298,73 +1295,6 @@ func (tv *GraphTraversalShortestPath) SubGraph(s ...interface{}) *GraphTraversal
 	return NewGraphTraversal(ng, tv.GraphTraversal.lockGraph)
 }
 
-// Metrics step : packets counters
-func (tv *GraphTraversalV) Metrics() *MetricsTraversalStep {
-	if tv.error != nil {
-		return &MetricsTraversalStep{error: tv.error}
-	}
-
-	tv = tv.Dedup("ID", "LastMetric.Start").Sort(common.SortAscending, "LastMetric.Start")
-	if tv.error != nil {
-		return &MetricsTraversalStep{error: tv.error}
-	}
-
-	metrics := make(map[string][]*common.TimedMetric)
-	it := tv.GraphTraversal.currentStepContext.PaginationRange.Iterator()
-	gslice := tv.GraphTraversal.Graph.GetContext().TimeSlice
-
-	tv.GraphTraversal.RLock()
-	defer tv.GraphTraversal.RUnlock()
-
-nodeloop:
-	for _, n := range tv.nodes {
-		if it.Done() {
-			break nodeloop
-		}
-
-		m := n.Metadata()
-		lastMetric, hasLastMetric := m["LastMetric"].(map[string]interface{})
-		if hasLastMetric {
-			start := lastMetric["Start"].(int64)
-			last := lastMetric["Last"].(int64)
-			if gslice == nil || (start > gslice.Start && last < gslice.Last) {
-				im := &graph.InterfaceMetric{
-					RxPackets:         lastMetric["RxPackets"].(int64),
-					TxPackets:         lastMetric["TxPackets"].(int64),
-					RxBytes:           lastMetric["RxBytes"].(int64),
-					TxBytes:           lastMetric["TxBytes"].(int64),
-					RxErrors:          lastMetric["RxErrors"].(int64),
-					TxErrors:          lastMetric["TxErrors"].(int64),
-					RxDropped:         lastMetric["RxDropped"].(int64),
-					TxDropped:         lastMetric["TxDropped"].(int64),
-					Multicast:         lastMetric["Multicast"].(int64),
-					Collisions:        lastMetric["Collisions"].(int64),
-					RxLengthErrors:    lastMetric["RxLengthErrors"].(int64),
-					RxOverErrors:      lastMetric["RxOverErrors"].(int64),
-					RxCrcErrors:       lastMetric["RxCrcErrors"].(int64),
-					RxFrameErrors:     lastMetric["RxFrameErrors"].(int64),
-					RxFifoErrors:      lastMetric["RxFifoErrors"].(int64),
-					RxMissedErrors:    lastMetric["RxMissedErrors"].(int64),
-					TxAbortedErrors:   lastMetric["TxAbortedErrors"].(int64),
-					TxCarrierErrors:   lastMetric["TxCarrierErrors"].(int64),
-					TxFifoErrors:      lastMetric["TxFifoErrors"].(int64),
-					TxHeartbeatErrors: lastMetric["TxHeartbeatErrors"].(int64),
-					TxWindowErrors:    lastMetric["TxWindowErrors"].(int64),
-					RxCompressed:      lastMetric["RxCompressed"].(int64),
-					TxCompressed:      lastMetric["TxCompressed"].(int64),
-				}
-				metric := &common.TimedMetric{
-					TimeSlice: *common.NewTimeSlice(start, last),
-					Metric:    im,
-				}
-				metrics[string(n.ID)] = append(metrics[string(n.ID)], metric)
-			}
-		}
-	}
-
-	return NewMetricsTraversalStep(tv.GraphTraversal, metrics, nil)
-}
-
 // Count step
 func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
 	if te.error != nil {
@@ -1710,142 +1640,4 @@ func (t *GraphTraversalValue) Dedup(keys ...interface{}) *GraphTraversalValue {
 		}
 	}
 	return ntv
-}
-
-// Sum aggregates integer values mapped by 'key' cross flows
-func (m *MetricsTraversalStep) Sum(keys ...interface{}) *GraphTraversalValue {
-	if m.error != nil {
-		return NewGraphTraversalValue(m.GraphTraversal, nil, m.error)
-	}
-
-	if len(keys) > 0 {
-		if len(keys) != 1 {
-			return NewGraphTraversalValue(m.GraphTraversal, nil, fmt.Errorf("Sum requires 1 parameter"))
-		}
-
-		key, ok := keys[0].(string)
-		if !ok {
-			return NewGraphTraversalValue(m.GraphTraversal, nil, errors.New("Argument of Sum must be a string"))
-		}
-
-		var total int64
-		for _, metrics := range m.metrics {
-			for _, metric := range metrics {
-				value, err := metric.GetFieldInt64(key)
-				if err != nil {
-					NewGraphTraversalValue(m.GraphTraversal, nil, err)
-				}
-				total += value
-			}
-		}
-		return NewGraphTraversalValue(m.GraphTraversal, total)
-	}
-
-	total := common.TimedMetric{}
-	for _, metrics := range m.metrics {
-		for _, metric := range metrics {
-			if total.Metric == nil {
-				total.Metric = metric.Metric
-			} else {
-				total.Metric.Add(metric.Metric)
-			}
-
-			if total.Start == 0 || total.Start > metric.Start {
-				total.Start = metric.Start
-			}
-
-			if total.Last == 0 || total.Last < metric.Last {
-				total.Last = metric.Last
-			}
-		}
-	}
-
-	return NewGraphTraversalValue(m.GraphTraversal, &total)
-}
-
-func aggregateMetrics(a, b []*common.TimedMetric) []*common.TimedMetric {
-	var result []*common.TimedMetric
-	boundA, boundB := len(a)-1, len(b)-1
-
-	var i, j int
-	for i <= boundA || j <= boundB {
-		if i > boundA && j <= boundB {
-			return append(result, b[j:]...)
-		} else if j > boundB && i <= boundA {
-			return append(result, a[i:]...)
-		} else if a[i].Last < b[j].Start {
-			// metric a is strictly before metric b
-			result = append(result, a[i])
-			i++
-		} else if b[j].Last < a[i].Start {
-			// metric b is strictly before metric a
-			result = append(result, b[j])
-			j++
-		} else {
-			start := a[i].Start
-			last := a[i].Last
-			if a[i].Start > b[j].Start {
-				start = b[j].Start
-				last = b[j].Last
-			}
-
-			// in case of an overlap then summing using the smallest start/last slice
-			var metric = a[i].Metric
-			metric.Add(b[j].Metric)
-
-			result = append(result, &common.TimedMetric{
-				Metric:    metric,
-				TimeSlice: *common.NewTimeSlice(start, last),
-			})
-			i++
-			j++
-		}
-	}
-	return result
-}
-
-// Aggregates merges multiple metrics array into one by summing overlapping
-// metrics. It returns a unique array will all the aggregated metrics.
-func (m *MetricsTraversalStep) Aggregates() *MetricsTraversalStep {
-	if m.error != nil {
-		return m
-	}
-
-	var aggregated []*common.TimedMetric
-	for _, metrics := range m.metrics {
-		aggregated = aggregateMetrics(aggregated, metrics)
-	}
-
-	return &MetricsTraversalStep{GraphTraversal: m.GraphTraversal, metrics: map[string][]*common.TimedMetric{"Aggregated": aggregated}}
-}
-
-// Values returns the graph metric values
-func (m *MetricsTraversalStep) Values() []interface{} {
-	if len(m.metrics) == 0 {
-		return []interface{}{}
-	}
-	return []interface{}{m.metrics}
-}
-
-// MarshalJSON serialize in JSON
-func (m *MetricsTraversalStep) MarshalJSON() ([]byte, error) {
-	values := m.Values()
-	m.GraphTraversal.RLock()
-	defer m.GraphTraversal.RUnlock()
-	return json.Marshal(values)
-}
-
-// Error returns error present at this step
-func (m *MetricsTraversalStep) Error() error {
-	return m.error
-}
-
-// Count step
-func (m *MetricsTraversalStep) Count(s ...interface{}) *GraphTraversalValue {
-	return NewGraphTraversalValue(m.GraphTraversal, len(m.metrics))
-}
-
-// NewMetricsTraversalStep creates a new tranversal metric step
-func NewMetricsTraversalStep(gt *GraphTraversal, metrics map[string][]*common.TimedMetric, err error) *MetricsTraversalStep {
-	return &MetricsTraversalStep{GraphTraversal: gt, metrics: metrics, error: err}
 }

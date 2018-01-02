@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -184,7 +185,7 @@ func flatMetrictoTimedMetric(flat map[string]interface{}) (*common.TimedMetric, 
 		}
 		tm.Metric = &metric
 	} else {
-		metric := graph.InterfaceMetric{}
+		metric := topology.InterfaceMetric{}
 		if err := mapstructure.WeakDecode(flat, &metric); err != nil {
 			return nil, err
 		}

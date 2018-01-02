@@ -43,40 +43,6 @@ var (
 	Layer2Metadata    = graph.Metadata{"RelationType": Layer2Link}
 )
 
-// NodePath describes a path in the graph between 2 nodes
-type NodePath []*graph.Node
-
-// Marshal Serialize the node path
-func (p NodePath) Marshal() string {
-	var path string
-	for i := len(p) - 1; i >= 0; i-- {
-		if len(path) > 0 {
-			path += "/"
-		}
-
-		metadata := p[i].Metadata()
-		n := metadata["Name"]
-		t := metadata["Type"]
-
-		if n == nil || t == nil {
-			return ""
-		}
-
-		path += fmt.Sprintf("%s[Type=%s]", n.(string), t.(string))
-	}
-
-	return path
-}
-
-// GraphPath returns a string representation of the shortestpath between 2 host on the same owner
-func GraphPath(g *graph.Graph, n *graph.Node) string {
-	nodes := g.LookupShortestPath(n, graph.Metadata{"Type": "host"}, graph.Metadata{"RelationType": "ownership"})
-	if len(nodes) > 0 {
-		return NodePath(nodes).Marshal()
-	}
-	return ""
-}
-
 // NamespaceFromNode returns the namespace name and the path of a node in the graph
 func NamespaceFromNode(g *graph.Graph, n *graph.Node) (string, string, error) {
 	name, _ := n.GetFieldString("Name")

@@ -163,10 +163,6 @@ type (
 	GremlinTraversalStepSum struct {
 		GremlinTraversalContext
 	}
-	// GremlinTraversalStepMetrics step
-	GremlinTraversalStepMetrics struct {
-		GremlinTraversalContext
-	}
 )
 
 var (
@@ -777,16 +773,6 @@ func (s *GremlinTraversalStepSum) Reduce(next GremlinTraversalStep) GremlinTrave
 	return next
 }
 
-// Exec Metrics step
-func (s *GremlinTraversalStepMetrics) Exec(last GraphTraversalStep) (GraphTraversalStep, error) {
-	return invokeStepFnc(last, "Metrics", s)
-}
-
-// Reduce Metrics step
-func (s *GremlinTraversalStepMetrics) Reduce(next GremlinTraversalStep) GremlinTraversalStep {
-	return next
-}
-
 // Exec sequence step
 func (s *GremlinTraversalSequence) Exec(g *graph.Graph, lockGraph bool) (GraphTraversalStep, error) {
 	var step GremlinTraversalStep
@@ -1131,8 +1117,6 @@ func (p *GremlinTraversalParser) parserStep() (GremlinTraversalStep, error) {
 		return &GremlinTraversalStepKeys{gremlinStepContext}, nil
 	case SUM:
 		return &GremlinTraversalStepSum{gremlinStepContext}, nil
-	case METRICS:
-		return &GremlinTraversalStepMetrics{gremlinStepContext}, nil
 	}
 
 	// extensions

@@ -88,7 +88,6 @@ const (
 	VALUES
 	KEYS
 	SUM
-	METRICS
 	ASC
 	DESC
 	IPV4RANGE
@@ -282,8 +281,6 @@ func (s *GremlinTraversalScanner) scanIdent() (tok Token, lit string) {
 		return KEYS, buf.String()
 	case "SUM":
 		return SUM, buf.String()
-	case "METRICS":
-		return METRICS, buf.String()
 	case "ASC":
 		return ASC, buf.String()
 	case "DESC":

@@ -33,9 +33,9 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow/ondemand"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -184,7 +184,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *api.Cap
 }
 
 func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
-	res, err := topology.ExecuteGremlinQuery(o.graph, query)
+	res, err := ge.TopologyGremlinQuery(o.graph, query)
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
 		return nil
@@ -285,7 +285,7 @@ func (o *OnDemandProbeClient) unregisterCapture(capture *api.Capture) {
 	delete(o.captures, capture.UUID)
 	o.Unlock()
 
-	res, err := topology.ExecuteGremlinQuery(o.graph, capture.GremlinQuery)
+	res, err := ge.TopologyGremlinQuery(o.graph, capture.GremlinQuery)
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
 		return

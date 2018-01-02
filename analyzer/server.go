@@ -37,7 +37,7 @@ import (
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
 	"github.com/skydive-project/skydive/flow/storage"
-	ftraversal "github.com/skydive-project/skydive/flow/traversal"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
@@ -278,8 +278,8 @@ func NewServerFromConfig() (*Server, error) {
 	}
 
 	tr := traversal.NewGremlinTraversalParser()
-	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
-	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(tableClient, storage))
+	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
 
 	alertServer := alert.NewAlertServer(alertAPIHandler, subscriberWSServer, g, tr, etcdClient)
 

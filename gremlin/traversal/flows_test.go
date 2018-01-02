@@ -28,7 +28,6 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 func TestFlowMetricsAggregates(t *testing.T) {
@@ -100,7 +99,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 			},
 		},
 	}
-	step := traversal.NewMetricsTraversalStep(nil, metrics, nil)
+	step := NewMetricsTraversalStep(nil, metrics, nil)
 
 	metrics = map[string][]*common.TimedMetric{
 		"Aggregated": {
@@ -142,7 +141,7 @@ func TestFlowMetricsAggregates(t *testing.T) {
 			},
 		},
 	}
-	expected := traversal.NewMetricsTraversalStep(nil, metrics, nil)
+	expected := NewMetricsTraversalStep(nil, metrics, nil)
 
 	got := step.Aggregates()
 

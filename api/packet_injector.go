@@ -31,10 +31,10 @@ import (
 
 	"github.com/abbot/go-http-auth"
 
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/validator"
 )
@@ -204,7 +204,7 @@ func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.Authent
 }
 
 func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
-	res, err := topology.ExecuteGremlinQuery(pi.Graph, gremlinQuery)
+	res, err := ge.TopologyGremlinQuery(pi.Graph, gremlinQuery)
 	if err != nil {
 		return nil
 	}
