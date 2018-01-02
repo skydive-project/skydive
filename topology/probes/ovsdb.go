@@ -282,6 +282,11 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		}
 	}
 
+	statistics := row.New.Fields["statistics"].(libovsdb.OvsMap)
+	for k, v := range statistics.GoMap {
+		tr.AddMetadata("ExtID."+k.(string), v.(string))
+	}
+
 	if port, ok := o.intfToPort[uuid]; ok {
 		if !topology.HaveLayer2Link(o.Graph, port, intf, nil) {
 			topology.AddLayer2Link(o.Graph, port, intf, nil)
@@ -459,7 +464,7 @@ func (o *OvsdbProbe) Stop() {
 // NewOvsdbProbe creates a new graph OVS database probe
 func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProbe {
 	mon := ovsdb.NewOvsMonitor(p, t)
-	mon.ExcludeColumn("statistics")
+	mon.ExcludeColumn("*", "statistics")
 
 	o := &OvsdbProbe{
 		Graph:        g,
