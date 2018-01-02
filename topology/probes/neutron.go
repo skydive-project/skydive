@@ -287,7 +287,14 @@ func (mapper *NeutronProbe) updateNode(node *graph.Node, attrs *attributes) {
 				mapper.graph.RUnlock()
 
 				if len(path) == 0 {
-					return errors.New("Path not found")
+					qbr := strings.Replace(name, "qvo", "qbr", 1)
+					mapper.graph.RLock()
+					path = mapper.graph.LookupShortestPath(node, graph.Metadata{"Name": qbr}, topology.Layer2Metadata)
+					mapper.graph.RUnlock()
+
+					if len(path) == 0 {
+						return errors.New("Path not found")
+					}
 				}
 
 				mapper.graph.Lock()
