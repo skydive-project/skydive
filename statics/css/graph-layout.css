@@ -5,6 +5,12 @@ text {
   stroke-width: 0;
 }
 
+@keyframes dash {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .node {
   stroke: #888;
   stroke-width: 1;

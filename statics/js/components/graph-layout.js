@@ -1192,6 +1192,35 @@ TopologyGraphLayout.prototype = {
     this.tick();
   },
 
+  styleReturn: function(d, values) {
+    if (d.active)
+      return values[0];
+    if (d.warning)
+      return values[1];
+    if (d.alert)
+      return values[2];
+    return values[3];
+  },
+
+  styleStrokeDasharray: function(d) {
+    return this.styleReturn(d, ["20", "20", "20", ""]);
+  },
+
+  styleStrokeDashoffset: function(d) {
+    return this.styleReturn(d, ["80 ", "80", "80", ""]);
+  },
+
+  styleAnimation: function(d) {
+    var animate = function(speed) {
+      return "dash "+speed+" linear forwards infinite";
+    }
+    return this.styleReturn(d, [animate("6s"), animate("3s"), animate("1s"), ""]);
+  },
+
+  styleStroke: function(d) {
+    return this.styleReturn(d, ["YellowGreen", "Yellow", "Tomato", ""]);
+  },
+
   updateBandwidth: function() {
     var self = this;
     var bandwidth = this.bandwidth, defaultInterfaceSpeed = 1048576;
@@ -1252,7 +1281,11 @@ TopologyGraphLayout.prototype = {
       self.g.select("#link-" + d.link.id)
         .classed ("link-label-active", d.active)
         .classed ("link-label-warning", d.warning)
-        .classed ("link-label-alert", d.alert);
+        .classed ("link-label-alert", d.alert)
+        .style("stroke-dasharray", self.styleStrokeDasharray(d))
+        .style("stroke-dashoffset", self.styleStrokeDashoffset(d))
+        .style("animation", self.styleAnimation(d))
+        .style("stroke", self.styleStroke(d));
     });
 
     // force a tick
