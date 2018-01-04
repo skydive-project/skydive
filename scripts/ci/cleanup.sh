@@ -49,6 +49,8 @@ EOF
   systemctl restart orientdb
   systemctl restart etcd
 
+  virsh undefine ci_devstack
+
   virsh net-destroy vagrant0
   virsh net-destroy vagrant-libvirt
 
