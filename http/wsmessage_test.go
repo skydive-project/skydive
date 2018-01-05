@@ -31,6 +31,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type fakeWSMessageServerSubscriptionHandler struct {
@@ -86,6 +87,7 @@ func (f *fakeWSMessageClientSubscriptionHandler) OnWSJSONMessage(c WSSpeaker, m 
 }
 
 func TestWSMessageSubscription(t *testing.T) {
+	logging.InitLogging()
 	httpserver := NewServer("myhost", common.AnalyzerService, "localhost", 59999, NewNoAuthenticationBackend(), "")
 
 	go httpserver.ListenAndServe()
@@ -102,7 +104,7 @@ func TestWSMessageSubscription(t *testing.T) {
 
 	wsclient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
 
-	wspool := NewWSJSONClientPool()
+	wspool := NewWSJSONClientPool("TestWSMessageSubscription")
 	wspool.AddClient(wsclient)
 
 	clientHandler := &fakeWSMessageClientSubscriptionHandler{t: t, received: make(map[string]bool)}

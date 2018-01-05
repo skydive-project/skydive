@@ -69,7 +69,7 @@ type Agent struct {
 // NewAnalyzerWSJSONClientPool creates a new http WebSocket client Pool
 // with authentification
 func NewAnalyzerWSJSONClientPool(authOptions *shttp.AuthenticationOpts) (*shttp.WSJSONClientPool, error) {
-	pool := shttp.NewWSJSONClientPool()
+	pool := shttp.NewWSJSONClientPool("AnalyzerClientPool")
 
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {

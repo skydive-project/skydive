@@ -24,12 +24,14 @@ package http
 
 import (
 	"math/rand"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
 // WSSpeakerPool is the interface that WSSpeaker pools have to implement.
@@ -47,6 +49,7 @@ type WSSpeakerPool interface {
 // WSPool is a connection container. It embed a list of WSSpeaker.
 type WSPool struct {
 	sync.RWMutex
+	name              string
 	quit              chan bool
 	broadcast         chan WSMessage
 	bulkMaxMsgs       int
@@ -86,6 +89,7 @@ func (s *WSPool) OnConnected(c WSSpeaker) {
 
 // OnDisconnected forwards the OnConnected event to event listeners of the pool.
 func (s *WSPool) OnDisconnected(c WSSpeaker) {
+	logging.GetLogger().Debugf("OnDisconnected %s for pool %s ", c.GetHost(), s.GetName())
 	s.eventHandlersLock.RLock()
 	for _, h := range s.eventHandlers {
 		h.OnDisconnected(c)
@@ -102,6 +106,7 @@ func (s *wsIncomerPool) OnDisconnected(c WSSpeaker) {
 
 // AddClient adds the given WSSpeaker to the pool.
 func (s *WSPool) AddClient(c WSSpeaker) error {
+	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
@@ -114,6 +119,7 @@ func (s *WSPool) AddClient(c WSSpeaker) error {
 
 // AddClient adds the given WSSpeaker to the wsIncomerPool.
 func (s *wsIncomerPool) AddClient(c WSSpeaker) error {
+	logging.GetLogger().Debugf("AddClient %s for pool %s", c.GetHost(), s.GetName())
 	s.Lock()
 	s.speakers = append(s.speakers, c)
 	s.Unlock()
@@ -138,10 +144,12 @@ func (s *WSPool) RemoveClient(c WSSpeaker) {
 	defer s.Unlock()
 	for i, ic := range s.speakers {
 		if ic.GetHost() == c.GetHost() {
+			logging.GetLogger().Debugf("Successfully removed client %s for pool %s", c.GetHost(), s.GetName())
 			s.speakers = append(s.speakers[:i], s.speakers[i+1:]...)
 			return
 		}
 	}
+	logging.GetLogger().Debugf("Failed to remove client %s for pool %s", c.GetHost(), s.GetName())
 }
 
 // GetStatus returns the states of the WebSocket clients
@@ -151,6 +159,11 @@ func (s *WSPool) GetStatus() map[string]WSConnStatus {
 		clients[client.GetHost()] = client.GetStatus()
 	}
 	return clients
+}
+
+// GetName returns the name of the pool
+func (s *WSPool) GetName() string {
+	return s.name + " type : [" + (reflect.TypeOf(s).String()) + "]"
 }
 
 // GetSpeakers returns the WSSpeakers of the pool.
@@ -333,11 +346,12 @@ func (s *WSClientPool) ConnectAll() {
 	s.RUnlock()
 }
 
-func newWSPool() *WSPool {
+func newWSPool(name string) *WSPool {
 	bulkMaxMsgs := config.GetConfig().GetInt("ws_bulk_maxmsgs")
 	bulkMaxDelay := config.GetConfig().GetInt("ws_bulk_maxdelay")
 
 	return &WSPool{
+		name:         name,
 		broadcast:    make(chan WSMessage, 100000),
 		quit:         make(chan bool, 2),
 		bulkMaxMsgs:  bulkMaxMsgs,
@@ -345,16 +359,16 @@ func newWSPool() *WSPool {
 	}
 }
 
-func newWSIncomerPool() *wsIncomerPool {
+func newWSIncomerPool(name string) *wsIncomerPool {
 	return &wsIncomerPool{
-		WSPool: newWSPool(),
+		WSPool: newWSPool(name),
 	}
 }
 
 // NewWSClientPool returns a new WSClientPool meaning a pool of outgoing WSClient.
-func NewWSClientPool() *WSClientPool {
+func NewWSClientPool(name string) *WSClientPool {
 	s := &WSClientPool{
-		WSPool: newWSPool(),
+		WSPool: newWSPool(name),
 	}
 
 	s.Start()

@@ -344,8 +344,8 @@ func (s *WSJSONClientPool) Request(host string, request *WSJSONMessage, timeout 
 }
 
 // NewWSJSONClientPool returns a new WSJSONClientPool.
-func NewWSJSONClientPool() *WSJSONClientPool {
-	pool := NewWSClientPool()
+func NewWSJSONClientPool(name string) *WSJSONClientPool {
+	pool := NewWSClientPool(name)
 	return &WSJSONClientPool{
 		WSClientPool:                     pool,
 		wsJSONSpeakerPoolEventDispatcher: newWSJSONSpeakerPoolEventDispatcher(pool),
