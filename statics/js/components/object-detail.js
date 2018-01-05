@@ -51,7 +51,8 @@ Vue.component('object-detail', {
         <div v-else>\
           <span class="object-key">{{key}}</span> :\
           <span class="object-value" :class="typeof(value)" v-html="transform(path ? path+\'.\'+key : key, value)"></span>\
-          <i v-if="links && links[key]" :class="links[key].class" @click="links[key].fnc"></i>\
+          <i v-if="links && links[key]" :class="links[key].class" @click="links[key].onClick" \
+            @mouseover="links[key].onMouseOver" @mouseout="links[key].onMouseOut"></i>\
         </div>\
       </div>\
     </div>\
