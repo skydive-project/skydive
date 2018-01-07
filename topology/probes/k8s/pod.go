@@ -58,6 +58,10 @@ func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
 	return newPodIndex(g, "Name")
 }
 
+func podUID(pod *api.Pod) graph.Identifier {
+	return graph.Identifier(pod.GetUID())
+}
+
 func (p *podCache) newMetadata(pod *api.Pod) graph.Metadata {
 	return newMetadata("pod", pod.GetName(), pod)
 }
@@ -76,7 +80,7 @@ func (p *podCache) onAdd(obj interface{}) {
 		return
 	}
 
-	podNode := p.graph.NewNode(graph.Identifier(pod.GetUID()), p.newMetadata(pod))
+	podNode := p.graph.NewNode(podUID(pod), p.newMetadata(pod))
 
 	containerNodes := p.containerIndexer.Get(pod.Namespace, pod.Name)
 	for _, containerNode := range containerNodes {
@@ -113,7 +117,7 @@ func (p *podCache) OnUpdate(oldObj, newObj interface{}) {
 	p.graph.Lock()
 	defer p.graph.Unlock()
 
-	podNode := p.graph.GetNode(graph.Identifier(newPod.GetUID()))
+	podNode := p.graph.GetNode(podUID(newPod))
 	if podNode == nil {
 		logging.GetLogger().Infof("Updating (re-adding) node for pod{%s}", newPod.GetName())
 		p.onAdd(newObj)
@@ -132,7 +136,7 @@ func (p *podCache) OnDelete(obj interface{}) {
 	if pod, ok := obj.(*api.Pod); ok {
 		logging.GetLogger().Infof("Deleting node for pod{%s}", pod.GetName())
 		p.graph.Lock()
-		if podNode := p.graph.GetNode(graph.Identifier(pod.GetUID())); podNode != nil {
+		if podNode := p.graph.GetNode(podUID(pod)); podNode != nil {
 			p.graph.DelNode(podNode)
 		}
 		p.graph.Unlock()

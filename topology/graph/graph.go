@@ -269,6 +269,15 @@ func GenID() Identifier {
 	return Identifier(u.String())
 }
 
+// GenIDNameBased helper generate a node Identifier
+func GenIDNameBased(namespace, name string) Identifier {
+	ns, _ := uuid.ParseHex(namespace)
+	n := []byte(name)
+	u, _ := uuid.NewV5(ns, n)
+
+	return Identifier(u.String())
+}
+
 func (m *Metadata) String() string {
 	j, _ := json.Marshal(m)
 	return string(j)

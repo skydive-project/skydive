@@ -48,6 +48,10 @@ func (c *nodeCache) newMetadata(node *v1.Node) graph.Metadata {
 	return newMetadata("host", node.GetName(), node)
 }
 
+func hostUID(node *v1.Node) graph.Identifier {
+	return graph.Identifier(node.GetUID())
+}
+
 func (c *nodeCache) onAdd(obj interface{}) {
 	host := obj.(*v1.Node)
 
@@ -61,7 +65,7 @@ func (c *nodeCache) onAdd(obj interface{}) {
 	hostNodes := c.hostIndexer.Get(hostName)
 	var hostNode *graph.Node
 	if len(hostNodes) == 0 {
-		hostNode = c.graph.NewNode(graph.Identifier(host.GetUID()), c.newMetadata(host))
+		hostNode = c.graph.NewNode(hostUID(host), c.newMetadata(host))
 	} else {
 		hostNode = hostNodes[0]
 		addMetadata(c.graph, hostNode, host)
@@ -81,7 +85,7 @@ func (c *nodeCache) OnUpdate(oldObj, newObj interface{}) {
 func (c *nodeCache) OnDelete(obj interface{}) {
 	if node, ok := obj.(*v1.Node); ok {
 		c.graph.Lock()
-		if nodeNode := c.graph.GetNode(graph.Identifier(node.GetUID())); nodeNode != nil {
+		if nodeNode := c.graph.GetNode(hostUID(node)); nodeNode != nil {
 			c.graph.DelNode(nodeNode)
 		}
 		c.graph.Unlock()

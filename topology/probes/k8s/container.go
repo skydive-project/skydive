@@ -71,8 +71,8 @@ func (c *containerCache) newMetadata(pod *v1.Pod, container *v1.Container) graph
 	return m
 }
 
-func makeContainerUID(pod *v1.Pod, containerName string) string {
-	return string(pod.GetUID()) + "-" + containerName
+func containerUID(pod *v1.Pod, containerName string) graph.Identifier {
+	return graph.GenIDNameBased(string(pod.GetUID()), containerName)
 }
 
 func (c *containerCache) linkContainerToPod(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
@@ -88,18 +88,17 @@ func (c *containerCache) linkContainerToPod(pod *v1.Pod, container *v1.Container
 }
 
 func (c *containerCache) onContainerAdd(pod *v1.Pod, container *v1.Container) {
-	uid := makeContainerUID(pod, container.Name)
-
 	c.Lock()
 	defer c.Unlock()
 
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
-	containerNode := c.graph.GetNode(graph.Identifier(uid))
+	uid := containerUID(pod, container.Name)
+	containerNode := c.graph.GetNode(uid)
 	if containerNode == nil {
 		logging.GetLogger().Infof("Creating container{%s}", container.Name)
-		containerNode = c.graph.NewNode(graph.Identifier(uid), c.newMetadata(pod, container))
+		containerNode = c.graph.NewNode(uid, c.newMetadata(pod, container))
 	} else {
 		logging.GetLogger().Infof("container{%s} already exists", container.Name)
 		addMetadata(c.graph, containerNode, container)

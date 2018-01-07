@@ -45,10 +45,14 @@ func (n *networkPolicyCache) newMetadata(np *networking_v1.NetworkPolicy) graph.
 	return newMetadata("networkpolicy", np.GetName(), np)
 }
 
+func netpolUID(np *networking_v1.NetworkPolicy) graph.Identifier {
+	return graph.Identifier(np.GetUID())
+}
+
 func (n *networkPolicyCache) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
-		policyNode := n.graph.NewNode(graph.Identifier(policy.GetUID()), n.newMetadata(policy))
+		policyNode := n.graph.NewNode(netpolUID(policy), n.newMetadata(policy))
 		n.handleNetworkPolicy(policyNode, policy)
 		n.graph.Unlock()
 	}
@@ -56,7 +60,7 @@ func (n *networkPolicyCache) OnAdd(obj interface{}) {
 
 func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
 	if policy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID())); policyNode != nil {
+		if policyNode := n.graph.GetNode(netpolUID(policy)); policyNode != nil {
 			n.graph.Lock()
 			addMetadata(n.graph, policyNode, policy)
 			n.handleNetworkPolicy(policyNode, policy)
@@ -67,7 +71,7 @@ func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
 
 func (n *networkPolicyCache) OnDelete(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID())); policyNode != nil {
+		if policyNode := n.graph.GetNode(netpolUID((policy))); policyNode != nil {
 			n.graph.Lock()
 			n.graph.DelNode(policyNode)
 			n.graph.Unlock()
@@ -93,7 +97,7 @@ func (n *networkPolicyCache) filterPodsByLabels(pods []*api.Pod, selector labels
 
 func (n *networkPolicyCache) mapPods(pods []*api.Pod) (nodes []*graph.Node) {
 	for _, pod := range pods {
-		nodes = append(nodes, n.graph.GetNode(graph.Identifier(pod.GetUID())))
+		nodes = append(nodes, n.graph.GetNode(podUID(pod)))
 	}
 	return
 }
@@ -142,7 +146,7 @@ func (n *networkPolicyCache) handlePod(podNode *graph.Node) {
 
 	for _, policy := range n.cache.List() {
 		policy := policy.(*networking_v1.NetworkPolicy)
-		policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID()))
+		policyNode := n.graph.GetNode(netpolUID(policy))
 		if policyNode == nil {
 			logging.GetLogger().Warningf("Failed to find node for network policy %s", policy.GetName())
 			continue
