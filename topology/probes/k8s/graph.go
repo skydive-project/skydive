@@ -37,6 +37,8 @@ func newMetadata(typ, name string, extra interface{}) graph.Metadata {
 }
 
 func addMetadata(g *graph.Graph, n *graph.Node, extra interface{}) {
-	g.AddMetadata(n, "Manager", "k8s")
-	g.AddMetadata(n, "K8s", extra)
+	tr := g.StartMetadataTransaction(n)
+	defer tr.Commit()
+	tr.AddMetadata("Manager", "k8s")
+	tr.AddMetadata("K8s", extra)
 }
