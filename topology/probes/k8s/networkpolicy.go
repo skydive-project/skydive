@@ -25,10 +25,10 @@ package k8s
 import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	api "k8s.io/api/core/v1"
 	networking_v1 "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
