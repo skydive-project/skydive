@@ -25,6 +25,7 @@ package k8s
 import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -46,46 +47,38 @@ type Probe struct {
 	networkPolicyCache *networkPolicyCache
 	nodeCache          *nodeCache
 	containerCache     *containerCache
+	bundle             *probe.ProbeBundle
 }
 
-type starter interface {
-	Start()
-	Stop()
-}
-
-func (probe *Probe) getSubProbes() []starter {
-	list := []starter{}
+func (p *Probe) makeProbeBundle() *probe.ProbeBundle {
 	subprobes := config.GetConfig().GetStringSlice("k8s.subprobes")
 	logging.GetLogger().Infof("K8s subprobes: %v", subprobes)
+	probes := make(map[string]probe.Probe)
 	for _, i := range subprobes {
 		switch i {
 		case "pod":
-			list = append(list, probe.podCache)
+			probes[i] = p.podCache
 		case "networkpolicy":
-			list = append(list, probe.networkPolicyCache)
+			probes[i] = p.networkPolicyCache
 		case "container":
-			list = append(list, probe.containerCache)
+			probes[i] = p.containerCache
 		case "node":
-			list = append(list, probe.nodeCache)
+			probes[i] = p.nodeCache
 		default:
 			logging.GetLogger().Errorf("skipping unsupported K8s subprobe %v", i)
 		}
 	}
-	return list
+	return probe.NewProbeBundle(probes)
 }
 
 // Start k8s probe
-func (probe *Probe) Start() {
-	for _, sub := range probe.getSubProbes() {
-		sub.Start()
-	}
+func (p *Probe) Start() {
+	p.bundle.Start()
 }
 
 // Stop k8s probe
-func (probe *Probe) Stop() {
-	for _, sub := range probe.getSubProbes() {
-		sub.Stop()
-	}
+func (p *Probe) Stop() {
+	p.bundle.Stop()
 }
 
 // NewProbe create the Probe for tracking k8s events
@@ -95,15 +88,16 @@ func NewProbe(g *graph.Graph) (*Probe, error) {
 		return nil, err
 	}
 
-	probe := &Probe{
+	p := &Probe{
 		graph:  g,
 		client: client,
 	}
 
-	probe.podCache = newPodCache(client, g)
-	probe.networkPolicyCache = newNetworkPolicyCache(client, g, probe.podCache)
-	probe.containerCache = newContainerCache(client, g)
-	probe.nodeCache = newNodeCache(client, g)
+	p.podCache = newPodCache(client, g)
+	p.networkPolicyCache = newNetworkPolicyCache(client, g, p.podCache)
+	p.containerCache = newContainerCache(client, g)
+	p.nodeCache = newNodeCache(client, g)
+	p.bundle = p.makeProbeBundle()
 
-	return probe, nil
+	return p, nil
 }
