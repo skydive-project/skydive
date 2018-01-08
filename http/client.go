@@ -24,6 +24,7 @@ package http
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -96,11 +97,25 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		req.Header = header
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Add("Accept-Encoding", "gzip")
 
 	cookie := http.Cookie{Name: "authtok", Value: c.authClient.AuthToken}
 	req.Header.Set("Cookie", cookie.String())
 
-	return c.client.Do(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return resp, err
+	}
+
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		resp.Body, err = gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resp, nil
 }
 
 func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts) *CrudClient {

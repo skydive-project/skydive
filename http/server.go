@@ -39,6 +39,7 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	gcontext "github.com/gorilla/context"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
 	"github.com/skydive-project/skydive/common"
@@ -146,7 +147,7 @@ func (s *Server) Serve() {
 	defer s.wg.Done()
 	s.wg.Add(1)
 
-	s.Handler = s.Router
+	s.Handler = handlers.CompressHandler(s.Router)
 	if err := s.Server.Serve(s.listener); err != nil {
 		if err == http.ErrServerClosed {
 			return
