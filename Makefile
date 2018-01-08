@@ -1,5 +1,21 @@
-VERSION_CMD='define="";version=`git rev-parse --verify HEAD`;tagname=`git show-ref --tags | grep $$version`;if [ -n "$$tagname" ]; then define=`echo $$tagname | awk -F "/" "{print \\$$NF}" | tr -d [a-z]`;else define=`printf "%.12s" $$version`;fi;tainted=`git ls-files -m | wc -l`;if [ "$$tainted" -gt 0 ]; then define="$${define}-tainted";fi;echo "$$define"'
-VERSION?=$(shell sh -c $(VERSION_CMD))
+define VERSION_CMD = 
+eval ' \
+	define=""; \
+	version=`git rev-parse --verify HEAD`; \
+	tagname=`git show-ref --tags | grep $$version`; \
+	if [ -n "$$tagname" ]; then \
+		define=`echo $$tagname | awk -F "/" "{print \\$$NF}" | tr -d [a-z]`; \
+	else \
+		define=`printf "%.12s" $$version`; \
+	fi; \
+	tainted=`git ls-files -m | wc -l` ; \
+	if [ "$$tainted" -gt 0 ]; then \
+		define="$${define}-tainted"; \
+	fi; \
+	echo "$$define" \
+'
+endef
+VERSION?=$(shell $(VERSION_CMD))
 $(info ${VERSION})
 
 # really Basic Makefile for Skydive
@@ -44,8 +60,27 @@ ifeq ($(WITH_EBPF), true)
   EXTRABINDATA+=probe/ebpf/*.o
 endif
 
-.PHONY: all doc
-all: install
+.PHONY: all install
+all install: skydive
+
+skydive.yml: etc/skydive.yml.default
+	cp $< $@
+	
+.PHONY: debug
+debug: GOFLAGS+=-gcflags='-N -l'
+debug: skydive.cleanup dlv skydive skydive.yml
+
+define skydive_debug
+sudo $$(which dlv) exec $$(which skydive) -- $1 -c skydive.yml
+endef
+
+.PHONY: debug.agent
+debug.agent:
+	$(call skydive_debug,agent)
+
+.PHONY: debug.analyzer
+debug.analyzer:
+	$(call skydive_debug,analyzer)
 
 .proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
 	protoc --go_out . ${FLOW_PROTO_FILES}
@@ -58,24 +93,25 @@ all: install
 	# add flowState to flow generated struct
 	sed -e 's/type Flow struct {/type Flow struct {\n\tXXX_state flowState `json:"-"`/' -i flow/flow.pb.go
 
+BINDATA_DIRS := \
+	statics/* \
+	statics/css/images/* \
+	statics/js/vendor/* \
+	statics/js/components/* \
+	${EXTRABINDATA}
+
 .bindata: builddep ebpf.build
-	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go statics/* statics/css/images/* statics/js/vendor/* statics/js/components/* ${EXTRABINDATA}
+	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 
-define govendor_do
-$(GOVENDOR) $1 \
-	-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
-	${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
-	+local
-endef
+skydive: govendor genlocalfiles dpdk.build contribs
+	$(GOVENDOR) install \
+		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
+		${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
+		+local
 
-.compile:
-	$(call govendor_do,install)
-
-install: govendor genlocalfiles dpdk.build contribs .compile
-
-build: govendor genlocalfiles dpdk.build contribs
-	$(call govendor_do,build)
+skydive.cleanup:
+	go clean -i $(SKYDIVE_GITHUB)
 
 STATIC_DIR :=
 STATIC_LIBS :=
@@ -107,13 +143,15 @@ endif
 
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
 
-static: govendor genlocalfiles
-	rm -f $$GOPATH/bin/skydive
+static: skydive.cleanup govendor genlocalfiles
 	$(GOVENDOR) install \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
 		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS} ${GOTAGS}" \
 		-installsuffix netgo +local || true
+
+contribs.cleanup:
+	$(MAKE) -C contrib/snort clean
 
 contribs:
 	$(MAKE) -C contrib/snort
@@ -188,7 +226,14 @@ fmt: govendor genlocalfiles
 
 vet: govendor
 	@echo "+ $@"
-	test -z "$$($(GOVENDOR) tool vet $$($(GOVENDOR) list -no-status +local | perl -pe 's|$(SKYDIVE_GITHUB)/?||g' | grep -v '^tests') 2>&1 | tee /dev/stderr | grep -v '^flow/probes/afpacket/' | grep -v 'exit status 1')"
+	test -z "$$($(GOVENDOR) tool vet $$( \
+			$(GOVENDOR) list -no-status +local \
+			| perl -pe 's|$(SKYDIVE_GITHUB)/?||g' \
+			| grep -v '^tests') 2>&1 \
+		| tee /dev/stderr \
+		| grep -v '^flow/probes/afpacket/' \
+		| grep -v 'exit status 1' \
+		)"
 
 check: govendor
 	@test -z "$$($(GOVENDOR) list +u)" || \
@@ -213,10 +258,10 @@ builddep:
 
 genlocalfiles: .proto .bindata
 
-clean: test.functionals.cleanup dpdk.cleanup
+clean: skydive.cleanup test.functionals.cleanup dpdk.cleanup contribs.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
-	$(MAKE) -C contrib/snort clean
 
+.PHONY: doc
 doc:
 	mkdir -p /tmp/skydive-doc
 	touch /tmp/skydive-doc/.nojekyll
