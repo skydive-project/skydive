@@ -213,12 +213,12 @@ func (ft *Table) updateMetric(f *Flow, start, last int64) {
 		f.LastUpdateMetric.ABBytes -= lm.ABBytes
 		f.LastUpdateMetric.BAPackets -= lm.BAPackets
 		f.LastUpdateMetric.BABytes -= lm.BABytes
-		f.LastUpdateStart = start
+		f.LastUpdateMetric.Start = start
 	} else {
-		f.LastUpdateStart = f.Start
+		f.LastUpdateMetric.Start = f.Start
 	}
 
-	f.LastUpdateLast = last
+	f.LastUpdateMetric.Last = last
 }
 
 func (ft *Table) update(updateFrom, updateTime int64) {
@@ -230,9 +230,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 			ft.updateMetric(f, updateFrom, updateTime)
 			updatedFlows = append(updatedFlows, f)
 		} else {
-			f.LastUpdateMetric = &FlowMetric{}
-			f.LastUpdateStart = updateFrom
-			f.LastUpdateLast = updateTime
+			f.LastUpdateMetric = &FlowMetric{Start: updateFrom, Last: updateTime}
 		}
 
 		f.XXX_state.lastMetric = f.Metric.Copy()
@@ -395,8 +393,6 @@ func (ft *Table) processFlow(fl *Flow) {
 		fl.BNodeTID = prev.BNodeTID
 
 		fl.LastUpdateMetric = prev.LastUpdateMetric
-		fl.LastUpdateStart = prev.LastUpdateStart
-		fl.LastUpdateLast = prev.LastUpdateLast
 
 		fl.XXX_state = prev.XXX_state
 	}

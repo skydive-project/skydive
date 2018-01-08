@@ -26,8 +26,8 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/api"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -58,7 +58,7 @@ func (u *UserMetadataManager) nodeEvent() {
 }
 
 func (u *UserMetadataManager) applyGremlinExpr(query string) []interface{} {
-	res, err := topology.ExecuteGremlinQuery(u.graph, query)
+	res, err := ge.TopologyGremlinQuery(u.graph, query)
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
 		return nil

@@ -32,8 +32,7 @@ import (
 	valid "gopkg.in/validator.v2"
 
 	"github.com/skydive-project/skydive/flow"
-	ftraversal "github.com/skydive-project/skydive/flow/traversal"
-	"github.com/skydive-project/skydive/topology"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
@@ -86,8 +85,8 @@ func isGremlinExpr(v interface{}, param string) error {
 	}
 
 	tr := traversal.NewGremlinTraversalParser()
-	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
-	tr.AddTraversalExtension(ftraversal.NewFlowTraversalExtension(nil, nil))
+	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(nil, nil))
 
 	if _, err := tr.Parse(strings.NewReader(query)); err != nil {
 		return GremlinNotValid(err)

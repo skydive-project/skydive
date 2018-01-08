@@ -725,19 +725,19 @@ func TestFlowMetricsStep(t *testing.T) {
 			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
 			gremlin += `.V().Has("Name", "br-fms", "Type", "ovsbridge").Flows()`
 
-			tm, err := gh.GetMetric(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum()`)
+			m, err := gh.GetMetric(gremlin + `.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum()`)
 			if err != nil {
 				flows, _ := gh.GetFlows(gremlin)
-				return fmt.Errorf("Could not find metrics (%+v) for flows %s", tm, helper.FlowsToString(flows))
+				return fmt.Errorf("Could not find metrics (%+v) for flows %s", m, helper.FlowsToString(flows))
 			}
-			metric := tm.Metric.(*flow.FlowMetric)
+			metric := m.(*flow.FlowMetric)
 
 			if metric.ABPackets != 15 || metric.BAPackets != 15 || metric.ABBytes < 15360 || metric.BABytes < 15360 {
 				flows, _ := gh.GetFlows(gremlin)
 				return fmt.Errorf("Wrong metric returned, got : %+v for flows %+v, request: %s", metric, helper.FlowsToString(flows), gremlin+`.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum()`)
 			}
 
-			checkMetrics := func(metrics map[string][]*common.TimedMetric) error {
+			checkMetrics := func(metrics map[string][]common.Metric) error {
 				if len(metrics) != 1 {
 					return fmt.Errorf("Should return only one metric array (%+v)", metrics)
 				}
@@ -749,11 +749,11 @@ func TestFlowMetricsStep(t *testing.T) {
 						return fmt.Errorf("metric array should have more that 1 element (%+v)", metricsOfID)
 					}
 
-					for _, tm := range metricsOfID {
-						if tm.Start < start {
+					for _, m := range metricsOfID {
+						if m.GetStart() < start {
 							return fmt.Errorf("Metrics not correctly sorted (%+v)", metricsOfID)
 						}
-						start = tm.Start
+						start = m.GetStart()
 					}
 				}
 

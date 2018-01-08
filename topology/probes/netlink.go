@@ -308,34 +308,6 @@ func (u *NetNsNetLinkProbe) getLinkIPs(link netlink.Link, family int) (ips []str
 	return
 }
 
-func (u *NetNsNetLinkProbe) statsToMap(statistics *netlink.LinkStatistics) map[string]int64 {
-	return map[string]int64{
-		"Collisions":        int64(statistics.Collisions),
-		"Multicast":         int64(statistics.Multicast),
-		"RxBytes":           int64(statistics.RxBytes),
-		"RxCompressed":      int64(statistics.RxCompressed),
-		"RxCrcErrors":       int64(statistics.RxCrcErrors),
-		"RxDropped":         int64(statistics.RxDropped),
-		"RxErrors":          int64(statistics.RxErrors),
-		"RxFifoErrors":      int64(statistics.RxFifoErrors),
-		"RxFrameErrors":     int64(statistics.RxFrameErrors),
-		"RxLengthErrors":    int64(statistics.RxLengthErrors),
-		"RxMissedErrors":    int64(statistics.RxMissedErrors),
-		"RxOverErrors":      int64(statistics.RxOverErrors),
-		"RxPackets":         int64(statistics.RxPackets),
-		"TxAbortedErrors":   int64(statistics.TxAbortedErrors),
-		"TxBytes":           int64(statistics.TxBytes),
-		"TxCarrierErrors":   int64(statistics.TxCarrierErrors),
-		"TxCompressed":      int64(statistics.TxCompressed),
-		"TxDropped":         int64(statistics.TxDropped),
-		"TxErrors":          int64(statistics.TxErrors),
-		"TxFifoErrors":      int64(statistics.TxFifoErrors),
-		"TxHeartbeatErrors": int64(statistics.TxHeartbeatErrors),
-		"TxPackets":         int64(statistics.TxPackets),
-		"TxWindowErrors":    int64(statistics.TxWindowErrors),
-	}
-}
-
 var neighStates = []string{
 	"NUD_INCOMPLETE",
 	"NUD_REACHABLE",
@@ -437,8 +409,8 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		metadata["RoutingTable"] = rt
 	}
 
-	if statistics := link.Attrs().Statistics; statistics != nil {
-		metadata["Statistics"] = u.statsToMap(statistics)
+	if metric := topology.NewInterfaceMetricsFromNetlink(link); metric != nil {
+		metadata["Metric"] = metric
 	}
 
 	if linkType == "veth" {
@@ -827,58 +799,37 @@ Ready:
 
 			for name, node := range links {
 				if link, err := u.handle.LinkByName(name); err == nil {
-					if stats := link.Attrs().Statistics; stats != nil {
-						u.Graph.Lock()
-						tr := u.Graph.StartMetadataTransaction(node)
-
-						// get and update the metadata transaction instance
-						m := tr.Metadata["Statistics"].(map[string]int64)
-						metric := netlink.LinkStatistics{
-							Collisions:        stats.Collisions - uint64(m["Collisions"]),
-							Multicast:         stats.Multicast - uint64(m["Multicast"]),
-							RxBytes:           stats.RxBytes - uint64(m["RxBytes"]),
-							RxCompressed:      stats.RxCompressed - uint64(m["RxCompressed"]),
-							RxCrcErrors:       stats.RxCrcErrors - uint64(m["RxCrcErrors"]),
-							RxDropped:         stats.RxDropped - uint64(m["RxDropped"]),
-							RxErrors:          stats.RxErrors - uint64(m["RxErrors"]),
-							RxFifoErrors:      stats.RxFifoErrors - uint64(m["RxFifoErrors"]),
-							RxFrameErrors:     stats.RxFrameErrors - uint64(m["RxFrameErrors"]),
-							RxLengthErrors:    stats.RxLengthErrors - uint64(m["RxLengthErrors"]),
-							RxMissedErrors:    stats.RxMissedErrors - uint64(m["RxMissedErrors"]),
-							RxOverErrors:      stats.RxOverErrors - uint64(m["RxOverErrors"]),
-							RxPackets:         stats.RxPackets - uint64(m["RxPackets"]),
-							TxAbortedErrors:   stats.TxAbortedErrors - uint64(m["TxAbortedErrors"]),
-							TxBytes:           stats.TxBytes - uint64(m["TxBytes"]),
-							TxCarrierErrors:   stats.TxCarrierErrors - uint64(m["TxCarrierErrors"]),
-							TxCompressed:      stats.TxCompressed - uint64(m["TxCompressed"]),
-							TxDropped:         stats.TxDropped - uint64(m["TxDropped"]),
-							TxErrors:          stats.TxErrors - uint64(m["TxErrors"]),
-							TxFifoErrors:      stats.TxFifoErrors - uint64(m["TxFifoErrors"]),
-							TxHeartbeatErrors: stats.TxHeartbeatErrors - uint64(m["TxHeartbeatErrors"]),
-							TxPackets:         stats.TxPackets - uint64(m["TxPackets"]),
-							TxWindowErrors:    stats.TxWindowErrors - uint64(m["TxWindowErrors"]),
-						}
-						tr.Metadata["Statistics"] = u.statsToMap(stats)
-						lastMetrics := u.statsToMap(&metric)
-
-						changed := false
-						for _, v := range lastMetrics {
-							if v != 0 {
-								changed = true
-								break
-							}
-						}
-						if !changed {
-							u.Graph.Unlock()
-							continue
-						}
-
-						lastMetrics["Start"] = int64(common.UnixMillis(last))
-						lastMetrics["Last"] = int64(common.UnixMillis(now))
-						tr.Metadata["LastMetric"] = lastMetrics
-						tr.Commit()
-						u.Graph.Unlock()
+					currMetric := topology.NewInterfaceMetricsFromNetlink(link)
+					if currMetric == nil || currMetric.IsZero() {
+						continue
 					}
+					currMetric.Last = int64(common.UnixMillis(now))
+
+					u.Graph.Lock()
+					tr := u.Graph.StartMetadataTransaction(node)
+
+					var lastUpdateMetric *topology.InterfaceMetric
+
+					prevMetric, ok := tr.Metadata["Metric"].(*topology.InterfaceMetric)
+					if ok {
+						lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
+					}
+
+					// nothing changed since last update
+					if lastUpdateMetric != nil && lastUpdateMetric.IsZero() {
+						u.Graph.Unlock()
+						continue
+					}
+
+					tr.Metadata["Metric"] = currMetric
+					if lastUpdateMetric != nil {
+						lastUpdateMetric.Start = int64(common.UnixMillis(last))
+						lastUpdateMetric.Last = int64(common.UnixMillis(now))
+						tr.Metadata["LastUpdateMetric"] = lastUpdateMetric
+					}
+
+					tr.Commit()
+					u.Graph.Unlock()
 				}
 			}
 			last = now

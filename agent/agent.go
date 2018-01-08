@@ -39,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/flow/enhancers"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/server"
 	fprobes "github.com/skydive-project/skydive/flow/probes"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
@@ -178,7 +179,7 @@ func NewAgent() (*Agent, error) {
 	wsServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
 
 	tr := traversal.NewGremlinTraversalParser()
-	tr.AddTraversalExtension(topology.NewTopologyTraversalExtension())
+	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 
 	rootNode, err := createRootNode(g)
 	if err != nil {

@@ -32,7 +32,7 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	"github.com/skydive-project/skydive/flow"
-	ftraversal "github.com/skydive-project/skydive/flow/traversal"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -162,7 +162,7 @@ func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.Authenticate
 			writeError(w, http.StatusNotAcceptable, errors.New("Only graph can be outputted as dot"))
 		}
 	} else if strings.Contains(r.Header.Get("Accept"), "vnd.tcpdump.pcap") {
-		if rawPacketsTraversal, ok := res.(*ftraversal.RawPacketsTraversalStep); ok {
+		if rawPacketsTraversal, ok := res.(*ge.RawPacketsTraversalStep); ok {
 			values := rawPacketsTraversal.Values()
 			if len(values) == 0 {
 				writeError(w, http.StatusNotFound, errors.New("No raw packet found, please check your Gremlin request and the time context"))

@@ -28,8 +28,8 @@ import (
 	"github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/common"
+	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -96,7 +96,7 @@ func (c *CaptureAPIHandler) Decorate(resource Resource) {
 	c.Graph.RLock()
 	defer c.Graph.RUnlock()
 
-	res, err := topology.ExecuteGremlinQuery(c.Graph, capture.GremlinQuery)
+	res, err := ge.TopologyGremlinQuery(c.Graph, capture.GremlinQuery)
 	if err != nil {
 		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
 		return

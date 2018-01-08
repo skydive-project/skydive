@@ -37,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -647,14 +648,14 @@ func TestInterfaceMetrics(t *testing.T) {
 			}
 
 			var start, tx int64
-			for _, tm := range metrics["Aggregated"] {
-				if tm.Start < start {
+			for _, m := range metrics["Aggregated"] {
+				if m.GetStart() < start {
 					j, _ := json.MarshalIndent(metrics, "", "\t")
 					return fmt.Errorf("Metrics not correctly sorted (%+v)", string(j))
 				}
-				start = tm.Start
+				start = m.GetStart()
 
-				im := tm.Metric.(*graph.InterfaceMetric)
+				im := m.(*topology.InterfaceMetric)
 				tx += im.TxPackets
 			}
 
@@ -664,12 +665,12 @@ func TestInterfaceMetrics(t *testing.T) {
 
 			gremlin += `.Sum()`
 
-			tm, err := gh.GetMetric(gremlin)
+			m, err := gh.GetMetric(gremlin)
 			if err != nil {
 				return fmt.Errorf("Could not find metrics with: %s", gremlin)
 			}
 
-			im := tm.Metric.(*graph.InterfaceMetric)
+			im := m.(*topology.InterfaceMetric)
 			if im.TxPackets != 30 {
 				return fmt.Errorf("Expected 30 TxPackets, got %d", tx)
 			}

@@ -41,16 +41,6 @@ import (
 )
 
 const (
-	traversalFlowToken        traversal.Token = 1001
-	traversalHopsToken        traversal.Token = 1002
-	traversalNodesToken       traversal.Token = 1003
-	traversalCaptureNodeToken traversal.Token = 1004
-	traversalAggregatesToken  traversal.Token = 1005
-	traversalRawPacketsToken  traversal.Token = 1006
-	traversalBpfToken         traversal.Token = 1007
-)
-
-const (
 	defaultSortBy = "Last"
 )
 
@@ -507,12 +497,12 @@ func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTr
 }
 
 // Metrics returns flow metric counters
-func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
+func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 	if f.error != nil {
-		return traversal.NewMetricsTraversalStep(nil, nil, f.error)
+		return NewMetricsTraversalStep(nil, nil, f.error)
 	}
 
-	var flowMetrics map[string][]*common.TimedMetric
+	var flowMetrics map[string][]common.Metric
 
 	context := f.GraphTraversal.Graph.GetContext()
 	if context.TimeSlice != nil {
@@ -523,7 +513,7 @@ func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
 			flowFilter := flow.NewFilterForFlowSet(f.flowset)
 			f.flowSearchQuery.Filter = filters.NewAndFilter(f.flowSearchQuery.Filter, flowFilter)
 		} else if f.flowSearchQuery.Filter == nil {
-			return traversal.NewMetricsTraversalStep(nil, nil, errors.New("Unable to filter flows"))
+			return NewMetricsTraversalStep(nil, nil, errors.New("Unable to filter flows"))
 		}
 
 		fr := filters.Range{To: context.TimeSlice.Last}
@@ -538,31 +528,25 @@ func (f *FlowTraversalStep) Metrics() *traversal.MetricsTraversalStep {
 
 		var err error
 		if flowMetrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {
-			return traversal.NewMetricsTraversalStep(nil, nil, f.error)
+			return NewMetricsTraversalStep(nil, nil, f.error)
 		}
 	} else {
-		flowMetrics = make(map[string][]*common.TimedMetric, len(f.flowset.Flows))
-		for _, flow := range f.flowset.Flows {
-			var timedMetric *common.TimedMetric
-			if flow.LastUpdateStart != 0 || flow.LastUpdateLast != 0 {
-				timedMetric = &common.TimedMetric{
-					TimeSlice: *common.NewTimeSlice(flow.LastUpdateStart, flow.LastUpdateLast),
-					Metric:    flow.LastUpdateMetric,
-				}
+		flowMetrics = make(map[string][]common.Metric, len(f.flowset.Flows))
+		for _, f := range f.flowset.Flows {
+			var metric *flow.FlowMetric
+			if f.LastUpdateMetric != nil {
+				metric = f.LastUpdateMetric
 			} else {
 				// if we get empty LastUpdateMetric it means that we got flow not already updated
 				// by the flow table update ticker, so packets between the start of the flow and
 				// the first update.
-				timedMetric = &common.TimedMetric{
-					TimeSlice: *common.NewTimeSlice(flow.Start, flow.Last),
-					Metric:    flow.Metric,
-				}
+				metric = f.Metric
 			}
-			flowMetrics[flow.UUID] = append(flowMetrics[flow.UUID], timedMetric)
+			flowMetrics[f.UUID] = append(flowMetrics[f.UUID], metric)
 		}
 	}
 
-	return traversal.NewMetricsTraversalStep(f.GraphTraversal, flowMetrics, nil)
+	return NewMetricsTraversalStep(f.GraphTraversal, flowMetrics, nil)
 }
 
 // Values returns list of raw packets
@@ -953,7 +937,7 @@ func (s *FlowGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) t
 	}
 
 	switch next.(type) {
-	case *traversal.GremlinTraversalStepMetrics:
+	case *MetricsGremlinTraversalStep:
 		s.metricsNextStep = true
 	case *RawPacketsGremlinTraversalStep:
 		s.rawpacketsNextStep = true
@@ -1048,8 +1032,8 @@ func (s *CaptureNodeGremlinTraversalStep) Context() *traversal.GremlinTraversalC
 // Exec Aggregates step
 func (a *AggregatesGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
 	switch last.(type) {
-	case *traversal.MetricsTraversalStep:
-		mts := last.(*traversal.MetricsTraversalStep)
+	case *MetricsTraversalStep:
+		mts := last.(*MetricsTraversalStep)
 		return mts.Aggregates(), nil
 	}
 
