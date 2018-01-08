@@ -370,6 +370,7 @@ func (f *Flow) LinkType() (layers.LinkType, error) {
 	return 0, errors.New("LinkType unknown")
 }
 
+// Init initializes the flow with the given Timestamp, nodeTID and related UUIDs
 func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
 	f.Start = now
 	f.Last = now
@@ -603,7 +604,6 @@ func (f *Flow) updateTCPMetrics(packet *gopacket.Packet) error {
 	default:
 		logging.GetLogger().Notice("Capture SYN unknown IP version. ignoring")
 		return nil
-
 	}
 
 	captureTime := common.UnixMillis(metadata.CaptureInfo.Timestamp)

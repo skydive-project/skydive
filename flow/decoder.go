@@ -24,6 +24,7 @@ package flow
 
 import (
 	"encoding/binary"
+	"runtime"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -221,4 +222,9 @@ func init() {
 	// MPLS next layer and fails otherwise. Instead, we also tries
 	// to decode it as Ethernet.
 	layers.MPLSPayloadDecoder = layerTypeInMplsEthOrIP
+
+	// linux uses the port 8472 as default port used for vxlan protocol
+	if runtime.GOOS == "linux" {
+		layers.RegisterUDPPortLayerType(layers.UDPPort(8472), layers.LayerTypeVXLAN)
+	}
 }
