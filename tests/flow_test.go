@@ -415,14 +415,14 @@ func TestSFlowSrcDstPath(t *testing.T) {
 			node1, err := gh.GetNode(prefix + `.V().Has("Name", "ssdp-intf1", "Type", "internal").HasKey("TID")`)
 			if err != nil {
 				var res interface{}
-				gh.Query("g", &res)
+				gh.QueryObject("g", &res)
 				return fmt.Errorf("ssdp-intf1 not found, %v", res)
 			}
 
 			node2, err := gh.GetNode(prefix + `.V().Has("Name", "ssdp-intf2", "Type", "internal").HasKey("TID")`)
 			if err != nil {
 				var res interface{}
-				gh.Query("G", &res)
+				gh.QueryObject("G", &res)
 				return fmt.Errorf("ssdp-intf2 not found, %v", res)
 			}
 
@@ -475,7 +475,7 @@ func TestFlowGremlin(t *testing.T) {
 			}
 
 			var count int64
-			gh.Query(prefix+`.V().Has("Name", "br-fg", "Type", "ovsbridge").Count()`, &count)
+			gh.QueryObject(prefix+`.V().Has("Name", "br-fg", "Type", "ovsbridge").Count()`, &count)
 			if count != 1 {
 				return fmt.Errorf("Should return 1, got: %d", count)
 			}
@@ -510,7 +510,7 @@ func TestFlowGremlin(t *testing.T) {
 				return fmt.Errorf("Should return one source node, got %d", len(nodes))
 			}
 
-			gh.Query(prefix+`.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`").Count()`, &count)
+			gh.QueryObject(prefix+`.V().Has("Name", "br-fg", "Type", "ovsbridge").Flows().Has("NodeTID", "`+tid+`").Count()`, &count)
 			if int(count) != len(flows) {
 				return fmt.Errorf("Gremlin count doesn't correspond to the number of flows, got: %v, expected: %v", len(flows), count)
 			}
@@ -1685,7 +1685,7 @@ func TestFlowSumStep(t *testing.T) {
 			gremlin += `.V().Has("Name", "br-sum", "Type", "ovsbridge").Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Sum("Metric.ABPackets")`
 
 			var s interface{}
-			if err := gh.Query(gremlin, &s); err != nil {
+			if err := gh.QueryObject(gremlin, &s); err != nil {
 				return fmt.Errorf("Error while retriving SUM: %v", err)
 			}
 			sum, _ := s.(json.Number).Int64()

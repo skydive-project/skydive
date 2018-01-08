@@ -62,7 +62,27 @@ func (g *GremlinQueryHelper) Request(query string, header http.Header) (*http.Re
 }
 
 // Query the topology API
-func (g *GremlinQueryHelper) Query(query string, values interface{}) error {
+func (g *GremlinQueryHelper) QueryRaw(query string) ([]byte, error) {
+	resp, err := g.Request(query, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error while reading response: %s", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s: %s", resp.Status, string(data))
+	}
+
+	return data, nil
+}
+
+// QueryObject the topology API and deserialize into value
+func (g *GremlinQueryHelper) QueryObject(query string, value interface{}) error {
 	resp, err := g.Request(query, nil)
 	if err != nil {
 		return err
@@ -74,7 +94,7 @@ func (g *GremlinQueryHelper) Query(query string, values interface{}) error {
 		return fmt.Errorf("%s: %s", resp.Status, string(data))
 	}
 
-	if err = common.JSONDecode(resp.Body, values); err != nil {
+	if err = common.JSONDecode(resp.Body, value); err != nil {
 		return err
 	}
 
@@ -84,7 +104,7 @@ func (g *GremlinQueryHelper) Query(query string, values interface{}) error {
 // GetNodes from the Gremlin query
 func (g *GremlinQueryHelper) GetNodes(query string) ([]*graph.Node, error) {
 	var values []interface{}
-	if err := g.Query(query, &values); err != nil {
+	if err := g.QueryObject(query, &values); err != nil {
 		return nil, err
 	}
 
@@ -127,7 +147,7 @@ func (g *GremlinQueryHelper) GetNode(query string) (node *graph.Node, _ error) {
 
 // GetFlows form the Gremlin query
 func (g *GremlinQueryHelper) GetFlows(query string) (flows []*flow.Flow, err error) {
-	err = g.Query(query, &flows)
+	err = g.QueryObject(query, &flows)
 	return
 }
 
@@ -178,7 +198,7 @@ func flatMetrictoTimedMetric(flat map[string]interface{}) (*common.TimedMetric, 
 func (g *GremlinQueryHelper) GetMetrics(query string) (map[string][]*common.TimedMetric, error) {
 	flat := []map[string][]map[string]interface{}{}
 
-	if err := g.Query(query, &flat); err != nil {
+	if err := g.QueryObject(query, &flat); err != nil {
 		return nil, err
 	}
 
@@ -206,7 +226,7 @@ func (g *GremlinQueryHelper) GetMetrics(query string) (map[string][]*common.Time
 func (g *GremlinQueryHelper) GetMetric(query string) (*common.TimedMetric, error) {
 	flat := map[string]interface{}{}
 
-	if err := g.Query(query, &flat); err != nil {
+	if err := g.QueryObject(query, &flat); err != nil {
 		return nil, err
 	}
 
