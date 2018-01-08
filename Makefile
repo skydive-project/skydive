@@ -87,11 +87,11 @@ debug.analyzer:
 	protoc --go_out . ${FILTERS_PROTO_FILES}
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
-	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i flow/flow.pb.go
+	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i '' flow/flow.pb.go
 	# do not export LastRawPackets used internally
-	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i flow/flow.pb.go
+	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i '' flow/flow.pb.go
 	# add flowState to flow generated struct
-	sed -e 's/type Flow struct {/type Flow struct {\n\tXXX_state flowState `json:"-"`/' -i flow/flow.pb.go
+	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i '' flow/flow.pb.go
 
 BINDATA_DIRS := \
 	statics/* \

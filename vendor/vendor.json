@@ -1557,9 +1557,9 @@
 			"revisionTime": "2017-08-21T15:13:55Z"
 		},
 		{
-			"checksumSHA1": "JCH45h0NMsN7LFN18mwjzNgDaYI=",
+			"checksumSHA1": "qf37dJzNS2iXycH62ukEw+cleZY=",
 			"path": "github.com/vishvananda/netns",
-			"revision": "604eaf189ee867d8c147fafc28def2394e878d25"
+			"revision": "be1fbeda19366dea804f00efff2dd73a1642fdcc"
 		},
 		{
 			"checksumSHA1": "B9K+5clCq0PU8n8/utbKT0QjQyU=",

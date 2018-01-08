@@ -81,6 +81,18 @@ int open_raw_socket_in_netns(int curns, int newns, const char *name)
 
   return fd;
 }
+#elif __APPLE__
+#include <stdlib.h>
+
+int open_raw_socket(const char *name)
+{
+   return 0; // UNIMPLEMENTED
+}
+
+int open_raw_socket_in_netns(int curns, int newns, const char *name)
+{
+   return 0; // UNIMPLEMENTED
+}
 #endif
 */
 import "C"
