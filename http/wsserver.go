@@ -66,6 +66,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 	if host == "" {
 		host = r.RemoteAddr
 	}
+	logging.GetLogger().Debugf("Serving messages for client %s for pool %s", host, s.GetName())
 
 	s.wsIncomerPool.RLock()
 	c := s.GetSpeakerByHost(host)
@@ -95,7 +96,7 @@ func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedReq
 // NewWSServer returns a new WSServer.
 func NewWSServer(server *Server, endpoint string) *WSServer {
 	s := &WSServer{
-		wsIncomerPool: newWSIncomerPool(), // server inherites from a WSSpeaker pool
+		wsIncomerPool: newWSIncomerPool(endpoint), // server inherites from a WSSpeaker pool
 		incomerHandler: func(c *websocket.Conn, a *auth.AuthenticatedRequest) WSSpeaker {
 			return defaultIncomerHandler(c, a)
 		},

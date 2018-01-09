@@ -91,7 +91,7 @@ func TestSubscription(t *testing.T) {
 	defer wsserver.Stop()
 
 	wsclient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
-	wspool := NewWSClientPool()
+	wspool := NewWSClientPool("TestSubscription")
 
 	wspool.AddClient(wsclient)
 

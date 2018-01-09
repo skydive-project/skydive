@@ -370,7 +370,7 @@ func NewTopologyReplicationEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.Au
 		Graph:  g,
 		cached: cached,
 		in:     pool,
-		out:    shttp.NewWSJSONClientPool(),
+		out:    shttp.NewWSJSONClientPool("TopologyReplicationEndpoint"),
 		conns:  make(map[string]shttp.WSSpeaker),
 	}
 	t.replicateMsg.Store(true)
