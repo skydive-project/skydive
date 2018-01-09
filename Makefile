@@ -96,6 +96,7 @@ debug.analyzer:
 	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i.bak flow/flow.pb.go
 	# add flowState to flow generated struct
 	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i.bak flow/flow.pb.go
+	gofmt -s -w flow/flow.pb.go
 
 BINDATA_DIRS := \
 	statics/* \
