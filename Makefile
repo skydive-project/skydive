@@ -60,6 +60,10 @@ ifeq ($(WITH_EBPF), true)
   EXTRABINDATA+=probe/ebpf/*.o
 endif
 
+ifeq ($(WITH_PROF), true)
+	BUILDTAGS+=prof
+endif
+
 .PHONY: all install
 all install: skydive
 
