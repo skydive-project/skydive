@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/socketplane/libovsdb"
 
@@ -140,6 +141,32 @@ func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row 
 	}
 	if bridge != nil {
 		o.Graph.DelNode(bridge)
+	}
+}
+
+// NewInterfaceMetricsFromNetlink returns a new InterfaceMetric object using
+// values of netlink.
+func newInterfaceMetricsFromOVSDB(stats libovsdb.OvsMap) *topology.InterfaceMetric {
+	setInt64 := func(k string) int64 {
+		if v, ok := stats.GoMap[k]; ok {
+			return int64(v.(float64))
+		}
+		return 0
+	}
+
+	return &topology.InterfaceMetric{
+		Collisions:    setInt64("collisions"),
+		RxBytes:       setInt64("rx_bytes"),
+		RxCrcErrors:   setInt64("rx_crc_err"),
+		RxDropped:     setInt64("rx_dropped"),
+		RxErrors:      setInt64("rx_errors"),
+		RxFrameErrors: setInt64("rx_frame_err"),
+		RxOverErrors:  setInt64("rx_over_err"),
+		RxPackets:     setInt64("rx_packets"),
+		TxBytes:       setInt64("tx_bytes"),
+		TxDropped:     setInt64("tx_dropped"),
+		TxErrors:      setInt64("tx_errors"),
+		TxPackets:     setInt64("tx_packets"),
 	}
 }
 
@@ -282,9 +309,30 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		}
 	}
 
-	statistics := row.New.Fields["statistics"].(libovsdb.OvsMap)
-	for k, v := range statistics.GoMap {
-		tr.AddMetadata("ExtID."+k.(string), v.(string))
+	if field, ok := row.New.Fields["statistics"]; ok {
+		now := time.Now()
+
+		statistics := field.(libovsdb.OvsMap)
+		currMetric := newInterfaceMetricsFromOVSDB(statistics)
+		currMetric.Last = int64(common.UnixMillis(now))
+
+		var prevMetric, lastUpdateMetric *topology.InterfaceMetric
+
+		if ovs, ok := tr.Metadata["Ovs"]; ok {
+			prevMetric, ok = ovs.(map[string]interface{})["Metric"].(*topology.InterfaceMetric)
+			if ok {
+				lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
+			}
+		}
+
+		tr.AddMetadata("Ovs.Metric", currMetric)
+
+		// nothing changed since last update
+		if lastUpdateMetric != nil && !lastUpdateMetric.IsZero() {
+			lastUpdateMetric.Start = prevMetric.Last
+			lastUpdateMetric.Last = int64(common.UnixMillis(now))
+			tr.AddMetadata("Ovs.LastUpdateMetric", lastUpdateMetric)
+		}
 	}
 
 	if port, ok := o.intfToPort[uuid]; ok {
@@ -465,6 +513,7 @@ func (o *OvsdbProbe) Stop() {
 func NewOvsdbProbe(g *graph.Graph, n *graph.Node, p string, t string) *OvsdbProbe {
 	mon := ovsdb.NewOvsMonitor(p, t)
 	mon.ExcludeColumn("*", "statistics")
+	mon.IncludeColumn("Interface", "statistics")
 
 	o := &OvsdbProbe{
 		Graph:        g,

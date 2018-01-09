@@ -141,6 +141,25 @@ label {
   margin-top: 0px;
 }
 
+.left-panel h1 a, .left-panel h1 a:hover {
+  color: #fff;
+  text-decoration: none;
+}
+
+.left-panel h2 {
+  font-size: 1.0em;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.left-panel .bg-warning {
+  background-color: #333;
+}
+
+.left-panel .text-warning {
+  color: #fff;
+}
+
 .sub-left-panel {
   border-radius: 5px;
   background-color: #111;
@@ -532,4 +551,5 @@ ul.dropdown-menu .fa.pull-right {
   display: inline-block;
   width: 100%;
   font-weight: bold;
+  color: #fff;
 }
