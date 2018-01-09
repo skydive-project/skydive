@@ -183,8 +183,8 @@ Vue.component('inject-form', {
 
     type: function(newVal, oldVal) {
       if(newVal.slice(-1) != oldVal.slice(-1)) {
-        if(this.srcNode != null) this.srcIP = this.getIP(this.srcNode);
-        if(this.dstNode != null) this.dstIP = this.getIP(this.dstNode);
+        if(this.srcNode !== null) this.srcIP = this.getIP(this.srcNode);
+        if(this.dstNode !== null) this.dstIP = this.getIP(this.dstNode);
       }
     }
 
@@ -204,9 +204,9 @@ Vue.component('inject-form', {
       md = node.metadata;
       ipFamily = this.type.slice(-1);
       if (ipFamily == "4" && "IPV4" in md) {
-        return md["IPV4"][0];
+        return md.IPV4[0];
       } else if (ipFamily == "6" && "IPV6" in md) {
-        return md["IPV6"][0];
+        return md.IPV6[0];
       } else {
         return "";
       }
@@ -236,7 +236,7 @@ Vue.component('inject-form', {
         return;
       }
       if (this.mode == "random") {
-        this.payload = (new Array(this.payloadlength)).join("x").toString()
+        this.payload = (new Array(this.payloadlength)).join("x").toString();
       }
       $.ajax({
         dataType: "json",
@@ -265,6 +265,9 @@ Vue.component('inject-form', {
       .fail(function(e) {
         self.$error({message: 'Packet injection error: ' + e.responseText});
       });
+
+      self.highlightNode(self.node1, false);
+      self.highlightNode(self.node2, false);
     },
 
   }
