@@ -1,3 +1,5 @@
+// +build linux
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -150,6 +152,8 @@ var AllInOne = &cobra.Command{
 }
 
 func init() {
+	RootCmd.AddCommand(AllInOne)
+
 	var uid uint32
 
 	skydivePath, _ := osext.Executable()

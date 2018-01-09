@@ -1,3 +1,5 @@
+// +build linux
+
 /*
  * Copyright (C) 2015 Red Hat, Inc.
  *
@@ -69,6 +71,8 @@ var Analyzer = &cobra.Command{
 }
 
 func init() {
+	RootCmd.AddCommand(Analyzer)
+
 	Analyzer.Flags().String("listen", "127.0.0.1:8082", "address and port for the analyzer API")
 	config.GetConfig().BindPFlag("analyzer.listen", Analyzer.Flags().Lookup("listen"))
 }

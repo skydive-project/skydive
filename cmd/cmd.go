@@ -66,9 +66,6 @@ func init() {
 	RootCmd.PersistentFlags().StringArrayVarP(&CfgFiles, "conf", "c", []string{}, "location of Skydive agent config files")
 	RootCmd.PersistentFlags().StringVarP(&cfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
 	RootCmd.AddCommand(VersionCmd)
-	RootCmd.AddCommand(Agent)
-	RootCmd.AddCommand(Analyzer)
 	RootCmd.AddCommand(Client)
-	RootCmd.AddCommand(AllInOne)
 	RootCmd.AddCommand(BashCompletion)
 }
