@@ -104,11 +104,13 @@ BINDATA_DIRS := \
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 
-skydive: govendor genlocalfiles dpdk.build contribs
+compile:
 	$(GOVENDOR) install \
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
 		${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
 		+local
+
+skydive: govendor genlocalfiles dpdk.build contribs compile
 
 skydive.cleanup:
 	go clean -i $(SKYDIVE_GITHUB)
