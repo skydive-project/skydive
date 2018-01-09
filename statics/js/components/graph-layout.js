@@ -792,6 +792,11 @@ TopologyGraphLayout.prototype = {
   },
 
   onNodeClick: function(d) {
+    if (this.selectedEdge) {
+      this.selectedEdge = null;
+      this.notifyHandlers('edgeSelected', this.selectedEdge);
+    }
+
     if (d3.event.shiftKey) return this.onNodeShiftClick(d);
     if (d3.event.altKey) return this.collapseByNode(d);
 
@@ -804,6 +809,11 @@ TopologyGraphLayout.prototype = {
   },
 
   onEdgeClick: function(e) {
+    if (this.selectedNode) {
+      this.unselectNode(this.selectedNode);
+      this.notifyHandlers('nodeSelected', this.selectedNode);
+    }
+
     if(e.collapse) return;
     if(this.selectedEdge === e) return;
     this.selectedEdge = e;
