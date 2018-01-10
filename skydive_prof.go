@@ -1,4 +1,4 @@
-// +build !prof
+// +build prof
 
 /*
  * Copyright (C) 2016 Red Hat, Inc.
@@ -25,9 +25,36 @@
 package main
 
 import (
+	"log"
+	"os"
+	"os/signal"
+	"runtime/pprof"
+	"syscall"
+
 	"github.com/skydive-project/skydive/cmd"
 )
 
+func profile(c chan os.Signal) {
+	for {
+		<-c
+		f, err := os.Create("/tmp/skydive-cpu.prof")
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		log.Println("CPU profiling Started")
+		<-c
+		pprof.StopCPUProfile()
+		log.Println("CPU profiling Stopped")
+	}
+}
+
 func main() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGUSR1)
+	go profile(c)
+
 	cmd.RootCmd.Execute()
 }
