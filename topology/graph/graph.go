@@ -272,8 +272,7 @@ func GenID() Identifier {
 // GenIDNameBased helper generate a node Identifier
 func GenIDNameBased(namespace, name string) Identifier {
 	ns, _ := uuid.ParseHex(namespace)
-	n := []byte(name)
-	u, _ := uuid.NewV5(ns, n)
+	u, _ := uuid.NewV5(ns, []byte(name))
 
 	return Identifier(u.String())
 }
