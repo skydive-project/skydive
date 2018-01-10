@@ -39,7 +39,7 @@ type podCache struct {
 	*kubeCache
 	graph            *graph.Graph
 	containerIndexer *graph.MetadataIndexer
-	hostIndexer      *graph.MetadataIndexer
+	nodeIndexer      *graph.MetadataIndexer
 }
 
 func newPodIndex(g *graph.Graph, by string) *graph.MetadataIndexer {
@@ -66,12 +66,12 @@ func (p *podCache) newMetadata(pod *api.Pod) graph.Metadata {
 	return newMetadata("pod", pod.GetName(), pod)
 }
 
-func (p *podCache) linkPodToHost(pod *api.Pod, podNode *graph.Node) {
-	hostNodes := p.hostIndexer.Get(pod.Spec.NodeName)
-	if len(hostNodes) == 0 {
+func (p *podCache) linkPodToNode(pod *api.Pod, podNode *graph.Node) {
+	nodeNodes := p.nodeIndexer.Get(pod.Spec.NodeName)
+	if len(nodeNodes) == 0 {
 		return
 	}
-	linkPodToHost(p.graph, hostNodes[0], podNode)
+	linkPodToNode(p.graph, nodeNodes[0], podNode)
 }
 
 func (p *podCache) onAdd(obj interface{}) {
@@ -87,7 +87,7 @@ func (p *podCache) onAdd(obj interface{}) {
 		p.graph.Link(podNode, containerNode, podToContainerMetadata)
 	}
 
-	p.linkPodToHost(pod, podNode)
+	p.linkPodToNode(pod, podNode)
 }
 
 func (p *podCache) OnAdd(obj interface{}) {
@@ -126,7 +126,7 @@ func (p *podCache) OnUpdate(oldObj, newObj interface{}) {
 
 	logging.GetLogger().Infof("Updating node for pod{%s}", newPod.GetName())
 	if oldPod.Spec.NodeName == "" && newPod.Spec.NodeName != "" {
-		p.linkPodToHost(newPod, podNode)
+		p.linkPodToNode(newPod, podNode)
 	}
 
 	addMetadata(p.graph, podNode, newPod)
@@ -143,14 +143,14 @@ func (p *podCache) OnDelete(obj interface{}) {
 	}
 }
 
-func linkPodsToHost(g *graph.Graph, host *graph.Node, pods []*graph.Node) {
+func linkPodsToNode(g *graph.Graph, host *graph.Node, pods []*graph.Node) {
 	for _, pod := range pods {
-		linkPodToHost(g, host, pod)
+		linkPodToNode(g, host, pod)
 	}
 }
 
-func linkPodToHost(g *graph.Graph, host, pod *graph.Node) {
-	topology.AddOwnershipLink(g, host, pod, nil)
+func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
+	topology.AddOwnershipLink(g, node, pod, nil)
 }
 
 func (p *podCache) List() (pods []*api.Pod) {
@@ -169,13 +169,13 @@ func (p *podCache) GetByKey(key string) *api.Pod {
 
 func (p *podCache) Start() {
 	p.containerIndexer.AddEventListener(p)
-	p.hostIndexer.AddEventListener(p)
+	p.nodeIndexer.AddEventListener(p)
 	p.kubeCache.Start()
 }
 
 func (p *podCache) Stop() {
 	p.containerIndexer.RemoveEventListener(p)
-	p.hostIndexer.RemoveEventListener(p)
+	p.nodeIndexer.RemoveEventListener(p)
 	p.kubeCache.Stop()
 }
 
@@ -183,7 +183,7 @@ func newPodCache(client *kubeClient, g *graph.Graph) *podCache {
 	p := &podCache{
 		graph:            g,
 		containerIndexer: newContainerIndexer(g),
-		hostIndexer:      newHostIndexer(g),
+		nodeIndexer:      newNodeIndexer(g),
 	}
 	p.kubeCache = client.getCacheFor(client.Core().RESTClient(), &api.Pod{}, "pods", p)
 	return p
