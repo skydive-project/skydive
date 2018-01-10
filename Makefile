@@ -68,11 +68,11 @@ endif
 all install: skydive
 
 skydive.yml: etc/skydive.yml.default
-	cp $< $@
+	[ -e $@ ] || cp $< $@
 	
 .PHONY: debug
 debug: GOFLAGS+=-gcflags='-N -l'
-debug: skydive.cleanup dlv skydive skydive.yml
+debug: skydive.cleanup skydive skydive.yml
 
 define skydive_debug
 sudo $$(which dlv) exec $$(which skydive) -- $1 -c skydive.yml
