@@ -42,20 +42,20 @@ type podCache struct {
 	nodeIndexer      *graph.MetadataIndexer
 }
 
-func newPodIndex(g *graph.Graph, by string) *graph.MetadataIndexer {
+func newPodIndexer(g *graph.Graph, by string) *graph.MetadataIndexer {
 	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, by)
 }
 
 func newPodIndexerByHost(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndex(g, "Pod.NodeName")
+	return newPodIndexer(g, "Pod.NodeName")
 }
 
 func newPodIndexerByNamespace(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndex(g, "Pod.Namespace")
+	return newPodIndexer(g, "Pod.Namespace")
 }
 
 func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndex(g, "Name")
+	return newPodIndexer(g, "Name")
 }
 
 func podUID(pod *api.Pod) graph.Identifier {
