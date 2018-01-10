@@ -39,7 +39,7 @@ func newMetadata(typ, name string, extra interface{}) graph.Metadata {
 
 func addMetadata(g *graph.Graph, n *graph.Node, extra interface{}) {
 	tr := g.StartMetadataTransaction(n)
-	defer tr.Commit()
 	tr.AddMetadata("Manager", "k8s")
 	tr.AddMetadata("K8s", common.NormalizeValue(extra))
+	tr.Commit()
 }
