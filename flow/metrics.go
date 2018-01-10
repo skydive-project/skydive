@@ -32,6 +32,13 @@ func (fm *FlowMetric) SetLast(last int64) {
 	fm.Last = last
 }
 
+func (fm *FlowMetric) GetStart() int64 {
+	return fm.Start
+}
+func (fm *FlowMetric) GetLast() int64 {
+	return fm.Last
+}
+
 // Copy a flow metric
 func (fm *FlowMetric) Copy() *FlowMetric {
 	return &FlowMetric{
