@@ -37,7 +37,7 @@ func TestServiceAddress(t *testing.T) {
 	if err != nil {
 		t.Errorf("should not return an error: %s", err)
 	}
-	if sa.Addr != "[::1]" || sa.Port != 8080 {
+	if (sa.Addr != "[::1]" && sa.Addr != "127.0.0.1") || sa.Port != 8080 {
 		t.Errorf("expected not found, got: %s", sa)
 	}
 
