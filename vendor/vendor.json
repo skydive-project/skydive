@@ -671,6 +671,12 @@
 			"revisionTime": "2017-07-04T05:34:23Z"
 		},
 		{
+			"checksumSHA1": "Z2LEpah3ZMTYNpRy7Rd+tI+T+W0=",
+			"path": "github.com/fatih/structs",
+			"revision": "f5faa72e73092639913f5833b75e1ac1d6bc7a63",
+			"revisionTime": "2017-10-20T06:48:19Z"
+		},
+		{
 			"checksumSHA1": "LtBBfn+Uw7/gaB2tVsrLRBTprdo=",
 			"path": "github.com/fsnotify/fsnotify",
 			"revision": "30411dbcefb7a1da7e84f75530ad3abe4011b4f8",
@@ -807,7 +813,7 @@
 			"revisionTime": "2016-07-27T17:26:17Z"
 		},
 		{
-			"checksumSHA1": "me40nSy9NBr9MmAwe5vDvTgSVZs=",
+			"checksumSHA1": "GENxfNGiSzB9hzo2fPZkI4F/Zzg=",
 			"path": "github.com/google/btree",
 			"revision": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
@@ -825,14 +831,14 @@
 			"revisionTime": "2017-11-28T22:01:57Z"
 		},
 		{
-			"checksumSHA1": "Uvt0pTvpmwUw0EwDiJm0AiTd754=",
+			"checksumSHA1": "ORc1X58pM+oNj08y5wXask2sV4c=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
 			"revision": "67a21c4470a0598531a769727aef40b870ffa128",
 			"revisionTime": "2017-11-28T22:01:57Z"
 		},
 		{
-			"checksumSHA1": "NNhvUjsdyYOMWHlYjcw7KrIaJH8=",
+			"checksumSHA1": "Zq24NvykkROxoBM3vum5unM6TTI=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcap",
 			"revision": "67a21c4470a0598531a769727aef40b870ffa128",
@@ -1212,7 +1218,7 @@
 			"revisionTime": "2013-11-06T22:25:44Z"
 		},
 		{
-			"checksumSHA1": "k1I8piNXcsrel3JptVnKykNJXBY=",
+			"checksumSHA1": "jHOLsfeMPcX84YQB2MXBqXFntBg=",
 			"path": "github.com/kr/pty",
 			"revision": "95d05c1eef33a45bd58676b6ce28d105839b8d0b",
 			"revisionTime": "2017-10-06T17:48:01Z"
@@ -1782,7 +1788,7 @@
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
-			"checksumSHA1": "/oZpHfYc+ZgOwYAhlvcMhmETYpw=",
+			"checksumSHA1": "TVEkpH3gq84iQ39I4R+mlDwjuVI=",
 			"path": "golang.org/x/sys/unix",
 			"revision": "99f16d856c9836c42d24e7ab64ea72916925fa97",
 			"revisionTime": "2017-03-08T15:04:45Z"
@@ -1806,19 +1812,19 @@
 			"revisionTime": "2017-09-13T16:58:53Z"
 		},
 		{
-			"checksumSHA1": "tk+lpF2CDV7e5RwwRY5ZTCGrd9o=",
+			"checksumSHA1": "iB6/RoQIzBaZxVi+t7tzbkwZTlo=",
 			"path": "golang.org/x/text/unicode/bidi",
 			"revision": "1cbadb444a806fd9430d14ad08967ed91da4fa0a",
 			"revisionTime": "2017-09-13T19:45:57Z"
 		},
 		{
-			"checksumSHA1": "TisxVXIAh3Hb6QdUOMso4wdqAQU=",
+			"checksumSHA1": "OwypTTxsp/HEwbfXq9yMR4fACRM=",
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "02704b6b714738b763ba478766eb55a4b4851cd4",
 			"revisionTime": "2016-04-13T10:07:35Z"
 		},
 		{
-			"checksumSHA1": "U1OTBlgTRUe9ZdMsbISL1E+eMm8=",
+			"checksumSHA1": "mfeW9NCKg58o6w5bbXPvpixpIw0=",
 			"path": "golang.org/x/text/width",
 			"revision": "ab5ac5f9a8deb4855a60fab02bc61a4ec770bd49",
 			"revisionTime": "2017-09-13T16:58:53Z"
@@ -1934,6 +1940,10 @@
 			"checksumSHA1": "2MXUjMNL4Zr28Gom3V3BJxdtiSQ=",
 			"path": "gopkg.in/yaml.v2",
 			"revision": "bef53efd0c76e49e6de55ead051f886bea7e9420"
+		},
+		{
+			"path": "http://github.com/fatih/structs",
+			"revision": ""
 		},
 		{
 			"checksumSHA1": "2AkXviX+M3zAqe5Lo7sZZgY2TRg=",

@@ -23,6 +23,7 @@
 package k8s
 
 import (
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -32,7 +33,7 @@ func newMetadata(typ, name string, extra interface{}) graph.Metadata {
 		"Probe":   "k8s",
 		"Manager": "k8s",
 		"Name":    name,
-		"K8s":     extra,
+		"K8s":     common.NormalizeValue(extra),
 	}
 }
 
@@ -40,5 +41,5 @@ func addMetadata(g *graph.Graph, n *graph.Node, extra interface{}) {
 	tr := g.StartMetadataTransaction(n)
 	defer tr.Commit()
 	tr.AddMetadata("Manager", "k8s")
-	tr.AddMetadata("K8s", extra)
+	tr.AddMetadata("K8s", common.NormalizeValue(extra))
 }

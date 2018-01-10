@@ -36,6 +36,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fatih/structs"
 )
 
 var (
@@ -235,26 +237,35 @@ func NormalizeIPForUrl(ip net.IP) string {
 
 // NormalizeValue returns a version of the passed value
 // that can be safely marshalled to JSON
-func NormalizeValue(v interface{}) interface{} {
-	switch v := v.(type) {
+func NormalizeValue(obj interface{}) interface{} {
+	if structs.IsStruct(obj) {
+		obj = structs.Map(obj)
+	}
+	switch v := obj.(type) {
 	case map[string]interface{}:
+		m := make(map[string]interface{}, len(v))
 		for key, value := range v {
-			v[key] = NormalizeValue(value)
+			SetField(m, key, NormalizeValue(value))
 		}
+		return m
 	case map[interface{}]interface{}:
 		m := make(map[string]interface{}, len(v))
 		for key, value := range v {
-			key := key.(string)
-			value = NormalizeValue(value)
-			m[key] = value
+			SetField(m, key.(string), NormalizeValue(value))
+		}
+		return m
+	case map[string]string:
+		m := make(map[string]interface{}, len(v))
+		for key, value := range v {
+			SetField(m, key, value)
 		}
 		return m
 	case []interface{}:
-		for i, value := range v {
-			v[i] = NormalizeValue(value)
+		for i, val := range v {
+			v[i] = NormalizeValue(val)
 		}
 	}
-	return v
+	return obj
 }
 
 // JSONDecode wrapper to UseNumber during JSON decoding
