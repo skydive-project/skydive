@@ -25,7 +25,6 @@ package k8s
 import (
 	"sync"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -65,9 +64,9 @@ func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 
 func (c *containerCache) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
 	m := newMetadata("container", container.Name, container)
-	common.SetField(m, DockerNameField, container.Name)
-	common.SetField(m, DockerPodNamespaceField, pod.GetNamespace())
-	common.SetField(m, DockerPodNameField, pod.GetName())
+	m.SetField(DockerNameField, container.Name)
+	m.SetField(DockerPodNamespaceField, pod.GetNamespace())
+	m.SetField(DockerPodNameField, pod.GetName())
 	return m
 }
 
