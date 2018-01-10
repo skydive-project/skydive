@@ -54,10 +54,17 @@ type WSJSONMessage struct {
 	UUID      string `json:",omitempty"`
 	Obj       *json.RawMessage
 	Status    int
+	value     interface{}
 }
 
 // Marshal serializes the WSJSONMessage into a JSON string.
 func (g WSJSONMessage) Marshal() []byte {
+	if g.Obj == nil {
+		b, _ := json.Marshal(g.value)
+		raw := json.RawMessage(b)
+		g.Obj = &raw
+	}
+
 	j, _ := json.Marshal(g)
 	return j
 }
@@ -70,15 +77,12 @@ func (g WSJSONMessage) Bytes() []byte {
 // Reply returns a reply message with the given value, type and status.
 // Basically it return a new WSJSONMessage with the correct Namespace and UUID.
 func (g *WSJSONMessage) Reply(v interface{}, kind string, status int) *WSJSONMessage {
-	b, _ := json.Marshal(v)
-	raw := json.RawMessage(b)
-
 	return &WSJSONMessage{
 		Namespace: g.Namespace,
 		UUID:      g.UUID,
-		Obj:       &raw,
 		Type:      kind,
 		Status:    status,
+		value:     v,
 	}
 }
 
@@ -93,15 +97,12 @@ func NewWSJSONMessage(ns string, tp string, v interface{}, uuids ...string) *WSJ
 		u = v4.String()
 	}
 
-	b, _ := json.Marshal(v)
-	raw := json.RawMessage(b)
-
 	return &WSJSONMessage{
 		Namespace: ns,
 		Type:      tp,
 		UUID:      u,
-		Obj:       &raw,
 		Status:    http.StatusOK,
+		value:     v,
 	}
 }
 
