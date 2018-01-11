@@ -27,8 +27,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/skydive-project/skydive/analyzer"
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 
@@ -41,7 +41,7 @@ var StatusCmd = &cobra.Command{
 	Short: "Show analyzer status",
 	Long:  "Show analyzer status",
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
@@ -60,7 +60,7 @@ var StatusCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var status analyzer.AnalyzerStatus
+		var status types.AnalyzerStatus
 		if err := common.JSONDecode(resp.Body, &status); err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)

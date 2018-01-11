@@ -31,7 +31,7 @@ import (
 
 	"github.com/socketplane/libovsdb"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -40,7 +40,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/sflow"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/probes"
+	ovsprobe "github.com/skydive-project/skydive/topology/probes/ovsdb"
 )
 
 // OvsSFlowProbe describes a SFlow probe from OVS switch
@@ -244,7 +244,7 @@ func (o *OvsSFlowProbesHandler) UnregisterSFlowProbeFromBridge(bridgeUUID string
 }
 
 // RegisterProbeOnBridge registers a new probe on the OVS bridge
-func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, capture *api.Capture) error {
+func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid string, capture *types.Capture) error {
 	headerSize := flow.DefaultCaptureLength
 	if capture.HeaderSize != 0 {
 		headerSize = uint32(capture.HeaderSize)
@@ -299,7 +299,7 @@ func isOvsBridge(n *graph.Node) bool {
 }
 
 // RegisterProbe registers a probe on a graph node
-func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+func (o *OvsSFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)
@@ -354,7 +354,7 @@ func NewOvsSFlowProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator, tb 
 	if probe == nil {
 		return nil, errors.New("Agent.ovssflow probe depends on agent.ovsdb topology probe: agent.ovssflow probe can't start properly")
 	}
-	p := probe.(*probes.OvsdbProbe)
+	p := probe.(*ovsprobe.OvsdbProbe)
 
 	allocator, err := sflow.NewSFlowAgentAllocator()
 	if err != nil {

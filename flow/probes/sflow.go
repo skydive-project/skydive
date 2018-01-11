@@ -27,7 +27,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/sflow"
@@ -75,7 +75,7 @@ func (d *SFlowProbesHandler) UnregisterProbe(n *graph.Node, e FlowProbeEventHand
 }
 
 // RegisterProbe registers a probe in the graph
-func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	var tid string
 	if tid, _ = n.GetFieldString("TID"); tid == "" {
 		return fmt.Errorf("No TID for node %v", n)

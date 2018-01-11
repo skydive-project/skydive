@@ -32,7 +32,7 @@ import (
 
 	cache "github.com/pmylund/go-cache"
 	"github.com/skydive-project/skydive/analyzer"
-	"github.com/skydive-project/skydive/api"
+	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"

@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -51,7 +51,7 @@ func TestPacketInjector(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) (err error) {
-			packet := &api.PacketParamsReq{
+			packet := &types.PacketParamsReq{
 				Src:   "G.V().Has('Name', 'pi-eth-src')",
 				Dst:   "G.V().Has('Name', 'pi-eth-dst')",
 				Type:  "icmp4",

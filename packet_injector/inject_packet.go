@@ -208,7 +208,7 @@ func InjectPacket(pp *PacketParams, g *graph.Graph) (string, error) {
 		for i := int64(0); i < pp.Count; i++ {
 			logging.GetLogger().Debugf("Injecting packet on interface %s", ifName)
 
-			if _, err := syscall.Write(rawSocket.GetFd(), packetData); err != nil {
+			if _, err := rawSocket.Write(packetData); err != nil {
 				if err == syscall.ENXIO {
 					logging.GetLogger().Warningf("Write error: %s", err.Error())
 				} else {

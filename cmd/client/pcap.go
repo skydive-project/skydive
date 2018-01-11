@@ -28,7 +28,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/logging"
 
 	"github.com/spf13/cobra"
@@ -51,7 +51,7 @@ var PcapCmd = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err)
 			os.Exit(1)

@@ -33,9 +33,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skydive-project/skydive/analyzer"
-	"github.com/skydive-project/skydive/api"
-	gclient "github.com/skydive-project/skydive/cmd/client"
+	gclient "github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -43,7 +42,7 @@ import (
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
-func getAnalyzerStatus(client *shttp.CrudClient) (status analyzer.AnalyzerStatus, err error) {
+func getAnalyzerStatus(client *shttp.CrudClient) (status types.AnalyzerStatus, err error) {
 	resp, err := client.Request("GET", "status", nil, nil)
 	if err != nil {
 		return status, err
@@ -301,7 +300,7 @@ func TestScaleHA(t *testing.T) {
 	config.InitConfig("file", []string{"/tmp/skydive-scale/agent-1.yml"})
 	authOptions := &shttp.AuthenticationOpts{}
 
-	client, err := api.NewCrudClientFromConfig(authOptions)
+	client, err := gclient.NewCrudClientFromConfig(authOptions)
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)
 	}
@@ -323,7 +322,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// start a capture
-	capture := api.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
+	capture := types.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
 	capture.SocketInfo = true
 	capture.Type = "pcap"
 	if err = client.Create("capture", capture); err != nil {
@@ -387,7 +386,7 @@ func TestScaleHA(t *testing.T) {
 
 	// switch back to the first analyzer
 	os.Setenv("SKYDIVE_ANALYZERS", "localhost:8082")
-	client, err = api.NewCrudClientFromConfig(authOptions)
+	client, err = gclient.NewCrudClientFromConfig(authOptions)
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err)
 	}
@@ -485,7 +484,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// restart a capture on all eth0
-	capture = api.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
+	capture = types.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
 	capture.SocketInfo = true
 	capture.Type = "pcap"
 	if err = client.Create("capture", capture); err != nil {

@@ -32,7 +32,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
@@ -833,7 +833,7 @@ func TestQueryMetadata(t *testing.T) {
 
 //TestUserMetadata tests user metadata functionality
 func TestUserMetadata(t *testing.T) {
-	umd := api.NewUserMetadata("G.V().Has('Name', 'br-umd', 'Type', 'ovsbridge')", "testKey", "testValue")
+	umd := types.NewUserMetadata("G.V().Has('Name', 'br-umd', 'Type', 'ovsbridge')", "testKey", "testValue")
 	test := &Test{
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-umd", true},

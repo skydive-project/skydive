@@ -37,7 +37,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hydrogen18/stoppableListener"
 	"github.com/skydive-project/skydive/alert"
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
@@ -47,7 +47,7 @@ import (
 
 var alertLock sync.Mutex
 
-func checkMessage(t *testing.T, b []byte, al *api.Alert, nsName string) (bool, error) {
+func checkMessage(t *testing.T, b []byte, al *types.Alert, nsName string) (bool, error) {
 	alertLock.Lock()
 	defer alertLock.Unlock()
 
@@ -79,7 +79,7 @@ func checkMessage(t *testing.T, b []byte, al *api.Alert, nsName string) (bool, e
 func TestAlertWebhook(t *testing.T) {
 	var (
 		err        error
-		al         *api.Alert
+		al         *types.Alert
 		sl         *stoppableListener.StoppableListener
 		wg         sync.WaitGroup
 		testPassed atomic.Value
@@ -129,7 +129,7 @@ func TestAlertWebhook(t *testing.T) {
 			alertLock.Lock()
 			defer alertLock.Unlock()
 
-			al = api.NewAlert()
+			al = types.NewAlert()
 			al.Expression = "G.V().Has('Name', 'alert-ns-webhook', 'Type', 'netns')"
 			al.Action = "http://localhost:8080/"
 
@@ -168,7 +168,7 @@ func TestAlertWebhook(t *testing.T) {
 func TestAlertScript(t *testing.T) {
 	var (
 		err        error
-		al         *api.Alert
+		al         *types.Alert
 		testPassed = false
 	)
 
@@ -205,7 +205,7 @@ func TestAlertScript(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			al = api.NewAlert()
+			al = types.NewAlert()
 			al.Expression = "G.V().Has('Name', 'alert-ns-script', 'Type', 'netns')"
 			al.Action = "file://" + tmpfile.Name()
 
@@ -250,7 +250,7 @@ func TestAlertWithTimer(t *testing.T) {
 	var (
 		err error
 		ws  *websocket.Conn
-		al  *api.Alert
+		al  *types.Alert
 	)
 
 	test := &Test{
@@ -266,7 +266,7 @@ func TestAlertWithTimer(t *testing.T) {
 				return err
 			}
 
-			al = api.NewAlert()
+			al = types.NewAlert()
 			al.Expression = "G.V().Has('Name', 'alert-ns-timer', 'Type', 'netns')"
 			al.Trigger = "duration:+1s"
 
@@ -325,7 +325,7 @@ func TestMultipleTriggering(t *testing.T) {
 	var (
 		err error
 		ws  *websocket.Conn
-		al  *api.Alert
+		al  *types.Alert
 	)
 
 	test := &Test{
@@ -341,7 +341,7 @@ func TestMultipleTriggering(t *testing.T) {
 				return err
 			}
 
-			al = api.NewAlert()
+			al = types.NewAlert()
 			al.Expression = "G.V().Has('Name', 'alert-lo-down', 'Type', 'netns').Out('Name','lo').Values('State')"
 
 			if err = c.client.Create("alert", al); err != nil {

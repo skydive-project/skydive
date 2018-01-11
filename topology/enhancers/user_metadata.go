@@ -25,7 +25,8 @@ package metadata
 import (
 	"sync"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/server"
+	api "github.com/skydive-project/skydive/api/types"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -36,9 +37,9 @@ type UserMetadataManager struct {
 	sync.RWMutex
 	graph.DefaultGraphListener
 	graph           *graph.Graph
-	metadataHandler *api.UserMetadataAPIHandler
+	metadataHandler *server.UserMetadataAPIHandler
 	metadata        map[string]*api.UserMetadata
-	watcher         api.StoppableWatcher
+	watcher         server.StoppableWatcher
 }
 
 //OnNodeAdded event
@@ -126,7 +127,7 @@ func (u *UserMetadataManager) Stop() {
 }
 
 //NewUserMetadataManager creates a new user metadata manager
-func NewUserMetadataManager(g *graph.Graph, u *api.UserMetadataAPIHandler) *UserMetadataManager {
+func NewUserMetadataManager(g *graph.Graph, u *server.UserMetadataAPIHandler) *UserMetadataManager {
 	resources := u.Index()
 	metadata := make(map[string]*api.UserMetadata)
 	for _, resource := range resources {

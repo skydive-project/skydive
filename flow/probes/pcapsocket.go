@@ -28,7 +28,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -84,7 +84,7 @@ func (p *PcapSocketProbe) run() {
 }
 
 // RegisterProbe registers a new probe in the graph
-func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {

@@ -25,7 +25,8 @@ package client
 import (
 	"os"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/client"
+	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -58,7 +59,7 @@ var AddMetadata = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err)
 			os.Exit(1)
@@ -91,7 +92,7 @@ var DeleteMetadata = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err)
 			os.Exit(1)
@@ -111,7 +112,7 @@ var UserMetadataList = &cobra.Command{
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
 		var metadata map[string]api.UserMetadata
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err)
 			os.Exit(1)

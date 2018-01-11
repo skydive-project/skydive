@@ -26,7 +26,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/client"
+	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -71,7 +72,7 @@ var CaptureCreate = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
 			os.Exit(1)
@@ -106,7 +107,7 @@ var CaptureList = &cobra.Command{
 	Long:  "List captures",
 	Run: func(cmd *cobra.Command, args []string) {
 		var captures map[string]api.Capture
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
 			os.Exit(1)
@@ -133,7 +134,7 @@ var CaptureGet = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var capture api.Capture
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
 			os.Exit(1)
@@ -159,7 +160,7 @@ var CaptureDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
 			os.Exit(1)

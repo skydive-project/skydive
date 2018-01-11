@@ -35,7 +35,8 @@ import (
 	"time"
 
 	"github.com/robertkrimen/otto"
-	"github.com/skydive-project/skydive/api"
+	api "github.com/skydive-project/skydive/api/server"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
 	shttp "github.com/skydive-project/skydive/http"
@@ -55,7 +56,7 @@ const (
 )
 
 type GremlinAlert struct {
-	*api.Alert
+	*types.Alert
 	graph             *graph.Graph
 	lastEval          interface{}
 	kind              int
@@ -201,7 +202,7 @@ func (ga *GremlinAlert) Trigger(payload []byte) error {
 	return nil
 }
 
-func NewGremlinAlert(alert *api.Alert, g *graph.Graph, p *traversal.GremlinTraversalParser) (*GremlinAlert, error) {
+func NewGremlinAlert(alert *types.Alert, g *graph.Graph, p *traversal.GremlinTraversalParser) (*GremlinAlert, error) {
 	ts, _ := p.Parse(strings.NewReader(alert.Expression))
 
 	ga := &GremlinAlert{
@@ -338,7 +339,7 @@ func parseTrigger(trigger string) (string, string) {
 	return splits[0], ""
 }
 
-func (a *AlertServer) RegisterAlert(apiAlert *api.Alert) error {
+func (a *AlertServer) RegisterAlert(apiAlert *types.Alert) error {
 	alert, err := NewGremlinAlert(apiAlert, a.Graph, a.gremlinParser)
 	if err != nil {
 		return err
@@ -400,10 +401,10 @@ func (a *AlertServer) UnregisterAlert(id string) {
 	}
 }
 
-func (a *AlertServer) onAPIWatcherEvent(action string, id string, resource api.Resource) {
+func (a *AlertServer) onAPIWatcherEvent(action string, id string, resource types.Resource) {
 	switch action {
 	case "init", "create", "set", "update":
-		if err := a.RegisterAlert(resource.(*api.Alert)); err != nil {
+		if err := a.RegisterAlert(resource.(*types.Alert)); err != nil {
 			logging.GetLogger().Errorf("Failed to register alert: %s", err.Error())
 		}
 	case "expire", "delete":

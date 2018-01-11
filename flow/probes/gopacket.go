@@ -1,3 +1,5 @@
+// +build linux
+
 /*
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -35,7 +37,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -139,7 +141,7 @@ func (p *GoPacketProbe) feedFlowTable(packetSeqChan chan *flow.PacketSequence, b
 	}
 }
 
-func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) {
+func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) {
 	atomic.StoreInt64(&p.state, common.RunningState)
 
 	headerSize := flow.DefaultCaptureLength
@@ -294,7 +296,7 @@ func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkTy
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		return fmt.Errorf("No name for node %v", n)

@@ -25,7 +25,8 @@ package client
 import (
 	"os"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/client"
+	api "github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -55,7 +56,7 @@ var PacketInjectorCmd = &cobra.Command{
 	Long:         "Inject packets",
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
 			os.Exit(1)

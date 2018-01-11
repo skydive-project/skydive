@@ -22,7 +22,9 @@
 
 package ondemand
 
-import "github.com/skydive-project/skydive/api"
+import (
+	api "github.com/skydive-project/skydive/api/types"
+)
 
 // Namespace "OnDemand"
 const (

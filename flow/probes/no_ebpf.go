@@ -25,7 +25,7 @@
 package probes
 
 import (
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -34,7 +34,7 @@ type EBPFProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	return nil
 }
 

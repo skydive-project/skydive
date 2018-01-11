@@ -35,7 +35,7 @@ import (
 	dpdkflow "github.com/intel-go/yanff/flow"
 	"github.com/intel-go/yanff/packet"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/topology"
@@ -53,7 +53,7 @@ type DPDKProbesHandler struct {
 }
 
 // RegisterProbe registers a gopacket probe
-func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+func (p *DPDKProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	tid, _ := n.GetFieldString("TID")
 	if tid == "" {
 		return fmt.Errorf("No TID for node %v", n)

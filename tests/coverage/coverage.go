@@ -23,9 +23,9 @@
 package coverage
 
 import (
-	"github.com/skydive-project/skydive/cmd"
+	"github.com/skydive-project/skydive/cmd/skydive"
 )
 
 func skdyiveCoverage() {
-	cmd.RootCmd.Execute()
+	skydive.RootCmd.Execute()
 }

@@ -33,6 +33,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
+	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -57,7 +58,7 @@ var (
 )
 
 func actionGremlinQuery(s *Session, query string) error {
-	queryHelper := NewGremlinQueryHelper(&s.authenticationOpts)
+	queryHelper := client.NewGremlinQueryHelper(&s.authenticationOpts)
 
 	var values interface{}
 	if err := queryHelper.QueryObject(query, &values); err != nil {

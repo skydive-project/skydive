@@ -32,6 +32,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -48,7 +49,7 @@ var QueryCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		gremlinQuery = args[0]
-		queryHelper := NewGremlinQueryHelper(&AuthenticationOpts)
+		queryHelper := client.NewGremlinQueryHelper(&AuthenticationOpts)
 
 		switch outputFormat {
 		case "json":
