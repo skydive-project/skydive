@@ -143,7 +143,10 @@ func NewMetadataIndexer(g *Graph, m Metadata, indexes ...string) (indexer *Metad
 				}
 				values := make([]interface{}, len(indexes))
 				for i, index := range indexes {
-					v, _ := n.GetField(index)
+					v, err := n.GetField(index)
+					if err != nil {
+						return
+					}
 					values[i] = v
 				}
 				hash = indexer.Hash(values...)
