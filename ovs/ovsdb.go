@@ -63,7 +63,8 @@ type OvsMonitor struct {
 	bridgeCache     map[string]string
 	interfaceCache  map[string]string
 	portCache       map[string]string
-	columnsExcluded map[string]bool
+	columnsExcluded map[string][]string
+	columnsIncluded map[string][]string
 	ticker          *time.Ticker
 	done            chan struct{}
 }
@@ -305,11 +306,50 @@ func (o *OvsMonitor) setMonitorRequests(table string, r *map[string]libovsdb.Mon
 		return errors.New("invalid Database Schema")
 	}
 
-	var columns []string
+	selected := make(map[string]bool)
+
+	// include everything by default
 	for column := range schema.Tables[table].Columns {
-		if _, found := o.columnsExcluded[column]; !found {
-			columns = append(columns, column)
+		selected[column] = true
+	}
+
+	// exclude columns
+	for _, selector := range []string{table, "*"} {
+		if columns, found := o.columnsExcluded[selector]; found {
+			for _, column := range columns {
+				if column == "*" {
+					for column = range schema.Tables[table].Columns {
+						delete(selected, column)
+					}
+				} else {
+					if _, found := schema.Tables[table].Columns[column]; found {
+						delete(selected, column)
+					}
+				}
+			}
 		}
+	}
+
+	// include columns
+	for _, selector := range []string{table, "*"} {
+		if columns, found := o.columnsIncluded[selector]; found {
+			for _, column := range columns {
+				if column == "*" {
+					for column = range schema.Tables[table].Columns {
+						selected[column] = true
+					}
+				} else {
+					if _, found := schema.Tables[table].Columns[column]; found {
+						selected[column] = true
+					}
+				}
+			}
+		}
+	}
+
+	var columns []string
+	for column := range selected {
+		columns = append(columns, column)
 	}
 
 	requests := *r
@@ -334,9 +374,25 @@ func (o *OvsMonitor) AddMonitorHandler(handler OvsMonitorHandler) {
 	o.MonitorHandlers = append(o.MonitorHandlers, handler)
 }
 
-// ExcludeColumn exclude some column to be monitored
-func (o *OvsMonitor) ExcludeColumn(column string) {
-	o.columnsExcluded[column] = true
+// ExcludeColumn excludes the given table/column to be monitored. All columns can be
+// excluded using "*" as column name.
+func (o *OvsMonitor) ExcludeColumn(table, column string) {
+	if _, ok := o.columnsExcluded[table]; !ok {
+		o.columnsExcluded[table] = []string{column}
+	} else {
+		o.columnsExcluded[table] = append(o.columnsExcluded[table], column)
+	}
+}
+
+// IncludeColumn includes the given column in the set of the monitored column.
+// Columns are excluded and then included in that order. By default all the column
+// are included.
+func (o *OvsMonitor) IncludeColumn(table, column string) {
+	if _, ok := o.columnsIncluded[table]; !ok {
+		o.columnsIncluded[table] = []string{column}
+	} else {
+		o.columnsIncluded[table] = append(o.columnsIncluded[table], column)
+	}
 }
 
 func (o *OvsMonitor) monitorOvsdb() error {
@@ -428,7 +484,8 @@ func NewOvsMonitor(protcol string, target string) *OvsMonitor {
 		bridgeCache:     make(map[string]string),
 		interfaceCache:  make(map[string]string),
 		portCache:       make(map[string]string),
-		columnsExcluded: make(map[string]bool),
+		columnsExcluded: make(map[string][]string),
+		columnsIncluded: make(map[string][]string),
 		ticker:          nil,
 		done:            make(chan struct{}),
 	}

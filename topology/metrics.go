@@ -24,7 +24,6 @@ package topology
 
 import (
 	"github.com/skydive-project/skydive/common"
-	"github.com/vishvananda/netlink"
 )
 
 // InterfaceMetric the interface packets counters
@@ -52,8 +51,8 @@ type InterfaceMetric struct {
 	TxHeartbeatErrors int64 `json:"TxHeartbeatErrors,omitempty"`
 	TxPackets         int64 `json:"TxPackets,omitempty"`
 	TxWindowErrors    int64 `json:"TxWindowErrors,omitempty"`
-	Start             int64 `json:"Start"`
-	Last              int64 `json:"Last"`
+	Start             int64 `json:"Start,omitempty"`
+	Last              int64 `json:"Last,omitempty"`
 }
 
 // GetStart returns start time
@@ -221,39 +220,4 @@ func (im *InterfaceMetric) IsZero() bool {
 		im.TxHeartbeatErrors +
 		im.TxPackets +
 		im.TxWindowErrors) == 0
-}
-
-// NewInterfaceMetricsFromNetlink returns a new InterfaceMetric object using
-// values of netlink.
-func NewInterfaceMetricsFromNetlink(link netlink.Link) *InterfaceMetric {
-	statistics := link.Attrs().Statistics
-	if statistics == nil {
-		return nil
-	}
-
-	return &InterfaceMetric{
-		Collisions:        int64(statistics.Collisions),
-		Multicast:         int64(statistics.Multicast),
-		RxBytes:           int64(statistics.RxBytes),
-		RxCompressed:      int64(statistics.RxCompressed),
-		RxCrcErrors:       int64(statistics.RxCrcErrors),
-		RxDropped:         int64(statistics.RxDropped),
-		RxErrors:          int64(statistics.RxErrors),
-		RxFifoErrors:      int64(statistics.RxFifoErrors),
-		RxFrameErrors:     int64(statistics.RxFrameErrors),
-		RxLengthErrors:    int64(statistics.RxLengthErrors),
-		RxMissedErrors:    int64(statistics.RxMissedErrors),
-		RxOverErrors:      int64(statistics.RxOverErrors),
-		RxPackets:         int64(statistics.RxPackets),
-		TxAbortedErrors:   int64(statistics.TxAbortedErrors),
-		TxBytes:           int64(statistics.TxBytes),
-		TxCarrierErrors:   int64(statistics.TxCarrierErrors),
-		TxCompressed:      int64(statistics.TxCompressed),
-		TxDropped:         int64(statistics.TxDropped),
-		TxErrors:          int64(statistics.TxErrors),
-		TxFifoErrors:      int64(statistics.TxFifoErrors),
-		TxHeartbeatErrors: int64(statistics.TxHeartbeatErrors),
-		TxPackets:         int64(statistics.TxPackets),
-		TxWindowErrors:    int64(statistics.TxWindowErrors),
-	}
 }

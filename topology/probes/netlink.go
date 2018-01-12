@@ -359,6 +359,39 @@ func (u *NetNsNetLinkProbe) getNeighbors(index, family int) (neighbors []neighbo
 	return
 }
 
+func newInterfaceMetricsFromNetlink(link netlink.Link) *topology.InterfaceMetric {
+	statistics := link.Attrs().Statistics
+	if statistics == nil {
+		return nil
+	}
+
+	return &topology.InterfaceMetric{
+		Collisions:        int64(statistics.Collisions),
+		Multicast:         int64(statistics.Multicast),
+		RxBytes:           int64(statistics.RxBytes),
+		RxCompressed:      int64(statistics.RxCompressed),
+		RxCrcErrors:       int64(statistics.RxCrcErrors),
+		RxDropped:         int64(statistics.RxDropped),
+		RxErrors:          int64(statistics.RxErrors),
+		RxFifoErrors:      int64(statistics.RxFifoErrors),
+		RxFrameErrors:     int64(statistics.RxFrameErrors),
+		RxLengthErrors:    int64(statistics.RxLengthErrors),
+		RxMissedErrors:    int64(statistics.RxMissedErrors),
+		RxOverErrors:      int64(statistics.RxOverErrors),
+		RxPackets:         int64(statistics.RxPackets),
+		TxAbortedErrors:   int64(statistics.TxAbortedErrors),
+		TxBytes:           int64(statistics.TxBytes),
+		TxCarrierErrors:   int64(statistics.TxCarrierErrors),
+		TxCompressed:      int64(statistics.TxCompressed),
+		TxDropped:         int64(statistics.TxDropped),
+		TxErrors:          int64(statistics.TxErrors),
+		TxFifoErrors:      int64(statistics.TxFifoErrors),
+		TxHeartbeatErrors: int64(statistics.TxHeartbeatErrors),
+		TxPackets:         int64(statistics.TxPackets),
+		TxWindowErrors:    int64(statistics.TxWindowErrors),
+	}
+}
+
 func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	driver, _ := u.ethtool.DriverName(link.Attrs().Name)
 	if driver == "" && link.Type() == "bridge" {
@@ -409,7 +442,7 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		metadata["RoutingTable"] = rt
 	}
 
-	if metric := topology.NewInterfaceMetricsFromNetlink(link); metric != nil {
+	if metric := newInterfaceMetricsFromNetlink(link); metric != nil {
 		metadata["Metric"] = metric
 	}
 
@@ -799,7 +832,7 @@ Ready:
 
 			for name, node := range links {
 				if link, err := u.handle.LinkByName(name); err == nil {
-					currMetric := topology.NewInterfaceMetricsFromNetlink(link)
+					currMetric := newInterfaceMetricsFromNetlink(link)
 					if currMetric == nil || currMetric.IsZero() {
 						continue
 					}

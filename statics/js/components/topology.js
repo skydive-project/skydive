@@ -156,13 +156,41 @@ var TopologyComponent = {
                 <h1>Rules</h1>\
                 <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
               </div>\
-              <div id="interface-metrics" v-show="Object.keys(currentNodeMetric).length">\
-                <h1>Interface metrics</h1>\
-                <metrics-table :object="currentNodeMetric"></metrics-table>\
+              <div v-show="Object.keys(currentNodeMetric).length">\
+                <h1>\
+                  <a data-toggle="collapse" href="#interface-metrics-panel" class="collapse-title">\
+                    Interface metrics\
+                    <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
+                  </a>\
+                </h1>\
+                <div id="interface-metrics-panel" class="collapse in">\
+                  <div id="interface-metrics">\
+                    <h2>Total metrics</h2>\
+                    <metrics-table :object="currentNodeMetric"></metrics-table>\
+                  </div>\
+                  <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastUpdateMetric).length && topologyTimeContext === 0">\
+                    <h2>Last metrics</h2>\
+                    <metrics-table :object="currentNodeLastUpdateMetric"></metrics-table>\
+                  </div>\
+                </div>\
               </div>\
-              <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastUpdateMetric).length && topologyTimeContext === 0">\
-                <h1>Last metrics</h1>\
-                <metrics-table :object="currentNodeLastUpdateMetric"></metrics-table>\
+              <div v-show="Object.keys(currentNodeOvsMetric).length">\
+                <h1>\
+                  <a data-toggle="collapse" href="#ovs-interface-metrics-panel" class="collapse-title">\
+                    OpenvSwitch metrics\
+                    <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
+                  </a>\
+                </h1>\
+                <div id="ovs-interface-metrics-panel" class="collapse">\
+                  <div id="ovs-interface-metrics">\
+                    <h2>Total metrics</h2>\
+                    <metrics-table :object="currentNodeOvsMetric"></metrics-table>\
+                  </div>\
+                  <div id="ovs-last-interface-metrics" v-show="Object.keys(currentNodeOvsLastUpdateMetric).length && topologyTimeContext === 0">\
+                    <h2>Last metrics</h2>\
+                    <metrics-table :object="currentNodeOvsLastUpdateMetric"></metrics-table>\
+                  </div>\
+                </div>\
               </div>\
               <div id="flow-table-panel" v-if="isAnalyzer && currentNodeFlowsQuery">\
                 <h1>Flows</h1>\
@@ -319,23 +347,27 @@ var TopologyComponent = {
 
     currentNodeMetadata: function() {
       if (!this.currentNode) return {};
-      return this.extractMetadata(this.currentNode.metadata, ['LastUpdateMetric', 'Metric']);
+      return this.extractMetadata(this.currentNode.metadata, ['LastUpdateMetric', 'Metric', 'Ovs']);
     },
 
     currentNodeMetric: function() {
       if (!this.currentNode) return {};
-      return this.extractMetadata(this.currentNode.metadata.Metric);
+      return this.normalizeMetric(this.extractMetadata(this.currentNode.metadata.Metric));
     },
 
     currentNodeLastUpdateMetric: function() {
       if (!this.currentNode) return {};
-      var s = this.extractMetadata(this.currentNode.metadata.LastUpdateMetric);
-      ['Start', 'Last'].forEach(function(k) {
-        if (s[k]) {
-          s[k] = new Date(s[k]).toLocaleTimeString();
-        }
-      });
-      return s;
+      return this.normalizeMetric(this.extractMetadata(this.currentNode.metadata.LastUpdateMetric));
+    },
+
+    currentNodeOvsMetric: function() {
+      if (!this.currentNode || !this.currentNode.metadata.Ovs) return {};
+      return this.normalizeMetric(this.extractMetadata(this.currentNode.metadata.Ovs.Metric));
+    },
+
+    currentNodeOvsLastUpdateMetric: function() {
+      if (!this.currentNode || !this.currentNode.metadata.Ovs) return {};
+      return this.normalizeMetric(this.extractMetadata(this.currentNode.metadata.Ovs.LastUpdateMetric));
     },
 
   },
@@ -498,7 +530,6 @@ var TopologyComponent = {
         .then(function(data) {
           data.forEach(function(sg) {
             for (i in sg.Nodes) {
-              self.nodes
               self.$store.commit('emphasize', sg.Nodes[i].ID);
             }
 
@@ -565,6 +596,15 @@ var TopologyComponent = {
 
     toggleCollapseByLevel: function(collapse) {
       this.layout.toggleCollapseByLevel(collapse);
+    },
+
+    normalizeMetric: function(metric) {
+      ['Start', 'Last'].forEach(function(k) {
+        if (metric[k]) {
+          metric[k] = new Date(metric[k]).toLocaleTimeString();
+        }
+      });
+      return metric;
     },
 
     extractMetadata: function(metadata, exclude) {
