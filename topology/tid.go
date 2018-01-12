@@ -55,6 +55,8 @@ func (t *TIDMapper) setTID(parent, child *graph.Node) {
 
 	var key string
 	switch tp {
+	case "ovsbridge", "ovsport":
+		return
 	case "netns":
 		key, _ = child.GetFieldString("Path")
 	default:
@@ -91,9 +93,11 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
 					t.Graph.AddMetadata(n, "TID", u.String())
 				}
-			case "ovsport":
+			case "ovsbridge", "ovsport":
 				if u, _ := n.GetFieldString("UUID"); u != "" {
+
 					tid := string(t.hostID) + u + tp
+
 					u, _ := uuid.NewV5(uuid.NamespaceOID, []byte(tid))
 					t.Graph.AddMetadata(n, "TID", u.String())
 				}
