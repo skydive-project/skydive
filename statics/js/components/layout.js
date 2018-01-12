@@ -26,6 +26,7 @@ var nodeImgMap = setupFixedImages({
   "veth": "veth",
   "bond": "port",
   "container": "docker",
+  "node": "host",
   "pod": "pod",
   "networkpolicy": "networkpolicy",
   "default": "intf",

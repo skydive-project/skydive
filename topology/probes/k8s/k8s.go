@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 IBM Corp.
+ * Copyright 2017 IBM Corp.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -23,49 +23,81 @@
 package k8s
 
 import (
+	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
 const (
-	PodToContainerLink = "pod2container"
-	PolicyToPodLink    = "policy2pod"
+	podToContainerLink = "pod2container"
+	policyToPodLink    = "policy2pod"
 )
 
 var (
-	PodToContainerMetadata = graph.Metadata{"RelationType": PodToContainerLink}
-	PolicyToPodMetadata    = graph.Metadata{"RelationType": PolicyToPodLink}
+	podToContainerMetadata = graph.Metadata{"RelationType": podToContainerLink}
+	policyToPodMetadata    = graph.Metadata{"RelationType": policyToPodLink}
 )
 
-type probe struct {
+// Probe for tracking k8s events
+type Probe struct {
 	graph              *graph.Graph
 	client             *kubeClient
 	podCache           *podCache
 	networkPolicyCache *networkPolicyCache
+	nodeCache          *nodeCache
+	containerCache     *containerCache
+	bundle             *probe.ProbeBundle
 }
 
-func (k8s *probe) Start() {
-	k8s.networkPolicyCache.Start()
-	k8s.podCache.Start()
+func (p *Probe) makeProbeBundle() *probe.ProbeBundle {
+	subprobes := config.GetConfig().GetStringSlice("k8s.subprobes")
+	logging.GetLogger().Infof("K8s subprobes: %v", subprobes)
+	probes := make(map[string]probe.Probe)
+	for _, i := range subprobes {
+		switch i {
+		case "pod":
+			probes[i] = p.podCache
+		case "networkpolicy":
+			probes[i] = p.networkPolicyCache
+		case "container":
+			probes[i] = p.containerCache
+		case "node":
+			probes[i] = p.nodeCache
+		default:
+			logging.GetLogger().Errorf("skipping unsupported K8s subprobe %v", i)
+		}
+	}
+	return probe.NewProbeBundle(probes)
 }
 
-func (k8s *probe) Stop() {
-	k8s.networkPolicyCache.Stop()
-	k8s.podCache.Stop()
+// Start k8s probe
+func (p *Probe) Start() {
+	p.bundle.Start()
 }
 
-func NewProbe(g *graph.Graph) (k8s *probe, err error) {
+// Stop k8s probe
+func (p *Probe) Stop() {
+	p.bundle.Stop()
+}
+
+// NewProbe create the Probe for tracking k8s events
+func NewProbe(g *graph.Graph) (*Probe, error) {
 	client, err := newKubeClient()
 	if err != nil {
 		return nil, err
 	}
 
-	podCache := newPodCache(client, g)
-	networkPolicyCache := newNetworkPolicyCache(client, g, podCache)
+	p := &Probe{
+		graph:  g,
+		client: client,
+	}
 
-	return &probe{
-		graph:              g,
-		client:             client,
-		podCache:           podCache,
-		networkPolicyCache: networkPolicyCache,
-	}, nil
+	p.podCache = newPodCache(client, g)
+	p.networkPolicyCache = newNetworkPolicyCache(client, g, p.podCache)
+	p.containerCache = newContainerCache(client, g)
+	p.nodeCache = newNodeCache(client, g)
+	p.bundle = p.makeProbeBundle()
+
+	return p, nil
 }

@@ -24,6 +24,7 @@ package common
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"testing"
 )
@@ -80,5 +81,58 @@ func TestIPV4Range16(t *testing.T) {
 	ip := "192.169.3.34/24"
 	if re.MatchString(ip) {
 		t.Errorf("%s matches the rexp %s", ip, expr)
+	}
+}
+
+func TestNormalizeStructToMap(t *testing.T) {
+	type (
+		B struct {
+			C1 string
+			C2 string
+			C3 string
+		}
+		A struct {
+			B B
+		}
+	)
+
+	before := A{
+		B: B{
+			C1: "ccc",
+		},
+	}
+
+	expected := map[string]interface{}{
+		"B": map[string]interface{}{
+			"C1": "ccc",
+			"C2": "",
+			"C3": "",
+		},
+	}
+
+	actual := NormalizeValue(before)
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Expected %+v actual %+v", expected, actual)
+	}
+}
+
+func TestNormalizeMapKeys(t *testing.T) {
+	before := map[string]interface{}{
+		"a.b": "A.B",
+		"d":   "D",
+	}
+
+	expected := map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": "A.B",
+		},
+		"d": "D",
+	}
+
+	actual := NormalizeValue(before)
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Expected %+v actual %+v", expected, actual)
 	}
 }

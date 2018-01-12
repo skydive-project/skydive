@@ -269,6 +269,14 @@ func GenID() Identifier {
 	return Identifier(u.String())
 }
 
+// GenIDNameBased helper generate a node Identifier
+func GenIDNameBased(namespace, name string) Identifier {
+	ns, _ := uuid.ParseHex(namespace)
+	u, _ := uuid.NewV5(ns, []byte(name))
+
+	return Identifier(u.String())
+}
+
 func (m *Metadata) String() string {
 	j, _ := json.Marshal(m)
 	return string(j)
@@ -693,6 +701,11 @@ func (g *Graph) DelMetadata(i interface{}, k string) bool {
 	return true
 }
 
+// SetField set metadata value based on dot key ("a.b.c.d" = "ok")
+func (m *Metadata) SetField(k string, v interface{}) bool {
+	return common.SetField(*m, k, v)
+}
+
 func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time) bool {
 	var e *graphElement
 	ge := graphEvent{element: i}
@@ -710,7 +723,7 @@ func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time)
 		return false
 	}
 
-	if !common.SetField(e.metadata, k, v) {
+	if !e.metadata.SetField(k, v) {
 		return false
 	}
 
@@ -732,7 +745,7 @@ func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 
 // AddMetadata in the current transaction
 func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
-	common.SetField(t.Metadata, k, v)
+	t.Metadata.SetField(k, v)
 }
 
 // Commit the current transaction to the graph

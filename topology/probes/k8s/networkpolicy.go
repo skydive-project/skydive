@@ -25,10 +25,10 @@ package k8s
 import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	api "k8s.io/api/core/v1"
 	networking_v1 "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -41,21 +41,18 @@ type networkPolicyCache struct {
 	podIndexer *graph.MetadataIndexer
 }
 
-func (n *networkPolicyCache) getMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
-	return graph.Metadata{
-		"Type":       "networkpolicy",
-		"Manager":    "k8s",
-		"Name":       np.GetName(),
-		"UID":        np.GetUID(),
-		"ObjectMeta": np.ObjectMeta,
-		"Spec":       np.Spec,
-	}
+func (n *networkPolicyCache) newMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
+	return newMetadata("networkpolicy", np.GetName(), np)
+}
+
+func netpolUID(np *networking_v1.NetworkPolicy) graph.Identifier {
+	return graph.Identifier(np.GetUID())
 }
 
 func (n *networkPolicyCache) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
-		policyNode := n.graph.NewNode(graph.Identifier(policy.GetUID()), n.getMetadata(policy))
+		policyNode := n.graph.NewNode(netpolUID(policy), n.newMetadata(policy))
 		n.handleNetworkPolicy(policyNode, policy)
 		n.graph.Unlock()
 	}
@@ -63,9 +60,9 @@ func (n *networkPolicyCache) OnAdd(obj interface{}) {
 
 func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
 	if policy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID())); policyNode != nil {
+		if policyNode := n.graph.GetNode(netpolUID(policy)); policyNode != nil {
 			n.graph.Lock()
-			n.graph.SetMetadata(policyNode, n.getMetadata(policy))
+			addMetadata(n.graph, policyNode, policy)
 			n.handleNetworkPolicy(policyNode, policy)
 			n.graph.Unlock()
 		}
@@ -74,7 +71,7 @@ func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
 
 func (n *networkPolicyCache) OnDelete(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID())); policyNode != nil {
+		if policyNode := n.graph.GetNode(netpolUID((policy))); policyNode != nil {
 			n.graph.Lock()
 			n.graph.DelNode(policyNode)
 			n.graph.Unlock()
@@ -100,7 +97,7 @@ func (n *networkPolicyCache) filterPodsByLabels(pods []*api.Pod, selector labels
 
 func (n *networkPolicyCache) mapPods(pods []*api.Pod) (nodes []*graph.Node) {
 	for _, pod := range pods {
-		nodes = append(nodes, n.graph.GetNode(graph.Identifier(pod.GetUID())))
+		nodes = append(nodes, n.graph.GetNode(podUID(pod)))
 	}
 	return
 }
@@ -121,7 +118,7 @@ func (n *networkPolicyCache) handleNetworkPolicy(policyNode *graph.Node, policy 
 	}
 
 	existingChildren := make(map[graph.Identifier]*graph.Node)
-	for _, container := range n.graph.LookupChildren(policyNode, nil, PolicyToPodMetadata) {
+	for _, container := range n.graph.LookupChildren(policyNode, nil, policyToPodMetadata) {
 		existingChildren[container.ID] = container
 	}
 
@@ -129,7 +126,7 @@ func (n *networkPolicyCache) handleNetworkPolicy(policyNode *graph.Node, policy 
 		if _, found := existingChildren[pod.ID]; found {
 			delete(existingChildren, pod.ID)
 		} else {
-			n.graph.Link(policyNode, pod, PolicyToPodMetadata)
+			n.graph.Link(policyNode, pod, policyToPodMetadata)
 		}
 	}
 
@@ -149,7 +146,7 @@ func (n *networkPolicyCache) handlePod(podNode *graph.Node) {
 
 	for _, policy := range n.cache.List() {
 		policy := policy.(*networking_v1.NetworkPolicy)
-		policyNode := n.graph.GetNode(graph.Identifier(policy.GetUID()))
+		policyNode := n.graph.GetNode(netpolUID(policy))
 		if policyNode == nil {
 			logging.GetLogger().Warningf("Failed to find node for network policy %s", policy.GetName())
 			continue
@@ -163,7 +160,7 @@ func (n *networkPolicyCache) handlePod(podNode *graph.Node) {
 		}
 
 		if toLink {
-			n.graph.Link(policyNode, podNode, PolicyToPodMetadata)
+			n.graph.Link(policyNode, podNode, policyToPodMetadata)
 		} else {
 			n.graph.Unlink(policyNode, podNode)
 		}
@@ -192,7 +189,7 @@ func newNetworkPolicyCache(client *kubeClient, g *graph.Graph, podCache *podCach
 	n := &networkPolicyCache{
 		graph:      g,
 		podCache:   podCache,
-		podIndexer: graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, "Pod.Namespace"),
+		podIndexer: newPodIndexerByNamespace(g),
 	}
 	n.kubeCache = client.getCacheFor(
 		client.ExtensionsV1beta1().RESTClient(),
