@@ -405,12 +405,7 @@ func (c *WSClient) connect() {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	certPEM := config.GetConfig().GetString("agent.X509_cert")
-	keyPEM := config.GetConfig().GetString("agent.X509_key")
-	if certPEM != "" && keyPEM != "" {
-		d.TLSClientConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
-		checkTLSConfig(d.TLSClientConfig)
-	}
+	d.TLSClientConfig = getTLSConfig(false)
 	c.conn, _, err = d.Dial(endpoint, headers)
 
 	if err != nil {

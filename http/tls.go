@@ -26,6 +26,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -34,6 +35,21 @@ func setTLSHeader(w http.ResponseWriter, r *http.Request) {
 	if r.TLS != nil {
 		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 	}
+}
+
+func getTLSConfig(setupRootCA bool) *tls.Config {
+	certPEM := config.GetConfig().GetString("agent.X509_cert")
+	keyPEM := config.GetConfig().GetString("agent.X509_key")
+	var tlsConfig *tls.Config = nil
+	if certPEM != "" && keyPEM != "" {
+		tlsConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
+		if setupRootCA {
+			analyzerCertPEM := config.GetConfig().GetString("analyzer.X509_cert")
+			tlsConfig.RootCAs = common.SetupTLSLoadCertificate(analyzerCertPEM)
+		}
+		checkTLSConfig(tlsConfig)
+	}
+	return tlsConfig
 }
 
 func checkTLSConfig(tlsConfig *tls.Config) {

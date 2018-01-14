@@ -58,14 +58,8 @@ func readBody(resp *http.Response) string {
 
 func getHttpClient() *http.Client {
 	client := &http.Client{}
-	if config.IsTLSenabled() == true {
-		certPEM := config.GetConfig().GetString("agent.X509_cert")
-		keyPEM := config.GetConfig().GetString("agent.X509_key")
-		analyzerCertPEM := config.GetConfig().GetString("analyzer.X509_cert")
-		tlsConfig := common.SetupTLSClientConfig(certPEM, keyPEM)
-		tlsConfig.RootCAs = common.SetupTLSLoadCertificate(analyzerCertPEM)
-		checkTLSConfig(tlsConfig)
-
+	if config.IsTLSenabled() {
+		tlsConfig := getTLSConfig(true)
 		tr := &http.Transport{TLSClientConfig: tlsConfig}
 		client = &http.Client{Transport: tr}
 	}
