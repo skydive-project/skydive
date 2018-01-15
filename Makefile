@@ -114,7 +114,6 @@ compile:
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
 		${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
-	test -e $$GOPATH/bin/skydive-cli || ln -s skydive $$GOPATH/bin/skydive-cli
 
 skydive: govendor genlocalfiles dpdk.build contribs compile
 
@@ -156,7 +155,7 @@ static: skydive.cleanup govendor genlocalfiles
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
 		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS} ${GOTAGS}" \
-		-installsuffix netgo +local || true
+		-installsuffix netgo || true
 
 contribs.cleanup:
 	$(MAKE) -C contrib/snort clean
