@@ -580,7 +580,7 @@ func (u *NetNsNetLinkProbe) onLinkDeleted(link netlink.Link) {
 
 	// case of removing the interface from a bridge
 	if intf != nil {
-		parents := u.Graph.LookupParents(intf, graph.Metadata{"Type": "bridge"}, graph.Metadata{})
+		parents := u.Graph.LookupParents(intf, graph.Metadata{"Type": "bridge"}, nil)
 		for _, parent := range parents {
 			u.Graph.Unlink(parent, intf)
 		}

@@ -126,7 +126,7 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.error)
 	}
 
-	m, err := traversal.SliceToMetadata(s...)
+	m, err := traversal.ParamsToMap(s...)
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
@@ -137,7 +137,13 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	for _, flow := range f.flowset.Flows {
 		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
 			m["TID"] = flow.BNodeTID
-			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+			matcher, err := traversal.MapToMetadataFilter(m)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -154,7 +160,7 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.error)
 	}
 
-	m, err := traversal.SliceToMetadata(s...)
+	m, err := traversal.ParamsToMap(s...)
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
@@ -165,7 +171,13 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	for _, flow := range f.flowset.Flows {
 		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
 			m["TID"] = flow.ANodeTID
-			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+			matcher, err := traversal.MapToMetadataFilter(m)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -182,7 +194,7 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.error)
 	}
 
-	m, err := traversal.SliceToMetadata(s...)
+	m, err := traversal.ParamsToMap(s...)
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
@@ -193,13 +205,25 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 	for _, flow := range f.flowset.Flows {
 		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
 			m["TID"] = flow.ANodeTID
-			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+			matcher, err := traversal.MapToMetadataFilter(m)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
 		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
 			m["TID"] = flow.BNodeTID
-			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+			matcher, err := traversal.MapToMetadataFilter(m)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -216,7 +240,7 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.error)
 	}
 
-	m, err := traversal.SliceToMetadata(s...)
+	m, err := traversal.ParamsToMap()
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
@@ -227,19 +251,37 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 	for _, flow := range f.flowset.Flows {
 		if flow.NodeTID != "" && flow.NodeTID != "*" {
 			m["TID"] = flow.NodeTID
-			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+			matcher, err := traversal.MapToMetadataFilter(m)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
 		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
 			m["TID"] = flow.ANodeTID
-			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+			matcher, err := traversal.MapToMetadataFilter(m)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
 		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
 			m["TID"] = flow.BNodeTID
-			if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+			matcher, err := traversal.MapToMetadataFilter(m)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+
+			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -255,7 +297,7 @@ func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.error)
 	}
 
-	m, err := traversal.SliceToMetadata(s...)
+	m, err := traversal.ParamsToMap(s...)
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
@@ -265,7 +307,13 @@ func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 
 	for _, fl := range f.flowset.Flows {
 		m["TID"] = fl.NodeTID
-		if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+		matcher, err := traversal.MapToMetadataFilter(m)
+		if err != nil {
+			return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+		}
+
+		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 			nodes = append(nodes, node)
 		}
 	}
@@ -301,19 +349,19 @@ func paramsToFilter(params ...interface{}) (*filters.Filter, error) {
 		}
 
 		if k == "Network" || k == "Link" || k == "Transport" {
-			fa, err := traversal.ParamToFilter(k+".A", params[i+1])
+			fa, err := traversal.KeyValueToFilter(k+".A", params[i+1])
 			if err != nil {
 				return nil, err
 			}
 
-			fb, err := traversal.ParamToFilter(k+".B", params[i+1])
+			fb, err := traversal.KeyValueToFilter(k+".B", params[i+1])
 			if err != nil {
 				return nil, err
 			}
 
 			filter = filters.NewOrFilter(fa, fb)
 		} else {
-			f, err := traversal.ParamToFilter(k, params[i+1])
+			f, err := traversal.KeyValueToFilter(k, params[i+1])
 			if err != nil {
 				return nil, err
 			}
@@ -370,7 +418,7 @@ func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraver
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, f.error)
 	}
 
-	m, err := traversal.SliceToMetadata(s...)
+	m, err := traversal.ParamsToMap(s...)
 	if err != nil {
 		return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 	}
@@ -380,7 +428,13 @@ func (f *FlowTraversalStep) CaptureNode(s ...interface{}) *traversal.GraphTraver
 
 	for _, fl := range f.flowset.Flows {
 		m["TID"] = fl.NodeTID
-		if node := f.GraphTraversal.Graph.LookupFirstNode(m); node != nil {
+
+		matcher, err := traversal.MapToMetadataFilter(m)
+		if err != nil {
+			return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+		}
+
+		if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 			nodes = append(nodes, node)
 		}
 	}

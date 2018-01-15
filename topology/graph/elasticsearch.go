@@ -363,13 +363,23 @@ func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elas
 		request["size"] = tsq.PaginationRange.To - tsq.PaginationRange.From
 	}
 
+	must := []map[string]interface{}{}
+
+	if tf := b.client.FormatFilter(tsq.TimeFilter, ""); tf != nil {
+		must = append(must, tf)
+	}
+
+	if f := b.client.FormatFilter(tsq.Filter, ""); f != nil {
+		must = append(must, f)
+	}
+
+	if mf := b.client.FormatFilter(tsq.MetadataFilter, "Metadata"); mf != nil {
+		must = append(must, mf)
+	}
+
 	request["query"] = map[string]interface{}{
 		"bool": map[string]interface{}{
-			"must": []map[string]interface{}{
-				b.client.FormatFilter(tsq.TimeFilter, ""),
-				b.client.FormatFilter(tsq.Filter, ""),
-				b.client.FormatFilter(tsq.MetadataFilter, "Metadata"),
-			},
+			"must": must,
 		},
 	}
 
@@ -438,10 +448,14 @@ func (b *ElasticSearchBackend) SearchEdges(tsq *TimedSearchQuery) (edges []*Edge
 }
 
 // GetEdges returns a list of edges within time slice, matching metadata
-func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge {
-	filter, err := NewFilterForMetadata(m)
-	if err != nil {
-		return []*Edge{}
+func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m GraphElementMatcher) []*Edge {
+	var filter *filters.Filter
+	if m != nil {
+		f, err := m.Filter()
+		if err != nil {
+			return []*Edge{}
+		}
+		filter = f
 	}
 
 	return b.SearchEdges(&TimedSearchQuery{
@@ -452,10 +466,14 @@ func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge
 }
 
 // GetNodes returns a list of nodes within time slice, matching metadata
-func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node {
-	filter, err := NewFilterForMetadata(m)
-	if err != nil {
-		return []*Node{}
+func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m GraphElementMatcher) []*Node {
+	var filter *filters.Filter
+	if m != nil {
+		f, err := m.Filter()
+		if err != nil {
+			return []*Node{}
+		}
+		filter = f
 	}
 
 	return b.SearchNodes(&TimedSearchQuery{
@@ -466,7 +484,7 @@ func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node
 }
 
 // GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadatas
-func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) (parents []*Node, children []*Node) {
+func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) (parents []*Node, children []*Node) {
 	for _, parent := range b.GetNode(e.parent, t) {
 		if parent.MatchMetadata(parentMetadata) {
 			parents = append(parents, parent)
@@ -483,10 +501,14 @@ func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parent
 }
 
 // GetNodeEdges returns a list of a node edges within time slice
-func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
-	metadataFilter, err := NewFilterForMetadata(m)
-	if err != nil {
-		return
+func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m GraphElementMatcher) (edges []*Edge) {
+	var filter *filters.Filter
+	if m != nil {
+		f, err := m.Filter()
+		if err != nil {
+			return []*Edge{}
+		}
+		filter = f
 	}
 
 	return b.SearchEdges(&TimedSearchQuery{
@@ -496,7 +518,7 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Meta
 			SortBy: "Revision",
 		},
 		TimeFilter:     b.getTimeFilter(t),
-		MetadataFilter: metadataFilter,
+		MetadataFilter: filter,
 	})
 }
 

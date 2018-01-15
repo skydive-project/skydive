@@ -133,7 +133,7 @@ func (m *MetadataIndexer) Hash(values ...interface{}) string {
 	return h
 }
 
-func NewMetadataIndexer(g *Graph, m Metadata, indexes ...string) (indexer *MetadataIndexer) {
+func NewMetadataIndexer(g *Graph, m GraphElementMatcher, indexes ...string) (indexer *MetadataIndexer) {
 	indexer = &MetadataIndexer{
 		indexes: indexes,
 		GraphIndexer: NewGraphIndexer(g, func(n *Node) (hash string) {

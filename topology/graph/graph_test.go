@@ -45,22 +45,22 @@ func TestLinks(t *testing.T) {
 	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 
 	g.NewEdge(GenID(), n1, n2, nil)
-	if !g.AreLinked(n1, n2, Metadata{}) {
+	if !g.AreLinked(n1, n2, nil) {
 		t.Error("nodes should be linked")
 	}
 
 	g.Unlink(n1, n2)
-	if g.AreLinked(n1, n2, Metadata{}) {
+	if g.AreLinked(n1, n2, nil) {
 		t.Error("nodes shouldn't be linked")
 	}
 
-	g.Link(n1, n2, Metadata{})
-	if !g.AreLinked(n1, n2, Metadata{}) {
+	g.Link(n1, n2, nil)
+	if !g.AreLinked(n1, n2, nil) {
 		t.Error("nodes should be linked")
 	}
 
 	g.DelNode(n2)
-	if g.AreLinked(n1, n2, Metadata{}) {
+	if g.AreLinked(n1, n2, nil) {
 		t.Error("nodes shouldn't be linked")
 	}
 }
@@ -72,7 +72,7 @@ func TestAreLinkedWithMetadata(t *testing.T) {
 	n2 := g.NewNode(GenID(), Metadata{"Value": 2, "Type": "intf"})
 
 	g.Link(n1, n2, Metadata{"Type": "aaa"})
-	if !g.AreLinked(n1, n2, Metadata{}) {
+	if !g.AreLinked(n1, n2, nil) {
 		t.Error("nodes should be linked")
 	}
 
@@ -95,7 +95,7 @@ func TestBasicLookup(t *testing.T) {
 
 	g.NewEdge(GenID(), n1, n2, nil)
 	g.NewEdge(GenID(), n2, n3, nil)
-	g.Link(n1, n4, Metadata{})
+	g.Link(n1, n4, nil)
 
 	if n1.ID != g.GetNode(n1.ID).ID {
 		t.Error("Wrong node returned")
@@ -143,12 +143,12 @@ func TestHierarchyLookup(t *testing.T) {
 	n3 := g.NewNode(GenID(), Metadata{"Value": 3})
 	n4 := g.NewNode(GenID(), Metadata{"Value": 4, "Name": "Node4"})
 
-	g.Link(n1, n2, Metadata{})
-	g.Link(n2, n3, Metadata{})
-	g.Link(n3, n4, Metadata{})
-	g.Link(n2, n4, Metadata{})
+	g.Link(n1, n2, nil)
+	g.Link(n2, n3, nil)
+	g.Link(n3, n4, nil)
+	g.Link(n2, n4, nil)
 
-	r := g.LookupParents(n4, nil, Metadata{})
+	r := g.LookupParents(n4, nil, nil)
 	if len(r) != 2 {
 		t.Error("Wrong number of nodes returned")
 	}

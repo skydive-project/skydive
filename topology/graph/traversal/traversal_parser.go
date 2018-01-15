@@ -847,7 +847,7 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			metadata, err := SliceToMetadata(metadataParams...)
+			metadata, err := ParamsToMetadata(metadataParams...)
 			if err != nil {
 				return nil, err
 			}

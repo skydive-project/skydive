@@ -83,7 +83,7 @@ func (m *MemoryBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 }
 
 // GetEdgeNodes returns a list of nodes of an edge
-func (m *MemoryBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
+func (m *MemoryBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
 	var parent *MemoryBackendNode
 	if n, ok := m.nodes[e.parent]; ok && n.MatchMetadata(parentMetadata) {
 		parent = n
@@ -120,7 +120,7 @@ func (m *MemoryBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 }
 
 // GetNodeEdges returns a list of edges of a node
-func (m *MemoryBackend) GetNodeEdges(n *Node, t *common.TimeSlice, meta Metadata) []*Edge {
+func (m *MemoryBackend) GetNodeEdges(n *Node, t *common.TimeSlice, meta GraphElementMatcher) []*Edge {
 	edges := []*Edge{}
 
 	if n, ok := m.nodes[n.ID]; ok {
@@ -162,7 +162,7 @@ func (m *MemoryBackend) NodeDeleted(n *Node) (removed bool) {
 }
 
 // GetNodes from the graph backend
-func (m MemoryBackend) GetNodes(t *common.TimeSlice, metadata Metadata) (nodes []*Node) {
+func (m MemoryBackend) GetNodes(t *common.TimeSlice, metadata GraphElementMatcher) (nodes []*Node) {
 	for _, n := range m.nodes {
 		if n.MatchMetadata(metadata) {
 			nodes = append(nodes, n.Node)
@@ -172,7 +172,7 @@ func (m MemoryBackend) GetNodes(t *common.TimeSlice, metadata Metadata) (nodes [
 }
 
 // GetEdges from the graph backend
-func (m MemoryBackend) GetEdges(t *common.TimeSlice, metadata Metadata) (edges []*Edge) {
+func (m MemoryBackend) GetEdges(t *common.TimeSlice, metadata GraphElementMatcher) (edges []*Edge) {
 	for _, e := range m.edges {
 		if e.MatchMetadata(metadata) {
 			edges = append(edges, e.Edge)

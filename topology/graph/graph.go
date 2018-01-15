@@ -73,7 +73,19 @@ type graphEvent struct {
 	listener GraphEventListener
 }
 
-// Metadata describes the graph node metadata type
+// GraphElementMatcher defines an interface used to match an element
+type GraphElementMatcher interface {
+	Match(e *graphElement) bool
+	Filter() (*filters.Filter, error)
+}
+
+// GraphElementFilter implements GraphElementMatcher interface based on filter
+type GraphElementFilter struct {
+	filter *filters.Filter
+}
+
+// Metadata describes the graph node metadata type. It implements GraphElementMatcher
+// based only on Metadata.
 type Metadata map[string]interface{}
 
 // MetadataTransaction describes a metadata(s) transaction in the graph
@@ -110,17 +122,17 @@ type GraphBackend interface {
 	NodeAdded(n *Node) bool
 	NodeDeleted(n *Node) bool
 	GetNode(i Identifier, at *common.TimeSlice) []*Node
-	GetNodeEdges(n *Node, at *common.TimeSlice, m Metadata) []*Edge
+	GetNodeEdges(n *Node, at *common.TimeSlice, m GraphElementMatcher) []*Edge
 
 	EdgeAdded(e *Edge) bool
 	EdgeDeleted(e *Edge) bool
 	GetEdge(i Identifier, at *common.TimeSlice) []*Edge
-	GetEdgeNodes(e *Edge, at *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node)
+	GetEdgeNodes(e *Edge, at *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node)
 
 	MetadataUpdated(e interface{}) bool
 
-	GetNodes(t *common.TimeSlice, m Metadata) []*Node
-	GetEdges(t *common.TimeSlice, m Metadata) []*Edge
+	GetNodes(t *common.TimeSlice, m GraphElementMatcher) []*Node
+	GetEdges(t *common.TimeSlice, m GraphElementMatcher) []*Edge
 
 	WithContext(graph *Graph, context GraphContext) (*Graph, error)
 }
@@ -277,9 +289,62 @@ func GenIDNameBased(namespace, name string) Identifier {
 	return Identifier(u.String())
 }
 
-func (m *Metadata) String() string {
+func (m Metadata) String() string {
 	j, _ := json.Marshal(m)
 	return string(j)
+}
+
+// Match returns true if the the given element matches the metadata.
+func (m Metadata) Match(e *graphElement) bool {
+	for k, v := range m {
+		nv, ok := e.metadata[k]
+		if !ok || !reflect.DeepEqual(nv, v) {
+			return false
+		}
+	}
+	return true
+}
+
+// Filter returns a filter corresponding to the metadata
+func (m Metadata) Filter() (*filters.Filter, error) {
+	var termFilters []*filters.Filter
+	for k, v := range m {
+		switch v := v.(type) {
+		case int64:
+			termFilters = append(termFilters, filters.NewTermInt64Filter(k, v))
+		case string:
+			termFilters = append(termFilters, filters.NewTermStringFilter(k, v))
+		case map[string]interface{}:
+			sm := Metadata(v)
+			filters, err := sm.Filter()
+			if err != nil {
+				return nil, err
+			}
+			termFilters = append(termFilters, filters)
+		default:
+			i, err := common.ToInt64(v)
+			if err != nil {
+				return nil, err
+			}
+			termFilters = append(termFilters, filters.NewTermInt64Filter(k, i))
+		}
+	}
+	return filters.NewAndFilter(termFilters...), nil
+}
+
+// Match returns true if the given element matches the filter.
+func (mf *GraphElementFilter) Match(e *graphElement) bool {
+	return mf.filter.Eval(e)
+}
+
+// Filter returns the filter
+func (mf *GraphElementFilter) Filter() (*filters.Filter, error) {
+	return mf.filter, nil
+}
+
+// NewGraphElementFilter returns a new GraphElementFilter
+func NewGraphElementFilter(f *filters.Filter) *GraphElementFilter {
+	return &GraphElementFilter{filter: f}
 }
 
 func (e *graphElement) Host() string {
@@ -366,22 +431,11 @@ func (e *graphElement) Metadata() Metadata {
 	return e.metadata.Clone()
 }
 
-func (e *graphElement) MatchMetadata(f Metadata) bool {
-	for k, v := range f {
-		switch v := v.(type) {
-		case *filters.Filter:
-			if !v.Eval(e) {
-				return false
-			}
-		default:
-			nv, ok := e.metadata[k]
-			if !ok || !reflect.DeepEqual(nv, v) {
-				return false
-			}
-		}
+func (e *graphElement) MatchMetadata(f GraphElementMatcher) bool {
+	if f == nil {
+		return true
 	}
-
-	return true
+	return f.Match(e)
 }
 
 func parseTime(i interface{}) (t time.Time, err error) {
@@ -776,7 +830,7 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 	return &t
 }
 
-func (g *Graph) getNeighborNodes(n *Node, em Metadata) (nodes []*Node) {
+func (g *Graph) getNeighborNodes(n *Node, em GraphElementMatcher) (nodes []*Node) {
 	t := g.context.TimeSlice
 	for _, e := range g.backend.GetNodeEdges(n, t, em) {
 		parents, childrens := g.backend.GetEdgeNodes(e, t, nil, nil)
@@ -786,7 +840,7 @@ func (g *Graph) getNeighborNodes(n *Node, em Metadata) (nodes []*Node) {
 	return nodes
 }
 
-func (g *Graph) findNodeMatchMetadata(nodesMap map[Identifier]*Node, m Metadata) *Node {
+func (g *Graph) findNodeMatchMetadata(nodesMap map[Identifier]*Node, m GraphElementMatcher) *Node {
 	for _, n := range nodesMap {
 		if n.MatchMetadata(m) {
 			return n
@@ -830,7 +884,7 @@ func (g *Graph) GetNodesMap(t *common.TimeSlice) map[Identifier]*Node {
 }
 
 // LookupShortestPath based on Dijkstra algorithm
-func (g *Graph) LookupShortestPath(n *Node, m Metadata, em Metadata) []*Node {
+func (g *Graph) LookupShortestPath(n *Node, m GraphElementMatcher, em GraphElementMatcher) []*Node {
 	t := g.context.TimeSlice
 	nodesMap := g.GetNodesMap(t)
 	target := g.findNodeMatchMetadata(nodesMap, m)
@@ -880,11 +934,11 @@ func (g *Graph) LookupShortestPath(n *Node, m Metadata, em Metadata) []*Node {
 }
 
 // LookupParents returns the associated parents edge of a node
-func (g *Graph) LookupParents(n *Node, f Metadata, em Metadata) (nodes []*Node) {
+func (g *Graph) LookupParents(n *Node, f GraphElementMatcher, em GraphElementMatcher) (nodes []*Node) {
 	t := g.context.TimeSlice
 	for _, e := range g.backend.GetNodeEdges(n, t, em) {
 		if e.GetChild() == n.ID {
-			parents, _ := g.backend.GetEdgeNodes(e, t, f, Metadata{})
+			parents, _ := g.backend.GetEdgeNodes(e, t, f, nil)
 			for _, parent := range parents {
 				nodes = append(nodes, parent)
 			}
@@ -895,8 +949,8 @@ func (g *Graph) LookupParents(n *Node, f Metadata, em Metadata) (nodes []*Node) 
 }
 
 // LookupFirstChild returns the child
-func (g *Graph) LookupFirstChild(n *Node, f Metadata) *Node {
-	nodes := g.LookupChildren(n, f, Metadata{})
+func (g *Graph) LookupFirstChild(n *Node, f GraphElementMatcher) *Node {
+	nodes := g.LookupChildren(n, f, nil)
 	if len(nodes) > 0 {
 		return nodes[0]
 	}
@@ -904,11 +958,11 @@ func (g *Graph) LookupFirstChild(n *Node, f Metadata) *Node {
 }
 
 // LookupChildren returns a list of children nodes
-func (g *Graph) LookupChildren(n *Node, f Metadata, em Metadata) (nodes []*Node) {
+func (g *Graph) LookupChildren(n *Node, f GraphElementMatcher, em GraphElementMatcher) (nodes []*Node) {
 	t := g.context.TimeSlice
 	for _, e := range g.backend.GetNodeEdges(n, t, em) {
 		if e.GetParent() == n.ID {
-			_, children := g.backend.GetEdgeNodes(e, t, Metadata{}, f)
+			_, children := g.backend.GetEdgeNodes(e, t, nil, f)
 			for _, child := range children {
 				nodes = append(nodes, child)
 			}
@@ -919,10 +973,10 @@ func (g *Graph) LookupChildren(n *Node, f Metadata, em Metadata) (nodes []*Node)
 }
 
 // AreLinked returns true if nodes n1, n2 are linked
-func (g *Graph) AreLinked(n1 *Node, n2 *Node, m Metadata) bool {
+func (g *Graph) AreLinked(n1 *Node, n2 *Node, m GraphElementMatcher) bool {
 	t := g.context.TimeSlice
 	for _, e := range g.backend.GetNodeEdges(n1, t, m) {
-		parents, children := g.backend.GetEdgeNodes(e, t, Metadata{}, Metadata{})
+		parents, children := g.backend.GetEdgeNodes(e, t, nil, nil)
 		if len(parents) == 0 || len(children) == 0 {
 			continue
 		}
@@ -947,8 +1001,8 @@ func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata) *Edge {
 
 // Unlink the nodes n1, n2 ; delete the associated edge
 func (g *Graph) Unlink(n1 *Node, n2 *Node) {
-	for _, e := range g.backend.GetNodeEdges(n1, nil, Metadata{}) {
-		parents, children := g.backend.GetEdgeNodes(e, nil, Metadata{}, Metadata{})
+	for _, e := range g.backend.GetNodeEdges(n1, nil, nil) {
+		parents, children := g.backend.GetEdgeNodes(e, nil, nil, nil)
 		if len(parents) == 0 || len(children) == 0 {
 			continue
 		}
@@ -961,7 +1015,7 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 }
 
 // LookupFirstNode returns the fist node matching metadata
-func (g *Graph) LookupFirstNode(m Metadata) *Node {
+func (g *Graph) LookupFirstNode(m GraphElementMatcher) *Node {
 	nodes := g.GetNodes(m)
 	if len(nodes) > 0 {
 		return nodes[0]
@@ -1132,7 +1186,7 @@ func (g *Graph) NodeDeleted(n *Node) {
 }
 
 func (g *Graph) delNode(n *Node, t time.Time) (success bool) {
-	for _, e := range g.backend.GetNodeEdges(n, nil, Metadata{}) {
+	for _, e := range g.backend.GetNodeEdges(n, nil, nil) {
 		g.delEdge(e, t)
 	}
 
@@ -1151,7 +1205,7 @@ func (g *Graph) DelNode(n *Node) bool {
 // DelHostGraph delete the associated node with the hostname host
 func (g *Graph) DelHostGraph(host string) {
 	t := time.Now().UTC()
-	for _, node := range g.GetNodes(Metadata{}) {
+	for _, node := range g.GetNodes(nil) {
 		if node.host == host {
 			g.delNode(node, t)
 		}
@@ -1159,22 +1213,22 @@ func (g *Graph) DelHostGraph(host string) {
 }
 
 // GetNodes returns a list of nodes
-func (g *Graph) GetNodes(m Metadata) []*Node {
+func (g *Graph) GetNodes(m GraphElementMatcher) []*Node {
 	return g.backend.GetNodes(g.context.TimeSlice, m)
 }
 
 // GetEdges returns a list of edges
-func (g *Graph) GetEdges(m Metadata) []*Edge {
+func (g *Graph) GetEdges(m GraphElementMatcher) []*Edge {
 	return g.backend.GetEdges(g.context.TimeSlice, m)
 }
 
 // GetEdgeNodes returns a list of nodes of an edge
-func (g *Graph) GetEdgeNodes(e *Edge, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
+func (g *Graph) GetEdgeNodes(e *Edge, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
 	return g.backend.GetEdgeNodes(e, g.context.TimeSlice, parentMetadata, childMetadata)
 }
 
 // GetNodeEdges returns a list of edges of a node
-func (g *Graph) GetNodeEdges(n *Node, m Metadata) []*Edge {
+func (g *Graph) GetNodeEdges(n *Node, m GraphElementMatcher) []*Edge {
 	return g.backend.GetNodeEdges(n, g.context.TimeSlice, m)
 }
 
@@ -1186,11 +1240,11 @@ func (g *Graph) String() string {
 // MarshalJSON serialize the graph in JSON
 func (g *Graph) MarshalJSON() ([]byte, error) {
 	nodes := make([]*Node, 0)
-	nodes = append(nodes, g.GetNodes(Metadata{})...)
+	nodes = append(nodes, g.GetNodes(nil)...)
 	SortNodes(nodes, "CreatedAt", common.SortAscending)
 
 	edges := make([]*Edge, 0)
-	edges = append(edges, g.GetEdges(Metadata{})...)
+	edges = append(edges, g.GetEdges(nil)...)
 	SortEdges(edges, "CreatedAt", common.SortAscending)
 
 	return json.Marshal(&struct {

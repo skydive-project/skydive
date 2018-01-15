@@ -30,6 +30,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage/orientdb"
 )
@@ -70,12 +71,18 @@ func metadataToOrientDBSetString(m Metadata) string {
 	return ""
 }
 
-func metadataToOrientDBSelectString(m Metadata) string {
-	metadataFilter, err := NewFilterForMetadata(m)
+func metadataToOrientDBSelectString(m GraphElementMatcher) string {
+	if m == nil {
+		return ""
+	}
+
+	var filter *filters.Filter
+	filter, err := m.Filter()
 	if err != nil {
 		return ""
 	}
-	return orientdb.FilterToExpression(metadataFilter, func(k string) string {
+
+	return orientdb.FilterToExpression(filter, func(k string) string {
 		key := "Metadata"
 		for _, s := range strings.Split(k, ".") {
 			key += "['" + s + "']"
@@ -167,7 +174,7 @@ func (o *OrientDBBackend) GetNode(i Identifier, t *common.TimeSlice) (nodes []*N
 }
 
 // GetNodeEdges returns a list of a node edges within time slice
-func (o *OrientDBBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
+func (o *OrientDBBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m GraphElementMatcher) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (Parent = '%s' OR Child = '%s')", o.getTimeSliceClause(t), n.ID, n.ID)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
@@ -222,7 +229,7 @@ func (o *OrientDBBackend) GetEdge(i Identifier, t *common.TimeSlice) (edges []*E
 }
 
 // GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadata
-func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) (parents []*Node, children []*Node) {
+func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) (parents []*Node, children []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID in [\"%s\", \"%s\"]", o.getTimeSliceClause(t), e.parent, e.child)
 	docs, err := o.client.Search(query)
 	if err != nil {
@@ -274,7 +281,7 @@ func (*OrientDBBackend) getTimeSliceClause(t *common.TimeSlice) string {
 }
 
 // GetNodes returns a list of nodes within time slice, matching metadata
-func (o *OrientDBBackend) GetNodes(t *common.TimeSlice, m Metadata) (nodes []*Node) {
+func (o *OrientDBBackend) GetNodes(t *common.TimeSlice, m GraphElementMatcher) (nodes []*Node) {
 	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeSliceClause(t))
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
@@ -295,7 +302,7 @@ func (o *OrientDBBackend) GetNodes(t *common.TimeSlice, m Metadata) (nodes []*No
 }
 
 // GetEdges returns a list of edges within time slice, matching metadata
-func (o *OrientDBBackend) GetEdges(t *common.TimeSlice, m Metadata) (edges []*Edge) {
+func (o *OrientDBBackend) GetEdges(t *common.TimeSlice, m GraphElementMatcher) (edges []*Edge) {
 	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeSliceClause(t))
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
