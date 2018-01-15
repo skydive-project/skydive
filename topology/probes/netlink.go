@@ -53,13 +53,13 @@ type pendingLink struct {
 }
 
 type neighbor struct {
-	Flags     []string `json:"Flags,omitempty"`
-	MAC       string
-	IP        string   `json:"IP,omitempty"`
-	State     []string `json:"State,omitempty"`
-	Vlan      int      `json:"Vlan,omitempty"`
-	VNI       int      `json:"VNI,omitempty"`
-	LinkIndex int
+	Flags   []string `json:"Flags,omitempty"`
+	MAC     string
+	IP      string   `json:"IP,omitempty"`
+	State   []string `json:"State,omitempty"`
+	Vlan    int64    `json:"Vlan,omitempty"`
+	VNI     int64    `json:"VNI,omitempty"`
+	IfIndex int64
 }
 
 // NetNsNetLinkProbe describes a topology probe based on netlink in a network namespace
@@ -91,9 +91,9 @@ type NetLinkProbe struct {
 
 // RouteTable describes a list of Routes
 type RoutingTable struct {
-	Id     int
-	Src    net.IP `json:"Src,omitempty"`
-	Routes []Route
+	ID     int64   `json:"Id"`
+	Src    net.IP  `json:"Src,omitempty"`
+	Routes []Route `json:"Routes,omitempty"`
 }
 
 // Route describes a route
@@ -104,8 +104,9 @@ type Route struct {
 
 // NextHop describes a next hop
 type NextHop struct {
-	Priority int    `json:"Priority,omitempty"`
-	Ip       net.IP `json:"Ip,omitempty"`
+	Priority int64  `json:"Priority,omitempty"`
+	IP       net.IP `json:"Src,omitempty"`
+	IfIndex  int64  `json:"IfIndex,omitempty"`
 }
 
 func (u *NetNsNetLinkProbe) linkPendingChildren(intf *graph.Node, index int64) {
@@ -344,12 +345,12 @@ func (u *NetNsNetLinkProbe) getNeighbors(index, family int) (neighbors []neighbo
 	if err == nil && len(neighList) > 0 {
 		for i, neigh := range neighList {
 			neighbors = append(neighbors, neighbor{
-				Flags:     getFlagsString(neighFlags, neigh.Flags),
-				MAC:       neigh.HardwareAddr.String(),
-				State:     getFlagsString(neighStates, neigh.State),
-				LinkIndex: neigh.LinkIndex,
-				Vlan:      neigh.Vlan,
-				VNI:       neigh.VNI,
+				Flags:   getFlagsString(neighFlags, neigh.Flags),
+				MAC:     neigh.HardwareAddr.String(),
+				State:   getFlagsString(neighStates, neigh.State),
+				IfIndex: int64(neigh.LinkIndex),
+				Vlan:    int64(neigh.Vlan),
+				VNI:     int64(neigh.VNI),
 			})
 			if neigh.IP != nil {
 				neighbors[i].IP = neigh.IP.String()
@@ -430,13 +431,15 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 		}
 	}
 
-	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); neighbors != nil {
+	if neighbors := u.getNeighbors(attrs.Index, syscall.AF_BRIDGE); len(neighbors) > 0 {
 		metadata["FDB"] = neighbors
 	}
 
 	neighbors := u.getNeighbors(attrs.Index, syscall.AF_INET)
 	neighbors = append(neighbors, u.getNeighbors(attrs.Index, syscall.AF_INET6)...)
-	metadata["Neighbors"] = neighbors
+	if len(neighbors) > 0 {
+		metadata["Neighbors"] = neighbors
+	}
 
 	if rt := u.getRoutingTable(link, syscall.RTA_UNSPEC); rt != nil {
 		metadata["RoutingTable"] = rt
@@ -528,7 +531,7 @@ func (u *NetNsNetLinkProbe) getRoutingTable(link netlink.Link, table int) []Rout
 			if rt, ok := routeTableList[route.Table]; ok {
 				routeTable = rt
 			} else {
-				routeTable = RoutingTable{Id: route.Table, Src: route.Src}
+				routeTable = RoutingTable{ID: int64(route.Table), Src: route.Src}
 			}
 			var r Route
 			if route.Dst != nil {
@@ -537,11 +540,11 @@ func (u *NetNsNetLinkProbe) getRoutingTable(link netlink.Link, table int) []Rout
 			var nh []NextHop
 			if len(route.MultiPath) > 0 {
 				for _, nexthop := range route.MultiPath {
-					var nhop = NextHop{Ip: nexthop.Gw, Priority: route.Priority}
+					var nhop = NextHop{IP: nexthop.Gw, Priority: int64(route.Priority)}
 					nh = append(nh, nhop)
 				}
 			} else {
-				var nhop = NextHop{Ip: route.Gw, Priority: route.Priority}
+				var nhop = NextHop{IP: route.Gw, Priority: int64(route.Priority), IfIndex: int64(route.LinkIndex)}
 				nh = append(nh, nhop)
 			}
 			r.Nexthops = nh
