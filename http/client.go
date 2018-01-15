@@ -110,6 +110,8 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	switch resp.Header.Get("Content-Encoding") {
 	case "gzip":
 		resp.Body, err = gzip.NewReader(resp.Body)
+		resp.Uncompressed = true
+		resp.ContentLength = -1
 		if err != nil {
 			return nil, err
 		}
