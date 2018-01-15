@@ -30,10 +30,12 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type RestClient struct {
@@ -102,6 +104,12 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	cookie := http.Cookie{Name: "authtok", Value: c.authClient.AuthToken}
 	req.Header.Set("Cookie", cookie.String())
 
+	if debug := config.GetConfig().GetBool("agent.http.debug"); debug {
+		if buf, err := httputil.DumpRequest(req, true); err == nil {
+			logging.GetLogger().Debugf("Request:\n%s", buf)
+		}
+	}
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return resp, err
@@ -115,6 +123,16 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if debug := config.GetConfig().GetBool("agent.http.debug"); debug {
+		buf, err := httputil.DumpResponse(resp, true)
+		if err == nil {
+			logging.GetLogger().Debugf("Response:\n%s", buf)
+		} else {
+			logging.GetLogger().Debugf("Response (error):\n%s", err)
+		}
+
 	}
 
 	return resp, nil
