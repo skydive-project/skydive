@@ -396,8 +396,9 @@ func (c *WSClient) connect() {
 			logging.GetLogger().Errorf("Unable to authenticate %s : %s", endpoint, err.Error())
 			return
 		}
-		c.AuthClient.SetHeaders(headers)
 	}
+
+	setCookies(&headers, c.AuthClient)
 
 	d := websocket.Dialer{
 		Proxy:           http.ProxyFromEnvironment,

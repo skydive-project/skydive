@@ -101,8 +101,7 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Accept-Encoding", "gzip")
 
-	cookie := http.Cookie{Name: "authtok", Value: c.authClient.AuthToken}
-	req.Header.Set("Cookie", cookie.String())
+	setCookies(&req.Header, c.authClient)
 
 	if debug := config.GetConfig().GetBool("agent.http.debug"); debug {
 		if buf, err := httputil.DumpRequest(req, true); err == nil {

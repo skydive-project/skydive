@@ -107,6 +107,10 @@ agent:
   http:
     # log the HTTP client request and response (to log level DEBUG)
     # debug: false
+    # define the Cookie HTTP Request Header
+    # cookie: 
+    #   <name1>: <value1>
+    #   <name2>: <value2>
   topology:
     # Probes used to capture topology informations like interfaces,
     # bridges, namespaces, etc...
