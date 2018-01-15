@@ -46,7 +46,15 @@ func newKubeClient() (*kubeClient, error) {
 	kubeconfig := config.GetConfig().GetString("k8s.config_file")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load Kubernetes config %s: %s", kubeconfig, err.Error())
+		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+
+		configOverrides := &clientcmd.ConfigOverrides{}
+
+		kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+		config, err = kubeConfig.ClientConfig()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to load Kubernetes config: %s", err.Error())
+		}
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)

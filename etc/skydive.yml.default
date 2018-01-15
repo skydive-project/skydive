@@ -253,10 +253,17 @@ ui:
   # extra_assets: /usr/share/skydive/assets
 
 k8s:
-  # EXPERIMENTAL: k8s probe is still under development and should not be used on production systems
-  # The kube config file, if executed inside the cluster, you may use the empty
-  # file, kube-config-empty.yml
-  # config_file: /etc/skydive/kube-cfg.yml
+  # EXPERIMENTAL: k8s probe is still under development and should not be used
+  # on production systems
+  #
+  # kubeconfig resolution order:
+  # if kubeconfig param is defined then use it
+  # else if $KUBECONFIG environment is define then use it
+  # else if $HOME/.kube/config file exists then use it
+  # else use empty configuration (for accessing from within the k8s cluster)
+  #
+  # Specify the path of k8s configuration YAML file
+  # config_file: /etc/skydive/kubeconfig
   subprobes:
   - networkpolicy
   - pod
