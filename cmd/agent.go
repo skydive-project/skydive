@@ -1,3 +1,5 @@
+// +build linux
+
 /*
  * Copyright (C) 2015 Red Hat, Inc.
  *
@@ -65,6 +67,8 @@ var Agent = &cobra.Command{
 }
 
 func init() {
+	RootCmd.AddCommand(Agent)
+
 	host, err := os.Hostname()
 	if err != nil {
 		panic(err)
