@@ -203,7 +203,7 @@ func (u *NetNSProbe) Unregister(path string) {
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
 
-	for _, child := range u.Graph.LookupChildren(probe.Root, graph.Metadata{}, graph.Metadata{}) {
+	for _, child := range u.Graph.LookupChildren(probe.Root, nil, nil) {
 		u.Graph.DelNode(child)
 	}
 	u.Graph.DelNode(probe.Root)

@@ -186,7 +186,7 @@ func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *api.Cap
 func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
 	res, err := ge.TopologyGremlinQuery(o.graph, query)
 	if err != nil {
-		logging.GetLogger().Errorf("Gremlin error: %s", err.Error())
+		logging.GetLogger().Errorf("Gremlin %s error: %s", query, err.Error())
 		return nil
 	}
 	return res.Values()

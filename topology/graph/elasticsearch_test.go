@@ -301,18 +301,13 @@ func TestElasticsearchLocal(t *testing.T) {
 							},
 						},
 					},
-					map[string]interface{}{
-						"bool": map[string]interface{}{
-							"must": []interface{}{},
-						},
-					},
 				},
 			},
 		},
 	}
 
 	if !reflect.DeepEqual(searchExpected, searchEdge) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %s\ngot: %s", spew.Sdump(searchEdge), spew.Sdump(searchExpected))
+		t.Fatalf("Expected elasticsearch records not found: \nexpected: %s\ngot: %s", spew.Sdump(searchExpected), spew.Sdump(searchEdge))
 	}
 
 	client.resetRevisions()

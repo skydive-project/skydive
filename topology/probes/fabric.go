@@ -49,7 +49,7 @@ type FabricProbe struct {
 
 // OnEdgeAdded event
 func (fb *FabricProbe) OnEdgeAdded(e *graph.Edge) {
-	parents, children := fb.Graph.GetEdgeNodes(e, graph.Metadata{}, graph.Metadata{})
+	parents, children := fb.Graph.GetEdgeNodes(e, nil, nil)
 	if len(parents) == 0 || len(children) == 0 {
 		return
 	}

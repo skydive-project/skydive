@@ -95,7 +95,7 @@ func (c *CachedBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 }
 
 // GetNodeEdges retrieve a list of edges from a node within a time slice, matching metadata
-func (c *CachedBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Metadata) (edges []*Edge) {
+func (c *CachedBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m GraphElementMatcher) (edges []*Edge) {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PersistentOnlyMode {
@@ -157,7 +157,7 @@ func (c *CachedBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 }
 
 // GetEdgeNodes retrieve a list of nodes from an edge within a time slice, matching metadata
-func (c *CachedBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata Metadata) ([]*Node, []*Node) {
+func (c *CachedBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PersistentOnlyMode {
@@ -188,7 +188,7 @@ func (c *CachedBackend) MetadataUpdated(i interface{}) bool {
 }
 
 // GetNodes returns a list of nodes with a time slice, matching metadata
-func (c *CachedBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node {
+func (c *CachedBackend) GetNodes(t *common.TimeSlice, m GraphElementMatcher) []*Node {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PersistentOnlyMode {
@@ -203,7 +203,7 @@ func (c *CachedBackend) GetNodes(t *common.TimeSlice, m Metadata) []*Node {
 }
 
 // GetEdges returns a list of edges with a time slice, matching metadata
-func (c *CachedBackend) GetEdges(t *common.TimeSlice, m Metadata) []*Edge {
+func (c *CachedBackend) GetEdges(t *common.TimeSlice, m GraphElementMatcher) []*Edge {
 	mode := c.cacheMode.Load()
 
 	if t == nil && mode != PersistentOnlyMode {

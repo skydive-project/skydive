@@ -105,7 +105,7 @@ func (t *TIDMapper) onNodeEvent(n *graph.Node) {
 				if probe, _ := n.GetFieldString("Probe"); probe == "fabric" {
 					t.Graph.AddMetadata(n, "TID", string(n.ID))
 				} else {
-					parents := t.Graph.LookupParents(n, graph.Metadata{}, OwnershipMetadata)
+					parents := t.Graph.LookupParents(n, nil, OwnershipMetadata)
 					if len(parents) > 1 {
 						logging.GetLogger().Errorf("A should always only have one ownership parent: %v", n)
 					} else if len(parents) == 1 {
@@ -134,7 +134,7 @@ func (t *TIDMapper) onEdgeEvent(e *graph.Edge) {
 		return
 	}
 
-	parents, children := t.Graph.GetEdgeNodes(e, graph.Metadata{}, graph.Metadata{})
+	parents, children := t.Graph.GetEdgeNodes(e, nil, nil)
 	if len(parents) == 0 || len(children) == 0 {
 		return
 	}
@@ -158,7 +158,7 @@ func (t *TIDMapper) OnEdgeDeleted(e *graph.Edge) {
 		return
 	}
 
-	parents, children := t.Graph.GetEdgeNodes(e, graph.Metadata{}, graph.Metadata{})
+	parents, children := t.Graph.GetEdgeNodes(e, nil, nil)
 	if len(parents) == 0 || len(children) == 0 {
 		return
 	}

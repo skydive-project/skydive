@@ -149,15 +149,13 @@ func (c *ElasticSearchClient) start(mappings []map[string][]byte) error {
 
 // FormatFilter creates a ElasticSearch request based on filters
 func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string) map[string]interface{} {
+	if filter == nil {
+		return nil
+	}
+
 	prefix := mapKey
 	if prefix != "" {
 		prefix += "."
-	}
-
-	if filter == nil {
-		return map[string]interface{}{
-			"match_all": map[string]interface{}{},
-		}
 	}
 
 	if f := filter.BoolFilter; f != nil {
