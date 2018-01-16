@@ -367,6 +367,24 @@ func (mapper *NeutronProbe) OnNodeUpdated(n *graph.Node) {
 
 // OnNodeAdded event
 func (mapper *NeutronProbe) OnNodeAdded(n *graph.Node) {
+	name, _ := n.GetFieldString("Name")
+	attachedMAC, _ := n.GetFieldString("ExtID.attached-mac")
+	if attachedMAC == "" && strings.HasPrefix(name, "tap") {
+		qvo := strings.Replace(name, "tap", "qvo", 1)
+		qvoNode := mapper.graph.LookupFirstNode(graph.Metadata{"Name": qvo, "Type": "veth"})
+		if qvoNode != nil {
+			tr := mapper.graph.StartMetadataTransaction(n)
+			if attachedMAC, _ = qvoNode.GetFieldString("ExtID.attached-mac"); attachedMAC != "" {
+				tr.AddMetadata("ExtID.attached-mac", attachedMAC)
+			}
+
+			if uuid, _ := qvoNode.GetFieldString("ExtID.vm-uuid"); uuid != "" {
+				tr.AddMetadata("ExtID.vm-uuid", uuid)
+			}
+			tr.Commit()
+		}
+	}
+
 	mapper.enhanceNode(n)
 }
 
