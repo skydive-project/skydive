@@ -30,10 +30,12 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
 type RestClient struct {
@@ -56,14 +58,8 @@ func readBody(resp *http.Response) string {
 
 func getHttpClient() *http.Client {
 	client := &http.Client{}
-	if config.IsTLSenabled() == true {
-		certPEM := config.GetConfig().GetString("agent.X509_cert")
-		keyPEM := config.GetConfig().GetString("agent.X509_key")
-		analyzerCertPEM := config.GetConfig().GetString("analyzer.X509_cert")
-		tlsConfig := common.SetupTLSClientConfig(certPEM, keyPEM)
-		tlsConfig.RootCAs = common.SetupTLSLoadCertificate(analyzerCertPEM)
-		checkTLSConfig(tlsConfig)
-
+	if config.IsTLSenabled() {
+		tlsConfig := getTLSConfig(true)
 		tr := &http.Transport{TLSClientConfig: tlsConfig}
 		client = &http.Client{Transport: tr}
 	}
@@ -99,8 +95,13 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Accept-Encoding", "gzip")
 
-	cookie := http.Cookie{Name: "authtok", Value: c.authClient.AuthToken}
-	req.Header.Set("Cookie", cookie.String())
+	setCookies(&req.Header, c.authClient)
+
+	if debug := config.GetConfig().GetBool("agent.http.debug"); debug {
+		if buf, err := httputil.DumpRequest(req, true); err == nil {
+			logging.GetLogger().Debugf("Request:\n%s", buf)
+		}
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -110,9 +111,21 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	switch resp.Header.Get("Content-Encoding") {
 	case "gzip":
 		resp.Body, err = gzip.NewReader(resp.Body)
+		resp.Uncompressed = true
+		resp.ContentLength = -1
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if debug := config.GetConfig().GetBool("agent.http.debug"); debug {
+		buf, err := httputil.DumpResponse(resp, true)
+		if err == nil {
+			logging.GetLogger().Debugf("Response:\n%s", buf)
+		} else {
+			logging.GetLogger().Debugf("Response (error):\n%s", err)
+		}
+
 	}
 
 	return resp, nil

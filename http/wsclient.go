@@ -396,20 +396,16 @@ func (c *WSClient) connect() {
 			logging.GetLogger().Errorf("Unable to authenticate %s : %s", endpoint, err.Error())
 			return
 		}
-		c.AuthClient.SetHeaders(headers)
 	}
+
+	setCookies(&headers, c.AuthClient)
 
 	d := websocket.Dialer{
 		Proxy:           http.ProxyFromEnvironment,
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	certPEM := config.GetConfig().GetString("agent.X509_cert")
-	keyPEM := config.GetConfig().GetString("agent.X509_key")
-	if certPEM != "" && keyPEM != "" {
-		d.TLSClientConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
-		checkTLSConfig(d.TLSClientConfig)
-	}
+	d.TLSClientConfig = getTLSConfig(false)
 	c.conn, _, err = d.Dial(endpoint, headers)
 
 	if err != nil {

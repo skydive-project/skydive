@@ -23,6 +23,7 @@
 package http
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -54,10 +55,38 @@ func (c *AuthenticationClient) Authenticated() bool {
 	return c.authenticated
 }
 
-func (c *AuthenticationClient) SetHeaders(headers http.Header) {
-	if c.authenticated && c.AuthToken != "" {
-		headers.Set("Cookie", c.Cookie().String())
+func setCookies(headers *http.Header, c *AuthenticationClient) {
+	var b bytes.Buffer
+	for _, cookie := range cookies(c) {
+		b.WriteString(cookie.String())
+		b.WriteString("; ")
 	}
+	headers.Set("Cookie", b.String())
+}
+
+func cookies(c *AuthenticationClient) []*http.Cookie {
+	var cookies []*http.Cookie
+	cookies = append(cookies, configCookies()...)
+	if c != nil {
+		cookies = append(cookies, c.AuthCookies()...)
+	}
+	return cookies
+}
+
+func configCookies() []*http.Cookie {
+	var cookies []*http.Cookie
+	for name, value := range config.GetConfig().GetStringMapString("agent.http.cookie") {
+		cookies = append(cookies, &http.Cookie{Name: name, Value: value})
+	}
+	return cookies
+}
+
+func (c *AuthenticationClient) AuthCookies() []*http.Cookie {
+	var cookies []*http.Cookie
+	if c.authenticated && c.AuthToken != "" {
+		cookies = append(cookies, c.Cookie())
+	}
+	return cookies
 }
 
 func (c *AuthenticationClient) Cookie() *http.Cookie {

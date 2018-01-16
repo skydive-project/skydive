@@ -60,6 +60,7 @@ func init() {
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
 	cfg.SetDefault("agent.X509_servername", "")
+	cfg.SetDefault("agent.http.debug", false)
 
 	cfg.SetDefault("analyzer.bandwidth_absolute_active", 1)
 	cfg.SetDefault("analyzer.bandwidth_absolute_alert", 1000)
