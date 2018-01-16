@@ -51,7 +51,7 @@ type CPUInfo struct {
 	Microcode  string `json:"Microcode,omitempty"`
 }
 
-// CreateRootNode creates a graph.Node based on the host properties and aims to have an unique ID
+// createRootNode creates a graph.Node based on the host properties and aims to have an unique ID
 func createRootNode(g *graph.Graph) (*graph.Node, error) {
 	hostID := config.GetConfig().GetString("host_id")
 	m := graph.Metadata{"Name": hostID, "Type": "host"}
@@ -70,6 +70,10 @@ func createRootNode(g *graph.Graph) (*graph.Node, error) {
 	// Retrieves the instance ID from cloud-init
 	if buffer, err := ioutil.ReadFile("/var/lib/cloud/data/instance-id"); err == nil {
 		m.SetField("InstanceID", strings.TrimSpace(string(buffer)))
+	}
+
+	if isolated, err := getIsolatedCPUs(); err == nil {
+		m.SetField("IsolatedCPU", isolated)
 	}
 
 	cpuInfo, err := cpu.Info()
