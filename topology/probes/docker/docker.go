@@ -118,11 +118,7 @@ func (probe *DockerProbe) registerContainer(id string) {
 	}
 
 	if len(info.Config.Labels) != 0 {
-		labels := make(map[string]interface{})
-		for k, v := range info.Config.Labels {
-			common.SetField(labels, k, v)
-		}
-		metadata["Docker"].(map[string]interface{})["Labels"] = labels
+		metadata["Docker"].(map[string]interface{})["Labels"] = common.NormalizeValue(info.Config.Labels)
 	}
 
 	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
