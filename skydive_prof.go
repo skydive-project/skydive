@@ -31,7 +31,7 @@ import (
 	"runtime/pprof"
 	"syscall"
 
-	"github.com/skydive-project/skydive/cmd"
+	"github.com/skydive-project/skydive/cmd/skydive"
 )
 
 func profile(c chan os.Signal) {
@@ -56,5 +56,5 @@ func main() {
 	signal.Notify(c, syscall.SIGUSR1)
 	go profile(c)
 
-	cmd.RootCmd.Execute()
+	skydive.RootCmd.Execute()
 }
