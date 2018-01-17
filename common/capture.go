@@ -22,6 +22,10 @@
 
 package common
 
+import (
+	"fmt"
+)
+
 // CaptureType describes a list of allowed and default captures probes
 type CaptureType struct {
 	Allowed []string
@@ -50,6 +54,7 @@ var (
 
 func initCaptureTypes() {
 	CaptureTypes["ovsbridge"] = CaptureType{Allowed: []string{"ovssflow", "pcapsocket"}, Default: "ovssflow"}
+	CaptureTypes["ovsport"] = CaptureType{Allowed: []string{"ovsmirror"}, Default: "ovsmirror"}
 	CaptureTypes["dpdkport"] = CaptureType{Allowed: []string{"dpdk"}, Default: "dpdk"}
 
 	// anything else will be handled by gopacket
@@ -79,6 +84,7 @@ func initProbeCapabilities() {
 	ProbeCapabilities["ovssflow"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["afpacket"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 	ProbeCapabilities["dpdk"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
+	ProbeCapabilities["ovsmirror"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 }
 
 // CheckProbeCapabilities checks that a probe supports given capabilites
@@ -89,6 +95,32 @@ func CheckProbeCapabilities(probeType string, capability ProbeCapability) bool {
 		}
 	}
 	return false
+}
+
+// ProbeTypeForNode returns the appropriate probe type for the given node type
+// and capture type.
+func ProbeTypeForNode(nodeTYpe string, captureType string) (string, error) {
+	probeType := ""
+	if captureType != "" {
+		types := CaptureTypes[nodeTYpe].Allowed
+		for _, t := range types {
+			if t == captureType {
+				probeType = t
+				break
+			}
+		}
+		if probeType == "" {
+			return "", fmt.Errorf("Capture type %s not allowed on this node type: %s", captureType, nodeTYpe)
+		}
+	} else {
+		// no capture type defined for this type of node, ex: ovsport
+		c, ok := CaptureTypes[nodeTYpe]
+		if !ok {
+			return "", nil
+		}
+		probeType = c.Default
+	}
+	return probeType, nil
 }
 
 func init() {

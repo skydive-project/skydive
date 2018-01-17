@@ -34,6 +34,7 @@ import (
 	"github.com/skydive-project/skydive/flow/probes"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -50,7 +51,7 @@ type OnDemandProbeServer struct {
 	graph.DefaultGraphListener
 	shttp.DefaultWSSpeakerEventHandler
 	Graph            *graph.Graph
-	Probes           *probes.FlowProbeBundle
+	Probes           *probe.ProbeBundle
 	WSJSONClientPool *shttp.WSJSONClientPool
 	activeProbes     map[graph.Identifier]*activeProbe
 }
@@ -58,29 +59,14 @@ type OnDemandProbeServer struct {
 func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *types.Capture) (probes.FlowProbe, error) {
 	tp, _ := n.GetFieldString("Type")
 
-	capType := ""
-	if capture.Type != "" {
-		types := common.CaptureTypes[tp].Allowed
-		for _, t := range types {
-			if t == capture.Type {
-				capType = t
-				break
-			}
-		}
-		if capType == "" {
-			return nil, fmt.Errorf("Capture type %v not allowed on this node: %v", capture, n)
-		}
-	} else {
-		// no capture type defined for this type of node, ex: ovsport
-		c, ok := common.CaptureTypes[tp]
-		if !ok {
-			return nil, nil
-		}
-		capType = c.Default
+	probeType, err := common.ProbeTypeForNode(tp, capture.Type)
+	if err != nil {
+		return nil, err
 	}
-	probe := o.Probes.GetProbe(capType)
+
+	probe := o.Probes.GetProbe(probeType)
 	if probe == nil {
-		return nil, fmt.Errorf("Unable to find probe for this capture type: %v", capType)
+		return nil, fmt.Errorf("Unable to find probe for this capture type: %s", capture.Type)
 	}
 
 	fprobe := probe.(probes.FlowProbe)
@@ -259,7 +245,7 @@ func (o *OnDemandProbeServer) Stop() {
 }
 
 // NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
-func NewOnDemandProbeServer(fb *probes.FlowProbeBundle, g *graph.Graph, pool *shttp.WSJSONClientPool) (*OnDemandProbeServer, error) {
+func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *shttp.WSJSONClientPool) (*OnDemandProbeServer, error) {
 	return &OnDemandProbeServer{
 		Graph:            g,
 		Probes:           fb,

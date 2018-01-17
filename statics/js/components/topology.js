@@ -666,7 +666,7 @@ Node.prototype = {
   },
 
   isCaptureAllowed: function() {
-    var allowedTypes = ["device", "veth", "ovsbridge", "geneve", "vlan", "bond",
+    var allowedTypes = ["device", "veth", "ovsbridge", "geneve", "vlan", "bond", "ovsport",
                         "internal", "tun", "bridge", "vxlan", "gre", "gretap", "dpdkport"];
     return allowedTypes.indexOf(this.metadata.Type) >= 0;
   },

@@ -95,6 +95,11 @@ circle.emphasized  {
   stroke-dasharray: 5,5;
 }
 
+.links path.mirroring {
+  stroke: #444;
+  stroke-dasharray: 2,5;
+}
+
 .links path.fabric {
   stroke: #eee;
   stroke-width: 2;
