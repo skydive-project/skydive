@@ -35,8 +35,8 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcapgo"
-	"github.com/skydive-project/skydive/api"
-	gclient "github.com/skydive-project/skydive/cmd/client"
+	gclient "github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -1054,7 +1054,7 @@ func TestICMP(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			req := &api.PacketParamsReq{
+			req := &types.PacketParamsReq{
 				Type:     "icmp4",
 				Src:      "G.V().Has('Name', 'icmp-intf1', 'Type', 'internal')",
 				Dst:      "G.V().Has('Name', 'icmp-intf2', 'Type', 'internal')",
@@ -1070,7 +1070,7 @@ func TestICMP(t *testing.T) {
 			}
 			ipv4TrackingID = req.TrackingID
 
-			req = &api.PacketParamsReq{
+			req = &types.PacketParamsReq{
 				Type:     "icmp6",
 				Src:      "G.V().Has('Name', 'icmp-intf1', 'Type', 'internal')",
 				Dst:      "G.V().Has('Name', 'icmp-intf2', 'Type', 'internal')",
@@ -1305,7 +1305,7 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 }
 
 func TestReplayCapture(t *testing.T) {
-	var capture *api.Capture
+	var capture *types.Capture
 
 	test := &Test{
 		setupCmds: []helper.Cmd{

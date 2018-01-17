@@ -23,11 +23,18 @@
 package agent
 
 import (
+	"runtime"
+
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
-	tprobes "github.com/skydive-project/skydive/topology/probes"
+	"github.com/skydive-project/skydive/topology/probes/docker"
+	"github.com/skydive-project/skydive/topology/probes/netlink"
+	"github.com/skydive-project/skydive/topology/probes/netns"
+	"github.com/skydive-project/skydive/topology/probes/neutron"
+	"github.com/skydive-project/skydive/topology/probes/opencontrail"
+	"github.com/skydive-project/skydive/topology/probes/ovsdb"
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology probe.ProbeBundle based on the configuration
@@ -38,21 +45,20 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 	probes := make(map[string]probe.Probe)
 	bundle := probe.NewProbeBundle(probes)
 
-	nlProbe, err := tprobes.NewNetLinkProbe(g)
-	if err != nil {
-		return nil, err
-	}
-	probes["netlink"] = nlProbe
-	nlProbe.Register("", n)
+	var nsProbe *netns.NetNSProbe
+	if runtime.GOOS == "linux" {
+		nlProbe, err := netlink.NewNetLinkProbe(g, n)
+		if err != nil {
+			return nil, err
+		}
+		probes["netlink"] = nlProbe
 
-	nsProbe, err := tprobes.NewNetNSProbe(g, n, nlProbe)
-	if err != nil {
-		return nil, err
+		nsProbe, err = netns.NewNetNSProbe(g, n, nlProbe)
+		if err != nil {
+			return nil, err
+		}
+		probes["netns"] = nsProbe
 	}
-	if path := config.GetConfig().GetString("netns.run_path"); path != "" {
-		nsProbe.Watch(path)
-	}
-	probes["netns"] = nsProbe
 
 	for _, t := range list {
 		if _, ok := probes[t]; ok {
@@ -61,26 +67,28 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 
 		switch t {
 		case "ovsdb":
-			probes[t] = tprobes.NewOvsdbProbeFromConfig(g, n)
+			probes[t] = ovsdb.NewOvsdbProbeFromConfig(g, n)
 		case "docker":
 			dockerURL := config.GetConfig().GetString("docker.url")
-			dockerProbe, err := tprobes.NewDockerProbe(nsProbe, dockerURL)
+			dockerProbe, err := docker.NewDockerProbe(nsProbe, dockerURL)
 			if err != nil {
 				return nil, err
 			}
-			if path := config.GetConfig().GetString("docker.netns.run_path"); path != "" {
-				nsProbe.Watch(path)
-			}
 			probes[t] = dockerProbe
 		case "neutron":
-			neutron, err := tprobes.NewNeutronProbeFromConfig(g)
+			neutron, err := neutron.NewNeutronProbeFromConfig(g)
 			if err != nil {
 				logging.GetLogger().Errorf("Failed to initialize Neutron probe: %s", err.Error())
 				return nil, err
 			}
 			probes["neutron"] = neutron
 		case "opencontrail":
-			probes[t] = tprobes.NewOpenContrailProbeFromConfig(g, n)
+			opencontrail, err := opencontrail.NewOpenContrailProbeFromConfig(g, n)
+			if err != nil {
+				logging.GetLogger().Errorf("Failed to initialize OpenContrail probe: %s", err.Error())
+				return nil, err
+			}
+			probes[t] = opencontrail
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}

@@ -1,4 +1,4 @@
-define VERSION_CMD = 
+define VERSION_CMD =
 eval ' \
 	define=""; \
 	version=`git rev-parse --verify HEAD`; \
@@ -21,7 +21,7 @@ $(info ${VERSION})
 # really Basic Makefile for Skydive
 export GO15VENDOREXPERIMENT=1
 
-GOVENDOR:=${GOPATH}/bin/govendor 
+GOVENDOR:=${GOPATH}/bin/govendor
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 SKYDIVE_PKG:=skydive-${VERSION}
@@ -69,7 +69,7 @@ all install: skydive
 
 skydive.yml: etc/skydive.yml.default
 	[ -e $@ ] || cp $< $@
-	
+
 .PHONY: debug
 debug: GOFLAGS+=-gcflags='-N -l'
 debug: skydive.cleanup skydive skydive.yml
@@ -91,11 +91,12 @@ debug.analyzer:
 	protoc --go_out . ${FILTERS_PROTO_FILES}
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
-	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i flow/flow.pb.go
+	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i.bak flow/flow.pb.go
 	# do not export LastRawPackets used internally
-	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i flow/flow.pb.go
+	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i.bak flow/flow.pb.go
 	# add flowState to flow generated struct
-	sed -e 's/type Flow struct {/type Flow struct {\n\tXXX_state flowState `json:"-"`/' -i flow/flow.pb.go
+	sed -e 's/type Flow struct {/type Flow struct { XXX_state flowState `json:"-"`/' -i.bak flow/flow.pb.go
+	gofmt -s -w flow/flow.pb.go
 
 BINDATA_DIRS := \
 	statics/* \
@@ -112,7 +113,7 @@ compile:
 	$(GOVENDOR) install \
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
 		${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
-		+local
+		${SKYDIVE_GITHUB}
 
 skydive: govendor genlocalfiles dpdk.build contribs compile
 
@@ -154,7 +155,7 @@ static: skydive.cleanup govendor genlocalfiles
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
 		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS} ${GOTAGS}" \
-		-installsuffix netgo +local || true
+		-installsuffix netgo || true
 
 contribs.cleanup:
 	$(MAKE) -C contrib/snort clean

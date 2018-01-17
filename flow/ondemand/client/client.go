@@ -29,7 +29,8 @@ import (
 
 	cache "github.com/pmylund/go-cache"
 
-	"github.com/skydive-project/skydive/api"
+	api "github.com/skydive-project/skydive/api/server"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow/ondemand"
@@ -48,7 +49,7 @@ type OnDemandProbeClient struct {
 	captureHandler   *api.CaptureAPIHandler
 	agentPool        shttp.WSJSONSpeakerPool
 	subscriberPool   shttp.WSJSONSpeakerPool
-	captures         map[string]*api.Capture
+	captures         map[string]*types.Capture
 	watcher          api.StoppableWatcher
 	registeredNodes  map[string]string
 	deletedNodeCache *cache.Cache
@@ -57,7 +58,7 @@ type OnDemandProbeClient struct {
 type nodeProbe struct {
 	id      string
 	host    string
-	capture *api.Capture
+	capture *types.Capture
 }
 
 // OnMessage event, valid message type : CaptureStartReply or CaptureStopReply message
@@ -92,8 +93,8 @@ func (o *OnDemandProbeClient) OnWSJSONMessage(c shttp.WSSpeaker, m *shttp.WSJSON
 	}
 }
 
-func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *api.Capture) {
-	toRegister := func(node *graph.Node, capture *api.Capture) (nodeID graph.Identifier, host string, register bool) {
+func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *types.Capture) {
+	toRegister := func(node *graph.Node, capture *types.Capture) (nodeID graph.Identifier, host string, register bool) {
 		o.graph.RLock()
 		defer o.graph.RUnlock()
 
@@ -163,7 +164,7 @@ func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
 	return true
 }
 
-func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *api.Capture) bool {
+func (o *OnDemandProbeClient) unregisterProbe(node *graph.Node, capture *types.Capture) bool {
 	cq := ondemand.CaptureQuery{
 		NodeID:  string(node.ID),
 		Capture: *capture,
@@ -228,7 +229,7 @@ func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
 
 		// not present unregister it
 		logging.GetLogger().Debugf("Unregister remaining capture for node %s: %s", n.ID, id)
-		go o.unregisterProbe(n, &api.Capture{UUID: id})
+		go o.unregisterProbe(n, &types.Capture{UUID: id})
 	} else {
 		o.checkForRegistration()
 	}
@@ -253,7 +254,7 @@ func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
 	o.checkForRegistration()
 }
 
-func (o *OnDemandProbeClient) registerCapture(capture *api.Capture) {
+func (o *OnDemandProbeClient) registerCapture(capture *types.Capture) {
 	o.graph.RLock()
 	defer o.graph.RUnlock()
 
@@ -267,7 +268,7 @@ func (o *OnDemandProbeClient) registerCapture(capture *api.Capture) {
 	}
 }
 
-func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
+func (o *OnDemandProbeClient) onCaptureAdded(capture *types.Capture) {
 	if !o.IsMaster() {
 		return
 	}
@@ -275,7 +276,7 @@ func (o *OnDemandProbeClient) onCaptureAdded(capture *api.Capture) {
 	o.registerCapture(capture)
 }
 
-func (o *OnDemandProbeClient) unregisterCapture(capture *api.Capture) {
+func (o *OnDemandProbeClient) unregisterCapture(capture *types.Capture) {
 	o.graph.Lock()
 	defer o.graph.Unlock()
 
@@ -303,7 +304,7 @@ func (o *OnDemandProbeClient) unregisterCapture(capture *api.Capture) {
 	}
 }
 
-func (o *OnDemandProbeClient) onCaptureDeleted(capture *api.Capture) {
+func (o *OnDemandProbeClient) onCaptureDeleted(capture *types.Capture) {
 	if !o.IsMaster() {
 		// fill the cache with recent delete in order to be able to delete then
 		// in case we lose the master and nobody is master yet. This cache will
@@ -327,12 +328,12 @@ func (o *OnDemandProbeClient) OnStartAsSlave() {
 func (o *OnDemandProbeClient) OnSwitchToMaster() {
 	// try to delete recently added capture to handle case where the api got a delete but wasn't yet master
 	for _, item := range o.deletedNodeCache.Items() {
-		capture := item.Object.(*api.Capture)
+		capture := item.Object.(*types.Capture)
 		o.unregisterCapture(capture)
 	}
 
 	for _, resource := range o.captureHandler.Index() {
-		capture := resource.(*api.Capture)
+		capture := resource.(*types.Capture)
 		o.onCaptureAdded(capture)
 	}
 }
@@ -341,9 +342,9 @@ func (o *OnDemandProbeClient) OnSwitchToMaster() {
 func (o *OnDemandProbeClient) OnSwitchToSlave() {
 }
 
-func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resource api.Resource) {
+func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resource types.Resource) {
 	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
-	capture := resource.(*api.Capture)
+	capture := resource.(*types.Capture)
 	switch action {
 	case "init", "create", "set", "update":
 		o.subscriberPool.BroadcastMessage(shttp.NewWSJSONMessage(ondemand.NotificationNamespace, "CaptureAdded", capture))
@@ -371,9 +372,9 @@ func (o *OnDemandProbeClient) Stop() {
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
 func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool shttp.WSJSONSpeakerPool, subscriberPool shttp.WSJSONSpeakerPool, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
 	resources := ch.Index()
-	captures := make(map[string]*api.Capture)
+	captures := make(map[string]*types.Capture)
 	for _, resource := range resources {
-		captures[resource.ID()] = resource.(*api.Capture)
+		captures[resource.ID()] = resource.(*types.Capture)
 	}
 
 	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "ondemand-client", etcdClient)

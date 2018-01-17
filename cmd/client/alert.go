@@ -25,7 +25,8 @@ package client
 import (
 	"os"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/validator"
 
@@ -54,13 +55,13 @@ var AlertCreate = &cobra.Command{
 	Short: "Create alert",
 	Long:  "Create alert",
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 
-		alert := api.NewAlert()
+		alert := types.NewAlert()
 		alert.Name = alertName
 		alert.Description = alertDescription
 		alert.Expression = alertExpression
@@ -71,6 +72,7 @@ var AlertCreate = &cobra.Command{
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
+
 		if err := client.Create("alert", &alert); err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
@@ -85,10 +87,10 @@ var AlertList = &cobra.Command{
 	Short: "List alerts",
 	Long:  "List alerts",
 	Run: func(cmd *cobra.Command, args []string) {
-		var alerts map[string]api.Alert
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		var alerts map[string]types.Alert
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Critical(err.Error())
+			logging.GetLogger().Error(err.Error())
 			os.Exit(1)
 		}
 		if err := client.List("alert", &alerts); err != nil {
@@ -111,8 +113,8 @@ var AlertGet = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		var alert api.Alert
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		var alert types.Alert
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
 			os.Exit(1)
@@ -138,7 +140,7 @@ var AlertDelete = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := api.NewCrudClientFromConfig(&AuthenticationOpts)
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Error(err.Error())
 			os.Exit(1)

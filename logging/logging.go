@@ -24,7 +24,6 @@ package logging
 
 import (
 	"fmt"
-	"log/syslog"
 	"os"
 	"runtime"
 	"strings"
@@ -254,7 +253,7 @@ func initLogger() (err error) {
 			}
 			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(file), msgPriority))
 		case "syslog":
-			w, err := syslog.New(syslog.LOG_CRIT, cfg.GetString("logging.syslog.tag"))
+			w, err := newSyslog(cfg.GetString("logging.syslog.tag"))
 			if err != nil {
 				return err
 			}

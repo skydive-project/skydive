@@ -28,7 +28,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	"github.com/skydive-project/skydive/flow/probes"
@@ -41,7 +41,7 @@ type activeProbe struct {
 	graph   *graph.Graph
 	node    *graph.Node
 	fprobe  probes.FlowProbe
-	capture *api.Capture
+	capture *types.Capture
 }
 
 // OnDemandProbeServer describes an ondemand probe server based on websocket
@@ -55,7 +55,7 @@ type OnDemandProbeServer struct {
 	activeProbes     map[graph.Identifier]*activeProbe
 }
 
-func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (probes.FlowProbe, error) {
+func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *types.Capture) (probes.FlowProbe, error) {
 	tp, _ := n.GetFieldString("Type")
 
 	capType := ""
@@ -87,7 +87,7 @@ func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *api.Capture) (pro
 	return fprobe, nil
 }
 
-func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *api.Capture) bool {
+func (o *OnDemandProbeServer) registerProbe(n *graph.Node, capture *types.Capture) bool {
 	name, _ := n.GetFieldString("Name")
 	if name == "" {
 		logging.GetLogger().Debugf("Unable to register flow probe, name of node unknown %s", n.ID)

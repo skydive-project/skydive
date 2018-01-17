@@ -1447,16 +1447,14 @@
 			"revision": "e01512671ed4c2248daf0c5e974ecf88a4947335"
 		},
 		{
-			"checksumSHA1": "mOYr9ML/yf+7tqHdf5dJSq3wPIc=",
+			"checksumSHA1": "cPdi9F9KsV/5s9FxZo5Km8uooG8=",
 			"path": "github.com/skydive-project/dede/dede",
-			"revision": "09b5e309310bf46c1bffd2e6bd7c12a25d4a81d3",
-			"revisionTime": "2017-12-12T16:47:56Z"
+			"revision": "d95b69cd1f75137aab3bcc01d6facf2aa7a43b80"
 		},
 		{
 			"checksumSHA1": "LPxzXx+6DGiG/91JW6EzfpepDHY=",
 			"path": "github.com/skydive-project/dede/statics",
-			"revision": "09b5e309310bf46c1bffd2e6bd7c12a25d4a81d3",
-			"revisionTime": "2017-12-12T16:47:56Z"
+			"revision": "d95b69cd1f75137aab3bcc01d6facf2aa7a43b80"
 		},
 		{
 			"checksumSHA1": "/HwlJqv7kKCmWqX88A2rehLiOic=",
@@ -1728,14 +1726,12 @@
 		{
 			"checksumSHA1": "locu61AZ1k1skk45VLE2zpDaVTA=",
 			"path": "golang.org/x/crypto/ssh",
-			"revision": "1f22c0103821b9390939b6776727195525381532",
-			"revisionTime": "2016-01-26T17:50:25Z"
+			"revision": "1f22c0103821b9390939b6776727195525381532"
 		},
 		{
 			"checksumSHA1": "nqWNlnMmVpt628zzvyo6Yv2CX5Q=",
 			"path": "golang.org/x/crypto/ssh/terminal",
-			"revision": "7d9177d70076375b9a59c8fde23d52d9c4a7ecd5",
-			"revisionTime": "2017-09-15T19:08:28Z"
+			"revision": "1f22c0103821b9390939b6776727195525381532"
 		},
 		{
 			"checksumSHA1": "9Pcc1IiRqPxEcxU2KMpkrcEGb3k=",
@@ -1788,16 +1784,16 @@
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
-			"checksumSHA1": "TVEkpH3gq84iQ39I4R+mlDwjuVI=",
+			"checksumSHA1": "gRu2kYXXhEN+A+NpuAuMrjuiud0=",
 			"path": "golang.org/x/sys/unix",
-			"revision": "99f16d856c9836c42d24e7ab64ea72916925fa97",
-			"revisionTime": "2017-03-08T15:04:45Z"
+			"revision": "810d7000345868fc619eb81f46307107118f4ae1",
+			"revisionTime": "2018-01-09T14:25:55Z"
 		},
 		{
-			"checksumSHA1": "kQB2wRB3twjUp615F6zEwGHjNe0=",
+			"checksumSHA1": "eQq+ZoTWPjyizS9XalhZwfGjQao=",
 			"path": "golang.org/x/sys/windows",
-			"revision": "9a7256cb28ed514b4e1e5f68959914c4c28a92e0",
-			"revisionTime": "2017-03-29T05:31:33Z"
+			"revision": "810d7000345868fc619eb81f46307107118f4ae1",
+			"revisionTime": "2018-01-09T14:25:55Z"
 		},
 		{
 			"checksumSHA1": "tltivJ/uj/lqLk05IqGfCv2F/E8=",
@@ -1940,10 +1936,6 @@
 			"checksumSHA1": "2MXUjMNL4Zr28Gom3V3BJxdtiSQ=",
 			"path": "gopkg.in/yaml.v2",
 			"revision": "bef53efd0c76e49e6de55ead051f886bea7e9420"
-		},
-		{
-			"path": "http://github.com/fatih/structs",
-			"revision": ""
 		},
 		{
 			"checksumSHA1": "2AkXviX+M3zAqe5Lo7sZZgY2TRg=",

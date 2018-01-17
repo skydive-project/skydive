@@ -25,9 +25,9 @@
 package main
 
 import (
-	"github.com/skydive-project/skydive/cmd"
+	"github.com/skydive-project/skydive/cmd/skydive"
 )
 
 func main() {
-	cmd.RootCmd.Execute()
+	skydive.RootCmd.Execute()
 }

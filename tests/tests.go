@@ -37,8 +37,8 @@ import (
 
 	"github.com/skydive-project/skydive/agent"
 	"github.com/skydive-project/skydive/analyzer"
-	"github.com/skydive-project/skydive/api"
-	gclient "github.com/skydive-project/skydive/cmd/client"
+	gclient "github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	shttp "github.com/skydive-project/skydive/http"
@@ -122,7 +122,7 @@ etcd:
 type TestContext struct {
 	gh        *gclient.GremlinQueryHelper
 	client    *shttp.CrudClient
-	captures  []*api.Capture
+	captures  []*types.Capture
 	setupTime time.Time
 	data      map[string]interface{}
 }
@@ -230,12 +230,12 @@ func (c *TestContext) getSystemState(t *testing.T) {
 }
 
 func RunTest(t *testing.T, test *Test) {
-	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
+	client, err := gclient.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
 		t.Fatalf("Failed to create client: %s", err.Error())
 	}
 
-	var captures []*api.Capture
+	var captures []*types.Capture
 	defer func() {
 		for _, capture := range captures {
 			client.Delete("capture", capture.ID())
@@ -243,7 +243,7 @@ func RunTest(t *testing.T, test *Test) {
 	}()
 
 	for _, tc := range test.captures {
-		capture := api.NewCapture(tc.gremlin, tc.bpf)
+		capture := types.NewCapture(tc.gremlin, tc.bpf)
 		capture.Type = tc.kind
 		capture.RawPacketLimit = tc.rawPackets
 		if err = client.Create("capture", capture); err != nil {
@@ -388,12 +388,12 @@ func RunTest(t *testing.T, test *Test) {
 	}
 }
 
-func pingRequest(t *testing.T, context *TestContext, packet *api.PacketParamsReq) error {
+func pingRequest(t *testing.T, context *TestContext, packet *types.PacketParamsReq) error {
 	return context.client.Create("injectpacket", packet)
 }
 
 func ping(t *testing.T, context *TestContext, ipVersion int, src string, dst string, count int64, id int64) error {
-	packet := &api.PacketParamsReq{
+	packet := &types.PacketParamsReq{
 		Src:      src,
 		Dst:      dst,
 		Type:     fmt.Sprintf("icmp%d", ipVersion),

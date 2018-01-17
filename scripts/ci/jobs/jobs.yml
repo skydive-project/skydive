@@ -100,7 +100,7 @@
       - chuck-norris
 
 - job:
-    name: skydive-compile-dpdk
+    name: skydive-compile-tests
     defaults: skydive
     concurrent: true
     properties:
@@ -116,11 +116,11 @@
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
-          status-context: skydive-compile-dpdk
+          status-context: skydive-compile-tests
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
-          scripts/ci/run-compile-dpdk.sh
+          scripts/ci/run-compile-tests.sh
     publishers:
       - chuck-norris
 

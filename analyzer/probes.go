@@ -27,16 +27,18 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
-	tprobes "github.com/skydive-project/skydive/topology/probes"
+	"github.com/skydive-project/skydive/topology/probes/fabric"
 	"github.com/skydive-project/skydive/topology/probes/k8s"
+	"github.com/skydive-project/skydive/topology/probes/peering"
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology server probes from configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error) {
 	list := config.GetConfig().GetStringSlice("analyzer.topology.probes")
-	probes := make(map[string]probe.Probe)
-	probes["fabric"] = tprobes.NewFabricProbe(g)
-	probes["peering"] = tprobes.NewPeeringProbe(g)
+	probes := map[string]probe.Probe{
+		"fabric":  fabric.NewFabricProbe(g),
+		"peering": peering.NewPeeringProbe(g),
+	}
 
 	for _, t := range list {
 		if _, ok := probes[t]; ok {

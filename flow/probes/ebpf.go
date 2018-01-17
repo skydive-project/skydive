@@ -42,7 +42,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/iovisor/gobpf/elf"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -286,7 +286,7 @@ func (p *EBPFProbe) stop() {
 	p.quit <- true
 }
 
-func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error {
+func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error {
 	if _, ok := p.probes[n.ID]; ok {
 		return nil
 	}

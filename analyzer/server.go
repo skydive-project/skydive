@@ -30,7 +30,8 @@ import (
 
 	"github.com/skydive-project/dede/dede"
 	"github.com/skydive-project/skydive/alert"
-	"github.com/skydive-project/skydive/api"
+	api "github.com/skydive-project/skydive/api/server"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
@@ -67,29 +68,9 @@ type Server struct {
 	wgServers           sync.WaitGroup
 }
 
-// ElectionStatus describes the status of an election
-type ElectionStatus struct {
-	IsMaster bool
-}
-
-type PeersStatus struct {
-	Incomers map[string]shttp.WSConnStatus
-	Outgoers map[string]shttp.WSConnStatus
-}
-
-// AnalyzerStatus describes the status of an analyzer
-type AnalyzerStatus struct {
-	Agents      map[string]shttp.WSConnStatus
-	Peers       PeersStatus
-	Publishers  map[string]shttp.WSConnStatus
-	Subscribers map[string]shttp.WSConnStatus
-	Alerts      ElectionStatus
-	Captures    ElectionStatus
-}
-
 // GetStatus returns the status of an analyzer
 func (s *Server) GetStatus() interface{} {
-	peersStatus := PeersStatus{
+	peersStatus := types.PeersStatus{
 		Incomers: make(map[string]shttp.WSConnStatus),
 		Outgoers: make(map[string]shttp.WSConnStatus),
 	}
@@ -101,13 +82,13 @@ func (s *Server) GetStatus() interface{} {
 		}
 	}
 
-	return &AnalyzerStatus{
+	return &types.AnalyzerStatus{
 		Agents:      s.agentWSServer.GetStatus(),
 		Peers:       peersStatus,
 		Publishers:  s.publisherWSServer.GetStatus(),
 		Subscribers: s.subscriberWSServer.GetStatus(),
-		Alerts:      ElectionStatus{IsMaster: s.alertServer.IsMaster()},
-		Captures:    ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
+		Alerts:      types.ElectionStatus{IsMaster: s.alertServer.IsMaster()},
+		Captures:    types.ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
 	}
 }
 
@@ -308,9 +289,7 @@ func NewServerFromConfig() (*Server, error) {
 	api.RegisterConfigAPI(hserver)
 	api.RegisterStatusAPI(hserver, s)
 
-	if config.GetConfig().GetBool("analyzer.ssh_enabled") {
-		dede.RegisterTerminalHandler("/dede", hserver.Router)
-	}
+	dede.RegisterHandler("terminal", "/dede", hserver.Router)
 
 	return s, nil
 }

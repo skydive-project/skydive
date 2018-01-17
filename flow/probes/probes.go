@@ -26,7 +26,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/analyzer"
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -43,7 +43,7 @@ type FlowProbeBundle struct {
 // FlowProbe defines flow probe mechanism
 type FlowProbe interface {
 	probe.Probe // inheritance of the probe.Probe interface Start/Stop functions
-	RegisterProbe(n *graph.Node, capture *api.Capture, e FlowProbeEventHandler) error
+	RegisterProbe(n *graph.Node, capture *types.Capture, e FlowProbeEventHandler) error
 	UnregisterProbe(n *graph.Node, e FlowProbeEventHandler) error
 }
 

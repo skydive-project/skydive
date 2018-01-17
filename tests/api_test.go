@@ -25,23 +25,24 @@ package tests
 import (
 	"testing"
 
-	"github.com/skydive-project/skydive/api"
+	"github.com/skydive-project/skydive/api/client"
+	"github.com/skydive-project/skydive/api/types"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 func TestAlertAPI(t *testing.T) {
-	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
+	client, err := client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	alert := api.NewAlert()
+	alert := types.NewAlert()
 	alert.Expression = "G.V().Has('MTU', GT(1500))"
 	if err := client.Create("alert", alert); err != nil {
 		t.Errorf("Failed to create alert: %s", err.Error())
 	}
 
-	alert2 := api.NewAlert()
+	alert2 := types.NewAlert()
 	alert2.Expression = "G.V().Has('MTU', Gt(1500))"
 	if err := client.Get("alert", alert.UUID, &alert2); err != nil {
 		t.Error(err)
@@ -51,7 +52,7 @@ func TestAlertAPI(t *testing.T) {
 		t.Errorf("Alert corrupted: %+v != %+v", alert, alert2)
 	}
 
-	var alerts map[string]api.Alert
+	var alerts map[string]types.Alert
 	if err := client.List("alert", &alerts); err != nil {
 		t.Error(err)
 	} else {
@@ -68,7 +69,7 @@ func TestAlertAPI(t *testing.T) {
 		t.Errorf("Failed to delete alert: %s", err.Error())
 	}
 
-	var alerts2 map[string]api.Alert
+	var alerts2 map[string]types.Alert
 	if err := client.List("alert", &alerts2); err != nil {
 		t.Errorf("Failed to list alerts: %s", err.Error())
 	} else {
@@ -79,23 +80,23 @@ func TestAlertAPI(t *testing.T) {
 }
 
 func TestCaptureAPI(t *testing.T) {
-	client, err := api.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
+	client, err := client.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	var captures map[string]api.Capture
+	var captures map[string]types.Capture
 	if err := client.List("capture", &captures); err != nil {
 		t.Error(err)
 	}
 	nbCaptures := len(captures)
 
-	capture := api.NewCapture("G.V().Has('Name', 'br-int')", "port 80")
+	capture := types.NewCapture("G.V().Has('Name', 'br-int')", "port 80")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatalf("Failed to create alert: %s", err.Error())
 	}
 
-	capture2 := &api.Capture{}
+	capture2 := &types.Capture{}
 	if err := client.Get("capture", capture.ID(), &capture2); err != nil {
 		t.Error(err)
 	}
@@ -120,7 +121,7 @@ func TestCaptureAPI(t *testing.T) {
 		t.Errorf("Failed to delete capture: %s", err.Error())
 	}
 
-	var captures2 map[string]api.Capture
+	var captures2 map[string]types.Capture
 	if err := client.List("capture", &captures2); err != nil {
 		t.Errorf("Failed to list captures: %s", err.Error())
 	} else {

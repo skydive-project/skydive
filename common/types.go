@@ -41,7 +41,7 @@ import (
 )
 
 var (
-	// ErrCantCompareInterface error can't compare inteface
+	// ErrCantCompareInterface error can't compare interface
 	ErrCantCompareInterface = errors.New("Can't compare interface")
 	// ErrFieldNotFound error field not found
 	ErrFieldNotFound = errors.New("Field not found")
@@ -51,6 +51,8 @@ var (
 	ErrNotFound = errors.New("No result found")
 	// ErrTimeout network timeout
 	ErrTimeout = errors.New("Timeout")
+	// ErrNotImplemented unimplemented feature
+	ErrNotImplemented = errors.New("Not implemented")
 )
 
 // SortOrder describes ascending or descending order

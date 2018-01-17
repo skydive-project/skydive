@@ -96,6 +96,7 @@ bin/skydive bash-completion
 %install
 export GOPATH=%{_builddir}/skydive-%{source}
 install -D -p -m 755 bin/skydive %{buildroot}%{_bindir}/skydive
+ln -s skydive %{buildroot}%{_bindir}/skydive-cli
 for bin in agent analyzer
 do
   install -D -m 644 contrib/systemd/skydive-${bin}.service %{buildroot}%{_unitdir}/skydive-${bin}.service
@@ -132,6 +133,7 @@ cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 %files
 %doc README.md LICENSE CHANGELOG.md
 %{_bindir}/skydive
+%{_bindir}/skydive-cli
 %{_sysconfdir}/bash_completion.d/skydive-bash-completion.sh
 %config(noreplace) %{_sysconfdir}/skydive/skydive.yml
 

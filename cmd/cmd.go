@@ -22,53 +22,8 @@
 
 package cmd
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/spf13/cobra"
-)
-
 var (
 	// CfgFiles skydive configuration files
 	CfgFiles   []string
-	cfgBackend string
+	CfgBackend string
 )
-
-// LoadConfiguration from a configuration file
-func LoadConfiguration() {
-	if len(CfgFiles) != 0 {
-		if err := config.InitConfig(cfgBackend, CfgFiles); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to initialize config: %s", err.Error())
-			os.Exit(1)
-		}
-
-		if err := logging.InitLogging(); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to initialize logging system: %s", err.Error())
-			os.Exit(1)
-		}
-	}
-}
-
-// RootCmd skydive root command
-var RootCmd = &cobra.Command{
-	Use:          "skydive [sub]",
-	Short:        "Skydive",
-	SilenceUsage: true,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		LoadConfiguration()
-	},
-}
-
-func init() {
-	RootCmd.PersistentFlags().StringArrayVarP(&CfgFiles, "conf", "c", []string{}, "location of Skydive agent config files")
-	RootCmd.PersistentFlags().StringVarP(&cfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
-	RootCmd.AddCommand(VersionCmd)
-	RootCmd.AddCommand(Agent)
-	RootCmd.AddCommand(Analyzer)
-	RootCmd.AddCommand(Client)
-	RootCmd.AddCommand(AllInOne)
-	RootCmd.AddCommand(BashCompletion)
-}
