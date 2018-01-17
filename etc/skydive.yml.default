@@ -231,19 +231,21 @@ auth:
   analyzer_password: password
 
 etcd:
+  # server parameters
   # when 'embedded' is set to true, the analyzer will start an embedded etcd server
   # embedded: true
   # listen: 0.0.0.0:12379
-
-  # both the analyzers and the agents make use of etcd
-  # servers:
-  #   - http://127.0.0.1:12379
-
-  # client_timeout: 5
-
   # maximum number of WAL and snapshot files. 0 means unlimited
   # max_wal_files: 0
   # max_snap_files: 0
+  # path of etcd persistence
+  # data_dir: /var/lib/skydive/etc
+
+  # client parameters
+  # both the analyzers and the agents make use of etcd
+  # servers:
+  #   - http://127.0.0.1:12379
+  # client_timeout: 5
 
 flow:
   # Without any new packets, a flow expires after flow.expire
