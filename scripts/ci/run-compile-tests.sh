@@ -16,3 +16,6 @@ GOOS=windows GOARCH=amd64 govendor build github.com/skydive-project/skydive
 
 # Compile Skydive for MacOS
 GOOS=darwin GOARCH=amd64 govendor build github.com/skydive-project/skydive
+
+# Compile profiling
+make WITH_PROF=true VERBOSE=true
