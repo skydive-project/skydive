@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync"
+	"time"
 
 	cache "github.com/pmylund/go-cache"
 
@@ -45,14 +46,15 @@ type OnDemandProbeClient struct {
 	sync.RWMutex
 	*etcd.EtcdMasterElector
 	graph.DefaultGraphListener
-	graph            *graph.Graph
-	captureHandler   *api.CaptureAPIHandler
-	agentPool        shttp.WSJSONSpeakerPool
-	subscriberPool   shttp.WSJSONSpeakerPool
-	captures         map[string]*types.Capture
-	watcher          api.StoppableWatcher
-	registeredNodes  map[string]string
-	deletedNodeCache *cache.Cache
+	graph                *graph.Graph
+	captureHandler       *api.CaptureAPIHandler
+	agentPool            shttp.WSJSONSpeakerPool
+	subscriberPool       shttp.WSJSONSpeakerPool
+	captures             map[string]*types.Capture
+	watcher              api.StoppableWatcher
+	registeredNodes      map[string]string
+	deletedNodeCache     *cache.Cache
+	checkForRegistration *common.Debouncer
 }
 
 type nodeProbe struct {
@@ -195,13 +197,17 @@ func (o *OnDemandProbeClient) applyGremlinExpr(query string) []interface{} {
 
 // checkForRegistration check the capture gremlin expression in order to
 // register new probe.
-func (o *OnDemandProbeClient) checkForRegistration() {
+func (o *OnDemandProbeClient) checkForRegistrationCallback() {
 	if !o.IsMaster() {
 		return
 	}
 
+	o.graph.RLock()
+	defer o.graph.RUnlock()
+
 	o.RLock()
 	defer o.RUnlock()
+
 	for _, capture := range o.captures {
 		res := o.applyGremlinExpr(capture.GremlinQuery)
 		if len(res) > 0 {
@@ -231,13 +237,13 @@ func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
 		logging.GetLogger().Debugf("Unregister remaining capture for node %s: %s", n.ID, id)
 		go o.unregisterProbe(n, &types.Capture{UUID: id})
 	} else {
-		o.checkForRegistration()
+		o.checkForRegistration.Call()
 	}
 }
 
 // OnNodeUpdated graph event
 func (o *OnDemandProbeClient) OnNodeUpdated(n *graph.Node) {
-	o.checkForRegistration()
+	o.checkForRegistration.Call()
 }
 
 // OnNodeDeleted graph event
@@ -251,7 +257,7 @@ func (o *OnDemandProbeClient) OnNodeDeleted(n *graph.Node) {
 
 // OnEdgeAdded graph event
 func (o *OnDemandProbeClient) OnEdgeAdded(e *graph.Edge) {
-	o.checkForRegistration()
+	o.checkForRegistration.Call()
 }
 
 func (o *OnDemandProbeClient) registerCapture(capture *types.Capture) {
@@ -359,6 +365,8 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 func (o *OnDemandProbeClient) Start() {
 	o.EtcdMasterElector.StartAndWait()
 
+	o.checkForRegistration.Start()
+
 	o.watcher = o.captureHandler.AsyncWatch(o.onAPIWatcherEvent)
 	o.graph.AddEventListener(o)
 }
@@ -367,6 +375,7 @@ func (o *OnDemandProbeClient) Start() {
 func (o *OnDemandProbeClient) Stop() {
 	o.watcher.Stop()
 	o.EtcdMasterElector.Stop()
+	o.checkForRegistration.Stop()
 }
 
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
@@ -389,6 +398,7 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool
 		registeredNodes:   make(map[string]string),
 		deletedNodeCache:  cache.New(elector.TTL()*2, elector.TTL()*2),
 	}
+	o.checkForRegistration = common.NewDebouncer(time.Second, o.checkForRegistrationCallback)
 
 	elector.AddEventListener(o)
 	agentPool.AddJSONMessageHandler(o, []string{ondemand.Namespace})
