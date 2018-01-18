@@ -55,6 +55,7 @@
   <script src="/statics/js/components/flow-table.js"></script>
   <script src="/statics/js/components/metrics-table.js"></script>
   <script src="/statics/js/components/rule-detail.js"></script>
+  <script src="/statics/js/components/preference.js"></script>
 
   <!-- views -->
   <script src="/statics/js/components/login.js"></script>
@@ -108,8 +109,11 @@
             </router-link>
           </ul>
           <ul class="nav navbar-nav navbar-right">
-            <router-link tag="li" to="/logout">
-              <a>Logout <i class="fa fa-exclamation-triangle text-danger" aria-hidden="true" title="Connection lost" v-if="!connected"></i></a>
+            <router-link tag="li" to="/preference">
+              <a>
+                <i class="fa fa-floppy-o"></i>
+                Preferences
+              </a>
             </router-link>
             <li>
               <a href="https://skydive-project.github.io/skydive/">
@@ -117,6 +121,13 @@
                 Documentation
               </a>
             </li>
+            <router-link tag="li" to="/logout">
+              <a>
+                <i class="fa fa-sign-out"></i>
+                Logout
+                <i class="fa fa-exclamation-triangle text-danger" aria-hidden="true" title="Connection lost" v-if="!connected"></i>
+              </a>
+            </router-link>
           </ul>
         </div>
       </div>

@@ -137,6 +137,7 @@ var routes = [
   { path: '/topology', component: TopologyComponent },
   { path: '/conversation', component: ConversationComponent },
   { path: '/discovery', component: DiscoveryComponent },
+  { path: '/preference', component: PreferenceComponent },
   { path: '*', redirect: '/topology' }
 ];
 
