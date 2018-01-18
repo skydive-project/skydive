@@ -50,14 +50,12 @@ const (
 	DockerPodNameField      = "Docker.Labels.io.kubernetes.pod.name"
 )
 
-func addNotNullFilter(m graph.Metadata, field string) {
-	m[field] = filters.NewNotFilter(filters.NewNullFilter(field))
-}
-
 func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
-	m := graph.Metadata{"Type": "container"}
-	addNotNullFilter(m, DockerPodNamespaceField)
-	addNotNullFilter(m, DockerPodNameField)
+	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Type", "container"),
+		filters.NewNotFilter(filters.NewNullFilter(DockerPodNamespaceField)),
+		filters.NewNotFilter(filters.NewNullFilter(DockerPodNameField)))
+	m := graph.NewGraphElementFilter(filter)
 
 	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField)
 }
