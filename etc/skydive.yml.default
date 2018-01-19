@@ -3,6 +3,15 @@
 # host_id is used to reference the agent by default set to hostname
 # host_id:
 
+http:
+  # define the Cookie HTTP Request Header
+  # cookie: 
+  #   <name1>: <value1>
+  #   <name2>: <value2>
+  # rest:
+  #   log the HTTP client request and response (to log level DEBUG)
+  #   debug: false
+
 # WebSocket delay between two pings.
 # ws_ping_delay: 2
 # WebSocket Ping/Pong timeout in second.
@@ -106,13 +115,6 @@ agent:
   # Not required, but can be used to allow virtual hosting
   # X509_servername: domain.com
   #
-  http:
-    # log the HTTP client request and response (to log level DEBUG)
-    # debug: false
-    # define the Cookie HTTP Request Header
-    # cookie: 
-    #   <name1>: <value1>
-    #   <name2>: <value2>
   topology:
     # Probes used to capture topology informations like interfaces,
     # bridges, namespaces, etc...

@@ -51,6 +51,7 @@ func init() {
 	}
 
 	cfg = viper.New()
+
 	cfg.SetDefault("agent.flow.probes", []string{"gopacket", "pcapsocket"})
 	cfg.SetDefault("agent.flow.pcapsocket.bind_address", "127.0.0.1")
 	cfg.SetDefault("agent.flow.pcapsocket.min_port", 8100)
@@ -60,7 +61,6 @@ func init() {
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
 	cfg.SetDefault("agent.X509_servername", "")
-	cfg.SetDefault("agent.http.debug", false)
 
 	cfg.SetDefault("analyzer.bandwidth_absolute_active", 1)
 	cfg.SetDefault("analyzer.bandwidth_absolute_alert", 1000)
@@ -132,6 +132,7 @@ func init() {
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
 
+	cfg.SetDefault("http.rest.debug", false)
 	cfg.SetDefault("ws_ping_delay", 2)
 	cfg.SetDefault("ws_pong_timeout", 5)
 	cfg.SetDefault("ws_bulk_maxmsgs", 100)
