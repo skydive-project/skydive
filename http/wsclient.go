@@ -237,7 +237,6 @@ func (c *WSConn) write(msg []byte) error {
 	}
 
 	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-
 	w, err := c.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
@@ -415,6 +414,7 @@ func (c *WSClient) connect() {
 		return
 	}
 	c.conn.SetPingHandler(nil)
+	c.conn.EnableWriteCompression(config.GetConfig().GetBool("http.ws.enable_write_compression"))
 
 	atomic.StoreInt32((*int32)(c.State), common.RunningState)
 	defer atomic.StoreInt32((*int32)(c.State), common.StoppedState)

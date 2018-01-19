@@ -22,6 +22,8 @@ http:
 # ws_bulk_maxdelay: 2
 # Maximum size of the message queue
 # ws_queue_size: 10000
+# enable write compression
+# ws_enable_write_compression: true
 
 openstack:
   auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
