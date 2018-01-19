@@ -87,6 +87,7 @@ type WSConnStatus struct {
 	State       *WSConnState `json:"IsConnected"`
 	Url         *url.URL     `json:"-"`
 	headers     http.Header
+	ConnectTime time.Time
 }
 
 func (s *WSConnState) MarshalJSON() ([]byte, error) {
@@ -363,6 +364,7 @@ func newWSConn(host string, clientType common.ServiceType, url *url.URL, headers
 			State:       new(WSConnState),
 			Url:         url,
 			headers:     headers,
+			ConnectTime: time.Now(),
 		},
 		send:       make(chan []byte, queueSize),
 		read:       make(chan []byte, queueSize),
