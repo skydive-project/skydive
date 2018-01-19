@@ -118,7 +118,7 @@ var TopologyComponent = {
               <i class="glyphicon glyphicon-minus-sign icon-sub"></i>\
             </span>\
           </button>\
-          <button v-if="currentNode != null" id="expand-all" type="button" class="btn btn-primary" \
+          <button v-if="currentNode != null && currentNode.isGroupOwner()" id="expand-all" type="button" class="btn btn-primary" \
                   title="Expand/Collapse Current Node Tree" @click="toggleExpandAll(currentNode)">\
             <span class="expand-icon-stack">\
               <span v-if="currentNode.group != null" class="glyphicon icon-main" \
@@ -144,7 +144,7 @@ var TopologyComponent = {
           <div class="left-panel" v-if="currentNode || currentEdge">\
             <div v-if="currentNode">\
               <h1>Node Metadata<span class="pull-right">(id: {{currentNode.id}})\
-                <i v-if="currentNode.group != null" class="node-action fa"\
+                <i v-if="currentNode.isGroupOwner()" class="node-action fa"\
                   title="Expand/Collapse Node"\
                   :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
                   @click="toggleExpandAll(currentNode)"></i></span>\
