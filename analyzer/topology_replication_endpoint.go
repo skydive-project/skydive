@@ -70,6 +70,10 @@ type TopologyReplicationEndpoint struct {
 	wg           sync.WaitGroup
 }
 
+func (t *TopologyReplicationEndpoint) debug() bool {
+	return config.GetConfig().GetBool("analyzer.replication.debug")
+}
+
 // getHostID loop until being able to get the host-id of the peer.
 func (p *TopologyReplicatorPeer) getHostID() string {
 	addr := common.NormalizeAddrForURL(p.URL.Hostname())
@@ -193,6 +197,9 @@ func (t *TopologyReplicationEndpoint) ConnectPeers() {
 
 	for _, candidate := range t.candidates {
 		t.wg.Add(1)
+		if t.debug() {
+			logging.GetLogger().Debugf("Connecting to peer %s", candidate.URL.String())
+		}
 		go candidate.connect(&t.wg)
 	}
 }
@@ -203,6 +210,9 @@ func (t *TopologyReplicationEndpoint) DisconnectPeers() {
 	defer t.RUnlock()
 
 	for _, candidate := range t.candidates {
+		if t.debug() {
+			logging.GetLogger().Debugf("Disconnecting from peer %s", candidate.URL.String())
+		}
 		candidate.disconnect()
 	}
 	t.wg.Wait()
@@ -225,6 +235,9 @@ func (t *TopologyReplicationEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sh
 	t.cached.SetMode(graph.CacheOnlyMode)
 	defer t.cached.SetMode(graph.DefaultMode)
 
+	if t.debug() {
+		logging.GetLogger().Debugf("Recieved message from peer %s: %s", c.GetURL().String(), msg.Bytes())
+	}
 	switch msgType {
 	case graph.SyncRequestMsgType:
 		reply := msg.Reply(t.Graph, graph.SyncReplyMsgType, http.StatusOK)
@@ -261,6 +274,9 @@ func (t *TopologyReplicationEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sh
 
 // SendToPeers sends the message to all the peers
 func (t *TopologyReplicationEndpoint) notifyPeers(msg *shttp.WSJSONMessage) {
+	if t.debug() {
+		logging.GetLogger().Debugf("Broadcasting message to all peers: %s", msg.Bytes())
+	}
 	t.in.BroadcastMessage(msg)
 	t.out.BroadcastMessage(msg)
 }

@@ -78,6 +78,7 @@ func init() {
 	cfg.SetDefault("analyzer.storage.bulk_insert_deadline", 5)
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 	cfg.SetDefault("analyzer.ssh_enabled", false)
+	cfg.SetDefault("analyzer.replication.debug", false)
 
 	cfg.SetDefault("auth.type", "noauth")
 	cfg.SetDefault("auth.keystone.tenant", "admin")

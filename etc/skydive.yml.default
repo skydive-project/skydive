@@ -87,6 +87,8 @@ analyzer:
   bandwidth_relative_active: 0.1
   bandwidth_relative_warning: 0.4
   bandwidth_relative_alert: 0.8
+  replication:
+    # debug: false
 
 # list of analyzers used by analyzers and agents
 analyzers:
