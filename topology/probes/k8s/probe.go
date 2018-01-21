@@ -41,10 +41,10 @@ var (
 
 // Probe for tracking k8s events
 type Probe struct {
-	podCache           *podCache
-	networkPolicyCache *networkPolicyCache
-	nodeCache          *nodeCache
-	containerCache     *containerCache
+	podProbe           *podProbe
+	networkPolicyProbe *networkPolicyProbe
+	nodeProbe          *nodeProbe
+	containerProbe     *containerProbe
 	bundle             *probe.ProbeBundle
 }
 
@@ -55,13 +55,13 @@ func (p *Probe) makeProbeBundle() *probe.ProbeBundle {
 	for _, i := range subprobes {
 		switch i {
 		case "pod":
-			probes[i] = p.podCache
+			probes[i] = p.podProbe
 		case "networkpolicy":
-			probes[i] = p.networkPolicyCache
+			probes[i] = p.networkPolicyProbe
 		case "container":
-			probes[i] = p.containerCache
+			probes[i] = p.containerProbe
 		case "node":
-			probes[i] = p.nodeCache
+			probes[i] = p.nodeProbe
 		default:
 			logging.GetLogger().Errorf("skipping unsupported K8s subprobe %v", i)
 		}
@@ -87,10 +87,10 @@ func NewProbe(g *graph.Graph) (*Probe, error) {
 	}
 
 	p := &Probe{}
-	p.podCache = newPodCache(g)
-	p.networkPolicyCache = newNetworkPolicyCache(g)
-	p.containerCache = newContainerCache(g)
-	p.nodeCache = newNodeCache(g)
+	p.podProbe = newPodProbe(g)
+	p.networkPolicyProbe = newNetworkPolicyProbe(g)
+	p.containerProbe = newContainerProbe(g)
+	p.nodeProbe = newNodeProbe(g)
 	p.bundle = p.makeProbeBundle()
 	return p, nil
 }

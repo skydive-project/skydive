@@ -33,7 +33,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type networkPolicyCache struct {
+type networkPolicyProbe struct {
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
 	*kubeCache
@@ -42,7 +42,7 @@ type networkPolicyCache struct {
 	podIndexer *graph.MetadataIndexer
 }
 
-func (n *networkPolicyCache) newMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
+func (n *networkPolicyProbe) newMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
 	return newMetadata("networkpolicy", np.GetName(), np)
 }
 
@@ -50,7 +50,7 @@ func netpolUID(np *networking_v1.NetworkPolicy) graph.Identifier {
 	return graph.Identifier(np.GetUID())
 }
 
-func (n *networkPolicyCache) OnAdd(obj interface{}) {
+func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
 		policyNode := n.graph.NewNode(netpolUID(policy), n.newMetadata(policy))
@@ -59,7 +59,7 @@ func (n *networkPolicyCache) OnAdd(obj interface{}) {
 	}
 }
 
-func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
+func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 	if policy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
 		if policyNode := n.graph.GetNode(netpolUID(policy)); policyNode != nil {
 			n.graph.Lock()
@@ -70,7 +70,7 @@ func (n *networkPolicyCache) OnUpdate(oldObj, newObj interface{}) {
 	}
 }
 
-func (n *networkPolicyCache) OnDelete(obj interface{}) {
+func (n *networkPolicyProbe) OnDelete(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		if policyNode := n.graph.GetNode(netpolUID((policy))); policyNode != nil {
 			n.graph.Lock()
@@ -80,14 +80,14 @@ func (n *networkPolicyCache) OnDelete(obj interface{}) {
 	}
 }
 
-func (n *networkPolicyCache) getPolicySelector(policy *networking_v1.NetworkPolicy) (podSelector labels.Selector) {
+func (n *networkPolicyProbe) getPolicySelector(policy *networking_v1.NetworkPolicy) (podSelector labels.Selector) {
 	if len(policy.Spec.PodSelector.MatchLabels) > 0 {
 		podSelector, _ = metav1.LabelSelectorAsSelector(&policy.Spec.PodSelector)
 	}
 	return
 }
 
-func (n *networkPolicyCache) filterPodsByLabels(pods []*api.Pod, selector labels.Selector) (filtered []*api.Pod) {
+func (n *networkPolicyProbe) filterPodsByLabels(pods []*api.Pod, selector labels.Selector) (filtered []*api.Pod) {
 	for _, pod := range pods {
 		if selector.Matches(labels.Set(pod.Labels)) {
 			filtered = append(filtered, pod)
@@ -96,14 +96,14 @@ func (n *networkPolicyCache) filterPodsByLabels(pods []*api.Pod, selector labels
 	return
 }
 
-func (n *networkPolicyCache) mapPods(pods []*api.Pod) (nodes []*graph.Node) {
+func (n *networkPolicyProbe) mapPods(pods []*api.Pod) (nodes []*graph.Node) {
 	for _, pod := range pods {
 		nodes = append(nodes, n.graph.GetNode(podUID(pod)))
 	}
 	return
 }
 
-func (n *networkPolicyCache) handleNetworkPolicy(policyNode *graph.Node, policy *networking_v1.NetworkPolicy) {
+func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy *networking_v1.NetworkPolicy) {
 	logging.GetLogger().Debugf("Considering network policy %s:%s", policy.GetUID(), policy.ObjectMeta.Name)
 
 	// create links between network policy and pods
@@ -136,7 +136,7 @@ func (n *networkPolicyCache) handleNetworkPolicy(policyNode *graph.Node, policy 
 	}
 }
 
-func (n *networkPolicyCache) handlePod(podNode *graph.Node) {
+func (n *networkPolicyProbe) handlePod(podNode *graph.Node) {
 	podName, _ := podNode.GetFieldString("Name")
 	namespace, _ := podNode.GetFieldString("Pod.Namespace")
 	pod := podGetByKey(n.podCache, namespace+"/"+podName)
@@ -168,21 +168,21 @@ func (n *networkPolicyCache) handlePod(podNode *graph.Node) {
 	}
 }
 
-func (n *networkPolicyCache) OnNodeAdded(node *graph.Node) {
+func (n *networkPolicyProbe) OnNodeAdded(node *graph.Node) {
 	n.handlePod(node)
 }
 
-func (n *networkPolicyCache) OnNodeUpdated(node *graph.Node) {
+func (n *networkPolicyProbe) OnNodeUpdated(node *graph.Node) {
 	n.handlePod(node)
 }
 
-func (n *networkPolicyCache) Start() {
+func (n *networkPolicyProbe) Start() {
 	n.podIndexer.AddEventListener(n)
 	n.kubeCache.Start()
 	n.podCache.Start()
 }
 
-func (n *networkPolicyCache) Stop() {
+func (n *networkPolicyProbe) Stop() {
 	n.podIndexer.RemoveEventListener(n)
 	n.kubeCache.Stop()
 	n.podCache.Stop()
@@ -192,11 +192,12 @@ func newNetworkPolicyKubeCache(handler cache.ResourceEventHandler) *kubeCache {
 	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &networking_v1.NetworkPolicy{}, "networkpolicies", handler)
 }
 
-func newNetworkPolicyCache(g *graph.Graph) *networkPolicyCache {
-	return &networkPolicyCache{
-		kubeCache:  newNetworkPolicyKubeCache(n),
+func newNetworkPolicyProbe(g *graph.Graph) *networkPolicyProbe {
+	n := &networkPolicyProbe{
 		graph:      g,
 		podCache:   newPodKubeCache(nil),
 		podIndexer: newPodIndexerByNamespace(g),
 	}
+	n.kubeCache = newNetworkPolicyKubeCache(n)
+	return n
 }

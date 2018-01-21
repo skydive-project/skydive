@@ -33,7 +33,7 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-type containerCache struct {
+type containerProbe struct {
 	sync.RWMutex
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
@@ -60,7 +60,7 @@ func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField)
 }
 
-func (c *containerCache) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
+func (c *containerProbe) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
 	m := newMetadata("container", container.Name, container)
 	m.SetField(DockerNameField, container.Name)
 	m.SetField(DockerPodNamespaceField, pod.GetNamespace())
@@ -72,7 +72,7 @@ func containerUID(pod *v1.Pod, containerName string) graph.Identifier {
 	return graph.GenIDNameBased(string(pod.GetUID()), containerName)
 }
 
-func (c *containerCache) linkContainerToPod(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
+func (c *containerProbe) linkContainerToPod(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
 	podNodes := c.podIndexer.Get(pod.GetName())
 
 	if len(podNodes) == 0 {
@@ -84,7 +84,7 @@ func (c *containerCache) linkContainerToPod(pod *v1.Pod, container *v1.Container
 	topology.AddOwnershipLink(c.graph, podNodes[0], containerNode, nil)
 }
 
-func (c *containerCache) onContainerAdd(pod *v1.Pod, container *v1.Container) {
+func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -104,13 +104,13 @@ func (c *containerCache) onContainerAdd(pod *v1.Pod, container *v1.Container) {
 	c.linkContainerToPod(pod, container, containerNode)
 }
 
-func (c *containerCache) onPodAdd(pod *v1.Pod) {
+func (c *containerProbe) onPodAdd(pod *v1.Pod) {
 	for _, container := range pod.Spec.Containers {
 		c.onContainerAdd(pod, &container)
 	}
 }
 
-func (c *containerCache) OnAdd(obj interface{}) {
+func (c *containerProbe) OnAdd(obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		return
@@ -120,7 +120,7 @@ func (c *containerCache) OnAdd(obj interface{}) {
 	c.onPodAdd(pod)
 }
 
-func (c *containerCache) OnUpdate(oldObj, newObj interface{}) {
+func (c *containerProbe) OnUpdate(oldObj, newObj interface{}) {
 	pod, ok := newObj.(*v1.Pod)
 	if !ok {
 		return
@@ -129,7 +129,7 @@ func (c *containerCache) OnUpdate(oldObj, newObj interface{}) {
 	c.onPodAdd(pod)
 }
 
-func (c *containerCache) OnDelete(obj interface{}) {
+func (c *containerProbe) OnDelete(obj interface{}) {
 	if pod, ok := obj.(*v1.Pod); ok {
 		c.graph.Lock()
 		defer c.graph.Unlock()
@@ -144,20 +144,20 @@ func (c *containerCache) OnDelete(obj interface{}) {
 	}
 }
 
-func (c *containerCache) Start() {
+func (c *containerProbe) Start() {
 	c.containerIndexer.AddEventListener(c)
 	c.podIndexer.AddEventListener(c)
 	c.kubeCache.Start()
 }
 
-func (c *containerCache) Stop() {
+func (c *containerProbe) Stop() {
 	c.containerIndexer.RemoveEventListener(c)
 	c.podIndexer.RemoveEventListener(c)
 	c.kubeCache.Stop()
 }
 
-func newContainerCache(g *graph.Graph) *containerCache {
-	c := &containerCache{
+func newContainerProbe(g *graph.Graph) *containerProbe {
+	c := &containerProbe{
 		graph:            g,
 		podIndexer:       newPodIndexerByName(g),
 		containerIndexer: newContainerIndexer(g),
