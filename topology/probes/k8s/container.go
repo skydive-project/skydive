@@ -156,12 +156,12 @@ func (c *containerCache) Stop() {
 	c.kubeCache.Stop()
 }
 
-func newContainerCache(client *kubeClient, g *graph.Graph) *containerCache {
+func newContainerCache(g *graph.Graph) *containerCache {
 	c := &containerCache{
 		graph:            g,
 		podIndexer:       newPodIndexerByName(g),
 		containerIndexer: newContainerIndexer(g),
 	}
-	c.kubeCache = client.getCacheFor(client.Core().RESTClient(), &v1.Pod{}, "pods", c)
+	c.kubeCache = newPodKubeCache(c)
 	return c
 }

@@ -41,8 +41,6 @@ var (
 
 // Probe for tracking k8s events
 type Probe struct {
-	graph              *graph.Graph
-	client             *kubeClient
 	podCache           *podCache
 	networkPolicyCache *networkPolicyCache
 	nodeCache          *nodeCache
@@ -83,21 +81,16 @@ func (p *Probe) Stop() {
 
 // NewProbe create the Probe for tracking k8s events
 func NewProbe(g *graph.Graph) (*Probe, error) {
-	client, err := newKubeClient()
+	err := initClientset()
 	if err != nil {
 		return nil, err
 	}
 
-	p := &Probe{
-		graph:  g,
-		client: client,
-	}
-
-	p.podCache = newPodCache(client, g)
-	p.networkPolicyCache = newNetworkPolicyCache(client, g, p.podCache)
-	p.containerCache = newContainerCache(client, g)
-	p.nodeCache = newNodeCache(client, g)
+	p := &Probe{}
+	p.podCache = newPodCache(g)
+	p.networkPolicyCache = newNetworkPolicyCache(g, p.podCache)
+	p.containerCache = newContainerCache(g)
+	p.nodeCache = newNodeCache(g)
 	p.bundle = p.makeProbeBundle()
-
 	return p, nil
 }

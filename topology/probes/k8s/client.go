@@ -37,15 +37,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type kubeClient struct {
-	*kubernetes.Clientset
-}
+var clientset *kubernetes.Clientset = nil
 
-func (c *kubeClient) getCacheFor(restClient rest.Interface, objType runtime.Object, resources string, handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(restClient, objType, resources, handler)
-}
-
-func newKubeClient() (*kubeClient, error) {
+func newClientset() (*kubernetes.Clientset, error) {
 	kubeconfig := config.GetConfig().GetString("k8s.config_file")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
@@ -60,12 +54,24 @@ func newKubeClient() (*kubeClient, error) {
 		}
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
+	clntset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err.Error())
 	}
 
-	return &kubeClient{clientset}, nil
+	return clntset, nil
+}
+
+func initClientset() (err error) {
+	clientset, err = newClientset()
+	return
+}
+
+func getClientset() *kubernetes.Clientset {
+	if clientset == nil {
+		panic("clientset was not initialized, aborting!")
+	}
+	return clientset
 }
 
 type kubeCache struct {
@@ -88,12 +94,16 @@ func (d *defaultKubeCacheEventHandler) OnDelete(obj interface{}) {
 
 func newKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler cache.ResourceEventHandler) *kubeCache {
 	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
+
+	cacheHandler := cache.ResourceEventHandlerFuncs{}
+	if handler != nil {
+		cacheHandler.AddFunc = handler.OnAdd
+		cacheHandler.UpdateFunc = handler.OnUpdate
+		cacheHandler.DeleteFunc = handler.OnDelete
+	}
+
 	c := &kubeCache{stopController: make(chan struct{})}
-	c.cache, c.controller = cache.NewInformer(watchlist, objType, 30*time.Minute, cache.ResourceEventHandlerFuncs{
-		AddFunc:    handler.OnAdd,
-		UpdateFunc: handler.OnUpdate,
-		DeleteFunc: handler.OnDelete,
-	})
+	c.cache, c.controller = cache.NewInformer(watchlist, objType, 30*time.Minute, cacheHandler)
 	return c
 }
 

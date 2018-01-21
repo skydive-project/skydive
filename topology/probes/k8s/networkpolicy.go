@@ -30,6 +30,7 @@ import (
 	networking_v1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/tools/cache"
 )
 
 type networkPolicyCache struct {
@@ -185,16 +186,16 @@ func (n *networkPolicyCache) Stop() {
 	n.kubeCache.Stop()
 }
 
-func newNetworkPolicyCache(client *kubeClient, g *graph.Graph, podCache *podCache) *networkPolicyCache {
+func newNetworkPolicyKubeCache(handler cache.ResourceEventHandler) *kubeCache {
+	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &networking_v1.NetworkPolicy{}, "networkpolicies", handler)
+}
+
+func newNetworkPolicyCache(g *graph.Graph, podCache *podCache) *networkPolicyCache {
 	n := &networkPolicyCache{
 		graph:      g,
 		podCache:   podCache,
 		podIndexer: newPodIndexerByNamespace(g),
 	}
-	n.kubeCache = client.getCacheFor(
-		client.ExtensionsV1beta1().RESTClient(),
-		&networking_v1.NetworkPolicy{},
-		"networkpolicies",
-		n)
+	n.kubeCache = newNetworkPolicyKubeCache(n)
 	return n
 }

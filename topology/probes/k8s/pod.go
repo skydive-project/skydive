@@ -30,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 
 	api "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 type podCache struct {
@@ -179,12 +180,16 @@ func (p *podCache) Stop() {
 	p.kubeCache.Stop()
 }
 
-func newPodCache(client *kubeClient, g *graph.Graph) *podCache {
+func newPodKubeCache(handler cache.ResourceEventHandler) *kubeCache {
+	return newKubeCache(getClientset().Core().RESTClient(), &api.Pod{}, "pods", handler)
+}
+
+func newPodCache(g *graph.Graph) *podCache {
 	p := &podCache{
 		graph:            g,
 		containerIndexer: newContainerIndexer(g),
 		nodeIndexer:      newNodeIndexer(g),
 	}
-	p.kubeCache = client.getCacheFor(client.Core().RESTClient(), &api.Pod{}, "pods", p)
+	p.kubeCache = newPodKubeCache(p)
 	return p
 }
