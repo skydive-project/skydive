@@ -41,20 +41,34 @@ type containerProbe struct {
 	graph            *graph.Graph
 	podIndexer       *graph.MetadataIndexer
 	containerIndexer *graph.MetadataIndexer
+	dockerIndexer    *graph.MetadataIndexer
 }
 
 // commonly accessed docker specific fields
 const (
 	DockerNameField         = "Docker.ContainerName"
-	DockerPodNamespaceField = "Docker.Labels.io.kubernetes.pod.namespace"
 	DockerPodNameField      = "Docker.Labels.io.kubernetes.pod.name"
+	DockerPodNamespaceField = "Docker.Labels.io.kubernetes.pod.namespace"
 )
+
+func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
+	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Manager", "docker"),
+		filters.NewTermStringFilter("Type", "container"),
+		filters.NewNotFilter(filters.NewNullFilter(DockerNameField)),
+		filters.NewNotFilter(filters.NewNullFilter(DockerPodNameField)),
+		filters.NewNotFilter(filters.NewNullFilter(DockerPodNamespaceField)))
+	m := graph.NewGraphElementFilter(filter)
+
+	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField)
+}
 
 func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Manager", "k8s"),
 		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotFilter(filters.NewNullFilter(DockerPodNamespaceField)),
-		filters.NewNotFilter(filters.NewNullFilter(DockerPodNameField)))
+		filters.NewNotFilter(filters.NewNullFilter(DockerPodNameField)),
+		filters.NewNotFilter(filters.NewNullFilter(DockerPodNamespaceField)))
 	m := graph.NewGraphElementFilter(filter)
 
 	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField)
@@ -146,12 +160,14 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 
 func (c *containerProbe) Start() {
 	c.containerIndexer.AddEventListener(c)
+	c.dockerIndexer.AddEventListener(c)
 	c.podIndexer.AddEventListener(c)
 	c.kubeCache.Start()
 }
 
 func (c *containerProbe) Stop() {
 	c.containerIndexer.RemoveEventListener(c)
+	c.dockerIndexer.RemoveEventListener(c)
 	c.podIndexer.RemoveEventListener(c)
 	c.kubeCache.Stop()
 }
@@ -161,6 +177,7 @@ func newContainerProbe(g *graph.Graph) *containerProbe {
 		graph:            g,
 		podIndexer:       newPodIndexerByName(g),
 		containerIndexer: newContainerIndexer(g),
+		dockerIndexer:    newDockerIndexer(g),
 	}
 	c.kubeCache = newPodKubeCache(c)
 	return c
