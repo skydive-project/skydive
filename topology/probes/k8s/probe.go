@@ -88,7 +88,7 @@ func NewProbe(g *graph.Graph) (*Probe, error) {
 
 	p := &Probe{}
 	p.podCache = newPodCache(g)
-	p.networkPolicyCache = newNetworkPolicyCache(g, p.podCache)
+	p.networkPolicyCache = newNetworkPolicyCache(g)
 	p.containerCache = newContainerCache(g)
 	p.nodeCache = newNodeCache(g)
 	p.bundle = p.makeProbeBundle()

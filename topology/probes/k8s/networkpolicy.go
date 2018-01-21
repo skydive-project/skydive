@@ -38,7 +38,7 @@ type networkPolicyCache struct {
 	graph.DefaultGraphListener
 	*kubeCache
 	graph      *graph.Graph
-	podCache   *podCache
+	podCache   *kubeCache
 	podIndexer *graph.MetadataIndexer
 }
 
@@ -109,10 +109,10 @@ func (n *networkPolicyCache) handleNetworkPolicy(policyNode *graph.Node, policy 
 	// create links between network policy and pods
 	var pods []*graph.Node
 	if podSelector := n.getPolicySelector(policy); podSelector != nil {
-		pods = n.mapPods(n.filterPodsByLabels(n.podCache.List(), podSelector))
+		pods = n.mapPods(n.filterPodsByLabels(podList(n.podCache), podSelector))
 	} else {
 		if policy.Namespace == api.NamespaceAll {
-			pods = n.mapPods(n.podCache.List())
+			pods = n.mapPods(podList(n.podCache))
 		} else {
 			pods = n.podIndexer.Get(policy.Namespace)
 		}
@@ -139,7 +139,7 @@ func (n *networkPolicyCache) handleNetworkPolicy(policyNode *graph.Node, policy 
 func (n *networkPolicyCache) handlePod(podNode *graph.Node) {
 	podName, _ := podNode.GetFieldString("Name")
 	namespace, _ := podNode.GetFieldString("Pod.Namespace")
-	pod := n.podCache.GetByKey(namespace + "/" + podName)
+	pod := podGetByKey(n.podCache, namespace+"/"+podName)
 	if pod == nil {
 		logging.GetLogger().Warningf("Failed to find pod for node %s", podNode.ID)
 		return
@@ -179,23 +179,24 @@ func (n *networkPolicyCache) OnNodeUpdated(node *graph.Node) {
 func (n *networkPolicyCache) Start() {
 	n.podIndexer.AddEventListener(n)
 	n.kubeCache.Start()
+	n.podCache.Start()
 }
 
 func (n *networkPolicyCache) Stop() {
 	n.podIndexer.RemoveEventListener(n)
 	n.kubeCache.Stop()
+	n.podCache.Stop()
 }
 
 func newNetworkPolicyKubeCache(handler cache.ResourceEventHandler) *kubeCache {
 	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &networking_v1.NetworkPolicy{}, "networkpolicies", handler)
 }
 
-func newNetworkPolicyCache(g *graph.Graph, podCache *podCache) *networkPolicyCache {
-	n := &networkPolicyCache{
+func newNetworkPolicyCache(g *graph.Graph) *networkPolicyCache {
+	return &networkPolicyCache{
+		kubeCache:  newNetworkPolicyKubeCache(n),
 		graph:      g,
-		podCache:   podCache,
+		podCache:   newPodKubeCache(nil),
 		podIndexer: newPodIndexerByNamespace(g),
 	}
-	n.kubeCache = newNetworkPolicyKubeCache(n)
-	return n
 }

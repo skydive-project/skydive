@@ -154,15 +154,15 @@ func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
 	topology.AddOwnershipLink(g, node, pod, nil)
 }
 
-func (p *podCache) List() (pods []*api.Pod) {
-	for _, pod := range p.cache.List() {
+func podList(c *kubeCache) (pods []*api.Pod) {
+	for _, pod := range c.cache.List() {
 		pods = append(pods, pod.(*api.Pod))
 	}
 	return
 }
 
-func (p *podCache) GetByKey(key string) *api.Pod {
-	if pod, found, _ := p.cache.GetByKey(key); found {
+func podGetByKey(c *kubeCache, key string) *api.Pod {
+	if pod, found, _ := c.cache.GetByKey(key); found {
 		return pod.(*api.Pod)
 	}
 	return nil
