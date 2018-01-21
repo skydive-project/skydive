@@ -2,6 +2,7 @@
 # create a fabric port node and link it to the TOR2 node
 #
 
+import logging
 import sys
 
 from skydive.graph import Node, Edge
@@ -12,6 +13,8 @@ from skydive.rest.client import RESTClient
 from skydive.websocket.client import WSMessage
 
 from skydive.websocket.client import NodeAddedMsgType, EdgeAddedMsgType
+
+LOG = logging.getLogger(__name__)
 
 
 class WSClientInjectProtocol(WSClientDebugProtocol):
@@ -54,9 +57,11 @@ class WSClientInjectProtocol(WSClientDebugProtocol):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
     wsclient = WSClient("host-test", "ws://localhost:8082/ws/publisher",
                         protocol=WSClientInjectProtocol, persistent=True)
     wsclient.connect()
+    wsclient.start()
 
 
 if __name__ == '__main__':

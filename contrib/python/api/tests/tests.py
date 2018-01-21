@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import time
 import unittest
@@ -19,6 +20,7 @@ class WSTestClient(WSClientDebugProtocol):
 class SkydiveWSTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        logging.basicConfig(level=logging.DEBUG)
         subprocess.call(["docker", "run", "--name",
                          "skydive-docker-python-tests", "-p", "8082:8082",
                          "-d", "skydive/skydive", "analyzer"])

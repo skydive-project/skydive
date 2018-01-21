@@ -29,6 +29,7 @@ try:
     import http.client as httplib
 except ImportError:
     import httplib
+import logging
 import uuid
 try:
     from urllib.parse import urlparse
@@ -40,6 +41,8 @@ from autobahn.asyncio.websocket import WebSocketClientFactory
 
 from skydive.encoder import JSONEncoder
 
+
+LOG = logging.getLogger(__name__)
 
 SyncRequestMsgType = "SyncRequest"
 SyncReplyMsgType = "SyncReply"
@@ -100,16 +103,16 @@ class WSClientDefaultProtocol(WebSocketClientProtocol):
 class WSClientDebugProtocol(WSClientDefaultProtocol):
 
     def onConnect(self, response):
-        print("Connected: {0}".format(response.peer))
+        LOG.debug("Connected: %s", response.peer)
 
     def onMessage(self, payload, isBinary):
         if isBinary:
-            print("Binary message received: {0} bytes".format(len(payload)))
+            LOG.debug("Binary message received: %d bytes", len(payload))
         else:
-            print("Text message received: {0}".format(payload.decode('utf8')))
+            LOG.debug("Text message received: %s", payload.decode('utf8'))
 
     def onOpen(self):
-        print("WebSocket connection opened.")
+        LOG.debug("WebSocket connection opened.")
 
         if self.factory.client.sync:
             msg = WSMessage(
@@ -118,7 +121,7 @@ class WSClientDebugProtocol(WSClientDefaultProtocol):
             self.sendWSMessage(msg)
 
     def onClose(self, wasClean, code, reason):
-        print("WebSocket connection closed: {0}".format(reason))
+        LOG.debug("WebSocket connection closed: %s", reason)
 
 
 class WSClient(WebSocketClientProtocol):
