@@ -24,9 +24,12 @@ package k8s
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/skydive-project/skydive/config"
 
+	api "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -63,4 +66,42 @@ func newKubeClient() (*kubeClient, error) {
 	}
 
 	return &kubeClient{clientset}, nil
+}
+
+type kubeCache struct {
+	cache          cache.Store
+	controller     cache.Controller
+	stopController chan (struct{})
+}
+
+type defaultKubeCacheEventHandler struct {
+}
+
+func (d *defaultKubeCacheEventHandler) OnAdd(obj interface{}) {
+}
+
+func (d *defaultKubeCacheEventHandler) OnUpdate(old, new interface{}) {
+}
+
+func (d *defaultKubeCacheEventHandler) OnDelete(obj interface{}) {
+}
+
+func newKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler cache.ResourceEventHandler) *kubeCache {
+	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
+	c := &kubeCache{stopController: make(chan struct{})}
+	c.cache, c.controller = cache.NewInformer(watchlist, objType, 30*time.Minute, cache.ResourceEventHandlerFuncs{
+		AddFunc:    handler.OnAdd,
+		UpdateFunc: handler.OnUpdate,
+		DeleteFunc: handler.OnDelete,
+	})
+	return c
+}
+
+func (c *kubeCache) Start() {
+	c.cache.Resync()
+	go c.controller.Run(c.stopController)
+}
+
+func (c *kubeCache) Stop() {
+	c.stopController <- struct{}{}
 }
