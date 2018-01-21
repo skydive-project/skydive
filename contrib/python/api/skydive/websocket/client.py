@@ -133,12 +133,14 @@ class WSClient(WebSocketClientProtocol):
 
     def __init__(self, host_id, endpoint, type="",
                  protocol=WSClientDefaultProtocol,
-                 username="", password="", sync="", filter="", persistent=True,
+                 username="", password="", cookie=None,
+                 sync="", filter="", persistent=True,
                  **kwargs):
         self.host_id = host_id
         self.endpoint = endpoint
         self.username = username
         self.password = password
+        self.cookie = cookie
         self.protocol = protocol
         self.type = type
         self.filter = filter
@@ -165,6 +167,9 @@ class WSClient(WebSocketClientProtocol):
 
         if self.filter:
             factory.headers["X-Gremlin-Filter"] = self.filter
+
+        if self.cookie:
+            factory.headers['Cookie'] = self.cookie
 
         self.loop = asyncio.get_event_loop()
         u = urlparse(self.endpoint)
