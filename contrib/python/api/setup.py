@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(name='skydive-client',
-      version='0.2.0',
-      description='Skydive Python 3 client library',
+      version='0.3.0',
+      description='Skydive Python client library',
       url='http://github.com/skydive-project/skydive',
       author='Sylvain Afchain',
       author_email='safchain@gmail.com',
@@ -15,5 +15,7 @@ setup(name='skydive-client',
       },
       install_requires=[
           'autobahn>=0.17.1',
+          'trollius>=2.1;python_version<"3.0"',
+          'asyncio>=3.4.3;python_version>="3.0"',
       ],
       zip_safe=False)
