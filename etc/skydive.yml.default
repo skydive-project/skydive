@@ -271,7 +271,7 @@ k8s:
   #
   # Specify the path of k8s configuration YAML file
   # config_file: /etc/skydive/kubeconfig
-  subprobes:
+  probes:
   - networkpolicy
   - pod
   - container

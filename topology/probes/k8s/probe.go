@@ -49,10 +49,10 @@ type Probe struct {
 }
 
 func (p *Probe) makeProbeBundle() *probe.ProbeBundle {
-	subprobes := config.GetConfig().GetStringSlice("k8s.subprobes")
-	logging.GetLogger().Infof("K8s subprobes: %v", subprobes)
+	configProbes := config.GetConfig().GetStringSlice("k8s.probes")
+	logging.GetLogger().Infof("K8s probes: %v", configProbes)
 	probes := make(map[string]probe.Probe)
-	for _, i := range subprobes {
+	for name, i := range configProbes {
 		switch i {
 		case "pod":
 			probes[i] = p.podProbe
@@ -63,7 +63,7 @@ func (p *Probe) makeProbeBundle() *probe.ProbeBundle {
 		case "node":
 			probes[i] = p.nodeProbe
 		default:
-			logging.GetLogger().Errorf("skipping unsupported K8s subprobe %v", i)
+			logging.GetLogger().Errorf("skipping unsupported K8s probe %v", name)
 		}
 	}
 	return probe.NewProbeBundle(probes)
