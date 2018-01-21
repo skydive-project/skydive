@@ -172,9 +172,13 @@ class WSClient(WebSocketClientProtocol):
         coro = self.loop.create_connection(factory, u.hostname, u.port)
         self.loop.run_until_complete(coro)
 
+    def start(self):
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
             self.loop.close()
         finally:
             pass
+
+    def stop(self):
+        self.loop.stop()
