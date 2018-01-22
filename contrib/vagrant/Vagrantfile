@@ -9,7 +9,7 @@ AGENT_EXTRA_PROVISION_SCRIPT=ENV.fetch("AGENT_EXTRA_PROVISION_SCRIPT", "")
 ANALYZER_EXTRA_PROVISION_SCRIPT=ENV.fetch("ANALYZER_EXTRA_PROVISION_SCRIPT", "")
 
 $skydive_extra_config = {
-  "ws_pong_timeout" => 10,
+  "http.ws.pong_timeout" => 10,
   "agent.topology.probes" => ["ovsdb", "docker"],
   "agent.topology.netlink.metrics_update" => 5
 }

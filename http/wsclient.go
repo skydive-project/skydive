@@ -237,6 +237,7 @@ func (c *WSConn) write(msg []byte) error {
 	}
 
 	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	c.conn.EnableWriteCompression(config.GetConfig().GetBool("http.ws.enable_write_compression"))
 	w, err := c.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		return err
@@ -462,7 +463,7 @@ func NewWSClient(host string, clientType common.ServiceType, url *url.URL, authC
 // NewWSClientFromConfig creates a WSClient based on the configuration
 func NewWSClientFromConfig(clientType common.ServiceType, url *url.URL, authClient *AuthenticationClient, headers http.Header) *WSClient {
 	host := config.GetConfig().GetString("host_id")
-	queueSize := config.GetConfig().GetInt("ws_queue_size")
+	queueSize := config.GetConfig().GetInt("http.ws.queue_size")
 	return NewWSClient(host, clientType, url, authClient, headers, queueSize)
 }
 
@@ -478,15 +479,15 @@ func newIncomingWSClient(conn *websocket.Conn, r *auth.AuthenticatedRequest) *ws
 		clientType = common.UnknownService
 	}
 
-	queueSize := config.GetConfig().GetInt("ws_queue_size")
+	queueSize := config.GetConfig().GetInt("http.ws.queue_size")
 
 	svc, _ := common.ServiceAddressFromString(conn.RemoteAddr().String())
 	url := config.GetURL("http", svc.Addr, svc.Port, r.URL.Path+"?"+r.URL.RawQuery)
 	wsconn := newWSConn(host, clientType, url, r.Header, queueSize)
 	wsconn.conn = conn
 
-	pingDelay := time.Duration(config.GetConfig().GetInt("ws_ping_delay")) * time.Second
-	pongTimeout := time.Duration(config.GetConfig().GetInt("ws_pong_timeout"))*time.Second + pingDelay
+	pingDelay := time.Duration(config.GetConfig().GetInt("http.ws.ping_delay")) * time.Second
+	pongTimeout := time.Duration(config.GetConfig().GetInt("http.ws.pong_timeout"))*time.Second + pingDelay
 
 	conn.SetReadLimit(maxMessageSize)
 	conn.SetReadDeadline(time.Now().Add(pongTimeout))

@@ -52,7 +52,9 @@ const (
 )
 
 const testConfig = `---
-ws_pong_timeout: 10
+http:
+  ws:
+    pong_timeout: 10
 
 analyzers:
   - 127.0.0.1:8082

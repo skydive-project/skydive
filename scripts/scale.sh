@@ -169,7 +169,9 @@ function create_agent() {
 
 		cat <<EOF >> $TEMP_DIR/$NAME.yml
 host_id: $NAME
-ws_pong_timeout: 15
+http:
+  ws:
+    pong_timeout: 15
 analyzer:
   X509_cert: $ANALYZER_CRT
   X509_key: $ANALYZER_KEY
@@ -293,7 +295,9 @@ function create_analyzer() {
 
 	cat <<EOF >> $TEMP_DIR/$NAME.yml
 host_id: $NAME
-ws_pong_timeout: 15
+http:
+  ws:
+    pong_timeout: 15
 etcd:
   embedded: $ETCD_EMBEDDED
   data_dir: $TEMP_DIR/$NAME-etcd
