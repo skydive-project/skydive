@@ -23,14 +23,12 @@
 package agent
 
 import (
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 
 	cache "github.com/pmylund/go-cache"
+
 	"github.com/skydive-project/skydive/analyzer"
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
@@ -255,29 +253,4 @@ func NewAgent() (*Agent, error) {
 	api.RegisterStatusAPI(hserver, agent)
 
 	return agent, nil
-}
-
-// CreateRootNode creates a graph.Node based on the host properties and aims to have an unique ID
-func createRootNode(g *graph.Graph) (*graph.Node, error) {
-	hostID := config.GetConfig().GetString("host_id")
-	m := graph.Metadata{"Name": hostID, "Type": "host"}
-
-	// Fill the metadata from the configuration file
-	if config.GetConfig().IsSet("agent.metadata") {
-		configMetadata, ok := common.NormalizeValue(config.GetConfig().Get("agent.metadata")).(map[string]interface{})
-		if !ok {
-			return nil, errors.New("agent.metadata has wrong format")
-		}
-		for k, v := range configMetadata {
-			m[k] = v
-		}
-	}
-
-	// Retrieves the instance ID from cloud-init
-	buffer, err := ioutil.ReadFile("/var/lib/cloud/data/instance-id")
-	if err == nil {
-		m["InstanceID"] = strings.TrimSpace(string(buffer))
-	}
-
-	return g.NewNode(graph.GenID(), m), nil
 }

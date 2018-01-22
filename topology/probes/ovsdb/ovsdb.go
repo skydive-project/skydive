@@ -268,6 +268,16 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		tr.AddMetadata("ExtID."+k.(string), v.(string))
 	}
 
+	options := row.New.Fields["options"].(libovsdb.OvsMap)
+	for k, v := range options.GoMap {
+		tr.AddMetadata("Ovs.Options."+k.(string), v.(string))
+	}
+
+	otherConfig := row.New.Fields["other_config"].(libovsdb.OvsMap)
+	for k, v := range otherConfig.GoMap {
+		tr.AddMetadata("Ovs.OtherConfig."+k.(string), v.(string))
+	}
+
 	o.uuidToIntf[uuid] = intf
 
 	switch itype {

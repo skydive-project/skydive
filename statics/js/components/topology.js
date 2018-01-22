@@ -347,27 +347,28 @@ var TopologyComponent = {
 
     currentNodeMetadata: function() {
       if (!this.currentNode) return {};
-      return this.extractMetadata(this.currentNode.metadata, ['LastUpdateMetric', 'Metric', 'Ovs']);
+      return this.extractMetadata(this.currentNode.metadata,
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric']);
     },
 
     currentNodeMetric: function() {
-      if (!this.currentNode) return {};
-      return this.normalizeMetric(this.extractMetadata(this.currentNode.metadata.Metric));
+      if (!this.currentNode || !this.currentNode.metadata.Metric) return {};
+      return this.normalizeMetric(this.currentNode.metadata.Metric);
     },
 
     currentNodeLastUpdateMetric: function() {
-      if (!this.currentNode) return {};
-      return this.normalizeMetric(this.extractMetadata(this.currentNode.metadata.LastUpdateMetric));
+      if (!this.currentNode || !this.currentNode.metadata.LastUpdateMetric) return {};
+      return this.normalizeMetric(this.currentNode.metadata.LastUpdateMetric);
     },
 
     currentNodeOvsMetric: function() {
-      if (!this.currentNode || !this.currentNode.metadata.Ovs) return {};
-      return this.normalizeMetric(this.extractMetadata(this.currentNode.metadata.Ovs.Metric));
+      if (!this.currentNode || !this.currentNode.metadata.Ovs || !this.currentNode.metadata.Ovs.Metric) return {};
+      return this.normalizeMetric(this.currentNode.metadata.Ovs.Metric);
     },
 
     currentNodeOvsLastUpdateMetric: function() {
-      if (!this.currentNode || !this.currentNode.metadata.Ovs) return {};
-      return this.normalizeMetric(this.extractMetadata(this.currentNode.metadata.Ovs.LastUpdateMetric));
+      if (!this.currentNode || !this.currentNode.metadata.Ovs || !this.currentNode.metadata.Ovs.LastUpdateMetric) return {};
+      return this.normalizeMetric(this.currentNode.metadata.Ovs.LastUpdateMetric);
     },
 
   },
@@ -616,10 +617,26 @@ var TopologyComponent = {
     },
 
     extractMetadata: function(metadata, exclude) {
-      var mdata = {};
-      for (var key in metadata) {
-        if (exclude && exclude.indexOf(key) >= 0) continue;
-        mdata[key] = metadata[key];
+      var mdata = JSON.parse(JSON.stringify(metadata));
+      for (var field of exclude) {
+        var path = field.split(".");
+
+        var root = mdata, prev, prevKey;
+        for (var i = 0; i < path.length; i++) {
+          var key = path[i];
+          if (i === path.length - 1) {
+            delete root[key];
+
+            // object empty
+            if (Object.keys(root).length === 0) delete prev[prevKey];
+            break;
+          }
+          prev = root;
+          prevKey = key;
+
+          root = root[key];
+          if (!root) break;
+        }
       }
       return mdata;
     },

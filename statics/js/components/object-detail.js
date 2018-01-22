@@ -68,7 +68,9 @@ Vue.component('object-detail', {
     },
 
     collapsedByDefault: function(key) {
-      if (key === "FDB" || key === "Neighbors" || key === "RoutingTable") return true;
+      if (key === "FDB" || key === "Neighbors" || key === "RoutingTable" ||
+          key === "CPU" || key === "IsolatedCPU")
+          return true;
       return false;
     },
   }
