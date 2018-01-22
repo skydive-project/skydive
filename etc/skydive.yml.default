@@ -3,16 +3,27 @@
 # host_id is used to reference the agent by default set to hostname
 # host_id:
 
-# WebSocket delay between two pings.
-# ws_ping_delay: 2
-# WebSocket Ping/Pong timeout in second.
-# ws_pong_timeout: 5
-# maximum number of topology aggregated messages before sending
-# ws_bulk_maxmsgs: 100
-# duration in seconds before flushing topology aggregated messages
-# ws_bulk_maxdelay: 2
-# Maximum size of the message queue
-# ws_queue_size: 10000
+http:
+  # define the Cookie HTTP Request Header
+  # cookie: 
+  #   <name1>: <value1>
+  #   <name2>: <value2>
+  # rest:
+  #   log the HTTP client request and response (to log level DEBUG)
+  #   debug: false
+  # ws:
+    # WebSocket delay between two pings.
+    # ping_delay: 2
+    # WebSocket Ping/Pong timeout in second.
+    # pong_timeout: 5
+    # maximum number of topology aggregated messages before sending
+    # bulk_maxmsgs: 100
+    # duration in seconds before flushing topology aggregated messages
+    # bulk_maxdelay: 2
+    # Maximum size of the message queue
+    # queue_size: 10000
+    # enable write compression
+    # enable_write_compression: true
 
 openstack:
   auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
@@ -87,6 +98,8 @@ analyzer:
   bandwidth_relative_active: 0.1
   bandwidth_relative_warning: 0.4
   bandwidth_relative_alert: 0.8
+  replication:
+    # debug: false
 
 # list of analyzers used by analyzers and agents
 analyzers:
@@ -104,13 +117,6 @@ agent:
   # Not required, but can be used to allow virtual hosting
   # X509_servername: domain.com
   #
-  http:
-    # log the HTTP client request and response (to log level DEBUG)
-    # debug: false
-    # define the Cookie HTTP Request Header
-    # cookie: 
-    #   <name1>: <value1>
-    #   <name2>: <value2>
   topology:
     # Probes used to capture topology informations like interfaces,
     # bridges, namespaces, etc...

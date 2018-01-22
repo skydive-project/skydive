@@ -75,7 +75,7 @@ func cookies(c *AuthenticationClient) []*http.Cookie {
 
 func configCookies() []*http.Cookie {
 	var cookies []*http.Cookie
-	for name, value := range config.GetConfig().GetStringMapString("agent.http.cookie") {
+	for name, value := range config.GetConfig().GetStringMapString("http.cookie") {
 		cookies = append(cookies, &http.Cookie{Name: name, Value: value})
 	}
 	return cookies

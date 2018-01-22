@@ -76,6 +76,10 @@ func NewRestClient(url *url.URL, authOptions *AuthenticationOpts) *RestClient {
 	}
 }
 
+func (c *RestClient) debug() bool {
+	return config.GetConfig().GetBool("http.rest.debug")
+}
+
 func (c *RestClient) Request(method, path string, body io.Reader, header http.Header) (*http.Response, error) {
 	if !c.authClient.Authenticated() {
 		if err := c.authClient.Authenticate(); err != nil {
@@ -97,7 +101,7 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 
 	setCookies(&req.Header, c.authClient)
 
-	if debug := config.GetConfig().GetBool("agent.http.debug"); debug {
+	if c.debug() {
 		if buf, err := httputil.DumpRequest(req, true); err == nil {
 			logging.GetLogger().Debugf("Request:\n%s", buf)
 		}
@@ -118,7 +122,7 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 		}
 	}
 
-	if debug := config.GetConfig().GetBool("agent.http.debug"); debug {
+	if c.debug() {
 		buf, err := httputil.DumpResponse(resp, true)
 		if err == nil {
 			logging.GetLogger().Debugf("Response:\n%s", buf)
