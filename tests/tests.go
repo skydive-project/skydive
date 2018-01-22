@@ -398,7 +398,7 @@ func ping(t *testing.T, context *TestContext, ipVersion int, src string, dst str
 		Dst:      dst,
 		Type:     fmt.Sprintf("icmp%d", ipVersion),
 		Count:    count,
-		ID:       id,
+		ICMPID:   id,
 		Interval: 1000,
 	}
 

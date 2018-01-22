@@ -178,6 +178,18 @@ func (h *BasicAPIHandler) Delete(id string) error {
 	return nil
 }
 
+//Update a resource
+func (h *BasicAPIHandler) Update(id string, resource types.Resource) error {
+	data, err := json.Marshal(&resource)
+	if err != nil {
+		return err
+	}
+
+	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
+	_, err = h.EtcdKeyAPI.Update(context.Background(), etcdPath, string(data))
+	return err
+}
+
 // AsyncWatch registers a new resource watcher
 func (h *BasicAPIHandler) AsyncWatch(f WatcherCallback) StoppableWatcher {
 	etcdPath := fmt.Sprintf("/%s/", h.ResourceHandler.Name())

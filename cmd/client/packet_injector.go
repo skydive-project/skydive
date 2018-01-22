@@ -47,6 +47,7 @@ var (
 	id         int64
 	count      int64
 	interval   int64
+	uuid       string
 )
 
 // PacketInjectorCmd skydive inject-packet root command
@@ -54,6 +55,13 @@ var PacketInjectorCmd = &cobra.Command{
 	Use:          "inject-packet",
 	Short:        "Inject packets",
 	Long:         "Inject packets",
+	SilenceUsage: false,
+}
+
+var PacketInjectionCreate = &cobra.Command{
+	Use:          "create",
+	Short:        "create packet injection",
+	Long:         "create packet injection",
 	SilenceUsage: false,
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
@@ -73,7 +81,7 @@ var PacketInjectorCmd = &cobra.Command{
 			DstPort:  dstPort,
 			Type:     packetType,
 			Payload:  payload,
-			ID:       id,
+			ICMPID:   id,
 			Count:    count,
 			Interval: interval,
 		}
@@ -89,6 +97,76 @@ var PacketInjectorCmd = &cobra.Command{
 		}
 
 		printJSON(packet)
+	},
+}
+
+var PacketInjectionGet = &cobra.Command{
+	Use:   "get",
+	Short: "get packet injection",
+	Long:  "get packet injection",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		var injection api.PacketParamsReq
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+		if err != nil {
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
+		}
+
+		if err := client.Get("injectpacket", args[0], &injection); err != nil {
+			logging.GetLogger().Error(err.Error())
+			os.Exit(1)
+		}
+		printJSON(&injection)
+	},
+}
+
+var PacketInjectionList = &cobra.Command{
+	Use:   "list",
+	Short: "list packet injections",
+	Long:  "list packet injections",
+	Run: func(cmd *cobra.Command, args []string) {
+		var injections map[string]api.PacketParamsReq
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+		if err != nil {
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
+		}
+
+		if err := client.List("injectpacket", &injections); err != nil {
+			logging.GetLogger().Error(err.Error())
+			os.Exit(1)
+		}
+		printJSON(injections)
+	},
+}
+
+var PacketInjectionDelete = &cobra.Command{
+	Use:   "delete [injection]",
+	Short: "Delete injection",
+	Long:  "Delete packet injection",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+		if err != nil {
+			logging.GetLogger().Critical(err.Error())
+			os.Exit(1)
+		}
+
+		if err := client.Delete("injectpacket", args[0]); err != nil {
+			logging.GetLogger().Error(err.Error())
+			os.Exit(1)
+		}
 	},
 }
 
@@ -109,5 +187,10 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 }
 
 func init() {
-	addInjectPacketFlags(PacketInjectorCmd)
+	PacketInjectorCmd.AddCommand(PacketInjectionList)
+	PacketInjectorCmd.AddCommand(PacketInjectionGet)
+	PacketInjectorCmd.AddCommand(PacketInjectionDelete)
+	PacketInjectorCmd.AddCommand(PacketInjectionCreate)
+
+	addInjectPacketFlags(PacketInjectionCreate)
 }

@@ -122,6 +122,7 @@ type ElectionStatus struct {
 
 // PacketParamsReq packet injector API parameters
 type PacketParamsReq struct {
+	UUID       string
 	Src        string
 	Dst        string
 	SrcIP      string
@@ -133,9 +134,20 @@ type PacketParamsReq struct {
 	Type       string
 	Payload    string
 	TrackingID string
-	ID         int64
+	ICMPID     int64
 	Count      int64
 	Interval   int64
+	StartTime  time.Time
+}
+
+// ID returns the packet injector request identifier
+func (ppr *PacketParamsReq) ID() string {
+	return ppr.UUID
+}
+
+// SetID set a new identifier for this injector
+func (ppr *PacketParamsReq) SetID(id string) {
+	ppr.UUID = id
 }
 
 type PeersStatus struct {

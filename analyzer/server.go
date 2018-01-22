@@ -59,6 +59,7 @@ type Server struct {
 	replicationEndpoint *TopologyReplicationEndpoint
 	alertServer         *alert.AlertServer
 	onDemandClient      *ondemand.OnDemandProbeClient
+	piClient            *packet_injector.PacketInjectorClient
 	metadataManager     *metadata.UserMetadataManager
 	flowServer          *FlowServer
 	probeBundle         *probe.ProbeBundle
@@ -106,6 +107,7 @@ func (s *Server) Start() error {
 
 	s.probeBundle.Start()
 	s.onDemandClient.Start()
+	s.piClient.Start()
 	s.alertServer.Start()
 	s.metadataManager.Start()
 	s.flowServer.Start()
@@ -139,6 +141,7 @@ func (s *Server) Stop() {
 	}
 	s.probeBundle.Stop()
 	s.onDemandClient.Stop()
+	s.piClient.Stop()
 	s.alertServer.Stop()
 	s.metadataManager.Stop()
 	s.etcdClient.Stop()
@@ -237,6 +240,12 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
+	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer)
+	if err != nil {
+		return nil, err
+	}
+
+	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
 	alertAPIHandler, err := api.RegisterAlertAPI(apiServer)
 	if err != nil {
 		return nil, err
@@ -264,8 +273,6 @@ func NewServerFromConfig() (*Server, error) {
 
 	alertServer := alert.NewAlertServer(alertAPIHandler, subscriberWSServer, g, tr, etcdClient)
 
-	piClient := packet_injector.NewPacketInjectorClient(agentWSServer)
-
 	s := &Server{
 		httpServer:          hserver,
 		agentWSServer:       agentWSServer,
@@ -277,6 +284,7 @@ func NewServerFromConfig() (*Server, error) {
 		embeddedEtcd:        embeddedEtcd,
 		etcdClient:          etcdClient,
 		onDemandClient:      onDemandClient,
+		piClient:            piClient,
 		metadataManager:     metadataManager,
 		storage:             storage,
 		flowServer:          flowServer,
@@ -284,7 +292,6 @@ func NewServerFromConfig() (*Server, error) {
 	}
 
 	api.RegisterTopologyAPI(hserver, g, tr)
-	api.RegisterPacketInjectorAPI(piClient, g, hserver)
 	api.RegisterPcapAPI(hserver, storage)
 	api.RegisterConfigAPI(hserver)
 	api.RegisterStatusAPI(hserver, s)

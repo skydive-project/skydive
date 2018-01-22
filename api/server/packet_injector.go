@@ -23,45 +23,51 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
-	"math/rand"
-	"net/http"
-	"strings"
 
-	"github.com/abbot/go-http-auth"
+	"github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/api/types"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
-	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/validator"
 )
 
-const (
-	min = 1024
-	max = 65535
-)
+//PacketInjectorResourceHandler describes a packet injector resource handler
+type PacketInjectorResourceHandler struct {
+	ResourceHandler
+}
 
 // PacketInjectorAPI exposes the packet injector API
 type PacketInjectorAPI struct {
-	PIClient *packet_injector.PacketInjectorClient
-	Graph    *graph.Graph
+	BasicAPIHandler
+	Graph      *graph.Graph
+	TrackingId chan string
 }
 
-func (pi *PacketInjectorAPI) normalizeIP(ip, ipFamily string) string {
-	if strings.Contains(ip, "/") {
-		return ip
-	}
-	if ipFamily == "IPV4" {
-		return ip + "/32"
-	}
-	return ip + "/64"
+func (pirh *PacketInjectorResourceHandler) Name() string {
+	return "injectpacket"
 }
 
-func (pi *PacketInjectorAPI) requestToParams(ppr *types.PacketParamsReq) (string, *packet_injector.PacketParams, error) {
+func (pirh *PacketInjectorResourceHandler) New() types.Resource {
+	id, _ := uuid.NewV4()
+
+	return &types.PacketParamsReq{
+		UUID: id.String(),
+	}
+}
+
+func (pi *PacketInjectorAPI) Create(r types.Resource) error {
+	ppr := r.(*types.PacketParamsReq)
+
+	if err := pi.validateRequest(ppr); err != nil {
+		return err
+	}
+	e := pi.BasicAPIHandler.Create(ppr)
+	ppr.TrackingID = <-pi.TrackingId
+	return e
+}
+
+func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketParamsReq) error {
 	pi.Graph.RLock()
 	defer pi.Graph.RUnlock()
 
@@ -69,7 +75,7 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *types.PacketParamsReq) (string
 	dstNode := pi.getNode(ppr.Dst)
 
 	if srcNode == nil {
-		return "", nil, errors.New("Not able to find a source node")
+		return errors.New("Not able to find a source node")
 	}
 
 	ipField := "IPV4"
@@ -77,113 +83,28 @@ func (pi *PacketInjectorAPI) requestToParams(ppr *types.PacketParamsReq) (string
 		ipField = "IPV6"
 	}
 
-	if ppr.SrcIP == "" {
-		ips, _ := srcNode.GetFieldStringList(ipField)
+	ips, _ := srcNode.GetFieldStringList(ipField)
+	if len(ips) == 0 && ppr.SrcIP == "" {
+		return errors.New("No source IP in node")
+	}
+	if dstNode != nil && ppr.DstIP == "" {
+		ips, _ := dstNode.GetFieldStringList(ipField)
 		if len(ips) == 0 {
-			return "", nil, errors.New("No source IP in node and user input")
+			return errors.New("No destination IP in node")
 		}
-		ppr.SrcIP = ips[0]
-	} else {
-		ppr.SrcIP = pi.normalizeIP(ppr.SrcIP, ipField)
 	}
-
-	if ppr.DstIP == "" {
-		if dstNode != nil {
-			ips, _ := dstNode.GetFieldStringList(ipField)
-			if len(ips) == 0 {
-				return "", nil, errors.New("No dest IP in node and user input")
-			}
-			ppr.DstIP = ips[0]
-		} else {
-			return "", nil, errors.New("Not able to find a dest node and dest IP also empty")
-		}
-	} else {
-		ppr.DstIP = pi.normalizeIP(ppr.DstIP, ipField)
+	mac, _ := srcNode.GetFieldString("MAC")
+	if mac == "" && ppr.SrcMAC == "" {
+		return errors.New("No source MAC in node")
 	}
-
-	if ppr.SrcMAC == "" {
-		if srcNode != nil {
-			mac, _ := srcNode.GetFieldString("MAC")
-			if mac == "" {
-				return "", nil, errors.New("No source MAC in node and user input")
-			}
-			ppr.SrcMAC = mac
-		} else {
-			return "", nil, errors.New("Not able to find a source node and source MAC also empty")
+	if dstNode != nil && ppr.DstMAC == "" {
+		mac, _ := dstNode.GetFieldString("MAC")
+		if mac == "" {
+			return errors.New("No destination MAC in node")
 		}
 	}
 
-	if ppr.DstMAC == "" {
-		if dstNode != nil {
-			mac, _ := dstNode.GetFieldString("MAC")
-			if mac == "" {
-				return "", nil, errors.New("No dest MAC in node and user input")
-			}
-			ppr.DstMAC = mac
-		} else {
-			return "", nil, errors.New("Not able to find a dest node and dest MAC also empty")
-		}
-	}
-
-	if ppr.Type == "tcp4" || ppr.Type == "tcp6" {
-		if ppr.SrcPort == 0 {
-			ppr.SrcPort = rand.Int63n(max-min) + min
-		}
-		if ppr.DstPort == 0 {
-			ppr.DstPort = rand.Int63n(max-min) + min
-		}
-	}
-
-	pp := &packet_injector.PacketParams{
-		SrcNodeID: srcNode.ID,
-		SrcIP:     ppr.SrcIP,
-		SrcMAC:    ppr.SrcMAC,
-		SrcPort:   ppr.SrcPort,
-		DstIP:     ppr.DstIP,
-		DstMAC:    ppr.DstMAC,
-		DstPort:   ppr.DstPort,
-		Type:      ppr.Type,
-		Payload:   ppr.Payload,
-		Count:     ppr.Count,
-		Interval:  ppr.Interval,
-		ID:        ppr.ID,
-	}
-
-	if errs := validator.Validate(pp); errs != nil {
-		return "", nil, errors.New("All the parms not set properly")
-	}
-
-	return srcNode.Host(), pp, nil
-}
-
-func (pi *PacketInjectorAPI) injectPacket(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	decoder := json.NewDecoder(r.Body)
-	var ppr types.PacketParamsReq
-	if err := decoder.Decode(&ppr); err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	host, pp, err := pi.requestToParams(&ppr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	trackingID, err := pi.PIClient.InjectPacket(host, pp)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
-	ppr.TrackingID = trackingID
-	if err := json.NewEncoder(w).Encode(ppr); err != nil {
-		logging.GetLogger().Warningf("Error while writing response: %s", err)
-	}
+	return nil
 }
 
 func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
@@ -203,25 +124,19 @@ func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
 	return nil
 }
 
-func (pi *PacketInjectorAPI) registerEndpoints(r *shttp.Server) {
-	routes := []shttp.Route{
-		{
-			Name:        "InjectPacket",
-			Method:      "POST",
-			Path:        "/api/injectpacket",
-			HandlerFunc: pi.injectPacket,
-		},
-	}
-
-	r.RegisterRoutes(routes)
-}
-
 // RegisterPacketInjectorAPI registers a new packet injector resource in the API
-func RegisterPacketInjectorAPI(pic *packet_injector.PacketInjectorClient, g *graph.Graph, r *shttp.Server) {
+func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *Server) (*PacketInjectorAPI, error) {
 	pia := &PacketInjectorAPI{
-		PIClient: pic,
-		Graph:    g,
+		BasicAPIHandler: BasicAPIHandler{
+			ResourceHandler: &PacketInjectorResourceHandler{},
+			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
+		},
+		Graph:      g,
+		TrackingId: make(chan string),
 	}
 
-	pia.registerEndpoints(r)
+	if err := apiServer.RegisterAPIHandler(pia); err != nil {
+		return nil, err
+	}
+	return pia, nil
 }

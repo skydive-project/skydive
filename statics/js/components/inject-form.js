@@ -252,7 +252,7 @@ Vue.component('inject-form', {
           "DstMAC": this.dstMAC,
           "Type": this.type,
           "Count": this.count,
-          "ID": this.id,
+          "ICMPID": this.id,
           "Interval": this.interval,
           "Payload": this.payload,
         }),
