@@ -23,6 +23,7 @@
 package k8s
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/skydive-project/skydive/logging"
@@ -61,6 +62,14 @@ func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
 
 func podUID(pod *api.Pod) graph.Identifier {
 	return graph.Identifier(pod.GetUID())
+}
+
+func dumpPod2(namespace, name string) string {
+	return fmt.Sprintf("pod{Namespace: %s, Name: %s}", namespace, name)
+}
+
+func dumpPod(pod *api.Pod) string {
+	return dumpPod2(pod.GetNamespace(), pod.GetName())
 }
 
 func (p *podProbe) newMetadata(pod *api.Pod) graph.Metadata {
@@ -103,7 +112,7 @@ func (p *podProbe) OnAdd(obj interface{}) {
 	p.graph.Lock()
 	defer p.graph.Unlock()
 
-	logging.GetLogger().Infof("Creating node for pod{%s}", pod.GetName())
+	logging.GetLogger().Debugf("Creating node for %s", dumpPod(pod))
 
 	p.onAdd(obj)
 }
@@ -120,12 +129,12 @@ func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 
 	podNode := p.graph.GetNode(podUID(newPod))
 	if podNode == nil {
-		logging.GetLogger().Infof("Updating (re-adding) node for pod{%s}", newPod.GetName())
+		logging.GetLogger().Debugf("Updating (re-adding) node for %s", dumpPod(newPod))
 		p.onAdd(newObj)
 		return
 	}
 
-	logging.GetLogger().Infof("Updating node for pod{%s}", newPod.GetName())
+	logging.GetLogger().Debugf("Updating node for %s", dumpPod(newPod))
 	if oldPod.Spec.NodeName == "" && newPod.Spec.NodeName != "" {
 		p.linkPodToNode(newPod, podNode)
 	}
@@ -135,7 +144,7 @@ func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 
 func (p *podProbe) OnDelete(obj interface{}) {
 	if pod, ok := obj.(*api.Pod); ok {
-		logging.GetLogger().Infof("Deleting node for pod{%s}", pod.GetName())
+		logging.GetLogger().Debugf("Deleting node for %s", dumpPod(pod))
 		p.graph.Lock()
 		if podNode := p.graph.GetNode(podUID(pod)); podNode != nil {
 			p.graph.DelNode(podNode)

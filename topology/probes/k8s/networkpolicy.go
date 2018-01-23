@@ -23,6 +23,8 @@
 package k8s
 
 import (
+	"fmt"
+
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 
@@ -48,6 +50,10 @@ func (n *networkPolicyProbe) newMetadata(np *networking_v1.NetworkPolicy) graph.
 
 func netpolUID(np *networking_v1.NetworkPolicy) graph.Identifier {
 	return graph.Identifier(np.GetUID())
+}
+
+func dumpNetworkPolicy(np *networking_v1.NetworkPolicy) string {
+	return fmt.Sprintf("networkPolicy{Namespace: %s Name: %s}", np.GetNamespace(), np.GetName())
 }
 
 func (n *networkPolicyProbe) OnAdd(obj interface{}) {
@@ -104,7 +110,7 @@ func (n *networkPolicyProbe) mapPods(pods []*api.Pod) (nodes []*graph.Node) {
 }
 
 func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy *networking_v1.NetworkPolicy) {
-	logging.GetLogger().Debugf("Considering network policy %s:%s", policy.GetUID(), policy.ObjectMeta.Name)
+	logging.GetLogger().Debugf("Handling update of %s", dumpNetworkPolicy(policy))
 
 	// create links between network policy and pods
 	var pods []*graph.Node
@@ -138,10 +144,10 @@ func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy 
 
 func (n *networkPolicyProbe) handlePod(podNode *graph.Node) {
 	podName, _ := podNode.GetFieldString("Name")
-	namespace, _ := podNode.GetFieldString("Pod.Namespace")
-	pod := podGetByKey(n.podCache, namespace+"/"+podName)
+	podNamespace, _ := podNode.GetFieldString("Pod.Namespace")
+	pod := podGetByKey(n.podCache, podNamespace+"/"+podName)
 	if pod == nil {
-		logging.GetLogger().Warningf("Failed to find pod for node %s", podNode.ID)
+		logging.GetLogger().Debugf("Failed to find node %s", dumpPod2(podNamespace, podName))
 		return
 	}
 
@@ -149,7 +155,7 @@ func (n *networkPolicyProbe) handlePod(podNode *graph.Node) {
 		policy := policy.(*networking_v1.NetworkPolicy)
 		policyNode := n.graph.GetNode(netpolUID(policy))
 		if policyNode == nil {
-			logging.GetLogger().Warningf("Failed to find node for network policy %s", policy.GetName())
+			logging.GetLogger().Debugf("Failed to find node for %s", dumpNetworkPolicy(policy))
 			continue
 		}
 
