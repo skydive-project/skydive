@@ -30,7 +30,6 @@ import (
 func newMetadata(typ, name string, extra interface{}) graph.Metadata {
 	return graph.Metadata{
 		"Type":    typ,
-		"Probe":   "k8s",
 		"Manager": "k8s",
 		"Name":    name,
 		"K8s":     common.NormalizeValue(extra),
