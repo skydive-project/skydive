@@ -163,20 +163,6 @@ func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
 	topology.AddOwnershipLink(g, node, pod, nil)
 }
 
-func podList(c *kubeCache) (pods []*api.Pod) {
-	for _, pod := range c.cache.List() {
-		pods = append(pods, pod.(*api.Pod))
-	}
-	return
-}
-
-func podGetByKey(c *kubeCache, key string) *api.Pod {
-	if pod, found, _ := c.cache.GetByKey(key); found {
-		return pod.(*api.Pod)
-	}
-	return nil
-}
-
 func (p *podProbe) Start() {
 	p.containerIndexer.AddEventListener(p)
 	p.nodeIndexer.AddEventListener(p)

@@ -93,8 +93,9 @@ func (n *networkPolicyProbe) getPolicySelector(policy *networking_v1.NetworkPoli
 	return
 }
 
-func (n *networkPolicyProbe) filterPodsByLabels(pods []*api.Pod, selector labels.Selector) (filtered []*api.Pod) {
+func (n *networkPolicyProbe) filterPodsByLabels(pods []interface{}, selector labels.Selector) (filtered []interface{}) {
 	for _, pod := range pods {
+		pod := pod.(*api.Pod)
 		if selector.Matches(labels.Set(pod.Labels)) {
 			filtered = append(filtered, pod)
 		}
@@ -102,9 +103,9 @@ func (n *networkPolicyProbe) filterPodsByLabels(pods []*api.Pod, selector labels
 	return
 }
 
-func (n *networkPolicyProbe) mapPods(pods []*api.Pod) (nodes []*graph.Node) {
+func (n *networkPolicyProbe) mapPods(pods []interface{}) (nodes []*graph.Node) {
 	for _, pod := range pods {
-		nodes = append(nodes, n.graph.GetNode(podUID(pod)))
+		nodes = append(nodes, n.graph.GetNode(podUID(pod.(*api.Pod))))
 	}
 	return
 }
@@ -115,10 +116,10 @@ func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy 
 	// create links between network policy and pods
 	var pods []*graph.Node
 	if podSelector := n.getPolicySelector(policy); podSelector != nil {
-		pods = n.mapPods(n.filterPodsByLabels(podList(n.podCache), podSelector))
+		pods = n.mapPods(n.filterPodsByLabels(n.podCache.list(), podSelector))
 	} else {
 		if policy.Namespace == api.NamespaceAll {
-			pods = n.mapPods(podList(n.podCache))
+			pods = n.mapPods(n.podCache.list())
 		} else {
 			pods = n.podIndexer.Get(policy.Namespace)
 		}
@@ -145,13 +146,14 @@ func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy 
 func (n *networkPolicyProbe) handlePod(podNode *graph.Node) {
 	podName, _ := podNode.GetFieldString("Name")
 	podNamespace, _ := podNode.GetFieldString("Pod.Namespace")
-	pod := podGetByKey(n.podCache, podNamespace+"/"+podName)
+	pod := n.podCache.getByKey(podNamespace, podName)
 	if pod == nil {
 		logging.GetLogger().Debugf("Failed to find node %s", dumpPod2(podNamespace, podName))
 		return
 	}
 
-	for _, policy := range n.cache.List() {
+	for _, policy := range n.list() {
+		pod := pod.(*api.Pod)
 		policy := policy.(*networking_v1.NetworkPolicy)
 		policyNode := n.graph.GetNode(netpolUID(policy))
 		if policyNode == nil {
