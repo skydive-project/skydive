@@ -821,3 +821,15 @@ func TestFlowSimpleSynFin(t *testing.T) {
 		t.Errorf("In the flow BA-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPFlowMetric.BAFinStart)
 	}
 }
+
+func TestGetFieldsXXX(t *testing.T) {
+	f := &Flow{}
+
+	fields := f.GetFields()
+	for _, i := range fields {
+		k := i.(string)
+		if strings.HasPrefix(k, "XXX_") {
+			t.Error("XXX_ private field exposed")
+		}
+	}
+}

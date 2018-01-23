@@ -1026,6 +1026,12 @@ func introspectFields(t reflect.Type, prefix string) []interface{} {
 	for i := 0; i < t.NumField(); i++ {
 		vField := t.Field(i)
 		tField := vField.Type
+
+		// ignore XXX fields as there are considered as private
+		if strings.HasPrefix(vField.Name, "XXX_") {
+			continue
+		}
+
 		vName := prefix + vField.Name
 
 		for tField.Kind() == reflect.Ptr {
