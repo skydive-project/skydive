@@ -30,9 +30,10 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 
 	api "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
-type podCache struct {
+type podProbe struct {
 	sync.RWMutex
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
@@ -62,11 +63,11 @@ func podUID(pod *api.Pod) graph.Identifier {
 	return graph.Identifier(pod.GetUID())
 }
 
-func (p *podCache) newMetadata(pod *api.Pod) graph.Metadata {
+func (p *podProbe) newMetadata(pod *api.Pod) graph.Metadata {
 	return newMetadata("pod", pod.GetName(), pod)
 }
 
-func (p *podCache) linkPodToNode(pod *api.Pod, podNode *graph.Node) {
+func (p *podProbe) linkPodToNode(pod *api.Pod, podNode *graph.Node) {
 	nodeNodes := p.nodeIndexer.Get(pod.Spec.NodeName)
 	if len(nodeNodes) == 0 {
 		return
@@ -74,7 +75,7 @@ func (p *podCache) linkPodToNode(pod *api.Pod, podNode *graph.Node) {
 	linkPodToNode(p.graph, nodeNodes[0], podNode)
 }
 
-func (p *podCache) onAdd(obj interface{}) {
+func (p *podProbe) onAdd(obj interface{}) {
 	pod, ok := obj.(*api.Pod)
 	if !ok {
 		return
@@ -90,7 +91,7 @@ func (p *podCache) onAdd(obj interface{}) {
 	p.linkPodToNode(pod, podNode)
 }
 
-func (p *podCache) OnAdd(obj interface{}) {
+func (p *podProbe) OnAdd(obj interface{}) {
 	pod, ok := obj.(*api.Pod)
 	if !ok {
 		return
@@ -107,7 +108,7 @@ func (p *podCache) OnAdd(obj interface{}) {
 	p.onAdd(obj)
 }
 
-func (p *podCache) OnUpdate(oldObj, newObj interface{}) {
+func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 	oldPod := oldObj.(*api.Pod)
 	newPod := newObj.(*api.Pod)
 
@@ -132,7 +133,7 @@ func (p *podCache) OnUpdate(oldObj, newObj interface{}) {
 	addMetadata(p.graph, podNode, newPod)
 }
 
-func (p *podCache) OnDelete(obj interface{}) {
+func (p *podProbe) OnDelete(obj interface{}) {
 	if pod, ok := obj.(*api.Pod); ok {
 		logging.GetLogger().Infof("Deleting node for pod{%s}", pod.GetName())
 		p.graph.Lock()
@@ -153,38 +154,42 @@ func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
 	topology.AddOwnershipLink(g, node, pod, nil)
 }
 
-func (p *podCache) List() (pods []*api.Pod) {
-	for _, pod := range p.cache.List() {
+func podList(c *kubeCache) (pods []*api.Pod) {
+	for _, pod := range c.cache.List() {
 		pods = append(pods, pod.(*api.Pod))
 	}
 	return
 }
 
-func (p *podCache) GetByKey(key string) *api.Pod {
-	if pod, found, _ := p.cache.GetByKey(key); found {
+func podGetByKey(c *kubeCache, key string) *api.Pod {
+	if pod, found, _ := c.cache.GetByKey(key); found {
 		return pod.(*api.Pod)
 	}
 	return nil
 }
 
-func (p *podCache) Start() {
+func (p *podProbe) Start() {
 	p.containerIndexer.AddEventListener(p)
 	p.nodeIndexer.AddEventListener(p)
 	p.kubeCache.Start()
 }
 
-func (p *podCache) Stop() {
+func (p *podProbe) Stop() {
 	p.containerIndexer.RemoveEventListener(p)
 	p.nodeIndexer.RemoveEventListener(p)
 	p.kubeCache.Stop()
 }
 
-func newPodCache(client *kubeClient, g *graph.Graph) *podCache {
-	p := &podCache{
+func newPodKubeCache(handler cache.ResourceEventHandler) *kubeCache {
+	return newKubeCache(getClientset().Core().RESTClient(), &api.Pod{}, "pods", handler)
+}
+
+func newPodProbe(g *graph.Graph) *podProbe {
+	p := &podProbe{
 		graph:            g,
 		containerIndexer: newContainerIndexer(g),
 		nodeIndexer:      newNodeIndexer(g),
 	}
-	p.kubeCache = client.getCacheFor(client.Core().RESTClient(), &api.Pod{}, "pods", p)
+	p.kubeCache = newPodKubeCache(p)
 	return p
 }

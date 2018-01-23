@@ -24,9 +24,12 @@ package k8s
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/skydive-project/skydive/config"
 
+	api "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -34,15 +37,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type kubeClient struct {
-	*kubernetes.Clientset
-}
+var clientset *kubernetes.Clientset = nil
 
-func (c *kubeClient) getCacheFor(restClient rest.Interface, objType runtime.Object, resources string, handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(restClient, objType, resources, handler)
-}
-
-func newKubeClient() (*kubeClient, error) {
+func newClientset() (*kubernetes.Clientset, error) {
 	kubeconfig := config.GetConfig().GetString("k8s.config_file")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
@@ -57,10 +54,64 @@ func newKubeClient() (*kubeClient, error) {
 		}
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
+	clntset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err.Error())
 	}
 
-	return &kubeClient{clientset}, nil
+	return clntset, nil
+}
+
+func initClientset() (err error) {
+	clientset, err = newClientset()
+	return
+}
+
+func getClientset() *kubernetes.Clientset {
+	if clientset == nil {
+		panic("clientset was not initialized, aborting!")
+	}
+	return clientset
+}
+
+type kubeCache struct {
+	cache          cache.Store
+	controller     cache.Controller
+	stopController chan (struct{})
+}
+
+type defaultKubeCacheEventHandler struct {
+}
+
+func (d *defaultKubeCacheEventHandler) OnAdd(obj interface{}) {
+}
+
+func (d *defaultKubeCacheEventHandler) OnUpdate(old, new interface{}) {
+}
+
+func (d *defaultKubeCacheEventHandler) OnDelete(obj interface{}) {
+}
+
+func newKubeCache(restClient rest.Interface, objType runtime.Object, resources string, handler cache.ResourceEventHandler) *kubeCache {
+	watchlist := cache.NewListWatchFromClient(restClient, resources, api.NamespaceAll, fields.Everything())
+
+	cacheHandler := cache.ResourceEventHandlerFuncs{}
+	if handler != nil {
+		cacheHandler.AddFunc = handler.OnAdd
+		cacheHandler.UpdateFunc = handler.OnUpdate
+		cacheHandler.DeleteFunc = handler.OnDelete
+	}
+
+	c := &kubeCache{stopController: make(chan struct{})}
+	c.cache, c.controller = cache.NewInformer(watchlist, objType, 30*time.Minute, cacheHandler)
+	return c
+}
+
+func (c *kubeCache) Start() {
+	c.cache.Resync()
+	go c.controller.Run(c.stopController)
+}
+
+func (c *kubeCache) Stop() {
+	c.stopController <- struct{}{}
 }

@@ -29,9 +29,10 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
-type nodeCache struct {
+type nodeProbe struct {
 	sync.RWMutex
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
@@ -50,7 +51,7 @@ func newHostIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "host"}, "Name")
 }
 
-func (c *nodeCache) newMetadata(node *v1.Node) graph.Metadata {
+func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
 	return newMetadata("node", node.GetName(), node)
 }
 
@@ -62,7 +63,7 @@ func nodeUID(node *v1.Node) graph.Identifier {
 	return graph.Identifier(node.GetUID())
 }
 
-func (c *nodeCache) onAdd(obj interface{}) {
+func (c *nodeProbe) onAdd(obj interface{}) {
 	node := obj.(*v1.Node)
 
 	c.Lock()
@@ -89,15 +90,15 @@ func (c *nodeCache) onAdd(obj interface{}) {
 	}
 }
 
-func (c *nodeCache) OnAdd(obj interface{}) {
+func (c *nodeProbe) OnAdd(obj interface{}) {
 	c.onAdd(obj)
 }
 
-func (c *nodeCache) OnUpdate(oldObj, newObj interface{}) {
+func (c *nodeProbe) OnUpdate(oldObj, newObj interface{}) {
 	c.onAdd(newObj)
 }
 
-func (c *nodeCache) OnDelete(obj interface{}) {
+func (c *nodeProbe) OnDelete(obj interface{}) {
 	if node, ok := obj.(*v1.Node); ok {
 		c.graph.Lock()
 		if nodeNode := c.graph.GetNode(nodeUID(node)); nodeNode != nil {
@@ -107,27 +108,31 @@ func (c *nodeCache) OnDelete(obj interface{}) {
 	}
 }
 
-func (c *nodeCache) Start() {
+func (c *nodeProbe) Start() {
 	c.kubeCache.Start()
 	c.nodeIndexer.AddEventListener(c)
 	c.hostIndexer.AddEventListener(c)
 	c.podIndexer.AddEventListener(c)
 }
 
-func (c *nodeCache) Stop() {
+func (c *nodeProbe) Stop() {
 	c.kubeCache.Stop()
 	c.nodeIndexer.RemoveEventListener(c)
 	c.hostIndexer.RemoveEventListener(c)
 	c.podIndexer.RemoveEventListener(c)
 }
 
-func newNodeCache(client *kubeClient, g *graph.Graph) *nodeCache {
-	c := &nodeCache{
+func newNodeKubeCache(handler cache.ResourceEventHandler) *kubeCache {
+	return newKubeCache(getClientset().Core().RESTClient(), &v1.Node{}, "nodes", handler)
+}
+
+func newNodeProbe(g *graph.Graph) *nodeProbe {
+	c := &nodeProbe{
 		graph:       g,
 		hostIndexer: newHostIndexer(g),
 		nodeIndexer: newNodeIndexer(g),
 		podIndexer:  newPodIndexerByHost(g),
 	}
-	c.kubeCache = client.getCacheFor(client.Core().RESTClient(), &v1.Node{}, "nodes", c)
+	c.kubeCache = newNodeKubeCache(c)
 	return c
 }

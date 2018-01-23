@@ -102,7 +102,7 @@ func init() {
 
 	cfg.SetDefault("host_id", host)
 
-	cfg.SetDefault("k8s.subprobes", []string{"networkpolicy", "pod", "container", "node"})
+	cfg.SetDefault("k8s.probes", []string{"networkpolicy", "pod", "container", "node"})
 
 	cfg.SetDefault("logging.backends", []string{"stderr"})
 	cfg.SetDefault("logging.color", true)

@@ -41,31 +41,25 @@ var (
 
 // Probe for tracking k8s events
 type Probe struct {
-	graph              *graph.Graph
-	client             *kubeClient
-	podCache           *podCache
-	networkPolicyCache *networkPolicyCache
-	nodeCache          *nodeCache
-	containerCache     *containerCache
-	bundle             *probe.ProbeBundle
+	bundle *probe.ProbeBundle
 }
 
-func (p *Probe) makeProbeBundle() *probe.ProbeBundle {
-	subprobes := config.GetConfig().GetStringSlice("k8s.subprobes")
-	logging.GetLogger().Infof("K8s subprobes: %v", subprobes)
+func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
+	configProbes := config.GetConfig().GetStringSlice("k8s.probes")
+	logging.GetLogger().Infof("K8s probes: %v", configProbes)
 	probes := make(map[string]probe.Probe)
-	for _, i := range subprobes {
+	for name, i := range configProbes {
 		switch i {
 		case "pod":
-			probes[i] = p.podCache
+			probes[i] = newPodProbe(g)
 		case "networkpolicy":
-			probes[i] = p.networkPolicyCache
+			probes[i] = newNetworkPolicyProbe(g)
 		case "container":
-			probes[i] = p.containerCache
+			probes[i] = newContainerProbe(g)
 		case "node":
-			probes[i] = p.nodeCache
+			probes[i] = newNodeProbe(g)
 		default:
-			logging.GetLogger().Errorf("skipping unsupported K8s subprobe %v", i)
+			logging.GetLogger().Errorf("skipping unsupported K8s probe %v", name)
 		}
 	}
 	return probe.NewProbeBundle(probes)
@@ -83,21 +77,12 @@ func (p *Probe) Stop() {
 
 // NewProbe create the Probe for tracking k8s events
 func NewProbe(g *graph.Graph) (*Probe, error) {
-	client, err := newKubeClient()
+	err := initClientset()
 	if err != nil {
 		return nil, err
 	}
 
-	p := &Probe{
-		graph:  g,
-		client: client,
-	}
-
-	p.podCache = newPodCache(client, g)
-	p.networkPolicyCache = newNetworkPolicyCache(client, g, p.podCache)
-	p.containerCache = newContainerCache(client, g)
-	p.nodeCache = newNodeCache(client, g)
-	p.bundle = p.makeProbeBundle()
-
-	return p, nil
+	return &Probe{
+		bundle: makeProbeBundle(g),
+	}, nil
 }
