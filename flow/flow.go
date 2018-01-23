@@ -1005,11 +1005,42 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 	}
 }
 
+// GetFieldInterface returns the value of a Flow field
+func (f *Flow) GetFieldInterface(field string) (_ interface{}, err error) {
+	switch field {
+	case "Metric":
+		return f.Metric, nil
+	case "LastUpdateMetric":
+		return f.LastUpdateMetric, nil
+	case "TCPFlowMetric":
+		return f.TCPFlowMetric, nil
+	case "Link":
+		return f.Link, nil
+	case "Network":
+		return f.Network, nil
+	case "ICMP":
+		return f.ICMP, nil
+	case "Transport":
+		return f.Transport, nil
+	case "SocketA":
+		return f.SocketA, nil
+	case "SocketB":
+		return f.SocketB, nil
+	default:
+		return 0, common.ErrFieldNotFound
+	}
+}
+
 // GetField returns the value of a field
 func (f *Flow) GetField(field string) (interface{}, error) {
+	if i, err := f.GetFieldInterface(field); err == nil {
+		return i, nil
+	}
+
 	if i, err := f.GetFieldInt64(field); err == nil {
 		return i, nil
 	}
+
 	return f.GetFieldString(field)
 }
 
@@ -1026,6 +1057,12 @@ func introspectFields(t reflect.Type, prefix string) []interface{} {
 	for i := 0; i < t.NumField(); i++ {
 		vField := t.Field(i)
 		tField := vField.Type
+
+		// ignore XXX fields as there are considered as private
+		if strings.HasPrefix(vField.Name, "XXX_") {
+			continue
+		}
+
 		vName := prefix + vField.Name
 
 		for tField.Kind() == reflect.Ptr {

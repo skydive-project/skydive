@@ -491,30 +491,6 @@ func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalVa
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
 }
 
-func (f *FlowTraversalStep) propertyInt64Values(field string) *traversal.GraphTraversalValue {
-	var s []interface{}
-	for _, fl := range f.flowset.Flows {
-		// ignore errors as not all flows have the all layers(Link/Network) thus not all fields
-		if v, err := fl.GetFieldInt64(field); err == nil {
-			s = append(s, v)
-		}
-	}
-
-	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
-}
-
-func (f *FlowTraversalStep) propertyStringValues(field string) *traversal.GraphTraversalValue {
-	var s []interface{}
-	for _, fl := range f.flowset.Flows {
-		// ignore errors as not all flows have the all layers(Link/Network) thus not all fields
-		if v, err := fl.GetFieldString(field); err == nil {
-			s = append(s, v)
-		}
-	}
-
-	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
-}
-
 // PropertyValues returns a flow field value
 func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
@@ -522,16 +498,16 @@ func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.Graph
 	}
 
 	key := keys[0].(string)
-
-	if len(f.flowset.Flows) > 0 {
-		// use the first flow to determine what is the type of the field
-		if _, err := f.flowset.Flows[0].GetFieldInt64(key); err == nil {
-			return f.propertyInt64Values(key)
+	var s []interface{}
+	for _, fl := range f.flowset.Flows {
+		v, err := fl.GetField(key)
+		if err != nil {
+			return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, common.ErrFieldNotFound)
 		}
-		return f.propertyStringValues(key)
+		s = append(s, v)
 	}
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
 
-	return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, common.ErrFieldNotFound)
 }
 
 // PropertyKeys returns a flow field
@@ -550,7 +526,7 @@ func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTr
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
 }
 
-// Metrics returns flow metric counters
+// FlowMetrics returns flow metric counters
 func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 	if f.error != nil {
 		return NewMetricsTraversalStep(nil, nil, f.error)

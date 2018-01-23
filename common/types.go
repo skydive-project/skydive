@@ -347,7 +347,7 @@ func DelField(obj map[string]interface{}, k string) interface{} {
 	return obj
 }
 
-// GetField retrieve a value from a tree from the dot key like "a.b.c.d"
+// GetField retrieves a value from a tree from the dot key like "a.b.c.d"
 func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 	components := strings.Split(k, ".")
 	for n, component := range components {
@@ -379,6 +379,36 @@ func GetField(obj map[string]interface{}, k string) (interface{}, error) {
 	}
 
 	return obj, nil
+}
+
+func getFields(obj map[string]interface{}, path string) ([]string, error) {
+	var fields []string
+
+	if path != "" {
+		path += "."
+	}
+
+	for k, v := range obj {
+		fields = append(fields, path+k)
+
+		switch v.(type) {
+		case map[string]interface{}:
+			subfields, err := getFields(v.(map[string]interface{}), path+k)
+			if err != nil {
+				return nil, err
+			}
+			fields = append(fields, subfields...)
+		case map[interface{}]interface{}:
+			return nil, errors.New("Not supporting map not using string as key")
+		}
+	}
+
+	return fields, nil
+}
+
+// GetFields returns all the keys using dot notation
+func GetFields(obj map[string]interface{}) ([]string, error) {
+	return getFields(obj, "")
 }
 
 func splitToRanges(min, max int) []int {

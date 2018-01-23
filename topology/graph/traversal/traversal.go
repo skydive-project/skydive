@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -623,8 +624,16 @@ func (tv *GraphTraversalV) PropertyValues(k ...interface{}) *GraphTraversalValue
 
 	var s []interface{}
 	for _, n := range tv.nodes {
-		if value, ok := n.Metadata()[key]; ok {
-			s = append(s, value)
+		if value, err := n.GetField(key); err == nil {
+			v := reflect.ValueOf(value)
+			switch v.Kind() {
+			case reflect.Map, reflect.Array, reflect.Slice:
+				if v.Len() > 0 {
+					s = append(s, value)
+				}
+			default:
+				s = append(s, value)
+			}
 		}
 	}
 	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
@@ -640,9 +649,18 @@ func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValu
 	defer tv.GraphTraversal.RUnlock()
 
 	var s []interface{}
+
+	seen := make(map[string]bool)
 	for _, n := range tv.nodes {
-		for key := range n.Metadata() {
-			s = append(s, key)
+		fields, err := n.GetFields()
+		if err != nil {
+			return &GraphTraversalValue{error: err}
+		}
+		for _, k := range fields {
+			if _, ok := seen[k]; !ok {
+				s = append(s, k)
+				seen[k] = true
+			}
 		}
 	}
 

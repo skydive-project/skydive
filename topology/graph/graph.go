@@ -390,6 +390,15 @@ func (e *graphElement) GetField(name string) (interface{}, error) {
 	}
 }
 
+func (e *graphElement) GetFields() ([]string, error) {
+	keys := []string{"ID", "Host", "CreatedAt", "UpdatedAt", "DeletedAt", "Revision"}
+	subkeys, err := common.GetFields(e.metadata)
+	if err != nil {
+		return nil, err
+	}
+	return append(keys, subkeys...), nil
+}
+
 func (e *graphElement) GetFieldStringList(name string) ([]string, error) {
 	v, err := e.GetField(name)
 	if err != nil {
