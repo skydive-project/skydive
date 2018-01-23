@@ -22,3 +22,6 @@ make WITH_PROF=true VERBOSE=true
 
 # Compile all tests
 make test.functionals.compile WITH_NEUTRON=true WITH_SELENIUM=true WITH_CDD=true WITH_SCALE=true
+
+# Skydive perf build
+make skydive.perf

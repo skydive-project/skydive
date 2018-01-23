@@ -23,6 +23,7 @@ export GO15VENDOREXPERIMENT=1
 
 GOVENDOR:=${GOPATH}/bin/govendor
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
+SKYDIVE_GITHUB_PERF:=github.com/skydive-project/skydive-perf
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 SKYDIVE_PKG:=skydive-${VERSION}
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
@@ -140,6 +141,17 @@ skydive: govendor genlocalfiles dpdk.build contribs compile
 
 skydive.cleanup:
 	go clean -i $(SKYDIVE_GITHUB)
+
+skydive.perf:
+	go get github.com/nplanel/prego
+	[[ -d "$(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)" ]] && rm -rf "$(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)" || true
+	mkdir -p $(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)
+	rsync -av --exclude .git . $(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)
+	find $(GOPATH)/src/$(SKYDIVE_GITHUB_PERF) -name "*.go" | grep -v -e tests -e vendor | xargs -n 1 perl -i -pe "s|//\@perf ||g"
+	find $(GOPATH)/src/$(SKYDIVE_GITHUB_PERF) -name "*.go" | xargs -n 1 perl -i -pe "s|$(SKYDIVE_GITHUB)|$(SKYDIVE_GITHUB_PERF)|g"
+	perl -i -pe "s|.*dede.*\n||g" $(GOPATH)/src/$(SKYDIVE_GITHUB_PERF)/analyzer/server.go
+	$(MAKE) -C $(GOPATH)/src/$(SKYDIVE_GITHUB_PERF) VERSION=perf SKYDIVE_GITHUB=$(SKYDIVE_GITHUB_PERF)
+
 
 STATIC_DIR :=
 STATIC_LIBS :=
