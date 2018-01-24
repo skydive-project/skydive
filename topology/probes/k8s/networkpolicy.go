@@ -48,7 +48,7 @@ func (n *networkPolicyProbe) newMetadata(np *networking_v1.NetworkPolicy) graph.
 	return newMetadata("networkpolicy", np.GetName(), np)
 }
 
-func netpolUID(np *networking_v1.NetworkPolicy) graph.Identifier {
+func networkPolicyUID(np *networking_v1.NetworkPolicy) graph.Identifier {
 	return graph.Identifier(np.GetUID())
 }
 
@@ -59,7 +59,7 @@ func dumpNetworkPolicy(np *networking_v1.NetworkPolicy) string {
 func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
-		policyNode := n.graph.NewNode(netpolUID(policy), n.newMetadata(policy))
+		policyNode := n.graph.NewNode(networkPolicyUID(policy), n.newMetadata(policy))
 		n.handleNetworkPolicyUpdate(policyNode, policy)
 		n.graph.Unlock()
 	}
@@ -67,7 +67,7 @@ func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 
 func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 	if policy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(netpolUID(policy)); policyNode != nil {
+		if policyNode := n.graph.GetNode(networkPolicyUID(policy)); policyNode != nil {
 			n.graph.Lock()
 			addMetadata(n.graph, policyNode, policy)
 			n.handleNetworkPolicyUpdate(policyNode, policy)
@@ -78,7 +78,7 @@ func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 
 func (n *networkPolicyProbe) OnDelete(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(netpolUID((policy))); policyNode != nil {
+		if policyNode := n.graph.GetNode(networkPolicyUID((policy))); policyNode != nil {
 			n.graph.Lock()
 			n.graph.DelNode(policyNode)
 			n.graph.Unlock()
@@ -150,7 +150,7 @@ func (n *networkPolicyProbe) onPodUpdated(podNode *graph.Node) {
 	for _, policy := range n.list() {
 		pod := pod.(*api.Pod)
 		policy := policy.(*networking_v1.NetworkPolicy)
-		policyNode := n.graph.GetNode(netpolUID(policy))
+		policyNode := n.graph.GetNode(networkPolicyUID(policy))
 		if policyNode == nil {
 			logging.GetLogger().Debugf("Failed to find node for %s", dumpNetworkPolicy(policy))
 			continue
