@@ -19,18 +19,31 @@
 # under the License.
 #
 
-import asyncio
+try:
+    import asyncio
+except ImportError:
+    import trollius as asyncio
 import base64
+import functools
 import json
-import http.client as httplib
+try:
+    import http.client as httplib
+except ImportError:
+    import httplib
+import logging
 import uuid
-from urllib.parse import urlparse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 from autobahn.asyncio.websocket import WebSocketClientProtocol
 from autobahn.asyncio.websocket import WebSocketClientFactory
 
 from skydive.encoder import JSONEncoder
 
+
+LOG = logging.getLogger(__name__)
 
 SyncRequestMsgType = "SyncRequest"
 SyncReplyMsgType = "SyncReply"
@@ -81,26 +94,36 @@ class SyncRequestMsg:
 
 class WSClientDefaultProtocol(WebSocketClientProtocol):
 
+    def debug_send(self, func, arg):
+        LOG.debug("Running func %s", func.__name__)
+        func(arg)
+
     def sendWSMessage(self, msg):
-        self.sendMessage(msg.to_json().encode())
+        self.factory.client.loop.call_soon(
+            functools.partial(self.debug_send, self.sendMessage,
+                              msg.to_json().encode()))
 
     def stop(self):
         self.factory.client.loop.stop()
+
+    def stop_when_complete(self):
+        self.factory.client.loop.call_soon(
+            functools.partial(self.factory.client.loop.stop))
 
 
 class WSClientDebugProtocol(WSClientDefaultProtocol):
 
     def onConnect(self, response):
-        print("Connected: {0}".format(response.peer))
+        LOG.debug("Connected: %s", response.peer)
 
     def onMessage(self, payload, isBinary):
         if isBinary:
-            print("Binary message received: {0} bytes".format(len(payload)))
+            LOG.debug("Binary message received: %d bytes", len(payload))
         else:
-            print("Text message received: {0}".format(payload.decode('utf8')))
+            LOG.debug("Text message received: %s", payload.decode('utf8'))
 
     def onOpen(self):
-        print("WebSocket connection opened.")
+        LOG.debug("WebSocket connection opened.")
 
         if self.factory.client.sync:
             msg = WSMessage(
@@ -109,19 +132,26 @@ class WSClientDebugProtocol(WSClientDefaultProtocol):
             self.sendWSMessage(msg)
 
     def onClose(self, wasClean, code, reason):
-        print("WebSocket connection closed: {0}".format(reason))
+        LOG.debug("WebSocket connection closed: %s", reason)
+
+    def sendWSMessage(self, msg):
+        LOG.debug("Sending message: %s", msg.to_json())
+        super(WSClientDebugProtocol, self).sendWSMessage(msg)
 
 
 class WSClient(WebSocketClientProtocol):
 
     def __init__(self, host_id, endpoint, type="",
                  protocol=WSClientDefaultProtocol,
-                 username="", password="", sync="", filter="", persistent=True,
+                 username="", password="", cookie=None,
+                 sync="", filter="", persistent=True,
                  **kwargs):
+        super(WSClient, self).__init__()
         self.host_id = host_id
         self.endpoint = endpoint
         self.username = username
         self.password = password
+        self.cookie = cookie
         self.protocol = protocol
         self.type = type
         self.filter = filter
@@ -149,15 +179,23 @@ class WSClient(WebSocketClientProtocol):
         if self.filter:
             factory.headers["X-Gremlin-Filter"] = self.filter
 
+        if self.cookie:
+            factory.headers['Cookie'] = self.cookie
+
         self.loop = asyncio.get_event_loop()
         u = urlparse(self.endpoint)
 
         coro = self.loop.create_connection(factory, u.hostname, u.port)
-        self.loop.run_until_complete(coro)
+        (transport, protocol) = self.loop.run_until_complete(coro)
+        LOG.debug('transport, protocol: %r, %r', transport, protocol)
 
+    def start(self):
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
             self.loop.close()
         finally:
             pass
+
+    def stop(self):
+        self.loop.stop()

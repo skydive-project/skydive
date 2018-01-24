@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import time
 import unittest
@@ -13,12 +14,13 @@ from skydive.websocket.client import NodeAddedMsgType, EdgeAddedMsgType
 class WSTestClient(WSClientDebugProtocol):
     def onOpen(self):
         self.factory.kwargs["test"](self)
-        self.stop()
+        self.stop_when_complete()
 
 
 class SkydiveWSTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        logging.basicConfig(level=logging.DEBUG)
         subprocess.call(["docker", "run", "--name",
                          "skydive-docker-python-tests", "-p", "8082:8082",
                          "-d", "skydive/skydive", "analyzer"])
@@ -38,6 +40,7 @@ class SkydiveWSTest(unittest.TestCase):
                                  "ws://localhost:8082/ws/publisher",
                                  protocol=WSTestClient, test=is_connected)
         self.wsclient.connect()
+        self.wsclient.start()
 
         self.assertEqual(self.connected, True, "failed to connect")
 
@@ -59,20 +62,21 @@ class SkydiveWSTest(unittest.TestCase):
             msg = WSMessage("Graph", EdgeAddedMsgType, edge)
             protocol.sendWSMessage(msg)
 
-            time.sleep(1)
-
-            restclient = RESTClient("localhost:8082")
-            nodes = restclient.lookup_nodes("G.V().Has('Name', 'Test port')")
-            self.assertEqual(len(nodes), 1, "should find one an only one node")
-
-            tor_id = nodes[0].id
-            self.assertEqual(tor_id, nodes[0].id, "wrong id for node")
-
-            edges = restclient.lookup_edges(
-                "G.E().Has('RelationType', 'layer2')")
-            self.assertEqual(len(edges), 1, "should find one an only one edge")
-
         self.wsclient = WSClient("host-test2",
                                  "ws://localhost:8082/ws/publisher",
                                  protocol=WSTestClient, test=create_node)
         self.wsclient.connect()
+        self.wsclient.start()
+
+        time.sleep(1)
+
+        restclient = RESTClient("localhost:8082")
+        nodes = restclient.lookup_nodes("G.V().Has('Name', 'Test port')")
+        self.assertEqual(len(nodes), 1, "should find one an only one node")
+
+        tor_id = nodes[0].id
+        self.assertEqual(tor_id, nodes[0].id, "wrong id for node")
+
+        edges = restclient.lookup_edges(
+            "G.E().Has('RelationType', 'layer2')")
+        self.assertEqual(len(edges), 1, "should find one an only one edge")

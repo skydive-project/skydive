@@ -21,6 +21,7 @@
 
 import argparse
 import json
+import logging
 import os
 import sys
 
@@ -31,19 +32,21 @@ from skydive.websocket.client import WSMessage
 from skydive.websocket.client import NodeUpdatedMsgType, NodeDeletedMsgType, \
     NodeAddedMsgType, EdgeUpdatedMsgType, EdgeDeletedMsgType, EdgeAddedMsgType
 
+LOG = logging.getLogger(__name__)
+
 
 class WSClientModifyProtocol(WSClientDebugProtocol):
 
     def onOpen(self):
-        print("WebSocket connection open.")
+        LOG.info("WebSocket connection open.")
 
         mode = self.factory.kwargs["mode"]
         file = self.factory.kwargs["file"]
 
         if mode and mode[-1] == 'e':
-            print(mode[:-1] + "ing: " + file)
+            LOG.info(mode[:-1] + "ing: " + file)
         else:
-            print(mode + "ing: " + file)
+            LOG.info(mode + "ing: " + file)
 
         with open(file) as json_file:
             data = json.load(json_file)
@@ -74,6 +77,7 @@ class WSClientModifyProtocol(WSClientDebugProtocol):
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--analyzer', type=str, default="127.0.0.1:8082",
@@ -141,6 +145,7 @@ def main():
                       mode=args.mode,
                       file=file)
     client.connect()
+    client.start()
 
 
 if __name__ == '__main__':
