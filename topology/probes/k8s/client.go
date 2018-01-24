@@ -84,6 +84,19 @@ func (c *kubeCache) list() []interface{} {
 	return c.cache.List()
 }
 
+func (c *kubeCache) listByNamespace(namespace string) (objList []interface{}) {
+	if namespace == api.NamespaceAll {
+		return c.list()
+	}
+	for _, obj := range c.list() {
+		ns := obj.(*api.Pod).GetNamespace()
+		if len(ns) == 0 || ns == namespace {
+			objList = append(objList, obj)
+		}
+	}
+	return
+}
+
 func (c *kubeCache) getByKey(namespace, name string) interface{} {
 	key := ""
 	if len(namespace) > 0 {
