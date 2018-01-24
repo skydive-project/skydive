@@ -29,14 +29,6 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-const (
-	policyToPodLink = "policy2pod"
-)
-
-var (
-	policyToPodMetadata = graph.Metadata{"RelationType": policyToPodLink}
-)
-
 // Probe for tracking k8s events
 type Probe struct {
 	bundle *probe.ProbeBundle
