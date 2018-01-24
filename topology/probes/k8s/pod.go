@@ -27,7 +27,6 @@ import (
 	"sync"
 
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	api "k8s.io/api/core/v1"
@@ -160,7 +159,7 @@ func linkPodsToNode(g *graph.Graph, host *graph.Node, pods []*graph.Node) {
 }
 
 func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
-	topology.AddOwnershipLink(g, node, pod, nil)
+	addOwnershipLink(g, node, pod)
 }
 
 func (p *podProbe) Start() {
