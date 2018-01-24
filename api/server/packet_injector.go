@@ -87,7 +87,10 @@ func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketParamsReq) error {
 	if len(ips) == 0 && ppr.SrcIP == "" {
 		return errors.New("No source IP in node")
 	}
-	if dstNode != nil && ppr.DstIP == "" {
+	if dstNode == nil && ppr.DstIP == "" {
+		return errors.New("No destination node and IP")
+	}
+	if ppr.DstIP == "" {
 		ips, _ := dstNode.GetFieldStringList(ipField)
 		if len(ips) == 0 {
 			return errors.New("No destination IP in node")
@@ -97,11 +100,19 @@ func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketParamsReq) error {
 	if mac == "" && ppr.SrcMAC == "" {
 		return errors.New("No source MAC in node")
 	}
-	if dstNode != nil && ppr.DstMAC == "" {
+	if dstNode == nil && ppr.DstMAC == "" {
+		return errors.New("No destination node and MAC")
+	}
+	if ppr.DstMAC == "" {
 		mac, _ := dstNode.GetFieldString("MAC")
 		if mac == "" {
 			return errors.New("No destination MAC in node")
 		}
+	}
+
+	allowedTypes := map[string]bool{"icmp4": true, "icmp6": true, "tcp4": true, "tcp6": true, "udp4": true, "udp6": true}
+	if _, ok := allowedTypes[ppr.Type]; !ok {
+		return errors.New("given type is not supported")
 	}
 
 	return nil
