@@ -96,7 +96,7 @@ func dumpContainer(pod *v1.Pod, container *v1.Container) string {
 }
 
 func (c *containerProbe) linkContainerToPod(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
-	podNodes := c.podIndexer.Get(pod.GetName())
+	podNodes := c.podIndexer.Get(pod.GetNamespace(), pod.GetName())
 
 	if len(podNodes) == 0 {
 		logging.GetLogger().Debugf("Can't find %s", dumpPod(pod))

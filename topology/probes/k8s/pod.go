@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 
@@ -43,20 +44,27 @@ type podProbe struct {
 	nodeIndexer      *graph.MetadataIndexer
 }
 
-func newPodIndexer(g *graph.Graph, by string) *graph.MetadataIndexer {
-	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, by)
-}
+const (
+	podNameField      = "K8s.ObjectMeta.Name"
+	podNamespaceField = "K8s.ObjectMeta.Namespace"
+	podNodeNameField  = "K8s.Spec.NodeName"
+)
 
 func newPodIndexerByHost(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndexer(g, "Pod.NodeName")
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, podNodeNameField)
 }
 
 func newPodIndexerByNamespace(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndexer(g, "Pod.Namespace")
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, podNamespaceField)
 }
 
 func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndexer(g, "Name")
+	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Type", "pod"),
+		filters.NewNotFilter(filters.NewNullFilter(podNamespaceField)),
+		filters.NewNotFilter(filters.NewNullFilter(podNameField)))
+	m := graph.NewGraphElementFilter(filter)
+	return graph.NewMetadataIndexer(g, m, podNamespaceField, podNameField)
 }
 
 func podUID(pod *api.Pod) graph.Identifier {
