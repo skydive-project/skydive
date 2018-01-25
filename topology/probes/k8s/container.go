@@ -55,12 +55,12 @@ func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", "docker"),
 		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotFilter(filters.NewNullFilter(DockerNameField)),
+		filters.NewNotFilter(filters.NewNullFilter(DockerPodNamespaceField)),
 		filters.NewNotFilter(filters.NewNullFilter(DockerPodNameField)),
-		filters.NewNotFilter(filters.NewNullFilter(DockerPodNamespaceField)))
+		filters.NewNotFilter(filters.NewNullFilter(DockerNameField)))
 	m := graph.NewGraphElementFilter(filter)
 
-	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField)
+	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField, DockerNameField)
 }
 
 func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
@@ -106,6 +106,17 @@ func (c *containerProbe) linkContainerToPod(pod *v1.Pod, container *v1.Container
 	addOwnershipLink(c.graph, podNodes[0], containerNode)
 }
 
+func (c *containerProbe) linkContainerToDocker(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
+	dockerNodes := c.dockerIndexer.Get(pod.GetNamespace(), pod.GetName(), container.Name)
+
+	if len(dockerNodes) == 0 {
+		logging.GetLogger().Debugf("Can't find docker associated with %s", dumpContainer(pod, container))
+		return
+	}
+
+	addLink(c.graph, containerNode, dockerNodes[0])
+}
+
 func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {
 	c.Lock()
 	defer c.Unlock()
@@ -124,6 +135,7 @@ func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {
 	}
 
 	c.linkContainerToPod(pod, container, containerNode)
+	c.linkContainerToDocker(pod, container, containerNode)
 }
 
 func (c *containerProbe) onPodAdd(pod *v1.Pod) {
