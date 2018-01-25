@@ -28,7 +28,6 @@ import (
 
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
@@ -104,7 +103,7 @@ func (c *containerProbe) linkContainerToPod(pod *v1.Pod, container *v1.Container
 	}
 
 	logging.GetLogger().Debugf("Linking %s to %s", dumpContainer(pod, container), dumpPod(pod))
-	topology.AddOwnershipLink(c.graph, podNodes[0], containerNode, nil)
+	addOwnershipLink(c.graph, podNodes[0], containerNode)
 }
 
 func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {

@@ -101,7 +101,7 @@ func (p *podProbe) onAdd(obj interface{}) {
 
 	containerNodes := p.containerIndexer.Get(pod.Namespace, pod.Name)
 	for _, containerNode := range containerNodes {
-		p.graph.Link(podNode, containerNode, podToContainerMetadata)
+		addOwnershipLink(p.graph, podNode, containerNode)
 	}
 
 	p.linkPodToNode(pod, podNode)

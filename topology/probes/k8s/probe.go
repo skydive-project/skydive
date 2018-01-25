@@ -30,13 +30,11 @@ import (
 )
 
 const (
-	podToContainerLink = "pod2container"
-	policyToPodLink    = "policy2pod"
+	policyToPodLink = "policy2pod"
 )
 
 var (
-	podToContainerMetadata = graph.Metadata{"RelationType": podToContainerLink}
-	policyToPodMetadata    = graph.Metadata{"RelationType": policyToPodLink}
+	policyToPodMetadata = graph.Metadata{"RelationType": policyToPodLink}
 )
 
 // Probe for tracking k8s events
