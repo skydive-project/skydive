@@ -17,7 +17,7 @@ googleAnalytics = ""
 	provider = "GitHub"
 	repo_url = "https://github.com/skydive-project/skydive"
 
-	version = "0.15.0"
+	version = "0.16.0"
 	logo = "images/skydive-logo.png"
 	favicon = "images/skydive-logo-16x16.png"
 
