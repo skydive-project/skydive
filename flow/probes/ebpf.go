@@ -256,8 +256,14 @@ func (p *EBPFProbe) run() {
 				if !ok {
 					startK := int64(kernFlow.start)
 
+					// check that the local time computed from the kernel time is not greater than Now
+					us := start.Add(time.Duration(startK - startKTimeNs))
+					if us.After(now) {
+						us = now
+					}
+
 					ebpfFlow = &EBPFFlow{
-						start: start.Add(time.Duration(startK - startKTimeNs)),
+						start: now,
 						last:  start.Add(time.Duration(lastK - startKTimeNs)),
 					}
 					ebpfFlows[kernFlow.key] = ebpfFlow

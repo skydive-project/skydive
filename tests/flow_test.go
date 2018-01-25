@@ -67,7 +67,7 @@ func TestSFlowProbeNode(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context('-%dns')", time.Now().Sub(c.time).Nanoseconds())
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 			}
 
 			gh := c.gh
@@ -120,7 +120,7 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context('-%dns')", time.Now().Sub(c.time).Nanoseconds())
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 			}
 
 			gh := c.gh
@@ -2062,7 +2062,7 @@ func TestOvsMirror(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"
 			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context('-%dns')", time.Now().Sub(c.time).Nanoseconds())
+				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
 			}
 
 			gh := c.gh
