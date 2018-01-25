@@ -36,6 +36,7 @@ import (
 
 // OvsClient describes an OVS database client connection
 type OvsClient struct {
+	sync.RWMutex
 	ovsdb     *libovsdb.OvsdbClient
 	connected uint64
 }
@@ -107,7 +108,10 @@ func (o *OvsClient) Exec(operations ...libovsdb.Operation) ([]libovsdb.Operation
 		return nil, errors.New("OVSDB client is not connected")
 	}
 
+	o.RLock()
 	result, err := o.ovsdb.Transact("Open_vSwitch", operations...)
+	o.RUnlock()
+
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +304,10 @@ func (o *OvsMonitor) updateHandler(updates *libovsdb.TableUpdates) {
 }
 
 func (o *OvsMonitor) setMonitorRequests(table string, r *map[string]libovsdb.MonitorRequest) error {
+	o.OvsClient.RLock()
 	schema, ok := o.OvsClient.ovsdb.Schema["Open_vSwitch"]
+	o.OvsClient.RUnlock()
+
 	if !ok {
 		return errors.New("invalid Database Schema")
 	}
@@ -399,7 +406,10 @@ func (o *OvsMonitor) monitorOvsdb() error {
 	if err != nil {
 		return err
 	}
+	o.OvsClient.Lock()
 	o.OvsClient.ovsdb = ovsdb
+	o.OvsClient.Unlock()
+
 	atomic.StoreUint64(&o.OvsClient.connected, 1)
 
 	notifier := Notifier{monitor: o}
@@ -469,7 +479,9 @@ func (o *OvsMonitor) StopMonitoring() {
 	if o.OvsClient != nil {
 		o.done <- struct{}{}
 		if o.isConnected() == true {
+			o.OvsClient.RLock()
 			o.OvsClient.ovsdb.Disconnect()
+			o.OvsClient.RUnlock()
 		}
 	}
 }
