@@ -49,7 +49,6 @@ COVERAGE?=0
 COVERAGE_MODE?=atomic
 COVERAGE_WD?="."
 BOOTSTRAP_ARGS?=
-GOTAGS?=
 
 ifeq ($(WITH_DPDK), true)
   BUILDTAGS+=dpdk
@@ -61,7 +60,23 @@ ifeq ($(WITH_EBPF), true)
 endif
 
 ifeq ($(WITH_PROF), true)
-	BUILDTAGS+=prof
+  BUILDTAGS+=prof
+endif
+
+ifeq ($(WITH_SCALE), true)
+  BUILDTAGS+=scale
+endif
+
+ifeq ($(WITH_NEUTRON), true)
+  BUILDTAGS+=neutron
+endif
+
+ifeq ($(WITH_SELENIUM), true)
+  BUILDTAGS+=selenium
+endif
+
+ifeq ($(WITH_CDD), true)
+  BUILDTAGS+=cdd
 endif
 
 .PHONY: all install
@@ -112,7 +127,7 @@ BINDATA_DIRS := \
 compile:
 	$(GOVENDOR) install \
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
-		${GOFLAGS} -tags="${BUILDTAGS} ${GOTAGS}" ${VERBOSE_FLAGS} \
+		${GOFLAGS} -tags="${BUILDTAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
 
 skydive: govendor genlocalfiles dpdk.build contribs compile
@@ -154,7 +169,7 @@ static: skydive.cleanup govendor genlocalfiles
 	$(GOVENDOR) install \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
 		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
-		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS} ${GOTAGS}" \
+		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS}" \
 		-installsuffix netgo || true
 
 contribs.cleanup:
@@ -183,7 +198,7 @@ test.functionals.cleanup:
 	rm -f tests/functionals
 
 test.functionals.compile: govendor genlocalfiles
-	$(GOVENDOR) test -tags "${BUILDTAGS} ${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
 	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS}
@@ -213,12 +228,12 @@ ifeq ($(COVERAGE), true)
 	for pkg in ${UT_PACKAGES}; do \
 		if [ -n "$$pkg" ]; then \
 			coverfile="${COVERAGE_WD}/$$(echo $$pkg | tr / -).cover"; \
-			$(GOVENDOR) test -tags "${BUILDTAGS} ${GOTAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
+			$(GOVENDOR) test -tags "${BUILDTAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
 		fi; \
 	done
 else
 	set -v ; \
-	$(GOVENDOR) test -tags "${BUILDTAGS} ${GOTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 endif
 
 govendor:
