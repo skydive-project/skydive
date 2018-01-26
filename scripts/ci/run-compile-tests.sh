@@ -19,3 +19,6 @@ GOOS=darwin GOARCH=amd64 govendor build github.com/skydive-project/skydive
 
 # Compile profiling
 make WITH_PROF=true VERBOSE=true
+
+# Compile all tests
+make test.functionals.compile WITH_NEUTRON=true WITH_SELENIUM=true WITH_CDD=true WITH_SCALE=true

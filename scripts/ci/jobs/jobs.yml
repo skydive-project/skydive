@@ -60,7 +60,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?go-fmt)'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?go-fmt).*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -84,7 +84,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?unit-tests)'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?unit-tests).*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -112,7 +112,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?compile-dpdk)'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?compile-dpdk).*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -137,7 +137,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?functional-tests-backend-{backend})'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?functional-tests-backend-{backend}).*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -184,7 +184,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?scale-tests)'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?scale-tests).*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -215,7 +215,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?selenium-tests)'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?selenium-tests).*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -245,7 +245,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run cdd-overview'
+          trigger-phrase: '.*(re)?run cdd-overview.*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -350,7 +350,7 @@
       - chuck-norris
 
 - job:
-    name: skydive-devstack-plugin
+    name: skydive-devstack-tests
     defaults: skydive
     properties:
       - github:
@@ -359,12 +359,12 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run devstack'
+          trigger-phrase: '.*(re)?run (skydive-)?devstack-tests.*'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
-          status-context: skydive-devstack-plugin
+          status-context: skydive-devstack-tests
       - timed: "@daily"
     builders:
       - shell: |
@@ -383,7 +383,7 @@
     node: baremetal
 
 - job:
-    name: skydive-vagrant
+    name: skydive-vagrant-tests
     defaults: skydive
     properties:
       - github:
@@ -392,12 +392,12 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?vagrant'
+          trigger-phrase: '.*(re)?run (skydive-)?vagrant-tests.*'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: false
-          status-context: skydive-vagrant
+          status-context: skydive-vagrant-tests
     builders:
       - shell: |
           #!/bin/bash
@@ -405,6 +405,7 @@
           cd contrib/vagrant
           for mode in binary package container
           do
+            DEPLOYMENT_MODE=$mode vagrant box update
             DEPLOYMENT_MODE=$mode vagrant up --provision-with common
             DEPLOYMENT_MODE=$mode vagrant provision
             retcode=$?
@@ -425,7 +426,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?packaging-tests'
+          trigger-phrase: '.*(re)?run (skydive-)?packaging-tests.*'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
@@ -446,7 +447,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?python-tests'
+          trigger-phrase: '.*(re)?run (skydive-)?python-tests.*'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
@@ -476,7 +477,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?coverage)'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?coverage).*'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true

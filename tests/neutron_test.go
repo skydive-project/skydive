@@ -36,7 +36,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 
-	gclient "github.com/skydive-project/skydive/cmd/client"
+	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"

@@ -18,4 +18,4 @@ make install
 export SKYDIVE_ANALYZERS=localhost:8082
 export SKYDIVE=${GOPATH}/bin/skydive
 
-make test.functionals GOTAGS="selenium" VERBOSE=true TIMEOUT=10m TEST_PATTERN=PacketInjectionCapture ARGS="$ARGS -standalone"
+make test.functionals WITH_SELENIUM=true VERBOSE=true TIMEOUT=10m TEST_PATTERN=PacketInjectionCapture ARGS="$ARGS -standalone"

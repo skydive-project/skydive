@@ -36,7 +36,7 @@ generate_cover_data() {
         export SKYDIVE_ANALYZERS=localhost:8082
 
         coverfile="../$workdir/functional.cover"
-        make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="$ARGS -test.coverprofile=$coverfile -standalone -graph.backend $backend -storage.backend $backend" TEST_PATTERN=$TEST_PATTERN
+        make test.functionals.batch VERBOSE=true TIMEOUT=20m BUILDTAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="$ARGS -test.coverprofile=$coverfile -standalone -graph.backend $backend -storage.backend $backend" TEST_PATTERN=$TEST_PATTERN
     fi
 
     if [ "$scale" -eq 1 ]; then
@@ -53,7 +53,7 @@ generate_cover_data() {
         curl -XDELETE 'localhost:9200/skydive*'
         $SKYDIVE compile
 
-        make test.functionals GOTAGS="scale" VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
+        make test.functionals WITH_SCALE=true VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
         cp /tmp/skydive-scale/*.cover "$workdir"/
     fi
 
