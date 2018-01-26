@@ -405,6 +405,7 @@
           cd contrib/vagrant
           for mode in binary package container
           do
+            DEPLOYMENT_MODE=$mode vagrant box update
             DEPLOYMENT_MODE=$mode vagrant up --provision-with common
             DEPLOYMENT_MODE=$mode vagrant provision
             retcode=$?
