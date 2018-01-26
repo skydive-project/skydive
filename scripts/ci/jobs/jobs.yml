@@ -350,7 +350,7 @@
       - chuck-norris
 
 - job:
-    name: skydive-devstack-plugin
+    name: skydive-devstack-tests
     defaults: skydive
     properties:
       - github:
@@ -359,12 +359,12 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run devstack'
+          trigger-phrase: '.*(re)?run (skydive-)?devstack-tests'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
-          status-context: skydive-devstack-plugin
+          status-context: skydive-devstack-tests
       - timed: "@daily"
     builders:
       - shell: |
@@ -383,7 +383,7 @@
     node: baremetal
 
 - job:
-    name: skydive-vagrant
+    name: skydive-vagrant-tests
     defaults: skydive
     properties:
       - github:
@@ -392,12 +392,12 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?vagrant'
+          trigger-phrase: '.*(re)?run (skydive-)?vagrant-tests'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: false
-          status-context: skydive-vagrant
+          status-context: skydive-vagrant-tests
     builders:
       - shell: |
           #!/bin/bash
