@@ -16,18 +16,5 @@ chmod +x ~/bin/gimme
 # before changing this be sure that it will not break the RHEL packaging
 eval "$(gimme 1.9.1)"
 
-export GOPATH=$WORKSPACE
-
-# Get the Go dependencies
-go get -f -u github.com/axw/gocov/gocov
-go get -f -u github.com/mattn/goveralls
-go get -f -u golang.org/x/tools/cmd/cover
-go get -f -u github.com/golang/lint/golint
-go get -f -u github.com/tebeka/go2xunit
-
-export PATH=$PATH:$GOPATH/bin
-
-# speedup govendor sync command
-mkdir -p $HOME/.govendor $GOPATH/.cache
-rm -rf $GOPATH/.cache/govendor
-ln -s $HOME/.govendor $GOPATH/.cache/govendor
+dir="$(dirname "$0")"
+. "${dir}/install-go-deps.sh"
