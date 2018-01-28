@@ -26,6 +26,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 
 	"github.com/google/gopacket/layers"
@@ -38,6 +40,7 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
 const (
@@ -507,7 +510,6 @@ func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.Graph
 		s = append(s, v)
 	}
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
-
 }
 
 // PropertyKeys returns a flow field
@@ -595,7 +597,7 @@ func (r *RawPacketsTraversalStep) MarshalJSON() ([]byte, error) {
 	return json.Marshal(values)
 }
 
-// Error returns tranversal error
+// Error returns traversal error
 func (r *RawPacketsTraversalStep) Error() error {
 	return r.error
 }
@@ -703,6 +705,47 @@ func (r *RawPacketsTraversalStep) BPF(s ...interface{}) *RawPacketsTraversalStep
 	return &RawPacketsTraversalStep{GraphTraversal: r.GraphTraversal, rawPackets: rawPackets}
 }
 
+// Sockets returns the sockets at both sides of the specified flows
+func (f *FlowTraversalStep) Sockets(s ...interface{}) *SocketsTraversalStep {
+	if f.error != nil {
+		return &SocketsTraversalStep{error: f.error}
+	}
+
+	if len(s) != 0 {
+		return &SocketsTraversalStep{error: fmt.Errorf("Sockets requires no parameter")}
+	}
+
+	indexer := NewSocketIndexer(f.GraphTraversal.Graph)
+
+	flowSockets := make(map[string][]*socketinfo.ConnectionInfo)
+	for _, fl := range f.flowset.Flows {
+		if transport := fl.GetTransport(); transport != nil && transport.GetProtocol() == flow.FlowProtocol_TCPPORT {
+			var sockets []*socketinfo.ConnectionInfo
+
+			localPort, _ := strconv.Atoi(fl.GetTransport().GetA())
+			remotePort, _ := strconv.Atoi(fl.GetTransport().GetB())
+
+			hash := socketinfo.HashTuple(net.ParseIP(fl.GetNetwork().GetA()), int64(localPort), net.ParseIP(fl.GetNetwork().GetB()), int64(remotePort))
+			_, socks := indexer.FromHash(hash)
+			for _, socket := range socks {
+				sockets = append(sockets, socket.(*socketinfo.ConnectionInfo))
+			}
+
+			hash = socketinfo.HashTuple(net.ParseIP(fl.GetNetwork().GetB()), int64(remotePort), net.ParseIP(fl.GetNetwork().GetA()), int64(localPort))
+			_, socks = indexer.FromHash(hash)
+			for _, socket := range socks {
+				sockets = append(sockets, socket.(*socketinfo.ConnectionInfo))
+			}
+
+			if len(sockets) > 0 {
+				flowSockets[fl.UUID] = sockets
+			}
+		}
+	}
+
+	return &SocketsTraversalStep{GraphTraversal: f.GraphTraversal, sockets: flowSockets}
+}
+
 // Values returns list of flows
 func (f *FlowTraversalStep) Values() []interface{} {
 	a := make([]interface{}, len(f.flowset.Flows))
@@ -717,12 +760,12 @@ func (f *FlowTraversalStep) MarshalJSON() ([]byte, error) {
 	return json.Marshal(f.Values())
 }
 
-// Error returns tranversal error
+// Error returns traversal error
 func (f *FlowTraversalStep) Error() error {
 	return f.error
 }
 
-// NewFlowTraversalExtension creates a new flow tranversal extension for Gremlin parser
+// NewFlowTraversalExtension creates a new flow traversal extension for Gremlin parser
 func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage) *FlowTraversalExtension {
 	return &FlowTraversalExtension{
 		FlowToken:        traversalFlowToken,

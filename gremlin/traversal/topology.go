@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
 // InterfaceMetrics returns a Metrics step from interface metric metadata
@@ -59,7 +60,7 @@ nodeloop:
 
 		m, _ := n.GetField("LastUpdateMetric")
 		if m == nil {
-			return nil
+			continue
 		}
 
 		// NOTE(safchain) mapstructure for now, need to be change once converted from json to
@@ -69,12 +70,52 @@ nodeloop:
 			return &MetricsTraversalStep{error: err}
 		}
 
-		if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) {
+		if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) && it.Next() {
 			metrics[string(n.ID)] = append(metrics[string(n.ID)], &lastMetric)
 		}
 	}
 
 	return NewMetricsTraversalStep(tv.GraphTraversal, metrics, nil)
+}
+
+// Sockets returns a sockets step from host/namespace sockets
+func Sockets(tv *traversal.GraphTraversalV) *SocketsTraversalStep {
+	if tv.Error() != nil {
+		return &SocketsTraversalStep{error: tv.Error()}
+	}
+
+	it := tv.GraphTraversal.CurrentStepContext().PaginationRange.Iterator()
+
+	tv.GraphTraversal.RLock()
+	defer tv.GraphTraversal.RUnlock()
+
+	sockets := make(map[string][]*socketinfo.ConnectionInfo)
+nodeloop:
+	for _, n := range tv.GetNodes() {
+		if it.Done() {
+			break nodeloop
+		}
+
+		m, _ := n.GetField("Sockets")
+		if m == nil {
+			continue
+		}
+
+		id := string(n.ID)
+		if _, found := sockets[id]; !found {
+			sockets[id] = make([]*socketinfo.ConnectionInfo, 0)
+		}
+
+		for _, socket := range getSockets(n) {
+			if it.Done() {
+				break
+			} else if it.Next() {
+				sockets[id] = append(sockets[id], socket)
+			}
+		}
+	}
+
+	return &SocketsTraversalStep{GraphTraversal: tv.GraphTraversal, sockets: sockets}
 }
 
 // TopologyGremlinQuery run a gremlin query on the graph g without any extension

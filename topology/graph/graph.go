@@ -477,6 +477,12 @@ func decodeMap(m map[string]interface{}) {
 				}
 			}
 			m[field] = value
+		case []interface{}:
+			for _, obj := range v {
+				if m, ok := obj.(map[string]interface{}); ok {
+					decodeMap(m)
+				}
+			}
 		case map[string]interface{}:
 			decodeMap(v)
 		default:

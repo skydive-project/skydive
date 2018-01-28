@@ -169,7 +169,6 @@ func TestDockerLabels(t *testing.T) {
 
 			gremlin := prefix + `.V().Has("Docker.ContainerName", "/test-skydive-docker-labels",`
 			gremlin += ` "Type", "container", "Docker.Labels.a.b.c", "123", "Docker.Labels.a~b/c@d", "456")`
-			fmt.Printf("Gremlin: %s\n", gremlin)
 			_, err := gh.GetNode(gremlin)
 			if err != nil {
 				return err

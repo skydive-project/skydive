@@ -871,7 +871,7 @@ func TestRouteTableHistory(t *testing.T) {
 				foundNewTable := false
 				for _, obj := range routingTable {
 					rt := obj.(map[string]interface{})
-					if (rt["Id"].(json.Number)).String() == "2" {
+					if rt["Id"].(int64) == 2 {
 						foundNewTable = true
 						break
 					}

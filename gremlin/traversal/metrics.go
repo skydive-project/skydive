@@ -40,6 +40,7 @@ type MetricsTraversalExtension struct {
 	MetricsToken traversal.Token
 }
 
+// MetricsGremlinTraversalStep describes the Metrics gremlin traversal step
 type MetricsGremlinTraversalStep struct {
 	context traversal.GremlinTraversalContext
 }
@@ -71,22 +72,21 @@ func (e *MetricsTraversalExtension) ParseStep(t traversal.Token, p traversal.Gre
 
 // Exec executes the metrics step
 func (s *MetricsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
-	switch last.(type) {
+	switch tv := last.(type) {
 	case *traversal.GraphTraversalV:
-		tv := last.(*traversal.GraphTraversalV)
 		return InterfaceMetrics(tv), nil
 	case *FlowTraversalStep:
-		fs := last.(*FlowTraversalStep)
-		return fs.FlowMetrics(), nil
+		return tv.FlowMetrics(), nil
 	}
 	return nil, traversal.ErrExecutionError
 }
 
-// Reduce flow step
+// Reduce metrics step
 func (s *MetricsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
 	return next
 }
 
+// Context metrics step
 func (s *MetricsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &s.context
 }
@@ -272,7 +272,7 @@ func (m *MetricsTraversalStep) Count(s ...interface{}) *traversal.GraphTraversal
 	return traversal.NewGraphTraversalValue(m.GraphTraversal, len(m.metrics))
 }
 
-// NewMetricsTraversalStep creates a new tranversal metric step
+// NewMetricsTraversalStep creates a new traversal metric step
 func NewMetricsTraversalStep(gt *traversal.GraphTraversal, metrics map[string][]common.Metric, err error) *MetricsTraversalStep {
 	return &MetricsTraversalStep{GraphTraversal: gt, metrics: metrics, error: err}
 }
