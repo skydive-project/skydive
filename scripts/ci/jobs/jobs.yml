@@ -365,7 +365,6 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-devstack-tests
-      - timed: "@daily"
     builders:
       - shell: |
           #!/bin/bash
