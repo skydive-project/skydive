@@ -65,7 +65,11 @@ func TestFlowMetric(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(m, e) {
-		t.Fatal("Unmarshalled flow not equal to the original")
+		t.Errorf("Expected metric %v not found, got: %v", e, m)
+	}
+
+	if flows[0].LastUpdateMetric != nil {
+		t.Error("Shouldn't get LastUpdateMetric, as the flow table update didn't call")
 	}
 }
 
@@ -367,7 +371,6 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 1,
 				BABytes:   42,
 			},
-			LastUpdateMetric: &FlowMetric{},
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/UDP/DNS",
@@ -393,7 +396,6 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 2,
 				BABytes:   256,
 			},
-			LastUpdateMetric: &FlowMetric{},
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/TCP",
@@ -419,7 +421,6 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 4,
 				BABytes:   760,
 			},
-			LastUpdateMetric: &FlowMetric{},
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/UDP/DNS",
@@ -445,7 +446,6 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 2,
 				BABytes:   190,
 			},
-			LastUpdateMetric: &FlowMetric{},
 		},
 		{
 			LayersPath:  "Ethernet/IPv4/TCP",
@@ -471,7 +471,6 @@ func TestPCAP1(t *testing.T) {
 				BAPackets: 18,
 				BABytes:   21080,
 			},
-			LastUpdateMetric: &FlowMetric{},
 		},
 	}
 

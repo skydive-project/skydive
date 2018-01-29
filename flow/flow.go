@@ -273,8 +273,7 @@ func networkID(p *gopacket.Packet) int64 {
 // NewFlow creates a new empty flow
 func NewFlow() *Flow {
 	return &Flow{
-		Metric:           &FlowMetric{},
-		LastUpdateMetric: &FlowMetric{},
+		Metric: &FlowMetric{},
 	}
 }
 

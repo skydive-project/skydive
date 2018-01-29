@@ -201,6 +201,9 @@ func (ft *Table) updateAt(now time.Time) {
 }
 
 func (ft *Table) updateMetric(f *Flow, start, last int64) {
+	if f.LastUpdateMetric == nil {
+		f.LastUpdateMetric = &FlowMetric{}
+	}
 	f.LastUpdateMetric.ABPackets = f.Metric.ABPackets
 	f.LastUpdateMetric.ABBytes = f.Metric.ABBytes
 	f.LastUpdateMetric.BAPackets = f.Metric.BAPackets
