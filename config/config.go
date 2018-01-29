@@ -82,6 +82,7 @@ func init() {
 	cfg.SetDefault("analyzer.ssh_enabled", false)
 	cfg.SetDefault("analyzer.storage.bulk_insert", 100)
 	cfg.SetDefault("analyzer.storage.bulk_insert_deadline", 5)
+	cfg.SetDefault("analyzer.storage.max_flow_buffer_size", 100000)
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 
 	cfg.SetDefault("auth.type", "noauth")
