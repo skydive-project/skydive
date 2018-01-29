@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - 2017-01-29
+### Added
+- Add Kubernetes probe
+- Retrieve Open vSwitch port metrics
+- Allow traffic capture on Open vSwitch ports
+- Add host info, such as CPU, memory, OS, Open vSwitch options, to metadata
+- Add `Preferences` pane to the Web UI
+- Allow SSH to agents through the WebUI (thanks to Dede)
+- Allow cross compilation of Skydive
+
+### Changed
+- Long-running packet injections can now be stopped
+- Performance improvements:
+  - Add gzip support for both API and WebSocket
+  - JSON serialization optimizations
+- The `skydive-client` module now supports Python 2.7
+
 ## [0.15.0] - 2017-12-05
 ### Added
 - Flow capture with eBPF probe
@@ -15,7 +32,7 @@ All notable changes to this project will be documented in this file.
 - Fix use of domain name and IPV6 in service addresses
 - Scalability improvements:
   - Improve ping mechanism for better disconnection handling
-  - Reduce graph lock pressure for Neutron and alerts.
+  - Reduce graph lock pressure for Neutron and alerts
 
 ## [0.14.0] - 2017-11-14
 ### Added
