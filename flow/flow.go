@@ -375,6 +375,9 @@ func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
 	f.Start = now
 	f.Last = now
 
+	f.Metric.Start = now
+	f.Metric.Last = now
+
 	f.NodeTID = nodeTID
 	f.ParentUUID = uuids.ParentUUID
 }
@@ -401,6 +404,8 @@ func (f *Flow) InitFromGoPacket(key string, now int64, packet *gopacket.Packet, 
 // Update a flow metrics and latency
 func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
 	f.Last = now
+	f.Metric.Last = now
+
 	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
 		f.updateMetricsWithNetworkLayer(packet)
 	}

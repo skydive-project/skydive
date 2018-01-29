@@ -191,6 +191,8 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 		ABPackets: int64(kernFlow.metrics.ab_packets),
 		BABytes:   int64(kernFlow.metrics.ba_bytes),
 		BAPackets: int64(kernFlow.metrics.ba_packets),
+		Start:     f.Start,
+		Last:      f.Last,
 	}
 
 	hasher := sha1.New()

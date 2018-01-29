@@ -44,6 +44,31 @@ func TestFlowReflection(t *testing.T) {
 	}
 }
 
+func TestFlowMetric(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 1 {
+		t.Error("A single packet must generate 1 flow")
+	}
+
+	m := flows[0].Metric
+	if m.Start == 0 || m.Last == 0 {
+		t.Error("Start/Last empty")
+	}
+
+	e := &FlowMetric{
+		ABPackets: 5,
+		ABBytes:   344,
+		BAPackets: 3,
+		BABytes:   206,
+		Start:     m.Start,
+		Last:      m.Last,
+	}
+
+	if !reflect.DeepEqual(m, e) {
+		t.Fatal("Unmarshalled flow not equal to the original")
+	}
+}
+
 func TestFlowSimpleIPv4(t *testing.T) {
 	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet, nil)
 	if len(flows) != 1 {
@@ -99,6 +124,8 @@ func TestFlowJSON(t *testing.T) {
 			ABPackets: 34,
 			BABytes:   44,
 			BAPackets: 55,
+			Start:     1111111,
+			Last:      2222222,
 		},
 		NodeTID:  "probe-tid",
 		ANodeTID: "anode-tid",
@@ -128,12 +155,16 @@ func TestFlowJSON(t *testing.T) {
 			v.ObjKV("ABBytes", v.Number()),
 			v.ObjKV("BAPackets", v.Number()),
 			v.ObjKV("BABytes", v.Number()),
+			v.ObjKV("Start", v.Number()),
+			v.ObjKV("Last", v.Number()),
 		)),
 		v.ObjKV("Metric", v.Object(
 			v.ObjKV("ABPackets", v.Number()),
 			v.ObjKV("ABBytes", v.Number()),
 			v.ObjKV("BAPackets", v.Number()),
 			v.ObjKV("BABytes", v.Number()),
+			v.ObjKV("Start", v.Number()),
+			v.ObjKV("Last", v.Number()),
 		),
 		))
 
