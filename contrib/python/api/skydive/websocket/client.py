@@ -19,10 +19,7 @@
 # under the License.
 #
 
-try:
-    import asyncio
-except ImportError:
-    import trollius as asyncio
+import trollius as asyncio
 import base64
 import functools
 import json
