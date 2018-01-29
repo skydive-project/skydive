@@ -55,16 +55,19 @@ func flowRawPacketToDocument(linkType layers.LinkType, rawpacket *flow.RawPacket
 }
 
 func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Document {
-	return orient.Document{
-		"@class":    "FlowMetric",
-		"@type":     "d",
-		"Start":     metric.Start,
-		"Last":      metric.Last,
-		"ABPackets": metric.ABPackets,
-		"ABBytes":   metric.ABBytes,
-		"BAPackets": metric.BAPackets,
-		"BABytes":   metric.BABytes,
+	if metric != nil {
+		return orient.Document{
+			"@class":    "FlowMetric",
+			"@type":     "d",
+			"Start":     metric.Start,
+			"Last":      metric.Last,
+			"ABPackets": metric.ABPackets,
+			"ABBytes":   metric.ABBytes,
+			"BAPackets": metric.BAPackets,
+			"BABytes":   metric.BABytes,
+		}
 	}
+	return nil
 }
 
 func flowTCPMetricToDocument(flow *flow.Flow, tcp_metric *flow.TCPMetric) orient.Document {
@@ -89,14 +92,13 @@ func flowTCPMetricToDocument(flow *flow.Flow, tcp_metric *flow.TCPMetric) orient
 func flowToDocument(flow *flow.Flow) orient.Document {
 	metricDoc := flowMetricToDocument(flow, flow.Metric)
 	lastMetricDoc := flowMetricToDocument(flow, flow.LastUpdateMetric)
-	tcpMetric := flowTCPMetricToDocument(flow, flow.TCPFlowMetric)
+	tcpMetricDoc := flowTCPMetricToDocument(flow, flow.TCPFlowMetric)
 	var flowDoc orient.Document
 	flowDoc = orient.Document{
 		"@class":             "Flow",
 		"UUID":               flow.UUID,
 		"LayersPath":         flow.LayersPath,
 		"Application":        flow.Application,
-		"LastUpdateMetric":   lastMetricDoc,
 		"Metric":             metricDoc,
 		"Start":              flow.Start,
 		"Last":               flow.Last,
@@ -109,8 +111,13 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 		"BNodeTID":           flow.BNodeTID,
 		"RawPacketsCaptured": flow.RawPacketsCaptured,
 	}
-	if tcpMetric != nil {
-		flowDoc["TCPFlowMetric"] = tcpMetric
+
+	if tcpMetricDoc != nil {
+		flowDoc["TCPFlowMetric"] = tcpMetricDoc
+	}
+
+	if lastMetricDoc != nil {
+		flowDoc["LastUpdateMetric"] = lastMetricDoc
 	}
 
 	if flow.Link != nil {
