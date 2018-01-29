@@ -522,13 +522,9 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Grap
 	})
 }
 
-// WithContext step
-func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
-	return &Graph{
-		backend: graph.backend,
-		context: context,
-		host:    graph.host,
-	}, nil
+// IsHistorySupported returns that this backend does support history
+func (b *ElasticSearchBackend) IsHistorySupported() bool {
+	return true
 }
 
 func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {

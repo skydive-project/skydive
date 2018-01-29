@@ -1064,7 +1064,7 @@ func (a *AggregatesGremlinTraversalStep) Exec(last traversal.GraphTraversalStep)
 	switch last.(type) {
 	case *MetricsTraversalStep:
 		mts := last.(*MetricsTraversalStep)
-		return mts.Aggregates(), nil
+		return mts.Aggregates(a.context.Params...), nil
 	}
 
 	return nil, traversal.ErrExecutionError

@@ -297,10 +297,13 @@ func NewTimeSlice(s, l int64) *TimeSlice {
 type Metric interface {
 	GetFieldInt64(field string) (int64, error)
 	Add(m Metric) Metric
+	Sub(m Metric) Metric
+	Split(cut int64) (Metric, Metric)
 	GetStart() int64
 	SetStart(start int64)
 	GetLast() int64
 	SetLast(last int64)
+	IsZero() bool
 }
 
 // SetField set a value in a tree based on dot key ("a.b.c.d" = "ok")

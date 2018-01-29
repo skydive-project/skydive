@@ -221,3 +221,61 @@ func (im *InterfaceMetric) IsZero() bool {
 		im.TxPackets +
 		im.TxWindowErrors) == 0
 }
+
+func (im *InterfaceMetric) applyRatio(ratio float64) *InterfaceMetric {
+	return &InterfaceMetric{
+		Collisions:        int64(float64(im.Collisions) * ratio),
+		Multicast:         int64(float64(im.Multicast) * ratio),
+		RxBytes:           int64(float64(im.RxBytes) * ratio),
+		RxCompressed:      int64(float64(im.RxCompressed) * ratio),
+		RxCrcErrors:       int64(float64(im.RxCrcErrors) * ratio),
+		RxDropped:         int64(float64(im.RxDropped) * ratio),
+		RxErrors:          int64(float64(im.RxErrors) * ratio),
+		RxFifoErrors:      int64(float64(im.RxFifoErrors) * ratio),
+		RxFrameErrors:     int64(float64(im.RxFrameErrors) * ratio),
+		RxLengthErrors:    int64(float64(im.RxLengthErrors) * ratio),
+		RxMissedErrors:    int64(float64(im.RxMissedErrors) * ratio),
+		RxOverErrors:      int64(float64(im.RxOverErrors) * ratio),
+		RxPackets:         int64(float64(im.RxPackets) * ratio),
+		TxAbortedErrors:   int64(float64(im.TxAbortedErrors) * ratio),
+		TxBytes:           int64(float64(im.TxBytes) * ratio),
+		TxCarrierErrors:   int64(float64(im.TxCarrierErrors) * ratio),
+		TxCompressed:      int64(float64(im.TxCompressed) * ratio),
+		TxDropped:         int64(float64(im.TxDropped) * ratio),
+		TxErrors:          int64(float64(im.TxErrors) * ratio),
+		TxFifoErrors:      int64(float64(im.TxFifoErrors) * ratio),
+		TxHeartbeatErrors: int64(float64(im.TxHeartbeatErrors) * ratio),
+		TxPackets:         int64(float64(im.TxPackets) * ratio),
+		TxWindowErrors:    int64(float64(im.TxWindowErrors) * ratio),
+		Start:             im.Start,
+		Last:              im.Last,
+	}
+}
+
+// Slice splits a Metric into two parts
+func (im *InterfaceMetric) Split(cut int64) (common.Metric, common.Metric) {
+	if cut < im.Start {
+		return nil, im
+	} else if cut > im.Last {
+		return im, nil
+	} else if im.Start == im.Last {
+		return im, nil
+	} else if cut == im.Start {
+		return nil, im
+	} else if cut == im.Last {
+		return im, nil
+	}
+
+	duration := float64(im.Last - im.Start)
+
+	ratio1 := float64(cut-im.Start) / duration
+	ratio2 := float64(im.Last-cut) / duration
+
+	m1 := im.applyRatio(ratio1)
+	m1.Last = cut
+
+	m2 := im.applyRatio(ratio2)
+	m2.Start = cut
+
+	return m1, m2
+}

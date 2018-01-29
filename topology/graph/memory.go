@@ -23,8 +23,6 @@
 package graph
 
 import (
-	"errors"
-
 	"github.com/skydive-project/skydive/common"
 )
 
@@ -181,12 +179,9 @@ func (m MemoryBackend) GetEdges(t *common.TimeSlice, metadata GraphElementMatche
 	return
 }
 
-// WithContext returns a graph based on context
-func (m *MemoryBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
-	if context.TimeSlice != nil {
-		return nil, errors.New("Memory backend does not support history")
-	}
-	return graph, nil
+// IsHistorySupported returns that this backend doesn't support history
+func (m *MemoryBackend) IsHistorySupported() bool {
+	return false
 }
 
 // NewMemoryBackend creates a new graph memory backend

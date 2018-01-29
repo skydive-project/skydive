@@ -76,8 +76,6 @@ func init() {
 	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")
 	cfg.SetDefault("agent.X509_servername", "")
 
-	cfg.SetDefault("analyzer.flowtable_expire", 600)
-	cfg.SetDefault("analyzer.flowtable_update", 60)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.replication.debug", false)
 	cfg.SetDefault("analyzer.ssh_enabled", false)

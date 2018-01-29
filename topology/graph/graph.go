@@ -134,7 +134,7 @@ type GraphBackend interface {
 	GetNodes(t *common.TimeSlice, m GraphElementMatcher) []*Node
 	GetEdges(t *common.TimeSlice, m GraphElementMatcher) []*Edge
 
-	WithContext(graph *Graph, context GraphContext) (*Graph, error)
+	IsHistorySupported() bool
 }
 
 // GraphContext describes within time slice
@@ -1278,9 +1278,15 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// WithContext select a graph within a context
-func (g *Graph) WithContext(c GraphContext) (*Graph, error) {
-	return g.backend.WithContext(g, c)
+// CloneWithContext creates a new graph based on the given one and the given context
+func (g *Graph) CloneWithContext(context GraphContext) (*Graph, error) {
+	ng := NewGraph(g.host, g.backend)
+	if context.TimeSlice != nil && !g.backend.IsHistorySupported() {
+		return nil, errors.New("Backend does not support history")
+	}
+	ng.context = context
+
+	return ng, nil
 }
 
 // GetContext returns the current context
@@ -1336,12 +1342,6 @@ func NewGraph(host string, backend GraphBackend) *Graph {
 func NewGraphFromConfig(backend GraphBackend) *Graph {
 	host := config.GetString("host_id")
 	return NewGraph(host, backend)
-}
-
-// NewGraphWithContext creates a new graph based on backedn within the context
-func NewGraphWithContext(hostID string, backend GraphBackend, context GraphContext) (*Graph, error) {
-	graph := NewGraph(hostID, backend)
-	return graph.WithContext(context)
 }
 
 // BackendFromConfig creates a new graph backend based on configuration

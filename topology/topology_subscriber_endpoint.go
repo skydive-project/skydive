@@ -121,7 +121,7 @@ func (t *TopologySubscriberEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sht
 		defer t.Graph.RUnlock()
 
 		syncMsg, status := obj.(graph.SyncRequestMsg), http.StatusOK
-		g, err := t.Graph.WithContext(syncMsg.GraphContext)
+		g, err := t.Graph.CloneWithContext(syncMsg.GraphContext)
 		var result interface{} = g
 		if err != nil {
 			logging.GetLogger().Errorf("unable to get a graph with context %+v: %s", syncMsg, err.Error())

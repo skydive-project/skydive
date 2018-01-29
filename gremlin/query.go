@@ -32,7 +32,7 @@ import (
 // QueryString used to construct string representation of query
 type QueryString string
 
-// NewValueStringFromArgument via inferance creates a correct ValueString
+// NewQueryStringFromArgument via inferance creates a correct ValueString
 func NewQueryStringFromArgument(v interface{}) QueryString {
 	switch t := v.(type) {
 	case QueryString:
@@ -47,8 +47,8 @@ func NewQueryStringFromArgument(v interface{}) QueryString {
 }
 
 // String converts value to string
-func (v QueryString) String() string {
-	s := string(v)
+func (q QueryString) String() string {
+	s := string(q)
 	fmt.Printf("Gremlin: %s\n", s)
 	return s
 }
@@ -75,8 +75,8 @@ func (q QueryString) newQueryString(name string, list ...interface{}) QueryStrin
 }
 
 // Aggregates append a Aggregates() operation to query
-func (q QueryString) Aggregates() QueryString {
-	return q.newQueryString("Aggregates")
+func (q QueryString) Aggregates(list ...interface{}) QueryString {
+	return q.newQueryString("Aggregates", list...)
 }
 
 // At append a At() operation to query

@@ -322,13 +322,9 @@ func (o *OrientDBBackend) GetEdges(t *common.TimeSlice, m GraphElementMatcher) (
 	return
 }
 
-// WithContext step
-func (o *OrientDBBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
-	return &Graph{
-		backend: graph.backend,
-		context: context,
-		host:    graph.host,
-	}, nil
+// IsHistorySupported returns that this backend does support history
+func (o *OrientDBBackend) IsHistorySupported() bool {
+	return true
 }
 
 func newOrientDBBackend(client orientdb.ClientInterface) (*OrientDBBackend, error) {
