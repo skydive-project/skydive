@@ -79,6 +79,10 @@ ifeq ($(WITH_CDD), true)
   BUILDTAGS+=cdd
 endif
 
+ifeq ($(WITH_K8S), true)
+  BUILDTAGS+=k8s
+endif
+
 .PHONY: all install
 all install: skydive
 
