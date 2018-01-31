@@ -44,12 +44,16 @@ var (
 	ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configuration file")
 )
 
-func init() {
+func hostID() string {
 	host, err := os.Hostname()
 	if err != nil {
 		panic(err)
 	}
+	pid := os.Getpid()
+	return fmt.Sprintf("%s-%d", host, pid)
+}
 
+func init() {
 	cfg = viper.New()
 
 	cfg.SetDefault("agent.flow.probes", []string{"gopacket", "pcapsocket"})
@@ -100,7 +104,7 @@ func init() {
 	cfg.SetDefault("graph.backend", "memory")
 	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
 
-	cfg.SetDefault("host_id", host)
+	cfg.SetDefault("host_id", hostID())
 
 	cfg.SetDefault("k8s.probes", []string{"networkpolicy", "pod", "container", "node"})
 
