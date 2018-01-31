@@ -1083,7 +1083,8 @@ TopologyGraphLayout.prototype = {
   },
 
   getLocalValue: function(key) {
-    var v = localStorage.getItem(key)
+    if (!localStorage.preferences) return 0;
+    var v = localStorage.preferences[key];
     if (!v || v === "0" || v === "null") return 0;
     return Number(v);
   },
@@ -1122,8 +1123,8 @@ TopologyGraphLayout.prototype = {
         vm.$getConfigValue('ui.bandwidth_threshold'))
       .then(function(period, src, threshold) {
         b.updatePeriod = period[0] * 1000; // in millisec
-        if (localStorage.bandwidthThreshold) {
-          b.bandwidthThreshold = localStorage.bandwidthThreshold;
+        if (localStorage.preferences && localStorage.preferences.bandwidthThreshold) {
+          b.bandwidthThreshold = localStorage.preferences.bandwidthThreshold;
         } else {
           b.bandwidthThreshold = threshold[0];
         }
