@@ -67,22 +67,22 @@ func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 
 func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 	if policy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
+		n.graph.Lock()
 		if policyNode := n.graph.GetNode(networkPolicyUID(policy)); policyNode != nil {
-			n.graph.Lock()
 			addMetadata(n.graph, policyNode, policy)
 			n.handleNetworkPolicyUpdate(policyNode, policy)
-			n.graph.Unlock()
 		}
+		n.graph.Unlock()
 	}
 }
 
 func (n *networkPolicyProbe) OnDelete(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
+		n.graph.Lock()
 		if policyNode := n.graph.GetNode(networkPolicyUID((policy))); policyNode != nil {
-			n.graph.Lock()
 			n.graph.DelNode(policyNode)
-			n.graph.Unlock()
 		}
+		n.graph.Unlock()
 	}
 }
 

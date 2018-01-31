@@ -58,6 +58,7 @@ var (
 	etcdServer     string
 	graphBackend   string
 	storageBackend string
+	analyzerProbes string
 )
 
 type HelperParams map[string]interface{}
@@ -68,6 +69,7 @@ func init() {
 	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
 	flag.StringVar(&GraphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
 	flag.StringVar(&storageBackend, "storage.backend", "", "Specify the storage backend used")
+	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.Parse()
 }
 
@@ -105,6 +107,9 @@ func InitConfig(conf string, params ...HelperParams) error {
 	}
 	if graphBackend != "" {
 		params[0]["GraphBackend"] = graphBackend
+	}
+	if analyzerProbes != "" {
+		params[0]["AnalyzerProbes"] = strings.Split(analyzerProbes, ",")
 	}
 
 	tmpl, err := template.New("config").Parse(conf)

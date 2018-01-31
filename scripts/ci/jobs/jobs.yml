@@ -150,7 +150,6 @@
           [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
-          sudo systemctl restart etcd
           BACKEND={backend} scripts/ci/run-functional-tests.sh
           retcode=$?
           # scripts/ci/coverage.sh

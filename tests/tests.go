@@ -66,8 +66,7 @@ analyzer:
   analyzer_username: admin
   analyzer_password: password
   topology:
-    probes:
-      - k8s
+    probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
 
 agent:
   listen: 8081

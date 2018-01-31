@@ -56,7 +56,7 @@ var (
 var (
 	setupPod = []helper.Cmd{
 		{"kubectl run " + podName +
-			"  --image=gcr.io/google_contaners/echoserver:1.4" +
+			"  --image=gcr.io/google_containers/echoserver:1.4" +
 			"  --port=8080", true},
 	}
 	tearDownPod = []helper.Cmd{
@@ -72,10 +72,9 @@ var (
 
 func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name *gremlin.ValueString) {
 	test := &Test{
-		setupCmds: append(tearDownCmds, setupCmds...),
-
+		mode:         OneShot,
+		setupCmds:    setupCmds,
 		tearDownCmds: tearDownCmds,
-
 		checks: []CheckFunction{func(c *CheckContext) error {
 			g := gremlin.NewQueryString()
 			g.G().V().HasNode(gremlin.NewValueString("k8s").Quote(), typ, name)
