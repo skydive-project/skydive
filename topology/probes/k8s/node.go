@@ -76,7 +76,7 @@ func (c *nodeProbe) onAdd(obj interface{}) {
 	nodeNodes := c.nodeIndexer.Get(hostName)
 	var nodeNode *graph.Node
 	if len(nodeNodes) == 0 {
-		nodeNode = c.graph.NewNode(nodeUID(node), c.newMetadata(node))
+		nodeNode = newNode(c.graph, nodeUID(node), c.newMetadata(node))
 	} else {
 		nodeNode = nodeNodes[0]
 		addMetadata(c.graph, nodeNode, node)

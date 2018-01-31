@@ -128,7 +128,7 @@ func (c *containerProbe) onContainerAdd(pod *v1.Pod, container *v1.Container) {
 	containerNode := c.graph.GetNode(uid)
 	if containerNode == nil {
 		logging.GetLogger().Debugf("Adding %s", dumpContainer(pod, container))
-		containerNode = c.graph.NewNode(uid, c.newMetadata(pod, container))
+		containerNode = newNode(c.graph, uid, c.newMetadata(pod, container))
 	} else {
 		logging.GetLogger().Debugf("Updating %s (as it already exists)", dumpContainer(pod, container))
 		addMetadata(c.graph, containerNode, container)

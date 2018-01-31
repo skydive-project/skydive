@@ -97,7 +97,7 @@ func (p *podProbe) onAdd(obj interface{}) {
 		return
 	}
 
-	podNode := p.graph.NewNode(podUID(pod), p.newMetadata(pod))
+	podNode := newNode(p.graph, podUID(pod), p.newMetadata(pod))
 
 	containerNodes := p.containerIndexer.Get(pod.Namespace, pod.Name)
 	for _, containerNode := range containerNodes {

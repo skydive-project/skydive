@@ -59,7 +59,7 @@ func dumpNetworkPolicy(np *networking_v1.NetworkPolicy) string {
 func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
-		policyNode := n.graph.NewNode(networkPolicyUID(policy), n.newMetadata(policy))
+		policyNode := newNode(n.graph, networkPolicyUID(policy), n.newMetadata(policy))
 		n.handleNetworkPolicyUpdate(policyNode, policy)
 		n.graph.Unlock()
 	}
