@@ -47,6 +47,12 @@ analyzer:
   # topology_filter:
   #   Namespaces: "g.V().Has('Type', 'netns').OutE().BothV()"
   #   Layer2: "g.E().Has('RelationType', 'layer2')"
+  # Section defining things to be invoked on startup
+  # startup:
+  # By default no capturing,  set filter to capture from selected nodes
+  # from the beginning automatically
+  #   capture_gremlin: "G.V().has('Name', NE('lo'))"
+  #   capture_bpf: "port 80"
   # Enable/disable ssh to hosts
   # ssh_enabled: false
   # Flow storage engine
