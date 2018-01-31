@@ -33,13 +33,13 @@ import (
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/config"
 )
 
 // OnDemandProbeClient describes an ondemand probe client based on a websocket
@@ -380,7 +380,7 @@ func (o *OnDemandProbeClient) Stop() {
 }
 
 // InvokeCaptureFromConfig invokes capture based on preconfigured selected SubGraph
-func (o *OnDemandProbeClient) InvokeCaptureFromConfig() () {
+func (o *OnDemandProbeClient) InvokeCaptureFromConfig() {
 	gremlin := config.GetConfig().GetString("analyzer.startup.capture_gremlin")
 	bpf := config.GetConfig().GetString("analyzer.startup.capture_bpf")
 	if gremlin == "" {
