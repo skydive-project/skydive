@@ -60,7 +60,7 @@ func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
 		policyNode := n.graph.NewNode(netpolUID(policy), n.newMetadata(policy))
-		n.handleNetworkPolicy(policyNode, policy)
+		n.handleNetworkPolicyUpdate(policyNode, policy)
 		n.graph.Unlock()
 	}
 }
@@ -70,7 +70,7 @@ func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 		if policyNode := n.graph.GetNode(netpolUID(policy)); policyNode != nil {
 			n.graph.Lock()
 			addMetadata(n.graph, policyNode, policy)
-			n.handleNetworkPolicy(policyNode, policy)
+			n.handleNetworkPolicyUpdate(policyNode, policy)
 			n.graph.Unlock()
 		}
 	}
@@ -110,10 +110,9 @@ func (n *networkPolicyProbe) mapPods(pods []interface{}) (nodes []*graph.Node) {
 	return
 }
 
-func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy *networking_v1.NetworkPolicy) {
+func (n *networkPolicyProbe) handleNetworkPolicyUpdate(policyNode *graph.Node, policy *networking_v1.NetworkPolicy) {
 	logging.GetLogger().Debugf("Handling update of %s", dumpNetworkPolicy(policy))
 
-	// create links between network policy and pods
 	var pods []*graph.Node
 	if podSelector := n.getPolicySelector(policy); podSelector != nil {
 		pods = n.mapPods(n.filterPodsByLabels(n.podCache.list(), podSelector))
