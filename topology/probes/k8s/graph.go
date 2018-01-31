@@ -28,7 +28,10 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-const manager = "k8s"
+const (
+	manager = "k8s"
+	hostID  = ""
+)
 
 func newMetadata(typ, name string, extra interface{}) graph.Metadata {
 	m := graph.Metadata{
@@ -59,7 +62,7 @@ func addLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 	if e := g.GetFirstLink(parent, child, m); e != nil {
 		return e
 	}
-	return g.Link(parent, child, m)
+	return g.Link(parent, child, m, hostID)
 }
 
 func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
@@ -69,7 +72,7 @@ func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 	if e := topology.GetOwnershipLink(g, parent, child, m); e != nil {
 		return e
 	}
-	return topology.AddOwnershipLink(g, parent, child, m)
+	return topology.AddOwnershipLink(g, parent, child, m, hostID)
 }
 
 func syncLink(g *graph.Graph, parent, child *graph.Node, toAdd bool) {
@@ -78,4 +81,8 @@ func syncLink(g *graph.Graph, parent, child *graph.Node, toAdd bool) {
 	} else {
 		addLink(g, parent, child)
 	}
+}
+
+func newNode(g *graph.Graph, i graph.Identifier, m graph.Metadata) *graph.Node {
+	return g.NewNode(i, m, hostID)
 }
