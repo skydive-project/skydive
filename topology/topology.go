@@ -127,7 +127,7 @@ func GetOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, met
 }
 
 // AddOwnershipLink Link between the parent and the child node, the child can have only one parent, previous will be overwritten
-func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) *graph.Edge {
+func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata, h ...string) *graph.Edge {
 	// do not add or change original metadata
 	m := metadata.Clone()
 	m["RelationType"] = OwnershipLink
@@ -139,7 +139,7 @@ func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, met
 	}
 
 	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(parent.ID+child.ID+OwnershipLink))
-	return g.NewEdge(graph.Identifier(id.String()), parent, child, m)
+	return g.NewEdge(graph.Identifier(id.String()), parent, child, m, h...)
 }
 
 // HaveLayer2Link returns true if parent and child have the same layer 2

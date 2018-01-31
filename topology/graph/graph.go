@@ -1001,11 +1001,11 @@ func (g *Graph) AreLinked(n1 *Node, n2 *Node, m GraphElementMatcher) bool {
 }
 
 // Link the nodes n1, n2 with a new edge
-func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata) *Edge {
+func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata, h ...string) *Edge {
 	if len(m) > 0 {
-		return g.NewEdge(GenID(), n1, n2, m)
+		return g.NewEdge(GenID(), n1, n2, m, h...)
 	}
-	return g.NewEdge(GenID(), n1, n2, nil)
+	return g.NewEdge(GenID(), n1, n2, nil, h...)
 }
 
 // Unlink the nodes n1, n2 ; delete the associated edge
@@ -1173,8 +1173,8 @@ func (g *Graph) newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time,
 }
 
 // NewEdge creates a new edge in the graph based on Identifier, parent, child nodes and metadata
-func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
-	return g.newEdge(i, p, c, m, time.Now().UTC())
+func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata, h ...string) *Edge {
+	return g.newEdge(i, p, c, m, time.Now().UTC(), h...)
 }
 
 // EdgeDeleted event
