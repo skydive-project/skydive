@@ -143,7 +143,7 @@ func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy 
 	}
 }
 
-func (n *networkPolicyProbe) handlePod(podNode *graph.Node) {
+func (n *networkPolicyProbe) onPodUpdated(podNode *graph.Node) {
 	podName, _ := podNode.GetFieldString("Name")
 	podNamespace, _ := podNode.GetFieldString("Pod.Namespace")
 	pod := n.podCache.getByKey(podNamespace, podName)
@@ -177,11 +177,11 @@ func (n *networkPolicyProbe) handlePod(podNode *graph.Node) {
 }
 
 func (n *networkPolicyProbe) OnNodeAdded(node *graph.Node) {
-	n.handlePod(node)
+	n.onPodUpdated(node)
 }
 
 func (n *networkPolicyProbe) OnNodeUpdated(node *graph.Node) {
-	n.handlePod(node)
+	n.onPodUpdated(node)
 }
 
 func (n *networkPolicyProbe) Start() {
