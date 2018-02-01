@@ -83,6 +83,13 @@ func (e *fakeEnhancer) Name() string {
 	return "fake"
 }
 
+func (e *fakeEnhancer) Start() error {
+	return nil
+}
+
+func (e *fakeEnhancer) Stop() {
+}
+
 func (e *fakeEnhancer) Enhance(f *Flow) {
 	if !e.enhanced {
 		f.ANodeTID = "aaa"

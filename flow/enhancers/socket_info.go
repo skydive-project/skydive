@@ -1,3 +1,5 @@
+// +build linux
+
 /*
  * Copyright (C) 2017 Red Hat, Inc.
  *
@@ -28,368 +30,310 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"regexp"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
+	"syscall"
 	"time"
 
 	"github.com/pmylund/go-cache"
+	"github.com/weaveworks/tcptracer-bpf/pkg/tracer"
 
 	"github.com/skydive-project/skydive/flow"
+	"github.com/skydive-project/skydive/logging"
 )
 
-// SocketInfo describes a process and socket information
-type SocketInfo struct {
-	Uid          int
-	LocalIPPort  string
-	RemoteIPPort string
-
-	Pid  int
-	PPid int
-	Tid  int
-	Exe  string
-	Name string
-}
-
-// SocketInfoEnhancer describes a SocketInfo Enhancer with UDP/TCP caches
+// SocketInfoEnhancer describes a SocketInfo Enhancer with TCP caches
 type SocketInfoEnhancer struct {
-	cacheTCP      *socketCache
-	cacheUDP      *socketCache
-	inodeNetMutex sync.Mutex
-	inodeNet      map[string]bool
+	tracer *tracer.Tracer
+	local  *cache.Cache
+	remote *cache.Cache
 }
 
-type socketCache struct {
-	inode           *cache.Cache
-	localAddr       *cache.Cache
-	localRemoteAddr *cache.Cache
-}
-
-type cacheAddr struct {
-	inode string
-}
-
-// Name return the SocketInfo enahancer name
+// Name returns the SocketInfo enhancer name
 func (s *SocketInfoEnhancer) Name() string {
 	return "SocketInfo"
 }
 
-func (s *SocketInfoEnhancer) resetScanProcNet() {
-	s.inodeNetMutex.Lock()
-	s.inodeNet = make(map[string]bool)
-	s.inodeNetMutex.Unlock()
-}
-
-func (s *SocketInfoEnhancer) needScanProcNet(procProcessRoot string) bool {
-	nsNet, err := os.Readlink(procProcessRoot + "/ns/net")
-	if err != nil {
-		return false
-	}
-
-	s.inodeNetMutex.Lock()
-	defer s.inodeNetMutex.Unlock()
-	if _, ok := s.inodeNet[nsNet]; !ok {
-		s.inodeNet[nsNet] = true
-		return true
-	}
-	return false
-}
-
-func (s *SocketInfoEnhancer) parseNetUDPTCP(c *socketCache, path string) {
-	u, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer u.Close()
-
-	r := bufio.NewReader(u)
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			return
-		}
-		i := strings.Index(line, ":")
-		if i < 0 {
-			continue
-		}
-		var localIPPort, remoteIPPort string
-		var state, wq, rq int
-		var timer, timeout, retrs, uid, probes int
-		var ino uint64
-		var refcnt, sk, rto, ato, qack int
-		var cwnd, ssthresh, opt int
-
-		fmt.Sscanf(line[i+1:], "%s %s %x %x:%x %x:%x %x %d %d %d %d %llx %d %d %d %d %d %[^\n]\n",
-			&localIPPort, &remoteIPPort,
-			&state, &wq, &rq,
-			&timer, &timeout, &retrs, &uid, &probes, &ino,
-			&refcnt, &sk, &rto, &ato, &qack,
-			&cwnd, &ssthresh, &opt)
-
-		inode := strconv.FormatUint(ino, 10)
-		_, ok := c.inode.Get(inode)
-		if ok {
-			continue
-		}
-		si := SocketInfo{
-			Uid:          uid,
-			LocalIPPort:  localIPPort,
-			RemoteIPPort: remoteIPPort,
-		}
-		c.inode.Set(inode, si, cache.DefaultExpiration)
-		c.localAddr.Set(localIPPort, cacheAddr{inode: inode}, cache.DefaultExpiration)
-		c.localRemoteAddr.Set(localIPPort+remoteIPPort, cacheAddr{inode: inode}, cache.DefaultExpiration)
-	}
-}
-
-func (s *SocketInfoEnhancer) updateProcNet(procProcessRoot string) {
-	/* scan only new one based on network namespace */
-	if s.needScanProcNet(procProcessRoot) == false {
-		return
-	}
-	s.parseNetUDPTCP(s.cacheUDP, procProcessRoot+"/net/udp")
-	s.parseNetUDPTCP(s.cacheUDP, procProcessRoot+"/net/udp6")
-	s.parseNetUDPTCP(s.cacheTCP, procProcessRoot+"/net/tcp")
-	s.parseNetUDPTCP(s.cacheTCP, procProcessRoot+"/net/tcp6")
-}
-
-var rProcPidTid = regexp.MustCompile("/proc/(\\d+)/task/(\\d+)$")
-
-func parseProcStat(procProcessRoot string, si *SocketInfo) {
-	// Retreive binary name
-	exe, err := os.Readlink(procProcessRoot + "/exe")
-	if err != nil {
-		return
-	}
-	si.Exe = exe
-
-	// Retreive task info
-	if strings.Contains(procProcessRoot, "/task/") == true {
-		p := rProcPidTid.FindStringSubmatch(procProcessRoot)
-		if len(p) > 0 {
-			pid, _ := strconv.Atoi(p[1])
-			tid, _ := strconv.Atoi(p[2])
-			si.Pid = pid
-			si.Tid = tid
-		}
-	}
-
-	// Retreive ppid and task name
-	stat, err := ioutil.ReadFile(procProcessRoot + "/stat")
-	if err != nil {
-		return
-	}
-	var pid, ppid, status int
-	var name string
-	fmt.Sscanf(string(stat), "%d %s %c %d", &pid, &name, &status, &ppid)
-	if si.Pid == 0 {
-		si.Pid = pid
-	}
-	si.Name = name[1 : len(name)-1]
-	si.PPid = ppid
-}
-
-func getPIDs(path string) []string {
-	pids := []string{}
-	proc, err := os.Open(path)
-	if err != nil {
-		return pids
-	}
-	defer proc.Close()
-	names, err := proc.Readdirnames(0)
-	if err != nil {
-		return pids
-	}
-	for _, n := range names {
-		if _, err := strconv.ParseInt(n, 0, 0); err != nil {
-			continue
-		}
-		pids = append(pids, n)
-	}
-	return pids
-}
-
-func getFDs(path string) []string {
-	fds := []string{}
-	proc, err := os.Open(path + "/fd")
-	if err != nil {
-		return fds
-	}
-	defer proc.Close()
-	names, err := proc.Readdirnames(0)
-	if err != nil {
-		return fds
-	}
-	for _, n := range names {
-		fd, err := os.Readlink(path + "/fd/" + n)
-		if err != nil {
-			continue
-		}
-		fds = append(fds, fd)
-	}
-	return fds
-}
-
-var rFdSocket = regexp.MustCompile("socket:\\[(\\d+)\\]$")
-
-func (s *SocketInfoEnhancer) scanProc() {
-	s.resetScanProcNet()
-
-	pids := getPIDs("/proc")
-	for _, p := range pids {
-		procTask := "/proc/" + p + "/task"
-		tasks := getPIDs(procTask)
-		for _, t := range tasks {
-			process := procTask + "/" + t
-			s.updateProcNet(process)
-
-			fds := getFDs(process)
-			for _, f := range fds {
-				inode := rFdSocket.FindStringSubmatch(f)
-				if len(inode) == 0 {
-					continue
-				}
-
-				var isUDP = true
-				sinfo, ok := s.cacheUDP.inode.Get(inode[1])
-				if !ok {
-					isUDP = false
-					sinfo, ok = s.cacheTCP.inode.Get(inode[1])
-					if !ok {
-						continue
-					}
-				}
-				si := sinfo.(SocketInfo)
-				parseProcStat(process, &si)
-				if isUDP == true {
-					s.cacheUDP.inode.Set(inode[1], si, cache.DefaultExpiration)
-				} else {
-					s.cacheTCP.inode.Set(inode[1], si, cache.DefaultExpiration)
-				}
-			}
-		}
-	}
-}
-
-func ipToHex(ip46 net.IP) string {
-	s := ""
+func ipToHex(ip46 net.IP) (s string) {
 	ip := ip46.To4()
 	if ip == nil {
 		ip = ip46
 	}
+
 	for i := range ip {
 		s += fmt.Sprintf("%02X", ip[(len(ip)-1)-i])
 	}
-	return s
+	return
+}
+
+func hashIPPort(ip net.IP, port uint16) string {
+	return fmt.Sprintf("%s:%04X", ipToHex(ip), port)
+}
+
+func getProcessInfo(pid int) (*flow.SocketInfo, error) {
+	processPath := fmt.Sprintf("/proc/%d", pid)
+	exe, err := os.Readlink(processPath + "/exe")
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := ioutil.ReadFile(processPath + "/stat")
+	if err != nil {
+		return nil, err
+	}
+
+	var name string
+	fmt.Sscanf(string(stat), "%d %s", &pid, &name)
+
+	socketInfo := &flow.SocketInfo{
+		Process: exe,
+		Name:    name[1 : len(name)-1],
+		Pid:     int64(pid),
+	}
+
+	return socketInfo, nil
+}
+
+func (s *SocketInfoEnhancer) addEntry(srcAddr, dstAddr string, socketInfo *flow.SocketInfo) {
+	s.local.Set(srcAddr, socketInfo, cache.NoExpiration)
+	s.remote.Set(srcAddr+"/"+dstAddr, socketInfo, cache.NoExpiration)
+}
+
+func (s *SocketInfoEnhancer) removeEntry(srcAddr, dstAddr string) {
+	// Delay deletion a bit
+	if socketInfo, found := s.local.Get(srcAddr); found {
+		s.local.Set(srcAddr, socketInfo, cache.DefaultExpiration)
+	}
+	if socketInfo, found := s.remote.Get(srcAddr + "/" + dstAddr); found {
+		s.remote.Set(srcAddr+"/"+dstAddr, socketInfo, cache.DefaultExpiration)
+	}
+}
+
+// TCPEventV4 is called when a tcp v4 event occurs
+func (s *SocketInfoEnhancer) TCPEventV4(tcpV4 tracer.TcpV4) {
+	srcAddr := hashIPPort(tcpV4.SAddr, tcpV4.SPort)
+	dstAddr := hashIPPort(tcpV4.DAddr, tcpV4.DPort)
+
+	switch tcpV4.Type {
+	case tracer.EventConnect, tracer.EventAccept:
+		if socketInfo, err := getProcessInfo(int(tcpV4.Pid)); err == nil {
+			s.addEntry(srcAddr, dstAddr, socketInfo)
+		}
+	case tracer.EventClose:
+		s.removeEntry(srcAddr, dstAddr)
+	}
+}
+
+// LostV4 is called when a tcp v4 event was lost
+func (s *SocketInfoEnhancer) LostV4(uint64) {
+}
+
+// TCPEventV6 is called when a tcp v6 event occurs
+func (s *SocketInfoEnhancer) TCPEventV6(tcpV6 tracer.TcpV6) {
+	srcAddr := hashIPPort(tcpV6.SAddr, tcpV6.SPort)
+	dstAddr := hashIPPort(tcpV6.DAddr, tcpV6.DPort)
+
+	switch tcpV6.Type {
+	case tracer.EventConnect, tracer.EventAccept:
+		if socketInfo, err := getProcessInfo(int(tcpV6.Pid)); err == nil {
+			s.addEntry(srcAddr, dstAddr, socketInfo)
+		}
+	case tracer.EventClose:
+	}
+}
+
+// LostV6 is called when a tcp v6 event was lost
+func (s *SocketInfoEnhancer) LostV6(uint64) {
 }
 
 func (s *SocketInfoEnhancer) getSocketInfoLocal(f *flow.Flow) bool {
+	var ipPortA, ipPortB string
+	var mappedA, mappedB bool
+	var entry interface{}
+
 	ip := net.ParseIP(f.Network.A)
 	if ip == nil {
 		return false
 	}
 
 	port, _ := strconv.ParseUint(f.Transport.A, 10, 0)
-	ipPortA := fmt.Sprintf("%s:%04X", ipToHex(ip), port)
-	ipPortB := ""
+	ipPortA = hashIPPort(ip, uint16(port))
 
 	ip = net.ParseIP(f.Network.B)
 	if ip != nil {
 		port, _ = strconv.ParseUint(f.Transport.B, 10, 0)
-		ipPortB = fmt.Sprintf("%s:%04X", ipToHex(ip), port)
+		ipPortB = hashIPPort(ip, uint16(port))
 	}
 
-	var cache *socketCache
-	if f.Transport.Protocol == flow.FlowProtocol_UDPPORT {
-		cache = s.cacheUDP
-	} else if f.Transport.Protocol == flow.FlowProtocol_TCPPORT {
-		cache = s.cacheTCP
+	if entry, mappedA = s.local.Get(ipPortA); mappedA {
+		f.SocketA = entry.(*flow.SocketInfo)
 	}
 
-	retried := false
-retry:
-	var siA, siB bool
-	// si.LocalIPPort == ipPortA
-	if local, ok := cache.localAddr.Get(ipPortA); ok {
-		if ca, ok := local.(cacheAddr); ok {
-			if sinfo, ok := cache.inode.Get(ca.inode); ok {
-				if si, ok := sinfo.(SocketInfo); ok {
-					f.SocketA = SocketInfoToFlowSocketInfo(&si)
-					siA = true
-				}
-			}
-		}
-	}
 	// peer (si.LocalIPPort == ipPortB) && (si.RemoteIPPort == ipPortA)
-	if local, ok := cache.localRemoteAddr.Get(ipPortB + ipPortA); ok {
-		if ca, ok := local.(cacheAddr); ok {
-			if sinfo, ok := cache.inode.Get(ca.inode); ok {
-				if si, ok := sinfo.(SocketInfo); ok {
-					f.SocketB = SocketInfoToFlowSocketInfo(&si)
-					siB = true
-				}
-			}
-		}
-	}
-	if siA || siB {
-		return true
+	if entry, mappedB = s.remote.Get(ipPortB + "/" + ipPortA); mappedB {
+		f.SocketB = entry.(*flow.SocketInfo)
 	}
 
-	if retried == false {
-		s.scanProc()
-		retried = true
-		goto retry
-	}
-	return false
+	return mappedA || mappedB
 }
 
-// SocketInfoToFlowSocketInfo create a new flow.SocketInfo based on process SocketInfo
-func SocketInfoToFlowSocketInfo(si *SocketInfo) *flow.SocketInfo {
-	if si == nil {
+func (s *SocketInfoEnhancer) scanProc() error {
+	s.local.Flush()
+	s.remote.Flush()
+
+	inodePids := make(map[int]int)
+	namespaces := make(map[uint64]bool)
+	processes := make(map[int]*flow.SocketInfo)
+
+	buildInodePidMap := func() error {
+		// Loop through all fd dirs of process on /proc to compare the inode and
+		// get the pid. Shamelessly taken from github.com/drael/GOnetstat
+		d, err := filepath.Glob("/proc/[0-9]*/fd/[0-9]*")
+		if err != nil {
+			return err
+		}
+
+		var inode int
+		for _, item := range d {
+			path, _ := os.Readlink(item)
+			if _, err := fmt.Sscanf(path, "socket:[%d]", &inode); err == nil {
+				pid, _ := strconv.Atoi(strings.Split(item, "/")[2])
+				inodePids[inode] = pid
+			}
+		}
+
 		return nil
 	}
-	return &flow.SocketInfo{
-		Process: si.Exe,
-		Pid:     int64(si.Pid),
-		Ppid:    int64(si.PPid),
-		Name:    si.Name,
-		Tid:     int64(si.Tid),
+
+	parseNetTCP := func(path string) {
+		u, err := os.Open(path)
+		if err != nil {
+			return
+		}
+		defer u.Close()
+
+		var stats syscall.Stat_t
+		if err := syscall.Fstat(int(u.Fd()), &stats); err != nil {
+			return
+		}
+
+		if _, found := namespaces[stats.Ino]; found {
+			// Already parsed
+			return
+		}
+		namespaces[stats.Ino] = true
+
+		r := bufio.NewReader(u)
+		r.ReadLine()
+
+		for {
+			line, err := r.ReadString('\n')
+			if err != nil {
+				return
+			}
+
+			var localIPPort, remoteIPPort string
+			var inode, ignore int
+
+			_, err = fmt.Sscanf(line, "%d: %s %s %x %x:%x %x:%x %x %d %d %d",
+				&ignore, &localIPPort, &remoteIPPort,
+				&ignore, &ignore, &ignore, &ignore, &ignore, &ignore, &ignore, &ignore,
+				&inode)
+
+			if err != nil {
+				logging.GetLogger().Debugf("Failed to parse %s: %s", path, err.Error())
+				continue
+			}
+
+			pid, found := inodePids[inode]
+			if !found {
+				logging.GetLogger().Debugf("Could not find process for inode %d", inode)
+				continue
+			}
+
+			socketInfo, found := processes[pid]
+			if !found {
+				socketInfo, err = getProcessInfo(pid)
+				if err != nil {
+					logging.GetLogger().Debugf("Failed to get stats for process %d", pid)
+					continue
+				}
+				processes[pid] = socketInfo
+			}
+
+			s.addEntry(localIPPort, remoteIPPort, socketInfo)
+		}
 	}
+
+	if err := buildInodePidMap(); err != nil {
+		return err
+	}
+
+	d, err := filepath.Glob("/proc/[0-9]*/task/[0-9]*/net")
+	if err != nil {
+		return err
+	}
+
+	for _, item := range d {
+		parseNetTCP(item + "/tcp")
+		parseNetTCP(item + "/tcp6")
+	}
+
+	return nil
 }
 
 func (s *SocketInfoEnhancer) getFlowSocketInfoLocal(f *flow.Flow) {
-	if foundSI := s.getSocketInfoLocal(f); foundSI == false {
+	if found := s.getSocketInfoLocal(f); !found {
+		if s.tracer == nil {
+			s.scanProc()
+			if found = s.getSocketInfoLocal(f); found {
+				return
+			}
+		}
+
 		f.SkipSocketInfo(true)
-		return
 	}
-	return
 }
 
-// Enhance the graph with process info
+// Enhance the flow with process info
 func (s *SocketInfoEnhancer) Enhance(f *flow.Flow) {
 	if f.Transport == nil || f.SkipSocketInfo() || f.Transport.Protocol != flow.FlowProtocol_TCPPORT {
 		return
 	}
+
 	if f.SocketA == nil && f.SocketB == nil {
 		s.getFlowSocketInfoLocal(f)
 	}
 }
 
-func newSocketCache(expire, cleanup time.Duration) *socketCache {
-	return &socketCache{
-		inode:           cache.New(expire, cleanup),
-		localAddr:       cache.New(expire, cleanup),
-		localRemoteAddr: cache.New(expire, cleanup),
+// Start the flow enhancer
+func (s *SocketInfoEnhancer) Start() error {
+	if s.tracer != nil {
+		s.tracer.Start()
+	}
+
+	return s.scanProc()
+}
+
+// Stop the flow enhancer
+func (s *SocketInfoEnhancer) Stop() {
+	if s.tracer != nil {
+		s.tracer.Stop()
 	}
 }
 
 // NewSocketInfoEnhancer create a new SocketInfo Enhancer
 func NewSocketInfoEnhancer(expire, cleanup time.Duration) *SocketInfoEnhancer {
 	s := &SocketInfoEnhancer{
-		cacheUDP: newSocketCache(expire, cleanup),
-		cacheTCP: newSocketCache(expire, cleanup),
+		local:  cache.New(expire, cleanup),
+		remote: cache.New(expire, cleanup),
 	}
-	s.scanProc()
+
+	var err error
+	if s.tracer, err = tracer.NewTracer(s); err != nil {
+		logging.GetLogger().Infof("Socket info enhancer is running in compatibility mode: %s", err.Error())
+	}
+
 	return s
 }

@@ -1620,6 +1620,13 @@
 			"revision": "604eaf189ee867d8c147fafc28def2394e878d25"
 		},
 		{
+			"checksumSHA1": "2jmj7l5rSw0yVb/vlWAYkK/YBwk=",
+			"path": "github.com/weaveworks/tcptracer-bpf",
+			"revision": "e080bd747dc6b62d4ed3ed2b7f0be4801bef8faf",
+			"revisionTime": "2017-08-17T15:53:01Z",
+			"tree": true
+		},
+		{
 			"checksumSHA1": "B9K+5clCq0PU8n8/utbKT0QjQyU=",
 			"path": "github.com/xeipuuv/gojsonpointer",
 			"revision": "6fe8760cad3569743d51ddbb243b26f8456742dc",
@@ -1789,7 +1796,7 @@
 			"revision": "1f22c0103821b9390939b6776727195525381532"
 		},
 		{
-			"checksumSHA1": "nqWNlnMmVpt628zzvyo6Yv2CX5Q=",
+			"checksumSHA1": "bA2gANkJBx2Br/p5GKYdhyGo3Pg=",
 			"path": "golang.org/x/crypto/ssh/terminal",
 			"revision": "1f22c0103821b9390939b6776727195525381532"
 		},

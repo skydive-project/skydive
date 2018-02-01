@@ -96,10 +96,7 @@ message TCPMetric {
 message SocketInfo {
   string Process = 1;
   int64 Pid = 2;
-  int64 Ppid = 3;
-  string Name = 4;
-  int64 Tid = 5;
-  int64 Uid = 6;
+  string Name = 3;
 }
 
 message Flow {

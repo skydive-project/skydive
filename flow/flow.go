@@ -898,12 +898,6 @@ func (si *SocketInfo) GetFieldInt64(field string) (int64, error) {
 	switch field {
 	case "Pid":
 		return si.Pid, nil
-	case "Ppid":
-		return si.Ppid, nil
-	case "Tid":
-		return si.Tid, nil
-	case "Uid":
-		return si.Uid, nil
 	default:
 		return 0, common.ErrFieldNotFound
 	}

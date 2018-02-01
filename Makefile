@@ -240,6 +240,7 @@ govendor:
 	go get github.com/kardianos/govendor
 	$(GOVENDOR) sync
 	patch -p0 < dpdk/dpdk.govendor.patch
+	rm -rf vendor/github.com/weaveworks/tcptracer-bpf/vendor/github.com/
 
 fmt: govendor genlocalfiles
 	@echo "+ $@"
