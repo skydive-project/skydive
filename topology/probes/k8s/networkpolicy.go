@@ -23,6 +23,8 @@
 package k8s
 
 import (
+	"fmt"
+
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 
@@ -46,25 +48,29 @@ func (n *networkPolicyProbe) newMetadata(np *networking_v1.NetworkPolicy) graph.
 	return newMetadata("networkpolicy", np.GetName(), np)
 }
 
-func netpolUID(np *networking_v1.NetworkPolicy) graph.Identifier {
+func networkPolicyUID(np *networking_v1.NetworkPolicy) graph.Identifier {
 	return graph.Identifier(np.GetUID())
+}
+
+func dumpNetworkPolicy(np *networking_v1.NetworkPolicy) string {
+	return fmt.Sprintf("networkPolicy{Namespace: %s Name: %s}", np.GetNamespace(), np.GetName())
 }
 
 func (n *networkPolicyProbe) OnAdd(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
 		n.graph.Lock()
-		policyNode := n.graph.NewNode(netpolUID(policy), n.newMetadata(policy))
-		n.handleNetworkPolicy(policyNode, policy)
+		policyNode := newNode(n.graph, networkPolicyUID(policy), n.newMetadata(policy))
+		n.handleNetworkPolicyUpdate(policyNode, policy)
 		n.graph.Unlock()
 	}
 }
 
 func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 	if policy, ok := newObj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(netpolUID(policy)); policyNode != nil {
+		if policyNode := n.graph.GetNode(networkPolicyUID(policy)); policyNode != nil {
 			n.graph.Lock()
 			addMetadata(n.graph, policyNode, policy)
-			n.handleNetworkPolicy(policyNode, policy)
+			n.handleNetworkPolicyUpdate(policyNode, policy)
 			n.graph.Unlock()
 		}
 	}
@@ -72,7 +78,7 @@ func (n *networkPolicyProbe) OnUpdate(oldObj, newObj interface{}) {
 
 func (n *networkPolicyProbe) OnDelete(obj interface{}) {
 	if policy, ok := obj.(*networking_v1.NetworkPolicy); ok {
-		if policyNode := n.graph.GetNode(netpolUID((policy))); policyNode != nil {
+		if policyNode := n.graph.GetNode(networkPolicyUID((policy))); policyNode != nil {
 			n.graph.Lock()
 			n.graph.DelNode(policyNode)
 			n.graph.Unlock()
@@ -80,54 +86,50 @@ func (n *networkPolicyProbe) OnDelete(obj interface{}) {
 	}
 }
 
-func (n *networkPolicyProbe) getPolicySelector(policy *networking_v1.NetworkPolicy) (podSelector labels.Selector) {
+func (n *networkPolicyProbe) getPodSelector(policy *networking_v1.NetworkPolicy) (selector labels.Selector) {
+	selector = labels.Everything()
 	if len(policy.Spec.PodSelector.MatchLabels) > 0 {
-		podSelector, _ = metav1.LabelSelectorAsSelector(&policy.Spec.PodSelector)
+		selector, _ = metav1.LabelSelectorAsSelector(&policy.Spec.PodSelector)
 	}
 	return
 }
 
-func (n *networkPolicyProbe) filterPodsByLabels(pods []*api.Pod, selector labels.Selector) (filtered []*api.Pod) {
-	for _, pod := range pods {
+func (n *networkPolicyProbe) filterPodsByLabels(in []interface{}, selector labels.Selector) (out []interface{}) {
+	for _, pod := range in {
+		pod := pod.(*api.Pod)
 		if selector.Matches(labels.Set(pod.Labels)) {
-			filtered = append(filtered, pod)
+			out = append(out, pod)
 		}
 	}
 	return
 }
 
-func (n *networkPolicyProbe) mapPods(pods []*api.Pod) (nodes []*graph.Node) {
+func (n *networkPolicyProbe) selectedPods(policy *networking_v1.NetworkPolicy) (nodes []*graph.Node) {
+	pods := n.podCache.listByNamespace(policy.Namespace)
+	pods = n.filterPodsByLabels(pods, n.getPodSelector(policy))
 	for _, pod := range pods {
-		nodes = append(nodes, n.graph.GetNode(podUID(pod)))
+		nodes = append(nodes, n.graph.GetNode(podUID(pod.(*api.Pod))))
 	}
 	return
 }
 
-func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy *networking_v1.NetworkPolicy) {
-	logging.GetLogger().Debugf("Considering network policy %s:%s", policy.GetUID(), policy.ObjectMeta.Name)
+func (n *networkPolicyProbe) isPodSelected(policy *networking_v1.NetworkPolicy, pod *api.Pod) bool {
+	return len(n.filterPodsByLabels([]interface{}{pod}, n.getPodSelector(policy))) == 1
+}
 
-	// create links between network policy and pods
-	var pods []*graph.Node
-	if podSelector := n.getPolicySelector(policy); podSelector != nil {
-		pods = n.mapPods(n.filterPodsByLabels(podList(n.podCache), podSelector))
-	} else {
-		if policy.Namespace == api.NamespaceAll {
-			pods = n.mapPods(podList(n.podCache))
-		} else {
-			pods = n.podIndexer.Get(policy.Namespace)
-		}
-	}
+func (n *networkPolicyProbe) handleNetworkPolicyUpdate(policyNode *graph.Node, policy *networking_v1.NetworkPolicy) {
+	logging.GetLogger().Debugf("Handling update of %s", dumpNetworkPolicy(policy))
 
 	existingChildren := make(map[graph.Identifier]*graph.Node)
-	for _, container := range n.graph.LookupChildren(policyNode, nil, policyToPodMetadata) {
+	for _, container := range n.graph.LookupChildren(policyNode, nil, newEdgeMetadata()) {
 		existingChildren[container.ID] = container
 	}
 
-	for _, pod := range pods {
-		if _, found := existingChildren[pod.ID]; found {
-			delete(existingChildren, pod.ID)
+	for _, podNode := range n.selectedPods(policy) {
+		if _, found := existingChildren[podNode.ID]; found {
+			delete(existingChildren, podNode.ID)
 		} else {
-			n.graph.Link(policyNode, pod, policyToPodMetadata)
+			addLink(n.graph, policyNode, podNode)
 		}
 	}
 
@@ -136,44 +138,33 @@ func (n *networkPolicyProbe) handleNetworkPolicy(policyNode *graph.Node, policy 
 	}
 }
 
-func (n *networkPolicyProbe) handlePod(podNode *graph.Node) {
+func (n *networkPolicyProbe) onPodUpdated(podNode *graph.Node) {
 	podName, _ := podNode.GetFieldString("Name")
-	namespace, _ := podNode.GetFieldString("Pod.Namespace")
-	pod := podGetByKey(n.podCache, namespace+"/"+podName)
+	podNamespace, _ := podNode.GetFieldString("Pod.Namespace")
+	pod := n.podCache.getByKey(podNamespace, podName)
 	if pod == nil {
-		logging.GetLogger().Warningf("Failed to find pod for node %s", podNode.ID)
+		logging.GetLogger().Debugf("Failed to find node %s", dumpPod2(podNamespace, podName))
 		return
 	}
 
-	for _, policy := range n.cache.List() {
+	for _, policy := range n.list() {
+		pod := pod.(*api.Pod)
 		policy := policy.(*networking_v1.NetworkPolicy)
-		policyNode := n.graph.GetNode(netpolUID(policy))
+		policyNode := n.graph.GetNode(networkPolicyUID(policy))
 		if policyNode == nil {
-			logging.GetLogger().Warningf("Failed to find node for network policy %s", policy.GetName())
+			logging.GetLogger().Debugf("Failed to find node for %s", dumpNetworkPolicy(policy))
 			continue
 		}
-
-		var toLink bool
-		if podSelector := n.getPolicySelector(policy); podSelector != nil {
-			toLink = podSelector.Matches(labels.Set(pod.Labels))
-		} else if policy.Namespace == api.NamespaceAll || pod.Namespace == policy.Namespace {
-			toLink = true
-		}
-
-		if toLink {
-			n.graph.Link(policyNode, podNode, policyToPodMetadata)
-		} else {
-			n.graph.Unlink(policyNode, podNode)
-		}
+		syncLink(n.graph, policyNode, podNode, n.isPodSelected(policy, pod))
 	}
 }
 
 func (n *networkPolicyProbe) OnNodeAdded(node *graph.Node) {
-	n.handlePod(node)
+	n.onPodUpdated(node)
 }
 
 func (n *networkPolicyProbe) OnNodeUpdated(node *graph.Node) {
-	n.handlePod(node)
+	n.onPodUpdated(node)
 }
 
 func (n *networkPolicyProbe) Start() {

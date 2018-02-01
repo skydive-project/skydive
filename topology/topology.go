@@ -119,22 +119,27 @@ func IsOwnershipLinked(g *graph.Graph, node *graph.Node) bool {
 	return len(edges) != 0
 }
 
-// AddOwnershipLink Link between the parent and the child node, the child can have only one parent, previous will be overwritten
-func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) *graph.Edge {
-	// a child node can only have one parent of type ownership, so delete the previous link
-	for _, e := range g.GetNodeEdges(child, graph.Metadata{"RelationType": OwnershipLink}) {
-		if e.GetChild() == child.ID {
-			logging.GetLogger().Debugf("Delete previous ownership link: %v", e)
-			g.DelEdge(e)
-		}
-	}
+// GetOwnershipLink get ownership Link between the parent and the child node or nil
+func GetOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata) *graph.Edge {
+	m := metadata.Clone()
+	m["RelationType"] = OwnershipLink
+	return g.GetFirstLink(parent, child, m)
+}
 
+// AddOwnershipLink Link between the parent and the child node, the child can have only one parent, previous will be overwritten
+func AddOwnershipLink(g *graph.Graph, parent *graph.Node, child *graph.Node, metadata graph.Metadata, h ...string) *graph.Edge {
 	// do not add or change original metadata
 	m := metadata.Clone()
 	m["RelationType"] = OwnershipLink
-	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(parent.ID+child.ID+OwnershipLink))
 
-	return g.NewEdge(graph.Identifier(id.String()), parent, child, m)
+	// a child node can only have one parent of type ownership, so delete the previous link
+	if e := g.GetFirstLink(parent, child, m); e != nil {
+		logging.GetLogger().Debugf("Delete previous ownership link: %v", e)
+		g.DelEdge(e)
+	}
+
+	id, _ := uuid.NewV5(uuid.NamespaceOID, []byte(parent.ID+child.ID+OwnershipLink))
+	return g.NewEdge(graph.Identifier(id.String()), parent, child, m, h...)
 }
 
 // HaveLayer2Link returns true if parent and child have the same layer 2

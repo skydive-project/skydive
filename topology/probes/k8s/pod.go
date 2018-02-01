@@ -23,10 +23,11 @@
 package k8s
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	api "k8s.io/api/core/v1"
@@ -43,24 +44,39 @@ type podProbe struct {
 	nodeIndexer      *graph.MetadataIndexer
 }
 
-func newPodIndexer(g *graph.Graph, by string) *graph.MetadataIndexer {
-	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, by)
-}
+const (
+	podNameField      = "K8s.ObjectMeta.Name"
+	podNamespaceField = "K8s.ObjectMeta.Namespace"
+	podNodeNameField  = "K8s.Spec.NodeName"
+)
 
 func newPodIndexerByHost(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndexer(g, "Pod.NodeName")
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, podNodeNameField)
 }
 
 func newPodIndexerByNamespace(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndexer(g, "Pod.Namespace")
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, podNamespaceField)
 }
 
 func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
-	return newPodIndexer(g, "Name")
+	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Type", "pod"),
+		filters.NewNotFilter(filters.NewNullFilter(podNamespaceField)),
+		filters.NewNotFilter(filters.NewNullFilter(podNameField)))
+	m := graph.NewGraphElementFilter(filter)
+	return graph.NewMetadataIndexer(g, m, podNamespaceField, podNameField)
 }
 
 func podUID(pod *api.Pod) graph.Identifier {
 	return graph.Identifier(pod.GetUID())
+}
+
+func dumpPod2(namespace, name string) string {
+	return fmt.Sprintf("pod{Namespace: %s, Name: %s}", namespace, name)
+}
+
+func dumpPod(pod *api.Pod) string {
+	return dumpPod2(pod.GetNamespace(), pod.GetName())
 }
 
 func (p *podProbe) newMetadata(pod *api.Pod) graph.Metadata {
@@ -81,11 +97,11 @@ func (p *podProbe) onAdd(obj interface{}) {
 		return
 	}
 
-	podNode := p.graph.NewNode(podUID(pod), p.newMetadata(pod))
+	podNode := newNode(p.graph, podUID(pod), p.newMetadata(pod))
 
 	containerNodes := p.containerIndexer.Get(pod.Namespace, pod.Name)
 	for _, containerNode := range containerNodes {
-		p.graph.Link(podNode, containerNode, podToContainerMetadata)
+		addOwnershipLink(p.graph, podNode, containerNode)
 	}
 
 	p.linkPodToNode(pod, podNode)
@@ -103,7 +119,7 @@ func (p *podProbe) OnAdd(obj interface{}) {
 	p.graph.Lock()
 	defer p.graph.Unlock()
 
-	logging.GetLogger().Infof("Creating node for pod{%s}", pod.GetName())
+	logging.GetLogger().Debugf("Creating node for %s", dumpPod(pod))
 
 	p.onAdd(obj)
 }
@@ -120,12 +136,12 @@ func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 
 	podNode := p.graph.GetNode(podUID(newPod))
 	if podNode == nil {
-		logging.GetLogger().Infof("Updating (re-adding) node for pod{%s}", newPod.GetName())
+		logging.GetLogger().Debugf("Updating (re-adding) node for %s", dumpPod(newPod))
 		p.onAdd(newObj)
 		return
 	}
 
-	logging.GetLogger().Infof("Updating node for pod{%s}", newPod.GetName())
+	logging.GetLogger().Debugf("Updating node for %s", dumpPod(newPod))
 	if oldPod.Spec.NodeName == "" && newPod.Spec.NodeName != "" {
 		p.linkPodToNode(newPod, podNode)
 	}
@@ -135,7 +151,7 @@ func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 
 func (p *podProbe) OnDelete(obj interface{}) {
 	if pod, ok := obj.(*api.Pod); ok {
-		logging.GetLogger().Infof("Deleting node for pod{%s}", pod.GetName())
+		logging.GetLogger().Debugf("Deleting node for %s", dumpPod(pod))
 		p.graph.Lock()
 		if podNode := p.graph.GetNode(podUID(pod)); podNode != nil {
 			p.graph.DelNode(podNode)
@@ -151,21 +167,7 @@ func linkPodsToNode(g *graph.Graph, host *graph.Node, pods []*graph.Node) {
 }
 
 func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
-	topology.AddOwnershipLink(g, node, pod, nil)
-}
-
-func podList(c *kubeCache) (pods []*api.Pod) {
-	for _, pod := range c.cache.List() {
-		pods = append(pods, pod.(*api.Pod))
-	}
-	return
-}
-
-func podGetByKey(c *kubeCache, key string) *api.Pod {
-	if pod, found, _ := c.cache.GetByKey(key); found {
-		return pod.(*api.Pod)
-	}
-	return nil
+	addOwnershipLink(g, node, pod)
 }
 
 func (p *podProbe) Start() {
