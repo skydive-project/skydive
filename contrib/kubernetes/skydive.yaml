@@ -50,10 +50,26 @@ spec:
           value: elasticsearch
         - name: SKYDIVE_ETCD_LISTEN
           value: 0.0.0.0:12379
+        livenessProbe:
+          httpGet:
+            host: localhost
+            port: 8082
+            path: /
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 3
       - name: skydive-elasticsearch
         image: elasticsearch:2
         ports:
         - containerPort: 9200
+        livenessProbe:
+          httpGet:
+            host: localhost
+            port: 9200
+            path: /
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 3
 ---
 apiVersion: extensions/v1beta1
 kind: DaemonSet
@@ -87,6 +103,14 @@ spec:
           mountPath: /host/run
         - name: ovsdb
           mountPath: /var/run/openvswitch/db.sock
+        livenessProbe:
+          httpGet:
+            host: localhost
+            port: 8081
+            path: /
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 3
       volumes:
       - name: docker
         hostPath:
