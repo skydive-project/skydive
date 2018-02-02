@@ -91,8 +91,10 @@ type AnalyzerConnStatus struct {
 
 // AgentStatus represents the status of an agent
 type AgentStatus struct {
-	Clients   map[string]shttp.WSConnStatus
-	Analyzers map[string]AnalyzerConnStatus
+	Clients        map[string]shttp.WSConnStatus
+	Analyzers      map[string]AnalyzerConnStatus
+	TopologyProbes []string
+	FlowProbes     []string
 }
 
 // GetStatus returns the status of an agent
@@ -112,8 +114,10 @@ func (a *Agent) GetStatus() interface{} {
 	}
 
 	return &AgentStatus{
-		Clients:   a.wsServer.GetStatus(),
-		Analyzers: analyzers,
+		Clients:        a.wsServer.GetStatus(),
+		Analyzers:      analyzers,
+		TopologyProbes: a.topologyProbeBundle.ActiveProbes(),
+		FlowProbes:     a.flowProbeBundle.ActiveProbes(),
 	}
 }
 

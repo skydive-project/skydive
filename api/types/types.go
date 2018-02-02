@@ -75,6 +75,7 @@ type AnalyzerStatus struct {
 	Subscribers map[string]shttp.WSConnStatus
 	Alerts      ElectionStatus
 	Captures    ElectionStatus
+	Probes      []string
 }
 
 // Capture describes a capture API
