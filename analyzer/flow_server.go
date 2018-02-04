@@ -157,9 +157,17 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 func (s *FlowServer) storeFlows(flows []*flow.Flow) {
 	if s.storage != nil && len(flows) > 0 {
 		s.enhancerPipeline.Enhance(s.enhancerPipelineConfig, flows)
-		s.storage.StoreFlows(flows)
-
-		logging.GetLogger().Debugf("%d flows stored", len(flows))
+		var flowsToStore []*flow.Flow
+		// Store only flows that had changes since last update
+		for _, fl := range flows {
+			if fl.LastUpdateMetric == nil ||
+				fl.LastUpdateMetric.ABPackets > 0 ||
+				fl.LastUpdateMetric.BAPackets > 0 {
+				flowsToStore = append(flowsToStore, fl)
+			}
+		}
+		s.storage.StoreFlows(flowsToStore)
+		logging.GetLogger().Debugf("%d flows stored", len(flowsToStore))
 	}
 }
 
