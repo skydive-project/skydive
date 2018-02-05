@@ -90,6 +90,7 @@ func (s *Server) GetStatus() interface{} {
 		Subscribers: s.subscriberWSServer.GetStatus(),
 		Alerts:      types.ElectionStatus{IsMaster: s.alertServer.IsMaster()},
 		Captures:    types.ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
+		Probes:      s.probeBundle.ActiveProbes(),
 	}
 }
 

@@ -67,6 +67,18 @@ func (p *ProbeBundle) GetProbe(name string) Probe {
 	return nil
 }
 
+//ActiveProbes returns all active probes name
+func (p *ProbeBundle) ActiveProbes() []string {
+	p.RLock()
+	defer p.RUnlock()
+
+	activeProbes := make([]string, 0, len(p.probes))
+	for k := range p.probes {
+		activeProbes = append(activeProbes, k)
+	}
+	return activeProbes
+}
+
 // AddProbe adds a probe to the bundle
 func (p *ProbeBundle) AddProbe(name string, probe Probe) {
 	p.RLock()
