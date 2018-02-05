@@ -31,6 +31,7 @@ try:
 except ImportError:
     import httplib
 import logging
+import requests
 import uuid
 try:
     from urllib.parse import urlparse
@@ -151,7 +152,12 @@ class WSClient(WebSocketClientProtocol):
         self.endpoint = endpoint
         self.username = username
         self.password = password
-        self.cookie = cookie
+        if not cookie:
+            self.cookies = None
+        elif isinstance(cookie, list):
+            self.cookies = cookie
+        else:
+            self.cookies = [cookie, ]
         self.protocol = protocol
         self.type = type
         self.filter = filter
@@ -179,8 +185,8 @@ class WSClient(WebSocketClientProtocol):
         if self.filter:
             factory.headers["X-Gremlin-Filter"] = self.filter
 
-        if self.cookie:
-            factory.headers['Cookie'] = self.cookie
+        if self.cookies:
+            factory.headers['Cookie'] = ';'.join(self.cookies)
 
         self.loop = asyncio.get_event_loop()
         u = urlparse(self.endpoint)
@@ -188,6 +194,35 @@ class WSClient(WebSocketClientProtocol):
         coro = self.loop.create_connection(factory, u.hostname, u.port)
         (transport, protocol) = self.loop.run_until_complete(coro)
         LOG.debug('transport, protocol: %r, %r', transport, protocol)
+
+    def login(self, host_spec, username, password):
+        """ Authenticate with infrastructure via the Skydive analyzer
+
+        This method will also set the authentication cookie to be used in
+        the future requests
+        :param host_spec: Host IP and port (e.g. 192.168.10.1:8082)
+        :type host_spec: string
+        :param username: Username to use for login
+        :type username: string
+        :param password: Password to use for login
+        :type password: string
+        :return: True on successful authentication, False otherwise
+        """
+        res = requests.post(
+            'http://{0}/login'.format(host_spec),
+            data={
+                'username': username,
+                'password': password,
+            },
+        )
+        if res.status_code == 200:
+            cookie = 'authtok={}'.format(res.cookies['authtok'])
+            if self.cookies:
+                self.cookies.append(cookie)
+            else:
+                self.cookie = [cookie, ]
+            return True
+        return False
 
     def start(self):
         try:

@@ -3,7 +3,7 @@ import sys
 
 
 def get_install_requires():
-    install_requires = ['autobahn>=0.17.1']
+    install_requires = ['autobahn>=0.17.1', 'requests>=2.14.2']
     if sys.version_info[0] < 3:
         install_requires.append('trollius>=2.1')
     else:
@@ -12,7 +12,7 @@ def get_install_requires():
 
 
 setup(name='skydive-client',
-      version='0.3.1',
+      version='0.4.0',
       description='Skydive Python client library',
       url='http://github.com/skydive-project/skydive',
       author='Sylvain Afchain',
