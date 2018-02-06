@@ -65,6 +65,9 @@ analyzer:
     backend: {{.Storage}}
   analyzer_username: admin
   analyzer_password: password
+  topology:
+    probes:
+      - k8s
 
 agent:
   listen: 8081
