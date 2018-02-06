@@ -220,7 +220,7 @@ class WSClient(WebSocketClientProtocol):
             if self.cookies:
                 self.cookies.append(cookie)
             else:
-                self.cookie = [cookie, ]
+                self.cookies = [cookie, ]
             return True
         return False
 
