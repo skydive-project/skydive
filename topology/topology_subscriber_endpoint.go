@@ -118,6 +118,8 @@ func (t *TopologySubscriberEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sht
 	// this kind of message usually comes from external clients like the WebUI
 	if msgType == graph.SyncRequestMsgType {
 		t.Graph.RLock()
+		defer t.Graph.RUnlock()
+
 		syncMsg, status := obj.(graph.SyncRequestMsg), http.StatusOK
 		g, err := t.Graph.WithContext(syncMsg.GraphContext)
 		var result interface{} = g
@@ -142,7 +144,6 @@ func (t *TopologySubscriberEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sht
 
 		reply := msg.Reply(result, graph.SyncReplyMsgType, status)
 		c.SendMessage(reply)
-		t.Graph.RUnlock()
 
 		return
 	}
