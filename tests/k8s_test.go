@@ -44,6 +44,7 @@ const (
 
 var (
 	networkPolicyConfig = k8sConfigFile("networkpolicy")
+	namespaceConfig     = k8sConfigFile("namespace")
 )
 
 var (
@@ -51,6 +52,7 @@ var (
 	podName           = objectName
 	containerName     = objectName
 	networkPolicyName = objectName
+	namespaceName     = objectName
 )
 
 var (
@@ -67,6 +69,12 @@ var (
 	}
 	tearDownNetworkPolicy = []helper.Cmd{
 		{"kubectl delete -f " + networkPolicyConfig, false},
+	}
+	setupNamespace = []helper.Cmd{
+		{"kubectl create -f " + namespaceConfig, true},
+	}
+	tearDownNamespace = []helper.Cmd{
+		{"kubectl delete -f " + namespaceConfig, false},
 	}
 )
 
@@ -109,4 +117,8 @@ func TestK8sNetworkPolicyNode(t *testing.T) {
 
 func TestK8sNodeNode(t *testing.T) {
 	testNodeCreation(t, nil, nil, gremlin.NewValueString("node").Quote(), gremlin.NewValueString(nodeName).Quote())
+}
+
+func TestK8sNamespaceNode(t *testing.T) {
+	testNodeCreation(t, setupNamespace, tearDownNamespace, gremlin.NewValueString("namespace").Quote(), gremlin.NewValueString(namespaceName).Quote())
 }

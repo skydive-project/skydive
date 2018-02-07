@@ -45,7 +45,7 @@ type networkPolicyProbe struct {
 }
 
 func (n *networkPolicyProbe) newMetadata(np *networking_v1.NetworkPolicy) graph.Metadata {
-	return newMetadata("networkpolicy", np.GetName(), np)
+	return newMetadata("networkpolicy", np.GetNamespace(), np.GetName(), np)
 }
 
 func networkPolicyUID(np *networking_v1.NetworkPolicy) graph.Identifier {
@@ -140,7 +140,7 @@ func (n *networkPolicyProbe) handleNetworkPolicyUpdate(policyNode *graph.Node, p
 
 func (n *networkPolicyProbe) onPodUpdated(podNode *graph.Node) {
 	podName, _ := podNode.GetFieldString("Name")
-	podNamespace, _ := podNode.GetFieldString("Pod.Namespace")
+	podNamespace, _ := podNode.GetFieldString("Namespace")
 	pod := n.podCache.getByKey(podNamespace, podName)
 	if pod == nil {
 		logging.GetLogger().Debugf("Failed to find node %s", dumpPod2(podNamespace, podName))

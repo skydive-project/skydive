@@ -29,6 +29,7 @@ var nodeImgMap = setupFixedImages({
   "node": "host",
   "pod": "pod",
   "networkpolicy": "networkpolicy",
+  "namespace": "ns",
   "default": "intf",
 });
 
