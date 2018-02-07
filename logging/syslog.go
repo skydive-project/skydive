@@ -25,10 +25,17 @@
 package logging
 
 import (
-	"io"
 	"log/syslog"
+
+	"github.com/tchap/zapext/zapsyslog"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-func newSyslog(tag string) (io.Writer, error) {
-	return syslog.New(syslog.LOG_CRIT, tag)
+func addSyslogBackend(backends []zapcore.Core, msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder, tag string) ([]zapcore.Core, error) {
+	w, err := syslog.New(syslog.LOG_CRIT, tag)
+	if err != nil {
+		return nil, err
+	}
+	return append(backends, zapsyslog.NewCore(msgPriority, encoder, w)), nil
 }

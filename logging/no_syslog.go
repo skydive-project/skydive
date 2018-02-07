@@ -25,11 +25,11 @@
 package logging
 
 import (
-	"io"
-
 	"github.com/skydive-project/skydive/common"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-func newSyslog(tag string) (io.Writer, error) {
+func addSyslogBackend(backends []zapcore.Core, msgPriority zap.LevelEnablerFunc, encoder zapcore.Encoder, tag string) ([]zapcore.Core, error) {
 	return nil, common.ErrNotImplemented
 }
