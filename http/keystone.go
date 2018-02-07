@@ -203,9 +203,9 @@ func NewKeystoneBackend(authURL string, tenant string, domain string) *KeystoneA
 }
 
 func NewKeystoneAuthenticationBackendFromConfig() *KeystoneAuthenticationBackend {
-	authURL := config.GetConfig().GetString("openstack.auth_url")
-	tenant := config.GetConfig().GetString("openstack.tenant_name")
-	domain := config.GetConfig().GetString("openstack.domain_name")
+	authURL := config.GetString("auth.keystone.auth_url")
+	domain := config.GetString("auth.keystone.domain_name")
+	tenant := config.GetString("auth.keystone.tenant_name")
 
 	return NewKeystoneBackend(authURL, tenant, domain)
 }

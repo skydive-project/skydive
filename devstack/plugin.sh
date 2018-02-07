@@ -165,17 +165,13 @@ auth:
   type: keystone
   analyzer_username: admin
   analyzer_password: $ADMIN_PASSWORD
+  keystone:
+    auth_url: ${KEYSTONE_AUTH_URI}/${SKYDIVE_KEYSTONE_API_VERSION}
+    tenant_name: admin
+    domain_name: $SERVICE_DOMAIN_NAME
 
 logging:
   level: $SKYDIVE_LOGLEVEL
-
-openstack:
-  auth_url: ${KEYSTONE_AUTH_URI}/${SKYDIVE_KEYSTONE_API_VERSION}
-  username: admin
-  password: $ADMIN_PASSWORD
-  tenant_name: admin
-  region_name: RegionOne
-  domain_name: $SERVICE_DOMAIN_NAME
 
 etcd:
   servers:
@@ -194,6 +190,14 @@ agent:
   topology:
     probes:
 $(get_probes_for_config $SKYDIVE_AGENT_PROBES)
+
+    neutron:
+      auth_url: ${KEYSTONE_AUTH_URI}/${SKYDIVE_KEYSTONE_API_VERSION}
+      username: admin
+      password: $ADMIN_PASSWORD
+      tenant_name: admin
+      region_name: RegionOne
+      domain_name: $SERVICE_DOMAIN_NAME
 
 analyzer:
 EOF

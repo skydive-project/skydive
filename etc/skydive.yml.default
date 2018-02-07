@@ -32,19 +32,6 @@ http:
     # enable write compression
     # enable_write_compression: true
 
-openstack:
-  # auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
-  # username: admin
-  # password: password123
-  # tenant_name: admin
-  # region_name: RegionOne
-
-  # The endpoint_type value must be 'public', 'internal' or 'admin'
-  # endpoint_type: public
-
-  # When using Keystone V3, domain_name needs to be specified
-  # domain_name: MyDomain
-
 analyzer:
   # address and port for the analyzer API, Format: addr:port.
   # Default addr is 127.0.0.1
@@ -140,6 +127,19 @@ agent:
     netlink:
       # delay in seconds between two metric updates
       # metrics_update: 30
+
+    neutron:
+      # auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
+      # username: admin
+      # password: password123
+      # tenant_name: admin
+      # region_name: RegionOne
+
+      # The endpoint_type value must be 'public', 'internal' or 'admin'
+      # endpoint_type: public
+
+      # When using Keystone V3, domain_name needs to be specified
+      # domain_name: MyDomain
 
   flow:
     # Period in second to get capture stats from the probe. Note this
@@ -259,6 +259,12 @@ auth:
   # type: basic
   basic:
     # file: /etc/skydive/htpasswd
+
+  keystone:
+    # auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
+    # tenant_name: admin
+    # When using Keystone V3, domain_name needs to be specified
+    # domain_name: MyDomain
 
   # The 'analyzer_username' and 'analyzer_password' parameters are
   # used by the agent to authenticate against the analyzer
