@@ -221,6 +221,9 @@ func (g *GraphEventHandler) notifyEvent(ge graphEvent) {
 
 		// notify only once per listener as if more than once we are in a recursion
 		// and we wont to notify a listener which generated a graph element
+		g.RLock()
+		defer g.RUnlock()
+
 		for _, g.currentEventListener = range g.eventListeners {
 			// do not notify the listener which generated the event
 			if g.currentEventListener == ge.listener {

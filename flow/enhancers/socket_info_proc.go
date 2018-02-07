@@ -37,21 +37,19 @@ import (
 	"time"
 
 	"github.com/pmylund/go-cache"
-	"github.com/weaveworks/tcptracer-bpf/pkg/tracer"
 
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 )
 
-// SocketInfoEnhancer describes a SocketInfo Enhancer with TCP caches
-type SocketInfoEnhancer struct {
-	tracer *tracer.Tracer
+// SocketInfoEnhancer describes a based socket mapper
+type ProcSocketInfoEnhancer struct {
 	local  *cache.Cache
 	remote *cache.Cache
 }
 
 // Name returns the SocketInfo enhancer name
-func (s *SocketInfoEnhancer) Name() string {
+func (s *ProcSocketInfoEnhancer) Name() string {
 	return "SocketInfo"
 }
 
@@ -95,12 +93,12 @@ func getProcessInfo(pid int) (*flow.SocketInfo, error) {
 	return socketInfo, nil
 }
 
-func (s *SocketInfoEnhancer) addEntry(srcAddr, dstAddr string, socketInfo *flow.SocketInfo) {
+func (s *ProcSocketInfoEnhancer) addEntry(srcAddr, dstAddr string, socketInfo *flow.SocketInfo) {
 	s.local.Set(srcAddr, socketInfo, cache.NoExpiration)
 	s.remote.Set(srcAddr+"/"+dstAddr, socketInfo, cache.NoExpiration)
 }
 
-func (s *SocketInfoEnhancer) removeEntry(srcAddr, dstAddr string) {
+func (s *ProcSocketInfoEnhancer) removeEntry(srcAddr, dstAddr string) {
 	// Delay deletion a bit
 	if socketInfo, found := s.local.Get(srcAddr); found {
 		s.local.Set(srcAddr, socketInfo, cache.DefaultExpiration)
@@ -110,44 +108,7 @@ func (s *SocketInfoEnhancer) removeEntry(srcAddr, dstAddr string) {
 	}
 }
 
-// TCPEventV4 is called when a tcp v4 event occurs
-func (s *SocketInfoEnhancer) TCPEventV4(tcpV4 tracer.TcpV4) {
-	srcAddr := hashIPPort(tcpV4.SAddr, tcpV4.SPort)
-	dstAddr := hashIPPort(tcpV4.DAddr, tcpV4.DPort)
-
-	switch tcpV4.Type {
-	case tracer.EventConnect, tracer.EventAccept:
-		if socketInfo, err := getProcessInfo(int(tcpV4.Pid)); err == nil {
-			s.addEntry(srcAddr, dstAddr, socketInfo)
-		}
-	case tracer.EventClose:
-		s.removeEntry(srcAddr, dstAddr)
-	}
-}
-
-// LostV4 is called when a tcp v4 event was lost
-func (s *SocketInfoEnhancer) LostV4(uint64) {
-}
-
-// TCPEventV6 is called when a tcp v6 event occurs
-func (s *SocketInfoEnhancer) TCPEventV6(tcpV6 tracer.TcpV6) {
-	srcAddr := hashIPPort(tcpV6.SAddr, tcpV6.SPort)
-	dstAddr := hashIPPort(tcpV6.DAddr, tcpV6.DPort)
-
-	switch tcpV6.Type {
-	case tracer.EventConnect, tracer.EventAccept:
-		if socketInfo, err := getProcessInfo(int(tcpV6.Pid)); err == nil {
-			s.addEntry(srcAddr, dstAddr, socketInfo)
-		}
-	case tracer.EventClose:
-	}
-}
-
-// LostV6 is called when a tcp v6 event was lost
-func (s *SocketInfoEnhancer) LostV6(uint64) {
-}
-
-func (s *SocketInfoEnhancer) getSocketInfoLocal(f *flow.Flow) bool {
+func (s *ProcSocketInfoEnhancer) mapFlow(f *flow.Flow) bool {
 	var ipPortA, ipPortB string
 	var mappedA, mappedB bool
 	var entry interface{}
@@ -178,7 +139,7 @@ func (s *SocketInfoEnhancer) getSocketInfoLocal(f *flow.Flow) bool {
 	return mappedA || mappedB
 }
 
-func (s *SocketInfoEnhancer) scanProc() error {
+func (s *ProcSocketInfoEnhancer) scanProc() error {
 	s.local.Flush()
 	s.remote.Flush()
 
@@ -283,57 +244,36 @@ func (s *SocketInfoEnhancer) scanProc() error {
 	return nil
 }
 
-func (s *SocketInfoEnhancer) getFlowSocketInfoLocal(f *flow.Flow) {
-	if found := s.getSocketInfoLocal(f); !found {
-		if s.tracer == nil {
-			s.scanProc()
-			if found = s.getSocketInfoLocal(f); found {
-				return
-			}
-		}
-
-		f.SkipSocketInfo(true)
-	}
-}
-
 // Enhance the flow with process info
-func (s *SocketInfoEnhancer) Enhance(f *flow.Flow) {
+func (s *ProcSocketInfoEnhancer) Enhance(f *flow.Flow) {
 	if f.Transport == nil || f.SkipSocketInfo() || f.Transport.Protocol != flow.FlowProtocol_TCPPORT {
 		return
 	}
 
 	if f.SocketA == nil && f.SocketB == nil {
-		s.getFlowSocketInfoLocal(f)
+		if found := s.mapFlow(f); !found {
+			s.scanProc()
+			if found = s.mapFlow(f); found {
+				return
+			}
+		}
+		f.SkipSocketInfo(true)
 	}
 }
 
 // Start the flow enhancer
-func (s *SocketInfoEnhancer) Start() error {
-	if s.tracer != nil {
-		s.tracer.Start()
-	}
-
+func (s *ProcSocketInfoEnhancer) Start() error {
 	return s.scanProc()
 }
 
 // Stop the flow enhancer
-func (s *SocketInfoEnhancer) Stop() {
-	if s.tracer != nil {
-		s.tracer.Stop()
-	}
+func (s *ProcSocketInfoEnhancer) Stop() {
 }
 
 // NewSocketInfoEnhancer create a new SocketInfo Enhancer
-func NewSocketInfoEnhancer(expire, cleanup time.Duration) *SocketInfoEnhancer {
-	s := &SocketInfoEnhancer{
+func NewProcSocketInfoEnhancer(expire, cleanup time.Duration) *ProcSocketInfoEnhancer {
+	return &ProcSocketInfoEnhancer{
 		local:  cache.New(expire, cleanup),
 		remote: cache.New(expire, cleanup),
 	}
-
-	var err error
-	if s.tracer, err = tracer.NewTracer(s); err != nil {
-		logging.GetLogger().Infof("Socket info enhancer is running in compatibility mode: %s", err.Error())
-	}
-
-	return s
 }
