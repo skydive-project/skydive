@@ -65,6 +65,8 @@ analyzer:
     backend: {{.Storage}}
   analyzer_username: admin
   analyzer_password: password
+  topology:
+    probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
 
 agent:
   listen: 8081

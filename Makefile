@@ -35,7 +35,7 @@ ifeq ($(VERBOSE), false)
   VERBOSE_TESTS_FLAGS:=
 endif
 ifeq ($(COVERAGE), true)
-  COVERAGE_ARGS:= -test.coverprofile=../functionals.cover
+  EXTRA_ARGS+= -test.coverprofile=../functionals.cover
 endif
 TIMEOUT?=1m
 TEST_PATTERN?=
@@ -77,6 +77,11 @@ endif
 
 ifeq ($(WITH_CDD), true)
   BUILDTAGS+=cdd
+endif
+
+ifeq ($(WITH_K8S), true)
+  BUILDTAGS+=k8s
+  EXTRA_ARGS+=-analyzer.topology.probes=k8s
 endif
 
 .PHONY: all install
@@ -201,21 +206,21 @@ test.functionals.compile: govendor genlocalfiles
 	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 test.functionals.run:
-	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS}
+	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS} ${EXTRA_ARGS}
 
 test.functionals.all: test.functionals.compile
-	$(MAKE) TIMEOUT="8m" ARGS=${ARGS} test.functionals.run
+	$(MAKE) TIMEOUT="8m" ARGS="${ARGS} ${EXTRA_ARGS}" test.functionals.run
 
 test.functionals.batch: test.functionals.compile
 ifneq ($(TEST_PATTERN),)
-	set -e ; $(MAKE) ARGS="${ARGS} -test.run ${TEST_PATTERN}" test.functionals.run
+	set -e ; $(MAKE) ARGS="${ARGS} ${EXTRA_ARGS} -test.run ${TEST_PATTERN}" test.functionals.run
 else
-	set -e ; $(MAKE) ARGS="${ARGS}" test.functionals.run
+	set -e ; $(MAKE) ARGS="${ARGS} ${EXTRA_ARGS}" test.functionals.run
 endif
 
 test.functionals: test.functionals.compile
 	for functest in ${FUNC_TESTS} ; do \
-		$(MAKE) ARGS="-test.run $$functest$$\$$ ${ARGS} ${COVERAGE_ARGS}" test.functionals.run; \
+		$(MAKE) ARGS="-test.run $$functest$$\$$ ${ARGS} ${EXTRA_ARGS}" test.functionals.run; \
 	done
 
 functional:

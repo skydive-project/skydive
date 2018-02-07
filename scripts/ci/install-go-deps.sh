@@ -2,7 +2,6 @@
 
 set -v
 
-export GOROOT=/opt/go
 export GOPATH=$WORKSPACE
 export PATH=$PATH:$GOROOT/bin
 
