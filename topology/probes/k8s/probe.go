@@ -35,7 +35,7 @@ type Probe struct {
 }
 
 func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
-	configProbes := config.GetConfig().GetStringSlice("k8s.probes")
+	configProbes := config.GetStringSlice("k8s.probes")
 	logging.GetLogger().Infof("K8s probes: %v", configProbes)
 	probes := make(map[string]probe.Probe)
 	for name, i := range configProbes {

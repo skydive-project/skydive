@@ -61,7 +61,7 @@ var AllInOneCmd = &cobra.Command{
 		}
 
 		skydivePath, _ := osext.Executable()
-		logFile := config.GetConfig().GetString("logging.file.path")
+		logFile := config.GetString("logging.file.path")
 		extension := filepath.Ext(logFile)
 		logFile = strings.TrimSuffix(logFile, extension)
 		os.Setenv("SKYDIVE_LOGGING_FILE_PATH", logFile+"-analyzer"+extension)
@@ -108,7 +108,7 @@ var AllInOneCmd = &cobra.Command{
 		}
 
 		authOptions := analyzer.NewAnalyzerAuthenticationOpts()
-		svcAddr, _ := common.ServiceAddressFromString(config.GetConfig().GetString("analyzer.listen"))
+		svcAddr, _ := common.ServiceAddressFromString(config.GetString("analyzer.listen"))
 		restClient := http.NewRestClient(config.GetURL("http", svcAddr.Addr, svcAddr.Port, ""), authOptions)
 		err = common.Retry(func() error {
 			_, err := restClient.Request("GET", "/api", nil, nil)
@@ -120,7 +120,7 @@ var AllInOneCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		os.Setenv("SKYDIVE_ANALYZERS", config.GetConfig().GetString("analyzer.listen"))
+		os.Setenv("SKYDIVE_ANALYZERS", config.GetString("analyzer.listen"))
 		os.Setenv("SKYDIVE_LOGGING_FILE_PATH", logFile+"-agent"+extension)
 
 		agentAttr := &os.ProcAttr{

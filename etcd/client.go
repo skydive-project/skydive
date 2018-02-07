@@ -88,7 +88,7 @@ func NewEtcdClient(etcdServers []string, clientTimeout time.Duration) (*EtcdClie
 // NewEtcdClientFromConfig creates a new ETCD client from configuration
 func NewEtcdClientFromConfig() (*EtcdClient, error) {
 	etcdServers := config.GetEtcdServerAddrs()
-	etcdTimeout := config.GetConfig().GetInt("etcd.client_timeout")
+	etcdTimeout := config.GetInt("etcd.client_timeout")
 	switch etcdTimeout {
 	case 0:
 		etcdTimeout = 5 // Default timeout

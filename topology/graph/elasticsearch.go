@@ -555,16 +555,16 @@ func NewElasticSearchBackend(addr string, port string, maxConns int, retrySecond
 
 // NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
 func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
-	addr := config.GetConfig().GetString("storage.elasticsearch.host")
+	addr := config.GetString("storage.elasticsearch.host")
 	c := strings.Split(addr, ":")
 	if len(c) != 2 {
 		return nil, ErrBadConfig
 	}
 
-	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
-	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
-	bulkMaxDocs := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdocs")
-	bulkMaxDelay := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdelay")
+	maxConns := config.GetInt("storage.elasticsearch.maxconns")
+	retrySeconds := config.GetInt("storage.elasticsearch.retry")
+	bulkMaxDocs := config.GetInt("storage.elasticsearch.bulk_maxdocs")
+	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
 
 	return NewElasticSearchBackend(c[0], c[1], maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 }

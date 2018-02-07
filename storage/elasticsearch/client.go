@@ -426,18 +426,18 @@ func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds
 
 // NewElasticSearchClientFromConfig creates a new ElasticSearch client based on configuration
 func NewElasticSearchClientFromConfig() (*ElasticSearchClient, error) {
-	elasticonfig := strings.Split(config.GetConfig().GetString("storage.elasticsearch.host"), ":")
+	elasticonfig := strings.Split(config.GetString("storage.elasticsearch.host"), ":")
 	if len(elasticonfig) != 2 {
 		return nil, ErrBadConfig
 	}
 
-	maxConns := config.GetConfig().GetInt("storage.elasticsearch.maxconns")
+	maxConns := config.GetInt("storage.elasticsearch.maxconns")
 	if maxConns == 0 {
 		return nil, errors.New("storage.elasticsearch.maxconns has to be > 0")
 	}
-	retrySeconds := config.GetConfig().GetInt("storage.elasticsearch.retry")
-	bulkMaxDocs := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdocs")
-	bulkMaxDelay := config.GetConfig().GetInt("storage.elasticsearch.bulk_maxdelay")
+	retrySeconds := config.GetInt("storage.elasticsearch.retry")
+	bulkMaxDocs := config.GetInt("storage.elasticsearch.bulk_maxdocs")
+	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
 
 	return NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 }

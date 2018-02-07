@@ -187,9 +187,9 @@ func (p *PcapSocketProbeHandler) Stop() {
 
 // NewPcapSocketProbeHandler creates a new pcap socket probe
 func NewPcapSocketProbeHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*PcapSocketProbeHandler, error) {
-	listen := config.GetConfig().GetString("agent.flow.pcapsocket.bind_address")
-	minPort := config.GetConfig().GetInt("agent.flow.pcapsocket.min_port")
-	maxPort := config.GetConfig().GetInt("agent.flow.pcapsocket.max_port")
+	listen := config.GetString("agent.flow.pcapsocket.bind_address")
+	minPort := config.GetInt("agent.flow.pcapsocket.min_port")
+	maxPort := config.GetInt("agent.flow.pcapsocket.max_port")
 
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", listen, minPort))
 	if err != nil {

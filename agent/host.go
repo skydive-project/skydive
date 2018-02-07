@@ -53,12 +53,12 @@ type CPUInfo struct {
 
 // createRootNode creates a graph.Node based on the host properties and aims to have an unique ID
 func createRootNode(g *graph.Graph) (*graph.Node, error) {
-	hostID := config.GetConfig().GetString("host_id")
+	hostID := config.GetString("host_id")
 	m := graph.Metadata{"Name": hostID, "Type": "host"}
 
 	// Fill the metadata from the configuration file
-	if config.GetConfig().IsSet("agent.metadata") {
-		configMetadata, ok := common.NormalizeValue(config.GetConfig().Get("agent.metadata")).(map[string]interface{})
+	if configMetadata := config.Get("agent.metadata"); configMetadata != nil {
+		configMetadata, ok := common.NormalizeValue(configMetadata).(map[string]interface{})
 		if !ok {
 			return nil, errors.New("agent.metadata has wrong format")
 		}

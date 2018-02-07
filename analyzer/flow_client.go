@@ -179,7 +179,7 @@ func NewFlowClient(addr string, port int) (*FlowClient, error) {
 		connection FlowClientConn
 		err        error
 	)
-	protocol := strings.ToLower(config.GetConfig().GetString("flow.protocol"))
+	protocol := strings.ToLower(config.GetString("flow.protocol"))
 	switch protocol {
 	case "udp":
 		connection, err = NewFlowClientUDPConn(common.NormalizeAddrForURL(addr), port)

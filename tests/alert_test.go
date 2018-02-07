@@ -261,7 +261,7 @@ func TestAlertWithTimer(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			ws, err = helper.WSConnect(config.GetConfig().GetString("analyzer.listen"), 5, nil)
+			ws, err = helper.WSConnect(config.GetString("analyzer.listen"), 5, nil)
 			if err != nil {
 				return err
 			}
@@ -336,7 +336,7 @@ func TestMultipleTriggering(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) error {
-			ws, err = helper.WSConnect(config.GetConfig().GetString("analyzer.listen"), 5, nil)
+			ws, err = helper.WSConnect(config.GetString("analyzer.listen"), 5, nil)
 			if err != nil {
 				return err
 			}

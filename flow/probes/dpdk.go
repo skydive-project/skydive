@@ -159,8 +159,8 @@ func getDPDKMacAddress(port int) string {
 
 // NewDPDKProbesHandler creates a new gopacket probe in the graph
 func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKProbesHandler, error) {
-	ports := config.GetConfig().GetStringSlice("dpdk.ports")
-	nbWorkers := config.GetConfig().GetInt("dpdk.workers")
+	ports := config.GetStringSlice("dpdk.ports")
+	nbWorkers := config.GetInt("dpdk.workers")
 
 	nbPorts := len(ports)
 	if nbWorkers == 0 || nbPorts == 0 {
@@ -171,7 +171,7 @@ func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKP
 	cfg := &dpdkflow.Config{
 		LogType: dpdkcommon.Initialization,
 	}
-	debug := config.GetConfig().GetInt("dpdk.debug")
+	debug := config.GetInt("dpdk.debug")
 	if debug > 0 {
 		cfg.LogType = dpdkcommon.Debug
 		cfg.DebugTime = uint(debug * 1000)

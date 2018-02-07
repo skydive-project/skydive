@@ -75,7 +75,7 @@ func cookies(c *AuthenticationClient) []*http.Cookie {
 
 func configCookies() []*http.Cookie {
 	var cookies []*http.Cookie
-	for name, value := range config.GetConfig().GetStringMapString("http.cookie") {
+	for name, value := range config.GetStringMapString("http.cookie") {
 		cookies = append(cookies, &http.Cookie{Name: name, Value: value})
 	}
 	return cookies
@@ -145,7 +145,7 @@ type AuthenticationBackend interface {
 }
 
 func NewAuthenticationBackendFromConfig() (AuthenticationBackend, error) {
-	t := config.GetConfig().GetString("auth.type")
+	t := config.GetString("auth.type")
 
 	switch t {
 	case "basic":

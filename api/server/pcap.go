@@ -47,8 +47,8 @@ func (p *PcapAPI) flowExpireUpdate(flows []*flow.Flow) {
 }
 
 func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	update := config.GetConfig().GetInt("flow.update")
-	expire := config.GetConfig().GetInt("flow.expire")
+	update := config.GetInt("flow.update")
+	expire := config.GetInt("flow.expire")
 
 	updateHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(update))
 	expireHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(expire))

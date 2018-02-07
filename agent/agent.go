@@ -209,9 +209,9 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	updateTime := time.Duration(config.GetConfig().GetInt("flow.update")) * time.Second
-	expireTime := time.Duration(config.GetConfig().GetInt("flow.expire")) * time.Second
-	cleanup := time.Duration(config.GetConfig().GetInt("cache.cleanup")) * time.Second
+	updateTime := time.Duration(config.GetInt("flow.update")) * time.Second
+	expireTime := time.Duration(config.GetInt("flow.expire")) * time.Second
+	cleanup := time.Duration(config.GetInt("cache.cleanup")) * time.Second
 
 	cache := cache.New(expireTime*2, cleanup)
 

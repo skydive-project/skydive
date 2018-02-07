@@ -43,7 +43,7 @@ var AnalyzerCmd = &cobra.Command{
 	Long:         "Skydive analyzer",
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.GetConfig().Set("logging.id", "agent")
+		config.Set("logging.id", "agent")
 		logging.GetLogger().Noticef("Skydive Analyzer %s starting...", version.Version)
 
 		server, err := analyzer.NewServerFromConfig()
@@ -70,5 +70,5 @@ var AnalyzerCmd = &cobra.Command{
 
 func init() {
 	AnalyzerCmd.Flags().String("listen", "127.0.0.1:8082", "address and port for the analyzer API")
-	config.GetConfig().BindPFlag("analyzer.listen", AnalyzerCmd.Flags().Lookup("listen"))
+	config.BindPFlag("analyzer.listen", AnalyzerCmd.Flags().Lookup("listen"))
 }

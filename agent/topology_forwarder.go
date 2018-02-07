@@ -117,6 +117,6 @@ func NewTopologyForwarder(host string, g *graph.Graph, pool shttp.WSJSONSpeakerP
 
 // NewTopologyForwarderFromConfig creates a TopologyForwarder from configuration
 func NewTopologyForwarderFromConfig(g *graph.Graph, pool shttp.WSJSONSpeakerPool) *TopologyForwarder {
-	host := config.GetConfig().GetString("host_id")
+	host := config.GetString("host_id")
 	return NewTopologyForwarder(host, g, pool)
 }

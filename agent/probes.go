@@ -39,7 +39,7 @@ import (
 
 // NewTopologyProbeBundleFromConfig creates a new topology probe.ProbeBundle based on the configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.ProbeBundle, error) {
-	list := config.GetConfig().GetStringSlice("agent.topology.probes")
+	list := config.GetStringSlice("agent.topology.probes")
 	logging.GetLogger().Infof("Topology probes: %v", list)
 
 	probes := make(map[string]probe.Probe)
@@ -69,7 +69,7 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 		case "ovsdb":
 			probes[t] = ovsdb.NewOvsdbProbeFromConfig(g, n)
 		case "docker":
-			dockerURL := config.GetConfig().GetString("docker.url")
+			dockerURL := config.GetString("docker.url")
 			dockerProbe, err := docker.NewDockerProbe(nsProbe, dockerURL)
 			if err != nil {
 				return nil, err

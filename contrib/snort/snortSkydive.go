@@ -238,7 +238,7 @@ func newSnortFlowEnhancer() *SnortFlowEnhancer {
 }
 
 func main() {
-	config.GetConfig().Set("logging.id", "SnortToSkydive")
+	config.Set("logging.id", "SnortToSkydive")
 	sfe := newSnortFlowEnhancer()
 	if sfe == nil {
 		return

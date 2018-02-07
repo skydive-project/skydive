@@ -84,6 +84,6 @@ func NewBasicAuthenticationBackend(file string) (*BasicAuthenticationBackend, er
 }
 
 func NewBasicAuthenticationBackendFromConfig() (*BasicAuthenticationBackend, error) {
-	f := config.GetConfig().GetString("auth.basic.file")
+	f := config.GetString("auth.basic.file")
 	return NewBasicAuthenticationBackend(f)
 }

@@ -381,8 +381,8 @@ func (o *OnDemandProbeClient) Stop() {
 
 // InvokeCaptureFromConfig invokes capture based on preconfigured selected SubGraph
 func (o *OnDemandProbeClient) InvokeCaptureFromConfig() {
-	gremlin := config.GetConfig().GetString("analyzer.startup.capture_gremlin")
-	bpf := config.GetConfig().GetString("analyzer.startup.capture_bpf")
+	gremlin := config.GetString("analyzer.startup.capture_gremlin")
+	bpf := config.GetString("analyzer.startup.capture_bpf")
 	if gremlin == "" {
 		return
 	}

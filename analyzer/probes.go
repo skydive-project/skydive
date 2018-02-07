@@ -34,7 +34,7 @@ import (
 
 // NewTopologyProbeBundleFromConfig creates a new topology server probes from configuration
 func NewTopologyProbeBundleFromConfig(g *graph.Graph) (*probe.ProbeBundle, error) {
-	list := config.GetConfig().GetStringSlice("analyzer.topology.probes")
+	list := config.GetStringSlice("analyzer.topology.probes")
 	probes := map[string]probe.Probe{
 		"fabric":  fabric.NewFabricProbe(g),
 		"peering": peering.NewPeeringProbe(g),

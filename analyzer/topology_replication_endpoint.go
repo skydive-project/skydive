@@ -71,7 +71,7 @@ type TopologyReplicationEndpoint struct {
 }
 
 func (t *TopologyReplicationEndpoint) debug() bool {
-	return config.GetConfig().GetBool("analyzer.replication.debug")
+	return config.GetBool("analyzer.replication.debug")
 }
 
 // getHostID loop until being able to get the host-id of the peer.
@@ -152,7 +152,7 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 
 	// check whether the peer is the local server itself or not thanks to the /api
 	// the goal is to not add itself as peer.
-	if p.getHostID() == config.GetConfig().GetString("host_id") {
+	if p.getHostID() == config.GetString("host_id") {
 		logging.GetLogger().Debugf("No connection to %s since it's me", p.URL.String())
 		return
 	}

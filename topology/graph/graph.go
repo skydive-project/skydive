@@ -1331,7 +1331,7 @@ func NewGraph(host string, backend GraphBackend) *Graph {
 
 // NewGraphFromConfig creates a new graph based on configuration
 func NewGraphFromConfig(backend GraphBackend) *Graph {
-	host := config.GetConfig().GetString("host_id")
+	host := config.GetString("host_id")
 	return NewGraph(host, backend)
 }
 
@@ -1344,7 +1344,7 @@ func NewGraphWithContext(hostID string, backend GraphBackend, context GraphConte
 // BackendFromConfig creates a new graph backend based on configuration
 // memory, orientdb, elasticsearch backend are supported
 func BackendFromConfig() (backend GraphBackend, err error) {
-	name := config.GetConfig().GetString("graph.backend")
+	name := config.GetString("graph.backend")
 	if len(name) == 0 {
 		name = "memory"
 	}
