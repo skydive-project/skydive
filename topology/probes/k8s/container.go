@@ -75,7 +75,7 @@ func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 }
 
 func (c *containerProbe) newMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
-	m := newMetadata("container", container.Name, container)
+	m := newMetadata("container", pod.GetNamespace(), container.Name, container)
 	m.SetField(DockerNameField, container.Name)
 	m.SetField(DockerPodNamespaceField, pod.GetNamespace())
 	m.SetField(DockerPodNameField, pod.GetName())

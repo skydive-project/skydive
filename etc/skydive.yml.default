@@ -314,6 +314,7 @@ k8s:
   - pod
   - container
   - node
+  - namespace
 
 ui:
   # Specify the extra assets folder. Javascript and CSS files present in this

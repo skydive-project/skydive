@@ -44,27 +44,21 @@ type podProbe struct {
 	nodeIndexer      *graph.MetadataIndexer
 }
 
-const (
-	podNameField      = "K8s.ObjectMeta.Name"
-	podNamespaceField = "K8s.ObjectMeta.Namespace"
-	podNodeNameField  = "K8s.Spec.NodeName"
-)
-
 func newPodIndexerByHost(g *graph.Graph) *graph.MetadataIndexer {
-	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, podNodeNameField)
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, nodeNameField)
 }
 
 func newPodIndexerByNamespace(g *graph.Graph) *graph.MetadataIndexer {
-	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, podNamespaceField)
+	return graph.NewMetadataIndexer(g, graph.Metadata{"Type": "pod"}, "Namespace")
 }
 
 func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Type", "pod"),
-		filters.NewNotFilter(filters.NewNullFilter(podNamespaceField)),
-		filters.NewNotFilter(filters.NewNullFilter(podNameField)))
+		filters.NewNotFilter(filters.NewNullFilter("Namespace")),
+		filters.NewNotFilter(filters.NewNullFilter("Name")))
 	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m, podNamespaceField, podNameField)
+	return graph.NewMetadataIndexer(g, m, "Namespace", "Name")
 }
 
 func podUID(pod *api.Pod) graph.Identifier {
@@ -80,7 +74,7 @@ func dumpPod(pod *api.Pod) string {
 }
 
 func (p *podProbe) newMetadata(pod *api.Pod) graph.Metadata {
-	return newMetadata("pod", pod.GetName(), pod)
+	return newMetadata("pod", pod.GetNamespace(), pod.GetName(), pod)
 }
 
 func (p *podProbe) linkPodToNode(pod *api.Pod, podNode *graph.Node) {

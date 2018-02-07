@@ -48,6 +48,8 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 			probes[i] = newContainerProbe(g)
 		case "node":
 			probes[i] = newNodeProbe(g)
+		case "namespace":
+			probes[i] = newNamespaceProbe(g)
 		default:
 			logging.GetLogger().Errorf("skipping unsupported K8s probe %v", name)
 		}
