@@ -1,68 +1,81 @@
 # Skydive config file
 
-# host_id is used to reference the agent by default set to hostname
+# host_id is used to reference the agent, by default set to hostname
 # host_id:
 
 http:
   # define the Cookie HTTP Request Header
-  # cookie: 
-  #   <name1>: <value1>
-  #   <name2>: <value2>
-  # rest:
-  #   log the HTTP client request and response (to log level DEBUG)
-  #   debug: false
-  # ws:
+  cookie:
+    # <name1>: <value1>
+    # <name2>: <value2>
+
+  rest:
+    # log the HTTP client request and response (to log level DEBUG)
+    # debug: false
+
+  ws:
     # WebSocket delay between two pings.
     # ping_delay: 2
+
     # WebSocket Ping/Pong timeout in second.
     # pong_timeout: 5
+
     # maximum number of topology aggregated messages before sending
     # bulk_maxmsgs: 100
+
     # duration in seconds before flushing topology aggregated messages
     # bulk_maxdelay: 2
+
     # Maximum size of the message queue
     # queue_size: 10000
+
     # enable write compression
     # enable_write_compression: true
 
 openstack:
-  auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
-  username: admin
-  password: password123
-  tenant_name: admin
-  region_name: RegionOne
+  # auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
+  # username: admin
+  # password: password123
+  # tenant_name: admin
+  # region_name: RegionOne
+
   # The endpoint_type value must be 'public', 'internal' or 'admin'
-  endpoint_type: public
+  # endpoint_type: public
+
   # When using Keystone V3, domain_name needs to be specified
   # domain_name: MyDomain
 
 analyzer:
   # address and port for the analyzer API, Format: addr:port.
   # Default addr is 127.0.0.1
-  listen: :8082
+  # listen: :8082
+
   # File path to X509 Certificate and Private Key to enable TLS communication
   # Must be different than the agent
   # X509_cert: /etc/ssl/certs/analyzer.domain.com.crt
   # X509_key:  /etc/ssl/certs/analyzer.domain.com.key
-  # topology_filter:
-  #   Namespaces: "g.V().Has('Type', 'netns').OutE().BothV()"
-  #   Layer2: "g.E().Has('RelationType', 'layer2')"
+
   # Section defining things to be invoked on startup
-  # startup:
-  # By default no capturing,  set filter to capture from selected nodes
-  # from the beginning automatically
-  #   capture_gremlin: "G.V().has('Name', NE('lo'))"
-  #   capture_bpf: "port 80"
+  startup:
+    # By default no capturing,  set filter to capture from selected nodes
+    # from the beginning automatically
+    # capture_gremlin: "G.V().has('Name', NE('lo'))"
+    # capture_bpf: "port 80"
+
   # Enable/disable ssh to hosts
   # ssh_enabled: false
+
   # Flow storage engine
-  # storage:
-      # Available: elasticsearch, orientdb
-      # backend: elasticsearch
-      # maximum number of flows aggregated between two data store inserts
-      # bulk_insert: 100
-      # deadline of each bulk insert in second
-      # bulk_insert_deadline: 5
+  storage:
+    # Available: elasticsearch, orientdb
+    # backend: elasticsearch
+
+    # maximum number of flows aggregated between two data store inserts
+    # bulk_insert: 100
+
+    # deadline of each bulk insert in second
+    # bulk_insert_deadline: 5
+
   topology:
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.
@@ -88,22 +101,11 @@ analyzer:
       # - TOR1[Name=tor1] -> [color=red] TOR1_PORT2[Name=port2, MTU=1500]
       # - TOR_PORT1 --> TOR1_PORT1
       # - TOR1_PORT2 --> *[Type=host]/eth0
+
+    # list of probes used by the analyzers
     probes:
       # - k8s
-  # update rate of links in seconds
-  bandwidth_update_rate: 5
-  # interface metrics - 'netlink'
-  # captured flows TxBytes + RxByte - 'flows' (need to turn on capture)
-  bandwidth_source: netlink
-  # 'absolute' - thresholds in Kbit
-  # 'relative' - thresholds in % relative to link speed reported by netlink
-  bandwidth_threshold: absolute
-  bandwidth_absolute_active: 1
-  bandwidth_absolute_warning: 10
-  bandwidth_absolute_alert: 100
-  bandwidth_relative_active: 0.1
-  bandwidth_relative_warning: 0.4
-  bandwidth_relative_alert: 0.8
+
   replication:
     # debug: false
 
@@ -114,41 +116,48 @@ analyzers:
 agent:
   # address and port for the agent API, Format: addr:port.
   # Default addr is 127.0.0.1
-  listen: :8081
+  # listen: :8081
+
   # File path to X509 Certificate and Private Key to enable TLS communication
   # Must be different than the analyzer and unique per agent (recommended)
   # X509_cert: /etc/ssl/certs/agent.domain.com.crt
   # X509_key:  /etc/ssl/certs/agent.domain.com.key
+
   # Server name field specified in TLS communications.
   # Not required, but can be used to allow virtual hosting
   # X509_servername: domain.com
-  #
+
   topology:
-    # Probes used to capture topology informations like interfaces,
+    # Probes used to capture topology information like interfaces,
     # bridges, namespaces, etc...
     # Available: ovsdb, docker, neutron, opencontrail
     probes:
-      - ovsdb
+      # - ovsdb
       # - docker
       # - neutron
       # - opencontrail
+
     netlink:
       # delay in seconds between two metric updates
       # metrics_update: 30
+
   flow:
     # Period in second to get capture stats from the probe. Note this
     # currently only works for the pcap probe
     # stats_update: 1
+
   metadata:
-    info: This is compute node
+    # info: This is compute node
 
 dpdk:
   # DPDK port listening flows from
-  # ports:
-  #    - 0
-  #    - 1
+  ports:
+    # - 0
+    # - 1
+
   # nb workers per port
   # workers: 4
+
   # debug message every n seconds
   # debug: 1
 
@@ -170,20 +179,26 @@ ovs:
   # at least locally
   # % sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6400:127.0.0.1
   # ovsdb: unix:///var/run/openvswitch/db.sock
+
   oflow:
     # Enable the parsing of openflow rules (disabled by default)
-    enable: false
+    # enable: false
+
     # The probe can connect to remote bridge over TLS (ssl url).
     # The default value is empty for those options.
     # Path to the private key file (TLS connection)
     # key: /etc/ssl/private/agent.key
+
     # Path to the certificate associated to the key (TLS connection)
     # cert: /etc/ssl/certs/agent.crt
+
     # Path to certificate authority validating bridge connections (TLS connection)
     # ca: /etc/ssl/certs/ca.crt
+
     address:
       # Map translating bridge names into URL for remote connection
       # - bridge: ssl:xxx.yyy.zzz.ttt:port
+
 docker:
   # url: unix:///var/run/docker.sock
 
@@ -194,40 +209,47 @@ netns:
 opencontrail:
   # Host address of the OpenContrail vrouter agent
   # host: localhost
+
   # TCP port of the OpenContrail vrouter agent
   # port: 8086
+
   # UDP dest port for MPLS traffic
   # mpls_udp_port: 51234
 
 storage:
+  # Elasticsearch connection information
   elasticsearch:
-    host: 127.0.0.1:9200
+    # host: 127.0.0.1:9200
     # maxconns: 10
     # retry: 60
     # bulk_maxdocs: 100
     # bulk_maxdelay: 5
 
-  # OrientDB connection informations
-  # orientdb:
-  #  addr: http://127.0.0.1:2480
-  #  database: Skydive
-  #  username: root
-  #  password: hello
+  # OrientDB connection information
+  orientdb:
+    # addr: http://127.0.0.1:2480
+    # database: Skydive
+    # username: root
+    # password: hello
 
 graph:
   # graph backend memory, elasticsearch, orientdb
-  backend: memory
+  # backend: memory
 
 logging:
-  level: INFO
+  # level: INFO
+
+  # Default backend used: stderr
   backends:
-    - stderr
-  # - stdout
-  # - file
-  # - syslog
+    # - stderr
+    # - stdout
+    # - file
+    # - syslog
+
   # configuration of the 'file' backend
-  # file:
-  #   path: /var/log/skydive.log
+  file:
+    # path: /var/log/skydive.log
+
   # configuration encoder could be for all backends or for specific one
   # encoder: json
   # color: false
@@ -235,41 +257,44 @@ logging:
 auth:
   # specify the type of authentication mechanism: noauth, basic, keystone (default: noauth)
   # type: basic
-  # basic:
+  basic:
     # file: /etc/skydive/htpasswd
+
   # The 'analyzer_username' and 'analyzer_password' parameters are
   # used by the agent to authenticate against the analyzer
   analyzer_username: admin
   analyzer_password: password
 
 etcd:
+  # server parameters
   # when 'embedded' is set to true, the analyzer will start an embedded etcd server
   # embedded: true
   # listen: 0.0.0.0:12379
-
-  # both the analyzers and the agents make use of etcd
-  # servers:
-  #   - http://127.0.0.1:12379
-
-  # client_timeout: 5
 
   # maximum number of WAL and snapshot files. 0 means unlimited
   # max_wal_files: 0
   # max_snap_files: 0
 
+  # path where the etcd files will be stored.
+  # data_dir: /var/lib/skydive/etcd
+
+  # client parameters
+  # both the analyzers and the agents make use of etcd
+  servers:
+    # - http://127.0.0.1:12379
+
+  # client_timeout: 5
+
 flow:
   # Without any new packets, a flow expires after flow.expire
   # seconds
-  expire: 600
+  # expire: 600
+
   # Seconds between flow updates (metrics, enhancements,...)
-  update: 60
+  # update: 60
+
   # Protocol to use to send flows to the analyzer: websocket or udp
   # protocol: udp
-
-ui:
-  # Specify the extra assets folder. Javascript and CSS files present in this
-  # folder will be added to the WebUI.
-  # extra_assets: /usr/share/skydive/assets
 
 k8s:
   # EXPERIMENTAL: k8s probe is still under development and should not be used
@@ -280,11 +305,44 @@ k8s:
   # else if $KUBECONFIG environment is define then use it
   # else if $HOME/.kube/config file exists then use it
   # else use empty configuration (for accessing from within the k8s cluster)
-  #
   # Specify the path of k8s configuration YAML file
   # config_file: /etc/skydive/kubeconfig
+
+  # Sub probes provided by the k8s probe
   probes:
   - networkpolicy
   - pod
   - container
   - node
+
+ui:
+  # Specify the extra assets folder. Javascript and CSS files present in this
+  # folder will be added to the WebUI.
+  # extra_assets: /usr/share/skydive/assets
+
+  # Settings specific to the topology view
+  topology:
+    # Pre-defined Gremlin expression used in the WebUI for Filtering and Highlighting.
+    favorites:
+    #   Namespaces: "g.V().Has('Type', 'netns').OutE().BothV()"
+    #   Layer2: "g.E().Has('RelationType', 'layer2')"
+
+    # Highlight Gremlin expression used by default and applied on WebUI load.
+    # default_highlight: "G.V().Has('Name', 'tap0')"
+
+  # update rate of links in seconds
+  bandwidth_update_rate: 5
+
+  # interface metrics - 'netlink'
+  # captured flows TxBytes + RxByte - 'flows' (need to turn on capture)
+  bandwidth_source: netlink
+
+  # 'absolute' - thresholds in Kbit
+  # 'relative' - thresholds in % relative to link speed reported by netlink
+  bandwidth_threshold: absolute
+  bandwidth_absolute_active: 1
+  bandwidth_absolute_warning: 10
+  bandwidth_absolute_alert: 100
+  bandwidth_relative_active: 0.1
+  bandwidth_relative_warning: 0.4
+  bandwidth_relative_alert: 0.8

@@ -62,23 +62,14 @@ func init() {
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
 	cfg.SetDefault("agent.X509_servername", "")
 
-	cfg.SetDefault("analyzer.bandwidth_absolute_active", 1)
-	cfg.SetDefault("analyzer.bandwidth_absolute_alert", 1000)
-	cfg.SetDefault("analyzer.bandwidth_absolute_warning", 100)
-	cfg.SetDefault("analyzer.bandwidth_relative_active", 0.1)
-	cfg.SetDefault("analyzer.bandwidth_relative_alert", 0.8)
-	cfg.SetDefault("analyzer.bandwidth_relative_warning", 0.5)
-	cfg.SetDefault("analyzer.bandwidth_source", "netlink")
-	cfg.SetDefault("analyzer.bandwidth_threshold", "relative")
-	cfg.SetDefault("analyzer.bandwidth_update_rate", 5)
 	cfg.SetDefault("analyzer.flowtable_expire", 600)
 	cfg.SetDefault("analyzer.flowtable_update", 60)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
+	cfg.SetDefault("analyzer.replication.debug", false)
+	cfg.SetDefault("analyzer.ssh_enabled", false)
 	cfg.SetDefault("analyzer.storage.bulk_insert", 100)
 	cfg.SetDefault("analyzer.storage.bulk_insert_deadline", 5)
 	cfg.SetDefault("analyzer.topology.probes", []string{})
-	cfg.SetDefault("analyzer.ssh_enabled", false)
-	cfg.SetDefault("analyzer.replication.debug", false)
 
 	cfg.SetDefault("auth.type", "noauth")
 	cfg.SetDefault("auth.keystone.tenant", "admin")
@@ -102,6 +93,15 @@ func init() {
 
 	cfg.SetDefault("host_id", host)
 
+	cfg.SetDefault("http.rest.debug", false)
+	cfg.SetDefault("http.ws.ping_delay", 2)
+	cfg.SetDefault("http.ws.pong_timeout", 5)
+	cfg.SetDefault("http.ws.bulk_maxmsgs", 100)
+	cfg.SetDefault("http.ws.bulk_maxdelay", 1)
+	cfg.SetDefault("http.ws.queue_size", 10000)
+	cfg.SetDefault("http.ws.enable_write_compression", true)
+
+	cfg.SetDefault("k8s.config_file", "/etc/skydive/kubeconfig")
 	cfg.SetDefault("k8s.probes", []string{"networkpolicy", "pod", "container", "node"})
 
 	cfg.SetDefault("logging.backends", []string{"stderr"})
@@ -117,10 +117,9 @@ func init() {
 	cfg.SetDefault("openstack.endpoint_type", "public")
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("ovs.oflow.enable", false)
+
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
-
-	cfg.SetDefault("k8s.config_file", "/etc/skydive/kubeconfig")
 
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
 	cfg.SetDefault("storage.elasticsearch.maxconns", 10)
@@ -132,13 +131,15 @@ func init() {
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
 
-	cfg.SetDefault("http.rest.debug", false)
-	cfg.SetDefault("http.ws.ping_delay", 2)
-	cfg.SetDefault("http.ws.pong_timeout", 5)
-	cfg.SetDefault("http.ws.bulk_maxmsgs", 100)
-	cfg.SetDefault("http.ws.bulk_maxdelay", 1)
-	cfg.SetDefault("http.ws.queue_size", 10000)
-	cfg.SetDefault("http.ws.enable_write_compression", true)
+	cfg.SetDefault("ui.bandwidth_absolute_active", 1)
+	cfg.SetDefault("ui.bandwidth_absolute_alert", 1000)
+	cfg.SetDefault("ui.bandwidth_absolute_warning", 100)
+	cfg.SetDefault("ui.bandwidth_relative_active", 0.1)
+	cfg.SetDefault("ui.bandwidth_relative_alert", 0.8)
+	cfg.SetDefault("ui.bandwidth_relative_warning", 0.5)
+	cfg.SetDefault("ui.bandwidth_source", "netlink")
+	cfg.SetDefault("ui.bandwidth_threshold", "relative")
+	cfg.SetDefault("ui.bandwidth_update_rate", 5)
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")
