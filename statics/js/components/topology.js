@@ -285,6 +285,21 @@ var TopologyComponent = {
 
     this.setGremlinFavoritesFromConfig();
 
+    if (typeof(this.$route.query.highlight) !== "undefined") {
+      this.topologyEmphasize = this.$route.query.highlight;
+      setTimeout(function(){self.emphasizeGremlinExpr();}, 2000)
+    }
+
+    if (typeof(this.$route.query.filter) !== "undefined") {
+      this.topologyFilter = this.$route.query.filter;
+    }
+
+    websocket.addConnectHandler(function() {
+      if (self.topologyFilter !== '') {
+        self.topologyFilterQuery();
+      }
+    });
+
     $.when(this.$getConfigValue('analyzer.ssh_enabled').
       then(function(sshEnabled) {
         self.isSSHEnabled = sshEnabled;
