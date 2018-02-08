@@ -347,8 +347,8 @@ func (s *WSClientPool) ConnectAll() {
 }
 
 func newWSPool(name string) *WSPool {
-	bulkMaxMsgs := config.GetConfig().GetInt("http.ws.bulk_maxmsgs")
-	bulkMaxDelay := config.GetConfig().GetInt("http.ws.bulk_maxdelay")
+	bulkMaxMsgs := config.GetInt("http.ws.bulk_maxmsgs")
+	bulkMaxDelay := config.GetInt("http.ws.bulk_maxdelay")
 
 	return &WSPool{
 		name:         name,

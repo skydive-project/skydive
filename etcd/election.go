@@ -228,6 +228,6 @@ func NewEtcdMasterElector(host string, serviceType common.ServiceType, key strin
 
 // NewEtcdMasterElectorFromConfig creates a new ETCD master elector from configuration
 func NewEtcdMasterElectorFromConfig(serviceType common.ServiceType, key string, etcdClient *EtcdClient) *EtcdMasterElector {
-	host := config.GetConfig().GetString("host_id")
+	host := config.GetString("host_id")
 	return NewEtcdMasterElector(host, serviceType, key, etcdClient)
 }

@@ -189,7 +189,7 @@ func (a *Server) RegisterAPIHandler(handler Handler) error {
 
 func (a *Server) addAPIRootRoute() {
 	info := Info{
-		Host:    config.GetConfig().GetString("host_id"),
+		Host:    config.GetString("host_id"),
 		Version: version.Version,
 		Service: string(a.ServiceType),
 	}

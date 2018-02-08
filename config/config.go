@@ -30,6 +30,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	// Viper remote client need to be internally initialized
 	_ "github.com/spf13/viper/remote"
@@ -37,11 +38,23 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
-var cfg *viper.Viper
-
 // ErrNoAnalyzerSpecified error no analyzer section is specified in the configuration file
+var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configuration file")
+
 var (
-	ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configuration file")
+	cfg           *viper.Viper
+	relocationMap = map[string]string{
+		"auth.keystone.auth_url":               "openstack.auth_url",
+		"auth.keystone.tenant_name":            "openstack.tenant_name",
+		"auth.keystone.domain_name":            "openstack.domain_name",
+		"agent.topology.neutron.auth_url":      "openstack.auth_url",
+		"agent.topology.neutron.domain_name":   "openstack.domain_name",
+		"agent.topology.neutron.endpoint_type": "openstack.endpoint_type",
+		"agent.topology.neutron.password":      "openstack.password",
+		"agent.topology.neutron.region_name":   "openstack.region_name",
+		"agent.topology.neutron.tenant_name":   "openstack.tenant_name",
+		"agent.topology.neutron.username":      "openstack.username",
+	}
 )
 
 func init() {
@@ -60,6 +73,7 @@ func init() {
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
+	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")
 	cfg.SetDefault("agent.X509_servername", "")
 
 	cfg.SetDefault("analyzer.flowtable_expire", 600)
@@ -91,6 +105,14 @@ func init() {
 	cfg.SetDefault("graph.backend", "memory")
 	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
 
+	cfg.SetDefault("http.rest.debug", false)
+	cfg.SetDefault("http.ws.ping_delay", 2)
+	cfg.SetDefault("http.ws.pong_timeout", 5)
+	cfg.SetDefault("http.ws.bulk_maxmsgs", 100)
+	cfg.SetDefault("http.ws.bulk_maxdelay", 1)
+	cfg.SetDefault("http.ws.queue_size", 10000)
+	cfg.SetDefault("http.ws.enable_write_compression", true)
+
 	cfg.SetDefault("host_id", host)
 
 	cfg.SetDefault("http.rest.debug", false)
@@ -114,7 +136,7 @@ func init() {
 	cfg.SetDefault("netns.run_path", "/var/run/netns")
 
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
-	cfg.SetDefault("openstack.endpoint_type", "public")
+
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("ovs.oflow.enable", false)
 
@@ -254,7 +276,7 @@ func SetDefault(key string, value interface{}) {
 // GetAnalyzerServiceAddresses returns a list of connectable Analyzers
 func GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
 	var addresses []common.ServiceAddress
-	for _, a := range GetConfig().GetStringSlice("analyzers") {
+	for _, a := range GetStringSlice("analyzers") {
 		sa, err := common.ServiceAddressFromString(a)
 		if err != nil {
 			return nil, err
@@ -287,7 +309,7 @@ func GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
 
 // GetEtcdServerAddrs returns the ETCD server address specified in the configuration file or embedded
 func GetEtcdServerAddrs() []string {
-	etcdServers := GetConfig().GetStringSlice("etcd.servers")
+	etcdServers := GetStringSlice("etcd.servers")
 	if len(etcdServers) > 0 {
 		return etcdServers
 	}
@@ -299,14 +321,70 @@ func GetEtcdServerAddrs() []string {
 
 // IsTLSenabled returns true is the analyzer certificates are set
 func IsTLSenabled() bool {
-	certPEM := GetConfig().GetString("analyzer.X509_cert")
-	keyPEM := GetConfig().GetString("analyzer.X509_key")
+	certPEM := GetString("analyzer.X509_cert")
+	keyPEM := GetString("analyzer.X509_key")
 	if len(certPEM) > 0 && len(keyPEM) > 0 {
 		return true
 	}
 	return false
 }
 
+func realKey(key string) string {
+	for {
+		if cfg.IsSet(key) {
+			return key
+		}
+		newKey, found := relocationMap[key]
+		if !found {
+			return key
+		}
+		fmt.Fprintf(os.Stderr, "Config value '%s' is now deprecated. Please use '%s' instead\n", key, newKey)
+		key = newKey
+	}
+}
+
+// Get returns a value of the configuration as in interface
+func Get(key string) interface{} {
+	return cfg.Get(realKey(key))
+}
+
+// Set a value of the configuration
+func Set(key string, value interface{}) {
+	cfg.Set(key, value)
+}
+
+// GetBool returns a boolean from the configuration
+func GetBool(key string) bool {
+	return cfg.GetBool(realKey(key))
+}
+
+// GetInt returns an interger from the configuration
+func GetInt(key string) int {
+	return cfg.GetInt(realKey(key))
+}
+
+// GetString returns a string from the configuration
+func GetString(key string) string {
+	return cfg.GetString(realKey(key))
+}
+
+// GetStringSlice returns a slice of strings from the configuration
+func GetStringSlice(key string) []string {
+	return cfg.GetStringSlice(realKey(key))
+}
+
+// GetStringMapString returns a map of strings from the configuration
+func GetStringMapString(key string) map[string]string {
+	return cfg.GetStringMapString(realKey(key))
+}
+
+// BindPFlag binds a command line flag to a configuration value
+func BindPFlag(key string, flag *pflag.Flag) error {
+	return cfg.BindPFlag(key, flag)
+}
+
+// GetURL constructs a URL from a tuple of protocol, address, port and path
+// If TLS is enabled, it will return the https (or wss) version of the URL.
 func GetURL(protocol string, addr string, port int, path string) *url.URL {
 	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
 

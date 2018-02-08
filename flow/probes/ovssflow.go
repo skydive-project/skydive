@@ -201,7 +201,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 		flowTable:  ft,
 	}
 
-	address := config.GetConfig().GetString("sflow.bind_address")
+	address := config.GetString("sflow.bind_address")
 	if address == "" {
 		address = "127.0.0.1"
 	}

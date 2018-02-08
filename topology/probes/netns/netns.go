@@ -311,7 +311,7 @@ func NewNetNSProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.NetLinkProbe)
 		pending:            make(chan string, 10),
 	}
 
-	if path := config.GetConfig().GetString("netns.run_path"); path != "" {
+	if path := config.GetString("netns.run_path"); path != "" {
 		nsProbe.Watch(path)
 	}
 

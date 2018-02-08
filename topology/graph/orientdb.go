@@ -398,9 +398,9 @@ func NewOrientDBBackend(addr string, database string, username string, password 
 
 // NewOrientDBBackendFromConfig creates a new OrientDB database client based on configuration
 func NewOrientDBBackendFromConfig() (*OrientDBBackend, error) {
-	addr := config.GetConfig().GetString("storage.orientdb.addr")
-	database := config.GetConfig().GetString("storage.orientdb.database")
-	username := config.GetConfig().GetString("storage.orientdb.username")
-	password := config.GetConfig().GetString("storage.orientdb.password")
+	addr := config.GetString("storage.orientdb.addr")
+	database := config.GetString("storage.orientdb.database")
+	username := config.GetString("storage.orientdb.username")
+	password := config.GetString("storage.orientdb.password")
 	return NewOrientDBBackend(addr, database, username, password)
 }

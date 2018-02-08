@@ -38,13 +38,13 @@ func setTLSHeader(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTLSConfig(setupRootCA bool) *tls.Config {
-	certPEM := config.GetConfig().GetString("agent.X509_cert")
-	keyPEM := config.GetConfig().GetString("agent.X509_key")
+	certPEM := config.GetString("agent.X509_cert")
+	keyPEM := config.GetString("agent.X509_key")
 	var tlsConfig *tls.Config = nil
 	if certPEM != "" && keyPEM != "" {
 		tlsConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
 		if setupRootCA {
-			analyzerCertPEM := config.GetConfig().GetString("analyzer.X509_cert")
+			analyzerCertPEM := config.GetString("analyzer.X509_cert")
 			tlsConfig.RootCAs = common.SetupTLSLoadCertificate(analyzerCertPEM)
 		}
 		checkTLSConfig(tlsConfig)
@@ -53,7 +53,7 @@ func getTLSConfig(setupRootCA bool) *tls.Config {
 }
 
 func checkTLSConfig(tlsConfig *tls.Config) {
-	tlsConfig.InsecureSkipVerify = config.GetConfig().GetBool("agent.X509_insecure")
+	tlsConfig.InsecureSkipVerify = config.GetBool("agent.X509_insecure")
 	if tlsConfig.InsecureSkipVerify == true {
 		logging.GetLogger().Warning("======> You running the agent in Insecure, the certificate can't be verified, generally use for test purpose, Please make sure it what's you want <======\n PRODUCTION must not run in Insecure\n")
 	}

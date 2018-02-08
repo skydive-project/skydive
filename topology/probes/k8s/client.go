@@ -40,7 +40,7 @@ import (
 var clientset *kubernetes.Clientset = nil
 
 func newClientset() (*kubernetes.Clientset, error) {
-	kubeconfig := config.GetConfig().GetString("k8s.config_file")
+	kubeconfig := config.GetString("k8s.config_file")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()

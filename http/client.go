@@ -77,7 +77,7 @@ func NewRestClient(url *url.URL, authOptions *AuthenticationOpts) *RestClient {
 }
 
 func (c *RestClient) debug() bool {
-	return config.GetConfig().GetBool("http.rest.debug")
+	return config.GetBool("http.rest.debug")
 }
 
 func (c *RestClient) Request(method, path string, body io.Reader, header http.Header) (*http.Response, error) {

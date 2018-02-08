@@ -40,9 +40,9 @@ var ClientCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		cmd.Root().PersistentPreRun(cmd.Root(), args)
 		if analyzerAddr != "" {
-			config.GetConfig().Set("analyzers", analyzerAddr)
+			config.Set("analyzers", analyzerAddr)
 		} else {
-			config.GetConfig().SetDefault("analyzers", "localhost:8082")
+			config.SetDefault("analyzers", "localhost:8082")
 		}
 	},
 }

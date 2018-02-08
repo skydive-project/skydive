@@ -285,9 +285,9 @@ func (mapper *OpenContrailProbe) Stop() {
 
 // NewOpenContrailProbeFromConfig creates a new OpenContrail probe based on configuration
 func NewOpenContrailProbeFromConfig(g *graph.Graph, r *graph.Node) (*OpenContrailProbe, error) {
-	host := config.GetConfig().GetString("opencontrail.host")
-	port := config.GetConfig().GetInt("opencontrail.port")
-	mplsUDPPort := config.GetConfig().GetInt("opencontrail.mpls_udp_port")
+	host := config.GetString("opencontrail.host")
+	port := config.GetInt("opencontrail.port")
+	mplsUDPPort := config.GetInt("opencontrail.mpls_udp_port")
 	if host == "" {
 		host = "localhost"
 	}

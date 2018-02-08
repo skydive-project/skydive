@@ -160,7 +160,7 @@ func NewFabricProbe(g *graph.Graph) *FabricProbe {
 	fb.Graph.Lock()
 	defer fb.Graph.Unlock()
 
-	list := config.GetConfig().GetStringSlice("analyzer.topology.fabric")
+	list := config.GetStringSlice("analyzer.topology.fabric")
 	for _, link := range list {
 		l2OnlyLink := false
 		pc := strings.Split(link, "-->")

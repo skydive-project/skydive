@@ -132,14 +132,14 @@ func NewEmbeddedEtcd(sa common.ServiceAddress, dataDir string, maxWalFiles, maxS
 
 // NewEmbeddedEtcdFromConfig creates a new embedded ETCD server from configuration
 func NewEmbeddedEtcdFromConfig() (*EmbeddedEtcd, error) {
-	dataDir := config.GetConfig().GetString("etcd.data_dir")
-	listen := config.GetConfig().GetString("etcd.listen")
+	dataDir := config.GetString("etcd.data_dir")
+	listen := config.GetString("etcd.listen")
 	sa, err := common.ServiceAddressFromString(listen)
 	if err != nil {
 		return nil, err
 	}
-	maxWalFiles := uint(config.GetConfig().GetInt("etcd.max_wal_files"))
-	maxSnapFiles := uint(config.GetConfig().GetInt("etcd.max_snap_files"))
+	maxWalFiles := uint(config.GetInt("etcd.max_wal_files"))
+	maxSnapFiles := uint(config.GetInt("etcd.max_snap_files"))
 	return NewEmbeddedEtcd(sa, dataDir, maxWalFiles, maxSnapFiles)
 }
 

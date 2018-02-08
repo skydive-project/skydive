@@ -42,7 +42,7 @@ var AgentCmd = &cobra.Command{
 	Long:         "Skydive agent",
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.GetConfig().Set("logging.id", "agent")
+		config.Set("logging.id", "agent")
 		logging.GetLogger().Noticef("Skydive Agent %s starting...", version.Version)
 
 		agent, err := agent.NewAgent()
@@ -71,8 +71,8 @@ func init() {
 	}
 
 	AgentCmd.Flags().String("host-id", host, "ID used to reference the agent, defaults to hostname")
-	config.GetConfig().BindPFlag("host_id", AgentCmd.Flags().Lookup("host-id"))
+	config.BindPFlag("host_id", AgentCmd.Flags().Lookup("host-id"))
 
 	AgentCmd.Flags().String("listen", "127.0.0.1:8081", "address and port for the agent API")
-	config.GetConfig().BindPFlag("agent.listen", AgentCmd.Flags().Lookup("listen"))
+	config.BindPFlag("agent.listen", AgentCmd.Flags().Lookup("listen"))
 }

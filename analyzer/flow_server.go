@@ -215,15 +215,15 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g, cache))
 	}
 
-	bulk := config.GetConfig().GetInt("analyzer.storage.bulk_insert")
-	bulkDeadLine := config.GetConfig().GetInt("analyzer.storage.bulk_insert_deadline")
+	bulk := config.GetInt("analyzer.storage.bulk_insert")
+	bulkDeadLine := config.GetInt("analyzer.storage.bulk_insert_deadline")
 	if bulkDeadLine < 1 {
 		return nil, fmt.Errorf("bulk_insert_deadline has to be >= 1")
 	}
 
 	var err error
 	var conn FlowServerConn
-	protocol := strings.ToLower(config.GetConfig().GetString("flow.protocol"))
+	protocol := strings.ToLower(config.GetString("flow.protocol"))
 	switch protocol {
 	case "udp":
 		conn, err = NewFlowServerUDPConn(s.Addr, s.Port)

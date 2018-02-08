@@ -817,7 +817,7 @@ Ready:
 	}
 	u.initialize()
 
-	seconds := config.GetConfig().GetInt("agent.topology.netlink.metrics_update")
+	seconds := config.GetInt("agent.topology.netlink.metrics_update")
 	ticker := time.NewTicker(time.Duration(seconds) * time.Second)
 
 	last := time.Now().UTC()
