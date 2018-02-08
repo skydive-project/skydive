@@ -208,11 +208,12 @@ func TestUpdate(t *testing.T) {
 
 	flow1, _ := table.getOrCreateFlow("flow1")
 
+	now := common.UnixMillis(time.Now())
 	flow1.Metric.ABBytes = 1
-	flow1.Last = table.tableClock
+	flow1.Last = now
 
 	// check that LastUpdateMetric is filled after a expire before an update
-	table.expire(table.tableClock + 1)
+	table.expire(now + 1)
 
 	if flow1.LastUpdateMetric.ABBytes != 1 {
 		t.Errorf("Flow should have been updated by expire : %+v", flow1)
@@ -221,7 +222,7 @@ func TestUpdate(t *testing.T) {
 	flow2, _ := table.getOrCreateFlow("flow2")
 
 	// clock is used to simulate real clock
-	clock := table.tableClock
+	clock := common.UnixMillis(time.Now())
 
 	flow2.Metric.ABBytes = 2
 	flow2.Last = clock + 1

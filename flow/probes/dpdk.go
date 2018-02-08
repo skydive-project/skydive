@@ -94,7 +94,7 @@ func packetHandler(packets []*packet.Packet, next []bool, nbPackets uint, contex
 
 	for i := uint(0); i < nbPackets; i++ {
 		packet := gopacket.NewPacket(packets[i].GetRawPacketBytes(), layers.LayerTypeEthernet, gopacket.Default)
-		if ps := flow.PacketSeqFromGoPacket(&packet, 0, -1, nil); len(ps.Packets) > 0 {
+		if ps := flow.PacketSeqFromGoPacket(&packet, 0, nil); len(ps.Packets) > 0 {
 			ctx.packetSeqChan <- ps
 		}
 		next[i] = false

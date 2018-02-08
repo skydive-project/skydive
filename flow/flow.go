@@ -31,6 +31,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
@@ -71,8 +72,7 @@ type Packet struct {
 
 // PacketSequence represents a suite of parent/child Packet
 type PacketSequence struct {
-	Packets   []Packet
-	Timestamp int64
+	Packets []Packet
 }
 
 // RawPackets embeds flow RawPacket array with the associated link type
@@ -382,7 +382,8 @@ func (f *Flow) Init(now int64, nodeTID string, uuids FlowUUIDs) {
 }
 
 // InitFromGoPacket initializes the flow based on packet data, flow key and ids
-func (f *Flow) InitFromGoPacket(key string, now int64, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
+func (f *Flow) InitFromGoPacket(key string, packet *gopacket.Packet, length int64, nodeTID string, uuids FlowUUIDs, opts FlowOpts) {
+	now := common.UnixMillis((*packet).Metadata().CaptureInfo.Timestamp)
 	f.Init(now, nodeTID, uuids)
 
 	f.newLinkLayer(packet, length)
@@ -401,7 +402,8 @@ func (f *Flow) InitFromGoPacket(key string, now int64, packet *gopacket.Packet, 
 }
 
 // Update a flow metrics and latency
-func (f *Flow) Update(now int64, packet *gopacket.Packet, length int64) {
+func (f *Flow) Update(packet *gopacket.Packet, length int64) {
+	now := common.UnixMillis((*packet).Metadata().CaptureInfo.Timestamp)
 	f.Last = now
 	f.Metric.Last = now
 
@@ -689,8 +691,8 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error 
 
 // PacketSeqFromGoPacket split original packet into multiple packets in
 // case of encapsulation like GRE, VXLAN, etc.
-func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, bpf *BPF) *PacketSequence {
-	ps := &PacketSequence{Timestamp: t}
+func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, bpf *BPF) *PacketSequence {
+	ps := &PacketSequence{}
 	if (*packet).Layer(gopacket.LayerTypeDecodeFailure) != nil {
 		logging.GetLogger().Errorf("Decoding failure on layerpath %s", LayerPathFromGoPacket(packet))
 		logging.GetLogger().Debug((*packet).Dump())
@@ -765,7 +767,7 @@ func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, t int64, 
 
 // PacketSeqFromSFlowSample returns an array of Packets as a sample
 // contains mutlple records which generate a Packets each.
-func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BPF) []*PacketSequence {
+func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF) []*PacketSequence {
 	var pss []*PacketSequence
 
 	for _, rec := range sample.Records {
@@ -777,9 +779,12 @@ func PacketSeqFromSFlowSample(sample *layers.SFlowFlowSample, t int64, bpf *BPF)
 		}
 
 		record := rec.(layers.SFlowRawPacketFlowRecord)
-
+		m := record.Header.Metadata()
+		if m.CaptureInfo.Timestamp.IsZero() {
+			m.CaptureInfo.Timestamp = time.Now()
+		}
 		// each record can generate multiple Packet in case of encapsulation
-		if ps := PacketSeqFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), t, bpf); len(ps.Packets) > 0 {
+		if ps := PacketSeqFromGoPacket(&record.Header, int64(record.FrameLength-record.PayloadRemoved), bpf); len(ps.Packets) > 0 {
 			pss = append(pss, ps)
 		}
 	}

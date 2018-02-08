@@ -73,10 +73,9 @@ func (p *PcapTableFeeder) Stop() {
 
 func (p *PcapTableFeeder) feedFlowTable() {
 	var (
-		lastTS    time.Time
-		lastSend  time.Time
-		pkt       = 1
-		timestamp int64
+		lastTS   time.Time
+		lastSend time.Time
+		pkt      = 1
 	)
 
 	defer p.Done()
@@ -101,8 +100,8 @@ func (p *PcapTableFeeder) feedFlowTable() {
 		}
 
 		packet := gopacket.NewPacket(data, p.handleRead.LinkType(), gopacket.NoCopy)
+		packet.Metadata().CaptureInfo = ci
 		if p.replay {
-			timestamp = -1
 			intervalInCapture := ci.Timestamp.Sub(lastTS)
 			elapsedTime := time.Since(lastSend)
 
@@ -112,11 +111,11 @@ func (p *PcapTableFeeder) feedFlowTable() {
 
 			lastSend = time.Now()
 			lastTS = ci.Timestamp
-		} else {
-			timestamp = common.UnixMillis(ci.Timestamp)
+
+			packet.Metadata().CaptureInfo.Timestamp = lastSend
 		}
 
-		ps := PacketSeqFromGoPacket(&packet, 0, timestamp, bpf)
+		ps := PacketSeqFromGoPacket(&packet, 0, bpf)
 		if ps == nil {
 			logging.GetLogger().Warningf("Failed to parse packet")
 		} else if len(ps.Packets) > 0 {

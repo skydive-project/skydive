@@ -265,7 +265,7 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 			if strings.Contains(LayerPathFromGoPacket(&p), "DecodeFailure") {
 				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
 			}
-			ps := PacketSeqFromGoPacket(&p, 0, -1, bpf)
+			ps := PacketSeqFromGoPacket(&p, 0, bpf)
 			if ps == nil {
 				t.Fatal("Failed to get PacketSeq: ", err)
 			}
