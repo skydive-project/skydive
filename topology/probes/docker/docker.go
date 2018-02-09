@@ -25,6 +25,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -35,7 +36,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/vishvananda/netns"
-	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"

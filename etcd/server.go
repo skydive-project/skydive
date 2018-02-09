@@ -23,6 +23,7 @@
 package etcd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -39,8 +40,6 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-
-	"golang.org/x/net/context"
 )
 
 const (

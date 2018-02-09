@@ -23,11 +23,10 @@
 package etcd
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
-
-	"golang.org/x/net/context"
 
 	etcd "github.com/coreos/etcd/client"
 
