@@ -455,12 +455,6 @@
 			"versionExact": "v3.0.9"
 		},
 		{
-			"checksumSHA1": "BJXHEdzHxRPmVnt6GFaPpwgns2c=",
-			"comment": "v2.0.0-38-g003851b",
-			"path": "github.com/coreos/go-etcd/etcd",
-			"revision": "003851be7bb0694fe3cc457a49529a19388ee7cf"
-		},
-		{
 			"checksumSHA1": "+pTlGYxKw3bD00BkE0RElG0kGvI=",
 			"path": "github.com/coreos/go-semver",
 			"revision": "8ab6407b697782a06568d4b7f1db25550ec2e4c6",
@@ -1659,31 +1653,36 @@
 			"checksumSHA1": "Jcarmr4WdTvVAWBssHA33O6NaeI=",
 			"comment": "v0.0.2-17-g749e360",
 			"path": "github.com/xordataexchange/crypt/backend",
-			"revision": "749e360c8f236773f28fc6d3ddfce4a470795227"
+			"revision": "b2862e3d0a775f18c7cfe02273500ae307b61218",
+			"revisionTime": "2017-06-26T21:55:01Z"
 		},
 		{
 			"checksumSHA1": "XwrymfY5Vix5WXwiG+PBmwJiFKo=",
 			"comment": "v0.0.2-17-g749e360",
 			"path": "github.com/xordataexchange/crypt/backend/consul",
-			"revision": "749e360c8f236773f28fc6d3ddfce4a470795227"
+			"revision": "b2862e3d0a775f18c7cfe02273500ae307b61218",
+			"revisionTime": "2017-06-26T21:55:01Z"
 		},
 		{
-			"checksumSHA1": "BW36av1Zwdz3JxqHFkIiOa3XJkE=",
+			"checksumSHA1": "6Noa/UysdDphO2N3EcfpxOVAvks=",
 			"comment": "v0.0.2-17-g749e360",
 			"path": "github.com/xordataexchange/crypt/backend/etcd",
-			"revision": "749e360c8f236773f28fc6d3ddfce4a470795227"
+			"revision": "b2862e3d0a775f18c7cfe02273500ae307b61218",
+			"revisionTime": "2017-06-26T21:55:01Z"
 		},
 		{
 			"checksumSHA1": "+LK6jdiDR3a/HF8SoN5Mf+XftU0=",
 			"comment": "v0.0.2-17-g749e360",
 			"path": "github.com/xordataexchange/crypt/config",
-			"revision": "749e360c8f236773f28fc6d3ddfce4a470795227"
+			"revision": "b2862e3d0a775f18c7cfe02273500ae307b61218",
+			"revisionTime": "2017-06-26T21:55:01Z"
 		},
 		{
 			"checksumSHA1": "lf1th5ICyuV7ah5/CCv1FdGI3Fs=",
 			"comment": "v0.0.2-17-g749e360",
 			"path": "github.com/xordataexchange/crypt/encoding/secconf",
-			"revision": "749e360c8f236773f28fc6d3ddfce4a470795227"
+			"revision": "b2862e3d0a775f18c7cfe02273500ae307b61218",
+			"revisionTime": "2017-06-26T21:55:01Z"
 		},
 		{
 			"checksumSHA1": "HedK9m8E8iyib4bIBtIX7xprOgo=",
