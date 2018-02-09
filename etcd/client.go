@@ -34,14 +34,14 @@ import (
 	"github.com/skydive-project/skydive/config"
 )
 
-// EtcdClient describes a ETCD configuration client
-type EtcdClient struct {
-	Client  *etcd.Client
+// Client describes a ETCD configuration client
+type Client struct {
+	client  *etcd.Client
 	KeysAPI etcd.KeysAPI
 }
 
 // GetInt64 returns an int64 value from the configuration key
-func (client *EtcdClient) GetInt64(key string) (int64, error) {
+func (client *Client) GetInt64(key string) (int64, error) {
 	resp, err := client.KeysAPI.Get(context.Background(), key, nil)
 	if err != nil {
 		return 0, err
@@ -50,13 +50,13 @@ func (client *EtcdClient) GetInt64(key string) (int64, error) {
 }
 
 // SetInt64 set an int64 value to the configuration key
-func (client *EtcdClient) SetInt64(key string, value int64) error {
+func (client *Client) SetInt64(key string, value int64) error {
 	_, err := client.KeysAPI.Set(context.Background(), key, strconv.FormatInt(value, 10), nil)
 	return err
 }
 
 // Stop the client
-func (client *EtcdClient) Stop() {
+func (client *Client) Stop() {
 	if tr, ok := etcd.DefaultTransport.(interface {
 		CloseIdleConnections()
 	}); ok {
@@ -64,29 +64,29 @@ func (client *EtcdClient) Stop() {
 	}
 }
 
-// NewEtcdClient creates a new ETCD client connection to ETCD servers
-func NewEtcdClient(etcdServers []string, clientTimeout time.Duration) (*EtcdClient, error) {
+// NewClient creates a new ETCD client connection to ETCD servers
+func NewClient(etcdServers []string, clientTimeout time.Duration) (*Client, error) {
 	cfg := etcd.Config{
 		Endpoints:               etcdServers,
 		Transport:               etcd.DefaultTransport,
 		HeaderTimeoutPerRequest: clientTimeout,
 	}
 
-	etcdClient, err := etcd.New(cfg)
+	client, err := etcd.New(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to etcd: %s", err)
 	}
 
-	kapi := etcd.NewKeysAPI(etcdClient)
+	kapi := etcd.NewKeysAPI(client)
 
-	return &EtcdClient{
-		Client:  &etcdClient,
+	return &Client{
+		client:  &client,
 		KeysAPI: kapi,
 	}, nil
 }
 
-// NewEtcdClientFromConfig creates a new ETCD client from configuration
-func NewEtcdClientFromConfig() (*EtcdClient, error) {
+// NewClientFromConfig creates a new ETCD client from configuration
+func NewClientFromConfig() (*Client, error) {
 	etcdServers := config.GetEtcdServerAddrs()
 	etcdTimeout := config.GetInt("etcd.client_timeout")
 	switch etcdTimeout {
@@ -96,5 +96,5 @@ func NewEtcdClientFromConfig() (*EtcdClient, error) {
 		etcdTimeout = 0 // No timeout
 	}
 
-	return NewEtcdClient(etcdServers, time.Duration(etcdTimeout)*time.Second)
+	return NewClient(etcdServers, time.Duration(etcdTimeout)*time.Second)
 }

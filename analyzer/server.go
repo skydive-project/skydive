@@ -65,7 +65,7 @@ type Server struct {
 	probeBundle         *probe.ProbeBundle
 	storage             storage.Storage
 	embeddedEtcd        *etcd.EmbeddedEtcd
-	etcdClient          *etcd.EtcdClient
+	etcdClient          *etcd.Client
 	wgServers           sync.WaitGroup
 }
 
@@ -210,7 +210,7 @@ func NewServerFromConfig() (*Server, error) {
 		}
 	}
 
-	etcdClient, err := etcd.NewEtcdClientFromConfig()
+	etcdClient, err := etcd.NewClientFromConfig()
 	if err != nil {
 		return nil, err
 	}
