@@ -4,9 +4,4 @@ metadata:
   namespace: default
   name: skydive-test
 spec:
-  podSelector:
-    matchLabels:
-      app: skydive-test
-  ingress:
-  - from:
-    - namespaceSelector: {}
+  podSelector: {}

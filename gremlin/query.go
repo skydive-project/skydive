@@ -30,107 +30,92 @@ import (
 )
 
 // QueryString used to construct string representation of query
-type QueryString struct {
-	Query string `json:"omitempty"`
+type QueryString string
+
+// String converts value to string
+func (v QueryString) String() string {
+	return string(v)
 }
 
-// NewQueryString used to create an empty query string
-func NewQueryString() *QueryString {
-	return &QueryString{}
-}
-
-// String convert query to string
-func (g *QueryString) String() string {
-	return g.Query
-}
-
-// G greate the graph token
-func (g *QueryString) G() *QueryString {
-	return g.Append("G")
-}
+// G represents the base graph token
+const G = QueryString("G")
 
 // Append appends string value to query
-func (g *QueryString) Append(s string) *QueryString {
-	g.Query += s
-	return g
-}
-
-// Appends appends dot, then string value to query
-func (g *QueryString) DotAppend(s string) *QueryString {
-	if s != "" {
-		g.Append("." + s)
-	}
-	return g
+func (q QueryString) Append(s string) QueryString {
+	return QueryString(q.String() + s)
 }
 
 // Append a Context() operation to query
-func (g *QueryString) Context(t time.Time) *QueryString {
+func (q QueryString) Context(t time.Time) QueryString {
 	if !t.IsZero() {
-		g.DotAppend(fmt.Sprintf("Context(%d)", common.UnixMillis(t)))
+		return q.Append(fmt.Sprintf(".Context(%d)", common.UnixMillis(t)))
 	}
-	return g
+	return q
 }
 
 // V append a V() operation to query
-func (g *QueryString) V() *QueryString {
-	return g.DotAppend("V()")
+func (q QueryString) V() QueryString {
+	return q.Append(".V()")
 }
 
 // Has append a Has() operation to query
-func (g *QueryString) Has(list ...*ValueString) *QueryString {
-	g.DotAppend("Has(")
+func (q QueryString) Has(list ...ValueString) QueryString {
+	q = q.Append(".Has(")
 	first := true
 	for _, v := range list {
 		if !first {
-			g.Append(", ")
+			q = q.Append(", ")
 		}
 		first = false
-		g.Append(v.String())
+		q = q.Append(v.String())
 	}
-	g.Append(")")
-	return g
-}
-
-// HasNode append a Has() for getting graph.Node elements
-func (g *QueryString) HasNode(mgr, typ, name *ValueString) *QueryString {
-	return g.Has(NewValueString("Manager").Quote(), mgr, NewValueString("Type").Quote(), typ, NewValueString("Name").Quote(), name)
+	return q.Append(")")
 }
 
 // ValueString a value used within query constructs
-type ValueString struct {
-	Value string `json:"omitempty"`
-}
-
-// NewValueString create a value object
-func NewValueString(s string) *ValueString {
-	return &ValueString{Value: s}
-}
+type ValueString string
 
 // String converts value to string
-func (v *ValueString) String() string {
-	return v.Value
+func (v ValueString) String() string {
+	return string(v)
 }
 
 // Quote used to quote string values as needed by query
-func (v *ValueString) Quote() *ValueString {
-	v.Value = `'` + v.Value + `'`
-	return v
+func (v ValueString) Quote() ValueString {
+	return ValueString(fmt.Sprintf("'%s'", v.String()))
 }
 
 // Regex used for constructing a regexp expression string
-func (v *ValueString) Regex() *ValueString {
-	v.Value = "Regex(" + v.Quote().String() + ")"
-	return v
+func (v ValueString) Regex() ValueString {
+	return ValueString(fmt.Sprintf("Regex(%s)", v.Quote()))
 }
 
 // StartsWith construct a regexp representing all that start with string
-func (v *ValueString) StartsWith() *ValueString {
-	v.Value += ".*"
-	return v.Regex()
+func (v ValueString) StartsWith() ValueString {
+	return ValueString(fmt.Sprintf("%s.*", v.String())).Regex()
 }
 
 // EndsWith construct a regexp representing all that end with string
-func (v *ValueString) EndsWith() *ValueString {
-	v.Value = ".*" + v.Value
-	return v.Regex()
+func (v ValueString) EndsWith() ValueString {
+	return ValueString(fmt.Sprintf(".*%s", v.String())).Regex()
+}
+
+// Quote used to quote string values as needed by query
+func Quote(s string) ValueString {
+	return ValueString(s).Quote()
+}
+
+// Regex used for constructing a regexp expression string
+func Regex(s string) ValueString {
+	return ValueString(s).Regex()
+}
+
+// StartsWith construct a regexp representing all that start with string
+func StartsWith(s string) ValueString {
+	return ValueString(s).StartsWith()
+}
+
+// EndsWith construct a regexp representing all that end with string
+func EndsWith(s string) ValueString {
+	return ValueString(s).EndsWith()
 }
