@@ -96,14 +96,14 @@ func init() {
 
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
-	cfg.SetDefault("etcd.listen", "0.0.0.0:12379")
+	cfg.SetDefault("etcd.name", host)
+	cfg.SetDefault("etcd.listen", "127.0.0.1:12379")
 
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
 	cfg.SetDefault("flow.protocol", "udp")
 
 	cfg.SetDefault("graph.backend", "memory")
-	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
 
 	cfg.SetDefault("http.rest.debug", false)
 	cfg.SetDefault("http.ws.ping_delay", 2)

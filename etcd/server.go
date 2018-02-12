@@ -26,20 +26,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
-	"net/http"
 	"net/url"
-	"os"
 	"time"
 
-	etcd "github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api/v2http"
+	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/logging"
 )
 
 const (
@@ -49,121 +48,125 @@ const (
 
 // EmbeddedEtcd provides a single node etcd server.
 type EmbeddedEtcd struct {
-	Port     int
-	listener net.Listener
-	server   *etcdserver.EtcdServer
-	dataDir  string
+	Port    int
+	config  *embed.Config
+	etcd    *embed.Etcd
+	dataDir string
 }
 
 // NewEmbeddedEtcd creates a new embedded ETCD server
-func NewEmbeddedEtcd(sa common.ServiceAddress, dataDir string, maxWalFiles, maxSnapFiles uint) (*EmbeddedEtcd, error) {
-	var err error
-	se := &EmbeddedEtcd{Port: sa.Port}
-	se.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", sa.Addr, sa.Port))
+func NewEmbeddedEtcd(name string, listen string, dataDir string, maxWalFiles, maxSnapFiles uint, debug bool) (*EmbeddedEtcd, error) {
+	sa, err := common.ServiceAddressFromString(listen)
 	if err != nil {
 		return nil, err
 	}
 
-	se.Port = se.listener.Addr().(*net.TCPAddr).Port
-	clientURLs, err := interfaceURLs(se.Port)
+	cfg := embed.NewConfig()
+	cfg.Name = name
+	cfg.Debug = debug
+	cfg.Dir = dataDir
+	cfg.ClusterState = embed.ClusterStateFlagNew
+	cfg.MaxWalFiles = maxWalFiles
+	cfg.MaxSnapFiles = maxSnapFiles
+
+	var endpoint string
+	var clientURLs, peerURLs types.URLs
+	if sa.Addr == "0.0.0.0" || sa.Addr == "::" {
+		if clientURLs, err = interfaceURLs(sa.Port); err != nil {
+			return nil, err
+		}
+		endpoint = clientURLs[0].String()
+
+		if peerURLs, err = interfaceURLs(sa.Port + 1); err != nil {
+			return nil, err
+		}
+	} else {
+		endpoint = fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port)
+		clientURLs, _ = types.NewURLs([]string{endpoint})
+		peerURLs, _ = types.NewURLs([]string{fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port+1)})
+	}
+
+	cfg.LCUrls = clientURLs
+	cfg.ACUrls = clientURLs
+	cfg.APUrls = peerURLs
+	cfg.LPUrls = peerURLs
+
+	var initialPeers types.URLsMap
+	peers := config.GetStringMapString("etcd.peers")
+	if len(peers) != 0 {
+		if initialPeers, err = types.NewURLsMapFromStringMap(peers, ","); err != nil {
+			return nil, err
+		}
+	} else {
+		if initialPeers, err = types.NewURLsMap(fmt.Sprintf("%s=%s", name, peerURLs[0].String())); err != nil {
+			return nil, err
+		}
+	}
+
+	cfg.InitialCluster = initialPeers.String()
+
+	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
-		se.Stop()
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port)
-	peerURLs, err := types.NewURLs([]string{endpoint})
-	if err != nil {
-		se.Stop()
-		return nil, err
+	osutil.RegisterInterruptHandler(etcd.Close)
+
+	select {
+	case <-etcd.Server.ReadyNotify():
+		log.Printf("Server is ready!")
+	case <-time.After(60 * time.Second):
+		etcd.Server.Stop() // trigger a shutdown
+		log.Printf("Server took too long to start!")
 	}
-
-	cfg := &etcdserver.ServerConfig{
-		Name:       memberName,
-		ClientURLs: clientURLs,
-		PeerURLs:   peerURLs,
-		DataDir:    dataDir,
-		InitialPeerURLsMap: types.URLsMap{
-			memberName: peerURLs,
-		},
-		NewCluster:    true,
-		TickMs:        100,
-		ElectionTicks: 10,
-		MaxWALFiles:   uint(maxWalFiles),
-		MaxSnapFiles:  uint(maxSnapFiles),
-	}
-
-	se.server, err = etcdserver.NewServer(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	se.server.Start()
-	osutil.RegisterInterruptHandler(se.server.Stop)
-
-	go http.Serve(se.listener,
-		v2http.NewClientHandler(se.server, cfg.ReqTimeout()))
 
 	// Wait for etcd server to be ready
 	t := time.Now().Add(startTimeout)
-	etcdClient, err := etcd.New(etcd.Config{
+
+	clientConfig := client.Config{
 		Endpoints:               []string{endpoint},
-		Transport:               etcd.DefaultTransport,
+		Transport:               client.DefaultTransport,
 		HeaderTimeoutPerRequest: time.Second,
-	})
+	}
+	etcdClient, err := client.New(clientConfig)
 	if err != nil {
 		return nil, err
 	}
-	kapi := etcd.NewKeysAPI(etcdClient)
+	kapi := client.NewKeysAPI(etcdClient)
 
 	for {
 		if time.Now().After(t) {
 			return nil, errors.New("Failed to start etcd")
 		}
 		if _, err := kapi.Set(context.Background(), "/skydive", "", nil); err == nil {
+			logging.GetLogger().Debugf("Successfully started etcd")
 			break
 		}
 		time.Sleep(time.Second)
 	}
 
-	return se, nil
+	return &EmbeddedEtcd{
+		Port:   sa.Port,
+		config: cfg,
+		etcd:   etcd,
+	}, nil
 }
 
 // NewEmbeddedEtcdFromConfig creates a new embedded ETCD server from configuration
 func NewEmbeddedEtcdFromConfig() (*EmbeddedEtcd, error) {
+	name := config.GetString("etcd.name")
 	dataDir := config.GetString("etcd.data_dir")
 	listen := config.GetString("etcd.listen")
-	sa, err := common.ServiceAddressFromString(listen)
-	if err != nil {
-		return nil, err
-	}
 	maxWalFiles := uint(config.GetInt("etcd.max_wal_files"))
 	maxSnapFiles := uint(config.GetInt("etcd.max_snap_files"))
-	return NewEmbeddedEtcd(sa, dataDir, maxWalFiles, maxSnapFiles)
+	debug := config.GetBool("etcd.debug")
+	return NewEmbeddedEtcd(name, listen, dataDir, maxWalFiles, maxSnapFiles, debug)
 }
 
 // Stop the embedded server
 func (se *EmbeddedEtcd) Stop() error {
-	var err error
-	firstErr := func(e error) {
-		if e != nil && err == nil {
-			err = e
-		}
-	}
-
-	if se.listener != nil {
-		firstErr(se.listener.Close())
-	}
-
-	if se.server != nil {
-		se.server.Stop()
-	}
-
-	if se.dataDir != "" {
-		firstErr(os.RemoveAll(se.dataDir))
-	}
-
-	return err
+	se.etcd.Close()
+	return nil
 }
 
 // Generate all publishable URLs for a given HTTP port.
@@ -176,7 +179,7 @@ func interfaceURLs(port int) (types.URLs, error) {
 	var allURLs types.URLs
 	for _, a := range allAddrs {
 		ip, ok := a.(*net.IPNet)
-		if !ok || !ip.IP.IsGlobalUnicast() {
+		if !ok || (!ip.IP.IsGlobalUnicast() && !ip.IP.IsLoopback()) {
 			continue
 		}
 
