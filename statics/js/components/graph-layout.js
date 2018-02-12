@@ -1,5 +1,3 @@
-var unidirectional = '->';
-
 var TopologyGraphLayout = function(vm, selector) {
   var self = this;
 
@@ -65,8 +63,6 @@ var TopologyGraphLayout = function(vm, selector) {
     .then(function() {
       self.bandwidth.intervalID = setInterval(self.updateBandwidth.bind(self), self.bandwidth.updatePeriod);
     });
-
-  setInterval(self.updateNetworkPolicy.bind(self), self.networkPolicy.updatePeriod);
 };
 
 TopologyGraphLayout.prototype = {
@@ -1168,76 +1164,6 @@ TopologyGraphLayout.prototype = {
       return Math.floor(8 * totalByte / (1024 * deltaTime)); // to kbit per sec
     }
     return 0;
-  },
-
-  updateNetworkPolicy: function() {
-    var i, link, links = this.links;
-    for (i in links) {
-      link = links[i];
-      if (link.metadata.LinkType === "policy") {
-        var netPolicy = link.metadata.NetworkPolicy;
-        var direction = link.metadata.Direction;
-        var fromTo = link.metadata.FromTo;
-        var From = link.metadata.From;
-        var To = link.metadata.To;
-        var textToPrint;
-
-        if (link.target.x < link.source.x) {
-          if (direction === unidirectional) {
-            textToPrint = To + ' <--- ' + From;
-          } else {
-            textToPrint = To + ' <---> ' + From;
-          }
-        } else {
-          if (direction === unidirectional) {
-            textToPrint = From + ' ---> ' + To;
-          } else {
-            textToPrint = From + ' <---> ' + To;
-          }
-        }
-
-        if (netPolicy) {
-          if (link.target.x < link.source.x) {
-            textToPrint = '(' + netPolicy + ') ' + textToPrint;
-          } else {
-            textToPrint = textToPrint + ' (' + netPolicy + ')';
-          }
-        }
-
-        this.linkLabels[link.id] = {
-          id: "link-label-" + link.id,
-          link: link,
-          text: textToPrint
-        };
-      }
-    }
-
-    this.linkLabel = this.linkLabel.data(Object.values(this.linkLabels), function(d) { return d.id; });
-    var exit = this.linkLabel.exit();
-
-    exit.each(function(d) {
-      this.g.select("#link-" + d.link.id)
-      .classed ("link-label-net-policy", false);
-    })
-    .remove();
-
-    var linkLabelEnter = this.linkLabel.enter()
-      .append('text')
-      .attr("id", function(d) { return "link-label-" + d.id; })
-      .attr("class", "link-label");
-
-    linkLabelEnter.append('textPath')
-      .attr("startOffset", "50%")
-      .attr("xlink:href", function(d) { return "#link-" + d.link.id; } );
-
-    this.linkLabel = linkLabelEnter.merge(this.linkLabel);
-
-    this.linkLabel.select('textPath')
-      .classed ("link-label-net-policy", true)
-      .text(function(d) { return d.text; });
-
-    // force a tick
-    this.tick();
   },
 
   styleReturn: function(d, values) {
