@@ -1390,6 +1390,8 @@ func TestPcapInject(t *testing.T) {
 				return err
 			}
 
+			t.Logf("XXXXXXXXXXXXXXXXXXXx: %+v", resp)
+
 			if resp.StatusCode != 200 {
 				return fmt.Errorf("Should get 200 status code, got %d", resp.StatusCode)
 			}
@@ -1399,6 +1401,7 @@ func TestPcapInject(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			flows, _ := c.gh.GetFlows(`G.Context(1454659514).Flows().Has('Application', 'DNS')`)
+			t.Logf("CCCCCCCCCCCCCCCCCCCCCCCC: %+v\n", flows)
 			if len(flows) != 2 {
 				return fmt.Errorf("Wrong number of DNS flows. Expected 2, got %d", len(flows))
 			}
