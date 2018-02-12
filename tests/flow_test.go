@@ -1460,23 +1460,30 @@ func TestFlowVLANSegmentation(t *testing.T) {
 			}
 
 			gh := c.gh
-			flowsInnerTunnel, err := gh.GetFlows(prefix + `.V().Has('Name', 'vlan-vm1').Out().Has('Name', 'vlan').Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')`)
+			outFlows, err := gh.GetFlows(prefix + `.V().Has('Name', 'vlan-vm2-eth0').Flows().Has('LayersPath', 'Ethernet/Dot1Q/IPv4/ICMPv4')`)
 			if err != nil {
 				return err
 			}
 
-			if len(flowsInnerTunnel) != 1 {
-				return fmt.Errorf("We should have only one ICMPv4 flow in the tunnel %v", helper.FlowsToString(flowsInnerTunnel))
+			if len(outFlows) != 1 {
+				return fmt.Errorf("We should have only one ICMPv4 flow %v", helper.FlowsToString(outFlows))
 			}
 
-			l3TrackingID := flowsInnerTunnel[0].L3TrackingID
-			flowsBridge, err := gh.GetFlows(prefix + fmt.Sprintf(`.V().Has('Name', 'vlan-vm2-eth0').Flows().Has("L3TrackingID", "%s")`, l3TrackingID))
+			if outFlows[0].GetLink().GetID() != 8 {
+				return fmt.Errorf("Should have a Vlan ID equal to 8 got: %v", helper.FlowsToString(outFlows))
+			}
+
+			inFlows, err := gh.GetFlows(prefix + `.V().Has('Name', 'vlan').Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')`)
 			if err != nil {
 				return err
 			}
 
-			if len(flowsBridge) == 0 {
-				return fmt.Errorf("L3TrackingID not found in VLANs: %v == %v", flowsInnerTunnel, flowsBridge)
+			if len(inFlows) != 1 {
+				return fmt.Errorf("We should have only one ICMPv4 flow %v", helper.FlowsToString(inFlows))
+			}
+
+			if inFlows[0].L3TrackingID != outFlows[0].L3TrackingID {
+				return fmt.Errorf("Both flows should have the same L3TrackingID: :%s vs %v", helper.FlowsToString(outFlows), helper.FlowsToString(inFlows))
 			}
 
 			return nil
