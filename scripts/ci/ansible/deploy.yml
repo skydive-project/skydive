@@ -89,6 +89,7 @@
        - llvm-devel
        - clang-devel
        - elfutils-libelf-devel
+       - kubernetes-client
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
