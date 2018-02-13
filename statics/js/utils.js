@@ -14,12 +14,15 @@ function debounce(func, wait, immediate) {
 	};
 }
 
-function bandwidthToString(kbps) {
-  if (kbps >= 1000000)
-    return (Math.floor(kbps / 1000000)).toString() + " Gbps";
-  if (kbps >= 1000)
-    return (Math.floor(kbps / 1000)).toString() + " Mbps";
-  return kbps.toString() + " Kbps";
+function bandwidthToString(bps) {
+  const KBPS = 1024, MBPS = 1024*1024, GBPS = 1024*1024*1024;
+  if (bps >= GBPS)
+    return (Math.floor(bps / GBPS)).toString() + " Gbps";
+  if (bps >= MBPS)
+    return (Math.floor(bps / MBPS)).toString() + " Mbps";
+  if (bps >= KBPS)
+    return (Math.floor(bps / KBPS)).toString() + " Kbps";
+  return bps.toString() + " bps";
 }
 
 function firstUppercase(string) {

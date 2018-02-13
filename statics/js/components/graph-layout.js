@@ -116,7 +116,7 @@ TopologyGraphLayout.prototype = {
     this.groups = [];
     this.collapseLevel = 0;
 
-    this.linkLabels = {};
+    this.linkLabelData = {};
 
     this.collapsed = this.defaultCollpsed || false;
     this.selectedNode = null;
@@ -1151,17 +1151,17 @@ TopologyGraphLayout.prototype = {
   },
 
   bandwidthFromMetrics: function(metrics) {
-    if (!metrics) return;
-
     var totalByte = metrics.RxBytes + metrics.TxBytes;
-    var deltaTime = metrics.Last - metrics.Start;
 
-    var now = new Date(), last = new Date(metrics.Last);
-    if ((now - last) > 2 * deltaTime) return 0;
+    var deltaMillis = metrics.Last - metrics.Start;
+    const fadeoutFactor = 2;
+    var elapsedMillis = (new Date() - new Date(metrics.Last));
+    if (elapsedMillis > fadeoutFactor * deltaMillis) {
+      return 0;
+    }
 
-    deltaTime = Math.floor(deltaTime / 1000); // ms to sec
-    if (deltaTime >= 1 && totalByte >= 1) {
-      return Math.floor(8 * totalByte / (1024 * deltaTime)); // to kbit per sec
+    if (deltaMillis > 0) {
+      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second 
     }
     return 0;
   },
@@ -1195,45 +1195,61 @@ TopologyGraphLayout.prototype = {
     return this.styleReturn(d, ["YellowGreen", "Yellow", "Tomato", ""]);
   },
 
-  updateBandwidth: function() {
+  updateLinkLabel: function() {
+    this.linkLabel = this.linkLabel.data(Object.values(this.linkLabelData), function(d) { return d.id; });
+  },
+
+  updateLinkLabelData: function() {
     var self = this;
-    var bandwidth = this.bandwidth, defaultInterfaceSpeed = 1048576;
 
-    var i, link, links = this.links;
-    for (i in links) {
-      link = links[i];
+    for (var i in this.links) {
+      var bandwidth = this.bandwidth;
+      var link = this.links[i];
 
-      if (link.metadata.RelationType != "layer2" || !link.target.metadata.LastUpdateMetric) continue;
-      if (!link.source.visible || !link.target.visible) continue;
+      if (!link.source.visible || !link.target.visible)
+        continue;
+      if (link.metadata.RelationType !== "layer2")
+        continue;
+      if (!link.target.metadata.LastUpdateMetric)
+        continue;
 
-      var speed = (this.bandwidth.bandwidthThreshold === 'relative') ?
-        link.target.metadata.Speed || defaultInterfaceSpeed : 1;
+      const defaultBandwidthBaseline = 1024 * 1024 * 1024; // 1 gbps
+      var bandwidthBaseline = (bandwidth.bandwidthThreshold === 'relative') ?
+        link.target.metadata.Speed || defaultBandwidthBaseline : 1;
+      var bandwidthAbsolute = this.bandwidthFromMetrics(link.target.metadata.LastUpdateMetric);
+      var bandwidthCheck = bandwidthAbsolute / bandwidthBaseline;
 
-      var kbps = this.bandwidthFromMetrics(link.target.metadata.LastUpdateMetric);
-      if (link.target.metadata.LastUpdateMetric && kbps > bandwidth.active * speed) {
-        this.linkLabels[link.id] = {
-          "id": "link-label-" + link.id,
-          "link": link,
-          "text": bandwidthToString(kbps),
-          "active": (kbps > bandwidth.active * speed) && (kbps < bandwidth.warning * speed),
-          "warning": (kbps >= bandwidth.warning * speed) && (kbps < bandwidth.alert * speed),
-          "alert": kbps >= bandwidth.alert * speed
+      if (bandwidthCheck > bandwidth.active) {
+        this.linkLabelData[link.id] = {
+          id: "link-label-" + link.id,
+          link: link,
+          text: bandwidthToString(bandwidthAbsolute),
+          active: (bandwidthCheck > bandwidth.active) && (bandwidthCheck < bandwidth.warning),
+          warning: (bandwidthCheck >= bandwidth.warning) && (bandwidthCheck < bandwidth.alert),
+          alert: bandwidthCheck >= bandwidth.alert
         };
       } else {
-        delete this.linkLabels[link.id];
+        delete this.linkLabelData[link.id];
       }
     }
+  },
 
-    this.linkLabel = this.linkLabel.data(Object.values(this.linkLabels), function(d) { return d.id; });
+  updateBandwidth: function() {
+    var self = this;
+
+    this.updateLinkLabelData();
+    this.updateLinkLabel();
     var exit = this.linkLabel.exit();
 
+    // update links which don't have traffic
     exit.each(function(d) {
       self.g.select("#link-" + d.link.id)
       .classed ("link-label-active", false)
       .classed ("link-label-warning", false)
       .classed ("link-label-alert", false);
-    })
-    .remove();
+    });
+
+    exit.remove();
 
     var linkLabelEnter = this.linkLabel.enter()
       .append('text')
@@ -1267,11 +1283,11 @@ TopologyGraphLayout.prototype = {
   },
 
   delLinkLabel: function(link) {
-    if (!(link.id in this.linkLabels)) return;
+    if (!(link.id in this.linkLabelData))
+      return;
+    delete this.linkLabelData[link.id];
 
-    delete this.linkLabels[link.id];
-
-    this.linkLabel = this.linkLabel.data(Object.values(this.linkLabels), function(d) { return d.id; });
+    this.updateLinkLabel();
     this.linkLabel.exit().remove();
 
     // force a tick
