@@ -24,6 +24,7 @@ package k8s
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/skydive-project/skydive/config"
@@ -78,6 +79,7 @@ type kubeCache struct {
 	cache          cache.Store
 	controller     cache.Controller
 	stopController chan (struct{})
+	wg             sync.WaitGroup
 }
 
 func (c *kubeCache) list() []interface{} {
@@ -138,9 +140,15 @@ func newKubeCache(restClient rest.Interface, objType runtime.Object, resources s
 
 func (c *kubeCache) Start() {
 	c.cache.Resync()
-	go c.controller.Run(c.stopController)
+	c.wg.Add(1)
+
+	go func() {
+		defer c.wg.Done()
+		c.controller.Run(c.stopController)
+	}()
 }
 
 func (c *kubeCache) Stop() {
 	c.stopController <- struct{}{}
+	c.wg.Wait()
 }

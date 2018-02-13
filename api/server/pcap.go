@@ -23,6 +23,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -62,11 +63,15 @@ func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest
 		return
 	}
 
+	fmt.Printf("VVVVVVVVVVVVVVVV\n")
 	feeder.Start()
+	fmt.Printf("BBBBBBBBBBBBBBBBBB\n")
 	feeder.Wait()
+	fmt.Printf("NNNNNNNNNNNNNNNNN\n")
 
 	// stop/flush flowtable
 	flowtable.Stop()
+	fmt.Printf("WWWWWWWWWWWWWWWWWWWw\n")
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
