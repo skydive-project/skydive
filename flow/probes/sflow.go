@@ -120,7 +120,7 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture
 	d.probes[tid] = ft
 	d.probesLock.Unlock()
 
-	e.OnStarted()
+	go e.OnStarted()
 
 	d.Graph.AddMetadata(n, "Capture.SflowSocket", addr.String())
 
