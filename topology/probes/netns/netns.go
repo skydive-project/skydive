@@ -118,20 +118,23 @@ func (u *NetNSProbe) checkNamespace(path string) error {
 }
 
 // Register a new network namespace path
-func (u *NetNSProbe) Register(path string, name string) *graph.Node {
-	logging.GetLogger().Debugf("Register Network Namespace: %s", path)
+func (u *NetNSProbe) Register(path string, name string) (*graph.Node, error) {
+	logging.GetLogger().Debugf("Register network namespace: %s", path)
+
+	if err := u.checkNamespace(path); err != nil {
+		return nil, err
+	}
 
 	var stats syscall.Stat_t
 	if err := syscall.Stat(path, &stats); err != nil {
-		logging.GetLogger().Errorf("Failed to stat namespace %s: %s", path, err.Error())
-		return nil
+		return nil, fmt.Errorf("Failed to stat namespace %s: %s", path, err.Error())
 	}
 
 	newns := &NetNs{path: path, dev: stats.Dev, ino: stats.Ino}
 
 	// avoid hard link to root ns
 	if u.rootNs.Equal(newns) {
-		return u.Root
+		return u.Root, nil
 	}
 
 	u.Lock()
@@ -146,12 +149,12 @@ func (u *NetNSProbe) Register(path string, name string) *graph.Node {
 	if probe, ok := u.netNsNetLinkProbes[nsString]; ok {
 		probe.useCount++
 		logging.GetLogger().Debugf("Increasing counter for namespace %s to %d", nsString, probe.useCount)
-		return probe.Root
+		return probe.Root, nil
 	}
 
 	u.Graph.Lock()
 
-	logging.GetLogger().Debugf("Network Namespace added: %s", nsString)
+	logging.GetLogger().Debugf("Network namespace added: %s", nsString)
 	metadata := graph.Metadata{
 		"Name":   name,
 		"Type":   "netns",
@@ -165,19 +168,20 @@ func (u *NetNSProbe) Register(path string, name string) *graph.Node {
 
 	u.Graph.Unlock()
 
-	logging.GetLogger().Debugf("Registering Namespace: %s", nsString)
+	logging.GetLogger().Debugf("Registering namespace: %s", nsString)
 	probe, err := u.NetLinkProbe.Register(path, n)
 	if err != nil {
 		logging.GetLogger().Errorf("Could not register netlink probe within namespace: %s", err.Error())
 	}
+
 	u.netNsNetLinkProbes[nsString] = &netNsNetLinkProbe{NetNsNetLinkProbe: probe, useCount: 1}
 
-	return n
+	return n, nil
 }
 
 // Unregister a network namespace path
 func (u *NetNSProbe) Unregister(path string) {
-	logging.GetLogger().Debugf("Unregister Network Namespace: %s", path)
+	logging.GetLogger().Debugf("Unregister network Namespace: %s", path)
 
 	u.Lock()
 	defer u.Unlock()
@@ -191,7 +195,7 @@ func (u *NetNSProbe) Unregister(path string) {
 	nsString := ns.String()
 	probe, ok := u.netNsNetLinkProbes[nsString]
 	if !ok {
-		logging.GetLogger().Debugf("No existing Network Namespace found: %s (%s)", nsString)
+		logging.GetLogger().Debugf("No existing network namespace found: %s (%s)", nsString)
 		return
 	}
 
@@ -202,7 +206,7 @@ func (u *NetNSProbe) Unregister(path string) {
 	}
 
 	u.NetLinkProbe.Unregister(path)
-	logging.GetLogger().Debugf("Network Namespace deleted: %s", nsString)
+	logging.GetLogger().Debugf("Network namespace deleted: %s", nsString)
 
 	u.Graph.Lock()
 	defer u.Graph.Unlock()
@@ -229,11 +233,10 @@ func (u *NetNSProbe) initializeRunPath(path string) {
 
 	files, _ := ioutil.ReadDir(path)
 	for _, f := range files {
-		if err := u.checkNamespace(path + "/" + f.Name()); err != nil {
+		if _, err := u.Register(path+"/"+f.Name(), f.Name()); err != nil {
 			logging.GetLogger().Errorf("Failed to register namespace %s: %s", path+"/"+f.Name(), err.Error())
 			continue
 		}
-		u.Register(path+"/"+f.Name(), f.Name())
 	}
 	logging.GetLogger().Debugf("NetNSProbe initialized %s", path)
 }
@@ -246,11 +249,10 @@ func (u *NetNSProbe) start() {
 			go u.initializeRunPath(path)
 		case ev := <-u.watcher.Events:
 			if ev.Op&fsnotify.Create == fsnotify.Create {
-				if err := u.checkNamespace(ev.Name); err != nil {
+				if _, err := u.Register(ev.Name, getNetNSName(ev.Name)); err != nil {
 					logging.GetLogger().Errorf("Failed to register namespace %s: %s", ev.Name, err.Error())
 					continue
 				}
-				u.Register(ev.Name, getNetNSName(ev.Name))
 			}
 			if ev.Op&fsnotify.Remove == fsnotify.Remove {
 				u.Unregister(ev.Name)

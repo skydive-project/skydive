@@ -99,7 +99,10 @@ func (probe *DockerProbe) registerContainer(id string) {
 		// The container is in net=host mode
 		n = probe.Root
 	} else {
-		n = probe.Register(namespace, info.Name[1:])
+		if n, err = probe.Register(namespace, info.Name[1:]); err != nil {
+			logging.GetLogger().Debugf("Failed to register probe for namespace %s: %s", namespace, err.Error())
+			return
+		}
 
 		probe.Graph.Lock()
 		probe.Graph.AddMetadata(n, "Manager", "docker")
