@@ -411,8 +411,10 @@ func (ft *Table) Run() {
 	ft.reply = make(chan *TableReply, 100)
 
 	atomic.StoreInt64(&ft.state, common.RunningState)
-	for atomic.LoadInt64(&ft.state) == common.RunningState {
+	for {
 		select {
+		case <-ft.quit:
+			return
 		case now := <-expireTicker.C:
 			ft.expireAt(now)
 		case now := <-updateTicker.C:
@@ -424,7 +426,6 @@ func (ft *Table) Run() {
 			if ok {
 				ft.reply <- ft.onQuery(query)
 			}
-		case <-ft.quit:
 		case ps := <-ft.packetSeqChan:
 			ft.processPacketSeq(ps)
 		case fl := <-ft.flowChan:

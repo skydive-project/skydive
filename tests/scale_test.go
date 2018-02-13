@@ -135,7 +135,7 @@ func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel string, flowExpec
 
 	prefix := "G"
 	if !live {
-		prefix = "G.At('-1s', 300)"
+		prefix = "G.At('-0s', 300)"
 	}
 	gremlin := fmt.Sprintf("%s.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4', 'NodeTID', '%s')", prefix, tid)
 
