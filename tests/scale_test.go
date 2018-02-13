@@ -137,7 +137,7 @@ func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel string, flowExpec
 	if !live {
 		prefix = "G.At('-0s', 300)"
 	}
-	gremlin := fmt.Sprintf("%s.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4', 'NodeTID', '%s')", prefix, tid)
+	gremlin := fmt.Sprintf("%s.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4', 'NodeTID', '%s').Sort()", prefix, tid)
 
 	retry := func() error {
 		flows, err := gh.GetFlows(gremlin)
@@ -146,7 +146,7 @@ func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel string, flowExpec
 		}
 
 		if !cmp(len(flows), flowExpected) {
-			return fmt.Errorf("Should get %d ICMPv4 flow with prefix(%s) got %d : %v", flowExpected, prefix, len(flows), flows)
+			return fmt.Errorf("Should get %d ICMPv4 flow with prefix(%s) got %s", flowExpected, prefix, helper.FlowsToString(flows))
 		}
 
 		return nil
@@ -171,7 +171,7 @@ func checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel string, flowExpect
 
 func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 	retry := func() error {
-		flows, err := gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Has('Transport.B', '5001')")
+		flows, err := gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Has('Transport.B', '5001').Sort()")
 		if err != nil {
 			return err
 		}
@@ -179,18 +179,18 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 		// two capture 2 flows
 		if len(flows) != flowExpected {
 			var flowsTCP []*flow.Flow
-			if flowsTCP, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/TCP')"); err != nil {
+			if flowsTCP, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Sort()"); err != nil {
 				return err
 			}
-			return fmt.Errorf("Should get %d iperf(tcp/5001) flow got %d : %v", flowExpected, len(flows), flowsTCP)
+			return fmt.Errorf("Should get %d iperf(tcp/5001) flows, got %s", flowExpected, helper.FlowsToString(flowsTCP))
 		}
 
 		for _, f := range flows {
 			if f.SocketA == nil || f.SocketA.Process != "/usr/bin/iperf" || f.SocketB == nil || f.SocketB.Process != "/usr/bin/iperf" {
-				return fmt.Errorf("Should get iperf exe as socket info %v", flows)
+				return fmt.Errorf("Should get iperf exe as socket info: %s", helper.FlowsToString(flows))
 			}
 			if f.SocketA.Name != "iperf" || f.SocketB.Name != "iperf" {
-				return fmt.Errorf("Should get iperf thread name %v", flows)
+				return fmt.Errorf("Should get iperf thread name %s", helper.FlowsToString(flows))
 			}
 		}
 		return nil
@@ -201,25 +201,25 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 
 	// check in the storage
 	retry = func() error {
-		flows, err := gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Has('Transport.B', '5001')")
+		flows, err := gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Has('Transport.B', '5001').Sort()")
 		if err != nil {
 			return err
 		}
 
 		if len(flows) != flowExpected {
 			var flowsTCP []*flow.Flow
-			if flowsTCP, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP')"); err != nil {
+			if flowsTCP, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Sort()"); err != nil {
 				return err
 			}
-			return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %d : %#+v", flowExpected, len(flows), flowsTCP)
+			return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %s", flowExpected, helper.FlowsToString(flowsTCP))
 		}
 
 		for _, f := range flows {
 			if f.SocketA == nil || f.SocketA.Process != "/usr/bin/iperf" || f.SocketB == nil || f.SocketB.Process != "/usr/bin/iperf" {
-				return fmt.Errorf("Should get iperf exe as socket info %v", flows)
+				return fmt.Errorf("Should get iperf exe as socket info %s", helper.FlowsToString(flows))
 			}
 			if f.SocketA.Name != "iperf" || f.SocketB.Name != "iperf" {
-				return fmt.Errorf("Should get iperf thread name %v", flows)
+				return fmt.Errorf("Should get iperf thread name %s", helper.FlowsToString(flows))
 			}
 		}
 		return nil
@@ -250,7 +250,7 @@ func checkCaptures(gh *gclient.GremlinQueryHelper, captureExpected int) error {
 
 func waitForFirstFlows(gh *gclient.GremlinQueryHelper, expected int) error {
 	retry := func() error {
-		flows, err := gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4')")
+		flows, err := gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4').Sort()")
 		if err != nil {
 			return err
 		}
