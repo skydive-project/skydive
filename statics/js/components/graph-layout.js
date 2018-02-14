@@ -1151,11 +1151,11 @@ TopologyGraphLayout.prototype = {
   },
 
   bandwidthFromMetrics: function(metrics) {
-    var totalByte = metrics.RxBytes + metrics.TxBytes;
+    var totalByte = (metrics.RxBytes || 0) + (metrics.TxBytes || 0);
 
     var deltaMillis = metrics.Last - metrics.Start;
     const fadeoutFactor = 2;
-    var elapsedMillis = (new Date() - new Date(metrics.Last));
+    var elapsedMillis = new Date() - new Date(metrics.Last);
     if (elapsedMillis > fadeoutFactor * deltaMillis) {
       return 0;
     }
