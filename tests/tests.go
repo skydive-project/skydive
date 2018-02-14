@@ -212,7 +212,7 @@ func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
 	if !at.IsZero() {
 		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
 	}
-	gremlin += ".V().Flows()"
+	gremlin += ".V().Flows().Sort()"
 
 	flows, err := c.gh.GetFlows(gremlin)
 	if err != nil {
