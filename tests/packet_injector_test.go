@@ -51,7 +51,7 @@ func TestPacketInjector(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) (err error) {
-			packet := &types.PacketParamsReq{
+			packet := &types.PacketInjection{
 				Src:   "G.V().Has('Name', 'pi-eth-src')",
 				Dst:   "G.V().Has('Name', 'pi-eth-dst')",
 				Type:  "icmp4",

@@ -51,13 +51,13 @@ func (pirh *PacketInjectorResourceHandler) Name() string {
 func (pirh *PacketInjectorResourceHandler) New() types.Resource {
 	id, _ := uuid.NewV4()
 
-	return &types.PacketParamsReq{
+	return &types.PacketInjection{
 		UUID: id.String(),
 	}
 }
 
 func (pi *PacketInjectorAPI) Create(r types.Resource) error {
-	ppr := r.(*types.PacketParamsReq)
+	ppr := r.(*types.PacketInjection)
 
 	if err := pi.validateRequest(ppr); err != nil {
 		return err
@@ -67,7 +67,7 @@ func (pi *PacketInjectorAPI) Create(r types.Resource) error {
 	return e
 }
 
-func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketParamsReq) error {
+func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketInjection) error {
 	pi.Graph.RLock()
 	defer pi.Graph.RUnlock()
 
@@ -108,11 +108,6 @@ func (pi *PacketInjectorAPI) validateRequest(ppr *types.PacketParamsReq) error {
 		if mac == "" {
 			return errors.New("No destination MAC in node")
 		}
-	}
-
-	allowedTypes := map[string]bool{"icmp4": true, "icmp6": true, "tcp4": true, "tcp6": true, "udp4": true, "udp6": true}
-	if _, ok := allowedTypes[ppr.Type]; !ok {
-		return errors.New("given type is not supported")
 	}
 
 	return nil
