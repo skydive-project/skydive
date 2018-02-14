@@ -108,7 +108,7 @@ var apiMixin = {
       });
     },
 
-    $captureCreate: function(query, name, description, bpf, headerSize, rawPackets, tcpMetric, socketInfo, type) {
+    $captureCreate: function(query, name, description, bpf, headerSize, rawPackets, tcpMetric, socketInfo, type, port) {
       var self = this;
       return $.ajax({
         dataType: "json",
@@ -122,6 +122,7 @@ var apiMixin = {
                               ExtraTCPMetric: tcpMetric,
                               SocketInfo: socketInfo,
                               Type: type || null,
+                              Port: port,
                              }),
         contentType: "application/json; charset=utf-8",
         method: 'POST',

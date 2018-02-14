@@ -60,6 +60,10 @@ Vue.component('capture-form', {
                     <option v-for="option in options" :value="option.type">{{ option.type }} ({{option.desc}})</option>\
                   </select>\
                 </div>\
+                <div class="form-group" v-if="captureType == \'sflow\'">\
+                  <label for="port">Port</label>\
+                  <input id="port" type="number" class="form-control input-sm" v-model="port" min="0"/>\
+                </div>\
                 <div class="form-group">\
                   <label for="capture-header-size">Header Size</label>\
                   <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
@@ -115,6 +119,7 @@ Vue.component('capture-form', {
       captureType: "",
       nodeType: "",
       typeAllowed: false,
+      port: 0,
     };
   },
 
@@ -275,7 +280,7 @@ Vue.component('capture-form', {
       }
       if (!this.typeAllowed)
         this.captureType = "";
-      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets, this.tcpMetric, this.socketInfo, this.captureType)
+      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets, this.tcpMetric, this.socketInfo, this.captureType, this.port)
         .then(function() {
           self.reset();
         });
