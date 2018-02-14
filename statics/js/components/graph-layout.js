@@ -1154,9 +1154,9 @@ TopologyGraphLayout.prototype = {
     var totalByte = (metrics.RxBytes || 0) + (metrics.TxBytes || 0);
 
     var deltaMillis = metrics.Last - metrics.Start;
-    const fadeoutFactor = 2;
-    var elapsedMillis = new Date() - new Date(metrics.Last);
-    if (elapsedMillis > fadeoutFactor * deltaMillis) {
+    var elapsedMillis = Date.now() - new Date(metrics.Last);
+    const maxClockSkewMillis = 5 * 60 * 1000; // 5 minutes
+    if (elapsedMillis > maxClockSkewMillis) {
       return 0;
     }
 
