@@ -51,7 +51,7 @@ const (
 	MaxCaptureLength uint32 = 4096
 	// MaxRawPacketLimit : maximum raw packet captured, limitation could be removed once flow over tcp
 	MaxRawPacketLimit uint32 = 10
-	// DefaultFlowProtobufSize : the default protobuf size without any raw packet for a flow
+	// DefaultProtobufFlowSize : the default protobuf size without any raw packet for a flow
 	DefaultProtobufFlowSize = 500
 )
 
@@ -62,6 +62,7 @@ type flowState struct {
 	link1stPacket    int64
 	network1stPacket int64
 	skipSocketInfo   bool
+	lastUpdate       int64
 }
 
 // Packet describes one packet
