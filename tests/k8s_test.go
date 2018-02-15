@@ -29,7 +29,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/skydive-project/skydive/gremlin"
+	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -37,64 +37,86 @@ func k8sConfigFile(name string) string {
 	return "./k8s/" + name + ".yaml"
 }
 
-const (
-	manager    = "k8s"
-	objectName = "skydive-test"
-)
+func k8sObjectName(name string) string {
+	prefix := "skydive-test"
+	if name != "" {
+		return prefix + "-" + name
+	}
+	return prefix
+}
 
-var (
-	networkPolicyConfig = k8sConfigFile("networkpolicy")
-	namespaceConfig     = k8sConfigFile("namespace")
+const (
+	manager = "k8s"
 )
 
 var (
 	nodeName, _       = os.Hostname()
-	podName           = objectName
-	containerName     = objectName
-	networkPolicyName = objectName
-	namespaceName     = objectName
+	podName           = k8sObjectName("pod")
+	containerName     = k8sObjectName("container")
+	networkPolicyName = k8sObjectName("")
+	namespaceName     = k8sObjectName("")
 )
 
-var (
-	setupPod = []helper.Cmd{
-		{"kubectl run " + podName +
+func makeCmdWaitUntilStatus(ty, name, status string) string {
+	return fmt.Sprintf("echo 'for i in {1..10}; do sleep 1; kubectl get %s %s %s break; done' | bash", ty, name, status)
+}
+
+func makeCmdWaitUntilCreated(ty, name string) string {
+	return makeCmdWaitUntilStatus(ty, name, "&&")
+}
+
+func makeCmdWaitUntilDeleted(ty, name string) string {
+	return makeCmdWaitUntilStatus(ty, name, "||")
+}
+
+func setupFromDeploymnet(name string) []helper.Cmd {
+	return []helper.Cmd{
+		{"kubectl run " + k8sObjectName(name) +
 			"  --image=gcr.io/google_containers/echoserver:1.4" +
 			"  --port=8080", true},
+		{makeCmdWaitUntilCreated("deployment", k8sObjectName(name)), true},
 	}
-	tearDownPod = []helper.Cmd{
-		{"kubectl delete deployment " + podName, false},
-	}
-	setupNetworkPolicy = []helper.Cmd{
-		{"kubectl create -f " + networkPolicyConfig, true},
-	}
-	tearDownNetworkPolicy = []helper.Cmd{
-		{"kubectl delete -f " + networkPolicyConfig, false},
-	}
-	setupNamespace = []helper.Cmd{
-		{"kubectl create -f " + namespaceConfig, true},
-	}
-	tearDownNamespace = []helper.Cmd{
-		{"kubectl delete -f " + namespaceConfig, false},
-	}
-)
+}
 
-func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name *gremlin.ValueString) {
+func tearDownFromDeployment(name string) []helper.Cmd {
+	return []helper.Cmd{
+		{"kubectl delete deployment " + k8sObjectName(name), false},
+		{makeCmdWaitUntilDeleted("deployment", k8sObjectName(name)), true},
+	}
+}
+
+func setupFromConfigFile(ty, name string) []helper.Cmd {
+	return []helper.Cmd{
+		{"kubectl create -f " + k8sConfigFile(ty), true},
+		{makeCmdWaitUntilCreated(ty, name), true},
+		{"sleep 2", true},
+	}
+}
+
+func tearDownFromConfigFile(ty, name string) []helper.Cmd {
+	return []helper.Cmd{
+		{"kubectl delete -f " + k8sConfigFile(ty), false},
+		{makeCmdWaitUntilDeleted(ty, name), true},
+	}
+}
+
+func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, ty, name g.ValueString) {
 	test := &Test{
 		mode:         OneShot,
-		setupCmds:    setupCmds,
+		retries:      3,
+		setupCmds:    append(tearDownCmds, setupCmds...),
 		tearDownCmds: tearDownCmds,
 		checks: []CheckFunction{func(c *CheckContext) error {
-			g := gremlin.NewQueryString()
-			g.G().V().HasNode(gremlin.NewValueString("k8s").Quote(), typ, name)
-			fmt.Printf("Gremlin: %s\n", g.String())
+			query := g.G.V().Has(g.Quote("Manager"), g.Quote("k8s"), g.Quote("Type"), ty, g.Quote("Name"), name)
+			fmt.Printf("Gremlin Query: %s\n", query)
 
-			nodes, err := c.gh.GetNodes(g.String())
+			nodes, err := c.gh.GetNodes(query.String())
 			if err != nil {
 				return err
 			}
 
 			if len(nodes) != 1 {
-				return fmt.Errorf("Ran \"%+v\", expected 1 node, got %+v", g, nodes)
+				return fmt.Errorf("Ran \"%s\", expected 1 node, got %d nodes: %+v", query, len(nodes), nodes)
 			}
 
 			return nil
@@ -103,22 +125,22 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, n
 	RunTest(t, test)
 }
 
-func TestK8sPodNode(t *testing.T) {
-	testNodeCreation(t, setupPod, tearDownPod, gremlin.NewValueString("pod").Quote(), gremlin.NewValueString(podName).StartsWith())
+func TestK8sContainerNode(t *testing.T) {
+	testNodeCreation(t, setupFromDeploymnet("container"), tearDownFromDeployment("container"), g.Quote("container"), g.Quote(containerName))
 }
 
-func TestK8sContainerNode(t *testing.T) {
-	testNodeCreation(t, setupPod, tearDownPod, gremlin.NewValueString("container").Quote(), gremlin.NewValueString(containerName).Quote())
+func TestK8sPodNode(t *testing.T) {
+	testNodeCreation(t, setupFromDeploymnet("pod"), tearDownFromDeployment("pod"), g.Quote("pod"), g.StartsWith(podName))
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
-	testNodeCreation(t, setupNetworkPolicy, tearDownNetworkPolicy, gremlin.NewValueString("networkpolicy").Quote(), gremlin.NewValueString(networkPolicyName).Quote())
+	testNodeCreation(t, setupFromConfigFile("networkpolicy", networkPolicyName), tearDownFromConfigFile("networkpolicy", networkPolicyName), g.Quote("networkpolicy"), g.Quote(networkPolicyName))
 }
 
 func TestK8sNodeNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, gremlin.NewValueString("node").Quote(), gremlin.NewValueString(nodeName).Quote())
+	testNodeCreation(t, nil, nil, g.Quote("node"), g.Quote(nodeName))
 }
 
 func TestK8sNamespaceNode(t *testing.T) {
-	testNodeCreation(t, setupNamespace, tearDownNamespace, gremlin.NewValueString("namespace").Quote(), gremlin.NewValueString(namespaceName).Quote())
+	testNodeCreation(t, setupFromConfigFile("namespace", namespaceName), tearDownFromConfigFile("namespace", namespaceName), g.Quote("namespace"), g.Quote(namespaceName))
 }
