@@ -62,7 +62,7 @@ type flowState struct {
 	link1stPacket    int64
 	network1stPacket int64
 	skipSocketInfo   bool
-	lastUpdate       int64
+	updateVersion    int64
 }
 
 // Packet describes one packet

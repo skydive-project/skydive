@@ -209,10 +209,10 @@ func TestUpdate(t *testing.T) {
 	flow1, _ := table.getOrCreateFlow("flow1")
 
 	flow1.Metric.ABBytes = 1
-	flow1.XXX_state.lastUpdate = table.tableClock
+	flow1.XXX_state.updateVersion = table.updateVersion + 1
 
 	// check that LastUpdateMetric is filled after a expire before an update
-	table.expire(table.tableClock + 1)
+	table.expire(common.UnixMillis(time.Now()))
 
 	if flow1.LastUpdateMetric.ABBytes != 1 {
 		t.Errorf("Flow should have been updated by expire : %+v", flow1)
@@ -220,16 +220,11 @@ func TestUpdate(t *testing.T) {
 
 	flow2, _ := table.getOrCreateFlow("flow2")
 
-	// clock is used to simulate real clock
-	clock := table.tableClock
-
 	flow2.Metric.ABBytes = 2
-	flow2.XXX_state.lastUpdate = clock + 1
-
-	updatedAt := clock + 5
+	flow2.XXX_state.updateVersion = table.updateVersion + 1
 
 	// should update everything between tableClock and clock
-	table.updateAt(time.Unix(0, updatedAt*int64(time.Millisecond)))
+	table.updateAt(time.Now())
 
 	if flow2.LastUpdateMetric.ABBytes != 2 {
 		t.Errorf("Flow should have been updated : %+v", flow2)
@@ -240,8 +235,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	// should update everything between previous updateAt and the new one
-	updatedAt += 5
-	table.updateAt(time.Unix(0, updatedAt*int64(time.Millisecond)))
+	table.updateAt(time.Now())
 
 	if flow2.LastUpdateMetric.ABBytes != 0 {
 		t.Errorf("Flow should have been updated : %+v", flow2)
@@ -252,11 +246,10 @@ func TestUpdate(t *testing.T) {
 	}
 
 	flow2.Metric.ABBytes = 10
-	flow2.XXX_state.lastUpdate = updatedAt
+	flow2.XXX_state.updateVersion = table.updateVersion + 1
 
 	// should update everything between previous updateAt and the new one
-	updatedAt += 5
-	table.updateAt(time.Unix(0, updatedAt*int64(time.Millisecond)))
+	table.updateAt(time.Now())
 
 	if flow2.LastUpdateMetric.ABBytes != 8 {
 		t.Errorf("Flow should have been updated : %+v", flow2)
@@ -267,11 +260,10 @@ func TestUpdate(t *testing.T) {
 	}
 
 	flow2.Metric.ABBytes = 15
-	flow2.XXX_state.lastUpdate = updatedAt + 1
+	flow2.XXX_state.updateVersion = table.updateVersion + 1
 
 	// should update everything between previous updateAt and the new one
-	updatedAt += 5
-	table.updateAt(time.Unix(0, updatedAt*int64(time.Millisecond)))
+	table.updateAt(time.Now())
 
 	if flow2.LastUpdateMetric.ABBytes != 5 {
 		t.Errorf("Flow should have been updated : %+v", flow2)

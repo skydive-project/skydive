@@ -88,9 +88,9 @@ type Table struct {
 	quit           chan bool
 	updateHandler  *Handler
 	lastUpdate     int64
+	updateVersion  int64
 	expireHandler  *Handler
 	lastExpire     int64
-	tableClock     int64
 	nodeTID        string
 	pipeline       *EnhancerPipeline
 	pipelineConfig *EnhancerPipelineConfig
@@ -119,8 +119,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 		t.pipelineConfig.Disable("SocketInfo")
 	}
 
-	t.tableClock = common.UnixMillis(time.Now())
-	t.lastUpdate = t.tableClock
+	t.updateVersion = 0
 
 	return t
 }
@@ -178,7 +177,7 @@ func (ft *Table) expire(expireBefore int64) {
 	for k, f := range ft.table {
 		if f.Last < expireBefore {
 			duration := time.Duration(f.Last - f.Start)
-			if f.XXX_state.lastUpdate >= ft.lastUpdate {
+			if f.XXX_state.updateVersion > ft.updateVersion {
 				ft.updateMetric(f, ft.lastUpdate, f.Last)
 			}
 
@@ -201,6 +200,7 @@ func (ft *Table) updateAt(now time.Time) {
 	updateTime := common.UnixMillis(now)
 	ft.update(ft.lastUpdate, updateTime)
 	ft.lastUpdate = updateTime
+	ft.updateVersion++
 }
 
 func (ft *Table) updateMetric(f *Flow, start, last int64) {
@@ -232,7 +232,7 @@ func (ft *Table) update(updateFrom, updateTime int64) {
 
 	var updatedFlows []*Flow
 	for _, f := range ft.table {
-		if f.XXX_state.lastUpdate >= updateFrom {
+		if f.XXX_state.updateVersion > ft.updateVersion {
 			ft.updateMetric(f, updateFrom, updateTime)
 			updatedFlows = append(updatedFlows, f)
 		} else {
@@ -355,10 +355,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3I
 		flow.Update(packet.gopacket, packet.length)
 	}
 
-	// Keep lastUpdate aligned with tableClock as a flow can be seen by skydive
-	// after a while. So using the orignal timestamp of packet can lead in having
-	// a non updated packet forever.
-	flow.XXX_state.lastUpdate = ft.tableClock
+	flow.XXX_state.updateVersion = ft.updateVersion + 1
 
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
 		flow.RawPacketsCaptured++
@@ -426,8 +423,6 @@ func (ft *Table) Run() {
 		select {
 		case <-ft.quit:
 			return
-		case now := <-nowTicker.C:
-			ft.tableClock = common.UnixMillis(now)
 		case now := <-expireTicker.C:
 			ft.expireAt(now)
 		case now := <-updateTicker.C:
