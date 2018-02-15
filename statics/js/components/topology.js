@@ -287,7 +287,7 @@ var TopologyComponent = {
 
     if (typeof(this.$route.query.highlight) !== "undefined") {
       this.topologyEmphasize = this.$route.query.highlight;
-      setTimeout(function(){self.emphasizeGremlinExpr();}, 2000)
+      setTimeout(function(){self.emphasizeGremlinExpr();}, 2000);
     }
 
     if (typeof(this.$route.query.filter) !== "undefined") {
@@ -475,7 +475,7 @@ var TopologyComponent = {
 
          $.when(self.$getConfigValue('ui.topology.default_highlight'))
           .then(function(favorite) {
-            self.topologyEmphasize = favorite;
+            if (favorite) self.topologyEmphasize = favorite;
           });
        });
     },
