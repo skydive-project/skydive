@@ -134,7 +134,7 @@ var routes = [
       }
     }
   },
-  { path: '/topology', component: TopologyComponent },
+  { path: '/topology', component: TopologyComponent, props: (route) => ({ query: route.query }) },
   { path: '/conversation', component: ConversationComponent },
   { path: '/discovery', component: DiscoveryComponent },
   { path: '/preference', component: PreferenceComponent },
@@ -142,6 +142,7 @@ var routes = [
 ];
 
 var router = new VueRouter({
+  mode: 'history',
   linkActiveClass: 'active',
   routes: routes
 });

@@ -306,6 +306,7 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 	router.PathPrefix("/statics").HandlerFunc(server.serveStatics)
 	router.PathPrefix(ExtraAssetPrefix).HandlerFunc(server.serveStatics)
 	router.HandleFunc("/login", server.serveLogin)
+	router.PathPrefix("/topology").HandlerFunc(server.serveIndex)
 	router.HandleFunc("/", server.serveIndex)
 
 	return server
