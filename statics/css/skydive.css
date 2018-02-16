@@ -580,6 +580,10 @@ ul.dropdown-menu .fa.pull-right {
   padding-right: 10px;
 }
 
+.btn-group-pref {
+  margin-right: 25px;
+}
+
 .help-text {
   cursor: help;
 }

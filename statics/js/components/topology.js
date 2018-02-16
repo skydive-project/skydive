@@ -456,8 +456,8 @@ var TopologyComponent = {
       var self = this;
       var options = $(".topology-gremlin-favorites");
 
-      if (typeof(Storage) !== "undefined") {
-        var favorites = JSON.parse(localStorage.getItem("favorites"));
+      if (typeof(Storage) !== "undefined" && localStorage.preferences) {
+        var favorites = JSON.parse(localStorage.preferences).favorites;
         if (favorites) {
           $.each(favorites, function(i, f) {
             options.append($("<option/>").text(f.name).val(f.expression));
