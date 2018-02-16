@@ -401,7 +401,7 @@
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
           cd contrib/vagrant
-          for mode in binary package container
+          for mode in dev binary package container
           do
             DEPLOYMENT_MODE=$mode vagrant box update
             DEPLOYMENT_MODE=$mode vagrant up --provision-with common
