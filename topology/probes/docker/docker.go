@@ -25,6 +25,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -35,7 +36,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/vishvananda/netns"
-	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -99,7 +99,10 @@ func (probe *DockerProbe) registerContainer(id string) {
 		// The container is in net=host mode
 		n = probe.Root
 	} else {
-		n = probe.Register(namespace, info.Name[1:])
+		if n, err = probe.Register(namespace, info.Name[1:]); err != nil {
+			logging.GetLogger().Debugf("Failed to register probe for namespace %s: %s", namespace, err.Error())
+			return
+		}
 
 		probe.Graph.Lock()
 		probe.Graph.AddMetadata(n, "Manager", "docker")

@@ -53,7 +53,7 @@ type PacketInjectorReply struct {
 }
 
 type PacketInjectorClient struct {
-	*etcd.EtcdMasterElector
+	*etcd.MasterElector
 	pool      shttp.WSJSONSpeakerPool
 	watcher   apiServer.StoppableWatcher
 	graph     *graph.Graph
@@ -283,14 +283,14 @@ func (pc *PacketInjectorClient) onAPIWatcherEvent(action string, id string, reso
 
 //Start the PI client
 func (pc *PacketInjectorClient) Start() {
-	pc.EtcdMasterElector.StartAndWait()
+	pc.MasterElector.StartAndWait()
 	pc.watcher = pc.piHandler.AsyncWatch(pc.onAPIWatcherEvent)
 }
 
 //Stop the PI client
 func (pc *PacketInjectorClient) Stop() {
 	pc.watcher.Stop()
-	pc.EtcdMasterElector.Stop()
+	pc.MasterElector.Stop()
 }
 
 func (pc *PacketInjectorClient) setTimeouts() {
@@ -308,14 +308,14 @@ func (pc *PacketInjectorClient) setTimeouts() {
 	}
 }
 
-func NewPacketInjectorClient(pool shttp.WSJSONSpeakerPool, etcdClient *etcd.EtcdClient, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
-	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "pi-client", etcdClient)
+func NewPacketInjectorClient(pool shttp.WSJSONSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
+	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "pi-client", etcdClient)
 
 	pic := &PacketInjectorClient{
-		EtcdMasterElector: elector,
-		pool:              pool,
-		piHandler:         piHandler,
-		graph:             g,
+		MasterElector: elector,
+		pool:          pool,
+		piHandler:     piHandler,
+		graph:         g,
 	}
 
 	elector.AddEventListener(pic)

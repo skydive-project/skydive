@@ -45,7 +45,7 @@ import (
 // OnDemandProbeClient describes an ondemand probe client based on a websocket
 type OnDemandProbeClient struct {
 	sync.RWMutex
-	*etcd.EtcdMasterElector
+	*etcd.MasterElector
 	graph.DefaultGraphListener
 	graph                *graph.Graph
 	captureHandler       *api.CaptureAPIHandler
@@ -364,7 +364,7 @@ func (o *OnDemandProbeClient) onAPIWatcherEvent(action string, id string, resour
 
 // Start the probe
 func (o *OnDemandProbeClient) Start() {
-	o.EtcdMasterElector.StartAndWait()
+	o.MasterElector.StartAndWait()
 
 	o.checkForRegistration.Start()
 
@@ -375,7 +375,7 @@ func (o *OnDemandProbeClient) Start() {
 // Stop the probe
 func (o *OnDemandProbeClient) Stop() {
 	o.watcher.Stop()
-	o.EtcdMasterElector.Stop()
+	o.MasterElector.Stop()
 	o.checkForRegistration.Stop()
 }
 
@@ -395,24 +395,24 @@ func (o *OnDemandProbeClient) InvokeCaptureFromConfig() {
 }
 
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
-func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool shttp.WSJSONSpeakerPool, subscriberPool shttp.WSJSONSpeakerPool, etcdClient *etcd.EtcdClient) *OnDemandProbeClient {
+func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool shttp.WSJSONSpeakerPool, subscriberPool shttp.WSJSONSpeakerPool, etcdClient *etcd.Client) *OnDemandProbeClient {
 	resources := ch.Index()
 	captures := make(map[string]*types.Capture)
 	for _, resource := range resources {
 		captures[resource.ID()] = resource.(*types.Capture)
 	}
 
-	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "ondemand-client", etcdClient)
+	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "ondemand-client", etcdClient)
 
 	o := &OnDemandProbeClient{
-		EtcdMasterElector: elector,
-		graph:             g,
-		captureHandler:    ch,
-		agentPool:         agentPool,
-		subscriberPool:    subscriberPool,
-		captures:          captures,
-		registeredNodes:   make(map[string]string),
-		deletedNodeCache:  cache.New(elector.TTL()*2, elector.TTL()*2),
+		MasterElector:    elector,
+		graph:            g,
+		captureHandler:   ch,
+		agentPool:        agentPool,
+		subscriberPool:   subscriberPool,
+		captures:         captures,
+		registeredNodes:  make(map[string]string),
+		deletedNodeCache: cache.New(elector.TTL()*2, elector.TTL()*2),
 	}
 	o.checkForRegistration = common.NewDebouncer(time.Second, o.checkForRegistrationCallback)
 

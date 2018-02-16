@@ -23,14 +23,13 @@
 package ovsdb
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"reflect"
 	"strings"
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
 func TestProtectCommas(t *testing.T) {

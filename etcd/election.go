@@ -39,21 +39,21 @@ const (
 	timeout = time.Second * 30
 )
 
-// EtcdMasterElectionListener describes the multi ETCD election mechanism
-type EtcdMasterElectionListener interface {
+// MasterElectionListener describes the multi ETCD election mechanism
+type MasterElectionListener interface {
 	OnStartAsMaster()
 	OnStartAsSlave()
 	OnSwitchToMaster()
 	OnSwitchToSlave()
 }
 
-// EtcdMasterElector describes an ETCD master elector
-type EtcdMasterElector struct {
+// MasterElector describes an ETCD master elector
+type MasterElector struct {
 	sync.RWMutex
 	EtcdKeyAPI etcd.KeysAPI
 	Host       string
 	path       string
-	listeners  []EtcdMasterElectionListener
+	listeners  []MasterElectionListener
 	cancel     context.CancelFunc
 	master     bool
 	state      int64
@@ -61,11 +61,11 @@ type EtcdMasterElector struct {
 }
 
 // TTL time to live
-func (le *EtcdMasterElector) TTL() time.Duration {
+func (le *MasterElector) TTL() time.Duration {
 	return timeout
 }
 
-func (le *EtcdMasterElector) holdLock(quit chan bool) {
+func (le *MasterElector) holdLock(quit chan bool) {
 	defer close(quit)
 
 	tick := time.NewTicker(timeout / 2)
@@ -92,7 +92,7 @@ func (le *EtcdMasterElector) holdLock(quit chan bool) {
 }
 
 // IsMaster returns true if the current instance is master
-func (le *EtcdMasterElector) IsMaster() bool {
+func (le *MasterElector) IsMaster() bool {
 	le.RLock()
 	defer le.RUnlock()
 
@@ -101,7 +101,7 @@ func (le *EtcdMasterElector) IsMaster() bool {
 
 // start starts the election process and send something to the chan when the first
 // election is done
-func (le *EtcdMasterElector) start(first chan struct{}) {
+func (le *MasterElector) start(first chan struct{}) {
 	// delete previous Lock
 	le.EtcdKeyAPI.Delete(context.Background(), le.path, &etcd.DeleteOptions{PrevValue: le.Host})
 
@@ -189,13 +189,13 @@ func (le *EtcdMasterElector) start(first chan struct{}) {
 }
 
 // Start the master election mechanism
-func (le *EtcdMasterElector) Start() {
+func (le *MasterElector) Start() {
 	go le.start(nil)
 }
 
 // StartAndWait starts the election mechanism and wait for the first election
 // before returning
-func (le *EtcdMasterElector) StartAndWait() {
+func (le *MasterElector) StartAndWait() {
 	first := make(chan struct{})
 	defer close(first)
 
@@ -204,7 +204,7 @@ func (le *EtcdMasterElector) StartAndWait() {
 }
 
 // Stop the election mechanism
-func (le *EtcdMasterElector) Stop() {
+func (le *MasterElector) Stop() {
 	if atomic.CompareAndSwapInt64(&le.state, common.RunningState, common.StoppingState) {
 		le.cancel()
 		le.wg.Wait()
@@ -212,13 +212,13 @@ func (le *EtcdMasterElector) Stop() {
 }
 
 // AddEventListener registers a new listener
-func (le *EtcdMasterElector) AddEventListener(listener EtcdMasterElectionListener) {
+func (le *MasterElector) AddEventListener(listener MasterElectionListener) {
 	le.listeners = append(le.listeners, listener)
 }
 
-// NewEtcdMasterElector creates a new ETCD master elector
-func NewEtcdMasterElector(host string, serviceType common.ServiceType, key string, etcdClient *EtcdClient) *EtcdMasterElector {
-	return &EtcdMasterElector{
+// NewMasterElector creates a new ETCD master elector
+func NewMasterElector(host string, serviceType common.ServiceType, key string, etcdClient *Client) *MasterElector {
+	return &MasterElector{
 		EtcdKeyAPI: etcdClient.KeysAPI,
 		Host:       host,
 		path:       "/master-" + serviceType.String() + "-" + key,
@@ -226,8 +226,8 @@ func NewEtcdMasterElector(host string, serviceType common.ServiceType, key strin
 	}
 }
 
-// NewEtcdMasterElectorFromConfig creates a new ETCD master elector from configuration
-func NewEtcdMasterElectorFromConfig(serviceType common.ServiceType, key string, etcdClient *EtcdClient) *EtcdMasterElector {
+// NewMasterElectorFromConfig creates a new ETCD master elector from configuration
+func NewMasterElectorFromConfig(serviceType common.ServiceType, key string, etcdClient *Client) *MasterElector {
 	host := config.GetString("host_id")
-	return NewEtcdMasterElector(host, serviceType, key, etcdClient)
+	return NewMasterElector(host, serviceType, key, etcdClient)
 }

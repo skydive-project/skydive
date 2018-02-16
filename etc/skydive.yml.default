@@ -285,9 +285,17 @@ etcd:
   # data_dir: /var/lib/skydive/etcd
 
   # client parameters
-  # both the analyzers and the agents make use of etcd
   servers:
     # - http://127.0.0.1:12379
+
+  # name to use for clustering, by default it is set to the host id
+  # name: analyzer1
+
+  # list of peers for etcd clustering between analyzers
+  # each entry is composed of the peer name and the endpoints for this peer
+  peers:
+    # analyzer1: http://172.17.0.2:12380
+    # analyzer2: http://172.17.0.3:12380
 
   # client_timeout: 5
 

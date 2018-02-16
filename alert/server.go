@@ -225,7 +225,7 @@ func NewGremlinAlert(alert *types.Alert, g *graph.Graph, p *traversal.GremlinTra
 
 type AlertServer struct {
 	sync.RWMutex
-	*etcd.EtcdMasterElector
+	*etcd.MasterElector
 	Graph         *graph.Graph
 	Pool          shttp.WSJSONSpeakerPool
 	AlertHandler  api.Handler
@@ -420,20 +420,20 @@ func (a *AlertServer) Start() {
 }
 
 func (a *AlertServer) Stop() {
-	a.EtcdMasterElector.Stop()
+	a.MasterElector.Stop()
 }
 
-func NewAlertServer(ah api.Handler, pool shttp.WSJSONSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.EtcdClient) *AlertServer {
-	elector := etcd.NewEtcdMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
+func NewAlertServer(ah api.Handler, pool shttp.WSJSONSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) *AlertServer {
+	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
 	as := &AlertServer{
-		EtcdMasterElector: elector,
-		Pool:              pool,
-		AlertHandler:      ah,
-		Graph:             graph,
-		graphAlerts:       make(map[string]*GremlinAlert),
-		alertTimers:       make(map[string]chan bool),
-		gremlinParser:     parser,
+		MasterElector: elector,
+		Pool:          pool,
+		AlertHandler:  ah,
+		Graph:         graph,
+		graphAlerts:   make(map[string]*GremlinAlert),
+		alertTimers:   make(map[string]chan bool),
+		gremlinParser: parser,
 	}
 
 	return as

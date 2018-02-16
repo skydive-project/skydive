@@ -63,12 +63,12 @@ func NewStorage(backend string) (s Storage, err error) {
 		if err != nil {
 			logging.GetLogger().Fatalf("Can't connect to OrientDB server: %v", err)
 		}
-	case "":
+	case "memory", "":
 		logging.GetLogger().Infof("Using no storage")
 		return
 	default:
 		err = fmt.Errorf("Storage type unknown: %s", backend)
-		logging.GetLogger().Fatalf(err.Error())
+		logging.GetLogger().Critical(err.Error())
 		return
 	}
 

@@ -23,6 +23,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -31,7 +32,6 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
-	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/logging"
