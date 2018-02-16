@@ -128,7 +128,7 @@ type TestContext struct {
 }
 
 type TestCapture struct {
-	gremlin    string
+	gremlin    g.QueryString
 	kind       string
 	bpf        string
 	rawPackets int
@@ -236,7 +236,7 @@ func RunTest(t *testing.T, test *Test) {
 	}()
 
 	for _, tc := range test.captures {
-		capture := types.NewCapture(tc.gremlin, tc.bpf)
+		capture := types.NewCapture(tc.gremlin.String(), tc.bpf)
 		capture.Type = tc.kind
 		capture.RawPacketLimit = tc.rawPackets
 		if err = client.Create("capture", capture); err != nil {
@@ -385,10 +385,10 @@ func pingRequest(t *testing.T, context *TestContext, packet *types.PacketParamsR
 	return context.client.Create("injectpacket", packet)
 }
 
-func ping(t *testing.T, context *TestContext, ipVersion int, src string, dst string, count int64, id int64) error {
+func ping(t *testing.T, context *TestContext, ipVersion int, src, dst g.QueryString, count int64, id int64) error {
 	packet := &types.PacketParamsReq{
-		Src:      src,
-		Dst:      dst,
+		Src:      src.String(),
+		Dst:      dst.String(),
 		Type:     fmt.Sprintf("icmp%d", ipVersion),
 		Count:    count,
 		ICMPID:   id,
