@@ -127,6 +127,7 @@ type TestCapture struct {
 	kind       string
 	bpf        string
 	rawPackets int
+	port       int
 }
 
 type TestInjection struct {
@@ -252,6 +253,7 @@ func RunTest(t *testing.T, test *Test) {
 		capture := types.NewCapture(tc.gremlin.String(), tc.bpf)
 		capture.Type = tc.kind
 		capture.RawPacketLimit = tc.rawPackets
+		capture.Port = tc.port
 		if err = client.Create("capture", capture); err != nil {
 			t.Fatal(err)
 		}

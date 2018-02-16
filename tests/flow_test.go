@@ -1991,3 +1991,64 @@ func TestOvsMirror(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+func TestSFlowCapture(t *testing.T) {
+	test := &Test{
+		setupCmds: []helper.Cmd{
+			{"ovs-vsctl add-br br-sfct", true},
+
+			{"ovs-vsctl add-port br-sfct sfct-intf1 -- set interface sfct-intf1 type=internal", true},
+			{"ip netns add sfct-vm1", true},
+			{"ip link set sfct-intf1 netns sfct-vm1", true},
+			{"ip netns exec sfct-vm1 ip address add 169.254.29.11/24 dev sfct-intf1", true},
+			{"ip netns exec sfct-vm1 ip link set sfct-intf1 up", true},
+
+			{"ovs-vsctl add-port br-sfct sfct-intf2 -- set interface sfct-intf2 type=internal", true},
+			{"ip netns add sfct-vm2", true},
+			{"ip link set sfct-intf2 netns sfct-vm2", true},
+			{"ip netns exec sfct-vm2 ip address add 169.254.29.12/24 dev sfct-intf2", true},
+			{"ip netns exec sfct-vm2 ip link set sfct-intf2 up", true},
+
+			{"ovs-vsctl --id=@sflow create sflow agent=lo target=\"127.0.0.1:6343\" header=128 sampling=1 polling=0 -- set bridge br-sfct sflow=@sflow", true},
+		},
+
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "sfct-vm1").Out().Has("Name", "sfct-intf1"),
+			to:    g.G.V().Has("Name", "sfct-vm2").Out().Has("Name", "sfct-intf2"),
+			count: 1,
+		}},
+
+		tearDownCmds: []helper.Cmd{
+			{"ip netns del sfct-vm1", true},
+			{"ip netns del sfct-vm2", true},
+			{"ovs-vsctl del-br br-sfct", true},
+		},
+
+		captures: []TestCapture{
+			{gremlin: g.G.V().Has("Type", "host").Out().Has("Name", "lo", "Type", "device"), kind: "sflow", port: 6343},
+		},
+
+		checks: []CheckFunction{func(c *CheckContext) error {
+			gh := c.gh
+
+			prefix := g.G.Context(c.time)
+			node, err := gh.GetNode(prefix.V().Has("Type", "host").Out().Has("Name", "lo", "Type", "device"))
+			if err != nil {
+				return err
+			}
+
+			flows, err := gh.GetFlows(prefix.Flows("NodeTID", node.Metadata()["TID"]).Has("Network.A", "169.254.29.11"))
+			if err != nil {
+				return err
+			}
+
+			if len(flows) != 1 {
+				return errors.New(fmt.Sprintf("We should receive only one flow, got: %d", len(flows)))
+			}
+
+			return nil
+		}},
+	}
+
+	RunTest(t, test)
+}
