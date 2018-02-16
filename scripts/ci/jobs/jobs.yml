@@ -400,16 +400,7 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          cd contrib/vagrant
-          for mode in dev binary package container
-          do
-            DEPLOYMENT_MODE=$mode vagrant box update
-            DEPLOYMENT_MODE=$mode vagrant up --provision-with common
-            DEPLOYMENT_MODE=$mode vagrant provision
-            retcode=$?
-            vagrant destroy
-            [ $retcode -ne 0 ] && exit $retcode || true
-          done
+          scripts/ci/run-vagrant-tests.sh
     publishers:
       - chuck-norris
     node: baremetal
