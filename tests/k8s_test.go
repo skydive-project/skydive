@@ -99,14 +99,14 @@ func tearDownFromConfigFile(ty, name string) []helper.Cmd {
 	}
 }
 
-func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, ty, name g.ValueString) {
+func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, ty, name interface{}) {
 	test := &Test{
 		mode:         OneShot,
 		retries:      3,
 		setupCmds:    append(tearDownCmds, setupCmds...),
 		tearDownCmds: tearDownCmds,
 		checks: []CheckFunction{func(c *CheckContext) error {
-			query := g.G.V().Has(g.Quote("Manager"), g.Quote("k8s"), g.Quote("Type"), ty, g.Quote("Name"), name)
+			query := g.G.V().Has("Manager", "k8s", "Type", ty, "Name", name)
 			fmt.Printf("Gremlin Query: %s\n", query)
 
 			nodes, err := c.gh.GetNodes(query.String())
@@ -125,21 +125,21 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, ty, na
 }
 
 func TestK8sContainerNode(t *testing.T) {
-	testNodeCreation(t, setupFromDeploymnet("container"), tearDownFromDeployment("container"), g.Quote("container"), g.Quote(containerName))
+	testNodeCreation(t, setupFromDeploymnet("container"), tearDownFromDeployment("container"), "container", containerName)
 }
 
 func TestK8sPodNode(t *testing.T) {
-	testNodeCreation(t, setupFromDeploymnet("pod"), tearDownFromDeployment("pod"), g.Quote("pod"), g.StartsWith(podName))
+	testNodeCreation(t, setupFromDeploymnet("pod"), tearDownFromDeployment("pod"), "pod", g.StartsWith(podName))
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
-	testNodeCreation(t, setupFromConfigFile("networkpolicy", networkPolicyName), tearDownFromConfigFile("networkpolicy", networkPolicyName), g.Quote("networkpolicy"), g.Quote(networkPolicyName))
+	testNodeCreation(t, setupFromConfigFile("networkpolicy", networkPolicyName), tearDownFromConfigFile("networkpolicy", networkPolicyName), "networkpolicy", networkPolicyName)
 }
 
 func TestK8sNodeNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, g.Quote("node"), g.Quote(nodeName))
+	testNodeCreation(t, nil, nil, "node", nodeName)
 }
 
 func TestK8sNamespaceNode(t *testing.T) {
-	testNodeCreation(t, setupFromConfigFile("namespace", namespaceName), tearDownFromConfigFile("namespace", namespaceName), g.Quote("namespace"), g.Quote(namespaceName))
+	testNodeCreation(t, setupFromConfigFile("namespace", namespaceName), tearDownFromConfigFile("namespace", namespaceName), "namespace", namespaceName)
 }
