@@ -36,6 +36,7 @@ import (
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -128,7 +129,7 @@ type TestContext struct {
 }
 
 type TestCapture struct {
-	gremlin    string
+	gremlin    g.QueryString
 	kind       string
 	bpf        string
 	rawPackets int
@@ -168,10 +169,7 @@ type Test struct {
 }
 
 func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
-	gremlin := "G"
-	if !at.IsZero() {
-		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
-	}
+	gremlin := g.G.V().Context(at)
 
 	switch helper.GraphOutputFormat {
 	case "ascii":
@@ -220,11 +218,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 }
 
 func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
-	gremlin := "G"
-	if !at.IsZero() {
-		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
-	}
-	gremlin += ".V().Flows().Sort()"
+	gremlin := g.G.V().Context(at).Flows().Sort()
 
 	flows, err := c.gh.GetFlows(gremlin)
 	if err != nil {
@@ -261,7 +255,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	t.Log("Creating captures")
 	for _, tc := range test.captures {
-		capture := types.NewCapture(tc.gremlin, tc.bpf)
+		capture := types.NewCapture(tc.gremlin.String(), tc.bpf)
 		capture.Type = tc.kind
 		capture.RawPacketLimit = tc.rawPackets
 		if err = client.Create("capture", capture); err != nil {
@@ -478,10 +472,10 @@ func pingRequest(t *testing.T, context *TestContext, packet *types.PacketParamsR
 	return context.client.Create("injectpacket", packet)
 }
 
-func ping(t *testing.T, context *TestContext, ipVersion int, src string, dst string, count int64, id int64) error {
+func ping(t *testing.T, context *TestContext, ipVersion int, src, dst g.QueryString, count int64, id int64) error {
 	packet := &types.PacketParamsReq{
-		Src:      src,
-		Dst:      dst,
+		Src:      src.String(),
+		Dst:      dst.String(),
 		Type:     fmt.Sprintf("icmp%d", ipVersion),
 		Count:    count,
 		ICMPID:   id,
