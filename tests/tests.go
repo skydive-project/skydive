@@ -36,6 +36,7 @@ import (
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -156,10 +157,7 @@ type Test struct {
 }
 
 func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
-	gremlin := "G"
-	if !at.IsZero() {
-		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
-	}
+	gremlin := g.G.V().Context(at)
 
 	switch helper.GraphOutputFormat {
 	case "ascii":
@@ -203,11 +201,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 }
 
 func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
-	gremlin := "G"
-	if !at.IsZero() {
-		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
-	}
-	gremlin += ".V().Flows().Sort()"
+	gremlin := g.G.V().Context(at).Flows().Sort()
 
 	flows, err := c.gh.GetFlows(gremlin)
 	if err != nil {
