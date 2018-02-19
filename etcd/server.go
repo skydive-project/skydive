@@ -98,9 +98,8 @@ func NewEmbeddedEtcd(name string, listen string, dataDir string, maxWalFiles, ma
 			return nil, err
 		}
 	} else {
-		if initialPeers, err = types.NewURLsMap(fmt.Sprintf("%s=%s", name, peerURLs[0].String())); err != nil {
-			return nil, err
-		}
+		initialPeers = types.URLsMap{}
+		initialPeers[name] = peerURLs
 	}
 
 	cfg.InitialCluster = initialPeers.String()
