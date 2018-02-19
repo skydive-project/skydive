@@ -25,7 +25,7 @@ var nodeImgMap = setupFixedImages({
   "netns": "ns",
   "veth": "veth",
   "bond": "port",
-  "container": "docker",
+  "container": "container",
   "node": "host",
   "pod": "pod",
   "networkpolicy": "networkpolicy",
@@ -35,6 +35,7 @@ var nodeImgMap = setupFixedImages({
 
 var managerImgMap = setupFixedImages({
   "docker": "docker",
+  "lxd": "lxd",
   "neutron": "openstack",
   "k8s": "k8s",
 });
