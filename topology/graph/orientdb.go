@@ -275,8 +275,8 @@ func (*OrientDBBackend) getTimeSliceClause(t *common.TimeSlice) string {
 	if t == nil {
 		return "ArchivedAt is NULL"
 	}
-	query := fmt.Sprintf("CreatedAt <= %d AND (DeletedAt > %d OR DeletedAt is NULL)", t.Last, t.Start)
-	query += fmt.Sprintf(" AND UpdatedAt <= %d AND (ArchivedAt > %d OR ArchivedAt is NULL)", t.Last, t.Start)
+	query := fmt.Sprintf("CreatedAt <= %d AND (DeletedAt >= %d OR DeletedAt is NULL)", t.Last, t.Start)
+	query += fmt.Sprintf(" AND UpdatedAt <= %d AND (ArchivedAt >= %d OR ArchivedAt is NULL)", t.Last, t.Start)
 	return query
 }
 
