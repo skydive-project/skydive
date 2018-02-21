@@ -226,7 +226,7 @@ func (b *ElasticSearchBackend) getTimeFilter(t *common.TimeSlice) *filters.Filte
 			filters.NewLteInt64Filter("UpdatedAt", t.Last),
 			filters.NewOrFilter(
 				filters.NewNullFilter("ArchivedAt"),
-				filters.NewGtInt64Filter("ArchivedAt", t.Start),
+				filters.NewGteInt64Filter("ArchivedAt", t.Start),
 			),
 		),
 	)
