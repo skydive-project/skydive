@@ -197,6 +197,9 @@
         Wants=network.target
         After=network.target
 
+        [Install]
+        WantedBy=multi-user.target
+
         [Service]
         ExecStart=/usr/bin/java -jar /var/lib/jenkins/slave.jar -jnlpUrl http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/computer/{{ inventory_hostname_short }}/slave-agent.jnlp -secret {{ hostvars['jenkins_master']['slave_secrets'][play_hosts.index(inventory_hostname)] }}
         User=jenkins
