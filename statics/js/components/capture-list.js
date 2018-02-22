@@ -2,7 +2,7 @@
 
 var Capture = {
 
-  mixins: [apiMixin],
+  mixins: [apiMixin, notificationMixin],
 
   props: {
 
@@ -120,7 +120,7 @@ var Capture = {
 
 Vue.component('capture-list', {
 
-  mixins: [apiMixin],
+  mixins: [apiMixin, notificationMixin],
 
   components: {
     'capture': Capture,
