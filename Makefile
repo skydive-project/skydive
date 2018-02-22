@@ -92,6 +92,7 @@ skydive.yml: etc/skydive.yml.default
 
 .PHONY: debug
 debug: GOFLAGS+=-gcflags='-N -l'
+debug: GO_BINDATA_FLAGS+=-debug
 debug: skydive.cleanup skydive skydive.yml
 
 define skydive_debug
