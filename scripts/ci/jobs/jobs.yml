@@ -42,6 +42,9 @@
     wrappers:
       - ansicolor:
           colormap: gnome-terminal
+      - timeout:
+          timeout: 3600
+          fail: true
       - timestamps
     scm:
       - skydive-github
