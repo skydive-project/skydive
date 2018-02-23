@@ -89,7 +89,6 @@ func setupFromConfigFile(ty, name string) []helper.Cmd {
 	return []helper.Cmd{
 		{"kubectl create -f " + k8sConfigFile(ty), true},
 		{makeCmdWaitUntilCreated(ty, name), true},
-		{"sleep 2", true},
 	}
 }
 
