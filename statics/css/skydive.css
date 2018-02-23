@@ -172,30 +172,30 @@ label {
   background: #529DE1;
 }
 
-ul.capture-list {
+ul.capture-list, ul.injector-list {
   list-style-type: none;
   padding: 0px;
 }
 
-li.capture-item {
+li.capture-item, li.injector-item {
   padding: 0px;
   padding-bottom: 10px;
 }
 
-.capture-item dl {
+.capture-item dl, .injector-item dl {
   margin-bottom: 0px;
 }
 
-.capture-item dt {
+.capture-item dt, .injector-item dt {
   width: 60px;
 }
 
-.capture-item dd {
+.capture-item dd, .injector-item dd {
   margin-left: 70px;
   margin-bottom: 5px;
 }
 
-.capture-item dd.query {
+.capture-item dd.query, .injector-item dd.query {
   font-family: monospace;
   font-size: 11px;
   background: #333;
@@ -204,12 +204,12 @@ li.capture-item {
   cursor: pointer;
 }
 
-.capture-title {
+.capture-title, .injector-title {
   font-weight: bold;
   padding-bottom: 5px;
 }
 
-.capture-action, .node-action {
+.capture-action, .node-action, .injector-action {
   float: right;
   cursor: pointer;
   font-size: 1.2em;
@@ -218,7 +218,7 @@ li.capture-item {
   padding-left: 10px;
 }
 
-.capture-delete {
+.capture-delete, .injector-delete {
   color: #a94442 !important;
 }
 

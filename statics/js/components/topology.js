@@ -134,6 +134,7 @@ var TopologyComponent = {
             <capture-form v-if="topologyMode ===  \'live\'"></capture-form>\
           </tab-pane>\
           <tab-pane title="Generator" v-if="topologyMode ===  \'live\'">\
+            <injection-list></injection-list>\
             <inject-form></inject-form>\
           </tab-pane>\
           <tab-pane title="Flows">\

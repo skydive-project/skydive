@@ -159,6 +159,33 @@ var apiMixin = {
       });
     },
 
+    $injectorList: function() {
+      var self = this;
+      return $.ajax({
+        dataType: "json",
+        url: '/api/injectpacket',
+        contentType: "application/json; charset=utf-8",
+        method: 'GET',
+      })
+      .fail(function(e) {
+        self.$error({message: 'Packet injector list error: ' + e.responseText});
+        return e;
+      });
+    },
+
+    $injectorDelete: function(uuid) {
+      var self = this;
+      return $.ajax({
+        dataType: 'text',
+        url: '/api/injectpacket/' + uuid + '/',
+        method: 'DELETE',
+      })
+      .fail(function(e) {
+        self.$error({message: 'Packet injector delete error: ' + e.responseText});
+        return e;
+      });
+    },
+
     $allowedTypes: function() {
       return ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy",
         "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan",
