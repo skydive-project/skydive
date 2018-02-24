@@ -461,6 +461,7 @@ inotifywait -m -r -e create -e delete /var/run/netns | while read PATH EVENT FOL
 
     case "\$EVENT" in
     CREATE)
+      /usr/bin/sleep 3
       /usr/bin/sudo ln -s /var/run/netns/\$FOLDER $TEMP_DIR/\$AGENT-netns/\$NS
       ;;
     DELETE)
