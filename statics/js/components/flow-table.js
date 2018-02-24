@@ -293,7 +293,7 @@ Vue.component('flow-table', {
             @mouseenter="highlightNodes(flows.row)"\
             @mouseleave="unhighlightNodes()">\
           <td v-for="field in flows.visibleFields">\
-            {{fieldValue(flows.row, field.name)}}\
+            {{ fieldValue(flows.row, field.name).toLocaleString() }}\
           </td>\
         </tr>\
         <tr class="flow-detail-row"\
@@ -719,8 +719,7 @@ Vue.component('flow-table', {
           }
         }
         if (value !== null) {
-          if (isNaN(value)) return value;
-          return value.toLocaleString();
+          return value;
         }
       }
       return "";
