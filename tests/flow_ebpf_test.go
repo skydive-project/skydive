@@ -27,6 +27,7 @@ package tests
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -54,7 +55,9 @@ func TestFlowsEBPF(t *testing.T) {
 		},
 
 		setupFunction: func(c *TestContext) (err error) {
-			return ping(t, c, 4, "G.V().Has('Name', 'ebpf-src-eth0')", "G.V().Has('Name', 'ebpf-dst-eth0')", 10, 0)
+			return common.Retry(func() error {
+				return ping(t, c, 4, "G.V().Has('Name', 'ebpf-src-eth0')", "G.V().Has('Name', 'ebpf-dst-eth0')", 10, 0)
+			}, 10, time.Second)
 		},
 
 		tearDownCmds: []helper.Cmd{
