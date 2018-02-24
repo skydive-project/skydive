@@ -9,7 +9,15 @@ var TopologyGraphLayout = function(vm, selector) {
 
   this.queue = new Queue();
   this.queue.await(function() {
-    if (self.invalid) self.update();
+    if (self.invalid) {
+      if (self._autoExpand) {
+        while (self.toggleCollapseByLevel(false));
+        setTimeout(function() {
+          self.zoomFit();
+        }, 5000);
+      }
+      self.update();
+    }
     self.invalid = false;
   }).start(100);
 
@@ -1021,6 +1029,11 @@ TopologyGraphLayout.prototype = {
     this.update();
   },
 
+  autoExpand: function(auto) {
+    this._autoExpand = auto;
+    this.invalid = true;
+  },
+
   collapse: function(collapse) {
     this.collapsed = collapse;
     this.defaultCollpsed = collapse;
@@ -1040,7 +1053,7 @@ TopologyGraphLayout.prototype = {
   toggleCollapseByLevel: function(collapse) {
     if (collapse) {
       if (this.collapseLevel === 0) {
-        return;
+        return false;
       } else {
         this.collapseLevel--;
       }
@@ -1051,13 +1064,17 @@ TopologyGraphLayout.prototype = {
         var group = this.groups[i];
         if (group.level > maxLevel) maxLevel = group.level;
       }
-      if (maxLevel > 1 && (this.collapseLevel + 1) >= maxLevel) {
-        return;
+      if (maxLevel === 0) {
+        return false;
+      }
+      if ((this.collapseLevel + 1) >= maxLevel) {
+        return false;
       }
 
       this.collapseByLevel(this.collapseLevel, collapse, this.groups);
       this.collapseLevel++;
     }
+    return true;
   },
 
   collapseByLevel: function(level, collapse, groups) {
