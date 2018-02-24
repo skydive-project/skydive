@@ -33,6 +33,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -82,7 +83,7 @@ func checkHostNodes(client *shttp.CrudClient, gh *gclient.GremlinQueryHelper, no
 		}
 
 		if len(nodes) != nodeExpected {
-			return fmt.Errorf("Should return %d host nodes got : %v", nodeExpected, nodes)
+			return fmt.Errorf("Should return %d host nodes got : %v", nodeExpected, spew.Sdump(nodes))
 		}
 
 		if err := checkAgents(client, nodeExpected); err != nil {
@@ -239,13 +240,13 @@ func checkCaptures(gh *gclient.GremlinQueryHelper, captureExpected int) error {
 		}
 
 		if len(nodes) != captureExpected {
-			return fmt.Errorf("Should return %d capture got : %v", captureExpected, nodes)
+			return fmt.Errorf("Should return %d capture got : %s", captureExpected, spew.Sdump(nodes))
 		}
 
 		return nil
 	}
 
-	return common.Retry(retry, 10, time.Second)
+	return common.Retry(retry, 20, time.Second)
 }
 
 func waitForFirstFlows(gh *gclient.GremlinQueryHelper, expected int) error {
@@ -256,7 +257,7 @@ func waitForFirstFlows(gh *gclient.GremlinQueryHelper, expected int) error {
 		}
 
 		if len(flows) != expected {
-			return errors.New("Should get at least one flow")
+			return fmt.Errorf("Should get at least one flow, got %s", spew.Sdump(flows))
 		}
 		return nil
 	}
