@@ -88,6 +88,7 @@
        - python3-virtualenv
        - llvm-devel
        - clang-devel
+       - elfutils-libelf-devel
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
