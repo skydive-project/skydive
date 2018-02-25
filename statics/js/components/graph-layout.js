@@ -1,3 +1,52 @@
+var LinkLabelBandwidth = function(topology, link) {
+  const defaultBandwidthBaseline = 1024 * 1024 * 1024; // 1 gbps
+
+  var bandwidthBaseline = (topology.bandwidth.bandwidthThreshold === 'relative') ?
+    link.target.metadata.Speed || defaultBandwidthBaseline : 1;
+
+  function bandwidthFromMetrics(metrics) {
+    var totalByte = (metrics.RxBytes || 0) + (metrics.TxBytes || 0);
+
+    var deltaMillis = metrics.Last - metrics.Start;
+    var elapsedMillis = Date.now() - new Date(metrics.Last);
+    const maxClockSkewMillis = 5 * 60 * 1000; // 5 minutes
+    if (elapsedMillis > maxClockSkewMillis) {
+      return 0;
+    }
+
+    if (deltaMillis > 0) {
+      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second 
+    }
+    return 0;
+  }
+
+  this.bandwidth = topology.bandwidth;
+  this.bandwidthAbsolute = bandwidthFromMetrics(link.target.metadata.LastUpdateMetric);
+  this.bandwidthCheck = this.bandwidthAbsolute / bandwidthBaseline;
+};
+
+LinkLabelBandwidth.prototype = {
+  check: function() {
+    return this.bandwidthCheck > this.bandwidth.active;
+  },
+
+  getText: function() {
+    return bandwidthToString(this.bandwidthAbsolute);
+  },
+
+  isActive: function() {
+    return (this.bandwidthCheck > this.bandwidth.active) && (this.bandwidthCheck < this.bandwidth.warning);
+  },
+
+  isWarning: function() {
+    return (this.bandwidthCheck >= this.bandwidth.warning) && (this.bandwidthCheck < this.bandwidth.alert);
+  },
+
+  isAlert: function() {
+    return this.bandwidthCheck >= this.bandwidth.alert;
+  },
+};
+
 var TopologyGraphLayout = function(vm, selector) {
   var self = this;
 
@@ -1151,22 +1200,6 @@ TopologyGraphLayout.prototype = {
     });
   },
 
-  bandwidthFromMetrics: function(metrics) {
-    var totalByte = (metrics.RxBytes || 0) + (metrics.TxBytes || 0);
-
-    var deltaMillis = metrics.Last - metrics.Start;
-    var elapsedMillis = Date.now() - new Date(metrics.Last);
-    const maxClockSkewMillis = 5 * 60 * 1000; // 5 minutes
-    if (elapsedMillis > maxClockSkewMillis) {
-      return 0;
-    }
-
-    if (deltaMillis > 0) {
-      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second 
-    }
-    return 0;
-  },
-
   styleReturn: function(d, values) {
     if (d.active)
       return values[0];
@@ -1204,7 +1237,6 @@ TopologyGraphLayout.prototype = {
     var self = this;
 
     for (var i in this.links) {
-      var bandwidth = this.bandwidth;
       var link = this.links[i];
 
       if (!link.source.visible || !link.target.visible)
@@ -1214,20 +1246,16 @@ TopologyGraphLayout.prototype = {
       if (!link.target.metadata.LastUpdateMetric)
         continue;
 
-      const defaultBandwidthBaseline = 1024 * 1024 * 1024; // 1 gbps
-      var bandwidthBaseline = (bandwidth.bandwidthThreshold === 'relative') ?
-        link.target.metadata.Speed || defaultBandwidthBaseline : 1;
-      var bandwidthAbsolute = this.bandwidthFromMetrics(link.target.metadata.LastUpdateMetric);
-      var bandwidthCheck = bandwidthAbsolute / bandwidthBaseline;
+      var driver = new LinkLabelBandwidth(this, link);
 
-      if (bandwidthCheck > bandwidth.active) {
+      if (driver.check()) {
         this.linkLabelData[link.id] = {
           id: "link-label-" + link.id,
           link: link,
-          text: bandwidthToString(bandwidthAbsolute),
-          active: (bandwidthCheck > bandwidth.active) && (bandwidthCheck < bandwidth.warning),
-          warning: (bandwidthCheck >= bandwidth.warning) && (bandwidthCheck < bandwidth.alert),
-          alert: bandwidthCheck >= bandwidth.alert
+          text: driver.getText(),
+          active: driver.isActive(),
+          warning: driver.isWarning(),
+          alert: driver.isAlert(),
         };
       } else {
         delete this.linkLabelData[link.id];
