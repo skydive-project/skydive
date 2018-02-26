@@ -209,7 +209,7 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
       // Precompute the orders.
       _this.orders = {
         name: d3.range(n).sort(function(a, b) {
-          return d3.ascending(nodes[a].name, nodes[b].name);
+          return nodes[a].name.localeCompare(nodes[b].name, undefined, {numeric: true, sensitivity: 'base'});
         }),
         count: d3.range(n).sort(function(a, b) {
           return nodes[b].count - nodes[a].count;
