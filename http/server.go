@@ -32,6 +32,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -166,24 +167,28 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
+func (s *Server) readStatics(upath string) (content []byte, err error) {
+	if asset, ok := s.extraAssets[upath]; ok {
+		logging.GetLogger().Debugf("Fetch disk asset: %s", upath)
+		content = asset.Content
+	} else if content, err = statics.Asset(upath); err != nil {
+		logging.GetLogger().Debugf("Fetch embeded asset: %s", upath)
+	}
+	return
+}
+
 func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
 	upath := r.URL.Path
 	if strings.HasPrefix(upath, "/") {
 		upath = strings.TrimPrefix(upath, "/")
 	}
 
-	var content []byte
-	var err error
+	content, err := s.readStatics(upath)
 
-	if asset, ok := s.extraAssets[upath]; ok {
-		content = asset.Content
-	} else {
-		content, err = statics.Asset(upath)
-		if err != nil {
-			logging.GetLogger().Errorf("Unable to find the asset: %s", upath)
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to find the asset %s", upath)
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
 	ext := filepath.Ext(upath)
@@ -196,7 +201,8 @@ func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
-	html, err := statics.Asset("statics/index.html")
+	html, err := s.readStatics("statics/index.html")
+
 	if err != nil {
 		logging.GetLogger().Error("Unable to find the asset index.html")
 		w.WriteHeader(http.StatusNotFound)
@@ -258,15 +264,25 @@ func (s *Server) HandleFunc(path string, f auth.AuthenticatedHandlerFunc) {
 	s.Router.HandleFunc(path, s.Auth.Wrap(f))
 }
 
-func (s *Server) loadExtraAssets(folder string) {
-	files, err := ioutil.ReadDir(folder)
+func (s *Server) loadExtraAssets(folder, prefix string) {
+	files := []string{}
+
+	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+
+		files = append(files, strings.TrimPrefix(path, folder))
+		return nil
+	})
+
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to load extra assets from %s: %s", folder, err)
 		return
 	}
 
 	for _, file := range files {
-		path := filepath.Join(folder, file.Name())
+		path := filepath.Join(folder, file)
 
 		data, err := ioutil.ReadFile(path)
 		if err != nil {
@@ -276,9 +292,10 @@ func (s *Server) loadExtraAssets(folder string) {
 
 		ext := filepath.Ext(path)
 
-		key := strings.TrimPrefix(filepath.Join(ExtraAssetPrefix, file.Name()), "/")
+		key := strings.TrimPrefix(filepath.Join(prefix, file), "/")
+		logging.GetLogger().Debugf("Added extra static assert: %s", key)
 		s.extraAssets[key] = ExtraAsset{
-			Filename: filepath.Join(ExtraAssetPrefix, file.Name()),
+			Filename: filepath.Join(prefix, file),
 			Ext:      ext,
 			Content:  data,
 		}
@@ -300,7 +317,7 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 	}
 
 	if assetsFolder != "" {
-		server.loadExtraAssets(assetsFolder)
+		server.loadExtraAssets(assetsFolder, ExtraAssetPrefix)
 	}
 
 	router.PathPrefix("/statics").HandlerFunc(server.serveStatics)
