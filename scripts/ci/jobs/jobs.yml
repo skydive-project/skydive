@@ -375,8 +375,44 @@
           [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
-          cd scripts/ci
+          cd scripts/ci/devstack
           vagrant up --no-provision && vagrant provision
+          retcode=$?
+          vagrant destroy
+          exit $retcode
+    publishers:
+      - chuck-norris
+    node: baremetal
+
+- job:
+    name: skydive-kolla-tests
+    defaults: skydive
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (skydive-)?kolla-tests.*'
+          only-trigger-phrase: true
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-kolla-tests
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+          . scripts/ci/install-go.sh
+          make static
+          cp $GOPATH/bin/skydive .
+          make test.functionals.compile GOFLAGS="-race" GORACE="history_size=5" WITH_NEUTRON=true VERBOSE=true
+          cd scripts/ci/kolla
+          DEPLOYMENT_MODE=dev vagrant up
           retcode=$?
           vagrant destroy
           exit $retcode

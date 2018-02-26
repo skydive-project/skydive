@@ -16,5 +16,5 @@ chmod +x ~/bin/gimme
 # before changing this be sure that it will not break the RHEL packaging
 eval "$(gimme 1.9.1)"
 
-dir="$(dirname "$0")"
+dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . "${dir}/install-go-deps.sh"

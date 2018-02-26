@@ -1,0 +1,33 @@
+VAGRANTFILE_API_VERSION = "2"
+
+DEPLOYMENT_MODE=ENV.fetch("DEPLOYMENT_MODE", "")
+
+$script = <<SCRIPT
+sudo yum -y install git make
+SCRIPT
+
+$testscript = <<SCRIPT
+sudo yum -y install https://www.rdoproject.org/repos/rdo-release.rpm
+sudo yum -y install libpcap libxml2 openvswitch
+cd /skydive
+source /etc/kolla/admin-openrc.sh
+export SKYDIVE_ANALYZERS=192.168.50.10:8085
+make test.functionals.run VERBOSE=true TIMEOUT=20m ARGS='-test.run TestNeutron'
+SCRIPT
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    config.vm.define :kolla do |kolla|
+         kolla.vm.box = "centos/7"
+         kolla.vm.synced_folder "../../..", "/skydive", :disabled => false, :type => "nfs", :nfs_udp => false
+         kolla.vm.provider :libvirt do |domain|
+             domain.memory = 8192
+             domain.cpus = 4
+             domain.graphics_type = "none"
+         end
+         kolla.vm.network "private_network", ip: "192.168.50.10"
+         kolla.vm.network "private_network", ip: "192.168.100.10"
+         kolla.vm.provision "pre", type: "shell", inline: $script, privileged: false
+         kolla.vm.provision "kolla", type: "shell", path: "run-kolla.sh", privileged: true, env: {"DEPLOYMENT_MODE" => DEPLOYMENT_MODE}
+         kolla.vm.provision "test", type: "shell", inline: $testscript, privileged: false
+    end
+end
