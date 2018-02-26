@@ -88,6 +88,7 @@
        - python3-virtualenv
        - llvm-devel
        - clang-devel
+       - elfutils-libelf-devel
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
@@ -210,6 +211,10 @@
       name: jenkins-slave
       state: started
       enabled: yes
+  - service:
+      name: firewalld
+      state: stopped
+      enabled: no
 
 - name: Jenkins master post configuration
   hosts: jenkins_master

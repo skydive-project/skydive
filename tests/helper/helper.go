@@ -124,15 +124,10 @@ func InitConfig(conf string, params ...HelperParams) error {
 
 	fmt.Printf("Config: %s\n", string(buff.Bytes()))
 
-	err = config.InitConfig("file", []string{f.Name()})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return config.InitConfig("file", []string{f.Name()})
 }
 
-func ExecCmds(t *testing.T, cmds ...Cmd) error {
+func ExecCmds(t *testing.T, cmds ...Cmd) (e error) {
 	for _, cmd := range cmds {
 		args := strings.Split(cmd.Cmd, " ")
 		command := exec.Command(args[0], args[1:]...)
@@ -145,9 +140,10 @@ func ExecCmds(t *testing.T, cmds ...Cmd) error {
 			if cmd.Check {
 				t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error(), string(stdouterr))
 			}
+			e = err
 		}
 	}
-	return nil
+	return
 }
 
 func FilterIPv6AddrAnd(flows []*flow.Flow, A, B string) (r []*flow.Flow) {
