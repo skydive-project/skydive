@@ -58,6 +58,10 @@ func TestNeutron(t *testing.T) {
 		DomainID:         domainID,
 	}
 
+	if opts.DomainID == "" {
+		opts.DomainName = os.Getenv("OS_PROJECT_DOMAIN_NAME")
+	}
+
 	var client *gophercloud.ServiceClient
 	var netResult networks.CreateResult
 
