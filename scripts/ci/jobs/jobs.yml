@@ -43,8 +43,9 @@
       - ansicolor:
           colormap: gnome-terminal
       - timeout:
-          timeout: 3600
+          timeout: 60
           fail: true
+          type: absolute
       - timestamps
     scm:
       - skydive-github
