@@ -15,7 +15,7 @@ var apiMixin = {
           // the agent
           return self.$downloadRawPackets(UUID, true);
         } else if (this.status === 200) {
-          var filename = UUID + 'pcap';
+          var filename = UUID + '.pcap';
           var type = xhr.getResponseHeader('Content-Type');
 
           var blob = new Blob([this.response], { type: type });
