@@ -90,13 +90,10 @@ flow:
   update: 10
 
 ovs:
-  ovsdb: unix:///var/run/openvswitch/db.sock
   oflow:
     enable: true
 
 storage:
-  elasticsearch:
-    host: 127.0.0.1:9200
   orientdb:
     addr: http://127.0.0.1:2480
     database: Skydive
@@ -108,9 +105,6 @@ graph:
 
 logging:
   level: DEBUG
-
-auth:
-  type: noauth
 
 etcd:
   data_dir: /tmp/skydive-etcd
