@@ -913,18 +913,31 @@ func TestAgentMetadata(t *testing.T) {
 
 //TestRouteTable tests route table update
 func TestRouteTable(t *testing.T) {
-	gopath := os.Getenv("GOPATH")
-	topology := gopath + "/src/github.com/skydive-project/skydive/scripts/simple.sh"
-
 	test := &Test{
 		mode: OneShot,
 
 		setupCmds: []helper.Cmd{
-			{fmt.Sprintf("%s start 124.65.91.42/24 124.65.92.43/24", topology), true},
+			{"ovs-vsctl add-br br-rt", true},
+			{"ip netns add rt-vm1", true},
+			{"ip link add rt-vm1-eth0 type veth peer name rt-eth-src netns rt-vm1", true},
+			{"ip link set rt-vm1-eth0 up", true},
+			{"ip netns exec rt-vm1 ip link set rt-eth-src up", true},
+			{"ip netns exec rt-vm1 ip address add 124.65.91.42/24 dev rt-eth-src", true},
+			{"ovs-vsctl add-port br-rt rt-vm1-eth0", true},
+			{"ip netns add rt-vm2", true},
+			{"ip link add rt-vm2-eth0 type veth peer name rt-eth-dst netns rt-vm2", true},
+			{"ip link set rt-vm2-eth0 up", true},
+			{"ip netns exec rt-vm2 ip link set rt-eth-dst up", true},
+			{"ip netns exec rt-vm2 ip address add 124.65.92.43/24 dev rt-eth-dst", true},
+			{"ovs-vsctl add-port br-rt rt-vm2-eth0", true},
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{fmt.Sprintf("%s stop", topology), true},
+			{"ovs-vsctl del-br br-rt", true},
+			{"ip link del rt-vm1-eth0", true},
+			{"ip netns del rt-vm1", true},
+			{"ip link del rt-vm2-eth0", true},
+			{"ip netns del rt-vm2", true},
 		},
 
 		checks: []CheckFunction{
@@ -943,7 +956,7 @@ func TestRouteTable(t *testing.T) {
 				noOfRoutingTable := len(routingTable)
 
 				helper.ExecCmds(t,
-					helper.Cmd{Cmd: "ip netns exec vm1 ip route add 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
+					helper.Cmd{Cmd: "ip netns exec rt-vm1 ip route add 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
 					helper.Cmd{Cmd: "sleep 5", Check: false},
 				)
 
@@ -952,7 +965,7 @@ func TestRouteTable(t *testing.T) {
 				newNoOfRoutingTable := len(routingTable)
 
 				helper.ExecCmds(t,
-					helper.Cmd{Cmd: "ip netns exec vm1 ip route del 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
+					helper.Cmd{Cmd: "ip netns exec rt-vm1 ip route del 124.65.92.0/24 via 124.65.91.42 table 2", Check: true},
 					helper.Cmd{Cmd: "sleep 5", Check: false},
 				)
 				if newNoOfRoutingTable <= noOfRoutingTable {
@@ -967,20 +980,33 @@ func TestRouteTable(t *testing.T) {
 
 //TestRouteTableHistory tests route table update available in history
 func TestRouteTableHistory(t *testing.T) {
-	gopath := os.Getenv("GOPATH")
-	topology := gopath + "/src/github.com/skydive-project/skydive/scripts/simple.sh"
-
 	test := &Test{
 		mode: OneShot,
 
 		setupCmds: []helper.Cmd{
-			{fmt.Sprintf("%s start 124.65.75.42/24 124.65.76.43/24", topology), true},
+			{"ovs-vsctl add-br br-rth", true},
+			{"ip netns add rth-vm1", true},
+			{"ip link add rth-vm1-eth0 type veth peer name rth-eth-src netns rth-vm1", true},
+			{"ip link set rth-vm1-eth0 up", true},
+			{"ip netns exec rth-vm1 ip link set rth-eth-src up", true},
+			{"ip netns exec rth-vm1 ip address add 124.65.75.42/24 dev rth-eth-src", true},
+			{"ovs-vsctl add-port br-rth rth-vm1-eth0", true},
+			{"ip netns add rth-vm2", true},
+			{"ip link add rth-vm2-eth0 type veth peer name rth-eth-dst netns rth-vm2", true},
+			{"ip link set rth-vm2-eth0 up", true},
+			{"ip netns exec rth-vm2 ip link set rth-eth-dst up", true},
+			{"ip netns exec rth-vm2 ip address add 124.65.76.43/24 dev rth-eth-dst", true},
+			{"ovs-vsctl add-port br-rth rth-vm2-eth0", true},
 			{"sleep 5", false},
-			{"ip netns exec vm1 ip route add 124.65.75.0/24 via 124.65.75.42 table 2", true},
+			{"ip netns exec rth-vm1 ip route add 124.65.75.0/24 via 124.65.75.42 table 2", true},
 		},
 
 		tearDownCmds: []helper.Cmd{
-			{fmt.Sprintf("%s stop", topology), true},
+			{"ovs-vsctl del-br br-rth", true},
+			{"ip link del rth-vm1-eth0", true},
+			{"ip netns del rth-vm1", true},
+			{"ip link del rth-vm2-eth0", true},
+			{"ip netns del rth-vm2", true},
 		},
 
 		checks: []CheckFunction{
