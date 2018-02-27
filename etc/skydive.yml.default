@@ -117,13 +117,15 @@ agent:
   topology:
     # Probes used to capture topology information like interfaces,
     # bridges, namespaces, etc...
-    # Available: ovsdb, docker, neutron, opencontrail
+    # Available: ovsdb, docker, neutron, opencontrail, socketinfo, lxd
     probes:
       # - ovsdb
       # - docker
       # - neutron
       # - opencontrail
       # - socketinfo
+      # - lxd
+
     netlink:
       # delay in seconds between two metric updates
       # metrics_update: 30
