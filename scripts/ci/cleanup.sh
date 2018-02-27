@@ -30,6 +30,7 @@ function cleanup() {
   cleanup_items intf "ip link del"
   cleanup_items ovsdb "ovs-vsctl del-br"
   cleanup_items docker "docker_rm"
+  cleanup_items lxd "lxc delete --force"
   cleanup_items docker-images "docker rmi -f"
 
   "${CURDIR}/../scale.sh" stop 10 10 10
@@ -76,6 +77,7 @@ function snapshot() {
   snapshot_items ovsdb $ext "ovs-vsctl list-br"
   snapshot_items docker $ext "docker ps -a -q"
   snapshot_items docker-images $ext "docker images -a -q"
+  snapshot_items lxd $ext "lxc list --format csv -c n"
 }
 
 case "$1" in
