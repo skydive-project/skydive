@@ -179,7 +179,8 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		header.Set("Accept", "vnd.graphviz")
 		resp, err := c.gh.Request(gremlin, header)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Error(err.Error())
+			return ""
 		}
 
 		b, err := ioutil.ReadAll(resp.Body)
@@ -188,18 +189,21 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		cmd := exec.Command("graph-easy", "--as_ascii")
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Error(err.Error())
+			return ""
 		}
 
 		if _, err = stdin.Write(b); err != nil {
-			t.Fatal(err.Error())
+			t.Error(err.Error())
+			return ""
 		}
 		stdin.Write([]byte("\n"))
 		stdin.Close()
 
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Error(err.Error())
+			return string(output)
 		}
 
 		return "\n" + string(output)
@@ -207,7 +211,8 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 	default:
 		data, err := c.gh.QueryRaw(gremlin)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Error(err.Error())
+			return ""
 		}
 
 		return string(data)
@@ -246,6 +251,7 @@ func RunTest(t *testing.T, test *Test) {
 		t.Fatalf("Failed to create client: %s", err.Error())
 	}
 
+	t.Log("Removing existing captures")
 	var captures []*types.Capture
 	defer func() {
 		for _, capture := range captures {
@@ -253,6 +259,7 @@ func RunTest(t *testing.T, test *Test) {
 		}
 	}()
 
+	t.Log("Creating captures")
 	for _, tc := range test.captures {
 		capture := types.NewCapture(tc.gremlin, tc.bpf)
 		capture.Type = tc.kind
@@ -263,6 +270,7 @@ func RunTest(t *testing.T, test *Test) {
 		captures = append(captures, capture)
 	}
 
+	t.Log("Executing setup commands")
 	helper.ExecCmds(t, test.setupCmds...)
 
 	context := &TestContext{
@@ -272,6 +280,7 @@ func RunTest(t *testing.T, test *Test) {
 		data:     make(map[string]interface{}),
 	}
 
+	t.Log("Checking captures are correctly set up")
 	err = common.Retry(func() error {
 		for _, capture := range captures {
 			nodes, err := context.gh.GetNodes(capture.GremlinQuery)
@@ -317,6 +326,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	settleTime := time.Now()
 
+	t.Log("Executing settle function")
 	if test.settleFunction != nil {
 		err = common.Retry(func() error {
 			return test.settleFunction(context)
@@ -334,6 +344,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	context.setupTime = time.Now()
 
+	t.Log("Executing setup function")
 	if test.setupFunction != nil {
 		if err = test.setupFunction(context); err != nil {
 			g := context.getWholeGraph(t, context.setupTime)
@@ -408,6 +419,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	test.checkContexts = make([]*CheckContext, len(test.checks))
 
+	t.Log("Running checks")
 	for i, check := range test.checks {
 		checkContext := &CheckContext{
 			TestContext: context,
@@ -436,6 +448,7 @@ func RunTest(t *testing.T, test *Test) {
 		}
 	}
 
+	t.Log("Running tear down commands")
 	if test.tearDownFunction != nil {
 		if err = test.tearDownFunction(context); err != nil {
 			helper.ExecCmds(t, test.tearDownCmds...)
