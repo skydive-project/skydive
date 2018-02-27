@@ -69,7 +69,7 @@ function snapshot() {
   mkdir -p $DIR
 
   snapshot_items netns $ext "ip netns | awk '{print \$1}'"
-  snapshot_items intf $ext "ip -o link show | awk -F': ' '{print \$2}'"
+  snapshot_items intf $ext "ip -o link show | awk -F': ' '{print \$2}' | cut -d '@' -f 1"
   snapshot_items ovsdb $ext "ovs-vsctl list-br"
   snapshot_items docker $ext "docker ps -a -q"
   snapshot_items docker-images $ext "docker images -a -q"
