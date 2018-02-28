@@ -113,7 +113,7 @@ func Between(list ...interface{}) ValueString {
 
 // Contains append a Contains() operation to query
 func Contains(v interface{}) ValueString {
-	return newValueString("Contains", v)
+	return ValueString(fmt.Sprintf(".*%s.*", v)).Regex()
 }
 
 // Gt append a Gt() operation to query
