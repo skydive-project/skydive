@@ -1521,31 +1521,6 @@ func TestSort(t *testing.T) {
 			{"ovs-vsctl add-port br-int src-vm2-eth0", true},
 		},
 
-		settleFunction: func(c *TestContext) (err error) {
-			if _, err = c.gh.GetNode("G.V().Has('Name', 'src1-eth0', 'State', 'UP')"); err != nil {
-				return
-			}
-
-			if _, err = c.gh.GetNode("G.V().Has('Name', 'src2-eth0', 'State', 'UP')"); err != nil {
-				return
-			}
-
-			_, err = c.gh.GetNode("G.V().Has('Name', 'dst-eth0', 'State', 'UP')")
-			return
-		},
-
-		setupFunction: func(c *TestContext) (err error) {
-			if err = ping(t, c, 4, "G.V().Has('Name', 'src1-eth0')", "G.V().Has('Name', 'dst-eth0')", 10, 0); err != nil {
-				return
-			}
-
-			if err = ping(t, c, 4, "G.V().Has('Name', 'src2-eth0')", "G.V().Has('Name', 'dst-eth0')", 20, 0); err != nil {
-				return
-			}
-
-			return
-		},
-
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-int", true},
 			{"ip link del dst-vm-eth0", true},
@@ -1558,6 +1533,11 @@ func TestSort(t *testing.T) {
 
 		captures: []TestCapture{
 			{gremlin: `G.V().Has('Name', 'dst-eth0', 'Type', 'veth')`},
+		},
+
+		injections: []TestInjection{
+			{from: "G.V().Has('Name', 'src1-eth0')", to: "G.V().Has('Name', 'dst-eth0')", count: 10},
+			{from: "G.V().Has('Name', 'src2-eth0')", to: "G.V().Has('Name', 'dst-eth0')", count: 20},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -1630,18 +1610,6 @@ func TestFlowSumStep(t *testing.T) {
 		},
 
 		settleFunction: func(c *TestContext) (err error) {
-			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf1', 'State', 'UP')"); err != nil {
-				return err
-			}
-
-			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf2', 'State', 'UP')"); err != nil {
-				return err
-			}
-
-			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf3', 'State', 'UP')"); err != nil {
-				return err
-			}
-
 			nodes, err := c.gh.GetNodes("G.V().Has('Name', 'br-sum').Out().Has('Type', 'ovsport').Dedup()")
 			if err != nil {
 				return err
@@ -1654,17 +1622,10 @@ func TestFlowSumStep(t *testing.T) {
 			return nil
 		},
 
-		setupFunction: func(c *TestContext) (err error) {
-			if err = ping(t, c, 4, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 3, 0); err != nil {
-				return
-			}
-			if err = ping(t, c, 4, "G.V().Has('Name', 'intf2')", "G.V().Has('Name', 'intf3')", 4, 0); err != nil {
-				return
-			}
-			if err = ping(t, c, 4, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf3')", 3, 0); err != nil {
-				return
-			}
-			return
+		injections: []TestInjection{
+			{from: "G.V().Has('Name', 'intf1')", to: "G.V().Has('Name', 'intf2')", count: 3},
+			{from: "G.V().Has('Name', 'intf2')", to: "G.V().Has('Name', 'intf3')", count: 4},
+			{from: "G.V().Has('Name', 'intf1')", to: "G.V().Has('Name', 'intf3')", count: 3},
 		},
 
 		tearDownCmds: []helper.Cmd{
@@ -1727,22 +1688,6 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 			{"ovs-vsctl add-port br-fcn vm2-eth0", true},
 		},
 
-		settleFunction: func(c *TestContext) (err error) {
-			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf1', 'State', 'UP')"); err != nil {
-				return err
-			}
-
-			if _, err := c.gh.GetNode("G.V().Has('Name', 'intf2', 'State', 'UP')"); err != nil {
-				return err
-			}
-
-			return nil
-		},
-
-		setupFunction: func(c *TestContext) (err error) {
-			return ping(t, c, 4, "G.V().Has('Name', 'intf1')", "G.V().Has('Name', 'intf2')", 3, 0)
-		},
-
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-fcn", true},
 			{"ip link del vm1-eth0", true},
@@ -1753,6 +1698,10 @@ func TestFlowCaptureNodeStep(t *testing.T) {
 
 		captures: []TestCapture{
 			{gremlin: `G.V().Has('Name', 'br-fcn', 'Type', 'ovsbridge')`},
+		},
+
+		injections: []TestInjection{
+			{from: "G.V().Has('Name', 'intf1')", to: "G.V().Has('Name', 'intf2')", count: 3},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -1804,10 +1753,6 @@ func TestFlowsWithShortestPath(t *testing.T) {
 			{"ovs-vsctl add-port br-spt dst-vm-eth0", true},
 		},
 
-		setupFunction: func(c *TestContext) (err error) {
-			return ping(t, c, 4, "G.V().Has('Name', 'spt-src-eth0')", "G.V().Has('Name', 'spt-dst-eth0')", 10, 0)
-		},
-
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-spt", true},
 			{"ip link del dst-vm-eth0", true},
@@ -1818,6 +1763,10 @@ func TestFlowsWithShortestPath(t *testing.T) {
 
 		captures: []TestCapture{
 			{gremlin: `G.V().Has('Name', 'spt-src-eth0').ShortestPathTo(Metadata('Name', 'spt-dst-eth0'), Metadata('RelationType', 'layer2'))`},
+		},
+
+		injections: []TestInjection{
+			{from: "G.V().Has('Name', 'spt-src-eth0')", to: "G.V().Has('Name', 'spt-dst-eth0')", count: 10},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
@@ -1915,11 +1864,6 @@ func TestRawPackets(t *testing.T) {
 			{"brctl addif br-rp rp-vm2-eth0", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec rp-vm1 ping -c 2 169.254.122.67", Check: false})
-			return nil
-		},
-
 		tearDownCmds: []helper.Cmd{
 			{"ip link set br-rp down", true},
 			{"brctl delbr br-rp", true},
@@ -1932,6 +1876,12 @@ func TestRawPackets(t *testing.T) {
 		captures: []TestCapture{
 			{gremlin: `G.V().Has('Name', 'rp-vm1-eth0')`, rawPackets: 9, kind: "pcap"},
 		},
+
+		injections: []TestInjection{{
+			from:  "G.V().Has('Name', 'rp-vm1', 'Type', 'netns').Out().Has('Name', 'eth0')",
+			to:    "G.V().Has('Name', 'rp-vm2', 'Type', 'netns').Out().Has('Name', 'eth0')",
+			count: 2,
+		}},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
@@ -2009,10 +1959,6 @@ func TestFlowsWithIpv4Range(t *testing.T) {
 			{"ovs-vsctl add-port br-ipr dst-ipr-eth0", true},
 		},
 
-		setupFunction: func(c *TestContext) (err error) {
-			return ping(t, c, 4, "G.V().Has('Name', 'ipr-src-eth0')", "G.V().Has('Name', 'ipr-dst-eth0')", 10, 0)
-		},
-
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-ipr", true},
 			{"ip link del dst-ipr-eth0", true},
@@ -2024,6 +1970,12 @@ func TestFlowsWithIpv4Range(t *testing.T) {
 		captures: []TestCapture{
 			{gremlin: `G.V().Has('Name', 'ipr-src-eth0')`},
 		},
+
+		injections: []TestInjection{{
+			from:  "G.V().Has('Name', 'ipr-src-eth0')",
+			to:    "G.V().Has('Name', 'ipr-dst-eth0')",
+			count: 10,
+		}},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			g := "g"
@@ -2053,11 +2005,6 @@ func TestOvsMirror(t *testing.T) {
 			{"ip link set omir-if1 up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ping -c 5 -I omir-if1 169.254.33.34", Check: false})
-			return nil
-		},
-
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-omir", true},
 		},
@@ -2065,6 +2012,13 @@ func TestOvsMirror(t *testing.T) {
 		captures: []TestCapture{
 			{gremlin: `g.V().Has("Name", "omir-if1", "Type", "ovsport")`},
 		},
+
+		injections: []TestInjection{{
+			from:  "G.V().Has('Name', 'omir-if1', 'Type', 'internal')",
+			toIP:  "169.254.33.34",
+			toMAC: "11:22:33:44:55:66",
+			count: 5,
+		}},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := "g"

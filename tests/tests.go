@@ -134,6 +134,16 @@ type TestCapture struct {
 	rawPackets int
 }
 
+type TestInjection struct {
+	from  string
+	to    string
+	toIP  string
+	toMAC string
+	ipv6  bool
+	count int64
+	id    int64
+}
+
 type CheckFunction func(c *CheckContext) error
 
 type CheckContext struct {
@@ -150,6 +160,7 @@ type Test struct {
 	tearDownCmds     []helper.Cmd
 	tearDownFunction func(c *TestContext) error
 	captures         []TestCapture
+	injections       []TestInjection
 	retries          int
 	mode             int
 	checks           []CheckFunction
@@ -330,6 +341,68 @@ func RunTest(t *testing.T, test *Test) {
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
 			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err.Error(), g, f)
+		}
+	}
+
+	// Wait for the interfaces to be ready for packet injection
+	err = common.Retry(func() error {
+		isReady := func(gremlin string, ipv6 bool) error {
+			gremlin += ".Has('State', 'UP')"
+			if ipv6 {
+				gremlin += ".HasKey('IPV6')"
+			} else {
+				gremlin += ".HasKey('IPV4')"
+			}
+
+			nodes, err := context.gh.GetNodes(gremlin)
+			if err != nil {
+				return err
+			}
+
+			if len(nodes) == 0 {
+				return fmt.Errorf("No node matching injection %s, graph: %s", gremlin, context.getWholeGraph(t, time.Now()))
+			}
+
+			return nil
+		}
+
+		for _, injection := range test.injections {
+			if err := isReady(injection.from, injection.ipv6); err != nil {
+				return err
+			}
+
+			if injection.to != "" {
+				return isReady(injection.to, injection.ipv6)
+			}
+		}
+
+		return nil
+	}, 15, time.Second)
+
+	for _, injection := range test.injections {
+		ipVersion := 4
+		if injection.ipv6 {
+			ipVersion = 6
+		}
+
+		packet := &types.PacketParamsReq{
+			Src:      injection.from,
+			Dst:      injection.to,
+			DstIP:    injection.toIP,
+			DstMAC:   injection.toMAC,
+			Type:     fmt.Sprintf("icmp%d", ipVersion),
+			Count:    injection.count,
+			ICMPID:   injection.id,
+			Interval: 1000,
+		}
+
+		if err := pingRequest(t, context, packet); err != nil {
+			g := context.getWholeGraph(t, context.setupTime)
+			f := context.getAllFlows(t, context.setupTime)
+			helper.ExecCmds(t, test.tearDownCmds...)
+			context.getSystemState(t)
+			t.Errorf("Packet injection failed: %s, graph: %s, flows: %s", err.Error(), g, f)
+			return
 		}
 	}
 
