@@ -268,6 +268,10 @@ func (s *Server) loadExtraAssets(folder, prefix string) {
 	files := []string{}
 
 	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if info.IsDir() {
 			return nil
 		}
