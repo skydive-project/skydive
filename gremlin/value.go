@@ -24,7 +24,6 @@ package gremlin
 
 import (
 	"fmt"
-	"strconv"
 )
 
 // ValueString a value used within query constructs
@@ -32,15 +31,17 @@ type ValueString string
 
 // newValueStringFromArgument via inferance creates a correct ValueString
 func NewValueStringFromArgument(v interface{}) ValueString {
-	switch v := v.(type) {
+	switch t := v.(type) {
 	case ValueString:
-		return v
+		return t
 	case string:
-		return Quote(v)
-	case int:
-		return ValueString(strconv.Itoa(v))
+		return Quote(t)
+	case fmt.Stringer:
+		return Quote(t.String())
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return ValueString(fmt.Sprintf("%d", t))
 	default:
-		panic(fmt.Sprintf("argument %v: type %T not supported", v, v))
+		panic(fmt.Sprintf("argument %v: type %T not supported", v, t))
 	}
 }
 

@@ -34,13 +34,15 @@ type QueryString string
 
 // NewValueStringFromArgument via inferance creates a correct ValueString
 func NewQueryStringFromArgument(v interface{}) QueryString {
-	switch v := v.(type) {
+	switch t := v.(type) {
 	case QueryString:
-		return v
+		return t
 	case string:
-		return QueryString(v)
+		return QueryString(t)
+	case fmt.Stringer:
+		return QueryString(t.String())
 	default:
-		panic(fmt.Sprintf("argument %v: type %T not supported", v, v))
+		panic(fmt.Sprintf("argument %v: type %T not supported", t, v))
 	}
 }
 
@@ -103,14 +105,16 @@ func (q QueryString) Context(list ...interface{}) QueryString {
 		if !first {
 			newQ = newQ.appends(", ")
 		}
-		switch v := v.(type) {
+		switch t := v.(type) {
 		case time.Time:
-			if v.IsZero() {
+			if t.IsZero() {
 				return q
 			}
-			newQ = newQ.appends(fmt.Sprintf("%d", common.UnixMillis(v)))
-		case int:
-			newQ = newQ.appends(fmt.Sprintf("%d", v))
+			newQ = newQ.appends(fmt.Sprintf("%d", common.UnixMillis(t)))
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			newQ = newQ.appends(fmt.Sprintf("%d", t))
+		default:
+			panic(fmt.Sprintf("argument %v: type %T not supported", t, v))
 		}
 	}
 	return newQ.appends(")")
