@@ -169,7 +169,7 @@ type Test struct {
 }
 
 func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
-	gremlin := g.G.V().Context(at)
+	gremlin := g.G.Context(at).V()
 
 	switch helper.GraphOutputFormat {
 	case "ascii":
@@ -218,7 +218,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 }
 
 func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
-	gremlin := g.G.V().Context(at).Flows().Sort()
+	gremlin := g.G.Context(at).V().Flows().Sort()
 
 	flows, err := c.gh.GetFlows(gremlin)
 	if err != nil {
