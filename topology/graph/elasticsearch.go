@@ -97,11 +97,23 @@ const graphElementMapping = `
 // ErrBadConfig elasticsearch configuration file is incorrect
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
 
+type StorageCmd struct {
+	isUpdate bool
+	obj      string
+	id       string
+	data     interface{}
+}
+
 // ElasticSearchBackend describes a presisent backend based on ElasticSearch
 type ElasticSearchBackend struct {
 	GraphBackend
-	client       elasticsearch.ElasticSearchClientInterface
-	prevRevision map[Identifier]int64
+	client       		elasticsearch.ElasticSearchClientInterface
+	prevRevision 		map[Identifier]int64
+	bulkInsert   		int
+	bulkInsertMax		int
+	bulInsertDeadline 	time.Duration
+	ch           		chan *StorageCmd
+	quit         		chan struct{}
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -185,10 +197,7 @@ func (b *ElasticSearchBackend) updateTimes(i interface{}) bool {
 		obj["ArchivedAt"] = common.UnixMillis(i.updatedAt)
 	}
 
-	if err := b.client.BulkUpdateWithPartialDoc(kind, id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while archiving %s %s: %s", kind, id, err.Error())
-		return false
-	}
+	b.ch <- &StorageCmd{isUpdate:true, obj:kind,id:id, data:obj}
 
 	return true
 }
@@ -237,10 +246,8 @@ func (b *ElasticSearchBackend) createNode(n *Node) bool {
 
 	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
 
-	if err := b.client.BulkIndex("node", id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
-		return false
-	}
+	b.ch <- &StorageCmd{isUpdate:false, obj:"node",id:id, data:obj}
+
 	b.prevRevision[n.ID] = n.revision
 
 	return true
@@ -260,10 +267,7 @@ func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
 
 	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
 
-	if err := b.client.BulkUpdateWithPartialDoc("node", id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while marking node as deleted %s: %s", id, err.Error())
-		return false
-	}
+	b.ch <- &StorageCmd{isUpdate:true, obj:"node", id:id, data:obj}
 
 	return true
 }
@@ -285,10 +289,7 @@ func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
 
 	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
 
-	if err := b.client.BulkIndex("edge", id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
-		return false
-	}
+	b.ch <- &StorageCmd{isUpdate:false, obj:"edge",id:id, data:obj}
 	b.prevRevision[e.ID] = e.revision
 
 	return true
@@ -308,10 +309,7 @@ func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
 
 	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
 
-	if err := b.client.BulkUpdateWithPartialDoc("edge", id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while marking edge as deleted %s: %s", id, err.Error())
-		return false
-	}
+	b.ch <- &StorageCmd{isUpdate:true, obj:"edge", id:id, data:obj}
 
 	return true
 }
@@ -531,15 +529,62 @@ func (b *ElasticSearchBackend) WithContext(graph *Graph, context GraphContext) (
 	}, nil
 }
 
-func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {
+func (b *ElasticSearchBackend) runStorageCmds(cmds []*StorageCmd) {
+	for _, cmd := range cmds {
+		if cmd.isUpdate {
+			if err := b.client.BulkUpdateWithPartialDoc(cmd.obj, cmd.id, cmd.data); err != nil {
+				logging.GetLogger().Errorf("Error while archiving %s %s: %s", cmd.obj, cmd.id, err.Error())
+			}
+		} else {
+			if err := b.client.BulkIndex(cmd.obj, cmd.id, cmd.data); err != nil {
+				logging.GetLogger().Errorf("Error while archiving %s %s: %s", cmd.obj, cmd.id, err.Error())
+			}
+		}
+	}
+}
+
+func (b *ElasticSearchBackend) Start() {
+	go func() {
+		dlTimer := time.NewTicker(b.bulInsertDeadline)
+		defer dlTimer.Stop()
+
+		var cmdBuffer []*StorageCmd
+		defer b.runStorageCmds(cmdBuffer)
+		for {
+			select {
+			case <-b.quit:
+				return
+			case <-dlTimer.C:
+				b.runStorageCmds(cmdBuffer)
+				cmdBuffer = cmdBuffer[:0]
+			case cmd := <-b.ch:
+				cmdBuffer = append(cmdBuffer, cmd)
+				if len(cmdBuffer) >= b.bulkInsertMax {
+					logging.GetLogger().Errorf("Buffer overflow - too many topology updates, skipping %d messages", len(cmdBuffer))
+					cmdBuffer = cmdBuffer[:0]
+				} else if len(cmdBuffer) >= b.bulkInsert {
+					b.runStorageCmds(cmdBuffer)
+					cmdBuffer = cmdBuffer[:0]
+				}
+			}
+		}
+	}()
+}
+
+func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface, bulkInsert int, bulkInsertMax int, bulkDeadLine int) (*ElasticSearchBackend, error) {
 	client.Start([]map[string][]byte{
 		{"node": []byte(graphElementMapping)},
 		{"edge": []byte(graphElementMapping)},
 	})
 
 	return &ElasticSearchBackend{
-		client:       client,
-		prevRevision: make(map[Identifier]int64),
+		client:       		client,
+		prevRevision: 		make(map[Identifier]int64),
+		bulkInsert: 		bulkInsert,
+		bulkInsertMax: 		bulkInsertMax,
+		bulInsertDeadline: 	time.Duration(time.Duration(bulkDeadLine) * time.Second),
+		ch: 			make(chan *StorageCmd, bulkInsertMax*2),
+		quit: 			make(chan struct{}, 2),
 	}, nil
 }
 
@@ -549,8 +594,16 @@ func NewElasticSearchBackend(addr string, port string, maxConns int, retrySecond
 	if err != nil {
 		return nil, err
 	}
+	bulkInsert := config.GetConfig().GetInt("storage.elasticsearch.bulk_topology_update")
+	bulkInsertMax := config.GetConfig().GetInt("storage.elasticsearch.bulk_topology_update_max")
+	bulkDeadLine := config.GetConfig().GetInt("storage.elasticsearch.topology_update_timer")
+	backend, err := newElasticSearchBackend(client, bulkInsert, bulkInsertMax, bulkDeadLine)
+	if err != nil {
+		return nil, err
+	}
+	backend.Start()
 
-	return newElasticSearchBackend(client)
+	return backend, err
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters

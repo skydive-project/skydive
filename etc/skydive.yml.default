@@ -224,6 +224,12 @@ storage:
     # retry: 60
     # bulk_maxdocs: 100
     # bulk_maxdelay: 5
+    # Topology updates are async and can be carried out in bulk
+    # bulk_topology_update: 1
+    # After reaching this number of topology updates we detect buffer overflow
+    # and all the updates will be cleared without real storage to the ElasticSearch
+    # bulk_topology_update_max: 100
+    # topology_update_timer: 5
 
   # OrientDB connection information
   orientdb:
