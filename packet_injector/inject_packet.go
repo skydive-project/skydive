@@ -232,10 +232,10 @@ func InjectPacket(pp *PacketParams, g *graph.Graph, chnl *Channels) (string, err
 					} else {
 						logging.GetLogger().Errorf("Write error: %s", err.Error())
 					}
+				}
 
-					if i != pp.Count-1 {
-						time.Sleep(time.Millisecond * time.Duration(pp.Interval))
-					}
+				if i != pp.Count-1 {
+					time.Sleep(time.Millisecond * time.Duration(pp.Interval))
 				}
 			}
 		}
