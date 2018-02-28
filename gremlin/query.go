@@ -48,7 +48,9 @@ func NewQueryStringFromArgument(v interface{}) QueryString {
 
 // String converts value to string
 func (v QueryString) String() string {
-	return string(v)
+	s := string(v)
+	fmt.Printf("Gremlin: %s\n", s)
+	return s
 }
 
 // G represents the base graph token
@@ -56,7 +58,7 @@ const G = QueryString("G")
 
 // Append appends string value to query
 func (q QueryString) appends(s string) QueryString {
-	return QueryString(q.String() + s)
+	return QueryString(string(q) + s)
 }
 
 func (q QueryString) newQueryString(name string, list ...interface{}) QueryString {
@@ -67,7 +69,7 @@ func (q QueryString) newQueryString(name string, list ...interface{}) QueryStrin
 			q = q.appends(", ")
 		}
 		first = false
-		q = q.appends(NewValueStringFromArgument(v).String())
+		q = q.appends(string(NewValueStringFromArgument(v)))
 	}
 	return q.appends(")")
 }
