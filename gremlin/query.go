@@ -114,6 +114,9 @@ func (q QueryString) Context(list ...interface{}) QueryString {
 			}
 			newQ = newQ.appends(fmt.Sprintf("%d", common.UnixMillis(t)))
 		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			if t == -1 {
+				return q
+			}
 			newQ = newQ.appends(fmt.Sprintf("%d", t))
 		default:
 			panic(fmt.Sprintf("argument %v: type %T not supported", t, v))
