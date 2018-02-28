@@ -54,43 +54,15 @@ func (v ValueString) String() string {
 const DESC = ValueString("DESC")
 
 // Quote used to quote string values as needed by query
-func (v ValueString) Quote() ValueString {
-	return ValueString(fmt.Sprintf(`"%s"`, v))
+func Quote(format string, a ...interface{}) ValueString {
+	s := fmt.Sprintf(format, a...)
+	return ValueString(fmt.Sprintf(`"%s"`, s))
 }
 
 // Regex used for constructing a regexp expression string
-func (v ValueString) Regex() ValueString {
-	return ValueString(fmt.Sprintf("Regex(%s)", v.Quote()))
-}
-
-// StartsWith construct a regexp representing all that start with string
-func (v ValueString) StartsWith() ValueString {
-	return ValueString(fmt.Sprintf("%s.*", v)).Regex()
-}
-
-// EndsWith construct a regexp representing all that end with string
-func (v ValueString) EndsWith() ValueString {
-	return ValueString(fmt.Sprintf(".*%s", v)).Regex()
-}
-
-// Quote used to quote string values as needed by query
-func Quote(s string) ValueString {
-	return ValueString(s).Quote()
-}
-
-// Regex used for constructing a regexp expression string
-func Regex(s string) ValueString {
-	return ValueString(s).Regex()
-}
-
-// StartsWith construct a regexp representing all that start with string
-func StartsWith(s string) ValueString {
-	return ValueString(s).StartsWith()
-}
-
-// EndsWith construct a regexp representing all that end with string
-func EndsWith(s string) ValueString {
-	return ValueString(s).EndsWith()
+func Regex(format string, a ...interface{}) ValueString {
+	s := fmt.Sprintf(format, a...)
+	return ValueString(fmt.Sprintf("Regex(%s)", Quote(s)))
 }
 
 func newValueString(name string, list ...interface{}) ValueString {
@@ -109,11 +81,6 @@ func newValueString(name string, list ...interface{}) ValueString {
 // Between append a Between() operation to query
 func Between(list ...interface{}) ValueString {
 	return newValueString("Between", list...)
-}
-
-// Contains append a Contains() operation to query
-func Contains(v interface{}) ValueString {
-	return ValueString(fmt.Sprintf(".*%s.*", v)).Regex()
 }
 
 // Gt append a Gt() operation to query

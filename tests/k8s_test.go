@@ -129,7 +129,7 @@ func TestK8sContainerNode(t *testing.T) {
 }
 
 func TestK8sPodNode(t *testing.T) {
-	testNodeCreation(t, setupFromDeploymnet("pod"), tearDownFromDeployment("pod"), "pod", g.StartsWith(podName))
+	testNodeCreation(t, setupFromDeploymnet("pod"), tearDownFromDeployment("pod"), "pod", g.Regex("%s.*", podName))
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {

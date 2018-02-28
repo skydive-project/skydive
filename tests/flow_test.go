@@ -500,7 +500,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 		return err
 	}
 
-	gremlin := ovsGremlin.Flows().Has("LayersPath", g.Contains("ICMPv4"))
+	gremlin := ovsGremlin.Flows().Has("LayersPath", g.Regex(".*ICMPv4.*"))
 
 	icmp, err := gh.GetFlows(gremlin)
 	if err != nil {
@@ -1953,7 +1953,7 @@ func TestOvsMirror(t *testing.T) {
 				return fmt.Errorf("Unable to find the expected ovsport: %s", err)
 			}
 
-			node, err := gh.GetNode(prefix.V().Has("Name", g.StartsWith("mir"), "Type", "internal").HasKey("TID"))
+			node, err := gh.GetNode(prefix.V().Has("Name", g.Regex("mir.*"), "Type", "internal").HasKey("TID"))
 			if err != nil {
 				return fmt.Errorf("Unable to find the expected Mirror interface: %s", err)
 			}
