@@ -380,7 +380,7 @@ func (o *OnDemandProbeClient) Stop() {
 }
 
 // InvokeCaptureFromConfig invokes capture based on preconfigured selected SubGraph
-func (o *OnDemandProbeClient) InvokeCaptureFromConfig() {
+func (o *OnDemandProbeClient) InvokeCaptureFromConfig(ch *api.CaptureAPIHandler) {
 	gremlin := config.GetString("analyzer.startup.capture_gremlin")
 	bpf := config.GetString("analyzer.startup.capture_bpf")
 	if gremlin == "" {
@@ -390,7 +390,7 @@ func (o *OnDemandProbeClient) InvokeCaptureFromConfig() {
 	capture := types.NewCapture(gremlin, bpf)
 	capture.SocketInfo = true
 	capture.Type = "pcap"
-	o.onCaptureAdded(capture)
+	ch.Create(capture)
 	return
 }
 
@@ -418,7 +418,6 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool
 
 	elector.AddEventListener(o)
 	agentPool.AddJSONMessageHandler(o, []string{ondemand.Namespace})
-	o.InvokeCaptureFromConfig()
-
+	o.InvokeCaptureFromConfig(ch)
 	return o
 }

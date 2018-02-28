@@ -62,7 +62,8 @@ analyzer:
   analyzer_password: password
   topology:
     probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
-
+  startup:
+    capture_gremlin: "g.V().Has('Name', 'startup-vm2')"
 agent:
   listen: 8081
   topology:
