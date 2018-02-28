@@ -261,6 +261,7 @@ Vue.component('inject-form', {
       })
       .then(function() {
         self.$success({message: 'Packet injected'});
+        app.$emit("referesh-injector-list");
       })
       .fail(function(e) {
         self.$error({message: 'Packet injection error: ' + e.responseText});
