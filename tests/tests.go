@@ -136,8 +136,8 @@ type TestCapture struct {
 }
 
 type TestInjection struct {
-	from  string
-	to    string
+	from  g.QueryString
+	to    g.QueryString
 	toIP  string
 	toMAC string
 	ipv6  bool
@@ -169,7 +169,7 @@ type Test struct {
 }
 
 func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
-	gremlin := g.G.Context(at).V()
+	gremlin := g.G.Context(at)
 
 	switch helper.GraphOutputFormat {
 	case "ascii":
@@ -201,7 +201,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Error(err.Error())
-			return string(output)
+			return ""
 		}
 
 		return "\n" + string(output)
@@ -351,12 +351,12 @@ func RunTest(t *testing.T, test *Test) {
 
 	// Wait for the interfaces to be ready for packet injection
 	err = common.Retry(func() error {
-		isReady := func(gremlin string, ipv6 bool) error {
-			gremlin += ".Has('State', 'UP')"
+		isReady := func(gremlin g.QueryString, ipv6 bool) error {
+			gremlin = gremlin.Has("State", "UP")
 			if ipv6 {
-				gremlin += ".HasKey('IPV6')"
+				gremlin = gremlin.HasKey("IPV6")
 			} else {
-				gremlin += ".HasKey('IPV4')"
+				gremlin = gremlin.HasKey("IPV4")
 			}
 
 			nodes, err := context.gh.GetNodes(gremlin)
@@ -391,8 +391,8 @@ func RunTest(t *testing.T, test *Test) {
 		}
 
 		packet := &types.PacketParamsReq{
-			Src:      injection.from,
-			Dst:      injection.to,
+			Src:      injection.from.String(),
+			Dst:      injection.to.String(),
 			DstIP:    injection.toIP,
 			DstMAC:   injection.toMAC,
 			Type:     fmt.Sprintf("icmp%d", ipVersion),
