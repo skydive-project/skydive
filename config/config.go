@@ -153,6 +153,7 @@ func init() {
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
 
+	cfg.SetDefault("ui.theme", "dark")
 	cfg.SetDefault("ui.bandwidth_absolute_active", 1)
 	cfg.SetDefault("ui.bandwidth_absolute_alert", 1000)
 	cfg.SetDefault("ui.bandwidth_absolute_warning", 100)
