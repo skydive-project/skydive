@@ -22,7 +22,6 @@ Vue.component('inject-form', {
         <node-selector class="inject-target"\
                        placeholder="From"\
                        id="inject-src"\
-                       attr="id"\
                        v-model="node1"></node-selector>\
         <div class="input-group">\
           <span for="inject-src-ip" class="input-group-addon">IP: </span>\
@@ -37,7 +36,6 @@ Vue.component('inject-form', {
         <label>Destination</label>\
         <node-selector placeholder="To"\
                        class="inject-target"\
-                       attr="id"\
                        id="inject-dst"\
                        v-model="node2"></node-selector>\
         <div class="input-group">\
@@ -242,8 +240,8 @@ Vue.component('inject-form', {
         dataType: "json",
         url: '/api/injectpacket',
         data: JSON.stringify({
-          "Src": "G.V('" + this.node1 + "')",
-          "Dst": "G.V('" + this.node2 + "')",
+          "Src": "G.V().Has('TID', '" + this.node1 + "')",
+          "Dst": "G.V().Has('TID', '" + this.node2 + "')",
           "SrcPort": this.port1,
           "DstPort": this.port2,
           "SrcIP": this.srcIP,
