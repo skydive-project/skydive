@@ -76,7 +76,7 @@ func (g *GremlinQueryHelper) QueryRaw(query string) ([]byte, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s: %s", resp.Status, string(data))
+		return nil, fmt.Errorf("%s: %s (for query %s)", resp.Status, string(data), query)
 	}
 
 	return data, nil
