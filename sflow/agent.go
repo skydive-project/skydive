@@ -39,7 +39,7 @@ import (
 )
 
 const (
-	maxDgramSize = 1500
+	maxDgramSize = 65535
 )
 
 var (
@@ -63,7 +63,7 @@ type SFlowAgent struct {
 type SFlowAgentAllocator struct {
 	sync.RWMutex
 	portAllocator *common.PortAllocator
-	Addr          string
+	agents        []*SFlowAgent
 }
 
 // GetTarget returns the current used connection
@@ -83,16 +83,17 @@ func (sfa *SFlowAgent) feedFlowTable(packetSeqChan chan *flow.PacketSequence) {
 
 	var buf [maxDgramSize]byte
 	for {
-		_, _, err := sfa.Conn.ReadFromUDP(buf[:])
+		n, _, err := sfa.Conn.ReadFromUDP(buf[:])
 		if err != nil {
 			return
 		}
 
 		// TODO use gopacket.NoCopy ? instead of gopacket.Default
-		p := gopacket.NewPacket(buf[:], layers.LayerTypeSFlow, gopacket.Default)
+		p := gopacket.NewPacket(buf[:n], layers.LayerTypeSFlow, gopacket.Default)
 		sflowLayer := p.Layer(layers.LayerTypeSFlow)
 		sflowPacket, ok := sflowLayer.(*layers.SFlowDatagram)
 		if !ok {
+			logging.GetLogger().Errorf("Unable to decode sFlow packet: %s", p)
 			continue
 		}
 
@@ -163,29 +164,34 @@ func NewSFlowAgent(u string, a *common.ServiceAddress, ft *flow.Table, bpfFilter
 	}
 }
 
+func (a *SFlowAgentAllocator) release(uuid string) {
+	for i, agent := range a.agents {
+		if uuid == agent.UUID {
+			agent.Stop()
+			a.portAllocator.Release(agent.Port)
+			a.agents = append(a.agents[:i], a.agents[i+1:]...)
+
+			break
+		}
+	}
+}
+
 // Release a sFlow agent
 func (a *SFlowAgentAllocator) Release(uuid string) {
 	a.Lock()
 	defer a.Unlock()
 
-	for i, obj := range a.portAllocator.PortMap {
-		agent := obj.(*SFlowAgent)
-		if uuid == agent.UUID {
-			agent.Stop()
-			a.portAllocator.Release(i)
-		}
-	}
+	a.release(uuid)
 }
 
 // ReleaseAll sFlow agents
 func (a *SFlowAgentAllocator) ReleaseAll() {
 	a.Lock()
-	for _, agent := range a.portAllocator.PortMap {
-		agent.(*SFlowAgent).Stop()
-	}
 	defer a.Unlock()
 
-	a.portAllocator.ReleaseAll()
+	for _, agent := range a.agents {
+		a.release(agent.UUID)
+	}
 }
 
 // Alloc allocates a new sFlow agent
@@ -194,15 +200,10 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter strin
 	defer a.Unlock()
 
 	// check if there is an already allocated agent for this uuid
-	a.portAllocator.RLock()
-	for _, obj := range a.portAllocator.PortMap {
-		if uuid == obj.(*SFlowAgent).UUID {
-			agent = obj.(*SFlowAgent)
+	for _, agent := range a.agents {
+		if uuid == agent.UUID {
+			return agent, ErrAgentAlreadyAllocated
 		}
-	}
-	a.portAllocator.RUnlock()
-	if agent != nil {
-		return agent, ErrAgentAlreadyAllocated
 	}
 
 	// get port, if port is not given by user.
@@ -212,9 +213,10 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter strin
 			return nil, errors.New("failed to allocate sflow port: " + err.Error())
 		}
 	}
-
 	s := NewSFlowAgent(uuid, addr, ft, bpfFilter, headerSize)
-	a.portAllocator.Set(addr.Port, s)
+
+	a.agents = append(a.agents, s)
+
 	s.Start()
 	return s, nil
 }
