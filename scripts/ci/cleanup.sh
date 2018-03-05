@@ -23,6 +23,9 @@ function docker_rm() {
 }
 
 function cleanup() {
+  # cleanup minikube
+  "${CURDIR}/install-minikube.sh" stop
+
   cleanup_items netns "ip netns del"
   cleanup_items intf "ip link del"
   cleanup_items ovsdb "ovs-vsctl del-br"
