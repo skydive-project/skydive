@@ -12,6 +12,7 @@ var store = new Vuex.Store({
     currentEdge: null,
     emphasizedNodes: [],
     highlightedNodes: [],
+    highlightInprogress: new Map(),
     notifications: [],
     topologyFilter: "",
     topologyHighlight: "",
@@ -83,6 +84,18 @@ var store = new Vuex.Store({
       state.highlightedNodes = state.highlightedNodes.filter(function(_id) {
         return id !== _id;
       });
+    },
+
+    highlightStart: function(state, uuid) {
+      state.highlightInprogress.set(uuid, true);
+    },
+
+    highlightEnd: function(state, uuid) {
+      state.highlightInprogress.set(uuid, false);
+    },
+
+    highlightDelete: function(state, uuid) {
+      state.highlightInprogress.delete(uuid);
     },
 
     emphasize: function(state, id) {

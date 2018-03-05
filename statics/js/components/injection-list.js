@@ -21,14 +21,14 @@ var Injector = {
       <dl class="dl-horizontal">\
         <dt>Src</dt>\
         <dd class="query"\
-            @mouseover="highlightNode(injector.Src)"\
-            @mouseout="unhighlightNode()">\
+            @mouseover="highlightNode(injector.UUID, injector.Src)"\
+            @mouseout="unhighlightNode(injector.UUID)">\
           {{injector.Src}}\
         </dd>\
         <dt v-if="injector.Dst">Dst</dt>\
         <dd v-if="injector.Dst" class="query"\
-            @mouseover="highlightNode(injector.Dst)"\
-            @mouseout="unhighlightNode()">\
+            @mouseover="highlightNode(injector.UUID, injector.Dst)"\
+            @mouseout="unhighlightNode(injector.UUID)">\
           {{injector.Dst}}\
         </dd>\
       </dl>\
@@ -43,21 +43,36 @@ var Injector = {
         });
     },
 
-    highlightNode: function(query, id) {
+    highlightNode: function(uuid, query) {
       var self = this;
+      self.$store.commit("highlightStart", uuid);
       this.$topologyQuery(query)
         .then(function(nodes) {
           nodes.forEach(function(n) {
             self.$store.commit("highlight", n.ID);
           });
+          self.$store.commit("highlightEnd", uuid);
         });
     },
 
-    unhighlightNode: function() {
-      var ids = this.$store.state.highlightedNodes.slice();
-      for (var i in ids) {
-        this.$store.commit('unhighlight', ids[i]);
-      }
+    waitForHighlight: function(uuid) {
+      var self = this;
+      setTimeout(function(){
+        var status = self.$store.state.highlightInprogress.get(uuid);
+        if (status) {
+          self.waitForHighlight(uuid);
+          return;
+        }
+        var ids = self.$store.state.highlightedNodes.slice();
+        for (var i in ids) {
+          self.$store.commit('unhighlight', ids[i]);
+        }
+        self.$store.commit('highlightDelete', uuid);
+      }, 100);
+    },
+
+    unhighlightNode: function(uuid) {
+      this.waitForHighlight(uuid);
     },
   },
 };
