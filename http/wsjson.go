@@ -299,13 +299,17 @@ func newWSJSONSpeaker(c WSSpeaker) *WSJSONSpeaker {
 
 func (c *WSClient) UpgradeToWSJSONSpeaker() *WSJSONSpeaker {
 	js := newWSJSONSpeaker(c)
+	c.Lock()
 	c.wsSpeaker = js
+	c.Unlock()
 	return js
 }
 
 func (c *wsIncomingClient) upgradeToWSJSONSpeaker() *WSJSONSpeaker {
 	js := newWSJSONSpeaker(c)
+	c.Lock()
 	c.wsSpeaker = js
+	c.Unlock()
 	return js
 }
 
