@@ -39,33 +39,21 @@ type PortAllocator struct {
 	sync.RWMutex
 	MinPort int
 	MaxPort int
-	PortMap map[int]interface{}
+	PortMap map[int]bool
 }
 
-// Allocate returns a new unused port between min and max ports
+// Allocate returns a new port between min and max ports.
 func (p *PortAllocator) Allocate() (int, error) {
 	p.Lock()
 	defer p.Unlock()
 
 	for i := p.MinPort; i <= p.MaxPort; i++ {
 		if _, ok := p.PortMap[i]; !ok {
-			p.PortMap[i] = struct{}{}
+			p.PortMap[i] = true
 			return i, nil
 		}
 	}
 	return 0, ErrNoPortLeft
-}
-
-// Set associate an object to the port map
-func (p *PortAllocator) Set(i int, obj interface{}) error {
-	p.Lock()
-	defer p.Unlock()
-
-	if i < p.MinPort || i > p.MaxPort {
-		return ErrInvalidPortRange
-	}
-	p.PortMap[i] = obj
-	return nil
 }
 
 // Release a port
@@ -86,7 +74,7 @@ func (p *PortAllocator) ReleaseAll() {
 	p.Lock()
 	defer p.Unlock()
 
-	p.PortMap = make(map[int]interface{})
+	p.PortMap = make(map[int]bool)
 }
 
 // NewPortAllocator creates a new port allocator range
@@ -98,6 +86,6 @@ func NewPortAllocator(min, max int) (*PortAllocator, error) {
 	return &PortAllocator{
 		MinPort: min,
 		MaxPort: max,
-		PortMap: make(map[int]interface{}),
+		PortMap: make(map[int]bool),
 	}, nil
 }

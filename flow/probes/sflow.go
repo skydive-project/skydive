@@ -40,11 +40,12 @@ const (
 
 // SFlowProbesHandler describes a SFlow probe in the graph
 type SFlowProbesHandler struct {
-	Graph      *graph.Graph
-	fpta       *FlowProbeTableAllocator
-	probes     map[string]*flow.Table
-	probesLock sync.RWMutex
-	allocator  *sflow.SFlowAgentAllocator
+	Graph       *graph.Graph
+	fpta        *FlowProbeTableAllocator
+	probes      map[string]*flow.Table
+	probesLock  sync.RWMutex
+	allocator   *sflow.SFlowAgentAllocator
+	staticPorts map[string]string
 }
 
 // UnregisterProbe unregisters a probe from the graph
