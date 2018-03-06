@@ -495,7 +495,12 @@ func TestFlowGremlin(t *testing.T) {
 }
 
 func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext int64, pings int64) error {
-	ovsGremlin := g.G.Context(timeContext).V().Has("Name", bridge, "Type", "ovsbridge")
+	graphGremlin := g.G
+	if timeContext != -1 {
+		graphGremlin = graphGremlin.Context(timeContext)
+	}
+
+	ovsGremlin := graphGremlin.V().Has("Name", bridge, "Type", "ovsbridge")
 	if _, err := gh.GetNode(ovsGremlin); err != nil {
 		return err
 	}
