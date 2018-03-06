@@ -365,12 +365,12 @@ func NewNullFilter(key string) *Filter {
 	return &Filter{NullFilter: &NullFilter{Key: key}}
 }
 
-// NewFilterForIds creates a new filters based on IDs
-func NewFilterForIds(uuids []string, attrs ...string) *Filter {
-	terms := make([]*Filter, len(uuids)*len(attrs))
-	for i, uuid := range uuids {
+// NewOrTermStringFilter creates a new "or" filter based on values and attributes
+func NewOrTermStringFilter(values []string, attrs ...string) *Filter {
+	terms := make([]*Filter, len(values)*len(attrs))
+	for i, value := range values {
 		for j, attr := range attrs {
-			terms[i*len(attrs)+j] = NewTermStringFilter(attr, uuid)
+			terms[i*len(attrs)+j] = NewTermStringFilter(attr, value)
 		}
 	}
 	return NewOrFilter(terms...)

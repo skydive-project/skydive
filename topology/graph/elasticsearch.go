@@ -272,7 +272,7 @@ func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
 func (b *ElasticSearchBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 	return b.SearchNodes(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
-			Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
+			Filter: filters.NewTermStringFilter("ID", string(i)),
 			Sort:   true,
 			SortBy: "Revision",
 		},
@@ -320,7 +320,7 @@ func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
 func (b *ElasticSearchBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 	return b.SearchEdges(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
-			Filter: filters.NewFilterForIds([]string{string(i)}, "ID"),
+			Filter: filters.NewTermStringFilter("ID", string(i)),
 			Sort:   true,
 			SortBy: "Revision",
 		},
