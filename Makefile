@@ -238,8 +238,13 @@ ifeq ($(COVERAGE), true)
 		fi; \
 	done
 else
+ifneq ($(TEST_PATTERN),)
+	set -v ; \
+	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -test.run ${TEST_PATTERN} ${UT_PACKAGES}
+else
 	set -v ; \
 	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+endif
 endif
 
 govendor:
