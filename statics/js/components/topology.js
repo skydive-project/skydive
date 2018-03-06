@@ -237,11 +237,6 @@ var TopologyComponent = {
     }.bind(this));
 
     this.layout = new TopologyGraphLayout(this, ".topology-d3");
-    this.collapse();
-
-    websocket.addConnectHandler(function() {
-      self.collapse();
-    });
 
     this.graph.addHandler(this.layout);
     this.graph.addHandler(this);
@@ -293,6 +288,15 @@ var TopologyComponent = {
 
     if (typeof(this.$route.query.filter) !== "undefined") {
       this.topologyFilter = this.$route.query.filter;
+    }
+
+    if (typeof(this.$route.query.expand) !== "undefined") {
+      this.layout.autoExpand(true);
+    } else {
+      this.collapse();
+      websocket.addConnectHandler(function() {
+        self.collapse();
+      });
     }
 
     websocket.addConnectHandler(function() {
