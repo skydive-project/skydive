@@ -45,10 +45,10 @@ func (t *TopologyForwarder) triggerResync() {
 	defer t.graph.RUnlock()
 
 	// request for deletion of everything belonging this host
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.host))
+	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.HostGraphDeletedMsgType, t.host))
 
 	// re-add all the nodes and edges
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, t.graph))
+	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.SyncMsgType, t.graph))
 }
 
 // OnNewMaster is called by the master election mechanism when a new master is elected. In
@@ -65,32 +65,32 @@ func (t *TopologyForwarder) OnNewMaster(c shttp.WSSpeaker) {
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnNodeUpdated(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
+	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnNodeAdded(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnNodeDeleted(n *graph.Node) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnEdgeUpdated(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
+	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnEdgeAdded(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *TopologyForwarder) OnEdgeDeleted(e *graph.Edge) {
-	t.masterElection.SendMessageToMaster(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+	t.masterElection.SendMessageToMaster(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }
 
 // GetMaster returns the current analyzer the agent is sending its events to
@@ -100,7 +100,7 @@ func (t *TopologyForwarder) GetMaster() shttp.WSSpeaker {
 
 // NewTopologyForwarder returns a new Graph forwarder which forwards event of the given graph
 // to the given WebSocket JSON speakers.
-func NewTopologyForwarder(host string, g *graph.Graph, pool shttp.WSJSONSpeakerPool) *TopologyForwarder {
+func NewTopologyForwarder(host string, g *graph.Graph, pool shttp.WSStructSpeakerPool) *TopologyForwarder {
 	masterElection := shttp.NewWSMasterElection(pool)
 
 	t := &TopologyForwarder{
@@ -116,7 +116,7 @@ func NewTopologyForwarder(host string, g *graph.Graph, pool shttp.WSJSONSpeakerP
 }
 
 // NewTopologyForwarderFromConfig creates a TopologyForwarder from configuration
-func NewTopologyForwarderFromConfig(g *graph.Graph, pool shttp.WSJSONSpeakerPool) *TopologyForwarder {
+func NewTopologyForwarderFromConfig(g *graph.Graph, pool shttp.WSStructSpeakerPool) *TopologyForwarder {
 	host := config.GetString("host_id")
 	return NewTopologyForwarder(host, g, pool)
 }

@@ -27,6 +27,7 @@ SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 SKYDIVE_PKG:=skydive-${VERSION}
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 FILTERS_PROTO_FILES=filters/filters.proto
+HTTP_PROTO_FILES=http/wsstructmessage.proto
 VERBOSE_FLAGS?=-v
 VERBOSE_TESTS_FLAGS?=-test.v
 VERBOSE?=true
@@ -107,9 +108,10 @@ debug.agent:
 debug.analyzer:
 	$(call skydive_debug,analyzer)
 
-.proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES}
+.proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES}
 	protoc --go_out . ${FLOW_PROTO_FILES}
 	protoc --go_out . ${FILTERS_PROTO_FILES}
+	protoc --go_out . ${HTTP_PROTO_FILES}
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i.bak flow/flow.pb.go

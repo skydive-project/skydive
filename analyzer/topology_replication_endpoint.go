@@ -60,8 +60,8 @@ type TopologyReplicatorPeer struct {
 type TopologyReplicationEndpoint struct {
 	sync.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
-	in           shttp.WSJSONSpeakerPool
-	out          *shttp.WSJSONClientPool
+	in           shttp.WSStructSpeakerPool
+	out          *shttp.WSStructClientPool
 	conns        map[string]shttp.WSSpeaker
 	candidates   []*TopologyReplicatorPeer
 	Graph        *graph.Graph
@@ -128,7 +128,7 @@ func (p *TopologyReplicatorPeer) OnConnected(c shttp.WSSpeaker) {
 		return
 	}
 
-	p.wsspeaker.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
+	p.wsspeaker.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.SyncMsgType, p.Graph))
 
 	p.endpoint.conns[p.host] = c
 	p.endpoint.out.AddClient(c)
@@ -169,13 +169,13 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 	authAddr := common.NormalizeAddrForURL(p.URL.Hostname())
 	authPort, _ := strconv.Atoi(p.URL.Port())
 	authClient := shttp.NewAuthenticationClient(config.GetURL("http", authAddr, authPort, ""), p.AuthOptions)
-	wsClient := shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, authClient, http.Header{}).UpgradeToWSJSONSpeaker()
+	wsClient := shttp.NewWSClientFromConfig(common.AnalyzerService, p.URL, authClient, http.Header{}).UpgradeToWSStructSpeaker()
 
 	// will trigger shttp.WSSpeakerEventHandler, so OnConnected
 	wsClient.AddEventHandler(p)
 
 	// subscribe to the graph messages
-	wsClient.AddJSONMessageHandler(p.endpoint, []string{graph.Namespace})
+	wsClient.AddStructMessageHandler(p.endpoint, []string{graph.Namespace})
 
 	p.wsspeaker = wsClient
 	p.wsspeaker.Connect()
@@ -227,8 +227,8 @@ func (t *TopologyReplicationEndpoint) DisconnectPeers() {
 	t.wg.Wait()
 }
 
-// OnWSJSONMessage is triggered by message coming from an other peer.
-func (t *TopologyReplicationEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+// OnWSStructMessage is triggered by message coming from an other peer.
+func (t *TopologyReplicationEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
@@ -245,7 +245,7 @@ func (t *TopologyReplicationEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sh
 	defer t.cached.SetMode(graph.DefaultMode)
 
 	if t.debug() {
-		logging.GetLogger().Debugf("Recieved message from peer %s: %s", c.GetURL().String(), msg.Bytes())
+		logging.GetLogger().Debugf("Recieved message from peer %s: %s", c.GetURL().String(), msg.Bytes(c.GetClientProtocol()))
 	}
 	switch msgType {
 	case graph.SyncRequestMsgType:
@@ -282,9 +282,9 @@ func (t *TopologyReplicationEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sh
 }
 
 // SendToPeers sends the message to all the peers
-func (t *TopologyReplicationEndpoint) notifyPeers(msg *shttp.WSJSONMessage) {
+func (t *TopologyReplicationEndpoint) notifyPeers(msg *shttp.WSStructMessage) {
 	if t.debug() {
-		logging.GetLogger().Debugf("Broadcasting message to all peers: %s", msg.Bytes())
+		logging.GetLogger().Debugf("Broadcasting message to all peers: (protobuf) %s", msg.Bytes(shttp.ProtobufProtocol))
 	}
 	t.in.BroadcastMessage(msg)
 	t.out.BroadcastMessage(msg)
@@ -293,7 +293,7 @@ func (t *TopologyReplicationEndpoint) notifyPeers(msg *shttp.WSJSONMessage) {
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeUpdatedMsgType, n)
+		msg := shttp.NewWSStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -301,7 +301,7 @@ func (t *TopologyReplicationEndpoint) OnNodeUpdated(n *graph.Node) {
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+		msg := shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -309,7 +309,7 @@ func (t *TopologyReplicationEndpoint) OnNodeAdded(n *graph.Node) {
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *TopologyReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 	if t.replicateMsg.Load() == true {
-		msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeDeletedMsgType, n)
+		msg := shttp.NewWSStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n)
 		t.notifyPeers(msg)
 	}
 }
@@ -317,7 +317,7 @@ func (t *TopologyReplicationEndpoint) OnNodeDeleted(n *graph.Node) {
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e)
+		msg := shttp.NewWSStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -325,7 +325,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeUpdated(e *graph.Edge) {
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeAddedMsgType, e)
+		msg := shttp.NewWSStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -333,7 +333,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeAdded(e *graph.Edge) {
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *TopologyReplicationEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	if t.replicateMsg.Load() == true {
-		msg := shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e)
+		msg := shttp.NewWSStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e)
 		t.notifyPeers(msg)
 	}
 }
@@ -367,9 +367,9 @@ func (t *TopologyReplicationEndpoint) OnConnected(c shttp.WSSpeaker) {
 
 	t.conns[c.GetHost()] = c
 
-	// subscribe to JSON messages
-	c.(*shttp.WSJSONSpeaker).AddJSONMessageHandler(t, []string{graph.Namespace})
-	c.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.SyncMsgType, t.Graph))
+	// subscribe to websocket structured messages
+	c.(*shttp.WSStructSpeaker).AddStructMessageHandler(t, []string{graph.Namespace})
+	c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.SyncMsgType, t.Graph))
 }
 
 // OnDisconnected is called when an incoming peer got disconnected.
@@ -385,7 +385,7 @@ func (t *TopologyReplicationEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 }
 
 // NewTopologyServer returns a new server to be used by other analyzers for replication.
-func NewTopologyReplicationEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph) (*TopologyReplicationEndpoint, error) {
+func NewTopologyReplicationEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph) (*TopologyReplicationEndpoint, error) {
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err)
@@ -395,7 +395,7 @@ func NewTopologyReplicationEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.Au
 		Graph:  g,
 		cached: cached,
 		in:     pool,
-		out:    shttp.NewWSJSONClientPool("TopologyReplicationEndpoint"),
+		out:    shttp.NewWSStructClientPool("TopologyReplicationEndpoint"),
 		conns:  make(map[string]shttp.WSSpeaker),
 	}
 	t.replicateMsg.Store(true)

@@ -43,6 +43,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -227,6 +228,22 @@ func WSClose(ws *websocket.Conn) error {
 		return err
 	}
 	return ws.Close()
+}
+
+func DecodeWSStructMessageJSON(b []byte) *shttp.WSStructMessage {
+	mJSON := shttp.WSStructMessageJSON{}
+	if err := json.Unmarshal(b, &mJSON); err != nil {
+		return nil
+	}
+	msg := &shttp.WSStructMessage{
+		Protocol:  shttp.JsonProtocol,
+		Namespace: mJSON.Namespace,
+		Type:      mJSON.Type,
+		UUID:      mJSON.UUID,
+		Status:    mJSON.Status,
+		JsonObj:   mJSON.Obj,
+	}
+	return msg
 }
 
 func SendPCAPFile(filename string, socket string) error {

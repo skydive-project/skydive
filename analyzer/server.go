@@ -52,10 +52,10 @@ import (
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
 type Server struct {
 	httpServer          *shttp.Server
-	agentWSServer       *shttp.WSJSONServer
-	publisherWSServer   *shttp.WSJSONServer
-	replicationWSServer *shttp.WSJSONServer
-	subscriberWSServer  *shttp.WSJSONServer
+	agentWSServer       *shttp.WSStructServer
+	publisherWSServer   *shttp.WSStructServer
+	replicationWSServer *shttp.WSStructServer
+	subscriberWSServer  *shttp.WSStructServer
 	replicationEndpoint *TopologyReplicationEndpoint
 	alertServer         *alert.AlertServer
 	onDemandClient      *ondemand.OnDemandProbeClient
@@ -177,25 +177,25 @@ func NewServerFromConfig() (*Server, error) {
 
 	authOptions := NewAnalyzerAuthenticationOpts()
 
-	agentWSServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/agent"))
+	agentWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/agent"))
 	_, err = NewTopologyAgentEndpoint(agentWSServer, authOptions, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	publisherWSServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/publisher"))
+	publisherWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/publisher"))
 	_, err = NewTopologyPublisherEndpoint(publisherWSServer, authOptions, g)
 	if err != nil {
 		return nil, err
 	}
 
-	replicationWSServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/replication"))
+	replicationWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/replication"))
 	replicationEndpoint, err := NewTopologyReplicationEndpoint(replicationWSServer, authOptions, cached, g)
 	if err != nil {
 		return nil, err
 	}
 
-	subscriberWSServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
+	subscriberWSServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
 	topology.NewTopologySubscriberEndpoint(subscriberWSServer, authOptions, g)
 
 	probeBundle, err := NewTopologyProbeBundleFromConfig(g)

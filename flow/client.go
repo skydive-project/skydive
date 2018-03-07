@@ -23,8 +23,6 @@
 package flow
 
 import (
-	"encoding/json"
-
 	"github.com/golang/protobuf/proto"
 
 	"github.com/skydive-project/skydive/common"
@@ -36,15 +34,15 @@ import (
 
 // TableClient describes a mechanism to Query a flow table via flowSet in JSON
 type TableClient struct {
-	WSJSONServer *shttp.WSJSONServer
+	WSStructServer *shttp.WSStructServer
 }
 
 func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearchQuery filters.SearchQuery) {
 	obj, _ := proto.Marshal(&flowSearchQuery)
 	tq := TableQuery{Type: "SearchQuery", Obj: obj}
-	msg := shttp.NewWSJSONMessage(Namespace, "TableQuery", tq)
+	msg := shttp.NewWSStructMessage(Namespace, "TableQuery", tq)
 
-	resp, err := f.WSJSONServer.Request(host, msg, shttp.DefaultRequestTimeout)
+	resp, err := f.WSStructServer.Request(host, msg, shttp.DefaultRequestTimeout)
 	if err != nil {
 		logging.GetLogger().Errorf("Unable to send message to agent %s: %s", host, err.Error())
 		flowset <- NewFlowSet()
@@ -52,7 +50,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 	}
 
 	var reply TableReply
-	if resp.Obj == nil || json.Unmarshal([]byte(*resp.Obj), &reply) != nil {
+	if resp == nil || resp.UnmarshalObj(&reply) != nil {
 		logging.GetLogger().Errorf("Error returned while reading TableReply from: %s", host)
 		flowset <- NewFlowSet()
 	}
@@ -78,7 +76,7 @@ func (f *TableClient) lookupFlows(flowset chan *FlowSet, host string, flowSearch
 
 // LookupFlows query flow table based on a filter search query
 func (f *TableClient) LookupFlows(flowSearchQuery filters.SearchQuery) (*FlowSet, error) {
-	speakers := f.WSJSONServer.GetSpeakersByType(common.AgentService)
+	speakers := f.WSStructServer.GetSpeakersByType(common.AgentService)
 	ch := make(chan *FlowSet, len(speakers))
 
 	for _, c := range speakers {
@@ -135,6 +133,6 @@ func (f *TableClient) LookupFlowsByNodes(hnmap topology.HostNodeTIDMap, flowSear
 }
 
 // NewTableClient creates a new table client based on websocket
-func NewTableClient(w *shttp.WSJSONServer) *TableClient {
-	return &TableClient{WSJSONServer: w}
+func NewTableClient(w *shttp.WSStructServer) *TableClient {
+	return &TableClient{WSStructServer: w}
 }

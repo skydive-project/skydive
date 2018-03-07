@@ -81,7 +81,7 @@ type FlowServer struct {
 
 // OnMessage event
 func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMessage) {
-	f, err := flow.FromData(m.Bytes())
+	f, err := flow.FromData(m.Bytes(client.GetClientProtocol()))
 	if err != nil {
 		logging.GetLogger().Errorf("Error while parsing flow: %s", err.Error())
 		return

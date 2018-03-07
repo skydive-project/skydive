@@ -35,12 +35,13 @@ func TestNullNodesEdges(t *testing.T) {
 
 	raw := json.RawMessage(nodesNull)
 
-	msg := &shttp.WSJSONMessage{
+	msg := &shttp.WSStructMessage{
+		Protocol:  shttp.JsonProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
-		Obj:       &raw,
 		Status:    http.StatusOK,
+		JsonObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalWSMessage(msg); err != nil {
@@ -51,12 +52,13 @@ func TestNullNodesEdges(t *testing.T) {
 
 	raw = json.RawMessage(edgesNull)
 
-	msg = &shttp.WSJSONMessage{
+	msg = &shttp.WSStructMessage{
+		Protocol:  shttp.JsonProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "bbb",
-		Obj:       &raw,
 		Status:    http.StatusOK,
+		JsonObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalWSMessage(msg); err != nil {
@@ -69,12 +71,13 @@ func TestID(t *testing.T) {
 
 	raw := json.RawMessage(idMissing)
 
-	msg := &shttp.WSJSONMessage{
+	msg := &shttp.WSStructMessage{
+		Protocol:  shttp.JsonProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
-		Obj:       &raw,
 		Status:    http.StatusOK,
+		JsonObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalWSMessage(msg); err == nil {
@@ -85,12 +88,13 @@ func TestID(t *testing.T) {
 
 	raw = json.RawMessage(idWrongType)
 
-	msg = &shttp.WSJSONMessage{
+	msg = &shttp.WSStructMessage{
+		Protocol:  shttp.JsonProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
-		Obj:       &raw,
 		Status:    http.StatusOK,
+		JsonObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalWSMessage(msg); err == nil {
@@ -103,12 +107,13 @@ func TestHost(t *testing.T) {
 
 	raw := json.RawMessage(hostWrongType)
 
-	msg := &shttp.WSJSONMessage{
+	msg := &shttp.WSStructMessage{
+		Protocol:  shttp.JsonProtocol,
 		Namespace: Namespace,
 		Type:      SyncMsgType,
 		UUID:      "aaa",
-		Obj:       &raw,
 		Status:    http.StatusOK,
+		JsonObj:   &raw,
 	}
 
 	if _, _, err := UnmarshalWSMessage(msg); err == nil {

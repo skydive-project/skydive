@@ -23,11 +23,9 @@
 package packet_injector
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 
-	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -44,9 +42,9 @@ type PacketInjectorServer struct {
 	Channels *Channels
 }
 
-func (pis *PacketInjectorServer) stopPI(msg *shttp.WSJSONMessage) error {
+func (pis *PacketInjectorServer) stopPI(msg *shttp.WSStructMessage) error {
 	var uuid string
-	if err := common.JSONDecode(bytes.NewBuffer([]byte(*msg.Obj)), &uuid); err != nil {
+	if err := msg.DecodeObj(&uuid); err != nil {
 		return err
 	}
 	pis.Channels.Lock()
@@ -60,9 +58,9 @@ func (pis *PacketInjectorServer) stopPI(msg *shttp.WSJSONMessage) error {
 	}
 }
 
-func (pis *PacketInjectorServer) injectPacket(msg *shttp.WSJSONMessage) (string, error) {
+func (pis *PacketInjectorServer) injectPacket(msg *shttp.WSStructMessage) (string, error) {
 	var params PacketInjectionParams
-	if err := common.JSONDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
+	if err := msg.DecodeObj(&params); err != nil {
 		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
 	}
 
@@ -75,10 +73,10 @@ func (pis *PacketInjectorServer) injectPacket(msg *shttp.WSJSONMessage) (string,
 }
 
 // OnWSMessage event, websocket PIRequest message
-func (pis *PacketInjectorServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+func (pis *PacketInjectorServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	switch msg.Type {
 	case "PIRequest":
-		var reply *shttp.WSJSONMessage
+		var reply *shttp.WSStructMessage
 		trackingID, err := pis.injectPacket(msg)
 		replyObj := &PacketInjectorReply{TrackingID: trackingID}
 		if err != nil {
@@ -92,7 +90,7 @@ func (pis *PacketInjectorServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.W
 
 		c.SendMessage(reply)
 	case "PIStopRequest":
-		var reply *shttp.WSJSONMessage
+		var reply *shttp.WSStructMessage
 		err := pis.stopPI(msg)
 		replyObj := &PacketInjectorReply{}
 		if err != nil {
@@ -106,11 +104,11 @@ func (pis *PacketInjectorServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.W
 }
 
 // NewServer creates a new packet injector server API based on websocket server
-func NewServer(graph *graph.Graph, pool shttp.WSJSONSpeakerPool) *PacketInjectorServer {
+func NewServer(graph *graph.Graph, pool shttp.WSStructSpeakerPool) *PacketInjectorServer {
 	s := &PacketInjectorServer{
 		Graph:    graph,
 		Channels: &Channels{Pipes: make(map[string](chan bool))},
 	}
-	pool.AddJSONMessageHandler(s, []string{Namespace})
+	pool.AddStructMessageHandler(s, []string{Namespace})
 	return s
 }

@@ -585,7 +585,7 @@ func TestQueryMetadata(t *testing.T) {
 			}
 
 			hostname, _ := os.Hostname()
-			wspool := shttp.NewWSJSONClientPool("TestQueryMetadata")
+			wspool := shttp.NewWSStructClientPool("TestQueryMetadata")
 			for _, sa := range addresses {
 				authClient := shttp.NewAuthenticationClient(config.GetURL("http", sa.Addr, sa.Port, ""), authOptions)
 				client := shttp.NewWSClient(hostname+"-cli", common.UnknownService, config.GetURL("ws", sa.Addr, sa.Port, "/ws/publisher"), authClient, http.Header{}, 1000)
@@ -626,7 +626,7 @@ func TestQueryMetadata(t *testing.T) {
 				},
 			})
 
-			msg := shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n)
+			msg := shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n)
 			masterElection.SendMessageToMaster(msg)
 
 			return nil

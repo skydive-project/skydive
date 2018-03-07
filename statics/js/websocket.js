@@ -61,13 +61,7 @@ WSHandler.prototype = {
       var msg = JSON.parse(r.data);
       if (self.msgHandlers[msg.Namespace]) {
         self.msgHandlers[msg.Namespace].forEach(function(callback) {
-          if (msg.Type == "BulkMessage") {
-            for (var subMsg in msg.Obj) {
-              callback(msg.Obj[subMsg]);
-            }
-          } else {
-            callback(msg);
-          }
+          callback(msg);
         });
       }
     };

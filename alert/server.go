@@ -227,7 +227,7 @@ type AlertServer struct {
 	sync.RWMutex
 	*etcd.MasterElector
 	Graph         *graph.Graph
-	Pool          shttp.WSJSONSpeakerPool
+	Pool          shttp.WSStructSpeakerPool
 	AlertHandler  api.Handler
 	watcher       api.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
@@ -261,7 +261,7 @@ func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
 		}
 	}()
 
-	wsMsg := shttp.NewWSJSONMessage(Namespace, "Alert", msg)
+	wsMsg := shttp.NewWSStructMessage(Namespace, "Alert", msg)
 	a.Pool.BroadcastMessage(wsMsg)
 
 	logging.GetLogger().Debugf("Alert %s of type %s was triggerred", al.UUID, al.Action)
@@ -423,7 +423,7 @@ func (a *AlertServer) Stop() {
 	a.MasterElector.Stop()
 }
 
-func NewAlertServer(ah api.Handler, pool shttp.WSJSONSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) *AlertServer {
+func NewAlertServer(ah api.Handler, pool shttp.WSStructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) *AlertServer {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
 	as := &AlertServer{

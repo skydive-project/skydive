@@ -39,7 +39,7 @@ type fakeWSMessageServerSubscriptionHandler struct {
 	sync.RWMutex
 	DefaultWSSpeakerEventHandler
 	t             *testing.T
-	server        *WSJSONServer
+	server        *WSStructServer
 	received      map[string]bool
 	receivedCount int
 }
@@ -61,20 +61,20 @@ func (f *fakeWSMessageServerSubscriptionHandler) OnConnected(c WSSpeaker) {
 		if f.receivedCount == 0 {
 			return errors.New("Client not ready")
 		}
-		c.SendMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast666", "AAA", "001"))
-		c.SendMessage(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
-		c.SendMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
+		c.SendMessage(NewWSStructMessage("SrvValidNS", "SrvValidNSUnicast666", "AAA", "001"))
+		c.SendMessage(NewWSStructMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
+		c.SendMessage(NewWSStructMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
 
-		f.server.BroadcastMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSBroadcast1", "AAA", "001"))
-		f.server.BroadcastMessage(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSBroacast2", "AAA", "001"))
-		f.server.BroadcastMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSBroadcast3", "AAA", "001"))
+		f.server.BroadcastMessage(NewWSStructMessage("SrvValidNS", "SrvValidNSBroadcast1", "AAA", "001"))
+		f.server.BroadcastMessage(NewWSStructMessage("SrvNotValidNS", "SrvNotValidNSBroacast2", "AAA", "001"))
+		f.server.BroadcastMessage(NewWSStructMessage("SrvValidNS", "SrvValidNSBroadcast3", "AAA", "001"))
 
 		return nil
 	}
 	go common.Retry(fnc, 5, time.Second)
 }
 
-func (f *fakeWSMessageServerSubscriptionHandler) OnWSJSONMessage(c WSSpeaker, m *WSJSONMessage) {
+func (f *fakeWSMessageServerSubscriptionHandler) OnWSStructMessage(c WSSpeaker, m *WSStructMessage) {
 	f.Lock()
 	f.received[m.Type] = true
 	f.receivedCount++
@@ -86,12 +86,12 @@ func (f *fakeWSMessageClientSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.connected++
 	f.Unlock()
 
-	c.SendMessage(NewWSJSONMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
-	c.SendMessage(NewWSJSONMessage("ClientNotValidNS", "ClientNotValidNS2", "AAA", "001"))
-	c.SendMessage(NewWSJSONMessage("ClientValidNS", "ClientValidNS3", "AAA", "001"))
+	c.SendMessage(NewWSStructMessage("ClientValidNS", "ClientValidNS1", "AAA", "001"))
+	c.SendMessage(NewWSStructMessage("ClientNotValidNS", "ClientNotValidNS2", "AAA", "001"))
+	c.SendMessage(NewWSStructMessage("ClientValidNS", "ClientValidNS3", "AAA", "001"))
 }
 
-func (f *fakeWSMessageClientSubscriptionHandler) OnWSJSONMessage(c WSSpeaker, m *WSJSONMessage) {
+func (f *fakeWSMessageClientSubscriptionHandler) OnWSStructMessage(c WSSpeaker, m *WSStructMessage) {
 	f.Lock()
 	f.received[m.Type] = true
 	f.receivedCount++
@@ -105,24 +105,24 @@ func TestWSMessageSubscription(t *testing.T) {
 	go httpserver.ListenAndServe()
 	defer httpserver.Stop()
 
-	wsserver := NewWSJSONServer(NewWSServer(httpserver, "/wstest"))
+	wsserver := NewWSStructServer(NewWSServer(httpserver, "/wstest"))
 
 	serverHandler := &fakeWSMessageServerSubscriptionHandler{t: t, server: wsserver, received: make(map[string]bool)}
 	wsserver.AddEventHandler(serverHandler)
-	wsserver.AddJSONMessageHandler(serverHandler, []string{"ClientValidNS"})
+	wsserver.AddStructMessageHandler(serverHandler, []string{"ClientValidNS"})
 
 	wsserver.Start()
 	defer wsserver.Stop()
 
 	wsclient := NewWSClient("myhost", common.AgentService, config.GetURL("ws", "localhost", 59999, "/wstest"), nil, http.Header{}, 1000)
 
-	wspool := NewWSJSONClientPool("TestWSMessageSubscription")
+	wspool := NewWSStructClientPool("TestWSMessageSubscription")
 	wspool.AddClient(wsclient)
 
 	clientHandler := &fakeWSMessageClientSubscriptionHandler{t: t, received: make(map[string]bool)}
 	wspool.AddEventHandler(clientHandler)
 
-	wspool.AddJSONMessageHandler(clientHandler, []string{"SrvValidNS"})
+	wspool.AddStructMessageHandler(clientHandler, []string{"SrvValidNS"})
 
 	wsclient.Connect()
 	defer wsclient.Disconnect()
