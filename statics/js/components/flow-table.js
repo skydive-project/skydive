@@ -435,7 +435,7 @@ Vue.component('flow-table', {
         {
           name: ['RTT'],
           label: 'RTT ms',
-          show: false,
+          show: true,
         },
       ]
     };
