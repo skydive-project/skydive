@@ -299,6 +299,10 @@ var TopologyComponent = {
       });
     }
 
+    if (typeof(this.$route.query.link_label_type) !== "undefined") {
+      this.layout.linkLabelType = this.$route.query.link_label_type;
+    }
+
     websocket.addConnectHandler(function() {
       if (self.topologyFilter !== '') {
         self.topologyFilterQuery();

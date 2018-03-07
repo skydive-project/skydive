@@ -1,5 +1,172 @@
+const maxClockSkewMillis = 5 * 60 * 1000; // 5 minutes
+
+var LinkLabelBandwidth = Vue.extend({
+  mixins: [apiMixin],
+
+  methods: {
+
+    bandwidthFromMetrics: function(metrics) {
+      if (!metrics) {
+        return 0;
+      }
+      if (!metrics.Last) {
+        return 0;
+      }
+      if (!metrics.Start) {
+        return 0;
+      }
+
+      const totalByte = (metrics.RxBytes || 0) + (metrics.TxBytes || 0);
+      const deltaMillis = metrics.Last - metrics.Start;
+      const elapsedMillis = Date.now() - new Date(metrics.Last);
+
+      if (deltaMillis === 0) {
+        return 0;
+      }
+      if (elapsedMillis > maxClockSkewMillis) {
+        return 0;
+      }
+
+      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second 
+    },
+
+    setup: function(topology) {
+      this.topology = topology;
+    },
+
+    updateData: function(link) {
+      if (!link.target.metadata.LastUpdateMetric) {
+        return;
+      }
+
+      const defaultBandwidthBaseline = 1024 * 1024 * 1024; // 1 gbps
+
+      link.bandwidthBaseline = (this.topology.bandwidth.bandwidthThreshold === 'relative') ?
+        link.target.metadata.Speed || defaultBandwidthBaseline : 1;
+
+      link.bandwidthAbsolute = this.bandwidthFromMetrics(link.target.metadata.LastUpdateMetric);
+      link.bandwidth = link.bandwidthAbsolute / link.bandwidthBaseline;
+    },
+ 
+    hasData: function(link) {
+      if (!link.target.metadata.LastUpdateMetric) {
+        return false;
+      }
+
+      if (!link.bandwidth) {
+        return false;
+      }
+      return link.bandwidth > this.topology.bandwidth.active;
+    },
+
+    getText: function(link) {
+      return bandwidthToString(link.bandwidthAbsolute);
+    },
+
+    isActive: function(link) {
+      return (link.bandwidth > this.topology.bandwidth.active) && (link.bandwidth < this.topology.bandwidth.warning);
+    },
+
+    isWarning: function(link) {
+      return (link.bandwidth >= this.topology.bandwidth.warning) && (link.bandwidth < this.topology.bandwidth.alert);
+    },
+
+    isAlert: function(link) {
+      return link.bandwidth >= this.topology.bandwidth.alert;
+    },
+  },
+});
+
+var LinkLabelLatency = Vue.extend({
+  mixins: [apiMixin],
+
+  methods: {
+    setup: function(topology) {
+      this.active = 0;
+      this.warning = 10
+      this.alert = 100;
+    },
+
+    updateLatency: function(link, a, b) {
+      link.latencyTimestamp = Math.max(a.Last, b.Last);
+      link.latency = Math.abs(a.RTT - b.RTT) / 1000000;
+    },
+
+    flowQuery: function(nodeTID, trackingID, limit) {
+      let query = `G.Flows()`;
+      query += `.Has("NodeTID", "${nodeTID}")`;
+      if (typeof trackingID !== 'undefined') {
+        query += `.Has("TrackingID", "${trackingID}")`;
+      }
+      query += `.Has("RTT", NE(0))`;
+      query += `.Sort().Limit(${limit})`;
+      return this.$topologyQuery(query)
+    },
+
+    updateData: function(link) {
+      var self = this;
+
+      const a = link.source.metadata;
+      const b = link.target.metadata;
+
+      if (!a.Capture) {
+        return;
+      }
+      if (!b.Capture) {
+        return;
+      }
+
+      this.flowQuery(a.TID, undefined, 10)
+        .then(function(flows) {
+          for (let i in flows) {
+            const aFlow = flows[i];
+            self.flowQuery(b.TID, aFlow.TrackingID, 1)
+              .then(function(flows) {
+                for (let i in flows) {
+                  const bFlow = flows[i];
+                  self.updateLatency(link, aFlow, bFlow);
+                }
+              })
+              .fail(function(error) {
+                console.log(error);
+              });
+          }
+        })
+        .fail(function(error) {
+          console.log(error);
+        });
+    },
+
+    hasData: function(link) {
+      if (!link.latencyTimestamp) {
+        return false;
+      }
+      const elapsedMillis = Date.now() - new Date(link.latencyTimestamp);
+      return elapsedMillis <= maxClockSkewMillis;
+    },
+
+    getText: function(link) {
+      return `${link.latency} ms`;
+    },
+
+    isActive: function(link) {
+      return (link.latency >= this.active) && (link.latency < this.warning);
+    },
+
+    isWarning: function(link) {
+      return (link.latency >= this.warning) && (link.latency < this.alert);
+    },
+
+    isAlert: function(link) {
+      return (link.latency >= this.alert);
+    },
+  },
+});
+
 var TopologyGraphLayout = function(vm, selector) {
   var self = this;
+
+  this.linkLabelType = "bandwidth";
 
   this.vm = vm;
 
@@ -69,11 +236,27 @@ var TopologyGraphLayout = function(vm, selector) {
 
   this.loadBandwidthConfig()
     .then(function() {
-      self.bandwidth.intervalID = setInterval(self.updateBandwidth.bind(self), self.bandwidth.updatePeriod);
+      self.bandwidth.intervalID = setInterval(self.updatelinkLatency.bind(self), self.bandwidth.updatePeriod);
     });
 };
 
 TopologyGraphLayout.prototype = {
+
+  linkLabelFactory: function(link) {
+    let type, driver;
+    switch (this.linkLabelType) {
+      case "latency":
+        type = "latency";
+        driver = new LinkLabelLatency();
+        break;
+      default:
+        type = "bandwidth";
+        driver = new LinkLabelBandwidth();
+        break;
+    }
+    driver.setup(this);
+    return driver;
+  },
 
   notifyHandlers: function(ev, v1) {
     var self = this;
@@ -1167,22 +1350,6 @@ TopologyGraphLayout.prototype = {
     });
   },
 
-  bandwidthFromMetrics: function(metrics) {
-    var totalByte = (metrics.RxBytes || 0) + (metrics.TxBytes || 0);
-
-    var deltaMillis = metrics.Last - metrics.Start;
-    var elapsedMillis = Date.now() - new Date(metrics.Last);
-    const maxClockSkewMillis = 5 * 60 * 1000; // 5 minutes
-    if (elapsedMillis > maxClockSkewMillis) {
-      return 0;
-    }
-
-    if (deltaMillis > 0) {
-      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second
-    }
-    return 0;
-  },
-
   styleReturn: function(d, values) {
     if (d.active)
       return values[0];
@@ -1219,31 +1386,26 @@ TopologyGraphLayout.prototype = {
   updateLinkLabelData: function() {
     var self = this;
 
+    const driver = self.linkLabelFactory();
+
     for (var i in this.links) {
-      var bandwidth = this.bandwidth;
       var link = this.links[i];
 
       if (!link.source.visible || !link.target.visible)
         continue;
       if (link.metadata.RelationType !== "layer2")
         continue;
-      if (!link.target.metadata.LastUpdateMetric)
-        continue;
 
-      const defaultBandwidthBaseline = 1024 * 1024 * 1024; // 1 gbps
-      var bandwidthBaseline = (bandwidth.bandwidthThreshold === 'relative') ?
-        link.target.metadata.Speed || defaultBandwidthBaseline : 1;
-      var bandwidthAbsolute = this.bandwidthFromMetrics(link.target.metadata.LastUpdateMetric);
-      var bandwidthCheck = bandwidthAbsolute / bandwidthBaseline;
+      driver.updateData(link);
 
-      if (bandwidthCheck > bandwidth.active) {
+      if (driver.hasData(link)) {
         this.linkLabelData[link.id] = {
           id: "link-label-" + link.id,
           link: link,
-          text: bandwidthToString(bandwidthAbsolute),
-          active: (bandwidthCheck > bandwidth.active) && (bandwidthCheck < bandwidth.warning),
-          warning: (bandwidthCheck >= bandwidth.warning) && (bandwidthCheck < bandwidth.alert),
-          alert: bandwidthCheck >= bandwidth.alert
+          text: driver.getText(link),
+          active: driver.isActive(link),
+          warning: driver.isWarning(link),
+          alert: driver.isAlert(link),
         };
       } else {
         delete this.linkLabelData[link.id];
@@ -1251,7 +1413,7 @@ TopologyGraphLayout.prototype = {
     }
   },
 
-  updateBandwidth: function() {
+  updatelinkLatency: function() {
     var self = this;
 
     this.updateLinkLabelData();
