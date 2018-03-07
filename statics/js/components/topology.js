@@ -362,7 +362,7 @@ var TopologyComponent = {
 
     currentNodeFlowsQuery: function() {
       if (this.currentNode && this.currentNode.isCaptureAllowed())
-        return "G.V('" + this.currentNode.id + "').Flows().Dedup().Sort()";
+        return "G.Flows().Has('NodeTID', '" + this.currentNode.metadata.TID + "').Sort()";
       return "";
     },
 

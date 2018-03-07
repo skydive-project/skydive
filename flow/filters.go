@@ -27,9 +27,9 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// NewFilterForNodeTIDs creates a new filter based on flow NodeTID, ANodeTID, BNodeTID
+// NewFilterForNodeTIDs creates a new filter based on flow NodeTID
 func NewFilterForNodeTIDs(uuids []string) *filters.Filter {
-	return filters.NewFilterForIds(uuids, "NodeTID", "ANodeTID", "BNodeTID")
+	return filters.NewOrTermStringFilter(uuids, "NodeTID")
 }
 
 // NewFilterForNodes creates a new filter based on graph nodes
@@ -54,5 +54,5 @@ func NewFilterForFlowSet(flowset *FlowSet) *filters.Filter {
 	for i, flow := range flowset.Flows {
 		ids[i] = string(flow.UUID)
 	}
-	return filters.NewFilterForIds(ids, "UUID")
+	return filters.NewOrTermStringFilter(ids, "UUID")
 }
