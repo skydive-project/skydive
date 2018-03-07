@@ -32,90 +32,168 @@ import (
 // QueryString used to construct string representation of query
 type QueryString string
 
+// NewValueStringFromArgument via inferance creates a correct ValueString
+func NewQueryStringFromArgument(v interface{}) QueryString {
+	switch t := v.(type) {
+	case QueryString:
+		return t
+	case string:
+		return QueryString(t)
+	case fmt.Stringer:
+		return QueryString(t.String())
+	default:
+		panic(fmt.Sprintf("argument %v: type %T not supported", t, v))
+	}
+}
+
 // String converts value to string
 func (v QueryString) String() string {
-	return string(v)
+	s := string(v)
+	fmt.Printf("Gremlin: %s\n", s)
+	return s
 }
 
 // G represents the base graph token
 const G = QueryString("G")
 
 // Append appends string value to query
-func (q QueryString) Append(s string) QueryString {
-	return QueryString(q.String() + s)
+func (q QueryString) appends(s string) QueryString {
+	return QueryString(string(q) + s)
 }
 
-// Append a Context() operation to query
-func (q QueryString) Context(t time.Time) QueryString {
-	if !t.IsZero() {
-		return q.Append(fmt.Sprintf(".Context(%d)", common.UnixMillis(t)))
-	}
-	return q
-}
-
-// V append a V() operation to query
-func (q QueryString) V() QueryString {
-	return q.Append(".V()")
-}
-
-// Has append a Has() operation to query
-func (q QueryString) Has(list ...ValueString) QueryString {
-	q = q.Append(".Has(")
+func (q QueryString) newQueryString(name string, list ...interface{}) QueryString {
+	q = q.appends(fmt.Sprintf(".%s(", name))
 	first := true
 	for _, v := range list {
 		if !first {
-			q = q.Append(", ")
+			q = q.appends(", ")
 		}
 		first = false
-		q = q.Append(v.String())
+		q = q.appends(string(NewValueStringFromArgument(v)))
 	}
-	return q.Append(")")
+	return q.appends(")")
 }
 
-// ValueString a value used within query constructs
-type ValueString string
-
-// String converts value to string
-func (v ValueString) String() string {
-	return string(v)
+// Aggregates append a Aggregates() operation to query
+func (q QueryString) Aggregates() QueryString {
+	return q.newQueryString("Aggregates")
 }
 
-// Quote used to quote string values as needed by query
-func (v ValueString) Quote() ValueString {
-	return ValueString(fmt.Sprintf("'%s'", v.String()))
+// At append a At() operation to query
+func (q QueryString) At(list ...interface{}) QueryString {
+	return q.newQueryString("At", list...)
 }
 
-// Regex used for constructing a regexp expression string
-func (v ValueString) Regex() ValueString {
-	return ValueString(fmt.Sprintf("Regex(%s)", v.Quote()))
+// Both append a Both() operation to query
+func (q QueryString) Both() QueryString {
+	return q.newQueryString("Both")
 }
 
-// StartsWith construct a regexp representing all that start with string
-func (v ValueString) StartsWith() ValueString {
-	return ValueString(fmt.Sprintf("%s.*", v.String())).Regex()
+// BPF append a PBF() operation to query
+func (q QueryString) BPF(list ...interface{}) QueryString {
+	return q.newQueryString("BPF", list...)
 }
 
-// EndsWith construct a regexp representing all that end with string
-func (v ValueString) EndsWith() ValueString {
-	return ValueString(fmt.Sprintf(".*%s", v.String())).Regex()
+// CaptureNode append a CaptureNode() operation to query
+func (q QueryString) CaptureNode() QueryString {
+	return q.newQueryString("CaptureNode")
 }
 
-// Quote used to quote string values as needed by query
-func Quote(s string) ValueString {
-	return ValueString(s).Quote()
+// Context append a Context() operation to query
+func (q QueryString) Context(list ...interface{}) QueryString {
+	newQ := q.appends(".Context(")
+	first := true
+	for _, v := range list {
+		if !first {
+			newQ = newQ.appends(", ")
+		}
+		first = false
+		switch t := v.(type) {
+		case time.Time:
+			if t.IsZero() {
+				return q
+			}
+			newQ = newQ.appends(fmt.Sprintf("%d", common.UnixMillis(t)))
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			newQ = newQ.appends(fmt.Sprintf("%d", t))
+		default:
+			panic(fmt.Sprintf("argument %v: type %T not supported", t, v))
+		}
+	}
+	return newQ.appends(")")
 }
 
-// Regex used for constructing a regexp expression string
-func Regex(s string) ValueString {
-	return ValueString(s).Regex()
+// Count append a Count() operation to query
+func (q QueryString) Count() QueryString {
+	return q.newQueryString("Count")
 }
 
-// StartsWith construct a regexp representing all that start with string
-func StartsWith(s string) ValueString {
-	return ValueString(s).StartsWith()
+// Dedup append a Dedup() operation to query
+func (q QueryString) Dedup() QueryString {
+	return q.newQueryString("Dedup")
 }
 
-// EndsWith construct a regexp representing all that end with string
-func EndsWith(s string) ValueString {
-	return ValueString(s).EndsWith()
+// Flows append a Flows() operation to query
+func (q QueryString) Flows(list ...interface{}) QueryString {
+	return q.newQueryString("Flows", list...)
+}
+
+// Has append a Has() operation to query
+func (q QueryString) Has(list ...interface{}) QueryString {
+	return q.newQueryString("Has", list...)
+}
+
+// HasKey append a HasKey() operation to query
+func (q QueryString) HasKey(v interface{}) QueryString {
+	return q.newQueryString("HasKey", v)
+}
+
+// Hops append a Hops() operation to query
+func (q QueryString) Hops() QueryString {
+	return q.newQueryString("Hops")
+}
+
+// In append a In() operation to query
+func (q QueryString) In() QueryString {
+	return q.newQueryString("In")
+}
+
+// Metrics append a Metrics() operation to query
+func (q QueryString) Metrics() QueryString {
+	return q.newQueryString("Metrics")
+}
+
+// Sum append a Sum() operation to query
+func (q QueryString) Sum(list ...interface{}) QueryString {
+	return q.newQueryString("Sum", list...)
+}
+
+// Nodes append a Nodes() operation to query
+func (q QueryString) Nodes() QueryString {
+	return q.newQueryString("Nodes")
+}
+
+// Out append a Out() operation to query
+func (q QueryString) Out() QueryString {
+	return q.newQueryString("Out")
+}
+
+// RawPackets append a RawPackets() operation to query
+func (q QueryString) RawPackets() QueryString {
+	return q.newQueryString("RawPackets")
+}
+
+// ShortestPathTo append a ShortestPathTo() operation to query
+func (q QueryString) ShortestPathTo(list ...interface{}) QueryString {
+	return q.newQueryString("ShortestPathTo", list...)
+}
+
+// Sort append a Sort() operation to query
+func (q QueryString) Sort(list ...interface{}) QueryString {
+	return q.newQueryString("Sort", list...)
+}
+
+// V append a V() operation to query
+func (q QueryString) V(list ...interface{}) QueryString {
+	return q.newQueryString("V", list...)
 }

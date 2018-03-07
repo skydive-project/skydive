@@ -36,6 +36,7 @@ import (
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/tests/helper"
@@ -122,15 +123,15 @@ type TestContext struct {
 }
 
 type TestCapture struct {
-	gremlin    string
+	gremlin    g.QueryString
 	kind       string
 	bpf        string
 	rawPackets int
 }
 
 type TestInjection struct {
-	from  string
-	to    string
+	from  g.QueryString
+	to    g.QueryString
 	toIP  string
 	toMAC string
 	ipv6  bool
@@ -162,10 +163,7 @@ type Test struct {
 }
 
 func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
-	gremlin := "G"
-	if !at.IsZero() {
-		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
-	}
+	gremlin := g.G.Context(at)
 
 	switch helper.GraphOutputFormat {
 	case "ascii":
@@ -197,7 +195,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Error(err.Error())
-			return string(output)
+			return ""
 		}
 
 		return "\n" + string(output)
@@ -214,11 +212,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 }
 
 func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
-	gremlin := "G"
-	if !at.IsZero() {
-		gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(at))
-	}
-	gremlin += ".V().Flows().Sort()"
+	gremlin := g.G.Context(at).V().Flows().Sort()
 
 	flows, err := c.gh.GetFlows(gremlin)
 	if err != nil {
@@ -255,7 +249,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	t.Log("Creating captures")
 	for _, tc := range test.captures {
-		capture := types.NewCapture(tc.gremlin, tc.bpf)
+		capture := types.NewCapture(tc.gremlin.String(), tc.bpf)
 		capture.Type = tc.kind
 		capture.RawPacketLimit = tc.rawPackets
 		if err = client.Create("capture", capture); err != nil {
@@ -351,12 +345,12 @@ func RunTest(t *testing.T, test *Test) {
 
 	// Wait for the interfaces to be ready for packet injection
 	err = common.Retry(func() error {
-		isReady := func(gremlin string, ipv6 bool) error {
-			gremlin += ".Has('State', 'UP')"
+		isReady := func(gremlin g.QueryString, ipv6 bool) error {
+			gremlin = gremlin.Has("State", "UP")
 			if ipv6 {
-				gremlin += ".HasKey('IPV6')"
+				gremlin = gremlin.HasKey("IPV6")
 			} else {
-				gremlin += ".HasKey('IPV4')"
+				gremlin = gremlin.HasKey("IPV4")
 			}
 
 			nodes, err := context.gh.GetNodes(gremlin)
@@ -391,8 +385,8 @@ func RunTest(t *testing.T, test *Test) {
 		}
 
 		packet := &types.PacketParamsReq{
-			Src:      injection.from,
-			Dst:      injection.to,
+			Src:      injection.from.String(),
+			Dst:      injection.to.String(),
 			DstIP:    injection.toIP,
 			DstMAC:   injection.toMAC,
 			Type:     fmt.Sprintf("icmp%d", ipVersion),
@@ -472,10 +466,10 @@ func pingRequest(t *testing.T, context *TestContext, packet *types.PacketParamsR
 	return context.client.Create("injectpacket", packet)
 }
 
-func ping(t *testing.T, context *TestContext, ipVersion int, src string, dst string, count int64, id int64) error {
+func ping(t *testing.T, context *TestContext, ipVersion int, src, dst g.QueryString, count int64, id int64) error {
 	packet := &types.PacketParamsReq{
-		Src:      src,
-		Dst:      dst,
+		Src:      src.String(),
+		Dst:      dst.String(),
 		Type:     fmt.Sprintf("icmp%d", ipVersion),
 		Count:    count,
 		ICMPID:   id,
