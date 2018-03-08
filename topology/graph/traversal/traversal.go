@@ -511,7 +511,7 @@ func (t *GraphTraversal) Context(s ...interface{}) *GraphTraversal {
 	t.RLock()
 	defer t.RUnlock()
 
-	g, err := t.Graph.WithContext(graph.GraphContext{TimeSlice: common.NewTimeSlice(common.UnixMillis(at.Add(-duration)), common.UnixMillis(at))})
+	g, err := t.Graph.CloneWithContext(graph.GraphContext{TimeSlice: common.NewTimeSlice(common.UnixMillis(at.Add(-duration)), common.UnixMillis(at))})
 	if err != nil {
 		return &GraphTraversal{error: err}
 	}

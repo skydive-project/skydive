@@ -480,7 +480,7 @@ func TestInterfaceMetrics(t *testing.T) {
 			gh := c.gh
 
 			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
-			gremlin += `.V().Has("Name", "im", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates()`
+			gremlin += `.V().Has("Name", "im", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates(10)`
 
 			metrics, err := gh.GetMetrics(gremlin)
 			if err != nil {
@@ -507,8 +507,10 @@ func TestInterfaceMetrics(t *testing.T) {
 				tx += im.TxPackets
 			}
 
-			if tx != 30 {
-				return fmt.Errorf("Expected 30 TxPackets, got %d", tx)
+			// due to ratio applied during the aggregation we can't expect to get excatly
+			// the sum of the metrics.
+			if tx <= 25 {
+				return fmt.Errorf("Expected at least TxPackets, got %d", tx)
 			}
 
 			gremlin += `.Sum()`
@@ -519,8 +521,8 @@ func TestInterfaceMetrics(t *testing.T) {
 			}
 
 			im := m.(*topology.InterfaceMetric)
-			if im.TxPackets != 30 {
-				return fmt.Errorf("Expected 30 TxPackets, got %d", tx)
+			if im.TxPackets != tx {
+				return fmt.Errorf("Sum error %d vs %d", im.TxPackets, tx)
 			}
 
 			return nil

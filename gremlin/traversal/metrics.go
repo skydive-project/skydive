@@ -31,6 +31,10 @@ import (
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
+const (
+	defaultAggregatesSliceLength = int64(30000) // 30 seconds
+)
+
 // MetricsTraversalExtension describes a new extension to enhance the topology
 type MetricsTraversalExtension struct {
 	MetricsToken traversal.Token
@@ -132,71 +136,114 @@ func (m *MetricsTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversa
 				total = total.Add(metric)
 			}
 
-			if total.GetStart() == 0 || total.GetStart() > metric.GetStart() {
+			if total.GetStart() > metric.GetStart() {
 				total.SetStart(metric.GetStart())
 			}
 
-			if total.GetLast() == 0 || total.GetLast() < metric.GetLast() {
+			if total.GetLast() < metric.GetLast() {
 				total.SetLast(metric.GetLast())
 			}
 		}
 	}
 
-	return traversal.NewGraphTraversalValue(m.GraphTraversal, &total)
+	return traversal.NewGraphTraversalValue(m.GraphTraversal, total)
 }
 
-func aggregateMetrics(a, b []common.Metric) []common.Metric {
-	var result []common.Metric
-	boundA, boundB := len(a)-1, len(b)-1
+func slice(m common.Metric, start, last int64) (common.Metric, common.Metric, common.Metric) {
+	s1, s2 := m.Split(start)
+	if s2 == nil || s2.IsZero() {
+		return s1, nil, nil
+	}
+
+	s2, s3 := s2.Split(last)
+	if s2 != nil && s2.IsZero() && m.GetStart() >= start && m.GetStart() < last {
+		// slice metric to low and became zero due to ratio. In that case use it directly.
+		return nil, m, nil
+	}
+
+	return s1, s2, s3
+}
+
+func aggregateMetrics(m []common.Metric, start, last int64, sliceLength int64, result []common.Metric) {
+	boundM, boundR := len(m)-1, len(result)
+
+	sStart, sLast := start, start+sliceLength
 
 	var i, j int
-	for i <= boundA || j <= boundB {
-		if i > boundA && j <= boundB {
-			return append(result, b[j:]...)
-		} else if j > boundB && i <= boundA {
-			return append(result, a[i:]...)
-		} else if a[i].GetLast() < b[j].GetStart() {
-			// metric a is strictly before metric b
-			result = append(result, a[i])
-			i++
-		} else if b[j].GetLast() < a[i].GetStart() {
-			// metric b is strictly before metric a
-			result = append(result, b[j])
-			j++
-		} else {
-			start := a[i].GetStart()
-			last := a[i].GetLast()
-			if a[i].GetStart() > b[j].GetStart() {
-				start = b[j].GetStart()
-				last = b[j].GetLast()
+	for j < boundR {
+		if sLast > last {
+			sLast = last
+		}
+
+		if i > boundM {
+			break
+		}
+
+		_, s2, s3 := slice(m[i], sStart, sLast)
+		if s2 != nil {
+			if result[j] == nil {
+				result[j] = s2
+				result[j].SetStart(sStart)
+				result[j].SetLast(sLast)
+			} else {
+				result[j] = result[j].Add(s2)
 			}
 
-			// in case of an overlap then summing using the smallest start/last slice
-			metric := a[i].Add(b[j])
-			metric.SetStart(start)
-			metric.SetLast(last)
-
-			result = append(result, metric)
-			i++
+			if s3 != nil && !s3.IsZero() {
+				m[i] = s3
+			} else {
+				i++
+			}
+		} else {
+			sStart += sliceLength
+			sLast += sliceLength
 			j++
 		}
 	}
-	return result
+
+	return
 }
 
 // Aggregates merges multiple metrics array into one by summing overlapping
 // metrics. It returns a unique array will all the aggregated metrics.
-func (m *MetricsTraversalStep) Aggregates() *MetricsTraversalStep {
+func (m *MetricsTraversalStep) Aggregates(s ...interface{}) *MetricsTraversalStep {
 	if m.error != nil {
-		return m
+		return &MetricsTraversalStep{error: m.error}
 	}
 
-	var aggregated []common.Metric
+	sliceLength := defaultAggregatesSliceLength
+	if len(s) != 0 {
+		sl, ok := s[0].(int64)
+		if !ok || sl <= 0 {
+			return &MetricsTraversalStep{error: fmt.Errorf("Aggregates parameter has to be a positive number")}
+		}
+		sliceLength = sl * 1000 // Millisecond
+	}
+
+	context := m.GraphTraversal.Graph.GetContext()
+
+	start := context.TimeSlice.Start
+	last := context.TimeSlice.Last
+
+	steps := (last - start) / sliceLength
+	if (last-start)%sliceLength != 0 {
+		steps++
+	}
+
+	aggregated := make([]common.Metric, steps, steps)
 	for _, metrics := range m.metrics {
-		aggregated = aggregateMetrics(aggregated, metrics)
+		aggregateMetrics(metrics, start, last, sliceLength, aggregated)
 	}
 
-	return &MetricsTraversalStep{GraphTraversal: m.GraphTraversal, metrics: map[string][]common.Metric{"Aggregated": aggregated}}
+	// filter out empty metrics
+	final := make([]common.Metric, 0)
+	for _, e := range aggregated {
+		if e != nil {
+			final = append(final, e)
+		}
+	}
+
+	return &MetricsTraversalStep{GraphTraversal: m.GraphTraversal, metrics: map[string][]common.Metric{"Aggregated": final}}
 }
 
 // Values returns the graph metric values

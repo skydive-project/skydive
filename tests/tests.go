@@ -171,7 +171,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		header.Set("Accept", "vnd.graphviz")
 		resp, err := c.gh.Request(gremlin, header)
 		if err != nil {
-			t.Error(err.Error())
+			t.Error(err)
 			return ""
 		}
 
@@ -181,12 +181,12 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		cmd := exec.Command("graph-easy", "--as_ascii")
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
-			t.Error(err.Error())
+			t.Error(err)
 			return ""
 		}
 
 		if _, err = stdin.Write(b); err != nil {
-			t.Error(err.Error())
+			t.Error(err)
 			return ""
 		}
 		stdin.Write([]byte("\n"))
@@ -194,7 +194,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Error(err.Error())
+			t.Error(err)
 			return ""
 		}
 
@@ -203,7 +203,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 	default:
 		data, err := c.gh.QueryRaw(gremlin)
 		if err != nil {
-			t.Error(err.Error())
+			t.Error(err)
 			return ""
 		}
 
@@ -216,7 +216,7 @@ func (c *TestContext) getAllFlows(t *testing.T, at time.Time) string {
 
 	flows, err := c.gh.GetFlows(gremlin)
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 		return ""
 	}
 
@@ -236,7 +236,7 @@ func (c *TestContext) getSystemState(t *testing.T) {
 func RunTest(t *testing.T, test *Test) {
 	client, err := gclient.NewCrudClientFromConfig(&shttp.AuthenticationOpts{})
 	if err != nil {
-		t.Fatalf("Failed to create client: %s", err.Error())
+		t.Fatalf("Failed to create client: %s", err)
 	}
 
 	t.Log("Removing existing captures")
@@ -304,7 +304,7 @@ func RunTest(t *testing.T, test *Test) {
 		g := context.getWholeGraph(t, time.Now())
 		helper.ExecCmds(t, test.tearDownCmds...)
 		context.getSystemState(t)
-		t.Fatalf("Failed to setup captures: %s, graph: %s", err.Error(), g)
+		t.Fatalf("Failed to setup captures: %s, graph: %s", err, g)
 	}
 
 	retries := test.retries
@@ -325,7 +325,7 @@ func RunTest(t *testing.T, test *Test) {
 			f := context.getAllFlows(t, settleTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
-			t.Errorf("Test failed to settle: %s, graph: %s, flows: %s", err.Error(), g, f)
+			t.Errorf("Test failed to settle: %s, graph: %s, flows: %s", err, g, f)
 			return
 		}
 	}
@@ -339,7 +339,7 @@ func RunTest(t *testing.T, test *Test) {
 			f := context.getAllFlows(t, context.setupTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
-			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err.Error(), g, f)
+			t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err, g, f)
 		}
 	}
 
@@ -355,7 +355,7 @@ func RunTest(t *testing.T, test *Test) {
 
 			nodes, err := context.gh.GetNodes(gremlin)
 			if err != nil {
-				return err
+				return fmt.Errorf("Gremlin request error `%s`: %s", gremlin, err)
 			}
 
 			if len(nodes) == 0 {
@@ -371,12 +371,22 @@ func RunTest(t *testing.T, test *Test) {
 			}
 
 			if injection.to != "" {
-				return isReady(injection.to, injection.ipv6)
+				if err := isReady(injection.to, injection.ipv6); err != nil {
+					return err
+				}
 			}
 		}
 
 		return nil
 	}, 15, time.Second)
+
+	if err != nil {
+		g := context.getWholeGraph(t, context.setupTime)
+		f := context.getAllFlows(t, context.setupTime)
+		helper.ExecCmds(t, test.tearDownCmds...)
+		context.getSystemState(t)
+		t.Fatalf("Failed to setup test: %s, graph: %s, flows: %s", err, g, f)
+	}
 
 	for _, injection := range test.injections {
 		ipVersion := 4
@@ -400,7 +410,7 @@ func RunTest(t *testing.T, test *Test) {
 			f := context.getAllFlows(t, context.setupTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
-			t.Errorf("Packet injection failed: %s, graph: %s, flows: %s", err.Error(), g, f)
+			t.Errorf("Packet injection failed: %s, graph: %s, flows: %s", err, g, f)
 			return
 		}
 	}
@@ -431,7 +441,7 @@ func RunTest(t *testing.T, test *Test) {
 			f := checkContext.getAllFlows(t, checkContext.startTime)
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
-			t.Errorf("Test failed: %s, graph: %s, flows: %s", err.Error(), g, f)
+			t.Errorf("Test failed: %s, graph: %s, flows: %s", err, g, f)
 			return
 		}
 	}
@@ -441,7 +451,7 @@ func RunTest(t *testing.T, test *Test) {
 		if err = test.tearDownFunction(context); err != nil {
 			helper.ExecCmds(t, test.tearDownCmds...)
 			context.getSystemState(t)
-			t.Fatalf("Fail to tear test down: %s", err.Error())
+			t.Fatalf("Fail to tear test down: %s", err)
 		}
 	}
 
@@ -456,7 +466,7 @@ func RunTest(t *testing.T, test *Test) {
 			}, retries, time.Second)
 
 			if err != nil {
-				t.Errorf("Failed to replay test: %s, graph: %s, flows: %s", err.Error(), checkContext.getWholeGraph(t, checkContext.time), checkContext.getAllFlows(t, checkContext.time))
+				t.Errorf("Failed to replay test: %s, graph: %s, flows: %s", err, checkContext.getWholeGraph(t, checkContext.time), checkContext.getAllFlows(t, checkContext.time))
 			}
 		}
 	}
@@ -536,11 +546,11 @@ func init() {
 
 	if helper.Standalone {
 		if err := helper.InitConfig(testConfig); err != nil {
-			panic(fmt.Sprintf("Failed to initialize config: %s", err.Error()))
+			panic(fmt.Sprintf("Failed to initialize config: %s", err))
 		}
 
 		if err := logging.InitLogging(); err != nil {
-			panic(fmt.Sprintf("Failed to initialize logging system: %s", err.Error()))
+			panic(fmt.Sprintf("Failed to initialize logging system: %s", err))
 		}
 
 		server, err := analyzer.NewServerFromConfig()

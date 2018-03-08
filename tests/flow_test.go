@@ -708,11 +708,7 @@ func TestFlowMetricsStep(t *testing.T) {
 				return fmt.Errorf("Wrong metric returned, got : %+v for flows %+v, request: %s", metric, helper.FlowsToString(flows), gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Sum())
 			}
 
-			checkMetrics := func(metrics map[string][]common.Metric) error {
-				if len(metrics) != 1 {
-					return fmt.Errorf("Should return only one metric array (%+v)", metrics)
-				}
-
+			checkMetricsOrder := func(metrics map[string][]common.Metric) error {
 				// check it's sorted
 				var start int64
 				for _, metricsOfID := range metrics {
@@ -736,16 +732,20 @@ func TestFlowMetricsStep(t *testing.T) {
 				return fmt.Errorf("Could not find metrics (%+v)", metrics)
 			}
 
-			if err = checkMetrics(metrics); err != nil {
+			if len(metrics) != 1 {
+				return fmt.Errorf("Should return only one metric array (%+v)", metrics)
+			}
+
+			if err = checkMetricsOrder(metrics); err != nil {
 				return err
 			}
 
-			metrics, err = gh.GetMetrics(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Aggregates())
+			metrics, err = gh.GetMetrics(gremlin.Has("LayersPath", "Ethernet/IPv4/ICMPv4").Dedup().Metrics().Aggregates(10))
 			if err != nil || len(metrics) == 0 {
 				return fmt.Errorf("Could not find metrics (%+v)", metrics)
 			}
 
-			if err = checkMetrics(metrics); err != nil {
+			if err = checkMetricsOrder(metrics); err != nil {
 				return err
 			}
 
@@ -1943,7 +1943,7 @@ func TestOvsMirror(t *testing.T) {
 		},
 
 		injections: []TestInjection{{
-			from:  "G.V().Has('Name', 'omir-if1', 'Type', 'internal')",
+			from:  g.G.V().Has("Name", "omir-if1", "Type", "internal"),
 			toIP:  "169.254.33.34",
 			toMAC: "11:22:33:44:55:66",
 			count: 5,

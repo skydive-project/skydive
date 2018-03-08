@@ -29,7 +29,7 @@ import (
 // ValueString a value used within query constructs
 type ValueString string
 
-// newValueStringFromArgument via inferance creates a correct ValueString
+// NewValueStringFromArgument via inferance creates a correct ValueString
 func NewValueStringFromArgument(v interface{}) ValueString {
 	switch t := v.(type) {
 	case ValueString:

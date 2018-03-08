@@ -217,9 +217,9 @@ func (c *CachedBackend) GetEdges(t *common.TimeSlice, m GraphElementMatcher) []*
 	return []*Edge{}
 }
 
-// WithContext returns a graph matching the context, usually within time slice
-func (c *CachedBackend) WithContext(graph *Graph, context GraphContext) (*Graph, error) {
-	return c.persistent.WithContext(graph, context)
+// IsHistorySupported returns whether the persistent backend supports history
+func (c *CachedBackend) IsHistorySupported() bool {
+	return c.persistent.IsHistorySupported()
 }
 
 // NewCachedBackend creates new graph cache mechanism
