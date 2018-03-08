@@ -146,25 +146,28 @@ text.link-label {
 }
 
 path.link-label-alert {
-  stroke: #ff1414;
+  stroke: Tomato;
 }
 
 path.link-label-warning {
-  stroke: #ff8e00;
+  stroke: Yellow;
+}
+
+path.link-label-active {
+  stroke: YellowGreen;
 }
 
 textPath.link-label-alert {
   stroke: #000;
-  fill: #ff4a4a;
+  fill: Tomato;
 }
 
 textPath.link-label-warning {
   stroke: #000;
-  fill: #ffa330;
+  fill: Yellow;
 }
 
-textPath.link-label-net-policy {
-  font-size: 30px;
-  fill: white;
-  stroke: black;
+textPath.link-label-active {
+  stroke: #000;
+  fill: YellowGreen;
 }
