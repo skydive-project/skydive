@@ -429,6 +429,7 @@ func getLinkLayerLength(packet *layers.Ethernet) int64 {
 		return 14 + int64(packet.Length)
 	}
 
+	// Metric in that case will not be correct if payload > captureLength
 	return 14 + int64(len(packet.Payload))
 }
 
@@ -697,12 +698,17 @@ func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, bpf *BPF)
 	}
 
 	packetLayers := (*packet).Layers()
+	metadata := (*packet).Metadata()
 
 	var topLayer = packetLayers[0]
 
 	if outerLength == 0 {
 		if ethernetPacket, ok := topLayer.(*layers.Ethernet); ok {
-			outerLength = getLinkLayerLength(ethernetPacket)
+			if metadata != nil && metadata.Length > 0 {
+				outerLength = int64(metadata.Length)
+			} else {
+				outerLength = getLinkLayerLength(ethernetPacket)
+			}
 		} else if ipv4Packet, ok := topLayer.(*layers.IPv4); ok {
 			outerLength = int64(ipv4Packet.Length)
 		} else if ipv6Packet, ok := topLayer.(*layers.IPv6); ok {
@@ -711,11 +717,12 @@ func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, bpf *BPF)
 	}
 
 	// length of the encapsulation header + the inner packet
-	topLayerLength := outerLength
-	var start int
-	var innerLength int
+	topLayerOffset, topLayerLength := 0, int(outerLength)
+
+	offset, length := topLayerOffset, topLayerLength
 	for i, layer := range packetLayers {
-		innerLength += len(layer.LayerContents())
+		length -= len(layer.LayerContents())
+		offset += len(layer.LayerContents())
 
 		switch layer.LayerType() {
 		case layers.LayerTypeGRE:
@@ -727,15 +734,12 @@ func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, bpf *BPF)
 			fallthrough
 			// We don't split on vlan layers.LayerTypeDot1Q
 		case layers.LayerTypeVXLAN, layers.LayerTypeMPLS, layers.LayerTypeGeneve:
-			p := gopacket.NewPacket(packetData[start:start+innerLength], topLayer.LayerType(), gopacket.NoCopy)
-			ps.Packets = append(ps.Packets, Packet{gopacket: &p, length: topLayerLength})
+			// TODO(safchain) do not truncate packet
+			p := gopacket.NewPacket(packetData[topLayerOffset:offset], topLayer.LayerType(), gopacket.NoCopy)
+			ps.Packets = append(ps.Packets, Packet{gopacket: &p, length: int64(topLayerLength)})
 
-			// subtract the current encapsulation header length as we are going to change the
-			// encapsulation layer
-			topLayerLength -= int64(innerLength)
-
-			start += innerLength
-			innerLength = 0
+			topLayerLength = length
+			topLayerOffset = offset
 
 			// change topLayer in case of multiple encapsulation
 			if i+1 <= len(packetLayers)-1 {
@@ -745,11 +749,11 @@ func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, bpf *BPF)
 	}
 
 	if len(ps.Packets) > 0 {
-		p := gopacket.NewPacket(packetData[start:], topLayer.LayerType(), gopacket.NoCopy)
-		if metadata := (*packet).Metadata(); metadata != nil {
+		p := gopacket.NewPacket(packetData[topLayerOffset:], topLayer.LayerType(), gopacket.NoCopy)
+		if metadata != nil {
 			p.Metadata().CaptureInfo = metadata.CaptureInfo
 		}
-		ps.Packets = append(ps.Packets, Packet{gopacket: &p, length: 0})
+		ps.Packets = append(ps.Packets, Packet{gopacket: &p, length: int64(topLayerLength)})
 	} else {
 		ps.Packets = append(ps.Packets, Packet{gopacket: packet, length: outerLength})
 	}
