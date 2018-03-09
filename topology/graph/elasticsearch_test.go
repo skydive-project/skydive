@@ -267,12 +267,6 @@ func TestElasticsearchLocal(t *testing.T) {
 
 	searchExpected := map[string]interface{}{
 		"size": float64(10000),
-		"sort": map[string]interface{}{
-			"Revision": map[string]interface{}{
-				"order":         "asc",
-				"unmapped_type": "date",
-			},
-		},
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
 				"must": []interface{}{

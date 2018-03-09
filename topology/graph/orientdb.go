@@ -149,6 +149,54 @@ func (o *OrientDBBackend) createNode(n *Node) bool {
 	return true
 }
 
+func (o *OrientDBBackend) searchNodes(t GraphContext, where string) (nodes []*Node) {
+	query := "SELECT FROM Node WHERE " + where
+	if !t.TimePoint {
+		query += " ORDER BY UpdatedAt"
+	}
+
+	docs, err := o.client.Search(query)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while retrieving nodes: %s (%+v)", err.Error(), docs)
+		return
+	}
+
+	nodes = make([]*Node, len(docs))
+	for i, doc := range docs {
+		nodes[i] = orientDBDocumentToNode(doc)
+	}
+
+	if len(nodes) > 1 && t.TimePoint {
+		nodes = dedupNodes(nodes)
+	}
+
+	return
+}
+
+func (o *OrientDBBackend) searchEdges(t GraphContext, where string) (edges []*Edge) {
+	query := "SELECT FROM Link WHERE " + where
+	if !t.TimePoint {
+		query += " ORDER BY UpdatedAt"
+	}
+
+	docs, err := o.client.Search(query)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while retrieving edges: %s", err.Error())
+		return nil
+	}
+
+	edges = make([]*Edge, len(docs))
+	for i, doc := range docs {
+		edges[i] = orientDBDocumentToEdge(doc)
+	}
+
+	if len(edges) > 1 && t.TimePoint {
+		edges = dedupEdges(edges)
+	}
+
+	return
+}
+
 // NodeAdded add a node in the database
 func (o *OrientDBBackend) NodeAdded(n *Node) bool {
 	return o.createNode(n)
@@ -160,35 +208,23 @@ func (o *OrientDBBackend) NodeDeleted(n *Node) bool {
 }
 
 // GetNode get a node within a time slice
-func (o *OrientDBBackend) GetNode(i Identifier, t *common.TimeSlice) (nodes []*Node) {
-	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID = '%s' ORDER BY Revision", o.getTimeSliceClause(t), i)
-	docs, err := o.client.Search(query)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving node %s: %s", i, err.Error())
-		return
+func (o *OrientDBBackend) GetNode(i Identifier, t GraphContext) (nodes []*Node) {
+	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
+	query += fmt.Sprintf(" AND ID = '%s' ORDER BY Revision", i)
+	if t.TimePoint {
+		query += " DESC LIMIT 1"
 	}
-	for _, doc := range docs {
-		nodes = append(nodes, orientDBDocumentToNode(doc))
-	}
-	return
+	return o.searchNodes(t, query)
 }
 
 // GetNodeEdges returns a list of a node edges within time slice
-func (o *OrientDBBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m GraphElementMatcher) (edges []*Edge) {
-	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND (Parent = '%s' OR Child = '%s')", o.getTimeSliceClause(t), n.ID, n.ID)
+func (o *OrientDBBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElementMatcher) (edges []*Edge) {
+	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
+	query += fmt.Sprintf(" AND (Parent = '%s' OR Child = '%s')", n.ID, n.ID)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
 	}
-	docs, err := o.client.Search(query)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving edges for node %s: %s", n.ID, err.Error())
-		return nil
-	}
-
-	for _, doc := range docs {
-		edges = append(edges, orientDBDocumentToEdge(doc))
-	}
-	return
+	return o.searchEdges(t, query)
 }
 
 func (o *OrientDBBackend) createEdge(e *Edge) bool {
@@ -215,30 +251,21 @@ func (o *OrientDBBackend) EdgeDeleted(e *Edge) bool {
 }
 
 // GetEdge get an edge within a time slice
-func (o *OrientDBBackend) GetEdge(i Identifier, t *common.TimeSlice) (edges []*Edge) {
-	query := fmt.Sprintf("SELECT FROM Link WHERE %s AND ID = '%s' ORDER BY Revision", o.getTimeSliceClause(t), i)
-	docs, err := o.client.Search(query)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving edge %s: %s", i, err.Error())
-		return nil
+func (o *OrientDBBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
+	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
+	query += fmt.Sprintf(" AND ID = '%s' ORDER BY Revision", i)
+	if t.TimePoint {
+		query += " DESC LIMIT 1"
 	}
-	for _, doc := range docs {
-		edges = append(edges, orientDBDocumentToEdge(doc))
-	}
-	return
+	return o.searchEdges(t, query)
 }
 
 // GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadata
-func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) (parents []*Node, children []*Node) {
-	query := fmt.Sprintf("SELECT FROM Node WHERE %s AND ID in [\"%s\", \"%s\"]", o.getTimeSliceClause(t), e.parent, e.child)
-	docs, err := o.client.Search(query)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving nodes for edge %s: %s", e.ID, err.Error())
-		return nil, nil
-	}
+func (o *OrientDBBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetadata, childMetadata GraphElementMatcher) (parents []*Node, children []*Node) {
+	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
+	query += fmt.Sprintf(" AND ID in [\"%s\", \"%s\"]", e.parent, e.child)
 
-	for _, doc := range docs {
-		node := orientDBDocumentToNode(doc)
+	for _, node := range o.searchNodes(t, query) {
 		if node.ID == e.parent && node.MatchMetadata(parentMetadata) {
 			parents = append(parents, node)
 		} else if node.MatchMetadata(childMetadata) {
@@ -271,55 +298,25 @@ func (o *OrientDBBackend) MetadataUpdated(i interface{}) bool {
 	return success
 }
 
-func (*OrientDBBackend) getTimeSliceClause(t *common.TimeSlice) string {
-	if t == nil {
-		return "ArchivedAt is NULL"
-	}
-	query := fmt.Sprintf("CreatedAt <= %d AND (DeletedAt >= %d OR DeletedAt is NULL)", t.Last, t.Start)
-	query += fmt.Sprintf(" AND UpdatedAt <= %d AND (ArchivedAt >= %d OR ArchivedAt is NULL)", t.Last, t.Start)
-	return query
-}
-
 // GetNodes returns a list of nodes within time slice, matching metadata
-func (o *OrientDBBackend) GetNodes(t *common.TimeSlice, m GraphElementMatcher) (nodes []*Node) {
-	query := fmt.Sprintf("SELECT FROM Node WHERE %s ", o.getTimeSliceClause(t))
+func (o *OrientDBBackend) GetNodes(t GraphContext, m GraphElementMatcher) (nodes []*Node) {
+	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
 	}
-	query += " ORDER BY UpdatedAt"
 
-	docs, err := o.client.Search(query)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving nodes: %s (%+v)", err.Error(), docs)
-		return
-	}
-
-	for _, doc := range docs {
-		nodes = append(nodes, orientDBDocumentToNode(doc))
-	}
-
-	return
+	logging.GetLogger().Debugf("GetNodes %+v => %s (%+v)", t, query, getTimeFilter(t.TimeSlice))
+	return o.searchNodes(t, query)
 }
 
 // GetEdges returns a list of edges within time slice, matching metadata
-func (o *OrientDBBackend) GetEdges(t *common.TimeSlice, m GraphElementMatcher) (edges []*Edge) {
-	query := fmt.Sprintf("SELECT FROM Link WHERE %s", o.getTimeSliceClause(t))
+func (o *OrientDBBackend) GetEdges(t GraphContext, m GraphElementMatcher) (edges []*Edge) {
+	query := orientdb.FilterToExpression(getTimeFilter(t.TimeSlice), nil)
 	if metadataQuery := metadataToOrientDBSelectString(m); metadataQuery != "" {
 		query += " AND " + metadataQuery
 	}
-	query += " ORDER BY UpdatedAt"
 
-	docs, err := o.client.Search(query)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while retrieving edges: %s (%+v)", err.Error(), docs)
-		return
-	}
-
-	for _, doc := range docs {
-		edges = append(edges, orientDBDocumentToEdge(doc))
-	}
-
-	return
+	return o.searchEdges(t, query)
 }
 
 // IsHistorySupported returns that this backend does support history

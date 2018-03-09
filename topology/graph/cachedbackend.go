@@ -24,8 +24,6 @@ package graph
 
 import (
 	"sync/atomic"
-
-	"github.com/skydive-project/skydive/common"
 )
 
 // Define the running cache mode, memory and/or persisent
@@ -80,10 +78,10 @@ func (c *CachedBackend) NodeDeleted(n *Node) bool {
 }
 
 // GetNode retrieve a node from the cache within a time slice
-func (c *CachedBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
+func (c *CachedBackend) GetNode(i Identifier, t GraphContext) []*Node {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PersistentOnlyMode {
+	if t.TimeSlice == nil && mode != PersistentOnlyMode {
 		return c.memory.GetNode(i, t)
 	}
 
@@ -95,10 +93,10 @@ func (c *CachedBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
 }
 
 // GetNodeEdges retrieve a list of edges from a node within a time slice, matching metadata
-func (c *CachedBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m GraphElementMatcher) (edges []*Edge) {
+func (c *CachedBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElementMatcher) (edges []*Edge) {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PersistentOnlyMode {
+	if t.TimeSlice == nil && mode != PersistentOnlyMode {
 		return c.memory.GetNodeEdges(n, t, m)
 	}
 
@@ -142,10 +140,10 @@ func (c *CachedBackend) EdgeDeleted(e *Edge) bool {
 }
 
 // GetEdge retrieve an edge within a time slice
-func (c *CachedBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
+func (c *CachedBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PersistentOnlyMode {
+	if t.TimeSlice == nil && mode != PersistentOnlyMode {
 		return c.memory.GetEdge(i, t)
 	}
 
@@ -157,10 +155,10 @@ func (c *CachedBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
 }
 
 // GetEdgeNodes retrieve a list of nodes from an edge within a time slice, matching metadata
-func (c *CachedBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
+func (c *CachedBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PersistentOnlyMode {
+	if t.TimeSlice == nil && mode != PersistentOnlyMode {
 		return c.memory.GetEdgeNodes(e, t, parentMetadata, childMetadata)
 	}
 
@@ -188,10 +186,10 @@ func (c *CachedBackend) MetadataUpdated(i interface{}) bool {
 }
 
 // GetNodes returns a list of nodes with a time slice, matching metadata
-func (c *CachedBackend) GetNodes(t *common.TimeSlice, m GraphElementMatcher) []*Node {
+func (c *CachedBackend) GetNodes(t GraphContext, m GraphElementMatcher) []*Node {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PersistentOnlyMode {
+	if t.TimeSlice == nil && mode != PersistentOnlyMode {
 		return c.memory.GetNodes(t, m)
 	}
 
@@ -203,10 +201,10 @@ func (c *CachedBackend) GetNodes(t *common.TimeSlice, m GraphElementMatcher) []*
 }
 
 // GetEdges returns a list of edges with a time slice, matching metadata
-func (c *CachedBackend) GetEdges(t *common.TimeSlice, m GraphElementMatcher) []*Edge {
+func (c *CachedBackend) GetEdges(t GraphContext, m GraphElementMatcher) []*Edge {
 	mode := c.cacheMode.Load()
 
-	if t == nil && mode != PersistentOnlyMode {
+	if t.TimeSlice == nil && mode != PersistentOnlyMode {
 		return c.memory.GetEdges(t, m)
 	}
 

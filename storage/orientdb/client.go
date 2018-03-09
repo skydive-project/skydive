@@ -241,6 +241,10 @@ func FilterToExpression(f *filters.Filter, formatter func(string) string) string
 		return fmt.Sprintf(`%s MATCHES "%s"`, formatter(f.RegexFilter.Key), strings.Replace(f.RegexFilter.Value, `\`, `\\`, -1))
 	}
 
+	if f.NullFilter != nil {
+		return fmt.Sprintf("%s is NULL", formatter(f.NullFilter.Key))
+	}
+
 	if f.IPV4RangeFilter != nil {
 		// ignore the error at this point it should have been catched earlier
 		regex, _ := common.IPV4CIDRToRegex(f.IPV4RangeFilter.Value)
