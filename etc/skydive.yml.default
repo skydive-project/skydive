@@ -348,10 +348,6 @@ ui:
   # update rate of links in seconds
   bandwidth_update_rate: 5
 
-  # interface metrics - 'netlink'
-  # captured flows TxBytes + RxByte - 'flows' (need to turn on capture)
-  bandwidth_source: netlink
-
   # 'absolute' - thresholds in Kbit
   # 'relative' - thresholds in % relative to link speed reported by netlink
   bandwidth_threshold: absolute
