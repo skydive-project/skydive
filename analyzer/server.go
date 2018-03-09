@@ -271,6 +271,7 @@ func NewServerFromConfig() (*Server, error) {
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
+	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 
 	alertServer := alert.NewAlertServer(alertAPIHandler, subscriberWSServer, g, tr, etcdClient)
 

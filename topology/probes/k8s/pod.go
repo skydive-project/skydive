@@ -55,8 +55,8 @@ func newPodIndexerByNamespace(g *graph.Graph) *graph.MetadataIndexer {
 func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Type", "pod"),
-		filters.NewNotFilter(filters.NewNullFilter("Namespace")),
-		filters.NewNotFilter(filters.NewNullFilter("Name")))
+		filters.NewNotNullFilter("Namespace"),
+		filters.NewNotNullFilter("Name"))
 	m := graph.NewGraphElementFilter(filter)
 	return graph.NewMetadataIndexer(g, m, "Namespace", "Name")
 }
@@ -78,7 +78,7 @@ func (p *podProbe) newMetadata(pod *api.Pod) graph.Metadata {
 }
 
 func (p *podProbe) linkPodToNode(pod *api.Pod, podNode *graph.Node) {
-	nodeNodes := p.nodeIndexer.Get(pod.Spec.NodeName)
+	nodeNodes, _ := p.nodeIndexer.Get(pod.Spec.NodeName)
 	if len(nodeNodes) == 0 {
 		return
 	}
@@ -93,7 +93,7 @@ func (p *podProbe) onAdd(obj interface{}) {
 
 	podNode := newNode(p.graph, podUID(pod), p.newMetadata(pod))
 
-	containerNodes := p.containerIndexer.Get(pod.Namespace, pod.Name)
+	containerNodes, _ := p.containerIndexer.Get(pod.Namespace, pod.Name)
 	for _, containerNode := range containerNodes {
 		addOwnershipLink(p.graph, podNode, containerNode)
 	}
@@ -166,13 +166,17 @@ func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
 
 func (p *podProbe) Start() {
 	p.containerIndexer.AddEventListener(p)
+	p.containerIndexer.Start()
 	p.nodeIndexer.AddEventListener(p)
+	p.nodeIndexer.Start()
 	p.kubeCache.Start()
 }
 
 func (p *podProbe) Stop() {
 	p.containerIndexer.RemoveEventListener(p)
+	p.containerIndexer.Stop()
 	p.nodeIndexer.RemoveEventListener(p)
+	p.nodeIndexer.Stop()
 	p.kubeCache.Stop()
 }
 

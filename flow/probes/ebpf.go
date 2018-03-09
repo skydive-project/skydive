@@ -416,7 +416,7 @@ func (p *EBPFProbesHandler) Stop() {
 func loadModule() (*elf.Module, error) {
 	data, err := statics.Asset("probe/ebpf/flow.o")
 	if err != nil {
-		logging.GetLogger().Fatalf("Unable to find eBPF elf binary in bindata")
+		return nil, fmt.Errorf("Unable to find eBPF elf binary in bindata")
 	}
 
 	reader := bytes.NewReader(data)

@@ -38,6 +38,7 @@ import (
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
+	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
 // GremlinQueryHelper describes a gremlin query request query helper mechanism
@@ -147,7 +148,7 @@ func (g *GremlinQueryHelper) GetNode(query interface{}) (node *graph.Node, _ err
 	return nil, common.ErrNotFound
 }
 
-// GetFlows form the Gremlin query
+// GetFlows from the Gremlin query
 func (g *GremlinQueryHelper) GetFlows(query interface{}) (flows []*flow.Flow, err error) {
 	err = g.QueryObject(query, &flows)
 	return
@@ -223,6 +224,27 @@ func (g *GremlinQueryHelper) GetMetric(query interface{}) (common.Metric, error)
 	}
 
 	return flatMetricToTypedMetric(flat)
+}
+
+// GetSockets from the Gremlin query
+func (g *GremlinQueryHelper) GetSockets(query string) (sockets map[string][]*socketinfo.ConnectionInfo, err error) {
+	var maps []map[string][]interface{}
+	if err = g.QueryObject(query, &maps); err != nil || len(maps) == 0 {
+		return nil, err
+	}
+
+	sockets = make(map[string][]*socketinfo.ConnectionInfo)
+	for id, objs := range maps[0] {
+		sockets[id] = make([]*socketinfo.ConnectionInfo, 0)
+		for _, obj := range objs {
+			socket := &socketinfo.ConnectionInfo{}
+			if err = mapstructure.WeakDecode(obj, socket); err == nil {
+				sockets[id] = append(sockets[id], socket)
+			}
+		}
+	}
+
+	return
 }
 
 // NewGremlinQueryHelper creates a new Gremlin query helper based on authentication

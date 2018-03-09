@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/neutron"
 	"github.com/skydive-project/skydive/topology/probes/opencontrail"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
+	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology probe.ProbeBundle based on the configuration
@@ -89,6 +90,8 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 				return nil, err
 			}
 			probes[t] = opencontrail
+		case "socketinfo":
+			probes[t] = socketinfo.NewSocketInfoProbe(g, n)
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}

@@ -28,131 +28,188 @@ import (
 	"github.com/cnf/structhash"
 )
 
-type NodeHasher func(n *Node) string
+// NodeHasher describes a callback that is called to map a node to
+// a set of hash,value pairs
+type NodeHasher func(n *Node) map[string]interface{}
 
+// GraphIndexer provides a way to index graph nodes. A node can be mapped to
+// multiple hash,value pairs. A hash can also be mapped to multiple nodes.
 type GraphIndexer struct {
 	sync.Mutex
 	*GraphEventHandler
 	DefaultGraphListener
-	graph       *Graph
-	hashNode    NodeHasher
-	hashToNodes map[string][]Identifier
-	nodeToHash  map[Identifier]string
+	graph        *Graph
+	hashNode     NodeHasher
+	appendOnly   bool
+	hashToValues map[string]map[Identifier]interface{}
+	nodeToHashes map[Identifier]map[string]bool
 }
 
-func (i *GraphIndexer) cacheNode(n *Node, h string) {
-	i.Lock()
-
-	if _, found := i.hashToNodes[h]; !found {
-		i.hashToNodes[h] = []Identifier{}
+func (i *GraphIndexer) index(id Identifier, h string, value interface{}) {
+	if _, found := i.hashToValues[h]; !found {
+		i.hashToValues[h] = make(map[Identifier]interface{})
 	}
+	i.hashToValues[h][id] = value
+	i.nodeToHashes[id][h] = true
+}
 
-	if _, found := i.nodeToHash[n.ID]; !found {
-		i.nodeToHash[n.ID] = h
-		i.hashToNodes[h] = append(i.hashToNodes[h], n.ID)
+func (i *GraphIndexer) unindex(id Identifier, h string) {
+	delete(i.hashToValues[h], id)
+	if len(i.hashToValues[h]) == 0 {
+		delete(i.hashToValues, h)
+	}
+}
+
+// cacheNode indexes a node with a set of hash -> value map
+func (i *GraphIndexer) cacheNode(n *Node, kv map[string]interface{}) {
+	i.Lock()
+	defer i.Unlock()
+
+	if hashes, found := i.nodeToHashes[n.ID]; !found {
+		// Node was not in the cache
+		i.nodeToHashes[n.ID] = make(map[string]bool)
+		for k, v := range kv {
+			i.index(n.ID, k, v)
+		}
+
 		i.notifyEvent(graphEvent{element: n, kind: nodeAdded})
 	} else {
+		// Node already was in the cache
+		if !i.appendOnly {
+			for h, _ := range hashes {
+				if _, found := kv[h]; !found {
+					i.unindex(n.ID, h)
+				}
+			}
+		}
+
+		for k, v := range kv {
+			i.index(n.ID, k, v)
+		}
+
 		i.notifyEvent(graphEvent{element: n, kind: nodeUpdated})
 	}
-
-	i.Unlock()
 }
 
+// forgetNode removes the node and its associated hashes from the index
 func (i *GraphIndexer) forgetNode(n *Node) {
 	i.Lock()
+	defer i.Unlock()
 
-	if h := i.nodeToHash[n.ID]; h != "" {
-		delete(i.nodeToHash, n.ID)
-		for index, id := range i.hashToNodes[h] {
-			if id == n.ID {
-				if len(i.hashToNodes) == 1 {
-					delete(i.hashToNodes, h)
-				} else {
-					i.hashToNodes[h] = append(i.hashToNodes[h][:index], i.hashToNodes[h][index+1:]...)
-				}
-				break
-			}
+	if hashes, found := i.nodeToHashes[n.ID]; found {
+		delete(i.nodeToHashes, n.ID)
+		for h, _ := range hashes {
+			delete(i.hashToValues[h], n.ID)
 		}
 
 		i.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
 	}
-
-	i.Unlock()
 }
 
+// OnNodeAdded event
 func (i *GraphIndexer) OnNodeAdded(n *Node) {
-	if h := i.hashNode(n); h != "" {
-		i.cacheNode(n, h)
+	if kv := i.hashNode(n); len(kv) != 0 {
+		i.cacheNode(n, kv)
 	}
 }
 
+// OnNodeUpdated event
 func (i *GraphIndexer) OnNodeUpdated(n *Node) {
-	if h := i.hashNode(n); h != "" {
-		i.cacheNode(n, h)
+	if kv := i.hashNode(n); len(kv) != 0 {
+		i.cacheNode(n, kv)
 	} else {
 		i.forgetNode(n)
 	}
 }
 
+// OnNodeDeleted event
 func (i *GraphIndexer) OnNodeDeleted(n *Node) {
 	i.forgetNode(n)
 }
 
-func (i *GraphIndexer) FromHash(hash string) (nodes []*Node) {
-	if ids, found := i.hashToNodes[hash]; found {
-		for _, id := range ids {
+// Fromhash returns the nodes mapped by a hash along with their associated values
+func (i *GraphIndexer) FromHash(hash string) (nodes []*Node, values []interface{}) {
+	if ids, found := i.hashToValues[hash]; found {
+		for id, obj := range ids {
 			nodes = append(nodes, i.graph.GetNode(id))
+			values = append(values, obj)
 		}
 	}
 	return
 }
 
-func NewGraphIndexer(g *Graph, hashNode NodeHasher) *GraphIndexer {
+// Start registers the graph indexer as a graph listener
+func (i *GraphIndexer) Start() {
+	i.graph.AddEventListener(i)
+}
+
+// Stop removes the graph indexer from the graph listeners
+func (i *GraphIndexer) Stop() {
+	i.graph.RemoveEventListener(i)
+}
+
+// NewGraphIndexer returns a new graph indexer with the associated hashing callback
+func NewGraphIndexer(g *Graph, hashNode NodeHasher, appendOnly bool) *GraphIndexer {
 	indexer := &GraphIndexer{
 		GraphEventHandler: NewGraphEventHandler(maxEvents),
 		graph:             g,
 		hashNode:          hashNode,
-		hashToNodes:       make(map[string][]Identifier),
-		nodeToHash:        make(map[Identifier]string),
+		hashToValues:      make(map[string]map[Identifier]interface{}),
+		nodeToHashes:      make(map[Identifier]map[string]bool),
+		appendOnly:        appendOnly,
 	}
-	g.AddEventListener(indexer)
 	return indexer
 }
 
+// MetadataIndexer describes a metadata based graph indexer
 type MetadataIndexer struct {
 	*GraphIndexer
 	indexes []string
 }
 
-func (m *MetadataIndexer) Get(values ...interface{}) []*Node {
-	return m.FromHash(m.Hash(values...))
-}
-
+// Hash computes the hash of the passed parameters
 func (m *MetadataIndexer) Hash(values ...interface{}) string {
+	if len(values) == 1 {
+		if s, ok := values[0].(string); ok {
+			return s
+		}
+	}
 	h, _ := structhash.Hash(values, 1)
 	return h
 }
 
+// Get computes the hash of the passed parameters and returns the matching
+// nodes with their respective value
+func (m *MetadataIndexer) Get(values ...interface{}) ([]*Node, []interface{}) {
+	return m.FromHash(m.Hash(values...))
+}
+
+// NewMetadataIndexer returns a new metadata graph indexer for the nodes
+// matching the graph filter `m`, indexing the metadata with `indexes`
 func NewMetadataIndexer(g *Graph, m GraphElementMatcher, indexes ...string) (indexer *MetadataIndexer) {
 	indexer = &MetadataIndexer{
 		indexes: indexes,
-		GraphIndexer: NewGraphIndexer(g, func(n *Node) (hash string) {
+		GraphIndexer: NewGraphIndexer(g, func(n *Node) (kv map[string]interface{}) {
 			if match := n.MatchMetadata(m); match {
-				if len(indexes) == 0 {
-					return string(n.ID)
-				}
-				values := make([]interface{}, len(indexes))
-				for i, index := range indexes {
-					v, err := n.GetField(index)
-					if err != nil {
-						return
+				switch len(indexes) {
+				case 0:
+					return map[string]interface{}{string(n.ID): nil}
+				default:
+					kv = make(map[string]interface{})
+					values := make([]interface{}, len(indexes))
+					for i, index := range indexes {
+						v, err := n.GetField(index)
+						if err != nil {
+							return
+						}
+						values[i] = v
 					}
-					values[i] = v
+
+					kv[indexer.Hash(values...)] = values
 				}
-				hash = indexer.Hash(values...)
 			}
 			return
-		}),
+		}, false),
 	}
 	return
 }

@@ -48,9 +48,7 @@ func NewQueryStringFromArgument(v interface{}) QueryString {
 
 // String converts value to string
 func (q QueryString) String() string {
-	s := string(q)
-	fmt.Printf("Gremlin: %s\n", s)
-	return s
+	return string(q)
 }
 
 // G represents the base graph token

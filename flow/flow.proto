@@ -93,12 +93,6 @@ message TCPMetric {
   int64 BARstStart = 8;
 }
 
-message SocketInfo {
-  string Process = 1;
-  int64 Pid = 2;
-  string Name = 3;
-}
-
 message Flow {
 /* Flow Universally Unique IDentifier
    flow.UUID is unique in the universe, as it should be used as a key of an
@@ -155,7 +149,4 @@ message Flow {
   repeated RawPacket LastRawPackets = 36;
 /* number of raw packet captured */
   int64 RawPacketsCaptured = 37;
-
-  SocketInfo SocketA = 60;
-  SocketInfo SocketB = 61;
 }

@@ -27,8 +27,6 @@ import (
 	"net/http"
 	"time"
 
-	cache "github.com/pmylund/go-cache"
-
 	"github.com/skydive-project/skydive/analyzer"
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/common"
@@ -211,17 +209,12 @@ func NewAgent() (*Agent, error) {
 
 	updateTime := time.Duration(config.GetInt("flow.update")) * time.Second
 	expireTime := time.Duration(config.GetInt("flow.expire")) * time.Second
-	cleanup := time.Duration(config.GetInt("cache.cleanup")) * time.Second
 
-	cache := cache.New(expireTime*2, cleanup)
-
-	pipeline := flow.NewEnhancerPipeline(
-		enhancers.NewGraphFlowEnhancer(g, cache),
-		enhancers.NewSocketInfoEnhancer(expireTime*2, cleanup))
+	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g))
 
 	// check that the neutron probe if loaded if so add the neutron flow enhancer
 	if topologyProbeBundle.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g, cache))
+		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
 	}
 
 	flowTableAllocator := flow.NewTableAllocator(updateTime, expireTime, pipeline)

@@ -123,7 +123,7 @@ agent:
       # - docker
       # - neutron
       # - opencontrail
-
+      # - socketinfo
     netlink:
       # delay in seconds between two metric updates
       # metrics_update: 30

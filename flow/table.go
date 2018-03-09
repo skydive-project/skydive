@@ -69,7 +69,6 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
 type TableOpts struct {
 	RawPacketLimit int64
 	TCPMetric      bool
-	SocketInfo     bool
 }
 
 // Table store the flow table and related metrics mechanism
@@ -114,9 +113,6 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 	}
 	if len(opts) > 0 {
 		t.Opts = opts[0]
-	}
-	if t.Opts.SocketInfo == false {
-		t.pipelineConfig.Disable("SocketInfo")
 	}
 
 	t.updateVersion = 0

@@ -394,6 +394,11 @@ func NewFilterIncludedIn(fr Range, prefix string) *Filter {
 	)
 }
 
+// NewNotNullFilter returns a filter that returns elements with a field set.
+func NewNotNullFilter(key string) *Filter {
+	return NewNotFilter(NewNullFilter(key))
+}
+
 func init() {
 	regexpCache = cache.New(5*time.Minute, 10*time.Minute)
 }

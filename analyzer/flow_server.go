@@ -31,7 +31,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pmylund/go-cache"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
@@ -207,12 +206,11 @@ func (s *FlowServer) Stop() {
 
 // NewFlowServer creates a new flow server listening at address/port, based on configuration
 func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle) (*FlowServer, error) {
-	cache := cache.New(time.Duration(600)*time.Second, time.Duration(600)*time.Second)
-	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g, cache))
+	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g))
 
 	// check that the neutron probe is loaded if so add the neutron flow enhancer
 	if probe.GetProbe("neutron") != nil {
-		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g, cache))
+		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
 	}
 
 	bulk := config.GetInt("analyzer.storage.bulk_insert")

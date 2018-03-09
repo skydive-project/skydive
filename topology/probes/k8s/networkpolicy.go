@@ -169,12 +169,14 @@ func (n *networkPolicyProbe) OnNodeUpdated(node *graph.Node) {
 
 func (n *networkPolicyProbe) Start() {
 	n.podIndexer.AddEventListener(n)
+	n.podIndexer.Start()
 	n.kubeCache.Start()
 	n.podCache.Start()
 }
 
 func (n *networkPolicyProbe) Stop() {
 	n.podIndexer.RemoveEventListener(n)
+	n.podIndexer.Stop()
 	n.kubeCache.Stop()
 	n.podCache.Stop()
 }

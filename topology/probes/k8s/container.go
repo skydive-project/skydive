@@ -55,9 +55,9 @@ func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", "docker"),
 		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotFilter(filters.NewNullFilter(DockerPodNamespaceField)),
-		filters.NewNotFilter(filters.NewNullFilter(DockerPodNameField)),
-		filters.NewNotFilter(filters.NewNullFilter(DockerNameField)))
+		filters.NewNotNullFilter(DockerPodNamespaceField),
+		filters.NewNotNullFilter(DockerPodNameField),
+		filters.NewNotNullFilter(DockerNameField))
 	m := graph.NewGraphElementFilter(filter)
 
 	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField, DockerNameField)
@@ -67,8 +67,8 @@ func newContainerIndexer(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", "k8s"),
 		filters.NewTermStringFilter("Type", "container"),
-		filters.NewNotFilter(filters.NewNullFilter(DockerPodNameField)),
-		filters.NewNotFilter(filters.NewNullFilter(DockerPodNamespaceField)))
+		filters.NewNotNullFilter(DockerPodNameField),
+		filters.NewNotNullFilter(DockerPodNamespaceField))
 	m := graph.NewGraphElementFilter(filter)
 
 	return graph.NewMetadataIndexer(g, m, DockerPodNamespaceField, DockerPodNameField)
@@ -95,7 +95,7 @@ func dumpContainer(pod *v1.Pod, container *v1.Container) string {
 }
 
 func (c *containerProbe) linkContainerToPod(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
-	podNodes := c.podIndexer.Get(pod.GetNamespace(), pod.GetName())
+	podNodes, _ := c.podIndexer.Get(pod.GetNamespace(), pod.GetName())
 
 	if len(podNodes) == 0 {
 		logging.GetLogger().Debugf("Can't find %s", dumpPod(pod))
@@ -107,7 +107,7 @@ func (c *containerProbe) linkContainerToPod(pod *v1.Pod, container *v1.Container
 }
 
 func (c *containerProbe) linkContainerToDocker(pod *v1.Pod, container *v1.Container, containerNode *graph.Node) {
-	dockerNodes := c.dockerIndexer.Get(pod.GetNamespace(), pod.GetName(), container.Name)
+	dockerNodes, _ := c.dockerIndexer.Get(pod.GetNamespace(), pod.GetName(), container.Name)
 
 	if len(dockerNodes) == 0 {
 		logging.GetLogger().Debugf("Can't find docker associated with %s", dumpContainer(pod, container))
@@ -168,7 +168,7 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 		c.graph.Lock()
 		defer c.graph.Unlock()
 
-		containerNodes := c.containerIndexer.Get(pod.Namespace, pod.Name)
+		containerNodes, _ := c.containerIndexer.Get(pod.Namespace, pod.Name)
 		logging.GetLogger().Debugf("Deleting container nodes of %s", dumpPod(pod))
 		for _, containerNode := range containerNodes {
 			containerName, _ := containerNode.GetFieldString(DockerNameField)
@@ -180,15 +180,21 @@ func (c *containerProbe) OnDelete(obj interface{}) {
 
 func (c *containerProbe) Start() {
 	c.containerIndexer.AddEventListener(c)
+	c.containerIndexer.Start()
 	c.dockerIndexer.AddEventListener(c)
+	c.dockerIndexer.Start()
 	c.podIndexer.AddEventListener(c)
+	c.podIndexer.Start()
 	c.kubeCache.Start()
 }
 
 func (c *containerProbe) Stop() {
 	c.containerIndexer.RemoveEventListener(c)
+	c.containerIndexer.Stop()
 	c.dockerIndexer.RemoveEventListener(c)
+	c.dockerIndexer.Stop()
 	c.podIndexer.RemoveEventListener(c)
+	c.podIndexer.Stop()
 	c.kubeCache.Stop()
 }
 

@@ -33,4 +33,5 @@ const (
 	traversalRawPacketsToken  traversal.Token = 1006
 	traversalBpfToken         traversal.Token = 1007
 	traversalMetricsToken     traversal.Token = 1008
+	traversalSocketsToken     traversal.Token = 1009
 )

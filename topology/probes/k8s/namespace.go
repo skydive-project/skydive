@@ -58,7 +58,7 @@ func newNamespaceIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", managerValue),
 		filters.NewTermStringFilter("Type", "namespace"),
-		filters.NewNotFilter(filters.NewNullFilter("Name")),
+		filters.NewNotNullFilter("Name"),
 	)
 	m := graph.NewGraphElementFilter(filter)
 	return graph.NewMetadataIndexer(g, m, "Name")
@@ -89,7 +89,8 @@ func (p *namespaceProbe) OnAdd(obj interface{}) {
 		nsNode := newNode(p.graph, namespaceUID(ns), p.newMetadata(ns))
 		logging.GetLogger().Debugf("Added %s", dumpNamespace(ns))
 
-		for _, objNode := range p.objectIndexer.Get(ns.GetName()) {
+		objNodes, _ := p.objectIndexer.Get(ns.GetName())
+		for _, objNode := range objNodes {
 			p.linkObject(objNode, nsNode)
 		}
 	}
@@ -122,7 +123,7 @@ func (p *namespaceProbe) OnDelete(obj interface{}) {
 func (p *namespaceProbe) OnNodeAdded(objNode *graph.Node) {
 	logging.GetLogger().Debugf("Got event on adding %s", dumpGraphNode(objNode))
 	objNamespace, _ := objNode.GetFieldString("Namespace")
-	nsNodes := p.namespaceIndexer.Get(objNamespace)
+	nsNodes, _ := p.namespaceIndexer.Get(objNamespace)
 	if len(nsNodes) > 0 {
 		p.linkObject(objNode, nsNodes[0])
 	}
@@ -130,12 +131,16 @@ func (p *namespaceProbe) OnNodeAdded(objNode *graph.Node) {
 
 func (p *namespaceProbe) Start() {
 	p.kubeCache.Start()
+	p.namespaceIndexer.Start()
 	p.objectIndexer.AddEventListener(p)
+	p.objectIndexer.Start()
 }
 
 func (p *namespaceProbe) Stop() {
 	p.kubeCache.Stop()
+	p.namespaceIndexer.Stop()
 	p.objectIndexer.RemoveEventListener(p)
+	p.objectIndexer.Stop()
 }
 
 func newNamespaceKubeCache(handler cache.ResourceEventHandler) *kubeCache {
