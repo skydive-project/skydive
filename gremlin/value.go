@@ -118,6 +118,11 @@ func Metadata(list ...interface{}) ValueString {
 	return newValueString("Metadata", list...)
 }
 
+// Ne append a Ne() operation to query
+func Ne(v interface{}) ValueString {
+	return newValueString("Ne", v)
+}
+
 // Within append a Within() operation to query
 func Within(list ...interface{}) ValueString {
 	return newValueString("Within", list...)
