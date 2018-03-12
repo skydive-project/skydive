@@ -375,6 +375,12 @@ func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *
 			if compareFlow(e, f) {
 				found = true
 			}
+
+			// check timestamp > 0
+			if f.GetStart() < 0 || f.GetLast() < 0 {
+				f, _ := json.MarshalIndent(flows, "", "\t")
+				t.Errorf("Wrong timestamps: %s", string(f))
+			}
 		}
 		if !found {
 			je, _ := json.MarshalIndent(e, "", "\t")

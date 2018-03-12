@@ -736,6 +736,9 @@ func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, bpf *BPF)
 		case layers.LayerTypeVXLAN, layers.LayerTypeMPLS, layers.LayerTypeGeneve:
 			// TODO(safchain) do not truncate packet
 			p := gopacket.NewPacket(packetData[topLayerOffset:offset], topLayer.LayerType(), gopacket.NoCopy)
+			if metadata != nil {
+				p.Metadata().CaptureInfo = metadata.CaptureInfo
+			}
 			ps.Packets = append(ps.Packets, Packet{gopacket: &p, length: int64(topLayerLength)})
 
 			topLayerLength = length
