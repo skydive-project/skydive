@@ -27,9 +27,9 @@ package tests
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/skydive-project/skydive/common"
+	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -54,11 +54,11 @@ func TestFlowsEBPF(t *testing.T) {
 			{"ovs-vsctl add-port br-ebpf dst-vm-eth0", true},
 		},
 
-		setupFunction: func(c *TestContext) (err error) {
-			return common.Retry(func() error {
-				return ping(t, c, 4, "G.V().Has('Name', 'ebpf-src-eth0')", "G.V().Has('Name', 'ebpf-dst-eth0')", 10, 0)
-			}, 10, time.Second)
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "src-vm").Out().Has("Name", "ebpf-src-eth0"),
+			to:    g.G.V().Has("Name", "dst-vm").Out().Has("Name", "ebpf-dst-eth0"),
+			count: 10,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-ebpf", true},

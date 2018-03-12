@@ -52,10 +52,11 @@ func TestSFlowProbeNode(t *testing.T) {
 			{"ip link set spn-intf1 up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ping -c 5 -I spn-intf1 169.254.33.34", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "spn-intf1", "Type", "internal"),
+			toIP:  "169.254.33.34",
+			count: 5,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-spn", true},
@@ -100,10 +101,11 @@ func TestSFlowNodeTIDOvsInternalNetNS(t *testing.T) {
 			{"ip netns exec sntoin-vm1 ip link set sntoin-intf1 up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec sntoin-vm1 ping -c 5 -I sntoin-intf1 169.254.33.34", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "sntoin-vm1").Out().Has("Name", "sntoin-intf1"),
+			toIP:  "169.254.33.34",
+			count: 5,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip netns del sntoin-vm1", true},
@@ -167,10 +169,11 @@ func TestSFlowTwoNodeTID(t *testing.T) {
 			{"brctl addif br-stnt-link stnt-link2", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec stnt-vm2 ping -c 5 -I stnt-intf2 169.254.33.33", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "stnt-vm1").Out().Has("Name", "stnt-intf1"),
+			to:    g.G.V().Has("Name", "stnt-vm2").Out().Has("Name", "stnt-intf2"),
+			count: 5,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip netns del stnt-vm1", true},
@@ -255,10 +258,11 @@ func TestBPF(t *testing.T) {
 			{"brctl addif br-bpf bpf-vm2-eth0", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec bpf-vm1 ping -c 5 169.254.66.67", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "bpf-vm1", "Type", "netns").Out().Has("Name", "eth0"),
+			to:    g.G.V().Has("Name", "bpf-vm2", "Type", "netns").Out().Has("Name", "eth0"),
+			count: 5,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip link set br-bpf down", true},
@@ -310,10 +314,11 @@ func TestPCAPProbe(t *testing.T) {
 			{"brctl addif br-pp pp-vm2-eth0", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec pp-vm1 ping -c 5 169.254.66.67", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "pp-vm1", "Type", "netns").Out().Has("Name", "eth0"),
+			to:    g.G.V().Has("Name", "pp-vm2", "Type", "netns").Out().Has("Name", "eth0"),
+			count: 5,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip link set br-pp down", true},
@@ -370,10 +375,11 @@ func TestSFlowSrcDstPath(t *testing.T) {
 			{"ip netns exec ssdp-vm2 ip link set ssdp-intf2 up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec ssdp-vm1 ping -c 5 169.254.33.34", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "ssdp-intf1", "Type", "internal"),
+			to:    g.G.V().Has("Name", "ssdp-intf2", "Type", "internal"),
+			count: 5,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip netns del ssdp-vm1", true},
@@ -425,10 +431,9 @@ func TestFlowGremlin(t *testing.T) {
 			{"ip link set fg-intf1 up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ping -c 5 -I fg-intf1 169.254.33.34", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from: g.G.V().Has("Name", "fg-intf1", "Type", "internal"), toIP: "169.254.33.34", count: 5,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ovs-vsctl del-br br-fg", true},
@@ -529,7 +534,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	if ethernet.ABBytes < pings*1066 || ethernet.BABytes < pings*1066 {
-		return fmt.Errorf("Number of bytes is wrong, got: %v", ethernet.BABytes)
+		return fmt.Errorf("Number of bytes is wrong, got: %d, expected at least %d", ethernet.BABytes, pings*1066)
 	}
 
 	flows, err := gh.GetFlows(ovsGremlin.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "Metric.ABPackets", pings))
@@ -622,15 +627,14 @@ func TestFlowMetrics(t *testing.T) {
 			{"ip link set fm-intf2 netns fm-vm2", true},
 			{"ip netns exec fm-vm2 ip address add 169.254.33.34/24 dev fm-intf2", true},
 			{"ip netns exec fm-vm2 ip link set fm-intf2 up", true},
-
-			// wait to have everything ready, sflow, interfaces
-			{"sleep 2", false},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec fm-vm1 ping -c 1 -s 1024 -I fm-intf1 169.254.33.34", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:    g.G.V().Has("Name", "fm-vm1").Out().Has("Name", "fm-intf1"),
+			to:      g.G.V().Has("Name", "fm-vm2").Out().Has("Name", "fm-intf2"),
+			count:   1,
+			payload: string(make([]byte, 1024)),
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip netns del fm-vm1", true},
@@ -674,13 +678,12 @@ func TestFlowMetricsStep(t *testing.T) {
 			{"ip netns exec fms-vm2 ip link set fms-intf2 up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t,
-				helper.Cmd{Cmd: "ip netns exec fms-vm1 ping -c 15 -s 1024 -I fms-intf1 169.254.33.34", Check: false},
-				helper.Cmd{Cmd: "sleep 15", Check: false},
-			)
-			return nil
-		},
+		injections: []TestInjection{{
+			from:    g.G.V().Has("Name", "fms-vm1").Out().Has("Name", "fms-intf1"),
+			to:      g.G.V().Has("Name", "fms-vm2").Out().Has("Name", "fms-intf2"),
+			count:   15,
+			payload: string(make([]byte, 1024)),
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip netns del fms-vm1", true},
@@ -693,6 +696,9 @@ func TestFlowMetricsStep(t *testing.T) {
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
+			time.Sleep(time.Second * 30)
+			return nil
+		}, func(c *CheckContext) error {
 			gh := c.gh
 			gremlin := g.G.Context(c.startTime, c.startTime.Unix()-c.setupTime.Unix()+5).V().Has("Name", "br-fms", "Type", "ovsbridge").Flows()
 
@@ -774,27 +780,12 @@ func TestFlowHops(t *testing.T) {
 			{"ip netns exec fh-vm2 ip link set fh-intf2 up", true},
 		},
 
-		settleFunction: func(c *TestContext) error {
-			// check that src and dst interfaces are in the right place before doing the ping
-			gremlin := g.G.V().Has("Name", "fh-vm1").Out().Has("Name", "fh-intf1")
-			nodes, err := c.gh.GetNodes(gremlin)
-			if err != nil || len(nodes) == 0 {
-				return errors.New("fh-intf1 not found in the expected namespace")
-			}
-
-			gremlin = g.G.V().Has("Name", "fh-vm2").Out().Has("Name", "fh-intf2")
-			nodes, err = c.gh.GetNodes(gremlin)
-			if err != nil || len(nodes) == 0 {
-				return errors.New("fh-intf2 not found in the expected namespace")
-			}
-
-			return nil
-		},
-
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec fh-vm1 ping -c 1 -s 1024 169.254.33.34", Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:    g.G.V().Has("Name", "fh-vm1").Out().Has("Name", "fh-intf1"),
+			to:      g.G.V().Has("Name", "fh-vm2").Out().Has("Name", "fh-intf2"),
+			count:   1,
+			payload: string(make([]byte, 1024-8)),
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip netns del fh-vm1", true},
@@ -883,28 +874,12 @@ func TestIPv6FlowHopsIPv6(t *testing.T) {
 			{"ip netns exec ipv6fh-vm2 ip link set ipv6fh-intf2 up", true},
 		},
 
-		settleFunction: func(c *TestContext) error {
-			// check that src and dst interfaces are in the right place before doing the ping
-			gremlin := g.G.V().Has("Name", "ipv6fh-vm1").Out().Has("Name", "ipv6fh-intf1")
-			nodes, err := c.gh.GetNodes(gremlin)
-			if err != nil || len(nodes) == 0 {
-				return errors.New("ipv6fh-intf1 not found in the expected namespace")
-			}
-
-			gremlin = g.G.V().Has("Name", "ipv6fh-vm2").Out().Has("Name", "ipv6fh-intf2")
-			nodes, err = c.gh.GetNodes(gremlin)
-			if err != nil || len(nodes) == 0 {
-				return errors.New("ipv6fh-intf2 not found in the expected namespace")
-			}
-
-			return nil
-		},
-
-		setupFunction: func(c *TestContext) error {
-			return common.Retry(func() error {
-				return helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec ipv6fh-vm1 ping6 -c 5 -s 1024 fd49:37c8:5229::2", Check: false})
-			}, 10, time.Second)
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "ipv6fh-vm1").Out().Has("Name", "ipv6fh-intf1"),
+			to:    g.G.V().Has("Name", "ipv6fh-vm2").Out().Has("Name", "ipv6fh-intf2"),
+			count: 5,
+			ipv6:  true,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip netns del ipv6fh-vm1", true},
@@ -979,7 +954,6 @@ func TestICMP(t *testing.T) {
 		t.Skipf("Platform doesn't support IPv6")
 	}
 
-	ipv4TrackingID, ipv6TrackingID := "", ""
 	test := &Test{
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-icmp", true},
@@ -999,53 +973,20 @@ func TestICMP(t *testing.T) {
 			{"ip netns exec icmp-vm2 ip link set icmp-intf2 up", true},
 		},
 
-		settleFunction: func(c *TestContext) error {
-			// check that src and dst interfaces are in the right place before doing the ping
-			gremlin := g.G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1")
-			_, err := c.gh.GetNode(gremlin)
-			if err != nil {
-				return errors.New("icmp-intf1 not found in the expected namespace")
-			}
-
-			gremlin = g.G.V().Has("Name", "icmp-vm2").Out().Has("Name", "icmp-intf2")
-			_, err = c.gh.GetNode(gremlin)
-			if err != nil {
-				return errors.New("icmp-intf2 not found in the expected namespace")
-			}
-
-			return nil
-		},
-
-		setupFunction: func(c *TestContext) error {
-			req := &types.PacketParamsReq{
-				Type:     "icmp4",
-				Src:      g.G.V().Has("Name", "icmp-intf1", "Type", "internal").String(),
-				Dst:      g.G.V().Has("Name", "icmp-intf2", "Type", "internal").String(),
-				SrcIP:    "10.0.0.1/24",
-				DstIP:    "10.0.0.2/24",
-				Count:    1,
-				Interval: 1000,
-				ICMPID:   123,
-			}
-			err := pingRequest(t, c, req)
-			if err != nil {
-				return err
-			}
-			ipv4TrackingID = req.TrackingID
-
-			req = &types.PacketParamsReq{
-				Type:     "icmp6",
-				Src:      g.G.V().Has("Name", "icmp-intf1", "Type", "internal").String(),
-				Dst:      g.G.V().Has("Name", "icmp-intf2", "Type", "internal").String(),
-				SrcIP:    "fd49:37c8:5229::1/48",
-				DstIP:    "fd49:37c8:5229::2/48",
-				Count:    1,
-				Interval: 1000,
-				ICMPID:   456,
-			}
-			err = pingRequest(t, c, req)
-			ipv6TrackingID = req.TrackingID
-			return err
+		injections: []TestInjection{
+			{
+				from:  g.G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1"),
+				to:    g.G.V().Has("Name", "icmp-vm2").Out().Has("Name", "icmp-intf2"),
+				count: 1,
+				id:    123,
+			},
+			{
+				from:  g.G.V().Has("Name", "icmp-intf1", "Type", "internal"),
+				to:    g.G.V().Has("Name", "icmp-intf2", "Type", "internal"),
+				count: 1,
+				id:    456,
+				ipv6:  true,
+			},
 		},
 
 		tearDownCmds: []helper.Cmd{
@@ -1061,6 +1002,9 @@ func TestICMP(t *testing.T) {
 		// since the agent update ticker is about 10 sec according to the configuration
 		// we should wait 11 sec to have the first update and the MetricRange filled
 		checks: []CheckFunction{func(c *CheckContext) error {
+			ipv4TrackingID := c.injections[0].TrackingID
+			ipv6TrackingID := c.injections[1].TrackingID
+
 			prefix := g.G.Context(c.time).V().Has("Name", "br-icmp", "Type", "ovsbridge")
 
 			gh := c.gh
@@ -1210,10 +1154,13 @@ func testFlowTunnel(t *testing.T, bridge string, tunnelType string, ipv6 bool, I
 			{gremlin: g.G.V().Has("Name", "tunnel-vm2-eth0")},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: fmt.Sprintf("ip netns exec tunnel-vm1 ping -c 5 -I %s %s", IP1, IP2), Check: false})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "tunnel-vm1").Out().Has("Name", "dummy0"),
+			to:    g.G.V().Has("Name", "tunnel-vm2").Out().Has("Name", "dummy0"),
+			intf:  g.G.V().Has("Name", "tunnel-vm1").Out().Has("Name", "tunnel"),
+			count: 5,
+			ipv6:  ipv6,
+		}},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			prefix := g.G.Context(c.time)
@@ -1385,14 +1332,14 @@ func TestFlowVLANSegmentation(t *testing.T) {
 			{"sudo ovs-vsctl add-port br-vlan vlan-vm2-eth0", true},
 
 			{"sudo ip netns exec vlan-vm1 ip l set vlan up", true},
-
 			{"sudo ip netns exec vlan-vm2 ip l set vlan up", true},
 		},
 
-		setupFunction: func(c *TestContext) error {
-			helper.ExecCmds(t, helper.Cmd{Cmd: "ip netns exec vlan-vm1 ping -c 5 172.16.0.2", Check: true})
-			return nil
-		},
+		injections: []TestInjection{{
+			from:  g.G.V().Has("Name", "vlan-vm1").Out().Has("Name", "vlan"),
+			to:    g.G.V().Has("Name", "vlan-vm2").Out().Has("Name", "vlan"),
+			count: 5,
+		}},
 
 		tearDownCmds: []helper.Cmd{
 			{"ip netns del vlan-vm1", true},

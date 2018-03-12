@@ -223,6 +223,10 @@ func (g *GremlinQueryHelper) GetMetric(query interface{}) (common.Metric, error)
 		return nil, err
 	}
 
+	if len(flat) == 0 {
+		return nil, fmt.Errorf("Failed to get metric for %s", query)
+	}
+
 	return flatMetricToTypedMetric(flat)
 }
 
