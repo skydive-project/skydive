@@ -31,6 +31,7 @@ import (
 	"github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -170,15 +171,27 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	}
 
 	for _, f := range flows {
-		if err := c.client.BulkIndex("flow", f.UUID, f); err != nil {
+		err, shouldRoll := c.client.BulkIndex("flow", f.UUID, f)
+		if err != nil {
 			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 			continue
 		}
+		if shouldRoll {
+			if err := c.client.RollIndex(); err != nil {
+				logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
+			}
+		}
 
 		if f.LastUpdateMetric != nil {
-			if err := c.client.BulkIndexChild("metric", f.UUID, "", f.LastUpdateMetric); err != nil {
+			err, shouldRoll := c.client.BulkIndexChild("metric", f.UUID, "", f.LastUpdateMetric)
+			if  err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
+			}
+			if shouldRoll {
+				if err := c.client.RollIndex(); err != nil {
+					logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
+				}
 			}
 		}
 
@@ -194,10 +207,17 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				"Index":     r.Index,
 				"Data":      r.Data,
 			}
-			if err := c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket); err != nil {
+			err, shouldRoll := c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket)
+			if err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
 			}
+			if shouldRoll {
+				if err := c.client.RollIndex(); err != nil {
+					logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
+				}
+			}
+
 		}
 	}
 
@@ -224,7 +244,7 @@ func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]in
 	if err != nil {
 		return elastigo.SearchResult{}, err
 	}
-	return c.client.Search(docType, string(q))
+	return c.client.Search(docType, string(q), "")
 }
 
 // SearchRawPackets searches flow raw packets matching filters in the database
@@ -432,10 +452,14 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 
 // Start the Database client
 func (c *ElasticSearchStorage) Start() {
-	go c.client.Start([]map[string][]byte{
+	entriesLimit := config.GetInt("analyzer.storage.index_entries_limit")
+	ageLimit := config.GetInt("analyzer.storage.index_age_limit")
+	indicesLimit := config.GetInt("analyzer.storage.indices_to_keep")
+	go c.client.Start("flows", []map[string][]byte{
 		{"metric": []byte(metricMapping)},
 		{"rawpacket": []byte(rawPacketMapping)},
 		{"flow": []byte(flowMapping)}},
+		entriesLimit, ageLimit, indicesLimit,
 	)
 }
 
