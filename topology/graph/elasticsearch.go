@@ -225,6 +225,9 @@ func (b *ElasticSearchBackend) createNode(n *Node) bool {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
 		return false
 	}
+	if rolled {
+		b.dumpTopology()
+	}
 	b.prevRevision[n.ID] = n.revision
 
 	if rolled {
@@ -307,6 +310,21 @@ func (b *ElasticSearchBackend) rollAndDumpTopology() error {
 	return nil
 }
 
+func (b *ElasticSearchBackend) dumpTopology() {
+	logging.GetLogger().Infof("###### Dumping topology")
+	nodes := b.GetNodes(nil, nil)
+	edges := b.GetEdges(nil, nil)
+
+	logging.GetLogger().Infof("###### Dumping nodes")
+	for _, node := range nodes {
+		b.createNode(node)
+	}
+	logging.GetLogger().Infof("###### Dumping edges")
+	for _, edge := range edges {
+		b.createEdge(edge)
+	}
+}
+
 func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
 	obj := b.mapEdge(e)
 
@@ -317,6 +335,10 @@ func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
 		return false
 	}
+	if rolled {
+		b.dumpTopology()
+	}
+
 	b.prevRevision[e.ID] = e.revision
 
 	if rolled {
