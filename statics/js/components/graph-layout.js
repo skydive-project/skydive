@@ -1132,9 +1132,8 @@ TopologyGraphLayout.prototype = {
 
     return $.when(
         vm.$getConfigValue('ui.bandwidth_update_rate'),
-        vm.$getConfigValue('ui.bandwidth_source'),
         vm.$getConfigValue('ui.bandwidth_threshold'))
-      .then(function(period, src, threshold) {
+      .then(function(period, threshold) {
         b.updatePeriod = period[0] * 1000; // in millisec
         if (localStorage.preferences && localStorage.preferences.bandwidthThreshold) {
           b.bandwidthThreshold = localStorage.preferences.bandwidthThreshold;
@@ -1150,17 +1149,17 @@ TopologyGraphLayout.prototype = {
         vm.$getConfigValue(cfgNames[t][2]))
         .then(function(active, warning, alert) {
           if (cfgValues[b.bandwidthThreshold][0]) {
-            b.active = cfgValues[b.bandwidthThreshold][0]
+            b.active = cfgValues[b.bandwidthThreshold][0];
           } else {
             b.active = active[0];
           }
           if (cfgValues[b.bandwidthThreshold][1]) {
-            b.warning = cfgValues[b.bandwidthThreshold][1]
+            b.warning = cfgValues[b.bandwidthThreshold][1];
           } else {
             b.warning = warning[0];
           }
           if (cfgValues[b.bandwidthThreshold][2]) {
-            b.alert = cfgValues[b.bandwidthThreshold][2]
+            b.alert = cfgValues[b.bandwidthThreshold][2];
           } else {
             b.alert = alert[0];
           }
@@ -1179,7 +1178,7 @@ TopologyGraphLayout.prototype = {
     }
 
     if (deltaMillis > 0) {
-      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second 
+      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second
     }
     return 0;
   },
@@ -1205,7 +1204,7 @@ TopologyGraphLayout.prototype = {
   styleAnimation: function(d) {
     var animate = function(speed) {
       return "dash "+speed+" linear forwards infinite";
-    }
+    };
     return this.styleReturn(d, [animate("6s"), animate("3s"), animate("1s"), ""]);
   },
 

@@ -434,7 +434,7 @@ Vue.component('flow-table', {
         },
         {
           name: ['RTT'],
-          label: 'RTT',
+          label: 'RTT ms',
           show: false,
         },
       ]
@@ -719,6 +719,10 @@ Vue.component('flow-table', {
           }
         }
         if (value !== null) {
+          switch (path) {
+            case "RTT":
+              value /= 1000000; // ms
+          }
           return value;
         }
       }

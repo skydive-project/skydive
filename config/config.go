@@ -158,7 +158,6 @@ func init() {
 	cfg.SetDefault("ui.bandwidth_relative_active", 0.1)
 	cfg.SetDefault("ui.bandwidth_relative_alert", 0.8)
 	cfg.SetDefault("ui.bandwidth_relative_warning", 0.5)
-	cfg.SetDefault("ui.bandwidth_source", "netlink")
 	cfg.SetDefault("ui.bandwidth_threshold", "relative")
 	cfg.SetDefault("ui.bandwidth_update_rate", 5)
 
