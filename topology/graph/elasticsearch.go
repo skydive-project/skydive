@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
 	"github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/common"
@@ -184,11 +183,12 @@ func (b *ElasticSearchBackend) updateTimes(i interface{}) bool {
 		obj["ArchivedAt"] = common.UnixMillis(i.updatedAt)
 	}
 
+	logging.GetLogger().Infof("#### Attempting update on %s %s", kind, id)
 	if err := b.client.BulkUpdateWithPartialDoc(kind, id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while archiving %s %s: %s", kind, id, err.Error())
 		return false
 	}
-
+	logging.GetLogger().Infof("#### Update times done %s", id)
 	return true
 }
 
@@ -218,12 +218,21 @@ func (b *ElasticSearchBackend) createNode(n *Node) bool {
 	obj := b.mapNode(n)
 
 	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
+	logging.GetLogger().Infof("#### Creating node %s (prev revision is %d)", id, b.prevRevision[n.ID])
 
-	if err := b.client.BulkIndex("node", id, obj); err != nil {
+	err, rolled := b.client.BulkIndex("node", id, obj)
+	if err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
 		return false
 	}
 	b.prevRevision[n.ID] = n.revision
+
+	if rolled {
+		b.rollAndDumpTopology()
+	}
+
+
+	logging.GetLogger().Infof("##### prev revision is now %d", b.prevRevision[n.ID])
 
 	return true
 }
@@ -241,13 +250,61 @@ func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
 	obj := map[string]interface{}{"DeletedAt": ms, "ArchivedAt": ms}
 
 	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
+	logging.GetLogger().Infof("#### Deleting node %s", id)
 
 	if err := b.client.BulkUpdateWithPartialDoc("node", id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while marking node as deleted %s: %s", id, err.Error())
 		return false
 	}
+	logging.GetLogger().Infof("#### Update node deleted done %s", id)
 
 	return true
+}
+
+// GetNode get a node within a time slice
+func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
+	index := ""
+	if t.TimeSlice == nil {
+		index = b.client.GetIndexAlias()
+	}
+	nodes := b.searchNodes(&TimedSearchQuery{
+		SearchQuery: filters.SearchQuery{
+			Filter: filters.NewTermStringFilter("ID", string(i)),
+			Sort:   true,
+			SortBy: "Revision",
+		},
+		TimeFilter: getTimeFilter(t.TimeSlice),
+	}, index)
+	
+	if len(nodes) > 1 && t.TimePoint {
+		return []*Node{nodes[len(nodes)-1]}
+	}
+
+	return nodes
+}
+
+func (b *ElasticSearchBackend) rollAndDumpTopology() error {
+	logging.GetLogger().Infof("###### Getting topology")
+	nodes := b.GetNodes(GraphContext {TimeSlice: nil, TimePoint: false}, nil)
+	for _, node := range nodes {
+		logging.GetLogger().Infof("###### Got node: %s-%d", node.ID, node.revision)
+	}
+	edges := b.GetEdges(GraphContext {TimeSlice: nil, TimePoint: false}, nil)
+
+	logging.GetLogger().Infof("###### Rolling")
+	if err := b.client.RollIndex(); err != nil {
+		return err
+	}
+
+	logging.GetLogger().Infof("###### Dumping topology")
+	for _, node := range nodes {
+		b.createNode(node)
+	}
+	for _, edge := range edges {
+		b.createEdge(edge)
+	}
+
+	return nil
 }
 
 func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
@@ -255,11 +312,17 @@ func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
 
 	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
 
-	if err := b.client.BulkIndex("edge", id, obj); err != nil {
+	err, rolled := b.client.BulkIndex("edge", id, obj)
+	if err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
 		return false
 	}
 	b.prevRevision[e.ID] = e.revision
+
+	if rolled {
+		b.rollAndDumpTopology()
+	}
+
 
 	return true
 }
@@ -278,12 +341,35 @@ func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
 
 	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
 
+	logging.GetLogger().Infof("##### Attempting update on %s", id)
 	if err := b.client.BulkUpdateWithPartialDoc("edge", id, obj); err != nil {
 		logging.GetLogger().Errorf("Error while marking edge as deleted %s: %s", id, err.Error())
 		return false
 	}
-
+	logging.GetLogger().Infof("#### Update edge deleted done %s", id)
 	return true
+}
+
+// GetEdge get an edge within a time slice
+func (b *ElasticSearchBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
+	index := ""
+	if t.TimeSlice == nil {
+		index = b.client.GetIndexAlias()
+	}
+	edges := b.searchEdges(&TimedSearchQuery{
+		SearchQuery: filters.SearchQuery{
+			Filter: filters.NewTermStringFilter("ID", string(i)),
+			Sort:   true,
+			SortBy: "Revision",
+		},
+		TimeFilter: getTimeFilter(t.TimeSlice),
+	}, index)
+	
+	if len(edges) > 1 && t.TimePoint {
+		return []*Edge{edges[len(edges)-1]}
+	}
+
+	return edges
 }
 
 // MetadataUpdated updates a node metadata in the database
@@ -304,7 +390,8 @@ func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 }
 
 // Query the database for a "node" or "edge"
-func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elastigo.SearchResult, _ error) {
+func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery, index string) (sr elastigo.SearchResult, _ error) {
+
 	request := map[string]interface{}{"size": 10000}
 
 	if tsq.PaginationRange != nil {
@@ -354,13 +441,14 @@ func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elas
 	if err != nil {
 		return
 	}
+	logging.GetLogger().Infof("###### Querying %ss: %s", obj, string(q))
 
-	return b.client.Search(obj, string(q))
+	return b.client.Search(obj, string(q), index)
 }
 
 // searchNodes search nodes matching the query
-func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node) {
-	out, err := b.Query("node", tsq)
+func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery, index string) (nodes []*Node) {
+	out, err := b.Query("node", tsq, index)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to query nodes: %s", err.Error())
 		return
@@ -380,8 +468,9 @@ func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node
 }
 
 // searchEdges search edges matching the query
-func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge) {
-	out, err := b.Query("edge", tsq)
+func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery, index string) (edges []*Edge) {
+	logging.GetLogger().Infof("#### searching edges")
+	out, err := b.Query("edge", tsq, index)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to query edges: %s", err.Error())
 		return
@@ -400,44 +489,13 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge
 	return
 }
 
-// GetNode get a node within a time slice
-func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
-	nodes := b.searchNodes(&TimedSearchQuery{
-		SearchQuery: filters.SearchQuery{
-			Filter: filters.NewTermStringFilter("ID", string(i)),
-			Sort:   true,
-			SortBy: "Revision",
-		},
-		TimeFilter: getTimeFilter(t.TimeSlice),
-	})
-
-	if len(nodes) > 1 && t.TimePoint {
-		return []*Node{nodes[len(nodes)-1]}
-	}
-
-	return nodes
-}
-
-// GetEdge get an edge within a time slice
-func (b *ElasticSearchBackend) GetEdge(i Identifier, t GraphContext) (edges []*Edge) {
-	edges = b.searchEdges(&TimedSearchQuery{
-		SearchQuery: filters.SearchQuery{
-			Filter: filters.NewTermStringFilter("ID", string(i)),
-			Sort:   true,
-			SortBy: "Revision",
-		},
-		TimeFilter: getTimeFilter(t.TimeSlice),
-	})
-
-	if len(edges) > 1 && t.TimePoint {
-		return []*Edge{edges[len(edges)-1]}
-	}
-
-	return edges
-}
-
 // GetEdges returns a list of edges within time slice, matching metadata
 func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) []*Edge {
+	logging.GetLogger().Infof("#### Getting edges")
+	index  := ""
+	if t.TimeSlice == nil {
+		index = b.client.GetIndexAlias()
+	}
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -446,7 +504,7 @@ func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) [
 		}
 		filter = f
 	}
-
+	
 	var searchQuery filters.SearchQuery
 	if !t.TimePoint {
 		searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
@@ -456,17 +514,22 @@ func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) [
 		SearchQuery:    searchQuery,
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
-	})
-
+	}, index)
+	
 	if t.TimePoint {
 		edges = dedupEdges(edges)
 	}
-
+	
 	return edges
 }
 
 // GetNodes returns a list of nodes within time slice, matching metadata
 func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) []*Node {
+	index := ""
+	if t.TimeSlice == nil {
+		index = b.client.GetIndexAlias()
+	}
+	logging.GetLogger().Infof("###### Get Nodes: %s %s", t, m)
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -475,7 +538,7 @@ func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) [
 		}
 		filter = f
 	}
-
+	
 	var searchQuery filters.SearchQuery
 	if !t.TimePoint {
 		searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
@@ -485,8 +548,8 @@ func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) [
 		SearchQuery:    searchQuery,
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
-	})
-
+	}, index)
+	
 	if len(nodes) > 1 && t.TimePoint {
 		nodes = dedupNodes(nodes)
 	}
@@ -513,6 +576,10 @@ func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetad
 
 // GetNodeEdges returns a list of a node edges within time slice
 func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElementMatcher) (edges []*Edge) {
+	index := ""
+	if t.TimeSlice == nil {
+		index = b.client.GetIndexAlias()
+	}
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -532,7 +599,7 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElem
 		SearchQuery:    searchQuery,
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
-	})
+	}, index)
 
 	if len(edges) > 1 && t.TimePoint {
 		edges = dedupEdges(edges)
@@ -547,10 +614,14 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 }
 
 func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {
-	client.Start([]map[string][]byte{
+	entriesLimit := config.GetInt("storage.elasticsearch.index_entries_limit")
+	ageLimit := config.GetInt("storage.elasticsearch.index_age_limit")
+	indicesLimit := config.GetInt("storage.elasticsearch.indices_to_keep")
+	client.Start("topology", []map[string][]byte{
 		{"node": []byte(graphElementMapping)},
-		{"edge": []byte(graphElementMapping)},
-	})
+		{"edge": []byte(graphElementMapping)}},
+		entriesLimit, ageLimit, indicesLimit,
+	)
 
 	return &ElasticSearchBackend{
 		client:       client,

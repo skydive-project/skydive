@@ -123,7 +123,7 @@ func (sfe *SnortFlowEnhancer) insertElasticSearch(msg *snortMessage, f *flow.Flo
 		"Message":        msg.Message,
 		"Classification": msg.Classification,
 	}
-	if err := sfe.client.BulkIndex("snortMessage", "", snortMessage); err != nil {
+	if err, _ := sfe.client.BulkIndex("snortMessage", "", snortMessage); err != nil {
 		return fmt.Errorf("Error while indexing: %s", err.Error())
 	}
 	logging.GetLogger().Infof("insert flow TrackingID %s %+#v", f.TrackingID, f)
@@ -196,8 +196,9 @@ func (sfe *SnortFlowEnhancer) parseSnortCMGX(reader *bufio.Reader) error {
 }
 
 func (sfe *SnortFlowEnhancer) Start() {
-	go sfe.client.Start([]map[string][]byte{
+	go sfe.client.Start("snort", []map[string][]byte{
 		{"snortMessage": []byte(snortMessageMapping)}},
+		-1, -1, -1,
 	)
 
 	go sfe.run()
