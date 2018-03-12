@@ -83,8 +83,8 @@ func (q QueryString) At(list ...interface{}) QueryString {
 }
 
 // Both append a Both() operation to query
-func (q QueryString) Both() QueryString {
-	return q.newQueryString("Both")
+func (q QueryString) Both(list ...interface{}) QueryString {
+	return q.newQueryString("Both", list...)
 }
 
 // BPF append a PBF() operation to query
@@ -156,6 +156,16 @@ func (q QueryString) In() QueryString {
 	return q.newQueryString("In")
 }
 
+// InE append a InE() operation to query
+func (q QueryString) InE() QueryString {
+	return q.newQueryString("InE")
+}
+
+// InV append a InV() operation to query
+func (q QueryString) InV() QueryString {
+	return q.newQueryString("InV")
+}
+
 // Metrics append a Metrics() operation to query
 func (q QueryString) Metrics() QueryString {
 	return q.newQueryString("Metrics")
@@ -172,8 +182,8 @@ func (q QueryString) Nodes() QueryString {
 }
 
 // Out append a Out() operation to query
-func (q QueryString) Out() QueryString {
-	return q.newQueryString("Out")
+func (q QueryString) Out(list ...interface{}) QueryString {
+	return q.newQueryString("Out", list...)
 }
 
 // RawPackets append a RawPackets() operation to query

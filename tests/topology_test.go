@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology"
@@ -53,18 +54,16 @@ func TestBridgeOVS(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			gremlin := "g"
-			if !c.time.IsZero() {
-				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			gremlin := g.G
+			gremlin = gremlin.Context(c.time)
 
-			gremlin += `.V().Has("Type", "ovsbridge", "Name", "br-test1")`
-			gremlin += `.Out("Type", "ovsport", "Name", "br-test1")`
-			gremlin += `.Out("Type", "internal", "Name", "br-test1", "Driver", "openvswitch")`
+			gremlin = gremlin.V().Has("Type", "ovsbridge", "Name", "br-test1")
+			gremlin = gremlin.Out("Type", "ovsport", "Name", "br-test1")
+			gremlin = gremlin.Out("Type", "internal", "Name", "br-test1", "Driver", "openvswitch")
 
 			// we have 2 links between ovsbridge and ovsport, this
 			// results in 2 out nodes which are the same node so we Dedup
-			gremlin += ".Dedup()"
+			gremlin = gremlin.Dedup()
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
@@ -100,13 +99,11 @@ func TestPatchOVS(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			gremlin := "g"
-			if !c.time.IsZero() {
-				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			gremlin := g.G
+			gremlin = gremlin.Context(c.time)
 
-			gremlin += `.V().Has("Type", "patch", "Name", "patch-br-test1", "Driver", "openvswitch")`
-			gremlin += `.Both("Type", "patch", "Name", "patch-br-test2", "Driver", "openvswitch")`
+			gremlin = gremlin.V().Has("Type", "patch", "Name", "patch-br-test1", "Driver", "openvswitch")
+			gremlin = gremlin.Both("Type", "patch", "Name", "patch-br-test2", "Driver", "openvswitch")
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
@@ -147,12 +144,9 @@ func TestInterfaceOVS(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
-
-			gremlin := prefix + `.V().Has("Type", "internal", "Name", "intf1", "Driver", "openvswitch").HasKey("UUID").HasKey("MAC")`
+			prefix := g.G
+			prefix = prefix.Context(c.time)
+			gremlin := prefix.V().Has("Type", "internal", "Name", "intf1", "Driver", "openvswitch").HasKey("UUID").HasKey("MAC")
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -162,7 +156,7 @@ func TestInterfaceOVS(t *testing.T) {
 				return fmt.Errorf("Expected one 'intf1' node with MAC and UUID attributes, got %+v", nodes)
 			}
 
-			gremlin = prefix + `.V().Has("Name", "intf1", "Type", Ne("ovsport"))`
+			gremlin = prefix.V().Has("Name", "intf1", "Type", g.Ne("ovsport"))
 			nodes, err = gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -191,12 +185,10 @@ func TestVeth(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			nodes, err := gh.GetNodes(prefix + `.V().Has("Type", "veth", "Name", "vm1-veth0").Both("Type", "veth", "Name", "vm1-veth1")`)
+			nodes, err := gh.GetNodes(prefix.V().Has("Type", "veth", "Name", "vm1-veth0").Both("Type", "veth", "Name", "vm1-veth1"))
 			if err != nil {
 				return err
 			}
@@ -225,12 +217,10 @@ func TestBridge(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			nodes, err := gh.GetNodes(prefix + `.V().Has("Type", "bridge", "Name", "br-test").Out("Name", "intf1")`)
+			nodes, err := gh.GetNodes(prefix.V().Has("Type", "bridge", "Name", "br-test").Out("Name", "intf1"))
 			if err != nil {
 				return err
 			}
@@ -261,17 +251,15 @@ func TestMacNameUpdate(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			newNodes, err := gh.GetNodes(prefix + `.V().Has("Name", "vm1-veth2", "MAC", "00:00:00:00:00:aa")`)
+			newNodes, err := gh.GetNodes(prefix.V().Has("Name", "vm1-veth2", "MAC", "00:00:00:00:00:aa"))
 			if err != nil {
 				return err
 			}
 
-			oldNodes, err := gh.GetNodes(prefix + `.V().Has("Name", "vm1-veth1")`)
+			oldNodes, err := gh.GetNodes(prefix.V().Has("Name", "vm1-veth1"))
 			if err != nil {
 				return err
 			}
@@ -300,12 +288,10 @@ func TestNameSpace(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			nodes, err := gh.GetNodes(prefix + `.V().Has("Name", "ns1", "Type", "netns")`)
+			nodes, err := gh.GetNodes(prefix.V().Has("Name", "ns1", "Type", "netns"))
 			if err != nil {
 				return err
 			}
@@ -335,12 +321,10 @@ func TestNameSpaceVeth(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			nodes, err := gh.GetNodes(prefix + `.V().Has("Name", "ns1", "Type", "netns").Out("Name", "vm1-veth1", "Type", "veth")`)
+			nodes, err := gh.GetNodes(prefix.V().Has("Name", "ns1", "Type", "netns").Out("Name", "vm1-veth1", "Type", "veth"))
 			if err != nil {
 				return err
 			}
@@ -372,12 +356,10 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			nodes, err := gh.GetNodes(prefix + `.V().Has("Name", "ns1", "Type", "netns").Out("Name", "intf1", "Type", "internal")`)
+			nodes, err := gh.GetNodes(prefix.V().Has("Name", "ns1", "Type", "netns").Out("Name", "intf1", "Type", "internal"))
 			if err != nil {
 				return err
 			}
@@ -386,7 +368,7 @@ func TestNameSpaceOVSInterface(t *testing.T) {
 				return fmt.Errorf("Expected 1 node of type internal, got %+v", nodes)
 			}
 
-			nodes, err = gh.GetNodes(prefix + `.V().Has("Name", "intf1", "Type", "internal")`)
+			nodes, err = gh.GetNodes(prefix.V().Has("Name", "intf1", "Type", "internal"))
 			if err != nil {
 				return err
 			}
@@ -421,8 +403,8 @@ func TestInterfaceUpdate(t *testing.T) {
 			gh := c.gh
 
 			now := time.Now()
-			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(now), int(now.Sub(start).Seconds()))
-			gremlin += `.V().Has("Name", "iu", "Type", "netns").Out().Has("Name", "lo")`
+			gremlin := g.G.Context(now, int(now.Sub(start).Seconds()))
+			gremlin = gremlin.V().Has("Name", "iu", "Type", "netns").Out().Has("Name", "lo")
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
@@ -479,8 +461,8 @@ func TestInterfaceMetrics(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
-			gremlin := fmt.Sprintf("g.Context(%d, %d)", common.UnixMillis(c.startTime), c.startTime.Unix()-c.setupTime.Unix()+5)
-			gremlin += `.V().Has("Name", "im", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates(10)`
+			gremlin := g.G.Context(c.startTime, c.startTime.Unix()-c.setupTime.Unix()+5)
+			gremlin = gremlin.V().Has("Name", "im", "Type", "netns").Out().Has("Name", "lo").Metrics().Aggregates(10)
 
 			metrics, err := gh.GetMetrics(gremlin)
 			if err != nil {
@@ -549,14 +531,12 @@ func TestOVSOwnershipLink(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
 			intfs := []string{"patch-br-owner", "gre-br-owner", "vxlan-br-owner", "geneve-br-owner"}
 			for _, intf := range intfs {
-				gremlin := prefix + fmt.Sprintf(`.V().Has('Name', '%s', 'Type', NE('ovsport')).InE().Has('RelationType', 'ownership').InV().Has('Name', 'br-owner')`, intf)
+				gremlin := prefix.V().Has("Name", intf, "Type", g.Ne("ovsport")).InE().Has("RelationType", "ownership").InV().Has("Name", "br-owner")
 				nodes, err := gh.GetNodes(gremlin)
 				if err != nil {
 					return err
@@ -655,22 +635,20 @@ func TestQueryMetadata(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			_, err := gh.GetNode(prefix + `.V().Has("A.F.G", 123)`)
+			_, err := gh.GetNode(prefix.V().Has("A.F.G", 123))
 			if err != nil {
 				return err
 			}
 
-			_, err = gh.GetNode(prefix + `.V().Has("A.B.C", 123)`)
+			_, err = gh.GetNode(prefix.V().Has("A.B.C", 123))
 			if err != nil {
 				return err
 			}
 
-			_, err = gh.GetNode(prefix + `.V().Has("A.B.D", 1)`)
+			_, err = gh.GetNode(prefix.V().Has("A.B.D", 1))
 			if err != nil {
 				return err
 			}
@@ -684,7 +662,7 @@ func TestQueryMetadata(t *testing.T) {
 
 //TestUserMetadata tests user metadata functionality
 func TestUserMetadata(t *testing.T) {
-	umd := types.NewUserMetadata("G.V().Has('Name', 'br-umd', 'Type', 'ovsbridge')", "testKey", "testValue")
+	umd := types.NewUserMetadata(g.G.V().Has("Name", "br-umd", "Type", "ovsbridge").String(), "testKey", "testValue")
 	test := &Test{
 		setupCmds: []helper.Cmd{
 			{"ovs-vsctl add-br br-umd", true},
@@ -705,12 +683,10 @@ func TestUserMetadata(t *testing.T) {
 
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				prefix := "g"
-				if !c.time.IsZero() {
-					prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-				}
+				prefix := g.G
+				prefix = prefix.Context(c.time)
 
-				_, err := c.gh.GetNode(prefix + ".V().Has('UserMetadata.testKey', 'testValue')")
+				_, err := c.gh.GetNode(prefix.V().Has("UserMetadata.testKey", "testValue"))
 				if err != nil {
 					return fmt.Errorf("Failed to find a node with UserMetadata.testKey metadata")
 				}
@@ -719,14 +695,12 @@ func TestUserMetadata(t *testing.T) {
 			},
 
 			func(c *CheckContext) error {
-				prefix := "g"
-				if !c.time.IsZero() {
-					prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-				}
+				prefix := g.G
+				prefix = prefix.Context(c.time)
 
 				c.client.Delete("usermetadata", umd.ID())
 
-				node, err := c.gh.GetNode(prefix + ".V().Has('UserMetadata.testKey', 'testValue')")
+				node, err := c.gh.GetNode(prefix.V().Has("UserMetadata.testKey", "testValue"))
 				if err != common.ErrNotFound {
 					return fmt.Errorf("Node %+v was found with metadata UserMetadata.testKey", node)
 				}
@@ -744,12 +718,10 @@ func TestAgentMetadata(t *testing.T) {
 	test := &Test{
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				prefix := "g"
-				if !c.time.IsZero() {
-					prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-				}
+				prefix := g.G
+				prefix = prefix.Context(c.time)
 
-				_, err := c.gh.GetNode(prefix + ".V().Has('mydict.value', 123)")
+				_, err := c.gh.GetNode(prefix.V().Has("mydict.value", 123))
 				if err != nil {
 					return fmt.Errorf("Failed to find the host node with mydict.value metadata")
 				}
@@ -793,12 +765,10 @@ func TestRouteTable(t *testing.T) {
 
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				prefix := "g"
-				if !c.time.IsZero() {
-					prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-				}
+				prefix := g.G
+				prefix = prefix.Context(c.time)
 
-				node, err := c.gh.GetNode(prefix + ".V().Has('IPV4', '124.65.91.42/24')")
+				node, err := c.gh.GetNode(prefix.V().Has("IPV4", "124.65.91.42/24"))
 				if err != nil {
 					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
 				}
@@ -811,7 +781,7 @@ func TestRouteTable(t *testing.T) {
 					helper.Cmd{Cmd: "sleep 5", Check: false},
 				)
 
-				node, err = c.gh.GetNode(prefix + ".V().Has('IPV4', '124.65.91.42/24')")
+				node, err = c.gh.GetNode(prefix.V().Has("IPV4", "124.65.91.42/24"))
 				routingTable = node.Metadata()["RoutingTable"].([]interface{})
 				newNoOfRoutingTable := len(routingTable)
 
@@ -862,8 +832,8 @@ func TestRouteTableHistory(t *testing.T) {
 
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				prefix := fmt.Sprintf("g.Context(%d)", common.UnixMillis(time.Now()))
-				node, err := c.gh.GetNode(prefix + ".V().Has('IPV4', '124.65.75.42/24')")
+				prefix := g.G.Context(time.Now())
+				node, err := c.gh.GetNode(prefix.V().Has("IPV4", "124.65.75.42/24"))
 				if err != nil {
 					return fmt.Errorf("Failed to find a node with IP 124.65.75.42/24")
 				}
