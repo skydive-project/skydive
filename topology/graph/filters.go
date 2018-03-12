@@ -37,24 +37,30 @@ func NewFilterForEdge(parent Identifier, child Identifier) *filters.Filter {
 	)
 }
 
-// NewFilterForTimeSlice creates a filter based on a time slice between CreatedAt and DeletedAt
-// time.Now() is used as reference if t == nil
-func NewFilterForTimeSlice(t *common.TimeSlice) *filters.Filter {
+// filterForTimeSlice creates a filter based on a time slice between
+// startName and endName. time.Now() is used as reference if t == nil
+func filterForTimeSlice(t *common.TimeSlice, startName, endName string) *filters.Filter {
 	if t == nil {
-		return NewFilterForTime(time.Now())
+		u := common.UnixMillis(time.Now())
+		t = common.NewTimeSlice(u, u)
 	}
 
 	return filters.NewAndFilter(
-		filters.NewLteInt64Filter("CreatedAt", t.Last),
+		filters.NewLteInt64Filter(startName, t.Last),
 		filters.NewOrFilter(
-			filters.NewNullFilter("DeletedAt"),
-			filters.NewGteInt64Filter("DeletedAt", t.Start),
+			filters.NewNullFilter(endName),
+			filters.NewGteInt64Filter(endName, t.Start),
 		),
 	)
 }
 
-// NewFilterForTime creates a filter including time slice t
-func NewFilterForTime(t time.Time) *filters.Filter {
-	u := common.UnixMillis(t)
-	return NewFilterForTimeSlice(common.NewTimeSlice(u, u))
+func getTimeFilter(t *common.TimeSlice) *filters.Filter {
+	if t == nil {
+		return filters.NewNullFilter("ArchivedAt")
+	}
+
+	return filters.NewAndFilter(
+		filterForTimeSlice(t, "CreatedAt", "DeletedAt"),
+		filterForTimeSlice(t, "UpdatedAt", "ArchivedAt"),
+	)
 }

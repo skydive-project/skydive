@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/mattbaird/elastigo/lib"
 
@@ -215,23 +214,6 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 	return nil
 }
 
-func (b *ElasticSearchBackend) getTimeFilter(t *common.TimeSlice) *filters.Filter {
-	if t == nil {
-		return filters.NewNullFilter("ArchivedAt")
-	}
-
-	return filters.NewAndFilter(
-		NewFilterForTimeSlice(t),
-		filters.NewAndFilter(
-			filters.NewLteInt64Filter("UpdatedAt", t.Last),
-			filters.NewOrFilter(
-				filters.NewNullFilter("ArchivedAt"),
-				filters.NewGteInt64Filter("ArchivedAt", t.Start),
-			),
-		),
-	)
-}
-
 func (b *ElasticSearchBackend) createNode(n *Node) bool {
 	obj := b.mapNode(n)
 
@@ -266,18 +248,6 @@ func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
 	}
 
 	return true
-}
-
-// GetNode get a node within a time slice
-func (b *ElasticSearchBackend) GetNode(i Identifier, t *common.TimeSlice) []*Node {
-	return b.SearchNodes(&TimedSearchQuery{
-		SearchQuery: filters.SearchQuery{
-			Filter: filters.NewTermStringFilter("ID", string(i)),
-			Sort:   true,
-			SortBy: "Revision",
-		},
-		TimeFilter: b.getTimeFilter(t),
-	})
 }
 
 func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
@@ -316,18 +286,6 @@ func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
 	return true
 }
 
-// GetEdge get an edge within a time slice
-func (b *ElasticSearchBackend) GetEdge(i Identifier, t *common.TimeSlice) []*Edge {
-	return b.SearchEdges(&TimedSearchQuery{
-		SearchQuery: filters.SearchQuery{
-			Filter: filters.NewTermStringFilter("ID", string(i)),
-			Sort:   true,
-			SortBy: "Revision",
-		},
-		TimeFilter: b.getTimeFilter(t),
-	})
-}
-
 // MetadataUpdated updates a node metadata in the database
 func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 	if !b.updateTimes(i) {
@@ -347,11 +305,6 @@ func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 
 // Query the database for a "node" or "edge"
 func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elastigo.SearchResult, _ error) {
-	if tsq.TimeFilter == nil {
-		t := common.UnixMillis(time.Now())
-		tsq.TimeFilter = b.getTimeFilter(common.NewTimeSlice(t, t))
-	}
-
 	request := map[string]interface{}{"size": 10000}
 
 	if tsq.PaginationRange != nil {
@@ -405,8 +358,8 @@ func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery) (sr elas
 	return b.client.Search(obj, string(q))
 }
 
-// SearchNodes search nodes matching the query
-func (b *ElasticSearchBackend) SearchNodes(tsq *TimedSearchQuery) (nodes []*Node) {
+// searchNodes search nodes matching the query
+func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node) {
 	out, err := b.Query("node", tsq)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to query nodes: %s", err.Error())
@@ -426,8 +379,8 @@ func (b *ElasticSearchBackend) SearchNodes(tsq *TimedSearchQuery) (nodes []*Node
 	return
 }
 
-// SearchEdges search edges matching the query
-func (b *ElasticSearchBackend) SearchEdges(tsq *TimedSearchQuery) (edges []*Edge) {
+// searchEdges search edges matching the query
+func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge) {
 	out, err := b.Query("edge", tsq)
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to query edges: %s", err.Error())
@@ -447,8 +400,44 @@ func (b *ElasticSearchBackend) SearchEdges(tsq *TimedSearchQuery) (edges []*Edge
 	return
 }
 
+// GetNode get a node within a time slice
+func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
+	nodes := b.searchNodes(&TimedSearchQuery{
+		SearchQuery: filters.SearchQuery{
+			Filter: filters.NewTermStringFilter("ID", string(i)),
+			Sort:   true,
+			SortBy: "Revision",
+		},
+		TimeFilter: getTimeFilter(t.TimeSlice),
+	})
+
+	if len(nodes) > 1 && t.TimePoint {
+		return []*Node{nodes[len(nodes)-1]}
+	}
+
+	return nodes
+}
+
+// GetEdge get an edge within a time slice
+func (b *ElasticSearchBackend) GetEdge(i Identifier, t GraphContext) (edges []*Edge) {
+	edges = b.searchEdges(&TimedSearchQuery{
+		SearchQuery: filters.SearchQuery{
+			Filter: filters.NewTermStringFilter("ID", string(i)),
+			Sort:   true,
+			SortBy: "Revision",
+		},
+		TimeFilter: getTimeFilter(t.TimeSlice),
+	})
+
+	if len(edges) > 1 && t.TimePoint {
+		return []*Edge{edges[len(edges)-1]}
+	}
+
+	return edges
+}
+
 // GetEdges returns a list of edges within time slice, matching metadata
-func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m GraphElementMatcher) []*Edge {
+func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) []*Edge {
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -458,15 +447,26 @@ func (b *ElasticSearchBackend) GetEdges(t *common.TimeSlice, m GraphElementMatch
 		filter = f
 	}
 
-	return b.SearchEdges(&TimedSearchQuery{
-		SearchQuery:    filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"},
-		TimeFilter:     NewFilterForTimeSlice(t),
+	var searchQuery filters.SearchQuery
+	if !t.TimePoint {
+		searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
+	}
+
+	edges := b.searchEdges(&TimedSearchQuery{
+		SearchQuery:    searchQuery,
+		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
 	})
+
+	if t.TimePoint {
+		edges = dedupEdges(edges)
+	}
+
+	return edges
 }
 
 // GetNodes returns a list of nodes within time slice, matching metadata
-func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m GraphElementMatcher) []*Node {
+func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) []*Node {
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -476,15 +476,26 @@ func (b *ElasticSearchBackend) GetNodes(t *common.TimeSlice, m GraphElementMatch
 		filter = f
 	}
 
-	return b.SearchNodes(&TimedSearchQuery{
-		SearchQuery:    filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"},
-		TimeFilter:     b.getTimeFilter(t),
+	var searchQuery filters.SearchQuery
+	if !t.TimePoint {
+		searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
+	}
+
+	nodes := b.searchNodes(&TimedSearchQuery{
+		SearchQuery:    searchQuery,
+		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
 	})
+
+	if len(nodes) > 1 && t.TimePoint {
+		nodes = dedupNodes(nodes)
+	}
+
+	return nodes
 }
 
 // GetEdgeNodes returns the parents and child nodes of an edge within time slice, matching metadatas
-func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) (parents []*Node, children []*Node) {
+func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetadata, childMetadata GraphElementMatcher) (parents []*Node, children []*Node) {
 	for _, parent := range b.GetNode(e.parent, t) {
 		if parent.MatchMetadata(parentMetadata) {
 			parents = append(parents, parent)
@@ -501,7 +512,7 @@ func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t *common.TimeSlice, parent
 }
 
 // GetNodeEdges returns a list of a node edges within time slice
-func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m GraphElementMatcher) (edges []*Edge) {
+func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElementMatcher) (edges []*Edge) {
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -511,15 +522,23 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t *common.TimeSlice, m Grap
 		filter = f
 	}
 
-	return b.SearchEdges(&TimedSearchQuery{
-		SearchQuery: filters.SearchQuery{
-			Filter: NewFilterForEdge(n.ID, n.ID),
-			Sort:   true,
-			SortBy: "Revision",
-		},
-		TimeFilter:     b.getTimeFilter(t),
+	var searchQuery filters.SearchQuery
+	if !t.TimePoint {
+		searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
+	}
+	searchQuery.Filter = NewFilterForEdge(n.ID, n.ID)
+
+	edges = b.searchEdges(&TimedSearchQuery{
+		SearchQuery:    searchQuery,
+		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
 	})
+
+	if len(edges) > 1 && t.TimePoint {
+		edges = dedupEdges(edges)
+	}
+
+	return
 }
 
 // IsHistorySupported returns that this backend does support history

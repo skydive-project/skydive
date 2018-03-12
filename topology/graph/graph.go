@@ -121,18 +121,18 @@ type Edge struct {
 type GraphBackend interface {
 	NodeAdded(n *Node) bool
 	NodeDeleted(n *Node) bool
-	GetNode(i Identifier, at *common.TimeSlice) []*Node
-	GetNodeEdges(n *Node, at *common.TimeSlice, m GraphElementMatcher) []*Edge
+	GetNode(i Identifier, at GraphContext) []*Node
+	GetNodeEdges(n *Node, at GraphContext, m GraphElementMatcher) []*Edge
 
 	EdgeAdded(e *Edge) bool
 	EdgeDeleted(e *Edge) bool
-	GetEdge(i Identifier, at *common.TimeSlice) []*Edge
-	GetEdgeNodes(e *Edge, at *common.TimeSlice, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node)
+	GetEdge(i Identifier, at GraphContext) []*Edge
+	GetEdgeNodes(e *Edge, at GraphContext, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node)
 
 	MetadataUpdated(e interface{}) bool
 
-	GetNodes(t *common.TimeSlice, m GraphElementMatcher) []*Node
-	GetEdges(t *common.TimeSlice, m GraphElementMatcher) []*Edge
+	GetNodes(t GraphContext, m GraphElementMatcher) []*Node
+	GetEdges(t GraphContext, m GraphElementMatcher) []*Edge
 
 	IsHistorySupported() bool
 }
@@ -140,7 +140,10 @@ type GraphBackend interface {
 // GraphContext describes within time slice
 type GraphContext struct {
 	TimeSlice *common.TimeSlice
+	TimePoint bool
 }
+
+var liveContext = GraphContext{TimePoint: true}
 
 // Graph describes the graph object based on events and context mechanism
 // An associated backend is used as storage
@@ -683,6 +686,40 @@ func (e *Edge) GetChild() Identifier {
 	return e.child
 }
 
+func dedupNodes(nodes []*Node) []*Node {
+	latests := make(map[Identifier]*Node)
+	for _, node := range nodes {
+		if n, found := latests[node.ID]; !found || node.revision > n.revision {
+			latests[node.ID] = node
+		}
+	}
+
+	uniq := make([]*Node, len(latests))
+	i := 0
+	for _, node := range latests {
+		uniq[i] = node
+		i++
+	}
+	return uniq
+}
+
+func dedupEdges(edges []*Edge) []*Edge {
+	latests := make(map[Identifier]*Edge)
+	for _, edge := range edges {
+		if e, found := latests[edge.ID]; !found || edge.revision > e.revision {
+			latests[edge.ID] = edge
+		}
+	}
+
+	uniq := make([]*Edge, len(latests))
+	i := 0
+	for _, edge := range latests {
+		uniq[i] = edge
+		i++
+	}
+	return uniq
+}
+
 // NodeUpdated updates a node
 func (g *Graph) NodeUpdated(n *Node) bool {
 	if node := g.GetNode(n.ID); node != nil {
@@ -849,9 +886,8 @@ func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
 }
 
 func (g *Graph) getNeighborNodes(n *Node, em GraphElementMatcher) (nodes []*Node) {
-	t := g.context.TimeSlice
-	for _, e := range g.backend.GetNodeEdges(n, t, em) {
-		parents, childrens := g.backend.GetEdgeNodes(e, t, nil, nil)
+	for _, e := range g.backend.GetNodeEdges(n, g.context, em) {
+		parents, childrens := g.backend.GetEdgeNodes(e, g.context, nil, nil)
 		nodes = append(nodes, parents...)
 		nodes = append(nodes, childrens...)
 	}
@@ -892,7 +928,7 @@ func getNodeMinDistance(nodesMap map[Identifier]*Node, distance map[Identifier]u
 }
 
 // GetNodesMap returns a map of nodes within a time slice
-func (g *Graph) GetNodesMap(t *common.TimeSlice) map[Identifier]*Node {
+func (g *Graph) GetNodesMap(t GraphContext) map[Identifier]*Node {
 	nodes := g.backend.GetNodes(t, nil)
 	nodesMap := make(map[Identifier]*Node, len(nodes))
 	for _, n := range nodes {
@@ -903,8 +939,7 @@ func (g *Graph) GetNodesMap(t *common.TimeSlice) map[Identifier]*Node {
 
 // LookupShortestPath based on Dijkstra algorithm
 func (g *Graph) LookupShortestPath(n *Node, m GraphElementMatcher, em GraphElementMatcher) []*Node {
-	t := g.context.TimeSlice
-	nodesMap := g.GetNodesMap(t)
+	nodesMap := g.GetNodesMap(g.context)
 	target := g.findNodeMatchMetadata(nodesMap, m)
 	if target == nil {
 		return []*Node{}
@@ -953,10 +988,9 @@ func (g *Graph) LookupShortestPath(n *Node, m GraphElementMatcher, em GraphEleme
 
 // LookupParents returns the associated parents edge of a node
 func (g *Graph) LookupParents(n *Node, f GraphElementMatcher, em GraphElementMatcher) (nodes []*Node) {
-	t := g.context.TimeSlice
-	for _, e := range g.backend.GetNodeEdges(n, t, em) {
+	for _, e := range g.backend.GetNodeEdges(n, g.context, em) {
 		if e.GetChild() == n.ID {
-			parents, _ := g.backend.GetEdgeNodes(e, t, f, nil)
+			parents, _ := g.backend.GetEdgeNodes(e, g.context, f, nil)
 			for _, parent := range parents {
 				nodes = append(nodes, parent)
 			}
@@ -977,10 +1011,9 @@ func (g *Graph) LookupFirstChild(n *Node, f GraphElementMatcher) *Node {
 
 // LookupChildren returns a list of children nodes
 func (g *Graph) LookupChildren(n *Node, f GraphElementMatcher, em GraphElementMatcher) (nodes []*Node) {
-	t := g.context.TimeSlice
-	for _, e := range g.backend.GetNodeEdges(n, t, em) {
+	for _, e := range g.backend.GetNodeEdges(n, g.context, em) {
 		if e.GetParent() == n.ID {
-			_, children := g.backend.GetEdgeNodes(e, t, nil, f)
+			_, children := g.backend.GetEdgeNodes(e, g.context, nil, f)
 			for _, child := range children {
 				nodes = append(nodes, child)
 			}
@@ -992,9 +1025,8 @@ func (g *Graph) LookupChildren(n *Node, f GraphElementMatcher, em GraphElementMa
 
 // AreLinked returns true if nodes n1, n2 are linked
 func (g *Graph) AreLinked(n1 *Node, n2 *Node, m GraphElementMatcher) bool {
-	t := g.context.TimeSlice
-	for _, e := range g.backend.GetNodeEdges(n1, t, m) {
-		parents, children := g.backend.GetEdgeNodes(e, t, nil, nil)
+	for _, e := range g.backend.GetNodeEdges(n1, g.context, m) {
+		parents, children := g.backend.GetEdgeNodes(e, g.context, nil, nil)
 		if len(parents) == 0 || len(children) == 0 {
 			continue
 		}
@@ -1019,8 +1051,8 @@ func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata, h ...string) *Edge {
 
 // Unlink the nodes n1, n2 ; delete the associated edge
 func (g *Graph) Unlink(n1 *Node, n2 *Node) {
-	for _, e := range g.backend.GetNodeEdges(n1, nil, nil) {
-		parents, children := g.backend.GetEdgeNodes(e, nil, nil, nil)
+	for _, e := range g.backend.GetNodeEdges(n1, liveContext, nil) {
+		parents, children := g.backend.GetEdgeNodes(e, liveContext, nil, nil)
 		if len(parents) == 0 || len(children) == 0 {
 			continue
 		}
@@ -1072,7 +1104,7 @@ func (g *Graph) AddEdge(e *Edge) bool {
 
 // GetEdge with Identifier i
 func (g *Graph) GetEdge(i Identifier) *Edge {
-	if edges := g.backend.GetEdge(i, g.context.TimeSlice); len(edges) != 0 {
+	if edges := g.backend.GetEdge(i, g.context); len(edges) != 0 {
 		return edges[0]
 	}
 	return nil
@@ -1098,7 +1130,7 @@ func (g *Graph) AddNode(n *Node) bool {
 
 // GetNode from Identifier
 func (g *Graph) GetNode(i Identifier) *Node {
-	if nodes := g.backend.GetNode(i, g.context.TimeSlice); len(nodes) != 0 {
+	if nodes := g.backend.GetNode(i, g.context); len(nodes) != 0 {
 		return nodes[0]
 	}
 	return nil
@@ -1214,7 +1246,7 @@ func (g *Graph) NodeDeleted(n *Node) {
 }
 
 func (g *Graph) delNode(n *Node, t time.Time) (success bool) {
-	for _, e := range g.backend.GetNodeEdges(n, nil, nil) {
+	for _, e := range g.backend.GetNodeEdges(n, liveContext, nil) {
 		g.delEdge(e, t)
 	}
 
@@ -1242,22 +1274,22 @@ func (g *Graph) DelHostGraph(host string) {
 
 // GetNodes returns a list of nodes
 func (g *Graph) GetNodes(m GraphElementMatcher) []*Node {
-	return g.backend.GetNodes(g.context.TimeSlice, m)
+	return g.backend.GetNodes(g.context, m)
 }
 
 // GetEdges returns a list of edges
 func (g *Graph) GetEdges(m GraphElementMatcher) []*Edge {
-	return g.backend.GetEdges(g.context.TimeSlice, m)
+	return g.backend.GetEdges(g.context, m)
 }
 
 // GetEdgeNodes returns a list of nodes of an edge
 func (g *Graph) GetEdgeNodes(e *Edge, parentMetadata, childMetadata GraphElementMatcher) ([]*Node, []*Node) {
-	return g.backend.GetEdgeNodes(e, g.context.TimeSlice, parentMetadata, childMetadata)
+	return g.backend.GetEdgeNodes(e, g.context, parentMetadata, childMetadata)
 }
 
 // GetNodeEdges returns a list of edges of a node
 func (g *Graph) GetNodeEdges(n *Node, m GraphElementMatcher) []*Edge {
-	return g.backend.GetNodeEdges(n, g.context.TimeSlice, m)
+	return g.backend.GetNodeEdges(n, g.context, m)
 }
 
 func (g *Graph) String() string {
@@ -1340,7 +1372,7 @@ func NewGraph(host string, backend GraphBackend) *Graph {
 		GraphEventHandler: NewGraphEventHandler(maxEvents),
 		backend:           backend,
 		host:              host,
-		context:           GraphContext{},
+		context:           GraphContext{TimePoint: true},
 	}
 }
 
