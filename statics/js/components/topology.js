@@ -320,6 +320,10 @@ var TopologyComponent = {
       this.layout.linkLabelType = this.$route.query.link_label_type;
     }
 
+    if (typeof(this.$route.query.topology_legend_hide) !== "undefined") {
+      $('.topology-legend').remove();
+    }
+
     websocket.addConnectHandler(function() {
       if (self.topologyFilter !== '') {
         self.topologyFilterQuery();
