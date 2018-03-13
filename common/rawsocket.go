@@ -39,7 +39,7 @@ package common
 #include <unistd.h>
 #include <net/if.h>
 
-int open_raw_socket(const char *name)
+int open_raw_socket(const char *name, uint16_t protocol)
 {
   struct sockaddr_ll sll;
   int fd;
@@ -52,7 +52,7 @@ int open_raw_socket(const char *name)
   memset(&sll, 0, sizeof(sll));
   sll.sll_family = AF_PACKET;
   sll.sll_ifindex = if_nametoindex(name);
-  sll.sll_protocol = htons(ETH_P_ALL);
+  sll.sll_protocol = htons(protocol);
   if (bind(fd, (struct sockaddr *)&sll, sizeof(sll)) < 0) {
     close(fd);
     return 0;
@@ -61,7 +61,7 @@ int open_raw_socket(const char *name)
   return fd;
 }
 
-int open_raw_socket_in_netns(int curns, int newns, const char *name)
+int open_raw_socket_in_netns(int curns, int newns, const char *name, uint16_t protocol)
 {
   int errno = 0;
   int fd = 0;
@@ -71,7 +71,7 @@ int open_raw_socket_in_netns(int curns, int newns, const char *name)
     return 0;
   }
 
-  fd = open_raw_socket(name);
+  fd = open_raw_socket(name, protocol);
 
   errno = setns(curns, CLONE_NEWNET);
   if (errno) {
@@ -94,6 +94,11 @@ import (
 	"unsafe"
 
 	"github.com/vishvananda/netns"
+)
+
+const (
+	AllPackets    = syscall.ETH_P_ALL
+	OnlyIPPackets = syscall.ETH_P_IP
 )
 
 // RawSocket describes a raw socket C implemenation
@@ -123,11 +128,11 @@ func (s *RawSocket) Close() error {
 }
 
 // NewRawSocket creates a raw socket for the network interface ifName
-func NewRawSocket(ifName string) (*RawSocket, error) {
+func NewRawSocket(ifName string, protocol int) (*RawSocket, error) {
 	li := unsafe.Pointer(C.CString(ifName))
 	defer C.free(li)
 
-	fd := C.open_raw_socket((*C.char)(li))
+	fd := C.open_raw_socket((*C.char)(li), C.uint16_t(protocol))
 	if fd == 0 {
 		return nil, fmt.Errorf("Failed to open raw socket for %s", ifName)
 	}
@@ -138,7 +143,7 @@ func NewRawSocket(ifName string) (*RawSocket, error) {
 }
 
 // NewRawSocketInNs create/open a socket in the namespace nsPath for the network interface ifName
-func NewRawSocketInNs(nsPath string, ifName string) (*RawSocket, error) {
+func NewRawSocketInNs(nsPath string, ifName string, protocol int) (*RawSocket, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -157,7 +162,7 @@ func NewRawSocketInNs(nsPath string, ifName string) (*RawSocket, error) {
 	pIfName := unsafe.Pointer(C.CString(ifName))
 	defer C.free(pIfName)
 
-	fd := C.open_raw_socket_in_netns(C.int(origns), C.int(newns), (*C.char)(pIfName))
+	fd := C.open_raw_socket_in_netns(C.int(origns), C.int(newns), (*C.char)(pIfName), C.uint16_t(protocol))
 	if fd == 0 {
 		return nil, fmt.Errorf("Failed to open raw socket for %s", ifName)
 	}

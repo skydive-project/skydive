@@ -331,9 +331,9 @@ func (p *EBPFProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture,
 
 	var rs *common.RawSocket
 	if nsPath != "" {
-		rs, err = common.NewRawSocketInNs(nsPath, ifName)
+		rs, err = common.NewRawSocketInNs(nsPath, ifName, syscall.ETH_P_ALL)
 	} else {
-		rs, err = common.NewRawSocket(ifName)
+		rs, err = common.NewRawSocket(ifName, syscall.ETH_P_ALL)
 	}
 	if err != nil {
 		return err

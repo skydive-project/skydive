@@ -217,6 +217,22 @@ func KeyFromGoPacket(p *gopacket.Packet, parentUUID string) Key {
 	return Key(parentUUID + strconv.FormatUint(uint64(network^transport^application), 10))
 }
 
+func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
+	switch encapType {
+	case "ether":
+		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
+	case "gre":
+		return LayerTypeInGRE, layers.LinkTypeIPv4
+	case "sit", "ipip":
+		return layers.LayerTypeIPv4, layers.LinkTypeIPv4
+	case "tunnel6", "gre6":
+		return layers.LayerTypeIPv6, layers.LinkTypeIPv6
+	default:
+		logging.GetLogger().Warningf("Encapsulation unknown %s, defaulting to Ethernet", encapType)
+		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
+	}
+}
+
 // LayerPathFromGoPacket returns path of all the layers separated by a slash.
 func LayerPathFromGoPacket(packet *gopacket.Packet) string {
 	path := ""
