@@ -73,6 +73,35 @@ func TestFlowMetric(t *testing.T) {
 	}
 }
 
+func TestFlowTruncatedMetric(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/icmpv4-truncated.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 1 {
+		t.Error("A single packet must generate 1 flow")
+	}
+
+	m := flows[0].Metric
+	if m.Start == 0 || m.Last == 0 {
+		t.Error("Start/Last empty")
+	}
+
+	e := &FlowMetric{
+		ABPackets: 1,
+		ABBytes:   1066,
+		BAPackets: 1,
+		BABytes:   1066,
+		Start:     m.Start,
+		Last:      m.Last,
+	}
+
+	if !reflect.DeepEqual(m, e) {
+		t.Errorf("Expected metric %v not found, got: %v", e, m)
+	}
+
+	if flows[0].LastUpdateMetric != nil {
+		t.Error("Shouldn't get LastUpdateMetric, as the flow table update didn't call")
+	}
+}
+
 func TestFlowSimpleIPv4(t *testing.T) {
 	flows := flowsFromPCAP(t, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet, nil)
 	if len(flows) != 1 {
@@ -345,6 +374,12 @@ func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *
 		for _, f := range flows {
 			if compareFlow(e, f) {
 				found = true
+			}
+
+			// check timestamp > 0
+			if f.GetStart() < 0 || f.GetLast() < 0 {
+				f, _ := json.MarshalIndent(flows, "", "\t")
+				t.Errorf("Wrong timestamps: %s", string(f))
 			}
 		}
 		if !found {
@@ -875,4 +910,62 @@ func TestGetFieldInterface(t *testing.T) {
 	if field == nil {
 		t.Error("Should return a Metric struct")
 	}
+}
+
+func TestVxlanIcmpv4Truncated(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/VXLAN",
+			Application: "VXLAN",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "fa:36:71:46:76:19",
+				B:        "3a:07:fe:34:45:8e",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.0.1",
+				B:        "172.16.0.2",
+				ID:       10,
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_UDPPORT,
+				A:        "55091",
+				B:        "4789",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   1116,
+				BAPackets: 1,
+				BABytes:   1116,
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/ICMPv4",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "f2:98:72:99:56:08",
+				B:        "26:09:b6:98:f9:64",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.1",
+				B:        "192.168.0.2",
+			},
+			ICMP: &ICMPLayer{
+				Type: ICMPType_ECHO,
+				Code: 0,
+				ID:   10222,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   1066,
+				BAPackets: 1,
+				BABytes:   1066,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/vxlan-icmpv4-truncated.pcap", layers.LinkTypeEthernet, nil, expected)
 }
