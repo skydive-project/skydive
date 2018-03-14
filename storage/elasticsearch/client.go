@@ -216,8 +216,6 @@ func (c *ElasticSearchClient) start(name string, mappings []map[string][]byte, e
 		return err
 	}
 
-	c.addMappings()
-
 	if err := c.createAlias(); err != nil {
 		logging.GetLogger().Errorf("##### Failed to create alias")
 		return err
@@ -461,7 +459,6 @@ func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) (er
 		c.index.lock.Unlock()
 		return err, false
 	}
-	logging.GetLogger().Infof("##### unlocking")
 	c.index.lock.Unlock()
 	c.index.increaseEntries()
 	return nil, c.shouldRollIndex()
@@ -475,7 +472,6 @@ func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{})
 		c.index.lock.Unlock()
 		return err, false
 	}
-	logging.GetLogger().Infof("##### unlocking")
 	c.index.lock.Unlock()
 	c.index.increaseEntries()
 	return nil, c.shouldRollIndex()
@@ -490,7 +486,6 @@ func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, d
 		c.index.lock.Unlock()
 		return err, false
 	}
-	logging.GetLogger().Infof("##### unlocking")
 	c.index.lock.Unlock()
 	c.index.increaseEntries()
 	return nil, c.shouldRollIndex()
@@ -504,7 +499,6 @@ func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id strin
 		c.index.lock.Unlock()
 		return err, false
 	}
-	logging.GetLogger().Infof("##### unlocking")
 	c.index.lock.Unlock()
 	c.index.increaseEntries()
 	return nil, c.shouldRollIndex()
