@@ -217,6 +217,22 @@ func KeyFromGoPacket(p *gopacket.Packet, parentUUID string) Key {
 	return Key(parentUUID + strconv.FormatUint(uint64(network^transport^application), 10))
 }
 
+func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
+	switch encapType {
+	case "ether":
+		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
+	case "gre":
+		return LayerTypeInGRE, layers.LinkTypeIPv4
+	case "sit", "ipip":
+		return layers.LayerTypeIPv4, layers.LinkTypeIPv4
+	case "tunnel6", "gre6":
+		return layers.LayerTypeIPv6, layers.LinkTypeIPv6
+	default:
+		logging.GetLogger().Warningf("Encapsulation unknown %s, defaulting to Ethernet", encapType)
+		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
+	}
+}
+
 // LayerPathFromGoPacket returns path of all the layers separated by a slash.
 func LayerPathFromGoPacket(packet *gopacket.Packet) string {
 	path := ""
@@ -276,12 +292,22 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	hasher := sha1.New()
 
 	hasher.Write(f.Transport.Hash())
+
 	if f.Network != nil {
 		hasher.Write(f.Network.Hash())
 		netID := make([]byte, 8)
 		binary.BigEndian.PutUint64(netID, uint64(f.Network.ID))
 		hasher.Write(netID)
 	}
+
+	if f.ICMP != nil {
+		icmpID := make([]byte, 4*3)
+		binary.BigEndian.PutUint32(icmpID, uint32(f.ICMP.Type))
+		binary.BigEndian.PutUint32(icmpID[4:], uint32(f.ICMP.Code))
+		binary.BigEndian.PutUint32(icmpID[8:], uint32(f.ICMP.ID))
+		hasher.Write(icmpID)
+	}
+
 	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
 	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
@@ -290,14 +316,6 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 		linkID := make([]byte, 8)
 		binary.BigEndian.PutUint64(linkID, uint64(f.Link.ID))
 		hasher.Write(linkID)
-	}
-
-	if f.ICMP != nil {
-		icmpID := make([]byte, 8*3)
-		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.Type))
-		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.Code))
-		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.ID))
-		hasher.Write(icmpID)
 	}
 
 	hasher.Write([]byte(layersPath))

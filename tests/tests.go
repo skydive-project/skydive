@@ -28,6 +28,7 @@ import (
 	"net"
 	"net/http"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -115,11 +116,12 @@ etcd:
 `
 
 type TestContext struct {
-	gh        *gclient.GremlinQueryHelper
-	client    *shttp.CrudClient
-	captures  []*types.Capture
-	setupTime time.Time
-	data      map[string]interface{}
+	gh         *gclient.GremlinQueryHelper
+	client     *shttp.CrudClient
+	captures   []*types.Capture
+	injections []*types.PacketParamsReq
+	setupTime  time.Time
+	data       map[string]interface{}
 }
 
 type TestCapture struct {
@@ -131,13 +133,17 @@ type TestCapture struct {
 }
 
 type TestInjection struct {
-	from  g.QueryString
-	to    g.QueryString
-	toIP  string
-	toMAC string
-	ipv6  bool
-	count int64
-	id    int64
+	intf    g.QueryString
+	from    g.QueryString
+	fromMAC string
+	fromIP  string
+	to      g.QueryString
+	toMAC   string
+	toIP    string
+	ipv6    bool
+	count   int64
+	id      int64
+	payload string
 }
 
 type CheckFunction func(c *CheckContext) error
@@ -396,14 +402,37 @@ func RunTest(t *testing.T, test *Test) {
 			ipVersion = 6
 		}
 
+		if injection.toIP != "" && injection.toMAC == "" {
+			injection.toMAC = "00:11:22:33:44:55"
+		}
+
+		var src, srcIP, srcMAC string
+		if injection.intf != "" {
+			srcNode, err := context.gh.GetNode(injection.from)
+			if err != nil {
+				continue
+			}
+
+			src = injection.intf.String()
+			srcMAC, _ = srcNode.GetFieldString("MAC")
+			if addresses, _ := srcNode.GetFieldStringList(fmt.Sprintf("IPV%d", ipVersion)); len(addresses) > 0 {
+				srcIP = strings.Split(addresses[0], "/")[0]
+			}
+		} else {
+			src = injection.from.String()
+		}
+
 		packet := &types.PacketParamsReq{
-			Src:      injection.from.String(),
+			Src:      src,
+			SrcMAC:   srcMAC,
+			SrcIP:    srcIP,
 			Dst:      injection.to.String(),
-			DstIP:    injection.toIP,
 			DstMAC:   injection.toMAC,
+			DstIP:    injection.toIP,
 			Type:     fmt.Sprintf("icmp%d", ipVersion),
 			Count:    injection.count,
 			ICMPID:   injection.id,
+			Payload:  injection.payload,
 			Interval: 1000,
 		}
 
@@ -415,6 +444,8 @@ func RunTest(t *testing.T, test *Test) {
 			t.Errorf("Packet injection failed: %s, graph: %s, flows: %s", err, g, f)
 			return
 		}
+
+		context.injections = append(context.injections, packet)
 	}
 
 	test.checkContexts = make([]*CheckContext, len(test.checks))

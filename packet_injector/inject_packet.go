@@ -113,88 +113,90 @@ func InjectPacket(pp *PacketParams, g *graph.Graph, chnl *Channels) (string, err
 		return "", errors.New("Source node has no name")
 	}
 
+	encapType, _ := srcNode.GetFieldString("EncapType")
+
 	_, nsPath, err := topology.NamespaceFromNode(g, srcNode)
-
 	g.RUnlock()
-
-	if err != nil {
-		return "", err
-	}
-
-	var rawSocket *common.RawSocket
-	if nsPath != "" {
-		rawSocket, err = common.NewRawSocketInNs(nsPath, ifName)
-	} else {
-		rawSocket, err = common.NewRawSocket(ifName)
-	}
 	if err != nil {
 		return "", err
 	}
 
 	var l []gopacket.SerializableLayer
-	var layerType gopacket.LayerType
-	ethLayer := &layers.Ethernet{SrcMAC: srcMAC, DstMAC: dstMAC}
 	payload := gopacket.Payload([]byte(pp.Payload))
+
+	protocol := common.AllPackets
+	layerType, _ := flow.GetFirstLayerType(encapType)
+	switch layerType {
+	case flow.LayerTypeInGRE, layers.LayerTypeIPv4, layers.LayerTypeIPv6:
+		protocol = common.OnlyIPPackets
+	default:
+		ethLayer := &layers.Ethernet{SrcMAC: srcMAC, DstMAC: dstMAC}
+		switch pp.Type {
+		case "icmp4", "tcp4", "udp4":
+			ethLayer.EthernetType = layers.EthernetTypeIPv4
+		case "icmp6", "tcp6", "udp6":
+			ethLayer.EthernetType = layers.EthernetTypeIPv6
+		}
+		l = append(l, ethLayer)
+	}
 
 	switch pp.Type {
 	case "icmp4":
-		ethLayer.EthernetType = layers.EthernetTypeIPv4
 		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4}
 		icmpLayer := &layers.ICMPv4{
 			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
 			Id:       uint16(pp.ID),
 		}
-		layerType = layers.LayerTypeEthernet
-		l = append(l, ethLayer, ipLayer, icmpLayer, payload)
+		l = append(l, ipLayer, icmpLayer)
 	case "icmp6":
-		ethLayer.EthernetType = layers.EthernetTypeIPv6
 		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolICMPv6}
 		icmpLayer := &layers.ICMPv6{
 			TypeCode:  layers.CreateICMPv6TypeCode(layers.ICMPv6TypeEchoRequest, 0),
 			TypeBytes: []byte{byte(pp.ID & int64(0xFF00) >> 8), byte(pp.ID & int64(0xFF)), 0, 0},
 		}
-		layerType = layers.LayerTypeEthernet
 		icmpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ethLayer, ipLayer, icmpLayer, payload)
+		l = append(l, ipLayer, icmpLayer)
 	case "tcp4":
-		ethLayer.EthernetType = layers.EthernetTypeIPv4
 		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolTCP, TTL: 64}
 		srcPort := layers.TCPPort(pp.SrcPort)
 		dstPort := layers.TCPPort(pp.DstPort)
 		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
-		layerType = layers.LayerTypeTCP
 		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ethLayer, ipLayer, tcpLayer, payload)
+		l = append(l, ipLayer, tcpLayer)
 	case "tcp6":
-		ethLayer.EthernetType = layers.EthernetTypeIPv6
 		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolTCP}
 		srcPort := layers.TCPPort(pp.SrcPort)
 		dstPort := layers.TCPPort(pp.DstPort)
 		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
-		layerType = layers.LayerTypeTCP
 		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ethLayer, ipLayer, tcpLayer, payload)
+		l = append(l, ipLayer, tcpLayer)
 	case "udp4":
-		ethLayer.EthernetType = layers.EthernetTypeIPv4
 		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolUDP, TTL: 64}
 		srcPort := layers.UDPPort(pp.SrcPort)
 		dstPort := layers.UDPPort(pp.DstPort)
 		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
-		layerType = layers.LayerTypeUDP
 		udpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ethLayer, ipLayer, udpLayer, payload)
+		l = append(l, ipLayer, udpLayer)
 	case "udp6":
-		ethLayer.EthernetType = layers.EthernetTypeIPv6
 		ipLayer := &layers.IPv6{SrcIP: srcIP, DstIP: dstIP, Version: 6, NextHeader: layers.IPProtocolUDP}
 		srcPort := layers.UDPPort(pp.SrcPort)
 		dstPort := layers.UDPPort(pp.DstPort)
 		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
-		layerType = layers.LayerTypeUDP
 		udpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ethLayer, ipLayer, udpLayer, payload)
+		l = append(l, ipLayer, udpLayer)
 	default:
-		rawSocket.Close()
 		return "", fmt.Errorf("Unsupported traffic type '%s'", pp.Type)
+	}
+	l = append(l, payload)
+
+	var rawSocket *common.RawSocket
+	if nsPath != "" {
+		rawSocket, err = common.NewRawSocketInNs(nsPath, ifName, protocol)
+	} else {
+		rawSocket, err = common.NewRawSocket(ifName, protocol)
+	}
+	if err != nil {
+		return "", err
 	}
 
 	buffer := gopacket.NewSerializeBuffer()

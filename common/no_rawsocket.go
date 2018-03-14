@@ -24,6 +24,11 @@
 
 package common
 
+const (
+	AllPackets = iota
+	OnlyIPPackets
+)
+
 // RawSocket describes a raw socket C implemenation
 type RawSocket struct {
 }
@@ -44,11 +49,11 @@ func (s *RawSocket) Close() error {
 }
 
 // NewRawSocket creates a raw socket for the network interface ifName
-func NewRawSocket(ifName string) (*RawSocket, error) {
+func NewRawSocket(ifName string, protocol int) (*RawSocket, error) {
 	return nil, ErrNotImplemented
 }
 
 // NewRawSocketInNs create/open a socket in the namespace nsPath for the network interface ifName
-func NewRawSocketInNs(nsPath string, ifName string) (*RawSocket, error) {
+func NewRawSocketInNs(nsPath string, ifName string, protocol int) (*RawSocket, error) {
 	return nil, ErrNotImplemented
 }
