@@ -122,8 +122,8 @@ var LinkLabelLatency = Vue.extend({
             const aFlow = flows[i];
             self.flowQuery(b.TID, aFlow.TrackingID, 1)
               .then(function(flows) {
-                for (let i in flows) {
-                  const bFlow = flows[i];
+                if (flows.length !== 0) {
+                  const bFlow = flows[0];
                   self.updateLatency(link, aFlow, bFlow);
                 }
               })
