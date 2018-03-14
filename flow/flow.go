@@ -292,12 +292,22 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	hasher := sha1.New()
 
 	hasher.Write(f.Transport.Hash())
+
 	if f.Network != nil {
 		hasher.Write(f.Network.Hash())
 		netID := make([]byte, 8)
 		binary.BigEndian.PutUint64(netID, uint64(f.Network.ID))
 		hasher.Write(netID)
 	}
+
+	if f.ICMP != nil {
+		icmpID := make([]byte, 4*3)
+		binary.BigEndian.PutUint32(icmpID, uint32(f.ICMP.Type))
+		binary.BigEndian.PutUint32(icmpID[4:], uint32(f.ICMP.Code))
+		binary.BigEndian.PutUint32(icmpID[8:], uint32(f.ICMP.ID))
+		hasher.Write(icmpID)
+	}
+
 	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
 	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
@@ -306,14 +316,6 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 		linkID := make([]byte, 8)
 		binary.BigEndian.PutUint64(linkID, uint64(f.Link.ID))
 		hasher.Write(linkID)
-	}
-
-	if f.ICMP != nil {
-		icmpID := make([]byte, 8*3)
-		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.Type))
-		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.Code))
-		binary.BigEndian.PutUint64(icmpID, uint64(f.ICMP.ID))
-		hasher.Write(icmpID)
 	}
 
 	hasher.Write([]byte(layersPath))
