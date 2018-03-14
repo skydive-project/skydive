@@ -31,16 +31,31 @@ var TopologyComponent = {
                     <label for="radio-history">History</label><span class="toggle-outside">\
                     <span class="toggle-inside"></span></span>\
                   </div>\
+                  <div class="switch switch--vertical">\
+                    <input id="radio-abs" name="time-type" type="radio" value="absolute" v-model="timeType" checked="checked" :disabled="topologyMode === \'live\'"/>\
+                    <label for="radio-abs">Absolute</label>\
+                    <input id="radio-rel" name="time-type" type="radio" value="relative" v-model="timeType" :disabled="topologyMode === \'live\'"/>\
+                    <label for="radio-rel">Relative</label>\
+                    <span class="toggle-outside">\
+                    <sapn class="toggle-inside"></span></span>\
+                  </div>\
                   <datepicker id="topology-datepicker" :calendar-class="\'topology-datepicker\'" \
                     :format="\'dd/MM/yyyy\'" placeholder="dd/MM/yyyy" \
                     v-on:opened="topologyOptionsExpanded" \
                     v-on:closed="topologyOptionsCollapsed" \
                     v-model="topologyDate" input-class="input-sm form-control"\
-                    :disabled-picker="topologyMode === \'live\'"></datepicker> \
+                    :disabled-picker="topologyMode === \'live\'"\
+                    v-if="timeType === \'absolute\'"></datepicker> \
                   <input id="topology-timepicker" placeholder="HH:mm:ss" \
                     v-model="topologyTime" class="input-sm form-control" \
                     :disabled="topologyMode === \'live\'" style="margin-left: 10px" \
-                    @keyup.enter="topologyTimeTravel"></input>\
+                    @keyup.enter="topologyTimeTravel"\
+                    v-if="timeType === \'absolute\'"></input>\
+                  <input id="topology-rel-time" placeholder="2h30m" \
+                    v-model="topologyRelTime" class="input-sm form-control" \
+                    :disabled="topologyMode === \'live\'" style="margin-left: 10px"\
+                    v-if="timeType === \'relative\'"></input>\
+                  <span class="help-btn" v-if="timeType === \'relative\'" title="relative time: ex 1d2h3m5s or 2h5m or 30m">&#8253;</span>\
                   <button type="button" class="btn btn-primary" \
                           :disabled="topologyMode === \'live\'" @click="topologyTimeTravel"> \
                     <span class="glyphicon glyphicon-time" aria-hidden="true"></span>\
@@ -223,6 +238,8 @@ var TopologyComponent = {
       topologyHumanTimeContext: "",
       isTopologyOptionsVisible: false,
       isSSHEnabled: false,
+      timeType: "absolute",
+      topologyRelTime: "1m",
     };
   },
 
@@ -331,6 +348,7 @@ var TopologyComponent = {
         this.topologyTimeContext = dt.getTime();
       }
     },
+
     topologyTimeContext: function(val) {
       if (!this.topologyTimeContext) {
         this.topologyHumanTimeContext = '';
@@ -340,6 +358,9 @@ var TopologyComponent = {
       }
     },
 
+    timeType: function(val) {
+      this.topologyTimeTravel();
+    }
   },
 
   computed: {
@@ -399,6 +420,7 @@ var TopologyComponent = {
     onPostInit: function() {
       setTimeout(this.emphasize.bind(this), 1000);
     },
+
     metadataLinks: function(m) {
       var self = this;
 
@@ -509,6 +531,17 @@ var TopologyComponent = {
     },
 
     topologyTimeTravel: function() {
+      if (this.timeType === "absolute") {
+        this.topologyTimeContext = this.getTopologyAbsTime();
+      } else {
+        this.topologyTimeContext = this.getTopologyRelTime();
+      }
+      this.$store.commit('topologyTimeContext', this.topologyTimeContext);
+      this.syncTopo(this.topologyTimeContext, this.topologyFilter);
+    },
+
+    getTopologyAbsTime: function() {
+      
       var time = new Date();
       if (this.topologyDate) time = new Date(this.topologyDate);
 
@@ -521,10 +554,24 @@ var TopologyComponent = {
         if (tl.length > 2) time.setSeconds(tl[2]);
       }
 
-      this.topologyTimeContext = time.getTime();
+      return time.getTime();
+    },
 
-      this.$store.commit('topologyTimeContext', this.topologyTimeContext);
-      this.syncTopo(this.topologyTimeContext, this.topologyFilter);
+    getTopologyRelTime: function() {
+      var relTimeStr = this.topologyRelTime;
+      var d = relTimeStr.match(/(\d+)\s*d/);
+      var h = relTimeStr.match(/(\d+)\s*h/);
+      var m = relTimeStr.match(/(\d+)\s*m/);
+      var s = relTimeStr.match(/(\d+)\s*s/);
+      var totalTime = 0;
+      if (d) totalTime += parseInt(d[1]) * 86400;
+      if (h) totalTime += parseInt(h[1]) * 3600;
+      if (m) totalTime += parseInt(m[1]) * 60;
+      if (s) totalTime += parseInt(s[1]);
+      totalTime = totalTime * 1000;
+      var currentTime = new Date().getTime();
+      var absTime = new Date(currentTime - totalTime);
+      return absTime.getTime();
     },
 
     topologyFilterQuery: function() {
