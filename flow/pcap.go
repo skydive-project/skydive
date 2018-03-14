@@ -115,7 +115,7 @@ func (p *PcapTableFeeder) feedFlowTable() {
 			packet.Metadata().CaptureInfo.Timestamp = lastSend
 		}
 
-		ps := PacketSeqFromGoPacket(&packet, 0, bpf)
+		ps := PacketSeqFromGoPacket(packet, 0, bpf)
 		if ps == nil {
 			logging.GetLogger().Warningf("Failed to parse packet")
 		} else if len(ps.Packets) > 0 {

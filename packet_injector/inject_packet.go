@@ -218,9 +218,9 @@ func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *Channels) (s
 		return "", err
 	}
 
-	flowKey := flow.KeyFromGoPacket(&packet, "").String()
+	flowKey := flow.KeyFromGoPacket(packet, "").String()
 	f := flow.NewFlow()
-	f.InitFromGoPacket(flowKey, &packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
+	f.InitFromGoPacket(flowKey, packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
 
 	p := make(chan bool)
 	chnl.Lock()

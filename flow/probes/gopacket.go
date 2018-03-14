@@ -121,7 +121,7 @@ func (p *GoPacketProbe) feedFlowTable(packetSeqChan chan *flow.PacketSequence, b
 		packet, err := p.packetSource.NextPacket()
 		switch err {
 		case nil:
-			if ps := flow.PacketSeqFromGoPacket(&packet, 0, bpf); len(ps.Packets) > 0 {
+			if ps := flow.PacketSeqFromGoPacket(packet, 0, bpf); len(ps.Packets) > 0 {
 				packetSeqChan <- ps
 			}
 		case io.EOF:

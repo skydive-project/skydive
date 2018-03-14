@@ -356,9 +356,9 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3I
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
 		flow.RawPacketsCaptured++
 		data := &RawPacket{
-			Timestamp: common.UnixMillis((*packet.gopacket).Metadata().CaptureInfo.Timestamp),
+			Timestamp: common.UnixMillis(packet.gopacket.Metadata().CaptureInfo.Timestamp),
 			Index:     flow.RawPacketsCaptured,
-			Data:      (*packet.gopacket).Data(),
+			Data:      packet.gopacket.Data(),
 		}
 		flow.LastRawPackets = append(flow.LastRawPackets, data)
 	}
