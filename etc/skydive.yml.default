@@ -231,7 +231,7 @@ opencontrail:
   # mpls_udp_port: 51234
 
 storage:
-  # Elasticsearch connection information
+  # Elasticsearch connection information.
   elasticsearch:
     # host: 127.0.0.1:9200
     # maxconns: 10

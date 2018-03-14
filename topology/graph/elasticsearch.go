@@ -225,10 +225,14 @@ func (b *ElasticSearchBackend) createNode(n *Node) bool {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
 		return false
 	}
-	if rolled {
-		b.dumpTopology()
-	}
 	b.prevRevision[n.ID] = n.revision
+
+	if rolled {
+		b.rollAndDumpTopology()
+	}
+
+
+	logging.GetLogger().Infof("##### prev revision is now %d", b.prevRevision[n.ID])
 
 	if rolled {
 		b.rollAndDumpTopology()
@@ -310,19 +314,28 @@ func (b *ElasticSearchBackend) rollAndDumpTopology() error {
 	return nil
 }
 
-func (b *ElasticSearchBackend) dumpTopology() {
-	logging.GetLogger().Infof("###### Dumping topology")
+func (b *ElasticSearchBackend) rollAndDumpTopology() error {
+	logging.GetLogger().Infof("###### Getting topology")
 	nodes := b.GetNodes(nil, nil)
+	for _, node := range nodes {
+		logging.GetLogger().Infof("###### Got node: %s-%d", node.ID, node.revision)
+	}
 	edges := b.GetEdges(nil, nil)
 
-	logging.GetLogger().Infof("###### Dumping nodes")
+	logging.GetLogger().Infof("###### Rolling")
+	if err := b.client.RollIndex(); err != nil {
+		return err
+	}
+
+	logging.GetLogger().Infof("###### Dumping topology")
 	for _, node := range nodes {
 		b.createNode(node)
 	}
-	logging.GetLogger().Infof("###### Dumping edges")
 	for _, edge := range edges {
 		b.createEdge(edge)
 	}
+
+	return nil
 }
 
 func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
@@ -335,11 +348,12 @@ func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
 		return false
 	}
+	b.prevRevision[e.ID] = e.revision
+
 	if rolled {
-		b.dumpTopology()
+		b.rollAndDumpTopology()
 	}
 
-	b.prevRevision[e.ID] = e.revision
 
 	if rolled {
 		b.rollAndDumpTopology()
@@ -413,7 +427,6 @@ func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 
 // Query the database for a "node" or "edge"
 func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery, index string) (sr elastigo.SearchResult, _ error) {
-
 	request := map[string]interface{}{"size": 10000}
 
 	if tsq.PaginationRange != nil {
