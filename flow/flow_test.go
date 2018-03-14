@@ -807,6 +807,45 @@ func TestGREEthernet(t *testing.T) {
 	validatePCAP(t, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet, nil, expected)
 }
 
+func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkType) {
+	handleRead, err := pcap.OpenOffline(filename)
+	if err != nil {
+		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+	}
+	defer handleRead.Close()
+
+	var data [][]byte
+	var ci []gopacket.CaptureInfo
+	for {
+		d, c, err := handleRead.ReadPacketData()
+		if err != nil && err != io.EOF {
+			b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+		} else if err == io.EOF {
+			break
+		}
+		data = append(data, d)
+		ci = append(ci, c)
+	}
+
+	for n := 0; n != b.N; n++ {
+		table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{TCPMetric: true})
+		for i, d := range data {
+			p := gopacket.NewPacket(d, linkType, gopacket.Default)
+			p.Metadata().CaptureInfo = ci[i]
+
+			ps := PacketSeqFromGoPacket(&p, 0, nil)
+			if ps == nil {
+				b.Fatal("Failed to get PacketSeq: ", err)
+			}
+			table.processPacketSeq(ps)
+		}
+	}
+}
+
+func BenchmarkPacketParsing(b *testing.B) {
+	benchmarkPacketParsing(b, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet)
+}
+
 func TestGREMPLS(t *testing.T) {
 	expected := []*Flow{
 		{
