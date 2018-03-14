@@ -103,6 +103,14 @@ var LinkLabelLatency = Vue.extend({
       return this.$topologyQuery(query)
     },
 
+    flowQueryByNodeTID: function(nodeTID, limit) {
+      return this.flowQuery(nodeTID, undefined, limit);
+    },
+
+    flowQueryByNodeTIDandTrackingID: function(nodeTID, trackingID) {
+      return this.flowQuery(nodeTID, trackingID, 1);
+    },
+
     updateData: function(link) {
       var self = this;
 
@@ -116,11 +124,11 @@ var LinkLabelLatency = Vue.extend({
         return;
       }
 
-      this.flowQuery(a.TID, undefined, 10)
+      this.flowQueryByNodeTID(a.TID, 10)
         .then(function(flows) {
           for (let i in flows) {
             const aFlow = flows[i];
-            self.flowQuery(b.TID, aFlow.TrackingID, 1)
+            self.flowQueryByNodeTIDandTrackingID(b.TID, aFlow.TrackingID)
               .then(function(flows) {
                 if (flows.length !== 0) {
                   const bFlow = flows[0];
