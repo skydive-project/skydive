@@ -65,7 +65,7 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
 	}
 }
 
-// TableOpt defines flow table options
+// TableOpts defines flow table options
 type TableOpts struct {
 	RawPacketLimit int64
 	TCPMetric      bool

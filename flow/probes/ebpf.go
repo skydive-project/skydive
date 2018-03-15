@@ -142,7 +142,9 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeUDP, gopacket.DecodeOptions{})
 			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
-				f.LayersPath += "/" + flow.LayerPathFromGoPacket(&p)
+				path, app := flow.LayersPath(p.Layers())
+				f.LayersPath += "/" + path
+				f.Application = app
 			} else {
 				f.LayersPath += "/UDP"
 			}
@@ -155,7 +157,9 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeTCP, gopacket.DecodeOptions{})
 			if p.Layer(gopacket.LayerTypeDecodeFailure) == nil {
-				f.LayersPath += "/" + flow.LayerPathFromGoPacket(&p)
+				path, app := flow.LayersPath(p.Layers())
+				f.LayersPath += "/" + path
+				f.Application = app
 			} else {
 				f.LayersPath += "/TCP"
 			}

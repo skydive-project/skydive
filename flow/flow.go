@@ -23,7 +23,6 @@
 package flow
 
 import (
-	"crypto/sha1"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -36,6 +35,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/spaolacci/murmur3"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
@@ -153,18 +153,16 @@ func (p *Packet) TransportLayer() gopacket.TransportLayer {
 func (p *Packet) ApplicationFlow() *gopacket.Flow {
 	if layer := p.Layer(layers.LayerTypeICMPv4); layer != nil {
 		if l, ok := layer.(*ICMPv4); ok {
-			b := make([]byte, 4)
-			binary.BigEndian.PutUint32(b, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
-
-			f := gopacket.NewFlow(0, b, nil)
+			value32 := make([]byte, 4)
+			binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+			f := gopacket.NewFlow(0, value32, nil)
 			return &f
 		}
 	} else if layer := p.Layer(layers.LayerTypeICMPv6); layer != nil {
 		if l, ok := layer.(*ICMPv6); ok {
-			b := make([]byte, 4)
-			binary.BigEndian.PutUint32(b, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
-
-			f := gopacket.NewFlow(0, b, nil)
+			value32 := make([]byte, 4)
+			binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+			f := gopacket.NewFlow(0, value32, nil)
 			return &f
 		}
 	}
@@ -186,6 +184,7 @@ func (p *Packet) Key(parentUUID string) string {
 	if af := p.ApplicationFlow(); af != nil {
 		uuid ^= af.FastHash()
 	}
+
 	return parentUUID + strconv.FormatUint(uuid, 10)
 }
 
@@ -279,6 +278,7 @@ func (i *ICMPLayer) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// GetFirstLayerType returns layer type and link type according to the given encapsulation
 func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
 	switch encapType {
 	case "ether":
@@ -295,10 +295,10 @@ func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
 	}
 }
 
-// LayerPathFromPacket returns path of all the layers separated by a slash.
-func LayerPathFromPacket(packet *Packet) string {
-	path := ""
-	for i, layer := range packet.Layers {
+// LayersPath returns path and the appication of all the layers separated by a slash.
+func LayersPath(ls []gopacket.Layer) (string, string) {
+	var app, path string
+	for i, layer := range ls {
 		if layer.LayerType() == layers.LayerTypeLinuxSLL {
 			continue
 		}
@@ -308,9 +308,10 @@ func LayerPathFromPacket(packet *Packet) string {
 		if i > 0 {
 			path += "/"
 		}
-		path += layer.LayerType().String()
+		app = layer.LayerType().String()
+		path += app
 	}
-	return path
+	return path, app
 }
 
 func linkID(p *Packet) int64 {
@@ -377,52 +378,35 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids FlowUUIDs, opt
 func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
 
-	hasher := sha1.New()
+	hasher := murmur3.New64()
+	f.Network.Hash(hasher)
+	f.ICMP.Hash(hasher)
+	f.Transport.Hash(hasher)
 
-	hasher.Write(f.Transport.Hash())
-
-	if f.Network != nil {
-		hasher.Write(f.Network.Hash())
-		netID := make([]byte, 8)
-		binary.BigEndian.PutUint64(netID, uint64(f.Network.ID))
-		hasher.Write(netID)
-	}
-
-	if f.ICMP != nil {
-		icmpID := make([]byte, 4*3)
-		binary.BigEndian.PutUint32(icmpID, uint32(f.ICMP.Type))
-		binary.BigEndian.PutUint32(icmpID[4:], uint32(f.ICMP.Code))
-		binary.BigEndian.PutUint32(icmpID[8:], uint32(f.ICMP.ID))
-		hasher.Write(icmpID)
-	}
-
+	// only need network and transport to compute l3trackingID
 	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
 	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
-	if f.Link != nil {
-		hasher.Write(f.Link.Hash())
-		linkID := make([]byte, 8)
-		binary.BigEndian.PutUint64(linkID, uint64(f.Link.ID))
-		hasher.Write(linkID)
-	}
+	f.Link.Hash(hasher)
 
 	hasher.Write([]byte(layersPath))
 	f.TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
-	bfStart := make([]byte, 8)
-	binary.BigEndian.PutUint64(bfStart, uint64(f.Start))
-	hasher.Write(bfStart)
+	value64 := make([]byte, 8)
+	binary.BigEndian.PutUint64(value64, uint64(f.Start))
+	hasher.Write(value64)
 	hasher.Write([]byte(f.NodeTID))
 
 	// include key so that we are sure that two flows with different keys don't
 	// give the same UUID due to different ways of hash the headers.
 	hasher.Write([]byte(key))
-	bL2ID := make([]byte, 8)
+
+	/*bL2ID := make([]byte, 8)
 	binary.BigEndian.PutUint64(bL2ID, uint64(L2ID))
 	hasher.Write(bL2ID)
 	bL3ID := make([]byte, 8)
 	binary.BigEndian.PutUint64(bL3ID, uint64(L3ID))
-	hasher.Write(bL3ID)
+	hasher.Write(bL3ID)*/
 
 	f.UUID = hex.EncodeToString(hasher.Sum(nil))
 }
@@ -486,9 +470,7 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 
 	f.newLinkLayer(packet)
 
-	f.LayersPath = LayerPathFromPacket(packet)
-	appLayers := strings.Split(f.LayersPath, "/")
-	f.Application = appLayers[len(appLayers)-1]
+	f.LayersPath, f.Application = LayersPath(packet.Layers)
 
 	// no network layer then no transport layer
 	if err := f.newNetworkLayer(packet); err == nil {
@@ -688,6 +670,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	if !(tcpPacket.SYN || tcpPacket.FIN || tcpPacket.RST) {
 		return nil
 	}
+
 	var srcIP string
 	var timeToLive uint32
 	switch f.Network.Protocol {
@@ -831,6 +814,8 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF) 
 				Data:     packetData[topLayerOffset:],
 				Length:   int64(topLayerLength),
 			}
+			// As this is the top flow, we can use the layer pointer from GoPacket
+			// This avoid to parse them later.
 			if len(ps.Packets) == 0 {
 				p.networkLayer = packet.NetworkLayer()
 				p.transportLayer = packet.TransportLayer()
@@ -851,6 +836,8 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF) 
 		Length:   int64(topLayerLength),
 	}
 	if len(ps.Packets) == 0 {
+		// As this is the top flow, we can use the layer pointer from GoPacket
+		// This avoid to parse them later.
 		p.networkLayer = packet.NetworkLayer()
 		p.transportLayer = packet.TransportLayer()
 	}

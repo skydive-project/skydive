@@ -827,18 +827,16 @@ func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkT
 		ci = append(ci, c)
 	}
 
+	p := gopacket.NewPacket(data[0], linkType, gopacket.Default)
+	p.Metadata().CaptureInfo = ci[0]
+
 	for n := 0; n != b.N; n++ {
-		table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{TCPMetric: true})
-
-		for i, d := range data {
-			p := gopacket.NewPacket(d, linkType, gopacket.Default)
-			p.Metadata().CaptureInfo = ci[i]
-
-			ps := PacketSeqFromGoPacket(p, 0, nil)
-			if ps == nil {
-				b.Fatal("Failed to get PacketSeq: ", err)
-			}
-			table.processPacketSeq(ps)
+		ps := PacketSeqFromGoPacket(p, 0, nil)
+		if ps == nil {
+			b.Fatal("Failed to get PacketSeq: ", err)
+		}
+		for _, packet := range ps.Packets {
+			NewFlowFromGoPacket(packet.GoPacket, "", FlowUUIDs{}, FlowOpts{})
 		}
 	}
 }
