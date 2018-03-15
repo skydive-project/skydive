@@ -96,11 +96,8 @@ func flowFromSnortMessage(msg *snortMessage) *flow.Flow {
 	nodeTID := ""
 	gpkt := gopacket.NewPacket(msg.Data, layers.LayerTypeEthernet, gopacket.NoCopy)
 	gpkt.Metadata().CaptureInfo.Timestamp = msg.Timestamp
-	new := flow.NewFlow()
-	key := flow.KeyFromGoPacket(gpkt, uuids.ParentUUID).String()
 
-	new.InitFromGoPacket(key, gpkt, int64(len(msg.Data)), nodeTID, uuids, flow.FlowOpts{})
-	return new
+	return flow.NewFlowFromGoPacket(gpkt, nodeTID, uuids, flow.FlowOpts{})
 }
 
 func parseSnortTimestamp(timestamp string) time.Time {

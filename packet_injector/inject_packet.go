@@ -212,15 +212,15 @@ func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *Channels) (s
 		return "", err
 	}
 
-	packetData, packet, err := forgePacket(pp.Type, layerType, srcMAC, dstMAC, srcIP, dstIP, pp.SrcPort, pp.DstPort, pp.ID, pp.Payload)
+	packetData, gpacket, err := forgePacket(pp.Type, layerType, srcMAC, dstMAC, srcIP, dstIP, pp.SrcPort, pp.DstPort, pp.ID, pp.Payload)
 	if err != nil {
 		rawSocket.Close()
 		return "", err
 	}
 
-	flowKey := flow.KeyFromGoPacket(packet, "").String()
-	f := flow.NewFlow()
-	f.InitFromGoPacket(flowKey, packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
+	packet := gopacket.NewPacket(packetData, layerType, gopacket.Default)
+
+	f := flow.NewFlowFromGoPacket(gpacket, tid, flow.FlowUUIDs{}, flow.FlowOpts{})
 
 	p := make(chan bool)
 	chnl.Lock()

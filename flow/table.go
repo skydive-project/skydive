@@ -332,7 +332,8 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 }
 
 func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3ID int64) *Flow {
-	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
+	// TODO
+	key := packet.Key(parentUUID)
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
 		opts := FlowOpts{
@@ -345,10 +346,10 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3I
 			L3ID:       L3ID,
 		}
 
-		flow.InitFromGoPacket(key, packet.gopacket, packet.length, ft.nodeTID, uuids, opts)
+		flow.initFromPacket(key, packet, ft.nodeTID, uuids, opts)
 		ft.pipeline.EnhanceFlow(ft.pipelineConfig, flow)
 	} else {
-		flow.Update(packet.gopacket, packet.length)
+		flow.Update(packet)
 	}
 
 	flow.XXX_state.updateVersion = ft.updateVersion + 1
@@ -356,9 +357,9 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3I
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
 		flow.RawPacketsCaptured++
 		data := &RawPacket{
-			Timestamp: common.UnixMillis(packet.gopacket.Metadata().CaptureInfo.Timestamp),
+			Timestamp: common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp),
 			Index:     flow.RawPacketsCaptured,
-			Data:      packet.gopacket.Data(),
+			Data:      packet.Data,
 		}
 		flow.LastRawPackets = append(flow.LastRawPackets, data)
 	}
@@ -372,7 +373,7 @@ func (ft *Table) processPacketSeq(ps *PacketSequence) {
 	var L3ID int64
 	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.nodeTID)
 	for _, packet := range ps.Packets {
-		f := ft.packetToFlow(&packet, parentUUID, L2ID, L3ID)
+		f := ft.packetToFlow(packet, parentUUID, L2ID, L3ID)
 		parentUUID = f.UUID
 		if f.Link != nil {
 			L2ID = f.Link.ID
