@@ -421,7 +421,7 @@ func TestPCAP1(t *testing.T) {
 				B:        "8.8.8.8",
 			},
 			Transport: &FlowLayer{
-				Protocol: FlowProtocol_UDPPORT,
+				Protocol: FlowProtocol_UDP,
 				A:        "37686",
 				B:        "53",
 			},
@@ -446,7 +446,7 @@ func TestPCAP1(t *testing.T) {
 				B:        "173.194.40.147",
 			},
 			Transport: &FlowLayer{
-				Protocol: FlowProtocol_TCPPORT,
+				Protocol: FlowProtocol_TCP,
 				A:        "47838",
 				B:        "80",
 			},
@@ -471,7 +471,7 @@ func TestPCAP1(t *testing.T) {
 				B:        "8.8.8.8",
 			},
 			Transport: &FlowLayer{
-				Protocol: FlowProtocol_UDPPORT,
+				Protocol: FlowProtocol_UDP,
 				A:        "33553",
 				B:        "53",
 			},
@@ -496,7 +496,7 @@ func TestPCAP1(t *testing.T) {
 				B:        "216.58.211.67",
 			},
 			Transport: &FlowLayer{
-				Protocol: FlowProtocol_TCPPORT,
+				Protocol: FlowProtocol_TCP,
 				A:        "54785",
 				B:        "80",
 			},
@@ -569,7 +569,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				B:        "10.11.0.55",
 			},
 			Transport: &FlowLayer{
-				Protocol: FlowProtocol_UDPPORT,
+				Protocol: FlowProtocol_UDP,
 				A:        "53580",
 				B:        "51234",
 			},
@@ -592,7 +592,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				B:        "10.65.65.5",
 			},
 			Transport: &FlowLayer{
-				Protocol: FlowProtocol_TCPPORT,
+				Protocol: FlowProtocol_TCP,
 				A:        "52477",
 				B:        "80",
 			},
@@ -615,7 +615,7 @@ func TestPCAPMplsContrail(t *testing.T) {
 				B:        "10.11.0.56",
 			},
 			Transport: &FlowLayer{
-				Protocol: FlowProtocol_UDPPORT,
+				Protocol: FlowProtocol_UDP,
 				A:        "51822",
 				B:        "51234",
 			},
@@ -929,7 +929,7 @@ func TestVxlanIcmpv4Truncated(t *testing.T) {
 				ID:       10,
 			},
 			Transport: &FlowLayer{
-				Protocol: FlowProtocol_UDPPORT,
+				Protocol: FlowProtocol_UDP,
 				A:        "55091",
 				B:        "4789",
 			},

@@ -25,7 +25,6 @@ package traversal
 import (
 	"encoding/json"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -142,7 +141,7 @@ func getSockets(n *graph.Node) (sockets []*socketinfo.ConnectionInfo) {
 	if socks, err := n.GetField("Sockets"); err == nil {
 		for _, socket := range socks.([]interface{}) {
 			var conn socketinfo.ConnectionInfo
-			if err := mapstructure.WeakDecode(socket, &conn); err == nil {
+			if err = conn.Decode(socket); err == nil {
 				sockets = append(sockets, &conn)
 			}
 		}

@@ -94,8 +94,13 @@ type FlowUUIDs struct {
 }
 
 // Value returns int32 value of a FlowProtocol
-func (x FlowProtocol) Value() int32 {
-	return int32(x)
+func (p FlowProtocol) Value() int32 {
+	return int32(p)
+}
+
+// MarshalJSON serialize a FlowProtocol in JSON
+func (p FlowProtocol) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + p.String() + "\""), nil
 }
 
 // MarshalJSON serialize a FlowLayer in JSON
@@ -580,7 +585,7 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *gopacket.Packet) error {
 func (f *Flow) updateTCPMetrics(packet *gopacket.Packet) error {
 	// capture content of SYN packets
 	//bypass if not TCP
-	if f.Network == nil || f.Transport == nil || f.Transport.Protocol != FlowProtocol_TCPPORT {
+	if f.Network == nil || f.Transport == nil || f.Transport.Protocol != FlowProtocol_TCP {
 		return nil
 	}
 	var metadata *gopacket.PacketMetadata
@@ -660,15 +665,15 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error 
 	var ok bool
 	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
 	_, ok = transportLayer.(*layers.TCP)
-	ptype := FlowProtocol_TCPPORT
+	ptype := FlowProtocol_TCP
 	if !ok {
 		transportLayer = (*packet).Layer(layers.LayerTypeUDP)
 		_, ok = transportLayer.(*layers.UDP)
-		ptype = FlowProtocol_UDPPORT
+		ptype = FlowProtocol_UDP
 		if !ok {
 			transportLayer = (*packet).Layer(layers.LayerTypeSCTP)
 			_, ok = transportLayer.(*layers.SCTP)
-			ptype = FlowProtocol_SCTPPORT
+			ptype = FlowProtocol_SCTP
 			if !ok {
 				return errors.New("Unable to decode the transport layer")
 			}
@@ -680,7 +685,7 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error 
 	}
 
 	switch ptype {
-	case FlowProtocol_TCPPORT:
+	case FlowProtocol_TCP:
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
@@ -688,11 +693,11 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error 
 			f.TCPFlowMetric = &TCPMetric{}
 			return f.updateTCPMetrics(packet)
 		}
-	case FlowProtocol_UDPPORT:
+	case FlowProtocol_UDP:
 		transportPacket, _ := transportLayer.(*layers.UDP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
-	case FlowProtocol_SCTPPORT:
+	case FlowProtocol_SCTP:
 		transportPacket, _ := transportLayer.(*layers.SCTP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
@@ -939,7 +944,7 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.ICMP.GetStringField(fields[1])
 	case "Transport":
 		return f.Transport.GetStringField(fields[1])
-	case "UDPPORT", "TCPPORT", "SCTPPORT":
+	case "UDP", "TCP", "SCTP":
 		return f.Transport.GetStringField(fields[1])
 	case "IPV4", "IPV6":
 		return f.Network.GetStringField(fields[1])

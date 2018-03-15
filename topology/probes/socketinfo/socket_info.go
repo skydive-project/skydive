@@ -39,6 +39,7 @@ import (
 	"time"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -179,7 +180,7 @@ func (s *ProcSocketInfoProbe) scanProc() error {
 		}, nil
 	}
 
-	parseNetTCP := func(path string) {
+	parseNet := func(protocol flow.FlowProtocol, path string) {
 		u, err := os.Open(path)
 		if err != nil {
 			return
@@ -211,10 +212,19 @@ func (s *ProcSocketInfoProbe) scanProc() error {
 				logging.GetLogger().Debugf("Failed to parse entry: %s", err.Error())
 				continue
 			}
+			conn.Protocol = protocol
 
 			logging.GetLogger().Debugf("Adding connection %+v", conn)
 			s.connCache.Set(conn.Hash(), conn)
 		}
+	}
+
+	parseNetTCP := func(path string) {
+		parseNet(flow.FlowProtocol_TCP, path)
+	}
+
+	parseNetUDP := func(path string) {
+		parseNet(flow.FlowProtocol_UDP, path)
 	}
 
 	if err := buildInodePidMap(); err != nil {
@@ -229,6 +239,8 @@ func (s *ProcSocketInfoProbe) scanProc() error {
 	for _, item := range d {
 		parseNetTCP(item + "/tcp")
 		parseNetTCP(item + "/tcp6")
+		parseNetUDP(item + "/udp")
+		parseNetUDP(item + "/udp6")
 	}
 
 	return nil

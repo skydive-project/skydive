@@ -118,7 +118,7 @@ func (fl *FlowLayer) Hash() []byte {
 		bip := net.ParseIP(fl.B)
 		return HashFromValues(aip, bip)
 	}
-	if fl.Protocol == FlowProtocol_TCPPORT {
+	if fl.Protocol == FlowProtocol_TCP {
 		aTCPPort, err := strconv.ParseUint(fl.A, 10, 16)
 		if err != nil {
 			panic(err)
@@ -129,7 +129,7 @@ func (fl *FlowLayer) Hash() []byte {
 		}
 		return HashFromValues(layers.TCPPort(aTCPPort), layers.TCPPort(bTCPPort))
 	}
-	if fl.Protocol == FlowProtocol_UDPPORT {
+	if fl.Protocol == FlowProtocol_UDP {
 		aUDPPort, err := strconv.ParseUint(fl.A, 10, 16)
 		if err != nil {
 			panic(err)
@@ -140,7 +140,7 @@ func (fl *FlowLayer) Hash() []byte {
 		}
 		return HashFromValues(layers.UDPPort(aUDPPort), layers.UDPPort(bUDPPort))
 	}
-	if fl.Protocol == FlowProtocol_SCTPPORT {
+	if fl.Protocol == FlowProtocol_SCTP {
 		aSCTPPort, err := strconv.ParseUint(fl.A, 10, 16)
 		if err != nil {
 			panic(err)

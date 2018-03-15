@@ -31,6 +31,7 @@ import (
 	"github.com/weaveworks/tcptracer-bpf/pkg/tracer"
 
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -59,11 +60,12 @@ func (s *EBPFSocketInfoProbe) TCPEventV4(tcpV4 tracer.TcpV4) {
 				RemoteAddress: dstAddr.IP.String(),
 				RemotePort:    int64(dstAddr.Port),
 				State:         ConnectionState(tcpStates[0]),
+				Protocol:      flow.FlowProtocol_TCP,
 			}
 			s.connCache.Set(conn.Hash(), conn)
 		}
 	case tracer.EventClose:
-		s.connCache.Remove(srcAddr, dstAddr)
+		s.connCache.Remove(flow.FlowProtocol_TCP, srcAddr, dstAddr)
 	}
 }
 
@@ -86,11 +88,12 @@ func (s *EBPFSocketInfoProbe) TCPEventV6(tcpV6 tracer.TcpV6) {
 				RemoteAddress: dstAddr.IP.String(),
 				RemotePort:    int64(dstAddr.Port),
 				State:         ConnectionState(tcpStates[0]),
+				Protocol:      flow.FlowProtocol_TCP,
 			}
 			s.connCache.Set(conn.Hash(), conn)
 		}
 	case tracer.EventClose:
-		s.connCache.Remove(srcAddr, dstAddr)
+		s.connCache.Remove(flow.FlowProtocol_TCP, srcAddr, dstAddr)
 	}
 }
 
