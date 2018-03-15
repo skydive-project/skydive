@@ -49,14 +49,20 @@ type FlowServerConn interface {
 
 // FlowServerConn describes a UDP flow server connection
 type FlowServerUDPConn struct {
-	conn *net.UDPConn
+	conn                   *net.UDPConn
+	timeOfLastLostFlowsLog time.Time
+	numOfLostFlows         int
+	maxFlowBufferSize      int
 }
 
 // FlowServerConn describes a WebSocket flow server connection
 type FlowServerWebSocketConn struct {
 	shttp.DefaultWSSpeakerEventHandler
-	server *shttp.Server
-	ch     chan *flow.Flow
+	server                 *shttp.Server
+	ch                     chan *flow.Flow
+	timeOfLastLostFlowsLog time.Time
+	numOfLostFlows         int
+	maxFlowBufferSize      int
 }
 
 // FlowServer describes a flow server with pipeline enhancers mechanism
@@ -81,6 +87,16 @@ func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMe
 		return
 	}
 	logging.GetLogger().Debugf("New flow from Websocket connection: %+v", f)
+	if len(c.ch) >= c.maxFlowBufferSize {
+		c.numOfLostFlows++
+		if c.timeOfLastLostFlowsLog.IsZero() ||
+			(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
+			logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
+			c.timeOfLastLostFlowsLog = time.Now()
+			c.numOfLostFlows = 0
+		}
+		return
+	}
 	c.ch <- f
 }
 
@@ -98,7 +114,8 @@ func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, 
 
 // NewFlowServerWebSocketConn returns a new WebSocket flow server
 func NewFlowServerWebSocketConn(server *shttp.Server) (*FlowServerWebSocketConn, error) {
-	return &FlowServerWebSocketConn{server: server}, nil
+	flowsMax := config.GetConfig().GetInt("analyzer.storage.max_flow_buffer_size")
+	return &FlowServerWebSocketConn{server: server, maxFlowBufferSize: flowsMax}, nil
 }
 
 // Serve UDP connections
@@ -130,6 +147,16 @@ func (c *FlowServerUDPConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sy
 				}
 
 				logging.GetLogger().Debugf("New flow from UDP connection: %+v", f)
+				if len(ch) >= c.maxFlowBufferSize {
+					c.numOfLostFlows++
+					if c.timeOfLastLostFlowsLog.IsZero() ||
+						(time.Now().Sub(c.timeOfLastLostFlowsLog) >= time.Second) {
+						logging.GetLogger().Errorf("Buffer overflow - too many flow updates, removing and not storing flows: %d", c.numOfLostFlows)
+						c.timeOfLastLostFlowsLog = time.Now()
+						c.numOfLostFlows = 0
+					}
+					return
+				}
 				ch <- f
 			}
 		}
@@ -150,7 +177,8 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 	}
 
 	logging.GetLogger().Info("Analyzer listen agents on UDP socket")
-	return &FlowServerUDPConn{conn: conn}, err
+	flowsMax := config.GetConfig().GetInt("analyzer.storage.max_flow_buffer_size")
+	return &FlowServerUDPConn{conn: conn, maxFlowBufferSize: flowsMax}, err
 }
 
 func (s *FlowServer) storeFlows(flows []*flow.Flow) {
@@ -218,10 +246,11 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 	if bulkDeadLine < 1 {
 		return nil, fmt.Errorf("bulk_insert_deadline has to be >= 1")
 	}
-
+	flowsMax := config.GetConfig().GetInt("analyzer.storage.max_flow_buffer_size")
 	var err error
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
+
 	switch protocol {
 	case "udp":
 		conn, err = NewFlowServerUDPConn(s.Addr, s.Port)
@@ -243,6 +272,6 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		bulkInsertDeadline:     time.Duration(time.Duration(bulkDeadLine) * time.Second),
 		conn:                   conn,
 		quit:                   make(chan struct{}, 2),
-		ch:                     make(chan *flow.Flow, bulk*2),
+		ch:                     make(chan *flow.Flow, flowsMax+bulk*2),
 	}, nil
 }
