@@ -23,15 +23,15 @@
 package graph
 
 import (
-	"encoding/json"
-	"reflect"
+	//"encoding/json"
+	//"reflect"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 	"net/http"
 
-	"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"
 	elastigo "github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/common"
@@ -320,154 +320,85 @@ func TestElasticsearchLocal(t *testing.T) {
 		},
 	}
 
-	if !reflect.DeepEqual(searchExpected, searchEdge) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %s\ngot: %s", spew.Sdump(searchExpected), spew.Sdump(searchEdge))
+	maxConns := config.GetInt("storage.elasticsearch.maxconns")
+	retrySeconds := config.GetInt("storage.elasticsearch.retry")
+	bulkMaxDocs := 1
+	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
+
+	client, err := elasticsearch.NewElasticSearchClient(c[0], c[1], maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+	if err != nil {
+		return nil, err
 	}
 
-	client.resetRevisions()
+	ageLimit := config.GetInt("storage.elasticsearch.index_age_limit")
+	indicesLimit := config.GetInt("storage.elasticsearch.indices_to_keep")
+	client.Start("test", []map[string][]byte{
+		{"node": []byte(graphElementMapping)},
+		{"edge": []byte(graphElementMapping)}},
+		entriesLimit, ageLimit, indicesLimit,
+	)
 
-	node1 := newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
-	node2 := newNode("bbb", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
-
-	edge := g.newEdge("eee", node1, node2, Metadata{"Name": "eee"}, time.Unix(1, 0), "host1")
-	g.addMetadata(edge, "Type", "veth", time.Unix(2, 0))
-
-	expected = []interface{}{
-		map[string]interface{}{
-			"ArchivedAt": int64(2000),
-			"CreatedAt":  int64(1000),
-			"Host":       "host1",
-			"ID":         "eee",
-			"Parent":     Identifier("aaa"),
-			"Child":      Identifier("bbb"),
-			"Metadata": Metadata{
-				"Name": "eee",
-			},
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
-		},
-		map[string]interface{}{
-			"CreatedAt": int64(1000),
-			"Host":      "host1",
-			"ID":        "eee",
-			"Parent":    Identifier("aaa"),
-			"Child":     Identifier("bbb"),
-			"Metadata": Metadata{
-				"Name": "eee",
-				"Type": "veth",
-			},
-			"Revision":  int64(2),
-			"UpdatedAt": int64(2000),
-		},
-	}
-
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
-	}
+	return &ElasticSearchBackend{
+		client:       client,
+		prevRevision: make(map[Identifier]int64),
+	}, nil
 }
 
-// test history when doing local modification
-func TestElasticsearchForwarded(t *testing.T) {
-	g, client := newElasticsearchGraph(t)
+// test active nodes after rolling elasticsearch indices
+//func TestElasticsearcActiveNodes(t *testing.T) {
+//	entriesLimit := 3
+//	backend, err := initBackend(entriesLimit)
+//	if err != nil {
+//		t.Fatalf("Failed to create backend: %s", err.Error())
+//	}
+//	g := NewGraphFromConfig(backend)
+//
+//	mg := newGraph(t)
+//	node := mg.NewNode("aaa", nil, "host1")
+//
+//	g.NodeAdded(node)
+//	for i := 1; i <= entriesLimit * 2; i++ {
+//		time.Sleep(2 * time.Second)
+//		g.SetMetadata(node, Metadata{"Temp": i})
+//	}
+//	time.Sleep(5 * time.Second)
+//
+//	activeNodes := len(backend.GetNodes(nil, nil))
+//	if activeNodes != 1 {
+//		t.Fatalf("Found %d active nodes instead of 1", activeNodes)
+//	}
+//}
+
+// test active edges after rolling elasticsearch indices
+func TestElasticsearcActiveEdges(t *testing.T) {
+	entriesLimit := 3
+	backend, err := initBackend(entriesLimit)
+	if err != nil {
+		t.Fatalf("Failed to create backend: %s", err.Error())
+	}
+	g := NewGraphFromConfig(backend)
+
 	mg := newGraph(t)
+	node1 := mg.NewNode("aaa", nil, "host1")
+	node2 := mg.NewNode("bbb", nil, "host1")
+	edge := mg.NewEdge("ccc", node1, node2, nil, "host1")
 
-	node := mg.NewNode("aaa", nil, "host1")
-	g.NodeAdded(node)
-	updatedAt1 := node.updatedAt
-
-	expected := []interface{}{
-		map[string]interface{}{
-			"UpdatedAt": common.UnixMillis(updatedAt1),
-			"CreatedAt": common.UnixMillis(node.createdAt),
-			"Host":      "host1",
-			"ID":        "aaa",
-			"Metadata":  Metadata{},
-			"Revision":  int64(1),
-		},
+	g.NodeAdded(node1)
+	g.NodeAdded(node2)
+	g.EdgeAdded(edge)
+	for i := 1; i < entriesLimit; i++ {
+		time.Sleep(2 * time.Second)
+		g.SetMetadata(edge, Metadata{"Temp": i})
 	}
+	time.Sleep(5 * time.Second)
 
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
-	}
+	metadat := map[string]interface{}{"ArchivedAt": nil}
+	activeEdges := len(backend.GetEdges(nil, Metadata(metadat)))
+	//filters.NewNullFilter("ArchivedAt")
+	time.Sleep(5 * time.Second)
+	if activeEdges != 1 {
 
-	mg.AddMetadata(node, "MTU", 1500)
-	updatedAt2 := node.updatedAt
-
-	b, _ := node.MarshalJSON()
-	rawMessage := json.RawMessage(b)
-
-	client.searchResult.Hits.Hits = []elastigo.Hit{
-		{Source: &rawMessage},
-	}
-	g.NodeUpdated(node)
-
-	expected = []interface{}{
-		map[string]interface{}{
-			"ArchivedAt": common.UnixMillis(updatedAt2),
-			"UpdatedAt":  common.UnixMillis(updatedAt1),
-			"CreatedAt":  common.UnixMillis(node.createdAt),
-			"Host":       "host1",
-			"ID":         "aaa",
-			"Metadata":   Metadata{},
-			"Revision":   int64(1),
-		},
-		map[string]interface{}{
-			"UpdatedAt": common.UnixMillis(updatedAt2),
-			"CreatedAt": common.UnixMillis(node.createdAt),
-			"Host":      "host1",
-			"ID":        "aaa",
-			"Metadata": Metadata{
-				"MTU": 1500,
-			},
-			"Revision": int64(2),
-		},
-	}
-
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
-	}
-
-	mg.AddMetadata(node, "MTU", 1510)
-	updatedAt3 := node.updatedAt
-
-	b, _ = node.MarshalJSON()
-	rawMessage = json.RawMessage(b)
-	client.searchResult.Hits.Hits = []elastigo.Hit{
-		{Source: &rawMessage},
-	}
-	g.NodeUpdated(node)
-
-	expected = []interface{}{
-		map[string]interface{}{
-			"ArchivedAt": common.UnixMillis(updatedAt2),
-			"UpdatedAt":  common.UnixMillis(updatedAt1),
-			"CreatedAt":  common.UnixMillis(node.createdAt),
-			"Host":       "host1",
-			"ID":         "aaa",
-			"Metadata":   Metadata{},
-			"Revision":   int64(1),
-		},
-		map[string]interface{}{
-			"ArchivedAt": common.UnixMillis(updatedAt3),
-			"UpdatedAt":  common.UnixMillis(updatedAt2),
-			"CreatedAt":  common.UnixMillis(node.createdAt),
-			"Host":       "host1",
-			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1500,
-			},
-			"Revision": int64(2),
-		},
-		map[string]interface{}{
-			"UpdatedAt": common.UnixMillis(updatedAt3),
-			"CreatedAt": common.UnixMillis(node.createdAt),
-			"Host":      "host1",
-			"ID":        "aaa",
-			"Metadata": Metadata{
-				"MTU": 1510,
-			},
-			"Revision": int64(3),
-		},
+		t.Fatalf("Found %d active edges instead of 1", activeEdges)
 	}
 
 	if !reflect.DeepEqual(client.getRevisions(), expected) {
