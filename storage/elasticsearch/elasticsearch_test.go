@@ -39,14 +39,16 @@ func (c *ElasticSearchClient) cleanupIndices(name string) error {
 }
 
 func getClient(name string, entriesLimit, ageLimit, indicesLimit int, mappings []map[string][]byte) (*ElasticSearchClient, error) {
-	client, err := NewElasticSearchClientFromConfig()
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed to create ES backend: %s", err.Error()))
-	}
 	if err := client.cleanupIndices(name); err != nil {
 		return nil, err
 	}
 	client.Start(name, mappings, entriesLimit, ageLimit, indicesLimit)
+=======
+	if _, err := client.connection.DeleteIndex(indexPrefix + "_test*"); err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to clear test indices: %s", err.Error()))
+	}
+	client.Start("test", mappings, entriesLimit, ageLimit, indicesLimit)
+>>>>>>> elastic: unit tests
 	return client, nil
 }
 
