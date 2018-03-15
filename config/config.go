@@ -161,11 +161,13 @@ func init() {
 	cfg.SetDefault("ui.bandwidth_relative_warning", 0.5)
 	cfg.SetDefault("ui.bandwidth_threshold", "relative")
 	cfg.SetDefault("ui.bandwidth_update_rate", 5)
+	cfg.SetDefault("ui.topology.favorites", map[string]string{})
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")
 	cfg.SetEnvKeyReplacer(replacer)
 	cfg.AutomaticEnv()
+	cfg.SetTypeByDefaultValue(true)
 }
 
 func checkStrictPositiveInt(key string) error {
