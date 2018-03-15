@@ -131,7 +131,7 @@ func (c *ElasticSearchClient) GetIndexAllAlias() string {
 
 func (c *ElasticSearchClient) countEntries() int {
 	curEntriesCount, _ := c.connection.Count(c.index.path, "", nil, "")
-	logging.GetLogger().Infof("#####       %s real entries in %s is %d", c.index.name, c.index.path, curEntriesCount.Count)
+	logging.GetLogger().Debugf("%s real entries in %s is %d", c.index.name, c.index.path, curEntriesCount.Count)
 	return curEntriesCount.Count
 }
 
@@ -159,7 +159,7 @@ func (c *ElasticSearchClient) createAlias() error {
 
 	add := `{"add":{"alias": "%s", "index": "%s"}}, {"add":{"alias": "%s", "index": "%s"}}]}`
 	aliases += fmt.Sprintf(add, newAlias, c.index.path, allAlias, c.index.path)
-	logging.GetLogger().Infof("####### Creating aliases: %s", aliases)
+	logging.GetLogger().Debugf("Creating aliases: %s", aliases)
 
 	code, _, _ = c.request("POST", "/_aliases", "", aliases)
 	if code != http.StatusOK {
@@ -201,7 +201,6 @@ func (c *ElasticSearchClient) createIndex(name string) error {
 
 
 func (c *ElasticSearchClient) start(name string, mappings []map[string][]byte, entriesLimit int, ageLimit int, indicesLimit int) error {
-	logging.GetLogger().Infof("##### Setting index for %s", name)
 	c.index = &ElasticIndex{
 		mappings:	mappings,
 		entriesLimit:	entriesLimit,
@@ -211,12 +210,12 @@ func (c *ElasticSearchClient) start(name string, mappings []map[string][]byte, e
 	}
 
 	if err := c.createIndex(name); err != nil {
-		logging.GetLogger().Errorf("##### Failed to create index")
+		logging.GetLogger().Errorf("Failed to create index %s", name)
 		return err
 	}
 
 	if err := c.createAlias(); err != nil {
-		logging.GetLogger().Errorf("##### Failed to create alias")
+		logging.GetLogger().Errorf("Failed to create alias")
 		return err
 	}
 
@@ -365,38 +364,35 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 
 func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
 	if c.index.entriesLimit == -1 {
-		logging.GetLogger().Infof("#####    %s entries limit not set", c.index.name)
+		logging.GetLogger().Debugf("%s entries limit not set", c.index.name)
 		return false
 	}
-	logging.GetLogger().Infof("#####    %s entries counter is %d", c.index.name, c.index.entriesCounter)
+	logging.GetLogger().Debugf("%s entries counter is %d", c.index.name, c.index.entriesCounter)
 	if c.index.entriesCounter < c.index.entriesLimit {
-		logging.GetLogger().Infof("#####    %s not enough to roll", c.index.name)
 		return false
 	}
 	c.indexer.Flush()
 	time.Sleep(3 * time.Millisecond)
-	logging.GetLogger().Infof("#####    %s syncing counter", c.index.name)
+
 	c.index.entriesCounter = c.countEntries()
 	if c.index.entriesCounter < c.index.entriesLimit {
-		logging.GetLogger().Infof("#####    %s still not enough to roll", c.index.name)
 		return false
 	}
-	logging.GetLogger().Infof("#####    %s enough entries to roll", c.index.name)
+	logging.GetLogger().Debugf("%s enough entries to roll", c.index.name)
 	return true
 }
 
 func (c *ElasticSearchClient) shouldRollIndexByAge() bool {
 	if c.index.ageLimit == -1 {
-		logging.GetLogger().Infof("#####    %s age limit not set", c.index.name)
+		logging.GetLogger().Debugf("%s age limit not set", c.index.name)
 		return false
 	}
 	age := int(time.Now().Sub(c.index.timeCreated).Seconds())
-	logging.GetLogger().Infof("#####    %s age is %d", c.index.name, age)
+	logging.GetLogger().Debugf("%s age is %d", c.index.name, age)
 	if age < c.index.ageLimit {
-		logging.GetLogger().Infof("#####    %s not old enough to roll", c.index.name)
 		return false
 	}
-	logging.GetLogger().Infof("#####    %s old enough to roll", c.index.name)
+	logging.GetLogger().Debugf("%s old enough to roll", c.index.name)
 	return true
 }
 
@@ -406,7 +402,7 @@ func (c *ElasticSearchClient) shouldRollIndex() bool {
 
 func (c *ElasticSearchClient) delIndices() {
 	if c.index.indicesLimit == -1 {
-		logging.GetLogger().Infof("##### no indices limit specified for %s", c.index.name)
+		logging.GetLogger().Debugf("No indices limit specified for %s", c.index.name)
 		return
 	}
 
@@ -417,14 +413,13 @@ func (c *ElasticSearchClient) delIndices() {
 
 	numToDel := len(indices) - c.index.indicesLimit
 	if numToDel <= 0 {
-		logging.GetLogger().Infof("##### %s not enough indices to delete", c.index.name)
 		return
 	}
 
 	for _, esIndex := range indices[:numToDel] {
-		logging.GetLogger().Infof("##### del index of %s: %s", c.index.name, esIndex.Name)
+		logging.GetLogger().Debugf("Deleting index of %s: %s", c.index.name, esIndex.Name)
 		if _, err := c.connection.DeleteIndex(esIndex.Name); err != nil {
-			logging.GetLogger().Errorf("##### Error del index %s: %s", esIndex.Name, err.Error())
+			logging.GetLogger().Errorf("Error deleting index %s: %s", esIndex.Name, err.Error())
 		}
 	}
 }
@@ -432,7 +427,7 @@ func (c *ElasticSearchClient) delIndices() {
 func (c *ElasticSearchClient) RollIndex() error {
 	c.indexer.Flush()
 	time.Sleep(3 * time.Millisecond)
-	logging.GetLogger().Infof("##### locking and rolling")
+	logging.GetLogger().Infof("Rolling indices for %s", c.index.name)
 	c.index.lock.Lock()
 
 	if err := c.createIndex(""); err != nil {
@@ -444,7 +439,7 @@ func (c *ElasticSearchClient) RollIndex() error {
 		return err
 	}
 
-	logging.GetLogger().Infof("##### %s finished rolling", c.index.name)
+	logging.GetLogger().Infof("%s finished rolling indices", c.index.name)
 	c.index.lock.Unlock()
 	c.delIndices()
 	return nil
@@ -452,7 +447,6 @@ func (c *ElasticSearchClient) RollIndex() error {
 
 // Index returns the skydive index
 func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) (error, bool) {
-	logging.GetLogger().Infof("##### indexing %s %s", obj, id)
 	c.index.lock.Lock()
 	if _, err := c.connection.Index(c.GetIndexAlias(), obj, id, nil, data); err != nil {
 		c.index.lock.Unlock()
@@ -465,7 +459,6 @@ func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) (er
 
 // BulkIndex returns the bulk index from the indexer
 func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{}) (error, bool) {
-	logging.GetLogger().Infof("##### indexing %s %s", obj, id)
 	c.index.lock.Lock()
 	if err := c.indexer.Index(c.GetIndexAlias(), obj, id, "", "", nil, data); err != nil {
 		c.index.lock.Unlock()
@@ -478,7 +471,6 @@ func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{})
 
 // IndexChild index a child object
 func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, data interface{}) (error, bool) {
-	logging.GetLogger().Infof("##### indexing %s %s", obj, id)
 	c.index.lock.Lock()
 	_, err := c.connection.IndexWithParameters(c.GetIndexAlias(), obj, id, parent, 0, "", "", "", 0, "", "", false, nil, data)
 	if err != nil {
@@ -492,7 +484,6 @@ func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, d
 
 // BulkIndexChild index a while object with the indexer
 func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) (error, bool) {
-	logging.GetLogger().Infof("##### indexing %s %s", obj, id)
 	c.index.lock.Lock()
 	if err := c.indexer.Index(c.GetIndexAlias(), obj, id, parent, "", nil, data); err != nil {
 		c.index.lock.Unlock()
@@ -505,27 +496,23 @@ func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id strin
 
 // Update an object
 func (c *ElasticSearchClient) Update(obj string, id string, data interface{}) error {
-	logging.GetLogger().Infof("##### updating %s %s", obj, id)
 	_, err := c.connection.Update(c.GetIndexAlias(), obj, id, nil, data)
 	return err
 }
 
 // BulkUpdate and object with the indexer
 func (c *ElasticSearchClient) BulkUpdate(obj string, id string, data interface{}) error {
-	logging.GetLogger().Infof("##### updating %s %s", obj, id)
 	return c.indexer.Update(c.GetIndexAlias(), obj, id, "", "", nil, data)
 }
 
 // UpdateWithPartialDoc an object with partial data
 func (c *ElasticSearchClient) UpdateWithPartialDoc(obj string, id string, data interface{}) error {
-	logging.GetLogger().Infof("##### updating %s %s", obj, id)
 	_, err := c.connection.UpdateWithPartialDoc(c.GetIndexAlias(), obj, id, nil, data, false)
 	return err
 }
 
 // BulkUpdateWithPartialDoc  an object with partial data using the indexer
 func (c *ElasticSearchClient) BulkUpdateWithPartialDoc(obj string, id string, data interface{}) error {
-	logging.GetLogger().Infof("##### updating %s %s", obj, id)
 	return c.indexer.UpdateWithPartialDoc(c.GetIndexAlias(), obj, id, "", "", nil, data, false)
 }
 
@@ -568,7 +555,6 @@ func (c *ElasticSearchClient) errorReader() {
 
 // Start the Elasticsearch client background jobs
 func (c *ElasticSearchClient) Start(name string, mappings []map[string][]byte, entriesLimit int, ageLimit int, indicesLimit int) {
-	logging.GetLogger().Infof("##### Starting ES for %s", name)
 	c.wg.Add(1)
 	go c.errorReader()
 
