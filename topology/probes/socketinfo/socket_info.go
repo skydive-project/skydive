@@ -63,6 +63,7 @@ type ProcSocketInfoProbe struct {
 	quit      chan bool
 	graph     *graph.Graph
 	host      *graph.Node
+	procGlob  string
 }
 
 func getProcessInfo(pid int) (*ProcessInfo, error) {
@@ -220,7 +221,7 @@ func (s *ProcSocketInfoProbe) scanProc() error {
 		return err
 	}
 
-	d, err := filepath.Glob("/proc/[0-9]*/task/[0-9]*/net")
+	d, err := filepath.Glob(s.procGlob)
 	if err != nil {
 		return err
 	}
@@ -285,7 +286,14 @@ func (s *ProcSocketInfoProbe) Stop() {
 
 // NewProcSocketInfoProbe create a new socket info probe
 func NewProcSocketInfoProbe(g *graph.Graph, host *graph.Node) *ProcSocketInfoProbe {
+	procGlob := "/proc/[0-9]*/task/[0-9]*/net"
+	pid := os.Getpid()
+	if _, err := os.Stat(fmt.Sprintf("/proc/%d/tasks/%d/net", pid, pid)); os.IsNotExist(err) {
+		procGlob = "/proc/[0-9]*/net"
+	}
+
 	return &ProcSocketInfoProbe{
+		procGlob:  procGlob,
 		connCache: NewConnectionCache(),
 		quit:      make(chan bool),
 		graph:     g,
