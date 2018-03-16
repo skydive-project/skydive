@@ -56,18 +56,24 @@ func readBody(resp *http.Response) string {
 	return string(data)
 }
 
-func getHttpClient() *http.Client {
+func getHttpClient() (*http.Client, error) {
 	client := &http.Client{}
 	if config.IsTLSenabled() {
-		tlsConfig := getTLSConfig(true)
+		tlsConfig, err := getTLSConfig(true)
+		if err != nil {
+			return nil, err
+		}
 		tr := &http.Transport{TLSClientConfig: tlsConfig}
 		client = &http.Client{Transport: tr}
 	}
-	return client
+	return client, nil
 }
 
-func NewRestClient(url *url.URL, authOptions *AuthenticationOpts) *RestClient {
-	client := getHttpClient()
+func NewRestClient(url *url.URL, authOptions *AuthenticationOpts) (*RestClient, error) {
+	client, err := getHttpClient()
+	if err != nil {
+		return nil, err
+	}
 	rc := &RestClient{
 		client: client,
 		url:    url,
@@ -75,7 +81,7 @@ func NewRestClient(url *url.URL, authOptions *AuthenticationOpts) *RestClient {
 	if authOptions.Username != "" {
 		rc.authClient = NewAuthenticationClient(url, authOptions)
 	}
-	return rc
+	return rc, nil
 }
 
 func (c *RestClient) debug() bool {
@@ -137,11 +143,14 @@ func (c *RestClient) Request(method, path string, body io.Reader, header http.He
 	return resp, nil
 }
 
-func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts) *CrudClient {
-	restClient := NewRestClient(url, authOpts)
+func NewCrudClient(url *url.URL, authOpts *AuthenticationOpts) (*CrudClient, error) {
+	restClient, err := NewRestClient(url, authOpts)
+	if err != nil {
+		return nil, err
+	}
 	return &CrudClient{
 		RestClient: *restClient,
-	}
+	}, nil
 }
 
 func (c *CrudClient) List(resource string, values interface{}) error {

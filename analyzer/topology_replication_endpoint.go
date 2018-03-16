@@ -75,10 +75,13 @@ func (t *TopologyReplicationEndpoint) debug() bool {
 }
 
 // getHostID loop until being able to get the host-id of the peer.
-func (p *TopologyReplicatorPeer) getHostID() string {
+func (p *TopologyReplicatorPeer) getHostID() (string, error) {
 	addr := common.NormalizeAddrForURL(p.URL.Hostname())
 	port, _ := strconv.Atoi(p.URL.Port())
-	client := shttp.NewRestClient(config.GetURL("http", addr, port, ""), p.AuthOptions)
+	client, err := shttp.NewRestClient(config.GetURL("http", addr, port, ""), p.AuthOptions)
+	if err != nil {
+		return "", err
+	}
 	contentReader := bytes.NewReader([]byte{})
 
 	var data []byte
@@ -104,7 +107,7 @@ func (p *TopologyReplicatorPeer) getHostID() string {
 		}
 		p.host = info.Host
 
-		return p.host
+		return p.host, nil
 
 	NotReady:
 		time.Sleep(1 * time.Second)
@@ -152,7 +155,13 @@ func (p *TopologyReplicatorPeer) connect(wg *sync.WaitGroup) {
 
 	// check whether the peer is the local server itself or not thanks to the /api
 	// the goal is to not add itself as peer.
-	if p.getHostID() == config.GetString("host_id") {
+	hostID, err := p.getHostID()
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to get the remote host ID: %s", err)
+		return
+	}
+
+	if hostID == config.GetString("host_id") {
 		logging.GetLogger().Debugf("No connection to %s since it's me", p.URL.String())
 		return
 	}

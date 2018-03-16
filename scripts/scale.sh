@@ -79,7 +79,7 @@ req_extensions = v3_req
 countryName_default = FR
 stateOrProvinceName_default = Paris
 localityName_default = Paris
-organizationalUnitName_default	= Skydive Team
+organizationalUnitName_default = Skydive Team
 commonName = skydive
 commonName_max	= 64
 
@@ -93,10 +93,11 @@ subjectAltName = @alt_names
 [alt_names]
 IP.1 = 127.0.0.1
 IP.2 = $GW_ADDR
+IP.3 = ::1
 EOF
 
 	for I in $( seq $ANALYZER_NUM ); do
-		IDX=$(( $I + 2 ))
+		IDX=$(( $I + 3 ))
 		echo IP.$IDX = $PREFIX.$I >> $TEMP_DIR/skydive-ssl.cnf
 	done
 

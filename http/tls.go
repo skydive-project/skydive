@@ -37,19 +37,26 @@ func setTLSHeader(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getTLSConfig(setupRootCA bool) *tls.Config {
+func getTLSConfig(setupRootCA bool) (*tls.Config, error) {
 	certPEM := config.GetString("agent.X509_cert")
 	keyPEM := config.GetString("agent.X509_key")
-	var tlsConfig *tls.Config = nil
+	var tlsConfig *tls.Config
 	if certPEM != "" && keyPEM != "" {
-		tlsConfig = common.SetupTLSClientConfig(certPEM, keyPEM)
+		var err error
+		tlsConfig, err = common.SetupTLSClientConfig(certPEM, keyPEM)
+		if err != nil {
+			return nil, err
+		}
 		if setupRootCA {
 			analyzerCertPEM := config.GetString("analyzer.X509_cert")
-			tlsConfig.RootCAs = common.SetupTLSLoadCertificate(analyzerCertPEM)
+			tlsConfig.RootCAs, err = common.SetupTLSLoadCertificate(analyzerCertPEM)
+			if err != nil {
+				return nil, err
+			}
 		}
 		checkTLSConfig(tlsConfig)
 	}
-	return tlsConfig
+	return tlsConfig, nil
 }
 
 func checkTLSConfig(tlsConfig *tls.Config) {

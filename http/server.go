@@ -127,8 +127,14 @@ func (s *Server) Listen() error {
 		certPEM := config.GetString("analyzer.X509_cert")
 		keyPEM := config.GetString("analyzer.X509_key")
 		agentCertPEM := config.GetString("agent.X509_cert")
-		tlsConfig := common.SetupTLSServerConfig(certPEM, keyPEM)
-		tlsConfig.ClientCAs = common.SetupTLSLoadCertificate(agentCertPEM)
+		tlsConfig, err := common.SetupTLSServerConfig(certPEM, keyPEM)
+		if err != nil {
+			return err
+		}
+		tlsConfig.ClientCAs, err = common.SetupTLSLoadCertificate(agentCertPEM)
+		if err != nil {
+			return err
+		}
 		s.listener = tls.NewListener(ln.(*net.TCPListener), tlsConfig)
 	}
 

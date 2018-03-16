@@ -395,7 +395,7 @@ func (c *WSClient) connect() {
 
 	if c.AuthClient != nil {
 		if err = c.AuthClient.Authenticate(); err != nil {
-			logging.GetLogger().Errorf("Unable to authenticate %s : %s", endpoint, err.Error())
+			logging.GetLogger().Errorf("Unable to authenticate %s : %s", endpoint, err)
 			return
 		}
 	}
@@ -407,11 +407,15 @@ func (c *WSClient) connect() {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	d.TLSClientConfig = getTLSConfig(false)
+	d.TLSClientConfig, err = getTLSConfig(false)
+	if err != nil {
+		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
+		return
+	}
 	c.conn, _, err = d.Dial(endpoint, headers)
 
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err.Error())
+		logging.GetLogger().Errorf("Unable to create a WebSocket connection %s : %s", endpoint, err)
 		return
 	}
 	c.conn.SetPingHandler(nil)
