@@ -23,6 +23,7 @@
 package types
 
 import (
+	"errors"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -120,8 +121,8 @@ type ElectionStatus struct {
 	IsMaster bool
 }
 
-// PacketParamsReq packet injector API parameters
-type PacketParamsReq struct {
+// PacketInjection packet injector API parameters
+type PacketInjection struct {
 	UUID       string
 	Src        string
 	Dst        string
@@ -137,19 +138,30 @@ type PacketParamsReq struct {
 	ICMPID     int64
 	Count      int64
 	Interval   int64
+	Increment  bool
 	StartTime  time.Time
 }
 
 // ID returns the packet injector request identifier
-func (ppr *PacketParamsReq) ID() string {
-	return ppr.UUID
+func (pi *PacketInjection) ID() string {
+	return pi.UUID
+}
+
+// Validate verifies the packet injection type is supported
+func (pi *PacketInjection) Validate() error {
+	allowedTypes := map[string]bool{"icmp4": true, "icmp6": true, "tcp4": true, "tcp6": true, "udp4": true, "udp6": true}
+	if _, ok := allowedTypes[pi.Type]; !ok {
+		return errors.New("given type is not supported")
+	}
+	return nil
 }
 
 // SetID set a new identifier for this injector
-func (ppr *PacketParamsReq) SetID(id string) {
-	ppr.UUID = id
+func (pi *PacketInjection) SetID(id string) {
+	pi.UUID = id
 }
 
+// PeersStatus describes the state of a peer
 type PeersStatus struct {
 	Incomers map[string]shttp.WSConnStatus
 	Outgoers map[string]shttp.WSConnStatus

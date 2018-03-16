@@ -975,10 +975,11 @@ func TestICMP(t *testing.T) {
 
 		injections: []TestInjection{
 			{
-				from:  g.G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1"),
-				to:    g.G.V().Has("Name", "icmp-vm2").Out().Has("Name", "icmp-intf2"),
-				count: 1,
-				id:    123,
+				from:      g.G.V().Has("Name", "icmp-vm1").Out().Has("Name", "icmp-intf1"),
+				to:        g.G.V().Has("Name", "icmp-vm2").Out().Has("Name", "icmp-intf2"),
+				count:     3,
+				id:        123,
+				increment: true,
 			},
 			{
 				from:  g.G.V().Has("Name", "icmp-intf1", "Type", "internal"),
@@ -1046,6 +1047,16 @@ func TestICMP(t *testing.T) {
 
 			if len(icmpFlows) != 1 {
 				return fmt.Errorf("We should receive one ICMPv6 flow with TrackingID %s, got %s", ipv6TrackingID, helper.FlowsToString(icmpFlows))
+			}
+
+			gremlin = prefix.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "ICMP.Type", "ECHO")
+			icmpFlows, err = gh.GetFlows(gremlin)
+			if err != nil {
+				return err
+			}
+
+			if len(icmpFlows) != 3 {
+				return fmt.Errorf("We should receive 3 ICMP flows", helper.FlowsToString(icmpFlows))
 			}
 
 			return nil

@@ -61,12 +61,12 @@ func (pis *PacketInjectorServer) stopPI(msg *shttp.WSJSONMessage) error {
 }
 
 func (pis *PacketInjectorServer) injectPacket(msg *shttp.WSJSONMessage) (string, error) {
-	var params PacketParams
+	var params PacketInjectionParams
 	if err := common.JSONDecode(bytes.NewBuffer([]byte(*msg.Obj)), &params); err != nil {
 		return "", fmt.Errorf("Unable to decode packet inject param message %v", msg)
 	}
 
-	trackingID, err := InjectPacket(&params, pis.Graph, pis.Channels)
+	trackingID, err := InjectPackets(&params, pis.Graph, pis.Channels)
 	if err != nil {
 		return "", fmt.Errorf("Failed to inject packet: %s", err.Error())
 	}

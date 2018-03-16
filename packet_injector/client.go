@@ -47,11 +47,13 @@ const (
 	max = 65535
 )
 
+// PacketInjectorReply describes the reply to a packet injection request
 type PacketInjectorReply struct {
 	TrackingID string
 	Error      string
 }
 
+// PacketInjectorClient describes a packet injector client
 type PacketInjectorClient struct {
 	*etcd.MasterElector
 	pool      shttp.WSJSONSpeakerPool
@@ -60,6 +62,7 @@ type PacketInjectorClient struct {
 	piHandler *apiServer.PacketInjectorAPI
 }
 
+// StopInjection cancels a running packet injection
 func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
 	msg := shttp.NewWSJSONMessage(Namespace, "PIStopRequest", uuid)
 
@@ -80,7 +83,9 @@ func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
 	return nil
 }
 
-func (pc *PacketInjectorClient) InjectPacket(host string, pp *PacketParams) (string, error) {
+// InjectPackets issues a packet injection request and returns the expected
+// tracking id
+func (pc *PacketInjectorClient) InjectPackets(host string, pp *PacketInjectionParams) (string, error) {
 	msg := shttp.NewWSJSONMessage(Namespace, "PIRequest", pp)
 
 	resp, err := pc.pool.Request(host, msg, shttp.DefaultRequestTimeout)
@@ -127,100 +132,101 @@ func (pc *PacketInjectorClient) getNode(gremlinQuery string) *graph.Node {
 	return nil
 }
 
-func (pc *PacketInjectorClient) requestToParams(ppr *types.PacketParamsReq) (string, *PacketParams, error) {
+func (pc *PacketInjectorClient) requestToParams(pi *types.PacketInjection) (string, *PacketInjectionParams, error) {
 	pc.graph.RLock()
 	defer pc.graph.RUnlock()
 
-	srcNode := pc.getNode(ppr.Src)
-	dstNode := pc.getNode(ppr.Dst)
+	srcNode := pc.getNode(pi.Src)
+	dstNode := pc.getNode(pi.Dst)
 
 	if srcNode == nil {
 		return "", nil, errors.New("Not able to find a source node")
 	}
 
 	ipField := "IPV4"
-	if ppr.Type == "icmp6" || ppr.Type == "tcp6" || ppr.Type == "udp6" {
+	if pi.Type == "icmp6" || pi.Type == "tcp6" || pi.Type == "udp6" {
 		ipField = "IPV6"
 	}
 
-	if ppr.SrcIP == "" {
+	if pi.SrcIP == "" {
 		ips, _ := srcNode.GetFieldStringList(ipField)
 		if len(ips) == 0 {
 			return "", nil, errors.New("No source IP in node and user input")
 		}
-		ppr.SrcIP = ips[0]
+		pi.SrcIP = ips[0]
 	} else {
-		ppr.SrcIP = pc.normalizeIP(ppr.SrcIP, ipField)
+		pi.SrcIP = pc.normalizeIP(pi.SrcIP, ipField)
 	}
 
-	if ppr.DstIP == "" {
+	if pi.DstIP == "" {
 		if dstNode != nil {
 			ips, _ := dstNode.GetFieldStringList(ipField)
 			if len(ips) == 0 {
 				return "", nil, errors.New("No dest IP in node and user input")
 			}
-			ppr.DstIP = ips[0]
+			pi.DstIP = ips[0]
 		} else {
 			return "", nil, errors.New("Not able to find a dest node and dest IP also empty")
 		}
 	} else {
-		ppr.DstIP = pc.normalizeIP(ppr.DstIP, ipField)
+		pi.DstIP = pc.normalizeIP(pi.DstIP, ipField)
 	}
 
-	if ppr.SrcMAC == "" {
+	if pi.SrcMAC == "" {
 		if srcNode != nil {
 			mac, _ := srcNode.GetFieldString("MAC")
 			if mac == "" {
 				return "", nil, errors.New("No source MAC in node and user input")
 			}
-			ppr.SrcMAC = mac
+			pi.SrcMAC = mac
 		} else {
 			return "", nil, errors.New("Not able to find a source node and source MAC also empty")
 		}
 	}
 
-	if ppr.DstMAC == "" {
+	if pi.DstMAC == "" {
 		if dstNode != nil {
 			mac, _ := dstNode.GetFieldString("MAC")
 			if mac == "" {
 				return "", nil, errors.New("No dest MAC in node and user input")
 			}
-			ppr.DstMAC = mac
+			pi.DstMAC = mac
 		} else {
 			return "", nil, errors.New("Not able to find a dest node and dest MAC also empty")
 		}
 	}
 
-	if ppr.Type == "tcp4" || ppr.Type == "tcp6" {
-		if ppr.SrcPort == 0 {
-			ppr.SrcPort = rand.Int63n(max-min) + min
+	if pi.Type == "tcp4" || pi.Type == "tcp6" {
+		if pi.SrcPort == 0 {
+			pi.SrcPort = rand.Int63n(max-min) + min
 		}
-		if ppr.DstPort == 0 {
-			ppr.DstPort = rand.Int63n(max-min) + min
+		if pi.DstPort == 0 {
+			pi.DstPort = rand.Int63n(max-min) + min
 		}
 	}
 
-	pp := &PacketParams{
-		UUID:      ppr.UUID,
+	pip := &PacketInjectionParams{
+		UUID:      pi.UUID,
 		SrcNodeID: srcNode.ID,
-		SrcIP:     ppr.SrcIP,
-		SrcMAC:    ppr.SrcMAC,
-		SrcPort:   ppr.SrcPort,
-		DstIP:     ppr.DstIP,
-		DstMAC:    ppr.DstMAC,
-		DstPort:   ppr.DstPort,
-		Type:      ppr.Type,
-		Payload:   ppr.Payload,
-		Count:     ppr.Count,
-		Interval:  ppr.Interval,
-		ID:        ppr.ICMPID,
+		SrcIP:     pi.SrcIP,
+		SrcMAC:    pi.SrcMAC,
+		SrcPort:   pi.SrcPort,
+		DstIP:     pi.DstIP,
+		DstMAC:    pi.DstMAC,
+		DstPort:   pi.DstPort,
+		Type:      pi.Type,
+		Payload:   pi.Payload,
+		Count:     pi.Count,
+		Interval:  pi.Interval,
+		ID:        pi.ICMPID,
+		Increment: pi.Increment,
 	}
 
-	if errs := validator.Validate(pp); errs != nil {
+	if errs := validator.Validate(pip); errs != nil {
 		return "", nil, errors.New("All the parms not set properly")
 	}
 
-	return srcNode.Host(), pp, nil
+	return srcNode.Host(), pip, nil
 }
 
 func (pc *PacketInjectorClient) expirePI(id string, expireTime time.Duration) {
@@ -247,47 +253,47 @@ func (pc *PacketInjectorClient) OnSwitchToSlave() {
 
 func (pc *PacketInjectorClient) onAPIWatcherEvent(action string, id string, resource types.Resource) {
 	logging.GetLogger().Debugf("New watcher event %s for %s", action, id)
-	ppr := resource.(*types.PacketParamsReq)
+	pi := resource.(*types.PacketInjection)
 	switch action {
 	case "create", "set":
-		host, pp, err := pc.requestToParams(ppr)
+		host, pip, err := pc.requestToParams(pi)
 		if err != nil {
 			pc.piHandler.TrackingId <- ""
 			logging.GetLogger().Errorf("Not able to parse request: %s", err.Error())
-			pc.piHandler.BasicAPIHandler.Delete(ppr.UUID)
+			pc.piHandler.BasicAPIHandler.Delete(pi.UUID)
 			return
 		}
-		trackingID, err := pc.InjectPacket(host, pp)
+		trackingID, err := pc.InjectPackets(host, pip)
 		if err != nil {
 			pc.piHandler.TrackingId <- ""
 			logging.GetLogger().Errorf("Not able to inject on host %s :: %s", host, err.Error())
-			pc.piHandler.BasicAPIHandler.Delete(ppr.UUID)
+			pc.piHandler.BasicAPIHandler.Delete(pi.UUID)
 			return
 		}
 		pc.piHandler.TrackingId <- trackingID
-		ppr.TrackingID = trackingID
-		ppr.StartTime = time.Now()
-		pc.piHandler.BasicAPIHandler.Update(ppr.UUID, ppr)
+		pi.TrackingID = trackingID
+		pi.StartTime = time.Now()
+		pc.piHandler.BasicAPIHandler.Update(pi.UUID, pi)
 
-		go pc.expirePI(ppr.UUID, time.Duration(ppr.Count*ppr.Interval)*time.Millisecond)
+		go pc.expirePI(pi.UUID, time.Duration(pi.Count*pi.Interval)*time.Millisecond)
 	case "expire", "delete":
 		pc.graph.RLock()
-		srcNode := pc.getNode(ppr.Src)
+		srcNode := pc.getNode(pi.Src)
 		pc.graph.RUnlock()
 		if srcNode == nil {
 			return
 		}
-		pc.StopInjection(srcNode.Host(), ppr.UUID)
+		pc.StopInjection(srcNode.Host(), pi.UUID)
 	}
 }
 
-//Start the PI client
+// Start the packet injector client
 func (pc *PacketInjectorClient) Start() {
 	pc.MasterElector.StartAndWait()
 	pc.watcher = pc.piHandler.AsyncWatch(pc.onAPIWatcherEvent)
 }
 
-//Stop the PI client
+// Stop the packet injector client
 func (pc *PacketInjectorClient) Stop() {
 	pc.watcher.Stop()
 	pc.MasterElector.Stop()
@@ -296,18 +302,19 @@ func (pc *PacketInjectorClient) Stop() {
 func (pc *PacketInjectorClient) setTimeouts() {
 	injections := pc.piHandler.Index()
 	for _, v := range injections {
-		ppr := v.(*types.PacketParamsReq)
-		validity := ppr.StartTime.Add(time.Duration(ppr.Count*ppr.Interval) * time.Millisecond)
+		pi := v.(*types.PacketInjection)
+		validity := pi.StartTime.Add(time.Duration(pi.Count*pi.Interval) * time.Millisecond)
 		if validity.After(time.Now()) {
-			elapsedTime := time.Now().Sub(ppr.StartTime)
-			totalTime := time.Duration(ppr.Count*ppr.Interval) * time.Millisecond
-			go pc.expirePI(ppr.UUID, totalTime-elapsedTime)
+			elapsedTime := time.Now().Sub(pi.StartTime)
+			totalTime := time.Duration(pi.Count*pi.Interval) * time.Millisecond
+			go pc.expirePI(pi.UUID, totalTime-elapsedTime)
 		} else {
-			pc.piHandler.BasicAPIHandler.Delete(ppr.UUID)
+			pc.piHandler.BasicAPIHandler.Delete(pi.UUID)
 		}
 	}
 }
 
+// NewPacketInjectorClient returns a new packet injector client
 func NewPacketInjectorClient(pool shttp.WSJSONSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "pi-client", etcdClient)
 

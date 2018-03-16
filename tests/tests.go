@@ -119,7 +119,7 @@ type TestContext struct {
 	gh         *gclient.GremlinQueryHelper
 	client     *shttp.CrudClient
 	captures   []*types.Capture
-	injections []*types.PacketParamsReq
+	injections []*types.PacketInjection
 	setupTime  time.Time
 	data       map[string]interface{}
 }
@@ -133,17 +133,18 @@ type TestCapture struct {
 }
 
 type TestInjection struct {
-	intf    g.QueryString
-	from    g.QueryString
-	fromMAC string
-	fromIP  string
-	to      g.QueryString
-	toMAC   string
-	toIP    string
-	ipv6    bool
-	count   int64
-	id      int64
-	payload string
+	intf      g.QueryString
+	from      g.QueryString
+	fromMAC   string
+	fromIP    string
+	to        g.QueryString
+	toMAC     string
+	toIP      string
+	ipv6      bool
+	count     int64
+	id        int64
+	increment bool
+	payload   string
 }
 
 type CheckFunction func(c *CheckContext) error
@@ -422,18 +423,19 @@ func RunTest(t *testing.T, test *Test) {
 			src = injection.from.String()
 		}
 
-		packet := &types.PacketParamsReq{
-			Src:      src,
-			SrcMAC:   srcMAC,
-			SrcIP:    srcIP,
-			Dst:      injection.to.String(),
-			DstMAC:   injection.toMAC,
-			DstIP:    injection.toIP,
-			Type:     fmt.Sprintf("icmp%d", ipVersion),
-			Count:    injection.count,
-			ICMPID:   injection.id,
-			Payload:  injection.payload,
-			Interval: 1000,
+		packet := &types.PacketInjection{
+			Src:       src,
+			SrcMAC:    srcMAC,
+			SrcIP:     srcIP,
+			Dst:       injection.to.String(),
+			DstMAC:    injection.toMAC,
+			DstIP:     injection.toIP,
+			Type:      fmt.Sprintf("icmp%d", ipVersion),
+			Count:     injection.count,
+			ICMPID:    injection.id,
+			Increment: injection.increment,
+			Payload:   injection.payload,
+			Interval:  1000,
 		}
 
 		if err := pingRequest(t, context, packet); err != nil {
@@ -505,12 +507,12 @@ func RunTest(t *testing.T, test *Test) {
 	}
 }
 
-func pingRequest(t *testing.T, context *TestContext, packet *types.PacketParamsReq) error {
+func pingRequest(t *testing.T, context *TestContext, packet *types.PacketInjection) error {
 	return context.client.Create("injectpacket", packet)
 }
 
 func ping(t *testing.T, context *TestContext, ipVersion int, src, dst g.QueryString, count int64, id int64) error {
-	packet := &types.PacketParamsReq{
+	packet := &types.PacketInjection{
 		Src:      src.String(),
 		Dst:      dst.String(),
 		Type:     fmt.Sprintf("icmp%d", ipVersion),

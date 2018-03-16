@@ -56,6 +56,10 @@ Vue.component('inject-form', {
           <label for="inject-count">ICMP Identifier</label>\
           <input id="inject-id" type="number" class="form-control input-sm" v-model="id" min="0" />\
         </div>\
+        <div class="form-group">\
+          <label for="inject-increment">Increment identifier at every packet</label>\
+          <input id="inject-increment" type="checkbox" class="form-check-input" v-model="increment" />\
+        </div>\
       </div>\
       <div class="form-group">\
         <label class="radio-inline">\
@@ -100,6 +104,7 @@ Vue.component('inject-form', {
       type: "icmp4",
       id: 0,
       interval: 0,
+      increment: false,
       port1: 0,
       port2: 0,
       payloadlength: 0,
@@ -251,6 +256,7 @@ Vue.component('inject-form', {
           "Type": this.type,
           "Count": this.count,
           "ICMPID": this.id,
+          "Increment": this.increment,
           "Interval": this.interval,
           "Payload": this.payload,
         }),

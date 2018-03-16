@@ -49,8 +49,8 @@ var (
 	}
 )
 
-// PacketParams describes the packet parameters to be injected
-type PacketParams struct {
+// PacketInjectionParams describes the packet parameters to be injected
+type PacketInjectionParams struct {
 	UUID      string
 	SrcNodeID graph.Identifier `valid:"nonzero"`
 	SrcIP     string           `valid:"nonzero"`
@@ -63,6 +63,7 @@ type PacketParams struct {
 	Count     int64            `valid:"min=1"`
 	ID        int64            `valid:"min=0"`
 	Interval  int64            `valid:"min=0"`
+	Increment bool
 	Payload   string
 }
 
@@ -71,8 +72,81 @@ type Channels struct {
 	Pipes map[string](chan bool)
 }
 
+func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC net.HardwareAddr, srcIP, dstIP net.IP, srcPort, dstPort int64, ID int64, data string) ([]byte, gopacket.Packet, error) {
+	var l []gopacket.SerializableLayer
+	payload := gopacket.Payload([]byte(data))
+
+	if layerType == layers.LayerTypeEthernet {
+		ethLayer := &layers.Ethernet{SrcMAC: srcMAC, DstMAC: dstMAC}
+		switch packetType {
+		case "icmp4", "tcp4", "udp4":
+			ethLayer.EthernetType = layers.EthernetTypeIPv4
+		case "icmp6", "tcp6", "udp6":
+			ethLayer.EthernetType = layers.EthernetTypeIPv6
+		}
+		l = append(l, ethLayer)
+	}
+
+	switch packetType {
+	case "icmp4":
+		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4}
+		icmpLayer := &layers.ICMPv4{
+			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
+			Id:       uint16(ID),
+		}
+		l = append(l, ipLayer, icmpLayer)
+	case "icmp6":
+		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolICMPv6}
+		icmpLayer := &layers.ICMPv6{
+			TypeCode:  layers.CreateICMPv6TypeCode(layers.ICMPv6TypeEchoRequest, 0),
+			TypeBytes: []byte{byte(ID & int64(0xFF00) >> 8), byte(ID & int64(0xFF)), 0, 0},
+		}
+		icmpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ipLayer, icmpLayer)
+	case "tcp4":
+		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolTCP, TTL: 64}
+		srcPort := layers.TCPPort(srcPort)
+		dstPort := layers.TCPPort(dstPort)
+		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
+		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ipLayer, tcpLayer)
+	case "tcp6":
+		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolTCP}
+		srcPort := layers.TCPPort(srcPort)
+		dstPort := layers.TCPPort(dstPort)
+		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
+		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ipLayer, tcpLayer)
+	case "udp4":
+		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolUDP, TTL: 64}
+		srcPort := layers.UDPPort(srcPort)
+		dstPort := layers.UDPPort(dstPort)
+		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
+		udpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ipLayer, udpLayer)
+	case "udp6":
+		ipLayer := &layers.IPv6{SrcIP: srcIP, DstIP: dstIP, Version: 6, NextHeader: layers.IPProtocolUDP}
+		srcPort := layers.UDPPort(srcPort)
+		dstPort := layers.UDPPort(dstPort)
+		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
+		udpLayer.SetNetworkLayerForChecksum(ipLayer)
+		l = append(l, ipLayer, udpLayer)
+	default:
+		return nil, nil, fmt.Errorf("Unsupported traffic type '%s'", packetType)
+	}
+	l = append(l, payload)
+
+	buffer := gopacket.NewSerializeBuffer()
+	if err := gopacket.SerializeLayers(buffer, options, l...); err != nil {
+		return nil, nil, fmt.Errorf("Error while generating %s packet: %s", packetType, err.Error())
+	}
+
+	packetData := buffer.Bytes()
+	return packetData, gopacket.NewPacket(packetData, layerType, gopacket.Default), nil
+}
+
 // InjectPacket inject some packets based on the graph
-func InjectPacket(pp *PacketParams, g *graph.Graph, chnl *Channels) (string, error) {
+func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *Channels) (string, error) {
 	srcIP := getIP(pp.SrcIP)
 	if srcIP == nil {
 		return "", errors.New("Source Node doesn't have proper IP")
@@ -121,73 +195,12 @@ func InjectPacket(pp *PacketParams, g *graph.Graph, chnl *Channels) (string, err
 		return "", err
 	}
 
-	var l []gopacket.SerializableLayer
-	payload := gopacket.Payload([]byte(pp.Payload))
-
 	protocol := common.AllPackets
 	layerType, _ := flow.GetFirstLayerType(encapType)
 	switch layerType {
 	case flow.LayerTypeInGRE, layers.LayerTypeIPv4, layers.LayerTypeIPv6:
 		protocol = common.OnlyIPPackets
-	default:
-		ethLayer := &layers.Ethernet{SrcMAC: srcMAC, DstMAC: dstMAC}
-		switch pp.Type {
-		case "icmp4", "tcp4", "udp4":
-			ethLayer.EthernetType = layers.EthernetTypeIPv4
-		case "icmp6", "tcp6", "udp6":
-			ethLayer.EthernetType = layers.EthernetTypeIPv6
-		}
-		l = append(l, ethLayer)
 	}
-
-	switch pp.Type {
-	case "icmp4":
-		ipLayer := &layers.IPv4{Version: 4, SrcIP: srcIP, DstIP: dstIP, Protocol: layers.IPProtocolICMPv4}
-		icmpLayer := &layers.ICMPv4{
-			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
-			Id:       uint16(pp.ID),
-		}
-		l = append(l, ipLayer, icmpLayer)
-	case "icmp6":
-		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolICMPv6}
-		icmpLayer := &layers.ICMPv6{
-			TypeCode:  layers.CreateICMPv6TypeCode(layers.ICMPv6TypeEchoRequest, 0),
-			TypeBytes: []byte{byte(pp.ID & int64(0xFF00) >> 8), byte(pp.ID & int64(0xFF)), 0, 0},
-		}
-		icmpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ipLayer, icmpLayer)
-	case "tcp4":
-		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolTCP, TTL: 64}
-		srcPort := layers.TCPPort(pp.SrcPort)
-		dstPort := layers.TCPPort(pp.DstPort)
-		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
-		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ipLayer, tcpLayer)
-	case "tcp6":
-		ipLayer := &layers.IPv6{Version: 6, SrcIP: srcIP, DstIP: dstIP, NextHeader: layers.IPProtocolTCP}
-		srcPort := layers.TCPPort(pp.SrcPort)
-		dstPort := layers.TCPPort(pp.DstPort)
-		tcpLayer := &layers.TCP{SrcPort: srcPort, DstPort: dstPort, Seq: rand.Uint32(), SYN: true}
-		tcpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ipLayer, tcpLayer)
-	case "udp4":
-		ipLayer := &layers.IPv4{SrcIP: srcIP, DstIP: dstIP, Version: 4, Protocol: layers.IPProtocolUDP, TTL: 64}
-		srcPort := layers.UDPPort(pp.SrcPort)
-		dstPort := layers.UDPPort(pp.DstPort)
-		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
-		udpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ipLayer, udpLayer)
-	case "udp6":
-		ipLayer := &layers.IPv6{SrcIP: srcIP, DstIP: dstIP, Version: 6, NextHeader: layers.IPProtocolUDP}
-		srcPort := layers.UDPPort(pp.SrcPort)
-		dstPort := layers.UDPPort(pp.DstPort)
-		udpLayer := &layers.UDP{SrcPort: srcPort, DstPort: dstPort}
-		udpLayer.SetNetworkLayerForChecksum(ipLayer)
-		l = append(l, ipLayer, udpLayer)
-	default:
-		return "", fmt.Errorf("Unsupported traffic type '%s'", pp.Type)
-	}
-	l = append(l, payload)
 
 	var rawSocket *common.RawSocket
 	if nsPath != "" {
@@ -199,14 +212,12 @@ func InjectPacket(pp *PacketParams, g *graph.Graph, chnl *Channels) (string, err
 		return "", err
 	}
 
-	buffer := gopacket.NewSerializeBuffer()
-	if err := gopacket.SerializeLayers(buffer, options, l...); err != nil {
+	packetData, packet, err := forgePacket(pp.Type, layerType, srcMAC, dstMAC, srcIP, dstIP, pp.SrcPort, pp.DstPort, pp.ID, pp.Payload)
+	if err != nil {
 		rawSocket.Close()
-		return "", fmt.Errorf("Error while generating %s packet: %s", pp.Type, err.Error())
+		return "", err
 	}
 
-	packetData := buffer.Bytes()
-	packet := gopacket.NewPacket(packetData, layerType, gopacket.Default)
 	flowKey := flow.KeyFromGoPacket(&packet, "").String()
 	f := flow.NewFlow()
 	f.InitFromGoPacket(flowKey, &packet, int64(len(packetData)), tid, flow.FlowUUIDs{}, flow.FlowOpts{})
@@ -238,6 +249,13 @@ func InjectPacket(pp *PacketParams, g *graph.Graph, chnl *Channels) (string, err
 
 				if i != pp.Count-1 {
 					time.Sleep(time.Millisecond * time.Duration(pp.Interval))
+				}
+
+				if strings.HasPrefix(pp.Type, "icmp") && pp.Increment {
+					if packetData, packet, err = forgePacket(pp.Type, layerType, srcMAC, dstMAC, srcIP, dstIP, pp.SrcPort, pp.DstPort, pp.ID+i+1, pp.Payload); err != nil {
+						logging.GetLogger().Error(err)
+						return
+					}
 				}
 			}
 		}

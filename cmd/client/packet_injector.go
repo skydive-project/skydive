@@ -47,6 +47,7 @@ var (
 	id         int64
 	count      int64
 	interval   int64
+	increment  bool
 	uuid       string
 )
 
@@ -58,6 +59,7 @@ var PacketInjectorCmd = &cobra.Command{
 	SilenceUsage: false,
 }
 
+// PacketInjectionCreate describes the command to create a packet injection
 var PacketInjectionCreate = &cobra.Command{
 	Use:          "create",
 	Short:        "create packet injection",
@@ -70,20 +72,21 @@ var PacketInjectionCreate = &cobra.Command{
 			os.Exit(1)
 		}
 
-		packet := &api.PacketParamsReq{
-			Src:      srcNode,
-			Dst:      dstNode,
-			SrcIP:    srcIP,
-			SrcMAC:   srcMAC,
-			SrcPort:  srcPort,
-			DstIP:    dstIP,
-			DstMAC:   dstMAC,
-			DstPort:  dstPort,
-			Type:     packetType,
-			Payload:  payload,
-			ICMPID:   id,
-			Count:    count,
-			Interval: interval,
+		packet := &api.PacketInjection{
+			Src:       srcNode,
+			Dst:       dstNode,
+			SrcIP:     srcIP,
+			SrcMAC:    srcMAC,
+			SrcPort:   srcPort,
+			DstIP:     dstIP,
+			DstMAC:    dstMAC,
+			DstPort:   dstPort,
+			Type:      packetType,
+			Payload:   payload,
+			ICMPID:    id,
+			Count:     count,
+			Interval:  interval,
+			Increment: increment,
 		}
 
 		if err = validator.Validate(packet); err != nil {
@@ -100,6 +103,7 @@ var PacketInjectionCreate = &cobra.Command{
 	},
 }
 
+// PacketInjectionGet describes the command to retrieve a packet injection
 var PacketInjectionGet = &cobra.Command{
 	Use:   "get",
 	Short: "get packet injection",
@@ -111,7 +115,7 @@ var PacketInjectionGet = &cobra.Command{
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		var injection api.PacketParamsReq
+		var injection api.PacketInjection
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
@@ -126,12 +130,13 @@ var PacketInjectionGet = &cobra.Command{
 	},
 }
 
+// PacketInjectionList describes the command to list all the packet injections
 var PacketInjectionList = &cobra.Command{
 	Use:   "list",
 	Short: "list packet injections",
 	Long:  "list packet injections",
 	Run: func(cmd *cobra.Command, args []string) {
-		var injections map[string]api.PacketParamsReq
+		var injections map[string]api.PacketInjection
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
 			logging.GetLogger().Critical(err.Error())
@@ -146,6 +151,7 @@ var PacketInjectionList = &cobra.Command{
 	},
 }
 
+// PacketInjectionDelete describes the command to delete a packet injection
 var PacketInjectionDelete = &cobra.Command{
 	Use:   "delete [injection]",
 	Short: "Delete injection",
@@ -182,6 +188,7 @@ func addInjectPacketFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6")
 	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
 	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
+	cmd.Flags().BoolVarP(&increment, "increment", "", false, "increment ICMP id for each packet")
 	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
 	cmd.Flags().Int64VarP(&interval, "interval", "", 1000, "wait interval milliseconds between sending each packet")
 }
