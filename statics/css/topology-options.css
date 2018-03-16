@@ -86,7 +86,7 @@
   background-color: #eee;
 }
 
-#topology-options-panel .row .clear-btn {
+#topology-options-panel .row .clear-btn, .help-btn {
   display: inline-block;
   padding: 1px;
   margin-left: -11px;
@@ -98,6 +98,11 @@
 #topology-options-panel .row .clear-btn:hover {
   color: #444;
   cursor: pointer;
+}
+
+.help-btn:hover {
+  color: #444;
+  cursor: help;
 }
 
 #topology-options #topology-datepicker {
@@ -133,5 +138,5 @@
 }
 
 #topology-datepicker, #topology-timepicker {
-  width: 120px !important;
+  width: 85px !important;
 }
