@@ -114,7 +114,7 @@ func (u *NetNSProbe) checkNamespace(path string) error {
 		}
 
 		return nil
-	}, 10, time.Millisecond*100)
+	}, 30, time.Millisecond*100)
 }
 
 // Register a new network namespace path
