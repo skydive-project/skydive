@@ -135,7 +135,7 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 		switch protocol {
 		case syscall.IPPROTO_UDP:
 			f.Transport = &flow.FlowLayer{
-				Protocol: flow.FlowProtocol_UDPPORT,
+				Protocol: flow.FlowProtocol_UDP,
 				A:        strconv.FormatUint(portA, 10),
 				B:        strconv.FormatUint(portB, 10),
 			}
@@ -148,7 +148,7 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 			}
 		case syscall.IPPROTO_TCP:
 			f.Transport = &flow.FlowLayer{
-				Protocol: flow.FlowProtocol_TCPPORT,
+				Protocol: flow.FlowProtocol_TCP,
 				A:        strconv.FormatUint(portA, 10),
 				B:        strconv.FormatUint(portB, 10),
 			}

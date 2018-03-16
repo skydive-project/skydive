@@ -30,9 +30,9 @@ package flow;
 enum FlowProtocol {
   ETHERNET = 0;
   IPV4 = 1;
-  TCPPORT = 2;
-  UDPPORT = 3;
-  SCTPPORT = 4;
+  TCP = 2;
+  UDP = 3;
+  SCTP = 4;
   IPV6 = 5;
   ICMPV4 = 6;
   ICMPV6 = 7;

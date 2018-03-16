@@ -719,19 +719,20 @@ func (f *FlowTraversalStep) Sockets(s ...interface{}) *SocketsTraversalStep {
 
 	flowSockets := make(map[string][]*socketinfo.ConnectionInfo)
 	for _, fl := range f.flowset.Flows {
-		if transport := fl.GetTransport(); transport != nil && transport.GetProtocol() == flow.FlowProtocol_TCPPORT {
+		if transport := fl.GetTransport(); transport != nil && (transport.GetProtocol() == flow.FlowProtocol_TCP || transport.GetProtocol() == flow.FlowProtocol_UDP) {
 			var sockets []*socketinfo.ConnectionInfo
 
 			localPort, _ := strconv.Atoi(fl.GetTransport().GetA())
 			remotePort, _ := strconv.Atoi(fl.GetTransport().GetB())
+			protocol := transport.GetProtocol()
 
-			hash := socketinfo.HashTuple(net.ParseIP(fl.GetNetwork().GetA()), int64(localPort), net.ParseIP(fl.GetNetwork().GetB()), int64(remotePort))
+			hash := socketinfo.HashTuple(protocol, net.ParseIP(fl.GetNetwork().GetA()), int64(localPort), net.ParseIP(fl.GetNetwork().GetB()), int64(remotePort))
 			_, socks := indexer.FromHash(hash)
 			for _, socket := range socks {
 				sockets = append(sockets, socket.(*socketinfo.ConnectionInfo))
 			}
 
-			hash = socketinfo.HashTuple(net.ParseIP(fl.GetNetwork().GetB()), int64(remotePort), net.ParseIP(fl.GetNetwork().GetA()), int64(localPort))
+			hash = socketinfo.HashTuple(protocol, net.ParseIP(fl.GetNetwork().GetB()), int64(remotePort), net.ParseIP(fl.GetNetwork().GetA()), int64(localPort))
 			_, socks = indexer.FromHash(hash)
 			for _, socket := range socks {
 				sockets = append(sockets, socket.(*socketinfo.ConnectionInfo))

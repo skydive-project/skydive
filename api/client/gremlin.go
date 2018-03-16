@@ -241,9 +241,9 @@ func (g *GremlinQueryHelper) GetSockets(query string) (sockets map[string][]*soc
 	for id, objs := range maps[0] {
 		sockets[id] = make([]*socketinfo.ConnectionInfo, 0)
 		for _, obj := range objs {
-			socket := &socketinfo.ConnectionInfo{}
-			if err = mapstructure.WeakDecode(obj, socket); err == nil {
-				sockets[id] = append(sockets[id], socket)
+			var socket socketinfo.ConnectionInfo
+			if err = socket.Decode(obj); err == nil {
+				sockets[id] = append(sockets[id], &socket)
 			}
 		}
 	}

@@ -25,6 +25,8 @@ package socketinfo
 import (
 	"net"
 	"testing"
+
+	"github.com/skydive-project/skydive/flow"
 )
 
 func TestConnectionCache(t *testing.T) {
@@ -43,16 +45,17 @@ func TestConnectionCache(t *testing.T) {
 		LocalPort:     int64(addr1.Port),
 		RemoteAddress: addr2.IP.String(),
 		RemotePort:    int64(addr2.Port),
+		Protocol:      flow.FlowProtocol_TCP,
 	}
 	c.Set(conn.Hash(), conn)
 
-	if c, _ := c.Get(addr1, addr2); c == nil {
+	if c, _ := c.Get(flow.FlowProtocol_TCP, addr1.IP, addr1.Port, addr2.IP, addr2.Port); c == nil {
 		t.Errorf("Expected entry for %s -> %s", addr1.String(), addr2.String())
 	}
 
-	c.Remove(addr1, addr2)
+	c.Remove(flow.FlowProtocol_TCP, addr1, addr2)
 
-	if c, _ := c.Get(addr1, addr2); c != nil {
+	if c, _ := c.Get(flow.FlowProtocol_TCP, addr1.IP, addr1.Port, addr2.IP, addr2.Port); c != nil {
 		t.Errorf("No entry expected for %s -> %s, got %+v", addr1.String(), addr2.String(), c)
 	}
 }

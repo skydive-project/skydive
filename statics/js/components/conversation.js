@@ -147,15 +147,15 @@ ConversationLayout.prototype.ShowConversation = function(layer) {
       flowLayer = "Network";
       break;
     case "udp":
-      gremlinQuery += ".Has('Transport.Protocol', 'UDPPORT')";
+      gremlinQuery += ".Has('Transport.Protocol', 'UDP')";
       flowLayer = "Transport";
       break;
     case "tcp":
-      gremlinQuery += ".Has('Transport.Protocol', 'TCPPORT')";
+      gremlinQuery += ".Has('Transport.Protocol', 'TCP')";
       flowLayer = "Transport";
       break;
     case "sctp":
-      gremlinQuery += ".Has('Transport.Protocol', 'SCTPPORT')";
+      gremlinQuery += ".Has('Transport.Protocol', 'SCTP')";
       flowLayer = "Transport";
       break;
     default:
