@@ -30,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/docker"
+	"github.com/skydive-project/skydive/topology/probes/lxd"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/topology/probes/netns"
 	"github.com/skydive-project/skydive/topology/probes/neutron"
@@ -69,6 +70,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 		switch t {
 		case "ovsdb":
 			probes[t] = ovsdb.NewOvsdbProbeFromConfig(g, n)
+		case "lxd":
+			lxdURL := config.GetConfig().GetString("lxd.url")
+			lxdProbe, err := lxd.NewLxdProbe(nsProbe, lxdURL)
+			if err != nil {
+				return nil, err
+			}
+			probes[t] = lxdProbe
 		case "docker":
 			dockerURL := config.GetString("docker.url")
 			dockerProbe, err := docker.NewDockerProbe(nsProbe, dockerURL)

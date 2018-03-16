@@ -1446,10 +1446,28 @@
 			"revisionTime": "2017-11-22T16:09:35Z"
 		},
 		{
+			"checksumSHA1": "LHZh5apJZKfVop30Df+QMsMybJM=",
+			"path": "github.com/juju/loggo",
+			"revision": "8232ab8918d91c72af1a9fb94d3edbe31d88b790",
+			"revisionTime": "2017-06-05T01:46:07Z"
+		},
+		{
 			"checksumSHA1": "a8Ge6pE7oxux9ZMZVAlyEeGzCng=",
 			"path": "github.com/juju/ratelimit",
 			"revision": "5b9ff866471762aa2ab2dced63c9fb6f53921342",
 			"revisionTime": "2017-05-23T01:21:41Z"
+		},
+		{
+			"checksumSHA1": "cjwF6h7GHyIgRAtE2ALx2OuLWqY=",
+			"path": "github.com/juju/webbrowser",
+			"revision": "54b8c57083b4afb7dc75da7f13e2967b2606a507",
+			"revisionTime": "2016-03-09T14:36:29Z"
+		},
+		{
+			"checksumSHA1": "T+kh2poktvucf6QrY3nRo09otto=",
+			"path": "github.com/julienschmidt/httprouter",
+			"revision": "d1898390779332322e6b5ca5011da4bf249bb056",
+			"revisionTime": "2018-02-22T16:05:26Z"
 		},
 		{
 			"checksumSHA1": "g+afVQQVopBLiLB5pFZp/8s6aBs=",
@@ -1468,6 +1486,70 @@
 			"path": "github.com/kr/pty",
 			"revision": "95d05c1eef33a45bd58676b6ce28d105839b8d0b",
 			"revisionTime": "2017-10-06T17:48:01Z"
+		},
+		{
+			"checksumSHA1": "E6lbuGqlBGB0dnklAzqfNZ8wd6s=",
+			"path": "github.com/lxc/lxd/client",
+			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",
+			"revisionTime": "2017-12-19T22:27:04Z",
+			"version": "lxd-2.21",
+			"versionExact": "lxd-2.21"
+		},
+		{
+			"checksumSHA1": "LD0LODkZVNMWnt47BNN7tTQ1JtY=",
+			"path": "github.com/lxc/lxd/shared",
+			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",
+			"revisionTime": "2017-12-19T22:27:04Z",
+			"version": "lxd-2.21",
+			"versionExact": "lxd-2.21"
+		},
+		{
+			"checksumSHA1": "ig/gOCGx1AGYU55xjkeBM6wx6EU=",
+			"path": "github.com/lxc/lxd/shared/api",
+			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",
+			"revisionTime": "2017-12-19T22:27:04Z",
+			"version": "lxd-2.21",
+			"versionExact": "lxd-2.21"
+		},
+		{
+			"checksumSHA1": "X5MyFQ1fUNXE0VnnogMCguow4UI=",
+			"path": "github.com/lxc/lxd/shared/cancel",
+			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",
+			"revisionTime": "2017-12-19T22:27:04Z",
+			"version": "lxd-2.21",
+			"versionExact": "lxd-2.21"
+		},
+		{
+			"checksumSHA1": "Mg0lxP3ywEWUuoPP3Faoc1K/4UU=",
+			"path": "github.com/lxc/lxd/shared/ioprogress",
+			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",
+			"revisionTime": "2017-12-19T22:27:04Z",
+			"version": "lxd-2.21",
+			"versionExact": "lxd-2.21"
+		},
+		{
+			"checksumSHA1": "KotoMpJvNmuV9ur+rgr59qOzT44=",
+			"path": "github.com/lxc/lxd/shared/logger",
+			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",
+			"revisionTime": "2017-12-19T22:27:04Z",
+			"version": "lxd-2.21",
+			"versionExact": "lxd-2.21"
+		},
+		{
+			"checksumSHA1": "fCtpj6ZloSiOarLRJDwmoHSCIwc=",
+			"path": "github.com/lxc/lxd/shared/osarch",
+			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",
+			"revisionTime": "2017-12-19T22:27:04Z",
+			"version": "lxd-2.21",
+			"versionExact": "lxd-2.21"
+		},
+		{
+			"checksumSHA1": "CuZ96YmYZNSiR2LbQS5Q2fyCHkE=",
+			"path": "github.com/lxc/lxd/shared/simplestreams",
+			"revision": "9907f3a64b6b8ec9144e8be02d633b951439c0f6",
+			"revisionTime": "2017-12-19T22:27:04Z",
+			"version": "lxd-2.21",
+			"versionExact": "lxd-2.21"
 		},
 		{
 			"checksumSHA1": "KCgFx/QQG9vUtshnL9aUxeWGFyY=",
@@ -1687,6 +1769,12 @@
 			"path": "github.com/robertkrimen/otto/token",
 			"revision": "bf1c3795ba078da6905fe80bfbc3ed3d8c36e9aa",
 			"revisionTime": "2016-10-04T12:49:59Z"
+		},
+		{
+			"checksumSHA1": "ehRkDJisGCCSYdNgyvs1gSywSPE=",
+			"path": "github.com/rogpeppe/fastuuid",
+			"revision": "6724a57986aff9bff1a1770e9347036def7c89f6",
+			"revisionTime": "2015-01-06T09:31:45Z"
 		},
 		{
 			"checksumSHA1": "GN8zgTgvo+ouD9LClMmOL3NB+jM=",
@@ -2005,6 +2093,18 @@
 			"revisionTime": "2016-01-26T17:50:25Z"
 		},
 		{
+			"checksumSHA1": "Fy1wkWVRMRkq0/AEzFWwRCib8jU=",
+			"path": "golang.org/x/crypto/nacl/box",
+			"revision": "432090b8f568c018896cd8a0fb0345872bbac6ce",
+			"revisionTime": "2018-02-08T00:33:17Z"
+		},
+		{
+			"checksumSHA1": "TwxAhBcGuCzWA6H3FvJE1XVZsxo=",
+			"path": "golang.org/x/crypto/nacl/secretbox",
+			"revision": "432090b8f568c018896cd8a0fb0345872bbac6ce",
+			"revisionTime": "2018-02-08T00:33:17Z"
+		},
+		{
 			"checksumSHA1": "gGwADm6eYv1MbHg29x1jWy6fB7w=",
 			"path": "golang.org/x/crypto/openpgp",
 			"revision": "1f22c0103821b9390939b6776727195525381532"
@@ -2035,6 +2135,18 @@
 			"revision": "1f22c0103821b9390939b6776727195525381532"
 		},
 		{
+			"checksumSHA1": "kVKE0OX1Xdw5mG7XKT86DLLKE2I=",
+			"path": "golang.org/x/crypto/poly1305",
+			"revision": "432090b8f568c018896cd8a0fb0345872bbac6ce",
+			"revisionTime": "2018-02-08T00:33:17Z"
+		},
+		{
+			"checksumSHA1": "cRCpfAgTnlIDpdcfjivbiv+9YJU=",
+			"path": "golang.org/x/crypto/salsa20/salsa",
+			"revision": "432090b8f568c018896cd8a0fb0345872bbac6ce",
+			"revisionTime": "2018-02-08T00:33:17Z"
+		},
+		{
 			"checksumSHA1": "locu61AZ1k1skk45VLE2zpDaVTA=",
 			"path": "golang.org/x/crypto/ssh",
 			"revision": "1f22c0103821b9390939b6776727195525381532"
@@ -2061,6 +2173,18 @@
 			"path": "golang.org/x/net/context/ctxhttp",
 			"revision": "66aacef3dd8a676686c7ae3716979581e8b03c47",
 			"revisionTime": "2016-09-14T00:11:54Z"
+		},
+		{
+			"checksumSHA1": "L68uqaYKEOxkq2xwnNV2bRP7yO4=",
+			"path": "golang.org/x/net/html",
+			"revision": "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb",
+			"revisionTime": "2018-02-18T17:15:52Z"
+		},
+		{
+			"checksumSHA1": "NvlH++AI8+25Z2Vs8WKxLVCNrxo=",
+			"path": "golang.org/x/net/html/atom",
+			"revision": "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb",
+			"revisionTime": "2018-02-18T17:15:52Z"
 		},
 		{
 			"checksumSHA1": "cY4u3LCdJxKaS2GbftZjfrOSnNE=",
@@ -2097,6 +2221,12 @@
 			"path": "golang.org/x/net/proxy",
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172",
 			"revisionTime": "2016-02-25T17:50:37Z"
+		},
+		{
+			"checksumSHA1": "Q165MxF3KQE3AaU3GGPsKFLEFCU=",
+			"path": "golang.org/x/net/publicsuffix",
+			"revision": "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb",
+			"revisionTime": "2018-02-18T17:15:52Z"
 		},
 		{
 			"checksumSHA1": "u/r66lwYfgg682u5hZG7/E7+VCY=",
@@ -2301,16 +2431,64 @@
 			"versionExact": "v1.7.5"
 		},
 		{
+			"checksumSHA1": "nkSUCucyJWGp2kBsYMzQ+UcyftY=",
+			"path": "gopkg.in/errgo.v1",
+			"revision": "442357a80af5c6bf9b6d51ae791a39c3421004f3",
+			"revisionTime": "2016-12-22T12:58:16Z"
+		},
+		{
 			"checksumSHA1": "WCpgePNKiUKt0S0VE/e5kF5OnzU=",
 			"comment": "v1.2.9",
 			"path": "gopkg.in/fsnotify.v1",
 			"revision": "8611c35ab31c1c28aa903d33cf8b6e44a399b09e"
 		},
 		{
+			"checksumSHA1": "1sTwddC+3MJeObnzpIPWnXs6oM4=",
+			"path": "gopkg.in/httprequest.v1",
+			"revision": "93f8fee4081f01ea23d258bdbbcdd319f668d718",
+			"revisionTime": "2018-02-09T16:35:14Z"
+		},
+		{
 			"checksumSHA1": "6f8MEU31llHM1sLM/GGH4/Qxu0A=",
 			"path": "gopkg.in/inf.v0",
 			"revision": "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4",
 			"revisionTime": "2015-09-11T12:57:57Z"
+		},
+		{
+			"checksumSHA1": "5oxp7mMFzr9Lt6O+iUpjf7DPBXM=",
+			"path": "gopkg.in/macaroon-bakery.v2/bakery",
+			"revision": "22c04a94d902625448265ef041bb53e715452a40",
+			"revisionTime": "2018-02-09T09:08:14Z"
+		},
+		{
+			"checksumSHA1": "1T/0110+eKcJB5ehfCGEaHQOZtA=",
+			"path": "gopkg.in/macaroon-bakery.v2/bakery/checkers",
+			"revision": "22c04a94d902625448265ef041bb53e715452a40",
+			"revisionTime": "2018-02-09T09:08:14Z"
+		},
+		{
+			"checksumSHA1": "Gh9daQ25fsyNer7JI5enGaDUajA=",
+			"path": "gopkg.in/macaroon-bakery.v2/bakery/internal/macaroonpb",
+			"revision": "22c04a94d902625448265ef041bb53e715452a40",
+			"revisionTime": "2018-02-09T09:08:14Z"
+		},
+		{
+			"checksumSHA1": "0ARUOAcAWuCSHSWHrgCKEjwGd+0=",
+			"path": "gopkg.in/macaroon-bakery.v2/httpbakery",
+			"revision": "22c04a94d902625448265ef041bb53e715452a40",
+			"revisionTime": "2018-02-09T09:08:14Z"
+		},
+		{
+			"checksumSHA1": "e8u06H3WGdqILMHlEAc1N+KADok=",
+			"path": "gopkg.in/macaroon-bakery.v2/internal/httputil",
+			"revision": "22c04a94d902625448265ef041bb53e715452a40",
+			"revisionTime": "2018-02-09T09:08:14Z"
+		},
+		{
+			"checksumSHA1": "VVnnp7lmRBumTK1iOUXaNKT3yrI=",
+			"path": "gopkg.in/macaroon.v2",
+			"revision": "bed2a428da6e56d950bed5b41fcbae3141e5b0d0",
+			"revisionTime": "2017-10-17T15:30:37Z"
 		},
 		{
 			"checksumSHA1": "omNnn0E5H5b9BuDZN5fUXBnETl8=",

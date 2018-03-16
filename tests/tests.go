@@ -74,6 +74,7 @@ agent:
       - netns
       - ovsdb
       - docker
+      - lxd
     netlink:
       metrics_update: 5
 
