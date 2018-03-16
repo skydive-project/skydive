@@ -111,6 +111,7 @@ func (p *Packet) Layer(t gopacket.LayerType) gopacket.Layer {
 	return nil
 }
 
+// LinkLayer returns first link layer
 func (p *Packet) LinkLayer() gopacket.LinkLayer {
 	if p.linkLayer != nil {
 		return p.linkLayer
@@ -122,6 +123,7 @@ func (p *Packet) LinkLayer() gopacket.LinkLayer {
 	return p.linkLayer
 }
 
+// NetworkLayer return first network layer
 func (p *Packet) NetworkLayer() gopacket.NetworkLayer {
 	if p.networkLayer != nil {
 		return p.networkLayer
@@ -135,6 +137,7 @@ func (p *Packet) NetworkLayer() gopacket.NetworkLayer {
 	return p.networkLayer
 }
 
+// TransportLayer returns first transport layer
 func (p *Packet) TransportLayer() gopacket.TransportLayer {
 	if p.transportLayer != nil {
 		return p.transportLayer
@@ -150,21 +153,20 @@ func (p *Packet) TransportLayer() gopacket.TransportLayer {
 	return p.transportLayer
 }
 
+// ApplicationFlow returns first application flow
 func (p *Packet) ApplicationFlow() *gopacket.Flow {
 	if layer := p.Layer(layers.LayerTypeICMPv4); layer != nil {
-		if l, ok := layer.(*ICMPv4); ok {
-			value32 := make([]byte, 4)
-			binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
-			f := gopacket.NewFlow(0, value32, nil)
-			return &f
-		}
+		l := layer.(*ICMPv4)
+		value32 := make([]byte, 4)
+		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+		f := gopacket.NewFlow(0, value32, nil)
+		return &f
 	} else if layer := p.Layer(layers.LayerTypeICMPv6); layer != nil {
-		if l, ok := layer.(*ICMPv6); ok {
-			value32 := make([]byte, 4)
-			binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
-			f := gopacket.NewFlow(0, value32, nil)
-			return &f
-		}
+		l := layer.(*ICMPv6)
+		value32 := make([]byte, 4)
+		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+		f := gopacket.NewFlow(0, value32, nil)
+		return &f
 	}
 
 	return nil
@@ -299,10 +301,11 @@ func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
 func LayersPath(ls []gopacket.Layer) (string, string) {
 	var app, path string
 	for i, layer := range ls {
-		if layer.LayerType() == layers.LayerTypeLinuxSLL {
+		tp := layer.LayerType()
+		if tp == layers.LayerTypeLinuxSLL {
 			continue
 		}
-		if layer.LayerType() == gopacket.LayerTypePayload {
+		if tp == gopacket.LayerTypePayload || tp == gopacket.LayerTypeDecodeFailure {
 			break
 		}
 		if i > 0 {
@@ -761,8 +764,9 @@ func (f *Flow) newTransportLayer(packet *Packet, tcpMetric bool) error {
 // case of encapsulation like GRE, VXLAN, etc.
 func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF) *PacketSequence {
 	ps := &PacketSequence{}
-	if packet.Layer(gopacket.LayerTypeDecodeFailure) != nil {
-		logging.GetLogger().Debug(packet.Dump())
+
+	if packet.LinkLayer() == nil && packet.NetworkLayer() == nil {
+		logging.GetLogger().Debugf("Unknown packet : %s\n", packet.Dump())
 		return ps
 	}
 

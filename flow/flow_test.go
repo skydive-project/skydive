@@ -277,7 +277,6 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 	}
 	defer handleRead.Close()
 
-	var pcapPacketNB int
 	for {
 		data, ci, err := handleRead.ReadPacketData()
 		if err != nil && err != io.EOF {
@@ -287,22 +286,8 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 		} else {
 			p := gopacket.NewPacket(data, linkType, gopacket.Default)
 			p.Metadata().CaptureInfo = ci
-			if p.ErrorLayer() != nil {
-				t.Fatalf("Failed to decode packet: %s", p.ErrorLayer().Error())
-			}
-			pcapPacketNB++
-			/*if strings.Contains(LayerPathFromGoPacket(p), "DecodeFailure") {
-				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
-			}*/
+
 			ps := PacketSeqFromGoPacket(p, 0, bpf)
-			if ps == nil {
-				t.Fatal("Failed to get PacketSeq: ", err)
-			}
-			/*for level, p := range ps.Packets {
-				if strings.Contains(LayerPathFromGoPacket(p.gopacket), "DecodeFailure") {
-					t.Fatalf("GoPacket decode this pcap packet %d level %d as DecodeFailure :\n%s", pcapPacketNB, level+1, p.gopacket.Dump())
-				}
-			}*/
 			table.processPacketSeq(ps)
 		}
 	}
@@ -1010,4 +995,39 @@ func TestVxlanIcmpv4Truncated(t *testing.T) {
 	}
 
 	validatePCAP(t, "pcaptraces/vxlan-icmpv4-truncated.pcap", layers.LinkTypeEthernet, nil, expected)
+}
+
+func TestNTPCorrupted(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/Dot1Q/IPv4/UDP",
+			Application: "UDP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "00:1c:0f:5c:a2:83",
+				B:        "00:1c:0f:09:00:10",
+				ID:       202,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "89.46.101.31",
+				B:        "196.95.70.83",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        "40820",
+				B:        "123",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   50,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+			TrackingID:   "b416e1a36e6d5875",
+			L3TrackingID: "77f3bb5333e3d353",
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/ntp-corrupted.pcap", layers.LinkTypeEthernet, nil, expected)
 }
