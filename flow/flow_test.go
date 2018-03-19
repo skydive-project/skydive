@@ -293,7 +293,7 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 	}
 }
 
-func getFlowChain(t *testing.T, table *Table, uuid string) []*Flow {
+func getFlowChain(t *testing.T, table *Table, uuid string, flowChain map[string]*Flow) {
 	// lookup for the parent
 	searchQuery := &filters.SearchQuery{
 		Filter: filters.NewTermStringFilter("UUID", uuid),
@@ -305,41 +305,32 @@ func getFlowChain(t *testing.T, table *Table, uuid string) []*Flow {
 	}
 	fl := flows[0]
 
-	flowChain := []*Flow{}
-Chain:
-	for {
-		flowChain = append(flowChain, fl)
-		searchQuery.Filter = filters.NewTermStringFilter("ParentUUID", fl.UUID)
-		children := table.getFlows(searchQuery).GetFlows()
-		switch len(children) {
-		case 0:
-			break Chain
-		case 1:
-			fl = children[0]
-		default:
-			t.Errorf("Should return only one flow got : %+v", children)
-		}
-	}
+	flowChain[fl.UUID] = fl
 
-	return flowChain
+	if fl.ParentUUID != "" {
+		getFlowChain(t, table, fl.ParentUUID, flowChain)
+	}
 }
 
 func validateAllParentChains(t *testing.T, table *Table) {
 	searchQuery := &filters.SearchQuery{
-		Filter: filters.NewTermStringFilter("ParentUUID", ""),
+		Filter: filters.NewNotNullFilter("ParentUUID"),
 	}
 
-	flowChained := []*Flow{}
+	flowChain := make(map[string]*Flow, 0)
 
 	flows := table.getFlows(searchQuery).GetFlows()
-	for _, f := range flows {
-		fls := getFlowChain(t, table, f.UUID)
-		flowChained = append(flowChained, fls...)
+	for _, fl := range flows {
+		flowChain[fl.UUID] = fl
+
+		if fl.ParentUUID != "" {
+			getFlowChain(t, table, fl.UUID, flowChain)
+		}
 	}
 
 	// we should have touch all the flow
 	flows = table.getFlows(&filters.SearchQuery{}).GetFlows()
-	if len(flows) != len(flowChained) {
+	if len(flows) != len(flowChain) {
 		t.Errorf("Flow parent chain is incorrect : %+v", flows)
 	}
 }
@@ -1030,4 +1021,87 @@ func TestNTPCorrupted(t *testing.T) {
 	}
 
 	validatePCAP(t, "pcaptraces/ntp-corrupted.pcap", layers.LinkTypeEthernet, nil, expected)
+}
+
+func TestVxlanSrcPort(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/VXLAN",
+			Application: "VXLAN",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "fa:36:71:46:76:19",
+				B:        "3a:07:fe:34:45:8e",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.0.1",
+				B:        "172.16.0.2",
+				ID:       10,
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        "51031",
+				B:        "4789",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   208,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/TCP",
+			Application: "TCP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "f2:98:72:99:56:08",
+				B:        "26:09:b6:98:f9:64",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.1",
+				B:        "192.168.0.2",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_TCP,
+				A:        "1468",
+				B:        "8080",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   54,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/TCP",
+			Application: "TCP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "f2:98:72:99:56:08",
+				B:        "26:09:b6:98:f9:64",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.1",
+				B:        "192.168.0.2",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_TCP,
+				A:        "1890",
+				B:        "8080",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   54,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/vxlan-src-port.pcap", layers.LinkTypeEthernet, nil, expected)
 }

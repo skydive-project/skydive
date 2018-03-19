@@ -41,8 +41,12 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// ErrFlowProtocol invalid protocol error
-var ErrFlowProtocol = errors.New("FlowProtocol invalid")
+var (
+	// ErrFlowProtocol invalid protocol error
+	ErrFlowProtocol = errors.New("FlowProtocol invalid")
+	// ErrLayerNotFound layer not present in the packet
+	ErrLayerNotFound = errors.New("Layer not found")
+)
 
 const (
 	// DefaultCaptureLength : default packet capture length
@@ -154,22 +158,43 @@ func (p *Packet) TransportLayer() gopacket.TransportLayer {
 }
 
 // ApplicationFlow returns first application flow
-func (p *Packet) ApplicationFlow() *gopacket.Flow {
+func (p *Packet) ApplicationFlow() (gopacket.Flow, error) {
 	if layer := p.Layer(layers.LayerTypeICMPv4); layer != nil {
 		l := layer.(*ICMPv4)
 		value32 := make([]byte, 4)
 		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
-		f := gopacket.NewFlow(0, value32, nil)
-		return &f
+		return gopacket.NewFlow(0, value32, nil), nil
 	} else if layer := p.Layer(layers.LayerTypeICMPv6); layer != nil {
 		l := layer.(*ICMPv6)
 		value32 := make([]byte, 4)
 		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
-		f := gopacket.NewFlow(0, value32, nil)
-		return &f
+		return gopacket.NewFlow(0, value32, nil), nil
 	}
 
-	return nil
+	return gopacket.Flow{}, ErrLayerNotFound
+}
+
+// TransportFlow returns first transport flow
+func (p *Packet) TransportFlow() (gopacket.Flow, error) {
+	layer := p.TransportLayer()
+	if layer == nil {
+		return gopacket.Flow{}, ErrLayerNotFound
+	}
+
+	// check vxlan in order to ignore source port from hash calculation
+	if layer.LayerType() == layers.LayerTypeUDP {
+		if vxlan := p.Layers[len(p.Layers)-1]; vxlan.LayerType() == layers.LayerTypeVXLAN {
+			value16 := make([]byte, 2)
+			binary.BigEndian.PutUint16(value16, uint16(layer.(*layers.UDP).DstPort))
+
+			// use the vni and the dest port to distinguish flows
+			value32 := make([]byte, 4)
+			binary.BigEndian.PutUint32(value32, vxlan.(*layers.VXLAN).VNI)
+			return gopacket.NewFlow(0, value32, value16), nil
+		}
+	}
+
+	return layer.TransportFlow(), nil
 }
 
 // Key returns the unique flow key
@@ -180,10 +205,10 @@ func (p *Packet) Key(parentUUID string) string {
 	if layer := p.NetworkLayer(); layer != nil {
 		uuid ^= layer.NetworkFlow().FastHash()
 	}
-	if layer := p.TransportLayer(); layer != nil {
-		uuid ^= layer.TransportFlow().FastHash()
+	if tf, err := p.TransportFlow(); err == nil {
+		uuid ^= tf.FastHash()
 	}
-	if af := p.ApplicationFlow(); af != nil {
+	if af, err := p.ApplicationFlow(); err == nil {
 		uuid ^= af.FastHash()
 	}
 
@@ -598,7 +623,7 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 		return f.updateMetricsWithNetworkLayer(packet)
 	}
 
-	return errors.New("Unable to decode the network layer")
+	return ErrLayerNotFound
 }
 
 func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet) error {
@@ -648,7 +673,7 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet) error {
 		return nil
 	}
 
-	return errors.New("Unable to decode the IP layer")
+	return ErrLayerNotFound
 }
 
 func (f *Flow) updateTCPMetrics(packet *Packet) error {
@@ -681,7 +706,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 		ipv4Layer := packet.Layer(layers.LayerTypeIPv4)
 		ipv4Packet, ok := ipv4Layer.(*layers.IPv4)
 		if !ok {
-			return errors.New("Unable to decode IPv4 Layer")
+			return ErrLayerNotFound
 		}
 		srcIP = ipv4Packet.SrcIP.String()
 		timeToLive = uint32(ipv4Packet.TTL)
@@ -689,7 +714,7 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 		ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
 		ipv6Packet, ok := ipv6Layer.(*layers.IPv6)
 		if !ok {
-			return errors.New("Unable to decode IPv4 Layer")
+			return ErrLayerNotFound
 		}
 		srcIP = ipv6Packet.SrcIP.String()
 		timeToLive = uint32(ipv6Packet.HopLimit)
@@ -754,7 +779,7 @@ func (f *Flow) newTransportLayer(packet *Packet, tcpMetric bool) error {
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
 	} else {
-		return errors.New("Unable to decode the transport layer")
+		return ErrLayerNotFound
 	}
 
 	return nil
