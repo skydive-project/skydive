@@ -35,21 +35,26 @@ var LinkLabelBandwidth = Vue.extend({
     },
 
     updateData: function(link) {
-      if (!link.target.metadata.LastUpdateMetric) {
+      var metadata;
+      if (link.target.metadata.LastUpdateMetric) {
+        metadata = link.target.metadata;
+      } else if (link.source.metadata.LastUpdateMetric) {
+        metadata = link.source.metadata;
+      } else {
         return;
       }
 
       const defaultBandwidthBaseline = 1024 * 1024 * 1024; // 1 gbps
 
       link.bandwidthBaseline = (this.topology.bandwidth.bandwidthThreshold === 'relative') ?
-        link.target.metadata.Speed || defaultBandwidthBaseline : 1;
+        metadata.Speed || defaultBandwidthBaseline : 1;
 
-      link.bandwidthAbsolute = this.bandwidthFromMetrics(link.target.metadata.LastUpdateMetric);
+      link.bandwidthAbsolute = this.bandwidthFromMetrics(metadata.LastUpdateMetric);
       link.bandwidth = link.bandwidthAbsolute / link.bandwidthBaseline;
     },
  
     hasData: function(link) {
-      if (!link.target.metadata.LastUpdateMetric) {
+      if (!link.target.metadata.LastUpdateMetric && !link.source.metadata.LastUpdateMetric) {
         return false;
       }
 
