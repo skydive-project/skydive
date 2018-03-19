@@ -171,7 +171,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	}
 
 	for _, f := range flows {
-		err, shouldRoll := c.client.BulkIndex("flow", f.UUID, f)
+		shouldRoll, err := c.client.BulkIndex("flow", f.UUID, f)
 		if err != nil {
 			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 			continue
@@ -183,8 +183,8 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 		}
 
 		if f.LastUpdateMetric != nil {
-			err, shouldRoll := c.client.BulkIndexChild("metric", f.UUID, "", f.LastUpdateMetric)
-			if  err != nil {
+			shouldRoll, err := c.client.BulkIndexChild("metric", f.UUID, "", f.LastUpdateMetric)
+			if err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue
 			}
@@ -207,7 +207,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				"Index":     r.Index,
 				"Data":      r.Data,
 			}
-			err, shouldRoll := c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket)
+			shouldRoll, err := c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket)
 			if err != nil {
 				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
 				continue

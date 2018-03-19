@@ -24,12 +24,13 @@ package graph
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
 	"time"
-	"net/http"
 
 	"github.com/davecgh/go-spew/spew"
 	elastigo "github.com/mattbaird/elastigo/lib"
@@ -38,7 +39,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
-	"fmt"
 )
 
 type revisionArray []interface{}
@@ -100,19 +100,19 @@ func (f *fakeElasticsearchClient) RollIndex() error {
 	return nil
 }
 
-func (f *fakeElasticsearchClient) Index(obj string, id string, data interface{}) (error, bool) {
+func (f *fakeElasticsearchClient) Index(obj string, id string, data interface{}) (bool, error) {
 	f.revisions[id] = data
-	return nil, f.shouldRoll
+	return f.shouldRoll, nil
 }
-func (f *fakeElasticsearchClient) BulkIndex(obj string, id string, data interface{}) (error, bool) {
+func (f *fakeElasticsearchClient) BulkIndex(obj string, id string, data interface{}) (bool, error) {
 	f.revisions[id] = data
-	return nil,  f.shouldRoll
+	return f.shouldRoll, nil
 }
-func (f *fakeElasticsearchClient) IndexChild(obj string, parent string, id string, data interface{}) (error, bool) {
-	return nil,  f.shouldRoll
+func (f *fakeElasticsearchClient) IndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
+	return f.shouldRoll, nil
 }
-func (f *fakeElasticsearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) (error, bool) {
-	return nil,  f.shouldRoll
+func (f *fakeElasticsearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
+	return f.shouldRoll, nil
 }
 func (f *fakeElasticsearchClient) Update(obj string, id string, data interface{}) error {
 	return nil
@@ -149,7 +149,7 @@ func (f *fakeElasticsearchClient) Start(name string, mappings []map[string][]byt
 
 func newElasticsearchGraph(t *testing.T) (*Graph, *fakeElasticsearchClient) {
 	client := &fakeElasticsearchClient{
-		revisions: make(map[string]interface{}),
+		revisions:  make(map[string]interface{}),
 		shouldRoll: false,
 	}
 	b, err := newElasticSearchBackend(client)
@@ -488,7 +488,7 @@ func delTestIndex(name string) error {
 	return nil
 }
 
-func initBackend(entriesLimit int, name string) (*ElasticSearchBackend, error){
+func initBackend(entriesLimit int, name string) (*ElasticSearchBackend, error) {
 	addr := config.GetString("storage.elasticsearch.host")
 	c := strings.Split(addr, ":")
 	if len(c) != 2 {
@@ -526,7 +526,6 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
 	}
-
 
 	backend, err := initBackend(entriesLimit, name)
 	if err != nil {
