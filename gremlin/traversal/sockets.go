@@ -116,6 +116,36 @@ func (s *SocketsTraversalStep) PropertyValues(keys ...interface{}) *traversal.Gr
 	return traversal.NewGraphTraversalValue(s.GraphTraversal, values, nil)
 }
 
+// Has step
+func (s *SocketsTraversalStep) Has(params ...interface{}) *SocketsTraversalStep {
+	if s.error != nil {
+		return s
+	}
+
+	filter, err := paramsToFilter(params...)
+	if err != nil {
+		return &SocketsTraversalStep{error: err}
+	}
+
+	s.GraphTraversal.RLock()
+	defer s.GraphTraversal.RUnlock()
+
+	flowSockets := make(map[string][]*socketinfo.ConnectionInfo)
+	for id, sockets := range s.sockets {
+		var socks []*socketinfo.ConnectionInfo
+		for _, socket := range sockets {
+			if filter == nil || filter.Eval(socket) {
+				socks = append(socks, socket)
+			}
+		}
+		if len(socks) > 0 {
+			flowSockets[id] = socks
+		}
+	}
+
+	return &SocketsTraversalStep{GraphTraversal: s.GraphTraversal, sockets: flowSockets}
+}
+
 // Values returns list of socket informations
 func (s *SocketsTraversalStep) Values() []interface{} {
 	if len(s.sockets) == 0 {
