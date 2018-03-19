@@ -9,7 +9,12 @@ dist: xenial
 
 before_install:
     - sudo apt-get -qq update
-    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils libdb5.3-dev libgraph-easy-perl screen inotify-tools realpath libnuma-dev linux-headers-$(uname -r)
+    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils libdb5.3-dev libgraph-easy-perl screen inotify-tools realpath libnuma-dev linux-headers-$(uname -r) software-properties-common
+    - sudo add-apt-repository -y ppa:git-core/ppa
+    - sudo apt-get update
+    - curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+    - sudo apt-get install git-lfs
+    - git lfs install
     - sudo ovs-vsctl show
     - sudo iptables -F
     - for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
@@ -30,6 +35,7 @@ before_install:
     - unzip protoc-3.1.0-linux-x86_64.zip
     - popd
     - export PATH=${HOME}/protoc/bin:${PATH}
+    - sudo apt-get install software-properties-common
 
 script:
     - export BUILD_TAG=$(date +%Y-%m-%d).${TRAVIS_JOB_NUMBER}
@@ -50,10 +56,13 @@ script:
     - git remote add binaries ${BINARIES_REPO}
     - git fetch binaries
     - git checkout -b travis-builds binaries/travis-builds
+    - git lfs track skydive-latest
+    - sudo chmod 666 $HOME/.gitconfig
     - git config --global user.email "builds@travis-ci.com"
     - git config --global user.name "Travis CI"
     - cp ${GOPATH}/bin/skydive skydive-latest
     - git add skydive-latest
+    - git add .gitattributes
     - git commit -m "${BUILD_TAG} travis build" --amend
     - git config credential.helper "store --file=.git/credentials"
     - echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > .git/credentials
