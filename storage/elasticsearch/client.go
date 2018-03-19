@@ -46,15 +46,14 @@ const indexVersion = 11
 const indexPrefix = "skydive"
 const indexAllAlias = "all"
 
-
 // ElasticSearchClientInterface describes the mechanism API of ElasticSearch database client
 type ElasticSearchClientInterface interface {
 	FormatFilter(filter *filters.Filter, mapKey string) map[string]interface{}
 	RollIndex() error
-	Index(obj string, id string, data interface{}) (error, bool)
-	BulkIndex(obj string, id string, data interface{}) (error, bool)
-	IndexChild(obj string, parent string, id string, data interface{}) (error, bool)
-	BulkIndexChild(obj string, parent string, id string, data interface{}) (error, bool)
+	Index(obj string, id string, data interface{}) (bool, error)
+	BulkIndex(obj string, id string, data interface{}) (bool, error)
+	IndexChild(obj string, parent string, id string, data interface{}) (bool, error)
+	BulkIndexChild(obj string, parent string, id string, data interface{}) (bool, error)
 	Update(obj string, id string, data interface{}) error
 	BulkUpdate(obj string, id string, data interface{}) error
 	UpdateWithPartialDoc(obj string, id string, data interface{}) error
@@ -68,16 +67,17 @@ type ElasticSearchClientInterface interface {
 	GetIndexAllAlias() string
 }
 
+// ElasticIndex describes an ElasticSearch index and its current status
 type ElasticIndex struct {
-	entriesCounter 	int
-	mappings 	[]map[string][]byte
-	name		string
-	path		string
-	timeCreated	time.Time
-	entriesLimit	int
-	ageLimit	int
-	indicesLimit	int
-	lock		sync.Mutex
+	entriesCounter int
+	mappings       []map[string][]byte
+	name           string
+	path           string
+	timeCreated    time.Time
+	entriesLimit   int
+	ageLimit       int
+	indicesLimit   int
+	lock           sync.Mutex
 }
 
 // ElasticSearchClient describes a ElasticSearch client connection
@@ -88,12 +88,10 @@ type ElasticSearchClient struct {
 	quit       chan bool
 	wg         sync.WaitGroup
 	index      *ElasticIndex
-
 }
 
 // ErrBadConfig error bad configuration file
 var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
-var ErrNotEnoughToRoll = errors.New("Not enough entries to roll index")
 
 func (c *ElasticSearchClient) request(method string, path string, query string, body string) (int, []byte, error) {
 	req, err := c.connection.NewRequest(method, path, query)
@@ -111,7 +109,7 @@ func (c *ElasticSearchClient) request(method string, path string, query string, 
 
 func (e *ElasticIndex) increaseEntries() {
 	e.lock.Lock()
-	e.entriesCounter += 1
+	e.entriesCounter++
 	e.lock.Unlock()
 }
 
@@ -121,10 +119,12 @@ func getIndexPath(name string) string {
 		name, indexVersion, t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 }
 
+// Get the rolling alias which points to the currently active index
 func (c *ElasticSearchClient) GetIndexAlias() string {
 	return fmt.Sprintf("%s_%s", indexPrefix, c.index.name)
 }
 
+// Get the alias which points to all Skydive indices
 func (c *ElasticSearchClient) GetIndexAllAlias() string {
 	return fmt.Sprintf("%s_%s", indexPrefix, indexAllAlias)
 }
@@ -185,7 +185,7 @@ func (c *ElasticSearchClient) createIndex(name string) error {
 		name = c.index.name
 	}
 	c.index.path = getIndexPath(name)
-	c.index.name = name;
+	c.index.name = name
 	c.index.timeCreated = time.Now()
 
 	if _, err := c.connection.OpenIndex(c.index.path); err != nil {
@@ -199,14 +199,13 @@ func (c *ElasticSearchClient) createIndex(name string) error {
 
 }
 
-
 func (c *ElasticSearchClient) start(name string, mappings []map[string][]byte, entriesLimit int, ageLimit int, indicesLimit int) error {
 	c.index = &ElasticIndex{
-		mappings:	mappings,
-		entriesLimit:	entriesLimit,
-		ageLimit:	ageLimit,
-		indicesLimit:	indicesLimit,
-		lock:		sync.Mutex{},
+		mappings:     mappings,
+		entriesLimit: entriesLimit,
+		ageLimit:     ageLimit,
+		indicesLimit: indicesLimit,
+		lock:         sync.Mutex{},
 	}
 
 	if err := c.createIndex(name); err != nil {
@@ -408,7 +407,7 @@ func (c *ElasticSearchClient) delIndices() {
 
 	indices := c.connection.GetCatIndexInfo(c.GetIndexAlias() + "_*")
 	sort.Slice(indices, func(i, j int) bool {
-	  return indices[i].Name < indices[j].Name
+		return indices[i].Name < indices[j].Name
 	})
 
 	numToDel := len(indices) - c.index.indicesLimit
@@ -424,6 +423,7 @@ func (c *ElasticSearchClient) delIndices() {
 	}
 }
 
+// Roll the current elasticsearch index
 func (c *ElasticSearchClient) RollIndex() error {
 	c.indexer.Flush()
 	time.Sleep(3 * time.Millisecond)
@@ -446,52 +446,52 @@ func (c *ElasticSearchClient) RollIndex() error {
 }
 
 // Index returns the skydive index
-func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) (error, bool) {
+func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) (bool, error) {
 	c.index.lock.Lock()
 	if _, err := c.connection.Index(c.GetIndexAlias(), obj, id, nil, data); err != nil {
 		c.index.lock.Unlock()
-		return err, false
+		return false, err
 	}
 	c.index.lock.Unlock()
 	c.index.increaseEntries()
-	return nil, c.shouldRollIndex()
+	return c.shouldRollIndex(), nil
 }
 
 // BulkIndex returns the bulk index from the indexer
-func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{}) (error, bool) {
+func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{}) (bool, error) {
 	c.index.lock.Lock()
 	if err := c.indexer.Index(c.GetIndexAlias(), obj, id, "", "", nil, data); err != nil {
 		c.index.lock.Unlock()
-		return err, false
+		return false, err
 	}
 	c.index.lock.Unlock()
 	c.index.increaseEntries()
-	return nil, c.shouldRollIndex()
+	return c.shouldRollIndex(), nil
 }
 
 // IndexChild index a child object
-func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, data interface{}) (error, bool) {
+func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
 	c.index.lock.Lock()
 	_, err := c.connection.IndexWithParameters(c.GetIndexAlias(), obj, id, parent, 0, "", "", "", 0, "", "", false, nil, data)
 	if err != nil {
 		c.index.lock.Unlock()
-		return err, false
+		return false, err
 	}
 	c.index.lock.Unlock()
 	c.index.increaseEntries()
-	return nil, c.shouldRollIndex()
+	return c.shouldRollIndex(), nil
 }
 
 // BulkIndexChild index a while object with the indexer
-func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) (error, bool) {
+func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
 	c.index.lock.Lock()
 	if err := c.indexer.Index(c.GetIndexAlias(), obj, id, parent, "", nil, data); err != nil {
 		c.index.lock.Unlock()
-		return err, false
+		return false, err
 	}
 	c.index.lock.Unlock()
 	c.index.increaseEntries()
-	return nil, c.shouldRollIndex()
+	return c.shouldRollIndex(), nil
 }
 
 // Update an object
@@ -538,7 +538,6 @@ func (c *ElasticSearchClient) Search(obj string, query string, index string) (el
 	}
 	return c.connection.Search(index, obj, nil, query)
 }
-
 
 func (c *ElasticSearchClient) errorReader() {
 	defer c.wg.Done()
@@ -612,11 +611,10 @@ func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds
 		connection: c,
 		indexer:    indexer,
 		quit:       make(chan bool),
-		index: 	    nil,
+		index:      nil,
 	}
 
 	client.started.Store(false)
-
 
 	return client, nil
 }

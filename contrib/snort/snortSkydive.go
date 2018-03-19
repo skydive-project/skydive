@@ -123,7 +123,7 @@ func (sfe *SnortFlowEnhancer) insertElasticSearch(msg *snortMessage, f *flow.Flo
 		"Message":        msg.Message,
 		"Classification": msg.Classification,
 	}
-	if err, _ := sfe.client.BulkIndex("snortMessage", "", snortMessage); err != nil {
+	if _, err := sfe.client.BulkIndex("snortMessage", "", snortMessage); err != nil {
 		return fmt.Errorf("Error while indexing: %s", err.Error())
 	}
 	logging.GetLogger().Infof("insert flow TrackingID %s %+#v", f.TrackingID, f)

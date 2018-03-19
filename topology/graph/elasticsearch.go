@@ -27,9 +27,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mattbaird/elastigo/lib"
 	"strconv"
 	"strings"
-	"github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -217,15 +217,17 @@ func (b *ElasticSearchBackend) createNode(n *Node) bool {
 
 	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
 
-	err, rolled := b.client.BulkIndex("node", id, obj)
+	shouldRoll, err := b.client.BulkIndex("node", id, obj)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
 		return false
 	}
 	b.prevRevision[n.ID] = n.revision
 
-	if rolled {
-		b.rollAndDumpTopology()
+	if shouldRoll {
+		if err := b.rollAndDumpTopology(); err != nil {
+			logging.GetLogger().Errorf("Error while dumping topology: %s", err.Error())
+		}
 	}
 
 	return true
@@ -267,7 +269,7 @@ func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
 		},
 		TimeFilter: getTimeFilter(t.TimeSlice),
 	}, index)
-	
+
 	if len(nodes) > 1 && t.TimePoint {
 		return []*Node{nodes[len(nodes)-1]}
 	}
@@ -299,17 +301,18 @@ func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
 
 	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
 
-	err, rolled := b.client.BulkIndex("edge", id, obj)
+	shouldRoll, err := b.client.BulkIndex("edge", id, obj)
 	if err != nil {
 		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
 		return false
 	}
 	b.prevRevision[e.ID] = e.revision
 
-	if rolled {
-		b.rollAndDumpTopology()
+	if shouldRoll {
+		if err := b.rollAndDumpTopology(); err != nil {
+			logging.GetLogger().Errorf("Error while dumping topology: %s", err.Error())
+		}
 	}
-
 
 	return true
 }
@@ -349,7 +352,7 @@ func (b *ElasticSearchBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
 		},
 		TimeFilter: getTimeFilter(t.TimeSlice),
 	}, index)
-	
+
 	if len(edges) > 1 && t.TimePoint {
 		return []*Edge{edges[len(edges)-1]}
 	}
@@ -473,10 +476,11 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery, index string) 
 
 // GetEdges returns a list of edges within time slice, matching metadata
 func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) []*Edge {
-	index  := ""
+	index := ""
 	if t.TimeSlice == nil {
 		index = b.client.GetIndexAlias()
 	}
+
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -485,7 +489,7 @@ func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) [
 		}
 		filter = f
 	}
-	
+
 	var searchQuery filters.SearchQuery
 	if !t.TimePoint {
 		searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
@@ -496,11 +500,11 @@ func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) [
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
 	}, index)
-	
+
 	if t.TimePoint {
 		edges = dedupEdges(edges)
 	}
-	
+
 	return edges
 }
 
@@ -519,7 +523,7 @@ func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) [
 		}
 		filter = f
 	}
-	
+
 	var searchQuery filters.SearchQuery
 	if !t.TimePoint {
 		searchQuery = filters.SearchQuery{Sort: true, SortBy: "UpdatedAt"}
@@ -530,7 +534,7 @@ func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) [
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
 	}, index)
-	
+
 	if len(nodes) > 1 && t.TimePoint {
 		nodes = dedupNodes(nodes)
 	}

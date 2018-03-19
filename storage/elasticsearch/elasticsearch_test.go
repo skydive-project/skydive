@@ -2,7 +2,6 @@ package elasticsearch
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -27,13 +26,13 @@ const testMapping = `
 	]
 }`
 
-func (c *ElasticSearchClient) indexEntry(id int) (error, bool) {
+func (c *ElasticSearchClient) indexEntry(id int) (bool, error) {
 	return c.Index("test_type", fmt.Sprintf("id%d", id), "{\"key\": \"val\"}")
 }
 
 func (c *ElasticSearchClient) cleanupIndices(name string) error {
 	if _, err := c.connection.DeleteIndex(fmt.Sprintf("%s_%s*", indexPrefix, name)); err != nil {
-		return errors.New(fmt.Sprintf("Failed to clear test indices: %s", err.Error()))
+		return fmt.Errorf(fmt.Sprintf("Failed to clear test indices: %s", err.Error()))
 	}
 	return nil
 }
@@ -64,7 +63,7 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 	}
 
 	for i := 1; i < entriesLimit; i++ {
-		if err, _ := client.indexEntry(i); err != nil {
+		if _, err := client.indexEntry(i); err != nil {
 			t.Fatalf("Failed to index entry %d: %s", i, err.Error())
 		}
 		time.Sleep(1 * time.Second)
@@ -73,7 +72,7 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 		}
 	}
 
-	if err, _ = client.indexEntry(entriesLimit); err != nil {
+	if _, err = client.indexEntry(entriesLimit); err != nil {
 		t.Fatalf("Failed to index entry %d: %s", entriesLimit, err.Error())
 	}
 	time.Sleep(1 * time.Second)
