@@ -39,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
+	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -77,7 +78,7 @@ func checkAgents(client *shttp.CrudClient, agentsExpected int) error {
 
 func checkHostNodes(client *shttp.CrudClient, gh *gclient.GremlinQueryHelper, nodeExpected int) error {
 	retry := func() error {
-		nodes, err := gh.GetNodes(`g.V().Has("Type", "host")`)
+		nodes, err := gh.GetNodes(g.G.V().Has("Type", "host"))
 		if err != nil {
 			return err
 		}
@@ -127,18 +128,18 @@ const (
 	checkBoth
 )
 
-func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel string, flowExpected int, cmp func(seen, exp int) bool, live bool) error {
+func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel g.QueryString, flowExpected int, cmp func(seen, exp int) bool, live bool) error {
 	node, err := gh.GetNode(nodeSel)
 	if err != nil {
 		return errors.New("Node node found: agent-1")
 	}
 	tid, _ := node.GetFieldString("TID")
 
-	prefix := "G"
+	prefix := g.G
 	if !live {
-		prefix = "G.At('-0s', 300)"
+		prefix = prefix.At("-0s", 300)
 	}
-	gremlin := fmt.Sprintf("%s.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4', 'NodeTID', '%s').Sort()", prefix, tid)
+	gremlin := prefix.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4", "NodeTID", tid).Sort()
 
 	retry := func() error {
 		flows, err := gh.GetFlows(gremlin)
@@ -155,7 +156,7 @@ func _checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel string, flowExpec
 	return common.Retry(retry, 40, time.Second)
 }
 
-func checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel string, flowExpected int, cmp func(seen, exp int) bool, mode int) error {
+func checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel g.QueryString, flowExpected int, cmp func(seen, exp int) bool, mode int) error {
 	if mode == checkBoth || mode == checkLive {
 		if err := _checkICMPv4Flows(gh, nodeSel, flowExpected, cmp, true); err != nil {
 			return err
@@ -172,7 +173,7 @@ func checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel string, flowExpect
 
 func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 	retry := func() error {
-		flows, err := gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Has('Transport.B', '5001').Sort()")
+		flows, err := gh.GetFlows(g.G.Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Has("Transport.B", "5001").Sort())
 		if err != nil {
 			return err
 		}
@@ -180,7 +181,7 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 		// two capture 2 flows
 		if len(flows) != flowExpected {
 			var flowsTCP []*flow.Flow
-			if flowsTCP, err = gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Sort()"); err != nil {
+			if flowsTCP, err = gh.GetFlows(g.G.Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Sort()); err != nil {
 				return err
 			}
 			return fmt.Errorf("Should get %d iperf(tcp/5001) flows, got %s", flowExpected, helper.FlowsToString(flowsTCP))
@@ -194,20 +195,20 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 
 	// check in the storage
 	retry = func() error {
-		flows, err := gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Has('Transport.B', '5001').Sort()")
+		flows, err := gh.GetFlows(g.G.At("-1s", 300).Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Has("Transport.B", "5001").Sort())
 		if err != nil {
 			return err
 		}
 
 		if len(flows) != flowExpected {
 			var flowsTCP []*flow.Flow
-			if flowsTCP, err = gh.GetFlows("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Sort()"); err != nil {
+			if flowsTCP, err = gh.GetFlows(g.G.At("-1s", 300).Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Sort()); err != nil {
 				return err
 			}
 			return fmt.Errorf("Should get %d iperf(tcp/5001) flow from datastore got %s", flowExpected, helper.FlowsToString(flowsTCP))
 		}
 
-		maps, err := gh.GetSockets("G.At('-1s', 300).Flows().Has('LayersPath', 'Ethernet/IPv4/TCP').Sockets()")
+		maps, err := gh.GetSockets(g.G.At("-1s", 300).Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Sockets())
 		if err != nil {
 			return err
 		}
@@ -237,7 +238,7 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 
 func checkCaptures(gh *gclient.GremlinQueryHelper, captureExpected int) error {
 	retry := func() error {
-		nodes, err := gh.GetNodes(`g.V().Has("Capture.State", "active")`)
+		nodes, err := gh.GetNodes(g.G.V().Has("Capture.State", "active"))
 		if err != nil {
 			return err
 		}
@@ -254,7 +255,7 @@ func checkCaptures(gh *gclient.GremlinQueryHelper, captureExpected int) error {
 
 func waitForFirstFlows(gh *gclient.GremlinQueryHelper, expected int) error {
 	retry := func() error {
-		flows, err := gh.GetFlows("G.Flows().Has('LayersPath', 'Ethernet/IPv4/ICMPv4').Sort()")
+		flows, err := gh.GetFlows(g.G.Flows().Has("LayersPath", "Ethernet/IPv4/ICMPv4").Sort())
 		if err != nil {
 			return err
 		}
@@ -326,7 +327,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// start a capture
-	capture := types.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
+	capture := types.NewCapture(g.G.V().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0").String(), "")
 	capture.Type = "pcap"
 	if err = client.Create("capture", capture); err != nil {
 		helper.ExecCmds(t, tearDownCmds...)
@@ -346,12 +347,12 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// 30 flows
-	node1 := "g.V().Has('Name', 'agent-1').Out().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')"
+	node1 := g.G.V().Has("Name", "agent-1").Out().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0")
 	if err = checkICMPv4Flows(gh, node1, 30, func(seen, exp int) bool { return seen == exp }, checkBoth); err != nil {
 		helper.ExecCmds(t, tearDownCmds...)
 		t.Fatal(err)
 	}
-	node2 := "g.V().Has('Name', 'agent-2').Out().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')"
+	node2 := g.G.V().Has("Name", "agent-2").Out().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0")
 	if err = checkICMPv4Flows(gh, node2, 30, func(seen, exp int) bool { return seen == exp }, checkBoth); err != nil {
 		helper.ExecCmds(t, tearDownCmds...)
 		t.Fatal(err)
@@ -424,7 +425,7 @@ func TestScaleHA(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	node3 := "g.V().Has('Name', 'agent-3').Out().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')"
+	node3 := g.G.V().Has("Name", "agent-3").Out().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0")
 	if err = checkICMPv4Flows(gh, node3, 30, func(seen, exp int) bool { return seen == exp }, checkBoth); err != nil {
 		helper.ExecCmds(t, tearDownCmds...)
 		t.Fatal(err)
@@ -487,7 +488,7 @@ func TestScaleHA(t *testing.T) {
 	}
 
 	// restart a capture on all eth0
-	capture = types.NewCapture("g.V().Has('Type', 'netns', 'Name', 'vm1').Out().Has('Name', 'eth0')", "")
+	capture = types.NewCapture(g.G.V().Has("Type", "netns", "Name", "vm1").Out().Has("Name", "eth0").String(), "")
 	capture.Type = "pcap"
 	if err = client.Create("capture", capture); err != nil {
 		t.Fatal(err)

@@ -231,7 +231,7 @@ func (g *GremlinQueryHelper) GetMetric(query interface{}) (common.Metric, error)
 }
 
 // GetSockets from the Gremlin query
-func (g *GremlinQueryHelper) GetSockets(query string) (sockets map[string][]*socketinfo.ConnectionInfo, err error) {
+func (g *GremlinQueryHelper) GetSockets(query interface{}) (sockets map[string][]*socketinfo.ConnectionInfo, err error) {
 	var maps []map[string][]interface{}
 	if err = g.QueryObject(query, &maps); err != nil || len(maps) == 0 {
 		return nil, err
