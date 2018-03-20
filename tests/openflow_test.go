@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
+	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -16,20 +16,19 @@ type ruleCmd struct {
 func verify(c *CheckContext, expected []int) error {
 	for i, e := range expected {
 		gh := c.gh
-		gremlin := "g"
-		if !c.time.IsZero() {
-			gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-		}
+		gremlin := g.G
+		gremlin = gremlin.Context(c.time)
 
-		gremlin += `.V().Has("Type", "ovsbridge", "Name", "br-test1")`
-		gremlin += fmt.Sprintf(`.Out("Type", "ofrule").Has("actions","resubmit(;%d)")`, i+1)
+		gremlin = gremlin.V().Has("Type", "ovsbridge", "Name", "br-test1")
+		actions := fmt.Sprintf(`resubmit(;%d)`, i+1)
+		gremlin = gremlin.Out("Type", "ofrule").Has("actions", actions)
 		nodes, err := gh.GetNodes(gremlin)
 		if err != nil {
 			return err
 		}
 		l := len(nodes)
 		if l != e {
-			return fmt.Errorf("expected %d rules with 'resubmit(,%d)' but got %d - %v", e, i+1, l, nodes)
+			return fmt.Errorf("expected %d rules with '%s' but got %d - %v", e, actions, l, nodes)
 		}
 	}
 	return nil
