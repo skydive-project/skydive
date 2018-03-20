@@ -34,6 +34,7 @@ import (
 	gclient "github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
+	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -106,7 +107,7 @@ func (s *seleniumHelper) zoomOut() error {
 	return nil
 }
 
-func (s *seleniumHelper) clickOnNode(gremlin string) error {
+func (s *seleniumHelper) clickOnNode(gremlin g.QueryString) error {
 	node, err := s.gh.GetNode(gremlin)
 	if err != nil {
 		return err
@@ -137,7 +138,7 @@ func (s *seleniumHelper) expand() error {
 	return nil
 }
 
-func (s *seleniumHelper) expandGroup(gremlin string) error {
+func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
 	node, err := s.gh.GetNode(gremlin)
 	if err != nil {
 		return err
@@ -179,7 +180,7 @@ func (s *seleniumHelper) expandGroup(gremlin string) error {
 	return nil
 }
 
-func (s *seleniumHelper) getFlowRow(gremlin string) (selenium.WebElement, error) {
+func (s *seleniumHelper) getFlowRow(gremlin g.QueryString) (selenium.WebElement, error) {
 	var flows []*flow.Flow
 	var err error
 
@@ -219,7 +220,7 @@ func (s *seleniumHelper) getFlowRow(gremlin string) (selenium.WebElement, error)
 	return el, nil
 }
 
-func (s *seleniumHelper) highlightFlow(gremlin string) error {
+func (s *seleniumHelper) highlightFlow(gremlin g.QueryString) error {
 	el, err := s.getFlowRow(gremlin)
 	if err != nil {
 		return err
@@ -233,7 +234,7 @@ func (s *seleniumHelper) scrollDownRightPanel() error {
 	return nil
 }
 
-func (s *seleniumHelper) clickOnFlow(gremlin string) error {
+func (s *seleniumHelper) clickOnFlow(gremlin g.QueryString) error {
 	el, err := s.getFlowRow(gremlin)
 	if err != nil {
 		return err
@@ -242,7 +243,7 @@ func (s *seleniumHelper) clickOnFlow(gremlin string) error {
 	return s.clickOn(el)
 }
 
-func (s *seleniumHelper) showNodeFlowTable(gremlin string) error {
+func (s *seleniumHelper) showNodeFlowTable(gremlin g.QueryString) error {
 	if err := s.clickOnNode(gremlin); err != nil {
 		return err
 	}
@@ -252,7 +253,7 @@ func (s *seleniumHelper) showNodeFlowTable(gremlin string) error {
 	return nil
 }
 
-func (s *seleniumHelper) selectNode(id string, gremlin string) error {
+func (s *seleniumHelper) selectNode(id string, gremlin g.QueryString) error {
 	if err := s.clickOnByID(id); err != nil {
 		return err
 	}
@@ -291,7 +292,7 @@ func (s *seleniumHelper) activateTab(id string) error {
 	return nil
 }
 
-func (s *seleniumHelper) startShortestPathCapture(g1 string, g2 string, bpf string) error {
+func (s *seleniumHelper) startShortestPathCapture(g1, g2 g.QueryString, bpf string) error {
 	if err := s.activateTab("Captures"); err != nil {
 		return err
 	}
@@ -328,7 +329,7 @@ func (s *seleniumHelper) startShortestPathCapture(g1 string, g2 string, bpf stri
 	return nil
 }
 
-func (s *seleniumHelper) startGremlinCapture(gremlin string) error {
+func (s *seleniumHelper) startGremlinCapture(gremlin g.QueryString) error {
 	if err := s.activateTab("Captures"); err != nil {
 		return err
 	}
@@ -341,7 +342,7 @@ func (s *seleniumHelper) startGremlinCapture(gremlin string) error {
 		return err
 	}
 
-	if err := s.fillTextBoxByID("capture-query", gremlin); err != nil {
+	if err := s.fillTextBoxByID("capture-query", gremlin.String()); err != nil {
 		return err
 	}
 
@@ -360,7 +361,7 @@ func (s *seleniumHelper) startGremlinCapture(gremlin string) error {
 	}
 	var foundCapture bool
 	for _, capture := range captures {
-		if txt, _ := capture.Text(); txt == gremlin {
+		if txt, _ := capture.Text(); txt == gremlin.String() {
 			foundCapture = true
 			break
 		}
@@ -384,7 +385,7 @@ func (s *seleniumHelper) closeNotification() error {
 	return nil
 }
 
-func (s *seleniumHelper) injectPacket(g1 string, g2 string, count int) error {
+func (s *seleniumHelper) injectPacket(g1, g2 g.QueryString, count int) error {
 	if err := s.activateTab("Generator"); err != nil {
 		return err
 	}
@@ -414,7 +415,7 @@ func (s *seleniumHelper) injectPacket(g1 string, g2 string, count int) error {
 	return nil
 }
 
-func (s *seleniumHelper) flowQuery(gremlin string) error {
+func (s *seleniumHelper) flowQuery(gremlin g.QueryString) error {
 	if err := s.activateTab("Flows"); err != nil {
 		return err
 	}
@@ -426,8 +427,8 @@ func (s *seleniumHelper) flowQuery(gremlin string) error {
 	if err := flowQuery.Clear(); err != nil {
 		return err
 	}
-	query := "G.Flows().Has('Network.A', '124.65.54.42', 'Network.B', '124.65.54.43')"
-	if err := flowQuery.SendKeys(query); err != nil {
+	query := g.G.Flows().Has("Network.A", "124.65.54.42", "Network.B", "124.65.54.43")
+	if err := flowQuery.SendKeys(query.String()); err != nil {
 		return err
 	}
 

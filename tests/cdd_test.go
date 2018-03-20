@@ -29,6 +29,7 @@ import (
 	"os"
 	"testing"
 
+	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -81,7 +82,7 @@ func TestOverview(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err = delaySec(1, sh.expandGroup("G.V().Has('Name', 'agent-1', 'Type', 'host').Out().Has('Name', 'vm1', 'Type', 'netns')")); err != nil {
+	if err = delaySec(1, sh.expandGroup(g.G.V().Has("Name", "agent-1", "Type", "host").Out().Has("Name", "vm1", "Type", "netns"))); err != nil {
 		t.Error(err)
 		return
 	}
@@ -89,7 +90,7 @@ func TestOverview(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err = delaySec(1, sh.expandGroup("G.V().Has('Name', 'agent-3', 'Type', 'host').Out().Has('Name', 'vm1', 'Type', 'netns')")); err != nil {
+	if err = delaySec(1, sh.expandGroup(g.G.V().Has("Name", "agent-3", "Type", "host").Out().Has("Name", "vm1", "Type", "netns"))); err != nil {
 		t.Error(err)
 		return
 	}
@@ -98,15 +99,15 @@ func TestOverview(t *testing.T) {
 		return
 	}
 
-	ng1_eth0 := "G.V().Has('Name', 'agent-1', 'Type', 'host').Out().Has('Name', 'vm1', 'Type', 'netns').Out().Has('Name', 'eth0')"
-	ng1_bridge := "G.V().Has('Name', 'agent-1', 'Type', 'host').Out().Has('Type', 'ovsbridge')"
+	ng1_eth0 := g.G.V().Has("Name", "agent-1", "Type", "host").Out().Has("Name", "vm1", "Type", "netns").Out().Has("Name", "eth0")
+	ng1_bridge := g.G.V().Has("Name", "agent-1", "Type", "host").Out().Has("Type", "ovsbridge")
 	if err = sh.startShortestPathCapture(ng1_eth0, ng1_bridge, "icmp"); err != nil {
 		t.Error(err)
 		return
 	}
 
-	ng3_eth0 := "G.V().Has('Name', 'agent-3', 'Type', 'host').Out().Has('Name', 'vm1', 'Type', 'netns').Out().Has('Name', 'eth0')"
-	ng3_bridge := "G.V().Has('Name', 'agent-3', 'Type', 'host').Out().Has('Type', 'ovsbridge')"
+	ng3_eth0 := g.G.V().Has("Name", "agent-3", "Type", "host").Out().Has("Name", "vm1", "Type", "netns").Out().Has("Name", "eth0")
+	ng3_bridge := g.G.V().Has("Name", "agent-3", "Type", "host").Out().Has("Type", "ovsbridge")
 	if err = sh.startShortestPathCapture(ng3_eth0, ng3_bridge, "icmp"); err != nil {
 		t.Error(err)
 		return
@@ -121,11 +122,11 @@ func TestOverview(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err = delaySec(1, sh.highlightFlow(ng1_eth0+".Flows()")); err != nil {
+	if err = delaySec(1, sh.highlightFlow(ng1_eth0.Flows())); err != nil {
 		t.Error(err)
 		return
 	}
-	if err = delaySec(1, sh.clickOnFlow(ng1_eth0+".Flows()")); err != nil {
+	if err = delaySec(1, sh.clickOnFlow(ng1_eth0.Flows())); err != nil {
 		t.Error(err)
 		return
 	}
