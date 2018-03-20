@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
+	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -42,13 +42,11 @@ func TestDockerSimple(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			gremlin := "g"
-			if !c.time.IsZero() {
-				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			gremlin := g.G
+			gremlin = gremlin.Context(c.time)
 
-			gremlin += `.V().Has("Type", "netns", "Manager", "docker")`
-			gremlin += `.Out("Type", "container", "Docker.ContainerName", "/test-skydive-docker-simple")`
+			gremlin = gremlin.V().Has("Type", "netns", "Manager", "docker")
+			gremlin = gremlin.Out("Type", "container", "Docker.ContainerName", "/test-skydive-docker-simple")
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
@@ -81,13 +79,11 @@ func TestDockerShareNamespace(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
-			gremlin := "g"
-			if !c.time.IsZero() {
-				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			gremlin := g.G
+			gremlin = gremlin.Context(c.time)
 
-			gremlin += `.V().Has("Type", "netns", "Manager", "docker")`
-			gremlin += `.Out().Has("Type", "container", "Docker.ContainerName", Within("/test-skydive-docker-share-ns", "/test-skydive-docker-share-ns2"))`
+			gremlin = gremlin.V().Has("Type", "netns", "Manager", "docker")
+			gremlin = gremlin.Out().Has("Type", "container", "Docker.ContainerName", g.Within("/test-skydive-docker-share-ns", "/test-skydive-docker-share-ns2"))
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -117,12 +113,10 @@ func TestDockerNetHost(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			gremlin := prefix + `.V().Has("Docker.ContainerName", "/test-skydive-docker-net-host", "Type", "container")`
+			gremlin := prefix.V().Has("Docker.ContainerName", "/test-skydive-docker-net-host", "Type", "container")
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -132,7 +126,7 @@ func TestDockerNetHost(t *testing.T) {
 				return fmt.Errorf("Expected 1 container, got %+v", nodes)
 			}
 
-			gremlin = prefix + `.V().Has("Type", "netns", "Manager", "docker", "Name", "test-skydive-docker-net-host")`
+			gremlin = prefix.V().Has("Type", "netns", "Manager", "docker", "Name", "test-skydive-docker-net-host")
 			nodes, err = gh.GetNodes(gremlin)
 			if err != nil {
 				return err
@@ -162,13 +156,10 @@ func TestDockerLabels(t *testing.T) {
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
 
-			prefix := "g"
-			if !c.time.IsZero() {
-				prefix += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			prefix := g.G
+			prefix = prefix.Context(c.time)
 
-			gremlin := prefix + `.V().Has("Docker.ContainerName", "/test-skydive-docker-labels",`
-			gremlin += ` "Type", "container", "Docker.Labels.a.b.c", "123", "Docker.Labels.a~b/c@d", "456")`
+			gremlin := prefix.V().Has("Docker.ContainerName", "/test-skydive-docker-labels", "Type", "container", "Docker.Labels.a.b.c", "123", "Docker.Labels.a~b/c@d", "456")
 			_, err := gh.GetNode(gremlin)
 			if err != nil {
 				return err
