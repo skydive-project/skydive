@@ -27,6 +27,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
+	g "github.com/skydive-project/skydive/gremlin"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
@@ -37,13 +38,13 @@ func TestAlertAPI(t *testing.T) {
 	}
 
 	alert := types.NewAlert()
-	alert.Expression = "G.V().Has('MTU', GT(1500))"
+	alert.Expression = g.G.V().Has("MTU", g.Gt(1500)).String()
 	if err := client.Create("alert", alert); err != nil {
 		t.Errorf("Failed to create alert: %s", err.Error())
 	}
 
 	alert2 := types.NewAlert()
-	alert2.Expression = "G.V().Has('MTU', Gt(1500))"
+	alert2.Expression = g.G.V().Has("MTU", g.Gt(1500)).String()
 	if err := client.Get("alert", alert.UUID, &alert2); err != nil {
 		t.Error(err)
 	}
@@ -91,7 +92,7 @@ func TestCaptureAPI(t *testing.T) {
 	}
 	nbCaptures := len(captures)
 
-	capture := types.NewCapture("G.V().Has('Name', 'br-int')", "port 80")
+	capture := types.NewCapture(g.G.V().Has("Name", "br-int").String(), "port 80")
 	if err := client.Create("capture", capture); err != nil {
 		t.Fatalf("Failed to create alert: %s", err.Error())
 	}
