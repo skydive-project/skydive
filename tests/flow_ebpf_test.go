@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -69,15 +68,13 @@ func TestFlowsEBPF(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: `G.V().Has('Name', 'ebpf-src-eth0')`, kind: "ebpf"},
+			{gremlin: g.G.V().Has("Name", "ebpf-src-eth0"), kind: "ebpf"},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			g := "g"
-			if !c.time.IsZero() {
-				g += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
-			gremlin := g + ".Flows().Has('Network', '169.254.107.33', 'LayersPath', 'Ethernet/IPv4/ICMPv4').Dedup()"
+			gremlin := g.G
+			gremlin = gremlin.Context(c.time)
+			gremlin = gremlin.Flows().Has("Network", "169.254.107.33", "LayersPath", "Ethernet/IPv4/ICMPv4").Dedup()
 			flows, err := c.gh.GetFlows(gremlin)
 			if err != nil {
 				return err
