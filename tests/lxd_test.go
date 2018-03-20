@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/skydive-project/skydive/common"
+	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -42,13 +42,11 @@ func TestLxdSimple(t *testing.T) {
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			gremlin := "g"
-			if !c.time.IsZero() {
-				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
+			gremlin := g.G
+			gremlin = gremlin.Context(c.time)
 
-			gremlin += `.V().Has("Type", "netns", "Manager", "lxd")`
-			gremlin += `.Out("Type", "container", "Name", "test-skydive-lxd-simple")`
+			gremlin = gremlin.V().Has("Type", "netns", "Manager", "lxd")
+			gremlin = gremlin.Out("Type", "container", "Name", "test-skydive-lxd-simple")
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {
