@@ -29,6 +29,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -52,8 +53,8 @@ func TestPacketInjector(t *testing.T) {
 
 		setupFunction: func(c *TestContext) (err error) {
 			packet := &types.PacketInjection{
-				Src:   "G.V().Has('Name', 'pi-eth-src')",
-				Dst:   "G.V().Has('Name', 'pi-eth-dst')",
+				Src:   g.G.V().Has("Name", "pi-eth-src").String(),
+				Dst:   g.G.V().Has("Name", "pi-eth-dst").String(),
 				Type:  "icmp4",
 				Count: 10,
 			}
@@ -87,15 +88,13 @@ func TestPacketInjector(t *testing.T) {
 		},
 
 		captures: []TestCapture{
-			{gremlin: `G.V().Has('Name', 'pi-eth-src').ShortestPathTo(Metadata('Name', 'pi-eth-dst'), Metadata('RelationType', 'layer2'))`},
+			{gremlin: g.G.V().Has("Name", "pi-eth-src").ShortestPathTo(g.Metadata("Name", "pi-eth-dst"), g.Metadata("RelationType", "layer2"))},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
-			gremlin := "g"
-			if !c.time.IsZero() {
-				gremlin += fmt.Sprintf(".Context(%d)", common.UnixMillis(c.time))
-			}
-			gremlin += ".V().Flows().Has('Network.A', '169.254.33.73').Has('Network.B', '169.254.33.74').Dedup()"
+			gremlin := g.G
+			gremlin = gremlin.Context(c.time)
+			gremlin = gremlin.V().Flows().Has("Network.A", "169.254.33.73").Has("Network.B", "169.254.33.74").Dedup()
 
 			flows, err := c.gh.GetFlows(gremlin)
 			if err != nil {
