@@ -32,6 +32,7 @@ import (
 
 	"github.com/tebeka/selenium"
 
+	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
 
@@ -69,7 +70,7 @@ func TestPacketInjectionCapture(t *testing.T) {
 	verifyFlows := func() error {
 		time.Sleep(3 * time.Second)
 
-		if err = sh.flowQuery("G.Flows().Has('Network.A', '124.65.54.42', 'Network.B', '124.65.54.43')"); err != nil {
+		if err = sh.flowQuery(g.G.Flows().Has("Network.A", "124.65.54.42", "Network.B", "124.65.54.43")); err != nil {
 			return err
 		}
 
@@ -113,7 +114,7 @@ func TestPacketInjectionCapture(t *testing.T) {
 	}
 	time.Sleep(2 * time.Second)
 
-	if err = sh.expandGroup("G.V().Has('Name', 'vm1', 'Type', 'netns')"); err != nil {
+	if err = sh.expandGroup(g.G.V().Has("Name", "vm1", "Type", "netns")); err != nil {
 		if err := sh.screenshot("postmortem.png"); err != nil {
 			t.Log(err)
 		}
@@ -131,7 +132,7 @@ func TestPacketInjectionCapture(t *testing.T) {
 	}
 	time.Sleep(2 * time.Second)
 
-	if err = sh.expandGroup("G.V().Has('Name', 'vm2', 'Type', 'netns')"); err != nil {
+	if err = sh.expandGroup(g.G.V().Has("Name", "vm2", "Type", "netns")); err != nil {
 		if err := sh.screenshot("postmortem.png"); err != nil {
 			t.Log(err)
 		}
@@ -149,7 +150,7 @@ func TestPacketInjectionCapture(t *testing.T) {
 	}
 	time.Sleep(2 * time.Second)
 
-	if err = sh.startGremlinCapture("G.V().Has('Name', 'br-int', 'Type', 'ovsbridge')"); err != nil {
+	if err = sh.startGremlinCapture(g.G.V().Has("Name", "br-int", "Type", "ovsbridge")); err != nil {
 		if err := sh.screenshot("postmortem.png"); err != nil {
 			t.Log(err)
 		}
@@ -157,8 +158,8 @@ func TestPacketInjectionCapture(t *testing.T) {
 		return
 	}
 
-	node1 := "G.V().Has('Name', 'eth0', 'IPV4', '124.65.54.42/24')"
-	node2 := "G.V().Has('Name', 'eth0', 'IPV4', '124.65.54.43/24')"
+	node1 := g.G.V().Has("Name", "eth0", "IPV4", "124.65.54.42/24")
+	node2 := g.G.V().Has("Name", "eth0", "IPV4", "124.65.54.43/24")
 
 	if err = sh.injectPacket(node1, node2, 0); err != nil {
 		if err := sh.screenshot("postmortem.png"); err != nil {
