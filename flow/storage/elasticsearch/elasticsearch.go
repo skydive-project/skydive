@@ -178,6 +178,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 		if shouldRoll {
 			if err := c.client.RollIndex(); err != nil {
 				logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
+				continue
 			}
 		}
 
@@ -190,6 +191,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 			if shouldRoll {
 				if err := c.client.RollIndex(); err != nil {
 					logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
+					continue
 				}
 			}
 		}
@@ -214,6 +216,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 			if shouldRoll {
 				if err := c.client.RollIndex(); err != nil {
 					logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
+					continue
 				}
 			}
 
