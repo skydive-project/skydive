@@ -475,7 +475,7 @@ func TestElasticsearchForwarded(t *testing.T) {
 	}
 }
 
-// test active edges after rolling elasticsearch indices
+// delTestIndex test active edges after rolling elasticsearch indices
 func delTestIndex(name string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("http://localhost:9200/skydive_%s*", name), nil)
 	if err != nil {
