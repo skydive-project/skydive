@@ -25,6 +25,7 @@ package elasticsearch
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/gopacket/layers"
@@ -163,6 +164,18 @@ type ElasticSearchStorage struct {
 	client *esclient.ElasticSearchClient
 }
 
+func (c *ElasticSearchStorage) rollIndex(shouldRoll bool, err error) error {
+	if err != nil {
+		return fmt.Errorf("Error while indexing: %s", err.Error())
+	}
+	if shouldRoll {
+		if err := c.client.RollIndex(); err != nil {
+			return fmt.Errorf("Error while rolling index: %s", err.Error())
+		}
+	}
+	return nil
+}
+
 // StoreFlows push a set of flows in the database
 func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	if !c.client.Started() {
@@ -170,29 +183,15 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	}
 
 	for _, f := range flows {
-		shouldRoll, err := c.client.BulkIndex("flow", f.UUID, f)
-		if err != nil {
-			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+		if err := c.rollIndex(c.client.BulkIndex("flow", f.UUID, f)); err != nil {
+			logging.GetLogger().Errorf(err.Error())
 			continue
-		}
-		if shouldRoll {
-			if err := c.client.RollIndex(); err != nil {
-				logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
-				continue
-			}
 		}
 
 		if f.LastUpdateMetric != nil {
-			shouldRoll, err := c.client.BulkIndexChild("metric", f.UUID, "", f.LastUpdateMetric)
-			if err != nil {
-				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+			if err := c.rollIndex(c.client.BulkIndexChild("metric", f.UUID, "", f.LastUpdateMetric)); err != nil {
+				logging.GetLogger().Errorf(err.Error())
 				continue
-			}
-			if shouldRoll {
-				if err := c.client.RollIndex(); err != nil {
-					logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
-					continue
-				}
 			}
 		}
 
@@ -208,16 +207,9 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				"Index":     r.Index,
 				"Data":      r.Data,
 			}
-			shouldRoll, err := c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket)
-			if err != nil {
-				logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+			if c.rollIndex(c.client.BulkIndexChild("rawpacket", f.UUID, "", rawpacket)) != nil {
+				logging.GetLogger().Errorf(err.Error())
 				continue
-			}
-			if shouldRoll {
-				if err := c.client.RollIndex(); err != nil {
-					logging.GetLogger().Errorf("Error while rolling index: %s", err.Error())
-					continue
-				}
 			}
 
 		}
