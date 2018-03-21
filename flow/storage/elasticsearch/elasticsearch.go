@@ -31,7 +31,6 @@ import (
 	"github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -452,14 +451,12 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 
 // Start the Database client
 func (c *ElasticSearchStorage) Start() {
-	entriesLimit := config.GetInt("analyzer.storage.index_entries_limit")
-	ageLimit := config.GetInt("analyzer.storage.index_age_limit")
-	indicesLimit := config.GetInt("analyzer.storage.indices_to_keep")
+	limits := esclient.NewElasticLimitsFromConfig("analyzer.storage")
 	go c.client.Start("flows", []map[string][]byte{
 		{"metric": []byte(metricMapping)},
 		{"rawpacket": []byte(rawPacketMapping)},
 		{"flow": []byte(flowMapping)}},
-		entriesLimit, ageLimit, indicesLimit,
+		limits,
 	)
 }
 

@@ -601,13 +601,11 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 }
 
 func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {
-	entriesLimit := config.GetInt("storage.elasticsearch.index_entries_limit")
-	ageLimit := config.GetInt("storage.elasticsearch.index_age_limit")
-	indicesLimit := config.GetInt("storage.elasticsearch.indices_to_keep")
+	limits := elasticsearch.NewElasticLimitsFromConfig("storage.elasticsearch")
 	client.Start("topology", []map[string][]byte{
 		{"node": []byte(graphElementMapping)},
 		{"edge": []byte(graphElementMapping)}},
-		entriesLimit, ageLimit, indicesLimit,
+		limits,
 	)
 
 	return &ElasticSearchBackend{
