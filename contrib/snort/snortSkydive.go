@@ -198,7 +198,7 @@ func (sfe *SnortFlowEnhancer) parseSnortCMGX(reader *bufio.Reader) error {
 func (sfe *SnortFlowEnhancer) Start() {
 	go sfe.client.Start("snort", []map[string][]byte{
 		{"snortMessage": []byte(snortMessageMapping)}},
-		-1, -1, -1,
+		0, 0, 0,
 	)
 
 	go sfe.run()

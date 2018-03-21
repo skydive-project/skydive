@@ -53,8 +53,8 @@ func getClient(name string, entriesLimit, ageLimit, indicesLimit int, mappings [
 // test rolling elasticsearch indices based on count limit
 func TestElasticsearchShouldRollByCount(t *testing.T) {
 	entriesLimit := 5
-	ageLimit := -1
-	indicesLimit := -1
+	ageLimit := 0
+	indicesLimit := 0
 	name := "should_roll_by_count_test"
 
 	client, err := getClient(name, entriesLimit, ageLimit, indicesLimit, []map[string][]byte{})
@@ -87,9 +87,9 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 
 // test rolling elasticsearch indices based on age limit
 func TestElasticsearchShouldRollByAge(t *testing.T) {
-	entriesLimit := -1
+	entriesLimit := 0
 	ageLimit := 5
-	indicesLimit := -1
+	indicesLimit := 0
 	name := "should_roll_by_age_test"
 
 	client, err := getClient(name, entriesLimit, ageLimit, indicesLimit, []map[string][]byte{})
@@ -114,8 +114,8 @@ func TestElasticsearchShouldRollByAge(t *testing.T) {
 
 // test deletion of rolling elasticsearch indices
 func TestElasticsearchDelIndices(t *testing.T) {
-	entriesLimit := -1
-	ageLimit := -1
+	entriesLimit := 0
+	ageLimit := 0
 	indicesLimit := 5
 	name := "del_indices_test"
 
@@ -160,9 +160,9 @@ func TestElasticsearchDelIndices(t *testing.T) {
 
 // test mappings before and after rolling elasticsearch indices
 func TestElasticsearchMappings(t *testing.T) {
-	entriesLimit := -1
-	ageLimit := -1
-	indicesLimit := -1
+	entriesLimit := 0
+	ageLimit := 0
+	indicesLimit := 0
 	name := "mappings_test"
 	mapKey := "testmap"
 

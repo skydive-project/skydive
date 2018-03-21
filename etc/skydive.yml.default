@@ -69,13 +69,13 @@ analyzer:
     # If a limit is specified, when the index reaches it, it is rolled.
     # index_entries_limit specifies the maximum number of entries allowed in an index.
     # index_age_limit specifies the maximum age (in seconds) allowed for an index.
-    # For both limits, a value of -1 specifies that there is no limitation.
-    # index_entries_limit: -1
-    # index_age_limit: -1
+    # For both limits, a value of 0 specifies that there is no limitation.
+    # index_entries_limit: 0 
+    # index_age_limit: 0 
 
     # The number of indices to keep before deleting.
-    # A value of -1 specifies no limit (i.e. indices will never be deleted)
-    # indices_to_keep: -1
+    # A value of 0 specifies no limit (i.e. indices will never be deleted)
+    # indices_to_keep: 0
 
   topology:
     # Define static interfaces and links updating Skydive topology
@@ -247,13 +247,13 @@ storage:
     # If a limit is specified, when the index reaches it, it is rolled.
     # index_entries_limit specifies the maximum number of entries allowed in an index.
     # index_age_limit specifies the maximum age (in seconds) allowed for an index.
-    # For both limits, a value of -1 specifies that there is no limitation.
-    # index_entries_limit: -1
-    # index_age_limit: -1
+    # For both limits, a value of 0 specifies that there is no limitation.
+    # index_entries_limit: 0
+    # index_age_limit: 0
 
     # The number of indices to keep before deleting.
-    # A value of -1 specifies no limit (i.e. indices will never be deleted)
-    # indices_to_keep: -1
+    # A value of 0 specifies no limit (i.e. indices will never be deleted)
+    # indices_to_keep: 0
 
   # OrientDB connection information
   orientdb:
