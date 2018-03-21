@@ -150,6 +150,25 @@ func (c *ElasticSearchClient) countEntries() int {
 	return curEntriesCount.Count
 }
 
+func (c *ElasticSearchClient) aliasAction(action, alias, index string) string {
+	cmd := fmt.Sprintf(`{"%s":{"alias": "%s", "index": "%s"}}`, action, alias, index)
+	logging.GetLogger().Debugf("Changing index: %s", cmd)
+	return cmd
+}
+
+func (c *ElasticSearchClient) aliasAdd(alias, index string) string {
+	return c.aliasAction("add", alias, index)
+}
+
+func (c *ElasticSearchClient) aliasRemove(alias, index string) string {
+	return c.aliasAction("remove", alias, index)
+}
+
+func (c *ElasticSearchClient) aliasSep() string {
+	return ", "
+}
+
+
 func (c *ElasticSearchClient) createAlias() error {
 	newAlias := c.GetIndexAlias()
 	allAlias := c.GetIndexAllAlias()
@@ -166,15 +185,16 @@ func (c *ElasticSearchClient) createAlias() error {
 
 		for k := range current {
 			if strings.HasPrefix(k, newAlias) {
-				remove := `{"remove":{"alias": "%s", "index": "%s"}},`
-				aliases += fmt.Sprintf(remove, newAlias, k)
+				aliases += c.aliasRemove(newAlias, k)
+				aliases += c.aliasSep()
 			}
 		}
 	}
 
-	add := `{"add":{"alias": "%s", "index": "%s"}}, {"add":{"alias": "%s", "index": "%s"}}]}`
-	aliases += fmt.Sprintf(add, newAlias, c.index.path, allAlias, c.index.path)
-	logging.GetLogger().Debugf("Creating aliases: %s", aliases)
+	aliases += c.aliasAdd(newAlias, c.index.path)
+	aliases += c.aliasSep()
+	aliases += c.aliasAdd(allAlias, c.index.path)
+	aliases += "]}"
 
 	code, _, _ = c.request("POST", "/_aliases", "", aliases)
 	if code != http.StatusOK {
@@ -211,7 +231,6 @@ func (c *ElasticSearchClient) createIndex(name string) error {
 
 	c.index.entriesCounter = c.countEntries()
 	return c.addMappings()
-
 }
 
 func (c *ElasticSearchClient) start(name string, mappings []map[string][]byte, limits ElasticLimits) error {
