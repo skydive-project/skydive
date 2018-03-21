@@ -506,7 +506,7 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?coverage).*'
+          trigger-phrase: '.*(re)?run (skydive-)?coverage.*'
           only-trigger-phrase: true
           github-hooks: true
           allow-whitelist-orgs-as-admins: true

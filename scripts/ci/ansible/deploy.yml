@@ -5,6 +5,14 @@
   - include: openstack.yml
     when: os_username is defined
 
+- name: Put SELinux in permissive mode
+  hosts: jenkins_master, slaves
+  become: yes
+  tasks:
+  - selinux:
+      policy: targeted
+      state: permissive
+
 - name: Install Python 2.x
   hosts: jenkins_master, slaves
   become: true
@@ -18,6 +26,7 @@
   hosts: jenkins_master
   become: true
   roles:
+    - role: geerlingguy.java
     - role: geerlingguy.jenkins
       when: deploy_master is defined
       java_packages:
@@ -49,8 +58,11 @@
        - unzip
        - wget
        - https://www.rdoproject.org/repos/rdo-release.rpm
+  - shell: "dnf copr enable -y ganto/lxd"
+  - shell: "dnf update -y"
   - shell: |
-      cd /tmp
+      mkdir -p /tmp/protoc
+      cd /tmp/protoc
       wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
       unzip protoc-3.1.0-linux-x86_64.zip
       chmod +x bin/protoc
@@ -59,7 +71,7 @@
       name: "{{ item }}"
       state: present
     with_items:
-       - http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-25.noarch.rpm
+       - http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-27.noarch.rpm
        - git
        - wget
        - unzip
@@ -91,6 +103,15 @@
        - clang-devel
        - elfutils-libelf-devel
        - kubernetes-client
+       - lxd
+       - lxd-client
+       - lxd-tools
+  - lineinfile:
+      path: /etc/subuid
+      line: 'root:1000000:65536'
+  - lineinfile:
+      path: /etc/subgid
+      line: 'root:1000000:65536'
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
@@ -100,6 +121,9 @@
       dest: /etc/sudoers.d/jenkins
       owner: root
       group: root
+  - selinux:
+      policy: targeted
+      state: permissive
   - service:
       name: "{{ item }}"
       state: started
@@ -108,9 +132,8 @@
       - etcd
       - openvswitch
       - docker
-  - selinux:
-      policy: targeted
-      state: permissive
+      - lxd
+  - shell: "lxd init --auto"
   - lineinfile:
       dest: /etc/hosts
       line: "{{ hostvars['jenkins_master']['private_ip'] }} {{ jenkins_public_hostname }}"
@@ -126,6 +149,8 @@
 - name: Register Jenkins slaves
   hosts: jenkins_master
   tasks:
+  - pause:
+    minutes: 2
   - uri:
       url: http://localhost:8080/scriptText
       method: POST
@@ -184,7 +209,7 @@
   - user:
       name: jenkins
       group: jenkins
-      groups: jenkins,libvirt,docker
+      groups: jenkins,libvirt,docker,lxd
       home: /var/lib/jenkins
   - get_url:
       url: "http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/jnlpJars/slave.jar"
@@ -216,6 +241,12 @@
       name: jenkins-slave
       state: started
       enabled: yes
+
+- name: Stop firewalld on Jenkins slaves
+  hosts: slaves
+  become: true
+  ignore_errors: yes
+  tasks:
   - service:
       name: firewalld
       state: stopped
