@@ -692,6 +692,11 @@ var TopologyComponent = {
     },
 
     normalizeMetric: function(metric) {
+      if (metric.Start && metric.Last) {
+        bps = Math.floor(1000 * 8 * ((metric.RxBytes || 0) + (metric.TxBytes || 0)) / (metric.Last - metric.Start));
+        metric["Bandwidth"] = bandwidthToString(bps);
+      }
+
       ['Start', 'Last'].forEach(function(k) {
         if (metric[k]) {
           metric[k] = new Date(metric[k]).toLocaleTimeString();

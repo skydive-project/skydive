@@ -76,6 +76,11 @@ Vue.component('metrics-table', {
       return ['Start', 'Last'].indexOf(field.label) !== -1;
     },
 
+    canShow: function(value) {
+      if (typeof value === "string") return value.length > 0;
+      return value > 0;
+    },
+
     toggleField: function(field) {
       field.show = !field.show;
       // mark the field if is has been changed by the user
@@ -97,7 +102,7 @@ Vue.component('metrics-table', {
           f.show = true;
           self.fields.splice(0, 0, f);
         } else {
-          f.show = self.object[f.name[0]] > 0;
+          f.show = self.canShow(self.object[f.name[0]]);
           self.fields.push(f);
         }
       });
@@ -111,7 +116,7 @@ Vue.component('metrics-table', {
       this.fields.forEach(function(f) {
         var newVal = self.object[f.name[0]];
         if (f.showChanged === false) {
-          if (newVal > 0 || self.isTime(f)) {
+          if (self.canShow(newVal) || self.isTime(f)) {
             f.show = true;
           } else {
             f.show = false;
