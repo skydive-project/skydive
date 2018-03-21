@@ -35,7 +35,7 @@ import (
 	"syscall"
 	"time"
 
-	"gopkg.in/fsnotify.v1"
+	"gopkg.in/fsnotify/fsnotify.v1"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"

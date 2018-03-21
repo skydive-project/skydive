@@ -2437,10 +2437,10 @@
 			"revisionTime": "2016-12-22T12:58:16Z"
 		},
 		{
-			"checksumSHA1": "WCpgePNKiUKt0S0VE/e5kF5OnzU=",
-			"comment": "v1.2.9",
-			"path": "gopkg.in/fsnotify.v1",
-			"revision": "8611c35ab31c1c28aa903d33cf8b6e44a399b09e"
+			"checksumSHA1": "8Vjxiz2qAtkg3zjJgoXiDq7AI64=",
+			"path": "gopkg.in/fsnotify/fsnotify.v1",
+			"revision": "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9",
+			"revisionTime": "2018-01-10T05:33:47Z"
 		},
 		{
 			"checksumSHA1": "1sTwddC+3MJeObnzpIPWnXs6oM4=",
