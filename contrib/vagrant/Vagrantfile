@@ -1,6 +1,9 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require 'vagrant-openstack-provider'
+
+ADDR_PREFIX=ENV.fetch("ADDR_PREFIX", "192.168.50")
 AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
 ANALYZER_COUNT=ENV.fetch("ANALYZER_COUNT", "1").to_i
 ELASTICSEARCH_COUNT=ENV.fetch("ELASTICSEARCH_COUNT", "0").to_i
@@ -11,13 +14,48 @@ ANALYZER_EXTRA_PROVISION_SCRIPT=ENV.fetch("ANALYZER_EXTRA_PROVISION_SCRIPT", "")
 $skydive_extra_config = {
   "http.ws.pong_timeout" => 10,
   "agent.topology.probes" => ["ovsdb", "docker"],
-  "agent.topology.netlink.metrics_update" => 5
+  "agent.topology.netlink.metrics_update" => 5,
+  "analyzer.listen" => "0.0.0.0:8082",
 }
+
+def ifcfg_config(interface, network, netmask, ip)
+  ifcfg_template = <<-IFCFG
+cat > /etc/sysconfig/network-scripts/ifcfg-#{interface} <<EOF
+BOOTPROTO=none
+DEVICE=#{interface}
+ONBOOT=yes
+TYPE=Ethernet
+USERCTL=no
+NETWORK=#{network}
+NETMASK=#{netmask}
+IPADDR=#{ip}
+EOF
+sudo /sbin/ifup #{interface}
+IFCFG
+  return ifcfg_template
+end
+
+def populate_os_config(os, ip)
+  os.openstack_auth_url = ENV.fetch("OS_AUTH_URL", "'http://keystone-server.net/v2.0/tokens'")
+  os.username = ENV.fetch("OS_USERNAME", "openstackUser")
+  os.password = ENV.fetch("OS_PASSWORD", "openstackPassword")
+  os.tenant_name = ENV.fetch("OS_TENANT_NAME", "myTenant")
+  os.flavor = ENV.fetch("OS_FLAVOR", "m1.large")
+  os.image = ENV.fetch("OS_CENTOS_IMAGE", "centos")
+  os.floating_ip_pool = ENV.fetch("OS_PUBLIC_IP_POOL", "8.0.0.0/8")
+  os.networks = [
+    'private',
+    {
+      name: 'vagrant',
+      address: ip,
+    },
+  ]
+end
 
 def provision_es(vm, hosts)
   vm.provision :ansible do |ansible|
     ansible.playbook = "playbook-es.yml"
-    ansible.groups = { "elasticsearch": hosts }
+    ansible.groups = { "elasticsearch": hosts.map { |h| h["name"] } }
     ansible.limit = "all"
     ansible.verbose = true
     ansible.galaxy_role_file = 'requirements.yml'
@@ -26,19 +64,30 @@ def provision_es(vm, hosts)
 
   $skydive_extra_config["analyzer.storage.backend"] = "elasticsearch"
   $skydive_extra_config["graph.backend"] = "elasticsearch"
-  $skydive_extra_config["storage.elasticsearch.host"] = "#{hosts[0]}:9200"
+  $skydive_extra_config["storage.elasticsearch.host"] = "#{hosts[0]['ip']}:9200"
 end
 
 Vagrant.configure(2) do |config|
+  config.ssh.username = 'centos'
+
   (1..AGENT_COUNT).each do |i|
+    ip = "#{ADDR_PREFIX}.#{(i+ANALYZER_COUNT+ELASTICSEARCH_COUNT)*10}"
+
     config.vm.define "agent#{i}" do |agent|
-      agent.vm.box = "centos/7"
-      agent.vm.provider :libvirt do |domain|
-        domain.memory = 1536
+      agent.vm.provider :openstack do |os|
+        populate_os_config(os, ip)
       end
+
+      agent.vm.provider :libvirt do |domain, override|
+        domain.memory = 1536
+        override.vm.box = "centos/7"
+        override.ssh.username = 'vagrant'
+      end
+
       agent.vm.hostname = "agent#{i}"
-      agent.vm.network "private_network", ip: "192.168.50.#{(i+ANALYZER_COUNT+ELASTICSEARCH_COUNT)*10}"
+      agent.vm.network "private_network", ip: ip
       agent.vm.synced_folder ".", "/vagrant", :disabled => true
+      agent.vm.provision "networking", type: "shell", inline: ifcfg_config("eth1", "#{ADDR_PREFIX}.0", "255.255.255.0", ip)
       agent.vm.provision "common", type: "shell", path: "setup-common.sh"
       agent.vm.provision "openvswitch", type: "shell", inline: "sudo yum -y install centos-release-openstack-pike"
 
@@ -49,27 +98,40 @@ Vagrant.configure(2) do |config|
   end
 
   (1..ELASTICSEARCH_COUNT).each do |i|
-    config.vm.define "elasticsearch#{i}" do |es|
-      es.vm.box = "centos/7"
-      es.vm.hostname = "elasticsearch#{i}"
-      es.vm.network "private_network", ip: "192.168.50.#{(i+ANALYZER_COUNT)*10}"
-      es.vm.synced_folder ".", "/vagrant", :disabled => true
-      es.vm.provision "common", type: "shell", path: "setup-common.sh"
+    ip = "#{ADDR_PREFIX}.#{(i+ANALYZER_COUNT)*10}"
 
-      provision_es(es.vm, Array.new(ELASTICSEARCH_COUNT){ |i| "elasticsearch#{(i+1).to_s}" })
+    config.vm.define "elasticsearch#{i}" do |es|
+      es.vm.provider :openstack do |os|
+        populate_os_config(os, ip)
+      end
+
+      es.vm.provider :libvirt do |domain, override|
+        override.vm.box = "centos/7"
+        override.ssh.username = 'vagrant'
+      end
+
+      es.vm.hostname = "elasticsearch#{i}"
+      es.vm.network "private_network", ip: ip
+      es.vm.synced_folder ".", "/vagrant", :disabled => true
+
+      es.vm.provision "networking", type: "shell", inline: ifcfg_config("eth1", "#{ADDR_PREFIX}.0", "255.255.255.0", ip)
+      es.vm.provision "common", type: "shell", path: "setup-common.sh"
+      provision_es(es.vm, Array.new(ELASTICSEARCH_COUNT){ |i| { "ip" => "#{ADDR_PREFIX}.#{(i+1+ANALYZER_COUNT)*10}", "name" => "elasticsearch#{(i+1).to_s}" } })
     end
   end
 
   (1..ANALYZER_COUNT).each do |i|
+    ip = "#{ADDR_PREFIX}.#{i*10}"
+
     config.vm.define "analyzer#{i}" do |analyzer|
-      analyzer.vm.box = "centos/7"
       analyzer.vm.hostname = "analyzer#{i}"
-      analyzer.vm.network "private_network", ip: "192.168.50.#{i*10}"
+      analyzer.vm.network "private_network", ip: ip
       analyzer.vm.synced_folder ".", "/vagrant", :disabled => true
+      analyzer.vm.provision "networking", type: "shell", inline: ifcfg_config("eth1", "#{ADDR_PREFIX}.0", "255.255.255.0", ip)
       analyzer.vm.provision "common", type: "shell", path: "setup-common.sh"
       if i == 1 then
         if ELASTICSEARCH_COUNT == 0
-          provision_es(analyzer.vm, Array.new(ANALYZER_COUNT){ |i| "analyzer#{(i+1).to_s}" })
+          provision_es(analyzer.vm, Array.new(ANALYZER_COUNT){ |i| { "ip" => "#{ADDR_PREFIX}.#{(i+1)*10}", "name" => "analyzer#{(i+1).to_s}" } })
         end
 
         analyzer.vm.provision :ansible do |ansible|
@@ -99,8 +161,16 @@ Vagrant.configure(2) do |config|
         analyzer.vm.provision "extra", type: "shell", path: ANALYZER_EXTRA_PROVISION_SCRIPT
       end
 
-      analyzer.vm.provider :libvirt do |domain|
+      analyzer.vm.provider :openstack do |os|
+        populate_os_config(os, ip)
+        os.security_groups = [ 'skydive' ]
+      end
+
+      analyzer.vm.provider :libvirt do |domain, override|
         domain.memory = 1536
+        domain.graphics_type = "none"
+        override.vm.box = "centos/7"
+        override.ssh.username = 'vagrant'
       end
     end
   end

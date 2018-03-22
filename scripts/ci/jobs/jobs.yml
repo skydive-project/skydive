@@ -464,7 +464,7 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           cd scripts/ci/devstack
-          vagrant up --no-provision && vagrant provision
+          vagrant up --no-provision --provider=openstack && vagrant provision
           retcode=$?
           vagrant destroy
           exit $retcode
@@ -475,7 +475,7 @@
       - openstack-credentials
     publishers:
       - chuck-norris
-    node: baremetal
+    node: vagrant
 
 - job:
     name: skydive-kolla-tests
@@ -506,7 +506,7 @@
           cp $GOPATH/bin/skydive .
           make test.functionals.compile GOFLAGS="-race" GORACE="history_size=5" WITH_NEUTRON=true VERBOSE=true
           cd scripts/ci/kolla
-          DEPLOYMENT_MODE=dev vagrant up
+          DEPLOYMENT_MODE=dev vagrant up --provider=openstack
           retcode=$?
           vagrant destroy
           exit $retcode
@@ -517,7 +517,7 @@
       - openstack-credentials
     publishers:
       - chuck-norris
-    node: baremetal
+    node: vagrant
 
 - job:
     name: skydive-vagrant-tests
@@ -540,7 +540,7 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          scripts/ci/run-vagrant-tests.sh
+          VAGRANT_DEFAULT_PROVIDER=openstack scripts/ci/run-vagrant-tests.sh
     wrappers:
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/skydive-vagrant-tests/builds/${BUILD_NUMBER}/log.html
@@ -548,7 +548,7 @@
       - openstack-credentials
     publishers:
       - chuck-norris
-    node: baremetal
+    node: vagrant
 
 - job:
     name: skydive-packaging-tests
