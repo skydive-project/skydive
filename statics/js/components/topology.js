@@ -693,7 +693,7 @@ var TopologyComponent = {
 
     normalizeMetric: function(metric) {
       ['Start', 'Last'].forEach(function(k) {
-        if (metric[k]) {
+        if (metric[k] && typeof metric[k] === 'number') {
           metric[k] = new Date(metric[k]).toLocaleTimeString();
         }
       });
