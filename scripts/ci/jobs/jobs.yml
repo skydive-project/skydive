@@ -69,8 +69,13 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-go-fmt
+          black-list-labels: WIP
     builders:
       - shell: cd src/github.com/skydive-project/skydive && scripts/ci/run-go-fmt.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-go-fmt/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-go-fmt
     publishers:
       - publish-cobertura
       - chuck-norris
@@ -93,10 +98,15 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-unit-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
           scripts/ci/run-unit-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-unit-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-unit-tests
     publishers:
       - junit:
           results: tests.xml
@@ -121,10 +131,15 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-compile-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
           scripts/ci/run-compile-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-compile-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-compile-tests
     publishers:
       - chuck-norris
 
@@ -146,6 +161,7 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: '{name}-functional-tests-backend-{backend}'
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -163,6 +179,10 @@
             mv src/github.com/skydive-project/skydive/cover.out.xml .
           fi
           exit $retcode
+    wrappers:
+      - github-pull-request:
+          status-url: 'http://ci-logs.skydive.network/{name}-functional-tests-backend-{backend}/builds/${{BUILD_NUMBER}}/log.html'
+          status-context: '{name}-functional-tests-backend-{backend}'
     publishers:
       - junit:
           results: tests.xml
@@ -192,6 +212,7 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-scale-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -204,6 +225,10 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb FLOW_PROTOCOL=udp scripts/ci/run-scale.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-scale-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-scale-tests
     publishers:
       - chuck-norris
 
@@ -223,6 +248,7 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-selenium-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -231,6 +257,10 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb scripts/ci/run-selenium-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-selenium-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-selenium-tests
     publishers:
       - chuck-norris
       - archive:
@@ -254,6 +284,7 @@
           cancel-builds-on-update: true
           only-trigger-phrase: true
           status-context: skydive-cdd-overview-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -262,6 +293,10 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb scripts/ci/run-cdd-overview-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-cdd-overview-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-cdd-overview-tests
     publishers:
       - chuck-norris
       - archive:
@@ -368,6 +403,7 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-devstack-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -380,6 +416,10 @@
           retcode=$?
           vagrant destroy
           exit $retcode
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-devstack-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-devstack-tests
     publishers:
       - chuck-norris
     node: baremetal
@@ -400,6 +440,7 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-kolla-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -416,6 +457,10 @@
           retcode=$?
           vagrant destroy
           exit $retcode
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-kolla-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-kolla-tests
     publishers:
       - chuck-norris
     node: baremetal
@@ -436,11 +481,16 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: false
           status-context: skydive-vagrant-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
           scripts/ci/run-vagrant-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-vagrant-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-vagrant-tests
     publishers:
       - chuck-norris
     node: baremetal
@@ -461,8 +511,13 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-packaging-tests
+          black-list-labels: WIP
     builders:
       - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-packaging-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-packaging-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-packaging-tests
     publishers:
       - chuck-norris
 
@@ -482,6 +537,7 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-python-tests
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -490,6 +546,10 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb scripts/ci/run-python-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-python-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-python-tests
     publishers:
       - chuck-norris
 
@@ -512,6 +572,7 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-coverage
+          black-list-labels: WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -525,6 +586,9 @@
           - text:
               credential-id: coveralls-token
               variable: COVERALLS_TOKEN
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-coverage/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-coverage
     publishers:
       - publish-cobertura
       - chuck-norris
