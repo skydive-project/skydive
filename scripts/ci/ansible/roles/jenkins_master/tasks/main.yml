@@ -64,7 +64,7 @@
     jsonObject.put("msgFailure", "Failure");
     jsonObject.put("blackListCommitAuthor", "");
     jsonObject.put("useDetailedComments", "false");
-    jsonObject.put("manageWebhooks", "true");
+    jsonObject.put("manageWebhooks", "false");
     jsonObject.put("unstableAs", "ERROR");
     jsonObject.put("autoCloseFailedPullRequests", "false");
     jsonObject.put("displayBuildErrorsOnDownstreamBuilds", "false");

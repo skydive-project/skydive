@@ -62,10 +62,10 @@
       - skydive-github
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?go-fmt).*'
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-go-fmt
@@ -86,10 +86,10 @@
       - skydive-github
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?unit-tests).*'
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-unit-tests
@@ -114,10 +114,10 @@
       - skydive-github
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?compile-dpdk).*'
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-compile-tests
@@ -139,10 +139,10 @@
       - skydive-github
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?functional-tests-backend-{backend}).*'
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: '{name}-functional-tests-backend-{backend}'
@@ -185,10 +185,10 @@
           url: https://github.com/skydive-project/skydive
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?scale-tests).*'
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-scale-tests
@@ -216,10 +216,10 @@
           url: https://github.com/skydive-project/skydive
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?selenium-tests).*'
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-selenium-tests
@@ -246,10 +246,10 @@
           url: https://github.com/skydive-project/skydive
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run cdd-overview.*'
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           only-trigger-phrase: true
@@ -360,11 +360,11 @@
           url: https://github.com/skydive-project/skydive
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (skydive-)?devstack-tests.*'
           only-trigger-phrase: true
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-devstack-tests
@@ -392,11 +392,11 @@
           url: https://github.com/skydive-project/skydive
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (skydive-)?kolla-tests.*'
           only-trigger-phrase: true
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-kolla-tests
@@ -428,11 +428,11 @@
           url: https://github.com/skydive-project/skydive
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (skydive-)?vagrant-tests.*'
           only-trigger-phrase: true
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: false
           status-context: skydive-vagrant-tests
@@ -453,11 +453,11 @@
           url: https://github.com/skydive-project/skydive
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (skydive-)?packaging-tests.*'
           only-trigger-phrase: true
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-packaging-tests
@@ -474,11 +474,11 @@
           url: https://github.com/skydive-project/skydive
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (skydive-)?python-tests.*'
           only-trigger-phrase: true
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-python-tests
@@ -504,11 +504,11 @@
       - skydive-github
     triggers:
       - github-pull-request:
+          cron: "* * * * *"
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (skydive-)?coverage.*'
           only-trigger-phrase: true
-          github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-coverage
