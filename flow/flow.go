@@ -405,7 +405,7 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids FlowUUIDs, opt
 }
 
 // UpdateUUID updates the flow UUID based on protocotols layers path and layers IDs
-func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
+func (f *Flow) UpdateUUID(key string) {
 	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
 
 	hasher := murmur3.New64()
@@ -430,13 +430,6 @@ func (f *Flow) UpdateUUID(key string, L2ID int64, L3ID int64) {
 	// include key so that we are sure that two flows with different keys don't
 	// give the same UUID due to different ways of hash the headers.
 	hasher.Write([]byte(key))
-
-	/*bL2ID := make([]byte, 8)
-	binary.BigEndian.PutUint64(bL2ID, uint64(L2ID))
-	hasher.Write(bL2ID)
-	bL3ID := make([]byte, 8)
-	binary.BigEndian.PutUint64(bL3ID, uint64(L3ID))
-	hasher.Write(bL3ID)*/
 
 	f.UUID = hex.EncodeToString(hasher.Sum(nil))
 }
@@ -508,7 +501,7 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 	}
 
 	// need to have as most variable filled as possible to get correct UUID
-	f.UpdateUUID(key, uuids.L2ID, uuids.L3ID)
+	f.UpdateUUID(key)
 }
 
 // Update a flow metrics and latency

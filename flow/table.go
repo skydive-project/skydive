@@ -339,7 +339,7 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3ID int64) *Flow {
+func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 	key := packet.Key(parentUUID)
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
@@ -350,8 +350,6 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3I
 
 		uuids := FlowUUIDs{
 			ParentUUID: parentUUID,
-			L2ID:       L2ID,
-			L3ID:       L3ID,
 		}
 
 		if ft.Opts.ReassembleTCP {
@@ -389,18 +387,10 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3I
 
 func (ft *Table) processPacketSeq(ps *PacketSequence) {
 	var parentUUID string
-	var L2ID int64
-	var L3ID int64
 	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.nodeTID)
 	for _, packet := range ps.Packets {
-		f := ft.packetToFlow(packet, parentUUID, L2ID, L3ID)
+		f := ft.packetToFlow(packet, parentUUID)
 		parentUUID = f.UUID
-		if f.Link != nil {
-			L2ID = f.Link.ID
-		}
-		if f.Network != nil {
-			L3ID = f.Network.ID
-		}
 	}
 }
 
