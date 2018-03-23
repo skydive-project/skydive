@@ -68,12 +68,14 @@ func getHttpClient() *http.Client {
 
 func NewRestClient(url *url.URL, authOptions *AuthenticationOpts) *RestClient {
 	client := getHttpClient()
-	authClient := NewAuthenticationClient(url, authOptions)
-	return &RestClient{
-		client:     client,
-		authClient: authClient,
-		url:        url,
+	rc := &RestClient{
+		client: client,
+		url:    url,
 	}
+	if authOptions.Username != "" {
+		rc.authClient = NewAuthenticationClient(url, authOptions)
+	}
+	return rc
 }
 
 func (c *RestClient) debug() bool {
@@ -81,7 +83,7 @@ func (c *RestClient) debug() bool {
 }
 
 func (c *RestClient) Request(method, path string, body io.Reader, header http.Header) (*http.Response, error) {
-	if !c.authClient.Authenticated() {
+	if c.authClient != nil && !c.authClient.Authenticated() {
 		if err := c.authClient.Authenticate(); err != nil {
 			return nil, err
 		}
