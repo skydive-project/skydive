@@ -201,6 +201,11 @@ func (q QueryString) Sort(list ...interface{}) QueryString {
 	return q.newQueryString("Sort", list...)
 }
 
+// Sockets append a Sockets() operation to query
+func (q QueryString) Sockets() QueryString {
+	return q.newQueryString("Sockets")
+}
+
 // V append a V() operation to query
 func (q QueryString) V(list ...interface{}) QueryString {
 	return q.newQueryString("V", list...)
