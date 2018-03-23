@@ -446,10 +446,6 @@ func (o *OvsMonitor) startMonitoring() error {
 	connectedOnce := false
 	o.ticker = time.NewTicker(ConnectionPollInterval)
 
-	if err := o.monitorOvsdb(); err != nil {
-		logging.GetLogger().Warningf("Could not connect to OVSDB, will retry every %s", ConnectionPollInterval.String())
-	}
-
 	for {
 		select {
 		case <-o.ticker.C:
@@ -470,7 +466,10 @@ func (o *OvsMonitor) startMonitoring() error {
 
 // StartMonitoring start the OVS database monitoring
 func (o *OvsMonitor) StartMonitoring() {
-	o.monitorOvsdb()
+	if err := o.monitorOvsdb(); err != nil {
+		logging.GetLogger().Warningf("Could not connect to OVSDB, will retry every %s", ConnectionPollInterval.String())
+	}
+
 	go o.startMonitoring()
 }
 
