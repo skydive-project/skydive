@@ -394,7 +394,6 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 
 func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
 	if c.index.limits.entriesLimit == 0 {
-		logging.GetLogger().Debugf("%s entries limit not set", c.index.name)
 		return false
 	}
 	logging.GetLogger().Debugf("%s entries counter is %d", c.index.name, c.index.entriesCounter)
@@ -414,7 +413,6 @@ func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
 
 func (c *ElasticSearchClient) shouldRollIndexByAge() bool {
 	if c.index.limits.ageLimit == 0 {
-		logging.GetLogger().Debugf("%s age limit not set", c.index.name)
 		return false
 	}
 	age := int(time.Now().Sub(c.index.timeCreated).Seconds())
@@ -432,7 +430,6 @@ func (c *ElasticSearchClient) shouldRollIndex() bool {
 
 func (c *ElasticSearchClient) delIndices() {
 	if c.index.limits.indicesLimit == 0 {
-		logging.GetLogger().Debugf("No indices limit specified for %s", c.index.name)
 		return
 	}
 
