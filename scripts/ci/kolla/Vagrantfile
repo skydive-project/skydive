@@ -11,7 +11,7 @@ sudo yum -y install https://www.rdoproject.org/repos/rdo-release.rpm
 sudo yum -y install libpcap libxml2 openvswitch
 cd /skydive
 source /etc/kolla/admin-openrc.sh
-export SKYDIVE_ANALYZERS=192.168.50.10:8085
+export SKYDIVE_ANALYZERS=192.168.50.200:8085
 make test.functionals.run VERBOSE=true TIMEOUT=20m ARGS='-test.run TestNeutron'
 SCRIPT
 
@@ -48,11 +48,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
               'private',
               {
                 name: 'vagrant',
-                address: "192.168.50.10",
+                address: "192.168.50.200",
               },
               {
                 name: 'vagrant',
-                address: "192.168.50.100",
+                address: "192.168.50.210",
               },
             ]
             override.vm.synced_folder "../../..", "/skydive", :disabled => false
@@ -66,10 +66,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             domain.graphics_type = "none"
         end
 
-        kolla.vm.network "private_network", ip: "192.168.50.10"
-        kolla.vm.network "private_network", ip: "192.168.50.100"
-        kolla.vm.provision "networking-eth1", type: "shell", inline: ifcfg_config("eth1", "192.168.50.0", "255.255.255.0", "192.168.50.10")
-        kolla.vm.provision "networking-eth2", type: "shell", inline: ifcfg_config("eth2", "192.168.50.0", "255.255.255.0", "192.168.50.100")
+        kolla.vm.network "private_network", ip: "192.168.50.200"
+        kolla.vm.network "private_network", ip: "192.168.50.210"
+        kolla.vm.provision "networking-eth1", type: "shell", inline: ifcfg_config("eth1", "192.168.50.0", "255.255.255.0", "192.168.50.200")
+        kolla.vm.provision "networking-eth2", type: "shell", inline: ifcfg_config("eth2", "192.168.50.0", "255.255.255.0", "192.168.50.210")
         kolla.vm.provision "pre", type: "shell", inline: $script, privileged: false
         kolla.vm.provision "kolla", type: "shell", path: "run-kolla.sh", privileged: true, env: {"DEPLOYMENT_MODE" => DEPLOYMENT_MODE}
         kolla.vm.provision "test", type: "shell", inline: $testscript, privileged: false

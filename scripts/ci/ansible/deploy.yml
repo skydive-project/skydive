@@ -48,7 +48,7 @@
         - build-timeout
 
 - name: Install requirements
-  hosts: slaves
+  hosts: jenkins_master, slaves
   become: yes
   tasks:
   - package:
@@ -68,10 +68,12 @@
       chmod +x bin/protoc
       mv bin/protoc /usr/bin/
   - package:
+      name: "http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-27.noarch.rpm"
+      state: present
+  - package:
       name: "{{ item }}"
       state: present
     with_items:
-       - http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-27.noarch.rpm
        - git
        - wget
        - unzip
@@ -212,8 +214,8 @@
     register: slave_secrets
   - set_fact: slave_secrets="{{ slave_secrets.stdout_lines }}"
 
-- name: Start Jenkins slaves
-  hosts: slaves
+- name: Configure Jenkins
+  hosts: jenkins_master, slaves
   become: true
   tasks:
   - group:
@@ -227,6 +229,11 @@
       group: jenkins
       groups: jenkins,libvirt,docker,lxd
       home: /var/lib/jenkins
+
+- name: Start Jenkins slaves
+  hosts: slaves
+  become: true
+  tasks:
   - get_url:
       url: "http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/jnlpJars/slave.jar"
       dest: /var/lib/jenkins/slave.jar
@@ -253,6 +260,9 @@
       group: root
     with_items: "{{ hostvars['jenkins_master']['slave_secrets'] }}"
   - shell: systemctl daemon-reload
+  - shell: vagrant plugin install vagrant-openstack-provider
+    become: yes
+    become_user: jenkins
   - service:
       name: jenkins-slave
       state: started
