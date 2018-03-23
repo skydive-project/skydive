@@ -23,7 +23,6 @@ NS2=vm2
 function vm_start() {
 	local vm=$1
 	local ip=$2
-	[ -n "$ip" ] || return
 	local delayhost=$3
 	local delayvm=$4
 
@@ -105,7 +104,7 @@ function start() {
 	set -x
 	sudo ovs-vsctl add-br br-int
 	vm_start $NS1 $SUBNET1 $DELAY2 $DELAY1
-	vm_start $NS2 $SUBNET2 $DELAY3 $DELAY4
+	[ -n "$SUBNET2" ] && vm_start $NS2 $SUBNET2 $DELAY3 $DELAY4
 }
 
 function stop() {
@@ -121,7 +120,7 @@ function ping() {
 	echo "NOTE: During 1st run RTT is doubled due to ARP resolution."
 	echo
 	set -x
-	sudo ip netns exec $NS1 ping -c 1 $IP2
+	[ -n "$IP2" ] && sudo ip netns exec $NS1 ping -c 1 $IP2
 	sudo ip netns exec $NS2 ping -c 1 $IP1
 }
 
