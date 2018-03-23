@@ -281,7 +281,7 @@ gometalinter: ineffassign interfacer golint goimports varcheck structcheck align
 
 lint: gometalinter
 	@echo "+ $@"
-	@gometalinter -j 2 --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json > lint.json || true
+	@gometalinter --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json > lint.json || true
 	cat lint.json
 
 # dependency package need for building the project
