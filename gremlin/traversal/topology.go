@@ -37,12 +37,12 @@ import (
 // InterfaceMetrics returns a Metrics step from interface metric metadata
 func InterfaceMetrics(tv *traversal.GraphTraversalV) *MetricsTraversalStep {
 	if tv.Error() != nil {
-		return &MetricsTraversalStep{error: tv.Error()}
+		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
 	tv = tv.Dedup("ID", "LastUpdateMetric.Start").Sort(common.SortAscending, "LastUpdateMetric.Start")
 	if tv.Error() != nil {
-		return &MetricsTraversalStep{error: tv.Error()}
+		return NewMetricsTraversalStepFromError(tv.Error())
 	}
 
 	metrics := make(map[string][]common.Metric)
@@ -67,7 +67,7 @@ nodeloop:
 		// protobuf
 		var lastMetric topology.InterfaceMetric
 		if err := mapstructure.WeakDecode(m, &lastMetric); err != nil {
-			return &MetricsTraversalStep{error: err}
+			return NewMetricsTraversalStepFromError(err)
 		}
 
 		if gslice == nil || (lastMetric.Start > gslice.Start && lastMetric.Last < gslice.Last) && it.Next() {
@@ -75,7 +75,7 @@ nodeloop:
 		}
 	}
 
-	return NewMetricsTraversalStep(tv.GraphTraversal, metrics, nil)
+	return NewMetricsTraversalStep(tv.GraphTraversal, metrics)
 }
 
 // Sockets returns a sockets step from host/namespace sockets

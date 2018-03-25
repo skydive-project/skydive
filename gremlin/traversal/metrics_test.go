@@ -47,11 +47,11 @@ func testMetric(t *testing.T, metrics, expected map[string][]common.Metric, tm t
 	gt := traversal.NewGraphTraversal(g, false)
 	gt = gt.Context(tm, dr)
 
-	step := NewMetricsTraversalStep(gt, metrics, nil)
+	step := NewMetricsTraversalStep(gt, metrics)
 
 	got := step.Aggregates(int64(10))
 
-	exp := NewMetricsTraversalStep(gt, expected, nil)
+	exp := NewMetricsTraversalStep(gt, expected)
 	if !reflect.DeepEqual(exp.Values(), got.Values()) {
 		e, _ := exp.MarshalJSON()
 		g, _ := got.MarshalJSON()
@@ -615,7 +615,7 @@ func testMetricSum(t *testing.T, metrics map[string][]common.Metric, expected co
 	gt := traversal.NewGraphTraversal(g, false)
 	gt = gt.Context(tm, dr)
 
-	step := NewMetricsTraversalStep(gt, metrics, nil)
+	step := NewMetricsTraversalStep(gt, metrics)
 
 	//	fmt.Printf("############# %+v\n", step.Aggregates(int64(10)).metrics)
 

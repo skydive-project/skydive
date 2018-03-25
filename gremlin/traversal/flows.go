@@ -327,7 +327,7 @@ func (f *FlowTraversalStep) Hops(s ...interface{}) *traversal.GraphTraversalV {
 // Count step
 func (f *FlowTraversalStep) Count(s ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
-		return traversal.NewGraphTraversalValue(f.GraphTraversal, 0, f.error)
+		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
 
 	return traversal.NewGraphTraversalValue(f.GraphTraversal, len(f.flowset.Flows))
@@ -466,21 +466,21 @@ func (f *FlowTraversalStep) Sort(keys ...interface{}) *FlowTraversalStep {
 // Sum aggregates integer values mapped by 'key' cross flows
 func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
-		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, f.error)
+		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
 
 	if len(keys) != 1 {
-		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, fmt.Errorf("Sum requires 1 parameter"))
+		return traversal.NewGraphTraversalValueFromError(fmt.Errorf("Sum requires 1 parameter"))
 	}
 
 	key, ok := keys[0].(string)
 	if !ok {
-		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, fmt.Errorf("Sum parameter has to be a string key"))
+		return traversal.NewGraphTraversalValueFromError(fmt.Errorf("Sum parameter has to be a string key"))
 	}
 
 	k := strings.Split(key, ".")
 	if k[0] != "Metric" && k[0] != "LastUpdateMetric" {
-		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, fmt.Errorf("Sum accepts only sub fields of Metric and LastUpadteMetric"))
+		return traversal.NewGraphTraversalValueFromError(fmt.Errorf("Sum accepts only sub fields of Metric and LastUpadteMetric"))
 	}
 
 	var s float64
@@ -488,16 +488,16 @@ func (f *FlowTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalVa
 		if v, err := fl.GetFieldInt64(key); err == nil {
 			s += float64(v)
 		} else {
-			return traversal.NewGraphTraversalValue(f.GraphTraversal, s, err)
+			return traversal.NewGraphTraversalValueFromError(err)
 		}
 	}
-	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, s)
 }
 
 // PropertyValues returns a flow field value
 func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
-		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, f.error)
+		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
 
 	key := keys[0].(string)
@@ -505,17 +505,17 @@ func (f *FlowTraversalStep) PropertyValues(keys ...interface{}) *traversal.Graph
 	for _, fl := range f.flowset.Flows {
 		v, err := fl.GetField(key)
 		if err != nil {
-			return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, common.ErrFieldNotFound)
+			return traversal.NewGraphTraversalValueFromError(common.ErrFieldNotFound)
 		}
 		s = append(s, v)
 	}
-	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, s)
 }
 
 // PropertyKeys returns a flow field
 func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTraversalValue {
 	if f.error != nil {
-		return traversal.NewGraphTraversalValue(f.GraphTraversal, nil, f.error)
+		return traversal.NewGraphTraversalValueFromError(f.error)
 	}
 
 	var s []interface{}
@@ -525,13 +525,13 @@ func (f *FlowTraversalStep) PropertyKeys(keys ...interface{}) *traversal.GraphTr
 		s = f.flowset.Flows[0].GetFields()
 	}
 
-	return traversal.NewGraphTraversalValue(f.GraphTraversal, s, nil)
+	return traversal.NewGraphTraversalValue(f.GraphTraversal, s)
 }
 
 // FlowMetrics returns flow metric counters
 func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 	if f.error != nil {
-		return NewMetricsTraversalStep(nil, nil, f.error)
+		return NewMetricsTraversalStepFromError(f.error)
 	}
 
 	var flowMetrics map[string][]common.Metric
@@ -545,7 +545,7 @@ func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 			flowFilter := flow.NewFilterForFlowSet(f.flowset)
 			f.flowSearchQuery.Filter = filters.NewAndFilter(f.flowSearchQuery.Filter, flowFilter)
 		} else if f.flowSearchQuery.Filter == nil {
-			return NewMetricsTraversalStep(nil, nil, errors.New("Unable to filter flows"))
+			return NewMetricsTraversalStepFromError(errors.New("Unable to filter flows"))
 		}
 
 		fr := filters.Range{To: context.TimeSlice.Last}
@@ -560,7 +560,7 @@ func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 
 		var err error
 		if flowMetrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {
-			return NewMetricsTraversalStep(nil, nil, err)
+			return NewMetricsTraversalStepFromError(err)
 		}
 	} else {
 		flowMetrics = make(map[string][]common.Metric, len(f.flowset.Flows))
@@ -578,7 +578,7 @@ func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 		}
 	}
 
-	return NewMetricsTraversalStep(f.GraphTraversal, flowMetrics, nil)
+	return NewMetricsTraversalStep(f.GraphTraversal, flowMetrics)
 }
 
 // Values returns list of raw packets

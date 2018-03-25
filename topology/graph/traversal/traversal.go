@@ -617,7 +617,7 @@ func (tv *GraphTraversalV) GetNodes() (nodes []*graph.Node) {
 // PropertyValues returns at this step, the values of each metadata selected by the first key
 func (tv *GraphTraversalV) PropertyValues(k ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
-		return &GraphTraversalValue{error: tv.error}
+		return NewGraphTraversalValueFromError(tv.error)
 	}
 
 	key := k[0].(string)
@@ -639,13 +639,13 @@ func (tv *GraphTraversalV) PropertyValues(k ...interface{}) *GraphTraversalValue
 			}
 		}
 	}
-	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
+	return NewGraphTraversalValue(tv.GraphTraversal, s)
 }
 
 // PropertyKeys returns at this step, all the metadata keys of each metadata
 func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
-		return &GraphTraversalValue{error: tv.error}
+		return NewGraphTraversalValueFromError(tv.error)
 	}
 
 	tv.GraphTraversal.RLock()
@@ -657,7 +657,7 @@ func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValu
 	for _, n := range tv.nodes {
 		fields, err := n.GetFields()
 		if err != nil {
-			return &GraphTraversalValue{error: err}
+			return NewGraphTraversalValueFromError(err)
 		}
 		for _, k := range fields {
 			if _, ok := seen[k]; !ok {
@@ -667,22 +667,22 @@ func (tv *GraphTraversalV) PropertyKeys(keys ...interface{}) *GraphTraversalValu
 		}
 	}
 
-	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
+	return NewGraphTraversalValue(tv.GraphTraversal, s)
 }
 
 // Sum step : key
 // returns the sum of the metadata values of the first argument key
 func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
-		return &GraphTraversalValue{error: tv.error}
+		return NewGraphTraversalValueFromError(tv.error)
 	}
 
 	if len(keys) != 1 {
-		return &GraphTraversalValue{error: fmt.Errorf("Sum requires 1 parameter")}
+		return NewGraphTraversalValueFromError(fmt.Errorf("Sum requires 1 parameter"))
 	}
 	key, ok := keys[0].(string)
 	if !ok {
-		return &GraphTraversalValue{error: fmt.Errorf("Sum parameter has to be a string key")}
+		return NewGraphTraversalValueFromError(fmt.Errorf("Sum parameter has to be a string key"))
 	}
 
 	tv.GraphTraversal.RLock()
@@ -694,15 +694,15 @@ func (tv *GraphTraversalV) Sum(keys ...interface{}) *GraphTraversalValue {
 			if v, err := common.ToFloat64(value); err == nil {
 				s += v
 			} else {
-				return &GraphTraversalValue{error: err}
+				return NewGraphTraversalValueFromError(err)
 			}
 		} else {
 			if err != common.ErrFieldNotFound {
-				return &GraphTraversalValue{error: err}
+				return NewGraphTraversalValueFromError(err)
 			}
 		}
 	}
-	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: s}
+	return NewGraphTraversalValue(tv.GraphTraversal, s)
 }
 
 // E step : [edge ID]
@@ -1070,10 +1070,10 @@ nodeloop:
 // Count step
 func (tv *GraphTraversalV) Count(s ...interface{}) *GraphTraversalValue {
 	if tv.error != nil {
-		return &GraphTraversalValue{error: tv.error}
+		return NewGraphTraversalValueFromError(tv.error)
 	}
 
-	return &GraphTraversalValue{GraphTraversal: tv.GraphTraversal, value: len(tv.nodes)}
+	return NewGraphTraversalValue(tv.GraphTraversal, len(tv.nodes))
 }
 
 // Range step
@@ -1342,10 +1342,10 @@ func (tv *GraphTraversalShortestPath) SubGraph(s ...interface{}) *GraphTraversal
 // Count step
 func (te *GraphTraversalE) Count(s ...interface{}) *GraphTraversalValue {
 	if te.error != nil {
-		return &GraphTraversalValue{error: te.error}
+		return NewGraphTraversalValueFromError(te.error)
 	}
 
-	return &GraphTraversalValue{GraphTraversal: te.GraphTraversal, value: len(te.edges)}
+	return NewGraphTraversalValue(te.GraphTraversal, len(te.edges))
 }
 
 // Range step
@@ -1633,11 +1633,18 @@ func (te *GraphTraversalE) SubGraph(s ...interface{}) *GraphTraversal {
 }
 
 // NewGraphTraversalValue creates a new traversal value step
-func NewGraphTraversalValue(gt *GraphTraversal, value interface{}, err ...error) *GraphTraversalValue {
+func NewGraphTraversalValue(gt *GraphTraversal, value interface{}) *GraphTraversalValue {
 	tv := &GraphTraversalValue{
 		GraphTraversal: gt,
 		value:          value,
 	}
+
+	return tv
+}
+
+// NewGraphTraversalValueFromError creates a new traversal value step
+func NewGraphTraversalValueFromError(err ...error) *GraphTraversalValue {
+	tv := &GraphTraversalValue{}
 
 	if len(err) > 0 {
 		tv.error = err[0]
