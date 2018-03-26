@@ -560,7 +560,7 @@ func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 
 		var err error
 		if flowMetrics, err = f.Storage.SearchMetrics(f.flowSearchQuery, metricFilter); err != nil {
-			return NewMetricsTraversalStep(nil, nil, f.error)
+			return NewMetricsTraversalStep(nil, nil, err)
 		}
 	} else {
 		flowMetrics = make(map[string][]common.Metric, len(f.flowset.Flows))
