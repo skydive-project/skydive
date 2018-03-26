@@ -49,7 +49,6 @@
     jsonObject.put("adminlist", "");
     jsonObject.put("allowMembersOfWhitelistedOrgsAsAdmin", "false");
     jsonObject.put("publishedURL", "");
-    jsonObject.put("requestForTestingPhrase", "test this");
     jsonObject.put("whitelistPhrase", "");
     jsonObject.put("okToTestPhrase", "ok to test");
     jsonObject.put("retestPhrase", "retest this please");
