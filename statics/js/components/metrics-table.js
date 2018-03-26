@@ -91,6 +91,7 @@ Vue.component('metrics-table', {
       // at creation show only fields that have a value gt 0
       var self = this;
       Object.getOwnPropertyNames(this.object).forEach(function(key) {
+        if (key === "__ob__") return;
         var f = {
           name: [key],
           label: key,
