@@ -20,7 +20,10 @@
 #
 
 import json
-import urllib.request
+try:
+    import urllib.request as request
+except ImportError:
+    import urllib2 as request
 
 from skydive.graph import Node, Edge
 
@@ -34,10 +37,10 @@ class RESTClient:
         data = json.dumps(
             {"GremlinQuery": gremlin}
         )
-        req = urllib.request.Request("http://%s/api/topology" % self.endpoint,
-                                     data.encode(),
-                                     {'Content-Type': 'application/json'})
-        resp = urllib.request.urlopen(req)
+        req = request.Request("http://%s/api/topology" % self.endpoint,
+                              data.encode(),
+                              {'Content-Type': 'application/json'})
+        resp = request.urlopen(req)
         if resp.getcode() != 200:
             return
 
