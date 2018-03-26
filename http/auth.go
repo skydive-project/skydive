@@ -140,6 +140,7 @@ func NewAuthenticationClient(url *url.URL, authOptions *AuthenticationOpts) *Aut
 }
 
 type AuthenticationBackend interface {
+	AuthType() string
 	Authenticate(username string, password string) (string, error)
 	Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc
 }
