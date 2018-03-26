@@ -86,6 +86,14 @@ def main():
     parser.add_argument('--host', type=str, default="Test",
                         dest='host',
                         help='client identifier')
+    parser.add_argument('--ssl', default=False,
+                        dest='ssl',
+                        action="store_true",
+                        help='use a secure SSL/TLS connection')
+    parser.add_argument('--insecure', default=False,
+                        dest='insecure',
+                        action="store_true",
+                        help="insecure connection, don't verify certificate")
     parser.add_argument('--username', type=str, default="",
                         dest='username',
                         help='client username')
@@ -137,7 +145,11 @@ def main():
         if not os.path.isfile(args.file):
             raise ValueError("The file %s does not exist" % args.file)
 
-    client = WSClient(args.host, "ws://" + args.analyzer + endpoint,
+    scheme = "ws://"
+    if args.ssl:
+        scheme = "wss://"
+    client = WSClient(args.host, scheme + args.analyzer + endpoint,
+                      insecure=args.insecure,
                       username=args.username,
                       password=args.password,
                       protocol=protocol,
