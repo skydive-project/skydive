@@ -106,13 +106,17 @@ func (c *AuthenticationClient) Authenticate() error {
 
 	var resp *http.Response
 	if config.IsTLSenabled() == true {
-		client := getHttpClient()
+		var client *http.Client
+		client, err = getHttpClient()
+		if err != nil {
+			return err
+		}
 		resp, err = client.Do(req)
 	} else {
 		resp, err = http.DefaultTransport.RoundTrip(req)
 	}
 	if err != nil {
-		return fmt.Errorf("Authentication failed: %s", err.Error())
+		return fmt.Errorf("Authentication failed: %s", err)
 	}
 	defer resp.Body.Close()
 

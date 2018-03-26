@@ -36,7 +36,7 @@ func NewCrudClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.Crud
 		return nil, err
 	}
 
-	return shttp.NewCrudClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions), nil
+	return shttp.NewCrudClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions)
 }
 
 // NewRestClientFromConfig creates a new REST client
@@ -47,5 +47,5 @@ func NewRestClientFromConfig(authOptions *shttp.AuthenticationOpts) (*shttp.Rest
 		return nil, err
 	}
 
-	return shttp.NewRestClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions), nil
+	return shttp.NewRestClient(config.GetURL("http", sa.Addr, sa.Port, "/api/"), authOptions)
 }

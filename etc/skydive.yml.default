@@ -113,6 +113,9 @@ agent:
   # X509_cert: /etc/ssl/certs/agent.domain.com.crt
   # X509_key:  /etc/ssl/certs/agent.domain.com.key
 
+  # Allow to use auto-signed Certificate
+  # X509_insecure: false
+
   # Server name field specified in TLS communications.
   # Not required, but can be used to allow virtual hosting
   # X509_servername: domain.com
