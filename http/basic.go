@@ -40,6 +40,10 @@ type BasicAuthenticationBackend struct {
 	*auth.BasicAuth
 }
 
+func (b *BasicAuthenticationBackend) AuthType() string {
+	return "Basic"
+}
+
 func (b *BasicAuthenticationBackend) Authenticate(username string, password string) (string, error) {
 	request := &http.Request{Header: make(map[string][]string)}
 	creds := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
@@ -61,7 +65,7 @@ func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc)
 		}
 
 		if username := b.CheckAuth(r); username == "" {
-			unauthorized(w, r)
+			unauthorized(w, r, b.AuthType())
 		} else {
 			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
 			copyRequestVars(r, &ar.Request)

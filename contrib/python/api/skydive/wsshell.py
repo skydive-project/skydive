@@ -137,14 +137,16 @@ def main():
         if not os.path.isfile(args.file):
             raise ValueError("The file %s does not exist" % args.file)
 
-    client = WSClient(args.host, "ws://" + args.analyzer + endpoint,
+    client = WSClient(args.host, "wss://" + args.analyzer + endpoint,
                       username=args.username,
                       password=args.password,
+                      ssl=False, insecure=True,
                       protocol=protocol,
                       filter=gremlin_filter,
                       sync=sync_request,
                       mode=args.mode,
                       file=file)
+    client.login()
     client.connect()
     client.start()
 
