@@ -27,21 +27,39 @@ except ImportError:
 
 from skydive.graph import Node, Edge
 
+import ssl
+
 
 class RESTClient:
-    def __init__(self, endpoint,  **kwargs):
+    def __init__(self, endpoint, ssl=False, insecure=False, **kwargs):
         self.endpoint = endpoint
+        self.ssl = ssl
+        self.insecure = insecure
+
         if "username" in kwargs:
             self.username = kwargs["username"]
         if "password" in kwargs:
             self.password = kwargs["password"]
 
-    def lookup(self, gremlin, klass):
+    def lookup(self, gremlin, klass=None):
         data = json.dumps(
             {"GremlinQuery": gremlin}
         )
 
-        url = "http://%s/api/topology" % self.endpoint
+	ssl_handler = None
+
+	scheme = "http"
+        if self.ssl:
+            scheme = "https"
+            ctx = ssl.create_default_context()
+
+            if self.insecure:
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+
+            ssl_handler = request.HTTPSHandler(context=ctx)
+
+        url = "%s://%s/api/topology" % (scheme, self.endpoint)
         handler = request.HTTPHandler(debuglevel=1)
         if hasattr(self, "username"):
             mgr = request.HTTPPasswordMgrWithDefaultRealm()
@@ -50,7 +68,11 @@ class RESTClient:
                              passwd=self.password)
             handler = request.HTTPBasicAuthHandler(mgr)
 
-        opener = request.build_opener(handler)
+        if ssl_handler:
+            opener = request.build_opener(ssl_handler, handler)
+        else:
+            opener = request.build_opener(handler)
+
         req = request.Request(url,
                               data.encode(),
                               {'Content-Type': 'application/json'})
@@ -61,7 +83,9 @@ class RESTClient:
 
         data = resp.read()
         objs = json.loads(data.decode())
-        return [klass.from_object(o) for o in objs]
+        if klass:
+            return [klass.from_object(o) for o in objs]
+        return objs
 
     def lookup_nodes(self, gremlin):
         return self.lookup(gremlin, Node)
