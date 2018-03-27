@@ -32,6 +32,7 @@ except ImportError:
     import httplib
 import logging
 import requests
+import ssl
 import uuid
 try:
     from urllib.parse import urlparse
@@ -146,6 +147,7 @@ class WSClient(WebSocketClientProtocol):
                  protocol=WSClientDefaultProtocol,
                  username="", password="", cookie=None,
                  sync="", filter="", persistent=True,
+                 ssl=False, insecure=False,
                  **kwargs):
         super(WSClient, self).__init__()
         self.host_id = host_id
@@ -163,6 +165,8 @@ class WSClient(WebSocketClientProtocol):
         self.filter = filter
         self.persistent = persistent
         self.sync = sync
+        self.ssl = ssl
+        self.insecure = insecure
         self.kwargs = kwargs
 
     def connect(self):
@@ -189,32 +193,42 @@ class WSClient(WebSocketClientProtocol):
             factory.headers['Cookie'] = ';'.join(self.cookies)
 
         self.loop = asyncio.get_event_loop()
+
+        scheme = "ws"
+        if self.ssl:
+            scheme = "wss"
+
+            ssl_ctx = ssl.create_default_context()
+            if self.insecure:
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
+
         u = urlparse(self.endpoint)
 
-        coro = self.loop.create_connection(factory, u.hostname, u.port)
+        coro = self.loop.create_connection(factory, u.hostname, u.port, ssl=ssl_ctx)
         (transport, protocol) = self.loop.run_until_complete(coro)
         LOG.debug('transport, protocol: %r, %r', transport, protocol)
 
-    def login(self, host_spec, username, password):
+    def login(self):
         """ Authenticate with infrastructure via the Skydive analyzer
 
-        This method will also set the authentication cookie to be used in
-        the future requests
-        :param host_spec: Host IP and port (e.g. 192.168.10.1:8082)
-        :type host_spec: string
-        :param username: Username to use for login
-        :type username: string
-        :param password: Password to use for login
-        :type password: string
         :return: True on successful authentication, False otherwise
         """
+
+        scheme = "http"
+        if self.ssl:
+            scheme = "https"
+
+        u = urlparse(self.endpoint)
+
         res = requests.post(
-            'http://{0}/login'.format(host_spec),
+            '{0}://{1}:{2}/login'.format(scheme, u.hostname, u.port),
             data={
-                'username': username,
-                'password': password,
-            },
+                'username': self.username,
+                'password': self.password,
+            },  verify=(not self.insecure)
         )
+
         if res.status_code == 200:
             cookie = 'authtok={}'.format(res.cookies['authtok'])
             if self.cookies:
