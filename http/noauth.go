@@ -32,6 +32,10 @@ import (
 type NoAuthenticationBackend struct {
 }
 
+func (h *NoAuthenticationBackend) AuthType() string {
+	return "NoAuth"
+}
+
 func (h *NoAuthenticationBackend) Authenticate(username string, password string) (string, error) {
 	return "", nil
 }

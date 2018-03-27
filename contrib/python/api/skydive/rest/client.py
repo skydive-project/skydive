@@ -29,18 +29,33 @@ from skydive.graph import Node, Edge
 
 
 class RESTClient:
-
-    def __init__(self, endpoint):
+    def __init__(self, endpoint,  **kwargs):
         self.endpoint = endpoint
+        if "username" in kwargs:
+            self.username = kwargs["username"]
+        if "password" in kwargs:
+            self.password = kwargs["password"]
 
     def lookup(self, gremlin, klass):
         data = json.dumps(
             {"GremlinQuery": gremlin}
         )
-        req = request.Request("http://%s/api/topology" % self.endpoint,
+
+        url = "http://%s/api/topology" % self.endpoint
+        handler = request.HTTPHandler(debuglevel=1)
+        if hasattr(self, "username"):
+            mgr = request.HTTPPasswordMgrWithDefaultRealm()
+            mgr.add_password(None, uri=url,
+                             user=self.username,
+                             passwd=self.password)
+            handler = request.HTTPBasicAuthHandler(mgr)
+
+        opener = request.build_opener(handler)
+        req = request.Request(url,
                               data.encode(),
                               {'Content-Type': 'application/json'})
-        resp = request.urlopen(req)
+
+        resp = opener.open(req)
         if resp.getcode() != 200:
             return
 

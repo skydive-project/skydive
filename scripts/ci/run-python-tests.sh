@@ -14,17 +14,33 @@ make docker-image
 
 cd contrib/python
 
-virtualenv-3 venv
-source venv/bin/activate
+
+echo "Python2 tests"
+virtualenv-2 venv2
+source venv2/bin/activate
+
+pip install -r api/requirements.txt
+
+pushd api
+python setup.py install
+python -m unittest discover tests
+popd
+
+deactivate
+
+
+echo "Python3 tests"
+virtualenv-3 venv3
+source venv3/bin/activate
 
 pip install pycodestyle flake8
 pip install -r api/requirements.txt
 
-cd api
-
+pushd api
 python setup.py install
 
 pycodestyle
 flake8
 
-python3 -m unittest discover tests
+python -m unittest discover tests
+popd
