@@ -138,6 +138,7 @@
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?go-fmt).*'
+          skip-build-phrase: '.*skip (skydive-)?go-fmt.*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -167,6 +168,7 @@
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?unit-tests).*'
+          skip-build-phrase: '.*skip (skydive-)?unit-tests.*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -199,7 +201,8 @@
       - github-pull-request:
           org-list:
             - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?compile-dpdk).*'
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?compile-tests).*'
+          skip-build-phrase: '.*skip (skydive-)?compile-tests.*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -230,6 +233,7 @@
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?functional-tests-backend-{backend}).*'
+          skip-build-phrase: '.*skip (skydive-)?functional-tests-backend-{backend}.*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -281,6 +285,7 @@
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?scale-tests).*'
+          skip-build-phrase: '.*skip (skydive-)?scale-tests.*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -317,6 +322,7 @@
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run (tests|(skydive-)?selenium-tests).*'
+          skip-build-phrase: '.*skip (skydive-)?selenium-tests.*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
@@ -352,6 +358,7 @@
           org-list:
             - skydive-project
           trigger-phrase: '.*(re)?run cdd-overview.*'
+          skip-build-phrase: '.*skip cdd-overview.*'
           github-hooks: true
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
