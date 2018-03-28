@@ -45,6 +45,7 @@ import (
 )
 
 var tcpStates = []string{
+	"UNKNOWN",
 	"ESTABLISHED",
 	"SYN_SENT",
 	"SYN_RECV",
