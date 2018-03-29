@@ -12,10 +12,10 @@ var TopologyComponent = {
         <div class="topology-d3">\
           <div class="topology-legend">\
             <strong>Topology view</strong></br>\
-            <span v-if="currTopologyFilter">{{currTopologyFilter}}</span>\
-            <span v-else>Full</span>\
-            <div v-if="topologyHumanTimeContext">{{topologyHumanTimeContext}}</div>\
-            <span v-else>Live</span>\
+            <p v-if="currTopologyFilter">{{currTopologyFilter}}</p>\
+            <p v-else>Full</p>\
+            <p v-if="topologyHumanTimeContext">{{topologyHumanTimeContext}}</p>\
+            <p v-else>Live</p>\
           </div>\
         </div>\
         <div id="topology-options">\
@@ -320,6 +320,10 @@ var TopologyComponent = {
       this.layout.linkLabelType = this.$route.query.link_label_type;
     }
 
+    if (typeof(this.$route.query.topology_legend_hide) !== "undefined") {
+      $('.topology-legend').remove();
+    }
+
     websocket.addConnectHandler(function() {
       if (self.topologyFilter !== '') {
         self.topologyFilterQuery();
@@ -545,7 +549,7 @@ var TopologyComponent = {
     },
 
     getTopologyAbsTime: function() {
-      
+
       var time = new Date();
       if (this.topologyDate) time = new Date(this.topologyDate);
 

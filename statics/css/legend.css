@@ -10,3 +10,13 @@
   min-width: 200px;
   max-width: 400px;
 }
+
+.topology-legend p {
+  width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  float: left;
+  clear: both;
+  margin: 0;
+}
