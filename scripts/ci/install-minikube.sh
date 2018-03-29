@@ -1,31 +1,29 @@
 #!/bin/bash
 
-set -v
-
 OS=linux
 ARCH=amd64
-TARGET_DIR="/usr/bin"
+TARGET_DIR=/usr/bin
 
-MINIKUBE_VERSION="v0.24.1"
+MINIKUBE_VERSION="v0.25.2"
 MINIKUBE_URL="https://github.com/kubernetes/minikube/releases/download/$MINIKUBE_VERSION/minikube-$OS-$ARCH"
 
 KUBECTL_VERSION="v1.9.0"
 KUBECTL_URL="https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/$OS/$ARCH/kubectl"
 
-[ -z "$MINIKUBE_FLAGS" ] && MINIKUBE_FLAGS="--extra-config=kubelet.CgroupDriver=systemd"
-[ -z "$MINIKUBE_VM_DRIVER" ] && MINIKUBE_VM_DRIVER=none
+export MINIKUBE_WANTUPDATENOTIFICATION=false
+export MINIKUBE_WANTREPORTERRORPROMPT=false
+export MINIKUBE_HOME=$HOME
+export CHANGE_MINIKUBE_NONE_USER=true
+export KUBECONFIG=$HOME/.kube/config
 
 uninstall_binary() {
 	local prog=$1
-	sudo rm -f ${TARGET_DIR}/$prog
+	sudo rm -f $TARGET_DIR/$prog
 }
 
 install_binary() {
 	local prog=$1
 	local url=$2
-	local target=${TARGET_DIR}/$prog
-
-	[ -f $target ] && return
 
 	wget --no-check-certificate -O $prog $url
 	if [ $? != 0 ]; then
@@ -33,8 +31,8 @@ install_binary() {
 		exit 1
 	fi
 
-	chmod a+x $prog
-	sudo mv -f $prog $target
+	chmod 0777 $prog
+	sudo mv $prog $TARGET_DIR/$prog
 }
 
 check_minikube() {
@@ -43,6 +41,8 @@ check_minikube() {
 		echo "minikube is not installed. Please run install-minikube.sh install"
 		exit 1
 	fi
+
+	sudo systemctl start docker
 }
 
 install() {
@@ -57,22 +57,46 @@ uninstall() {
 
 stop() {
 	check_minikube
-	sudo $(which minikube) delete || true
-	sudo rm -rf ~/.minikube ~/.kube
+
+	sudo -E minikube delete
+	sudo rm -rf $HOME/.minikube $HOME/.kube
+	sudo rm -rf /root/.minikube /root/.kube
+
+	sudo docker system prune -af
+	for i in $(sudo docker ps -aq --filter name=k8s); do
+		sudo docker stop $i
+		sudo docker rm $i
+	done
+
+	sudo systemctl stop localkube
+	sudo systemctl disable localkube
 }
 
 start() {
 	check_minikube
-	sudo -E CHANGE_MINIKUBE_NONE_USER=true $(which minikube) \
-		--vm-driver=${MINIKUBE_VM_DRIVER} \
-		${MINIKUBE_FLAGS} start
-	sudo $(which minikube) status
+
+	local args="--vm-driver=none"
+	local driver=$(sudo docker info --format '{{print .CgroupDriver}}')
+	if [ -n "$dirver" ]; then
+		args="$args --extra-config=kubelet.CgroupDriver=$driver"
+	fi
+
+       	sudo -E minikube start $args
+	sudo -E minikube addons disable dashboard
+	minikube status
 	kubectl config use-context minikube
+
+	# enable accesss from root account
+	for i in .kube .minikube; do
+		sudo rm -rf /root/$i
+		sudo cp -ar $HOME/$i /root/$i
+	done
 }
 
 status() {
 	kubectl version
 	kubectl config get-contexts
+	minikube status
 }
 
 case "$1" in
