@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -392,11 +393,12 @@ func (c *ElasticSearchClient) Started() bool {
 }
 
 // NewElasticSearchClient creates a new ElasticSearch client
-func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchClient, error) {
+func NewElasticSearchClient(url *url.URL, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchClient, error) {
 	c := elastigo.NewConn()
 
-	c.Domain = addr
-	c.Port = port
+	c.Protocol = url.Scheme
+	c.Domain = url.Hostname()
+	c.Port = url.Port()
 
 	indexer := c.NewBulkIndexerErrors(maxConns, retrySeconds)
 	if bulkMaxDocs > 0 {
@@ -426,8 +428,13 @@ func NewElasticSearchClient(addr string, port string, maxConns int, retrySeconds
 
 // NewElasticSearchClientFromConfig creates a new ElasticSearch client based on configuration
 func NewElasticSearchClientFromConfig() (*ElasticSearchClient, error) {
-	elasticonfig := strings.Split(config.GetString("storage.elasticsearch.host"), ":")
-	if len(elasticonfig) != 2 {
+	elasticHost := config.GetString("storage.elasticsearch.host")
+	if !strings.HasPrefix(elasticHost, "http://") && !strings.HasPrefix(elasticHost, "https://") {
+		elasticHost = "http://" + elasticHost
+	}
+
+	url, err := url.Parse(elasticHost)
+	if err != nil || url.Port() == "" {
 		return nil, ErrBadConfig
 	}
 
@@ -439,5 +446,5 @@ func NewElasticSearchClientFromConfig() (*ElasticSearchClient, error) {
 	bulkMaxDocs := config.GetInt("storage.elasticsearch.bulk_maxdocs")
 	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
 
-	return NewElasticSearchClient(elasticonfig[0], elasticonfig[1], maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+	return NewElasticSearchClient(url, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 }

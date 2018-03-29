@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -559,8 +560,8 @@ func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) 
 }
 
 // NewElasticSearchBackend creates a new graph backend and connect to an ElasticSearch database
-func NewElasticSearchBackend(addr string, port string, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchBackend, error) {
-	client, err := elasticsearch.NewElasticSearchClient(addr, port, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+func NewElasticSearchBackend(url *url.URL, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchBackend, error) {
+	client, err := elasticsearch.NewElasticSearchClient(url, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 	if err != nil {
 		return nil, err
 	}
@@ -570,16 +571,23 @@ func NewElasticSearchBackend(addr string, port string, maxConns int, retrySecond
 
 // NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
 func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
-	addr := config.GetString("storage.elasticsearch.host")
-	c := strings.Split(addr, ":")
-	if len(c) != 2 {
+	elasticHost := config.GetString("storage.elasticsearch.host")
+	if !strings.HasPrefix(elasticHost, "http://") && !strings.HasPrefix(elasticHost, "https://") {
+		elasticHost = "http://" + elasticHost
+	}
+
+	url, err := url.Parse(elasticHost)
+	if err != nil || url.Port() == "" {
 		return nil, ErrBadConfig
 	}
 
 	maxConns := config.GetInt("storage.elasticsearch.maxconns")
+	if maxConns == 0 {
+		return nil, errors.New("storage.elasticsearch.maxconns has to be > 0")
+	}
 	retrySeconds := config.GetInt("storage.elasticsearch.retry")
 	bulkMaxDocs := config.GetInt("storage.elasticsearch.bulk_maxdocs")
 	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
 
-	return NewElasticSearchBackend(c[0], c[1], maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+	return NewElasticSearchBackend(url, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 }
