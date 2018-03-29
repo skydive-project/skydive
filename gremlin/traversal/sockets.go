@@ -98,7 +98,7 @@ type SocketsTraversalStep struct {
 // PropertyValues returns a flow field value
 func (s *SocketsTraversalStep) PropertyValues(keys ...interface{}) *traversal.GraphTraversalValue {
 	if s.error != nil {
-		return traversal.NewGraphTraversalValue(s.GraphTraversal, nil, s.error)
+		return traversal.NewGraphTraversalValueFromError(s.error)
 	}
 
 	key := keys[0].(string)
@@ -107,13 +107,13 @@ func (s *SocketsTraversalStep) PropertyValues(keys ...interface{}) *traversal.Gr
 		for _, socket := range sockets {
 			v, err := socket.GetField(key)
 			if err != nil {
-				return traversal.NewGraphTraversalValue(s.GraphTraversal, nil, common.ErrFieldNotFound)
+				return traversal.NewGraphTraversalValueFromError(common.ErrFieldNotFound)
 			}
 			values = append(values, v)
 		}
 	}
 
-	return traversal.NewGraphTraversalValue(s.GraphTraversal, values, nil)
+	return traversal.NewGraphTraversalValue(s.GraphTraversal, values)
 }
 
 // Has step

@@ -101,17 +101,17 @@ type MetricsTraversalStep struct {
 // Sum aggregates integer values mapped by 'key' cross flows
 func (m *MetricsTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversalValue {
 	if m.error != nil {
-		return traversal.NewGraphTraversalValue(m.GraphTraversal, nil, m.error)
+		return traversal.NewGraphTraversalValueFromError(m.error)
 	}
 
 	if len(keys) > 0 {
 		if len(keys) != 1 {
-			return traversal.NewGraphTraversalValue(m.GraphTraversal, nil, fmt.Errorf("Sum requires 1 parameter"))
+			return traversal.NewGraphTraversalValueFromError(fmt.Errorf("Sum requires 1 parameter"))
 		}
 
 		key, ok := keys[0].(string)
 		if !ok {
-			return traversal.NewGraphTraversalValue(m.GraphTraversal, nil, errors.New("Argument of Sum must be a string"))
+			return traversal.NewGraphTraversalValueFromError(errors.New("Argument of Sum must be a string"))
 		}
 
 		var total int64
@@ -119,7 +119,7 @@ func (m *MetricsTraversalStep) Sum(keys ...interface{}) *traversal.GraphTraversa
 			for _, metric := range metrics {
 				value, err := metric.GetFieldInt64(key)
 				if err != nil {
-					return traversal.NewGraphTraversalValue(m.GraphTraversal, nil, err)
+					return traversal.NewGraphTraversalValueFromError(err)
 				}
 				total += value
 			}
@@ -208,14 +208,14 @@ func aggregateMetrics(m []common.Metric, start, last int64, sliceLength int64, r
 // metrics. It returns a unique array will all the aggregated metrics.
 func (m *MetricsTraversalStep) Aggregates(s ...interface{}) *MetricsTraversalStep {
 	if m.error != nil {
-		return &MetricsTraversalStep{error: m.error}
+		return NewMetricsTraversalStepFromError(m.error)
 	}
 
 	sliceLength := defaultAggregatesSliceLength
 	if len(s) != 0 {
 		sl, ok := s[0].(int64)
 		if !ok || sl <= 0 {
-			return &MetricsTraversalStep{error: fmt.Errorf("Aggregates parameter has to be a positive number")}
+			return NewMetricsTraversalStepFromError(fmt.Errorf("Aggregates parameter has to be a positive number"))
 		}
 		sliceLength = sl * 1000 // Millisecond
 	}
@@ -243,7 +243,7 @@ func (m *MetricsTraversalStep) Aggregates(s ...interface{}) *MetricsTraversalSte
 		}
 	}
 
-	return &MetricsTraversalStep{GraphTraversal: m.GraphTraversal, metrics: map[string][]common.Metric{"Aggregated": final}}
+	return NewMetricsTraversalStep(m.GraphTraversal, map[string][]common.Metric{"Aggregated": final})
 }
 
 // Values returns the graph metric values
@@ -273,6 +273,13 @@ func (m *MetricsTraversalStep) Count(s ...interface{}) *traversal.GraphTraversal
 }
 
 // NewMetricsTraversalStep creates a new traversal metric step
-func NewMetricsTraversalStep(gt *traversal.GraphTraversal, metrics map[string][]common.Metric, err error) *MetricsTraversalStep {
-	return &MetricsTraversalStep{GraphTraversal: gt, metrics: metrics, error: err}
+func NewMetricsTraversalStep(gt *traversal.GraphTraversal, metrics map[string][]common.Metric) *MetricsTraversalStep {
+	m := &MetricsTraversalStep{GraphTraversal: gt, metrics: metrics}
+	return m
+}
+
+// NewMetricsTraversalStepFromError creates a new traversal metric step
+func NewMetricsTraversalStepFromError(err error) *MetricsTraversalStep {
+	m := &MetricsTraversalStep{error: err}
+	return m
 }
