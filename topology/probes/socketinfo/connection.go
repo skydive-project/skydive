@@ -112,13 +112,19 @@ func (c *ConnectionInfo) Decode(obj interface{}) error {
 		return fmt.Errorf("Unable to decode connection: %v, %+v", obj, reflect.TypeOf(obj))
 	}
 
-	if protocol, ok := objMap["Protocol"]; ok {
+	// copy to not modify original node
+	m := make(map[string]interface{})
+	for k, v := range objMap {
+		m[k] = v
+	}
+
+	if protocol, ok := m["Protocol"]; ok {
 		if protocol, ok := protocol.(string); ok {
-			objMap["Protocol"] = flow.FlowProtocol_value[protocol]
+			m["Protocol"] = flow.FlowProtocol_value[protocol]
 		}
 	}
 
-	return mapstructure.WeakDecode(objMap, c)
+	return mapstructure.WeakDecode(m, c)
 }
 
 // ConnectionCache describes a cache of TCP connections
