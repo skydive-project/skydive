@@ -2,7 +2,7 @@
 
 set -v
 
-sudo dnf -y install gcc glibc-static xz-static zlib-static flex bison byacc libxml2-static
+sudo dnf -y install gcc glibc-static xz-static zlib-static flex bison byacc libxml2-static python2-virtualenv python3-virtualenv
 
 git clone https://github.com/the-tcpdump-group/libpcap.git
 cd libpcap

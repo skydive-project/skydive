@@ -32,6 +32,7 @@ except ImportError:
     import httplib
 import logging
 import requests
+import ssl
 import uuid
 try:
     from urllib.parse import urlparse
@@ -146,6 +147,7 @@ class WSClient(WebSocketClientProtocol):
                  protocol=WSClientDefaultProtocol,
                  username="", password="", cookie=None,
                  sync="", filter="", persistent=True,
+                 insecure=False,
                  **kwargs):
         super(WSClient, self).__init__()
         self.host_id = host_id
@@ -163,6 +165,7 @@ class WSClient(WebSocketClientProtocol):
         self.filter = filter
         self.persistent = persistent
         self.sync = sync
+        self.insecure = insecure
         self.kwargs = kwargs
 
     def connect(self):
@@ -178,8 +181,8 @@ class WSClient(WebSocketClientProtocol):
             factory.headers["X-Persistence-Policy"] = "DeleteOnDisconnect"
 
         if self.username:
-            authorization = base64.b64encode(
-                b"%s:%s" % (self.username, self.password)).decode("ascii")
+            up = "%s:%s" % (self.username, self.password)
+            authorization = base64.b64encode(up.encode()).decode("ascii")
             factory.headers["Authorization"] = 'Basic %s' % authorization
 
         if self.filter:
@@ -191,11 +194,19 @@ class WSClient(WebSocketClientProtocol):
         self.loop = asyncio.get_event_loop()
         u = urlparse(self.endpoint)
 
-        coro = self.loop.create_connection(factory, u.hostname, u.port)
+        context = None
+        if u.scheme == "wss":
+            if self.insecure:
+                context = ssl._create_unverified_context()
+            else:
+                context = ssl._create_default_context()
+
+        coro = self.loop.create_connection(factory,
+                                           u.hostname, u.port, ssl=context)
         (transport, protocol) = self.loop.run_until_complete(coro)
         LOG.debug('transport, protocol: %r, %r', transport, protocol)
 
-    def login(self, host_spec, username, password):
+    def login(self, host_spec="", username="", password=""):
         """ Authenticate with infrastructure via the Skydive analyzer
 
         This method will also set the authentication cookie to be used in
@@ -208,13 +219,27 @@ class WSClient(WebSocketClientProtocol):
         :type password: string
         :return: True on successful authentication, False otherwise
         """
+
+        scheme = "http"
+        if not host_spec:
+            u = urlparse(self.endpoint)
+            host_spec = u.netloc
+            if u.scheme == "wss":
+                scheme = "https"
+            if self.username:
+                username = self.username
+            if self.password:
+                password = self.password
+
         res = requests.post(
-            'http://{0}/login'.format(host_spec),
+            '{0}://{1}/login'.format(scheme, host_spec),
             data={
                 'username': username,
                 'password': password,
             },
+            verify=(not self.insecure)
         )
+
         if res.status_code == 200:
             cookie = 'authtok={}'.format(res.cookies['authtok'])
             if self.cookies:

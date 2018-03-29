@@ -2,6 +2,7 @@ import logging
 import subprocess
 import time
 import unittest
+import os
 
 from skydive.graph import Node, Edge
 from skydive.rest.client import RESTClient
@@ -21,9 +22,33 @@ class SkydiveWSTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         logging.basicConfig(level=logging.DEBUG)
+
+        cls.schemeWS = "ws"
+        cls.schemeHTTP = "http"
+        if "SKYDIVE_PYTHON_TESTS_TLS" in os.environ:
+            cls.schemeWS = "wss"
+            cls.schemeHTTP = "https"
+
+        cls.username = ""
+        cls.password = ""
+        cls.auth = False
+        if "SKYDIVE_PYTHON_TESTS_USERPASS" in os.environ:
+            cls.auth = True
+            userpass = os.environ["SKYDIVE_PYTHON_TESTS_USERPASS"]
+            cls.username, cls.password = userpass.split(":")
+
+        extraArgs = []
+        if "SKYDIVE_PYTHON_TESTS_MAPFILE" in os.environ:
+            files = os.environ["SKYDIVE_PYTHON_TESTS_MAPFILE"]
+            if files:
+                for f in files.split(","):
+                    extraArgs.append("-v")
+                    extraArgs.append(f)
+
         subprocess.call(["docker", "run", "--name",
-                         "skydive-docker-python-tests", "-p", "8082:8082",
-                         "-d", "skydive/skydive", "analyzer"])
+                         "skydive-docker-python-tests", "-p", "8082:8082"] +
+                        extraArgs +
+                        ["-d", "skydive/skydive:devel", "analyzer"])
         time.sleep(10)
 
     @classmethod
@@ -37,9 +62,20 @@ class SkydiveWSTest(unittest.TestCase):
             self.connected = True
 
         self.wsclient = WSClient("host-test",
-                                 "ws://localhost:8082/ws/publisher",
-                                 protocol=WSTestClient, test=is_connected)
+                                 self.schemeWS +
+                                 "://localhost:8082/ws/publisher",
+                                 protocol=WSTestClient, test=is_connected,
+                                 username=self.username,
+                                 password=self.password,
+                                 insecure=True)
         self.wsclient.connect()
+        if self.auth:
+            ret = self.wsclient.login("localhost:8082", "toto")
+            self.assertEqual(ret, False, "login() should failed")
+            ret = self.wsclient.login("localhost:8082", "admin", "pass")
+            self.assertEqual(ret, True, "login() failed")
+            ret = self.wsclient.login()
+            self.assertEqual(ret, True, "login() failed")
         self.wsclient.start()
 
         self.assertEqual(self.connected, True, "failed to connect")
@@ -63,14 +99,22 @@ class SkydiveWSTest(unittest.TestCase):
             protocol.sendWSMessage(msg)
 
         self.wsclient = WSClient("host-test2",
-                                 "ws://localhost:8082/ws/publisher",
-                                 protocol=WSTestClient, test=create_node)
+                                 self.schemeWS +
+                                 "://localhost:8082/ws/publisher",
+                                 protocol=WSTestClient, test=create_node,
+                                 username=self.username,
+                                 password=self.password,
+                                 insecure=True)
         self.wsclient.connect()
         self.wsclient.start()
 
         time.sleep(1)
 
-        restclient = RESTClient("localhost:8082")
+        restclient = RESTClient("localhost:8082",
+                                scheme=self.schemeHTTP,
+                                username=self.username,
+                                password=self.password,
+                                insecure=True)
         nodes = restclient.lookup_nodes("G.V().Has('Name', 'Test port')")
         self.assertEqual(len(nodes), 1, "should find one an only one node")
 
