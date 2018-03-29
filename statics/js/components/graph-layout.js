@@ -274,11 +274,6 @@ var TopologyGraphLayout = function(vm, selector) {
   this.simulation
     .on("tick", this.tick.bind(this));
 
-
-  this.networkPolicy = {
-    updatePeriod: 3000,
-  };
-
   this.bandwidth = {
     bandwidthThreshold: 'absolute',
     updatePeriod: 3000,

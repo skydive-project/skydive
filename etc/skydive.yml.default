@@ -343,6 +343,9 @@ ui:
   # folder will be added to the WebUI.
   # extra_assets: /usr/share/skydive/assets
 
+  # select between light, dark themes
+  # theme: dark
+
   # Settings specific to the topology view
   topology:
     # Pre-defined Gremlin expression used in the WebUI for Filtering and Highlighting.

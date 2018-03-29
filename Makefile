@@ -122,6 +122,7 @@ debug.analyzer:
 BINDATA_DIRS := \
 	statics/* \
 	statics/css/images/* \
+	statics/css/themes/*/* \
 	statics/js/vendor/* \
 	statics/js/components/* \
 	${EXTRABINDATA}

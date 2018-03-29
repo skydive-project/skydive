@@ -1,0 +1,125 @@
+body {
+  background-color: #fff;
+}
+
+label {
+  color: #000;
+}
+
+.mode {
+  color: #337ab7;
+}
+
+#right-panel {
+  border-left: 5px #eee solid;
+  color: #111;
+}
+
+.main-toolbar {
+  background-color: #fff;
+}
+
+.main-toolbar .tooltip-inner {
+  background-color: #fff;
+}
+
+.left-panel {
+  background-color: #ddd;
+}
+
+.left-panel h1 a, .left-panel h1 a:hover {
+  color: #000;
+}
+
+.left-panel .bg-warning {
+  background-color: #ccc;
+}
+
+.sub-left-panel {
+  background-color: #ccc;
+}
+
+.capture-item dd.query, .injector-item dd.query {
+  background: #ccc;
+}
+
+.capture-action, .node-action, .injector-action {
+  color: black !important;
+}
+
+.bootstrap-switch .bootstrap-switch-label {
+  background: #fff;
+}
+
+.bootstrap-switch-label {
+  color: black;
+}
+
+.flow-ops-panel .tab-content {
+  color : black;
+  background-color: #ddd;
+}
+
+.flow-ops-panel .nav>li>a {
+  color : black;
+}
+
+.flow-ops-panel .nav-pills > li > a {
+  background-color: #eee;
+}
+
+.flow-ops-panel .nav-pills>li.active>a, .flow-ops-panel .nav-pills>li.active>a:focus, .flow-ops-panel .nav-pills>li.active>a:hover {
+  background-color: #ddd;
+}
+
+.dynamic-table {
+  border: 2px solid #888;
+}
+
+.dynamic-table .dynamic-table-actions {
+  background: #999;
+}
+
+.dynamic-table thead {
+  background: #eee;
+}
+
+.dynamic-table tbody {
+  background: #ccc;
+}
+
+.dynamic-table tbody tr.flow-row:hover {
+  background: #bbb;
+}
+
+.dynamic-table tbody tr.flow-detail-row {
+  background: #ddd;
+}
+
+.object-value.string  {
+  color: #222;
+}
+
+.object-value.number {
+  color: blue;
+}
+
+#metadata-panel .object-key-value a, #metadata-panel .object-key-value a:focus, #metadata-panel .object-key-value a:hover  {
+  color: #000;
+}
+
+.object-key-value.application .object-value, .object-key-value.a .object-value, .object-key-value.b .object-value {
+  color: #003869;
+}
+
+.dynamic-table .flow-row.flow-detail {
+  background: #8e8e8e;
+}
+
+.topology-controls {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+#navbar {
+  background-color: #f7f7f7;
+}
