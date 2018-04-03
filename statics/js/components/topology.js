@@ -696,7 +696,7 @@ var TopologyComponent = {
     },
 
     normalizeMetric: function(metric) {
-      if (metric.Start && metric.Last) {
+      if (metric.Start && metric.Last && (metric.Last - metric.Start) > 0) {
         bps = Math.floor(1000 * 8 * ((metric.RxBytes || 0) + (metric.TxBytes || 0)) / (metric.Last - metric.Start));
         metric["Bandwidth"] = bandwidthToString(bps);
       }
