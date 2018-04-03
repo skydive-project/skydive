@@ -1264,8 +1264,8 @@ func TestReplayCapture(t *testing.T) {
 				return err
 			}
 
-			if len(flows) != 5 {
-				return fmt.Errorf("Wrong number of flows. Expected 5, got %d", len(flows))
+			if len(flows) != 6 {
+				return fmt.Errorf("Wrong number of flows. Expected 6, got %d", len(flows))
 			}
 
 			flows, err = gh.GetFlows(gremlin.Has("Application", "DNS"))

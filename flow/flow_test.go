@@ -424,8 +424,8 @@ func TestPCAP1(t *testing.T) {
 			Metric: &FlowMetric{
 				ABPackets: 1,
 				ABBytes:   42,
-				BAPackets: 1,
-				BABytes:   42,
+				BAPackets: 0,
+				BABytes:   0,
 			},
 		},
 		{

@@ -204,6 +204,9 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 func (p *Packet) Key(parentUUID string) string {
 	var uuid uint64
 
+	if layer := p.LinkLayer(); layer != nil {
+		uuid ^= layer.LinkFlow().FastHash()
+	}
 	if layer := p.NetworkLayer(); layer != nil {
 		uuid ^= layer.NetworkFlow().FastHash()
 	}
