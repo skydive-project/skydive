@@ -19,8 +19,8 @@
 %define source %{tagversion}
 %endif
 
-%{!?tagversion:%global tagversion 0.16.0}
-%{!?source:%global source 0.16.0}
+%{!?tagversion:%global tagversion 0.17.0}
+%{!?source:%global source 0.17.0}
 %{!?tag:%global tag 1}
 
 Name:           skydive
@@ -149,6 +149,9 @@ cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 %{_datadir}/skydive-ansible
 
 %changelog
+* Tue Apr 03 2018 Sylvain Afchain <safchain@redhat.com> - 0.17.0-1
+- Bump to version 0.17.0
+
 * Mon Jan 29 2018 Sylvain Baubeau <sbaubeau@redhat.com> - 0.16.0-1
 - Bump to version 0.16.0
 

@@ -2,7 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.16.0] - 2017-01-29
+## [0.17.0] - 2018-04-03
+### Added
+- Add Latency to WebUI topology links
+- Packet Injector now allows to increment ICMP `id` for each packet
+- New `Light` WebUI theme
+- Add `Has` Gremlin step to `SocketInfo` step allowing to filter socket information
+- New socketinfo probe to retrieve active sockets of a host.
+  The new `Sockets` Gremlin step can be used to retrieve socket information corresponding to flows.
+- Add `Bandwidth` to WebUI `Metric` tables
+- Add clustering support for embedded Etcd
+- `Aggregates` Gremlin step now uses fixed time slices
+- Add LXD topology support
+- Python API now suports TLS and authentication
+
+### Changed
+- SocketInfo now supports kernel wihtout ePBF support
+- Fixed Flow metric issue on large packets
+- Add capture `Name` to node metadata
+- Fixed `RTT` display on WebUI
+
+## [0.16.0] - 2018-01-29
 ### Added
 - Add Kubernetes probe
 - Retrieve Open vSwitch port metrics
