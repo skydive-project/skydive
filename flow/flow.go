@@ -315,8 +315,8 @@ func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
 	switch encapType {
 	case "ether":
 		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
-	case "gre":
-		return LayerTypeInGRE, layers.LinkTypeIPv4
+	case "none", "gre":
+		return LayerTypeRawIP, layers.LinkTypeIPv4
 	case "sit", "ipip":
 		return layers.LayerTypeIPv4, layers.LinkTypeIPv4
 	case "tunnel6", "gre6":
@@ -797,6 +797,10 @@ func PacketSeqFromGoPacket(packet gopacket.Packet, outerLength int64, bpf *BPF, 
 			return ps
 		}
 		ipMetric = m
+	}
+
+	if packet.ErrorLayer() != nil {
+		logging.GetLogger().Debugf("Decoding or partial decoding error : %s\n", packet.Dump())
 	}
 
 	if packet.LinkLayer() == nil && packet.NetworkLayer() == nil {

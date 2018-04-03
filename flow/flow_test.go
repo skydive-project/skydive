@@ -1180,6 +1180,29 @@ func TestNTPCorrupted(t *testing.T) {
 	validatePCAP(t, "pcaptraces/ntp-corrupted.pcap", layers.LinkTypeEthernet, nil, expected)
 }
 
+func TestLinkType12(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "IPv4/TCP",
+			Application: "TCP",
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "10.171.169.243",
+				B:        "192.168.255.1",
+				ID:       0,
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_TCP,
+				A:        "10250",
+				B:        "41252",
+				ID:       0,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/link-type-12.pcap", layers.LinkTypeRaw, nil, expected)
+}
+
 func TestVxlanSrcPort(t *testing.T) {
 	expected := []*Flow{
 		{
