@@ -23,6 +23,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -54,7 +55,18 @@ func (f *fakeServerSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
-	c.SendMessage(WSRawMessage{})
+
+	fnc := func() error {
+		f.RLock()
+		defer f.RUnlock()
+		if f.received == 0 {
+			return errors.New("Client not ready")
+		}
+		c.SendMessage(WSRawMessage{})
+
+		return nil
+	}
+	go common.Retry(fnc, 5, time.Second)
 }
 
 func (f *fakeServerSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
