@@ -185,13 +185,20 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 
 	// check vxlan in order to ignore source port from hash calculation
 	if layer.LayerType() == layers.LayerTypeUDP {
-		if vxlan := p.Layers[len(p.Layers)-1]; vxlan.LayerType() == layers.LayerTypeVXLAN {
+		encap := p.Layers[len(p.Layers)-1]
+
+		if encap.LayerType() == layers.LayerTypeVXLAN || encap.LayerType() == layers.LayerTypeGeneve {
 			value16 := make([]byte, 2)
 			binary.BigEndian.PutUint16(value16, uint16(layer.(*layers.UDP).DstPort))
 
 			// use the vni and the dest port to distinguish flows
 			value32 := make([]byte, 4)
-			binary.BigEndian.PutUint32(value32, vxlan.(*layers.VXLAN).VNI)
+			if encap.LayerType() == layers.LayerTypeVXLAN {
+				binary.BigEndian.PutUint32(value32, encap.(*layers.VXLAN).VNI)
+			} else {
+				binary.BigEndian.PutUint32(value32, encap.(*layers.Geneve).VNI)
+			}
+
 			return gopacket.NewFlow(0, value32, value16), nil
 		}
 	}
