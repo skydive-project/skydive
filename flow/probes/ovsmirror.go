@@ -524,7 +524,9 @@ func (o *ovsMirrorInterfaceHandler) OnNodeDeleted(n *graph.Node) {
 		return
 	}
 
-	ovsProbe.subProbe.UnregisterProbe(n, ovsProbe)
+	if ovsProbe.subProbe != nil {
+		ovsProbe.subProbe.UnregisterProbe(n, ovsProbe)
+	}
 }
 
 // Start the probe
