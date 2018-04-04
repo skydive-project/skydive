@@ -38,6 +38,7 @@ import (
 
 	"github.com/skydive-project/skydive/analyzer"
 	"github.com/skydive-project/skydive/cmd"
+	cmdconfig "github.com/skydive-project/skydive/cmd/config"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/http"
@@ -95,7 +96,7 @@ var AllInOneCmd = &cobra.Command{
 		copy(analyzerArgs, args)
 
 		if len(cmd.CfgFiles) != 0 {
-			if err := config.InitConfig(cmd.CfgBackend, cmd.CfgFiles); err != nil {
+			if err := cmdconfig.LoadConfiguration(cmd.CfgBackend, cmd.CfgFiles); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to initialize config: %s", err.Error())
 				os.Exit(1)
 			}

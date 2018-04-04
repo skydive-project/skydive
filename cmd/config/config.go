@@ -34,12 +34,12 @@ const (
 )
 
 // LoadConfiguration from a configuration file
+// If no configuration file are given, try to load the default configuraiton file /etc/skydive/skydive.yml
 func LoadConfiguration(cfgBackend string, cfgFiles []string) error {
 	if len(cfgFiles) == 0 {
-		if err := config.InitConfig(cfgBackend, []string{DefaultConfigurationFile}); err == nil {
-			if err := logging.InitLogging(); err != nil {
-				return fmt.Errorf("Failed to initialize logging system: %s", err.Error())
-			}
+		config.InitConfig(cfgBackend, []string{DefaultConfigurationFile})
+		if err := logging.InitLogging(); err != nil {
+			return fmt.Errorf("Failed to initialize logging system: %s", err.Error())
 		}
 		return nil
 	}
