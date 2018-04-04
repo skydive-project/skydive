@@ -54,6 +54,7 @@ func (f *fakeServerSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
+	f.t.Log("Server has a new client")
 	c.SendMessage(WSRawMessage{})
 }
 
@@ -61,12 +62,14 @@ func (f *fakeServerSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
 	f.Lock()
 	f.received++
 	f.Unlock()
+	f.t.Log("Server received a new message")
 }
 
 func (f *fakeClientSubscriptionHandler) OnConnected(c WSSpeaker) {
 	f.Lock()
 	f.connected++
 	f.Unlock()
+	f.t.Log("Client sent a new message")
 	c.SendMessage(WSRawMessage{})
 }
 
@@ -74,6 +77,7 @@ func (f *fakeClientSubscriptionHandler) OnMessage(c WSSpeaker, m WSMessage) {
 	f.Lock()
 	f.received++
 	f.Unlock()
+	f.t.Log("Client received a new message")
 }
 
 func TestSubscription(t *testing.T) {
