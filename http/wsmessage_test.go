@@ -23,6 +23,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -53,13 +54,24 @@ type fakeWSMessageClientSubscriptionHandler struct {
 }
 
 func (f *fakeWSMessageServerSubscriptionHandler) OnConnected(c WSSpeaker) {
-	c.SendMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast666", "AAA", "001"))
-	c.SendMessage(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
-	c.SendMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
+	// wait first message received to be sure that the client can consume messages
+	fnc := func() error {
+		f.RLock()
+		defer f.RUnlock()
+		if f.receivedCount == 0 {
+			return errors.New("Client not ready")
+		}
+		c.SendMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast666", "AAA", "001"))
+		c.SendMessage(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSUnicast2", "AAA", "001"))
+		c.SendMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSUnicast3", "AAA", "001"))
 
-	f.server.BroadcastMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSBroadcast1", "AAA", "001"))
-	f.server.BroadcastMessage(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSBroacast2", "AAA", "001"))
-	f.server.BroadcastMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSBroadcast3", "AAA", "001"))
+		f.server.BroadcastMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSBroadcast1", "AAA", "001"))
+		f.server.BroadcastMessage(NewWSJSONMessage("SrvNotValidNS", "SrvNotValidNSBroacast2", "AAA", "001"))
+		f.server.BroadcastMessage(NewWSJSONMessage("SrvValidNS", "SrvValidNSBroadcast3", "AAA", "001"))
+
+		return nil
+	}
+	go common.Retry(fnc, 5, time.Second)
 }
 
 func (f *fakeWSMessageServerSubscriptionHandler) OnWSJSONMessage(c WSSpeaker, m *WSJSONMessage) {
