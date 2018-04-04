@@ -1,4 +1,4 @@
-[![Build Status](https://ci.skydive.network/job/skydive-create-binaries/badge/icon)](https://ci.skydive.network/job/skydive-create-binaries/)
+[![Build Status](http://ci-logs.skydive.network/skydive-create-binaries/badge)](http://ci-logs.skydive.network/skydive-create-binaries/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/skydive-project/skydive)](https://goreportcard.com/report/github.com/skydive-project/skydive)
 [![Coverage Status](https://coveralls.io/repos/github/skydive-project/skydive/badge.svg?branch=master)](https://coveralls.io/github/skydive-project/skydive?branch=master)
 
