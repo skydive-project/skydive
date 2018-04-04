@@ -1801,16 +1801,16 @@
 			"revision": "c7e63cf4530bcd3ba943729cee0efeff2ebea63f"
 		},
 		{
-			"checksumSHA1": "GWX9W5F1QBqLZsS1bYsG3jXjb3g=",
+			"checksumSHA1": "a7Mfywx84Uljm/ZSNU30YdUa1Yk=",
+			"origin": "github.com/lebauce/viper",
 			"path": "github.com/spf13/viper",
-			"revision": "aafc9e6bc7b7bb53ddaa75a5ef49a17d6e654be5",
-			"revisionTime": "2017-11-29T09:51:06Z"
+			"revision": "54676d0dbb12f9b6febb2f8210e9590d81d4b5e3"
 		},
 		{
 			"checksumSHA1": "BR/kPm9HQod+IBsWoYB8BCRBg3s=",
+			"origin": "github.com/lebauce/viper/remote",
 			"path": "github.com/spf13/viper/remote",
-			"revision": "aafc9e6bc7b7bb53ddaa75a5ef49a17d6e654be5",
-			"revisionTime": "2017-11-29T09:51:06Z"
+			"revision": "54676d0dbb12f9b6febb2f8210e9590d81d4b5e3"
 		},
 		{
 			"checksumSHA1": "ANGOe9JH8sHzYNOQgEFCXuAhiuM=",
