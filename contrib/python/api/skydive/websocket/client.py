@@ -23,7 +23,6 @@ try:
     import asyncio
 except ImportError:
     import trollius as asyncio
-import base64
 import functools
 import json
 try:
@@ -31,17 +30,18 @@ try:
 except ImportError:
     import httplib
 import logging
-import requests
 import ssl
 import uuid
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
+import warnings
 
 from autobahn.asyncio.websocket import WebSocketClientProtocol
 from autobahn.asyncio.websocket import WebSocketClientFactory
 
+from skydive.auth import Authenticate
 from skydive.encoder import JSONEncoder
 
 
@@ -168,6 +168,17 @@ class WSClient(WebSocketClientProtocol):
         self.insecure = insecure
         self.kwargs = kwargs
 
+        self.url = urlparse(self.endpoint)
+
+        scheme = "http"
+        if self.url.scheme == "wss":
+            scheme = "http"
+
+        self.auth = Authenticate(
+            "%s:%s" % (self.url.hostname, self.url.port),
+            scheme=scheme, username=username, password=password,
+            insecure=insecure)
+
     def connect(self):
         factory = WebSocketClientFactory(self.endpoint)
         factory.protocol = self.protocol
@@ -181,9 +192,12 @@ class WSClient(WebSocketClientProtocol):
             factory.headers["X-Persistence-Policy"] = "DeleteOnDisconnect"
 
         if self.username:
-            up = "%s:%s" % (self.username, self.password)
-            authorization = base64.b64encode(up.encode()).decode("ascii")
-            factory.headers["Authorization"] = 'Basic %s' % authorization
+            if self.auth.login():
+                cookie = 'authtok={}'.format(self.auth.authtok)
+                if self.cookies:
+                    self.cookies.append(cookie)
+                else:
+                    self.cookies = [cookie, ]
 
         if self.filter:
             factory.headers["X-Gremlin-Filter"] = self.filter
@@ -197,17 +211,16 @@ class WSClient(WebSocketClientProtocol):
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
 
-        u = urlparse(self.endpoint)
-
         context = None
-        if u.scheme == "wss":
+        if self.url.scheme == "wss":
             if self.insecure:
                 context = ssl._create_unverified_context()
             else:
                 context = ssl._create_default_context()
 
         coro = self.loop.create_connection(factory,
-                                           u.hostname, u.port, ssl=context)
+                                           self.url.hostname, self.url.port,
+                                           ssl=context)
         (transport, protocol) = self.loop.run_until_complete(coro)
         LOG.debug('transport, protocol: %r, %r', transport, protocol)
 
@@ -225,6 +238,12 @@ class WSClient(WebSocketClientProtocol):
         :return: True on successful authentication, False otherwise
         """
 
+        warnings.warn(
+            "shouldn't use this function anymore ! use connect which handles"
+            "handles authentication directly.",
+            DeprecationWarning
+        )
+
         scheme = "http"
         if not host_spec:
             u = urlparse(self.endpoint)
@@ -236,23 +255,18 @@ class WSClient(WebSocketClientProtocol):
             if self.password:
                 password = self.password
 
-        res = requests.post(
-            '{0}://{1}/login'.format(scheme, host_spec),
-            data={
-                'username': username,
-                'password': password,
-            },
-            verify=(not self.insecure)
-        )
-
-        if res.status_code == 200:
-            cookie = 'authtok={}'.format(res.cookies['authtok'])
+        auth = Authenticate(host_spec, scheme=scheme,
+                            username=username, password=password)
+        try:
+            auth.login()
+            cookie = 'authtok={}'.format(auth.authtok)
             if self.cookies:
                 self.cookies.append(cookie)
             else:
                 self.cookies = [cookie, ]
             return True
-        return False
+        except Exception:
+            return False
 
     def start(self):
         try:

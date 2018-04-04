@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 Red Hat, Inc.
+# Copyright (C) 2018 Red Hat, Inc.
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -19,18 +19,25 @@
 # under the License.
 #
 
-import json
+try:
+    from http.cookiejar import CookieJar
+except ImportError:
+    from cookielib import CookieJar
+
 import ssl
 try:
     import urllib.request as request
 except ImportError:
     import urllib2 as request
 
-from skydive.auth import Authenticate
-from skydive.graph import Node, Edge
+try:
+    import urllib.parse as urlencoder
+except ImportError:
+    import urllib as urlencoder
 
 
-class RESTClient:
+class Authenticate:
+
     def __init__(self, endpoint, scheme="http",
                  username="", password="",
                  insecure=False, debug=0):
@@ -41,17 +48,17 @@ class RESTClient:
         self.insecure = insecure
         self.debug = debug
 
-        self.auth = Authenticate(endpoint, scheme,
-                                 username, password, insecure)
+        self.cookie_jar = CookieJar()
+        self.authenticated = False
+        self.authtok = ""
 
-    def request(self, path, data=None):
-        if self.username and not self.auth.authenticated:
-            self.auth.login()
-
+    def login(self):
         handlers = []
-        url = "%s://%s%s" % (self.scheme, self.endpoint, path)
+        url = "%s://%s/login" % (self.scheme, self.endpoint)
         handlers.append(request.HTTPHandler(debuglevel=self.debug))
-        handlers.append(request.HTTPCookieProcessor(self.auth.cookie_jar))
+        handlers.append(request.HTTPCookieProcessor(self.cookie_jar))
+
+        data = {"username": self.username, "password": self.password}
 
         if self.scheme == "https":
             if self.insecure:
@@ -63,32 +70,16 @@ class RESTClient:
 
         opener = request.build_opener(*handlers)
 
-        headers = {'Content-Type': 'application/json'}
-        req = request.Request(url, data=data, headers=headers)
+        req = request.Request(url, data=urlencoder.urlencode(data).encode())
+        opener.open(req)
 
-        try:
-            resp = opener.open(req)
-        except request.HTTPError as err:
-            self.auth.logout()
-            raise
+        for cookie in self.cookie_jar:
+            if cookie.name == "authtok":
+                self.authtok = cookie.value
+                self.authenticated = True
 
-        return resp
+        return self.authenticated
 
-    def lookup(self, gremlin, klass=None):
-        data = json.dumps(
-            {"GremlinQuery": gremlin}
-        )
-
-        resp = self.request("/api/topology", data.encode())
-
-        data = resp.read()
-        objs = json.loads(data.decode())
-        if klass:
-            return [klass.from_object(o) for o in objs]
-        return objs
-
-    def lookup_nodes(self, gremlin):
-        return self.lookup(gremlin, Node)
-
-    def lookup_edges(self, gremlin):
-        return self.lookup(gremlin, Edge)
+    def logout(self):
+        self.authenticated = False
+        self.authtok = ""
