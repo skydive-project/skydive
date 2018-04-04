@@ -48,7 +48,7 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringArrayVarP(&cmd.CfgFiles, "conf", "c", []string{"/etc/skydive/skydive.yml"}, "location of Skydive configuration files, default : /etc/skydive/skydive.yml")
+	RootCmd.PersistentFlags().StringArrayVarP(&cmd.CfgFiles, "conf", "c", []string{""}, "location of Skydive configuration files, default try loading /etc/skydive/skydive.yml")
 	RootCmd.PersistentFlags().StringVarP(&cmd.CfgBackend, "config-backend", "b", "file", "configuration backend (defaults to file)")
 
 	executable := path.Base(os.Args[0])
