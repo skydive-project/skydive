@@ -107,7 +107,7 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture
 
 	opts := flow.TableOpts{
 		RawPacketLimit: int64(capture.RawPacketLimit),
-		TCPMetric:      capture.ExtraTCPMetric,
+		TCPIPMetric:    capture.ExtraTCPMetric,
 	}
 	ft := d.fpta.Alloc(tid, opts)
 

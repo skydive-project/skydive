@@ -180,7 +180,7 @@ func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKP
 
 	opts := flow.TableOpts{
 		RawPacketLimit: 0,
-		TCPMetric:      false,
+		TCPIPMetric:    false,
 	}
 
 	dph := &DPDKProbesHandler{

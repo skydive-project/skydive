@@ -35,6 +35,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/ip4defrag"
 	"github.com/google/gopacket/layers"
 
 	"github.com/skydive-project/skydive/common"
@@ -43,6 +44,9 @@ import (
 
 // ErrFlowProtocol invalid protocol error
 var ErrFlowProtocol = errors.New("FlowProtocol invalid")
+
+// IPv4Defragmentation enable IPv4 flow defragmentation
+var IPv4Defragmentation = false
 
 const (
 	// DefaultCaptureLength : default packet capture length
@@ -72,7 +76,8 @@ type Packet struct {
 
 // PacketSequence represents a suite of parent/child Packet
 type PacketSequence struct {
-	Packets []Packet
+	Packets        []Packet
+	IPFragmentStat IPFragmentStat
 }
 
 // RawPackets embeds flow RawPacket array with the associated link type
@@ -83,7 +88,8 @@ type RawPackets struct {
 
 // FlowOpts describes options that can be used to process flows
 type FlowOpts struct {
-	TCPMetric bool
+	TCPMetric      bool
+	IPFragmentStat IPFragmentStat
 }
 
 // FlowUUIDs describes UUIDs that can be applied to flows
@@ -92,6 +98,15 @@ type FlowUUIDs struct {
 	L2ID       int64
 	L3ID       int64
 }
+
+// IPFragmentStat describes IP flagments and defragmentation errors
+type IPFragmentStat struct {
+	Fragments      int64
+	FragmentErrors int64
+}
+
+var defraggerStat = make(map[uint64]IPFragmentStat)
+var defragger *ip4defrag.IPv4Defragmenter
 
 // Value returns int32 value of a FlowProtocol
 func (p FlowProtocol) Value() int32 {
@@ -213,12 +228,32 @@ func (f Key) String() string {
 	return string(f)
 }
 
+// Workaround as SetApplication can't reset applicaiton layer to a new value
+func getApplicationLayer(p *gopacket.Packet) gopacket.ApplicationLayer {
+	app := (*p).ApplicationLayer()
+	if app == nil {
+		return nil
+	}
+	if IPv4Defragmentation == false {
+		return app
+	}
+	if app.LayerType() != gopacket.LayerTypeFragment {
+		return app
+	}
+	layers := (*p).Layers()
+	l := layers[len(layers)-1]
+	if l.LayerType() == gopacket.LayerTypePayload {
+		l = layers[len(layers)-2]
+	}
+	return l.(gopacket.ApplicationLayer)
+}
+
 // KeyFromGoPacket returns the unique flow key
 // The unique key is calculated based on parentUUID, network, transport and applicable layers
 func KeyFromGoPacket(p *gopacket.Packet, parentUUID string) Key {
 	network := layerFlow((*p).NetworkLayer()).FastHash()
 	transport := layerFlow((*p).TransportLayer()).FastHash()
-	application := layerFlow((*p).ApplicationLayer()).FastHash()
+	application := layerFlow(getApplicationLayer(p)).FastHash()
 	return Key(parentUUID + strconv.FormatUint(uint64(network^transport^application), 10))
 }
 
@@ -408,7 +443,7 @@ func (f *Flow) InitFromGoPacket(key string, packet *gopacket.Packet, length int6
 	f.Application = appLayers[len(appLayers)-1]
 
 	// no network layer then no transport layer
-	if err := f.newNetworkLayer(packet); err == nil {
+	if err := f.newNetworkLayer(packet, opts.IPFragmentStat); err == nil {
 		f.newTransportLayer(packet, opts.TCPMetric)
 	}
 
@@ -425,7 +460,7 @@ func (f *Flow) Update(packet *gopacket.Packet, length int64) {
 	if updated := f.updateMetricsWithLinkLayer(packet, length); !updated {
 		f.updateMetricsWithNetworkLayer(packet)
 	}
-	if f.TCPFlowMetric != nil {
+	if f.TCPMetric != nil {
 		f.updateTCPMetrics(packet)
 	}
 }
@@ -488,9 +523,13 @@ func (f *Flow) updateMetricsWithLinkLayer(packet *gopacket.Packet, length int64)
 	return true
 }
 
-func (f *Flow) newNetworkLayer(packet *gopacket.Packet) error {
+func (f *Flow) newNetworkLayer(packet *gopacket.Packet, ipFragStat IPFragmentStat) error {
 	ipv4Layer := (*packet).Layer(layers.LayerTypeIPv4)
 	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+		f.IPMetric = &IPMetric{
+			Fragments:      ipFragStat.Fragments,
+			FragmentErrors: ipFragStat.FragmentErrors,
+		}
 		f.Network = &FlowLayer{
 			Protocol: FlowProtocol_IPV4,
 			A:        ipv4Packet.SrcIP.String(),
@@ -633,34 +672,34 @@ func (f *Flow) updateTCPMetrics(packet *gopacket.Packet) error {
 	switch {
 	case tcpPacket.SYN:
 		if f.Network.A == srcIP {
-			if f.TCPFlowMetric.ABSynStart == 0 {
-				f.TCPFlowMetric.ABSynStart = captureTime
-				f.TCPFlowMetric.ABSynTTL = timeToLive
+			if f.TCPMetric.ABSynStart == 0 {
+				f.TCPMetric.ABSynStart = captureTime
+				f.TCPMetric.ABSynTTL = timeToLive
 			}
 		} else {
-			if f.TCPFlowMetric.BASynStart == 0 {
-				f.TCPFlowMetric.BASynStart = captureTime
-				f.TCPFlowMetric.BASynTTL = timeToLive
+			if f.TCPMetric.BASynStart == 0 {
+				f.TCPMetric.BASynStart = captureTime
+				f.TCPMetric.BASynTTL = timeToLive
 			}
 		}
 	case tcpPacket.FIN:
 		if f.Network.A == srcIP {
-			f.TCPFlowMetric.ABFinStart = captureTime
+			f.TCPMetric.ABFinStart = captureTime
 		} else {
-			f.TCPFlowMetric.BAFinStart = captureTime
+			f.TCPMetric.BAFinStart = captureTime
 		}
 	case tcpPacket.RST:
 		if f.Network.A == srcIP {
-			f.TCPFlowMetric.ABRstStart = captureTime
+			f.TCPMetric.ABRstStart = captureTime
 		} else {
-			f.TCPFlowMetric.BARstStart = captureTime
+			f.TCPMetric.BARstStart = captureTime
 		}
 	}
 
 	return nil
 }
 
-func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error {
+func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpipMetric bool) error {
 	var transportLayer gopacket.Layer
 	var ok bool
 	transportLayer = (*packet).Layer(layers.LayerTypeTCP)
@@ -689,8 +728,8 @@ func (f *Flow) newTransportLayer(packet *gopacket.Packet, tcpMetric bool) error 
 		transportPacket, _ := transportLayer.(*layers.TCP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
-		if tcpMetric {
-			f.TCPFlowMetric = &TCPMetric{}
+		if tcpipMetric {
+			f.TCPMetric = &TCPMetric{}
 			return f.updateTCPMetrics(packet)
 		}
 	case FlowProtocol_UDP:
@@ -720,6 +759,48 @@ func PacketSeqFromGoPacket(packet *gopacket.Packet, outerLength int64, bpf *BPF)
 		return ps
 	}
 
+	var ipFragStat IPFragmentStat
+	if IPv4Defragmentation {
+		ip4Layer := (*packet).Layer(layers.LayerTypeIPv4)
+		if ip4Layer != nil {
+			ip4 := ip4Layer.(*layers.IPv4)
+			l := ip4.Length
+			newip4, err := defragger.DefragIPv4WithTimestamp(ip4, (*packet).Metadata().CaptureInfo.Timestamp)
+			if err != nil {
+				logging.GetLogger().Errorf("Error while de-fragmenting %s", LayerPathFromGoPacket(packet))
+				s, _ := defraggerStat[ip4.NetworkFlow().FastHash()]
+				s.FragmentErrors++
+				return ps
+			} else if newip4 == nil {
+				s, _ := defraggerStat[ip4.NetworkFlow().FastHash()]
+				s.Fragments++
+				// packet fragment, we don't have whole packet yet.
+				return ps
+			}
+			if newip4.Length != l {
+				s, _ := defraggerStat[ip4.NetworkFlow().FastHash()]
+				s.Fragments++
+				pb, ok := (*packet).(gopacket.PacketBuilder)
+				if !ok {
+					panic("Not a PacketBuilder")
+				}
+				nextDecoder := newip4.NextLayerType()
+				nextDecoder.Decode(newip4.Payload, pb)
+
+				ipFragStat = s
+				delete(defraggerStat, ip4.NetworkFlow().FastHash())
+			}
+		}
+	}
+
+	return packetsFromGoPacketSplitTunnel(packet, ipFragStat, outerLength, bpf)
+}
+
+func packetsFromGoPacketSplitTunnel(packet *gopacket.Packet, ipFragStat IPFragmentStat, outerLength int64, bpf *BPF) *PacketSequence {
+	ps := &PacketSequence{
+		IPFragmentStat: ipFragStat,
+	}
+	packetData := (*packet).Data()
 	packetLayers := (*packet).Layers()
 	metadata := (*packet).Metadata()
 
@@ -872,7 +953,22 @@ func (i *ICMPLayer) GetFieldInt64(field string) (int64, error) {
 	}
 }
 
-// GetFieldInt64 returns the value of a ICMP field
+// GetFieldInt64 returns the value of a IPMetric field
+func (i *IPMetric) GetFieldInt64(field string) (int64, error) {
+	if i == nil {
+		return 0, common.ErrFieldNotFound
+	}
+	switch field {
+	case "Fragments":
+		return i.Fragments, nil
+	case "FragmentErrors":
+		return i.FragmentErrors, nil
+	default:
+		return 0, common.ErrFieldNotFound
+	}
+}
+
+// GetFieldInt64 returns the value of a TCPMetric field
 func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
 	if i == nil {
 		return 0, common.ErrFieldNotFound
@@ -895,6 +991,34 @@ func (i *TCPMetric) GetFieldInt64(field string) (int64, error) {
 		return i.BARstStart, nil
 	case "BARstStart":
 		return i.BARstStart, nil
+	case "ABSegmentOutOfOrder":
+		return i.ABSegmentOutOfOrder, nil
+	case "ABSegmentSkipped":
+		return i.ABSegmentSkipped, nil
+	case "ABSegmentSkippedBytes":
+		return i.ABSegmentSkippedBytes, nil
+	case "ABPackets":
+		return i.ABPackets, nil
+	case "ABBytes":
+		return i.ABBytes, nil
+	case "ABSawStart":
+		return i.ABSawStart, nil
+	case "ABSawEnd":
+		return i.ABSawEnd, nil
+	case "BASegmentOutOfOrder":
+		return i.BASegmentOutOfOrder, nil
+	case "BASegmentSkipped":
+		return i.BASegmentSkipped, nil
+	case "BASegmentSkippedBytes":
+		return i.BASegmentSkippedBytes, nil
+	case "BAPackets":
+		return i.BAPackets, nil
+	case "BABytes":
+		return i.BABytes, nil
+	case "BASawStart":
+		return i.BASawStart, nil
+	case "BASawEnd":
+		return i.BASawEnd, nil
 	default:
 		return 0, common.ErrFieldNotFound
 	}
@@ -975,8 +1099,10 @@ func (f *Flow) GetFieldInt64(field string) (_ int64, err error) {
 		return f.Metric.GetFieldInt64(fields[1])
 	case "LastUpdateMetric":
 		return f.LastUpdateMetric.GetFieldInt64(fields[1])
-	case "TCPFlowMetric":
-		return f.TCPFlowMetric.GetFieldInt64(fields[1])
+	case "TCPMetric":
+		return f.TCPMetric.GetFieldInt64(fields[1])
+	case "IPMetric":
+		return f.IPMetric.GetFieldInt64(fields[1])
 	case "Link":
 		return f.Link.GetFieldInt64(fields[1])
 	case "Network":
@@ -999,8 +1125,8 @@ func (f *Flow) GetFieldInterface(field string) (_ interface{}, err error) {
 		return f.Metric, nil
 	case "LastUpdateMetric":
 		return f.LastUpdateMetric, nil
-	case "TCPFlowMetric":
-		return f.TCPFlowMetric, nil
+	case "TCPMetric":
+		return f.TCPMetric, nil
 	case "Link":
 		return f.Link, nil
 	case "Network":
@@ -1064,4 +1190,5 @@ func introspectFields(t reflect.Type, prefix string) []interface{} {
 
 func init() {
 	fields = introspectFields(reflect.TypeOf(Flow{}), "")
+	defragger = ip4defrag.NewIPv4Defragmenter()
 }

@@ -1063,6 +1063,12 @@
 			"revisionTime": "2017-11-28T22:01:57Z"
 		},
 		{
+			"checksumSHA1": "gGFpdcZzV7x5Qzj7Xcv2JUNr7bk=",
+			"path": "github.com/google/gopacket/ip4defrag",
+			"revision": "cd2c957bda20a83d89ba6a0c5eb1eb66e95fba4d",
+			"revisionTime": "2018-01-03T19:45:41Z"
+		},
+		{
 			"checksumSHA1": "ORc1X58pM+oNj08y5wXask2sV4c=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
@@ -1082,6 +1088,12 @@
 			"path": "github.com/google/gopacket/pcapgo",
 			"revision": "67a21c4470a0598531a769727aef40b870ffa128",
 			"revisionTime": "2017-11-28T22:01:57Z"
+		},
+		{
+			"checksumSHA1": "rvhzYriHI3iVAVeEUKvunq82Pww=",
+			"path": "github.com/google/gopacket/tcpassembly",
+			"revision": "cd2c957bda20a83d89ba6a0c5eb1eb66e95fba4d",
+			"revisionTime": "2018-01-03T19:45:41Z"
 		},
 		{
 			"checksumSHA1": "Nf/pN/E1Rutz925nyJR4eEeghwg=",
