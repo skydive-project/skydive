@@ -39,6 +39,11 @@
 
 - yedit:
     src: "{{ skydive_config_file }}"
+    key: host_id
+    value: "{{ ansible_hostname }}"
+
+- yedit:
+    src: "{{ skydive_config_file }}"
     key: analyzers
     value: "{{ analyzers.split(',') }}"
 
