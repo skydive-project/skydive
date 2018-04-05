@@ -133,8 +133,6 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 		"L3TrackingID":       flow.L3TrackingID,
 		"ParentUUID":         flow.ParentUUID,
 		"NodeTID":            flow.NodeTID,
-		"ANodeTID":           flow.ANodeTID,
-		"BNodeTID":           flow.BNodeTID,
 		"RawPacketsCaptured": flow.RawPacketsCaptured,
 	}
 
@@ -494,8 +492,6 @@ func New(backend string) (*OrientDBStorage, error) {
 				{Name: "L3TrackingID", Type: "STRING"},
 				{Name: "ParentUUID", Type: "STRING"},
 				{Name: "NodeTID", Type: "STRING"},
-				{Name: "ANodeTID", Type: "STRING"},
-				{Name: "BNodeTID", Type: "STRING"},
 				{Name: "RawPacketsCaptured", Type: "LONG"},
 			},
 			Indexes: []orient.Index{

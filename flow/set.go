@@ -49,7 +49,7 @@ func getDedupField(flow *Flow, field string) (string, error) {
 	}
 
 	// only flow string field are support for dedup as only few make sense
-	// for dedup like ANodeTID, NodeTID, etc.
+	// for dedup like NodeTID, etc.
 	return flow.GetFieldString(field)
 }
 
