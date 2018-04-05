@@ -103,7 +103,7 @@ Vue.component('metrics-table', {
           f.show = true;
           self.fields.splice(0, 0, f);
         } else {
-          f.show = self.canShow(self.object[f.name[0]]);
+          f.show = self.canShow(self.object[key]);
           self.fields.push(f);
         }
       });
@@ -114,7 +114,9 @@ Vue.component('metrics-table', {
       // unless it has been hidden or showed manually by
       // the user.
       var self = this;
+      var fieldNameArray = [];
       this.fields.forEach(function(f) {
+        fieldNameArray.push(f.name[0]);
         var newVal = self.object[f.name[0]];
         if (f.showChanged === false) {
           if (self.canShow(newVal) || self.isTime(f)) {
@@ -123,6 +125,19 @@ Vue.component('metrics-table', {
             f.show = false;
           }
         }
+      });
+
+      // add the new fields
+      Object.getOwnPropertyNames(this.object).forEach(function(key) {
+        if (key === "__ob__") return;
+        if (fieldNameArray.indexOf(key) >= 0) return;
+        var f = {
+          name: [key],
+          label: key,
+          show: self.canShow(self.object[key]),
+          showChanged: false
+        };
+        self.fields.push(f);
       });
     },
 
