@@ -191,7 +191,12 @@ class WSClient(WebSocketClientProtocol):
         if self.cookies:
             factory.headers['Cookie'] = ';'.join(self.cookies)
 
-        self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+
         u = urlparse(self.endpoint)
 
         context = None
