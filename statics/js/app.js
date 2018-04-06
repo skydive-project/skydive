@@ -168,6 +168,7 @@ var app = new Vue({
   created: function() {
     var self = this;
 
+    this.setTheme("dark");
     this.setThemeFromConfig();
 
     websocket.addConnectHandler(self.onConnected.bind(self));
@@ -269,24 +270,27 @@ var app = new Vue({
     },
 
     setThemeFromConfig: function() {
-      self = this;
+      var self = this;
+
       $.when(this.$getConfigValue('ui.theme'))
-        .then(function(theme) {
+        .always(function(theme) {
           if (typeof(self.$route.query.theme) !== "undefined") {
             theme = self.$route.query.theme;
           }
           self.setTheme(theme);
         });
     },
- 
+
     setTheme: function(theme) {
       switch (theme) {
         case 'light':
-          navbarClass = 'navbar-light';
+          $("#navbar").removeClass("navbar-inverse");
+          $("#navbar").addClass("navbar-light");
           break;
         default:
           theme = 'dark';
-          navbarClass = 'navbar-inverse';
+          $("#navbar").addClass("navbar-inverse");
+          $("#navbar").removeClass("navbar-light");
       }
 
       for (var i = 0; i < document.styleSheets.length; i++) {
@@ -294,11 +298,11 @@ var app = new Vue({
           continue;
         }
         if (document.styleSheets[i].href.search(theme) != -1) {
-          continue;
+          document.styleSheets[i].disabled = false;
+        } else {
+          document.styleSheets[i].disabled = true;
         }
-        document.styleSheets[i].disabled = true;
       }
-      document.getElementById("navbar").classList.add(navbarClass);
     },
   }
 
