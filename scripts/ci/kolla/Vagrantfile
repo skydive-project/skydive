@@ -11,23 +11,67 @@ sudo yum -y install https://www.rdoproject.org/repos/rdo-release.rpm
 sudo yum -y install libpcap libxml2 openvswitch
 cd /skydive
 source /etc/kolla/admin-openrc.sh
-export SKYDIVE_ANALYZERS=192.168.50.10:8085
+export SKYDIVE_ANALYZERS=192.168.50.200:8085
 make test.functionals.run VERBOSE=true TIMEOUT=20m ARGS='-test.run TestNeutron'
 SCRIPT
 
+def ifcfg_config(interface, network, netmask, ip)
+  ifcfg_template = <<-IFCFG
+cat > /etc/sysconfig/network-scripts/ifcfg-#{interface} <<EOF
+BOOTPROTO=none
+DEVICE=#{interface}
+ONBOOT=yes
+TYPE=Ethernet
+USERCTL=no
+NETWORK=#{network}
+NETMASK=#{netmask}
+IPADDR=#{ip}
+EOF
+sudo /sbin/ifup #{interface}
+IFCFG
+  return ifcfg_template
+end
+
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    config.ssh.username = 'centos'
+
     config.vm.define :kolla do |kolla|
-         kolla.vm.box = "centos/7"
-         kolla.vm.synced_folder "../../..", "/skydive", :disabled => false, :type => "nfs", :nfs_udp => false
-         kolla.vm.provider :libvirt do |domain|
-             domain.memory = 8192
-             domain.cpus = 4
-             domain.graphics_type = "none"
-         end
-         kolla.vm.network "private_network", ip: "192.168.50.10"
-         kolla.vm.network "private_network", ip: "192.168.100.10"
-         kolla.vm.provision "pre", type: "shell", inline: $script, privileged: false
-         kolla.vm.provision "kolla", type: "shell", path: "run-kolla.sh", privileged: true, env: {"DEPLOYMENT_MODE" => DEPLOYMENT_MODE}
-         kolla.vm.provision "test", type: "shell", inline: $testscript, privileged: false
+        kolla.vm.provider :openstack do |os, override|
+            os.openstack_auth_url = ENV.fetch("OS_AUTH_URL", "'http://keystone-server.net/v2.0/tokens'")
+            os.username = ENV.fetch("OS_USERNAME", "openstackUser")
+            os.password = ENV.fetch("OS_PASSWORD", "openstackPassword")
+            os.tenant_name = ENV.fetch("OS_TENANT_NAME", "myTenant")
+            os.flavor = ENV.fetch("OS_LARGE_FLAVOR", "m1.large")
+            os.image = ENV.fetch("OS_CENTOS_IMAGE", "centos")
+            os.floating_ip_pool = ENV.fetch("OS_PUBLIC_IP_POOL", "8.0.0.0/8")
+            os.networks = [
+              'private',
+              {
+                name: 'vagrant',
+                address: "192.168.50.200",
+              },
+              {
+                name: 'vagrant',
+                address: "192.168.50.210",
+              },
+            ]
+            override.vm.synced_folder "../../..", "/skydive", :disabled => false
+        end
+        kolla.vm.provider :libvirt do |domain, override|
+            override.ssh.username = 'vagrant'
+            override.vm.box = "centos/7"
+            override.vm.synced_folder "../../..", "/skydive", :disabled => false, :type => "nfs", :nfs_udp => false
+            domain.memory = 8192
+            domain.cpus = 4
+            domain.graphics_type = "none"
+        end
+
+        kolla.vm.network "private_network", ip: "192.168.50.200"
+        kolla.vm.network "private_network", ip: "192.168.50.210"
+        kolla.vm.provision "networking-eth1", type: "shell", inline: ifcfg_config("eth1", "192.168.50.0", "255.255.255.0", "192.168.50.200")
+        kolla.vm.provision "networking-eth2", type: "shell", inline: ifcfg_config("eth2", "192.168.50.0", "255.255.255.0", "192.168.50.210")
+        kolla.vm.provision "pre", type: "shell", inline: $script, privileged: false
+        kolla.vm.provision "kolla", type: "shell", path: "run-kolla.sh", privileged: true, env: {"DEPLOYMENT_MODE" => DEPLOYMENT_MODE}
+        kolla.vm.provision "test", type: "shell", inline: $testscript, privileged: false
     end
 end

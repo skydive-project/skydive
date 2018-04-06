@@ -7,13 +7,27 @@ git checkout -b devstack
 SCRIPT
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    config.ssh.username = 'fedora'
+
     config.vm.define :devstack do |devstack|
-         devstack.vm.box = "fedora/26-cloud-base"
-         devstack.vm.synced_folder "../../..", "/vagrant", :disabled => false
-         devstack.vm.provider :libvirt do |domain|
+         devstack.vm.provider :openstack do |os|
+             os.openstack_auth_url = ENV.fetch("OS_AUTH_URL", "'http://keystone-server.net/v2.0/tokens'")
+             os.username = ENV.fetch("OS_USERNAME", "openstackUser")
+             os.password = ENV.fetch("OS_PASSWORD", "openstackPassword")
+             os.tenant_name = ENV.fetch("OS_TENANT_NAME", "myTenant")
+             os.flavor = ENV.fetch("OS_LARGE_FLAVOR", "m1.large")
+             os.image = ENV.fetch("OS_FEDORA_IMAGE", "fedora")
+             os.floating_ip_pool = ENV.fetch("OS_PUBLIC_IP_POOL", "8.0.0.0/8")
+             os.networks = ENV.fetch("OS_NETWORKS", "private").split()
+         end
+         devstack.vm.provider :libvirt do |domain, override|
+             override.vm.box = "fedora/26-cloud-base"
+             override.ssh.username = 'vagrant'
              domain.memory = 8192
              domain.cpus = 4
+             domain.graphics_type = "none"
          end
+         devstack.vm.synced_folder "../../..", "/vagrant", :disabled => false
          devstack.vm.provision "pre", type: "shell", inline: $script, privileged: false
          devstack.vm.provision "devstack", type: "shell", path: "run-devstack.sh", privileged: false, env: {"SKYDIVE_PATH" => "/vagrant"}
          devstack.vm.provision "test", type: "shell", path: "run-openstack-tests.sh", privileged: false

@@ -36,6 +36,79 @@
                 unhealthy: 5000000
                 failing: 3000000
 
+- wrapper:
+    name: openstack-credentials
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: openstack-username
+              variable: OS_USERNAME
+          - text:
+              credential-id: openstack-password
+              variable: OS_PASSWORD
+          - text:
+              credential-id: openstack-tenant-name
+              variable: OS_TENANT_NAME
+          - text:
+              credential-id: openstack-auth-url
+              variable: OS_AUTH_URL
+          - text:
+              credential-id: openstack-region-name
+              variable: OS_REGION_NAME
+          - text:
+              credential-id: openstack-public-network
+              variable: OS_PUBLIC_IP_POOL
+          - text:
+              credential-id: openstack-centos-image
+              variable: OS_CENTOS_IMAGE
+          - text:
+              credential-id: openstack-fedora-image
+              variable: OS_FEDORA_IMAGE
+          - text:
+              credential-id: openstack-large-flavor
+              variable: OS_LARGE_FLAVOR
+
+- wrapper:
+    name: github-credentials
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: github
+              variable: GITHUB_TOKEN
+          - text:
+              credential-id: github-username
+              variable: GITHUB_USERNAME
+
+- wrapper:
+    name: docker-credentials
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: docker-password
+              variable: DOCKER_PASSWORD
+
+- wrapper:
+    name: copr-credentials
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: copr-login
+              variable: COPR_LOGIN
+          - text:
+              credential-id: copr-token
+              variable: COPR_TOKEN
+
+- wrapper:
+    name: coverage-credentials
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: codecov-token
+              variable: CODECOV_TOKEN
+          - text:
+              credential-id: coveralls-token
+              variable: COVERALLS_TOKEN
+
 - defaults:
     name: skydive
     project-type: freestyle
@@ -331,22 +404,9 @@
           branches:
             - "${REF}"
     wrappers:
-      - credentials-binding:
-          - text:
-              credential-id: github
-              variable: GITHUB_TOKEN
-          - text:
-              credential-id: github-username
-              variable: GITHUB_USERNAME
-          - text:
-              credential-id: docker-password
-              variable: DOCKER_PASSWORD
-          - text:
-              credential-id: copr-login
-              variable: COPR_LOGIN
-          - text:
-              credential-id: copr-token
-              variable: COPR_TOKEN
+      - github-credentials
+      - docker-credentials
+      - copr-credentials
     builders:
       - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-release.sh
     publishers:
@@ -372,16 +432,8 @@
           branches:
             - master
     wrappers:
-      - credentials-binding:
-          - text:
-              credential-id: github
-              variable: GITHUB_TOKEN
-          - text:
-              credential-id: github-username
-              variable: GITHUB_USERNAME
-          - text:
-              credential-id: docker-password
-              variable: DOCKER_PASSWORD
+      - github-credentials
+      - docker-credentials
     builders:
       - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-binaries.sh
     publishers:
@@ -412,7 +464,7 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           cd scripts/ci/devstack
-          vagrant up --no-provision && vagrant provision
+          vagrant up --no-provision --provider=openstack && vagrant provision
           retcode=$?
           vagrant destroy
           exit $retcode
@@ -420,9 +472,10 @@
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/skydive-devstack-tests/builds/${BUILD_NUMBER}/log.html
           status-context: skydive-devstack-tests
+      - openstack-credentials
     publishers:
       - chuck-norris
-    node: baremetal
+    node: vagrant
 
 - job:
     name: skydive-kolla-tests
@@ -453,7 +506,7 @@
           cp $GOPATH/bin/skydive .
           make test.functionals.compile GOFLAGS="-race" GORACE="history_size=5" WITH_NEUTRON=true VERBOSE=true
           cd scripts/ci/kolla
-          DEPLOYMENT_MODE=dev vagrant up
+          DEPLOYMENT_MODE=dev vagrant up --provider=openstack
           retcode=$?
           vagrant destroy
           exit $retcode
@@ -461,9 +514,10 @@
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/skydive-kolla-tests/builds/${BUILD_NUMBER}/log.html
           status-context: skydive-kolla-tests
+      - openstack-credentials
     publishers:
       - chuck-norris
-    node: baremetal
+    node: vagrant
 
 - job:
     name: skydive-vagrant-tests
@@ -486,14 +540,15 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          scripts/ci/run-vagrant-tests.sh
+          VAGRANT_DEFAULT_PROVIDER=openstack scripts/ci/run-vagrant-tests.sh
     wrappers:
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/skydive-vagrant-tests/builds/${BUILD_NUMBER}/log.html
           status-context: skydive-vagrant-tests
+      - openstack-credentials
     publishers:
       - chuck-norris
-    node: baremetal
+    node: vagrant
 
 - job:
     name: skydive-packaging-tests
@@ -579,13 +634,7 @@
           cd src/github.com/skydive-project/skydive
           ./scripts/ci/run-coverage.sh
     wrappers:
-      - credentials-binding:
-          - text:
-              credential-id: codecov-token
-              variable: CODECOV_TOKEN
-          - text:
-              credential-id: coveralls-token
-              variable: COVERALLS_TOKEN
+      - coverage-credentials
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/skydive-coverage/builds/${BUILD_NUMBER}/log.html
           status-context: skydive-coverage

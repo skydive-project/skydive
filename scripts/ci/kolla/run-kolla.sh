@@ -35,7 +35,7 @@ cat >> /etc/kolla/globals.yml <<EOF
 kolla_base_distro: "centos"
 kolla_install_type: "binary"
 openstack_release: "master"
-kolla_internal_vip_address: "192.168.50.20"
+kolla_internal_vip_address: "192.168.50.210"
 network_interface: "eth1"
 neutron_external_interface: "eth2"
 neutron_plugin_agent: "openvswitch"
@@ -43,18 +43,18 @@ enable_fluentd: "no"
 enable_heat: "no"
 enable_horizon: "no"
 enable_skydive: "yes"
-skydive_analyzer_image: "192.168.50.10:4000/kolla/centos-binary-skydive-analyzer"
+skydive_analyzer_image: "192.168.50.200:4000/kolla/centos-binary-skydive-analyzer"
 skydive_analyzer_tag: "devel"
-skydive_analyzer_image_full: "192.168.50.10:4000/kolla/centos-binary-skydive-analyzer:devel"
-skydive_agent_image: "192.168.50.10:4000/kolla/centos-binary-skydive-agent"
+skydive_analyzer_image_full: "192.168.50.200:4000/kolla/centos-binary-skydive-analyzer:devel"
+skydive_agent_image: "192.168.50.200:4000/kolla/centos-binary-skydive-agent"
 skydive_agent_tag: "devel"
-skydive_agent_image_full: "192.168.50.10:4000/kolla/centos-binary-skydive-agent:devel"
+skydive_agent_image_full: "192.168.50.200:4000/kolla/centos-binary-skydive-agent:devel"
 EOF
 
 $KOLLA_ANSIBLE -i ./all-in-one bootstrap-servers
 
 # Allow access to local registry
-sed -i 's|/usr/bin/dockerd|/usr/bin/dockerd --insecure-registry 192.168.50.10:4000|' /etc/systemd/system/docker.service.d/kolla.conf
+sed -i 's|/usr/bin/dockerd|/usr/bin/dockerd --insecure-registry 192.168.50.200:4000|' /etc/systemd/system/docker.service.d/kolla.conf
 systemctl daemon-reload
 systemctl restart docker
 
@@ -68,9 +68,9 @@ cd -
 
 # Modify the Skydive binary URL and build the images
 cd kolla
-sed -i 's|https://github.com/skydive-project/skydive/releases/download/\(.*\)/skydive|http://192.168.50.10:8888/skydive|' docker/skydive/skydive-base/Dockerfile.j2
-tools/build.py --registry 192.168.50.10:4000 --push -b centos skydive-agent --tag devel
-tools/build.py --registry 192.168.50.10:4000 --push -b centos skydive-analyzer --tag devel
+sed -i 's|https://github.com/skydive-project/skydive/releases/download/\(.*\)/skydive|http://192.168.50.200:8888/skydive|' docker/skydive/skydive-base/Dockerfile.j2
+tools/build.py --registry 192.168.50.200:4000 --push -b centos skydive-agent --tag devel
+tools/build.py --registry 192.168.50.200:4000 --push -b centos skydive-analyzer --tag devel
 cd -
 
 # Deploy Kolla
