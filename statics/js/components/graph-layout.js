@@ -222,6 +222,8 @@ var LinkLabelLatency = Vue.extend({
   },
 });
 
+
+
 var TopologyGraphLayout = function(vm, selector) {
   var self = this;
 
@@ -354,6 +356,7 @@ TopologyGraphLayout.prototype = {
   initD3Data: function() {
     this.nodes = {};
     this._nodes = {};
+    this.setFixedPlacementFromConfig();
 
     this.links = {};
     this._links = {};
@@ -416,6 +419,22 @@ TopologyGraphLayout.prototype = {
       }
     }
     return distance;
+  },
+
+  setFixedPlacementFromConfig: function() {
+   this.fixedPositionBuilder = new FixedPositionBuilder();
+   var pos = this.fixedPositionBuilder;
+   return $.when(this.vm.$getConfigValue('ui.topology.fixed_nodes'))
+       .then(function(favorites) {
+         if (!favorites) return;
+         console.log(favorites)
+         for(var n in favorites) {
+           for(var k in favorites[n]){
+              pos.AddRule(k, favorites[n][k]);
+           }
+         }
+         }
+         );
   },
 
   hideNode: function(d) {
@@ -1629,6 +1648,14 @@ TopologyGraphLayout.prototype = {
     this.simulation.nodes(nodes);
     this.simulation.force("link").links(links);
     this.simulation.alpha(1).restart();
+    this.reArrangeGraphNodes();
+  },
+
+  reArrangeGraphNodes: function () {
+    for (var i in this.nodes) {
+        var aNode = this.nodes[i];
+        this.fixedPositionBuilder.RePaintNode(aNode, this);
+    }
   },
 
   highlightLink: function(d) {

@@ -393,6 +393,11 @@ ui:
     # default_highlight: "layer2"
     # Filter Gremlin expression used by default and applied on WebUI load.
     # default_filter: "layer2"
+    # Pre-defined boolean expression to select nodes with certain Metadata and change their view
+    # Pin to ceratin location.
+    # fixed_nodes:
+    #   - (Name=tor1): (X=300, Y=300)
+    #   - (Name=port2): (X=500, Y=500)
 
   # update rate of links in seconds
   bandwidth_update_rate: 5
