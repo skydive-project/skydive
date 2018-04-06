@@ -44,6 +44,11 @@ var ClientCmd = &cobra.Command{
 		} else {
 			config.SetDefault("analyzers", "localhost:8082")
 		}
+		authUsername := config.GetString("auth.analyzer_username")
+		if authUsername != "" && AuthenticationOpts.Username == "" {
+			AuthenticationOpts.Username = authUsername
+			AuthenticationOpts.Password = config.GetString("auth.analyzer_password")
+		}
 	},
 }
 

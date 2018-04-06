@@ -29,16 +29,27 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// LoadConfiguration from a configuration file
-func LoadConfiguration(cfgBackend string, cfgFiles []string) error {
-	if len(cfgFiles) != 0 {
-		if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
-			return fmt.Errorf("Failed to initialize config: %s", err.Error())
-		}
+const (
+	DefaultConfigurationFile = "/etc/skydive/skydive.yml"
+)
 
+// LoadConfiguration from a configuration file
+// If no configuration file are given, try to load the default configuraiton file /etc/skydive/skydive.yml
+func LoadConfiguration(cfgBackend string, cfgFiles []string) error {
+	if len(cfgFiles) == 0 {
+		config.InitConfig(cfgBackend, []string{DefaultConfigurationFile})
 		if err := logging.InitLogging(); err != nil {
 			return fmt.Errorf("Failed to initialize logging system: %s", err.Error())
 		}
+		return nil
+	}
+
+	if err := config.InitConfig(cfgBackend, cfgFiles); err != nil {
+		return fmt.Errorf("Failed to initialize config: %s", err.Error())
+	}
+
+	if err := logging.InitLogging(); err != nil {
+		return fmt.Errorf("Failed to initialize logging system: %s", err.Error())
 	}
 
 	return nil

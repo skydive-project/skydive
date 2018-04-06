@@ -43,7 +43,7 @@ var AnalyzerCmd = &cobra.Command{
 	Long:         "Skydive analyzer",
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.Set("logging.id", "agent")
+		config.Set("logging.id", "analyzer")
 		logging.GetLogger().Noticef("Skydive Analyzer %s starting...", version.Version)
 
 		server, err := analyzer.NewServerFromConfig()
