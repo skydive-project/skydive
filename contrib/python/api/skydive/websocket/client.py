@@ -178,6 +178,13 @@ class WSClient(WebSocketClientProtocol):
             "%s:%s" % (self.url.hostname, self.url.port),
             scheme=scheme, username=username, password=password,
             insecure=insecure)
+        # We MUST initialize the loop here as the WebSocketClientFactory
+        # needs it on init
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
 
     def connect(self):
         factory = WebSocketClientFactory(self.endpoint)
@@ -204,12 +211,6 @@ class WSClient(WebSocketClientProtocol):
 
         if self.cookies:
             factory.headers['Cookie'] = ';'.join(self.cookies)
-
-        try:
-            self.loop = asyncio.get_event_loop()
-        except RuntimeError:
-            self.loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self.loop)
 
         context = None
         if self.url.scheme == "wss":
