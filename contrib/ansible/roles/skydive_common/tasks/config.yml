@@ -1,0 +1,34 @@
+---
+- name: ensures skydive configuration folder exists
+  file:
+    path: "{{ skydive_config_file | dirname }}"
+    state: directory
+
+- get_url:
+    url: https://raw.githubusercontent.com/skydive-project/skydive/{{ skydive_release }}/etc/skydive.yml.default
+    dest: "{{ skydive_config_file }}"
+    mode: 0644
+  ignore_errors: yes
+
+- copy:
+    content: ""
+    dest: "{{ skydive_config_file }}"
+    mode: 0644
+    force: no
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: host_id
+    value: "{{ ansible_hostname }}"
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: analyzers
+    value: "{{ analyzers.split(',') }}"
+
+- yedit:
+    src: "{{ skydive_config_file }}"
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict: "{{ skydive_extra_config }}"
+  when: skydive_extra_config is defined
