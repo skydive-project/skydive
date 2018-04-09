@@ -355,6 +355,8 @@ ui:
 
     # Highlight Gremlin expression used by default and applied on WebUI load.
     # default_highlight: "G.V().Has('Name', 'tap0')"
+    # Filter Gremlin expression used by default and applied on WebUI load.
+    # default_filter: "G.V().Has('Manager', 'k8s')"
 
   # update rate of links in seconds
   bandwidth_update_rate: 5
