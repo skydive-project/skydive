@@ -86,12 +86,12 @@ var CaptureCreate = &cobra.Command{
 		capture.RawPacketLimit = rawPacketLimit
 		capture.ExtraTCPMetric = extraTCPMetric
 		if err := validator.Validate(capture); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
 		if err := client.Create("capture", &capture); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 		printJSON(&capture)
@@ -112,7 +112,7 @@ var CaptureList = &cobra.Command{
 		}
 
 		if err := client.List("capture", &captures); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 		printJSON(captures)
@@ -139,7 +139,7 @@ var CaptureGet = &cobra.Command{
 		}
 
 		if err := client.Get("capture", args[0], &capture); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 		printJSON(&capture)
@@ -165,7 +165,7 @@ var CaptureDelete = &cobra.Command{
 		}
 
 		if err := client.Delete("capture", args[0]); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 	},
