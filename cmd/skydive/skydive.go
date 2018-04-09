@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/cmd/completion"
 	"github.com/skydive-project/skydive/cmd/config"
 	"github.com/skydive-project/skydive/cmd/version"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +44,10 @@ var RootCmd = &cobra.Command{
 	Short:        "Skydive",
 	SilenceUsage: true,
 	PersistentPreRun: func(c *cobra.Command, args []string) {
-		config.LoadConfiguration(cmd.CfgBackend, cmd.CfgFiles)
+		if err := config.LoadConfiguration(cmd.CfgBackend, cmd.CfgFiles); err != nil {
+			logging.GetLogger().Error(err)
+			os.Exit(1)
+		}
 	},
 }
 

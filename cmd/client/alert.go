@@ -57,7 +57,7 @@ var AlertCreate = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
@@ -69,12 +69,12 @@ var AlertCreate = &cobra.Command{
 		alert.Action = alertAction
 
 		if err := validator.Validate(alert); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
 		if err := client.Create("alert", &alert); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 		printJSON(&alert)
@@ -90,11 +90,11 @@ var AlertList = &cobra.Command{
 		var alerts map[string]types.Alert
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 		if err := client.List("alert", &alerts); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 		printJSON(alerts)
@@ -121,7 +121,7 @@ var AlertGet = &cobra.Command{
 		}
 
 		if err := client.Get("alert", args[0], &alert); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 		printJSON(&alert)
@@ -142,12 +142,12 @@ var AlertDelete = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
 		if err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 
 		if err := client.Delete("alert", args[0]); err != nil {
-			logging.GetLogger().Error(err.Error())
+			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
 	},
