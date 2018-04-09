@@ -508,6 +508,11 @@ var TopologyComponent = {
            options.append($("<option/>").text(key).val(value));
          });
 
+        $.when(self.$getConfigValue('ui.topology.default_filter'))
+          .then(function(default_filter) {
+            if (default_filter) self.topologyFilter = default_filter;
+            });
+
          $.when(self.$getConfigValue('ui.topology.default_highlight'))
           .then(function(favorite) {
             if (favorite) self.topologyEmphasize = favorite;
