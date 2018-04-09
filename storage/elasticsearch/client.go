@@ -141,7 +141,7 @@ func (c *ElasticSearchClient) GetIndexAlias() string {
 
 // Get the alias which points to all Skydive indices
 func (c *ElasticSearchClient) GetIndexAllAlias() string {
-	return fmt.Sprintf("%s_%s", indexPrefix, indexAllAlias)
+	return fmt.Sprintf("%s_%s_%s", indexPrefix, c.index.name, indexAllAlias)
 }
 
 func (c *ElasticSearchClient) countEntries() int {
