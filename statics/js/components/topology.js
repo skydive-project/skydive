@@ -510,12 +510,18 @@ var TopologyComponent = {
 
         $.when(self.$getConfigValue('ui.topology.default_filter'))
           .then(function(default_filter) {
-            if (default_filter) self.topologyFilter = default_filter;
-            });
+            if (default_filter) {
+              var value = favorites[default_filter];
+              if (value) self.topologyFilter = value;
+            }
+          });
 
          $.when(self.$getConfigValue('ui.topology.default_highlight'))
-          .then(function(favorite) {
-            if (favorite) self.topologyEmphasize = favorite;
+          .then(function(default_highlight) {
+            if (default_highlight) {
+              var value = favorites[default_highlight];
+              if (value) self.topologyEmphasize = value;
+            }
           });
        });
     },
