@@ -1,0 +1,14 @@
+---
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+     - unzip
+     - wget
+- shell: |
+    mkdir -p /tmp/protoc
+    cd /tmp/protoc
+    wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
+    unzip protoc-3.1.0-linux-x86_64.zip
+    chmod +x bin/protoc
+    mv bin/protoc /usr/bin/

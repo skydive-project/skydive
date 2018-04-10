@@ -1,0 +1,54 @@
+---
+- include: fedora.yml
+  when: ansible_distribution == "Fedora"
+
+- include: centos.yml
+  when: ansible_distribution == "CentOS"
+
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+     - git
+     - wget
+     - unzip
+     - gcc
+     - make
+     - openvswitch
+     - docker
+     - libpcap-devel
+     - libxml2-devel
+     - screen
+     - inotify-tools
+     - iperf
+     - libselinux-python
+     - bridge-utils
+     - perl-Graph-Easy
+     - rpm-build
+     - rpmlint
+     - vagrant-libvirt
+     - ansible
+     - numactl-devel
+     - kernel-devel
+     - python3-virtualenv
+     - llvm-devel
+     - clang-devel
+     - elfutils-libelf-devel
+     - kubernetes-client
+
+- service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openvswitch
+    - docker
+
+- include: lxd.yml
+  when: ansible_distribution == "Fedora"
+
+- include: protobuf.yml
+
+- include: static.yml
+
+- include: gimme.yml

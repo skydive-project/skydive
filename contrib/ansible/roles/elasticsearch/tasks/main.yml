@@ -15,11 +15,14 @@
 
 - name: Install elasticsearch package
   package:
-    name: elasticsearch
+    name: "{{ item }}"
     state: present
+  with_items:
+    - java
+    - elasticsearch
 
 - name: Starts and enable elasticsearch
   service:
     name: elasticsearch
     state: started
-    enabled: true
+    enabled: yes

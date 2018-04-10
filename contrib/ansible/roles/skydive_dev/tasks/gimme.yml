@@ -1,0 +1,22 @@
+---
+- name: download gimme binary
+  get_url:
+    url: "https://raw.githubusercontent.com/travis-ci/gimme/master/gimme"
+    dest: "/usr/local/bin/gimme"
+    force: true
+    mode: 0755
+
+- name: run gimme in bash profile
+  lineinfile:
+    path: /home/vagrant/.bash_profile
+    line: 'eval "$(gimme 1.9.1)"'
+
+- name: set GOPATH
+  lineinfile:
+    path: /home/vagrant/.bash_profile
+    line: 'export GOPATH=/home/vagrant'
+
+- name: run gimme once
+  command: /usr/local/bin/gimme 1.9.1
+  become: yes
+  become_user: vagrant

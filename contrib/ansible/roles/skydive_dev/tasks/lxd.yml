@@ -1,0 +1,27 @@
+---
+- selinux:
+    policy: targeted
+    state: permissive
+
+- shell: "dnf copr enable -y ganto/lxd"
+
+- package:
+    name: lxd
+    state: present
+
+- lineinfile:
+    path: /etc/subuid
+    line: 'root:1000000:65536'
+
+- lineinfile:
+    path: /etc/subgid
+    line: 'root:1000000:65536'
+
+- service:
+    name: lxd
+    state: started
+    enabled: yes
+
+- shell: "systemctl enable lxd"
+
+- shell: "lxd init --auto"
