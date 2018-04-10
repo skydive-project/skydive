@@ -58,7 +58,11 @@ type ElasticLimits struct {
 func NewElasticLimitsFromConfig(path string) ElasticLimits {
 	limits := ElasticLimits{}
 	limits.EntriesLimit = config.GetInt(path + ".index_entries_limit")
-	limits.AgeLimit = config.GetInt(path + ".index_age_limit")
+	limits.AgeLimit = 0
+	// TODO: read the AgeLimit from the configuration. At this stage we are setting statically to zero since
+	// TODO: the feature of reading the index creation date is not supported.
+	// TODO: the code that need to happen when we will
+	// TODO: be ready:: limits.AgeLimit = config.GetInt(path + ".index_age_limit")
 	limits.IndicesLimit = config.GetInt(path + ".indices_to_keep")
 	return limits
 }
@@ -127,9 +131,7 @@ func (c *ElasticSearchClient) request(method string, path string, query string, 
 }
 
 func (e *ElasticIndex) increaseEntries() {
-	e.Lock()
 	e.entriesCounter++
-	e.Unlock()
 }
 
 func getIndexPath(name string) string {
@@ -218,13 +220,18 @@ func (c *ElasticSearchClient) addMappings() error {
 	return nil
 }
 
+func (c *ElasticSearchClient) timeCreated() time.Time {
+	//TODO: Get the index creation time (so we can compare to current time and decide if we need
+	//TODO: to roll the index by time. Make sure this supports restart of the Analyzer
+	return time.Now()
+}
+
 func (c *ElasticSearchClient) createIndex(name string) error {
 	if name == "" {
 		name = c.index.name
 	}
 	c.index.path = getIndexPath(name)
 	c.index.name = name
-	c.index.timeCreated = time.Now()
 
 	if _, err := c.connection.OpenIndex(c.index.path); err != nil {
 		if _, err := c.connection.CreateIndex(c.index.path); err != nil {
@@ -232,6 +239,7 @@ func (c *ElasticSearchClient) createIndex(name string) error {
 		}
 	}
 
+	c.index.timeCreated = c.timeCreated()
 	c.index.entriesCounter = c.countEntries()
 	return c.addMappings()
 }
@@ -460,11 +468,10 @@ func (c *ElasticSearchClient) rollIndex() error {
 	defer c.index.Unlock()
 
 	c.indexer.Stop()
-	c.quit <- true
+	c.stopErrorReader()
 	c.indexer = newBulkIndexer(c.connection, c.maxConns, c.retrySeconds, c.bulkMaxDocs, c.bulkMaxDelay)
 	c.indexer.Start()
-	c.wg.Add(1)
-	go c.errorReader()
+	c.startErrorReader()
 
 	logging.GetLogger().Infof("Rolling indices for %s", c.index.name)
 
@@ -488,62 +495,44 @@ func (c *ElasticSearchClient) RollIndex() error {
 	return nil
 }
 
-func (c *ElasticSearchClient) _index(obj string, id string, data interface{}) error {
-	c.index.Lock()
-	defer c.index.Unlock()
-	_, err := c.connection.Index(c.GetIndexAlias(), obj, id, nil, data)
-	return err
-}
-
 // Index returns the skydive index
 func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) (bool, error) {
-	if err := c._index(obj, id, data); err != nil {
+	c.index.Lock()
+	defer c.index.Unlock()
+	if _, err := c.connection.Index(c.GetIndexAlias(), obj, id, nil, data); err != nil {
 		return false, err
 	}
 	c.index.increaseEntries()
 	return c.shouldRollIndex(), nil
-}
-
-func (c *ElasticSearchClient) bulkIndex(obj string, id string, data interface{}) error {
-	c.index.Lock()
-	defer c.index.Unlock()
-	return c.indexer.Index(c.GetIndexAlias(), obj, id, "", "", nil, data)
 }
 
 // BulkIndex returns the bulk index from the indexer
 func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{}) (bool, error) {
-	if err := c.bulkIndex(obj, id, data); err != nil {
+	c.index.Lock()
+	defer c.index.Unlock()
+	if err := c.indexer.Index(c.GetIndexAlias(), obj, id, "", "", nil, data); err != nil {
 		return false, err
 	}
 	c.index.increaseEntries()
 	return c.shouldRollIndex(), nil
-}
-
-func (c *ElasticSearchClient) indexChild(obj string, parent string, id string, data interface{}) error {
-	c.index.Lock()
-	defer c.index.Unlock()
-	_, err := c.connection.IndexWithParameters(c.GetIndexAlias(), obj, id, parent, 0, "", "", "", 0, "", "", false, nil, data)
-	return err
 }
 
 // IndexChild index a child object
 func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
-	if err := c.indexChild(obj, parent, id, data); err != nil {
+	c.index.Lock()
+	defer c.index.Unlock()
+	if _, err := c.connection.IndexWithParameters(c.GetIndexAlias(), obj, id, parent, 0, "", "", "", 0, "", "", false, nil, data); err != nil {
 		return false, err
 	}
 	c.index.increaseEntries()
 	return c.shouldRollIndex(), nil
 }
 
-func (c *ElasticSearchClient) bulkIndexChild(obj string, parent string, id string, data interface{}) error {
-	c.index.Lock()
-	defer c.index.Unlock()
-	return c.indexer.Index(c.GetIndexAlias(), obj, id, parent, "", nil, data)
-}
-
 // BulkIndexChild index a while object with the indexer
 func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
-	if err := c.bulkIndexChild(obj, parent, id, data); err != nil {
+	c.index.Lock()
+	defer c.index.Unlock()
+	if err := c.indexer.Index(c.GetIndexAlias(), obj, id, parent, "", nil, data); err != nil {
 		return false, err
 	}
 	c.index.increaseEntries()
@@ -609,11 +598,18 @@ func (c *ElasticSearchClient) errorReader() {
 	}
 }
 
-// Start the Elasticsearch client background jobs
-func (c *ElasticSearchClient) Start(name string, mappings []map[string][]byte, limits ElasticLimits) {
+func (c *ElasticSearchClient) startErrorReader() {
 	c.wg.Add(1)
 	go c.errorReader()
+}
 
+func (c *ElasticSearchClient) stopErrorReader() {
+	c.quit <- true
+}
+
+// Start the Elasticsearch client background jobs
+func (c *ElasticSearchClient) Start(name string, mappings []map[string][]byte, limits ElasticLimits) {
+	c.startErrorReader()
 	for {
 		err := c.start(name, mappings, limits)
 		if err == nil {
