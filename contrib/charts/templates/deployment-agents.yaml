@@ -1,0 +1,82 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: {{ template "fullname" . }}-agent
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  template:
+    metadata:
+      annotations:
+        productName: {{ .Chart.Name }}
+        productID: 8e6bdbcba44f46939c3d1c54447386b2
+        productVersion: {{ .Chart.Version }} 
+      labels:
+        app: {{ template "fullname" . }}
+        tier: agent
+    spec:
+      affinity:
+        {{- include "nodeaffinity" . | indent 6 }}
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      hostPID: true
+{{ if .Values.image.imagePullSecrets }}
+      imagePullSecrets:
+      - name: {{ .Values.image.imagePullSecrets }}
+{{ end }}
+      containers:
+      - name: skydive-agent
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.imagePullPolicy | default "" | quote }}
+        args:
+        - agent
+        - --listen=0.0.0.0:8081
+        ports:
+        - containerPort: 8081
+        readinessProbe:
+          httpGet:
+            port: 8081
+            path: /api/status
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            port: 8081
+            path: /api/status
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 10
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        env:
+        - name: SKYDIVE_ANALYZERS
+          value: {{ template "fullname" . }}-service:{{ .Values.service.port }}
+        - name: SKYDIVE_FLOW_PROTOCOL
+          value: websocket
+        - name: SKYDIVE_AGENT_TOPOLOTY_PROBS
+          value: ovsdb, docker
+      {{- if .Values.env }}
+{{ toYaml .Values.env | indent 8 }}
+      {{- end }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: docker
+          mountPath: /var/run/docker.sock
+        - name: run
+          mountPath: /host/run
+        - name: ovsdb
+          mountPath: /var/run/openvswitch/db.sock
+      volumes:
+      - name: docker
+        hostPath:
+          path: /var/run/docker.sock
+      - name: run
+        hostPath:
+          path: /var/run/netns
+      - name: ovsdb
+        hostPath:
+          path: /var/run/openvswitch/db.sock

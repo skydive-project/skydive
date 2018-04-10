@@ -1,0 +1,85 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-analyzer
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        productName: {{ .Chart.Name }}
+        productID: 8e6bdbcba44f46939c3d1c54447386b2
+        productVersion: {{ .Chart.Version }} 
+      labels:
+        app: {{ template "fullname" . }}
+        tier: analyzer
+    spec:
+      affinity:
+        {{- include "nodeaffinity" . | indent 6 }}
+{{ if .Values.image.imagePullSecrets }}
+      imagePullSecrets:
+      - name: {{ .Values.image.imagePullSecrets }}
+{{ end }}
+      containers:
+      - name: skydive-analyzer
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default "" .Values.image.imagePullPolicy | quote }}
+        args:
+        - analyzer
+        - --listen=0.0.0.0:8082
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        - containerPort: {{ .Values.service.port }}
+          protocol: UDP
+        - containerPort: 12379
+        readinessProbe:
+          httpGet:
+            port: 8082
+            path: /api/status
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            port: 8082
+            path: /api/status
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 10
+        env:
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
+          value: "k8s"
+        - name: SKYDIVE_UI_TOPOLOGY_FAVORITES
+          value: '{"Infrastructure":"G.V().Has(\"Manager\", NE(\"k8s\"))","Kubernetes":"G.V().Has(\"Manager\", \"k8s\")"}'
+        - name: SKYDIVE_UI_TOPOLOGY_DEFAULT_FILTER
+          value: 'G.V().Has("Manager", NE("k8s"))'
+        - name: SKYDIVE_UI_THEME
+          value: "light"
+        - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
+          value: "elasticsearch"
+        - name: SKYDIVE_GRAPH_BACKEND
+          value: "elasticsearch"
+        - name: SKYDIVE_STORAGE_ELASTICSEARCH_HOST
+          value: {{ .Values.storage.elasticsearch.host }}
+        - name: SKYDIVE_EMBEDDED
+          value: "true"
+        - name: SKYDIVE_FLOW_PROTOCOL
+          value: "websocket"
+        - name: SKYDIVE_ANALYZER_TOPOLOGY_FABRIC
+          value: {{ .Values.analyzer.topology.fabric }}
+      {{- if .Values.env }}
+{{ toYaml .Values.env | indent 8 }}
+      {{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+
+      - name: skydive-elasticsearch
+        image: elasticsearch:2
+        ports:
+        - containerPort: 9200
+        resources:
+{{ toYaml .Values.resources | indent 10 }}

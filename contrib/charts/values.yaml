@@ -1,0 +1,39 @@
+###############################################################################
+############################ Skydive ##########################################
+###############################################################################
+
+##################
+## Image variables
+arch: 
+  amd64: "3 - Most preferred"
+  
+image:
+  repository: skydive/skydive
+  tag: latest
+  imagePullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 8192Mi
+  requests:
+    cpu: 100m
+    memory: 512Mi
+
+## env variables
+env: []
+
+##################
+## Service variables
+service:
+  name: skydive
+  port: 8082
+  type: NodePort
+
+analyzer:
+  topology:
+    fabric: "TOR1->*[Type=host]/eth0"
+
+storage:
+  elasticsearch:
+    host: 127.0.0.1:9200
