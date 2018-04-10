@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ template "fullname" . }}-connection-test"
+  annotations:
+    "helm.sh/hook": test-success
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+    
+spec:
+  affinity:
+    {{- include "nodeaffinity" . | indent 6 }}
+  containers:
+  - name: skydive-connection-test
+    image: {{ .Values.image.repository }}
+    args:
+    - client
+    ports:
+    - containerPort: {{ .Values.service.port }}
+    - containerPort: {{ .Values.service.port }}
+      protocol: UDP
+    - containerPort: 12379
+    env:
+    - name: SKYDIVE_ANALYZERS
+      value: "{{ template "fullname" . }}-service:{{ .Values.service.port }}"
+  restartPolicy: Never

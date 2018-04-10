@@ -1,0 +1,112 @@
+## Architecture metadata
+arch:
+  __metadata:
+    label: "Architecture scheduling preferences"
+  amd64:
+    __metadata:
+      name: "amd64"
+      label: "amd64"
+      description: "Architecture preference for target worker node."
+      type: "string"
+      immutable: false
+      required: true
+      options:
+      - label: "3 - Most preferred"
+        value: "3 - Most preferred"
+
+## Image metadata
+image:
+  repository:
+    __metadata:
+      name: "repository"
+      label: "repository"
+      description: "Docker image location"
+      type: "string"
+      immutable: false
+      required: true
+  tag: 
+    __metadata:
+      name: "Docker image Tag"
+      label: "Docker image Tag"
+      description: "Docker image Tag"
+      type: "string"
+      immutable: false
+      required: true
+  imagePullPolicy:
+    __metadata:
+      name: "Image pull policy"
+      label: "Image pull policy"
+      description: "Docker image pull policy"
+      type: "string"
+      immutable: false
+      required: true
+      
+## Resources metadata
+resources:
+  __metadata:
+    label: "Resources"
+  requests:
+    cpu: 
+      __metadata: 
+        label: "CPU request"
+        description: "The requested CPU"
+        type: "string"
+        required: true   
+    memory: 
+      __metadata: 
+        label: "Memory request"
+        description: "The memory request"
+        type: "string"
+        required: true   
+  limits:
+    cpu: 
+      __metadata: 
+        label: "CPU limit"
+        description: "The CPU limit"
+        type: "string"
+        required: true   
+    memory: 
+      __metadata: 
+        label: "Memory limit"
+        description: "The memeory limit"
+        type: "string"
+        required: true   
+
+
+service:
+  name: 
+    __metadata:
+      name: "Name"
+      label: "Service Name"
+      description: "This is the Service Name"
+      type: "string"
+      immutable: false
+      required: true
+      validation: "^[a-zA-Z]([a-zA-Z0-9-\\.])+$"
+  port: 
+    __metadata:
+      name: "port"
+      label: "Service port"
+      description: "This is the service port number"
+      type: "number"
+      immutable: false
+      required: true
+  type:
+    __metadata:
+      name: "type"
+      label: "Service port type"
+      description: "This is the service port type (e.g. NodePort, LoadBalancer)"
+      type: "string"
+      immutable: false
+      required: true
+
+analyzer:
+  topology: 
+    fabric: 
+      __metadata:
+        name: "Fabric"
+        label: "Analyzer Topology Fabric"
+        description: "This represents the network fabric in .dot language format ref: https://github.com/skydive-project/skydive/blob/master/etc/skydive.yml.default"
+        type: "string"
+        immutable: false
+        required: true
