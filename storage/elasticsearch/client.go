@@ -49,17 +49,17 @@ const indexAllAlias = "all"
 
 // ElasticLimits describes index limits driving roll policy
 type ElasticLimits struct {
-	entriesLimit int
-	ageLimit     int
-	indicesLimit int
+	EntriesLimit int
+	AgeLimit     int
+	IndicesLimit int
 }
 
 // NewElasticLimitsFromConfig create new limits from configuration
 func NewElasticLimitsFromConfig(path string) ElasticLimits {
 	limits := ElasticLimits{}
-	limits.entriesLimit = config.GetInt(path + ".index_entries_limit")
-	limits.ageLimit = config.GetInt(path + ".index_age_limit")
-	limits.indicesLimit = config.GetInt(path + ".indices_to_keep")
+	limits.EntriesLimit = config.GetInt(path + ".index_entries_limit")
+	limits.AgeLimit = config.GetInt(path + ".index_age_limit")
+	limits.IndicesLimit = config.GetInt(path + ".indices_to_keep")
 	return limits
 }
 
@@ -97,12 +97,16 @@ type ElasticIndex struct {
 
 // ElasticSearchClient describes a ElasticSearch client connection
 type ElasticSearchClient struct {
-	connection *elastigo.Conn
-	indexer    *elastigo.BulkIndexer
-	started    atomic.Value
-	quit       chan bool
-	wg         sync.WaitGroup
-	index      *ElasticIndex
+	connection   *elastigo.Conn
+	indexer      *elastigo.BulkIndexer
+	started      atomic.Value
+	quit         chan bool
+	wg           sync.WaitGroup
+	index        *ElasticIndex
+	maxConns     int
+	retrySeconds int
+	bulkMaxDocs  int
+	bulkMaxDelay int
 }
 
 // ErrBadConfig error bad configuration file
@@ -167,7 +171,6 @@ func (c *ElasticSearchClient) aliasRemove(alias, index string) string {
 func (c *ElasticSearchClient) aliasSep() string {
 	return ", "
 }
-
 
 func (c *ElasticSearchClient) createAlias() error {
 	newAlias := c.GetIndexAlias()
@@ -393,18 +396,18 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 }
 
 func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
-	if c.index.limits.entriesLimit == 0 {
+	if c.index.limits.EntriesLimit == 0 {
 		return false
 	}
 	logging.GetLogger().Debugf("%s entries counter is %d", c.index.name, c.index.entriesCounter)
-	if c.index.entriesCounter < c.index.limits.entriesLimit {
+	if c.index.entriesCounter < c.index.limits.EntriesLimit {
 		return false
 	}
 	c.indexer.Flush()
 	time.Sleep(3 * time.Millisecond)
 
 	c.index.entriesCounter = c.countEntries()
-	if c.index.entriesCounter < c.index.limits.entriesLimit {
+	if c.index.entriesCounter < c.index.limits.EntriesLimit {
 		return false
 	}
 	logging.GetLogger().Debugf("%s enough entries to roll", c.index.name)
@@ -412,12 +415,12 @@ func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
 }
 
 func (c *ElasticSearchClient) shouldRollIndexByAge() bool {
-	if c.index.limits.ageLimit == 0 {
+	if c.index.limits.AgeLimit == 0 {
 		return false
 	}
 	age := int(time.Now().Sub(c.index.timeCreated).Seconds())
 	logging.GetLogger().Debugf("%s age is %d", c.index.name, age)
-	if age < c.index.limits.ageLimit {
+	if age < c.index.limits.AgeLimit {
 		return false
 	}
 	logging.GetLogger().Debugf("%s old enough to roll", c.index.name)
@@ -429,7 +432,7 @@ func (c *ElasticSearchClient) shouldRollIndex() bool {
 }
 
 func (c *ElasticSearchClient) delIndices() {
-	if c.index.limits.indicesLimit == 0 {
+	if c.index.limits.IndicesLimit == 0 {
 		return
 	}
 
@@ -438,7 +441,7 @@ func (c *ElasticSearchClient) delIndices() {
 		return indices[i].Name < indices[j].Name
 	})
 
-	numToDel := len(indices) - c.index.limits.indicesLimit
+	numToDel := len(indices) - c.index.limits.IndicesLimit
 	if numToDel <= 0 {
 		return
 	}
@@ -452,12 +455,18 @@ func (c *ElasticSearchClient) delIndices() {
 }
 
 func (c *ElasticSearchClient) rollIndex() error {
-	c.indexer.Flush()
-	time.Sleep(3 * time.Millisecond)
-	logging.GetLogger().Infof("Rolling indices for %s", c.index.name)
 
 	c.index.Lock()
 	defer c.index.Unlock()
+
+	c.indexer.Stop()
+	c.quit <- true
+	c.indexer = newBulkIndexer(c.connection, c.maxConns, c.retrySeconds, c.bulkMaxDocs, c.bulkMaxDelay)
+	c.indexer.Start()
+	c.wg.Add(1)
+	go c.errorReader()
+
+	logging.GetLogger().Infof("Rolling indices for %s", c.index.name)
 
 	if err := c.createIndex(""); err != nil {
 		return err
@@ -589,9 +598,10 @@ func (c *ElasticSearchClient) Search(obj string, query string, index string) (el
 func (c *ElasticSearchClient) errorReader() {
 	defer c.wg.Done()
 
+	errorChannel := c.indexer.ErrorChannel
 	for {
 		select {
-		case err := <-c.indexer.ErrorChannel:
+		case err := <-errorChannel:
 			logging.GetLogger().Errorf("Elasticsearch request error: %s, %v", err.Err.Error(), err.Buf)
 		case <-c.quit:
 			return
@@ -630,16 +640,9 @@ func (c *ElasticSearchClient) Stop() {
 func (c *ElasticSearchClient) Started() bool {
 	return c.started.Load() == true
 }
-
-// NewElasticSearchClient creates a new ElasticSearch client
-func NewElasticSearchClient(url *url.URL, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchClient, error) {
-	c := elastigo.NewConn()
-
-	c.Protocol = url.Scheme
-	c.Domain = url.Hostname()
-	c.Port = url.Port()
-
-	indexer := c.NewBulkIndexerErrors(maxConns, retrySeconds)
+func newBulkIndexer(c *elastigo.Conn, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) *elastigo.BulkIndexer {
+	indexer := c.NewBulkIndexer(maxConns)
+	indexer.RetryForSeconds = retrySeconds
 	if bulkMaxDocs > 0 {
 		indexer.BulkMaxDocs = bulkMaxDocs
 
@@ -655,11 +658,28 @@ func NewElasticSearchClient(url *url.URL, maxConns int, retrySeconds int, bulkMa
 		indexer.BufferDelayMax = time.Duration(bulkMaxDelay) * time.Second
 	}
 
+	return indexer
+}
+
+// NewElasticSearchClient creates a new ElasticSearch client
+func NewElasticSearchClient(url *url.URL, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchClient, error) {
+	c := elastigo.NewConn()
+
+	c.Protocol = url.Scheme
+	c.Domain = url.Hostname()
+	c.Port = url.Port()
+
+	indexer := newBulkIndexer(c, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+
 	client := &ElasticSearchClient{
-		connection: c,
-		indexer:    indexer,
-		quit:       make(chan bool),
-		index:      nil,
+		connection:   c,
+		indexer:      indexer,
+		quit:         make(chan bool),
+		index:        nil,
+		maxConns:     maxConns,
+		retrySeconds: retrySeconds,
+		bulkMaxDocs:  bulkMaxDocs,
+		bulkMaxDelay: bulkMaxDelay,
 	}
 
 	client.started.Store(false)

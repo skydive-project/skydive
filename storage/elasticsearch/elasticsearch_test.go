@@ -53,7 +53,7 @@ func getClient(name string, limits ElasticLimits, mappings []map[string][]byte) 
 // test rolling elasticsearch indices based on count limit
 func TestElasticsearchShouldRollByCount(t *testing.T) {
 	limits := ElasticLimits{}
-	limits.entriesLimit = 5
+	limits.EntriesLimit = 5
 
 	name := "should_roll_by_count_test"
 
@@ -62,22 +62,22 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 		t.Fatalf("Initialisation error: %s", err.Error())
 	}
 
-	for i := 1; i < limits.entriesLimit; i++ {
+	for i := 1; i < limits.EntriesLimit; i++ {
 		if _, err := client.indexEntry(i); err != nil {
 			t.Fatalf("Failed to index entry %d: %s", i, err.Error())
 		}
 		time.Sleep(1 * time.Second)
 		if client.shouldRollIndex() {
-			t.Fatalf("Index should not have rolled after %d entries (limit is %d)", i, limits.entriesLimit)
+			t.Fatalf("Index should not have rolled after %d entries (limit is %d)", i, limits.EntriesLimit)
 		}
 	}
 
-	if _, err = client.indexEntry(limits.entriesLimit); err != nil {
-		t.Fatalf("Failed to index entry %d: %s", limits.entriesLimit, err.Error())
+	if _, err = client.indexEntry(limits.EntriesLimit); err != nil {
+		t.Fatalf("Failed to index entry %d: %s", limits.EntriesLimit, err.Error())
 	}
 	time.Sleep(1 * time.Second)
 	if client.shouldRollIndex() {
-		t.Fatalf("Index should have rolled after %d entries", limits.entriesLimit)
+		t.Fatalf("Index should have rolled after %d entries", limits.EntriesLimit)
 	}
 
 	if err := client.cleanupIndices(name); err != nil {
@@ -88,7 +88,7 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 // test rolling elasticsearch indices based on age limit
 func TestElasticsearchShouldRollByAge(t *testing.T) {
 	limits := ElasticLimits{}
-	limits.ageLimit = 5
+	limits.AgeLimit = 5
 	name := "should_roll_by_age_test"
 
 	client, err := getClient(name, limits, []map[string][]byte{})
@@ -96,14 +96,14 @@ func TestElasticsearchShouldRollByAge(t *testing.T) {
 		t.Fatalf("Initialisation error: %s", err.Error())
 	}
 
-	time.Sleep(time.Duration(limits.ageLimit-2) * time.Second)
+	time.Sleep(time.Duration(limits.AgeLimit-2) * time.Second)
 	if client.shouldRollIndex() {
-		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", limits.ageLimit-2, limits.ageLimit)
+		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", limits.AgeLimit-2, limits.AgeLimit)
 	}
 
 	time.Sleep(4 * time.Second)
 	if !client.shouldRollIndex() {
-		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", limits.ageLimit+2, limits.ageLimit)
+		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", limits.AgeLimit+2, limits.AgeLimit)
 	}
 
 	if err := client.cleanupIndices(name); err != nil {
@@ -114,7 +114,7 @@ func TestElasticsearchShouldRollByAge(t *testing.T) {
 // test deletion of rolling elasticsearch indices
 func TestElasticsearchDelIndices(t *testing.T) {
 	limits := ElasticLimits{}
-	limits.indicesLimit = 5
+	limits.IndicesLimit = 5
 	name := "del_indices_test"
 
 	client, err := getClient(name, limits, []map[string][]byte{})
@@ -124,24 +124,24 @@ func TestElasticsearchDelIndices(t *testing.T) {
 	firstIndex := client.index.path
 	time.Sleep(1 * time.Second)
 
-	for i := 1; i < limits.indicesLimit; i++ {
+	for i := 1; i < limits.IndicesLimit; i++ {
 		if err := client.RollIndex(); err != nil {
 			t.Fatalf("Failed to roll index %d: %s", i, err.Error())
 		}
 		time.Sleep(1 * time.Second)
 		indices := client.connection.GetCatIndexInfo(client.GetIndexAlias() + "_*")
 		if len(indices) != i+1 {
-			t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, limits.indicesLimit, len(indices))
+			t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, limits.IndicesLimit, len(indices))
 		}
 	}
 
 	if err = client.RollIndex(); err != nil {
-		t.Fatalf("Failed to roll index %d: %s", limits.indicesLimit, err.Error())
+		t.Fatalf("Failed to roll index %d: %s", limits.IndicesLimit, err.Error())
 	}
 	time.Sleep(1 * time.Second)
 	indices := client.connection.GetCatIndexInfo(client.GetIndexAlias() + "_*")
-	if len(indices) != limits.indicesLimit {
-		t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", limits.indicesLimit, limits.indicesLimit, limits.indicesLimit, len(indices))
+	if len(indices) != limits.IndicesLimit {
+		t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", limits.IndicesLimit, limits.IndicesLimit, limits.IndicesLimit, len(indices))
 	}
 
 	for _, esIndex := range indices {

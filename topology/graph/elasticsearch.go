@@ -30,6 +30,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mattbaird/elastigo/lib"
 
@@ -284,11 +285,22 @@ func (b *ElasticSearchBackend) rollAndDumpTopology() error {
 	nodes := b.GetNodes(GraphContext{nil, false}, nil)
 	edges := b.GetEdges(GraphContext{nil, false}, nil)
 
+	logging.GetLogger().Debugf("Mark all current nodes and edges as 'archived now' in the old index")
+	for _, node := range nodes {
+		node.updatedAt = time.Now()
+		b.updateTimes(node)
+	}
+	for _, edge := range edges {
+		edge.updatedAt = time.Now()
+		b.updateTimes(edge)
+	}
+
+	logging.GetLogger().Debugf("Rolling the Index ")
 	if err := b.client.RollIndex(); err != nil {
 		return err
 	}
 
-	logging.GetLogger().Debugf("Dumping topology")
+	logging.GetLogger().Debugf("Insert all current nodes and edges to the new index")
 	for _, node := range nodes {
 		b.createNode(node)
 	}

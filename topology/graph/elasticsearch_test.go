@@ -39,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
+	"net/url"
 )
 
 type revisionArray []interface{}
@@ -144,7 +145,7 @@ func (f *fakeElasticsearchClient) Search(obj string, query string, index string)
 	f.searches = append(f.searches, query)
 	return f.searchResult, nil
 }
-func (f *fakeElasticsearchClient) Start(name string, mappings []map[string][]byte, entriesLimit, ageLimit, indicesLimit int) {
+func (f *fakeElasticsearchClient) Start(name string, mappings []map[string][]byte, limits elasticsearch.ElasticLimits) {
 }
 
 func newElasticsearchGraph(t *testing.T) (*Graph, *fakeElasticsearchClient) {
@@ -488,10 +489,14 @@ func delTestIndex(name string) error {
 	return nil
 }
 
-func initBackend(limits ElasticLimits, name string) (*ElasticSearchBackend, error) {
-	addr := config.GetString("storage.elasticsearch.host")
-	c := strings.Split(addr, ":")
-	if len(c) != 2 {
+func initBackend(limits elasticsearch.ElasticLimits, name string) (*ElasticSearchBackend, error) {
+	elasticHost := config.GetString("storage.elasticsearch.host")
+	if !strings.HasPrefix(elasticHost, "http://") && !strings.HasPrefix(elasticHost, "https://") {
+		elasticHost = "http://" + elasticHost
+	}
+
+	url, err := url.Parse(elasticHost)
+	if err != nil || url.Port() == "" {
 		return nil, ErrBadConfig
 	}
 
@@ -500,7 +505,7 @@ func initBackend(limits ElasticLimits, name string) (*ElasticSearchBackend, erro
 	bulkMaxDocs := 1
 	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
 
-	client, err := elasticsearch.NewElasticSearchClient(c[0], c[1], maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+	client, err := elasticsearch.NewElasticSearchClient(url, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 	if err != nil {
 		return nil, err
 	}
@@ -519,8 +524,8 @@ func initBackend(limits ElasticLimits, name string) (*ElasticSearchBackend, erro
 
 // test active nodes after rolling elasticsearch indices
 func TestElasticsearcActiveNodes(t *testing.T) {
-	limits := NewElasticLimitsFromConfig("storage.elasticsearch")
-	limits.entriesLimit = 3
+	limits := elasticsearch.NewElasticLimitsFromConfig("storage.elasticsearch")
+	limits.EntriesLimit = 3
 	name := "test_nodes"
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
@@ -536,7 +541,7 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 	node := mg.NewNode("aaa", nil, "host1")
 
 	g.NodeAdded(node)
-	for i := 1; i <= limits.entriesLimit+1; i++ {
+	for i := 1; i <= limits.EntriesLimit+1; i++ {
 		time.Sleep(3 * time.Second)
 		g.SetMetadata(node, Metadata{"Temp": i})
 	}
@@ -554,8 +559,8 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 
 // test active edges after rolling elasticsearch indices
 func TestElasticsearcActiveEdges(t *testing.T) {
-	limits := NewElasticLimitsFromConfig("storage.elasticsearch")
-	limits.entriesLimit = 3
+	limits := elasticsearch.NewElasticLimitsFromConfig("storage.elasticsearch")
+	limits.EntriesLimit = 3
 	name := "test_edges"
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
@@ -575,7 +580,7 @@ func TestElasticsearcActiveEdges(t *testing.T) {
 	g.NodeAdded(node1)
 	g.NodeAdded(node2)
 	g.EdgeAdded(edge)
-	for i := 1; i < limits.entriesLimit; i++ {
+	for i := 1; i < limits.EntriesLimit; i++ {
 		time.Sleep(3 * time.Second)
 		g.SetMetadata(edge, Metadata{"Temp": i})
 	}
