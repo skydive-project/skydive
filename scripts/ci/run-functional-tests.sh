@@ -9,6 +9,10 @@ dir="$(dirname "$0")"
 . "${dir}/install-minikube.sh" stop
 . "${dir}/install-minikube.sh" start
 
+. "${dir}/install-helm.sh" install
+. "${dir}/install-helm.sh" stop
+. "${dir}/install-helm.sh" start
+
 sudo iptables -F
 sudo iptables -P FORWARD ACCEPT
 for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
