@@ -587,3 +587,8 @@ ul.dropdown-menu .fa.pull-right {
 .help-text {
   cursor: help;
 }
+
+.input-xs {
+  height: 22px;
+  padding: 5px;
+}
