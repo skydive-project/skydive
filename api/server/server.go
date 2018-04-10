@@ -168,7 +168,6 @@ func (a *Server) RegisterAPIHandler(handler Handler) error {
 					return
 				}
 
-				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
 			},
 		},
