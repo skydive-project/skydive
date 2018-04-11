@@ -100,6 +100,7 @@ type RoutingTable struct {
 
 // Route describes a route
 type Route struct {
+	Protocol int64     `json:"Protocol,omitempty"`
 	Prefix   string    `json:"Prefix,omitempty"`
 	Nexthops []NextHop `json:"Nexthops,omitempty"`
 }
@@ -535,7 +536,8 @@ func (u *NetNsNetLinkProbe) getRoutingTable(link netlink.Link, table int) []Rout
 			} else {
 				routeTable = RoutingTable{ID: int64(route.Table), Src: route.Src}
 			}
-			var r Route
+
+			r := Route{Protocol: int64(route.Protocol)}
 			if route.Dst != nil {
 				r.Prefix = (*route.Dst).String()
 			}
@@ -553,6 +555,7 @@ func (u *NetNsNetLinkProbe) getRoutingTable(link netlink.Link, table int) []Rout
 			routeTable.Routes = append(routeTable.Routes, r)
 			routeTableList[route.Table] = routeTable
 		}
+
 		rt := []RoutingTable{}
 		for _, r := range routeTableList {
 			rt = append(rt, r)
@@ -703,7 +706,7 @@ func (u *NetNsNetLinkProbe) initialize() {
 	logging.GetLogger().Debugf("Initialize Netlink interfaces for %s", u.Root.ID)
 	links, err := u.handle.LinkList()
 	if err != nil {
-		logging.GetLogger().Errorf("Unable to list interfaces: %s", err.Error())
+		logging.GetLogger().Errorf("Unable to list interfaces: %s", err)
 		return
 	}
 
@@ -812,7 +815,7 @@ Ready:
 
 	event := syscall.EpollEvent{Events: syscall.EPOLLIN, Fd: int32(fd)}
 	if err := syscall.EpollCtl(u.epollFd, syscall.EPOLL_CTL_ADD, fd, &event); err != nil {
-		logging.GetLogger().Errorf("Failed to set the netlink fd as non-blocking: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to set the netlink fd as non-blocking: %s", err)
 		return
 	}
 	u.initialize()
@@ -881,7 +884,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 	msgs, err := u.socket.Receive()
 	if err != nil {
 		if errno, ok := err.(syscall.Errno); !ok || !errno.Temporary() {
-			logging.GetLogger().Errorf("Failed to receive from netlink messages: %s", err.Error())
+			logging.GetLogger().Errorf("Failed to receive from netlink messages: %s", err)
 		}
 		return
 	}
@@ -891,7 +894,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 		case syscall.RTM_NEWLINK:
 			link, err := netlink.LinkDeserialize(nil, msg.Data)
 			if err != nil {
-				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
+				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err)
 				continue
 			}
 			logging.GetLogger().Debugf("Netlink ADD event for %s(%d,%s) within %s", link.Attrs().Name, link.Attrs().Index, link.Type(), u.Root.ID)
@@ -899,7 +902,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 		case syscall.RTM_DELLINK:
 			link, err := netlink.LinkDeserialize(nil, msg.Data)
 			if err != nil {
-				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err.Error())
+				logging.GetLogger().Warningf("Failed to deserialize netlink message: %s", err)
 				continue
 			}
 			logging.GetLogger().Debugf("Netlink DEL event for %s(%d) within %s", link.Attrs().Name, link.Attrs().Index, u.Root.ID)
@@ -907,21 +910,21 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 		case syscall.RTM_NEWADDR:
 			addr, family, ifindex, err := parseAddr(msg.Data)
 			if err != nil {
-				logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
+				logging.GetLogger().Warningf("Failed to parse newlink message: %s", err)
 				continue
 			}
 			u.onAddressAdded(addr, family, int64(ifindex))
 		case syscall.RTM_DELADDR:
 			addr, family, ifindex, err := parseAddr(msg.Data)
 			if err != nil {
-				logging.GetLogger().Warningf("Failed to parse newlink message: %s", err.Error())
+				logging.GetLogger().Warningf("Failed to parse newlink message: %s", err)
 				continue
 			}
 			u.onAddressDeleted(addr, family, int64(ifindex))
 		case syscall.RTM_NEWROUTE, syscall.RTM_DELROUTE:
 			rt, err, index := u.getRoutingTables(msg.Data)
 			if err != nil {
-				logging.GetLogger().Warningf("Failed to get Routes: %s", err.Error())
+				logging.GetLogger().Warningf("Failed to get Routes: %s", err)
 				continue
 			}
 			u.onRouteChanged(int64(index), rt)
@@ -976,25 +979,25 @@ func newNetNsNetLinkProbe(g *graph.Graph, root *graph.Node, nsPath string) (*Net
 	if nsPath != "" {
 		context, err = common.NewNetNsContext(nsPath)
 		if err != nil {
-			return errFnc(fmt.Errorf("Failed to switch namespace: %s", err.Error()))
+			return errFnc(fmt.Errorf("Failed to switch namespace: %s", err))
 		}
 	}
 
 	// Both NewHandle and Subscribe need to done in the network namespace.
 	if probe.handle, err = netlink.NewHandle(syscall.NETLINK_ROUTE); err != nil {
-		return errFnc(fmt.Errorf("Failed to create netlink handle: %s", err.Error()))
+		return errFnc(fmt.Errorf("Failed to create netlink handle: %s", err))
 	}
 
 	if probe.socket, err = nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_LINK, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR, syscall.RTNLGRP_IPV4_MROUTE, syscall.RTNLGRP_IPV4_ROUTE, syscall.RTNLGRP_IPV6_MROUTE, syscall.RTNLGRP_IPV6_ROUTE); err != nil {
-		return errFnc(fmt.Errorf("Failed to subscribe to netlink messages: %s", err.Error()))
+		return errFnc(fmt.Errorf("Failed to subscribe to netlink messages: %s", err))
 	}
 
 	if probe.ethtool, err = ethtool.NewEthtool(); err != nil {
-		return errFnc(fmt.Errorf("Failed to create ethtool object: %s", err.Error()))
+		return errFnc(fmt.Errorf("Failed to create ethtool object: %s", err))
 	}
 
 	if probe.epollFd, err = syscall.EpollCreate1(0); err != nil {
-		return errFnc(fmt.Errorf("Failed to create epoll: %s", err.Error()))
+		return errFnc(fmt.Errorf("Failed to create epoll: %s", err))
 	}
 
 	// Leave the network namespace
@@ -1053,7 +1056,7 @@ func (u *NetLinkProbe) start() {
 		nevents, err := syscall.EpollWait(u.epollFd, events[:], 200)
 		if err != nil {
 			if errno, ok := err.(syscall.Errno); ok && errno != syscall.EINTR {
-				logging.GetLogger().Errorf("Failed to receive from events from netlink: %s", err.Error())
+				logging.GetLogger().Errorf("Failed to receive from events from netlink: %s", err)
 			}
 			continue
 		}
@@ -1099,7 +1102,7 @@ func (u *NetLinkProbe) Stop() {
 func NewNetLinkProbe(g *graph.Graph, n *graph.Node) (*NetLinkProbe, error) {
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create epoll: %s", err.Error())
+		return nil, fmt.Errorf("Failed to create epoll: %s", err)
 	}
 
 	nlProbe := &NetLinkProbe{
