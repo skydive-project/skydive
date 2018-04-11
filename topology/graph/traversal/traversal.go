@@ -354,6 +354,9 @@ func Lte(s interface{}) *LTEGraphElementMatcher {
 	return &LTEGraphElementMatcher{value: s}
 }
 
+// ForeverPredicate descripes a entire time limit in the history
+type ForeverPredicate struct{}
+
 // GTEGraphElementMatcher describes a list of metadata that match Greater Than Equal
 type GTEGraphElementMatcher struct {
 	value interface{}
