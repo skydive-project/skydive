@@ -37,7 +37,7 @@ var TopologyComponent = {
                     <input id="radio-rel" name="time-type" type="radio" value="relative" v-model="timeType" :disabled="topologyMode === \'live\'"/>\
                     <label for="radio-rel">Relative</label>\
                     <span class="toggle-outside">\
-                    <sapn class="toggle-inside"></span></span>\
+                    <span class="toggle-inside"></span></span>\
                   </div>\
                   <datepicker id="topology-datepicker" :calendar-class="\'topology-datepicker\'" \
                     :format="\'dd/MM/yyyy\'" placeholder="dd/MM/yyyy" \
@@ -142,7 +142,7 @@ var TopologyComponent = {
           </button>\
         </div>\
       </div>\
-      <div id="right-panel" class="col-sm-5 fill">\
+      <div class="col-sm-5 fill sidebar">\
         <tabs v-if="isAnalyzer" :active="!isCaptureEnabled ? 2 : 0">\
           <tab-pane title="Captures" v-if="isCaptureEnabled">\
             <capture-list></capture-list>\
@@ -155,85 +155,60 @@ var TopologyComponent = {
             <flow-table-control></flow-table-control>\
           </tab-pane>\
         </tabs>\
-        <transition name="slide" mode="out-in">\
-          <div class="left-panel" v-if="currentNode || currentEdge">\
-            <div v-if="currentNode">\
-              <h1>Node Metadata<span class="pull-right">(id: {{currentNode.id}})\
-                <i v-if="currentNode.isGroupOwner()" class="node-action fa"\
-                  title="Expand/Collapse Node"\
-                  :class="{\'fa-expand\': (currentNode.group && currentNode.group.collapsed), \'fa-compress\': (!currentNode.group || !currentNode.group.collapsed)}"\
-                  @click="toggleExpandAll(currentNode)"></i></span>\
-              </h1>\
-              <div id="metadata-panel" class="sub-left-panel">\
-                <object-detail :object="currentNodeMetadata" :links="metadataLinks(currentNodeMetadata)"></object-detail>\
-              </div>\
-              <div v-if="currentNodeMetadata.Type == \'ovsbridge\'">\
-                <h1>Rules</h1>\
-                <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
-              </div>\
-              <div v-if="currentNode.metadata.RoutingTable">\
-                <h1>\
-                  <a data-toggle="collapse" href="#interface-routing-table-panel" class="collapse-title">\
-                    Routing tables\
-                    <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
-                  </a>\
-                </h1>\
-                <div id="interface-routing-table-panel" class="collapse out">\
-                  <div v-for="rt in currentNode.metadata.RoutingTable">\
-                    <h2>src: {{rt.Src || "none"}}<span class="pull-right">(id: {{rt.Id}})</span></h2>\
-                    <routing-table :rt="rt"></routing-table>\
-                  </div>\
-                </div>\
-              </div>\
-              <div v-show="Object.keys(currentNodeMetric).length">\
-                <h1>\
-                  <a data-toggle="collapse" href="#interface-metrics-panel" class="collapse-title">\
-                    Interface metrics\
-                    <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
-                  </a>\
-                </h1>\
-                <div id="interface-metrics-panel" class="collapse in">\
-                  <div id="interface-metrics">\
-                    <h2>Total metrics</h2>\
-                    <metrics-table :object="currentNodeMetric"></metrics-table>\
-                  </div>\
-                  <div id="last-interface-metrics" v-show="Object.keys(currentNodeLastUpdateMetric).length && topologyTimeContext === 0">\
-                    <h2>Last metrics</h2>\
-                    <metrics-table :object="currentNodeLastUpdateMetric"></metrics-table>\
-                  </div>\
-                </div>\
-              </div>\
-              <div v-show="Object.keys(currentNodeOvsMetric).length">\
-                <h1>\
-                  <a data-toggle="collapse" href="#ovs-interface-metrics-panel" class="collapse-title">\
-                    OpenvSwitch metrics\
-                    <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
-                  </a>\
-                </h1>\
-                <div id="ovs-interface-metrics-panel" class="collapse">\
-                  <div id="ovs-interface-metrics">\
-                    <h2>Total metrics</h2>\
-                    <metrics-table :object="currentNodeOvsMetric"></metrics-table>\
-                  </div>\
-                  <div id="ovs-last-interface-metrics" v-show="Object.keys(currentNodeOvsLastUpdateMetric).length && topologyTimeContext === 0">\
-                    <h2>Last metrics</h2>\
-                    <metrics-table :object="currentNodeOvsLastUpdateMetric"></metrics-table>\
-                  </div>\
-                </div>\
-              </div>\
-              <div id="flow-table-panel" v-if="isAnalyzer && currentNodeFlowsQuery">\
-                <h1>Flows</h1>\
-                <flow-table :value="currentNodeFlowsQuery"></flow-table>\
-              </div>\
-            </div>\
-            <div v-if="currentEdge">\
-              <h1> Edge Metadata<span class="pull-right">(id: {{currentEdge.id}})</h1>\
-              <div id="metadata-panel" class="sub-left-panel">\
-                <object-detail :object="currentEdge.metadata"></object-detail>\
-              </div>\
-            </div>\
+        <panel v-if="currentNodeMetadata"\
+               :collapsed="false"\
+               title="Metadata">\
+          <template slot="actions">\
+            <button v-if="currentNode.isGroupOwner()"\
+                    title="Expand/Collapse Node"\
+                    class="btn btn-default btn-xs"\
+                    @click.stop="toggleExpandAll(currentNode)">\
+              <i class="node-action fa"\
+                 :class="{\'fa-expand\': currentNode.group.collapsed, \'fa-compress\': !currentNode.group.collapsed}" />\
+            </button>\
+          </template>\
+          <object-detail :object="currentNodeMetadata"\
+                         :links="metadataLinks(currentNodeMetadata)"\
+                         :collapsed="metadataCollapseState">\
+          </object-detail>\
+        </panel>\
+        <panel v-if="currentEdge"\
+               title="Metadata">\
+          <object-detail :object="currentEdge.metadata"></object-detail>\
+        </panel>\
+        <panel v-if="currentNodeMetadata && currentNodeMetadata.Type == \'ovsbridge\'"\
+               title="Rules">\
+          <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
+        </panel>\
+        <panel v-if="currentNodeMetric"\
+               title="Metrics">\
+          <h2>Total metrics</h2>\
+          <metrics-table :object="currentNodeMetric"></metrics-table>\
+          <div v-show="currentNodeLastUpdateMetric && topologyTimeContext === 0">\
+            <h2>Last metrics</h2>\
+            <metrics-table :object="currentNodeLastUpdateMetric"></metrics-table>\
           </div>\
-        </transition>\
+        </panel>\
+        <panel v-if="currentNodeOvsMetric"\
+               title="OVS metrics">\
+          <h2>Total metrics</h2>\
+          <metrics-table :object="currentNodeOvsMetric"></metrics-table>\
+          <div v-show="currentNodeOvsLastUpdateMetric && topologyTimeContext === 0">\
+            <h2>Last metrics</h2>\
+            <metrics-table :object="currentNodeOvsLastUpdateMetric"></metrics-table>\
+          </div>\
+        </panel>\
+        <panel v-if="currentNodeMetadata && currentNode.metadata.RoutingTable"\
+               title="Routing tables">\
+          <div v-for="rt in currentNode.metadata.RoutingTable">\
+            <h2>src: {{rt.Src || "none"}}<span class="pull-right">(id: {{rt.Id}})</span></h2>\
+            <routing-table :rt="rt"></routing-table>\
+          </div>\
+        </panel>\
+        <panel v-if="isAnalyzer && currentNodeFlowsQuery"\
+               title="Flows">\
+          <flow-table :value="currentNodeFlowsQuery"></flow-table>\
+        </panel>\
       </div>\
     </div>\
   ',
@@ -255,6 +230,10 @@ var TopologyComponent = {
       topologyRelTime: "1m",
       isCaptureEnabled: true,
       isPacketInjectEnabled: true,
+      metadataCollapseState: {
+        IPV4: false,
+        IPV6: false,
+      },
     };
   },
 
@@ -414,35 +393,35 @@ var TopologyComponent = {
       return this.$store.state.currentEdge;
     },
 
-    currentNodeFlowsQuery: function() {
-      if (this.currentNode && this.currentNode.isCaptureAllowed())
-        return "G.Flows().Has('NodeTID', '" + this.currentNode.metadata.TID + "').Sort()";
-      return "";
-    },
-
     currentNodeMetadata: function() {
-      if (!this.currentNode) return {};
+      if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
         ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable']);
     },
 
+    currentNodeFlowsQuery: function() {
+      if (this.currentNodeMetadata && this.currentNode.isCaptureAllowed())
+        return "G.Flows().Has('NodeTID', '" + this.currentNode.metadata.TID + "').Sort()";
+      return null;
+    },
+
     currentNodeMetric: function() {
-      if (!this.currentNode || !this.currentNode.metadata.Metric) return {};
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.Metric) return null;
       return this.normalizeMetric(this.currentNode.metadata.Metric);
     },
 
     currentNodeLastUpdateMetric: function() {
-      if (!this.currentNode || !this.currentNode.metadata.LastUpdateMetric) return {};
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.LastUpdateMetric) return null;
       return this.normalizeMetric(this.currentNode.metadata.LastUpdateMetric);
     },
 
     currentNodeOvsMetric: function() {
-      if (!this.currentNode || !this.currentNode.metadata.Ovs || !this.currentNode.metadata.Ovs.Metric) return {};
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.Ovs || !this.currentNode.metadata.Ovs.Metric) return null;
       return this.normalizeMetric(this.currentNode.metadata.Ovs.Metric);
     },
 
     currentNodeOvsLastUpdateMetric: function() {
-      if (!this.currentNode || !this.currentNode.metadata.Ovs || !this.currentNode.metadata.Ovs.LastUpdateMetric) return {};
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.Ovs || !this.currentNode.metadata.Ovs.LastUpdateMetric) return null;
       return this.normalizeMetric(this.currentNode.metadata.Ovs.LastUpdateMetric);
     },
 

@@ -60,17 +60,6 @@ label {
   stroke: #fff;
 }
 
-.pane-label {
-  position: absolute;
-  z-index: 99;
-  padding: 0;
-  font-size: 80%;
-  opacity: .4;
-  right: 15px;
-  bottom: 15px;
-  margin: 0;
-}
-
 .cont {
   width:100%;
   height: 100%
@@ -82,22 +71,12 @@ label {
   overflow: auto;
 }
 
-#right-panel {
+.sidebar {
   border-left: 5px #222 solid;
   color: #fff;
   padding-top: 5px;
   overflow-y: auto;
   overflow-x: hidden;
-}
-
-.main-toolbar {
-  background-color: #111;
-  height: 65px;
-  padding-top: 28px;
-}
-
-.main-toolbar .tooltip-inner {
-  background-color: #333;
 }
 
 .fill {
@@ -122,50 +101,71 @@ label {
   margin-bottom: 10px;
 }
 
-.left-panel {
+.panel {
   border-radius: 5px;
   background-color: #222;
-  padding: 15px;
   margin-top: 10px;
   margin-bottom: 10px;
+  border: 0;
 }
 
-.left-panel h1 {
+.panel-content {
+  padding: 15px;
+}
+
+.panel-content h1 {
   font-size: 1.1em;
   font-weight: bold;
   border-bottom: 1px solid #777;
   padding-bottom: 5px;
 }
 
-.left-panel > h1:first-child {
+.panel-content .closed {
+  border: none;
+  padding-bottom: 0px;
+  margin-bottom: 0px;
+}
+
+.panel-content h1:first-child {
   margin-top: 0px;
 }
 
-.left-panel h1 a, .left-panel h1 a:hover {
-  color: #fff;
-  text-decoration: none;
-}
-
-.left-panel h2 {
+.panel-content h2 {
   font-size: 1.0em;
   font-weight: bold;
   margin-bottom: 5px;
 }
 
-.left-panel .bg-warning {
+.panel-content .bg-warning {
   background-color: #333;
 }
 
-.left-panel .text-warning {
+.panel-content .text-warning {
   color: #fff;
 }
 
-.sub-left-panel {
+.panel-actions {
+  text-align: right;
+  background: #282828;
+  padding: 5px;
+  border-radius: 0 0 5px 5px;
+  border-top: 1px dotted #444;
+}
+
+.sub-panel {
   border-radius: 5px;
   background-color: #111;
   padding: 5px;
   margin-top: 10px;
   margin-bottom: 10px;
+}
+
+.collapse-header {
+  cursor: pointer;
+}
+
+.collapse-header:hover {
+  color: orange;
 }
 
 .node-time {
@@ -209,7 +209,7 @@ li.capture-item, li.injector-item {
   padding-bottom: 5px;
 }
 
-.capture-action, .node-action, .injector-action {
+.capture-action, .injector-action {
   float: right;
   cursor: pointer;
   font-size: 1.2em;
@@ -228,12 +228,6 @@ li.capture-item, li.injector-item {
 
 .inject-target {
   margin-bottom: 5px;
-}
-
-.title-left-panel {
-  font-size: 1.2em;
-  padding-bottom: 5px;
-  color: #fff;
 }
 
 .bootstrap-switch {
@@ -470,23 +464,6 @@ ul.dropdown-menu .fa.pull-right {
 
 .object-sub-detail .object-detail {
   margin-left: 20px;
-}
-
-.capture-advanced .panel-heading {
-  padding: 0px 0px;
-  margin-bottom: 20px;
-}
-
-.capture-advanced .panel-heading a {
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.capture-advanced legend {
-  color: #fff;
-  font-size: 14px;
-  font-weight: bold;
-  border-bottom: 1px solid #444;
 }
 
 .raw-packet-link {

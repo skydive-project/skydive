@@ -12,28 +12,25 @@ var ConversationComponent = {
         <div class="conversation-d3"></div>\
       </div>\
       <div class="col-sm-4 fill sidebar">\
-        <div class="left-cont">\
-          <div class="left-panel">\
-            <form>\
-              <div class="form-group" v-if="false">\
-                <label for="order-type">Order</label>\
-                <select id="order-type" v-model="order" class="form-control input-sm">\
-                  <option v-for="order in orders" :value="order.value">{{ order.label }}</option>\
-                </select>\
-              </div>\
-              <div class="form-group">\
-                <label for="layer-type">Layer</label>\
-                <select id="layer-type" v-model="layer" class="form-control input-sm">\
-                  <option v-for="layer in layers" :value="layer.value">{{ layer.label }}</option>\
-                </select>\
-              </div>\
-            </form>\
-          </div>\
-          <div class="left-panel" v-if="node">\
-            <div class="title-left-panel">Interface detail</div>\
-            <object-detail :object="node"></object-detail>\
-          </div>\
-        </div>\
+        <panel title="Options" :collapsed="false">\
+          <form>\
+            <div class="form-group" v-if="false">\
+              <label for="order-type">Order</label>\
+              <select id="order-type" v-model="order" class="form-control input-sm">\
+                <option v-for="order in orders" :value="order.value">{{ order.label }}</option>\
+              </select>\
+            </div>\
+            <div class="form-group">\
+              <label for="layer-type">Layer</label>\
+              <select id="layer-type" v-model="layer" class="form-control input-sm">\
+                <option v-for="layer in layers" :value="layer.value">{{ layer.label }}</option>\
+              </select>\
+            </div>\
+          </form>\
+        </panel>\
+        <panel title="Interface detail" v-if="node">\
+          <object-detail :object="node"></object-detail>\
+        </panel>\
       </div>\
     </div>\
   ',
