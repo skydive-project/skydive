@@ -23,7 +23,6 @@
 package graph
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 
@@ -64,9 +63,9 @@ type SyncMsg struct {
 }
 
 // UnmarshalWSMessage deserialize the websocket message
-func UnmarshalWSMessage(msg *shttp.WSJSONMessage) (string, interface{}, error) {
+func UnmarshalWSMessage(msg *shttp.WSStructMessage) (string, interface{}, error) {
 	var obj interface{}
-	if err := common.JSONDecode(bytes.NewReader([]byte(*msg.Obj)), &obj); err != nil {
+	if err := msg.DecodeObj(&obj); err != nil {
 		return "", msg, err
 	}
 

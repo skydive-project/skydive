@@ -48,8 +48,8 @@ import (
 type Agent struct {
 	shttp.DefaultWSSpeakerEventHandler
 	graph               *graph.Graph
-	wsServer            *shttp.WSJSONServer
-	analyzerClientPool  *shttp.WSJSONClientPool
+	wsServer            *shttp.WSStructServer
+	analyzerClientPool  *shttp.WSStructClientPool
 	topologyEndpoint    *topology.TopologySubscriberEndpoint
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.ProbeBundle
@@ -63,10 +63,10 @@ type Agent struct {
 	topologyForwarder   *TopologyForwarder
 }
 
-// NewAnalyzerWSJSONClientPool creates a new http WebSocket client Pool
+// NewAnalyzerWSStructClientPool creates a new http WebSocket client Pool
 // with authentification
-func NewAnalyzerWSJSONClientPool(authOptions *shttp.AuthenticationOpts) (*shttp.WSJSONClientPool, error) {
-	pool := shttp.NewWSJSONClientPool("AnalyzerClientPool")
+func NewAnalyzerWSStructClientPool(authOptions *shttp.AuthenticationOpts) (*shttp.WSStructClientPool, error) {
+	pool := shttp.NewWSStructClientPool("AnalyzerClientPool")
 
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
@@ -179,7 +179,7 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	wsServer := shttp.NewWSJSONServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
+	wsServer := shttp.NewWSStructServer(shttp.NewWSServer(hserver, "/ws/subscriber"))
 
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
@@ -195,7 +195,7 @@ func NewAgent() (*Agent, error) {
 
 	topologyEndpoint := topology.NewTopologySubscriberEndpoint(wsServer, authOptions, g)
 
-	analyzerClientPool, err := NewAnalyzerWSJSONClientPool(authOptions)
+	analyzerClientPool, err := NewAnalyzerWSStructClientPool(authOptions)
 	if err != nil {
 		return nil, err
 	}

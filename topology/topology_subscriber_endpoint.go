@@ -44,7 +44,7 @@ type topologySubscriber struct {
 type TopologySubscriberEndpoint struct {
 	sync.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
-	pool          shttp.WSJSONSpeakerPool
+	pool          shttp.WSStructSpeakerPool
 	Graph         *graph.Graph
 	wg            sync.WaitGroup
 	gremlinParser *traversal.GremlinTraversalParser
@@ -105,11 +105,10 @@ func (t *TopologySubscriberEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	t.Unlock()
 }
 
-// OnWSJSONMessage is triggered when receiving a message from a subscriber.
+// OnWSStructMessage is triggered when receiving a message from a subscriber.
 // It only responds to SyncRequestMsgType messages
-func (t *TopologySubscriberEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+func (t *TopologySubscriberEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
-
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
 		return
@@ -152,7 +151,7 @@ func (t *TopologySubscriberEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *sht
 // notifyClients forwards local graph modification to subscribers. If a subscriber
 // specified a Gremlin filter, a 'Diff' is applied between the previous graph state
 // for this subscriber and the current graph state.
-func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSJSONMessage) {
+func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSStructMessage) {
 	for _, c := range t.pool.GetSpeakers() {
 		t.RLock()
 		subscriber, found := t.subscribers[c.GetHost()]
@@ -168,19 +167,19 @@ func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSJSONMessage) {
 			addedNodes, removedNodes, addedEdges, removedEdges := subscriber.graph.Diff(g)
 
 			for _, n := range addedNodes {
-				c.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+				c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 			}
 
 			for _, n := range removedNodes {
-				c.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+				c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 			}
 
 			for _, e := range addedEdges {
-				c.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+				c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 			}
 
 			for _, e := range removedEdges {
-				c.SendMessage(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+				c.SendMessage(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 			}
 
 			subscriber.graph = g
@@ -192,37 +191,37 @@ func (t *TopologySubscriberEndpoint) notifyClients(msg *shttp.WSJSONMessage) {
 
 // OnNodeUpdated graph node updated event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeUpdated(n *graph.Node) {
-	t.notifyClients(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
+	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.NodeUpdatedMsgType, n))
 }
 
 // OnNodeAdded graph node added event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeAdded(n *graph.Node) {
-	t.notifyClients(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeAddedMsgType, n))
+	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.NodeAddedMsgType, n))
 }
 
 // OnNodeDeleted graph node deleted event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnNodeDeleted(n *graph.Node) {
-	t.notifyClients(shttp.NewWSJSONMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
+	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.NodeDeletedMsgType, n))
 }
 
 // OnEdgeUpdated graph edge updated event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeUpdated(e *graph.Edge) {
-	t.notifyClients(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
+	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeUpdatedMsgType, e))
 }
 
 // OnEdgeAdded graph edge added event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeAdded(e *graph.Edge) {
-	t.notifyClients(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
+	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeAddedMsgType, e))
 }
 
 // OnEdgeDeleted graph edge deleted event. Implements the GraphEventListener interface.
 func (t *TopologySubscriberEndpoint) OnEdgeDeleted(e *graph.Edge) {
-	t.notifyClients(shttp.NewWSJSONMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
+	t.notifyClients(shttp.NewWSStructMessage(graph.Namespace, graph.EdgeDeletedMsgType, e))
 }
 
 // NewTopologySubscriberEndpoint returns a new server to be used by external subscribers,
 // for instance the WebUI.
-func NewTopologySubscriberEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.AuthenticationOpts, g *graph.Graph) *TopologySubscriberEndpoint {
+func NewTopologySubscriberEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.AuthenticationOpts, g *graph.Graph) *TopologySubscriberEndpoint {
 	t := &TopologySubscriberEndpoint{
 		Graph:         g,
 		pool:          pool,
@@ -233,7 +232,7 @@ func NewTopologySubscriberEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.Aut
 	pool.AddEventHandler(t)
 
 	// subscribe to the graph messages
-	pool.AddJSONMessageHandler(t, []string{graph.Namespace})
+	pool.AddStructMessageHandler(t, []string{graph.Namespace})
 
 	// subscribe to the local graph event
 	g.AddEventListener(t)

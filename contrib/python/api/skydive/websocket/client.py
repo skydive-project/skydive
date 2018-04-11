@@ -193,6 +193,7 @@ class WSClient(WebSocketClientProtocol):
         factory.kwargs = self.kwargs
         factory.headers["X-Host-ID"] = self.host_id
         factory.headers["X-Client-Type"] = self.type
+        factory.headers["X-Client-Protocol"] = "json"
         if self.persistent:
             factory.headers["X-Persistence-Policy"] = "Persistent"
         else:

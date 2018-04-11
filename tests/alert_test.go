@@ -40,7 +40,6 @@ import (
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -293,22 +292,21 @@ func TestAlertWithTimer(t *testing.T) {
 					return err
 				}
 
-				var msg shttp.WSJSONMessage
-				if err = common.JSONDecode(bytes.NewReader(m), &msg); err != nil {
-					t.Fatalf("Failed to unmarshal message: %s", err.Error())
+				msg := helper.DecodeWSStructMessageJSON(m)
+				if msg == nil {
+					t.Fatal("Failed to unmarshal message")
 				}
-
 				if msg.Namespace != "Alert" {
 					continue
 				}
 
-				testPassed, err := checkMessage(t, []byte(*msg.Obj), al, "alert-ns-timer")
+				testPassed, err := checkMessage(t, []byte(*msg.JsonObj), al, "alert-ns-timer")
 				if err != nil {
 					return err
 				}
 
 				if !testPassed {
-					return fmt.Errorf("Wrong alert message: %+v (error: %+v)", string([]byte(*msg.Obj)), err)
+					return fmt.Errorf("Wrong alert message: %+v (error: %+v)", string(*msg.JsonObj), err)
 				}
 
 				break
@@ -375,9 +373,9 @@ func TestMultipleTriggering(t *testing.T) {
 					return err
 				}
 
-				var msg shttp.WSJSONMessage
-				if err = common.JSONDecode(bytes.NewReader(m), &msg); err != nil {
-					t.Fatalf("Failed to unmarshal message: %s", err.Error())
+				msg := helper.DecodeWSStructMessageJSON(m)
+				if msg == nil {
+					t.Fatal("Failed to unmarshal message")
 				}
 
 				if msg.Namespace != "Alert" {
@@ -385,7 +383,7 @@ func TestMultipleTriggering(t *testing.T) {
 				}
 
 				var alertMsg alert.AlertMessage
-				if err := common.JSONDecode(bytes.NewReader([]byte(*msg.Obj)), &alertMsg); err != nil {
+				if err := msg.DecodeObj(&alertMsg); err != nil {
 					t.Fatalf("Failed to unmarshal alert : %s", err.Error())
 				}
 

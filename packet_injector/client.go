@@ -23,7 +23,6 @@
 package packet_injector
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -56,7 +55,7 @@ type PacketInjectorReply struct {
 // PacketInjectorClient describes a packet injector client
 type PacketInjectorClient struct {
 	*etcd.MasterElector
-	pool      shttp.WSJSONSpeakerPool
+	pool      shttp.WSStructSpeakerPool
 	watcher   apiServer.StoppableWatcher
 	graph     *graph.Graph
 	piHandler *apiServer.PacketInjectorAPI
@@ -64,7 +63,7 @@ type PacketInjectorClient struct {
 
 // StopInjection cancels a running packet injection
 func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
-	msg := shttp.NewWSJSONMessage(Namespace, "PIStopRequest", uuid)
+	msg := shttp.NewWSStructMessage(Namespace, "PIStopRequest", uuid)
 
 	resp, err := pc.pool.Request(host, msg, shttp.DefaultRequestTimeout)
 	if err != nil {
@@ -72,7 +71,7 @@ func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
 	}
 
 	var reply PacketInjectorReply
-	if err := json.Unmarshal([]byte(*resp.Obj), &reply); err != nil {
+	if err := resp.UnmarshalObj(&reply); err != nil {
 		return fmt.Errorf("Failed to parse response from %s: %s", host, err.Error())
 	}
 
@@ -86,7 +85,7 @@ func (pc *PacketInjectorClient) StopInjection(host string, uuid string) error {
 // InjectPackets issues a packet injection request and returns the expected
 // tracking id
 func (pc *PacketInjectorClient) InjectPackets(host string, pp *PacketInjectionParams) (string, error) {
-	msg := shttp.NewWSJSONMessage(Namespace, "PIRequest", pp)
+	msg := shttp.NewWSStructMessage(Namespace, "PIRequest", pp)
 
 	resp, err := pc.pool.Request(host, msg, shttp.DefaultRequestTimeout)
 	if err != nil {
@@ -94,7 +93,7 @@ func (pc *PacketInjectorClient) InjectPackets(host string, pp *PacketInjectionPa
 	}
 
 	var reply PacketInjectorReply
-	if err := json.Unmarshal([]byte(*resp.Obj), &reply); err != nil {
+	if err := resp.UnmarshalObj(&reply); err != nil {
 		return "", fmt.Errorf("Failed to parse response from %s: %s", host, err.Error())
 	}
 
@@ -315,7 +314,7 @@ func (pc *PacketInjectorClient) setTimeouts() {
 }
 
 // NewPacketInjectorClient returns a new packet injector client
-func NewPacketInjectorClient(pool shttp.WSJSONSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
+func NewPacketInjectorClient(pool shttp.WSStructSpeakerPool, etcdClient *etcd.Client, piHandler *apiServer.PacketInjectorAPI, g *graph.Graph) *PacketInjectorClient {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "pi-client", etcdClient)
 
 	pic := &PacketInjectorClient{

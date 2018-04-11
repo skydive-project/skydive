@@ -23,8 +23,6 @@
 package flow
 
 import (
-	"encoding/json"
-
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -40,9 +38,9 @@ type TableServer struct {
 }
 
 // OnTableQuery event
-func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	var query TableQuery
-	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
+	if err := msg.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode search flow message %v", msg)
 		return
 	}
@@ -53,7 +51,7 @@ func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) 
 }
 
 // OnWSMessage TableQuery
-func (s *TableServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+func (s *TableServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	switch msg.Type {
 	case "TableQuery":
 		s.OnTableQuery(c, msg)
@@ -61,10 +59,10 @@ func (s *TableServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessag
 }
 
 // NewServer creates a new flow table query server based on websocket
-func NewServer(allocator *TableAllocator, pool shttp.WSJSONSpeakerPool) *TableServer {
+func NewServer(allocator *TableAllocator, pool shttp.WSStructSpeakerPool) *TableServer {
 	s := &TableServer{
 		TableAllocator: allocator,
 	}
-	pool.AddJSONMessageHandler(s, []string{Namespace})
+	pool.AddStructMessageHandler(s, []string{Namespace})
 	return s
 }

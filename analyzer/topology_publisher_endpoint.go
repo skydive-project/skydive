@@ -49,7 +49,7 @@ const (
 type TopologyPublisherEndpoint struct {
 	sync.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
-	pool          shttp.WSJSONSpeakerPool
+	pool          shttp.WSStructSpeakerPool
 	Graph         *graph.Graph
 	cached        *graph.CachedBackend
 	nodeSchema    gojsonschema.JSONLoader
@@ -71,8 +71,8 @@ func (t *TopologyPublisherEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	t.Graph.Unlock()
 }
 
-// OnWSJSONMessage is triggered by message coming from a publisher.
-func (t *TopologyPublisherEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+// OnWSStructMessage is triggered by message coming from a publisher.
+func (t *TopologyPublisherEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
@@ -138,7 +138,7 @@ func (t *TopologyPublisherEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *shtt
 }
 
 // NewTopologyPublisherEndpoint returns a new server for external publishers.
-func NewTopologyPublisherEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.AuthenticationOpts, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
+func NewTopologyPublisherEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.AuthenticationOpts, g *graph.Graph) (*TopologyPublisherEndpoint, error) {
 	nodeSchema, err := statics.Asset("statics/schemas/node.schema")
 	if err != nil {
 		return nil, err
@@ -160,7 +160,7 @@ func NewTopologyPublisherEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.Auth
 	pool.AddEventHandler(t)
 
 	// subscribe to the graph messages
-	pool.AddJSONMessageHandler(t, []string{graph.Namespace})
+	pool.AddStructMessageHandler(t, []string{graph.Namespace})
 
 	return t, nil
 }

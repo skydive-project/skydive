@@ -23,7 +23,6 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -50,10 +49,10 @@ type OnDemandProbeServer struct {
 	sync.RWMutex
 	graph.DefaultGraphListener
 	shttp.DefaultWSSpeakerEventHandler
-	Graph            *graph.Graph
-	Probes           *probe.ProbeBundle
-	WSJSONClientPool *shttp.WSJSONClientPool
-	activeProbes     map[graph.Identifier]*activeProbe
+	Graph              *graph.Graph
+	Probes             *probe.ProbeBundle
+	WSStructClientPool *shttp.WSStructClientPool
+	activeProbes       map[graph.Identifier]*activeProbe
 }
 
 func (o *OnDemandProbeServer) getProbe(n *graph.Node, capture *types.Capture) (probes.FlowProbe, error) {
@@ -162,10 +161,10 @@ func (p *activeProbe) OnStopped() {
 	p.graph.Unlock()
 }
 
-// OnWSJSONMessage websocket message, valid message type are CaptureStart, CaptureStop
-func (o *OnDemandProbeServer) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+// OnWSStructMessage websocket message, valid message type are CaptureStart, CaptureStop
+func (o *OnDemandProbeServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	var query ondemand.CaptureQuery
-	if err := json.Unmarshal([]byte(*msg.Obj), &query); err != nil {
+	if err := msg.UnmarshalObj(&query); err != nil {
 		logging.GetLogger().Errorf("Unable to decode capture %v", msg)
 		return
 	}
@@ -232,7 +231,7 @@ func (o *OnDemandProbeServer) OnNodeDeleted(n *graph.Node) {
 // Start the probe
 func (o *OnDemandProbeServer) Start() error {
 	o.Graph.AddEventListener(o)
-	o.WSJSONClientPool.AddJSONMessageHandler(o, []string{ondemand.Namespace})
+	o.WSStructClientPool.AddStructMessageHandler(o, []string{ondemand.Namespace})
 
 	return nil
 }
@@ -250,11 +249,11 @@ func (o *OnDemandProbeServer) Stop() {
 }
 
 // NewOnDemandProbeServer creates a new Ondemand probes server based on graph and websocket
-func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *shttp.WSJSONClientPool) (*OnDemandProbeServer, error) {
+func NewOnDemandProbeServer(fb *probe.ProbeBundle, g *graph.Graph, pool *shttp.WSStructClientPool) (*OnDemandProbeServer, error) {
 	return &OnDemandProbeServer{
-		Graph:            g,
-		Probes:           fb,
-		WSJSONClientPool: pool,
-		activeProbes:     make(map[graph.Identifier]*activeProbe),
+		Graph:              g,
+		Probes:             fb,
+		WSStructClientPool: pool,
+		activeProbes:       make(map[graph.Identifier]*activeProbe),
 	}, nil
 }

@@ -34,7 +34,7 @@ import (
 type TopologyAgentEndpoint struct {
 	sync.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
-	pool   shttp.WSJSONSpeakerPool
+	pool   shttp.WSStructSpeakerPool
 	Graph  *graph.Graph
 	cached *graph.CachedBackend
 	wg     sync.WaitGroup
@@ -49,8 +49,8 @@ func (t *TopologyAgentEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	t.Graph.Unlock()
 }
 
-// OnWSJSONMessage is triggered when a message from the agent is received.
-func (t *TopologyAgentEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WSJSONMessage) {
+// OnWSStructMessage is triggered when a message from the agent is received.
+func (t *TopologyAgentEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	msgType, obj, err := graph.UnmarshalWSMessage(msg)
 	if err != nil {
 		logging.GetLogger().Errorf("Graph: Unable to parse the event %v: %s", msg, err.Error())
@@ -95,7 +95,7 @@ func (t *TopologyAgentEndpoint) OnWSJSONMessage(c shttp.WSSpeaker, msg *shttp.WS
 }
 
 // NewTopologyAgentEndpoint returns a new server that handles messages from the agents
-func NewTopologyAgentEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
+func NewTopologyAgentEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph) (*TopologyAgentEndpoint, error) {
 	t := &TopologyAgentEndpoint{
 		Graph:  g,
 		pool:   pool,
@@ -105,7 +105,7 @@ func NewTopologyAgentEndpoint(pool shttp.WSJSONSpeakerPool, auth *shttp.Authenti
 	pool.AddEventHandler(t)
 
 	// subscribe to the graph messages
-	pool.AddJSONMessageHandler(t, []string{graph.Namespace})
+	pool.AddStructMessageHandler(t, []string{graph.Namespace})
 
 	return t, nil
 }
