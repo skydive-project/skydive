@@ -33,7 +33,7 @@ echo "Python3 tests"
 virtualenv-3 venv3
 source venv3/bin/activate
 
-pip install pycodestyle flake8
+pip install flake8
 pip install -r api/requirements.txt
 
 pushd api
