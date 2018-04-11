@@ -12,7 +12,7 @@ def get_install_requires():
 
 
 setup(name='skydive-client',
-      version='0.4.3',
+      version='0.4.4',
       description='Skydive Python client library',
       url='http://github.com/skydive-project/skydive',
       author='Sylvain Afchain',
