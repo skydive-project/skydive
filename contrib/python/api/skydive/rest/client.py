@@ -30,6 +30,10 @@ from skydive.auth import Authenticate
 from skydive.graph import Node, Edge
 
 
+class BadRequest(Exception):
+    pass
+
+
 class RESTClient:
     def __init__(self, endpoint, scheme="http",
                  username="", password="",
@@ -44,7 +48,7 @@ class RESTClient:
         self.auth = Authenticate(endpoint, scheme,
                                  username, password, insecure)
 
-    def request(self, path, data=None):
+    def request(self, path, method="GET", data=None):
         if self.username and not self.auth.authenticated:
             self.auth.login()
 
@@ -61,28 +65,44 @@ class RESTClient:
             handlers.append(request.HTTPSHandler(debuglevel=self.debug,
                                                  context=context))
 
+        if data is not None:
+            encoded_data = data.encode()
+        else:
+            encoded_data = None
+
         opener = request.build_opener(*handlers)
 
         headers = {'Content-Type': 'application/json'}
-        req = request.Request(url, data=data, headers=headers)
+        req = request.Request(url,
+                              data=encoded_data,
+                              headers=headers)
+        req.get_method = lambda: method
 
         try:
             resp = opener.open(req)
-        except request.HTTPError as err:
+        except request.HTTPError as e:
             self.auth.logout()
-            raise
+            raise BadRequest(e.read())
 
-        return resp
+        data = resp.read()
+
+        # DEPRECATED: workaround for skydive < 0.17
+        # See PR #941
+        if method == "DELETE":
+            return data
+
+        content_type = resp.headers.get("Content-type").split(";")[0]
+        if content_type == "application/json":
+            return json.loads(data.decode())
+        return data
 
     def lookup(self, gremlin, klass=None):
         data = json.dumps(
             {"GremlinQuery": gremlin}
         )
 
-        resp = self.request("/api/topology", data.encode())
+        objs = self.request("/api/topology", method="POST", data=data)
 
-        data = resp.read()
-        objs = json.loads(data.decode())
         if klass:
             return [klass.from_object(o) for o in objs]
         return objs
@@ -92,3 +112,16 @@ class RESTClient:
 
     def lookup_edges(self, gremlin):
         return self.lookup(gremlin, Edge)
+
+    def capture_create(self, query):
+        data = json.dumps(
+            {"GremlinQuery": query}
+        )
+        return self.request("/api/capture", method="POST", data=data)
+
+    def capture_list(self):
+        return self.request("/api/capture")
+
+    def capture_delete(self, capture_id):
+        path = "/api/capture/%s" % capture_id
+        return self.request(path, method="DELETE")
