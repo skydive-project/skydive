@@ -229,6 +229,12 @@
       group: jenkins
       groups: jenkins,libvirt,docker,lxd
       home: /var/lib/jenkins
+  - service:
+      name: "{{ item }}"
+      state: restarted
+      enabled: true
+    with_items:
+      - docker
 
 - name: Start Jenkins slaves
   hosts: slaves
