@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 
@@ -36,10 +35,8 @@ import (
 	elastigo "github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
-	"net/url"
 )
 
 type revisionArray []interface{}
@@ -145,7 +142,7 @@ func (f *fakeElasticsearchClient) Search(obj string, query string, index string)
 	f.searches = append(f.searches, query)
 	return f.searchResult, nil
 }
-func (f *fakeElasticsearchClient) Start(name string, mappings []map[string][]byte, limits elasticsearch.ElasticLimits) {
+func (f *fakeElasticsearchClient) Start() {
 }
 
 func newElasticsearchGraph(t *testing.T) (*Graph, *fakeElasticsearchClient) {
@@ -489,32 +486,21 @@ func delTestIndex(name string) error {
 	return nil
 }
 
-func initBackend(limits elasticsearch.ElasticLimits, name string) (*ElasticSearchBackend, error) {
-	elasticHost := config.GetString("storage.elasticsearch.host")
-	if !strings.HasPrefix(elasticHost, "http://") && !strings.HasPrefix(elasticHost, "https://") {
-		elasticHost = "http://" + elasticHost
+func initBackend(indexCfg elasticsearch.IndexConfig, name string) (*ElasticSearchBackend, error) {
+	mappings := elasticsearch.Mappings{
+		{"node": []byte(graphElementMapping)},
+		{"edge": []byte(graphElementMapping)},
 	}
 
-	url, err := url.Parse(elasticHost)
-	if err != nil || url.Port() == "" {
-		return nil, ErrBadConfig
-	}
+	connCfg := elasticsearch.NewConnConfig("storage.elasticsearch")
+	connCfg.BulkMaxDocs = 1
 
-	maxConns := config.GetInt("storage.elasticsearch.maxconns")
-	retrySeconds := config.GetInt("storage.elasticsearch.retry")
-	bulkMaxDocs := 1
-	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
-
-	client, err := elasticsearch.NewElasticSearchClient(url, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+	client, err := elasticsearch.NewElasticSearchClient(name, mappings, indexCfg, connCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	client.Start(name, []map[string][]byte{
-		{"node": []byte(graphElementMapping)},
-		{"edge": []byte(graphElementMapping)}},
-		limits,
-	)
+	client.Start()
 
 	return &ElasticSearchBackend{
 		client:       client,
@@ -524,14 +510,14 @@ func initBackend(limits elasticsearch.ElasticLimits, name string) (*ElasticSearc
 
 // test active nodes after rolling elasticsearch indices
 func TestElasticsearcActiveNodes(t *testing.T) {
-	limits := elasticsearch.NewElasticLimitsFromConfig("storage.elasticsearch")
-	limits.EntriesLimit = 10
+	indexCfg := elasticsearch.NewIndexConfig("storage.elasticsearch")
+	indexCfg.EntriesLimit = 10
 	name := "test_nodes"
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
 	}
 
-	backend, err := initBackend(limits, name)
+	backend, err := initBackend(indexCfg, name)
 	if err != nil {
 		t.Fatalf("Failed to create backend: %s", err.Error())
 	}
@@ -541,7 +527,7 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 	node := mg.NewNode("aaa", nil, "host1")
 
 	g.NodeAdded(node)
-	for i := 1; i <= limits.EntriesLimit+1; i++ {
+	for i := 1; i <= indexCfg.EntriesLimit+1; i++ {
 		time.Sleep(1 * time.Second)
 		g.SetMetadata(node, Metadata{"Temp": i})
 	}
@@ -559,14 +545,14 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 
 // test active edges after rolling elasticsearch indices
 func TestElasticsearcActiveEdges(t *testing.T) {
-	limits := elasticsearch.NewElasticLimitsFromConfig("storage.elasticsearch")
-	limits.EntriesLimit = 10
+	indexCfg := elasticsearch.NewIndexConfig("storage.elasticsearch")
+	indexCfg.EntriesLimit = 10
 	name := "test_edges"
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
 	}
 
-	backend, err := initBackend(limits, name)
+	backend, err := initBackend(indexCfg, name)
 	if err != nil {
 		t.Fatalf("Failed to create backend: %s", err.Error())
 	}
@@ -580,7 +566,7 @@ func TestElasticsearcActiveEdges(t *testing.T) {
 	g.NodeAdded(node1)
 	g.NodeAdded(node2)
 	g.EdgeAdded(edge)
-	for i := 1; i < limits.EntriesLimit; i++ {
+	for i := 1; i < indexCfg.EntriesLimit; i++ {
 		time.Sleep(1 * time.Second)
 		g.SetMetadata(edge, Metadata{"Temp": i})
 	}

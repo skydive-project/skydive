@@ -27,7 +27,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +34,6 @@ import (
 	"github.com/mattbaird/elastigo/lib"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
@@ -615,12 +613,7 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 }
 
 func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {
-	limits := elasticsearch.NewElasticLimitsFromConfig("storage.elasticsearch")
-	client.Start("topology", []map[string][]byte{
-		{"node": []byte(graphElementMapping)},
-		{"edge": []byte(graphElementMapping)}},
-		limits,
-	)
+	client.Start()
 
 	return &ElasticSearchBackend{
 		client:       client,
@@ -628,35 +621,18 @@ func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) 
 	}, nil
 }
 
-// NewElasticSearchBackend creates a new graph backend and connect to an ElasticSearch database
-func NewElasticSearchBackend(url *url.URL, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchBackend, error) {
-	client, err := elasticsearch.NewElasticSearchClient(url, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+// NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
+func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
+	indexCfg := elasticsearch.NewIndexConfig("storage.elasticsearch")
+	connCfg := elasticsearch.NewConnConfig("storage.elasticsearch")
+	mappings := elasticsearch.Mappings{
+		{"node": []byte(graphElementMapping)},
+		{"edge": []byte(graphElementMapping)},
+	}
+	client, err := elasticsearch.NewElasticSearchClient("topology", mappings, indexCfg, connCfg)
 	if err != nil {
 		return nil, err
 	}
 
 	return newElasticSearchBackend(client)
-}
-
-// NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
-func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
-	elasticHost := config.GetString("storage.elasticsearch.host")
-	if !strings.HasPrefix(elasticHost, "http://") && !strings.HasPrefix(elasticHost, "https://") {
-		elasticHost = "http://" + elasticHost
-	}
-
-	url, err := url.Parse(elasticHost)
-	if err != nil || url.Port() == "" {
-		return nil, ErrBadConfig
-	}
-
-	maxConns := config.GetInt("storage.elasticsearch.maxconns")
-	if maxConns == 0 {
-		return nil, errors.New("storage.elasticsearch.maxconns has to be > 0")
-	}
-	retrySeconds := config.GetInt("storage.elasticsearch.retry")
-	bulkMaxDocs := config.GetInt("storage.elasticsearch.bulk_maxdocs")
-	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
-
-	return NewElasticSearchBackend(url, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 }

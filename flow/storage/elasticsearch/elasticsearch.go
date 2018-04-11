@@ -446,13 +446,7 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 
 // Start the Database client
 func (c *ElasticSearchStorage) Start() {
-	limits := esclient.NewElasticLimitsFromConfig("analyzer.flow")
-	go c.client.Start("flows", []map[string][]byte{
-		{"metric": []byte(metricMapping)},
-		{"rawpacket": []byte(rawPacketMapping)},
-		{"flow": []byte(flowMapping)}},
-		limits,
-	)
+	go c.client.Start()
 }
 
 // Stop the Database client
@@ -462,7 +456,14 @@ func (c *ElasticSearchStorage) Stop() {
 
 // New creates a new ElasticSearch database client
 func New() (*ElasticSearchStorage, error) {
-	client, err := esclient.NewElasticSearchClientFromConfig()
+	indexCfg := esclient.NewIndexConfig("analyzer.flow")
+	connCfg := esclient.NewConnConfig("storage.elasticsearch")
+	mappings := esclient.Mappings{
+		{"metric": []byte(metricMapping)},
+		{"rawpacket": []byte(rawPacketMapping)},
+		{"flow": []byte(flowMapping)},
+	}
+	client, err := esclient.NewElasticSearchClient("flows", mappings, indexCfg, connCfg)
 	if err != nil {
 		return nil, err
 	}

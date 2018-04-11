@@ -193,11 +193,7 @@ func (sfe *SnortFlowEnhancer) parseSnortCMGX(reader *bufio.Reader) error {
 }
 
 func (sfe *SnortFlowEnhancer) Start() {
-	go sfe.client.Start("snort", []map[string][]byte{
-		{"snortMessage": []byte(snortMessageMapping)}},
-		esclient.ElasticLimits{},
-	)
-
+	go sfe.client.Start()
 	go sfe.run()
 }
 
@@ -224,7 +220,12 @@ func newSnortFlowEnhancer() *SnortFlowEnhancer {
 	sfe.running.Store(true)
 
 	var err error
-	sfe.client, err = esclient.NewElasticSearchClientFromConfig()
+	mappings := esclient.Mappings{
+		{"snortMessage": []byte(snortMessageMapping)},
+	}
+	indexCfg := esclient.NewIndexConfig("storage.elasticsearch")
+	connCfg := esclient.NewConnConfig("storage.elasticsearch")
+	sfe.client, err = esclient.NewElasticSearchClient("snort", mappings, indexCfg, connCfg)
 	if err != nil {
 		if err != io.EOF {
 			logging.GetLogger().Errorf("elasticsearch client error : %v", err)

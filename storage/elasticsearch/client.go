@@ -47,24 +47,24 @@ const indexVersion = 11
 const indexPrefix = "skydive"
 const indexAllAlias = "all"
 
-// ElasticLimits describes index limits driving roll policy
-type ElasticLimits struct {
+// IndexConfig describes index limits driving roll policy
+type IndexConfig struct {
 	EntriesLimit int
 	AgeLimit     int
 	IndicesLimit int
 }
 
-// NewElasticLimitsFromConfig create new limits from configuration
-func NewElasticLimitsFromConfig(path string) ElasticLimits {
-	limits := ElasticLimits{}
-	limits.EntriesLimit = config.GetInt(path + ".index_entries_limit")
-	limits.AgeLimit = 0
+// NewIndexConfigFromConfig create new limits from configuration
+func NewIndexConfig(path string) IndexConfig {
+	indexCfg := IndexConfig{}
+	indexCfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
+	indexCfg.AgeLimit = 0
 	// TODO: read the AgeLimit from the configuration. At this stage we are setting statically to zero since
 	// TODO: the feature of reading the index creation date is not supported.
 	// TODO: the code that need to happen when we will
-	// TODO: be ready:: limits.AgeLimit = config.GetInt(path + ".index_age_limit")
-	limits.IndicesLimit = config.GetInt(path + ".indices_to_keep")
-	return limits
+	// TODO: be ready:: indexCfg.AgeLimit = config.GetInt(path + ".index_age_limit")
+	indexCfg.IndicesLimit = config.GetInt(path + ".indices_to_keep")
+	return indexCfg
 }
 
 // ElasticSearchClientInterface describes the mechanism API of ElasticSearch database client
@@ -83,34 +83,43 @@ type ElasticSearchClientInterface interface {
 	Delete(obj string, id string) (elastigo.BaseResponse, error)
 	BulkDelete(obj string, id string)
 	Search(obj string, query string, index string) (elastigo.SearchResult, error)
-	Start(name string, mappings []map[string][]byte, limits ElasticLimits)
+	Start()
 	GetIndexAlias() string
 	GetIndexAllAlias() string
 }
+
+// Mappings describes the mappings of the clinet connection
+type Mappings []map[string][]byte
 
 // ElasticIndex describes an ElasticSearch index and its current status
 type ElasticIndex struct {
 	sync.Mutex
 	entriesCounter int
-	mappings       []map[string][]byte
-	name           string
 	path           string
 	timeCreated    time.Time
-	limits         ElasticLimits
+}
+
+// ConnConfig describes the ElasticSearch configuration section
+type ConnConfig struct {
+	ElasticHost  string
+	MaxConns     int
+	RetrySeconds int
+	BulkMaxDocs  int
+	BulkMaxDelay int
 }
 
 // ElasticSearchClient describes a ElasticSearch client connection
 type ElasticSearchClient struct {
-	connection   *elastigo.Conn
-	indexer      *elastigo.BulkIndexer
-	started      atomic.Value
-	quit         chan bool
-	wg           sync.WaitGroup
-	index        *ElasticIndex
-	maxConns     int
-	retrySeconds int
-	bulkMaxDocs  int
-	bulkMaxDelay int
+	connection *elastigo.Conn
+	indexer    *elastigo.BulkIndexer
+	started    atomic.Value
+	quit       chan bool
+	wg         sync.WaitGroup
+	name       string
+	mappings   Mappings
+	indexCfg   IndexConfig
+	connCfg    ConnConfig
+	index      *ElasticIndex
 }
 
 // ErrBadConfig error bad configuration file
@@ -134,25 +143,29 @@ func (e *ElasticIndex) increaseEntries() {
 	e.entriesCounter++
 }
 
-func getIndexPath(name string) string {
+func getTimeNow() string {
 	t := time.Now()
-	return fmt.Sprintf("skydive_%s_v%d_%d-%02d-%02d_%02d-%02d-%02d",
-		name, indexVersion, t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	return fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d",
+		t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+}
+
+func (c *ElasticSearchClient) getIndexPath() string {
+	return fmt.Sprintf("%s_%s_v%d_%s", indexPrefix, c.name, indexVersion, getTimeNow())
 }
 
 // Get the rolling alias which points to the currently active index
 func (c *ElasticSearchClient) GetIndexAlias() string {
-	return fmt.Sprintf("%s_%s", indexPrefix, c.index.name)
+	return fmt.Sprintf("%s_%s", indexPrefix, c.name)
 }
 
 // Get the alias which points to all Skydive indices
 func (c *ElasticSearchClient) GetIndexAllAlias() string {
-	return fmt.Sprintf("%s_%s_%s", indexPrefix, c.index.name, indexAllAlias)
+	return fmt.Sprintf("%s_%s_%s", indexPrefix, c.name, indexAllAlias)
 }
 
 func (c *ElasticSearchClient) countEntries() int {
 	curEntriesCount, _ := c.connection.Count(c.index.path, "", nil, "")
-	logging.GetLogger().Debugf("%s real entries in %s is %d", c.index.name, c.index.path, curEntriesCount.Count)
+	logging.GetLogger().Debugf("%s real entries in %s is %d", c.name, c.index.path, curEntriesCount.Count)
 	return curEntriesCount.Count
 }
 
@@ -210,7 +223,7 @@ func (c *ElasticSearchClient) createAlias() error {
 }
 
 func (c *ElasticSearchClient) addMappings() error {
-	for _, document := range c.index.mappings {
+	for _, document := range c.mappings {
 		for obj, mapping := range document {
 			if err := c.connection.PutMappingFromJSON(c.index.path, obj, []byte(mapping)); err != nil {
 				return fmt.Errorf("Unable to create %s mapping: %s", obj, err.Error())
@@ -226,12 +239,8 @@ func (c *ElasticSearchClient) timeCreated() time.Time {
 	return time.Now()
 }
 
-func (c *ElasticSearchClient) createIndex(name string) error {
-	if name == "" {
-		name = c.index.name
-	}
-	c.index.path = getIndexPath(name)
-	c.index.name = name
+func (c *ElasticSearchClient) createIndex() error {
+	c.index.path = c.getIndexPath()
 
 	if _, err := c.connection.OpenIndex(c.index.path); err != nil {
 		if _, err := c.connection.CreateIndex(c.index.path); err != nil {
@@ -244,14 +253,11 @@ func (c *ElasticSearchClient) createIndex(name string) error {
 	return c.addMappings()
 }
 
-func (c *ElasticSearchClient) start(name string, mappings []map[string][]byte, limits ElasticLimits) error {
-	c.index = &ElasticIndex{
-		mappings: mappings,
-		limits:   limits,
-	}
+func (c *ElasticSearchClient) start() error {
+	c.index = &ElasticIndex{}
 
-	if err := c.createIndex(name); err != nil {
-		logging.GetLogger().Errorf("Failed to create index %s", name)
+	if err := c.createIndex(); err != nil {
+		logging.GetLogger().Errorf("Failed to create index %s", c.name)
 		return err
 	}
 
@@ -263,7 +269,7 @@ func (c *ElasticSearchClient) start(name string, mappings []map[string][]byte, l
 	c.indexer.Start()
 	c.started.Store(true)
 
-	logging.GetLogger().Infof("ElasticSearchStorage started with skydive index %s", c.index.name)
+	logging.GetLogger().Infof("ElasticSearchStorage started with skydive index %s", c.name)
 
 	return nil
 }
@@ -404,34 +410,34 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 }
 
 func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
-	if c.index.limits.EntriesLimit == 0 {
+	if c.indexCfg.EntriesLimit == 0 {
 		return false
 	}
-	logging.GetLogger().Debugf("%s entries counter is %d", c.index.name, c.index.entriesCounter)
-	if c.index.entriesCounter < c.index.limits.EntriesLimit {
+	logging.GetLogger().Debugf("%s entries counter is %d", c.name, c.index.entriesCounter)
+	if c.index.entriesCounter < c.indexCfg.EntriesLimit {
 		return false
 	}
 	c.indexer.Flush()
 	time.Sleep(1 * time.Second)
 
 	c.index.entriesCounter = c.countEntries()
-	if c.index.entriesCounter < c.index.limits.EntriesLimit {
+	if c.index.entriesCounter < c.indexCfg.EntriesLimit {
 		return false
 	}
-	logging.GetLogger().Debugf("%s enough entries to roll", c.index.name)
+	logging.GetLogger().Debugf("%s enough entries to roll", c.name)
 	return true
 }
 
 func (c *ElasticSearchClient) shouldRollIndexByAge() bool {
-	if c.index.limits.AgeLimit == 0 {
+	if c.indexCfg.AgeLimit == 0 {
 		return false
 	}
 	age := int(time.Now().Sub(c.index.timeCreated).Seconds())
-	logging.GetLogger().Debugf("%s age is %d", c.index.name, age)
-	if age < c.index.limits.AgeLimit {
+	logging.GetLogger().Debugf("%s age is %d", c.name, age)
+	if age < c.indexCfg.AgeLimit {
 		return false
 	}
-	logging.GetLogger().Debugf("%s old enough to roll", c.index.name)
+	logging.GetLogger().Debugf("%s old enough to roll", c.name)
 	return true
 }
 
@@ -440,7 +446,7 @@ func (c *ElasticSearchClient) shouldRollIndex() bool {
 }
 
 func (c *ElasticSearchClient) delIndices() {
-	if c.index.limits.IndicesLimit == 0 {
+	if c.indexCfg.IndicesLimit == 0 {
 		return
 	}
 
@@ -449,13 +455,13 @@ func (c *ElasticSearchClient) delIndices() {
 		return indices[i].Name < indices[j].Name
 	})
 
-	numToDel := len(indices) - c.index.limits.IndicesLimit
+	numToDel := len(indices) - c.indexCfg.IndicesLimit
 	if numToDel <= 0 {
 		return
 	}
 
 	for _, esIndex := range indices[:numToDel] {
-		logging.GetLogger().Debugf("Deleting index of %s: %s", c.index.name, esIndex.Name)
+		logging.GetLogger().Debugf("Deleting index of %s: %s", c.name, esIndex.Name)
 		if _, err := c.connection.DeleteIndex(esIndex.Name); err != nil {
 			logging.GetLogger().Errorf("Error deleting index %s: %s", esIndex.Name, err.Error())
 		}
@@ -469,20 +475,20 @@ func (c *ElasticSearchClient) rollIndex() error {
 
 	c.indexer.Stop()
 	c.stopErrorReader()
-	c.indexer = newBulkIndexer(c.connection, c.maxConns, c.retrySeconds, c.bulkMaxDocs, c.bulkMaxDelay)
+	c.indexer = newBulkIndexer(c.connection, c.connCfg)
 	c.indexer.Start()
 	c.startErrorReader()
 
-	logging.GetLogger().Infof("Rolling indices for %s", c.index.name)
+	logging.GetLogger().Infof("Rolling indices for %s", c.name)
 
-	if err := c.createIndex(""); err != nil {
+	if err := c.createIndex(); err != nil {
 		return err
 	}
 	if err := c.createAlias(); err != nil {
 		return err
 	}
 
-	logging.GetLogger().Infof("%s finished rolling indices", c.index.name)
+	logging.GetLogger().Infof("%s finished rolling indices", c.name)
 	return nil
 }
 
@@ -608,10 +614,10 @@ func (c *ElasticSearchClient) stopErrorReader() {
 }
 
 // Start the Elasticsearch client background jobs
-func (c *ElasticSearchClient) Start(name string, mappings []map[string][]byte, limits ElasticLimits) {
+func (c *ElasticSearchClient) Start() {
 	c.startErrorReader()
 	for {
-		err := c.start(name, mappings, limits)
+		err := c.start()
 		if err == nil {
 			break
 		}
@@ -636,72 +642,86 @@ func (c *ElasticSearchClient) Stop() {
 func (c *ElasticSearchClient) Started() bool {
 	return c.started.Load() == true
 }
-func newBulkIndexer(c *elastigo.Conn, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) *elastigo.BulkIndexer {
-	indexer := c.NewBulkIndexer(maxConns)
-	indexer.RetryForSeconds = retrySeconds
-	if bulkMaxDocs > 0 {
-		indexer.BulkMaxDocs = bulkMaxDocs
+
+func newBulkIndexer(c *elastigo.Conn, connCfg ConnConfig) *elastigo.BulkIndexer {
+	indexer := c.NewBulkIndexer(connCfg.MaxConns)
+	indexer.RetryForSeconds = connCfg.RetrySeconds
+	if connCfg.BulkMaxDocs > 0 {
+		indexer.BulkMaxDocs = connCfg.BulkMaxDocs
 
 		// set chan to 80% of max doc
-		if bulkMaxDocs > 100 {
-			indexer.BulkChannel = make(chan []byte, int(float64(bulkMaxDocs)*0.8))
+		if connCfg.BulkMaxDocs > 100 {
+			indexer.BulkChannel = make(chan []byte, int(float64(connCfg.BulkMaxDocs)*0.8))
 		}
 	}
+
 	// override the default error chan size
 	indexer.ErrorChannel = make(chan *elastigo.ErrorBuffer, 100)
 
-	if bulkMaxDelay > 0 {
-		indexer.BufferDelayMax = time.Duration(bulkMaxDelay) * time.Second
+	if connCfg.BulkMaxDelay > 0 {
+		indexer.BufferDelayMax = time.Duration(connCfg.BulkMaxDelay) * time.Second
 	}
 
 	return indexer
 }
 
-// NewElasticSearchClient creates a new ElasticSearch client
-func NewElasticSearchClient(url *url.URL, maxConns int, retrySeconds int, bulkMaxDocs int, bulkMaxDelay int) (*ElasticSearchClient, error) {
+func urlFromHost(host string) (*url.URL, error) {
+	urlStr := host
+	if !strings.HasPrefix(urlStr, "http://") && !strings.HasPrefix(urlStr, "https://") {
+		urlStr = "http://" + urlStr
+	}
+
+	url, err := url.Parse(urlStr)
+	if err != nil || url.Port() == "" {
+		return nil, ErrBadConfig
+	}
+	return url, nil
+}
+
+func NewConnConfig(path string) ConnConfig {
+	connCfg := ConnConfig{}
+
+	connCfg.ElasticHost = config.GetString(path + ".host")
+	connCfg.MaxConns = config.GetInt(path + ".maxconns")
+	connCfg.RetrySeconds = config.GetInt(path + ".retry")
+	connCfg.BulkMaxDocs = config.GetInt(path + ".bulk_maxdocs")
+	connCfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")
+
+	return connCfg
+}
+
+// NewElasticSearchClient creates a new ElasticSearch client based on configuration
+func NewElasticSearchClient(name string, mappings Mappings, indexCfg IndexConfig, connCfg ConnConfig) (*ElasticSearchClient, error) {
+
+	url, err := urlFromHost(connCfg.ElasticHost)
+	if err != nil {
+		return nil, err
+	}
+
+	if connCfg.MaxConns == 0 {
+		return nil, errors.New("maxconns has to be > 0")
+	}
+
 	c := elastigo.NewConn()
 
 	c.Protocol = url.Scheme
 	c.Domain = url.Hostname()
 	c.Port = url.Port()
 
-	indexer := newBulkIndexer(c, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
+	indexer := newBulkIndexer(c, connCfg)
 
 	client := &ElasticSearchClient{
-		connection:   c,
-		indexer:      indexer,
-		quit:         make(chan bool),
-		index:        nil,
-		maxConns:     maxConns,
-		retrySeconds: retrySeconds,
-		bulkMaxDocs:  bulkMaxDocs,
-		bulkMaxDelay: bulkMaxDelay,
+		connection: c,
+		indexer:    indexer,
+		quit:       make(chan bool),
+		index:      nil,
+		name:       name,
+		mappings:   mappings,
+		indexCfg:   indexCfg,
+		connCfg:    connCfg,
 	}
 
 	client.started.Store(false)
 
 	return client, nil
-}
-
-// NewElasticSearchClientFromConfig creates a new ElasticSearch client based on configuration
-func NewElasticSearchClientFromConfig() (*ElasticSearchClient, error) {
-	elasticHost := config.GetString("storage.elasticsearch.host")
-	if !strings.HasPrefix(elasticHost, "http://") && !strings.HasPrefix(elasticHost, "https://") {
-		elasticHost = "http://" + elasticHost
-	}
-
-	url, err := url.Parse(elasticHost)
-	if err != nil || url.Port() == "" {
-		return nil, ErrBadConfig
-	}
-
-	maxConns := config.GetInt("storage.elasticsearch.maxconns")
-	if maxConns == 0 {
-		return nil, errors.New("storage.elasticsearch.maxconns has to be > 0")
-	}
-	retrySeconds := config.GetInt("storage.elasticsearch.retry")
-	bulkMaxDocs := config.GetInt("storage.elasticsearch.bulk_maxdocs")
-	bulkMaxDelay := config.GetInt("storage.elasticsearch.bulk_maxdelay")
-
-	return NewElasticSearchClient(url, maxConns, retrySeconds, bulkMaxDocs, bulkMaxDelay)
 }

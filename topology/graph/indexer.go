@@ -76,7 +76,7 @@ func (i *GraphIndexer) cacheNode(n *Node, kv map[string]interface{}) {
 	} else {
 		// Node already was in the cache
 		if !i.appendOnly {
-			for h, _ := range hashes {
+			for h := range hashes {
 				if _, found := kv[h]; !found {
 					i.unindex(n.ID, h)
 				}
@@ -98,7 +98,7 @@ func (i *GraphIndexer) forgetNode(n *Node) {
 
 	if hashes, found := i.nodeToHashes[n.ID]; found {
 		delete(i.nodeToHashes, n.ID)
-		for h, _ := range hashes {
+		for h := range hashes {
 			delete(i.hashToValues[h], n.ID)
 		}
 
