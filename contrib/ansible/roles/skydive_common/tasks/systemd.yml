@@ -1,5 +1,5 @@
 ---
-- name: generate systemd unit file
+- name: Generate systemd unit file
   become: true
   template:
     src: "{{ role_path }}/templates/skydive.service.j2"
