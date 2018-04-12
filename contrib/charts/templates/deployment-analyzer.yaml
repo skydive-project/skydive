@@ -54,9 +54,9 @@ spec:
         - name: SKYDIVE_ANALYZER_TOPOLOGY_PROBES
           value: "k8s"
         - name: SKYDIVE_UI_TOPOLOGY_FAVORITES
-          value: '{"Infrastructure":"G.V().Has(\"Manager\", NE(\"k8s\"))","Kubernetes":"G.V().Has(\"Manager\", \"k8s\")"}'
+          value: '{"infrastructure":"G.V().Has(\"Manager\", NE(\"k8s\"))","kubernetes":"G.V().Has(\"Manager\", \"k8s\")"}'
         - name: SKYDIVE_UI_TOPOLOGY_DEFAULT_FILTER
-          value: 'G.V().Has("Manager", NE("k8s"))'
+          value: 'infrastructure'
         - name: SKYDIVE_UI_THEME
           value: "light"
         - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
