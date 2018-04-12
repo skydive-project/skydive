@@ -1479,7 +1479,11 @@ TopologyGraphLayout.prototype = {
       self.g.select("#link-" + d.link.id)
       .classed ("link-label-active", false)
       .classed ("link-label-warning", false)
-      .classed ("link-label-alert", false);
+      .classed ("link-label-alert", false)
+      .style("stroke-dasharray", "")
+      .style("stroke-dashoffset", "")
+      .style("animation", "")
+      .style("stroke", "");
     });
 
     exit.remove();
