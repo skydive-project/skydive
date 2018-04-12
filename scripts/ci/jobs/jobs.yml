@@ -447,6 +447,35 @@
       - chuck-norris
 
 - job:
+    name: skydive-create-vagrant-boxes
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    node: slaves
+    triggers:
+      - github
+    scm:
+      - git:
+          url: https://github.com/skydive-project/skydive
+          browser: githubweb
+          browser-url: http://github.com/skydive-project/skydive
+          timeout: 20
+          basedir: src/github.com/skydive-project/skydive
+          per-build-tag: false
+          skip-tag: true
+          branches:
+            - master
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: vagrantcloud-token
+              variable: VAGRANTCLOUD_TOKEN
+    builders:
+      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-vagrant-boxes.sh
+    publishers:
+      - chuck-norris
+
+- job:
     name: skydive-devstack-tests
     defaults: skydive
     properties:

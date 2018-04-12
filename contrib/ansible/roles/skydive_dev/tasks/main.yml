@@ -35,6 +35,7 @@
      - clang-devel
      - elfutils-libelf-devel
      - kubernetes-client
+     - jq
 
 - service:
     name: "{{ item }}"
