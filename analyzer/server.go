@@ -231,7 +231,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g)
+	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g, config.GetConfig().GetBool("analyzer.capture_enabled"))
 	if err != nil {
 		return nil, err
 	}
@@ -241,12 +241,12 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer)
+	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, config.GetConfig().GetBool("analyzer.packet_injection_enabled"))
 	if err != nil {
 		return nil, err
 	}
-
 	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
+
 	alertAPIHandler, err := api.RegisterAlertAPI(apiServer)
 	if err != nil {
 		return nil, err

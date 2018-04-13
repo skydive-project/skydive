@@ -99,6 +99,9 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *types
 	toRegister := func(node *graph.Node, capture *types.Capture) (nodeID graph.Identifier, host string, register bool) {
 		o.graph.RLock()
 		defer o.graph.RUnlock()
+		if !config.GetConfig().GetBool("analyzer.capture_enabled") {
+			return
+		}
 
 		// check not already registered
 		o.RLock()
@@ -148,6 +151,7 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *types
 }
 
 func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
+
 	cq := ondemand.CaptureQuery{
 		NodeID:  np.id,
 		Capture: *np.capture,
@@ -380,6 +384,10 @@ func (o *OnDemandProbeClient) Stop() {
 
 // InvokeCaptureFromConfig invokes capture based on preconfigured selected SubGraph
 func (o *OnDemandProbeClient) InvokeCaptureFromConfig(ch *api.CaptureAPIHandler) {
+	is_capture_enabled := config.GetConfig().GetBool("analyzer.capture_enabled")
+	if !is_capture_enabled {
+		return
+	}
 	gremlin := config.GetString("analyzer.startup.capture_gremlin")
 	bpf := config.GetString("analyzer.startup.capture_bpf")
 	if gremlin == "" {

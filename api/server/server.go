@@ -64,6 +64,13 @@ func writeError(w http.ResponseWriter, status int, err error) {
 	w.Write([]byte(err.Error()))
 }
 
+// RegisterNotAllowedAPIHandler registers a new handler for unpermitted use of API
+func (a *Server) RegisterNotAllowedAPIHandler(handler Handler) {
+	a.HTTPServer.Router.PathPrefix("/api/" + handler.Name()).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+}
+
 // RegisterAPIHandler registers a new handler for an API
 func (a *Server) RegisterAPIHandler(handler Handler) error {
 	name := handler.Name()

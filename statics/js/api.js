@@ -89,6 +89,9 @@ var apiMixin = {
         method: 'GET',
       })
       .fail(function(e) {
+        if (e.status === 405) { // not allowed
+          return $.Deferred().promise([]);
+        }
         self.$error({message: 'Capture list error: ' + e.responseText});
         return e;
       });
