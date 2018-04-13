@@ -38,8 +38,7 @@ BuildRequires:  llvm clang kernel-headers
 # generate the list of the Go libraries bundled into the Skydive binaries
 ### AUTO-BUNDLED-GEN-ENTRY-POINT
 
-# e.g. el6 has ppc64 arch without gcc-go, so EA tag is required
-ExclusiveArch:  %{?go_arches:%{go_arches}}%{!?go_arches:%{ix86} x86_64 %{arm}}
+ExclusiveArch: x86_64
 # If go_compiler is not set to 1, there is no virtual provide. Use golang instead.
 BuildRequires:  %{?go_compiler:compiler(go-compiler)}%{!?go_compiler:golang} >= 1.8
 
