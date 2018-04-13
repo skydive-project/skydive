@@ -143,7 +143,7 @@ var TopologyComponent = {
         </div>\
       </div>\
       <div id="right-panel" class="col-sm-5 fill">\
-        <tabs v-if="isAnalyzer">\
+        <tabs v-if="isAnalyzer" :active="!isCaptureEnabled ? 2 : 0">\
           <tab-pane title="Captures" v-if="isCaptureEnabled">\
             <capture-list></capture-list>\
             <capture-form v-if="topologyMode ===  \'live\'"></capture-form>\
