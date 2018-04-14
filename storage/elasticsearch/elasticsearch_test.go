@@ -76,7 +76,7 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 		t.Fatalf("Failed to index entry %d: %s", limits.EntriesLimit, err.Error())
 	}
 	time.Sleep(1 * time.Second)
-	if client.shouldRollIndex() {
+	if !client.shouldRollIndex() {
 		t.Fatalf("Index should have rolled after %d entries", limits.EntriesLimit)
 	}
 

@@ -412,7 +412,7 @@ func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
 		return false
 	}
 	c.indexer.Flush()
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	c.index.entriesCounter = c.countEntries()
 	if c.index.entriesCounter < c.index.limits.EntriesLimit {
