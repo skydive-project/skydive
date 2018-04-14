@@ -525,7 +525,7 @@ func initBackend(limits elasticsearch.ElasticLimits, name string) (*ElasticSearc
 // test active nodes after rolling elasticsearch indices
 func TestElasticsearcActiveNodes(t *testing.T) {
 	limits := elasticsearch.NewElasticLimitsFromConfig("storage.elasticsearch")
-	limits.EntriesLimit = 3
+	limits.EntriesLimit = 10
 	name := "test_nodes"
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
@@ -542,10 +542,10 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 
 	g.NodeAdded(node)
 	for i := 1; i <= limits.EntriesLimit+1; i++ {
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 		g.SetMetadata(node, Metadata{"Temp": i})
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	activeNodes := len(backend.GetNodes(GraphContext{nil, false}, nil))
 	if activeNodes != 1 {
@@ -560,7 +560,7 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 // test active edges after rolling elasticsearch indices
 func TestElasticsearcActiveEdges(t *testing.T) {
 	limits := elasticsearch.NewElasticLimitsFromConfig("storage.elasticsearch")
-	limits.EntriesLimit = 3
+	limits.EntriesLimit = 10
 	name := "test_edges"
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
@@ -581,13 +581,13 @@ func TestElasticsearcActiveEdges(t *testing.T) {
 	g.NodeAdded(node2)
 	g.EdgeAdded(edge)
 	for i := 1; i < limits.EntriesLimit; i++ {
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 		g.SetMetadata(edge, Metadata{"Temp": i})
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	activeEdges := len(backend.GetEdges(GraphContext{nil, false}, nil))
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 	if activeEdges != 1 {
 		t.Fatalf("Found %d active edges instead of 1", activeEdges)
 	}
