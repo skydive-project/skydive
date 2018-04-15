@@ -108,6 +108,7 @@ debug.agent:
 debug.analyzer:
 	$(call skydive_debug,analyzer)
 
+.PHONY: .proto
 .proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES}
 	protoc --go_out . ${FLOW_PROTO_FILES}
 	protoc --go_out . ${FILTERS_PROTO_FILES}
@@ -129,18 +130,22 @@ BINDATA_DIRS := \
 	statics/js/components/* \
 	${EXTRABINDATA}
 
+.PHONY: .bindata
 .bindata: builddep ebpf.build
 	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 
+.PHONY: compile
 compile:
 	$(GOVENDOR) install \
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
 		${GOFLAGS} -tags="${BUILDTAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
 
+.PHONY: skydive
 skydive: govendor genlocalfiles dpdk.build contribs compile
 
+.PHONY: skydive.cleanup
 skydive.cleanup:
 	go clean -i $(SKYDIVE_GITHUB)
 
@@ -174,6 +179,7 @@ endif
 
 STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
 
+.PHONY: static
 static: skydive.cleanup govendor genlocalfiles
 	$(GOVENDOR) install \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
@@ -181,40 +187,51 @@ static: skydive.cleanup govendor genlocalfiles
 		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS}" \
 		-installsuffix netgo || true
 
+.PHONY: contribs.cleanup
 contribs.cleanup:
 	$(MAKE) -C contrib/snort clean
 
+.PHONY: contribs
 contribs:
 	$(MAKE) -C contrib/snort
 
+.PHONY: dpdk.build
 dpdk.build:
 ifeq ($(WITH_DPDK), true)
 	$(MAKE) -C dpdk
 endif
 
+.PHONY: dpdk.cleanup
 dpdk.cleanup:
 	$(MAKE) -C dpdk clean
 
+.PHONY: ebpf.build
 ebpf.build:
 ifeq ($(WITH_EBPF), true)
 	$(MAKE) -C probe/ebpf
 endif
 
+.PHONY: ebpf.clean
 ebpf.clean:
 	$(MAKE) -C probe/ebpf clean
 
+.PHONY: test.functionals.cleanup
 test.functionals.cleanup:
 	rm -f tests/functionals
 
+.PHONY: test.functionals.compile
 test.functionals.compile: govendor genlocalfiles
 	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
+.PHONY: test.functionals.run
 test.functionals.run:
 	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS} ${EXTRA_ARGS}
 
+.PHONY: tests.functionals.all
 test.functionals.all: test.functionals.compile
 	$(MAKE) TIMEOUT="8m" ARGS="${ARGS} ${EXTRA_ARGS}" test.functionals.run
 
+.PHONY: test.functionals.batch
 test.functionals.batch: test.functionals.compile
 ifneq ($(TEST_PATTERN),)
 	set -e ; $(MAKE) ARGS="${ARGS} ${EXTRA_ARGS} -test.run ${TEST_PATTERN}" test.functionals.run
@@ -222,14 +239,17 @@ else
 	set -e ; $(MAKE) ARGS="${ARGS} ${EXTRA_ARGS}" test.functionals.run
 endif
 
+.PHONY: test.functionals
 test.functionals: test.functionals.compile
 	for functest in ${FUNC_TESTS} ; do \
 		$(MAKE) ARGS="-test.run $$functest$$\$$ ${ARGS} ${EXTRA_ARGS}" test.functionals.run; \
 	done
 
+.PHONY: functional
 functional:
 	$(MAKE) test.functionals VERBOSE=true TIMEOUT=10m ARGS='-standalone'
 
+.PHONY: test
 test: govendor genlocalfiles
 ifeq ($(COVERAGE), true)
 	set -v ; \
@@ -250,17 +270,20 @@ else
 endif
 endif
 
+.PHONY: govendor
 govendor:
 	go get github.com/kardianos/govendor
 	$(GOVENDOR) sync
 	patch -p0 < dpdk/dpdk.govendor.patch
 	rm -rf vendor/github.com/weaveworks/tcptracer-bpf/vendor/github.com/
 
+.PHONY: fmt
 fmt: govendor genlocalfiles
 	@echo "+ $@"
 	@test -z "$$($(GOVENDOR) fmt +local)" || \
 		(echo "+ please format Go code with 'gofmt -s'" && /bin/false)
 
+.PHONY: vet
 vet: govendor
 	@echo "+ $@"
 	test -z "$$($(GOVENDOR) tool vet $$( \
@@ -272,29 +295,50 @@ vet: govendor
 		| grep -v 'exit status 1' \
 		)"
 
+.PHONY: check
 check: govendor
 	@test -z "$$($(GOVENDOR) list +u)" || \
 		(echo -e "You must remove these unused packages:\n$$($(GOVENDOR) list +u)" && /bin/false)
 
-ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl:
+LINTER_COMMANDS := \
+	aligncheck \
+	deadcode \
+	dupl \
+	errcheck \
+	gocyclo \
+	golint \
+	goimports \
+	gotype \
+	ineffassign \
+	interfacer \
+	structcheck \
+	varcheck
+
+.PHONY: $(LINTER_COMMANDS)
+$(LINTER_COMMANDS):
 	@go get github.com/alecthomas/gometalinter
 	@command -v $@ >/dev/null || gometalinter --install --update
 
-gometalinter: ineffassign interfacer golint goimports varcheck structcheck aligncheck deadcode gotype errcheck gocyclo dupl
+.PHONY: gometalinter
+gometalinter: $(LINTER_COMMANDS)
 
+.PHONY: lint
 lint: gometalinter
 	@echo "+ $@"
 	@gometalinter --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json > lint.json || true
 	cat lint.json
 
 # dependency package need for building the project
+.PHONY: builddep
 builddep:
 	go get github.com/golang/protobuf/proto
 	go get github.com/golang/protobuf/protoc-gen-go
 	go get github.com/jteeuwen/go-bindata/...
 
+.PHONY: genlocalfiles
 genlocalfiles: .proto .bindata
 
+.PHONY: clean
 clean: skydive.cleanup test.functionals.cleanup dpdk.cleanup contribs.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
@@ -309,28 +353,35 @@ doc:
 	git commit -a -m "Documentation update"
 	git push -f gerrit gh-pages
 
+.PHONY: doctest
 doctest:
 	hugo server run -t hugo-material-docs -s doc -b http://localhost:1313/skydive
 
+.PHONY: srpm
 srpm:
 	contrib/packaging/rpm/generate-skydive-bootstrap.sh -s ${BOOTSTRAP_ARGS}
 
+.PHONY: rpm
 rpm:
 	contrib/packaging/rpm/generate-skydive-bootstrap.sh -b ${BOOTSTRAP_ARGS}
 
+.PHONY: docker-image
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
 	sudo -E docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
 
+.PHONY: vendor
 vendor: govendor check
 	tar cvzf vendor.tar.gz vendor/
 
+.PHONY: localdist
 localdist: govendor genlocalfiles
 	tar -C $$GOPATH --transform "s/^src/$(SKYDIVE_PKG)\/src/" \
 		--exclude=src/$(SKYDIVE_GITHUB)/rpmbuild \
 		--exclude=src/$(SKYDIVE_GITHUB)/.git \
 		-cvzf ${DESTDIR}/$(SKYDIVE_PKG).tar.gz src/$(SKYDIVE_GITHUB)
 
+.PHONY: dist
 dist:
 	tmpdir=`mktemp -d -u --suffix=skydive-pkg`; \
 	godir=$${tmpdir}/$(SKYDIVE_PKG); \
