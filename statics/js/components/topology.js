@@ -171,6 +171,20 @@ var TopologyComponent = {
                 <h1>Rules</h1>\
                 <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
               </div>\
+              <div v-if="currentNode.metadata.RoutingTable">\
+                <h1>\
+                  <a data-toggle="collapse" href="#interface-routing-table-panel" class="collapse-title">\
+                    Routing tables\
+                    <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
+                  </a>\
+                </h1>\
+                <div id="interface-routing-table-panel" class="collapse out">\
+                  <div v-for="rt in currentNode.metadata.RoutingTable">\
+                    <h2>src: {{rt.Src || "none"}}<span class="pull-right">(id: {{rt.Id}})</span></h2>\
+                    <routing-table :rt="rt"></routing-table>\
+                  </div>\
+                </div>\
+              </div>\
               <div v-show="Object.keys(currentNodeMetric).length">\
                 <h1>\
                   <a data-toggle="collapse" href="#interface-metrics-panel" class="collapse-title">\
@@ -409,7 +423,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return {};
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable']);
     },
 
     currentNodeMetric: function() {
