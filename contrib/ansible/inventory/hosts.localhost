@@ -1,0 +1,12 @@
+[skydive:children]
+analyzers
+agents
+
+[skydive:vars]
+skydive_listen_ip=0.0.0.0
+
+[analyzers]
+localhost ansible_connection=local
+
+[agents]
+localhost ansible_connection=local

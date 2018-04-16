@@ -1,95 +1,38 @@
 ---
-- name: ensures skydive configuration folder exists
+- name: Ensures skydive configuration folder exists
   file:
     path: "{{ skydive_config_file | dirname }}"
     state: directory
 
-- get_url:
+- name: Download default config file
+  get_url:
     url: https://raw.githubusercontent.com/skydive-project/skydive/{{ skydive_release }}/etc/skydive.yml.default
     dest: "{{ skydive_config_file }}"
     mode: 0644
+    force: no
   ignore_errors: yes
 
-- copy:
+- name: Create empty config file is needed
+  copy:
     content: ""
     dest: "{{ skydive_config_file }}"
     mode: 0644
     force: no
 
-- yedit:
+- name: Set host ID
+  yedit:
     src: "{{ skydive_config_file }}"
     key: host_id
     value: "{{ ansible_hostname }}"
 
-- yedit:
+- name: Set analyzers list
+  yedit:
     src: "{{ skydive_config_file }}"
     key: analyzers
     value: "{{ analyzers.split(',') }}"
 
-- yedit:
-    src: "{{ skydive_config_file }}"
-    key: "auth.type"
-    value: "{{ skydive_auth_type }}"
-    state: present
-  when: skydive_auth_type is defined
-
-- yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.keystone.auth_url"
-          value: "{{ os_auth_url }}"
-        - key: "auth.keystone.tenant_name"
-          value: "{{ os_tenant_name }}"
-        - key: "auth.analyzer_username"
-          value: "{{ os_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ os_password }}"
-        - key: "auth.keyston.tenant_name"
-          value: "{{ os_tenant_name }}"
-    state: present
-  when: skydive_auth_type == "keystone"
-
-- yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.basic.file"
-          value: "{{ skydive_basic_auth_file}}"
-        - key: "auth.analyzer_username"
-          value: "{{ skydive_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ skydive_password }}"
-    state: present
-  when: skydive_auth_type == "basic"
-
-- htpasswd:
-    path: "{{ skydive_basic_auth_file }}"
-    name: "{{ skydive_username }}"
-    password: "{{ skydive_password }}"
-    owner: root
-    group: root
-    mode: 0640
-  when: skydive_auth_type == "basic"
-
-- yedit:
-    src: "{{ skydive_config_file }}"
-    key: "agent.topology.neutron"
-    state: absent
-
-- yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "agent.topology.neutron.auth_url"
-          value: "{{ os_auth_url }}"
-        - key: "agent.topology.neutron.username"
-          value: "{{ os_username }}"
-        - key: "agent.topology.neutron.password"
-          value: "{{ os_password }}"
-        - key: "agent.topology.neutron.tenant_name"
-          value: "{{ os_tenant_name }}"
-    state: present
-  when: keystone_url is defined
-
-- yedit:
+- name: Set extra config vars
+  yedit:
     src: "{{ skydive_config_file }}"
     key: "{{ item.key }}"
     value: "{{ item.value }}"

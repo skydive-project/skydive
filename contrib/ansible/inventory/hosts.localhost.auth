@@ -1,0 +1,17 @@
+[skydive:children]
+analyzers
+agents
+
+[skydive:vars]
+skydive_listen_ip=0.0.0.0
+skydive_username=admin
+skydive_password=secret
+
+[analyzers]
+localhost ansible_connection=local
+
+[analyzers:vars]
+skydive_auth_type=basic
+
+[agents]
+localhost ansible_connection=local

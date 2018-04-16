@@ -1,0 +1,96 @@
+---
+- name: Set fabric nodes
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: analyzer.topology.fabric
+    value: "{{ skydive_fabric }}"
+  when: skydive_fabric is defined
+
+- name: Setup Etcd mode embedded/external
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: etcd.embedded
+    value: "{{ skydive_etcd_embedded and hostvars[groups['analyzers'][0]].ansible_hostname == hostvars[inventory_hostname].ansible_hostname }}"
+
+- name: Setup analyzer listen address for container mode
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "analyzer.listen"
+    value: "0.0.0.0:{{ skydive_analyzer_port }}"
+  when: skydive_deployment_mode == "container"
+
+- name: Setup analyzer listen address for non container mode
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "analyzer.listen"
+    value: "{{ skydive_analyzer_ip }}:{{ skydive_analyzer_port }}"
+  when: skydive_deployment_mode != "container"
+
+- name: Setup Etcd listen addresses for container mode
+  yedit: 
+    src: "{{ skydive_config_file }}"
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    etcd.listen: "0.0.0.0:{{ skydive_etcd_port }}"
+    etcd.servers: "http://localhost:{{ skydive_etcd_port }}"
+  when: skydive_deployment_mode == "container"
+
+- name: Setup Etcd listen addresses for non container mode
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    etcd.listen: "{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
+    etcd.servers:
+    - "http://{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
+  when: skydive_deployment_mode != "container"
+
+- name: Define auth type
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "auth.type"
+    value: "{{ skydive_auth_type }}"
+    state: present
+  when: skydive_auth_type is not none
+
+- name: Define Keystone auth parameters
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "auth.keystone.auth_url"
+          value: "{{ os_auth_url }}"
+        - key: "auth.keystone.tenant_name"
+          value: "{{ os_tenant_name }}"
+        - key: "auth.analyzer_username"
+          value: "{{ os_username }}"
+        - key: "auth.analyzer_password"
+          value: "{{ os_password }}"
+        - key: "auth.keystone.domain_name"
+          value: "{{ os_domain_name }}"
+    state: present
+  when: skydive_auth_type == "keystone"
+
+- name: Define basic auth parameters
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "auth.basic.file"
+          value: "{{ skydive_basic_auth_file}}"
+        - key: "auth.analyzer_username"
+          value: "{{ skydive_username }}"
+        - key: "auth.analyzer_password"
+          value: "{{ skydive_password }}"
+    state: present
+  when: skydive_auth_type == "basic"
+
+- name: Create basic auth secret file
+  htpasswd:
+    path: "{{ skydive_basic_auth_file }}"
+    name: "{{ skydive_username }}"
+    password: "{{ skydive_password }}"
+    owner: root
+    group: root
+    mode: 0640
+  when: skydive_auth_type == "basic"

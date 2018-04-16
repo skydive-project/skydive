@@ -1,5 +1,5 @@
 ---
-- name: copy skydive binary
+- name: Copy skydive binary
   copy:
     src: "{{ skydive_binary_remote_location | replace('file://', '') }}"
     dest: "{{ skydive_binary_location }}"
@@ -7,7 +7,7 @@
     mode: 0755
   when: '"file://" in skydive_binary_remote_location'
 
-- name: download skydive binary
+- name: Download skydive binary
   get_url:
     url: "{{ skydive_binary_remote_location }}"
     dest: "{{ skydive_binary_location }}"

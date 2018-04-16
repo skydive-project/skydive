@@ -1,0 +1,23 @@
+---
+- name: Clean-up neutron probe section
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "agent.topology.neutron"
+    state: absent
+
+- name: Setup neutron probe section
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "agent.topology.neutron.auth_url"
+          value: "{{ os_auth_url }}"
+        - key: "agent.topology.neutron.username"
+          value: "{{ os_username }}"
+        - key: "agent.topology.neutron.password"
+          value: "{{ os_password }}"
+        - key: "agent.topology.neutron.tenant_name"
+          value: "{{ os_tenant_name }}"
+        - key: "agent.topology.neutron.domain_name"
+          value: "{{ os_domain_name }}"
+    state: present
+  when: os_auth_url is defined

@@ -1,0 +1,25 @@
+[skydive:children]
+analyzers
+agents
+
+[skydive:vars]
+skydive_listen_ip=0.0.0.0
+skydive_etcd_port=12380
+skydive_deployment_mode=container
+
+skydive_auth_type=keystone
+
+os_auth_url=http://192.168.0.16/identity/v3
+os_username=admin
+os_password=secret
+os_tenant_name=admin
+os_domain_name=Default
+
+[analyzers]
+localhost ansible_connection=local
+
+[agents]
+localhost ansible_connection=local
+
+[agents:vars]
+skydive_extra_config={'agent.topology.probes': ['docker','neutron']}

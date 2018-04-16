@@ -19,37 +19,6 @@
         {%- else -%}
           {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
         {%- endif -%}
-- yedit:
-    src: "{{ skydive_config_file }}"
-    key: analyzer.topology.fabric
-    value: "{{ skydive_fabric }}"
-  when: skydive_fabric is defined
-
-- yedit:
-    src: "{{ skydive_config_file }}"
-    key: etcd.embedded
-    value: "{{ skydive_etcd_embedded and hostvars[groups['analyzers'][0]].ansible_hostname == hostvars[inventory_hostname].ansible_hostname }}"
-
-- yedit:
-    src: "{{ skydive_config_file }}"
-    key: "{{ item.key }}"
-    value: "{{ item.value }}"
-  with_dict:
-    analyzer.listen: "0.0.0.0:{{ skydive_analyzer_port }}"
-    etcd.listen: "0.0.0.0:{{ skydive_etcd_port }}"
-    etcd.servers: "http://localhost:{{ skydive_etcd_port }}"
-  when: skydive_deployment_mode == "container"
-
-- yedit:
-    src: "{{ skydive_config_file }}"
-    key: "{{ item.key }}"
-    value: "{{ item.value }}"
-  with_dict:
-    analyzer.listen: "{{ skydive_analyzer_ip }}:{{ skydive_analyzer_port }}"
-    etcd.listen: "{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
-    etcd.servers:
-    - "http://{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
-  when: skydive_deployment_mode != "container"
 
 - include: docker.yml
   when: skydive_deployment_mode == "container"
@@ -59,3 +28,5 @@
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
+
+- include: config.yml

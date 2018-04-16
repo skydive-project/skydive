@@ -7,3 +7,5 @@
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
+
+- include: config.yml

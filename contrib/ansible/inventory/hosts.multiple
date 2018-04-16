@@ -1,0 +1,12 @@
+[skydive:children]
+analyzers
+agents
+
+[skydive:vars]
+skydive_listen_ip=0.0.0.0
+
+[analyzers]
+10.0.0.4
+
+[agents]
+10.0.0.9

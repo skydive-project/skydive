@@ -1,9 +1,10 @@
 ---
-- package:
+- name: Install skydive analyzer package
+  package:
     name: skydive-analyzer
     state: present
 
-- name: start service
+- name: Start service
   service:
     name: skydive-analyzer
     state: started
