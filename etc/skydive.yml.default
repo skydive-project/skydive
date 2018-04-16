@@ -71,6 +71,17 @@ analyzer:
 
     # Max number of flows in write buffer (after which all flows accumulated are dropped)
     # max_flow_buffer_size: 100000
+    
+    # If a limit is specified, when the index reaches it, it is rolled.
+    # index_entries_limit specifies the maximum number of entries allowed in an index.
+    # index_age_limit specifies the maximum age (in seconds) allowed for an index.
+    # For both limits, a value of 0 specifies that there is no limitation.
+    # index_entries_limit: 0 
+    # index_age_limit: 0 
+
+    # The number of indices to keep before deleting.
+    # A value of 0 specifies no limit (i.e. indices will never be deleted)
+    # indices_to_keep: 0
 
   topology:
     # Define static interfaces and links updating Skydive topology
@@ -231,13 +242,24 @@ opencontrail:
   # mpls_udp_port: 51234
 
 storage:
-  # Elasticsearch connection information
+  # Elasticsearch connection information.
   elasticsearch:
     # host: 127.0.0.1:9200
     # maxconns: 10
     # retry: 60
     # bulk_maxdocs: 100
     # bulk_maxdelay: 5
+
+    # If a limit is specified, when the index reaches it, it is rolled.
+    # index_entries_limit specifies the maximum number of entries allowed in an index.
+    # index_age_limit specifies the maximum age (in seconds) allowed for an index.
+    # For both limits, a value of 0 specifies that there is no limitation.
+    # index_entries_limit: 0
+    # index_age_limit: 0
+
+    # The number of indices to keep before deleting.
+    # A value of 0 specifies no limit (i.e. indices will never be deleted)
+    # indices_to_keep: 0
 
   # OrientDB connection information
   orientdb:
