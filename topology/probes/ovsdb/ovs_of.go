@@ -270,7 +270,7 @@ func (r RealExecute) ExecCommand(com string, args ...string) ([]byte, error) {
 // ExecCommandPipe executes a command on a host and gives back a pipe to control it.
 func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...string) (io.Reader, error) {
 	/* #nosec */
-	command := exec.Command(com, args...)
+	command := exec.CommandContext(ctx, com, args...)
 	out, err := command.StdoutPipe()
 	command.Stderr = command.Stdout
 	if err != nil {
@@ -278,17 +278,6 @@ func (r RealExecute) ExecCommandPipe(ctx context.Context, com string, args ...st
 	}
 
 	err = command.Start()
-	go func(kill bool) {
-		<-ctx.Done()
-		if kill {
-			erk := command.Process.Kill()
-			if erk != nil {
-				logging.GetLogger().Errorf("Cannot kill background process: %s", com)
-			}
-			command.Process.Wait()
-		}
-	}(err == nil)
-
 	return out, err
 }
 
