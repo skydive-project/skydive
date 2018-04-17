@@ -1485,6 +1485,12 @@
 			"revisionTime": "2018-02-22T16:05:26Z"
 		},
 		{
+			"checksumSHA1": "PHre5XJwcYAZuYIygas3wH3MNEg=",
+			"path": "github.com/kami-zh/go-capturer",
+			"revision": "e492ea43421da7381e5200a2e22753bfc31347c2",
+			"revisionTime": "2017-12-11T12:01:16Z"
+		},
+		{
 			"checksumSHA1": "g+afVQQVopBLiLB5pFZp/8s6aBs=",
 			"path": "github.com/kardianos/osext",
 			"revision": "c2c54e542fb797ad986b31721e1baedf214ca413",

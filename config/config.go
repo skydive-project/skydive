@@ -43,17 +43,23 @@ var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configurat
 
 var (
 	cfg           *viper.Viper
-	relocationMap = map[string]string{
-		"auth.keystone.auth_url":               "openstack.auth_url",
-		"auth.keystone.tenant_name":            "openstack.tenant_name",
-		"auth.keystone.domain_name":            "openstack.domain_name",
-		"agent.topology.neutron.auth_url":      "openstack.auth_url",
-		"agent.topology.neutron.domain_name":   "openstack.domain_name",
-		"agent.topology.neutron.endpoint_type": "openstack.endpoint_type",
-		"agent.topology.neutron.password":      "openstack.password",
-		"agent.topology.neutron.region_name":   "openstack.region_name",
-		"agent.topology.neutron.tenant_name":   "openstack.tenant_name",
-		"agent.topology.neutron.username":      "openstack.username",
+	relocationMap = map[string][]string{
+		"openstack.auth_url": {
+			"auth.keystone.auth_url",
+			"agent.topology.neutron.auth_url",
+		},
+		"openstack.tenant_name": {
+			"auth.keystone.tenant_name",
+			"agent.topology.neutron.tenant_name",
+		},
+		"openstack.domain_name": {
+			"auth.keystone.domain_name",
+			"agent.topology.neutron.domain_name",
+		},
+		"openstack.region_name":   {"agent.topology.neutron.region_name"},
+		"openstack.endpoint_type": {"agent.topology.neutron.endpoint_type"},
+		"openstack.username":      {"agent.topology.neutron.username"},
+		"openstack.password":      {"agent.topology.neutron.password"},
 	}
 )
 
@@ -341,17 +347,23 @@ func IsTLSenabled() bool {
 }
 
 func realKey(key string) string {
-	for {
-		if cfg.IsSet(key) {
-			return key
-		}
-		newKey, found := relocationMap[key]
-		if !found {
-			return key
-		}
-		fmt.Fprintf(os.Stderr, "Config value '%s' is now deprecated. Please use '%s' instead\n", key, newKey)
-		key = newKey
+	if cfg.IsSet(key) {
+		return key
 	}
+
+	// check is there is a deprecated key that can be used
+	depKeys, found := relocationMap[key]
+	if !found {
+		return key
+	}
+	for _, depKey := range depKeys {
+		if cfg.IsSet(depKey) {
+			fmt.Fprintf(os.Stderr, "Config value '%s' is now deprecated. Please use '%s' instead\n", depKey, key)
+			return depKey
+		}
+	}
+
+	return key
 }
 
 // Get returns a value of the configuration as in interface
