@@ -98,7 +98,6 @@ func init() {
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 
 	cfg.SetDefault("auth.type", "noauth")
-	cfg.SetDefault("auth.keystone.tenant", "admin")
 
 	cfg.SetDefault("cache.expire", 300)
 	cfg.SetDefault("cache.cleanup", 30)
@@ -148,6 +147,11 @@ func init() {
 	cfg.SetDefault("netns.run_path", "/var/run/netns")
 
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
+
+	cfg.SetDefault("openstack.tenant_name", "admin")
+	cfg.SetDefault("openstack.domain_name", "Default")
+	cfg.SetDefault("openstack.region_name", "RegionOne")
+	cfg.SetDefault("openstack.endpoint_type", "public")
 
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("ovs.oflow.enable", false)
