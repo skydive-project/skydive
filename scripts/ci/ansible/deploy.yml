@@ -1,12 +1,18 @@
 ---
 - name: Create resources
   hosts: localhost
+  tags:
+    - master
+    - slave
   tasks:
   - include: openstack.yml
     when: os_username is defined
 
 - name: Put SELinux in permissive mode
   hosts: jenkins_master, slaves
+  tags:
+    - master
+    - slave
   become: yes
   tasks:
   - selinux:
@@ -15,6 +21,9 @@
 
 - name: Install Python 2.x
   hosts: jenkins_master, slaves
+  tags:
+    - master
+    - slave
   become: true
   tasks:
   - package:
@@ -24,6 +33,8 @@
 
 - name: Deploy Jenkins master
   hosts: jenkins_master
+  tags:
+    - master
   become: true
   roles:
     - role: geerlingguy.java
@@ -49,6 +60,9 @@
 
 - name: Install requirements
   hosts: jenkins_master, slaves
+  tags:
+    - master
+    - slave
   become: yes
   tasks:
   - package:
@@ -96,6 +110,7 @@
        - rpm-build
        - rpmlint
        - golang
+       - libvirt
        - vagrant-libvirt
        - ansible
        - numactl-devel
@@ -159,6 +174,9 @@
 
 - name: Install orientdb and elasticsearch
   hosts: slaves
+  tags:
+    - master
+    - slave
   become: yes
   roles:
    - role: orientdb
@@ -166,6 +184,9 @@
 
 - name: Register Jenkins slaves
   hosts: jenkins_master
+  tags:
+    - master
+    - slave
   tasks:
   - pause:
     minutes: 2
@@ -209,13 +230,38 @@
 
 - name: Get JNLP slave secrets
   hosts: jenkins_master
+  tags:
+    - master
+    - slave
   tasks:
-  - shell: curl --user "admin:{{ jenkins_admin_password | default('admin') }}" -d "script=for (aSlave in hudson.model.Hudson.instance.slaves) { println aSlave.getComputer().getJnlpMac() }" http://localhost:8080/scriptText
+  - uri:
+      url: http://localhost:8080/scriptText
+      method: POST
+      user: admin
+      password: "{{ jenkins_admin_password | default('admin' )}}"
+      body: |
+        script=String agent_name = "{{ item }}"
+        String result
+        hudson.model.Hudson.instance.slaves.find { agent ->
+            agent.name == agent_name
+        }.with { agent ->
+            result = agent.getComputer().getJnlpMac()
+        }
+        print result
+      force_basic_auth: yes
+      return_content: yes
+    with_items: "{{ groups.slaves }}"
     register: slave_secrets
-  - set_fact: slave_secrets="{{ slave_secrets.stdout_lines }}"
+  - name: make a slave_secrets map
+    set_fact:
+      secret_hostmap: "{{ secret_hostmap|default({}) | combine( {item.item: item.content} ) }}"
+    with_items: "{{ slave_secrets.results }}"
 
 - name: Configure Jenkins
   hosts: jenkins_master, slaves
+  tags:
+    - master
+    - slave
   become: true
   tasks:
   - group:
@@ -238,6 +284,9 @@
 
 - name: Start Jenkins slaves
   hosts: slaves
+  tags:
+    - master
+    - slave
   become: true
   tasks:
   - get_url:
@@ -257,14 +306,13 @@
         WantedBy=multi-user.target
 
         [Service]
-        ExecStart=/usr/bin/java -jar /var/lib/jenkins/slave.jar -jnlpUrl http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/computer/{{ inventory_hostname_short }}/slave-agent.jnlp -secret {{ hostvars['jenkins_master']['slave_secrets'][play_hosts.index(inventory_hostname)] }}
+        ExecStart=/usr/bin/java -jar /var/lib/jenkins/slave.jar -jnlpUrl http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/computer/{{ inventory_hostname_short }}/slave-agent.jnlp -secret {{ hostvars['jenkins_master']['secret_hostmap'][ inventory_hostname_short ] }}
         User=jenkins
         Restart=always
       mode: 0644
       dest: /etc/systemd/system/jenkins-slave.service
       owner: root
       group: root
-    with_items: "{{ hostvars['jenkins_master']['slave_secrets'] }}"
   - shell: systemctl daemon-reload
   - shell: vagrant plugin install vagrant-openstack-provider
     become: yes
@@ -276,6 +324,9 @@
 
 - name: Stop firewalld on Jenkins slaves
   hosts: slaves
+  tags:
+    - master
+    - slave
   become: true
   ignore_errors: yes
   tasks:
@@ -286,6 +337,8 @@
 
 - name: Jenkins master post configuration
   hosts: jenkins_master
+  tags:
+    - master
   become: true
   roles:
   - role: jenkins_master
