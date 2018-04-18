@@ -251,18 +251,17 @@ func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
 				}
 				w.WriteHeader(http.StatusOK)
 			} else {
-				unauthorized(w, r, s.Auth.AuthType())
+				unauthorized(w, r)
 			}
 		} else {
-			unauthorized(w, r, s.Auth.AuthType())
+			unauthorized(w, r)
 		}
 	} else {
 		http.Redirect(w, r, "/", http.StatusFound)
 	}
 }
 
-func unauthorized(w http.ResponseWriter, r *http.Request, authType string) {
-	w.Header().Add("WWW-Authenticate", fmt.Sprintf(`%s realm="Skydive" charset="UTF-8"`, authType))
+func unauthorized(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte("401 Unauthorized\n"))
 }

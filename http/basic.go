@@ -40,10 +40,6 @@ type BasicAuthenticationBackend struct {
 	*auth.BasicAuth
 }
 
-func (b *BasicAuthenticationBackend) AuthType() string {
-	return "Basic"
-}
-
 func (b *BasicAuthenticationBackend) Authenticate(username string, password string) (string, error) {
 	request := &http.Request{Header: make(map[string][]string)}
 	creds := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
@@ -59,13 +55,20 @@ func (b *BasicAuthenticationBackend) Authenticate(username string, password stri
 func (b *BasicAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		setTLSHeader(w, r)
+
+		// force to use cookie and the login page to retrieve the token.
+		// We do not use basic auth as classic http basic auth. We only use basic auth
+		// as auth backend.
 		cookie, err := r.Cookie("authtok")
 		if err == nil {
 			r.Header.Set("Authorization", "Basic "+cookie.Value)
+		} else {
+			// delete Authorization in order to avoid authentication without using cookie
+			r.Header.Del("Authorization")
 		}
 
 		if username := b.CheckAuth(r); username == "" {
-			unauthorized(w, r, b.AuthType())
+			unauthorized(w, r)
 		} else {
 			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
 			copyRequestVars(r, &ar.Request)
