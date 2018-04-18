@@ -31,6 +31,34 @@
     key: analyzers
     value: "{{ analyzers.split(',') }}"
 
+- name: Set flow protocol
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "flow.protocol"
+    value: "{{ skydive_flow_protocol }}"
+
+- name: Define Keystone auth parameters
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "auth.analyzer_username"
+          value: "{{ os_username }}"
+        - key: "auth.analyzer_password"
+          value: "{{ os_password }}"
+    state: present
+  when: skydive_auth_type == "keystone"
+
+- name: Define basic auth parameters
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "auth.analyzer_username"
+          value: "{{ skydive_username }}"
+        - key: "auth.analyzer_password"
+          value: "{{ skydive_password }}"
+    state: present
+  when: skydive_auth_type == "basic"
+
 - name: Set extra config vars
   yedit:
     src: "{{ skydive_config_file }}"

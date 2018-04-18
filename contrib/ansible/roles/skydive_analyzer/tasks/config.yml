@@ -27,7 +27,7 @@
   when: skydive_deployment_mode != "container"
 
 - name: Setup Etcd listen addresses for container mode
-  yedit: 
+  yedit:
     src: "{{ skydive_config_file }}"
     key: "{{ item.key }}"
     value: "{{ item.value }}"
@@ -63,10 +63,6 @@
           value: "{{ os_auth_url }}"
         - key: "auth.keystone.tenant_name"
           value: "{{ os_tenant_name }}"
-        - key: "auth.analyzer_username"
-          value: "{{ os_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ os_password }}"
         - key: "auth.keystone.domain_name"
           value: "{{ os_domain_name }}"
     state: present
@@ -77,11 +73,7 @@
     src: "{{ skydive_config_file }}"
     edits:
         - key: "auth.basic.file"
-          value: "{{ skydive_basic_auth_file}}"
-        - key: "auth.analyzer_username"
-          value: "{{ skydive_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ skydive_password }}"
+          value: "{{ skydive_basic_auth_file }}"
     state: present
   when: skydive_auth_type == "basic"
 
