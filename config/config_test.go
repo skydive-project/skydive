@@ -36,6 +36,7 @@ func TestRelocation(t *testing.T) {
 auth:
   keystone:
     auth_url: "http://test.test"
+    tenant_name: "test"
 `)
 
 	cfg.ReadConfig(bytes.NewBuffer(yamlv1))
@@ -47,6 +48,11 @@ auth:
 	})
 	if len(out) == 0 {
 		t.Fatal("A warning should have been raised")
+	}
+
+	value := Get("openstack.tenant_name")
+	if value != "test" {
+		t.Fatal("Relocation with default failed")
 	}
 
 	var yamlv2 = []byte(`
@@ -63,5 +69,10 @@ openstack:
 	})
 	if len(out) != 0 {
 		t.Fatal("A warning shouldn't have been raised")
+	}
+
+	value = Get("openstack.tenant_name")
+	if value != "admin" {
+		t.Fatal("Relocation with default failed")
 	}
 }
