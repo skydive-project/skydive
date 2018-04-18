@@ -446,7 +446,7 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 
 // Start the Database client
 func (c *ElasticSearchStorage) Start() {
-	limits := esclient.NewElasticLimitsFromConfig("analyzer.storage")
+	limits := esclient.NewElasticLimitsFromConfig("analyzer.flow")
 	go c.client.Start("flows", []map[string][]byte{
 		{"metric": []byte(metricMapping)},
 		{"rawpacket": []byte(rawPacketMapping)},
