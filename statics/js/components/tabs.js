@@ -53,11 +53,28 @@ Vue.component('tabs', {
     </div>\
   ',
 
+  props: {
+
+    active: {
+      type: Number,
+      default: 0
+    },
+
+  },
+
   data: function() {
     return {
       panes: [],
       selected: 0
     };
+  },
+
+  watch: {
+
+    active: function(newValue) {
+      this.select(newValue);
+    },
+
   },
 
   methods: {
