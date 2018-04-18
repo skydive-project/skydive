@@ -48,10 +48,6 @@ type User struct {
 	Name string `mapstructure:"name"`
 }
 
-func (b *KeystoneAuthenticationBackend) AuthType() string {
-	return "Basic"
-}
-
 func (b *KeystoneAuthenticationBackend) checkUserV2(client *gophercloud.ServiceClient, tokenID string) (string, error) {
 	result := tokens2.Get(client, tokenID)
 
@@ -184,7 +180,7 @@ func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFu
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to check token: %s", err.Error())
 			}
-			unauthorized(w, r, b.AuthType())
+			unauthorized(w, r)
 		} else {
 			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
 			copyRequestVars(r, &ar.Request)
