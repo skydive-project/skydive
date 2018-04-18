@@ -78,5 +78,5 @@ func NewStorage(backend string) (s Storage, err error) {
 
 // NewStorageFromConfig creates a new storage based configuration
 func NewStorageFromConfig() (s Storage, err error) {
-	return NewStorage(config.GetString("analyzer.storage.backend"))
+	return NewStorage(config.GetString("analyzer.flow.backend"))
 }
