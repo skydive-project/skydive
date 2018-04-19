@@ -853,12 +853,133 @@ func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkT
 	}
 }
 
+func getgopacket(b *testing.B, handleRead *pcap.Handle, linkType layers.LinkType) (gopacket.Packet, error) {
+	data, ci, err := handleRead.ReadPacketData()
+	if err != nil {
+		if err == io.EOF {
+			return nil, err
+		}
+		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+	}
+	p := gopacket.NewPacket(data, linkType, gopacket.Default)
+	p.Metadata().CaptureInfo = ci
+	return p, nil
+}
+
+func benchPacketList(b *testing.B, filename string, linkType layers.LinkType, callback func(b *testing.B, table *Table, packetsList []gopacket.Packet)) (packets int, table *Table) {
+	bulkNbPackets := 100000
+
+	handleRead, err := pcap.OpenOffline(filename)
+	if err != nil {
+		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+	}
+	ft := NewTable(nil, nil, NewEnhancerPipeline(&fakeEnhancer{}), "", TableOpts{})
+	packets = 0
+
+	for {
+		var packetsList []gopacket.Packet
+		ended := false
+		for {
+			p, err := getgopacket(b, handleRead, linkType)
+			if err != nil {
+				ended = true
+				break
+			}
+			packetsList = append(packetsList, p)
+
+			packets++
+			if (packets % bulkNbPackets) == 0 {
+				break
+			}
+		}
+
+		b.StartTimer()
+		callback(b, ft, packetsList)
+		b.StopTimer()
+
+		if ended {
+			break
+		}
+	}
+	handleRead.Close()
+
+	return packets, ft
+}
+
+// Bench creation of a new flow for each packets
+func benchmarkPacketsParsing(b *testing.B, filename string, linkType layers.LinkType) {
+	b.ResetTimer()
+	for n := 0; n != b.N; n++ {
+		benchPacketList(b, filename, linkType,
+			func(b *testing.B, table *Table, packetsList []gopacket.Packet) {
+				for _, p := range packetsList {
+					ps := PacketSeqFromGoPacket(p, 0, nil, nil)
+					if ps == nil {
+						b.Fatal("Failed to get PacketSeq")
+					}
+					for _, packet := range ps.Packets {
+						NewFlowFromGoPacket(packet.GoPacket, "", FlowUUIDs{}, FlowOpts{})
+					}
+				}
+			})
+	}
+}
+
+// Bench creation of flow and connection tracking, via FlowTable
+func benchmarkPacketsFlowTable(b *testing.B, filename string, linkType layers.LinkType) {
+	b.ResetTimer()
+	b.StopTimer()
+	b.ReportAllocs()
+
+	var ft *Table
+	packets := 0
+	for n := 0; n != b.N; n++ {
+		packets, ft = benchPacketList(b, filename, linkType,
+			func(b *testing.B, table *Table, packetsList []gopacket.Packet) {
+				for _, p := range packetsList {
+					ps := PacketSeqFromGoPacket(p, 0, nil, nil)
+					if ps == nil {
+						b.Fatal("Failed to get PacketSeq")
+					}
+					table.processPacketSeq(ps)
+				}
+			})
+	}
+
+	b.Logf("packets %d flows %d", packets, len(ft.table))
+	b.Logf("packets per flows %d", packets/len(ft.table))
+	fset := ft.getFlows(&filters.SearchQuery{
+		Filter: filters.NewTermStringFilter("Network.Protocol", "IPV4"),
+	})
+	nbFlows := len(fset.Flows)
+	b.Logf("IPv4 flows %d", nbFlows)
+	fset = ft.getFlows(&filters.SearchQuery{
+		Filter: filters.NewTermStringFilter("Network.Protocol", "IPV6"),
+	})
+	b.Logf("IPv6 flows %d", len(fset.Flows))
+
+	if packets != 4679031 {
+		b.Fail()
+	}
+	if len(ft.table) != 9088 || nbFlows != 9088 {
+		b.Fail()
+	}
+}
+
 func BenchmarkPacketParsing1(b *testing.B) {
 	benchmarkPacketParsing(b, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet)
 }
 
 func BenchmarkPacketParsing2(b *testing.B) {
 	benchmarkPacketParsing(b, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet)
+}
+
+func BenchmarkPacketsParsing(b *testing.B) {
+	benchmarkPacketsParsing(b, "pcaptraces/201801011400.small.pcap", layers.LinkTypeEthernet)
+}
+
+func BenchmarkPacketsFlowTable(b *testing.B) {
+	benchmarkPacketsFlowTable(b, "pcaptraces/201801011400.small.pcap", layers.LinkTypeEthernet)
 }
 
 func TestGREMPLS(t *testing.T) {
