@@ -351,10 +351,6 @@ func IsTLSenabled() bool {
 }
 
 func realKey(key string) string {
-	if cfg.IsSet(key) {
-		return key
-	}
-
 	// check is there is a deprecated key that can be used
 	depKeys, found := relocationMap[key]
 	if !found {
