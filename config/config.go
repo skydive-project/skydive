@@ -47,6 +47,15 @@ var (
 		"analyzer.storage.flow.backend": {
 			"graph.backend",
 		},
+		"analyzer.storage.flow.bulk_insert": {
+			"analyzer.storage.bulk_insert",
+		},
+		"analyzer.storage.flow.bulk_insert_deadline": {
+			"analyzer.storage.bulk_insert_deadline",
+		},
+		"analyzer.storage.flow.max_flow_buffer_size": {
+			"analyzer.storage.max_flow_buffer_size",
+		},
 		"analyzer.storage.topology.backend": {
 			"storage.backend",
 		},
@@ -95,12 +104,9 @@ func init() {
 	cfg.SetDefault("analyzer.packet_injection_enabled", true)
 	cfg.SetDefault("analyzer.replication.debug", false)
 	cfg.SetDefault("analyzer.ssh_enabled", false)
-	cfg.SetDefault("analyzer.storage.bulk_insert", 100)
-	cfg.SetDefault("analyzer.storage.bulk_insert_deadline", 5)
-	cfg.SetDefault("analyzer.storage.index_age_limit", 0)
-	cfg.SetDefault("analyzer.storage.index_entries_limit", 0)
-	cfg.SetDefault("analyzer.storage.indices_to_keep", 0)
-	cfg.SetDefault("analyzer.storage.max_flow_buffer_size", 100000)
+	cfg.SetDefault("analyzer.storage.flow.bulk_insert", 100)
+	cfg.SetDefault("analyzer.storage.flow.bulk_insert_deadline", 5)
+	cfg.SetDefault("analyzer.storage.flow.max_flow_buffer_size", 100000)
 	cfg.SetDefault("analyzer.storage.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 
@@ -173,6 +179,7 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)
 	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)
 	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)
+
 	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")
 	cfg.SetDefault("storage.orientdb.database", "Skydive")
 	cfg.SetDefault("storage.orientdb.username", "root")
