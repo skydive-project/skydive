@@ -623,13 +623,12 @@ func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) 
 
 // NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
 func NewElasticSearchBackendFromConfig() (*ElasticSearchBackend, error) {
-	indexCfg := elasticsearch.NewIndexConfig("storage.elasticsearch")
-	connCfg := elasticsearch.NewConnConfig("storage.elasticsearch")
+	cfg := elasticsearch.NewConfig("storage.elasticsearch")
 	mappings := elasticsearch.Mappings{
 		{"node": []byte(graphElementMapping)},
 		{"edge": []byte(graphElementMapping)},
 	}
-	client, err := elasticsearch.NewElasticSearchClient("topology", mappings, indexCfg, connCfg)
+	client, err := elasticsearch.NewElasticSearchClient("topology", mappings, cfg)
 	if err != nil {
 		return nil, err
 	}

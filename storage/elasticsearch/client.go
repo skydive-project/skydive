@@ -47,24 +47,36 @@ const indexVersion = 11
 const indexPrefix = "skydive"
 const indexAllAlias = "all"
 
-// IndexConfig describes index limits driving roll policy
-type IndexConfig struct {
+// Config describes configuration for elasticsearch
+type Config struct {
+	ElasticHost  string
+	MaxConns     int
+	RetrySeconds int
+	BulkMaxDocs  int
+	BulkMaxDelay int
 	EntriesLimit int
 	AgeLimit     int
 	IndicesLimit int
 }
 
-// NewIndexConfigFromConfig create new limits from configuration
-func NewIndexConfig(path string) IndexConfig {
-	indexCfg := IndexConfig{}
-	indexCfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
-	indexCfg.AgeLimit = 0
+func NewConfig(path string) Config {
+	cfg := Config{}
+
+	cfg.ElasticHost = config.GetString(path + ".host")
+	cfg.MaxConns = config.GetInt(path + ".maxconns")
+	cfg.RetrySeconds = config.GetInt(path + ".retry")
+	cfg.BulkMaxDocs = config.GetInt(path + ".bulk_maxdocs")
+	cfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")
+
+	cfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
+	cfg.AgeLimit = 0
 	// TODO: read the AgeLimit from the configuration. At this stage we are setting statically to zero since
 	// TODO: the feature of reading the index creation date is not supported.
 	// TODO: the code that need to happen when we will
-	// TODO: be ready:: indexCfg.AgeLimit = config.GetInt(path + ".index_age_limit")
-	indexCfg.IndicesLimit = config.GetInt(path + ".indices_to_keep")
-	return indexCfg
+	// TODO: be ready:: cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
+	cfg.IndicesLimit = config.GetInt(path + ".indices_to_keep")
+
+	return cfg
 }
 
 // ElasticSearchClientInterface describes the mechanism API of ElasticSearch database client
@@ -99,15 +111,6 @@ type ElasticIndex struct {
 	timeCreated    time.Time
 }
 
-// ConnConfig describes the ElasticSearch configuration section
-type ConnConfig struct {
-	ElasticHost  string
-	MaxConns     int
-	RetrySeconds int
-	BulkMaxDocs  int
-	BulkMaxDelay int
-}
-
 // ElasticSearchClient describes a ElasticSearch client connection
 type ElasticSearchClient struct {
 	connection *elastigo.Conn
@@ -117,8 +120,7 @@ type ElasticSearchClient struct {
 	wg         sync.WaitGroup
 	name       string
 	mappings   Mappings
-	indexCfg   IndexConfig
-	connCfg    ConnConfig
+	cfg        Config
 	index      *ElasticIndex
 }
 
@@ -410,18 +412,18 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 }
 
 func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
-	if c.indexCfg.EntriesLimit == 0 {
+	if c.cfg.EntriesLimit == 0 {
 		return false
 	}
 	logging.GetLogger().Debugf("%s entries counter is %d", c.name, c.index.entriesCounter)
-	if c.index.entriesCounter < c.indexCfg.EntriesLimit {
+	if c.index.entriesCounter < c.cfg.EntriesLimit {
 		return false
 	}
 	c.indexer.Flush()
 	time.Sleep(1 * time.Second)
 
 	c.index.entriesCounter = c.countEntries()
-	if c.index.entriesCounter < c.indexCfg.EntriesLimit {
+	if c.index.entriesCounter < c.cfg.EntriesLimit {
 		return false
 	}
 	logging.GetLogger().Debugf("%s enough entries to roll", c.name)
@@ -429,12 +431,12 @@ func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
 }
 
 func (c *ElasticSearchClient) shouldRollIndexByAge() bool {
-	if c.indexCfg.AgeLimit == 0 {
+	if c.cfg.AgeLimit == 0 {
 		return false
 	}
 	age := int(time.Now().Sub(c.index.timeCreated).Seconds())
 	logging.GetLogger().Debugf("%s age is %d", c.name, age)
-	if age < c.indexCfg.AgeLimit {
+	if age < c.cfg.AgeLimit {
 		return false
 	}
 	logging.GetLogger().Debugf("%s old enough to roll", c.name)
@@ -446,7 +448,7 @@ func (c *ElasticSearchClient) shouldRollIndex() bool {
 }
 
 func (c *ElasticSearchClient) delIndices() {
-	if c.indexCfg.IndicesLimit == 0 {
+	if c.cfg.IndicesLimit == 0 {
 		return
 	}
 
@@ -455,7 +457,7 @@ func (c *ElasticSearchClient) delIndices() {
 		return indices[i].Name < indices[j].Name
 	})
 
-	numToDel := len(indices) - c.indexCfg.IndicesLimit
+	numToDel := len(indices) - c.cfg.IndicesLimit
 	if numToDel <= 0 {
 		return
 	}
@@ -475,7 +477,7 @@ func (c *ElasticSearchClient) rollIndex() error {
 
 	c.indexer.Stop()
 	c.stopErrorReader()
-	c.indexer = newBulkIndexer(c.connection, c.connCfg)
+	c.indexer = newBulkIndexer(c.connection, c.cfg)
 	c.indexer.Start()
 	c.startErrorReader()
 
@@ -643,23 +645,23 @@ func (c *ElasticSearchClient) Started() bool {
 	return c.started.Load() == true
 }
 
-func newBulkIndexer(c *elastigo.Conn, connCfg ConnConfig) *elastigo.BulkIndexer {
-	indexer := c.NewBulkIndexer(connCfg.MaxConns)
-	indexer.RetryForSeconds = connCfg.RetrySeconds
-	if connCfg.BulkMaxDocs > 0 {
-		indexer.BulkMaxDocs = connCfg.BulkMaxDocs
+func newBulkIndexer(c *elastigo.Conn, cfg Config) *elastigo.BulkIndexer {
+	indexer := c.NewBulkIndexer(cfg.MaxConns)
+	indexer.RetryForSeconds = cfg.RetrySeconds
+	if cfg.BulkMaxDocs > 0 {
+		indexer.BulkMaxDocs = cfg.BulkMaxDocs
 
 		// set chan to 80% of max doc
-		if connCfg.BulkMaxDocs > 100 {
-			indexer.BulkChannel = make(chan []byte, int(float64(connCfg.BulkMaxDocs)*0.8))
+		if cfg.BulkMaxDocs > 100 {
+			indexer.BulkChannel = make(chan []byte, int(float64(cfg.BulkMaxDocs)*0.8))
 		}
 	}
 
 	// override the default error chan size
 	indexer.ErrorChannel = make(chan *elastigo.ErrorBuffer, 100)
 
-	if connCfg.BulkMaxDelay > 0 {
-		indexer.BufferDelayMax = time.Duration(connCfg.BulkMaxDelay) * time.Second
+	if cfg.BulkMaxDelay > 0 {
+		indexer.BufferDelayMax = time.Duration(cfg.BulkMaxDelay) * time.Second
 	}
 
 	return indexer
@@ -678,27 +680,15 @@ func urlFromHost(host string) (*url.URL, error) {
 	return url, nil
 }
 
-func NewConnConfig(path string) ConnConfig {
-	connCfg := ConnConfig{}
-
-	connCfg.ElasticHost = config.GetString(path + ".host")
-	connCfg.MaxConns = config.GetInt(path + ".maxconns")
-	connCfg.RetrySeconds = config.GetInt(path + ".retry")
-	connCfg.BulkMaxDocs = config.GetInt(path + ".bulk_maxdocs")
-	connCfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")
-
-	return connCfg
-}
-
 // NewElasticSearchClient creates a new ElasticSearch client based on configuration
-func NewElasticSearchClient(name string, mappings Mappings, indexCfg IndexConfig, connCfg ConnConfig) (*ElasticSearchClient, error) {
+func NewElasticSearchClient(name string, mappings Mappings, cfg Config) (*ElasticSearchClient, error) {
 
-	url, err := urlFromHost(connCfg.ElasticHost)
+	url, err := urlFromHost(cfg.ElasticHost)
 	if err != nil {
 		return nil, err
 	}
 
-	if connCfg.MaxConns == 0 {
+	if cfg.MaxConns == 0 {
 		return nil, errors.New("maxconns has to be > 0")
 	}
 
@@ -708,7 +698,7 @@ func NewElasticSearchClient(name string, mappings Mappings, indexCfg IndexConfig
 	c.Domain = url.Hostname()
 	c.Port = url.Port()
 
-	indexer := newBulkIndexer(c, connCfg)
+	indexer := newBulkIndexer(c, cfg)
 
 	client := &ElasticSearchClient{
 		connection: c,
@@ -717,8 +707,7 @@ func NewElasticSearchClient(name string, mappings Mappings, indexCfg IndexConfig
 		index:      nil,
 		name:       name,
 		mappings:   mappings,
-		indexCfg:   indexCfg,
-		connCfg:    connCfg,
+		cfg:        cfg,
 	}
 
 	client.started.Store(false)

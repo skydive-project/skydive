@@ -223,9 +223,8 @@ func newSnortFlowEnhancer() *SnortFlowEnhancer {
 	mappings := esclient.Mappings{
 		{"snortMessage": []byte(snortMessageMapping)},
 	}
-	indexCfg := esclient.NewIndexConfig("storage.elasticsearch")
-	connCfg := esclient.NewConnConfig("storage.elasticsearch")
-	sfe.client, err = esclient.NewElasticSearchClient("snort", mappings, indexCfg, connCfg)
+	cfg := esclient.NewConfig("storage.elasticsearch")
+	sfe.client, err = esclient.NewElasticSearchClient("snort", mappings, cfg)
 	if err != nil {
 		if err != io.EOF {
 			logging.GetLogger().Errorf("elasticsearch client error : %v", err)

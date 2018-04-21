@@ -456,14 +456,13 @@ func (c *ElasticSearchStorage) Stop() {
 
 // New creates a new ElasticSearch database client
 func New() (*ElasticSearchStorage, error) {
-	indexCfg := esclient.NewIndexConfig("analyzer.flow")
-	connCfg := esclient.NewConnConfig("storage.elasticsearch")
+	cfg := esclient.NewConfig("storage.elasticsearch")
 	mappings := esclient.Mappings{
 		{"metric": []byte(metricMapping)},
 		{"rawpacket": []byte(rawPacketMapping)},
 		{"flow": []byte(flowMapping)},
 	}
-	client, err := esclient.NewElasticSearchClient("flows", mappings, indexCfg, connCfg)
+	client, err := esclient.NewElasticSearchClient("flows", mappings, cfg)
 	if err != nil {
 		return nil, err
 	}

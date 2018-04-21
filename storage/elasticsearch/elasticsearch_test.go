@@ -37,9 +37,8 @@ func (c *ElasticSearchClient) cleanupIndices() error {
 	return nil
 }
 
-func getClient(name string, indexCfg IndexConfig, mappings Mappings) (*ElasticSearchClient, error) {
-	connCfg := NewConnConfig("storage.elasticsearch")
-	client, err := NewElasticSearchClient(name, mappings, indexCfg, connCfg)
+func getClient(name string, mappings Mappings, cfg Config) (*ElasticSearchClient, error) {
+	client, err := NewElasticSearchClient(name, mappings, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -53,32 +52,32 @@ func getClient(name string, indexCfg IndexConfig, mappings Mappings) (*ElasticSe
 
 // test rolling elasticsearch indices based on count limit
 func TestElasticsearchShouldRollByCount(t *testing.T) {
-	indexCfg := IndexConfig{}
-	indexCfg.EntriesLimit = 5
+	cfg := NewConfig("storage.elasticsearch")
+	cfg.EntriesLimit = 5
 
 	name := "should_roll_by_count_test"
 
-	client, err := getClient(name, indexCfg, Mappings{})
+	client, err := getClient(name, Mappings{}, cfg)
 	if err != nil {
 		t.Fatalf("Initialisation error: %s", err.Error())
 	}
 
-	for i := 1; i < indexCfg.EntriesLimit; i++ {
+	for i := 1; i < cfg.EntriesLimit; i++ {
 		if _, err := client.indexEntry(i); err != nil {
 			t.Fatalf("Failed to index entry %d: %s", i, err.Error())
 		}
 		time.Sleep(1 * time.Second)
 		if client.shouldRollIndex() {
-			t.Fatalf("Index should not have rolled after %d entries (limit is %d)", i, indexCfg.EntriesLimit)
+			t.Fatalf("Index should not have rolled after %d entries (limit is %d)", i, cfg.EntriesLimit)
 		}
 	}
 
-	if _, err = client.indexEntry(indexCfg.EntriesLimit); err != nil {
-		t.Fatalf("Failed to index entry %d: %s", indexCfg.EntriesLimit, err.Error())
+	if _, err = client.indexEntry(cfg.EntriesLimit); err != nil {
+		t.Fatalf("Failed to index entry %d: %s", cfg.EntriesLimit, err.Error())
 	}
 	time.Sleep(1 * time.Second)
 	if !client.shouldRollIndex() {
-		t.Fatalf("Index should have rolled after %d entries", indexCfg.EntriesLimit)
+		t.Fatalf("Index should have rolled after %d entries", cfg.EntriesLimit)
 	}
 
 	if err := client.cleanupIndices(); err != nil {
@@ -88,23 +87,23 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 
 // test rolling elasticsearch indices based on age limit
 func TestElasticsearchShouldRollByAge(t *testing.T) {
-	indexCfg := IndexConfig{}
-	indexCfg.AgeLimit = 5
+	cfg := NewConfig("storage.elasticsearch")
+	cfg.AgeLimit = 5
 	name := "should_roll_by_age_test"
 
-	client, err := getClient(name, indexCfg, Mappings{})
+	client, err := getClient(name, Mappings{}, cfg)
 	if err != nil {
 		t.Fatalf("Initialisation error: %s", err.Error())
 	}
 
-	time.Sleep(time.Duration(indexCfg.AgeLimit-2) * time.Second)
+	time.Sleep(time.Duration(cfg.AgeLimit-2) * time.Second)
 	if client.shouldRollIndex() {
-		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", indexCfg.AgeLimit-2, indexCfg.AgeLimit)
+		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", cfg.AgeLimit-2, cfg.AgeLimit)
 	}
 
 	time.Sleep(4 * time.Second)
 	if !client.shouldRollIndex() {
-		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", indexCfg.AgeLimit+2, indexCfg.AgeLimit)
+		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", cfg.AgeLimit+2, cfg.AgeLimit)
 	}
 
 	if err := client.cleanupIndices(); err != nil {
@@ -114,35 +113,35 @@ func TestElasticsearchShouldRollByAge(t *testing.T) {
 
 // test deletion of rolling elasticsearch indices
 func TestElasticsearchDelIndices(t *testing.T) {
-	indexCfg := IndexConfig{}
-	indexCfg.IndicesLimit = 5
+	cfg := NewConfig("storage.elasticsearch")
+	cfg.IndicesLimit = 5
 	name := "del_indices_test"
 
-	client, err := getClient(name, indexCfg, Mappings{})
+	client, err := getClient(name, Mappings{}, cfg)
 	if err != nil {
 		t.Fatalf("Initialisation error: %s", err.Error())
 	}
 	firstIndex := client.index.path
 	time.Sleep(1 * time.Second)
 
-	for i := 1; i < indexCfg.IndicesLimit; i++ {
+	for i := 1; i < cfg.IndicesLimit; i++ {
 		if err := client.RollIndex(); err != nil {
 			t.Fatalf("Failed to roll index %d: %s", i, err.Error())
 		}
 		time.Sleep(1 * time.Second)
 		indices := client.connection.GetCatIndexInfo(client.GetIndexAlias() + "_*")
 		if len(indices) != i+1 {
-			t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, indexCfg.IndicesLimit, len(indices))
+			t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, cfg.IndicesLimit, len(indices))
 		}
 	}
 
 	if err = client.RollIndex(); err != nil {
-		t.Fatalf("Failed to roll index %d: %s", indexCfg.IndicesLimit, err.Error())
+		t.Fatalf("Failed to roll index %d: %s", cfg.IndicesLimit, err.Error())
 	}
 	time.Sleep(1 * time.Second)
 	indices := client.connection.GetCatIndexInfo(client.GetIndexAlias() + "_*")
-	if len(indices) != indexCfg.IndicesLimit {
-		t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", indexCfg.IndicesLimit, indexCfg.IndicesLimit, indexCfg.IndicesLimit, len(indices))
+	if len(indices) != cfg.IndicesLimit {
+		t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", cfg.IndicesLimit, cfg.IndicesLimit, cfg.IndicesLimit, len(indices))
 	}
 
 	for _, esIndex := range indices {
@@ -159,11 +158,11 @@ func TestElasticsearchDelIndices(t *testing.T) {
 
 // test mappings before and after rolling elasticsearch indices
 func TestElasticsearchMappings(t *testing.T) {
-	indexCfg := IndexConfig{}
+	cfg := NewConfig("storage.elasticsearch")
 	name := "mappings_test"
 	mapKey := "testmap"
 
-	client, err := getClient(name, indexCfg, Mappings{{mapKey: []byte(testMapping)}})
+	client, err := getClient(name, Mappings{{mapKey: []byte(testMapping)}}, cfg)
 	if err != nil {
 		t.Fatalf("Initialisation error: %s", err.Error())
 	}
