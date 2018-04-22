@@ -63,8 +63,9 @@ analyzer:
 
   # Flow storage engine
   storage:
-    # Available: elasticsearch, orientdb
-    # backend: elasticsearch
+    flow:
+      # Available: elasticsearch, orientdb
+      # backend: elasticsearch
 
     # maximum number of flows aggregated between two data store inserts
     # bulk_insert: 100
@@ -85,6 +86,9 @@ analyzer:
     # The number of indices to keep before deleting.
     # A value of 0 specifies no limit (i.e. indices will never be deleted)
     # indices_to_keep: 0
+    topology:
+      # Available: memory, elasticsearch, orientdb
+      # backend: memory
 
   topology:
     # Define static interfaces and links updating Skydive topology
@@ -268,8 +272,6 @@ storage:
     # password: hello
 
 graph:
-  # graph backend memory, elasticsearch, orientdb
-  # backend: memory
 
 logging:
   # level: INFO

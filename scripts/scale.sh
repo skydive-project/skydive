@@ -313,8 +313,6 @@ storage:
     host: $ELASTICSEARCH
 logging:
   level: DEBUG
-graph:
-  backend: $GRAPH
 flow:
   expire: 600
   update: 5
@@ -328,7 +326,10 @@ analyzer:
   X509_cert: $ANALYZER_CRT
   X509_key: $ANALYZER_KEY
   storage:
-    backend: $STORAGE
+    flow:
+      backend: $STORAGE
+    topology:
+      backend: $GRAPH
   topology:
     fabric:
 EOF

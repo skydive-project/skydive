@@ -44,6 +44,12 @@ var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configurat
 var (
 	cfg           *viper.Viper
 	relocationMap = map[string][]string{
+		"analyzer.storage.flow.backend": {
+			"graph.backend",
+		},
+		"analyzer.storage.topology.backend": {
+			"storage.backend",
+		},
 		"openstack.auth_url": {
 			"auth.keystone.auth_url",
 			"agent.topology.neutron.auth_url",
@@ -95,6 +101,7 @@ func init() {
 	cfg.SetDefault("analyzer.storage.index_entries_limit", 0)
 	cfg.SetDefault("analyzer.storage.indices_to_keep", 0)
 	cfg.SetDefault("analyzer.storage.max_flow_buffer_size", 100000)
+	cfg.SetDefault("analyzer.storage.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 
 	cfg.SetDefault("auth.type", "noauth")
@@ -113,8 +120,6 @@ func init() {
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
 	cfg.SetDefault("flow.protocol", "udp")
-
-	cfg.SetDefault("graph.backend", "memory")
 
 	cfg.SetDefault("http.rest.debug", false)
 	cfg.SetDefault("http.ws.ping_delay", 2)
