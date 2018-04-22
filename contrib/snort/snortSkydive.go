@@ -223,7 +223,7 @@ func newSnortFlowEnhancer() *SnortFlowEnhancer {
 	mappings := esclient.Mappings{
 		{"snortMessage": []byte(snortMessageMapping)},
 	}
-	cfg := esclient.NewConfig("storage.elasticsearch")
+	cfg := esclient.NewConfig()
 	sfe.client, err = esclient.NewElasticSearchClient("snort", mappings, cfg)
 	if err != nil {
 		if err != io.EOF {

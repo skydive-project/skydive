@@ -509,7 +509,7 @@ func initBackend(cfg elasticsearch.Config, name string) (*ElasticSearchBackend, 
 
 // test active nodes after rolling elasticsearch indices
 func TestElasticsearcActiveNodes(t *testing.T) {
-	cfg := elasticsearch.NewConfig("storage.elasticsearch")
+	cfg := elasticsearch.NewConfig()
 	cfg.EntriesLimit = 10
 	name := "test_nodes"
 	if err := delTestIndex(name); err != nil {
@@ -544,7 +544,7 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 
 // test active edges after rolling elasticsearch indices
 func TestElasticsearcActiveEdges(t *testing.T) {
-	cfg := elasticsearch.NewConfig("storage.elasticsearch")
+	cfg := elasticsearch.NewConfig()
 	cfg.EntriesLimit = 10
 	name := "test_edges"
 	if err := delTestIndex(name); err != nil {

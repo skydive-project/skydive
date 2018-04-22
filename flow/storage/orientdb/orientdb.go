@@ -378,11 +378,12 @@ func (c *OrientDBStorage) Close() {
 }
 
 // New creates a new OrientDB database client
-func New() (*OrientDBStorage, error) {
-	addr := config.GetString("storage.orientdb.addr")
-	database := config.GetString("storage.orientdb.database")
-	username := config.GetString("storage.orientdb.username")
-	password := config.GetString("storage.orientdb.password")
+func New(backend string) (*OrientDBStorage, error) {
+	path := "storage." + backend
+	addr := config.GetString(path + ".addr")
+	database := config.GetString(path + ".database")
+	username := config.GetString(path + ".username")
+	password := config.GetString(path + ".password")
 
 	client, err := orient.NewClient(addr, database, username, password)
 	if err != nil {

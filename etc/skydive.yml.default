@@ -63,7 +63,7 @@ analyzer:
 
   # Flow storage engine
   flow:
-    # Available: elasticsearch, orientdb
+    # Available: elasticsearch, orientdb, sample
     # backend: elasticsearch
 
     # maximum number of flows aggregated between two data store inserts
@@ -87,7 +87,7 @@ analyzer:
     # indices_to_keep: 0
 
   topology:
-    # graph backend : memory, elasticsearch, orientdb
+    # graph backend : memory, elasticsearch, orientdb, sample
     # backend: memory
 
     # Define static interfaces and links updating Skydive topology
@@ -244,8 +244,14 @@ opencontrail:
   # mpls_udp_port: 51234
 
 storage:
-  # Elasticsearch connection information.
+  # an example for user defined backend 'sample'.
+  # sample:
+  #   driver: elasticsearch, orientdb, memory
+  #   here add driver type specific fields.
+
+  # Elasticsearch backend information.
   elasticsearch:
+    # driver: elasticsearch
     # host: 127.0.0.1:9200
     # maxconns: 10
     # retry: 60
@@ -262,13 +268,18 @@ storage:
     # The number of indices to keep before deleting.
     # A value of 0 specifies no limit (i.e. indices will never be deleted)
     # indices_to_keep: 0
-
-  # OrientDB connection information
+    
+  # OrientDB backend information.
   orientdb:
+    # driver: orientdb
     # addr: http://127.0.0.1:2480
     # database: Skydive
     # username: root
     # password: hello
+
+  # Memory backend information.
+  memory:
+    # driver: memory
 
 logging:
   # level: INFO

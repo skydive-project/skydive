@@ -52,7 +52,7 @@ func getClient(name string, mappings Mappings, cfg Config) (*ElasticSearchClient
 
 // test rolling elasticsearch indices based on count limit
 func TestElasticsearchShouldRollByCount(t *testing.T) {
-	cfg := NewConfig("storage.elasticsearch")
+	cfg := NewConfig()
 	cfg.EntriesLimit = 5
 
 	name := "should_roll_by_count_test"
@@ -87,7 +87,7 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 
 // test rolling elasticsearch indices based on age limit
 func TestElasticsearchShouldRollByAge(t *testing.T) {
-	cfg := NewConfig("storage.elasticsearch")
+	cfg := NewConfig()
 	cfg.AgeLimit = 5
 	name := "should_roll_by_age_test"
 
@@ -113,7 +113,7 @@ func TestElasticsearchShouldRollByAge(t *testing.T) {
 
 // test deletion of rolling elasticsearch indices
 func TestElasticsearchDelIndices(t *testing.T) {
-	cfg := NewConfig("storage.elasticsearch")
+	cfg := NewConfig()
 	cfg.IndicesLimit = 5
 	name := "del_indices_test"
 
@@ -158,7 +158,7 @@ func TestElasticsearchDelIndices(t *testing.T) {
 
 // test mappings before and after rolling elasticsearch indices
 func TestElasticsearchMappings(t *testing.T) {
-	cfg := NewConfig("storage.elasticsearch")
+	cfg := NewConfig()
 	name := "mappings_test"
 	mapKey := "testmap"
 

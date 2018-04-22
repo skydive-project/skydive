@@ -455,8 +455,8 @@ func (c *ElasticSearchStorage) Stop() {
 }
 
 // New creates a new ElasticSearch database client
-func New() (*ElasticSearchStorage, error) {
-	cfg := esclient.NewConfig("storage.elasticsearch")
+func New(backend string) (*ElasticSearchStorage, error) {
+	cfg := esclient.NewConfig(backend)
 	mappings := esclient.Mappings{
 		{"metric": []byte(metricMapping)},
 		{"rawpacket": []byte(rawPacketMapping)},

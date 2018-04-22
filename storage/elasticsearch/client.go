@@ -59,8 +59,15 @@ type Config struct {
 	IndicesLimit int
 }
 
-func NewConfig(path string) Config {
+func NewConfig(name ...string) Config {
 	cfg := Config{}
+
+	path := "storage."
+	if len(name) > 0 {
+		path += name[0]
+	} else {
+		path += "elasticsearch"
+	}
 
 	cfg.ElasticHost = config.GetString(path + ".host")
 	cfg.MaxConns = config.GetInt(path + ".maxconns")
