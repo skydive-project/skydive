@@ -151,7 +151,7 @@
   - service:
       name: "{{ item }}"
       state: started
-      enabled: true
+      enabled: yes
     with_items:
       - etcd
       - openvswitch
@@ -188,8 +188,10 @@
     - master
     - slave
   tasks:
-  - pause:
-    minutes: 2
+  - name: Workaround, Pause 2 minutes waiting for jenkins_master to settle
+    pause:
+      minutes: 2
+    when: deploy_master is defined
   - uri:
       url: http://localhost:8080/scriptText
       method: POST
@@ -278,7 +280,7 @@
   - service:
       name: "{{ item }}"
       state: restarted
-      enabled: true
+      enabled: yes
     with_items:
       - docker
 
@@ -334,6 +336,16 @@
       name: firewalld
       state: stopped
       enabled: no
+
+- name: Reboot Jenkins slaves to match running kernel and devel headers
+  hosts: slaves
+  tags:
+    - master
+    - slave
+  become: true
+  ignore_errors: yes
+  tasks:
+    - shell: systemctl reboot
 
 - name: Jenkins master post configuration
   hosts: jenkins_master
