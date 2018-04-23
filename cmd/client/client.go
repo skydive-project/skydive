@@ -42,7 +42,7 @@ var ClientCmd = &cobra.Command{
 		if analyzerAddr != "" {
 			config.Set("analyzers", analyzerAddr)
 		} else {
-			config.SetDefault("analyzers", "localhost:8082")
+			config.SetDefault("analyzers", []string{"localhost:8082"})
 		}
 		authUsername := config.GetString("auth.analyzer_username")
 		if authUsername != "" && AuthenticationOpts.Username == "" {
