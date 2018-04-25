@@ -37,9 +37,14 @@ var Injector = {
 
   methods: {
     remove: function(injector) {
-      this.$injectorDelete(injector.UUID)
-        .always(function() {
-          app.$emit("referesh-injector-list");
+      var self = this;
+      this.injectAPI.delete(injector.UUID)
+        .catch(function (e) {
+          self.$error({message: 'Packet injector delete error: ' + e.responseText});
+          return e;
+        })
+        .finally(function() {
+          app.$emit("refresh-injector-list");
         });
     },
 
@@ -110,7 +115,7 @@ Vue.component('injection-list', {
     var self = this;
     setInterval(this.getInjectorList.bind(this), 30000);
     this.getInjectorList();
-    app.$on("referesh-injector-list", function() {
+    app.$on("refresh-injector-list", function() {
       self.getInjectorList();
     });
   },
@@ -118,9 +123,13 @@ Vue.component('injection-list', {
   methods: {
     getInjectorList: function() {
       var self = this;
-      this.$injectorList()
+      this.injectAPI.list()
         .then(function(data) {
           self.injectors = data;
+        })
+        .catch(function (e) {
+          self.$error({message: 'Packet injector list error: ' + e.responseText});
+          return e;
         });
     },
   },

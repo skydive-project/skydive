@@ -222,7 +222,7 @@ var app = new Vue({
           .then(function() {
             self.$store.commit('history', true);
           })
-          .fail(function() {
+          .catch(function() {
             self.$store.commit('history', false);
           });
       } else {

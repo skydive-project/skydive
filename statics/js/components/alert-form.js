@@ -85,11 +85,24 @@ Vue.component('alert-form', {
         }
         this.trigger = "duration:" + this.duration;
       }
-      this.$alertCreate(this.name, this.desc, this.expr, this.trigger, this.action)
-        .then(function() {
-          self.reset();
-          app.$emit("refresh-alert-list");
-        });
+
+      var alert = new api.Alert();
+      alert.Name = this.name;
+      alert.Description = this.desc;
+      alert.Expression = this.expr;
+      alert.Trigger = this.trigger;
+      alert.Action = this.action;
+      return self.alertAPI.create(alert)
+        .then(function(data) {
+            self.$success({message: 'Alert created'});
+            self.reset();
+            app.$emit("refresh-alert-list");
+            return data;
+          })
+          .catch(function(e) {
+            self.$error({message: 'Alert create error: ' + e.responseText});
+            return e;
+          });
     }
   }
 });

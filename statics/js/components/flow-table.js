@@ -593,7 +593,7 @@ Vue.component('flow-table', {
             self.queryResults.push(f);
           });
         })
-        .fail(function(r) {
+        .catch(function(r) {
           self.queryError = r.responseText + "Query was : " + self.limitedQuery;
           self.stopAutoRefresh();
         });
@@ -795,7 +795,7 @@ Vue.component('flow-table-control', {
           self.validatedQuery = self.query;
           self.error = "";
         })
-        .fail(function(e) {
+        .catch(function(e) {
           self.error = e.responseText;
         });
     }
