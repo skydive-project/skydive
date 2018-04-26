@@ -143,7 +143,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-go-fmt
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: cd src/github.com/skydive-project/skydive && scripts/ci/run-go-fmt.sh
     wrappers:
@@ -173,7 +174,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-unit-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
@@ -207,7 +209,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-compile-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
@@ -238,7 +241,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: '{name}-functional-tests-backend-{backend}'
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -290,7 +294,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-scale-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -327,7 +332,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-selenium-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -364,7 +370,8 @@
           cancel-builds-on-update: true
           only-trigger-phrase: true
           status-context: skydive-cdd-overview-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -447,6 +454,35 @@
       - chuck-norris
 
 - job:
+    name: skydive-create-vagrant-boxes
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    node: slaves
+    triggers:
+      - github
+    scm:
+      - git:
+          url: https://github.com/skydive-project/skydive
+          browser: githubweb
+          browser-url: http://github.com/skydive-project/skydive
+          timeout: 20
+          basedir: src/github.com/skydive-project/skydive
+          per-build-tag: false
+          skip-tag: true
+          branches:
+            - master
+    wrappers:
+      - credentials-binding:
+          - text:
+              credential-id: vagrantcloud-token
+              variable: VAGRANTCLOUD_TOKEN
+    builders:
+      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-vagrant-boxes.sh
+    publishers:
+      - chuck-norris
+
+- job:
     name: skydive-devstack-tests
     defaults: skydive
     properties:
@@ -462,7 +498,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-devstack-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -500,7 +537,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-kolla-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -542,7 +580,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: false
           status-context: skydive-vagrant-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -573,7 +612,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-packaging-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-packaging-tests.sh
     wrappers:
@@ -599,7 +639,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-python-tests
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash
@@ -634,7 +675,8 @@
           allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
           status-context: skydive-coverage
-          black-list-labels: WIP
+          black-list-labels:
+            - WIP
     builders:
       - shell: |
           #!/bin/bash

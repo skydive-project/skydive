@@ -1,0 +1,7 @@
+---
+- package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+     - https://www.rdoproject.org/repos/rdo-release.rpm
+- shell: "yum update -y"

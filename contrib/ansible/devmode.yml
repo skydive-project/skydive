@@ -1,0 +1,8 @@
+---
+- name: Deploy Skydive development machine
+  hosts: dev
+  become: yes
+  roles:
+  - role: elasticsearch
+  - role: orientdb
+  - role: skydive_dev

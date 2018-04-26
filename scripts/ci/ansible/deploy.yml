@@ -72,70 +72,9 @@
        - unzip
        - wget
        - https://www.rdoproject.org/repos/rdo-release.rpm
-  - shell: "dnf copr enable -y ganto/lxd"
-  - shell: "dnf update -y"
-  - shell: |
-      mkdir -p /tmp/protoc
-      cd /tmp/protoc
-      wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
-      unzip protoc-3.1.0-linux-x86_64.zip
-      chmod +x bin/protoc
-      mv bin/protoc /usr/bin/
   - package:
       name: "http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-27.noarch.rpm"
       state: present
-  - package:
-      name: "{{ item }}"
-      state: present
-    with_items:
-       - git
-       - wget
-       - unzip
-       - gcc
-       - make
-       - openvswitch
-       - docker
-       - libpcap-devel
-       - etcd
-       - libxml2-devel
-       - jq
-       - screen
-       - libselinux-python
-       - bridge-utils
-       - perl-Graph-Easy
-       - java
-       - ffmpeg
-       - gifsicle
-       - iperf
-       - rpm-build
-       - rpmlint
-       - golang
-       - libvirt
-       - vagrant-libvirt
-       - ansible
-       - numactl-devel
-       - kernel-devel
-       - python3-virtualenv
-       - llvm-devel
-       - clang-devel
-       - elfutils-libelf-devel
-       - kubernetes-client
-       - lxd
-       - lxd-client
-       - lxd-tools
-       - glibc-static
-       - xz-static
-       - zlib-static
-       - flex
-       - bison
-       - byacc
-       - libxml2-static
-  - lineinfile:
-      path: /etc/subuid
-      line: 'root:1000000:65536'
-  - lineinfile:
-      path: /etc/subgid
-      line: 'root:1000000:65536'
   - copy:
       content: |
         jenkins ALL=(root) NOPASSWD:ALL
@@ -145,32 +84,12 @@
       dest: /etc/sudoers.d/jenkins
       owner: root
       group: root
-  - selinux:
-      policy: targeted
-      state: permissive
-  - service:
-      name: "{{ item }}"
-      state: started
-      enabled: yes
-    with_items:
-      - etcd
-      - openvswitch
-      - docker
-      - lxd
-  - shell: "lxd init --auto"
   - lineinfile:
       dest: /etc/hosts
       line: "{{ hostvars['jenkins_master']['private_ip'] }} {{ jenkins_public_hostname }}"
       state: present
-  - shell: |
-      cd /tmp
-      git clone https://github.com/the-tcpdump-group/libpcap.git
-      cd libpcap
-      git checkout libpcap-1.5.3
-      ./configure --prefix=/usr/local --disable-shared --disable-dbus --disable-bluetooth --disable-canusb
-      make
-      sudo make install
-      cd ..
+  roles:
+    - role: skydive_dev
 
 - name: Install orientdb and elasticsearch
   hosts: slaves

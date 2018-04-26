@@ -1,0 +1,6 @@
+---
+- package:
+    name: "http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-27.noarch.rpm"
+    state: present
+- name: "Updating packages"
+  shell: "dnf update -y"
