@@ -74,8 +74,16 @@ Vue.component('capture-form', {
                 </div>\
                 <div class="form-group">\
                   <label class="form-check-label">\
-                    <input id="capture-tcp-metric" type="checkbox" class="form-check-input" v-model="tcpMetric">\
+                    <input id="capture-tcp-metric" type="checkbox" class="form-check-input" v-model="extraTCPMetric">\
                     Extra TCP metric\
+                  </label>\
+                  <label class="form-check-label">\
+                    <input id="capture-ip-defrag" type="checkbox" class="form-check-input" v-model="ipDefrag">\
+                    Defragment IPv4 packets\
+                  </label>\
+                  <label class="form-check-label">\
+                    <input id="capture-reassamble-tcp" type="checkbox" class="form-check-input" v-model="reassembleTCP">\
+                    Reassemble TCP packets\
                   </label>\
                 </div>\
               </fieldset>\
@@ -101,7 +109,9 @@ Vue.component('capture-form', {
       bpf: "",
       headerSize: 0,
       rawPackets: 0,
-      tcpMetric: true,
+      extraTCPMetric: true,
+      ipDefrag: false,
+      reassembleTCP: false,
       userQuery: "",
       mode: "selection",
       visible: false,
@@ -249,7 +259,9 @@ Vue.component('capture-form', {
       this.node1 = this.node2 = this.userQuery = "";
       this.name = this.desc = this.bpf = "";
       this.headerSize = this.rawPackets = 0;
-      this.tcpMetric = true;
+      this.extraTCPMetric = true;
+      this.ipDefrag = false;
+      this.reassembleTCP = false;
       this.visible = false;
       this.captureType = "";
     },
@@ -278,7 +290,10 @@ Vue.component('capture-form', {
       }
       if (!this.typeAllowed)
         this.captureType = "";
-      this.$captureCreate(this.query, this.name, this.desc, this.bpf, this.headerSize, this.rawPackets, this.tcpMetric, this.captureType, this.port)
+      this.$captureCreate(this.query, this.name, this.desc, this.bpf,
+                          this.headerSize, this.rawPackets,
+                          this.extraTCPMetric, this.ipDefrag, this.reassambleTCP,
+                          this.captureType, this.port)
         .then(function() {
           self.reset();
         });

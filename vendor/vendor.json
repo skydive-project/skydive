@@ -1063,6 +1063,12 @@
 			"revisionTime": "2017-11-28T22:01:57Z"
 		},
 		{
+			"checksumSHA1": "gGFpdcZzV7x5Qzj7Xcv2JUNr7bk=",
+			"path": "github.com/google/gopacket/ip4defrag",
+			"revision": "67a21c4470a0598531a769727aef40b870ffa128",
+			"revisionTime": "2017-11-28T22:01:57Z"
+		},
+		{
 			"checksumSHA1": "ORc1X58pM+oNj08y5wXask2sV4c=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/layers",
@@ -1080,6 +1086,12 @@
 			"checksumSHA1": "adb/IaMUy8be7lTHu0kSh+2zF2c=",
 			"comment": "v1.1.11-106-gbdf4ee7",
 			"path": "github.com/google/gopacket/pcapgo",
+			"revision": "67a21c4470a0598531a769727aef40b870ffa128",
+			"revisionTime": "2017-11-28T22:01:57Z"
+		},
+		{
+			"checksumSHA1": "rvhzYriHI3iVAVeEUKvunq82Pww=",
+			"path": "github.com/google/gopacket/tcpassembly",
 			"revision": "67a21c4470a0598531a769727aef40b870ffa128",
 			"revisionTime": "2017-11-28T22:01:57Z"
 		},
@@ -1853,6 +1865,12 @@
 			"comment": "v0.1-11-g5113f8f",
 			"path": "github.com/socketplane/libovsdb",
 			"revision": "5113f8fb4d9d374417ab4ce35424fbea1aad7272"
+		},
+		{
+			"checksumSHA1": "jAzqolwnRJhHsKXmmvKNrHqxqAw=",
+			"path": "github.com/spaolacci/murmur3",
+			"revision": "f09979ecbc725b9e6d41a297405f65e7e8804acc",
+			"revisionTime": "2018-01-18T20:28:30Z"
 		},
 		{
 			"checksumSHA1": "/nVR+XV3LuSQEJTy0YZRtbWbCbY=",

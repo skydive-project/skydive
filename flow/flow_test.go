@@ -128,6 +128,46 @@ func TestFlowSimpleIPv6(t *testing.T) {
 	}
 }
 
+func TestFlowIPv4DefragDisabled(t *testing.T) {
+	opt := TableOpts{ExtraTCPMetric: true, ReassembleTCP: true, IPDefrag: false}
+	flows := flowsFromPCAP(t, "pcaptraces/ipv4-fragments.pcap", layers.LinkTypeEthernet, nil, opt)
+	if len(flows) != 2 {
+		t.Error("A fragmented packets must generate 2 flow", len(flows))
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/Fragment" {
+		if flows[1].LayersPath != "Ethernet/IPv4/Fragment" {
+			t.Errorf("Flow LayersPath must be Ethernet/IPv4/Fragment got : %s %s", flows[0].LayersPath, flows[1].LayersPath)
+		}
+	}
+}
+
+func TestFlowIPv4DefragEnabled(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/ipv4-fragments.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 1 {
+		t.Error("A fragmented packets must generate 1 flow", len(flows))
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/Fragment/ICMPv4" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/Fragment/ICMPv4 got : %s", flows[0].LayersPath)
+	}
+	if flows[0].IPMetric.FragmentErrors != 0 || flows[0].IPMetric.Fragments != 1 {
+		t.Errorf("Flow IPMetric fragmentErrors %d fragments %d", flows[0].IPMetric.FragmentErrors, flows[0].IPMetric.Fragments)
+	}
+}
+
+func TestFlowTCPSegments(t *testing.T) {
+	flows := flowsFromPCAP(t, "pcaptraces/eth-ipv4-tcp-http-ooo.pcap", layers.LinkTypeEthernet, nil)
+	if len(flows) != 1 {
+		t.Error("A out of order tcp packets must generate 1 flow", len(flows))
+	}
+	if flows[0].LayersPath != "Ethernet/IPv4/TCP" {
+		t.Errorf("Flow LayersPath must be Ethernet/IPv4/TCP got : %s", flows[0].LayersPath)
+	}
+	m := flows[0].TCPMetric
+	if !(m.ABSegmentOutOfOrder == 0 && m.BASegmentOutOfOrder == 3) {
+		t.Errorf("Flow SegmentOutOfOrder do not match, got : %d %d", m.ABSegmentOutOfOrder, m.BASegmentOutOfOrder)
+	}
+}
+
 func TestBPFFilter(t *testing.T) {
 	bpf, err := NewBPF(layers.LinkTypeEthernet, DefaultCaptureLength, "port 53 or port 80")
 	if err != nil {
@@ -277,7 +317,6 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 	}
 	defer handleRead.Close()
 
-	var pcapPacketNB int
 	for {
 		data, ci, err := handleRead.ReadPacketData()
 		if err != nil && err != io.EOF {
@@ -287,28 +326,14 @@ func fillTableFromPCAP(t *testing.T, table *Table, filename string, linkType lay
 		} else {
 			p := gopacket.NewPacket(data, linkType, gopacket.Default)
 			p.Metadata().CaptureInfo = ci
-			if p.ErrorLayer() != nil {
-				t.Fatalf("Failed to decode packet with layer path '%s': %s", LayerPathFromGoPacket(&p), p.ErrorLayer().Error())
-			}
-			pcapPacketNB++
-			if strings.Contains(LayerPathFromGoPacket(&p), "DecodeFailure") {
-				t.Fatalf("GoPacket decode this pcap packet %d as DecodeFailure :\n%s", pcapPacketNB, p.Dump())
-			}
-			ps := PacketSeqFromGoPacket(&p, 0, bpf)
-			if ps == nil {
-				t.Fatal("Failed to get PacketSeq: ", err)
-			}
-			for level, p := range ps.Packets {
-				if strings.Contains(LayerPathFromGoPacket((&p).gopacket), "DecodeFailure") {
-					t.Fatalf("GoPacket decode this pcap packet %d level %d as DecodeFailure :\n%s", pcapPacketNB, level+1, (*(&p).gopacket).Dump())
-				}
-			}
+
+			ps := PacketSeqFromGoPacket(p, 0, bpf, table.IPDefragger())
 			table.processPacketSeq(ps)
 		}
 	}
 }
 
-func getFlowChain(t *testing.T, table *Table, uuid string) []*Flow {
+func getFlowChain(t *testing.T, table *Table, uuid string, flowChain map[string]*Flow) {
 	// lookup for the parent
 	searchQuery := &filters.SearchQuery{
 		Filter: filters.NewTermStringFilter("UUID", uuid),
@@ -320,47 +345,43 @@ func getFlowChain(t *testing.T, table *Table, uuid string) []*Flow {
 	}
 	fl := flows[0]
 
-	flowChain := []*Flow{}
-Chain:
-	for {
-		flowChain = append(flowChain, fl)
-		searchQuery.Filter = filters.NewTermStringFilter("ParentUUID", fl.UUID)
-		children := table.getFlows(searchQuery).GetFlows()
-		switch len(children) {
-		case 0:
-			break Chain
-		case 1:
-			fl = children[0]
-		default:
-			t.Errorf("Should return only one flow got : %+v", children)
-		}
-	}
+	flowChain[fl.UUID] = fl
 
-	return flowChain
+	if fl.ParentUUID != "" {
+		getFlowChain(t, table, fl.ParentUUID, flowChain)
+	}
 }
 
 func validateAllParentChains(t *testing.T, table *Table) {
 	searchQuery := &filters.SearchQuery{
-		Filter: filters.NewTermStringFilter("ParentUUID", ""),
+		Filter: filters.NewNotNullFilter("ParentUUID"),
 	}
 
-	flowChained := []*Flow{}
+	flowChain := make(map[string]*Flow, 0)
 
 	flows := table.getFlows(searchQuery).GetFlows()
-	for _, f := range flows {
-		fls := getFlowChain(t, table, f.UUID)
-		flowChained = append(flowChained, fls...)
+	for _, fl := range flows {
+		flowChain[fl.UUID] = fl
+
+		if fl.ParentUUID != "" {
+			getFlowChain(t, table, fl.UUID, flowChain)
+		}
 	}
 
 	// we should have touch all the flow
 	flows = table.getFlows(&filters.SearchQuery{}).GetFlows()
-	if len(flows) != len(flowChained) {
+	if len(flows) != len(flowChain) {
 		t.Errorf("Flow parent chain is incorrect : %+v", flows)
 	}
 }
 
-func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF) []*Flow {
-	table := NewTable(nil, nil, NewEnhancerPipeline(), "", TableOpts{TCPMetric: true})
+func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF, opts ...TableOpts) []*Flow {
+	opt := TableOpts{ExtraTCPMetric: true, ReassembleTCP: true, IPDefrag: true}
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+
+	table := NewTable(nil, nil, NewEnhancerPipeline(), "", opt)
 	fillTableFromPCAP(t, table, filename, linkType, bpf)
 	validateAllParentChains(t, table)
 
@@ -807,6 +828,39 @@ func TestGREEthernet(t *testing.T) {
 	validatePCAP(t, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet, nil, expected)
 }
 
+func benchmarkPacketParsing(b *testing.B, filename string, linkType layers.LinkType) {
+	handleRead, err := pcap.OpenOffline(filename)
+	if err != nil {
+		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+	}
+	defer handleRead.Close()
+
+	data, ci, err := handleRead.ReadPacketData()
+	if err != nil {
+		b.Fatal("PCAP OpenOffline error (handle to read packet): ", err)
+	}
+	p := gopacket.NewPacket(data, linkType, gopacket.Default)
+	p.Metadata().CaptureInfo = ci
+
+	for n := 0; n != b.N; n++ {
+		ps := PacketSeqFromGoPacket(p, 0, nil, nil)
+		if ps == nil {
+			b.Fatal("Failed to get PacketSeq: ", err)
+		}
+		for _, packet := range ps.Packets {
+			NewFlowFromGoPacket(packet.GoPacket, "", FlowUUIDs{}, FlowOpts{})
+		}
+	}
+}
+
+func BenchmarkPacketParsing1(b *testing.B) {
+	benchmarkPacketParsing(b, "pcaptraces/gre-gre-icmpv4.pcap", layers.LinkTypeEthernet)
+}
+
+func BenchmarkPacketParsing2(b *testing.B) {
+	benchmarkPacketParsing(b, "pcaptraces/simple-tcpv4.pcap", layers.LinkTypeEthernet)
+}
+
 func TestGREMPLS(t *testing.T) {
 	expected := []*Flow{
 		{
@@ -863,27 +917,27 @@ func TestFlowSimpleSynFin(t *testing.T) {
 	if len(flows) != 1 {
 		t.Error("A single packet must generate 1 flow")
 	}
-	if flows[0].TCPFlowMetric == nil {
+	if flows[0].TCPMetric == nil {
 		t.Errorf("Flow SYN/FIN is disabled")
 		return
 	}
-	if flows[0].TCPFlowMetric.ABSynStart != synTimestamp {
-		t.Errorf("In the flow AB-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPFlowMetric.ABSynStart)
+	if flows[0].TCPMetric.ABSynStart != synTimestamp {
+		t.Errorf("In the flow AB-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPMetric.ABSynStart)
 	}
-	if flows[0].TCPFlowMetric.BASynStart != synTimestamp {
-		t.Errorf("In the flow BA-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPFlowMetric.BASynStart)
+	if flows[0].TCPMetric.BASynStart != synTimestamp {
+		t.Errorf("In the flow BA-SYN must start at: %d, received at %d", synTimestamp, flows[0].TCPMetric.BASynStart)
 	}
-	if flows[0].TCPFlowMetric.ABSynTTL != synTTL {
-		t.Errorf("In flow AB-SYN TTL is: %d, supposed to be: %d", flows[0].TCPFlowMetric.ABSynTTL, synTTL)
+	if flows[0].TCPMetric.ABSynTTL != synTTL {
+		t.Errorf("In flow AB-SYN TTL is: %d, supposed to be: %d", flows[0].TCPMetric.ABSynTTL, synTTL)
 	}
-	if flows[0].TCPFlowMetric.BASynTTL != synTTL {
-		t.Errorf("In flow BA-SYN TTL is: %d, supposed to be: %d", flows[0].TCPFlowMetric.BASynTTL, synTTL)
+	if flows[0].TCPMetric.BASynTTL != synTTL {
+		t.Errorf("In flow BA-SYN TTL is: %d, supposed to be: %d", flows[0].TCPMetric.BASynTTL, synTTL)
 	}
-	if flows[0].TCPFlowMetric.ABFinStart != finTimestamp {
-		t.Errorf("In the flow AB-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPFlowMetric.ABFinStart)
+	if flows[0].TCPMetric.ABFinStart != finTimestamp {
+		t.Errorf("In the flow AB-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPMetric.ABFinStart)
 	}
-	if flows[0].TCPFlowMetric.BAFinStart != finTimestamp {
-		t.Errorf("In the flow BA-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPFlowMetric.BAFinStart)
+	if flows[0].TCPMetric.BAFinStart != finTimestamp {
+		t.Errorf("In the flow BA-FIN must start at: %d, received at %d", finTimestamp, flows[0].TCPMetric.BAFinStart)
 	}
 }
 
@@ -968,4 +1022,122 @@ func TestVxlanIcmpv4Truncated(t *testing.T) {
 	}
 
 	validatePCAP(t, "pcaptraces/vxlan-icmpv4-truncated.pcap", layers.LinkTypeEthernet, nil, expected)
+}
+
+func TestNTPCorrupted(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/Dot1Q/IPv4/UDP",
+			Application: "UDP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "00:1c:0f:5c:a2:83",
+				B:        "00:1c:0f:09:00:10",
+				ID:       202,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "89.46.101.31",
+				B:        "196.95.70.83",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        "40820",
+				B:        "123",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   50,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+			TrackingID:   "b416e1a36e6d5875",
+			L3TrackingID: "77f3bb5333e3d353",
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/ntp-corrupted.pcap", layers.LinkTypeEthernet, nil, expected)
+}
+
+func TestVxlanSrcPort(t *testing.T) {
+	expected := []*Flow{
+		{
+			LayersPath:  "Ethernet/IPv4/UDP/VXLAN",
+			Application: "VXLAN",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "fa:36:71:46:76:19",
+				B:        "3a:07:fe:34:45:8e",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "172.16.0.1",
+				B:        "172.16.0.2",
+				ID:       10,
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_UDP,
+				A:        "51031",
+				B:        "4789",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   208,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/TCP",
+			Application: "TCP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "f2:98:72:99:56:08",
+				B:        "26:09:b6:98:f9:64",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.1",
+				B:        "192.168.0.2",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_TCP,
+				A:        "1468",
+				B:        "8080",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   54,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+		{
+			LayersPath:  "Ethernet/IPv4/TCP",
+			Application: "TCP",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "f2:98:72:99:56:08",
+				B:        "26:09:b6:98:f9:64",
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.1",
+				B:        "192.168.0.2",
+			},
+			Transport: &FlowLayer{
+				Protocol: FlowProtocol_TCP,
+				A:        "1890",
+				B:        "8080",
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   54,
+				BAPackets: 0,
+				BABytes:   0,
+			},
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/vxlan-src-port.pcap", layers.LinkTypeEthernet, nil, expected)
 }

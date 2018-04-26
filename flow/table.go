@@ -29,6 +29,9 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
@@ -65,10 +68,12 @@ func NewFlowHandler(callback ExpireUpdateFunc, every time.Duration) *Handler {
 	}
 }
 
-// TableOpt defines flow table options
+// TableOpts defines flow table options
 type TableOpts struct {
 	RawPacketLimit int64
-	TCPMetric      bool
+	ExtraTCPMetric bool
+	IPDefrag       bool
+	ReassembleTCP  bool
 }
 
 // Table store the flow table and related metrics mechanism
@@ -93,6 +98,8 @@ type Table struct {
 	nodeTID        string
 	pipeline       *EnhancerPipeline
 	pipelineConfig *EnhancerPipelineConfig
+	ipDefragger    *IPDefragger
+	tcpAssembler   *TCPAssembler
 }
 
 // NewTable creates a new flow table
@@ -110,13 +117,14 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 		pipeline:       pipeline,
 		pipelineConfig: NewEnhancerPipelineConfig(),
 		nodeTID:        nodeTID,
+		ipDefragger:    NewIPDefragger(),
+		tcpAssembler:   NewTCPAssembler(),
 	}
 	if len(opts) > 0 {
 		t.Opts = opts[0]
 	}
 
 	t.updateVersion = 0
-
 	return t
 }
 
@@ -331,24 +339,35 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 	return nil
 }
 
-func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3ID int64) *Flow {
-	key := KeyFromGoPacket(packet.gopacket, parentUUID).String()
+func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
+	key := packet.Key(parentUUID)
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
 		opts := FlowOpts{
-			TCPMetric: ft.Opts.TCPMetric,
+			TCPMetric: ft.Opts.ExtraTCPMetric,
+			IPDefrag:  ft.Opts.IPDefrag,
 		}
 
 		uuids := FlowUUIDs{
 			ParentUUID: parentUUID,
-			L2ID:       L2ID,
-			L3ID:       L3ID,
 		}
 
-		flow.InitFromGoPacket(key, packet.gopacket, packet.length, ft.nodeTID, uuids, opts)
+		if ft.Opts.ReassembleTCP {
+			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
+				ft.tcpAssembler.RegisterFlow(flow, packet.GoPacket)
+			}
+		}
+
+		flow.initFromPacket(key, packet, ft.nodeTID, uuids, opts)
 		ft.pipeline.EnhanceFlow(ft.pipelineConfig, flow)
 	} else {
-		flow.Update(packet.gopacket, packet.length)
+		if ft.Opts.ReassembleTCP {
+			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
+				ft.tcpAssembler.Assemble(packet.GoPacket)
+			}
+		}
+
+		flow.Update(packet)
 	}
 
 	flow.XXX_state.updateVersion = ft.updateVersion + 1
@@ -356,9 +375,9 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3I
 	if ft.Opts.RawPacketLimit != 0 && flow.RawPacketsCaptured < ft.Opts.RawPacketLimit {
 		flow.RawPacketsCaptured++
 		data := &RawPacket{
-			Timestamp: common.UnixMillis((*packet.gopacket).Metadata().CaptureInfo.Timestamp),
+			Timestamp: common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp),
 			Index:     flow.RawPacketsCaptured,
-			Data:      (*packet.gopacket).Data(),
+			Data:      packet.Data,
 		}
 		flow.LastRawPackets = append(flow.LastRawPackets, data)
 	}
@@ -368,18 +387,10 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string, L2ID int64, L3I
 
 func (ft *Table) processPacketSeq(ps *PacketSequence) {
 	var parentUUID string
-	var L2ID int64
-	var L3ID int64
 	logging.GetLogger().Debugf("%d Packets received for capture node %s", len(ps.Packets), ft.nodeTID)
 	for _, packet := range ps.Packets {
-		f := ft.packetToFlow(&packet, parentUUID, L2ID, L3ID)
+		f := ft.packetToFlow(packet, parentUUID)
 		parentUUID = f.UUID
-		if f.Link != nil {
-			L2ID = f.Link.ID
-		}
-		if f.Network != nil {
-			L3ID = f.Network.ID
-		}
 	}
 }
 
@@ -408,6 +419,12 @@ func (ft *Table) Run() {
 	expireTicker := time.NewTicker(ft.expireHandler.every)
 	defer expireTicker.Stop()
 
+	// ticker used internally to track fragment and tcp connections
+	const ctDuration = 30 * time.Second
+
+	ctTicker := time.NewTicker(ctDuration)
+	defer ctTicker.Stop()
+
 	nowTicker := time.NewTicker(time.Second * 1)
 	defer nowTicker.Stop()
 
@@ -424,6 +441,8 @@ func (ft *Table) Run() {
 		case now := <-updateTicker.C:
 			ft.updateAt(now)
 		case <-ft.flush:
+			ft.tcpAssembler.FlushAll()
+
 			ft.expireNow()
 			ft.flushDone <- true
 		case query, ok := <-ft.query:
@@ -434,7 +453,33 @@ func (ft *Table) Run() {
 			ft.processPacketSeq(ps)
 		case fl := <-ft.flowChan:
 			ft.processFlow(fl)
+		case now := <-ctTicker.C:
+			t := now.Add(-ctDuration)
+			ft.tcpAssembler.FlushOlderThan(t)
+			ft.ipDefragger.FlushOlderThan(t)
 		}
+	}
+}
+
+// IPDefragger returns the ipDefragger if enabled
+func (ft *Table) IPDefragger() *IPDefragger {
+	if ft.Opts.IPDefrag {
+		return ft.ipDefragger
+	}
+	return nil
+}
+
+// FeedWithGoPacket feeds the table with a gopacket
+func (ft *Table) FeedWithGoPacket(packet gopacket.Packet, bpf *BPF) {
+	if ps := PacketSeqFromGoPacket(packet, 0, bpf, ft.ipDefragger); len(ps.Packets) > 0 {
+		ft.packetSeqChan <- ps
+	}
+}
+
+// FeedWithSFlowSample feeds the table with sflow samples
+func (ft *Table) FeedWithSFlowSample(sample *layers.SFlowFlowSample, bpf *BPF) {
+	for _, ps := range PacketSeqFromSFlowSample(sample, bpf, ft.ipDefragger) {
+		ft.packetSeqChan <- ps
 	}
 }
 

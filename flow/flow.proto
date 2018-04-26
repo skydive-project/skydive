@@ -82,6 +82,11 @@ message RawPacket {
   bytes Data = 3;
 }
 
+message IPMetric {
+  int64 Fragments = 1;
+  int64 FragmentErrors = 2;
+}
+
 message TCPMetric {
   int64 ABSynStart = 1;
   int64 BASynStart = 2;
@@ -91,6 +96,21 @@ message TCPMetric {
   int64 BAFinStart = 6;
   int64 ABRstStart = 7;
   int64 BARstStart = 8;
+
+  int64 ABSegmentOutOfOrder = 9;
+  int64 ABSegmentSkipped = 10;
+  int64 ABSegmentSkippedBytes = 11;
+  int64 ABPackets = 12;
+  int64 ABBytes = 13;
+  int64 ABSawStart = 14;
+  int64 ABSawEnd = 15;
+  int64 BASegmentOutOfOrder = 16;
+  int64 BASegmentSkipped = 17;
+  int64 BASegmentSkippedBytes = 18;
+  int64 BAPackets = 19;
+  int64 BABytes = 20;
+  int64 BASawStart = 21;
+  int64 BASawEnd = 22;
 }
 
 message Flow {
@@ -119,8 +139,9 @@ message Flow {
 /* Total amount of data for the whole flow duration */
   FlowMetric Metric = 32;
 
-/* Flow metric specific to the TCP Protocol only and optional */
-  TCPMetric TCPFlowMetric = 38;
+/* Metric specific to the TCP and IPs Protocols and optional */
+  TCPMetric TCPMetric = 38;
+  IPMetric IPMetric = 39;
 
   int64 Start = 10;
   int64 Last = 11;

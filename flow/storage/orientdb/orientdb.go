@@ -71,28 +71,41 @@ func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Docum
 }
 
 func flowTCPMetricToDocument(flow *flow.Flow, tcp_metric *flow.TCPMetric) orient.Document {
-	if tcp_metric != nil {
-		return orient.Document{
-			"@class":     "TCPMetric",
-			"@type":      "d",
-			"ABSynStart": tcp_metric.ABSynStart,
-			"BASynStart": tcp_metric.BASynStart,
-			"ABSynTTL":   tcp_metric.ABSynTTL,
-			"BASynTTL":   tcp_metric.BASynTTL,
-			"ABFinStart": tcp_metric.ABFinStart,
-			"BAFinStart": tcp_metric.BAFinStart,
-			"ABRstStart": tcp_metric.ABRstStart,
-			"BARstStart": tcp_metric.BARstStart,
-		}
-
+	if tcp_metric == nil {
+		return nil
 	}
-	return nil
+	return orient.Document{
+		"@class":                "TCPMetric",
+		"@type":                 "d",
+		"ABSynStart":            tcp_metric.ABSynStart,
+		"BASynStart":            tcp_metric.BASynStart,
+		"ABSynTTL":              tcp_metric.ABSynTTL,
+		"BASynTTL":              tcp_metric.BASynTTL,
+		"ABFinStart":            tcp_metric.ABFinStart,
+		"BAFinStart":            tcp_metric.BAFinStart,
+		"ABRstStart":            tcp_metric.ABRstStart,
+		"BARstStart":            tcp_metric.BARstStart,
+		"ABSegmentOutOfOrder":   tcp_metric.ABSegmentOutOfOrder,
+		"ABSegmentSkipped":      tcp_metric.ABSegmentSkipped,
+		"ABSegmentSkippedBytes": tcp_metric.ABSegmentSkippedBytes,
+		"ABPackets":             tcp_metric.ABPackets,
+		"ABBytes":               tcp_metric.ABBytes,
+		"ABSawStart":            tcp_metric.ABSawStart,
+		"ABSawEnd":              tcp_metric.ABSawEnd,
+		"BASegmentOutOfOrder":   tcp_metric.BASegmentOutOfOrder,
+		"BASegmentSkipped":      tcp_metric.BASegmentSkipped,
+		"BASegmentSkippedBytes": tcp_metric.BASegmentSkippedBytes,
+		"BAPackets":             tcp_metric.BAPackets,
+		"BABytes":               tcp_metric.BABytes,
+		"BASawStart":            tcp_metric.BASawStart,
+		"BASawEnd":              tcp_metric.BASawEnd,
+	}
 }
 
 func flowToDocument(flow *flow.Flow) orient.Document {
 	metricDoc := flowMetricToDocument(flow, flow.Metric)
 	lastMetricDoc := flowMetricToDocument(flow, flow.LastUpdateMetric)
-	tcpMetricDoc := flowTCPMetricToDocument(flow, flow.TCPFlowMetric)
+	tcpMetricDoc := flowTCPMetricToDocument(flow, flow.TCPMetric)
 	var flowDoc orient.Document
 	flowDoc = orient.Document{
 		"@class":             "Flow",
@@ -113,13 +126,17 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 	}
 
 	if tcpMetricDoc != nil {
-		flowDoc["TCPFlowMetric"] = tcpMetricDoc
+		flowDoc["TCPMetric"] = tcpMetricDoc
 	}
-
 	if lastMetricDoc != nil {
 		flowDoc["LastUpdateMetric"] = lastMetricDoc
 	}
-
+	if flow.IPMetric != nil {
+		flowDoc["IPMetric"] = orient.Document{
+			"Fragments":      flow.IPMetric.Fragments,
+			"FragmentErrors": flow.IPMetric.FragmentErrors,
+		}
+	}
 	if flow.Link != nil {
 		flowDoc["Link"] = orient.Document{
 			"Protocol": flow.Link.Protocol.String(),
@@ -128,7 +145,6 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 			"ID":       flow.Link.ID,
 		}
 	}
-
 	if flow.Network != nil {
 		flowDoc["Network"] = orient.Document{
 			"Protocol": flow.Network.Protocol.String(),
@@ -137,7 +153,6 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 			"ID":       flow.Network.ID,
 		}
 	}
-
 	if flow.ICMP != nil {
 		flowDoc["ICMP"] = orient.Document{
 			"Type": flow.ICMP.Type.String(),
@@ -145,7 +160,6 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 			"ID":   flow.ICMP.ID,
 		}
 	}
-
 	if flow.Transport != nil {
 		flowDoc["Transport"] = orient.Document{
 			"Protocol": flow.Transport.Protocol.String(),
@@ -154,7 +168,6 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 			"ID":       flow.Transport.ID,
 		}
 	}
-
 	return flowDoc
 }
 
@@ -416,6 +429,22 @@ func New() (*OrientDBStorage, error) {
 				{Name: "BAFinStart", Type: "LONG", Mandatory: false, NotNull: true},
 				{Name: "ABRstStart", Type: "LONG", Mandatory: false, NotNull: true},
 				{Name: "BARstStart", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "IPFragments", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "IPFragmentErrors", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "ABSegmentOutOfOrder", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "ABSegmentSkipped", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "ABSegmentSkippedBytes", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "ABPackets", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "ABBytes", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "ABSawStart", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "ABSawEnd", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "BASegmentOutOfOrder", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "BASegmentSkipped", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "BASegmentSkippedBytes", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "BAPackets", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "BABytes", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "BASawStart", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "BASawEnd", Type: "LONG", Mandatory: false, NotNull: true},
 			},
 			Indexes: []orient.Index{
 				{Name: "TCPMetric.TimeSpan", Fields: []string{"ABSynStart", "ABFinStart"}, Type: "NOTUNIQUE"},
@@ -435,7 +464,7 @@ func New() (*OrientDBStorage, error) {
 				{Name: "Application", Type: "STRING"},
 				{Name: "LastUpdateMetric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
 				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
-				{Name: "TCPFlowMetric", Type: "EMBEDDED", LinkedClass: "TCPMetric"},
+				{Name: "TCPMetric", Type: "EMBEDDED", LinkedClass: "TCPMetric"},
 				{Name: "Start", Type: "LONG"},
 				{Name: "Last", Type: "LONG"},
 				{Name: "TrackingID", Type: "STRING", Mandatory: true, NotNull: true},
@@ -464,9 +493,8 @@ func New() (*OrientDBStorage, error) {
 	client.CreateIndex("FlowMetric", flowIndex)
 
 	client.CreateProperty("TCPMetric", flowProp)
-
-	extFlowIndex := orient.Index{Name: "TCPMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
-	client.CreateIndex("TCPMetric", extFlowIndex)
+	tcpipMetricFlowIndex := orient.Index{Name: "TCPMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
+	client.CreateIndex("TCPMetric", tcpipMetricFlowIndex)
 
 	return &OrientDBStorage{
 		client: client,

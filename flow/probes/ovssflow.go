@@ -187,7 +187,9 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 
 	opts := flow.TableOpts{
 		RawPacketLimit: int64(capture.RawPacketLimit),
-		TCPMetric:      capture.ExtraTCPMetric,
+		ExtraTCPMetric: capture.ExtraTCPMetric,
+		IPDefrag:       capture.IPDefrag,
+		ReassembleTCP:  capture.ReassembleTCP,
 	}
 	ft := o.fpta.Alloc(tid, opts)
 

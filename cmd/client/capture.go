@@ -46,6 +46,8 @@ var (
 	headerSize         int
 	rawPacketLimit     int
 	extraTCPMetric     bool
+	ipDefrag           bool
+	reassembleTCP      bool
 )
 
 // CaptureCmd skdyive capture root command
@@ -84,12 +86,15 @@ var CaptureCreate = &cobra.Command{
 		capture.Port = port
 		capture.HeaderSize = headerSize
 		capture.ExtraTCPMetric = extraTCPMetric
+		capture.IPDefrag = ipDefrag
+		capture.ReassembleTCP = reassembleTCP
 
 		if !config.GetConfig().GetBool("analyzer.packet_capture_enabled") {
 			capture.RawPacketLimit = 0
 		} else {
 			capture.RawPacketLimit = rawPacketLimit
 		}
+
 		if err := validator.Validate(capture); err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
@@ -198,6 +203,8 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&headerSize, "header-size", "", 0, fmt.Sprintf("Header size of packet used, default: %d", flow.MaxCaptureLength))
 	cmd.Flags().IntVarP(&rawPacketLimit, "rawpacket-limit", "", 0, "Set the limit of raw packet captured, 0 no packet, -1 infinite, default: 0")
 	cmd.Flags().BoolVarP(&extraTCPMetric, "extra-tcp-metric", "", false, "Add additional TCP metric to flows, default: false")
+	cmd.Flags().BoolVarP(&ipDefrag, "ip-defrag", "", false, "Defragment IPv4 packets, default: false")
+	cmd.Flags().BoolVarP(&reassembleTCP, "reassamble-tcp", "", false, "Reassemble TCP packets, default: false")
 }
 
 func init() {

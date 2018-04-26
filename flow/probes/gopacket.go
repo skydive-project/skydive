@@ -114,16 +114,14 @@ func (p *GoPacketProbe) afpacketUpdateStats(g *graph.Graph, n *graph.Node, handl
 	}
 }
 
-func (p *GoPacketProbe) feedFlowTable(packetSeqChan chan *flow.PacketSequence, bpf *flow.BPF) {
+func (p *GoPacketProbe) feedFlowTable(bpf *flow.BPF) {
 	var count int
 
 	for atomic.LoadInt64(&p.state) == common.RunningState {
 		packet, err := p.packetSource.NextPacket()
 		switch err {
 		case nil:
-			if ps := flow.PacketSeqFromGoPacket(&packet, 0, bpf); len(ps.Packets) > 0 {
-				packetSeqChan <- ps
-			}
+			p.flowTable.FeedWithGoPacket(packet, bpf)
 		case io.EOF:
 			time.Sleep(20 * time.Millisecond)
 		case afpacket.ErrTimeout:
@@ -249,13 +247,13 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *types.Captur
 		}
 	}
 
-	packetSeqChan, _ := p.flowTable.Start()
+	p.flowTable.Start()
 	defer p.flowTable.Stop()
 
 	// notify active
 	e.OnStarted()
 
-	p.feedFlowTable(packetSeqChan, bpfFilter)
+	p.feedFlowTable(bpfFilter)
 
 	if statsTicker != nil {
 		close(statsDone)
@@ -320,7 +318,9 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 
 	opts := flow.TableOpts{
 		RawPacketLimit: int64(capture.RawPacketLimit),
-		TCPMetric:      capture.ExtraTCPMetric,
+		ExtraTCPMetric: capture.ExtraTCPMetric,
+		IPDefrag:       capture.IPDefrag,
+		ReassembleTCP:  capture.ReassembleTCP,
 	}
 	ft := p.fpta.Alloc(tid, opts)
 
