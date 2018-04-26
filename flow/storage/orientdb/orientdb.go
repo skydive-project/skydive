@@ -102,10 +102,23 @@ func flowTCPMetricToDocument(flow *flow.Flow, tcp_metric *flow.TCPMetric) orient
 	}
 }
 
+func flowIPMetricToDocument(flow *flow.Flow, ipMetric *flow.IPMetric) orient.Document {
+	if ipMetric == nil {
+		return nil
+	}
+	return orient.Document{
+		"@class":         "IPMetric",
+		"@type":          "d",
+		"Fragments":      ipMetric.Fragments,
+		"FragmentErrors": ipMetric.FragmentErrors,
+	}
+}
+
 func flowToDocument(flow *flow.Flow) orient.Document {
 	metricDoc := flowMetricToDocument(flow, flow.Metric)
 	lastMetricDoc := flowMetricToDocument(flow, flow.LastUpdateMetric)
 	tcpMetricDoc := flowTCPMetricToDocument(flow, flow.TCPMetric)
+	ipMetricDoc := flowIPMetricToDocument(flow, flow.IPMetric)
 	var flowDoc orient.Document
 	flowDoc = orient.Document{
 		"@class":             "Flow",
@@ -132,10 +145,7 @@ func flowToDocument(flow *flow.Flow) orient.Document {
 		flowDoc["LastUpdateMetric"] = lastMetricDoc
 	}
 	if flow.IPMetric != nil {
-		flowDoc["IPMetric"] = orient.Document{
-			"Fragments":      flow.IPMetric.Fragments,
-			"FragmentErrors": flow.IPMetric.FragmentErrors,
-		}
+		flowDoc["IPMetric"] = ipMetricDoc
 	}
 	if flow.Link != nil {
 		flowDoc["Link"] = orient.Document{
@@ -429,8 +439,6 @@ func New() (*OrientDBStorage, error) {
 				{Name: "BAFinStart", Type: "LONG", Mandatory: false, NotNull: true},
 				{Name: "ABRstStart", Type: "LONG", Mandatory: false, NotNull: true},
 				{Name: "BARstStart", Type: "LONG", Mandatory: false, NotNull: true},
-				{Name: "IPFragments", Type: "LONG", Mandatory: false, NotNull: true},
-				{Name: "IPFragmentErrors", Type: "LONG", Mandatory: false, NotNull: true},
 				{Name: "ABSegmentOutOfOrder", Type: "LONG", Mandatory: false, NotNull: true},
 				{Name: "ABSegmentSkipped", Type: "LONG", Mandatory: false, NotNull: true},
 				{Name: "ABSegmentSkippedBytes", Type: "LONG", Mandatory: false, NotNull: true},
@@ -451,7 +459,20 @@ func New() (*OrientDBStorage, error) {
 			},
 		}
 		if err := client.CreateDocumentClass(class); err != nil {
-			return nil, fmt.Errorf("Failed to register class ExtFlowMetric: %s", err.Error())
+			return nil, fmt.Errorf("Failed to register class FlowMetric: %s", err.Error())
+		}
+	}
+
+	if _, err := client.GetDocumentClass("IPMetric"); err != nil {
+		class := orient.ClassDefinition{
+			Name: "IPMetric",
+			Properties: []orient.Property{
+				{Name: "Fragments", Type: "LONG", Mandatory: false, NotNull: true},
+				{Name: "FragmentErrors", Type: "LONG", Mandatory: false, NotNull: true},
+			},
+		}
+		if err := client.CreateDocumentClass(class); err != nil {
+			return nil, fmt.Errorf("Failed to register class IPMetric: %s", err.Error())
 		}
 	}
 
@@ -464,6 +485,7 @@ func New() (*OrientDBStorage, error) {
 				{Name: "Application", Type: "STRING"},
 				{Name: "LastUpdateMetric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
 				{Name: "Metric", Type: "EMBEDDED", LinkedClass: "FlowMetric"},
+				{Name: "IPMetric", Type: "EMBEDDED", LinkedClass: "IPMetric"},
 				{Name: "TCPMetric", Type: "EMBEDDED", LinkedClass: "TCPMetric"},
 				{Name: "Start", Type: "LONG"},
 				{Name: "Last", Type: "LONG"},
@@ -487,14 +509,18 @@ func New() (*OrientDBStorage, error) {
 	}
 
 	flowProp := orient.Property{Name: "Flow", Type: "LINK", LinkedClass: "Flow", Mandatory: false, NotNull: true}
-	client.CreateProperty("FlowMetric", flowProp)
 
+	client.CreateProperty("FlowMetric", flowProp)
 	flowIndex := orient.Index{Name: "FlowMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
 	client.CreateIndex("FlowMetric", flowIndex)
 
 	client.CreateProperty("TCPMetric", flowProp)
-	tcpipMetricFlowIndex := orient.Index{Name: "TCPMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
-	client.CreateIndex("TCPMetric", tcpipMetricFlowIndex)
+	tcpMetricFlowIndex := orient.Index{Name: "TCPMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
+	client.CreateIndex("TCPMetric", tcpMetricFlowIndex)
+
+	client.CreateProperty("IPMetric", flowProp)
+	ipMetricFlowIndex := orient.Index{Name: "IPMetric.Flow", Fields: []string{"Flow"}, Type: "NOTUNIQUE"}
+	client.CreateIndex("IPMetric", ipMetricFlowIndex)
 
 	return &OrientDBStorage{
 		client: client,
