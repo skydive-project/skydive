@@ -28,6 +28,7 @@ import (
 
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
@@ -198,7 +199,7 @@ func (c *containerProbe) Stop() {
 	c.kubeCache.Stop()
 }
 
-func newContainerProbe(g *graph.Graph) *containerProbe {
+func newContainerProbe(g *graph.Graph) probe.Probe {
 	c := &containerProbe{
 		graph:            g,
 		podIndexer:       newPodIndexerByName(g),

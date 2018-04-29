@@ -25,6 +25,7 @@ package k8s
 import (
 	"sync"
 
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
@@ -127,7 +128,7 @@ func newNodeKubeCache(handler cache.ResourceEventHandler) *kubeCache {
 	return newKubeCache(getClientset().Core().RESTClient(), &v1.Node{}, "nodes", handler)
 }
 
-func newNodeProbe(g *graph.Graph) *nodeProbe {
+func newNodeProbe(g *graph.Graph) probe.Probe {
 	c := &nodeProbe{
 		graph:       g,
 		hostIndexer: newHostIndexer(g),

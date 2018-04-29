@@ -35,22 +35,27 @@ type Probe struct {
 }
 
 func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
+	name2ctor := map[string](func(*graph.Graph) probe.Probe){
+		"container":     newContainerProbe,
+		"namespace":     newNamespaceProbe,
+		"networkpolicy": newNetworkPolicyProbe,
+		"node":          newNodeProbe,
+		"pod":           newPodProbe,
+	}
+
 	configProbes := config.GetStringSlice("k8s.probes")
+	if len(configProbes) == 0 {
+		for name := range name2ctor {
+			configProbes = append(configProbes, name)
+		}
+	}
 	logging.GetLogger().Infof("K8s probes: %v", configProbes)
+
 	probes := make(map[string]probe.Probe)
-	for name, i := range configProbes {
-		switch i {
-		case "pod":
-			probes[i] = newPodProbe(g)
-		case "networkpolicy":
-			probes[i] = newNetworkPolicyProbe(g)
-		case "container":
-			probes[i] = newContainerProbe(g)
-		case "node":
-			probes[i] = newNodeProbe(g)
-		case "namespace":
-			probes[i] = newNamespaceProbe(g)
-		default:
+	for _, name := range configProbes {
+		if ctor, ok := name2ctor[name]; ok {
+			probes[name] = ctor(g)
+		} else {
 			logging.GetLogger().Errorf("skipping unsupported K8s probe %v", name)
 		}
 	}
