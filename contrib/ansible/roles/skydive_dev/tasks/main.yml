@@ -36,6 +36,8 @@
      - elfutils-libelf-devel
      - kubernetes-client
      - jq
+     - aria2
+     - tcpdump
 
 - service:
     name: "{{ item }}"

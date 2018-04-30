@@ -142,6 +142,10 @@ func (ft *Table) getFlows(query *filters.SearchQuery) *FlowSet {
 		}
 	}
 
+	if query == nil {
+		return flowset
+	}
+
 	if query.Sort {
 		flowset.Sort(common.SortOrder(query.SortOrder), query.SortBy)
 	}
