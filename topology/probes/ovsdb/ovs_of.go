@@ -348,7 +348,10 @@ func completeEvent(ctx context.Context, o *OvsOfProbe, event *Event, prefix stri
 	// the priority is provided. Another approach would be to use the shortest filter as it is the more generic
 	expected := countElements(oldrule.Filter)
 	filter := makeFilter(oldrule)
-	command, err1 := o.makeCommand([]string{"ovs-ofctl", "dump-flows"}, bridge, filter)
+	versions := strings.Join(config.GetStringSlice("ovs.oflow.openflow_versions"), ",")
+	command, err1 := o.makeCommand(
+		[]string{"ovs-ofctl", "-O", versions, "dump-flows"},
+		bridge, filter)
 	if err1 != nil {
 		return err1
 	}
