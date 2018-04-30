@@ -71,8 +71,8 @@ def provision_es(vm, hosts)
     ansible.sudo = true
   end
 
-  $skydive_extra_config["analyzer.storage.backend"] = "elasticsearch"
-  $skydive_extra_config["graph.backend"] = "elasticsearch"
+  $skydive_extra_config["analyzer.flow.backend"] = "elasticsearch"
+  $skydive_extra_config["analyzer.topology.backend"] = "elasticsearch"
   $skydive_extra_config["storage.elasticsearch.host"] = "#{hosts[0]['ip']}:9200"
 end
 

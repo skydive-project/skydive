@@ -88,14 +88,15 @@ func init() {
 	cfg.SetDefault("agent.X509_servername", "")
 
 	cfg.SetDefault("analyzer.capture_enabled", true)
+	cfg.SetDefault("analyzer.flow.backend", "memory")
+	cfg.SetDefault("analyzer.flow.bulk_insert", 100)
+	cfg.SetDefault("analyzer.flow.bulk_insert_deadline", 5)
+	cfg.SetDefault("analyzer.flow.max_buffer_size", 100000)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.packet_capture_enabled", true)
 	cfg.SetDefault("analyzer.packet_injection_enabled", true)
 	cfg.SetDefault("analyzer.replication.debug", false)
 	cfg.SetDefault("analyzer.ssh_enabled", false)
-	cfg.SetDefault("analyzer.flow.bulk_insert", 100)
-	cfg.SetDefault("analyzer.flow.bulk_insert_deadline", 5)
-	cfg.SetDefault("analyzer.flow.max_buffer_size", 100000)
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 

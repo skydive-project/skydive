@@ -59,11 +59,11 @@ analyzers:
 analyzer:
   listen: 0.0.0.0:8082
   flow:
-    backend: {{.Storage}}
+    backend: {{.FlowBackend}}
   analyzer_username: admin
   analyzer_password: password
   topology:
-    backend: {{.GraphBackend}}
+    backend: {{.TopologyBackend}}
     probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
   startup:
     capture_gremlin: "g.V().Has('Name', 'startup-vm2')"

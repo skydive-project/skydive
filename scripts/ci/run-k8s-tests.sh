@@ -16,8 +16,8 @@ export SKYDIVE_LOGGING_LEVEL=DEBUG
 
 ARGS= \
 	"-standalone" \
-	"-graph.backend=elasticsearch" \
-	"-storage.backend=elasticsearch" \
+	"-analyzer.topology.backend=elasticsearch" \
+	"-analyzer.flow.backend=elasticsearch" \
 	"-analyzer.topology.probes=k8s"
 
 make test.functionals WITH_K8S=true VERBOSE=true TIMEOUT=1m ARGS="$ARGS"
