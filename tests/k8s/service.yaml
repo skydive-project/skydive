@@ -1,0 +1,9 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: skydive-test
+spec:
+  ports:
+  - protocol: TCP
+    port: 1080
+    targetPort: 9376

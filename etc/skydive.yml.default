@@ -365,6 +365,7 @@ k8s:
   - networkpolicy
   - node
   - pod
+  - service
 
 ui:
   # Specify the extra assets folder. Javascript and CSS files present in this

@@ -43,6 +43,7 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 		"networkpolicy": newNetworkPolicyProbe,
 		"node":          newNodeProbe,
 		"pod":           newPodProbe,
+		"service":       newServiceProbe,
 	}
 
 	configProbes := config.GetStringSlice("k8s.probes")
