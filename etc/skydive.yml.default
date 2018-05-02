@@ -360,6 +360,7 @@ k8s:
   probes:
   - cluster
   - container
+  - deployment
   - namespace
   - networkpolicy
   - node
