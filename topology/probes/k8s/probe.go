@@ -38,6 +38,7 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 	name2ctor := map[string](func(*graph.Graph) probe.Probe){
 		"cluster":       newClusterProbe,
 		"container":     newContainerProbe,
+		"daemonset":     newDaemonSetProbe,
 		"deployment":    newDeploymentProbe,
 		"ingress":       newIngressProbe,
 		"namespace":     newNamespaceProbe,
