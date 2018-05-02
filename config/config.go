@@ -56,10 +56,14 @@ var (
 			"auth.keystone.domain_name",
 			"agent.topology.neutron.domain_name",
 		},
-		"openstack.region_name":   {"agent.topology.neutron.region_name"},
-		"openstack.endpoint_type": {"agent.topology.neutron.endpoint_type"},
-		"openstack.username":      {"agent.topology.neutron.username"},
-		"openstack.password":      {"agent.topology.neutron.password"},
+		"openstack.region_name":              {"agent.topology.neutron.region_name"},
+		"openstack.endpoint_type":            {"agent.topology.neutron.endpoint_type"},
+		"openstack.username":                 {"agent.topology.neutron.username"},
+		"openstack.password":                 {"agent.topology.neutron.password"},
+		"analyzer.flow.bulk_insert":          {"analyzer.storage.bulk_insert"},
+		"analyzer.flow.bulk_insert_deadline": {"analyzer.storage.bulk_insert_deadline"},
+		"analyzer.flow.max_buffer_size":      {"analyzer.storage.max_flow_buffer_size"},
+		"analyzer.topology.backend":          {"graph.backend"},
 	}
 )
 
@@ -89,12 +93,10 @@ func init() {
 	cfg.SetDefault("analyzer.packet_injection_enabled", true)
 	cfg.SetDefault("analyzer.replication.debug", false)
 	cfg.SetDefault("analyzer.ssh_enabled", false)
-	cfg.SetDefault("analyzer.storage.bulk_insert", 100)
-	cfg.SetDefault("analyzer.storage.bulk_insert_deadline", 5)
-	cfg.SetDefault("analyzer.storage.index_age_limit", 0)
-	cfg.SetDefault("analyzer.storage.index_entries_limit", 0)
-	cfg.SetDefault("analyzer.storage.indices_to_keep", 0)
-	cfg.SetDefault("analyzer.storage.max_flow_buffer_size", 100000)
+	cfg.SetDefault("analyzer.flow.bulk_insert", 100)
+	cfg.SetDefault("analyzer.flow.bulk_insert_deadline", 5)
+	cfg.SetDefault("analyzer.flow.max_buffer_size", 100000)
+	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 
 	cfg.SetDefault("auth.type", "noauth")
@@ -113,8 +115,6 @@ func init() {
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
 	cfg.SetDefault("flow.protocol", "udp")
-
-	cfg.SetDefault("graph.backend", "memory")
 
 	cfg.SetDefault("http.rest.debug", false)
 	cfg.SetDefault("http.ws.ping_delay", 2)

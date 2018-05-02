@@ -62,7 +62,7 @@ analyzer:
   # packet_injection_enabled: true
 
   # Flow storage engine
-  storage:
+  flow:
     # Available: elasticsearch, orientdb
     # backend: elasticsearch
 
@@ -87,6 +87,9 @@ analyzer:
     # indices_to_keep: 0
 
   topology:
+    # graph backend : memory, elasticsearch, orientdb
+    # backend: memory
+
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.
     #
@@ -266,10 +269,6 @@ storage:
     # database: Skydive
     # username: root
     # password: hello
-
-graph:
-  # graph backend memory, elasticsearch, orientdb
-  # backend: memory
 
 logging:
   # level: INFO

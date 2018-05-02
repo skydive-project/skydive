@@ -163,7 +163,12 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	persistent, err := graph.BackendFromConfig()
+	name := config.GetString("analyzer.topology.backend")
+	if len(name) == 0 {
+		name = "memory"
+	}
+
+	persistent, err := graph.NewBackendByName(name)
 	if err != nil {
 		return nil, err
 	}
