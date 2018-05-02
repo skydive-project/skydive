@@ -36,7 +36,7 @@ generate_cover_data() {
         export SKYDIVE_ANALYZERS=localhost:8082
 
         coverfile="../$workdir/functional.cover"
-        make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="$ARGS -test.coverprofile=$coverfile -standalone -graph.backend $backend -storage.backend $backend" TEST_PATTERN=$TEST_PATTERN
+        make test.functionals.batch VERBOSE=true TIMEOUT=20m GOFLAGS="-cover -covermode=$mode -coverpkg=$PKG" ARGS="$ARGS -test.coverprofile=$coverfile -standalone -analyzer.topology.backend $backend -analyzer.flow.backend $backend" TEST_PATTERN=$TEST_PATTERN
     fi
 
     if [ "$scale" -eq 1 ]; then

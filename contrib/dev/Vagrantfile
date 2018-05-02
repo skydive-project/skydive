@@ -11,8 +11,8 @@ $skydive_extra_config = {
   "http.ws.pong_timeout" => 10,
   "agent.topology.netlink.metrics_update" => 5,
   "analyzer.listen" => "0.0.0.0:8082",
-  "analyzer.storage.backend" => "elasticsearch",
-  "graph.backend" => "elasticsearch",
+  "analyzer.flow.backend" => "elasticsearch",
+  "analyzer.topology.backend" => "elasticsearch",
   "storage.elasticsearch.host" => "127.0.0.1:9200"
 }
 

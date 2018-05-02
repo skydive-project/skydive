@@ -56,10 +56,10 @@ var (
 	Standalone        bool
 	GraphOutputFormat string
 
-	etcdServer     string
-	graphBackend   string
-	storageBackend string
-	analyzerProbes string
+	etcdServer      string
+	topologyBackend string
+	flowBackend     string
+	analyzerProbes  string
 )
 
 type HelperParams map[string]interface{}
@@ -67,9 +67,9 @@ type HelperParams map[string]interface{}
 func init() {
 	flag.BoolVar(&Standalone, "standalone", false, "Start an analyzer and an agent")
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
-	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
+	flag.StringVar(&topologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
 	flag.StringVar(&GraphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
-	flag.StringVar(&storageBackend, "storage.backend", "", "Specify the storage backend used")
+	flag.StringVar(&flowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.Parse()
 }
@@ -96,18 +96,18 @@ func InitConfig(conf string, params ...HelperParams) error {
 		params[0]["EmbeddedEtcd"] = "true"
 		params[0]["EtcdServer"] = "http://localhost:12379"
 	}
-	if storageBackend != "" {
-		params[0]["Storage"] = storageBackend
+	if flowBackend != "" {
+		params[0]["FlowBackend"] = flowBackend
 	}
-	if storageBackend == "orientdb" || graphBackend == "orientdb" {
+	if flowBackend == "orientdb" || topologyBackend == "orientdb" {
 		orientDBPassword := os.Getenv("ORIENTDB_ROOT_PASSWORD")
 		if orientDBPassword == "" {
 			orientDBPassword = "root"
 		}
 		params[0]["OrientDBRootPassword"] = orientDBPassword
 	}
-	if graphBackend != "" {
-		params[0]["GraphBackend"] = graphBackend
+	if topologyBackend != "" {
+		params[0]["TopologyBackend"] = topologyBackend
 	}
 	if analyzerProbes != "" {
 		params[0]["AnalyzerProbes"] = strings.Split(analyzerProbes, ",")

@@ -114,7 +114,7 @@ func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, 
 
 // NewFlowServerWebSocketConn returns a new WebSocket flow server
 func NewFlowServerWebSocketConn(server *shttp.Server) (*FlowServerWebSocketConn, error) {
-	flowsMax := config.GetConfig().GetInt("analyzer.storage.max_flow_buffer_size")
+	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
 	return &FlowServerWebSocketConn{server: server, maxFlowBufferSize: flowsMax}, nil
 }
 
@@ -177,7 +177,7 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 	}
 
 	logging.GetLogger().Info("Analyzer listen agents on UDP socket")
-	flowsMax := config.GetConfig().GetInt("analyzer.storage.max_flow_buffer_size")
+	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
 	return &FlowServerUDPConn{conn: conn, maxFlowBufferSize: flowsMax}, err
 }
 
@@ -241,12 +241,12 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
 	}
 
-	bulk := config.GetInt("analyzer.storage.bulk_insert")
-	bulkDeadLine := config.GetInt("analyzer.storage.bulk_insert_deadline")
+	bulk := config.GetInt("analyzer.flow.bulk_insert")
+	bulkDeadLine := config.GetInt("analyzer.flow.bulk_insert_deadline")
 	if bulkDeadLine < 1 {
 		return nil, fmt.Errorf("bulk_insert_deadline has to be >= 1")
 	}
-	flowsMax := config.GetConfig().GetInt("analyzer.storage.max_flow_buffer_size")
+	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
 	var err error
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))

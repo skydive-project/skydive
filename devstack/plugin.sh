@@ -179,9 +179,6 @@ etcd:
   data_dir: /tmp/skydive-etcd
   listen: $SKYDIVE_AGENT_ETCD
 
-graph:
-  backend: $SKYDIVE_GRAPH_STORAGE
-
 analyzers:
   - $SKYDIVE_ANALYZERS
 
@@ -204,13 +201,14 @@ EOF
 
     if [ "$SKYDIVE_FLOWS_STORAGE" == "elasticsearch" ]; then
         cat >> $SKYDIVE_CONFIG_FILE <<- EOF
-  storage:
+  flow:
     backend: $SKYDIVE_FLOWS_STORAGE
 EOF
     fi
 
     cat >> $SKYDIVE_CONFIG_FILE <<- EOF
   topology:
+    backend: $SKYDIVE_GRAPH_STORAGE
     probes:
 $(get_probes_for_config $SKYDIVE_ANALYZER_PROBES)
 EOF
