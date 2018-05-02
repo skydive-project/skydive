@@ -28,255 +28,115 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
 	"github.com/skydive-project/skydive/api/client"
-	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/logging"
 )
 
-// ShellCmd skydive shell root command
-var ShellCmd = &cobra.Command{
-	Use:          "shell",
-	Short:        "Shell Command Line Interface",
-	Long:         "Skydive Shell Command Line Interface, yet another shell",
-	SilenceUsage: false,
-	Run: func(cmd *cobra.Command, args []string) {
-		shellMain()
-	},
-}
-
 var (
+	shellScript string
+
 	// ErrContinue parser error continue input
 	ErrContinue = errors.New("<continue input>")
 	// ErrQuit parser error quit session
 	ErrQuit = errors.New("<quit session>")
 )
 
-func actionGremlinQuery(s *Session, query string) error {
-	queryHelper := client.NewGremlinQueryHelper(&s.authenticationOpts)
-
-	var values interface{}
-	if err := queryHelper.QueryObject(query, &values); err != nil {
-		return err
-	}
-
-	printJSON(values)
-	return nil
-}
-
-func actionSetVarUsername(s *Session, arg string) error {
-	s.authenticationOpts.Username = arg
-	return nil
-}
-func actionSetVarPassword(s *Session, arg string) error {
-	s.authenticationOpts.Password = arg
-	return nil
-}
-func actionSetVarAnalyzer(s *Session, arg string) error {
-	s.analyzerAddr = arg
-	config.Set("analyzers", s.analyzerAddr)
-	return nil
-}
-
-var vocaGremlinBase = []string{
-	"V(",
-	"Context(",
-	"Flows(",
-}
-
-var vocaGremlinExt = []string{
-	"Has(",
-	"Dedup()",
-	"ShortestPathTo(", // 1 or 2
-	"Both()",
-	"Count()",
-	"Range(", // 2
-	"Limit(", // 1
-	"Sort(",
-	"Out()",
-	"OutV()",
-	"OutE()",
-	"In()",
-	"InV()",
-	"InE()",
-}
-
-func completeG(s *Session, prefix string) []string {
-	if prefix == "" {
-		return vocaGremlinBase
-	}
-	return vocaGremlinExt
-}
-
-type command struct {
-	name     string
-	action   func(*Session, string) error
-	complete func(*Session, string) []string
-	arg      string
-	document string
-}
-
-var commands = []command{
-	{
-		name:     "g",
-		action:   actionGremlinQuery,
-		complete: completeG,
-		arg:      "<gremlin expression>",
-		document: "evaluate a gremlin expression",
-	},
-	{
-		name:     "username",
-		action:   actionSetVarUsername,
-		complete: nil,
-		arg:      "<username>",
-		document: "set the analyzer connection username",
-	},
-	{
-		name:     "password",
-		action:   actionSetVarPassword,
-		complete: nil,
-		arg:      "<password>",
-		document: "set the analyzer connection password",
-	},
-	{
-		name:     "analyzer",
-		action:   actionSetVarAnalyzer,
-		complete: nil,
-		arg:      "<address:port>",
-		document: "set the analyzer connection address",
-	},
+// Session describes a shell session
+type Session struct {
+	authenticationOpts shttp.AuthenticationOpts
+	jsre               *js.JSRE
+	rl                 *contLiner
+	historyFile        string
 }
 
 func (s *Session) completeWord(line string, pos int) (string, []string, string) {
-	if strings.HasPrefix(line, "g") {
-		// complete commands
-		if !strings.Contains(line[0:pos], ".") {
-			pre, post := line[0:pos], line[pos:]
-			result := []string{}
-			for _, command := range commands {
-				name := command.name
-				if strings.HasPrefix(name, pre) {
-					// having complete means that this command takes an argument (for now)
-					if !strings.HasPrefix(post, ".") && command.arg != "" {
-						name = name + "."
-					}
-					result = append(result, name)
-				}
-			}
-			return "", result, post
-		}
-
-		// complete command arguments
-		for _, command := range commands {
-			if command.complete == nil {
-				continue
-			}
-
-			cmdPrefix := command.name + "."
-			if strings.HasPrefix(line, cmdPrefix) && pos >= len(cmdPrefix) {
-				complLine := ""
-				if len(line)-len(cmdPrefix) > 0 {
-					complLine = line[len(cmdPrefix) : len(line)-len(cmdPrefix)]
-				}
-				return line, command.complete(s, complLine), ""
-			}
-		}
-
+	if len(line) == 0 || pos == 0 {
 		return "", nil, ""
 	}
-	if strings.HasPrefix(line, ":") {
-		// complete commands
-		if !strings.Contains(line[0:pos], " ") {
-			pre, post := line[0:pos], line[pos:]
 
-			result := []string{}
-			for _, command := range commands {
-				name := ":" + command.name
-				if strings.HasPrefix(name, pre) {
-					// having complete means that this command takes an argument (for now)
-					if !strings.HasPrefix(post, " ") && command.arg != "" {
-						name = name + " "
-					}
-					result = append(result, name)
-				}
-			}
-			return "", result, post
+	// Chunck data to relevant part for autocompletion
+	// E.g. in case of nested lines eth.getBalance(eth.coinb<tab><tab>
+	start := pos - 1
+	for ; start > 0; start-- {
+		// Skip all methods and namespaces (i.e. including the dot)
+		if line[start] == '.' || (line[start] >= 'a' && line[start] <= 'z') || (line[start] >= 'A' && line[start] <= 'Z') {
+			continue
 		}
-
-		// complete command arguments
-		for _, command := range commands {
-			if command.complete == nil {
-				continue
-			}
-
-			cmdPrefix := ":" + command.name + " "
-			if strings.HasPrefix(line, cmdPrefix) && pos >= len(cmdPrefix) {
-				return cmdPrefix, command.complete(s, line[len(cmdPrefix):pos]), ""
-			}
-		}
-
-		return "", nil, ""
+		// We've hit an unexpected character, autocomplete form here
+		start++
+		break
 	}
-	return "", nil, ""
+	return line[:start], s.jsre.CompleteKeywords(line[start:pos]), line[pos:]
 }
 
-func shellMain() {
-	s, err := NewSession()
-	if err != nil {
-		panic(err)
-	}
-
-	rl := newContLiner()
-	defer rl.Close()
-
-	var historyFile string
+func (s *Session) loadHistory() error {
+	historyFile := ""
 	home, err := homeDir()
 	if err != nil {
-		logging.GetLogger().Errorf("home: %s", err)
+		return fmt.Errorf("Failed to retrieve home directory: %s", err)
 	} else {
 		historyFile = filepath.Join(home, "history")
 
 		f, err := os.Open(historyFile)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				logging.GetLogger().Errorf("%s", err)
+				return err
 			}
 		} else {
-			_, err := rl.ReadHistory(f)
+			_, err := s.rl.ReadHistory(f)
 			if err != nil {
-				logging.GetLogger().Errorf("while reading history: %s", err)
+				return err
 			}
 		}
 	}
 
-	rl.SetWordCompleter(s.completeWord)
+	s.historyFile = historyFile
+	return nil
+}
 
+func (s *Session) saveHistory() error {
+	if s.historyFile == "" {
+		return nil
+	}
+
+	err := os.MkdirAll(filepath.Dir(s.historyFile), 0755)
+	if err != nil {
+		return err
+	} else {
+		f, err := os.Create(s.historyFile)
+		if err != nil {
+			return err
+		} else {
+			_, err := s.rl.WriteHistory(f)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Session) prompt() error {
 	for {
-		in, err := rl.Prompt()
+		in, err := s.rl.Prompt()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			fmt.Fprintf(os.Stderr, "fatal: %s", err)
-			os.Exit(1)
+			return err
 		}
 
 		if in == "" {
 			continue
 		}
 
-		if err = rl.Reindent(); err != nil {
-			fmt.Fprintf(os.Stderr, "error: %s\n", err)
-			rl.Clear()
-			continue
-		}
-
-		err = s.Eval(in)
+		err = s.eval(in)
 		if err != nil {
 			if err == ErrContinue {
 				continue
@@ -285,25 +145,10 @@ func shellMain() {
 			}
 			fmt.Println(err)
 		}
-		rl.Accepted()
+		s.rl.Accepted()
 	}
 
-	if historyFile != "" {
-		err := os.MkdirAll(filepath.Dir(historyFile), 0755)
-		if err != nil {
-			logging.GetLogger().Errorf("%s", err)
-		} else {
-			f, err := os.Create(historyFile)
-			if err != nil {
-				logging.GetLogger().Errorf("%s", err)
-			} else {
-				_, err := rl.WriteHistory(f)
-				if err != nil {
-					logging.GetLogger().Errorf("while saving history: %s", err)
-				}
-			}
-		}
-	}
+	return nil
 }
 
 func homeDir() (home string, err error) {
@@ -321,54 +166,79 @@ func homeDir() (home string, err error) {
 	return
 }
 
-// Session describes a shell session
-type Session struct {
-	authenticationOpts shttp.AuthenticationOpts
-	analyzerAddr       string
-}
-
 // NewSession creates a new shell session
 func NewSession() (*Session, error) {
-	s := &Session{
-		analyzerAddr: "localhost:8082",
-		authenticationOpts: shttp.AuthenticationOpts{
-			Username: "admin",
-			Password: "password",
-		},
+	jsre, err := js.NewJSRE()
+	if err != nil {
+		return nil, err
 	}
-	config.Set("analyzers", s.analyzerAddr)
+
+	s := &Session{
+		authenticationOpts: AuthenticationOpts,
+		jsre:               jsre,
+		rl:                 newContLiner(),
+	}
+
+	client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	s.jsre.Start()
+	s.jsre.RegisterAPIClient(client)
+
+	if err := s.loadHistory(); err != nil {
+		return nil, fmt.Errorf("while reading history: %s", err)
+	}
+
+	s.rl.SetWordCompleter(s.completeWord)
 
 	return s, nil
 }
 
 // Eval evaluation a input expression
-func (s *Session) Eval(in string) error {
-	logging.GetLogger().Debugf("eval >>> %q", in)
-	for _, command := range commands {
-		if command.name == "g" && strings.HasPrefix(in, command.name) {
-			err := command.action(s, in)
-			if err != nil {
-				logging.GetLogger().Errorf("%s: %s", command.name, err)
-			}
-			return nil
-		}
-		arg := strings.TrimPrefix(in, ":"+command.name)
-		if arg == in {
-			continue
-		}
-
-		if arg == "" || strings.HasPrefix(arg, " ") {
-			arg = strings.TrimSpace(arg)
-			err := command.action(s, arg)
-			if err != nil {
-				if err == ErrQuit {
-					return err
-				}
-				logging.GetLogger().Errorf("%s: %s", command.name, err)
-			}
-			return nil
-		}
+func (s *Session) eval(in string) error {
+	_, err := s.jsre.Exec(in)
+	if err != nil {
+		return fmt.Errorf("Error while executing Javascript '%s': %s", in, err.Error())
 	}
-
 	return nil
+}
+
+// Close the session
+func (s *Session) Close() error {
+	return s.rl.Close()
+}
+
+// ShellCmd skydive shell root command
+var ShellCmd = &cobra.Command{
+	Use:          "shell",
+	Short:        "Shell Command Line Interface",
+	Long:         "Skydive Shell Command Line Interface, yet another shell",
+	SilenceUsage: false,
+	Run: func(cmd *cobra.Command, args []string) {
+		s, err := NewSession()
+		if err != nil {
+			logging.GetLogger().Errorf("Error while creating session: %s", err)
+			os.Exit(1)
+		}
+		defer s.Close()
+
+		if shellScript != "" {
+			result := s.jsre.RunScript(shellScript)
+			if result.IsDefined() {
+				logging.GetLogger().Errorf("Error while exeucting script %s: %s", shellScript, result.String())
+			}
+		}
+
+		s.prompt()
+
+		if err := s.saveHistory(); err != nil {
+			logging.GetLogger().Errorf("Error while saving history: %s", err)
+		}
+	},
+}
+
+func init() {
+	ShellCmd.Flags().StringVarP(&shellScript, "script", "", "", "path to a JavaScript to execute")
 }
