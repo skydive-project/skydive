@@ -30,9 +30,9 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-// LayerTypeInGRE creates a layer type, should be unique and high, so it doesn't conflict,
+// LayerTypeRawIP creates a layer type, should be unique and high, so it doesn't conflict,
 // giving it a name and a decoder to use.
-var LayerTypeInGRE = gopacket.RegisterLayerType(55555, gopacket.LayerTypeMetadata{Name: "LayerTypeInGRE", Decoder: gopacket.DecodeFunc(decodeInGRELayer)})
+var LayerTypeRawIP = gopacket.RegisterLayerType(55555, gopacket.LayerTypeMetadata{Name: "LayerTypeRawIP", Decoder: gopacket.DecodeFunc(decodeInGRELayer)})
 
 // Try to find if the next layer is IPv4, or IPv6. If it fails, it considers it is Ethernet.
 var layerTypeInMplsEthOrIP = gopacket.RegisterLayerType(55556, gopacket.LayerTypeMetadata{Name: "LayerTypeInMplsEthOrIp", Decoder: gopacket.DecodeFunc(decodeInMplsEthOrIPLayer)})
@@ -40,20 +40,20 @@ var layerTypeInMplsEthOrIP = gopacket.RegisterLayerType(55556, gopacket.LayerTyp
 var layerTypeICMPv4 = gopacket.OverrideLayerType(19, gopacket.LayerTypeMetadata{Name: "ICMPv4", Decoder: gopacket.DecodeFunc(decodeICMPv4)})
 var layerTypeICMPv6 = gopacket.OverrideLayerType(57, gopacket.LayerTypeMetadata{Name: "ICMPv6", Decoder: gopacket.DecodeFunc(decodeICMPv6)})
 
-type inGRELayer struct {
+type rawIPLayer struct {
 	StrangeHeader []byte
 	payload       []byte
 }
 
-func (m inGRELayer) LayerType() gopacket.LayerType {
-	return LayerTypeInGRE
+func (m rawIPLayer) LayerType() gopacket.LayerType {
+	return LayerTypeRawIP
 }
 
-func (m inGRELayer) LayerContents() []byte {
+func (m rawIPLayer) LayerContents() []byte {
 	return m.StrangeHeader
 }
 
-func (m inGRELayer) LayerPayload() []byte {
+func (m rawIPLayer) LayerPayload() []byte {
 	return m.payload
 }
 

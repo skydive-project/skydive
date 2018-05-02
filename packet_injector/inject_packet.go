@@ -198,7 +198,7 @@ func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *Channels) (s
 	protocol := common.AllPackets
 	layerType, _ := flow.GetFirstLayerType(encapType)
 	switch layerType {
-	case flow.LayerTypeInGRE, layers.LayerTypeIPv4, layers.LayerTypeIPv6:
+	case flow.LayerTypeRawIP, layers.LayerTypeIPv4, layers.LayerTypeIPv6:
 		protocol = common.OnlyIPPackets
 	}
 
