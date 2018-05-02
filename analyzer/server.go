@@ -58,7 +58,7 @@ type Server struct {
 	replicationWSServer *shttp.WSStructServer
 	subscriberWSServer  *shttp.WSStructServer
 	replicationEndpoint *TopologyReplicationEndpoint
-	alertServer         *alert.AlertServer
+	alertServer         *alert.Server
 	onDemandClient      *ondemand.OnDemandProbeClient
 	piClient            *packet_injector.PacketInjectorClient
 	metadataManager     *metadata.UserMetadataManager
@@ -272,8 +272,7 @@ func NewServerFromConfig() (*Server, error) {
 	}
 	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
 
-	alertAPIHandler, err := api.RegisterAlertAPI(apiServer)
-	if err != nil {
+	if _, err = api.RegisterAlertAPI(apiServer); err != nil {
 		return nil, err
 	}
 
@@ -298,7 +297,10 @@ func NewServerFromConfig() (*Server, error) {
 	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 
-	alertServer := alert.NewAlertServer(alertAPIHandler, subscriberWSServer, g, tr, etcdClient)
+	alertServer, err := alert.NewServer(apiServer, subscriberWSServer, g, tr, etcdClient)
+	if err != nil {
+		return nil, err
+	}
 
 	s := &Server{
 		httpServer:          hserver,

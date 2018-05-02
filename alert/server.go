@@ -33,19 +33,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/robertkrimen/otto"
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 )
 
 const (
-	// Namespace Alert
+	// Alert websocket namespace
 	Namespace = "Alert"
 )
 
@@ -54,6 +54,8 @@ const (
 	actionScript
 )
 
+// GreminAlert represents an alert that will be triggered if its associated
+// Gremlin expression returns a non empty result.
 type GremlinAlert struct {
 	*types.Alert
 	graph             *graph.Graph
@@ -64,7 +66,7 @@ type GremlinAlert struct {
 	gremlinParser     *traversal.GremlinTraversalParser
 }
 
-func (ga *GremlinAlert) Evaluate(lockGraph bool) (interface{}, error) {
+func (ga *GremlinAlert) evaluate(server *api.Server, vm *js.JSRE, lockGraph bool) (interface{}, error) {
 	// If the alert is a simple Gremlin query, avoid
 	// converting to JavaScript
 	if ga.traversalSequence != nil {
@@ -82,45 +84,7 @@ func (ga *GremlinAlert) Evaluate(lockGraph bool) (interface{}, error) {
 	}
 
 	// Fallback to JavaScript
-	vm := otto.New()
-	vm.Set("Gremlin", func(call otto.FunctionCall) otto.Value {
-		if len(call.ArgumentList) < 1 || !call.Argument(0).IsString() {
-			return vm.MakeCustomError("MissingQueryArgument", "Gremlin requires a string parameter")
-		}
-
-		query := call.Argument(0).String()
-
-		// TODO(sbaubeau) Cache the queries
-		ts, err := ga.gremlinParser.Parse(strings.NewReader(query))
-		if err != nil {
-			return vm.MakeCustomError("ParseError", err.Error())
-		}
-
-		result, err := ts.Exec(ga.graph, lockGraph)
-		if err != nil {
-			return vm.MakeCustomError("ExecuteError", err.Error())
-		}
-
-		source, err := result.MarshalJSON()
-		if err != nil {
-			return vm.MakeCustomError("MarshalError", err.Error())
-		}
-
-		jsonObj, err := vm.Object("obj = " + string(source))
-		if err != nil {
-			return vm.MakeCustomError("JSONError", err.Error())
-		}
-
-		logging.GetLogger().Infof("Gremlin returned %+v", jsonObj)
-		r, _ := vm.ToValue(jsonObj)
-		return r
-	})
-
-	// Create an alias '$' for 'Gremlin'
-	gremlin, _ := vm.Get("Gremlin")
-	vm.Set("$", gremlin)
-
-	result, err := vm.Run(ga.Expression)
+	result, err := vm.Exec(ga.Expression)
 	if err != nil {
 		return nil, fmt.Errorf("Error while executing Javascript '%s': %s", ga.Expression, err.Error())
 	}
@@ -160,7 +124,7 @@ func (ga *GremlinAlert) Evaluate(lockGraph bool) (interface{}, error) {
 	return nil, nil
 }
 
-func (ga *GremlinAlert) Trigger(payload []byte) error {
+func (ga *GremlinAlert) trigger(payload []byte) error {
 	switch ga.kind {
 	case actionWebHook:
 		client := &http.Client{}
@@ -201,6 +165,7 @@ func (ga *GremlinAlert) Trigger(payload []byte) error {
 	return nil
 }
 
+// NewGremlinAlert returns a new gremlin based alert
 func NewGremlinAlert(alert *types.Alert, g *graph.Graph, p *traversal.GremlinTraversalParser) (*GremlinAlert, error) {
 	ts, _ := p.Parse(strings.NewReader(alert.Expression))
 
@@ -222,26 +187,33 @@ func NewGremlinAlert(alert *types.Alert, g *graph.Graph, p *traversal.GremlinTra
 	return ga, nil
 }
 
-type AlertServer struct {
+// Server describes an alerting alerts that evaluates registered
+// alerts on graph events or periodically and trigger them if their condition
+// evaluates to true
+type Server struct {
 	common.RWMutex
 	*etcd.MasterElector
 	Graph         *graph.Graph
 	Pool          shttp.WSStructSpeakerPool
 	AlertHandler  api.Handler
+	apiServer     *api.Server
 	watcher       api.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
 	alertTimers   map[string]chan bool
 	gremlinParser *traversal.GremlinTraversalParser
+	jsre          *js.JSRE
 }
 
-type AlertMessage struct {
+// Message describes a websocket message that is sent by the alerting
+// server when an alert was triggered
+type Message struct {
 	UUID       string
 	Timestamp  time.Time
 	ReasonData interface{}
 }
 
-func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
-	msg := AlertMessage{
+func (a *Server) triggerAlert(al *GremlinAlert, data interface{}) error {
+	msg := Message{
 		UUID:       al.UUID,
 		Timestamp:  time.Now().UTC(),
 		ReasonData: data,
@@ -255,7 +227,7 @@ func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
 	}
 
 	go func() {
-		if err := al.Trigger(payload); err != nil {
+		if err := al.trigger(payload); err != nil {
 			logging.GetLogger().Infof("Failed to trigger alert: %s", err.Error())
 		}
 	}()
@@ -267,12 +239,12 @@ func (a *AlertServer) TriggerAlert(al *GremlinAlert, data interface{}) error {
 	return nil
 }
 
-func (a *AlertServer) evaluateAlert(al *GremlinAlert, lockGraph bool) error {
+func (a *Server) evaluateAlert(al *GremlinAlert, lockGraph bool) error {
 	if !a.IsMaster() {
 		return nil
 	}
 
-	data, err := al.Evaluate(lockGraph)
+	data, err := al.evaluate(a.apiServer, a.jsre, lockGraph)
 	if err != nil {
 		return err
 	}
@@ -284,7 +256,7 @@ func (a *AlertServer) evaluateAlert(al *GremlinAlert, lockGraph bool) error {
 		equal := reflect.DeepEqual(reflect.ValueOf(data).Interface(), al.lastEval)
 		if !equal {
 			al.lastEval = data
-			return a.TriggerAlert(al, data)
+			return a.triggerAlert(al, data)
 		}
 	} else {
 		// Gremlin query returned no datas, or Javascript expression was unsuccessful
@@ -295,7 +267,8 @@ func (a *AlertServer) evaluateAlert(al *GremlinAlert, lockGraph bool) error {
 	return nil
 }
 
-func (a *AlertServer) EvaluateAlerts(alerts map[string]*GremlinAlert, lockGraph bool) {
+// Evaluate all the registered alerts
+func (a *Server) evaluateAlerts(alerts map[string]*GremlinAlert, lockGraph bool) {
 	a.RLock()
 	defer a.RUnlock()
 
@@ -306,28 +279,34 @@ func (a *AlertServer) EvaluateAlerts(alerts map[string]*GremlinAlert, lockGraph 
 	}
 }
 
-func (a *AlertServer) OnNodeUpdated(n *graph.Node) {
-	a.EvaluateAlerts(a.graphAlerts, false)
+// OnNodeUpdated event
+func (a *Server) OnNodeUpdated(n *graph.Node) {
+	a.evaluateAlerts(a.graphAlerts, false)
 }
 
-func (a *AlertServer) OnNodeAdded(n *graph.Node) {
-	a.EvaluateAlerts(a.graphAlerts, false)
+// OnNodeAdded event
+func (a *Server) OnNodeAdded(n *graph.Node) {
+	a.evaluateAlerts(a.graphAlerts, false)
 }
 
-func (a *AlertServer) OnNodeDeleted(n *graph.Node) {
-	a.EvaluateAlerts(a.graphAlerts, false)
+// OnNodeDeleted event
+func (a *Server) OnNodeDeleted(n *graph.Node) {
+	a.evaluateAlerts(a.graphAlerts, false)
 }
 
-func (a *AlertServer) OnEdgeAdded(e *graph.Edge) {
-	a.EvaluateAlerts(a.graphAlerts, false)
+// OnEdgeAdded event
+func (a *Server) OnEdgeAdded(e *graph.Edge) {
+	a.evaluateAlerts(a.graphAlerts, false)
 }
 
-func (a *AlertServer) OnEdgeUpdated(e *graph.Edge) {
-	a.EvaluateAlerts(a.graphAlerts, false)
+// OnEdgeUpdated event
+func (a *Server) OnEdgeUpdated(e *graph.Edge) {
+	a.evaluateAlerts(a.graphAlerts, false)
 }
 
-func (a *AlertServer) OnEdgeDeleted(e *graph.Edge) {
-	a.EvaluateAlerts(a.graphAlerts, false)
+// OnEdgeDeleted event
+func (a *Server) OnEdgeDeleted(e *graph.Edge) {
+	a.evaluateAlerts(a.graphAlerts, false)
 }
 
 func parseTrigger(trigger string) (string, string) {
@@ -338,7 +317,7 @@ func parseTrigger(trigger string) (string, string) {
 	return splits[0], ""
 }
 
-func (a *AlertServer) RegisterAlert(apiAlert *types.Alert) error {
+func (a *Server) registerAlert(apiAlert *types.Alert) error {
 	alert, err := NewGremlinAlert(apiAlert, a.Graph, a.gremlinParser)
 	if err != nil {
 		return err
@@ -386,8 +365,8 @@ func (a *AlertServer) RegisterAlert(apiAlert *types.Alert) error {
 	return nil
 }
 
-func (a *AlertServer) UnregisterAlert(id string) {
-	logging.GetLogger().Debugf("Alert deleted: %s", id)
+func (a *Server) unregisterAlert(id string) {
+	logging.GetLogger().Debugf("Unregistering alert: %s", id)
 
 	a.Lock()
 	defer a.Unlock()
@@ -400,40 +379,53 @@ func (a *AlertServer) UnregisterAlert(id string) {
 	}
 }
 
-func (a *AlertServer) onAPIWatcherEvent(action string, id string, resource types.Resource) {
+func (a *Server) onAPIWatcherEvent(action string, id string, resource types.Resource) {
 	switch action {
 	case "init", "create", "set", "update":
-		if err := a.RegisterAlert(resource.(*types.Alert)); err != nil {
+		if err := a.registerAlert(resource.(*types.Alert)); err != nil {
 			logging.GetLogger().Errorf("Failed to register alert: %s", err.Error())
 		}
 	case "expire", "delete":
-		a.UnregisterAlert(id)
+		a.unregisterAlert(id)
 	}
 }
 
-func (a *AlertServer) Start() {
+// Start the alerting server
+func (a *Server) Start() {
 	a.StartAndWait()
 
 	a.watcher = a.AlertHandler.AsyncWatch(a.onAPIWatcherEvent)
 	a.Graph.AddEventListener(a)
 }
 
-func (a *AlertServer) Stop() {
+// Stop the alerting server
+func (a *Server) Stop() {
 	a.MasterElector.Stop()
 }
 
-func NewAlertServer(ah api.Handler, pool shttp.WSStructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) *AlertServer {
+// Returns a new alerting server
+func NewServer(apiServer *api.Server, pool shttp.WSStructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) (*Server, error) {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
-	as := &AlertServer{
+	jsre, err := js.NewJSRE()
+	if err != nil {
+		return nil, err
+	}
+
+	jsre.Start()
+	jsre.RegisterAPIServer(graph, parser, apiServer)
+
+	as := &Server{
 		MasterElector: elector,
 		Pool:          pool,
-		AlertHandler:  ah,
+		AlertHandler:  apiServer.GetHandler("alert"),
 		Graph:         graph,
 		graphAlerts:   make(map[string]*GremlinAlert),
 		alertTimers:   make(map[string]chan bool),
 		gremlinParser: parser,
+		apiServer:     apiServer,
+		jsre:          jsre,
 	}
 
-	return as
+	return as, nil
 }

@@ -178,7 +178,7 @@ func (h *BasicAPIHandler) Delete(id string) error {
 	return nil
 }
 
-//Update a resource
+// Update a resource
 func (h *BasicAPIHandler) Update(id string, resource types.Resource) error {
 	data, err := json.Marshal(&resource)
 	if err != nil {
