@@ -999,8 +999,40 @@
 			"versionExact": "v1.0.0"
 		},
 		{
+			"checksumSHA1": "ZIqcmeEc/EU9HsKJHuJ1Iy+ZNgE=",
+			"path": "github.com/golang/protobuf/protoc-gen-go",
+			"revision": "925541529c1fa6821df4e44ce2723319eb2be768",
+			"revisionTime": "2018-01-25T21:43:03Z",
+			"version": "v1.0.0",
+			"versionExact": "v1.0.0"
+		},
+		{
 			"checksumSHA1": "XNHQiRltA7NQJV0RvUroY+cf+zg=",
 			"path": "github.com/golang/protobuf/protoc-gen-go/descriptor",
+			"revision": "925541529c1fa6821df4e44ce2723319eb2be768",
+			"revisionTime": "2018-01-25T21:43:03Z",
+			"version": "v1.0.0",
+			"versionExact": "v1.0.0"
+		},
+		{
+			"checksumSHA1": "dbkgZT1dlQxBBeqNb74+pdbOMbc=",
+			"path": "github.com/golang/protobuf/protoc-gen-go/generator",
+			"revision": "925541529c1fa6821df4e44ce2723319eb2be768",
+			"revisionTime": "2018-01-25T21:43:03Z",
+			"version": "v1.0.0",
+			"versionExact": "v1.0.0"
+		},
+		{
+			"checksumSHA1": "u5V5OglAZoibucYHK3OtIFYM+w0=",
+			"path": "github.com/golang/protobuf/protoc-gen-go/grpc",
+			"revision": "925541529c1fa6821df4e44ce2723319eb2be768",
+			"revisionTime": "2018-01-25T21:43:03Z",
+			"version": "v1.0.0",
+			"versionExact": "v1.0.0"
+		},
+		{
+			"checksumSHA1": "KxpGuQ5LSMaImXONLN/YM3shGcQ=",
+			"path": "github.com/golang/protobuf/protoc-gen-go/plugin",
 			"revision": "925541529c1fa6821df4e44ce2723319eb2be768",
 			"revisionTime": "2018-01-25T21:43:03Z",
 			"version": "v1.0.0",
@@ -1471,6 +1503,18 @@
 			"path": "github.com/json-iterator/go",
 			"revision": "ff2b70c1dbffdd98567bd8c2f9449d97c0d04c88",
 			"revisionTime": "2017-11-22T16:09:35Z"
+		},
+		{
+			"checksumSHA1": "KCKXDLsu/NrrzJc540ylOgwsakE=",
+			"path": "github.com/jteeuwen/go-bindata",
+			"revision": "6025e8de665b31fa74ab1a66f2cddd8c0abf887e",
+			"revisionTime": "2018-03-05T03:04:58Z"
+		},
+		{
+			"checksumSHA1": "1E4XSPmZqO/s20/WWJKXsyGTfm4=",
+			"path": "github.com/jteeuwen/go-bindata/go-bindata",
+			"revision": "6025e8de665b31fa74ab1a66f2cddd8c0abf887e",
+			"revisionTime": "2018-03-05T03:04:58Z"
 		},
 		{
 			"checksumSHA1": "LHZh5apJZKfVop30Df+QMsMybJM=",

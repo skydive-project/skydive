@@ -15,6 +15,19 @@ eval ' \
 	echo "$$define" \
 '
 endef
+
+define VENDOR_BUILD
+ln -s vendor src ; \
+cd vendor/$1; \
+GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go build $1; \
+cd -; \
+unlink src
+endef
+
+define VENDOR_RUN
+PATH=$${GOPATH}/src/${SKYDIVE_GITHUB}/vendor/$1:$$PATH
+endef
+
 VERSION?=$(shell $(VERSION_CMD))
 $(info ${VERSION})
 
@@ -24,6 +37,8 @@ export GO15VENDOREXPERIMENT=1
 GOVENDOR:=${GOPATH}/bin/govendor
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
+GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
+PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
 SKYDIVE_PKG:=skydive-${VERSION}
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 FILTERS_PROTO_FILES=filters/filters.proto
@@ -110,9 +125,9 @@ debug.analyzer:
 
 .PHONY: .proto
 .proto: builddep ${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES}
-	protoc --go_out . ${FLOW_PROTO_FILES}
-	protoc --go_out . ${FILTERS_PROTO_FILES}
-	protoc --go_out . ${HTTP_PROTO_FILES}
+	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . ${FLOW_PROTO_FILES}
+	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . ${FILTERS_PROTO_FILES}
+	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . ${HTTP_PROTO_FILES}
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
 	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i.bak flow/flow.pb.go
@@ -132,7 +147,7 @@ BINDATA_DIRS := \
 
 .PHONY: .bindata
 .bindata: builddep ebpf.build
-	go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
+	$(call VENDOR_RUN,${GO_BINDATA_GITHUB}) go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 
 .PHONY: compile
@@ -347,10 +362,9 @@ lint: gometalinter
 
 # dependency package need for building the project
 .PHONY: builddep
-builddep:
-	go get github.com/golang/protobuf/proto
-	go get github.com/golang/protobuf/protoc-gen-go
-	go get github.com/jteeuwen/go-bindata/...
+builddep: govendor
+	$(call VENDOR_BUILD,${PROTOC_GEN_GO_GITHUB})
+	$(call VENDOR_BUILD,${GO_BINDATA_GITHUB})
 
 .PHONY: genlocalfiles
 genlocalfiles: .proto .bindata
