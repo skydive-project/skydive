@@ -1385,7 +1385,7 @@ func NewGraphFromConfig(backend GraphBackend) *Graph {
 // BackendFromConfig creates a new graph backend based on configuration
 // memory, orientdb, elasticsearch backend are supported
 func BackendFromConfig() (backend GraphBackend, err error) {
-	name := config.GetString("graph.backend")
+	name := config.GetString("analyzer.storage.topology.backend")
 	if len(name) == 0 {
 		name = "memory"
 	}

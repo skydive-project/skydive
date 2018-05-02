@@ -26,10 +26,10 @@ fi
 case "$BACKEND" in
   "orientdb")
     export ORIENTDB_ROOT_PASSWORD=root
-    ARGS="-graph.backend orientdb -storage.backend orientdb"
+    ARGS="-analyzer.storage.topology.backend orientdb -analyzer.storage.flow.backend orientdb"
     ;;
   "elasticsearch")
-    ARGS="-graph.backend elasticsearch -storage.backend elasticsearch"
+    ARGS="-analyzer.storage.topology.backend elasticsearch -analyzer.storage.flow.backend elasticsearch"
     ;;
 esac
 

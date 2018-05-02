@@ -18,7 +18,10 @@ sudo tee /etc/skydive/skydive.yml << EOF
 analyzer:
   listen: 0.0.0.0:8082
   storage:
-    backend: elasticsearch
+    flow:
+      backend: elasticsearch
+    topology:
+      backend: elasticsearch
   topology:
     fabric:
       - TOR1[Name=tor1] -> TOR1_PORT1[Name=port1, MTU=1500]
@@ -28,8 +31,6 @@ analyzer:
 etcd:
   client_timeout: 100
   listen: 0.0.0.0:12379
-graph:
-  backend: elasticsearch
 elasticsearch:
   addr: 127.0.0.1:9200
 flow:

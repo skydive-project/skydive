@@ -59,13 +59,17 @@ analyzers:
 analyzer:
   listen: 0.0.0.0:8082
   storage:
-    backend: {{.Storage}}
+    flow:
+      backend: {{.Storage}}
+    topology:
+      backend: {{.GraphBackend}}
   analyzer_username: admin
   analyzer_password: password
   topology:
     probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
   startup:
     capture_gremlin: "g.V().Has('Name', 'startup-vm2')"
+
 agent:
   listen: 8081
   topology:
@@ -102,9 +106,6 @@ storage:
     database: Skydive
     username: root
     password: {{.OrientDBRootPassword}}
-
-graph:
-  backend: {{.GraphBackend}}
 
 logging:
   level: DEBUG
