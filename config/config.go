@@ -160,6 +160,7 @@ func init() {
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
 
+	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
 	cfg.SetDefault("storage.elasticsearch.maxconns", 10)
 	cfg.SetDefault("storage.elasticsearch.retry", 60)
@@ -168,10 +169,12 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)
 	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)
 	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)
+	cfg.SetDefault("storage.orientdb.driver", "orientdb")
 	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")
 	cfg.SetDefault("storage.orientdb.database", "Skydive")
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
+	cfg.SetDefault("storage.memory.driver", "memory")
 
 	cfg.SetDefault("ui.theme", "dark")
 	cfg.SetDefault("ui.bandwidth_absolute_active", 1)

@@ -52,14 +52,15 @@ type Storage interface {
 
 // NewStorage creates a new flow storage based on the backend
 func NewStorage(backend string) (s Storage, err error) {
-	switch backend {
+	driver := config.GetString("storage." + backend + ".driver")
+	switch driver {
 	case "elasticsearch":
-		s, err = elasticsearch.New()
+		s, err = elasticsearch.New(backend)
 		if err != nil {
 			logging.GetLogger().Fatalf("Can't connect to ElasticSearch server: %v", err)
 		}
 	case "orientdb":
-		s, err = orientdb.New()
+		s, err = orientdb.New(backend)
 		if err != nil {
 			logging.GetLogger().Fatalf("Can't connect to OrientDB server: %v", err)
 		}
@@ -67,7 +68,7 @@ func NewStorage(backend string) (s Storage, err error) {
 		logging.GetLogger().Infof("Using no storage")
 		return
 	default:
-		err = fmt.Errorf("Storage type unknown: %s", backend)
+		err = fmt.Errorf("Flow backend driver '%s' not supported", driver)
 		logging.GetLogger().Critical(err.Error())
 		return
 	}

@@ -1385,15 +1385,16 @@ func NewGraphFromConfig(backend GraphBackend) *Graph {
 // NewBackendByName creates a new graph backend based on the name
 // memory, orientdb, elasticsearch backend are supported
 func NewBackendByName(name string) (backend GraphBackend, err error) {
-	switch name {
+	driver := config.GetString("storage." + name + ".driver")
+	switch driver {
 	case "memory":
 		backend, err = NewMemoryBackend()
 	case "orientdb":
-		backend, err = NewOrientDBBackendFromConfig()
+		backend, err = NewOrientDBBackendFromConfig(name)
 	case "elasticsearch":
-		backend, err = NewElasticSearchBackendFromConfig()
+		backend, err = NewElasticSearchBackendFromConfig(name)
 	default:
-		return nil, errors.New("Config file is misconfigured, graph backend unknown: " + name)
+		return nil, errors.New(fmt.Sprintf("Toplogy backend driver '%s' not supported", driver))
 	}
 
 	if err != nil {
