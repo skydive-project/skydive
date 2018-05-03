@@ -263,8 +263,6 @@ func (c *ElasticSearchClient) createIndex() error {
 }
 
 func (c *ElasticSearchClient) start() error {
-	c.index = &ElasticIndex{}
-
 	if err := c.createIndex(); err != nil {
 		logging.GetLogger().Errorf("Failed to create index %s", c.name)
 		return err
@@ -478,7 +476,6 @@ func (c *ElasticSearchClient) delIndices() {
 }
 
 func (c *ElasticSearchClient) rollIndex() error {
-
 	c.index.Lock()
 	defer c.index.Unlock()
 
@@ -602,7 +599,9 @@ func (c *ElasticSearchClient) Search(obj string, query string, index string) (el
 func (c *ElasticSearchClient) errorReader() {
 	defer c.wg.Done()
 
+	c.index.Lock()
 	errorChannel := c.indexer.ErrorChannel
+	c.index.Unlock()
 	for {
 		select {
 		case err := <-errorChannel:
@@ -711,7 +710,7 @@ func NewElasticSearchClient(name string, mappings Mappings, cfg Config) (*Elasti
 		connection: c,
 		indexer:    indexer,
 		quit:       make(chan bool),
-		index:      nil,
+		index:      &ElasticIndex{},
 		name:       name,
 		mappings:   mappings,
 		cfg:        cfg,
