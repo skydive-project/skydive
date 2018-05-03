@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	api "k8s.io/api/core/v1"
@@ -185,7 +186,7 @@ func newNetworkPolicyKubeCache(handler cache.ResourceEventHandler) *kubeCache {
 	return newKubeCache(getClientset().ExtensionsV1beta1().RESTClient(), &networking_v1.NetworkPolicy{}, "networkpolicies", handler)
 }
 
-func newNetworkPolicyProbe(g *graph.Graph) *networkPolicyProbe {
+func newNetworkPolicyProbe(g *graph.Graph) probe.Probe {
 	n := &networkPolicyProbe{
 		graph:      g,
 		podCache:   newPodKubeCache(nil),

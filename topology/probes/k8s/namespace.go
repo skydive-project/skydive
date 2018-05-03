@@ -27,6 +27,7 @@ import (
 
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
 	"k8s.io/api/core/v1"
@@ -147,7 +148,7 @@ func newNamespaceKubeCache(handler cache.ResourceEventHandler) *kubeCache {
 	return newKubeCache(getClientset().Core().RESTClient(), &v1.Namespace{}, "namespaces", handler)
 }
 
-func newNamespaceProbe(g *graph.Graph) *namespaceProbe {
+func newNamespaceProbe(g *graph.Graph) probe.Probe {
 	p := &namespaceProbe{
 		graph:            g,
 		objectIndexer:    newObjectIndexer(g),

@@ -136,7 +136,6 @@ func init() {
 	cfg.SetDefault("http.ws.enable_write_compression", true)
 
 	cfg.SetDefault("k8s.config_file", "/etc/skydive/kubeconfig")
-	cfg.SetDefault("k8s.probes", []string{"networkpolicy", "pod", "container", "node", "namespace"})
 
 	cfg.SetDefault("logging.backends", []string{"stderr"})
 	cfg.SetDefault("logging.color", true)
