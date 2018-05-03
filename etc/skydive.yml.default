@@ -63,8 +63,8 @@ analyzer:
 
   # Flow storage engine
   flow:
-    # Available: elasticsearch, orientdb, sample
-    # backend: elasticsearch
+    # Storage backend name: myelasticsearch, myorientdb
+    # backend: myelasticsearch
 
     # maximum number of flows aggregated between two data store inserts
     # bulk_insert: 100
@@ -87,8 +87,8 @@ analyzer:
     # indices_to_keep: 0
 
   topology:
-    # graph backend : memory, elasticsearch, orientdb, sample
-    # backend: memory
+    # Storage backend name: mymemory, myelasticsearch, myorientdb
+    # backend: mymemory
 
     # Define static interfaces and links updating Skydive topology
     # Can be useful to define external resources like : TOR, Router, etc.
@@ -244,13 +244,8 @@ opencontrail:
   # mpls_udp_port: 51234
 
 storage:
-  # an example for user defined backend 'sample'.
-  # sample:
-  #   driver: elasticsearch, orientdb, memory
-  #   here add driver type specific fields.
-
   # Elasticsearch backend information.
-  elasticsearch:
+  myelasticsearch:
     # driver: elasticsearch
     # host: 127.0.0.1:9200
     # maxconns: 10
@@ -270,15 +265,15 @@ storage:
     # indices_to_keep: 0
     
   # OrientDB backend information.
-  orientdb:
+  myorientdb:
     # driver: orientdb
     # addr: http://127.0.0.1:2480
     # database: Skydive
     # username: root
     # password: hello
 
-  # Memory backend information.
-  memory:
+  # Memory backend
+  mymemory:
     # driver: memory
 
 logging:
