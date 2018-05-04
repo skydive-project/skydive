@@ -39,11 +39,6 @@ Basically there are only two roles :
 | Variable                    | Description                                   |
 | --------------------------- | --------------------------------------------- |
 | skydive_topology_probes     | Defines topology probes used by the agents    |
-| os_auth_url                 | OpenStack authentication url                  |
-| os_username                 | OpenStack username                            |
-| os_password                 | OpenStack password                            |
-| os_tenant_name              | OpenStack tenant name                         |
-| os_domain_name              | OpenStack domain name                         |
 | skydive_fabric              | Fabric definition                             |
 | skydive_etcd_embedded       | Use embedded Etcd (true/false)                |
 | skydive_analyzer_port       | Defines analyzer listen port                  |
@@ -58,6 +53,12 @@ Basically there are only two roles :
 | skydive_flow_protocol       | Specify the flow protocol used                |
 | skydive_extra_config        | Defines any extra config parameter            |
 | skydive_nic                 | Specify the listen interface                  |
+| os_auth_url                 | OpenStack authentication url                  |
+| os_username                 | OpenStack username                            |
+| os_password                 | OpenStack password                            |
+| os_tenant_name              | OpenStack tenant name                         |
+| os_domain_name              | OpenStack domain name                         |
+| os_endpoint_type            | OpenStack endpoint type                       |
 
 ## How to configure Skydive
 

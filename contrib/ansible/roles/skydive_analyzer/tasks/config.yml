@@ -55,19 +55,6 @@
     state: present
   when: skydive_auth_type is not none
 
-- name: Define Keystone auth parameters
-  yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.keystone.auth_url"
-          value: "{{ os_auth_url }}"
-        - key: "auth.keystone.tenant_name"
-          value: "{{ os_tenant_name }}"
-        - key: "auth.keystone.domain_name"
-          value: "{{ os_domain_name }}"
-    state: present
-  when: skydive_auth_type == "keystone"
-
 - name: Define basic auth parameters
   yedit:
     src: "{{ skydive_config_file }}"
