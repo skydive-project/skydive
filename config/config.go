@@ -64,6 +64,7 @@ var (
 		"analyzer.flow.bulk_insert_deadline": {"analyzer.storage.bulk_insert_deadline"},
 		"analyzer.flow.max_buffer_size":      {"analyzer.storage.max_flow_buffer_size"},
 		"analyzer.topology.backend":          {"graph.backend"},
+		"analyzer.flow.backend":              {"analyzer.storage.backend"},
 	}
 )
 
