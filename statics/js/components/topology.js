@@ -176,6 +176,10 @@ var TopologyComponent = {
                title="Metadata">\
           <object-detail :object="currentEdge.metadata"></object-detail>\
         </panel>\
+        <panel v-if="currentNodeFeatures"\
+               title="Features">\
+          <feature-table :features="currentNodeFeatures"></feature-table>\
+        </panel>\
         <panel v-if="currentNodeMetadata && currentNodeMetadata.Type == \'ovsbridge\'"\
                title="Rules">\
           <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
@@ -396,13 +400,18 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features']);
     },
 
     currentNodeFlowsQuery: function() {
       if (this.currentNodeMetadata && this.currentNode.isCaptureAllowed())
         return "G.Flows().Has('NodeTID', '" + this.currentNode.metadata.TID + "').Sort()";
       return null;
+    },
+
+    currentNodeFeatures: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.Features) return null;
+      return this.currentNode.metadata.Features;
     },
 
     currentNodeMetric: function() {

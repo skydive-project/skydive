@@ -1,3 +1,5 @@
+/* jshint multistr: true */
+
 Vue.component('routing-table', {
 
   props: {

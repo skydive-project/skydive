@@ -1848,9 +1848,10 @@
 			"revisionTime": "2015-01-06T09:31:45Z"
 		},
 		{
-			"checksumSHA1": "GN8zgTgvo+ouD9LClMmOL3NB+jM=",
+			"checksumSHA1": "7Fqh2nZs8wQCD0AYGsqfLodWHAk=",
 			"path": "github.com/safchain/ethtool",
-			"revision": "e01512671ed4c2248daf0c5e974ecf88a4947335"
+			"revision": "6e3f4faa84e1d8d48afec75ed064cf3611d3f8bf",
+			"revisionTime": "2018-05-04T15:00:54Z"
 		},
 		{
 			"checksumSHA1": "QtAVwWxnBr7kMsJYpOIv+hD00Ss=",

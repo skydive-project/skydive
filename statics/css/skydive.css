@@ -569,3 +569,11 @@ ul.dropdown-menu .fa.pull-right {
   height: 22px;
   padding: 5px;
 }
+
+.bool-value-true {
+  color: #00de00;
+}
+
+.bool-value-false {
+  color: #ff2020;
+}
