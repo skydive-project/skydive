@@ -350,6 +350,8 @@ func (s *seleniumHelper) startGremlinCapture(gremlin g.QueryString) error {
 		return err
 	}
 
+	time.Sleep(1 * time.Second)
+
 	if err := s.closeNotification(); err != nil {
 		return err
 	}
@@ -381,6 +383,7 @@ func (s *seleniumHelper) closeNotification() error {
 
 	el, _ := notification.FindElement(selenium.ByClassName, "close")
 	s.clickOn(el)
+	time.Sleep(1 * time.Second)
 
 	return nil
 }
