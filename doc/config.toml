@@ -91,6 +91,12 @@ googleAnalytics = ""
   weight = 300
 
 [[menu.main]]
+  name = "Development environment"
+	parent = "started"
+	url = "getting-started/devmode/"
+  weight = 500
+
+[[menu.main]]
 	name   = "API"
 	identifier = "api"
 	url    = "api/"

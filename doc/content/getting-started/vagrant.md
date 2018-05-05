@@ -1,6 +1,6 @@
 ---
 date: 2016-11-28T15:21:44+01:00
-title: vagrant
+title: Vagrant
 ---
 
 ## Vagrant deployment
