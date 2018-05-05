@@ -28,7 +28,9 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -37,29 +39,24 @@ func k8sConfigFile(name string) string {
 	return "./k8s/" + name + ".yaml"
 }
 
-func k8sObjectName(name string) string {
-	prefix := "skydive-test"
-	if name != "" {
-		return prefix + "-" + name
-	}
-	return prefix
-}
-
 const (
-	manager = "k8s"
+	manager         = "k8s"
+	objName         = "skydive-test"
+	k8sRetry        = 10
+	k8sDelaySeconds = 1
 )
 
 var (
 	nodeName, _       = os.Hostname()
-	podName           = k8sObjectName("pod")
-	containerName     = k8sObjectName("container")
-	networkPolicyName = k8sObjectName("")
-	namespaceName     = k8sObjectName("")
+	podName           = objName
+	containerName     = objName
+	networkPolicyName = objName
+	namespaceName     = objName
 	clusterName       = "cluster"
 )
 
 func makeCmdWaitUntilStatus(ty, name, status string) string {
-	return fmt.Sprintf("echo 'for i in {1..10}; do sleep 1; kubectl get %s %s %s break; done' | bash", ty, name, status)
+	return fmt.Sprintf("echo 'for i in {1..%d}; do sleep %d; kubectl get %s %s %s break; done' | bash", k8sRetry, k8sDelaySeconds, ty, name, status)
 }
 
 func makeCmdWaitUntilCreated(ty, name string) string {
@@ -68,22 +65,6 @@ func makeCmdWaitUntilCreated(ty, name string) string {
 
 func makeCmdWaitUntilDeleted(ty, name string) string {
 	return makeCmdWaitUntilStatus(ty, name, "||")
-}
-
-func setupFromDeploymnet(name string) []helper.Cmd {
-	return []helper.Cmd{
-		{"kubectl run " + k8sObjectName(name) +
-			"  --image=gcr.io/google_containers/echoserver:1.4" +
-			"  --port=8080", true},
-		{makeCmdWaitUntilCreated("deployment", k8sObjectName(name)), true},
-	}
-}
-
-func tearDownFromDeployment(name string) []helper.Cmd {
-	return []helper.Cmd{
-		{"kubectl delete deployment " + k8sObjectName(name), false},
-		{makeCmdWaitUntilDeleted("deployment", k8sObjectName(name)), true},
-	}
 }
 
 func setupFromConfigFile(ty, name string) []helper.Cmd {
@@ -100,41 +81,49 @@ func tearDownFromConfigFile(ty, name string) []helper.Cmd {
 	}
 }
 
-func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, ty, name interface{}) {
+func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name string) {
 	test := &Test{
 		mode:         OneShot,
 		retries:      3,
 		setupCmds:    append(tearDownCmds, setupCmds...),
 		tearDownCmds: tearDownCmds,
 		checks: []CheckFunction{func(c *CheckContext) error {
-			query := g.G.V().Has("Manager", "k8s", "Type", ty, "Name", name)
-			fmt.Printf("Gremlin Query: %s\n", query)
+			return common.Retry(func() error {
+				query := g.G.V().Has("Manager", "k8s", "Type", typ, "Name", name)
+				t.Log("Gremlin Query: " + query)
 
-			nodes, err := c.gh.GetNodes(query.String())
-			if err != nil {
-				return err
-			}
+				nodes, err := c.gh.GetNodes(query.String())
+				if err != nil {
+					return err
+				}
 
-			if len(nodes) != 1 {
-				return fmt.Errorf("Ran \"%s\", expected 1 node, got %d nodes: %+v", query, len(nodes), nodes)
-			}
+				if len(nodes) != 1 {
+					return fmt.Errorf("Ran '%s', expected 1 node, got %d nodes: %+v", query, len(nodes), nodes)
+				}
 
-			return nil
+				return nil
+			}, k8sRetry, k8sDelaySeconds*time.Second)
 		}},
 	}
 	RunTest(t, test)
 }
 
-func TestK8sContainerNode(t *testing.T) {
-	testNodeCreation(t, setupFromDeploymnet("container"), tearDownFromDeployment("container"), "container", containerName)
+func testNodeCreationFromConfig(t *testing.T, typ, name string) {
+	setup := setupFromConfigFile(typ, name)
+	tearDown := tearDownFromConfigFile(typ, name)
+	testNodeCreation(t, setup, tearDown, typ, name)
 }
 
-func TestK8sPodNode(t *testing.T) {
-	testNodeCreation(t, setupFromDeploymnet("pod"), tearDownFromDeployment("pod"), "pod", g.Regex("%s.*", podName))
+func TestK8sContainerNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "container", containerName)
+}
+
+func TestK8sNamespaceNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "namespace", namespaceName)
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
-	testNodeCreation(t, setupFromConfigFile("networkpolicy", networkPolicyName), tearDownFromConfigFile("networkpolicy", networkPolicyName), "networkpolicy", networkPolicyName)
+	testNodeCreationFromConfig(t, "networkpolicy", networkPolicyName)
 }
 
 func TestK8sNodeNode(t *testing.T) {
@@ -145,6 +134,6 @@ func TestK8sClusterNode(t *testing.T) {
 	testNodeCreation(t, nil, nil, "cluster", clusterName)
 }
 
-func TestK8sNamespaceNode(t *testing.T) {
-	testNodeCreation(t, setupFromConfigFile("namespace", namespaceName), tearDownFromConfigFile("namespace", namespaceName), "namespace", namespaceName)
+func TestK8sPodNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "pod", podName)
 }
