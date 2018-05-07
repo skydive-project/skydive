@@ -5,98 +5,96 @@ Vue.component('capture-form', {
   mixins: [apiMixin, notificationMixin],
 
   template: '\
-    <transition name="slide" mode="out-in">\
-      <div class="sub-left-panel" v-if="visible">\
-        <form @submit.prevent="start" class="capture-form">\
-          <div class="form-group">\
-            <label for="capture-name">Name</label>\
-            <input id="capture-name" type="text" class="form-control input-sm" v-model="name" />\
-          </div>\
-          <div class="form-group">\
-            <label for="capture-desc">Description</label>\
-            <textarea id="capture-desc" type="text" class="form-control input-sm" rows="2" v-model="desc"></textarea>\
-          </div>\
-          <div class="form-group">\
-            <label class="radio-inline">\
-              <input type="radio" id="by-node" name="capture-target" value="selection" v-model="mode"> Nodes selection\
-            </label>\
-            <label class="radio-inline">\
-              <input type="radio" id="by-gremlin" name="capture-target" value="gremlin" v-model="mode"> Gremlin Expression\
-            </label>\
-          </div>\
-          <div class="form-group" v-if="mode == \'selection\'">\
-            <label>Targets</label>\
-            <node-selector id="node-selector-1" class="inject-target"\
-                           placeholder="Interface 1"\
-                           form="capture"\
-                           v-model="node1"></node-selector>\
-            <node-selector id="node-selector-2" placeholder="Interface 2 (Optional)"\
-                           form="capture"\
-                           v-model="node2"></node-selector>\
-          </div>\
-          <div class="form-group" v-if="mode == \'gremlin\'">\
-            <label for="capture-query">Query</label>\
-            <textarea id="capture-query" type="text" class="form-control input-sm" rows="5" v-model="userQuery"></textarea>\
-          </div>\
-          <div class="form-group">\
-            <label for="capture-bpf">BPF filter</label>\
-            <input id="capture-bpf" type="text" class="form-control input-sm" v-model="bpf" />\
-          </div>\
-          <div class="capture-advanced">\
-            <div class="panel-heading">\
-              <h4 class="panel-title">\
-                <a data-toggle="collapse" data-parent="#" href="#one" class="collapse-title">\
-                  Advanced options\
-                  <i class="indicator glyphicon glyphicon-chevron-down pull-right"></i>\
-                </a>\
-              </h4>\
+    <div>\
+      <form @submit.prevent="start" class="capture-form" v-if="visible">\
+        <div class="form-group">\
+          <label for="capture-name">Name</label>\
+          <input id="capture-name" type="text" class="form-control input-sm" v-model="name" />\
+        </div>\
+        <div class="form-group">\
+          <label for="capture-desc">Description</label>\
+          <textarea id="capture-desc" type="text" class="form-control input-sm" rows="2" v-model="desc"></textarea>\
+        </div>\
+        <div class="form-group">\
+          <label class="radio-inline">\
+            <input type="radio" id="by-node" name="capture-target" value="selection" v-model="mode"> Nodes selection\
+          </label>\
+          <label class="radio-inline">\
+            <input type="radio" id="by-gremlin" name="capture-target" value="gremlin" v-model="mode"> Gremlin Expression\
+          </label>\
+        </div>\
+        <div class="form-group" v-if="mode == \'selection\'">\
+          <label>Targets</label>\
+          <node-selector id="node-selector-1" class="inject-target"\
+                         placeholder="Interface 1"\
+                         form="capture"\
+                         v-model="node1"></node-selector>\
+          <node-selector id="node-selector-2" placeholder="Interface 2 (Optional)"\
+                         form="capture"\
+                         v-model="node2"></node-selector>\
+        </div>\
+        <div class="form-group" v-if="mode == \'gremlin\'">\
+          <label for="capture-query">Query</label>\
+          <textarea id="capture-query" type="text" class="form-control input-sm" rows="5" v-model="userQuery"></textarea>\
+        </div>\
+        <div class="form-group">\
+          <label for="capture-bpf">BPF filter</label>\
+          <input id="capture-bpf" type="text" class="form-control input-sm" v-model="bpf" />\
+        </div>\
+        <collapse :collapsed="true" class="form-group">\
+          <h1 slot="collapse-header" slot-scope="props" :class="{\'closed\': !props.active}">\
+            Advanced options\
+            <span class="pull-right">\
+              <i class="glyphicon glyphicon-chevron-left rotate" :class="{\'down\': props.active}"></i>\
+            </span>\
+          </h1>\
+          <fieldset slot="collapse-body" class="form-group">\
+            <div class="form-group">\
+              <label for="capture-type">Capture Type</label>\
+              <select id="capture-type" v-model="captureType" class="form-control input-sm" :disabled="!typeAllowed">\
+                <option disabled value="">Select capture type</option>\
+                <option v-for="option in options" :value="option.type">{{ option.type }} ({{option.desc}})</option>\
+              </select>\
             </div>\
-            <div id="one" class="panel-collapse collapse">\
-              <fieldset class="form-group">\
-                <div class="form-group">\
-                  <label for="capture-type">Capture Type</label>\
-                  <select id="capture-type" v-model="captureType" class="form-control input-sm" :disabled="!typeAllowed">\
-                    <option disabled value="">Select capture type</option>\
-                    <option v-for="option in options" :value="option.type">{{ option.type }} ({{option.desc}})</option>\
-                  </select>\
-                </div>\
-                <div class="form-group" v-if="captureType == \'sflow\'">\
-                  <label for="port">Port</label>\
-                  <input id="port" type="number" class="form-control input-sm" v-model="port" min="0"/>\
-                </div>\
-                <div class="form-group">\
-                  <label for="capture-header-size">Header Size</label>\
-                  <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
-                </div>\
-                <div class="form-group" v-if="isPacketCaptureEnabled">\
-                  <label for="capture-raw-packets">Raw packets limit</label>\
-                  <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model="rawPackets" min="0" max="10"/>\
-                </div>\
-                <div class="form-group">\
-                  <label class="form-check-label">\
-                    <input id="capture-tcp-metric" type="checkbox" class="form-check-input" v-model="extraTCPMetric">\
-                    Extra TCP metric\
-                  </label>\
-                  <label class="form-check-label">\
-                    <input id="capture-ip-defrag" type="checkbox" class="form-check-input" v-model="ipDefrag">\
-                    Defragment IPv4 packets\
-                  </label>\
-                  <label class="form-check-label">\
-                    <input id="capture-reassamble-tcp" type="checkbox" class="form-check-input" v-model="reassembleTCP">\
-                    Reassemble TCP packets\
-                  </label>\
-                </div>\
-              </fieldset>\
+            <div class="form-group" v-if="captureType == \'sflow\'">\
+              <label for="port">Port</label>\
+              <input id="port" type="number" class="form-control input-sm" v-model="port" min="0"/>\
             </div>\
-          </div>\
-          <button type="submit" id="start-capture" class="btn btn-primary">Start</button>\
-          <button type="button" class="btn btn-danger" @click="reset">Cancel</button>\
-        </form>\
-      </div>\
-      <div v-else>\
-        <button type="button" id="create-capture" class="btn btn-primary" @click="visible = !visible"> Create</button>\
-      </div>\
-    </transition>\
+            <div class="form-group">\
+              <label for="capture-header-size">Header Size</label>\
+              <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
+            </div>\
+            <div class="form-group" v-if="isPacketCaptureEnabled">\
+              <label for="capture-raw-packets">Raw packets limit</label>\
+              <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model="rawPackets" min="0" max="10"/>\
+            </div>\
+            <div class="form-group">\
+              <label class="form-check-label">\
+                <input id="capture-tcp-metric" type="checkbox" class="form-check-input" v-model="extraTCPMetric">\
+                Extra TCP metric\
+              </label>\
+              <label class="form-check-label">\
+                <input id="capture-ip-defrag" type="checkbox" class="form-check-input" v-model="ipDefrag">\
+                Defragment IPv4 packets\
+              </label>\
+              <label class="form-check-label">\
+                <input id="capture-reassamble-tcp" type="checkbox" class="form-check-input" v-model="reassembleTCP">\
+                Reassemble TCP packets\
+              </label>\
+            </div>\
+          </fieldset>\
+        </collapse>\
+        <button type="submit" id="start-capture" class="btn btn-primary">Start</button>\
+        <button type="button" class="btn btn-danger" @click="reset">Cancel</button>\
+      </form>\
+      <button type="button"\
+              id="create-capture"\
+              class="btn btn-primary"\
+              v-else\
+              @click="visible = !visible">\
+        Create\
+      </button>\
+    </div>\
   ',
 
   data: function() {
@@ -141,11 +139,11 @@ Vue.component('capture-form', {
           {"type": "ovsmirror", "desc": "Leverages mirroring to capture - experimental"}
         ];
       }
-      options["ovsbridge"] = [
+      options.ovsbridge = [
         {"type": "ovssflow", "desc": "Reading sFlow from OVS"},
         {"type": "pcapsocket", "desc": "Socket reading PCAP format data"}
       ];
-      options["dpdkport"] = [
+      options.dpdkport = [
         {"type": "dpdk", "desc": "DPDK based probe - experimental"}
       ];
       return options[this.nodeType];

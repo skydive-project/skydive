@@ -13,24 +13,27 @@ var DiscoveryComponent = {
         <div class="discovery-d3"></div>\
       </div>\
       <div class="col-sm-4 fill sidebar">\
-        <div class="left-cont">\
-          <div class="left-panel">\
-            <label for="mode">Type</label>\
-            <select id="type" v-model="type" class="form-control input-sm">\
-              <option value="bytes">Bytes</option>\
-              <option value="packets">Packets</option>\
-            </select>\
-            <label for="mode">Mode</label>\
-            <select id="mode" v-model="mode" class="form-control input-sm">\
-              <option value="size">Size</option>\
-              <option value="count">Count</option>\
-            </select>\
-          </div>\
-          <div class="left-panel" v-if="protocolData">\
-            <div class="title-left-panel">Protocol Data</div>\
-            <object-detail :object="protocolData"></object-detail>\
-          </div>\
-        </div>\
+        <panel title="Options" :collapsed="false">\
+          <form>\
+            <div class="form-group">\
+              <label for="mode">Type</label>\
+              <select id="type" v-model="type" class="form-control input-sm">\
+                <option value="bytes">Bytes</option>\
+                <option value="packets">Packets</option>\
+              </select>\
+            </div>\
+            <div class="form-group">\
+              <label for="mode">Mode</label>\
+              <select id="mode" v-model="mode" class="form-control input-sm">\
+                <option value="size">Size</option>\
+                <option value="count">Count</option>\
+              </select>\
+            </div>\
+          <form>\
+        </panel>\
+        <panel title="Protocol Data" v-if="protocolData">\
+          <object-detail :object="protocolData"></object-detail>\
+        </panel>\
       </div>\
   ',
 

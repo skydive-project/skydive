@@ -8,8 +8,8 @@ Vue.component('tab-pane', {
     <div class="tab-pane"\
          v-bind:class="{active: selected}"\
          v-if="selected">\
-      <div class="left-cont">\
-        <div class="left-panel">\
+      <div class="panel">\
+        <div class="panel-content">\
           <slot></slot>\
         </div>\
       </div>\

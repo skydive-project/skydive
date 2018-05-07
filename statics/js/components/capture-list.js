@@ -127,7 +127,7 @@ Vue.component('capture-list', {
   },
 
   template: '\
-    <div class="sub-left-panel" v-if="count > 0">\
+    <div class="sub-panel" v-if="count > 0">\
       <ul class="capture-list">\
         <li class="capture-item"\
             v-for="capture in captures"\

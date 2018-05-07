@@ -10,32 +10,28 @@ label {
   color: #337ab7;
 }
 
-#right-panel {
+.sidebar {
   border-left: 5px #eee solid;
   color: #111;
 }
 
-.main-toolbar {
-  background-color: #fff;
-}
-
-.main-toolbar .tooltip-inner {
-  background-color: #fff;
-}
-
-.left-panel {
+.panel {
   background-color: #ddd;
 }
 
-.left-panel h1 a, .left-panel h1 a:hover {
+.panel h1 a, .panel h1 a:hover {
   color: #000;
 }
 
-.left-panel .bg-warning {
+.panel .bg-warning {
   background-color: #ccc;
 }
 
-.sub-left-panel {
+.panel-actions {
+  background-color: #c2c2c2;
+}
+
+.sub-panel {
   background-color: #ccc;
 }
 
@@ -43,7 +39,7 @@ label {
   background: #ccc;
 }
 
-.capture-action, .node-action, .injector-action {
+.capture-action, .injector-action {
   color: black !important;
 }
 
