@@ -25,6 +25,7 @@ var nodeImgMap = setupFixedImages({
   "netns": "ns",
   "veth": "veth",
   "bond": "port",
+  "cluster": "cluster",
   "container": "container",
   "node": "host",
   "pod": "pod",

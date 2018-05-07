@@ -55,6 +55,7 @@ var (
 	containerName     = k8sObjectName("container")
 	networkPolicyName = k8sObjectName("")
 	namespaceName     = k8sObjectName("")
+	clusterName       = "cluster"
 )
 
 func makeCmdWaitUntilStatus(ty, name, status string) string {
@@ -138,6 +139,10 @@ func TestK8sNetworkPolicyNode(t *testing.T) {
 
 func TestK8sNodeNode(t *testing.T) {
 	testNodeCreation(t, nil, nil, "node", nodeName)
+}
+
+func TestK8sClusterNode(t *testing.T) {
+	testNodeCreation(t, nil, nil, "cluster", clusterName)
 }
 
 func TestK8sNamespaceNode(t *testing.T) {
