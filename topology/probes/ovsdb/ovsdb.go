@@ -56,15 +56,9 @@ type OvsdbProbe struct {
 	portToBridge map[string]*graph.Node
 }
 
-func isOvsLogicalInterface(intf *graph.Node) bool {
+func isOvsDrivenInterface(intf *graph.Node) bool {
 	if d, _ := intf.GetFieldString("Driver"); d != "openvswitch" {
 		return false
-	}
-
-	t, _ := intf.GetFieldString("Type")
-	switch t {
-	case "gre", "vxlan", "geneve", "patch":
-		return true
 	}
 	return true
 }
@@ -106,7 +100,7 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 
 				// internal ovs interface that have to be linked to the bridge as they
 				// are just logical interface.
-				if intf, ok := o.portToIntf[uuid]; ok && isOvsLogicalInterface(intf) {
+				if intf, ok := o.portToIntf[uuid]; ok && isOvsDrivenInterface(intf) {
 					if !topology.IsOwnershipLinked(o.Graph, intf) {
 						topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
 					}
@@ -214,12 +208,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	if driver == "" {
 		// force the driver as it is not defined and we need it to delete properly
-		switch itype {
-		case "gre", "vxlan", "geneve", "patch":
-			driver = "openvswitch"
-		default:
-			driver = "unknown"
-		}
+		driver = "openvswitch"
 	}
 
 	name := row.New.Fields["name"].(string)
@@ -351,7 +340,7 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		}
 
 		puuid, _ := port.GetFieldString("UUID")
-		if brige, ok := o.portToBridge[puuid]; ok && isOvsLogicalInterface(intf) {
+		if brige, ok := o.portToBridge[puuid]; ok && isOvsDrivenInterface(intf) {
 			if !topology.IsOwnershipLinked(o.Graph, intf) {
 				topology.AddOwnershipLink(o.Graph, brige, intf, nil)
 			}
@@ -484,7 +473,7 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			topology.AddLayer2Link(o.Graph, bridge, port, nil)
 		}
 
-		if intf, ok := o.portToIntf[uuid]; ok && isOvsLogicalInterface(intf) {
+		if intf, ok := o.portToIntf[uuid]; ok && isOvsDrivenInterface(intf) {
 			if !topology.IsOwnershipLinked(o.Graph, intf) {
 				topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
 			}
