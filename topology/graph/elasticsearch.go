@@ -39,7 +39,8 @@ import (
 	"github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
-const graphElementMapping = `
+// ESGraphElementMapping elasticsearch db mapping scheme
+const ESGraphElementMapping = `
 {
 	"dynamic_templates": [
 		{
@@ -612,7 +613,7 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
 }
 
-func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {
+func NewElasticSearchBackendFromClient(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {
 	client.Start()
 
 	return &ElasticSearchBackend{
@@ -625,13 +626,13 @@ func newElasticSearchBackend(client elasticsearch.ElasticSearchClientInterface) 
 func NewElasticSearchBackendFromConfig(backend string) (*ElasticSearchBackend, error) {
 	cfg := elasticsearch.NewConfig(backend)
 	mappings := elasticsearch.Mappings{
-		{"node": []byte(graphElementMapping)},
-		{"edge": []byte(graphElementMapping)},
+		{"node": []byte(ESGraphElementMapping)},
+		{"edge": []byte(ESGraphElementMapping)},
 	}
 	client, err := elasticsearch.NewElasticSearchClient("topology", mappings, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return newElasticSearchBackend(client)
+	return NewElasticSearchBackendFromClient(client)
 }

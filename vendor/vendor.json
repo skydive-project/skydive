@@ -1654,16 +1654,16 @@
 		},
 		{
 			"checksumSHA1": "1AfJEGDJfegnLKaiGGCHNFAep8Y=",
-			"origin": "github.com/safchain/elastigo",
+			"origin": "github.com/nplanel/elastigo",
 			"path": "github.com/mattbaird/elastigo",
-			"revision": "441c1531dca50a19990385930149f6785f78fe59",
+			"revision": "d151f01ee6010dd75830ea1b7c855aeb008a7c55",
 			"revisionTime": "2017-12-01T10:39:43Z"
 		},
 		{
-			"checksumSHA1": "mSBTKRhZy0/SCae0FDdeEtITDkw=",
-			"origin": "github.com/safchain/elastigo/lib",
+			"checksumSHA1": "V2l48FARId4QK9WE7rKgjro4Om4=",
+			"origin": "github.com/nplanel/elastigo/lib",
 			"path": "github.com/mattbaird/elastigo/lib",
-			"revision": "441c1531dca50a19990385930149f6785f78fe59",
+			"revision": "d151f01ee6010dd75830ea1b7c855aeb008a7c55",
 			"revisionTime": "2017-12-01T10:39:43Z"
 		},
 		{
