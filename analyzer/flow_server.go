@@ -42,6 +42,19 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+// FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
+const FlowBulkInsertDefault int = 100
+
+// FlowBulkDeadlineDefault deadline of each bulk insert in second
+const FlowBulkInsertDeadlineDefault int = 5
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // FlowServerConn describes a flow server connection
 type FlowServerConn interface {
 	Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup)
@@ -232,6 +245,25 @@ func (s *FlowServer) Stop() {
 	}
 }
 
+func (s *FlowServer) setupBulkConfigFromBackend() error {
+	s.bulkInsert = FlowBulkInsertDefault
+	s.bulkInsertDeadline = time.Duration(FlowBulkInsertDeadlineDefault) * time.Second
+
+	storage := fmt.Sprintf("storage.%s.", config.GetString("analyzer.flow.backend"))
+	if config.GetString(storage+"driver") == "elasticsearch" {
+		s.bulkInsert = config.GetInt(storage + "bulk_maxdocs")
+		bulkMaxDelay := config.GetInt(storage + "bulk_maxdelay")
+		if s.bulkInsert < 1 || bulkMaxDelay < 1 {
+			return fmt.Errorf("bulk_maxdocs and bulk_maxdelay must be positive values")
+		}
+		s.bulkInsertDeadline = time.Duration(bulkMaxDelay) * time.Second
+	}
+
+	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
+	s.ch = make(chan *flow.Flow, max(flowsMax, s.bulkInsert*2))
+	return nil
+}
+
 // NewFlowServer creates a new flow server listening at address/port, based on configuration
 func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe *probe.ProbeBundle) (*FlowServer, error) {
 	pipeline := flow.NewEnhancerPipeline(enhancers.NewGraphFlowEnhancer(g))
@@ -241,12 +273,6 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		pipeline.AddEnhancer(enhancers.NewNeutronFlowEnhancer(g))
 	}
 
-	bulk := config.GetInt("analyzer.flow.bulk_insert")
-	bulkDeadLine := config.GetInt("analyzer.flow.bulk_insert_deadline")
-	if bulkDeadLine < 1 {
-		return nil, fmt.Errorf("bulk_insert_deadline has to be >= 1")
-	}
-	flowsMax := config.GetConfig().GetInt("analyzer.flow.max_buffer_size")
 	var err error
 	var conn FlowServerConn
 	protocol := strings.ToLower(config.GetString("flow.protocol"))
@@ -264,14 +290,16 @@ func NewFlowServer(s *shttp.Server, g *graph.Graph, store storage.Storage, probe
 		return nil, err
 	}
 
-	return &FlowServer{
+	fs := &FlowServer{
 		storage:                store,
 		enhancerPipeline:       pipeline,
 		enhancerPipelineConfig: flow.NewEnhancerPipelineConfig(),
-		bulkInsert:             bulk,
-		bulkInsertDeadline:     time.Duration(time.Duration(bulkDeadLine) * time.Second),
-		conn:                   conn,
-		quit:                   make(chan struct{}, 2),
-		ch:                     make(chan *flow.Flow, flowsMax+bulk*2),
-	}, nil
+		conn: conn,
+		quit: make(chan struct{}, 2),
+	}
+	err = fs.setupBulkConfigFromBackend()
+	if err != nil {
+		return nil, err
+	}
+	return fs, nil
 }

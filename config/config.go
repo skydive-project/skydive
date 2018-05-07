@@ -90,8 +90,6 @@ func init() {
 
 	cfg.SetDefault("analyzer.capture_enabled", true)
 	cfg.SetDefault("analyzer.flow.backend", "memory")
-	cfg.SetDefault("analyzer.flow.bulk_insert", 100)
-	cfg.SetDefault("analyzer.flow.bulk_insert_deadline", 5)
 	cfg.SetDefault("analyzer.flow.max_buffer_size", 100000)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
 	cfg.SetDefault("analyzer.packet_capture_enabled", true)
@@ -117,14 +115,6 @@ func init() {
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
 	cfg.SetDefault("flow.protocol", "udp")
-
-	cfg.SetDefault("http.rest.debug", false)
-	cfg.SetDefault("http.ws.ping_delay", 2)
-	cfg.SetDefault("http.ws.pong_timeout", 5)
-	cfg.SetDefault("http.ws.bulk_maxmsgs", 100)
-	cfg.SetDefault("http.ws.bulk_maxdelay", 1)
-	cfg.SetDefault("http.ws.queue_size", 10000)
-	cfg.SetDefault("http.ws.enable_write_compression", true)
 
 	cfg.SetDefault("host_id", host)
 
@@ -170,12 +160,12 @@ func init() {
 	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)
 	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)
 	cfg.SetDefault("storage.elasticsearch.indices_to_keep", 0)
+	cfg.SetDefault("storage.memory.driver", "memory")
 	cfg.SetDefault("storage.orientdb.driver", "orientdb")
 	cfg.SetDefault("storage.orientdb.addr", "http://localhost:2480")
 	cfg.SetDefault("storage.orientdb.database", "Skydive")
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
-	cfg.SetDefault("storage.memory.driver", "memory")
 
 	cfg.SetDefault("ui.theme", "dark")
 	cfg.SetDefault("ui.bandwidth_absolute_active", 1)
