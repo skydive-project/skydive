@@ -53,7 +53,7 @@ type PcapSocketProbeHandler struct {
 	addr          *net.TCPAddr
 	wg            sync.WaitGroup
 	probes        map[string]*PcapSocketProbe
-	probesLock    sync.RWMutex
+	probesLock    common.RWMutex
 	portAllocator *common.PortAllocator
 }
 

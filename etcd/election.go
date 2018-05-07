@@ -49,7 +49,7 @@ type MasterElectionListener interface {
 
 // MasterElector describes an ETCD master elector
 type MasterElector struct {
-	sync.RWMutex
+	common.RWMutex
 	EtcdKeyAPI etcd.KeysAPI
 	Host       string
 	path       string

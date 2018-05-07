@@ -25,7 +25,6 @@ package probes
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/socketplane/libovsdb"
 
@@ -55,7 +54,7 @@ type OvsSFlowProbe struct {
 // OvsSFlowProbesHandler describes a flow probe in running in the graph
 type OvsSFlowProbesHandler struct {
 	probes       map[string]OvsSFlowProbe
-	probesLock   sync.RWMutex
+	probesLock   common.RWMutex
 	Graph        *graph.Graph
 	fpta         *FlowProbeTableAllocator
 	ovsClient    *ovsdb.OvsClient

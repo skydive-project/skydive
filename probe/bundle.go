@@ -22,7 +22,7 @@
 
 package probe
 
-import "sync"
+import "github.com/skydive-project/skydive/common"
 
 // Probe describes a Probe (topology or flow) mechanism API
 type Probe interface {
@@ -32,7 +32,7 @@ type Probe interface {
 
 // ProbeBundle describes a bundle of probes (topology of flow)
 type ProbeBundle struct {
-	sync.RWMutex
+	common.RWMutex
 	probes map[string]Probe
 }
 

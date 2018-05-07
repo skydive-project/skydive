@@ -28,6 +28,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -42,7 +43,7 @@ type topologySubscriber struct {
 
 // TopologySubscriberEndpoint sends all the modifications to its subscribers.
 type TopologySubscriberEndpoint struct {
-	sync.RWMutex
+	common.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
 	pool          shttp.WSStructSpeakerPool
 	Graph         *graph.Graph

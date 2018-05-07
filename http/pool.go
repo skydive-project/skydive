@@ -48,18 +48,18 @@ type WSSpeakerPool interface {
 
 // WSPool is a connection container. It embed a list of WSSpeaker.
 type WSPool struct {
-	sync.RWMutex
+	common.RWMutex
 	name              string
 	quit              chan bool
 	broadcast         chan WSMessage
 	bulkMaxMsgs       int
 	bulkMaxDelay      time.Duration
 	eventBuffer       []WSMessage
-	eventBufferLock   sync.RWMutex
+	eventBufferLock   common.RWMutex
 	wg                sync.WaitGroup
 	running           atomic.Value
 	eventHandlers     []WSSpeakerEventHandler
-	eventHandlersLock sync.RWMutex
+	eventHandlersLock common.RWMutex
 	speakers          []WSSpeaker
 }
 

@@ -24,7 +24,6 @@ package common
 
 import (
 	"errors"
-	"sync"
 )
 
 var (
@@ -36,7 +35,7 @@ var (
 
 // PortAllocator describes a threads safe port list that can be allocated
 type PortAllocator struct {
-	sync.RWMutex
+	RWMutex
 	MinPort int
 	MaxPort int
 	PortMap map[int]bool

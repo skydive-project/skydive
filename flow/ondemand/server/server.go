@@ -25,7 +25,6 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"sync"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -46,7 +45,7 @@ type activeProbe struct {
 
 // OnDemandProbeServer describes an ondemand probe server based on websocket
 type OnDemandProbeServer struct {
-	sync.RWMutex
+	common.RWMutex
 	graph.DefaultGraphListener
 	shttp.DefaultWSSpeakerEventHandler
 	Graph              *graph.Graph

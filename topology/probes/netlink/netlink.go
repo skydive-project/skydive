@@ -66,7 +66,7 @@ type neighbor struct {
 
 // NetNsNetLinkProbe describes a topology probe based on netlink in a network namespace
 type NetNsNetLinkProbe struct {
-	sync.RWMutex
+	common.RWMutex
 	Graph                *graph.Graph
 	Root                 *graph.Node
 	NsPath               string
@@ -83,7 +83,7 @@ type NetNsNetLinkProbe struct {
 
 // NetLinkProbe describes a list NetLink NameSpace probe to enhance the graph
 type NetLinkProbe struct {
-	sync.RWMutex
+	common.RWMutex
 	Graph   *graph.Graph
 	epollFd int
 	probes  map[int32]*NetNsNetLinkProbe

@@ -24,8 +24,8 @@ package k8s
 
 import (
 	"fmt"
-	"sync"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
@@ -36,7 +36,7 @@ import (
 )
 
 type podProbe struct {
-	sync.RWMutex
+	common.RWMutex
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
 	*kubeCache

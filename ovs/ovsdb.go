@@ -25,18 +25,18 @@ package ovsdb
 import (
 	"errors"
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/socketplane/libovsdb"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
 // OvsClient describes an OVS database client connection
 type OvsClient struct {
-	sync.RWMutex
+	common.RWMutex
 	ovsdb     *libovsdb.OvsdbClient
 	connected uint64
 }
@@ -56,7 +56,7 @@ type OvsMonitorHandler interface {
 
 // OvsMonitor describes an OVS client Monitor
 type OvsMonitor struct {
-	sync.RWMutex
+	common.RWMutex
 	Protocol        string
 	Target          string
 	OvsClient       *OvsClient

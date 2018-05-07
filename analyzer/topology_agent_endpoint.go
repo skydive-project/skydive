@@ -25,6 +25,7 @@ package analyzer
 import (
 	"sync"
 
+	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -32,7 +33,7 @@ import (
 
 // TopologyAgentEndpoint serves the graph for agents.
 type TopologyAgentEndpoint struct {
-	sync.RWMutex
+	common.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
 	pool   shttp.WSStructSpeakerPool
 	Graph  *graph.Graph

@@ -23,12 +23,12 @@
 package flow
 
 import (
-	"sync"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/ip4defrag"
 	"github.com/google/gopacket/layers"
+	"github.com/skydive-project/skydive/common"
 )
 
 type ipv4Key struct {
@@ -44,7 +44,7 @@ type IPDefraggerMetric struct {
 
 // IPDefragger defines an IPv4 defragmenter
 type IPDefragger struct {
-	sync.RWMutex
+	common.RWMutex
 	defragger *ip4defrag.IPv4Defragmenter
 	dfmetrics map[ipv4Key]*IPDefraggerMetric
 }

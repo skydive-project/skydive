@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -148,7 +147,7 @@ var liveContext = GraphContext{TimePoint: true}
 // Graph describes the graph object based on events and context mechanism
 // An associated backend is used as storage
 type Graph struct {
-	sync.RWMutex
+	common.RWMutex
 	*GraphEventHandler
 	backend GraphBackend
 	context GraphContext
@@ -199,7 +198,7 @@ func (c *DefaultGraphListener) OnEdgeDeleted(e *Edge) {
 }
 
 type GraphEventHandler struct {
-	sync.RWMutex
+	common.RWMutex
 	eventListeners       []GraphEventListener
 	eventChan            chan graphEvent
 	eventConsumed        bool

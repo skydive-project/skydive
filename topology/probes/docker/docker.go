@@ -56,7 +56,7 @@ type containerInfo struct {
 
 // DockerProbe describes a Docker topology graph that enhance the graph
 type DockerProbe struct {
-	sync.RWMutex
+	common.RWMutex
 	*ns.NetNSProbe
 	url          string
 	client       *client.Client

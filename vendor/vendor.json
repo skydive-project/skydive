@@ -1853,6 +1853,12 @@
 			"revision": "e01512671ed4c2248daf0c5e974ecf88a4947335"
 		},
 		{
+			"checksumSHA1": "QtAVwWxnBr7kMsJYpOIv+hD00Ss=",
+			"path": "github.com/safchain/insanelock",
+			"revision": "33bca45866480bc4b8caca2a94898c3baf161c1e",
+			"revisionTime": "2018-05-09T13:54:44Z"
+		},
+		{
 			"checksumSHA1": "R/fjdtUQaHeLGBIm0QM/RZrRd2g=",
 			"path": "github.com/shirou/gopsutil/cpu",
 			"revision": "6a368fb7cd1221fa6ea90facc9447c9a2234c255",

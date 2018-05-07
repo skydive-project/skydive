@@ -25,7 +25,6 @@ package probes
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -43,7 +42,7 @@ type SFlowProbesHandler struct {
 	Graph       *graph.Graph
 	fpta        *FlowProbeTableAllocator
 	probes      map[string]*flow.Table
-	probesLock  sync.RWMutex
+	probesLock  common.RWMutex
 	allocator   *sflow.SFlowAgentAllocator
 	staticPorts map[string]string
 }

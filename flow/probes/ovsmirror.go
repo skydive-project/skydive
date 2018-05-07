@@ -27,7 +27,6 @@ package probes
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/socketplane/libovsdb"
 	"github.com/vishvananda/netlink"
@@ -55,7 +54,7 @@ type ovsMirrorProbe struct {
 type OvsMirrorProbesHandler struct {
 	probes      map[string]*ovsMirrorProbe
 	probeBundle *probe.ProbeBundle
-	probesLock  sync.RWMutex
+	probesLock  common.RWMutex
 	Graph       *graph.Graph
 	ovsClient   *ovsdb.OvsClient
 	intfIndexer *graph.MetadataIndexer

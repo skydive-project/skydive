@@ -78,7 +78,7 @@ type EBPFProbe struct {
 type EBPFProbesHandler struct {
 	graph      *graph.Graph
 	probes     map[graph.Identifier]*EBPFProbe
-	probesLock sync.RWMutex
+	probesLock common.RWMutex
 	fpta       *FlowProbeTableAllocator
 	wg         sync.WaitGroup
 }

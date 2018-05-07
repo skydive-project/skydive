@@ -95,6 +95,10 @@ ifeq ($(WITH_CDD), true)
   BUILDTAGS+=cdd
 endif
 
+ifeq ($(WITH_MUTEX_DEBUG), true)
+  BUILDTAGS+=mutexdebug
+endif
+
 ifeq ($(WITH_K8S), true)
   BUILDTAGS+=k8s
   EXTRA_ARGS+=-analyzer.topology.probes=k8s

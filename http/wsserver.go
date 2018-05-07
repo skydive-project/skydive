@@ -25,11 +25,11 @@ package http
 import (
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/abbot/go-http-auth"
 	"github.com/gorilla/websocket"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -38,7 +38,7 @@ type WSIncomerHandler func(*websocket.Conn, *auth.AuthenticatedRequest) WSSpeake
 
 // WSServer implements a websocket server. It owns a WSPool of incoming WSSpeakers.
 type WSServer struct {
-	sync.RWMutex
+	common.RWMutex
 	*wsIncomerPool
 	incomerHandler WSIncomerHandler
 }
