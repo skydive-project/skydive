@@ -63,7 +63,7 @@ func newClusterIndexer(g *graph.Graph) *graph.MetadataIndexer {
 }
 
 func dumpCluster(name string) string {
-	return fmt.Sprintf("cluster{'Name': %s}")
+	return fmt.Sprintf("cluster{'Name': %s}", name)
 }
 
 func (p *clusterProbe) newMetadata(name string) graph.Metadata {
