@@ -162,7 +162,7 @@ func linkPodsToNode(g *graph.Graph, host *graph.Node, pods []*graph.Node) {
 }
 
 func linkPodToNode(g *graph.Graph, node, pod *graph.Node) {
-	addOwnershipLink(g, node, pod)
+	addLink(g, node, pod)
 }
 
 func (p *podProbe) Start() {

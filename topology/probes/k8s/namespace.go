@@ -79,7 +79,7 @@ func namespaceUID(ns *v1.Namespace) graph.Identifier {
 }
 
 func (p *namespaceProbe) linkObject(objNode, nsNode *graph.Node) {
-	addLink(p.graph, nsNode, objNode)
+	addOwnershipLink(p.graph, nsNode, objNode)
 	logging.GetLogger().Debugf("Added link: %s -> %s", dumpGraphNode(nsNode), dumpGraphNode(objNode))
 }
 
