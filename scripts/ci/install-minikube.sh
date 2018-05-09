@@ -77,7 +77,7 @@ start() {
 
 	local args="--vm-driver=none"
 	local driver=$(sudo docker info --format '{{print .CgroupDriver}}')
-	if [ -n "$dirver" ]; then
+	if [ -n "$driver" ]; then
 		args="$args --extra-config=kubelet.CgroupDriver=$driver"
 	fi
 
