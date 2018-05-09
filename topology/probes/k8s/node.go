@@ -23,8 +23,7 @@
 package k8s
 
 import (
-	"sync"
-
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -34,7 +33,7 @@ import (
 )
 
 type nodeProbe struct {
-	sync.RWMutex
+	common.RWMutex
 	defaultKubeCacheEventHandler
 	graph.DefaultGraphListener
 	*kubeCache

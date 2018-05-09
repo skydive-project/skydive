@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
@@ -36,7 +35,7 @@ import (
 )
 
 type fakeWSMessageServerSubscriptionHandler struct {
-	sync.RWMutex
+	common.RWMutex
 	DefaultWSSpeakerEventHandler
 	t             *testing.T
 	server        *WSStructServer
@@ -45,7 +44,7 @@ type fakeWSMessageServerSubscriptionHandler struct {
 }
 
 type fakeWSMessageClientSubscriptionHandler struct {
-	sync.RWMutex
+	common.RWMutex
 	DefaultWSSpeakerEventHandler
 	t             *testing.T
 	received      map[string]bool

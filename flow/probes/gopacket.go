@@ -66,7 +66,7 @@ type GoPacketProbesHandler struct {
 	fpta       *FlowProbeTableAllocator
 	wg         sync.WaitGroup
 	probes     map[string]*GoPacketProbe
-	probesLock sync.RWMutex
+	probesLock common.RWMutex
 }
 
 func (p *GoPacketProbe) pcapUpdateStats(g *graph.Graph, n *graph.Node, handle *pcap.Handle, ticker *time.Ticker, done chan bool, wg *sync.WaitGroup) {

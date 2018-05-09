@@ -27,7 +27,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -49,7 +48,7 @@ var (
 
 // SFlowAgent describes SFlow agent probe
 type SFlowAgent struct {
-	sync.RWMutex
+	common.RWMutex
 	UUID       string
 	Addr       string
 	Port       int
@@ -61,7 +60,7 @@ type SFlowAgent struct {
 
 // SFlowAgentAllocator describes an SFlow agent allocator to manage multiple SFlow agent probe
 type SFlowAgentAllocator struct {
-	sync.RWMutex
+	common.RWMutex
 	portAllocator *common.PortAllocator
 	agents        []*SFlowAgent
 }

@@ -75,7 +75,7 @@ type loggingEvent struct {
 
 // LxdProbe describes a LXD topology graph that enhance the graph
 type LxdProbe struct {
-	sync.RWMutex
+	common.RWMutex
 	*ns.NetNSProbe
 	state        int64
 	wg           sync.WaitGroup

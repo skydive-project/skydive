@@ -31,7 +31,6 @@ import (
 	"os/exec"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/robertkrimen/otto"
@@ -224,7 +223,7 @@ func NewGremlinAlert(alert *types.Alert, g *graph.Graph, p *traversal.GremlinTra
 }
 
 type AlertServer struct {
-	sync.RWMutex
+	common.RWMutex
 	*etcd.MasterElector
 	Graph         *graph.Graph
 	Pool          shttp.WSStructSpeakerPool

@@ -87,7 +87,7 @@ type Table struct {
 	query          chan *TableQuery
 	reply          chan *TableReply
 	state          int64
-	lockState      sync.RWMutex
+	lockState      common.RWMutex
 	wg             sync.WaitGroup
 	quit           chan bool
 	updateHandler  *Handler

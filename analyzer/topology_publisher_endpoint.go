@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/skydive-project/skydive/common"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/statics"
@@ -47,7 +48,7 @@ const (
 // TopologyPublisherEndpoint serves the graph for external publishers, for instance
 // an external program that interacts with the Skydive graph.
 type TopologyPublisherEndpoint struct {
-	sync.RWMutex
+	common.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
 	pool          shttp.WSStructSpeakerPool
 	Graph         *graph.Graph

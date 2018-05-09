@@ -58,7 +58,7 @@ type TopologyReplicatorPeer struct {
 
 // TopologyReplicationEndpoint serves the local Graph and send local modification to its peers.
 type TopologyReplicationEndpoint struct {
-	sync.RWMutex
+	common.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
 	in           shttp.WSStructSpeakerPool
 	out          *shttp.WSStructClientPool

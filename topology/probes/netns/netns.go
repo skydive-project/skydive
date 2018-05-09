@@ -31,7 +31,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -48,7 +47,7 @@ import (
 
 // NetNSProbe describes a netlink probe in a network namespace
 type NetNSProbe struct {
-	sync.RWMutex
+	common.RWMutex
 	Graph              *graph.Graph
 	Root               *graph.Node
 	NetLinkProbe       *netlink.NetLinkProbe

@@ -23,10 +23,9 @@
 package metadata
 
 import (
-	"sync"
-
 	"github.com/skydive-project/skydive/api/server"
 	api "github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/common"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -34,7 +33,7 @@ import (
 
 //UserMetadataManager describes user metadata manager
 type UserMetadataManager struct {
-	sync.RWMutex
+	common.RWMutex
 	graph.DefaultGraphListener
 	graph           *graph.Graph
 	metadataHandler *server.UserMetadataAPIHandler

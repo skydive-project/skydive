@@ -24,7 +24,6 @@ package client
 
 import (
 	"net/http"
-	"sync"
 	"time"
 
 	cache "github.com/pmylund/go-cache"
@@ -43,7 +42,7 @@ import (
 
 // OnDemandProbeClient describes an ondemand probe client based on a websocket
 type OnDemandProbeClient struct {
-	sync.RWMutex
+	common.RWMutex
 	*etcd.MasterElector
 	graph.DefaultGraphListener
 	graph                *graph.Graph

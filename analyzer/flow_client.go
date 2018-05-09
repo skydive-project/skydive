@@ -29,7 +29,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/skydive-project/skydive/common"
@@ -41,7 +40,7 @@ import (
 
 // FlowClientPool describes a flow client pool.
 type FlowClientPool struct {
-	sync.RWMutex
+	common.RWMutex
 	shttp.DefaultWSSpeakerEventHandler
 	flowClients []*FlowClient
 }

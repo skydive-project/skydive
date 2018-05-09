@@ -120,7 +120,7 @@ func (s *WSConnState) UnmarshalJSON(b []byte) error {
 
 // WSConn is the connection object of a WSSpeaker
 type WSConn struct {
-	sync.RWMutex
+	common.RWMutex
 	WSConnStatus
 	send          chan []byte
 	read          chan []byte

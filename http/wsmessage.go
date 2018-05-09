@@ -29,7 +29,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/abbot/go-http-auth"
@@ -222,7 +221,7 @@ type WSSpeakerStructMessageDispatcher interface {
 }
 
 type wsStructSpeakerEventDispatcher struct {
-	eventHandlersLock sync.RWMutex
+	eventHandlersLock common.RWMutex
 	nsEventHandlers   map[string][]WSSpeakerStructMessageHandler
 }
 
@@ -307,7 +306,7 @@ type WSStructSpeaker struct {
 	WSSpeaker
 	*wsStructSpeakerEventDispatcher
 	nsSubscribed   map[string]bool
-	replyChanMutex sync.RWMutex
+	replyChanMutex common.RWMutex
 	replyChan      map[string]chan *WSStructMessage
 }
 

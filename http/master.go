@@ -22,7 +22,7 @@
 
 package http
 
-import "sync"
+import "github.com/skydive-project/skydive/common"
 
 // WSMasterEventHandler is the interface to be implemented by master election listeners.
 type WSMasterEventHandler interface {
@@ -32,7 +32,7 @@ type WSMasterEventHandler interface {
 // WSMasterElection provides a mechanism based on etcd to elect a master from a
 // WSSpeakerPool.
 type WSMasterElection struct {
-	sync.RWMutex
+	common.RWMutex
 	DefaultWSSpeakerEventHandler
 	pool          WSSpeakerPool
 	master        WSSpeaker

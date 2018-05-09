@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -148,11 +147,11 @@ var liveContext = GraphContext{TimePoint: true}
 // Graph describes the graph object based on events and context mechanism
 // An associated backend is used as storage
 type Graph struct {
-	sync.RWMutex
-	*GraphEventHandler
-	backend GraphBackend
-	context GraphContext
-	host    string
+	common.RWMutex
+	eventHandler *GraphEventHandler
+	backend      GraphBackend
+	context      GraphContext
+	host         string
 }
 
 // HostNodeTIDMap a map of host and node ID
@@ -199,11 +198,39 @@ func (c *DefaultGraphListener) OnEdgeDeleted(e *Edge) {
 }
 
 type GraphEventHandler struct {
-	sync.RWMutex
+	common.RWMutex
 	eventListeners       []GraphEventListener
 	eventChan            chan graphEvent
 	eventConsumed        bool
 	currentEventListener GraphEventListener
+}
+
+func (g *GraphEventHandler) notifyListeners(ge graphEvent) {
+	// notify only once per listener as if more than once we are in a recursion
+	// and we wont to notify a listener which generated a graph element
+	g.RLock()
+	defer g.RUnlock()
+	for _, g.currentEventListener = range g.eventListeners {
+		// do not notify the listener which generated the event
+		if g.currentEventListener == ge.listener {
+			continue
+		}
+
+		switch ge.kind {
+		case nodeAdded:
+			g.currentEventListener.OnNodeAdded(ge.element.(*Node))
+		case nodeUpdated:
+			g.currentEventListener.OnNodeUpdated(ge.element.(*Node))
+		case nodeDeleted:
+			g.currentEventListener.OnNodeDeleted(ge.element.(*Node))
+		case edgeAdded:
+			g.currentEventListener.OnEdgeAdded(ge.element.(*Edge))
+		case edgeUpdated:
+			g.currentEventListener.OnEdgeUpdated(ge.element.(*Edge))
+		case edgeDeleted:
+			g.currentEventListener.OnEdgeDeleted(ge.element.(*Edge))
+		}
+	}
 }
 
 func (g *GraphEventHandler) notifyEvent(ge graphEvent) {
@@ -221,33 +248,7 @@ func (g *GraphEventHandler) notifyEvent(ge graphEvent) {
 
 	for len(g.eventChan) > 0 {
 		ge = <-g.eventChan
-
-		// notify only once per listener as if more than once we are in a recursion
-		// and we wont to notify a listener which generated a graph element
-		g.RLock()
-		defer g.RUnlock()
-
-		for _, g.currentEventListener = range g.eventListeners {
-			// do not notify the listener which generated the event
-			if g.currentEventListener == ge.listener {
-				continue
-			}
-
-			switch ge.kind {
-			case nodeAdded:
-				g.currentEventListener.OnNodeAdded(ge.element.(*Node))
-			case nodeUpdated:
-				g.currentEventListener.OnNodeUpdated(ge.element.(*Node))
-			case nodeDeleted:
-				g.currentEventListener.OnNodeDeleted(ge.element.(*Node))
-			case edgeAdded:
-				g.currentEventListener.OnEdgeAdded(ge.element.(*Edge))
-			case edgeUpdated:
-				g.currentEventListener.OnEdgeUpdated(ge.element.(*Edge))
-			case edgeDeleted:
-				g.currentEventListener.OnEdgeDeleted(ge.element.(*Edge))
-			}
-		}
+		g.notifyListeners(ge)
 	}
 	g.currentEventListener = nil
 	g.eventConsumed = false
@@ -731,7 +732,7 @@ func (g *Graph) NodeUpdated(n *Node) bool {
 			return false
 		}
 
-		g.notifyEvent(graphEvent{kind: nodeUpdated, element: node})
+		g.eventHandler.notifyEvent(graphEvent{kind: nodeUpdated, element: node})
 		return true
 	}
 	return false
@@ -747,7 +748,7 @@ func (g *Graph) EdgeUpdated(e *Edge) bool {
 			return false
 		}
 
-		g.notifyEvent(graphEvent{kind: edgeUpdated, element: edge})
+		g.eventHandler.notifyEvent(graphEvent{kind: edgeUpdated, element: edge})
 		return true
 	}
 	return false
@@ -779,7 +780,7 @@ func (g *Graph) SetMetadata(i interface{}, m Metadata) bool {
 		return false
 	}
 
-	g.notifyEvent(ge)
+	g.eventHandler.notifyEvent(ge)
 	return true
 }
 
@@ -806,7 +807,7 @@ func (g *Graph) DelMetadata(i interface{}, k string) bool {
 		return false
 	}
 
-	g.notifyEvent(ge)
+	g.eventHandler.notifyEvent(ge)
 	return true
 }
 
@@ -843,7 +844,7 @@ func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time)
 		return false
 	}
 
-	g.notifyEvent(ge)
+	g.eventHandler.notifyEvent(ge)
 	return true
 }
 
@@ -1097,7 +1098,7 @@ func (g *Graph) AddEdge(e *Edge) bool {
 	if !g.backend.EdgeAdded(e) {
 		return false
 	}
-	g.notifyEvent(graphEvent{element: e, kind: edgeAdded})
+	g.eventHandler.notifyEvent(graphEvent{element: e, kind: edgeAdded})
 
 	return true
 }
@@ -1123,7 +1124,7 @@ func (g *Graph) AddNode(n *Node) bool {
 	if !g.backend.NodeAdded(n) {
 		return false
 	}
-	g.notifyEvent(graphEvent{element: n, kind: nodeAdded})
+	g.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeAdded})
 
 	return true
 }
@@ -1221,14 +1222,14 @@ func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata, h ...string)
 // EdgeDeleted event
 func (g *Graph) EdgeDeleted(e *Edge) {
 	if g.backend.EdgeDeleted(e) {
-		g.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
+		g.eventHandler.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
 	}
 }
 
 func (g *Graph) delEdge(e *Edge, t time.Time) (success bool) {
 	e.deletedAt = t
 	if success = g.backend.EdgeDeleted(e); success {
-		g.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
+		g.eventHandler.notifyEvent(graphEvent{element: e, kind: edgeDeleted})
 	}
 	return
 }
@@ -1241,7 +1242,7 @@ func (g *Graph) DelEdge(e *Edge) bool {
 // NodeDeleted event
 func (g *Graph) NodeDeleted(n *Node) {
 	if g.backend.NodeDeleted(n) {
-		g.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
+		g.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
 	}
 }
 
@@ -1252,7 +1253,7 @@ func (g *Graph) delNode(n *Node, t time.Time) (success bool) {
 
 	n.deletedAt = t
 	if success = g.backend.NodeDeleted(n); success {
-		g.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
+		g.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
 	}
 	return
 }
@@ -1366,13 +1367,23 @@ func (g *Graph) Diff(newGraph *Graph) (addedNodes []*Node, removedNodes []*Node,
 	return
 }
 
+// AddEventListener subscibe a new graph listener
+func (g *Graph) AddEventListener(l GraphEventListener) {
+	g.eventHandler.AddEventListener(l)
+}
+
+// RemoveEventListener unsubscribe a graph listener
+func (g *Graph) RemoveEventListener(l GraphEventListener) {
+	g.eventHandler.RemoveEventListener(l)
+}
+
 // NewGraph creates a new graph based on the backend
 func NewGraph(host string, backend GraphBackend) *Graph {
 	return &Graph{
-		GraphEventHandler: NewGraphEventHandler(maxEvents),
-		backend:           backend,
-		host:              host,
-		context:           GraphContext{TimePoint: true},
+		eventHandler: NewGraphEventHandler(maxEvents),
+		backend:      backend,
+		host:         host,
+		context:      GraphContext{TimePoint: true},
 	}
 }
 

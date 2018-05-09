@@ -24,13 +24,14 @@ package flow
 
 import (
 	"net/http"
-	"sync"
 	"time"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 // TableAllocator aims to create/allocate a new flow table
 type TableAllocator struct {
-	sync.RWMutex
+	common.RWMutex
 	update   time.Duration
 	expire   time.Duration
 	tables   map[*Table]bool
