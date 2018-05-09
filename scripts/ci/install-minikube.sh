@@ -31,7 +31,7 @@ install_binary() {
                 exit 1
         fi
 
-        chmod 0777 $prog
+        chmod a+x $prog
         sudo mv $prog $TARGET_DIR/$prog
 }
 
