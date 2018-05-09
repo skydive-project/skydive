@@ -299,6 +299,8 @@ func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTrav
 			}
 		case int64:
 			s.Params[1] = time.Duration(param) * time.Second
+		case *ForeverPredicate:
+			s.Params[1] = time.Duration(time.Now().UnixNano())
 		default:
 			return nil, errors.New("Key must be either an integer or a string")
 		}
@@ -315,6 +317,8 @@ func (s *GremlinTraversalStepContext) Exec(last GraphTraversalStep) (_ GraphTrav
 			} else {
 				s.Params[0] = time.Unix(param, 0)
 			}
+		case *NowPredicate:
+			s.Params[0] = time.Now()
 		default:
 			return nil, errors.New("Key must be either an integer or a string")
 		}
@@ -963,6 +967,10 @@ func (p *GremlinTraversalParser) parseStepParams() ([]interface{}, error) {
 				return nil, fmt.Errorf("One parameter expected with IPV4RANGE: %v", ipParams)
 			}
 			params = append(params, IPV4Range(ipParams[0]))
+		case FOREVER:
+			params = append(params, &ForeverPredicate{})
+		case NOW:
+			params = append(params, &NowPredicate{})
 		default:
 			return nil, fmt.Errorf("Unexpected token while parsing parameters, got: %s", lit)
 		}
