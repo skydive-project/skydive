@@ -3,7 +3,17 @@
     var: hostvars[inventory_hostname]
 
 - set_fact:
-    analyzers: "{% for i in groups['analyzers'] %}{% if skydive_nic is defined %}{{ hostvars[i][skydive_nic].ipv4.address }}{% else %}{{ hostvars[i].ansible_default_ipv4.address }}{% endif %}:8082{% if not loop.last %},{% endif %}{% endfor %}"
+    analyzers: >-
+      {% for i in groups['analyzers'] -%}
+        {%- if hostvars[i]['skydive_listen_ip'] is defined and not "0.0.0.0" -%}
+          {{ hostvars[i]['skydive_listen_ip'] }}:{{ skydive_analyzer_port }}
+        {%- elif skydive_nic is defined -%}
+          {{ hostvars[i][skydive_nic].ipv4.address }}:{{ skydive_analyzer_port }}
+        {%- else -%}
+          {{ hostvars[i].ansible_default_ipv4.address }}:{{ skydive_analyzer_port }}
+        {%- endif -%}
+        {%- if not loop.last -%},{%- endif -%}
+      {%- endfor %}
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"

@@ -1,0 +1,7 @@
+---
+- name: Setup probes
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "agent.topology.probes"
+    value: "{{ skydive_topology_probes }}"
+    state: present

@@ -1,0 +1,16 @@
+[skydive:children]
+analyzers
+agents
+
+[skydive:vars]
+skydive_listen_ip=0.0.0.0
+skydive_deployment_mode=container
+
+[analyzers]
+localhost ansible_connection=local
+
+[agents]
+localhost ansible_connection=local
+
+[agents:vars]
+skydive_extra_config={'agent.topology.probes': ['docker']}
