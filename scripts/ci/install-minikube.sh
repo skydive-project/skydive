@@ -81,7 +81,7 @@ start() {
                 args="$args --extra-config=kubelet.CgroupDriver=$driver"
         fi
 
-               sudo -E minikube start $args
+        sudo -E minikube start $args
         sudo -E minikube addons disable dashboard
         minikube status
         kubectl config use-context minikube
