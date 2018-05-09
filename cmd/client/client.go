@@ -56,6 +56,7 @@ func RegisterClientCommands(cmd *cobra.Command) {
 	cmd.AddCommand(AlertCmd)
 	cmd.AddCommand(CaptureCmd)
 	cmd.AddCommand(PacketInjectorCmd)
+	cmd.AddCommand(FabricProbeCmd)
 	cmd.AddCommand(PcapCmd)
 	cmd.AddCommand(QueryCmd)
 	cmd.AddCommand(ShellCmd)

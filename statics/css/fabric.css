@@ -1,0 +1,12 @@
+#fabric-form {
+  position: absolute;
+  left: 20px;
+  bottom: 80px;
+  border-radius: 4px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+div:empty {
+  display:none;
+}

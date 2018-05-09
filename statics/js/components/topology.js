@@ -102,7 +102,14 @@ var TopologyComponent = {
             </div>\
           </div>\
         </div>\
+        <div id="fabric-form">\
+          <fabric-form></fabric-form>\
+        </div>\
         <div class="topology-controls">\
+          <button id="fabric" type="button" class="btn btn-primary"\
+                  title="Fabric Node" @click="showFabricNodeForm">\
+            <span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>\
+          </button>\
           <button id="zoom-in" type="button" class="btn btn-primary"\
                   title="Zoom In" @click="zoomIn">\
             <span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span>\
@@ -166,12 +173,27 @@ var TopologyComponent = {
               <i class="node-action fa"\
                  :class="{\'fa-expand\': currentNode.group.collapsed, \'fa-compress\': !currentNode.group.collapsed}" />\
             </button>\
+            <button v-if="currentNode.isFabricHost()"\
+                    title="fabric port"\
+                    class="btn btn-default btn-xs"\
+                    @click.stop="showFabricPortForm()">\
+              <i class="node-action glyphicon glyphicon-plus-sign" />\
+            </button>\
+            <button v-if="currentNode.isFabricPort()"\
+                    title="fabric link"\
+                    class="btn btn-default btn-xs"\
+                    @click.stop="showFabricLinkForm()">\
+              <i class="node-action glyphicon glyphicon-link" />\
+            </button>\
           </template>\
           <object-detail :object="currentNodeMetadata"\
                          :links="metadataLinks(currentNodeMetadata)"\
                          :collapsed="metadataCollapseState">\
           </object-detail>\
         </panel>\
+        <div>\
+          <fabric-link></fabric-link>\
+        </div>\
         <panel v-if="currentEdge"\
                title="Metadata">\
           <object-detail :object="currentEdge.metadata"></object-detail>\
@@ -643,6 +665,22 @@ var TopologyComponent = {
       this.isTopologyOptionsVisible = false;
     },
 
+    showFabricNodeForm: function() {
+      app.$emit("node-host");
+      app.$emit("show-fabric-form");
+    },
+
+    showFabricPortForm: function() {
+      app.$emit("node-port");
+      app.$emit("parent-id", store.state.currentNode.id);
+      app.$emit("show-fabric-form");
+    },
+
+    showFabricLinkForm: function() {
+      app.$emit("src-id", store.state.currentNode.id);
+      app.$emit("show-fabric-link-form");
+    },
+
     emphasizeNodes: function(gremlinExpr) {
       var self = this;
       var i;
@@ -801,6 +839,14 @@ Node.prototype = {
 
   isGroupOwner: function(type) {
     return this.group && this.group.owner === this && (!type || type === this.group.type);
+  },
+
+  isFabricHost: function() {
+    return this.metadata.FabricType === "host";
+  },
+
+  isFabricPort: function() {
+    return this.metadata.FabricType === "port";
   },
 
   isCaptureOn: function() {

@@ -192,6 +192,56 @@ var apiMixin = {
       });
     },
 
+    $createFabricNode: function(name, metadata, type, subType, parentID) {
+      var self = this;
+      return $.ajax({
+        dataType: "json",
+        url: 'api/fabricprobe',
+        data: JSON.stringify({
+                             Name: name,
+                             Metadata: metadata || null,
+                             Type: type,
+                             SubType: subType,
+                             ParentID: parentID || null,
+                            }),
+        contentType: "application/json; charset=utf-8",
+        method: 'POST',
+      })
+      .then(function(data) {
+        self.$success({message: 'Fabric ' + type + ' created'});
+        return data;
+      })
+      .fail(function(e) {
+        self.$error({message: 'Fabric create error: ' + e.responseText});
+        return e;
+      });
+    },
+
+    $createFabricLink: function(source, target, subType, metadata) {
+      var self = this;
+      return $.ajax({
+        dataType: "json",
+        url: 'api/fabricprobe',
+        data: JSON.stringify({
+                             Type: "link",
+                             SubType: subType,
+                             Metadata: metadata,
+                             SrcNode: source,
+                             DstNode: target,
+                            }),
+        contentType: "application/json; charset=utf-8",
+        method: 'POST',
+      })
+      .then(function(data) {
+        self.$success({message: 'Fabric link created'});
+        return data;
+      })
+      .fail(function(e) {
+        self.$error({message: 'Fabric link create error: ' + e.responseText});
+        return e;
+      });
+    },
+
     $allowedTypes: function() {
       return ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy",
         "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan",

@@ -79,6 +79,10 @@ func (fb *FabricProbe) LinkNodes(parent *graph.Node, child *graph.Node, linkMeta
 }
 
 func defToMetadata(def string, metadata graph.Metadata) (graph.Metadata, error) {
+	if def == "" {
+		return metadata, nil
+	}
+
 	for _, pair := range strings.Split(def, ",") {
 		pair = strings.TrimSpace(pair)
 
@@ -118,17 +122,12 @@ func nodeDefToMetadata(nodeDef string) (string, graph.Metadata, error) {
 	return f[0], metadata, err
 }
 
-func (fb *FabricProbe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, error) {
-	nodeName, metadata, err := nodeDefToMetadata(nodeDef)
-	if err != nil {
-		return nil, err
-	}
-
+func (fb *FabricProbe) getOrCreateFabricNode(name string, metadata graph.Metadata) (*graph.Node, error) {
 	if _, ok := metadata["Type"]; !ok {
 		metadata["Type"] = "device"
 	}
 
-	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte("fabric"+nodeName))
+	u, _ := uuid.NewV5(uuid.NamespaceOID, []byte("fabric"+name))
 	id := graph.Identifier(u.String())
 
 	if node := fb.Graph.GetNode(id); node != nil {
@@ -138,6 +137,15 @@ func (fb *FabricProbe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node
 	metadata["Probe"] = "fabric"
 
 	return fb.Graph.NewNode(id, metadata, ""), nil
+}
+
+func (fb *FabricProbe) getOrCreateFabricNodeFromDef(nodeDef string) (*graph.Node, error) {
+	nodeName, metadata, err := nodeDefToMetadata(nodeDef)
+	if err != nil {
+		return nil, err
+	}
+
+	return fb.getOrCreateFabricNode(nodeName, metadata)
 }
 
 // Start the probe

@@ -47,6 +47,7 @@ import (
 	"github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
+	"github.com/skydive-project/skydive/topology/probes/fabric"
 )
 
 // Server describes an Analyzer servers mechanism like http, websocket, topology, ondemand probes, ...
@@ -60,6 +61,7 @@ type Server struct {
 	alertServer         *alert.AlertServer
 	onDemandClient      *ondemand.OnDemandProbeClient
 	piClient            *packet_injector.PacketInjectorClient
+	fpManager           *fabric.FabricProbeManager
 	metadataManager     *metadata.UserMetadataManager
 	flowServer          *FlowServer
 	probeBundle         *probe.ProbeBundle
@@ -109,6 +111,7 @@ func (s *Server) Start() error {
 	s.probeBundle.Start()
 	s.onDemandClient.Start()
 	s.piClient.Start()
+	s.fpManager.Start()
 	s.alertServer.Start()
 	s.metadataManager.Start()
 	s.flowServer.Start()
@@ -143,6 +146,7 @@ func (s *Server) Stop() {
 	s.probeBundle.Stop()
 	s.onDemandClient.Stop()
 	s.piClient.Stop()
+	s.fpManager.Stop()
 	s.alertServer.Stop()
 	s.metadataManager.Stop()
 	s.etcdClient.Stop()
@@ -252,6 +256,12 @@ func NewServerFromConfig() (*Server, error) {
 	}
 	piClient := packet_injector.NewPacketInjectorClient(agentWSServer, etcdClient, piAPIHandler, g)
 
+	fpAPIHandler, err := api.RegisterFabricAPI(apiServer)
+	if err != nil {
+		return nil, err
+	}
+
+	fpManager := fabric.NewFabricProbeManager(etcdClient, fpAPIHandler, (probeBundle.GetProbe("fabric").(*fabric.FabricProbe)))
 	alertAPIHandler, err := api.RegisterAlertAPI(apiServer)
 	if err != nil {
 		return nil, err
@@ -292,6 +302,7 @@ func NewServerFromConfig() (*Server, error) {
 		etcdClient:          etcdClient,
 		onDemandClient:      onDemandClient,
 		piClient:            piClient,
+		fpManager:           fpManager,
 		metadataManager:     metadataManager,
 		storage:             storage,
 		flowServer:          flowServer,

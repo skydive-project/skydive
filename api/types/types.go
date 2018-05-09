@@ -204,3 +204,22 @@ func NewUserMetadata(query string, key string, value string) *UserMetadata {
 		Value:        value,
 	}
 }
+
+type FabricProbe struct {
+	UUID     string
+	Type     string
+	SubType  string
+	Name     string
+	SrcNode  string
+	DstNode  string
+	Metadata string
+	ParentID string
+}
+
+func (fp *FabricProbe) ID() string {
+	return fp.UUID
+}
+
+func (fp *FabricProbe) SetID(id string) {
+	fp.UUID = id
+}
