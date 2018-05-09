@@ -23,9 +23,9 @@
 package graph
 
 import (
-	"sync"
-
 	"github.com/cnf/structhash"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 // NodeHasher describes a callback that is called to map a node to
@@ -35,8 +35,8 @@ type NodeHasher func(n *Node) map[string]interface{}
 // GraphIndexer provides a way to index graph nodes. A node can be mapped to
 // multiple hash,value pairs. A hash can also be mapped to multiple nodes.
 type GraphIndexer struct {
-	sync.Mutex
-	*GraphEventHandler
+	common.RWMutex
+	eventHandler *GraphEventHandler
 	DefaultGraphListener
 	graph        *Graph
 	hashNode     NodeHasher
@@ -72,7 +72,7 @@ func (i *GraphIndexer) cacheNode(n *Node, kv map[string]interface{}) {
 			i.index(n.ID, k, v)
 		}
 
-		i.notifyEvent(graphEvent{element: n, kind: nodeAdded})
+		i.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeAdded})
 	} else {
 		// Node already was in the cache
 		if !i.appendOnly {
@@ -87,7 +87,7 @@ func (i *GraphIndexer) cacheNode(n *Node, kv map[string]interface{}) {
 			i.index(n.ID, k, v)
 		}
 
-		i.notifyEvent(graphEvent{element: n, kind: nodeUpdated})
+		i.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeUpdated})
 	}
 }
 
@@ -102,7 +102,7 @@ func (i *GraphIndexer) forgetNode(n *Node) {
 			delete(i.hashToValues[h], n.ID)
 		}
 
-		i.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
+		i.eventHandler.notifyEvent(graphEvent{element: n, kind: nodeDeleted})
 	}
 }
 
@@ -148,15 +148,25 @@ func (i *GraphIndexer) Stop() {
 	i.graph.RemoveEventListener(i)
 }
 
+// AddEventListener subscibe a new graph listener
+func (i *GraphIndexer) AddEventListener(l GraphEventListener) {
+	i.eventHandler.AddEventListener(l)
+}
+
+// RemoveEventListener unsubscribe a graph listener
+func (i *GraphIndexer) RemoveEventListener(l GraphEventListener) {
+	i.eventHandler.RemoveEventListener(l)
+}
+
 // NewGraphIndexer returns a new graph indexer with the associated hashing callback
 func NewGraphIndexer(g *Graph, hashNode NodeHasher, appendOnly bool) *GraphIndexer {
 	indexer := &GraphIndexer{
-		GraphEventHandler: NewGraphEventHandler(maxEvents),
-		graph:             g,
-		hashNode:          hashNode,
-		hashToValues:      make(map[string]map[Identifier]interface{}),
-		nodeToHashes:      make(map[Identifier]map[string]bool),
-		appendOnly:        appendOnly,
+		eventHandler: NewGraphEventHandler(maxEvents),
+		graph:        g,
+		hashNode:     hashNode,
+		hashToValues: make(map[string]map[Identifier]interface{}),
+		nodeToHashes: make(map[Identifier]map[string]bool),
+		appendOnly:   appendOnly,
 	}
 	return indexer
 }
