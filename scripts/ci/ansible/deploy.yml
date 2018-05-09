@@ -57,6 +57,7 @@
         - ansicolor
         - credentials-binding
         - build-timeout
+        - timestamper
 
 - name: Install requirements
   hosts: jenkins_master, slaves
