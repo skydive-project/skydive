@@ -112,6 +112,8 @@
 - defaults:
     name: skydive
     project-type: freestyle
+    scm:
+      - skydive-github
     wrappers:
       - ansicolor:
           colormap: gnome-terminal
@@ -120,8 +122,6 @@
           fail: true
           type: absolute
       - timestamps
-    scm:
-      - skydive-github
     node: slaves
 
 - job:
@@ -131,8 +131,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -162,8 +160,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -197,8 +193,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -229,8 +223,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -264,6 +256,13 @@
       - github-pull-request:
           status-url: 'http://ci-logs.skydive.network/{name}-functional-tests-backend-{backend}/builds/${{BUILD_NUMBER}}/log.html'
           status-context: '{name}-functional-tests-backend-{backend}'
+      - ansicolor:
+          colormap: gnome-terminal
+      - timeout:
+          timeout: 60
+          fail: true
+          type: absolute
+      - timestamps
     publishers:
       - junit:
           results: tests.xml
@@ -663,8 +662,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
