@@ -1,12 +1,13 @@
 package elasticsearch
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/skydive-project/skydive/common"
 )
 
 const testMapping = `
@@ -31,7 +32,7 @@ func (c *ElasticSearchClient) indexEntry(id int) (bool, error) {
 }
 
 func (c *ElasticSearchClient) cleanupIndices() error {
-	if _, err := c.connection.DeleteIndex(fmt.Sprintf("%s_%s*", indexPrefix, c.name)); err != nil {
+	if _, err := c.client.DeleteIndex(fmt.Sprintf("%s_%s*", indexPrefix, c.name)).Do(context.Background()); err != nil {
 		return fmt.Errorf(fmt.Sprintf("Failed to clear test indices: %s", err.Error()))
 	}
 	return nil
@@ -97,12 +98,12 @@ func TestElasticsearchShouldRollByAge(t *testing.T) {
 	}
 
 	time.Sleep(time.Duration(cfg.AgeLimit-2) * time.Second)
-	if client.shouldRollIndex() {
+	if client.shouldRollIndexByAge() {
 		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", cfg.AgeLimit-2, cfg.AgeLimit)
 	}
 
 	time.Sleep(4 * time.Second)
-	if !client.shouldRollIndex() {
+	if !client.shouldRollIndexByAge() {
 		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", cfg.AgeLimit+2, cfg.AgeLimit)
 	}
 
@@ -128,32 +129,37 @@ func TestElasticsearchDelIndices(t *testing.T) {
 		if err := client.RollIndex(); err != nil {
 			t.Fatalf("Failed to roll index %d: %s", i, err.Error())
 		}
-		time.Sleep(1 * time.Second)
-		indices := client.connection.GetCatIndexInfo(client.GetIndexAlias() + "_*")
-		if len(indices) != i+1 {
-			t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, cfg.IndicesLimit, len(indices))
-		}
+		common.Retry(func() error {
+			indices, _ := client.client.IndexNames()
+			if len(indices) != i+1 {
+				return fmt.Errorf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, cfg.IndicesLimit, len(indices))
+			}
+			return nil
+		}, 5, time.Second)
 	}
 
 	if err = client.RollIndex(); err != nil {
 		t.Fatalf("Failed to roll index %d: %s", cfg.IndicesLimit, err.Error())
 	}
-	time.Sleep(1 * time.Second)
-	indices := client.connection.GetCatIndexInfo(client.GetIndexAlias() + "_*")
-	if len(indices) != cfg.IndicesLimit {
-		t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", cfg.IndicesLimit, cfg.IndicesLimit, cfg.IndicesLimit, len(indices))
-	}
 
-	for _, esIndex := range indices {
-		if esIndex.Name == firstIndex {
-			t.Fatalf("First index %s Should have been deleted", firstIndex)
+	common.Retry(func() error {
+		indices, _ := client.client.IndexNames()
+		if len(indices) != cfg.IndicesLimit {
+			return fmt.Errorf("Should have had %d indices after %d rolls (limit is %d), but have %d", cfg.IndicesLimit, cfg.IndicesLimit, cfg.IndicesLimit, len(indices))
 		}
-	}
+
+		for _, esIndex := range indices {
+			if esIndex == firstIndex {
+				return fmt.Errorf("First index %s Should have been deleted", firstIndex)
+			}
+		}
+
+		return nil
+	}, 5, time.Second)
 
 	if err := client.cleanupIndices(); err != nil {
 		t.Fatalf(err.Error())
 	}
-
 }
 
 // test mappings before and after rolling elasticsearch indices
@@ -172,14 +178,9 @@ func TestElasticsearchMappings(t *testing.T) {
 	}
 	time.Sleep(1 * time.Second)
 
-	code, data, err := client.request("GET", fmt.Sprintf("/%s/_mapping", client.GetIndexAlias()), "", "")
-	if code != http.StatusOK {
-		t.Fatalf("Failed to retreive mappings: %d %s", code, err.Error())
-	}
-
-	var mappings map[string]interface{}
-	if err := json.Unmarshal(data, &mappings); err != nil {
-		t.Fatalf("Unable to parse mappings: %s", err.Error())
+	mappings, err := client.client.GetMapping().Index(client.GetIndexAlias()).Do(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to retrieve mappings: %s", err.Error())
 	}
 
 	for indexName, doc := range mappings {

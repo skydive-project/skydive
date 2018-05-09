@@ -26,10 +26,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/gopacket/layers"
-	"github.com/mattbaird/elastigo/lib"
+	elastic "github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
@@ -218,27 +217,8 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	return nil
 }
 
-func (c *ElasticSearchStorage) requestFromQuery(fsq filters.SearchQuery) (map[string]interface{}, error) {
-	request := map[string]interface{}{"size": 10000}
-
-	if fsq.PaginationRange != nil {
-		if fsq.PaginationRange.To < fsq.PaginationRange.From {
-			return request, errors.New("Incorrect PaginationRange, To < From")
-		}
-
-		request["from"] = fsq.PaginationRange.From
-		request["size"] = fsq.PaginationRange.To - fsq.PaginationRange.From
-	}
-
-	return request, nil
-}
-
-func (c *ElasticSearchStorage) sendRequest(docType string, request map[string]interface{}) (elastigo.SearchResult, error) {
-	q, err := json.Marshal(request)
-	if err != nil {
-		return elastigo.SearchResult{}, err
-	}
-	return c.client.Search(docType, string(q), "")
+func (c *ElasticSearchStorage) sendRequest(docType string, esQuery elastic.Query, query filters.SearchQuery) (*elastic.SearchResult, error) {
+	return c.client.Search(docType, esQuery, "", query)
 }
 
 // SearchRawPackets searches flow raw packets matching filters in the database
@@ -247,52 +227,21 @@ func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetF
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
 
-	request, err := c.requestFromQuery(fsq)
-	if err != nil {
-		return nil, err
-	}
-
 	// do not escape flow as ES use sub object in that case
 	flowQuery := c.client.FormatFilter(fsq.Filter, "")
-	musts := []map[string]interface{}{{
-		"has_parent": map[string]interface{}{
-			"type":  "flow",
-			"query": flowQuery,
-		},
-	}}
+	mustQueries := []elastic.Query{elastic.NewHasParentQuery("flow", flowQuery)}
 
 	if packetFilter != nil {
-		packetQuery := c.client.FormatFilter(packetFilter, "")
-		musts = append(musts, packetQuery)
+		mustQueries = append(mustQueries, c.client.FormatFilter(packetFilter, ""))
 	}
 
-	request["query"] = map[string]interface{}{
-		"bool": map[string]interface{}{
-			"must": musts,
-		},
-	}
-
-	if fsq.Sort {
-		sortOrder := fsq.SortOrder
-		if sortOrder == "" {
-			sortOrder = "asc"
-		}
-
-		request["sort"] = map[string]interface{}{
-			fsq.SortBy: map[string]string{
-				"order":         strings.ToLower(sortOrder),
-				"unmapped_type": "date",
-			},
-		}
-	}
-
-	out, err := c.sendRequest("rawpacket", request)
+	out, err := c.sendRequest("rawpacket", elastic.NewBoolQuery().Must(mustQueries...), fsq)
 	if err != nil {
 		return nil, err
 	}
 
 	rawpackets := make(map[string]*flow.RawPackets)
-	if out.Hits.Len() > 0 {
+	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			obj := struct {
 				LinkType  layers.LinkType
@@ -330,50 +279,21 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
 
-	request, err := c.requestFromQuery(fsq)
-	if err != nil {
-		return nil, err
-	}
-
 	// do not escape flow as ES use sub object in that case
 	flowQuery := c.client.FormatFilter(fsq.Filter, "")
-	musts := []map[string]interface{}{{
-		"has_parent": map[string]interface{}{
-			"type":  "flow",
-			"query": flowQuery,
-		},
-	}}
-
 	metricQuery := c.client.FormatFilter(metricFilter, "")
-	musts = append(musts, metricQuery)
+	esQuery := elastic.NewBoolQuery().Must(
+		elastic.NewHasParentQuery("flow", flowQuery),
+		metricQuery,
+	)
 
-	request["query"] = map[string]interface{}{
-		"bool": map[string]interface{}{
-			"must": musts,
-		},
-	}
-
-	if fsq.Sort {
-		sortOrder := fsq.SortOrder
-		if sortOrder == "" {
-			sortOrder = "asc"
-		}
-
-		request["sort"] = map[string]interface{}{
-			fsq.SortBy: map[string]string{
-				"order":         strings.ToLower(sortOrder),
-				"unmapped_type": "date",
-			},
-		}
-	}
-
-	out, err := c.sendRequest("metric", request)
+	out, err := c.sendRequest("metric", esQuery, fsq)
 	if err != nil {
 		return nil, err
 	}
 
 	metrics := map[string][]common.Metric{}
-	if out.Hits.Len() > 0 {
+	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			m := new(flow.FlowMetric)
 			if err := json.Unmarshal([]byte(*d.Source), m); err != nil {
@@ -393,39 +313,13 @@ func (c *ElasticSearchStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowS
 		return nil, errors.New("ElasticSearchStorage is not yet started")
 	}
 
-	request, err := c.requestFromQuery(fsq)
-	if err != nil {
-		return nil, err
-	}
-
-	var query map[string]interface{}
-	if fsq.Filter != nil {
-		query = c.client.FormatFilter(fsq.Filter, "")
-	}
-
-	request["query"] = query
-
-	if fsq.Sort {
-		sortOrder := fsq.SortOrder
-		if sortOrder == "" {
-			sortOrder = "asc"
-		}
-
-		request["sort"] = map[string]interface{}{
-			fsq.SortBy: map[string]string{
-				"order":         strings.ToLower(sortOrder),
-				"unmapped_type": "date",
-			},
-		}
-	}
-
-	out, err := c.sendRequest("flow", request)
+	out, err := c.sendRequest("flow", c.client.FormatFilter(fsq.Filter, ""), fsq)
 	if err != nil {
 		return nil, err
 	}
 
 	flowset := flow.NewFlowSet()
-	if out.Hits.Len() > 0 {
+	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			f := new(flow.Flow)
 			if err := json.Unmarshal([]byte(*d.Source), f); err != nil {

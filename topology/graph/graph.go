@@ -435,7 +435,7 @@ func (m Metadata) Clone() Metadata {
 	n := Metadata{}
 
 	for k, v := range m {
-		n[k] = v
+		n[k] = common.NormalizeValue(v)
 	}
 
 	return n

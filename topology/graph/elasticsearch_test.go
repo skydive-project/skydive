@@ -29,8 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
-	elastigo "github.com/mattbaird/elastigo/lib"
+	elastic "github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
@@ -56,8 +55,8 @@ func (a revisionArray) Less(i, j int) bool {
 
 type fakeElasticsearchClient struct {
 	revisions    map[string]interface{}
-	searches     []string
-	searchResult elastigo.SearchResult
+	searches     []elastic.Query
+	searchResult elastic.SearchResult
 	shouldRoll   bool
 }
 
@@ -77,7 +76,7 @@ func (f *fakeElasticsearchClient) resetRevisions() {
 	f.revisions = make(map[string]interface{})
 }
 
-func (f *fakeElasticsearchClient) FormatFilter(filter *filters.Filter, mapKey string) map[string]interface{} {
+func (f *fakeElasticsearchClient) FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 	es := &elasticsearch.ElasticSearchClient{}
 	return es.FormatFilter(filter, mapKey)
 }
@@ -128,17 +127,17 @@ func (f *fakeElasticsearchClient) BulkUpdateWithPartialDoc(obj string, id string
 	}
 	return nil
 }
-func (f *fakeElasticsearchClient) Get(obj string, id string) (elastigo.BaseResponse, error) {
-	return elastigo.BaseResponse{}, nil
+func (f *fakeElasticsearchClient) Get(obj string, id string) (*elastic.GetResult, error) {
+	return &elastic.GetResult{}, nil
 }
-func (f *fakeElasticsearchClient) Delete(obj string, id string) (elastigo.BaseResponse, error) {
-	return elastigo.BaseResponse{}, nil
+func (f *fakeElasticsearchClient) Delete(obj string, id string) (*elastic.DeleteResponse, error) {
+	return &elastic.DeleteResponse{}, nil
 }
 func (f *fakeElasticsearchClient) BulkDelete(obj string, id string) {
 }
-func (f *fakeElasticsearchClient) Search(obj string, query string, index string) (elastigo.SearchResult, error) {
+func (f *fakeElasticsearchClient) Search(obj string, query elastic.Query, index string, fsq filters.SearchQuery) (*elastic.SearchResult, error) {
 	f.searches = append(f.searches, query)
-	return f.searchResult, nil
+	return &f.searchResult, nil
 }
 func (f *fakeElasticsearchClient) Start() {
 }
@@ -149,6 +148,7 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeElasticsearchClient) {
 		shouldRoll: false,
 	}
 	b, err := NewElasticSearchBackendFromClient(client)
+	client.searchResult.Hits = &elastic.SearchHits{}
 
 	if err != nil {
 		t.Error(err.Error())
@@ -233,7 +233,7 @@ func TestElasticsearchLocal(t *testing.T) {
 		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
 	}
 
-	client.searches = []string{}
+	client.searches = []elastic.Query{}
 
 	g.delNode(node, time.Unix(4, 0))
 
@@ -276,48 +276,6 @@ func TestElasticsearchLocal(t *testing.T) {
 
 	if !reflect.DeepEqual(client.getRevisions(), expected) {
 		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
-	}
-
-	var searchEdge interface{}
-	json.Unmarshal([]byte(client.searches[0]), &searchEdge)
-
-	searchExpected := map[string]interface{}{
-		"size": float64(10000),
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"must": []interface{}{
-					map[string]interface{}{
-						"bool": map[string]interface{}{
-							"must_not": map[string]interface{}{
-								"exists": map[string]interface{}{
-									"field": "ArchivedAt",
-								},
-							},
-						},
-					},
-					map[string]interface{}{
-						"bool": map[string]interface{}{
-							"should": []interface{}{
-								map[string]interface{}{
-									"term": map[string]interface{}{
-										"Parent": "aaa",
-									},
-								},
-								map[string]interface{}{
-									"term": map[string]interface{}{
-										"Child": "aaa",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	if !reflect.DeepEqual(searchExpected, searchEdge) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %s\ngot: %s", spew.Sdump(searchExpected), spew.Sdump(searchEdge))
 	}
 
 	client.resetRevisions()
@@ -392,7 +350,7 @@ func TestElasticsearchForwarded(t *testing.T) {
 	b, _ := node.MarshalJSON()
 	rawMessage := json.RawMessage(b)
 
-	client.searchResult.Hits.Hits = []elastigo.Hit{
+	client.searchResult.Hits.Hits = []*elastic.SearchHit{
 		{Source: &rawMessage},
 	}
 	g.NodeUpdated(node)
@@ -428,7 +386,7 @@ func TestElasticsearchForwarded(t *testing.T) {
 
 	b, _ = node.MarshalJSON()
 	rawMessage = json.RawMessage(b)
-	client.searchResult.Hits.Hits = []elastigo.Hit{
+	client.searchResult.Hits.Hits = []*elastic.SearchHit{
 		{Source: &rawMessage},
 	}
 	g.NodeUpdated(node)

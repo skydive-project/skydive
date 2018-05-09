@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -107,11 +108,16 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 		time.Sleep(1 * time.Second)
 		g.SetMetadata(node, graph.Metadata{"Temp": i})
 	}
-	time.Sleep(3 * time.Second)
 
-	activeNodes := len(backend.GetNodes(graph.GraphContext{nil, false}, nil))
-	if activeNodes != 1 {
-		t.Fatalf("Found %d active nodes instead of 1", activeNodes)
+	err = common.Retry(func() error {
+		activeNodes := len(backend.GetNodes(graph.GraphContext{nil, false}, nil))
+		if activeNodes != 1 {
+			return fmt.Errorf("Found %d active nodes instead of 1", activeNodes)
+		}
+		return nil
+	}, 10, time.Second)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	if err := delTestIndex(indexNodesName); err != nil {
