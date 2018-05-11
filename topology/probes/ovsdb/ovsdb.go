@@ -57,10 +57,17 @@ type OvsdbProbe struct {
 }
 
 func isOvsDrivenInterface(intf *graph.Node) bool {
-	if d, _ := intf.GetFieldString("Driver"); d != "openvswitch" {
-		return false
+	if d, _ := intf.GetFieldString("Driver"); d == "openvswitch" {
+		return true
 	}
-	return true
+
+	t, _ := intf.GetFieldString("Type")
+	switch t {
+	case "dpdk", "dpdkvhostuserclient", "patch", "internal":
+		return true
+	}
+
+	return false
 }
 
 // OnOvsBridgeUpdate event
