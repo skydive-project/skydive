@@ -70,7 +70,8 @@ func TestPacketInjectionCapture(t *testing.T) {
 	verifyFlows := func() error {
 		time.Sleep(3 * time.Second)
 
-		if err = sh.flowQuery(g.G.Flows().Has("Network.A", "124.65.54.42", "Network.B", "124.65.54.43")); err != nil {
+		// do not check the direction as first packet could have been not seen
+		if err = sh.flowQuery(g.G.Flows().Has("Network", "124.65.54.42", "Network", "124.65.54.43")); err != nil {
 			return err
 		}
 
