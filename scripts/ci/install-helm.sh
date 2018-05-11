@@ -10,11 +10,11 @@ uninstall() {
 install() {
 	sudo yum install -y socat
 	local runme=/tmp/get_helm.sh
-	curl $HELM_GET | sh
+	curl $HELM_GET | sed -s '/helm version/helm --debug version/' | sh
 }
 
 stop() {
-	helm reset --force
+	helm reset
 }
 
 start() {

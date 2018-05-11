@@ -112,6 +112,8 @@
 - defaults:
     name: skydive
     project-type: freestyle
+    scm:
+      - skydive-github
     wrappers:
       - ansicolor:
           colormap: gnome-terminal
@@ -120,8 +122,6 @@
           fail: true
           type: absolute
       - timestamps
-    scm:
-      - skydive-github
     node: slaves
 
 - job:
@@ -131,8 +131,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -144,7 +142,7 @@
           cancel-builds-on-update: true
           status-context: skydive-go-fmt
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: cd src/github.com/skydive-project/skydive && scripts/ci/run-go-fmt.sh
     wrappers:
@@ -162,8 +160,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -175,7 +171,7 @@
           cancel-builds-on-update: true
           status-context: skydive-unit-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
@@ -197,8 +193,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -210,7 +204,7 @@
           cancel-builds-on-update: true
           status-context: skydive-compile-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
@@ -229,8 +223,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -242,7 +234,7 @@
           cancel-builds-on-update: true
           status-context: '{name}-functional-tests-backend-{backend}'
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
@@ -264,6 +256,13 @@
       - github-pull-request:
           status-url: 'http://ci-logs.skydive.network/{name}-functional-tests-backend-{backend}/builds/${{BUILD_NUMBER}}/log.html'
           status-context: '{name}-functional-tests-backend-{backend}'
+      - ansicolor:
+          colormap: gnome-terminal
+      - timeout:
+          timeout: 60
+          fail: true
+          type: absolute
+      - timestamps
     publishers:
       - junit:
           results: tests.xml
@@ -295,7 +294,7 @@
           cancel-builds-on-update: true
           status-context: skydive-scale-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
@@ -333,7 +332,7 @@
           cancel-builds-on-update: true
           status-context: skydive-selenium-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
@@ -371,7 +370,7 @@
           only-trigger-phrase: true
           status-context: skydive-cdd-overview-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
@@ -499,7 +498,7 @@
           cancel-builds-on-update: true
           status-context: skydive-devstack-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
@@ -538,7 +537,7 @@
           cancel-builds-on-update: true
           status-context: skydive-kolla-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
@@ -581,7 +580,7 @@
           cancel-builds-on-update: false
           status-context: skydive-vagrant-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
@@ -613,7 +612,7 @@
           cancel-builds-on-update: true
           status-context: skydive-packaging-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-packaging-tests.sh
     wrappers:
@@ -640,7 +639,7 @@
           cancel-builds-on-update: true
           status-context: skydive-python-tests
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
@@ -663,8 +662,6 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    scm:
-      - skydive-github
     triggers:
       - github-pull-request:
           org-list:
@@ -676,7 +673,7 @@
           cancel-builds-on-update: true
           status-context: skydive-coverage
           black-list-labels:
-            - WIP
+            - no-ci
     builders:
       - shell: |
           #!/bin/bash
