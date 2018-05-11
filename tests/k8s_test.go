@@ -50,6 +50,7 @@ var (
 	nodeName, _       = os.Hostname()
 	podName           = objName
 	containerName     = objName
+	deploymentName    = objName
 	networkPolicyName = objName
 	namespaceName     = objName
 	clusterName       = "cluster"
@@ -116,6 +117,10 @@ func testNodeCreationFromConfig(t *testing.T, typ, name string) {
 
 func TestK8sContainerNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "container", containerName)
+}
+
+func TestK8sDeploymentNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "deployment", deploymentName)
 }
 
 func TestK8sNamespaceNode(t *testing.T) {

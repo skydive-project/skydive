@@ -27,6 +27,7 @@ var nodeImgMap = setupFixedImages({
   "bond": "port",
   "cluster": "cluster",
   "container": "container",
+  "deployment": "deployment",
   "node": "host",
   "pod": "pod",
   "networkpolicy": "networkpolicy",
