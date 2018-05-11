@@ -48,7 +48,6 @@ var (
 	count      int64
 	interval   int64
 	increment  bool
-	uuid       string
 )
 
 // PacketInjectorCmd skydive inject-packet root command
