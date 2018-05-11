@@ -37,7 +37,7 @@ import (
 
 // CPUInfo defines host information
 type CPUInfo struct {
-	CPU        int64  `json:"CPU,omitempty"`
+	CPU        int64
 	VendorID   string `json:"VendorID,omitempty"`
 	Family     string `json:"Family,omitempty"`
 	Model      string `json:"Model,omitempty"`
