@@ -326,7 +326,7 @@ func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
 		return false
 	}
 	c.bulkProcessor.Flush()
-	time.Sleep(1 * time.Second)
+	c.client.Flush(c.name)
 
 	c.index.entriesCounter = c.countEntries()
 	if c.index.entriesCounter < c.cfg.EntriesLimit {
@@ -350,7 +350,19 @@ func (c *ElasticSearchClient) shouldRollIndexByAge() bool {
 }
 
 func (c *ElasticSearchClient) shouldRollIndex() bool {
-	return (c.shouldRollIndexByCount() || c.shouldRollIndexByAge())
+	return (c.shouldRollIndexByAge() || c.shouldRollIndexByCount())
+}
+
+func (c *ElasticSearchClient) ShouldRollIndex() bool {
+	c.index.Lock()
+	defer c.index.Unlock()
+	return c.shouldRollIndex()
+}
+
+func (c *ElasticSearchClient) IndexPath() string {
+	c.index.Lock()
+	defer c.index.Unlock()
+	return c.index.path
 }
 
 func (c *ElasticSearchClient) delIndices() {
@@ -560,6 +572,11 @@ func urlFromHost(host string) (*url.URL, error) {
 		return nil, ErrBadConfig
 	}
 	return url, nil
+}
+
+// GetClient returns the elastic client object
+func (c *ElasticSearchClient) GetClient() *elastic.Client {
+	return c.client
 }
 
 // NewElasticSearchClient creates a new ElasticSearch client based on configuration
