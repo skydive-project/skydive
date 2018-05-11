@@ -265,7 +265,7 @@
   become: true
   ignore_errors: yes
   tasks:
-    - shell: systemctl reboot
+    - shell: shutdown -r
 
 - name: Jenkins master post configuration
   hosts: jenkins_master
