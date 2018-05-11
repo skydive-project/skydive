@@ -156,7 +156,7 @@ BINDATA_DIRS := \
 
 .PHONY: compile
 compile:
-	$(GOVENDOR) install \
+	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(GOVENDOR) install \
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
 		${GOFLAGS} -tags="${BUILDTAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
