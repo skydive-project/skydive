@@ -17,7 +17,7 @@ function cleanup_items() {
 function docker_rm() {
   local container=$1
   docker stop $container
-  for i in $( seq 5 ); do 
+  for i in $( seq 5 ); do
     docker rm -f $container && break || sleep 1
   done
 }
@@ -31,8 +31,7 @@ function cleanup() {
   cleanup_items ovsdb "ovs-vsctl del-br"
   cleanup_items docker "docker_rm"
   cleanup_items lxd "lxc delete --force"
-  cleanup_items docker-images "docker rmi -f"
-
+  
   "${CURDIR}/../scale.sh" stop 10 10 10
 
   # clean elasticsearch
@@ -76,7 +75,6 @@ function snapshot() {
   snapshot_items intf $ext "ip -o link show | awk -F': ' '{print \$2}' | cut -d '@' -f 1"
   snapshot_items ovsdb $ext "ovs-vsctl list-br"
   snapshot_items docker $ext "docker ps -a -q"
-  snapshot_items docker-images $ext "docker images -a -q"
   snapshot_items lxd $ext "lxc list --format csv -c n"
 }
 
