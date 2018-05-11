@@ -55,3 +55,5 @@
 - include: static.yml
 
 - include: gimme.yml
+  tags:
+    - vagrant
