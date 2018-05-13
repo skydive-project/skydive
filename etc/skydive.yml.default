@@ -361,6 +361,7 @@ k8s:
   - cluster
   - container
   - deployment
+  - ingress
   - namespace
   - networkpolicy
   - node
