@@ -55,11 +55,11 @@ type Cmd struct {
 var (
 	Standalone        bool
 	GraphOutputFormat string
+	TopologyBackend   string
+	FlowBackend       string
 
-	etcdServer      string
-	topologyBackend string
-	flowBackend     string
-	analyzerProbes  string
+	etcdServer     string
+	analyzerProbes string
 )
 
 type HelperParams map[string]interface{}
@@ -67,9 +67,9 @@ type HelperParams map[string]interface{}
 func init() {
 	flag.BoolVar(&Standalone, "standalone", false, "Start an analyzer and an agent")
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
-	flag.StringVar(&topologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
+	flag.StringVar(&TopologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
 	flag.StringVar(&GraphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
-	flag.StringVar(&flowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
+	flag.StringVar(&FlowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.Parse()
 }
@@ -96,18 +96,18 @@ func InitConfig(conf string, params ...HelperParams) error {
 		params[0]["EmbeddedEtcd"] = "true"
 		params[0]["EtcdServer"] = "http://localhost:12379"
 	}
-	if flowBackend != "" {
-		params[0]["FlowBackend"] = flowBackend
+	if FlowBackend != "" {
+		params[0]["FlowBackend"] = FlowBackend
 	}
-	if flowBackend == "orientdb" || topologyBackend == "orientdb" {
+	if FlowBackend == "orientdb" || TopologyBackend == "orientdb" {
 		orientDBPassword := os.Getenv("ORIENTDB_ROOT_PASSWORD")
 		if orientDBPassword == "" {
 			orientDBPassword = "root"
 		}
 		params[0]["OrientDBRootPassword"] = orientDBPassword
 	}
-	if topologyBackend != "" {
-		params[0]["TopologyBackend"] = topologyBackend
+	if TopologyBackend != "" {
+		params[0]["TopologyBackend"] = TopologyBackend
 	}
 	if analyzerProbes != "" {
 		params[0]["AnalyzerProbes"] = strings.Split(analyzerProbes, ",")

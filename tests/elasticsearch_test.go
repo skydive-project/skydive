@@ -32,6 +32,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/storage/elasticsearch"
+	"github.com/skydive-project/skydive/tests/helper"
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
@@ -98,6 +99,10 @@ func initBackend(t *testing.T, cfg elasticsearch.Config, name string) (*graph.El
 
 // test active nodes after rolling elasticsearch indices
 func TestElasticsearcActiveNodes(t *testing.T) {
+	if helper.TopologyBackend != "elasticsearch" && helper.FlowBackend != "elasticsearch" {
+		t.Skip("Elasticsearch is used neither for topology nor flows")
+	}
+
 	cfg := elasticsearch.NewConfig()
 	cfg.EntriesLimit = 10
 
@@ -138,6 +143,10 @@ func TestElasticsearcActiveNodes(t *testing.T) {
 
 // test active edges after rolling elasticsearch indices
 func TestElasticsearcActiveEdges(t *testing.T) {
+	if helper.TopologyBackend != "elasticsearch" && helper.FlowBackend != "elasticsearch" {
+		t.Skip("Elasticsearch is used neither for topology nor flows")
+	}
+
 	cfg := elasticsearch.NewConfig()
 	cfg.EntriesLimit = 10
 
@@ -182,6 +191,10 @@ func indexEntry(c *elasticsearch.ElasticSearchClient, id int) (bool, error) {
 
 // test rolling elasticsearch indices based on count limit
 func TestElasticsearchShouldRollByCount(t *testing.T) {
+	if helper.TopologyBackend != "elasticsearch" && helper.FlowBackend != "elasticsearch" {
+		t.Skip("Elasticsearch is used neither for topology nor flows")
+	}
+
 	cfg := elasticsearch.NewConfig()
 	cfg.EntriesLimit = 5
 	name := "should_roll_by_count_test"
@@ -220,6 +233,10 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 
 // test rolling elasticsearch indices based on age limit
 func TestElasticsearchShouldRollByAge(t *testing.T) {
+	if helper.TopologyBackend != "elasticsearch" && helper.FlowBackend != "elasticsearch" {
+		t.Skip("Elasticsearch is used neither for topology nor flows")
+	}
+
 	cfg := elasticsearch.NewConfig()
 	cfg.AgeLimit = 5
 	name := "should_roll_by_age_test"
@@ -250,6 +267,10 @@ func TestElasticsearchShouldRollByAge(t *testing.T) {
 
 // test deletion of rolling elasticsearch indices
 func TestElasticsearchDelIndices(t *testing.T) {
+	if helper.TopologyBackend != "elasticsearch" && helper.FlowBackend != "elasticsearch" {
+		t.Skip("Elasticsearch is used neither for topology nor flows")
+	}
+
 	cfg := elasticsearch.NewConfig()
 	cfg.IndicesLimit = 5
 	name := "del_indices_test"
@@ -299,6 +320,10 @@ func TestElasticsearchDelIndices(t *testing.T) {
 
 // test mappings before and after rolling elasticsearch indices
 func TestElasticsearchMappings(t *testing.T) {
+	if helper.TopologyBackend != "elasticsearch" && helper.FlowBackend != "elasticsearch" {
+		t.Skip("Elasticsearch is used neither for topology nor flows")
+	}
+
 	cfg := elasticsearch.NewConfig()
 	name := "mappings_test"
 	mapKey := "testmap"

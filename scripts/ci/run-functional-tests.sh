@@ -11,10 +11,6 @@ for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
-if [ "$COVERAGE" != "true" ]; then
-    GOFLAGS="-race"
-fi
-
 case "$BACKEND" in
   "orientdb")
     export ORIENTDB_ROOT_PASSWORD=root
@@ -24,6 +20,10 @@ case "$BACKEND" in
     ARGS="-analyzer.topology.backend elasticsearch -analyzer.flow.backend elasticsearch"
     ;;
 esac
+
+if [ "$COVERAGE" != "true" ]; then
+    GOFLAGS="-race"
+fi
 
 make test.functionals.batch GOFLAGS="$GOFLAGS" GORACE="history_size=5" WITH_EBPF=true WITH_K8S=false VERBOSE=true TIMEOUT=20m COVERAGE=$COVERAGE ARGS="$ARGS -graph.output ascii -standalone" TEST_PATTERN=$TEST_PATTERN 2>&1 | tee $WORKSPACE/output.log
 go2xunit -fail -fail-on-race -suite-name-prefix tests -input $WORKSPACE/output.log -output $WORKSPACE/tests.xml
