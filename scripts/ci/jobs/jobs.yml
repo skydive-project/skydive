@@ -216,6 +216,37 @@
     publishers:
       - chuck-norris
 
+- job:
+    name: skydive-k8s-tests
+    defaults: skydive
+    node: baremetal
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?k8s-tests).*'
+          skip-build-phrase: '.*skip (skydive-)?k8s-tests.*'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          status-context: skydive-k8s-tests
+          black-list-labels:
+            - no-ci
+    builders:
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          scripts/ci/run-k8s-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/skydive-k8s-tests/builds/${BUILD_NUMBER}/log.html
+          status-context: skydive-k8s-tests
+    publishers:
+      - chuck-norris
+
 - job-template:
     name: '{name}-functional-tests-backend-{backend}'
     defaults: skydive
@@ -457,7 +488,7 @@
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    node: slaves
+    node: baremetal
     triggers:
       - github
     scm:
@@ -484,6 +515,7 @@
 - job:
     name: skydive-devstack-tests
     defaults: skydive
+    node: baremetal
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
@@ -507,7 +539,7 @@
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
           cd scripts/ci/devstack
-          vagrant up --no-provision --provider=openstack && vagrant provision
+          vagrant up --no-provision --provider=libvirt && vagrant provision
           retcode=$?
           vagrant destroy
           exit $retcode
@@ -518,11 +550,11 @@
       - openstack-credentials
     publishers:
       - chuck-norris
-    node: vagrant
 
 - job:
     name: skydive-kolla-tests
     defaults: skydive
+    node: baremetal
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
@@ -550,7 +582,7 @@
           cp $GOPATH/bin/skydive .
           make test.functionals.compile GOFLAGS="-race" GORACE="history_size=5" WITH_NEUTRON=true VERBOSE=true
           cd scripts/ci/kolla
-          DEPLOYMENT_MODE=dev vagrant up --provider=openstack
+          DEPLOYMENT_MODE=dev vagrant up --provider=libvirt
           retcode=$?
           vagrant destroy
           exit $retcode
@@ -561,11 +593,11 @@
       - openstack-credentials
     publishers:
       - chuck-norris
-    node: vagrant
 
 - job:
     name: skydive-vagrant-tests
     defaults: skydive
+    node: baremetal
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
@@ -585,7 +617,7 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          VAGRANT_DEFAULT_PROVIDER=openstack scripts/ci/run-vagrant-tests.sh
+          VAGRANT_DEFAULT_PROVIDER=libvirt scripts/ci/run-vagrant-tests.sh
     wrappers:
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/skydive-vagrant-tests/builds/${BUILD_NUMBER}/log.html
@@ -593,7 +625,6 @@
       - openstack-credentials
     publishers:
       - chuck-norris
-    node: vagrant
 
 - job:
     name: skydive-packaging-tests
@@ -658,6 +689,7 @@
 - job:
     name: skydive-coverage
     defaults: skydive
+    node: baremetal
     concurrent: true
     properties:
       - github:
