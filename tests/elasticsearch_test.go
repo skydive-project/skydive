@@ -172,16 +172,22 @@ func TestElasticsearcActiveEdges(t *testing.T) {
 		time.Sleep(1 * time.Second)
 		g.SetMetadata(edge, graph.Metadata{"Temp": i})
 	}
-	time.Sleep(3 * time.Second)
 
-	activeEdges := len(backend.GetEdges(graph.GraphContext{nil, false}, nil))
-	time.Sleep(3 * time.Second)
-	if activeEdges != 1 {
-		t.Fatalf("Found %d active edges instead of 1", activeEdges)
-	}
+	err = common.Retry(func() error {
+		activeEdges := len(backend.GetEdges(graph.GraphContext{nil, false}, nil))
+		time.Sleep(3 * time.Second)
+		if activeEdges != 1 {
+			t.Fatalf("Found %d active edges instead of 1", activeEdges)
+		}
 
-	if err := delTestIndex(indexEdgesName); err != nil {
-		t.Fatalf("Failed to clear test indices: %s", err.Error())
+		if err := delTestIndex(indexEdgesName); err != nil {
+			t.Fatalf("Failed to clear test indices: %s", err.Error())
+		}
+
+		return nil
+	}, 10, time.Second)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -212,19 +218,24 @@ func TestElasticsearchShouldRollByCount(t *testing.T) {
 		if _, err := indexEntry(client, i); err != nil {
 			t.Fatalf("Failed to index entry %d: %s", i, err.Error())
 		}
-		time.Sleep(1 * time.Second)
-		if client.ShouldRollIndex() {
-			t.Fatalf("Index should not have rolled after %d entries (limit is %d)", i, cfg.EntriesLimit)
-		}
+
+		err = common.Retry(func() error {
+			if client.ShouldRollIndex() {
+				return fmt.Errorf("Index should not have rolled after %d entries (limit is %d)", i, cfg.EntriesLimit)
+			}
+			return nil
+		}, 10, time.Second)
 	}
 
 	if _, err = indexEntry(client, cfg.EntriesLimit); err != nil {
 		t.Fatalf("Failed to index entry %d: %s", cfg.EntriesLimit, err.Error())
 	}
-	time.Sleep(1 * time.Second)
-	if !client.ShouldRollIndex() {
-		t.Fatalf("Index should have rolled after %d entries", cfg.EntriesLimit)
-	}
+	err = common.Retry(func() error {
+		if !client.ShouldRollIndex() {
+			return fmt.Errorf("Index should have rolled after %d entries", cfg.EntriesLimit)
+		}
+		return nil
+	}, 10, time.Second)
 
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
@@ -290,32 +301,36 @@ func TestElasticsearchDelIndices(t *testing.T) {
 		if err := client.RollIndex(); err != nil {
 			t.Fatalf("Failed to roll index %d: %s", i, err.Error())
 		}
-		time.Sleep(1 * time.Second)
-		indices, _ := client.GetClient().IndexNames()
-		if len(indices) != i+1 {
-			t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, cfg.IndicesLimit, len(indices))
-		}
+		common.Retry(func() error {
+			indices, _ := client.GetClient().IndexNames()
+			if len(indices) != i+1 {
+				return fmt.Errorf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, cfg.IndicesLimit, len(indices))
+			}
+			return nil
+		}, 5, time.Second)
 	}
 
 	if err = client.RollIndex(); err != nil {
 		t.Fatalf("Failed to roll index %d: %s", cfg.IndicesLimit, err.Error())
 	}
-	time.Sleep(1 * time.Second)
-	indices, _ := client.GetClient().IndexNames()
-	if len(indices) != cfg.IndicesLimit {
-		t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", cfg.IndicesLimit, cfg.IndicesLimit, cfg.IndicesLimit, len(indices))
-	}
-
-	for _, esIndex := range indices {
-		if esIndex == firstIndex {
-			t.Fatalf("First index %s Should have been deleted", firstIndex)
+	common.Retry(func() error {
+		indices, _ := client.GetClient().IndexNames()
+		if len(indices) != cfg.IndicesLimit {
+			return fmt.Errorf("Should have had %d indices after %d rolls (limit is %d), but have %d", cfg.IndicesLimit, cfg.IndicesLimit, cfg.IndicesLimit, len(indices))
 		}
-	}
+
+		for _, esIndex := range indices {
+			if esIndex == firstIndex {
+				return fmt.Errorf("First index %s Should have been deleted", firstIndex)
+			}
+		}
+
+		return nil
+	}, 5, time.Second)
 
 	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
 	}
-
 }
 
 // test mappings before and after rolling elasticsearch indices
