@@ -25,6 +25,7 @@ package tests
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
+const indexPrefix = "test_skydive_mwnxf0f2"
 const indexNodesName string = "test_nodes_2uzxp52i"
 const indexEdgesName string = "test_edges_tz4tz7er"
 
@@ -56,20 +58,11 @@ func delTestIndex(name string) error {
 	return nil
 }
 
-func initBackend(t *testing.T, cfg elasticsearch.Config, name string) (*graph.ElasticSearchBackend, error) {
-	mappings := elasticsearch.Mappings{
-		{"node": []byte(graph.ESGraphElementMapping)},
-		{"edge": []byte(graph.ESGraphElementMapping)},
-	}
-
-	cfg.ElasticHost = "http://localhost:9200"
-	cfg.BulkMaxDocs = 1
-
+func getClient(t *testing.T, name string, mappings elasticsearch.Mappings, cfg elasticsearch.Config) (*elasticsearch.ElasticSearchClient, error) {
 	client, err := elasticsearch.NewElasticSearchClient(name, mappings, cfg)
 	if err != nil {
 		return nil, err
 	}
-
 	client.Start()
 
 	timeout := 50
@@ -79,6 +72,23 @@ func initBackend(t *testing.T, cfg elasticsearch.Config, name string) (*graph.El
 		if timeout == 0 {
 			t.Fatal("Failed to connect to elasticsearch")
 		}
+	}
+
+	return client, nil
+}
+
+func initBackend(t *testing.T, cfg elasticsearch.Config, name string) (*graph.ElasticSearchBackend, error) {
+	mappings := elasticsearch.Mappings{
+		{"node": []byte(graph.ESGraphElementMapping)},
+		{"edge": []byte(graph.ESGraphElementMapping)},
+	}
+
+	cfg.ElasticHost = "http://localhost:9200"
+	cfg.BulkMaxDocs = 1
+
+	client, err := getClient(t, name, mappings, cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	return graph.NewElasticSearchBackendFromClient(client)
@@ -155,6 +165,183 @@ func TestElasticsearcActiveEdges(t *testing.T) {
 	}
 
 	if err := delTestIndex(indexEdgesName); err != nil {
+		t.Fatalf("Failed to clear test indices: %s", err.Error())
+	}
+}
+
+func indexEntry(c *elasticsearch.ElasticSearchClient, id int) (bool, error) {
+	return c.Index("test_type", fmt.Sprintf("id%d", id), `{"key": "val"}`)
+}
+
+// test rolling elasticsearch indices based on count limit
+func TestElasticsearchShouldRollByCount(t *testing.T) {
+	cfg := elasticsearch.NewConfig()
+	cfg.EntriesLimit = 5
+	name := "should_roll_by_count_test"
+
+	if err := delTestIndex(name); err != nil {
+		t.Fatalf("Failed to clear test indices: %s", err.Error())
+	}
+
+	client, err := getClient(t, name, elasticsearch.Mappings{}, cfg)
+	if err != nil {
+		t.Fatalf("Initialisation error: %s", err.Error())
+	}
+
+	for i := 1; i < cfg.EntriesLimit; i++ {
+		if _, err := indexEntry(client, i); err != nil {
+			t.Fatalf("Failed to index entry %d: %s", i, err.Error())
+		}
+		time.Sleep(1 * time.Second)
+		if client.ShouldRollIndex() {
+			t.Fatalf("Index should not have rolled after %d entries (limit is %d)", i, cfg.EntriesLimit)
+		}
+	}
+
+	if _, err = indexEntry(client, cfg.EntriesLimit); err != nil {
+		t.Fatalf("Failed to index entry %d: %s", cfg.EntriesLimit, err.Error())
+	}
+	time.Sleep(1 * time.Second)
+	if !client.ShouldRollIndex() {
+		t.Fatalf("Index should have rolled after %d entries", cfg.EntriesLimit)
+	}
+
+	if err := delTestIndex(name); err != nil {
+		t.Fatalf("Failed to clear test indices: %s", err.Error())
+	}
+}
+
+// test rolling elasticsearch indices based on age limit
+func TestElasticsearchShouldRollByAge(t *testing.T) {
+	cfg := elasticsearch.NewConfig()
+	cfg.AgeLimit = 5
+	name := "should_roll_by_age_test"
+
+	if err := delTestIndex(name); err != nil {
+		t.Fatalf("Failed to clear test indices: %s", err.Error())
+	}
+
+	client, err := getClient(t, name, elasticsearch.Mappings{}, cfg)
+	if err != nil {
+		t.Fatalf("Initialisation error: %s", err.Error())
+	}
+
+	time.Sleep(time.Duration(cfg.AgeLimit-2) * time.Second)
+	if client.ShouldRollIndex() {
+		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", cfg.AgeLimit-2, cfg.AgeLimit)
+	}
+
+	time.Sleep(4 * time.Second)
+	if !client.ShouldRollIndex() {
+		t.Fatalf("Index should not have rolled after %d seconds (limit is %d)", cfg.AgeLimit+2, cfg.AgeLimit)
+	}
+
+	if err := delTestIndex(name); err != nil {
+		t.Fatalf("Failed to clear test indices: %s", err.Error())
+	}
+}
+
+// test deletion of rolling elasticsearch indices
+func TestElasticsearchDelIndices(t *testing.T) {
+	cfg := elasticsearch.NewConfig()
+	cfg.IndicesLimit = 5
+	name := "del_indices_test"
+
+	if err := delTestIndex(name); err != nil {
+		t.Fatalf("Failed to clear test indices: %s", err.Error())
+	}
+
+	client, err := getClient(t, name, elasticsearch.Mappings{}, cfg)
+	if err != nil {
+		t.Fatalf("Initialisation error: %s", err.Error())
+	}
+	firstIndex := client.IndexPath()
+	time.Sleep(1 * time.Second)
+
+	for i := 1; i < cfg.IndicesLimit; i++ {
+		if err := client.RollIndex(); err != nil {
+			t.Fatalf("Failed to roll index %d: %s", i, err.Error())
+		}
+		time.Sleep(1 * time.Second)
+		indices := client.CatIndexInfo()
+		if len(indices) != i+1 {
+			t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", i+1, i, cfg.IndicesLimit, len(indices))
+		}
+	}
+
+	if err = client.RollIndex(); err != nil {
+		t.Fatalf("Failed to roll index %d: %s", cfg.IndicesLimit, err.Error())
+	}
+	time.Sleep(1 * time.Second)
+	indices := client.CatIndexInfo()
+	if len(indices) != cfg.IndicesLimit {
+		t.Fatalf("Should have had %d indices after %d rolls (limit is %d), but have %d", cfg.IndicesLimit, cfg.IndicesLimit, cfg.IndicesLimit, len(indices))
+	}
+
+	for _, esIndex := range indices {
+		if esIndex.Name == firstIndex {
+			t.Fatalf("First index %s Should have been deleted", firstIndex)
+		}
+	}
+
+	if err := delTestIndex(name); err != nil {
+		t.Fatalf("Failed to clear test indices: %s", err.Error())
+	}
+
+}
+
+// test mappings before and after rolling elasticsearch indices
+func TestElasticsearchMappings(t *testing.T) {
+	cfg := elasticsearch.NewConfig()
+	name := "mappings_test"
+	mapKey := "testmap"
+
+	if err := delTestIndex(name); err != nil {
+		t.Fatalf("Failed to clear test indices: %s", err.Error())
+	}
+
+	const testMapping = `
+{
+	"dynamic_templates": [
+		{
+			"strings": {
+				"match": "*",
+				"match_mapping_type": "string",
+				"mapping": {
+					"type":       "string",
+					"index":      "not_analyzed",
+					"doc_values": false
+				}
+			}
+		}
+	]
+}`
+
+	client, err := getClient(t, name, elasticsearch.Mappings{{mapKey: []byte(testMapping)}}, cfg)
+	if err != nil {
+		t.Fatalf("Initialisation error: %s", err.Error())
+	}
+
+	if err := client.RollIndex(); err != nil {
+		t.Fatalf("Failed to roll index: %s", err.Error())
+	}
+	time.Sleep(1 * time.Second)
+
+	mappings, err := client.GetMappings()
+	if err != nil {
+		t.Fatalf("Failed to retreive mappings: %s", err.Error())
+	}
+
+	for indexName, doc := range mappings {
+		if strings.HasPrefix(indexName, client.GetIndexAlias()) {
+			mapping := doc.(map[string]interface{})["mappings"]
+			if _, ok := mapping.(map[string]interface{})[mapKey]; !ok {
+				t.Fatalf("test mapping not found: %v", mapping)
+			}
+		}
+	}
+
+	if err := delTestIndex(name); err != nil {
 		t.Fatalf("Failed to clear test indices: %s", err.Error())
 	}
 }

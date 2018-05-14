@@ -231,6 +231,22 @@ func (c *ElasticSearchClient) createAlias() error {
 	return nil
 }
 
+func (c *ElasticSearchClient) GetMappings() (map[string]interface{}, error) {
+	code, data, err := c.request("GET", fmt.Sprintf("/%s/_mapping", c.GetIndexAlias()), "", "")
+	if err != nil {
+		return nil, err
+	}
+	if code != http.StatusOK {
+		return nil, fmt.Errorf("http error %d", code)
+	}
+
+	var mappings map[string]interface{}
+	if err := json.Unmarshal(data, &mappings); err != nil {
+		return nil, err
+	}
+	return mappings, nil
+}
+
 func (c *ElasticSearchClient) addMappings() error {
 	for _, document := range c.mappings {
 		for obj, mapping := range document {
@@ -425,7 +441,7 @@ func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
 		return false
 	}
 	c.indexer.Flush()
-	time.Sleep(1 * time.Second)
+	c.connection.Flush()
 
 	c.index.entriesCounter = c.countEntries()
 	if c.index.entriesCounter < c.cfg.EntriesLimit {
@@ -449,7 +465,23 @@ func (c *ElasticSearchClient) shouldRollIndexByAge() bool {
 }
 
 func (c *ElasticSearchClient) shouldRollIndex() bool {
-	return (c.shouldRollIndexByCount() || c.shouldRollIndexByAge())
+	return (c.shouldRollIndexByAge() || c.shouldRollIndexByCount())
+}
+
+func (c *ElasticSearchClient) ShouldRollIndex() bool {
+	c.index.Lock()
+	defer c.index.Unlock()
+	return c.shouldRollIndex()
+}
+
+func (c *ElasticSearchClient) CatIndexInfo() []elastigo.CatIndexInfo {
+	return c.connection.GetCatIndexInfo(c.GetIndexAlias() + "_*")
+}
+
+func (c *ElasticSearchClient) IndexPath() string {
+	c.index.Lock()
+	defer c.index.Unlock()
+	return c.index.path
 }
 
 func (c *ElasticSearchClient) delIndices() {
@@ -457,7 +489,7 @@ func (c *ElasticSearchClient) delIndices() {
 		return
 	}
 
-	indices := c.connection.GetCatIndexInfo(c.GetIndexAlias() + "_*")
+	indices := c.CatIndexInfo()
 	sort.Slice(indices, func(i, j int) bool {
 		return indices[i].Name < indices[j].Name
 	})
