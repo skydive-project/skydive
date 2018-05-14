@@ -148,9 +148,8 @@ agent:
       # delay in seconds between two metric updates
       # metrics_update: 30
 
-  flow:
+  capture:
     # Period in second to get capture stats from the probe. Note this
-    # currently only works for the pcap probe
     # stats_update: 1
 
   metadata:
