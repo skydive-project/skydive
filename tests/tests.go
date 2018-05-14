@@ -110,6 +110,7 @@ logging:
 etcd:
   data_dir: /tmp/skydive-etcd
   embedded: {{.EmbeddedEtcd}}
+  client_timeout: 15
   servers:
     - {{.EtcdServer}}
 `
