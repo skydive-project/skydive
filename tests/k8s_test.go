@@ -51,6 +51,7 @@ var (
 	podName           = objName
 	containerName     = objName
 	deploymentName    = objName
+	ingressName       = objName
 	networkPolicyName = objName
 	namespaceName     = objName
 	serviceName       = objName
@@ -122,6 +123,10 @@ func TestK8sContainerNode(t *testing.T) {
 
 func TestK8sDeploymentNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "deployment", deploymentName)
+}
+
+func TestK8sIngressNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "ingress", ingressName)
 }
 
 func TestK8sNamespaceNode(t *testing.T) {

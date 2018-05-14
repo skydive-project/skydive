@@ -1,0 +1,8 @@
+kind: Ingress
+apiVersion: extensions/v1beta1
+metadata:
+  name: skydive-test
+spec:
+  backend:
+    serviceName: testsvc
+    servicePort: 1080

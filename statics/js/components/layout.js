@@ -28,6 +28,7 @@ var nodeImgMap = setupFixedImages({
   "cluster": "cluster",
   "container": "container",
   "deployment": "deployment",
+  "ingress": "ingress",
   "node": "host",
   "pod": "pod",
   "networkpolicy": "networkpolicy",
