@@ -291,7 +291,7 @@ Vue.component('flow-table', {
             :class="{\'flow-detail\': hasFlowDetail(flows.row)}"\
             @click="toggleFlowDetail(flows.row)"\
             @mouseenter="highlightNodes(flows.row)"\
-            @mouseleave="unhighlightNodes()">\
+            @mouseleave="unhighlightNodes(flows.row)">\
           <td v-for="field in flows.visibleFields">\
             {{ fieldValue(flows.row, field.name).toLocaleString() }}\
           </td>\
@@ -299,7 +299,7 @@ Vue.component('flow-table', {
         <tr class="flow-detail-row"\
             v-if="hasFlowDetail(flows.row)"\
             @mouseenter="highlightNodes(flows.row)"\
-            @mouseleave="unhighlightNodes()">\
+            @mouseleave="unhighlightNodes(flows.row)">\
           <td :colspan="flows.visibleFields.length">\
             <object-detail :object="flows.row" :transformer="transform" :links="flowDetailLinks(flows.row)"></object-detail>\
           </td>\
@@ -649,22 +649,38 @@ Vue.component('flow-table', {
       return links;
     },
 
-    unhighlightNodes: function() {
-      var ids = this.$store.state.highlightedNodes.slice();
-      for (var i in ids) {
-        this.$store.commit('unhighlight', ids[i]);
-      }
+    waitForHighlight: function(uuid) {
+      var self = this;
+      setTimeout(function() {
+        var status = self.$store.state.highlightInprogress.get(uuid);
+        if (status) {
+          self.waitForHighlight(uuid);
+          return;
+        }
+
+        var ids = self.$store.state.highlightedNodes.slice();
+        for (var i in ids) {
+          self.$store.commit('unhighlight', ids[i]);
+        }
+        self.$store.commit('highlightDelete', uuid);
+      }, 100);
+    },
+
+    unhighlightNodes: function(obj) {
+      this.waitForHighlight(obj.UUID);
     },
 
     highlightNodes: function(obj) {
       var self = this,
           query = "G.Flows().Has('" + this.highlightMode + "', '" + obj[this.highlightMode] + "').Node()";
+      this.$store.commit('highlightStart', obj.UUID);
       query = this.setQueryTime(query);
       this.$topologyQuery(query)
         .then(function(nodes) {
           nodes.forEach(function(n) {
             self.$store.commit('highlight', n.ID);
           });
+          self.$store.commit('highlightEnd', obj.UUID);
         });
     },
 

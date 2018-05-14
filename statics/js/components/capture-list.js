@@ -34,7 +34,7 @@ var Capture = {
         <dt>Query</dt>\
         <dd class="query"\
             @mouseover="highlightNodes(capture)"\
-            @mouseout="unhighlightNodes()"\
+            @mouseout="unhighlightNodes(capture)"\
             @click="(canShowFlows ? showFlows = !showFlows : null)">\
           {{capture.GremlinQuery}}\
         </dd>\
@@ -91,11 +91,25 @@ var Capture = {
         });
     },
 
-    unhighlightNodes: function() {
-      var ids = this.$store.state.highlightedNodes.slice();
-      for (var i in ids) {
-        this.$store.commit('unhighlight', ids[i]);
-      }
+    waitForHighlight: function(uuid) {
+      var self = this;
+      setTimeout(function() {
+        var status = self.$store.state.highlightInprogress.get(uuid);
+        if (status) {
+          self.waitForHighlight(uuid);
+          return;
+        }
+
+        var ids = self.$store.state.highlightedNodes.slice();
+        for (var i in ids) {
+          self.$store.commit('unhighlight', ids[i]);
+        }
+        self.$store.commit('highlightDelete', uuid);
+      }, 100);
+    },
+
+    unhighlightNodes: function(capture) {
+      this.waitForHighlight(capture.UUID);
     },
 
     highlightNodes: function(capture) {
@@ -105,11 +119,13 @@ var Capture = {
       if (this.deleting) {
         return;
       }
+      this.$store.commit('highlightStart', capture.UUID);
       this.$topologyQuery(capture.GremlinQuery)
         .then(function(nodes) {
           nodes.forEach(function(n) {
             self.$store.commit("highlight", n.ID);
           });
+          self.$store.commit('highlightEnd', capture.UUID);
         });
     }
 
