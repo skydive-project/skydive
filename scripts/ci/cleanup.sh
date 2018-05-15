@@ -50,6 +50,7 @@ EOF
   systemctl restart openvswitch
   systemctl restart elasticsearch
   systemctl restart orientdb
+  systemctl restart lxd
 
   virsh net-destroy vagrant0
   virsh net-destroy vagrant-libvirt
