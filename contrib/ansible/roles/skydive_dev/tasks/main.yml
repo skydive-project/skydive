@@ -26,6 +26,8 @@
      - perl-Graph-Easy
      - rpm-build
      - rpmlint
+     - libvirt
+     - libvirt-client
      - vagrant-libvirt
      - ansible
      - numactl-devel
