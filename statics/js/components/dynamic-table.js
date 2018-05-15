@@ -18,6 +18,10 @@ Vue.component('dynamic-table', {
       required: true,
     },
 
+    toggleFields: {
+      type: Array,
+    },
+
     sortOrder: {
       type: Number,
     },
@@ -57,7 +61,13 @@ Vue.component('dynamic-table', {
                   :row="row" :visibleFields="visibleFields">\
               <tr class="flow-row">\
                 <td v-for="field in visibleFields">\
-                  {{fieldValue(row, field.name)}}\
+                  <span v-if="field.type == \'boolean\'">\
+                    <i v-if="fieldBoolValue(row, field.name)" class="fa fa-check bool-value-true" aria-hidden="true"></i>\
+                    <i v-else class="fa fa-times bool-value-false" aria-hidden="true"></i>\
+                  </span>\
+                  <span v-else>\
+                    {{fieldValue(row, field.name)}}\
+                  </span>\
                 </td>\
               </tr>\
             </slot>\
@@ -69,7 +79,7 @@ Vue.component('dynamic-table', {
           <span slot="button-text">\
             <i class="fa fa-cog" aria-hidden="true"></i>\
           </span>\
-          <li v-for="(field, index) in fields">\
+          <li v-for="(field, index) in toggleEntries">\
             <a href="#" @click="toggleField(field, index)">\
               <small><i class="fa fa-check text-success pull-right"\
                  aria-hidden="true" v-show="field.show"></i>\
@@ -91,6 +101,13 @@ Vue.component('dynamic-table', {
       });
     },
 
+    toggleEntries: function() {
+      if (!this.toggleFields) {
+        return this.fields;
+      }
+      return this.toggleFields;
+    },
+
   },
 
   methods: {
@@ -105,6 +122,10 @@ Vue.component('dynamic-table', {
 
     toggleField: function(field, index) {
       this.$emit('toggleField', field, index);
+    },
+
+    fieldBoolValue: function(object, key) {
+      return object[key[0]] == true;
     },
 
     fieldValue: function(object, key) {

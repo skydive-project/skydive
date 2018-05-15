@@ -791,6 +791,80 @@ func (u *NetNsNetLinkProbe) isRunning() bool {
 	return atomic.LoadInt64(&u.state) == common.RunningState
 }
 
+func (u *NetNsNetLinkProbe) cloneLinkNodes() map[string]*graph.Node {
+	// do a copy of the original in order to avoid inter locks
+	// between graph lock and netlink lock while iterating
+	u.RLock()
+	links := make(map[string]*graph.Node)
+	for k, v := range u.links {
+		links[k] = v
+	}
+	u.RUnlock()
+
+	return links
+}
+
+func (u *NetNsNetLinkProbe) updateIntfMetric(now, last time.Time) {
+	for name, node := range u.cloneLinkNodes() {
+		if link, err := u.handle.LinkByName(name); err == nil {
+			currMetric := newInterfaceMetricsFromNetlink(link)
+			if currMetric == nil || currMetric.IsZero() {
+				continue
+			}
+			currMetric.Last = int64(common.UnixMillis(now))
+
+			u.Graph.Lock()
+			tr := u.Graph.StartMetadataTransaction(node)
+
+			var lastUpdateMetric *topology.InterfaceMetric
+
+			prevMetric, ok := tr.Metadata["Metric"].(*topology.InterfaceMetric)
+			if ok {
+				lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
+			}
+
+			// nothing changed since last update
+			if lastUpdateMetric != nil && lastUpdateMetric.IsZero() {
+				u.Graph.Unlock()
+				continue
+			}
+
+			tr.Metadata["Metric"] = currMetric
+			if lastUpdateMetric != nil {
+				lastUpdateMetric.Start = int64(common.UnixMillis(last))
+				lastUpdateMetric.Last = int64(common.UnixMillis(now))
+				tr.Metadata["LastUpdateMetric"] = lastUpdateMetric
+			}
+
+			tr.Commit()
+			u.Graph.Unlock()
+		}
+	}
+}
+
+func (u *NetNsNetLinkProbe) updateIntfFeatures() {
+	for name, node := range u.cloneLinkNodes() {
+		u.Graph.RLock()
+		driver, _ := node.GetFieldString("Driver")
+		u.Graph.RUnlock()
+
+		if driver == "" {
+			continue
+		}
+
+		features, err := u.ethtool.Features(name)
+		if err != nil {
+			logging.GetLogger().Warningf("Unable to retrieve feature of %s: %s", name, err)
+		}
+
+		if len(features) > 0 {
+			u.Graph.Lock()
+			u.Graph.AddMetadata(node, "Features", features)
+			u.Graph.Unlock()
+		}
+	}
+}
+
 func (u *NetNsNetLinkProbe) start(nlProbe *NetLinkProbe) {
 	u.wg.Add(1)
 	defer u.wg.Done()
@@ -821,58 +895,20 @@ Ready:
 	u.initialize()
 
 	seconds := config.GetInt("agent.topology.netlink.metrics_update")
-	ticker := time.NewTicker(time.Duration(seconds) * time.Second)
+	metricTicker := time.NewTicker(time.Duration(seconds) * time.Second)
+	defer metricTicker.Stop()
+
+	featureTicker := time.NewTicker(5 * time.Second)
+	defer featureTicker.Stop()
 
 	last := time.Now().UTC()
 	for {
 		select {
-		case <-ticker.C:
-			now := time.Now().UTC()
-
-			// do a copy of the original in order to avoid inter locks
-			// between graph lock and netlink lock while iterating
-			u.RLock()
-			links := make(map[string]*graph.Node)
-			for k, v := range u.links {
-				links[k] = v
-			}
-			u.RUnlock()
-
-			for name, node := range links {
-				if link, err := u.handle.LinkByName(name); err == nil {
-					currMetric := newInterfaceMetricsFromNetlink(link)
-					if currMetric == nil || currMetric.IsZero() {
-						continue
-					}
-					currMetric.Last = int64(common.UnixMillis(now))
-
-					u.Graph.Lock()
-					tr := u.Graph.StartMetadataTransaction(node)
-
-					var lastUpdateMetric *topology.InterfaceMetric
-
-					prevMetric, ok := tr.Metadata["Metric"].(*topology.InterfaceMetric)
-					if ok {
-						lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
-					}
-
-					// nothing changed since last update
-					if lastUpdateMetric != nil && lastUpdateMetric.IsZero() {
-						u.Graph.Unlock()
-						continue
-					}
-
-					tr.Metadata["Metric"] = currMetric
-					if lastUpdateMetric != nil {
-						lastUpdateMetric.Start = int64(common.UnixMillis(last))
-						lastUpdateMetric.Last = int64(common.UnixMillis(now))
-						tr.Metadata["LastUpdateMetric"] = lastUpdateMetric
-					}
-
-					tr.Commit()
-					u.Graph.Unlock()
-				}
-			}
+		case <-featureTicker.C:
+			u.updateIntfFeatures()
+		case t := <-metricTicker.C:
+			now := t.UTC()
+			u.updateIntfMetric(now, last)
 			last = now
 		case <-u.quit:
 			return
