@@ -38,6 +38,7 @@ import (
 	"github.com/spaolacci/murmur3"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 )
 
@@ -94,10 +95,20 @@ type RawPackets struct {
 	RawPackets []*RawPacket
 }
 
+// defines what are the layers used for the flow key calculation
+type LayerKeyMode int
+
+const (
+	DefaultLayerKeyMode              = L2KeyMode
+	L2KeyMode           LayerKeyMode = 0 // uses Layer2 and Layer3 for hash computation, default mode
+	L3PreferedKeyMode   LayerKeyMode = 1 // uses Layer3 only and layer2 if no Layer3
+)
+
 // FlowOpts describes options that can be used to process flows
 type FlowOpts struct {
-	TCPMetric bool
-	IPDefrag  bool
+	TCPMetric    bool
+	IPDefrag     bool
+	LayerKeyMode LayerKeyMode
 }
 
 // FlowUUIDs describes UUIDs that can be applied to flows
@@ -105,6 +116,31 @@ type FlowUUIDs struct {
 	ParentUUID string
 	L2ID       int64
 	L3ID       int64
+}
+
+func (l LayerKeyMode) String() string {
+	if l == L2KeyMode {
+		return "L2"
+	}
+	return "L3"
+}
+
+func LayerKeyModeByName(name string) (LayerKeyMode, error) {
+	switch name {
+	case "L2":
+		return L2KeyMode, nil
+	case "L3":
+		return L3PreferedKeyMode, nil
+	}
+	return L2KeyMode, errors.New("LayerKeyMode unknown")
+}
+
+func DefaultLayerKeyModeName() string {
+	mode := config.GetString("flow.default_layer_key_mode")
+	if mode == "" {
+		mode = DefaultLayerKeyMode.String()
+	}
+	return mode
 }
 
 // Layer returns the given layer type
@@ -208,11 +244,14 @@ func (p *Packet) TransportFlow() (gopacket.Flow, error) {
 
 // Key returns the unique flow key
 // The unique key is calculated based on parentUUID, network, transport and applicable layers
-func (p *Packet) Key(parentUUID string) string {
+func (p *Packet) Key(parentUUID string, opts FlowOpts) string {
 	var uuid uint64
 
-	if layer := p.LinkLayer(); layer != nil {
-		uuid ^= layer.LinkFlow().FastHash()
+	// uses L2 is requested or if there is no network layer
+	if opts.LayerKeyMode == L2KeyMode || p.NetworkLayer() == nil {
+		if layer := p.LinkLayer(); layer != nil {
+			uuid ^= layer.LinkFlow().FastHash()
+		}
 	}
 	if layer := p.NetworkLayer(); layer != nil {
 		uuid ^= layer.NetworkFlow().FastHash()
@@ -409,13 +448,13 @@ func NewFlowFromGoPacket(p gopacket.Packet, nodeTID string, uuids FlowUUIDs, opt
 		Length:   length,
 	}
 
-	f.initFromPacket(packet.Key(uuids.ParentUUID), packet, nodeTID, uuids, opts)
+	f.initFromPacket(packet.Key(uuids.ParentUUID, opts), packet, nodeTID, uuids, opts)
 
 	return f
 }
 
 // UpdateUUID updates the flow UUID based on protocotols layers path and layers IDs
-func (f *Flow) UpdateUUID(key string) {
+func (f *Flow) UpdateUUID(key string, opts FlowOpts) {
 	layersPath := strings.Replace(f.LayersPath, "Dot1Q/", "", -1)
 
 	hasher := murmur3.New64()
@@ -427,7 +466,9 @@ func (f *Flow) UpdateUUID(key string) {
 	hasher.Write([]byte(strings.TrimPrefix(layersPath, "Ethernet/")))
 	f.L3TrackingID = hex.EncodeToString(hasher.Sum(nil))
 
-	f.Link.Hash(hasher)
+	if opts.LayerKeyMode == L2KeyMode || f.Network == nil {
+		f.Link.Hash(hasher)
+	}
 
 	hasher.Write([]byte(layersPath))
 	f.TrackingID = hex.EncodeToString(hasher.Sum(nil))
@@ -511,7 +552,7 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 	}
 
 	// need to have as most variable filled as possible to get correct UUID
-	f.UpdateUUID(key)
+	f.UpdateUUID(key, opts)
 }
 
 // Update a flow metrics and latency

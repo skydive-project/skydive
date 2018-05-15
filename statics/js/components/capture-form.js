@@ -61,6 +61,15 @@ Vue.component('capture-form', {
               <input id="port" type="number" class="form-control input-sm" v-model="port" min="0"/>\
             </div>\
             <div class="form-group">\
+              <label for="capture-layer-key-mode">Layers used for Flow Key</label>\
+              <select id="capture-layer-key-mode" v-model="captureLayerKeyMode" class="form-control input-sm">\
+                <option disabled value="">Select layers to be used</option>\
+                <option value="" selected>Default</option>\
+                <option value="L2">L2 (uses Layer 2 and beyond)</option>\
+                <option value="L3">L3 (uses layer 3 and beyond)</option>\
+              </select>\
+            </div>\
+            <div class="form-group">\
               <label for="capture-header-size">Header Size</label>\
               <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
             </div>\
@@ -114,6 +123,7 @@ Vue.component('capture-form', {
       mode: "selection",
       visible: false,
       captureType: "",
+      captureLayerKeyMode: "",
       nodeType: "",
       typeAllowed: false,
       port: 0,
@@ -262,6 +272,7 @@ Vue.component('capture-form', {
       this.reassembleTCP = false;
       this.visible = false;
       this.captureType = "";
+      this.captureLayerKeyMode = "";
     },
 
     checkQuery: function(query) {
@@ -291,7 +302,7 @@ Vue.component('capture-form', {
       this.$captureCreate(this.query, this.name, this.desc, this.bpf,
                           this.headerSize, this.rawPackets,
                           this.extraTCPMetric, this.ipDefrag, this.reassambleTCP,
-                          this.captureType, this.port)
+                          this.captureType, this.port, this.captureLayerKeyMode)
         .then(function() {
           self.reset();
         });

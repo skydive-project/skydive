@@ -112,7 +112,7 @@ var apiMixin = {
     },
 
     $captureCreate: function(query, name, description, bpf, headerSize, rawPackets,
-      extraTCPMetric, ipDefrag, reassambleTCP, type, port) {
+      extraTCPMetric, ipDefrag, reassambleTCP, type, port, layerKeyMode) {
       var self = this;
       return $.ajax({
         dataType: "json",
@@ -128,6 +128,7 @@ var apiMixin = {
                               ReassembleTCP: reassambleTCP,
                               Type: type || null,
                               Port: port,
+                              LayerKeyMode: layerKeyMode
                              }),
         contentType: "application/json; charset=utf-8",
         method: 'POST',

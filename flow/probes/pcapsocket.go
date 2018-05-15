@@ -67,14 +67,14 @@ func (p *PcapSocketProbe) run() {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt64(&p.state) == common.RunningState {
-				logging.GetLogger().Errorf("Error while accepting connection: %s", err.Error())
+				logging.GetLogger().Errorf("Error while accepting connection: %s", err)
 			}
 			break
 		}
 
 		feeder, err := flow.NewPcapTableFeeder(conn, packetSeqChan, true, p.bpfFilter)
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to create pcap table feeder: %s", err.Error())
+			logging.GetLogger().Errorf("Failed to create pcap table feeder: %s", err)
 			return
 		}
 
@@ -105,16 +105,11 @@ func (p *PcapSocketProbeHandler) RegisterProbe(n *graph.Node, capture *types.Cap
 
 	listener, err := net.ListenTCP("tcp", &tcpAddr)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to listen on TDP socket %s: %s", tcpAddr.String(), err.Error())
+		logging.GetLogger().Errorf("Failed to listen on TDP socket %s: %s", tcpAddr.String(), err)
 		return err
 	}
 
-	opts := flow.TableOpts{
-		RawPacketLimit: int64(capture.RawPacketLimit),
-		ExtraTCPMetric: capture.ExtraTCPMetric,
-		IPDefrag:       capture.IPDefrag,
-		ReassembleTCP:  capture.ReassembleTCP,
-	}
+	opts := tableOptsFromCapture(capture)
 	ft := p.fpta.Alloc(tid, opts)
 
 	probe := &PcapSocketProbe{

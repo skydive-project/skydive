@@ -187,11 +187,11 @@ li.capture-item, li.injector-item {
 }
 
 .capture-item dt, .injector-item dt {
-  width: 60px;
+  width: 100px;
 }
 
 .capture-item dd, .injector-item dd {
-  margin-left: 70px;
+  margin-left: 110px;
   margin-bottom: 5px;
 }
 

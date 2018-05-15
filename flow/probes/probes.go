@@ -123,3 +123,15 @@ func NewFlowProbeBundle(tb *probe.ProbeBundle, g *graph.Graph, fta *flow.TableAl
 
 	return fb
 }
+
+func tableOptsFromCapture(capture *types.Capture) flow.TableOpts {
+	layerKeyMode, _ := flow.LayerKeyModeByName(capture.LayerKeyMode)
+
+	return flow.TableOpts{
+		RawPacketLimit: int64(capture.RawPacketLimit),
+		ExtraTCPMetric: capture.ExtraTCPMetric,
+		IPDefrag:       capture.IPDefrag,
+		ReassembleTCP:  capture.ReassembleTCP,
+		LayerKeyMode:   layerKeyMode,
+	}
+}

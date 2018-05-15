@@ -48,6 +48,7 @@ var (
 	extraTCPMetric     bool
 	ipDefrag           bool
 	reassembleTCP      bool
+	layerKeyMode       string
 )
 
 // CaptureCmd skdyive capture root command
@@ -88,6 +89,7 @@ var CaptureCreate = &cobra.Command{
 		capture.ExtraTCPMetric = extraTCPMetric
 		capture.IPDefrag = ipDefrag
 		capture.ReassembleTCP = reassembleTCP
+		capture.LayerKeyMode = layerKeyMode
 
 		if !config.GetConfig().GetBool("analyzer.packet_capture_enabled") {
 			capture.RawPacketLimit = 0
@@ -205,6 +207,7 @@ func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&extraTCPMetric, "extra-tcp-metric", "", false, "Add additional TCP metric to flows, default: false")
 	cmd.Flags().BoolVarP(&ipDefrag, "ip-defrag", "", false, "Defragment IPv4 packets, default: false")
 	cmd.Flags().BoolVarP(&reassembleTCP, "reassamble-tcp", "", false, "Reassemble TCP packets, default: false")
+	cmd.Flags().StringVarP(&layerKeyMode, "layer-key-mode", "", "L2", "Defines the first layer used by flow key calculation, L2 or L3")
 }
 
 func init() {

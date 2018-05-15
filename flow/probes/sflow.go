@@ -104,12 +104,7 @@ func (d *SFlowProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capture
 		headerSize = uint32(capture.HeaderSize)
 	}
 
-	opts := flow.TableOpts{
-		RawPacketLimit: int64(capture.RawPacketLimit),
-		ExtraTCPMetric: capture.ExtraTCPMetric,
-		IPDefrag:       capture.IPDefrag,
-		ReassembleTCP:  capture.ReassembleTCP,
-	}
+	opts := tableOptsFromCapture(capture)
 	ft := d.fpta.Alloc(tid, opts)
 
 	addr := common.ServiceAddress{Addr: address, Port: capture.Port}
