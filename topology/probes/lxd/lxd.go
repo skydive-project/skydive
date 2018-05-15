@@ -26,7 +26,6 @@
 package lxd
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"sync"
@@ -80,7 +79,6 @@ type LxdProbe struct {
 	state        int64
 	wg           sync.WaitGroup
 	connected    atomic.Value
-	cancel       context.CancelFunc
 	quit         chan struct{}
 	containerMap map[string]containerInfo
 	hostNs       netns.NsHandle
@@ -234,6 +232,7 @@ func (probe *LxdProbe) connect() (err error) {
 	defer probe.connected.Store(false)
 
 	go func() {
+		probe.wg.Add(1)
 		defer probe.wg.Done()
 
 		logging.GetLogger().Debugf("Listing LXD containers")
@@ -243,7 +242,9 @@ func (probe *LxdProbe) connect() (err error) {
 		}
 
 		for _, n := range containers {
-			probe.registerContainer(n.Name)
+			if atomic.LoadInt64(&probe.state) == common.RunningState {
+				probe.registerContainer(n.Name)
+			}
 		}
 	}()
 
@@ -281,7 +282,6 @@ func (probe *LxdProbe) Stop() {
 	}
 
 	if probe.connected.Load() == true {
-		probe.cancel()
 		probe.quit <- struct{}{}
 		probe.wg.Wait()
 	}

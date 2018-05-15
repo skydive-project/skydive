@@ -28,10 +28,9 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/mattbaird/elastigo/lib"
+	elastic "github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
@@ -393,58 +392,24 @@ func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 }
 
 // Query the database for a "node" or "edge"
-func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery, index string) (sr elastigo.SearchResult, _ error) {
-	request := map[string]interface{}{"size": 10000}
-
-	if tsq.PaginationRange != nil {
-		if tsq.PaginationRange.To < tsq.PaginationRange.From {
-			return sr, errors.New("Incorrect PaginationRange, To < From")
-		}
-
-		request["from"] = tsq.PaginationRange.From
-		request["size"] = tsq.PaginationRange.To - tsq.PaginationRange.From
-	}
-
-	must := []map[string]interface{}{}
+func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery, index string) (sr *elastic.SearchResult, _ error) {
+	var filters []elastic.Query
 
 	if tf := b.client.FormatFilter(tsq.TimeFilter, ""); tf != nil {
-		must = append(must, tf)
+		filters = append(filters, tf)
 	}
 
 	if f := b.client.FormatFilter(tsq.Filter, ""); f != nil {
-		must = append(must, f)
+		filters = append(filters, f)
 	}
 
 	if mf := b.client.FormatFilter(tsq.MetadataFilter, "Metadata"); mf != nil {
-		must = append(must, mf)
+		filters = append(filters, mf)
 	}
 
-	request["query"] = map[string]interface{}{
-		"bool": map[string]interface{}{
-			"must": must,
-		},
-	}
+	mustQuery := elastic.NewBoolQuery().Must(filters...)
 
-	if tsq.Sort {
-		sortOrder := tsq.SortOrder
-		if sortOrder == "" {
-			sortOrder = "asc"
-		}
-
-		request["sort"] = map[string]interface{}{
-			tsq.SortBy: map[string]string{
-				"order":         strings.ToLower(sortOrder),
-				"unmapped_type": "date",
-			},
-		}
-	}
-
-	q, err := json.Marshal(request)
-	if err != nil {
-		return
-	}
-
-	return b.client.Search(obj, string(q), index)
+	return b.client.Search(obj, mustQuery, index, tsq.SearchQuery)
 }
 
 // searchNodes search nodes matching the query
@@ -455,7 +420,7 @@ func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery, index string) 
 		return
 	}
 
-	if out.Hits.Len() > 0 {
+	if out != nil && len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var node Node
 			if err := b.hitToNode(d.Source, &node); err != nil {
@@ -476,7 +441,7 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery, index string) 
 		return
 	}
 
-	if out.Hits.Len() > 0 {
+	if out != nil && len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
 			var edge Edge
 			if err := b.hitToEdge(d.Source, &edge); err != nil {

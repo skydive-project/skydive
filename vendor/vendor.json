@@ -39,11 +39,6 @@
 			"revision": "ca62df34b58d26b6a064246c21c0a18f97813173"
 		},
 		{
-			"checksumSHA1": "i0y0dyoXdCZHQOeKBVykuPOvYyA=",
-			"path": "github.com/araddon/gou",
-			"revision": "0c2ab7394d785afff14c983fedce4be70ccc431f"
-		},
-		{
 			"checksumSHA1": "mEPx03tDisj6nvPDxzIeb1gt4xg=",
 			"path": "github.com/armon/consul-api",
 			"revision": "dcfedd50ed5334f96adee43fc88518a4f095e15c"
@@ -52,11 +47,6 @@
 			"checksumSHA1": "4QnLdmB1kG3N+KlDd1N+G9TWAGQ=",
 			"path": "github.com/beorn7/perks/quantile",
 			"revision": "b965b613227fddccbfffe13eae360ed3fa822f8d"
-		},
-		{
-			"checksumSHA1": "Wqg57i6dQo9ZvTAifQscSij80dE=",
-			"path": "github.com/bitly/go-hostpool",
-			"revision": "d0e59c22a56e8dadfed24f74f452cea5a52722d2"
 		},
 		{
 			"checksumSHA1": "V3t2eqPEsfIvxdGjBfvbsnO7Vqg=",
@@ -1635,6 +1625,12 @@
 			"revision": "c81f9d71af8f8cba1466501d30326b99a4e56c19"
 		},
 		{
+			"checksumSHA1": "HIMDeysKGqDKh9a3N5lFLZRNHaU=",
+			"path": "github.com/mailru/easyjson",
+			"revision": "8b799c424f57fa123fc63a99d6383bc6e4c02578",
+			"revisionTime": "2018-03-23T15:44:45Z"
+		},
+		{
 			"checksumSHA1": "T8soMJArSZrYnhmdpAnq1bVxQ6Q=",
 			"path": "github.com/mailru/easyjson/buffer",
 			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
@@ -1651,20 +1647,6 @@
 			"path": "github.com/mailru/easyjson/jwriter",
 			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
 			"revisionTime": "2017-09-02T15:12:37Z"
-		},
-		{
-			"checksumSHA1": "1AfJEGDJfegnLKaiGGCHNFAep8Y=",
-			"origin": "github.com/nplanel/elastigo",
-			"path": "github.com/mattbaird/elastigo",
-			"revision": "d151f01ee6010dd75830ea1b7c855aeb008a7c55",
-			"revisionTime": "2017-12-01T10:39:43Z"
-		},
-		{
-			"checksumSHA1": "V2l48FARId4QK9WE7rKgjro4Om4=",
-			"origin": "github.com/nplanel/elastigo/lib",
-			"path": "github.com/mattbaird/elastigo/lib",
-			"revision": "d151f01ee6010dd75830ea1b7c855aeb008a7c55",
-			"revisionTime": "2017-12-01T10:39:43Z"
 		},
 		{
 			"checksumSHA1": "DdH3xAkzAWJ4B/LGYJyCeRsly2I=",
@@ -1716,6 +1698,30 @@
 			"checksumSHA1": "gcLub3oB+u4QrOJZcYmk/y2AP4k=",
 			"path": "github.com/nu7hatch/gouuid",
 			"revision": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+		},
+		{
+			"checksumSHA1": "nAraxoe54PKPlnhiCkRx/FLbISU=",
+			"path": "github.com/olivere/elastic",
+			"revision": "4eb0cace57d54aa19e2c709e13979daeb20130a6",
+			"revisionTime": "2018-04-30T15:37:50Z",
+			"version": "release-branch.v6",
+			"versionExact": "release-branch.v6"
+		},
+		{
+			"checksumSHA1": "r7eEvesetOsRfZLJ+Z4kvTv3xGI=",
+			"path": "github.com/olivere/elastic/config",
+			"revision": "4eb0cace57d54aa19e2c709e13979daeb20130a6",
+			"revisionTime": "2018-04-30T15:37:50Z",
+			"version": "release-branch.v6",
+			"versionExact": "release-branch.v6"
+		},
+		{
+			"checksumSHA1": "AmcqvKDAUGvVsrf8NDCQ/B8cMj4=",
+			"path": "github.com/olivere/elastic/uritemplates",
+			"revision": "4eb0cace57d54aa19e2c709e13979daeb20130a6",
+			"revisionTime": "2018-04-30T15:37:50Z",
+			"version": "release-branch.v6",
+			"versionExact": "release-branch.v6"
 		},
 		{
 			"checksumSHA1": "BoXdUBWB8UnSlFlbnuTQaPqfCGk=",

@@ -32,6 +32,7 @@ import (
 
 	"github.com/tebeka/selenium"
 
+	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -68,35 +69,35 @@ func TestPacketInjectionCapture(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	verifyFlows := func() error {
-		time.Sleep(3 * time.Second)
+		return common.Retry(func() error {
+			// do not check the direction as first packet could have been not seen
+			if err = sh.flowQuery(g.G.Flows().Has("Network", "124.65.54.42", "Network", "124.65.54.43")); err != nil {
+				return err
+			}
 
-		// do not check the direction as first packet could have been not seen
-		if err = sh.flowQuery(g.G.Flows().Has("Network", "124.65.54.42", "Network", "124.65.54.43")); err != nil {
-			return err
-		}
+			time.Sleep(time.Second)
 
-		time.Sleep(2 * time.Second)
-
-		flowRow, err := sh.findElement(selenium.ByClassName, "flow-row")
-		if err != nil {
-			return err
-		}
-		rowData, err := flowRow.FindElements(selenium.ByTagName, "td")
-		if err != nil {
-			return err
-		}
-		const expectedRowCount = 8
-		if len(rowData) != expectedRowCount {
-			return fmt.Errorf("By default %d rows should be return, but got: %d", expectedRowCount, len(rowData))
-		}
-		txt, err := rowData[1].Text()
-		if err != nil {
-			return err
-		}
-		if txt != "124.65.54.42" {
-			return fmt.Errorf("Network.A should be '124.65.54.42' but got: %s", txt)
-		}
-		return nil
+			flowRow, err := sh.findElement(selenium.ByClassName, "flow-row")
+			if err != nil {
+				return err
+			}
+			rowData, err := flowRow.FindElements(selenium.ByTagName, "td")
+			if err != nil {
+				return err
+			}
+			const expectedRowCount = 8
+			if len(rowData) != expectedRowCount {
+				return fmt.Errorf("By default %d rows should be return, but got: %d", expectedRowCount, len(rowData))
+			}
+			txt, err := rowData[1].Text()
+			if err != nil {
+				return err
+			}
+			if txt != "124.65.54.42" && txt != "124.65.54.43" {
+				return fmt.Errorf("Network.A should be either '124.65.54.42' or '124.65.54.43' but got: %s", txt)
+			}
+			return nil
+		}, 10, time.Second)
 	}
 
 	if err = sh.expand(); err != nil {

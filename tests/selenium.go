@@ -430,8 +430,8 @@ func (s *seleniumHelper) flowQuery(gremlin g.QueryString) error {
 	if err := flowQuery.Clear(); err != nil {
 		return err
 	}
-	query := g.G.Flows().Has("Network.A", "124.65.54.42", "Network.B", "124.65.54.43")
-	if err := flowQuery.SendKeys(query.String()); err != nil {
+
+	if err := flowQuery.SendKeys(gremlin.String()); err != nil {
 		return err
 	}
 
