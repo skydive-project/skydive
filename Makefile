@@ -406,8 +406,7 @@ gometalinter: $(LINTER_COMMANDS)
 .PHONY: lint
 lint: gometalinter
 	@echo "+ $@"
-	@gometalinter --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json > lint.json || true
-	cat lint.json
+	@gometalinter --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
 # dependency package need for building the project
 .PHONY: builddep
