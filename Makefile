@@ -377,21 +377,6 @@ genlocalfiles: .proto .bindata
 clean: skydive.cleanup test.functionals.cleanup dpdk.cleanup contribs.cleanup
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
-.PHONY: doc
-doc:
-	mkdir -p /tmp/skydive-doc
-	touch /tmp/skydive-doc/.nojekyll
-	hugo --theme=hugo-material-docs -s doc -d /tmp/skydive-doc
-	git checkout gh-pages
-	cp -dpR /tmp/skydive-doc/* .
-	git add -A
-	git commit -a -m "Documentation update"
-	git push -f gerrit gh-pages
-
-.PHONY: doctest
-doctest:
-	hugo server run -t hugo-material-docs -s doc -b http://localhost:1313/skydive
-
 .PHONY: srpm
 srpm:
 	contrib/packaging/rpm/generate-skydive-bootstrap.sh -s ${BOOTSTRAP_ARGS}
