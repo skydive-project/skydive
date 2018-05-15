@@ -501,7 +501,7 @@
       - string:
           name: DEVMODE
           default: "true"
-          description: Use built binary, package and docker image"
+          description: Use built binary, package and docker image
       - string:
           name: MODES
           default: "binary package container"

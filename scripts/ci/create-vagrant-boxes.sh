@@ -11,7 +11,15 @@ fi
 
 dir="$(dirname "$0")"
 
-VERSION="$(grep 'skydive_release:' ${dir}/../../contrib/ansible/roles/skydive_common/defaults/main.yml | cut -f 2 -d ' ' | tr -d 'v')"
+# SKYDIVE_RELEASE is a relase tag (like "v0.1.2") or "master"
+export SKYDIVE_RELEASE=master
+BOXVERSION=1.0.0
+tagname=$(git show-ref --tags $REF)
+if [ -n "$tagname" ]; then
+    export SKYDIVE_RELEASE=$(echo $tagname | awk -F "/" "{print \$NF}")
+    BOXVERSION=$(echo $SKYDIVE_RELEASE | tr -d '[a-z]')
+fi
+
 cd ${dir}/../../contrib/dev
 
 vagrant plugin install vagrant-reload
@@ -29,10 +37,13 @@ do
     PREPARE_BOX=true vagrant up --provider=$provider
     [ "$provider" = "libvirt" ] && sudo chmod a+r /var/lib/libvirt/images/dev_dev.img || true
 
+    # skydive testing
+    vagrant ssh -c 'set -e; cd src/github.com/skydive-project/skydive; make test functional; curl -XDELETE "localhost:9200/skydive*"'
+    
     vagrant package --out skydive-dev-$provider.box
     vagrant destroy --force
 
-    json=`curl "https://vagrantcloud.com/api/v1/box/skydive/skydive-dev/version/$VERSION/provider/$provider/upload?access_token=$VAGRANTCLOUD_TOKEN"`
+    json=`curl "https://vagrantcloud.com/api/v1/box/skydive/skydive-dev/version/$BOXVERSION/provider/$provider/upload?access_token=$VAGRANTCLOUD_TOKEN"`
     upload_path=`echo $json | jq .upload_path | cut -d '"' -f 2`
 
     if [ -n "$DRY_RUN" ]; then

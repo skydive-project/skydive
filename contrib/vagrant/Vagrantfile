@@ -154,6 +154,9 @@ Vagrant.configure(2) do |config|
             "skydive_fabric_default_interface" => "eth1",
             "skydive_listen_ip" => "0.0.0.0"
           }
+          if ENV.fetch("SKYDIVE_RELEASE", "") != "" then
+            ansible_extra_vars["skydive_release"] = ENV.fetch("SKYDIVE_RELEASE")
+          end
 
           if DEVMODE then
             if DEPLOYMENT_MODE == "binary" then
