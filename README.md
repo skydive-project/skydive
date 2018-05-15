@@ -63,7 +63,7 @@ sudo skydive allinone [-c skydive.yml]
 
 Skydive documentation can be found here:
 
-* http://skydive-project.github.io/skydive
+* http://skydive.network/documentation
 
 ## Contributing
 
