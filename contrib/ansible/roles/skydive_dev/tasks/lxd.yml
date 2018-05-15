@@ -3,7 +3,11 @@
     policy: targeted
     state: permissive
 
-- shell: "dnf copr enable -y ganto/lxd"
+- shell: "dnf copr enable -y ganto/lxc3"
+
+- package:
+    name: lxc
+    state: present
 
 - package:
     name: lxd
