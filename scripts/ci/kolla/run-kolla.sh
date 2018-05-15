@@ -9,6 +9,7 @@ pip install -U pip
 if [ "$DEPLOYMENT_MODE" == "dev" ]; then
   git clone https://github.com/openstack/kolla
   git clone https://github.com/openstack/kolla-ansible
+  pip install -U 'oslo.config==5.2.0'
   pip install -r kolla-ansible/requirements.txt
   pip install -r kolla/requirements.txt
 
