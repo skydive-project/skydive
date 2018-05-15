@@ -73,7 +73,7 @@
     wrappers:
       - credentials-binding:
           - text:
-              credential-id: github
+              credential-id: github-token
               variable: GITHUB_TOKEN
           - text:
               credential-id: github-username
