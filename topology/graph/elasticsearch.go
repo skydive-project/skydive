@@ -25,20 +25,18 @@ package graph
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"strconv"
-	"time"
 
-	elastic "github.com/olivere/elastic"
+	"github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/storage/elasticsearch"
+	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
-// ESGraphElementMapping elasticsearch db mapping scheme
-const ESGraphElementMapping = `
+// graphElementMapping  elasticsearch db mapping scheme
+const graphElementMapping = `
 {
 	"dynamic_templates": [
 		{
@@ -46,8 +44,7 @@ const ESGraphElementMapping = `
 				"match": "*",
 				"match_mapping_type": "string",
 				"mapping": {
-					"type":       "string",
-					"index":      "not_analyzed",
+					"type": "keyword",
 					"doc_values": false
 				}
 			}
@@ -56,7 +53,7 @@ const ESGraphElementMapping = `
 			"archivedat": {
 				"match": "ArchivedAt",
 				"mapping": {
-					"type":"date",
+					"type": "date",
 					"format": "epoch_millis"
 				}
 			}
@@ -65,7 +62,7 @@ const ESGraphElementMapping = `
 			"updatedat": {
 				"match": "UpdatedAt",
 				"mapping": {
-					"type":"date",
+					"type": "date",
 					"format": "epoch_millis"
 				}
 			}
@@ -74,7 +71,7 @@ const ESGraphElementMapping = `
 			"createdat": {
 				"match": "CreatedAt",
 				"mapping": {
-					"type":"date",
+					"type": "date",
 					"format": "epoch_millis"
 				}
 			}
@@ -83,7 +80,7 @@ const ESGraphElementMapping = `
 			"deletedat": {
 				"match":"DeletedAt",
 				"mapping": {
-					"type":"date",
+					"type": "date",
 					"format": "epoch_millis"
 				}
 			}
@@ -92,11 +89,29 @@ const ESGraphElementMapping = `
 }
 `
 
+const (
+	nodeType = "node"
+	edgeType = "edge"
+)
+
+var topologyLiveIndex = es.Index{
+	Name:    "topology_live",
+	Type:    "graph_element",
+	Mapping: graphElementMapping,
+}
+
+var topologyArchiveIndex = es.Index{
+	Name:      "topology_archive",
+	Type:      "graph_element",
+	Mapping:   graphElementMapping,
+	RollIndex: true,
+}
+
 // ElasticSearchBackend describes a presisent backend based on ElasticSearch
 type ElasticSearchBackend struct {
 	GraphBackend
-	client       elasticsearch.ElasticSearchClientInterface
-	prevRevision map[Identifier]int64
+	client       es.ClientInterface
+	prevRevision map[Identifier]map[string]interface{}
 }
 
 // TimedSearchQuery describes a search query within a time slice and metadata filters
@@ -106,8 +121,9 @@ type TimedSearchQuery struct {
 	MetadataFilter *filters.Filter
 }
 
-func (b *ElasticSearchBackend) mapElement(e *graphElement) map[string]interface{} {
+func (b *ElasticSearchBackend) graphElementToMap(typ string, e *graphElement) map[string]interface{} {
 	obj := map[string]interface{}{
+		"_Type":     typ,
 		"ID":        string(e.ID),
 		"Host":      e.host,
 		"CreatedAt": common.UnixMillis(e.createdAt),
@@ -116,72 +132,38 @@ func (b *ElasticSearchBackend) mapElement(e *graphElement) map[string]interface{
 		"Revision":  e.revision,
 	}
 
-	if !e.deletedAt.IsZero() {
-		obj["DeletedAt"] = common.UnixMillis(e.deletedAt)
-	}
-
 	return obj
 }
 
-func (b *ElasticSearchBackend) mapNode(n *Node) map[string]interface{} {
-	return b.mapElement(&n.graphElement)
+func (b *ElasticSearchBackend) nodeToMap(n *Node) map[string]interface{} {
+	return b.graphElementToMap(nodeType, &n.graphElement)
 }
 
-func (b *ElasticSearchBackend) mapEdge(e *Edge) map[string]interface{} {
-	obj := b.mapElement(&e.graphElement)
+func (b *ElasticSearchBackend) edgeToMap(e *Edge) map[string]interface{} {
+	obj := b.graphElementToMap(edgeType, &e.graphElement)
 	obj["Parent"] = e.parent
 	obj["Child"] = e.child
 	return obj
 }
 
-func (b *ElasticSearchBackend) getElement(kind string, i Identifier, element interface{}) error {
-	resp, err := b.client.Get(kind, string(i))
-	if err != nil {
-		return err
+func (b *ElasticSearchBackend) archive(e graphElement) bool {
+	obj, ok := b.prevRevision[e.ID]
+	if !ok {
+		logging.GetLogger().Errorf("Update from an unknow revision, graph element: %s", e.ID)
+		return false
+	}
+	if !e.deletedAt.IsZero() {
+		deleteAt := common.UnixMillis(e.deletedAt)
+		obj["DeletedAt"] = deleteAt
+		obj["ArchivedAt"] = deleteAt
+	} else {
+		obj["ArchivedAt"] = common.UnixMillis(e.updatedAt)
 	}
 
-	if resp.Found {
-		switch e := element.(type) {
-		case *Node:
-			return b.hitToNode(resp.Source, e)
-		case *Edge:
-			return b.hitToEdge(resp.Source, e)
-		}
-	}
+	id := string(e.ID) + "-" + strconv.FormatInt(obj["Revision"].(int64), 10)
 
-	return fmt.Errorf("No object found %s", string(i))
-}
-
-func (b *ElasticSearchBackend) updateTimes(i interface{}) bool {
-	obj := make(map[string]interface{})
-	var id, kind string
-	switch i := i.(type) {
-	case *Node:
-		kind = "node"
-
-		revision, ok := b.prevRevision[i.ID]
-		if !ok {
-			logging.GetLogger().Errorf("Update from an unknow revision, node: %s", i.ID)
-			return false
-		}
-		id = string(i.ID) + "-" + strconv.FormatInt(revision, 10)
-
-		obj["ArchivedAt"] = common.UnixMillis(i.updatedAt)
-	case *Edge:
-		kind = "edge"
-
-		revision, ok := b.prevRevision[i.ID]
-		if !ok {
-			logging.GetLogger().Errorf("Update from an unknow revision, edge: %s", i.ID)
-			return false
-		}
-		id = string(i.ID) + "-" + strconv.FormatInt(revision, 10)
-
-		obj["ArchivedAt"] = common.UnixMillis(i.updatedAt)
-	}
-
-	if err := b.client.BulkUpdateWithPartialDoc(kind, id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while archiving %s %s: %s", kind, id, err.Error())
+	if err := b.client.BulkIndex(topologyArchiveIndex, id, obj); err != nil {
+		logging.GetLogger().Errorf("Error while archiving %s: %s", id, err)
 		return false
 	}
 	return true
@@ -205,56 +187,43 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 	return edge.Decode(obj)
 }
 
-func (b *ElasticSearchBackend) createNode(n *Node) bool {
-	obj := b.mapNode(n)
+func (b *ElasticSearchBackend) indexNode(n *Node) bool {
+	obj := b.nodeToMap(n)
 
-	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
-
-	shouldRoll, err := b.client.BulkIndex("node", id, obj)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err.Error())
+	if err := b.client.BulkIndex(topologyLiveIndex, string(n.ID), obj); err != nil {
+		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
 		return false
 	}
-	b.prevRevision[n.ID] = n.revision
-
-	if shouldRoll {
-		if err := b.rollAndDumpTopology(); err != nil {
-			logging.GetLogger().Errorf("Error while dumping topology: %s", err.Error())
-			return false
-		}
-	}
+	b.prevRevision[n.ID] = obj
 
 	return true
 }
 
 // NodeAdded add a node
 func (b *ElasticSearchBackend) NodeAdded(n *Node) bool {
-	return b.createNode(n)
+	return b.indexNode(n)
 }
 
 // NodeDeleted delete a node
 func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
-	delete(b.prevRevision, n.ID)
+	success := true
 
-	ms := common.UnixMillis(n.deletedAt)
-	obj := map[string]interface{}{"DeletedAt": ms, "ArchivedAt": ms}
-
-	id := string(n.ID) + "-" + strconv.FormatInt(n.revision, 10)
-
-	if err := b.client.BulkUpdateWithPartialDoc("node", id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while marking node as deleted %s: %s", id, err.Error())
-		return false
+	if !b.archive(n.graphElement) {
+		success = false
 	}
 
-	return true
+	if err := b.client.BulkDelete(topologyLiveIndex, string(n.ID)); err != nil {
+		logging.GetLogger().Errorf("Error while deleting node %s: %s", n.ID, err)
+		success = false
+	}
+
+	delete(b.prevRevision, n.ID)
+
+	return success
 }
 
 // GetNode get a node within a time slice
 func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
-	index := ""
-	if t.TimeSlice == nil {
-		index = b.client.GetIndexAlias()
-	}
 	nodes := b.searchNodes(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
 			Filter: filters.NewTermStringFilter("ID", string(i)),
@@ -262,7 +231,7 @@ func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
 			SortBy: "Revision",
 		},
 		TimeFilter: getTimeFilter(t.TimeSlice),
-	}, index)
+	})
 
 	if len(nodes) > 1 && t.TimePoint {
 		return []*Node{nodes[len(nodes)-1]}
@@ -271,85 +240,43 @@ func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
 	return nodes
 }
 
-func (b *ElasticSearchBackend) rollAndDumpTopology() error {
-	nodes := b.GetNodes(GraphContext{nil, false}, nil)
-	edges := b.GetEdges(GraphContext{nil, false}, nil)
+func (b *ElasticSearchBackend) indexEdge(e *Edge) bool {
+	obj := b.edgeToMap(e)
 
-	logging.GetLogger().Debugf("Mark all current nodes and edges as 'archived now' in the old index")
-	for _, node := range nodes {
-		node.updatedAt = time.Now()
-		b.updateTimes(node)
-	}
-	for _, edge := range edges {
-		edge.updatedAt = time.Now()
-		b.updateTimes(edge)
-	}
-
-	logging.GetLogger().Debugf("Rolling the Index ")
-	if err := b.client.RollIndex(); err != nil {
-		return err
-	}
-
-	logging.GetLogger().Debugf("Insert all current nodes and edges to the new index")
-	for _, node := range nodes {
-		b.createNode(node)
-	}
-	for _, edge := range edges {
-		b.createEdge(edge)
-	}
-
-	return nil
-}
-
-func (b *ElasticSearchBackend) createEdge(e *Edge) bool {
-	obj := b.mapEdge(e)
-
-	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
-
-	shouldRoll, err := b.client.BulkIndex("edge", id, obj)
-	if err != nil {
-		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err.Error())
+	if err := b.client.BulkIndex(topologyLiveIndex, string(e.ID), obj); err != nil {
+		logging.GetLogger().Errorf("Error while indexing edge %s: %s", e.ID, err)
 		return false
 	}
-	b.prevRevision[e.ID] = e.revision
-
-	if shouldRoll {
-		if err := b.rollAndDumpTopology(); err != nil {
-			logging.GetLogger().Errorf("Error while dumping topology: %s", err.Error())
-			return false
-		}
-	}
+	b.prevRevision[e.ID] = obj
 
 	return true
 }
 
 // EdgeAdded add an edge in the database
 func (b *ElasticSearchBackend) EdgeAdded(e *Edge) bool {
-	return b.createEdge(e)
+	return b.indexEdge(e)
 }
 
 // EdgeDeleted delete an edge in the database
 func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
+	success := true
+
+	if !b.archive(e.graphElement) {
+		success = false
+	}
+
+	if err := b.client.BulkDelete(topologyLiveIndex, string(e.ID)); err != nil {
+		logging.GetLogger().Errorf("Error while deleting edge %s: %s", e.ID, err)
+		success = false
+	}
+
 	delete(b.prevRevision, e.ID)
 
-	ms := common.UnixMillis(e.deletedAt)
-	obj := map[string]interface{}{"DeletedAt": ms, "ArchivedAt": ms}
-
-	id := string(e.ID) + "-" + strconv.FormatInt(e.revision, 10)
-
-	if err := b.client.BulkUpdateWithPartialDoc("edge", id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while marking edge as deleted %s: %s", id, err.Error())
-		return false
-	}
-	return true
+	return success
 }
 
 // GetEdge get an edge within a time slice
 func (b *ElasticSearchBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
-	index := ""
-	if t.TimeSlice == nil {
-		index = b.client.GetIndexAlias()
-	}
 	edges := b.searchEdges(&TimedSearchQuery{
 		SearchQuery: filters.SearchQuery{
 			Filter: filters.NewTermStringFilter("ID", string(i)),
@@ -357,7 +284,7 @@ func (b *ElasticSearchBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
 			SortBy: "Revision",
 		},
 		TimeFilter: getTimeFilter(t.TimeSlice),
-	}, index)
+	})
 
 	if len(edges) > 1 && t.TimePoint {
 		return []*Edge{edges[len(edges)-1]}
@@ -368,47 +295,54 @@ func (b *ElasticSearchBackend) GetEdge(i Identifier, t GraphContext) []*Edge {
 
 // MetadataUpdated updates a node metadata in the database
 func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
-	if !b.updateTimes(i) {
-		return false
-	}
-
 	success := true
+
 	switch i := i.(type) {
 	case *Node:
-		success = b.createNode(i)
+		if !b.archive(i.graphElement) {
+			return false
+		}
+
+		success = b.indexNode(i)
 	case *Edge:
-		success = b.createEdge(i)
+		if !b.archive(i.graphElement) {
+			return false
+		}
+
+		success = b.indexEdge(i)
 	}
 
 	return success
 }
 
 // Query the database for a "node" or "edge"
-func (b *ElasticSearchBackend) Query(obj string, tsq *TimedSearchQuery, index string) (sr *elastic.SearchResult, _ error) {
-	var filters []elastic.Query
-
-	if tf := b.client.FormatFilter(tsq.TimeFilter, ""); tf != nil {
-		filters = append(filters, tf)
+func (b *ElasticSearchBackend) Query(typ string, tsq *TimedSearchQuery) (sr *elastic.SearchResult, _ error) {
+	fltrs := []elastic.Query{
+		es.FormatFilter(filters.NewTermStringFilter("_Type", typ), ""),
 	}
 
-	if f := b.client.FormatFilter(tsq.Filter, ""); f != nil {
-		filters = append(filters, f)
+	if tf := es.FormatFilter(tsq.TimeFilter, ""); tf != nil {
+		fltrs = append(fltrs, tf)
 	}
 
-	if mf := b.client.FormatFilter(tsq.MetadataFilter, "Metadata"); mf != nil {
-		filters = append(filters, mf)
+	if f := es.FormatFilter(tsq.Filter, ""); f != nil {
+		fltrs = append(fltrs, f)
 	}
 
-	mustQuery := elastic.NewBoolQuery().Must(filters...)
+	if mf := es.FormatFilter(tsq.MetadataFilter, "Metadata"); mf != nil {
+		fltrs = append(fltrs, mf)
+	}
 
-	return b.client.Search(obj, mustQuery, index, tsq.SearchQuery)
+	mustQuery := elastic.NewBoolQuery().Must(fltrs...)
+
+	return b.client.Search("graph_element", mustQuery, tsq.SearchQuery, topologyLiveIndex.Alias(), topologyArchiveIndex.IndexWildcard())
 }
 
 // searchNodes search nodes matching the query
-func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery, index string) (nodes []*Node) {
-	out, err := b.Query("node", tsq, index)
+func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery) (nodes []*Node) {
+	out, err := b.Query(nodeType, tsq)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to query nodes: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to query nodes: %s", err)
 		return
 	}
 
@@ -426,10 +360,10 @@ func (b *ElasticSearchBackend) searchNodes(tsq *TimedSearchQuery, index string) 
 }
 
 // searchEdges search edges matching the query
-func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery, index string) (edges []*Edge) {
-	out, err := b.Query("edge", tsq, index)
+func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery) (edges []*Edge) {
+	out, err := b.Query(edgeType, tsq)
 	if err != nil {
-		logging.GetLogger().Errorf("Failed to query edges: %s", err.Error())
+		logging.GetLogger().Errorf("Failed to query edges: %s", err)
 		return
 	}
 
@@ -448,11 +382,6 @@ func (b *ElasticSearchBackend) searchEdges(tsq *TimedSearchQuery, index string) 
 
 // GetEdges returns a list of edges within time slice, matching metadata
 func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) []*Edge {
-	index := ""
-	if t.TimeSlice == nil {
-		index = b.client.GetIndexAlias()
-	}
-
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -471,7 +400,7 @@ func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) [
 		SearchQuery:    searchQuery,
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
-	}, index)
+	})
 
 	if t.TimePoint {
 		edges = dedupEdges(edges)
@@ -482,11 +411,6 @@ func (b *ElasticSearchBackend) GetEdges(t GraphContext, m GraphElementMatcher) [
 
 // GetNodes returns a list of nodes within time slice, matching metadata
 func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) []*Node {
-	index := ""
-	if t.TimeSlice == nil {
-		index = b.client.GetIndexAlias()
-	}
-
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -505,7 +429,7 @@ func (b *ElasticSearchBackend) GetNodes(t GraphContext, m GraphElementMatcher) [
 		SearchQuery:    searchQuery,
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
-	}, index)
+	})
 
 	if len(nodes) > 1 && t.TimePoint {
 		nodes = dedupNodes(nodes)
@@ -533,10 +457,6 @@ func (b *ElasticSearchBackend) GetEdgeNodes(e *Edge, t GraphContext, parentMetad
 
 // GetNodeEdges returns a list of a node edges within time slice
 func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElementMatcher) (edges []*Edge) {
-	index := ""
-	if t.TimeSlice == nil {
-		index = b.client.GetIndexAlias()
-	}
 	var filter *filters.Filter
 	if m != nil {
 		f, err := m.Filter()
@@ -556,7 +476,7 @@ func (b *ElasticSearchBackend) GetNodeEdges(n *Node, t GraphContext, m GraphElem
 		SearchQuery:    searchQuery,
 		TimeFilter:     getTimeFilter(t.TimeSlice),
 		MetadataFilter: filter,
-	}, index)
+	})
 
 	if len(edges) > 1 && t.TimePoint {
 		edges = dedupEdges(edges)
@@ -570,23 +490,27 @@ func (b *ElasticSearchBackend) IsHistorySupported() bool {
 	return true
 }
 
-func NewElasticSearchBackendFromClient(client elasticsearch.ElasticSearchClientInterface) (*ElasticSearchBackend, error) {
+// NewElasticSearchBackendFromClient creates a new graph backend using the given elasticsearch
+// client connection
+func NewElasticSearchBackendFromClient(client es.ClientInterface) (*ElasticSearchBackend, error) {
 	client.Start()
 
 	return &ElasticSearchBackend{
 		client:       client,
-		prevRevision: make(map[Identifier]int64),
+		prevRevision: make(map[Identifier]map[string]interface{}),
 	}, nil
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
 func NewElasticSearchBackendFromConfig(backend string) (*ElasticSearchBackend, error) {
-	cfg := elasticsearch.NewConfig(backend)
-	mappings := elasticsearch.Mappings{
-		{"node": []byte(ESGraphElementMapping)},
-		{"edge": []byte(ESGraphElementMapping)},
+	cfg := es.NewConfig(backend)
+
+	indices := []es.Index{
+		topologyLiveIndex,
+		topologyArchiveIndex,
 	}
-	client, err := elasticsearch.NewElasticSearchClient("topology", mappings, cfg)
+
+	client, err := es.NewClient(indices, cfg)
 	if err != nil {
 		return nil, err
 	}

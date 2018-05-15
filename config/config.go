@@ -44,12 +44,10 @@ var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configurat
 var (
 	cfg           *viper.Viper
 	relocationMap = map[string][]string{
-		"analyzer.flow.bulk_insert":          {"analyzer.storage.bulk_insert"},
-		"analyzer.flow.bulk_insert_deadline": {"analyzer.storage.bulk_insert_deadline"},
-		"analyzer.flow.max_buffer_size":      {"analyzer.storage.max_flow_buffer_size"},
-		"analyzer.topology.backend":          {"graph.backend"},
-		"analyzer.flow.backend":              {"analyzer.storage.backend"},
-		"agent.capture.stats_update":         {"agent.flow.stats_update"},
+		"analyzer.flow.max_buffer_size": {"analyzer.storage.max_flow_buffer_size"},
+		"analyzer.topology.backend":     {"graph.backend"},
+		"analyzer.flow.backend":         {"analyzer.storage.backend"},
+		"agent.capture.stats_update":    {"agent.flow.stats_update"},
 	}
 )
 
@@ -142,9 +140,6 @@ func init() {
 
 	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
-	cfg.SetDefault("storage.elasticsearch.maxconns", 10)
-	cfg.SetDefault("storage.elasticsearch.retry", 60)
-	cfg.SetDefault("storage.elasticsearch.bulk_maxdocs", 100)
 	cfg.SetDefault("storage.elasticsearch.bulk_maxdelay", 5)
 	cfg.SetDefault("storage.elasticsearch.index_age_limit", 0)
 	cfg.SetDefault("storage.elasticsearch.index_entries_limit", 0)
@@ -354,6 +349,11 @@ func realKey(key string) string {
 	}
 
 	return key
+}
+
+// IsSet returns wether a key is set
+func IsSet(key string) bool {
+	return cfg.IsSet(key)
 }
 
 // Get returns a value of the configuration as in interface

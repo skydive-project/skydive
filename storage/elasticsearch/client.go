@@ -27,12 +27,12 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	version "github.com/hashicorp/go-version"
 	elastic "github.com/olivere/elastic"
 	esconfig "github.com/olivere/elastic/config"
 
@@ -42,22 +42,22 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-const indexVersion = 11
-const indexPrefix = "skydive"
-const indexAllAlias = "all"
+const (
+	schemaVersion  = 11
+	indexPrefix    = "skydive"
+	minimalVersion = "5.5"
+)
 
 // Config describes configuration for elasticsearch
 type Config struct {
 	ElasticHost  string
-	MaxConns     int
-	RetrySeconds int
-	BulkMaxDocs  int
 	BulkMaxDelay int
 	EntriesLimit int
 	AgeLimit     int
 	IndicesLimit int
 }
 
+// NewConfig returns a new Config for the given backend name
 func NewConfig(name ...string) Config {
 	cfg := Config{}
 
@@ -69,128 +69,94 @@ func NewConfig(name ...string) Config {
 	}
 
 	cfg.ElasticHost = config.GetString(path + ".host")
-	cfg.MaxConns = config.GetInt(path + ".maxconns")
-	cfg.RetrySeconds = config.GetInt(path + ".retry")
-	cfg.BulkMaxDocs = config.GetInt(path + ".bulk_maxdocs")
 	cfg.BulkMaxDelay = config.GetInt(path + ".bulk_maxdelay")
 
 	cfg.EntriesLimit = config.GetInt(path + ".index_entries_limit")
-	cfg.AgeLimit = 0
-	// TODO: read the AgeLimit from the configuration. At this stage we are setting statically to zero since
-	// TODO: the feature of reading the index creation date is not supported.
-	// TODO: the code that need to happen when we will
-	// TODO: be ready:: cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
+	cfg.AgeLimit = config.GetInt(path + ".index_age_limit")
 	cfg.IndicesLimit = config.GetInt(path + ".indices_to_keep")
 
 	return cfg
 }
 
-// ElasticSearchClientInterface describes the mechanism API of ElasticSearch database client
-type ElasticSearchClientInterface interface {
-	FormatFilter(filter *filters.Filter, mapKey string) elastic.Query
-	RollIndex() error
-	Index(obj string, id string, data interface{}) (bool, error)
-	BulkIndex(obj string, id string, data interface{}) (bool, error)
-	IndexChild(obj string, parent string, id string, data interface{}) (bool, error)
-	BulkIndexChild(obj string, parent string, id string, data interface{}) (bool, error)
-	Update(obj string, id string, data interface{}) error
-	BulkUpdate(obj string, id string, data interface{}) error
-	UpdateWithPartialDoc(obj string, id string, data interface{}) error
-	BulkUpdateWithPartialDoc(obj string, id string, data interface{}) error
-	Get(obj string, id string) (*elastic.GetResult, error)
-	Delete(obj string, id string) (*elastic.DeleteResponse, error)
-	BulkDelete(obj string, id string)
-	Search(obj string, query elastic.Query, index string, pagination filters.SearchQuery) (*elastic.SearchResult, error)
+// ClientInterface describes the mechanism API of ElasticSearch database client
+type ClientInterface interface {
+	Index(index Index, id string, data interface{}) error
+	BulkIndex(index Index, id string, data interface{}) error
+	Update(index Index, id string, data interface{}) error
+	BulkUpdate(index Index, id string, data interface{}) error
+	UpdateWithPartialDoc(index Index, id string, data interface{}) error
+	BulkUpdateWithPartialDoc(index Index, id string, data interface{}) error
+	Get(index Index, id string) (*elastic.GetResult, error)
+	Delete(index Index, id string) (*elastic.DeleteResponse, error)
+	BulkDelete(index Index, id string) error
+	Search(typ string, query elastic.Query, pagination filters.SearchQuery, indices ...string) (*elastic.SearchResult, error)
 	Start()
-	GetIndexAlias() string
-	GetIndexAllAlias() string
 }
 
-// Mappings describes the mappings of the clinet connection
-type Mappings []map[string][]byte
-
-// ElasticIndex describes an ElasticSearch index and its current status
-type ElasticIndex struct {
-	sync.Mutex
-	entriesCounter int
-	path           string
-	timeCreated    time.Time
+// Index defines a Client Index
+type Index struct {
+	Name          string
+	Type          string
+	Mapping       string
+	RollIndex     bool
+	URL           string
+	fullName      string // used as cache
+	alias         string // used as cache
+	indexWildcard string // used as cache
 }
 
-// ElasticSearchClient describes a ElasticSearch client connection
-type ElasticSearchClient struct {
+// Client describes a ElasticSearch client connection
+type Client struct {
+	url           *url.URL
 	client        *elastic.Client
 	bulkProcessor *elastic.BulkProcessor
 	started       atomic.Value
 	quit          chan bool
 	wg            sync.WaitGroup
-	name          string
-	mappings      Mappings
 	cfg           Config
-	index         *ElasticIndex
+	indices       map[string]Index
+	rollService   *rollIndexService
 }
 
 var (
 	// ErrBadConfig error bad configuration file
-	ErrBadConfig = func(reason string) error { return fmt.Errorf("Elasticsearch configuration error: %s", reason) }
+	ErrBadConfig = func(reason string) error { return fmt.Errorf("Config file is misconfigured: %s", reason) }
 	// ErrIndexTypeNotFound error index type used but not defined
 	ErrIndexTypeNotFound = errors.New("Index type not found in the indices map")
 )
 
-func (e *ElasticIndex) increaseEntries() {
-	e.entriesCounter++
-}
-
-func getTimeNow() string {
-	t := time.Now()
-	return fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d",
-		t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-}
-
-func (c *ElasticSearchClient) getIndexPath() string {
-	var suffix string
-	if c.cfg.EntriesLimit != 0 || c.cfg.AgeLimit != 0 {
-		suffix = "_" + getTimeNow()
-	}
-
-	return fmt.Sprintf("%s_%s_v%d%s", indexPrefix, c.name, indexVersion, suffix)
-}
-
-// GetIndexAlias returns the rolling alias which points to the currently active index
-func (c *ElasticSearchClient) GetIndexAlias() string {
-	return fmt.Sprintf("%s_%s", indexPrefix, c.name)
-}
-
-// GetIndexAllAlias return the alias which points to all Skydive indices
-func (c *ElasticSearchClient) GetIndexAllAlias() string {
-	return fmt.Sprintf("%s_%s_%s", indexPrefix, c.name, indexAllAlias)
-}
-
-func (c *ElasticSearchClient) countEntries() int {
-	count, _ := c.client.Count(c.index.path).Do(context.Background())
-	logging.GetLogger().Debugf("%s real entries in %s is %d", c.name, c.index.path, count)
-	return int(count)
-}
-
-func (c *ElasticSearchClient) createAlias() error {
-	newAlias := c.GetIndexAlias()
-	allAlias := c.GetIndexAllAlias()
-	aliasServer := c.client.Alias()
-
-	aliasResult, err := c.client.Aliases().Do(context.Background())
-	if err != nil {
-		return err
-	}
-
-	for k := range aliasResult.Indices {
-		if strings.HasPrefix(k, newAlias) {
-			aliasServer.Remove(k, newAlias)
+// FullName returns the full name of an index, prefix, name, version, suffix in case of rolling index
+func (i *Index) FullName() string {
+	if i.fullName == "" {
+		var suffix string
+		if i.RollIndex {
+			suffix = "-000001"
 		}
+		i.fullName = fmt.Sprintf("%s_%s_v%d%s", indexPrefix, i.Name, schemaVersion, suffix)
 	}
+	return i.fullName
+}
 
-	aliasServer.Add(c.index.path, newAlias)
-	aliasServer.Add(c.index.path, allAlias)
+// Alias returns the Alias of the index
+func (i *Index) Alias() string {
+	if i.alias == "" {
+		i.alias = fmt.Sprintf("%s_%s", indexPrefix, i.Name)
+	}
+	return i.alias
+}
 
+// IndexWildcard returns the Index wildcard search string used to all the indexes of an index
+// definition. Useful to request rolled over indexes.
+func (i *Index) IndexWildcard() string {
+	if i.indexWildcard == "" {
+		i.indexWildcard = fmt.Sprintf("%s_%s_v%d*", indexPrefix, i.Name, schemaVersion)
+	}
+	return i.indexWildcard
+}
+
+func (c *Client) createAliases(index Index) error {
+	aliasServer := c.client.Alias()
+	aliasServer.Add(index.FullName(), index.Alias())
 	if _, err := aliasServer.Do(context.Background()); err != nil {
 		return err
 	}
@@ -198,59 +164,75 @@ func (c *ElasticSearchClient) createAlias() error {
 	return nil
 }
 
-func (c *ElasticSearchClient) addMappings() error {
-	for _, document := range c.mappings {
-		for obj, mapping := range document {
-			if _, err := c.client.PutMapping().Index(c.index.path).Type(obj).BodyString(string(mapping)).Do(context.Background()); err != nil {
-				return fmt.Errorf("Unable to create %s mapping: %s", obj, err.Error())
-			}
-		}
+func (c *Client) addMapping(index Index) error {
+	if _, err := c.client.PutMapping().Index(index.FullName()).Type(index.Type).BodyString(index.Mapping).Do(context.Background()); err != nil {
+		return fmt.Errorf("Unable to create %s mapping: %s", index.Mapping, err)
 	}
 	return nil
 }
 
-func (c *ElasticSearchClient) timeCreated() time.Time {
-	//TODO: Get the index creation time (so we can compare to current time and decide if we need
-	//TODO: to roll the index by time. Make sure this supports restart of the Analyzer
-	return time.Now()
-}
+func (c *Client) createIndices() error {
+	for _, index := range c.indices {
+		if exists, _ := c.client.IndexExists(index.FullName()).Do(context.Background()); !exists {
+			if _, err := c.client.CreateIndex(index.FullName()).Do(context.Background()); err != nil {
+				return fmt.Errorf("Unable to create the skydive index: %s", err)
+			}
 
-func (c *ElasticSearchClient) createIndex() error {
-	c.index.path = c.getIndexPath()
+			if index.Mapping != "" {
+				if err := c.addMapping(index); err != nil {
+					return err
+				}
+			}
 
-	if exists, _ := c.client.IndexExists(c.index.path).Do(context.Background()); !exists {
-		if _, err := c.client.CreateIndex(c.index.path).Do(context.Background()); err != nil {
-			return errors.New("Unable to create the skydive index: " + err.Error())
+			if err := c.createAliases(index); err != nil {
+				return err
+			}
 		}
 	}
 
-	c.index.timeCreated = c.timeCreated()
-	c.index.entriesCounter = c.countEntries()
-	return c.addMappings()
+	return nil
 }
 
-func (c *ElasticSearchClient) start() error {
-	c.index = &ElasticIndex{}
-	if err := c.createIndex(); err != nil {
-		logging.GetLogger().Errorf("Failed to create index %s", c.name)
-		return err
+func (c *Client) start() error {
+	vt, err := c.client.ElasticsearchVersion(c.url.String())
+	if err != nil {
+		return fmt.Errorf("Unable to get the version: %s", vt)
 	}
 
-	if err := c.createAlias(); err != nil {
-		logging.GetLogger().Errorf("Failed to create alias")
-		return err
+	v, err := version.NewVersion(vt)
+	if err != nil {
+		return fmt.Errorf("Unable to parse the version: %s", vt)
+	}
+
+	min, _ := version.NewVersion(minimalVersion)
+	if v.LessThan(min) {
+		return fmt.Errorf("Skydive support only version > %s, found: %s", minimalVersion, vt)
+	}
+
+	if err := c.createIndices(); err != nil {
+		return fmt.Errorf("Failed to create index: %s", err)
 	}
 
 	c.bulkProcessor.Start(context.Background())
+
+	if c.rollService != nil {
+		c.rollService.start()
+	}
+
 	c.started.Store(true)
 
-	logging.GetLogger().Infof("ElasticSearchStorage started with skydive index %s", c.name)
+	aliases := []string{}
+	for _, index := range c.indices {
+		aliases = append(aliases, index.Alias())
+	}
+
+	logging.GetLogger().Infof("client started for %s", strings.Join(aliases, ", "))
 
 	return nil
 }
 
 // FormatFilter creates a ElasticSearch request based on filters
-func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
+func FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
 	// TODO: remove all this and replace with olivere/elastic queries
 	if filter == nil {
 		return nil
@@ -264,7 +246,7 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 	if f := filter.BoolFilter; f != nil {
 		queries := make([]elastic.Query, len(f.Filters))
 		for i, item := range f.Filters {
-			queries[i] = c.FormatFilter(item, mapKey)
+			queries[i] = FormatFilter(item, mapKey)
 		}
 		boolQuery := elastic.NewBoolQuery()
 		switch f.Op {
@@ -326,201 +308,73 @@ func (c *ElasticSearchClient) FormatFilter(filter *filters.Filter, mapKey string
 	return nil
 }
 
-func (c *ElasticSearchClient) shouldRollIndexByCount() bool {
-	if c.cfg.EntriesLimit == 0 {
-		return false
-	}
-	logging.GetLogger().Debugf("%s entries counter is %d", c.name, c.index.entriesCounter)
-	if c.index.entriesCounter < c.cfg.EntriesLimit {
-		return false
-	}
-	c.bulkProcessor.Flush()
-	c.client.Flush(c.name)
-
-	c.index.entriesCounter = c.countEntries()
-	if c.index.entriesCounter < c.cfg.EntriesLimit {
-		return false
-	}
-	logging.GetLogger().Debugf("%s enough entries to roll", c.name)
-	return true
-}
-
-func (c *ElasticSearchClient) shouldRollIndexByAge() bool {
-	if c.cfg.AgeLimit == 0 {
-		return false
-	}
-	age := int(time.Now().Sub(c.index.timeCreated).Seconds())
-	logging.GetLogger().Debugf("%s age is %d", c.name, age)
-	if age < c.cfg.AgeLimit {
-		return false
-	}
-	logging.GetLogger().Debugf("%s old enough to roll", c.name)
-	return true
-}
-
-func (c *ElasticSearchClient) shouldRollIndex() bool {
-	return (c.shouldRollIndexByAge() || c.shouldRollIndexByCount())
-}
-
-func (c *ElasticSearchClient) ShouldRollIndex() bool {
-	c.index.Lock()
-	defer c.index.Unlock()
-	return c.shouldRollIndex()
-}
-
-func (c *ElasticSearchClient) IndexPath() string {
-	c.index.Lock()
-	defer c.index.Unlock()
-	return c.index.path
-}
-
-func (c *ElasticSearchClient) delIndices() {
-	if c.cfg.IndicesLimit == 0 {
-		return
-	}
-
-	indices, _ := c.client.IndexNames()
-	sort.Strings(indices)
-
-	numToDel := len(indices) - c.cfg.IndicesLimit
-	if numToDel <= 0 {
-		return
-	}
-
-	if _, err := c.client.DeleteIndex(indices[:numToDel]...).Do(context.Background()); err != nil {
-		logging.GetLogger().Errorf("Error deleting indexes %+v: %s", indices, err.Error())
-	}
-}
-
-func (c *ElasticSearchClient) rollIndex() error {
-	c.index.Lock()
-	defer c.index.Unlock()
-
-	logging.GetLogger().Infof("Rolling indices for %s", c.name)
-
-	if err := c.createIndex(); err != nil {
-		return err
-	}
-	if err := c.createAlias(); err != nil {
-		return err
-	}
-
-	logging.GetLogger().Infof("%s finished rolling indices", c.name)
-	return nil
-}
-
-// RollIndex rolls the current elasticsearch index
-func (c *ElasticSearchClient) RollIndex() error {
-	if err := c.rollIndex(); err != nil {
-		return err
-	}
-	c.delIndices()
-	return nil
-}
-
 // Index returns the skydive index
-func (c *ElasticSearchClient) Index(obj string, id string, data interface{}) (bool, error) {
-	c.index.Lock()
-	defer c.index.Unlock()
-
-	if _, err := c.client.Index().Index(c.GetIndexAlias()).Type(obj).Id(id).BodyJson(data).Do(context.Background()); err != nil {
-		return false, err
+func (c *Client) Index(index Index, id string, data interface{}) error {
+	if _, err := c.client.Index().Index(index.Alias()).Type(index.Type).Id(id).BodyJson(data).Do(context.Background()); err != nil {
+		return err
 	}
-
-	c.index.increaseEntries()
-	return c.shouldRollIndex(), nil
+	return nil
 }
 
 // BulkIndex returns the bulk index from the indexer
-func (c *ElasticSearchClient) BulkIndex(obj string, id string, data interface{}) (bool, error) {
-	c.index.Lock()
-	defer c.index.Unlock()
-
-	req := elastic.NewBulkIndexRequest().Index(c.GetIndexAlias()).Type(obj).Id(id).Doc(data)
+func (c *Client) BulkIndex(index Index, id string, data interface{}) error {
+	req := elastic.NewBulkIndexRequest().Index(index.Alias()).Type(index.Type).Id(id).Doc(data)
 	c.bulkProcessor.Add(req)
 
-	c.index.increaseEntries()
-	return c.shouldRollIndex(), nil
-}
-
-// IndexChild index a child object
-func (c *ElasticSearchClient) IndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
-	c.index.Lock()
-	defer c.index.Unlock()
-
-	if _, err := c.client.Index().Index(c.GetIndexAlias()).Type(obj).Id(id).Parent(parent).BodyJson(data).Do(context.Background()); err != nil {
-		return false, err
-	}
-
-	c.index.increaseEntries()
-	return c.shouldRollIndex(), nil
-}
-
-// BulkIndexChild index a while object with the indexer
-func (c *ElasticSearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
-	c.index.Lock()
-	defer c.index.Unlock()
-
-	req := elastic.NewBulkIndexRequest().Index(c.GetIndexAlias()).Type(obj).Id(id).Parent(parent).Doc(data)
-	c.bulkProcessor.Add(req)
-
-	c.index.increaseEntries()
-	return c.shouldRollIndex(), nil
+	return nil
 }
 
 // Update an object
-func (c *ElasticSearchClient) Update(obj string, id string, data interface{}) error {
-	_, err := c.client.Update().Index(c.GetIndexAlias()).Type(obj).Id(id).Doc(data).Do(context.Background())
+func (c *Client) Update(index Index, id string, data interface{}) error {
+	_, err := c.client.Update().Index(index.Alias()).Type(index.Type).Id(id).Doc(data).Do(context.Background())
 	return err
 }
 
 // BulkUpdate and object with the indexer
-func (c *ElasticSearchClient) BulkUpdate(obj string, id string, data interface{}) error {
-	req := elastic.NewBulkUpdateRequest().Index(c.GetIndexAlias()).Type(obj).Id(id).Doc(data)
+func (c *Client) BulkUpdate(index Index, id string, data interface{}) error {
+	req := elastic.NewBulkUpdateRequest().Index(index.Alias()).Type(index.Type).Id(id).Doc(data)
 	c.bulkProcessor.Add(req)
 
 	return nil
 }
 
 // UpdateWithPartialDoc an object with partial data
-func (c *ElasticSearchClient) UpdateWithPartialDoc(obj string, id string, data interface{}) error {
-	// TODO: check this is right
-	return c.Update(obj, id, data)
+func (c *Client) UpdateWithPartialDoc(index Index, id string, data interface{}) error {
+	return c.Update(index, id, data)
 }
 
 // BulkUpdateWithPartialDoc  an object with partial data using the indexer
-func (c *ElasticSearchClient) BulkUpdateWithPartialDoc(obj string, id string, data interface{}) error {
-	req := elastic.NewBulkUpdateRequest().Index(c.GetIndexAlias()).Type(obj).Id(id).Doc(data)
+func (c *Client) BulkUpdateWithPartialDoc(index Index, id string, data interface{}) error {
+	req := elastic.NewBulkUpdateRequest().Index(index.Alias()).Type(index.Type).Id(id).Doc(data)
 	c.bulkProcessor.Add(req)
+
 	return nil
 }
 
 // Get an object
-func (c *ElasticSearchClient) Get(obj string, id string) (*elastic.GetResult, error) {
-	return c.client.Get().Index(c.GetIndexAlias()).Type(obj).Id(id).Do(context.Background())
+func (c *Client) Get(index Index, id string) (*elastic.GetResult, error) {
+	return c.client.Get().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
 }
 
 // Delete an object
-func (c *ElasticSearchClient) Delete(obj string, id string) (*elastic.DeleteResponse, error) {
-	return c.client.Delete().Index(c.GetIndexAlias()).Type(obj).Id(id).Do(context.Background())
+func (c *Client) Delete(index Index, id string) (*elastic.DeleteResponse, error) {
+	return c.client.Delete().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
 }
 
 // BulkDelete an object with the indexer
-func (c *ElasticSearchClient) BulkDelete(obj string, id string) {
-	req := elastic.NewBulkDeleteRequest().Index(c.GetIndexAlias()).Type(obj).Id(id)
+func (c *Client) BulkDelete(index Index, id string) error {
+	req := elastic.NewBulkDeleteRequest().Index(index.Alias()).Type(index.Type).Id(id)
 	c.bulkProcessor.Add(req)
+
+	return nil
 }
 
 // Search an object
-func (c *ElasticSearchClient) Search(obj string, query elastic.Query, index string, opts filters.SearchQuery) (*elastic.SearchResult, error) {
-	if index == "" {
-		index = c.GetIndexAllAlias()
-	}
-
+func (c *Client) Search(typ string, query elastic.Query, opts filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
 	searchQuery := c.client.
 		Search().
-		Index(index).
-		Type(obj).
+		Index(indices...).
+		Type(typ).
 		Query(query).
 		Size(10000)
 
@@ -543,20 +397,20 @@ func (c *ElasticSearchClient) Search(obj string, query elastic.Query, index stri
 }
 
 // Start the Elasticsearch client background jobs
-func (c *ElasticSearchClient) Start() {
+func (c *Client) Start() {
 	for {
 		err := c.start()
 		if err == nil {
 			break
 		}
-		logging.GetLogger().Errorf("Unable to get connected to Elasticsearch: %s", err.Error())
+		logging.GetLogger().Errorf("Unable to get connected to Elasticsearch: %s", err)
 
 		time.Sleep(1 * time.Second)
 	}
 }
 
 // Stop Elasticsearch background client
-func (c *ElasticSearchClient) Stop() {
+func (c *Client) Stop() {
 	if c.started.Load() == true {
 		c.quit <- true
 		c.wg.Wait()
@@ -566,7 +420,7 @@ func (c *ElasticSearchClient) Stop() {
 }
 
 // Started is the client already started ?
-func (c *ElasticSearchClient) Started() bool {
+func (c *Client) Started() bool {
 	return c.started.Load() == true
 }
 
@@ -584,19 +438,15 @@ func urlFromHost(host string) (*url.URL, error) {
 }
 
 // GetClient returns the elastic client object
-func (c *ElasticSearchClient) GetClient() *elastic.Client {
+func (c *Client) GetClient() *elastic.Client {
 	return c.client
 }
 
-// NewElasticSearchClient creates a new ElasticSearch client based on configuration
-func NewElasticSearchClient(name string, mappings Mappings, cfg Config) (*ElasticSearchClient, error) {
+// NewClient creates a new ElasticSearch client based on configuration
+func NewClient(indices []Index, cfg Config) (*Client, error) {
 	url, err := urlFromHost(cfg.ElasticHost)
 	if err != nil {
 		return nil, err
-	}
-
-	if cfg.MaxConns == 0 {
-		return nil, errors.New("maxconns has to be > 0")
 	}
 
 	esConfig, err := esconfig.Parse(url.String())
@@ -618,6 +468,9 @@ func NewElasticSearchClient(name string, mappings Mappings, cfg Config) (*Elasti
 
 			if response.Errors {
 				logging.GetLogger().Errorf("Failed to insert %d entries", len(response.Failed()))
+				for i, fail := range response.Failed() {
+					logging.GetLogger().Errorf("Failed to insert entry %d: %s", i, fail.Error.Reason)
+				}
 			}
 		}).
 		FlushInterval(time.Duration(cfg.BulkMaxDelay) * time.Second).
@@ -626,14 +479,27 @@ func NewElasticSearchClient(name string, mappings Mappings, cfg Config) (*Elasti
 		return nil, err
 	}
 
-	client := &ElasticSearchClient{
+	indicesMap := make(map[string]Index, 0)
+	rollIndices := []Index{}
+	for _, index := range indices {
+		indicesMap[index.Name] = index
+
+		if index.RollIndex {
+			rollIndices = append(rollIndices, index)
+		}
+	}
+
+	client := &Client{
+		url:           url,
 		client:        esClient,
 		bulkProcessor: bulkProcessor,
 		quit:          make(chan bool, 1),
-		index:         nil,
-		name:          name,
-		mappings:      mappings,
 		cfg:           cfg,
+		indices:       indicesMap,
+	}
+
+	if len(rollIndices) > 0 {
+		client.rollService = newRollIndexService(esClient, rollIndices, cfg, etcdClient)
 	}
 
 	client.started.Store(false)

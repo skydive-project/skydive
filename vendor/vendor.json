@@ -989,6 +989,12 @@
 			"revisionTime": "2017-06-06T14:27:51Z"
 		},
 		{
+			"checksumSHA1": "TI+QiWWuz4SQKW/MyRRYhjzdq2A=",
+			"path": "github.com/go-test/deep",
+			"revision": "57af0be209c537ba1d9c2a4b285ab7aea0897e51",
+			"revisionTime": "2018-05-09T20:02:13Z"
+		},
+		{
 			"checksumSHA1": "j+2QWtfa7AsYOoqpJuwwfgkOvr8=",
 			"path": "github.com/gobwas/httphead",
 			"revision": "01c9b01b368a438f615030bbbd5e4f9e0023e15c",
@@ -1356,6 +1362,12 @@
 			"revisionTime": "2017-11-03T16:55:59Z",
 			"version": "v1.3.0",
 			"versionExact": "v1.3.0"
+		},
+		{
+			"checksumSHA1": "4+PK0yd1prnC11PETgrXPzHyct4=",
+			"path": "github.com/hashicorp/go-version",
+			"revision": "23480c0665776210b5fbbac6eaaee40e3e6a96b7",
+			"revisionTime": "2018-03-22T23:02:33Z"
 		},
 		{
 			"checksumSHA1": "d9PxF1XQGLMJZRct2R8qVM/eYlE=",

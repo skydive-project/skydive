@@ -23,129 +23,75 @@
 package graph
 
 import (
-	"encoding/json"
-	"reflect"
-	"sort"
 	"testing"
 	"time"
 
-	elastic "github.com/olivere/elastic"
+	"github.com/go-test/deep"
+	"github.com/olivere/elastic"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/storage/elasticsearch"
+	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
-type revisionArray []interface{}
-
-func (a revisionArray) Len() int {
-	return len(a)
-}
-func (a revisionArray) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-func (a revisionArray) Less(i, j int) bool {
-	e := a[i].(map[string]interface{})
-	f := a[j].(map[string]interface{})
-
-	v1, v2 := e["Revision"].(int64), f["Revision"].(int64)
-
-	return v1 < v2
+type fakeESIndex struct {
+	entries map[string]interface{}
 }
 
-type fakeElasticsearchClient struct {
-	revisions    map[string]interface{}
+type fakeESClient struct {
+	indices      map[string]*fakeESIndex
 	searches     []elastic.Query
 	searchResult elastic.SearchResult
-	shouldRoll   bool
 }
 
-func (f *fakeElasticsearchClient) getRevisions() []interface{} {
-	v := make(revisionArray, 0, len(f.revisions))
-
-	for _, value := range f.revisions {
-		v = append(v, value)
-	}
-
-	sort.Sort(v)
-
-	return []interface{}(v)
+func (f *fakeESClient) resetIndices() {
+	f.indices = make(map[string]*fakeESIndex)
 }
 
-func (f *fakeElasticsearchClient) resetRevisions() {
-	f.revisions = make(map[string]interface{})
-}
-
-func (f *fakeElasticsearchClient) FormatFilter(filter *filters.Filter, mapKey string) elastic.Query {
-	es := &elasticsearch.ElasticSearchClient{}
-	return es.FormatFilter(filter, mapKey)
-}
-
-func (f *fakeElasticsearchClient) GetIndexAlias() string {
-	return "skydive_test"
-}
-
-func (f *fakeElasticsearchClient) GetIndexAllAlias() string {
-	return "skydive_all"
-}
-
-func (f *fakeElasticsearchClient) RollIndex() error {
-	f.revisions = make(map[string]interface{})
-	f.shouldRoll = false
-	return nil
-}
-
-func (f *fakeElasticsearchClient) Index(obj string, id string, data interface{}) (bool, error) {
-	f.revisions[id] = data
-	return f.shouldRoll, nil
-}
-func (f *fakeElasticsearchClient) BulkIndex(obj string, id string, data interface{}) (bool, error) {
-	f.revisions[id] = data
-	return f.shouldRoll, nil
-}
-func (f *fakeElasticsearchClient) IndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
-	return f.shouldRoll, nil
-}
-func (f *fakeElasticsearchClient) BulkIndexChild(obj string, parent string, id string, data interface{}) (bool, error) {
-	return f.shouldRoll, nil
-}
-func (f *fakeElasticsearchClient) Update(obj string, id string, data interface{}) error {
-	return nil
-}
-func (f *fakeElasticsearchClient) BulkUpdate(obj string, id string, data interface{}) error {
-	return nil
-}
-func (f *fakeElasticsearchClient) UpdateWithPartialDoc(obj string, id string, data interface{}) error {
-	return nil
-}
-func (f *fakeElasticsearchClient) BulkUpdateWithPartialDoc(obj string, id string, data interface{}) error {
-	if revision, ok := f.revisions[id]; ok {
-		m := revision.(map[string]interface{})
-		for k, v := range data.(map[string]interface{}) {
-			m[k] = v
+func (f *fakeESClient) Index(index es.ElasticSearchIndex, id string, data interface{}) error {
+	if _, ok := f.indices[index.Name]; !ok {
+		f.indices[index.Name] = &fakeESIndex{
+			entries: make(map[string]interface{}, 0),
 		}
 	}
+	f.indices[index.Name].entries[id] = data
 	return nil
 }
-func (f *fakeElasticsearchClient) Get(obj string, id string) (*elastic.GetResult, error) {
+func (f *fakeESClient) BulkIndex(index es.ElasticSearchIndex, id string, data interface{}) error {
+	return f.Index(index, id, data)
+}
+func (f *fakeESClient) Update(index es.ElasticSearchIndex, id string, data interface{}) error {
+	return nil
+}
+func (f *fakeESClient) BulkUpdate(index es.ElasticSearchIndex, id string, data interface{}) error {
+	return nil
+}
+func (f *fakeESClient) UpdateWithPartialDoc(index es.ElasticSearchIndex, id string, data interface{}) error {
+	return nil
+}
+func (f *fakeESClient) BulkUpdateWithPartialDoc(index es.ElasticSearchIndex, id string, data interface{}) error {
+	return nil
+}
+func (f *fakeESClient) Get(index es.ElasticSearchIndex, id string) (*elastic.GetResult, error) {
 	return &elastic.GetResult{}, nil
 }
-func (f *fakeElasticsearchClient) Delete(obj string, id string) (*elastic.DeleteResponse, error) {
+func (f *fakeESClient) Delete(index es.ElasticSearchIndex, id string) (*elastic.DeleteResponse, error) {
+	delete(f.indices[index.Name].entries, id)
 	return &elastic.DeleteResponse{}, nil
 }
-func (f *fakeElasticsearchClient) BulkDelete(obj string, id string) {
+func (f *fakeESClient) BulkDelete(index es.ElasticSearchIndex, id string) error {
+	_, ok := f.Delete(index, id)
+	return ok
 }
-func (f *fakeElasticsearchClient) Search(obj string, query elastic.Query, index string, fsq filters.SearchQuery) (*elastic.SearchResult, error) {
+func (f *fakeESClient) Search(typ string, query elastic.Query, fsq filters.SearchQuery, indices ...string) (*elastic.SearchResult, error) {
 	f.searches = append(f.searches, query)
 	return &f.searchResult, nil
 }
-func (f *fakeElasticsearchClient) Start() {
+func (f *fakeESClient) Start() {
 }
 
-func newElasticsearchGraph(t *testing.T) (*Graph, *fakeElasticsearchClient) {
-	client := &fakeElasticsearchClient{
-		revisions:  make(map[string]interface{}),
-		shouldRoll: false,
+func newElasticsearchGraph(t *testing.T) (*Graph, *fakeESClient) {
+	client := &fakeESClient{
+		indices: make(map[string]*fakeESIndex),
 	}
 	b, err := NewElasticSearchBackendFromClient(client)
 	client.searchResult.Hits = &elastic.SearchHits{}
@@ -157,26 +103,15 @@ func newElasticsearchGraph(t *testing.T) (*Graph, *fakeElasticsearchClient) {
 	return NewGraphFromConfig(b), client
 }
 
-// test history when doing local modification
-func TestElasticsearchLocal(t *testing.T) {
+func TestElasticsearchNode(t *testing.T) {
 	g, client := newElasticsearchGraph(t)
 
 	node := g.newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
 	g.addMetadata(node, "MTU", 1510, time.Unix(2, 0))
 
-	expected := []interface{}{
-		map[string]interface{}{
-			"ArchivedAt": int64(2000),
-			"CreatedAt":  int64(1000),
-			"Host":       "host1",
-			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1500,
-			},
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
-		},
-		map[string]interface{}{
+	expectedLive := map[string]interface{}{
+		"aaa": map[string]interface{}{
+			"_Type":     "node",
 			"CreatedAt": int64(1000),
 			"Host":      "host1",
 			"ID":        "aaa",
@@ -187,244 +122,249 @@ func TestElasticsearchLocal(t *testing.T) {
 			"UpdatedAt": int64(2000),
 		},
 	}
-
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
+	live := client.indices[topologyLiveIndex.Name].entries
+	if diff := deep.Equal(live, expectedLive); diff != nil {
+		t.Fatalf("Expected elasticsearch live records not found: %s", diff)
 	}
 
-	g.addMetadata(node, "MTU", 1520, time.Unix(3, 0))
-
-	expected = []interface{}{
-		map[string]interface{}{
+	expectedArchive := map[string]interface{}{
+		"aaa-1": map[string]interface{}{
+			"_Type":      "node",
 			"ArchivedAt": int64(2000),
-			"UpdatedAt":  int64(1000),
 			"CreatedAt":  int64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
 			"Metadata": Metadata{
 				"MTU": 1500,
 			},
-			"Revision": int64(1),
+			"Revision":  int64(1),
+			"UpdatedAt": int64(1000),
 		},
-		map[string]interface{}{
-			"ArchivedAt": int64(3000),
-			"UpdatedAt":  int64(2000),
-			"CreatedAt":  int64(1000),
-			"Host":       "host1",
-			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1510,
-			},
-			"Revision": int64(2),
-		},
-		map[string]interface{}{
-			"UpdatedAt": int64(3000),
+	}
+	archive := client.indices[topologyArchiveIndex.Name].entries
+	if diff := deep.Equal(archive, expectedArchive); diff != nil {
+		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
+	}
+
+	// generate another revision
+	g.addMetadata(node, "MTU", 1520, time.Unix(3, 0))
+
+	expectedLive = map[string]interface{}{
+		"aaa": map[string]interface{}{
+			"_Type":     "node",
 			"CreatedAt": int64(1000),
 			"Host":      "host1",
 			"ID":        "aaa",
 			"Metadata": Metadata{
 				"MTU": 1520,
 			},
-			"Revision": int64(3),
+			"Revision":  int64(3),
+			"UpdatedAt": int64(3000),
 		},
 	}
-
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
+	live = client.indices[topologyLiveIndex.Name].entries
+	if diff := deep.Equal(live, expectedLive); diff != nil {
+		t.Fatalf("Expected elasticsearch live records not found: %s", diff)
 	}
 
-	client.searches = []elastic.Query{}
-
-	g.delNode(node, time.Unix(4, 0))
-
-	expected = []interface{}{
-		map[string]interface{}{
+	expectedArchive = map[string]interface{}{
+		"aaa-1": map[string]interface{}{
+			"_Type":      "node",
 			"ArchivedAt": int64(2000),
-			"UpdatedAt":  int64(1000),
 			"CreatedAt":  int64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
 			"Metadata": Metadata{
 				"MTU": 1500,
 			},
-			"Revision": int64(1),
+			"Revision":  int64(1),
+			"UpdatedAt": int64(1000),
 		},
-		map[string]interface{}{
+		"aaa-2": map[string]interface{}{
+			"_Type":      "node",
 			"ArchivedAt": int64(3000),
-			"UpdatedAt":  int64(2000),
 			"CreatedAt":  int64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
 			"Metadata": Metadata{
 				"MTU": 1510,
 			},
-			"Revision": int64(2),
+			"Revision":  int64(2),
+			"UpdatedAt": int64(2000),
 		},
-		map[string]interface{}{
+	}
+	archive = client.indices[topologyArchiveIndex.Name].entries
+	if diff := deep.Equal(archive, expectedArchive); diff != nil {
+		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
+	}
+
+	// delete node, should be deleted from live and generate another
+	// archive
+	g.delNode(node, time.Unix(4, 0))
+
+	if _, ok := client.indices[topologyLiveIndex.Name].entries["aaa"]; ok {
+		t.Fatal("The entry should not be in the index after deletion")
+	}
+
+	expectedArchive = map[string]interface{}{
+		"aaa-1": map[string]interface{}{
+			"_Type":      "node",
+			"ArchivedAt": int64(2000),
+			"CreatedAt":  int64(1000),
+			"Host":       "host1",
+			"ID":         "aaa",
+			"Metadata": Metadata{
+				"MTU": 1500,
+			},
+			"Revision":  int64(1),
+			"UpdatedAt": int64(1000),
+		},
+		"aaa-2": map[string]interface{}{
+			"_Type":      "node",
+			"ArchivedAt": int64(3000),
+			"CreatedAt":  int64(1000),
+			"Host":       "host1",
+			"ID":         "aaa",
+			"Metadata": Metadata{
+				"MTU": 1510,
+			},
+			"Revision":  int64(2),
+			"UpdatedAt": int64(2000),
+		},
+		"aaa-3": map[string]interface{}{
+			"_Type":      "node",
 			"ArchivedAt": int64(4000),
 			"DeletedAt":  int64(4000),
-			"UpdatedAt":  int64(3000),
 			"CreatedAt":  int64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
 			"Metadata": Metadata{
 				"MTU": 1520,
 			},
-			"Revision": int64(3),
+			"Revision":  int64(3),
+			"UpdatedAt": int64(3000),
 		},
 	}
-
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
+	archive = client.indices[topologyArchiveIndex.Name].entries
+	if diff := deep.Equal(archive, expectedArchive); diff != nil {
+		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}
+}
 
-	client.resetRevisions()
+func TestElasticsearchEdge(t *testing.T) {
+	g, client := newElasticsearchGraph(t)
 
-	node1 := newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
-	node2 := newNode("bbb", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node1 := g.newNode("aaa", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
+	node2 := g.newNode("bbb", Metadata{"MTU": 1500}, time.Unix(1, 0), "host1")
 
 	edge := g.newEdge("eee", node1, node2, Metadata{"Name": "eee"}, time.Unix(1, 0), "host1")
 	g.addMetadata(edge, "Type", "veth", time.Unix(2, 0))
 
-	expected = []interface{}{
-		map[string]interface{}{
-			"ArchivedAt": int64(2000),
-			"CreatedAt":  int64(1000),
-			"Host":       "host1",
-			"ID":         "eee",
-			"Parent":     Identifier("aaa"),
-			"Child":      Identifier("bbb"),
+	expectedLive := map[string]interface{}{
+		"aaa": map[string]interface{}{
+			"_Type":     "node",
+			"CreatedAt": int64(1000),
+			"Host":      "host1",
+			"ID":        "aaa",
 			"Metadata": Metadata{
-				"Name": "eee",
+				"MTU": 1500,
 			},
 			"Revision":  int64(1),
 			"UpdatedAt": int64(1000),
 		},
-		map[string]interface{}{
+		"bbb": map[string]interface{}{
+			"_Type":     "node",
+			"CreatedAt": int64(1000),
+			"Host":      "host1",
+			"ID":        "bbb",
+			"Metadata": Metadata{
+				"MTU": 1500,
+			},
+			"Revision":  int64(1),
+			"UpdatedAt": int64(1000),
+		},
+		"eee": map[string]interface{}{
+			"_Type":     "edge",
 			"CreatedAt": int64(1000),
 			"Host":      "host1",
 			"ID":        "eee",
+			"Metadata": Metadata{
+				"Type": "veth",
+				"Name": "eee",
+			},
 			"Parent":    Identifier("aaa"),
 			"Child":     Identifier("bbb"),
-			"Metadata": Metadata{
-				"Name": "eee",
-				"Type": "veth",
-			},
 			"Revision":  int64(2),
 			"UpdatedAt": int64(2000),
 		},
 	}
 
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
+	live := client.indices[topologyLiveIndex.Name].entries
+	if diff := deep.Equal(live, expectedLive); diff != nil {
+		t.Fatalf("Expected elasticsearch live records not found: %s", diff)
 	}
-}
 
-// test history when doing local modification
-func TestElasticsearchForwarded(t *testing.T) {
-	g, client := newElasticsearchGraph(t)
-	mg := newGraph(t)
-
-	node := mg.NewNode("aaa", nil, "host1")
-	g.NodeAdded(node)
-	updatedAt1 := node.updatedAt
-
-	expected := []interface{}{
-		map[string]interface{}{
-			"UpdatedAt": common.UnixMillis(updatedAt1),
-			"CreatedAt": common.UnixMillis(node.createdAt),
-			"Host":      "host1",
-			"ID":        "aaa",
-			"Metadata":  Metadata{},
+	expectedArchive := map[string]interface{}{
+		"eee-1": map[string]interface{}{
+			"_Type":      "edge",
+			"CreatedAt":  int64(1000),
+			"ArchivedAt": int64(2000),
+			"Host":       "host1",
+			"ID":         "eee",
+			"Metadata": Metadata{
+				"Name": "eee",
+			},
+			"Parent":    Identifier("aaa"),
+			"Child":     Identifier("bbb"),
 			"Revision":  int64(1),
+			"UpdatedAt": int64(1000),
 		},
 	}
-
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
+	archive := client.indices[topologyArchiveIndex.Name].entries
+	if diff := deep.Equal(archive, expectedArchive); diff != nil {
+		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}
 
-	mg.AddMetadata(node, "MTU", 1500)
-	updatedAt2 := node.updatedAt
+	g.delEdge(edge, time.Unix(3, 0))
 
-	b, _ := node.MarshalJSON()
-	rawMessage := json.RawMessage(b)
-
-	client.searchResult.Hits.Hits = []*elastic.SearchHit{
-		{Source: &rawMessage},
+	if _, ok := client.indices[topologyLiveIndex.Name].entries["eee"]; ok {
+		t.Fatal("The entry should not be in the index after deletion")
 	}
-	g.NodeUpdated(node)
 
-	expected = []interface{}{
-		map[string]interface{}{
-			"ArchivedAt": common.UnixMillis(updatedAt2),
-			"UpdatedAt":  common.UnixMillis(updatedAt1),
-			"CreatedAt":  common.UnixMillis(node.createdAt),
+	expectedArchive = map[string]interface{}{
+		"eee-2": map[string]interface{}{
+			"_Type":      "edge",
+			"CreatedAt":  int64(1000),
+			"DeletedAt":  int64(3000),
+			"ArchivedAt": int64(3000),
 			"Host":       "host1",
-			"ID":         "aaa",
-			"Metadata":   Metadata{},
-			"Revision":   int64(1),
-		},
-		map[string]interface{}{
-			"UpdatedAt": common.UnixMillis(updatedAt2),
-			"CreatedAt": common.UnixMillis(node.createdAt),
-			"Host":      "host1",
-			"ID":        "aaa",
+			"ID":         "eee",
 			"Metadata": Metadata{
-				"MTU": 1500,
+				"Name": "eee",
+				"Type": "veth",
 			},
-			"Revision": int64(2),
+			"Parent":    Identifier("aaa"),
+			"Child":     Identifier("bbb"),
+			"Revision":  int64(2),
+			"UpdatedAt": int64(2000),
 		},
-	}
-
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
-	}
-
-	mg.AddMetadata(node, "MTU", 1510)
-	updatedAt3 := node.updatedAt
-
-	b, _ = node.MarshalJSON()
-	rawMessage = json.RawMessage(b)
-	client.searchResult.Hits.Hits = []*elastic.SearchHit{
-		{Source: &rawMessage},
-	}
-	g.NodeUpdated(node)
-
-	expected = []interface{}{
-		map[string]interface{}{
-			"ArchivedAt": common.UnixMillis(updatedAt2),
-			"UpdatedAt":  common.UnixMillis(updatedAt1),
-			"CreatedAt":  common.UnixMillis(node.createdAt),
+		"eee-1": map[string]interface{}{
+			"_Type":      "edge",
+			"CreatedAt":  int64(1000),
+			"ArchivedAt": int64(2000),
 			"Host":       "host1",
-			"ID":         "aaa",
-			"Metadata":   Metadata{},
-			"Revision":   int64(1),
-		},
-		map[string]interface{}{
-			"ArchivedAt": common.UnixMillis(updatedAt3),
-			"UpdatedAt":  common.UnixMillis(updatedAt2),
-			"CreatedAt":  common.UnixMillis(node.createdAt),
-			"Host":       "host1",
-			"ID":         "aaa",
+			"ID":         "eee",
 			"Metadata": Metadata{
-				"MTU": 1500,
+				"Name": "eee",
 			},
-			"Revision": int64(2),
-		},
-		map[string]interface{}{
-			"UpdatedAt": common.UnixMillis(updatedAt3),
-			"CreatedAt": common.UnixMillis(node.createdAt),
-			"Host":      "host1",
-			"ID":        "aaa",
-			"Metadata": Metadata{
-				"MTU": 1510,
-			},
-			"Revision": int64(3),
+			"Parent":    Identifier("aaa"),
+			"Child":     Identifier("bbb"),
+			"Revision":  int64(1),
+			"UpdatedAt": int64(1000),
 		},
 	}
-
-	if !reflect.DeepEqual(client.getRevisions(), expected) {
-		t.Fatalf("Expected elasticsearch records not found: \nexpected: %v\ngot: %v", expected, client.getRevisions())
+	archive = client.indices[topologyArchiveIndex.Name].entries
+	if diff := deep.Equal(archive, expectedArchive); diff != nil {
+		t.Fatalf("Expected elasticsearch archived records not found: %s", diff)
 	}
 }
