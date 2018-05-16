@@ -373,7 +373,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 			}
 		}
 
-		flow.Update(packet)
+		flow.Update(packet, ft.flowOpts)
 	}
 
 	flow.XXX_state.updateVersion = ft.updateVersion + 1

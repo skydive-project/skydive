@@ -203,7 +203,7 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 	hasher.Write(C.GoBytes(unsafe.Pointer(&kernFlow.key), C.sizeof___u64))
 	key := hex.EncodeToString(hasher.Sum(nil))
 
-	f.UpdateUUID(key)
+	f.UpdateUUID(key, flow.FlowOpts{})
 
 	return f
 }

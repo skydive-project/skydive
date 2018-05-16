@@ -548,33 +548,49 @@ func (f *Flow) initFromPacket(key string, packet *Packet, nodeTID string, uuids 
 
 	// no network layer then no transport layer
 	if err := f.newNetworkLayer(packet); err == nil {
-		f.newTransportLayer(packet, opts.TCPMetric)
+		f.newTransportLayer(packet, opts)
 	}
 
 	// need to have as most variable filled as possible to get correct UUID
 	f.UpdateUUID(key, opts)
+
+	// update metrics
+	f.Update(packet, opts)
 }
 
 // Update a flow metrics and latency
-func (f *Flow) Update(packet *Packet) {
+func (f *Flow) Update(packet *Packet, opts FlowOpts) {
 	now := common.UnixMillis(packet.GoPacket.Metadata().CaptureInfo.Timestamp)
 	f.Last = now
 	f.Metric.Last = now
 
-	if updated := f.updateMetricsWithLinkLayer(packet); !updated {
-		f.updateMetricsWithNetworkLayer(packet)
+	if opts.LayerKeyMode == L3PreferedKeyMode {
+		// use the ethernet length as we want to get the full size and we want to
+		// rely on the l3 address order.
+		length := packet.Length
+		if length == 0 {
+			if ethernetPacket := getLinkLayer(packet); ethernetPacket != nil {
+				length = getLinkLayerLength(ethernetPacket)
+			}
+		}
+
+		f.updateMetricsWithNetworkLayer(packet, length)
+	} else {
+		if updated := f.updateMetricsWithLinkLayer(packet); !updated {
+			f.updateMetricsWithNetworkLayer(packet, 0)
+		}
 	}
 	if f.TCPMetric != nil {
 		f.updateTCPMetrics(packet)
 	}
 }
 
-func (f *Flow) newLinkLayer(packet *Packet) {
+func (f *Flow) newLinkLayer(packet *Packet) error {
 	ethernetLayer := packet.Layer(layers.LayerTypeEthernet)
 	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
 	if !ok {
 		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
-		return
+		return ErrLayerNotFound
 	}
 
 	f.Link = &FlowLayer{
@@ -583,7 +599,17 @@ func (f *Flow) newLinkLayer(packet *Packet) {
 		B:        ethernetPacket.DstMAC.String(),
 		ID:       linkID(packet),
 	}
-	f.updateMetricsWithLinkLayer(packet)
+
+	return nil
+}
+
+func getLinkLayer(packet *Packet) *layers.Ethernet {
+	ethernetLayer := packet.Layer(layers.LayerTypeEthernet)
+	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
+	if !ok {
+		return nil
+	}
+	return ethernetPacket
 }
 
 func getLinkLayerLength(packet *layers.Ethernet) int64 {
@@ -596,14 +622,11 @@ func getLinkLayerLength(packet *layers.Ethernet) int64 {
 }
 
 func (f *Flow) updateMetricsWithLinkLayer(packet *Packet) bool {
-	ethernetLayer := packet.Layer(layers.LayerTypeEthernet)
-	ethernetPacket, ok := ethernetLayer.(*layers.Ethernet)
-	if !ok || f.Link == nil {
-		// bypass if a Link layer can't be decoded, i.e. Network layer is the first layer
+	ethernetPacket := getLinkLayer(packet)
+	if ethernetPacket == nil || f.Link == nil {
 		return false
 	}
 
-	// if the length is given use it as the packet can be truncated like in SFlow
 	length := packet.Length
 	if length == 0 {
 		length = getLinkLayerLength(ethernetPacket)
@@ -647,7 +670,7 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 				ID:   uint32(layer.Id),
 			}
 		}
-		return f.updateMetricsWithNetworkLayer(packet)
+		return nil
 	}
 
 	ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
@@ -667,26 +690,24 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 				ID:   uint32(layer.Id),
 			}
 		}
-		return f.updateMetricsWithNetworkLayer(packet)
+		return nil
 	}
 
 	return ErrLayerNotFound
 }
 
-func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet) error {
-	// bypass if a Link layer already exist
-	if f.Link != nil {
-		return nil
-	}
-
+func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet, length int64) error {
 	ipv4Layer := packet.Layer(layers.LayerTypeIPv4)
 	if ipv4Packet, ok := ipv4Layer.(*layers.IPv4); ok {
+		if length == 0 {
+			length = int64(ipv4Packet.Length)
+		}
 		if f.Network.A == ipv4Packet.SrcIP.String() {
 			f.Metric.ABPackets++
-			f.Metric.ABBytes += int64(ipv4Packet.Length)
+			f.Metric.ABBytes += length
 		} else {
 			f.Metric.BAPackets++
-			f.Metric.BABytes += int64(ipv4Packet.Length)
+			f.Metric.BABytes += length
 		}
 
 		// update RTT
@@ -701,12 +722,15 @@ func (f *Flow) updateMetricsWithNetworkLayer(packet *Packet) error {
 	}
 	ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
 	if ipv6Packet, ok := ipv6Layer.(*layers.IPv6); ok {
+		if length == 0 {
+			length = int64(ipv6Packet.Length)
+		}
 		if f.Network.A == ipv6Packet.SrcIP.String() {
 			f.Metric.ABPackets++
-			f.Metric.ABBytes += int64(ipv6Packet.Length)
+			f.Metric.ABBytes += length
 		} else {
 			f.Metric.BAPackets++
-			f.Metric.BABytes += int64(ipv6Packet.Length)
+			f.Metric.BABytes += length
 		}
 
 		// update RTT
@@ -802,16 +826,15 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 	return nil
 }
 
-func (f *Flow) newTransportLayer(packet *Packet, tcpMetric bool) error {
+func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
 	if layer := packet.Layer(layers.LayerTypeTCP); layer != nil {
 		f.Transport = &FlowLayer{Protocol: FlowProtocol_TCP}
 
 		transportPacket := layer.(*layers.TCP)
 		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
 		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
-		if tcpMetric {
+		if opts.TCPMetric {
 			f.TCPMetric = &TCPMetric{}
-			f.updateTCPMetrics(packet)
 		}
 	} else if layer := packet.Layer(layers.LayerTypeUDP); layer != nil {
 		f.Transport = &FlowLayer{Protocol: FlowProtocol_UDP}
