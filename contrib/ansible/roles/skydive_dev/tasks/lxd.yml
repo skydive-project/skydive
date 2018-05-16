@@ -26,6 +26,11 @@
     state: started
     enabled: yes
 
+- file:
+    src: /var/run/lxd.socket
+    dest: /var/lib/lxd/unix.socket
+    state: link
+
 - shell: "systemctl enable lxd"
 
 - shell: "lxd init --auto"
