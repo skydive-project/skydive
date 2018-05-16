@@ -38,6 +38,7 @@ var OTHER_PORTS = -4;
 /** Port number representing the entry port - not an Openflow normalized port */
 var SAME_PORT = -5;
 var reFindInport = new RegExp('(^|.*,)in_port=([0-9]*)(,.*|$)');
+var reFindPriority = new RegExp('^priority=([0-9]*),?(.*|$)');
 var reSplit = new RegExp('[:();]');
 /** Translation from OVS syntax to summary actions */
 var actionTable = {
@@ -115,11 +116,24 @@ function inport(filters) {
   return matchInport ? safePort(matchInport[2]) : ANY_PORT;
 }
 
+/** Get rid of the priority part in the filter
+ * @param filters: the filters of a rule as a string usually beginning with priority
+ * @return the simplified filter as a string.
+ */
+function removePriority(filters) {
+  var matchPriority = reFindPriority.exec(filters);
+  if (matchPriority) {
+    return matchPriority[2];
+  }
+  return filters;
+}
+
 /** Summarize the filter of a rule, filling the inPort
  *  @param rule: the rule to complete
  */
 function summarizeFilter(rule) {
   rule.inPort = inport(rule.filters);
+  rule.filters = removePriority(rule.filters);
 }
 
 /** Computes the summary of a rule, both filters and outActions
@@ -128,6 +142,50 @@ function summarizeFilter(rule) {
 function summarize(rule) {
   summarizeFilter(rule);
   summarizeActions(rule);
+}
+
+/** Compare two openflow rules by priority and then action.
+ *  @param rule1: first rule
+ *  @param rule2: second rule
+ *  @return an integer as specified by array.sort
+ */
+function compareRules(rule1, rule2) {
+  if (rule1.priority > rule2.priority) return -1;
+  if (rule1.priority == rule2.priority && rule1.actions < rule2.actions) return -1;
+  if (rule1.priority == rule2.priority && rule1.actions == rule2.actions && rule1.filters < rule2.filters) return -1;
+  return 1;
+}
+
+/** Adds rowspan to have a nicely formatted priorities and actions
+ * @param rules: a set of Openflow rules
+ */
+function addRowspan(rules) {
+  rules.sort(compareRules);
+  var prevActions;
+  var prevPriority;
+  for(var i=0; i<rules.length; i++) {
+    var rule = rules[i];
+    if(rule.priority == prevPriority) {
+      rule.prioritySpan = -1;
+    } else {
+      prevPriority=rule.priority;
+      var span=0;
+      for(var j=i; j<rules.length && rules[j].priority == prevPriority; j++) {
+        span = span+1;
+      }
+      rule.prioritySpan = span;
+    }
+    if(rule.priority == prevPriority && rule.actions == prevActions) {
+      rule.actionsSpan = -1;
+    } else {
+      prevActions=rule.actions;
+      var span=0;
+      for(var j=i; j<rules.length && rules[j].actions == prevActions; j++) {
+        span = span+1;
+      }
+      rule.actionsSpan = span;
+    }
+  }
 }
 
 /** Classify the eleements of an array into a table according to a classifier function.
@@ -150,6 +208,9 @@ function classify(array, classifier) {
       list.push(elem);
     else
       result[key] = [elem];
+  }
+  for(var key in result) {
+    addRowspan(result[key]);
   }
   return result;
 }
@@ -352,6 +413,7 @@ Vue.component('rule-table-detail', {
       <table class="table table-bordered table-condensed">\
         <thead>\
             <tr>\
+                <th class="priority-column">priority</th>\
                 <th class="filters-column">filters</th>\
                 <th class="summary-column">summary</th>\
                 <th class="actions-column">actions</th>\
@@ -361,12 +423,15 @@ Vue.component('rule-table-detail', {
             <tr v-for="rule in rules"\
                 :id="\'R-\' + rule.UUID"\
                 v-bind:class="{soft: layout.isHighlighted(rule)}">\
+                <td v-if="rule.prioritySpan != -1" :rowspan="rule.prioritySpan">\
+                  {{rule.priority}}\
+                </td>\
                 <td>\
                   <span v-for="filter in rule.filters.replace(/([;,])/g, \'$1#\').split(\'#\')">\
                     {{ filter }}\
                   </span>\
                 </td>\
-                <td>\
+                <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
                     <table>\
                         <tr v-for="act in rule.outAction">\
                             <td>\
@@ -381,7 +446,7 @@ Vue.component('rule-table-detail', {
                         </tr>\
                     </table>\
                 </td>\
-                <td>\
+                <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
                   <span v-for="act in rule.actions.replace(/([;,])/g, \'$1#\').split(\'#\')">\
                     {{ act }}\
                   </span>\
