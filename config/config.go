@@ -87,14 +87,10 @@ func init() {
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 	cfg.SetDefault("agent.X509_servername", "")
 
-	cfg.SetDefault("analyzer.capture_enabled", true)
 	cfg.SetDefault("analyzer.flow.backend", "memory")
 	cfg.SetDefault("analyzer.flow.max_buffer_size", 100000)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
-	cfg.SetDefault("analyzer.packet_capture_enabled", true)
-	cfg.SetDefault("analyzer.packet_injection_enabled", true)
 	cfg.SetDefault("analyzer.replication.debug", false)
-	cfg.SetDefault("analyzer.ssh_enabled", false)
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 
@@ -150,6 +146,12 @@ func init() {
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
 
+	cfg.SetDefault("rbac.model.request_definition", []string{"sub, obj, act"})
+	cfg.SetDefault("rbac.model.policy_definition", []string{"sub, obj, act, eft"})
+	cfg.SetDefault("rbac.model.role_definition", []string{"_, _"})
+	cfg.SetDefault("rbac.model.policy_effect", []string{"some(where (p_eft == allow)) && !some(where (p_eft == deny))"})
+	cfg.SetDefault("rbac.model.matchers", []string{"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act"})
+
 	cfg.SetDefault("storage.elasticsearch.driver", "elasticsearch")
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
 	cfg.SetDefault("storage.elasticsearch.maxconns", 10)
@@ -166,16 +168,7 @@ func init() {
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
 
-	cfg.SetDefault("ui.theme", "dark")
-	cfg.SetDefault("ui.bandwidth_absolute_active", 1)
-	cfg.SetDefault("ui.bandwidth_absolute_alert", 1000)
-	cfg.SetDefault("ui.bandwidth_absolute_warning", 100)
-	cfg.SetDefault("ui.bandwidth_relative_active", 0.1)
-	cfg.SetDefault("ui.bandwidth_relative_alert", 0.8)
-	cfg.SetDefault("ui.bandwidth_relative_warning", 0.5)
-	cfg.SetDefault("ui.bandwidth_threshold", "relative")
-	cfg.SetDefault("ui.bandwidth_update_rate", 5)
-	cfg.SetDefault("ui.topology.favorites", map[string]string{})
+	cfg.SetDefault("ui", map[string]interface{}{})
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")

@@ -16,7 +16,7 @@ var Capture = {
   template: '\
     <div class="capture-item">\
       <div class="capture-title">\
-        <i class="capture-action capture-delete fa fa-trash"\
+        <i v-if="canWriteCaptures" class="capture-action capture-delete fa fa-trash"\
            @click="remove(capture)">\
         </i>\
         <i class="capture-action fa"\
@@ -70,6 +70,10 @@ var Capture = {
     // https://github.com/skydive-project/skydive/issues/202
     canShowFlows: function() {
       return this.capture.GremlinQuery.search('ShortestPathTo') === -1;
+    },
+
+    canWriteCaptures: function() {
+      return app.enforce("capture", "write");
     },
 
   },

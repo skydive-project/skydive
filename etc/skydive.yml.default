@@ -407,3 +407,20 @@ ui:
   bandwidth_relative_active: 0.1
   bandwidth_relative_warning: 0.4
   bandwidth_relative_alert: 0.8
+
+rbac:
+  model:
+    # RBAC model
+    # request_definition:
+    # - sub, obj, act
+    # policy_definition:
+    # - sub, obj, act, eft
+    # role_definition:
+    # - _, _
+    # policy_effect:
+    # - some(where (p_eft == allow)) && !some(where (p_eft == deny))
+    # matchers:
+    # - g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+  policy:
+    # additional RBAC policy:
+    # - p, myuser, capture, write, deny

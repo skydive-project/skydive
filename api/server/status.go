@@ -7,6 +7,7 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/rbac"
 )
 
 // WSSpeaker is the interface to report the status of a service
@@ -19,8 +20,12 @@ type statusAPI struct {
 }
 
 func (s *statusAPI) statusGet(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	if !rbac.Enforce(r.Username, "status", "read") {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	status := s.reporter.GetStatus()
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(status); err != nil {

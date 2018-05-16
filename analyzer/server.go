@@ -43,6 +43,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
+	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/enhancers"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -92,6 +93,20 @@ func (s *Server) GetStatus() interface{} {
 		Captures:    types.ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
 		Probes:      s.probeBundle.ActiveProbes(),
 	}
+}
+
+// createStartupCapture creates capture based on preconfigured selected SubGraph
+func (s *Server) createStartupCapture(ch *api.CaptureAPIHandler) error {
+	gremlin := config.GetString("analyzer.startup.capture_gremlin")
+	if gremlin == "" {
+		return nil
+	}
+
+	bpf := config.GetString("analyzer.startup.capture_bpf")
+	logging.GetLogger().Infof("Invoke capturing from the startup with gremlin: %s and BPF: %s", gremlin, bpf)
+	capture := types.NewCapture(gremlin, bpf)
+	capture.Type = "pcap"
+	return ch.Create(capture)
 }
 
 // Start the analyzer server
@@ -158,6 +173,34 @@ func (s *Server) Stop() {
 func NewServerFromConfig() (*Server, error) {
 	embedEtcd := config.GetBool("etcd.embedded")
 
+	var embeddedEtcd *etcd.EmbeddedEtcd
+	var err error
+	if embedEtcd {
+		if embeddedEtcd, err = etcd.NewEmbeddedEtcdFromConfig(); err != nil {
+			return nil, err
+		}
+	}
+
+	etcdClient, err := etcd.NewClientFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// wait for etcd to be ready
+	for {
+		host := config.GetString("host_id")
+		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
+			logging.GetLogger().Errorf("Etcd server not ready: %s", err.Error())
+			time.Sleep(time.Second)
+		} else {
+			break
+		}
+	}
+
+	if err := rbac.Init(etcdClient.KeysAPI); err != nil {
+		return nil, err
+	}
+
 	hserver, err := shttp.NewServerFromConfig(common.AnalyzerService)
 	if err != nil {
 		return nil, err
@@ -208,35 +251,12 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	var embeddedEtcd *etcd.EmbeddedEtcd
-	if embedEtcd {
-		if embeddedEtcd, err = etcd.NewEmbeddedEtcdFromConfig(); err != nil {
-			return nil, err
-		}
-	}
-
-	etcdClient, err := etcd.NewClientFromConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	// wait for etcd to be ready
-	for {
-		host := config.GetString("host_id")
-		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
-			logging.GetLogger().Errorf("Etcd server not ready: %s", err.Error())
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
-	}
-
 	apiServer, err := api.NewAPI(hserver, etcdClient.KeysAPI, common.AnalyzerService)
 	if err != nil {
 		return nil, err
 	}
 
-	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g, config.GetConfig().GetBool("analyzer.capture_enabled"))
+	captureAPIHandler, err := api.RegisterCaptureAPI(apiServer, g)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +266,7 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
-	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer, config.GetConfig().GetBool("analyzer.packet_injection_enabled"))
+	piAPIHandler, err := api.RegisterPacketInjectorAPI(g, apiServer)
 	if err != nil {
 		return nil, err
 	}
@@ -297,6 +317,8 @@ func NewServerFromConfig() (*Server, error) {
 		flowServer:          flowServer,
 		alertServer:         alertServer,
 	}
+
+	s.createStartupCapture(captureAPIHandler)
 
 	api.RegisterTopologyAPI(hserver, g, tr)
 	api.RegisterPcapAPI(hserver, storage)

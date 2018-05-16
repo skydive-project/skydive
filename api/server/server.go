@@ -36,6 +36,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/validator"
 	"github.com/skydive-project/skydive/version"
 )
@@ -64,13 +65,6 @@ func writeError(w http.ResponseWriter, status int, err error) {
 	w.Write([]byte(err.Error()))
 }
 
-// RegisterNotAllowedAPIHandler registers a new handler for unpermitted use of API
-func (a *Server) RegisterNotAllowedAPIHandler(handler Handler) {
-	a.HTTPServer.Router.PathPrefix("/api/" + handler.Name()).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	})
-}
-
 // RegisterAPIHandler registers a new handler for an API
 func (a *Server) RegisterAPIHandler(handler Handler) error {
 	name := handler.Name()
@@ -82,6 +76,11 @@ func (a *Server) RegisterAPIHandler(handler Handler) error {
 			Method: "GET",
 			Path:   "/api/" + name,
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+				if rbac.Enforce(r.Username, name, "read") == false {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
 				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 				w.WriteHeader(http.StatusOK)
 
@@ -100,6 +99,11 @@ func (a *Server) RegisterAPIHandler(handler Handler) error {
 			Method: "GET",
 			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+				if rbac.Enforce(r.Username, name, "read") == false {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
 				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
 				if id == "" {
 					w.WriteHeader(http.StatusBadRequest)
@@ -124,6 +128,11 @@ func (a *Server) RegisterAPIHandler(handler Handler) error {
 			Method: "POST",
 			Path:   "/api/" + name,
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+				if rbac.Enforce(r.Username, name, "write") == false {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
 				resource := handler.New()
 
 				// keep the original ID
@@ -164,6 +173,11 @@ func (a *Server) RegisterAPIHandler(handler Handler) error {
 			Method: "DELETE",
 			Path:   shttp.PathPrefix(fmt.Sprintf("/api/%s/", name)),
 			HandlerFunc: func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+				if rbac.Enforce(r.Username, name, "write") == false {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
 				id := r.URL.Path[len(fmt.Sprintf("/api/%s/", name)):]
 				if id == "" {
 					w.WriteHeader(http.StatusBadRequest)

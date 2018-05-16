@@ -143,12 +143,12 @@ var TopologyComponent = {
         </div>\
       </div>\
       <div class="col-sm-5 fill sidebar">\
-        <tabs v-if="isAnalyzer" :active="!isCaptureEnabled ? 2 : 0">\
-          <tab-pane title="Captures" v-if="isCaptureEnabled">\
+        <tabs v-if="isAnalyzer" :active="!canReadCaptures ? 2 : 0">\
+          <tab-pane title="Captures" v-if="canReadCaptures">\
             <capture-list></capture-list>\
-            <capture-form v-if="topologyMode ===  \'live\'"></capture-form>\
+            <capture-form v-if="canWriteCaptures && topologyMode ===  \'live\'"></capture-form>\
           </tab-pane>\
-          <tab-pane title="Generator" v-if="topologyMode ===  \'live\' && isPacketInjectEnabled">\
+          <tab-pane title="Generator" v-if="topologyMode ===  \'live\' && canInjectPackets">\
             <injection-list></injection-list>\
             <inject-form></inject-form>\
           </tab-pane>\
@@ -233,8 +233,6 @@ var TopologyComponent = {
       isSSHEnabled: false,
       timeType: "absolute",
       topologyRelTime: "1m",
-      isCaptureEnabled: true,
-      isPacketInjectEnabled: true,
       metadataCollapseState: {
         IPV4: false,
         IPV6: false,
@@ -328,21 +326,6 @@ var TopologyComponent = {
         self.topologyFilterQuery();
       }
     });
-
-    $.when(this.$getConfigValue('analyzer.ssh_enabled').
-      then(function(sshEnabled) {
-        self.isSSHEnabled = sshEnabled;
-    }));
-
-    $.when(this.$getConfigValue('analyzer.capture_enabled').
-      then(function(captureEnabled) {
-        self.isCaptureEnabled = captureEnabled;
-    }));
-
-    $.when(this.$getConfigValue('analyzer.packet_injection_enabled').
-      then(function(injectEnabled) {
-        self.isPacketInjectEnabled = injectEnabled;
-    }));
   },
 
   beforeDestroy: function() {
@@ -435,6 +418,21 @@ var TopologyComponent = {
       return this.normalizeMetric(this.currentNode.metadata.Ovs.LastUpdateMetric);
     },
 
+    canReadCaptures: function() {
+      return app.enforce("capture", "read");
+    },
+
+    canWriteCaptures: function() {
+      return app.enforce("capture", "write");
+    },
+
+    canInjectPackets: function() {
+      return app.enforce("injectpacket", "write");
+    },
+
+    isSSHEnabled: function() {
+      return app.getConfigValue('ssh_enabled');
+    }
   },
 
   methods: {
@@ -514,30 +512,24 @@ var TopologyComponent = {
         }
       }
 
-      return $.when(this.$getConfigValue('ui.topology.favorites'))
-       .then(function(favorites) {
-         if (!favorites) return;
+      var favorites = app.getConfigValue('topology.favorites');
+      if (favorites.length == 0) return;
 
-         $.each(favorites, function(key, value) {
-           options.append($("<option/>").text(key).val(value));
-         });
+      $.each(favorites, function(key, value) {
+        options.append($("<option/>").text(key).val(value));
+      });
 
-        $.when(self.$getConfigValue('ui.topology.default_filter'))
-          .then(function(default_filter) {
-            if (default_filter) {
-              var value = favorites[default_filter];
-              if (value) self.topologyFilter = value;
-            }
-          });
+      var default_filter = app.getConfigValue('topology.default_filter');
+      if (default_filter) {
+        var value = favorites[default_filter];
+        if (value) self.topologyFilter = value;
+      }
 
-         $.when(self.$getConfigValue('ui.topology.default_highlight'))
-          .then(function(default_highlight) {
-            if (default_highlight) {
-              var value = favorites[default_highlight];
-              if (value) self.topologyEmphasize = value;
-            }
-          });
-       });
+      var default_highlight = app.getConfigValue('topology.default_highlight');
+      if (default_highlight) {
+        var value = favorites[default_highlight];
+        if (value) self.topologyEmphasize = value;
+      }
     },
 
     onFilterDatalistSelect: function(e) {

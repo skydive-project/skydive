@@ -27,7 +27,7 @@ var LinkLabelBandwidth = Vue.extend({
         return 0;
       }
 
-      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second 
+      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second
     },
 
     setup: function(topology) {
@@ -52,7 +52,7 @@ var LinkLabelBandwidth = Vue.extend({
       link.bandwidthAbsolute = this.bandwidthFromMetrics(metadata.LastUpdateMetric);
       link.bandwidth = link.bandwidthAbsolute / link.bandwidthBaseline;
     },
- 
+
     hasData: function(link) {
       if (!link.target.metadata.LastUpdateMetric && !link.source.metadata.LastUpdateMetric) {
         return false;
@@ -151,7 +151,7 @@ var LinkLabelLatency = Vue.extend({
       let map = {};
       for (let i in flows) {
         const flow = flows[i];
-        map[flow.TrackingID] = flow; 
+        map[flow.TrackingID] = flow;
       }
       return map;
     },
@@ -289,9 +289,7 @@ var TopologyGraphLayout = function(vm, selector) {
   };
 
   this.loadBandwidthConfig()
-    .then(function() {
-      self.bandwidth.intervalID = setInterval(self.updatelinkLatency.bind(self), self.bandwidth.updatePeriod);
-    });
+  self.bandwidth.intervalID = setInterval(self.updatelinkLatency.bind(self), self.bandwidth.updatePeriod);
 };
 
 TopologyGraphLayout.prototype = {
@@ -1332,24 +1330,17 @@ TopologyGraphLayout.prototype = {
     }
   },
 
-  getLocalValue: function(key) {
-    if (!localStorage.preferences) return 0;
-    var v = localStorage.preferences[key];
-    if (!v || v === "0" || v === "null") return 0;
-    return Number(v);
-  },
-
   loadBandwidthConfig: function() {
-    var vm = this.vm, b = this.bandwidth, self = this;
+    var b = this.bandwidth;
 
     var cfgNames = {
-      relative: ['ui.bandwidth_relative_active',
-                 'ui.bandwidth_relative_warning',
-                 'ui.bandwidth_relative_alert'],
-      absolute: ['ui.bandwidth_absolute_active',
-                 'ui.bandwidth_absolute_warning',
-                 'ui.bandwidth_absolute_alert']
-     };
+      relative: ['bandwidth_relative_active',
+                 'bandwidth_relative_warning',
+                 'bandwidth_relative_alert'],
+      absolute: ['bandwidth_absolute_active',
+                 'bandwidth_absolute_warning',
+                 'bandwidth_absolute_alert']
+    };
 
     var cfgValues = {
       absolute: [0, 0, 0],
@@ -1358,50 +1349,20 @@ TopologyGraphLayout.prototype = {
 
     if (typeof(Storage) !== "undefined") {
       cfgValues = {
-        absolute: [this.getLocalValue("bandwidthAbsoluteActive"),
-                   this.getLocalValue("bandwidthAbsoluteWarning"),
-                   this.getLocalValue("bandwidthAbsoluteAlert")],
-        relative: [this.getLocalValue("bandwidthRelativeActive"),
-                   this.getLocalValue("bandwidthRelativeWarning"),
-                   this.getLocalValue("bandwidthRelativeAlert")]
+        absolute: [app.getLocalValue("bandwidthAbsoluteActive"),
+                   app.getLocalValue("bandwidthAbsoluteWarning"),
+                   app.getLocalValue("bandwidthAbsoluteAlert")],
+        relative: [app.getLocalValue("bandwidthRelativeActive"),
+                   app.getLocalValue("bandwidthRelativeWarning"),
+                   app.getLocalValue("bandwidthRelativeAlert")]
       };
     }
 
-    return $.when(
-        vm.$getConfigValue('ui.bandwidth_update_rate'),
-        vm.$getConfigValue('ui.bandwidth_threshold'))
-      .then(function(period, threshold) {
-        b.updatePeriod = period[0] * 1000; // in millisec
-        if (localStorage.preferences && localStorage.preferences.bandwidthThreshold) {
-          b.bandwidthThreshold = localStorage.preferences.bandwidthThreshold;
-        } else {
-          b.bandwidthThreshold = threshold[0];
-        }
-        return b.bandwidthThreshold;
-      })
-    .then(function(t) {
-      return $.when(
-        vm.$getConfigValue(cfgNames[t][0]),
-        vm.$getConfigValue(cfgNames[t][1]),
-        vm.$getConfigValue(cfgNames[t][2]))
-        .then(function(active, warning, alert) {
-          if (cfgValues[b.bandwidthThreshold][0]) {
-            b.active = cfgValues[b.bandwidthThreshold][0];
-          } else {
-            b.active = active[0];
-          }
-          if (cfgValues[b.bandwidthThreshold][1]) {
-            b.warning = cfgValues[b.bandwidthThreshold][1];
-          } else {
-            b.warning = warning[0];
-          }
-          if (cfgValues[b.bandwidthThreshold][2]) {
-            b.alert = cfgValues[b.bandwidthThreshold][2];
-          } else {
-            b.alert = alert[0];
-          }
-        });
-    });
+    b.updatePeriod = app.getConfigValue('bandwidth_update_rate') * 1000; // in millisec
+    b.bandwidthThreshold = app.getConfigValue('bandwidth_threshold');
+    b.active = app.getConfigValue(cfgNames[b.bandwidthThreshold][0]);
+    b.warning = app.getConfigValue(cfgNames[b.bandwidthThreshold][1]);
+    b.alert = app.getConfigValue(cfgNames[b.bandwidthThreshold][2]);
   },
 
   styleReturn: function(d, values) {

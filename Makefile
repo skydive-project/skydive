@@ -147,6 +147,7 @@ BINDATA_DIRS := \
 	statics/css/themes/*/* \
 	statics/js/vendor/* \
 	statics/js/components/* \
+	rbac/policy.csv \
 	${EXTRABINDATA}
 
 .PHONY: .bindata

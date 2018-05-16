@@ -140,7 +140,7 @@ func (c *CaptureAPIHandler) Create(r types.Resource) error {
 }
 
 // RegisterCaptureAPI registers an new resource, capture
-func RegisterCaptureAPI(apiServer *Server, g *graph.Graph, enabled bool) (*CaptureAPIHandler, error) {
+func RegisterCaptureAPI(apiServer *Server, g *graph.Graph) (*CaptureAPIHandler, error) {
 	captureAPIHandler := &CaptureAPIHandler{
 		BasicAPIHandler: BasicAPIHandler{
 			ResourceHandler: &CaptureResourceHandler{},
@@ -148,12 +148,8 @@ func RegisterCaptureAPI(apiServer *Server, g *graph.Graph, enabled bool) (*Captu
 		},
 		Graph: g,
 	}
-	if enabled {
-		if err := apiServer.RegisterAPIHandler(captureAPIHandler); err != nil {
-			return nil, err
-		}
-	} else {
-		apiServer.RegisterNotAllowedAPIHandler(captureAPIHandler)
+	if err := apiServer.RegisterAPIHandler(captureAPIHandler); err != nil {
+		return nil, err
 	}
 	return captureAPIHandler, nil
 }

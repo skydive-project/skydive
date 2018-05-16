@@ -36,6 +36,7 @@ import (
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
 	"github.com/skydive-project/skydive/validator"
@@ -102,6 +103,11 @@ func (t *TopologyAPI) graphToDot(w http.ResponseWriter, g *graph.Graph) {
 }
 
 func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	if !rbac.Enforce(r.Username, "topology", "read") {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	t.graph.RLock()
 	defer t.graph.RUnlock()
 
@@ -118,8 +124,12 @@ func (t *TopologyAPI) topologyIndex(w http.ResponseWriter, r *auth.Authenticated
 }
 
 func (t *TopologyAPI) topologySearch(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	resource := types.TopologyParam{}
+	if !rbac.Enforce(r.Username, "topology", "read") {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 
+	resource := types.TopologyParam{}
 	data, _ := ioutil.ReadAll(r.Body)
 	if len(data) != 0 {
 		if err := json.Unmarshal(data, &resource); err != nil {

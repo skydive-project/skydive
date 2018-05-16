@@ -3,8 +3,10 @@ var websocket = new WSHandler();
 var store = new Vuex.Store({
 
   state: {
+    config: defaultConfig,
     connected: null,
     logged: null,
+    permissions: getPermissions(),
     service: null,
     version: null,
     history: null,
@@ -17,13 +19,6 @@ var store = new Vuex.Store({
     topologyFilter: "",
     topologyHighlight: "",
     topologyTimeContext: 0,
-  },
-
-  getters: {
-
-    currTopologyHighlightExpr: function(state) {
-      return state.topologyHighlight;
-    },
   },
 
   mutations: {
@@ -44,12 +39,14 @@ var store = new Vuex.Store({
       state.topologyTimeContext = time;
     },
 
-    login: function(state) {
+    login: function(state, data) {
       state.logged = true;
+      state.permissions = getPermissions();
     },
 
     logout: function(state) {
       state.logged = false;
+      state.permissions = [];
     },
 
     connected: function(state) {
@@ -142,7 +139,9 @@ var routes = [
     component: {
       template: '<div></div>',
       created: function() {
-        document.cookie = document.cookie + ';expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        setCookie("authtok", "", -1);
+        setCookie("permissions", "", -1);
+        websocket.disconnect();
         this.$store.commit('logout');
       }
     }
@@ -181,7 +180,6 @@ var app = new Vue({
   created: function() {
     var self = this;
 
-    this.setTheme("dark");
     this.setThemeFromConfig();
 
     websocket.addConnectHandler(self.onConnected.bind(self));
@@ -257,41 +255,71 @@ var app = new Vue({
     },
 
     onConnected: function() {
-      var self = this;
-
-      self.$store.commit('connected');
-      self.$success({message: 'Connected'});
+      this.$store.commit('connected');
+      this.$success({message: 'Connected'});
     },
 
     onDisconnected: function() {
-      var self = this;
+      this.$store.commit('disconnected');
+      this.$error({message: 'Disconnected'});
 
-      self.$store.commit('disconnected');
-      self.$error({message: 'Disconnected'});
-
-      if (self.$store.state.logged)
+      if (this.$store.state.logged)
         setTimeout(function(){websocket.connect();}, 1000);
     },
 
     onError: function() {
-      var self = this;
-
-      if (self.$store.state.connected)
-        self.$store.commit('disconnected');
+      if (this.$store.state.connected)
+        this.$store.commit('disconnected');
 
       setTimeout(function(){websocket.connect();}, 1000);
     },
 
-    setThemeFromConfig: function() {
-      var self = this;
+    camelize: function(input) {
+      return input.toLowerCase().replace(/_(.)/g, function(match, group1) {
+        return group1.toUpperCase();
+      });
+    },
 
-      $.when(this.$getConfigValue('ui.theme'))
-        .always(function(theme) {
-          if (typeof(self.$route.query.theme) !== "undefined") {
-            theme = self.$route.query.theme;
+    getLocalValue: function(key) {
+      if (!localStorage.preferences) return 0;
+      var v = JSON.parse(localStorage.preferences)[key];
+      if (!v || v === "0" || v === "null") return 0;
+      if (isNaN(v)) return v;
+      return Number(v);
+    },
+
+    getConfigValue: function(key) {
+      var value = this.getLocalValue(this.camelize(key));
+      if (!value) {
+        var value = this.$store.state.config;
+        var splitted = key.split(".");
+        for (var s in splitted) {
+          value = value[splitted[s]];
+          if (value === undefined) {
+            break;
           }
-          self.setTheme(theme);
-        });
+        }
+      }
+      return value;
+    },
+
+    enforce: function(subject, action) {
+      var authorized = false;
+      var perms = this.$store.state.permissions;
+      for (var perm in perms) {
+        if (perms[perm][1] === subject && perms[perm][2] === action) {
+          if (perms[perm][3] === "allow") {
+            authorized = true
+          } else if (perms[perm][3] === "deny") {
+            authorized = false
+          }
+        }
+      }
+      return authorized;
+    },
+
+    setThemeFromConfig: function() {
+      this.setTheme(this.getConfigValue("theme"));
     },
 
     setTheme: function(theme) {
@@ -328,4 +356,6 @@ $(document).ready(function() {
   Vue.component('datepicker', Datepicker);
 
   app.$mount('#app');
+
+  app.setThemeFromConfig();
 });

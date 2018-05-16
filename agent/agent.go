@@ -37,6 +37,7 @@ import (
 	fprobes "github.com/skydive-project/skydive/flow/probes"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/packet_injector"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology"
@@ -71,6 +72,11 @@ func NewAnalyzerWSStructClientPool(authOptions *shttp.AuthenticationOpts) (*shtt
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get the analyzers list: %s", err.Error())
+	}
+
+	if len(addresses) == 0 {
+		logging.GetLogger().Info("Agent is running in standalone mode")
+		return pool, nil
 	}
 
 	for _, sa := range addresses {

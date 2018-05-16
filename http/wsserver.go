@@ -31,6 +31,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/rbac"
 )
 
 // WSIncomerHandler incoming client handler interface.
@@ -61,6 +62,13 @@ func defaultIncomerHandler(conn *websocket.Conn, r *auth.AuthenticatedRequest) *
 }
 
 func (s *WSServer) serveMessages(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	logging.GetLogger().Debugf("Enforcing websocket for %s, %s", s.name, r.Username)
+	if rbac.Enforce(r.Username, "websocket", s.name) == false {
+		w.Header().Set("Connection", "close")
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	// if X-Host-ID specified avoid having twice the same ID
 	host := getRequestParameter(r, "X-Host-ID")
 	if host == "" {
