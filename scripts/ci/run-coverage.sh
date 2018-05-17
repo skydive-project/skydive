@@ -8,9 +8,6 @@ go get -f -u github.com/axw/gocov/gocov
 go get -f -u github.com/mattn/goveralls
 go get -f -u golang.org/x/tools/cmd/cover
 
-sudo systemctl stop etcd.service
-sleep 15
-
 sudo iptables -F
 sudo iptables -P FORWARD ACCEPT
 for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done

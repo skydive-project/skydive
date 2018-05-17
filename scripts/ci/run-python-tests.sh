@@ -12,7 +12,6 @@ make docker-image
 
 cd contrib/python
 
-
 echo "Python2 tests"
 virtualenv-2 venv2
 source venv2/bin/activate
