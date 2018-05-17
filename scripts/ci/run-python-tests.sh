@@ -3,8 +3,6 @@
 set -v
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
-. "${dir}/install-static-requirements.sh"
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
@@ -13,7 +11,6 @@ set -e
 make docker-image
 
 cd contrib/python
-
 
 echo "Python2 tests"
 virtualenv-2 venv2

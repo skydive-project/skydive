@@ -3,13 +3,10 @@
 set -v
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
 
-# this should deploy in the CI image
-sudo yum install -y screen inotify-tools
-
-sudo systemctl stop etcd.service
-sleep 15
+go get -f -u github.com/axw/gocov/gocov
+go get -f -u github.com/mattn/goveralls
+go get -f -u golang.org/x/tools/cmd/cover
 
 sudo iptables -F
 sudo iptables -P FORWARD ACCEPT

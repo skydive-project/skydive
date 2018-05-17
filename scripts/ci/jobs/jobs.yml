@@ -109,6 +109,16 @@
               credential-id: coveralls-token
               variable: COVERALLS_TOKEN
 
+- builder:
+    name: skydive-cleanup
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          [ -d /var/tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+
 - defaults:
     name: skydive
     project-type: freestyle
@@ -144,13 +154,15 @@
           black-list-labels:
             - no-ci
     builders:
-      - shell: cd src/github.com/skydive-project/skydive && scripts/ci/run-go-fmt.sh
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
+          scripts/ci/run-go-fmt.sh
     wrappers:
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/skydive-go-fmt/builds/${BUILD_NUMBER}/log.html
           status-context: skydive-go-fmt
     publishers:
-      - publish-cobertura
       - chuck-norris
 
 - job:
@@ -175,6 +187,7 @@
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
           scripts/ci/run-unit-tests.sh
     wrappers:
       - github-pull-request:
@@ -183,7 +196,6 @@
     publishers:
       - junit:
           results: tests.xml
-      - publish-cobertura
       - chuck-norris
 
 - job:
@@ -208,6 +220,7 @@
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
           scripts/ci/run-compile-tests.sh
     wrappers:
       - github-pull-request:
@@ -239,6 +252,7 @@
     builders:
       - shell: |
           cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
           scripts/ci/run-k8s-tests.sh
     wrappers:
       - github-pull-request:
@@ -267,22 +281,12 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
-          set -v
           cd src/github.com/skydive-project/skydive
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
+          . scripts/ci/install-go.sh
           BACKEND={backend} scripts/ci/run-functional-tests.sh
-          retcode=$?
-          # scripts/ci/coverage.sh
-          cd -
-          if [ -e src/github.com/skydive-project/skydive/cover.out.xml ]
-          then
-            mv src/github.com/skydive-project/skydive/cover.out.xml .
-          fi
-          exit $retcode
     wrappers:
       - github-pull-request:
           status-url: 'http://ci-logs.skydive.network/{name}-functional-tests-backend-{backend}/builds/${{BUILD_NUMBER}}/log.html'
@@ -327,16 +331,17 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
-          set -v
           cd src/github.com/skydive-project/skydive
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
+          . scripts/ci/install-go.sh
           SHELL=dumb scripts/ci/run-scale.sh
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
+      - skydive-cleanup
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
           SHELL=dumb FLOW_PROTOCOL=udp scripts/ci/run-scale.sh
     wrappers:
       - github-pull-request:
@@ -365,12 +370,11 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
+          . scripts/ci/install-go.sh
           SHELL=dumb scripts/ci/run-selenium-tests.sh
     wrappers:
       - github-pull-request:
@@ -403,12 +407,11 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
+          . scripts/ci/install-go.sh
           SHELL=dumb scripts/ci/run-cdd-overview-tests.sh
     wrappers:
       - github-pull-request:
@@ -452,7 +455,10 @@
       - docker-credentials
       - copr-credentials
     builders:
-      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-release.sh
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
+          SHELL=dumb scripts/ci/create-release.sh
     publishers:
       - chuck-norris
 
@@ -479,7 +485,10 @@
       - github-credentials
       - docker-credentials
     builders:
-      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-binaries.sh
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
+          SHELL=dumb scripts/ci/create-binaries.sh
     publishers:
       - chuck-norris
 
@@ -508,7 +517,10 @@
               credential-id: vagrantcloud-token
               variable: VAGRANTCLOUD_TOKEN
     builders:
-      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/create-vagrant-boxes.sh
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
+          SHELL=dumb scripts/ci/create-vagrant-boxes.sh
     publishers:
       - chuck-norris
 
@@ -532,12 +544,11 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
+          . scripts/ci/install-go.sh
           cd scripts/ci/devstack
           vagrant up --no-provision --provider=libvirt && vagrant provision
           retcode=$?
@@ -574,9 +585,6 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
           . scripts/ci/install-go.sh
           make static
           cp $GOPATH/bin/skydive .
@@ -617,6 +625,7 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
           VAGRANT_DEFAULT_PROVIDER=libvirt scripts/ci/run-vagrant-tests.sh
     wrappers:
       - github-pull-request:
@@ -645,7 +654,10 @@
           black-list-labels:
             - no-ci
     builders:
-      - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-packaging-tests.sh
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
+          SHELL=dumb scripts/ci/run-packaging-tests.sh
     wrappers:
       - github-pull-request:
           status-url: http://ci-logs.skydive.network/skydive-packaging-tests/builds/${BUILD_NUMBER}/log.html
@@ -675,9 +687,7 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
+          . scripts/ci/install-go.sh
           SHELL=dumb scripts/ci/run-python-tests.sh
     wrappers:
       - github-pull-request:
@@ -710,7 +720,8 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          ./scripts/ci/run-coverage.sh
+          . scripts/ci/install-go.sh
+          scripts/ci/run-coverage.sh
     wrappers:
       - coverage-credentials
       - github-pull-request:

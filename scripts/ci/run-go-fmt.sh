@@ -3,7 +3,8 @@
 set -v
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
+
+go get -f -u github.com/golang/lint/golint
 
 set -e
 

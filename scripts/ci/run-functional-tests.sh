@@ -3,7 +3,8 @@
 set -v
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
+
+go get -f -u github.com/tebeka/go2xunit
 
 sudo iptables -F
 sudo iptables -P FORWARD ACCEPT

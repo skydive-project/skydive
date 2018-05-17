@@ -3,7 +3,8 @@
 set -v
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
+
+go get -f -u github.com/tebeka/go2xunit
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 make test GOFLAGS=-race VERBOSE=true TIMEOUT=5m COVERAGE=${COVERAGE} | tee $WORKSPACE/unit-tests.log
