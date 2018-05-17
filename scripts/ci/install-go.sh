@@ -16,5 +16,10 @@ chmod +x ~/bin/gimme
 # before changing this be sure that it will not break the RHEL packaging
 eval "$(gimme 1.9.1)"
 
-dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-. "${dir}/install-go-deps.sh"
+export GOPATH=$WORKSPACE
+export PATH=$PATH:$GOPATH/bin
+
+# speedup govendor sync command
+mkdir -p $HOME/.govendor $GOPATH/.cache
+rm -rf $GOPATH/.cache/govendor
+ln -s $HOME/.govendor $GOPATH/.cache/govendor

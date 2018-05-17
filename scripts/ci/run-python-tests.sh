@@ -3,8 +3,6 @@
 set -v
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
-. "${dir}/install-static-requirements.sh"
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 

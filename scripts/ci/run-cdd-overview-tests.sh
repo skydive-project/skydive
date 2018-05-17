@@ -3,7 +3,6 @@
 set -v
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
 
 sudo systemctl stop etcd.service
 sleep 15

@@ -3,7 +3,8 @@
 set -v
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
+
+go get -f -u github.com/tebeka/go2xunit
 
 . "${dir}/install-minikube.sh" install
 . "${dir}/install-minikube.sh" start

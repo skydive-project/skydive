@@ -10,7 +10,6 @@ then
 fi
 
 dir="$(dirname "$0")"
-. "${dir}/install-go.sh"
 
 VERSION="$(grep 'skydive_release:' ${dir}/../../contrib/ansible/roles/skydive_common/defaults/main.yml | cut -f 2 -d ' ' | tr -d 'v')"
 cd ${dir}/../../contrib/dev
