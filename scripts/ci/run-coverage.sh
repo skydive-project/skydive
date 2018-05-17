@@ -8,9 +8,6 @@ go get -f -u github.com/axw/gocov/gocov
 go get -f -u github.com/mattn/goveralls
 go get -f -u golang.org/x/tools/cmd/cover
 
-# this should deploy in the CI image
-sudo yum install -y screen inotify-tools
-
 sudo systemctl stop etcd.service
 sleep 15
 

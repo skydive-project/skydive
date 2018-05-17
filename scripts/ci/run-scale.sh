@@ -4,9 +4,6 @@ set -v
 
 dir="$(dirname "$0")"
 
-# this should deploy in the CI image
-sudo yum install -y screen inotify-tools iperf
-
 sudo systemctl stop etcd.service
 sleep 15
 
