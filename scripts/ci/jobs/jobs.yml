@@ -109,6 +109,16 @@
               credential-id: coveralls-token
               variable: COVERALLS_TOKEN
 
+- builder:
+    name: skydive-cleanup
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          [ -d /var/tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          sudo scripts/ci/cleanup.sh snapshot
+          sudo scripts/ci/cleanup.sh cleanup
+
 - defaults:
     name: skydive
     project-type: freestyle
@@ -153,7 +163,6 @@
           status-url: http://ci-logs.skydive.network/skydive-go-fmt/builds/${BUILD_NUMBER}/log.html
           status-context: skydive-go-fmt
     publishers:
-      - publish-cobertura
       - chuck-norris
 
 - job:
@@ -187,7 +196,6 @@
     publishers:
       - junit:
           results: tests.xml
-      - publish-cobertura
       - chuck-norris
 
 - job:
@@ -273,14 +281,11 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
-          set -v
           cd src/github.com/skydive-project/skydive
           . scripts/ci/install-go.sh
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
           BACKEND={backend} scripts/ci/run-functional-tests.sh
     wrappers:
       - github-pull-request:
@@ -326,17 +331,17 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
-          set -v
           cd src/github.com/skydive-project/skydive
           . scripts/ci/install-go.sh
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb scripts/ci/run-scale.sh
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
+      - skydive-cleanup
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
           SHELL=dumb FLOW_PROTOCOL=udp scripts/ci/run-scale.sh
     wrappers:
       - github-pull-request:
@@ -365,13 +370,11 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
           . scripts/ci/install-go.sh
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb scripts/ci/run-selenium-tests.sh
     wrappers:
       - github-pull-request:
@@ -404,13 +407,11 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
           . scripts/ci/install-go.sh
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb scripts/ci/run-cdd-overview-tests.sh
     wrappers:
       - github-pull-request:
@@ -543,13 +544,11 @@
           black-list-labels:
             - no-ci
     builders:
+      - skydive-cleanup
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
           . scripts/ci/install-go.sh
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
           cd scripts/ci/devstack
           vagrant up --no-provision --provider=libvirt && vagrant provision
           retcode=$?
@@ -586,10 +585,6 @@
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
           . scripts/ci/install-go.sh
           make static
           cp $GOPATH/bin/skydive .
@@ -693,9 +688,6 @@
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
           . scripts/ci/install-go.sh
-          [ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
-          sudo scripts/ci/cleanup.sh snapshot
-          sudo scripts/ci/cleanup.sh cleanup
           SHELL=dumb scripts/ci/run-python-tests.sh
     wrappers:
       - github-pull-request:

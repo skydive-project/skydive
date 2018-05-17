@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR=/tmp/netcleanup
+DIR=/var/tmp/skydive-cleanup
 CURDIR="$(dirname "$0")"
 
 function cleanup_items() {
@@ -31,7 +31,7 @@ function cleanup() {
   cleanup_items ovsdb "ovs-vsctl del-br"
   cleanup_items docker "docker_rm"
   cleanup_items lxd "lxc delete --force"
-  
+
   "${CURDIR}/../scale.sh" stop 10 10 10
 
   # clean elasticsearch
