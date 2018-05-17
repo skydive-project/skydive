@@ -84,6 +84,14 @@ make functional
 EOF
 SCRIPT
 
+$setup_cleanup = <<SCRIPT
+sudo /home/vagrant/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh init
+cat >> ~/.bash_profile <<'EOF'
+export WORKSPACE=/home/vagrant
+alias cleanup="(sudo /home/vagrant/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh snapshot; sudo /home/vagrant/src/github.com/skydive-project/skydive/scripts/ci/cleanup.sh cleanup) &> /dev/null"
+EOF
+SCRIPT
+
 def populate_os_config(os, ip)
   os.openstack_auth_url = ENV.fetch("OS_AUTH_URL", "'http://keystone-server.net/v2.0/tokens'")
   os.username = ENV.fetch("OS_USERNAME", "openstackUser")
@@ -131,6 +139,7 @@ Vagrant.configure(2) do |config|
         ansible.limit = "all"
         ansible.verbose = true
       end
+      dev.vm.provision "cleanup-init", type: "shell", inline: $setup_cleanup, privileged: false
     end
 
     dev.vm.provider :virtualbox do |vb, override|
