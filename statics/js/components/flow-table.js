@@ -618,23 +618,6 @@ Vue.component('flow-table', {
 
       var links = {};
 
-      if (flow.ANodeTID !== "*") {
-        links.ANodeTID = {
-          "class": "indicator glyphicon glyphicon-link raw-packet-link",
-          "onClick": function() {},
-          "onMouseOver": function(){ self.highlightRelatedTID(flow.ANodeTID); },
-          "onMouseOut": function(){ self.unhighlightRelatedTID(); }
-        };
-      }
-      if (flow.BNodeTID !== "*") {
-        links.BNodeTID = {
-          "class": "indicator glyphicon glyphicon-link raw-packet-link",
-          "onClick": function() {},
-          "onMouseOver": function(){ self.highlightRelatedTID(flow.BNodeTID); },
-          "onMouseOut": function(){ self.unhighlightRelatedTID(); }
-        };
-      }
-
       if (flow.RawPacketsCaptured > 0) {
         links.RawPacketsCaptured = {
           "class": "indicator glyphicon glyphicon-download-alt raw-packet-link",
@@ -682,32 +665,6 @@ Vue.component('flow-table', {
           });
           self.$store.commit('highlightEnd', obj.UUID);
         });
-    },
-
-    isNodeHighlighted: function(id) {
-      return this.$store.state.highlightedNodes.slice().indexOf(id) >= 0;
-    },
-
-    highlightRelatedTID: function(tid) {
-      var self = this,
-          query = "G.V().Has('TID', '" + tid + "')";
-      query = this.setQueryTime(query);
-      this.$topologyQuery(query)
-        .then(function(nodes) {
-          nodes.forEach(function(n) {
-            if (!self.isNodeHighlighted(n.ID)) {
-              self.$store.commit('highlight', n.ID);
-              self.currRelatedNodeHighlighted = n.ID;
-            }
-          });
-        });
-    },
-
-    unhighlightRelatedTID: function() {
-      if (this.currRelatedNodeHighlighted) {
-        this.$store.commit('unhighlight', this.currRelatedNodeHighlighted);
-        this.currRelatedNodeHighlighted = '';
-      }
     },
 
     compareFlows: function(f1, f2) {

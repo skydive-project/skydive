@@ -363,7 +363,6 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 		}
 
 		flow.initFromPacket(key, packet, ft.nodeTID, uuids, opts)
-		ft.pipeline.EnhanceFlow(ft.pipelineConfig, flow)
 	} else {
 		if ft.Opts.ReassembleTCP {
 			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
@@ -400,12 +399,7 @@ func (ft *Table) processPacketSeq(ps *PacketSequence) {
 
 func (ft *Table) processFlow(fl *Flow) {
 	prev := ft.replaceFlow(fl.UUID, fl)
-	if prev == nil {
-		ft.pipeline.EnhanceFlow(ft.pipelineConfig, fl)
-	} else {
-		fl.ANodeTID = prev.ANodeTID
-		fl.BNodeTID = prev.BNodeTID
-
+	if prev != nil {
 		fl.LastUpdateMetric = prev.LastUpdateMetric
 
 		fl.XXX_state = prev.XXX_state

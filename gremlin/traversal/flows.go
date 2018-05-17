@@ -138,13 +138,22 @@ func (f *FlowTraversalStep) Out(s ...interface{}) *traversal.GraphTraversalV {
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
-		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
-			m["TID"] = flow.BNodeTID
-
-			matcher, err := traversal.MapToMetadataFilter(m)
+		if flow.Link.B != "" {
+			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
+
+			f1, err := traversal.KeyValueToFilter("MAC", flow.Link.B)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+			f2, err := traversal.KeyValueToFilter("PeerIntfMAC", flow.Link.B)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+			filter2 := filters.NewOrFilter(f1, f2)
+			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
 			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
@@ -172,13 +181,22 @@ func (f *FlowTraversalStep) In(s ...interface{}) *traversal.GraphTraversalV {
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
-		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
-			m["TID"] = flow.ANodeTID
-
-			matcher, err := traversal.MapToMetadataFilter(m)
+		if flow.Link.A != "" {
+			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
+
+			f1, err := traversal.KeyValueToFilter("MAC", flow.Link.A)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+			f2, err := traversal.KeyValueToFilter("PeerIntfMAC", flow.Link.A)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+			filter2 := filters.NewOrFilter(f1, f2)
+			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
 			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
@@ -206,25 +224,43 @@ func (f *FlowTraversalStep) Both(s ...interface{}) *traversal.GraphTraversalV {
 	defer f.GraphTraversal.RUnlock()
 
 	for _, flow := range f.flowset.Flows {
-		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
-			m["TID"] = flow.ANodeTID
-
-			matcher, err := traversal.MapToMetadataFilter(m)
+		if flow.Link.A != "" {
+			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
+
+			f1, err := traversal.KeyValueToFilter("MAC", flow.Link.A)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+			f2, err := traversal.KeyValueToFilter("PeerIntfMAC", flow.Link.A)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+			filter2 := filters.NewOrFilter(f1, f2)
+
+			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
 			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
 			}
 		}
-		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
-			m["TID"] = flow.BNodeTID
-
-			matcher, err := traversal.MapToMetadataFilter(m)
+		if flow.Link.B != "" {
+			filter1, err := traversal.MapToFilter(m)
 			if err != nil {
 				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
 			}
+			f1, err := traversal.KeyValueToFilter("MAC", flow.Link.B)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+			f2, err := traversal.KeyValueToFilter("PeerIntfMAC", flow.Link.B)
+			if err != nil {
+				return traversal.NewGraphTraversalV(f.GraphTraversal, nodes, err)
+			}
+			filter2 := filters.NewOrFilter(f1, f2)
+			matcher := graph.NewGraphElementFilter(filters.NewAndFilter(filter1, filter2))
 
 			if node := f.GraphTraversal.Graph.LookupFirstNode(matcher); node != nil {
 				nodes = append(nodes, node)
@@ -264,8 +300,10 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 				nodes = append(nodes, node)
 			}
 		}
-		if flow.ANodeTID != "" && flow.ANodeTID != "*" {
-			m["TID"] = flow.ANodeTID
+
+		delete(m, "TID")
+		if flow.Link.A != "" {
+			m["MAC"] = flow.Link.A
 
 			matcher, err := traversal.MapToMetadataFilter(m)
 			if err != nil {
@@ -276,8 +314,8 @@ func (f *FlowTraversalStep) Nodes(s ...interface{}) *traversal.GraphTraversalV {
 				nodes = append(nodes, node)
 			}
 		}
-		if flow.BNodeTID != "" && flow.BNodeTID != "*" {
-			m["TID"] = flow.BNodeTID
+		if flow.Link.B != "" {
+			m["MAC"] = flow.Link.B
 
 			matcher, err := traversal.MapToMetadataFilter(m)
 			if err != nil {

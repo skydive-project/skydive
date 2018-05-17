@@ -25,7 +25,6 @@ package flow
 // Enhancer should Enhance the flow via this interface
 type Enhancer interface {
 	Name() string
-	Enhance(flow *Flow)
 	Start() error
 	Stop()
 }
@@ -62,22 +61,6 @@ func (epc *EnhancerPipelineConfig) IsEnabled(name string) bool {
 		return true
 	}
 	return v
-}
-
-// EnhanceFlow enhance a flow from with all registered enhancer
-func (e *EnhancerPipeline) EnhanceFlow(cfg *EnhancerPipelineConfig, flow *Flow) {
-	for _, enhancer := range e.Enhancers {
-		if cfg.IsEnabled(enhancer.Name()) {
-			enhancer.Enhance(flow)
-		}
-	}
-}
-
-// Enhance a list of flows
-func (e *EnhancerPipeline) Enhance(cfg *EnhancerPipelineConfig, flows []*Flow) {
-	for _, flow := range flows {
-		e.EnhanceFlow(cfg, flow)
-	}
 }
 
 // Start starts all the enhancers

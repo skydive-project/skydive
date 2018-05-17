@@ -125,7 +125,7 @@ var LinkLabelLatency = Vue.extend({
     },
 
     flowCategoryKey: function(flow) {
-      return `a=${flow.ANodeTID} b=${flow.BNodeTID} app=${flow.Application}`;
+      return `a=${flow.Link.A} b=${flow.Link.B} app=${flow.Application}`;
     },
 
     uniqueFlows: function(inFlows, count) {

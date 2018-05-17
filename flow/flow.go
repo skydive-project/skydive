@@ -1075,10 +1075,6 @@ func (f *Flow) GetFieldString(field string) (string, error) {
 		return f.ParentUUID, nil
 	case "NodeTID":
 		return f.NodeTID, nil
-	case "ANodeTID":
-		return f.ANodeTID, nil
-	case "BNodeTID":
-		return f.BNodeTID, nil
 	case "Application":
 		return f.Application, nil
 	}

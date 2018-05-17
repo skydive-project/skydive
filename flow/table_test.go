@@ -91,30 +91,7 @@ func (e *fakeEnhancer) Stop() {
 }
 
 func (e *fakeEnhancer) Enhance(f *Flow) {
-	if !e.enhanced {
-		f.ANodeTID = "aaa"
-		f.BNodeTID = "bbb"
-	}
 	e.enhanced = true
-}
-
-func TestEnhancer(t *testing.T) {
-	table := NewTable(nil, nil, NewEnhancerPipeline(&fakeEnhancer{}), "", TableOpts{})
-
-	fillTableFromPCAP(t, table, "pcaptraces/icmpv4-symetric.pcap", layers.LinkTypeEthernet, nil)
-	flows := table.getFlows(&filters.SearchQuery{}).Flows
-
-	// check for one flow enhanced
-	var enhanced int
-	for _, f := range flows {
-		if f.ANodeTID == "aaa" && f.BNodeTID == "bbb" {
-			enhanced++
-		}
-	}
-
-	if enhanced != 1 {
-		t.Errorf("One flow should be enhanced got : %d", enhanced)
-	}
 }
 
 func TestGetFlowsWithFilters(t *testing.T) {
@@ -133,30 +110,6 @@ func TestGetFlowsWithFilters(t *testing.T) {
 	flows := table.getFlows(searchQuery).Flows
 	if len(flows) != 100 {
 		t.Errorf("Should return 100 flow uuids got : %+v", flows)
-	}
-
-	filter = filters.NewAndFilter(
-		filters.NewTermStringFilter("NodeTID", "probe-1"),
-		filters.NewTermStringFilter("ANodeTID", "aaa"),
-	)
-
-	searchQuery = &filters.SearchQuery{
-		Filter: filter,
-	}
-
-	flows = table.getFlows(searchQuery).Flows
-	if len(flows) != 1 {
-		t.Errorf("Should return 1 flow uuids got : %+v", flows)
-	}
-
-	searchQuery.Filter = filters.NewAndFilter(
-		filters.NewTermStringFilter("NodeTID", "probe-1"),
-		filters.NewNotFilter(filters.NewTermStringFilter("ANodeTID", "aaa")),
-	)
-
-	flows = table.getFlows(searchQuery).Flows
-	if len(flows) != 99 {
-		t.Errorf("Should return 99 flow uuids got : %+v", flows)
 	}
 
 	// sort test

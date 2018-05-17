@@ -200,9 +200,7 @@ func TestFlowJSON(t *testing.T) {
 			Start:     1111111,
 			Last:      2222222,
 		},
-		NodeTID:  "probe-tid",
-		ANodeTID: "anode-tid",
-		BNodeTID: "bnode-tid",
+		NodeTID: "probe-tid",
 	}
 
 	j, err := json.Marshal(f)
@@ -214,8 +212,6 @@ func TestFlowJSON(t *testing.T) {
 		v.ObjKV("UUID", v.String()),
 		v.ObjKV("LayersPath", v.String()),
 		v.ObjKV("NodeTID", v.String()),
-		v.ObjKV("ANodeTID", v.String()),
-		v.ObjKV("BNodeTID", v.String()),
 		v.ObjKV("Start", v.Number()),
 		v.ObjKV("Last", v.Number()),
 		v.ObjKV("Link", v.Object(

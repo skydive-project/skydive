@@ -408,11 +408,30 @@ func TestSFlowSrcDstPath(t *testing.T) {
 				return fmt.Errorf("ssdp-intf2 not found, %v", res)
 			}
 
-			within := g.Within(node1.Metadata()["TID"], node2.Metadata()["TID"])
-			flows, err := gh.GetFlows(prefix.Flows().Has("ANodeTID", within, "BNodeTID", within))
+			srcNode, err := gh.GetNode(prefix.Flows().Has("Network.A", "169.254.33.33").In())
 			if err != nil {
-				flows, _ = gh.GetFlows(g.G.Flows())
-				return fmt.Errorf("flow with ANodeTID and BNodeTID not found: %v", flows)
+				var res interface{}
+				gh.QueryObject("g", &res)
+				return fmt.Errorf("Source node not found, %v", res)
+			}
+
+			dstNode, err := gh.GetNode(prefix.Flows().Has("Network.A", "169.254.33.33").Out())
+			if err != nil {
+				var res interface{}
+				gh.QueryObject("g", &res)
+				return fmt.Errorf("Destination node found, %v", res)
+			}
+
+			tid1, _ := node1.GetFieldString("TID")
+			tid2, _ := srcNode.GetFieldString("TID")
+			if tid1 != tid2 {
+				return fmt.Errorf("Source Nodes not matching")
+			}
+
+			tid3, _ := node2.GetFieldString("TID")
+			tid4, _ := dstNode.GetFieldString("TID")
+			if tid3 != tid4 {
+				return fmt.Errorf("Destination nodes not matching")
 			}
 
 			return nil

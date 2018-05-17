@@ -24,7 +24,6 @@ package enhancers
 
 import (
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/packet"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -58,19 +57,6 @@ func (nfe *NeutronFlowEnhancer) getNodeTID(mac string) (tid string) {
 	}
 
 	return
-}
-
-// Enhance A and B node TID based on neutron database
-func (nfe *NeutronFlowEnhancer) Enhance(f *flow.Flow) {
-	if f.Link == nil {
-		return
-	}
-	if f.ANodeTID == "" {
-		f.ANodeTID = nfe.getNodeTID(f.Link.A)
-	}
-	if f.BNodeTID == "" {
-		f.BNodeTID = nfe.getNodeTID(f.Link.B)
-	}
 }
 
 // Start the neutron flow enhancer

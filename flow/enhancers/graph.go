@@ -24,7 +24,6 @@ package enhancers
 
 import (
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/packet"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -58,19 +57,6 @@ func (gfe *GraphFlowEnhancer) getNodeTID(mac string) (tid string) {
 	}
 
 	return
-}
-
-// Enhance the graph with local TID node cache
-func (gfe *GraphFlowEnhancer) Enhance(f *flow.Flow) {
-	if f.Link == nil {
-		return
-	}
-	if f.ANodeTID == "" {
-		f.ANodeTID = gfe.getNodeTID(f.Link.A)
-	}
-	if f.BNodeTID == "" {
-		f.BNodeTID = gfe.getNodeTID(f.Link.B)
-	}
 }
 
 // Start the graph flow enhancer

@@ -163,8 +163,6 @@ message Flow {
 
 /* Topology info */
   string NodeTID = 33;
-  string ANodeTID = 34;
-  string BNodeTID = 35;
 
 /* raw packets, will not be exported, see Makefile */
   repeated RawPacket LastRawPackets = 36;

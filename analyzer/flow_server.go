@@ -196,7 +196,6 @@ func NewFlowServerUDPConn(addr string, port int) (*FlowServerUDPConn, error) {
 
 func (s *FlowServer) storeFlows(flows []*flow.Flow) {
 	if s.storage != nil && len(flows) > 0 {
-		s.enhancerPipeline.Enhance(s.enhancerPipelineConfig, flows)
 		s.storage.StoreFlows(flows)
 
 		logging.GetLogger().Debugf("%d flows stored", len(flows))
