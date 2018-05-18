@@ -54,6 +54,7 @@
     - docker
 
 - name: Configure docker
+  command: "/bin/true"
   become: yes
   tasks:
   - group:
