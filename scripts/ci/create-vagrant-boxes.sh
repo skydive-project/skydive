@@ -29,5 +29,10 @@ do
 
   json=`curl "https://vagrantcloud.com/api/v1/box/skydive/skydive-dev/version/$VERSION/provider/$provider/upload?access_token=$VAGRANTCLOUD_TOKEN"`
   upload_path=`echo $json | jq .upload_path | cut -d '"' -f 2`
+
+  set +e
   curl -X PUT --upload-file skydive-dev-$provider.box $upload_path
+  ret=$?
+  set -e
+  [[ $ret -ne 0 ]] && curl -X PUT --upload-file skydive-dev-$provider.box $upload_path
 done
