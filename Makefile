@@ -283,7 +283,7 @@ test.functionals: test.functionals.compile
 
 .PHONY: functional
 functional:
-	$(MAKE) test.functionals VERBOSE=true TIMEOUT=10m ARGS='-standalone -analyzer.topology.backend elasticsearch -analyzer.flow.backend elasticsearch'
+	$(MAKE) test.functionals VERBOSE=true TIMEOUT=10m ARGS='-standalone -analyzer.topology.backend elasticsearch -analyzer.flow.backend elasticsearch' TEST_PATTERN=${TEST_PATTERN}
 
 .PHONY: test
 test: govendor genlocalfiles
