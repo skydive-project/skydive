@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -n "$(sudo virt-what)" ]; then
+    echo "This test must running on baremetal host"
+    exit 1
+fi
+
 set -v
 
 dir="$(dirname "$0")"

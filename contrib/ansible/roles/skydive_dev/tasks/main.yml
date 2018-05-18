@@ -41,6 +41,9 @@
      - aria2
      - tcpdump
      - socat
+     - python2-virtualenv
+     - python3-virtualenv
+     - virt-what
 
 - service:
     name: "{{ item }}"
@@ -49,6 +52,23 @@
   with_items:
     - openvswitch
     - docker
+
+- name: Configure docker
+  become: yes
+  tasks:
+  - group:
+      name: docker
+      state: present
+  - user:
+      name: vagrant
+      groups: vagrant, docker
+      append: yes
+  - service:
+      name: "{{ item }}"
+      state: restarted
+      enabled: yes
+    with_items:
+      - docker
 
 - include: lxd.yml
   when: ansible_distribution == "Fedora"

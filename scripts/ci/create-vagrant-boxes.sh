@@ -17,6 +17,8 @@ cd ${dir}/../../contrib/dev
 vagrant plugin install vagrant-openstack
 vagrant plugin install vagrant-reload
 
+set -e
+
 for provider in libvirt virtualbox
 do
   PREPARE_BOX=true vagrant up --provider=$provider

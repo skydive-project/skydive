@@ -408,12 +408,12 @@ func (o *OvsMonitor) monitorOvsdb() error {
 	}
 	o.OvsClient.Lock()
 	o.OvsClient.ovsdb = ovsdb
-	o.OvsClient.Unlock()
 
 	atomic.StoreUint64(&o.OvsClient.connected, 1)
 
 	notifier := Notifier{monitor: o}
 	ovsdb.Register(notifier)
+	o.OvsClient.Unlock()
 
 	requests := make(map[string]libovsdb.MonitorRequest)
 	err = o.setMonitorRequests("Bridge", &requests)
