@@ -50,11 +50,11 @@ var (
 	}
 	// GremlinNotValid validator
 	GremlinNotValid = func(err error) error {
-		return valid.TextErr{Err: fmt.Errorf("Not a valid Gremlin expression: %s", err.Error())}
+		return valid.TextErr{Err: fmt.Errorf("Not a valid Gremlin expression: %s", err)}
 	}
 	// BPFFilterNotValid validator
 	BPFFilterNotValid = func(err error) error {
-		return valid.TextErr{Err: fmt.Errorf("Not a valid BPF expression: %s", err.Error())}
+		return valid.TextErr{Err: fmt.Errorf("Not a valid BPF expression: %s", err)}
 	}
 	// CaptureHeaderSizeNotValid validator
 	CaptureHeaderSizeNotValid = func(min, max uint32) error {
@@ -63,6 +63,11 @@ var (
 	// RawPacketLimitNotValid validator
 	RawPacketLimitNotValid = func(min, max uint32) error {
 		return valid.TextErr{Err: fmt.Errorf("A valid raw packet limit size is > %d && <= %d", min, max)}
+	}
+
+	//LayerKeyModeNotValid validator
+	LayerKeyModeNotValid = func() error {
+		return valid.TextErr{Err: errors.New("Not a valid layer key mode")}
 	}
 )
 
@@ -131,6 +136,22 @@ func isValidRawPacketLimit(v interface{}, param string) error {
 	return nil
 }
 
+func isValidLayerKeyMode(v interface{}, param string) error {
+	name, ok := v.(string)
+	if !ok {
+		return LayerKeyModeNotValid()
+	}
+
+	if len(name) == 0 {
+		return nil
+	}
+
+	if _, err := flow.LayerKeyModeByName(name); err != nil {
+		return LayerKeyModeNotValid()
+	}
+	return nil
+}
+
 // Validate an object based on previously (at init) registered function
 func Validate(value interface{}) error {
 	if err := skydiveValidator.Validate(value); err != nil {
@@ -150,5 +171,6 @@ func init() {
 	skydiveValidator.SetValidationFunc("isBPFFilter", isBPFFilter)
 	skydiveValidator.SetValidationFunc("isValidCaptureHeaderSize", isValidCaptureHeaderSize)
 	skydiveValidator.SetValidationFunc("isValidRawPacketLimit", isValidRawPacketLimit)
+	skydiveValidator.SetValidationFunc("isValidLayerKeyMode", isValidLayerKeyMode)
 	skydiveValidator.SetTag("valid")
 }

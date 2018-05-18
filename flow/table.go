@@ -74,6 +74,7 @@ type TableOpts struct {
 	ExtraTCPMetric bool
 	IPDefrag       bool
 	ReassembleTCP  bool
+	LayerKeyMode   LayerKeyMode
 }
 
 // Table store the flow table and related metrics mechanism
@@ -100,6 +101,7 @@ type Table struct {
 	pipelineConfig *EnhancerPipelineConfig
 	ipDefragger    *IPDefragger
 	tcpAssembler   *TCPAssembler
+	flowOpts       FlowOpts
 }
 
 // NewTable creates a new flow table
@@ -122,6 +124,12 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 	}
 	if len(opts) > 0 {
 		t.Opts = opts[0]
+	}
+
+	t.flowOpts = FlowOpts{
+		TCPMetric:    t.Opts.ExtraTCPMetric,
+		IPDefrag:     t.Opts.IPDefrag,
+		LayerKeyMode: t.Opts.LayerKeyMode,
 	}
 
 	t.updateVersion = 0
@@ -344,14 +352,9 @@ func (ft *Table) Query(query *TableQuery) *TableReply {
 }
 
 func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
-	key := packet.Key(parentUUID)
+	key := packet.Key(parentUUID, ft.flowOpts)
 	flow, new := ft.getOrCreateFlow(key)
 	if new {
-		opts := FlowOpts{
-			TCPMetric: ft.Opts.ExtraTCPMetric,
-			IPDefrag:  ft.Opts.IPDefrag,
-		}
-
 		uuids := FlowUUIDs{
 			ParentUUID: parentUUID,
 		}
@@ -362,7 +365,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 			}
 		}
 
-		flow.initFromPacket(key, packet, ft.nodeTID, uuids, opts)
+		flow.initFromPacket(key, packet, ft.nodeTID, uuids, ft.flowOpts)
 	} else {
 		if ft.Opts.ReassembleTCP {
 			if layer := packet.GoPacket.TransportLayer(); layer != nil && layer.LayerType() == layers.LayerTypeTCP {
@@ -370,7 +373,7 @@ func (ft *Table) packetToFlow(packet *Packet, parentUUID string) *Flow {
 			}
 		}
 
-		flow.Update(packet)
+		flow.Update(packet, ft.flowOpts)
 	}
 
 	flow.XXX_state.updateVersion = ft.updateVersion + 1

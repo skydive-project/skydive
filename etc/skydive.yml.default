@@ -199,7 +199,6 @@ ovs:
     # openflow_versions:
     #  - OpenFlow10
 
-
     # The probe can connect to remote bridge over TLS (ssl url).
     # The default value is empty for those options.
     # Path to the private key file (TLS connection)
@@ -252,7 +251,7 @@ storage:
     # The number of indices to keep before deleting.
     # A value of 0 specifies no limit (i.e. indices will never be deleted)
     # indices_to_keep: 0
-    
+
   # OrientDB backend information.
   myorientdb:
     # driver: orientdb
@@ -342,10 +341,16 @@ flow:
   # Protocol to use to send flows to the analyzer: websocket or udp
   # protocol: udp
 
+  # Define the layer key mode used by default for captures. The key mode defines
+  # the layers used to identify a unique flow.
+  # * L2, this mode includes layer 2 and beyond.
+  # * L3, this mode includes layer 3 and beyond and takes layer 2 if there is no layer 3.
+  # default_layer_key_mode: L2
+
 k8s:
   # EXPERIMENTAL: k8s probe is still under development and should not be used
   # on production systems
-  
+
   # kubeconfig resolution order:
   # - if config_file param is defined then use it;
   # - else if $KUBECONFIG environment is define then use it;

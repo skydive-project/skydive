@@ -29,6 +29,7 @@ import (
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/flow"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -55,7 +56,8 @@ func (c *CaptureResourceHandler) New() types.Resource {
 	id, _ := uuid.NewV4()
 
 	return &types.Capture{
-		UUID: id.String(),
+		UUID:         id.String(),
+		LayerKeyMode: flow.DefaultLayerKeyModeName(),
 	}
 }
 

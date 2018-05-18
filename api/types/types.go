@@ -95,6 +95,7 @@ type Capture struct {
 	ExtraTCPMetric bool   `json:"ExtraTCPMetric"`
 	IPDefrag       bool   `json:"IPDefrag"`
 	ReassembleTCP  bool   `json:"ReassembleTCP"`
+	LayerKeyMode   string `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode"`
 }
 
 // ID returns the capture Identifier

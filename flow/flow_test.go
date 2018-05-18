@@ -384,8 +384,8 @@ func flowsFromPCAP(t *testing.T, filename string, linkType layers.LinkType, bpf 
 	return table.getFlows(&filters.SearchQuery{}).Flows
 }
 
-func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF, expected []*Flow) {
-	flows := flowsFromPCAP(t, filename, linkType, bpf)
+func validatePCAP(t *testing.T, filename string, linkType layers.LinkType, bpf *BPF, expected []*Flow, opts ...TableOpts) {
+	flows := flowsFromPCAP(t, filename, linkType, bpf, opts...)
 	for _, e := range expected {
 		found := false
 		for _, f := range flows {
@@ -1426,4 +1426,106 @@ func TestGeneve(t *testing.T) {
 	}
 
 	validatePCAP(t, "pcaptraces/geneve.pcap", layers.LinkTypeEthernet, nil, expected)
+}
+
+func TestLayerKeyMode(t *testing.T) {
+	expected := []*Flow{
+		{
+			UUID:        "4238ac6e55e4fe84",
+			LayersPath:  "Ethernet/IPv4/ICMPv4",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "f2:45:25:5b:3a:bc",
+				B:        "2e:b9:2d:76:24:07",
+				ID:       0,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.2",
+				B:        "192.168.0.1",
+				ID:       0,
+			},
+			ICMP: &ICMPLayer{
+				Type: ICMPType_ECHO,
+				Code: 0,
+				ID:   23604,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 2,
+				ABBytes:   196,
+				BAPackets: 2,
+				BABytes:   196,
+			},
+			TrackingID:   "fccc60686022c1d7",
+			L3TrackingID: "8d393414982d64e4",
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/layer-key-mode.pcap", layers.LinkTypeEthernet, nil, expected, TableOpts{LayerKeyMode: L3PreferedKeyMode})
+
+	expected = []*Flow{
+		{
+			UUID:        "4238ac6e55e4fe84",
+			LayersPath:  "Ethernet/IPv4/ICMPv4",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "f2:45:25:5b:3a:ac",
+				B:        "2e:b9:2d:76:24:07",
+				ID:       0,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.2",
+				B:        "192.168.0.1",
+				ID:       0,
+			},
+			ICMP: &ICMPLayer{
+				Type: ICMPType_ECHO,
+				Code: 0,
+				ID:   23604,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   98,
+				BAPackets: 1,
+				BABytes:   98,
+			},
+			TrackingID:   "dceb357acb653343",
+			L3TrackingID: "8d393414982d64e4",
+		},
+		{
+			UUID:        "4238ac6e55e4fe84",
+			LayersPath:  "Ethernet/IPv4/ICMPv4",
+			Application: "ICMPv4",
+			Link: &FlowLayer{
+				Protocol: FlowProtocol_ETHERNET,
+				A:        "f2:45:25:5b:3a:bc",
+				B:        "2e:b9:2d:76:24:07",
+				ID:       0,
+			},
+			Network: &FlowLayer{
+				Protocol: FlowProtocol_IPV4,
+				A:        "192.168.0.2",
+				B:        "192.168.0.1",
+				ID:       0,
+			},
+			ICMP: &ICMPLayer{
+				Type: ICMPType_ECHO,
+				Code: 0,
+				ID:   23604,
+			},
+			Metric: &FlowMetric{
+				ABPackets: 1,
+				ABBytes:   98,
+				BAPackets: 1,
+				BABytes:   98,
+			},
+			TrackingID:   "5a98493143d10285",
+			L3TrackingID: "8d393414982d64e4",
+		},
+	}
+
+	validatePCAP(t, "pcaptraces/layer-key-mode.pcap", layers.LinkTypeEthernet, nil, expected, TableOpts{LayerKeyMode: L2KeyMode})
 }

@@ -189,7 +189,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *types.Captur
 	case "pcap":
 		handle, err := pcap.OpenLive(ifName, int32(headerSize), true, time.Second)
 		if err != nil {
-			logging.GetLogger().Errorf("Error while opening device %s: %s", ifName, err.Error())
+			logging.GetLogger().Errorf("Error while opening device %s: %s", ifName, err)
 			return
 		}
 
@@ -205,7 +205,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *types.Captur
 		fnc := func() error {
 			handle, err = NewAFPacketHandle(ifName, int32(headerSize))
 			if err != nil {
-				return fmt.Errorf("Error while opening device %s: %s", ifName, err.Error())
+				return fmt.Errorf("Error while opening device %s: %s", ifName, err)
 			}
 			return nil
 		}
@@ -316,12 +316,7 @@ func (p *GoPacketProbesHandler) RegisterProbe(n *graph.Node, capture *types.Capt
 		logging.GetLogger().Infof("MPLSUDP port: %v", port)
 	}
 
-	opts := flow.TableOpts{
-		RawPacketLimit: int64(capture.RawPacketLimit),
-		ExtraTCPMetric: capture.ExtraTCPMetric,
-		IPDefrag:       capture.IPDefrag,
-		ReassembleTCP:  capture.ReassembleTCP,
-	}
+	opts := tableOptsFromCapture(capture)
 	ft := p.fpta.Alloc(tid, opts)
 
 	probe := &GoPacketProbe{

@@ -478,7 +478,7 @@ func (o *ovsMirrorInterfaceHandler) onNodeEvent(n *graph.Node) {
 
 	fprobe := subProbe.(FlowProbe)
 	if err := fprobe.RegisterProbe(n, ovsProbe.capture, ovsProbe); err != nil {
-		logging.GetLogger().Debugf("Failed to register flow probe: %s", err.Error())
+		logging.GetLogger().Debugf("Failed to register flow probe: %s", err)
 		return
 	}
 
