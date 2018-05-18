@@ -1,6 +1,6 @@
 ---
 - name: Generate systemd unit file
-  become: true
+  become: yes
   template:
     src: "{{ role_path }}/templates/skydive.service.j2"
     dest: /etc/systemd/system/{{ service_name }}.service

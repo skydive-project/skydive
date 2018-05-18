@@ -15,7 +15,7 @@ export SKYDIVE_ANALYZERS=localhost:8082
 export ELASTICSEARCH=localhost:9200
 export TLS=true
 export SKYDIVE=${GOPATH}/bin/skydive
-export FLOW_PROTOCOL=${FLOW_PROTOCOL}
+export FLOW_PROTOCOL=${FLOW_PROTOCOL:-udp}
 export SKYDIVE_LOGGING_LEVEL=DEBUG
 
 make test.functionals WITH_SCALE=true VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale

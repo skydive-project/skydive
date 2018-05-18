@@ -24,7 +24,7 @@
   tags:
     - master
     - slave
-  become: true
+  become: yes
   tasks:
   - package:
       name: python
@@ -35,7 +35,7 @@
   hosts: jenkins_master
   tags:
     - master
-  become: true
+  become: yes
   roles:
     - role: geerlingguy.java
     - role: geerlingguy.jenkins
@@ -184,7 +184,7 @@
   tags:
     - master
     - slave
-  become: true
+  become: yes
   tasks:
   - group:
       name: jenkins
@@ -209,7 +209,7 @@
   tags:
     - master
     - slave
-  become: true
+  become: yes
   tasks:
   - get_url:
       url: "http://{{ hostvars['jenkins_master']['private_ip'] }}:8080/jnlpJars/slave.jar"
@@ -249,7 +249,7 @@
   tags:
     - master
     - slave
-  become: true
+  become: yes
   ignore_errors: yes
   tasks:
   - service:
@@ -262,7 +262,7 @@
   tags:
     - master
     - slave
-  become: true
+  become: yes
   ignore_errors: yes
   tasks:
     - shell: shutdown -r
@@ -271,7 +271,7 @@
   hosts: jenkins_master
   tags:
     - master
-  become: true
+  become: yes
   roles:
   - role: jenkins_master
     when: deploy_master is defined

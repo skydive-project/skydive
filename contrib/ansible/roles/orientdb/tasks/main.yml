@@ -70,7 +70,7 @@
     line: "Environment=ORIENTDB_ROOT_PASSWORD={{ orientdb_root_password }}"
 
 - name: Refresh systemd cache
-  become: true
+  become: yes
   shell: systemctl daemon-reload
 
 - name: Starts and enable OrientDB

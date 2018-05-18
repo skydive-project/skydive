@@ -12,6 +12,7 @@ for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
+BACKEND=${BACKEND:-elasticsearch}
 case "$BACKEND" in
   "orientdb")
     export ORIENTDB_ROOT_PASSWORD=root
