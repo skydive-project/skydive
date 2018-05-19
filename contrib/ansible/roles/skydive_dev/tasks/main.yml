@@ -53,24 +53,6 @@
     - openvswitch
     - docker
 
-- name: Configure docker
-  command: "/bin/true"
-  become: yes
-  tasks:
-  - group:
-      name: docker
-      state: present
-  - user:
-      name: vagrant
-      groups: vagrant, docker
-      append: yes
-  - service:
-      name: "{{ item }}"
-      state: restarted
-      enabled: yes
-    with_items:
-      - docker
-
 - include: lxd.yml
   when: ansible_distribution == "Fedora"
 
@@ -79,5 +61,9 @@
 - include: static.yml
 
 - include: gimme.yml
+  tags:
+    - vagrant
+
+- include: docker.yml
   tags:
     - vagrant

@@ -1,0 +1,16 @@
+---
+- group:
+    name: docker
+    state: present
+
+- user:
+    name: vagrant
+    groups: docker
+    append: yes
+
+- service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  with_items:
+    - docker
