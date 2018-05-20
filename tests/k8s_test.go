@@ -56,6 +56,7 @@ var (
 	jobName           = objName
 	networkPolicyName = objName
 	namespaceName     = objName
+	replicaSetName    = objName
 	serviceName       = objName
 	clusterName       = "cluster"
 )
@@ -157,6 +158,10 @@ func TestK8sNodeNode(t *testing.T) {
 
 func TestK8sPodNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "pod", podName)
+}
+
+func TestK8sReplicaSetNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "replicaset", replicaSetName)
 }
 
 func TestK8sServiceNode(t *testing.T) {
