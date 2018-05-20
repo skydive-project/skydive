@@ -29,6 +29,7 @@ var nodeImgMap = setupFixedImages({
   "container": "container",
   "deployment": "deployment",
   "ingress": "ingress",
+  "job": "job",
   "node": "host",
   "pod": "pod",
   "networkpolicy": "networkpolicy",

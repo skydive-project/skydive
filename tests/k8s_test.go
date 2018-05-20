@@ -52,6 +52,7 @@ var (
 	containerName     = objName
 	deploymentName    = objName
 	ingressName       = objName
+	jobName           = objName
 	networkPolicyName = objName
 	namespaceName     = objName
 	serviceName       = objName
@@ -117,6 +118,10 @@ func testNodeCreationFromConfig(t *testing.T, typ, name string) {
 	testNodeCreation(t, setup, tearDown, typ, name)
 }
 
+func TestK8sClusterNode(t *testing.T) {
+	testNodeCreation(t, nil, nil, "cluster", clusterName)
+}
+
 func TestK8sContainerNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "container", containerName)
 }
@@ -129,6 +134,10 @@ func TestK8sIngressNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "ingress", ingressName)
 }
 
+func TestK8sJobNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "job", jobName)
+}
+
 func TestK8sNamespaceNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "namespace", namespaceName)
 }
@@ -139,10 +148,6 @@ func TestK8sNetworkPolicyNode(t *testing.T) {
 
 func TestK8sNodeNode(t *testing.T) {
 	testNodeCreation(t, nil, nil, "node", nodeName)
-}
-
-func TestK8sClusterNode(t *testing.T) {
-	testNodeCreation(t, nil, nil, "cluster", clusterName)
 }
 
 func TestK8sPodNode(t *testing.T) {
