@@ -33,6 +33,7 @@ var nodeImgMap = setupFixedImages({
   "job": "job",
   "node": "host",
   "persistentvolume": "persistentvolume",
+  "persistentvolumeclaim": "persistentvolumeclaim",
   "pod": "pod",
   "networkpolicy": "networkpolicy",
   "namespace": "ns",

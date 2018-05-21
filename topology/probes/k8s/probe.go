@@ -36,19 +36,20 @@ type Probe struct {
 
 func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 	name2ctor := map[string](func(*graph.Graph) probe.Probe){
-		"cluster":          newClusterProbe,
-		"container":        newContainerProbe,
-		"daemonset":        newDaemonSetProbe,
-		"deployment":       newDeploymentProbe,
-		"ingress":          newIngressProbe,
-		"job":              newJobProbe,
-		"namespace":        newNamespaceProbe,
-		"networkpolicy":    newNetworkPolicyProbe,
-		"node":             newNodeProbe,
-		"persistentvolume": newPersistentVolumeProbe,
-		"pod":              newPodProbe,
-		"replicaset":       newReplicaSetProbe,
-		"service":          newServiceProbe,
+		"cluster":               newClusterProbe,
+		"container":             newContainerProbe,
+		"daemonset":             newDaemonSetProbe,
+		"deployment":            newDeploymentProbe,
+		"ingress":               newIngressProbe,
+		"job":                   newJobProbe,
+		"namespace":             newNamespaceProbe,
+		"networkpolicy":         newNetworkPolicyProbe,
+		"node":                  newNodeProbe,
+		"persistentvolume":      newPersistentVolumeProbe,
+		"persistentvolumeclaim": newPersistentVolumeClaimProbe,
+		"pod":        newPodProbe,
+		"replicaset": newReplicaSetProbe,
+		"service":    newServiceProbe,
 	}
 
 	configProbes := config.GetStringSlice("k8s.probes")
