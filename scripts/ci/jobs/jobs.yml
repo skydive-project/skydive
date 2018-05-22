@@ -261,6 +261,38 @@
     publishers:
       - chuck-norris
 
+- job:
+    name: skydive-helm-tests
+    defaults: skydive
+    node: baremetal
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/skydive-project/skydive
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          trigger-phrase: '.*(re)?run (tests|(skydive-)?helm-tests).*'
+          skip-build-phrase: '.*skip (skydive-)?helm-tests.*'
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: true
+          cancel-builds-on-update: true
+          only-trigger-phrase: true
+          status-context: skydive-helm-tests
+          black-list-labels:
+            - no-ci
+    builders:
+      - shell: |
+          cd src/github.com/skydive-project/skydive
+          scripts/ci/run-helm-tests.sh
+    wrappers:
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/${JOB_NAME}/builds/${BUILD_NUMBER}/log.html
+          status-context: ${JOB_NAME}
+    publishers:
+      - chuck-norris
+
 - job-template:
     name: '{name}-functional-tests-backend-{backend}'
     defaults: skydive
