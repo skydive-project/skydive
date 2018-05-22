@@ -199,7 +199,7 @@ endif
 
 OS_DEB := $(shell test -f /etc/debian_version && echo -n Y)
 ifeq ($(OS_DEB),Y)
-	STATIC_DIR := $(shell dpkg-architecture --command sh -c 'echo /usr/lib/$$DEB_TARGET_MULTIARCH')
+	STATIC_DIR := $(shell dpkg-architecture -c 'sh' -c 'echo /usr/lib/$$DEB_BUILD_MULTIARCH')
 	STATIC_LIBS := \
 		libz.a \
 		liblzma.a \
