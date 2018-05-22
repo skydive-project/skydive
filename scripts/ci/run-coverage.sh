@@ -16,7 +16,6 @@ set -e
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
-[ -d /tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
 export ARGS="-graph.output ascii"
 ./coverage.sh --no-functionals --no-scale
 sudo scripts/ci/cleanup.sh snapshot

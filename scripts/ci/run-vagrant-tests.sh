@@ -20,7 +20,7 @@ do
   DEPLOYMENT_MODE=$mode vagrant up --provision-with common
   DEPLOYMENT_MODE=$mode vagrant provision
   retcode=$?
-  vagrant destroy
+  vagrant destroy --force
   [ $retcode -ne 0 ] && exit $retcode || true
 done
 
