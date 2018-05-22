@@ -380,6 +380,7 @@ k8s:
   - namespace
   - networkpolicy
   - node
+  - persistentvolume
   - pod
   - replicaset
   - service
