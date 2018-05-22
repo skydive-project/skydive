@@ -58,7 +58,7 @@ Vue.component('capture-form', {
             </div>\
             <div class="form-group" v-if="captureType == \'sflow\'">\
               <label for="port">Port</label>\
-              <input id="port" type="number" class="form-control input-sm" v-model="port" min="0"/>\
+              <input id="port" type="number" class="form-control input-sm" v-model.number="port" min="0"/>\
             </div>\
             <div class="form-group">\
               <label for="capture-layer-key-mode">Layers used for Flow Key</label>\
@@ -71,11 +71,11 @@ Vue.component('capture-form', {
             </div>\
             <div class="form-group">\
               <label for="capture-header-size">Header Size</label>\
-              <input id="capture-header-size" type="number" class="form-control input-sm" v-model="headerSize" min="0" />\
+              <input id="capture-header-size" type="number" class="form-control input-sm" v-model.number="headerSize" min="0" />\
             </div>\
             <div class="form-group" v-if="isPacketCaptureEnabled">\
               <label for="capture-raw-packets">Raw packets limit</label>\
-              <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model="rawPackets" min="0" max="10"/>\
+              <input id="capture-raw-packets" type="number" class="form-control input-sm" v-model.number="rawPackets" min="0" max="10"/>\
             </div>\
             <div class="form-group">\
               <label class="form-check-label">\
