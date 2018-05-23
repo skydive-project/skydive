@@ -2,16 +2,32 @@
     name: skydive-github
     scm:
       - git:
-          url: https://github.com/skydive-project/skydive
+          url: "${REPOSITORY}"
           browser: githubweb
-          browser-url: http://github.com/skydive-project/skydive
+          browser-url: "${REPOSITORY}"
           timeout: 20
           basedir: src/github.com/skydive-project/skydive
           per-build-tag: false
           skip-tag: true
-          refspec: +refs/pull/*:refs/remotes/origin/pr/*
+          refspec: "${REFSPEC}"
           branches:
-            - "${ghprbActualCommit}"
+            - "${REF}"
+
+- trigger:
+    name: skydive-pull-request
+    triggers:
+      - github-pull-request:
+          org-list:
+            - skydive-project
+          github-hooks: true
+          allow-whitelist-orgs-as-admins: false
+          trigger-phrase: '.*(re)?run ({trigger-prefix}tests|(skydive-)?{name}).*'
+          skip-build-phrase: '.*skip (skydive-)?{name}.*'
+          cancel-builds-on-update: "{cancel-builds-on-update}"
+          only-trigger-phrase: "{only-trigger-phrase}"
+          status-context: "skydive-{name}"
+          black-list-labels:
+            - no-ci
 
 - publisher:
     name: publish-cobertura
@@ -109,90 +125,104 @@
               credential-id: coveralls-token
               variable: COVERALLS_TOKEN
 
+- wrapper:
+    name: skydive-wrappers
+    wrappers:
+      - ansicolor:
+          colormap: gnome-terminal
+      - timeout:
+          timeout: 120
+          fail: true
+          type: absolute
+      - timestamps
+      - github-pull-request:
+          status-url: http://ci-logs.skydive.network/${JOB_NAME}/builds/${BUILD_NUMBER}/log.html
+          status-context: ${JOB_NAME}
+
 - builder:
     name: skydive-cleanup
     builders:
       - shell: |
           #!/bin/bash
           cd src/github.com/skydive-project/skydive
-          [ -d /var/tmp/netcleanup ] || sudo scripts/ci/cleanup.sh init
+          [ -d /var/tmp/skydive-cleanup ] || sudo scripts/ci/cleanup.sh init
           sudo scripts/ci/cleanup.sh snapshot
           sudo scripts/ci/cleanup.sh cleanup
+
+- builder:
+    name: skydive-test
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          . scripts/ci/install-go.sh
+          {test}
+
+- parameter:
+    name: skydive-parameters
+    parameters:
+      - string:
+          name: REPOSITORY
+          default: "{repository}"
+          description: URL of the Git repository to use
+      - string:
+          name: REF
+          default: "{ref}"
+          description: The tag or branch to build
+      - string:
+          name: REFSPEC
+          default: "{refspec}"
+      - string:
+          name: DRY_RUN
+          default: "{dry-run}"
+          description: If specified, do not upload anything
 
 - defaults:
     name: skydive
     project-type: freestyle
-    scm:
-      - skydive-github
-    wrappers:
-      - ansicolor:
-          colormap: gnome-terminal
-      - timeout:
-          timeout: 60
-          fail: true
-          type: absolute
-      - timestamps
     node: slaves
-
-- job:
-    name: skydive-go-fmt
-    defaults: skydive
     concurrent: true
+    parameters:
+      - skydive-parameters:
+          repository: https://github.com/skydive-project/skydive
+          ref: "${sha1}"
+          refspec: "+refs/pull/*:refs/remotes/origin/pr/*"
+          dry-run: "true"
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
-    triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?go-fmt).*'
-          skip-build-phrase: '.*skip (skydive-)?go-fmt.*'
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
-          cancel-builds-on-update: true
-          status-context: skydive-go-fmt
-          black-list-labels:
-            - no-ci
-    builders:
-      - shell: |
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          scripts/ci/run-go-fmt.sh
+    scm:
+      - skydive-github
     wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-go-fmt/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-go-fmt
+      - skydive-wrappers
     publishers:
       - chuck-norris
 
 - job:
+    name: skydive-go-fmt
+    defaults: skydive
+    triggers:
+      - skydive-pull-request:
+          name: go-fmt
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
+          cancel-builds-on-update: true
+    builders:
+      - skydive-test:
+          test: scripts/ci/run-go-fmt.sh
+
+- job:
     name: skydive-unit-tests
     defaults: skydive
-    concurrent: true
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?unit-tests).*'
-          skip-build-phrase: '.*skip (skydive-)?unit-tests.*'
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
+      - skydive-pull-request:
+          name: unit-tests
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
           cancel-builds-on-update: true
-          status-context: skydive-unit-tests
-          black-list-labels:
-            - no-ci
     builders:
-      - shell: |
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          scripts/ci/run-unit-tests.sh
-    wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-unit-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-unit-tests
+      - skydive-test:
+          test: scripts/ci/run-unit-tests.sh
     publishers:
       - junit:
           results: tests.xml
@@ -201,103 +231,64 @@
 - job:
     name: skydive-compile-tests
     defaults: skydive
-    concurrent: true
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?compile-tests).*'
-          skip-build-phrase: '.*skip (skydive-)?compile-tests.*'
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
+      - skydive-pull-request:
+          name: compile-tests
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
           cancel-builds-on-update: true
-          status-context: skydive-compile-tests
-          black-list-labels:
-            - no-ci
     builders:
-      - shell: |
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          scripts/ci/run-compile-tests.sh
-    wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-compile-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-compile-tests
-    publishers:
-      - chuck-norris
+      - skydive-test:
+          test: scripts/ci/run-compile-tests.sh
 
 - job:
     name: skydive-k8s-tests
     defaults: skydive
     node: baremetal
-    concurrent: true
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?k8s-tests).*'
-          skip-build-phrase: '.*skip (skydive-)?k8s-tests.*'
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
+      - skydive-pull-request:
+          name: k8s-tests
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
           cancel-builds-on-update: true
-          status-context: skydive-k8s-tests
-          black-list-labels:
-            - no-ci
     builders:
-      - shell: |
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          scripts/ci/run-k8s-tests.sh
-    wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-k8s-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-k8s-tests
-    publishers:
-      - chuck-norris
+      - skydive-test:
+          test: scripts/ci/run-k8s-tests.sh
+
+- job:
+    name: skydive-helm-tests
+    defaults: skydive
+    node: baremetal
+    concurrent: true
+    triggers:
+      - skydive-pull-request:
+          name: helm-tests
+          trigger-prefix: "all "
+          cancel-builds-on-update: true
+          only-trigger-phrase: true
+    builders:
+      - skydive-test:
+          test: scripts/ci/run-helm-tests.sh
 
 - job-template:
     name: '{name}-functional-tests-backend-{backend}'
     defaults: skydive
-    concurrent: true
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
+    parameters:
+      - skydive-parameters:
+          repository: https://github.com/skydive-project/skydive
+          ref: "${{sha1}}"
+          refspec: "+refs/pull/*:refs/remotes/origin/pr/*"
+          dry-run: "true"
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?functional-tests-backend-{backend}).*'
-          skip-build-phrase: '.*skip (skydive-)?functional-tests-backend-{backend}.*'
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
+      - skydive-pull-request:
+          name: "functional-tests-backend-{backend}"
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
           cancel-builds-on-update: true
-          status-context: '{name}-functional-tests-backend-{backend}'
-          black-list-labels:
-            - no-ci
     builders:
       - skydive-cleanup
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          BACKEND={backend} scripts/ci/run-functional-tests.sh
-    wrappers:
-      - github-pull-request:
-          status-url: 'http://ci-logs.skydive.network/{name}-functional-tests-backend-{backend}/builds/${{BUILD_NUMBER}}/log.html'
-          status-context: '{name}-functional-tests-backend-{backend}'
-      - ansicolor:
-          colormap: gnome-terminal
-      - timeout:
-          timeout: 60
-          fail: true
-          type: absolute
-      - timestamps
+      - skydive-test:
+          test: BACKEND={backend} scripts/ci/run-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml
@@ -314,72 +305,33 @@
 - job:
     name: skydive-scale-tests
     defaults: skydive
-    concurrent: true
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?scale-tests).*'
-          skip-build-phrase: '.*skip (skydive-)?scale-tests.*'
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
+      - skydive-pull-request:
+          name: scale-tests
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
           cancel-builds-on-update: true
-          status-context: skydive-scale-tests
-          black-list-labels:
-            - no-ci
     builders:
       - skydive-cleanup
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb scripts/ci/run-scale.sh
+      - skydive-test:
+          test: FLOW_PROTOCOL=udp scripts/ci/run-scale.sh
       - skydive-cleanup
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb FLOW_PROTOCOL=udp scripts/ci/run-scale.sh
-    wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-scale-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-scale-tests
-    publishers:
-      - chuck-norris
+      - skydive-test:
+          test: scripts/ci/run-scale.sh
 
 - job:
     name: skydive-selenium-tests
     defaults: skydive
-    concurrent: true
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (tests|(skydive-)?selenium-tests).*'
-          skip-build-phrase: '.*skip (skydive-)?selenium-tests.*'
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
+      - skydive-pull-request:
+          name: selenium-tests
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
           cancel-builds-on-update: true
-          status-context: skydive-selenium-tests
-          black-list-labels:
-            - no-ci
     builders:
       - skydive-cleanup
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb scripts/ci/run-selenium-tests.sh
-    wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-selenium-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-selenium-tests
+      - skydive-test:
+          test: scripts/ci/run-selenium-tests.sh
     publishers:
       - chuck-norris
       - archive:
@@ -389,34 +341,16 @@
 - job:
     name: skydive-cdd-overview-tests
     defaults: skydive
-    concurrent: true
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run cdd-overview.*'
-          skip-build-phrase: '.*skip cdd-overview.*'
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
-          cancel-builds-on-update: true
+      - skydive-pull-request:
+          name: cdd-overview-tests
+          trigger-prefix: "all "
           only-trigger-phrase: true
-          status-context: skydive-cdd-overview-tests
-          black-list-labels:
-            - no-ci
+          cancel-builds-on-update: true
     builders:
       - skydive-cleanup
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb scripts/ci/run-cdd-overview-tests.sh
-    wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-cdd-overview-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-cdd-overview-tests
+      - skydive-test:
+          test: scripts/ci/run-cdd-overview-tests.sh
     publishers:
       - chuck-norris
       - archive:
@@ -431,302 +365,248 @@
 
 - job:
     name: skydive-release
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
-    parameters:
-      - string:
-          name: REF
-          description: The tag or branch to build
-    scm:
-      - git:
-          url: https://github.com/skydive-project/skydive
-          browser: githubweb
-          browser-url: http://github.com/skydive-project/skydive
-          timeout: 20
-          basedir: src/github.com/skydive-project/skydive
-          per-build-tag: false
-          skip-tag: true
-          refspec: +refs/tags/*:refs/remotes/origin/tags/*
-          branches:
-            - "${REF}"
+    defaults: skydive
+    triggers:
+      - skydive-pull-request:
+          name: release
+          trigger-prefix: "deliverable "
+          only-trigger-phrase: true
+          cancel-builds-on-update: true
     wrappers:
       - github-credentials
-      - docker-credentials
-      - copr-credentials
     builders:
-      - shell: |
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb scripts/ci/create-release.sh
-    publishers:
-      - chuck-norris
+      - skydive-test:
+          test: scripts/ci/create-release.sh
 
 - job:
     name: skydive-create-binaries
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
-    node: slaves
+    defaults: skydive
     triggers:
-      - github
-    scm:
-      - git:
-          url: https://github.com/skydive-project/skydive
-          browser: githubweb
-          browser-url: http://github.com/skydive-project/skydive
-          timeout: 20
-          basedir: src/github.com/skydive-project/skydive
-          per-build-tag: false
-          skip-tag: true
-          branches:
-            - master
+      - skydive-pull-request:
+          name: create-binaries
+          trigger-prefix: "deliverable "
+          only-trigger-phrase: true
+          cancel-builds-on-update: true
     wrappers:
       - github-credentials
       - docker-credentials
+      - skydive-wrappers
     builders:
-      - shell: |
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb scripts/ci/create-binaries.sh
-    publishers:
-      - chuck-norris
+      - skydive-test:
+          test: scripts/ci/create-binaries.sh
 
 - job:
     name: skydive-create-vagrant-boxes
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
+    defaults: skydive
     node: baremetal
     triggers:
-      - github
-    scm:
-      - git:
-          url: https://github.com/skydive-project/skydive
-          browser: githubweb
-          browser-url: http://github.com/skydive-project/skydive
-          timeout: 20
-          basedir: src/github.com/skydive-project/skydive
-          per-build-tag: false
-          skip-tag: true
-          branches:
-            - master
+      - skydive-pull-request:
+          name: create-vagrant-boxes
+          trigger-prefix: "deliverable "
+          only-trigger-phrase: true
+          cancel-builds-on-update: false
     wrappers:
       - credentials-binding:
           - text:
               credential-id: vagrantcloud-token
               variable: VAGRANTCLOUD_TOKEN
+      - skydive-wrappers
     builders:
-      - shell: |
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb scripts/ci/create-vagrant-boxes.sh
-    publishers:
-      - chuck-norris
+      - skydive-test:
+          test: scripts/ci/create-vagrant-boxes.sh
+
+- job:
+    name: skydive-create-docker-image
+    defaults: skydive
+    triggers:
+      - skydive-pull-request:
+          name: create-docker-image
+          trigger-prefix: "deliverable "
+          only-trigger-phrase: true
+          cancel-builds-on-update: true
+    builders:
+      - skydive-test:
+          test: scripts/ci/create-docker-image.sh
+    wrappers:
+      - docker-credentials
+
+- job:
+    name: skydive-build-copr
+    defaults: skydive
+    triggers:
+      - skydive-pull-request:
+          name: build-copr
+          trigger-prefix: "deliverable "
+          only-trigger-phrase: true
+          cancel-builds-on-update: true
+    builders:
+      - skydive-test:
+          test: scripts/ci/build-copr.sh
+    wrappers:
+      - copr-credentials
 
 - job:
     name: skydive-devstack-tests
     defaults: skydive
     node: baremetal
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?devstack-tests.*'
+      - skydive-pull-request:
+          name: devstack-tests
+          trigger-prefix: "all "
           only-trigger-phrase: true
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
-          cancel-builds-on-update: true
-          status-context: skydive-devstack-tests
-          black-list-labels:
-            - no-ci
+          cancel-builds-on-update: false
     builders:
       - skydive-cleanup
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          cd scripts/ci/devstack
-          vagrant up --no-provision --provider=libvirt && vagrant provision
-          retcode=$?
-          vagrant destroy
-          exit $retcode
+      - skydive-test:
+          test: scripts/ci/run-devstack-tests.sh
     wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-devstack-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-devstack-tests
       - openstack-credentials
-    publishers:
-      - chuck-norris
+      - skydive-wrappers
 
 - job:
     name: skydive-kolla-tests
     defaults: skydive
     node: baremetal
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?kolla-tests.*'
+      - skydive-pull-request:
+          name: kolla-tests
+          trigger-prefix: "all "
           only-trigger-phrase: true
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
-          cancel-builds-on-update: true
-          status-context: skydive-kolla-tests
-          black-list-labels:
-            - no-ci
+          cancel-builds-on-update: false
     builders:
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          make static
-          cp $GOPATH/bin/skydive .
-          make test.functionals.compile GOFLAGS="-race" GORACE="history_size=5" WITH_NEUTRON=true VERBOSE=true
-          cd scripts/ci/kolla
-          DEPLOYMENT_MODE=dev vagrant up --provider=libvirt
-          retcode=$?
-          vagrant destroy
-          exit $retcode
+      - skydive-test:
+          test: scripts/ci/run-kolla-tests.sh
     wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-kolla-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-kolla-tests
       - openstack-credentials
-    publishers:
-      - chuck-norris
+      - skydive-wrappers
 
 - job:
     name: skydive-vagrant-tests
     defaults: skydive
     node: baremetal
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?vagrant-tests.*'
+      - skydive-pull-request:
+          name: vagrant-tests
+          trigger-prefix: "all "
           only-trigger-phrase: true
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: false
-          status-context: skydive-vagrant-tests
-          black-list-labels:
-            - no-ci
     builders:
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          VAGRANT_DEFAULT_PROVIDER=libvirt scripts/ci/run-vagrant-tests.sh
+      - skydive-test:
+          test: VAGRANT_DEFAULT_PROVIDER=libvirt scripts/ci/run-vagrant-tests.sh
     wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-vagrant-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-vagrant-tests
       - openstack-credentials
-    publishers:
-      - chuck-norris
+      - skydive-wrappers
 
 - job:
     name: skydive-packaging-tests
     defaults: skydive
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?packaging-tests.*'
+      - skydive-pull-request:
+          name: packaging-tests
+          trigger-prefix: "all "
           only-trigger-phrase: true
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
-          status-context: skydive-packaging-tests
-          black-list-labels:
-            - no-ci
     builders:
-      - shell: |
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb scripts/ci/run-packaging-tests.sh
-    wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-packaging-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-packaging-tests
-    publishers:
-      - chuck-norris
+      - skydive-test:
+          test: scripts/ci/run-packaging-tests.sh
 
 - job:
     name: skydive-python-tests
     defaults: skydive
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?python-tests.*'
+      - skydive-pull-request:
+          name: python-tests
+          trigger-prefix: "all "
           only-trigger-phrase: true
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
-          status-context: skydive-python-tests
-          black-list-labels:
-            - no-ci
     builders:
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          SHELL=dumb scripts/ci/run-python-tests.sh
-    wrappers:
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-python-tests/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-python-tests
-    publishers:
-      - chuck-norris
+      - skydive-test:
+          test: scripts/ci/run-python-tests.sh
 
 - job:
     name: skydive-coverage
     defaults: skydive
     node: baremetal
-    concurrent: true
-    properties:
-      - github:
-          url: https://github.com/skydive-project/skydive
     triggers:
-      - github-pull-request:
-          org-list:
-            - skydive-project
-          trigger-phrase: '.*(re)?run (skydive-)?coverage.*'
+      - skydive-pull-request:
+          name: coverage
+          trigger-prefix: "all "
           only-trigger-phrase: true
-          github-hooks: true
-          allow-whitelist-orgs-as-admins: true
           cancel-builds-on-update: true
-          status-context: skydive-coverage
-          black-list-labels:
-            - no-ci
     builders:
-      - shell: |
-          #!/bin/bash
-          cd src/github.com/skydive-project/skydive
-          . scripts/ci/install-go.sh
-          scripts/ci/run-coverage.sh
+      - skydive-cleanup
+      - skydive-test:
+          test: scripts/ci/run-coverage.sh
     wrappers:
       - coverage-credentials
-      - github-pull-request:
-          status-url: http://ci-logs.skydive.network/skydive-coverage/builds/${BUILD_NUMBER}/log.html
-          status-context: skydive-coverage
+      - skydive-wrappers
     publishers:
       - publish-cobertura
       - chuck-norris
+
+- trigger:
+    name: skydive-github-trigger
+    triggers:
+      - github
+
+- job:
+    name: skydive-create-deliverables
+    project-type: multijob
+    defaults: skydive
+    parameters:
+      - skydive-parameters:
+          repository: https://github.com/skydive-project/skydive
+          ref: ""
+          refspec: "+refs/tags/*:refs/remotes/origin/tags/*"
+          dry-run: ""
+    triggers:
+      - skydive-github-trigger
+    builders:
+      - multijob:
+          name: skydive-create-deliverables
+          condition: SUCCESSFUL
+          projects:
+            - name: skydive-create-docker-image
+              current-parameters: true
+              git-revision: true
+            - name: skydive-build-copr
+              current-parameters: true
+              git-revision: true
+            - name: skydive-create-vagrant-boxes
+              current-parameters: true
+              git-revision: true
+      - multijob:
+          name: skydive-create-release
+          condition: SUCCESSFUL
+          projects:
+            - name: skydive-release
+              current-parameters: true
+              git-revision: true
+
+- job:
+    name: skydive-create-deliverables-trunk
+    project-type: multijob
+    defaults: skydive
+    parameters:
+      - skydive-parameters:
+          repository: https://github.com/skydive-project/skydive
+          ref: "refs/heads/master"
+          refspec: "+refs/heads/*:refs/remotes/origin/*"
+          dry-run: ""
+    triggers:
+      - skydive-github-trigger
+    builders:
+      - multijob:
+          name: skydive-create-deliverables
+          condition: SUCCESSFUL
+          projects:
+            - name: skydive-create-binaries
+              current-parameters: true
+              git-revision: true
+            - name: skydive-create-docker-image
+              current-parameters: true
+              git-revision: true
+              predefined-parameters: REF=latest
+            - name: skydive-create-vagrant-boxes
+              current-parameters: true
+              git-revision: true

@@ -58,6 +58,7 @@
         - credentials-binding
         - build-timeout
         - timestamper
+        - jenkins-multijob-plugin
 
 - name: Install requirements
   hosts: jenkins_master, slaves
