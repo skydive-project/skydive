@@ -1,0 +1,43 @@
+---
+- name: Install Keystone requirements
+  package:
+    name: python2-shade
+    state: present
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: Install Keystone requirements
+  package:
+    name: python-shade
+    state: present
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+- name: Create a Skydive keystone user
+  environment:
+    OS_AUTH_URL: "{{ os_auth_url }}"
+    OS_USERNAME: "{{ os_username }}"
+    OS_PASSWORD: "{{ os_password }}"
+    OS_PROJECT_NAME: "{{ os_tenant_name }}"
+    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
+    OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
+  os_user:
+    name: "{{ skydive_os_service_username }}"
+    password: "{{ skydive_os_service_password }}"
+    domain: "{{ skydive_os_service_domain_name }}"
+    default_project: "{{ skydive_os_service_tenant_name }}"
+    state: present
+
+- name: Set skydive Keystone user as admin
+  environment:
+    OS_AUTH_URL: "{{ os_auth_url }}"
+    OS_USERNAME: "{{ os_username }}"
+    OS_PASSWORD: "{{ os_password }}"
+    OS_PROJECT_NAME: "{{ os_tenant_name }}"
+    OS_USER_DOMAIN_NAME: "{{ os_user_domain_name }}"
+    OS_PROJECT_DOMAIN_NAME: "{{ os_project_domain_name }}"
+    OS_IDENTITY_API_VERSION: "{{ os_identity_api_version }}"
+  os_user_role:
+    user: "{{ skydive_os_service_username }}"
+    role: "{{ skydive_os_service_user_role }}"
+    project: "{{ skydive_os_service_tenant_name }}"
+    state: present

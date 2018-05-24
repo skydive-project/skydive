@@ -9,9 +9,15 @@ skydive_binary_remote_location: https://github.com/skydive-project/skydive/relea
 skydive_deployment_mode: binary
 skydive_analyzer_port: 8082
 skydive_agent_port: 8081
-skydive_auth_type:
 skydive_flow_protocol: udp
 
-os_auth_url:
-os_tenant_name: admin
-os_domain_name: Default
+skydive_auth_type:
+skydive_username: skydive
+skydive_password: skydive
+
+skydive_os_service_username: skydive
+skydive_os_service_password: skydive
+skydive_os_service_tenant_name: service
+skydive_os_service_domain_name: Default
+skydive_os_service_region_name: RegionOne
+skydive_os_service_endpoint_type: internal

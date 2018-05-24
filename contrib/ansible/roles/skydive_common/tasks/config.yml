@@ -37,29 +37,6 @@
     key: "flow.protocol"
     value: "{{ skydive_flow_protocol }}"
 
-- name: Define Keystone auth parameters
-  yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.analyzer_username"
-          value: "{{ os_username }}"
-        - key: "auth.analyzer_password"
-          value: "{{ os_password }}"
-    state: present
-  when: skydive_auth_type == "keystone"
-
-- name: Define keystone auth parameters
-  yedit:
-    src: "{{ skydive_config_file }}"
-    edits:
-        - key: "auth.keystone.auth_url"
-          value: "{{ os_auth_url }}"
-        - key: "auth.keystone.tenant_name"
-          value: "{{ os_tenant_name }}"
-        - key: "auth.keystone.domain_name"
-          value: "{{ os_domain_name }}"
-    state: present
-
 - name: Define basic auth parameters
   yedit:
     src: "{{ skydive_config_file }}"
@@ -70,6 +47,17 @@
           value: "{{ skydive_password }}"
     state: present
   when: skydive_auth_type == "basic"
+
+- name: Define Keystone parameters
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "auth.analyzer_username"
+          value: "{{ skydive_os_service_username }}"
+        - key: "auth.analyzer_password"
+          value: "{{ skydive_os_service_password }}"
+    state: present
+  when: skydive_auth_type == "keystone"
 
 - name: Set extra config vars
   yedit:
