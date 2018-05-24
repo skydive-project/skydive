@@ -46,13 +46,14 @@
     jsonObject.put("username", "");
     jsonObject.put("password", "");
     jsonObject.put("accessToken", "accessToken");
-    jsonObject.put("adminlist", "");
+    jsonObject.put("adminlist", ["nplanel", "safchain", "lebauce", "masco-enovance"]);
     jsonObject.put("allowMembersOfWhitelistedOrgsAsAdmin", "false");
     jsonObject.put("publishedURL", "");
-    jsonObject.put("whitelistPhrase", "");
+    jsonObject.put("whitelistPhrase", "add to whitelist");
     jsonObject.put("okToTestPhrase", "ok to test");
     jsonObject.put("retestPhrase", "retest this please");
-    jsonObject.put("skipBuildPhrase", "[skip ci]");
+    jsonObject.put("requestForTestingPhrase", "Can one of the admins verify this patch ?");
+    jsonObject.put("skipBuildPhrase", "skip ci");
     jsonObject.put("cron", "*/1 * * * *");
     jsonObject.put("useComments", "false");
     jsonObject.put("logExcerptLines", "0");
