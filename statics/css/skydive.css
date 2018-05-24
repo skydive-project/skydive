@@ -512,6 +512,11 @@ ul.dropdown-menu .fa.pull-right {
   background-color: #333;
 }
 
+.rules-detail .navbar-brand {
+  font-size: 16px;
+  line-height: 16px;
+}
+
 .expand-icon-stack .icon-main {
   font-size: 15px;
 }
