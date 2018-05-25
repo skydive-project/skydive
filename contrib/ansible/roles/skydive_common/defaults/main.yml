@@ -13,9 +13,5 @@ skydive_auth_type:
 skydive_flow_protocol: udp
 
 os_auth_url:
-os_tenant_name:
+os_tenant_name: admin
 os_domain_name: Default
-os_region_name: RegionOne
-os_username:
-os_password:
-os_endpoint_type: public

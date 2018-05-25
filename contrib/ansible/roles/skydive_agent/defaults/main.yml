@@ -3,3 +3,11 @@ skydive_agent_docker_extra_env:
 skydive_agent_docker_image: skydive/skydive
 skydive_agent_docker_command: agent
 skydive_topology_probes:
+
+os_auth_url:
+os_tenant_name: service
+os_domain_name: Default
+os_region_name: RegionOne
+os_username: neutron
+os_password:
+os_endpoint_type: public

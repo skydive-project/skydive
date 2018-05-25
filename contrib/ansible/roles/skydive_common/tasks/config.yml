@@ -48,24 +48,16 @@
     state: present
   when: skydive_auth_type == "keystone"
 
-- name: Define Openstack parameters
+- name: Define keystone auth parameters
   yedit:
     src: "{{ skydive_config_file }}"
     edits:
-        - key: "openstack.auth_url"
+        - key: "auth.keystone.auth_url"
           value: "{{ os_auth_url }}"
-        - key: "openstack.tenant_name"
+        - key: "auth.keystone.tenant_name"
           value: "{{ os_tenant_name }}"
-        - key: "openstack.domain_name"
+        - key: "auth.keystone.domain_name"
           value: "{{ os_domain_name }}"
-        - key: "openstack.region_name"
-          value: "{{ os_region_name }}"
-        - key: "openstack.username"
-          value: "{{ os_username }}"
-        - key: "openstack.password"
-          value: "{{ os_password }}"
-        - key: "openstack.endpoint_type"
-          value: "{{ os_endpoint_type }}"
     state: present
 
 - name: Define basic auth parameters

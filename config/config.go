@@ -44,22 +44,6 @@ var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configurat
 var (
 	cfg           *viper.Viper
 	relocationMap = map[string][]string{
-		"openstack.auth_url": {
-			"auth.keystone.auth_url",
-			"agent.topology.neutron.auth_url",
-		},
-		"openstack.tenant_name": {
-			"auth.keystone.tenant_name",
-			"agent.topology.neutron.tenant_name",
-		},
-		"openstack.domain_name": {
-			"auth.keystone.domain_name",
-			"agent.topology.neutron.domain_name",
-		},
-		"openstack.region_name":              {"agent.topology.neutron.region_name"},
-		"openstack.endpoint_type":            {"agent.topology.neutron.endpoint_type"},
-		"openstack.username":                 {"agent.topology.neutron.username"},
-		"openstack.password":                 {"agent.topology.neutron.password"},
 		"analyzer.flow.bulk_insert":          {"analyzer.storage.bulk_insert"},
 		"analyzer.flow.bulk_insert_deadline": {"analyzer.storage.bulk_insert_deadline"},
 		"analyzer.flow.max_buffer_size":      {"analyzer.storage.max_flow_buffer_size"},
@@ -85,6 +69,11 @@ func init() {
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
+	cfg.SetDefault("agent.topology.neutron.domain_name", "Default")
+	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")
+	cfg.SetDefault("agent.topology.neutron.region_name", "RegionOne")
+	cfg.SetDefault("agent.topology.neutron.tenant_name", "service")
+	cfg.SetDefault("agent.topology.neutron.username", "neutron")
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 	cfg.SetDefault("agent.X509_servername", "")
 
@@ -99,6 +88,8 @@ func init() {
 	cfg.SetDefault("analyzer.topology.backend", "memory")
 	cfg.SetDefault("analyzer.topology.probes", []string{})
 
+	cfg.SetDefault("auth.keystone.tenant_name", "admin")
+	cfg.SetDefault("auth.keystone.domain_name", "Default")
 	cfg.SetDefault("auth.type", "noauth")
 
 	cfg.SetDefault("cache.expire", 300)
@@ -138,11 +129,6 @@ func init() {
 	cfg.SetDefault("netns.run_path", "/var/run/netns")
 
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
-
-	cfg.SetDefault("openstack.tenant_name", "admin")
-	cfg.SetDefault("openstack.domain_name", "Default")
-	cfg.SetDefault("openstack.region_name", "RegionOne")
-	cfg.SetDefault("openstack.endpoint_type", "public")
 
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("ovs.oflow.enable", false)

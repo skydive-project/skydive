@@ -465,13 +465,13 @@ func NewNeutronProbe(g *graph.Graph, authURL, username, password, tenantName, re
 
 // NewNeutronProbeFromConfig creates a new neutron probe based on configuration
 func NewNeutronProbeFromConfig(g *graph.Graph) (*NeutronProbe, error) {
-	authURL := config.GetString("openstack.auth_url")
-	domainName := config.GetString("openstack.domain_name")
-	endpointType := config.GetString("openstack.endpoint_type")
-	password := config.GetString("openstack.password")
-	regionName := config.GetString("openstack.region_name")
-	tenantName := config.GetString("openstack.tenant_name")
-	username := config.GetString("openstack.username")
+	authURL := config.GetString("agent.topology.neutron.auth_url")
+	domainName := config.GetString("agent.topology.neutron.domain_name")
+	endpointType := config.GetString("agent.topology.neutron.endpoint_type")
+	password := config.GetString("agent.topology.neutron.password")
+	regionName := config.GetString("agent.topology.neutron.region_name")
+	tenantName := config.GetString("agent.topology.neutron.tenant_name")
+	username := config.GetString("agent.topology.neutron.username")
 
 	endpointTypes := map[string]gophercloud.Availability{
 		"public":   gophercloud.AvailabilityPublic,

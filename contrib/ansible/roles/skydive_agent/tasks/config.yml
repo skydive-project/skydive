@@ -5,3 +5,23 @@
     key: "agent.topology.probes"
     value: "{{ skydive_topology_probes }}"
     state: present
+
+- name: Define neutron probe parameters
+  yedit:
+    src: "{{ skydive_config_file }}"
+    edits:
+        - key: "agent.topology.neutron.auth_url"
+          value: "{{ os_auth_url }}"
+        - key: "agent.topology.neutron.tenant_name"
+          value: "{{ os_tenant_name }}"
+        - key: "agent.topology.neutron.domain_name"
+          value: "{{ os_domain_name }}"
+        - key: "agent.topology.neutron.region_name"
+          value: "{{ os_region_name }}"
+        - key: "agent.topology.neutron.username"
+          value: "{{ os_username }}"
+        - key: "agent.topology.neutron.password"
+          value: "{{ os_password }}"
+        - key: "agent.topology.neutron.endpoint_type"
+          value: "{{ os_endpoint_type }}"
+    state: present
