@@ -427,9 +427,7 @@ Vue.component('rule-table-detail', {
                   {{rule.priority}}\
                 </td>\
                 <td>\
-                  <span v-for="filter in rule.filters.replace(/([;,])/g, \'$1#\').split(\'#\')">\
-                    {{ filter }}\
-                  </span>\
+                  {{ splitLine(rule.filters) }}\
                 </td>\
                 <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
                     <table>\
@@ -447,9 +445,7 @@ Vue.component('rule-table-detail', {
                     </table>\
                 </td>\
                 <td v-if="rule.actionsSpan != -1" :rowspan="rule.actionsSpan">\
-                  <span v-for="act in rule.actions.replace(/([;,])/g, \'$1#\').split(\'#\')">\
-                    {{ act }}\
-                  </span>\
+                  {{ splitLine(rule.actions) }}\
                 </td>\
             </tr>\
         </tbody>\
@@ -465,6 +461,19 @@ Vue.component('rule-table-detail', {
       required: true
     }
   },
+  methods: {
+    splitLine: function(elt_list) {
+      function reresplit(elt) {
+        return elt.length > 40 ? elt.match(/.{1,40}/g).join('\u200b') : elt;
+      }
+      function resplit(elt) {
+        return (
+          elt.length > 40 ?
+          elt.split(';').map(reresplit).join(';\u200b') : elt);
+      }
+      return elt_list.split(',').map(resplit).join(',\u200b');
+    }
+  }
 });
 
 /** Vue component showing the rules associated to a bridge */
