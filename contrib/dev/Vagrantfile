@@ -162,8 +162,7 @@ Vagrant.configure(2) do |config|
     dev.vm.box = "skydive/skydive-dev"
 
     if PREPARE_BOX then
-      # Install Python for ansible
-      dev.vm.provision "common", type: "shell", inline: "sudo yum -y install python2 python-yaml libselinux-python vim git"
+      dev.vm.provision "python-for-ansible", type: "shell", inline: "sudo yum -y install python2 python-yaml libselinux-python"
       if not SKYDIVE_SYNC_FOLDER then
         dev.vm.provision "skygive-git-clone", type: "shell", privileged: false, inline: $skydive_git_clone
       end

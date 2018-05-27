@@ -43,6 +43,7 @@
      - socat
      - python2-virtualenv
      - python3-virtualenv
+     - vim
      - virt-what
 
 - service:
