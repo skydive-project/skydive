@@ -45,8 +45,12 @@ import (
 // FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
 const FlowBulkInsertDefault int = 100
 
-// FlowBulkInsertDeadlineDefault deadline of each bulk insert in second
-const FlowBulkInsertDeadlineDefault int = 5
+	// FlowBulkDeadlineDefault deadline of each bulk insert in second
+	FlowBulkInsertDeadlineDefault int = 5
+
+	// FlowBulkMaxDelayDefault delay between two bulk
+	FlowBulkMaxDelayDefault int = 5
+)
 
 func max(a, b int) int {
 	if a > b {
@@ -249,11 +253,10 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 	s.bulkInsertDeadline = time.Duration(FlowBulkInsertDeadlineDefault) * time.Second
 
 	storage := fmt.Sprintf("storage.%s.", config.GetString("analyzer.flow.backend"))
-	if config.GetString(storage+"driver") == "elasticsearch" {
-		s.bulkInsert = config.GetInt(storage + "bulk_maxdocs")
+	if config.GetString(storage+"driver") != "memory" {
 		bulkMaxDelay := config.GetInt(storage + "bulk_maxdelay")
-		if s.bulkInsert < 1 || bulkMaxDelay < 1 {
-			return fmt.Errorf("bulk_maxdocs and bulk_maxdelay must be positive values")
+		if bulkMaxDelay < 1 {
+			return fmt.Errorf("bulk_maxdelay must be positive values, given: %d", bulkMaxDelay)
 		}
 		s.bulkInsertDeadline = time.Duration(bulkMaxDelay) * time.Second
 	}

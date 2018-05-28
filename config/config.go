@@ -214,6 +214,23 @@ func checkViperSupportedExts(ext string) bool {
 	return false
 }
 
+func setStorageDefaults() {
+	for key, _ := range cfg.GetStringMap("storage") {
+		if key == "elasticsearch" || key == "orientdb" || key == "memory" {
+			continue
+		}
+
+		driver := cfg.GetString("storage." + key + ".driver")
+		if driver == "" {
+			continue
+		}
+
+		for defkey, value := range cfg.GetStringMap("storage." + driver) {
+			cfg.SetDefault("storage."+key+"."+defkey, value)
+		}
+	}
+}
+
 // InitConfig with a backend
 func InitConfig(backend string, paths []string) error {
 	if len(paths) == 0 {
@@ -251,6 +268,8 @@ func InitConfig(backend string, paths []string) error {
 	default:
 		return fmt.Errorf("Invalid backend: %s", backend)
 	}
+
+	setStorageDefaults()
 
 	return checkConfig()
 }

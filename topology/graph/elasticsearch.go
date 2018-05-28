@@ -25,7 +25,6 @@ package graph
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -92,9 +91,6 @@ const ESGraphElementMapping = `
 	]
 }
 `
-
-// ErrBadConfig elasticsearch configuration file is incorrect
-var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
 
 // ElasticSearchBackend describes a presisent backend based on ElasticSearch
 type ElasticSearchBackend struct {

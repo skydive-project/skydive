@@ -57,19 +57,19 @@ func NewStorage(backend string) (s Storage, err error) {
 	case "elasticsearch":
 		s, err = elasticsearch.New(backend)
 		if err != nil {
-			logging.GetLogger().Fatalf("Can't connect to ElasticSearch server: %v", err)
+			err = fmt.Errorf("Can't connect to ElasticSearch server: %v", err)
+			return
 		}
 	case "orientdb":
 		s, err = orientdb.New(backend)
 		if err != nil {
-			logging.GetLogger().Fatalf("Can't connect to OrientDB server: %v", err)
+			err = fmt.Errorf("Can't connect to OrientDB server: %v", err)
+			return
 		}
-	case "memory", "":
-		logging.GetLogger().Infof("Using no storage")
+	case "memory":
 		return
 	default:
 		err = fmt.Errorf("Flow backend driver '%s' not supported", driver)
-		logging.GetLogger().Critical(err.Error())
 		return
 	}
 

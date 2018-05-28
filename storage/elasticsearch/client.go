@@ -130,8 +130,12 @@ type ElasticSearchClient struct {
 	index         *ElasticIndex
 }
 
-// ErrBadConfig error bad configuration file
-var ErrBadConfig = errors.New("elasticsearch : Config file is misconfigured, check elasticsearch key format")
+var (
+	// ErrBadConfig error bad configuration file
+	ErrBadConfig = func(reason string) error { return fmt.Errorf("Elasticsearch configuration error: %s", reason) }
+	// ErrIndexTypeNotFound error index type used but not defined
+	ErrIndexTypeNotFound = errors.New("Index type not found in the indices map")
+)
 
 func (e *ElasticIndex) increaseEntries() {
 	e.entriesCounter++
@@ -574,7 +578,7 @@ func urlFromHost(host string) (*url.URL, error) {
 
 	url, err := url.Parse(urlStr)
 	if err != nil || url.Port() == "" {
-		return nil, ErrBadConfig
+		return nil, ErrBadConfig(fmt.Sprintf("wrong url format, %s", urlStr))
 	}
 	return url, nil
 }
