@@ -36,7 +36,6 @@ $skydive_git_clone = <<SCRIPT
 mkdir -p #{SKYDIVE_GUEST}
 cd #{SKYDIVE_GUEST}
 git clone https://#{SKYDIVE_GITHUB} .
-ssh-keygen -f id_rsa -t rsa -N ''
 SCRIPT
 
 $guest_additions_script = <<SCRIPT
