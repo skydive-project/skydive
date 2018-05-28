@@ -2,16 +2,16 @@
     name: skydive-github
     scm:
       - git:
-          url: "${REPOSITORY}"
+          url: "{repository}"
           browser: githubweb
-          browser-url: "${REPOSITORY}"
+          browser-url: "{repository}"
           timeout: 20
           basedir: src/github.com/skydive-project/skydive
           per-build-tag: false
           skip-tag: true
-          refspec: "${REFSPEC}"
+          refspec: "{refspec}"
           branches:
-            - "${REF}"
+            - "{ref}"
 
 - trigger:
     name: skydive-pull-request
@@ -192,7 +192,10 @@
       - github:
           url: https://github.com/skydive-project/skydive
     scm:
-      - skydive-github
+      - skydive-github:
+          repository: "${REPOSITORY}"
+          ref: "${REF}"
+          refspec: "${REFSPEC}"
     wrappers:
       - skydive-wrappers
     publishers:
@@ -270,37 +273,41 @@
       - skydive-test:
           test: scripts/ci/run-helm-tests.sh
 
-- job-template:
-    name: '{name}-functional-tests-backend-{backend}'
+- job:
+    name: 'skydive-functional-tests-backend-elasticsearch'
     defaults: skydive
-    parameters:
-      - skydive-parameters:
-          repository: https://github.com/skydive-project/skydive
-          ref: "${{sha1}}"
-          refspec: "+refs/pull/*:refs/remotes/origin/pr/*"
-          dry-run: "true"
     triggers:
       - skydive-pull-request:
-          name: "functional-tests-backend-{backend}"
+          name: "functional-tests-backend-elasticsearch"
           trigger-prefix: "(all )?"
           only-trigger-phrase: false
           cancel-builds-on-update: true
     builders:
       - skydive-cleanup
       - skydive-test:
-          test: BACKEND={backend} scripts/ci/run-functional-tests.sh
+          test: BACKEND=elasticsearch scripts/ci/run-functional-tests.sh
     publishers:
       - junit:
           results: tests.xml
       - chuck-norris
 
-- project:
-    name: skydive
-    backend:
-      - orientdb
-      - elasticsearch
-    jobs:
-      - '{name}-functional-tests-backend-{backend}'
+- job:
+    name: 'skydive-functional-tests-backend-orientdb'
+    defaults: skydive
+    triggers:
+      - skydive-pull-request:
+          name: "functional-tests-backend-orientdb"
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
+          cancel-builds-on-update: true
+    builders:
+      - skydive-cleanup
+      - skydive-test:
+          test: BACKEND=orientdb scripts/ci/run-functional-tests.sh
+    publishers:
+      - junit:
+          results: tests.xml
+      - chuck-norris
 
 - job:
     name: skydive-scale-tests
@@ -559,6 +566,11 @@
           ref: ""
           refspec: "+refs/tags/*:refs/remotes/origin/tags/*"
           dry-run: ""
+    scm:
+      - skydive-github:
+          repository: "https://github.com/skydive-project/skydive"
+          ref: ""
+          refspec: "+refs/tags/*:refs/remotes/origin/tags/*"
     triggers:
       - skydive-github-trigger
     builders:
@@ -593,6 +605,11 @@
           ref: "refs/heads/master"
           refspec: "+refs/heads/*:refs/remotes/origin/*"
           dry-run: ""
+    scm:
+      - skydive-github:
+          repository: "https://github.com/skydive-project/skydive"
+          ref: "refs/heads/master"
+          refspec: "+refs/heads/*:refs/remotes/origin/*"
     triggers:
       - skydive-github-trigger
     builders:
