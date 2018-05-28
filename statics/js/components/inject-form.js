@@ -49,12 +49,12 @@ Vue.component('inject-form', {
       </div>\
       <div class="form-group">\
         <label for="inject-count">Nb. of packets</label>\
-        <input id="inject-count" type="number" class="form-control input-sm" v-model="count" min="1" />\
+        <input id="inject-count" type="number" class="form-control input-sm" v-model.number="count" min="1" />\
       </div>\
       <div v-if="type === \'icmp4\' || type === \'icmp6\'">\
         <div class="form-group">\
           <label for="inject-count">ICMP Identifier</label>\
-          <input id="inject-id" type="number" class="form-control input-sm" v-model="id" min="0" />\
+          <input id="inject-id" type="number" class="form-control input-sm" v-model.number="id" min="0" />\
         </div>\
         <div class="form-group">\
           <label for="inject-increment">Increment identifier at every packet</label>\
@@ -71,7 +71,7 @@ Vue.component('inject-form', {
       </div>\
       <div class="form-group" v-if="mode == \'random\'">\
         <label for="payload-length">Payload length</label>\
-        <input id="payload-length" type="number" class="form-control input-sm" v-model="payloadlength" min="0" />\
+        <input id="payload-length" type="number" class="form-control input-sm" v-model.number="payloadlength" min="0" />\
       </div>\
       <div class="form-group" v-if="mode == \'custom\'">\
         <label for="payld">Payload</label>\
@@ -80,16 +80,16 @@ Vue.component('inject-form', {
       <div v-if="type === \'tcp4\' || type === \'tcp6\' || type === \'udp4\' || type === \'udp6\'">\
         <div class="form-group">\
           <label for="src-port">Src Port</label>\
-          <input id="src-port" type="number" class="form-control input-sm" v-model="port1" min="0" />\
+          <input id="src-port" type="number" class="form-control input-sm" v-model.number="port1" min="0" />\
         </div>\
         <div class="form-group">\
           <label for="dst-port">Dst Port</label>\
-          <input id="dst-port" type="number" class="form-control input-sm" v-model="port2" min="0" />\
+          <input id="dst-port" type="number" class="form-control input-sm" v-model.number="port2" min="0" />\
         </div>\
       </div>\
       <div class="form-group">\
         <label for="inject-interval">Interval in milliseconds</label>\
-        <input id="inject-interval" type="number" class="form-control input-sm" v-model="interval" min="0" />\
+        <input id="inject-interval" type="number" class="form-control input-sm" v-model.number="interval" min="0" />\
       </div>\
       <button type="submit" id="inject" class="btn btn-primary">Inject</button>\
       <button type="button" class="btn btn-danger" @click="reset">Reset</button>\
