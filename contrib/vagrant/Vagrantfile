@@ -12,7 +12,8 @@ AGENT_EXTRA_PROVISION_SCRIPT=ENV.fetch("AGENT_EXTRA_PROVISION_SCRIPT", "")
 ANALYZER_EXTRA_PROVISION_SCRIPT=ENV.fetch("ANALYZER_EXTRA_PROVISION_SCRIPT", "")
 
 $install_agent_deps = <<SCRIPT
-yum -y install centos-release-openstack-pike
+yum -y update centos-release
+yum -y install centos-release-openstack-queens
 yum -y install openvswitch docker
 systemctl start openvswitch
 systemctl start docker
