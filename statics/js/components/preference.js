@@ -42,34 +42,34 @@ var PreferenceComponent = {
         <div class="form-group">\
           <label for="bw-abs-active">Bandwidth Absolute Active</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Active threshold in kbps"></i></a>\
-          <input id="bw-abs-active" type="number" class="form-control input-sm" v-model="preferences.bandwidthAbsoluteActive" min="0"/>\
+          <input id="bw-abs-active" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthAbsoluteActive" min="0"/>\
         </div>\
         <div class="form-group">\
           <label for="bw-abs-warning">Bandwidth Absolute Warning</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Warning threshold in kbps"></i></a>\
-          <input id="bw-abs-warning" type="number" class="form-control input-sm" v-model="preferences.bandwidthAbsoluteWarning" min="0"/>\
+          <input id="bw-abs-warning" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthAbsoluteWarning" min="0"/>\
         </div>\
         <div class="form-group">\
           <label for="bw-abs-alert">Bandwidth Absolute Alert</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Alert threshold in kbps"></i></a>\
-          <input id="bw-abs-alert" type="number" class="form-control input-sm" v-model="preferences.bandwidthAbsoluteAlert" min="0"/>\
+          <input id="bw-abs-alert" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthAbsoluteAlert" min="0"/>\
         </div>\
       </div>\
       <div v-if="preferences.bandwidthThreshold == \'relative\'">\
         <div class="form-group">\
           <label for="bw-rel-active">Bandwidth Relative Active</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Active threshold in between 0 to 1"></i></a>\
-          <input id="bw-rel-active" type="number" class="form-control input-sm" v-model="preferences.bandwidthRelativeActive" min="0" max="1" step="0.1"/>\
+          <input id="bw-rel-active" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthRelativeActive" min="0" max="1" step="0.1"/>\
         </div>\
         <div class="form-group">\
           <label for="bw-rel-warning">Bandwidth Relative Warning</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Warning threshold in between 0 to 1"></i></a>\
-          <input id="bw-rel-warning" type="number" class="form-control input-sm" v-model="preferences.bandwidthRelativeWarning" min="0" max="1" step="0.1"/>\
+          <input id="bw-rel-warning" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthRelativeWarning" min="0" max="1" step="0.1"/>\
         </div>\
         <div class="form-group">\
           <label for="bw-rel-alert">Bandwidth Relative Alert</label>\
           <a><i class="fa fa-question help-text" aria-hidden="true" title="Alert threshold in between 0 to 1"></i></a>\
-          <input id="bw-rel-alert" type="number" class="form-control input-sm" v-model="preferences.bandwidthRelativeAlert" min="0" max="1" step="0.1"/>\
+          <input id="bw-rel-alert" type="number" class="form-control input-sm" v-model.number="preferences.bandwidthRelativeAlert" min="0" max="1" step="0.1"/>\
         </div>\
       </div>\
       <div class="button-holder row">\
