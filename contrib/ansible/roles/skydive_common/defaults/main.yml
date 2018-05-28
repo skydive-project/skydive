@@ -7,11 +7,9 @@ skydive_config_file: /etc/skydive/skydive.yml
 skydive_binary_location: /usr/bin/skydive
 skydive_binary_remote_location: https://github.com/skydive-project/skydive/releases/download/{{ skydive_release }}/skydive
 skydive_deployment_mode: binary
-skydive_etcd_embedded: yes
 skydive_listen_ip:
 skydive_analyzer_port: 8082
 skydive_agent_port: 8081
-skydive_etcd_port: 12379
 skydive_auth_type:
 skydive_flow_protocol: udp
 

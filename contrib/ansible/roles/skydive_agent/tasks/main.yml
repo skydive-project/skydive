@@ -1,4 +1,6 @@
 ---
+- include: config.yml
+
 - include: docker.yml
   when: skydive_deployment_mode == "container"
 
@@ -7,5 +9,3 @@
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
-
-- include: config.yml

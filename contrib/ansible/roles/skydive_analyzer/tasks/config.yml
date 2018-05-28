@@ -10,7 +10,7 @@
   yedit:
     src: "{{ skydive_config_file }}"
     key: etcd.embedded
-    value: "{{ skydive_etcd_embedded and hostvars[groups['analyzers'][0]].ansible_hostname == hostvars[inventory_hostname].ansible_hostname }}"
+    value: "{{ skydive_etcd_embedded }}"
 
 - name: Setup analyzer listen address for container mode
   yedit:
@@ -33,19 +33,45 @@
     value: "{{ item.value }}"
   with_dict:
     etcd.listen: "0.0.0.0:{{ skydive_etcd_port }}"
-    etcd.servers: "http://localhost:{{ skydive_etcd_port }}"
+    etcd.servers: "{{ skydive_etcd_scheme }}://localhost:{{ skydive_etcd_port }}"
   when: skydive_deployment_mode == "container"
 
-- name: Setup Etcd listen addresses for non container mode
+- name: Setup Etcd listen address for non container mode
   yedit:
     src: "{{ skydive_config_file }}"
-    key: "{{ item.key }}"
-    value: "{{ item.value }}"
-  with_dict:
-    etcd.listen: "{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
-    etcd.servers:
-    - "http://{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
-  when: skydive_deployment_mode != "container"
+    key: "etcd.listen"
+    value: "{{ hostvars[groups['analyzers'][0]].skydive_analyzer_ip }}:{{ skydive_etcd_port }}"
+
+- name: Setup Etcd embedded server name
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "etcd.name"
+    value: "{{ ansible_hostname }}"
+  when: skydive_etcd_embedded | bool
+
+- name: Setup Etcd embedded servers list
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "etcd.servers"
+    value: "{{ analyzers.split(',') | map('regex_replace', '([^:]*).*', skydive_etcd_scheme + '://\\1:' + (skydive_etcd_port | string)) | list }}"
+  when: skydive_etcd_embedded | bool
+
+- name: Setup Etcd server list
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "etcd.servers"
+    value: "{{ skydive_etcd_servers }}"
+  when: not (skydive_etcd_embedded | bool)
+
+- name: Setup Etcd peers list
+  yedit:
+    src: "{{ skydive_config_file }}"
+    key: "{{ 'etcd.peers.' + hostvars[item[0]]['ansible_hostname'] }}"
+    value: "{{ skydive_etcd_scheme + '://' + (item[1] | regex_replace('([^:]*).*', '\\1:')) + ((skydive_etcd_port + 1) | string) }}"
+  with_together:
+    - "{{ groups['analyzers'] }}"
+    - "{{ analyzers.split(',') | list }}"
+  when: skydive_etcd_embedded | bool
 
 - name: Define auth type
   yedit:

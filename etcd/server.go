@@ -69,16 +69,18 @@ func NewEmbeddedEtcd(name string, listen string, dataDir string, maxWalFiles, ma
 	cfg.MaxWalFiles = maxWalFiles
 	cfg.MaxSnapFiles = maxSnapFiles
 
-	var endpoint string
+	var endpoints []string
 	var clientURLs types.URLs
 	if sa.Addr == "0.0.0.0" || sa.Addr == "::" {
 		if clientURLs, err = interfaceURLs(sa.Port); err != nil {
 			return nil, err
 		}
-		endpoint = clientURLs[0].String()
+		for _, url := range clientURLs {
+			endpoints = append(endpoints, url.String())
+		}
 	} else {
-		endpoint = fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port)
-		clientURLs, _ = types.NewURLs([]string{endpoint})
+		endpoints = []string{fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port)}
+		clientURLs, _ = types.NewURLs(endpoints)
 	}
 
 	cfg.LCUrls = clientURLs
@@ -126,7 +128,7 @@ func NewEmbeddedEtcd(name string, listen string, dataDir string, maxWalFiles, ma
 	t := time.Now().Add(startTimeout)
 
 	clientConfig := client.Config{
-		Endpoints:               []string{endpoint},
+		Endpoints:               endpoints,
 		Transport:               client.DefaultTransport,
 		HeaderTimeoutPerRequest: time.Second,
 	}
