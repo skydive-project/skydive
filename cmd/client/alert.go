@@ -146,9 +146,10 @@ var AlertDelete = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := client.Delete("alert", args[0]); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
+		for _, id := range args {
+			if err := client.Delete("alert", id); err != nil {
+				logging.GetLogger().Error(err)
+			}
 		}
 	},
 }
