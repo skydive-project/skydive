@@ -17,6 +17,11 @@ cd ${dir}/../../contrib/dev
 vagrant plugin install vagrant-openstack
 vagrant plugin install vagrant-reload
 
+function vagrant_cleanup {
+    vagrant destroy --force
+}
+trap vagrant_cleanup EXIT
+
 set -v
 set -e
 
