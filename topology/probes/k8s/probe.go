@@ -40,6 +40,7 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 		"container":     newContainerProbe,
 		"deployment":    newDeploymentProbe,
 		"ingress":       newIngressProbe,
+		"job":           newJobProbe,
 		"namespace":     newNamespaceProbe,
 		"networkpolicy": newNetworkPolicyProbe,
 		"node":          newNodeProbe,
