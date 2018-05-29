@@ -5,6 +5,7 @@ if [ -n "$(sudo virt-what)" ]; then
     exit 1
 fi
 
+set -e
 set -v
 
 dir="$(dirname "$0")"
@@ -14,14 +15,15 @@ make install
 
 cd contrib/vagrant
 
+function vagrant_cleanup {
+    vagrant destroy --force
+}
+trap vagrant_cleanup EXIT
+
 for mode in dev binary package container
 do
   DEPLOYMENT_MODE=$mode vagrant box update
   DEPLOYMENT_MODE=$mode vagrant up --provision-with common
   DEPLOYMENT_MODE=$mode vagrant provision
-  retcode=$?
   vagrant destroy --force
-  [ $retcode -ne 0 ] && exit $retcode || true
 done
-
-exit 0
