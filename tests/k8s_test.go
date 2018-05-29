@@ -50,6 +50,7 @@ var (
 	nodeName, _       = os.Hostname()
 	podName           = objName
 	containerName     = objName
+	daemonSetName     = objName
 	deploymentName    = objName
 	ingressName       = objName
 	jobName           = objName
@@ -60,7 +61,7 @@ var (
 )
 
 func makeCmdWaitUntilStatus(ty, name, status string) string {
-	return fmt.Sprintf("echo 'for i in {1..%d}; do sleep %d; kubectl get %s %s %s break; done' | bash", k8sRetry, k8sDelaySeconds, ty, name, status)
+	return fmt.Sprintf("echo 'for i in {1..%d}; do sleep %d; kubectl get --all-namespaces %s %s %s break; done' | bash", k8sRetry, k8sDelaySeconds, ty, name, status)
 }
 
 func makeCmdWaitUntilCreated(ty, name string) string {
@@ -140,6 +141,10 @@ func TestK8sJobNode(t *testing.T) {
 
 func TestK8sNamespaceNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "namespace", namespaceName)
+}
+
+func TestK8sDaemonSetNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "daemonset", daemonsetName)
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
