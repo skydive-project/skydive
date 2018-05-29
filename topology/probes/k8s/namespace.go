@@ -58,6 +58,7 @@ func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 			filters.NewTermStringFilter("Type", "replicaset"),
 			filters.NewTermStringFilter("Type", "replicationcontroller"),
 			filters.NewTermStringFilter("Type", "service"),
+			filters.NewTermStringFilter("Type", "statefulset"),
 		),
 	)
 	m := graph.NewGraphElementFilter(filter)
