@@ -168,9 +168,10 @@ var PacketInjectionDelete = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := client.Delete("injectpacket", args[0]); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
+		for _, id := range args {
+			if err := client.Delete("injectpacket", id); err != nil {
+				logging.GetLogger().Error(err.Error())
+			}
 		}
 	},
 }
