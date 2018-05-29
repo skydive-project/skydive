@@ -102,6 +102,7 @@ type Table struct {
 	ipDefragger    *IPDefragger
 	tcpAssembler   *TCPAssembler
 	flowOpts       FlowOpts
+	appPortMap     *ApplicationPortMap
 }
 
 // NewTable creates a new flow table
@@ -121,6 +122,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 		nodeTID:        nodeTID,
 		ipDefragger:    NewIPDefragger(),
 		tcpAssembler:   NewTCPAssembler(),
+		appPortMap:     NewApplicationPortMapFromConfig(),
 	}
 	if len(opts) > 0 {
 		t.Opts = opts[0]
@@ -130,6 +132,7 @@ func NewTable(updateHandler *Handler, expireHandler *Handler, pipeline *Enhancer
 		TCPMetric:    t.Opts.ExtraTCPMetric,
 		IPDefrag:     t.Opts.IPDefrag,
 		LayerKeyMode: t.Opts.LayerKeyMode,
+		AppPortMap:   t.appPortMap,
 	}
 
 	t.updateVersion = 0

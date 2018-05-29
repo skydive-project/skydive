@@ -109,6 +109,7 @@ type FlowOpts struct {
 	TCPMetric    bool
 	IPDefrag     bool
 	LayerKeyMode LayerKeyMode
+	AppPortMap   *ApplicationPortMap
 }
 
 // FlowUUIDs describes UUIDs that can be applied to flows
@@ -831,8 +832,13 @@ func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
 		f.Transport = &FlowLayer{Protocol: FlowProtocol_TCP}
 
 		transportPacket := layer.(*layers.TCP)
-		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
-		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
+		srcPort, dstPort := int(transportPacket.SrcPort), int(transportPacket.DstPort)
+		f.Transport.A, f.Transport.B = strconv.Itoa(srcPort), strconv.Itoa(dstPort)
+
+		if app, ok := opts.AppPortMap.TCPApplication(srcPort, dstPort); ok {
+			f.Application = app
+		}
+
 		if opts.TCPMetric {
 			f.TCPMetric = &TCPMetric{}
 		}
@@ -840,8 +846,12 @@ func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
 		f.Transport = &FlowLayer{Protocol: FlowProtocol_UDP}
 
 		transportPacket := layer.(*layers.UDP)
-		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
-		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
+		srcPort, dstPort := int(transportPacket.SrcPort), int(transportPacket.DstPort)
+		f.Transport.A, f.Transport.B = strconv.Itoa(srcPort), strconv.Itoa(dstPort)
+
+		if app, ok := opts.AppPortMap.UDPApplication(srcPort, dstPort); ok {
+			f.Application = app
+		}
 	} else if layer := packet.Layer(layers.LayerTypeSCTP); layer != nil {
 		f.Transport = &FlowLayer{Protocol: FlowProtocol_SCTP}
 

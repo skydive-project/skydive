@@ -65,6 +65,7 @@ var (
 		"analyzer.flow.max_buffer_size":      {"analyzer.storage.max_flow_buffer_size"},
 		"analyzer.topology.backend":          {"graph.backend"},
 		"analyzer.flow.backend":              {"analyzer.storage.backend"},
+		"agent.capture.stats_update":         {"agent.flow.stats_update"},
 	}
 )
 
@@ -76,11 +77,11 @@ func init() {
 
 	cfg = viper.New()
 
+	cfg.SetDefault("agent.capture.stats_update", 1)
 	cfg.SetDefault("agent.flow.probes", []string{"gopacket", "pcapsocket"})
 	cfg.SetDefault("agent.flow.pcapsocket.bind_address", "127.0.0.1")
 	cfg.SetDefault("agent.flow.pcapsocket.min_port", 8100)
 	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
-	cfg.SetDefault("agent.flow.stats_update", 1)
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
