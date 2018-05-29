@@ -172,6 +172,10 @@ func TestK8sReplicaSetNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "replicaset", replicaSetName)
 }
 
+func TestK8sReplicationControllerNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "replicationcontroller", objName+"-replicationcontroller")
+}
+
 func TestK8sServiceNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "service", serviceName)
 }
