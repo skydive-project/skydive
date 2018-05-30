@@ -2,10 +2,26 @@
 # vi: set ft=ruby :
 
 require 'vagrant-openstack-provider'
+require 'vagrant-reload'
+if Vagrant::Util::Platform.windows? then
+  require 'vagrant-vbguest'
+end
 
-PREPARE_BOX=ENV.fetch("PREPARE_BOX", "") == "true" ? true : false
-PROVISION_BOX=ENV.fetch("PROVISION_BOX", ENV.fetch("PREPARE_BOX", "")) == "true" ? true : false
-SYNCED_FOLDER=ENV.has_key?("GOPATH") ? ENV.fetch("GOPATH") + "/src/github.com/skydive-project/skydive" : "../.."
+PREPARE_BOX = ENV.fetch("PREPARE_BOX", "") == "true" ? true : false
+PROVISION_BOX = ENV.fetch("PROVISION_BOX", ENV.fetch("PREPARE_BOX", "")) == "true" ? true : false
+
+DEVMODE_ROOT = "../.."
+GOPATH = "/home/vagrant"
+
+SKYDIVE_SYNC_FOLDER = ENV.fetch("SKYDIVE_SYNC_FOLDER", "true") == "true" ? true : false
+SKYDIVE_GITHUB = "github.com/skydive-project/skydive"
+SKYDIVE_DIR = "/src/#{SKYDIVE_GITHUB}"
+SKYDIVE_HOST = ENV.has_key?("GOPATH") ? ENV.fetch("GOPATH") + SKYDIVE_DIR : DEVMODE_ROOT
+SKYDIVE_GUEST = GOPATH + SKYDIVE_DIR
+
+ANSIBLE_DIR = "/contrib/ansible"
+ANSIBLE_HOST = DEVMODE_ROOT + ANSIBLE_DIR
+ANSIBLE_GUEST = GOPATH + ANSIBLE_DIR
 
 $skydive_extra_config = {
   "http.ws.pong_timeout" => 10,
@@ -16,9 +32,15 @@ $skydive_extra_config = {
   "storage.elasticsearch.host" => "127.0.0.1:9200"
 }
 
+$skydive_git_clone = <<SCRIPT
+mkdir -p #{SKYDIVE_GUEST}
+cd #{SKYDIVE_GUEST}
+git clone https://#{SKYDIVE_GITHUB} .
+SCRIPT
+
 $guest_additions_script = <<SCRIPT
 sudo dnf -y install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
-sudo dnf -y install kernel kernel-devel VirtualBox-guest-additions
+sudo dnf -y install kernel kernel-devel VirtualBox-guest-additions akmods
 latest=`rpm -q kernel-devel --qf '%{BUILDTIME} %{version}-%{release}.%{arch}\n' | sort -n -k 1 | tail -n 1 | awk '{print $2}'`
 sudo akmods --kernels $latest
 SCRIPT
@@ -73,7 +95,7 @@ cat > /etc/motd <<'EOF'
 # Welcome to the Skydive development image
 #
 # To go to the Skydive sources, use:
-cd src/github.com/skydive-project/skydive
+cd #{SKYDIVE_GUEST}
 #
 # To build Skydive, use:
 make
@@ -92,7 +114,7 @@ alias cleanup="(sudo /home/vagrant/src/github.com/skydive-project/skydive/script
 EOF
 SCRIPT
 
-def populate_os_config(os, ip)
+def populate_os_config(os)
   os.openstack_auth_url = ENV.fetch("OS_AUTH_URL", "'http://keystone-server.net/v2.0/tokens'")
   os.username = ENV.fetch("OS_USERNAME", "openstackUser")
   os.password = ENV.fetch("OS_PASSWORD", "openstackPassword")
@@ -107,19 +129,43 @@ def populate_os_config(os, ip)
       address: '192.168.10.10',
     },
   ]
+  os.security_groups = [ 'skydive' ]
+end
+
+def fedora_box(override, type)
+  major = "27"
+  override.vm.box = "fedora/#{major}-cloud-base"
+end
+
+def synced_folder(override, type, host, guest)
+  if type == "virtualbox" and Vagrant::Util::Platform.windows? then
+    override.vm.synced_folder host, guest, type: "virtualbox", user: "vagrant", group: "vagrant"
+  else
+    override.vm.synced_folder host, guest, type: "nfs", nfs_udp: false
+  end
+end
+
+def dev_synced_folders(override, type)
+    if SKYDIVE_SYNC_FOLDER then
+      synced_folder(override, type, SKYDIVE_HOST, SKYDIVE_GUEST)
+    end
+    if PROVISION_BOX then
+      synced_folder(override, type, ANSIBLE_HOST, ANSIBLE_GUEST)
+    end
 end
 
 Vagrant.configure(2) do |config|
   config.vm.define "dev" do |dev|
     dev.vm.hostname = "dev"
     dev.vm.synced_folder ".", "/vagrant", disabled: true
-    dev.vm.synced_folder SYNCED_FOLDER, "/home/vagrant/src/github.com/skydive-project/skydive", disabled: false, :type => "nfs", :nfs_udp => false
     dev.vm.box = "skydive/skydive-dev"
 
     if PREPARE_BOX then
-      # Install Python for ansible
-      dev.vm.provision "common", type: "shell", inline: "sudo yum -y install python2 python-yaml libselinux-python"
-      dev.vm.provision "shared-folders", type: "shell", inline: "sudo chown vagrant:vagrant /home/vagrant/src /home/vagrant/src/github.com /home/vagrant/src/github.com/skydive-project"
+      dev.vm.provision "python-for-ansible", type: "shell", inline: "sudo yum -y install python2 python-yaml libselinux-python"
+      if not SKYDIVE_SYNC_FOLDER then
+        dev.vm.provision "skygive-git-clone", type: "shell", privileged: false, inline: $skydive_git_clone
+      end
+      dev.vm.provision "shared-folders", type: "shell", inline: "sudo chown vagrant:vagrant #{GOPATH}/src #{GOPATH}/src/github.com #{GOPATH}/src/github.com/skydive-project"
       dev.vm.provision "write-motd", type: "shell", inline: $write_motd_script
     end
 
@@ -130,7 +176,7 @@ Vagrant.configure(2) do |config|
           "skydive_fabric_default_interface" => "eth0"
         }
         ansible.install = true
-        ansible.provisioning_path = "/home/vagrant/src/github.com/skydive-project/skydive/contrib/ansible"
+        ansible.provisioning_path = ANSIBLE_GUEST
         ansible.playbook = "devmode.yml"
         ansible.extra_vars = ansible_extra_vars
         ansible.groups = {
@@ -146,15 +192,12 @@ Vagrant.configure(2) do |config|
       vb.gui = false
       vb.memory = "3072"
       override.vm.network "private_network", ip: "192.168.100.10"
+      dev_synced_folders(override, "virtualbox")
 
       if PREPARE_BOX then
-        override.vm.box = "fedora/27-cloud-base"
-        override.vm.box_url = "https://download.fedoraproject.org/pub/fedora/linux/releases/27/CloudImages/x86_64/images/Fedora-Cloud-Base-Vagrant-27-1.6.x86_64.vagrant-virtualbox.box"
-
+        fedora_box(override, "virtualbox")
         override.vm.provision "guest-additions", type: "shell", inline: $guest_additions_script
         override.vm.provision :reload
-      else
-        override.vm.synced_folder SYNCED_FOLDER, "/home/vagrant/src/github.com/skydive-project/skydive", :type => "virtualbox"
       end
     end
 
@@ -162,20 +205,17 @@ Vagrant.configure(2) do |config|
       domain.memory = 3072
       domain.graphics_type = "none"
       override.vm.network "private_network", ip: "192.168.10.10"
+      dev_synced_folders(override, "nfs")
 
       if PREPARE_BOX then
-        override.vm.box = "f27-cloud-libvirt"
-        override.vm.box_url = "https://download.fedoraproject.org/pub/fedora/linux/releases"\
-                              "/27/CloudImages/x86_64/images/Fedora-Cloud-Base-Vagrant-27-1"\
-                              ".6.x86_64.vagrant-libvirt.box"
-
+        fedora_box(override, "libvirt")
         override.vm.provision "vagrant-insecure-key", type: "shell", privileged: false, inline: $vagrant_insecure_key_script
       end
     end
 
     dev.vm.provider :openstack do |os, override|
-      populate_os_config(os, "192.168.10.10")
-      os.security_groups = [ 'skydive' ]
+      dev_synced_folders(override, "nfs")
+      populate_os_config(os)
     end
 
   end
