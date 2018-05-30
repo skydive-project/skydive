@@ -104,6 +104,10 @@ ifeq ($(WITH_K8S), true)
   EXTRA_ARGS+=-analyzer.topology.probes=k8s
 endif
 
+ifeq ($(WITH_HELM), true)
+  BUILDTAGS+=helm
+endif
+
 .PHONY: all install
 all install: skydive
 
