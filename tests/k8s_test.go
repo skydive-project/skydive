@@ -160,6 +160,10 @@ func TestK8sPersistentVolumeNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "persistentvolume", objName+"-persistentvolume")
 }
 
+func TestK8sPersistentVolumeClaimNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "persistentvolumeclaim", objName+"-persistentvolumeclaim")
+}
+
 func TestK8sPodNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "pod", podName)
 }
