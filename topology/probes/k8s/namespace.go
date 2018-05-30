@@ -52,6 +52,7 @@ func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 			filters.NewTermStringFilter("Type", "ingress"),
 			filters.NewTermStringFilter("Type", "job"),
 			filters.NewTermStringFilter("Type", "pod"),
+			filters.NewTermStringFilter("Type", "persistentvolume"),
 			filters.NewTermStringFilter("Type", "networkpolicy"),
 			filters.NewTermStringFilter("Type", "replicaset"),
 			filters.NewTermStringFilter("Type", "service"),

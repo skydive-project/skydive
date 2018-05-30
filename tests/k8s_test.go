@@ -145,7 +145,7 @@ func TestK8sNamespaceNode(t *testing.T) {
 }
 
 func TestK8sDaemonSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "daemonset", daemonsetName)
+	testNodeCreationFromConfig(t, "daemonset", daemonSetName)
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
@@ -154,6 +154,10 @@ func TestK8sNetworkPolicyNode(t *testing.T) {
 
 func TestK8sNodeNode(t *testing.T) {
 	testNodeCreation(t, nil, nil, "node", nodeName)
+}
+
+func TestK8sPersistentVolumeNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "persistentvolume", objName+"-persistentvolume")
 }
 
 func TestK8sPodNode(t *testing.T) {
