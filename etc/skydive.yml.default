@@ -381,6 +381,7 @@ k8s:
   - networkpolicy
   - node
   - pod
+  - replicaset
   - service
 
 ui:

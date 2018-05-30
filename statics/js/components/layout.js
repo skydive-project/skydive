@@ -35,6 +35,7 @@ var nodeImgMap = setupFixedImages({
   "pod": "pod",
   "networkpolicy": "networkpolicy",
   "namespace": "ns",
+  "replicaset": "replicaset",
   "service": "service",
   "default": "intf",
 });

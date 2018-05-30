@@ -46,6 +46,7 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 		"networkpolicy": newNetworkPolicyProbe,
 		"node":          newNodeProbe,
 		"pod":           newPodProbe,
+		"replicaset":    newReplicaSetProbe,
 		"service":       newServiceProbe,
 	}
 
