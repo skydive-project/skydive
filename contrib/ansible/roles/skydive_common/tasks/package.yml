@@ -1,10 +1,8 @@
 ---
 - name: Install opstools repository
-  yum_repository:
-    name: centos-opstools-testing
-    description: CentOS-7 - OpsTools - release
-    baseurl: https://buildlogs.centos.org/centos/7/opstools/$basearch/
-    gpgcheck: no
+  package:
+    name: https://buildlogs.centos.org/centos/7/opstools/x86_64/common/centos-release-opstools-1-4.el7.noarch.rpm
+    state: present
   when: ansible_os_family == "RedHat"
 
 - name: Install skydive package
