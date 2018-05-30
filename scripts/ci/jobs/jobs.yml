@@ -136,7 +136,7 @@
           type: absolute
       - timestamps
       - github-pull-request:
-          status-url: http://ci-logs.skydive.network/${JOB_NAME}/builds/${BUILD_NUMBER}/log.html
+          status-url: http://ci-logs.skydive.network/${JOB_NAME}/builds/${BUILD_NUMBER}/log
           status-context: ${JOB_NAME}
 
 - builder:
