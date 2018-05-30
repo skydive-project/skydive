@@ -70,39 +70,42 @@ func NewEmbeddedEtcd(name string, listen string, dataDir string, maxWalFiles, ma
 	cfg.MaxSnapFiles = maxSnapFiles
 
 	var endpoint string
-	var clientURLs, peerURLs types.URLs
+	var clientURLs types.URLs
 	if sa.Addr == "0.0.0.0" || sa.Addr == "::" {
 		if clientURLs, err = interfaceURLs(sa.Port); err != nil {
 			return nil, err
 		}
 		endpoint = clientURLs[0].String()
-
-		if peerURLs, err = interfaceURLs(sa.Port + 1); err != nil {
-			return nil, err
-		}
 	} else {
 		endpoint = fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port)
 		clientURLs, _ = types.NewURLs([]string{endpoint})
-		peerURLs, _ = types.NewURLs([]string{fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port+1)})
 	}
 
 	cfg.LCUrls = clientURLs
 	cfg.ACUrls = clientURLs
-	cfg.APUrls = peerURLs
-	cfg.LPUrls = peerURLs
 
-	var initialPeers types.URLsMap
+	var peerUrls types.URLs
 	peers := config.GetStringMapString("etcd.peers")
 	if len(peers) != 0 {
-		if initialPeers, err = types.NewURLsMapFromStringMap(peers, ","); err != nil {
+		initialPeers, err := types.NewURLsMapFromStringMap(peers, ",")
+		if err != nil {
 			return nil, err
 		}
-	} else {
-		initialPeers = types.URLsMap{}
-		initialPeers[name] = peerURLs
+
+		peerUrls = initialPeers[name]
+		if peerUrls == nil {
+			return nil, fmt.Errorf("Unable to find Etcd name entry in the peers list: %s", name)
+		}
+		cfg.InitialCluster = initialPeers.String()
 	}
 
-	cfg.InitialCluster = initialPeers.String()
+	if peerUrls == nil {
+		peerUrls, _ = types.NewURLs([]string{fmt.Sprintf("http://localhost:%d", sa.Port+1)})
+		cfg.InitialCluster = types.URLsMap{name: peerUrls}.String()
+	}
+
+	cfg.LPUrls = peerUrls
+	cfg.APUrls = peerUrls
 
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
