@@ -133,7 +133,7 @@ def populate_os_config(os)
 end
 
 def fedora_box(override, type)
-  major = "28" 
+  major = "27"
   override.vm.box = "fedora/#{major}-cloud-base"
 end
 
