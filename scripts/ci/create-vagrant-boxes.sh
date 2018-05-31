@@ -14,7 +14,6 @@ dir="$(dirname "$0")"
 VERSION="$(grep 'skydive_release:' ${dir}/../../contrib/ansible/roles/skydive_common/defaults/main.yml | cut -f 2 -d ' ' | tr -d 'v')"
 cd ${dir}/../../contrib/dev
 
-vagrant plugin install vagrant-openstack
 vagrant plugin install vagrant-reload
 
 function vagrant_cleanup {

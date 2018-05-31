@@ -5,13 +5,21 @@ if [ -n "$(sudo virt-what)" ]; then
     exit 1
 fi
 
+[ -z "$MODES" ] && MODES="binary package container"
+
 set -e
 set -v
 
 dir="$(dirname "$0")"
 
 cd ${GOPATH}/src/github.com/skydive-project/skydive
-make static
+
+if [ "$DEVMODE" == "true" ]; then
+    make static
+    make rpm BOOTSTRAP_ARGS=-l
+    make docker-image
+    docker save skydive/skydive:devel -o skydive-docker-devel.tar
+fi
 
 cd contrib/vagrant
 
@@ -23,7 +31,7 @@ trap vagrant_cleanup EXIT
 export ANALYZER_COUNT=2
 export AGENT_COUNT=1
 
-for mode in dev binary package container
+for mode in $MODES
 do
   DEPLOYMENT_MODE=$mode vagrant box update
   DEPLOYMENT_MODE=$mode vagrant up --provision-with common

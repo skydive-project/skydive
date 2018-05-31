@@ -177,17 +177,22 @@
           default: "{dry-run}"
           description: If specified, do not upload anything
 
-- defaults:
-    name: skydive
-    project-type: freestyle
-    node: slaves
-    concurrent: true
+- parameter:
+    name: skydive-default-parameters
     parameters:
       - skydive-parameters:
           repository: https://github.com/skydive-project/skydive
           ref: "${sha1}"
           refspec: "+refs/pull/*:refs/remotes/origin/pr/*"
           dry-run: "true"
+
+- defaults:
+    name: skydive
+    project-type: freestyle
+    node: slaves
+    concurrent: true
+    parameters:
+      - skydive-default-parameters
     properties:
       - github:
           url: https://github.com/skydive-project/skydive
@@ -491,6 +496,15 @@
     name: skydive-vagrant-tests
     defaults: skydive
     node: baremetal
+    parameters:
+      - skydive-default-parameters
+      - string:
+          name: DEVMODE
+          default: "true"
+          description: Use built binary, package and docker image"
+      - string:
+          name: MODES
+          default: "binary package container"
     triggers:
       - skydive-pull-request:
           name: vagrant-tests
