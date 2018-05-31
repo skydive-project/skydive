@@ -8,7 +8,6 @@ function usage {
 
 from=HEAD
 build_opts=-ba
-target=dist
 
 while getopts ":asblr:" opt; do
   case $opt in
@@ -20,9 +19,6 @@ while getopts ":asblr:" opt; do
       ;;
     b)
       build_opts="-bb"
-      ;;
-    l)
-      target="localdist"
       ;;
     r)
       from=$OPTARG
@@ -46,7 +42,8 @@ if [ -n "$tagname" ]; then
     version=$(echo $tagname | awk -F '/' '{print $NF}' | tr -d [a-z])
     define="tagversion $version"
 else
-    define="commit ${version:0:12}"
+    version=${version:0:12}
+    define="commit $version"
 fi
 
 set -e
@@ -56,7 +53,9 @@ rpmbuilddir=$gitdir/rpmbuild
 
 mkdir -p $rpmbuilddir/SOURCES
 mkdir -p $rpmbuilddir/SPECS
-make -C $gitdir $target DESTDIR=$rpmbuilddir/SOURCES
+make -C $gitdir dist DESTDIR=$rpmbuilddir/SOURCES
 $(dirname "$0")/specfile-update-bundles $gitdir/vendor/vendor.json $gitdir/contrib/packaging/rpm/skydive.spec > $rpmbuilddir/SPECS/skydive.spec
-echo rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $rpmbuilddir" $rpmbuilddir/SPECS/skydive.spec
+set -x
 rpmbuild --nodeps $build_opts --undefine dist --define "$define" --define "_topdir $rpmbuilddir" $rpmbuilddir/SPECS/skydive.spec
+set +x
+rm -rf $rpmbuilddir/BUILD/skydive-$version

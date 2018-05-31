@@ -9,6 +9,10 @@
 %define gotest() go test -compiler gc -ldflags "${LDFLAGS:-}" %{?**};
 %endif
 
+%global selinuxtype targeted
+%global selinux_policyver 3.13.1-192
+%global moduletype contrib
+
 # commit or tagversion need to be defined on command line
 %if %{defined commit}
 %define source %{commit}
@@ -33,6 +37,8 @@ Source0:        https://%{import_path}/releases/download/v%{source}/skydive-%{so
 BuildRequires:  systemd
 BuildRequires:  libpcap-devel libxml2-devel
 BuildRequires:  llvm clang kernel-headers
+BuildRequires:  selinux-policy-devel, policycoreutils-devel
+Requires:       %{name}-selinux = %{version}-%{release}
 
 # This is used by the specfile-update-bundles script to automatically
 # generate the list of the Go libraries bundled into the Skydive binaries
@@ -83,14 +89,27 @@ Requires:         ansible
 %description ansible
 Ansible recipes to deploy Skydive
 
+%package selinux
+Summary:          Skydive selinux recipes
+Requires:         policycoreutils, libselinux-utils
+Requires(post):   selinux-policy-base >= %{selinux_policyver}, policycoreutils
+Requires(postun): policycoreutils
+BuildArch:        noarch
+
+%description selinux
+This package installs and sets up the SELinux policy security module for Skydive.
+
 %prep
 %setup -q -n skydive-%{source}/src/%{import_path}
 
 %build
 export GOPATH=%{_builddir}/skydive-%{source}
 export GO15VENDOREXPERIMENT=1
+export LDFLAGS="$LDFLAGS -X github.com/skydive-project/skydive/version.Version=%{source}"
 %gobuild -o bin/skydive %{import_path}
 bin/skydive bash-completion
+make -f /usr/share/selinux/devel/Makefile -C contrib/packaging/rpm/ skydive.pp
+bzip2 contrib/packaging/rpm/skydive.pp
 
 %install
 export GOPATH=%{_builddir}/skydive-%{source}
@@ -106,7 +125,18 @@ install -D -m 644 skydive-bash-completion.sh %{buildroot}/%{_sysconfdir}/bash_co
 install -d -m 755 %{buildroot}/%{_datadir}/skydive-ansible
 cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 
+# SELinux
+install -D -m 644 contrib/packaging/rpm/skydive.pp.bz2 %{buildroot}%{_datadir}/selinux/packages/skydive.pp.bz2
+install -D -m 644 contrib/packaging/rpm/skydive.if %{buildroot}%{_datadir}/selinux/devel/include/contrib/skydive.if
+install -D -m 644 contrib/packaging/rpm/skydive-selinux.8 %{buildroot}%{_mandir}/man8/skydive-selinux.8
+
 %post agent
+if %{_sbindir}/selinuxenabled && [ "$1" = "1" ] ; then
+    set +e
+    %{_sbindir}/semanage port -a -t skydive_agent_sflow_ports_t -p udp 6343
+    %{_sbindir}/semanage port -a -t skydive_agent_sflow_ports_t -p udp 6345-6355
+    %{_sbindir}/semanage port -a -t skydive_agent_pcapsocket_ports_t -p tcp 8100-8132
+fi
 %systemd_post %{basename:%{name}-agent.service}
 
 %preun agent
@@ -114,8 +144,20 @@ cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 
 %postun agent
 %systemd_postun
+if %{_sbindir}/selinuxenabled && [ "$1" = "0" ] ; then
+    set +e
+    %{_sbindir}/semanage port -d -t skydive_agent_sflow_ports_t -p udp 6343
+    %{_sbindir}/semanage port -d -t skydive_agent_sflow_ports_t -p udp 6345-6355
+    %{_sbindir}/semanage port -d -t skydive_agent_pcapsocket_ports_t -p tcp 8100-8132
+fi
 
 %post analyzer
+if %{_sbindir}/selinuxenabled && [ "$1" = "1" ] ; then
+    set +e
+    %{_sbindir}/semanage port -a -t skydive_etcd_ports_t -p tcp 12379-12380
+    %{_sbindir}/semanage port -a -t skydive_analyzer_db_connect_ports_t -p tcp 2480
+    %{_sbindir}/semanage port -a -t skydive_analyzer_db_connect_ports_t -p tcp 9200
+fi
 %systemd_post %{basename:%{name}-analyzer.service}
 
 %preun analyzer
@@ -123,8 +165,30 @@ cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 
 %postun analyzer
 %systemd_postun
+if %{_sbindir}/selinuxenabled && [ "$1" = "0" ] ; then
+    set +e
+    %{_sbindir}/semanage port -d -t skydive_etcd_ports_t -p tcp 12379-12380
+    %{_sbindir}/semanage port -d -t skydive_analyzer_db_connect_ports_t -p tcp 2480
+    %{_sbindir}/semanage port -d -t skydive_analyzer_db_connect_ports_t -p tcp 9200
+fi
+
+%pre selinux
+%selinux_relabel_pre -s %{selinuxtype}
+
+%post selinux
+%selinux_modules_install -s %{selinuxtype} %{_datadir}/selinux/packages/%{name}.pp.bz2
+
+%postun selinux
+if [ "$1" = "0" ]; then
+    %selinux_modules_uninstall -s %{name}
+fi
+
+%posttrans selinux
+%selinux_relabel_post -s %{selinuxtype}
 
 %check
+%{buildroot}%{_bindir}/skydive version | grep -q "skydive github.com/skydive-project/skydive %{source}" || exit 1
+
 %if 0%{?with_check} && 0%{?with_unit_test} && 0%{?with_devel}
 %gotest $(go list ./... | grep -v '/tests' | grep -v '/vendor/')
 %endif
@@ -146,6 +210,11 @@ cp -R contrib/ansible/* %{buildroot}/%{_datadir}/skydive-ansible/
 
 %files ansible
 %{_datadir}/skydive-ansible
+
+%files selinux
+%attr(0644,root,root) %{_datadir}/selinux/packages/%{name}.pp.bz2
+%attr(0644,root,root) %{_datadir}/selinux/devel/include/%{moduletype}/%{name}.if
+%attr(0644,root,root) %{_mandir}/man8/skydive-selinux.8.*
 
 %changelog
 * Tue Apr 03 2018 Sylvain Afchain <safchain@redhat.com> - 0.17.0-1

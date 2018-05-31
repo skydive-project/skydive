@@ -1,0 +1,170 @@
+policy_module(skydive, 0.17.0)
+
+########################################
+#
+# Declarations
+#
+
+type skydive_t;
+type skydive_exec_t;
+init_daemon_domain(skydive_t, skydive_exec_t)
+
+type skydive_var_lib_t;
+files_type(skydive_var_lib_t)
+
+########################################
+#
+# skydive local policy
+#
+allow skydive_t self:fifo_file rw_fifo_file_perms;
+allow skydive_t self:unix_stream_socket create_stream_socket_perms;
+
+manage_dirs_pattern(skydive_t, skydive_var_lib_t, skydive_var_lib_t)
+manage_files_pattern(skydive_t, skydive_var_lib_t, skydive_var_lib_t)
+manage_lnk_files_pattern(skydive_t, skydive_var_lib_t, skydive_var_lib_t)
+files_var_lib_filetrans(skydive_t, skydive_var_lib_t, { dir file lnk_file })
+
+domain_use_interactive_fds(skydive_t)
+
+files_read_etc_files(skydive_t)
+
+auth_use_nsswitch(skydive_t)
+
+miscfiles_read_localization(skydive_t)
+
+sysnet_dns_name_resolve(skydive_t)
+
+# Network
+
+# already defined by us_cli_port_t udp/tcp/8082
+# type skydive_analyzer_ui_port_t;
+# corenet_port(skydive_analyzer_ui_port_t);
+# type skydive_analyzer_flow_port_t;
+# corenet_port(skydive_analyzer_flow_port_t);
+
+# already defined by transproxy_port_t tcp/8081
+# type skydive_agent_ui_port_t;
+# corenet_port(skydive_agent_ui_port_t);
+
+# tcp/12379-12380
+type skydive_etcd_ports_t;
+corenet_port(skydive_etcd_ports_t);
+
+# analyzer DB connect tcp/9200 (ElasticSearch) tcp/2480 (OrientDB)
+type skydive_analyzer_db_connect_ports_t;
+corenet_port(skydive_analyzer_db_connect_ports_t);
+
+# udp/6343, 6345-6355
+type skydive_agent_sflow_ports_t;
+corenet_port(skydive_agent_sflow_ports_t);
+
+# tcp/8100-8132
+type skydive_agent_pcapsocket_ports_t;
+corenet_port(skydive_agent_pcapsocket_ports_t);
+
+require {
+        type transproxy_port_t;
+        type spc_t;
+        type unreserved_port_t;
+        type us_cli_port_t;
+        type kernel_t;
+        type sysctl_net_t;
+        type container_var_run_t;
+        type skydive_var_lib_t;
+        type container_t;
+        type skydive_exec_t;
+        type skydive_t;
+        type devlog_t;
+        type openvswitch_t;
+        type openvswitch_var_run_t;
+        type nsfs_t;
+        type skydive_etcd_ports_t;
+        type skydive_analyzer_db_connect_ports_t;
+#        type skydive_analyzer_ui_port_t;
+#        type skydive_analyzer_flow_port_t;
+#        type skydive_agent_ui_port_t;
+        type skydive_agent_sflow_ports_t;
+        type skydive_agent_pcapsocket_ports_t;
+        type unconfined_t;
+        class system module_load;
+        class file { getattr map open read };
+        class capability { dac_override dac_read_search net_raw sys_admin };
+        class packet_socket { bind create getopt ioctl map setopt };
+        class unix_dgram_socket ioctl;
+        class netlink_route_socket nlmsg_write;
+        class dir { add_name read remove_name search write };
+        class lnk_file read;
+        class sock_file { create unlink write };
+}
+
+#============= openvswitch_t ==============
+allow openvswitch_t self:system module_load;
+files_map_kernel_modules(openvswitch_t)
+
+#============= skydive_t ==============
+allow skydive_t bin_t:file execute_no_trans;
+allow skydive_t container_t:dir { getattr search};
+allow skydive_t container_t:file read;
+allow skydive_t container_t:lnk_file read;
+allow skydive_t container_var_run_t:dir read;
+allow skydive_t devlog_t:lnk_file read;
+allow skydive_t devlog_t:sock_file write;
+allow skydive_t openvswitch_var_run_t:dir { add_name remove_name write };
+allow skydive_t openvswitch_var_run_t:sock_file { create unlink };
+allow skydive_t self:capability { dac_override dac_read_search net_raw sys_admin };
+allow skydive_t self:netlink_route_socket nlmsg_write;
+allow skydive_t self:packet_socket { bind create getopt ioctl map setopt };
+allow skydive_t self:unix_dgram_socket ioctl;
+allow skydive_t skydive_exec_t:file map;
+allow skydive_t skydive_var_lib_t:file map;
+
+allow skydive_t kernel_t:system module_request;
+allow skydive_t kernel_t:unix_dgram_socket sendto;
+allow skydive_t proc_t:dir read;
+allow skydive_t proc_t:file { getattr open read };
+
+allow skydive_t self:tcp_socket { accept listen };
+allow skydive_t self:unix_dgram_socket { connect create getattr setopt };
+allow skydive_t sysctl_net_t:dir search;
+allow skydive_t sysctl_net_t:file { open read };
+allow skydive_t transproxy_port_t:tcp_socket name_bind;
+allow skydive_t self:cap_userns { sys_admin sys_ptrace };
+allow skydive_t spc_t:dir { getattr search };
+allow skydive_t spc_t:file read;
+allow skydive_t spc_t:lnk_file read;
+allow skydive_t skydive_var_lib_t:file { getattr open read };
+allow skydive_t nsfs_t:file { getattr open read };
+allow skydive_t ifconfig_var_run_t:file { getattr open read };
+
+# /run/netns namespace files are unconfined under Fedora
+allow skydive_t unconfined_t:file { getattr open read };
+
+# Network
+allow skydive_t skydive_etcd_ports_t:tcp_socket { name_bind name_connect };
+allow skydive_t transproxy_port_t:tcp_socket { name_bind name_connect };
+allow skydive_t us_cli_port_t:tcp_socket { name_bind name_connect };
+allow skydive_t us_cli_port_t:udp_socket name_bind;
+allow skydive_t skydive_analyzer_db_connect_ports_t:tcp_socket name_connect;
+allow skydive_t skydive_agent_sflow_ports_t:udp_socket name_bind;
+allow skydive_t skydive_agent_pcapsocket_ports_t:tcp_socket name_bind;
+
+cloudform_read_lib_lnk_files(skydive_t)
+container_manage_lib_files(skydive_t)
+container_read_pid_files(skydive_t)
+container_read_state(skydive_t)
+container_stream_connect(skydive_t)
+corecmd_mmap_bin_files(skydive_t)
+corecmd_shell_entry_type(skydive_t)
+corenet_tcp_connect_http_cache_port(skydive_t)
+dev_list_sysfs(skydive_t)
+dev_read_sysfs(skydive_t)
+files_manage_generic_tmp_files(skydive_t)
+ipa_filetrans_named_content(skydive_t)
+kernel_read_network_state(skydive_t)
+openvswitch_stream_connect(skydive_t)
+sssd_read_public_files(skydive_t)
+sssd_run_stream_connect(skydive_t)
+sssd_stream_connect(skydive_t)
+sysnet_manage_ifconfig_run(skydive_t)
+userdom_exec_user_tmp_files(skydive_t)
+fs_read_nsfs_files(skydive_t)
