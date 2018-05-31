@@ -55,6 +55,8 @@ type Cmd struct {
 
 var (
 	Standalone        bool
+	AgentTestsOnly    bool
+	NoOFTests         bool
 	GraphOutputFormat string
 	TopologyBackend   string
 	FlowBackend       string
@@ -68,6 +70,8 @@ type HelperParams map[string]interface{}
 
 func init() {
 	flag.BoolVar(&Standalone, "standalone", false, "Start an analyzer and an agent")
+	flag.BoolVar(&AgentTestsOnly, "agenttestsonly", false, "run agent test only")
+	flag.BoolVar(&NoOFTests, "nooftests", false, "dont't run OpenFlow tests")
 	flag.StringVar(&etcdServer, "etcd.server", "", "Etcd server")
 	flag.StringVar(&TopologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
 	flag.StringVar(&GraphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")

@@ -22,6 +22,16 @@ systemctl start openvswitch
 systemctl start docker
 systemctl enable openvswitch
 systemctl enable docker
+yum -y install libpcap libselinux-python bridge-utils net-tools yum-plugin-copr.noarch
+#curl -o /etc/yum.repos.d/_copr_ganto-lxc3.repo https://copr.fedorainfracloud.org/coprs/ganto/lxc3/repo/epel-7/ganto-lxc3-epel-7.repo
+#yum repolist
+#yum -y install lxd
+#grep -q 'root:1000000:65536' /etc/subuid || echo 'root:1000000:65536' >> /etc/subuid
+#grep -q 'root:1000000:65536' /etc/subgid || echo 'root:1000000:65536' >> /etc/subgid
+#systemctl start lxd
+#ln -s /var/run/lxd.socket /var/lib/lxd/unix.socket
+#systemctl enable lxd
+#lxd init --auto
 SCRIPT
 
 $skydive_extra_config = {
@@ -29,6 +39,18 @@ $skydive_extra_config = {
   "agent.topology.probes" => ["ovsdb", "docker"],
   "agent.topology.netlink.metrics_update" => 5,
 }
+
+if DEVMODE then
+  # default config from tests/tests.go:testConfig
+  $skydive_extra_config["flow.expire"] = "600"
+  $skydive_extra_config["flow.update"] = "10"
+  $skydive_extra_config["agent.topology.probes"] = "netlink netns ovsdb docker"
+  $skydive_extra_config["agent.topology.metrics_update"] = "5"
+  $skydive_extra_config["agent.metadata.mydict.value"] = "123"
+  $skydive_extra_config["analyzer.startup.capture_gremlin"] = "g.V().Has('Name','startup-vm2')"
+  $skydive_extra_config["ovs.oflow.enable"] = "true"
+  $skydive_extra_config["logging.level"] = "DEBUG"
+end
 
 def ifcfg_config(interface, network, netmask, ip)
   ifcfg_template = <<-IFCFG
@@ -69,9 +91,8 @@ def provision_es(vm, hosts)
     ansible.playbook = "playbook-es.yml"
     ansible.groups = { "elasticsearch": hosts.map { |h| h["name"] } }
     ansible.limit = "all"
-    ansible.verbose = "-vvv"
     ansible.galaxy_role_file = 'requirements.yml'
-    ansible.sudo = true
+    ansible.become = true
   end
 
   $skydive_extra_config["analyzer.flow.backend"] = "elasticsearch"

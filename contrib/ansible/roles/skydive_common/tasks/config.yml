@@ -12,7 +12,7 @@
     force: no
   ignore_errors: yes
 
-- name: Create empty config file is needed
+- name: Create empty config file if needed
   copy:
     content: ""
     dest: "{{ skydive_config_file }}"

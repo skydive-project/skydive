@@ -13,6 +13,12 @@ type ruleCmd struct {
 	add  bool
 }
 
+func checkTest(t *testing.T) {
+	if helper.NoOFTests {
+		t.Skip("Don't run OpenFlows test as /usr/bin/ovs-ofctl didn't exist in agent process namespace")
+	}
+}
+
 func verify(c *CheckContext, expected []int) error {
 	for i, e := range expected {
 		gh := c.gh
@@ -35,6 +41,7 @@ func verify(c *CheckContext, expected []int) error {
 }
 
 func makeTest(t *testing.T, rules []ruleCmd, expected []int) {
+	checkTest(t)
 	setupCmds := []helper.Cmd{
 		{"ovs-vsctl add-br br-test1", true},
 		{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},
@@ -96,7 +103,8 @@ func TestSuperimposedOFRule(t *testing.T) {
 		[]int{1, 0, 1, 1})
 }
 
-func TestDelRuleWithBridge(t *testing.T) {
+func TestDelRuleWithBridgeOFRule(t *testing.T) {
+	checkTest(t)
 	setupCmds := []helper.Cmd{
 		{"ovs-vsctl add-br br-test1", true},
 		{"ovs-vsctl add-port br-test1 intf1 -- set interface intf1 type=internal", true},

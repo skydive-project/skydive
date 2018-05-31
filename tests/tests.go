@@ -187,6 +187,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
+			resp.Body.Close()
 			t.Error(err)
 			return ""
 		}
