@@ -55,7 +55,7 @@
     src: "{{ skydive_config_file }}"
     key: "etcd.servers"
     value: "{{ analyzers.split(',') | map('regex_replace', '([^:]*).*', skydive_etcd_scheme + '://\\1:' + (skydive_etcd_port | string)) | list }}"
-  when: skydive_etcd_embedded | bool
+  when: (skydive_etcd_embedded | bool) and (analyzers.split(',') | list | length > 1)
 
 - name: Setup Etcd server list
   yedit:
@@ -72,7 +72,7 @@
   with_together:
     - "{{ groups['analyzers'] }}"
     - "{{ analyzers.split(',') | list }}"
-  when: skydive_etcd_embedded | bool
+  when: (skydive_etcd_embedded | bool) and (analyzers.split(',') | list | length > 1)
 
 - name: Define auth type
   yedit:
