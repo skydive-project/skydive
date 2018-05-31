@@ -1,4 +1,3 @@
-skydive_listen_ip:
 skydive_agent_port: 8081
 skydive_agent_docker_extra_env:
 skydive_agent_docker_image: skydive/skydive

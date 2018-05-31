@@ -20,6 +20,8 @@
           {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
         {%- endif -%}
 
+- include: config.yml
+
 - include: docker.yml
   when: skydive_deployment_mode == "container"
 
@@ -28,5 +30,3 @@
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
-
-- include: config.yml

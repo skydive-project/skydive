@@ -40,10 +40,11 @@ Basically there are only two roles :
 | --------------------------- | --------------------------------------------- |
 | skydive_topology_probes     | Defines topology probes used by the agents    |
 | skydive_fabric              | Fabric definition                             |
-| skydive_etcd_embedded       | Use embedded Etcd (true/false)                |
+| skydive_etcd_embedded       | Use embedded Etcd (yes/no)                    |
+| skydive_etcd_port           | Defines Etcd port                             |
+| skydive_etcd_servers        | Defines Etcd servers if not embedded          |
 | skydive_analyzer_port       | Defines analyzer listen port                  |
 | skydive_analyzer_ip         | Defines anakyzer listen IP                    |
-| skydive_etcd_port           | Defines Etcd port                             |
 | skydive_deployment_mode     | Specify the deployment mode                   |
 | skydive_auth_type           | Specify the authentication type               |
 | skydive_basic_auth_file     | Secret file for basic authentication          |
