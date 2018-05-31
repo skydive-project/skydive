@@ -40,6 +40,7 @@ var nodeImgMap = setupFixedImages({
   "replicaset": "replicaset",
   "replicationcontroller": "replicationcontroller",
   "service": "service",
+  "statefulset": "statefulset",
   "default": "intf",
 });
 

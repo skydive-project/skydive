@@ -179,3 +179,7 @@ func TestK8sReplicationControllerNode(t *testing.T) {
 func TestK8sServiceNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "service", serviceName)
 }
+
+func TestK8sStatefulSetNode(t *testing.T) {
+	testNodeCreationFromConfig(t, "statefulset", "web")
+}
