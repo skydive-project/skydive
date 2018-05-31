@@ -383,6 +383,7 @@ k8s:
   - persistentvolume
   - pod
   - replicaset
+  - replicationcontroller
   - service
 
 ui:

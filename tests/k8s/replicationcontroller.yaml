@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: skydive-test-replicationcontroller
+spec:
+  replicas: 3
+  selector:
+    app: skydive-test-replicationcontroller
+  template:
+    metadata:
+      name: skydive-test-replicationcontroller
+      labels:
+        app: skydive-test-replicationcontroller
+    spec:
+      containers:
+      - name: skydive-test-replicationcontroller
+        image: nginx
+        ports:
+        - containerPort: 80

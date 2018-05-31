@@ -38,6 +38,7 @@ var nodeImgMap = setupFixedImages({
   "networkpolicy": "networkpolicy",
   "namespace": "ns",
   "replicaset": "replicaset",
+  "replicationcontroller": "replicationcontroller",
   "service": "service",
   "default": "intf",
 });
