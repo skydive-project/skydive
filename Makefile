@@ -17,11 +17,11 @@ eval ' \
 endef
 
 define VENDOR_BUILD
-ln -s vendor src ; \
-cd vendor/$1; \
+ln -s vendor src || mv vendor src; \
+cd src/$1; \
 GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go build $1; \
 cd -; \
-unlink src
+unlink src || mv src vendor
 endef
 
 define VENDOR_RUN
