@@ -8,7 +8,7 @@
   get_url:
     url: https://raw.githubusercontent.com/skydive-project/skydive/{{ skydive_release }}/etc/skydive.yml.default
     dest: "{{ skydive_config_file }}"
-    mode: 0644
+    mode: 0600
     force: no
   ignore_errors: yes
 
@@ -16,7 +16,7 @@
   copy:
     content: ""
     dest: "{{ skydive_config_file }}"
-    mode: 0644
+    mode: 0600
     force: no
 
 - name: Set host ID
