@@ -69,24 +69,25 @@ func NewEmbeddedEtcd(name string, listen string, dataDir string, maxWalFiles, ma
 	cfg.MaxWalFiles = maxWalFiles
 	cfg.MaxSnapFiles = maxSnapFiles
 
-	var endpoints []string
-	var clientURLs types.URLs
+	var listenClientURLs types.URLs
+	var listenPeerURLs types.URLs
 	if sa.Addr == "0.0.0.0" || sa.Addr == "::" {
-		if clientURLs, err = interfaceURLs(sa.Port); err != nil {
+		if listenClientURLs, err = interfaceURLs(sa.Port); err != nil {
 			return nil, err
 		}
-		for _, url := range clientURLs {
-			endpoints = append(endpoints, url.String())
+		if listenPeerURLs, err = interfaceURLs(sa.Port + 1); err != nil {
+			return nil, err
 		}
 	} else {
-		endpoints = []string{fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port)}
-		clientURLs, _ = types.NewURLs(endpoints)
+		listenClientURLs, _ = types.NewURLs([]string{fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port)})
+		listenPeerURLs, _ = types.NewURLs([]string{fmt.Sprintf("http://%s:%d", sa.Addr, sa.Port+1)})
 	}
 
-	cfg.LCUrls = clientURLs
-	cfg.ACUrls = clientURLs
+	cfg.LCUrls = listenClientURLs
+	cfg.LPUrls = listenPeerURLs
+	cfg.ACUrls = listenClientURLs // This probably won't work with proxy feature
 
-	var peerUrls types.URLs
+	var advertisePeerUrls types.URLs
 	peers := config.GetStringMapString("etcd.peers")
 	if len(peers) != 0 {
 		initialPeers, err := types.NewURLsMapFromStringMap(peers, ",")
@@ -94,20 +95,18 @@ func NewEmbeddedEtcd(name string, listen string, dataDir string, maxWalFiles, ma
 			return nil, err
 		}
 
-		peerUrls = initialPeers[name]
-		if peerUrls == nil {
+		if advertisePeerUrls = initialPeers[name]; advertisePeerUrls == nil {
 			return nil, fmt.Errorf("Unable to find Etcd name entry in the peers list: %s", name)
 		}
 		cfg.InitialCluster = initialPeers.String()
 	}
 
-	if peerUrls == nil {
-		peerUrls, _ = types.NewURLs([]string{fmt.Sprintf("http://localhost:%d", sa.Port+1)})
-		cfg.InitialCluster = types.URLsMap{name: peerUrls}.String()
+	if advertisePeerUrls == nil {
+		advertisePeerUrls, _ = types.NewURLs([]string{fmt.Sprintf("http://localhost:%d", sa.Port+1)})
+		cfg.InitialCluster = types.URLsMap{name: advertisePeerUrls}.String()
 	}
 
-	cfg.LPUrls = peerUrls
-	cfg.APUrls = peerUrls
+	cfg.APUrls = advertisePeerUrls
 
 	etcd, err := embed.StartEtcd(cfg)
 	if err != nil {
@@ -128,7 +127,7 @@ func NewEmbeddedEtcd(name string, listen string, dataDir string, maxWalFiles, ma
 	t := time.Now().Add(startTimeout)
 
 	clientConfig := client.Config{
-		Endpoints:               endpoints,
+		Endpoints:               listenClientURLs.StringSlice(),
 		Transport:               client.DefaultTransport,
 		HeaderTimeoutPerRequest: time.Second,
 	}

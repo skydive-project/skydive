@@ -14,7 +14,7 @@ spec:
       annotations:
         productName: {{ .Chart.Name }}
         productID: 8e6bdbcba44f46939c3d1c54447386b2
-        productVersion: {{ .Chart.Version }} 
+        productVersion: {{ .Chart.Version }}
       labels:
         app: {{ template "fullname" . }}
         tier: analyzer
@@ -37,6 +37,7 @@ spec:
         - containerPort: {{ .Values.service.port }}
           protocol: UDP
         - containerPort: 12379
+        - containerPort: 12380
         readinessProbe:
           httpGet:
             port: 8082
