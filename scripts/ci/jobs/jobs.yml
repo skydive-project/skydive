@@ -641,3 +641,21 @@
             - name: skydive-create-vagrant-boxes
               current-parameters: true
               git-revision: true
+
+- job:
+    name: skydive-tripleo-tests
+    defaults: skydive
+    node: tripleo
+    triggers:
+      - skydive-pull-request:
+          name: tripleo-tests
+          trigger-prefix: "all "
+          only-trigger-phrase: true
+          cancel-builds-on-update: false
+    builders:
+      - shell: |
+          #!/bin/bash
+          cd src/github.com/skydive-project/skydive
+          scripts/ci/run-tripleo-tests.sh
+    wrappers:
+      - skydive-wrappers

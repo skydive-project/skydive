@@ -15,6 +15,7 @@ skydive_auth_type:
 skydive_username: skydive
 skydive_password: skydive
 
+skydive_os_auth_url:
 skydive_os_service_username: skydive
 skydive_os_service_password: skydive
 skydive_os_service_tenant_name: service
