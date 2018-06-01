@@ -12,9 +12,10 @@ spec:
   ports:
   - port: 12379
     name: etcd
+  - port: 12380
+    name: etcd-cluster
   - port: 9200
     name: elasticsearch
   selector:
     app: {{ template "fullname" . }}
     tier: analyzer
-

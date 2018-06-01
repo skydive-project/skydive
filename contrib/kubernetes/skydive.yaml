@@ -14,6 +14,8 @@ spec:
     protocol: UDP
   - port: 12379
     name: etcd
+  - port: 12380
+    name: etcd-cluster
   - port: 9200
     name: es
   selector:
@@ -43,6 +45,7 @@ spec:
         - containerPort: 8082
           protocol: UDP
         - containerPort: 12379
+        - containerPort: 12380
         env:
         - name: SKYDIVE_ANALYZER_STORAGE_BACKEND
           value: elasticsearch

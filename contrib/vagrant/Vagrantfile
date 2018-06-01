@@ -8,6 +8,9 @@ AGENT_COUNT=ENV.fetch("AGENT_COUNT", "2").to_i
 ANALYZER_COUNT=ENV.fetch("ANALYZER_COUNT", "1").to_i
 ELASTICSEARCH_COUNT=ENV.fetch("ELASTICSEARCH_COUNT", "0").to_i
 
+DEPLOYMENT_MODE = ENV.fetch("DEPLOYMENT_MODE", "binary")
+DEVMODE = ENV.fetch("DEVMODE", "") == "true" ? true : false
+
 AGENT_EXTRA_PROVISION_SCRIPT=ENV.fetch("AGENT_EXTRA_PROVISION_SCRIPT", "")
 ANALYZER_EXTRA_PROVISION_SCRIPT=ENV.fetch("ANALYZER_EXTRA_PROVISION_SCRIPT", "")
 
@@ -145,16 +148,21 @@ Vagrant.configure(2) do |config|
 
         analyzer.vm.provision :ansible do |ansible|
           ansible_extra_vars = {
-            "skydive_deployment_mode" => ENV.fetch("DEPLOYMENT_MODE", "binary"),
+            "skydive_deployment_mode" => DEPLOYMENT_MODE,
             "skydive_extra_config" => $skydive_extra_config,
             "skydive_nic" => "ansible_eth1",
             "skydive_fabric_default_interface" => "eth1",
             "skydive_listen_ip" => "0.0.0.0"
           }
 
-          if ENV.fetch("DEPLOYMENT_MODE", "") == "dev"
-            ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/bin/skydive"
-            ansible_extra_vars["skydive_deployment_mode"] = "binary"
+          if DEVMODE then
+            if DEPLOYMENT_MODE == "binary" then
+              ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/bin/skydive"
+            elsif DEPLOYMENT_MODE == "package" then
+              ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/src/github.com/skydive-project/skydive/rpmbuild/RPMS/x86_64/"
+            elsif DEPLOYMENT_MODE == "container" then
+              ansible_extra_vars["skydive_binary_remote_location"] = "file://" + ENV.fetch("GOPATH") + "/src/github.com/skydive-project/skydive/skydive-docker-devel.tar"
+            end
           end
 
           ansible.playbook = "provisioning/playbook.yml.sample"

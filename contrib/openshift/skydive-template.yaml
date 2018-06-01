@@ -23,6 +23,10 @@ objects:
       port: 12379
       protocol: TCP
       targetPort: 12379
+    - name: etcd-cluster
+      port: 12380
+      protocol: TCP
+      targetPort: 12380
     - name: es
       port: 9200
       protocol: TCP
@@ -83,6 +87,8 @@ objects:
           - containerPort: 8082
             protocol: UDP
           - containerPort: 12379
+            protocol: TCP
+          - containerPort: 12380
             protocol: TCP
           readinessProbe:
             failureThreshold: 1

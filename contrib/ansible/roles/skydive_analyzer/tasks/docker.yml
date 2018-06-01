@@ -10,6 +10,34 @@
     state: started
     enabled: yes
 
+- name: Run docker registry
+  shell: "docker run -d -p 5000:5000 --restart=always --name registry registry:2"
+  when: '"file://" in skydive_binary_remote_location'
+
+- name: Set facts
+  set_fact: "skydive_docker_registry=localhost:5000"
+  when: '"file://" in skydive_binary_remote_location'
+
+- name: Copy docker image
+  copy:
+    src: "{{ skydive_binary_remote_location | replace('file://', '') }}"
+    dest: /tmp
+    force: true
+    mode: 0755
+  when: '"file://" in skydive_binary_remote_location'
+
+- name: Import skydive image
+  shell: "docker load -i /tmp/{{ skydive_binary_remote_location | replace('file://', '') | basename }}"
+  when: '"file://" in skydive_binary_remote_location'
+
+- name: Tag skydive image
+  shell: "docker tag skydive/skydive:devel {{ skydive_docker_registry }}/{{ skydive_analyzer_docker_image }}:{{ skydive_docker_image_tag }}"
+  when: '"file://" in skydive_binary_remote_location'
+
+- name: Push skydive image to registry
+  shell: "docker push {{ skydive_docker_registry }}/{{ skydive_analyzer_docker_image }}:{{ skydive_docker_image_tag }}"
+  when: '"file://" in skydive_binary_remote_location'
+
 - name: Create systemd unit file
   include_role:
     name: skydive_common
@@ -24,6 +52,7 @@
         -p {{ skydive_analyzer_port }}:{{ skydive_analyzer_port }} \
         -p {{ skydive_analyzer_port }}:{{ skydive_analyzer_port }}/udp \
         -p {{ skydive_etcd_port }}:{{ skydive_etcd_port }} \
+        -p {{ skydive_etcd_port + 1 }}:{{ skydive_etcd_port + 1 }} \
         {{ skydive_docker_registry }}/{{ skydive_analyzer_docker_image }}:{{ skydive_docker_image_tag }} \
         {{ skydive_analyzer_docker_command }}
     exec_stop_post: /usr/bin/docker stop skydive-analyzer-{{ ansible_hostname }}
