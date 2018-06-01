@@ -1366,6 +1366,12 @@
 			"revisionTime": "2017-01-09T16:22:49Z"
 		},
 		{
+			"checksumSHA1": "xvygA+U7XMo8rnkBly7KhMUU3lg=",
+			"path": "github.com/huin/mqtt",
+			"revision": "c2d0e7ca9387fcfe29274b4b32ac80798d57ad4d",
+			"revisionTime": "2013-08-22T13:28:49Z"
+		},
+		{
 			"checksumSHA1": "N4Uk5GHnDyx7s2ru1m4dsCN9Jmc=",
 			"path": "github.com/hydrogen18/stoppableListener",
 			"revision": "dadc9ccc400c712e5a316107a5c462863919e579"
@@ -1482,6 +1488,12 @@
 			"path": "github.com/jbowtie/gokogiri/xpath",
 			"revision": "e2644e49d5b4a4d2382d1a4b28dfbb313a4ffb0c",
 			"revisionTime": "2016-07-04T00:25:24Z"
+		},
+		{
+			"checksumSHA1": "wlNOIvqQGgWM3Rx58wSzdDJeLrw=",
+			"path": "github.com/jeffallen/mqtt",
+			"revision": "5387cfa89df03a54fd8791e873878cc7ad9ec021",
+			"revisionTime": "2018-05-18T07:33:22Z"
 		},
 		{
 			"checksumSHA1": "irxwCucfzk0o745pGL995YofeTM=",

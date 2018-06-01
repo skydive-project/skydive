@@ -84,6 +84,7 @@ func init() {
 	cfg.SetDefault("agent.flow.pcapsocket.max_port", 8132)
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
+	cfg.SetDefault("agent.topology.mqtt.listen", "localhost:1883")
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
 	cfg.SetDefault("agent.topology.socketinfo.host_update", 10)
 	cfg.SetDefault("agent.X509_servername", "")

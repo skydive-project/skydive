@@ -31,6 +31,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/probes/docker"
 	"github.com/skydive-project/skydive/topology/probes/lxd"
+	"github.com/skydive-project/skydive/topology/probes/mqtt"
 	"github.com/skydive-project/skydive/topology/probes/netlink"
 	"github.com/skydive-project/skydive/topology/probes/netns"
 	"github.com/skydive-project/skydive/topology/probes/neutron"
@@ -100,6 +101,12 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 			probes[t] = opencontrail
 		case "socketinfo":
 			probes[t] = socketinfo.NewSocketInfoProbe(g, n)
+		case "mqtt":
+			mqttProbe, err := mqtt.NewMQTTProbe(g)
+			if err != nil {
+				return nil, err
+			}
+			probes["mqtt"] = mqttProbe
 		default:
 			logging.GetLogger().Errorf("unknown probe type %s", t)
 		}
