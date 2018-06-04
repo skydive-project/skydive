@@ -192,6 +192,57 @@ var apiMixin = {
       });
     },
 
+    $alertCreate: function(name, desc, exp, trigger, action) {
+      var self = this;
+      return $.ajax({
+        dataType: "json",
+        url: '/api/alert',
+        data: JSON.stringify({Name: name || null,
+                              Description: desc || null,
+                              Expression: exp,
+                              Trigger: trigger,
+                              Action: action || null
+                             }),
+        contentType: "application/json; charset=utf-8",
+        method: 'POST',
+      })
+      .then(function(data) {
+        self.$success({message: 'Alert created'});
+        return data;
+      })
+      .fail(function(e) {
+        self.$error({message: 'Alert create error: ' + e.responseText});
+        return e;
+      });
+    },
+
+    $alertList: function() {
+      var self = this;
+      return $.ajax({
+        dataType: "json",
+        url: '/api/alert',
+        contentType: "application/json; charset=utf-8",
+        method: 'GET',
+      })
+      .fail(function(e) {
+        self.$error({message: 'Alert list error: ' + e.responseText});
+        return e;
+      });
+    },
+
+    $alertDelete: function(uuid) {
+      var self = this;
+      return $.ajax({
+        dataType: 'text',
+        url: '/api/alert/' + uuid + '/',
+        method: 'DELETE',
+      })
+      .fail(function(e) {
+        self.$error({message: 'Alert delete error: ' + e.responseText});
+        return e;
+      });
+    },
+
     $allowedTypes: function() {
       return ["ovsbridge", "device", "internal", "veth", "tun", "bridge", "dummy",
         "gre", "bond", "can", "hsr", "ifb", "macvlan", "macvtap", "vlan", "vxlan",

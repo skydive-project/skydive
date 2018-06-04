@@ -155,6 +155,10 @@ var TopologyComponent = {
           <tab-pane title="Flows">\
             <flow-table-control></flow-table-control>\
           </tab-pane>\
+          <tab-pane title="Alerts">\
+            <alert-list></alert-list>\
+            <alert-form></alert-form>\
+          </tab-pane>\
         </tabs>\
         <panel v-if="currentNodeMetadata"\
                :collapsed="false"\
