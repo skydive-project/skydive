@@ -31,8 +31,8 @@ SKYDIVE_ANALYZER_LISTEN=${SKYDIVE_ANALYZER_LISTEN:-$SERVICE_HOST:8082}
 # Inform the agent about the address on which analyzers are listening
 SKYDIVE_ANALYZERS=${SKYDIVE_ANALYZERS:-$SKYDIVE_ANALYZER_LISTEN}
 
-# Configure the skydive agent with the etcd server address
-SKYDIVE_AGENT_ETCD=${SKYDIVE_AGENT_ETCD:-$SERVICE_HOST:12379}
+# Configure the skydive analyzer with the etcd server address
+SKYDIVE_ANALYZER_ETCD=${SKYDIVE_ANALYZER_ETCD:-$SERVICE_HOST:12379}
 
 # ip:port address on which skydive agent listens for connections.
 SKYDIVE_AGENT_LISTEN=${SKYDIVE_AGENT_LISTEN:-"127.0.0.1:8081"}
@@ -175,9 +175,9 @@ logging:
 
 etcd:
   servers:
-    - http://$SKYDIVE_AGENT_ETCD
+    - http://$SKYDIVE_ANALYZER_ETCD
   data_dir: /tmp/skydive-etcd
-  listen: $SKYDIVE_AGENT_ETCD
+  listen: $SKYDIVE_ANALYZER_ETCD
 
 analyzers:
   - $SKYDIVE_ANALYZERS

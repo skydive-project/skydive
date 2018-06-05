@@ -17,5 +17,5 @@ enable_plugin skydive https://github.com/skydive-project/skydive.git
 enable_service skydive-agent
 
 SKYDIVE_ANALYZERS=${SERVICE_HOST}:8082
+SKYDIVE_ANALYZER_ETCD=${SERVICE_HOST}:12379
 SKYDIVE_AGENT_LISTEN=${HOST_IP}:8081
-SKYDIVE_AGENT_ETCD=http://${SERVICE_HOST}:12379
