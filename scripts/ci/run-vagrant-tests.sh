@@ -30,6 +30,7 @@ trap vagrant_cleanup EXIT
 
 export ANALYZER_COUNT=2
 export AGENT_COUNT=1
+export SKYDIVE_RELEASE=master
 
 for mode in $MODES
 do
@@ -45,6 +46,12 @@ do
   vagrant ssh agent1 -- sudo journalctl -n 100 -u skydive-agent
 
   vagrant ssh analyzer1 -- curl http://localhost:8082
-  retcode=$?
+  if [ "$mode" != "container" ]; then
+      vagrant ssh analyzer1 -c 'set -e; skydive client query "g.V()"'
+  else
+      CONTAINER=$(vagrant ssh analyzer1 -- sudo docker ps | grep 'skydive/skydive:latest' | awk '{print $1}')
+      vagrant ssh analyzer1 -- sudo docker exec -t $CONTAINER skydive client query "'g.V()'"
+  fi
+
   vagrant destroy --force
 done
