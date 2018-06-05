@@ -44,25 +44,27 @@ type namespaceProbe struct {
 }
 
 func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
+	ownedByNamespaceFilter := filters.NewOrFilter(
+		filters.NewTermStringFilter("Type", "deployment"),
+		filters.NewTermStringFilter("Type", "daemonset"),
+		filters.NewTermStringFilter("Type", "ingress"),
+		filters.NewTermStringFilter("Type", "job"),
+		filters.NewTermStringFilter("Type", "pod"),
+		filters.NewTermStringFilter("Type", "persistentvolume"),
+		filters.NewTermStringFilter("Type", "persistentvolumeclaim"),
+		filters.NewTermStringFilter("Type", "networkpolicy"),
+		filters.NewTermStringFilter("Type", "replicaset"),
+		filters.NewTermStringFilter("Type", "replicationcontroller"),
+		filters.NewTermStringFilter("Type", "service"),
+		filters.NewTermStringFilter("Type", "statefulset"),
+	)
+
 	filter := filters.NewAndFilter(
 		filters.NewTermStringFilter("Manager", managerValue),
-		filters.NewOrFilter(
-			filters.NewTermStringFilter("Type", "deployment"),
-			filters.NewTermStringFilter("Type", "daemonset"),
-			filters.NewTermStringFilter("Type", "ingress"),
-			filters.NewTermStringFilter("Type", "job"),
-			filters.NewTermStringFilter("Type", "pod"),
-			filters.NewTermStringFilter("Type", "persistentvolume"),
-			filters.NewTermStringFilter("Type", "persistentvolumeclaim"),
-			filters.NewTermStringFilter("Type", "networkpolicy"),
-			filters.NewTermStringFilter("Type", "replicaset"),
-			filters.NewTermStringFilter("Type", "replicationcontroller"),
-			filters.NewTermStringFilter("Type", "service"),
-			filters.NewTermStringFilter("Type", "statefulset"),
-		),
+		ownedByNamespaceFilter,
 	)
 	m := graph.NewGraphElementFilter(filter)
-	return graph.NewMetadataIndexer(g, m)
+	return graph.NewMetadataIndexer(g, m, "Namespace")
 }
 
 func newNamespaceIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
@@ -133,6 +135,15 @@ func (p *namespaceProbe) OnDelete(obj interface{}) {
 
 func (p *namespaceProbe) OnNodeAdded(objNode *graph.Node) {
 	logging.GetLogger().Debugf("Got event on adding %s", dumpGraphNode(objNode))
+	objNamespace, _ := objNode.GetFieldString("Namespace")
+	nsNodes, _ := p.namespaceIndexer.Get(objNamespace)
+	if len(nsNodes) > 0 {
+		p.linkObject(objNode, nsNodes[0])
+	}
+}
+
+func (p *namespaceProbe) OnNodeUpdated(objNode *graph.Node) {
+	logging.GetLogger().Debugf("Got event on updating %s", dumpGraphNode(objNode))
 	objNamespace, _ := objNode.GetFieldString("Namespace")
 	nsNodes, _ := p.namespaceIndexer.Get(objNamespace)
 	if len(nsNodes) > 0 {
