@@ -188,10 +188,7 @@ Vue.component('capture-form', {
   mounted: function() {
     var self = this;
 
-    $.when(this.$getConfigValue('analyzer.packet_capture_enabled').
-      then(function(packetCaptureEnabled) {
-        self.isPacketCaptureEnabled = packetCaptureEnabled;
-    }));
+    self.isPacketCaptureEnabled = app.enforce("capture", "rawpackets");
   },
 
   watch: {

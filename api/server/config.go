@@ -11,6 +11,7 @@ import (
 	"github.com/skydive-project/skydive/config"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/rbac"
 	"github.com/spf13/viper"
 )
 
@@ -19,10 +20,14 @@ type configAPI struct {
 }
 
 func (c *configAPI) configGet(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
 	vars := mux.Vars(&r.Request)
 	key := vars["key"]
+	if !rbac.Enforce(r.Username, "config", "read") {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	value := common.NormalizeValue(c.cfg.Get(key))
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(value); err != nil {

@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "oyXJxS8qqy5TCkqvndCD1c7Lkg4=",
+			"path": "github.com/Knetic/govaluate",
+			"revision": "9aa49832a739dcd78a5542ff189fb82c3e423116",
+			"revisionTime": "2017-10-22T00:36:10Z"
+		},
+		{
 			"checksumSHA1": "L9njXCkN30+qHaLayiiA2Q9jDlY=",
 			"path": "github.com/Microsoft/go-winio",
 			"revision": "fff283ad5116362ca252298cfc9b95828956d85d",
@@ -47,6 +53,70 @@
 			"checksumSHA1": "4QnLdmB1kG3N+KlDd1N+G9TWAGQ=",
 			"path": "github.com/beorn7/perks/quantile",
 			"revision": "b965b613227fddccbfffe13eae360ed3fa822f8d"
+		},
+		{
+			"checksumSHA1": "PP3i7ZVbaAK3XBdtN3HqvQa2Fm0=",
+			"path": "github.com/casbin/casbin",
+			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
+			"revisionTime": "2018-02-09T12:08:38Z",
+			"version": "v1.4.0",
+			"versionExact": "v1.4.0"
+		},
+		{
+			"checksumSHA1": "BXKY680lIrk01sP/PMxnr9s2meA=",
+			"path": "github.com/casbin/casbin/config",
+			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
+			"revisionTime": "2018-02-09T12:08:38Z",
+			"version": "v1.4.0",
+			"versionExact": "v1.4.0"
+		},
+		{
+			"checksumSHA1": "VXqtVquCWuL2JXWbFYaAjtSTcA4=",
+			"path": "github.com/casbin/casbin/file-adapter",
+			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
+			"revisionTime": "2018-02-09T12:08:38Z",
+			"version": "v1.4.0",
+			"versionExact": "v1.4.0"
+		},
+		{
+			"checksumSHA1": "bSkFnB02QiQ8WKnv0QCNMRJmTF8=",
+			"path": "github.com/casbin/casbin/model",
+			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
+			"revisionTime": "2018-02-09T12:08:38Z",
+			"version": "v1.4.0",
+			"versionExact": "v1.4.0"
+		},
+		{
+			"checksumSHA1": "teIOlw9Sg1JXFz4YM5YVxZVpbjQ=",
+			"path": "github.com/casbin/casbin/persist",
+			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
+			"revisionTime": "2018-02-09T12:08:38Z",
+			"version": "v1.4.0",
+			"versionExact": "v1.4.0"
+		},
+		{
+			"checksumSHA1": "nAlfLc2pfrNcxI71bD8Eb+JGUJg=",
+			"path": "github.com/casbin/casbin/rbac",
+			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
+			"revisionTime": "2018-02-09T12:08:38Z",
+			"version": "v1.4.0",
+			"versionExact": "v1.4.0"
+		},
+		{
+			"checksumSHA1": "00tJ6Ik3zJCCf9hx2gnfvdybyb8=",
+			"path": "github.com/casbin/casbin/rbac/default-role-manager",
+			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
+			"revisionTime": "2018-02-09T12:08:38Z",
+			"version": "v1.4.0",
+			"versionExact": "v1.4.0"
+		},
+		{
+			"checksumSHA1": "ZHfEHGfRFe4QPqmx5cukK8UMB1g=",
+			"path": "github.com/casbin/casbin/util",
+			"revision": "3a17f2855cc12ad36fd614c590b9d18f46dfd65d",
+			"revisionTime": "2018-02-09T12:08:38Z",
+			"version": "v1.4.0",
+			"versionExact": "v1.4.0"
 		},
 		{
 			"checksumSHA1": "V3t2eqPEsfIvxdGjBfvbsnO7Vqg=",

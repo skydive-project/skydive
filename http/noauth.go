@@ -43,7 +43,7 @@ func (h *NoAuthenticationBackend) Authenticate(username string, password string)
 func (h *NoAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		setTLSHeader(w, r)
-		ar := &auth.AuthenticatedRequest{Request: *r, Username: ""}
+		ar := &auth.AuthenticatedRequest{Request: *r, Username: "admin"}
 		copyRequestVars(r, &ar.Request)
 		wrapped(w, ar)
 		context.Clear(&ar.Request)

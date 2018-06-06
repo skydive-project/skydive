@@ -156,15 +156,6 @@ var apiMixin = {
       });
     },
 
-    $getConfigValue: function(key) {
-      return $.ajax({
-        dataType: 'json',
-        url: "/api/config/" + key,
-        contentType: "application/json; charset=utf-8",
-        method: 'GET',
-      });
-    },
-
     $injectorList: function() {
       var self = this;
       return $.ajax({

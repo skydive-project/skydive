@@ -78,6 +78,29 @@
   <script src="/statics/js/components/conversation.js"></script>
   <script src="/statics/js/components/discovery.js"></script>
 
+  <!-- UI config -->
+  <script>
+  var defaultConfig = {
+    "bandwidth_absolute_active": 1,
+    "bandwidth_absolute_alert": 1000,
+    "bandwidth_absolute_warning": 100,
+    "bandwidth_relative_active": 0.1,
+    "bandwidth_relative_alert": 0.8,
+    "bandwidth_relative_warning": 0.5,
+    "bandwidth_threshold": "relative",
+    "bandwidth_update_rate": 5,
+    "ssh_enabled": false,
+    "theme": "dark",
+    "topology": {
+      "favorites": {},
+    },
+  }
+
+  uiConfig = $.extend({}, defaultConfig, << .UIConfig >>);
+
+  var allPermissions = << .Permissions >>;
+  </script>
+
   <script src="/statics/js/app.js"></script>
 
   <!-- extra assets -->

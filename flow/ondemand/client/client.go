@@ -31,7 +31,6 @@ import (
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/flow/ondemand"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
@@ -98,9 +97,6 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *types
 	toRegister := func(node *graph.Node, capture *types.Capture) (nodeID graph.Identifier, host string, register bool) {
 		o.graph.RLock()
 		defer o.graph.RUnlock()
-		if !config.GetConfig().GetBool("analyzer.capture_enabled") {
-			return
-		}
 
 		// check not already registered
 		o.RLock()
@@ -381,24 +377,6 @@ func (o *OnDemandProbeClient) Stop() {
 	o.checkForRegistration.Stop()
 }
 
-// InvokeCaptureFromConfig invokes capture based on preconfigured selected SubGraph
-func (o *OnDemandProbeClient) InvokeCaptureFromConfig(ch *api.CaptureAPIHandler) {
-	is_capture_enabled := config.GetConfig().GetBool("analyzer.capture_enabled")
-	if !is_capture_enabled {
-		return
-	}
-	gremlin := config.GetString("analyzer.startup.capture_gremlin")
-	bpf := config.GetString("analyzer.startup.capture_bpf")
-	if gremlin == "" {
-		return
-	}
-	logging.GetLogger().Infof("Invoke capturing from the startup with gremlin: %s and BPF: %s", gremlin, bpf)
-	capture := types.NewCapture(gremlin, bpf)
-	capture.Type = "pcap"
-	ch.Create(capture)
-	return
-}
-
 // NewOnDemandProbeClient creates a new ondemand probe client based on Capture API, graph and websocket
 func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool shttp.WSStructSpeakerPool, subscriberPool shttp.WSStructSpeakerPool, etcdClient *etcd.Client) *OnDemandProbeClient {
 	resources := ch.Index()
@@ -423,6 +401,6 @@ func NewOnDemandProbeClient(g *graph.Graph, ch *api.CaptureAPIHandler, agentPool
 
 	elector.AddEventListener(o)
 	agentPool.AddStructMessageHandler(o, []string{ondemand.Namespace})
-	o.InvokeCaptureFromConfig(ch)
+
 	return o
 }

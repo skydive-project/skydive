@@ -32,6 +32,7 @@ import (
 	"github.com/skydive-project/skydive/flow/storage"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/rbac"
 )
 
 // PcapAPI exposes the pcap injector API
@@ -49,6 +50,11 @@ func (p *PcapAPI) flowExpireUpdate(flows []*flow.Flow) {
 func (p *PcapAPI) injectPcap(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	update := config.GetInt("flow.update")
 	expire := config.GetInt("flow.expire")
+
+	if !rbac.Enforce(r.Username, "pcap", "write") {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 
 	updateHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(update))
 	expireHandler := flow.NewFlowHandler(p.flowExpireUpdate, time.Second*time.Duration(expire))

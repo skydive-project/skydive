@@ -25,6 +25,8 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -46,6 +48,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/rbac"
 	"github.com/skydive-project/skydive/statics"
 )
 
@@ -208,7 +211,6 @@ func (s *Server) serveStatics(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 	html, err := s.readStatics("statics/index.html")
-
 	if err != nil {
 		logging.GetLogger().Error("Unable to find the asset index.html")
 		w.WriteHeader(http.StatusNotFound)
@@ -217,8 +219,12 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		ExtraAssets map[string]ExtraAsset
+		UIConfig    interface{}
+		Permissions [][]string
 	}{
 		ExtraAssets: s.extraAssets,
+		UIConfig:    config.Get("ui"),
+		Permissions: rbac.GetPermissionsForUser("admin"),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
@@ -243,12 +249,18 @@ func (s *Server) serveLogin(w http.ResponseWriter, r *http.Request) {
 			login, password := loginForm[0], passwordForm[0]
 			if token, err := s.Auth.Authenticate(login, password); err == nil {
 				if token != "" {
-					cookie := &http.Cookie{
+					http.SetCookie(w, &http.Cookie{
 						Name:  "authtok",
 						Value: token,
-					}
-					http.SetCookie(w, cookie)
+					})
 				}
+
+				jsonPerms, _ := json.Marshal(rbac.GetPermissionsForUser(login))
+				http.SetCookie(w, &http.Cookie{
+					Name:  "permissions",
+					Value: base64.StdEncoding.EncodeToString([]byte(jsonPerms)),
+				})
+
 				w.WriteHeader(http.StatusOK)
 			} else {
 				unauthorized(w, r)

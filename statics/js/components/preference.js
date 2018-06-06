@@ -9,6 +9,11 @@ var PreferenceComponent = {
   template: '\
     <form class="form-preference" @submit.prevent="save">\
       <div class="form-group">\
+        <label for="theme">Theme</label>\
+        <select id="theme" v-model="preferences.theme" class="form-control input-sm">\
+          <option value="dark">Dark</option>\
+          <option value="light">Light</option>\
+        </select>\
         <label for="default-favorite">Favorite Gremlin Expressions</label>\
         <a><i class="fa fa-question help-text" aria-hidden="true" title="Filter and highlight gremlin queries, displayed in the left panel"></i></a>\
         <div v-for="favorite in preferences.favorites">\
@@ -88,14 +93,6 @@ var PreferenceComponent = {
     if (localStorage.preferences) p = JSON.parse(localStorage.preferences);
     if (!p.favorites || p.favorites.length <= 0) p.favorites = [{name:"", expression:""}];
 
-    if (!p.bandwidthThreshold) {
-      p.bandwidthThreshold = 'absolute';//temp value, will be replaced with config value!
-      $.when(this.$getConfigValue('analyzer.bandwidth_threshold')).
-        then(function(value) {
-          self.preferences.bandwidthThreshold = value;
-      });
-    }
-
     return {
       preferences: p,
     };
@@ -108,6 +105,7 @@ var PreferenceComponent = {
       localStorage.setItem("preferences", JSON.stringify(this.preferences));
       this.$success({message: 'Preferences Saved'});
       this.$router.push("/topology");
+      app.setThemeFromConfig();
     },
 
     cancel: function() {
