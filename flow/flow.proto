@@ -45,6 +45,13 @@ message FlowLayer {
   int64 ID = 5;
 }
 
+message TransportLayer {
+  FlowProtocol Protocol = 1;
+  int64 A = 2;
+  int64 B = 3;
+  int64 ID = 4;
+}
+
 enum ICMPType {
   UNKNOWN = 0;
   DESTINATION_UNREACHABLE = 1;
@@ -129,7 +136,7 @@ message Flow {
 /* Data Flow info */
   FlowLayer Link = 20;
   FlowLayer Network = 21;
-  FlowLayer Transport = 22;
+  TransportLayer Transport = 22;
   ICMPLayer ICMP = 23;
 
 /* Data Flow Metric info from the 1st layer

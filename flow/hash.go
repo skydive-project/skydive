@@ -38,6 +38,24 @@ func (fl *ICMPLayer) Hash(hasher hash.Hash) {
 	hasher.Write(value32)
 }
 
+func (tl *TransportLayer) Hash(hasher hash.Hash) {
+	if tl == nil {
+		return
+	}
+
+	value32 := make([]byte, 4)
+	if tl.A > tl.B {
+		binary.BigEndian.PutUint32(value32, uint32(tl.A<<16|tl.B))
+	} else {
+		binary.BigEndian.PutUint32(value32, uint32(tl.B<<16|tl.A))
+	}
+	hasher.Write(value32)
+
+	valueID := make([]byte, 8)
+	binary.BigEndian.PutUint64(valueID, uint64(tl.ID))
+	hasher.Write(valueID)
+}
+
 // Hash calculates a unique symetric flow layer hash
 func (fl *FlowLayer) Hash(hasher hash.Hash) {
 	if fl == nil {

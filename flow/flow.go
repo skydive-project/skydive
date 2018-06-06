@@ -277,6 +277,47 @@ func (p FlowProtocol) MarshalJSON() ([]byte, error) {
 	return []byte("\"" + p.String() + "\""), nil
 }
 
+// MarshalJSON serialize a TransportLayer in JSON
+func (tl *TransportLayer) MarshalJSON() ([]byte, error) {
+	obj := &struct {
+		Protocol string
+		A        int64
+		B        int64
+		ID       int64
+	}{
+		Protocol: tl.Protocol.String(),
+		A:        tl.A,
+		B:        tl.B,
+		ID:       tl.ID,
+	}
+
+	return json.Marshal(&obj)
+}
+
+//UnmarshalJSON deserialize a JSON object in TransportLayer
+func (tl *TransportLayer) UnmarshalJSON(b []byte) error {
+	m := struct {
+		Protocol string
+		A        int64
+		B        int64
+		ID       int64
+	}{}
+
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+
+	protocol, ok := FlowProtocol_value[m.Protocol]
+	if !ok {
+		return ErrFlowProtocol
+	}
+	tl.Protocol = FlowProtocol(protocol)
+	tl.A = m.A
+	tl.B = m.B
+	tl.ID = m.ID
+	return nil
+}
+
 // MarshalJSON serialize a FlowLayer in JSON
 func (f *FlowLayer) MarshalJSON() ([]byte, error) {
 	obj := &struct {
@@ -829,11 +870,11 @@ func (f *Flow) updateTCPMetrics(packet *Packet) error {
 
 func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
 	if layer := packet.Layer(layers.LayerTypeTCP); layer != nil {
-		f.Transport = &FlowLayer{Protocol: FlowProtocol_TCP}
+		f.Transport = &TransportLayer{Protocol: FlowProtocol_TCP}
 
 		transportPacket := layer.(*layers.TCP)
 		srcPort, dstPort := int(transportPacket.SrcPort), int(transportPacket.DstPort)
-		f.Transport.A, f.Transport.B = strconv.Itoa(srcPort), strconv.Itoa(dstPort)
+		f.Transport.A, f.Transport.B = int64(srcPort), int64(dstPort)
 
 		if app, ok := opts.AppPortMap.TCPApplication(srcPort, dstPort); ok {
 			f.Application = app
@@ -843,21 +884,21 @@ func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
 			f.TCPMetric = &TCPMetric{}
 		}
 	} else if layer := packet.Layer(layers.LayerTypeUDP); layer != nil {
-		f.Transport = &FlowLayer{Protocol: FlowProtocol_UDP}
+		f.Transport = &TransportLayer{Protocol: FlowProtocol_UDP}
 
 		transportPacket := layer.(*layers.UDP)
 		srcPort, dstPort := int(transportPacket.SrcPort), int(transportPacket.DstPort)
-		f.Transport.A, f.Transport.B = strconv.Itoa(srcPort), strconv.Itoa(dstPort)
+		f.Transport.A, f.Transport.B = int64(srcPort), int64(dstPort)
 
 		if app, ok := opts.AppPortMap.UDPApplication(srcPort, dstPort); ok {
 			f.Application = app
 		}
 	} else if layer := packet.Layer(layers.LayerTypeSCTP); layer != nil {
-		f.Transport = &FlowLayer{Protocol: FlowProtocol_SCTP}
+		f.Transport = &TransportLayer{Protocol: FlowProtocol_SCTP}
 
 		transportPacket := layer.(*layers.SCTP)
-		f.Transport.A = strconv.Itoa(int(transportPacket.SrcPort))
-		f.Transport.B = strconv.Itoa(int(transportPacket.DstPort))
+		f.Transport.A = int64(transportPacket.SrcPort)
+		f.Transport.B = int64(transportPacket.DstPort)
 	} else {
 		return ErrLayerNotFound
 	}
@@ -1024,6 +1065,36 @@ func (f *FlowLayer) GetFieldInt64(field string) (int64, error) {
 	switch field {
 	case "ID":
 		return f.ID, nil
+	}
+	return 0, common.ErrFieldNotFound
+}
+
+//GetStringField returns the value of a transport layer field
+func (tl *TransportLayer) GetStringField(field string) (string, error) {
+	if tl == nil {
+		return "", common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "Protocol":
+		return tl.Protocol.String(), nil
+	}
+	return "", common.ErrFieldNotFound
+}
+
+//GetFieldInt64 returns the value of a transport layer firld
+func (tl *TransportLayer) GetFieldInt64(field string) (int64, error) {
+	if tl == nil {
+		return 0, common.ErrFieldNotFound
+	}
+
+	switch field {
+	case "ID":
+		return tl.ID, nil
+	case "A":
+		return tl.A, nil
+	case "B":
+		return tl.B, nil
 	}
 	return 0, common.ErrFieldNotFound
 }

@@ -23,6 +23,7 @@
 package flow
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/google/gopacket"
@@ -140,7 +141,8 @@ func (s *TCPAssemblerStream) ReassemblyComplete() {
 		s.flow.TCPMetric = m
 	}
 
-	if f.Network.A == s.network.Src().String() && f.Transport.A == s.transport.Src().String() {
+	port, _ := strconv.ParseInt(s.transport.Src().String(), 10, 64)
+	if f.Network.A == s.network.Src().String() && f.Transport.A == port {
 		m.ABSegmentOutOfOrder = s.outOfOrder
 		m.ABSegmentSkipped = s.skipped
 		m.ABSegmentSkippedBytes = s.skippedBytes

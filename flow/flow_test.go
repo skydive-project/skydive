@@ -264,6 +264,14 @@ func compareFlowLayer(expected, tested *FlowLayer) bool {
 	return expected.Protocol == tested.Protocol && expected.A == tested.A && expected.B == tested.B && expected.ID == tested.ID
 }
 
+func compareTransportLayer(expected, tested *TransportLayer) bool {
+	if tested == nil {
+		return false
+	}
+
+	return expected.Protocol == tested.Protocol && expected.A == tested.A && expected.B == tested.B && expected.ID == tested.ID
+}
+
 func compareFlowMetric(expected, tested *FlowMetric) bool {
 	if tested == nil {
 		return false
@@ -292,7 +300,7 @@ func compareFlow(expected, tested *Flow) bool {
 	if expected.Network != nil && !compareFlowLayer(expected.Network, tested.Network) {
 		return false
 	}
-	if expected.Transport != nil && !compareFlowLayer(expected.Transport, tested.Transport) {
+	if expected.Transport != nil && !compareTransportLayer(expected.Transport, tested.Transport) {
 		return false
 	}
 	if expected.Metric != nil && !compareFlowMetric(expected.Metric, tested.Metric) {
@@ -437,10 +445,10 @@ func TestPCAP1(t *testing.T) {
 				A:        "192.168.0.5",
 				B:        "8.8.8.8",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "37686",
-				B:        "53",
+				A:        37686,
+				B:        53,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 2,
@@ -462,10 +470,10 @@ func TestPCAP1(t *testing.T) {
 				A:        "192.168.0.5",
 				B:        "173.194.40.147",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_TCP,
-				A:        "47838",
-				B:        "80",
+				A:        47838,
+				B:        80,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 6,
@@ -487,10 +495,10 @@ func TestPCAP1(t *testing.T) {
 				A:        "192.168.0.5",
 				B:        "8.8.8.8",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "33553",
-				B:        "53",
+				A:        33553,
+				B:        53,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 2,
@@ -512,10 +520,10 @@ func TestPCAP1(t *testing.T) {
 				A:        "192.168.0.5",
 				B:        "216.58.211.67",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_TCP,
-				A:        "54785",
-				B:        "80",
+				A:        54785,
+				B:        80,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 20,
@@ -585,10 +593,10 @@ func TestPCAPMplsContrail(t *testing.T) {
 				A:        "10.11.0.56",
 				B:        "10.11.0.55",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "53580",
-				B:        "51234",
+				A:        53580,
+				B:        51234,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 1,
@@ -608,10 +616,10 @@ func TestPCAPMplsContrail(t *testing.T) {
 				A:        "10.65.65.4",
 				B:        "10.65.65.5",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_TCP,
-				A:        "52477",
-				B:        "80",
+				A:        52477,
+				B:        80,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 1,
@@ -631,10 +639,10 @@ func TestPCAPMplsContrail(t *testing.T) {
 				A:        "10.11.0.55",
 				B:        "10.11.0.56",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "51822",
-				B:        "51234",
+				A:        51822,
+				B:        51234,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 1,
@@ -1099,10 +1107,10 @@ func TestVxlanIcmpv4Truncated(t *testing.T) {
 				B:        "172.16.0.2",
 				ID:       10,
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "55091",
-				B:        "4789",
+				A:        55091,
+				B:        4789,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 1,
@@ -1157,10 +1165,10 @@ func TestNTPCorrupted(t *testing.T) {
 				A:        "89.46.101.31",
 				B:        "196.95.70.83",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "40820",
-				B:        "123",
+				A:        40820,
+				B:        123,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 1,
@@ -1168,8 +1176,8 @@ func TestNTPCorrupted(t *testing.T) {
 				BAPackets: 0,
 				BABytes:   0,
 			},
-			TrackingID:   "b416e1a36e6d5875",
-			L3TrackingID: "77f3bb5333e3d353",
+			TrackingID:   "35888c9feebbb826",
+			L3TrackingID: "1a38b07877d9a8bd",
 		},
 	}
 
@@ -1187,10 +1195,10 @@ func TestLinkType12(t *testing.T) {
 				B:        "192.168.255.1",
 				ID:       0,
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_TCP,
-				A:        "10250",
-				B:        "41252",
+				A:        10250,
+				B:        41252,
 				ID:       0,
 			},
 		},
@@ -1215,10 +1223,10 @@ func TestVxlanSrcPort(t *testing.T) {
 				B:        "172.16.0.2",
 				ID:       10,
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "51031",
-				B:        "4789",
+				A:        51031,
+				B:        4789,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 2,
@@ -1240,10 +1248,10 @@ func TestVxlanSrcPort(t *testing.T) {
 				A:        "192.168.0.1",
 				B:        "192.168.0.2",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_TCP,
-				A:        "1468",
-				B:        "8080",
+				A:        1468,
+				B:        8080,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 1,
@@ -1265,10 +1273,10 @@ func TestVxlanSrcPort(t *testing.T) {
 				A:        "192.168.0.1",
 				B:        "192.168.0.2",
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_TCP,
-				A:        "1890",
-				B:        "8080",
+				A:        1890,
+				B:        8080,
 			},
 			Metric: &FlowMetric{
 				ABPackets: 1,
@@ -1299,10 +1307,10 @@ func TestGeneve(t *testing.T) {
 				B:        "20.0.0.2",
 				ID:       0,
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "12618",
-				B:        "6081",
+				A:        12618,
+				B:        6081,
 				ID:       0,
 			},
 			Metric: &FlowMetric{
@@ -1327,10 +1335,10 @@ func TestGeneve(t *testing.T) {
 				B:        "20.0.0.1",
 				ID:       11,
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "50525",
-				B:        "6081",
+				A:        50525,
+				B:        6081,
 				ID:       0,
 			},
 			Metric: &FlowMetric{
@@ -1382,10 +1390,10 @@ func TestGeneve(t *testing.T) {
 				B:        "30.0.0.1",
 				ID:       0,
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_TCP,
-				A:        "51225",
-				B:        "22",
+				A:        51225,
+				B:        22,
 				ID:       0,
 			},
 			Metric: &FlowMetric{
@@ -1410,10 +1418,10 @@ func TestGeneve(t *testing.T) {
 				B:        "20.0.0.2",
 				ID:       0,
 			},
-			Transport: &FlowLayer{
+			Transport: &TransportLayer{
 				Protocol: FlowProtocol_UDP,
-				A:        "22540",
-				B:        "6081",
+				A:        22540,
+				B:        6081,
 				ID:       0,
 			},
 			Metric: &FlowMetric{
