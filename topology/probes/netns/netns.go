@@ -105,6 +105,10 @@ func (u *NetNSProbe) checkNamespace(path string) error {
 			return err
 		}
 
+		if (stats.Mode & syscall.S_IFLNK) > 0 {
+			return nil
+		}
+
 		if parent := filepath.Dir(path); parent != "" {
 			if err := syscall.Stat(parent, &parentStats); err == nil {
 				if stats.Dev == parentStats.Dev {
@@ -169,9 +173,18 @@ func (u *NetNSProbe) Register(path string, name string) (*graph.Node, error) {
 	u.Graph.Unlock()
 
 	logging.GetLogger().Debugf("Registering namespace: %s", nsString)
-	probe, err := u.NetLinkProbe.Register(path, n)
+
+	var probe *netlink.NetNsNetLinkProbe
+	err := common.Retry(func() error {
+		var err error
+		probe, err = u.NetLinkProbe.Register(path, n)
+		if err != nil {
+			return fmt.Errorf("Could not register netlink probe within namespace: %s", err)
+		}
+		return nil
+	}, 100, 10*time.Millisecond)
 	if err != nil {
-		return nil, fmt.Errorf("Could not register netlink probe within namespace: %s", err)
+		return nil, err
 	}
 
 	u.netNsNetLinkProbes[nsString] = &netNsNetLinkProbe{NetNsNetLinkProbe: probe, useCount: 1}
