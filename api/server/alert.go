@@ -23,6 +23,8 @@
 package server
 
 import (
+	"time"
+
 	"github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/api/types"
 )
@@ -42,7 +44,8 @@ func (a *AlertResourceHandler) New() types.Resource {
 	id, _ := uuid.NewV4()
 
 	return &types.Alert{
-		UUID: id.String(),
+		UUID:       id.String(),
+		CreateTime: time.Now().UTC(),
 	}
 }
 
