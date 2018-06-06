@@ -148,6 +148,19 @@ agent:
       # delay in seconds between two metric updates
       # metrics_update: 30
 
+    # Define OpenStack Neutron credentials and the enpoint type
+    # used by the neutron probe
+    neutron:
+      # auth_url:
+      # username: neutron
+      # password: secret
+      # tenant_name: service
+      # region_name: RegionOne
+      # domain_name: Default
+
+      # The endpoint_type value must be 'public', 'internal' or 'admin'
+      # endpoint_type: public
+
   capture:
     # Period in second to get capture stats from the probe. Note this
     # stats_update: 1
@@ -287,19 +300,18 @@ auth:
   basic:
     # file: /etc/skydive/htpasswd
 
+  # Define Keystone authentication type parameters
+  keystone:
+    # auth_url: http://xxx.xxx.xxx.xxx:5000/v3
+
+    # define the tenant and the domain that the users have to belong to
+    # tenant_name: admin
+    # domain_name: Default
+
   # The 'analyzer_username' and 'analyzer_password' parameters are
   # used by the agent to authenticate against the analyzer
   # analyzer_username: admin
   # analyzer_password: password
-
-openstack:
-  # auth_url: http://xxx.xxx.xxx.xxx:5000/v2.0
-  # tenant_name: admin
-  # domain_name: Default
-  # region_name: RegionOne
-  # endpoint_type: public
-  # username: admin
-  # password: secret
 
 etcd:
   # server parameters

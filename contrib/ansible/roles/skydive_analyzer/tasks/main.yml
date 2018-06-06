@@ -30,3 +30,6 @@
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"
+
+- include: keystone.yml
+  when: skydive_auth_type == "keystone"

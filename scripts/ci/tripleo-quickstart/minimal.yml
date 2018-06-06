@@ -1,0 +1,70 @@
+# Summary of the feature set.
+# This is a basic configuration it should match fs001 as
+# closely as possible with the exception of the network isolation type
+
+# Deploy an Openstack environment with ssl undercloud, introspect, and use network isolation
+# Note: any change in this featureset must also be done in featureset035.
+
+# This enables TLS for the undercloud which will also make haproxy bind to the
+# configured public-vip and admin-vip.
+overcloud_templates_path: "{{ working_dir }}/tripleo-heat-templates"
+overcloud_templates_repo: https://github.com/safchain/tripleo-heat-templates
+overcloud_templates_branch: review/sylvain_afchain/bp/skydive-external-deploy-tasks
+
+undercloud_generate_service_certificate: true
+ssl_overcloud: true
+step_introspect: true
+
+# This enables container deployements after Pike
+containerized_overcloud: >-
+  {% if release in ['newton', 'ocata', 'pike'] -%}
+  false
+  {%- else -%}
+  true
+  {%- endif -%}
+delete_docker_cache: true
+
+# Tell tripleo about our environment.
+enable_pacemaker: false
+network_isolation: true
+network_isolation_type: "single-nic-vlans"
+
+# This featureset is extremely resource intensive, so we disable telemetry
+# in order to reduce the overall memory footprint
+# This is not required in newton
+telemetry_args: >-
+   {% if release != 'newton' %}
+   -e {{ overcloud_templates_path }}/environments/disable-telemetry.yaml
+   {% endif %}
+
+extra_args: >-
+  --ntp-server pool.ntp.org
+  {% if release not in ['newton', 'ocata', 'pike'] %}
+  -e {{ working_dir }}/skydive.yaml
+  -e {{ working_dir }}/tripleo-heat-templates/environments/services/skydive-environment.yaml
+  {% endif %}
+
+# keep the doc gen settings at the bottom of the config file.
+# options below direct automatic doc generation by tripleo-collect-logs
+artcl_gen_docs: false
+
+# Use the traditional ping test in newton, ocata and pike
+# Run tempest in queens+
+
+test_ping: >-
+  {% if release in ['newton', 'ocata', 'pike'] -%}
+  true
+  {%- else -%}
+  false
+  {%- endif -%}
+
+# looking for a small set of tempest tests to validate
+# tempest config and execution are working
+run_tempest: false
+
+deploy_steps_ansible_workflow: >-
+  {% if release not in ['newton','ocata','pike'] -%}
+  true
+  {%- else -%}
+  false
+  {%- endif -%}

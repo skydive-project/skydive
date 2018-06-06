@@ -9,11 +9,19 @@ skydive_deployment_mode=container
 
 skydive_auth_type=keystone
 
-os_auth_url=http://192.168.0.16/identity/v3
+os_auth_url=http://192.168.0.16
 os_username=admin
 os_password=secret
 os_tenant_name=admin
 os_domain_name=Default
+os_identity_api_version=3
+
+skydive_os_auth_url=http://192.168.0.16/identity/v3
+skydive_os_service_username=skydive
+skydive_os_service_password=secret
+skydive_os_service_tenant_name=service
+skydive_os_service_domain_name=Default
+skydive_os_service_region_name=RegionOne
 
 [analyzers]
 localhost ansible_connection=local

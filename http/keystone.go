@@ -62,18 +62,7 @@ func (b *KeystoneAuthenticationBackend) checkUserV2(client *gophercloud.ServiceC
 	}
 
 	if token.Tenant.Name != b.Tenant {
-		return "", ErrWrongCredentials
-	}
-
-	isAdmin := false
-	for _, role := range user.Roles {
-		if role.Name == "admin" {
-			isAdmin = true
-			break
-		}
-	}
-
-	if !isAdmin {
+		logging.GetLogger().Debugf("Keystone authentication error, tenant miss-match: %s vs %s", token.Tenant.Name, b.Tenant)
 		return "", ErrWrongCredentials
 	}
 
@@ -102,20 +91,9 @@ func (b *KeystoneAuthenticationBackend) checkUserV3(client *gophercloud.ServiceC
 	mapstructure.Decode(result.Body, &response)
 
 	// test that the project is the same as the one provided in the conf file
-	if response.Token.Project.Name != b.Tenant || response.Token.Project.Domain.Name != b.Domain {
-		return "", ErrWrongCredentials
-	}
-
-	// test that the user is the admin of the project
-	isAdmin := false
-	for _, role := range response.Token.Roles {
-		if role.Name == "admin" {
-			isAdmin = true
-			break
-		}
-	}
-
-	if !isAdmin {
+	project := response.Token.Project
+	if project.Name != b.Tenant || project.Domain.Name != b.Domain {
+		logging.GetLogger().Debugf("Keystone authentication error, tenant or domain miss-match: %s vs %s, %s vs %s", project.Name, b.Tenant, project.Domain.Name, b.Domain)
 		return "", ErrWrongCredentials
 	}
 
@@ -125,11 +103,13 @@ func (b *KeystoneAuthenticationBackend) checkUserV3(client *gophercloud.ServiceC
 func (b *KeystoneAuthenticationBackend) CheckUser(r *http.Request) (string, error) {
 	cookie, err := r.Cookie("authtok")
 	if err != nil {
+		logging.GetLogger().Debug("Keystone authentication error, cookie not found")
 		return "", ErrWrongCredentials
 	}
 
 	tokenID := cookie.Value
 	if tokenID == "" {
+		logging.GetLogger().Debug("Keystone authentication error, empty cookie value")
 		return "", ErrWrongCredentials
 	}
 
@@ -166,7 +146,7 @@ func (b *KeystoneAuthenticationBackend) Authenticate(username string, password s
 	}
 
 	if err := openstack.Authenticate(provider, opts); err != nil {
-		logging.GetLogger().Noticef("Keystone authentication error : %s", err)
+		logging.GetLogger().Noticef("Keystone authentication error: %s", err)
 		return "", err
 	}
 
@@ -178,7 +158,7 @@ func (b *KeystoneAuthenticationBackend) Wrap(wrapped auth.AuthenticatedHandlerFu
 		setTLSHeader(w, r)
 		if username, err := b.CheckUser(r); username == "" {
 			if err != nil {
-				logging.GetLogger().Warningf("Failed to check token: %s", err.Error())
+				logging.GetLogger().Warningf("Failed to check token: %s", err)
 			}
 			unauthorized(w, r)
 		} else {
@@ -203,9 +183,9 @@ func NewKeystoneBackend(authURL string, tenant string, domain string) *KeystoneA
 }
 
 func NewKeystoneAuthenticationBackendFromConfig() *KeystoneAuthenticationBackend {
-	authURL := config.GetString("openstack.auth_url")
-	domain := config.GetString("openstack.domain_name")
-	tenant := config.GetString("openstack.tenant_name")
+	authURL := config.GetString("auth.keystone.auth_url")
+	domain := config.GetString("auth.keystone.domain_name")
+	tenant := config.GetString("auth.keystone.tenant_name")
 
 	return NewKeystoneBackend(authURL, tenant, domain)
 }

@@ -32,6 +32,17 @@ import (
 func TestRelocation(t *testing.T) {
 	cfg.SetConfigType("yaml")
 
+	relocationMap = map[string][]string{
+		"openstack.auth_url": {
+			"auth.keystone.auth_url",
+			"agent.topology.neutron.auth_url",
+		},
+		"openstack.tenant_name": {
+			"auth.keystone.tenant_name",
+			"agent.topology.neutron.tenant_name",
+		},
+	}
+
 	var yamlv1 = []byte(`
 auth:
   keystone:
