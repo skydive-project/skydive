@@ -4,46 +4,100 @@ go_import_path: github.com/skydive-project/skydive
 go:
     - 1.9.1
 
-sudo: required
+sudo: false
+os:
+    - linux-ppc64le
+    - linux
 dist: xenial
+services:
+    - docker
+addons:
+    apt:
+        packages:
+            - openvswitch-switch
+            - unzip
+            - build-essential
+            - flex
+            - bison
+            - libxml2-dev
+            - libz-dev
+            - liblzma-dev
+            - libicu-dev
+            - libc++-dev
+            - bridge-utils
+            - libdb5.3-dev
+            - libgraph-easy-perl
+            - screen
+            - inotify-tools
+            - realpath
+            - libnuma-dev
+            - libpcap-dev
+
+cache:
+  apt: true
+  directories:
+    - ${HOME}/protoc/bin
+    - ${HOME}/protoc/lib
+    - ${GOPATH}
 
 before_install:
-    - sudo apt-get -qq update
-    - sudo apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y openvswitch-switch unzip docker.io build-essential flex bison libxml2-dev libz-dev liblzma-dev libicu-dev libc++-dev bridge-utils libdb5.3-dev libgraph-easy-perl screen inotify-tools realpath libnuma-dev linux-headers-$(uname -r)
-    - sudo ovs-vsctl show
-    - sudo iptables -F
-    - for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
 
-    - git clone https://github.com/the-tcpdump-group/libpcap.git
-    - cd libpcap
-    - git checkout libpcap-1.5.3
-    - ./configure --prefix=/usr/local --disable-shared --disable-dbus --disable-bluetooth --disable-canusb
-    - make
-    - sudo make install
-    - cd ..
+    - |
+      if [ ! -x ${HOME}/protoc/bin/protoc ]; then
+        mkdir ${HOME}/protoc
+        pushd ${HOME}/protoc
+        PROTOC_VER=3.5.1
+        wget https://github.com/google/protobuf/archive/v${PROTOC_VER}.tar.gz
+        tar -zxf v${PROTOC_VER}.tar.gz
+        cd protobuf-${PROTOC_VER}/
+        ./autogen.sh
+        ./configure --prefix=${HOME}/protoc
+        make -j4
+        make -j4 install
+        popd
+      fi
 
-    - mkdir ${HOME}/protoc
-    - pushd ${HOME}/protoc
-    - wget https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip
-    - unzip protoc-3.1.0-linux-x86_64.zip
-    - popd
-    - export PATH=${HOME}/protoc/bin:${PATH}
+    - export PATH=${HOME}/protoc/bin:${GOPATH}/bin:${PATH}
+    - export LD_LIBRARY_PATH=${HOME}/protoc/lib:${LD_LIBRARY_PATH}
+
+before_script:
+    - |
+      if [ -n "${TRAVIS_TAG}" ]
+      then
+        BUILD_TAG=${TRAVIS_TAG}
+      else
+        BUILD_TAG=$(date +%Y-%m-%d).${TRAVIS_JOB_NUMBER%%.*}
+      fi
+
+    - |
+      if [ ${TRAVIS_OS_NAME} == linux-ppc64le ]
+      then
+        DOCKER_BASE=alpine:3.7
+        export BUILD_TAG=${BUILD_TAG}_ppc64le
+      else
+        export BUILD_TAG=${BUILD_TAG}_x86_64
+      fi
+
+    - echo BUILD_TAG=${BUILD_TAG}
 
 script:
-    - export BUILD_TAG=$(date +%Y-%m-%d).${TRAVIS_JOB_NUMBER}
-    - export PATH=${GOPATH}/bin:${PATH}
-
     - make WITH_EBPF=true install
     - make WITH_EBPF=true static
 
     - echo "--- DOCKER IMAGE ---"
-    - make docker-image DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
-    - sudo -E docker login -e "${DOCKER_EMAIL}" -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
-    - sudo -E docker tag ${DOCKER_IMAGE}:${BUILD_TAG} ${DOCKER_IMAGE}:latest
-    - sudo -E docker push docker.io/${DOCKER_IMAGE}:${BUILD_TAG}
-    - sudo -E docker push docker.io/${DOCKER_IMAGE}:latest
+    - make docker-image ${DOCKER_BASE:+BASE=$DOCKER_BASE} DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
+
+after_success:
+    - echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+    - docker push docker.io/${DOCKER_IMAGE}:${BUILD_TAG}
+    - |
+      if [ -n "${TRAVIS_TAG}" ]
+      then
+        docker tag ${DOCKER_IMAGE}:${BUILD_TAG} ${DOCKER_IMAGE}:latest
+        docker push docker.io/${DOCKER_IMAGE}:latest
+      fi
 
     - echo "--- BINARIES ---"
     - git reset --hard
@@ -52,9 +106,64 @@ script:
     - git checkout -b travis-builds binaries/travis-builds
     - git config --global user.email "builds@travis-ci.com"
     - git config --global user.name "Travis CI"
-    - cp ${GOPATH}/bin/skydive skydive-latest
-    - git add skydive-latest
+    - cp ${GOPATH}/bin/skydive skydive-${TRAVIS_OS_NAME}
+    - git add skydive-${TRAVIS_OS_NAME}
     - git commit -m "${BUILD_TAG} travis build" --amend
     - git config credential.helper "store --file=.git/credentials"
     - echo "https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com" > .git/credentials
     - git push -f -q binaries travis-builds
+
+before_deploy:
+    - git config --global user.email "builds@travis-ci.com"
+    - git config --global user.name "Travis CI"
+    - make DESTDIR=$HOME SKYDIVE_PKG=skydive-${TRAVIS_OS_NAME}-${TRAVIS_TAG} localdist
+
+deploy:
+    provider: releases
+    user: ${TRAVIS_REPO_SLUG%/*}
+    api_key: ${GITHUB_TOKEN}
+    file:
+        - skydive-${TRAVIS_OS_NAME}
+        - ${HOME}/skydive-${TRAVIS_OS_NAME}-${TRAVIS_TAG}.tar.gz
+    skip_cleanup: true
+    on:
+        tags: true
+
+
+jobs:
+  include:
+    - stage: build_multi_arch_docker_image
+      # only ppc64le currently has a docker new enough to support experimental manifests
+      os: linux-ppc64le
+      # minimise things that the stage doesn't require. note still need before_script
+      cache: false
+      before_install: true
+      install: true
+      before_deploy: true
+      deploy:
+        provider: script
+        script: true
+        on:
+          condition: 0
+      addons:
+          apt:
+              packages:
+      script:
+      - |
+         if [[ "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then
+           echo '{ "experimental" : "enabled" }' > ~/.docker/config.json
+           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+           MANIFEST="${DOCKER_IMAGE}:${BUILD_TAG%%_*}"
+           docker manifest create  "${MANIFEST}" "${MANIFEST}_x86_64" "${MANIFEST}_ppc64le"
+           docker manifest inspect "${MANIFEST}"
+           docker manifest push    "${MANIFEST}"
+           if [ -n "${TRAVIS_TAG}" ]
+           then
+             docker manifest create  ${DOCKER_IMAGE}:latest "${MANIFEST}_x86_64" "${MANIFEST}_ppc64le"
+             docker manifest inspect ${DOCKER_IMAGE}:latest
+             docker manifest push    ${DOCKER_IMAGE}:latest
+           fi
+         fi
+      after_success: true
+
+# vim:set et ts=4 sw=4
