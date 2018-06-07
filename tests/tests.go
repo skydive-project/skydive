@@ -66,7 +66,7 @@ analyzer:
     backend: {{.TopologyBackend}}
     probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
   startup:
-    capture_gremlin: "g.V().Has('Name', 'startup-vm2')"
+    capture_gremlin: "g.V().Has('Name','startup-vm2')"
 
 agent:
   listen: {{.AgentAddr}}:{{.AgentPort}}
