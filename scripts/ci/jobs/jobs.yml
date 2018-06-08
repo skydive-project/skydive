@@ -279,6 +279,20 @@
           test: scripts/ci/run-helm-tests.sh
 
 - job:
+    name: skydive-opencontrail-tests
+    defaults: skydive
+    node: baremetal
+    triggers:
+      - skydive-pull-request:
+          name: opencontrail-tests
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: true
+          cancel-builds-on-update: false
+    builders:
+      - skydive-test:
+          test: scripts/ci/run-opencontrail-tests.sh
+
+- job:
     name: 'skydive-functional-tests-backend-elasticsearch'
     defaults: skydive
     triggers:
