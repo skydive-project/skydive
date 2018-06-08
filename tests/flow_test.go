@@ -1368,9 +1368,11 @@ func TestFlowVLANSegmentation(t *testing.T) {
 		}},
 
 		tearDownCmds: []helper.Cmd{
-			{"ip netns del vlan-vm1", true},
-			{"ip netns del vlan-vm2", true},
-			{"ovs-vsctl del-br br-vlan", true},
+			{"sudo ip link del vlan-vm1-eth0", true},
+			{"sudo ip link del vlan-vm2-eth0", true},
+			{"sudo ip netns del vlan-vm1", true},
+			{"sudo ip netns del vlan-vm2", true},
+			{"sudo ovs-vsctl del-br br-vlan", true},
 		},
 
 		captures: []TestCapture{
