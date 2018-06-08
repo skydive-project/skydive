@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DIR="$(dirname "$0")"
+
 OS=linux
 ARCH=amd64
 TARGET_DIR=/usr/bin
@@ -7,14 +9,28 @@ TARGET_DIR=/usr/bin
 MINIKUBE_VERSION="v0.25.2"
 MINIKUBE_URL="https://github.com/kubernetes/minikube/releases/download/$MINIKUBE_VERSION/minikube-$OS-$ARCH"
 
-KUBECTL_VERSION="v1.9.0"
+KUBECTL_VERSION="v1.9.4"
 KUBECTL_URL="https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/$OS/$ARCH/kubectl"
 
 export MINIKUBE_WANTUPDATENOTIFICATION=false
 export MINIKUBE_WANTREPORTERRORPROMPT=false
-export MINIKUBE_HOME=$HOME
-export CHANGE_MINIKUBE_NONE_USER=true
-export KUBECONFIG=$HOME/.kube/config
+
+case "$MINIKUBE_DRIVER" in
+        "" | "none")
+                MINIKUBE_DRIVER=none
+                export MINIKUBE_HOME=$HOME
+                export CHANGE_MINIKUBE_NONE_USER=true
+                export KUBECONFIG=$HOME/.kube/config
+                minikube() { sudo -E minikube $@; }
+                kubectl() { sudo -E kubectl $@; }
+                ;;
+        "virtualbox")
+                ;;
+        *)
+                echo "don't support MINIKUBE_DRIVER value '$MINIKUBE_DRIVER'"
+                exit 1
+                ;;
+esac
 
 uninstall_binary() {
         local prog=$1
@@ -41,8 +57,6 @@ check_minikube() {
                 echo "minikube is not installed. Please run install-minikube.sh install"
                 exit 1
         fi
-
-        sudo systemctl start docker
 }
 
 install() {
@@ -58,39 +72,47 @@ uninstall() {
 stop() {
         check_minikube
 
-        sudo -E minikube delete
+        minikube delete
         sudo rm -rf $HOME/.minikube $HOME/.kube
         sudo rm -rf /root/.minikube /root/.kube
 
-        sudo docker system prune -af
-        for i in $(sudo docker ps -aq --filter name=k8s); do
-                sudo docker stop $i
-                sudo docker rm $i
-        done
+        if [ "$MINIKUBE_DRIVER" == "none" ]; then
+                sudo rm -rf /etc/kubernetes
+                sudo rm -rf /var/lib/localkube
 
-        sudo systemctl stop localkube
-        sudo systemctl disable localkube
+                sudo docker system prune -af
+                for i in $(sudo docker ps -aq --filter name=k8s); do
+                        sudo docker stop $i
+                        sudo docker rm $i
+                done
+
+                sudo systemctl stop localkube
+                sudo systemctl disable localkube
+        fi
 }
 
 start() {
         check_minikube
 
-        local args="--vm-driver=none"
-        local driver=$(sudo docker info --format '{{print .CgroupDriver}}')
-        if [ -n "$driver" ]; then
-                args="$args --extra-config=kubelet.CgroupDriver=$driver"
+        if [ "$MINIKUBE_DRIVER" == "none" ]; then
+                local args="--vm-driver=none"
+                local driver=$(sudo docker info --format '{{print .CgroupDriver}}')
+                if [ -n "$driver" ]; then
+                        args="$args --extra-config=kubelet.CgroupDriver=$driver"
+                fi
         fi
 
-        sudo -E minikube start $args
-        sudo -E minikube addons disable dashboard
+        minikube start $args
         minikube status
         kubectl config use-context minikube
 
-        # enable accesss from root account
         for i in .kube .minikube; do
                 sudo rm -rf /root/$i
                 sudo cp -ar $HOME/$i /root/$i
         done
+
+        kubectl get services kubernetes
+        kubectl get pods -n kube-system
 }
 
 status() {
