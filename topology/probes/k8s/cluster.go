@@ -46,6 +46,8 @@ func newClusterLinkedObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 		filters.NewOrFilter(
 			filters.NewTermStringFilter("Type", "namespace"),
 			filters.NewTermStringFilter("Type", "node"),
+			filters.NewTermStringFilter("Type", "persistentvolume"),
+			filters.NewTermStringFilter("Type", "persistentvolumeclaim"),
 		),
 	)
 	m := graph.NewGraphElementFilter(filter)

@@ -393,6 +393,7 @@ k8s:
   - networkpolicy
   - node
   - persistentvolume
+  - persistentvolumeclaim
   - pod
   - replicaset
   - replicationcontroller
