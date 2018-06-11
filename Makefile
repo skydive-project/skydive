@@ -108,6 +108,10 @@ ifeq ($(WITH_HELM), true)
   BUILDTAGS+=helm
 endif
 
+ifeq ($(WITH_OPENCONTRAIL), true)
+  BUILDTAGS+=opencontrail
+endif
+
 .PHONY: all install
 all install: skydive
 

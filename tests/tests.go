@@ -77,6 +77,7 @@ agent:
       - ovsdb
       - docker
       - lxd
+      - opencontrail
     netlink:
       metrics_update: 5
 
