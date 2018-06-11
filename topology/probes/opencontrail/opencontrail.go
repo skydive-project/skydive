@@ -117,7 +117,8 @@ func getInterfaceFromIntrospect(host string, port int, name string) (col collect
 		}
 		return
 	}
-	err = common.Retry(getFromIntrospect, 3, 500*time.Millisecond)
+	// Retry during about 8 seconds
+	err = common.RetryExponential(getFromIntrospect, 5, 250*time.Millisecond)
 	return
 }
 
