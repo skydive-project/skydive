@@ -110,8 +110,13 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *types
 		if _, err := node.GetFieldString("Capture.ID"); err == nil {
 			return
 		}
+
 		tp, _ := node.GetFieldString("Type")
 		if !common.IsCaptureAllowed(tp) {
+			return
+		}
+
+		if node.Host() == "" {
 			return
 		}
 
@@ -146,7 +151,6 @@ func (o *OnDemandProbeClient) registerProbes(nodes []interface{}, capture *types
 }
 
 func (o *OnDemandProbeClient) registerProbe(np nodeProbe) bool {
-
 	cq := ondemand.CaptureQuery{
 		NodeID:  np.id,
 		Capture: *np.capture,
