@@ -32,6 +32,30 @@
 - shell: |
     curl --user "admin:{{ jenkins_admin_password | default('admin') }}" \
       --data-urlencode 'script= \
+    import hudson.slaves.EnvironmentVariablesNodeProperty
+    import jenkins.model.Jenkins
+
+    instance = Jenkins.getInstance();
+    globalNodeProperties = instance.getGlobalNodeProperties();
+    envVarsNodePropertyList = globalNodeProperties.getAll(EnvironmentVariablesNodeProperty.class);
+    newEnvVarsNodeProperty = null;
+    envVars = null;
+
+    if ( envVarsNodePropertyList == null || envVarsNodePropertyList.size() == 0 ) {
+      newEnvVarsNodeProperty = new EnvironmentVariablesNodeProperty();
+      globalNodeProperties.add(newEnvVarsNodeProperty);
+      envVars = newEnvVarsNodeProperty.getEnvVars();
+    } else {
+      envVars = envVarsNodePropertyList.get(0).getEnvVars();
+    }
+
+    envVars.put("http_proxy", "http://localhost:3128");
+    instance.save();
+    ' http://localhost:8080/scriptText
+
+- shell: |
+    curl --user "admin:{{ jenkins_admin_password | default('admin') }}" \
+      --data-urlencode 'script= \
     import hudson.util.Secret;
     import com.cloudbees.plugins.credentials.*;
     import com.cloudbees.plugins.credentials.domains.Domain;
