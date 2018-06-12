@@ -159,6 +159,9 @@ var TopologyComponent = {
             <alert-list></alert-list>\
             <alert-form></alert-form>\
           </tab-pane>\
+          <tab-pane title="Workflows">\
+            <workflow-call></workflow-call>\
+          </tab-pane>\
         </tabs>\
         <panel id="node-metadata" v-if="currentNodeMetadata"\
                :collapsed="false"\

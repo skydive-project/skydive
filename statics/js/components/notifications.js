@@ -58,7 +58,7 @@ Vue.component('notifications', {
 
   template: '\
     <div class="col-xs-11 col-sm-4" style="position: fixed; z-index: 1031; top: 20px; right: 20px;">\
-      <notification id="notification" v-for="n in notifications" :notification="n"></notification>\
+      <notification id="notification" v-for="n in notifications" :key="n.title" :notification="n"></notification>\
     </div>\
   ',
 
