@@ -29,7 +29,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mitchellh/go-homedir"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
 	"github.com/skydive-project/skydive/api/client"
@@ -227,7 +227,7 @@ var ShellCmd = &cobra.Command{
 		if shellScript != "" {
 			result := s.jsre.RunScript(shellScript)
 			if result.IsDefined() {
-				logging.GetLogger().Errorf("Error while exeucting script %s: %s", shellScript, result.String())
+				logging.GetLogger().Errorf("Error while executing script %s: %s", shellScript, result.String())
 			}
 		}
 

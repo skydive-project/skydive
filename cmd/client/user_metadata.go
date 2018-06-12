@@ -46,11 +46,11 @@ var UserMetadataCmd = &cobra.Command{
 	SilenceUsage: false,
 }
 
-//AddMetadata skydive user-metadata add command
-var AddMetadata = &cobra.Command{
-	Use:          "add",
-	Short:        "add user metadata",
-	Long:         "add user metadata",
+// UserMetadataCreate skydive user-metadata add command
+var UserMetadataCreate = &cobra.Command{
+	Use:          "create",
+	Short:        "create user metadata",
+	Long:         "create user metadata",
 	SilenceUsage: false,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if gremlinQuery == "" || key == "" || value == "" {
@@ -79,8 +79,8 @@ var AddMetadata = &cobra.Command{
 	},
 }
 
-//DeleteMetadata skydive user-metadata delete command
-var DeleteMetadata = &cobra.Command{
+// UserMetadataDelete skydive user-metadata delete command
+var UserMetadataDelete = &cobra.Command{
 	Use:          "delete",
 	Short:        "delete user metadata",
 	Long:         "delete user metadata",
@@ -106,7 +106,7 @@ var DeleteMetadata = &cobra.Command{
 	},
 }
 
-//UserMetadataList skydive user-metadata list command
+// UserMetadataList skydive user-metadata list command
 var UserMetadataList = &cobra.Command{
 	Use:          "list",
 	Short:        "List user metadata",
@@ -135,9 +135,9 @@ func addUserMetadataFlags(cmd *cobra.Command) {
 }
 
 func init() {
-	UserMetadataCmd.AddCommand(AddMetadata)
-	UserMetadataCmd.AddCommand(DeleteMetadata)
+	UserMetadataCmd.AddCommand(UserMetadataCreate)
+	UserMetadataCmd.AddCommand(UserMetadataDelete)
 	UserMetadataCmd.AddCommand(UserMetadataList)
 
-	addUserMetadataFlags(AddMetadata)
+	addUserMetadataFlags(UserMetadataCreate)
 }
