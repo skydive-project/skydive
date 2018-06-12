@@ -26,7 +26,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
@@ -36,10 +35,24 @@ type Resource interface {
 	SetID(string)
 }
 
+// BasicResource is a resource with a unique identifier
+type BasicResource struct {
+	UUID string `yaml:"UUID"`
+}
+
+// ID returns the alert ID
+func (b *BasicResource) ID() string {
+	return b.UUID
+}
+
+// SetID set ID
+func (b *BasicResource) SetID(i string) {
+	b.UUID = i
+}
+
 // Alert is a set of parameters, the Alert Action will Trigger according to its Expression.
 type Alert struct {
-	Resource
-	UUID        string
+	BasicResource
 	Name        string `json:",omitempty"`
 	Description string `json:",omitempty"`
 	Expression  string `json:",omitempty" valid:"nonzero"`
@@ -48,22 +61,9 @@ type Alert struct {
 	CreateTime  time.Time
 }
 
-// ID returns the alert ID
-func (a *Alert) ID() string {
-	return a.UUID
-}
-
-// SetID set ID
-func (a *Alert) SetID(i string) {
-	a.UUID = i
-}
-
 // NewAlert creates a New empty Alert, only UUID and CreateTime are set.
 func NewAlert() *Alert {
-	id, _ := uuid.NewV4()
-
 	return &Alert{
-		UUID:       id.String(),
 		CreateTime: time.Now().UTC(),
 	}
 }
@@ -81,7 +81,7 @@ type AnalyzerStatus struct {
 
 // Capture describes a capture API
 type Capture struct {
-	UUID           string
+	BasicResource
 	GremlinQuery   string `json:"GremlinQuery,omitempty" valid:"isGremlinExpr"`
 	BPFFilter      string `json:"BPFFilter,omitempty" valid:"isBPFFilter"`
 	Name           string `json:"Name,omitempty"`
@@ -98,22 +98,9 @@ type Capture struct {
 	LayerKeyMode   string `json:"LayerKeyMode,omitempty" valid:"isValidLayerKeyMode"`
 }
 
-// ID returns the capture Identifier
-func (c *Capture) ID() string {
-	return c.UUID
-}
-
-// SetID set a new identifier for this capture
-func (c *Capture) SetID(i string) {
-	c.UUID = i
-}
-
 // NewCapture creates a new capture
 func NewCapture(query string, bpfFilter string) *Capture {
-	id, _ := uuid.NewV4()
-
 	return &Capture{
-		UUID:         id.String(),
 		GremlinQuery: query,
 		BPFFilter:    bpfFilter,
 	}
@@ -126,7 +113,7 @@ type ElectionStatus struct {
 
 // PacketInjection packet injector API parameters
 type PacketInjection struct {
-	UUID       string
+	BasicResource
 	Src        string
 	Dst        string
 	SrcIP      string
@@ -145,11 +132,6 @@ type PacketInjection struct {
 	StartTime  time.Time
 }
 
-// ID returns the packet injector request identifier
-func (pi *PacketInjection) ID() string {
-	return pi.UUID
-}
-
 // Validate verifies the packet injection type is supported
 func (pi *PacketInjection) Validate() error {
 	allowedTypes := map[string]bool{"icmp4": true, "icmp6": true, "tcp4": true, "tcp6": true, "udp4": true, "udp6": true}
@@ -157,11 +139,6 @@ func (pi *PacketInjection) Validate() error {
 		return errors.New("given type is not supported")
 	}
 	return nil
-}
-
-// SetID set a new identifier for this injector
-func (pi *PacketInjection) SetID(id string) {
-	pi.UUID = id
 }
 
 // PeersStatus describes the state of a peer
@@ -177,30 +154,32 @@ type TopologyParam struct {
 
 // UserMetadata describes a user metadata
 type UserMetadata struct {
-	UUID         string
+	BasicResource
 	GremlinQuery string `valid:"isGremlinExpr"`
 	Key          string `valid:"nonzero"`
 	Value        string `valid:"nonzero"`
 }
 
-// ID returns the user metadata identifier
-func (m *UserMetadata) ID() string {
-	return m.UUID
-}
-
-// SetID set a new identifier for this user metadata
-func (m *UserMetadata) SetID(id string) {
-	m.UUID = id
-}
-
 // NewUserMetadata creates a new user metadata
 func NewUserMetadata(query string, key string, value string) *UserMetadata {
-	id, _ := uuid.NewV4()
-
 	return &UserMetadata{
-		UUID:         id.String(),
 		GremlinQuery: query,
 		Key:          key,
 		Value:        value,
 	}
+}
+
+type WorkflowParam struct {
+	Name        string
+	Description string
+	Type        string
+}
+
+// Workflow describes a workflow
+type Workflow struct {
+	BasicResource `yaml:",inline"`
+	Name          string          `yaml:"name" valid:"nonzero"`
+	Description   string          `yaml:"description"`
+	Parameters    []WorkflowParam `yaml:"parameters"`
+	Source        string          `valid:"isValidWorkflow" yaml:"source"`
 }

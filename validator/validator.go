@@ -152,6 +152,12 @@ func isValidLayerKeyMode(v interface{}, param string) error {
 	return nil
 }
 
+func isValidWorkflow(v interface{}, param string) error {
+	// Check that `v` is valid JS code that returns
+	// a promise
+	return nil
+}
+
 // Validate an object based on previously (at init) registered function
 func Validate(value interface{}) error {
 	if err := skydiveValidator.Validate(value); err != nil {
@@ -172,5 +178,6 @@ func init() {
 	skydiveValidator.SetValidationFunc("isValidCaptureHeaderSize", isValidCaptureHeaderSize)
 	skydiveValidator.SetValidationFunc("isValidRawPacketLimit", isValidRawPacketLimit)
 	skydiveValidator.SetValidationFunc("isValidLayerKeyMode", isValidLayerKeyMode)
+	skydiveValidator.SetValidationFunc("isValidWorkflow", isValidWorkflow)
 	skydiveValidator.SetTag("valid")
 }

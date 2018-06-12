@@ -11,6 +11,8 @@ p, admin, status, read, allow
 p, admin, topology, read, allow
 p, admin, usermetadata, read, allow
 p, admin, usermetadata, write, allow
+p, admin, workflow, read, allow
+p, admin, workflow, write, allow
 p, admin, websocket, /ws/agent, allow
 p, admin, websocket, /ws/flow, allow
 p, admin, websocket, /ws/publisher, allow

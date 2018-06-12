@@ -197,12 +197,15 @@ debug.analyzer:
 
 BINDATA_DIRS := \
 	js/*.js \
-	statics/* \
-	statics/css/images/* \
-	statics/css/themes/*/* \
-	statics/js/vendor/* \
-	statics/js/components/* \
 	rbac/policy.csv \
+	statics/index.html \
+	statics/css/* \
+	statics/css/themes/*/* \
+	statics/fonts/* \
+	statics/img/* \
+	statics/js/* \
+	statics/schemas/* \
+	statics/workflows/* \
 	${EXTRABINDATA}
 
 .PHONY: npm.install

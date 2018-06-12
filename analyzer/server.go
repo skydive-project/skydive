@@ -276,6 +276,10 @@ func NewServerFromConfig() (*Server, error) {
 		return nil, err
 	}
 
+	if _, err := api.RegisterWorkflowAPI(apiServer); err != nil {
+		return nil, err
+	}
+
 	onDemandClient := ondemand.NewOnDemandProbeClient(g, captureAPIHandler, agentWSServer, subscriberWSServer, etcdClient)
 
 	metadataManager := metadata.NewUserMetadataManager(g, metadataAPIHandler)
