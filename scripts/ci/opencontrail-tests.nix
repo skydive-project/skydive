@@ -14,7 +14,7 @@ let
     name = "skydive-test-functionals";
     phases = [ "installPhase" "fixupPhase" ];
     installPhase = "cp ${../../tests/functionals} $out";
-    # This could be avoid by using a static linked test binary.
+    # This could be avoided by using a static linked test binary.
     preFixup = let
       libPath = pkgs.lib.makeLibraryPath [ pkgs.libpcap pkgs.libxml2 ];
     in ''
@@ -23,6 +23,7 @@ let
   };
 
   testScript = ''
+    # This is to wait until OpenContrail is ready
     $machine->waitUntilSucceeds("curl -s http://localhost:8083/Snh_ShowBgpNeighborSummaryReq | grep machine | grep -q Established");
     $machine->succeed("${skydiveTestFunctionals} -test.run TestOpenContrail -standalone");
   '';

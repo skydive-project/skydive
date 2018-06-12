@@ -13,18 +13,17 @@ import (
 func TestOpenContrailTopology(t *testing.T) {
 	test := &Test{
 		setupCmds: []helper.Cmd{
-			{"contrail-create-network.py default-domain:default-project:vn1", false},
-			{"netns-daemon-start -n default-domain:default-project:vn1 vm1", false},
+			{"contrail-create-network.py default-domain:default-project:vn1", true},
+			{"netns-daemon-start -n default-domain:default-project:vn1 vm1", true},
 		},
 		tearDownCmds: []helper.Cmd{
 			// We should delete the net
-			{"netns-daemon-stop vm1", false},
+			{"netns-daemon-stop vm1", true},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
 			gh := c.gh
-			gremlin := g.G
-			gremlin = gremlin.V().Has("Contrail")
+			gremlin := g.G.V().Has("Contrail")
 
 			nodes, err := gh.GetNodes(gremlin)
 			if err != nil {

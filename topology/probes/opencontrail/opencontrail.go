@@ -267,7 +267,7 @@ func (mapper *OpenContrailProbe) OnNodeDeleted(n *graph.Node) {
 	if name == "" {
 		return
 	}
-	if n.ID == mapper.vHost.ID {
+	if mapper.vHost != nil && n.ID == mapper.vHost.ID {
 		logging.GetLogger().Debugf("Removed %s", name)
 		mapper.vHost = nil
 	}
