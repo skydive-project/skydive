@@ -258,6 +258,27 @@
       state: stopped
       enabled: no
 
+- name: Install squid
+  hosts: slaves
+  tags:
+    - slave
+  become: yes
+  tasks:
+  - package:
+      name: squid
+  - lineinfile:
+      path: /etc/squid/squid.conf
+      regexp: 'cache_dir ufs /var/spool/squid'
+      line: 'cache_dir ufs /var/spool/squid 8192 16 256'
+  - lineinfile:
+      path: /etc/squid/squid.conf
+      insertafter: 'cache_dir ufs /var/spool/squid 8192 16 256'
+      line: 'maximum_object_size 2048 MB'
+  - service:
+      name: squid
+      state: restarted
+      enabled: yes
+
 - name: Reboot Jenkins slaves to match running kernel and devel headers
   hosts: slaves
   tags:

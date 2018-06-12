@@ -104,6 +104,7 @@ start() {
 
         minikube start $args
         minikube status
+        export no_proxy=$no_proxy,$(minikube ip)
         kubectl config use-context minikube
 
         for i in .kube .minikube; do
