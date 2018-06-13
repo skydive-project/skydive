@@ -190,8 +190,8 @@ bench.flow.traces: flow/pcaptraces/201801011400.small.pcap
 bench.flow: bench.flow.traces
 	govendor test -bench=. ${SKYDIVE_GITHUB}/flow
 
-STATIC_DIR :=
-STATIC_LIBS :=
+STATIC_DIR?=
+STATIC_LIBS?=
 
 OS_RHEL := $(shell test -f /etc/redhat-release && echo -n Y)
 ifeq ($(OS_RHEL),Y)
