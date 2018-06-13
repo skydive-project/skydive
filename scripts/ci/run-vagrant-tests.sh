@@ -16,7 +16,7 @@ cd ${GOPATH}/src/github.com/skydive-project/skydive
 
 if [ "$DEVMODE" == "true" ]; then
     make static
-    make rpm BOOTSTRAP_ARGS=-l
+    make rpm
     make docker-image
     docker save skydive/skydive:devel -o skydive-docker-devel.tar
 fi

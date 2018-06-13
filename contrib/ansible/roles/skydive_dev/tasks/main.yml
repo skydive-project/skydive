@@ -44,6 +44,8 @@
      - python2-virtualenv
      - python3-virtualenv
      - virt-what
+     - selinux-policy-devel
+     - policycoreutils-devel
 
 - service:
     name: "{{ item }}"

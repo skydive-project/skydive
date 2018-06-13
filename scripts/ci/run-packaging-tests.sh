@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -v
+set -e
 
 dir="$(dirname "$0")"
 

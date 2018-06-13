@@ -403,28 +403,8 @@ docker-image: static
 vendor: govendor check
 	tar cvzf vendor.tar.gz vendor/
 
-.PHONY: localdist
-localdist: govendor genlocalfiles
-	tar -C $$GOPATH --transform "s/^src/$(SKYDIVE_PKG)\/src/" \
-		--exclude=src/$(SKYDIVE_GITHUB)/rpmbuild \
-		--exclude=src/$(SKYDIVE_GITHUB)/.git \
-		-cvzf ${DESTDIR}/$(SKYDIVE_PKG).tar.gz src/$(SKYDIVE_GITHUB)
-
 .PHONY: dist
-dist:
-	tmpdir=`mktemp -d -u --suffix=skydive-pkg`; \
-	godir=$${tmpdir}/$(SKYDIVE_PKG); \
-	skydivedir=$${godir}/src/$(SKYDIVE_GITHUB); \
-	mkdir -p `dirname $$skydivedir`; \
-	git clone . $$skydivedir; \
-	pushd $$skydivedir; \
-	mkdir -p $$godir/.cache; \
-	[ -d $$GOPATH/.cache/govendor ] && ln -s $$GOPATH/.cache/govendor $$godir/.cache/govendor; \
-	export GOPATH=$$godir; \
-	cd $$skydivedir; \
-	echo "go take a coffee, govendor sync takes time ..."; \
-	$(MAKE) govendor genlocalfiles; \
-	popd; \
-	tar -C $$tmpdir --exclude=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/.git \
-		-cvzf ${DESTDIR}/$(SKYDIVE_PKG).tar.gz $(SKYDIVE_PKG)/src; \
-	rm -rf $$tmpdir
+dist: govendor genlocalfiles
+	git archive -o ${DESTDIR}/$(SKYDIVE_PKG).tar --prefix $(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/ HEAD
+	tar --append -f ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" vendor statics/bindata.go $(patsubst %.proto,%.pb.go,${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES})
+	gzip -f ${DESTDIR}/$(SKYDIVE_PKG).tar

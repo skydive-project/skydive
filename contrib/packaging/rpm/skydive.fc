@@ -1,0 +1,2 @@
+/usr/bin/skydive		--	gen_context(system_u:object_r:skydive_exec_t,s0)
+/var/lib/skydive(/.*)?		gen_context(system_u:object_r:skydive_var_lib_t,s0)
