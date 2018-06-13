@@ -12,7 +12,4 @@ set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 make install
 
-export SKYDIVE_ANALYZERS=localhost:8082
-export SKYDIVE=${GOPATH}/bin/skydive
-
 make test.functionals WITH_SELENIUM=true VERBOSE=true TIMEOUT=10m TEST_PATTERN=PacketInjectionCapture ARGS="$ARGS -standalone"

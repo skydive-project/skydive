@@ -29,6 +29,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
 )
@@ -50,11 +51,17 @@ func TestOverview(t *testing.T) {
 
 	ipaddr, err := getFirstAvailableIPv4Addr()
 	if err != nil {
-		t.Errorf("Not able to find Analayzer addr: %v", err)
+		t.Errorf("Not able to find analyzer address: %v", err)
 		return
 	}
 
-	sh, err := newSeleniumHelper(t, ipaddr, 8082)
+	sa, err := common.ServiceAddressFromString(helper.AnalyzerListen)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	sh, err := newSeleniumHelper(t, ipaddr, sa.Port)
 	if err != nil {
 		t.Error(err)
 		return

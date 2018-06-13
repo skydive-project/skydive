@@ -41,6 +41,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	shttp "github.com/skydive-project/skydive/http"
@@ -57,6 +58,7 @@ var (
 	GraphOutputFormat string
 	TopologyBackend   string
 	FlowBackend       string
+	AnalyzerListen    string
 
 	etcdServer     string
 	analyzerProbes string
@@ -70,6 +72,7 @@ func init() {
 	flag.StringVar(&TopologyBackend, "analyzer.topology.backend", "memory", "Specify the graph storage backend used")
 	flag.StringVar(&GraphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
 	flag.StringVar(&FlowBackend, "analyzer.flow.backend", "", "Specify the flow storage backend used")
+	flag.StringVar(&AnalyzerListen, "analyzer.listen", "0.0.0.0:64500", "Specify the analyzer listen address")
 	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.Parse()
 }
@@ -83,7 +86,14 @@ func InitConfig(conf string, params ...HelperParams) error {
 	if len(params) == 0 {
 		params = []HelperParams{make(HelperParams)}
 	}
-	params[0]["AnalyzerPort"] = 64500
+
+	sa, err := common.ServiceAddressFromString(AnalyzerListen)
+	if err != nil {
+		return err
+	}
+	params[0]["AnalyzerAddr"] = sa.Addr
+	params[0]["AnalyzerPort"] = sa.Port
+
 	if testing.Verbose() {
 		params[0]["LogLevel"] = "DEBUG"
 	} else {
