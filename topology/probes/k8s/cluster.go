@@ -110,6 +110,14 @@ func (p *clusterProbe) OnNodeAdded(objNode *graph.Node) {
 	}
 }
 
+func (p *clusterProbe) OnNodeUpdated(objNode *graph.Node) {
+	logging.GetLogger().Debugf("Got event on updating %s", dumpGraphNode(objNode))
+	clusterNodes, _ := p.clusterIndexer.Get(clusterName)
+	if len(clusterNodes) > 0 {
+		p.linkObject(objNode, clusterNodes[0])
+	}
+}
+
 func (p *clusterProbe) Start() {
 	p.clusterIndexer.Start()
 	p.objectIndexer.AddEventListener(p)
