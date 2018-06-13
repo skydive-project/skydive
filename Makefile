@@ -264,6 +264,14 @@ test.functionals.cleanup:
 test.functionals.compile: govendor genlocalfiles
 	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
+.PHONY: test.functionals.static
+test.functionals.static: govendor genlocalfiles
+	$(GOVENDOR) test -tags "netgo ${BUILDTAGS} test" \
+		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
+		-installsuffix netgo \
+		${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
+		-c -o tests/functionals ./tests/
+
 .PHONY: test.functionals.run
 test.functionals.run:
 	cd tests && sudo -E ./functionals ${VERBOSE_TESTS_FLAGS} -test.timeout ${TIMEOUT} ${ARGS} ${EXTRA_ARGS}
