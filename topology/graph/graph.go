@@ -33,6 +33,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 )
 
@@ -1395,7 +1396,7 @@ func NewGraphFromConfig(backend GraphBackend) *Graph {
 
 // NewBackendByName creates a new graph backend based on the name
 // memory, orientdb, elasticsearch backend are supported
-func NewBackendByName(name string) (backend GraphBackend, err error) {
+func NewBackendByName(name string, etcdClient *etcd.Client) (backend GraphBackend, err error) {
 	driver := config.GetString("storage." + name + ".driver")
 	switch driver {
 	case "memory":
@@ -1403,7 +1404,7 @@ func NewBackendByName(name string) (backend GraphBackend, err error) {
 	case "orientdb":
 		backend, err = NewOrientDBBackendFromConfig(name)
 	case "elasticsearch":
-		backend, err = NewElasticSearchBackendFromConfig(name)
+		backend, err = NewElasticSearchBackendFromConfig(name, etcdClient)
 	default:
 		return nil, fmt.Errorf("Topology backend driver '%s' not supported", driver)
 	}

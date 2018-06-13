@@ -87,22 +87,26 @@ func (r *rollIndexService) cleanup(index Index) {
 	}
 }
 
-func (r *rollIndexService) roll() {
+func (r *rollIndexService) roll(force bool) {
 	logging.GetLogger().Debug("Start rolling indices...")
 
 	for _, index := range r.indices {
 		ri := r.client.RolloverIndex(index.Alias())
 
 		needToRoll := false
-		if r.config.EntriesLimit != 0 {
-			ri.AddMaxIndexDocsCondition(int64(r.config.EntriesLimit))
+		if force {
 			needToRoll = true
-		}
-		min := int(time.Duration(r.config.AgeLimit).Minutes())
-		if min != 0 {
-			min := fmt.Sprintf("%dm", min)
-			ri.AddMaxIndexAgeCondition(min)
-			needToRoll = true
+		} else {
+			if r.config.EntriesLimit != 0 {
+				ri.AddMaxIndexDocsCondition(int64(r.config.EntriesLimit))
+				needToRoll = true
+			}
+			min := int(time.Duration(r.config.AgeLimit).Minutes())
+			if min != 0 {
+				min := fmt.Sprintf("%dm", min)
+				ri.AddMaxIndexAgeCondition(min)
+				needToRoll = true
+			}
 		}
 
 		if needToRoll {
@@ -138,6 +142,8 @@ func (r *rollIndexService) run() {
 
 	for {
 		select {
+		case <-r.triggerRoll:
+			r.roll(true)
 		case <-timer.C:
 			if r.elector == nil || r.elector.IsMaster() {
 				r.roll(false)

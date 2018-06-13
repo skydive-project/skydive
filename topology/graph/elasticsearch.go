@@ -25,11 +25,13 @@ package graph
 import (
 	"bytes"
 	"encoding/json"
-	"strconv"
+	"fmt"
+	"time"
 
 	"github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
@@ -121,49 +123,54 @@ type TimedSearchQuery struct {
 	MetadataFilter *filters.Filter
 }
 
-func (b *ElasticSearchBackend) graphElementToMap(typ string, e *graphElement) map[string]interface{} {
+func graphElementToMap(typ string, e *graphElement) (map[string]interface{}, error) {
+	data, err := json.Marshal(e.metadata)
+	if err != nil {
+		return nil, fmt.Errorf("Error while adding graph element %s: %s", e.ID, err)
+	}
+
 	obj := map[string]interface{}{
 		"_Type":     typ,
 		"ID":        string(e.ID),
 		"Host":      e.host,
 		"CreatedAt": common.UnixMillis(e.createdAt),
 		"UpdatedAt": common.UnixMillis(e.updatedAt),
-		"Metadata":  e.metadata.Clone(),
+		"Metadata":  json.RawMessage(data),
 		"Revision":  e.revision,
 	}
 
-	return obj
+	if !e.deletedAt.IsZero() {
+		obj["DeletedAt"] = common.UnixMillis(e.deletedAt)
+	}
+
+	return obj, nil
 }
 
-func (b *ElasticSearchBackend) nodeToMap(n *Node) map[string]interface{} {
-	return b.graphElementToMap(nodeType, &n.graphElement)
+func nodeToMap(n *Node) (map[string]interface{}, error) {
+	return graphElementToMap(nodeType, &n.graphElement)
 }
 
-func (b *ElasticSearchBackend) edgeToMap(e *Edge) map[string]interface{} {
-	obj := b.graphElementToMap(edgeType, &e.graphElement)
+func edgeToMap(e *Edge) (map[string]interface{}, error) {
+	obj, err := graphElementToMap(edgeType, &e.graphElement)
+	if err != nil {
+		return nil, err
+	}
 	obj["Parent"] = e.parent
 	obj["Child"] = e.child
-	return obj
+	return obj, nil
 }
 
-func (b *ElasticSearchBackend) archive(e graphElement) bool {
-	obj, ok := b.prevRevision[e.ID]
-	if !ok {
-		logging.GetLogger().Errorf("Update from an unknow revision, graph element: %s", e.ID)
+func (b *ElasticSearchBackend) archive(obj map[string]interface{}, at time.Time) bool {
+	obj["ArchivedAt"] = common.UnixMillis(at)
+
+	data, err := json.Marshal(obj)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while adding graph element %s: %s", obj["ID"], err)
 		return false
 	}
-	if !e.deletedAt.IsZero() {
-		deleteAt := common.UnixMillis(e.deletedAt)
-		obj["DeletedAt"] = deleteAt
-		obj["ArchivedAt"] = deleteAt
-	} else {
-		obj["ArchivedAt"] = common.UnixMillis(e.updatedAt)
-	}
 
-	id := string(e.ID) + "-" + strconv.FormatInt(obj["Revision"].(int64), 10)
-
-	if err := b.client.BulkIndex(topologyArchiveIndex, id, obj); err != nil {
-		logging.GetLogger().Errorf("Error while archiving %s: %s", id, err)
+	if err := b.client.BulkIndex(topologyArchiveIndex, "", json.RawMessage(data)); err != nil {
+		logging.GetLogger().Errorf("Error while archiving %v: %s", obj, err)
 		return false
 	}
 	return true
@@ -188,9 +195,19 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 }
 
 func (b *ElasticSearchBackend) indexNode(n *Node) bool {
-	obj := b.nodeToMap(n)
+	obj, err := nodeToMap(n)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
+		return false
+	}
 
-	if err := b.client.BulkIndex(topologyLiveIndex, string(n.ID), obj); err != nil {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
+		return false
+	}
+
+	if err := b.client.BulkIndex(topologyLiveIndex, string(n.ID), json.RawMessage(data)); err != nil {
 		logging.GetLogger().Errorf("Error while adding node %s: %s", n.ID, err)
 		return false
 	}
@@ -206,9 +223,14 @@ func (b *ElasticSearchBackend) NodeAdded(n *Node) bool {
 
 // NodeDeleted delete a node
 func (b *ElasticSearchBackend) NodeDeleted(n *Node) bool {
-	success := true
+	obj, err := nodeToMap(n)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while deleting node %s: %s", n.ID, err)
+		return false
+	}
 
-	if !b.archive(n.graphElement) {
+	success := true
+	if !b.archive(obj, n.deletedAt) {
 		success = false
 	}
 
@@ -241,9 +263,19 @@ func (b *ElasticSearchBackend) GetNode(i Identifier, t GraphContext) []*Node {
 }
 
 func (b *ElasticSearchBackend) indexEdge(e *Edge) bool {
-	obj := b.edgeToMap(e)
+	obj, err := edgeToMap(e)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err)
+		return false
+	}
 
-	if err := b.client.BulkIndex(topologyLiveIndex, string(e.ID), obj); err != nil {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while adding edge %s: %s", e.ID, err)
+		return false
+	}
+
+	if err := b.client.BulkIndex(topologyLiveIndex, string(e.ID), json.RawMessage(data)); err != nil {
 		logging.GetLogger().Errorf("Error while indexing edge %s: %s", e.ID, err)
 		return false
 	}
@@ -259,9 +291,14 @@ func (b *ElasticSearchBackend) EdgeAdded(e *Edge) bool {
 
 // EdgeDeleted delete an edge in the database
 func (b *ElasticSearchBackend) EdgeDeleted(e *Edge) bool {
-	success := true
+	obj, err := edgeToMap(e)
+	if err != nil {
+		logging.GetLogger().Errorf("Error while deleting edge %s: %s", e.ID, err)
+		return false
+	}
 
-	if !b.archive(e.graphElement) {
+	success := true
+	if !b.archive(obj, e.deletedAt) {
 		success = false
 	}
 
@@ -299,13 +336,25 @@ func (b *ElasticSearchBackend) MetadataUpdated(i interface{}) bool {
 
 	switch i := i.(type) {
 	case *Node:
-		if !b.archive(i.graphElement) {
+		obj := b.prevRevision[i.ID]
+		if obj == nil {
+			logging.GetLogger().Errorf("Unable to update an unkwown node: %s", i.ID)
+			return false
+		}
+
+		if !b.archive(obj, i.updatedAt) {
 			return false
 		}
 
 		success = b.indexNode(i)
 	case *Edge:
-		if !b.archive(i.graphElement) {
+		obj := b.prevRevision[i.ID]
+		if obj == nil {
+			logging.GetLogger().Errorf("Unable to update an unkwown edge: %s", i.ID)
+			return false
+		}
+
+		if !b.archive(obj, i.updatedAt) {
 			return false
 		}
 
@@ -502,7 +551,7 @@ func NewElasticSearchBackendFromClient(client es.ClientInterface) (*ElasticSearc
 }
 
 // NewElasticSearchBackendFromConfig creates a new graph backend based on configuration file parameters
-func NewElasticSearchBackendFromConfig(backend string) (*ElasticSearchBackend, error) {
+func NewElasticSearchBackendFromConfig(backend string, etcdClient *etcd.Client) (*ElasticSearchBackend, error) {
 	cfg := es.NewConfig(backend)
 
 	indices := []es.Index{
@@ -510,7 +559,7 @@ func NewElasticSearchBackendFromConfig(backend string) (*ElasticSearchBackend, e
 		topologyArchiveIndex,
 	}
 
-	client, err := es.NewClient(indices, cfg)
+	client, err := es.NewClient(indices, cfg, etcdClient)
 	if err != nil {
 		return nil, err
 	}

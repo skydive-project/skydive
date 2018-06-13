@@ -28,6 +28,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/storage/elasticsearch"
@@ -51,11 +52,11 @@ type Storage interface {
 }
 
 // NewStorage creates a new flow storage based on the backend
-func NewStorage(backend string) (s Storage, err error) {
+func NewStorage(backend string, etcdClient *etcd.Client) (s Storage, err error) {
 	driver := config.GetString("storage." + backend + ".driver")
 	switch driver {
 	case "elasticsearch":
-		s, err = elasticsearch.New(backend)
+		s, err = elasticsearch.New(backend, etcdClient)
 		if err != nil {
 			err = fmt.Errorf("Can't connect to ElasticSearch server: %v", err)
 			return
@@ -78,6 +79,6 @@ func NewStorage(backend string) (s Storage, err error) {
 }
 
 // NewStorageFromConfig creates a new storage based configuration
-func NewStorageFromConfig() (s Storage, err error) {
-	return NewStorage(config.GetString("analyzer.flow.backend"))
+func NewStorageFromConfig(etcdClient *etcd.Client) (s Storage, err error) {
+	return NewStorage(config.GetString("analyzer.flow.backend"), etcdClient)
 }

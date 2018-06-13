@@ -211,7 +211,7 @@ func NewServerFromConfig() (*Server, error) {
 		name = "memory"
 	}
 
-	persistent, err := graph.NewBackendByName(name)
+	persistent, err := graph.NewBackendByName(name, etcdClient)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	tableClient := flow.NewTableClient(agentWSServer)
 
-	storage, err := storage.NewStorageFromConfig()
+	storage, err := storage.NewStorageFromConfig(etcdClient)
 	if err != nil {
 		return nil, err
 	}

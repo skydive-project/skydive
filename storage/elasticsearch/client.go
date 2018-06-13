@@ -38,6 +38,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 )
@@ -82,10 +83,6 @@ func NewConfig(name ...string) Config {
 type ClientInterface interface {
 	Index(index Index, id string, data interface{}) error
 	BulkIndex(index Index, id string, data interface{}) error
-	Update(index Index, id string, data interface{}) error
-	BulkUpdate(index Index, id string, data interface{}) error
-	UpdateWithPartialDoc(index Index, id string, data interface{}) error
-	BulkUpdateWithPartialDoc(index Index, id string, data interface{}) error
 	Get(index Index, id string) (*elastic.GetResult, error)
 	Delete(index Index, id string) (*elastic.DeleteResponse, error)
 	BulkDelete(index Index, id string) error
@@ -324,33 +321,6 @@ func (c *Client) BulkIndex(index Index, id string, data interface{}) error {
 	return nil
 }
 
-// Update an object
-func (c *Client) Update(index Index, id string, data interface{}) error {
-	_, err := c.client.Update().Index(index.Alias()).Type(index.Type).Id(id).Doc(data).Do(context.Background())
-	return err
-}
-
-// BulkUpdate and object with the indexer
-func (c *Client) BulkUpdate(index Index, id string, data interface{}) error {
-	req := elastic.NewBulkUpdateRequest().Index(index.Alias()).Type(index.Type).Id(id).Doc(data)
-	c.bulkProcessor.Add(req)
-
-	return nil
-}
-
-// UpdateWithPartialDoc an object with partial data
-func (c *Client) UpdateWithPartialDoc(index Index, id string, data interface{}) error {
-	return c.Update(index, id, data)
-}
-
-// BulkUpdateWithPartialDoc  an object with partial data using the indexer
-func (c *Client) BulkUpdateWithPartialDoc(index Index, id string, data interface{}) error {
-	req := elastic.NewBulkUpdateRequest().Index(index.Alias()).Type(index.Type).Id(id).Doc(data)
-	c.bulkProcessor.Add(req)
-
-	return nil
-}
-
 // Get an object
 func (c *Client) Get(index Index, id string) (*elastic.GetResult, error) {
 	return c.client.Get().Index(index.Alias()).Type(index.Type).Id(id).Do(context.Background())
@@ -394,6 +364,13 @@ func (c *Client) Search(typ string, query elastic.Query, opts filters.SearchQuer
 	}
 
 	return searchQuery.Do(context.Background())
+}
+
+// RollIndex forces a rolling index
+func (c *Client) RollIndex() {
+	if c.rollService != nil {
+		c.rollService.triggerRoll <- true
+	}
 }
 
 // Start the Elasticsearch client background jobs
@@ -443,7 +420,7 @@ func (c *Client) GetClient() *elastic.Client {
 }
 
 // NewClient creates a new ElasticSearch client based on configuration
-func NewClient(indices []Index, cfg Config) (*Client, error) {
+func NewClient(indices []Index, cfg Config, etcdClient *etcd.Client) (*Client, error) {
 	url, err := urlFromHost(cfg.ElasticHost)
 	if err != nil {
 		return nil, err

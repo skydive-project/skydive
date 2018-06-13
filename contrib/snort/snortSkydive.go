@@ -230,7 +230,7 @@ func newSnortFlowEnhancer() *SnortFlowEnhancer {
 	indices := []es.Index{snortIndex}
 
 	cfg := es.NewConfig()
-	client, err := es.NewClient(indices, cfg)
+	client, err := es.NewClient(indices, cfg, nil)
 	if err != nil {
 		if err != io.EOF {
 			logging.GetLogger().Errorf("elasticsearch client error : %v", err)

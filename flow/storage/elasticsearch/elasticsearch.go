@@ -30,6 +30,7 @@ import (
 	"github.com/olivere/elastic"
 
 	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/etcd"
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/logging"
@@ -174,7 +175,13 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 	}
 
 	for _, f := range flows {
-		if err := c.client.BulkIndex(flowIndex, f.UUID, f); err != nil {
+		data, err := json.Marshal(f)
+		if err != nil {
+			logging.GetLogger().Error(err)
+			continue
+		}
+
+		if err := c.client.BulkIndex(flowIndex, f.UUID, json.RawMessage(data)); err != nil {
 			logging.GetLogger().Error(err)
 			continue
 		}
@@ -187,7 +194,13 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				Flow:       eflow,
 			}
 
-			if err := c.client.BulkIndex(metricIndex, "", record); err != nil {
+			data, err := json.Marshal(record)
+			if err != nil {
+				logging.GetLogger().Error(err)
+				continue
+			}
+
+			if err := c.client.BulkIndex(metricIndex, "", json.RawMessage(data)); err != nil {
 				logging.GetLogger().Error(err)
 				continue
 			}
@@ -195,7 +208,7 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 
 		linkType, err := f.LinkType()
 		if err != nil {
-			logging.GetLogger().Errorf("Error while indexing: %s", err.Error())
+			logging.GetLogger().Errorf("Error while indexing: %s", err)
 			continue
 		}
 		for _, r := range f.LastRawPackets {
@@ -204,7 +217,14 @@ func (c *ElasticSearchStorage) StoreFlows(flows []*flow.Flow) error {
 				RawPacket: r,
 				Flow:      eflow,
 			}
-			if c.client.BulkIndex(rawpacketIndex, f.UUID, record) != nil {
+
+			data, err := json.Marshal(record)
+			if err != nil {
+				logging.GetLogger().Error(err)
+				continue
+			}
+
+			if c.client.BulkIndex(rawpacketIndex, f.UUID, json.RawMessage(data)) != nil {
 				logging.GetLogger().Error(err)
 				continue
 			}
@@ -331,7 +351,7 @@ func (c *ElasticSearchStorage) Stop() {
 }
 
 // New creates a new ElasticSearch database client
-func New(backend string) (*ElasticSearchStorage, error) {
+func New(backend string, etcdClient *etcd.Client) (*ElasticSearchStorage, error) {
 	cfg := es.NewConfig(backend)
 
 	indices := []es.Index{
@@ -340,7 +360,7 @@ func New(backend string) (*ElasticSearchStorage, error) {
 		rawpacketIndex,
 	}
 
-	client, err := es.NewClient(indices, cfg)
+	client, err := es.NewClient(indices, cfg, etcdClient)
 	if err != nil {
 		return nil, err
 	}

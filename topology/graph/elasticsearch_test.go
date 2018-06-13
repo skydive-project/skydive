@@ -23,6 +23,8 @@
 package graph
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -47,38 +49,38 @@ func (f *fakeESClient) resetIndices() {
 	f.indices = make(map[string]*fakeESIndex)
 }
 
-func (f *fakeESClient) Index(index es.ElasticSearchIndex, id string, data interface{}) error {
+func (f *fakeESClient) Index(index es.Index, id string, data interface{}) error {
 	if _, ok := f.indices[index.Name]; !ok {
 		f.indices[index.Name] = &fakeESIndex{
 			entries: make(map[string]interface{}, 0),
 		}
 	}
-	f.indices[index.Name].entries[id] = data
+
+	// reconvert data into map as it is in json.RawMessage
+	rd := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(data.(json.RawMessage)), &rd); err != nil {
+		return err
+	}
+
+	// fake id if not given with the revision number
+	if id == "" {
+		id = fmt.Sprintf("%s-%d", rd["ID"].(string), int(rd["Revision"].(float64)))
+	}
+
+	f.indices[index.Name].entries[id] = rd
 	return nil
 }
-func (f *fakeESClient) BulkIndex(index es.ElasticSearchIndex, id string, data interface{}) error {
+func (f *fakeESClient) BulkIndex(index es.Index, id string, data interface{}) error {
 	return f.Index(index, id, data)
 }
-func (f *fakeESClient) Update(index es.ElasticSearchIndex, id string, data interface{}) error {
-	return nil
-}
-func (f *fakeESClient) BulkUpdate(index es.ElasticSearchIndex, id string, data interface{}) error {
-	return nil
-}
-func (f *fakeESClient) UpdateWithPartialDoc(index es.ElasticSearchIndex, id string, data interface{}) error {
-	return nil
-}
-func (f *fakeESClient) BulkUpdateWithPartialDoc(index es.ElasticSearchIndex, id string, data interface{}) error {
-	return nil
-}
-func (f *fakeESClient) Get(index es.ElasticSearchIndex, id string) (*elastic.GetResult, error) {
+func (f *fakeESClient) Get(index es.Index, id string) (*elastic.GetResult, error) {
 	return &elastic.GetResult{}, nil
 }
-func (f *fakeESClient) Delete(index es.ElasticSearchIndex, id string) (*elastic.DeleteResponse, error) {
+func (f *fakeESClient) Delete(index es.Index, id string) (*elastic.DeleteResponse, error) {
 	delete(f.indices[index.Name].entries, id)
 	return &elastic.DeleteResponse{}, nil
 }
-func (f *fakeESClient) BulkDelete(index es.ElasticSearchIndex, id string) error {
+func (f *fakeESClient) BulkDelete(index es.Index, id string) error {
 	_, ok := f.Delete(index, id)
 	return ok
 }
@@ -112,16 +114,17 @@ func TestElasticsearchNode(t *testing.T) {
 	expectedLive := map[string]interface{}{
 		"aaa": map[string]interface{}{
 			"_Type":     "node",
-			"CreatedAt": int64(1000),
+			"CreatedAt": float64(1000),
 			"Host":      "host1",
 			"ID":        "aaa",
-			"Metadata": Metadata{
-				"MTU": 1510,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1510),
 			},
-			"Revision":  int64(2),
-			"UpdatedAt": int64(2000),
+			"Revision":  float64(2),
+			"UpdatedAt": float64(2000),
 		},
 	}
+
 	live := client.indices[topologyLiveIndex.Name].entries
 	if diff := deep.Equal(live, expectedLive); diff != nil {
 		t.Fatalf("Expected elasticsearch live records not found: %s", diff)
@@ -130,15 +133,15 @@ func TestElasticsearchNode(t *testing.T) {
 	expectedArchive := map[string]interface{}{
 		"aaa-1": map[string]interface{}{
 			"_Type":      "node",
-			"ArchivedAt": int64(2000),
-			"CreatedAt":  int64(1000),
+			"ArchivedAt": float64(2000),
+			"CreatedAt":  float64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1500,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1500),
 			},
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
+			"Revision":  float64(1),
+			"UpdatedAt": float64(1000),
 		},
 	}
 	archive := client.indices[topologyArchiveIndex.Name].entries
@@ -152,14 +155,14 @@ func TestElasticsearchNode(t *testing.T) {
 	expectedLive = map[string]interface{}{
 		"aaa": map[string]interface{}{
 			"_Type":     "node",
-			"CreatedAt": int64(1000),
+			"CreatedAt": float64(1000),
 			"Host":      "host1",
 			"ID":        "aaa",
-			"Metadata": Metadata{
-				"MTU": 1520,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1520),
 			},
-			"Revision":  int64(3),
-			"UpdatedAt": int64(3000),
+			"Revision":  float64(3),
+			"UpdatedAt": float64(3000),
 		},
 	}
 	live = client.indices[topologyLiveIndex.Name].entries
@@ -170,27 +173,27 @@ func TestElasticsearchNode(t *testing.T) {
 	expectedArchive = map[string]interface{}{
 		"aaa-1": map[string]interface{}{
 			"_Type":      "node",
-			"ArchivedAt": int64(2000),
-			"CreatedAt":  int64(1000),
+			"ArchivedAt": float64(2000),
+			"CreatedAt":  float64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1500,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1500),
 			},
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
+			"Revision":  float64(1),
+			"UpdatedAt": float64(1000),
 		},
 		"aaa-2": map[string]interface{}{
 			"_Type":      "node",
-			"ArchivedAt": int64(3000),
-			"CreatedAt":  int64(1000),
+			"ArchivedAt": float64(3000),
+			"CreatedAt":  float64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1510,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1510),
 			},
-			"Revision":  int64(2),
-			"UpdatedAt": int64(2000),
+			"Revision":  float64(2),
+			"UpdatedAt": float64(2000),
 		},
 	}
 	archive = client.indices[topologyArchiveIndex.Name].entries
@@ -209,40 +212,40 @@ func TestElasticsearchNode(t *testing.T) {
 	expectedArchive = map[string]interface{}{
 		"aaa-1": map[string]interface{}{
 			"_Type":      "node",
-			"ArchivedAt": int64(2000),
-			"CreatedAt":  int64(1000),
+			"ArchivedAt": float64(2000),
+			"CreatedAt":  float64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1500,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1500),
 			},
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
+			"Revision":  float64(1),
+			"UpdatedAt": float64(1000),
 		},
 		"aaa-2": map[string]interface{}{
 			"_Type":      "node",
-			"ArchivedAt": int64(3000),
-			"CreatedAt":  int64(1000),
+			"ArchivedAt": float64(3000),
+			"CreatedAt":  float64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1510,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1510),
 			},
-			"Revision":  int64(2),
-			"UpdatedAt": int64(2000),
+			"Revision":  float64(2),
+			"UpdatedAt": float64(2000),
 		},
 		"aaa-3": map[string]interface{}{
 			"_Type":      "node",
-			"ArchivedAt": int64(4000),
-			"DeletedAt":  int64(4000),
-			"CreatedAt":  int64(1000),
+			"ArchivedAt": float64(4000),
+			"DeletedAt":  float64(4000),
+			"CreatedAt":  float64(1000),
 			"Host":       "host1",
 			"ID":         "aaa",
-			"Metadata": Metadata{
-				"MTU": 1520,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1520),
 			},
-			"Revision":  int64(3),
-			"UpdatedAt": int64(3000),
+			"Revision":  float64(3),
+			"UpdatedAt": float64(3000),
 		},
 	}
 	archive = client.indices[topologyArchiveIndex.Name].entries
@@ -263,39 +266,39 @@ func TestElasticsearchEdge(t *testing.T) {
 	expectedLive := map[string]interface{}{
 		"aaa": map[string]interface{}{
 			"_Type":     "node",
-			"CreatedAt": int64(1000),
+			"CreatedAt": float64(1000),
 			"Host":      "host1",
 			"ID":        "aaa",
-			"Metadata": Metadata{
-				"MTU": 1500,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1500),
 			},
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
+			"Revision":  float64(1),
+			"UpdatedAt": float64(1000),
 		},
 		"bbb": map[string]interface{}{
 			"_Type":     "node",
-			"CreatedAt": int64(1000),
+			"CreatedAt": float64(1000),
 			"Host":      "host1",
 			"ID":        "bbb",
-			"Metadata": Metadata{
-				"MTU": 1500,
+			"Metadata": map[string]interface{}{
+				"MTU": float64(1500),
 			},
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
+			"Revision":  float64(1),
+			"UpdatedAt": float64(1000),
 		},
 		"eee": map[string]interface{}{
 			"_Type":     "edge",
-			"CreatedAt": int64(1000),
+			"CreatedAt": float64(1000),
 			"Host":      "host1",
 			"ID":        "eee",
-			"Metadata": Metadata{
+			"Metadata": map[string]interface{}{
 				"Type": "veth",
 				"Name": "eee",
 			},
-			"Parent":    Identifier("aaa"),
-			"Child":     Identifier("bbb"),
-			"Revision":  int64(2),
-			"UpdatedAt": int64(2000),
+			"Parent":    "aaa",
+			"Child":     "bbb",
+			"Revision":  float64(2),
+			"UpdatedAt": float64(2000),
 		},
 	}
 
@@ -307,17 +310,17 @@ func TestElasticsearchEdge(t *testing.T) {
 	expectedArchive := map[string]interface{}{
 		"eee-1": map[string]interface{}{
 			"_Type":      "edge",
-			"CreatedAt":  int64(1000),
-			"ArchivedAt": int64(2000),
+			"CreatedAt":  float64(1000),
+			"ArchivedAt": float64(2000),
 			"Host":       "host1",
 			"ID":         "eee",
-			"Metadata": Metadata{
+			"Metadata": map[string]interface{}{
 				"Name": "eee",
 			},
-			"Parent":    Identifier("aaa"),
-			"Child":     Identifier("bbb"),
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
+			"Parent":    "aaa",
+			"Child":     "bbb",
+			"Revision":  float64(1),
+			"UpdatedAt": float64(1000),
 		},
 	}
 	archive := client.indices[topologyArchiveIndex.Name].entries
@@ -334,33 +337,33 @@ func TestElasticsearchEdge(t *testing.T) {
 	expectedArchive = map[string]interface{}{
 		"eee-2": map[string]interface{}{
 			"_Type":      "edge",
-			"CreatedAt":  int64(1000),
-			"DeletedAt":  int64(3000),
-			"ArchivedAt": int64(3000),
+			"CreatedAt":  float64(1000),
+			"DeletedAt":  float64(3000),
+			"ArchivedAt": float64(3000),
 			"Host":       "host1",
 			"ID":         "eee",
-			"Metadata": Metadata{
+			"Metadata": map[string]interface{}{
 				"Name": "eee",
 				"Type": "veth",
 			},
-			"Parent":    Identifier("aaa"),
-			"Child":     Identifier("bbb"),
-			"Revision":  int64(2),
-			"UpdatedAt": int64(2000),
+			"Parent":    "aaa",
+			"Child":     "bbb",
+			"Revision":  float64(2),
+			"UpdatedAt": float64(2000),
 		},
 		"eee-1": map[string]interface{}{
 			"_Type":      "edge",
-			"CreatedAt":  int64(1000),
-			"ArchivedAt": int64(2000),
+			"CreatedAt":  float64(1000),
+			"ArchivedAt": float64(2000),
 			"Host":       "host1",
 			"ID":         "eee",
-			"Metadata": Metadata{
+			"Metadata": map[string]interface{}{
 				"Name": "eee",
 			},
-			"Parent":    Identifier("aaa"),
-			"Child":     Identifier("bbb"),
-			"Revision":  int64(1),
-			"UpdatedAt": int64(1000),
+			"Parent":    "aaa",
+			"Child":     "bbb",
+			"Revision":  float64(1),
+			"UpdatedAt": float64(1000),
 		},
 	}
 	archive = client.indices[topologyArchiveIndex.Name].entries

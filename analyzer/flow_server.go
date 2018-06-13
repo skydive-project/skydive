@@ -43,8 +43,9 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
-const FlowBulkInsertDefault int = 100
+const (
+	// FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
+	FlowBulkInsertDefault int = 100
 
 	// FlowBulkDeadlineDefault deadline of each bulk insert in second
 	FlowBulkInsertDeadlineDefault int = 5
@@ -256,8 +257,11 @@ func (s *FlowServer) setupBulkConfigFromBackend() error {
 	storage := fmt.Sprintf("storage.%s.", config.GetString("analyzer.flow.backend"))
 	if config.IsSet(storage + "driver") {
 		bulkMaxDelay := config.GetInt(storage + "bulk_maxdelay")
-		if bulkMaxDelay < 1 {
+		if bulkMaxDelay < 0 {
 			return errors.New("bulk_maxdelay must be positive values")
+		}
+		if bulkMaxDelay == 0 {
+			bulkMaxDelay = FlowBulkMaxDelayDefault
 		}
 		s.bulkInsertDeadline = time.Duration(bulkMaxDelay) * time.Second
 	}
