@@ -75,9 +75,9 @@ before_script:
       if [ ${TRAVIS_OS_NAME} == linux-ppc64le ]
       then
         DOCKER_BASE=alpine:3.7
-        export BUILD_TAG=${BUILD_TAG}_ppc64le
+        export BUILD_TAG=${BUILD_TAG}-ppc64le
       else
-        export BUILD_TAG=${BUILD_TAG}_x86_64
+        export BUILD_TAG=${BUILD_TAG}-x86_64
       fi
 
     - echo BUILD_TAG=${BUILD_TAG}
@@ -92,12 +92,6 @@ script:
 after_success:
     - echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
     - docker push docker.io/${DOCKER_IMAGE}:${BUILD_TAG}
-    - |
-      if [ -n "${TRAVIS_TAG}" ]
-      then
-        docker tag ${DOCKER_IMAGE}:${BUILD_TAG} ${DOCKER_IMAGE}:latest
-        docker push docker.io/${DOCKER_IMAGE}:latest
-      fi
 
     - echo "--- BINARIES ---"
     - git reset --hard
@@ -153,13 +147,13 @@ jobs:
          if [[ "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then
            echo '{ "experimental" : "enabled" }' > ~/.docker/config.json
            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-           MANIFEST="${DOCKER_IMAGE}:${BUILD_TAG%%_*}"
-           docker manifest create  "${MANIFEST}" "${MANIFEST}_x86_64" "${MANIFEST}_ppc64le"
+           MANIFEST="${DOCKER_IMAGE}:${BUILD_TAG%-*}"
+           docker manifest create  "${MANIFEST}" "${MANIFEST}-x86_64" "${MANIFEST}-ppc64le"
            docker manifest inspect "${MANIFEST}"
            docker manifest push    "${MANIFEST}"
            if [ -n "${TRAVIS_TAG}" ]
            then
-             docker manifest create  ${DOCKER_IMAGE}:latest "${MANIFEST}_x86_64" "${MANIFEST}_ppc64le"
+             docker manifest create  ${DOCKER_IMAGE}:latest "${MANIFEST}-x86_64" "${MANIFEST}-ppc64le"
              docker manifest inspect ${DOCKER_IMAGE}:latest
              docker manifest push    ${DOCKER_IMAGE}:latest
            fi
