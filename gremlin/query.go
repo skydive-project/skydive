@@ -186,6 +186,16 @@ func (q QueryString) Out(list ...interface{}) QueryString {
 	return q.newQueryString("Out", list...)
 }
 
+// OutE append a OutE() operation to query
+func (q QueryString) OutE(list ...interface{}) QueryString {
+	return q.newQueryString("OutE", list...)
+}
+
+// OutV append a OutV() operation to query
+func (q QueryString) OutV(list ...interface{}) QueryString {
+	return q.newQueryString("OutV", list...)
+}
+
 // RawPackets append a RawPackets() operation to query
 func (q QueryString) RawPackets() QueryString {
 	return q.newQueryString("RawPackets")
