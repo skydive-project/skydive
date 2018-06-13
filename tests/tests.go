@@ -54,10 +54,10 @@ http:
     pong_timeout: 10
 
 analyzers:
-  - 127.0.0.1:8082
+  - 127.0.0.1:{{.AnalyzerPort}}
 
 analyzer:
-  listen: 0.0.0.0:8082
+  listen: {{.AnalyzerAddr}}:{{.AnalyzerPort}}
   flow:
     backend: {{.FlowBackend}}
   analyzer_username: admin
@@ -67,6 +67,7 @@ analyzer:
     probes: {{block "list" .}}{{"\n"}}{{range .AnalyzerProbes}}{{println "    -" .}}{{end}}{{end}}
   startup:
     capture_gremlin: "g.V().Has('Name', 'startup-vm2')"
+
 agent:
   listen: 8081
   topology:
