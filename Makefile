@@ -194,8 +194,8 @@ bench.flow.traces: flow/pcaptraces/201801011400.small.pcap
 bench.flow: bench.flow.traces
 	govendor test -bench=. ${SKYDIVE_GITHUB}/flow
 
-STATIC_DIR :=
-STATIC_LIBS :=
+STATIC_DIR?=
+STATIC_LIBS?=
 
 OS_RHEL := $(shell test -f /etc/redhat-release && echo -n Y)
 ifeq ($(OS_RHEL),Y)
@@ -267,6 +267,14 @@ test.functionals.cleanup:
 .PHONY: test.functionals.compile
 test.functionals.compile: govendor genlocalfiles
 	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+
+.PHONY: test.functionals.static
+test.functionals.static: govendor genlocalfiles
+	$(GOVENDOR) test -tags "netgo ${BUILDTAGS} test" \
+		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
+		-installsuffix netgo \
+		${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
+		-c -o tests/functionals ./tests/
 
 .PHONY: test.functionals.run
 test.functionals.run:
