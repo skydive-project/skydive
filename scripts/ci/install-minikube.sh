@@ -12,6 +12,13 @@ MINIKUBE_URL="https://github.com/kubernetes/minikube/releases/download/$MINIKUBE
 KUBECTL_VERSION="v1.9.4"
 KUBECTL_URL="https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/$OS/$ARCH/kubectl"
 
+WITH_CALICO=true
+
+CALICO_SITE="https://docs.projectcalico.org"
+CALICO_VER="v1.5"
+CALICO_PATH="getting-started/kubernetes/installation/hosted/calico.yaml"
+CALICO_URL="$CALICO_SITE/$CALICO_VER/$CALICO_PATH"
+
 export MINIKUBE_WANTUPDATENOTIFICATION=false
 export MINIKUBE_WANTREPORTERRORPROMPT=false
 
@@ -102,6 +109,10 @@ start() {
                 fi
         fi
 
+        if [ "$WITH_CALICO" == "true" ]; then
+                args="$args --network-plugin=cni --host-only-cidr=20.0.0.0/16"
+        fi
+
         minikube start $args
         minikube status
         export no_proxy=$no_proxy,$(minikube ip)
@@ -111,6 +122,10 @@ start() {
                 sudo rm -rf /root/$i
                 sudo cp -ar $HOME/$i /root/$i
         done
+
+        if [ "$WITH_CALICO" == "true" ]; then
+                kubectl apply -f $CALICO_URL
+        fi
 
         kubectl get services kubernetes
         kubectl get pods -n kube-system
