@@ -33,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/skydive-project/skydive/topology/graph"
 )
 
 func k8sConfigFile(name string) string {
@@ -40,10 +41,10 @@ func k8sConfigFile(name string) string {
 }
 
 const (
-	manager         = "k8s"
-	objName         = "skydive-test"
-	k8sRetry        = 10
-	k8sDelaySeconds = 1
+	manager  = "k8s"
+	objName  = "skydive-test"
+	k8sRetry = 10
+	k8sDelay = time.Second
 )
 
 var (
@@ -61,32 +62,68 @@ var (
 	clusterName       = "cluster"
 )
 
-func makeCmdWaitUntilStatus(ty, name, status string) string {
-	return fmt.Sprintf("echo 'for i in {1..%d}; do sleep %d; kubectl get --all-namespaces %s %s %s break; done' | bash", k8sRetry, k8sDelaySeconds, ty, name, status)
-}
-
-func makeCmdWaitUntilCreated(ty, name string) string {
-	return makeCmdWaitUntilStatus(ty, name, "&&")
-}
-
-func makeCmdWaitUntilDeleted(ty, name string) string {
-	return makeCmdWaitUntilStatus(ty, name, "||")
-}
-
 func setupFromConfigFile(ty, name string) []helper.Cmd {
 	return []helper.Cmd{
 		{"kubectl create -f " + k8sConfigFile(ty), true},
-		{makeCmdWaitUntilCreated(ty, name), true},
 	}
 }
 
 func tearDownFromConfigFile(ty, name string) []helper.Cmd {
 	return []helper.Cmd{
-		{"kubectl delete -f " + k8sConfigFile(ty), false},
-		{makeCmdWaitUntilDeleted(ty, name), true},
+		{"kubectl delete --grace-period=0 --force -f " + k8sConfigFile(ty), false},
 	}
 }
 
+func makeHasArgsType(ty interface{}, args1 ...interface{}) []interface{} {
+	args := []interface{}{"Manager", "k8s", "Type", ty}
+	args = append(args, args1...)
+	return args
+}
+
+func makeHasArgsNode(node *graph.Node, args1 ...interface{}) []interface{} {
+	m := node.Metadata()
+	args := []interface{}{"Namespace", m["Namespace"], "Name", m["Name"]}
+	args = append(args, args1...)
+	return makeHasArgsType(m["Type"], args...)
+}
+
+func queryNodeCreation(t *testing.T, c *CheckContext, query g.QueryString) (node *graph.Node, err error) {
+	err = common.Retry(func() error {
+		const expectedNumNodes = 1
+
+		t.Logf("Gremlin Query: %s", query)
+		nodes, e := c.gh.GetNodes(query.String())
+		if e != nil {
+			return e
+		}
+
+		if len(nodes) != expectedNumNodes {
+			return fmt.Errorf("Ran '%s', expected %d node, got %d nodes: %+v", query, expectedNumNodes, len(nodes), nodes)
+		}
+
+		if expectedNumNodes > 0 {
+			node = nodes[0]
+		}
+		return nil
+	}, k8sRetry, k8sDelay)
+	return
+}
+
+func checkNodeCreation(t *testing.T, c *CheckContext, ty string, values ...interface{}) (*graph.Node, error) {
+	args := makeHasArgsType(ty, values...)
+	query := g.G.V().Has(args...)
+	return queryNodeCreation(t, c, query)
+}
+
+func checkEdgeCreation(t *testing.T, c *CheckContext, from, to *graph.Node, relType string) error {
+	fromArgs := makeHasArgsNode(from)
+	toArgs := makeHasArgsNode(to)
+	query := g.G.V().Has(fromArgs...).OutE().Has("RelationType", relType).OutV().Has(toArgs...)
+	_, err := queryNodeCreation(t, c, query)
+	return err
+}
+
+/* -- test creation of single resource -- */
 func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name string) {
 	test := &Test{
 		mode:         OneShot,
@@ -94,21 +131,8 @@ func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, n
 		setupCmds:    append(tearDownCmds, setupCmds...),
 		tearDownCmds: tearDownCmds,
 		checks: []CheckFunction{func(c *CheckContext) error {
-			return common.Retry(func() error {
-				query := g.G.V().Has("Manager", "k8s", "Type", typ, "Name", name)
-				t.Log("Gremlin Query: " + query)
-
-				nodes, err := c.gh.GetNodes(query.String())
-				if err != nil {
-					return err
-				}
-
-				if len(nodes) != 1 {
-					return fmt.Errorf("Ran '%s', expected 1 node, got %d nodes: %+v", query, len(nodes), nodes)
-				}
-
-				return nil
-			}, k8sRetry, k8sDelaySeconds*time.Second)
+			_, err := checkNodeCreation(t, c, typ, "Name", name)
+			return err
 		}},
 	}
 	RunTest(t, test)
@@ -182,4 +206,75 @@ func TestK8sServiceNode(t *testing.T) {
 
 func TestK8sStatefulSetNode(t *testing.T) {
 	testNodeCreationFromConfig(t, "statefulset", "web")
+}
+
+/* -- test multi-node scenarios -- */
+func testScenario(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, checks []CheckFunction) {
+	test := &Test{
+		mode:         OneShot,
+		retries:      3,
+		setupCmds:    append(tearDownCmds, setupCmds...),
+		tearDownCmds: tearDownCmds,
+		checks:       checks,
+	}
+	RunTest(t, test)
+}
+
+func TestHelloNodeScenario(t *testing.T) {
+	testScenario(
+		t,
+		[]helper.Cmd{
+			{"kubectl run hello-node --image=hello-node:v1 --port=8080", true},
+		},
+		[]helper.Cmd{
+			{"kubectl delete --grace-period=0 --force deploy hello-node", false},
+		},
+		[]CheckFunction{
+			func(c *CheckContext) error {
+				// check nodes exist
+				cluster, err := checkNodeCreation(t, c, "cluster")
+				if err != nil {
+					return err
+				}
+
+				container, err := checkNodeCreation(t, c, "container", "Name", "hello-node")
+				if err != nil {
+					return err
+				}
+
+				deployment, err := checkNodeCreation(t, c, "deployment", "Name", "hello-node")
+				if err != nil {
+					return err
+				}
+
+				namespace, err := checkNodeCreation(t, c, "namespace", "Name", "default")
+				if err != nil {
+					return err
+				}
+
+				pod, err := checkNodeCreation(t, c, "pod", "Name", g.Regex("%s-.*", "hello-node"))
+				if err != nil {
+					return err
+				}
+
+				// check edges exist
+				if err = checkEdgeCreation(t, c, cluster, namespace, "ownership"); err != nil {
+					return err
+				}
+
+				if err = checkEdgeCreation(t, c, namespace, deployment, "ownership"); err != nil {
+					return err
+				}
+
+				if err = checkEdgeCreation(t, c, namespace, pod, "ownership"); err != nil {
+					return err
+				}
+
+				if err = checkEdgeCreation(t, c, pod, container, "ownership"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+	)
 }
