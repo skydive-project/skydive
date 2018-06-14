@@ -416,3 +416,6 @@ dist: govendor genlocalfiles
 	git archive -o ${DESTDIR}/$(SKYDIVE_PKG).tar --prefix $(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/ HEAD
 	tar --append -f ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" vendor statics/bindata.go $(patsubst %.proto,%.pb.go,${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES})
 	gzip -f ${DESTDIR}/$(SKYDIVE_PKG).tar
+
+ansible-tarball:
+	git ls-files contrib/ansible/roles | tar cfz ${DESTDIR}/skydive-ansible-$(VERSION).tar.gz --transform='s|contrib/ansible/roles/||' -T -
