@@ -29,7 +29,6 @@ import (
 	"net"
 	"strings"
 
-	"github.com/google/gopacket/layers"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
@@ -53,7 +52,6 @@ type FlowTraversalExtension struct {
 	NodesToken       traversal.Token
 	CaptureNodeToken traversal.Token
 	AggregatesToken  traversal.Token
-	RawPacketsToken  traversal.Token
 	BpfToken         traversal.Token
 	TableClient      *flow.TableClient
 	Storage          storage.Storage
@@ -81,13 +79,6 @@ type FlowTraversalStep struct {
 	flowset         *flow.FlowSet
 	flowSearchQuery filters.SearchQuery
 	error           error
-}
-
-// RawPacketsTraversalStep rawpackets step
-type RawPacketsTraversalStep struct {
-	GraphTraversal *traversal.GraphTraversal
-	rawPackets     map[string]*flow.RawPackets
-	error          error
 }
 
 // HopsGremlinTraversalStep hops step
@@ -618,27 +609,6 @@ func (f *FlowTraversalStep) FlowMetrics() *MetricsTraversalStep {
 	return NewMetricsTraversalStep(f.GraphTraversal, flowMetrics)
 }
 
-// Values returns list of raw packets
-func (r *RawPacketsTraversalStep) Values() []interface{} {
-	if len(r.rawPackets) == 0 {
-		return []interface{}{}
-	}
-	return []interface{}{r.rawPackets}
-}
-
-// MarshalJSON serialize in JSON
-func (r *RawPacketsTraversalStep) MarshalJSON() ([]byte, error) {
-	values := r.Values()
-	r.GraphTraversal.RLock()
-	defer r.GraphTraversal.RUnlock()
-	return json.Marshal(values)
-}
-
-// Error returns traversal error
-func (r *RawPacketsTraversalStep) Error() error {
-	return r.error
-}
-
 // RawPackets searches for RawPacket based on previous flow filter from
 // either agents or datastore.
 func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
@@ -695,51 +665,6 @@ func (f *FlowTraversalStep) RawPackets() *RawPacketsTraversalStep {
 	}
 
 	return &RawPacketsTraversalStep{GraphTraversal: f.GraphTraversal, rawPackets: rawPackets}
-}
-
-// BPF returns only the raw packets that matches the specified BPF filter
-func (r *RawPacketsTraversalStep) BPF(s ...interface{}) *RawPacketsTraversalStep {
-	if r.error != nil {
-		return &RawPacketsTraversalStep{error: r.error}
-	}
-
-	if len(s) != 1 {
-		return &RawPacketsTraversalStep{error: fmt.Errorf("BPF requires 1 parameter")}
-	}
-
-	filter, ok := s[0].(string)
-	if !ok {
-		return &RawPacketsTraversalStep{error: fmt.Errorf("BPF parameter has to be a string")}
-	}
-
-	// While very improbable, we may have different link types so we keep
-	// a map of BPF filters for the link types
-	bpfFilters := make(map[layers.LinkType]*flow.BPF)
-	rawPackets := make(map[string]*flow.RawPackets)
-	for key, value := range r.rawPackets {
-		var err error
-		bpf, ok := bpfFilters[value.LinkType]
-		if !ok {
-			bpf, err = flow.NewBPF(value.LinkType, flow.DefaultCaptureLength, filter)
-			if err != nil {
-				return &RawPacketsTraversalStep{error: err}
-			}
-			bpfFilters[value.LinkType] = bpf
-		}
-
-		var filteredPackets []*flow.RawPacket
-		for _, packet := range value.RawPackets {
-			if bpf.Matches(packet.Data) {
-				filteredPackets = append(filteredPackets, packet)
-			}
-		}
-		rawPackets[key] = &flow.RawPackets{
-			LinkType:   value.LinkType,
-			RawPackets: filteredPackets,
-		}
-	}
-
-	return &RawPacketsTraversalStep{GraphTraversal: r.GraphTraversal, rawPackets: rawPackets}
 }
 
 // Sockets returns the sockets at both sides of the specified flows
@@ -811,7 +736,6 @@ func NewFlowTraversalExtension(client *flow.TableClient, storage storage.Storage
 		NodesToken:       traversalNodesToken,
 		CaptureNodeToken: traversalCaptureNodeToken,
 		AggregatesToken:  traversalAggregatesToken,
-		RawPacketsToken:  traversalRawPacketsToken,
 		BpfToken:         traversalBpfToken,
 		TableClient:      client,
 		Storage:          storage,
@@ -831,8 +755,6 @@ func (e *FlowTraversalExtension) ScanIdent(s string) (traversal.Token, bool) {
 		return e.CaptureNodeToken, true
 	case "AGGREGATES":
 		return e.AggregatesToken, true
-	case "RAWPACKETS":
-		return e.RawPacketsToken, true
 	case "BPF":
 		return e.BpfToken, true
 	}
@@ -852,8 +774,6 @@ func (e *FlowTraversalExtension) ParseStep(t traversal.Token, p traversal.Gremli
 		return &CaptureNodeGremlinTraversalStep{context: p}, nil
 	case e.AggregatesToken:
 		return &AggregatesGremlinTraversalStep{context: p}, nil
-	case e.RawPacketsToken:
-		return &RawPacketsGremlinTraversalStep{context: p}, nil
 	case e.BpfToken:
 		return &BpfGremlinTraversalStep{context: p}, nil
 	}
@@ -1159,27 +1079,6 @@ func (a *AggregatesGremlinTraversalStep) Reduce(next traversal.GremlinTraversalS
 // Context Aggregates step
 func (a *AggregatesGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
 	return &a.context
-}
-
-// Exec RawPackets step
-func (r *RawPacketsGremlinTraversalStep) Exec(last traversal.GraphTraversalStep) (traversal.GraphTraversalStep, error) {
-	switch last.(type) {
-	case *FlowTraversalStep:
-		fs := last.(*FlowTraversalStep)
-		return fs.RawPackets(), nil
-	}
-
-	return nil, traversal.ErrExecutionError
-}
-
-// Reduce RawPackets step
-func (r *RawPacketsGremlinTraversalStep) Reduce(next traversal.GremlinTraversalStep) traversal.GremlinTraversalStep {
-	return next
-}
-
-// Context RawPackets step
-func (r *RawPacketsGremlinTraversalStep) Context() *traversal.GremlinTraversalContext {
-	return &r.context
 }
 
 // Exec BPF step

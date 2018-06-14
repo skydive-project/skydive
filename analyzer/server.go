@@ -298,6 +298,7 @@ func NewServerFromConfig() (*Server, error) {
 
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
 	tr.AddTraversalExtension(ge.NewFlowTraversalExtension(tableClient, storage))
 	tr.AddTraversalExtension(ge.NewSocketsTraversalExtension())
 
