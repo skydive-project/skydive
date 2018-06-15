@@ -144,7 +144,12 @@ func getTimeNow() string {
 }
 
 func (c *ElasticSearchClient) getIndexPath() string {
-	return fmt.Sprintf("%s_%s_v%d_%s", indexPrefix, c.name, indexVersion, getTimeNow())
+	var suffix string
+	if c.cfg.EntriesLimit != 0 || c.cfg.AgeLimit != 0 {
+		suffix = "_" + getTimeNow()
+	}
+
+	return fmt.Sprintf("%s_%s_v%d%s", indexPrefix, c.name, indexVersion, suffix)
 }
 
 // Get the rolling alias which points to the currently active index
