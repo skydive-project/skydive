@@ -35,32 +35,20 @@ set -v
 
 changelog=$(scripts/ci/extract-changelog.py CHANGELOG.md $CHANGELOG_VERSION)
 make static WITH_EBPF=true
+make ansible-tarball
 ${dir}/../../contrib/packaging/rpm/generate-skydive-bootstrap.sh -s -r ${TAG}
 
+function cleanup {
+    git push --delete origin $TAG
+    github-release delete --user skydive-project --repo skydive --tag ${TAG}
+}
+trap cleanup ERR
+
 github-release release ${FLAGS} --user skydive-project --repo skydive --tag ${TAG} --description "$changelog"
-retcode=$?
-if [ $retcode != 0 ]; then
-    git push --delete origin $TAG || true
-    exit $retcode
-fi
-
 github-release upload --user skydive-project --repo skydive --tag ${TAG} --name skydive --file $GOPATH/bin/skydive
-retcode=$?
-if [ $retcode != 0 ]; then
-    git push --delete origin $TAG || true
-    github-release delete --user skydive-project --repo skydive --tag ${TAG} || true
-    exit $retcode
-fi
-
 github-release upload --user skydive-project --repo skydive --tag ${TAG} --name skydive-${VERSION}.tar.gz --file rpmbuild/SOURCES/skydive-${VERSION}.tar.gz
-retcode=$?
-if [ $retcode != 0 ]; then
-    git push --delete origin $TAG || true
-    github-release delete --user skydive-project --repo skydive --tag ${TAG} || true
-    exit $retcode
-fi
+github-release upload --user skydive-project --repo skydive --tag ${TAG} --name skydive-ansible-${VERSION}.tar.gz --file rpmbuild/SOURCES/skydive-${VERSION}.tar.gz
 
 if [ -n "$DRY_RUN" ]; then
-    git push --delete origin $TAG || true
-    github-release delete --user skydive-project --repo skydive --tag ${TAG} || true
+    cleanup
 fi
