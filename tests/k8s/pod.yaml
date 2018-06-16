@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: skydive-test
+  name: skydive-test-pod
 spec:
   containers:
-  - name: nginx
+  - name: skydive-test-pod-nginx
     image: nginx
     ports:
     - containerPort: 80
     volumeMounts:
-    - name: workdir
+    - name: skydive-test-pod-workdir
       mountPath: /usr/share/nginx/html
   # These containers are run during pod initialization
   initContainers:
-  - name: install
+  - name: skydive-test-pod-install
     image: busybox
     command:
     - wget
@@ -21,9 +21,9 @@ spec:
     - "/work-dir/index.html"
     - http://kubernetes.io
     volumeMounts:
-    - name: workdir
+    - name: skydive-test-pod-workdir
       mountPath: "/work-dir"
   dnsPolicy: Default
   volumes:
-  - name: workdir
+  - name: skydive-test-pod-workdir
     emptyDir: {}

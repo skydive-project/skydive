@@ -1,6 +1,6 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: skydive-test
+  name: skydive-test-namespace
   labels:
-    name: skydive-test
+    name: skydive-test-namespace

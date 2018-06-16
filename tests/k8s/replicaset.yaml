@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
-  name: skydive-test
+  name: skydive-test-replicaset
   labels:
     app: guestbook
     tier: frontend
@@ -21,7 +21,7 @@ spec:
         tier: frontend
     spec:
       containers:
-      - name: php-redis
+      - name: skydive-test-replicaset-php-redis
         image: gcr.io/google_samples/gb-frontend:v3
         resources:
           requests:

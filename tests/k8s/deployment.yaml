@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: skydive-test
+  name: skydive-test-deployment
   labels:
     app: nginx
 spec:
@@ -15,7 +15,7 @@ spec:
         app: nginx
     spec:
       containers:
-      - name: nginx
+      - name: skydive-test-deployment-nginx
         image: nginx:1.7.9
         ports:
         - containerPort: 80

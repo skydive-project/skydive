@@ -41,26 +41,14 @@ func k8sConfigFile(name string) string {
 }
 
 const (
-	manager  = "k8s"
-	objName  = "skydive-test"
-	k8sRetry = 10
-	k8sDelay = time.Second
+	clusterName = "cluster"
+	k8sRetry    = 10
+	k8sDelay    = time.Second
+	manager     = "k8s"
+	objName     = "skydive-test"
 )
 
-var (
-	nodeName, _       = os.Hostname()
-	podName           = objName
-	containerName     = objName
-	daemonSetName     = objName
-	deploymentName    = objName
-	ingressName       = objName
-	jobName           = objName
-	networkPolicyName = objName
-	namespaceName     = objName
-	replicaSetName    = objName
-	serviceName       = objName
-	clusterName       = "cluster"
-)
+var nodeName, _ = os.Hostname()
 
 func setupFromConfigFile(ty, name string) []helper.Cmd {
 	return []helper.Cmd{
@@ -149,31 +137,31 @@ func TestK8sClusterNode(t *testing.T) {
 }
 
 func TestK8sContainerNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "container", containerName)
+	testNodeCreationFromConfig(t, "container", objName+"-container")
 }
 
 func TestK8sDeploymentNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "deployment", deploymentName)
+	testNodeCreationFromConfig(t, "deployment", objName+"-deployment")
 }
 
 func TestK8sIngressNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "ingress", ingressName)
+	testNodeCreationFromConfig(t, "ingress", objName+"-ingress")
 }
 
 func TestK8sJobNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "job", jobName)
+	testNodeCreationFromConfig(t, "job", objName+"-job")
 }
 
 func TestK8sNamespaceNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "namespace", namespaceName)
+	testNodeCreationFromConfig(t, "namespace", objName+"-namespace")
 }
 
 func TestK8sDaemonSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "daemonset", daemonSetName)
+	testNodeCreationFromConfig(t, "daemonset", objName+"-daemonset")
 }
 
 func TestK8sNetworkPolicyNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "networkpolicy", networkPolicyName)
+	testNodeCreationFromConfig(t, "networkpolicy", objName+"-networkpolicy")
 }
 
 func TestK8sNodeNode(t *testing.T) {
@@ -189,11 +177,11 @@ func TestK8sPersistentVolumeClaimNode(t *testing.T) {
 }
 
 func TestK8sPodNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "pod", podName)
+	testNodeCreationFromConfig(t, "pod", objName+"-pod")
 }
 
 func TestK8sReplicaSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "replicaset", replicaSetName)
+	testNodeCreationFromConfig(t, "replicaset", objName+"-replicaset")
 }
 
 func TestK8sReplicationControllerNode(t *testing.T) {
@@ -201,11 +189,11 @@ func TestK8sReplicationControllerNode(t *testing.T) {
 }
 
 func TestK8sServiceNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "service", serviceName)
+	testNodeCreationFromConfig(t, "service", objName+"-service")
 }
 
 func TestK8sStatefulSetNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "statefulset", "web")
+	testNodeCreationFromConfig(t, "statefulset", objName+"-statefulset")
 }
 
 /* -- test multi-node scenarios -- */
