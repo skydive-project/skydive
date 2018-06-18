@@ -23,6 +23,7 @@
 package agent
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/skydive-project/skydive/config"
@@ -74,28 +75,26 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 			lxdURL := config.GetConfig().GetString("lxd.url")
 			lxdProbe, err := lxd.NewLxdProbe(nsProbe, lxdURL)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Failed to initialize LXD probe: %s", err)
 			}
 			probes[t] = lxdProbe
 		case "docker":
 			dockerURL := config.GetString("docker.url")
 			dockerProbe, err := docker.NewDockerProbe(nsProbe, dockerURL)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Failed to initialize Docker probe: %s", err)
 			}
 			probes[t] = dockerProbe
 		case "neutron":
 			neutron, err := neutron.NewNeutronProbeFromConfig(g)
 			if err != nil {
-				logging.GetLogger().Errorf("Failed to initialize Neutron probe: %s", err.Error())
-				return nil, err
+				return nil, fmt.Errorf("Failed to initialize Neutron probe: %s", err)
 			}
 			probes["neutron"] = neutron
 		case "opencontrail":
 			opencontrail, err := opencontrail.NewOpenContrailProbeFromConfig(g, n)
 			if err != nil {
-				logging.GetLogger().Errorf("Failed to initialize OpenContrail probe: %s", err.Error())
-				return nil, err
+				return nil, fmt.Errorf("Failed to initialize OpenContrail probe: %s", err)
 			}
 			probes[t] = opencontrail
 		case "socketinfo":

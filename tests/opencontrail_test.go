@@ -1,4 +1,4 @@
-// +build opencontrail
+// +build opencontrail_tests
 
 package tests
 

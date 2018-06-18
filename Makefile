@@ -62,51 +62,58 @@ COVERAGE?=0
 COVERAGE_MODE?=atomic
 COVERAGE_WD?="."
 BOOTSTRAP_ARGS?=
+BUILD_TAGS?=$(TAGS)
+WITH_LXD?=true
+WITH_OPENCONTRAIL?=true
 
 ifeq ($(WITH_DPDK), true)
-  BUILDTAGS+=dpdk
+  BUILD_TAGS+=dpdk
 endif
 
 ifeq ($(WITH_EBPF), true)
-  BUILDTAGS+=ebpf
+  BUILD_TAGS+=ebpf
   EXTRABINDATA+=probe/ebpf/*.o
 endif
 
 ifeq ($(WITH_PROF), true)
-  BUILDTAGS+=prof
+  BUILD_TAGS+=prof
 endif
 
 ifeq ($(WITH_SCALE), true)
-  BUILDTAGS+=scale
+  BUILD_TAGS+=scale
 endif
 
 ifeq ($(WITH_NEUTRON), true)
-  BUILDTAGS+=neutron
+  BUILD_TAGS+=neutron
 endif
 
 ifeq ($(WITH_SELENIUM), true)
-  BUILDTAGS+=selenium
+  BUILD_TAGS+=selenium
 endif
 
 ifeq ($(WITH_CDD), true)
-  BUILDTAGS+=cdd
+  BUILD_TAGS+=cdd
 endif
 
 ifeq ($(WITH_MUTEX_DEBUG), true)
-  BUILDTAGS+=mutexdebug
+  BUILD_TAGS+=mutexdebug
 endif
 
 ifeq ($(WITH_K8S), true)
-  BUILDTAGS+=k8s
+  BUILD_TAGS+=k8s
   EXTRA_ARGS+=-analyzer.topology.probes=k8s
 endif
 
 ifeq ($(WITH_HELM), true)
-  BUILDTAGS+=helm
+  BUILD_TAGS+=helm
 endif
 
 ifeq ($(WITH_OPENCONTRAIL), true)
-  BUILDTAGS+=opencontrail
+  BUILD_TAGS+=opencontrail
+endif
+
+ifeq ($(WITH_LXD), true)
+  BUILD_TAGS+=lxd
 endif
 
 .PHONY: all install
@@ -168,7 +175,7 @@ BINDATA_DIRS := \
 compile:
 	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(GOVENDOR) install \
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
-		${GOFLAGS} -tags="${BUILDTAGS}" ${VERBOSE_FLAGS} \
+		${GOFLAGS} -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
 
 .PHONY: skydive
@@ -267,11 +274,11 @@ test.functionals.cleanup:
 
 .PHONY: test.functionals.compile
 test.functionals.compile: govendor genlocalfiles
-	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
+	$(GOVENDOR) test -tags "${BUILD_TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -c -o tests/functionals ./tests/
 
 .PHONY: test.functionals.static
 test.functionals.static: govendor genlocalfiles
-	$(GOVENDOR) test -tags "netgo ${BUILDTAGS} test" \
+	$(GOVENDOR) test -tags "netgo ${BUILD_TAGS} test" \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) -extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		-installsuffix netgo \
 		${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} \
@@ -311,16 +318,16 @@ ifeq ($(COVERAGE), true)
 	for pkg in ${UT_PACKAGES}; do \
 		if [ -n "$$pkg" ]; then \
 			coverfile="${COVERAGE_WD}/$$(echo $$pkg | tr / -).cover"; \
-			$(GOVENDOR) test -tags "${BUILDTAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
+			$(GOVENDOR) test -tags "${BUILD_TAGS} test" -covermode=${COVERAGE_MODE} -coverprofile="$$coverfile" ${VERBOSE_FLAGS} -timeout ${TIMEOUT} $$pkg; \
 		fi; \
 	done
 else
 ifneq ($(TEST_PATTERN),)
 	set -v ; \
-	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -test.run ${TEST_PATTERN} ${UT_PACKAGES}
+	$(GOVENDOR) test -tags "${BUILD_TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} -test.run ${TEST_PATTERN} ${UT_PACKAGES}
 else
 	set -v ; \
-	$(GOVENDOR) test -tags "${BUILDTAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
+	$(GOVENDOR) test -tags "${BUILD_TAGS} test" ${GOFLAGS} ${VERBOSE_FLAGS} -timeout ${TIMEOUT} ${UT_PACKAGES}
 endif
 endif
 
