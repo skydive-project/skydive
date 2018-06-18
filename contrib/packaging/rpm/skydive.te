@@ -113,10 +113,19 @@ allow skydive_t openvswitch_var_run_t:dir { add_name remove_name write };
 allow skydive_t openvswitch_var_run_t:sock_file { create unlink };
 allow skydive_t self:capability { dac_override dac_read_search net_raw sys_admin };
 allow skydive_t self:netlink_route_socket nlmsg_write;
-allow skydive_t self:packet_socket { bind create getopt ioctl map setopt };
+allow skydive_t self:packet_socket { create_socket_perms bind create getopt ioctl map setopt };
 allow skydive_t self:unix_dgram_socket ioctl;
 allow skydive_t skydive_exec_t:file map;
 allow skydive_t skydive_var_lib_t:file map;
+
+allow skydive_t self:process { setcap signal_perms };
+allow skydive_t self:netlink_route_socket create_netlink_socket_perms;
+allow skydive_t self:netlink_socket create_socket_perms;
+allow skydive_t self:netlink_netfilter_socket create_socket_perms;
+allow skydive_t self:udp_socket create_socket_perms;
+allow skydive_t self:tcp_socket create_stream_socket_perms;
+allow skydive_t self:socket create_socket_perms;
+allow skydive_t self:netlink_socket create_socket_perms;
 
 allow skydive_t kernel_t:system module_request;
 allow skydive_t kernel_t:unix_dgram_socket sendto;
