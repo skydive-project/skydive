@@ -97,10 +97,6 @@ require {
         class sock_file { create unlink write };
 }
 
-#============= openvswitch_t ==============
-allow openvswitch_t self:system module_load;
-files_map_kernel_modules(openvswitch_t)
-
 #============= skydive_t ==============
 allow skydive_t bin_t:file execute_no_trans;
 allow skydive_t container_t:dir { getattr search};
