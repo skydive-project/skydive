@@ -111,7 +111,7 @@ allow skydive_t devlog_t:lnk_file read;
 allow skydive_t devlog_t:sock_file write;
 allow skydive_t openvswitch_var_run_t:dir { add_name remove_name write };
 allow skydive_t openvswitch_var_run_t:sock_file { create unlink };
-allow skydive_t self:capability { dac_override dac_read_search net_raw sys_admin };
+allow skydive_t self:capability { dac_override dac_read_search net_raw net_admin sys_admin };
 allow skydive_t self:netlink_route_socket nlmsg_write;
 allow skydive_t self:packet_socket { create_socket_perms bind create getopt ioctl map setopt };
 allow skydive_t self:unix_dgram_socket ioctl;
