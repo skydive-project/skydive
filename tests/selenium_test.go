@@ -64,7 +64,29 @@ func TestPacketInjectionCapture(t *testing.T) {
 		return
 	}
 
-	sh, err := newSeleniumHelper(t, ipaddr, sa.Port)
+	sh, err := newSeleniumHelper(t, ipaddr, sa.Port-1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = sh.connect(); err != nil {
+		sh.quit()
+		t.Fatal(err)
+	}
+	time.Sleep(10 * time.Second)
+
+	if err = sh.expand(); err != nil {
+		if err := sh.screenshot("postmortem.png"); err != nil {
+			t.Log(err)
+		}
+		sh.quit()
+		t.Fatal(err)
+	}
+	time.Sleep(2 * time.Second)
+	sh.quit()
+
+	sh, err = newSeleniumHelper(t, ipaddr, sa.Port)
 	if err != nil {
 		t.Error(err)
 		return

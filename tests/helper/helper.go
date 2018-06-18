@@ -93,6 +93,8 @@ func InitConfig(conf string, params ...HelperParams) error {
 	}
 	params[0]["AnalyzerAddr"] = sa.Addr
 	params[0]["AnalyzerPort"] = sa.Port
+	params[0]["AgentAddr"] = sa.Addr
+	params[0]["AgentPort"] = sa.Port - 1
 
 	if testing.Verbose() {
 		params[0]["LogLevel"] = "DEBUG"
