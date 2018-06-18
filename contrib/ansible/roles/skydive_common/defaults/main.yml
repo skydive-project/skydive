@@ -1,5 +1,5 @@
 ---
-skydive_release: v0.17.0
+skydive_release: v0.18.0
 skydive_docker_registry: docker.io
 skydive_docker_image: "skydive/skydive"
 skydive_docker_image_tag: latest

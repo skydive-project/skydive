@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.0] - 2018-06-18
+### Added
+- Add `RBAC` mechanism
+- Provide development `Vagrant` boxes on `Vagrantcloud`, supporting `VirtualBox` and `libvirt`
+- Report more `Kubernetes` objects: deployment, services, daemonsets, jobs and more
+- Report interface features from `netlink`
+- New `FOREVER` and `NOW` Gremlin predicates
+- Add `SELinux` policy security module for RPM packages
+- Add authentication and `etcd` clustering to the `Ansible` playbooks
+
+### Changed
+- Flows:
+  - Parsing code rework for correctness and performances
+  - Fix metrics with multipath
+  - Provide a way to define the layers used (L2/L3 or L3 only)
+- Split `Keystone` auth section : one for the probe and one for authentication
+- Support different elasticsearch connections per index
+- WebUI:
+  - Nicer sidebar
+  - Dedicated section for routing table
+  - Allowing managing alerts
+  - Group `OpenFlow` rules by priority and actions
+- `OVS-DPDK` fixes
+
 ## [0.17.0] - 2018-04-03
 ### Added
 - Add Latency to WebUI topology links
