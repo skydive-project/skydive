@@ -33,3 +33,5 @@
 
 - include: keystone.yml
   when: skydive_auth_type == "keystone"
+
+- include: tests.yml
