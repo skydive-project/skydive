@@ -1,44 +1,44 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx
+  name: skydive-test-statefulset-nginx
   labels:
-    app: nginx
+    app: skydive-test-statefulset-nginx
 spec:
   ports:
   - port: 80
-    name: web
+    name: skydive-test-statefulset
   clusterIP: None
   selector:
-    app: nginx
+    app: skydive-test-statefulset-nginx
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: web
+  name: skydive-test-statefulset
 spec:
-  serviceName: "nginx"
+  serviceName: "skydive-test-statefulset-nginx"
   replicas: 2
   selector:
     matchLabels:
-      app: nginx
+      app: skydive-test-statefulset-nginx
   template:
     metadata:
       labels:
-        app: nginx
+        app: skydive-test-statefulset-nginx
     spec:
       containers:
-      - name: nginx
+      - name: skydive-test-statefulset-nginx
         image: k8s.gcr.io/nginx-slim:0.8
         ports:
         - containerPort: 80
-          name: web
+          name: skydive-test-statefulset-web
         volumeMounts:
-        - name: www
+        - name: skydive-test-statefulset-www
           mountPath: /usr/share/nginx/html
   volumeClaimTemplates:
   - metadata:
-      name: www
+      name: skydive-test-statefulset-www
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

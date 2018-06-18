@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: skydive-test
+  name: skydive-test-job
 spec:
   template:
     metadata:
       name: countdown
     spec:
       containers:
-      - name: counter
+      - name: skydive-test-job-counter
         image: centos:7
         command:
          - "bin/bash"
