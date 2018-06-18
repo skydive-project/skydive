@@ -179,6 +179,7 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 	case "ascii":
 		header := make(http.Header)
 		header.Set("Accept", "vnd.graphviz")
+
 		resp, err := c.gh.Request(gremlin, header)
 		if err != nil {
 			t.Error(err)
@@ -192,6 +193,11 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 			return ""
 		}
 		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Error(string(b))
+			return ""
+		}
 
 		cmd := exec.Command("graph-easy", "--as_ascii")
 		stdin, err := cmd.StdinPipe()
