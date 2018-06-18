@@ -23,8 +23,8 @@
 %define source %{tagversion}
 %endif
 
-%{!?tagversion:%global tagversion 0.17.0}
-%{!?source:%global source 0.17.0}
+%{!?tagversion:%global tagversion 0.18.0}
+%{!?source:%global source 0.18.0}
 %{!?tag:%global tag 1}
 
 Name:           skydive
@@ -217,6 +217,10 @@ fi
 %attr(0644,root,root) %{_mandir}/man8/skydive-selinux.8.*
 
 %changelog
+* Mon Jun 18 2018 Sylvain Baubeau <sbaubeau@redhat.com> - 0.18.0-1
+- Bump to version 0.18.0
+- Add SElinux policy
+
 * Tue Apr 03 2018 Sylvain Afchain <safchain@redhat.com> - 0.17.0-1
 - Bump to version 0.17.0
 
