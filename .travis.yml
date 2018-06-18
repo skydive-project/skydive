@@ -56,6 +56,8 @@ before_install:
         ./configure --prefix=${HOME}/protoc
         make -j4
         make -j4 install
+        rm -f v${PROTOC_VER}.tar.gz
+        rm -rf protobuf-${PROTOC_VER}/
         popd
       fi
 
@@ -83,9 +85,6 @@ before_script:
     - echo BUILD_TAG=${BUILD_TAG}
 
 script:
-    - make WITH_EBPF=true install
-    - make WITH_EBPF=true static
-
     - echo "--- DOCKER IMAGE ---"
     - make docker-image ${DOCKER_BASE:+BASE=$DOCKER_BASE} DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
 
@@ -159,5 +158,3 @@ jobs:
            fi
          fi
       after_success: true
-
-# vim:set et ts=4 sw=4
