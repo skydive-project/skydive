@@ -2,7 +2,8 @@
   debug:
     var: hostvars[inventory_hostname]
 
-- set_fact:
+- name: Set analyzers list
+  set_fact:
     analyzers: >-
       {% for i in groups['analyzers'] -%}
         {%- if hostvars[i]['skydive_listen_ip'] is defined and not "0.0.0.0" -%}
@@ -14,6 +15,8 @@
         {%- endif -%}
         {%- if not loop.last -%},{%- endif -%}
       {%- endfor %}
+  tags:
+    - tests
 
 - include: binary.yml
   when: skydive_deployment_mode == "binary"

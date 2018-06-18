@@ -19,6 +19,10 @@
     mode: 0755
   when: '"file://" in skydive_binary_remote_location'
 
+- name: Move skydive packages
+  shell: "mv /tmp/*/*.rpm /tmp"
+  when: '"file://" in skydive_binary_remote_location'
+
 - name: Search skydive packages
   find:
     paths: /tmp

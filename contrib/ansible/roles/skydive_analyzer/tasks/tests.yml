@@ -1,0 +1,16 @@
+---
+- name: Check Skydive agents status
+  uri:
+    url: "http://{{ analyzers.split(',')[0] }}/api/status"
+    user: "{{ skydive_username }}"
+    password: "{{ skydive_password }}"
+    force_basic_auth: "{{ skydive_password is not none }}"
+    status_code: 200
+    return_content: yes
+  run_once: true
+  register: response
+  until: response.json is defined and response.json.Agents is defined and (response.json.Agents|length) == (groups['agents']|length)
+  retries: 2
+  delay: 6
+  tags:
+    - tests
