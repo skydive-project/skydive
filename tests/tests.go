@@ -69,7 +69,7 @@ analyzer:
     capture_gremlin: "g.V().Has('Name', 'startup-vm2')"
 
 agent:
-  listen: 8081
+  listen: {{.AgentAddr}}:{{.AgentPort}}
   topology:
     probes:
       - netlink
