@@ -38,21 +38,7 @@ import (
 	"github.com/skydive-project/skydive/statics"
 )
 
-var enforcer *Enforcer
-
-// Enforcer is the main interface for authorization enforcement and policy management.
-type Enforcer struct {
-	*casbin.Enforcer
-}
-
-// Enforce decides whether a "subject" can access an "object" with the operation "action"
-func (e *Enforcer) Enforce(rvals ...interface{}) bool {
-	if e == nil {
-		return true
-	}
-
-	return e.Enforcer.Enforce(rvals...)
-}
+var enforcer *casbin.Enforcer
 
 func loadSection(model model.Model, key string, sec string) {
 	getKey := func(i int) string {
@@ -135,16 +121,24 @@ func Init(kapi etcd.KeysAPI) error {
 		casbinEnforcer.BuildRoleLinks()
 	})
 
-	enforcer = &Enforcer{casbinEnforcer}
+	enforcer = casbinEnforcer
 	return nil
 }
 
 // Enforce decides whether a "subject" can access an "object" with the operation "action"
 func Enforce(sub, obj, act string) bool {
+	if enforcer == nil {
+		return true
+	}
+
 	return enforcer.Enforce(sub, obj, act)
 }
 
 // GetPermissionsForUser returns all the allow and deny permissions for a user
 func GetPermissionsForUser(user string) [][]string {
+	if enforcer == nil {
+		return nil
+	}
+
 	return enforcer.GetPermissionsForUser(user)
 }
