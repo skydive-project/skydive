@@ -1,12 +1,13 @@
 define VERSION_CMD =
 eval ' \
 	define=""; \
-	version=`git rev-parse --verify HEAD`; \
-	tagname=`git show-ref --tags | grep $$version`; \
+	version=`git describe --abbrev=0 --tags | tr -d [a-z]` ; \
+	commit=`git rev-parse --verify HEAD`; \
+	tagname=`git show-ref --tags | grep $$commit`; \
 	if [ -n "$$tagname" ]; then \
 		define=`echo $$tagname | awk -F "/" "{print \\$$NF}" | tr -d [a-z]`; \
 	else \
-		define=`printf "%.12s" $$version`; \
+		define=`printf "$$version-%.12s" $$commit`; \
 	fi; \
 	tainted=`git ls-files -m | wc -l` ; \
 	if [ "$$tainted" -gt 0 ]; then \
@@ -29,10 +30,6 @@ PATH=$${GOPATH}/src/${SKYDIVE_GITHUB}/vendor/$1:$$PATH
 endef
 
 VERSION?=$(shell $(VERSION_CMD))
-$(info ${VERSION})
-
-# really Basic Makefile for Skydive
-export GO15VENDOREXPERIMENT=1
 
 GOVENDOR:=${GOPATH}/bin/govendor
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
@@ -114,6 +111,10 @@ endif
 
 .PHONY: all install
 all install: skydive
+
+.PHONY: version
+version:
+	@echo -n ${VERSION}
 
 skydive.yml: etc/skydive.yml.default
 	[ -e $@ ] || cp $< $@
@@ -407,9 +408,11 @@ docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
 	sudo -E docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
 
-.PHONY: vendor
-vendor: govendor check
-	tar cvzf vendor.tar.gz vendor/
+.PHONY: localdist
+localdist: govendor genlocalfiles
+	git ls-files | tar -cf ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" -T -
+	tar --append -f ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" vendor statics/bindata.go $(patsubst %.proto,%.pb.go,${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES})
+	gzip -f ${DESTDIR}/$(SKYDIVE_PKG).tar
 
 .PHONY: dist
 dist: govendor genlocalfiles

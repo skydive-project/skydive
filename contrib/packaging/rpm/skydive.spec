@@ -9,31 +9,30 @@
 %define gotest() go test -compiler gc -ldflags "${LDFLAGS:-}" %{?**};
 %endif
 
+%define extracttag() %(eval "echo %1 | cut -d '-' -f 2-")
+%define extractversion() %(eval "echo %1 | cut -d '-' -f 1")
+%define normalize() %(eval "echo %1 | tr '-' '.'")
+
 %global selinuxtype targeted
 %global selinux_policyver 3.13.1-192
 %global moduletype contrib
 
-# commit or tagversion need to be defined on command line
-%if %{defined commit}
-%define source %{commit}
-%define tag 0.git%{commit}
+%if %{defined fullver}
+%define vertag %extracttag %{fullver}
+%define tag %normalize 0.%{vertag}
 %endif
 
-%if %{defined tagversion}
-%define source %{tagversion}
-%endif
-
-%{!?tagversion:%global tagversion 0.18.0}
-%{!?source:%global source 0.18.0}
+%{!?fullver:%global fullver 0.18.0}
+%define version %{extractversion %{fullver}}
 %{!?tag:%global tag 1}
 
 Name:           skydive
-Version:        %{tagversion}
+Version:        %{version}
 Release:        %{tag}%{?dist}
 Summary:        Real-time network topology and protocols analyzer.
 License:        ASL 2.0
 URL:            https://%{import_path}
-Source0:        https://%{import_path}/releases/download/v%{source}/skydive-%{source}.tar.gz
+Source0:        https://%{import_path}/releases/download/v%{version}/skydive-%{fullver}.tar.gz
 BuildRequires:  systemd
 BuildRequires:  libpcap-devel libxml2-devel
 BuildRequires:  llvm clang kernel-headers
@@ -100,12 +99,12 @@ BuildArch:        noarch
 This package installs and sets up the SELinux policy security module for Skydive.
 
 %prep
-%setup -q -n skydive-%{source}/src/%{import_path}
+%setup -q -n skydive-%{fullver}/src/%{import_path}
 
 %build
-export GOPATH=%{_builddir}/skydive-%{source}
+export GOPATH=%{_builddir}/skydive-%{fullver}
 export GO15VENDOREXPERIMENT=1
-export LDFLAGS="$LDFLAGS -X github.com/skydive-project/skydive/version.Version=%{source}"
+export LDFLAGS="$LDFLAGS -X github.com/skydive-project/skydive/version.Version=%{fullver}"
 %gobuild -o bin/skydive %{import_path}
 bin/skydive bash-completion
 
@@ -120,7 +119,7 @@ make -f /usr/share/selinux/devel/Makefile -C contrib/packaging/rpm/ skydive.pp
 bzip2 contrib/packaging/rpm/skydive.pp
 
 %install
-export GOPATH=%{_builddir}/skydive-%{source}
+export GOPATH=%{_builddir}/skydive-%{fullver}
 install -D -p -m 755 bin/skydive %{buildroot}%{_bindir}/skydive
 ln -s skydive %{buildroot}%{_bindir}/skydive-cli
 for bin in agent analyzer
@@ -195,7 +194,7 @@ fi
 %selinux_relabel_post -s %{selinuxtype}
 
 %check
-%{buildroot}%{_bindir}/skydive version | grep -q "skydive github.com/skydive-project/skydive %{source}" || exit 1
+%{buildroot}%{_bindir}/skydive version | grep -q "skydive github.com/skydive-project/skydive %{fullver}" || exit 1
 
 %if 0%{?with_check} && 0%{?with_unit_test} && 0%{?with_devel}
 %gotest $(go list ./... | grep -v '/tests' | grep -v '/vendor/')
