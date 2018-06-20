@@ -46,6 +46,8 @@
      - virt-what
      - selinux-policy-devel
      - policycoreutils-devel
+     - mock
+     - yum-utils
 
 - service:
     name: "{{ item }}"
