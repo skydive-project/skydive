@@ -1,11 +1,11 @@
 define VERSION_CMD =
 eval ' \
 	define=""; \
-	version=`git describe --abbrev=0 --tags | tr -d [a-z]` ; \
+	version=`git describe --abbrev=0 --tags | tr -d "[a-z]"` ; \
 	commit=`git rev-parse --verify HEAD`; \
 	tagname=`git show-ref --tags | grep $$commit`; \
 	if [ -n "$$tagname" ]; then \
-		define=`echo $$tagname | awk -F "/" "{print \\$$NF}" | tr -d [a-z]`; \
+		define=`echo $$tagname | awk -F "/" "{print \\$$NF}" | tr -d "[a-z]"`; \
 	else \
 		define=`printf "$$version-%.12s" $$commit`; \
 	fi; \
