@@ -1075,6 +1075,8 @@ func (u *NetLinkProbe) Unregister(nsPath string) error {
 			}
 			delete(u.probes, fd)
 
+			probe.stop()
+
 			return nil
 		}
 	}
