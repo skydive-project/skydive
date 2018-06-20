@@ -108,6 +108,14 @@ export GO15VENDOREXPERIMENT=1
 export LDFLAGS="$LDFLAGS -X github.com/skydive-project/skydive/version.Version=%{source}"
 %gobuild -o bin/skydive %{import_path}
 bin/skydive bash-completion
+
+# SELinux build
+%if 0%{?fedora} >= 27
+cp contrib/packaging/rpm/skydive.te{.fedora,}
+%endif
+%if 0%{?rhel} >= 7
+cp contrib/packaging/rpm/skydive.te{.rhel,}
+%endif
 make -f /usr/share/selinux/devel/Makefile -C contrib/packaging/rpm/ skydive.pp
 bzip2 contrib/packaging/rpm/skydive.pp
 
