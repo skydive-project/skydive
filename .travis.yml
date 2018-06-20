@@ -86,7 +86,7 @@ before_script:
 
 script:
     - echo "--- DOCKER IMAGE ---"
-    - make docker-image ${DOCKER_BASE:+BASE=$DOCKER_BASE} DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
+    - make docker-image ${DOCKER_BASE:+DOCKER_BASE=$DOCKER_BASE} DOCKER_IMAGE=${DOCKER_IMAGE} DOCKER_TAG=${BUILD_TAG}
 
 after_success:
     - echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
@@ -109,7 +109,7 @@ after_success:
 before_deploy:
     - git config --global user.email "builds@travis-ci.com"
     - git config --global user.name "Travis CI"
-    - make DESTDIR=$HOME SKYDIVE_PKG=skydive-${TRAVIS_OS_NAME}-${TRAVIS_TAG} localdist
+    - make DESTDIR=$HOME SKYDIVE_PKG=skydive-${TRAVIS_OS_NAME}-${TRAVIS_TAG} dist
 
 deploy:
     provider: releases
