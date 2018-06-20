@@ -56,6 +56,7 @@ func newObjectIndexer(g *graph.Graph) *graph.MetadataIndexer {
 		filters.NewTermStringFilter("Type", "replicationcontroller"),
 		filters.NewTermStringFilter("Type", "service"),
 		filters.NewTermStringFilter("Type", "statefulset"),
+		filters.NewTermStringFilter("Type", "storageclass"),
 	)
 
 	filter := filters.NewAndFilter(

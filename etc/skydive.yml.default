@@ -381,6 +381,7 @@ k8s:
   - replicationcontroller
   - service
   - statefulset
+  - storageclass
 
 ui:
   # Specify the extra assets folder. Javascript and CSS files present in this

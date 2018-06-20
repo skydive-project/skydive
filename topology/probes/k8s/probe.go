@@ -65,6 +65,7 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 		"replicationcontroller": newReplicationControllerProbe,
 		"service":               newServiceProbe,
 		"statefulset":           newStatefulSetProbe,
+		"storageclass":          newStorageClassProbe,
 	}
 
 	configProbes := config.GetStringSlice("k8s.probes")
