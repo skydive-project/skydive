@@ -227,7 +227,6 @@ func (u *NetNsNetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link
 }
 
 func (u *NetNsNetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
-	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
 
 	var intf *graph.Node
@@ -243,32 +242,12 @@ func (u *NetNsNetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.
 		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
 	}
 
-	// ignore ovs-system interface as it doesn't make any sense according to
-	// the following thread:
-	// http://openvswitch.org/pipermail/discuss/2013-October/011657.html
-	if name == "ovs-system" {
-		return intf
-	}
-
 	return intf
 }
 
 func (u *NetNsNetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
-	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
-
-	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{
-		"Name":    name,
-		"IfIndex": index,
-	})
-
-	if intf == nil {
-		intf = u.Graph.NewNode(graph.GenID(), m)
-	}
-
-	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf, nil) {
-		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
-	}
+	intf := u.addGenericLinkToTopology(link, m)
 
 	u.linkPendingChildren(intf, index)
 
