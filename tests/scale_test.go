@@ -173,7 +173,7 @@ func checkICMPv4Flows(gh *gclient.GremlinQueryHelper, nodeSel g.QueryString, flo
 
 func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 	retry := func() error {
-		flows, err := gh.GetFlows(g.G.Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Has("Transport.B", "5001").Sort())
+		flows, err := gh.GetFlows(g.G.Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Has("Transport.B", 5001).Sort())
 		if err != nil {
 			return err
 		}
@@ -195,7 +195,7 @@ func checkIPerfFlows(gh *gclient.GremlinQueryHelper, flowExpected int) error {
 
 	// check in the storage
 	retry = func() error {
-		flows, err := gh.GetFlows(g.G.At("-1s", 300).Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Has("Transport.B", "5001").Sort())
+		flows, err := gh.GetFlows(g.G.At("-1s", 300).Flows().Has("LayersPath", "Ethernet/IPv4/TCP").Has("Transport.B", 5001).Sort())
 		if err != nil {
 			return err
 		}

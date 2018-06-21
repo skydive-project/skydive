@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 
 	"github.com/google/gopacket/layers"
@@ -760,8 +759,8 @@ func (f *FlowTraversalStep) Sockets(s ...interface{}) *SocketsTraversalStep {
 		if transport := fl.GetTransport(); transport != nil && (transport.GetProtocol() == flow.FlowProtocol_TCP || transport.GetProtocol() == flow.FlowProtocol_UDP) {
 			var sockets []*socketinfo.ConnectionInfo
 
-			localPort, _ := strconv.Atoi(fl.GetTransport().GetA())
-			remotePort, _ := strconv.Atoi(fl.GetTransport().GetB())
+			localPort := fl.GetTransport().GetA()
+			remotePort := fl.GetTransport().GetB()
 			protocol := transport.GetProtocol()
 
 			hash := socketinfo.HashTuple(protocol, net.ParseIP(fl.GetNetwork().GetA()), int64(localPort), net.ParseIP(fl.GetNetwork().GetB()), int64(remotePort))

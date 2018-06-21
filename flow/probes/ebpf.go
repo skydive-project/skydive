@@ -31,7 +31,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -128,16 +127,16 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 
 	// TRANSPORT
 	if layersFlag&uint8(C.TRANSPORT_LAYER) > 0 {
-		portA := uint64(kernFlow.transport_layer.port_src)
-		portB := uint64(kernFlow.transport_layer.port_dst)
+		portA := int64(kernFlow.transport_layer.port_src)
+		portB := int64(kernFlow.transport_layer.port_dst)
 		protocol := uint8(kernFlow.transport_layer.protocol)
 
 		switch protocol {
 		case syscall.IPPROTO_UDP:
-			f.Transport = &flow.FlowLayer{
+			f.Transport = &flow.TransportLayer{
 				Protocol: flow.FlowProtocol_UDP,
-				A:        strconv.FormatUint(portA, 10),
-				B:        strconv.FormatUint(portB, 10),
+				A:        portA,
+				B:        portB,
 			}
 
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeUDP, gopacket.DecodeOptions{})
@@ -149,10 +148,10 @@ func (p *EBPFProbe) flowFromEBPF(ebpfFlow *EBPFFlow, kernFlow *C.struct_flow, up
 				f.LayersPath += "/UDP"
 			}
 		case syscall.IPPROTO_TCP:
-			f.Transport = &flow.FlowLayer{
+			f.Transport = &flow.TransportLayer{
 				Protocol: flow.FlowProtocol_TCP,
-				A:        strconv.FormatUint(portA, 10),
-				B:        strconv.FormatUint(portB, 10),
+				A:        portA,
+				B:        portB,
 			}
 
 			p := gopacket.NewPacket(C.GoBytes(unsafe.Pointer(&kernFlow.payload[0]), C.PAYLOAD_LENGTH), layers.LayerTypeTCP, gopacket.DecodeOptions{})
