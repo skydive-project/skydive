@@ -9,7 +9,7 @@
 %define gotest() go test -compiler gc -ldflags "${LDFLAGS:-}" %{?**};
 %endif
 
-%define extracttag() %(eval "echo %1 | cut -d '-' -f 2-")
+%define extracttag() %(eval "echo %1 | cut -s -d '-' -f 2-")
 %define extractversion() %(eval "echo %1 | cut -d '-' -f 1")
 %define normalize() %(eval "echo %1 | tr '-' '.'")
 
@@ -19,7 +19,9 @@
 
 %if %{defined fullver}
 %define vertag %extracttag %{fullver}
+%if "%{vertag}" != ""
 %define tag %normalize 0.%{vertag}
+%endif
 %endif
 
 %{!?fullver:%global fullver 0.18.0}

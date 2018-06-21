@@ -24,7 +24,8 @@ token = $COPR_TOKEN
 copr_url = https://copr.fedorainfracloud.org
 EOF
 
-contrib/packaging/rpm/generate-skydive-bootstrap.sh -s -r ${TAG}
+gitdir=$(cd "$(dirname "$0")/../.."; pwd)
+make -s -C $gitdir srpm
 
 if [ -n "$DRY_RUN" ]; then
     echo "Running in dry run mode. Do not build package."
