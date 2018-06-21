@@ -1377,7 +1377,7 @@ func TestFlowVLANSegmentation(t *testing.T) {
 
 		captures: []TestCapture{
 			{gremlin: g.G.V().Has("Name", "vlan-vm1").Out().Has("Name", "vlan")},
-			{gremlin: g.G.V().Has("Name", "vlan-vm2-eth0")},
+			{gremlin: g.G.V().Has("Name", "vlan-vm2-eth0", "Type", "veth")},
 		},
 
 		checks: []CheckFunction{func(c *CheckContext) error {
