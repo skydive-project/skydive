@@ -48,6 +48,7 @@
      - policycoreutils-devel
      - mock
      - yum-utils
+     - manifest-tool
 
 - service:
     name: "{{ item }}"

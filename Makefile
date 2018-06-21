@@ -20,7 +20,7 @@ endef
 define VENDOR_BUILD
 ln -s vendor src || mv vendor src; \
 cd src/$1; \
-GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go build $1; \
+(unset GOARCH; unset CC; GOPATH=$$GOPATH/src/${SKYDIVE_GITHUB} go build $1); \
 cd -; \
 unlink src || mv src vendor
 endef
@@ -30,7 +30,7 @@ PATH=$${GOPATH}/src/${SKYDIVE_GITHUB}/vendor/$1:$$PATH
 endef
 
 VERSION?=$(shell $(VERSION_CMD))
-
+GO_GET:=CC= GOARCH= go get
 GOVENDOR:=${GOPATH}/bin/govendor
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
@@ -65,6 +65,31 @@ BOOTSTRAP_ARGS?=
 BUILD_TAGS?=$(TAGS)
 WITH_LXD?=true
 WITH_OPENCONTRAIL?=true
+
+STATIC_DIR?=
+STATIC_LIBS?=
+
+OS_RHEL := $(shell test -f /etc/redhat-release && echo -n Y)
+ifeq ($(OS_RHEL),Y)
+	STATIC_DIR := /usr/lib64
+	STATIC_LIBS := \
+		libz.a \
+		liblzma.a \
+		libm.a
+endif
+
+OS_DEB := $(shell test -f /etc/debian_version && echo -n Y)
+ifeq ($(OS_DEB),Y)
+	STATIC_DIR := $(shell dpkg-architecture -c 'sh' -c 'echo /usr/lib/$$DEB_HOST_MULTIARCH')
+	STATIC_LIBS := \
+		libz.a \
+		liblzma.a \
+		libc.a \
+		libdl.a \
+		libpthread.a \
+		libc++.a \
+		libm.a
+endif
 
 ifeq ($(WITH_DPDK), true)
   BUILD_TAGS+=dpdk
@@ -110,11 +135,18 @@ endif
 
 ifeq ($(WITH_OPENCONTRAIL), true)
   BUILD_TAGS+=opencontrail
+  STATIC_LIBS+=libxml2.a
+ifeq ($(OS_DEB),Y)
+  STATIC_LIBS+=libicuuc.a \
+               libicudata.a
+endif
 endif
 
 ifeq ($(WITH_LXD), true)
   BUILD_TAGS+=lxd
 endif
+
+STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
 
 .PHONY: all install
 all install: skydive
@@ -178,6 +210,14 @@ compile:
 		${GOFLAGS} -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
 
+.PHONY: compile.static
+compile.static:
+	$(GOVENDOR) install \
+		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
+		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
+		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS}" \
+		-installsuffix netgo || true
+
 .PHONY: skydive
 skydive: govendor genlocalfiles dpdk.build contribs compile
 
@@ -202,43 +242,8 @@ bench.flow.traces: flow/pcaptraces/201801011400.small.pcap
 bench.flow: bench.flow.traces
 	govendor test -bench=. ${SKYDIVE_GITHUB}/flow
 
-STATIC_DIR?=
-STATIC_LIBS?=
-
-OS_RHEL := $(shell test -f /etc/redhat-release && echo -n Y)
-ifeq ($(OS_RHEL),Y)
-	STATIC_DIR := /usr/lib64
-	STATIC_LIBS := \
-		libz.a \
-		liblzma.a \
-		libm.a
-endif
-
-OS_DEB := $(shell test -f /etc/debian_version && echo -n Y)
-ifeq ($(OS_DEB),Y)
-	STATIC_DIR := $(shell dpkg-architecture -c 'sh' -c 'echo /usr/lib/$$DEB_BUILD_MULTIARCH')
-	STATIC_LIBS := \
-		libz.a \
-		liblzma.a \
-		libicuuc.a \
-		libicudata.a \
-		libxml2.a \
-		libc.a \
-		libdl.a \
-		libpthread.a \
-		libc++.a \
-		libm.a
-endif
-
-STATIC_LIBS_ABS := $(addprefix $(STATIC_DIR)/,$(STATIC_LIBS))
-
 .PHONY: static
-static: skydive.cleanup govendor genlocalfiles
-	$(GOVENDOR) install \
-		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
-		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
-		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS}" \
-		-installsuffix netgo || true
+static: skydive.cleanup govendor genlocalfiles compile.static
 
 .PHONY: contribs.cleanup
 contribs.cleanup:
@@ -314,7 +319,7 @@ functional:
 test: govendor genlocalfiles
 ifeq ($(COVERAGE), true)
 	set -v ; \
-	go get github.com/mattn/goveralls ; \
+	$(GO_GET) github.com/mattn/goveralls ; \
 	for pkg in ${UT_PACKAGES}; do \
 		if [ -n "$$pkg" ]; then \
 			coverfile="${COVERAGE_WD}/$$(echo $$pkg | tr / -).cover"; \
@@ -333,7 +338,7 @@ endif
 
 .PHONY: govendor
 govendor:
-	go get github.com/kardianos/govendor
+	$(GO_GET) github.com/kardianos/govendor
 	$(GOVENDOR) sync
 	patch -p0 < dpdk/dpdk.govendor.patch
 	rm -rf vendor/github.com/weaveworks/tcptracer-bpf/vendor/github.com/
@@ -377,7 +382,7 @@ LINTER_COMMANDS := \
 
 .PHONY: $(LINTER_COMMANDS)
 $(LINTER_COMMANDS):
-	@go get github.com/alecthomas/gometalinter
+	@$(GO_GET) github.com/alecthomas/gometalinter
 	@command -v $@ >/dev/null || gometalinter --install --update
 
 .PHONY: gometalinter
@@ -413,7 +418,7 @@ rpm:
 .PHONY: docker-image
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
-	sudo -E docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
+	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
 
 .PHONY: localdist
 localdist: govendor genlocalfiles
