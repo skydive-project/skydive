@@ -275,6 +275,7 @@ func NewDockerProbe(nsProbe *ns.NetNSProbe, dockerURL string) (*DockerProbe, err
 	}
 
 	if path := config.GetString("docker.netns.run_path"); path != "" {
+		nsProbe.Exclude(path + "/default")
 		nsProbe.Watch(path)
 	}
 
