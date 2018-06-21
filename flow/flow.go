@@ -25,7 +25,6 @@ package flow
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"reflect"
 	"strconv"
@@ -277,123 +276,29 @@ func (p FlowProtocol) MarshalJSON() ([]byte, error) {
 	return []byte("\"" + p.String() + "\""), nil
 }
 
-// MarshalJSON serialize a TransportLayer in JSON
-func (tl *TransportLayer) MarshalJSON() ([]byte, error) {
-	obj := &struct {
-		Protocol string
-		A        int64
-		B        int64
-		ID       int64
-	}{
-		Protocol: tl.Protocol.String(),
-		A:        tl.A,
-		B:        tl.B,
-		ID:       tl.ID,
-	}
-
-	return json.Marshal(&obj)
-}
-
-//UnmarshalJSON deserialize a JSON object in TransportLayer
-func (tl *TransportLayer) UnmarshalJSON(b []byte) error {
-	m := struct {
-		Protocol string
-		A        int64
-		B        int64
-		ID       int64
-	}{}
-
-	if err := json.Unmarshal(b, &m); err != nil {
-		return err
-	}
-
-	protocol, ok := FlowProtocol_value[m.Protocol]
+// UnmarshalJSON serialize a FlowProtocol in JSON
+func (p *FlowProtocol) UnmarshalJSON(b []byte) error {
+	protocol, ok := FlowProtocol_value[string(b[1:len(b)-1])]
 	if !ok {
 		return ErrFlowProtocol
 	}
-	tl.Protocol = FlowProtocol(protocol)
-	tl.A = m.A
-	tl.B = m.B
-	tl.ID = m.ID
-	return nil
-}
-
-// MarshalJSON serialize a FlowLayer in JSON
-func (f *FlowLayer) MarshalJSON() ([]byte, error) {
-	obj := &struct {
-		Protocol string
-		A        string
-		B        string
-		ID       int64
-	}{
-		Protocol: f.Protocol.String(),
-		A:        f.A,
-		B:        f.B,
-		ID:       f.ID,
-	}
-
-	return json.Marshal(&obj)
-}
-
-// UnmarshalJSON deserialize a JSON object in FlowLayer
-func (f *FlowLayer) UnmarshalJSON(b []byte) error {
-	m := struct {
-		Protocol string
-		A        string
-		B        string
-		ID       int64
-	}{}
-
-	if err := json.Unmarshal(b, &m); err != nil {
-		return err
-	}
-
-	protocol, ok := FlowProtocol_value[m.Protocol]
-	if !ok {
-		return ErrFlowProtocol
-	}
-	f.Protocol = FlowProtocol(protocol)
-	f.A = m.A
-	f.B = m.B
-	f.ID = m.ID
+	*p = FlowProtocol(protocol)
 
 	return nil
 }
 
-// MarshalJSON serialize a ICMPLayer in JSON
-func (i *ICMPLayer) MarshalJSON() ([]byte, error) {
-	obj := &struct {
-		Type string
-		Code uint32
-		ID   uint32
-	}{
-		Type: i.Type.String(),
-		Code: i.Code,
-		ID:   i.ID,
-	}
-
-	return json.Marshal(&obj)
+// MarshalJSON serialize a FlowProtocol in JSON
+func (i ICMPType) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + i.String() + "\""), nil
 }
 
-// UnmarshalJSON deserialize a JSON object in ICMPLayer
-func (i *ICMPLayer) UnmarshalJSON(b []byte) error {
-	m := struct {
-		Type string
-		Code uint32
-		ID   uint32
-	}{}
-
-	if err := json.Unmarshal(b, &m); err != nil {
-		return err
-	}
-
-	icmpType, ok := ICMPType_value[m.Type]
+// UnmarshalJSON serialize a ICMPType in JSON
+func (i *ICMPType) UnmarshalJSON(b []byte) error {
+	icmpType, ok := ICMPType_value[string(b[1:len(b)-1])]
 	if !ok {
 		return ErrFlowProtocol
 	}
-	i.Type = ICMPType(icmpType)
-	i.Code = m.Code
-	i.ID = m.ID
+	*i = ICMPType(icmpType)
 
 	return nil
 }

@@ -171,7 +171,7 @@ func TestFlowTCPSegments(t *testing.T) {
 func TestBPFFilter(t *testing.T) {
 	bpf, err := NewBPF(layers.LinkTypeEthernet, DefaultCaptureLength, "port 53 or port 80")
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 	}
 
 	flows := flowsFromPCAP(t, "pcaptraces/eth-ip4-arp-dns-req-http-google.pcap", layers.LinkTypeEthernet, bpf)
@@ -189,6 +189,9 @@ func TestFlowJSON(t *testing.T) {
 			A:        "value-1",
 			B:        "value-2",
 		},
+		ICMP: &ICMPLayer{
+			Type: ICMPType_ECHO,
+		},
 		Start:            1111,
 		Last:             222,
 		LastUpdateMetric: &FlowMetric{},
@@ -205,7 +208,7 @@ func TestFlowJSON(t *testing.T) {
 
 	j, err := json.Marshal(f)
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 	}
 
 	schema := v.Object(
@@ -218,6 +221,9 @@ func TestFlowJSON(t *testing.T) {
 			v.ObjKV("Protocol", v.String()),
 			v.ObjKV("A", v.String()),
 			v.ObjKV("B", v.String()),
+		)),
+		v.ObjKV("ICMP", v.Object(
+			v.ObjKV("Type", v.String()),
 		)),
 		v.ObjKV("LastUpdateMetric", v.Object(
 			v.ObjKV("ABPackets", v.Number()),
@@ -542,12 +548,12 @@ func TestEmptyParentUUIDExported(t *testing.T) {
 
 	m, err := json.Marshal(&flow)
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal(err)
 	}
 
 	var i map[string]interface{}
 	if err = json.Unmarshal(m, &i); err != nil {
-		t.Fatal(err.Error())
+		t.Fatal(err)
 	}
 
 	if _, ok := i["ParentUUID"]; !ok {
