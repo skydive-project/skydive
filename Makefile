@@ -61,6 +61,7 @@ DESTDIR?=$(shell pwd)
 COVERAGE?=0
 COVERAGE_MODE?=atomic
 COVERAGE_WD?="."
+BOOTSTRAP:=contrib/packaging/rpm/generate-skydive-bootstrap.sh
 BOOTSTRAP_ARGS?=
 BUILD_TAGS?=$(TAGS)
 WITH_LXD?=true
@@ -413,11 +414,11 @@ clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean
 
 .PHONY: srpm
 srpm:
-	contrib/packaging/rpm/generate-skydive-bootstrap.sh -s ${BOOTSTRAP_ARGS}
+	$(BOOTSTRAP) -s ${BOOTSTRAP_ARGS}
 
 .PHONY: rpm
 rpm:
-	contrib/packaging/rpm/generate-skydive-bootstrap.sh -b ${BOOTSTRAP_ARGS}
+	$(BOOTSTRAP) -b ${BOOTSTRAP_ARGS}
 
 .PHONY: docker-image
 docker-image: static
