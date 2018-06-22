@@ -403,7 +403,7 @@ func TestInterfaceUpdate(t *testing.T) {
 			gh := c.gh
 
 			now := time.Now()
-			gremlin := g.G.Context(now, int(now.Sub(start).Seconds()))
+			gremlin := g.G.Context("NOW", int(now.Sub(start).Seconds()))
 			gremlin = gremlin.V().Has("Name", "iu", "Type", "netns").Out().Has("Name", "lo")
 
 			nodes, err := gh.GetNodes(gremlin)
@@ -843,7 +843,7 @@ func TestRouteTableHistory(t *testing.T) {
 
 		checks: []CheckFunction{
 			func(c *CheckContext) error {
-				prefix := g.G.Context(time.Now())
+				prefix := g.G.Context("NOW")
 				node, err := c.gh.GetNode(prefix.V().Has("IPV4", "124.65.75.42/24"))
 				if err != nil {
 					return fmt.Errorf("Failed to find a node with IP 124.65.75.42/24")
