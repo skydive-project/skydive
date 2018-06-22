@@ -161,7 +161,7 @@ skydive.yml: etc/skydive.yml.default
 .PHONY: debug
 debug: GOFLAGS+=-gcflags='-N -l'
 debug: GO_BINDATA_FLAGS+=-debug
-debug: skydive.cleanup skydive skydive.yml
+debug: skydive.clean skydive skydive.yml
 
 define skydive_debug
 sudo $$(which dlv) exec $$(which skydive) -- $1 -c skydive.yml
@@ -225,8 +225,8 @@ compile.static:
 .PHONY: skydive
 skydive: govendor genlocalfiles dpdk.build contribs compile
 
-.PHONY: skydive.cleanup
-skydive.cleanup:
+.PHONY: skydive.clean
+skydive.clean:
 	go clean -i $(SKYDIVE_GITHUB)
 
 .PHONY: bench
@@ -247,10 +247,10 @@ bench.flow: bench.flow.traces
 	govendor test -bench=. ${SKYDIVE_GITHUB}/flow
 
 .PHONY: static
-static: skydive.cleanup govendor genlocalfiles compile.static
+static: skydive.clean govendor genlocalfiles compile.static
 
-.PHONY: contribs.cleanup
-contribs.cleanup:
+.PHONY: contribs.clean
+contribs.clean:
 	$(MAKE) -C contrib/snort clean
 
 .PHONY: contribs
@@ -263,8 +263,8 @@ ifeq ($(WITH_DPDK), true)
 	$(MAKE) -C dpdk
 endif
 
-.PHONY: dpdk.cleanup
-dpdk.cleanup:
+.PHONY: dpdk.clean
+dpdk.clean:
 	$(MAKE) -C dpdk clean
 
 .PHONY: ebpf.build
@@ -277,8 +277,8 @@ endif
 ebpf.clean:
 	$(MAKE) -C probe/ebpf clean
 
-.PHONY: test.functionals.cleanup
-test.functionals.cleanup:
+.PHONY: test.functionals.clean
+test.functionals.clean:
 	rm -f tests/functionals
 
 .PHONY: test.functionals.compile
@@ -408,7 +408,7 @@ builddep: govendor
 genlocalfiles: .proto .bindata
 
 .PHONY: clean
-clean: skydive.cleanup test.functionals.cleanup dpdk.cleanup contribs.cleanup
+clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm
