@@ -33,10 +33,11 @@ VERSION?=$(shell $(VERSION_CMD))
 GO_GET:=CC= GOARCH= go get
 GOVENDOR:=${GOPATH}/bin/govendor
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
+SKYDIVE_PKG:=skydive-${VERSION}
+SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
 PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
-SKYDIVE_PKG:=skydive-${VERSION}
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 FILTERS_PROTO_FILES=filters/filters.proto
 HTTP_PROTO_FILES=http/wsstructmessage.proto
@@ -425,14 +426,30 @@ docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
 
+SKYDIVE_PROTO_FILES:= \
+	${FLOW_PROTO_FILES} \
+	${FILTERS_PROTO_FILES} \
+	${HTTP_PROTO_FILES}
+
+SKYDIVE_TAR_INPUT:= \
+	vendor \
+	statics/bindata.go \
+	$(patsubst %.proto,%.pb.go,$(SKYDIVE_PROTO_FILES))
+
+SKYDIVE_TAR:=${DESTDIR}/$(SKYDIVE_PKG).tar
+
+define TAR_CMD
+tar $1 -f $(SKYDIVE_TAR) --transform="s||$(SKYDIVE_PATH)|" $2
+endef
+
 .PHONY: localdist
 localdist: govendor genlocalfiles
-	git ls-files | tar -cf ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" -T -
-	tar --append -f ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" vendor statics/bindata.go $(patsubst %.proto,%.pb.go,${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES})
-	gzip -f ${DESTDIR}/$(SKYDIVE_PKG).tar
+	git ls-files | $(call TAR_CMD,--create,--files-from -)
+	$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+	gzip -f $(SKYDIVE_TAR)
 
 .PHONY: dist
 dist: govendor genlocalfiles
-	git archive -o ${DESTDIR}/$(SKYDIVE_PKG).tar --prefix $(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/ HEAD
-	tar --append -f ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" vendor statics/bindata.go $(patsubst %.proto,%.pb.go,${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES})
-	gzip -f ${DESTDIR}/$(SKYDIVE_PKG).tar
+	git archive -o $(SKYDIVE_TAR) --prefix $(SKYDIVE_PATH) HEAD
+	$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+	gzip -f $(SKYDIVE_TAR)
