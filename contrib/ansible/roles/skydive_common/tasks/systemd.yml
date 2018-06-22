@@ -14,3 +14,17 @@
     state: started
     enabled: yes
     daemon_reload: yes
+
+- name: Check Skydive service started
+  command: systemctl status {{ service_name }}
+  ignore_errors: yes
+  changed_when: false
+  register: service_skydive_status
+
+- name: Report status of Skydive service
+  fail:
+    msg: |
+      Service {{ service_name }} is not running.
+      {{ service_skydive_status.stdout }}
+      {{ service_skydive_status.stderr }}
+  when: service_skydive_status is failed
