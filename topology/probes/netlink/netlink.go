@@ -40,6 +40,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
+	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -226,7 +227,6 @@ func (u *NetNsNetLinkProbe) handleIntfIsVeth(intf *graph.Node, link netlink.Link
 }
 
 func (u *NetNsNetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
-	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
 
 	var intf *graph.Node
@@ -234,52 +234,20 @@ func (u *NetNsNetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.
 		"IfIndex": index,
 	})
 
-	// could be a member of ovs
-	intfs := u.Graph.GetNodes(graph.Metadata{
-		"Name":    name,
-		"IfIndex": index,
-	})
-	for _, i := range intfs {
-		if uuid, _ := i.GetFieldString("UUID"); uuid != "" {
-			intf = i
-			break
-		}
-	}
-
 	if intf == nil {
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
 	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf, nil) {
 		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
-	}
-
-	// ignore ovs-system interface as it doesn't make any sense according to
-	// the following thread:
-	// http://openvswitch.org/pipermail/discuss/2013-October/011657.html
-	if name == "ovs-system" {
-		return intf
 	}
 
 	return intf
 }
 
 func (u *NetNsNetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
-	name := link.Attrs().Name
 	index := int64(link.Attrs().Index)
-
-	intf := u.Graph.LookupFirstChild(u.Root, graph.Metadata{
-		"Name":    name,
-		"IfIndex": index,
-	})
-
-	if intf == nil {
-		intf = u.Graph.NewNode(graph.GenID(), m)
-	}
-
-	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf, nil) {
-		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
-	}
+	intf := u.addGenericLinkToTopology(link, m)
 
 	u.linkPendingChildren(intf, index)
 
@@ -288,13 +256,18 @@ func (u *NetNsNetLinkProbe) addBridgeLinkToTopology(link netlink.Link, m graph.M
 
 func (u *NetNsNetLinkProbe) addOvsLinkToTopology(link netlink.Link, m graph.Metadata) *graph.Node {
 	name := link.Attrs().Name
+	attrs := link.Attrs()
 
-	intf := u.Graph.LookupFirstNode(graph.Metadata{"Name": name, "Driver": "openvswitch"})
-	if intf == nil {
-		intf = u.Graph.NewNode(graph.GenID(), m)
+	filter := filters.NewAndFilter(
+		filters.NewTermStringFilter("Name", name),
+		filters.NewTermStringFilter("MAC", attrs.HardwareAddr.String()),
+		filters.NewNotNullFilter("UUID"),
+	)
+
+	intf := u.Graph.LookupFirstNode(graph.NewGraphElementFilter(filter))
+	if intf != nil {
+		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
 	}
-
-	topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
 
 	return intf
 }
@@ -492,14 +465,16 @@ func (u *NetNsNetLinkProbe) addLinkToTopology(link netlink.Link) {
 	switch driver {
 	case "bridge":
 		intf = u.addBridgeLinkToTopology(link, metadata)
-	case "openvswitch":
+	default:
 		intf = u.addOvsLinkToTopology(link, metadata)
 		// always prefer Type from ovs
-		if tp, _ := intf.GetFieldString("Type"); tp != "" {
-			metadata["Type"] = tp
+		if intf != nil {
+			if tp, _ := intf.GetFieldString("Type"); tp != "" {
+				metadata["Type"] = tp
+			}
+		} else {
+			intf = u.addGenericLinkToTopology(link, metadata)
 		}
-	default:
-		intf = u.addGenericLinkToTopology(link, metadata)
 	}
 
 	if intf == nil {

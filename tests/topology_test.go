@@ -544,7 +544,7 @@ func TestOVSOwnershipLink(t *testing.T) {
 
 				// only the host node shouldn't have a parent ownership link
 				if len(nodes) != 1 {
-					return errors.New("tunneling and patch interface should have one ownership link to the bridge")
+					return fmt.Errorf("tunneling and patch interface should have one ownership link to the bridge: %s", intf)
 				}
 			}
 

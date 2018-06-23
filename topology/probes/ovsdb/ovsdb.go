@@ -56,18 +56,22 @@ type OvsdbProbe struct {
 	portToBridge map[string]*graph.Node
 }
 
-func isOvsDrivenInterface(intf *graph.Node) bool {
-	if d, _ := intf.GetFieldString("Driver"); d == "openvswitch" {
-		return true
-	}
-
-	t, _ := intf.GetFieldString("Type")
+func isOvsInterfaceType(t string) bool {
 	switch t {
 	case "dpdk", "dpdkvhostuserclient", "patch", "internal":
 		return true
 	}
 
 	return false
+}
+
+func isOvsDrivenInterface(intf *graph.Node) bool {
+	if d, _ := intf.GetFieldString("Driver"); d == "openvswitch" {
+		return true
+	}
+
+	t, _ := intf.GetFieldString("Type")
+	return isOvsInterfaceType(t)
 }
 
 // OnOvsBridgeUpdate event
@@ -105,12 +109,8 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 					topology.AddLayer2Link(o.Graph, bridge, port, nil)
 				}
 
-				// internal ovs interface that have to be linked to the bridge as they
-				// are just logical interface.
-				if intf, ok := o.portToIntf[uuid]; ok && isOvsDrivenInterface(intf) {
-					if !topology.IsOwnershipLinked(o.Graph, intf) {
-						topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
-					}
+				if intf, ok := o.portToIntf[uuid]; ok {
+					o.linkIntfTOBridge(bridge, intf)
 				}
 			}
 		}
@@ -145,6 +145,16 @@ func (o *OvsdbProbe) OnOvsBridgeDel(monitor *ovsdb.OvsMonitor, uuid string, row 
 	}
 }
 
+// linkIntfTOBridge having ifindex set to 0 (not handled by netlink) or being in
+// error
+func (o *OvsdbProbe) linkIntfTOBridge(bridge, intf *graph.Node) {
+	oerror, _ := intf.GetFieldString("Ovs.Error")
+	ifindex, _ := intf.GetFieldInt64("IfIndex")
+	if (oerror != "" || ifindex == 0) && !topology.IsOwnershipLinked(o.Graph, intf) {
+		topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
+	}
+}
+
 // NewInterfaceMetricsFromNetlink returns a new InterfaceMetric object using
 // values of netlink.
 func newInterfaceMetricsFromOVSDB(stats libovsdb.OvsMap) *topology.InterfaceMetric {
@@ -171,84 +181,131 @@ func newInterfaceMetricsFromOVSDB(stats libovsdb.OvsMap) *topology.InterfaceMetr
 	}
 }
 
+func columnStringValue(row *libovsdb.Row, col string) string {
+	var value string
+
+	if c, ok := row.Fields[col]; ok {
+		switch row.Fields[col].(type) {
+		case string:
+			value = c.(string)
+		case libovsdb.OvsSet:
+			set := row.Fields[col].(libovsdb.OvsSet)
+			if len(set.GoSet) > 0 {
+				value = set.GoSet[0].(string)
+			}
+		}
+	}
+
+	return value
+}
+
+func goMapStringValue(row *libovsdb.Row, col string, subcol string) string {
+	var value string
+
+	if c, ok := row.Fields[col]; ok {
+		switch c.(type) {
+		case libovsdb.OvsMap:
+			m := c.(libovsdb.OvsMap)
+			if v, ok := m.GoMap[subcol]; ok {
+				if vs, ok := v.(string); ok {
+					value = vs
+				}
+			}
+		}
+	}
+
+	return value
+}
+
+func columnInt64Value(row *libovsdb.Row, col string) int64 {
+	var value int64
+
+	if c, ok := row.Fields[col]; ok {
+		switch row.Fields[col].(type) {
+		case float64:
+			value = int64(c.(float64))
+		case libovsdb.OvsSet:
+			set := row.Fields[col].(libovsdb.OvsSet)
+			if len(set.GoSet) > 0 {
+				switch set.GoSet[0].(type) {
+				case int64:
+					value = set.GoSet[0].(int64)
+				case float64:
+					value = int64(set.GoSet[0].(float64))
+
+				}
+			}
+		}
+	}
+
+	return value
+}
+
 // OnOvsInterfaceAdd event
 func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, row *libovsdb.RowUpdate) {
 	o.Lock()
 	defer o.Unlock()
 
-	var ofport int64
-	switch row.New.Fields["ofport"].(type) {
-	case float64:
-		ofport = int64(row.New.Fields["ofport"].(float64))
-	default:
-		return
-	}
+	name := columnStringValue(&row.New, "name")
+	oerror := columnStringValue(&row.New, "error")
+	ofport := columnInt64Value(&row.New, "ofport")
+	mac := columnStringValue(&row.New, "mac_in_use")
+	ifindex := columnInt64Value(&row.New, "ifindex")
+	itype := columnStringValue(&row.New, "type")
 
-	var mac string
-	switch row.New.Fields["mac_in_use"].(type) {
-	case string:
-		mac = row.New.Fields["mac_in_use"].(string)
-	}
-
-	var index int64
-	if i, ok := row.New.Fields["ifindex"]; ok {
-		switch row.New.Fields["ifindex"].(type) {
-		case float64:
-			index = int64(i.(float64))
-		case libovsdb.OvsSet:
-			set := row.New.Fields["ifindex"].(libovsdb.OvsSet)
-			if len(set.GoSet) > 0 {
-				index = set.GoSet[0].(int64)
-			}
-		}
-	}
-
-	var itype string
-	if t, ok := row.New.Fields["type"]; ok {
-		itype = t.(string)
-	}
-
-	var driver string
-	if d, ok := row.New.Fields["status"].(libovsdb.OvsMap).GoMap["driver_name"]; ok {
-		driver = d.(string)
-	}
-
-	if driver == "" {
-		// force the driver as it is not defined and we need it to delete properly
+	driver := goMapStringValue(&row.New, "status", "driver_name")
+	if driver == "" && isOvsInterfaceType(itype) {
 		driver = "openvswitch"
 	}
-
-	name := row.New.Fields["name"].(string)
 
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
 	intf := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
-	if intf == nil {
-		lm := graph.Metadata{"Name": name, "Driver": driver}
-		if index > 0 {
-			lm["IfIndex"] = index
+	if mac != "" {
+		lm := graph.Metadata{"Name": name, "MAC": mac}
+		if ifindex > 0 {
+			lm["IfIndex"] = ifindex
 		}
 
-		// added before by netlink ?
-		if intf = o.Graph.LookupFirstNode(lm); intf != nil {
-			o.Graph.AddMetadata(intf, "UUID", uuid)
+		if intf == nil {
+			// no already inserted ovs interface but maybe already detected by netlink
+			intf = o.Graph.LookupFirstNode(lm)
+		} else {
+			// if there is a interface with the same MAC, name and optionally
+			// the same ifindex but having another ID, it means that ovs and
+			// netlink have seen the same interface. In order to keep only
+			// one interface we delete the ovs one and use the netlink one.
+			if nintf := o.Graph.LookupFirstNode(lm); nintf != nil && intf.ID != nintf.ID {
+				o.Graph.DelNode(intf)
+				intf = nintf
+			}
 		}
 	}
 
 	if intf == nil {
-		intf = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Driver": driver})
+		intf = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid})
 	}
 
 	tr := o.Graph.StartMetadataTransaction(intf)
 	defer tr.Commit()
 
+	tr.AddMetadata("UUID", uuid)
+
+	if oerror != "" {
+		tr.AddMetadata("Ovs.Error", oerror)
+	}
+
+	if driver != "" {
+		tr.AddMetadata("Driver", driver)
+	}
+
 	if ofport != 0 {
 		tr.AddMetadata("OfPort", ofport)
 	}
 
-	if index > 0 {
-		tr.AddMetadata("IfIndex", index)
+	if ifindex > 0 {
+		tr.AddMetadata("IfIndex", ifindex)
 	}
 
 	if mac != "" {
@@ -278,27 +335,22 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 
 	switch itype {
 	case "gre", "vxlan", "geneve":
-		m := row.New.Fields["options"].(libovsdb.OvsMap)
-		if ip, ok := m.GoMap["local_ip"]; ok {
-			tr.AddMetadata("LocalIP", ip.(string))
+		if ip := goMapStringValue(&row.New, "options", "local_ip"); ip != "" {
+			tr.AddMetadata("LocalIP", ip)
 		}
-		if ip, ok := m.GoMap["remote_ip"]; ok {
-			tr.AddMetadata("RemoteIP", ip.(string))
+		if ip := goMapStringValue(&row.New, "options", "remote_ip"); ip != "" {
+			tr.AddMetadata("RemoteIP", ip)
 		}
-		m = row.New.Fields["status"].(libovsdb.OvsMap)
-		if iface, ok := m.GoMap["tunnel_egress_iface"]; ok {
-			tr.AddMetadata("TunEgressIface", iface.(string))
+
+		if iface := goMapStringValue(&row.New, "status", "tunnel_egress_iface"); iface != "" {
+			tr.AddMetadata("TunEgressIface", iface)
 		}
-		if carrier, ok := m.GoMap["tunnel_egress_iface_carrier"]; ok {
-			tr.AddMetadata("TunEgressIfaceCarrier", carrier.(string))
+		if iface := goMapStringValue(&row.New, "status", "tunnel_egress_iface_carrier"); iface != "" {
+			tr.AddMetadata("TunEgressIfaceCarrier", iface)
 		}
 
 	case "patch":
-		m := row.New.Fields["options"].(libovsdb.OvsMap)
-		if p, ok := m.GoMap["peer"]; ok {
-
-			peerName := p.(string)
-
+		if peerName := goMapStringValue(&row.New, "options", "peer"); peerName != "" {
 			peer := o.Graph.LookupFirstNode(graph.Metadata{"Name": peerName, "Type": "patch"})
 			if peer != nil {
 				if !topology.HaveLayer2Link(o.Graph, intf, peer, nil) {
@@ -347,10 +399,8 @@ func (o *OvsdbProbe) OnOvsInterfaceAdd(monitor *ovsdb.OvsMonitor, uuid string, r
 		}
 
 		puuid, _ := port.GetFieldString("UUID")
-		if brige, ok := o.portToBridge[puuid]; ok && isOvsDrivenInterface(intf) {
-			if !topology.IsOwnershipLinked(o.Graph, intf) {
-				topology.AddOwnershipLink(o.Graph, brige, intf, nil)
-			}
+		if brige, ok := o.portToBridge[puuid]; ok {
+			o.linkIntfTOBridge(brige, intf)
 		}
 	}
 }
@@ -480,10 +530,8 @@ func (o *OvsdbProbe) OnOvsPortAdd(monitor *ovsdb.OvsMonitor, uuid string, row *l
 			topology.AddLayer2Link(o.Graph, bridge, port, nil)
 		}
 
-		if intf, ok := o.portToIntf[uuid]; ok && isOvsDrivenInterface(intf) {
-			if !topology.IsOwnershipLinked(o.Graph, intf) {
-				topology.AddOwnershipLink(o.Graph, bridge, intf, nil)
-			}
+		if intf, ok := o.portToIntf[uuid]; ok {
+			o.linkIntfTOBridge(bridge, intf)
 		}
 	}
 }
