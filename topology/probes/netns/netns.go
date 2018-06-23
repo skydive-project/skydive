@@ -56,6 +56,7 @@ type NetNSProbe struct {
 	rootNs             *NetNs
 	watcher            *fsnotify.Watcher
 	pending            chan string
+	exclude            []string
 }
 
 // NetNs describes a network namespace path associated with a device / inode
@@ -126,7 +127,7 @@ func (u *NetNSProbe) Register(path string, name string) (*graph.Node, error) {
 
 	var stats syscall.Stat_t
 	if err := syscall.Stat(path, &stats); err != nil {
-		return nil, fmt.Errorf("Failed to stat namespace %s: %s", path, err.Error())
+		return nil, fmt.Errorf("Failed to stat namespace %s: %s", path, err)
 	}
 
 	newns := &NetNs{path: path, dev: stats.Dev, ino: stats.Ino}
@@ -170,7 +171,7 @@ func (u *NetNSProbe) Register(path string, name string) (*graph.Node, error) {
 	logging.GetLogger().Debugf("Registering namespace: %s", nsString)
 	probe, err := u.NetLinkProbe.Register(path, n)
 	if err != nil {
-		logging.GetLogger().Errorf("Could not register netlink probe within namespace: %s", err.Error())
+		logging.GetLogger().Errorf("Could not register netlink probe within namespace: %s", err)
 	}
 
 	u.netNsNetLinkProbes[nsString] = &netNsNetLinkProbe{NetNsNetLinkProbe: probe, useCount: 1}
@@ -227,13 +228,20 @@ func (u *NetNSProbe) initializeRunPath(path string) {
 	}
 
 	if err := u.watcher.Add(path); err != nil {
-		logging.GetLogger().Errorf("Unable to Watch %s: %s", path, err.Error())
+		logging.GetLogger().Errorf("Unable to Watch %s: %s", path, err)
 	}
 
 	files, _ := ioutil.ReadDir(path)
+LOOP:
 	for _, f := range files {
-		if _, err := u.Register(path+"/"+f.Name(), f.Name()); err != nil {
-			logging.GetLogger().Errorf("Failed to register namespace %s: %s", path+"/"+f.Name(), err.Error())
+		fullpath, name := path+"/"+f.Name(), f.Name()
+
+		if u.isPathExcluded(fullpath) {
+			continue LOOP
+		}
+
+		if _, err := u.Register(fullpath, name); err != nil {
+			logging.GetLogger().Errorf("Failed to register namespace %s: %s", fullpath, err)
 			continue
 		}
 	}
@@ -242,14 +250,18 @@ func (u *NetNSProbe) initializeRunPath(path string) {
 
 func (u *NetNSProbe) start() {
 	logging.GetLogger().Debugf("NetNSProbe initialized")
+LOOP:
 	for {
 		select {
 		case path := <-u.pending:
 			go u.initializeRunPath(path)
 		case ev := <-u.watcher.Events:
+			if u.isPathExcluded(ev.Name) {
+				continue LOOP
+			}
 			if ev.Op&fsnotify.Create == fsnotify.Create {
 				if _, err := u.Register(ev.Name, getNetNSName(ev.Name)); err != nil {
-					logging.GetLogger().Errorf("Failed to register namespace %s: %s", ev.Name, err.Error())
+					logging.GetLogger().Errorf("Failed to register namespace %s: %s", ev.Name, err)
 					continue
 				}
 			}
@@ -258,7 +270,7 @@ func (u *NetNSProbe) start() {
 			}
 
 		case err := <-u.watcher.Errors:
-			logging.GetLogger().Errorf("Error while watching network namespace: %s", err.Error())
+			logging.GetLogger().Errorf("Error while watching network namespace: %s", err)
 		}
 	}
 }
@@ -276,6 +288,25 @@ func (u *NetNSProbe) Start() {
 // Stop the probe
 func (u *NetNSProbe) Stop() {
 	u.NetLinkProbe.Stop()
+}
+
+func (u *NetNSProbe) isPathExcluded(path string) bool {
+	u.RLock()
+	defer u.RUnlock()
+
+	for _, e := range u.exclude {
+		if e == path {
+			return true
+		}
+	}
+	return false
+}
+
+// Exclude specify path to not process
+func (u *NetNSProbe) Exclude(paths ...string) {
+	u.Lock()
+	u.exclude = append(u.exclude, paths...)
+	u.Unlock()
 }
 
 // NewNetNSProbe creates a new network namespace probe
@@ -298,7 +329,7 @@ func NewNetNSProbe(g *graph.Graph, n *graph.Node, nlProbe *netlink.NetLinkProbe)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err.Error())
+		return nil, fmt.Errorf("Unable to create a new Watcher: %s", err)
 	}
 
 	nsProbe := &NetNSProbe{
