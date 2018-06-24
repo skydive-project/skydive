@@ -55,6 +55,7 @@ TEST_PATTERN?=
 UT_PACKAGES?=$(shell $(GOVENDOR) list -no-status +local | grep -v '/tests')
 FUNC_TESTS_CMD:="grep -e 'func Test${TEST_PATTERN}' tests/*.go | perl -pe 's|.*func (.*?)\(.*|\1|g' | shuf"
 FUNC_TESTS:=$(shell sh -c $(FUNC_TESTS_CMD))
+DOCKER_BASE?=gcr.io/distroless/base
 DOCKER_IMAGE?=skydive/skydive
 DOCKER_TAG?=devel
 DESTDIR?=$(shell pwd)
@@ -406,7 +407,7 @@ rpm:
 .PHONY: docker-image
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
-	sudo -E docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
+	docker build --build-arg BASE=${DOCKER_BASE} -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
 
 .PHONY: localdist
 localdist: govendor genlocalfiles
