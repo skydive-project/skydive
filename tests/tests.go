@@ -511,7 +511,7 @@ func RunTest(t *testing.T, test *Test) {
 
 	helper.ExecCmds(t, test.tearDownCmds...)
 
-	if test.mode == Replay {
+	if test.mode == Replay && helper.AgentTestsOnly == false {
 		for i, check := range test.checks {
 			checkContext := test.checkContexts[i]
 			t.Logf("Replaying test with time %s (Unix: %d), startTime %s (Unix: %d)", checkContext.time, checkContext.time.Unix(), checkContext.startTime, checkContext.startTime.Unix())
