@@ -138,6 +138,19 @@ func (s *seleniumHelper) expand() error {
 	return nil
 }
 
+func (s *seleniumHelper) expandPanel(id string) error {
+	panel, err := s.findElement(selenium.ByID, id)
+	if err != nil {
+		return err
+	}
+
+	if err = s.clickOn(panel); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
 	node, err := s.gh.GetNode(gremlin)
 	if err != nil {
@@ -167,7 +180,7 @@ func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
 		}
 
 		return nil
-	}, 20, 10*time.Millisecond)
+	}, 40, 5*time.Millisecond)
 
 	if err != nil {
 		return err
@@ -230,7 +243,7 @@ func (s *seleniumHelper) highlightFlow(gremlin g.QueryString) error {
 }
 
 func (s *seleniumHelper) scrollDownRightPanel() error {
-	s.webdriver.ExecuteScript("$('#right-panel').animate({scrollTop: $('#right-panel').get(0).scrollHeight}, 500);", nil)
+	s.webdriver.ExecuteScript("$('#info-panel').animate({scrollTop: $('#info-panel').get(0).scrollHeight}, 500);", nil)
 	return nil
 }
 
@@ -248,6 +261,8 @@ func (s *seleniumHelper) showNodeFlowTable(gremlin g.QueryString) error {
 		return err
 	}
 
+	s.scrollDownRightPanel()
+	s.expandPanel("flow-table")
 	s.scrollDownRightPanel()
 
 	return nil

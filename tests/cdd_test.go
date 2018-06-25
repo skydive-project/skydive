@@ -27,16 +27,23 @@ package tests
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/tebeka/selenium"
 )
 
 func TestOverview(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	scale := gopath + "/src/github.com/skydive-project/skydive/scripts/scale.sh"
+	port := strings.Split(helper.AnalyzerListen, ":")[1]
+
+	os.Setenv("PATH", fmt.Sprintf("%s/bin:%s", gopath, os.Getenv("PATH")))
+	os.Setenv("ANALYZER_PORT", port)
 
 	setupCmds := []helper.Cmd{
 		{fmt.Sprintf("%s start 1 4 2", scale), true},
@@ -49,19 +56,14 @@ func TestOverview(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	ipaddr, err := getFirstAvailableIPv4Addr()
-	if err != nil {
-		t.Errorf("Not able to find analyzer address: %v", err)
-		return
-	}
-
-	sa, err := common.ServiceAddressFromString(helper.AnalyzerListen)
+	// IP prefix set in the scale.sh script
+	sa, err := common.ServiceAddressFromString(fmt.Sprintf("192.168.50.254:%s", port))
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	sh, err := newSeleniumHelper(t, ipaddr, sa.Port)
+	sh, err := newSeleniumHelper(t, sa.Addr, sa.Port)
 	if err != nil {
 		t.Error(err)
 		return
@@ -80,6 +82,7 @@ func TestOverview(t *testing.T) {
 
 	// start recording
 	sh.startVideoRecord("overview")
+	defer sh.stopVideoRecord()
 
 	if err = delaySec(5, sh.expand()); err != nil {
 		t.Error(err)
@@ -143,5 +146,62 @@ func TestOverview(t *testing.T) {
 		return
 	}
 
-	sh.stopVideoRecord()
+	verifyFlows := func() error {
+		n1_eth0, err := sh.gh.GetNode(ng1_eth0.String())
+		if err != nil {
+			return err
+		}
+		n3_eth0, err := sh.gh.GetNode(ng3_eth0.String())
+		if err != nil {
+			return err
+		}
+
+		ipList1, err := n1_eth0.GetFieldStringList("IPV4")
+		if err != nil {
+			return err
+		}
+		ip1 := strings.Split(ipList1[0], "/")[0]
+
+		ipList3, err := n3_eth0.GetFieldStringList("IPV4")
+		if err != nil {
+			return err
+		}
+		ip3 := strings.Split(ipList3[0], "/")[0]
+
+		return common.Retry(func() error {
+			// do not check the direction as first packet could have been not seen
+			if err = sh.flowQuery(g.G.Flows().Has("Network", ip1, "Network", ip3)); err != nil {
+				return err
+			}
+
+			time.Sleep(time.Second)
+
+			flowRow, err := sh.findElement(selenium.ByClassName, "flow-row")
+			if err != nil {
+				return err
+			}
+			rowData, err := flowRow.FindElements(selenium.ByTagName, "td")
+			if err != nil {
+				return err
+			}
+			const expectedRowCount = 8
+			if len(rowData) != expectedRowCount {
+				return fmt.Errorf("By default %d rows should be return, but got: %d", expectedRowCount, len(rowData))
+			}
+			txt, err := rowData[1].Text()
+			if err != nil {
+				return err
+			}
+
+			if txt != ip1 && txt != ip3 {
+				return fmt.Errorf("Network.A should be either '%s' or '%s' but got: %s", ip1, ip3, txt)
+			}
+			return nil
+		}, 10, time.Second)
+	}
+
+	if err = verifyFlows(); err != nil {
+		t.Error(err)
+		return
+	}
 }
