@@ -444,6 +444,7 @@
 - job:
     name: skydive-create-docker-image
     defaults: skydive
+    node: baremetal
     triggers:
       - skydive-pull-request:
           name: create-docker-image

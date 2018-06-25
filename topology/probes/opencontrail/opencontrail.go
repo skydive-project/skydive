@@ -1,4 +1,4 @@
-// +build linux
+// +build linux,opencontrail
 
 /*
  * Copyright (C) 2016 Orange, Inc.

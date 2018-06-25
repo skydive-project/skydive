@@ -1,4 +1,4 @@
-// +build !linux
+// +build !linux !lxd
 
 /*
  * Copyright (C) 2018 Iain Grant
