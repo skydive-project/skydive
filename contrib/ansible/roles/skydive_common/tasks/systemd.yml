@@ -8,10 +8,10 @@
     group: "root"
     mode: "0644"
 
-- name: Restart service
+- name: Start service
   systemd:
     name: "{{ service_name }}"
-    state: started
+    state: restarted
     enabled: yes
     daemon_reload: yes
 
