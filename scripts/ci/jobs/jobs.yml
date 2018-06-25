@@ -346,32 +346,13 @@
           test: scripts/ci/run-scale.sh
 
 - job:
-    name: skydive-selenium-tests
-    defaults: skydive
-    triggers:
-      - skydive-pull-request:
-          name: selenium-tests
-          trigger-prefix: "(all )?"
-          only-trigger-phrase: false
-          cancel-builds-on-update: true
-    builders:
-      - skydive-cleanup
-      - skydive-test:
-          test: scripts/ci/run-selenium-tests.sh
-    publishers:
-      - chuck-norris
-      - archive:
-          artifacts: 'src/github.com/skydive-project/skydive/tests/postmortem.png'
-          allow-empty: 'true'
-
-- job:
     name: skydive-cdd-overview-tests
     defaults: skydive
     triggers:
       - skydive-pull-request:
           name: cdd-overview-tests
-          trigger-prefix: "all "
-          only-trigger-phrase: true
+          trigger-prefix: "(all )?"
+          only-trigger-phrase: false
           cancel-builds-on-update: true
     builders:
       - skydive-cleanup

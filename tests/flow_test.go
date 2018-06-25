@@ -2020,7 +2020,7 @@ func TestSFlowCapture(t *testing.T) {
 			}
 
 			if len(flows) != 1 {
-				return errors.New(fmt.Sprintf("We should receive only one flow, got: %d", len(flows)))
+				return fmt.Errorf("We should receive only one flow, got: %d", len(flows))
 			}
 
 			return nil

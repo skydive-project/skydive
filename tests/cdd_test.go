@@ -29,10 +29,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/skydive-project/skydive/common"
 	g "github.com/skydive-project/skydive/gremlin"
 	"github.com/skydive-project/skydive/tests/helper"
+	"github.com/tebeka/selenium"
 )
 
 func TestOverview(t *testing.T) {
@@ -140,6 +142,65 @@ func TestOverview(t *testing.T) {
 	}
 
 	if err = delaySec(3, sh.scrollDownRightPanel()); err != nil {
+		t.Error(err)
+		return
+	}
+
+	verifyFlows := func() error {
+		n1_eth0, err := sh.gh.GetNode(ng1_eth0.String())
+		if err != nil {
+			return err
+		}
+		n3_eth0, err := sh.gh.GetNode(ng3_eth0.String())
+		if err != nil {
+			return err
+		}
+
+		ipList1, err := n1_eth0.GetFieldStringList("IPV4")
+		if err != nil {
+			return err
+		}
+		ip1 := strings.Split(ipList1[0], "/")[0]
+
+		ipList3, err := n3_eth0.GetFieldStringList("IPV4")
+		if err != nil {
+			return err
+		}
+		ip3 := strings.Split(ipList3[0], "/")[0]
+
+		return common.Retry(func() error {
+			// do not check the direction as first packet could have been not seen
+			if err = sh.flowQuery(g.G.Flows().Has("Network", ip1, "Network", ip3)); err != nil {
+				return err
+			}
+
+			time.Sleep(time.Second)
+
+			flowRow, err := sh.findElement(selenium.ByClassName, "flow-row")
+			if err != nil {
+				return err
+			}
+			rowData, err := flowRow.FindElements(selenium.ByTagName, "td")
+			if err != nil {
+				return err
+			}
+			const expectedRowCount = 8
+			if len(rowData) != expectedRowCount {
+				return fmt.Errorf("By default %d rows should be return, but got: %d", expectedRowCount, len(rowData))
+			}
+			txt, err := rowData[1].Text()
+			if err != nil {
+				return err
+			}
+
+			if txt != ip1 && txt != ip3 {
+				return fmt.Errorf("Network.A should be either '%s' or '%s' but got: %s", ip1, ip3, txt)
+			}
+			return nil
+		}, 10, time.Second)
+	}
+
+	if err = verifyFlows(); err != nil {
 		t.Error(err)
 		return
 	}
