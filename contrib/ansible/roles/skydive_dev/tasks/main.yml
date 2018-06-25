@@ -49,6 +49,7 @@
      - mock
      - yum-utils
      - manifest-tool
+     - ffmpeg
 
 - service:
     name: "{{ item }}"

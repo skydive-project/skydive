@@ -180,7 +180,7 @@ func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
 		}
 
 		return nil
-	}, 20, 10*time.Millisecond)
+	}, 40, 5*time.Millisecond)
 
 	if err != nil {
 		return err
