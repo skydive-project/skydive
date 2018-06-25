@@ -27,6 +27,7 @@ package tests
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/skydive-project/skydive/common"
@@ -37,6 +38,10 @@ import (
 func TestOverview(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	scale := gopath + "/src/github.com/skydive-project/skydive/scripts/scale.sh"
+	port := strings.Split(helper.AnalyzerListen, ":")[1]
+
+	os.Setenv("PATH", fmt.Sprintf("%s/bin:%s", gopath, os.Getenv("PATH")))
+	os.Setenv("ANALYZER_PORT", port)
 
 	setupCmds := []helper.Cmd{
 		{fmt.Sprintf("%s start 1 4 2", scale), true},
@@ -49,19 +54,14 @@ func TestOverview(t *testing.T) {
 	helper.ExecCmds(t, setupCmds...)
 	defer helper.ExecCmds(t, tearDownCmds...)
 
-	ipaddr, err := getFirstAvailableIPv4Addr()
-	if err != nil {
-		t.Errorf("Not able to find analyzer address: %v", err)
-		return
-	}
-
-	sa, err := common.ServiceAddressFromString(helper.AnalyzerListen)
+	// IP prefix set in the scale.sh script
+	sa, err := common.ServiceAddressFromString(fmt.Sprintf("192.168.50.254:%s", port))
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	sh, err := newSeleniumHelper(t, ipaddr, sa.Port)
+	sh, err := newSeleniumHelper(t, sa.Addr, sa.Port)
 	if err != nil {
 		t.Error(err)
 		return
@@ -80,6 +80,7 @@ func TestOverview(t *testing.T) {
 
 	// start recording
 	sh.startVideoRecord("overview")
+	defer sh.stopVideoRecord()
 
 	if err = delaySec(5, sh.expand()); err != nil {
 		t.Error(err)
@@ -142,6 +143,4 @@ func TestOverview(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
-	sh.stopVideoRecord()
 }

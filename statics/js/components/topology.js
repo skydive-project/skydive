@@ -142,7 +142,7 @@ var TopologyComponent = {
           </button>\
         </div>\
       </div>\
-      <div class="col-sm-5 fill sidebar">\
+      <div id="info-panel" class="col-sm-5 fill sidebar">\
         <tabs v-if="isAnalyzer" :active="!canReadCaptures ? 2 : 0">\
           <tab-pane title="Captures" v-if="canReadCaptures">\
             <capture-list></capture-list>\
@@ -160,7 +160,7 @@ var TopologyComponent = {
             <alert-form></alert-form>\
           </tab-pane>\
         </tabs>\
-        <panel v-if="currentNodeMetadata"\
+        <panel id="node-metadata" v-if="currentNodeMetadata"\
                :collapsed="false"\
                title="Metadata">\
           <template slot="actions">\
@@ -177,19 +177,19 @@ var TopologyComponent = {
                          :collapsed="metadataCollapseState">\
           </object-detail>\
         </panel>\
-        <panel v-if="currentEdge"\
+        <panel id="edge-metadata" v-if="currentEdge"\
                title="Metadata">\
           <object-detail :object="currentEdge.metadata"></object-detail>\
         </panel>\
-        <panel v-if="currentNodeFeatures"\
+        <panel id="feature-table" v-if="currentNodeFeatures"\
                title="Features">\
           <feature-table :features="currentNodeFeatures"></feature-table>\
         </panel>\
-        <panel v-if="currentNodeMetadata && currentNodeMetadata.Type == \'ovsbridge\'"\
+        <panel id="ovs-rules" v-if="currentNodeMetadata && currentNodeMetadata.Type == \'ovsbridge\'"\
                title="Rules">\
           <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
         </panel>\
-        <panel v-if="currentNodeMetric"\
+        <panel id="total-metric" v-if="currentNodeMetric"\
                title="Metrics">\
           <h2>Total metrics</h2>\
           <metrics-table :object="currentNodeMetric"></metrics-table>\
@@ -198,7 +198,7 @@ var TopologyComponent = {
             <metrics-table :object="currentNodeLastUpdateMetric"></metrics-table>\
           </div>\
         </panel>\
-        <panel v-if="currentNodeOvsMetric"\
+        <panel id="ovs-metric" v-if="currentNodeOvsMetric"\
                title="OVS metrics">\
           <h2>Total metrics</h2>\
           <metrics-table :object="currentNodeOvsMetric"></metrics-table>\
@@ -207,14 +207,14 @@ var TopologyComponent = {
             <metrics-table :object="currentNodeOvsLastUpdateMetric"></metrics-table>\
           </div>\
         </panel>\
-        <panel v-if="currentNodeMetadata && currentNode.metadata.RoutingTable"\
+        <panel id="routing-tabel" v-if="currentNodeMetadata && currentNode.metadata.RoutingTable"\
                title="Routing tables">\
           <div v-for="rt in currentNode.metadata.RoutingTable">\
             <h2>src: {{rt.Src || "none"}}<span class="pull-right">(id: {{rt.Id}})</span></h2>\
             <routing-table :rt="rt"></routing-table>\
           </div>\
         </panel>\
-        <panel v-if="isAnalyzer && currentNodeFlowsQuery"\
+        <panel id="flow-table" v-if="isAnalyzer && currentNodeFlowsQuery"\
                title="Flows">\
           <flow-table :value="currentNodeFlowsQuery"></flow-table>\
         </panel>\
