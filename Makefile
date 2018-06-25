@@ -182,7 +182,11 @@ debug.analyzer:
 	$(call VENDOR_RUN,${PROTOC_GEN_GO_GITHUB}) protoc --go_out . ${HTTP_PROTO_FILES}
 	# always export flow.ParentUUID as we need to store this information to know
 	# if it's a Outer or Inner packet.
-	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' -e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' -i.bak flow/flow.pb.go
+	sed -e 's/ParentUUID\(.*\),omitempty\(.*\)/ParentUUID\1\2/' \
+		-e 's/Protocol\(.*\),omitempty\(.*\)/Protocol\1\2/' \
+		-e 's/ICMPType\(.*\),omitempty\(.*\)/ICMPType\1\2/' \
+		-e 's/int64\(.*\),omitempty\(.*\)/int64\1\2/' \
+		-i.bak flow/flow.pb.go
 	# do not export LastRawPackets used internally
 	sed -e 's/json:"LastRawPackets,omitempty"/json:"-"/g' -i.bak flow/flow.pb.go
 	# add flowState to flow generated struct
