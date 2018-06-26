@@ -23,181 +23,82 @@
 package client
 
 import (
-	"os"
-
-	"github.com/skydive-project/skydive/api/client"
-	api "github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/validator"
+	"github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/http"
 
 	"github.com/spf13/cobra"
 )
 
-var (
-	srcNode    string
-	dstNode    string
-	srcIP      string
-	srcMAC     string
-	srcPort    int64
-	dstPort    int64
-	dstIP      string
-	dstMAC     string
-	packetType string
-	payload    string
-	id         int64
-	count      int64
-	interval   int64
-	increment  bool
-)
-
-// PacketInjectorCmd skydive inject-packet root command
-var PacketInjectorCmd = &cobra.Command{
-	Use:          "inject-packet",
-	Short:        "Inject packets",
-	Long:         "Inject packets",
-	SilenceUsage: false,
+var injectOpts = struct {
+	SrcNode    string `flag:"src,source node gremlin expression (mandatory)"`
+	DstNode    string `flag:"dst,destination node gremlin expression"`
+	SrcIP      string `flag:"srcIP,source node IP"`
+	DstIP      string `flag:"dstIP,destination node IP"`
+	SrcMAC     string `flag:"srcMAC,source node MAC"`
+	DstMAC     string `flag:"dstMAC,destination node MAC"`
+	SrcPort    int    `flag:"srcPort,source port for TCP packet"`
+	DstPort    int    `flag:"dstPort,destination port for TCP packet"`
+	PacketType string `flag:"type,packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6"`
+	Payload    string `flag:"payload,payload"`
+	ICMPID     int    `flag:"id,ICMP identification"`
+	Increment  bool   `flag:"increment,increment ICMP id for each packet"`
+	Count      int    `flag:"count,number of packets to be generated"`
+	Interval   int    `flag:"interval,wait interval milliseconds between sending each packet"`
+}{
+	PacketType: "icmp4",
+	Count:      1,
+	Interval:   1000,
 }
 
-// PacketInjectionCreate describes the command to create a packet injection
-var PacketInjectionCreate = &cobra.Command{
-	Use:          "create",
-	Short:        "create packet injection",
-	Long:         "create packet injection",
-	SilenceUsage: false,
-	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
+var packetInjectorCmd = crudRootCommand{
+	Resource: "injectpacket",
+	Command:  "inject-packet",
+	Name:     "packet injection",
 
-		packet := &api.PacketInjection{
-			Src:       srcNode,
-			Dst:       dstNode,
-			SrcIP:     srcIP,
-			SrcMAC:    srcMAC,
-			SrcPort:   srcPort,
-			DstIP:     dstIP,
-			DstMAC:    dstMAC,
-			DstPort:   dstPort,
-			Type:      packetType,
-			Payload:   payload,
-			ICMPID:    id,
-			Count:     count,
-			Interval:  interval,
-			Increment: increment,
-		}
-
-		if err = validator.Validate(packet); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
-		}
-
-		if err := client.Create("injectpacket", &packet); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
-		}
-
-		printJSON(packet)
+	Get: &getHandler{
+		Run: func(client *http.CrudClient, id string) (types.Resource, error) {
+			var inject types.PacketInjection
+			err := client.Get("injectpacket", id, &inject)
+			return &inject, err
+		},
 	},
-}
 
-// PacketInjectionGet describes the command to retrieve a packet injection
-var PacketInjectionGet = &cobra.Command{
-	Use:   "get",
-	Short: "get packet injection",
-	Long:  "get packet injection",
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			cmd.Usage()
-			os.Exit(1)
-		}
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		var injection api.PacketInjection
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
-
-		if err := client.Get("injectpacket", args[0], &injection); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
-		}
-		printJSON(&injection)
-	},
-}
-
-// PacketInjectionList describes the command to list all the packet injections
-var PacketInjectionList = &cobra.Command{
-	Use:   "list",
-	Short: "list packet injections",
-	Long:  "list packet injections",
-	Run: func(cmd *cobra.Command, args []string) {
-		var injections map[string]api.PacketInjection
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
-
-		if err := client.List("injectpacket", &injections); err != nil {
-			logging.GetLogger().Error(err.Error())
-			os.Exit(1)
-		}
-		printJSON(injections)
-	},
-}
-
-// PacketInjectionDelete describes the command to delete a packet injection
-var PacketInjectionDelete = &cobra.Command{
-	Use:   "delete [injection]",
-	Short: "Delete injection",
-	Long:  "Delete packet injection",
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			cmd.Usage()
-			os.Exit(1)
-		}
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
-
-		for _, id := range args {
-			if err := client.Delete("injectpacket", id); err != nil {
-				logging.GetLogger().Error(err.Error())
+	List: &listHandler{
+		Run: func(client *http.CrudClient) (map[string]types.Resource, error) {
+			var injections map[string]types.PacketInjection
+			if err := client.List("injectpacket", &injections); err != nil {
+				return nil, err
 			}
-		}
+			resources := make(map[string]types.Resource, len(injections))
+			for _, inject := range injections {
+				resources[inject.ID()] = &inject
+			}
+			return resources, nil
+		},
 	},
-}
 
-func addInjectPacketFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&srcNode, "src", "", "", "source node gremlin expression (mandatory)")
-	cmd.Flags().StringVarP(&dstNode, "dst", "", "", "destination node gremlin expression")
-	cmd.Flags().StringVarP(&srcIP, "srcIP", "", "", "source node IP")
-	cmd.Flags().StringVarP(&dstIP, "dstIP", "", "", "destination node IP")
-	cmd.Flags().StringVarP(&srcMAC, "srcMAC", "", "", "source node MAC")
-	cmd.Flags().StringVarP(&dstMAC, "dstMAC", "", "", "destination node MAC")
-	cmd.Flags().Int64VarP(&srcPort, "srcPort", "", 0, "source port for TCP packet")
-	cmd.Flags().Int64VarP(&dstPort, "dstPort", "", 0, "destination port for TCP packet")
-	cmd.Flags().StringVarP(&packetType, "type", "", "icmp4", "packet type: icmp4, icmp6, tcp4, tcp6, udp4 and udp6")
-	cmd.Flags().StringVarP(&payload, "payload", "", "", "payload")
-	cmd.Flags().Int64VarP(&id, "id", "", 0, "ICMP identification")
-	cmd.Flags().BoolVarP(&increment, "increment", "", false, "increment ICMP id for each packet")
-	cmd.Flags().Int64VarP(&count, "count", "", 1, "number of packets to be generated")
-	cmd.Flags().Int64VarP(&interval, "interval", "", 1000, "wait interval milliseconds between sending each packet")
-}
+	Create: &createHandler{
+		Flags: func(crud *crudRootCommand, c *cobra.Command) {
+			crud.setFlags(c, &injectOpts)
+		},
 
-func init() {
-	PacketInjectorCmd.AddCommand(PacketInjectionList)
-	PacketInjectorCmd.AddCommand(PacketInjectionGet)
-	PacketInjectorCmd.AddCommand(PacketInjectionDelete)
-	PacketInjectorCmd.AddCommand(PacketInjectionCreate)
-
-	addInjectPacketFlags(PacketInjectionCreate)
+		Run: func(client *http.CrudClient) (types.Resource, error) {
+			return &types.PacketInjection{
+				Src:       injectOpts.SrcNode,
+				Dst:       injectOpts.DstNode,
+				SrcIP:     injectOpts.SrcIP,
+				SrcMAC:    injectOpts.SrcMAC,
+				SrcPort:   int64(injectOpts.SrcPort),
+				DstIP:     injectOpts.DstIP,
+				DstMAC:    injectOpts.DstMAC,
+				DstPort:   int64(injectOpts.DstPort),
+				Type:      injectOpts.PacketType,
+				Payload:   injectOpts.Payload,
+				ICMPID:    int64(injectOpts.ICMPID),
+				Count:     int64(injectOpts.Count),
+				Interval:  int64(injectOpts.Interval),
+				Increment: injectOpts.Increment,
+			}, nil
+		},
+	},
 }

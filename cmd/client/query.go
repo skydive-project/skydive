@@ -36,8 +36,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
-// QueryCmd skydive topology query command
-var QueryCmd = &cobra.Command{
+var queryCmd = &cobra.Command{
 	Use:   "query [gremlin]",
 	Short: "Issue Gremlin queries",
 	Long:  "Issue Gremlin queries",
@@ -103,5 +102,5 @@ var QueryCmd = &cobra.Command{
 }
 
 func init() {
-	QueryCmd.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json, dot or pcap)")
+	queryCmd.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json, dot or pcap)")
 }

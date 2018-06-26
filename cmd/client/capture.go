@@ -24,198 +24,104 @@ package client
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/skydive-project/skydive/api/client"
-	api "github.com/skydive-project/skydive/api/types"
+	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/flow"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/validator"
+	"github.com/skydive-project/skydive/http"
 	"github.com/spf13/cobra"
 )
 
-var (
-	bpfFilter          string
-	captureName        string
-	captureDescription string
-	captureType        string
-	nodeTID            string
-	port               int
-	headerSize         int
-	rawPacketLimit     int
-	extraTCPMetric     bool
-	ipDefrag           bool
-	reassembleTCP      bool
-	layerKeyMode       string
-)
-
-// CaptureCmd skdyive capture root command
-var CaptureCmd = &cobra.Command{
-	Use:          "capture",
-	Short:        "Manage captures",
-	Long:         "Manage captures",
-	SilenceUsage: false,
+var captureOpts = struct {
+	BpfFilter          string `flag:"bpf,BPF filter"`
+	CaptureName        string `flag:"name,capture name"`
+	CaptureDescription string `flag:"description,capture description"`
+	CaptureType        string
+	GremlinQuery       string `flag:"gremlin,Gremlin Query"`
+	NodeTID            string `flag:"node,node TID"`
+	Port               int    `flag:"port,capture port"`
+	HeaderSize         int    `flag:"header-size,Header size of packet used"`
+	RawPacketLimit     int    `flag:"rawpacket-limit,Set the limit of raw packet captured, 0 no packet, -1 infinite, default: 0"`
+	ExtraTCPMetric     bool   `flag:"extra-tcp-metric,Add additional TCP metric to flows, default: false"`
+	IPDefrag           bool   `flag:"ip-defrag,Defragment IPv4 packets, default: false"`
+	ReassembleTCP      bool   `flag:"reassamble-tcp,Reassemble TCP packets, default: false"`
+	LayerKeyMode       string `flag:"layer-key-mode,Defines the first layer used by flow key calculation, L2 or L3"`
+}{
+	LayerKeyMode: "L2",
 }
 
-// CaptureCreate skydive capture creates command
-var CaptureCreate = &cobra.Command{
-	Use:   "create",
-	Short: "Create capture",
-	Long:  "Create capture",
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if nodeTID != "" {
-			if gremlinQuery != "" {
-				logging.GetLogger().Error("Options --node and --gremlin are exclusive")
-				os.Exit(1)
+var captureCmd = crudRootCommand{
+	Resource: "capture",
+
+	Get: &getHandler{
+		Run: func(client *http.CrudClient, id string) (types.Resource, error) {
+			var capture types.Capture
+			err := client.Get("capture", id, &capture)
+			return &capture, err
+		},
+	},
+
+	List: &listHandler{
+		Run: func(client *http.CrudClient) (map[string]types.Resource, error) {
+			var captures map[string]types.Capture
+			if err := client.List("capture", &captures); err != nil {
+				return nil, err
 			}
-			gremlinQuery = fmt.Sprintf("g.V().Has('TID', '%s')", nodeTID)
-		}
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
-
-		capture := api.NewCapture(gremlinQuery, bpfFilter)
-		capture.Name = captureName
-		capture.Description = captureDescription
-		capture.Type = captureType
-		capture.Port = port
-		capture.HeaderSize = headerSize
-		capture.ExtraTCPMetric = extraTCPMetric
-		capture.IPDefrag = ipDefrag
-		capture.ReassembleTCP = reassembleTCP
-		capture.LayerKeyMode = layerKeyMode
-
-		if !config.GetConfig().GetBool("analyzer.packet_capture_enabled") {
-			capture.RawPacketLimit = 0
-		} else {
-			capture.RawPacketLimit = rawPacketLimit
-		}
-
-		if err := validator.Validate(capture); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-
-		if err := client.Create("capture", &capture); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		printJSON(&capture)
-	},
-}
-
-// CaptureList skydive capture list command
-var CaptureList = &cobra.Command{
-	Use:   "list",
-	Short: "List captures",
-	Long:  "List captures",
-	Run: func(cmd *cobra.Command, args []string) {
-		var captures map[string]api.Capture
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
-
-		if err := client.List("capture", &captures); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		printJSON(captures)
-	},
-}
-
-// CaptureGet skydive capture get command
-var CaptureGet = &cobra.Command{
-	Use:   "get [capture]",
-	Short: "Display capture",
-	Long:  "Display capture",
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			cmd.Usage()
-			os.Exit(1)
-		}
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		var capture api.Capture
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
-
-		if err := client.Get("capture", args[0], &capture); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		printJSON(&capture)
-	},
-}
-
-// CaptureDelete skydive capture delete command
-var CaptureDelete = &cobra.Command{
-	Use:   "delete [capture]",
-	Short: "Delete capture",
-	Long:  "Delete capture",
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			cmd.Usage()
-			os.Exit(1)
-		}
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
-
-		for _, id := range args {
-			if err := client.Delete("capture", id); err != nil {
-				logging.GetLogger().Error(err)
+			resources := make(map[string]types.Resource, len(captures))
+			for _, capture := range captures {
+				resources[capture.ID()] = &capture
 			}
-		}
+			return resources, nil
+		},
 	},
-}
 
-func addCaptureFlags(cmd *cobra.Command) {
-	types := []string{}
-	found := map[string]bool{}
-	for _, v := range common.CaptureTypes {
-		for _, t := range v.Allowed {
-			if found[t] != true {
-				found[t] = true
-				types = append(types, t)
+	Create: &createHandler{
+		Flags: func(crud *crudRootCommand, c *cobra.Command) {
+			crud.setFlags(c, &captureOpts)
+
+			types := []string{}
+			found := map[string]bool{}
+			for _, v := range common.CaptureTypes {
+				for _, t := range v.Allowed {
+					if found[t] != true {
+						found[t] = true
+						types = append(types, t)
+					}
+				}
 			}
-		}
-	}
-	helpText := fmt.Sprintf("Allowed capture types: %v", types)
-	cmd.Flags().StringVarP(&gremlinQuery, "gremlin", "", "", "Gremlin Query")
-	cmd.Flags().StringVarP(&nodeTID, "node", "", "", "node TID")
-	cmd.Flags().StringVarP(&bpfFilter, "bpf", "", "", "BPF filter")
-	cmd.Flags().StringVarP(&captureName, "name", "", "", "capture name")
-	cmd.Flags().StringVarP(&captureDescription, "description", "", "", "capture description")
-	cmd.Flags().StringVarP(&captureType, "type", "", "", helpText)
-	cmd.Flags().IntVarP(&port, "port", "", 0, "capture port")
-	cmd.Flags().IntVarP(&headerSize, "header-size", "", 0, fmt.Sprintf("Header size of packet used, default: %d", flow.MaxCaptureLength))
-	cmd.Flags().IntVarP(&rawPacketLimit, "rawpacket-limit", "", 0, "Set the limit of raw packet captured, 0 no packet, -1 infinite, default: 0")
-	cmd.Flags().BoolVarP(&extraTCPMetric, "extra-tcp-metric", "", false, "Add additional TCP metric to flows, default: false")
-	cmd.Flags().BoolVarP(&ipDefrag, "ip-defrag", "", false, "Defragment IPv4 packets, default: false")
-	cmd.Flags().BoolVarP(&reassembleTCP, "reassamble-tcp", "", false, "Reassemble TCP packets, default: false")
-	cmd.Flags().StringVarP(&layerKeyMode, "layer-key-mode", "", "L2", "Defines the first layer used by flow key calculation, L2 or L3")
-}
+			helpText := fmt.Sprintf("Allowed capture types: %v", types)
+			c.Flags().StringVarP(&captureOpts.CaptureType, "type", "", "", helpText)
+		},
 
-func init() {
-	CaptureCmd.AddCommand(CaptureList)
-	CaptureCmd.AddCommand(CaptureCreate)
-	CaptureCmd.AddCommand(CaptureGet)
-	CaptureCmd.AddCommand(CaptureDelete)
+		PreRun: func() error {
+			if captureOpts.NodeTID != "" {
+				if captureOpts.GremlinQuery != "" {
+					return fmt.Errorf("Options --node and --gremlin are exclusive")
+				}
+				captureOpts.GremlinQuery = fmt.Sprintf("g.V().Has('TID', '%s')", captureOpts.NodeTID)
+			}
+			return nil
+		},
 
-	addCaptureFlags(CaptureCreate)
+		Run: func(client *http.CrudClient) (types.Resource, error) {
+			capture := types.NewCapture(captureOpts.GremlinQuery, captureOpts.BpfFilter)
+			capture.Name = captureOpts.CaptureName
+			capture.Description = captureOpts.CaptureDescription
+			capture.Type = captureOpts.CaptureType
+			capture.Port = captureOpts.Port
+			capture.HeaderSize = captureOpts.HeaderSize
+			capture.ExtraTCPMetric = captureOpts.ExtraTCPMetric
+			capture.IPDefrag = captureOpts.IPDefrag
+			capture.ReassembleTCP = captureOpts.ReassembleTCP
+			capture.LayerKeyMode = captureOpts.LayerKeyMode
+
+			if !config.GetConfig().GetBool("analyzer.packet_capture_enabled") {
+				capture.RawPacketLimit = 0
+			} else {
+				capture.RawPacketLimit = captureOpts.RawPacketLimit
+			}
+
+			return capture, nil
+		},
+	},
 }

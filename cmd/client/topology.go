@@ -34,27 +34,26 @@ var (
 	outputFormat string
 )
 
-// TopologyCmd skydive topology root command
-var TopologyCmd = &cobra.Command{
+// topologyCmd skydive topology root command
+var topologyCmd = &cobra.Command{
 	Use:          "topology",
 	Short:        "Request on topology [deprecated: use 'client query' instead]",
 	Long:         "Request on topology [deprecated: use 'client query' instead]",
 	SilenceUsage: false,
 }
 
-// TopologyRequest skydive topology query command
-var TopologyRequest = &cobra.Command{
+var topologyRequest = &cobra.Command{
 	Use:   "query",
 	Short: "query topology",
 	Long:  "query topology",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Fprintln(os.Stderr, "The 'client topology query' command is deprecated. Please use 'client query' instead")
-		QueryCmd.Run(cmd, []string{gremlinQuery})
+		queryCmd.Run(cmd, []string{gremlinQuery})
 	},
 }
 
 func init() {
-	TopologyCmd.AddCommand(TopologyRequest)
-	TopologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "G", "Gremlin Query")
-	TopologyRequest.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json, dot or pcap)")
+	topologyCmd.AddCommand(topologyRequest)
+	topologyRequest.Flags().StringVarP(&gremlinQuery, "gremlin", "", "G", "Gremlin Query")
+	topologyRequest.Flags().StringVarP(&outputFormat, "format", "", "json", "Output format (json, dot or pcap)")
 }

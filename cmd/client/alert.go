@@ -23,150 +23,60 @@
 package client
 
 import (
-	"os"
-
-	"github.com/skydive-project/skydive/api/client"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/validator"
+	"github.com/skydive-project/skydive/http"
 
 	"github.com/spf13/cobra"
 )
 
-var (
-	alertName        string
-	alertDescription string
-	alertExpression  string
-	alertAction      string
-	alertTrigger     string
-)
-
-// AlertCmd skydive alert root command
-var AlertCmd = &cobra.Command{
-	Use:          "alert",
-	Short:        "Manage alerts",
-	Long:         "Manage alerts",
-	SilenceUsage: false,
+var alertOpts = struct {
+	Name        string `flag:"name,alert name"`
+	Description string `flag:"description,description of the alert"`
+	Trigger     string `flag:"trigger,event that triggers the alert evaluation"`
+	Expression  string `flag:"expression,Gremlin of JavaScript expression evaluated to trigger the alarm"`
+	Action      string `flag:"action,can be either an empty string, or a URL (use 'file://' for local scripts)"`
+}{
+	Trigger: "graph",
 }
 
-// AlertCreate skydive alert creates command
-var AlertCreate = &cobra.Command{
-	Use:   "create",
-	Short: "Create alert",
-	Long:  "Create alert",
-	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
+var alertCmd = crudRootCommand{
+	Resource: "alert",
 
-		alert := types.NewAlert()
-		alert.Name = alertName
-		alert.Description = alertDescription
-		alert.Expression = alertExpression
-		alert.Trigger = alertTrigger
-		alert.Action = alertAction
-
-		if err := validator.Validate(alert); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-
-		if err := client.Create("alert", &alert); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		printJSON(&alert)
+	Get: &getHandler{
+		Run: func(client *http.CrudClient, id string) (types.Resource, error) {
+			var alert types.Alert
+			err := client.Get("alert", id, &alert)
+			return &alert, err
+		},
 	},
-}
 
-// AlertList skydive alert list command
-var AlertList = &cobra.Command{
-	Use:   "list",
-	Short: "List alerts",
-	Long:  "List alerts",
-	Run: func(cmd *cobra.Command, args []string) {
-		var alerts map[string]types.Alert
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		if err := client.List("alert", &alerts); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		printJSON(alerts)
-	},
-}
-
-// AlertGet skydive alert get command
-var AlertGet = &cobra.Command{
-	Use:   "get [alert]",
-	Short: "Display alert",
-	Long:  "Display alert",
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			cmd.Usage()
-			os.Exit(1)
-		}
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		var alert types.Alert
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Critical(err.Error())
-			os.Exit(1)
-		}
-
-		if err := client.Get("alert", args[0], &alert); err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-		printJSON(&alert)
-	},
-}
-
-// AlertDelete skydive alert delete command
-var AlertDelete = &cobra.Command{
-	Use:   "delete [alert]",
-	Short: "Delete alert",
-	Long:  "Delete alert",
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			cmd.Usage()
-			os.Exit(1)
-		}
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		client, err := client.NewCrudClientFromConfig(&AuthenticationOpts)
-		if err != nil {
-			logging.GetLogger().Error(err)
-			os.Exit(1)
-		}
-
-		for _, id := range args {
-			if err := client.Delete("alert", id); err != nil {
-				logging.GetLogger().Error(err)
+	List: &listHandler{
+		Run: func(client *http.CrudClient) (map[string]types.Resource, error) {
+			var alerts map[string]types.Alert
+			if err := client.List("alert", &alerts); err != nil {
+				return nil, err
 			}
-		}
+			resources := make(map[string]types.Resource, len(alerts))
+			for _, alert := range alerts {
+				resources[alert.ID()] = &alert
+			}
+			return resources, nil
+		},
 	},
-}
 
-func addAlertFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&alertName, "name", "", "", "alert name")
-	cmd.Flags().StringVarP(&alertDescription, "description", "", "", "description of the alert")
-	cmd.Flags().StringVarP(&alertTrigger, "trigger", "", "graph", "event that triggers the alert evaluation")
-	cmd.Flags().StringVarP(&alertExpression, "expression", "", "", "Gremlin of JavaScript expression evaluated to trigger the alarm")
-	cmd.Flags().StringVarP(&alertAction, "action", "", "", "can be either an empty string, or a URL (use 'file://' for local scripts)")
-}
+	Create: &createHandler{
+		Flags: func(crud *crudRootCommand, c *cobra.Command) {
+			crud.setFlags(c, &alertOpts)
+		},
 
-func init() {
-	AlertCmd.AddCommand(AlertList)
-	AlertCmd.AddCommand(AlertGet)
-	AlertCmd.AddCommand(AlertCreate)
-	AlertCmd.AddCommand(AlertDelete)
-
-	addAlertFlags(AlertCreate)
+		Run: func(client *http.CrudClient) (types.Resource, error) {
+			alert := types.NewAlert()
+			alert.Name = alertOpts.Name
+			alert.Description = alertOpts.Description
+			alert.Expression = alertOpts.Expression
+			alert.Trigger = alertOpts.Trigger
+			alert.Action = alertOpts.Action
+			return alert, nil
+		},
+	},
 }

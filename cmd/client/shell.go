@@ -40,7 +40,7 @@ import (
 )
 
 // ShellCmd skydive shell root command
-var ShellCmd = &cobra.Command{
+var shellCmd = &cobra.Command{
 	Use:          "shell",
 	Short:        "Shell Command Line Interface",
 	Long:         "Skydive Shell Command Line Interface, yet another shell",

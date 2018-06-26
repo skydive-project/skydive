@@ -38,8 +38,7 @@ var (
 	pcapTrace string
 )
 
-// PcapCmd skydive pcap root command
-var PcapCmd = &cobra.Command{
+var pcapCmd = &cobra.Command{
 	Use:   "pcap",
 	Short: "Import flows from PCAP file",
 	Long:  "Import flows from PCAP file",
@@ -81,5 +80,5 @@ var PcapCmd = &cobra.Command{
 }
 
 func init() {
-	PcapCmd.Flags().StringVarP(&pcapTrace, "trace", "t", "", "PCAP trace file to read")
+	pcapCmd.Flags().StringVarP(&pcapTrace, "trace", "t", "", "PCAP trace file to read")
 }

@@ -31,7 +31,7 @@ import (
 
 var analyzerAddr string
 
-// Client skydive client root command
+// ClientCmd describes the client root command
 var ClientCmd = &cobra.Command{
 	Use:          "client",
 	Short:        "Skydive client",
@@ -52,16 +52,17 @@ var ClientCmd = &cobra.Command{
 	},
 }
 
+// RegisterClientCommands register all the client subcommands
 func RegisterClientCommands(cmd *cobra.Command) {
-	cmd.AddCommand(AlertCmd)
-	cmd.AddCommand(CaptureCmd)
-	cmd.AddCommand(PacketInjectorCmd)
-	cmd.AddCommand(PcapCmd)
-	cmd.AddCommand(QueryCmd)
-	cmd.AddCommand(ShellCmd)
-	cmd.AddCommand(StatusCmd)
-	cmd.AddCommand(TopologyCmd)
-	cmd.AddCommand(UserMetadataCmd)
+	cmd.AddCommand(alertCmd.Cmd())
+	cmd.AddCommand(captureCmd.Cmd())
+	cmd.AddCommand(packetInjectorCmd.Cmd())
+	cmd.AddCommand(pcapCmd)
+	cmd.AddCommand(queryCmd)
+	cmd.AddCommand(shellCmd)
+	cmd.AddCommand(statusCmd)
+	cmd.AddCommand(topologyCmd)
+	cmd.AddCommand(userMetadataCmd.Cmd())
 }
 
 func init() {

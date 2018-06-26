@@ -35,8 +35,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// StatusShow shows an analyzer status
-var StatusCmd = &cobra.Command{
+var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show analyzer status",
 	Long:  "Show analyzer status",

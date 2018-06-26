@@ -26,7 +26,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
@@ -38,7 +38,7 @@ type Resource interface {
 
 // Alert is a set of parameters, the Alert Action will Trigger according to its Expression.
 type Alert struct {
-	Resource
+	Resource    `json:",omitempty"`
 	UUID        string
 	Name        string `json:",omitempty"`
 	Description string `json:",omitempty"`
