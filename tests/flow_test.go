@@ -1075,7 +1075,7 @@ func TestICMP(t *testing.T) {
 			}
 
 			if len(icmpFlows) != 3 {
-				return fmt.Errorf("We should receive 3 ICMP flows", helper.FlowsToString(icmpFlows))
+				return fmt.Errorf("We should receive 3 ICMP flows, got %s", helper.FlowsToString(icmpFlows))
 			}
 
 			return nil
