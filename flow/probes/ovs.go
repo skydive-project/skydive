@@ -69,7 +69,7 @@ func ovsRowProbeID(row *map[string]interface{}) (string, error) {
 
 func ovsRetrieveSkydiveProbeRowUUIDs(ovsClient *ovsdb.OvsClient, table string) ([]string, error) {
 	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{GoUUID: "abc"})
-	operations := []libovsdb.Operation{libovsdb.Operation{Op: "select", Table: table, Where: []interface{}{condition}}}
+	operations := []libovsdb.Operation{{Op: "select", Table: table, Where: []interface{}{condition}}}
 	result, err := ovsClient.Exec(operations...)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func ovsRetrieveSkydiveProbeRowUUIDs(ovsClient *ovsdb.OvsClient, table string) (
 
 func ovsRetrieveSkydiveProbeRowUUID(ovsClient *ovsdb.OvsClient, table, id string) (string, error) {
 	condition := libovsdb.NewCondition("_uuid", "!=", libovsdb.UUID{GoUUID: "abc"})
-	operations := []libovsdb.Operation{libovsdb.Operation{Op: "select", Table: table, Where: []interface{}{condition}}}
+	operations := []libovsdb.Operation{{Op: "select", Table: table, Where: []interface{}{condition}}}
 	result, err := ovsClient.Exec(operations...)
 	if err != nil {
 		return "", err

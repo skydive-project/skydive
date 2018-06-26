@@ -58,7 +58,7 @@ func (l *Logger) log(level level, format *string, args ...interface{}) {
 	if format != nil {
 		fmt += " " + *format
 	} else {
-		for _ = range args {
+		for range args {
 			fmt += " %v"
 		}
 	}

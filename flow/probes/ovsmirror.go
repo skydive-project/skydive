@@ -130,9 +130,9 @@ func newDeletePortOP(probe *ovsMirrorProbe) *libovsdb.Operation {
 func newInsertMirrorOP(probe *ovsMirrorProbe, srcUUID string, dstInsertOp *libovsdb.Operation) (*libovsdb.Operation, error) {
 	mirrorRow := make(map[string]interface{})
 	mirrorRow["name"] = probe.mirrorName()
-	srcSet, _ := libovsdb.NewOvsSet([]libovsdb.UUID{libovsdb.UUID{GoUUID: srcUUID}})
+	srcSet, _ := libovsdb.NewOvsSet([]libovsdb.UUID{{GoUUID: srcUUID}})
 	mirrorRow["select_src_port"] = srcSet
-	dstSet, _ := libovsdb.NewOvsSet([]libovsdb.UUID{libovsdb.UUID{GoUUID: srcUUID}})
+	dstSet, _ := libovsdb.NewOvsSet([]libovsdb.UUID{{GoUUID: srcUUID}})
 	mirrorRow["select_dst_port"] = dstSet
 	mirrorRow["output_port"] = libovsdb.UUID{GoUUID: dstInsertOp.UUIDName}
 
@@ -210,7 +210,7 @@ func (o *OvsMirrorProbesHandler) registerProbeOnPort(probe *ovsMirrorProbe, port
 	}
 	operations = append(operations, *portInsertOp)
 
-	mutateUUID := []libovsdb.UUID{libovsdb.UUID{GoUUID: portInsertOp.UUIDName}}
+	mutateUUID := []libovsdb.UUID{{GoUUID: portInsertOp.UUIDName}}
 	mutateSet, _ := libovsdb.NewOvsSet(mutateUUID)
 	mutation := libovsdb.NewMutation("ports", "insert", mutateSet)
 
@@ -229,7 +229,7 @@ func (o *OvsMirrorProbesHandler) registerProbeOnPort(probe *ovsMirrorProbe, port
 	}
 	operations = append(operations, *mirrorInsertOp)
 
-	mutateMirrorsUUID := []libovsdb.UUID{libovsdb.UUID{GoUUID: mirrorInsertOp.UUIDName}}
+	mutateMirrorsUUID := []libovsdb.UUID{{GoUUID: mirrorInsertOp.UUIDName}}
 	mutateMirrosSet, _ := libovsdb.NewOvsSet(mutateMirrorsUUID)
 	mutationMirrors := libovsdb.NewMutation("mirrors", "insert", mutateMirrosSet)
 
@@ -280,11 +280,11 @@ func (o *OvsMirrorProbesHandler) unregisterProbeFromPort(portUUID string) error 
 		*newDeletePortOP(probe),
 	}
 
-	mutatePortsUUID := []libovsdb.UUID{libovsdb.UUID{GoUUID: mirrorPortUUID}}
+	mutatePortsUUID := []libovsdb.UUID{{GoUUID: mirrorPortUUID}}
 	mutatePortsSet, _ := libovsdb.NewOvsSet(mutatePortsUUID)
 	mutationPorts := libovsdb.NewMutation("ports", "delete", mutatePortsSet)
 
-	mutateMirrorsUUID := []libovsdb.UUID{libovsdb.UUID{GoUUID: mirrorUUID}}
+	mutateMirrorsUUID := []libovsdb.UUID{{GoUUID: mirrorUUID}}
 	mutateMirrosSet, _ := libovsdb.NewOvsSet(mutateMirrorsUUID)
 	mutationMirrors := libovsdb.NewMutation("mirrors", "delete", mutateMirrosSet)
 
@@ -374,7 +374,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 		condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: uuid})
 		operations = append(operations, libovsdb.Operation{Op: "delete", Table: "Mirror", Where: []interface{}{condition}})
 
-		mutateUUID := []libovsdb.UUID{libovsdb.UUID{GoUUID: uuid}}
+		mutateUUID := []libovsdb.UUID{{GoUUID: uuid}}
 		mutateSet, _ := libovsdb.NewOvsSet(mutateUUID)
 		mutation := libovsdb.NewMutation("mirrors", "delete", mutateSet)
 
@@ -402,7 +402,7 @@ func (o *OvsMirrorProbesHandler) cleanupOvsMirrors() {
 		condition := libovsdb.NewCondition("_uuid", "==", libovsdb.UUID{GoUUID: uuid})
 		operations = append(operations, libovsdb.Operation{Op: "delete", Table: "Port", Where: []interface{}{condition}})
 
-		mutateUUID := []libovsdb.UUID{libovsdb.UUID{GoUUID: uuid}}
+		mutateUUID := []libovsdb.UUID{{GoUUID: uuid}}
 		mutateSet, _ := libovsdb.NewOvsSet(mutateUUID)
 		mutation := libovsdb.NewMutation("ports", "delete", mutateSet)
 
