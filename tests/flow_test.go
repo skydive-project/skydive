@@ -618,7 +618,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	metric, err = gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Between(pingLen, pingLen+1)))
-	if metric == nil || metric.ABBytes <= pingLen-1 || metric.ABBytes >= pingLen+1 {
+	if err != nil || metric == nil || metric.ABBytes <= pingLen-1 || metric.ABBytes >= pingLen+1 {
 		return fmt.Errorf("Number of bytes is wrong, got: %v", metric)
 	}
 

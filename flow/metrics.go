@@ -105,7 +105,7 @@ func (fm *FlowMetric) Add(m common.Metric) common.Metric {
 	}
 }
 
-// Sub substracts flow metrics
+// Sub subtracts flow metrics
 func (fm *FlowMetric) Sub(m common.Metric) common.Metric {
 	f2 := m.(*FlowMetric)
 

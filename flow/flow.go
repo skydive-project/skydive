@@ -320,7 +320,7 @@ func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
 	}
 }
 
-// LayersPath returns path and the appication of all the layers separated by a slash.
+// LayersPath returns path and the application of all the layers separated by a slash.
 func LayersPath(ls []gopacket.Layer) (string, string) {
 	var app, path string
 	for i, layer := range ls {

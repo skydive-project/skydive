@@ -489,7 +489,7 @@ func TestInterfaceMetrics(t *testing.T) {
 				tx += im.TxPackets
 			}
 
-			// due to ratio applied during the aggregation we can't expect to get excatly
+			// due to ratio applied during the aggregation we can't expect to get exactly
 			// the sum of the metrics.
 			if tx <= 25 {
 				return fmt.Errorf("Expected at least TxPackets, got %d", tx)
@@ -782,6 +782,10 @@ func TestRouteTable(t *testing.T) {
 				)
 
 				node, err = c.gh.GetNode(prefix.V().Has("IPV4", "124.65.91.42/24"))
+				if err != nil {
+					return fmt.Errorf("Failed to find a node with IP 124.65.91.42/24")
+				}
+
 				routingTable = node.Metadata()["RoutingTable"].([]interface{})
 				newNoOfRoutingTable := len(routingTable)
 

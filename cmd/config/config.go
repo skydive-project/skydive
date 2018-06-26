@@ -34,7 +34,7 @@ const (
 )
 
 // LoadConfiguration from a configuration file
-// If no configuration file are given, try to load the default configuraiton file /etc/skydive/skydive.yml
+// If no configuration file are given, try to load the default configuration file /etc/skydive/skydive.yml
 func LoadConfiguration(cfgBackend string, cfgFiles []string) error {
 	if len(cfgFiles) == 0 {
 		config.InitConfig(cfgBackend, []string{DefaultConfigurationFile})

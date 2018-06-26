@@ -292,7 +292,6 @@ func (c *OrientDBStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter
 			sql += " AND " + conditional
 		} else {
 			sql += " WHERE " + conditional
-			where = true
 		}
 	}
 
