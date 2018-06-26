@@ -87,7 +87,7 @@ func initProbeCapabilities() {
 	ProbeCapabilities["ovsmirror"] = BPFCapability | RawPacketsCapability | ExtraTCPMetricCapability
 }
 
-// CheckProbeCapabilities checks that a probe supports given capabilites
+// CheckProbeCapabilities checks that a probe supports given capabilities
 func CheckProbeCapabilities(probeType string, capability ProbeCapability) bool {
 	if c, ok := ProbeCapabilities[probeType]; ok {
 		if (c & capability) > 0 {

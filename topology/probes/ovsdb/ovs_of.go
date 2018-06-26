@@ -255,7 +255,7 @@ type Execute interface {
 	ExecCommandPipe(context.Context, string, ...string) (io.Reader, error)
 }
 
-// RealExecute is the actual implementation given below. It can be overriden for tests.
+// RealExecute is the actual implementation given below. It can be overridden for tests.
 type RealExecute struct{}
 
 var executor Execute = RealExecute{}
@@ -291,7 +291,7 @@ func launchOnSwitch(cmd []string) (string, error) {
 }
 
 // launchContinuousOnSwitch launches  a stream producing command on a given switch. The command is resilient
-// and is relaunched until the context explicitely cancels it.
+// and is relaunched until the context explicitly cancels it.
 func launchContinuousOnSwitch(ctx context.Context, cmd []string) (<-chan string, error) {
 	var cout = make(chan string, 10)
 

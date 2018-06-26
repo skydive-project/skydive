@@ -161,7 +161,7 @@ func (im *InterfaceMetric) Add(m common.Metric) common.Metric {
 	}
 }
 
-// Sub substracts two metrics and return a new Metrics object
+// Sub subtracts two metrics and return a new metrics object
 func (im *InterfaceMetric) Sub(m common.Metric) common.Metric {
 	om := m.(*InterfaceMetric)
 

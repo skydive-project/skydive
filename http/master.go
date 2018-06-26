@@ -62,7 +62,7 @@ func (a *WSMasterElection) SendMessageToMaster(m WSMessage) {
 }
 
 // OnConnected is triggered when a new WSSpeaker get connected. If no master
-// was elected this WSSpeaker will be choosen as master.
+// was elected this WSSpeaker will be chosen as master.
 func (a *WSMasterElection) OnConnected(c WSSpeaker) {
 	a.Lock()
 	if a.master == nil {
