@@ -245,7 +245,7 @@ func (t *TopologyReplicationEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *
 	defer t.cached.SetMode(graph.DefaultMode)
 
 	if t.debug() {
-		logging.GetLogger().Debugf("Recieved message from peer %s: %s", c.GetURL().String(), msg.Bytes(c.GetClientProtocol()))
+		logging.GetLogger().Debugf("Received message from peer %s: %s", c.GetURL().String(), msg.Bytes(c.GetClientProtocol()))
 	}
 	switch msgType {
 	case graph.SyncRequestMsgType:

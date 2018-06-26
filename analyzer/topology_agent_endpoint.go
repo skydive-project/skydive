@@ -64,7 +64,7 @@ func (t *TopologyAgentEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.
 	switch msgType {
 	case graph.HostGraphDeletedMsgType:
 		// HostGraphDeletedMsgType is handled specifically as we need to be sure to not use the
-		// cache while deleting otherwise the delete mechanism is using the cache to walk throught
+		// cache while deleting otherwise the delete mechanism is using the cache to walk through
 		// the graph.
 		logging.GetLogger().Debugf("Got %s message for host %s", graph.HostGraphDeletedMsgType, obj.(string))
 		t.Graph.DelHostGraph(obj.(string))

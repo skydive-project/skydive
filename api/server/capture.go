@@ -25,7 +25,7 @@ package server
 import (
 	"fmt"
 
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
@@ -109,7 +109,7 @@ func (c *CaptureAPIHandler) Decorate(resource types.Resource) {
 func (c *CaptureAPIHandler) Create(r types.Resource) error {
 	capture := r.(*types.Capture)
 
-	// check capabilites
+	// check capabilities
 	if capture.Type != "" {
 		if capture.BPFFilter != "" {
 			if !common.CheckProbeCapabilities(capture.Type, common.BPFCapability) {

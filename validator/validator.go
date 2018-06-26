@@ -128,7 +128,7 @@ func isValidRawPacketLimit(v interface{}, param string) error {
 	limit, ok := v.(int)
 	l := uint32(limit)
 	// The current limitation of 10 packet could be removed once flow will be
-	// transfered over tcp.
+	// transferred over tcp.
 	if !ok || l < 0 || l > flow.MaxRawPacketLimit {
 		return RawPacketLimitNotValid(0, flow.MaxRawPacketLimit)
 	}
