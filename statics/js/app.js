@@ -3,7 +3,7 @@ var websocket = new WSHandler();
 var store = new Vuex.Store({
 
   state: {
-    config: defaultConfig,
+    config: uiConfig,
     connected: null,
     logged: null,
     permissions: getPermissions(),
