@@ -201,11 +201,7 @@ func checkConfig() error {
 		return err
 	}
 
-	if err := checkPositiveInt("etcd.max_snap_files"); err != nil {
-		return err
-	}
-
-	return nil
+	return checkPositiveInt("etcd.max_snap_files")
 }
 
 func checkViperSupportedExts(ext string) bool {

@@ -30,6 +30,7 @@ import (
 	"github.com/skydive-project/skydive/logging"
 )
 
+// ApplicationPortMap maps UDP and TCP port numbers to service names
 type ApplicationPortMap struct {
 	UDP map[int]string
 	TCP map[int]string
@@ -46,14 +47,14 @@ func (a *ApplicationPortMap) application(srcPort, dstPort int, protoMap map[int]
 	return "", false
 }
 
-func (a *ApplicationPortMap) TCPApplication(srcPort, dstPort int) (string, bool) {
+func (a *ApplicationPortMap) tcpApplication(srcPort, dstPort int) (string, bool) {
 	if a == nil {
 		return "", false
 	}
 	return a.application(srcPort, dstPort, a.TCP)
 }
 
-func (a *ApplicationPortMap) UDPApplication(srcPort, dstPort int) (string, bool) {
+func (a *ApplicationPortMap) udpApplication(srcPort, dstPort int) (string, bool) {
 	if a == nil {
 		return "", false
 	}
@@ -82,6 +83,8 @@ func (a *ApplicationPortMap) init() {
 	}
 }
 
+// NewApplicationPortMapFromConfig returns a new application port mapper
+// and load it from the configuration file
 func NewApplicationPortMapFromConfig() *ApplicationPortMap {
 	apm := &ApplicationPortMap{
 		TCP: make(map[int]string),

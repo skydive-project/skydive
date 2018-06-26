@@ -70,35 +70,35 @@ func flowMetricToDocument(flow *flow.Flow, metric *flow.FlowMetric) orient.Docum
 	return nil
 }
 
-func flowTCPMetricToDocument(flow *flow.Flow, tcp_metric *flow.TCPMetric) orient.Document {
-	if tcp_metric == nil {
+func flowTCPMetricToDocument(flow *flow.Flow, tcpMetric *flow.TCPMetric) orient.Document {
+	if tcpMetric == nil {
 		return nil
 	}
 	return orient.Document{
 		"@class":                "TCPMetric",
 		"@type":                 "d",
-		"ABSynStart":            tcp_metric.ABSynStart,
-		"BASynStart":            tcp_metric.BASynStart,
-		"ABSynTTL":              tcp_metric.ABSynTTL,
-		"BASynTTL":              tcp_metric.BASynTTL,
-		"ABFinStart":            tcp_metric.ABFinStart,
-		"BAFinStart":            tcp_metric.BAFinStart,
-		"ABRstStart":            tcp_metric.ABRstStart,
-		"BARstStart":            tcp_metric.BARstStart,
-		"ABSegmentOutOfOrder":   tcp_metric.ABSegmentOutOfOrder,
-		"ABSegmentSkipped":      tcp_metric.ABSegmentSkipped,
-		"ABSegmentSkippedBytes": tcp_metric.ABSegmentSkippedBytes,
-		"ABPackets":             tcp_metric.ABPackets,
-		"ABBytes":               tcp_metric.ABBytes,
-		"ABSawStart":            tcp_metric.ABSawStart,
-		"ABSawEnd":              tcp_metric.ABSawEnd,
-		"BASegmentOutOfOrder":   tcp_metric.BASegmentOutOfOrder,
-		"BASegmentSkipped":      tcp_metric.BASegmentSkipped,
-		"BASegmentSkippedBytes": tcp_metric.BASegmentSkippedBytes,
-		"BAPackets":             tcp_metric.BAPackets,
-		"BABytes":               tcp_metric.BABytes,
-		"BASawStart":            tcp_metric.BASawStart,
-		"BASawEnd":              tcp_metric.BASawEnd,
+		"ABSynStart":            tcpMetric.ABSynStart,
+		"BASynStart":            tcpMetric.BASynStart,
+		"ABSynTTL":              tcpMetric.ABSynTTL,
+		"BASynTTL":              tcpMetric.BASynTTL,
+		"ABFinStart":            tcpMetric.ABFinStart,
+		"BAFinStart":            tcpMetric.BAFinStart,
+		"ABRstStart":            tcpMetric.ABRstStart,
+		"BARstStart":            tcpMetric.BARstStart,
+		"ABSegmentOutOfOrder":   tcpMetric.ABSegmentOutOfOrder,
+		"ABSegmentSkipped":      tcpMetric.ABSegmentSkipped,
+		"ABSegmentSkippedBytes": tcpMetric.ABSegmentSkippedBytes,
+		"ABPackets":             tcpMetric.ABPackets,
+		"ABBytes":               tcpMetric.ABBytes,
+		"ABSawStart":            tcpMetric.ABSawStart,
+		"ABSawEnd":              tcpMetric.ABSawEnd,
+		"BASegmentOutOfOrder":   tcpMetric.BASegmentOutOfOrder,
+		"BASegmentSkipped":      tcpMetric.BASegmentSkipped,
+		"BASegmentSkippedBytes": tcpMetric.BASegmentSkippedBytes,
+		"BAPackets":             tcpMetric.BAPackets,
+		"BABytes":               tcpMetric.BABytes,
+		"BASawStart":            tcpMetric.BASawStart,
+		"BASawEnd":              tcpMetric.BASawEnd,
 	}
 }
 
@@ -277,7 +277,7 @@ func (c *OrientDBStorage) SearchFlows(fsq filters.SearchQuery) (*flow.FlowSet, e
 	return flowset, nil
 }
 
-// SearchMetrics searches flow raw packets matching filters in the database
+// SearchRawPackets searches flow raw packets matching filters in the database
 func (c *OrientDBStorage) SearchRawPackets(fsq filters.SearchQuery, packetFilter *filters.Filter) (map[string]*flow.RawPackets, error) {
 	filter := fsq.Filter
 	sql := "SELECT LinkType, Timestamp, Index, Data, Flow.UUID FROM FlowRawPacket"

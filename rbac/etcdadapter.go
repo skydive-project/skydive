@@ -36,7 +36,7 @@ import (
 	etcd "github.com/coreos/etcd/client"
 )
 
-const EtcdPolicyKey = "/casbinPolicy"
+const etcdPolicyKey = "/casbinPolicy"
 
 // EtcdAdapter represents the etcd adapter for policy persistence, can load policy
 // from etcd or save policy to etcd.
@@ -51,7 +51,7 @@ func NewEtcdAdapter(kapi etcd.KeysAPI) (*EtcdAdapter, error) {
 
 // LoadPolicy loads policy from etcd.
 func (a *EtcdAdapter) LoadPolicy(model model.Model) error {
-	resp, err := a.kapi.Get(context.Background(), EtcdPolicyKey, nil)
+	resp, err := a.kapi.Get(context.Background(), etcdPolicyKey, nil)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (a *EtcdAdapter) SavePolicy(model model.Model) error {
 	}
 
 	s := strings.TrimRight(tmp.String(), "\n")
-	_, err := a.kapi.Set(context.Background(), EtcdPolicyKey, s, nil)
+	_, err := a.kapi.Set(context.Background(), etcdPolicyKey, s, nil)
 	return err
 }
 

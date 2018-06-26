@@ -10,7 +10,7 @@ import (
 	"github.com/skydive-project/skydive/rbac"
 )
 
-// WSSpeaker is the interface to report the status of a service
+// StatusReporter is the interface to report the status of a service
 type StatusReporter interface {
 	GetStatus() interface{}
 }
@@ -46,7 +46,7 @@ func (s *statusAPI) registerEndpoints(r *shttp.Server) {
 	r.RegisterRoutes(routes)
 }
 
-// RegisterStatus registers the status endpoint
+// RegisterStatusAPI registers the status API endpoint
 func RegisterStatusAPI(s *shttp.Server, r StatusReporter) {
 	a := &statusAPI{
 		reporter: r,

@@ -97,11 +97,7 @@ func (g *GremlinQueryHelper) QueryObject(query interface{}, value interface{}) e
 		return fmt.Errorf("%s: %s", resp.Status, string(data))
 	}
 
-	if err = common.JSONDecode(resp.Body, value); err != nil {
-		return err
-	}
-
-	return nil
+	return common.JSONDecode(resp.Body, value)
 }
 
 // GetNodes from the Gremlin query

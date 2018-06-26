@@ -42,7 +42,7 @@ type SocketsGremlinTraversalStep struct {
 	context traversal.GremlinTraversalContext
 }
 
-// NewMetricsTraversalExtension returns a new graph traversal extension
+// NewSocketsTraversalExtension returns a new graph traversal extension
 func NewSocketsTraversalExtension() *SocketsTraversalExtension {
 	return &SocketsTraversalExtension{
 		SocketsToken: traversalSocketsToken,

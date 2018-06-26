@@ -131,11 +131,7 @@ func (s *seleniumHelper) expand() error {
 		return err
 	}
 
-	if err = s.clickOn(expand); err != nil {
-		return err
-	}
-
-	return nil
+	return s.clickOn(expand)
 }
 
 func (s *seleniumHelper) expandPanel(id string) error {
@@ -144,11 +140,7 @@ func (s *seleniumHelper) expandPanel(id string) error {
 		return err
 	}
 
-	if err = s.clickOn(panel); err != nil {
-		return err
-	}
-
-	return nil
+	return s.clickOn(panel)
 }
 
 func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
@@ -186,11 +178,7 @@ func (s *seleniumHelper) expandGroup(gremlin g.QueryString) error {
 		return err
 	}
 
-	if err = s.webdriver.KeyUp(selenium.AltKey); err != nil {
-		return err
-	}
-
-	return nil
+	return s.webdriver.KeyUp(selenium.AltKey)
 }
 
 func (s *seleniumHelper) getFlowRow(gremlin g.QueryString) (selenium.WebElement, error) {
@@ -284,14 +272,12 @@ func (s *seleniumHelper) fillTextBoxByID(id string, text string) error {
 	if err != nil || box == nil {
 		return fmt.Errorf("Not found text box: %v", err)
 	}
+
 	if err = box.Clear(); err != nil {
 		return err
 	}
-	if err = box.SendKeys(text); err != nil {
-		return err
-	}
 
-	return nil
+	return box.SendKeys(text)
 }
 
 func (s *seleniumHelper) activateTab(id string) error {
@@ -337,11 +323,7 @@ func (s *seleniumHelper) startShortestPathCapture(g1, g2 g.QueryString, bpf stri
 		return err
 	}
 
-	if err := s.closeNotification(); err != nil {
-		return err
-	}
-
-	return nil
+	return s.closeNotification()
 }
 
 func (s *seleniumHelper) startGremlinCapture(gremlin g.QueryString) error {
@@ -426,11 +408,7 @@ func (s *seleniumHelper) injectPacket(g1, g2 g.QueryString, count int) error {
 		}
 	}
 
-	if err := s.clickOnByID("inject"); err != nil {
-		return err
-	}
-
-	return nil
+	return s.clickOnByID("inject")
 }
 
 func (s *seleniumHelper) flowQuery(gremlin g.QueryString) error {
@@ -446,11 +424,7 @@ func (s *seleniumHelper) flowQuery(gremlin g.QueryString) error {
 		return err
 	}
 
-	if err := flowQuery.SendKeys(gremlin.String()); err != nil {
-		return err
-	}
-
-	return nil
+	return flowQuery.SendKeys(gremlin.String())
 }
 
 func (s *seleniumHelper) enableFakeMousePointer() error {
@@ -515,11 +489,7 @@ func (s *seleniumHelper) clickOn(el selenium.WebElement) error {
 		}
 	}
 
-	if err := el.Click(); err != nil {
-		return err
-	}
-
-	return nil
+	return el.Click()
 }
 
 func (s *seleniumHelper) moveOn(el selenium.WebElement) error {
@@ -529,11 +499,7 @@ func (s *seleniumHelper) moveOn(el selenium.WebElement) error {
 		}
 	}
 
-	if err := el.MoveTo(0, 0); err != nil {
-		return err
-	}
-
-	return nil
+	return el.MoveTo(0, 0)
 }
 
 func (s *seleniumHelper) clickOnByID(id string) error {

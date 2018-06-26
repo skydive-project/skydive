@@ -37,7 +37,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var clientset *kubernetes.Clientset = nil
+var clientset *kubernetes.Clientset
 
 func newClientset() (*kubernetes.Clientset, error) {
 	kubeconfig := config.GetString("k8s.config_file")

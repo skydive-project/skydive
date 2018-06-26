@@ -276,10 +276,10 @@ func getGoPacketFirstLayerType(n *graph.Node) (gopacket.LayerType, layers.LinkTy
 
 	if encapType, err := n.GetFieldString("EncapType"); err == nil {
 		return flow.GetFirstLayerType(encapType)
-	} else {
-		logging.GetLogger().Warningf("EncapType not found on link %s, defaulting to Ethernet", name)
-		return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 	}
+
+	logging.GetLogger().Warningf("EncapType not found on link %s, defaulting to Ethernet", name)
+	return layers.LayerTypeEthernet, layers.LinkTypeEthernet
 }
 
 // RegisterProbe registers a gopacket probe

@@ -23,7 +23,8 @@
 package cmd
 
 var (
-	// CfgFiles skydive configuration files
-	CfgFiles   []string
+	// CfgFiles holds the Skydive configuration files
+	CfgFiles []string
+	// CfgBackend holds the current configuration backend
 	CfgBackend string
 )

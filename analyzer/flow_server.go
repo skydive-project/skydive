@@ -45,7 +45,7 @@ import (
 // FlowBulkInsertDefault maximum number of flows aggregated between two data store inserts
 const FlowBulkInsertDefault int = 100
 
-// FlowBulkDeadlineDefault deadline of each bulk insert in second
+// FlowBulkInsertDeadlineDefault deadline of each bulk insert in second
 const FlowBulkInsertDeadlineDefault int = 5
 
 func max(a, b int) int {
@@ -60,7 +60,7 @@ type FlowServerConn interface {
 	Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup)
 }
 
-// FlowServerConn describes a UDP flow server connection
+// FlowServerUDPConn describes a UDP flow server connection
 type FlowServerUDPConn struct {
 	conn                   *net.UDPConn
 	timeOfLastLostFlowsLog time.Time
@@ -68,7 +68,7 @@ type FlowServerUDPConn struct {
 	maxFlowBufferSize      int
 }
 
-// FlowServerConn describes a WebSocket flow server connection
+// FlowServerWebSocketConn describes a WebSocket flow server connection
 type FlowServerWebSocketConn struct {
 	shttp.DefaultWSSpeakerEventHandler
 	server                 *shttp.Server
@@ -113,7 +113,7 @@ func (c *FlowServerWebSocketConn) OnMessage(client shttp.WSSpeaker, m shttp.WSMe
 	c.ch <- f
 }
 
-// Start a WebSocket flow server
+// Serve starts a WebSocket flow server
 func (c *FlowServerWebSocketConn) Serve(ch chan *flow.Flow, quit chan struct{}, wg *sync.WaitGroup) {
 	c.ch = ch
 	server := shttp.NewWSServer(c.server, "/ws/flow")

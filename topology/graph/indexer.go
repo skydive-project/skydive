@@ -127,7 +127,7 @@ func (i *GraphIndexer) OnNodeDeleted(n *Node) {
 	i.forgetNode(n)
 }
 
-// Fromhash returns the nodes mapped by a hash along with their associated values
+// FromHash returns the nodes mapped by a hash along with their associated values
 func (i *GraphIndexer) FromHash(hash string) (nodes []*Node, values []interface{}) {
 	if ids, found := i.hashToValues[hash]; found {
 		for id, obj := range ids {

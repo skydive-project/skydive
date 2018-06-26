@@ -61,7 +61,7 @@ type nodeProbe struct {
 	capture *types.Capture
 }
 
-// OnMessage event, valid message type : CaptureStartReply or CaptureStopReply message
+// OnWSStructMessage event, valid message type : CaptureStartReply or CaptureStopReply message
 func (o *OnDemandProbeClient) OnWSStructMessage(c shttp.WSSpeaker, m *shttp.WSStructMessage) {
 	var query ondemand.CaptureQuery
 	if err := m.UnmarshalObj(&query); err != nil {

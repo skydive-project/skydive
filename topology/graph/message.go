@@ -50,7 +50,7 @@ var (
 	ErrSyncMsgMalFormed     = errors.New("SyncMsg/SyncReplyMsg malformed")
 )
 
-// type SyncRequestMsg describes a graph synchro request message
+// SyncRequestMsg describes a graph synchro request message
 type SyncRequestMsg struct {
 	GraphContext
 	GremlinFilter string

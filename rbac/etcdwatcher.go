@@ -41,8 +41,7 @@ func finalizer(w *EtcdWatcher) {
 	w.running = false
 }
 
-// NewAdapter is the constructor for Watcher.
-// endpoint is the endpoint for etcd clusters.
+// NewEtcdWatcher returns new etcd change watcher
 func NewEtcdWatcher(kapi etcd.KeysAPI) persist.Watcher {
 	w := &EtcdWatcher{
 		kapi:    kapi,
@@ -74,7 +73,7 @@ func (w *EtcdWatcher) Update() error {
 
 // startWatch is a goroutine that watches the policy change.
 func (w *EtcdWatcher) startWatch() error {
-	watcher := w.kapi.Watcher(EtcdPolicyKey, &etcd.WatcherOptions{Recursive: false})
+	watcher := w.kapi.Watcher(etcdPolicyKey, &etcd.WatcherOptions{Recursive: false})
 	for {
 		if !w.running {
 			return nil

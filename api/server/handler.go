@@ -49,7 +49,7 @@ type Handler interface {
 	AsyncWatch(f WatcherCallback) StoppableWatcher
 }
 
-// types.ResourceHandler aims to creates new resource of an API
+// ResourceHandler aims to creates new resource of an API
 type ResourceHandler interface {
 	Name() string
 	New() types.Resource
@@ -80,7 +80,7 @@ type BasicStoppableWatcher struct {
 	wg      sync.WaitGroup
 }
 
-// types.ResourceWatcher asynchronous interface
+// ResourceWatcher asynchronous interface
 type ResourceWatcher interface {
 	AsyncWatch(f WatcherCallback) StoppableWatcher
 }

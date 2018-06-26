@@ -252,7 +252,7 @@ func (im *InterfaceMetric) applyRatio(ratio float64) *InterfaceMetric {
 	}
 }
 
-// Slice splits a Metric into two parts
+// Split splits a metric into two parts
 func (im *InterfaceMetric) Split(cut int64) (common.Metric, common.Metric) {
 	if cut < im.Start {
 		return nil, im

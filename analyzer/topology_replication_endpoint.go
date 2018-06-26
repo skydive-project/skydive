@@ -134,7 +134,7 @@ func (p *TopologyReplicatorPeer) OnConnected(c shttp.WSSpeaker) {
 	p.endpoint.out.AddClient(c)
 }
 
-// OnConnected is called when the peer gets Disconnected
+// OnDisconnected is called when the peer gets disconnected
 func (p *TopologyReplicatorPeer) OnDisconnected(c shttp.WSSpeaker) {
 	p.endpoint.Lock()
 	defer p.endpoint.Unlock()
@@ -338,6 +338,7 @@ func (t *TopologyReplicationEndpoint) OnEdgeDeleted(e *graph.Edge) {
 	}
 }
 
+// GetSpeakers return both incoming and outgoing speakers
 func (t *TopologyReplicationEndpoint) GetSpeakers() []shttp.WSSpeaker {
 	return append(t.in.GetSpeakers(), t.out.GetSpeakers()...)
 }
@@ -384,7 +385,7 @@ func (t *TopologyReplicationEndpoint) OnDisconnected(c shttp.WSSpeaker) {
 	}
 }
 
-// NewTopologyServer returns a new server to be used by other analyzers for replication.
+// NewTopologyReplicationEndpoint returns a new server to be used by other analyzers for replication.
 func NewTopologyReplicationEndpoint(pool shttp.WSStructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph) (*TopologyReplicationEndpoint, error) {
 	addresses, err := config.GetAnalyzerServiceAddresses()
 	if err != nil {

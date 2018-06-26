@@ -770,11 +770,7 @@ func TestFlowMetricsStep(t *testing.T) {
 				return fmt.Errorf("Could not find metrics (%+v)", metrics)
 			}
 
-			if err = checkMetricsOrder(metrics); err != nil {
-				return err
-			}
-
-			return nil
+			return checkMetricsOrder(metrics)
 		}},
 	}
 

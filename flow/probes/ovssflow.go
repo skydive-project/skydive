@@ -209,10 +209,7 @@ func (o *OvsSFlowProbesHandler) RegisterProbeOnBridge(bridgeUUID string, tid str
 
 	probe.Target = agent.GetTarget()
 
-	if err = o.registerSFlowProbeOnBridge(probe, bridgeUUID); err != nil {
-		return err
-	}
-	return nil
+	return o.registerSFlowProbeOnBridge(probe, bridgeUUID)
 }
 
 func isOvsBridge(n *graph.Node) bool {

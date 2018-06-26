@@ -50,7 +50,7 @@ func (s *TableServer) OnTableQuery(c shttp.WSSpeaker, msg *shttp.WSStructMessage
 	c.SendMessage(reply)
 }
 
-// OnWSMessage TableQuery
+// OnWSStructMessage TableQuery
 func (s *TableServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp.WSStructMessage) {
 	switch msg.Type {
 	case "TableQuery":
