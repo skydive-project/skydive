@@ -120,7 +120,7 @@ func TestMetadataIndexer(t *testing.T) {
 
 	g.NewNode(GenID(), m5, "host")
 
-	nodes, values = dockerCache.Get("kube-system", "mypod", "mycontainer")
+	nodes, _ = dockerCache.Get("kube-system", "mypod", "mycontainer")
 	if len(nodes) != 1 {
 		t.Errorf("Expected 1 one, got %+v", nodes)
 	}

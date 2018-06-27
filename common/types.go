@@ -228,9 +228,9 @@ func IPv6Supported() bool {
 	return true
 }
 
-// NormalizeIPForUrl returns a string normalized that can be used in URL. Brackets
+// NormalizeIPForURL returns a string normalized that can be used in URL. Brackets
 // will be used for IPV6 addresses.
-func NormalizeIPForUrl(ip net.IP) string {
+func NormalizeIPForURL(ip net.IP) string {
 	if ip.To4() == nil {
 		return "[" + ip.String() + "]"
 	}

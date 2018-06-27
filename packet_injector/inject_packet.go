@@ -67,7 +67,7 @@ type PacketInjectionParams struct {
 	Payload   string
 }
 
-type Channels struct {
+type channels struct {
 	sync.Mutex
 	Pipes map[string](chan bool)
 }
@@ -146,7 +146,7 @@ func forgePacket(packetType string, layerType gopacket.LayerType, srcMAC, dstMAC
 }
 
 // InjectPacket inject some packets based on the graph
-func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *Channels) (string, error) {
+func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *channels) (string, error) {
 	srcIP := getIP(pp.SrcIP)
 	if srcIP == nil {
 		return "", errors.New("Source Node doesn't have proper IP")
@@ -218,7 +218,7 @@ func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *Channels) (s
 		return "", err
 	}
 
-	packet := gopacket.NewPacket(packetData, layerType, gopacket.Default)
+	gopacket.NewPacket(packetData, layerType, gopacket.Default)
 
 	f := flow.NewFlowFromGoPacket(gpacket, tid, flow.FlowUUIDs{}, flow.FlowOpts{})
 
@@ -252,7 +252,7 @@ func InjectPackets(pp *PacketInjectionParams, g *graph.Graph, chnl *Channels) (s
 				}
 
 				if strings.HasPrefix(pp.Type, "icmp") && pp.Increment {
-					if packetData, packet, err = forgePacket(pp.Type, layerType, srcMAC, dstMAC, srcIP, dstIP, pp.SrcPort, pp.DstPort, pp.ID+i+1, pp.Payload); err != nil {
+					if packetData, _, err = forgePacket(pp.Type, layerType, srcMAC, dstMAC, srcIP, dstIP, pp.SrcPort, pp.DstPort, pp.ID+i+1, pp.Payload); err != nil {
 						logging.GetLogger().Error(err)
 						return
 					}

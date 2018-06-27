@@ -94,13 +94,13 @@ type RawPackets struct {
 	RawPackets []*RawPacket
 }
 
-// defines what are the layers used for the flow key calculation
+// LayerKeyMode defines what are the layers used for the flow key calculation
 type LayerKeyMode int
 
 const (
-	DefaultLayerKeyMode              = L2KeyMode
-	L2KeyMode           LayerKeyMode = 0 // uses Layer2 and Layer3 for hash computation, default mode
-	L3PreferedKeyMode   LayerKeyMode = 1 // uses Layer3 only and layer2 if no Layer3
+	DefaultLayerKeyMode              = L2KeyMode // default mode
+	L2KeyMode           LayerKeyMode = 0         // uses Layer2 and Layer3 for hash computation, default mode
+	L3PreferedKeyMode   LayerKeyMode = 1         // uses Layer3 only and layer2 if no Layer3
 )
 
 // FlowOpts describes options that can be used to process flows
@@ -205,7 +205,7 @@ func (p *Packet) ApplicationFlow() (gopacket.Flow, error) {
 	} else if layer := p.Layer(layers.LayerTypeICMPv6); layer != nil {
 		l := layer.(*ICMPv6)
 		value32 := make([]byte, 4)
-		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.Id))
+		binary.BigEndian.PutUint32(value32, uint32(l.Type)<<24|uint32(l.TypeCode.Code())<<16|uint32(l.ID))
 		return gopacket.NewFlow(0, value32, nil), nil
 	}
 
@@ -320,7 +320,7 @@ func GetFirstLayerType(encapType string) (gopacket.LayerType, layers.LinkType) {
 	}
 }
 
-// LayersPath returns path and the appication of all the layers separated by a slash.
+// LayersPath returns path and the application of all the layers separated by a slash.
 func LayersPath(ls []gopacket.Layer) (string, string) {
 	var app, path string
 	for i, layer := range ls {
@@ -634,7 +634,7 @@ func (f *Flow) newNetworkLayer(packet *Packet) error {
 			f.ICMP = &ICMPLayer{
 				Code: uint32(layer.TypeCode.Code()),
 				Type: layer.Type,
-				ID:   uint32(layer.Id),
+				ID:   uint32(layer.ID),
 			}
 		}
 		return nil
@@ -781,7 +781,7 @@ func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
 		srcPort, dstPort := int(transportPacket.SrcPort), int(transportPacket.DstPort)
 		f.Transport.A, f.Transport.B = int64(srcPort), int64(dstPort)
 
-		if app, ok := opts.AppPortMap.TCPApplication(srcPort, dstPort); ok {
+		if app, ok := opts.AppPortMap.tcpApplication(srcPort, dstPort); ok {
 			f.Application = app
 		}
 
@@ -795,7 +795,7 @@ func (f *Flow) newTransportLayer(packet *Packet, opts FlowOpts) error {
 		srcPort, dstPort := int(transportPacket.SrcPort), int(transportPacket.DstPort)
 		f.Transport.A, f.Transport.B = int64(srcPort), int64(dstPort)
 
-		if app, ok := opts.AppPortMap.UDPApplication(srcPort, dstPort); ok {
+		if app, ok := opts.AppPortMap.udpApplication(srcPort, dstPort); ok {
 			f.Application = app
 		}
 	} else if layer := packet.Layer(layers.LayerTypeSCTP); layer != nil {

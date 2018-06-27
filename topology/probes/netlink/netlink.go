@@ -92,7 +92,7 @@ type NetLinkProbe struct {
 	wg      sync.WaitGroup
 }
 
-// RouteTable describes a list of Routes
+// RoutingTable describes a list of Routes
 type RoutingTable struct {
 	ID     int64   `json:"Id"`
 	Src    net.IP  `json:"Src,omitempty"`
@@ -695,11 +695,11 @@ func (u *NetNsNetLinkProbe) initialize() {
 	}
 }
 
-func (u *NetNsNetLinkProbe) getRoutingTables(m []byte) ([]RoutingTable, error, int) {
+func (u *NetNsNetLinkProbe) getRoutingTables(m []byte) ([]RoutingTable, int, error) {
 	msg := nl.DeserializeRtMsg(m)
 	attrs, err := nl.ParseRouteAttr(m[msg.Len():])
 	if err != nil {
-		return nil, err, -1
+		return nil, -1, err
 	}
 	native := nl.NativeEndian()
 	var linkIndex int
@@ -713,9 +713,10 @@ func (u *NetNsNetLinkProbe) getRoutingTables(m []byte) ([]RoutingTable, error, i
 
 	link, err := u.handle.LinkByIndex(linkIndex)
 	if err != nil {
-		return nil, err, linkIndex
+		return nil, linkIndex, err
 	}
-	return u.getRoutingTable(link, syscall.RTA_UNSPEC), nil, linkIndex
+
+	return u.getRoutingTable(link, syscall.RTA_UNSPEC), linkIndex, err
 }
 
 func parseAddr(m []byte) (addr netlink.Addr, family, index int, err error) {
@@ -933,7 +934,7 @@ func (u *NetNsNetLinkProbe) onMessageAvailable() {
 			}
 			u.onAddressDeleted(addr, family, int64(ifindex))
 		case syscall.RTM_NEWROUTE, syscall.RTM_DELROUTE:
-			rt, err, index := u.getRoutingTables(msg.Data)
+			rt, index, err := u.getRoutingTables(msg.Data)
 			if err != nil {
 				logging.GetLogger().Warningf("Failed to get Routes: %s", err)
 				continue

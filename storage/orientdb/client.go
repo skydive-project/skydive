@@ -582,8 +582,11 @@ func (c *Client) Query(obj string, query *filters.SearchQuery, result interface{
 func (c *Client) Connect() error {
 	url := fmt.Sprintf("%s/connect/%s", c.url, c.database)
 	request, err := http.NewRequest("GET", url, nil)
-	request.SetBasicAuth(c.username, c.password)
+	if err != nil {
+		return err
+	}
 
+	request.SetBasicAuth(c.username, c.password)
 	resp, err := c.client.Do(request)
 	if err != nil {
 		return err

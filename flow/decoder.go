@@ -70,7 +70,7 @@ func (i *ICMPv4) Payload() []byte { return i.LayerPayload() }
 type ICMPv6 struct {
 	layers.ICMPv6
 	Type ICMPType
-	Id   uint16
+	ID   uint16
 }
 
 // Payload returns the ICMP payload
@@ -209,7 +209,7 @@ func decodeICMPv6(data []byte, p gopacket.PacketBuilder) error {
 
 	switch icmpv6.TypeCode.Type() {
 	case layers.ICMPv6TypeEchoRequest, layers.ICMPv6TypeEchoReply:
-		icmpv6.Id = binary.BigEndian.Uint16(icmpv6.TypeBytes[0:2])
+		icmpv6.ID = binary.BigEndian.Uint16(icmpv6.TypeBytes[0:2])
 	}
 
 	p.AddLayer(icmpv6)

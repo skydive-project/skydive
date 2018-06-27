@@ -1405,7 +1405,7 @@ func NewBackendByName(name string) (backend GraphBackend, err error) {
 	case "elasticsearch":
 		backend, err = NewElasticSearchBackendFromConfig(name)
 	default:
-		return nil, errors.New(fmt.Sprintf("Toplogy backend driver '%s' not supported", driver))
+		return nil, fmt.Errorf("Topology backend driver '%s' not supported", driver)
 	}
 
 	if err != nil {

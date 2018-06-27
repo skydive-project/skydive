@@ -152,12 +152,12 @@ func (c *ElasticSearchClient) getIndexPath() string {
 	return fmt.Sprintf("%s_%s_v%d%s", indexPrefix, c.name, indexVersion, suffix)
 }
 
-// Get the rolling alias which points to the currently active index
+// GetIndexAlias returns the rolling alias which points to the currently active index
 func (c *ElasticSearchClient) GetIndexAlias() string {
 	return fmt.Sprintf("%s_%s", indexPrefix, c.name)
 }
 
-// Get the alias which points to all Skydive indices
+// GetIndexAllAlias return the alias which points to all Skydive indices
 func (c *ElasticSearchClient) GetIndexAllAlias() string {
 	return fmt.Sprintf("%s_%s_%s", indexPrefix, c.name, indexAllAlias)
 }
@@ -405,7 +405,7 @@ func (c *ElasticSearchClient) rollIndex() error {
 	return nil
 }
 
-// Roll the current elasticsearch index
+// RollIndex rolls the current elasticsearch index
 func (c *ElasticSearchClient) RollIndex() error {
 	if err := c.rollIndex(); err != nil {
 		return err

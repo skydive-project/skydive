@@ -376,7 +376,7 @@ func TestElasticsearchMappings(t *testing.T) {
 
 	mappings, err := client.GetClient().GetMapping().Index(client.GetIndexAlias()).Do(context.Background())
 	if err != nil {
-		t.Fatalf("Failed to retreive mappings: %s", err.Error())
+		t.Fatalf("Failed to retrieve mappings: %s", err.Error())
 	}
 
 	for indexName, doc := range mappings {

@@ -33,13 +33,13 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type Logger struct {
+type logger struct {
 	*zap.Logger
 	config zap.Config
 	id     string
 }
 
-var logger *Logger
+var currentLogger *logger
 
 type level int
 
@@ -52,13 +52,13 @@ const (
 	DEBUG
 )
 
-func (l *Logger) log(level level, format *string, args ...interface{}) {
+func (l *logger) log(level level, format *string, args ...interface{}) {
 	s := l.Sugar()
 	fmt := l.id
 	if format != nil {
 		fmt += " " + *format
 	} else {
-		for _ = range args {
+		for range args {
 			fmt += " %v"
 		}
 	}
@@ -99,86 +99,86 @@ func getZapLevel(level string) zapcore.Level {
 }
 
 // Fatal is equivalent to l.Critical(fmt.Sprint()) followed by a call to os.Exit(1).
-func (l *Logger) Fatal(args ...interface{}) {
+func (l *logger) Fatal(args ...interface{}) {
 	l.log(CRITICAL, nil, args...)
 	os.Exit(1)
 }
 
 // Fatalf is equivalent to l.Critical followed by a call to os.Exit(1).
-func (l *Logger) Fatalf(format string, args ...interface{}) {
+func (l *logger) Fatalf(format string, args ...interface{}) {
 	l.log(CRITICAL, &format, args...)
 	os.Exit(1)
 }
 
 // Panic is equivalent to l.Critical(fmt.Sprint()) followed by a call to panic().
-func (l *Logger) Panic(args ...interface{}) {
+func (l *logger) Panic(args ...interface{}) {
 	l.log(CRITICAL, nil, args...)
 	panic(fmt.Sprint(args...))
 }
 
 // Panicf is equivalent to l.Critical followed by a call to panic().
-func (l *Logger) Panicf(format string, args ...interface{}) {
+func (l *logger) Panicf(format string, args ...interface{}) {
 	l.log(CRITICAL, &format, args...)
 	panic(fmt.Sprintf(format, args...))
 }
 
 // Critical logs a message using CRITICAL as log level.
-func (l *Logger) Critical(args ...interface{}) {
+func (l *logger) Critical(args ...interface{}) {
 	l.log(CRITICAL, nil, args...)
 }
 
 // Criticalf logs a message using CRITICAL as log level.
-func (l *Logger) Criticalf(format string, args ...interface{}) {
+func (l *logger) Criticalf(format string, args ...interface{}) {
 	l.log(CRITICAL, &format, args...)
 }
 
 // Error logs a message using ERROR as log level.
-func (l *Logger) Error(args ...interface{}) {
+func (l *logger) Error(args ...interface{}) {
 	l.log(ERROR, nil, args...)
 }
 
 // Errorf logs a message using ERROR as log level.
-func (l *Logger) Errorf(format string, args ...interface{}) {
+func (l *logger) Errorf(format string, args ...interface{}) {
 	l.log(ERROR, &format, args...)
 }
 
 // Warning logs a message using WARNING as log level.
-func (l *Logger) Warning(args ...interface{}) {
+func (l *logger) Warning(args ...interface{}) {
 	l.log(WARNING, nil, args...)
 }
 
 // Warningf logs a message using WARNING as log level.
-func (l *Logger) Warningf(format string, args ...interface{}) {
+func (l *logger) Warningf(format string, args ...interface{}) {
 	l.log(WARNING, &format, args...)
 }
 
 // Notice logs a message using NOTICE as log level.
-func (l *Logger) Notice(args ...interface{}) {
+func (l *logger) Notice(args ...interface{}) {
 	l.log(NOTICE, nil, args...)
 }
 
 // Noticef logs a message using NOTICE as log level.
-func (l *Logger) Noticef(format string, args ...interface{}) {
+func (l *logger) Noticef(format string, args ...interface{}) {
 	l.log(NOTICE, &format, args...)
 }
 
 // Info logs a message using INFO as log level.
-func (l *Logger) Info(args ...interface{}) {
+func (l *logger) Info(args ...interface{}) {
 	l.log(INFO, nil, args...)
 }
 
 // Infof logs a message using INFO as log level.
-func (l *Logger) Infof(format string, args ...interface{}) {
+func (l *logger) Infof(format string, args ...interface{}) {
 	l.log(INFO, &format, args...)
 }
 
 // Debug logs a message using DEBUG as log level.
-func (l *Logger) Debug(args ...interface{}) {
+func (l *logger) Debug(args ...interface{}) {
 	l.log(DEBUG, nil, args...)
 }
 
 // Debugf logs a message using DEBUG as log level.
-func (l *Logger) Debugf(format string, args ...interface{}) {
+func (l *logger) Debugf(format string, args ...interface{}) {
 	l.log(DEBUG, &format, args...)
 }
 
@@ -292,7 +292,7 @@ func initLogger() (err error) {
 		// zap.AddStacktrace(zapcore.ErrorLevel),
 		zap.AddStacktrace(zapcore.DPanicLevel),
 	)
-	logger = &Logger{
+	currentLogger = &logger{
 		Logger: z,
 		config: c,
 		id:     cfg.GetString("host_id") + ":" + cfg.GetString("logging.id"),
@@ -302,13 +302,13 @@ func initLogger() (err error) {
 }
 
 // GetLogger returns the current logger instance
-func GetLogger() (log *Logger) {
-	if logger == nil {
+func GetLogger() (log *logger) {
+	if currentLogger == nil {
 		if err := initLogger(); err != nil {
 			panic(err)
 		}
 	}
-	return logger
+	return currentLogger
 }
 
 // InitLogging initialize the logger

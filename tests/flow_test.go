@@ -618,7 +618,7 @@ func queryFlowMetrics(gh *gclient.GremlinQueryHelper, bridge string, timeContext
 	}
 
 	metric, err = gh.GetFlowMetric(gremlin.Has("Metric.ABBytes", g.Between(pingLen, pingLen+1)))
-	if metric == nil || metric.ABBytes <= pingLen-1 || metric.ABBytes >= pingLen+1 {
+	if err != nil || metric == nil || metric.ABBytes <= pingLen-1 || metric.ABBytes >= pingLen+1 {
 		return fmt.Errorf("Number of bytes is wrong, got: %v", metric)
 	}
 
@@ -770,11 +770,7 @@ func TestFlowMetricsStep(t *testing.T) {
 				return fmt.Errorf("Could not find metrics (%+v)", metrics)
 			}
 
-			if err = checkMetricsOrder(metrics); err != nil {
-				return err
-			}
-
-			return nil
+			return checkMetricsOrder(metrics)
 		}},
 	}
 
@@ -1075,7 +1071,7 @@ func TestICMP(t *testing.T) {
 			}
 
 			if len(icmpFlows) != 3 {
-				return fmt.Errorf("We should receive 3 ICMP flows", helper.FlowsToString(icmpFlows))
+				return fmt.Errorf("We should receive 3 ICMP flows, got %s", helper.FlowsToString(icmpFlows))
 			}
 
 			return nil

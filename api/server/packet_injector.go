@@ -32,8 +32,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-//PacketInjectorResourceHandler describes a packet injector resource handler
-type PacketInjectorResourceHandler struct {
+type packetInjectorResourceHandler struct {
 	ResourceHandler
 }
 
@@ -41,14 +40,14 @@ type PacketInjectorResourceHandler struct {
 type PacketInjectorAPI struct {
 	BasicAPIHandler
 	Graph      *graph.Graph
-	TrackingId chan string
+	TrackingID chan string
 }
 
-func (pirh *PacketInjectorResourceHandler) Name() string {
+func (pirh *packetInjectorResourceHandler) Name() string {
 	return "injectpacket"
 }
 
-func (pirh *PacketInjectorResourceHandler) New() types.Resource {
+func (pirh *packetInjectorResourceHandler) New() types.Resource {
 	id, _ := uuid.NewV4()
 
 	return &types.PacketInjection{
@@ -56,6 +55,7 @@ func (pirh *PacketInjectorResourceHandler) New() types.Resource {
 	}
 }
 
+// Create allocates a new packet injection
 func (pi *PacketInjectorAPI) Create(r types.Resource) error {
 	ppr := r.(*types.PacketInjection)
 
@@ -63,7 +63,7 @@ func (pi *PacketInjectorAPI) Create(r types.Resource) error {
 		return err
 	}
 	e := pi.BasicAPIHandler.Create(ppr)
-	ppr.TrackingID = <-pi.TrackingId
+	ppr.TrackingID = <-pi.TrackingID
 	return e
 }
 
@@ -134,11 +134,11 @@ func (pi *PacketInjectorAPI) getNode(gremlinQuery string) *graph.Node {
 func RegisterPacketInjectorAPI(g *graph.Graph, apiServer *Server) (*PacketInjectorAPI, error) {
 	pia := &PacketInjectorAPI{
 		BasicAPIHandler: BasicAPIHandler{
-			ResourceHandler: &PacketInjectorResourceHandler{},
+			ResourceHandler: &packetInjectorResourceHandler{},
 			EtcdKeyAPI:      apiServer.EtcdKeyAPI,
 		},
 		Graph:      g,
-		TrackingId: make(chan string),
+		TrackingID: make(chan string),
 	}
 	if err := apiServer.RegisterAPIHandler(pia); err != nil {
 		return nil, err

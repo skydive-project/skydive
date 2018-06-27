@@ -39,6 +39,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// RootCmd describes the skydive root command
 var RootCmd = &cobra.Command{
 	Use:          "skydive [sub]",
 	Short:        "Skydive",

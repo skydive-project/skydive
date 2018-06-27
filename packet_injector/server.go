@@ -39,7 +39,7 @@ const (
 // PacketInjectorServer creates a packet injector server API
 type PacketInjectorServer struct {
 	Graph    *graph.Graph
-	Channels *Channels
+	Channels *channels
 }
 
 func (pis *PacketInjectorServer) stopPI(msg *shttp.WSStructMessage) error {
@@ -53,9 +53,8 @@ func (pis *PacketInjectorServer) stopPI(msg *shttp.WSStructMessage) error {
 	if ok {
 		c <- true
 		return nil
-	} else {
-		return fmt.Errorf("No PI running on this ID: %s", uuid)
 	}
+	return fmt.Errorf("No PI running on this ID: %s", uuid)
 }
 
 func (pis *PacketInjectorServer) injectPacket(msg *shttp.WSStructMessage) (string, error) {
@@ -107,7 +106,7 @@ func (pis *PacketInjectorServer) OnWSStructMessage(c shttp.WSSpeaker, msg *shttp
 func NewServer(graph *graph.Graph, pool shttp.WSStructSpeakerPool) *PacketInjectorServer {
 	s := &PacketInjectorServer{
 		Graph:    graph,
-		Channels: &Channels{Pipes: make(map[string](chan bool))},
+		Channels: &channels{Pipes: make(map[string](chan bool))},
 	}
 	pool.AddStructMessageHandler(s, []string{Namespace})
 	return s

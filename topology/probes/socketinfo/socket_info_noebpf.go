@@ -28,7 +28,7 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-// NewSocketInfoEnhancer create a new socket info probe
+// NewSocketInfoProbe create a new socket info probe
 func NewSocketInfoProbe(g *graph.Graph, host *graph.Node) *ProcSocketInfoProbe {
 	return NewProcSocketInfoProbe(g, host)
 }

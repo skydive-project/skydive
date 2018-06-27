@@ -181,7 +181,7 @@ func (s *Server) readStatics(upath string) (content []byte, err error) {
 		logging.GetLogger().Debugf("Fetch disk asset: %s", upath)
 		content = asset.Content
 	} else if content, err = statics.Asset(upath); err != nil {
-		logging.GetLogger().Debugf("Fetch embeded asset: %s", upath)
+		logging.GetLogger().Debugf("Fetch embedded asset: %s", upath)
 	}
 	return
 }

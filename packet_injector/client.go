@@ -257,19 +257,19 @@ func (pc *PacketInjectorClient) onAPIWatcherEvent(action string, id string, reso
 	case "create", "set":
 		host, pip, err := pc.requestToParams(pi)
 		if err != nil {
-			pc.piHandler.TrackingId <- ""
+			pc.piHandler.TrackingID <- ""
 			logging.GetLogger().Errorf("Not able to parse request: %s", err.Error())
 			pc.piHandler.BasicAPIHandler.Delete(pi.UUID)
 			return
 		}
 		trackingID, err := pc.InjectPackets(host, pip)
 		if err != nil {
-			pc.piHandler.TrackingId <- ""
+			pc.piHandler.TrackingID <- ""
 			logging.GetLogger().Errorf("Not able to inject on host %s :: %s", host, err.Error())
 			pc.piHandler.BasicAPIHandler.Delete(pi.UUID)
 			return
 		}
-		pc.piHandler.TrackingId <- trackingID
+		pc.piHandler.TrackingID <- trackingID
 		pi.TrackingID = trackingID
 		pi.StartTime = time.Now()
 		pc.piHandler.BasicAPIHandler.Update(pi.UUID, pi)

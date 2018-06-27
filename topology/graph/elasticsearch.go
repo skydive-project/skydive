@@ -196,10 +196,8 @@ func (b *ElasticSearchBackend) hitToNode(source *json.RawMessage, node *Node) er
 	if err := common.JSONDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
 		return err
 	}
-	if err := node.Decode(obj); err != nil {
-		return err
-	}
-	return nil
+
+	return node.Decode(obj)
 }
 
 func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) error {
@@ -207,10 +205,8 @@ func (b *ElasticSearchBackend) hitToEdge(source *json.RawMessage, edge *Edge) er
 	if err := common.JSONDecode(bytes.NewReader([]byte(*source)), &obj); err != nil {
 		return err
 	}
-	if err := edge.Decode(obj); err != nil {
-		return err
-	}
-	return nil
+
+	return edge.Decode(obj)
 }
 
 func (b *ElasticSearchBackend) createNode(n *Node) bool {

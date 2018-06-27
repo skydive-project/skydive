@@ -185,6 +185,10 @@ func (c *TestContext) getWholeGraph(t *testing.T, at time.Time) string {
 		}
 
 		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Error(err)
+			return ""
+		}
 		resp.Body.Close()
 
 		cmd := exec.Command("graph-easy", "--as_ascii")
