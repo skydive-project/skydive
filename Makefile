@@ -33,10 +33,11 @@ VERSION?=$(shell $(VERSION_CMD))
 GO_GET:=CC= GOARCH= go get
 GOVENDOR:=${GOPATH}/bin/govendor
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
+SKYDIVE_PKG:=skydive-${VERSION}
+SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
 SKYDIVE_GITHUB_VERSION:=$(SKYDIVE_GITHUB)/version.Version=${VERSION}
 GO_BINDATA_GITHUB:=github.com/jteeuwen/go-bindata/go-bindata
 PROTOC_GEN_GO_GITHUB:=github.com/golang/protobuf/protoc-gen-go
-SKYDIVE_PKG:=skydive-${VERSION}
 FLOW_PROTO_FILES=flow/flow.proto flow/set.proto flow/request.proto
 FILTERS_PROTO_FILES=filters/filters.proto
 HTTP_PROTO_FILES=http/wsstructmessage.proto
@@ -61,6 +62,7 @@ DESTDIR?=$(shell pwd)
 COVERAGE?=0
 COVERAGE_MODE?=atomic
 COVERAGE_WD?="."
+BOOTSTRAP:=contrib/packaging/rpm/generate-skydive-bootstrap.sh
 BOOTSTRAP_ARGS?=
 BUILD_TAGS?=$(TAGS)
 WITH_LXD?=true
@@ -161,7 +163,7 @@ skydive.yml: etc/skydive.yml.default
 .PHONY: debug
 debug: GOFLAGS+=-gcflags='-N -l'
 debug: GO_BINDATA_FLAGS+=-debug
-debug: skydive.cleanup skydive skydive.yml
+debug: skydive.clean skydive skydive.yml
 
 define skydive_debug
 sudo $$(which dlv) exec $$(which skydive) -- $1 -c skydive.yml
@@ -225,8 +227,8 @@ compile.static:
 .PHONY: skydive
 skydive: govendor genlocalfiles dpdk.build contribs compile
 
-.PHONY: skydive.cleanup
-skydive.cleanup:
+.PHONY: skydive.clean
+skydive.clean:
 	go clean -i $(SKYDIVE_GITHUB)
 
 .PHONY: bench
@@ -247,10 +249,10 @@ bench.flow: bench.flow.traces
 	govendor test -bench=. ${SKYDIVE_GITHUB}/flow
 
 .PHONY: static
-static: skydive.cleanup govendor genlocalfiles compile.static
+static: skydive.clean govendor genlocalfiles compile.static
 
-.PHONY: contribs.cleanup
-contribs.cleanup:
+.PHONY: contribs.clean
+contribs.clean:
 	$(MAKE) -C contrib/snort clean
 
 .PHONY: contribs
@@ -263,8 +265,8 @@ ifeq ($(WITH_DPDK), true)
 	$(MAKE) -C dpdk
 endif
 
-.PHONY: dpdk.cleanup
-dpdk.cleanup:
+.PHONY: dpdk.clean
+dpdk.clean:
 	$(MAKE) -C dpdk clean
 
 .PHONY: ebpf.build
@@ -277,8 +279,8 @@ endif
 ebpf.clean:
 	$(MAKE) -C probe/ebpf clean
 
-.PHONY: test.functionals.cleanup
-test.functionals.cleanup:
+.PHONY: test.functionals.clean
+test.functionals.clean:
 	rm -f tests/functionals
 
 .PHONY: test.functionals.compile
@@ -408,30 +410,46 @@ builddep: govendor
 genlocalfiles: .proto .bindata
 
 .PHONY: clean
-clean: skydive.cleanup test.functionals.cleanup dpdk.cleanup contribs.cleanup
+clean: skydive.clean test.functionals.clean dpdk.clean contribs.clean
 	grep path vendor/vendor.json | perl -pe 's|.*": "(.*?)".*|\1|g' | xargs -n 1 go clean -i >/dev/null 2>&1 || true
 
 .PHONY: srpm
 srpm:
-	contrib/packaging/rpm/generate-skydive-bootstrap.sh -s ${BOOTSTRAP_ARGS}
+	$(BOOTSTRAP) -s ${BOOTSTRAP_ARGS}
 
 .PHONY: rpm
 rpm:
-	contrib/packaging/rpm/generate-skydive-bootstrap.sh -b ${BOOTSTRAP_ARGS}
+	$(BOOTSTRAP) -b ${BOOTSTRAP_ARGS}
 
 .PHONY: docker-image
 docker-image: static
 	cp $$GOPATH/bin/skydive contrib/docker/
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -f contrib/docker/Dockerfile contrib/docker/
 
+SKYDIVE_PROTO_FILES:= \
+	${FLOW_PROTO_FILES} \
+	${FILTERS_PROTO_FILES} \
+	${HTTP_PROTO_FILES}
+
+SKYDIVE_TAR_INPUT:= \
+	vendor \
+	statics/bindata.go \
+	$(patsubst %.proto,%.pb.go,$(SKYDIVE_PROTO_FILES))
+
+SKYDIVE_TAR:=${DESTDIR}/$(SKYDIVE_PKG).tar
+
+define TAR_CMD
+tar $1 -f $(SKYDIVE_TAR) --transform="s||$(SKYDIVE_PATH)|" $2
+endef
+
 .PHONY: localdist
 localdist: govendor genlocalfiles
-	git ls-files | tar -cf ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" -T -
-	tar --append -f ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" vendor statics/bindata.go $(patsubst %.proto,%.pb.go,${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES})
-	gzip -f ${DESTDIR}/$(SKYDIVE_PKG).tar
+	git ls-files | $(call TAR_CMD,--create,--files-from -)
+	$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+	gzip -f $(SKYDIVE_TAR)
 
 .PHONY: dist
 dist: govendor genlocalfiles
-	git archive -o ${DESTDIR}/$(SKYDIVE_PKG).tar --prefix $(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/ HEAD
-	tar --append -f ${DESTDIR}/$(SKYDIVE_PKG).tar --transform="s||$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/|" vendor statics/bindata.go $(patsubst %.proto,%.pb.go,${FLOW_PROTO_FILES} ${FILTERS_PROTO_FILES} ${HTTP_PROTO_FILES})
-	gzip -f ${DESTDIR}/$(SKYDIVE_PKG).tar
+	git archive -o $(SKYDIVE_TAR) --prefix $(SKYDIVE_PATH) HEAD
+	$(call TAR_CMD,--append,$(SKYDIVE_TAR_INPUT))
+	gzip -f $(SKYDIVE_TAR)
