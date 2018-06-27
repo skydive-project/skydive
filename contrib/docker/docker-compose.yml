@@ -1,11 +1,14 @@
 version: '2'
 services:
   elasticsearch:
-    image: elasticsearch:2
-    command: elasticsearch -Des.network.bind_host=0.0.0.0
+    image: elasticsearch:5
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "19200:9200"
+      - "19300:9300"
+    environment:
+      - "discovery.type=single-node"
+    networks:
+      - skynet
 
   skydive-analyzer:
     image: skydive/skydive
@@ -20,6 +23,8 @@ services:
       - SKYDIVE_ANALYZER_STORAGE_BACKEND=elasticsearch
       - SKYDIVE_GRAPH_BACKEND=elasticsearch
       - SKYDIVE_ETCD_LISTEN=0.0.0.0:12379
+    networks:
+      - skynet
 
   skydive-agent:
     image: skydive/skydive
@@ -38,3 +43,6 @@ services:
     environment:
       - SKYDIVE_NETNS_RUN_PATH=/host/run
       - SKYDIVE_ANALYZERS=127.0.0.1:8082
+
+networks:
+  skynet:

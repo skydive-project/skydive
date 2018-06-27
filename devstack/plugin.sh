@@ -65,7 +65,7 @@ if [ "x$PUBLIC_INTERFACE" != "x" ]; then
 fi
 
 ELASTICSEARCH_BASE_URL=https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution
-ELASTICSEARCH_VERSION=2.3.1
+ELASTICSEARCH_VERSION=5.6.10
 
 USE_ELASTICSEARCH=0
 if [ "${SKYDIVE_FLOWS_STORAGE}" == "elasticsearch" ] || [ "${SKYDIVE_GRAPH_STORAGE}" == "elasticsearch" ]; then
@@ -103,10 +103,10 @@ function install_go {
 function download_elasticsearch {
     if [ ! -f ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.* ]; then
         if is_ubuntu; then
-            wget ${ELASTICSEARCH_BASE_URL}/deb/elasticsearch/${ELASTICSEARCH_VERSION}/elasticsearch-${ELASTICSEARCH_VERSION}.deb \
+            wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTICSEARCH_VERSION}.deb \
                 -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.deb
         elif is_fedora; then
-            wget ${ELASTICSEARCH_BASE_URL}/rpm/elasticsearch/${ELASTICSEARCH_VERSION}/elasticsearch-${ELASTICSEARCH_VERSION}.rpm \
+            wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTICSEARCH_VERSION}.rpm \
                 -O ${TOP_DIR}/files/elasticsearch-${ELASTICSEARCH_VERSION}.noarch.rpm
         fi
     fi

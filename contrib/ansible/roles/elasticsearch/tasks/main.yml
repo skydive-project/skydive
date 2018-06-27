@@ -8,10 +8,11 @@
   yum_repository:
     state: present
     name: elasticsearch
-    description: Elasticsearch repository for 2.x packages
+    description: Elasticsearch repository for 5.x packages
     gpgcheck: true
-    gpgkey: https://packages.elastic.co/GPG-KEY-elasticsearch
-    baseurl: https://packages.elastic.co/elasticsearch/2.x/centos
+    gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    baseurl: https://artifacts.elastic.co/packages/5.x/yum
+
 
 - name: Install elasticsearch package
   package:
