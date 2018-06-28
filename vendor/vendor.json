@@ -1713,10 +1713,28 @@
 			"revisionTime": "2018-03-23T15:44:45Z"
 		},
 		{
+			"checksumSHA1": "W8CjFM+BSf5yW0+PGv+eXN0Z1n0=",
+			"path": "github.com/mailru/easyjson/bootstrap",
+			"revision": "3fdea8d05856a0c8df22ed4bc71b3219245e4485",
+			"revisionTime": "2018-06-06T16:35:43Z"
+		},
+		{
 			"checksumSHA1": "T8soMJArSZrYnhmdpAnq1bVxQ6Q=",
 			"path": "github.com/mailru/easyjson/buffer",
 			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
 			"revisionTime": "2017-09-02T15:12:37Z"
+		},
+		{
+			"checksumSHA1": "ZZNuLdXAod35jfV8tgMTrK+qhOQ=",
+			"path": "github.com/mailru/easyjson/easyjson",
+			"revision": "3fdea8d05856a0c8df22ed4bc71b3219245e4485",
+			"revisionTime": "2018-06-06T16:35:43Z"
+		},
+		{
+			"checksumSHA1": "QCOSMCP+znzImWyoYv+LK8VqAT8=",
+			"path": "github.com/mailru/easyjson/gen",
+			"revision": "3fdea8d05856a0c8df22ed4bc71b3219245e4485",
+			"revisionTime": "2018-06-06T16:35:43Z"
 		},
 		{
 			"checksumSHA1": "Xw5HIdQ2vlr5wkKl+8ANM9xp5Zs=",
@@ -1729,6 +1747,12 @@
 			"path": "github.com/mailru/easyjson/jwriter",
 			"revision": "2a92e673c9a6302dd05c3a691ae1f24aef46457d",
 			"revisionTime": "2017-09-02T15:12:37Z"
+		},
+		{
+			"checksumSHA1": "M7JP8bFK4tdXYrEYmhOE1knP/ec=",
+			"path": "github.com/mailru/easyjson/parser",
+			"revision": "3fdea8d05856a0c8df22ed4bc71b3219245e4485",
+			"revisionTime": "2018-06-06T16:35:43Z"
 		},
 		{
 			"checksumSHA1": "DdH3xAkzAWJ4B/LGYJyCeRsly2I=",

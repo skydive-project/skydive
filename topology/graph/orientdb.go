@@ -63,8 +63,7 @@ func graphElementToOrientDBSetString(e graphElement) (s string) {
 
 func metadataToOrientDBSetString(m Metadata) string {
 	if len(m) > 0 {
-		b, err := json.Marshal(m)
-		if err == nil {
+		if b, err := json.Marshal(m); err == nil {
 			return "Metadata = " + string(b)
 		}
 	}

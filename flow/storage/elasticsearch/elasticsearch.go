@@ -130,42 +130,52 @@ type ElasticSearchStorage struct {
 	client *es.Client
 }
 
-// TODO get rid of this structure use static flow marshaller instead
+// easyjson:json
 type embeddedFlow struct {
-	UUID        string
-	LayersPath  string
-	Application string
-	Link        *flow.FlowLayer      `json:"Link,omitempty"`
-	Network     *flow.FlowLayer      `json:"Network,omitempty"`
-	Transport   *flow.TransportLayer `json:"Transport,omitempty"`
-	ICMP        *flow.ICMPLayer      `json:"ICMP,omitempty"`
-	Start       int64
-	Last        int64
+	UUID         *string
+	LayersPath   *string
+	Application  *string
+	Link         *flow.FlowLayer      `json:"Link,omitempty"`
+	Network      *flow.FlowLayer      `json:"Network,omitempty"`
+	Transport    *flow.TransportLayer `json:"Transport,omitempty"`
+	ICMP         *flow.ICMPLayer      `json:"ICMP,omitempty"`
+	TrackingID   *string
+	L3TrackingID *string
+	ParentUUID   *string
+	NodeTID      *string
+	Start        *int64
+	Last         *int64
 }
 
 func flowToEmbbedFlow(f *flow.Flow) *embeddedFlow {
 	return &embeddedFlow{
-		UUID:        f.UUID,
-		LayersPath:  f.LayersPath,
-		Application: f.Application,
-		Link:        f.Link,
-		Network:     f.Network,
-		Transport:   f.Transport,
-		ICMP:        f.ICMP,
-		Start:       f.Start,
-		Last:        f.Last,
+		UUID:         &f.UUID,
+		LayersPath:   &f.LayersPath,
+		Application:  &f.Application,
+		Link:         f.Link,
+		Network:      f.Network,
+		Transport:    f.Transport,
+		ICMP:         f.ICMP,
+		TrackingID:   &f.TrackingID,
+		L3TrackingID: &f.L3TrackingID,
+		ParentUUID:   &f.ParentUUID,
+		NodeTID:      &f.NodeTID,
+		Start:        &f.Start,
+		Last:         &f.Last,
 	}
 }
 
+// easyjson:json
 type metricRecord struct {
 	*flow.FlowMetric
-	Flow *embeddedFlow
+	Flow *embeddedFlow `json:"Flow"`
 }
 
+// easyjson:json
 type rawpacketRecord struct {
 	LinkType layers.LinkType
 	*flow.RawPacket
-	Flow *embeddedFlow
+	Flow *embeddedFlow `json:"Flow"`
 }
 
 // StoreFlows push a set of flows in the database
@@ -264,10 +274,10 @@ func (c *ElasticSearchStorage) SearchRawPackets(fsq filters.SearchQuery, packetF
 				return nil, err
 			}
 
-			if fr, ok := rawpackets[record.Flow.UUID]; ok {
+			if fr, ok := rawpackets[*record.Flow.UUID]; ok {
 				fr.RawPackets = append(fr.RawPackets, record.RawPacket)
 			} else {
-				rawpackets[record.Flow.UUID] = &flow.RawPackets{
+				rawpackets[*record.Flow.UUID] = &flow.RawPackets{
 					LinkType:   record.LinkType,
 					RawPackets: []*flow.RawPacket{record.RawPacket},
 				}
@@ -294,14 +304,19 @@ func (c *ElasticSearchStorage) SearchMetrics(fsq filters.SearchQuery, metricFilt
 		return nil, err
 	}
 
-	metrics := map[string][]common.Metric{}
+	metrics := make(map[string][]common.Metric)
 	if len(out.Hits.Hits) > 0 {
 		for _, d := range out.Hits.Hits {
-			var metric metricRecord
-			if err := json.Unmarshal([]byte(*d.Source), &metric); err != nil {
+			var record metricRecord
+			if err := json.Unmarshal([]byte(*d.Source), &record); err != nil {
 				return nil, err
 			}
-			metrics[metric.Flow.UUID] = append(metrics[d.Parent], metric.FlowMetric)
+
+			if fm, ok := metrics[*record.Flow.UUID]; ok {
+				metrics[*record.Flow.UUID] = append(fm, record.FlowMetric)
+			} else {
+				metrics[*record.Flow.UUID] = []common.Metric{record.FlowMetric}
+			}
 		}
 	}
 

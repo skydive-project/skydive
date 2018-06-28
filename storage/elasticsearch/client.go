@@ -44,7 +44,7 @@ import (
 )
 
 const (
-	schemaVersion  = 11
+	schemaVersion  = "12"
 	indexPrefix    = "skydive"
 	minimalVersion = "5.5"
 )
@@ -92,14 +92,11 @@ type ClientInterface interface {
 
 // Index defines a Client Index
 type Index struct {
-	Name          string
-	Type          string
-	Mapping       string
-	RollIndex     bool
-	URL           string
-	fullName      string // used as cache
-	alias         string // used as cache
-	indexWildcard string // used as cache
+	Name      string
+	Type      string
+	Mapping   string
+	RollIndex bool
+	URL       string
 }
 
 // Client describes a ElasticSearch client connection
@@ -124,31 +121,22 @@ var (
 
 // FullName returns the full name of an index, prefix, name, version, suffix in case of rolling index
 func (i *Index) FullName() string {
-	if i.fullName == "" {
-		var suffix string
-		if i.RollIndex {
-			suffix = "-000001"
-		}
-		i.fullName = fmt.Sprintf("%s_%s_v%d%s", indexPrefix, i.Name, schemaVersion, suffix)
+	var suffix string
+	if i.RollIndex {
+		suffix = "-000001"
 	}
-	return i.fullName
+	return indexPrefix + "_" + i.Name + "_v" + schemaVersion + suffix
 }
 
 // Alias returns the Alias of the index
 func (i *Index) Alias() string {
-	if i.alias == "" {
-		i.alias = fmt.Sprintf("%s_%s", indexPrefix, i.Name)
-	}
-	return i.alias
+	return indexPrefix + "_" + i.Name
 }
 
 // IndexWildcard returns the Index wildcard search string used to all the indexes of an index
 // definition. Useful to request rolled over indexes.
 func (i *Index) IndexWildcard() string {
-	if i.indexWildcard == "" {
-		i.indexWildcard = fmt.Sprintf("%s_%s_v%d*", indexPrefix, i.Name, schemaVersion)
-	}
-	return i.indexWildcard
+	return indexPrefix + "_" + i.Name + "_v" + schemaVersion + "*"
 }
 
 func (c *Client) createAliases(index Index) error {
