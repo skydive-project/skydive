@@ -157,6 +157,7 @@ agent:
       # tenant_name: service
       # region_name: RegionOne
       # domain_name: Default
+      # ssl_insecure: false
 
       # The endpoint_type value must be 'public', 'internal' or 'admin'
       # endpoint_type: public

@@ -23,8 +23,10 @@
 package neutron
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -397,14 +399,33 @@ func (mapper *NeutronProbe) OnNodeDeleted(n *graph.Node) {
 func (mapper *NeutronProbe) Start() {
 	go func() {
 		for mapper.client == nil {
-			provider, err := openstack.AuthenticatedClient(mapper.opts)
+			client, err := openstack.NewClient(mapper.opts.IdentityEndpoint)
 			if err != nil {
+				logging.GetLogger().Errorf("failed to create neutron client: %s", err)
+				time.Sleep(time.Second)
+				continue
+			}
+
+			if err = openstack.Authenticate(client, mapper.opts); err != nil {
 				logging.GetLogger().Errorf("keystone authentication error: %s", err)
 				time.Sleep(time.Second)
 				continue
 			}
 
-			client, err := openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
+			sslInsecure := config.GetBool("agent.topology.neutron.ssl_insecure")
+			if sslInsecure {
+				logging.GetLogger().Warningf("Skipping SSL certificates verification")
+			}
+
+			client.HTTPClient = http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: sslInsecure,
+					},
+				},
+			}
+
+			networkClient, err := openstack.NewNetworkV2(client, gophercloud.EndpointOpts{
 				Name:         "neutron",
 				Region:       mapper.regionName,
 				Availability: mapper.availability,
@@ -414,7 +435,7 @@ func (mapper *NeutronProbe) Start() {
 				time.Sleep(time.Second)
 				continue
 			}
-			mapper.client = client
+			mapper.client = networkClient
 		}
 		mapper.graph.RLock()
 		for _, n := range mapper.graph.GetNodes(nil) {

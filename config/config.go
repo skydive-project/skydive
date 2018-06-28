@@ -71,6 +71,7 @@ func init() {
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
 	cfg.SetDefault("agent.topology.neutron.domain_name", "Default")
 	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")
+	cfg.SetDefault("agent.topology.neutron.ssl_insecure", false)
 	cfg.SetDefault("agent.topology.neutron.region_name", "RegionOne")
 	cfg.SetDefault("agent.topology.neutron.tenant_name", "service")
 	cfg.SetDefault("agent.topology.neutron.username", "neutron")
