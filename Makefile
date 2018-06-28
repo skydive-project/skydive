@@ -32,6 +32,7 @@ endef
 VERSION?=$(shell $(VERSION_CMD))
 GO_GET:=CC= GOARCH= go get
 GOVENDOR:=${GOPATH}/bin/govendor
+BUILD_CMD?=${GOVENDOR}
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_PKG:=skydive-${VERSION}
 SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
@@ -205,7 +206,7 @@ BINDATA_DIRS := \
 	statics/img/* \
 	statics/js/* \
 	statics/schemas/* \
-	statics/workflows/* \
+	statics/workflows/*.yaml \
 	${EXTRABINDATA}
 
 .PHONY: npm.install
@@ -223,14 +224,14 @@ typescript: npm.install
 
 .PHONY: compile
 compile:
-	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(GOVENDOR) install \
+	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(BUILD_CMD) install \
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
 		${GOFLAGS} -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
 
 .PHONY: compile.static
 compile.static:
-	$(GOVENDOR) install \
+	$(BUILD_CMD) install \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
 		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS}" \
