@@ -36,24 +36,29 @@ const (
 )
 
 const (
-	extraField    = "K8s"
-	nodeNameField = extraField + ".Spec.NodeName"
+	detailsField  = "K8s"
+	nodeNameField = detailsField + ".Spec.NodeName"
 )
 
-func newMetadata(ty, namespace, name string, extra interface{}) graph.Metadata {
+func newMetadata(ty, namespace, name string, details interface{}, extras ...graph.Metadata) graph.Metadata {
 	m := graph.Metadata{
-		"Manager":   managerValue,
-		"Type":      ty,
-		"Namespace": namespace,
-		"Name":      name,
-		extraField:  common.NormalizeValue(extra),
+		"Manager":    managerValue,
+		"Type":       ty,
+		"Namespace":  namespace,
+		"Name":       name,
+		detailsField: common.NormalizeValue(details),
+	}
+	for _, extra := range extras {
+		for k, v := range extra {
+			m[k] = v
+		}
 	}
 	return m
 }
 
-func addMetadata(g *graph.Graph, n *graph.Node, extra interface{}) {
+func addMetadata(g *graph.Graph, n *graph.Node, details interface{}) {
 	tr := g.StartMetadataTransaction(n)
-	tr.AddMetadata(extraField, common.NormalizeValue(extra))
+	tr.AddMetadata(detailsField, common.NormalizeValue(details))
 	tr.Commit()
 }
 

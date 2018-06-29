@@ -31,7 +31,7 @@ import (
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
-	api "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -62,7 +62,7 @@ func newPodIndexerByName(g *graph.Graph) *graph.MetadataIndexer {
 	return graph.NewMetadataIndexer(g, m, "Namespace", "Name")
 }
 
-func podUID(pod *api.Pod) graph.Identifier {
+func podUID(pod *v1.Pod) graph.Identifier {
 	return graph.Identifier(pod.GetUID())
 }
 
@@ -70,15 +70,30 @@ func dumpPod2(namespace, name string) string {
 	return fmt.Sprintf("pod{Namespace: %s, Name: %s}", namespace, name)
 }
 
-func dumpPod(pod *api.Pod) string {
+func dumpPod(pod *v1.Pod) string {
 	return dumpPod2(pod.GetNamespace(), pod.GetName())
 }
 
-func (p *podProbe) newMetadata(pod *api.Pod) graph.Metadata {
-	return newMetadata("pod", pod.GetNamespace(), pod.GetName(), pod)
+func (p *podProbe) newMetadata(pod *v1.Pod) graph.Metadata {
+	extra := graph.Metadata{}
+
+	podIP := pod.Status.PodIP
+	if podIP != "" {
+		extra["IP"] = podIP
+	}
+
+	extra["Node"] = pod.Spec.NodeName
+
+	reason := string(pod.Status.Phase)
+	if pod.Status.Reason != "" {
+		reason = pod.Status.Reason
+	}
+	extra["Status"] = reason
+
+	return newMetadata("pod", pod.Namespace, pod.Name, pod, extra)
 }
 
-func (p *podProbe) linkPodToNode(pod *api.Pod, podNode *graph.Node) {
+func (p *podProbe) linkPodToNode(pod *v1.Pod, podNode *graph.Node) {
 	nodeNodes, _ := p.nodeIndexer.Get(pod.Spec.NodeName)
 	if len(nodeNodes) == 0 {
 		return
@@ -87,7 +102,7 @@ func (p *podProbe) linkPodToNode(pod *api.Pod, podNode *graph.Node) {
 }
 
 func (p *podProbe) onAdd(obj interface{}) {
-	pod, ok := obj.(*api.Pod)
+	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		return
 	}
@@ -103,7 +118,7 @@ func (p *podProbe) onAdd(obj interface{}) {
 }
 
 func (p *podProbe) OnAdd(obj interface{}) {
-	pod, ok := obj.(*api.Pod)
+	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		return
 	}
@@ -120,8 +135,8 @@ func (p *podProbe) OnAdd(obj interface{}) {
 }
 
 func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
-	oldPod := oldObj.(*api.Pod)
-	newPod := newObj.(*api.Pod)
+	oldPod := oldObj.(*v1.Pod)
+	newPod := newObj.(*v1.Pod)
 
 	p.Lock()
 	defer p.Unlock()
@@ -145,7 +160,7 @@ func (p *podProbe) OnUpdate(oldObj, newObj interface{}) {
 }
 
 func (p *podProbe) OnDelete(obj interface{}) {
-	if pod, ok := obj.(*api.Pod); ok {
+	if pod, ok := obj.(*v1.Pod); ok {
 		logging.GetLogger().Debugf("Deleting node for %s", dumpPod(pod))
 		p.graph.Lock()
 		if podNode := p.graph.GetNode(podUID(pod)); podNode != nil {
@@ -182,7 +197,7 @@ func (p *podProbe) Stop() {
 }
 
 func newPodKubeCache(handler cache.ResourceEventHandler) *kubeCache {
-	return newKubeCache(getClientset().Core().RESTClient(), &api.Pod{}, "pods", handler)
+	return newKubeCache(getClientset().Core().RESTClient(), &v1.Pod{}, "pods", handler)
 }
 
 func newPodProbe(g *graph.Graph) probe.Probe {

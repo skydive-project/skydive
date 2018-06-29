@@ -112,24 +112,36 @@ func checkEdgeCreation(t *testing.T, c *CheckContext, from, to *graph.Node, relT
 }
 
 /* -- test creation of single resource -- */
-func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name string) {
+func testNodeCreation(t *testing.T, setupCmds, tearDownCmds []helper.Cmd, typ, name string, fields ...string) {
 	test := &Test{
 		mode:         OneShot,
 		retries:      3,
 		setupCmds:    append(tearDownCmds, setupCmds...),
 		tearDownCmds: tearDownCmds,
 		checks: []CheckFunction{func(c *CheckContext) error {
-			_, err := checkNodeCreation(t, c, typ, "Name", name)
-			return err
+			obj, err := checkNodeCreation(t, c, typ, "Name", name)
+			if err != nil {
+				return err
+			}
+
+			m := obj.Metadata()
+			for _, field := range fields {
+				if _, ok := m[field]; !ok {
+
+					return fmt.Errorf("Node '%s %s' missing field: %s", typ, name, field)
+				}
+			}
+
+			return nil
 		}},
 	}
 	RunTest(t, test)
 }
 
-func testNodeCreationFromConfig(t *testing.T, typ, name string) {
+func testNodeCreationFromConfig(t *testing.T, typ, name string, fields ...string) {
 	setup := setupFromConfigFile(typ, name)
 	tearDown := tearDownFromConfigFile(typ, name)
-	testNodeCreation(t, setup, tearDown, typ, name)
+	testNodeCreation(t, setup, tearDown, typ, name, fields...)
 }
 
 func TestK8sClusterNode(t *testing.T) {
@@ -177,7 +189,7 @@ func TestK8sPersistentVolumeClaimNode(t *testing.T) {
 }
 
 func TestK8sPodNode(t *testing.T) {
-	testNodeCreationFromConfig(t, "pod", objName+"-pod")
+	testNodeCreationFromConfig(t, "pod", objName+"-pod", "Node", "Status")
 }
 
 func TestK8sReplicaSetNode(t *testing.T) {
