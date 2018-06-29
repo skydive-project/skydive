@@ -25,8 +25,6 @@ package server
 import (
 	"errors"
 
-	"github.com/nu7hatch/gouuid"
-
 	"github.com/skydive-project/skydive/api/types"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	"github.com/skydive-project/skydive/topology/graph"
@@ -48,11 +46,7 @@ func (pirh *packetInjectorResourceHandler) Name() string {
 }
 
 func (pirh *packetInjectorResourceHandler) New() types.Resource {
-	id, _ := uuid.NewV4()
-
-	return &types.PacketInjection{
-		UUID: id.String(),
-	}
+	return &types.PacketInjection{}
 }
 
 // Create allocates a new packet injection

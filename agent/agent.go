@@ -189,6 +189,7 @@ func NewAgent() (*Agent, error) {
 
 	tr := traversal.NewGremlinTraversalParser()
 	tr.AddTraversalExtension(ge.NewMetricsTraversalExtension())
+	tr.AddTraversalExtension(ge.NewRawPacketsTraversalExtension())
 
 	rootNode, err := createRootNode(g)
 	if err != nil {

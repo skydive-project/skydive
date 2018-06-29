@@ -25,8 +25,6 @@ package server
 import (
 	"fmt"
 
-	uuid "github.com/nu7hatch/gouuid"
-
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
@@ -53,10 +51,7 @@ func (c *CaptureResourceHandler) Name() string {
 
 // New creates a new capture resource
 func (c *CaptureResourceHandler) New() types.Resource {
-	id, _ := uuid.NewV4()
-
 	return &types.Capture{
-		UUID:         id.String(),
 		LayerKeyMode: flow.DefaultLayerKeyModeName(),
 	}
 }
@@ -128,7 +123,7 @@ func (c *CaptureAPIHandler) Create(r types.Resource) error {
 		}
 	}
 
-	resources := c.BasicAPIHandler.Index()
+	resources := c.Index()
 	for _, resource := range resources {
 		resource := resource.(*types.Capture)
 		if resource.GremlinQuery == capture.GremlinQuery {

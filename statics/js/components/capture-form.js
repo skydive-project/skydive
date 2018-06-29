@@ -87,7 +87,7 @@ Vue.component('capture-form', {
                 Defragment IPv4 packets\
               </label>\
               <label class="form-check-label">\
-                <input id="capture-reassamble-tcp" type="checkbox" class="form-check-input" v-model="reassembleTCP">\
+                <input id="capture-reassemble-tcp" type="checkbox" class="form-check-input" v-model="reassembleTCP">\
                 Reassemble TCP packets\
               </label>\
             </div>\
@@ -220,7 +220,7 @@ Vue.component('capture-form', {
             self.typeAllowed = false;
           }
         })
-        .fail(function() {
+        .catch(function() {
           self.resetQueryNodes();
           self.typeAllowed = false;
         });
@@ -283,7 +283,7 @@ Vue.component('capture-form', {
             self.typeAllowed = false;
           }
         })
-        .fail(function(e) {
+        .catch(function(e) {
           self.typeAllowed = false;
         });
     },
@@ -296,13 +296,30 @@ Vue.component('capture-form', {
       }
       if (!this.typeAllowed)
         this.captureType = "";
-      this.$captureCreate(this.query, this.name, this.desc, this.bpf,
-                          this.headerSize, this.rawPackets,
-                          this.extraTCPMetric, this.ipDefrag, this.reassambleTCP,
-                          this.captureType, this.port, this.captureLayerKeyMode)
-        .then(function() {
-          self.reset();
-        });
+
+      var capture = new api.Capture();
+      capture.GremlinQuery = this.query;
+      capture.Name = this.name;
+      capture.Description = this.desc;
+      capture.BPFFilter = this.bpf;
+      capture.HeaderSize = this.headerSize;
+      capture.RawPacketLimit = this.rawPackets;
+      capture.ExtraTCPMetric = this.tcpMetric;
+      capture.Type = this.captureType;
+      capture.Port = this.port;
+      capture.IPDefrag = this.ipDefrag;
+      capture.ReassembleTCP = this.reassembleTCP;
+      capture.LayerKeyMode = this.layerKeyMode
+      return self.captureAPI.create(capture)
+      .then(function(data) {
+        self.$success({message: 'Capture created'});
+        self.reset();
+        return data;
+      })
+      .catch(function(e) {
+        self.$error({message: 'Capture create error: ' + e.responseText});
+        return e;
+      });
     },
 
     resetQueryNodes: function() {

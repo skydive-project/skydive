@@ -1,6 +1,11 @@
 %global import_path     github.com/skydive-project/skydive
 %global gopath          %{_datadir}/gocode
 
+%if 0%{?fedora} >= 27
+%define with_features WITH_EBPF=true
+%endif
+%{!?with_features:%global with_features ""}
+
 %if !%{defined gobuild}
 %define gobuild(o:) go build -compiler gc -ldflags "${LDFLAGS:-} -B 0x$(head -c20 /dev/urandom|od -An -tx1|tr -d ' \\n')" -a -v -x %{?**};
 %endif
@@ -105,10 +110,9 @@ This package installs and sets up the SELinux policy security module for Skydive
 
 %build
 export GOPATH=%{_builddir}/skydive-%{fullver}
-export GO15VENDOREXPERIMENT=1
 export LDFLAGS="$LDFLAGS -X github.com/skydive-project/skydive/version.Version=%{fullver}"
-%gobuild -o bin/skydive %{import_path}
-bin/skydive bash-completion
+make compile BUILD_CMD=go %{with_features}
+%{_builddir}/skydive-%{fullver}/bin/skydive bash-completion
 
 # SELinux build
 %if 0%{?fedora} >= 27
@@ -121,8 +125,7 @@ make -f /usr/share/selinux/devel/Makefile -C contrib/packaging/rpm/ skydive.pp
 bzip2 contrib/packaging/rpm/skydive.pp
 
 %install
-export GOPATH=%{_builddir}/skydive-%{fullver}
-install -D -p -m 755 bin/skydive %{buildroot}%{_bindir}/skydive
+install -D -p -m 755 %{_builddir}/skydive-%{fullver}/bin/skydive %{buildroot}%{_bindir}/skydive
 ln -s skydive %{buildroot}%{_bindir}/skydive-cli
 for bin in agent analyzer
 do

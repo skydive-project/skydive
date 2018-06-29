@@ -38,9 +38,13 @@ var Alert = {
 
   methods: {
     remove: function(alert) {
-      this.$alertDelete(alert.UUID)
-        .always(function() {
-          app.$emit("refresh-alert-list");
+      this.alertAPI.delete(alert.UUID)
+        .catch(function (e) {
+          self.$error({message: 'Alert delete error: ' + e.responseText});
+          return e;
+        })
+        .finally(function() {
+            app.$emit("refresh-alert-list");
         });
     },
   },
@@ -88,9 +92,17 @@ Vue.component('alert-list', {
   methods: {
     getAlertList: function() {
       var self = this;
-      this.$alertList()
+      self.alertAPI.list()
         .then(function(data) {
           self.alerts = data;
+        })
+        .catch(function (e) {
+          console.log("Error while listing alerts: " + e);
+          if (e.status === 405) { // not allowed
+            return $.Deferred().promise([]);
+          }
+          self.$error({message: 'Alert list error: ' + e.responseText});
+          return e;
         });
     },
   },

@@ -25,7 +25,6 @@ package server
 import (
 	"time"
 
-	"github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/api/types"
 )
 
@@ -41,10 +40,7 @@ type AlertAPIHandler struct {
 
 // New creates a new alert
 func (a *AlertResourceHandler) New() types.Resource {
-	id, _ := uuid.NewV4()
-
 	return &types.Alert{
-		UUID:       id.String(),
 		CreateTime: time.Now().UTC(),
 	}
 }

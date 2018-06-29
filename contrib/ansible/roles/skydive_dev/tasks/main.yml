@@ -50,6 +50,7 @@
      - yum-utils
      - manifest-tool
      - ffmpeg
+     - npm
 
 - service:
     name: "{{ item }}"

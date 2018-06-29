@@ -187,11 +187,11 @@ var LinkLabelLatency = Vue.extend({
               const aFlow = aFlowMap[bFlow.TrackingID];
               self.updateLatency(link, aFlow, bFlow);
             })
-            .fail(function(error) {
+            .catch(function(error) {
               console.log(error);
             });
         })
-        .fail(function(error) {
+        .catch(function(error) {
           console.log(error);
         });
     },

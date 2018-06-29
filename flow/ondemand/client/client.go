@@ -238,7 +238,7 @@ func (o *OnDemandProbeClient) OnNodeAdded(n *graph.Node) {
 
 		// not present unregister it
 		logging.GetLogger().Debugf("Unregister remaining capture for node %s: %s", n.ID, id)
-		go o.unregisterProbe(n, &types.Capture{UUID: id})
+		go o.unregisterProbe(n, &types.Capture{BasicResource: types.BasicResource{UUID: id}})
 	} else {
 		o.checkForRegistration.Call()
 	}

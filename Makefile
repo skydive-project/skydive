@@ -32,6 +32,7 @@ endef
 VERSION?=$(shell $(VERSION_CMD))
 GO_GET:=CC= GOARCH= go get
 GOVENDOR:=${GOPATH}/bin/govendor
+BUILD_CMD?=${GOVENDOR}
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_PKG:=skydive-${VERSION}
 SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
@@ -196,29 +197,41 @@ debug.analyzer:
 	gofmt -s -w flow/flow.pb.go
 
 BINDATA_DIRS := \
-	statics/* \
-	statics/css/images/* \
-	statics/css/themes/*/* \
-	statics/js/vendor/* \
-	statics/js/components/* \
+	js/*.js \
 	rbac/policy.csv \
+	statics/index.html \
+	statics/css/* \
+	statics/css/themes/*/* \
+	statics/fonts/* \
+	statics/img/* \
+	statics/js/* \
+	statics/schemas/* \
+	statics/workflows/*.yaml \
 	${EXTRABINDATA}
 
+.PHONY: npm.install
+npm.install:
+	cd js && npm install
+
+.PHONY: typescript
+typescript: npm.install
+	cd js && PATH=`npm bin`:$$PATH make all
+
 .PHONY: .bindata
-.bindata: builddep ebpf.build
+.bindata: builddep ebpf.build typescript
 	$(call VENDOR_RUN,${GO_BINDATA_GITHUB}) go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 
 .PHONY: compile
 compile:
-	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(GOVENDOR) install \
+	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(BUILD_CMD) install \
 		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
 		${GOFLAGS} -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
 
 .PHONY: compile.static
 compile.static:
-	$(GOVENDOR) install \
+	$(BUILD_CMD) install \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
 		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
 		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS}" \
@@ -397,8 +410,7 @@ gometalinter: $(LINTER_COMMANDS)
 .PHONY: lint
 lint: gometalinter
 	@echo "+ $@"
-	@gometalinter --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json > lint.json || true
-	cat lint.json
+	@gometalinter --disable=gotype --vendor -e '.*\.pb.go' --skip=statics/... --deadline 10m --sort=path ./... --json | tee lint.json || true
 
 # dependency package need for building the project
 .PHONY: builddep

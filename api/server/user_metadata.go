@@ -25,8 +25,6 @@ package server
 import (
 	"fmt"
 
-	"github.com/nu7hatch/gouuid"
-
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/topology/graph"
 )
@@ -43,11 +41,7 @@ type UserMetadataAPIHandler struct {
 
 //New creates a new user metadata resource
 func (m *UserMetadataResourceHandler) New() types.Resource {
-	id, _ := uuid.NewV4()
-
-	return &types.UserMetadata{
-		UUID: id.String(),
-	}
+	return &types.UserMetadata{}
 }
 
 //Name return "usermetadata"
@@ -58,7 +52,7 @@ func (m *UserMetadataResourceHandler) Name() string {
 //Create tests that whether the resource is duplicate or unique
 func (m *UserMetadataAPIHandler) Create(r types.Resource) error {
 	umd := r.(*types.UserMetadata)
-	resources := m.BasicAPIHandler.Index()
+	resources := m.Index()
 	for _, resource := range resources {
 		u := resource.(*types.UserMetadata)
 		if u.GremlinQuery == umd.GremlinQuery && umd.Key == u.Key && umd.Value == u.Value {

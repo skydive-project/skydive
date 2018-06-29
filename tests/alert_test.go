@@ -50,7 +50,7 @@ func checkMessage(t *testing.T, b []byte, al *types.Alert, nsName string) (bool,
 	alertLock.Lock()
 	defer alertLock.Unlock()
 
-	var alertMsg alert.AlertMessage
+	var alertMsg alert.Message
 	if err := common.JSONDecode(bytes.NewReader(b), &alertMsg); err == nil {
 		if alertMsg.UUID == al.UUID {
 			var nodes []*graph.Node
@@ -382,7 +382,7 @@ func TestMultipleTriggering(t *testing.T) {
 					continue
 				}
 
-				var alertMsg alert.AlertMessage
+				var alertMsg alert.Message
 				if err := msg.DecodeObj(&alertMsg); err != nil {
 					t.Fatalf("Failed to unmarshal alert : %s", err.Error())
 				}

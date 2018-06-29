@@ -29,7 +29,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/abbot/go-http-auth"
+	auth "github.com/abbot/go-http-auth"
 	etcd "github.com/coreos/etcd/client"
 
 	"github.com/skydive-project/skydive/common"
@@ -135,15 +135,10 @@ func (a *Server) RegisterAPIHandler(handler Handler) error {
 
 				resource := handler.New()
 
-				// keep the original ID
-				id := resource.ID()
-
 				if err := common.JSONDecode(r.Body, &resource); err != nil {
 					writeError(w, http.StatusBadRequest, err)
 					return
 				}
-
-				resource.SetID(id)
 
 				if err := validator.Validate(resource); err != nil {
 					writeError(w, http.StatusBadRequest, err)

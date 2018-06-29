@@ -32,6 +32,7 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
+	uuid "github.com/nu7hatch/gouuid"
 
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/logging"
@@ -157,12 +158,15 @@ func (h *BasicAPIHandler) Get(id string) (types.Resource, bool) {
 
 // Create a new resource in Etcd
 func (h *BasicAPIHandler) Create(resource types.Resource) error {
+	id, _ := uuid.NewV4()
+	resource.SetID(id.String())
+
 	data, err := json.Marshal(&resource)
 	if err != nil {
 		return err
 	}
 
-	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), resource.ID())
+	etcdPath := fmt.Sprintf("/%s/%s", h.ResourceHandler.Name(), id)
 	_, err = h.EtcdKeyAPI.Set(context.Background(), etcdPath, string(data), nil)
 	return err
 }
@@ -178,7 +182,7 @@ func (h *BasicAPIHandler) Delete(id string) error {
 	return nil
 }
 
-//Update a resource
+// Update a resource
 func (h *BasicAPIHandler) Update(id string, resource types.Resource) error {
 	data, err := json.Marshal(&resource)
 	if err != nil {
