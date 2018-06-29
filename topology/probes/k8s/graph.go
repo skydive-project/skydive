@@ -82,7 +82,7 @@ func addOwnershipLink(g *graph.Graph, parent, child *graph.Node) *graph.Edge {
 	m := graph.Metadata{
 		"Manager": managerValue,
 	}
-	if e := topology.GetOwnershipLink(g, parent, child, m); e != nil {
+	if e := topology.GetOwnershipLink(g, parent, child); e != nil {
 		return e
 	}
 	return topology.AddOwnershipLink(g, parent, child, m, hostID)

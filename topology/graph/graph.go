@@ -88,11 +88,11 @@ type GraphElementFilter struct {
 // based only on Metadata.
 type Metadata map[string]interface{}
 
-// MetadataTransaction describes a metadata(s) transaction in the graph
+// MetadataTransaction describes a metadata transaction in the graph
 type MetadataTransaction struct {
 	graph        *Graph
 	graphElement interface{}
-	Metadata     Metadata
+	adds         map[string]interface{}
 }
 
 type graphElement struct {
@@ -431,21 +431,10 @@ func (e *graphElement) GetFieldStringList(name string) ([]string, error) {
 	}
 }
 
-// Clone a metadata
-func (m Metadata) Clone() Metadata {
-	n := Metadata{}
-
-	for k, v := range m {
-		n[k] = common.NormalizeValue(v)
-	}
-
-	return n
-}
-
-// Metadata returns a copy in order to avoid direct modification of metadata leading in
-// loosing notification.
+// Metadata returns metadata. Note that the metadata returned shouldn't be modify directly
+// but using accessors.
 func (e *graphElement) Metadata() Metadata {
-	return e.metadata.Clone()
+	return e.metadata
 }
 
 func (e *graphElement) MatchMetadata(f GraphElementMatcher) bool {
@@ -849,6 +838,11 @@ func (g *Graph) addMetadata(i interface{}, k string, v interface{}, t time.Time)
 	return true
 }
 
+func (g *Graph) updateMetadata(i interface{}, metadata Metadata, t time.Time) bool {
+
+	return true
+}
+
 // AddMetadata add a metadata to an associated edge or node
 func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 	return g.addMetadata(i, k, v, time.Now().UTC())
@@ -856,32 +850,54 @@ func (g *Graph) AddMetadata(i interface{}, k string, v interface{}) bool {
 
 // AddMetadata in the current transaction
 func (t *MetadataTransaction) AddMetadata(k string, v interface{}) {
-	t.Metadata.SetField(k, v)
+	t.adds[k] = v
 }
 
 // Commit the current transaction to the graph
 func (t *MetadataTransaction) Commit() {
-	t.graph.SetMetadata(t.graphElement, t.Metadata)
+	var e *graphElement
+	ge := graphEvent{element: t.graphElement}
+
+	switch t.graphElement.(type) {
+	case *Node:
+		e = &t.graphElement.(*Node).graphElement
+		ge.kind = nodeUpdated
+	case *Edge:
+		e = &t.graphElement.(*Edge).graphElement
+		ge.kind = edgeUpdated
+	}
+
+	var updated bool
+	for k, v := range t.adds {
+		if o, ok := e.metadata[k]; ok && reflect.DeepEqual(o, v) {
+			continue
+		}
+
+		if e.metadata.SetField(k, v) {
+			updated = true
+		}
+	}
+
+	if !updated {
+		return
+	}
+
+	e.updatedAt = time.Now().UTC()
+	e.revision++
+
+	if !t.graph.backend.MetadataUpdated(e) {
+		return
+	}
+
+	t.graph.eventHandler.notifyEvent(ge)
 }
 
 // StartMetadataTransaction start a new transaction
 func (g *Graph) StartMetadataTransaction(i interface{}) *MetadataTransaction {
-	var e graphElement
-
-	switch i.(type) {
-	case *Node:
-		e = i.(*Node).graphElement
-	case *Edge:
-		e = i.(*Edge).graphElement
-	}
-
 	t := MetadataTransaction{
 		graph:        g,
 		graphElement: i,
-		Metadata:     make(Metadata),
-	}
-	for k, v := range e.metadata {
-		t.Metadata[k] = v
+		adds:         make(map[string]interface{}),
 	}
 
 	return &t

@@ -238,7 +238,7 @@ func (u *NetNsNetLinkProbe) addGenericLinkToTopology(link netlink.Link, m graph.
 		intf = u.Graph.NewNode(graph.GenID(), m)
 	}
 
-	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf, nil) {
+	if !topology.HaveOwnershipLink(u.Graph, u.Root, intf) {
 		topology.AddOwnershipLink(u.Graph, u.Root, intf, nil)
 	}
 
@@ -794,9 +794,9 @@ func (u *NetNsNetLinkProbe) updateIntfMetric(now, last time.Time) {
 
 			var lastUpdateMetric *topology.InterfaceMetric
 
-			prevMetric, ok := tr.Metadata["Metric"].(*topology.InterfaceMetric)
-			if ok {
-				lastUpdateMetric = currMetric.Sub(prevMetric).(*topology.InterfaceMetric)
+			prevMetric, err := node.GetField("Metric")
+			if err == nil {
+				lastUpdateMetric = currMetric.Sub(prevMetric.(*topology.InterfaceMetric)).(*topology.InterfaceMetric)
 			}
 
 			// nothing changed since last update
@@ -805,11 +805,11 @@ func (u *NetNsNetLinkProbe) updateIntfMetric(now, last time.Time) {
 				continue
 			}
 
-			tr.Metadata["Metric"] = currMetric
+			tr.AddMetadata("Metric", currMetric)
 			if lastUpdateMetric != nil {
 				lastUpdateMetric.Start = int64(common.UnixMillis(last))
 				lastUpdateMetric.Last = int64(common.UnixMillis(now))
-				tr.Metadata["LastUpdateMetric"] = lastUpdateMetric
+				tr.AddMetadata("LastUpdateMetric", lastUpdateMetric)
 			}
 
 			tr.Commit()
