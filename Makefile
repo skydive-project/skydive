@@ -33,6 +33,7 @@ VERSION?=$(shell $(VERSION_CMD))
 GO_GET:=CC= GOARCH= go get
 GOVENDOR:=${GOPATH}/bin/govendor
 BUILD_CMD?=${GOVENDOR}
+BUILD_ID:=$(shell echo 0x$$(head -c20 /dev/urandom|od -An -tx1|tr -d ' \n'))
 SKYDIVE_GITHUB:=github.com/skydive-project/skydive
 SKYDIVE_PKG:=skydive-${VERSION}
 SKYDIVE_PATH:=$(SKYDIVE_PKG)/src/$(SKYDIVE_GITHUB)/
@@ -225,7 +226,8 @@ typescript: npm.install
 .PHONY: compile
 compile:
 	CGO_CFLAGS_ALLOW='.*' CGO_LDFLAGS_ALLOW='.*' $(BUILD_CMD) install \
-		-ldflags="-X $(SKYDIVE_GITHUB_VERSION)" \
+		-ldflags="-X $(SKYDIVE_GITHUB_VERSION) \
+		-B $(BUILD_ID)" \
 		${GOFLAGS} -tags="${BUILD_TAGS}" ${VERBOSE_FLAGS} \
 		${SKYDIVE_GITHUB}
 
@@ -233,7 +235,8 @@ compile:
 compile.static:
 	$(BUILD_CMD) install \
 		-ldflags "-X $(SKYDIVE_GITHUB_VERSION) \
-		-extldflags \"-static $(STATIC_LIBS_ABS)\"" \
+		-extldflags \"-static $(STATIC_LIBS_ABS)\" \
+		-B $(BUILD_ID)" \
 		${VERBOSE_FLAGS} -tags "netgo ${BUILDTAGS}" \
 		-installsuffix netgo || true
 
