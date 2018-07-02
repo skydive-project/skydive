@@ -4,11 +4,7 @@
 %if 0%{?fedora} >= 27
 %define with_features WITH_EBPF=true
 %endif
-%{!?with_features:%global with_features ""}
-
-%if !%{defined gobuild}
-%define gobuild(o:) go build -compiler gc -ldflags "${LDFLAGS:-} -B 0x$(head -c20 /dev/urandom|od -An -tx1|tr -d ' \\n')" -a -v -x %{?**};
-%endif
+%{!?with_features:%global with_features %{nil}}
 
 %if !%{defined gotest}
 %define gotest() go test -compiler gc -ldflags "${LDFLAGS:-}" %{?**};
@@ -42,7 +38,9 @@ URL:            https://%{import_path}
 Source0:        https://%{import_path}/releases/download/v%{version}/skydive-%{fullver}.tar.gz
 BuildRequires:  systemd
 BuildRequires:  libpcap-devel libxml2-devel
+%if 0%{?fedora} >= 27
 BuildRequires:  llvm clang kernel-headers
+%endif
 BuildRequires:  selinux-policy-devel, policycoreutils-devel
 Requires:       %{name}-selinux = %{version}-%{release}
 
@@ -110,8 +108,7 @@ This package installs and sets up the SELinux policy security module for Skydive
 
 %build
 export GOPATH=%{_builddir}/skydive-%{fullver}
-export LDFLAGS="$LDFLAGS -X github.com/skydive-project/skydive/version.Version=%{fullver}"
-make compile BUILD_CMD=go %{with_features}
+make compile BUILD_CMD=go VERSION=%{fullver} %{with_features}
 %{_builddir}/skydive-%{fullver}/bin/skydive bash-completion
 
 # SELinux build
