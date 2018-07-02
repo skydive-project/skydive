@@ -177,6 +177,16 @@ agent:
       # The endpoint_type value must be 'public', 'internal' or 'admin'
       # endpoint_type: public
 
+    opencontrail:
+      # Host address of the OpenContrail vrouter agent
+      # host: localhost
+
+      # TCP port of the OpenContrail vrouter agent
+      # port: 8086
+
+      # UDP dest port for MPLS traffic
+      # mpls_udp_port: 51234
+
     ovs:
       # ovsdb connection, Format supported :
       # * addr:port
@@ -241,16 +251,6 @@ sflow:
   # with a port from this range
   # port_min: 6345
   # port_max: 6355
-
-opencontrail:
-  # Host address of the OpenContrail vrouter agent
-  # host: localhost
-
-  # TCP port of the OpenContrail vrouter agent
-  # port: 8086
-
-  # UDP dest port for MPLS traffic
-  # mpls_udp_port: 51234
 
 storage:
   # Elasticsearch backend information.

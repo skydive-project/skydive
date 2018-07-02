@@ -51,6 +51,7 @@ var (
 		"agent.topology.docker.url":                  {"docker.url"},
 		"agent.topology.docker.netns.run_path":       {"docker.netns.run_path"},
 		"agent.topology.netns.run_path":              {"netns.run_path"},
+		"agent.topology.opencontrail.mpls_udp_port":  {"opencontrail.mpls_udp_port"},
 		"agent.topology.ovs.ovsdb":                   {"ovs.ovsdb"},
 		"agent.topology.ovs.oflow.enable":            {"ovs.oflow.enable"},
 		"agent.topology.ovs.oflow.openflow_versions": {"ovs.oflow.openflow_versions"},
@@ -94,6 +95,9 @@ func init() {
 	cfg.SetDefault("agent.topology.neutron.region_name", "RegionOne")
 	cfg.SetDefault("agent.topology.neutron.tenant_name", "service")
 	cfg.SetDefault("agent.topology.neutron.username", "neutron")
+	cfg.SetDefault("agent.topology.opencontrail.host", "localhost")
+	cfg.SetDefault("agent.topology.opencontrail.mpls_udp_port", 51234)
+	cfg.SetDefault("agent.topology.opencontrail.port", 8085)
 	cfg.SetDefault("agent.topology.ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("agent.topology.ovs.oflow.enable", false)
 	cfg.SetDefault("agent.topology.ovs.oflow.openflow_versions", []string{"OpenFlow10"})
@@ -143,10 +147,6 @@ func init() {
 	cfg.SetDefault("logging.file.path", "/var/log/skydive.log")
 	cfg.SetDefault("logging.level", "INFO")
 	cfg.SetDefault("logging.syslog.tag", "skydive")
-
-	cfg.SetDefault("opencontrail.host", "localhost")
-	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
-	cfg.SetDefault("opencontrail.port", 8085)
 
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
