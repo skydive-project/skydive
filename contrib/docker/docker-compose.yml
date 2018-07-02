@@ -41,7 +41,7 @@ services:
       - /var/run/netns:/host/run:shared
       - /var/run/openvswitch/db.sock:/var/run/openvswitch/db.sock
     environment:
-      - SKYDIVE_NETNS_RUN_PATH=/host/run
+      - SKYDIVE_AGENT_TOPOLOGY_NETNS_RUN_PATH=/host/run
       - SKYDIVE_ANALYZERS=127.0.0.1:8082
 
 networks:

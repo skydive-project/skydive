@@ -159,6 +159,10 @@ agent:
       # delay in seconds between two metric updates
       # metrics_update: 30
 
+    netns:
+      # allow to specify where the netns probe is watching network namespace
+      # run_path: /var/run/netns
+
     # Define OpenStack Neutron credentials and the enpoint type
     # used by the neutron probe
     neutron:
@@ -237,10 +241,6 @@ sflow:
   # with a port from this range
   # port_min: 6345
   # port_max: 6355
-
-netns:
-  # allow to specify where the netns probe is watching network namespace
-  # run_path: /var/run/netns
 
 opencontrail:
   # Host address of the OpenContrail vrouter agent

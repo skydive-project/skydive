@@ -56,7 +56,7 @@ spec:
           value: {{ template "fullname" . }}-service:{{ .Values.service.port }}
         - name: SKYDIVE_FLOW_PROTOCOL
           value: websocket
-        - name: SKYDIVE_AGENT_TOPOLOTY_PROBS
+        - name: SKYDIVE_AGENT_TOPOLOGY_PROBES
           value: ovsdb, docker
       {{- if .Values.env }}
 {{ toYaml .Values.env | indent 8 }}

@@ -20,7 +20,7 @@
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v /var/run/netns:/host/run:ro,shared \
         -v /etc/skydive/skydive.yml:/etc/skydive.yml \
-        -e SKYDIVE_NETNS_RUN_PATH=/host/run {{ skydive_agent_docker_extra_env }} \
+        -e SKYDIVE_AGENT_TOPOLOGY_NETNS_RUN_PATH=/host/run {{ skydive_agent_docker_extra_env }} \
         -p {{ skydive_agent_port }}:{{ skydive_agent_port }} \
         --name=skydive-agent-{{ ansible_hostname }} \
         {{ skydive_docker_registry }}/{{ skydive_agent_docker_image }}:{{ skydive_docker_image_tag }} \

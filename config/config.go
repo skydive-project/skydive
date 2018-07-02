@@ -50,6 +50,7 @@ var (
 		"agent.capture.stats_update":                 {"agent.flow.stats_update"},
 		"agent.topology.docker.url":                  {"docker.url"},
 		"agent.topology.docker.netns.run_path":       {"docker.netns.run_path"},
+		"agent.topology.netns.run_path":              {"netns.run_path"},
 		"agent.topology.ovs.ovsdb":                   {"ovs.ovsdb"},
 		"agent.topology.ovs.oflow.enable":            {"ovs.oflow.enable"},
 		"agent.topology.ovs.oflow.openflow_versions": {"ovs.oflow.openflow_versions"},
@@ -86,6 +87,7 @@ func init() {
 	cfg.SetDefault("agent.topology.docker.url", "unix:///var/run/docker.sock")
 	cfg.SetDefault("agent.topology.docker.netns.run_path", "/var/run/docker/netns")
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
+	cfg.SetDefault("agent.topology.netns.run_path", "/var/run/netns")
 	cfg.SetDefault("agent.topology.neutron.domain_name", "Default")
 	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")
 	cfg.SetDefault("agent.topology.neutron.ssl_insecure", false)
@@ -141,8 +143,6 @@ func init() {
 	cfg.SetDefault("logging.file.path", "/var/log/skydive.log")
 	cfg.SetDefault("logging.level", "INFO")
 	cfg.SetDefault("logging.syslog.tag", "skydive")
-
-	cfg.SetDefault("netns.run_path", "/var/run/netns")
 
 	cfg.SetDefault("opencontrail.host", "localhost")
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
