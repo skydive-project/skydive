@@ -51,6 +51,7 @@
      - manifest-tool
      - ffmpeg
      - npm
+     - gifsicle
 
 - service:
     name: "{{ item }}"
