@@ -92,8 +92,12 @@ func (t *TopologyPublisherEndpoint) OnWSStructMessage(c shttp.WSSpeaker, msg *sh
 	}
 
 	if schema != nil {
-		if _, err := gojsonschema.Validate(t.edgeSchema, loader); err != nil {
-			logging.GetLogger().Errorf("Invalid message: %s", err.Error())
+		result, err := gojsonschema.Validate(schema, loader)
+		if err != nil {
+			logging.GetLogger().Errorf("Error while validating message: %s", err)
+			return
+		} else if !result.Valid() {
+			logging.GetLogger().Errorf("Invalid message %s", msgType)
 			return
 		}
 	}

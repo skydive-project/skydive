@@ -92,8 +92,24 @@ class SkydiveWSTest(unittest.TestCase):
             msg = WSMessage("Graph", NodeAddedMsgType, node)
             protocol.sendWSMessage(msg)
 
+            node = Node("BAD_NODE", "",
+                        metadata={"Name": "Bad node"})
+            msg = WSMessage("Graph", NodeAddedMsgType, node)
+            protocol.sendWSMessage(msg)
+
+            node = Node("BAD_NETNS", "",
+                        metadata={"Name": "Bad netns", "Type": "netns"})
+            msg = WSMessage("Graph", NodeAddedMsgType, node)
+            protocol.sendWSMessage(msg)
+
             edge = Edge("TOR_L2LINK", "",
                         "TOR_TEST", "PORT_TEST",
+                        metadata={"RelationType": "layer2"})
+            msg = WSMessage("Graph", EdgeAddedMsgType, edge)
+            protocol.sendWSMessage(msg)
+
+            edge = Edge("BAD_LINK", "",
+                        "", "",
                         metadata={"RelationType": "layer2"})
             msg = WSMessage("Graph", EdgeAddedMsgType, edge)
             protocol.sendWSMessage(msg)
@@ -120,6 +136,12 @@ class SkydiveWSTest(unittest.TestCase):
 
         tor_id = nodes[0].id
         self.assertEqual(tor_id, nodes[0].id, "wrong id for node")
+
+        nodes = restclient.lookup_nodes("G.V().Has('Name', 'Bad netns')")
+        self.assertEqual(len(nodes), 0, "should find no 'Bad netns' node")
+
+        nodes = restclient.lookup_nodes("G.V().Has('Name', 'Bad node')")
+        self.assertEqual(len(nodes), 0, "should find no 'Bad node' node")
 
         edges = restclient.lookup_edges(
             "G.E().Has('RelationType', 'layer2')")

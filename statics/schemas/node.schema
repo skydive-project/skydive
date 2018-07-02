@@ -5,7 +5,8 @@
     "graphElement": {
       "properties": {
         "ID": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "Host": {
           "type": "string"
@@ -20,13 +21,6 @@
       "required": [
         "ID"
       ]
-    },
-    "deviceMetadata": {
-      "properties": {
-        "MTU": {
-          "type": "integer"
-        }
-      }
     },
     "nsMetadata": {
       "properties": {
@@ -58,9 +52,24 @@
               "allOf": [
                 {
                   "properties": {
-                    "Name": {
-                      "type": "string"
-                    },
+                    "Type": {
+                      "type": "string",
+                      "minLength": 1,
+                      "not": { "enum": [ "netns", "ovsport" ] }
+                    }
+                  },
+                  "required": [ "Type" ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "Metadata": {
+              "allOf": [
+                {
+                  "properties": {
                     "Type": {
                       "type": "string",
                       "enum": [ "netns" ]
@@ -80,9 +89,6 @@
               "allOf": [
                 {
                   "properties": {
-                    "Name": {
-                      "type": "string"
-                    },
                     "Type": {
                       "type": "string",
                       "enum": [ "ovsport" ]
