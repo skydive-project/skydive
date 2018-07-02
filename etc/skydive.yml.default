@@ -105,6 +105,49 @@ analyzer:
       # - k8s
       # - istio
 
+    k8s:
+      # EXPERIMENTAL: k8s probe is still under development and should not be used
+      # on production systems
+
+      # kubeconfig resolution order:
+      # - if config_file param is defined then use it;
+      # - else if $KUBECONFIG environment is define then use it;
+      # - else if $HOME/.kube/config file exists then use it;
+      # - else use empty configuration (for accessing from within the k8s cluster).
+
+      # specify the path of k8s configuration YAML file.
+      # config_file: /etc/skydive/kubeconfig
+
+      # list of (sub) probes comprising k8s probe.
+      # if list is empty then will resolve to all existing (sub) probes.
+      probes:
+        - container
+        - cronjob
+        - deployment
+        - endpoints
+        - ingress
+        - job
+        - namespace
+        - networkpolicy
+        - node
+        - persistentvolume
+        - persistentvolumeclaim
+        - pod
+        - replicaset
+        - replicationcontroller
+        - service
+        - statefulset
+        - storageclass
+
+    istio:
+      # specify the path of istio configuration YAML file.
+      # config_file: /etc/skydive/kubeconfig
+
+      # EXPERIMENTAL: istio probe is still under development and should not be used
+      # on production systems
+      probes:
+      - destinationrule
+
   replication:
     # debug: false
 
@@ -382,47 +425,6 @@ flow:
       # 1194: OPENVPN
     udp:
       # 1194: OPENVPN
-
-k8s:
-  # EXPERIMENTAL: k8s probe is still under development and should not be used
-  # on production systems
-
-  # kubeconfig resolution order:
-  # - if config_file param is defined then use it;
-  # - else if $KUBECONFIG environment is define then use it;
-  # - else if $HOME/.kube/config file exists then use it;
-  # - else use empty configuration (for accessing from within the k8s cluster).
-
-  # specify the path of k8s configuration YAML file.
-  # config_file: /etc/skydive/kubeconfig
-
-  # list of (sub) probes comprising k8s probe.
-  # if list is empty then will resolve to all existing (sub) probes.
-  probes:
-  - container
-  - cronjob
-  - deployment
-  - endpoints
-  - ingress
-  - job
-  - namespace
-  - networkpolicy
-  - node
-  - persistentvolume
-  - persistentvolumeclaim
-  - pod
-  - replicaset
-  - replicationcontroller
-  - service
-  - statefulset
-  - storageclass
-
-istio:
-  # EXPERIMENTAL: istio probe is still under development and should not be used
-  # on production systems
-  probes:
-  - cluster
-  - destinationrule
 
 ui:
   # Specify the extra assets folder. Javascript and CSS files present in this

@@ -59,8 +59,8 @@ func NewConfig(kubeConfig string) (*rest.Config, error) {
 
 // NewK8sProbe returns a new Kubernetes probe
 func NewK8sProbe(g *graph.Graph) (*Probe, error) {
-	configFile := config.GetString("k8s.config_file")
-	enabledSubprobes := config.GetStringSlice("k8s.probes")
+	configFile := config.GetString("analyzer.topology.k8s.config_file")
+	enabledSubprobes := config.GetStringSlice("analyzer.topology.k8s.probes")
 
 	config, err := NewConfig(configFile)
 	if err != nil {
