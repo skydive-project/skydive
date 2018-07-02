@@ -85,13 +85,14 @@ func (o *OvsdbProbe) OnOvsBridgeAdd(monitor *ovsdb.OvsMonitor, uuid string, row 
 	defer o.Unlock()
 
 	name := row.New.Fields["name"].(string)
+        datapath_type := row.New.Fields["datapath_type"].(string)
 
 	o.Graph.Lock()
 	defer o.Graph.Unlock()
 
 	bridge := o.Graph.LookupFirstNode(graph.Metadata{"UUID": uuid})
 	if bridge == nil {
-		bridge = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Type": "ovsbridge"})
+		bridge = o.Graph.NewNode(graph.GenID(), graph.Metadata{"Name": name, "UUID": uuid, "Type": "ovsbridge", "Datapath Type": datapath_type})
 		topology.AddOwnershipLink(o.Graph, o.Root, bridge, nil)
 	}
 

@@ -189,6 +189,15 @@ var TopologyComponent = {
           <feature-table :features="currentNodeFeatures"></feature-table>\
         </panel>\
         <panel id="ovs-rules" v-if="currentNodeMetadata && currentNodeMetadata.Type == \'ovsbridge\'"\
+        <panel v-if="currentNodeCoverage"\
+               title="Coverage">\
+          <pre> {{ currentNodeCoverage }} </pre>\
+        </panel>\
+        <panel v-if="currentNodePMD"\
+               title="PMD">\
+          <pre> {{ currentNodePMD }} </pre>\
+        </panel>\
+        <panel v-if="currentNodeMetadata && currentNodeMetadata.Type == \'ovsbridge\'"\
                title="Rules">\
           <rule-detail :bridge="currentNode" :graph="graph"></rule-detail>\
         </panel>\
@@ -391,7 +400,7 @@ var TopologyComponent = {
     currentNodeMetadata: function() {
       if (!this.currentNode) return null;
       return this.extractMetadata(this.currentNode.metadata,
-        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features']);
+        ['LastUpdateMetric', 'Metric', 'Ovs.Metric', 'Ovs.LastUpdateMetric', 'RoutingTable', 'Features', 'coverage', 'pmd']);
     },
 
     currentNodeFlowsQuery: function() {
@@ -403,6 +412,16 @@ var TopologyComponent = {
     currentNodeFeatures: function() {
       if (!this.currentNodeMetadata || !this.currentNode.metadata.Features) return null;
       return this.currentNode.metadata.Features;
+    },
+
+    currentNodeCoverage: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.coverage) return null;
+      return this.currentNode.metadata.coverage;
+    },
+
+    currentNodePMD: function() {
+      if (!this.currentNodeMetadata || !this.currentNode.metadata.pmd) return null;
+      return this.currentNode.metadata.pmd;
     },
 
     currentNodeMetric: function() {

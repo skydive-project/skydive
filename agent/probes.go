@@ -37,6 +37,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/neutron"
 	"github.com/skydive-project/skydive/topology/probes/opencontrail"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
+	"github.com/skydive-project/skydive/topology/probes/pmd"
 	"github.com/skydive-project/skydive/topology/probes/socketinfo"
 )
 
@@ -97,6 +98,8 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 				return nil, fmt.Errorf("Failed to initialize OpenContrail probe: %s", err)
 			}
 			probes[t] = opencontrail
+		case "pmd":
+			probes[t] = pmd.NewPMDProbe(g)
 		case "socketinfo":
 			probes[t] = socketinfo.NewSocketInfoProbe(g, n)
 		default:
