@@ -202,6 +202,8 @@ agent:
       - netns
       - ovsdb
       - socketinfo
+    netns:
+      run_path: $TEMP_DIR/$NAME-netns
   auth:
     cluster:
       username: agent-${IDX}
@@ -210,8 +212,6 @@ flow:
   expire: 600
   update: 5
   protocol: $FLOW_PROTOCOL
-netns:
-  run_path: $TEMP_DIR/$NAME-netns
 etcd:
   data_dir: $TEMP_DIR/$NAME-etcd
   servers:

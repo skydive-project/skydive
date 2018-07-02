@@ -209,6 +209,10 @@ agent:
       # delay in seconds between two metric updates
       # metrics_update: 30
 
+    netns:
+      # allow to specify where the netns probe is watching network namespace
+      # run_path: /var/run/netns
+
     # Define OpenStack Neutron credentials and the enpoint type
     # used by the neutron probe
     neutron:
