@@ -72,18 +72,19 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, hostNode *graph.Node) (*pr
 			probes[t] = ovsdb.NewProbeFromConfig(g, hostNode)
 		case "lxd":
 			lxdURL := config.GetConfig().GetString("lxd.url")
-			Probe, err := lxd.NewProbe(nsProbe, lxdURL)
+			lxdProbe, err := lxd.NewProbe(nsProbe, lxdURL)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize LXD probe: %s", err)
 			}
-			probes[t] = Probe
+			probes[t] = lxdProbe
 		case "docker":
-			dockerURL := config.GetString("docker.url")
-			Probe, err := docker.NewProbe(nsProbe, dockerURL)
+			dockerURL := config.GetString("agent.topology.docker.url")
+			netnsRunPath := config.GetString("agent.topology.docker.netns.run_path")
+			dockerProbe, err := docker.NewProbe(nsProbe, dockerURL, netnsRunPath)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to initialize Docker probe: %s", err)
 			}
-			probes[t] = Probe
+			probes[t] = dockerProbe
 		case "lldp":
 			interfaces := config.GetStringSlice("agent.topology.lldp.interfaces")
 			lldpProbe, err := lldp.NewProbe(g, hostNode, interfaces)

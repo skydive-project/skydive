@@ -33,7 +33,6 @@ import (
 	"github.com/vishvananda/netns"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology"
@@ -287,18 +286,18 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe creates a new topology Docker probe
-func NewProbe(nsProbe *ns.Probe, dockerURL string) (*Probe, error) {
-	Probe := &Probe{
+func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string) (*Probe, error) {
+	probe := &Probe{
 		Probe:        nsProbe,
 		url:          dockerURL,
 		containerMap: make(map[string]containerInfo),
 		state:        common.StoppedState,
 	}
 
-	if path := config.GetString("docker.netns.run_path"); path != "" {
-		nsProbe.Exclude(path + "/default")
-		nsProbe.Watch(path)
+	if netnsRunPath != "" {
+		nsProbe.Exclude(netnsRunPath + "/default")
+		nsProbe.Watch(netnsRunPath)
 	}
 
-	return Probe, nil
+	return probe, nil
 }

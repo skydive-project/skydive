@@ -37,6 +37,6 @@ func (probe *Probe) Stop() {
 }
 
 // NewProbe creates a new topology Docker probe
-func NewProbe(nsProbe *ns.Probe, dockerURL string) (*Probe, error) {
+func NewProbe(nsProbe *ns.Probe, dockerURL, netnsRunPath string) (*Probe, error) {
 	return nil, common.ErrNotImplemented
 }
