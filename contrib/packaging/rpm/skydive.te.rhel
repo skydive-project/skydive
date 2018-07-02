@@ -98,7 +98,7 @@ require {
 }
 
 #============= skydive_t ==============
-allow skydive_t bin_t:file execute_no_trans;
+allow skydive_t bin_t:file {execute_no_trans map};
 allow skydive_t container_t:dir { getattr search};
 allow skydive_t container_t:file read;
 allow skydive_t container_t:lnk_file read;

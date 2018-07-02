@@ -18,6 +18,12 @@
 %global selinux_policyver 3.13.1-192
 %global moduletype contrib
 
+%if 0%{?rhel} >= 7
+%global selinux_semanage_pkg policycoreutils-python
+%else
+%global selinux_semanage_pkg policycoreutils-python-utils
+%endif
+
 %if %{defined fullver}
 %define vertag %extracttag %{fullver}
 %if "%{vertag}" != ""
@@ -67,9 +73,9 @@ topology and flows informations.
 %package analyzer
 Summary:          Skydive analyzer
 Requires:         %{name} = %{version}-%{release}
-Requires(post):   systemd
+Requires(post):   systemd %{selinux_semanage_pkg}
 Requires(preun):  systemd
-Requires(postun): systemd
+Requires(postun): systemd %{selinux_semanage_pkg}
 
 %description analyzer
 Collects data captured by the Skydive agents.
@@ -77,9 +83,9 @@ Collects data captured by the Skydive agents.
 %package agent
 Summary:          Skydive agent
 Requires:         %{name} = %{version}-%{release}
-Requires(post):   systemd
+Requires(post):   systemd %{selinux_semanage_pkg}
 Requires(preun):  systemd
-Requires(postun): systemd
+Requires(postun): systemd %{selinux_semanage_pkg}
 
 %description agent
 The Skydive agent has to be started on each node where the topology and
@@ -95,7 +101,7 @@ Ansible recipes to deploy Skydive
 
 %package selinux
 Summary:          Skydive selinux recipes
-Requires:         policycoreutils, libselinux-utils
+Requires:         container-selinux, policycoreutils, libselinux-utils
 Requires(post):   selinux-policy-base >= %{selinux_policyver}, policycoreutils
 Requires(postun): policycoreutils
 BuildArch:        noarch
